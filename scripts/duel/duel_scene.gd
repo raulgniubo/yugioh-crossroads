@@ -236,7 +236,35 @@ func _play_event(ev: Dictionary) -> void:
 				hud.remove_hand_card(ev["card"])
 			hud.inspect(ev["card"])
 			Sfx.play("spell")
-			await board.anim_activate(p, ev["card"])
+			if SpellRules.kind(ev["card"]) in ["field", "equip", "cont", "ritual", "quick"]:
+				var titles := {"field": "FIELD SPELL", "equip": "EQUIP SPELL", "cont": "CONTINUOUS SPELL", "ritual": "RITUAL SPELL", "quick": "QUICK-PLAY SPELL"}
+				hud.effect_text("%s  ·  %s" % [titles[SpellRules.kind(ev["card"])], ev["card"].cname()], Color("7dffc8"))
+			await board.anim_activate(p, ev["card"], int(ev.get("zone", 2)))
+		"st_settle":
+			await board.anim_settle(p, ev["card"], int(ev["zone"]))
+		"st_reset":
+			await board.anim_reset(p, ev["card"], int(ev["zone"]))
+		"chain":
+			Sfx.play("spell", -2.0, 1.25)
+			hud.banner("CHAIN %d" % int(ev["n"]), Color("ffd23a"))
+			await get_tree().create_timer(Settings.t(0.35)).timeout
+		"control":
+			Sfx.play("special", -3.0)
+			board.hide_stats_for(ev["card"])
+			hud.effect_text("%s changes sides!" % ev["card"].cname(), Color("ff8ad8"))
+			await board.anim_control(p, ev["card"], int(ev["zone"]))
+		"bounce":
+			board.hide_stats_for(ev["card"])
+			Sfx.play("card", -2.0)
+			await board.anim_bounce(ev["card"])
+			if not ev.get("extra", false):
+				if p == ME:
+					hud.add_hand_card(ev["card"])
+				else:
+					await board.anim_add_to_opp_hand(ev["card"])
+		"gy_to_deck":
+			board.remove_from_gy(ev["card"])
+			board.set_deck_count(p, ev["deck"])
 		"spell_done":
 			await board.anim_spell_done(ev["card"])
 		"attack":
@@ -366,7 +394,12 @@ func _update_counts() -> void:
 
 # ------------------------------------------------------------------ player input
 
+var _flow := false   # true while a chain / target prompt is running
+
+
 func _my_turn() -> bool:
+	if _flow:
+		return false
 	return state.current == ME and not busy and not state.is_over() and not hud.overlay_visible()
 
 
@@ -398,6 +431,12 @@ func _refresh() -> void:
 	hud.set_playable(playable)
 	_clear_glows()
 	if mode == "":
+		for st in state.players[ME].spells:
+			var sc := board.card_for(st) if st != null else null
+			if sc and not st.face_up:
+				sc.set_glow(state.can_activate(ME, st), Color("ff4dd2"))
+			elif sc and SpellRules.can_fire(state, ME, st):
+				sc.set_glow(true, Color("ffd23a"))
 		for m in state.players[ME].monsters():
 			var c := board.card_for(m)
 			if c and (state.can_attack(ME, m) or state.can_flip_summon(ME, m) or state.can_change_position(ME, m)):
@@ -455,7 +494,7 @@ func _on_action(action: String) -> void:
 		var uid := int(action.substr(5))
 		for x in state.players[ME].extra:
 			if x.uid == uid:
-				await _play(state.activate(ME, c, x))
+				await _activate_flow(ME, c, x)
 				return
 		return
 	match action:
@@ -480,7 +519,9 @@ func _on_action(action: String) -> void:
 						list.append(["fuse:%d" % o["card"].uid, o["card"].data["name"], true])
 					hud.show_actions(get_viewport().get_mouse_position(), list)
 					return
-			await _play(state.activate(ME, c))
+			await _activate_flow(ME, c, null)
+		"fire":
+			await _play(SpellRules.fire(state, ME, c))
 		"attack":
 			if state.phase == DuelState.Phase.MAIN1:
 				await _play(state.enter_battle())
@@ -522,6 +563,17 @@ func _on_board_card_clicked(card: Card3D) -> void:
 	if mode == "materials":
 		if mine:
 			_toggle_material(inst)
+		return
+	if mode == "" and state.players[ME].spells.has(inst):
+		# Your own Spell & Trap cards: flip a Set one, or fire a charged one.
+		var st_opts := []
+		if not inst.face_up and state.can_activate(ME, inst):
+			st_opts.append(["activate", "Activate", true])
+		if SpellRules.can_fire(state, ME, inst):
+			st_opts.append(["fire", "Fire (%d damage)" % (inst.counter * int(SpellRules.spec(inst)["cannon"])), true])
+		if not st_opts.is_empty():
+			_menu_card = inst
+			hud.show_actions(board.screen_pos(inst) + Vector2(60, 0), st_opts)
 		return
 	if mode == "tribute":
 		if mine:
@@ -654,38 +706,103 @@ func _do_attack(p: int, attacker, target) -> void:
 	if ev.is_empty():
 		return
 	await _play(ev)
-	var d := state.opponent(p)
-	var opts := state.responses(d, "attack")
-	var choice = null
-	if not opts.is_empty():
-		if d == AI or _autoplay:
-			choice = DuelAI.choose_response(state, d, "attack", opts, _level_for(d))
-			if choice != null:
-				await _ai_wait(0.3)
-		else:
-			choice = await hud.ask_response("%s attacks! Respond?" % attacker.data["name"], opts)
-	if choice != null:
-		await _play(state.respond(d, choice))
+	await _window(state.opponent(p), "attack", null, "%s attacks! Respond?" % attacker.data["name"])
 	await _play(state.resolve_attack())
 
 
-## After a summon, the other player may respond (Trap Hole and friends).
+## After a summon, the other player may respond (Trap Hole, Solemn Judgment and friends).
 func _after_summon(p: int) -> void:
 	var subj = state.last_summoned
 	if subj == null or state.is_over():
 		return
-	var d := state.opponent(p)
-	var opts := state.responses(d, "summon", subj)
-	if opts.is_empty():
-		return
-	var choice = null
-	if d == AI or _autoplay:
-		choice = DuelAI.choose_response(state, d, "summon", opts, _level_for(d))
-	else:
-		choice = await hud.ask_response("%s was summoned. Respond?" % subj.data["name"], opts)
-	if choice != null:
-		await _play(state.respond(d, choice, subj))
 	state.last_summoned = null
+	await _window(state.opponent(p), "summon", subj, "%s was summoned. Respond?" % subj.data["name"])
+
+
+## Activate a Spell/Trap with the full chain: target, the other player's response, then resolve.
+func _activate_flow(who: int, c, target) -> void:
+	var sp := SpellRules.spec(c)
+	if target == null and who == ME and not _autoplay and not sp.has("legacy") and SpellRules._needs_target(sp):
+		target = await _pick_target(who, c)
+		if target == null:
+			return
+	var ev := state.chain_add(who, c, target, "open", null)
+	if ev.is_empty():
+		return
+	_flow = true
+	await _play(ev)
+	await _window(state.opponent(who), "chain", null, "")
+	_flow = false
+	_refresh()
+	await _after_summon(who)
+
+
+func _pick_target(who: int, c):
+	var cands := SpellRules.targets(state, who, c)
+	if cands.is_empty():
+		return null
+	if cands.size() == 1 or who == AI or _autoplay:
+		return SpellRules.auto_target(state, who, c) if (who == AI or _autoplay) else cands[0]
+	var hidden := []
+	for x in cands:
+		if x.owner != who and not x.face_up:
+			hidden.append(x)
+	_flow = true
+	var pick = await hud.ask_pick("Choose a target for %s" % c.cname(), cands, "Select", "Cancel", hidden)
+	_flow = false
+	return pick
+
+
+## A response window. Players take turns adding to the chain until both pass, then it resolves.
+## window: "attack" | "summon" | "chain" | "battle_start". `first` gets the first chance.
+func _window(first: int, window: String, subject, prompt: String) -> void:
+	var who := first
+	var passes := 0
+	var was_flow := _flow
+	_flow = true
+	while passes < 2 and not state.is_over() and not _finished:
+		var win := window if state.chain.is_empty() else "chain"
+		var subj = subject if state.chain.is_empty() else state.chain.back()
+		var opts := state.responses(who, win, subj)
+		if win == "chain" and window in ["attack", "summon"]:
+			# Cards made for the original trigger still fit while the chain builds.
+			for o in state.responses(who, window, subject):
+				if not opts.has(o) and not o.is_monster() and SpellRules.kind(o) != "counter":
+					opts.append(o)
+		var choice = null
+		if not opts.is_empty():
+			if who == AI or _autoplay:
+				choice = DuelAI.choose_response(state, who, win, opts, _level_for(who))
+				if choice != null:
+					await _ai_wait(0.3)
+			else:
+				var text := prompt
+				if win == "chain":
+					text = "Chain to %s?" % state.chain.back()["card"].cname()
+				elif window == "battle_start":
+					text = "The Battle Phase begins. Respond?"
+				choice = await hud.ask_response(text, opts)
+		if choice != null:
+			if choice.is_monster() or (choice.cname() == "Kuriboh" and state.players[who].hand.has(choice)):
+				await _play(state.respond(who, choice, subject))
+			else:
+				var target = null
+				var sp := SpellRules.spec(choice)
+				if not sp.has("legacy") and SpellRules._needs_target(sp):
+					target = await _pick_target(who, choice)
+					_flow = true
+					if target == null:
+						passes += 1
+						who = state.opponent(who)
+						continue
+				await _play(state.chain_add(who, choice, target, win, subj))
+			passes = 0
+		else:
+			passes += 1
+		who = state.opponent(who)
+	if not state.chain.is_empty():
+		await _play(state.chain_resolve())
+	_flow = was_flow
 
 
 func _start_attack(inst) -> void:
@@ -794,11 +911,18 @@ func _ai_turn(who: int) -> void:
 		var act := DuelAI.next_main_action(state, who, _level_for(who))
 		if act.is_empty():
 			break
+		if act["do"] == "activate":
+			var n0 := state.players[who].hand.size() + state.players[who].set_cards().size()
+			await _activate_flow(who, act["card"], act.get("choice"))
+			if state.players[who].hand.size() + state.players[who].set_cards().size() == n0:
+				break
+			await _ai_wait(0.35)
+			continue
 		var ev := DuelAI.apply(state, who, act)
 		if ev.is_empty():
 			break
 		await _play(ev)
-		if act["do"] in ["summon", "extra", "special_hand", "flip"] or (act["do"] == "activate" and act["card"].data.get("effect", "") in ["fusion", "reborn"]):
+		if act["do"] in ["summon", "extra", "special_hand", "flip"]:
 			await _after_summon(who)
 		await _ai_wait(0.35)
 	if state.can_enter_battle() and not state.is_over() and not _finished:
@@ -808,6 +932,7 @@ func _ai_turn(who: int) -> void:
 				any_attack = true
 		if any_attack:
 			await _play(state.enter_battle())
+			await _window(state.opponent(who), "battle_start", null, "")
 			await _ai_wait(0.3)
 			steps = 0
 			while steps < 10 and not state.is_over() and not _finished:
@@ -825,10 +950,19 @@ func _ai_turn(who: int) -> void:
 					var act2 := DuelAI.next_main_action(state, who, _level_for(who))
 					if act2.is_empty():
 						break
+					if act2["do"] == "activate":
+						var n1 := state.players[who].hand.size() + state.players[who].set_cards().size()
+						await _activate_flow(who, act2["card"], act2.get("choice"))
+						if state.players[who].hand.size() + state.players[who].set_cards().size() == n1:
+							break
+						await _ai_wait(0.3)
+						continue
 					var ev2 := DuelAI.apply(state, who, act2)
 					if ev2.is_empty():
 						break
 					await _play(ev2)
+					if act2["do"] in ["summon", "extra", "special_hand", "flip"]:
+						await _after_summon(who)
 					await _ai_wait(0.3)
 	await _ai_wait(0.3)
 

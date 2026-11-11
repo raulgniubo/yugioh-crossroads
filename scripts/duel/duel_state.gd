@@ -39,6 +39,13 @@ class CardInst:
 	var killed_turn := -1
 	var attack_count := 0
 	var attack_count_turn := -1
+	var equipped_to = null        # an Equip card's monster
+	var linked = null             # Call of the Haunted / Premature Burial: the monster it brought back
+	var counter := 0
+	var orig_owner := -1          # set while the opponent controls this monster
+	var control_until := -1
+	var def_mod_t := 0
+	var def_mod_turn := -1
 
 	func reset_mods() -> void:
 		atk_mod = 0
@@ -90,6 +97,11 @@ class PlayerState:
 	var no_damage_turn := -1
 	var protect_turn := -1
 	var swords_left := 0
+	var field_spell: CardInst = null
+	var no_attack_turn := -1
+	var skip_draw := 0
+	var attacks_this_turn := 0
+	var attacks_turn := -1
 
 	func set_cards() -> Array[CardInst]:
 		var out: Array[CardInst] = []
@@ -182,11 +194,18 @@ func begin_turn() -> Array:
 	normal_summoned = false
 	phase = Phase.DRAW
 	var events := [{"type": "turn", "player": current, "turn": turn}, {"type": "phase", "phase": phase}]
+	events.append_array(_cleanup())
 	if turn > 1:
-		events.append_array(_draw(current))
+		if players[current].skip_draw > 0:
+			players[current].skip_draw -= 1
+			events.append({"type": "effect", "player": current, "card": null, "text": "Draw Phase skipped"})
+		else:
+			events.append_array(_draw(current))
 		if is_over():
 			return events
 	events.append_array(EffectRunner.standby(self, current))
+	if not is_over():
+		events.append_array(SpellRules.standby(self, current))
 	if is_over():
 		return events
 	phase = Phase.MAIN1
@@ -226,6 +245,11 @@ func end_turn() -> Array:
 		ps.hand.erase(worst)
 		_to_gy(ps, worst)
 		events.append({"type": "discard", "player": current, "card": worst})
+	# Monsters borrowed until the End Phase go home.
+	for m in ps.monsters():
+		if m.control_until == turn:
+			events.append_array(_return_control(m))
+	events.append_array(_cleanup())
 	# Swords of Revealing Light counts down at the end of the opponent's turns.
 	var owner := opponent(current)
 	if players[owner].swords_left > 0:
@@ -251,7 +275,28 @@ func _draw(p: int, count := 1) -> Array:
 		var c: CardInst = ps.deck.pop_back()
 		ps.hand.append(c)
 		events.append({"type": "draw", "player": p, "card": c, "deck": ps.deck.size()})
+	events.append_array(_check_exodia())
 	return events
+
+
+const EXODIA := ["Exodia the Forbidden One", "Right Arm of the Forbidden One", "Left Arm of the Forbidden One",
+		"Right Leg of the Forbidden One", "Left Leg of the Forbidden One"]
+
+
+## All five pieces of Exodia in one hand wins the duel on the spot.
+func _check_exodia() -> Array:
+	if is_over():
+		return []
+	for q in 2:
+		var have := {}
+		for h in players[q].hand:
+			if EXODIA.has(h.cname()):
+				have[h.cname()] = true
+		if have.size() == 5:
+			_set_winner(q, "%s assembled all five pieces of Exodia!" % players[q].name)
+			return [{"type": "effect", "player": q, "card": null, "text": "EXODIA! OBLITERATE!"},
+					{"type": "win", "player": winner, "reason": win_reason}]
+	return []
 
 
 func _set_winner(p: int, reason: String) -> void:
@@ -353,9 +398,137 @@ func change_position(p: int, c: CardInst) -> Array:
 
 # ------------------------------------------------------------------ spells
 
+## Can player p activate this Spell/Trap right now as their own action (Main Phase)?
+## From the hand (Spells), or a Set card (Spells, and Traps that can be used any time).
 func can_activate(p: int, c: CardInst) -> bool:
-	if p != current or not _in_main() or is_over() or not c.is_spell() or not players[p].hand.has(c):
+	if p != current or not _in_main() or is_over() or c.is_monster():
 		return false
+	var sp := SpellRules.spec(c)
+	if sp.is_empty():
+		return false
+	var ps := players[p]
+	if ps.hand.has(c):
+		if c.is_trap():
+			return false
+		if sp["k"] != "field" and ps.spells.find(null) == -1:
+			return false
+	elif ps.spells.has(c) and not c.face_up:
+		if c.is_trap():
+			if c.set_turn >= turn or not (sp.get("win", []) as Array).has("free"):
+				return false
+		elif sp["k"] == "quick" and c.set_turn >= turn:
+			return false
+	else:
+		return false
+	if SpellRules.blocked(self, c):
+		return false
+	if sp.has("legacy"):
+		return _legacy_can(p, c)
+	return SpellRules.feasible(self, p, c, "open", null)
+
+
+## Activate and resolve at once (no responses). The duel screen uses chain_add / chain_resolve
+## so both players get to respond; the AI's look-ahead and the tests use this shortcut.
+func activate(p: int, c: CardInst, choice = null) -> Array:
+	if not can_activate(p, c):
+		return []
+	var events := chain_add(p, c, choice, "open", null)
+	if events.is_empty():
+		return []
+	events.append_array(chain_resolve())
+	return events
+
+
+## Put a card on the chain: pay its cost, turn it face-up, remember its target.
+## `target` is the chosen target (or the Fusion Monster for Polymerization); null lets the game pick.
+func chain_add(p: int, c: CardInst, target = null, window := "open", subject = null) -> Array:
+	var sp := SpellRules.spec(c)
+	var ps := players[p]
+	if sp.is_empty():
+		return []
+	var events := []
+	var zone := -1
+	if sp.has("legacy") and str(sp["legacy"]) == "fusion":
+		var ok := false
+		for o in fusion_targets(p, c):
+			if target == null or o["card"] == target:
+				target = o["card"]
+				ok = true
+				break
+		if not ok:
+			return []
+	if ps.hand.has(c):
+		ps.hand.erase(c)
+		if sp["k"] == "field":
+			if ps.field_spell != null:
+				events.append_array(_destroy_st(ps.field_spell))
+			ps.field_spell = c
+			zone = 5
+		else:
+			zone = ps.spells.find(null)
+			if zone == -1:
+				ps.hand.append(c)
+				return []
+			ps.spells[zone] = c
+		c.face_up = true
+		events.append({"type": "activate", "player": p, "card": c, "zone": zone})
+	elif ps.spells.has(c):
+		zone = ps.spells.find(c)
+		c.face_up = true
+		events.append({"type": "trap", "player": p, "card": c, "zone": zone})
+	else:
+		return []
+	if target == null and not sp.has("legacy") and SpellRules._needs_target(sp):
+		target = SpellRules.auto_target(self, p, c)
+	var link := {"player": p, "card": c, "kind": "trap" if c.is_trap() else "spell", "spec": sp, "target": target,
+			"subject": subject, "window": window, "negated": false, "zone": zone}
+	events.append_array(SpellRules.pay_cost(self, p, c, sp))
+	chain.append(link)
+	if chain.size() > 1:
+		events.append({"type": "chain", "player": p, "card": c, "n": chain.size()})
+	return events
+
+
+## Resolve the chain, last card first.
+func chain_resolve() -> Array:
+	var events := []
+	while not chain.is_empty() and not is_over():
+		var link: Dictionary = chain.pop_back()
+		var c: CardInst = link["card"]
+		var p: int = link["player"]
+		var sp: Dictionary = link["spec"]
+		var ps := players[p]
+		var here := ps.spells.has(c) or ps.field_spell == c
+		var stays: bool = SpellRules.PERSIST.has(sp["k"])
+		if link["negated"] or (not here and stays):
+			events.append({"type": "effect", "player": p, "card": c, "text": "%s is negated" % c.cname()})
+		elif sp.has("legacy"):
+			events.append_array(_legacy_trap(p, c, link["subject"]) if c.is_trap() else _legacy_spell(p, c, link["target"]))
+			stays = false
+		else:
+			events.append_array(SpellRules.resolve(self, link))
+			stays = stays and link.get("stays", true) and not link["negated"]
+		here = ps.spells.has(c) or ps.field_spell == c
+		if here:
+			if link.get("reset", false):
+				events.append({"type": "st_reset", "player": p, "card": c, "zone": link["zone"]})
+			elif stays and not link["negated"]:
+				events.append({"type": "st_settle", "player": p, "card": c, "zone": link["zone"]})
+			else:
+				if ps.field_spell == c:
+					ps.field_spell = null
+				else:
+					ps.spells[ps.spells.find(c)] = null
+				events.append_array(SpellRules.left_field(self, c))
+				_to_gy(ps, c)
+				events.append({"type": "st_done" if c.is_trap() else "spell_done", "player": p, "card": c})
+	chain.clear()
+	events.append_array(_cleanup())
+	events.append_array(_check_exodia())
+	return events
+
+
+func _legacy_can(p: int, c: CardInst) -> bool:
 	match c.data.get("effect", ""):
 		"soul_release":
 			return not players[opponent(p)].gy.is_empty()
@@ -382,9 +555,7 @@ func can_activate(p: int, c: CardInst) -> bool:
 	return true
 
 
-func activate(p: int, c: CardInst, choice: CardInst = null) -> Array:
-	if not can_activate(p, c):
-		return []
+func _legacy_spell(p: int, c: CardInst, choice = null) -> Array:
 	var ps := players[p]
 	var fusion_plan := {}
 	if c.data.get("effect", "") == "fusion":
@@ -395,8 +566,7 @@ func activate(p: int, c: CardInst, choice: CardInst = null) -> Array:
 				break
 		if fusion_plan.is_empty():
 			return []
-	ps.hand.erase(c)
-	var events := [{"type": "activate", "player": p, "card": c}]
+	var events := []
 	match c.data.get("effect", ""):
 		"draw2":
 			events.append_array(_draw(p, 2))
@@ -468,8 +638,6 @@ func activate(p: int, c: CardInst, choice: CardInst = null) -> Array:
 				revive.owner = p
 				events.append_array(_special(p, revive, "reborn"))
 				events.append_array(EffectRunner.on_summon(self, p, revive, "special"))
-	_to_gy(ps, c)
-	events.append({"type": "spell_done", "player": p, "card": c})
 	return events
 
 
@@ -493,7 +661,7 @@ func _lowest_face_up(p: int) -> CardInst:
 
 func can_attack(p: int, c: CardInst) -> bool:
 	return (p == current and phase == Phase.BATTLE and not is_over() and players[p].field.has(c)
-			and c.face_up and c.attack_pos and attacks_left(c) > 0
+			and c.face_up and c.attack_pos and attacks_left(c) > 0 and SpellRules.can_attack(self, p, c)
 			and not (EffectRunner.fx(c).get("summon_sick", false) and c.summoned_turn == turn)
 			and players[opponent(p)].swords_left == 0)
 
@@ -536,6 +704,8 @@ func attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 
 
 var pending_attack := {}
+## The chain: links are {"player", "card", "kind", "spec", "target", "subject", "negated"}, last in resolves first.
+var chain: Array = []
 ## Last monster Normal Summoned, for the "summon" response window.
 var last_summoned: CardInst = null
 
@@ -552,6 +722,10 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 		attacker.attack_count_turn = turn
 		attacker.attack_count = 0
 	attacker.attack_count += 1
+	if players[p].attacks_turn != turn:
+		players[p].attacks_turn = turn
+		players[p].attacks_this_turn = 0
+	players[p].attacks_this_turn += 1
 	pending_attack = {"player": p, "attacker": attacker, "target": target, "negated": false}
 	return [{"type": "attack", "player": p, "card": attacker, "target": target}]
 
@@ -607,10 +781,10 @@ func resolve_attack() -> Array:
 			events.append_array(_battle_kill(target, attacker))
 			events.append_array(_battle_kill(attacker, target))
 	else:
-		var d: int = target.def()
+		var d: int = def_of(target)
 		if a > d:
 			events.append_array(_battle_kill(attacker, target))
-			if EffectRunner.piercing(self, p, attacker):
+			if EffectRunner.piercing(self, p, attacker) or SpellRules.equip_flag(self, attacker, "pierce"):
 				events.append({"type": "effect", "player": p, "card": attacker, "text": "Piercing damage!"})
 				events.append_array(_battle_damage(opp, a - d, attacker, target))
 		elif a < d:
@@ -634,6 +808,8 @@ func resolve_attack() -> Array:
 
 ## winner destroys loser by battle (if it can be destroyed), with the triggers that come with it.
 func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
+	if SpellRules.equip_flag(self, loser, "no_battle_death"):
+		return []
 	var events := _battle_destroy(loser)
 	var died := not players[loser.owner].field.has(loser) and players[loser.owner].gy.has(loser)
 	if not died:
@@ -662,7 +838,11 @@ func atk_of(c: CardInst, attacking: bool, vs: CardInst = null, battling := false
 		"Max Warrior":
 			if attacking:
 				v += 400
-	return maxi(0, v + EffectRunner.atk_bonus(self, c, attacking, vs, battling))
+	return maxi(0, v + EffectRunner.atk_bonus(self, c, attacking, vs, battling) + SpellRules.atk_bonus(self, c, attacking and battling, vs))
+
+
+func def_of(c: CardInst) -> int:
+	return maxi(0, c.def() + (c.def_mod_t if c.def_mod_turn == turn else 0) + SpellRules.def_bonus(self, c))
 
 
 func _battle_destroy(c: CardInst) -> Array:
@@ -698,12 +878,19 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 		_to_gy(ps, o)
 	c.overlays.clear()
 	events.append_array(_on_leave_field(c, by_battle))
+	events.append_array(_monster_left(c))
 	return events
 
 
 ## Every card headed for the Graveyard goes through here, so "banish instead" effects work.
 func _to_gy(ps: PlayerState, c: CardInst) -> void:
-	if _gy_redirect():
+	if c.orig_owner != -1:
+		# A borrowed monster goes to its real owner's Graveyard.
+		c.owner = c.orig_owner
+		c.orig_owner = -1
+		c.control_until = -1
+		ps = players[c.owner]
+	if _gy_redirect(c):
 		ps.banished.append(c)
 		redirected.append(c)
 	else:
@@ -714,7 +901,9 @@ func _to_gy(ps: PlayerState, c: CardInst) -> void:
 var redirected: Array = []
 
 
-func _gy_redirect() -> bool:
+func _gy_redirect(c: CardInst = null) -> bool:
+	if SpellRules.redirect(self, c):
+		return true
 	for q in 2:
 		for m in players[q].monsters():
 			if m.face_up and EffectRunner.fx(m).get("banish_redirect", false):
@@ -752,10 +941,23 @@ func _banish(c: CardInst) -> Array:
 		elif ps.deck.has(c):
 			from = "deck"
 			ps.deck.erase(c)
+		elif ps.field_spell == c:
+			from = "spells"
+			zone = 5
+			ps.field_spell = null
 		if from != "":
+			if c.orig_owner != -1:
+				c.owner = c.orig_owner
+				c.orig_owner = -1
+				c.control_until = -1
 			c.face_up = true
 			players[c.owner].banished.append(c)
-			return [{"type": "banish", "player": c.owner, "card": c, "from": from, "zone": zone, "side": q}]
+			var bev := [{"type": "banish", "player": c.owner, "card": c, "from": from, "zone": zone, "side": q}]
+			if from == "field":
+				bev.append_array(_monster_left(c))
+			elif from == "spells":
+				bev.append_array(SpellRules.left_field(self, c))
+			return bev
 	return []
 
 
@@ -771,11 +973,118 @@ func _best_monsters(list: Array, n: int) -> Array:
 func _destroy_st(c: CardInst) -> Array:
 	var ps := players[c.owner]
 	var zone := ps.spells.find(c)
-	if zone == -1:
+	if ps.field_spell == c:
+		ps.field_spell = null
+		zone = 5
+	elif zone == -1:
 		return []
-	ps.spells[zone] = null
+	else:
+		ps.spells[zone] = null
 	_to_gy(ps, c)
-	return [{"type": "destroy_st", "player": c.owner, "card": c, "zone": zone}]
+	var events := [{"type": "destroy_st", "player": c.owner, "card": c, "zone": zone}]
+	events.append_array(SpellRules.left_field(self, c))
+	return events
+
+
+## Equip cards (and Call of the Haunted) go when their monster goes.
+func _monster_left(m: CardInst) -> Array:
+	var events := []
+	for q in 2:
+		for st in players[q].spells.duplicate():
+			if st == null or not st.face_up:
+				continue
+			if st.equipped_to == m or st.linked == m:
+				st.linked = null
+				st.equipped_to = null
+				events.append_array(_destroy_st(st))
+	return events
+
+
+## Sweep up Equip cards whose monster is gone (tributed, used as material...).
+func _cleanup() -> Array:
+	var events := []
+	for q in 2:
+		for st in players[q].spells.duplicate():
+			if st == null or not st.face_up:
+				continue
+			var m = st.equipped_to if st.equipped_to != null else st.linked
+			if m == null:
+				continue
+			if not (players[0].field.has(m) or players[1].field.has(m)) or not m.face_up:
+				st.linked = null
+				st.equipped_to = null
+				events.append_array(_destroy_st(st))
+	return events
+
+
+## Return a card on the field to its owner's hand (Extra Deck monsters go back to the Extra Deck).
+func _bounce(c: CardInst) -> Array:
+	for q in 2:
+		var ps := players[q]
+		var from := ""
+		var zone := -1
+		if ps.field.has(c):
+			from = "field"
+			zone = ps.field.find(c)
+			ps.field[zone] = null
+			for o in c.overlays:
+				_to_gy(ps, o)
+			c.overlays.clear()
+			c.reset_mods()
+		elif ps.spells.has(c):
+			from = "spells"
+			zone = ps.spells.find(c)
+			ps.spells[zone] = null
+		elif ps.field_spell == c:
+			from = "spells"
+			zone = 5
+			ps.field_spell = null
+		if from == "":
+			continue
+		if c.orig_owner != -1:
+			c.owner = c.orig_owner
+			c.orig_owner = -1
+			c.control_until = -1
+		c.face_up = true
+		var home := players[c.owner]
+		var to_extra: bool = c.is_monster() and c.frame() in ["fusion", "synchro", "xyz"]
+		if to_extra:
+			home.extra.append(c)
+		else:
+			home.hand.append(c)
+		var events := [{"type": "bounce", "player": c.owner, "card": c, "from": from, "zone": zone, "side": q, "extra": to_extra}]
+		events.append_array(_monster_left(c) if from == "field" else SpellRules.left_field(self, c))
+		return events
+	return []
+
+
+## Move a monster to player p's side. `until`: the turn it goes back at the End Phase, or -1 to keep it.
+func _take_control(c: CardInst, p: int, until: int) -> Array:
+	var from_p := c.owner
+	if from_p == p or not players[from_p].field.has(c):
+		return []
+	var zone := players[p].free_zone()
+	if zone == -1:
+		return _destroy(c)
+	var from_zone := players[from_p].field.find(c)
+	players[from_p].field[from_zone] = null
+	players[p].field[zone] = c
+	if c.orig_owner == -1:
+		c.orig_owner = from_p
+	c.owner = p
+	c.control_until = until
+	return [{"type": "control", "player": p, "card": c, "zone": zone, "from_player": from_p, "from_zone": from_zone}]
+
+
+func _return_control(c: CardInst) -> Array:
+	if c.orig_owner == -1 or c.orig_owner == c.owner or not players[c.owner].field.has(c):
+		return []
+	var home := c.orig_owner
+	c.orig_owner = -1
+	var ev := _take_control(c, home, -1)
+	c.orig_owner = -1
+	c.control_until = -1
+	return ev
 
 
 ## Triggers when a monster leaves the field for the GY.
@@ -849,13 +1158,13 @@ func _special(p: int, c: CardInst, method: String) -> Array:
 
 ## Every Fusion Monster that can be made right now with Polymerization `poly`.
 ## Each option: {"card", "hand": [materials], "field": [materials]}
-func fusion_targets(p: int, poly: CardInst = null) -> Array:
+func fusion_targets(p: int, poly: CardInst = null, from_gy := false) -> Array:
 	var ps := players[p]
 	var out := []
 	for f in ps.extra:
 		if f.frame() != "fusion":
 			continue
-		var pool_hand: Array = ps.hand.duplicate()
+		var pool_hand: Array = ps.hand.duplicate() if not from_gy else ps.gy.duplicate()
 		if poly:
 			pool_hand.erase(poly)
 		var pool_field: Array = ps.monsters()
@@ -894,18 +1203,22 @@ func fusion_targets(p: int, poly: CardInst = null) -> Array:
 	return out
 
 
-func _do_fusion(p: int, plan: Dictionary) -> Array:
+func _do_fusion(p: int, plan: Dictionary, banish := false) -> Array:
 	var ps := players[p]
 	var events := []
-	for m in plan["hand"]:
-		ps.hand.erase(m)
-		_to_gy(ps, m)
-		events.append({"type": "material", "player": p, "card": m, "from": "hand"})
-	for m in plan["field"]:
-		var z := ps.field.find(m)
-		ps.field[z] = null
-		_to_gy(ps, m)
-		events.append({"type": "material", "player": p, "card": m, "from": "field", "zone": z})
+	if banish:
+		for m in plan["hand"] + plan["field"]:
+			events.append_array(_banish(m))
+	else:
+		for m in plan["hand"]:
+			ps.hand.erase(m)
+			_to_gy(ps, m)
+			events.append({"type": "material", "player": p, "card": m, "from": "hand"})
+		for m in plan["field"]:
+			var z := ps.field.find(m)
+			ps.field[z] = null
+			_to_gy(ps, m)
+			events.append({"type": "material", "player": p, "card": m, "from": "field", "zone": z})
 	var f: CardInst = plan["card"]
 	ps.extra.erase(f)
 	events.append_array(_special(p, f, "fusion"))
@@ -1020,7 +1333,41 @@ func clone() -> DuelState:
 		np.no_damage_turn = ps.no_damage_turn
 		np.protect_turn = ps.protect_turn
 		np.swords_left = ps.swords_left
+		np.field_spell = _clone_card(ps.field_spell, map) if ps.field_spell != null else null
+		np.no_attack_turn = ps.no_attack_turn
+		np.skip_draw = ps.skip_draw
+		np.attacks_this_turn = ps.attacks_this_turn
+		np.attacks_turn = ps.attacks_turn
 		s.players.append(np)
+	# Links between cards (equips, borrowed monsters, the chain, the attack in progress).
+	for ps in players:
+		for c in ps.spells:
+			if c != null:
+				var n: CardInst = map[c.uid]
+				n.equipped_to = map.get(c.equipped_to.uid) if c.equipped_to != null else null
+				n.linked = map.get(c.linked.uid) if c.linked != null else null
+	for l in chain:
+		var nl: Dictionary = l.duplicate()
+		nl["card"] = map.get(l["card"].uid, l["card"])
+		if l["target"] != null:
+			nl["target"] = map.get(l["target"].uid, l["target"])
+		if l["subject"] != null and not (l["subject"] is Dictionary):
+			nl["subject"] = map.get(l["subject"].uid, l["subject"])
+		elif l["subject"] is Dictionary:
+			nl["subject"] = null
+		s.chain.append(nl)
+	for i in s.chain.size():
+		if chain[i]["subject"] is Dictionary:
+			var idx := chain.find(chain[i]["subject"])
+			if idx != -1:
+				s.chain[i]["subject"] = s.chain[idx]
+	if last_summoned != null:
+		s.last_summoned = map.get(last_summoned.uid)
+	if not pending_attack.is_empty():
+		s.pending_attack = pending_attack.duplicate()
+		s.pending_attack["attacker"] = map.get(pending_attack["attacker"].uid, pending_attack["attacker"])
+		if pending_attack["target"] != null:
+			s.pending_attack["target"] = map.get(pending_attack["target"].uid, pending_attack["target"])
 	s.current = current
 	s.turn = turn
 	s.phase = phase
@@ -1058,6 +1405,11 @@ func _clone_card(c: CardInst, map: Dictionary) -> CardInst:
 	n.killed_turn = c.killed_turn
 	n.attack_count = c.attack_count
 	n.attack_count_turn = c.attack_count_turn
+	n.counter = c.counter
+	n.orig_owner = c.orig_owner
+	n.control_until = c.control_until
+	n.def_mod_t = c.def_mod_t
+	n.def_mod_turn = c.def_mod_turn
 	map[c.uid] = n
 	for o in c.overlays:
 		n.overlays.append(_clone_card(o, map))
@@ -1080,7 +1432,7 @@ func find_uid(uid: int) -> CardInst:
 
 func can_set_st(p: int, c: CardInst) -> bool:
 	return (p == current and _in_main() and not is_over() and not c.is_monster()
-			and players[p].hand.has(c) and players[p].spells.find(null) != -1)
+			and players[p].hand.has(c) and players[p].spells.find(null) != -1 and SpellRules.kind(c) != "field")
 
 
 func set_st(p: int, c: CardInst) -> Array:
@@ -1097,15 +1449,16 @@ func set_st(p: int, c: CardInst) -> Array:
 
 ## Cards player `p` could activate right now in a response window.
 ## window: "attack" (an opponent's monster declared an attack) or "summon".
-func responses(p: int, window: String, subject: CardInst = null) -> Array:
+func responses(p: int, window: String, subject = null) -> Array:
 	var out := []
 	var ps := players[p]
 	if is_over():
 		return out
 	for c in ps.spells:
-		if c == null or not c.is_trap() or c.set_turn >= turn:
-			continue
-		if _trap_fits(p, c, window, subject):
+		if c != null and not c.face_up and SpellRules.fits(self, p, c, window, subject):
+			out.append(c)
+	for c in ps.hand:
+		if not c.is_monster() and SpellRules.fits(self, p, c, window, subject):
 			out.append(c)
 	if window == "attack":
 		if not pending_attack.is_empty() and pending_attack["player"] != p:
@@ -1146,7 +1499,7 @@ func _trap_fits(p: int, c: CardInst, window: String, subject: CardInst) -> bool:
 
 
 ## Activate a response card (trap, Kuriboh from hand, Utopia's effect).
-func respond(p: int, c: CardInst, subject: CardInst = null) -> Array:
+func respond(p: int, c: CardInst, subject = null) -> Array:
 	var ps := players[p]
 	var events := []
 	if c.cname() == "Kuriboh" and ps.hand.has(c):
@@ -1164,12 +1517,18 @@ func respond(p: int, c: CardInst, subject: CardInst = null) -> Array:
 			pending_attack["negated"] = true
 		events.append({"type": "effect", "player": p, "card": c, "text": "Utopia negates the attack!"})
 		return events
-	var zone := ps.spells.find(c)
-	if zone == -1:
+	if not ps.spells.has(c) and not ps.hand.has(c):
 		return events
-	c.face_up = true
-	events.append({"type": "trap", "player": p, "card": c, "zone": zone})
+	events.append_array(chain_add(p, c, null, "attack" if not pending_attack.is_empty() else "summon", subject))
+	events.append_array(chain_resolve())
+	return events
+
+func _legacy_trap(p: int, c: CardInst, subject = null) -> Array:
+	var ps := players[p]
+	var events := []
 	var opp := opponent(p)
+	if subject is Dictionary:
+		subject = null
 	match c.data.get("effect", ""):
 		"mirror_force":
 			pending_attack["negated"] = true
@@ -1200,9 +1559,6 @@ func respond(p: int, c: CardInst, subject: CardInst = null) -> Array:
 			for q in 2:
 				for m in players[q].monsters():
 					events.append_array(_destroy(m))
-	ps.spells[ps.spells.find(c)] = null
-	_to_gy(ps, c)
-	events.append({"type": "st_done", "player": p, "card": c})
 	return events
 
 

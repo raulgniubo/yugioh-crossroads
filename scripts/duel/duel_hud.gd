@@ -734,9 +734,14 @@ func inspect(inst, hidden := false) -> void:
 			txt += "\n(This effect isn't in the game yet. It plays with its stats.)"
 		_inspect_text.text = txt if txt != "" else "Normal Monster"
 	else:
-		_chip("Spell", Color("2de2a0"))
+		var is_trap: bool = str(d.get("kind", "")) == "trap"
+		var st_names := {"quick": "Quick-Play Spell", "cont": "Continuous Spell", "field": "Field Spell", "equip": "Equip Spell",
+				"ritual": "Ritual Spell", "ctrap": "Continuous Trap", "counter": "Counter Trap"}
+		_chip(str(st_names.get(SpellRules.kind(inst), "Trap" if is_trap else "Spell")), Color("ff4dd2") if is_trap else Color("2de2a0"))
 		_inspect_stat_row.visible = false
-		_inspect_text.text = str(d.get("text", d.get("desc", "")))
+		var body := str(d.get("text", d.get("desc", "")))
+		var rule := SpellRules.note(inst) if inst != null and not hidden else ""
+		_inspect_text.text = ("IN THIS GAME: " + rule + "\n\n" + body) if rule != "" else body
 
 
 # ------------------------------------------------------------------ hand
@@ -879,9 +884,14 @@ func hide_prompt() -> void:
 
 
 ## Ask the player whether to respond with one of `options` (cards). Returns the card or null.
-func ask_response(text: String, options: Array):
+## Pick one card from a list (targets, materials...). `hidden` cards are shown face-down.
+func ask_pick(text: String, options: Array, button := "Select", cancel := "Cancel", hidden: Array = []):
+	return await ask_response(text, options, button, cancel, hidden, Color("7fd8ff"))
+
+
+func ask_response(text: String, options: Array, button := "Activate", cancel := "Don't activate", hidden: Array = [], tint := Color("ff4dd2")):
 	var root := PanelContainer.new()
-	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.06, 0.02, 0.08, 0.97), 22, Color("ff4dd2", 0.7)))
+	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.06, 0.02, 0.08, 0.97) if tint == Color("ff4dd2") else Color(0.03, 0.06, 0.11, 0.97), 22, Color(tint, 0.7)))
 	root.z_index = 60
 	add_child(root)
 	var v := VBoxContainer.new()
@@ -895,20 +905,27 @@ func ask_response(text: String, options: Array):
 	for c in options:
 		var col := VBoxContainer.new()
 		var tr := TextureRect.new()
-		tr.texture = Cards.get_face(c.id)
-		tr.custom_minimum_size = Vector2(150, 219)
+		var secret := hidden.has(c)
+		tr.texture = Cards.get_back() if secret else Cards.get_face(c.id)
+		var small := options.size() > 6
+		tr.custom_minimum_size = Vector2(110, 161) if small else Vector2(150, 219)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tr.mouse_entered.connect(func(): inspect(c))
+		tr.mouse_filter = Control.MOUSE_FILTER_STOP
+		tr.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		tr.mouse_entered.connect(func(): inspect(c, secret))
+		tr.gui_input.connect(func(e):
+			if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+				_response_picked.emit(c))
 		col.add_child(tr)
 		var b := Button.new()
-		b.text = "Activate"
-		b.add_theme_stylebox_override("normal", UITheme.button_box(Color("ff4dd2", 0.25), Color("ff4dd2"), 14))
+		b.text = button
+		b.add_theme_stylebox_override("normal", UITheme.button_box(Color(tint, 0.25), tint, 14))
 		b.pressed.connect(func(): _response_picked.emit(c))
 		col.add_child(b)
 		row.add_child(col)
 	var no := Button.new()
-	no.text = "Don't activate"
+	no.text = cancel
 	no.pressed.connect(func(): _response_picked.emit(null))
 	v.add_child(no)
 	root.reset_size()

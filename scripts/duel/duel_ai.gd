@@ -32,8 +32,20 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 	if level == EASY and randf() < 0.12:
 		return {}  # Easy sometimes just passes
 	# 1. Spells
-	for c in me.hand:
+	var pool: Array = me.hand.duplicate()
+	for st in me.spells:
+		if st != null and not st.face_up:
+			pool.append(st)
+	var idle := -1e9
+	for c in pool:
 		if c.is_monster() or not s.can_activate(p, c):
+			continue
+		if not SpellRules.spec(c).has("legacy"):
+			# Cards from the Spell/Trap table: play it if a quick look ahead says the board gets better.
+			if idle < -1e8:
+				idle = _score_after(s, p, {})
+			if _score_after(s, p, {"do": "activate", "card": c}) > idle + 80.0:
+				return {"do": "activate", "card": c}
 			continue
 		match c.data.get("effect", ""):
 			"draw2", "swords":
@@ -288,11 +300,14 @@ static func _candidates(s: DuelState, p: int) -> Array:
 			var tributes := _weakest(me, need)
 			out.append({"do": "summon", "card": c, "tributes": tributes})
 			out.append({"do": "set", "card": c, "tributes": tributes})
+	for c in me.spells:
+		if c != null and not c.face_up and s.can_activate(p, c):
+			out.append({"do": "activate", "card": c})
 	for x in me.extra:
 		if s.can_extra_summon(p, x):
 			out.append({"do": "extra", "card": x})
 	for c in me.hand:
-		if c.is_trap() and s.can_set_st(p, c):
+		if (c.is_trap() or SpellRules.kind(c) == "quick") and s.can_set_st(p, c):
 			out.append({"do": "set_st", "card": c})
 		if s.can_special_from_hand(p, c):
 			out.append({"do": "special_hand", "card": c})
@@ -374,9 +389,41 @@ static func apply(s: DuelState, p: int, act: Dictionary) -> Array:
 	return []
 
 
+## Data-driven Spell/Trap cards: try each on a copy of the duel and keep the one that helps most.
+static func _sim_response(s: DuelState, p: int, window: String, options: Array) -> DuelState.CardInst:
+	var base := _sim_score(s, p, window, null)
+	var best: DuelState.CardInst = null
+	var best_gain := 140.0
+	for c in options:
+		if c.is_monster() or SpellRules.spec(c).has("legacy") or SpellRules.spec(c).is_empty():
+			continue
+		var gain := _sim_score(s, p, window, c) - base
+		if gain > best_gain:
+			best_gain = gain
+			best = c
+	return best
+
+
+static func _sim_score(s: DuelState, p: int, window: String, c) -> float:
+	var sim := s.clone()
+	if c != null:
+		var subj = sim.chain.back() if not sim.chain.is_empty() else sim.last_summoned
+		if sim.chain_add(p, sim.find_uid(c.uid), null, window, subj).is_empty():
+			return -1e9
+	sim.chain_resolve()
+	if not sim.pending_attack.is_empty():
+		sim.resolve_attack()
+	return _evaluate(sim, p)
+
+
 ## Should player p use a response card? Returns the card or null.
 static func choose_response(s: DuelState, p: int, window: String, options: Array, level := NORMAL) -> DuelState.CardInst:
 	if options.is_empty() or (level == EASY and randf() < 0.4):
+		return null
+	var sim_pick := _sim_response(s, p, window, options)
+	if sim_pick != null:
+		return sim_pick
+	if window != "attack" and window != "summon":
 		return null
 	var me := s.players[p]
 	if window == "attack":

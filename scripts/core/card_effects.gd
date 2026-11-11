@@ -258,7 +258,9 @@ static func has(name: String) -> bool:
 
 ## Does a card match a filter dictionary?
 static func matches(d: Dictionary, f: Dictionary) -> bool:
-	if f.get("monster", true) and d.get("kind", "monster") != "monster":
+	if f.get("monster", true) and (d.get("kind", "monster") != "monster" or str(d.get("frame", "")) in ["spell", "trap"]):
+		return false
+	if f.has("frame") and str(d.get("frame", "")) != f["frame"]:
 		return false
 	var n := str(d.get("name", ""))
 	var alias := str(of(n).get("name_as", ""))

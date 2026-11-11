@@ -12,6 +12,7 @@ func _ready() -> void:
 	_test_traps()
 	_test_effects()
 	_test_banish()
+	_test_spell_rules()
 	var stress := OS.get_environment("STRESS_FOLDER")
 	if stress != "":
 		CardData.load_external(stress)
@@ -245,7 +246,10 @@ func _ai_vs_ai(seed: int, a := "yugi", b := "kaiba", lv_a := 1, lv_b := 1) -> in
 func _total(s: DuelState) -> int:
 	var t := 0
 	for ps in s.players:
-		t += ps.deck.size() + ps.hand.size() + ps.gy.size() + ps.extra.size() + ps.set_cards().size()
+		t += ps.deck.size() + ps.hand.size() + ps.gy.size() + ps.extra.size() + ps.banished.size()
+		t += 1 if ps.field_spell != null else 0
+		for st in ps.spells:
+			t += 1 if st != null else 0
 		for m in ps.monsters():
 			t += 1 + m.overlays.size()
 	return t
@@ -292,6 +296,221 @@ func _battle_ready(s: DuelState) -> void:
 	s.current = 0
 	s.turn = 3
 	s.phase = DuelState.Phase.BATTLE
+
+
+## A Spell/Trap by name, in hand ("hand") or Set last turn ("set").
+func _st(s: DuelState, p: int, name: String, where := "hand", kind := "spell", extra := {}) -> DuelState.CardInst:
+	var c := s._make(40640057, p)
+	var d := {"name": name, "kind": kind, "frame": kind}
+	d.merge(extra, true)
+	c.data = d
+	if where == "hand":
+		s.players[p].hand.append(c)
+	else:
+		c.face_up = false
+		c.set_turn = s.turn - 1
+		s.players[p].spells[s.players[p].spells.find(null)] = c
+	return c
+
+
+func _main_ready(seed: int) -> DuelState:
+	var s := _new_state(seed)
+	_battle_ready(s)
+	s.phase = DuelState.Phase.MAIN1
+	return s
+
+
+func _test_spell_rules() -> void:
+	# Field Spell: boosts the right monsters on both sides, sits in the Field Zone
+	var s := _main_ready(41)
+	var dragon := _fake(s, 0, "Dragon", 2000, 1000, 0, {"race": "Dragon"})
+	var warrior := _fake(s, 1, "Warrior", 1500, 1000, 0)
+	var mountain := _st(s, 0, "Mountain")
+	check(s.can_activate(0, mountain), "Field Spell can be activated")
+	s.activate(0, mountain)
+	check(s.players[0].field_spell == mountain, "Field Spell sits in the Field Zone")
+	check(s.atk_of(dragon, false) == 2200 and s.def_of(dragon) == 1200 and s.atk_of(warrior, false) == 1500, "Mountain boosts Dragons only")
+	var yami := _st(s, 0, "Yami")
+	s.activate(0, yami)
+	check(s.players[0].field_spell == yami and s.players[0].gy.has(mountain), "A new Field Spell replaces the old one")
+	# Equip Spell: boosts, and leaves with its monster
+	s = _main_ready(42)
+	var m := _fake(s, 0, "Knight", 1500, 1000, 0)
+	var foe := _fake(s, 1, "Foe", 2000, 1000, 0)
+	var axe := _st(s, 0, "Axe of Despair")
+	s.activate(0, axe, m)
+	check(axe.equipped_to == m and s.atk_of(m, false) == 2500 and s.players[0].spells.has(axe), "Axe of Despair equips for +1000")
+	s.phase = DuelState.Phase.BATTLE
+	s.attack(0, m, foe)
+	check(not s.players[1].field.has(foe), "Equipped monster wins the battle")
+	s._destroy(m)
+	check(not s.players[0].spells.has(axe) and s.players[0].gy.has(axe), "Equip card is destroyed with its monster")
+	# Continuous Spell stays and locks attacks; upkeep is paid in the Standby Phase
+	s = _main_ready(43)
+	var strong := _fake(s, 0, "Strong", 1800, 0, 0)
+	var weak := _fake(s, 0, "Weak", 1000, 0, 1)
+	var peace := _st(s, 0, "Messenger of Peace")
+	s.activate(0, peace)
+	check(s.players[0].spells.has(peace) and peace.face_up, "Continuous Spell stays on the field")
+	s.phase = DuelState.Phase.BATTLE
+	check(not s.can_attack(0, strong) and s.can_attack(0, weak), "Messenger of Peace stops 1500+ ATK attackers")
+	var lp := s.players[0].lp
+	s.end_turn()
+	s.begin_turn()
+	s.end_turn()
+	s.begin_turn()
+	check(s.players[0].lp == lp - 100, "Messenger of Peace upkeep is paid")
+	# Chain: Mystical Space Typhoon in response does not stop a Normal Spell, a Counter Trap does
+	s = _main_ready(44)
+	_fake(s, 1, "Victim", 1500, 0, 0)
+	var ookazi := _st(s, 0, "Ookazi")
+	var mst := _st(s, 1, "Mystical Space Typhoon", "set")
+	lp = s.players[1].lp
+	s.chain_add(0, ookazi)
+	check(s.responses(1, "chain", s.chain.back()).has(mst), "Set Quick-Play Spell can be chained")
+	s.chain_add(1, mst, ookazi, "chain", s.chain.back())
+	check(s.chain.size() == 2, "Chain has two links")
+	s.chain_resolve()
+	check(s.players[1].lp == lp - 800 and s.players[0].gy.has(ookazi), "Chained MST does not negate a Normal Spell")
+	s = _main_ready(45)
+	var ookazi2 := _st(s, 0, "Ookazi")
+	var jammer := _st(s, 1, "Magic Jammer", "set", "trap")
+	s.players[1].hand.clear()
+	_st(s, 1, "Fodder")
+	lp = s.players[1].lp
+	s.chain_add(0, ookazi2)
+	check(s.responses(1, "chain", s.chain.back()).has(jammer), "Counter Trap can answer a Spell")
+	s.chain_add(1, jammer, null, "chain", s.chain.back())
+	s.chain_resolve()
+	check(s.players[1].lp == lp and s.players[0].gy.has(ookazi2) and s.players[1].hand.is_empty(), "Magic Jammer negates the Spell (discard paid)")
+	# Solemn Judgment negates a summon for half your Life Points
+	s = _main_ready(46)
+	var big := _fake(s, 0, "Big", 3000, 0, 0)
+	big.summoned_turn = s.turn
+	var solemn := _st(s, 1, "Solemn Judgment", "set", "trap")
+	check(s.responses(1, "summon", big).has(solemn), "Solemn Judgment answers a summon")
+	lp = s.players[1].lp
+	s.chain_add(1, solemn, null, "summon", big)
+	s.chain_resolve()
+	check(not s.players[0].field.has(big) and s.players[1].lp == lp / 2, "Solemn Judgment negates the summon")
+	# Quick-Play from the hand during your own Battle Phase
+	s = _main_ready(47)
+	var a1 := _fake(s, 0, "Attacker", 1500, 0, 0)
+	var d1 := _fake(s, 1, "Wall", 2000, 0, 0)
+	var rush := _st(s, 0, "Rush Recklessly")
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(0, a1, d1)
+	check(s.responses(0, "attack").has(rush), "Quick-Play Spell from hand on your own turn")
+	s.chain_add(0, rush, a1, "attack")
+	s.chain_resolve()
+	s.resolve_attack()
+	check(not s.players[1].field.has(d1) and s.players[0].field.has(a1), "Rush Recklessly wins the battle")
+	# Control: Change of Heart until the End Phase, Snatch Steal while equipped
+	s = _main_ready(48)
+	var prize := _fake(s, 1, "Prize", 2400, 0, 0)
+	var coh := _st(s, 0, "Change of Heart")
+	s.activate(0, coh, prize)
+	check(s.players[0].field.has(prize) and not s.players[1].field.has(prize), "Change of Heart takes control")
+	s.end_turn()
+	check(s.players[1].field.has(prize) and prize.owner == 1, "The monster goes back at the End Phase")
+	s = _main_ready(49)
+	prize = _fake(s, 1, "Prize", 2400, 0, 0)
+	var snatch := _st(s, 0, "Snatch Steal")
+	s.activate(0, snatch, prize)
+	check(s.players[0].field.has(prize), "Snatch Steal takes control")
+	s._destroy_st(snatch)
+	check(s.players[1].field.has(prize), "Control returns when Snatch Steal leaves")
+	s = _main_ready(50)
+	prize = _fake(s, 1, "Prize", 2400, 0, 0)
+	s.activate(0, _st(s, 0, "Change of Heart"), prize)
+	s._destroy(prize)
+	check(s.players[1].gy.has(prize) and not s.players[0].gy.has(prize), "A borrowed monster goes to its owner's Graveyard")
+	# Call of the Haunted
+	s = _main_ready(51)
+	var dead := _fake(s, 0, "Dead", 2500, 0, -1)
+	s.players[0].gy.append(dead)
+	var call := _st(s, 0, "Call of the Haunted", "set", "trap")
+	check(s.can_activate(0, call), "A free Trap can be flipped in your own Main Phase")
+	s.activate(0, call)
+	check(s.players[0].field.has(dead) and s.players[0].spells.has(call), "Call of the Haunted revives and stays")
+	s._destroy_st(call)
+	check(not s.players[0].field.has(dead), "The revived monster dies with Call of the Haunted")
+	# Royal Decree shuts off other Traps
+	s = _main_ready(52)
+	var decree := _st(s, 0, "Royal Decree", "set", "trap")
+	s.activate(0, decree)
+	var mf := _st(s, 1, "Mirror Force", "set", "trap")
+	var att := _fake(s, 0, "Att", 2000, 0, 0)
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(0, att, null)
+	check(not s.responses(1, "attack").has(mf), "Royal Decree blocks Mirror Force")
+	s.resolve_attack()
+	# Mirror Force through the chain
+	s = _main_ready(53)
+	mf = _st(s, 1, "Mirror Force", "set", "trap")
+	att = _fake(s, 0, "Att", 2000, 0, 0)
+	var att2 := _fake(s, 0, "Att2", 1000, 0, 1)
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(0, att, null)
+	check(s.responses(1, "attack").has(mf), "Mirror Force answers an attack")
+	lp = s.players[1].lp
+	s.respond(1, mf)
+	s.resolve_attack()
+	check(s.players[0].monsters().is_empty() and s.players[1].lp == lp, "Mirror Force destroys attackers and stops the attack")
+	# Ritual Summon
+	s = _main_ready(54)
+	s.players[0].hand.clear()
+	var rit := _fake(s, 0, "Relinquished", 0, 0, -1, {"frame": "ritual", "level": 1, "desc": "You can Ritual Summon this card with \"Black Illusion Ritual\"."})
+	s.players[0].hand.append(rit)
+	var fod := _fake(s, 0, "Fodder", 500, 0, -1, {"level": 2})
+	s.players[0].hand.append(fod)
+	var rs := _st(s, 0, "Black Illusion Ritual", "hand", "spell", {"st": "ritual"})
+	check(s.can_activate(0, rs), "Ritual Spell is playable")
+	s.activate(0, rs)
+	check(s.players[0].field.has(rit) and s.players[0].gy.has(fod), "Ritual Summon tributes and summons")
+	# Exodia
+	s = _main_ready(55)
+	s.players[0].hand.clear()
+	for n in DuelState.EXODIA.slice(0, 4):
+		s.players[0].hand.append(_fake(s, 0, n, 200, 300, -1))
+	s.players[0].deck.append(_fake(s, 0, DuelState.EXODIA[4], 200, 300, -1))
+	s._draw(0)
+	check(s.is_over() and s.winner == 0, "Exodia wins the duel")
+	# Assorted cards
+	s = _main_ready(56)
+	var up := _fake(s, 1, "Up", 1800, 500, 0)
+	s.activate(0, _st(s, 0, "Book of Moon"), up)
+	check(not up.face_up and not up.attack_pos, "Book of Moon flips a monster face-down")
+	_st(s, 1, "SetA", "set", "trap")
+	_st(s, 0, "SetB", "set", "trap")
+	s.activate(0, _st(s, 0, "Heavy Storm"))
+	check(s.players[0].set_cards().is_empty() and s.players[1].set_cards().is_empty(), "Heavy Storm clears every Spell/Trap")
+	s = _main_ready(57)
+	var ringed := _fake(s, 1, "Ringed", 2000, 0, 0)
+	var ring := _st(s, 0, "Ring of Destruction", "set", "trap")
+	var lp0 := s.players[0].lp
+	lp = s.players[1].lp
+	s.activate(0, ring, ringed)
+	check(not s.players[1].field.has(ringed) and s.players[0].lp == lp0 - 2000 and s.players[1].lp == lp - 2000, "Ring of Destruction burns both players")
+	s = _main_ready(58)
+	var bnc := _fake(s, 1, "Bounce", 2000, 0, 0)
+	s.activate(0, _st(s, 0, "Compulsory Evacuation Device", "set", "trap"), bnc)
+	check(s.players[1].hand.has(bnc), "Compulsory Evacuation Device returns a monster to the hand")
+	var hs := s.players[0].hand.size()
+	s.activate(0, _st(s, 0, "Graceful Charity"))
+	check(s.players[0].hand.size() == hs + 1, "Graceful Charity: draw 3, discard 2")
+	# Derived Equip / Field text, clone keeps everything
+	s = _main_ready(59)
+	var eq := _st(s, 0, "Test Blade", "hand", "spell", {"st": "equip", "desc": "The equipped monster gains 600 ATK."})
+	var hero := _fake(s, 0, "Hero", 1000, 0, 0)
+	s.activate(0, eq, hero)
+	check(s.atk_of(hero, false) == 1600, "Equip Spells are read from their card text")
+	var fs := _st(s, 0, "Test Land", "hand", "spell", {"st": "field", "desc": "All Warrior monsters on the field gain 300 ATK."})
+	s.activate(0, fs)
+	check(s.atk_of(hero, false) == 1900, "Field Spells are read from their card text")
+	var cl := s.clone()
+	check(cl.atk_of(cl.players[0].field[0], false) == 1900 and cl.players[0].field_spell != null, "Clone keeps equips and the Field Spell")
+	print("spell rules tests done")
 
 
 func _test_banish() -> void:

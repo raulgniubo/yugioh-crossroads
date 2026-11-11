@@ -290,10 +290,43 @@ static func deck_name(deck_key: String) -> String:
 	return NAMED_DECKS.get(deck_key, {}).get("name", "?")
 
 
+## Extra Spells and Traps each deck gets when the full card database is installed
+## (Field, Equip, Continuous, Quick-Play, Counter and Ritual cards).
+const ADDONS := {
+	"yugi": {"Magic Cylinder": 1, "Mystical Space Typhoon": 1, "Book of Secret Arts": 1, "Yami": 1, "Magic Jammer": 1, "Black Luster Ritual": 1, "Black Luster Soldier": 1},
+	"kaiba": {"Shrink": 1, "Enemy Controller": 1, "Ring of Destruction": 1, "Mountain": 1, "Dragon Treasure": 1, "Negate Attack": 1},
+	"joey": {"Graceful Charity": 1, "Sogen": 1, "Lightning Blade": 1, "Call of the Haunted": 1, "Rush Recklessly": 1},
+	"mai": {"Harpies' Hunting Ground": 2, "Harpie's Feather Duster": 1, "Gravity Bind": 1, "Follow Wind": 1},
+	"bakura": {"Yami": 2, "Dark Energy": 1, "Call of the Haunted": 1, "Dark Core": 1},
+	"marik": {"Nightmare Wheel": 2, "Mystic Plasma Zone": 1, "Malevolent Nuzzler": 1, "Magic Jammer": 1},
+	"pegasus": {"Shadow Spell": 1, "Heavy Storm": 1, "Change of Heart": 1, "Mystical Space Typhoon": 1},
+	"weevil": {"Forest": 2, "Laser Cannon Armor": 2, "Just Desserts": 1},
+	"rex": {"Jurassic World": 2, "Raise Body Heat": 1, "Hammer Shot": 1, "Rush Recklessly": 1},
+	"jaden": {"Skyscraper": 2, "Miracle Fusion": 1, "E - Emergency Call": 1, "Draining Shield": 1, "The Warrior Returning Alive": 1},
+	"chazz": {"Rush Recklessly": 1, "Call of the Haunted": 1, "Ring of Destruction": 1, "Dragon Treasure": 1},
+	"zane": {"Machine Conversion Factory": 1, "Heavy Storm": 1, "Mystical Space Typhoon": 1, "Trap Jammer": 1},
+	"alexis": {"Machine Angel Ritual": 3, "Luminous Spark": 1, "Horn of the Unicorn": 1},
+	"syrus": {"Machine Conversion Factory": 1, "Rush Recklessly": 1, "Negate Attack": 1, "Draining Shield": 1},
+	"aster": {"Mystic Plasma Zone": 1, "Ring of Destruction": 1, "Book of Moon": 1, "Dark Bribe": 1},
+	"yusei": {"Junk Barrage": 1, "Mystical Space Typhoon": 1, "Rush Recklessly": 1, "Draining Shield": 1, "Call of the Haunted": 1},
+	"jack": {"Molten Destruction": 1, "Salamandra": 1, "Dark Bribe": 1, "Shrink": 1},
+	"crow": {"Rising Air Current": 1, "Book of Moon": 1, "Mirror Force": 1, "Follow Wind": 1},
+	"akiza": {"Vile Germs": 1, "Forest": 1, "Magic Cylinder": 1, "Mystical Space Typhoon": 1},
+	"kalin": {"Mystic Plasma Zone": 1, "Card Destruction": 1, "Dark Energy": 1, "Dust Tornado": 1},
+	"yuma": {"Ego Boost": 1, "Mystical Space Typhoon": 1, "Draining Shield": 1, "Lightning Blade": 1},
+	"shark": {"A Legendary Ocean": 2, "Steel Shell": 1, "Dust Tornado": 1},
+	"kite": {"Luminous Spark": 1, "Shrink": 1, "Solemn Judgment": 1, "Book of Moon": 1},
+	"vector": {"Mystic Plasma Zone": 1, "Shadow Spell": 1, "Dark Bribe": 1, "Malevolent Nuzzler": 1},
+	"echo": {"Mystical Space Typhoon": 1, "Axe of Despair": 1, "Call of the Haunted": 1, "Book of Moon": 1, "Solemn Judgment": 1},
+	"kairo": {"Dragon Treasure": 1, "Mountain": 1, "Ring of Destruction": 1, "Solemn Judgment": 1, "Shrink": 1},
+}
+
+
 static func deck_list(deck_key: String) -> Array[int]:
+	var extra_cards: Array[int] = _expand(_resolve(ADDONS.get(deck_key, {}), false))
 	if DECKS.has(deck_key):
-		return _expand(DECKS[deck_key]["cards"])
-	return _fill_to_30(_resolve(NAMED_DECKS.get(deck_key, {}).get("cards", {}), false))
+		return _expand(DECKS[deck_key]["cards"]) + extra_cards
+	return _fill_to_30(_resolve(NAMED_DECKS.get(deck_key, {}).get("cards", {}), false)) + extra_cards
 
 
 static func extra_list(deck_key: String) -> Array[int]:
@@ -312,11 +345,11 @@ static func _resolve(names: Dictionary, extra: bool) -> Dictionary:
 		if id == 0:
 			continue
 		var d := get_card(id)
-		if d["kind"] != "monster" and not d.has("effect"):
+		if d["kind"] != "monster" and not d.has("effect") and not SpellRules.FX.has(str(d.get("name", ""))) and not str(d.get("st", "")) in ["equip", "field", "ritual"]:
 			continue
 		if (d.get("frame", "") in ["fusion", "synchro", "xyz"]) != extra:
 			continue
-		if d.get("frame", "") in ["ritual", "link"]:
+		if d.get("frame", "") == "link":
 			continue
 		out[id] = names[n]
 	return out
@@ -345,7 +378,7 @@ static func load_external(folder: String) -> void:
 	if not FileAccess.file_exists(src):
 		return
 	var cache := "user://card_index.json"
-	var stamp := str(FileAccess.get_modified_time(src))
+	var stamp := str(FileAccess.get_modified_time(src)) + "-v9"
 	if FileAccess.file_exists(cache):
 		var c = JSON.parse_string(FileAccess.get_file_as_string(cache))
 		if typeof(c) == TYPE_DICTIONARY and c.get("stamp", "") == stamp:
@@ -382,6 +415,7 @@ static func _from_db(raw: Dictionary) -> Dictionary:
 		frame = "normal"
 	var d := {"name": name, "frame": frame, "desc": str(raw.get("desc", ""))}
 	if frame == "spell" or frame == "trap":
+		d["st"] = str(raw.get("race", "")).to_lower()
 		if SPELL_EFFECTS.has(name):
 			d["effect"] = SPELL_EFFECTS[name]
 			d["text"] = d["desc"]

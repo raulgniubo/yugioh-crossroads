@@ -478,8 +478,9 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				events.append(_ev(p, c, "%s: draw %d" % [name, a[1]]))
 				events.append_array(s._draw(p, int(a[1])))
 		"draw_once":
-			if not ps.has_meta("once_" + name):
-				ps.set_meta("once_" + name, true)
+			var once_key := "once_" + name.validate_node_name().replace(" ", "_").replace("-", "_").replace("'", "")
+			if not ps.has_meta(once_key):
+				ps.set_meta(once_key, true)
 				events.append(_ev(p, c, "%s: draw %d" % [name, a[1]]))
 				events.append_array(s._draw(p, int(a[1])))
 		"damage":

@@ -72,6 +72,16 @@ func gy_pos(p: int) -> Vector3:
 	return Vector3(SIDE_X, 0.01, MONSTER_ROW) if p == 0 else Vector3(-SIDE_X, 0.01, -MONSTER_ROW)
 
 
+## The Field Zone: left of the monster row.
+func field_pos(p: int) -> Vector3:
+	return Vector3(-SIDE_X, 0.01, MONSTER_ROW) if p == 0 else Vector3(SIDE_X, 0.01, -MONSTER_ROW)
+
+
+## Spell & Trap zone 0-4, or 5 for the Field Zone.
+func st_pos(p: int, zone: int) -> Vector3:
+	return field_pos(p) if zone >= 5 else spell_zone_pos(p, zone)
+
+
 ## The banished pile sits just outside the Graveyard.
 func banish_pos(p: int) -> Vector3:
 	return Vector3(SIDE_X + 0.92, 0.01, MONSTER_ROW) if p == 0 else Vector3(-SIDE_X - 0.92, 0.01, -MONSTER_ROW)
@@ -341,6 +351,7 @@ func _build_zones() -> void:
 		_zone(deck_pos(p), Vector2(0.72, 0.98), col, 0.6)
 		_zone(gy_pos(p), Vector2(0.72, 0.98), col, 0.6)
 		_zone(banish_pos(p), Vector2(0.72, 0.98), BANISH_COLOR, 0.35)
+		_zone(field_pos(p), Vector2(0.72, 0.98), Color("3ddc97"), 0.5)
 		var bl := Label3D.new()
 		bl.text = "BANISHED"
 		bl.font = UITheme.semi_font()
@@ -876,14 +887,15 @@ func anim_position(p: int, inst, zone: int) -> void:
 	await _move(c, to, 0.3, 0.25)
 
 
-func anim_activate(p: int, inst) -> void:
+func anim_activate(p: int, inst, zone := 2) -> void:
 	var c: Card3D
 	if p == 0:
 		c = _new_card(inst)
 		c.transform = _near_camera_xform()
 	else:
 		c = _take_from_opp_hand(inst)
-	var to := Transform3D(table_basis(p, true, true), spell_zone_pos(p, 2) + Vector3(0, 0.02, 0))
+	c.set_pickable(true)
+	var to := Transform3D(table_basis(p, true, true), st_pos(p, zone if zone >= 0 else 2) + Vector3(0, 0.02, 0))
 	await _move(c, Transform3D(to.basis, to.origin + Vector3(0, 0.8, 0)), 0.35, 0.3)
 	c.set_glow(true, UITheme.ACCENT)
 	var tw := create_tween()
@@ -925,7 +937,7 @@ func anim_trap(p: int, inst, zone: int) -> void:
 	var c := card_for(inst)
 	if c == null:
 		return
-	var up := Transform3D(Basis(Vector3.UP, 0.0 if p == 0 else PI) * Basis(Vector3.RIGHT, -0.6), spell_zone_pos(p, zone) + Vector3(0, 1.2, 0.3 if p == 0 else -0.3))
+	var up := Transform3D(Basis(Vector3.UP, 0.0 if p == 0 else PI) * Basis(Vector3.RIGHT, -0.6), st_pos(p, zone) + Vector3(0, 1.2, 0.3 if p == 0 else -0.3))
 	c.set_glow(true, Color("ff4dd2"))
 	await _move(c, up, 0.3, 0.2)
 	_flash(up.origin, Color("ff4dd2"))
@@ -934,6 +946,78 @@ func anim_trap(p: int, inst, zone: int) -> void:
 	var tw := create_tween()
 	tw.tween_method(c.flash, 3.0, 0.2, Settings.t(0.5))
 	await _wait(0.55)
+
+
+## A Continuous / Field / Equip card stays: it settles face-up in its zone with a soft glow.
+func anim_settle(p: int, inst, zone: int) -> void:
+	var c := card_for(inst)
+	if c == null:
+		return
+	var to := Transform3D(table_basis(p, true, true), st_pos(p, zone) + Vector3(0, 0.02, 0))
+	await _move(c, to, 0.28, 0.2)
+	c.set_glow(true, Color("3ddc97") if zone >= 5 else Color("7fd8ff"))
+	_burst(to.origin, Color("3ddc97") if zone >= 5 else Color("7fd8ff"), 0.9)
+	if inst.equipped_to != null and card_for(inst.equipped_to) != null:
+		_link_beam(to.origin + Vector3(0, 0.1, 0), card_for(inst.equipped_to).position + Vector3(0, 0.15, 0), Color("7fd8ff"))
+		pulse(inst.equipped_to, Color("7fd8ff"))
+
+
+## A card that re-Sets itself (Scrap-Iron Scarecrow).
+func anim_reset(p: int, inst, zone: int) -> void:
+	var c := card_for(inst)
+	if c == null:
+		return
+	c.set_glow(false)
+	await _move(c, Transform3D(table_basis(p, false, true), st_pos(p, zone) + Vector3(0, 0.02, 0)), 0.3, 0.3)
+
+
+## A monster changes sides.
+func anim_control(p: int, inst, zone: int) -> void:
+	var c := card_for(inst)
+	if c == null:
+		return
+	c.set_glow(true, Color("ff8ad8"))
+	_flash(c.position + Vector3(0, 0.3, 0), Color("ff8ad8"))
+	await _move(c, Transform3D(table_basis(p, inst.face_up, inst.attack_pos), monster_zone_pos(p, zone) + Vector3(0, 0.02, 0)), 0.5, 1.1)
+	_burst(c.position, Color("ff8ad8"), 1.2)
+	c.set_glow(false)
+
+
+## A card on the field goes back to the hand (or Extra Deck).
+func anim_bounce(inst) -> void:
+	var c := card_for(inst)
+	if c == null:
+		return
+	c.set_glow(true, Color("9fd0ff"))
+	var tw := create_tween().set_parallel()
+	tw.tween_property(c, "position:y", c.position.y + 1.3, Settings.t(0.28)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tw.tween_method(c.set_alpha, 1.0, 0.0, Settings.t(0.28))
+	await tw.finished
+	_cards.erase(inst.uid)
+	c.queue_free()
+
+
+## A quick line of light between two points (equip links).
+func _link_beam(a: Vector3, b: Vector3, color: Color) -> void:
+	var mi := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.035, 0.035, a.distance_to(b))
+	mi.mesh = bm
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = color
+	m.emission_enabled = true
+	m.emission = color
+	m.emission_energy_multiplier = 4.0
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mi.material_override = m
+	add_child(mi)
+	mi.position = (a + b) / 2.0
+	if a.distance_to(b) > 0.01:
+		mi.look_at(b)
+	var tw := create_tween()
+	tw.tween_property(m, "albedo_color:a", 0.0, Settings.t(0.6))
+	tw.tween_callback(mi.queue_free)
 
 
 ## A card shown from the hand (Kuriboh) then sent to the GY.
@@ -1303,7 +1387,7 @@ func refresh_stats(state: DuelState) -> void:
 			pair[0].text = "?" if hidden else str(shown_atk)
 			if not hidden and shown_atk != m.atk():
 				pair[0].modulate = Color("ffd23a") if shown_atk > m.atk() else Color("ff7a7a")
-			pair[1].text = "?" if hidden else str(m.def())
+			pair[1].text = "?" if hidden else str(state.def_of(m))
 			var active := Color("ffffff")
 			var dim := Color(0.75, 0.82, 0.95, 0.55)
 			pair[0].modulate = (active if m.attack_pos else dim) if not hidden else dim
