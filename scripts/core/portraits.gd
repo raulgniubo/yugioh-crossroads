@@ -17,13 +17,16 @@ func folder() -> String:
 
 
 func has_real(key: String) -> bool:
-	return _find_file(key) != ""
+	return _find_file(key) != "" or Avatars.has_avatar(key)
 
 
 func get_portrait(key: String) -> Texture2D:
 	if _cache.has(key):
 		return _cache[key]
-	var tex: Texture2D = null
+	var tex: Texture2D = Avatars.portrait(key) if Avatars.has_avatar(key) else null
+	if tex != null:
+		_cache[key] = tex
+		return tex
 	var path := _find_file(key)
 	if path != "":
 		var img := Image.load_from_file(path)
@@ -43,6 +46,7 @@ func clear_cache() -> void:
 
 func _forget(key: String) -> void:
 	_cache.erase(key)
+	Avatars.forget(key)
 	var vp := get_node_or_null("vp_" + key)
 	if vp:
 		vp.name = "old_" + str(randi())

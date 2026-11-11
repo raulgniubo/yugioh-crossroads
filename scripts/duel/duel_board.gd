@@ -13,7 +13,10 @@ const SIDE_X := 4.15
 const CAM_POS := Vector3(0, 9.0, 6.9)
 const CAM_TARGET := Vector3(0, 0, 1.15)
 
+signal ace_summoned(inst)
+
 var camera: Camera3D
+var _battle_mode := false
 var theme: Dictionary = FieldThemes.resolve("auto", "")
 var _cards := {}  # uid -> Card3D
 var _gy_cards: Array = [[], []]
@@ -470,41 +473,82 @@ func anim_summon(p: int, inst, zone: int, set_card: bool) -> void:
 func hologram(inst, at: Vector3, force_big := false) -> void:
 	var big: bool = force_big or int(inst.data.get("level", 0)) >= 7
 	var art := Cards.get_art(inst.id)
+	var col: Color = _frame_color(inst)
 	var spr := Sprite3D.new()
 	spr.texture = art
 	spr.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 	spr.shaded = false
-	var h := 2.4 if big else 1.6
+	var h := 3.3 if big else 2.2
 	spr.pixel_size = h / maxf(1.0, art.get_height())
 	spr.position = at + Vector3(0, h * 0.55, 0)
 	spr.modulate = Color(1.1, 1.2, 1.3, 0.0)
-	spr.scale = Vector3(0.2, 0.2, 0.2)
+	spr.scale = Vector3(0.15, 0.02, 0.15)
 	add_child(spr)
+	# A thin glowing frame behind the art reads as a "projected" monster.
+	var glow := Sprite3D.new()
+	glow.texture = art
+	glow.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	glow.shaded = false
+	glow.pixel_size = spr.pixel_size * 1.06
+	glow.modulate = Color(col.r * 2.0, col.g * 2.0, col.b * 2.0, 0.0)
+	glow.position = Vector3(0, 0, -0.02)
+	spr.add_child(glow)
 	var beam := _beam(at, big)
+	if big:
+		ace_summoned.emit(inst)
+		_ring_fx(at + Vector3(0, 0.05, 0), col, 1.4, 0.0, 0.0)
+		_ring_fx(at + Vector3(0, 0.05, 0), col, 2.2, 0.15, 0.0)
+		_flash(at + Vector3(0, h * 0.5, 0), col)
+		var zoom := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		zoom.tween_property(camera, "fov", camera.fov - 8.0, Settings.t(0.35))
 	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(spr, "scale", Vector3.ONE, Settings.t(0.35))
-	tw.tween_property(spr, "modulate:a", 0.95, Settings.t(0.2))
+	tw.tween_property(spr, "scale", Vector3.ONE, Settings.t(0.45 if big else 0.35))
+	tw.tween_property(spr, "modulate:a", 0.97, Settings.t(0.25))
+	tw.tween_property(glow, "modulate:a", 0.35, Settings.t(0.4))
 	await tw.finished
 	if big:
-		shake(0.35)
-	await _wait(0.75 if big else 0.4)
+		shake(0.45)
+		Sfx.play("impact")
+	# Idle: a gentle float while it is on screen.
+	var float_tw := create_tween().set_loops(2).set_trans(Tween.TRANS_SINE)
+	float_tw.tween_property(spr, "position:y", spr.position.y + 0.12, Settings.t(0.4))
+	float_tw.tween_property(spr, "position:y", spr.position.y, Settings.t(0.4))
+	await _wait(1.25 if big else 0.55)
+	float_tw.kill()
+	if big:
+		var back := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		back.tween_property(camera, "fov", 40.0 if _battle_mode else 44.0, Settings.t(0.45))
 	var tw2 := create_tween().set_parallel()
-	tw2.tween_property(spr, "modulate:a", 0.0, Settings.t(0.3))
-	tw2.tween_property(spr, "position:y", spr.position.y - h * 0.4, Settings.t(0.3))
-	tw2.tween_property(spr, "scale", Vector3(0.6, 0.6, 0.6), Settings.t(0.3))
-	tw2.tween_property(beam, "scale:x", 0.01, Settings.t(0.3))
-	tw2.tween_property(beam, "scale:z", 0.01, Settings.t(0.3))
+	tw2.tween_property(spr, "modulate:a", 0.0, Settings.t(0.35))
+	tw2.tween_property(glow, "modulate:a", 0.0, Settings.t(0.25))
+	tw2.tween_property(spr, "position:y", spr.position.y - h * 0.4, Settings.t(0.35))
+	tw2.tween_property(spr, "scale", Vector3(0.6, 0.6, 0.6), Settings.t(0.35))
+	tw2.tween_property(beam, "scale:x", 0.01, Settings.t(0.35))
+	tw2.tween_property(beam, "scale:z", 0.01, Settings.t(0.35))
 	await tw2.finished
 	spr.queue_free()
 	beam.queue_free()
 
 
+func _frame_color(inst) -> Color:
+	match inst.frame() if inst.has_method("frame") else "":
+		"fusion":
+			return Color("b06cff")
+		"synchro":
+			return Color("f2f2f2")
+		"xyz":
+			return Color("ffd23a")
+		"effect":
+			return Color("ff9a3c")
+	return UITheme.ACCENT
+
+
 func _beam(at: Vector3, big: bool) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.55 if big else 0.4
-	cyl.bottom_radius = 0.45 if big else 0.32
-	cyl.height = 5.0
+	cyl.top_radius = 0.85 if big else 0.55
+	cyl.bottom_radius = 0.6 if big else 0.42
+	cyl.height = 7.0
 	cyl.cap_top = false
 	cyl.cap_bottom = false
 	mi.mesh = cyl
@@ -515,7 +559,7 @@ func _beam(at: Vector3, big: bool) -> MeshInstance3D:
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	m.albedo_color = Color(UITheme.ACCENT, 0.18)
 	mi.material_override = m
-	mi.position = at + Vector3(0, 2.5, 0)
+	mi.position = at + Vector3(0, 3.5, 0)
 	add_child(mi)
 	return mi
 
@@ -785,7 +829,6 @@ func _consume_orbs(at: Vector3) -> void:
 
 
 ## Battle Phase: the field tints and the camera leans in.
-var _battle_mode := false
 
 
 func set_battle_mode(on: bool) -> void:
@@ -840,6 +883,112 @@ func anim_spell_done(inst) -> void:
 	_cards.erase(inst.uid)
 	c.queue_free()
 	_add_to_gy(inst)
+
+
+func anim_set_st(p: int, inst, zone: int) -> void:
+	var c: Card3D
+	if p == 0:
+		c = _new_card(inst)
+		c.transform = _near_camera_xform()
+	else:
+		c = _take_from_opp_hand(inst)
+	c.set_pickable(true)
+	var to := Transform3D(table_basis(p, false, true), spell_zone_pos(p, zone) + Vector3(0, 0.02, 0))
+	await _move(c, to, 0.32, 0.4)
+	_burst(to.origin, Color("b98cff"), 0.8)
+
+
+## A set trap flips up with a flash.
+func anim_trap(p: int, inst, zone: int) -> void:
+	var c := card_for(inst)
+	if c == null:
+		return
+	var up := Transform3D(Basis(Vector3.UP, 0.0 if p == 0 else PI) * Basis(Vector3.RIGHT, -0.6), spell_zone_pos(p, zone) + Vector3(0, 1.2, 0.3 if p == 0 else -0.3))
+	c.set_glow(true, Color("ff4dd2"))
+	await _move(c, up, 0.3, 0.2)
+	_flash(up.origin, Color("ff4dd2"))
+	_burst(up.origin, Color("ff4dd2"), 1.6)
+	shake(0.3)
+	var tw := create_tween()
+	tw.tween_method(c.flash, 3.0, 0.2, Settings.t(0.5))
+	await _wait(0.55)
+
+
+## A card shown from the hand (Kuriboh) then sent to the GY.
+func anim_hand_effect(p: int, inst) -> void:
+	var c: Card3D
+	if p == 0:
+		c = _new_card(inst)
+		c.transform = _near_camera_xform()
+	else:
+		c = _take_from_opp_hand(inst)
+	var show_at := Transform3D(Basis(Vector3.RIGHT, -0.7), Vector3(0, 2.2, 1.6 if p == 0 else -0.6))
+	await _move(c, show_at, 0.3, 0.2)
+	c.set_glow(true, UITheme.GOLD)
+	_flash(show_at.origin, UITheme.GOLD)
+	await _wait(0.5)
+	await anim_spell_done(inst)
+
+
+func anim_add_to_opp_hand(inst) -> void:
+	var c := _new_card(inst)
+	c.set_pickable(false)
+	c.transform = Transform3D(table_basis(1, false, true), deck_pos(1) + Vector3(0, 0.3, 0))
+	_opp_hand.append(c)
+	_layout_opp_hand()
+	await _wait(0.25)
+
+
+func pulse(inst, color: Color) -> void:
+	var c := card_for(inst)
+	if c == null:
+		return
+	c.set_glow(true, color)
+	var tw := create_tween()
+	tw.tween_method(c.flash, 2.5, 0.0, Settings.t(0.5))
+	tw.tween_callback(func(): if is_instance_valid(c): c.set_glow(false))
+
+
+## Declaring an attack: the attacker rises and leans toward its target.
+func anim_declare(p: int, inst, target) -> void:
+	var c := card_for(inst)
+	if c == null:
+		return
+	c.set_glow(true, UITheme.DANGER)
+	var home := c.transform
+	c.set_meta("home", home)
+	var goal := _attack_goal(p, target)
+	var lift := Transform3D(home.basis, home.origin + Vector3(0, 0.7, 0) + (goal - home.origin) * 0.08)
+	await _move(c, lift, 0.22, 0.0)
+
+
+func anim_battle(p: int, inst, target) -> void:
+	var c := card_for(inst)
+	if c == null:
+		return
+	var home: Transform3D = c.get_meta("home", c.transform)
+	var goal := _attack_goal(p, target)
+	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.82) + Vector3(0, 0.25, 0))
+	await _move(c, hit, 0.14, 0.15)
+	_burst(goal + Vector3(0, 0.1, 0), Color("ff8a5c"), 1.3)
+	shake(0.4)
+	await _move(c, home, 0.32, 0.3)
+	c.set_glow(false)
+
+
+func anim_attack_stopped(inst) -> void:
+	var c := card_for(inst)
+	if c == null:
+		return
+	var home: Transform3D = c.get_meta("home", c.transform)
+	await _move(c, home, 0.3, 0.1)
+	c.set_glow(false)
+
+
+func _attack_goal(p: int, target) -> Vector3:
+	if target != null and card_for(target) != null:
+		return card_for(target).position
+	return Vector3(0, 0.6, -3.4) if p == 0 else Vector3(0, 0.6, 3.6)
 
 
 func anim_attack(p: int, inst, target) -> void:

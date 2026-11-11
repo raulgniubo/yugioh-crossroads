@@ -147,6 +147,23 @@ const DATA := {
 }
 
 ## Fallback lines by personality, used when a character has nothing specific to say.
+## Story-only cast (not in the Free Duel roster).
+const STORY_CAST := {
+	"kairo": {"name": "Kairo Vance", "short": "Kairo", "era": "Crossroads", "color": Color("e04848"), "title": "The Rival",
+		"deck": "kairo", "ace_name": "Red-Eyes Black Dragon", "personality": "cool",
+		"lines": {"intro": ["Stay out of my way."], "ace": ["This echo is mine now."], "taunt": ["You're slow."],
+			"win": ["Told you. Go home."], "lose": ["...Lucky."]}},
+	"lumen": {"name": "Lumen", "short": "Lumen", "era": "Crossroads", "color": Color("8ff0ff"), "title": "A glitchy duel spirit"},
+	"shopkeeper": {"name": "Old Shopkeeper", "short": "Shopkeeper", "era": "Crossroads", "color": Color("c9a76a"), "title": "Card shop owner"},
+	"hunter": {"name": "Rare Hunter", "short": "Rare Hunter", "era": "Duel Monsters", "color": Color("6b4a9e"), "title": "One of Vellum's men",
+		"deck": "yusei", "personality": "dark",
+		"lines": {"intro": ["Your rare cards belong to Vellum now."], "ace": ["Behold... a power from another time!"]}},
+	"kid": {"name": "Rookie Duelist", "short": "Rookie", "era": "Duel Monsters", "color": Color("f0a040"), "title": "Street duelist",
+		"deck": "joey", "personality": "kind"},
+	"vendor": {"name": "Card Vendor", "short": "Vendor", "era": "Duel Monsters", "color": Color("40c0a0"), "title": "Kame Game regular"},
+	"guard": {"name": "KaibaCorp Guard", "short": "Guard", "era": "Duel Monsters", "color": Color("4070e0"), "title": "Security"},
+}
+
 const PERSONALITY_LINES := {
 	"kind": {"intro": ["Good luck! Let's have a great duel."], "turn": ["My turn! Here goes."],
 		"ace": ["I believe in you!"], "attack": ["Go, attack!"], "hurt": ["That hurt... but I'm okay."],
@@ -181,7 +198,7 @@ const PLAYER_LINES := {
 
 
 static func get_char(key: String) -> Dictionary:
-	var d: Dictionary = DATA.get(key, {}).duplicate()
+	var d: Dictionary = DATA.get(key, STORY_CAST.get(key, {})).duplicate()
 	if d.is_empty():
 		return d
 	if not d.has("ace") and d.has("ace_name"):
@@ -194,10 +211,10 @@ static func available(key: String) -> bool:
 
 
 static func line(key: String, kind: String) -> String:
-	var own: Dictionary = PLAYER_LINES if key == "player" else DATA.get(key, {}).get("lines", {})
+	var own: Dictionary = PLAYER_LINES if key == "player" else DATA.get(key, STORY_CAST.get(key, {})).get("lines", {})
 	var arr: Array = own.get(kind, [])
 	if arr.is_empty() and key != "player":
-		var pers: String = DATA.get(key, {}).get("personality", "cool")
+		var pers: String = DATA.get(key, STORY_CAST.get(key, {})).get("personality", "cool")
 		arr = PERSONALITY_LINES.get(pers, {}).get(kind, [])
 	if arr.is_empty() and key == "player":
 		arr = PERSONALITY_LINES["wild"].get(kind, [])

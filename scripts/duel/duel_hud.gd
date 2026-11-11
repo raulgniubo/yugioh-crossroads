@@ -12,6 +12,7 @@ signal direct_attack_pressed
 signal pause_action(action: String)
 signal extra_pressed
 signal extra_chosen(inst)
+signal _response_picked(choice)
 
 const HAND_CARD := Vector2(150, 218)
 
@@ -781,8 +782,9 @@ func _build_prompt() -> void:
 	_prompt.visible = false
 
 
-func show_prompt(text: String, direct := false) -> void:
+func show_prompt(text: String, direct := false, direct_label := "Direct Attack") -> void:
 	_prompt_label.text = text
+	_btn_direct.text = direct_label
 	_btn_direct.visible = direct
 	_prompt.visible = true
 	_prompt.reset_size()
@@ -792,6 +794,71 @@ func show_prompt(text: String, direct := false) -> void:
 
 func hide_prompt() -> void:
 	_prompt.visible = false
+
+
+## Ask the player whether to respond with one of `options` (cards). Returns the card or null.
+func ask_response(text: String, options: Array):
+	var root := PanelContainer.new()
+	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.06, 0.02, 0.08, 0.97), 22, Color("ff4dd2", 0.7)))
+	root.z_index = 60
+	add_child(root)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	root.add_child(v)
+	var t := UITheme.label(text, 30, Color.WHITE, UITheme.title_font())
+	v.add_child(t)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	v.add_child(row)
+	for c in options:
+		var col := VBoxContainer.new()
+		var tr := TextureRect.new()
+		tr.texture = Cards.get_face(c.id)
+		tr.custom_minimum_size = Vector2(150, 219)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.mouse_entered.connect(func(): inspect(c))
+		col.add_child(tr)
+		var b := Button.new()
+		b.text = "Activate"
+		b.add_theme_stylebox_override("normal", UITheme.button_box(Color("ff4dd2", 0.25), Color("ff4dd2"), 14))
+		b.pressed.connect(func(): _response_picked.emit(c))
+		col.add_child(b)
+		row.add_child(col)
+	var no := Button.new()
+	no.text = "Don't activate"
+	no.pressed.connect(func(): _response_picked.emit(null))
+	v.add_child(no)
+	root.reset_size()
+	var vs := get_viewport_rect().size
+	await get_tree().process_frame
+	root.position = Vector2((vs.x - root.size.x) / 2.0, vs.y * 0.3)
+	root.modulate.a = 0.0
+	create_tween().tween_property(root, "modulate:a", 1.0, 0.15)
+	Sfx.play("spell", -2.0, 0.7)
+	var choice = await _response_picked
+	root.queue_free()
+	return choice
+
+
+## Small floating callout for card effects.
+func effect_text(text: String, color := Color("ffd23a")) -> void:
+	var l := UITheme.label(text, 30, Color.WHITE, UITheme.semi_font())
+	var sb := UITheme.button_box(Color(0.03, 0.04, 0.08, 0.92), color, 16)
+	sb.content_margin_left = 22
+	sb.content_margin_right = 22
+	l.add_theme_stylebox_override("normal", sb)
+	l.z_index = 40
+	add_child(l)
+	l.reset_size()
+	var vs := get_viewport_rect().size
+	l.position = Vector2((vs.x - l.size.x) / 2.0, vs.y * 0.24)
+	l.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(l, "modulate:a", 1.0, 0.15)
+	tw.tween_interval(Settings.t(1.3))
+	tw.tween_property(l, "modulate:a", 0.0, 0.3)
+	tw.tween_callback(l.queue_free)
 
 
 const ACTION_ICONS := {
@@ -883,6 +950,59 @@ func actions_visible() -> bool:
 	return _menu.visible
 
 
+## Ace monster moment: letterbox bars, the monster's name sweeping in, its stats.
+func summon_cinematic(card_name: String, atk: int, def: int, color: Color, mine: bool) -> void:
+	var root := Control.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.z_index = 40
+	add_child(root)
+	var vs := get_viewport_rect().size
+	var bar_h := 120.0
+	var bars: Array[ColorRect] = []
+	for top in [true, false]:
+		var b := ColorRect.new()
+		b.color = Color(0, 0, 0, 0.92)
+		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.size = Vector2(vs.x, bar_h)
+		b.position = Vector2(0, -bar_h if top else vs.y)
+		root.add_child(b)
+		bars.append(b)
+	var stripe := ColorRect.new()
+	stripe.color = Color(color, 0.85)
+	stripe.size = Vector2(vs.x, 4)
+	stripe.position = Vector2(0, vs.y - bar_h - 2)
+	stripe.modulate.a = 0.0
+	root.add_child(stripe)
+	var name_l := UITheme.label(card_name.to_upper(), 76, Color.WHITE, UITheme.title_font())
+	name_l.add_theme_color_override("font_outline_color", Color(color, 0.9))
+	name_l.add_theme_constant_override("outline_size", 10)
+	name_l.position = Vector2(-900 if mine else vs.x + 100, vs.y - bar_h - 150)
+	root.add_child(name_l)
+	var stats := UITheme.label("ATK %d   ·   DEF %d" % [atk, def], 30, Color(color.lightened(0.4)), UITheme.semi_font())
+	stats.position = Vector2(vs.x * 0.08, vs.y - bar_h + 38)
+	stats.modulate.a = 0.0
+	root.add_child(stats)
+	await get_tree().process_frame
+	var target_x := vs.x * 0.08 if mine else vs.x * 0.92 - name_l.size.x
+	if not mine:
+		stats.position.x = vs.x * 0.92 - 360
+	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(bars[0], "position:y", 0.0, Settings.t(0.3))
+	tw.tween_property(bars[1], "position:y", vs.y - bar_h, Settings.t(0.3))
+	tw.tween_property(stripe, "modulate:a", 1.0, Settings.t(0.3))
+	tw.tween_property(name_l, "position:x", target_x, Settings.t(0.45)).set_delay(Settings.t(0.1))
+	tw.tween_property(stats, "modulate:a", 1.0, Settings.t(0.3)).set_delay(Settings.t(0.35))
+	await tw.finished
+	await get_tree().create_timer(Settings.t(1.0)).timeout
+	var out := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	out.tween_property(bars[0], "position:y", -bar_h, Settings.t(0.3))
+	out.tween_property(bars[1], "position:y", vs.y, Settings.t(0.3))
+	out.tween_property(root, "modulate:a", 0.0, Settings.t(0.3))
+	await out.finished
+	root.queue_free()
+
+
 func banner(text: String, color := Color.WHITE) -> void:
 	_banner.text = text
 	_banner.add_theme_color_override("font_color", color)
@@ -952,10 +1072,18 @@ func _overlay_button(v: VBoxContainer, text: String, action: String) -> Button:
 	return b
 
 
-func show_result(won: bool, reason: String) -> void:
+func show_result(won: bool, reason: String, story := false, lose_ok := false, cont := "Continue Story") -> void:
 	var v := _overlay_panel("VICTORY" if won else "DEFEAT", reason, UITheme.ACCENT if won else UITheme.DANGER)
-	var first := _overlay_button(v, "Rematch", "rematch")
-	_overlay_button(v, "Main Menu", "menu")
+	var first: Button
+	if story:
+		if won or lose_ok:
+			first = _overlay_button(v, cont, "story_continue")
+		else:
+			first = _overlay_button(v, "Try Again", "rematch")
+			_overlay_button(v, "Quit to Menu", "menu")
+	else:
+		first = _overlay_button(v, "Rematch", "rematch")
+		_overlay_button(v, "Main Menu", "menu")
 	first.grab_focus()
 
 

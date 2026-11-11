@@ -81,7 +81,8 @@ func _build_menu() -> void:
 	_menu_box.add_theme_constant_override("separation", 6)
 	add_child(_menu_box)
 	var entries := [
-		["STORY", "Chapter 1: The Blank Deck. Coming soon", _on_story],
+		["STORY", "Prologue and Chapter 1 are here", _on_story],
+		["FREE ROAM", "Walk Domino City, talk and take street duels", _on_roam],
 		["FREE DUEL", "Duel a rival with a story deck", _on_free_duel],
 		["DECK", "Your cards and decks", _on_deck],
 		["SETTINGS", "Display, audio and card art", _on_settings],
@@ -250,6 +251,7 @@ func _refresh_chip() -> void:
 
 func _open_profile(first: bool) -> void:
 	var ed := ProfileEditor.new(first)
+	ed.z_index = 100
 	add_child(ed)
 	_panel_open = true
 	ed.closed.connect(func():
@@ -307,8 +309,43 @@ func _open_panel(p: SidePanel) -> void:
 			_items[1].grab_focus())
 
 
+func _on_roam() -> void:
+	Router.roam["district"] = "domino"
+	Router.go(Router.ROAM)
+
+
 func _on_story() -> void:
-	Router.toast("Story mode is coming in a later build")
+	var p := SidePanel.new("Story", 760)
+	p.z_index = 100
+	var pos := StoryProgress.position()
+	if pos["chapter"] != "":
+		var cont := Button.new()
+		cont.text = "▶  Continue where you left off"
+		cont.custom_minimum_size = Vector2(0, 72)
+		cont.add_theme_font_size_override("font_size", 28)
+		cont.pressed.connect(func():
+			Router.story = pos
+			Router.story_result = ""
+			Router.go(Router.STORY))
+		p.body.add_child(cont)
+	p.add_section("Chapters")
+	var unlocked := StoryProgress.unlocked()
+	for c in StoryData.CHAPTERS:
+		var ok: bool = unlocked.has(c["id"]) and StoryData.SCRIPTS.has(c["id"])
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(0, 96)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.text = "%s   ·   %s\n%s" % [c["title"].to_upper(), c["era"], c["name"] if ok else ("Locked" if StoryData.SCRIPTS.has(c["id"]) else "Coming soon")]
+		b.add_theme_font_size_override("font_size", 24)
+		b.disabled = not ok
+		var id: String = c["id"]
+		b.pressed.connect(func():
+			Router.story = {"chapter": id, "step": 0, "flags": {}}
+			Router.story_result = ""
+			Router.go(Router.STORY))
+		p.body.add_child(b)
+	add_child(p)
+	_open_panel(p)
 
 
 func _on_deck() -> void:
@@ -325,6 +362,7 @@ func _on_quit() -> void:
 
 func _on_free_duel() -> void:
 	var cs := CharacterSelect.new()
+	cs.z_index = 100
 	add_child(cs)
 	_panel_open = true
 	cs.start.connect(func(cfg):

@@ -81,6 +81,23 @@ const CARDS := {
 	83764718: {"name": "Monster Reborn", "frame": "spell", "effect": "reborn", "text": "Target 1 monster in either GY; Special Summon it."},
 	12580477: {"name": "Raigeki", "frame": "spell", "effect": "raigeki", "text": "Destroy all monsters your opponent controls."},
 	53129443: {"name": "Dark Hole", "frame": "spell", "effect": "darkhole", "text": "Destroy all monsters on the field."},
+	5318639: {"name": "Mystical Space Typhoon", "frame": "spell", "effect": "mst", "text": "Destroy 1 Spell/Trap on the field."},
+	72302403: {"name": "Swords of Revealing Light", "frame": "spell", "effect": "swords", "text": "Flip all monsters your opponent controls face-up. Your opponent's monsters cannot declare an attack for 3 of their turns."},
+	# Traps
+	44095762: {"name": "Mirror Force", "frame": "trap", "effect": "mirror_force", "text": "When an opponent's monster declares an attack: Destroy all your opponent's Attack Position monsters."},
+	62279055: {"name": "Magic Cylinder", "frame": "trap", "effect": "magic_cylinder", "text": "When an opponent's monster declares an attack: Negate the attack, and inflict damage to your opponent equal to its ATK."},
+	56120475: {"name": "Sakuretsu Armor", "frame": "trap", "effect": "sakuretsu", "text": "When an opponent's monster declares an attack: Destroy the attacking monster."},
+	14315573: {"name": "Negate Attack", "frame": "trap", "effect": "negate_attack", "text": "When an opponent's monster declares an attack: Negate the attack."},
+	98427577: {"name": "Scrap-Iron Scarecrow", "frame": "trap", "effect": "negate_attack", "text": "When an opponent's monster declares an attack: Negate the attack."},
+	12607053: {"name": "Waboku", "frame": "trap", "effect": "waboku", "text": "You take no battle damage this turn, and your monsters can't be destroyed by battle this turn."},
+	4206964: {"name": "Trap Hole", "frame": "trap", "effect": "trap_hole", "text": "When your opponent Normal or Flip Summons a monster with 1000 or more ATK: Destroy that monster."},
+	29401950: {"name": "Bottomless Trap Hole", "frame": "trap", "effect": "bottomless", "text": "When your opponent Summons a monster with 1500 or more ATK: Destroy that monster."},
+	53582587: {"name": "Torrential Tribute", "frame": "trap", "effect": "torrential", "text": "When a monster is Summoned: Destroy all monsters on the field."},
+	# Effect monsters with scripted effects
+	40640057: {"name": "Kuriboh", "frame": "effect", "atk": 300, "def": 200, "level": 1, "attribute": "DARK", "race": "Fiend", "text": "During damage calculation, if your opponent attacks: Discard this card; you take no battle damage from that battle."},
+	26202165: {"name": "Sangan", "frame": "effect", "atk": 1000, "def": 600, "level": 3, "attribute": "DARK", "race": "Fiend", "text": "If this card is sent from the field to the GY: Add 1 monster with 1500 or less ATK from your Deck to your hand."},
+	83011277: {"name": "Mystic Tomato", "frame": "effect", "atk": 1400, "def": 1100, "level": 4, "attribute": "DARK", "race": "Plant", "text": "If this card is destroyed by battle: Special Summon 1 DARK monster with 1500 or less ATK from your Deck."},
+	70095154: {"name": "Cyber Dragon", "frame": "effect", "atk": 2100, "def": 1600, "level": 5, "attribute": "LIGHT", "race": "Machine", "text": "If only your opponent controls a monster, you can Special Summon this card from your hand."},
 	46130346: {"name": "Hinotama", "frame": "spell", "effect": "burn500", "text": "Inflict 500 damage to your opponent."},
 }
 
@@ -88,7 +105,27 @@ const CARDS := {
 const SPELL_EFFECTS := {
 	"Pot of Greed": "draw2", "Dian Keto the Cure Master": "heal1000", "Fissure": "fissure",
 	"Polymerization": "fusion", "Monster Reborn": "reborn", "Raigeki": "raigeki",
-	"Dark Hole": "darkhole", "Hinotama": "burn500",
+	"Dark Hole": "darkhole", "Hinotama": "burn500", "Mystical Space Typhoon": "mst",
+	"Swords of Revealing Light": "swords", "Mirror Force": "mirror_force", "Magic Cylinder": "magic_cylinder",
+	"Sakuretsu Armor": "sakuretsu", "Negate Attack": "negate_attack", "Scrap-Iron Scarecrow": "negate_attack",
+	"Waboku": "waboku", "Trap Hole": "trap_hole", "Bottomless Trap Hole": "bottomless", "Torrential Tribute": "torrential",
+}
+
+## Monster effects the engine runs, by card name.
+const MONSTER_EFFECTS := {
+	"Kuriboh": "Discard during an opponent's attack: no battle damage.",
+	"Winged Kuriboh": "Destroyed: no battle damage for the rest of the turn.",
+	"Sangan": "Sent from field to GY: add a monster with 1500 or less ATK from Deck.",
+	"Mystic Tomato": "Destroyed by battle: Special Summon a DARK monster (1500 or less ATK) from Deck.",
+	"Cyber Dragon": "Special Summon from hand if only your opponent controls a monster.",
+	"Junk Synchron": "Normal Summoned: Special Summon a Level 2 or lower monster from your GY.",
+	"Goblindbergh": "Normal Summoned: Special Summon a Level 4 monster from your hand.",
+	"Speed Warrior": "Doubles its ATK during the Battle Phase of the turn it was Normal Summoned.",
+	"Max Warrior": "Gains 400 ATK when it attacks.",
+	"Zubaba Knight": "Attacking a Defense Position monster: destroy it right away.",
+	"Gogogo Golem": "Once per turn, in Defense Position it can't be destroyed by battle.",
+	"Number 39: Utopia": "When a monster declares an attack: detach 1 material to negate it.",
+	"Elemental HERO Wildheart": "Unaffected by Trap effects.",
 }
 
 ## Filled from the downloaded card database (tools/fetch_cards.py), if present.
@@ -96,46 +133,66 @@ static var EXT := {}
 static var NAME_TO_ID := {}
 
 const DECKS := {
+	# Story: the player's Echo Deck (early game) and Kairo's deck.
+	"echo": {
+		"name": "Echo",
+		"cards": {91152256: 3, 48305365: 2, 69140098: 2, 14898066: 2, 41392891: 2, 32452818: 2, 15025844: 2,
+			28279543: 2, 40640057: 2, 26202165: 1, 70781052: 1,
+			55144522: 1, 66788016: 1, 72302403: 1, 62279055: 1, 12607053: 2, 4206964: 1, 84257639: 2},
+	},
+	"kairo": {
+		"name": "Stolen Echo",
+		"cards": {74677422: 2, 70781052: 2, 28279543: 2, 97590747: 3, 24611934: 3, 67724379: 2, 14898066: 3,
+			41392891: 2, 70095154: 2, 83011277: 2,
+			55144522: 1, 12580477: 1, 83764718: 1, 44095762: 1, 56120475: 2, 53582587: 1},
+		"extra": {11901678: 1},
+	},
 	"yugi": {
 		"name": "Dark Magician",
-		"cards": {46986414: 2, 70781052: 2, 6368038: 2, 28279543: 2, 91152256: 3, 41392891: 2,
-			15025844: 2, 13039848: 2, 32452818: 3, 69140098: 2, 66602787: 1, 90357090: 1,
-			55144522: 1, 84257639: 1, 66788016: 2, 24094653: 2},
+		"cards": {46986414: 2, 70781052: 2, 6368038: 2, 28279543: 2, 91152256: 2, 41392891: 1,
+			15025844: 1, 13039848: 1, 32452818: 2, 69140098: 2, 40640057: 2, 26202165: 1,
+			55144522: 1, 66788016: 1, 24094653: 2, 72302403: 1, 5318639: 1,
+			44095762: 1, 62279055: 2, 12607053: 1},
 		"extra": {66889139: 2},
 	},
 	"kaiba": {
 		"name": "Blue-Eyes",
-		"cards": {89631139: 3, 30113682: 2, 26378150: 2, 14898066: 3, 97590747: 3, 5053103: 3,
-			67724379: 2, 24611934: 2, 76184692: 2, 88819587: 1,
-			55144522: 1, 66788016: 1, 24094653: 2, 12580477: 1, 83764718: 1, 84257639: 1},
+		"cards": {89631139: 3, 30113682: 2, 26378150: 2, 14898066: 3, 97590747: 2, 5053103: 2,
+			67724379: 1, 24611934: 2, 70095154: 2, 83011277: 1,
+			55144522: 1, 66788016: 1, 24094653: 2, 12580477: 1, 83764718: 1,
+			4206964: 2, 14315573: 1, 53582587: 1},
 		"extra": {23995346: 1},
 	},
 	"joey": {
 		"name": "Red-Eyes",
 		"cards": {74677422: 2, 70781052: 1, 48305365: 3, 14977074: 2, 18246479: 2, 34460851: 2,
-			44287299: 3, 49791927: 2, 64428736: 2, 88819587: 2, 76184692: 1,
-			24094653: 3, 55144522: 1, 84257639: 2, 66788016: 1, 83764718: 1},
+			44287299: 3, 49791927: 1, 64428736: 2, 88819587: 2,
+			24094653: 3, 55144522: 1, 84257639: 1, 83764718: 1,
+			12607053: 2, 56120475: 1, 4206964: 1},
 		"extra": {11901678: 1, 45231177: 2, 3366982: 1},
 	},
 	"jaden": {
 		"name": "Elemental HERO",
-		"cards": {21844576: 3, 58932615: 3, 84327329: 3, 20721928: 3, 86188410: 3, 79979666: 3,
+		"cards": {21844576: 3, 58932615: 3, 84327329: 3, 20721928: 3, 86188410: 2, 79979666: 2,
 			57116033: 2, 89943723: 2,
-			24094653: 4, 55144522: 1, 84257639: 1, 66788016: 1, 83764718: 1},
+			24094653: 4, 55144522: 1, 83764718: 1,
+			44095762: 1, 14315573: 2, 56120475: 1},
 		"extra": {35809262: 2, 61204971: 2, 47737087: 1},
 	},
 	"yusei": {
 		"name": "Synchron",
 		"cards": {63977008: 3, 96182448: 3, 9365703: 3, 23571046: 3, 59546797: 3, 63142001: 3,
-			91152256: 2, 32452818: 2, 76184692: 2,
-			55144522: 1, 84257639: 2, 66788016: 2, 83764718: 1},
+			91152256: 2, 32452818: 1,
+			55144522: 1, 66788016: 1, 83764718: 1,
+			98427577: 3, 56120475: 2, 5318639: 1},
 		"extra": {60800381: 2, 44508094: 1, 51447164: 1},
 	},
 	"yuma": {
 		"name": "Gagaga",
-		"cards": {26082117: 3, 97617181: 2, 62476815: 3, 25259669: 3, 91152256: 2, 32452818: 2,
-			5053103: 2, 44287299: 2, 76184692: 3, 90357090: 2,
-			55144522: 1, 84257639: 2, 66788016: 2, 83764718: 1},
+		"cards": {26082117: 3, 97617181: 3, 62476815: 3, 25259669: 3, 91152256: 2, 32452818: 2,
+			5053103: 2, 44287299: 2, 90357090: 1,
+			55144522: 1, 84257639: 1, 66788016: 1, 83764718: 1,
+			14315573: 2, 12607053: 2, 4206964: 1},
 		"extra": {84013237: 2, 12014404: 1},
 	},
 }
@@ -204,14 +261,14 @@ const NAMED_DECKS := {
 
 
 static func get_card(id: int) -> Dictionary:
+	var d: Dictionary
 	if not CARDS.has(id) and EXT.has(id):
-		var e: Dictionary = EXT[id].duplicate()
-		e["id"] = id
-		e["kind"] = "spell" if e.get("frame", "") == "spell" else "monster"
-		return e
-	var d: Dictionary = CARDS.get(id, {"name": "Unknown", "frame": "normal"}).duplicate()
+		d = EXT[id].duplicate()
+	else:
+		d = CARDS.get(id, {"name": "Unknown", "frame": "normal"}).duplicate()
 	d["id"] = id
-	d["kind"] = "spell" if d.get("frame", "") == "spell" else "monster"
+	var frame: String = d.get("frame", "")
+	d["kind"] = "trap" if frame == "trap" else ("spell" if frame == "spell" else "monster")
 	return d
 
 
@@ -253,11 +310,11 @@ static func _resolve(names: Dictionary, extra: bool) -> Dictionary:
 		if id == 0:
 			continue
 		var d := get_card(id)
-		if d["kind"] == "spell" and not d.has("effect"):
+		if d["kind"] != "monster" and not d.has("effect"):
 			continue
 		if (d.get("frame", "") in ["fusion", "synchro", "xyz"]) != extra:
 			continue
-		if d.get("frame", "") in ["ritual", "link", "trap"]:
+		if d.get("frame", "") in ["ritual", "link"]:
 			continue
 		out[id] = names[n]
 	return out
@@ -322,12 +379,10 @@ static func _from_db(raw: Dictionary) -> Dictionary:
 	elif frame.begins_with("normal"):
 		frame = "normal"
 	var d := {"name": name, "frame": frame, "desc": str(raw.get("desc", ""))}
-	if frame == "spell":
+	if frame == "spell" or frame == "trap":
 		if SPELL_EFFECTS.has(name):
 			d["effect"] = SPELL_EFFECTS[name]
 			d["text"] = d["desc"]
-		return d
-	if frame == "trap":
 		return d
 	d["atk"] = int(raw.get("atk", 0))
 	d["def"] = int(raw.get("def", 0))
@@ -377,7 +432,7 @@ static func legend_deck(deck_key: String) -> Array[int]:
 	var counts: Dictionary = DECKS[deck_key]["cards"].duplicate()
 	var monsters := []
 	for id in counts:
-		if CARDS.get(id, {}).get("frame", "") != "spell":
+		if not (CARDS.get(id, {}).get("frame", "") in ["spell", "trap"]):
 			monsters.append(id)
 	monsters.sort_custom(func(a, b): return CARDS[a].get("atk", 0) < CARDS[b].get("atk", 0))
 	var removed := 0

@@ -3,6 +3,15 @@ extends CanvasLayer
 
 const MAIN_MENU := "res://scenes/main_menu.tscn"
 const DUEL := "res://scenes/duel.tscn"
+const STORY := "res://scenes/story.tscn"
+const ROAM := "res://scenes/roam.tscn"
+
+## Free roam: where you are and what just happened there.
+var roam := {"district": "domino", "pos": null, "last_duel": "", "result": ""}
+
+## Story position handed between the story player and story duels.
+var story := {}
+var story_result := ""
 
 ## Set by the menu before starting a duel.
 var duel_config := {"player_deck": "yugi", "opponent_deck": "kaiba"}
@@ -72,6 +81,17 @@ func _debug_args() -> void:
 			after = float(a.substr(8))
 		elif a == "--duel":
 			duel = true
+		elif a.begins_with("--assets="):
+			Settings.card_folder = a.substr(9)
+			Cards.clear_cache()
+			Portraits.clear_cache()
+		elif a.begins_with("--story="):
+			story = {"chapter": a.substr(8), "step": 0, "flags": {}}
+			await get_tree().process_frame
+			go(STORY)
+		elif a == "--roam":
+			await get_tree().process_frame
+			go(ROAM)
 		elif a.begins_with("--opp="):
 			duel_config["opponent"] = a.substr(6)
 		elif a.begins_with("--field="):

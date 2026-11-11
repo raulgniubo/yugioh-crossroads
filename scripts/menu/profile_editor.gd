@@ -10,6 +10,7 @@ var _gender_btns: Array[Button] = []
 var _color_btns: Array[Button] = []
 var _emblem_btns: Array[Button] = []
 var _first_time := false
+var _tint_btns: Array = []
 
 
 func _init(first_time := false) -> void:
@@ -100,7 +101,36 @@ func _ready() -> void:
 			_refresh())
 		er.add_child(b)
 		_emblem_btns.append(b)
-	var hint := UITheme.label("Want your own picture? Put player.png in your card folder's characters folder.", 16, UITheme.TEXT_DIM)
+	if Avatars.has_avatar("player"):
+		v.add_child(_section("LOOK  ·  3D MODEL"))
+		for g in ["hair", "outfit", "eyes"]:
+			var tr := HBoxContainer.new()
+			tr.add_theme_constant_override("separation", 8)
+			var gl := UITheme.label(g.capitalize(), 18, UITheme.TEXT_DIM)
+			gl.custom_minimum_size = Vector2(80, 0)
+			tr.add_child(gl)
+			for c in Avatars.TINTS:
+				var b := Button.new()
+				b.custom_minimum_size = Vector2(40, 40)
+				b.toggle_mode = true
+				b.tooltip_text = "Original" if c == Color.WHITE else ""
+				for st in ["normal", "hover", "pressed", "focus", "hover_pressed"]:
+					var sb := UITheme.button_box(c, Color.WHITE if st in ["pressed", "hover_pressed"] else Color(1, 1, 1, 0.15), 20)
+					sb.set_border_width_all(3)
+					b.add_theme_stylebox_override(st, sb)
+				if c == Color.WHITE:
+					b.text = "↺"
+					b.add_theme_color_override("font_color", Color.BLACK)
+				var group: String = g
+				var col: Color = c
+				b.pressed.connect(func():
+					Profile.tints[group] = col
+					Avatars.retint("player")
+					_refresh())
+				tr.add_child(b)
+				_tint_btns.append([b, group, col])
+			v.add_child(tr)
+	var hint := UITheme.label("3D model: put player.vrm (from VRoid Studio) in your card folder's characters folder. Or player.png for a picture." if not Avatars.has_avatar("player") else "Your model: characters/player.vrm", 16, UITheme.TEXT_DIM)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(hint)
 	var row := HBoxContainer.new()
@@ -111,6 +141,7 @@ func _ready() -> void:
 		cancel.text = "Cancel"
 		cancel.pressed.connect(func():
 			Profile._ready()
+			Avatars.retint("player")
 			_close())
 		row.add_child(cancel)
 	var save := Button.new()
@@ -146,9 +177,12 @@ func _refresh() -> void:
 		_color_btns[i].set_pressed_no_signal(i == Profile.color_index)
 	for i in _emblem_btns.size():
 		_emblem_btns[i].set_pressed_no_signal(i == Profile.emblem)
+	for t in _tint_btns:
+		(t[0] as Button).set_pressed_no_signal(Profile.tints.get(t[1], Color.WHITE) == t[2])
 	var n := _name_edit.text.strip_edges()
 	Profile.duelist_name = n if n != "" else "Duelist"
-	Portraits._forget("player")
+	if not Avatars.has_avatar("player"):
+		Portraits._forget("player")  # the drawn placeholder shows name, color and emblem
 	_preview.texture = Portraits.get_portrait("player")
 
 
@@ -167,6 +201,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _first_time and (event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_pause")):
 		get_viewport().set_input_as_handled()
 		Profile._ready()
+		Avatars.retint("player")
 		_close()
 
 

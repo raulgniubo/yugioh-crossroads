@@ -15,6 +15,7 @@ var duelist_name := "Duelist"
 var gender := 0
 var color_index := 0
 var emblem := 0
+var tints := {"hair": Color.WHITE, "outfit": Color.WHITE, "eyes": Color.WHITE}
 var wins := 0
 var losses := 0
 
@@ -28,6 +29,7 @@ func _ready() -> void:
 	gender = cfg.get_value("profile", "gender", gender)
 	color_index = cfg.get_value("profile", "color", color_index)
 	emblem = cfg.get_value("profile", "emblem", emblem)
+	tints = cfg.get_value("profile", "tints", tints)
 	wins = cfg.get_value("stats", "wins", 0)
 	losses = cfg.get_value("stats", "losses", 0)
 
@@ -39,6 +41,7 @@ func save() -> void:
 	cfg.set_value("profile", "gender", gender)
 	cfg.set_value("profile", "color", color_index)
 	cfg.set_value("profile", "emblem", emblem)
+	cfg.set_value("profile", "tints", tints)
 	cfg.set_value("stats", "wins", wins)
 	cfg.set_value("stats", "losses", losses)
 	cfg.save(PATH)

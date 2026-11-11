@@ -9,6 +9,7 @@ func _ready() -> void:
 	_test_tributes()
 	_test_battle_math()
 	_test_synchro_xyz_fusion()
+	_test_traps()
 	var keys: Array = CardData.DECKS.keys()
 	for seed in 60:
 		_ai_vs_ai(seed, keys[seed % keys.size()], keys[(seed / keys.size() + 1 + seed) % keys.size()], seed % 3, seed % 3)
@@ -47,6 +48,45 @@ func _new_state(seed := 1, a := "yugi", b := "kaiba", legend_a := false, legend_
 			CardData.legend_deck(b) if legend_b else CardData.deck_list(b), "A", "B", 0, seed,
 			CardData.extra_list(a), CardData.extra_list(b))
 	return s
+
+
+func _test_traps() -> void:
+	var s := _new_state(11)
+	s.begin_turn()
+	s.end_turn()
+	s.begin_turn()  # player 1, turn 2
+	var mf := s._make(44095762, 0)
+	s.players[0].spells[0] = mf
+	mf.face_up = false
+	mf.set_turn = 1
+	var a1 := _put(s, 1, 89631139, 0)
+	var a2 := _put(s, 1, 14898066, 1)
+	a1.summoned_turn = 1
+	a2.summoned_turn = 1
+	s.enter_battle()
+	s.declare_attack(1, a1, null)
+	var opts := s.responses(0, "attack")
+	check(opts.has(mf), "Mirror Force is offered on attack")
+	s.respond(0, mf)
+	check(s.players[1].monsters().is_empty(), "Mirror Force wipes attack-position monsters")
+	var ev := s.resolve_attack()
+	check(ev.size() == 1 and ev[0]["type"] == "attack_stopped", "attack stops after Mirror Force")
+	check(s.players[0].lp == DuelState.START_LP, "no damage after Mirror Force")
+	# Magic Cylinder
+	var t := _new_state(12)
+	t.begin_turn()
+	t.end_turn()
+	t.begin_turn()
+	var mc := t._make(62279055, 0)
+	t.players[0].spells[1] = mc
+	mc.set_turn = 1
+	var b := _put(t, 1, 70781052, 0)
+	t.enter_battle()
+	t.declare_attack(1, b, null)
+	t.respond(0, mc)
+	t.resolve_attack()
+	check(t.players[1].lp == DuelState.START_LP - 2500, "Magic Cylinder bounces 2500")
+	check(t.players[0].lp == DuelState.START_LP, "Magic Cylinder blocks the hit")
 
 
 func _put(s: DuelState, p: int, id: int, zone: int) -> DuelState.CardInst:
@@ -161,7 +201,13 @@ func _ai_vs_ai(seed: int, a := "yugi", b := "kaiba", lv_a := 1, lv_b := 1) -> in
 				var atk := DuelAI.next_attack(s, p, lv)
 				if atk.is_empty():
 					break
-				s.attack(p, atk["card"], atk["target"])
+				if s.declare_attack(p, atk["card"], atk["target"]).is_empty():
+					break
+				var d := s.opponent(p)
+				var r := DuelAI.choose_response(s, d, "attack", s.responses(d, "attack"), lv_b if d == 1 else lv_a)
+				if r != null:
+					s.respond(d, r)
+				s.resolve_attack()
 			s.enter_main2()
 			steps = 0
 			while steps < 10 and not s.is_over():
@@ -182,7 +228,7 @@ func _ai_vs_ai(seed: int, a := "yugi", b := "kaiba", lv_a := 1, lv_b := 1) -> in
 func _total(s: DuelState) -> int:
 	var t := 0
 	for ps in s.players:
-		t += ps.deck.size() + ps.hand.size() + ps.gy.size() + ps.extra.size()
+		t += ps.deck.size() + ps.hand.size() + ps.gy.size() + ps.extra.size() + ps.set_cards().size()
 		for m in ps.monsters():
 			t += 1 + m.overlays.size()
 	return t
@@ -202,4 +248,8 @@ func _run(s: DuelState, p: int, act: Dictionary) -> Array:
 			return s.flip_summon(p, act["card"])
 		"position":
 			return s.change_position(p, act["card"])
+		"set_st":
+			return s.set_st(p, act["card"])
+		"special_hand":
+			return s.special_from_hand(p, act["card"])
 	return []

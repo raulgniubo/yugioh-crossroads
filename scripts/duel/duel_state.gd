@@ -26,6 +26,17 @@ class CardInst:
 	var pos_changed_turn := -1
 	var attacked_turn := -1
 	var overlays: Array = []
+	var set_turn := -1
+	var used_turn := -1
+
+	func cname() -> String:
+		return str(data.get("name", ""))
+
+	func is_trap() -> bool:
+		return data.get("kind", "") == "trap"
+
+	func is_spell() -> bool:
+		return data.get("kind", "") == "spell"
 
 	func is_monster() -> bool:
 		return data.get("kind", "monster") == "monster"
@@ -54,6 +65,17 @@ class PlayerState:
 	var hand: Array[CardInst] = []
 	var gy: Array[CardInst] = []
 	var extra: Array[CardInst] = []
+	var spells: Array = [null, null, null, null, null]
+	var no_damage_turn := -1
+	var protect_turn := -1
+	var swords_left := 0
+
+	func set_cards() -> Array[CardInst]:
+		var out: Array[CardInst] = []
+		for c in spells:
+			if c != null:
+				out.append(c)
+		return out
 	var field: Array = [null, null, null, null, null]
 
 	func monsters() -> Array[CardInst]:
@@ -178,6 +200,12 @@ func end_turn() -> Array:
 		ps.hand.erase(worst)
 		ps.gy.append(worst)
 		events.append({"type": "discard", "player": current, "card": worst})
+	# Swords of Revealing Light counts down at the end of the opponent's turns.
+	var owner := opponent(current)
+	if players[owner].swords_left > 0:
+		players[owner].swords_left -= 1
+		if players[owner].swords_left == 0:
+			events.append({"type": "swords_end", "player": owner})
 	current = opponent(current)
 	return events
 
@@ -255,6 +283,9 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 	c.attacked_turn = -1
 	normal_summoned = true
 	events.append({"type": "set" if set_card else "summon", "player": p, "card": c, "zone": zone})
+	if not set_card:
+		last_summoned = c
+		events.append_array(summon_triggers(p, c))
 	return events
 
 
@@ -269,6 +300,8 @@ func flip_summon(p: int, c: CardInst) -> Array:
 	c.face_up = true
 	c.attack_pos = true
 	c.pos_changed_turn = turn
+	c.summoned_turn = turn
+	last_summoned = c
 	return [{"type": "flip", "player": p, "card": c, "zone": players[p].field.find(c)}]
 
 
@@ -289,9 +322,11 @@ func change_position(p: int, c: CardInst) -> Array:
 # ------------------------------------------------------------------ spells
 
 func can_activate(p: int, c: CardInst) -> bool:
-	if p != current or not _in_main() or is_over() or c.is_monster() or not players[p].hand.has(c):
+	if p != current or not _in_main() or is_over() or not c.is_spell() or not players[p].hand.has(c):
 		return false
 	match c.data.get("effect", ""):
+		"mst":
+			return not players[opponent(p)].set_cards().is_empty()
 		"draw2":
 			return players[p].deck.size() >= 2
 		"fissure":
@@ -341,6 +376,16 @@ func activate(p: int, c: CardInst, choice: CardInst = null) -> Array:
 					events.append_array(_destroy(m))
 		"burn500":
 			events.append_array(_damage(opponent(p), 500))
+		"mst":
+			var st: Array = players[opponent(p)].set_cards()
+			if not st.is_empty():
+				events.append_array(_destroy_st(st[0]))
+		"swords":
+			players[p].swords_left = 3
+			for m in players[opponent(p)].monsters():
+				if not m.face_up:
+					m.face_up = true
+					events.append({"type": "reveal", "player": opponent(p), "card": m, "zone": players[opponent(p)].field.find(m)})
 		"fusion":
 			events.append_array(_do_fusion(p, fusion_plan))
 		"reborn":
@@ -366,7 +411,8 @@ func _lowest_face_up(p: int) -> CardInst:
 
 func can_attack(p: int, c: CardInst) -> bool:
 	return (p == current and phase == Phase.BATTLE and not is_over() and players[p].field.has(c)
-			and c.face_up and c.attack_pos and c.attacked_turn != turn)
+			and c.face_up and c.attack_pos and c.attacked_turn != turn
+			and players[opponent(p)].swords_left == 0)
 
 
 func can_direct_attack(p: int) -> bool:
@@ -377,44 +423,109 @@ func attack_targets(p: int) -> Array[CardInst]:
 	return players[opponent(p)].monsters()
 
 
+## Attack in one go (AI simulation and tests). The duel screen uses
+## declare_attack + response window + resolve_attack instead.
 func attack(p: int, attacker: CardInst, target: CardInst) -> Array:
+	var ev := declare_attack(p, attacker, target)
+	if ev.is_empty():
+		return []
+	ev.append_array(resolve_attack())
+	return ev
+
+
+var pending_attack := {}
+## Last monster Normal Summoned, for the "summon" response window.
+var last_summoned: CardInst = null
+
+
+func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	if not can_attack(p, attacker):
 		return []
-	var opp := opponent(p)
 	if target == null and not can_direct_attack(p):
 		return []
-	if target != null and not players[opp].field.has(target):
+	if target != null and not players[opponent(p)].field.has(target):
 		return []
 	attacker.attacked_turn = turn
-	var events := [{"type": "attack", "player": p, "card": attacker, "target": target}]
+	pending_attack = {"player": p, "attacker": attacker, "target": target, "negated": false}
+	return [{"type": "attack", "player": p, "card": attacker, "target": target}]
+
+
+func resolve_attack() -> Array:
+	if pending_attack.is_empty():
+		return []
+	var pa := pending_attack
+	pending_attack = {}
+	var p: int = pa["player"]
+	var attacker: CardInst = pa["attacker"]
+	var target = pa["target"]
+	var opp := opponent(p)
+	if pa["negated"] or not players[p].field.has(attacker) or is_over():
+		return [{"type": "attack_stopped", "player": p, "card": attacker}]
+	if target != null and not players[opp].field.has(target):
+		return [{"type": "attack_stopped", "player": p, "card": attacker}]
+	var events := [{"type": "battle", "player": p, "card": attacker, "target": target}]
+	var a := atk_of(attacker, true)
 	if target == null:
-		events.append_array(_damage(opp, attacker.atk()))
+		events.append_array(_battle_damage(opp, a))
 		return events
 	if not target.face_up:
 		target.face_up = true
 		events.append({"type": "reveal", "player": opp, "card": target, "zone": players[opp].field.find(target)})
-	var a := attacker.atk()
+	# Zubaba Knight destroys a Defense Position monster outright.
+	if attacker.cname() == "Zubaba Knight" and not target.attack_pos:
+		events.append_array(_destroy(target, true))
+		return events
 	if target.attack_pos:
-		var t := target.atk()
+		var t := atk_of(target, false)
 		if a > t:
-			events.append_array(_destroy(target))
-			events.append_array(_damage(opp, a - t))
+			events.append_array(_battle_destroy(target))
+			events.append_array(_battle_damage(opp, a - t))
 		elif a < t:
-			events.append_array(_destroy(attacker))
-			events.append_array(_damage(p, t - a))
+			events.append_array(_battle_destroy(attacker))
+			events.append_array(_battle_damage(p, t - a))
 		elif a > 0:
-			events.append_array(_destroy(attacker))
-			events.append_array(_destroy(target))
+			events.append_array(_battle_destroy(attacker))
+			events.append_array(_battle_destroy(target))
 	else:
-		var d := target.def()
+		var d: int = target.def()
 		if a > d:
-			events.append_array(_destroy(target))
+			events.append_array(_battle_destroy(target))
 		elif a < d:
-			events.append_array(_damage(p, d - a))
+			events.append_array(_battle_damage(p, d - a))
 	return events
 
 
-func _destroy(c: CardInst) -> Array:
+## ATK including passive effects. `attacking` = it's the attacker in this battle.
+func atk_of(c: CardInst, attacking: bool) -> int:
+	var v := c.atk()
+	match c.cname():
+		"Speed Warrior":
+			if phase == Phase.BATTLE and c.summoned_turn == turn:
+				v *= 2
+		"Max Warrior":
+			if attacking:
+				v += 400
+	return v
+
+
+func _battle_destroy(c: CardInst) -> Array:
+	var ps := players[c.owner]
+	if ps.protect_turn == turn:
+		return []
+	if c.cname() == "Gogogo Golem" and not c.attack_pos and c.used_turn != turn:
+		c.used_turn = turn
+		return [{"type": "effect", "player": c.owner, "card": c, "text": "Gogogo Golem holds on!"}]
+	return _destroy(c, true)
+
+
+func _battle_damage(p: int, amount: int) -> Array:
+	var ps := players[p]
+	if ps.no_damage_turn == turn or ps.protect_turn == turn:
+		return [{"type": "effect", "player": p, "card": null, "text": "No battle damage!"}]
+	return _damage(p, amount)
+
+
+func _destroy(c: CardInst, by_battle := false) -> Array:
 	var ps := players[c.owner]
 	var zone := ps.field.find(c)
 	if zone == -1:
@@ -425,6 +536,45 @@ func _destroy(c: CardInst) -> Array:
 	for o in c.overlays:
 		ps.gy.append(o)
 	c.overlays.clear()
+	events.append_array(_on_leave_field(c, by_battle))
+	return events
+
+
+func _destroy_st(c: CardInst) -> Array:
+	var ps := players[c.owner]
+	var zone := ps.spells.find(c)
+	if zone == -1:
+		return []
+	ps.spells[zone] = null
+	ps.gy.append(c)
+	return [{"type": "destroy_st", "player": c.owner, "card": c, "zone": zone}]
+
+
+## Triggers when a monster leaves the field for the GY.
+func _on_leave_field(c: CardInst, by_battle: bool) -> Array:
+	var p := c.owner
+	var ps := players[p]
+	var events := []
+	match c.cname():
+		"Sangan":
+			for d in ps.deck:
+				if d.is_monster() and d.atk() <= 1500:
+					ps.deck.erase(d)
+					ps.hand.append(d)
+					events.append({"type": "effect", "player": p, "card": c, "text": "Sangan adds %s to the hand" % d.cname()})
+					events.append({"type": "search", "player": p, "card": d, "deck": ps.deck.size()})
+					break
+		"Winged Kuriboh":
+			ps.no_damage_turn = turn
+			events.append({"type": "effect", "player": p, "card": c, "text": "No battle damage this turn"})
+		"Mystic Tomato":
+			if by_battle and ps.free_zone() != -1:
+				for d in ps.deck:
+					if d.is_monster() and d.atk() <= 1500 and d.data.get("attribute", "") == "DARK" and not CardData.is_extra(d.id):
+						ps.deck.erase(d)
+						events.append({"type": "effect", "player": p, "card": c, "text": "Mystic Tomato calls %s" % d.cname()})
+						events.append_array(_special(p, d, "effect"))
+						break
 	return events
 
 
@@ -463,6 +613,7 @@ func _special(p: int, c: CardInst, method: String) -> Array:
 	c.summoned_turn = turn
 	c.pos_changed_turn = -1
 	c.attacked_turn = -1
+	last_summoned = c
 	return [{"type": "special", "player": p, "card": c, "zone": zone, "method": method}]
 
 
@@ -540,9 +691,10 @@ func extra_materials(p: int, c: CardInst) -> Array:
 	var out := []
 	if c.frame() == "xyz":
 		var same := mons.filter(func(m): return m.level() == c.level() and m.frame() not in ["xyz"])
-		if same.size() >= 2:
-			same.sort_custom(func(a, b): return a.atk() < b.atk())
-			out.append(same.slice(0, 2))
+		same.sort_custom(func(a, b): return a.atk() < b.atk())
+		for i in same.size():
+			for j in range(i + 1, same.size()):
+				out.append([same[i], same[j]])
 	elif c.frame() == "synchro":
 		var n := mons.size()
 		for mask in range(1, 1 << n):
@@ -624,6 +776,12 @@ func clone() -> DuelState:
 		np.field = []
 		for c in ps.field:
 			np.field.append(_clone_card(c, map) if c != null else null)
+		np.spells = []
+		for c in ps.spells:
+			np.spells.append(_clone_card(c, map) if c != null else null)
+		np.no_damage_turn = ps.no_damage_turn
+		np.protect_turn = ps.protect_turn
+		np.swords_left = ps.swords_left
 		s.players.append(np)
 	s.current = current
 	s.turn = turn
@@ -650,6 +808,8 @@ func _clone_card(c: CardInst, map: Dictionary) -> CardInst:
 	n.summoned_turn = c.summoned_turn
 	n.pos_changed_turn = c.pos_changed_turn
 	n.attacked_turn = c.attacked_turn
+	n.set_turn = c.set_turn
+	n.used_turn = c.used_turn
 	map[c.uid] = n
 	for o in c.overlays:
 		n.overlays.append(_clone_card(o, map))
@@ -662,7 +822,177 @@ func find_uid(uid: int) -> CardInst:
 			for c in list:
 				if c.uid == uid:
 					return c
-		for c in ps.field:
+		for c in ps.field + ps.spells:
 			if c != null and c.uid == uid:
 				return c
 	return null
+
+
+# ------------------------------------------------------------------ spells & traps on the field
+
+func can_set_st(p: int, c: CardInst) -> bool:
+	return (p == current and _in_main() and not is_over() and not c.is_monster()
+			and players[p].hand.has(c) and players[p].spells.find(null) != -1)
+
+
+func set_st(p: int, c: CardInst) -> Array:
+	if not can_set_st(p, c):
+		return []
+	var ps := players[p]
+	var zone := ps.spells.find(null)
+	ps.hand.erase(c)
+	ps.spells[zone] = c
+	c.face_up = false
+	c.set_turn = turn
+	return [{"type": "set_st", "player": p, "card": c, "zone": zone}]
+
+
+## Cards player `p` could activate right now in a response window.
+## window: "attack" (an opponent's monster declared an attack) or "summon".
+func responses(p: int, window: String, subject: CardInst = null) -> Array:
+	var out := []
+	var ps := players[p]
+	if is_over():
+		return out
+	for c in ps.spells:
+		if c == null or not c.is_trap() or c.set_turn >= turn:
+			continue
+		if _trap_fits(p, c, window, subject):
+			out.append(c)
+	if window == "attack":
+		if not pending_attack.is_empty() and pending_attack["player"] != p:
+			for c in ps.hand:
+				if c.cname() == "Kuriboh":
+					out.append(c)
+					break
+		for m in ps.monsters():
+			if m.cname() == "Number 39: Utopia" and m.face_up and m.overlays.size() > 0 and m.used_turn != turn:
+				out.append(m)
+	return out
+
+
+func _trap_fits(p: int, c: CardInst, window: String, subject: CardInst) -> bool:
+	var e: String = c.data.get("effect", "")
+	if window == "attack":
+		if pending_attack.is_empty() or pending_attack["player"] == p:
+			return false
+		var att: CardInst = pending_attack["attacker"]
+		var immune := att.cname() == "Elemental HERO Wildheart"
+		match e:
+			"mirror_force", "sakuretsu":
+				return not immune
+			"magic_cylinder", "negate_attack", "waboku":
+				return true
+		return false
+	if window == "summon" and subject != null and subject.owner != p:
+		if subject.cname() == "Elemental HERO Wildheart":
+			return false
+		match e:
+			"trap_hole":
+				return subject.atk() >= 1000 and subject.summoned_turn == turn
+			"bottomless":
+				return subject.atk() >= 1500
+			"torrential":
+				return true
+	return false
+
+
+## Activate a response card (trap, Kuriboh from hand, Utopia's effect).
+func respond(p: int, c: CardInst, subject: CardInst = null) -> Array:
+	var ps := players[p]
+	var events := []
+	if c.cname() == "Kuriboh" and ps.hand.has(c):
+		ps.hand.erase(c)
+		ps.gy.append(c)
+		ps.no_damage_turn = turn
+		events.append({"type": "hand_effect", "player": p, "card": c, "text": "Kuriboh! No battle damage."})
+		return events
+	if c.cname() == "Number 39: Utopia":
+		c.used_turn = turn
+		var o: CardInst = c.overlays.pop_back()
+		ps.gy.append(o)
+		events.append({"type": "detach", "player": p, "card": c, "material": o})
+		if not pending_attack.is_empty():
+			pending_attack["negated"] = true
+		events.append({"type": "effect", "player": p, "card": c, "text": "Utopia negates the attack!"})
+		return events
+	var zone := ps.spells.find(c)
+	if zone == -1:
+		return events
+	c.face_up = true
+	events.append({"type": "trap", "player": p, "card": c, "zone": zone})
+	var opp := opponent(p)
+	match c.data.get("effect", ""):
+		"mirror_force":
+			pending_attack["negated"] = true
+			for m in players[opp].monsters():
+				if m.attack_pos and m.cname() != "Elemental HERO Wildheart":
+					events.append_array(_destroy(m))
+		"sakuretsu":
+			events.append_array(_destroy(pending_attack["attacker"]))
+		"magic_cylinder":
+			pending_attack["negated"] = true
+			events.append_array(_damage(opp, pending_attack["attacker"].atk()))
+		"negate_attack":
+			pending_attack["negated"] = true
+		"waboku":
+			ps.protect_turn = turn
+		"trap_hole", "bottomless":
+			if subject != null:
+				events.append_array(_destroy(subject))
+		"torrential":
+			for q in 2:
+				for m in players[q].monsters():
+					events.append_array(_destroy(m))
+	ps.spells[ps.spells.find(c)] = null
+	ps.gy.append(c)
+	events.append({"type": "st_done", "player": p, "card": c})
+	return events
+
+
+# ------------------------------------------------------------------ monster effects from hand / on summon
+
+func can_special_from_hand(p: int, c: CardInst) -> bool:
+	if p != current or not _in_main() or is_over() or not players[p].hand.has(c):
+		return false
+	if c.cname() == "Cyber Dragon":
+		return players[p].monsters().is_empty() and not players[opponent(p)].monsters().is_empty() and players[p].free_zone() != -1
+	return false
+
+
+func special_from_hand(p: int, c: CardInst) -> Array:
+	if not can_special_from_hand(p, c):
+		return []
+	players[p].hand.erase(c)
+	return _special(p, c, "effect")
+
+
+## Triggers after a Normal Summon resolves.
+func summon_triggers(p: int, c: CardInst) -> Array:
+	var ps := players[p]
+	var events := []
+	match c.cname():
+		"Junk Synchron":
+			if ps.free_zone() == -1:
+				return events
+			for g in ps.gy:
+				if g.is_monster() and g.level() <= 2 and not CardData.is_extra(g.id):
+					ps.gy.erase(g)
+					events.append({"type": "effect", "player": p, "card": c, "text": "Junk Synchron revives %s" % g.cname()})
+					var ev := _special(p, g, "reborn")
+					if not ev.is_empty():
+						g.attack_pos = false
+					events.append_array(ev)
+					break
+		"Goblindbergh":
+			if ps.free_zone() == -1:
+				return events
+			for h in ps.hand:
+				if h.is_monster() and h.level() == 4:
+					ps.hand.erase(h)
+					events.append({"type": "effect", "player": p, "card": c, "text": "Goblindbergh brings out %s" % h.cname()})
+					events.append_array(_special(p, h, "effect"))
+					c.attack_pos = false
+					events.append({"type": "position", "player": p, "card": c, "zone": ps.field.find(c)})
+					break
+	return events

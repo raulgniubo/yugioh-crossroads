@@ -36,7 +36,9 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 		if c.is_monster() or not s.can_activate(p, c):
 			continue
 		match c.data.get("effect", ""):
-			"draw2":
+			"draw2", "swords":
+				return {"do": "activate", "card": c}
+			"mst":
 				return {"do": "activate", "card": c}
 			"heal1000":
 				if me.lp <= (5000 if level == HARD else 6000):
@@ -82,6 +84,14 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 		var plan := _best_summon(s, p, opp_best, level)
 		if not plan.is_empty():
 			return plan
+	# 4b. Cyber Dragon from hand
+	for c in me.hand:
+		if s.can_special_from_hand(p, c):
+			return {"do": "special_hand", "card": c}
+	# 4c. Set traps (and Mystical Space Typhoon / spells we're holding back)
+	for c in me.hand:
+		if c.is_trap() and s.can_set_st(p, c):
+			return {"do": "set_st", "card": c}
 	# 5. Position changes (before battle)
 	if s.phase == DuelState.Phase.MAIN1 and level > EASY:
 		for m in me.monsters():
@@ -132,6 +142,16 @@ static func _best_target(m: DuelState.CardInst, targets: Array, facedown_min: in
 ## stronger monsters stay free for the next target or a direct hit.
 static func _hard_attack(attackers: Array, opp: DuelState.PlayerState) -> Dictionary:
 	var targets: Array = opp.monsters()
+	if not opp.set_cards().is_empty() and attackers.size() > 1:
+		# Possible traps: lead with the weakest attacker that still does something.
+		var weakest: Array = attackers.duplicate()
+		weakest.sort_custom(func(a, b): return a.atk() < b.atk())
+		for m in weakest:
+			if targets.is_empty():
+				return {"do": "attack", "card": m, "target": null}
+			for t in targets:
+				if t.face_up and m.atk() > (t.atk() if t.attack_pos else t.def()):
+					return {"do": "attack", "card": m, "target": t}
 	targets.sort_custom(func(a, b): return _threat(a) > _threat(b))
 	for t in targets:
 		if not t.face_up:
@@ -263,6 +283,11 @@ static func _candidates(s: DuelState, p: int) -> Array:
 	for x in me.extra:
 		if s.can_extra_summon(p, x):
 			out.append({"do": "extra", "card": x})
+	for c in me.hand:
+		if c.is_trap() and s.can_set_st(p, c):
+			out.append({"do": "set_st", "card": c})
+		if s.can_special_from_hand(p, c):
+			out.append({"do": "special_hand", "card": c})
 	for m in me.monsters():
 		if s.can_flip_summon(p, m):
 			out.append({"do": "flip", "card": m})
@@ -330,7 +355,68 @@ static func apply(s: DuelState, p: int, act: Dictionary) -> Array:
 			return s.flip_summon(p, act["card"])
 		"position":
 			return s.change_position(p, act["card"])
+		"set_st":
+			return s.set_st(p, act["card"])
+		"special_hand":
+			return s.special_from_hand(p, act["card"])
 	return []
+
+
+## Should player p use a response card? Returns the card or null.
+static func choose_response(s: DuelState, p: int, window: String, options: Array, level := NORMAL) -> DuelState.CardInst:
+	if options.is_empty() or (level == EASY and randf() < 0.4):
+		return null
+	var me := s.players[p]
+	if window == "attack":
+		var att: DuelState.CardInst = s.pending_attack["attacker"]
+		var target = s.pending_attack["target"]
+		var opp := s.players[s.opponent(p)]
+		var attackers_up := 0
+		for m in opp.monsters():
+			if m.attack_pos:
+				attackers_up += 1
+		# How bad is this attack if we let it through?
+		var dmg := 0
+		var lose_monster := false
+		if target == null:
+			dmg = att.atk()
+		elif target.face_up and target.attack_pos:
+			dmg = maxi(0, att.atk() - target.atk())
+			lose_monster = att.atk() > target.atk()
+		else:
+			lose_monster = att.atk() > target.def()
+		var bad := dmg >= 1000 or lose_monster or dmg >= me.lp
+		for c in options:
+			match c.data.get("effect", c.cname()):
+				"mirror_force":
+					if attackers_up >= 2 or (bad and att.atk() >= 1800):
+						return c
+				"magic_cylinder":
+					if att.atk() >= 1500:
+						return c
+				"sakuretsu":
+					if att.atk() >= 1600 or bad:
+						return c
+		for c in options:
+			var e: String = c.data.get("effect", "")
+			if c.cname() == "Number 39: Utopia" and bad:
+				return c
+			if c.cname() == "Kuriboh" and dmg >= 1500:
+				return c
+			if e in ["negate_attack", "waboku"] and (dmg >= 1500 or lose_monster or dmg >= me.lp):
+				return c
+		return null
+	if window == "summon":
+		var subj: DuelState.CardInst = s.last_summoned
+		for c in options:
+			match c.data.get("effect", ""):
+				"trap_hole", "bottomless":
+					if subj and subj.atk() >= 1700:
+						return c
+				"torrential":
+					if s.players[s.opponent(p)].monsters().size() > me.monsters().size():
+						return c
+	return null
 
 
 ## Board + life point evaluation from player p's point of view.
@@ -341,6 +427,7 @@ static func _evaluate(s: DuelState, p: int) -> float:
 	var score := float(s.players[p].lp) * 0.8 - float(s.players[o].lp) * 1.3
 	score += _board(s.players[p]) - _board(s.players[o])
 	score += 150.0 * (s.players[p].hand.size() - s.players[o].hand.size())
+	score += 400.0 * (s.players[p].set_cards().size() - s.players[o].set_cards().size())
 	return score
 
 
