@@ -20,6 +20,9 @@ locally, which is what the API guide asks for.
 """
 import argparse
 import json
+import shutil
+import ssl
+import subprocess
 import sys
 import time
 import urllib.parse
@@ -31,13 +34,35 @@ HEADERS = {"User-Agent": "private-ygo-project/1.0"}
 DELAY = 0.2  # seconds between downloads (5 per second)
 
 
+USE_CURL = False
+
+
+def _curl(url):
+    out = subprocess.run(
+        ["curl", "-sSfL", "-A", HEADERS["User-Agent"], "--max-time", "60", url],
+        capture_output=True,
+    )
+    if out.returncode != 0:
+        raise RuntimeError(out.stderr.decode(errors="replace").strip() or "curl failed")
+    return out.stdout
+
+
 def get(url, retries=3):
+    global USE_CURL
     for attempt in range(retries):
         try:
+            if USE_CURL:
+                return _curl(url)
             req = urllib.request.Request(url, headers=HEADERS)
             with urllib.request.urlopen(req, timeout=60) as r:
                 return r.read()
         except Exception as e:
+            # Python from python.org on macOS often has no SSL certificates installed.
+            # The system curl does, so switch to it for the rest of the run.
+            if not USE_CURL and isinstance(getattr(e, "reason", e), ssl.SSLError) and shutil.which("curl"):
+                print("  Python SSL certificates missing, using curl instead")
+                USE_CURL = True
+                continue
             if attempt == retries - 1:
                 raise
             print(f"  retrying ({e})")
