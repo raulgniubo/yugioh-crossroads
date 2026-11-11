@@ -91,7 +91,7 @@ const CARDS := {
 	98427577: {"name": "Scrap-Iron Scarecrow", "frame": "trap", "effect": "negate_attack", "text": "When an opponent's monster declares an attack: Negate the attack."},
 	12607053: {"name": "Waboku", "frame": "trap", "effect": "waboku", "text": "You take no battle damage this turn, and your monsters can't be destroyed by battle this turn."},
 	4206964: {"name": "Trap Hole", "frame": "trap", "effect": "trap_hole", "text": "When your opponent Normal or Flip Summons a monster with 1000 or more ATK: Destroy that monster."},
-	29401950: {"name": "Bottomless Trap Hole", "frame": "trap", "effect": "bottomless", "text": "When your opponent Summons a monster with 1500 or more ATK: Destroy that monster."},
+	29401950: {"name": "Bottomless Trap Hole", "frame": "trap", "effect": "bottomless", "text": "When your opponent Summons a monster with 1500 or more ATK: Destroy that monster, and banish it."},
 	53582587: {"name": "Torrential Tribute", "frame": "trap", "effect": "torrential", "text": "When a monster is Summoned: Destroy all monsters on the field."},
 	# Effect monsters with scripted effects
 	40640057: {"name": "Kuriboh", "frame": "effect", "atk": 300, "def": 200, "level": 1, "attribute": "DARK", "race": "Fiend", "text": "During damage calculation, if your opponent attacks: Discard this card; you take no battle damage from that battle."},
@@ -109,6 +109,8 @@ const SPELL_EFFECTS := {
 	"Swords of Revealing Light": "swords", "Mirror Force": "mirror_force", "Magic Cylinder": "magic_cylinder",
 	"Sakuretsu Armor": "sakuretsu", "Negate Attack": "negate_attack", "Scrap-Iron Scarecrow": "negate_attack",
 	"Waboku": "waboku", "Galaxy Zero": "reborn", "Trap Hole": "trap_hole", "Bottomless Trap Hole": "bottomless", "Torrential Tribute": "torrential",
+	"Soul Release": "soul_release", "Dark Core": "dark_core", "Burial from a Different Dimension": "burial_dd",
+	"Dimensional Prison": "dim_prison", "D.D.R. - Different Dimension Reincarnation": "dd_return",
 }
 
 ## Monster effects the engine runs, by card name.

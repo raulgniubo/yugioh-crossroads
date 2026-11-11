@@ -68,6 +68,14 @@ static func _count(s: DuelState, owner: int, spec: String) -> int:
 	var kind := parts[0]
 	var val := parts[1] if parts.size() > 1 else ""
 	var n := 0
+	if kind == "own_banished":
+		return s.players[owner].banished.size()
+	if kind == "all_banished_monsters":
+		for q in 2:
+			for b in s.players[q].banished:
+				if b.is_monster():
+					n += 1
+		return n
 	var sides := [owner] if kind.begins_with("own") else [0, 1]
 	for p in sides:
 		for m in s.players[p].monsters():
@@ -174,6 +182,12 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 			return false
 		"only_card_in_hand":
 			return s.players[p].hand.size() == 1
+		"gy_dark3":
+			var n := 0
+			for g in s.players[p].gy:
+				if g.is_monster() and str(g.data.get("attribute", "")) == "DARK":
+					n += 1
+			return n == 3
 	return false
 
 
@@ -182,6 +196,8 @@ static func can_special_hand(s: DuelState, p: int, c) -> bool:
 	var f := fx(c)
 	if s.players[p].free_zone() == -1:
 		return false
+	if f.get("special_banish_ld", false):
+		return _gy_attr(s, p, "LIGHT") != null and _gy_attr(s, p, "DARK") != null
 	if f.has("special_hand_if"):
 		return _cond(s, p, str(f["special_hand_if"]))
 	if f.has("special_tribute2"):
@@ -195,6 +211,15 @@ static func can_special_hand(s: DuelState, p: int, c) -> bool:
 			if str(m.data.get("attribute", "")) == f["special_tribute_attr"]:
 				return true
 	return false
+
+
+## The weakest monster of an Attribute in a player's Graveyard (banish costs use the least useful one).
+static func _gy_attr(s: DuelState, p: int, attr: String):
+	var pick = null
+	for g in s.players[p].gy:
+		if g.is_monster() and str(g.data.get("attribute", "")) == attr and (pick == null or g.atk() < pick.atk()):
+			pick = g
+	return pick
 
 
 static func special_hand(s: DuelState, p: int, c) -> Array:
@@ -212,8 +237,11 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 				picks.append(m)
 		for m in picks:
 			ps.field[ps.field.find(m)] = null
-			ps.gy.append(m)
+			s._to_gy(ps, m)
 			events.append({"type": "tribute", "player": p, "card": m})
+	if f.get("special_banish_ld", false):
+		for attr in ["LIGHT", "DARK"]:
+			events.append_array(s._banish(_gy_attr(s, p, attr)))
 	ps.hand.erase(c)
 	if f.get("half_if_special", false):
 		c.set_meta("special_from_hand", true)
@@ -306,6 +334,12 @@ static func can_ignite(s: DuelState, p: int, c) -> bool:
 		"detach2":
 			if c.overlays.size() < 2:
 				return false
+		"banish_gy_dark":
+			if _gy_attr(s, p, "DARK") == null:
+				return false
+		"banish_gy_monster":
+			if s._best_monsters(ps.gy, 1).is_empty():
+				return false
 	return _has_target(s, p, c, ig["do"])
 
 
@@ -320,6 +354,12 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 						return false
 			"opp_half", "opp_zero", "destroy_half_damage":
 				if opp.monsters().is_empty():
+					return false
+			"banish":
+				if s._strongest_face_up(s.opponent(p)) == null and not (a[1] == "best_any" and (not opp.monsters().is_empty() or not opp.set_cards().is_empty())):
+					return false
+			"banish_own_gy_boost":
+				if s._best_monsters(s.players[p].gy, 1).is_empty():
 					return false
 			"special":
 				var ps := s.players[p]
@@ -351,12 +391,12 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 				if pick == null or s._card_value(h) < s._card_value(pick) or (ig["cost"] == "discard_monster" and h.atk() > pick.atk()):
 					pick = h
 			ps.hand.erase(pick)
-			ps.gy.append(pick)
+			s._to_gy(ps, pick)
 			ctx["discarded"] = pick
 			events.append({"type": "discard", "player": p, "card": pick})
 		"tribute_self":
 			ps.field[ps.field.find(c)] = null
-			ps.gy.append(c)
+			s._to_gy(ps, c)
 			events.append({"type": "tribute", "player": p, "card": c})
 		"tribute_other", "tribute_plant":
 			var pick = null
@@ -370,13 +410,18 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 			if pick == null and ig["cost"] == "tribute_plant":
 				pick = c
 			ps.field[ps.field.find(pick)] = null
-			ps.gy.append(pick)
+			s._to_gy(ps, pick)
 			events.append({"type": "tribute", "player": p, "card": pick})
+		"banish_gy_dark":
+			events.append_array(s._banish(_gy_attr(s, p, "DARK")))
+		"banish_gy_monster":
+			var gm: Array = s._best_monsters(ps.gy, 99)
+			events.append_array(s._banish(gm[gm.size() - 1]))
 		"detach", "detach2":
 			var n := 2 if ig["cost"] == "detach2" else 1
 			for i in n:
 				var o = c.overlays.pop_back()
-				ps.gy.append(o)
+				s._to_gy(ps, o)
 			events.append({"type": "detach", "player": p, "card": c})
 	events.append_array(run_list(s, p, c, ig["do"], ctx))
 	return events
@@ -507,7 +552,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				for i in 2:
 					var h = ps.hand[0]
 					ps.hand.erase(h)
-					ps.gy.append(h)
+					s._to_gy(ps, h)
 					events.append({"type": "discard", "player": p, "card": h})
 			if a[0] == "pay_revive":
 				if ps.lp <= int(a[1]):
@@ -523,6 +568,49 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			events.append_array(ev)
 		"destroy":
 			events.append_array(_destroy_action(s, p, c, str(a[1]), ctx))
+		"banish":
+			# ["banish", "best"]: the opponent's strongest face-up monster. "best_any": or a set card.
+			var t = s._strongest_face_up(opp_i)
+			if t == null and str(a[1]) == "best_any":
+				t = _best_opp(s, p)
+				if t == null and not opp.set_cards().is_empty():
+					t = opp.set_cards()[0]
+			if t != null:
+				events.append(_ev(p, c, "%s banishes %s" % [name, t.cname() if t.face_up else "a set card"]))
+				ctx["banished"] = t
+				events.append_array(s._banish(t))
+		"banish_opp_gy":
+			var picks: Array = s._best_monsters(opp.gy, int(a[1]))
+			if not picks.is_empty():
+				events.append(_ev(p, c, "%s banishes from the Graveyard" % name))
+			for g in picks:
+				events.append_array(s._banish(g))
+		"banish_own_gy_boost":
+			# Bazoo: banish up to n monsters from your GY, gain ATK for each until the end of the turn.
+			var picks: Array = s._best_monsters(ps.gy, 99)
+			picks.reverse()
+			picks = picks.slice(0, int(a[1]))
+			for g in picks:
+				events.append_array(s._banish(g))
+			if not picks.is_empty():
+				c.atk_mod_t = (c.atk_mod_t if c.atk_mod_turn == s.turn else 0) + int(a[2]) * picks.size()
+				c.atk_mod_turn = s.turn
+				events.append(_ev(p, c, "%s gains %d ATK" % [name, int(a[2]) * picks.size()]))
+		"banish_killer_and_self":
+			var k = ctx.get("killer")
+			events.append(_ev(p, c, "%s drags its attacker out of the duel" % name))
+			if k != null and s.players[k.owner].field.has(k):
+				events.append_array(s._banish(k))
+			events.append_array(s._banish(c))
+		"banish_victim":
+			var v = ctx.get("victim")
+			if v != null and s.players[v.owner].gy.has(v):
+				events.append(_ev(p, c, "%s banishes %s" % [name, v.cname()]))
+				events.append_array(s._banish(v))
+		"damage_if_banished_dark":
+			var b = ctx.get("banished")
+			if b != null and b.is_monster() and str(b.data.get("attribute", "")) == "DARK":
+				events.append_array(s._damage(opp_i, int(a[1])))
 		"destroy_half_damage":
 			var t = _best_opp(s, p)
 			if t != null:
@@ -587,13 +675,13 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			if not opp.hand.is_empty():
 				var h = opp.hand[s._rng.randi() % opp.hand.size()]
 				opp.hand.erase(h)
-				opp.gy.append(h)
+				s._to_gy(opp, h)
 				events.append(_ev(p, c, "%s makes the opponent discard" % name))
 				events.append({"type": "discard", "player": opp_i, "card": h})
 		"opp_mill":
 			if not opp.deck.is_empty():
 				var d = opp.deck.pop_back()
-				opp.gy.append(d)
+				s._to_gy(opp, d)
 				events.append(_ev(p, c, "%s sends %s to the GY" % [name, d.cname()]))
 				events.append({"type": "mill", "player": opp_i, "card": d, "deck": opp.deck.size()})
 		"opp_redraw":
@@ -639,7 +727,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 						if zone == -1:
 							return events
 						ps.field[zone] = null
-						ps.gy.append(c)
+						s._to_gy(ps, c)
 						events.append({"type": "tribute", "player": p, "card": c})
 						src.erase(d)
 						events.append(_ev(p, c, "%s levels up!" % name))

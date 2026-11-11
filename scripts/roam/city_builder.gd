@@ -475,13 +475,15 @@ func _build_buildings() -> void:
 				else:
 					building(Vector3(qx * 33.0, 0, qz * 21.0 + along), Vector3(7.5, h, w), rng)
 	# Mid-block buildings so streets feel like streets.
-	var mids := [[Vector3(-24, 0, -13), Vector3(8, 9, 7), "konbini", 0.0], [Vector3(24, 0, -12), Vector3(8, 14, 7), "apartment", 0.0],
+	var mids := [[Vector3(-24, 0, -13), Vector3(8, 9, 7), "konbini", 0.0], [Vector3(24, 0, -12.5), Vector3(8, 14, 7), "cafe" if has_model("cafe") else "apartment", 0.0],
 			[Vector3(-25, 0, 22), Vector3(8, 11, 9), "apartment", PI], [Vector3(-14, 0, 25), Vector3(7, 7, 7), "konbini", PI / 2],
 			[Vector3(14, 0, -27), Vector3(6, 18, 6), "apartment", -PI / 2]]
 	for b in mids:
 		var holder: Node3D = null
 		if b[2] == "konbini":
 			holder = prop("konbini", b[0] + Vector3(0, 0.16, 0), b[3], 9.0)
+		elif b[2] == "cafe":
+			holder = prop("cafe", b[0] + Vector3(0, 0.16, 0), b[3], 9.0, true)
 		else:
 			holder = prop("apartment", b[0] + Vector3(0, 0.16, 0), b[3], (b[1] as Vector3).y + 4.0, true)
 		if holder:
@@ -542,17 +544,51 @@ func _kame_boxes() -> void:
 
 func _rest_of_landmarks() -> void:
 	# KaibaCorp Tower
-	var tower := window_material(Color(0.28, 0.34, 0.48), 7.0, Color("7cc4ff"))
-	tower.set_shader_parameter("style", 1.0)
-	box(Vector3(14, 72, 14), Vector3(0, 36, -48), tower)
-	box(Vector3(18, 5, 18), Vector3(0, 2.5, -48), mat(Color(0.78, 0.82, 0.9), 0.25, 0.7))
-	box(Vector3(10, 6, 10), Vector3(0, 75, -48), mat(Color(0.7, 0.75, 0.85), 0.3, 0.8))
-	neon_sign("KC", Vector3(0, 62, -40.9), Color("7cc4ff"), 1100, 0.0, false)
+	var kc := prop("corp_tower", Vector3(0, 0, -50), 0.0, 78.0, true)
+	if kc:
+		collide(kc)
+		var beacon := OmniLight3D.new()
+		beacon.light_color = Color("7cc4ff")
+		beacon.light_energy = 6.0
+		beacon.omni_range = 40.0
+		beacon.position = Vector3(0, 40, -44)
+		add_child(beacon)
+	else:
+		var tower := window_material(Color(0.28, 0.34, 0.48), 7.0, Color("7cc4ff"))
+		tower.set_shader_parameter("style", 1.0)
+		box(Vector3(14, 72, 14), Vector3(0, 36, -48), tower)
+		box(Vector3(18, 5, 18), Vector3(0, 2.5, -48), mat(Color(0.78, 0.82, 0.9), 0.25, 0.7))
+		box(Vector3(10, 6, 10), Vector3(0, 75, -48), mat(Color(0.7, 0.75, 0.85), 0.3, 0.8))
+		neon_sign("KC", Vector3(0, 62, -40.9), Color("7cc4ff"), 1100, 0.0, false)
 	neon_sign("KAIBACORP", Vector3(0, 6.2, -38.95), Color("aee0ff"), 260)
+	# Landmarks at the far end of each road
+	var dome := prop("duel_dome", Vector3(-54, 0, 0), PI / 2, 34.0)
+	if dome:
+		neon_sign("DUEL DOME", Vector3(-38.5, 9.5, 0), theme["accent"], 300, PI / 2)
+	var school := prop("school", Vector3(54, 0, 0), -PI / 2, 30.0)
+	if school:
+		neon_sign("DOMINO HIGH", Vector3(38.5, 12.5, 0), Color("ffe9a8"), 220, -PI / 2, false)
+	prop("clock_tower", Vector3(0, 0, 46), PI, 30.0, true)
+	# Inside the blocks
+	collide(prop("arcade", Vector3(12.5, 0.16, -16.5), -PI / 2, 9.0))
+	if has_model("arcade"):
+		neon_sign("ARCADE", Vector3(7.6, 6.4, -16.5), Color("5affc0"), 150, -PI / 2)
+	collide(prop("food_stall", Vector3(9.6, 0.16, 26.5), -PI / 2, 3.6), 0.8)
+	if has_model("food_stall"):
+		var lantern := OmniLight3D.new()
+		lantern.light_color = Color(1.0, 0.55, 0.3)
+		lantern.light_energy = 1.6
+		lantern.omni_range = 6.0
+		lantern.position = Vector3(8.8, 2.6, 26.5)
+		add_child(lantern)
+		_lamp_lights.append(lantern)
+	collide(prop("dragon_statue", Vector3(27.5, 0.2, 27.5), -PI * 0.75, 4.2, true), 0.6)
+	collide(prop("motorcycle", Vector3(-7.4, 0.16, -9.2), PI / 2, 2.1), 0.7)
+	collide(prop("motorcycle", Vector3(7.6, 0.16, 10.4), -PI / 2, 2.1), 0.7)
 	# Neon around town
 	neon_sign("CARD SHOP", Vector3(-29.1, 6, -13), Color("ff5ab4"), 140, PI / 2)
-	neon_sign("ARCADE", Vector3(29.1, 5, 10), Color("5affc0"), 180, -PI / 2)
-	neon_sign("BURGER WORLD", Vector3(24, 4.2, -8.42), Color("ffb030"), 140, 0.0)
+	neon_sign("GAME CENTER", Vector3(29.1, 5, 10), Color("5affc0"), 150, -PI / 2)
+	neon_sign("BURGER WORLD" if not has_model("cafe") else "CAFE", Vector3(24, 6.6, -8.3), Color("ffb030"), 140, 0.0)
 	neon_sign("BATTLE CITY", Vector3(-29.1, 16, 14), theme["accent"], 280, PI / 2)
 	neon_sign("DUEL DISK  ·  NOW ONLINE", Vector3(29.1, 12, -16), theme["accent2"], 160, -PI / 2)
 	neon_sign("HOTEL", Vector3(-25, 9.5, 17.45), Color("ff6060"), 150, 0.0)

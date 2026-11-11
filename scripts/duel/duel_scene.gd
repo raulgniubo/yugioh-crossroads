@@ -92,6 +92,7 @@ func _start() -> void:
 	var first := randi() % 2
 	var opp_list := CardData.legend_deck(opp_deck) if _ai_level >= 2 else CardData.deck_list(opp_deck)
 	state.bonus_cards = [0, 1 if _ai_level >= 2 else 0]
+	board.state_ref = state
 	var events := state.setup(CardData.deck_list(my_deck), opp_list, me_name, opp_name, first, -1,
 			CardData.extra_list(my_deck), CardData.extra_list(opp_deck))
 	for p in 2:
@@ -313,6 +314,18 @@ func _play_event(ev: Dictionary) -> void:
 			if p == ME:
 				hud.remove_hand_card(ev["card"])
 			await board.anim_discard(p, ev["card"])
+		"banish":
+			board.hide_stats_for(ev["card"])
+			if ev["from"] == "hand" and int(ev.get("side", p)) == ME:
+				hud.remove_hand_card(ev["card"])
+			Sfx.play("destroy", -6.0)
+			hud.effect_text("%s is banished" % ev["card"].cname(), Color("c9a0ff"))
+			await board.anim_banish(ev["card"], ev["from"], int(ev.get("side", p)))
+		"unbanish":
+			board.remove_from_banished(ev["card"])
+			if ev.get("to", "gy") == "gy":
+				board._add_to_gy(ev["card"])
+			await get_tree().create_timer(Settings.t(0.2)).timeout
 		"gy_to_hand":
 			board.remove_from_gy(ev["card"])
 			if p == ME:
@@ -347,7 +360,8 @@ func _play_event(ev: Dictionary) -> void:
 func _update_counts() -> void:
 	for p in 2:
 		var ps := state.players[p]
-		hud.set_counts(p, ps.deck.size(), ps.hand.size(), ps.gy.size())
+		hud.set_counts(p, ps.deck.size(), ps.hand.size(), ps.gy.size(), ps.banished.size())
+		hud.piles[p] = [ps.gy, ps.banished]
 
 
 # ------------------------------------------------------------------ player input

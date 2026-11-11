@@ -84,6 +84,7 @@ class PlayerState:
 	var deck: Array[CardInst] = []
 	var hand: Array[CardInst] = []
 	var gy: Array[CardInst] = []
+	var banished: Array[CardInst] = []
 	var extra: Array[CardInst] = []
 	var spells: Array = [null, null, null, null, null]
 	var no_damage_turn := -1
@@ -176,6 +177,7 @@ func is_over() -> bool:
 # ------------------------------------------------------------------ turn flow
 
 func begin_turn() -> Array:
+	redirected.clear()
 	turn += 1
 	normal_summoned = false
 	phase = Phase.DRAW
@@ -222,7 +224,7 @@ func end_turn() -> Array:
 			if _card_value(c) < _card_value(worst):
 				worst = c
 		ps.hand.erase(worst)
-		ps.gy.append(worst)
+		_to_gy(ps, worst)
 		events.append({"type": "discard", "player": current, "card": worst})
 	# Swords of Revealing Light counts down at the end of the opponent's turns.
 	var owner := opponent(current)
@@ -297,7 +299,7 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 			return []
 	for t in tributes:
 		ps.field[ps.field.find(t)] = null
-		ps.gy.append(t)
+		_to_gy(ps, t)
 		events.append({"type": "tribute", "player": p, "card": t})
 	var zone := ps.free_zone()
 	ps.hand.erase(c)
@@ -355,6 +357,14 @@ func can_activate(p: int, c: CardInst) -> bool:
 	if p != current or not _in_main() or is_over() or not c.is_spell() or not players[p].hand.has(c):
 		return false
 	match c.data.get("effect", ""):
+		"soul_release":
+			return not players[opponent(p)].gy.is_empty()
+		"dark_core":
+			return players[p].hand.size() >= 2 and _strongest_face_up(opponent(p)) != null
+		"burial_dd":
+			return not _best_monsters(players[p].banished, 3).is_empty()
+		"dd_return":
+			return players[p].free_zone() != -1 and not _best_monsters(players[p].banished, 1).is_empty()
 		"mst":
 			return not players[opponent(p)].set_cards().is_empty()
 		"draw2":
@@ -406,6 +416,39 @@ func activate(p: int, c: CardInst, choice: CardInst = null) -> Array:
 					events.append_array(_destroy(m))
 		"burn500":
 			events.append_array(_damage(opponent(p), 500))
+		"soul_release":
+			# Banish up to 5 cards from the opponent's Graveyard (their best monsters first).
+			var picks: Array = _best_monsters(players[opponent(p)].gy, 5)
+			for g in players[opponent(p)].gy:
+				if picks.size() < 5 and not picks.has(g):
+					picks.append(g)
+			for g in picks:
+				events.append_array(_banish(g))
+		"dark_core":
+			# Discard 1, then banish the opponent's strongest face-up monster.
+			var worst: CardInst = null
+			for h in ps.hand:
+				if worst == null or _card_value(h) < _card_value(worst):
+					worst = h
+			if worst:
+				ps.hand.erase(worst)
+				_to_gy(ps, worst)
+				events.append({"type": "discard", "player": p, "card": worst})
+			events.append_array(_banish(_strongest_face_up(opponent(p))))
+		"burial_dd":
+			# Return up to 3 of your banished monsters to the Graveyard.
+			for g in _best_monsters(ps.banished, 3):
+				ps.banished.erase(g)
+				ps.gy.append(g)
+				events.append({"type": "unbanish", "player": p, "card": g})
+		"dd_return":
+			# Special Summon your strongest banished monster.
+			var back: Array = _best_monsters(ps.banished, 1)
+			if not back.is_empty():
+				ps.banished.erase(back[0])
+				events.append({"type": "unbanish", "player": p, "card": back[0], "to": "field"})
+				events.append_array(_special(p, back[0], "reborn"))
+				events.append_array(EffectRunner.on_summon(self, p, back[0], "special"))
 		"mst":
 			var st: Array = players[opponent(p)].set_cards()
 			if not st.is_empty():
@@ -425,9 +468,17 @@ func activate(p: int, c: CardInst, choice: CardInst = null) -> Array:
 				revive.owner = p
 				events.append_array(_special(p, revive, "reborn"))
 				events.append_array(EffectRunner.on_summon(self, p, revive, "special"))
-	ps.gy.append(c)
+	_to_gy(ps, c)
 	events.append({"type": "spell_done", "player": p, "card": c})
 	return events
+
+
+func _strongest_face_up(p: int) -> CardInst:
+	var best: CardInst = null
+	for m in players[p].monsters():
+		if m.face_up and (best == null or atk_of(m, false) > atk_of(best, false)):
+			best = m
+	return best
 
 
 func _lowest_face_up(p: int) -> CardInst:
@@ -641,13 +692,80 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	if zone == -1:
 		return []
 	ps.field[zone] = null
-	ps.gy.append(c)
+	_to_gy(ps, c)
 	var events := [{"type": "destroy", "player": c.owner, "card": c, "zone": zone, "overlays": c.overlays.duplicate()}]
 	for o in c.overlays:
-		ps.gy.append(o)
+		_to_gy(ps, o)
 	c.overlays.clear()
 	events.append_array(_on_leave_field(c, by_battle))
 	return events
+
+
+## Every card headed for the Graveyard goes through here, so "banish instead" effects work.
+func _to_gy(ps: PlayerState, c: CardInst) -> void:
+	if _gy_redirect():
+		ps.banished.append(c)
+		redirected.append(c)
+	else:
+		ps.gy.append(c)
+
+
+## Cards banished instead of going to the GY since the last time the scene looked (for the board).
+var redirected: Array = []
+
+
+func _gy_redirect() -> bool:
+	for q in 2:
+		for m in players[q].monsters():
+			if m.face_up and EffectRunner.fx(m).get("banish_redirect", false):
+				return true
+	return false
+
+
+## Banish (remove from play) a card from wherever it is: field, Spell & Trap zone, GY or hand.
+## Banished cards are out of the duel: no Graveyard triggers, no Monster Reborn.
+func _banish(c: CardInst) -> Array:
+	if c == null:
+		return []
+	for q in 2:
+		var ps := players[q]
+		var from := ""
+		var zone := -1
+		if ps.field.has(c):
+			from = "field"
+			zone = ps.field.find(c)
+			ps.field[zone] = null
+			for o in c.overlays:
+				_to_gy(ps, o)
+			c.overlays.clear()
+			c.reset_mods()
+		elif ps.spells.has(c):
+			from = "spells"
+			zone = ps.spells.find(c)
+			ps.spells[zone] = null
+		elif ps.gy.has(c):
+			from = "gy"
+			ps.gy.erase(c)
+		elif ps.hand.has(c):
+			from = "hand"
+			ps.hand.erase(c)
+		elif ps.deck.has(c):
+			from = "deck"
+			ps.deck.erase(c)
+		if from != "":
+			c.face_up = true
+			players[c.owner].banished.append(c)
+			return [{"type": "banish", "player": c.owner, "card": c, "from": from, "zone": zone, "side": q}]
+	return []
+
+
+func _best_monsters(list: Array, n: int) -> Array:
+	var mons: Array = []
+	for g in list:
+		if g.is_monster():
+			mons.append(g)
+	mons.sort_custom(func(a, b): return a.atk() > b.atk())
+	return mons.slice(0, n)
 
 
 func _destroy_st(c: CardInst) -> Array:
@@ -656,7 +774,7 @@ func _destroy_st(c: CardInst) -> Array:
 	if zone == -1:
 		return []
 	ps.spells[zone] = null
-	ps.gy.append(c)
+	_to_gy(ps, c)
 	return [{"type": "destroy_st", "player": c.owner, "card": c, "zone": zone}]
 
 
@@ -716,7 +834,7 @@ func _special(p: int, c: CardInst, method: String) -> Array:
 	var ps := players[p]
 	var zone := ps.free_zone()
 	if zone == -1:
-		ps.gy.append(c)
+		_to_gy(ps, c)
 		return []
 	ps.field[zone] = c
 	c.face_up = true
@@ -781,12 +899,12 @@ func _do_fusion(p: int, plan: Dictionary) -> Array:
 	var events := []
 	for m in plan["hand"]:
 		ps.hand.erase(m)
-		ps.gy.append(m)
+		_to_gy(ps, m)
 		events.append({"type": "material", "player": p, "card": m, "from": "hand"})
 	for m in plan["field"]:
 		var z := ps.field.find(m)
 		ps.field[z] = null
-		ps.gy.append(m)
+		_to_gy(ps, m)
 		events.append({"type": "material", "player": p, "card": m, "from": "field", "zone": z})
 	var f: CardInst = plan["card"]
 	ps.extra.erase(f)
@@ -860,7 +978,7 @@ func extra_summon(p: int, c: CardInst, materials: Array = []) -> Array:
 		if xyz:
 			c.overlays.append(m)
 		else:
-			ps.gy.append(m)
+			_to_gy(ps, m)
 		events.append({"type": "material", "player": p, "card": m, "from": "field", "zone": z, "overlay": xyz})
 	ps.extra.erase(c)
 	events.append_array(_special(p, c, c.frame()))
@@ -889,6 +1007,8 @@ func clone() -> DuelState:
 			np.hand.append(_clone_card(c, map))
 		for c in ps.gy:
 			np.gy.append(_clone_card(c, map))
+		for c in ps.banished:
+			np.banished.append(_clone_card(c, map))
 		for c in ps.extra:
 			np.extra.append(_clone_card(c, map))
 		np.field = []
@@ -946,7 +1066,7 @@ func _clone_card(c: CardInst, map: Dictionary) -> CardInst:
 
 func find_uid(uid: int) -> CardInst:
 	for ps in players:
-		for list in [ps.hand, ps.deck, ps.gy, ps.extra]:
+		for list in [ps.hand, ps.deck, ps.gy, ps.extra, ps.banished]:
 			for c in list:
 				if c.uid == uid:
 					return c
@@ -1009,7 +1129,7 @@ func _trap_fits(p: int, c: CardInst, window: String, subject: CardInst) -> bool:
 		match e:
 			"mirror_force", "sakuretsu":
 				return not immune
-			"magic_cylinder", "negate_attack", "waboku":
+			"magic_cylinder", "negate_attack", "waboku", "dim_prison":
 				return true
 		return false
 	if window == "summon" and subject != null and subject.owner != p:
@@ -1031,14 +1151,14 @@ func respond(p: int, c: CardInst, subject: CardInst = null) -> Array:
 	var events := []
 	if c.cname() == "Kuriboh" and ps.hand.has(c):
 		ps.hand.erase(c)
-		ps.gy.append(c)
+		_to_gy(ps, c)
 		ps.no_damage_turn = turn
 		events.append({"type": "hand_effect", "player": p, "card": c, "text": "Kuriboh! No battle damage."})
 		return events
 	if c.cname() == "Number 39: Utopia":
 		c.used_turn = turn
 		var o: CardInst = c.overlays.pop_back()
-		ps.gy.append(o)
+		_to_gy(ps, o)
 		events.append({"type": "detach", "player": p, "card": c, "material": o})
 		if not pending_attack.is_empty():
 			pending_attack["negated"] = true
@@ -1065,15 +1185,23 @@ func respond(p: int, c: CardInst, subject: CardInst = null) -> Array:
 			pending_attack["negated"] = true
 		"waboku":
 			ps.protect_turn = turn
-		"trap_hole", "bottomless":
+		"dim_prison":
+			pending_attack["negated"] = true
+			events.append_array(_banish(pending_attack["attacker"]))
+		"trap_hole":
 			if subject != null:
 				events.append_array(_destroy(subject))
+		"bottomless":
+			# Destroy it, and banish it instead of sending it to the Graveyard.
+			if subject != null:
+				events.append_array(_destroy(subject))
+				events.append_array(_banish(subject))
 		"torrential":
 			for q in 2:
 				for m in players[q].monsters():
 					events.append_array(_destroy(m))
 	ps.spells[ps.spells.find(c)] = null
-	ps.gy.append(c)
+	_to_gy(ps, c)
 	events.append({"type": "st_done", "player": p, "card": c})
 	return events
 

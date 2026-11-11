@@ -11,6 +11,7 @@ func _ready() -> void:
 	_test_synchro_xyz_fusion()
 	_test_traps()
 	_test_effects()
+	_test_banish()
 	var stress := OS.get_environment("STRESS_FOLDER")
 	if stress != "":
 		CardData.load_external(stress)
@@ -291,6 +292,72 @@ func _battle_ready(s: DuelState) -> void:
 	s.current = 0
 	s.turn = 3
 	s.phase = DuelState.Phase.BATTLE
+
+
+func _test_banish() -> void:
+	# D.D. Warrior Lady takes her attacker out of the duel with her
+	var s := _new_state(31)
+	_battle_ready(s)
+	var big := _fake(s, 0, "Big", 2400, 0, 0)
+	var lady := _fake(s, 1, "D.D. Warrior Lady", 1500, 1600, 0)
+	s.attack(0, big, lady)
+	check(s.players[0].banished.has(big) and s.players[1].banished.has(lady), "D.D. Warrior Lady banishes both")
+	check(not s.players[1].gy.has(lady) and not s.players[0].field.has(big), "Banished cards leave the field and GY")
+	# Bottomless Trap Hole banishes instead of sending to the GY
+	s = _new_state(32)
+	_battle_ready(s)
+	s.phase = DuelState.Phase.MAIN1
+	var victim := _fake(s, 0, "Victim", 1800, 0, 0)
+	victim.summoned_turn = s.turn
+	var trap := s._make(29401950, 1)
+	trap.face_up = false
+	s.players[1].spells[0] = trap
+	s.respond(1, trap, victim)
+	check(s.players[0].banished.has(victim) and not s.players[0].gy.has(victim), "Bottomless Trap Hole banishes")
+	# Soul Release empties the opponent's Graveyard
+	s = _new_state(33)
+	_battle_ready(s)
+	s.phase = DuelState.Phase.MAIN1
+	for i in 3:
+		s.players[1].gy.append(_fake(s, 1, "Dead%d" % i, 1000 + i * 100, 0, -1))
+	var sr := s._make(40640057, 0)
+	sr.data = {"name": "Soul Release", "kind": "spell", "frame": "spell", "effect": "soul_release"}
+	s.players[0].hand.append(sr)
+	check(s.can_activate(0, sr), "Soul Release can be played")
+	s.activate(0, sr)
+	check(s.players[1].gy.is_empty() and s.players[1].banished.size() == 3, "Soul Release banishes the Graveyard")
+	# Chaos Sorcerer: Special Summon by banishing LIGHT + DARK, then banish a monster
+	s = _new_state(34)
+	_battle_ready(s)
+	s.phase = DuelState.Phase.MAIN1
+	s.players[0].gy.append(_fake(s, 0, "Lite", 500, 0, -1, {"attribute": "LIGHT"}))
+	s.players[0].gy.append(_fake(s, 0, "Dork", 500, 0, -1, {"attribute": "DARK"}))
+	var cs := _fake(s, 0, "Chaos Sorcerer", 2300, 2000, -1, {"attribute": "DARK", "level": 6})
+	s.players[0].hand.append(cs)
+	check(s.can_special_from_hand(0, cs), "Chaos Sorcerer can be Special Summoned")
+	s.special_from_hand(0, cs)
+	check(s.players[0].field.has(cs) and s.players[0].banished.size() == 2, "Chaos Sorcerer banishes LIGHT + DARK")
+	var foe := _fake(s, 1, "Foe", 3000, 0, 0)
+	check(s.can_ignite(0, cs), "Chaos Sorcerer effect is ready")
+	s.ignite(0, cs)
+	check(s.players[1].banished.has(foe), "Chaos Sorcerer banishes a monster")
+	# Banisher of the Light: destroyed monsters are banished instead
+	s = _new_state(35)
+	_battle_ready(s)
+	_fake(s, 0, "Banisher of the Light", 100, 2000, 1)
+	var a2 := _fake(s, 0, "Hitter", 2000, 0, 0)
+	var d2 := _fake(s, 1, "Weak", 500, 0, 0)
+	s.attack(0, a2, d2)
+	check(s.players[1].banished.has(d2) and not s.players[1].gy.has(d2), "Banisher of the Light redirects to banished")
+	# Gren Maju counts banished cards; clone keeps the banished pile
+	s = _new_state(36)
+	_battle_ready(s)
+	var gm := _fake(s, 0, "Gren Maju Da Eiza", 0, 0, 0)
+	for i in 4:
+		s.players[0].banished.append(_fake(s, 0, "B%d" % i, 0, 0, -1))
+	check(s.atk_of(gm, true) == 1600, "Gren Maju gains 400 per banished card (got %d)" % s.atk_of(gm, true))
+	check(s.clone().players[0].banished.size() == 4, "Clone copies the banished pile")
+	print("banish tests done")
 
 
 func _test_effects() -> void:

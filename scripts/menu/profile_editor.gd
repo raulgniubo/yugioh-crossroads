@@ -101,8 +101,14 @@ func _ready() -> void:
 			_refresh())
 		er.add_child(b)
 		_emblem_btns.append(b)
-	if Avatars.has_avatar("player"):
-		v.add_child(_section("LOOK  ·  3D MODEL"))
+	if Avatars.own_file("player") == "":
+		_look_row(v, "BODY", ["Type A", "Type B"], func(): return Profile.look_body, func(i): Profile.look_body = i)
+		_hair_holder = VBoxContainer.new()
+		v.add_child(_hair_holder)
+		_rebuild_hair()
+		_look_row(v, "OUTFIT", Profile.HERO_OUTFITS, func(): return Profile.look_outfit, func(i): Profile.look_outfit = i)
+	else:
+		v.add_child(_section("LOOK  ·  YOUR OWN 3D MODEL"))
 		for g in ["hair", "outfit", "eyes"]:
 			var tr := HBoxContainer.new()
 			tr.add_theme_constant_override("separation", 8)
@@ -113,7 +119,6 @@ func _ready() -> void:
 				var b := Button.new()
 				b.custom_minimum_size = Vector2(40, 40)
 				b.toggle_mode = true
-				b.tooltip_text = "Original" if c == Color.WHITE else ""
 				for st in ["normal", "hover", "pressed", "focus", "hover_pressed"]:
 					var sb := UITheme.button_box(c, Color.WHITE if st in ["pressed", "hover_pressed"] else Color(1, 1, 1, 0.15), 20)
 					sb.set_border_width_all(3)
@@ -130,9 +135,9 @@ func _ready() -> void:
 				tr.add_child(b)
 				_tint_btns.append([b, group, col])
 			v.add_child(tr)
-	var hint := UITheme.label("3D model: put player.vrm (from VRoid Studio) in your card folder's characters folder. Or player.png for a picture." if not Avatars.has_avatar("player") else "Your model: characters/player.vrm", 16, UITheme.TEXT_DIM)
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(hint)
+		var hint := UITheme.label("Using your own model: characters/player in your card folder. Remove it to use the built-in looks.", 16, UITheme.TEXT_DIM)
+		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(hint)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	v.add_child(row)
@@ -141,7 +146,7 @@ func _ready() -> void:
 		cancel.text = "Cancel"
 		cancel.pressed.connect(func():
 			Profile._ready()
-			Avatars.retint("player")
+			Portraits._forget("player")
 			_close())
 		row.add_child(cancel)
 	var save := Button.new()
@@ -155,6 +160,44 @@ func _ready() -> void:
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.3)
 	await get_tree().process_frame
 	_name_edit.grab_focus()
+
+
+var _hair_holder: VBoxContainer
+var _look_rows: Array = []  # [buttons, getter]
+
+
+## A row of choices for one part of the built-in hero look.
+func _look_row(parent: Control, title: String, options: Array, getter: Callable, setter: Callable) -> void:
+	parent.add_child(_section(title))
+	var r := HBoxContainer.new()
+	r.add_theme_constant_override("separation", 10)
+	parent.add_child(r)
+	var btns: Array = []
+	for i in options.size():
+		var b := _toggle(str(options[i]))
+		b.custom_minimum_size = Vector2(170, 50)
+		b.pressed.connect(func():
+			setter.call(i)
+			if title == "BODY":
+				_rebuild_hair()
+			_look_changed())
+		r.add_child(b)
+		btns.append(b)
+	_look_rows.append([btns, getter])
+
+
+func _rebuild_hair() -> void:
+	for row in _look_rows.duplicate():
+		if (row[0] as Array).size() > 0 and (row[0][0] as Button).get_parent().get_parent() == _hair_holder:
+			_look_rows.erase(row)
+	for c in _hair_holder.get_children():
+		c.queue_free()
+	_look_row(_hair_holder, "HAIR", Profile.HERO_HAIR[Profile.look_body], func(): return Profile.look_hair, func(i): Profile.look_hair = i)
+
+
+func _look_changed() -> void:
+	Portraits._forget("player")
+	_refresh()
 
 
 func _section(t: String) -> Label:
@@ -177,6 +220,10 @@ func _refresh() -> void:
 		_color_btns[i].set_pressed_no_signal(i == Profile.color_index)
 	for i in _emblem_btns.size():
 		_emblem_btns[i].set_pressed_no_signal(i == Profile.emblem)
+	for row in _look_rows:
+		for i in (row[0] as Array).size():
+			if is_instance_valid(row[0][i]):
+				(row[0][i] as Button).set_pressed_no_signal(i == int((row[1] as Callable).call()))
 	for t in _tint_btns:
 		(t[0] as Button).set_pressed_no_signal(Profile.tints.get(t[1], Color.WHITE) == t[2])
 	var n := _name_edit.text.strip_edges()
@@ -201,7 +248,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _first_time and (event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_pause")):
 		get_viewport().set_input_as_handled()
 		Profile._ready()
-		Avatars.retint("player")
+		Portraits._forget("player")
 		_close()
 
 

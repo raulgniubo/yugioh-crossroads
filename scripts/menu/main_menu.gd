@@ -1,7 +1,7 @@
 extends Control
 ## Main menu: animated 3D backdrop, title, menu entries and side panels.
 
-const MenuBackground := preload("res://scripts/menu/menu_background.gd")
+const MenuBackground := preload("res://scripts/menu/menu_city.gd")
 
 var _items: Array[MenuItem] = []
 var _menu_box: VBoxContainer
@@ -41,7 +41,7 @@ func _build_background() -> void:
 func _build_overlay() -> void:
 	var grad := Gradient.new()
 	grad.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
-	grad.colors = PackedColorArray([Color(0.01, 0.02, 0.04, 0.96), Color(0.01, 0.02, 0.04, 0.7), Color(0.01, 0.02, 0.04, 0.0)])
+	grad.colors = PackedColorArray([Color(0.01, 0.02, 0.05, 0.93), Color(0.01, 0.02, 0.05, 0.55), Color(0.01, 0.02, 0.05, 0.0)])
 	var gt := GradientTexture2D.new()
 	gt.gradient = grad
 	gt.width = 256
@@ -51,7 +51,7 @@ func _build_overlay() -> void:
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_SCALE
 	tr.anchor_bottom = 1.0
-	tr.anchor_right = 0.62
+	tr.anchor_right = 0.5
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(tr)
 
@@ -171,7 +171,7 @@ func _build_featured() -> void:
 
 func _layout_carousel(instant: bool) -> void:
 	var n := _carousel.size()
-	var center := Vector2(1380, 560)
+	var center := Vector2(get_viewport_rect().size.x - 400.0, get_viewport_rect().size.y - 300.0)
 	for i in n:
 		var card := _carousel[i]
 		var rel := i - _carousel_idx
@@ -180,8 +180,8 @@ func _layout_carousel(instant: bool) -> void:
 		elif rel < -n / 2:
 			rel += n
 		var a := absf(rel)
-		var pos := center + Vector2(rel * 200.0, a * 26.0) - card.size / 2.0
-		var sc := 1.0 - a * 0.16
+		var pos := center + Vector2(rel * 128.0, a * 14.0) - card.size / 2.0
+		var sc := (1.0 - a * 0.16) * 0.6
 		var alpha := 0.0 if a > 2 else (1.0 if a == 0 else 0.7 - (a - 1) * 0.35)
 		card.z_index = 10 - int(a) * 2
 		if instant:

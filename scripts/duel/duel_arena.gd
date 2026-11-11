@@ -54,6 +54,48 @@ func _stage_ring() -> void:
 		box(Vector3(0.5, 0.35, 11.2), Vector3(side * 7.45, -0.18, 0), rim, false)
 		box(Vector3(15.4, 0.04, 0.06), Vector3(0, 0.0, side * 5.62), glow, false)
 		box(Vector3(0.06, 0.04, 11.2), Vector3(side * 7.72, 0.0, 0), glow, false)
+	# Hologram projector pylons at the four corners, with light beams feeding the field.
+	for sx in [-1, 1]:
+		for sz in [-1, 1]:
+			var at := Vector3(sx * 8.7, -0.3, sz * 6.5)
+			if prop("holo_pylon", at, atan2(-at.x, -at.z), 3.6, true) == null:
+				continue
+			var l := OmniLight3D.new()
+			l.light_color = theme["accent"] if sz > 0 else theme["accent2"]
+			l.light_energy = 2.2
+			l.omni_range = 7.0
+			l.position = at + Vector3(0, 3.5, 0)
+			add_child(l)
+			var beam := MeshInstance3D.new()
+			var cm := CylinderMesh.new()
+			cm.top_radius = 0.03
+			cm.bottom_radius = 0.16
+			cm.height = 9.0
+			cm.radial_segments = 8
+			beam.mesh = cm
+			var bm := StandardMaterial3D.new()
+			bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			bm.albedo_color = Color(l.light_color, 0.16)
+			bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+			bm.cull_mode = BaseMaterial3D.CULL_DISABLED
+			beam.material_override = bm
+			beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			beam.position = at + Vector3(0, 3.4 + 4.5, 0)
+			add_child(beam)
+			_bob.append([beam, beam.position.y, 0.6 + 0.1 * (sx + sz)])
+	# Stone guardians watching from both flanks.
+	for sx in [-1, 1]:
+		var st := prop("dragon_statue", Vector3(sx * 12.2, -0.3, 0), -sx * PI / 2, 5.4, true)
+		if st:
+			var up := SpotLight3D.new()
+			up.light_color = Color(theme["accent"]).lerp(Color.WHITE, 0.4)
+			up.light_energy = 5.0
+			up.spot_range = 9.0
+			up.spot_angle = 38.0
+			up.position = Vector3(sx * 9.6, 0.3, 0)
+			add_child(up)
+			up.look_at(Vector3(sx * 12.2, 3.0, 0))
 
 
 func _crowd(center: Vector3, radius_from: float, radius_to: float, rows: int, arc_from: float, arc_to: float, base_y: float, step_h: float) -> void:

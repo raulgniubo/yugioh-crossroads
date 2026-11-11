@@ -26,6 +26,10 @@ var _battle_mode := false
 var theme: Dictionary = FieldThemes.resolve("auto", "")
 var _cards := {}  # uid -> Card3D
 var _gy_cards: Array = [[], []]
+var _ban_cards: Array = [[], []]
+var _ban_labels: Array = [null, null]
+var state_ref: DuelState   # set by the scene, so piles know where a card really ended up
+const BANISH_COLOR := Color("b06cff")
 var _opp_hand: Array[Card3D] = []
 var _deck_piles: Array[Node3D] = []
 var _deck_labels: Array[Label3D] = []
@@ -66,6 +70,11 @@ func deck_pos(p: int) -> Vector3:
 
 func gy_pos(p: int) -> Vector3:
 	return Vector3(SIDE_X, 0.01, MONSTER_ROW) if p == 0 else Vector3(-SIDE_X, 0.01, -MONSTER_ROW)
+
+
+## The banished pile sits just outside the Graveyard.
+func banish_pos(p: int) -> Vector3:
+	return Vector3(SIDE_X + 0.92, 0.01, MONSTER_ROW) if p == 0 else Vector3(-SIDE_X - 0.92, 0.01, -MONSTER_ROW)
 
 
 ## Orientation for a card lying on the table.
@@ -331,6 +340,18 @@ func _build_zones() -> void:
 			_zone(spell_zone_pos(p, z), Vector2(0.72, 0.98), col, 0.45)
 		_zone(deck_pos(p), Vector2(0.72, 0.98), col, 0.6)
 		_zone(gy_pos(p), Vector2(0.72, 0.98), col, 0.6)
+		_zone(banish_pos(p), Vector2(0.72, 0.98), BANISH_COLOR, 0.35)
+		var bl := Label3D.new()
+		bl.text = "BANISHED"
+		bl.font = UITheme.semi_font()
+		bl.font_size = 34
+		bl.pixel_size = 0.004
+		bl.modulate = Color(BANISH_COLOR, 0.0)
+		bl.outline_modulate = Color(0, 0, 0, 0.0)
+		bl.rotation = Vector3(-PI / 2, 0.0 if p == 0 else PI, 0)
+		bl.position = banish_pos(p) + Vector3(0, 0.012, 0.64 if p == 0 else -0.64)
+		add_child(bl)
+		_ban_labels[p] = bl
 
 
 func _build_decks() -> void:
@@ -1107,6 +1128,91 @@ func anim_attack(p: int, inst, target) -> void:
 	cam_release(0.45)
 
 
+func remove_from_banished(inst) -> void:
+	for pile in _ban_cards:
+		for gc in pile:
+			if gc.inst == inst:
+				pile.erase(gc)
+				gc.queue_free()
+				return
+
+
+func _add_to_banished(inst) -> void:
+	var p: int = inst.owner
+	var c := Card3D.new()
+	c.setup(inst.id)
+	c.inst = inst
+	c.set_pickable(true)
+	c.hovered.connect(func(card, inside): card_hovered.emit(card, inside))
+	add_child(c)
+	var pile: Array = _ban_cards[p]
+	var y := 0.02 + pile.size() * 0.015
+	c.transform = Transform3D(table_basis(p, true, true) * Basis(Vector3.BACK, _rng.randf_range(-0.14, 0.14)), banish_pos(p) + Vector3(0, y, 0))
+	c.set_glow(true, BANISH_COLOR)
+	pile.append(c)
+	if pile.size() > 3:
+		var old: Card3D = pile.pop_front()
+		old.queue_free()
+		for k in pile.size():
+			(pile[k] as Card3D).position.y = 0.02 + k * 0.015
+	var bl: Label3D = _ban_labels[p]
+	if bl and bl.modulate.a < 0.5:
+		create_tween().tween_property(bl, "modulate:a", 0.9, Settings.t(0.4))
+
+
+## A card is removed from play: it lifts, twists into a violet rift and lands on the banished pile.
+func anim_banish(inst, from: String, side: int) -> void:
+	var c := card_for(inst)
+	if from == "gy":
+		remove_from_gy(inst)
+	elif from == "hand" and side == 1:
+		c = _take_from_opp_hand(inst)
+	var at: Vector3 = c.position if c else gy_pos(inst.owner) + Vector3(0, 0.1, 0)
+	if c:
+		c.set_glow(true, BANISH_COLOR)
+		var tw := create_tween().set_parallel()
+		tw.tween_property(c, "position:y", at.y + 0.7, Settings.t(0.22)).set_trans(Tween.TRANS_SINE)
+		tw.tween_method(c.flash, 0.0, 2.2, Settings.t(0.22))
+		await tw.finished
+		var tw2 := create_tween().set_parallel()
+		tw2.tween_property(c, "scale", Vector3(0.02, 1.25, 1.0), Settings.t(0.2)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		tw2.tween_property(c, "rotation:y", c.rotation.y + PI, Settings.t(0.2))
+		tw2.tween_method(c.set_alpha, 1.0, 0.0, Settings.t(0.2))
+		await tw2.finished
+		_cards.erase(inst.uid)
+		c.queue_free()
+	_rift(at + Vector3(0, 0.5, 0))
+	_impact(banish_pos(inst.owner) + Vector3(0, 0.1, 0), BANISH_COLOR)
+	_add_to_banished(inst)
+	await _wait(0.18)
+
+
+## A thin violet tear in the air where a card left the duel.
+func _rift(at: Vector3) -> void:
+	var mi := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(0.09, 1.5)
+	mi.mesh = q
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = Color(0.9, 0.75, 1.0)
+	m.emission_enabled = true
+	m.emission = BANISH_COLOR
+	m.emission_energy_multiplier = 6.0
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mi.material_override = m
+	mi.position = at
+	mi.scale = Vector3(0.2, 0.1, 1)
+	add_child(mi)
+	var tw := create_tween()
+	tw.tween_property(mi, "scale", Vector3(1.6, 1.0, 1), Settings.t(0.1))
+	tw.tween_property(mi, "scale", Vector3(0.05, 1.3, 1), Settings.t(0.28))
+	tw.parallel().tween_property(m, "albedo_color:a", 0.0, Settings.t(0.28))
+	tw.tween_callback(mi.queue_free)
+
+
 func remove_from_gy(inst) -> void:
 	for pile in _gy_cards:
 		for gc in pile:
@@ -1147,6 +1253,9 @@ func anim_discard(p: int, inst) -> void:
 
 
 func _add_to_gy(inst) -> void:
+	if state_ref and state_ref.players[inst.owner].banished.has(inst):
+		_add_to_banished(inst)   # "banish instead" effects
+		return
 	var p: int = inst.owner
 	var c := Card3D.new()
 	c.setup(inst.id)

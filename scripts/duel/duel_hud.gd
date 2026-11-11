@@ -129,6 +129,12 @@ func _plate(p: int) -> PanelContainer:
 	bar_bg.add_child(bar)
 	_lp_bars[p] = bar
 	var counts := UITheme.label("", 16, UITheme.TEXT_DIM)
+	counts.mouse_filter = Control.MOUSE_FILTER_STOP
+	counts.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	counts.tooltip_text = "See the Graveyard and banished cards"
+	counts.gui_input.connect(func(e):
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			show_piles(p))
 	v.add_child(counts)
 	_count_labels[p] = counts
 	add_child(pc)
@@ -241,8 +247,80 @@ func react(p: int, kind: String) -> void:
 		tw.tween_property(pt, "scale", Vector2.ONE, 0.3)
 
 
-func set_counts(p: int, deck: int, hand: int, gy: int) -> void:
-	_count_labels[p].text = "Deck %d   ·   Hand %d   ·   GY %d" % [deck, hand, gy]
+## [graveyard, banished] card lists per player, kept fresh by the scene for the pile viewer.
+var piles: Array = [[[], []], [[], []]]
+var _pile_panel: Control
+
+
+func set_counts(p: int, deck: int, hand: int, gy: int, banished := 0) -> void:
+	var t := "Deck %d   ·   Hand %d   ·   GY %d" % [deck, hand, gy]
+	if banished > 0:
+		t += "   ·   Banished %d" % banished
+	_count_labels[p].text = t + "     ▸ view"
+
+
+## Every card in a player's Graveyard and banished pile.
+func show_piles(p: int) -> void:
+	hide_piles()
+	_pile_panel = Control.new()
+	_pile_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_pile_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_pile_panel)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.gui_input.connect(func(e):
+		if e is InputEventMouseButton and e.pressed:
+			hide_piles())
+	_pile_panel.add_child(dim)
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.04, 0.06, 0.11, 0.97), 22, Color(UITheme.ACCENT, 0.4)))
+	_pile_panel.add_child(panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	panel.add_child(v)
+	var who: String = str(player_names[p]) if player_names.size() > p else ("You" if p == 0 else "Opponent")
+	v.add_child(UITheme.label(who.to_upper(), 20, UITheme.TEXT_DIM, UITheme.semi_font()))
+	var titles := ["GRAVEYARD", "BANISHED"]
+	var cols := [UITheme.ACCENT, Color("b06cff")]
+	for k in 2:
+		var list: Array = piles[p][k]
+		v.add_child(UITheme.label("%s  ·  %d" % [titles[k], list.size()], 34, cols[k], UITheme.title_font()))
+		if list.is_empty():
+			v.add_child(UITheme.label("Empty" if k == 0 else "No cards have been banished.", 18, UITheme.TEXT_DIM))
+			continue
+		var sc := ScrollContainer.new()
+		sc.custom_minimum_size = Vector2(1080, 196)
+		sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		v.add_child(sc)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		sc.add_child(row)
+		for i in range(list.size() - 1, -1, -1):
+			var inst = list[i]
+			var tr := TextureRect.new()
+			tr.texture = Cards.get_face(inst.id)
+			tr.custom_minimum_size = Vector2(124, 181)
+			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tr.stretch_mode = TextureRect.STRETCH_SCALE
+			tr.mouse_filter = Control.MOUSE_FILTER_STOP
+			tr.mouse_entered.connect(func(): inspect(inst))
+			row.add_child(tr)
+	var close := Button.new()
+	close.text = "Close"
+	close.pressed.connect(hide_piles)
+	v.add_child(close)
+	await get_tree().process_frame
+	if _pile_panel:
+		panel.reset_size()
+		panel.position = (get_viewport_rect().size - panel.size) / 2.0
+		close.grab_focus()
+
+
+func hide_piles() -> void:
+	if _pile_panel:
+		_pile_panel.queue_free()
+		_pile_panel = null
 
 
 func set_lp(p: int, lp: int, delta: int) -> void:

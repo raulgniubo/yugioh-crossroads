@@ -34,6 +34,16 @@ var _pause: Control
 var _counter: Label
 var _theme: Dictionary
 var city: CityBuilder
+var _spots: Array = []        # [{pos: Vector3, range: float, label: String, action: Callable}]
+var _near_spot: Dictionary = {}
+var _inside := ""
+var _outside_pos := Vector3(-10, 0, -13.6)
+var _map: RoamMap
+var _map_full: RoamMap
+var _loc_name: Label
+var _loc_area: Label
+var _fader: ColorRect
+var _overlay_open := false
 
 
 func _ready() -> void:
@@ -44,8 +54,11 @@ func _ready() -> void:
 	_build_player()
 	_build_npcs()
 	_build_walkers()
+	_build_places()
 	city.player = _player
 	_build_ui()
+	if _player.position.distance_to(ShopInterior.AT) < 30.0:
+		_set_inside("kame")
 	Music.play("menu")
 	_after_duel()
 	_debug()
@@ -57,12 +70,16 @@ func _load_progress() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(SAVE_PATH) == OK:
 		_beaten = cfg.get_value("roam", "beaten", {})
+		if cfg.has_section_key("roam", "deck") and CardData.has_deck(cfg.get_value("roam", "deck", "")):
+			Router.duel_config["player_deck"] = cfg.get_value("roam", "deck")
 
 
 func _save_progress() -> void:
 	var cfg := ConfigFile.new()
+	cfg.load(SAVE_PATH)
 	cfg.set_value("roam", "beaten", _beaten)
 	cfg.save(SAVE_PATH)
+	_refresh_map_people()
 
 
 func _after_duel() -> void:
@@ -217,7 +234,7 @@ func _build_player() -> void:
 
 func _physics_process(delta: float) -> void:
 	var input := Vector2.ZERO
-	if not _talking and _pause == null:
+	if not _talking and _pause == null and not _overlay_open and not (_map_full and _map_full.visible):
 		if Input.is_key_pressed(KEY_W) or Input.is_action_pressed("ui_up"):
 			input.y -= 1
 		if Input.is_key_pressed(KEY_S) or Input.is_action_pressed("ui_down"):
@@ -276,7 +293,17 @@ func _unhandled_input(event: InputEvent) -> void:
 				_advance()
 				get_viewport().set_input_as_handled()
 		return
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_T:
+	if _map_full and _map_full.visible:
+		if (event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_M, KEY_ESCAPE]) or event.is_action_pressed("ui_cancel"):
+			_toggle_map()
+			get_viewport().set_input_as_handled()
+		return
+	if _overlay_open:
+		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
+		_toggle_map()
+		get_viewport().set_input_as_handled()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_T:
 		_cycle_tod()
 		get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
@@ -306,9 +333,16 @@ func _npc_color(d: Dictionary) -> Color:
 
 func _build_npcs() -> void:
 	for d in district.get("npcs", []):
+		_add_npc(d, Vector3.ZERO)
+	for d in district.get("shop_npcs", []):
+		_add_npc(d, ShopInterior.AT)
+
+
+func _add_npc(d: Dictionary, offset: Vector3) -> void:
+	if true:
 		var f := RoamFigure.new()
 		add_child(f)
-		f.position = d["pos"]
+		f.position = d["pos"] + offset
 		f.rotation.y = d.get("face", 0.0)
 		var model_key: String = d.get("char", "")
 		if model_key == "":
@@ -337,6 +371,140 @@ func _build_npcs() -> void:
 		_refresh_marker(entry)
 
 
+func _refresh_map_people() -> void:
+	if _map == null:
+		return
+	var list: Array = []
+	for n in _npcs:
+		var d: Dictionary = n[0]
+		var f: Node3D = n[1]
+		if f.position.distance_to(ShopInterior.AT) < 30.0:
+			continue
+		var state := "talk"
+		if d.has("duel"):
+			state = "beaten" if _beaten.has(d["id"]) else "duel"
+		list.append({"pos": Vector2(f.position.x, f.position.z), "state": state, "name": _npc_name(d)})
+	_map.npcs = list
+	_map_full.npcs = list
+
+
+func _toggle_map() -> void:
+	_map_full.visible = not _map_full.visible
+	_map.visible = not _map_full.visible
+	Sfx.play("click")
+
+
+# ------------------------------------------------------------------ places you can enter
+
+func _build_places() -> void:
+	ShopInterior.build(city)
+	var at := ShopInterior.AT
+	_spots.append({"pos": Vector3(-10, 0, -15.4), "range": 2.3, "label": "Enter Kame Game", "action": func(): _travel("kame")})
+	_spots.append({"pos": at + Vector3(0, 0, 4.3), "range": 1.7, "label": "Leave the shop", "action": func(): _travel("")})
+	_spots.append({"pos": at + Vector3(-6.0, 0, 3.4), "range": 1.7, "label": "Change your look", "action": _open_look})
+	# A glowing mat in front of the shop door so the way in is easy to spot.
+	var mat_mesh := city.box(Vector3(2.2, 0.03, 1.2), Vector3(-10, 0.18, -15.4), city.glow_mat(Color("ffd166"), 1.3), false)
+	mat_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var arrow := Label3D.new()
+	arrow.text = "▼  ENTER"
+	arrow.font = UITheme.semi_font()
+	arrow.font_size = 64
+	arrow.pixel_size = 0.005
+	arrow.outline_size = 10
+	arrow.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	arrow.modulate = Color("ffe9a8")
+	arrow.position = Vector3(-10, 3.0, -15.4)
+	city.add_child(arrow)
+
+
+func _travel(where: String) -> void:
+	if _overlay_open:
+		return
+	_overlay_open = true
+	var tw := create_tween()
+	tw.tween_property(_fader, "color:a", 1.0, 0.22)
+	await tw.finished
+	if where == "kame":
+		_outside_pos = Vector3(-10, 0, -13.6)
+		_player.position = ShopInterior.AT + Vector3(0, 0, 3.2)
+		_yaw = 0.0
+	else:
+		_player.position = _outside_pos
+		_yaw = PI
+	_player.velocity = Vector3.ZERO
+	_figure.rotation.y = _yaw + PI
+	_pivot.position = _player.position + Vector3(0, 1.45, 0)
+	_set_inside(where)
+	await get_tree().create_timer(0.12).timeout
+	var tw2 := create_tween()
+	tw2.tween_property(_fader, "color:a", 0.0, 0.3)
+	_overlay_open = false
+
+
+func _set_inside(where: String) -> void:
+	_inside = where
+	# A soft fill light that travels with the camera, so you are never a silhouette indoors.
+	var fill: OmniLight3D = _cam.get_node_or_null("Fill")
+	if fill == null:
+		fill = OmniLight3D.new()
+		fill.name = "Fill"
+		fill.light_color = Color(1.0, 0.93, 0.82)
+		fill.light_energy = 1.5
+		fill.omni_range = 9.0
+		fill.omni_attenuation = 0.6
+		fill.shadow_enabled = false
+		_cam.add_child(fill)
+	fill.visible = where != ""
+	_arm.spring_length = 3.6 if where != "" else 6.0
+	if _loc_name:
+		_loc_name.text = "KAME GAME" if where != "" else str(district.get("name", "")).to_upper()
+		_loc_area.text = "Card shop" if where != "" else str(district.get("area", ""))
+
+
+func _open_look() -> void:
+	_overlay_open = true
+	var ed := ProfileEditor.new(false)
+	_ui.add_child(ed)
+	ed.closed.connect(func():
+		_overlay_open = false
+		var rot := _figure.rotation.y
+		_figure.queue_free()
+		_figure = RoamFigure.new()
+		_player.add_child(_figure)
+		_figure.setup("player", Profile.color(), "", false)
+		_figure.rotation.y = rot)
+
+
+func _open_deck_picker() -> void:
+	_overlay_open = true
+	var p := SidePanel.new("Choose your deck", 620)
+	var current: String = Router.duel_config.get("player_deck", "echo")
+	var keys: Array = ["echo"]
+	for k in Characters.ORDER:
+		if Characters.available(k):
+			keys.append(Characters.DATA[k]["deck"])
+	for k in keys:
+		if not CardData.has_deck(k):
+			continue
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(0, 64)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.add_theme_font_size_override("font_size", 24)
+		b.text = ("●  " if k == current else "     ") + CardData.deck_name(k)
+		var key: String = k
+		b.pressed.connect(func():
+			Router.duel_config["player_deck"] = key
+			var cfg := ConfigFile.new()
+			cfg.load(SAVE_PATH)
+			cfg.set_value("roam", "deck", key)
+			cfg.save(SAVE_PATH)
+			Router.toast("Deck set: %s" % CardData.deck_name(key))
+			p.close())
+		p.body.add_child(b)
+	p.closed.connect(func(): _overlay_open = false)
+	_ui.add_child(p)
+
+
 func _refresh_marker(n: Array) -> void:
 	var d: Dictionary = n[0]
 	var m: Label3D = n[2]
@@ -363,14 +531,33 @@ func _update_near() -> void:
 			best_d = dist
 			best = n[0]
 	_near = best
+	_near_spot = {}
+	if _near.is_empty():
+		for sp in _spots:
+			if (sp["pos"] as Vector3).distance_to(_player.global_position) < float(sp["range"]):
+				_near_spot = sp
+				break
 	if _prompt:
-		_prompt.visible = not _near.is_empty() and not _talking and _pause == null
+		_prompt.visible = (not _near.is_empty() or not _near_spot.is_empty()) and not _talking and _pause == null and not _overlay_open
 		if _prompt.visible:
-			_prompt.text = "E   Talk to %s" % _npc_name(_near)
+			_prompt.text = ("E   Talk to %s" % _npc_name(_near)) if not _near.is_empty() else ("E   %s" % _near_spot["label"])
+	if _map:
+		_map.player_pos = Vector2(_player.position.x, _player.position.z)
+		_map.player_yaw = _figure.rotation.y + PI
+		_map.inside = _inside
+		if _map_full and _map_full.visible:
+			_map_full.player_pos = _map.player_pos
+			_map_full.player_yaw = _map.player_yaw
+			_map_full.inside = _inside
 
 
 func _talk() -> void:
-	if _near.is_empty() or _talking:
+	if _talking or _overlay_open:
+		return
+	if _near.is_empty():
+		if not _near_spot.is_empty():
+			Sfx.play("click")
+			(_near_spot["action"] as Callable).call()
 		return
 	var d := _near
 	_dlg_npc = d
@@ -410,7 +597,21 @@ func _show_line() -> void:
 	_dlg_text.visible_ratio = 0.0
 	create_tween().tween_property(_dlg_text, "visible_ratio", 1.0, 0.02 * _dlg_text.text.length())
 	var last := _dlg_index == _dlg_lines.size() - 1
-	if last and _dlg_npc.has("duel"):
+	if last and _dlg_npc.has("shop"):
+		var deck_btn := Button.new()
+		deck_btn.text = "  Choose my deck  "
+		deck_btn.add_theme_font_size_override("font_size", 26)
+		deck_btn.pressed.connect(func():
+			_end_talk()
+			_open_deck_picker())
+		_dlg_buttons.add_child(deck_btn)
+		var bye := Button.new()
+		bye.text = "  Just looking  "
+		bye.add_theme_font_size_override("font_size", 26)
+		bye.pressed.connect(_end_talk)
+		_dlg_buttons.add_child(bye)
+		deck_btn.grab_focus.call_deferred()
+	elif last and _dlg_npc.has("duel"):
 		var duel_btn := Button.new()
 		duel_btn.text = "  Duel!  "
 		duel_btn.add_theme_font_size_override("font_size", 26)
@@ -470,19 +671,47 @@ func _build_ui() -> void:
 	var loc := VBoxContainer.new()
 	loc.position = Vector2(48, 36)
 	_ui.add_child(loc)
-	loc.add_child(UITheme.label(district.get("name", "").to_upper(), 46, Color.WHITE, UITheme.title_font()))
-	loc.add_child(UITheme.label(district.get("area", ""), 22, _theme["accent"], UITheme.semi_font()))
+	_loc_name = UITheme.label(district.get("name", "").to_upper(), 46, Color.WHITE, UITheme.title_font())
+	loc.add_child(_loc_name)
+	_loc_area = UITheme.label(district.get("area", ""), 22, _theme["accent"], UITheme.semi_font())
+	loc.add_child(_loc_area)
 	_counter = UITheme.label("", 20, UITheme.TEXT_DIM)
 	loc.add_child(_counter)
 	_update_counter()
 	# Controls, bottom left.
-	var help := UITheme.label("WASD / stick  move     Shift  run     Drag  look     Scroll  zoom     E  talk     T  time of day     Esc  menu", 18, Color(1, 1, 1, 0.5))
+	var help := UITheme.label("WASD / stick  move     Shift  run     Drag  look     Scroll  zoom     E  talk / enter     M  map     T  time of day     Esc  menu", 18, Color(1, 1, 1, 0.5))
 	help.anchor_top = 1.0
 	help.anchor_bottom = 1.0
 	help.position = Vector2(48, -50)
 	help.offset_top = -50
 	help.offset_left = 48
 	_ui.add_child(help)
+	# Maps: a small one in the corner, the full one on M.
+	_map = RoamMap.new()
+	_map.accent = _theme["accent"]
+	_map.anchor_left = 1.0
+	_map.anchor_right = 1.0
+	_map.offset_left = -292
+	_map.offset_right = -36
+	_map.offset_top = 36
+	_map.offset_bottom = 292
+	_ui.add_child(_map)
+	_map_full = RoamMap.new()
+	_map_full.full = true
+	_map_full.accent = _theme["accent"]
+	_map_full.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_map_full.offset_left = 260
+	_map_full.offset_right = -260
+	_map_full.offset_top = 70
+	_map_full.offset_bottom = -70
+	_map_full.visible = false
+	_ui.add_child(_map_full)
+	_refresh_map_people()
+	_fader = ColorRect.new()
+	_fader.color = Color(0, 0, 0, 0)
+	_fader.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_fader.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui.add_child(_fader)
 	# Talk prompt.
 	_prompt = Label.new()
 	_prompt.add_theme_font_override("font", UITheme.semi_font())
@@ -498,6 +727,7 @@ func _build_ui() -> void:
 	_prompt.anchor_top = 1.0
 	_prompt.anchor_bottom = 1.0
 	_prompt.offset_top = -200
+	_prompt.offset_bottom = -148
 	_prompt.offset_left = -200
 	_prompt.offset_right = 200
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -601,6 +831,20 @@ func _debug() -> void:
 			for i in 2:
 				await get_tree().create_timer(0.4).timeout
 				_advance()
+		elif a == "--shop":
+			await get_tree().create_timer(0.6).timeout
+			await _travel("kame")
+			_pitch = -0.12
+		elif a == "--map":
+			await get_tree().create_timer(0.6).timeout
+			_toggle_map()
+		elif a.begins_with("--at="):
+			var parts := a.trim_prefix("--at=").split(",")
+			await get_tree().create_timer(0.3).timeout
+			_player.position = Vector3(float(parts[0]), 0, float(parts[1]))
+			_yaw = float(parts[2]) if parts.size() > 2 else _yaw
+			_figure.rotation.y = _yaw + PI
+			_pivot.position = _player.position + Vector3(0, 1.45, 0)
 		elif a == "--lineup":
 			# Model check: everyone in a row in front of the camera.
 			var keys: Array = Characters.ORDER
