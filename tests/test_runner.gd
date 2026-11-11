@@ -11,7 +11,15 @@ func _ready() -> void:
 	_test_synchro_xyz_fusion()
 	var keys: Array = CardData.DECKS.keys()
 	for seed in 60:
-		_ai_vs_ai(seed, keys[seed % keys.size()], keys[(seed / keys.size() + 1 + seed) % keys.size()])
+		_ai_vs_ai(seed, keys[seed % keys.size()], keys[(seed / keys.size() + 1 + seed) % keys.size()], seed % 3, seed % 3)
+	# Hard should beat Easy most of the time with mirrored decks.
+	var hard_wins := 0
+	for seed in 40:
+		var k: String = keys[seed % keys.size()]
+		if _ai_vs_ai(100 + seed, k, k, 2, 0) == 0:
+			hard_wins += 1
+	print("Hard vs Easy: Hard won %d of 40" % hard_wins)
+	check(hard_wins >= 24, "Hard beats Easy most of the time (%d/40)" % hard_wins)
 	print("TESTS DONE, failures: %d" % failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -112,7 +120,7 @@ func _test_battle_math() -> void:
 	check(ev.any(func(e): return e["type"] == "reveal"), "face-down target gets revealed")
 
 
-func _ai_vs_ai(seed: int, a := "yugi", b := "kaiba") -> void:
+func _ai_vs_ai(seed: int, a := "yugi", b := "kaiba", lv_a := 1, lv_b := 1) -> int:
 	var s := _new_state(seed, a, b)
 	var start_total := _total(s)
 	var guard := 0
@@ -122,10 +130,11 @@ func _ai_vs_ai(seed: int, a := "yugi", b := "kaiba") -> void:
 		if s.is_over():
 			break
 		var p := s.current
+		var lv := lv_a if p == 0 else lv_b
 		var steps := 0
 		while steps < 20:
 			steps += 1
-			var act := DuelAI.next_main_action(s, p)
+			var act := DuelAI.next_main_action(s, p, lv)
 			if act.is_empty():
 				break
 			var ev := _run(s, p, act)
@@ -137,11 +146,17 @@ func _ai_vs_ai(seed: int, a := "yugi", b := "kaiba") -> void:
 			steps = 0
 			while steps < 10 and not s.is_over():
 				steps += 1
-				var atk := DuelAI.next_attack(s, p)
+				var atk := DuelAI.next_attack(s, p, lv)
 				if atk.is_empty():
 					break
 				s.attack(p, atk["card"], atk["target"])
 			s.enter_main2()
+			steps = 0
+			while steps < 10 and not s.is_over():
+				steps += 1
+				var act2 := DuelAI.next_main_action(s, p, lv)
+				if act2.is_empty() or _run(s, p, act2).is_empty():
+					break
 		if s.is_over():
 			break
 		s.end_turn()
@@ -149,7 +164,7 @@ func _ai_vs_ai(seed: int, a := "yugi", b := "kaiba") -> void:
 			check(s.players[i].hand.size() <= DuelState.HAND_LIMIT or i == s.current, "hand limit")
 		check(_total(s) == start_total, "card count stays %d (got %d)" % [start_total, _total(s)])
 	check(s.is_over(), "duel %d ended (turns: %d)" % [seed, s.turn])
-	print("duel %s vs %s seed %d: winner %d after %d turns (%s)" % [a, b, seed, s.winner, s.turn, s.win_reason])
+	return s.winner
 
 
 func _total(s: DuelState) -> int:

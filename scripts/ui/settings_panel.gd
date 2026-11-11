@@ -45,6 +45,17 @@ static func open(parent: Node) -> SidePanel:
 		Settings.anim_speed = Settings.ANIM_SPEEDS[keys[i]]
 		Settings.save_settings())
 	p.add_row("Animation speed", speed)
+	var field := OptionButton.new()
+	var fkeys := ["auto"] + FieldThemes.ORDER
+	for i in fkeys.size():
+		var k: String = fkeys[i]
+		field.add_item("Opponent's home field" if k == "auto" else FieldThemes.THEMES[k]["name"], i)
+		if k == Settings.field_theme:
+			field.select(i)
+	field.item_selected.connect(func(i):
+		Settings.field_theme = fkeys[i]
+		Settings.save_settings())
+	p.add_row("Duel field", field)
 
 	p.add_section("Card art")
 	var folder := LineEdit.new()

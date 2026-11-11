@@ -17,6 +17,7 @@ var music_volume := 0.7
 var sfx_volume := 0.8
 var anim_speed := 1.0
 var card_folder := ""
+var field_theme := "auto"
 
 
 func _ready() -> void:
@@ -41,6 +42,7 @@ func load_settings() -> void:
 	sfx_volume = cfg.get_value("audio", "sfx", sfx_volume)
 	anim_speed = cfg.get_value("game", "anim_speed", anim_speed)
 	card_folder = cfg.get_value("game", "card_folder", card_folder)
+	field_theme = cfg.get_value("game", "field_theme", field_theme)
 
 
 func save_settings() -> void:
@@ -52,6 +54,7 @@ func save_settings() -> void:
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.set_value("game", "anim_speed", anim_speed)
 	cfg.set_value("game", "card_folder", card_folder)
+	cfg.set_value("game", "field_theme", field_theme)
 	cfg.save(PATH)
 
 

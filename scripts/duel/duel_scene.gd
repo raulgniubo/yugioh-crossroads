@@ -20,6 +20,7 @@ var _finished := false
 var _surrendered := false
 var _autoplay := "--autoplay" in OS.get_cmdline_user_args()
 var _opp_key := "kaiba"
+var _ai_level := 1
 var _materials: Array = []
 
 signal _turn_finished
@@ -27,7 +28,10 @@ signal _turn_finished
 
 func _ready() -> void:
 	get_viewport().physics_object_picking = true
+	Music.play("duel")
 	board = DuelBoard.new()
+	var cfg0: Dictionary = Router.duel_config
+	board.theme = FieldThemes.resolve(str(cfg0.get("field", Settings.field_theme)), str(cfg0.get("opponent", "kaiba")))
 	add_child(board)
 	var layer := CanvasLayer.new()
 	add_child(layer)
@@ -51,6 +55,7 @@ func _ready() -> void:
 func _start() -> void:
 	var cfg: Dictionary = Router.duel_config
 	_opp_key = cfg.get("opponent", "kaiba")
+	_ai_level = int(cfg.get("difficulty", 1))
 	var opp: Dictionary = Characters.get_char(_opp_key)
 	var my_deck: String = cfg.get("player_deck", "yugi")
 	var opp_deck: String = opp.get("deck", "kaiba")
@@ -126,6 +131,7 @@ func _play(events: Array) -> void:
 	_refresh()
 	for ev in events:
 		await _play_event(ev)
+		board.refresh_stats(state)
 	busy = false
 	_update_counts()
 	_refresh()
@@ -161,6 +167,7 @@ func _play_event(ev: Dictionary) -> void:
 				hud.react(p, "ace")
 			await board.anim_summon(p, ev["card"], ev["zone"], ev["type"] == "set")
 		"tribute":
+			board.hide_stats_for(ev["card"])
 			await board.anim_tribute(ev["card"])
 		"flip", "reveal":
 			await board.anim_flip(p, ev["card"], ev["zone"])
@@ -181,9 +188,11 @@ func _play_event(ev: Dictionary) -> void:
 			get_tree().create_timer(Settings.t(0.36)).timeout.connect(func(): Sfx.play("impact"))
 			await board.anim_attack(p, ev["card"], ev["target"])
 		"destroy":
+			board.hide_stats_for(ev["card"])
 			Sfx.play("destroy", -3.0)
 			await board.anim_destroy(ev["card"], ev.get("overlays", []))
 		"material":
+			board.hide_stats_for(ev["card"])
 			if ev["from"] == "hand" and p == ME:
 				hud.remove_hand_card(ev["card"])
 			_materials.append(ev["card"])
@@ -289,6 +298,8 @@ func _on_hand_card_pressed(inst, at: Vector2) -> void:
 		return
 	_menu_card = inst
 	hud.inspect(inst)
+	hud.focus_hand_card(inst)
+	at.y -= 120
 	if inst.is_monster():
 		var can := state.can_normal_summon(ME, inst)
 		var need := state.tributes_needed(inst)
@@ -332,6 +343,11 @@ func _on_action(action: String) -> void:
 					hud.show_actions(get_viewport().get_mouse_position(), list)
 					return
 			await _play(state.activate(ME, c))
+		"attack":
+			if state.phase == DuelState.Phase.MAIN1:
+				await _play(state.enter_battle())
+			if state.can_attack(ME, c):
+				_start_attack(c)
 		"flip":
 			await _play(state.flip_summon(ME, c))
 		"position":
@@ -386,6 +402,8 @@ func _on_board_card_clicked(card: Card3D) -> void:
 		_start_attack(inst)
 		return
 	var opts := []
+	if state.phase == DuelState.Phase.MAIN1 and state.can_enter_battle() and inst.face_up and inst.attack_pos and inst.attacked_turn != state.turn:
+		opts.append(["attack", "Attack", true])
 	if state.can_flip_summon(ME, inst):
 		opts.append(["flip", "Flip Summon", true])
 	if state.can_change_position(ME, inst):
@@ -393,7 +411,7 @@ func _on_board_card_clicked(card: Card3D) -> void:
 	if opts.is_empty():
 		return
 	_menu_card = inst
-	hud.show_actions(get_viewport().get_mouse_position(), opts)
+	hud.show_actions(board.screen_pos(inst) - Vector2(0, 40), opts)
 
 
 func _on_extra_pressed() -> void:
@@ -436,7 +454,11 @@ func _start_attack(inst) -> void:
 		var c := board.card_for(t)
 		if c:
 			c.set_glow(true, UITheme.DANGER)
-	hud.show_prompt("Choose a target for %s" % inst.data.get("name", ""), state.can_direct_attack(ME))
+	board.start_aim(inst)
+	if state.can_direct_attack(ME):
+		hud.show_prompt("No monsters in the way. Attack directly!", true)
+	else:
+		hud.show_prompt("Tap a monster to attack with %s" % inst.data.get("name", ""), false)
 
 
 func _on_direct_attack() -> void:
@@ -448,6 +470,7 @@ func _on_direct_attack() -> void:
 
 
 func _cancel_mode() -> void:
+	board.stop_aim()
 	mode = ""
 	_pending_card = null
 	_attacker = null
@@ -458,6 +481,8 @@ func _cancel_mode() -> void:
 
 
 func _on_board_card_hovered(card: Card3D, inside: bool) -> void:
+	if mode == "attack" and card.inst != null and state.players[AI].field.has(card.inst):
+		board.set_aim_target(card if inside else null)
 	if not inside or card.inst == null:
 		return
 	var inst = card.inst
@@ -482,6 +507,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _on_pause_action(action: String) -> void:
 	match action:
+		"open":
+			if not _finished and not hud.overlay_visible():
+				_cancel_mode()
+				hud.show_pause()
 		"resume":
 			hud.hide_overlay()
 			_refresh()
@@ -508,7 +537,7 @@ func _ai_turn(who: int) -> void:
 	var steps := 0
 	while steps < 20 and not state.is_over() and not _finished:
 		steps += 1
-		var act := DuelAI.next_main_action(state, who)
+		var act := DuelAI.next_main_action(state, who, _level_for(who))
 		if act.is_empty():
 			break
 		var ev := _run_ai(act, who)
@@ -517,19 +546,36 @@ func _ai_turn(who: int) -> void:
 		await _play(ev)
 		await _ai_wait(0.35)
 	if state.can_enter_battle() and not state.is_over() and not _finished:
-		var any_attack := not DuelAI.next_attack(state, who).is_empty()
+		var any_attack := not DuelAI.next_attack(state, who, _level_for(who)).is_empty()
 		if any_attack:
 			await _play(state.enter_battle())
 			await _ai_wait(0.3)
 			steps = 0
 			while steps < 10 and not state.is_over() and not _finished:
 				steps += 1
-				var atk := DuelAI.next_attack(state, who)
+				var atk := DuelAI.next_attack(state, who, _level_for(who))
 				if atk.is_empty():
 					break
 				await _play(state.attack(who, atk["card"], atk["target"]))
 				await _ai_wait(0.3)
+			if not state.is_over() and not _finished:
+				await _play(state.enter_main2())
+				steps = 0
+				while steps < 10 and not state.is_over() and not _finished:
+					steps += 1
+					var act2 := DuelAI.next_main_action(state, who, _level_for(who))
+					if act2.is_empty():
+						break
+					var ev2 := _run_ai(act2, who)
+					if ev2.is_empty():
+						break
+					await _play(ev2)
+					await _ai_wait(0.3)
 	await _ai_wait(0.3)
+
+
+func _level_for(who: int) -> int:
+	return _ai_level if who == AI else 1
 
 
 func _ai_wait(sec: float) -> void:

@@ -59,6 +59,8 @@ func _debug_args() -> void:
 			duel = true
 		elif a.begins_with("--opp="):
 			duel_config["opponent"] = a.substr(6)
+		elif a.begins_with("--field="):
+			duel_config["field"] = a.substr(8)
 		elif a.begins_with("--deck="):
 			duel_config["player_deck"] = a.substr(7)
 		elif a.begins_with("--open="):

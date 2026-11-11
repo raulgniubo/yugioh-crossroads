@@ -1,12 +1,26 @@
 class_name DuelAI
 extends RefCounted
-## Simple opponent. Each call returns the next action to take, or {} when done.
-## Actions: {"do": "activate"|"summon"|"set"|"flip"|"position"|"attack", ...}
+## Opponent brain with three levels.
+##   0 Easy:   plays its best monster, attacks only when it clearly wins, makes mistakes.
+##   1 Normal: sensible summons, spells and attacks.
+##   2 Hard:   clears the strongest threats first with the smallest monster that wins,
+##             plays around face-downs, saves removal for real threats, goes defensive
+##             when behind, and sets up Synchro/Xyz/Fusion plays.
+## Each call returns the next action, or {} when done.
+## Actions: {"do": "activate"|"summon"|"set"|"flip"|"position"|"attack"|"extra", ...}
+
+const EASY := 0
+const NORMAL := 1
+const HARD := 2
 
 
-static func next_main_action(s: DuelState, p: int) -> Dictionary:
+static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionary:
 	var me := s.players[p]
 	var opp := s.players[s.opponent(p)]
+	var opp_best := _strongest_atk(opp)
+	var my_best := _strongest_atk(me)
+	if level == EASY and randf() < 0.12:
+		return {}  # Easy sometimes just passes
 	# 1. Spells
 	for c in me.hand:
 		if c.is_monster() or not s.can_activate(p, c):
@@ -15,42 +29,51 @@ static func next_main_action(s: DuelState, p: int) -> Dictionary:
 			"draw2":
 				return {"do": "activate", "card": c}
 			"heal1000":
-				if me.lp <= 6000:
+				if me.lp <= (5000 if level == HARD else 6000):
 					return {"do": "activate", "card": c}
-			"fissure", "raigeki", "reborn":
-				return {"do": "activate", "card": c}
+			"fissure":
+				var t := s._lowest_face_up(s.opponent(p))
+				if level < HARD or t.atk() >= 1500 or t.atk() >= my_best:
+					return {"do": "activate", "card": c}
+			"raigeki":
+				if level < HARD or opp.monsters().size() >= 2 or opp_best >= my_best:
+					return {"do": "activate", "card": c}
+			"reborn":
+				var best := s._best_in_gy()
+				if level < HARD or best.atk() >= 1800 or best.atk() > opp_best:
+					return {"do": "activate", "card": c}
 			"fusion":
 				var opts := s.fusion_targets(p, c)
-				var best: Dictionary = opts[0]
+				var plan: Dictionary = opts[0]
 				var lost := 0
-				for m in best["field"]:
+				for m in plan["field"]:
 					lost += m.atk()
-				if best["card"].atk() > lost:
-					return {"do": "activate", "card": c, "choice": best["card"]}
-	var opp_best := _strongest_atk(opp)
-	# Synchro / Xyz when it's an upgrade
-	var extra_sorted := me.extra.duplicate()
-	extra_sorted.sort_custom(func(a, b): return a.atk() > b.atk())
-	for x in extra_sorted:
-		if not s.can_extra_summon(p, x):
-			continue
-		var mats: Array = s.extra_materials(p, x)[0]
-		var mat_best := 0
-		for m in mats:
-			mat_best = maxi(mat_best, m.atk())
-		if x.atk() > mat_best:
-			return {"do": "extra", "card": x}
-	# 2. Flip set monsters that can now do something
+				if plan["card"].atk() > lost or level == EASY:
+					return {"do": "activate", "card": c, "choice": plan["card"]}
+	# 2. Synchro / Xyz when it's an upgrade
+	if level > EASY:
+		var extra_sorted := me.extra.duplicate()
+		extra_sorted.sort_custom(func(a, b): return a.atk() > b.atk())
+		for x in extra_sorted:
+			if not s.can_extra_summon(p, x):
+				continue
+			var mats: Array = s.extra_materials(p, x)[0]
+			var mat_best := 0
+			for m in mats:
+				mat_best = maxi(mat_best, m.atk())
+			if x.atk() > mat_best:
+				return {"do": "extra", "card": x}
+	# 3. Flip set monsters that can now do something
 	for m in me.monsters():
 		if s.can_flip_summon(p, m) and (m.atk() > opp_best or opp.monsters().is_empty()):
 			return {"do": "flip", "card": m}
-	# 3. Normal summon or set
+	# 4. Normal summon or set
 	if not s.normal_summoned:
-		var plan := _best_summon(s, p, opp_best)
+		var plan := _best_summon(s, p, opp_best, level)
 		if not plan.is_empty():
 			return plan
-	# 4. Position changes (main 1 only, before battle)
-	if s.phase == DuelState.Phase.MAIN1:
+	# 5. Position changes (before battle)
+	if s.phase == DuelState.Phase.MAIN1 and level > EASY:
 		for m in me.monsters():
 			if not s.can_change_position(p, m):
 				continue
@@ -61,29 +84,75 @@ static func next_main_action(s: DuelState, p: int) -> Dictionary:
 	return {}
 
 
-static func next_attack(s: DuelState, p: int) -> Dictionary:
+static func next_attack(s: DuelState, p: int, level := NORMAL) -> Dictionary:
 	var opp := s.players[s.opponent(p)]
-	for m in s.players[p].monsters():
-		if not s.can_attack(p, m):
-			continue
-		if s.can_direct_attack(p):
-			return {"do": "attack", "card": m, "target": null}
-		var best: DuelState.CardInst = null
-		var best_score := -1
-		for t in opp.monsters():
-			var score := -1
-			if t.face_up and t.attack_pos and m.atk() > t.atk():
-				score = 1000 + t.atk()
-			elif t.face_up and not t.attack_pos and m.atk() > t.def():
-				score = 500 + t.def()
-			elif not t.face_up and m.atk() >= 1300:
-				score = 100
-			if score > best_score:
-				best_score = score
-				best = t
+	var attackers: Array = s.players[p].monsters().filter(func(m): return s.can_attack(p, m))
+	if attackers.is_empty():
+		return {}
+	attackers.sort_custom(func(a, b): return a.atk() > b.atk())
+	if s.can_direct_attack(p):
+		return {"do": "attack", "card": attackers[0], "target": null}
+	if level == EASY:
+		for m in attackers:
+			for t in opp.monsters():
+				if t.face_up and t.attack_pos and m.atk() > t.atk() + 300:
+					return {"do": "attack", "card": m, "target": t}
+		return {}
+	if level == HARD:
+		return _hard_attack(attackers, opp)
+	for m in attackers:
+		var best := _best_target(m, opp.monsters(), 1300)
 		if best != null:
 			return {"do": "attack", "card": m, "target": best}
 	return {}
+
+
+static func _best_target(m: DuelState.CardInst, targets: Array, facedown_min: int) -> DuelState.CardInst:
+	var best: DuelState.CardInst = null
+	var best_score := -1
+	for t in targets:
+		var score := -1
+		if t.face_up and t.attack_pos and m.atk() > t.atk():
+			score = 1000 + t.atk()
+		elif t.face_up and not t.attack_pos and m.atk() > t.def():
+			score = 500 + t.def()
+		elif not t.face_up and m.atk() >= facedown_min:
+			score = 100
+		if score > best_score:
+			best_score = score
+			best = t
+	return best
+
+
+## Kill the biggest threat with the smallest monster that still wins, so the
+## stronger monsters stay free for the next target or a direct hit.
+static func _hard_attack(attackers: Array, opp: DuelState.PlayerState) -> Dictionary:
+	var targets: Array = opp.monsters()
+	targets.sort_custom(func(a, b): return _threat(a) > _threat(b))
+	for t in targets:
+		if not t.face_up:
+			continue
+		var need: int = t.atk() if t.attack_pos else t.def()
+		var pick: DuelState.CardInst = null
+		for m in attackers:
+			if m.atk() > need and (pick == null or m.atk() < pick.atk()):
+				pick = m
+		if pick != null:
+			return {"do": "attack", "card": pick, "target": t}
+	# Probe a face-down with the weakest monster that can afford a bounce.
+	for t in targets:
+		if not t.face_up:
+			var probe: DuelState.CardInst = null
+			for m in attackers:
+				if m.atk() >= 1500 and (probe == null or m.atk() < probe.atk()):
+					probe = m
+			if probe != null:
+				return {"do": "attack", "card": probe, "target": t}
+	return {}
+
+
+static func _threat(t: DuelState.CardInst) -> int:
+	return t.atk() if t.face_up else 1200
 
 
 static func _strongest_atk(ps: DuelState.PlayerState) -> int:
@@ -94,7 +163,7 @@ static func _strongest_atk(ps: DuelState.PlayerState) -> int:
 	return best
 
 
-static func _best_summon(s: DuelState, p: int, opp_best: int) -> Dictionary:
+static func _best_summon(s: DuelState, p: int, opp_best: int, level: int) -> Dictionary:
 	var me := s.players[p]
 	var options := []
 	for c in me.hand:
@@ -105,12 +174,16 @@ static func _best_summon(s: DuelState, p: int, opp_best: int) -> Dictionary:
 		var lost := 0
 		for t in tributes:
 			lost += t.atk()
-		# Only tribute when it's clearly worth it.
-		if need > 0 and c.atk() < lost + 600:
+		var margin := 600 if level < HARD else 300
+		var worth := c.atk() >= lost + margin or (level == HARD and c.atk() > opp_best and lost < opp_best)
+		if need > 0 and not worth:
 			continue
 		options.append({"card": c, "tributes": tributes})
 	if options.is_empty():
 		return {}
+	if level == EASY:
+		var pick: Dictionary = options[randi() % options.size()]
+		return {"do": "summon", "card": pick["card"], "tributes": pick["tributes"]}
 	# A monster that unlocks a Synchro or Xyz Summon right away beats raw ATK.
 	for o in options:
 		if o["tributes"].is_empty() and _enables_extra(s, p, o["card"]):

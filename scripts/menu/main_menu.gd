@@ -12,6 +12,7 @@ var _panel_open := false
 func _ready() -> void:
 	theme = UITheme.build()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	Music.play("menu")
 	_build_background()
 	_build_overlay()
 	_build_title()
@@ -102,51 +103,77 @@ var _chip_name: Label
 var _chip_sub: Label
 
 
+## All duelists together: slanted portrait strips across the right side.
 func _build_featured() -> void:
 	var holder := Control.new()
-	holder.anchor_left = 1.0
-	holder.anchor_right = 1.0
-	holder.anchor_top = 1.0
-	holder.anchor_bottom = 1.0
-	holder.offset_left = -700
-	holder.offset_right = -110
-	holder.offset_top = -860
-	holder.offset_bottom = -110
+	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.clip_contents = true
 	add_child(holder)
-	_featured = TextureRect.new()
-	_featured.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_featured.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_featured.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_featured.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(_featured)
-	_featured_name = UITheme.label("", 22, UITheme.TEXT_DIM, UITheme.semi_font())
-	_featured_name.anchor_top = 1.0
-	_featured_name.anchor_bottom = 1.0
-	_featured_name.anchor_right = 1.0
-	_featured_name.offset_top = 6
-	_featured_name.offset_bottom = 40
-	_featured_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	holder.add_child(_featured_name)
-	_show_featured()
-	var t := Timer.new()
-	t.wait_time = 6.0
-	t.autostart = true
-	t.timeout.connect(func():
-		_featured_idx = (_featured_idx + 1) % Characters.ORDER.size()
-		_show_featured())
-	add_child(t)
-
-
-func _show_featured() -> void:
-	var key: String = Characters.ORDER[_featured_idx]
-	var d := Characters.get_char(key)
-	var tw := create_tween()
-	tw.tween_property(_featured, "modulate:a", 0.0, 0.4)
-	tw.tween_callback(func():
-		_featured.texture = Portraits.get_portrait(key)
-		_featured_name.text = "%s  ·  %s" % [str(d["name"]).to_upper(), d["era"]])
-	tw.tween_property(_featured, "modulate:a", 1.0, 0.6)
+	move_child(holder, 1)
+	var keys: Array = Characters.ORDER
+	var strip_w := 250.0
+	var start_x := 760.0
+	for i in keys.size():
+		var key: String = keys[i]
+		var d := Characters.get_char(key)
+		var strip := Control.new()
+		strip.clip_contents = true
+		strip.size = Vector2(strip_w, 1500)
+		strip.position = Vector2(start_x + i * (strip_w - 40), -220)
+		strip.rotation = deg_to_rad(10)
+		strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(strip)
+		var pt := TextureRect.new()
+		pt.texture = Portraits.get_portrait(key)
+		pt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pt.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		pt.size = Vector2(strip_w + 260, 1500)
+		pt.position = Vector2(-130, 0)
+		pt.rotation = deg_to_rad(-10)
+		pt.pivot_offset = pt.size / 2.0
+		pt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		strip.add_child(pt)
+		var grad := Gradient.new()
+		grad.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
+		grad.colors = PackedColorArray([Color(d["color"], 0.0), Color(d["color"], 0.18), Color(0.01, 0.02, 0.04, 0.95)])
+		var gt := GradientTexture2D.new()
+		gt.gradient = grad
+		gt.fill_from = Vector2(0, 0)
+		gt.fill_to = Vector2(0, 1)
+		var tint := TextureRect.new()
+		tint.texture = gt
+		tint.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tint.stretch_mode = TextureRect.STRETCH_SCALE
+		tint.size = strip.size
+		tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		strip.add_child(tint)
+		var edge := ColorRect.new()
+		edge.color = Color(d["color"], 0.9)
+		edge.size = Vector2(4, 1500)
+		edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		strip.add_child(edge)
+		var n := UITheme.label(str(d["short"]).to_upper(), 34, Color.WHITE, UITheme.title_font())
+		n.position = Vector2(26, 1090)
+		n.rotation = deg_to_rad(-10)
+		strip.add_child(n)
+		var e := UITheme.label(str(d["era"]).to_upper(), 16, Color(d["color"]).lightened(0.4), UITheme.semi_font())
+		e.position = Vector2(30, 1132)
+		e.rotation = deg_to_rad(-10)
+		strip.add_child(e)
+		strip.modulate.a = 0.0
+		var tw := create_tween()
+		tw.tween_interval(0.3 + i * 0.09)
+		tw.tween_property(strip, "modulate:a", 0.92, 0.6)
+		var drift := create_tween().set_loops()
+		drift.tween_property(pt, "position:y", -30.0, 6.0 + i).set_trans(Tween.TRANS_SINE)
+		drift.tween_property(pt, "position:y", 0.0, 6.0 + i).set_trans(Tween.TRANS_SINE)
+	# Darken the far left so the title and menu stay readable over the strips.
+	var shade := ColorRect.new()
+	shade.color = Color(0.01, 0.02, 0.04, 0.0)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(shade)
 
 
 func _build_profile_chip() -> void:
@@ -280,8 +307,8 @@ func _on_free_duel() -> void:
 	var cs := CharacterSelect.new()
 	add_child(cs)
 	_panel_open = true
-	cs.start.connect(func(opp, deck):
-		Router.duel_config = {"opponent": opp, "player_deck": deck}
+	cs.start.connect(func(opp, deck, diff):
+		Router.duel_config = {"opponent": opp, "player_deck": deck, "difficulty": diff}
 		Router.go(Router.DUEL))
 	cs.closed.connect(func():
 		_panel_open = false

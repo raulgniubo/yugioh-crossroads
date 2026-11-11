@@ -14,6 +14,7 @@ const CAM_POS := Vector3(0, 9.0, 6.9)
 const CAM_TARGET := Vector3(0, 0, 1.15)
 
 var camera: Camera3D
+var theme: Dictionary = FieldThemes.resolve("auto", "")
 var _cards := {}  # uid -> Card3D
 var _gy_cards: Array = [[], []]
 var _opp_hand: Array[Card3D] = []
@@ -22,6 +23,10 @@ var _deck_labels: Array[Label3D] = []
 var _shake := 0.0
 var _time := 0.0
 var _zone_shader: Shader
+var _stats := {}  # uid -> [atk_label, def_label]
+var _aim_from: Card3D = null
+var _aim_target: Card3D = null
+var _arrow: Node3D
 var _rng := RandomNumberGenerator.new()
 
 
@@ -29,6 +34,7 @@ func _ready() -> void:
 	_rng.randomize()
 	_build_environment()
 	_build_mat()
+	_build_arena()
 	_build_zones()
 	_build_decks()
 
@@ -65,20 +71,29 @@ func table_basis(p: int, face_up: bool, attack_pos: bool) -> Basis:
 # ------------------------------------------------------------------ build
 
 func _build_environment() -> void:
+	var sky_mat := ProceduralSkyMaterial.new()
+	sky_mat.sky_top_color = theme["sky_top"]
+	sky_mat.sky_horizon_color = theme["sky_horizon"]
+	sky_mat.ground_bottom_color = Color(theme["base"]).darkened(0.5)
+	sky_mat.ground_horizon_color = theme["sky_horizon"]
+	sky_mat.sun_angle_max = 0.0
+	var sky := Sky.new()
+	sky.sky_material = sky_mat
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color("03060b")
+	env.background_mode = Environment.BG_SKY
+	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("a9c8ff")
-	env.ambient_light_energy = 0.7
+	env.ambient_light_color = Color(theme["accent"]).lerp(Color.WHITE, 0.6)
+	env.ambient_light_energy = 0.65
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.glow_enabled = true
-	env.glow_intensity = 0.8
-	env.glow_bloom = 0.08
-	env.glow_hdr_threshold = 1.0
+	env.glow_intensity = 0.9
+	env.glow_bloom = 0.1
+	env.glow_hdr_threshold = 0.95
 	env.fog_enabled = true
-	env.fog_light_color = Color("08111f")
-	env.fog_density = 0.02
+	env.fog_light_color = theme["fog"]
+	env.fog_density = 0.028
+	env.fog_sky_affect = 0.4
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -90,10 +105,10 @@ func _build_environment() -> void:
 	add_child(key)
 	for side in [-1, 1]:
 		var l := OmniLight3D.new()
-		l.light_color = UITheme.ACCENT if side == 1 else Color("7b5cff")
-		l.light_energy = 1.6
-		l.omni_range = 7.0
-		l.position = Vector3(5.5 * side, 1.5, -1.5 * side)
+		l.light_color = theme["accent"] if side == 1 else theme["accent2"]
+		l.light_energy = 1.8
+		l.omni_range = 8.0
+		l.position = Vector3(5.8 * side, 1.6, -1.5 * side)
 		add_child(l)
 	camera = Camera3D.new()
 	camera.fov = 44
@@ -115,28 +130,160 @@ render_mode unshaded;
 uniform vec3 base : source_color = vec3(0.025, 0.045, 0.085);
 uniform vec3 accent : source_color = vec3(0.18, 0.89, 0.9);
 uniform vec3 accent2 : source_color = vec3(0.48, 0.36, 1.0);
-void fragment() {
-	vec2 p = (UV - 0.5) * vec2(12.0, 7.6);
+uniform int pattern = 0;
+
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+
+float line_aa(float d, float w) { return 1.0 - smoothstep(w, w + fwidth(d) * 1.5, d); }
+
+float hex_edge(vec2 p) {
+	vec2 r = vec2(1.0, 1.7320508);
+	vec2 h = r * 0.5;
+	vec2 a = mod(p, r) - h;
+	vec2 b = mod(p - h, r) - h;
+	vec2 g = dot(a, a) < dot(b, b) ? a : b;
+	vec2 q = abs(g);
+	float d = max(dot(q, normalize(vec2(1.0, 1.7320508))), q.x);
+	return 0.5 - d;
+}
+
+float pattern_value(vec2 p) {
+	if (pattern == 1) {
+		return line_aa(hex_edge(p * 1.6), 0.02);
+	} else if (pattern == 2) {
+		vec2 g = p * 2.0;
+		vec2 cell = floor(g);
+		vec2 f = fract(g);
+		float hzn = step(0.62, hash(cell)) * line_aa(abs(f.y - 0.5), 0.02);
+		float vrt = step(0.7, hash(cell + 17.0)) * line_aa(abs(f.x - 0.5), 0.02);
+		float node = step(0.85, hash(cell + 3.0)) * (1.0 - smoothstep(0.06, 0.09, length(f - 0.5)));
+		return max(max(hzn, vrt), node);
+	} else if (pattern == 3) {
+		float r = length(p);
+		float rings = line_aa(abs(fract(r * 1.2) - 0.5), 0.02);
+		float a = atan(p.y, p.x);
+		float ticks = line_aa(abs(fract(a * 6.0 / 3.14159) - 0.5), 0.015) * step(0.5, fract(r * 0.6));
+		return max(rings * 0.8, ticks);
+	} else if (pattern == 4) {
+		vec2 d = vec2(p.x + p.y, p.x - p.y) * 1.2;
+		vec2 g = abs(fract(d) - 0.5);
+		return line_aa(min(g.x, g.y), 0.015);
+	}
 	vec2 gp = p * 2.0;
 	vec2 g = abs(fract(gp) - 0.5) / fwidth(gp);
-	float grid = 1.0 - min(min(g.x, g.y), 1.0);
-	float r = length(p);
-	float ring = 1.0 - smoothstep(0.0, 0.035, abs(r - 1.25));
-	float ring2 = 1.0 - smoothstep(0.0, 0.02, abs(r - 1.55));
-	float mid = 1.0 - smoothstep(0.0, 0.03, abs(p.y));
-	float vig = smoothstep(7.0, 0.5, length(p * vec2(0.75, 1.15)));
+	return 1.0 - min(min(g.x, g.y), 1.0);
+}
+
+void fragment() {
+	vec2 p = (UV - 0.5) * vec2(12.0, 7.6);
+	float vig = smoothstep(7.2, 0.5, length(p * vec2(0.72, 1.1)));
 	vec3 side = mix(accent, accent2, step(0.0, -p.y));
-	vec3 col = base * (0.5 + 0.8 * vig);
-	col += accent * grid * 0.035 * vig;
-	col += side * (ring * 0.45 + ring2 * 0.2);
-	col += mix(accent, accent2, 0.5) * mid * 0.3 * vig;
+	vec3 col = base * (0.55 + 0.9 * vig);
+	// Patterned floor, brighter near the center
+	col += side * pattern_value(p) * 0.075 * vig;
+	// Rotating emblem rings in the middle
+	float r = length(p);
+	float a = atan(p.y, p.x);
+	float ring1 = line_aa(abs(r - 1.25), 0.03);
+	float ring2 = line_aa(abs(r - 1.55), 0.015);
+	float dash = step(0.5, fract((a + TIME * 0.15) * 12.0 / 6.28318));
+	float ring3 = line_aa(abs(r - 1.85), 0.012) * dash;
+	col += side * (ring1 * 0.5 + ring2 * 0.25 + ring3 * 0.35);
+	// Center divider and a sweeping scan line
+	float mid = line_aa(abs(p.y), 0.025);
+	col += mix(accent, accent2, 0.5) * mid * 0.35 * vig;
+	float sweep = 1.0 - smoothstep(0.0, 0.6, abs(p.x - (fract(TIME * 0.08) * 16.0 - 8.0)));
+	col += side * sweep * 0.05 * vig;
+	// Frame around the mat
+	vec2 e = abs(p) - vec2(5.75, 3.6);
+	float frame = line_aa(abs(max(e.x, e.y)), 0.03);
+	col += side * frame * 0.8;
 	ALBEDO = col;
 }
 """
 	var m := ShaderMaterial.new()
 	m.shader = sh
+	m.set_shader_parameter("base", theme["base"])
+	m.set_shader_parameter("accent", theme["accent"])
+	m.set_shader_parameter("accent2", theme["accent2"])
+	m.set_shader_parameter("pattern", theme["pattern"])
 	mi.material_override = m
 	add_child(mi)
+
+
+## Floor beyond the mat, corner pylons and drifting particles.
+func _build_arena() -> void:
+	var floor_mi := MeshInstance3D.new()
+	var fp := PlaneMesh.new()
+	fp.size = Vector2(60, 60)
+	floor_mi.mesh = fp
+	var fm := StandardMaterial3D.new()
+	fm.albedo_color = Color(theme["base"]).darkened(0.35)
+	fm.metallic = 0.6
+	fm.roughness = 0.25
+	floor_mi.material_override = fm
+	floor_mi.position.y = -0.02
+	add_child(floor_mi)
+	for corner in [Vector3(-6.4, 0, -4.1), Vector3(6.4, 0, -4.1), Vector3(-6.4, 0, 4.1), Vector3(6.4, 0, 4.1)]:
+		var col: Color = theme["accent"] if corner.z > 0 else theme["accent2"]
+		var pylon := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 0.1
+		cyl.bottom_radius = 0.2
+		cyl.height = 1.8
+		pylon.mesh = cyl
+		var pm := StandardMaterial3D.new()
+		pm.albedo_color = Color("1a2130")
+		pm.metallic = 0.8
+		pm.roughness = 0.3
+		pylon.material_override = pm
+		pylon.position = corner + Vector3(0, 0.9, 0)
+		add_child(pylon)
+		var orb := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 0.16
+		sm.height = 0.32
+		orb.mesh = sm
+		var om := StandardMaterial3D.new()
+		om.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		om.albedo_color = col
+		om.emission_enabled = true
+		om.emission = col
+		om.emission_energy_multiplier = 5.0
+		orb.material_override = om
+		orb.position = corner + Vector3(0, 1.9, 0)
+		add_child(orb)
+		var tw := create_tween().set_loops()
+		tw.tween_property(orb, "position:y", 2.05, 1.4).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(orb, "position:y", 1.9, 1.4).set_trans(Tween.TRANS_SINE)
+	var motes := GPUParticles3D.new()
+	motes.amount = 50
+	motes.lifetime = 7.0
+	motes.preprocess = 7.0
+	var ppm := ParticleProcessMaterial.new()
+	ppm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	ppm.emission_box_extents = Vector3(7, 0.1, 4.5)
+	ppm.direction = Vector3(0, 1, 0)
+	ppm.spread = 15
+	ppm.initial_velocity_min = 0.05
+	ppm.initial_velocity_max = 0.2
+	ppm.gravity = Vector3.ZERO
+	ppm.scale_min = 0.5
+	ppm.scale_max = 1.3
+	motes.process_material = ppm
+	var q := QuadMesh.new()
+	q.size = Vector2(0.025, 0.025)
+	var qm := StandardMaterial3D.new()
+	qm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	qm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	qm.albedo_color = Color(theme["accent"]).lightened(0.4)
+	qm.emission_enabled = true
+	qm.emission = theme["accent"]
+	qm.emission_energy_multiplier = 1.5
+	q.material = qm
+	motes.draw_pass_1 = q
+	motes.visibility_aabb = AABB(Vector3(-10, -1, -8), Vector3(20, 10, 16))
+	add_child(motes)
 
 
 func _zone(pos: Vector3, size: Vector2, color: Color, intensity: float) -> MeshInstance3D:
@@ -172,7 +319,7 @@ void fragment() {
 
 func _build_zones() -> void:
 	for p in 2:
-		var col := UITheme.ACCENT if p == 0 else Color("8a6dff")
+		var col: Color = theme["accent"] if p == 0 else theme["accent2"]
 		for z in 5:
 			_zone(monster_zone_pos(p, z), Vector2(0.98, 0.98), col, 0.9)
 			_zone(spell_zone_pos(p, z), Vector2(0.72, 0.98), col, 0.45)
@@ -717,6 +864,150 @@ func _add_to_gy(inst) -> void:
 		old.queue_free()
 
 
+# ------------------------------------------------------------------ stats & aiming
+
+## Master Duel style ATK / DEF readout under every monster on the field.
+func refresh_stats(state: DuelState) -> void:
+	var seen := {}
+	for p in 2:
+		for m in state.players[p].monsters():
+			var c := card_for(m)
+			if c == null:
+				continue
+			seen[m.uid] = true
+			var pair: Array = _stats.get(m.uid, [])
+			if pair.is_empty():
+				pair = [_stat_label(), _stat_label(), _stat_label()]
+				pair[2].text = "/"
+				pair[2].modulate = Color(1, 1, 1, 0.4)
+				_stats[m.uid] = pair
+			var hidden: bool = not m.face_up and p == 1
+			var base: Vector3 = monster_zone_pos(p, state.players[p].field.find(m))
+			var off := Vector3(0, 0.08, 0.6)
+			pair[0].position = base + off + Vector3(-0.27, 0, 0)
+			pair[1].position = base + off + Vector3(0.27, 0, 0)
+			pair[2].position = base + off
+			pair[0].text = "?" if hidden else str(m.atk())
+			pair[1].text = "?" if hidden else str(m.def())
+			var active := Color("ffffff")
+			var dim := Color(0.75, 0.82, 0.95, 0.55)
+			pair[0].modulate = (active if m.attack_pos else dim) if not hidden else dim
+			pair[1].modulate = (Color("7fd8ff") if not m.attack_pos else dim) if not hidden else dim
+			pair[0].font_size = 72 if m.attack_pos else 54
+			pair[1].font_size = 72 if not m.attack_pos else 54
+			for l in pair:
+				l.visible = true
+	for uid in _stats.keys():
+		if not seen.has(uid):
+			for l in _stats[uid]:
+				l.queue_free()
+			_stats.erase(uid)
+
+
+func hide_stats_for(inst) -> void:
+	if _stats.has(inst.uid):
+		for l in _stats[inst.uid]:
+			l.visible = false
+
+
+func _stat_label() -> Label3D:
+	var l := Label3D.new()
+	l.font = UITheme.title_font()
+	l.font_size = 64
+	l.pixel_size = 0.0035
+	l.outline_size = 16
+	l.outline_modulate = Color(0, 0, 0, 0.85)
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	l.render_priority = 2
+	add_child(l)
+	return l
+
+
+func screen_pos(inst) -> Vector2:
+	var c := card_for(inst)
+	if c == null:
+		return get_viewport().get_visible_rect().size / 2.0
+	return camera.unproject_position(c.global_position)
+
+
+func start_aim(inst) -> void:
+	_aim_from = card_for(inst)
+	if _arrow == null:
+		_arrow = _make_arrow()
+	_arrow.visible = _aim_from != null
+
+
+func set_aim_target(card: Card3D) -> void:
+	_aim_target = card
+
+
+func stop_aim() -> void:
+	_aim_from = null
+	_aim_target = null
+	if _arrow:
+		_arrow.visible = false
+
+
+func _make_arrow() -> Node3D:
+	var root := Node3D.new()
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = Color("ff5a5a")
+	m.emission_enabled = true
+	m.emission = Color("ff3b3b")
+	m.emission_energy_multiplier = 3.0
+	m.no_depth_test = true
+	var shaft := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(0.09, 0.02, 1.0)
+	shaft.mesh = box
+	shaft.material_override = m
+	shaft.name = "Shaft"
+	root.add_child(shaft)
+	var head := MeshInstance3D.new()
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.0
+	cone.bottom_radius = 0.22
+	cone.height = 0.4
+	head.mesh = cone
+	head.material_override = m
+	head.name = "Head"
+	head.rotation_degrees = Vector3(-90, 0, 0)
+	root.add_child(head)
+	root.visible = false
+	add_child(root)
+	return root
+
+
+func _update_arrow() -> void:
+	if _arrow == null or not _arrow.visible or _aim_from == null or not is_instance_valid(_aim_from):
+		return
+	var from := _aim_from.global_position + Vector3(0, 0.25, 0)
+	var to: Vector3
+	if _aim_target and is_instance_valid(_aim_target):
+		to = _aim_target.global_position + Vector3(0, 0.25, 0)
+	else:
+		var mp := get_viewport().get_mouse_position()
+		var o := camera.project_ray_origin(mp)
+		var d := camera.project_ray_normal(mp)
+		if absf(d.y) < 0.001:
+			return
+		var t := (0.25 - o.y) / d.y
+		to = o + d * t
+	var dir := to - from
+	var length := maxf(dir.length(), 0.3)
+	var pulse := 1.0 + sin(_time * 10.0) * 0.08
+	_arrow.global_position = from
+	_arrow.look_at(to if to.distance_to(from) > 0.01 else from + Vector3.FORWARD, Vector3.UP)
+	var shaft := _arrow.get_node("Shaft") as MeshInstance3D
+	shaft.scale = Vector3(pulse, 1, length - 0.35)
+	shaft.position = Vector3(0, 0, -(length - 0.35) / 2.0)
+	var head := _arrow.get_node("Head") as MeshInstance3D
+	head.position = Vector3(0, 0, -length + 0.2)
+	head.scale = Vector3(pulse, pulse, pulse)
+
+
 # ------------------------------------------------------------------ camera
 
 func shake(amount: float) -> void:
@@ -731,3 +1022,4 @@ func _process(delta: float) -> void:
 	var jitter := Vector3(_rng.randf_range(-s, s), _rng.randf_range(-s, s), 0)
 	camera.position = CAM_POS + sway + jitter
 	camera.look_at(CAM_TARGET + jitter * 0.5)
+	_update_arrow()

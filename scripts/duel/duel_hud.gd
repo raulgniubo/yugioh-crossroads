@@ -56,6 +56,12 @@ func _ready() -> void:
 	_build_inspector()
 	_build_hand()
 	_build_prompt()
+	var menu_btn := Button.new()
+	menu_btn.text = "☰  MENU"
+	menu_btn.position = Vector2(36, 30)
+	menu_btn.custom_minimum_size = Vector2(150, 52)
+	menu_btn.pressed.connect(func(): pause_action.emit("open"))
+	add_child(menu_btn)
 	_float_root = Control.new()
 	_float_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_float_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -624,7 +630,7 @@ func _layout_hand() -> void:
 	for i in n:
 		var node: Control = _hand[i]["node"]
 		var offset := i - (n - 1) / 2.0
-		var hovered := i == _hand_hover
+		var hovered: bool = i == _hand_hover or _hand[i]["inst"] == _focused
 		var target := Vector2(offset * spacing - HAND_CARD.x / 2.0, -HAND_CARD.y * 0.72 + absf(offset) * 6.0)
 		var rot := deg_to_rad(offset * 2.5)
 		var sc := 1.0
@@ -679,30 +685,75 @@ func hide_prompt() -> void:
 	_prompt.visible = false
 
 
-## options: [[action_id, label, enabled], ...]
+const ACTION_ICONS := {
+	"summon": "▲", "set": "▼", "activate": "✦", "flip": "⟳", "position": "⟲",
+	"attack": "⚔", "direct": "⚔", "fuse": "✸",
+}
+var _focused = null
+
+
+## options: [[action_id, label, enabled], ...]  Animated pill buttons above `at`.
 func show_actions(at: Vector2, options: Array) -> void:
 	for c in _menu.get_children():
 		c.queue_free()
+	_menu.add_theme_constant_override("separation", 8)
+	var i := 0
 	for o in options:
-		var b := Button.new()
-		b.text = o[1]
-		b.disabled = not o[2]
-		b.custom_minimum_size = Vector2(190, 50)
 		var id: String = o[0]
+		var key := id.split(":")[0]
+		var b := Button.new()
+		b.text = "%s   %s" % [ACTION_ICONS.get(key, "•"), o[1]]
+		b.disabled = not o[2]
+		b.custom_minimum_size = Vector2(250, 58)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.add_theme_font_size_override("font_size", 26)
+		var col: Color = UITheme.DANGER if key in ["attack", "direct"] else (Color("ffd23a") if key == "fuse" else UITheme.ACCENT)
+		var normal := UITheme.button_box(Color(0.04, 0.07, 0.13, 0.94), Color(col, 0.55), 29)
+		normal.shadow_color = Color(0, 0, 0, 0.5)
+		normal.shadow_size = 10
+		var hover := UITheme.button_box(Color(col, 0.28), col, 29)
+		hover.border_width_left = 3
+		hover.border_width_right = 3
+		hover.border_width_top = 3
+		hover.border_width_bottom = 3
+		b.add_theme_stylebox_override("normal", normal)
+		b.add_theme_stylebox_override("hover", hover)
+		b.add_theme_stylebox_override("focus", hover)
+		b.add_theme_stylebox_override("pressed", UITheme.button_box(col, col, 29))
 		b.pressed.connect(func():
 			hide_actions()
 			action_chosen.emit(id))
+		b.modulate.a = 0.0
+		b.pivot_offset = Vector2(125, 29)
+		b.scale = Vector2(0.7, 0.7)
 		_menu.add_child(b)
+		var tw := create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(b, "modulate:a", 1.0, 0.16).set_delay(i * 0.045)
+		tw.tween_property(b, "scale", Vector2.ONE, 0.22).set_delay(i * 0.045)
+		i += 1
 	_menu.visible = true
 	_menu.reset_size()
 	await get_tree().process_frame
 	var vs := get_viewport_rect().size
 	_menu.position = Vector2(clampf(at.x - _menu.size.x / 2.0, 10, vs.x - _menu.size.x - 10),
-			clampf(at.y - _menu.size.y - 20, 10, vs.y - _menu.size.y - 10))
+			clampf(at.y - _menu.size.y - 26, 10, vs.y - _menu.size.y - 10))
+	for c in _menu.get_children():
+		if c is Button and not c.disabled:
+			c.grab_focus()
+			break
+
+
+## Lift a hand card while its actions are open.
+func focus_hand_card(inst) -> void:
+	_focused = inst
+	_layout_hand()
 
 
 func hide_actions() -> void:
 	_menu.visible = false
+	if _focused != null:
+		_focused = null
+		_layout_hand()
 
 
 func actions_visible() -> bool:

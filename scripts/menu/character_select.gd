@@ -2,7 +2,7 @@ class_name CharacterSelect
 extends Control
 ## Free Duel opponent select: a row of duelist cards, a big preview and deck choice.
 
-signal start(opponent: String, deck: String)
+signal start(opponent: String, deck: String, difficulty: int)
 signal closed
 
 var _selected := ""
@@ -15,6 +15,8 @@ var _deck_info: Label
 var _ace: TextureRect
 var _deck_pick: OptionButton
 var _deck_keys: Array = []
+var _difficulty := 1
+var _diff_btns: Array[Button] = []
 
 
 func _ready() -> void:
@@ -85,7 +87,7 @@ func _ready() -> void:
 	controls.anchor_bottom = 1.0
 	controls.offset_left = -620
 	controls.offset_right = -60
-	controls.offset_top = -300
+	controls.offset_top = -400
 	controls.offset_bottom = -60
 	add_child(controls)
 	var h := HBoxContainer.new()
@@ -110,6 +112,24 @@ func _ready() -> void:
 		var owner: Dictionary = Characters.get_char(key)
 		_deck_pick.add_item("%s  (%s)" % [CardData.DECKS[key]["name"], owner.get("short", key)])
 	v.add_child(_deck_pick)
+	v.add_child(UITheme.label("DIFFICULTY", 16, UITheme.ACCENT, UITheme.semi_font()))
+	var drow := HBoxContainer.new()
+	drow.add_theme_constant_override("separation", 8)
+	v.add_child(drow)
+	_difficulty = int(Router.duel_config.get("difficulty", 1))
+	for i in 3:
+		var db := Button.new()
+		db.text = ["Easy", "Normal", "Hard"][i]
+		db.toggle_mode = true
+		db.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		db.add_theme_stylebox_override("hover_pressed", UITheme.button_box(UITheme.ACCENT, UITheme.ACCENT))
+		db.pressed.connect(func():
+			_difficulty = i
+			for j in _diff_btns.size():
+				_diff_btns[j].set_pressed_no_signal(j == i))
+		db.set_pressed_no_signal(i == _difficulty)
+		drow.add_child(db)
+		_diff_btns.append(db)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	v.add_child(row)
@@ -121,10 +141,11 @@ func _ready() -> void:
 	go.text = "DUEL!"
 	go.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	go.add_theme_font_size_override("font_size", 30)
-	go.pressed.connect(func(): start.emit(_selected, _deck_keys[_deck_pick.selected]))
+	go.pressed.connect(func(): start.emit(_selected, _deck_keys[_deck_pick.selected], _difficulty))
 	row.add_child(go)
-	_select("kaiba")
-	_deck_pick.select(0)
+	var last_opp: String = Router.duel_config.get("opponent", "kaiba")
+	_select(last_opp)
+	_deck_pick.select(maxi(0, _deck_keys.find(Router.duel_config.get("player_deck", "yugi"))))
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.25)
 	await get_tree().process_frame
@@ -189,7 +210,8 @@ func _select(key: String) -> void:
 	_title.text = d["title"]
 	_era.text = str(d["era"]).to_upper()
 	var deck: Dictionary = CardData.DECKS[d["deck"]]
-	_deck_info.text = "%s's %s Deck\n30 cards  ·  %d Extra Deck" % [d["short"], deck["name"], CardData.extra_list(d["deck"]).size()]
+	_deck_info.text = "%s plays the %s Deck\n30 cards  ·  %d in the Extra Deck  ·  %s" % [d["short"], deck["name"],
+			CardData.extra_list(d["deck"]).size(), FieldThemes.resolve("auto", key)["name"]]
 	_ace.texture = Cards.get_face(d["ace"])
 	for k in _cards:
 		(_cards[k] as Button).modulate = Color.WHITE if k == key else Color(0.7, 0.72, 0.8)
