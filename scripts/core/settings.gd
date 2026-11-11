@@ -18,6 +18,7 @@ var sfx_volume := 0.8
 var anim_speed := 1.0
 var card_folder := ""
 var field_theme := "auto"
+var show_fps := false
 
 
 func _ready() -> void:
@@ -43,6 +44,7 @@ func load_settings() -> void:
 	anim_speed = cfg.get_value("game", "anim_speed", anim_speed)
 	card_folder = cfg.get_value("game", "card_folder", card_folder)
 	field_theme = cfg.get_value("game", "field_theme", field_theme)
+	show_fps = cfg.get_value("display", "show_fps", show_fps)
 
 
 func save_settings() -> void:
@@ -55,6 +57,7 @@ func save_settings() -> void:
 	cfg.set_value("game", "anim_speed", anim_speed)
 	cfg.set_value("game", "card_folder", card_folder)
 	cfg.set_value("game", "field_theme", field_theme)
+	cfg.set_value("display", "show_fps", show_fps)
 	cfg.save(PATH)
 
 

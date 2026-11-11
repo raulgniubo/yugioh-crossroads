@@ -15,6 +15,16 @@ const HARD := 2
 
 
 static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionary:
+	if level >= HARD:
+		return _lookahead_main(s, p)
+	# Normal plays like the old Hard heuristics.
+	if level == NORMAL:
+		level = HARD
+		return _heuristic_main(s, p, level)
+	return _heuristic_main(s, p, level)
+
+
+static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 	var me := s.players[p]
 	var opp := s.players[s.opponent(p)]
 	var opp_best := _strongest_atk(opp)
@@ -98,13 +108,7 @@ static func next_attack(s: DuelState, p: int, level := NORMAL) -> Dictionary:
 				if t.face_up and t.attack_pos and m.atk() > t.atk() + 300:
 					return {"do": "attack", "card": m, "target": t}
 		return {}
-	if level == HARD:
-		return _hard_attack(attackers, opp)
-	for m in attackers:
-		var best := _best_target(m, opp.monsters(), 1300)
-		if best != null:
-			return {"do": "attack", "card": m, "target": best}
-	return {}
+	return _hard_attack(attackers, opp)
 
 
 static func _best_target(m: DuelState.CardInst, targets: Array, facedown_min: int) -> DuelState.CardInst:
@@ -220,3 +224,129 @@ static func _enables_extra(s: DuelState, p: int, c: DuelState.CardInst) -> bool:
 	ps.field[zone] = null
 	c.face_up = was_up
 	return ok
+
+
+# ------------------------------------------------------------------ lookahead (Hard)
+
+## Try every legal main-phase action on a copy of the duel, play out a greedy
+## battle phase, score the result, and pick the best. Returns {} if doing
+## nothing (or attacking right away) scores best.
+static func _lookahead_main(s: DuelState, p: int) -> Dictionary:
+	var candidates := _candidates(s, p)
+	var best_score := _score_after(s, p, {})
+	var best := {}
+	for act in candidates:
+		var sc := _score_after(s, p, act)
+		if sc > best_score + 50.0:
+			best_score = sc
+			best = act
+	return best
+
+
+static func _candidates(s: DuelState, p: int) -> Array:
+	var out := []
+	var me := s.players[p]
+	for c in me.hand:
+		if not c.is_monster():
+			if s.can_activate(p, c):
+				if c.data.get("effect", "") == "fusion":
+					for o in s.fusion_targets(p, c):
+						out.append({"do": "activate", "card": c, "choice": o["card"]})
+				else:
+					out.append({"do": "activate", "card": c})
+			continue
+		if s.can_normal_summon(p, c):
+			var need := s.tributes_needed(c)
+			var tributes := _weakest(me, need)
+			out.append({"do": "summon", "card": c, "tributes": tributes})
+			out.append({"do": "set", "card": c, "tributes": tributes})
+	for x in me.extra:
+		if s.can_extra_summon(p, x):
+			out.append({"do": "extra", "card": x})
+	for m in me.monsters():
+		if s.can_flip_summon(p, m):
+			out.append({"do": "flip", "card": m})
+		if s.can_change_position(p, m):
+			out.append({"do": "position", "card": m})
+	return out
+
+
+static func _score_after(s: DuelState, p: int, act: Dictionary) -> float:
+	var sim := s.clone()
+	if not act.is_empty():
+		var ev := apply(sim, p, _map_action(sim, act))
+		if ev.is_empty():
+			return -1e9
+	# Play out a greedy battle if it's still Main Phase 1.
+	if sim.can_enter_battle() and not sim.is_over():
+		sim.enter_battle()
+		var guard := 0
+		while guard < 10 and not sim.is_over():
+			guard += 1
+			var a := next_attack(sim, p, HARD)
+			if a.is_empty():
+				break
+			sim.attack(p, a["card"], a["target"])
+	# Let the opponent swing back with what's already on their field.
+	if not sim.is_over():
+		var o := sim.opponent(p)
+		sim.current = o
+		sim.turn += 1
+		sim.phase = DuelState.Phase.BATTLE
+		var guard2 := 0
+		while guard2 < 10 and not sim.is_over():
+			guard2 += 1
+			var b := next_attack(sim, o, HARD)
+			if b.is_empty():
+				break
+			sim.attack(o, b["card"], b["target"])
+	return _evaluate(sim, p)
+
+
+static func _map_action(sim: DuelState, act: Dictionary) -> Dictionary:
+	var m := act.duplicate()
+	for k in ["card", "choice"]:
+		if m.get(k) != null:
+			m[k] = sim.find_uid(m[k].uid)
+	if m.has("tributes"):
+		var t := []
+		for c in m["tributes"]:
+			t.append(sim.find_uid(c.uid))
+		m["tributes"] = t
+	return m
+
+
+static func apply(s: DuelState, p: int, act: Dictionary) -> Array:
+	match act["do"]:
+		"activate":
+			return s.activate(p, act["card"], act.get("choice"))
+		"extra":
+			return s.extra_summon(p, act["card"])
+		"summon":
+			return s.normal_summon(p, act["card"], act["tributes"], false)
+		"set":
+			return s.normal_summon(p, act["card"], act["tributes"], true)
+		"flip":
+			return s.flip_summon(p, act["card"])
+		"position":
+			return s.change_position(p, act["card"])
+	return []
+
+
+## Board + life point evaluation from player p's point of view.
+static func _evaluate(s: DuelState, p: int) -> float:
+	if s.is_over():
+		return 1e8 if s.winner == p else -1e8
+	var o := s.opponent(p)
+	var score := float(s.players[p].lp) * 0.8 - float(s.players[o].lp) * 1.3
+	score += _board(s.players[p]) - _board(s.players[o])
+	score += 150.0 * (s.players[p].hand.size() - s.players[o].hand.size())
+	return score
+
+
+static func _board(ps: DuelState.PlayerState) -> float:
+	var v := 0.0
+	for m in ps.monsters():
+		v += float(maxi(m.atk(), m.def())) * 0.9 + 300.0
+		v += 200.0 * m.overlays.size()
+	return v

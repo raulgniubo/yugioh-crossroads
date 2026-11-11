@@ -25,12 +25,13 @@ API = "https://yugipedia.com/api.php"
 HEADERS = {"User-Agent": "private-ygo-project/1.0 (personal use)"}
 
 CHARACTERS = {
-    "yugi": "Yugi Muto",
-    "kaiba": "Seto Kaiba",
-    "joey": "Joey Wheeler",
-    "jaden": "Jaden Yuki",
-    "yusei": "Yusei Fudo",
-    "yuma": "Yuma Tsukumo",
+    "yugi": "Yugi Muto", "kaiba": "Seto Kaiba", "joey": "Joey Wheeler", "mai": "Mai Valentine",
+    "bakura": "Bakura Ryou", "marik": "Marik Ishtar", "pegasus": "Maximillion J. Pegasus",
+    "weevil": "Weevil Underwood", "rex": "Rex Raptor",
+    "jaden": "Jaden Yuki", "chazz": "Chazz Princeton", "zane": "Zane Truesdale", "alexis": "Alexis Rhodes",
+    "syrus": "Syrus Truesdale", "aster": "Aster Phoenix",
+    "yusei": "Yusei Fudo", "jack": "Jack Atlas", "crow": "Crow Hogan", "akiza": "Akiza Izinski", "kalin": "Kalin Kessler",
+    "yuma": "Yuma Tsukumo", "shark": "Reginald Kastle", "kite": "Kite Tenjo", "vector": "Vector",
 }
 
 USE_CURL = False

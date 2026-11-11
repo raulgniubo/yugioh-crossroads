@@ -28,7 +28,10 @@ const HOME := {
 static func resolve(choice: String, opponent: String) -> Dictionary:
 	var key := choice
 	if key == "auto" or not THEMES.has(key):
-		key = HOME.get(opponent, "crossroads")
+		key = HOME.get(opponent, "")
+		if key == "":
+			var era: String = Characters.DATA.get(opponent, {}).get("era", "")
+			key = {"Duel Monsters": "battlecity", "GX": "academy", "5D's": "satellite", "ZEXAL": "heartland"}.get(era, "crossroads")
 	var t: Dictionary = THEMES[key].duplicate()
 	t["key"] = key
 	return t

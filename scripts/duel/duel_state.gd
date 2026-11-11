@@ -75,6 +75,8 @@ var normal_summoned := false
 var winner := -1
 var win_reason := ""
 var _uid := 0
+## Extra cards in the opening hand (Hard mode gives the AI +1).
+var bonus_cards := [0, 0]
 var _rng := RandomNumberGenerator.new()
 
 
@@ -98,7 +100,7 @@ func setup(deck_a: Array[int], deck_b: Array[int], name_a: String, name_b: Strin
 	turn = 0
 	var events := [{"type": "start"}]
 	for i in 2:
-		for n in 5:
+		for n in 5 + bonus_cards[i]:
 			events.append_array(_draw(i))
 	return events
 
@@ -296,6 +298,8 @@ func can_activate(p: int, c: CardInst) -> bool:
 			return _lowest_face_up(opponent(p)) != null
 		"raigeki":
 			return not players[opponent(p)].monsters().is_empty()
+		"darkhole":
+			return not players[0].monsters().is_empty() or not players[1].monsters().is_empty()
 		"fusion":
 			return not fusion_targets(p, c).is_empty()
 		"reborn":
@@ -331,6 +335,12 @@ func activate(p: int, c: CardInst, choice: CardInst = null) -> Array:
 		"raigeki":
 			for m in players[opponent(p)].monsters():
 				events.append_array(_destroy(m))
+		"darkhole":
+			for q in 2:
+				for m in players[q].monsters():
+					events.append_array(_destroy(m))
+		"burn500":
+			events.append_array(_damage(opponent(p), 500))
 		"fusion":
 			events.append_array(_do_fusion(p, fusion_plan))
 		"reborn":
@@ -471,7 +481,10 @@ func fusion_targets(p: int, poly: CardInst = null) -> Array:
 		var used_hand := []
 		var used_field := []
 		var ok := true
-		for mid in f.data.get("materials", []):
+		var mats := CardData.fusion_materials(f.data)
+		if mats.is_empty():
+			continue
+		for mid in mats:
 			var found = null
 			for h in pool_hand:
 				if h.id == mid:
@@ -587,3 +600,69 @@ func extra_summon(p: int, c: CardInst, materials: Array = []) -> Array:
 	ps.extra.erase(c)
 	events.append_array(_special(p, c, c.frame()))
 	return events
+
+
+# ------------------------------------------------------------------ simulation helpers (AI)
+
+## Deep copy for lookahead. Cards keep their uid so actions can be mapped across.
+func clone() -> DuelState:
+	var s := DuelState.new()
+	var map := {}
+	s.players = []
+	for ps in players:
+		var np := PlayerState.new()
+		np.name = ps.name
+		np.lp = ps.lp
+		for c in ps.deck:
+			np.deck.append(_clone_card(c, map))
+		for c in ps.hand:
+			np.hand.append(_clone_card(c, map))
+		for c in ps.gy:
+			np.gy.append(_clone_card(c, map))
+		for c in ps.extra:
+			np.extra.append(_clone_card(c, map))
+		np.field = []
+		for c in ps.field:
+			np.field.append(_clone_card(c, map) if c != null else null)
+		s.players.append(np)
+	s.current = current
+	s.turn = turn
+	s.phase = phase
+	s.normal_summoned = normal_summoned
+	s.winner = winner
+	s.win_reason = win_reason
+	s._uid = _uid
+	s._rng.seed = _rng.seed
+	s._rng.state = _rng.state
+	return s
+
+
+func _clone_card(c: CardInst, map: Dictionary) -> CardInst:
+	if map.has(c.uid):
+		return map[c.uid]
+	var n := CardInst.new()
+	n.uid = c.uid
+	n.id = c.id
+	n.data = c.data
+	n.owner = c.owner
+	n.face_up = c.face_up
+	n.attack_pos = c.attack_pos
+	n.summoned_turn = c.summoned_turn
+	n.pos_changed_turn = c.pos_changed_turn
+	n.attacked_turn = c.attacked_turn
+	map[c.uid] = n
+	for o in c.overlays:
+		n.overlays.append(_clone_card(o, map))
+	return n
+
+
+func find_uid(uid: int) -> CardInst:
+	for ps in players:
+		for list in [ps.hand, ps.deck, ps.gy, ps.extra]:
+			for c in list:
+				if c.uid == uid:
+					return c
+		for c in ps.field:
+			if c != null and c.uid == uid:
+				return c
+	return null

@@ -458,6 +458,8 @@ func anim_summon(p: int, inst, zone: int, set_card: bool) -> void:
 	var to := Transform3D(table_basis(p, not set_card, not set_card), monster_zone_pos(p, zone) + Vector3(0, 0.02, 0))
 	var hover := Transform3D(to.basis, to.origin + Vector3(0, 1.1, 0))
 	await _move(c, hover, 0.38, 0.4)
+	if not _orbs.is_empty():
+		await _consume_orbs(to.origin)
 	await _move(c, to, 0.14, 0.0)
 	_burst(to.origin, UITheme.ACCENT if p == 0 else Color("a08cff"), 1.0 if set_card else 1.6)
 	shake(0.12 if set_card else 0.25)
@@ -727,18 +729,69 @@ func _flash(at: Vector3, color: Color) -> void:
 	tw.tween_callback(l.queue_free)
 
 
+var _orbs: Array[MeshInstance3D] = []
+
+
+## Tributes rise, glow gold, and turn into orbs of light that wait over the field
+## until the new monster lands (see anim_summon).
 func anim_tribute(inst) -> void:
 	var c := card_for(inst)
 	if c == null:
 		return
 	c.set_glow(true, UITheme.GOLD)
-	var tw := create_tween().set_parallel()
-	tw.tween_property(c, "position:y", 0.9, Settings.t(0.35))
-	tw.tween_method(c.set_alpha, 1.0, 0.0, Settings.t(0.35))
-	await tw.finished
+	var rise := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	rise.tween_property(c, "position:y", 0.9, Settings.t(0.3))
+	rise.tween_method(c.flash, 0.0, 3.0, Settings.t(0.3))
+	await rise.finished
+	var orb := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.16
+	sm.height = 0.32
+	orb.mesh = sm
+	var om := StandardMaterial3D.new()
+	om.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	om.albedo_color = Color("ffe28a")
+	om.emission_enabled = true
+	om.emission = UITheme.GOLD
+	om.emission_energy_multiplier = 6.0
+	orb.material_override = om
+	orb.position = c.position
+	add_child(orb)
+	_orbs.append(orb)
+	var fade := create_tween().set_parallel()
+	fade.tween_method(c.set_alpha, 1.0, 0.0, Settings.t(0.2))
+	fade.tween_property(c, "scale", Vector3(0.3, 0.3, 0.3), Settings.t(0.2))
+	var gather := Vector3(0, 1.8, 1.0) + Vector3((_orbs.size() - 1.5) * 0.5, 0, 0)
+	fade.tween_property(orb, "position", gather, Settings.t(0.35)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	await fade.finished
 	_cards.erase(inst.uid)
 	c.queue_free()
 	_add_to_gy(inst)
+
+
+func _consume_orbs(at: Vector3) -> void:
+	if _orbs.is_empty():
+		return
+	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	for orb in _orbs:
+		tw.tween_property(orb, "position", at + Vector3(0, 0.3, 0), Settings.t(0.3))
+		tw.tween_property(orb, "scale", Vector3(0.4, 0.4, 0.4), Settings.t(0.3))
+	await tw.finished
+	for orb in _orbs:
+		orb.queue_free()
+	_orbs.clear()
+	_flash(at + Vector3(0, 0.5, 0), UITheme.GOLD)
+	_ring_fx(at + Vector3(0, 0.1, 0), UITheme.GOLD, 1.0, 0.0, 1.2)
+
+
+## Battle Phase: the field tints and the camera leans in.
+var _battle_mode := false
+
+
+func set_battle_mode(on: bool) -> void:
+	_battle_mode = on
+	var tw := create_tween()
+	tw.tween_property(camera, "fov", 40.0 if on else 44.0, Settings.t(0.5)).set_trans(Tween.TRANS_CUBIC)
 
 
 func anim_flip(p: int, inst, zone: int) -> void:
@@ -855,13 +908,16 @@ func _add_to_gy(inst) -> void:
 	c.hovered.connect(func(card, inside): card_hovered.emit(card, inside))
 	add_child(c)
 	var pile: Array = _gy_cards[p]
-	var y := 0.02 + pile.size() * 0.004
+	var y := 0.02 + pile.size() * 0.015
 	var jitter := _rng.randf_range(-0.06, 0.06)
 	c.transform = Transform3D(table_basis(p, true, true) * Basis(Vector3.BACK, jitter), gy_pos(p) + Vector3(0, y, 0))
 	pile.append(c)
-	if pile.size() > 5:
+	if pile.size() > 3:
 		var old: Card3D = pile.pop_front()
 		old.queue_free()
+		for k in pile.size():
+			var gc: Card3D = pile[k]
+			gc.position.y = 0.02 + k * 0.015
 
 
 # ------------------------------------------------------------------ stats & aiming

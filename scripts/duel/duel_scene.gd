@@ -20,6 +20,9 @@ var _finished := false
 var _surrendered := false
 var _autoplay := "--autoplay" in OS.get_cmdline_user_args()
 var _opp_key := "kaiba"
+var _me_key := "player"
+var _pending_tributes := 0
+var _said_low := false
 var _ai_level := 1
 var _materials: Array = []
 
@@ -60,22 +63,26 @@ func _start() -> void:
 	var my_deck: String = cfg.get("player_deck", "yugi")
 	var opp_deck: String = opp.get("deck", "kaiba")
 	var opp_name: String = opp.get("name", "Rival")
-	var me_name := Profile.duelist_name
+	_me_key = cfg.get("player_char", "player")
+	var me_info := Portraits.info(_me_key)
+	var me_name: String = me_info.get("name", Profile.duelist_name)
 	hud.set_names(me_name, opp_name)
-	hud.set_portraits("player", _opp_key)
+	hud.set_portraits(_me_key, _opp_key)
 	var first := randi() % 2
-	var events := state.setup(CardData.deck_list(my_deck), CardData.deck_list(opp_deck), me_name, opp_name, first, -1,
+	var opp_list := CardData.legend_deck(opp_deck) if _ai_level >= 2 else CardData.deck_list(opp_deck)
+	state.bonus_cards = [0, 1 if _ai_level >= 2 else 0]
+	var events := state.setup(CardData.deck_list(my_deck), opp_list, me_name, opp_name, first, -1,
 			CardData.extra_list(my_deck), CardData.extra_list(opp_deck))
 	for p in 2:
-		board.set_deck_count(p, state.players[p].deck.size() + 5)
+		board.set_deck_count(p, state.players[p].deck.size() + 5 + state.bonus_cards[p])
 	_update_counts()
 	hud.set_phase_buttons("", false, false)
 	hud.set_extra_button(state.players[ME].extra.size(), 0, false)
 	if not _autoplay:
 		await hud.vs_intro(
-			{"key": "player", "name": me_name, "color": Profile.color(), "sub": "%s Deck" % CardData.DECKS[my_deck]["name"]},
+			{"key": _me_key, "name": me_name, "color": me_info.get("color", Profile.color()), "sub": "%s Deck" % CardData.deck_name(my_deck)},
 			{"key": _opp_key, "name": opp_name, "color": opp.get("color", UITheme.DANGER),
-				"sub": "%s  ·  %s Deck" % [opp.get("title", ""), CardData.DECKS[opp_deck]["name"]]})
+				"sub": "%s  ·  %s Deck" % [opp.get("title", ""), CardData.deck_name(opp_deck)]})
 	else:
 		await get_tree().create_timer(0.5).timeout
 	hud.say(AI, Characters.line(_opp_key, "intro"))
@@ -86,7 +93,7 @@ func _start() -> void:
 
 
 func _speaker(p: int) -> String:
-	return "player" if p == ME else _opp_key
+	return _me_key if p == ME else _opp_key
 
 
 func _loop() -> void:
@@ -99,6 +106,8 @@ func _loop() -> void:
 		else:
 			_turn_done = false
 			_refresh()
+			if "--demo-actions" in OS.get_cmdline_user_args():
+				_demo_actions()
 			await _turn_finished
 		if state.is_over():
 			break
@@ -116,6 +125,7 @@ func _finish() -> void:
 	hud.set_playable([])
 	await get_tree().create_timer(0.6).timeout
 	var won := state.winner == ME
+	print("DUEL OVER: winner %d (%s)" % [state.winner, state.win_reason])
 	if not _autoplay:
 		Profile.record_result(won)
 	Sfx.play("win" if won else "lose")
@@ -135,6 +145,9 @@ func _play(events: Array) -> void:
 	busy = false
 	_update_counts()
 	_refresh()
+	# A win can happen mid-turn (an attack or a burn spell). Release the turn wait.
+	if state.is_over() and not _finished:
+		_turn_finished.emit()
 
 
 func _play_event(ev: Dictionary) -> void:
@@ -148,7 +161,15 @@ func _play_event(ev: Dictionary) -> void:
 			await hud.banner("YOUR TURN" if mine else "%s'S TURN" % state.players[AI].name.to_upper(),
 					UITheme.ACCENT if mine else Color("a08cff"))
 		"phase":
-			hud.set_phase(ev["phase"], state.current == ME)
+			var ph: int = ev["phase"]
+			hud.set_phase(ph, state.current == ME)
+			board.set_battle_mode(ph == DuelState.Phase.BATTLE)
+			var names := {DuelState.Phase.BATTLE: "BATTLE PHASE", DuelState.Phase.MAIN2: "MAIN PHASE 2", DuelState.Phase.END: "END PHASE"}
+			if names.has(ph):
+				var col: Color = UITheme.DANGER if ph == DuelState.Phase.BATTLE else (UITheme.ACCENT if state.current == ME else Color("a08cff"))
+				await hud.phase_sweep(names[ph], col)
+				if ph == DuelState.Phase.END and state.current == AI and randf() < 0.3:
+					hud.say(AI, Characters.line(_opp_key, "taunt"))
 		"draw":
 			_update_counts()
 			Sfx.play("draw", -6.0)
@@ -165,8 +186,15 @@ func _play_event(ev: Dictionary) -> void:
 			if is_ace:
 				hud.say(p, Characters.line(_speaker(p), "ace"))
 				hud.react(p, "ace")
+			if ev["type"] == "summon" and _pending_tributes > 0:
+				hud.banner("TRIBUTE SUMMON", UITheme.GOLD)
+			_pending_tributes = 0
 			await board.anim_summon(p, ev["card"], ev["zone"], ev["type"] == "set")
+			if p == ME and ev["type"] == "summon" and ev["card"].atk() >= 2000 and randf() < 0.65:
+				hud.say(AI, Characters.line(_opp_key, "react"))
 		"tribute":
+			_pending_tributes += 1
+			Sfx.play("spell", -4.0, 0.8)
 			board.hide_stats_for(ev["card"])
 			await board.anim_tribute(ev["card"])
 		"flip", "reveal":
@@ -188,6 +216,8 @@ func _play_event(ev: Dictionary) -> void:
 			get_tree().create_timer(Settings.t(0.36)).timeout.connect(func(): Sfx.play("impact"))
 			await board.anim_attack(p, ev["card"], ev["target"])
 		"destroy":
+			if p == AI and randf() < 0.5:
+				hud.say(AI, Characters.line(_opp_key, "destroyed"))
 			board.hide_stats_for(ev["card"])
 			Sfx.play("destroy", -3.0)
 			await board.anim_destroy(ev["card"], ev.get("overlays", []))
@@ -218,7 +248,10 @@ func _play_event(ev: Dictionary) -> void:
 				board.shake(0.5)
 				Sfx.play("damage")
 				hud.react(p, "hurt")
-				if ev["delta"] <= -1000:
+				if p == AI and ev["lp"] <= 2000 and not _said_low:
+					_said_low = true
+					hud.say(AI, Characters.line(_opp_key, "low"))
+				elif ev["delta"] <= -1000:
 					hud.say(p, Characters.line(_speaker(p), "hurt"))
 			else:
 				Sfx.play("heal")
@@ -299,7 +332,7 @@ func _on_hand_card_pressed(inst, at: Vector2) -> void:
 	_menu_card = inst
 	hud.inspect(inst)
 	hud.focus_hand_card(inst)
-	at.y -= 120
+	at = hud.hand_card_anchor(inst)
 	if inst.is_monster():
 		var can := state.can_normal_summon(ME, inst)
 		var need := state.tributes_needed(inst)
@@ -411,7 +444,7 @@ func _on_board_card_clicked(card: Card3D) -> void:
 	if opts.is_empty():
 		return
 	_menu_card = inst
-	hud.show_actions(board.screen_pos(inst) - Vector2(0, 40), opts)
+	hud.show_actions(board.screen_pos(inst) + Vector2(60, 0), opts)
 
 
 func _on_extra_pressed() -> void:
@@ -597,3 +630,13 @@ func _run_ai(act: Dictionary, who: int) -> Array:
 		"position":
 			return state.change_position(who, act["card"])
 	return []
+
+
+
+func _demo_actions() -> void:
+	await get_tree().create_timer(0.6).timeout
+	for c in state.players[ME].hand:
+		if c.is_monster():
+			hud.inspect(c)
+			_on_hand_card_pressed(c, Vector2.ZERO)
+			return

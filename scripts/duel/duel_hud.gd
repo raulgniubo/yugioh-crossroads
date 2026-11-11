@@ -67,6 +67,7 @@ func _ready() -> void:
 	_float_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_float_root)
 	_menu = VBoxContainer.new()
+	_menu.z_index = 50
 	_menu.visible = false
 	_menu.add_theme_constant_override("separation", 6)
 	add_child(_menu)
@@ -250,7 +251,7 @@ func set_lp(p: int, lp: int, delta: int) -> void:
 	var tw := create_tween()
 	tw.tween_method(func(v: float): lbl.text = str(int(round(v))), from, float(lp), Settings.t(0.7))
 	var bar := _lp_bars[p]
-	create_tween().tween_property(bar, "size:x", 340.0 * clampf(lp / 8000.0, 0.0, 1.0), Settings.t(0.7))
+	create_tween().tween_property(bar, "size:x", 250.0 * clampf(lp / 8000.0, 0.0, 1.0), Settings.t(0.7))
 	var col := UITheme.DANGER if delta < 0 else Color("4fd18b")
 	lbl.add_theme_color_override("font_color", col)
 	create_tween().tween_method(func(c: Color): lbl.add_theme_color_override("font_color", c), col, Color.WHITE, Settings.t(1.0))
@@ -339,7 +340,9 @@ func set_phase_buttons(battle_text: String, battle_enabled: bool, end_enabled: b
 
 
 func set_extra_button(count: int, ready: int, enabled: bool) -> void:
-	_btn_extra.text = "Extra Deck  %d" % count + ("   ·   %d ready" % ready if ready > 0 else "")
+	_btn_extra.visible = count > 0
+	_btn_extra.tooltip_text = "Your Fusion, Synchro and Xyz monsters wait in the Extra Deck."
+	_btn_extra.text = ("✸ SUMMON READY  (%d)" % ready) if ready > 0 else "Extra Deck  %d" % count
 	_btn_extra.disabled = not enabled or count == 0
 	_btn_extra.add_theme_color_override("font_color", Color("ffd23a") if ready > 0 else UITheme.TEXT_DIM)
 
@@ -366,6 +369,10 @@ func show_extra(options: Array) -> void:
 	v.add_theme_constant_override("separation", 14)
 	panel.add_child(v)
 	v.add_child(UITheme.label("EXTRA DECK", 42, Color("ffd23a"), UITheme.title_font()))
+	var ex := UITheme.label("Fusion, Synchro and Xyz monsters wait here. Synchro needs a Tuner plus monsters whose Levels add up.\nXyz needs 2 monsters with the same Level. Fusion uses Polymerization from your hand.", 17, UITheme.TEXT_DIM)
+	ex.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ex.custom_minimum_size = Vector2(700, 0)
+	v.add_child(ex)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
 	v.add_child(row)
@@ -403,6 +410,47 @@ func hide_extra() -> void:
 	if _extra_panel:
 		_extra_panel.queue_free()
 		_extra_panel = null
+
+
+## A sweeping band across the screen for phase changes.
+func phase_sweep(text: String, color: Color) -> void:
+	var vs := get_viewport_rect().size
+	var band := ColorRect.new()
+	band.color = Color(color, 0.0)
+	band.size = Vector2(vs.x, 120)
+	band.position = Vector2(0, vs.y * 0.42 - 60)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(band)
+	var line_top := ColorRect.new()
+	line_top.color = color
+	line_top.size = Vector2(0, 3)
+	band.add_child(line_top)
+	var line_bot := ColorRect.new()
+	line_bot.color = color
+	line_bot.size = Vector2(0, 3)
+	line_bot.position = Vector2(vs.x, 117)
+	band.add_child(line_bot)
+	var l := UITheme.label(text, 72, Color.WHITE, UITheme.title_font())
+	l.add_theme_color_override("font_shadow_color", Color(color, 0.9))
+	l.add_theme_constant_override("shadow_outline_size", 22)
+	l.size = Vector2(vs.x, 120)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.position.x = vs.x * 0.25
+	l.modulate.a = 0.0
+	band.add_child(l)
+	Sfx.play("turn", -2.0, 1.25)
+	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	tw.tween_property(band, "color:a", 0.22, Settings.t(0.15))
+	tw.tween_property(line_top, "size:x", vs.x, Settings.t(0.35))
+	tw.tween_property(line_bot, "size:x", vs.x, Settings.t(0.35))
+	tw.tween_property(line_bot, "position:x", 0.0, Settings.t(0.35))
+	tw.tween_property(l, "position:x", 0.0, Settings.t(0.35))
+	tw.tween_property(l, "modulate:a", 1.0, Settings.t(0.2))
+	tw.chain().tween_interval(Settings.t(0.35))
+	tw.chain().tween_property(band, "modulate:a", 0.0, Settings.t(0.25))
+	await tw.finished
+	band.queue_free()
 
 
 ## Full-screen VS intro.
@@ -495,56 +543,117 @@ func vs_intro(left: Dictionary, right: Dictionary) -> void:
 
 # ------------------------------------------------------------------ inspector
 
+var _inspect_chips: HBoxContainer
+var _inspect_atk: Label
+var _inspect_def: Label
+var _inspect_stat_row: HBoxContainer
+
+
 func _build_inspector() -> void:
 	_inspect_panel = PanelContainer.new()
-	_inspect_panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.04, 0.07, 0.12, 0.85), 18))
+	_inspect_panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.05, 0.1, 0.92), 20, Color(UITheme.ACCENT, 0.25)))
 	_inspect_panel.anchor_top = 0.5
 	_inspect_panel.anchor_bottom = 0.5
-	_inspect_panel.offset_left = 36
-	_inspect_panel.offset_right = 356
-	_inspect_panel.offset_top = -300
-	_inspect_panel.offset_bottom = 230
+	_inspect_panel.offset_left = 30
+	_inspect_panel.offset_right = 390
+	_inspect_panel.offset_top = -390
+	_inspect_panel.offset_bottom = 300
 	_inspect_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_inspect_panel)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	_inspect_panel.add_child(v)
 	_inspect_tex = TextureRect.new()
-	_inspect_tex.custom_minimum_size = Vector2(284, 300)
+	_inspect_tex.custom_minimum_size = Vector2(320, 330)
 	_inspect_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_inspect_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	v.add_child(_inspect_tex)
-	_inspect_name = UITheme.label("", 26, Color.WHITE, UITheme.title_font())
+	_inspect_name = UITheme.label("", 28, Color.WHITE, UITheme.title_font())
 	_inspect_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_inspect_name.custom_minimum_size = Vector2(320, 0)
 	v.add_child(_inspect_name)
-	_inspect_stats = UITheme.label("", 18, UITheme.ACCENT, UITheme.semi_font())
-	v.add_child(_inspect_stats)
+	_inspect_chips = HBoxContainer.new()
+	_inspect_chips.add_theme_constant_override("separation", 6)
+	v.add_child(_inspect_chips)
+	_inspect_stat_row = HBoxContainer.new()
+	_inspect_stat_row.add_theme_constant_override("separation", 10)
+	v.add_child(_inspect_stat_row)
+	_inspect_atk = _stat_box("ATK", Color("ff6b6b"))
+	_inspect_def = _stat_box("DEF", Color("6bc8ff"))
+	_inspect_stats = UITheme.label("", 1, Color.TRANSPARENT)
 	_inspect_text = UITheme.label("", 15, UITheme.TEXT_DIM)
 	_inspect_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_inspect_text.custom_minimum_size = Vector2(284, 0)
+	_inspect_text.custom_minimum_size = Vector2(320, 0)
+	_inspect_text.max_lines_visible = 6
 	v.add_child(_inspect_text)
 	_inspect_panel.modulate.a = 0.0
+
+
+func _stat_box(title: String, col: Color) -> Label:
+	var box := PanelContainer.new()
+	var sb := UITheme.button_box(Color(col, 0.12), Color(col, 0.55), 12)
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 4
+	box.add_theme_stylebox_override("panel", sb)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var h := HBoxContainer.new()
+	box.add_child(h)
+	var t := UITheme.label(title, 18, col, UITheme.semi_font())
+	t.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	h.add_child(t)
+	var n := UITheme.label("0", 40, Color.WHITE, UITheme.title_font())
+	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	n.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(n)
+	_inspect_stat_row.add_child(box)
+	return n
+
+
+func _chip(text: String, col: Color) -> void:
+	var l := UITheme.label(text, 15, col.lightened(0.3), UITheme.semi_font())
+	var sb := UITheme.button_box(Color(col, 0.15), Color(col, 0.5), 10)
+	sb.content_margin_left = 10
+	sb.content_margin_right = 10
+	sb.content_margin_top = 3
+	sb.content_margin_bottom = 3
+	l.add_theme_stylebox_override("normal", sb)
+	_inspect_chips.add_child(l)
 
 
 func inspect(inst, hidden := false) -> void:
 	if inst == null:
 		return
-	_inspect_panel.modulate.a = 1.0
+	if _inspect_panel.modulate.a < 0.99:
+		create_tween().tween_property(_inspect_panel, "modulate:a", 1.0, 0.15)
+	for c in _inspect_chips.get_children():
+		c.queue_free()
 	if hidden:
 		_inspect_tex.texture = Cards.get_back()
 		_inspect_name.text = "Face-down card"
-		_inspect_stats.text = ""
-		_inspect_text.text = ""
+		_inspect_stat_row.visible = false
+		_inspect_text.text = "You don't know what this is yet."
 		return
 	var d: Dictionary = inst.data
 	_inspect_tex.texture = Cards.get_face(inst.id)
 	_inspect_name.text = d.get("name", "")
 	if d.get("kind", "monster") == "monster":
-		_inspect_stats.text = "LV %d  ·  %s  ·  %s\nATK %d   DEF %d" % [d.get("level", 0), d.get("attribute", ""), d.get("race", ""), d.get("atk", 0), d.get("def", 0)]
-		_inspect_text.text = str(d.get("desc", "Normal Monster"))
+		var frame: String = d.get("frame", "normal")
+		var lv_word := "Rank" if frame == "xyz" else "Level"
+		_chip("%s %d" % [lv_word, int(d.get("level", 0))], Color("ffd23a"))
+		_chip(str(d.get("attribute", "")), Cards.ATTRIBUTE_COLORS.get(d.get("attribute", ""), [Color.GRAY, Color.GRAY])[1])
+		_chip(str(d.get("race", "")), UITheme.ACCENT)
+		_chip(frame.capitalize() + (" Tuner" if d.get("tuner", false) else ""), Color("b0b8c8"))
+		_inspect_stat_row.visible = true
+		_inspect_atk.text = str(d.get("atk", 0))
+		_inspect_def.text = str(d.get("def", 0))
+		var txt := str(d.get("desc", ""))
+		if frame == "effect" or (frame in ["synchro", "xyz", "fusion"] and txt != ""):
+			txt += "\n(Effects aren't active yet. It plays with its stats.)"
+		_inspect_text.text = txt if txt != "" else "Normal Monster"
 	else:
-		_inspect_stats.text = "Spell Card"
-		_inspect_text.text = str(d.get("text", ""))
+		_chip("Spell", Color("2de2a0"))
+		_inspect_stat_row.visible = false
+		_inspect_text.text = str(d.get("text", d.get("desc", "")))
 
 
 # ------------------------------------------------------------------ hand
@@ -692,9 +801,11 @@ const ACTION_ICONS := {
 var _focused = null
 
 
-## options: [[action_id, label, enabled], ...]  Animated pill buttons above `at`.
+## options: [[action_id, label, enabled], ...]  Pill buttons that pop out beside `at`.
+## `at` is the right edge / vertical middle of the card that was tapped.
 func show_actions(at: Vector2, options: Array) -> void:
 	for c in _menu.get_children():
+		_menu.remove_child(c)
 		c.queue_free()
 	_menu.add_theme_constant_override("separation", 8)
 	var i := 0
@@ -704,43 +815,55 @@ func show_actions(at: Vector2, options: Array) -> void:
 		var b := Button.new()
 		b.text = "%s   %s" % [ACTION_ICONS.get(key, "•"), o[1]]
 		b.disabled = not o[2]
-		b.custom_minimum_size = Vector2(250, 58)
+		b.custom_minimum_size = Vector2(250, 56)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.add_theme_font_size_override("font_size", 26)
+		b.add_theme_font_size_override("font_size", 25)
 		var col: Color = UITheme.DANGER if key in ["attack", "direct"] else (Color("ffd23a") if key == "fuse" else UITheme.ACCENT)
-		var normal := UITheme.button_box(Color(0.04, 0.07, 0.13, 0.94), Color(col, 0.55), 29)
-		normal.shadow_color = Color(0, 0, 0, 0.5)
-		normal.shadow_size = 10
-		var hover := UITheme.button_box(Color(col, 0.28), col, 29)
-		hover.border_width_left = 3
-		hover.border_width_right = 3
-		hover.border_width_top = 3
-		hover.border_width_bottom = 3
+		var normal := UITheme.button_box(Color(0.03, 0.06, 0.11, 0.97), Color(col, 0.7), 28)
+		normal.shadow_color = Color(0, 0, 0, 0.55)
+		normal.shadow_size = 12
+		var hover := UITheme.button_box(Color(col, 0.3), col, 28)
+		hover.set_border_width_all(3)
 		b.add_theme_stylebox_override("normal", normal)
 		b.add_theme_stylebox_override("hover", hover)
 		b.add_theme_stylebox_override("focus", hover)
-		b.add_theme_stylebox_override("pressed", UITheme.button_box(col, col, 29))
+		b.add_theme_stylebox_override("pressed", UITheme.button_box(col, col, 28))
 		b.pressed.connect(func():
 			hide_actions()
 			action_chosen.emit(id))
-		b.modulate.a = 0.0
-		b.pivot_offset = Vector2(125, 29)
-		b.scale = Vector2(0.7, 0.7)
 		_menu.add_child(b)
-		var tw := create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.tween_property(b, "modulate:a", 1.0, 0.16).set_delay(i * 0.045)
-		tw.tween_property(b, "scale", Vector2.ONE, 0.22).set_delay(i * 0.045)
+		b.modulate.a = 0.0
+		b.position.x = -30
+		var tw := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(b, "modulate:a", 1.0, 0.1).set_delay(i * 0.03)
 		i += 1
 	_menu.visible = true
 	_menu.reset_size()
-	await get_tree().process_frame
+	var sz := _menu.get_combined_minimum_size()
 	var vs := get_viewport_rect().size
-	_menu.position = Vector2(clampf(at.x - _menu.size.x / 2.0, 10, vs.x - _menu.size.x - 10),
-			clampf(at.y - _menu.size.y - 26, 10, vs.y - _menu.size.y - 10))
+	var x := at.x + 24
+	if x + sz.x > vs.x - 10:
+		x = at.x - sz.x - 200
+	_menu.position = Vector2(clampf(x, 10, vs.x - sz.x - 10), clampf(at.y - sz.y / 2.0, 10, vs.y - sz.y - 10))
+	_menu.modulate.a = 1.0
+	var slide := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	var target := _menu.position
+	_menu.position.x -= 24
+	slide.tween_property(_menu, "position", target, 0.14)
+	Sfx.play("hover", -8.0, 1.3)
 	for c in _menu.get_children():
 		if c is Button and not c.disabled:
 			c.grab_focus()
 			break
+
+
+func hand_card_anchor(inst) -> Vector2:
+	for e in _hand:
+		if e["inst"] == inst:
+			var n: Control = e["node"]
+			var vs := get_viewport_rect().size
+			return Vector2(vs.x / 2.0 + n.position.x + HAND_CARD.x * 1.12, vs.y - HAND_CARD.y * 1.18 - 40 + 70)
+	return get_viewport_rect().size / 2.0
 
 
 ## Lift a hand card while its actions are open.

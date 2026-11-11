@@ -80,7 +80,20 @@ const CARDS := {
 	24094653: {"name": "Polymerization", "frame": "spell", "effect": "fusion", "text": "Fusion Summon 1 Fusion Monster from your Extra Deck, using monsters from your hand or field as Fusion Material."},
 	83764718: {"name": "Monster Reborn", "frame": "spell", "effect": "reborn", "text": "Target 1 monster in either GY; Special Summon it."},
 	12580477: {"name": "Raigeki", "frame": "spell", "effect": "raigeki", "text": "Destroy all monsters your opponent controls."},
+	53129443: {"name": "Dark Hole", "frame": "spell", "effect": "darkhole", "text": "Destroy all monsters on the field."},
+	46130346: {"name": "Hinotama", "frame": "spell", "effect": "burn500", "text": "Inflict 500 damage to your opponent."},
 }
+
+## Spells the rules engine can play, by name (used for decks built from the card database).
+const SPELL_EFFECTS := {
+	"Pot of Greed": "draw2", "Dian Keto the Cure Master": "heal1000", "Fissure": "fissure",
+	"Polymerization": "fusion", "Monster Reborn": "reborn", "Raigeki": "raigeki",
+	"Dark Hole": "darkhole", "Hinotama": "burn500",
+}
+
+## Filled from the downloaded card database (tools/fetch_cards.py), if present.
+static var EXT := {}
+static var NAME_TO_ID := {}
 
 const DECKS := {
 	"yugi": {
@@ -128,7 +141,74 @@ const DECKS := {
 }
 
 
+## Decks for the wider cast, by card name. They need the card database to resolve.
+## Effect monsters play as their stats for now.
+const NAMED_DECKS := {
+	"mai": {"name": "Harpie", "cards": {"Harpie Lady": 3, "Harpie Lady 1": 2, "Harpie Lady 2": 2, "Harpie Lady 3": 2, "Cyber Harpie Lady": 2,
+		"Harpie's Pet Dragon": 2, "Harpie Girl": 2, "Harpie Queen": 2, "Birdface": 2, "Harpie Channeler": 2,
+		"Pot of Greed": 1, "Dian Keto the Cure Master": 1, "Fissure": 2, "Monster Reborn": 1, "Hinotama": 2}},
+	"bakura": {"name": "Dark Fiends", "cards": {"Dark Ruler Ha Des": 2, "Headless Knight": 3, "The Earl of Demise": 2, "Pumpking the King of Ghosts": 2,
+		"Summoned Skull": 2, "Ryu-Kishin": 3, "Sangan": 2, "Dark Necrofear": 1, "Gernia": 2, "Lord of the Lamp": 2,
+		"Pot of Greed": 1, "Dark Hole": 1, "Monster Reborn": 1, "Fissure": 2}},
+	"marik": {"name": "Rare Hunter", "cards": {"Gil Garth": 2, "Makyura the Destructor": 2, "Revival Jam": 2, "Drillago": 2, "Vampire Lord": 2,
+		"Viser Des": 2, "Mystic Lamp": 2, "Stone Statue of the Aztecs": 2, "Bowganian": 2, "Granadora": 2,
+		"Pot of Greed": 1, "Dark Hole": 1, "Monster Reborn": 1, "Raigeki": 1, "Hinotama": 2}},
+	"pegasus": {"name": "Toon", "cards": {"Toon Summoned Skull": 2, "Toon Dark Magician Girl": 2, "Toon Gemini Elf": 2, "Toon Mermaid": 2,
+		"Toon Alligator": 3, "Toon Masked Sorcerer": 2, "Toon Goblin Attack Force": 2, "Bickuribox": 2, "Dragon Piper": 2, "Toon Cannon Soldier": 2,
+		"Pot of Greed": 1, "Monster Reborn": 1, "Fissure": 2, "Raigeki": 1}},
+	"weevil": {"name": "Insect", "cards": {"Insect Queen": 2, "Basic Insect": 3, "Hercules Beetle": 2, "Killer Needle": 3, "Petit Moth": 2,
+		"Leghul": 2, "Pinch Hopper": 2, "Insect Knight": 3, "Neo Bug": 2, "Gokipon": 2,
+		"Pot of Greed": 1, "Fissure": 2, "Monster Reborn": 1, "Dian Keto the Cure Master": 2}},
+	"rex": {"name": "Dinosaur", "cards": {"Black Tyranno": 2, "Two-Headed King Rex": 3, "Sword Arm of Dragon": 2, "Megazowler": 3, "Uraby": 3,
+		"Crawling Dragon #2": 2, "Gilasaurus": 2, "Mad Sword Beast": 2, "Sabersaurus": 3,
+		"Pot of Greed": 1, "Fissure": 2, "Monster Reborn": 1, "Hinotama": 2, "Dian Keto the Cure Master": 1}},
+	"chazz": {"name": "Armed Dragon", "cards": {"Armed Dragon LV3": 3, "Armed Dragon LV5": 2, "Armed Dragon LV7": 2, "X-Head Cannon": 3, "Y-Dragon Head": 3,
+		"Z-Metal Tank": 3, "Ojama Yellow": 2, "Ojama Green": 1, "Ojama Black": 1,
+		"Polymerization": 3, "Pot of Greed": 1, "Monster Reborn": 1, "Fissure": 2}, "extra": {"XYZ-Dragon Cannon": 2}},
+	"zane": {"name": "Cyber Dragon", "cards": {"Cyber Dragon": 3, "Proto-Cyber Dragon": 3, "Cyber Dragon Zwei": 2, "Cyber Phoenix": 2, "Cyber Larva": 2,
+		"Cyber Valley": 2, "Cyber Kirin": 2, "Cyber Eltanin": 1, "Cyber Barrier Dragon": 2,
+		"Polymerization": 4, "Pot of Greed": 1, "Monster Reborn": 1, "Raigeki": 1, "Fissure": 2}, "extra": {"Cyber Twin Dragon": 2, "Cyber End Dragon": 1}},
+	"alexis": {"name": "Cyber Girl", "cards": {"Cyber Tutu": 3, "Etoile Cyber": 3, "Blade Skater": 3, "Cyber Prima": 2, "Cyber Gymnast": 2,
+		"Cyber Petit Angel": 2, "Cyber Angel Benten": 2, "Cyber Angel Idaten": 1, "Cyber Angel Dakini": 1,
+		"Polymerization": 3, "Pot of Greed": 1, "Dian Keto the Cure Master": 2, "Fissure": 2, "Monster Reborn": 1}, "extra": {"Cyber Blader": 2}},
+	"syrus": {"name": "Roid", "cards": {"Gyroid": 3, "Steamroid": 3, "Drillroid": 2, "Submarineroid": 2, "Truckroid": 2,
+		"Expressroid": 2, "Patroid": 2, "Cycroid": 2, "Jetroid": 2, "Rescueroid": 1,
+		"Polymerization": 4, "Pot of Greed": 1, "Dian Keto the Cure Master": 2, "Fissure": 1, "Monster Reborn": 1}, "extra": {"Steam Gyroid": 2, "Super Vehicroid Jumbo Drill": 1}},
+	"aster": {"name": "Destiny HERO", "cards": {"Destiny HERO - Diamond Dude": 3, "Destiny HERO - Doom Lord": 2, "Destiny HERO - Dasher": 2,
+		"Destiny HERO - Defender": 2, "Destiny HERO - Captain Tenacious": 2, "Destiny HERO - Malicious": 3, "Destiny HERO - Doublecross": 2,
+		"Destiny HERO - Dunker": 2, "Destiny HERO - Disk Commander": 2,
+		"Pot of Greed": 1, "Dark Hole": 1, "Monster Reborn": 1, "Fissure": 2, "Raigeki": 1}},
+	"jack": {"name": "Resonator", "cards": {"Dark Resonator": 3, "Barrier Resonator": 2, "Mad Archfiend": 3, "Twin-Sword Marauder": 3,
+		"Big Piece Golem": 2, "Medium Piece Golem": 2, "Vice Dragon": 2, "Snipe Hunter": 2, "Battle Fader": 1, "Sinister Sprocket": 2,
+		"Pot of Greed": 1, "Monster Reborn": 1, "Fissure": 2, "Raigeki": 1}, "extra": {"Red Dragon Archfiend": 2, "Exploder Dragonwing": 1}},
+	"crow": {"name": "Blackwing", "cards": {"Blackwing - Bora the Spear": 3, "Blackwing - Gale the Whirlwind": 3, "Blackwing - Sirocco the Dawn": 2,
+		"Blackwing - Blizzard the Far North": 3, "Blackwing - Kalut the Moon Shadow": 2, "Blackwing - Shura the Blue Flame": 2,
+		"Blackwing - Elphin the Raven": 2, "Blackwing - Fane the Steel Chain": 2, "Blackwing - Vayu the Emblem of Honor": 2,
+		"Pot of Greed": 1, "Monster Reborn": 1, "Fissure": 2, "Dian Keto the Cure Master": 1}, "extra": {"Blackwing Armor Master": 2, "Blackwing Armed Wing": 1}},
+	"akiza": {"name": "Rose", "cards": {"Twilight Rose Knight": 3, "Lord Poison": 2, "Copy Plant": 2, "Revival Rose": 2, "Dark Verger": 3,
+		"Botanical Lion": 2, "Evil Thorn": 2, "Phoenixian Seed": 2, "Rose Tentacles": 2, "Lonefire Blossom": 2,
+		"Pot of Greed": 1, "Monster Reborn": 1, "Fissure": 2, "Dark Hole": 1}, "extra": {"Black Rose Dragon": 2, "Splendid Rose": 1}},
+	"kalin": {"name": "Infernity", "cards": {"Infernity Necromancer": 3, "Infernity Archfiend": 3, "Infernity Beast": 3, "Infernity Avenger": 3,
+		"Infernity Mirage": 2, "Infernity Dwarf": 2, "Infernity Guardian": 2, "Infernity Knight": 2, "Stygian Street Patrol": 2,
+		"Pot of Greed": 1, "Monster Reborn": 1, "Dark Hole": 1, "Fissure": 2, "Hinotama": 3}, "extra": {"Infernity Doom Dragon": 1}},
+	"shark": {"name": "Shark", "cards": {"Big Jaws": 3, "Shark Stickers": 3, "Hammer Shark": 2, "Spear Shark": 2, "Double Shark": 2,
+		"Eagle Shark": 2, "Cat Shark": 2, "Skull Kraken": 2, "Saber Shark": 2, "Sharkraken": 2,
+		"Pot of Greed": 1, "Monster Reborn": 1, "Fissure": 2, "Dian Keto the Cure Master": 1}, "extra": {"Number 17: Leviathan Dragon": 2, "Black Ray Lancer": 1, "Number 32: Shark Drake": 1}},
+	"kite": {"name": "Photon", "cards": {"Galaxy-Eyes Photon Dragon": 3, "Photon Thrasher": 3, "Photon Crusher": 3, "Photon Lizard": 2,
+		"Photon Sabre Tiger": 3, "Galaxy Knight": 2, "Photon Cerberus": 2, "Galaxy Soldier": 2, "Photon Leo": 2,
+		"Pot of Greed": 1, "Monster Reborn": 1, "Raigeki": 1, "Fissure": 2}, "extra": {"Number 62: Galaxy-Eyes Prime Photon Dragon": 1, "Starliege Paladynamo": 2}},
+	"vector": {"name": "Umbral Horror", "cards": {"Umbral Horror Ghoul": 3, "Umbral Horror Unform": 3, "Umbral Horror Will o' the Wisp": 3,
+		"Umbral Horror Ghost": 3, "Archfiend Soldier": 3, "Summoned Skull": 2, "Ryu-Kishin Powered": 3, "Vorse Raider": 2,
+		"Pot of Greed": 1, "Dark Hole": 1, "Monster Reborn": 1, "Fissure": 2, "Hinotama": 3}, "extra": {"Number 43: Manipulator of Souls": 1, "Number 65: Djinn Buster": 2}},
+}
+
+
 static func get_card(id: int) -> Dictionary:
+	if not CARDS.has(id) and EXT.has(id):
+		var e: Dictionary = EXT[id].duplicate()
+		e["id"] = id
+		e["kind"] = "spell" if e.get("frame", "") == "spell" else "monster"
+		return e
 	var d: Dictionary = CARDS.get(id, {"name": "Unknown", "frame": "normal"}).duplicate()
 	d["id"] = id
 	d["kind"] = "spell" if d.get("frame", "") == "spell" else "monster"
@@ -136,15 +216,147 @@ static func get_card(id: int) -> Dictionary:
 
 
 static func is_extra(id: int) -> bool:
-	return CARDS.get(id, {}).get("frame", "") in ["fusion", "synchro", "xyz"]
+	return get_card(id).get("frame", "") in ["fusion", "synchro", "xyz"]
+
+
+static func has_deck(deck_key: String) -> bool:
+	if DECKS.has(deck_key):
+		return true
+	return NAMED_DECKS.has(deck_key) and deck_list(deck_key).size() >= 20
+
+
+static func deck_name(deck_key: String) -> String:
+	if DECKS.has(deck_key):
+		return DECKS[deck_key]["name"]
+	return NAMED_DECKS.get(deck_key, {}).get("name", "?")
 
 
 static func deck_list(deck_key: String) -> Array[int]:
-	return _expand(DECKS[deck_key]["cards"])
+	if DECKS.has(deck_key):
+		return _expand(DECKS[deck_key]["cards"])
+	return _fill_to_30(_resolve(NAMED_DECKS.get(deck_key, {}).get("cards", {}), false))
 
 
 static func extra_list(deck_key: String) -> Array[int]:
-	return _expand(DECKS[deck_key].get("extra", {}))
+	if DECKS.has(deck_key):
+		return _expand(DECKS[deck_key].get("extra", {}))
+	return _expand(_resolve(NAMED_DECKS.get(deck_key, {}).get("extra", {}), true))
+
+
+## Card names -> ids via the database. Unknown or unsupported cards are dropped.
+static func _resolve(names: Dictionary, extra: bool) -> Dictionary:
+	var out := {}
+	for n in names:
+		if names[n] <= 0:
+			continue
+		var id: int = NAME_TO_ID.get(str(n).to_lower(), 0)
+		if id == 0:
+			continue
+		var d := get_card(id)
+		if d["kind"] == "spell" and not d.has("effect"):
+			continue
+		if (d.get("frame", "") in ["fusion", "synchro", "xyz"]) != extra:
+			continue
+		if d.get("frame", "") in ["ritual", "link", "trap"]:
+			continue
+		out[id] = names[n]
+	return out
+
+
+## Keep the deck at 30 by adding copies of its best monsters (max 3 each).
+static func _fill_to_30(counts: Dictionary) -> Array[int]:
+	var ids := counts.keys()
+	ids.sort_custom(func(a, b): return get_card(a).get("atk", 0) > get_card(b).get("atk", 0))
+	var total := 0
+	for id in counts:
+		total += counts[id]
+	for id in ids:
+		while total < 30 and counts[id] < 3 and get_card(id)["kind"] == "monster" and get_card(id).get("level", 4) <= 4:
+			counts[id] += 1
+			total += 1
+	return _expand(counts)
+
+
+## Load the downloaded card database. A compact index is cached in user:// so
+## later launches don't parse the full file again.
+static func load_external(folder: String) -> void:
+	EXT.clear()
+	NAME_TO_ID.clear()
+	var src := folder.path_join("cards.json")
+	if not FileAccess.file_exists(src):
+		return
+	var cache := "user://card_index.json"
+	var stamp := str(FileAccess.get_modified_time(src))
+	if FileAccess.file_exists(cache):
+		var c = JSON.parse_string(FileAccess.get_file_as_string(cache))
+		if typeof(c) == TYPE_DICTIONARY and c.get("stamp", "") == stamp:
+			for k in c["cards"]:
+				var d: Dictionary = c["cards"][k]
+				EXT[int(k)] = d
+				NAME_TO_ID[str(d["name"]).to_lower()] = int(k)
+			return
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(src))
+	if typeof(parsed) != TYPE_ARRAY:
+		return
+	var compact := {}
+	for raw in parsed:
+		if typeof(raw) != TYPE_DICTIONARY or not raw.has("id"):
+			continue
+		var d := _from_db(raw)
+		if d.is_empty():
+			continue
+		var id := int(raw["id"])
+		EXT[id] = d
+		compact[str(id)] = d
+		NAME_TO_ID[str(d["name"]).to_lower()] = id
+	var f := FileAccess.open(cache, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify({"stamp": stamp, "cards": compact}))
+
+
+static func _from_db(raw: Dictionary) -> Dictionary:
+	var name := str(raw.get("name", ""))
+	var frame := str(raw.get("frameType", "normal"))
+	if frame.begins_with("effect"):
+		frame = "effect"
+	elif frame.begins_with("normal"):
+		frame = "normal"
+	var d := {"name": name, "frame": frame, "desc": str(raw.get("desc", ""))}
+	if frame == "spell":
+		if SPELL_EFFECTS.has(name):
+			d["effect"] = SPELL_EFFECTS[name]
+			d["text"] = d["desc"]
+		return d
+	if frame == "trap":
+		return d
+	d["atk"] = int(raw.get("atk", 0))
+	d["def"] = int(raw.get("def", 0))
+	d["level"] = int(raw.get("level", raw.get("linkval", 0)))
+	d["attribute"] = str(raw.get("attribute", ""))
+	d["race"] = str(raw.get("race", ""))
+	if "Tuner" in str(raw.get("type", "")):
+		d["tuner"] = true
+	if frame == "fusion":
+		var first: String = str(d["desc"]).split("\n")[0]
+		var mats := []
+		var parts: PackedStringArray = first.split("\"")
+		for i in range(1, parts.size(), 2):
+			mats.append(parts[i])
+		if "+" in first and mats.size() >= 2:
+			d["material_names"] = mats
+	return d
+
+
+static func fusion_materials(card: Dictionary) -> Array:
+	if card.has("materials"):
+		return card["materials"]
+	var out := []
+	for n in card.get("material_names", []):
+		var id: int = NAME_TO_ID.get(str(n).to_lower(), 0)
+		if id == 0:
+			return []
+		out.append(id)
+	return out
 
 
 static func _expand(cards: Dictionary) -> Array[int]:
@@ -153,3 +365,35 @@ static func _expand(cards: Dictionary) -> Array[int]:
 		for i in cards[id]:
 			out.append(int(id))
 	return out
+
+
+
+## Hard mode: the opponent brings a tuned "Legend" version of their deck.
+## The 6 weakest monsters are swapped for extra copies of their best ones
+## (max 3 per card), plus Pot of Greed and Monster Reborn if missing.
+static func legend_deck(deck_key: String) -> Array[int]:
+	if not DECKS.has(deck_key):
+		return deck_list(deck_key)
+	var counts: Dictionary = DECKS[deck_key]["cards"].duplicate()
+	var monsters := []
+	for id in counts:
+		if CARDS.get(id, {}).get("frame", "") != "spell":
+			monsters.append(id)
+	monsters.sort_custom(func(a, b): return CARDS[a].get("atk", 0) < CARDS[b].get("atk", 0))
+	var removed := 0
+	for id in monsters:
+		while removed < 6 and counts[id] > 0 and CARDS[id].get("level", 4) <= 4:
+			counts[id] -= 1
+			removed += 1
+	var strong := monsters.duplicate()
+	strong.reverse()
+	var added := 0
+	for want in [55144522, 83764718]:
+		if counts.get(want, 0) == 0 and added < removed:
+			counts[want] = 1
+			added += 1
+	for id in strong:
+		while added < removed and counts[id] < 3:
+			counts[id] += 1
+			added += 1
+	return _expand(counts)

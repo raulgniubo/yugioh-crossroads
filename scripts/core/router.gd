@@ -10,6 +10,13 @@ var duel_config := {"player_deck": "yugi", "opponent_deck": "kaiba"}
 var _fade: ColorRect
 var _toast: Label
 var _busy := false
+var _fps: Label
+
+
+func _process(_delta: float) -> void:
+	_fps.visible = Settings.show_fps
+	if _fps.visible:
+		_fps.text = "%d FPS" % Engine.get_frames_per_second()
 
 
 func _ready() -> void:
@@ -40,6 +47,14 @@ func _ready() -> void:
 	_toast.modulate.a = 0.0
 	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_toast)
+	_fps = Label.new()
+	_fps.position = Vector2(12, 8)
+	_fps.add_theme_font_size_override("font_size", 18)
+	_fps.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
+	_fps.add_theme_color_override("font_outline_color", Color.BLACK)
+	_fps.add_theme_constant_override("outline_size", 6)
+	_fps.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_fps)
 	var tw := create_tween()
 	tw.tween_property(_fade, "color:a", 0.0, 0.8).set_delay(0.15)
 	_debug_args()
@@ -78,9 +93,12 @@ func _debug_args() -> void:
 		go(DUEL)
 	if shot != "":
 		await get_tree().create_timer(after).timeout
-		var img := get_viewport().get_texture().get_image()
-		img.save_png(shot)
-		print("screenshot saved: ", shot)
+		if DisplayServer.get_name() != "headless":
+			var img := get_viewport().get_texture().get_image()
+			img.save_png(shot)
+			print("screenshot saved: ", shot)
+		else:
+			print("headless run finished")
 		get_tree().quit()
 
 

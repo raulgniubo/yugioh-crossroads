@@ -19,7 +19,17 @@ func _ready() -> void:
 		if _ai_vs_ai(100 + seed, k, k, 2, 0) == 0:
 			hard_wins += 1
 	print("Hard vs Easy: Hard won %d of 40" % hard_wins)
-	check(hard_wins >= 24, "Hard beats Easy most of the time (%d/40)" % hard_wins)
+	check(hard_wins >= 30, "Hard beats Easy most of the time (%d/40)" % hard_wins)
+	var hn := 0
+	var games := int(OS.get_environment("HN_GAMES")) if OS.get_environment("HN_GAMES") != "" else 40
+	for seed in games:
+		var k: String = keys[seed % keys.size()]
+		var first_hard := seed % 2 == 0
+		var w := _ai_vs_ai(300 + seed, k, k, 2 if first_hard else 1, 1 if first_hard else 2)
+		if (w == 0) == first_hard:
+			hn += 1
+	print("Hard vs Normal: Hard won %d of %d" % [hn, games])
+	check(hn * 100 >= games * 60, "Hard beats Normal clearly (%d/%d)" % [hn, games])
 	print("TESTS DONE, failures: %d" % failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -30,9 +40,11 @@ func check(cond: bool, msg: String) -> void:
 		push_error("FAIL: " + msg)
 
 
-func _new_state(seed := 1, a := "yugi", b := "kaiba") -> DuelState:
+func _new_state(seed := 1, a := "yugi", b := "kaiba", legend_a := false, legend_b := false) -> DuelState:
 	var s := DuelState.new()
-	s.setup(CardData.deck_list(a), CardData.deck_list(b), "A", "B", 0, seed,
+	s.bonus_cards = [1 if legend_a else 0, 1 if legend_b else 0]
+	s.setup(CardData.legend_deck(a) if legend_a else CardData.deck_list(a),
+			CardData.legend_deck(b) if legend_b else CardData.deck_list(b), "A", "B", 0, seed,
 			CardData.extra_list(a), CardData.extra_list(b))
 	return s
 
@@ -121,7 +133,7 @@ func _test_battle_math() -> void:
 
 
 func _ai_vs_ai(seed: int, a := "yugi", b := "kaiba", lv_a := 1, lv_b := 1) -> int:
-	var s := _new_state(seed, a, b)
+	var s := _new_state(seed, a, b, lv_a == 2, lv_b == 2)
 	var start_total := _total(s)
 	var guard := 0
 	while not s.is_over() and guard < 200:

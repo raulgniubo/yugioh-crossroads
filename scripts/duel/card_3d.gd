@@ -17,7 +17,8 @@ var _core: MeshInstance3D
 var _glow: MeshInstance3D
 var _front_mat: StandardMaterial3D
 var _back_mat: StandardMaterial3D
-var _glow_mat: StandardMaterial3D
+var _glow_mat: ShaderMaterial
+static var _glow_sh: Shader
 var _area: Area3D
 
 
@@ -35,14 +36,12 @@ func _init() -> void:
 	core_mat.albedo_color = Color("0b0e14")
 	_core.material_override = core_mat
 	add_child(_core)
-	_glow_mat = StandardMaterial3D.new()
-	_glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_glow_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_glow_mat.albedo_color = Color(UITheme.ACCENT, 0.9)
-	_glow_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_glow_mat = ShaderMaterial.new()
+	_glow_mat.shader = _glow_shader()
+	_glow_mat.set_shader_parameter("color", UITheme.ACCENT)
 	_glow = MeshInstance3D.new()
 	var gq := QuadMesh.new()
-	gq.size = SIZE + Vector2(0.07, 0.07)
+	gq.size = SIZE + Vector2(0.12, 0.12)
 	_glow.mesh = gq
 	_glow.material_override = _glow_mat
 	_glow.position.z = -0.006
@@ -59,6 +58,27 @@ func _init() -> void:
 	_area.input_event.connect(_on_input)
 	_area.mouse_entered.connect(func(): hovered.emit(self, true))
 	_area.mouse_exited.connect(func(): hovered.emit(self, false))
+
+
+static func _glow_shader() -> Shader:
+	if _glow_sh == null:
+		_glow_sh = Shader.new()
+		_glow_sh.code = """
+shader_type spatial;
+render_mode unshaded, blend_add, cull_disabled, depth_draw_never;
+uniform vec3 color : source_color = vec3(0.18, 0.89, 0.9);
+void fragment() {
+	vec2 d = abs(UV * 2.0 - 1.0);
+	vec2 inner = vec2(0.59, 0.86) / vec2(0.71, 0.98);
+	float out_x = smoothstep(inner.x - 0.02, inner.x + 0.04, d.x);
+	float out_y = smoothstep(inner.y - 0.01, inner.y + 0.02, d.y);
+	float ring = max(out_x, out_y);
+	float fade = 1.0 - smoothstep(0.85, 1.0, max(d.x, d.y));
+	float pulse = 0.75 + 0.25 * sin(TIME * 5.0);
+	ALBEDO = color * ring * fade * 2.2 * pulse;
+}
+"""
+	return _glow_sh
 
 
 func _card_material() -> StandardMaterial3D:
@@ -98,7 +118,7 @@ func set_pickable(on: bool) -> void:
 
 func set_glow(on: bool, color := UITheme.ACCENT) -> void:
 	_glow.visible = on
-	_glow_mat.albedo_color = Color(color, 0.9)
+	_glow_mat.set_shader_parameter("color", color)
 
 
 func set_alpha(a: float) -> void:

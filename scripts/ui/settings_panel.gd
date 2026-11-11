@@ -29,6 +29,14 @@ static func open(parent: Node) -> SidePanel:
 			Settings.save_settings())
 		p.add_row("Resolution", res)
 
+	var fps := CheckButton.new()
+	fps.text = "Show FPS"
+	fps.button_pressed = Settings.show_fps
+	fps.toggled.connect(func(on):
+		Settings.show_fps = on
+		Settings.save_settings())
+	p.add_row("Performance", fps)
+
 	p.add_section("Audio")
 	p.add_row("Master", _slider(Settings.master_volume, func(v): Settings.master_volume = v))
 	p.add_row("Music", _slider(Settings.music_volume, func(v): Settings.music_volume = v))

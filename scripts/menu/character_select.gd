@@ -1,122 +1,263 @@
 class_name CharacterSelect
 extends Control
-## Free Duel opponent select: a row of duelist cards, a big preview and deck choice.
+## Free Duel setup: pick who you play as (yourself or any duelist) and who you face.
+## Tap a slot (YOU / OPPONENT) at the top, then pick from the roster below.
 
-signal start(opponent: String, deck: String, difficulty: int)
+signal start(config: Dictionary)
 signal closed
 
-var _selected := ""
-var _cards := {}
-var _preview: TextureRect
-var _name: Label
-var _title: Label
-var _era: Label
-var _deck_info: Label
-var _ace: TextureRect
+var _me := "player"
+var _opp := "kaiba"
+var _picking := "opp"
+var _era := ""
+var _difficulty := 1
+var _my_deck := "yugi"
+var _grid: GridContainer
+var _slots := {}
+var _tabs: Array[Button] = []
+var _diff_btns: Array[Button] = []
 var _deck_pick: OptionButton
 var _deck_keys: Array = []
-var _difficulty := 1
-var _diff_btns: Array[Button] = []
+var _info: Label
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	var cfg: Dictionary = Router.duel_config
+	_me = cfg.get("player_char", "player")
+	_opp = cfg.get("opponent", "kaiba")
+	_difficulty = int(cfg.get("difficulty", 1))
+	_my_deck = cfg.get("player_deck", "yugi")
 	var dim := ColorRect.new()
-	dim.color = Color(0.01, 0.02, 0.04, 0.97)
+	dim.color = Color(0.015, 0.025, 0.05, 0.98)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
-	# Big preview on the right
-	_preview = TextureRect.new()
-	_preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_preview.anchor_left = 0.56
-	_preview.anchor_right = 1.0
-	_preview.anchor_bottom = 1.0
-	_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_preview)
-	var fade := TextureRect.new()
-	var grad := Gradient.new()
-	grad.colors = PackedColorArray([Color(0.01, 0.02, 0.04, 1), Color(0.01, 0.02, 0.04, 0)])
-	var gt := GradientTexture2D.new()
-	gt.gradient = grad
-	gt.width = 64
-	gt.height = 4
-	fade.texture = gt
-	fade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	fade.stretch_mode = TextureRect.STRETCH_SCALE
-	fade.anchor_left = 0.56
-	fade.anchor_right = 0.75
-	fade.anchor_bottom = 1.0
-	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(fade)
-	# Header
-	var header := UITheme.label("CHOOSE YOUR OPPONENT", 64, Color.WHITE, UITheme.title_font())
-	header.position = Vector2(100, 70)
+	var header := UITheme.label("FREE DUEL", 60, Color.WHITE, UITheme.title_font())
+	header.position = Vector2(80, 44)
 	add_child(header)
-	var sub := UITheme.label("Free Duel  ·  More duelists join as the story goes on", 22, UITheme.TEXT_DIM)
-	sub.position = Vector2(104, 150)
-	add_child(sub)
-	# Character cards
-	var grid := GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 18)
-	grid.add_theme_constant_override("v_separation", 18)
-	grid.position = Vector2(100, 220)
-	add_child(grid)
-	for key in Characters.ORDER:
-		grid.add_child(_char_card(key))
-	# Info block
-	var info := VBoxContainer.new()
-	info.position = Vector2(100, 880)
-	info.add_theme_constant_override("separation", 4)
-	add_child(info)
-	_name = UITheme.label("", 54, Color.WHITE, UITheme.title_font())
-	info.add_child(_name)
-	_title = UITheme.label("", 22, UITheme.TEXT_DIM)
-	info.add_child(_title)
-	_era = UITheme.label("", 18, UITheme.ACCENT, UITheme.semi_font())
-	_era.position = Vector2(104, 860)
-	add_child(_era)
-	# Right-bottom controls
-	var controls := PanelContainer.new()
-	controls.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.04, 0.07, 0.12, 0.9), 20, Color(UITheme.ACCENT, 0.3)))
-	controls.anchor_left = 1.0
-	controls.anchor_right = 1.0
-	controls.anchor_top = 1.0
-	controls.anchor_bottom = 1.0
-	controls.offset_left = -620
-	controls.offset_right = -60
-	controls.offset_top = -400
-	controls.offset_bottom = -60
-	add_child(controls)
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 18)
-	controls.add_child(h)
-	_ace = TextureRect.new()
-	_ace.custom_minimum_size = Vector2(140, 204)
-	_ace.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_ace.stretch_mode = TextureRect.STRETCH_SCALE
-	h.add_child(_ace)
+	var hint := UITheme.label("Tap YOU or OPPONENT, then pick a duelist", 20, UITheme.TEXT_DIM)
+	hint.position = Vector2(84, 116)
+	add_child(hint)
+	_build_slots()
+	_build_tabs()
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(80, 470)
+	scroll.size = Vector2(1180, 560)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(scroll)
+	_grid = GridContainer.new()
+	_grid.columns = 6
+	_grid.add_theme_constant_override("h_separation", 14)
+	_grid.add_theme_constant_override("v_separation", 14)
+	scroll.add_child(_grid)
+	_build_controls()
+	_refresh_all()
+	modulate.a = 0.0
+	create_tween().tween_property(self, "modulate:a", 1.0, 0.25)
+
+
+# ------------------------------------------------------------------ slots
+
+func _build_slots() -> void:
+	for side in ["me", "opp"]:
+		var b := Button.new()
+		b.flat = true
+		b.clip_contents = true
+		b.size = Vector2(520, 230)
+		b.position = Vector2(80 if side == "me" else 700, 170)
+		b.pressed.connect(func():
+			_picking = side
+			_refresh_all())
+		add_child(b)
+		var pt := TextureRect.new()
+		pt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pt.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		pt.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		pt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(pt)
+		var grad := Gradient.new()
+		grad.colors = PackedColorArray([Color(0, 0, 0, 0.85), Color(0, 0, 0, 0.0)])
+		var gt := GradientTexture2D.new()
+		gt.gradient = grad
+		var shade := TextureRect.new()
+		shade.texture = gt
+		shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		shade.stretch_mode = TextureRect.STRETCH_SCALE
+		shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(shade)
+		var tag := UITheme.label("", 18, UITheme.ACCENT, UITheme.semi_font())
+		tag.position = Vector2(22, 18)
+		b.add_child(tag)
+		var name_l := UITheme.label("", 46, Color.WHITE, UITheme.title_font())
+		name_l.position = Vector2(20, 120)
+		b.add_child(name_l)
+		var sub := UITheme.label("", 18, UITheme.TEXT_DIM)
+		sub.position = Vector2(22, 180)
+		b.add_child(sub)
+		_slots[side] = {"button": b, "portrait": pt, "name": name_l, "sub": sub, "tag": tag}
+	var vs := UITheme.label("VS", 64, Color.WHITE, UITheme.title_font())
+	vs.position = Vector2(608, 236)
+	vs.add_theme_color_override("font_shadow_color", Color(UITheme.ACCENT, 0.7))
+	vs.add_theme_constant_override("shadow_outline_size", 18)
+	add_child(vs)
+
+
+func _refresh_slots() -> void:
+	for side in _slots:
+		var key: String = _me if side == "me" else _opp
+		var sl: Dictionary = _slots[side]
+		var info := Portraits.info(key)
+		sl["portrait"].texture = Portraits.get_portrait(key)
+		sl["name"].text = str(info.get("name", "")).to_upper()
+		var deck_key: String = _my_deck if side == "me" else str(Characters.get_char(key).get("deck", ""))
+		sl["sub"].text = "%s  ·  %s Deck" % [info.get("era", ""), CardData.deck_name(deck_key)]
+		var active: bool = side == _picking
+		var col: Color = info.get("color", UITheme.ACCENT)
+		var sb := UITheme.button_box(Color(0.03, 0.05, 0.09, 1), col if active else Color(1, 1, 1, 0.12), 22)
+		sb.set_border_width_all(4 if active else 1)
+		sb.set_content_margin_all(0)
+		for st in ["normal", "hover", "pressed", "focus"]:
+			sl["button"].add_theme_stylebox_override(st, sb)
+		sl["tag"].text = ("YOU" if side == "me" else "OPPONENT") + ("   ◀ choosing" if active else "")
+
+
+# ------------------------------------------------------------------ roster
+
+func _build_tabs() -> void:
+	var row := HBoxContainer.new()
+	row.position = Vector2(80, 418)
+	row.add_theme_constant_override("separation", 8)
+	add_child(row)
+	var tabs := [["", "ALL"]]
+	for e in Characters.ERAS:
+		tabs.append([e, e.to_upper()])
+	for t in tabs:
+		var b := Button.new()
+		b.text = t[1]
+		b.toggle_mode = true
+		b.add_theme_font_size_override("font_size", 18)
+		b.add_theme_stylebox_override("hover_pressed", UITheme.button_box(UITheme.ACCENT, UITheme.ACCENT))
+		var era: String = t[0]
+		b.pressed.connect(func():
+			_era = era
+			_refresh_all())
+		row.add_child(b)
+		_tabs.append(b)
+
+
+func _refresh_grid() -> void:
+	for c in _grid.get_children():
+		c.queue_free()
+	var keys: Array = []
+	if _picking == "me":
+		keys.append("player")
+	for k in Characters.ORDER:
+		if _era == "" or Characters.DATA[k]["era"] == _era:
+			keys.append(k)
+	var i := 0
+	for key in keys:
+		var card := _roster_card(key)
+		_grid.add_child(card)
+		card.modulate.a = 0.0
+		create_tween().tween_property(card, "modulate:a", 1.0, 0.15).set_delay(i * 0.012)
+		i += 1
+
+
+func _roster_card(key: String) -> Control:
+	var info := Portraits.info(key)
+	var ok := key == "player" or Characters.available(key)
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(184, 170)
+	b.clip_contents = true
+	b.flat = true
+	var chosen := (key == _me and _picking == "me") or (key == _opp and _picking == "opp")
+	var col: Color = info.get("color", UITheme.ACCENT)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		var lit: bool = chosen or st == "hover"
+		var sb := UITheme.button_box(Color(0.05, 0.08, 0.13, 1), col if lit else Color(1, 1, 1, 0.06), 14)
+		sb.set_border_width_all(3 if lit else 1)
+		sb.set_content_margin_all(0)
+		b.add_theme_stylebox_override(st, sb)
+	var pt := TextureRect.new()
+	pt.texture = Portraits.get_portrait(key)
+	pt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pt.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	pt.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	pt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(pt)
+	var band := ColorRect.new()
+	band.color = Color(0, 0, 0, 0.72)
+	band.anchor_top = 1.0
+	band.anchor_right = 1.0
+	band.anchor_bottom = 1.0
+	band.offset_top = -40
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(band)
+	var n := UITheme.label(("YOU" if key == "player" else str(info.get("short", ""))).to_upper(), 24, Color.WHITE, UITheme.title_font())
+	n.position = Vector2(12, 4)
+	band.add_child(n)
+	var stripe := ColorRect.new()
+	stripe.color = col
+	stripe.size = Vector2(184, 3)
+	stripe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	band.add_child(stripe)
+	if not ok:
+		pt.modulate = Color(0.35, 0.35, 0.4)
+		var lock := UITheme.label("Needs card database", 14, UITheme.TEXT_DIM)
+		lock.position = Vector2(10, 10)
+		b.add_child(lock)
+	b.pressed.connect(func():
+		if not ok:
+			Router.toast("Download the full card database to unlock %s" % info.get("short", ""))
+			return
+		_choose(key))
+	b.mouse_entered.connect(func():
+		b.pivot_offset = b.size / 2.0
+		create_tween().tween_property(b, "scale", Vector2(1.05, 1.05), 0.1))
+	b.mouse_exited.connect(func():
+		create_tween().tween_property(b, "scale", Vector2.ONE, 0.12))
+	return b
+
+
+func _choose(key: String) -> void:
+	if _picking == "me":
+		_me = key
+		if key != "player":
+			_my_deck = Characters.get_char(key)["deck"]
+		_picking = "opp"
+	else:
+		_opp = key
+	Sfx.play("card", -6.0)
+	_refresh_all()
+
+
+# ------------------------------------------------------------------ controls
+
+func _build_controls() -> void:
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.04, 0.07, 0.12, 0.96), 22, Color(UITheme.ACCENT, 0.3)))
+	panel.position = Vector2(1320, 170)
+	panel.custom_minimum_size = Vector2(540, 0)
+	add_child(panel)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
-	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	h.add_child(v)
-	_deck_info = UITheme.label("", 20, UITheme.TEXT)
-	_deck_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(_deck_info)
+	v.add_theme_constant_override("separation", 12)
+	panel.add_child(v)
+	_info = UITheme.label("", 20, UITheme.TEXT)
+	_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_info.custom_minimum_size = Vector2(500, 0)
+	v.add_child(_info)
 	v.add_child(UITheme.label("YOUR DECK", 16, UITheme.ACCENT, UITheme.semi_font()))
 	_deck_pick = OptionButton.new()
-	for key in CardData.DECKS:
-		_deck_keys.append(key)
-		var owner: Dictionary = Characters.get_char(key)
-		_deck_pick.add_item("%s  (%s)" % [CardData.DECKS[key]["name"], owner.get("short", key)])
+	_deck_pick.item_selected.connect(func(i):
+		_my_deck = _deck_keys[i]
+		_refresh_slots())
 	v.add_child(_deck_pick)
 	v.add_child(UITheme.label("DIFFICULTY", 16, UITheme.ACCENT, UITheme.semi_font()))
 	var drow := HBoxContainer.new()
 	drow.add_theme_constant_override("separation", 8)
 	v.add_child(drow)
-	_difficulty = int(Router.duel_config.get("difficulty", 1))
 	for i in 3:
 		var db := Button.new()
 		db.text = ["Easy", "Normal", "Hard"][i]
@@ -125,9 +266,7 @@ func _ready() -> void:
 		db.add_theme_stylebox_override("hover_pressed", UITheme.button_box(UITheme.ACCENT, UITheme.ACCENT))
 		db.pressed.connect(func():
 			_difficulty = i
-			for j in _diff_btns.size():
-				_diff_btns[j].set_pressed_no_signal(j == i))
-		db.set_pressed_no_signal(i == _difficulty)
+			_refresh_all())
 		drow.add_child(db)
 		_diff_btns.append(db)
 	var row := HBoxContainer.new()
@@ -140,81 +279,34 @@ func _ready() -> void:
 	var go := Button.new()
 	go.text = "DUEL!"
 	go.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	go.add_theme_font_size_override("font_size", 30)
-	go.pressed.connect(func(): start.emit(_selected, _deck_keys[_deck_pick.selected], _difficulty))
+	go.custom_minimum_size = Vector2(0, 64)
+	go.add_theme_font_size_override("font_size", 32)
+	go.pressed.connect(func():
+		start.emit({"player_char": _me, "opponent": _opp, "player_deck": _my_deck, "difficulty": _difficulty}))
 	row.add_child(go)
-	var last_opp: String = Router.duel_config.get("opponent", "kaiba")
-	_select(last_opp)
-	_deck_pick.select(maxi(0, _deck_keys.find(Router.duel_config.get("player_deck", "yugi"))))
-	modulate.a = 0.0
-	create_tween().tween_property(self, "modulate:a", 1.0, 0.25)
-	await get_tree().process_frame
-	go.grab_focus()
 
 
-func _char_card(key: String) -> Control:
-	var d := Characters.get_char(key)
-	var b := Button.new()
-	b.custom_minimum_size = Vector2(250, 200)
-	b.flat = true
-	b.clip_contents = true
-	var sb := UITheme.button_box(Color(0.05, 0.08, 0.13, 0.9), Color(1, 1, 1, 0.08), 16)
-	sb.set_content_margin_all(0)
-	for st in ["normal", "hover", "pressed", "focus"]:
-		var x: StyleBoxFlat = sb.duplicate()
-		if st != "normal":
-			x.border_color = d["color"]
-			x.set_border_width_all(3)
-		b.add_theme_stylebox_override(st, x)
-	var pt := TextureRect.new()
-	pt.texture = Portraits.get_portrait(key)
-	pt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	pt.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	pt.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	pt.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(pt)
-	var band := ColorRect.new()
-	band.color = Color(0, 0, 0, 0.6)
-	band.anchor_top = 1.0
-	band.anchor_right = 1.0
-	band.anchor_bottom = 1.0
-	band.offset_top = -46
-	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(band)
-	var n := UITheme.label(str(d["short"]).to_upper(), 30, Color.WHITE, UITheme.title_font())
-	n.position = Vector2(14, 6)
-	band.add_child(n)
-	var e := UITheme.label(str(d["era"]).to_upper(), 15, Color(d["color"]).lightened(0.3), UITheme.semi_font())
-	e.anchor_left = 1.0
-	e.anchor_right = 1.0
-	e.offset_left = -130
-	e.offset_right = -12
-	e.offset_top = 14
-	e.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	band.add_child(e)
-	b.pressed.connect(func(): _select(key))
-	b.focus_entered.connect(func(): _select(key))
-	_cards[key] = b
-	return b
-
-
-func _select(key: String) -> void:
-	if key == _selected:
-		return
-	_selected = key
-	var d := Characters.get_char(key)
-	_preview.texture = Portraits.get_portrait(key)
-	_preview.modulate.a = 0.0
-	create_tween().tween_property(_preview, "modulate:a", 1.0, 0.25)
-	_name.text = str(d["name"]).to_upper()
-	_title.text = d["title"]
-	_era.text = str(d["era"]).to_upper()
-	var deck: Dictionary = CardData.DECKS[d["deck"]]
-	_deck_info.text = "%s plays the %s Deck\n30 cards  ·  %d in the Extra Deck  ·  %s" % [d["short"], deck["name"],
-			CardData.extra_list(d["deck"]).size(), FieldThemes.resolve("auto", key)["name"]]
-	_ace.texture = Cards.get_face(d["ace"])
-	for k in _cards:
-		(_cards[k] as Button).modulate = Color.WHITE if k == key else Color(0.7, 0.72, 0.8)
+func _refresh_all() -> void:
+	_refresh_slots()
+	_refresh_grid()
+	for i in _tabs.size():
+		var era: String = "" if i == 0 else Characters.ERAS[i - 1]
+		_tabs[i].set_pressed_no_signal(era == _era)
+	for i in _diff_btns.size():
+		_diff_btns[i].set_pressed_no_signal(i == _difficulty)
+	_deck_pick.clear()
+	_deck_keys.clear()
+	for k in Characters.ORDER:
+		var deck: String = Characters.DATA[k]["deck"]
+		if CardData.has_deck(deck) and not _deck_keys.has(deck):
+			_deck_keys.append(deck)
+			_deck_pick.add_item("%s  (%s)" % [CardData.deck_name(deck), Characters.DATA[k]["short"]])
+	_deck_pick.select(maxi(0, _deck_keys.find(_my_deck)))
+	var o := Characters.get_char(_opp)
+	var notes := ["Easy: relaxed and makes mistakes.", "Normal: plays sensibly and attacks when it can.",
+			"Hard: thinks ahead, brings a tuned deck and starts with one extra card."]
+	_info.text = "%s plays the %s Deck on the %s.\n\n%s" % [o.get("short", ""), CardData.deck_name(o.get("deck", "")),
+			FieldThemes.resolve("auto", _opp)["name"], notes[_difficulty]]
 
 
 func _unhandled_input(event: InputEvent) -> void:

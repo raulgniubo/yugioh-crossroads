@@ -103,77 +103,97 @@ var _chip_name: Label
 var _chip_sub: Label
 
 
-## All duelists together: slanted portrait strips across the right side.
+## A rotating lineup of duelists on the right: the center card is big and bright,
+## its neighbours fan out behind it.
+var _carousel: Array[Control] = []
+var _carousel_idx := 0
+
+
 func _build_featured() -> void:
 	var holder := Control.new()
 	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.clip_contents = true
 	add_child(holder)
-	move_child(holder, 1)
-	var keys: Array = Characters.ORDER
-	var strip_w := 250.0
-	var start_x := 760.0
-	for i in keys.size():
-		var key: String = keys[i]
+	move_child(holder, 2)
+	for key in Characters.ORDER:
 		var d := Characters.get_char(key)
-		var strip := Control.new()
-		strip.clip_contents = true
-		strip.size = Vector2(strip_w, 1500)
-		strip.position = Vector2(start_x + i * (strip_w - 40), -220)
-		strip.rotation = deg_to_rad(10)
-		strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		holder.add_child(strip)
+		var card := Panel.new()
+		card.size = Vector2(380, 520)
+		card.pivot_offset = card.size / 2.0
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.02, 0.03, 0.06, 1)
+		sb.set_corner_radius_all(26)
+		sb.border_color = d["color"]
+		sb.set_border_width_all(3)
+		card.add_theme_stylebox_override("panel", sb)
+		card.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var pt := TextureRect.new()
 		pt.texture = Portraits.get_portrait(key)
 		pt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		pt.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		pt.size = Vector2(strip_w + 260, 1500)
-		pt.position = Vector2(-130, 0)
-		pt.rotation = deg_to_rad(-10)
-		pt.pivot_offset = pt.size / 2.0
+		pt.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		pt.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		strip.add_child(pt)
+		card.add_child(pt)
 		var grad := Gradient.new()
-		grad.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
-		grad.colors = PackedColorArray([Color(d["color"], 0.0), Color(d["color"], 0.18), Color(0.01, 0.02, 0.04, 0.95)])
+		grad.offsets = PackedFloat32Array([0.0, 0.6, 1.0])
+		grad.colors = PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0.1), Color(0.01, 0.02, 0.05, 0.92)])
 		var gt := GradientTexture2D.new()
 		gt.gradient = grad
 		gt.fill_from = Vector2(0, 0)
 		gt.fill_to = Vector2(0, 1)
-		var tint := TextureRect.new()
-		tint.texture = gt
-		tint.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tint.stretch_mode = TextureRect.STRETCH_SCALE
-		tint.size = strip.size
-		tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		strip.add_child(tint)
-		var edge := ColorRect.new()
-		edge.color = Color(d["color"], 0.9)
-		edge.size = Vector2(4, 1500)
-		edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		strip.add_child(edge)
-		var n := UITheme.label(str(d["short"]).to_upper(), 34, Color.WHITE, UITheme.title_font())
-		n.position = Vector2(26, 1090)
-		n.rotation = deg_to_rad(-10)
-		strip.add_child(n)
+		var shade := TextureRect.new()
+		shade.texture = gt
+		shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		shade.stretch_mode = TextureRect.STRETCH_SCALE
+		shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(shade)
+		var n := UITheme.label(str(d["short"]).to_upper(), 44, Color.WHITE, UITheme.title_font())
+		n.position = Vector2(24, 430)
+		card.add_child(n)
 		var e := UITheme.label(str(d["era"]).to_upper(), 16, Color(d["color"]).lightened(0.4), UITheme.semi_font())
-		e.position = Vector2(30, 1132)
-		e.rotation = deg_to_rad(-10)
-		strip.add_child(e)
-		strip.modulate.a = 0.0
-		var tw := create_tween()
-		tw.tween_interval(0.3 + i * 0.09)
-		tw.tween_property(strip, "modulate:a", 0.92, 0.6)
-		var drift := create_tween().set_loops()
-		drift.tween_property(pt, "position:y", -30.0, 6.0 + i).set_trans(Tween.TRANS_SINE)
-		drift.tween_property(pt, "position:y", 0.0, 6.0 + i).set_trans(Tween.TRANS_SINE)
-	# Darken the far left so the title and menu stay readable over the strips.
-	var shade := ColorRect.new()
-	shade.color = Color(0.01, 0.02, 0.04, 0.0)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(shade)
+		e.position = Vector2(26, 482)
+		card.add_child(e)
+		card.modulate.a = 0.0
+		holder.add_child(card)
+		_carousel.append(card)
+	_layout_carousel(true)
+	var t := Timer.new()
+	t.wait_time = 3.5
+	t.autostart = true
+	t.timeout.connect(func():
+		_carousel_idx = (_carousel_idx + 1) % _carousel.size()
+		_layout_carousel(false))
+	add_child(t)
+
+
+func _layout_carousel(instant: bool) -> void:
+	var n := _carousel.size()
+	var center := Vector2(1380, 560)
+	for i in n:
+		var card := _carousel[i]
+		var rel := i - _carousel_idx
+		if rel > n / 2:
+			rel -= n
+		elif rel < -n / 2:
+			rel += n
+		var a := absf(rel)
+		var pos := center + Vector2(rel * 200.0, a * 26.0) - card.size / 2.0
+		var sc := 1.0 - a * 0.16
+		var alpha := 0.0 if a > 2 else (1.0 if a == 0 else 0.7 - (a - 1) * 0.35)
+		card.z_index = 10 - int(a) * 2
+		if instant:
+			card.position = pos
+			card.scale = Vector2(sc, sc)
+			card.rotation = deg_to_rad(rel * 6.0)
+			create_tween().tween_property(card, "modulate:a", alpha, 0.6).set_delay(0.3 + a * 0.1)
+			continue
+		var tw := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_property(card, "position", pos, 0.7)
+		tw.tween_property(card, "scale", Vector2(sc, sc), 0.7)
+		tw.tween_property(card, "rotation", deg_to_rad(rel * 6.0), 0.7)
+		tw.tween_property(card, "modulate:a", alpha, 0.5)
 
 
 func _build_profile_chip() -> void:
@@ -185,7 +205,7 @@ func _build_profile_chip() -> void:
 	chip.offset_right = -50
 	chip.offset_top = 40
 	chip.offset_bottom = 124
-	var sb := UITheme.panel_box(Color(0.04, 0.07, 0.12, 0.8), 20, Color(1, 1, 1, 0.1))
+	var sb := UITheme.panel_box(Color(0.03, 0.05, 0.09, 0.96), 20, Color(UITheme.ACCENT, 0.45))
 	sb.set_content_margin_all(10)
 	var sbh: StyleBoxFlat = sb.duplicate()
 	sbh.border_color = UITheme.ACCENT
@@ -213,7 +233,7 @@ func _build_profile_chip() -> void:
 	_chip_name.position = Vector2(92, 8)
 	_chip_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.add_child(_chip_name)
-	_chip_sub = UITheme.label("", 16, UITheme.TEXT_DIM)
+	_chip_sub = UITheme.label("", 16, Color(0.8, 0.88, 1.0, 0.9))
 	_chip_sub.position = Vector2(93, 46)
 	_chip_sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.add_child(_chip_sub)
@@ -307,8 +327,8 @@ func _on_free_duel() -> void:
 	var cs := CharacterSelect.new()
 	add_child(cs)
 	_panel_open = true
-	cs.start.connect(func(opp, deck, diff):
-		Router.duel_config = {"opponent": opp, "player_deck": deck, "difficulty": diff}
+	cs.start.connect(func(cfg):
+		Router.duel_config = cfg
 		Router.go(Router.DUEL))
 	cs.closed.connect(func():
 		_panel_open = false

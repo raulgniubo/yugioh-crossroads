@@ -19,7 +19,6 @@ const ATTRIBUTE_COLORS := {
 var _face_cache := {}
 var _art_cache := {}
 var _back_texture: Texture2D
-var _external_names := {}
 var _font_title: Font
 var _font_body: Font
 
@@ -32,8 +31,8 @@ func _ready() -> void:
 
 func get_card(id: int) -> Dictionary:
 	var d := CardData.get_card(id)
-	if _external_names.has(id):
-		d["desc"] = _external_names[id]
+	if CardData.EXT.has(id) and CardData.CARDS.has(id):
+		d["desc"] = CardData.EXT[id].get("desc", "")
 	return d
 
 
@@ -89,16 +88,7 @@ func _load_image(path: String) -> Texture2D:
 
 
 func _load_external_data() -> void:
-	_external_names.clear()
-	var path := Settings.card_folder.path_join("cards.json")
-	if not FileAccess.file_exists(path):
-		return
-	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if typeof(parsed) != TYPE_ARRAY:
-		return
-	for c in parsed:
-		if typeof(c) == TYPE_DICTIONARY and c.has("id"):
-			_external_names[int(c["id"])] = str(c.get("desc", ""))
+	CardData.load_external(Settings.card_folder)
 
 
 # ---------------------------------------------------------------- placeholders
