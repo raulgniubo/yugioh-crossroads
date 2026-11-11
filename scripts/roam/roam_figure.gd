@@ -27,6 +27,7 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 		var l := Label3D.new()
 		l.text = display_name
 		l.font_size = 40
+		l.pixel_size = 0.0035
 		l.outline_size = 10
 		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		l.no_depth_test = false
@@ -87,85 +88,15 @@ func _process(delta: float) -> void:
 				var local := pb.inverse() * Basis(q) * pb * Basis(info[1])
 				sk.set_bone_pose_rotation(b, local.get_rotation_quaternion())
 		_model.position.y = absf(cos(_phase)) * 0.035 * walk + sin(_time * 1.7) * 0.004
-	elif not _rig.is_empty():
-		(_rig["leg_l"] as Node3D).rotation.x = s * 0.6 * walk
-		(_rig["leg_r"] as Node3D).rotation.x = -s * 0.6 * walk
-		(_rig["arm_l"] as Node3D).rotation.x = -s * 0.5 * walk
-		(_rig["arm_r"] as Node3D).rotation.x = s * 0.5 * walk
-		(_rig["body"] as Node3D).position.y = absf(cos(_phase)) * 0.04 * walk + sin(_time * 1.7) * 0.006
+	elif _rig.has("model"):
+		(_rig["model"] as DuelistModel).set_speed(_speed)
 
 
 # ------------------------------------------------------------------ stand-in
 
-func _mat(c: Color, rough := 0.6) -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.albedo_color = c
-	m.roughness = rough
-	return m
-
-
-func _part(mesh: Mesh, mat: Material, pos: Vector3, parent: Node3D) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	mi.material_override = mat
-	mi.position = pos
-	parent.add_child(mi)
-	return mi
-
-
-func _limb(parent: Node3D, pivot: Vector3, length: float, radius: float, mat: Material) -> Node3D:
-	var j := Node3D.new()
-	j.position = pivot
-	parent.add_child(j)
-	var c := CapsuleMesh.new()
-	c.radius = radius
-	c.height = length
-	_part(c, mat, Vector3(0, -length / 2.0, 0), j)
-	return j
-
-
-## A clean, toy-like duelist: jacket in the character's color, dark pants, a hair cap.
 func _build_standin(color: Color) -> void:
-	var body := Node3D.new()
-	add_child(body)
-	var jacket := _mat(color.darkened(0.15), 0.5)
-	var shirt := _mat(Color(0.92, 0.94, 0.97))
-	var pants := _mat(Color(0.12, 0.13, 0.17))
-	var skin := _mat(Color(1.0, 0.86, 0.76), 0.8)
-	var hair := _mat(color.lightened(0.1).lerp(Color(0.15, 0.12, 0.1), 0.35), 0.4)
-	var torso := CapsuleMesh.new()
-	torso.radius = 0.24
-	torso.height = 0.72
-	_part(torso, jacket, Vector3(0, 1.18, 0), body)
-	var chest := BoxMesh.new()
-	chest.size = Vector3(0.18, 0.4, 0.05)
-	_part(chest, shirt, Vector3(0, 1.25, 0.215), body)
-	var head := SphereMesh.new()
-	head.radius = 0.19
-	head.height = 0.4
-	_part(head, skin, Vector3(0, 1.72, 0), body)
-	var cap := SphereMesh.new()
-	cap.radius = 0.215
-	cap.height = 0.3
-	_part(cap, hair, Vector3(0, 1.8, -0.03), body)
-	for side in [-1.0, 1.0]:
-		var eye := SphereMesh.new()
-		eye.radius = 0.025
-		eye.height = 0.05
-		_part(eye, _mat(Color(0.08, 0.08, 0.12)), Vector3(0.07 * side, 1.73, 0.175), body)
-	_rig["leg_l"] = _limb(body, Vector3(0.11, 0.86, 0), 0.82, 0.09, pants)
-	_rig["leg_r"] = _limb(body, Vector3(-0.11, 0.86, 0), 0.82, 0.09, pants)
-	_rig["arm_l"] = _limb(body, Vector3(0.31, 1.46, 0), 0.62, 0.07, jacket)
-	_rig["arm_r"] = _limb(body, Vector3(-0.31, 1.46, 0), 0.62, 0.07, jacket)
-	(_rig["arm_l"] as Node3D).rotation.z = 0.12
-	(_rig["arm_r"] as Node3D).rotation.z = -0.12
-	# Duel disk on the left arm.
-	var disk := CylinderMesh.new()
-	disk.top_radius = 0.2
-	disk.bottom_radius = 0.2
-	disk.height = 0.03
-	var dm := _mat(Color(0.75, 0.78, 0.85), 0.3)
-	dm.metallic = 0.6
-	var d := _part(disk, dm, Vector3(0.03, -0.45, 0.05), _rig["arm_l"])
-	d.rotation.z = PI / 2
-	_rig["body"] = body
+	var m := DuelistModel.new()
+	add_child(m)
+	var l: Dictionary = DuelistModel.player_look() if key == "player" else DuelistModel.look_for(key, color)
+	m.build(l)
+	_rig["model"] = m

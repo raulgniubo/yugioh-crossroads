@@ -75,7 +75,8 @@ func _make_placeholder(key: String) -> Texture2D:
 	vp.name = "vp_" + key
 	vp.size = SIZE
 	vp.transparent_bg = true
-	vp.disable_3d = true
+	vp.own_world_3d = true
+	vp.msaa_3d = Viewport.MSAA_4X
 	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	add_child(vp)
 	var root := Control.new()
@@ -104,16 +105,47 @@ func _make_placeholder(key: String) -> Texture2D:
 		line.rotation = deg_to_rad(18)
 		root.add_child(line)
 	if key == "player":
+		root.modulate.a = 1.0
 		_emblem(root, Profile.emblem, col)
-	else:
-		var initial := UITheme.label(str(d.get("short", "?")).substr(0, 1), 340, Color(1, 1, 1, 0.92), UITheme.title_font())
-		initial.size = Vector2(SIZE.x, 460)
-		initial.position = Vector2(0, 70)
-		initial.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		initial.add_theme_color_override("font_shadow_color", Color(col, 0.9))
-		initial.add_theme_constant_override("shadow_outline_size", 40)
-		root.add_child(initial)
+		root.get_child(root.get_child_count() - 1).modulate.a = 0.35
+	_bust(vp, key, col)
 	return vp.get_texture()
+
+
+## A cel-shaded 3D bust of the character's stand-in model in front of the drawn background.
+func _bust(vp: SubViewport, key: String, col: Color) -> void:
+	var stage := Node3D.new()
+	vp.add_child(stage)
+	var we := WorldEnvironment.new()
+	var e := Environment.new()
+	e.background_mode = Environment.BG_CANVAS
+	e.background_canvas_max_layer = 0
+	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	e.ambient_light_color = Color(0.85, 0.88, 1.0)
+	e.ambient_light_energy = 0.4
+	e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	we.environment = e
+	stage.add_child(we)
+	var key_l := DirectionalLight3D.new()
+	key_l.light_energy = 1.0
+	key_l.rotation_degrees = Vector3(-20, 28, 0)
+	stage.add_child(key_l)
+	var rim := DirectionalLight3D.new()
+	rim.light_color = col.lightened(0.4)
+	rim.light_energy = 0.8
+	rim.rotation_degrees = Vector3(-10, 160, 0)
+	stage.add_child(rim)
+	var m := DuelistModel.new()
+	stage.add_child(m)
+	m.build(DuelistModel.player_look() if key == "player" else DuelistModel.look_for(key, col))
+	m.set_process(false)
+	m.rotation.y = -0.25
+	var cam := Camera3D.new()
+	cam.fov = 26
+	cam.position = Vector3(0.0, 1.72, 2.0)
+	stage.add_child(cam)
+	cam.look_at(Vector3(0, 1.6, 0))
+	cam.current = true
 
 
 func _emblem(root: Control, style: int, col: Color) -> void:

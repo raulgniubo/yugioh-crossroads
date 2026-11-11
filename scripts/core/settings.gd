@@ -19,6 +19,20 @@ var anim_speed := 1.0
 var card_folder := ""
 var field_theme := "auto"
 var show_fps := false
+## 0 = Performance, 1 = High, 2 = Ultra (global illumination).
+var graphics := 1
+const GRAPHICS := ["Performance", "High", "Ultra"]
+
+
+## Applies screen effects that scale with the graphics setting to an Environment.
+func tune_environment(e: Environment) -> void:
+	var fplus := RenderingServer.get_current_rendering_method() == "forward_plus"
+	e.ssao_enabled = graphics >= 1
+	e.ssr_enabled = fplus and graphics >= 1
+	e.ssr_max_steps = 48
+	e.ssil_enabled = fplus and graphics >= 2
+	e.sdfgi_enabled = fplus and graphics >= 2
+	e.volumetric_fog_enabled = fplus and graphics >= 1
 
 
 func _ready() -> void:
@@ -45,6 +59,7 @@ func load_settings() -> void:
 	card_folder = cfg.get_value("game", "card_folder", card_folder)
 	field_theme = cfg.get_value("game", "field_theme", field_theme)
 	show_fps = cfg.get_value("display", "show_fps", show_fps)
+	graphics = cfg.get_value("display", "graphics", graphics)
 
 
 func save_settings() -> void:
@@ -58,6 +73,7 @@ func save_settings() -> void:
 	cfg.set_value("game", "card_folder", card_folder)
 	cfg.set_value("game", "field_theme", field_theme)
 	cfg.set_value("display", "show_fps", show_fps)
+	cfg.set_value("display", "graphics", graphics)
 	cfg.save(PATH)
 
 

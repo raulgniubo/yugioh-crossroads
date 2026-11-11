@@ -15,6 +15,12 @@ const CAM_TARGET := Vector3(0, 0, 1.15)
 
 signal ace_summoned(inst)
 
+## Cinematic camera: blends from the table view toward cam_pos / cam_target by cam_weight.
+var cam_pos := Vector3(0, 4, 12)
+var cam_target := Vector3.ZERO
+var cam_weight := 0.0
+var _cam_tween: Tween
+
 var camera: Camera3D
 var _battle_mode := false
 var theme: Dictionary = FieldThemes.resolve("auto", "")
@@ -95,8 +101,12 @@ func _build_environment() -> void:
 	env.glow_hdr_threshold = 0.95
 	env.fog_enabled = true
 	env.fog_light_color = theme["fog"]
-	env.fog_density = 0.028
+	env.fog_density = 0.006
 	env.fog_sky_affect = 0.4
+	Settings.tune_environment(env)
+	env.sdfgi_enabled = false
+	env.volumetric_fog_density = 0.004
+	env.volumetric_fog_albedo = Color(theme["fog"]).lightened(0.3)
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -216,17 +226,10 @@ void fragment() {
 
 ## Floor beyond the mat, corner pylons and drifting particles.
 func _build_arena() -> void:
-	var floor_mi := MeshInstance3D.new()
-	var fp := PlaneMesh.new()
-	fp.size = Vector2(60, 60)
-	floor_mi.mesh = fp
-	var fm := StandardMaterial3D.new()
-	fm.albedo_color = Color(theme["base"]).darkened(0.35)
-	fm.metallic = 0.6
-	fm.roughness = 0.25
-	floor_mi.material_override = fm
-	floor_mi.position.y = -0.02
-	add_child(floor_mi)
+	var arena := DuelArena.new()
+	arena.name = "Arena"
+	add_child(arena)
+	arena.build_arena(theme)
 	for corner in [Vector3(-6.4, 0, -4.1), Vector3(6.4, 0, -4.1), Vector3(-6.4, 0, 4.1), Vector3(6.4, 0, 4.1)]:
 		var col: Color = theme["accent"] if corner.z > 0 else theme["accent2"]
 		var pylon := MeshInstance3D.new()
@@ -499,8 +502,7 @@ func hologram(inst, at: Vector3, force_big := false) -> void:
 		_ring_fx(at + Vector3(0, 0.05, 0), col, 1.4, 0.0, 0.0)
 		_ring_fx(at + Vector3(0, 0.05, 0), col, 2.2, 0.15, 0.0)
 		_flash(at + Vector3(0, h * 0.5, 0), col)
-		var zoom := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		zoom.tween_property(camera, "fov", camera.fov - 8.0, Settings.t(0.35))
+		cam_shot(at + Vector3(at.x * -0.3, 0.9, 5.2), at + Vector3(0, h * 0.62, 0), 0.5)
 	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(spr, "scale", Vector3.ONE, Settings.t(0.45 if big else 0.35))
 	tw.tween_property(spr, "modulate:a", 0.97, Settings.t(0.25))
@@ -513,11 +515,10 @@ func hologram(inst, at: Vector3, force_big := false) -> void:
 	var float_tw := create_tween().set_loops(2).set_trans(Tween.TRANS_SINE)
 	float_tw.tween_property(spr, "position:y", spr.position.y + 0.12, Settings.t(0.4))
 	float_tw.tween_property(spr, "position:y", spr.position.y, Settings.t(0.4))
-	await _wait(1.25 if big else 0.55)
+	await _wait(1.6 if big else 0.55)
 	float_tw.kill()
 	if big:
-		var back := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-		back.tween_property(camera, "fov", 40.0 if _battle_mode else 44.0, Settings.t(0.45))
+		cam_release(0.55)
 	var tw2 := create_tween().set_parallel()
 	tw2.tween_property(spr, "modulate:a", 0.0, Settings.t(0.35))
 	tw2.tween_property(glow, "modulate:a", 0.0, Settings.t(0.25))
@@ -968,11 +969,14 @@ func anim_battle(p: int, inst, target) -> void:
 		return
 	var home: Transform3D = c.get_meta("home", c.transform)
 	var goal := _attack_goal(p, target)
+	_battle_shot(p, home.origin, goal)
+	await _wait(0.3)
 	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.82) + Vector3(0, 0.25, 0))
-	await _move(c, hit, 0.14, 0.15)
-	_burst(goal + Vector3(0, 0.1, 0), Color("ff8a5c"), 1.3)
-	shake(0.4)
+	await _move(c, hit, 0.16, 0.15)
+	_impact(goal + Vector3(0, 0.15, 0), Color("ff8a5c"))
+	await _wait(0.25)
 	await _move(c, home, 0.32, 0.3)
+	cam_release(0.45)
 	c.set_glow(false)
 
 
@@ -983,6 +987,97 @@ func anim_attack_stopped(inst) -> void:
 	var home: Transform3D = c.get_meta("home", c.transform)
 	await _move(c, home, 0.3, 0.1)
 	c.set_glow(false)
+
+
+## Low camera for attacks: behind your attacker, or facing the incoming one.
+func _battle_shot(p: int, from: Vector3, goal: Vector3) -> void:
+	if p == 0:
+		cam_shot(from + Vector3(from.x * 0.15, 2.3, 4.2), goal.lerp(from, 0.25) + Vector3(0, 0.4, 0), 0.35)
+	else:
+		var mid := from.lerp(goal, 0.5)
+		cam_shot(Vector3(mid.x * 0.5 + 1.5, 2.6, goal.z + 5.0), mid + Vector3(0, 0.6, 0), 0.35)
+
+
+## Hit: a flash, a ring, sparks flying out and a hard shake.
+func _impact(at: Vector3, color: Color) -> void:
+	_burst(at, color, 1.5)
+	_flash(at + Vector3(0, 0.6, 0), color)
+	_sparks(at, color, 40)
+	shake(0.55)
+	Sfx.play("impact", -4.0)
+
+
+func _sparks(at: Vector3, color: Color, amount: int) -> void:
+	var ps := GPUParticles3D.new()
+	ps.one_shot = true
+	ps.explosiveness = 0.95
+	ps.amount = amount
+	ps.lifetime = 0.9
+	var pm := ParticleProcessMaterial.new()
+	pm.direction = Vector3(0, 1, 0)
+	pm.spread = 80.0
+	pm.initial_velocity_min = 3.0
+	pm.initial_velocity_max = 7.0
+	pm.gravity = Vector3(0, -9.0, 0)
+	pm.damping_min = 1.0
+	pm.damping_max = 2.0
+	pm.scale_min = 0.6
+	pm.scale_max = 1.4
+	var grad := Gradient.new()
+	grad.set_color(0, Color(1, 1, 1, 1))
+	grad.set_color(1, Color(color, 0.0))
+	var gt := GradientTexture1D.new()
+	gt.gradient = grad
+	pm.color_ramp = gt
+	ps.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2(0.05, 0.05)
+	var qm := StandardMaterial3D.new()
+	qm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	qm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	qm.vertex_color_use_as_albedo = true
+	qm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	qm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	qm.albedo_color = Color(color.r * 2.0, color.g * 2.0, color.b * 2.0)
+	q.material = qm
+	ps.draw_pass_1 = q
+	ps.position = at
+	add_child(ps)
+	ps.emitting = true
+	get_tree().create_timer(1.5).timeout.connect(ps.queue_free)
+
+
+## The card bursts into glowing shards that tumble away.
+func _shatter(at: Vector3, color: Color) -> void:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = color.lightened(0.3)
+	m.emission_enabled = true
+	m.emission = color
+	m.emission_energy_multiplier = 2.5
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	create_tween().tween_property(m, "albedo_color:a", 0.0, Settings.t(0.6)).set_delay(Settings.t(0.3))
+	for i in 18:
+		var shard := MeshInstance3D.new()
+		var pr := PrismMesh.new()
+		pr.size = Vector3(_rng.randf_range(0.12, 0.3), _rng.randf_range(0.15, 0.35), 0.01)
+		shard.mesh = pr
+		shard.material_override = m
+		shard.position = at + Vector3(_rng.randf_range(-0.4, 0.4), 0.3, _rng.randf_range(-0.5, 0.5))
+		shard.rotation = Vector3(_rng.randf() * TAU, _rng.randf() * TAU, _rng.randf() * TAU)
+		add_child(shard)
+		var vel := Vector3(_rng.randf_range(-2.5, 2.5), _rng.randf_range(2.0, 4.5), _rng.randf_range(-2.0, 2.0))
+		var spin := Vector3(_rng.randf_range(-8, 8), _rng.randf_range(-8, 8), _rng.randf_range(-8, 8))
+		var start := shard.position
+		var start_rot := shard.rotation
+		var dur := Settings.t(0.9)
+		var tw := create_tween().set_parallel()
+		tw.tween_method(func(t: float):
+			shard.position = start + vel * t + Vector3(0, -6.0, 0) * t * t * 0.5
+			shard.rotation = start_rot + spin * t, 0.0, dur, dur)
+		tw.chain().tween_callback(shard.queue_free)
+	_sparks(at + Vector3(0, 0.3, 0), color, 30)
 
 
 func _attack_goal(p: int, target) -> Vector3:
@@ -1002,12 +1097,14 @@ func anim_attack(p: int, inst, target) -> void:
 	else:
 		goal = Vector3(0, 0.6, -3.4) if p == 0 else Vector3(0, 0.6, 3.6)
 	var lift := Transform3D(home.basis, home.origin + Vector3(0, 0.7, 0) + (goal - home.origin) * -0.08)
-	await _move(c, lift, 0.2, 0.0)
+	_battle_shot(p, home.origin, goal)
+	await _move(c, lift, 0.3, 0.0)
 	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.82) + Vector3(0, 0.25, 0))
-	await _move(c, hit, 0.14, 0.15)
-	_burst(goal + Vector3(0, 0.1, 0), Color("ff8a5c"), 1.3)
-	shake(0.4)
+	await _move(c, hit, 0.16, 0.15)
+	_impact(goal + Vector3(0, 0.15, 0), Color("ff8a5c"))
+	await _wait(0.25)
 	await _move(c, home, 0.32, 0.3)
+	cam_release(0.45)
 
 
 func remove_from_gy(inst) -> void:
@@ -1029,10 +1126,11 @@ func anim_destroy(inst, overlays: Array = []) -> void:
 	var tw := create_tween()
 	tw.tween_method(c.flash, 0.0, 3.0, Settings.t(0.12))
 	await tw.finished
+	_shatter(c.position, _frame_color(inst))
 	var tw2 := create_tween().set_parallel()
-	tw2.tween_property(c, "position:y", 1.2, Settings.t(0.35))
-	tw2.tween_property(c, "scale", Vector3(1.25, 1.25, 1.25), Settings.t(0.35))
-	tw2.tween_method(c.set_alpha, 1.0, 0.0, Settings.t(0.35))
+	tw2.tween_property(c, "position:y", 0.5, Settings.t(0.2))
+	tw2.tween_property(c, "scale", Vector3(1.15, 1.15, 1.15), Settings.t(0.2))
+	tw2.tween_method(c.set_alpha, 1.0, 0.0, Settings.t(0.2))
 	await tw2.finished
 	_cards.erase(inst.uid)
 	c.queue_free()
@@ -1215,6 +1313,39 @@ func _update_arrow() -> void:
 
 # ------------------------------------------------------------------ camera
 
+## Move the camera to a shot and hold it; call cam_release() to go back to the table.
+func cam_shot(pos: Vector3, target: Vector3, dur := 0.45) -> void:
+	if _cam_tween:
+		_cam_tween.kill()
+	if cam_weight < 0.05:
+		cam_pos = pos
+		cam_target = target
+	_cam_tween = create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	_cam_tween.tween_property(self, "cam_pos", pos, Settings.t(dur))
+	_cam_tween.tween_property(self, "cam_target", target, Settings.t(dur))
+	_cam_tween.tween_property(self, "cam_weight", 1.0, Settings.t(dur))
+
+
+func cam_release(dur := 0.5) -> void:
+	if _cam_tween:
+		_cam_tween.kill()
+	_cam_tween = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	_cam_tween.tween_property(self, "cam_weight", 0.0, Settings.t(dur))
+
+
+## Opening shot: a sweep over the arena that settles on the table.
+func intro_flyover(dur := 3.2) -> void:
+	cam_pos = Vector3(-16, 5.5, 15)
+	cam_target = Vector3(0, 3.0, -8)
+	cam_weight = 1.0
+	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(self, "cam_pos", Vector3(6, 3.2, 11), dur * 0.55)
+	tw.tween_property(self, "cam_target", Vector3(0, 1.5, -2), dur * 0.55)
+	tw.chain().tween_property(self, "cam_weight", 0.0, dur * 0.45).set_trans(Tween.TRANS_CUBIC)
+	_cam_tween = tw
+	await tw.finished
+
+
 func shake(amount: float) -> void:
 	_shake = maxf(_shake, amount)
 
@@ -1225,6 +1356,8 @@ func _process(delta: float) -> void:
 	var sway := Vector3(sin(_time * 0.35) * 0.06, sin(_time * 0.5) * 0.04, 0)
 	var s := _shake * _shake * 0.35
 	var jitter := Vector3(_rng.randf_range(-s, s), _rng.randf_range(-s, s), 0)
-	camera.position = CAM_POS + sway + jitter
-	camera.look_at(CAM_TARGET + jitter * 0.5)
+	var pos := CAM_POS.lerp(cam_pos, cam_weight) + sway * (1.0 - cam_weight) + jitter
+	var tgt := CAM_TARGET.lerp(cam_target, cam_weight) + jitter * 0.5
+	camera.position = pos
+	camera.look_at(tgt)
 	_update_arrow()

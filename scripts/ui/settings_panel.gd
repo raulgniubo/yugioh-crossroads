@@ -29,6 +29,16 @@ static func open(parent: Node) -> SidePanel:
 			Settings.save_settings())
 		p.add_row("Resolution", res)
 
+	var gfx := OptionButton.new()
+	for i in Settings.GRAPHICS.size():
+		gfx.add_item(Settings.GRAPHICS[i], i)
+	gfx.select(Settings.graphics)
+	gfx.item_selected.connect(func(i):
+		Settings.graphics = i
+		Settings.save_settings()
+		Router.toast("Applies next time a scene loads"))
+	p.add_row("Graphics", gfx)
+
 	var fps := CheckButton.new()
 	fps.text = "Show FPS"
 	fps.button_pressed = Settings.show_fps

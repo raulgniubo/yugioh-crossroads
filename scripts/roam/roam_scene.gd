@@ -13,7 +13,7 @@ var _pivot: Node3D
 var _arm: SpringArm3D
 var _cam: Camera3D
 var _yaw := 0.0
-var _pitch := -0.32
+var _pitch := -0.22
 var _npcs: Array = []  # [data, figure, marker]
 var _near: Dictionary = {}
 var _beaten := {}
@@ -33,6 +33,7 @@ var _talking := false
 var _pause: Control
 var _counter: Label
 var _theme: Dictionary
+var city: CityBuilder
 
 
 func _ready() -> void:
@@ -42,6 +43,8 @@ func _ready() -> void:
 	_build_world()
 	_build_player()
 	_build_npcs()
+	_build_walkers()
+	city.player = _player
 	_build_ui()
 	Music.play("menu")
 	_after_duel()
@@ -83,312 +86,96 @@ func _after_duel() -> void:
 
 # ------------------------------------------------------------------ world
 
-func _mat(c: Color, rough := 0.8, metal := 0.0) -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.albedo_color = c
-	m.roughness = rough
-	m.metallic = metal
-	return m
-
-
-func _box(size: Vector3, pos: Vector3, mat: Material, solid := true) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = size
-	mi.mesh = bm
-	mi.material_override = mat
-	mi.position = pos
-	add_child(mi)
-	if solid:
-		var body := StaticBody3D.new()
-		var cs := CollisionShape3D.new()
-		var sh := BoxShape3D.new()
-		sh.size = size
-		cs.shape = sh
-		body.add_child(cs)
-		body.position = pos
-		add_child(body)
-	return mi
-
-
 func _build_world() -> void:
-	var env := WorldEnvironment.new()
-	var e := Environment.new()
-	var sky := Sky.new()
-	var sm := ProceduralSkyMaterial.new()
-	sm.sky_top_color = _theme["sky_top"]
-	sm.sky_horizon_color = (_theme["sky_horizon"] as Color).lightened(0.15)
-	sm.ground_horizon_color = _theme["sky_horizon"]
-	sm.ground_bottom_color = Color(0.02, 0.02, 0.04)
-	sm.sun_angle_max = 20
-	sky.sky_material = sm
-	e.background_mode = Environment.BG_SKY
-	e.sky = sky
-	e.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	e.ambient_light_energy = 1.4
-	e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	e.glow_enabled = true
-	e.glow_intensity = 0.9
-	e.glow_bloom = 0.15
-	e.fog_enabled = true
-	e.fog_light_color = _theme["fog"]
-	e.fog_density = 0.012
-	e.ssao_enabled = true
-	env.environment = e
-	add_child(env)
-	var sun := DirectionalLight3D.new()
-	sun.light_color = Color(1.0, 0.75, 0.6)
-	sun.light_energy = 1.0
-	sun.rotation_degrees = Vector3(-28, -35, 0)
-	sun.shadow_enabled = true
-	add_child(sun)
-
-	# Ground: asphalt roads crossing at the plaza, sidewalks around them.
-	_box(Vector3(120, 0.2, 120), Vector3(0, -0.1, 0), _mat(Color(0.07, 0.07, 0.09), 0.9))
-	var walk := _mat(Color(0.32, 0.31, 0.34), 0.85)
-	for qx in [-1, 1]:
-		for qz in [-1, 1]:
-			_box(Vector3(30, 0.16, 30), Vector3(qx * 21.0, 0.08, qz * 21.0), walk, false)
-	# Lane markings and crosswalks.
-	var paint := _mat(Color(0.9, 0.9, 0.85), 0.6)
-	for i in range(-5, 6):
-		if absi(i) <= 1:
-			continue
-		_box(Vector3(2.2, 0.02, 0.18), Vector3(i * 5.0, 0.01, 0), paint, false)
-		_box(Vector3(0.18, 0.02, 2.2), Vector3(0, 0.01, i * 5.0), paint, false)
-	for k in range(-4, 5):
-		for side in [-1, 1]:
-			_box(Vector3(0.5, 0.02, 2.4), Vector3(k * 1.0, 0.01, side * 5.2), paint, false)
-			_box(Vector3(2.4, 0.02, 0.5), Vector3(side * 5.2, 0.01, k * 1.0), paint, false)
-	# Plaza: a big duel emblem on the crossing.
-	var ring := MeshInstance3D.new()
-	var tm := TorusMesh.new()
-	tm.inner_radius = 2.6
-	tm.outer_radius = 2.8
-	ring.mesh = tm
-	var rm := _mat(_theme["accent"])
-	rm.emission_enabled = true
-	rm.emission = _theme["accent"]
-	rm.emission_energy_multiplier = 2.0
-	ring.material_override = rm
-	ring.scale = Vector3(1, 0.05, 1)
-	ring.position.y = 0.02
-	add_child(ring)
-
-	_build_blocks()
-	_build_landmarks()
-	_build_lamps()
-	# Invisible walls keep you in the district.
-	var wall := StandardMaterial3D.new()
-	wall.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	wall.albedo_color = Color(0, 0, 0, 0)
-	for side in [-1, 1]:
-		_box(Vector3(80, 6, 1), Vector3(0, 3, side * 34.0), wall)
-		_box(Vector3(1, 6, 80), Vector3(side * 34.0, 3, 0), wall)
+	city = CityBuilder.new()
+	add_child(city)
+	city.build(_theme, Router.roam.get("tod", "night"))
 
 
-func _window_material(tint: Color, seed: float) -> ShaderMaterial:
-	var sh := Shader.new()
-	sh.code = """
-shader_type spatial;
-uniform vec4 wall : source_color = vec4(0.12, 0.12, 0.16, 1.0);
-uniform vec4 glow : source_color = vec4(1.0, 0.8, 0.5, 1.0);
-uniform float seed = 0.0;
-varying vec3 wp;
-varying vec3 wn;
-float h(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233)) + seed) * 43758.5453); }
-void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz); }
-void fragment() {
-	float u = abs(wn.x) > 0.5 ? wp.z : wp.x;
-	vec2 cell = floor(vec2(u / 1.6, wp.y / 2.4));
-	vec2 f = fract(vec2(u / 1.6, wp.y / 2.4));
-	float win = step(0.18, f.x) * step(f.x, 0.82) * step(0.3, f.y) * step(f.y, 0.8);
-	if (abs(wn.y) > 0.5 || wp.y < 2.2) { win = 0.0; }
-	float lit = step(0.52, h(cell));
-	ALBEDO = mix(wall.rgb, vec3(0.05, 0.07, 0.1), win);
-	ROUGHNESS = mix(0.85, 0.2, win);
-	METALLIC = win * 0.4;
-	EMISSION = glow.rgb * win * lit * (0.8 + h(cell + 3.1) * 1.6);
-}
-"""
-	var m := ShaderMaterial.new()
-	m.shader = sh
-	m.set_shader_parameter("wall", tint)
-	m.set_shader_parameter("seed", seed)
-	m.set_shader_parameter("glow", Color(1.0, 0.82, 0.55).lerp(_theme["accent2"], 0.25))
-	return m
+func _cycle_tod() -> void:
+	var i := CityBuilder.TODS.find(city.tod)
+	var next: String = CityBuilder.TODS[(i + 1) % CityBuilder.TODS.size()]
+	Router.roam["tod"] = next
+	city.apply_tod(next)
+	Router.toast({"night": "Night", "sunset": "Sunset", "day": "Daytime"}[next])
 
 
-func _build_blocks() -> void:
+# ------------------------------------------------------------------ pedestrians
+
+const WALK_LINES := [
+	"Did you catch the Battle City finals? Unreal.",
+	"My little brother won't stop talking about Blue-Eyes.",
+	"Kame Game has the best booster prices in town.",
+	"Watch out for the guys in robes. They've been stealing rare cards.",
+	"I'm saving up for a new Duel Disk.",
+	"The lights on KaibaCorp Tower never go off. Does that guy ever sleep?",
+	"Heard there's a duel spirit haunting the park at night...",
+	"I'm late for work. Again.",
+]
+const ROUTES := [
+	[Vector3(7.2, 0, 8), Vector3(7.2, 0, 29)],
+	[Vector3(8, 0, 7.2), Vector3(29, 0, 7.2)],
+	[Vector3(-7.4, 0, 8), Vector3(-7.4, 0, 29)],
+	[Vector3(8, 0, -7.4), Vector3(29, 0, -7.4)],
+	[Vector3(-8, 0, -7.4), Vector3(-29, 0, -7.4)],
+	[Vector3(7.4, 0, -8), Vector3(7.4, 0, -29)],
+	[Vector3(-8, 0, 7.4), Vector3(-29, 0, 7.4)],
+	[Vector3(-4.0, 0, -10), Vector3(4.0, 0, -10)],
+]
+var _walkers: Array = []  # {fig, a, b, t, dir, body}
+
+
+func _build_walkers() -> void:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 1999
-	var tints := [Color(0.16, 0.15, 0.2), Color(0.22, 0.18, 0.18), Color(0.13, 0.17, 0.22), Color(0.2, 0.2, 0.22)]
-	# Buildings line the outer edge of each block, leaving the inner sidewalks open.
-	for qx in [-1, 1]:
-		for qz in [-1, 1]:
-			for i in 4:
-				var along := -12.0 + i * 8.0
-				for row in [0, 1]:
-					var h := rng.randf_range(8.0, 26.0)
-					var w := rng.randf_range(6.0, 7.6)
-					var x: float
-					var z: float
-					if row == 0:  # back row along X
-						x = qx * (21.0 + along * 0.0) + along
-						z = qz * 32.0
-					else:  # side row along Z
-						x = qx * 32.0
-						z = qz * 21.0 + along
-					var m := _window_material(tints[rng.randi() % tints.size()], rng.randf() * 100.0)
-					_box(Vector3(w, h, w), Vector3(x, h / 2.0, z), m)
+	rng.seed = 11
+	var palette := [Color("e0533f"), Color("3f7be0"), Color("3fbf8a"), Color("8a4fd9"), Color("f0a040"), Color("2b2b33"), Color("e8e8ee"), Color("c94f8a")]
+	for i in ROUTES.size():
+		var f := RoamFigure.new()
+		add_child(f)
+		f.setup("walker_%d" % i, palette[rng.randi() % palette.size()], "", false)
+		var body := AnimatableBody3D.new()
+		body.sync_to_physics = false
+		var cs := CollisionShape3D.new()
+		var cap := CapsuleShape3D.new()
+		cap.radius = 0.3
+		cap.height = 1.7
+		cs.shape = cap
+		cs.position.y = 0.85
+		body.add_child(cs)
+		f.add_child(body)
+		var w := {"fig": f, "a": ROUTES[i][0], "b": ROUTES[i][1], "t": rng.randf(), "dir": 1.0 if rng.randf() > 0.5 else -1.0,
+			"speed": rng.randf_range(1.1, 1.6), "pause": 0.0}
+		_walkers.append(w)
+		var d := {"id": "walker_%d" % i, "name": "Passerby", "color": Color.GRAY, "lines": [WALK_LINES[i % WALK_LINES.size()]]}
+		var marker := Label3D.new()
+		marker.visible = false
+		f.add_child(marker)
+		_npcs.append([d, f, marker])
 
 
-func _sign(text: String, pos: Vector3, color: Color, size := 120, rot := 0.0) -> Label3D:
-	var l := Label3D.new()
-	l.text = text
-	l.font_size = size
-	l.outline_size = 0
-	l.modulate = color
-	l.position = pos
-	l.rotation.y = rot
-	l.shaded = false
-	l.double_sided = true
-	l.font = load("res://assets/fonts/Rajdhani-SemiBold.ttf")
-	add_child(l)
-	var light := OmniLight3D.new()
-	light.light_color = color
-	light.light_energy = 1.5
-	light.omni_range = 7.0
-	light.position = pos + Vector3(0, 0, 1.0).rotated(Vector3.UP, rot)
-	add_child(light)
-	return l
-
-
-func _build_landmarks() -> void:
-	# Kame Game: the little shop on the corner.
-	var shop := _mat(Color(0.55, 0.42, 0.3), 0.8)
-	_box(Vector3(9, 6, 6), Vector3(-10, 3, -19), shop)
-	_box(Vector3(9.6, 0.4, 6.6), Vector3(-10, 6.2, -19), _mat(Color(0.3, 0.18, 0.12)))
-	var glass := _mat(Color(0.5, 0.75, 0.9), 0.1, 0.3)
-	glass.emission_enabled = true
-	glass.emission = Color(1.0, 0.85, 0.6)
-	glass.emission_energy_multiplier = 0.8
-	_box(Vector3(5, 2.6, 0.1), Vector3(-10, 1.5, -15.95), glass, false)
-	var awning := _mat(Color(0.75, 0.15, 0.2), 0.7)
-	var aw := _box(Vector3(7, 0.12, 1.6), Vector3(-10, 3.2, -15.4), awning, false)
-	aw.rotation.x = 0.25
-	_sign("KAME GAME", Vector3(-10, 4.4, -15.9), Color("ffd166"), 140)
-	# KaibaCorp Tower looms at the end of the main street.
-	var tower := _window_material(Color(0.2, 0.26, 0.38), 7.0)
-	_box(Vector3(14, 70, 14), Vector3(0, 35, -46), tower)
-	_box(Vector3(18, 4, 18), Vector3(0, 2, -46), _mat(Color(0.75, 0.8, 0.88), 0.3, 0.6))
-	_sign("KC", Vector3(0, 60, -38.9), Color("7cc4ff"), 1100)
-	# Park corner: grass, trees and a fountain with a hologram.
-	var grass := _mat(Color(0.12, 0.24, 0.12), 0.95)
-	_box(Vector3(22, 0.2, 22), Vector3(19, 0.1, 19), grass, false)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 7
-	for i in 7:
-		var p := Vector3(rng.randf_range(10, 28), 0, rng.randf_range(10, 28))
-		if p.distance_to(Vector3(19, 0, 19)) < 4.5 or p.distance_to(Vector3(12, 0, 6)) < 3.0:
-			continue
-		_tree(p, rng.randf_range(0.8, 1.3))
-	var basin := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 2.6
-	cyl.bottom_radius = 2.8
-	cyl.height = 0.6
-	basin.mesh = cyl
-	basin.material_override = _mat(Color(0.6, 0.6, 0.65), 0.6)
-	basin.position = Vector3(19, 0.3, 19)
-	add_child(basin)
-	var water := _box(Vector3(4.6, 0.05, 4.6), Vector3(19, 0.58, 19), _mat(Color(0.2, 0.5, 0.7), 0.05, 0.2), false)
-	water.mesh = CylinderMesh.new()
-	(water.mesh as CylinderMesh).top_radius = 2.4
-	(water.mesh as CylinderMesh).bottom_radius = 2.4
-	(water.mesh as CylinderMesh).height = 0.05
-	var col := StaticBody3D.new()
-	var cs := CollisionShape3D.new()
-	var shp := CylinderShape3D.new()
-	shp.radius = 2.8
-	shp.height = 1.2
-	cs.shape = shp
-	col.add_child(cs)
-	col.position = Vector3(19, 0.6, 19)
-	add_child(col)
-	# A slowly spinning card hologram above the fountain.
-	var holo := MeshInstance3D.new()
-	var q := QuadMesh.new()
-	q.size = Vector2(1.6, 2.3)
-	holo.mesh = q
-	var hm := StandardMaterial3D.new()
-	hm.albedo_texture = Cards.get_back()
-	hm.albedo_color = Color(_theme["accent"], 0.75)
-	hm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	hm.emission_enabled = true
-	hm.emission = _theme["accent"]
-	hm.emission_energy_multiplier = 1.4
-	hm.cull_mode = BaseMaterial3D.CULL_DISABLED
-	hm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	holo.material_override = hm
-	holo.position = Vector3(19, 2.6, 19)
-	holo.name = "Holo"
-	add_child(holo)
-	var hl := OmniLight3D.new()
-	hl.light_color = _theme["accent"]
-	hl.light_energy = 2.0
-	hl.omni_range = 8.0
-	hl.position = Vector3(19, 2.2, 19)
-	add_child(hl)
-	# Big screen on a building: Battle City ads.
-	_sign("BATTLE CITY", Vector3(-31.4, 14, 14), _theme["accent"], 260, PI / 2)
-	_sign("DUEL DISK  ·  NOW ONLINE", Vector3(31.4, 10, -14), _theme["accent2"], 150, -PI / 2)
-
-
-func _tree(p: Vector3, s: float) -> void:
-	var trunk := MeshInstance3D.new()
-	var c := CylinderMesh.new()
-	c.top_radius = 0.15 * s
-	c.bottom_radius = 0.22 * s
-	c.height = 2.0 * s
-	trunk.mesh = c
-	trunk.material_override = _mat(Color(0.3, 0.2, 0.12))
-	trunk.position = p + Vector3(0, s, 0)
-	add_child(trunk)
-	var top := MeshInstance3D.new()
-	var sp := SphereMesh.new()
-	sp.radius = 1.4 * s
-	sp.height = 2.6 * s
-	top.mesh = sp
-	top.material_override = _mat(Color(0.14, 0.32, 0.16), 0.9)
-	top.position = p + Vector3(0, 2.8 * s, 0)
-	add_child(top)
-	var body := StaticBody3D.new()
-	var cs := CollisionShape3D.new()
-	var sh := CylinderShape3D.new()
-	sh.radius = 0.3 * s
-	sh.height = 3.0
-	cs.shape = sh
-	body.add_child(cs)
-	body.position = p + Vector3(0, 1.5, 0)
-	add_child(body)
-
-
-func _build_lamps() -> void:
-	var pole := _mat(Color(0.2, 0.21, 0.24), 0.4, 0.7)
-	var bulb := _mat(Color(1, 0.9, 0.7))
-	bulb.emission_enabled = true
-	bulb.emission = Color(1.0, 0.85, 0.6)
-	bulb.emission_energy_multiplier = 4.0
-	for p in [Vector3(6.2, 0, 12), Vector3(-6.2, 0, -12), Vector3(6.2, 0, -24), Vector3(-6.2, 0, 24), Vector3(12, 0, -6.2), Vector3(-24, 0, 6.2), Vector3(24, 0, -6.2), Vector3(-12, 0, 6.2)]:
-		_box(Vector3(0.18, 5, 0.18), p + Vector3(0, 2.5, 0), pole)
-		_box(Vector3(0.6, 0.25, 0.6), p + Vector3(0, 5.1, 0), bulb, false)
-		var l := OmniLight3D.new()
-		l.light_color = Color(1.0, 0.82, 0.6)
-		l.light_energy = 2.2
-		l.omni_range = 11.0
-		l.position = p + Vector3(0, 4.8, 0)
-		add_child(l)
+func _move_walkers(delta: float) -> void:
+	for w in _walkers:
+		var f: RoamFigure = w["fig"]
+		var a: Vector3 = w["a"]
+		var b: Vector3 = w["b"]
+		var len := a.distance_to(b)
+		var near_player := f.global_position.distance_to(_player.global_position) < 1.6
+		var talking_to: bool = _talking and _dlg_npc.get("id", "") == str(f.key)
+		if w["pause"] > 0.0:
+			w["pause"] -= delta
+		var moving: bool = not near_player and not talking_to and w["pause"] <= 0.0
+		if moving:
+			w["t"] += w["dir"] * w["speed"] * delta / len
+			if w["t"] > 1.0 or w["t"] < 0.0:
+				w["t"] = clampf(w["t"], 0.0, 1.0)
+				w["dir"] = -w["dir"]
+				w["pause"] = randf_range(0.5, 2.5)
+		var pos := a.lerp(b, w["t"]) + Vector3(0, 0.16, 0)
+		f.position = pos
+		f.set_speed(w["speed"] if moving else 0.0)
+		if not talking_to:
+			var heading: Vector3 = (b - a).normalized() * float(w["dir"])
+			f.rotation.y = lerp_angle(f.rotation.y, atan2(heading.x, heading.z), 1.0 - exp(-delta * 8.0))
 
 
 # ------------------------------------------------------------------ player & camera
@@ -413,7 +200,7 @@ func _build_player() -> void:
 	_pivot = Node3D.new()
 	add_child(_pivot)
 	_arm = SpringArm3D.new()
-	_arm.spring_length = 5.2
+	_arm.spring_length = 6.0
 	_arm.margin = 0.3
 	var sh := SphereShape3D.new()
 	sh.radius = 0.25
@@ -461,9 +248,7 @@ func _physics_process(delta: float) -> void:
 		_figure.rotation.y = lerp_angle(_figure.rotation.y, want, 1.0 - exp(-delta * 12.0))
 	_pivot.position = _pivot.position.lerp(_player.position + Vector3(0, 1.45, 0), 1.0 - exp(-delta * 10.0))
 	_pivot.rotation = Vector3(_pitch, _yaw, 0)
-	var holo := get_node_or_null("Holo")
-	if holo:
-		holo.rotation.y += delta * 0.8
+	_move_walkers(delta)
 	_update_near()
 
 
@@ -489,7 +274,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				_advance()
 				get_viewport().set_input_as_handled()
 		return
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_T:
+		_cycle_tod()
+		get_viewport().set_input_as_handled()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
 		_talk()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("ui_accept") or (event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_A):
@@ -684,7 +472,7 @@ func _build_ui() -> void:
 	loc.add_child(_counter)
 	_update_counter()
 	# Controls, bottom left.
-	var help := UITheme.label("WASD / stick  move     Shift  run     Drag  look     Scroll  zoom     E  talk     Esc  menu", 18, Color(1, 1, 1, 0.5))
+	var help := UITheme.label("WASD / stick  move     Shift  run     Drag  look     Scroll  zoom     E  talk     T  time of day     Esc  menu", 18, Color(1, 1, 1, 0.5))
 	help.anchor_top = 1.0
 	help.anchor_bottom = 1.0
 	help.position = Vector2(48, -50)
@@ -809,6 +597,22 @@ func _debug() -> void:
 			for i in 2:
 				await get_tree().create_timer(0.4).timeout
 				_advance()
+		elif a == "--lineup":
+			# Model check: everyone in a row in front of the camera.
+			var keys: Array = Characters.ORDER
+			for i in keys.size():
+				var f := RoamFigure.new()
+				add_child(f)
+				var row := i / 8
+				f.position = Vector3(-4.9 + (i % 8) * 1.4, 0, 4.0 - row * 2.2)
+				f.setup(keys[i], Characters.get_char(keys[i]).get("color", Color.WHITE), Characters.get_char(keys[i]).get("short", ""))
+			_player.position = Vector3(0, 0, 6.2 if "--close" in OS.get_cmdline_user_args() else 9.0)
+			_yaw = 0.0
+			_pitch = -0.1
+			_arm.spring_length = 0.1
+			_figure.visible = false
+			for n in _npcs:
+				n[1].visible = false
 		elif a == "--roam-walk":
 			await get_tree().create_timer(0.5).timeout
 			_yaw = PI * 0.8

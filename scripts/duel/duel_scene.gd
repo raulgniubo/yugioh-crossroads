@@ -60,13 +60,22 @@ func _ready() -> void:
 
 
 func _debug_cine() -> void:
-	await get_tree().create_timer(2.5).timeout
+	await get_tree().create_timer(4.0).timeout
 	var inst = state._make(89631139, ME)
+	if "--battle-demo" in OS.get_cmdline_user_args():
+		# Two monsters on the field, ours attacks theirs and it shatters.
+		var foe = state._make(89631139, AI)
+		await board.anim_summon(ME, inst, 2, false)
+		await board.anim_summon(AI, foe, 2, false)
+		await board.anim_declare(ME, inst, foe)
+		await board.anim_battle(ME, inst, foe)
+		await board.anim_destroy(foe)
+		return
 	board.hologram(inst, board.monster_zone_pos(ME, 2))
 
 
 func _start() -> void:
-	if "--cine" in OS.get_cmdline_user_args():
+	if "--cine" in OS.get_cmdline_user_args() or "--battle-demo" in OS.get_cmdline_user_args():
 		_debug_cine()
 	var cfg: Dictionary = Router.duel_config
 	_opp_key = cfg.get("opponent", "kaiba")
@@ -90,6 +99,8 @@ func _start() -> void:
 	_update_counts()
 	hud.set_phase_buttons("", false, false)
 	hud.set_extra_button(state.players[ME].extra.size(), 0, false)
+	if "--no-fly" not in OS.get_cmdline_user_args():
+		board.intro_flyover(3.6 if not _autoplay else 2.5)
 	if not _autoplay:
 		await hud.vs_intro(
 			{"key": _me_key, "name": me_name, "color": me_info.get("color", Profile.color()), "sub": "%s Deck" % CardData.deck_name(my_deck)},
