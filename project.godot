@@ -18,7 +18,10 @@ boot_splash/show_image=false
 [autoload]
 
 Settings="*res://scripts/core/settings.gd"
+Profile="*res://scripts/core/profile.gd"
 Cards="*res://scripts/core/card_db.gd"
+Portraits="*res://scripts/core/portraits.gd"
+Sfx="*res://scripts/core/sfx.gd"
 Router="*res://scripts/core/router.gd"
 
 [display]

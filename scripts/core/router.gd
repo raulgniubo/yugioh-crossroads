@@ -57,6 +57,18 @@ func _debug_args() -> void:
 			after = float(a.substr(8))
 		elif a == "--duel":
 			duel = true
+		elif a.begins_with("--opp="):
+			duel_config["opponent"] = a.substr(6)
+		elif a.begins_with("--deck="):
+			duel_config["player_deck"] = a.substr(7)
+		elif a.begins_with("--open="):
+			var what := a.substr(7)
+			await get_tree().create_timer(1.2).timeout
+			var menu := get_tree().current_scene
+			if what == "select":
+				menu._on_free_duel()
+			elif what == "profile":
+				menu._open_profile(true)
 		elif a.begins_with("--speed="):
 			Settings.anim_speed = float(a.substr(8))
 	if duel:

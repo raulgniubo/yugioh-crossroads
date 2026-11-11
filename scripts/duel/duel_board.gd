@@ -318,8 +318,8 @@ func anim_summon(p: int, inst, zone: int, set_card: bool) -> void:
 		await hologram(inst, to.origin)
 
 
-func hologram(inst, at: Vector3) -> void:
-	var big: bool = int(inst.data.get("level", 0)) >= 7
+func hologram(inst, at: Vector3, force_big := false) -> void:
+	var big: bool = force_big or int(inst.data.get("level", 0)) >= 7
 	var art := Cards.get_art(inst.id)
 	var spr := Sprite3D.new()
 	spr.texture = art
@@ -392,6 +392,192 @@ func _burst(at: Vector3, color: Color, size: float) -> void:
 	tw.tween_property(mi, "scale", Vector3(size * 2.2, 1, size * 2.2), Settings.t(0.5))
 	tw.tween_property(m, "albedo_color:a", 0.0, Settings.t(0.5))
 	tw.chain().tween_callback(mi.queue_free)
+
+
+const METHOD_COLORS := {
+	"fusion": Color("b15cff"),
+	"synchro": Color("6dff9a"),
+	"xyz": Color("ffd23a"),
+	"reborn": Color("ffe9a8"),
+}
+
+
+## A card leaves (hand or field) to become material. Flies to the summon point.
+func anim_material(p: int, inst, from: String, center: Vector3) -> void:
+	var c := card_for(inst)
+	if from == "hand":
+		if p == 0:
+			c = _new_card(inst)
+			c.transform = _near_camera_xform()
+		else:
+			c = _take_from_opp_hand(inst)
+	if c == null:
+		return
+	c.set_pickable(false)
+	c.set_glow(true, Color.WHITE)
+	var to := Transform3D(Basis(Vector3.RIGHT, -0.4) * Basis(Vector3.UP, randf_range(-0.6, 0.6)), center + Vector3(randf_range(-0.9, 0.9), 1.6, randf_range(-0.3, 0.3)))
+	await _move(c, to, 0.32, 0.4)
+
+
+func special_center(p: int, zone: int) -> Vector3:
+	return monster_zone_pos(p, zone)
+
+
+## Pull the materials together, play the method's effect, then land the monster.
+func anim_special(p: int, inst, zone: int, method: String, materials: Array) -> void:
+	var col: Color = METHOD_COLORS.get(method, UITheme.ACCENT)
+	if method == "reborn":
+		remove_from_gy(inst)
+	var at := monster_zone_pos(p, zone) + Vector3(0, 0.02, 0)
+	var core := at + Vector3(0, 1.6, 0)
+	# Materials spiral into the core and vanish
+	var tw: Tween = create_tween().set_parallel() if materials.size() > 0 else null
+	for m in materials:
+		var mc := card_for(m)
+		if mc == null:
+			continue
+		tw.tween_property(mc, "position", core, Settings.t(0.45)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+		tw.tween_property(mc, "scale", Vector3(0.2, 0.2, 0.2), Settings.t(0.45))
+		tw.tween_method(mc.set_alpha, 1.0, 0.0, Settings.t(0.45))
+	match method:
+		"synchro":
+			for i in 3:
+				_ring_fx(at + Vector3(0, 0.3 + i * 0.7, 0), col, 0.8, 0.12 * i, 1.0)
+		"xyz":
+			_vortex(core, col)
+		"fusion":
+			_swirl(core, col)
+		_:
+			_ring_fx(at + Vector3(0, 0.1, 0), col, 1.0, 0.0, 1.0)
+	if tw:
+		await tw.finished
+	else:
+		await _wait(0.45)
+	for m in materials:
+		var mc := card_for(m)
+		if mc:
+			_cards.erase(m.uid)
+			mc.queue_free()
+		if method != "xyz":
+			_add_to_gy(m)
+	shake(0.6)
+	_flash(core, col)
+	var c := _new_card(inst)
+	c.transform = Transform3D(table_basis(p, true, true), core)
+	c.scale = Vector3(0.1, 0.1, 0.1)
+	var grow := create_tween()
+	grow.tween_property(c, "scale", Vector3.ONE, Settings.t(0.25)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await grow.finished
+	await _move(c, Transform3D(table_basis(p, true, true), at), 0.25, 0.0)
+	_burst(at, col, 2.2)
+	if method == "xyz":
+		set_overlays(inst)
+	await hologram(inst, at, true)
+
+
+func set_overlays(inst) -> void:
+	var c := card_for(inst)
+	if c == null:
+		return
+	var lbl := c.get_node_or_null("Overlays") as Label3D
+	if lbl == null:
+		lbl = Label3D.new()
+		lbl.name = "Overlays"
+		lbl.font = UITheme.title_font()
+		lbl.font_size = 56
+		lbl.pixel_size = 0.004
+		lbl.outline_size = 14
+		lbl.modulate = Color("ffd23a")
+		lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		lbl.no_depth_test = true
+		lbl.position = Vector3(0.3, 0.42, 0.25)
+		c.add_child(lbl)
+	lbl.text = "◆ %d" % inst.overlays.size()
+	lbl.visible = inst.overlays.size() > 0
+
+
+func _ring_fx(at: Vector3, color: Color, size: float, delay: float, rise: float) -> void:
+	var mi := MeshInstance3D.new()
+	var t := TorusMesh.new()
+	t.inner_radius = 0.55
+	t.outer_radius = 0.6
+	t.rings = 48
+	t.ring_segments = 6
+	mi.mesh = t
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.albedo_color = Color(color, 0.0)
+	mi.material_override = m
+	mi.position = at
+	mi.scale = Vector3(size, 1, size)
+	add_child(mi)
+	var tw := create_tween()
+	tw.tween_interval(Settings.t(delay))
+	tw.tween_property(m, "albedo_color:a", 1.0, Settings.t(0.12))
+	tw.parallel().tween_property(mi, "position:y", at.y + rise, Settings.t(0.6))
+	tw.tween_property(m, "albedo_color:a", 0.0, Settings.t(0.35))
+	tw.parallel().tween_property(mi, "scale", Vector3(size * 1.8, 1, size * 1.8), Settings.t(0.35))
+	tw.tween_callback(mi.queue_free)
+
+
+func _swirl(at: Vector3, color: Color) -> void:
+	for i in 4:
+		var mi := MeshInstance3D.new()
+		var t := TorusMesh.new()
+		t.inner_radius = 0.7 + i * 0.12
+		t.outer_radius = 0.74 + i * 0.12
+		mi.mesh = t
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		m.albedo_color = Color(color.lerp(Color("ff8a3a"), i / 4.0), 0.9)
+		mi.material_override = m
+		mi.position = at
+		mi.rotation = Vector3(randf() * PI, randf() * PI, 0)
+		add_child(mi)
+		var tw := create_tween().set_parallel()
+		tw.tween_property(mi, "rotation", mi.rotation + Vector3(PI * 2.0, PI, 0), Settings.t(0.9))
+		tw.tween_property(mi, "scale", Vector3(0.05, 0.05, 0.05), Settings.t(0.9)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		tw.chain().tween_callback(mi.queue_free)
+
+
+func _vortex(at: Vector3, color: Color) -> void:
+	var sphere := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.6
+	sm.height = 1.2
+	sphere.mesh = sm
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_color = Color(0.02, 0.0, 0.08, 0.85)
+	sphere.material_override = m
+	sphere.position = at
+	sphere.scale = Vector3(0.1, 0.1, 0.1)
+	add_child(sphere)
+	var tw := create_tween()
+	tw.tween_property(sphere, "scale", Vector3.ONE, Settings.t(0.3)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(Settings.t(0.35))
+	tw.tween_property(sphere, "scale", Vector3(0.01, 0.01, 0.01), Settings.t(0.2))
+	tw.tween_callback(sphere.queue_free)
+	for i in 3:
+		_ring_fx(at + Vector3(0, -0.2 + i * 0.2, 0), color, 1.1 - i * 0.2, i * 0.08, 0.0)
+
+
+func _flash(at: Vector3, color: Color) -> void:
+	var l := OmniLight3D.new()
+	l.light_color = color
+	l.light_energy = 0.0
+	l.omni_range = 8.0
+	l.position = at
+	add_child(l)
+	var tw := create_tween()
+	tw.tween_property(l, "light_energy", 12.0, Settings.t(0.08))
+	tw.tween_property(l, "light_energy", 0.0, Settings.t(0.6))
+	tw.tween_callback(l.queue_free)
 
 
 func anim_tribute(inst) -> void:
@@ -475,10 +661,21 @@ func anim_attack(p: int, inst, target) -> void:
 	await _move(c, home, 0.32, 0.3)
 
 
-func anim_destroy(inst) -> void:
+func remove_from_gy(inst) -> void:
+	for pile in _gy_cards:
+		for gc in pile:
+			if gc.inst == inst:
+				pile.erase(gc)
+				gc.queue_free()
+				return
+
+
+func anim_destroy(inst, overlays: Array = []) -> void:
 	var c := card_for(inst)
 	if c == null:
 		return
+	for o in overlays:
+		_add_to_gy(o)
 	c.set_glow(true, UITheme.DANGER)
 	var tw := create_tween()
 	tw.tween_method(c.flash, 0.0, 3.0, Settings.t(0.12))

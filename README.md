@@ -31,7 +31,14 @@ game's card folder (default `~/Documents/Crossroads/assets`, changeable in Setti
 python3 tools/fetch_cards.py --set "Legend of Blue Eyes White Dragon" --set "Metal Raiders" --out ~/Documents/Crossroads/assets
 ```
 
-Card images are never committed to this repo.
+Character pictures (Yugi, Kaiba, Joey, Jaden, Yusei, Yuma) work the same way:
+
+```
+python3 tools/fetch_characters.py --out ~/Documents/Crossroads/assets
+```
+
+They land in `characters/<key>.png`. Drop your own `player.png` there to use your own picture.
+Card and character images are never committed to this repo.
 
 ## Project layout
 
@@ -49,5 +56,5 @@ tools/             fetch_cards.py
 
 ```
 godot --headless --path . res://tests/test_runner.tscn        # rules tests
-godot --path . -- --duel --autoplay                            # watch AI vs AI
+godot --path . -- --duel --autoplay --deck=yusei --opp=yuma    # watch AI vs AI
 ```

@@ -25,6 +25,7 @@ class CardInst:
 	var summoned_turn := -1
 	var pos_changed_turn := -1
 	var attacked_turn := -1
+	var overlays: Array = []
 
 	func is_monster() -> bool:
 		return data.get("kind", "monster") == "monster"
@@ -38,6 +39,12 @@ class CardInst:
 	func level() -> int:
 		return int(data.get("level", 0))
 
+	func frame() -> String:
+		return str(data.get("frame", "normal"))
+
+	func is_tuner() -> bool:
+		return bool(data.get("tuner", false))
+
 
 class PlayerState:
 	extends RefCounted
@@ -46,6 +53,7 @@ class PlayerState:
 	var deck: Array[CardInst] = []
 	var hand: Array[CardInst] = []
 	var gy: Array[CardInst] = []
+	var extra: Array[CardInst] = []
 	var field: Array = [null, null, null, null, null]
 
 	func monsters() -> Array[CardInst]:
@@ -70,7 +78,8 @@ var _uid := 0
 var _rng := RandomNumberGenerator.new()
 
 
-func setup(deck_a: Array[int], deck_b: Array[int], name_a: String, name_b: String, first := 0, seed := -1) -> Array:
+func setup(deck_a: Array[int], deck_b: Array[int], name_a: String, name_b: String, first := 0, seed := -1,
+		extra_a: Array[int] = [], extra_b: Array[int] = []) -> Array:
 	if seed >= 0:
 		_rng.seed = seed
 	else:
@@ -81,14 +90,10 @@ func setup(deck_a: Array[int], deck_b: Array[int], name_a: String, name_b: Strin
 	for i in 2:
 		var ids: Array[int] = deck_a if i == 0 else deck_b
 		for id in ids:
-			_uid += 1
-			var c := CardInst.new()
-			c.uid = _uid
-			c.id = id
-			c.data = CardData.get_card(id)
-			c.owner = i
-			players[i].deck.append(c)
+			players[i].deck.append(_make(id, i))
 		_shuffle(players[i].deck)
+		for id in (extra_a if i == 0 else extra_b):
+			players[i].extra.append(_make(id, i))
 	current = first
 	turn = 0
 	var events := [{"type": "start"}]
@@ -96,6 +101,16 @@ func setup(deck_a: Array[int], deck_b: Array[int], name_a: String, name_b: Strin
 		for n in 5:
 			events.append_array(_draw(i))
 	return events
+
+
+func _make(id: int, owner: int) -> CardInst:
+	_uid += 1
+	var c := CardInst.new()
+	c.uid = _uid
+	c.id = id
+	c.data = CardData.get_card(id)
+	c.owner = owner
+	return c
 
 
 func _shuffle(arr: Array) -> void:
@@ -279,13 +294,28 @@ func can_activate(p: int, c: CardInst) -> bool:
 			return players[p].deck.size() >= 2
 		"fissure":
 			return _lowest_face_up(opponent(p)) != null
+		"raigeki":
+			return not players[opponent(p)].monsters().is_empty()
+		"fusion":
+			return not fusion_targets(p, c).is_empty()
+		"reborn":
+			return _best_in_gy() != null and players[p].free_zone() != -1
 	return true
 
 
-func activate(p: int, c: CardInst) -> Array:
+func activate(p: int, c: CardInst, choice: CardInst = null) -> Array:
 	if not can_activate(p, c):
 		return []
 	var ps := players[p]
+	var fusion_plan := {}
+	if c.data.get("effect", "") == "fusion":
+		var options := fusion_targets(p, c)
+		for o in options:
+			if choice == null or o["card"] == choice:
+				fusion_plan = o
+				break
+		if fusion_plan.is_empty():
+			return []
 	ps.hand.erase(c)
 	var events := [{"type": "activate", "player": p, "card": c}]
 	match c.data.get("effect", ""):
@@ -298,6 +328,17 @@ func activate(p: int, c: CardInst) -> Array:
 			var target := _lowest_face_up(opponent(p))
 			if target:
 				events.append_array(_destroy(target))
+		"raigeki":
+			for m in players[opponent(p)].monsters():
+				events.append_array(_destroy(m))
+		"fusion":
+			events.append_array(_do_fusion(p, fusion_plan))
+		"reborn":
+			var revive := _best_in_gy()
+			if revive:
+				players[revive.owner].gy.erase(revive)
+				revive.owner = p
+				events.append_array(_special(p, revive, "reborn"))
 	ps.gy.append(c)
 	events.append({"type": "spell_done", "player": p, "card": c})
 	return events
@@ -370,7 +411,11 @@ func _destroy(c: CardInst) -> Array:
 		return []
 	ps.field[zone] = null
 	ps.gy.append(c)
-	return [{"type": "destroy", "player": c.owner, "card": c, "zone": zone}]
+	var events := [{"type": "destroy", "player": c.owner, "card": c, "zone": zone, "overlays": c.overlays.duplicate()}]
+	for o in c.overlays:
+		ps.gy.append(o)
+	c.overlays.clear()
+	return events
 
 
 func _damage(p: int, amount: int) -> Array:
@@ -382,4 +427,163 @@ func _damage(p: int, amount: int) -> Array:
 	if ps.lp == 0:
 		_set_winner(opponent(p), "%s's Life Points hit zero." % ps.name)
 		events.append({"type": "win", "player": winner, "reason": win_reason})
+	return events
+
+
+# ------------------------------------------------------------------ special summons
+
+func _best_in_gy() -> CardInst:
+	var best: CardInst = null
+	for ps in players:
+		for c in ps.gy:
+			if c.is_monster() and (best == null or c.atk() > best.atk()):
+				best = c
+	return best
+
+
+func _special(p: int, c: CardInst, method: String) -> Array:
+	var ps := players[p]
+	var zone := ps.free_zone()
+	if zone == -1:
+		ps.gy.append(c)
+		return []
+	ps.field[zone] = c
+	c.face_up = true
+	c.attack_pos = true
+	c.summoned_turn = turn
+	c.pos_changed_turn = -1
+	c.attacked_turn = -1
+	return [{"type": "special", "player": p, "card": c, "zone": zone, "method": method}]
+
+
+## Every Fusion Monster that can be made right now with Polymerization `poly`.
+## Each option: {"card", "hand": [materials], "field": [materials]}
+func fusion_targets(p: int, poly: CardInst = null) -> Array:
+	var ps := players[p]
+	var out := []
+	for f in ps.extra:
+		if f.frame() != "fusion":
+			continue
+		var pool_hand: Array = ps.hand.duplicate()
+		if poly:
+			pool_hand.erase(poly)
+		var pool_field: Array = ps.monsters()
+		var used_hand := []
+		var used_field := []
+		var ok := true
+		for mid in f.data.get("materials", []):
+			var found = null
+			for h in pool_hand:
+				if h.id == mid:
+					found = h
+					break
+			if found:
+				pool_hand.erase(found)
+				used_hand.append(found)
+				continue
+			for m in pool_field:
+				if m.id == mid:
+					found = m
+					break
+			if found:
+				pool_field.erase(found)
+				used_field.append(found)
+				continue
+			ok = false
+			break
+		if not ok:
+			continue
+		if used_field.is_empty() and ps.free_zone() == -1:
+			continue
+		out.append({"card": f, "hand": used_hand, "field": used_field})
+	out.sort_custom(func(a, b): return a["card"].atk() > b["card"].atk())
+	return out
+
+
+func _do_fusion(p: int, plan: Dictionary) -> Array:
+	var ps := players[p]
+	var events := []
+	for m in plan["hand"]:
+		ps.hand.erase(m)
+		ps.gy.append(m)
+		events.append({"type": "material", "player": p, "card": m, "from": "hand"})
+	for m in plan["field"]:
+		var z := ps.field.find(m)
+		ps.field[z] = null
+		ps.gy.append(m)
+		events.append({"type": "material", "player": p, "card": m, "from": "field", "zone": z})
+	var f: CardInst = plan["card"]
+	ps.extra.erase(f)
+	events.append_array(_special(p, f, "fusion"))
+	return events
+
+
+## Material sets for a Synchro or Xyz monster, best (cheapest) first.
+func extra_materials(p: int, c: CardInst) -> Array:
+	var mons: Array = []
+	for m in players[p].monsters():
+		if m.face_up:
+			mons.append(m)
+	var out := []
+	if c.frame() == "xyz":
+		var same := mons.filter(func(m): return m.level() == c.level() and m.frame() not in ["xyz"])
+		if same.size() >= 2:
+			same.sort_custom(func(a, b): return a.atk() < b.atk())
+			out.append(same.slice(0, 2))
+	elif c.frame() == "synchro":
+		var n := mons.size()
+		for mask in range(1, 1 << n):
+			var sel := []
+			for i in n:
+				if mask & (1 << i):
+					sel.append(mons[i])
+			var tuners := sel.filter(func(m): return m.is_tuner())
+			if tuners.size() != 1 or sel.size() < 2:
+				continue
+			var total := 0
+			for m in sel:
+				total += m.level()
+			if total == c.level():
+				out.append(sel)
+		out.sort_custom(func(a, b): return _sum_atk(a) < _sum_atk(b))
+	return out
+
+
+func _sum_atk(arr: Array) -> int:
+	var t := 0
+	for m in arr:
+		t += m.atk()
+	return t
+
+
+func can_extra_summon(p: int, c: CardInst) -> bool:
+	if p != current or not _in_main() or is_over() or not players[p].extra.has(c):
+		return false
+	if c.frame() != "synchro" and c.frame() != "xyz":
+		return false
+	return not extra_materials(p, c).is_empty()
+
+
+func extra_summon(p: int, c: CardInst, materials: Array = []) -> Array:
+	if not can_extra_summon(p, c):
+		return []
+	if materials.is_empty():
+		materials = extra_materials(p, c)[0]
+	var ps := players[p]
+	var events := []
+	var xyz := c.frame() == "xyz"
+	for m in materials:
+		var z := ps.field.find(m)
+		if z == -1:
+			return []
+	for m in materials:
+		var z := ps.field.find(m)
+		ps.field[z] = null
+		if xyz:
+			c.overlays.append(m)
+		else:
+			ps.gy.append(m)
+		events.append({"type": "material", "player": p, "card": m, "from": "field", "zone": z, "overlay": xyz})
+	ps.extra.erase(c)
+	events.append_array(_special(p, c, c.frame()))
 	return events

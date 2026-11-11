@@ -10,6 +10,8 @@ signal action_chosen(action: String)
 signal cancel_pressed
 signal direct_attack_pressed
 signal pause_action(action: String)
+signal extra_pressed
+signal extra_chosen(inst)
 
 const HAND_CARD := Vector2(150, 218)
 
@@ -37,6 +39,13 @@ var _banner: Label
 var _float_root: Control
 var _overlay: Control
 var player_names := ["You", "Opponent"]
+var portrait_keys := ["player", "kaiba"]
+var _portraits: Array[TextureRect] = [null, null]
+var _plates: Array[PanelContainer] = [null, null]
+var _bubbles: Array[PanelContainer] = [null, null]
+var _bubble_labels: Array[Label] = [null, null]
+var _btn_extra: Button
+var _extra_panel: Control
 
 
 func _ready() -> void:
@@ -68,13 +77,34 @@ func _ready() -> void:
 # ------------------------------------------------------------------ plates
 
 func _plate(p: int) -> PanelContainer:
+	var col := UITheme.ACCENT if p == 0 else Color("8a6dff")
 	var pc := PanelContainer.new()
-	pc.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.04, 0.07, 0.12, 0.82), 18,
-			Color(UITheme.ACCENT if p == 0 else Color("8a6dff"), 0.35)))
-	pc.custom_minimum_size = Vector2(380, 0)
+	var sb := UITheme.panel_box(Color(0.04, 0.07, 0.12, 0.84), 18, Color(col, 0.4))
+	sb.set_content_margin_all(12)
+	pc.add_theme_stylebox_override("panel", sb)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 16)
+	pc.add_child(h)
+	var frame := Panel.new()
+	frame.custom_minimum_size = Vector2(118, 148)
+	var fsb := StyleBoxFlat.new()
+	fsb.bg_color = Color(0.02, 0.03, 0.06, 1)
+	fsb.set_corner_radius_all(14)
+	fsb.border_color = col
+	fsb.set_border_width_all(2)
+	frame.add_theme_stylebox_override("panel", fsb)
+	frame.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+	h.add_child(frame)
+	var portrait := TextureRect.new()
+	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	portrait.pivot_offset = Vector2(59, 74)
+	frame.add_child(portrait)
+	_portraits[p] = portrait
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 4)
-	pc.add_child(v)
+	v.add_theme_constant_override("separation", 2)
+	h.add_child(v)
 	var name_l := UITheme.label(player_names[p].to_upper(), 24, UITheme.TEXT_DIM, UITheme.semi_font())
 	name_l.name = "Name"
 	v.add_child(name_l)
@@ -83,17 +113,35 @@ func _plate(p: int) -> PanelContainer:
 	_lp_labels[p] = lp
 	var bar_bg := ColorRect.new()
 	bar_bg.color = Color(1, 1, 1, 0.08)
-	bar_bg.custom_minimum_size = Vector2(340, 6)
+	bar_bg.custom_minimum_size = Vector2(250, 6)
 	v.add_child(bar_bg)
 	var bar := ColorRect.new()
-	bar.color = UITheme.ACCENT if p == 0 else Color("8a6dff")
-	bar.size = Vector2(340, 6)
+	bar.color = col
+	bar.size = Vector2(250, 6)
 	bar_bg.add_child(bar)
 	_lp_bars[p] = bar
-	var counts := UITheme.label("", 17, UITheme.TEXT_DIM)
+	var counts := UITheme.label("", 16, UITheme.TEXT_DIM)
 	v.add_child(counts)
 	_count_labels[p] = counts
 	add_child(pc)
+	_plates[p] = pc
+	# Speech bubble
+	var bubble := PanelContainer.new()
+	var bsb := UITheme.panel_box(Color(0.96, 0.98, 1.0, 0.97), 16, Color(col, 0.0))
+	bsb.content_margin_left = 20
+	bsb.content_margin_right = 20
+	bsb.content_margin_top = 12
+	bsb.content_margin_bottom = 12
+	bubble.add_theme_stylebox_override("panel", bsb)
+	var bl := UITheme.label("", 22, Color("0b1020"), UITheme.semi_font())
+	bl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	bl.custom_minimum_size = Vector2(300, 0)
+	bubble.add_child(bl)
+	bubble.modulate.a = 0.0
+	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bubble)
+	_bubbles[p] = bubble
+	_bubble_labels[p] = bl
 	return pc
 
 
@@ -101,15 +149,25 @@ func _build_plates() -> void:
 	var opp := _plate(1)
 	opp.anchor_left = 1.0
 	opp.anchor_right = 1.0
-	opp.offset_left = -416
+	opp.offset_left = -456
 	opp.offset_right = -36
 	opp.offset_top = 30
 	var me := _plate(0)
 	me.anchor_top = 1.0
 	me.anchor_bottom = 1.0
 	me.offset_left = 36
-	me.offset_top = -200
+	me.offset_top = -206
 	me.offset_bottom = -30
+	_bubbles[1].anchor_left = 1.0
+	_bubbles[1].anchor_right = 1.0
+	_bubbles[1].offset_left = -500
+	_bubbles[1].offset_right = -120
+	_bubbles[1].offset_top = 216
+	_bubbles[0].anchor_top = 1.0
+	_bubbles[0].anchor_bottom = 1.0
+	_bubbles[0].offset_left = 160
+	_bubbles[0].offset_right = 540
+	_bubbles[0].offset_top = -300
 
 
 func set_names(a: String, b: String) -> void:
@@ -117,6 +175,62 @@ func set_names(a: String, b: String) -> void:
 	for i in 2:
 		var lbl := _lp_labels[i].get_parent().get_node("Name") as Label
 		lbl.text = player_names[i].to_upper()
+
+
+func set_portraits(a: String, b: String) -> void:
+	portrait_keys = [a, b]
+	for i in 2:
+		_portraits[i].texture = Portraits.get_portrait(portrait_keys[i])
+
+
+## A short line in a speech bubble next to the duelist. Doesn't block.
+func say(p: int, text: String) -> void:
+	if text == "":
+		return
+	var b := _bubbles[p]
+	_bubble_labels[p].text = text
+	b.reset_size()
+	await get_tree().process_frame
+	var sz := b.get_combined_minimum_size()
+	if p == 1:
+		b.offset_right = -40
+		b.offset_left = -40 - sz.x
+		b.offset_top = 222
+		b.offset_bottom = 222 + sz.y
+	else:
+		b.offset_left = 36
+		b.offset_right = 36 + sz.x
+		b.offset_bottom = -222
+		b.offset_top = -222 - sz.y
+	b.size = sz
+	b.pivot_offset = Vector2(0 if p == 0 else b.size.x, b.size.y if p == 0 else 0)
+	b.scale = Vector2(0.85, 0.85)
+	if b.has_meta("tw"):
+		var old: Tween = b.get_meta("tw")
+		if old and old.is_valid():
+			old.kill()
+	var tw := create_tween()
+	b.set_meta("tw", tw)
+	tw.set_parallel()
+	tw.tween_property(b, "modulate:a", 1.0, 0.15)
+	tw.tween_property(b, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_interval(2.4)
+	tw.chain().tween_property(b, "modulate:a", 0.0, 0.3)
+
+
+## Portrait reaction: shake on damage, pulse on big moments.
+func react(p: int, kind: String) -> void:
+	var pt := _portraits[p]
+	var tw := create_tween()
+	if kind == "hurt":
+		pt.modulate = Color(1.6, 0.6, 0.6)
+		for i in 6:
+			tw.tween_property(pt, "position:x", (8.0 if i % 2 == 0 else -8.0), 0.04)
+		tw.tween_property(pt, "position:x", 0.0, 0.04)
+		tw.parallel().tween_property(pt, "modulate", Color.WHITE, 0.4)
+	else:
+		tw.tween_property(pt, "scale", Vector2(1.12, 1.12), 0.15)
+		tw.tween_property(pt, "scale", Vector2.ONE, 0.3)
 
 
 func set_counts(p: int, deck: int, hand: int, gy: int) -> void:
@@ -185,6 +299,12 @@ func _build_phase() -> void:
 	_btn_end.custom_minimum_size = Vector2(294, 58)
 	_btn_end.pressed.connect(func(): phase_button.emit("end"))
 	box.add_child(_btn_end)
+	_btn_extra = Button.new()
+	_btn_extra.text = "Extra Deck"
+	_btn_extra.custom_minimum_size = Vector2(294, 50)
+	_btn_extra.add_theme_color_override("font_color", Color("ffd23a"))
+	_btn_extra.pressed.connect(func(): extra_pressed.emit())
+	box.add_child(_btn_extra)
 
 
 func set_phase(phase: int, my_turn: bool) -> void:
@@ -210,6 +330,161 @@ func set_phase_buttons(battle_text: String, battle_enabled: bool, end_enabled: b
 	_btn_battle.visible = battle_text != ""
 	_btn_battle.disabled = not battle_enabled
 	_btn_end.disabled = not end_enabled
+
+
+func set_extra_button(count: int, ready: int, enabled: bool) -> void:
+	_btn_extra.text = "Extra Deck  %d" % count + ("   ·   %d ready" % ready if ready > 0 else "")
+	_btn_extra.disabled = not enabled or count == 0
+	_btn_extra.add_theme_color_override("font_color", Color("ffd23a") if ready > 0 else UITheme.TEXT_DIM)
+
+
+## options: [[inst, status_text, enabled], ...]
+func show_extra(options: Array) -> void:
+	hide_extra()
+	_extra_panel = Control.new()
+	_extra_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_extra_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_extra_panel)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.5)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.gui_input.connect(func(e):
+		if e is InputEventMouseButton and e.pressed:
+			hide_extra())
+	_extra_panel.add_child(dim)
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.04, 0.06, 0.11, 0.97), 22, Color("ffd23a", 0.4)))
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	_extra_panel.add_child(panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 14)
+	panel.add_child(v)
+	v.add_child(UITheme.label("EXTRA DECK", 42, Color("ffd23a"), UITheme.title_font()))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	v.add_child(row)
+	for o in options:
+		var inst = o[0]
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 6)
+		var tr := TextureRect.new()
+		tr.texture = Cards.get_face(inst.id)
+		tr.custom_minimum_size = Vector2(170, 248)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_SCALE
+		tr.modulate = Color.WHITE if o[2] else Color(0.55, 0.55, 0.6)
+		tr.mouse_entered.connect(func(): inspect(inst))
+		col.add_child(tr)
+		var b := Button.new()
+		b.text = o[1]
+		b.disabled = not o[2]
+		b.add_theme_font_size_override("font_size", 18)
+		b.pressed.connect(func():
+			hide_extra()
+			extra_chosen.emit(inst))
+		col.add_child(b)
+		row.add_child(col)
+	var close := Button.new()
+	close.text = "Close"
+	close.pressed.connect(hide_extra)
+	v.add_child(close)
+	await get_tree().process_frame
+	panel.reset_size()
+	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+
+
+func hide_extra() -> void:
+	if _extra_panel:
+		_extra_panel.queue_free()
+		_extra_panel = null
+
+
+## Full-screen VS intro.
+func vs_intro(left: Dictionary, right: Dictionary) -> void:
+	var root := Control.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(root)
+	var vs_size := get_viewport_rect().size
+	var bg := ColorRect.new()
+	bg.color = Color(0.01, 0.015, 0.03, 0.96)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_child(bg)
+	var sides := []
+	for i in 2:
+		var d: Dictionary = left if i == 0 else right
+		var col: Color = d["color"]
+		var half := Control.new()
+		half.size = Vector2(vs_size.x * 0.62, vs_size.y)
+		half.position = Vector2(-vs_size.x * 0.1 if i == 0 else vs_size.x * 0.48, 0)
+		half.clip_contents = true
+		root.add_child(half)
+		var tint := ColorRect.new()
+		tint.color = col.darkened(0.6)
+		tint.size = half.size
+		half.add_child(tint)
+		var pt := TextureRect.new()
+		pt.texture = Portraits.get_portrait(d["key"])
+		pt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pt.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		pt.size = Vector2(vs_size.y * 0.8, vs_size.y)
+		pt.position = Vector2((half.size.x - pt.size.x) / 2.0 + (60 if i == 0 else -60), 0)
+		pt.flip_h = i == 1 and Portraits.has_real(d["key"])
+		half.add_child(pt)
+		var sg := Gradient.new()
+		sg.colors = PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0.85)])
+		var sgt := GradientTexture2D.new()
+		sgt.gradient = sg
+		sgt.fill_from = Vector2(0, 0)
+		sgt.fill_to = Vector2(0, 1)
+		var shade := TextureRect.new()
+		shade.texture = sgt
+		shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		shade.stretch_mode = TextureRect.STRETCH_SCALE
+		shade.size = Vector2(half.size.x, half.size.y * 0.5)
+		shade.position = Vector2(0, half.size.y * 0.5)
+		half.add_child(shade)
+		var name_l := UITheme.label(str(d["name"]).to_upper(), 96, Color.WHITE, UITheme.title_font())
+		name_l.add_theme_color_override("font_shadow_color", Color(col, 0.8))
+		name_l.add_theme_constant_override("shadow_outline_size", 24)
+		var sub := UITheme.label(str(d["sub"]), 30, col.lightened(0.45), UITheme.semi_font())
+		var info := VBoxContainer.new()
+		info.add_child(name_l)
+		info.add_child(sub)
+		info.position = Vector2(vs_size.x * 0.16 if i == 0 else 40, vs_size.y - 220)
+		half.add_child(info)
+		half.rotation = deg_to_rad(-6 if i == 0 else -6)
+		half.pivot_offset = half.size / 2.0
+		sides.append(half)
+	var vs := UITheme.label("VS", 220, Color.WHITE, UITheme.title_font())
+	vs.add_theme_color_override("font_shadow_color", Color(UITheme.ACCENT, 0.9))
+	vs.add_theme_constant_override("shadow_outline_size", 40)
+	vs.size = Vector2(500, 260)
+	vs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vs.position = Vector2((vs_size.x - 500) / 2.0, (vs_size.y - 260) / 2.0)
+	vs.pivot_offset = Vector2(250, 130)
+	vs.scale = Vector2(3, 3)
+	vs.modulate.a = 0.0
+	root.add_child(vs)
+	var l: Control = sides[0]
+	var r: Control = sides[1]
+	var lx := l.position.x
+	var rx := r.position.x
+	l.position.x -= vs_size.x * 0.7
+	r.position.x += vs_size.x * 0.7
+	Sfx.play("turn")
+	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "position:x", lx, 0.55)
+	tw.tween_property(r, "position:x", rx, 0.55).set_delay(0.12)
+	tw.tween_property(vs, "scale", Vector2.ONE, 0.35).set_delay(0.5).set_trans(Tween.TRANS_BACK)
+	tw.tween_property(vs, "modulate:a", 1.0, 0.2).set_delay(0.5)
+	tw.tween_callback(func(): Sfx.play("vs")).set_delay(0.55)
+	await tw.finished
+	await get_tree().create_timer(1.5).timeout
+	var out := create_tween().set_parallel()
+	out.tween_property(root, "modulate:a", 0.0, 0.35)
+	await out.finished
+	root.queue_free()
 
 
 # ------------------------------------------------------------------ inspector

@@ -8,8 +8,10 @@ var failures := 0
 func _ready() -> void:
 	_test_tributes()
 	_test_battle_math()
-	for seed in 30:
-		_ai_vs_ai(seed)
+	_test_synchro_xyz_fusion()
+	var keys: Array = CardData.DECKS.keys()
+	for seed in 60:
+		_ai_vs_ai(seed, keys[seed % keys.size()], keys[(seed / keys.size() + 1 + seed) % keys.size()])
 	print("TESTS DONE, failures: %d" % failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -20,10 +22,62 @@ func check(cond: bool, msg: String) -> void:
 		push_error("FAIL: " + msg)
 
 
-func _new_state(seed := 1) -> DuelState:
+func _new_state(seed := 1, a := "yugi", b := "kaiba") -> DuelState:
 	var s := DuelState.new()
-	s.setup(CardData.deck_list("yugi"), CardData.deck_list("kaiba"), "A", "B", 0, seed)
+	s.setup(CardData.deck_list(a), CardData.deck_list(b), "A", "B", 0, seed,
+			CardData.extra_list(a), CardData.extra_list(b))
 	return s
+
+
+func _put(s: DuelState, p: int, id: int, zone: int) -> DuelState.CardInst:
+	var c := s._make(id, p)
+	s.players[p].field[zone] = c
+	return c
+
+
+func _test_synchro_xyz_fusion() -> void:
+	var s := _new_state(5, "yusei", "yuma")
+	s.begin_turn()
+	s.current = 0
+	s.phase = DuelState.Phase.MAIN1
+	_put(s, 0, 63977008, 0)  # Junk Synchron L3 tuner
+	_put(s, 0, 59546797, 1)  # Shield Warrior L3
+	_put(s, 0, 9365703, 2)   # Speed Warrior L2
+	var stardust: DuelState.CardInst = null
+	for x in s.players[0].extra:
+		if x.id == 44508094:
+			stardust = x
+	check(s.can_extra_summon(0, stardust), "Stardust needs tuner 3 + 3 + 2")
+	var ev := s.extra_summon(0, stardust)
+	check(s.players[0].field.has(stardust), "Stardust on field")
+	check(s.players[0].monsters().size() == 1, "materials left field")
+	check(ev.filter(func(e): return e["type"] == "material").size() == 3, "3 material events")
+	# Xyz
+	var y := _new_state(6, "yuma", "yusei")
+	y.begin_turn()
+	y.phase = DuelState.Phase.MAIN1
+	_put(y, 0, 26082117, 0)
+	_put(y, 0, 62476815, 1)
+	var utopia: DuelState.CardInst = null
+	for x in y.players[0].extra:
+		if x.id == 84013237:
+			utopia = x
+	check(y.can_extra_summon(0, utopia), "Utopia from two Level 4s")
+	y.extra_summon(0, utopia)
+	check(utopia.overlays.size() == 2, "Utopia has 2 materials")
+	# Fusion
+	var f := _new_state(7, "jaden", "yugi")
+	f.begin_turn()
+	f.phase = DuelState.Phase.MAIN1
+	f.players[0].hand.clear()
+	var poly := f._make(24094653, 0)
+	f.players[0].hand.append(poly)
+	f.players[0].hand.append(f._make(21844576, 0))
+	_put(f, 0, 58932615, 0)
+	check(f.can_activate(0, poly), "Polymerization usable with Avian + Burstinatrix")
+	f.activate(0, poly)
+	var wingman := f.players[0].monsters()
+	check(wingman.size() == 1 and wingman[0].id == 35809262, "Flame Wingman fused")
 
 
 func _test_tributes() -> void:
@@ -58,8 +112,9 @@ func _test_battle_math() -> void:
 	check(ev.any(func(e): return e["type"] == "reveal"), "face-down target gets revealed")
 
 
-func _ai_vs_ai(seed: int) -> void:
-	var s := _new_state(seed)
+func _ai_vs_ai(seed: int, a := "yugi", b := "kaiba") -> void:
+	var s := _new_state(seed, a, b)
+	var start_total := _total(s)
 	var guard := 0
 	while not s.is_over() and guard < 200:
 		guard += 1
@@ -92,16 +147,26 @@ func _ai_vs_ai(seed: int) -> void:
 		s.end_turn()
 		for i in 2:
 			check(s.players[i].hand.size() <= DuelState.HAND_LIMIT or i == s.current, "hand limit")
-			var total: int = s.players[i].deck.size() + s.players[i].hand.size() + s.players[i].gy.size() + s.players[i].monsters().size()
-			check(total == 30, "card count stays 30 (got %d)" % total)
+		check(_total(s) == start_total, "card count stays %d (got %d)" % [start_total, _total(s)])
 	check(s.is_over(), "duel %d ended (turns: %d)" % [seed, s.turn])
-	print("duel seed %d: winner %d after %d turns (%s)" % [seed, s.winner, s.turn, s.win_reason])
+	print("duel %s vs %s seed %d: winner %d after %d turns (%s)" % [a, b, seed, s.winner, s.turn, s.win_reason])
+
+
+func _total(s: DuelState) -> int:
+	var t := 0
+	for ps in s.players:
+		t += ps.deck.size() + ps.hand.size() + ps.gy.size() + ps.extra.size()
+		for m in ps.monsters():
+			t += 1 + m.overlays.size()
+	return t
 
 
 func _run(s: DuelState, p: int, act: Dictionary) -> Array:
 	match act["do"]:
 		"activate":
-			return s.activate(p, act["card"])
+			return s.activate(p, act["card"], act.get("choice"))
+		"extra":
+			return s.extra_summon(p, act["card"])
 		"summon":
 			return s.normal_summon(p, act["card"], act["tributes"], false)
 		"set":

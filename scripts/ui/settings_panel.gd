@@ -53,6 +53,7 @@ static func open(parent: Node) -> SidePanel:
 		Settings.card_folder = t.strip_edges()
 		Settings.save_settings()
 		Cards.clear_cache()
+		Portraits.clear_cache()
 		Router.toast("Card folder saved"))
 	p.add_row("Folder", folder)
 	var status := UITheme.label("", 17, UITheme.TEXT_DIM)

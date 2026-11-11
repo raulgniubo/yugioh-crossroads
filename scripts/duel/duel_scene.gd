@@ -19,6 +19,8 @@ var _turn_done := false
 var _finished := false
 var _surrendered := false
 var _autoplay := "--autoplay" in OS.get_cmdline_user_args()
+var _opp_key := "kaiba"
+var _materials: Array = []
 
 signal _turn_finished
 
@@ -41,26 +43,45 @@ func _ready() -> void:
 	hud.cancel_pressed.connect(_cancel_mode)
 	hud.direct_attack_pressed.connect(_on_direct_attack)
 	hud.pause_action.connect(_on_pause_action)
+	hud.extra_pressed.connect(_on_extra_pressed)
+	hud.extra_chosen.connect(_on_extra_chosen)
 	_start()
 
 
 func _start() -> void:
 	var cfg: Dictionary = Router.duel_config
+	_opp_key = cfg.get("opponent", "kaiba")
+	var opp: Dictionary = Characters.get_char(_opp_key)
 	var my_deck: String = cfg.get("player_deck", "yugi")
-	var opp_deck: String = cfg.get("opponent_deck", "kaiba")
-	var opp_name: String = CardData.DECKS[opp_deck]["duelist"]
-	hud.set_names("You", opp_name)
+	var opp_deck: String = opp.get("deck", "kaiba")
+	var opp_name: String = opp.get("name", "Rival")
+	var me_name := Profile.duelist_name
+	hud.set_names(me_name, opp_name)
+	hud.set_portraits("player", _opp_key)
 	var first := randi() % 2
-	var events := state.setup(CardData.deck_list(my_deck), CardData.deck_list(opp_deck), "You", opp_name, first)
+	var events := state.setup(CardData.deck_list(my_deck), CardData.deck_list(opp_deck), me_name, opp_name, first, -1,
+			CardData.extra_list(my_deck), CardData.extra_list(opp_deck))
 	for p in 2:
 		board.set_deck_count(p, state.players[p].deck.size() + 5)
 	_update_counts()
 	hud.set_phase_buttons("", false, false)
-	await get_tree().create_timer(0.6).timeout
+	hud.set_extra_button(state.players[ME].extra.size(), 0, false)
+	if not _autoplay:
+		await hud.vs_intro(
+			{"key": "player", "name": me_name, "color": Profile.color(), "sub": "%s Deck" % CardData.DECKS[my_deck]["name"]},
+			{"key": _opp_key, "name": opp_name, "color": opp.get("color", UITheme.DANGER),
+				"sub": "%s  ·  %s Deck" % [opp.get("title", ""), CardData.DECKS[opp_deck]["name"]]})
+	else:
+		await get_tree().create_timer(0.5).timeout
+	hud.say(AI, Characters.line(_opp_key, "intro"))
 	await hud.banner("DUEL!", UITheme.ACCENT)
 	await _play(events)
-	await hud.banner("You go first" if first == ME else "%s goes first" % opp_name, UITheme.TEXT)
+	await hud.banner("You go first" if first == ME else "%s goes first" % opp.get("short", opp_name), UITheme.TEXT)
 	_loop()
+
+
+func _speaker(p: int) -> String:
+	return "player" if p == ME else _opp_key
 
 
 func _loop() -> void:
@@ -90,6 +111,11 @@ func _finish() -> void:
 	hud.set_playable([])
 	await get_tree().create_timer(0.6).timeout
 	var won := state.winner == ME
+	if not _autoplay:
+		Profile.record_result(won)
+	Sfx.play("win" if won else "lose")
+	hud.say(AI, Characters.line(_opp_key, "lose" if won else "win"))
+	await get_tree().create_timer(1.2).timeout
 	hud.show_result(won, "You surrendered." if _surrendered else state.win_reason)
 
 
@@ -110,18 +136,29 @@ func _play_event(ev: Dictionary) -> void:
 	match ev["type"]:
 		"turn":
 			var mine := p == ME
+			Sfx.play("turn")
+			if randf() < 0.45:
+				hud.say(p, Characters.line(_speaker(p), "turn"))
 			await hud.banner("YOUR TURN" if mine else "%s'S TURN" % state.players[AI].name.to_upper(),
 					UITheme.ACCENT if mine else Color("a08cff"))
 		"phase":
 			hud.set_phase(ev["phase"], state.current == ME)
 		"draw":
 			_update_counts()
+			Sfx.play("draw", -6.0)
 			await board.anim_draw(p, ev["card"], ev["deck"])
 			if p == ME:
 				hud.add_hand_card(ev["card"])
 		"summon", "set":
 			if p == ME:
 				hud.remove_hand_card(ev["card"])
+			Sfx.play("card")
+			var is_ace: bool = ev["type"] == "summon" and (ev["card"].level() >= 7 or ev["card"].id == Characters.get_char(_opp_key).get("ace", 0))
+			if ev["type"] == "summon":
+				get_tree().create_timer(Settings.t(0.5)).timeout.connect(func(): Sfx.play("summon", -4.0))
+			if is_ace:
+				hud.say(p, Characters.line(_speaker(p), "ace"))
+				hud.react(p, "ace")
 			await board.anim_summon(p, ev["card"], ev["zone"], ev["type"] == "set")
 		"tribute":
 			await board.anim_tribute(ev["card"])
@@ -133,13 +170,35 @@ func _play_event(ev: Dictionary) -> void:
 			if p == ME:
 				hud.remove_hand_card(ev["card"])
 			hud.inspect(ev["card"])
+			Sfx.play("spell")
 			await board.anim_activate(p, ev["card"])
 		"spell_done":
 			await board.anim_spell_done(ev["card"])
 		"attack":
+			if ev["target"] == null or randf() < 0.3:
+				hud.say(p, Characters.line(_speaker(p), "attack"))
+			Sfx.play("attack")
+			get_tree().create_timer(Settings.t(0.36)).timeout.connect(func(): Sfx.play("impact"))
 			await board.anim_attack(p, ev["card"], ev["target"])
 		"destroy":
-			await board.anim_destroy(ev["card"])
+			Sfx.play("destroy", -3.0)
+			await board.anim_destroy(ev["card"], ev.get("overlays", []))
+		"material":
+			if ev["from"] == "hand" and p == ME:
+				hud.remove_hand_card(ev["card"])
+			_materials.append(ev["card"])
+			Sfx.play("card", -4.0)
+			await board.anim_material(p, ev["card"], ev["from"], board.monster_zone_pos(p, 2))
+		"special":
+			var method: String = ev["method"]
+			var titles := {"fusion": "FUSION SUMMON", "synchro": "SYNCHRO SUMMON", "xyz": "XYZ SUMMON", "reborn": "REVIVED"}
+			Sfx.play("special")
+			hud.say(p, Characters.line(_speaker(p), "ace"))
+			hud.react(p, "ace")
+			hud.banner(titles.get(method, "SPECIAL SUMMON"), board.METHOD_COLORS.get(method, UITheme.ACCENT))
+			var mats := _materials.duplicate()
+			_materials.clear()
+			await board.anim_special(p, ev["card"], ev["zone"], method, mats)
 		"discard":
 			if p == ME:
 				hud.remove_hand_card(ev["card"])
@@ -148,6 +207,12 @@ func _play_event(ev: Dictionary) -> void:
 			hud.set_lp(p, ev["lp"], ev["delta"])
 			if ev["delta"] < 0:
 				board.shake(0.5)
+				Sfx.play("damage")
+				hud.react(p, "hurt")
+				if ev["delta"] <= -1000:
+					hud.say(p, Characters.line(_speaker(p), "hurt"))
+			else:
+				Sfx.play("heal")
 			await get_tree().create_timer(Settings.t(0.45)).timeout
 	_update_counts()
 
@@ -167,6 +232,7 @@ func _my_turn() -> bool:
 func _refresh() -> void:
 	if not _my_turn():
 		hud.set_phase_buttons("", false, false)
+		hud.set_extra_button(state.players[ME].extra.size() if state.players.size() > 0 else 0, 0, false)
 		hud.set_playable([])
 		_clear_glows()
 		return
@@ -179,6 +245,11 @@ func _refresh() -> void:
 			hud.set_phase_buttons("", false, true)
 		_:
 			hud.set_phase_buttons("", false, false)
+	var ready := 0
+	for x in state.players[ME].extra:
+		if state.can_extra_summon(ME, x):
+			ready += 1
+	hud.set_extra_button(state.players[ME].extra.size(), ready, true)
 	var playable := []
 	for c in state.players[ME].hand:
 		if state.can_normal_summon(ME, c) or state.can_activate(ME, c):
@@ -232,6 +303,13 @@ func _on_action(action: String) -> void:
 	_menu_card = null
 	if c == null or not _my_turn():
 		return
+	if action.begins_with("fuse:"):
+		var uid := int(action.substr(5))
+		for x in state.players[ME].extra:
+			if x.uid == uid:
+				await _play(state.activate(ME, c, x))
+				return
+		return
 	match action:
 		"summon", "set":
 			var need := state.tributes_needed(c)
@@ -244,6 +322,15 @@ func _on_action(action: String) -> void:
 				_tributes = []
 				_refresh_tribute()
 		"activate":
+			if c.data.get("effect", "") == "fusion":
+				var opts := state.fusion_targets(ME, c)
+				if opts.size() > 1:
+					_menu_card = c
+					var list := []
+					for o in opts:
+						list.append(["fuse:%d" % o["card"].uid, o["card"].data["name"], true])
+					hud.show_actions(get_viewport().get_mouse_position(), list)
+					return
 			await _play(state.activate(ME, c))
 		"flip":
 			await _play(state.flip_summon(ME, c))
@@ -307,6 +394,37 @@ func _on_board_card_clicked(card: Card3D) -> void:
 		return
 	_menu_card = inst
 	hud.show_actions(get_viewport().get_mouse_position(), opts)
+
+
+func _on_extra_pressed() -> void:
+	if not _my_turn():
+		return
+	_cancel_mode()
+	var opts := []
+	var has_poly := false
+	for h in state.players[ME].hand:
+		if h.data.get("effect", "") == "fusion":
+			has_poly = true
+	for x in state.players[ME].extra:
+		var status := ""
+		var ok := false
+		match x.frame():
+			"fusion":
+				status = "Use Polymerization" if has_poly else "Needs Polymerization"
+			"synchro":
+				ok = state.can_extra_summon(ME, x)
+				status = "Synchro Summon" if ok else "Tuner + %d levels" % x.level()
+			"xyz":
+				ok = state.can_extra_summon(ME, x)
+				status = "Xyz Summon" if ok else "2 Level %d monsters" % x.level()
+		opts.append([x, status, ok])
+	hud.show_extra(opts)
+
+
+func _on_extra_chosen(inst) -> void:
+	if not _my_turn():
+		return
+	await _play(state.extra_summon(ME, inst))
 
 
 func _start_attack(inst) -> void:
@@ -421,7 +539,9 @@ func _ai_wait(sec: float) -> void:
 func _run_ai(act: Dictionary, who: int) -> Array:
 	match act["do"]:
 		"activate":
-			return state.activate(who, act["card"])
+			return state.activate(who, act["card"], act.get("choice"))
+		"extra":
+			return state.extra_summon(who, act["card"])
 		"summon":
 			return state.normal_summon(who, act["card"], act["tributes"], false)
 		"set":
