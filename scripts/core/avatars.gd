@@ -18,12 +18,95 @@ var _stages := {}  # key -> SubViewport
 var _registered := false
 
 
+## A character model: characters/<key>.vrm or .glb in the card folder (your own models),
+## or a bundled one in res://assets/models/people/<key>.glb (townsfolk).
 func path_for(key: String) -> String:
-	return Settings.card_folder.path_join("characters/%s.vrm" % key)
+	for ext in ["vrm", "glb"]:
+		var p := Settings.card_folder.path_join("characters/%s.%s" % [key, ext])
+		if FileAccess.file_exists(p):
+			return p
+	var bundled := "res://assets/models/people/%s.glb" % key
+	if ResourceLoader.exists(bundled):
+		return bundled
+	return ""
 
 
 func has_avatar(key: String) -> bool:
-	return FileAccess.file_exists(path_for(key))
+	return key != "" and path_for(key) != ""
+
+
+## Common bone names in rigs from Meshy, Mixamo, Blender's Rigify-lite and VRoid.
+const BONE_ALIASES := {
+	"Head": ["head"],
+	"Hips": ["hips", "pelvis"],
+	"LeftUpperArm": ["leftarm", "upperarm_l", "l_upperarm", "leftupperarm", "arm_l", "upper_arm.l"],
+	"RightUpperArm": ["rightarm", "upperarm_r", "r_upperarm", "rightupperarm", "arm_r", "upper_arm.r"],
+	"LeftLowerArm": ["leftforearm", "lowerarm_l", "l_forearm", "leftlowerarm", "forearm_l", "forearm.l"],
+	"RightLowerArm": ["rightforearm", "lowerarm_r", "r_forearm", "rightlowerarm", "forearm_r", "forearm.r"],
+	"LeftUpperLeg": ["leftupleg", "thigh_l", "l_thigh", "leftupperleg", "thigh.l"],
+	"RightUpperLeg": ["rightupleg", "thigh_r", "r_thigh", "rightupperleg", "thigh.r"],
+	"LeftLowerLeg": ["leftleg", "calf_l", "l_calf", "leftlowerleg", "shin.l"],
+	"RightLowerLeg": ["rightleg", "calf_r", "r_calf", "rightlowerleg", "shin.r"],
+	"LeftFoot": ["leftfoot", "foot_l", "l_foot", "foot.l"],
+	"LeftToes": ["lefttoebase", "toe_l", "l_toe", "lefttoes", "toe.l"],
+}
+
+
+func _guess_human_map(scene: Node) -> Dictionary:
+	var sk := _skeleton(scene)
+	var out := {}
+	if sk == null:
+		return out
+	var names := {}
+	for i in sk.get_bone_count():
+		var n := sk.get_bone_name(i)
+		var simple := n.to_lower().replace("mixamorig:", "").replace("mixamorig_", "").replace(" ", "").replace("_", "").replace("-", "")
+		names[simple] = n
+		names[n.to_lower()] = n
+	for human in BONE_ALIASES:
+		for alias in BONE_ALIASES[human]:
+			var key: String = alias.replace("_", "")
+			if names.has(alias):
+				out[human] = names[alias]
+				break
+			if names.has(key):
+				out[human] = names[key]
+				break
+	return out
+
+
+func _load_glb(path: String) -> Node:
+	if path.begins_with("res://"):
+		var ps = load(path)
+		return ps.instantiate() if ps is PackedScene else null
+	var gltf := GLTFDocument.new()
+	var state := GLTFState.new()
+	state.handle_binary_image = GLTFState.HANDLE_BINARY_EMBED_AS_UNCOMPRESSED
+	if gltf.append_from_file(path, state) != OK:
+		return null
+	return gltf.generate_scene(state)
+
+
+## The model's AnimationPlayer, if it came with animations (walk/idle...).
+func anim_player(model: Node) -> AnimationPlayer:
+	if model is AnimationPlayer:
+		return model
+	for c in model.get_children():
+		var a := anim_player(c)
+		if a:
+			return a
+	return null
+
+
+## Best clip for a motion: "idle", "walk" or "run".
+func clip(ap: AnimationPlayer, motion: String) -> String:
+	var names := ap.get_animation_list()
+	for n in names:
+		if String(n).to_lower().contains(motion):
+			return n
+	if motion == "run":
+		return clip(ap, "walk")
+	return names[0] if names.size() > 0 and motion == "walk" else ""
 
 
 func _register() -> void:
@@ -39,13 +122,34 @@ func _register() -> void:
 func load_model(key: String) -> Node3D:
 	if not has_avatar(key):
 		return null
+	var path := path_for(key)
+	if path.ends_with(".glb"):
+		var g := _load_glb(path)
+		if g == null:
+			return null
+		var r := Node3D.new()
+		r.set_meta("human_bones", _guess_human_map(g))
+		r.set_meta("animated", anim_player(g) != null)
+		r.add_child(g)
+		var ap := anim_player(g)
+		if ap:
+			for n in ap.get_animation_list():
+				var a := ap.get_animation(n)
+				if String(n).to_lower().contains("walk") or String(n).to_lower().contains("run") or String(n).to_lower().contains("idle"):
+					a.loop_mode = Animation.LOOP_LINEAR
+			var idle := clip(ap, "idle")
+			if idle != "":
+				ap.play(idle)
+		elif key == "player":
+			apply_tints(g)
+		return r
 	_register()
 	var gltf := GLTFDocument.new()
 	var vrm0: GLTFDocumentExtension = VRM0_EXT.new()
 	gltf.register_gltf_document_extension(vrm0, true)
 	var state := GLTFState.new()
 	state.handle_binary_image = GLTFState.HANDLE_BINARY_EMBED_AS_UNCOMPRESSED
-	var err := gltf.append_from_file(path_for(key), state, IMPORT_USE_NAMED_SKIN_BINDS)
+	var err := gltf.append_from_file(path, state, IMPORT_USE_NAMED_SKIN_BINDS)
 	var scene: Node = null
 	if err == OK:
 		scene = gltf.generate_scene(state)

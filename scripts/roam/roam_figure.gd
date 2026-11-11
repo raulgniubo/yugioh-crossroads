@@ -10,6 +10,8 @@ var _swing_bones := {}    # bone idx -> [parent global basis, relaxed local rota
 var _phase := 0.0
 var _speed := 0.0
 var _time := randf() * 10.0
+var _anim: AnimationPlayer = null
+var _cur_clip := ""
 
 
 func setup(char_key: String, color: Color, display_name := "", show_name := true) -> void:
@@ -18,9 +20,11 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 	if _model:
 		add_child(_model)
 		await get_tree().process_frame
-		Avatars._relax_pose(_model)
 		_face_plus_z()
-		_collect_bones()
+		_anim = Avatars.anim_player(_model)
+		if _anim == null:
+			Avatars._relax_pose(_model)
+			_collect_bones()
 	else:
 		_build_standin(color)
 	if show_name and display_name != "":
@@ -72,7 +76,16 @@ func _process(delta: float) -> void:
 	var walk := clampf(_speed / 4.0, 0.0, 1.6)
 	_phase += delta * (2.0 + _speed * 2.2)
 	var s := sin(_phase)
-	if _model:
+	if _model and _anim:
+		var want := Avatars.clip(_anim, "idle") if _speed < 0.3 else Avatars.clip(_anim, "run" if _speed > 5.5 else "walk")
+		if want != "" and want != _cur_clip:
+			_cur_clip = want
+			_anim.play(want, 0.25)
+		if _speed >= 0.3:
+			_anim.speed_scale = clampf(_speed / (6.5 if _speed > 5.5 else 1.6), 0.6, 1.8)
+		else:
+			_anim.speed_scale = 1.0
+	elif _model:
 		var sk := Avatars._skeleton(_model)
 		if sk:
 			for b in _swing_bones:

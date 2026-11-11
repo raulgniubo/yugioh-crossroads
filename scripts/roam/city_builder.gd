@@ -107,6 +107,70 @@ func solid_cyl(r: float, h: float, pos: Vector3) -> void:
 	add_child(body)
 
 
+# ------------------------------------------------------------------ real models
+
+const MODELS := "res://assets/models/city/%s.glb"
+static var _model_cache := {}
+
+
+func has_model(name: String) -> bool:
+	return ResourceLoader.exists(MODELS % name)
+
+
+## Place a Meshy-made model. Scaled so its largest side (or its height, if `by_height`) is `size`,
+## sitting on the ground at `pos`, turned by `rot` (radians). Model fronts face +Z.
+func prop(name: String, pos: Vector3, rot: float, size: float, by_height := false, parent: Node3D = null) -> Node3D:
+	if not has_model(name):
+		return null
+	var ps: PackedScene = _model_cache.get(name)
+	if ps == null:
+		ps = load(MODELS % name)
+		_model_cache[name] = ps
+	var inst: Node3D = ps.instantiate()
+	var holder := Node3D.new()
+	holder.add_child(inst)
+	var box := _aabb(inst, Transform3D.IDENTITY)
+	var ref := box.size.y if by_height else maxf(box.size.x, maxf(box.size.y, box.size.z))
+	var k := size / maxf(ref, 0.001)
+	inst.scale = Vector3.ONE * k
+	inst.position = Vector3(-box.get_center().x * k, -box.position.y * k, -box.get_center().z * k)
+	holder.position = pos
+	holder.rotation.y = rot
+	holder.set_meta("size", box.size * k)
+	(parent if parent else self).add_child(holder)
+	return holder
+
+
+func _aabb(n: Node, xf: Transform3D) -> AABB:
+	var out := AABB()
+	var first := true
+	var t: Transform3D = xf * ((n as Node3D).transform if n is Node3D else Transform3D.IDENTITY)
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh:
+		out = t * (n as MeshInstance3D).mesh.get_aabb()
+		first = false
+	for c in n.get_children():
+		var b := _aabb(c, t)
+		if b.size != Vector3.ZERO:
+			out = b if first else out.merge(b)
+			first = false
+	return out
+
+
+## Invisible box collider matching a placed prop.
+func collide(holder: Node3D, shrink := 0.9) -> void:
+	if holder == null or not make_solid:
+		return
+	var sz: Vector3 = holder.get_meta("size", Vector3.ONE)
+	var body := StaticBody3D.new()
+	var cs := CollisionShape3D.new()
+	var sh := BoxShape3D.new()
+	sh.size = Vector3(sz.x * shrink, sz.y, sz.z * shrink)
+	cs.shape = sh
+	cs.position.y = sz.y / 2.0
+	body.add_child(cs)
+	holder.add_child(body)
+
+
 # ------------------------------------------------------------------ environment
 
 func _build_env() -> void:
@@ -399,13 +463,31 @@ func _build_buildings() -> void:
 				var along := -12.0 + i * 8.0
 				var h := rng.randf_range(10.0, 30.0)
 				var w := rng.randf_range(6.8, 7.8)
-				building(Vector3(qx * 21.0 + along, 0, qz * 33.0), Vector3(w, h, 7.5), rng)
+				var back_rot := 0.0 if qz < 0 else PI
+				var side_rot := PI / 2 if qx < 0 else -PI / 2
+				if i % 3 == 1 and has_model("apartment"):
+					collide(prop("apartment", Vector3(qx * 21.0 + along, 0.16, qz * 32.0), back_rot, rng.randf_range(15.0, 20.0), true))
+				else:
+					building(Vector3(qx * 21.0 + along, 0, qz * 33.0), Vector3(w, h, 7.5), rng)
 				h = rng.randf_range(10.0, 30.0)
-				building(Vector3(qx * 33.0, 0, qz * 21.0 + along), Vector3(7.5, h, w), rng)
+				if i % 3 == 2 and has_model("apartment"):
+					collide(prop("apartment", Vector3(qx * 32.0, 0.16, qz * 21.0 + along), side_rot, rng.randf_range(15.0, 20.0), true))
+				else:
+					building(Vector3(qx * 33.0, 0, qz * 21.0 + along), Vector3(7.5, h, w), rng)
 	# Mid-block buildings so streets feel like streets.
-	for b in [[Vector3(-24, 0, -13), Vector3(8, 9, 7)], [Vector3(24, 0, -12), Vector3(8, 14, 7)], [Vector3(-25, 0, 22), Vector3(8, 11, 9)],
-			[Vector3(-14, 0, 25), Vector3(7, 7, 7)], [Vector3(14, 0, -27), Vector3(6, 18, 6)]]:
-		building(b[0], b[1], rng)
+	var mids := [[Vector3(-24, 0, -13), Vector3(8, 9, 7), "konbini", 0.0], [Vector3(24, 0, -12), Vector3(8, 14, 7), "apartment", 0.0],
+			[Vector3(-25, 0, 22), Vector3(8, 11, 9), "apartment", PI], [Vector3(-14, 0, 25), Vector3(7, 7, 7), "konbini", PI / 2],
+			[Vector3(14, 0, -27), Vector3(6, 18, 6), "apartment", -PI / 2]]
+	for b in mids:
+		var holder: Node3D = null
+		if b[2] == "konbini":
+			holder = prop("konbini", b[0] + Vector3(0, 0.16, 0), b[3], 9.0)
+		else:
+			holder = prop("apartment", b[0] + Vector3(0, 0.16, 0), b[3], (b[1] as Vector3).y + 4.0, true)
+		if holder:
+			collide(holder)
+		else:
+			building(b[0], b[1], rng)
 
 
 func neon_sign(text: String, pos: Vector3, color: Color, size := 120, rot := 0.0, light := true) -> Label3D:
@@ -432,7 +514,17 @@ func neon_sign(text: String, pos: Vector3, color: Color, size := 120, rot := 0.0
 
 
 func _build_landmarks() -> void:
-	# Kame Game
+	# Kame Game: the real shop model when we have it
+	var kame := prop("card_shop", Vector3(-10, 0.16, -19.5), 0.0, 9.5)
+	if kame:
+		collide(kame, 0.85)
+		neon_sign("KAME GAME", Vector3(-10, 5.6, -14.8), Color("ffd166"), 150)
+	else:
+		_kame_boxes()
+	_rest_of_landmarks()
+
+
+func _kame_boxes() -> void:
 	var shop := mat(Color(0.62, 0.48, 0.34), 0.85)
 	box(Vector3(9, 6, 6), Vector3(-10, 3, -19), shop)
 	box(Vector3(9.6, 0.4, 6.6), Vector3(-10, 6.2, -19), mat(Color(0.3, 0.18, 0.12)))
@@ -446,6 +538,9 @@ func _build_landmarks() -> void:
 		var stripe := box(Vector3(0.88, 0.1, 1.7), Vector3(-13.5 + i * 1.0, 3.2, -15.3), mat(Color(0.85, 0.15, 0.2) if i % 2 == 0 else Color(0.95, 0.95, 0.92), 0.7), false)
 		stripe.rotation.x = 0.3
 	neon_sign("KAME GAME", Vector3(-10, 4.5, -15.9), Color("ffd166"), 150)
+
+
+func _rest_of_landmarks() -> void:
 	# KaibaCorp Tower
 	var tower := window_material(Color(0.28, 0.34, 0.48), 7.0, Color("7cc4ff"))
 	tower.set_shader_parameter("style", 1.0)
@@ -487,12 +582,15 @@ void fragment() {
 		if p.distance_to(Vector3(19, 0, 19)) < 4.8 or p.distance_to(Vector3(12, 0, 6)) < 3.0 or absf(p.x - 7.0) < 1.6:
 			continue
 		tree(p, rng.randf_range(0.85, 1.3))
-	var stone := mat(Color(0.62, 0.62, 0.66), 0.6)
-	cyl(2.6, 2.8, 0.6, Vector3(19, 0.3, 19), stone, null, 32)
-	solid_cyl(2.8, 1.2, Vector3(19, 0.6, 19))
-	var water := mat(Color(0.12, 0.3, 0.42), 0.02, 0.1)
-	cyl(2.4, 2.4, 0.05, Vector3(19, 0.58, 19), water, null, 32)
-	cyl(0.3, 0.45, 1.2, Vector3(19, 1.1, 19), stone)
+	if prop("fountain", Vector3(19, 0.2, 19), 0.0, 5.8):
+		solid_cyl(2.8, 1.2, Vector3(19, 0.6, 19))
+	else:
+		var stone := mat(Color(0.62, 0.62, 0.66), 0.6)
+		cyl(2.6, 2.8, 0.6, Vector3(19, 0.3, 19), stone, null, 32)
+		solid_cyl(2.8, 1.2, Vector3(19, 0.6, 19))
+		var water := mat(Color(0.12, 0.3, 0.42), 0.02, 0.1)
+		cyl(2.4, 2.4, 0.05, Vector3(19, 0.58, 19), water, null, 32)
+		cyl(0.3, 0.45, 1.2, Vector3(19, 1.1, 19), stone)
 	var holo := MeshInstance3D.new()
 	var q := QuadMesh.new()
 	q.size = Vector2(1.6, 2.3)
@@ -507,7 +605,7 @@ void fragment() {
 	hm.cull_mode = BaseMaterial3D.CULL_DISABLED
 	hm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	holo.material_override = hm
-	holo.position = Vector3(19, 3.1, 19)
+	holo.position = Vector3(19, 6.2, 19)
 	holo.name = "Holo"
 	add_child(holo)
 	var hl := OmniLight3D.new()
@@ -519,6 +617,10 @@ void fragment() {
 
 
 func tree(p: Vector3, s: float) -> void:
+	var kind := "sakura" if int(absf(p.x * 7.0 + p.z * 3.0)) % 3 == 0 else "tree"
+	if prop(kind, p + Vector3(0, 0.2, 0), fmod(p.x * 13.0, TAU), 5.2 * s, true):
+		solid_cyl(0.35 * s, 3.0, p + Vector3(0, 1.5, 0))
+		return
 	var bark := mat(Color(0.3, 0.2, 0.13), 0.95)
 	cyl(0.12 * s, 0.22 * s, 2.2 * s, p + Vector3(0, 1.1 * s, 0), bark)
 	var rng := RandomNumberGenerator.new()
@@ -542,6 +644,19 @@ func _build_street_furniture() -> void:
 	# Street lamps with curved arms
 	for p in [Vector3(6.6, 0, 13), Vector3(-6.6, 0, -13), Vector3(6.6, 0, -25), Vector3(-6.6, 0, 25), Vector3(13, 0, -6.6), Vector3(-25, 0, 6.6), Vector3(25, 0, -6.6), Vector3(-13, 0, 6.6), Vector3(6.6, 0, 26), Vector3(-6.6, 0, -27)]:
 		var toward := Vector3(-signf(p.x) if absf(p.x) < 7.0 else 0.0, 0, -signf(p.z) if absf(p.z) < 7.0 else 0.0)
+		var lamp_rot := 0.0 if toward.x < 0 else (PI if toward.x > 0 else (-PI / 2 if toward.z < 0 else PI / 2))
+		var lm := prop("street_lamp", p + Vector3(0, 0.16, 0), lamp_rot, 5.8, true)
+		if lm:
+			solid_cyl(0.15, 5.0, p + Vector3(0, 2.5, 0))
+			var ll := OmniLight3D.new()
+			ll.light_color = Color(1.0, 0.8, 0.58)
+			ll.omni_range = 12.0
+			ll.omni_attenuation = 1.4
+			ll.light_volumetric_fog_energy = 2.5
+			ll.position = p + Vector3(0, 5.2, 0) + toward * 2.0
+			add_child(ll)
+			_lamp_lights.append(ll)
+			continue
 		box(Vector3(0.16, 5.4, 0.16), p + Vector3(0, 2.7, 0), pole)
 		box(Vector3(0.12, 0.12, 0.12) + toward.abs() * 1.3, p + Vector3(0, 5.35, 0) + toward * 0.65, pole, false)
 		var bulb := glow_mat(Color(1.0, 0.86, 0.62), 4.0)
@@ -581,6 +696,9 @@ func _build_street_furniture() -> void:
 	# Benches, bins, vending machines, a bus stop
 	var wood := mat(Color(0.5, 0.33, 0.2), 0.8)
 	for b in [[Vector3(9, 0.16, 13), 0.0], [Vector3(9, 0.16, 24), 0.0], [Vector3(-9, 0.16, 11), PI], [Vector3(15, 0.16, -9), PI / 2]]:
+		if prop("bench", b[0], b[1], 1.9):
+			box(Vector3(1.8, 1.0, 0.6), b[0] + Vector3(0, 0.5, 0), mat(Color.BLACK), true).visible = false
+			continue
 		var n := Node3D.new()
 		n.position = b[0]
 		n.rotation.y = b[1]
@@ -591,6 +709,16 @@ func _build_street_furniture() -> void:
 			box(Vector3(0.06, 0.45, 0.45), Vector3(x, 0.22, 0), pole, false, n)
 		box(Vector3(1.8, 1.0, 0.6), b[0] + Vector3(0, 0.5, 0), mat(Color.BLACK), true).visible = false  # collision only
 	for v in [[Vector3(-7.0, 0.16, -10.5), PI / 2, Color("ff4060")], [Vector3(7.0, 0.16, 9.5), -PI / 2, Color("40a0ff")], [Vector3(-7.0, 0.16, 18), PI / 2, Color("40ff9a")]]:
+		var vm := prop("vending", v[0], v[1], 1.95, true)
+		if vm:
+			collide(vm)
+			var gl := OmniLight3D.new()
+			gl.light_color = Color(0.9, 0.95, 1.0)
+			gl.light_energy = 1.2
+			gl.omni_range = 3.5
+			gl.position = Vector3(0, 1.3, 0.9)
+			vm.add_child(gl)
+			continue
 		var n := Node3D.new()
 		n.position = v[0]
 		n.rotation.y = v[1]
@@ -618,6 +746,10 @@ func _build_street_furniture() -> void:
 		cyl(0.3, 0.27, 0.9, p + Vector3(0, 0.45, 0), mat(Color(0.2, 0.32, 0.25), 0.6))
 		solid_cyl(0.3, 0.9, p + Vector3(0, 0.45, 0))
 	# Bus stop shelter
+	var bs := prop("bus_stop", Vector3(-18, 0.16, 6.6), PI, 4.2)
+	if bs:
+		box(Vector3(4, 2.4, 0.4), Vector3(-18, 1.3, 6.0), mat(Color.BLACK), true).visible = false
+		return
 	var bus := Node3D.new()
 	bus.position = Vector3(-18, 0.16, 7.0)
 	add_child(bus)
@@ -651,6 +783,20 @@ func _process(delta: float) -> void:
 # ------------------------------------------------------------------ traffic
 
 func car(color: Color) -> Node3D:
+	if has_model("kei_car"):
+		var n := Node3D.new()
+		var kind := "kei_car" if color.r > color.b else "sedan"
+		var m := prop(kind, Vector3.ZERO, PI / 2, 4.2 if kind == "sedan" else 3.6, false, n)
+		var spot := SpotLight3D.new()
+		spot.light_color = Color(1, 0.95, 0.85)
+		spot.light_energy = 3.0
+		spot.spot_range = 14.0
+		spot.spot_angle = 30.0
+		spot.position = Vector3(0, 0.75, 2.2)
+		spot.rotation.x = -0.12
+		spot.rotation.y = PI
+		n.add_child(spot)
+		return n
 	var n := Node3D.new()
 	var paint := mat(color, 0.25, 0.6)
 	paint.clearcoat_enabled = true

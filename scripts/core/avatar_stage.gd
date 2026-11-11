@@ -37,7 +37,8 @@ func setup(model: Node3D) -> void:
 	add_child(_cam)
 	_cam.current = true
 	await get_tree().process_frame
-	Avatars._relax_pose(model)
+	if Avatars.anim_player(model) == null:
+		Avatars._relax_pose(model)
 	for mi in Avatars._meshes(model):
 		if mi.mesh is ArrayMesh:
 			for i in (mi.mesh as ArrayMesh).get_blend_shape_count():

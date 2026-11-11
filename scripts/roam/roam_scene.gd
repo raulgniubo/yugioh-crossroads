@@ -132,7 +132,9 @@ func _build_walkers() -> void:
 	for i in ROUTES.size():
 		var f := RoamFigure.new()
 		add_child(f)
-		f.setup("walker_%d" % i, palette[rng.randi() % palette.size()], "", false)
+		var people := ["student_boy", "student_girl", "office_worker", "stylish_woman", "street_duelist", "shopkeeper"]
+		var mkey: String = people[i % people.size()] if Avatars.has_avatar(people[i % people.size()]) else "walker_%d" % i
+		f.setup(mkey, palette[rng.randi() % palette.size()], "", false)
 		var body := AnimatableBody3D.new()
 		body.sync_to_physics = false
 		var cs := CollisionShape3D.new()
@@ -143,7 +145,7 @@ func _build_walkers() -> void:
 		cs.position.y = 0.85
 		body.add_child(cs)
 		f.add_child(body)
-		var w := {"fig": f, "a": ROUTES[i][0], "b": ROUTES[i][1], "t": rng.randf(), "dir": 1.0 if rng.randf() > 0.5 else -1.0,
+		var w := {"id": "walker_%d" % i, "fig": f, "a": ROUTES[i][0], "b": ROUTES[i][1], "t": rng.randf(), "dir": 1.0 if rng.randf() > 0.5 else -1.0,
 			"speed": rng.randf_range(1.1, 1.6), "pause": 0.0}
 		_walkers.append(w)
 		var d := {"id": "walker_%d" % i, "name": "Passerby", "color": Color.GRAY, "lines": [WALK_LINES[i % WALK_LINES.size()]]}
@@ -160,7 +162,7 @@ func _move_walkers(delta: float) -> void:
 		var b: Vector3 = w["b"]
 		var len := a.distance_to(b)
 		var near_player := f.global_position.distance_to(_player.global_position) < 1.6
-		var talking_to: bool = _talking and _dlg_npc.get("id", "") == str(f.key)
+		var talking_to: bool = _talking and _dlg_npc.get("id", "") == str(w["id"])
 		if w["pause"] > 0.0:
 			w["pause"] -= delta
 		var moving: bool = not near_player and not talking_to and w["pause"] <= 0.0
@@ -311,6 +313,8 @@ func _build_npcs() -> void:
 		var model_key: String = d.get("char", "")
 		if model_key == "":
 			model_key = d["id"]
+		if not Avatars.has_avatar(model_key) and d.has("model") and Avatars.has_avatar(d["model"]):
+			model_key = d["model"]
 		f.setup(model_key, _npc_color(d), _npc_name(d))
 		var body := StaticBody3D.new()
 		var cs := CollisionShape3D.new()
