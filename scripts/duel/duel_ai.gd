@@ -84,10 +84,14 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 		var plan := _best_summon(s, p, opp_best, level)
 		if not plan.is_empty():
 			return plan
-	# 4b. Cyber Dragon from hand
+	# 4b. Special Summons from hand (Cyber Dragon, Bora, Gale...)
 	for c in me.hand:
 		if s.can_special_from_hand(p, c):
 			return {"do": "special_hand", "card": c}
+	# 4d. Monster effects on the field
+	for m in me.monsters():
+		if s.can_ignite(p, m):
+			return {"do": "ignite", "card": m}
 	# 4c. Set traps (and Mystical Space Typhoon / spells we're holding back)
 	for c in me.hand:
 		if c.is_trap() and s.can_set_st(p, c):
@@ -109,9 +113,13 @@ static func next_attack(s: DuelState, p: int, level := NORMAL) -> Dictionary:
 	var attackers: Array = s.players[p].monsters().filter(func(m): return s.can_attack(p, m))
 	if attackers.is_empty():
 		return {}
-	attackers.sort_custom(func(a, b): return a.atk() > b.atk())
+	attackers.sort_custom(func(a, b): return s.atk_of(a, true) > s.atk_of(b, true))
 	if s.can_direct_attack(p):
 		return {"do": "attack", "card": attackers[0], "target": null}
+	# Monsters that can go straight for the Life Points (Toons, Fane, Leghul...)
+	for m in attackers:
+		if s.can_direct_attack_with(p, m) and level > EASY:
+			return {"do": "attack", "card": m, "target": null}
 	if level == EASY:
 		for m in attackers:
 			for t in opp.monsters():
@@ -289,6 +297,8 @@ static func _candidates(s: DuelState, p: int) -> Array:
 		if s.can_special_from_hand(p, c):
 			out.append({"do": "special_hand", "card": c})
 	for m in me.monsters():
+		if s.can_ignite(p, m):
+			out.append({"do": "ignite", "card": m})
 		if s.can_flip_summon(p, m):
 			out.append({"do": "flip", "card": m})
 		if s.can_change_position(p, m):
@@ -359,6 +369,8 @@ static func apply(s: DuelState, p: int, act: Dictionary) -> Array:
 			return s.set_st(p, act["card"])
 		"special_hand":
 			return s.special_from_hand(p, act["card"])
+		"ignite":
+			return s.ignite(p, act["card"])
 	return []
 
 

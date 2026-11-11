@@ -313,6 +313,20 @@ func _play_event(ev: Dictionary) -> void:
 			if p == ME:
 				hud.remove_hand_card(ev["card"])
 			await board.anim_discard(p, ev["card"])
+		"gy_to_hand":
+			board.remove_from_gy(ev["card"])
+			if p == ME:
+				hud.add_hand_card(ev["card"])
+			else:
+				await board.anim_add_to_opp_hand(ev["card"])
+		"mill":
+			board._add_to_gy(ev["card"])
+			board.set_deck_count(p, ev["deck"])
+		"redraw":
+			if p == ME:
+				for e in hud._hand.duplicate():
+					hud.remove_hand_card(e["inst"])
+			board.set_deck_count(p, ev["deck"])
 		"lp":
 			hud.set_lp(p, ev["lp"], ev["delta"])
 			if ev["delta"] < 0:
@@ -460,6 +474,9 @@ func _on_action(action: String) -> void:
 				_start_attack(c)
 		"flip":
 			await _play(state.flip_summon(ME, c))
+		"ignite":
+			await _play(state.ignite(ME, c))
+			await _after_summon(ME)
 		"set_st":
 			await _play(state.set_st(ME, c))
 		"special_hand":
@@ -524,6 +541,8 @@ func _on_board_card_clicked(card: Card3D) -> void:
 	var opts := []
 	if state.phase == DuelState.Phase.MAIN1 and state.can_enter_battle() and inst.face_up and inst.attack_pos and inst.attacked_turn != state.turn:
 		opts.append(["attack", "Attack", true])
+	if state.can_ignite(ME, inst):
+		opts.append(["ignite", "Effect: " + str(EffectRunner.ignite_spec(inst).get("label", "Activate")), true])
 	if state.can_flip_summon(ME, inst):
 		opts.append(["flip", "Flip Summon", true])
 	if state.can_change_position(ME, inst):
@@ -667,6 +686,8 @@ func _start_attack(inst) -> void:
 	board.start_aim(inst)
 	if state.can_direct_attack(ME):
 		hud.show_prompt("No monsters in the way. Attack directly!", true)
+	elif state.can_direct_attack_with(ME, inst):
+		hud.show_prompt("Tap a monster, or %s can attack directly!" % inst.data.get("name", ""), true, "Direct attack")
 	else:
 		hud.show_prompt("Tap a monster to attack with %s" % inst.data.get("name", ""), false)
 
@@ -769,7 +790,7 @@ func _ai_turn(who: int) -> void:
 	if state.can_enter_battle() and not state.is_over() and not _finished:
 		var any_attack := false
 		for m in state.players[who].monsters():
-			if m.face_up and m.attack_pos and m.attacked_turn != state.turn:
+			if m.face_up and m.attack_pos and state.attacks_left(m) > 0:
 				any_attack = true
 		if any_attack:
 			await _play(state.enter_battle())
@@ -820,6 +841,8 @@ func _run_ai(act: Dictionary, who: int) -> Array:
 			return state.flip_summon(who, act["card"])
 		"position":
 			return state.change_position(who, act["card"])
+		"ignite":
+			return state.ignite(who, act["card"])
 	return []
 
 

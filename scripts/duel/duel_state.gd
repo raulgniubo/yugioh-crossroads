@@ -28,6 +28,26 @@ class CardInst:
 	var overlays: Array = []
 	var set_turn := -1
 	var used_turn := -1
+	# Effect bookkeeping (see EffectRunner)
+	var atk_mod := 0
+	var atk_mod_t := 0
+	var atk_mod_turn := -1
+	var half_turn := -1
+	var zero_turn := -1
+	var survive_turn := -1
+	var ignite_turn := -1
+	var killed_turn := -1
+	var attack_count := 0
+	var attack_count_turn := -1
+
+	func reset_mods() -> void:
+		atk_mod = 0
+		atk_mod_t = 0
+		atk_mod_turn = -1
+		half_turn = -1
+		zero_turn = -1
+		attack_count = 0
+		attack_count_turn = -1
 
 	func cname() -> String:
 		return str(data.get("name", ""))
@@ -164,6 +184,9 @@ func begin_turn() -> Array:
 		events.append_array(_draw(current))
 		if is_over():
 			return events
+	events.append_array(EffectRunner.standby(self, current))
+	if is_over():
+		return events
 	phase = Phase.MAIN1
 	events.append({"type": "phase", "phase": phase})
 	return events
@@ -190,6 +213,7 @@ func enter_main2() -> Array:
 func end_turn() -> Array:
 	phase = Phase.END
 	var events := [{"type": "phase", "phase": phase}]
+	events.append_array(EffectRunner.end_phase(self, current))
 	var ps := players[current]
 	while ps.hand.size() > HAND_LIMIT:
 		# Prototype: discard the weakest card automatically.
@@ -241,6 +265,8 @@ func _in_main() -> bool:
 # ------------------------------------------------------------------ summoning
 
 func tributes_needed(c: CardInst) -> int:
+	if c.level() >= 5 and EffectRunner.no_tribute(self, c.owner, c):
+		return 0
 	if c.level() >= 7:
 		return 2
 	if c.level() >= 5:
@@ -281,11 +307,13 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 	c.summoned_turn = turn
 	c.pos_changed_turn = -1
 	c.attacked_turn = -1
+	c.reset_mods()
 	normal_summoned = true
 	events.append({"type": "set" if set_card else "summon", "player": p, "card": c, "zone": zone})
 	if not set_card:
 		last_summoned = c
 		events.append_array(summon_triggers(p, c))
+		events.append_array(EffectRunner.on_summon(self, p, c, "normal"))
 	return events
 
 
@@ -302,7 +330,9 @@ func flip_summon(p: int, c: CardInst) -> Array:
 	c.pos_changed_turn = turn
 	c.summoned_turn = turn
 	last_summoned = c
-	return [{"type": "flip", "player": p, "card": c, "zone": players[p].field.find(c)}]
+	var events := [{"type": "flip", "player": p, "card": c, "zone": players[p].field.find(c)}]
+	events.append_array(EffectRunner.on_summon(self, p, c, "flip"))
+	return events
 
 
 func can_change_position(p: int, c: CardInst) -> bool:
@@ -394,6 +424,7 @@ func activate(p: int, c: CardInst, choice: CardInst = null) -> Array:
 				players[revive.owner].gy.erase(revive)
 				revive.owner = p
 				events.append_array(_special(p, revive, "reborn"))
+				events.append_array(EffectRunner.on_summon(self, p, revive, "special"))
 	ps.gy.append(c)
 	events.append({"type": "spell_done", "player": p, "card": c})
 	return events
@@ -411,12 +442,32 @@ func _lowest_face_up(p: int) -> CardInst:
 
 func can_attack(p: int, c: CardInst) -> bool:
 	return (p == current and phase == Phase.BATTLE and not is_over() and players[p].field.has(c)
-			and c.face_up and c.attack_pos and c.attacked_turn != turn
+			and c.face_up and c.attack_pos and attacks_left(c) > 0
+			and not (EffectRunner.fx(c).get("summon_sick", false) and c.summoned_turn == turn)
 			and players[opponent(p)].swords_left == 0)
+
+
+func attacks_left(c: CardInst) -> int:
+	var used := c.attack_count if c.attack_count_turn == turn else 0
+	return EffectRunner.max_attacks(c) - used
+
+
+## Can this monster attack the opponent directly right now?
+func can_direct_attack_with(p: int, c: CardInst) -> bool:
+	return EffectRunner.can_direct(self, p, c)
 
 
 func can_direct_attack(p: int) -> bool:
 	return players[opponent(p)].monsters().is_empty()
+
+
+## Monster effects activated from the field (once per turn, Main Phase).
+func can_ignite(p: int, c: CardInst) -> bool:
+	return EffectRunner.can_ignite(self, p, c)
+
+
+func ignite(p: int, c: CardInst) -> Array:
+	return EffectRunner.ignite(self, p, c)
 
 
 func attack_targets(p: int) -> Array[CardInst]:
@@ -441,11 +492,15 @@ var last_summoned: CardInst = null
 func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	if not can_attack(p, attacker):
 		return []
-	if target == null and not can_direct_attack(p):
+	if target == null and not can_direct_attack_with(p, attacker):
 		return []
 	if target != null and not players[opponent(p)].field.has(target):
 		return []
 	attacker.attacked_turn = turn
+	if attacker.attack_count_turn != turn:
+		attacker.attack_count_turn = turn
+		attacker.attack_count = 0
+	attacker.attack_count += 1
 	pending_attack = {"player": p, "attacker": attacker, "target": target, "negated": false}
 	return [{"type": "attack", "player": p, "card": attacker, "target": target}]
 
@@ -463,40 +518,91 @@ func resolve_attack() -> Array:
 		return [{"type": "attack_stopped", "player": p, "card": attacker}]
 	if target != null and not players[opp].field.has(target):
 		return [{"type": "attack_stopped", "player": p, "card": attacker}]
+	# Cyber Barrier Dragon: once per turn, its owner's side shrugs off an attack.
+	for m in players[opp].monsters():
+		if m.face_up and m.attack_pos and EffectRunner.fx(m).get("negate_attack_once", false) and m.ignite_turn != turn:
+			m.ignite_turn = turn
+			return [{"type": "effect", "player": opp, "card": m, "text": "%s negates the attack!" % m.cname()},
+				{"type": "attack_stopped", "player": p, "card": attacker}]
 	var events := [{"type": "battle", "player": p, "card": attacker, "target": target}]
-	var a := atk_of(attacker, true)
+	var a := atk_of(attacker, true, target, true)
 	if target == null:
-		events.append_array(_battle_damage(opp, a))
+		var before := players[opp].lp
+		events.append_array(_battle_damage(opp, a, attacker, null))
+		if players[opp].lp < before:
+			events.append_array(EffectRunner.trigger(self, attacker, "damage"))
+		events.append_array(_after_attack(attacker))
 		return events
 	if not target.face_up:
 		target.face_up = true
 		events.append({"type": "reveal", "player": opp, "card": target, "zone": players[opp].field.find(target)})
-	# Zubaba Knight destroys a Defense Position monster outright.
-	if attacker.cname() == "Zubaba Knight" and not target.attack_pos:
-		events.append_array(_destroy(target, true))
+		events.append_array(EffectRunner.trigger(self, target, "flip"))
+	var kill_def: bool = attacker.cname() == "Zubaba Knight" or EffectRunner.fx(attacker).get("kill_def", false)
+	if kill_def and not target.attack_pos:
+		events.append({"type": "effect", "player": p, "card": attacker, "text": "%s destroys it outright!" % attacker.cname()})
+		events.append_array(_battle_kill(attacker, target))
+		events.append_array(_after_attack(attacker))
 		return events
+	var target_was_def: bool = not target.attack_pos
 	if target.attack_pos:
-		var t := atk_of(target, false)
+		var t := atk_of(target, false, attacker, true)
 		if a > t:
-			events.append_array(_battle_destroy(target))
-			events.append_array(_battle_damage(opp, a - t))
+			events.append_array(_battle_kill(attacker, target))
+			events.append_array(_battle_damage(opp, a - t, attacker, target))
 		elif a < t:
-			events.append_array(_battle_destroy(attacker))
-			events.append_array(_battle_damage(p, t - a))
+			events.append_array(_battle_kill(target, attacker))
+			events.append_array(_battle_damage(p, t - a, target, attacker))
 		elif a > 0:
-			events.append_array(_battle_destroy(attacker))
-			events.append_array(_battle_destroy(target))
+			events.append_array(_battle_kill(target, attacker))
+			events.append_array(_battle_kill(attacker, target))
 	else:
 		var d: int = target.def()
 		if a > d:
-			events.append_array(_battle_destroy(target))
+			events.append_array(_battle_kill(attacker, target))
+			if EffectRunner.piercing(self, p, attacker):
+				events.append({"type": "effect", "player": p, "card": attacker, "text": "Piercing damage!"})
+				events.append_array(_battle_damage(opp, a - d, attacker, target))
 		elif a < d:
-			events.append_array(_battle_damage(p, d - a))
+			var dmg := d - a
+			if EffectRunner.fx(target).get("double_damage_attacked", false):
+				dmg *= 2
+			events.append_array(_battle_damage(p, dmg, target, attacker))
+	# Red Dragon Archfiend: after attacking a Defense monster, burn all of them.
+	if target_was_def and EffectRunner.fx(attacker).get("kill_def_all", false) and players[p].field.has(attacker):
+		var defs := []
+		for m in players[opp].monsters():
+			if not m.attack_pos:
+				defs.append(m)
+		if not defs.is_empty():
+			events.append({"type": "effect", "player": p, "card": attacker, "text": "%s scorches every Defense monster!" % attacker.cname()})
+			for m in defs:
+				events.append_array(_destroy(m))
+	events.append_array(_after_attack(attacker))
 	return events
 
 
-## ATK including passive effects. `attacking` = it's the attacker in this battle.
-func atk_of(c: CardInst, attacking: bool) -> int:
+## winner destroys loser by battle (if it can be destroyed), with the triggers that come with it.
+func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
+	var events := _battle_destroy(loser)
+	var died := not players[loser.owner].field.has(loser) and players[loser.owner].gy.has(loser)
+	if not died:
+		return events
+	winner_c.killed_turn = turn
+	if players[winner_c.owner].field.has(winner_c):
+		events.append_array(EffectRunner.trigger(self, winner_c, "kill", {"victim": loser}))
+	events.append_array(EffectRunner.trigger(self, loser, "death", {"killer": winner_c}))
+	return events
+
+
+func _after_attack(attacker: CardInst) -> Array:
+	if players[attacker.owner].field.has(attacker) and attacker.attack_pos and EffectRunner.fx(attacker).get("def_after_attack", false):
+		attacker.attack_pos = false
+		return [{"type": "position", "player": attacker.owner, "card": attacker, "zone": players[attacker.owner].field.find(attacker)}]
+	return []
+
+
+## ATK including effects. `attacking` = it's the attacker in this battle; vs = the other monster.
+func atk_of(c: CardInst, attacking: bool, vs: CardInst = null, battling := false) -> int:
 	var v := c.atk()
 	match c.cname():
 		"Speed Warrior":
@@ -505,21 +611,25 @@ func atk_of(c: CardInst, attacking: bool) -> int:
 		"Max Warrior":
 			if attacking:
 				v += 400
-	return v
+	return maxi(0, v + EffectRunner.atk_bonus(self, c, attacking, vs, battling))
 
 
 func _battle_destroy(c: CardInst) -> Array:
 	var ps := players[c.owner]
 	if ps.protect_turn == turn:
 		return []
+	if EffectRunner.survives_battle(self, c):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": "%s isn't destroyed!" % c.cname()}]
 	if c.cname() == "Gogogo Golem" and not c.attack_pos and c.used_turn != turn:
 		c.used_turn = turn
 		return [{"type": "effect", "player": c.owner, "card": c, "text": "Gogogo Golem holds on!"}]
 	return _destroy(c, true)
 
 
-func _battle_damage(p: int, amount: int) -> Array:
+func _battle_damage(p: int, amount: int, dealer: CardInst = null, taker: CardInst = null) -> Array:
 	var ps := players[p]
+	if EffectRunner.no_damage_involving(taker) and taker.owner == p:
+		return [{"type": "effect", "player": p, "card": taker, "text": "No battle damage!"}]
 	if ps.no_damage_turn == turn or ps.protect_turn == turn:
 		return [{"type": "effect", "player": p, "card": null, "text": "No battle damage!"}]
 	return _damage(p, amount)
@@ -575,6 +685,7 @@ func _on_leave_field(c: CardInst, by_battle: bool) -> Array:
 						events.append({"type": "effect", "player": p, "card": c, "text": "Mystic Tomato calls %s" % d.cname()})
 						events.append_array(_special(p, d, "effect"))
 						break
+	events.append_array(EffectRunner.trigger(self, c, "gy"))
 	return events
 
 
@@ -613,6 +724,7 @@ func _special(p: int, c: CardInst, method: String) -> Array:
 	c.summoned_turn = turn
 	c.pos_changed_turn = -1
 	c.attacked_turn = -1
+	c.reset_mods()
 	last_summoned = c
 	return [{"type": "special", "player": p, "card": c, "zone": zone, "method": method}]
 
@@ -679,6 +791,7 @@ func _do_fusion(p: int, plan: Dictionary) -> Array:
 	var f: CardInst = plan["card"]
 	ps.extra.erase(f)
 	events.append_array(_special(p, f, "fusion"))
+	events.append_array(EffectRunner.on_summon(self, p, f, "fusion"))
 	return events
 
 
@@ -751,6 +864,11 @@ func extra_summon(p: int, c: CardInst, materials: Array = []) -> Array:
 		events.append({"type": "material", "player": p, "card": m, "from": "field", "zone": z, "overlay": xyz})
 	ps.extra.erase(c)
 	events.append_array(_special(p, c, c.frame()))
+	if not xyz:
+		for m in materials:
+			events.append_array(EffectRunner.trigger(self, m, "material"))
+	var ctx_kind := c.frame()
+	events.append_array(EffectRunner.on_summon(self, p, c, ctx_kind))
 	return events
 
 
@@ -810,6 +928,16 @@ func _clone_card(c: CardInst, map: Dictionary) -> CardInst:
 	n.attacked_turn = c.attacked_turn
 	n.set_turn = c.set_turn
 	n.used_turn = c.used_turn
+	n.atk_mod = c.atk_mod
+	n.atk_mod_t = c.atk_mod_t
+	n.atk_mod_turn = c.atk_mod_turn
+	n.half_turn = c.half_turn
+	n.zero_turn = c.zero_turn
+	n.survive_turn = c.survive_turn
+	n.ignite_turn = c.ignite_turn
+	n.killed_turn = c.killed_turn
+	n.attack_count = c.attack_count
+	n.attack_count_turn = c.attack_count_turn
 	map[c.uid] = n
 	for o in c.overlays:
 		n.overlays.append(_clone_card(o, map))
@@ -957,12 +1085,14 @@ func can_special_from_hand(p: int, c: CardInst) -> bool:
 		return false
 	if c.cname() == "Cyber Dragon":
 		return players[p].monsters().is_empty() and not players[opponent(p)].monsters().is_empty() and players[p].free_zone() != -1
-	return false
+	return EffectRunner.can_special_hand(self, p, c)
 
 
 func special_from_hand(p: int, c: CardInst) -> Array:
 	if not can_special_from_hand(p, c):
 		return []
+	if c.cname() != "Cyber Dragon":
+		return EffectRunner.special_hand(self, p, c)
 	players[p].hand.erase(c)
 	return _special(p, c, "effect")
 

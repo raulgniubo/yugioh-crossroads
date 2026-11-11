@@ -1190,11 +1190,16 @@ func refresh_stats(state: DuelState) -> void:
 			pair[0].position = base + off + Vector3(-0.27, 0, 0)
 			pair[1].position = base + off + Vector3(0.27, 0, 0)
 			pair[2].position = base + off
-			pair[0].text = "?" if hidden else str(m.atk())
+			var shown_atk := state.atk_of(m, false)
+			pair[0].text = "?" if hidden else str(shown_atk)
+			if not hidden and shown_atk != m.atk():
+				pair[0].modulate = Color("ffd23a") if shown_atk > m.atk() else Color("ff7a7a")
 			pair[1].text = "?" if hidden else str(m.def())
 			var active := Color("ffffff")
 			var dim := Color(0.75, 0.82, 0.95, 0.55)
 			pair[0].modulate = (active if m.attack_pos else dim) if not hidden else dim
+			if not hidden and shown_atk != m.atk() and m.attack_pos:
+				pair[0].modulate = Color("ffd23a") if shown_atk > m.atk() else Color("ff8a8a")
 			pair[1].modulate = (Color("7fd8ff") if not m.attack_pos else dim) if not hidden else dim
 			pair[0].font_size = 72 if m.attack_pos else 54
 			pair[1].font_size = 72 if not m.attack_pos else 54

@@ -108,7 +108,7 @@ const SPELL_EFFECTS := {
 	"Dark Hole": "darkhole", "Hinotama": "burn500", "Mystical Space Typhoon": "mst",
 	"Swords of Revealing Light": "swords", "Mirror Force": "mirror_force", "Magic Cylinder": "magic_cylinder",
 	"Sakuretsu Armor": "sakuretsu", "Negate Attack": "negate_attack", "Scrap-Iron Scarecrow": "negate_attack",
-	"Waboku": "waboku", "Trap Hole": "trap_hole", "Bottomless Trap Hole": "bottomless", "Torrential Tribute": "torrential",
+	"Waboku": "waboku", "Galaxy Zero": "reborn", "Trap Hole": "trap_hole", "Bottomless Trap Hole": "bottomless", "Torrential Tribute": "torrential",
 }
 
 ## Monster effects the engine runs, by card name.

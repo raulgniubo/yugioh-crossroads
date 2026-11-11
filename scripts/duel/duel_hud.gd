@@ -648,8 +648,12 @@ func inspect(inst, hidden := false) -> void:
 		_inspect_atk.text = str(d.get("atk", 0))
 		_inspect_def.text = str(d.get("def", 0))
 		var txt := str(d.get("desc", ""))
-		if frame == "effect" or (frame in ["synchro", "xyz", "fusion"] and txt != ""):
-			txt += "\n(Effects aren't active yet. It plays with its stats.)"
+		var nm := str(d.get("name", ""))
+		var note := str(CardEffects.of(nm).get("note", CardData.MONSTER_EFFECTS.get(nm, "")))
+		if note != "":
+			txt = "IN THIS GAME: " + note + "\n\n" + txt
+		elif frame == "effect" or (frame in ["synchro", "xyz", "fusion"] and txt.length() > 80):
+			txt += "\n(This effect isn't in the game yet. It plays with its stats.)"
 		_inspect_text.text = txt if txt != "" else "Normal Monster"
 	else:
 		_chip("Spell", Color("2de2a0"))

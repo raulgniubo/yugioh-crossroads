@@ -10,6 +10,22 @@ func _ready() -> void:
 	_test_battle_math()
 	_test_synchro_xyz_fusion()
 	_test_traps()
+	_test_effects()
+	var stress := OS.get_environment("STRESS_FOLDER")
+	if stress != "":
+		CardData.load_external(stress)
+		var all: Array = Characters.ORDER.filter(func(k): return CardData.has_deck(Characters.DATA[k]["deck"]))
+		var n := 0
+		for seed in int(OS.get_environment("STRESS_GAMES")) if OS.get_environment("STRESS_GAMES") != "" else 48:
+			var a: String = Characters.DATA[all[seed % all.size()]]["deck"]
+			var b: String = Characters.DATA[all[(seed * 7 + 3) % all.size()]]["deck"]
+			_ai_vs_ai(900 + seed, a, b, seed % 3, (seed + 1) % 3)
+			n += 1
+		print("stress: %d games across %d decks" % [n, all.size()])
+		print("effects fired for %d different cards: %s" % [EffectRunner.fired.size(), str(EffectRunner.fired)])
+		print("TESTS DONE, failures: %d" % failures)
+		get_tree().quit(1 if failures > 0 else 0)
+		return
 	var keys: Array = CardData.DECKS.keys()
 	for seed in 60:
 		_ai_vs_ai(seed, keys[seed % keys.size()], keys[(seed / keys.size() + 1 + seed) % keys.size()], seed % 3, seed % 3)
@@ -252,4 +268,99 @@ func _run(s: DuelState, p: int, act: Dictionary) -> Array:
 			return s.set_st(p, act["card"])
 		"special_hand":
 			return s.special_from_hand(p, act["card"])
+		"ignite":
+			return s.ignite(p, act["card"])
 	return []
+
+
+
+func _fake(s: DuelState, p: int, name: String, atk: int, def: int, zone: int, extra := {}) -> DuelState.CardInst:
+	var c := s._make(40640057, p)
+	var d := {"name": name, "kind": "monster", "frame": "effect", "atk": atk, "def": def, "level": 4, "attribute": "EARTH", "race": "Warrior"}
+	d.merge(extra, true)
+	c.data = d
+	if zone >= 0:
+		s.players[p].field[zone] = c
+	return c
+
+
+func _battle_ready(s: DuelState) -> void:
+	for p in 2:
+		s.players[p].field = [null, null, null, null, null]
+		s.players[p].spells = [null, null, null, null, null]
+	s.current = 0
+	s.turn = 3
+	s.phase = DuelState.Phase.BATTLE
+
+
+func _test_effects() -> void:
+	# Flame Wingman burns for the destroyed monster's ATK
+	var s := _new_state(5)
+	_battle_ready(s)
+	var w := _fake(s, 0, "Elemental HERO Flame Wingman", 2100, 1200, 0, {"frame": "fusion", "level": 6})
+	var t := _fake(s, 1, "Target", 1500, 1000, 0)
+	var lp := s.players[1].lp
+	s.attack(0, w, t)
+	check(s.players[1].lp == lp - 600 - 1500, "Flame Wingman burns (got %d)" % (lp - s.players[1].lp))
+	# Piercing
+	s = _new_state(6)
+	_battle_ready(s)
+	var msb := _fake(s, 0, "Mad Sword Beast", 1400, 1200, 0)
+	var wall := _fake(s, 1, "Wall", 0, 500, 0)
+	wall.attack_pos = false
+	lp = s.players[1].lp
+	s.attack(0, msb, wall)
+	check(s.players[1].lp == lp - 900, "Piercing damage")
+	# Gyroid survives the first battle each turn
+	s = _new_state(7)
+	_battle_ready(s)
+	var big := _fake(s, 0, "Big", 2000, 0, 0)
+	var big2 := _fake(s, 0, "Big2", 2000, 0, 1)
+	var gy := _fake(s, 1, "Gyroid", 1000, 1000, 0)
+	s.attack(0, big, gy)
+	check(s.players[1].field.has(gy), "Gyroid survives once")
+	s.attack(0, big2, gy)
+	check(not s.players[1].field.has(gy), "Gyroid falls the second time")
+	# Direct attacker past a blocker
+	s = _new_state(8)
+	_battle_ready(s)
+	var leg := _fake(s, 0, "Leghul", 300, 350, 0)
+	_fake(s, 1, "Blocker", 2000, 2000, 0)
+	lp = s.players[1].lp
+	s.attack(0, leg, null)
+	check(s.players[1].lp == lp - 300, "Leghul attacks directly")
+	# Double attack
+	s = _new_state(9)
+	_battle_ready(s)
+	var twin := _fake(s, 0, "Cyber Twin Dragon", 2800, 2100, 0)
+	lp = s.players[1].lp
+	s.attack(0, twin, null)
+	check(s.can_attack(0, twin), "Cyber Twin Dragon can attack again")
+	s.attack(0, twin, null)
+	check(s.players[1].lp == lp - 5600 and not s.can_attack(0, twin), "Two attacks, then done")
+	# Ignition: Thunder Giant discards to destroy a weaker monster
+	s = _new_state(10)
+	_battle_ready(s)
+	s.phase = DuelState.Phase.MAIN1
+	var tg := _fake(s, 0, "Elemental HERO Thunder Giant", 2400, 1500, 0)
+	var weak := _fake(s, 1, "Weak", 1800, 1000, 0)
+	check(s.can_ignite(0, tg), "Thunder Giant can use its effect")
+	var hand_before := s.players[0].hand.size()
+	s.ignite(0, tg)
+	check(not s.players[1].field.has(weak) and s.players[0].hand.size() == hand_before - 1, "Thunder Giant destroyed a monster")
+	check(not s.can_ignite(0, tg), "Once per turn")
+	# Standby burn
+	s = _new_state(11)
+	_battle_ready(s)
+	_fake(s, 1, "Bowganian", 1300, 1000, 0)
+	s.current = 1
+	lp = s.players[0].lp
+	s.begin_turn()
+	check(s.players[0].lp == lp - 600, "Bowganian burns at Standby")
+	# Aura
+	s = _new_state(12)
+	_battle_ready(s)
+	_fake(s, 0, "Harpie Lady 1", 1300, 1400, 0, {"attribute": "WIND"})
+	var bird := _fake(s, 1, "Wind bird", 1000, 1000, 0, {"attribute": "WIND"})
+	check(s.atk_of(bird, false) == 1300, "Harpie Lady 1 powers up WIND monsters")
+	print("effects tests done")
