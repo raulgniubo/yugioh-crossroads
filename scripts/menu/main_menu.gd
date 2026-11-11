@@ -349,7 +349,14 @@ func _on_story() -> void:
 
 
 func _on_deck() -> void:
-	Router.toast("Deck builder is coming soon")
+	var db := DeckBuilder.new()
+	db.z_index = 100
+	add_child(db)
+	_panel_open = true
+	db.closed.connect(func():
+		_panel_open = false
+		if _items.size() > 1:
+			_items[1].grab_focus())
 
 
 func _on_settings() -> void:

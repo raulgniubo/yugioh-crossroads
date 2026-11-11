@@ -461,6 +461,13 @@ func _set_inside(where: String) -> void:
 		_loc_area.text = "Card shop" if where != "" else str(district.get("area", ""))
 
 
+## A full-screen menu opened from the world (pack shop, deck builder).
+func _open_overlay(panel: Control) -> void:
+	_overlay_open = true
+	_ui.add_child(panel)
+	panel.connect("closed", func(): _overlay_open = false)
+
+
 func _open_look() -> void:
 	_overlay_open = true
 	var ed := ProfileEditor.new(false)
@@ -479,7 +486,7 @@ func _open_deck_picker() -> void:
 	_overlay_open = true
 	var p := SidePanel.new("Choose your deck", 620)
 	var current: String = Router.duel_config.get("player_deck", "echo")
-	var keys: Array = ["echo"]
+	var keys: Array = ["custom", "echo"]
 	for k in Characters.ORDER:
 		if Characters.available(k):
 			keys.append(Characters.DATA[k]["deck"])
@@ -606,6 +613,21 @@ func _show_line() -> void:
 			_open_deck_picker())
 		_dlg_buttons.add_child(deck_btn)
 		var bye := Button.new()
+		var packs := Button.new()
+		packs.text = "  Buy packs  "
+		packs.add_theme_font_size_override("font_size", 26)
+		packs.pressed.connect(func():
+			_end_talk()
+			_open_overlay(PackShop.new()))
+		_dlg_buttons.add_child(packs)
+		_dlg_buttons.move_child(packs, 0)
+		var build := Button.new()
+		build.text = "  Build my deck  "
+		build.add_theme_font_size_override("font_size", 26)
+		build.pressed.connect(func():
+			_end_talk()
+			_open_overlay(DeckBuilder.new()))
+		_dlg_buttons.add_child(build)
 		bye.text = "  Just looking  "
 		bye.add_theme_font_size_override("font_size", 26)
 		bye.pressed.connect(_end_talk)

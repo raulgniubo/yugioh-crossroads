@@ -279,12 +279,16 @@ static func is_extra(id: int) -> bool:
 
 
 static func has_deck(deck_key: String) -> bool:
+	if deck_key == "custom":
+		return Engine.get_main_loop().root.get_node("Collection").deck_ok()
 	if DECKS.has(deck_key):
 		return true
 	return NAMED_DECKS.has(deck_key) and deck_list(deck_key).size() >= 20
 
 
 static func deck_name(deck_key: String) -> String:
+	if deck_key == "custom":
+		return str(Engine.get_main_loop().root.get_node("Collection").deck_name)
 	if DECKS.has(deck_key):
 		return DECKS[deck_key]["name"]
 	return NAMED_DECKS.get(deck_key, {}).get("name", "?")
@@ -323,6 +327,11 @@ const ADDONS := {
 
 
 static func deck_list(deck_key: String) -> Array[int]:
+	if deck_key == "custom":
+		var mine: Array[int] = []
+		for id in Engine.get_main_loop().root.get_node("Collection").main:
+			mine.append(int(id))
+		return mine
 	var extra_cards: Array[int] = _expand(_resolve(ADDONS.get(deck_key, {}), false))
 	if DECKS.has(deck_key):
 		return _expand(DECKS[deck_key]["cards"]) + extra_cards
@@ -330,6 +339,11 @@ static func deck_list(deck_key: String) -> Array[int]:
 
 
 static func extra_list(deck_key: String) -> Array[int]:
+	if deck_key == "custom":
+		var mine: Array[int] = []
+		for id in Engine.get_main_loop().root.get_node("Collection").extra:
+			mine.append(int(id))
+		return mine
 	if DECKS.has(deck_key):
 		return _expand(DECKS[deck_key].get("extra", {}))
 	return _expand(_resolve(NAMED_DECKS.get(deck_key, {}).get("extra", {}), true))

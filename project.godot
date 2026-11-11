@@ -7,7 +7,7 @@ config_version=5
 
 config/name="Yu-Gi-Oh! Crossroads"
 config/description="Private fan project. Not affiliated with Konami."
-config/version="0.8.0"
+config/version="0.9.0"
 run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/use_custom_user_dir=true
@@ -25,6 +25,7 @@ Portraits="*res://scripts/core/portraits.gd"
 Sfx="*res://scripts/core/sfx.gd"
 Music="*res://scripts/core/music.gd"
 Router="*res://scripts/core/router.gd"
+Collection="*res://scripts/core/collection.gd"
 
 [display]
 

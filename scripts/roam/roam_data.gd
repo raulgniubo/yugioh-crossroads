@@ -33,7 +33,7 @@ const DISTRICTS := {
 		# Inside Kame Game (positions are relative to the shop room).
 		"shop_npcs": [
 			{"id": "owner", "char": "", "model": "shopkeeper", "name": "Shop Owner", "color": Color("c9a76a"), "pos": Vector3(0, 0, -4.1), "face": 0.0, "shop": true,
-				"lines": ["Welcome to Kame Game, {player}! Take your time and look around.", "Want to switch the deck you duel with? I keep them all behind the counter."]},
+				"lines": ["Welcome to Kame Game, {player}! Fresh booster packs just came in.", "Packs, deck building, or switching decks: what'll it be?"]},
 			{"id": "regular", "char": "", "model": "student_girl", "name": "Shop Regular", "color": Color("ff8ac0"), "pos": Vector3(4.0, 0, 1.6), "face": 2.6,
 				"lines": ["The tables are free play. Winner stays on!"],
 				"duel": {"deck": "alexis", "difficulty": 1, "intro": "Table two is mine!"}},

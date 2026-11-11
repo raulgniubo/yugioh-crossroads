@@ -110,6 +110,14 @@ func _debug_args() -> void:
 				menu._on_free_duel()
 			elif what == "profile":
 				menu._open_profile(true)
+			elif what == "deck":
+				menu._on_deck()
+			elif what == "packs":
+				var ps := PackShop.new()
+				ps.z_index = 100
+				menu.add_child(ps)
+				await get_tree().create_timer(0.6).timeout
+				ps._open(Collection.PACKS[1])
 		elif a.begins_with("--speed="):
 			Settings.anim_speed = float(a.substr(8))
 	if duel:

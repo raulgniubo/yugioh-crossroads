@@ -154,13 +154,18 @@ func _finish() -> void:
 			Router.story_result = "won" if state.winner == ME else "lost"
 			Router.go(Router.STORY))
 	print("DUEL OVER: winner %d (%s) LP %d vs %d turn %d" % [state.winner, state.win_reason, state.players[0].lp, state.players[1].lp, state.turn])
+	var earned := 0
 	if not _autoplay:
 		Profile.record_result(won)
+		earned = Collection.reward(won and not _surrendered, _ai_level)
 	Sfx.play("win" if won else "lose")
 	hud.say(AI, Characters.line(_opp_key, "lose" if won else "win"))
 	await get_tree().create_timer(1.2).timeout
 	var cfg: Dictionary = Router.duel_config
-	hud.show_result(won, "You surrendered." if _surrendered else state.win_reason, cfg.get("story", false), cfg.get("lose_ok", false), cfg.get("continue_label", "Continue Story"))
+	var why: String = "You surrendered." if _surrendered else state.win_reason
+	if earned > 0:
+		why += "\n+%d Duel Points  (you have %d)" % [earned, Collection.dp]
+	hud.show_result(won, why, cfg.get("story", false), cfg.get("lose_ok", false), cfg.get("continue_label", "Continue Story"))
 	_won = won
 
 

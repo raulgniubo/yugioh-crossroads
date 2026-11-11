@@ -296,6 +296,10 @@ func _refresh_all() -> void:
 		_diff_btns[i].set_pressed_no_signal(i == _difficulty)
 	_deck_pick.clear()
 	_deck_keys.clear()
+	for special in ["custom", "echo"]:
+		if CardData.has_deck(special):
+			_deck_keys.append(special)
+			_deck_pick.add_item("%s  (%s)" % [CardData.deck_name(special), "built by you" if special == "custom" else "starter"])
 	for k in Characters.ORDER:
 		var deck: String = Characters.DATA[k]["deck"]
 		if CardData.has_deck(deck) and not _deck_keys.has(deck):
