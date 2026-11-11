@@ -1,0 +1,527 @@
+class_name DuelHUD
+extends Control
+## Everything 2D on top of the duel: life points, hand, phase controls,
+## card inspector, banners, prompts, action menus and the result screen.
+
+signal hand_card_pressed(inst, at: Vector2)
+signal hand_card_hovered(inst)
+signal phase_button(action: String)
+signal action_chosen(action: String)
+signal cancel_pressed
+signal direct_attack_pressed
+signal pause_action(action: String)
+
+const HAND_CARD := Vector2(150, 218)
+
+var _lp_labels: Array[Label] = [null, null]
+var _lp_bars: Array[ColorRect] = [null, null]
+var _lp_values := [8000.0, 8000.0]
+var _count_labels: Array[Label] = [null, null]
+var _hand_root: Control
+var _hand: Array = []  # [{inst, node}]
+var _hand_hover := -1
+var _playable := {}
+var _phase_labels: Array[Label] = []
+var _btn_battle: Button
+var _btn_end: Button
+var _inspect_panel: PanelContainer
+var _inspect_tex: TextureRect
+var _inspect_name: Label
+var _inspect_stats: Label
+var _inspect_text: Label
+var _prompt: PanelContainer
+var _prompt_label: Label
+var _btn_direct: Button
+var _menu: VBoxContainer
+var _banner: Label
+var _float_root: Control
+var _overlay: Control
+var player_names := ["You", "Opponent"]
+
+
+func _ready() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_build_plates()
+	_build_phase()
+	_build_inspector()
+	_build_hand()
+	_build_prompt()
+	_float_root = Control.new()
+	_float_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_float_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_float_root)
+	_menu = VBoxContainer.new()
+	_menu.visible = false
+	_menu.add_theme_constant_override("separation", 6)
+	add_child(_menu)
+	_banner = UITheme.label("", 110, Color.WHITE, UITheme.title_font())
+	_banner.set_anchors_preset(Control.PRESET_CENTER)
+	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_banner.add_theme_color_override("font_shadow_color", Color(UITheme.ACCENT, 0.6))
+	_banner.add_theme_constant_override("shadow_outline_size", 28)
+	_banner.modulate.a = 0.0
+	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_banner)
+
+
+# ------------------------------------------------------------------ plates
+
+func _plate(p: int) -> PanelContainer:
+	var pc := PanelContainer.new()
+	pc.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.04, 0.07, 0.12, 0.82), 18,
+			Color(UITheme.ACCENT if p == 0 else Color("8a6dff"), 0.35)))
+	pc.custom_minimum_size = Vector2(380, 0)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	pc.add_child(v)
+	var name_l := UITheme.label(player_names[p].to_upper(), 24, UITheme.TEXT_DIM, UITheme.semi_font())
+	name_l.name = "Name"
+	v.add_child(name_l)
+	var lp := UITheme.label("8000", 58, Color.WHITE, UITheme.title_font())
+	v.add_child(lp)
+	_lp_labels[p] = lp
+	var bar_bg := ColorRect.new()
+	bar_bg.color = Color(1, 1, 1, 0.08)
+	bar_bg.custom_minimum_size = Vector2(340, 6)
+	v.add_child(bar_bg)
+	var bar := ColorRect.new()
+	bar.color = UITheme.ACCENT if p == 0 else Color("8a6dff")
+	bar.size = Vector2(340, 6)
+	bar_bg.add_child(bar)
+	_lp_bars[p] = bar
+	var counts := UITheme.label("", 17, UITheme.TEXT_DIM)
+	v.add_child(counts)
+	_count_labels[p] = counts
+	add_child(pc)
+	return pc
+
+
+func _build_plates() -> void:
+	var opp := _plate(1)
+	opp.anchor_left = 1.0
+	opp.anchor_right = 1.0
+	opp.offset_left = -416
+	opp.offset_right = -36
+	opp.offset_top = 30
+	var me := _plate(0)
+	me.anchor_top = 1.0
+	me.anchor_bottom = 1.0
+	me.offset_left = 36
+	me.offset_top = -200
+	me.offset_bottom = -30
+
+
+func set_names(a: String, b: String) -> void:
+	player_names = [a, b]
+	for i in 2:
+		var lbl := _lp_labels[i].get_parent().get_node("Name") as Label
+		lbl.text = player_names[i].to_upper()
+
+
+func set_counts(p: int, deck: int, hand: int, gy: int) -> void:
+	_count_labels[p].text = "Deck %d   ·   Hand %d   ·   GY %d" % [deck, hand, gy]
+
+
+func set_lp(p: int, lp: int, delta: int) -> void:
+	var from: float = _lp_values[p]
+	_lp_values[p] = lp
+	var lbl := _lp_labels[p]
+	var tw := create_tween()
+	tw.tween_method(func(v: float): lbl.text = str(int(round(v))), from, float(lp), Settings.t(0.7))
+	var bar := _lp_bars[p]
+	create_tween().tween_property(bar, "size:x", 340.0 * clampf(lp / 8000.0, 0.0, 1.0), Settings.t(0.7))
+	var col := UITheme.DANGER if delta < 0 else Color("4fd18b")
+	lbl.add_theme_color_override("font_color", col)
+	create_tween().tween_method(func(c: Color): lbl.add_theme_color_override("font_color", c), col, Color.WHITE, Settings.t(1.0))
+	_float_number(p, delta)
+
+
+func _float_number(p: int, delta: int) -> void:
+	var l := UITheme.label(("%+d" % delta), 84, UITheme.DANGER if delta < 0 else Color("4fd18b"), UITheme.title_font())
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	l.add_theme_constant_override("outline_size", 14)
+	var vs := get_viewport_rect().size
+	l.position = Vector2(vs.x * 0.5 - 120, vs.y * (0.62 if p == 0 else 0.22))
+	_float_root.add_child(l)
+	var tw := create_tween().set_parallel()
+	tw.tween_property(l, "position:y", l.position.y - 90, Settings.t(1.1)).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(l, "modulate:a", 0.0, Settings.t(0.5)).set_delay(Settings.t(0.7))
+	tw.chain().tween_callback(l.queue_free)
+
+
+# ------------------------------------------------------------------ phases
+
+func _build_phase() -> void:
+	var box := VBoxContainer.new()
+	box.anchor_left = 1.0
+	box.anchor_right = 1.0
+	box.anchor_top = 0.5
+	box.anchor_bottom = 0.5
+	box.offset_left = -330
+	box.offset_right = -36
+	box.offset_top = -170
+	box.offset_bottom = 230
+	box.add_theme_constant_override("separation", 8)
+	add_child(box)
+	var pills := HBoxContainer.new()
+	pills.add_theme_constant_override("separation", 6)
+	pills.alignment = BoxContainer.ALIGNMENT_END
+	box.add_child(pills)
+	for txt in ["DP", "M1", "BP", "M2", "EP"]:
+		var l := UITheme.label(txt, 20, UITheme.TEXT_DIM, UITheme.semi_font())
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.custom_minimum_size = Vector2(52, 36)
+		l.add_theme_stylebox_override("normal", _pill_box(Color(0.05, 0.08, 0.13, 0.8)))
+		pills.add_child(l)
+		_phase_labels.append(l)
+	_btn_battle = Button.new()
+	_btn_battle.text = "Battle Phase"
+	_btn_battle.custom_minimum_size = Vector2(294, 58)
+	_btn_battle.pressed.connect(func(): phase_button.emit("battle"))
+	box.add_child(_btn_battle)
+	_btn_end = Button.new()
+	_btn_end.text = "End Turn"
+	_btn_end.custom_minimum_size = Vector2(294, 58)
+	_btn_end.pressed.connect(func(): phase_button.emit("end"))
+	box.add_child(_btn_end)
+
+
+func set_phase(phase: int, my_turn: bool) -> void:
+	for i in _phase_labels.size():
+		var on := i == phase
+		var l := _phase_labels[i]
+		l.add_theme_color_override("font_color", UITheme.BG if on else UITheme.TEXT_DIM)
+		var col: Color = (UITheme.ACCENT if my_turn else Color("8a6dff")) if on else Color(0.05, 0.08, 0.13, 0.8)
+		l.add_theme_stylebox_override("normal", _pill_box(col))
+
+
+func _pill_box(col: Color) -> StyleBoxFlat:
+	var sb := UITheme.button_box(col, Color(1, 1, 1, 0.08), 8)
+	sb.content_margin_left = 4
+	sb.content_margin_right = 4
+	sb.content_margin_top = 2
+	sb.content_margin_bottom = 2
+	return sb
+
+
+func set_phase_buttons(battle_text: String, battle_enabled: bool, end_enabled: bool) -> void:
+	_btn_battle.text = battle_text
+	_btn_battle.visible = battle_text != ""
+	_btn_battle.disabled = not battle_enabled
+	_btn_end.disabled = not end_enabled
+
+
+# ------------------------------------------------------------------ inspector
+
+func _build_inspector() -> void:
+	_inspect_panel = PanelContainer.new()
+	_inspect_panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.04, 0.07, 0.12, 0.85), 18))
+	_inspect_panel.anchor_top = 0.5
+	_inspect_panel.anchor_bottom = 0.5
+	_inspect_panel.offset_left = 36
+	_inspect_panel.offset_right = 356
+	_inspect_panel.offset_top = -300
+	_inspect_panel.offset_bottom = 230
+	_inspect_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_inspect_panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	_inspect_panel.add_child(v)
+	_inspect_tex = TextureRect.new()
+	_inspect_tex.custom_minimum_size = Vector2(284, 300)
+	_inspect_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_inspect_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	v.add_child(_inspect_tex)
+	_inspect_name = UITheme.label("", 26, Color.WHITE, UITheme.title_font())
+	_inspect_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(_inspect_name)
+	_inspect_stats = UITheme.label("", 18, UITheme.ACCENT, UITheme.semi_font())
+	v.add_child(_inspect_stats)
+	_inspect_text = UITheme.label("", 15, UITheme.TEXT_DIM)
+	_inspect_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_inspect_text.custom_minimum_size = Vector2(284, 0)
+	v.add_child(_inspect_text)
+	_inspect_panel.modulate.a = 0.0
+
+
+func inspect(inst, hidden := false) -> void:
+	if inst == null:
+		return
+	_inspect_panel.modulate.a = 1.0
+	if hidden:
+		_inspect_tex.texture = Cards.get_back()
+		_inspect_name.text = "Face-down card"
+		_inspect_stats.text = ""
+		_inspect_text.text = ""
+		return
+	var d: Dictionary = inst.data
+	_inspect_tex.texture = Cards.get_face(inst.id)
+	_inspect_name.text = d.get("name", "")
+	if d.get("kind", "monster") == "monster":
+		_inspect_stats.text = "LV %d  ·  %s  ·  %s\nATK %d   DEF %d" % [d.get("level", 0), d.get("attribute", ""), d.get("race", ""), d.get("atk", 0), d.get("def", 0)]
+		_inspect_text.text = str(d.get("desc", "Normal Monster"))
+	else:
+		_inspect_stats.text = "Spell Card"
+		_inspect_text.text = str(d.get("text", ""))
+
+
+# ------------------------------------------------------------------ hand
+
+func _build_hand() -> void:
+	_hand_root = Control.new()
+	_hand_root.anchor_left = 0.5
+	_hand_root.anchor_right = 0.5
+	_hand_root.anchor_top = 1.0
+	_hand_root.anchor_bottom = 1.0
+	_hand_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_hand_root)
+
+
+func add_hand_card(inst) -> void:
+	var tr := TextureRect.new()
+	tr.texture = Cards.get_face(inst.id)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_SCALE
+	tr.size = HAND_CARD
+	tr.pivot_offset = HAND_CARD / 2.0
+	tr.mouse_filter = Control.MOUSE_FILTER_STOP
+	var glow := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0, 0, 0, 0)
+	sb.border_color = UITheme.ACCENT
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(8)
+	sb.expand_margin_left = 4
+	sb.expand_margin_right = 4
+	sb.expand_margin_top = 4
+	sb.expand_margin_bottom = 4
+	glow.add_theme_stylebox_override("panel", sb)
+	glow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	glow.visible = false
+	glow.name = "Glow"
+	tr.add_child(glow)
+	tr.position = Vector2(300, -80)
+	tr.modulate.a = 0.0
+	_hand_root.add_child(tr)
+	var entry := {"inst": inst, "node": tr}
+	_hand.append(entry)
+	tr.mouse_entered.connect(func():
+		_hand_hover = _hand.find(entry)
+		hand_card_hovered.emit(inst)
+		_layout_hand())
+	tr.mouse_exited.connect(func():
+		if _hand_hover == _hand.find(entry):
+			_hand_hover = -1
+		_layout_hand())
+	tr.gui_input.connect(func(e):
+		if (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT) or (e is InputEventScreenTouch and e.pressed):
+			hand_card_pressed.emit(inst, tr.global_position + Vector2(tr.size.x / 2.0, 0)))
+	_layout_hand()
+
+
+func remove_hand_card(inst) -> void:
+	for i in _hand.size():
+		if _hand[i]["inst"] == inst:
+			var n: Control = _hand[i]["node"]
+			_hand.remove_at(i)
+			_hand_hover = -1
+			var tw := create_tween().set_parallel()
+			tw.tween_property(n, "position:y", n.position.y - 160, Settings.t(0.2))
+			tw.tween_property(n, "modulate:a", 0.0, Settings.t(0.2))
+			tw.chain().tween_callback(n.queue_free)
+			break
+	_layout_hand()
+
+
+func set_playable(insts: Array) -> void:
+	_playable.clear()
+	for i in insts:
+		_playable[i] = true
+	for e in _hand:
+		(e["node"].get_node("Glow") as Panel).visible = _playable.has(e["inst"])
+
+
+func _layout_hand() -> void:
+	var n := _hand.size()
+	var spacing := minf(HAND_CARD.x * 0.82, 1050.0 / maxf(n, 1))
+	for i in n:
+		var node: Control = _hand[i]["node"]
+		var offset := i - (n - 1) / 2.0
+		var hovered := i == _hand_hover
+		var target := Vector2(offset * spacing - HAND_CARD.x / 2.0, -HAND_CARD.y * 0.72 + absf(offset) * 6.0)
+		var rot := deg_to_rad(offset * 2.5)
+		var sc := 1.0
+		if hovered:
+			target.y = -HAND_CARD.y - 40
+			rot = 0.0
+			sc = 1.18
+		node.z_index = 10 if hovered else i
+		var tw := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(node, "position", target, 0.18)
+		tw.tween_property(node, "rotation", rot, 0.18)
+		tw.tween_property(node, "scale", Vector2(sc, sc), 0.18)
+		tw.tween_property(node, "modulate:a", 1.0, 0.18)
+
+
+# ------------------------------------------------------------------ prompts & menus
+
+func _build_prompt() -> void:
+	_prompt = PanelContainer.new()
+	_prompt.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.04, 0.07, 0.12, 0.92), 16, Color(UITheme.ACCENT, 0.5)))
+	_prompt.anchor_left = 0.5
+	_prompt.anchor_right = 0.5
+	_prompt.offset_top = 36
+	_prompt.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	add_child(_prompt)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 16)
+	_prompt.add_child(h)
+	_prompt_label = UITheme.label("", 24, Color.WHITE, UITheme.semi_font())
+	h.add_child(_prompt_label)
+	_btn_direct = Button.new()
+	_btn_direct.text = "Direct Attack"
+	_btn_direct.pressed.connect(func(): direct_attack_pressed.emit())
+	h.add_child(_btn_direct)
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.pressed.connect(func(): cancel_pressed.emit())
+	h.add_child(cancel)
+	_prompt.visible = false
+
+
+func show_prompt(text: String, direct := false) -> void:
+	_prompt_label.text = text
+	_btn_direct.visible = direct
+	_prompt.visible = true
+	_prompt.reset_size()
+	_prompt.offset_left = -_prompt.size.x / 2.0
+	_prompt.offset_right = _prompt.size.x / 2.0
+
+
+func hide_prompt() -> void:
+	_prompt.visible = false
+
+
+## options: [[action_id, label, enabled], ...]
+func show_actions(at: Vector2, options: Array) -> void:
+	for c in _menu.get_children():
+		c.queue_free()
+	for o in options:
+		var b := Button.new()
+		b.text = o[1]
+		b.disabled = not o[2]
+		b.custom_minimum_size = Vector2(190, 50)
+		var id: String = o[0]
+		b.pressed.connect(func():
+			hide_actions()
+			action_chosen.emit(id))
+		_menu.add_child(b)
+	_menu.visible = true
+	_menu.reset_size()
+	await get_tree().process_frame
+	var vs := get_viewport_rect().size
+	_menu.position = Vector2(clampf(at.x - _menu.size.x / 2.0, 10, vs.x - _menu.size.x - 10),
+			clampf(at.y - _menu.size.y - 20, 10, vs.y - _menu.size.y - 10))
+
+
+func hide_actions() -> void:
+	_menu.visible = false
+
+
+func actions_visible() -> bool:
+	return _menu.visible
+
+
+func banner(text: String, color := Color.WHITE) -> void:
+	_banner.text = text
+	_banner.add_theme_color_override("font_color", color)
+	_banner.reset_size()
+	var vs := get_viewport_rect().size
+	_banner.position = Vector2((vs.x - _banner.size.x) / 2.0 - 60, vs.y * 0.4 - _banner.size.y / 2.0)
+	var x := _banner.position.x
+	var tw := create_tween()
+	tw.set_parallel()
+	tw.tween_property(_banner, "modulate:a", 1.0, Settings.t(0.2))
+	tw.tween_property(_banner, "position:x", x + 60, Settings.t(0.35)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_interval(Settings.t(0.55))
+	tw.chain().tween_property(_banner, "modulate:a", 0.0, Settings.t(0.25))
+	await tw.finished
+
+
+# ------------------------------------------------------------------ overlays
+
+func _clear_overlay() -> void:
+	if _overlay:
+		_overlay.queue_free()
+		_overlay = null
+
+
+func _overlay_panel(title: String, subtitle: String, title_color: Color) -> VBoxContainer:
+	_clear_overlay()
+	_overlay = Control.new()
+	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_overlay)
+	var dim := ColorRect.new()
+	dim.color = Color(0.01, 0.02, 0.04, 0.78)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_overlay.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_overlay.add_child(center)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 14)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	center.add_child(v)
+	var t := UITheme.label(title, 120, title_color, UITheme.title_font())
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	t.add_theme_color_override("font_shadow_color", Color(title_color, 0.5))
+	t.add_theme_constant_override("shadow_outline_size", 30)
+	v.add_child(t)
+	if subtitle != "":
+		var s := UITheme.label(subtitle, 24, UITheme.TEXT_DIM)
+		s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(s)
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 20)
+	v.add_child(spacer)
+	_overlay.modulate.a = 0.0
+	create_tween().tween_property(_overlay, "modulate:a", 1.0, 0.3)
+	return v
+
+
+func _overlay_button(v: VBoxContainer, text: String, action: String) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.custom_minimum_size = Vector2(360, 60)
+	b.pressed.connect(func(): pause_action.emit(action))
+	var c := CenterContainer.new()
+	c.add_child(b)
+	v.add_child(c)
+	return b
+
+
+func show_result(won: bool, reason: String) -> void:
+	var v := _overlay_panel("VICTORY" if won else "DEFEAT", reason, UITheme.ACCENT if won else UITheme.DANGER)
+	var first := _overlay_button(v, "Rematch", "rematch")
+	_overlay_button(v, "Main Menu", "menu")
+	first.grab_focus()
+
+
+func show_pause() -> void:
+	var v := _overlay_panel("PAUSED", "", Color.WHITE)
+	var first := _overlay_button(v, "Resume", "resume")
+	_overlay_button(v, "Settings", "settings")
+	_overlay_button(v, "Surrender", "surrender")
+	_overlay_button(v, "Main Menu", "menu")
+	first.grab_focus()
+
+
+func hide_overlay() -> void:
+	_clear_overlay()
+
+
+func overlay_visible() -> bool:
+	return _overlay != null

@@ -1,0 +1,17 @@
+# Godot
+.godot/
+*.translation
+export_credentials.cfg
+
+# Builds
+build/
+
+# Local card assets (never commit Konami assets)
+assets/cards/
+assets/art/
+cards.json
+
+# OS
+.DS_Store
+Thumbs.db
+__pycache__/

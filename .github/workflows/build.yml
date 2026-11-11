@@ -1,0 +1,85 @@
+name: Build
+
+# Mac builds on every push to main.
+# Windows only builds when you ask: Actions tab > Build > Run workflow > pick "windows" or "both".
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: "What to build"
+        type: choice
+        options: [mac, windows, both]
+        default: mac
+
+env:
+  GODOT_VERSION: 4.7.2
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot and export templates
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}
+
+      - name: Install Godot
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          cd ~/godot
+          curl -sSL -o godot.zip https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          unzip -q godot.zip && mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 godot && rm godot.zip
+          curl -sSL -o templates.tpz https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          unzip -q templates.tpz
+          # Keep only what we export, so the cache stays small.
+          for f in macos.zip windows_release_x86_64.exe windows_debug_x86_64.exe version.txt; do
+            mv templates/$f ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/
+          done
+          rm -rf templates templates.tpz
+
+      - name: Import project
+        run: ~/godot/godot --headless --import || true
+
+      - name: Run rules tests
+        run: ~/godot/godot --headless --path . res://tests/test_runner.tscn
+
+      - name: Export macOS
+        if: github.event_name == 'push' || inputs.platform == 'mac' || inputs.platform == 'both'
+        run: |
+          mkdir -p build/mac
+          ~/godot/godot --headless --export-release "macOS" build/mac/Crossroads.zip
+          test -s build/mac/Crossroads.zip
+
+      - name: Export Windows
+        if: inputs.platform == 'windows' || inputs.platform == 'both'
+        run: |
+          mkdir -p build/windows
+          ~/godot/godot --headless --export-release "Windows" build/windows/Crossroads.exe
+          test -s build/windows/Crossroads.exe
+
+      - name: Upload macOS build
+        if: hashFiles('build/mac/Crossroads.zip') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: Crossroads-macOS
+          path: build/mac/Crossroads.zip
+          compression-level: 0
+          retention-days: 14
+
+      - name: Upload Windows build
+        if: hashFiles('build/windows/Crossroads.exe') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: Crossroads-Windows
+          path: build/windows/Crossroads.exe
+          retention-days: 14
