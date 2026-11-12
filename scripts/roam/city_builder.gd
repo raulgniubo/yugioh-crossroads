@@ -238,8 +238,9 @@ func apply_tod(t: String) -> void:
 		var lab: Label3D = n[0]
 		lab.modulate = Color(c.r, c.g, c.b) * (0.8 + 1.6 * L["neon"])
 		(n[1] as OmniLight3D).light_energy = 1.8 * L["neon"]
-	var road: ShaderMaterial = get_meta("road_mat")
-	road.set_shader_parameter("wet", 1.0 if tod != "day" else 0.45)
+	var road: ShaderMaterial = get_meta("road_mat", null)
+	if road:
+		road.set_shader_parameter("wet", 1.0 if tod != "day" else 0.45)
 
 
 # ------------------------------------------------------------------ ground

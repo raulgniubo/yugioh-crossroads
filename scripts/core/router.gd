@@ -89,6 +89,8 @@ func _debug_args() -> void:
 			story = {"chapter": a.substr(8), "step": 0, "flags": {}}
 			await get_tree().process_frame
 			go(STORY)
+		elif a.begins_with("--district="):
+			roam["district"] = a.substr(11)
 		elif a.begins_with("--tod="):
 			roam["tod"] = a.substr(6)
 		elif a.begins_with("--gfx="):

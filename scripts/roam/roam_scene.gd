@@ -57,8 +57,14 @@ func _ready() -> void:
 	_build_places()
 	city.player = _player
 	_build_ui()
-	if _player.position.distance_to(ShopInterior.AT) < 30.0:
+	if district.get("builder", "") != "academy" and _player.position.distance_to(ShopInterior.AT) < 30.0:
 		_set_inside("kame")
+	if _map:
+		for mp in [_map, _map_full]:
+			mp.title = str(district.get("name", "")).to_upper()
+			mp.area = str(district.get("area", ""))
+			if district.has("map"):
+				mp.layout = district["map"]
 	Music.play("menu")
 	_after_duel()
 	_debug()
@@ -104,8 +110,11 @@ func _after_duel() -> void:
 # ------------------------------------------------------------------ world
 
 func _build_world() -> void:
-	city = CityBuilder.new()
+	city = AcademyBuilder.new() if district.get("builder", "") == "academy" else CityBuilder.new()
 	add_child(city)
+	var key: String = Router.roam.get("district", "domino")
+	if not Router.roam.has("tod_" + key) and district.has("tod") and not Router.roam.has("tod"):
+		Router.roam["tod"] = district["tod"]
 	city.build(_theme, Router.roam.get("tod", "night"))
 
 
@@ -146,7 +155,8 @@ func _build_walkers() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
 	var palette := [Color("e0533f"), Color("3f7be0"), Color("3fbf8a"), Color("8a4fd9"), Color("f0a040"), Color("2b2b33"), Color("e8e8ee"), Color("c94f8a")]
-	for i in ROUTES.size():
+	var routes: Array = district.get("routes", ROUTES)
+	for i in routes.size():
 		var f := RoamFigure.new()
 		add_child(f)
 		var people := ["student_boy", "student_girl", "office_worker", "stylish_woman", "street_duelist", "shopkeeper"]
@@ -162,7 +172,7 @@ func _build_walkers() -> void:
 		cs.position.y = 0.85
 		body.add_child(cs)
 		f.add_child(body)
-		var w := {"id": "walker_%d" % i, "fig": f, "a": ROUTES[i][0], "b": ROUTES[i][1], "t": rng.randf(), "dir": 1.0 if rng.randf() > 0.5 else -1.0,
+		var w := {"id": "walker_%d" % i, "fig": f, "a": routes[i][0], "b": routes[i][1], "t": rng.randf(), "dir": 1.0 if rng.randf() > 0.5 else -1.0,
 			"speed": rng.randf_range(1.1, 1.6), "pause": 0.0}
 		_walkers.append(w)
 		var d := {"id": "walker_%d" % i, "name": "Passerby", "color": Color.GRAY, "lines": [WALK_LINES[i % WALK_LINES.size()]]}
@@ -210,11 +220,11 @@ func _build_player() -> void:
 	_player.add_child(cs)
 	add_child(_player)
 	var start = Router.roam.get("pos")
-	_player.position = start if start is Vector3 else Vector3(0, 0, 8)
+	_player.position = start if start is Vector3 else district.get("start", Vector3(0, 0, 8))
 	_figure = RoamFigure.new()
 	_player.add_child(_figure)
 	_figure.setup("player", Profile.color(), "", false)
-	_yaw = float(Router.roam.get("yaw", PI))
+	_yaw = float(Router.roam.get("yaw", district.get("yaw", PI)))
 	_figure.rotation.y = _yaw + PI
 	_pivot = Node3D.new()
 	add_child(_pivot)
@@ -397,6 +407,24 @@ func _toggle_map() -> void:
 # ------------------------------------------------------------------ places you can enter
 
 func _build_places() -> void:
+	# The way to the other district (a ferry bus in town, the pier on the island).
+	if district.has("travel"):
+		var tr: Dictionary = district["travel"]
+		_spots.append({"pos": tr["pos"], "range": 2.6, "label": tr["label"], "action": func(): _travel_district(str(tr["to"]))})
+		var sign_l := Label3D.new()
+		sign_l.text = "▼  FERRY"
+		sign_l.font = UITheme.semi_font()
+		sign_l.font_size = 64
+		sign_l.pixel_size = 0.005
+		sign_l.outline_size = 10
+		sign_l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sign_l.modulate = Color("9fe0ff")
+		sign_l.position = (tr["pos"] as Vector3) + Vector3(0, 3.2, 0)
+		city.add_child(sign_l)
+		var pad := city.box(Vector3(2.4, 0.03, 1.4), (tr["pos"] as Vector3) + Vector3(0, 0.24, 0), city.glow_mat(Color("7fd8ff"), 1.2), false)
+		pad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if district.get("builder", "") == "academy":
+		return
 	ShopInterior.build(city)
 	var at := ShopInterior.AT
 	_spots.append({"pos": Vector3(-10, 0, -15.4), "range": 2.3, "label": "Enter Kame Game", "action": func(): _travel("kame")})
@@ -439,6 +467,19 @@ func _travel(where: String) -> void:
 	var tw2 := create_tween()
 	tw2.tween_property(_fader, "color:a", 0.0, 0.3)
 	_overlay_open = false
+
+
+func _travel_district(key: String) -> void:
+	if _overlay_open:
+		return
+	_overlay_open = true
+	Sfx.play("special", -4.0)
+	Router.toast("The ferry to %s..." % RoamData.district(key).get("name", key))
+	Router.roam["district"] = key
+	Router.roam["pos"] = null
+	Router.roam.erase("yaw")
+	Router.roam.erase("tod")
+	Router.go(Router.ROAM)
 
 
 func _set_inside(where: String) -> void:

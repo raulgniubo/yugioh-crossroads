@@ -16,6 +16,9 @@ const LANDMARKS := [
 ]
 
 var full := false
+var title := "DOMINO CITY"
+var area := "Downtown"
+var layout := {}        # {"island": radius, "landmarks": [...], "paths": [[a, b], ...]} for places that aren't the city grid
 var player_pos := Vector2.ZERO
 var player_yaw := 0.0
 var inside := ""
@@ -45,25 +48,35 @@ func _draw() -> void:
 	bg.set_border_width_all(2)
 	draw_style_box(bg, r)
 	var center := size / 2.0 + (Vector2(0, 26) if full else Vector2.ZERO)
-	var scale := (minf(size.x, size.y - 90.0) / 128.0) if full else 3.3
+	var span := 160.0 if layout.has("island") else 128.0
+	var scale := (minf(size.x, size.y - 90.0) / span) if full else (2.4 if layout.has("island") else 3.3)
 	var origin := Vector2.ZERO if full or inside != "" else player_pos
 	if inside != "":
 		origin = Vector2(-10, -19.5) if not full else Vector2.ZERO
 	var to_map := func(w: Vector2) -> Vector2: return center + (w - origin) * scale
-	# Blocks and roads
-	draw_rect(Rect2(to_map.call(Vector2(-64, -64)), Vector2(128, 128) * scale), Color(0.09, 0.1, 0.13))
-	for qx in [-1, 1]:
+	var marks: Array = layout.get("landmarks", LANDMARKS)
+	if layout.has("island"):
+		# Sea, sand, grass and footpaths
+		var rad := float(layout["island"])
+		draw_rect(Rect2(to_map.call(Vector2(-80, -80)), Vector2(160, 160) * scale), Color(0.05, 0.16, 0.26))
+		draw_circle(to_map.call(Vector2.ZERO), (rad + 6.0) * scale, Color(0.74, 0.67, 0.5))
+		draw_circle(to_map.call(Vector2.ZERO), (rad - 6.0) * scale, Color(0.2, 0.36, 0.2))
+		for pth in layout.get("paths", []):
+			draw_line(to_map.call(pth[0]), to_map.call(pth[1]), Color(0.8, 0.76, 0.66), maxf(3.0, 4.0 * scale))
+	else:
+		draw_rect(Rect2(to_map.call(Vector2(-64, -64)), Vector2(128, 128) * scale), Color(0.09, 0.1, 0.13))
+	for qx in ([-1, 1] if not layout.has("island") else []):
 		for qz in [-1, 1]:
 			var c := Vector2(qx * 21.5, qz * 21.5)
 			draw_rect(Rect2(to_map.call(c - Vector2(15.5, 15.5)), Vector2(31, 31) * scale), Color(0.2, 0.21, 0.25))
-	for i in range(-12, 13):
+	for i in (range(-12, 13) if not layout.has("island") else []):
 		if absi(i) <= 1:
 			continue
 		draw_rect(Rect2(to_map.call(Vector2(i * 5.0 - 1.1, -0.12)), Vector2(2.2, 0.3) * scale), Color(0.95, 0.75, 0.2, 0.6))
 		draw_rect(Rect2(to_map.call(Vector2(-0.12, i * 5.0 - 1.1)), Vector2(0.3, 2.2) * scale), Color(0.95, 0.75, 0.2, 0.6))
 	draw_arc(to_map.call(Vector2.ZERO), 3.0 * scale, 0, TAU, 32, Color(accent, 0.8), 2.0)
 	# Landmarks
-	for l in LANDMARKS:
+	for l in marks:
 		var sz: Vector2 = l["size"] * scale
 		var p: Vector2 = to_map.call(l["pos"])
 		var col: Color = l["color"]
@@ -97,8 +110,8 @@ func _draw() -> void:
 	draw_colored_polygon(PackedVector2Array([me + fwd * k * 1.25, me - fwd * k * 0.7 + side * k * 0.8, me - fwd * k * 0.25, me - fwd * k * 0.7 - side * k * 0.8]), Color.WHITE)
 	draw_polyline(PackedVector2Array([me + fwd * k * 1.25, me - fwd * k * 0.7 + side * k * 0.8, me - fwd * k * 0.25, me - fwd * k * 0.7 - side * k * 0.8, me + fwd * k * 1.25]), accent, 2.0)
 	if full:
-		draw_string(_bold, Vector2(34, 54), "DOMINO CITY", HORIZONTAL_ALIGNMENT_LEFT, -1, 40, Color.WHITE)
-		var where := "You are inside Kame Game" if inside != "" else "Downtown"
+		draw_string(_bold, Vector2(34, 54), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 40, Color.WHITE)
+		var where := "You are inside Kame Game" if inside != "" else area
 		draw_string(_font, Vector2(36, 82), where, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, accent)
 		var lx := size.x - 600.0
 		for item in [["wants to duel", Color("ff5a6e")], ["beaten", Color("5aff9a")], ["talk", Color(1, 1, 1, 0.85)]]:
