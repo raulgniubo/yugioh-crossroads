@@ -16,6 +16,7 @@ var master_volume := 0.8
 var music_volume := 0.7
 var sfx_volume := 0.8
 var anim_speed := 1.0
+var pace := 1.0          # extra speed on top, set by the duel (the opponent's turn runs quicker)
 var card_folder := ""
 var field_theme := "auto"
 var language := "en"
@@ -106,7 +107,7 @@ func apply() -> void:
 
 ## Seconds scaled by the animation speed setting.
 func t(seconds: float) -> float:
-	return seconds / maxf(anim_speed, 0.1)
+	return seconds / maxf(anim_speed * pace, 0.1)
 
 
 func _is_desktop() -> bool:

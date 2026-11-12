@@ -55,7 +55,7 @@ func _ready() -> void:
 			if Characters.available(k):
 				_opp = k
 				break
-	_difficulty = int(cfg.get("difficulty", 1))
+	_difficulty = clampi(int(cfg.get("difficulty", 1)), 1, 3)
 	_my_deck = cfg.get("player_deck", "yugi")
 	if not CardData.has_deck(_my_deck):
 		_my_deck = "echo" if CardData.has_deck("echo") else "yugi"
@@ -80,19 +80,19 @@ func _ready() -> void:
 	_center()
 	# A clear way out, top left.
 	var top_back := Button.new()
-	top_back.text = "  ◀  Back  "
-	top_back.add_theme_font_size_override("font_size", 24)
-	top_back.position = Vector2(64, 38)
-	top_back.size = Vector2(150, 56)
+	top_back.text = "◀  Back"
+	top_back.add_theme_font_size_override("font_size", 18)
+	top_back.position = Vector2(64, 48)
+	top_back.size = Vector2(104, 40)
 	top_back.tooltip_text = "Back to the main menu (Esc)"
 	top_back.pressed.connect(close)
 	_root.add_child(top_back)
 	var header := UITheme.label("FREE DUEL", 58, Color.WHITE, UITheme.title_font())
-	header.position = Vector2(236, 28)
+	header.position = Vector2(188, 28)
 	_root.add_child(header)
 	var bar := ColorRect.new()
 	bar.color = UITheme.ACCENT
-	bar.position = Vector2(238, 98)
+	bar.position = Vector2(190, 98)
 	bar.size = Vector2(118, 4)
 	_root.add_child(bar)
 	_build_picker()
@@ -341,16 +341,16 @@ var _pick_title: Label
 ## Who the roster is choosing for, said loudly: two big switches over the roster.
 func _build_picker() -> void:
 	var box := HBoxContainer.new()
-	box.position = Vector2(604, 662)
+	box.position = Vector2(500, 48)
 	box.add_theme_constant_override("separation", 10)
 	_root.add_child(box)
-	_pick_title = UITheme.label("", 26, Color.WHITE, UITheme.title_font())
+	_pick_title = UITheme.label("", 20, UITheme.TEXT_DIM, UITheme.semi_font())
 	_pick_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	box.add_child(_pick_title)
 	for side in ["me", "opp"]:
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(190, 48)
-		b.add_theme_font_size_override("font_size", 20)
+		b.custom_minimum_size = Vector2(180, 42)
+		b.add_theme_font_size_override("font_size", 18)
 		b.pressed.connect(func():
 			_picking = side
 			Sfx.play("card", -8.0)
@@ -362,12 +362,12 @@ func _build_picker() -> void:
 func _refresh_picker() -> void:
 	if _pick_title == null:
 		return
-	_pick_title.text = Loc.t("PICK YOUR DUELIST:") if _picking == "me" else Loc.t("PICK YOUR OPPONENT:")
+	_pick_title.text = Loc.t("The roster below changes:")
 	for side in _pick_btns:
 		var b: Button = _pick_btns[side]
 		var on: bool = side == _picking
 		var col: Color = Portraits.info(_me if side == "me" else _opp).get("color", UITheme.ACCENT)
-		b.text = ("✓  " if on else "") + (Loc.t("ME") if side == "me" else Loc.t("OPPONENT"))
+		b.text = ("●  " if on else "") + (Loc.t("My duelist") if side == "me" else Loc.t("My opponent"))
 		var sb := UITheme.button_box(col if on else Color(0.05, 0.08, 0.14, 0.9), col if on else Color(1, 1, 1, 0.2), 12)
 		for st in ["normal", "hover", "pressed", "focus"]:
 			b.add_theme_stylebox_override(st, sb)
@@ -558,8 +558,9 @@ func _build_setup() -> void:
 	v.add_theme_constant_override("separation", 6)
 	panel.add_child(v)
 	_quote = UITheme.label("", 20, UITheme.TEXT)
-	_quote.position = Vector2(1180, 92)
-	_quote.size = Vector2(676, 28)
+	_quote.position = Vector2(1180, 84)
+	_quote.size = Vector2(676, 26)
+	_quote.add_theme_font_size_override("font_size", 17)
 	_quote.clip_text = true
 	_quote.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_root.add_child(_quote)
@@ -586,37 +587,54 @@ func _build_setup() -> void:
 	var drow := HBoxContainer.new()
 	drow.add_theme_constant_override("separation", 8)
 	v.add_child(drow)
-	for i in 4:
+	for i in 3:
 		var db := Button.new()
-		db.text = ["Easy", "Normal", "Hard", "Expert"][i]
+		db.text = ["Easy", "Normal", "Hard"][i]
 		db.toggle_mode = true
 		db.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		db.add_theme_stylebox_override("hover_pressed", UITheme.button_box(UITheme.ACCENT, UITheme.ACCENT))
+		_pick_style(db)
 		db.pressed.connect(func():
-			_difficulty = i
+			_difficulty = i + 1
 			_refresh_all())
 		drow.add_child(db)
 		_diff_btns.append(db)
 	_diff_note = UITheme.label("", 15, UITheme.TEXT_DIM)
 	v.add_child(_diff_note)
-	var ahead := HBoxContainer.new()
-	v.add_child(ahead)
-	ahead.add_child(UITheme.label("ARENA", 16, UITheme.ACCENT, UITheme.semi_font()))
-	var asp := Control.new()
-	asp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ahead.add_child(asp)
+	# How the duel is played: on foot or on runners, one duel or a match.
 	_match_btn = CheckButton.new()
-	_match_btn.text = "Best of 3"
-	_match_btn.tooltip_text = "Play up to three duels. Between duels you can swap cards with your Side Deck."
-	for cn in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color"]:
-		_match_btn.add_theme_color_override(cn, UITheme.TEXT)
 	_turbo_btn = CheckButton.new()
-	_turbo_btn.text = "Turbo"
-	_turbo_btn.tooltip_text = "A Turbo Duel: both duelists ride. Spells need Speed Counters, and Speed World 2 lets you spend them."
-	for cn in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color"]:
-		_turbo_btn.add_theme_color_override(cn, Color("ff8a3a"))
-	ahead.add_child(_turbo_btn)
-	ahead.add_child(_match_btn)
+	var rules := HBoxContainer.new()
+	rules.add_theme_constant_override("separation", 8)
+	v.add_child(rules)
+	for grp in [[_turbo_btn, "TYPE", ["Standard", "Turbo Duel"], ["A normal duel at the table.", "Both duelists ride runners. Spells need Speed Counters."]],
+			[_match_btn, "LENGTH", ["1 duel", "Best of 3"], ["One duel decides it.", "First to win two duels. You can swap Side Deck cards between duels."]]]:
+		var cb: CheckButton = grp[0]
+		var gv := VBoxContainer.new()
+		gv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		gv.add_theme_constant_override("separation", 2)
+		rules.add_child(gv)
+		gv.add_child(UITheme.label(str(grp[1]), 16, UITheme.ACCENT, UITheme.semi_font()))
+		var gh := HBoxContainer.new()
+		gh.add_theme_constant_override("separation", 6)
+		gv.add_child(gh)
+		var pair: Array = []
+		for k in 2:
+			var ob := Button.new()
+			ob.text = str(grp[2][k])
+			ob.tooltip_text = str(grp[3][k])
+			ob.toggle_mode = true
+			ob.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			ob.add_theme_font_size_override("font_size", 18)
+			_pick_style(ob)
+			ob.button_pressed = k == 0
+			gh.add_child(ob)
+			pair.append(ob)
+		for k in 2:
+			(pair[k] as Button).pressed.connect(func():
+				cb.button_pressed = k == 1
+				(pair[0] as Button).set_pressed_no_signal(k == 0)
+				(pair[1] as Button).set_pressed_no_signal(k == 1))
+	v.add_child(UITheme.label("ARENA", 16, UITheme.ACCENT, UITheme.semi_font()))
 	var arow := HBoxContainer.new()
 	arow.add_theme_constant_override("separation", 10)
 	v.add_child(arow)
@@ -641,11 +659,6 @@ func _build_setup() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	v.add_child(row)
-	var back := Button.new()
-	back.text = "Back"
-	back.custom_minimum_size = Vector2(0, 60)
-	back.pressed.connect(close)
-	row.add_child(back)
 	var rnd := Button.new()
 	rnd.text = "Random rival"
 	rnd.custom_minimum_size = Vector2(0, 60)
@@ -666,6 +679,17 @@ func _build_setup() -> void:
 	_go.add_theme_stylebox_override("focus", UITheme.button_box(UITheme.ACCENT.lightened(0.15), Color.WHITE, 14))
 	_go.pressed.connect(_start_duel)
 	row.add_child(_go)
+
+
+## A choice button: the picked one is filled bright so it is obvious which is on.
+func _pick_style(b: Button) -> void:
+	var on := UITheme.button_box(UITheme.ACCENT, UITheme.ACCENT, 8)
+	on.content_margin_left = 8
+	on.content_margin_right = 8
+	for st in ["pressed", "hover_pressed"]:
+		b.add_theme_stylebox_override(st, on)
+	for c in ["font_pressed_color", "font_hover_pressed_color"]:
+		b.add_theme_color_override(c, Color(0.02, 0.05, 0.08))
 
 
 func _step_field(dir: int) -> void:
@@ -709,8 +733,8 @@ func _refresh_deck_row() -> void:
 
 func _refresh_setup() -> void:
 	for i in _diff_btns.size():
-		_diff_btns[i].set_pressed_no_signal(i == _difficulty)
-	_diff_note.text = ["Relaxed. Makes mistakes and leaves openings.", "Plays sensibly and attacks when it can.",
+		_diff_btns[i].set_pressed_no_signal(i + 1 == maxi(1, _difficulty))
+	_diff_note.text = ["Plays sensibly and attacks when it can.", "Plays sensibly and attacks when it can.",
 			"Thinks ahead, brings a tuned deck and starts with one extra card.",
 			"Plans two plays ahead and sees your counterattack coming. Tuned deck, one extra card."][_difficulty]
 	var th := FieldThemes.resolve(_field, _opp)

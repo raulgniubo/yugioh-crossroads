@@ -56,6 +56,11 @@ var _lights: Array = []        # every lamp in the world, for _cull_lights
 var _chat_turn := {}           # npc id -> how many times you have talked this visit
 var _light_t := 0.0
 var walkers_frozen := false       # the story's Hollows: nobody on the street moves
+var life: WorldLife                # street dressing, animals, benches, favors (Domino and the Academy)
+var _jump := false
+var _hop_test := "--hop" in OS.get_cmdline_user_args()   # dev: jump now and then on a walk test
+var _squash := 0.0
+var _air := false                 # off the ground (for the landing sound)
 var _rooms := {}                  # rooms you can walk into in this district (door filled in)
 
 
@@ -93,6 +98,10 @@ func _ready() -> void:
 	extras.scene = self
 	extras.story_mode = in_story
 	add_child(extras)
+	if str(Router.roam.get("district", "domino")) in ["domino", "academy"] or not RoamData.DISTRICTS.has(str(Router.roam.get("district", "domino"))):
+		life = WorldLife.new()
+		add_child(life)
+		life.setup(self)
 	_update_fill()
 	if in_story:
 		if _counter:
@@ -163,6 +172,9 @@ func _build_world() -> void:
 		(city as CityBuilder).wide = true
 	if not Router.roam.has("tod_" + key) and district.has("tod") and not Router.roam.has("tod"):
 		Router.roam["tod"] = district["tod"]
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--tod="):
+			Router.roam["tod"] = a.trim_prefix("--tod=")
 	city.build(_theme, Router.roam.get("tod", "night"))
 
 
@@ -227,6 +239,7 @@ func _build_walkers() -> void:
 		cs.shape = cap
 		cs.position.y = 0.85
 		body.add_child(cs)
+		body.collision_layer = 2
 		f.add_child(body)
 		var w := {"id": "walker_%d" % i, "fig": f, "a": routes[i][0], "b": routes[i][1], "t": rng.randf(), "dir": 1.0 if rng.randf() > 0.5 else -1.0,
 			"speed": rng.randf_range(1.1, 1.6), "pause": 0.0}
@@ -257,14 +270,22 @@ func _move_walkers(delta: float) -> void:
 		var talking_to: bool = _talking and _dlg_npc.get("id", "") == str(w["id"])
 		if w["pause"] > 0.0:
 			w["pause"] -= delta
-		var moving: bool = not near_player and not talking_to and w["pause"] <= 0.0
+		var moving: bool = not talking_to and w["pause"] <= 0.0 and not (near_player and _prompt and _prompt.visible and _near.get("id", "") == str(w["id"]) and _player.velocity.length() < 0.5)
 		if moving:
 			w["t"] += w["dir"] * w["speed"] * delta / len
 			if w["t"] > 1.0 or w["t"] < 0.0:
 				w["t"] = clampf(w["t"], 0.0, 1.0)
 				w["dir"] = -w["dir"]
 				w["pause"] = randf_range(0.5, 2.5)
-		var pos := a.lerp(b, w["t"]) + Vector3(0, 0.16, 0)
+		# Step around you instead of standing in your way.
+		var along: Vector3 = (b - a).normalized()
+		var side_dir := along.cross(Vector3.UP)
+		var rel: Vector3 = _player.global_position - (a.lerp(b, w["t"]))
+		var want_side := 0.0
+		if rel.length() < 2.4:
+			want_side = -signf(rel.dot(side_dir) if absf(rel.dot(side_dir)) > 0.05 else 1.0) * 1.0
+		w["side"] = lerpf(float(w.get("side", 0.0)), want_side, 1.0 - exp(-delta * 4.0))
+		var pos := a.lerp(b, w["t"]) + Vector3(0, 0.16, 0) + side_dir * float(w["side"])
 		f.position = pos
 		f.set_speed(w["speed"] if moving else 0.0)
 		if not talking_to:
@@ -322,6 +343,7 @@ func _build_player() -> void:
 	cs.shape = cap
 	cs.position.y = 0.85
 	_player.add_child(cs)
+	_player.collision_mask = 3
 	add_child(_player)
 	var start = Router.roam.get("pos")
 	_player.position = start if start is Vector3 else district.get("start", Vector3(0, 0, 8))
@@ -340,6 +362,7 @@ func _build_player() -> void:
 	sh.radius = 0.25
 	_arm.shape = sh
 	_arm.add_excluded_object(_player.get_rid())
+	_arm.collision_mask = 1
 	_pivot.add_child(_arm)
 	_cam = Camera3D.new()
 	_cam.fov = 60
@@ -398,22 +421,51 @@ func _physics_process(delta: float) -> void:
 		if Input.is_key_pressed(KEY_Q):
 			_yaw += delta * 2.0
 	input = input.limit_length(1.0)
+	if life and life.seated:
+		if input.length() > 0.3:
+			life.stand_up()
+		input = Vector2.ZERO
 	var run := Input.is_key_pressed(KEY_SHIFT) or Input.is_joy_button_pressed(0, JOY_BUTTON_LEFT_SHOULDER) or Input.get_joy_axis(0, JOY_AXIS_TRIGGER_RIGHT) > 0.4
 	Pad.overlay = _talking or _overlay_open or _pause != null
 	var basis := Basis(Vector3.UP, _yaw)
 	var dir := basis * Vector3(input.x, 0, input.y)
 	var target := dir * (RUN if run else SPEED)
-	_player.velocity.x = lerpf(_player.velocity.x, target.x, 1.0 - exp(-delta * 12.0))
-	_player.velocity.z = lerpf(_player.velocity.z, target.z, 1.0 - exp(-delta * 12.0))
-	_player.velocity.y = 0.0 if _player.is_on_floor() else _player.velocity.y - 20.0 * delta
+	# Ease into a walk, stop a touch quicker than you start.
+	var rate := 7.5 if target.length() > 0.1 else 11.0
+	_player.velocity.x = lerpf(_player.velocity.x, target.x, 1.0 - exp(-delta * rate))
+	_player.velocity.z = lerpf(_player.velocity.z, target.z, 1.0 - exp(-delta * rate))
+	var grounded := _player.is_on_floor()
+	if grounded and _air and _player.velocity.y <= 0.0:
+		Sfx.play("land", -8.0)
+		_squash = 0.14
+	_air = not grounded
+	_player.velocity.y = 0.0 if grounded else _player.velocity.y - 20.0 * delta
+	if _hop_test and Engine.get_physics_frames() % 150 == 100:
+		_jump = true
+	if _jump and grounded and not (life and life.seated):
+		_player.velocity.y = 6.2
+		Sfx.play("jump", -9.0)
+		_air = true
+	_jump = false
 	_player.move_and_slide()
 	var flat := Vector2(_player.velocity.x, _player.velocity.z)
-	_figure.set_speed(flat.length())
-	if flat.length() > 0.3:
+	_figure.set_speed(flat.length() if not _air else 0.0)
+	var turn := 0.0
+	if flat.length() > 0.3 and not (life and life.seated):
 		var want := atan2(flat.x, flat.y)
-		_figure.rotation.y = lerp_angle(_figure.rotation.y, want, 1.0 - exp(-delta * 12.0))
+		turn = wrapf(want - _figure.rotation.y, -PI, PI)
+		_figure.rotation.y = lerp_angle(_figure.rotation.y, want, 1.0 - exp(-delta * 10.0))
+	# Lean into turns and forward into a run; a little squash on landing.
+	var k := 1.0 - exp(-delta * 8.0)
+	_figure.rotation.z = lerpf(_figure.rotation.z, clampf(-turn * 0.22, -0.16, 0.16) * clampf(flat.length() / RUN, 0.0, 1.0), k)
+	_figure.rotation.x = lerpf(_figure.rotation.x, 0.07 * clampf((flat.length() - SPEED) / (RUN - SPEED), 0.0, 1.0) + (-0.12 if _air else 0.0), k)
+	_squash = move_toward(_squash, 0.0, delta * 0.6)
+	_figure.scale = Vector3(1.0 + _squash * 0.5, 1.0 - _squash, 1.0 + _squash * 0.5)
 	_pivot.position = _pivot.position.lerp(_player.position + Vector3(0, 1.45, 0), 1.0 - exp(-delta * 10.0))
 	_pivot.rotation = Vector3(_pitch, _yaw, 0)
+	# Backed against a wall the camera ends up at your shoulder: step out of its way.
+	if story == null or not story._cut:
+		_figure.visible = _cam.global_position.distance_to(_player.global_position + Vector3(0, 1.3, 0)) > 0.75
 	_light_t -= delta
 	if _light_t <= 0.0:
 		_light_t = 0.35
@@ -461,7 +513,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
 		_talk()
 		get_viewport().set_input_as_handled()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_SPACE and _near.is_empty() and _near_spot.is_empty():
+		_jump = true
+		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("ui_accept") or (event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_A):
+		if _near.is_empty() and _near_spot.is_empty():
+			_jump = true
 		_talk()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_pause"):
@@ -530,6 +587,7 @@ func _add_npc(d: Dictionary, offset: Vector3) -> void:
 		cs.shape = cap
 		cs.position.y = 0.85
 		body.add_child(cs)
+		body.collision_layer = 2
 		f.add_child(body)
 		var marker := Sprite3D.new()
 		marker.pixel_size = 0.0019
@@ -698,9 +756,22 @@ func _travel(where: String) -> void:
 	if _overlay_open:
 		return
 	_overlay_open = true
-	var tw := create_tween()
-	tw.tween_property(_fader, "color:a", 1.0, 0.22)
+	if life:
+		life.stand_up()
+	Sfx.play("door", -3.0)
+	var tw := create_tween().set_parallel()
+	tw.tween_property(_fader, "color:a", 1.0, 0.38).set_delay(0.12)
+	tw.tween_property(_arm, "spring_length", maxf(2.2, _arm.spring_length - 2.4), 0.5).set_trans(Tween.TRANS_SINE)
+	if not _near_spot.is_empty():
+		# Walk the last step to the door while the picture fades.
+		var to: Vector3 = (_near_spot["pos"] as Vector3) - _player.position
+		to.y = 0.0
+		if to.length() > 0.05:
+			_figure.rotation.y = atan2(to.x, to.z)
+			_figure.set_speed(SPEED * 0.7)
+			tw.tween_property(_player, "position", _player.position + to.limit_length(0.9), 0.45)
 	await tw.finished
+	_figure.set_speed(0.0)
 	if where == "kame":
 		_outside_pos = Vector3(-10, 0, -13.6)
 		_outside_yaw = PI
@@ -721,8 +792,11 @@ func _travel(where: String) -> void:
 	_pivot.position = _player.position + Vector3(0, 1.45, 0)
 	_set_inside(where)
 	await get_tree().create_timer(0.12).timeout
-	var tw2 := create_tween()
-	tw2.tween_property(_fader, "color:a", 0.0, 0.3)
+	var settle := _arm.spring_length
+	_arm.spring_length = settle + 1.6
+	var tw2 := create_tween().set_parallel()
+	tw2.tween_property(_fader, "color:a", 0.0, 0.45)
+	tw2.tween_property(_arm, "spring_length", settle, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	_overlay_open = false
 
 
@@ -730,13 +804,26 @@ func _travel_district(key: String) -> void:
 	if _overlay_open:
 		return
 	_overlay_open = true
-	Sfx.play("special", -4.0)
-	Router.toast(Loc.t("The ferry to %s...") % Loc.t(str(RoamData.district(key).get("name", key))))
+	await travel_card(key)
 	Router.roam["district"] = key
 	Router.roam["pos"] = null
 	Router.roam.erase("yaw")
 	Router.roam.erase("tod")
 	Router.go(Router.ROAM)
+
+
+## The ride to another world, shown before the scene changes.
+func travel_card(key: String) -> void:
+	var here: String = str(Router.roam.get("district", "domino"))
+	var sea: bool = "academy" in [here, key]
+	var card := TravelCard.new(str(district.get("name", "")), str(RoamData.district(key).get("name", key)), sea)
+	_ui.add_child(card)
+	await card.play()
+
+
+func _outdoor_sound() -> void:
+	Music.play({"": "city", "academy": "academy"}.get(str(district.get("builder", "")), str(district.get("theme", "city"))))
+	Sfx.ambience({"": "city", "academy": "sea"}.get(str(district.get("builder", "")), "wind" if district.get("theme", "") == "satellite" else "hum"))
 
 
 ## A soft light that travels with the camera, so the hero is never a silhouette
@@ -767,8 +854,11 @@ func _update_fill() -> void:
 func _set_inside(where: String) -> void:
 	if where != _inside:
 		Sfx.play("door", -4.0)
-		Music.play("shop" if where != "" else "city")
-		Sfx.ambience("shop" if where != "" else "city")
+		if where != "":
+			Music.play("shop")
+			Sfx.ambience("shop")
+		else:
+			_outdoor_sound()
 	_inside = where
 	if _rooms.has(where):
 		Music.play(str(_rooms[where]["music"]))
@@ -832,6 +922,19 @@ func _open_look() -> void:
 		_figure.setup("player", Profile.color(), "", false)
 		_dress_player()
 		_figure.rotation.y = rot)
+
+
+## Which footstep fits what is under your feet.
+func ground_sound() -> String:
+	if _inside != "":
+		return "step_hall" if _inside in ["kc_lobby", "ac_hall", "dorm_blue", "arcade"] else "step_wood"
+	if str(Router.roam.get("district", "")) == "academy":
+		var p := _player.position
+		if Vector2(p.x - 48.0, p.z - 50.0).length() < 17.0 or Vector2(p.x, p.z).length() > 64.0:
+			return "step_sand"
+		if absf(p.x) > 2.6 and Vector2(p.x, p.z).length() > 9.5 and absf(p.z - 6.0) > 2.2 and absf(p.z + 4.0) > 2.2:
+			return "step_grass"
+	return "step"
 
 
 ## My Decks, from anywhere: the B key, the bar at the top, the pause menu, the shop counter.
@@ -903,7 +1006,7 @@ func _update_near() -> void:
 			_loc_area.text = Loc.t(area)
 	# A door and a person can both be in reach: whichever is closer gets the prompt.
 	# During a story chapter the doors are shut: the scene decides when you go through one.
-	for sp in (_spots if story == null else []):
+	for sp in (_spots if story == null and not (life != null and life.seated) else []):
 		var sd := (sp["pos"] as Vector3).distance_to(_player.global_position)
 		if sd < float(sp["range"]) and (_near.is_empty() or sd < best_d):
 			_near_spot = sp
@@ -960,9 +1063,13 @@ func _talk() -> void:
 		var turn: int = int(_chat_turn.get(d["id"], 0))
 		say = topics[turn % topics.size()]
 		_chat_turn[d["id"]] = turn + 1
+	var favor: Array = life.errand_talk(d) if life and story == null else []
+	if not favor.is_empty():
+		say = favor
+	Collection.daily_bump("talk")
 	for l in say:
 		_dlg_lines.append(Loc.t(str(l)).replace("{player}", Profile.duelist_name))
-	if d.has("duel"):
+	if d.has("duel") and favor.is_empty():
 		var duel: Dictionary = d["duel"]
 		if _beaten.has(d["id"]):
 			_dlg_lines.append("Rematch? I won't go easy on you this time.")
@@ -1534,6 +1641,8 @@ func _debug() -> void:
 					await get_tree().physics_frame
 					continue
 				for i in 600:
+					if i % 30 == 0 and "--arm" in OS.get_cmdline_user_args():
+						print("ARM hit=", _arm.get_hit_length(), " at ", _player.global_position)
 					var to := goal - _player.global_position
 					to.y = 0
 					if to.length() < 0.25:

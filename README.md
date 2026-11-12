@@ -5,6 +5,31 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.15
+
+- Open world pass for Domino City and Duel Academy: street detail everywhere (bins, planters,
+  hydrants, cones, signs, cafe tables, bunting, bikes, signposts), drifting clouds, lamp halos,
+  birds that scatter, gulls, butterflies, cats you can pet, people chatting in pairs and sitting
+  on benches. You can sit on free benches, buy a drink from vending machines, do small favors
+  for people (two per world), and three daily challenges show up in Quests.
+- Moving around: smooth start and stop, a lean into turns, a jump (Space, or A on a pad when
+  nothing is nearby), footsteps that change with the ground, door sounds and a short step in when
+  you enter a building, and a travel card (ferry or speed lines) between worlds.
+- More sound: grass, sand, wood and hall footsteps, fountain water, birds, crickets at night,
+  distant horns, cats, cans, pickups.
+- Turbo Duels and the highway look much better: a real night sky with a moon, stars and lit
+  cloud bands, a far wall of city, searchlights, light arches over the road, a wet road that
+  smears the lamps, moving holo signs and mast lights on the towers, and long light trails.
+- Duels: a coach line at the top says what you can do right now; the opponent's turn runs
+  quicker; the opponent's Trap now flips up facing you; every monster shows its effect text;
+  "Pause in every phase" has a small "?" that explains it; in a Turbo Duel the speech bubble no
+  longer covers the speed gauges.
+- Free Duel: smaller Back, a plain "My duelist / My opponent" switch, three difficulties (Easy,
+  Normal, Hard; the old Easy is gone), clear TYPE (Standard / Turbo Duel) and LENGTH (1 duel /
+  Best of 3) choices, and no second Back button.
+- Home screen: the Duel Points box and the profile chip line up.
+- Dev: `/tmp/rec.sh` style clip recording with `--write-movie`, plus `--tod=`, `--sit`, `--hop`.
+
 ## What is in 0.14
 
 - Natural standing: every character gets a calm idle built from their own skeleton (arms by the

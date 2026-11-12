@@ -427,7 +427,8 @@ func reward(won: bool, difficulty: int, info := {}) -> int:
 		dp += 40
 		save()
 		return 40
-	last_reward.append([["Win (Easy)", "Win (Normal)", "Win (Hard)", "Win (Expert)"][clampi(difficulty, 0, 3)], 120 + 60 * difficulty])
+	last_reward.append([["Win (Beginner)", "Win (Easy)", "Win (Normal)", "Win (Hard)"][clampi(difficulty, 0, 3)], 120 + 60 * difficulty])
+	daily_bump("win")
 	var today := Time.get_date_string_from_system()
 	if str(record.get("day", "")) != today:
 		record["day"] = today
@@ -455,6 +456,57 @@ func reward(won: bool, difficulty: int, info := {}) -> int:
 	dp += n
 	save()
 	return n
+
+
+## Today's challenges: three small things to do, new every day.
+const DAILY := [
+	{"k": "win", "goal": 1, "name": "Today: win a duel", "text": "Win any duel today.", "reward": 120},
+	{"k": "win", "goal": 3, "name": "Today: win 3 duels", "text": "Win three duels today.", "reward": 300},
+	{"k": "pack", "goal": 1, "name": "Today: open a pack", "text": "Open a booster pack today.", "reward": 80},
+	{"k": "talk", "goal": 5, "name": "Today: catch up", "text": "Talk to people 5 times today.", "reward": 80},
+	{"k": "chip", "goal": 2, "name": "Today: star search", "text": "Find 2 Star Chips today.", "reward": 100},
+	{"k": "sit", "goal": 1, "name": "Today: take a break", "text": "Sit down on a bench for a moment.", "reward": 40},
+	{"k": "cat", "goal": 1, "name": "Today: make a friend", "text": "Pet a cat.", "reward": 40},
+	{"k": "errand", "goal": 1, "name": "Today: lend a hand", "text": "Finish a favor for someone in town.", "reward": 150},
+]
+
+
+func _daily() -> Dictionary:
+	var today := Time.get_date_string_from_system()
+	var d: Dictionary = record.get("daily", {})
+	if str(d.get("day", "")) != today:
+		d = {"day": today, "n": {}}
+		record["daily"] = d
+	return d
+
+
+## Count something toward today's challenges ("win", "pack", "talk", "chip", "sit", "cat", "errand").
+func daily_bump(kind: String) -> void:
+	var d := _daily()
+	var n: Dictionary = d.get("n", {})
+	n[kind] = int(n.get(kind, 0)) + 1
+	d["n"] = n
+	record["daily"] = d
+
+
+## The three challenges picked for today, with progress: [{id, name, text, have, goal, reward}]
+func daily_rows() -> Array:
+	var d := _daily()
+	var day := str(d["day"])
+	var n: Dictionary = d.get("n", {})
+	var out: Array = []
+	var start := absi(hash(day)) % DAILY.size()
+	var used := {}
+	var i := 0
+	while out.size() < 3 and i < DAILY.size():
+		var t: Dictionary = DAILY[(start + i * 3) % DAILY.size()]
+		i += 1
+		if used.has(t["k"]):
+			continue
+		used[t["k"]] = true
+		out.append({"id": "daily_%s_%s%d" % [day, t["k"], t["goal"]], "name": t["name"], "text": t["text"],
+			"have": mini(int(t["goal"]), int(n.get(t["k"], 0))), "goal": t["goal"], "reward": t["reward"]})
+	return out
 
 
 func pack_price(pack: Dictionary) -> int:
@@ -582,5 +634,6 @@ func open_pack(era: String) -> Array:
 					break
 		pulls.append(id)
 		owned[id] = int(owned.get(id, 0)) + 1
+	daily_bump("pack")
 	save()
 	return pulls

@@ -1170,7 +1170,8 @@ func anim_trap(p: int, inst, zone: int) -> void:
 	var c := card_for(inst)
 	if c == null:
 		return
-	var up := Transform3D(Basis(Vector3.UP, 0.0 if p == 0 else PI) * Basis(Vector3.RIGHT, -0.6), st_pos(p, zone) + Vector3(0, 1.2, 0.3 if p == 0 else -0.3))
+	# The card lifts and shows its face to you, whoever flipped it.
+	var up := Transform3D(Basis(Vector3.RIGHT, -0.6 if p == 0 else -0.25), st_pos(p, zone) + Vector3(0, 1.2 if p == 0 else 1.5, 0.3))
 	c.set_glow(true, Color("ff4dd2"))
 	await _move(c, up, 0.3, 0.2)
 	_flash(up.origin, Color("ff4dd2"))

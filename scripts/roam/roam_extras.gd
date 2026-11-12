@@ -17,6 +17,7 @@ var _hud: Control
 var _wp_label: Label
 var _chip_label: Button
 var _chip_card: Control
+var _errands := {}             # favors: id -> stage (see WorldLife)
 var _edge_label: Label
 var _chips: Array = []          # [{node, pos, idx}]
 var _got := {}                  # district -> [chip indices]
@@ -60,6 +61,7 @@ func _load() -> void:
 		_talked = cfg.get_value("x", "talked", {})
 		_visited = cfg.get_value("x", "visited", {})
 		_done = cfg.get_value("x", "done", {})
+		_errands = cfg.get_value("x", "errands", {})
 
 
 func _save() -> void:
@@ -68,6 +70,7 @@ func _save() -> void:
 	cfg.set_value("x", "talked", _talked)
 	cfg.set_value("x", "visited", _visited)
 	cfg.set_value("x", "done", _done)
+	cfg.set_value("x", "errands", _errands)
 	cfg.save(SAVE)
 
 
@@ -294,8 +297,7 @@ func travel_world(key: String) -> void:
 		Sfx.play("gong", -6.0)
 		Router.go(Router.RIDE)
 		return
-	Sfx.play("special", -4.0)
-	Router.toast(Loc.t("Traveling to %s...") % Loc.t(str(RoamData.district(key).get("name", key))))
+	await scene.travel_card(key)
 	Router.roam["district"] = key
 	Router.roam["pos"] = null
 	Router.roam.erase("yaw")
@@ -499,6 +501,7 @@ func _collect(c: Dictionary) -> void:
 	tw.tween_property(n, "scale", Vector3.ZERO, 0.35)
 	tw.chain().tween_callback(n.queue_free)
 	Collection.dp += CHIP_DP
+	Collection.daily_bump("chip")
 	Sfx.play("coin", -2.0)
 	var total := _chip_spots().size()
 	if got.size() == total:
@@ -556,6 +559,7 @@ func quest_rows() -> Array:
 		{"id": "world_tour", "name": "World tour", "text": "Set foot in all five worlds. (Press G to travel.)", "have": worlds, "goal": RoamData.WORLDS.size(), "reward": 400},
 		{"id": "chip_master", "name": "Chip master", "text": "Collect 30 Star Chips across every world.", "have": mini(30, all_chips), "goal": 30, "reward": 600},
 	]
+	rows = Collection.daily_rows() + rows
 	for r in rows:
 		r["done"] = _done.has(r["id"])
 	return rows
@@ -723,9 +727,9 @@ func _process(delta: float) -> void:
 	var sp := Vector2(scene._player.velocity.x, scene._player.velocity.z).length()
 	if sp > 0.6 and scene._player.is_on_floor():
 		_step += delta * sp
-		if _step > 1.55:
+		if _step > (1.5 if sp < 5.5 else 2.1):
 			_step = 0.0
-			Sfx.play("step", -13.0, 0.9 + randf() * 0.25)
+			Sfx.play(scene.ground_sound(), -9.0 if sp > 5.5 else -11.0, 0.9 + randf() * 0.25)
 	if scene._talking and scene._dlg_text.visible_ratio < 1.0:
 		_blip += delta
 		if _blip > 0.055:

@@ -205,6 +205,11 @@ func set_portraits(a: String, b: String) -> void:
 
 
 ## A short line in a speech bubble next to the duelist. Doesn't block.
+var _coach: PanelContainer
+var _coach_label: Label
+var _coach_text := ""
+
+
 func say(p: int, text: String) -> void:
 	if text == "":
 		return
@@ -214,10 +219,13 @@ func say(p: int, text: String) -> void:
 	await get_tree().process_frame
 	var sz := b.get_combined_minimum_size()
 	if p == 1:
-		b.offset_right = -40
-		b.offset_left = -40 - sz.x
-		b.offset_top = 222
-		b.offset_bottom = 222 + sz.y
+		# In a Turbo Duel the speed gauges sit under the panel, so the bubble goes beside it.
+		var side := 0.0 if _gauges.is_empty() else 470.0
+		var top := 222.0 if _gauges.is_empty() else 64.0
+		b.offset_right = -40 - side
+		b.offset_left = -40 - side - sz.x
+		b.offset_top = top
+		b.offset_bottom = top + sz.y
 	else:
 		b.offset_left = 36
 		b.offset_right = 36 + sz.x
@@ -402,19 +410,52 @@ func _build_phase() -> void:
 	box.add_child(_btn_extra)
 	# Each phase of either turn is a chance to use Set cards and Quick-Play Spells. This switches
 	# those reminders off for players who only want to be asked about attacks, summons and chains.
+	var ask_row := HBoxContainer.new()
+	ask_row.add_theme_constant_override("separation", 6)
+	box.add_child(ask_row)
 	var ask := CheckButton.new()
 	ask.text = "Pause in every phase"
 	ask.button_pressed = phase_prompts
+	ask.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ask.add_theme_font_size_override("font_size", 17)
 	for col in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color", "font_focus_color"]:
 		ask.add_theme_color_override(col, UITheme.TEXT)
-	ask.tooltip_text = "On: the duel stops in the Draw, Standby, Battle and End Phase whenever one of your Set cards or Quick-Play Spells could be used there.\nOff: you are only asked during summons, attacks and chains."
 	ask.toggled.connect(func(on): phase_prompts = on)
-	box.add_child(ask)
-	var ask_help := UITheme.label("Stops the duel when a Set card could be used. Off = only during attacks and chains.", 14, UITheme.TEXT_DIM)
-	ask_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	ask_help.custom_minimum_size = Vector2(294, 0)
-	box.add_child(ask_help)
+	ask_row.add_child(ask)
+	# A small "i": press it to read what the switch does.
+	var info := Button.new()
+	info.text = "?"
+	info.custom_minimum_size = Vector2(34, 34)
+	info.add_theme_font_size_override("font_size", 18)
+	for st in [["normal", 0.12], ["hover", 0.3], ["pressed", 0.3], ["focus", 0.12]]:
+		var isb := UITheme.button_box(Color(UITheme.ACCENT, float(st[1])), Color(UITheme.ACCENT, 0.7), 17)
+		isb.set_content_margin_all(2)
+		info.add_theme_stylebox_override(str(st[0]), isb)
+	info.add_theme_color_override("font_color", UITheme.ACCENT)
+	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ask_row.add_child(info)
+	var tip := PanelContainer.new()
+	var tsb := UITheme.panel_box(Color(0.03, 0.05, 0.1, 0.97), 14, Color(UITheme.ACCENT, 0.6))
+	tsb.set_content_margin_all(14)
+	tip.add_theme_stylebox_override("panel", tsb)
+	tip.visible = false
+	tip.z_index = 20
+	tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tl := UITheme.label("ON: the duel stops in each phase when one of your face-down cards or Quick-Play Spells could be used, so you never miss a chance.\n\nOFF: faster duels. You are only asked during summons, attacks and chains.", 16, UITheme.TEXT)
+	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tl.custom_minimum_size = Vector2(300, 0)
+	tip.add_child(tl)
+	add_child(tip)
+	if "--tip" in OS.get_cmdline_user_args():
+		get_tree().create_timer(3.0).timeout.connect(func(): info.pressed.emit())
+	var show_tip := func(on: bool):
+		tip.visible = on
+		if on:
+			tip.reset_size()
+			tip.global_position = info.global_position + Vector2(-tip.size.x + 34, 44)
+	info.mouse_entered.connect(func(): show_tip.call(true))
+	info.mouse_exited.connect(func(): show_tip.call(false))
+	info.pressed.connect(func(): show_tip.call(not tip.visible))
 
 
 func set_phase(phase: int, my_turn: bool) -> void:
@@ -788,7 +829,13 @@ func inspect(inst, hidden := false) -> void:
 		if note == "" and (frame == "effect" or (frame in ["synchro", "xyz", "fusion"] and txt.length() > 80)):
 			_inspect_note.text = Loc.t("Not in this game yet: this card plays with its ATK and DEF only.")
 			_inspect_note.visible = true
-		_inspect_text.text = txt if txt != "" else "Normal Monster"
+		# Cards built into the game carry no printed text of their own: take it from the card
+		# database, or failing that say what the card does in this game.
+		if txt == "":
+			txt = str(CardData.EXT.get(int(inst.id), {}).get("desc", ""))
+		if txt == "":
+			txt = note
+		_inspect_text.text = txt if txt != "" else ("Normal Monster" if frame == "normal" else "")
 	else:
 		var is_trap: bool = str(d.get("kind", "")) == "trap"
 		var st_names := {"quick": "Quick-Play Spell", "cont": "Continuous Spell", "field": "Field Spell", "equip": "Equip Spell",
@@ -800,6 +847,8 @@ func inspect(inst, hidden := false) -> void:
 				_chip(Loc.t("Speed Spell  ·  needs %d") % need, Color("ff8a3a"))
 		_inspect_stat_row.visible = false
 		var body := str(d.get("text", d.get("desc", "")))
+		if body == "":
+			body = str(CardData.EXT.get(int(inst.id), {}).get("desc", ""))
 		_inspect_text.text = body
 		if SpellRules.spec(inst).is_empty():
 			_inspect_note.text = Loc.t("Not in this game yet: you can still Set it as a bluff.")
@@ -929,6 +978,37 @@ func _build_prompt() -> void:
 	cancel.pressed.connect(func(): cancel_pressed.emit())
 	h.add_child(cancel)
 	_prompt.visible = false
+	# The coach line: what you can do right now, in a few words.
+	_coach = PanelContainer.new()
+	var csb := UITheme.panel_box(Color(0.03, 0.05, 0.09, 0.78), 14, Color(UITheme.ACCENT, 0.28))
+	csb.content_margin_left = 18
+	csb.content_margin_right = 18
+	csb.content_margin_top = 7
+	csb.content_margin_bottom = 7
+	_coach.add_theme_stylebox_override("panel", csb)
+	_coach.anchor_left = 0.5
+	_coach.anchor_right = 0.5
+	_coach.offset_top = 36
+	_coach.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_coach.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_coach.visible = false
+	add_child(_coach)
+	_coach_label = UITheme.label("", 19, UITheme.TEXT, UITheme.semi_font())
+	_coach.add_child(_coach_label)
+
+
+## Show (or with "" hide) the coach line. It steps aside while a prompt is up.
+func set_coach(text: String) -> void:
+	if _coach == null:
+		return
+	_coach_text = text
+	var show := text != "" and not _prompt.visible
+	if show and (_coach_label.text != text or not _coach.visible):
+		_coach_label.text = text
+		_coach.reset_size()
+		_coach.offset_left = -_coach.size.x / 2.0
+		_coach.offset_right = _coach.size.x / 2.0
+	_coach.visible = show
 
 
 func show_prompt(text: String, direct := false, direct_label := "Direct Attack") -> void:
@@ -936,6 +1016,8 @@ func show_prompt(text: String, direct := false, direct_label := "Direct Attack")
 	_btn_direct.text = direct_label
 	_btn_direct.visible = direct
 	_prompt.visible = true
+	if _coach:
+		_coach.visible = false
 	_prompt.reset_size()
 	_prompt.offset_left = -_prompt.size.x / 2.0
 	_prompt.offset_right = _prompt.size.x / 2.0
@@ -943,6 +1025,7 @@ func show_prompt(text: String, direct := false, direct_label := "Direct Attack")
 
 func hide_prompt() -> void:
 	_prompt.visible = false
+	set_coach(_coach_text)
 
 
 ## Ask the player whether to respond with one of `options` (cards). Returns the card or null.

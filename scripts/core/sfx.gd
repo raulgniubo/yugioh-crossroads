@@ -59,6 +59,10 @@ func _on_node_added(n: Node) -> void:
 var _last := {}       # sound name -> msec it last played (the same sound twice in a blink is one sound)
 
 
+func stream(name: String) -> AudioStream:
+	return _sounds.get(name)
+
+
 func play(name: String, volume_db := 0.0, pitch := 1.0) -> void:
 	if not _sounds.has(name):
 		return
@@ -119,10 +123,48 @@ func _build_more() -> void:
 	add["quest"] = _tone([659.25, 783.99, 987.77, 1318.5], 1.0, 0.01, 0.38, 0.0, 0.11)
 	add["door"] = _mix(_noise(0.3, 0.45, 500.0, 150.0), _tone([120.0], 0.3, 0.005, 0.3, -0.3, 0.0))
 	add["panel"] = _noise(0.22, 0.28, 1200.0, 4200.0)
+	# The open world: footsteps for each kind of ground, jumps, animals, small machines.
+	add["step_wood"] = _mix(_noise(0.06, 0.3, 500.0, 180.0), _tone([150.0], 0.07, 0.002, 0.22, -0.3, 0.0))
+	add["step_grass"] = _noise(0.11, 0.2, 2600.0, 900.0)
+	add["step_sand"] = _noise(0.14, 0.2, 1500.0, 400.0)
+	add["step_hall"] = _mix(_noise(0.05, 0.3, 1800.0, 500.0), _tone([420.0], 0.09, 0.002, 0.12, -0.2, 0.0))
+	add["jump"] = _noise(0.16, 0.22, 500.0, 2400.0)
+	add["land"] = _mix(_noise(0.1, 0.35, 700.0, 150.0), _tone([90.0], 0.12, 0.002, 0.3, -0.4, 0.0))
+	add["meow"] = _tone([620.0, 780.0], 0.42, 0.04, 0.3, -0.28, 0.06)
+	add["purr"] = _tone([27.0, 54.0, 81.0], 1.1, 0.2, 0.5, 0.0, 0.0)
+	add["can"] = _mix(_tone([180.0, 240.0], 0.25, 0.002, 0.5, -0.4, 0.12), _noise(0.3, 0.3, 900.0, 300.0))
+	add["fizz"] = _noise(0.6, 0.2, 7000.0, 9000.0)
+	add["flutter"] = _mix(_noise(0.5, 0.3, 1200.0, 3200.0), _noise(0.5, 0.25, 2400.0, 900.0))
+	add["gull"] = _tone([1250.0, 1180.0, 1320.0], 0.7, 0.03, 0.2, -0.22, 0.2)
+	add["chirp"] = _tone([3100.0, 3600.0, 3300.0, 3900.0], 0.42, 0.004, 0.14, 0.12, 0.09)
+	add["chirp2"] = _tone([2500.0, 2900.0, 2500.0], 0.5, 0.004, 0.13, -0.1, 0.14)
+	add["cricket"] = _tone([4300.0, 4300.0, 4300.0, 4300.0], 0.42, 0.002, 0.07, 0.0, 0.09)
+	add["horn"] = _tone([392.0, 494.0], 0.5, 0.02, 0.16, 0.0, 0.0)
+	add["hey"] = _tone([440.0, 554.0], 0.16, 0.01, 0.2, 0.25, 0.05)
+	add["sit"] = _noise(0.2, 0.22, 400.0, 150.0)
+	add["pickup"] = _tone([880.0, 1174.66, 1568.0], 0.4, 0.003, 0.3, 0.0, 0.06)
+	add["bell"] = _tone([1046.5, 2093.0, 3140.0], 1.2, 0.002, 0.22, 0.0, 0.0)
+	add["wave"] = _noise(2.4, 0.3, 300.0, 1400.0)
 	add["cheer"] = _crowd(2.4, 0.55, true, r)
 	add["gasp"] = _crowd(1.0, 0.4, false, r)
 	call_deferred("_add_sounds", add)
 	var loops := {}
+	# A steady splash for fountains (played from where the fountain stands).
+	var wn := int(3.0 * RATE)
+	var wb := PackedFloat32Array()
+	wb.resize(wn)
+	var lp1 := 0.0
+	var lp2 := 0.0
+	for i in wn:
+		var x := r.randf_range(-1.0, 1.0)
+		lp1 += 0.5 * (x - lp1)
+		lp2 += 0.06 * (x - lp2)
+		var edge := minf(1.0, minf(i, wn - i) / 2000.0)
+		wb[i] = (lp1 - lp2) * 0.35 * edge * (0.8 + 0.2 * sin(i * 0.0021))
+	var water := _to_wav(wb)
+	water.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	water.loop_end = wn
+	call_deferred("_add_sounds", {"water": water})
 	for kind in ["city", "sea", "wind", "hum", "crowd", "shop", "engine"]:
 		loops["amb_" + kind] = _ambience(6.0, kind, r)
 		call_deferred("_add_sounds", loops.duplicate())

@@ -207,7 +207,9 @@ func _loop() -> void:
 		await _act("begin_main1", [])
 		if state.current == AI or _autoplay or _human_test:
 			await _ai_turn(state.current)
+			Settings.pace = 1.0
 		else:
+			Settings.pace = 1.0
 			_turn_done = false
 			_refresh()
 			if "--demo-actions" in OS.get_cmdline_user_args():
@@ -680,6 +682,7 @@ func _refresh() -> void:
 			board.set_extra_count(ME, state.players[ME].extra.size(), 0)
 			board.set_extra_count(AI, state.players[AI].extra.size())
 		hud.set_playable([])
+		hud.set_coach("")
 		_clear_glows()
 		return
 	match state.phase:
@@ -703,6 +706,7 @@ func _refresh() -> void:
 		if state.can_normal_summon(ME, c) or state.can_activate(ME, c) or state.can_special_from_hand(ME, c) or (c.is_trap() and state.can_set_st(ME, c)):
 			playable.append(c)
 	hud.set_playable(playable)
+	hud.set_coach(_coach_line(ready) if mode == "" else "")
 	_clear_glows()
 	if mode == "":
 		for st in state.players[ME].spells:
@@ -715,6 +719,63 @@ func _refresh() -> void:
 			var c := board.card_for(m)
 			if c and (state.can_attack(ME, m) or state.can_flip_summon(ME, m) or state.can_change_position(ME, m)):
 				c.set_glow(true, UITheme.ACCENT)
+
+
+## A few words on what is open to you right now, so a glowing card is never a riddle.
+func _coach_line(extra_ready: int) -> String:
+	var me: DuelState.PlayerState = state.players[ME]
+	var parts: Array = []
+	if state.phase == DuelState.Phase.BATTLE:
+		var n := 0
+		for m in me.monsters():
+			if state.can_attack(ME, m):
+				n += 1
+		if n > 0:
+			parts.append(Loc.t("Tap a glowing monster to attack  (%d ready)") % n)
+		else:
+			parts.append(Loc.t("No attacks left: go to Main Phase 2 or end your turn"))
+		return "   ·   ".join(parts)
+	if state.phase != DuelState.Phase.MAIN1 and state.phase != DuelState.Phase.MAIN2:
+		return ""
+	var summon := false
+	var special := false
+	var spell := false
+	var trap := false
+	for c in me.hand:
+		if state.can_normal_summon(ME, c):
+			summon = true
+		elif state.can_special_from_hand(ME, c):
+			special = true
+		if not c.is_monster() and state.can_activate(ME, c):
+			spell = true
+		if c.is_trap() and state.can_set_st(ME, c):
+			trap = true
+	if summon:
+		parts.append(Loc.t("Summon or Set a monster"))
+	if special:
+		parts.append(Loc.t("Special Summon from your hand"))
+	if extra_ready > 0:
+		parts.append(Loc.t("Extra Deck summon ready"))
+	if spell:
+		parts.append(Loc.t("Play a Spell"))
+	if trap and parts.size() < 3:
+		parts.append(Loc.t("Set a Trap"))
+	var set_ready := false
+	for st in me.spells:
+		if st != null and ((not st.face_up and state.can_activate(ME, st)) or (st.face_up and SpellRules.can_fire(state, ME, st))):
+			set_ready = true
+	if set_ready and parts.size() < 3:
+		parts.append(Loc.t("Use a card on your field"))
+	if state.phase == DuelState.Phase.MAIN1 and state.can_enter_battle():
+		var can_hit := false
+		for m in me.monsters():
+			if m.face_up and m.attack_pos:
+				can_hit = true
+		if can_hit and parts.size() < 3:
+			parts.append(Loc.t("Battle Phase to attack"))
+	if parts.is_empty():
+		return Loc.t("Nothing left to play: end your turn")
+	return "   ·   ".join(parts.slice(0, 3))
 
 
 func _clear_glows() -> void:
@@ -1287,7 +1348,9 @@ func _restore_match_deck() -> void:
 # ------------------------------------------------------------------ AI
 
 func _ai_turn(who: int) -> void:
-	await _ai_wait(0.6)
+	# The other side's turn runs a notch quicker: you are watching, not deciding.
+	Settings.pace = 1.35 if who != ME else 1.0
+	await _ai_wait(0.45)
 	var steps := 0
 	while steps < 20 and not state.is_over() and not _finished:
 		steps += 1
@@ -1388,3 +1451,7 @@ func _demo_actions() -> void:
 			hud.inspect(c)
 			_on_hand_card_pressed(c, Vector2.ZERO)
 			return
+
+
+func _exit_tree() -> void:
+	Settings.pace = 1.0

@@ -10,7 +10,7 @@ const TOD_LOOK := {
 	"sunset": {"top": Color("2a3a78"), "horizon": Color("ff9a5a"), "ground": Color("3a2420"), "sun": Color("ffb880"), "sun_e": 1.9, "sun_rot": Vector3(-15, -60, 0),
 		"amb": 1.2, "fog": Color("b06a5a"), "fog_d": 0.006, "windows": 0.3, "lamps": 0.5, "neon": 0.7, "exposure": 1.15},
 	"day": {"top": Color("3a7ad8"), "horizon": Color("bcd8f0"), "ground": Color("5a6070"), "sun": Color("fff4e0"), "sun_e": 2.2, "sun_rot": Vector3(-52, -35, 0),
-		"amb": 1.0, "fog": Color("b8cce0"), "fog_d": 0.004, "windows": 0.06, "lamps": 0.0, "neon": 0.25, "exposure": 0.95},
+		"amb": 1.0, "fog": Color("c4d6ea"), "fog_d": 0.0026, "windows": 0.06, "lamps": 0.0, "neon": 0.25, "exposure": 0.95},
 }
 
 var theme: Dictionary
@@ -27,6 +27,7 @@ var _signals: Array = []       # traffic light lamps [[red, yellow, green] mater
 var _time := 0.0
 var player: Node3D
 var make_solid := true
+var places: Array = []        # [kind, position, rotation] of benches, vending machines, fountains
 var wide := false             # the full city: DominoPlus builds the outer walls
 
 
@@ -108,6 +109,7 @@ func solid_cyl(r: float, h: float, pos: Vector3) -> void:
 	cs.shape = sh
 	body.add_child(cs)
 	body.position = pos
+	body.collision_layer = 2
 	add_child(body)
 
 
@@ -217,6 +219,8 @@ func prop(name: String, pos: Vector3, rot: float, size: float, by_height := fals
 	holder.rotation.y = rot
 	holder.set_meta("size", box.size * k)
 	(parent if parent else self).add_child(holder)
+	if parent == null and name in ["bench", "vending", "fountain"]:
+		places.append([name, pos, rot])
 	return holder
 
 
@@ -247,6 +251,9 @@ func collide(holder: Node3D, shrink := 0.9) -> void:
 	cs.shape = sh
 	cs.position.y = sz.y / 2.0
 	body.add_child(cs)
+	# Small things (benches, bikes, lamps) stop your feet but not the camera.
+	if maxf(sz.x, sz.z) < 3.6 and sz.y < 6.5:
+		body.collision_layer = 2
 	holder.add_child(body)
 
 

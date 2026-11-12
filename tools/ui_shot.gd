@@ -23,6 +23,7 @@ func _ready() -> void:
 		"packs": ps = PackShop.new()
 		"deckshop": ps = DeckShop.new()
 		"purse": ps = DpPurse.new()
+		"free": ps = CharacterSelect.new()
 		"rps":
 			var og := OpeningGame.new()
 			og.me_key = "player"

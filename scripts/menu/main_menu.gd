@@ -90,10 +90,10 @@ func _build_menu() -> void:
 	var purse := DpPurse.new()
 	purse.anchor_left = 1.0
 	purse.anchor_right = 1.0
-	purse.offset_left = -700
-	purse.offset_right = -440
-	purse.offset_top = 50
-	purse.offset_bottom = 114
+	purse.offset_left = -706
+	purse.offset_right = -446
+	purse.offset_top = 40
+	purse.offset_bottom = 124
 	add_child(purse)
 	_menu_box = VBoxContainer.new()
 	_menu_box.position = Vector2(100, 356)
@@ -220,11 +220,10 @@ func _layout_carousel(instant: bool) -> void:
 
 func _build_profile_chip() -> void:
 	var chip := Button.new()
-	chip.flat = true
 	chip.anchor_left = 1.0
 	chip.anchor_right = 1.0
-	chip.offset_left = -420
-	chip.offset_right = -50
+	chip.offset_left = -430
+	chip.offset_right = -60
 	chip.offset_top = 40
 	chip.offset_bottom = 124
 	var sb := UITheme.panel_box(Color(0.03, 0.05, 0.09, 0.96), 20, Color(UITheme.ACCENT, 0.45))
