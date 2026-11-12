@@ -237,6 +237,8 @@ func load_model(key: String) -> Node3D:
 				ap.play(idle)
 		elif key == "player":
 			apply_tints(g)
+		if key == "player" and path.begins_with("res://"):
+			apply_hero_color(g, Profile.color(), Profile.look_outfit)
 		return r
 	_register()
 	var gltf := GLTFDocument.new()
@@ -339,6 +341,65 @@ const GROUPS := {
 	"outfit": ["cloth", "tops", "bottoms", "shoes", "onepiece", "huku", "outfit"],
 	"eyes": ["eyeiris", "eye_iris", "iris"],
 }
+
+
+var _hero_shader: Shader
+
+
+## Your signature color on the built-in hero: the accent parts of the outfit (and the hair streak)
+## are repainted in it. The models are painted with a teal accent (orange on the rider suit), so
+## only pixels close to that hue and strongly colored are touched; skin and neutrals stay as they are.
+func apply_hero_color(scene: Node, color: Color, outfit := 0) -> void:
+	if _hero_shader == null:
+		_hero_shader = Shader.new()
+		_hero_shader.code = """
+shader_type spatial;
+uniform sampler2D tex : source_color, filter_linear_mipmap;
+uniform float hue = 0.5;
+uniform float sat_mul = 1.0;
+uniform float from_hue = 0.49;
+uniform float band = 0.075;
+uniform float min_sat = 0.28;
+vec3 rgb2hsv(vec3 c) {
+	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+	vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+	vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+	float d = q.x - min(q.w, q.y);
+	return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x);
+}
+vec3 hsv2rgb(vec3 c) {
+	vec3 p = abs(fract(c.xxx + vec3(1.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
+	return c.z * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y);
+}
+void fragment() {
+	vec4 t = texture(tex, UV);
+	vec3 h = rgb2hsv(t.rgb);
+	float d = abs(h.x - from_hue);
+	d = min(d, 1.0 - d);
+	float m = (1.0 - smoothstep(band * 0.7, band, d)) * smoothstep(min_sat, min_sat + 0.12, h.y);
+	vec3 sw = hsv2rgb(vec3(hue, clamp(h.y * sat_mul, 0.0, 1.0), h.z));
+	ALBEDO = mix(t.rgb, sw, m);
+	ROUGHNESS = 0.85;
+	SPECULAR = 0.2;
+}
+"""
+	for mi in _meshes(scene):
+		if mi.mesh == null:
+			continue
+		for i in mi.mesh.get_surface_count():
+			var mat := mi.get_active_material(i)
+			if not (mat is BaseMaterial3D) or (mat as BaseMaterial3D).albedo_texture == null:
+				continue
+			var sm := ShaderMaterial.new()
+			sm.shader = _hero_shader
+			sm.set_shader_parameter("tex", (mat as BaseMaterial3D).albedo_texture)
+			sm.set_shader_parameter("hue", color.h)
+			sm.set_shader_parameter("sat_mul", clampf(color.s / 0.8, 0.6, 1.3))
+			if outfit == 2:
+				sm.set_shader_parameter("from_hue", 0.065)
+				sm.set_shader_parameter("band", 0.05)
+				sm.set_shader_parameter("min_sat", 0.62)
+			mi.set_surface_override_material(i, sm)
 
 
 func apply_tints(scene: Node) -> void:

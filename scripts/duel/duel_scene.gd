@@ -47,6 +47,7 @@ func _ready() -> void:
 	layer.add_child(hud)
 	board.card_clicked.connect(_on_board_card_clicked)
 	board.card_hovered.connect(_on_board_card_hovered)
+	board.direct_clicked.connect(_on_direct_attack)
 	board.ace_summoned.connect(func(inst):
 		hud.summon_cinematic(inst.cname(), int(inst.data.get("atk", 0)), int(inst.data.get("def", 0)),
 			board._frame_color(inst), inst.owner == ME))
@@ -1036,10 +1037,11 @@ func _start_attack(inst) -> void:
 		if c:
 			c.set_glow(true, UITheme.DANGER)
 	board.start_aim(inst)
+	board.show_direct_target(state.can_direct_attack_with(ME, inst))
 	if state.can_direct_attack(ME):
-		hud.show_prompt("No monsters in the way. Attack directly!", true)
+		hud.show_prompt("No monsters in the way. Click their side of the field to attack directly!", false)
 	elif state.can_direct_attack_with(ME, inst):
-		hud.show_prompt("Tap a monster, or %s can attack directly!" % inst.data.get("name", ""), true, "Direct attack")
+		hud.show_prompt("Click a monster, or their side of the field: %s can attack directly!" % inst.data.get("name", ""), false)
 	else:
 		hud.show_prompt("Tap a monster to attack with %s" % inst.data.get("name", ""), false)
 
@@ -1060,6 +1062,7 @@ func _on_direct_attack() -> void:
 
 func _cancel_mode() -> void:
 	board.stop_aim()
+	board.show_direct_target(false)
 	mode = ""
 	_pending_card = null
 	_attacker = null

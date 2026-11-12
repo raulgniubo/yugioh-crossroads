@@ -91,6 +91,11 @@ func _plate(p: int) -> PanelContainer:
 	var sb := UITheme.panel_box(Color(0.04, 0.07, 0.12, 0.84), 18, Color(col, 0.4))
 	sb.set_content_margin_all(12)
 	pc.add_theme_stylebox_override("panel", sb)
+	if p == 1:
+		# Clicking the opponent's plate while aiming an attack is a direct attack too.
+		pc.gui_input.connect(func(ev):
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				direct_attack_pressed.emit())
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 16)
 	pc.add_child(h)

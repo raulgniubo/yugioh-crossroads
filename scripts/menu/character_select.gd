@@ -92,6 +92,7 @@ func _ready() -> void:
 	_build_tabs()
 	_grid = GridContainer.new()
 	_grid.columns = 13
+	_grid.add_theme_constant_override("h_separation", 8)
 	_grid.position = Vector2(64, 722)
 	_grid.add_theme_constant_override("h_separation", 8)
 	_grid.add_theme_constant_override("v_separation", 8)
@@ -351,9 +352,8 @@ func _refresh_grid() -> void:
 	for c in _grid.get_children():
 		_grid.remove_child(c)
 		c.queue_free()
-	var keys: Array = []
-	if _picking == "me":
-		keys.append("player")
+	# Your own duelist is always the first tile, whoever you are choosing for.
+	var keys: Array = ["player"]
 	for k in Characters.ORDER:
 		if _era == "" or Characters.DATA[k]["era"] == _era:
 			keys.append(k)
@@ -458,7 +458,13 @@ func _roster_card(key: String) -> Control:
 
 
 func _choose(key: String) -> void:
-	if _picking == "me":
+	if key == "player":
+		# Tapping your own duelist always puts you back in the YOU seat.
+		_me = "player"
+		if not CardData.has_deck(_my_deck):
+			_my_deck = "echo"
+		_picking = "opp"
+	elif _picking == "me":
 		_me = key
 		if key != "player":
 			_my_deck = Characters.get_char(key)["deck"]

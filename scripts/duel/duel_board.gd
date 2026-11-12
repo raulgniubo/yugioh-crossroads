@@ -14,6 +14,7 @@ const CAM_POS := Vector3(0, 9.0, 6.9)
 const CAM_TARGET := Vector3(0, 0, 1.15)
 
 signal ace_summoned(inst)
+signal direct_clicked
 
 ## Cinematic camera: blends from the table view toward cam_pos / cam_target by cam_weight.
 var cam_pos := Vector3(0, 4, 12)
@@ -1432,6 +1433,77 @@ func screen_pos(inst) -> Vector2:
 	return camera.unproject_position(c.global_position)
 
 
+# ------------------------------------------------------------------ direct attack target
+
+var _direct: Node3D
+var _direct_hover := false
+var _direct_ring: MeshInstance3D
+var _direct_label: Label3D
+
+
+## A big target over the opponent's side of the field: click it (or anywhere on their monster
+## row) to attack directly. The aiming arrow snaps to it.
+func show_direct_target(on: bool) -> void:
+	if _direct == null:
+		if not on:
+			return
+		_direct = Node3D.new()
+		_direct.position = monster_zone_pos(1, 2) + Vector3(0, 0.06, 0)
+		add_child(_direct)
+		_direct_ring = MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = 0.92
+		tm.outer_radius = 1.05
+		_direct_ring.mesh = tm
+		var rm := StandardMaterial3D.new()
+		rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		rm.albedo_color = Color("ff5a5a")
+		rm.emission_enabled = true
+		rm.emission = Color("ff3b3b")
+		rm.emission_energy_multiplier = 3.0
+		_direct_ring.material_override = rm
+		_direct_ring.scale = Vector3(1, 0.2, 1)
+		_direct.add_child(_direct_ring)
+		for i in 2:
+			var bar := MeshInstance3D.new()
+			var bm := BoxMesh.new()
+			bm.size = Vector3(2.5, 0.02, 0.07)
+			bar.mesh = bm
+			bar.material_override = rm
+			bar.rotation.y = PI / 2 * i
+			_direct.add_child(bar)
+		_direct_label = Label3D.new()
+		_direct_label.text = "DIRECT ATTACK"
+		_direct_label.font = UITheme.title_font()
+		_direct_label.font_size = 96
+		_direct_label.pixel_size = 0.0042
+		_direct_label.outline_size = 22
+		_direct_label.modulate = Color("ffe3e3")
+		_direct_label.outline_modulate = Color("7a0d16")
+		_direct_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		_direct_label.no_depth_test = true
+		_direct_label.position = Vector3(0, 0.95, 0)
+		_direct.add_child(_direct_label)
+		var area := Area3D.new()
+		area.name = "Hit"
+		var cs := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = Vector3(8.6, 0.9, 2.2)
+		cs.shape = box
+		area.add_child(cs)
+		area.position = Vector3(0, 0.3, 0)
+		area.mouse_entered.connect(func(): _direct_hover = true)
+		area.mouse_exited.connect(func(): _direct_hover = false)
+		area.input_event.connect(func(_cam, ev, _pos, _n, _i):
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				direct_clicked.emit())
+		_direct.add_child(area)
+	_direct.visible = on
+	(_direct.get_node("Hit") as Area3D).input_ray_pickable = on
+	if not on:
+		_direct_hover = false
+
+
 func start_aim(inst) -> void:
 	_aim_from = card_for(inst)
 	if _arrow == null:
@@ -1486,7 +1558,13 @@ func _update_arrow() -> void:
 		return
 	var from := _aim_from.global_position + Vector3(0, 0.25, 0)
 	var to: Vector3
-	if _aim_target and is_instance_valid(_aim_target):
+	if _direct != null and _direct.visible:
+		var pulse := 1.0 + sin(_time * 5.0) * 0.07
+		_direct_ring.scale = Vector3(pulse, 0.2, pulse) * (1.12 if _direct_hover else 1.0)
+		_direct_label.modulate = Color.WHITE if _direct_hover else Color("ffc9c9")
+	if _direct != null and _direct.visible and _direct_hover:
+		to = _direct.global_position + Vector3(0, 0.25, 0)
+	elif _aim_target and is_instance_valid(_aim_target):
 		to = _aim_target.global_position + Vector3(0, 0.25, 0)
 	else:
 		var mp := get_viewport().get_mouse_position()

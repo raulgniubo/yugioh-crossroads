@@ -43,6 +43,10 @@ func _ready() -> void:
 			n.position = Vector3(-box.get_center().x * s, -box.position.y * s, -box.get_center().z * s)
 		holder.position = Vector3((i % cols - (cols - 1) / 2.0) * 2.3, -(i / cols) * 2.7, 0)
 		holder.rotation.y = 0.5 if dir.contains("city") else 0.0
+		for arg in OS.get_cmdline_user_args():
+			if arg.begins_with("--tint="):
+				var ti := (i + int(arg.trim_prefix("--tint="))) % Profile.COLORS.size()
+				Avatars.apply_hero_color(n, Profile.COLORS[ti], 2 if names[i].contains("rider") else 0)
 		var ap := _ap(n)
 		if ap:
 			var want := "idle"
