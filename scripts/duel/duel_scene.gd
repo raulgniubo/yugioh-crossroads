@@ -26,6 +26,9 @@ var _said_low := false
 var _won := false
 var _ai_level := 1
 var _materials: Array = []
+## Dev: the AI plays your side too, but through the human path, with prompts answered at random.
+var _human_test := "--human-test" in OS.get_cmdline_user_args()
+var _asked := {}
 
 signal _turn_finished
 
@@ -99,6 +102,7 @@ func _start() -> void:
 			first = AI
 	state.defer_fx = true
 	state.manual = [not _autoplay, false]
+	hud.auto_answer = _human_test
 	var opp_list := CardData.legend_deck(opp_deck) if _ai_level >= 2 else CardData.deck_list(opp_deck)
 	state.bonus_cards = [0, 1 if _ai_level >= 2 else 0]
 	board.state_ref = state
@@ -154,7 +158,7 @@ func _loop() -> void:
 		if state.is_over():
 			break
 		await _act("begin_main1", [])
-		if state.current == AI or _autoplay:
+		if state.current == AI or _autoplay or _human_test:
 			await _ai_turn(state.current)
 		else:
 			_turn_done = false
@@ -251,6 +255,9 @@ func _where(c) -> String:
 func _ask(need: Dictionary) -> Array:
 	var was := _flow
 	_flow = true
+	if _human_test:
+		var key := str(need["prompt"]).get_slice(":", 0).left(28)
+		_asked[key] = int(_asked.get(key, 0)) + 1
 	var src = state.find_uid(int(need.get("source", -1)))
 	if need.has("options"):
 		var idx: int = await hud.ask_choice(str(need["prompt"]), need["options"], src)
@@ -305,6 +312,8 @@ func _finish() -> void:
 		get_tree().create_timer(2.0).timeout.connect(func():
 			Router.story_result = "won" if state.winner == ME else "lost"
 			Router.go(Router.STORY))
+	if _human_test:
+		print("PROMPTS: ", _asked)
 	print("DUEL OVER: winner %d (%s) LP %d vs %d turn %d" % [state.winner, state.win_reason, state.players[0].lp, state.players[1].lp, state.turn])
 	var earned := 0
 	if not _autoplay:
@@ -972,6 +981,8 @@ func _window(first: int, window: String, subject, prompt: String) -> void:
 				choice = DuelAI.choose_response(state, who, win, opts, _level_for(who))
 				if choice != null:
 					await _ai_wait(0.3)
+			elif window in ["phase", "battle_start"] and win == window and not hud.phase_prompts:
+				choice = null
 			else:
 				var text := prompt
 				if win == "chain":

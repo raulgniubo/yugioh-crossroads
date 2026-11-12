@@ -131,6 +131,7 @@ const MONSTER_EFFECTS := {
 }
 
 ## Filled from the downloaded card database (tools/fetch_cards.py), if present.
+const MIN_DECK := 40
 static var EXT := {}
 ## Tokens made during a duel (Sheep Tokens...): id -> card data. Not real cards, never in a deck.
 static var TOKENS := {}
@@ -338,8 +339,40 @@ static func deck_list(deck_key: String) -> Array[int]:
 		return mine
 	var extra_cards: Array[int] = _expand(_resolve(ADDONS.get(deck_key, {}), false))
 	if DECKS.has(deck_key):
-		return _expand(DECKS[deck_key]["cards"]) + extra_cards
-	return _fill_to_30(_resolve(NAMED_DECKS.get(deck_key, {}).get("cards", {}), false)) + extra_cards
+		return to_forty(_expand(DECKS[deck_key]["cards"]) + extra_cards)
+	return to_forty(_fill_to_30(_resolve(NAMED_DECKS.get(deck_key, {}).get("cards", {}), false)) + extra_cards)
+
+
+## A Main Deck is 40 to 60 cards. Smaller lists are topped up with further copies (3 at most)
+## of what the deck already plays: low-Level monsters first, then its Spells and Traps.
+static func to_forty(list: Array[int]) -> Array[int]:
+	if list.size() >= MIN_DECK or list.is_empty():
+		return list
+	var counts := {}
+	var order: Array = []
+	for id in list:
+		if not counts.has(id):
+			order.append(id)
+		counts[id] = int(counts.get(id, 0)) + 1
+	var mons: Array = order.filter(func(id): return get_card(id)["kind"] == "monster" and int(get_card(id).get("level", 4)) <= 4)
+	mons.sort_custom(func(a, b): return int(get_card(a).get("atk", 0)) > int(get_card(b).get("atk", 0)))
+	var rest: Array = order.filter(func(id): return get_card(id)["kind"] != "monster")
+	var out: Array[int] = list.duplicate()
+	for pool in [mons, rest, order]:
+		for id in pool:
+			if out.size() >= MIN_DECK:
+				return out
+			if counts[id] < 3:
+				counts[id] += 1
+				out.append(id)
+	# Still short: a second pass adds third copies.
+	for id in mons + rest:
+		if out.size() >= MIN_DECK:
+			break
+		if counts[id] < 3:
+			counts[id] += 1
+			out.append(id)
+	return out
 
 
 static func extra_list(deck_key: String) -> Array[int]:
@@ -505,4 +538,4 @@ static func legend_deck(deck_key: String) -> Array[int]:
 		while added < removed and counts[id] < 3:
 			counts[id] += 1
 			added += 1
-	return _expand(counts)
+	return to_forty(_expand(counts))

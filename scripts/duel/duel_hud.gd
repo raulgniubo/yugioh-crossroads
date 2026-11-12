@@ -393,6 +393,15 @@ func _build_phase() -> void:
 	_btn_extra.add_theme_color_override("font_color", Color("ffd23a"))
 	_btn_extra.pressed.connect(func(): extra_pressed.emit())
 	box.add_child(_btn_extra)
+	# Each phase of either turn is a chance to use Set cards and Quick-Play Spells. This switches
+	# those reminders off for players who only want to be asked about attacks, summons and chains.
+	var ask := CheckButton.new()
+	ask.text = "Ask me in every phase"
+	ask.button_pressed = phase_prompts
+	ask.add_theme_font_size_override("font_size", 17)
+	ask.tooltip_text = "Draw, Standby, Battle start, Main 2 and End Phase: get a prompt whenever one of your cards could be activated."
+	ask.toggled.connect(func(on): phase_prompts = on)
+	box.add_child(ask)
 
 
 func set_phase(phase: int, my_turn: bool) -> void:
@@ -896,10 +905,16 @@ func ask_pick(text: String, options: Array, button := "Select", cancel := "Cance
 
 
 signal _choice_picked(index: int)
+## Dev: answer every prompt at random (the --human-test run that exercises the manual path).
+var auto_answer := false
+var phase_prompts := true
 
 
 ## A question with a few labelled answers (a position, yes / no, go first or second). Returns the index.
 func ask_choice(text: String, answers: Array, card = null) -> int:
+	if auto_answer:
+		await get_tree().process_frame
+		return randi() % answers.size()
 	var root := PanelContainer.new()
 	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.06, 0.11, 0.97), 22, Color(UITheme.ACCENT, 0.7)))
 	root.z_index = 60
@@ -947,6 +962,9 @@ func ask_choice(text: String, answers: Array, card = null) -> int:
 
 
 func ask_response(text: String, options: Array, button := "Activate", cancel := "Don't activate", hidden: Array = [], tint := Color("ff4dd2"), labels := {}):
+	if auto_answer:
+		await get_tree().process_frame
+		return null if (cancel != "" and randf() < 0.3) or options.is_empty() else options[randi() % options.size()]
 	var root := PanelContainer.new()
 	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.06, 0.02, 0.08, 0.97) if tint == Color("ff4dd2") else Color(0.03, 0.06, 0.11, 0.97), 22, Color(tint, 0.7)))
 	root.z_index = 60

@@ -7,7 +7,7 @@ signal changed
 const PATH := "user://collection.cfg"
 const PACK_PRICE := 150
 const PACK_SIZE := 5
-const MAIN_MIN := 30
+const MAIN_MIN := 40
 const MAIN_MAX := 60
 const EXTRA_MAX := 15
 const PACKS := [

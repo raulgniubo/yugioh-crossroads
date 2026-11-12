@@ -16,7 +16,14 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 - Duel Academy island: a second free-roam district reached by ferry from Domino City.
 - Free Duel: new setup screen (both duelists, deck preview, difficulty, arena), every duelist has a
   unique model, duelists stand in the arena with opening and victory shots, result screen with stats.
-- Not in yet: monster effects as chain links, tokens, Pendulum and Link monsters.
+- 0.9.1 rules pass: you make every choice yourself (targets, discards, costs, Tributes, Fusion and
+  Ritual materials, Deck searches, which monster to revive, Attack or Defense on a Special Summon,
+  optional effects). Monster effects are chain links. Both players can act in the Draw, Standby and
+  End Phases, at the start of the Battle Phase and of Main Phase 2. Damage Step limits, replays,
+  Tokens, Skill Drain, effect negation, draws, coin toss, 40 to 60 card decks, revive limits for
+  Ritual and Extra Deck monsters. The choice system is `DuelState.choose` + `DuelScene._run`.
+- Out of scope: Pendulum and Link monsters (no cards from those eras are in the game), Match play
+  with a Side Deck, the Forbidden/Limited list.
 
 ## Playing a build
 
