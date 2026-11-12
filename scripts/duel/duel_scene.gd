@@ -131,6 +131,16 @@ func _start() -> void:
 		await get_tree().create_timer(0.5).timeout
 		hud.say(AI, Characters.line(_opp_key, "intro"))
 	await hud.banner("DUEL!", UITheme.ACCENT)
+	if "--ask-test" in OS.get_cmdline_user_args():
+		await _play(events)
+		var lab := {}
+		for h in state.players[ME].hand:
+			lab[h.uid] = "Your hand"
+		if "--ask-choice" in OS.get_cmdline_user_args():
+			await hud.ask_choice("Special Summon %s in:" % state.players[ME].hand[0].cname(), ["Attack Position", "Defense Position"], state.players[ME].hand[0])
+		else:
+			await hud.ask_pick("Hand limit: discard 2 cards   (1 of 2)", state.players[ME].hand, "Select", "", [], lab)
+		return
 	if "--end-test" in OS.get_cmdline_user_args():
 		state.winner = AI if "--lose" in OS.get_cmdline_user_args() else ME
 		state.win_reason = "Test finish."

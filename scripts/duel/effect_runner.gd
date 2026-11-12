@@ -29,6 +29,8 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 				b += int(f.get("atk_vs_def", 0))
 		else:
 			b += int(f.get("atk_direct", 0))
+	if battling and attacking and f.get("nitro", false) and s.players[c.owner].spell_turn == s.turn and c.attack_count <= 1:
+		b += 1000
 	if battling and not attacking:
 		b += int(f.get("atk_attacked", 0))
 	if f.has("atk_per"):
@@ -111,6 +113,11 @@ static func can_direct(s: DuelState, p: int, c) -> bool:
 				if m.face_up and not str(m.data.get("attribute", "")) in ["EARTH", "WATER", "FIRE"]:
 					return false
 			return true
+		"opp_all_1600":
+			for m in opp.monsters():
+				if not m.face_up or s.atk_of(m, false) < 1600:
+					return false
+			return true
 		"opp_all_stronger":
 			for m in opp.monsters():
 				if s.atk_of(m, false) <= s.atk_of(c, false):
@@ -142,6 +149,9 @@ static func survives_battle(s: DuelState, c) -> bool:
 	if f.get("hand_empty_guard", false) and s.players[c.owner].hand.is_empty():
 		return true
 	if f.get("blader", false) and s.players[s.opponent(c.owner)].monsters().size() == 1:
+		return true
+	if f.get("survive_once_def", false) and not c.attack_pos and c.survive_turn != s.turn:
+		c.survive_turn = s.turn
 		return true
 	if f.get("survive_once", false) and c.survive_turn != s.turn:
 		c.survive_turn = s.turn
@@ -200,6 +210,8 @@ static func can_special_hand(s: DuelState, p: int, c) -> bool:
 		return false
 	if f.get("special_banish_ld", false):
 		return _gy_attr(s, p, "LIGHT") != null and _gy_attr(s, p, "DARK") != null
+	if f.get("eltanin", false):
+		return not _light_machines(s, p).is_empty()
 	if f.has("special_hand_if"):
 		return _cond(s, p, str(f["special_hand_if"]))
 	if f.has("special_tribute2"):
@@ -230,10 +242,35 @@ static func _gy_attr(s: DuelState, p: int, attr: String, c = null):
 	return pick
 
 
+static func _light_machines(s: DuelState, p: int) -> Array:
+	var out: Array = []
+	for m in s.players[p].monsters() + s.players[p].gy:
+		if m.is_monster() and (m.face_up or s.players[p].gy.has(m)) and str(m.data.get("attribute", "")) == "LIGHT" and str(m.data.get("race", "")) == "Machine":
+			out.append(m)
+	return out
+
+
 static func special_hand(s: DuelState, p: int, c) -> Array:
 	var f := fx(c)
 	var ps := s.players[p]
 	var events := []
+	if f.get("eltanin", false):
+		var fuel := _light_machines(s, p)
+		for m in fuel:
+			events.append_array(s._banish(m))
+		ps.hand.erase(c)
+		c.atk_mod = 500 * fuel.size() - c.atk()
+		events.append_array(s._special(p, c, "effect"))
+		events.append(_ev(p, c, "%s: %d ATK. Every other face-up monster goes to the Graveyard!" % [c.cname(), 500 * fuel.size()]))
+		for q in 2:
+			for m in s.players[q].monsters():
+				if m != c and m.face_up:
+					var z := s.players[q].field.find(m)
+					s.players[q].field[z] = null
+					s._to_gy(s.players[q], m)
+					events.append({"type": "destroy", "player": q, "card": m, "zone": z})
+					events.append_array(s._monster_left(m))
+		return events
 	if f.has("special_tribute2") or f.has("special_tribute_attr"):
 		var picks := []
 		var need := 2 if f.has("special_tribute2") else 1
@@ -583,7 +620,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				if a[1] == "deck":
 					s._shuffle(ps.deck)
 				events.append(_ev(p, c, "%s calls %s" % [name, d.cname()]))
-				var ev := s._special(p, d, "reborn" if a[1] == "gy" else "effect", "def" if a.size() > 3 and a[3] == "def" else "")
+				var ev := s._special(p, d, "reborn" if a[1] == "gy" else "effect", "def" if a.size() > 3 and a[3] == "def" else ("atk" if a.size() > 3 and a[3] == "atk" else ""))
 				events.append_array(ev)
 				events.append_array(on_summon(s, p, d, "special"))
 		"revive_self", "revive_self_discard2", "pay_revive":
@@ -684,6 +721,9 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			c.atk_mod_turn = s.turn
 			c.atk_mod_t = int(a[1])
 			events.append(_ev(p, c, "%s gains %d ATK this turn" % [name, a[1]]))
+		"no_battle_damage":
+			ps.no_damage_turn = s.turn
+			events.append(_ev(p, c, "%s: no battle damage this turn" % name))
 		"self_atk_zero":
 			c.zero_turn = s.turn
 		"perm_atk":

@@ -16,6 +16,20 @@ class_name CardEffects
 ## Filters:   {"name", "has", "race", "attr", "max_lv", "lv", "max_atk", "min_atk", "not", "monster"}
 
 const FX := {
+	# ---- The last deck monsters that used to play without their effects
+	"Sangan": {"note": "Sent from the field to the Graveyard: add a monster with 1500 or less ATK from your Deck to your hand.", "gy": [["search", {"max_atk": 1500}]]},
+	"Mystic Tomato": {"note": "Destroyed by battle: Special Summon a DARK monster with 1500 or less ATK from your Deck.", "death": [["special", "deck", {"attr": "DARK", "max_atk": 1500}, "atk", 1]]},
+	"Junk Synchron": {"note": "Normal Summoned: Special Summon a Level 2 or lower monster from your Graveyard in Defense Position.", "summon": [["special", "gy", {"max_lv": 2}, "def", 1]]},
+	"Goblindbergh": {"note": "Normal Summoned: Special Summon a Level 4 or lower monster from your hand, then this card changes to Defense Position.", "summon": [["special", "hand", {"max_lv": 4}, "any", 1], ["to_def"]]},
+	"Max Warrior": {"note": "Gains 400 ATK while it attacks a monster.", "atk_attack": 400},
+	"Gogogo Golem": {"note": "Once per turn, in Defense Position, it is not destroyed by battle.", "survive_once_def": true},
+	"Drillago": {"note": "Can attack directly if every monster your opponent controls is face-up with 1600 or more ATK.", "direct_if": "opp_all_1600"},
+	"Winged Kuriboh": {"note": "Destroyed and sent to the Graveyard: you take no battle damage for the rest of the turn.", "death": [["no_battle_damage"]], "gy": [["no_battle_damage"]]},
+	"Speed Warrior": {"note": "Normal Summoned: its ATK is doubled this turn.", "summon": [["self_atk", 900]]},
+	"Nitro Warrior": {"note": "If you activated a Spell this turn, its first attack gains 1000 ATK.", "nitro": true},
+	"Battle Fader": {"note": "From your hand, when the opponent attacks you directly: Special Summon it and end the Battle Phase. Banished when it leaves the field.", "banish_when_leaves": true},
+	"Shield Warrior": {"note": "From your Graveyard, when your monster is attacked: banish this card and that monster is not destroyed by this battle."},
+	"Cyber Eltanin": {"note": "Special Summon from your hand by banishing every LIGHT Machine from your field and Graveyard: 500 ATK for each, and every other face-up monster goes to the Graveyard.", "eltanin": true},
 	# ---- Banishing (removed from play)
 	"D.D. Warrior Lady": {"note": "Destroyed by battle: banishes itself and the monster that destroyed it.", "death": [["banish_killer_and_self"]]},
 	"D.D. Assailant": {"note": "Destroyed by battle: banishes itself and the monster that destroyed it.", "death": [["banish_killer_and_self"]]},

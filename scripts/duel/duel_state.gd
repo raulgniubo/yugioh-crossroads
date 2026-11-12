@@ -109,6 +109,7 @@ class PlayerState:
 	var skip_draw := 0
 	var attacks_this_turn := 0
 	var attacks_turn := -1
+	var spell_turn := -1          # last turn this player activated a Spell (Nitro Warrior)
 	var no_summon_turn := -1      # Scapegoat: no Summons for the rest of this turn (Sets are fine)
 
 	func set_cards() -> Array[CardInst]:
@@ -614,6 +615,8 @@ func chain_add(p: int, c: CardInst, target = null, window := "open", subject = n
 	var link := {"player": p, "card": c, "kind": "trap" if c.is_trap() else "spell", "spec": sp, "target": target,
 			"subject": subject, "window": window, "negated": false, "zone": zone}
 	events.append_array(SpellRules.pay_cost(self, p, c, sp))
+	if c.is_spell():
+		ps.spell_turn = turn
 	chain.append(link)
 	if chain.size() > 1:
 		events.append({"type": "chain", "player": p, "card": c, "n": chain.size()})
@@ -871,6 +874,8 @@ func attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 
 
 var pending_attack := {}
+## Shield Warrior: the monster that cannot be destroyed by the battle in progress.
+var _shield: CardInst = null
 ## The chain: links are {"player", "card", "kind", "spec", "target", "subject", "negated"}, last in resolves first.
 var chain: Array = []
 ## Last monster Normal Summoned, for the "summon" response window.
@@ -885,6 +890,7 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	if target != null and not players[opponent(p)].field.has(target):
 		return []
 	attacker.attacked_turn = turn
+	_shield = null
 	if attacker.attack_count_turn != turn:
 		attacker.attack_count_turn = turn
 		attacker.attack_count = 0
@@ -1013,6 +1019,9 @@ func resolve_attack() -> Array:
 func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 	if SpellRules.equip_flag(self, loser, "no_battle_death"):
 		return []
+	if _shield == loser:
+		_shield = null
+		return [{"type": "effect", "player": loser.owner, "card": loser, "text": "%s is not destroyed" % loser.cname()}]
 	var events := _battle_destroy(loser)
 	var died := not players[loser.owner].field.has(loser) and players[loser.owner].gy.has(loser)
 	if not died:
@@ -1112,6 +1121,8 @@ var redirected: Array = []
 
 func _gy_redirect(c: CardInst = null) -> bool:
 	if SpellRules.redirect(self, c):
+		return true
+	if c != null and c.is_monster() and EffectRunner.fx(c).get("banish_when_leaves", false) and c.summoned_turn != -1:
 		return true
 	for q in 2:
 		for m in players[q].monsters():
@@ -1592,6 +1603,7 @@ func clone() -> DuelState:
 		np.no_attack_turn = ps.no_attack_turn
 		np.skip_draw = ps.skip_draw
 		np.no_summon_turn = ps.no_summon_turn
+		np.spell_turn = ps.spell_turn
 		np.attacks_this_turn = ps.attacks_this_turn
 		np.attacks_turn = ps.attacks_turn
 		s.players.append(np)
@@ -1627,6 +1639,8 @@ func clone() -> DuelState:
 				s.chain[i]["subject"] = s.chain[idx]
 	if last_summoned != null:
 		s.last_summoned = map.get(last_summoned.uid)
+	if _shield != null:
+		s._shield = map.get(_shield.uid)
 	if not pending_attack.is_empty():
 		s.pending_attack = pending_attack.duplicate()
 		s.pending_attack["attacker"] = map.get(pending_attack["attacker"].uid, pending_attack["attacker"])
@@ -1745,6 +1759,18 @@ func responses(p: int, window: String, subject = null) -> Array:
 				if c.cname() == "Kuriboh":
 					out.append(c)
 					break
+			# Battle Fader: from the hand, against a direct attack.
+			if pending_attack["target"] == null and ps.free_zone() != -1 and ps.no_summon_turn != turn:
+				for c in ps.hand:
+					if c.cname() == "Battle Fader":
+						out.append(c)
+						break
+			# Shield Warrior: from the Graveyard, when one of your monsters is attacked.
+			if pending_attack["target"] != null and _shield == null:
+				for c in ps.gy:
+					if c.cname() == "Shield Warrior":
+						out.append(c)
+						break
 		for m in ps.monsters():
 			if m.cname() == "Number 39: Utopia" and m.face_up and m.overlays.size() > 0 and m.used_turn != turn:
 				out.append(m)
@@ -1786,6 +1812,19 @@ func respond(p: int, c: CardInst, subject = null) -> Array:
 		_to_gy(ps, c)
 		ps.no_damage_turn = turn
 		events.append({"type": "hand_effect", "player": p, "card": c, "text": "Kuriboh! No battle damage."})
+		return events
+	if c.cname() == "Battle Fader" and ps.hand.has(c) and not pending_attack.is_empty():
+		ps.hand.erase(c)
+		events.append({"type": "hand_effect", "player": p, "card": c, "text": "Battle Fader! The Battle Phase ends."})
+		events.append_array(_special(p, c, "effect"))
+		pending_attack["negated"] = true
+		players[pending_attack["player"]].no_attack_turn = turn
+		last_summoned = null
+		return events
+	if c.cname() == "Shield Warrior" and ps.gy.has(c) and not pending_attack.is_empty() and pending_attack["target"] != null:
+		events.append_array(_banish(c))
+		_shield = pending_attack["target"]
+		events.append({"type": "effect", "player": p, "card": c, "text": "Shield Warrior protects %s" % _shield.cname()})
 		return events
 	if c.cname() == "Number 39: Utopia":
 		c.used_turn = turn
