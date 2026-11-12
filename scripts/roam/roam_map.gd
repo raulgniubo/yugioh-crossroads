@@ -25,6 +25,7 @@ var layout := {}        # {"island": radius, "landmarks": [...], "paths": [[a, b
 var player_pos := Vector2.ZERO
 var player_yaw := 0.0
 var inside := ""
+var goal := Vector2.INF        # where the current objective is (INF = none)
 var inside_at := Vector2(-10, -19.5)   # where the building you are in stands on the map
 var inside_name := "Kame Game"
 var npcs: Array = []   # [{pos: Vector2, state: "duel"|"beaten"|"talk", name}]
@@ -115,6 +116,27 @@ func _draw() -> void:
 		if full:
 			draw_string_outline(_font, p + Vector2(9, 6), Loc.t(str(n["name"])), HORIZONTAL_ALIGNMENT_LEFT, -1, 17, 4, Color(0, 0, 0, 0.85))
 			draw_string(_font, p + Vector2(9, 6), Loc.t(str(n["name"])), HORIZONTAL_ALIGNMENT_LEFT, -1, 17, col.lightened(0.3))
+	# The current objective: a gold diamond, pinned to the edge of the small map when it is
+	# further away than the map shows.
+	if goal != Vector2.INF:
+		var gp: Vector2 = to_map.call(goal)
+		var inset := Rect2(Vector2(16, 16), size - Vector2(32, 32))
+		var off := not inset.has_point(gp)
+		if off:
+			var gmid := size / 2.0
+			var gd := gp - gmid
+			var gk := minf((inset.size.x / 2.0) / maxf(absf(gd.x), 0.001), (inset.size.y / 2.0) / maxf(absf(gd.y), 0.001))
+			gp = gmid + gd * gk
+		var pulse := 1.0 + 0.18 * sin(Time.get_ticks_msec() / 180.0)
+		var gr := (11.0 if full else 8.0) * pulse
+		var gold := Color("ffd166")
+		draw_colored_polygon(PackedVector2Array([gp + Vector2(0, -gr - 3), gp + Vector2(gr + 3, 0), gp + Vector2(0, gr + 3), gp + Vector2(-gr - 3, 0)]), Color(0, 0, 0, 0.8))
+		draw_colored_polygon(PackedVector2Array([gp + Vector2(0, -gr), gp + Vector2(gr, 0), gp + Vector2(0, gr), gp + Vector2(-gr, 0)]), gold)
+		if not off:
+			draw_arc(gp, gr * 2.0 * pulse, 0, TAU, 24, Color(gold, 0.5), 2.0)
+		if full:
+			draw_string_outline(_font, gp + Vector2(16, 6), Loc.t("Goal"), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, 5, Color(0, 0, 0, 0.9))
+			draw_string(_font, gp + Vector2(16, 6), Loc.t("Goal"), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, gold)
 	# You
 	var me: Vector2 = to_map.call(player_pos if inside == "" else inside_at + Vector2(0, 2.5))
 	var fwd := Vector2(sin(player_yaw), cos(player_yaw)) * -1.0

@@ -158,8 +158,6 @@ func _debug_args() -> void:
 					Collection.dp += 500
 					await get_tree().create_timer(0.6).timeout
 					ps._open(Collection.PACKS[0])
-				await get_tree().create_timer(0.6).timeout
-				ps._open(Collection.PACKS[1])
 		elif a.begins_with("--speed="):
 			Settings.anim_speed = float(a.substr(8))
 	if duel:

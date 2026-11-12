@@ -113,12 +113,19 @@ func _start() -> void:
 		else:
 			first = AI
 	elif not _autoplay and not cfg.has("first"):
-		# Coin toss: the winner decides who takes the first turn.
-		var toss := randi() % 2
-		if toss == ME:
-			first = ME if await hud.ask_choice("You won the coin toss", ["Go first", "Go second"]) == 0 else AI
+		# A coin toss or rock-paper-scissors, played out: the winner decides who starts.
+		if _human_test:
+			first = randi() % 2
 		else:
-			first = AI
+			var og := OpeningGame.new()
+			og.me_key = _me_key
+			og.opp_key = _opp_key
+			og.me_name = me_name
+			og.opp_name = str(opp.get("short", opp_name)) if str(opp.get("short", "")) != "" else opp_name
+			og.me_color = me_info.get("color", Profile.color())
+			og.opp_color = Color(opp.get("color", Color("ff5a6e")))
+			hud.add_child(og)
+			first = ME if await og.finished else AI
 	state.defer_fx = true
 	state.turbo = cfg.get("turbo", false)
 	if state.turbo:

@@ -30,6 +30,7 @@ var _step := 0.0
 var _blip := 0.0
 
 
+var _last_barker = null
 var story_mode := false     # a story chapter is running: no quick bar, chips or quests
 var _bar: Control
 
@@ -536,6 +537,7 @@ var _bark: Label3D
 
 func _street_life(delta: float, p: Vector3) -> void:
 	if scene._inside != "":
+		_indoor_chatter(delta, p)
 		return
 	for n in scene._npcs:
 		var fig: Node3D = n[1]
@@ -574,6 +576,48 @@ func _street_life(delta: float, p: Vector3) -> void:
 	tw.tween_property(_bark, "modulate:a", 0.0, 0.4)
 	tw.tween_callback(_bark.queue_free)
 	Sfx.play("blip", -16.0, randf_range(0.9, 1.3))
+
+
+## Indoors, the people in the room talk among themselves: each has a few lines of their own.
+func _indoor_chatter(delta: float, p: Vector3) -> void:
+	_bark_in -= delta
+	if _bark_in > 0.0 or scene._overlay_open or scene._talking:
+		return
+	_bark_in = randf_range(2.6, 5.0)
+	var near := []
+	for n in scene._npcs:
+		var fig: Node3D = n[1]
+		if is_instance_valid(fig) and (n[0] as Dictionary).has("barks") and fig.global_position.distance_to(p) < 14.0 and n[0] != _last_barker:
+			near.append(n)
+	if near.is_empty():
+		return
+	var pick: Array = near[randi() % near.size()]
+	_last_barker = pick[0]
+	var lines: Array = pick[0]["barks"]
+	_say_over(pick[1], Loc.t(str(lines[randi() % lines.size()])), 2.3)
+
+
+func _say_over(who: Node3D, text: String, hold: float) -> void:
+	if _bark and is_instance_valid(_bark):
+		_bark.queue_free()
+	_bark = Label3D.new()
+	_bark.text = text
+	_bark.font_size = 34
+	_bark.pixel_size = 0.004
+	_bark.outline_size = 12
+	_bark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_bark.no_depth_test = true
+	_bark.modulate = Color(1, 1, 1, 0.0)
+	_bark.outline_modulate = Color(0.02, 0.03, 0.06, 0.9)
+	_bark.position = Vector3(0, 2.85, 0)
+	who.add_child(_bark)
+	var tw := _bark.create_tween()
+	tw.tween_property(_bark, "modulate:a", 1.0, 0.2)
+	tw.parallel().tween_property(_bark, "position:y", 3.0, 0.2)
+	tw.tween_interval(hold)
+	tw.tween_property(_bark, "modulate:a", 0.0, 0.35)
+	tw.tween_callback(_bark.queue_free)
+	Sfx.play("blip", -18.0, randf_range(0.9, 1.4))
 
 
 func _process(delta: float) -> void:

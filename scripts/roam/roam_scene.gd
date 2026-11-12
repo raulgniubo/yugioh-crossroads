@@ -48,6 +48,7 @@ var extras: RoamExtras
 var _help: Label
 var story: StoryDirector          # set while a story chapter is being played in this world
 var _lights: Array = []        # every lamp in the world, for _cull_lights
+var _chat_turn := {}           # npc id -> how many times you have talked this visit
 var _light_t := 0.0
 var walkers_frozen := false       # the story's Hollows: nobody on the street moves
 
@@ -607,6 +608,7 @@ func _build_places() -> void:
 	_spots.append({"pos": Vector3(-10, 0, -15.4), "range": 2.3, "label": "Enter Kame Game", "action": func(): _travel("kame")})
 	_spots.append({"pos": at + Vector3(0, 0, 4.3), "range": 1.7, "label": "Leave the shop", "action": func(): _travel("")})
 	_spots.append({"pos": at + Vector3(-6.0, 0, 3.4), "range": 1.7, "label": "Change your look", "action": _open_look})
+	_spots.append({"pos": at + Vector3(-1.75, 0, -1.9), "range": 1.2, "label": "Pet the shop cat", "action": _pet_cat})
 	# A glowing mat in front of the shop door so the way in is easy to spot.
 	var mat_mesh := city.box(Vector3(2.2, 0.03, 1.2), Vector3(-10, 0.18, -15.4), city.glow_mat(Color("ffd166"), 1.3), false)
 	mat_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -849,13 +851,28 @@ func _update_near() -> void:
 		if area != "" and _loc_area.text != Loc.t(area):
 			_loc_area.text = Loc.t(area)
 	# A door and a person can both be in reach: whichever is closer gets the prompt.
-	for sp in _spots:
+	# During a story chapter the doors are shut: the scene decides when you go through one.
+	for sp in (_spots if story == null else []):
 		var sd := (sp["pos"] as Vector3).distance_to(_player.global_position)
 		if sd < float(sp["range"]) and (_near.is_empty() or sd < best_d):
 			_near_spot = sp
 			_near = {}
 			break
-	if _prompt:
+	# In a chapter, say so when you walk up to a door, so a shut door is never a mystery.
+	var locked := ""
+	if story != null and _near.is_empty() and not _overlay_open:
+		for sp in _spots:
+			if (sp["pos"] as Vector3).distance_to(_player.global_position) < float(sp["range"]):
+				# Unless this door is where the goal is sending you.
+				if story._goal.has("at") and (story._goal["at"] as Vector3).distance_to(sp["pos"]) < 3.0:
+					break
+				var goal_text := str(story._goal.get("goal", ""))
+				locked = Loc.t("Not now.  Goal: %s") % Loc.t(goal_text) if goal_text != "" else Loc.t("Not now.")
+				break
+	if _prompt and locked != "":
+		_prompt.visible = true
+		_prompt.text = locked
+	elif _prompt:
 		_prompt.visible = (not _near.is_empty() or not _near_spot.is_empty()) and not _talking and _pause == null and not _overlay_open
 		if _prompt.visible:
 			_prompt.text = (Loc.t("E   Talk to %s") % Loc.t(_npc_name(_near))) if not _near.is_empty() else ("E   %s" % Loc.t(str(_near_spot["label"])))
@@ -863,6 +880,10 @@ func _update_near() -> void:
 		_map.player_pos = Vector2(_player.position.x, _player.position.z)
 		_map.player_yaw = _figure.rotation.y + PI
 		_map.inside = _inside
+		var has_goal: bool = extras != null and extras._wp_on and _inside == ""
+		_map.goal = Vector2(extras.waypoint.x, extras.waypoint.z) if has_goal else Vector2.INF
+		if _map_full:
+			_map_full.goal = _map.goal
 		if _map_full and _map_full.visible:
 			_map_full.player_pos = _map.player_pos
 			_map_full.player_yaw = _map.player_yaw
@@ -881,7 +902,14 @@ func _talk() -> void:
 	_dlg_npc = d
 	_talking = true
 	_dlg_lines = []
-	for l in d.get("lines", []):
+	var say: Array = d.get("lines", [])
+	if d.has("chats"):
+		# People with more to say go through their topics one visit at a time.
+		var topics: Array = d["chats"]
+		var turn: int = int(_chat_turn.get(d["id"], 0))
+		say = topics[turn % topics.size()]
+		_chat_turn[d["id"]] = turn + 1
+	for l in say:
 		_dlg_lines.append(Loc.t(str(l)).replace("{player}", Profile.duelist_name))
 	if d.has("duel"):
 		var duel: Dictionary = d["duel"]
@@ -944,6 +972,21 @@ func _show_line() -> void:
 		bye.pressed.connect(_end_talk)
 		_dlg_buttons.add_child(bye)
 		deck_btn.grab_focus.call_deferred()
+	elif last and _dlg_npc.get("trade", false):
+		_trade_buttons()
+	elif last and _dlg_npc.has("gift") and not _shop_flag("gift_" + str(_dlg_npc["id"])):
+		var take := Button.new()
+		take.text = Loc.t("  Thanks!  (+%d DP)  ") % int(_dlg_npc["gift"])
+		take.add_theme_font_size_override("font_size", 26)
+		take.pressed.connect(func():
+			_shop_set("gift_" + str(_dlg_npc["id"]), true)
+			Collection.dp += int(_dlg_npc["gift"])
+			Collection.save()
+			Sfx.play("coin", -3.0)
+			Router.toast(Loc.t("+%d Duel Points") % int(_dlg_npc["gift"]))
+			_end_talk())
+		_dlg_buttons.add_child(take)
+		take.grab_focus.call_deferred()
 	elif last and _dlg_npc.get("claw", false):
 		var try := Button.new()
 		try.text = Loc.t("  Try the claw  ·  %d DP  ") % 60
@@ -969,6 +1012,89 @@ func _show_line() -> void:
 		later.pressed.connect(_end_talk)
 		_dlg_buttons.add_child(later)
 		duel_btn.grab_focus.call_deferred()
+
+
+# ------------------------------------------------------------------ the card shop's regulars
+
+func _shop_cfg() -> ConfigFile:
+	var cfg := ConfigFile.new()
+	cfg.load("user://shop.cfg")
+	return cfg
+
+
+func _shop_flag(key: String) -> bool:
+	return bool(_shop_cfg().get_value("shop", key, false))
+
+
+func _shop_set(key: String, value) -> void:
+	var cfg := _shop_cfg()
+	cfg.set_value("shop", key, value)
+	cfg.save("user://shop.cfg")
+
+
+func _today() -> String:
+	return Time.get_date_string_from_system()
+
+
+## The trader's single of the day: the same card all day, a different one tomorrow.
+func _trade_card() -> int:
+	var good: Array = []
+	for era in ["Duel Monsters", "GX", "5D's", "ZEXAL", "Vault"]:
+		for id in Collection.pool(era):
+			if CardData.rarity(id) >= 2:
+				good.append(id)
+	if good.is_empty():
+		return 0
+	good.sort()
+	return good[hash(_today()) % good.size()]
+
+
+func _trade_buttons() -> void:
+	var id := _trade_card()
+	if id == 0:
+		_dlg_text.text = Loc.t("My binder is empty until the card database is in. Come back then.")
+		_dlg_text.visible_ratio = 1.0
+	elif str(_shop_cfg().get_value("shop", "bought_day", "")) == _today():
+		_dlg_text.text = Loc.t("You already cleaned me out today. Come back tomorrow for a new one.")
+		_dlg_text.visible_ratio = 1.0
+	else:
+		var r := CardData.rarity(id)
+		var price := 520 if r >= 3 else 360
+		var nm := str(CardData.get_card(id).get("name", "?"))
+		_dlg_text.text = Loc.t("Today I have %s (%s). %d Duel Points and it's yours.") % [nm, Loc.t(Foil.NAMES[r]), price]
+		_dlg_text.visible_ratio = 1.0
+		var buy := Button.new()
+		buy.text = Loc.t("  Buy it  ·  %d DP  ") % price
+		buy.add_theme_font_size_override("font_size", 26)
+		buy.disabled = Collection.dp < price
+		buy.pressed.connect(func():
+			Collection.dp -= price
+			Collection.owned[id] = mini(3, int(Collection.owned.get(id, 0)) + 1)
+			Collection.save()
+			_shop_set("bought_day", _today())
+			Sfx.play("rare", -3.0)
+			Router.toast(Loc.t("%s is in your collection.") % nm)
+			_end_talk())
+		_dlg_buttons.add_child(buy)
+		buy.grab_focus.call_deferred()
+	var no := Button.new()
+	no.text = "  Not today  "
+	no.add_theme_font_size_override("font_size", 26)
+	no.pressed.connect(_end_talk)
+	_dlg_buttons.add_child(no)
+	if _dlg_buttons.get_child_count() == 1:
+		no.grab_focus.call_deferred()
+
+
+func _pet_cat() -> void:
+	Sfx.play("blip", -8.0, 0.5)
+	if str(_shop_cfg().get_value("shop", "cat_day", "")) != _today():
+		_shop_set("cat_day", _today())
+		Collection.dp += 10
+		Collection.save()
+		Router.toast(Loc.t("Kuri purrs. You feel lucky.  +10 Duel Points"))
+	else:
+		Router.toast(Loc.t(["Kuri purrs.", "Kuri opens one eye, then goes back to sleep.", "Kuri stretches across the register."][randi() % 3]))
 
 
 ## The arcade's prize claw: pay, watch it wobble, win one random card (sometimes a good one).

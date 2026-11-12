@@ -909,6 +909,12 @@ func _do_goal(st: Dictionary) -> void:
 	create_tween().tween_property(_goal_box, "modulate:a", 1.0, 0.4)
 	Sfx.play("quest", -6.0)
 	scene.extras.set_waypoint(at, Loc.t(str(st["goal"])))
+	# Turn the camera toward where you are meant to go, so the beacon is on screen.
+	var to_goal := Vector3(at.x - scene._player.global_position.x, 0, at.z - scene._player.global_position.z)
+	if to_goal.length() > 1.5:
+		var want_yaw := atan2(-to_goal.x, -to_goal.z)
+		var yt := create_tween()
+		yt.tween_method(func(v: float): scene._yaw = v, scene._yaw, scene._yaw + angle_difference(scene._yaw, want_yaw), 0.7).set_trans(Tween.TRANS_SINE)
 	var r := float(st.get("r", 2.6))
 	if _auto:
 		await get_tree().create_timer(1.2).timeout

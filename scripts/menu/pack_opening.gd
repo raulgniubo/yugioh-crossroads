@@ -9,6 +9,7 @@ var _pulls: Array = []
 var _before := {}
 var _color := Color("7cc4ff")
 var _title := ""
+var _pack := {}
 var _cards: Array = []
 var _done := false
 var _skip := false
@@ -19,11 +20,12 @@ var _t := 0.0
 var _btn: Button
 
 
-func _init(pulls: Array, owned_before: Dictionary, color: Color, title: String) -> void:
+func _init(pulls: Array, owned_before: Dictionary, color: Color, title: String, pack := {}) -> void:
 	_pulls = pulls
 	_before = owned_before
 	_color = color
 	_title = title
+	_pack = pack if not pack.is_empty() else {"name": title, "color": color, "key": ""}
 
 
 func _ready() -> void:
@@ -85,25 +87,11 @@ func _wait(sec: float) -> void:
 func _run() -> void:
 	var center := size / 2.0
 	# The pack.
-	var pack := PanelContainer.new()
-	pack.add_theme_stylebox_override("panel", UITheme.panel_box(_color.darkened(0.55), 16, _color.lightened(0.2)))
-	pack.custom_minimum_size = Vector2(250, 380)
-	pack.size = Vector2(250, 380)
-	pack.pivot_offset = Vector2(125, 190)
-	var pv := VBoxContainer.new()
-	pv.alignment = BoxContainer.ALIGNMENT_CENTER
-	pack.add_child(pv)
-	var star := UITheme.label("✦", 96, _color.lightened(0.5), UITheme.title_font())
-	star.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pv.add_child(star)
-	var name_l := UITheme.label(_title.to_upper(), 24, Color.WHITE, UITheme.title_font())
-	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_l.custom_minimum_size = Vector2(220, 0)
-	pv.add_child(name_l)
-	var sub := UITheme.label("BOOSTER PACK", 15, _color.lightened(0.4), UITheme.semi_font())
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pv.add_child(sub)
+	var pack := PackWrapper.new().setup(_pack)
+	pack.custom_minimum_size = Vector2(250, 384)
+	pack.size = Vector2(250, 384)
+	pack.pivot_offset = Vector2(125, 192)
+	pack.glow = 0.6
 	add_child(pack)
 	pack.position = Vector2(center.x - 125, -420)
 	Sfx.play("whoosh", -4.0)
@@ -119,8 +107,29 @@ func _run() -> void:
 		sh.tween_property(pack, "rotation", 0.0, 0.04)
 		await sh.finished
 		await _wait(0.12)
-	# Rip.
+	# Rip: the top seal peels off and flutters away before the light comes out.
 	Sfx.play("pack_rip", -2.0)
+	if not _skip:
+		pack.torn = true
+		pack.sheen = false
+		var strip := ColorRect.new()
+		strip.color = _color.darkened(0.35)
+		strip.size = PackWrapper.seal_rect(pack.size).size
+		strip.position = pack.position
+		strip.pivot_offset = Vector2(0, strip.size.y / 2.0)
+		add_child(strip)
+		var peel := create_tween().set_parallel()
+		peel.tween_property(strip, "rotation", -1.1, 0.42).set_ease(Tween.EASE_OUT)
+		peel.tween_property(strip, "position", strip.position + Vector2(170, -210), 0.42).set_ease(Tween.EASE_OUT)
+		peel.tween_property(strip, "modulate:a", 0.0, 0.42).set_ease(Tween.EASE_IN)
+		peel.chain().tween_callback(strip.queue_free)
+		# Light leaks out of the open top and the pack swells.
+		_beams.append([center.x, _color.lightened(0.4), _t])
+		_burst(Vector2(center.x, pack.position.y + 20), _color.lightened(0.3), 26)
+		var swell := create_tween()
+		swell.tween_property(pack, "scale", Vector2(1.08, 1.08), 0.3).set_trans(Tween.TRANS_SINE)
+		await swell.finished
+		await _wait(0.12)
 	var flash := ColorRect.new()
 	flash.color = Color(1, 1, 1, 0.9)
 	flash.set_anchors_preset(Control.PRESET_FULL_RECT)

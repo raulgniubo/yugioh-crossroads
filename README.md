@@ -5,6 +5,21 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.12
+
+- Who goes first is played, not announced (`scripts/duel/opening_game.gd`): call a coin toss and
+  watch it flip, or throw rock-paper-scissors against the other duelist. The game remembers which
+  one you like and you can switch on the spot.
+- Booster packs have illustrated foil wrappers (`scripts/ui/pack_wrapper.gd`, art in
+  `assets/ui/packs/`). The pack shop is a lit shelf with what is in each pack and what you own; the
+  opening scene tears the seal off the real wrapper.
+- Kame Game is a place to hang out: pack wall, a display case of the best cards, pennants, notice
+  board, a cat. Eight people with rotating conversations and chatter of their own, a trader who
+  sells one single a day, and a first pack on the house.
+- Story: doors are shut during a scene and say so, the camera turns toward each new goal, and the
+  goal is a gold diamond on the map.
+- Dropped-in character models (see below) get the game's idle and victory, retargeted to fit.
+
 ## Your own character models
 
 Put a rigged GLB (or VRM) in `<card folder>/characters/`, named after the character: `yugi.glb`,
