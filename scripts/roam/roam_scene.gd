@@ -45,6 +45,11 @@ var _loc_area: Label
 var _fader: ColorRect
 var _overlay_open := false
 var extras: RoamExtras
+var _help: Label
+var story: StoryDirector          # set while a story chapter is being played in this world
+var _lights: Array = []        # every lamp in the world, for _cull_lights
+var _light_t := 0.0
+var walkers_frozen := false       # the story's Hollows: nobody on the street moves
 
 
 func _ready() -> void:
@@ -53,13 +58,19 @@ func _ready() -> void:
 	_load_progress()
 	_build_world()
 	_build_player()
-	_build_npcs()
+	var in_story := str(Router.roam.get("story", "")) != ""
+	if not in_story:
+		_build_npcs()
 	_build_walkers()
 	_build_places()
 	city.player = _player
 	_build_ui()
 	if district.get("builder", "") == "" and _player.position.distance_to(ShopInterior.AT) < 30.0:
 		_set_inside("kame")
+	elif district.get("builder", "") == "":
+		for rk in Interiors.ROOMS:
+			if _player.position.distance_to(Interiors.ROOMS[rk]["at"]) < 30.0:
+				_set_inside(rk)
 	if _map:
 		for mp in [_map, _map_full]:
 			mp.title = str(district.get("name", "")).to_upper()
@@ -73,9 +84,21 @@ func _ready() -> void:
 	Pad.hint("Left stick  walk     Right stick  look     A  talk / enter     LB  run     Y  map     X  card shop     Back  worlds     Start  menu")
 	extras = RoamExtras.new()
 	extras.scene = self
+	extras.story_mode = in_story
 	add_child(extras)
 	_update_fill()
-	_after_duel()
+	if in_story:
+		if _counter:
+			_counter.visible = false
+		# No through traffic during a chapter: scenes play out in the middle of the street.
+		for c in city.cars:
+			(c["node"] as Node3D).queue_free()
+		city.cars.clear()
+		story = StoryDirector.new()
+		story.scene = self
+		add_child(story)
+	else:
+		_after_duel()
 	_debug()
 
 
@@ -124,10 +147,14 @@ func _build_world() -> void:
 			city = AcademyBuilder.new()
 		"arena":
 			city = ArenaDistrict.new()
+		"newdomino":
+			city = NewDominoBuilder.new()
 		_:
 			city = CityBuilder.new()
 	add_child(city)
 	var key: String = Router.roam.get("district", "domino")
+	if city is CityBuilder and str(district.get("builder", "")) == "":
+		(city as CityBuilder).wide = true
 	if not Router.roam.has("tod_" + key) and district.has("tod") and not Router.roam.has("tod"):
 		Router.roam["tod"] = district["tod"]
 	city.build(_theme, Router.roam.get("tod", "night"))
@@ -211,6 +238,8 @@ func _build_walkers() -> void:
 
 
 func _move_walkers(delta: float) -> void:
+	if walkers_frozen:
+		return
 	for w in _walkers:
 		var f: RoamFigure = w["fig"]
 		var a: Vector3 = w["a"]
@@ -271,6 +300,34 @@ func _build_player() -> void:
 	_cam.current = true
 
 
+## The renderer only draws so many lights at once, and it picks them by what the camera
+## could see, not by how near they are. So lamps a long way off (the whole city, when you are
+## standing in a shop) are switched off, or they crowd out the ones in the room with you.
+func _cull_lights() -> void:
+	if city == null:
+		return
+	if _lights.is_empty():
+		for n in city.find_children("*", "Light3D", true, false):
+			if not (n is DirectionalLight3D):
+				_lights.append(n)
+	var cam := get_viewport().get_camera_3d()
+	var here: Vector3 = cam.global_position if cam else _player.global_position
+	for l: Light3D in _lights:
+		if not is_instance_valid(l):
+			continue
+		var reach := 55.0
+		if l is OmniLight3D:
+			reach += (l as OmniLight3D).omni_range
+		elif l is SpotLight3D:
+			reach += (l as SpotLight3D).spot_range
+		var far := l.global_position.distance_to(here) > reach
+		if far != bool(l.get_meta("far", false)) or not l.has_meta("far"):
+			if not l.has_meta("want"):
+				l.set_meta("want", l.visible)
+			l.set_meta("far", far)
+			l.visible = bool(l.get_meta("want")) and not far
+
+
 func _physics_process(delta: float) -> void:
 	var input := Vector2.ZERO
 	if not _talking and _pause == null and not _overlay_open and not (_map_full and _map_full.visible):
@@ -310,6 +367,10 @@ func _physics_process(delta: float) -> void:
 		_figure.rotation.y = lerp_angle(_figure.rotation.y, want, 1.0 - exp(-delta * 12.0))
 	_pivot.position = _pivot.position.lerp(_player.position + Vector3(0, 1.45, 0), 1.0 - exp(-delta * 10.0))
 	_pivot.rotation = Vector3(_pitch, _yaw, 0)
+	_light_t -= delta
+	if _light_t <= 0.0:
+		_light_t = 0.35
+		_cull_lights()
 	_move_walkers(delta)
 	_update_near()
 
@@ -464,11 +525,28 @@ func _build_places() -> void:
 		city.add_child(sign_l)
 		var pad := city.box(Vector3(2.4, 0.03, 1.4), (tr["pos"] as Vector3) + Vector3(0, 0.24, 0), city.glow_mat(Color("7fd8ff"), 1.2), false)
 		pad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if Router.roam.get("district", "") == "newdomino":
+		# The runner gate: back up onto the highway.
+		var g := NewDominoBuilder.GATE + Vector3(0, 0, 0.5)
+		_spots.append({"pos": g, "range": 3.0, "label": "Ride onto the highway (Turbo Duels)", "action": func():
+			Sfx.play("gong", -6.0)
+			Router.roam["ride_from"] = "newdomino"
+			Router.go(Router.RIDE)})
+		var gl := Label3D.new()
+		gl.text = Loc.t("▼  HIGHWAY")
+		gl.font_size = 64
+		gl.pixel_size = 0.006
+		gl.outline_size = 14
+		gl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		gl.modulate = Color("ff8a3a")
+		gl.position = g + Vector3(0, 3.2, 0)
+		city.add_child(gl)
 	if Router.roam.get("district", "") == "satellite":
 		# The garage door leads out onto the highway.
 		var ramp := Vector3(-10, 0, 16.2)
 		_spots.append({"pos": ramp, "range": 2.6, "label": "Ride onto the highway (Turbo Duels)", "action": func():
 			Sfx.play("gong", -6.0)
+			Router.roam["ride_from"] = "satellite"
 			Router.go(Router.RIDE)})
 		var rl := Label3D.new()
 		rl.text = Loc.t("▼  HIGHWAY")
@@ -502,6 +580,29 @@ func _build_places() -> void:
 	if district.get("builder", "") != "":
 		return
 	ShopInterior.build(city)
+	# More doors: the KaibaCorp lobby, Burger World and the arcade.
+	for rk in Interiors.ROOMS:
+		var room: Dictionary = Interiors.ROOMS[rk]
+		Interiors.build(city, rk)
+		var door: Vector3 = room["door"]
+		var inside_at: Vector3 = room["at"]
+		var half: Vector2 = room["half"]
+		_spots.append({"pos": door + Vector3(0, 0, 0.9), "range": 2.3, "label": str(room["label"]), "action": func(): _travel(rk)})
+		_spots.append({"pos": inside_at + Vector3(0, 0, half.y - 0.7), "range": 1.7, "label": "Leave", "action": func(): _travel("")})
+		var dl := Label3D.new()
+		dl.text = Loc.t("▼  ENTER")
+		dl.font_size = 64
+		dl.pixel_size = 0.006
+		dl.outline_size = 14
+		dl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		dl.modulate = Color(room["trim"]).lightened(0.3)
+		dl.position = door + Vector3(0, 3.0, 0.9)
+		city.add_child(dl)
+		var dmat := city.box(Vector3(2.2, 0.03, 1.2), door + Vector3(0, 0.18, 0.9), city.glow_mat(room["trim"], 1.3), false)
+		dmat.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if str(Router.roam.get("story", "")) == "":
+			for d in Interiors.PEOPLE.get(rk, []):
+				_add_npc(d, inside_at)
 	var at := ShopInterior.AT
 	_spots.append({"pos": Vector3(-10, 0, -15.4), "range": 2.3, "label": "Enter Kame Game", "action": func(): _travel("kame")})
 	_spots.append({"pos": at + Vector3(0, 0, 4.3), "range": 1.7, "label": "Leave the shop", "action": func(): _travel("")})
@@ -531,6 +632,11 @@ func _travel(where: String) -> void:
 	if where == "kame":
 		_outside_pos = Vector3(-10, 0, -13.6)
 		_player.position = ShopInterior.AT + Vector3(0, 0, 3.2)
+		_yaw = 0.0
+	elif Interiors.ROOMS.has(where):
+		var room: Dictionary = Interiors.ROOMS[where]
+		_outside_pos = (room["door"] as Vector3) + Vector3(0, 0, 2.2)
+		_player.position = (room["at"] as Vector3) + Vector3(0, 0, (room["half"] as Vector2).y - 1.8)
 		_yaw = 0.0
 	else:
 		_player.position = _outside_pos
@@ -589,12 +695,27 @@ func _set_inside(where: String) -> void:
 		Music.play("shop" if where != "" else "city")
 		Sfx.ambience("shop" if where != "" else "city")
 	_inside = where
+	if Interiors.ROOMS.has(where):
+		Music.play(str(Interiors.ROOMS[where]["music"]))
 	# A soft fill light that travels with the camera, so you are never a silhouette indoors.
 	_update_fill()
 	_arm.spring_length = 3.6 if where != "" else 6.0
 	if _loc_name:
 		_loc_name.text = "KAME GAME" if where != "" else str(district.get("name", "")).to_upper()
 		_loc_area.text = "Card shop" if where != "" else str(district.get("area", ""))
+		if Interiors.ROOMS.has(where):
+			_loc_name.text = Loc.t(str(Interiors.ROOMS[where]["name"])).to_upper()
+			_loc_area.text = Loc.t(str(Interiors.ROOMS[where]["area"]))
+	for mp in [_map, _map_full]:
+		if mp == null:
+			continue
+		if Interiors.ROOMS.has(where):
+			var door: Vector3 = Interiors.ROOMS[where]["door"]
+			mp.inside_at = Vector2(door.x, door.z - 2.5)
+			mp.inside_name = str(Interiors.ROOMS[where]["name"])
+		else:
+			mp.inside_at = Vector2(-10, -19.5)
+			mp.inside_name = "Kame Game"
 
 
 ## A full-screen menu opened from the world (pack shop, deck builder).
@@ -681,6 +802,35 @@ func _refresh_marker(n: Array) -> void:
 		m.modulate = Color("ffd166")
 
 
+## Which part of town the player is standing in (shown under the city name).
+func _area_name() -> String:
+	var p := _player.global_position
+	match str(district.get("builder", "")):
+		"":
+			if p.z < -35.5:
+				return "KaibaCorp Plaza"
+			if p.z > 62.5:
+				return "Domino Pier"
+			if p.z > 35.5:
+				return "Harbor"
+			if p.x < -35.0:
+				return "Duel Dome"
+			if p.x > 35.0:
+				return "Domino High"
+			return "Downtown"
+		"newdomino":
+			if p.z > 34.0:
+				return "Highway Gate"
+			if p.z < -20.0:
+				return "Stadium Gate"
+			if p.x < -24.0:
+				return "Sector Security"
+			if p.x > 24.0:
+				return "The Tops"
+			return "Central Plaza"
+	return ""
+
+
 func _update_near() -> void:
 	var best: Dictionary = {}
 	var best_d := TALK_RANGE
@@ -694,6 +844,10 @@ func _update_near() -> void:
 			best = n[0]
 	_near = best
 	_near_spot = {}
+	if _inside == "" and _loc_area:
+		var area := _area_name()
+		if area != "" and _loc_area.text != Loc.t(area):
+			_loc_area.text = Loc.t(area)
 	if _near.is_empty():
 		for sp in _spots:
 			if (sp["pos"] as Vector3).distance_to(_player.global_position) < float(sp["range"]):
@@ -788,6 +942,19 @@ func _show_line() -> void:
 		bye.pressed.connect(_end_talk)
 		_dlg_buttons.add_child(bye)
 		deck_btn.grab_focus.call_deferred()
+	elif last and _dlg_npc.get("claw", false):
+		var try := Button.new()
+		try.text = Loc.t("  Try the claw  ·  %d DP  ") % 60
+		try.add_theme_font_size_override("font_size", 26)
+		try.disabled = Collection.dp < 60
+		try.pressed.connect(_play_claw)
+		_dlg_buttons.add_child(try)
+		var nope := Button.new()
+		nope.text = "  Not now  "
+		nope.add_theme_font_size_override("font_size", 26)
+		nope.pressed.connect(_end_talk)
+		_dlg_buttons.add_child(nope)
+		try.grab_focus.call_deferred()
 	elif last and _dlg_npc.has("duel"):
 		var duel_btn := Button.new()
 		duel_btn.text = "  Duel!  "
@@ -800,6 +967,51 @@ func _show_line() -> void:
 		later.pressed.connect(_end_talk)
 		_dlg_buttons.add_child(later)
 		duel_btn.grab_focus.call_deferred()
+
+
+## The arcade's prize claw: pay, watch it wobble, win one random card (sometimes a good one).
+func _play_claw() -> void:
+	if Collection.dp < 60:
+		return
+	Collection.dp -= 60
+	for c in _dlg_buttons.get_children():
+		c.queue_free()
+	_dlg_text.text = Loc.t("The claw drops...")
+	Sfx.play("charge", -4.0)
+	await get_tree().create_timer(1.1).timeout
+	var pools: Array = []
+	for era in ["Duel Monsters", "GX", "5D's", "ZEXAL", "Vault"]:
+		pools.append_array(Collection.pool(era))
+	if pools.is_empty():
+		_dlg_text.text = Loc.t("It comes up empty. The machine gives your points back.")
+		Collection.dp += 60
+		Collection.save()
+		return
+	var id: int = pools[randi() % pools.size()]
+	# One try in four digs for something shiny.
+	if randf() < 0.25:
+		for tries in 12:
+			var alt: int = pools[randi() % pools.size()]
+			if CardData.rarity(alt) >= 2:
+				id = alt
+				break
+	Collection.owned[id] = mini(3, int(Collection.owned.get(id, 0)) + 1)
+	Collection.save()
+	var r := CardData.rarity(id)
+	Sfx.play("rare" if r >= 2 else "sparkle", -3.0)
+	_dlg_text.text = Loc.t("It grabs a card: %s  (%s). It is in your collection.") % [str(CardData.get_card(id).get("name", "?")), Loc.t(Foil.NAMES[r])]
+	var again := Button.new()
+	again.text = Loc.t("  Again  ·  %d DP  ") % 60
+	again.add_theme_font_size_override("font_size", 26)
+	again.disabled = Collection.dp < 60
+	again.pressed.connect(_play_claw)
+	_dlg_buttons.add_child(again)
+	var done := Button.new()
+	done.text = "  Done  "
+	done.add_theme_font_size_override("font_size", 26)
+	done.pressed.connect(_end_talk)
+	_dlg_buttons.add_child(done)
+	done.grab_focus.call_deferred()
 
 
 func _advance() -> void:
@@ -863,6 +1075,7 @@ func _build_ui() -> void:
 	help.offset_top = -50
 	help.offset_left = 48
 	_ui.add_child(help)
+	_help = help
 	# Maps: a small one in the corner, the full one on M.
 	_map = RoamMap.new()
 	_map.accent = _theme["accent"]
@@ -1038,6 +1251,77 @@ func _debug() -> void:
 			_figure.visible = false
 			for n in _npcs:
 				n[1].visible = false
+		elif a.begins_with("--eye="):
+			# Free camera for checking a build: --eye=x,y,z,lookx,looky,lookz
+			var e := a.trim_prefix("--eye=").split(",")
+			await get_tree().create_timer(0.4).timeout
+			var eye := Camera3D.new()
+			eye.far = 600.0
+			eye.fov = 60.0
+			add_child(eye)
+			eye.global_position = Vector3(float(e[0]), float(e[1]), float(e[2]))
+			var target := Vector3(float(e[3]), float(e[4]), float(e[5]))
+			eye.look_at(target, Vector3.FORWARD if absf(eye.global_position.x - target.x) + absf(eye.global_position.z - target.z) < 0.01 else Vector3.UP)
+			eye.current = true
+		elif a.begins_with("--walk-to="):
+			# Collision check: walk in straight lines through the listed points and report
+			# where the player ends up. --walk-to=x,z;x,z;...
+			await get_tree().create_timer(0.5).timeout
+			for leg in a.trim_prefix("--walk-to=").split(";"):
+				var w := leg.trim_prefix("@").split(",")
+				var goal := Vector3(float(w[0]), 0, float(w[1]))
+				if leg.begins_with("@"):
+					_player.global_position = goal + Vector3(0, 0.1, 0)
+					await get_tree().physics_frame
+					continue
+				for i in 600:
+					var to := goal - _player.global_position
+					to.y = 0
+					if to.length() < 0.25:
+						break
+					_player.velocity = to.normalized() * 6.0
+					_player.move_and_slide()
+					await get_tree().physics_frame
+				await get_tree().physics_frame
+				var flat := Vector2(goal.x - _player.global_position.x, goal.z - _player.global_position.z).length()
+				print("WALK to ", goal, " ", "ok" if flat < 0.5 else "BLOCKED", " at ", _player.global_position.snapped(Vector3(0.1, 0.1, 0.1)), " spot=", _near_spot.get("label", ""), " npc=", _near.get("id", ""))
+			if "--walk-quit" in OS.get_cmdline_user_args():
+				get_tree().quit()
+		elif a.begins_with("--what="):
+			# What is standing here? Lists every mesh within 4 m of x,z.
+			await get_tree().create_timer(1.0).timeout
+			var wp := a.trim_prefix("--what=").split(",")
+			var spot := Vector3(float(wp[0]), 0, float(wp[1]))
+			for n in find_children("*", "MeshInstance3D", true, false):
+				var mi := n as MeshInstance3D
+				var gp := mi.global_position
+				if Vector2(gp.x - spot.x, gp.z - spot.z).length() < 4.0 and mi.mesh:
+					print("WHAT ", mi.get_path(), " at ", gp.snapped(Vector3(0.1, 0.1, 0.1)), " size ", (mi.mesh.get_aabb().size * mi.global_transform.basis.get_scale()).snapped(Vector3(0.1, 0.1, 0.1)), " vis=", mi.is_visible_in_tree(), " mat=", mi.material_override)
+		elif a.begins_with("--enter="):
+			await get_tree().create_timer(0.6).timeout
+			await _travel(a.trim_prefix("--enter="))
+		elif a.begins_with("--tour="):
+			# Several free-camera shots in one run: --tour=name:x,y,z,lx,ly,lz;name2:...
+			await get_tree().create_timer(1.2).timeout
+			var tcam := Camera3D.new()
+			tcam.far = 700.0
+			tcam.fov = 62.0
+			add_child(tcam)
+			tcam.current = true
+			for part in a.trim_prefix("--tour=").split(";"):
+				var bits := part.split(":")
+				var e2 := bits[1].split(",")
+				tcam.global_position = Vector3(float(e2[0]), float(e2[1]), float(e2[2]))
+				var tg := Vector3(float(e2[3]), float(e2[4]), float(e2[5]))
+				if tcam.global_position.distance_to(_player.global_position) > 160.0:
+					_player.global_position = Vector3(tg.x, 0.3, tg.z)
+				tcam.look_at(tg, Vector3.UP)
+				for i in 4:
+					await get_tree().process_frame
+				await RenderingServer.frame_post_draw
+				get_viewport().get_texture().get_image().save_png("/tmp/%s.png" % bits[0])
+				print("tour shot ", bits[0])
+			get_tree().quit()
 		elif a == "--roam-walk":
 			await get_tree().create_timer(0.5).timeout
 			_yaw = PI * 0.8

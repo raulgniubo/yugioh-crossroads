@@ -3,6 +3,7 @@ extends RefCounted
 ## Story save: unlocked chapters, current chapter + step, flags. user://story.cfg
 
 const PATH := "user://story.cfg"
+const SCRIPT_VERSION := 2      # bump when chapter scripts are restructured
 
 
 static func _load() -> ConfigFile:
@@ -29,11 +30,16 @@ static func save_position(chapter: String, step: int, flags: Dictionary) -> void
 	cfg.set_value("story", "chapter", chapter)
 	cfg.set_value("story", "step", step)
 	cfg.set_value("story", "flags", flags)
+	cfg.set_value("story", "script", SCRIPT_VERSION)
 	cfg.save(PATH)
 
 
 static func position() -> Dictionary:
 	var cfg := _load()
+	# A place saved in an older build points into a script that has since been rewritten:
+	# start that chapter from the top instead of landing mid-sentence somewhere else.
+	if int(cfg.get_value("story", "script", 1)) != SCRIPT_VERSION:
+		return {"chapter": "", "step": 0, "flags": {}}
 	return {"chapter": cfg.get_value("story", "chapter", ""), "step": cfg.get_value("story", "step", 0),
 			"flags": cfg.get_value("story", "flags", {})}
 

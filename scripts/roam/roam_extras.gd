@@ -30,12 +30,20 @@ var _step := 0.0
 var _blip := 0.0
 
 
+var story_mode := false     # a story chapter is running: no quick bar, chips or quests
+var _bar: Control
+
+
 func _ready() -> void:
 	_key = str(Router.roam.get("district", "domino"))
 	_load()
-	_visited[_key] = true
 	_build_hud()
 	_build_fence()
+	if story_mode:
+		if _bar:
+			_bar.visible = false
+		return
+	_visited[_key] = true
 	_build_chips()
 	_save()
 	_check_quests(false)
@@ -69,6 +77,7 @@ func _build_hud() -> void:
 	_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	scene._ui.add_child(_hud)
 	var bar := HBoxContainer.new()
+	_bar = bar
 	bar.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	bar.offset_top = 26
 	bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -119,7 +128,7 @@ func open_guide(tab := "places") -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _busy():
+	if _busy() or story_mode:
 		return
 	var pad: bool = event is InputEventJoypadButton and event.pressed
 	if (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_G) or (pad and event.button_index == JOY_BUTTON_BACK):
@@ -192,7 +201,8 @@ func set_waypoint(pos: Vector3, title: String) -> void:
 	(_beacon.get_node("Tag") as Label3D).text = "▼ " + Loc.t(title)
 	_beacon.visible = true
 	Sfx.play("special", -8.0)
-	Router.toast(Loc.t("Follow the beacon to %s") % Loc.t(title))
+	if not story_mode:
+		Router.toast(Loc.t("Follow the beacon to %s") % Loc.t(title))
 
 
 func clear_waypoint() -> void:
@@ -239,6 +249,19 @@ func fast_travel(pos: Vector3, title: String) -> void:
 	if b.has("r"):
 		var flat := Vector2(spot.x, spot.z).limit_length(float(b["r"]) - 3.5)
 		spot = Vector3(flat.x, 0, flat.y)
+	elif b.get("open", false):
+		# Domino's plus shape: the old square, plus the plaza, the harbor, the pier and the forecourts.
+		var x := clampf(spot.x, -41.0, 41.0)
+		var z := clampf(spot.z, -53.0, 89.0)
+		if absf(x) > 32.0:
+			z = clampf(z, -10.0, 10.0)
+		if z < -33.0:
+			x = clampf(x, -25.0, 25.0)
+		elif z > 61.0:
+			x = clampf(x, -2.6, 2.6)
+		elif z > 33.0:
+			x = clampf(x, -28.0, 28.0)
+		spot = Vector3(x, 0, z)
 	else:
 		var lim: float = float(b["half"]) - 2.5
 		spot = Vector3(clampf(spot.x, -lim, lim), 0, clampf(spot.z, -lim, lim))
@@ -278,13 +301,18 @@ func _bounds() -> Dictionary:
 			return {"r": AcademyBuilder.SHORE - 3.0}
 		"arena":
 			return {"r": ArenaDistrict.RADIUS}
-	return {"half": 34.5}
+		"newdomino":
+			return {"half": 50.5}
+	# Domino City: the avenues run on past the old square, so there is no single fence line.
+	return {"half": 34.5, "open": true}
 
 
 func _edge_distance(p: Vector3) -> float:
 	var b := _bounds()
 	if b.has("r"):
 		return float(b["r"]) - Vector2(p.x, p.z).length()
+	if b.get("open", false):
+		return 99.0
 	return float(b["half"]) - maxf(absf(p.x), absf(p.z))
 
 
@@ -312,6 +340,8 @@ void fragment() {
 	_fence_mat.shader = sh
 	_fence_mat.set_shader_parameter("tint", Color(scene._theme.get("accent", UITheme.ACCENT)))
 	var b := _bounds()
+	if b.get("open", false):
+		return
 	if b.has("r"):
 		var mi := MeshInstance3D.new()
 		var cm := CylinderMesh.new()
@@ -347,7 +377,10 @@ func _chip_spots() -> Array:
 	match str(scene.district.get("builder", "")):
 		"":
 			return [Vector3(5.2, 0, -28), Vector3(-5.2, 0, -20), Vector3(5.2, 0, 12), Vector3(-5.2, 0, 27), Vector3(-28, 0, 5.2), Vector3(-18, 0, -5.2),
-					Vector3(16, 0, 5.2), Vector3(29, 0, -5.2), Vector3(19, 0, 19), Vector3(12, 0, 25), Vector3(26, 0, 13), Vector3(-10, 0, -11.5)]
+					Vector3(16, 0, 5.2), Vector3(29, 0, -5.2), Vector3(19, 0, 19), Vector3(12, 0, 25), Vector3(26, 0, 13), Vector3(-10, 0, -11.5),
+					# KaibaCorp Plaza, the harbor, the pier and the two forecourts.
+					Vector3(-23, 0, -52), Vector3(23, 0, -39), Vector3(-27, 0, 59), Vector3(26, 0, 40), Vector3(0, 0, 90.5), Vector3(0, 0, 72),
+					Vector3(-36.4, 0, -10.8), Vector3(39.5, 0, 10.8)]
 		"academy":
 			return [Vector3(0, 0, 36), Vector3(-3, 0, 18), Vector3(-20, 0, 6), Vector3(-36, 0, 3), Vector3(-30, 0, -8), Vector3(22, 0, -4), Vector3(37, 0, -8),
 					Vector3(19, 0, 14), Vector3(30, 0, 30), Vector3(47, 0, 30), Vector3(3, 0, -16), Vector3(-10, 0, -28)]
@@ -427,7 +460,7 @@ func _collect(c: Dictionary) -> void:
 
 # ------------------------------------------------------------------ quests
 
-const BOSS := {"domino": "yugi", "academy": "jaden", "satellite": "yusei", "heartland": "yuma"}
+const BOSS := {"domino": "yugi", "academy": "jaden", "satellite": "yusei", "heartland": "yuma", "newdomino": "jack"}
 
 
 func _duelists_here() -> Array:
@@ -465,7 +498,7 @@ func quest_rows() -> Array:
 			"have": 1 if scene._beaten.has(boss) else 0, "goal": 1, "reward": 400},
 		{"id": _key + "_chips", "name": "Star hunter", "text": Loc.t("Collect 8 Star Chips in %s.") % place,
 			"have": mini(8, (_got.get(_key, []) as Array).size()), "goal": 8, "reward": 250},
-		{"id": "world_tour", "name": "World tour", "text": "Set foot in all four worlds. (Press G to travel.)", "have": worlds, "goal": RoamData.WORLDS.size(), "reward": 400},
+		{"id": "world_tour", "name": "World tour", "text": "Set foot in all five worlds. (Press G to travel.)", "have": worlds, "goal": RoamData.WORLDS.size(), "reward": 400},
 		{"id": "chip_master", "name": "Chip master", "text": "Collect 30 Star Chips across every world.", "have": mini(30, all_chips), "goal": 30, "reward": 600},
 	]
 	for r in rows:
@@ -474,6 +507,8 @@ func quest_rows() -> Array:
 
 
 func _check_quests(announce: bool) -> void:
+	if story_mode:
+		return
 	for r in quest_rows():
 		if not r["done"] and int(r["have"]) >= int(r["goal"]):
 			_done[r["id"]] = true

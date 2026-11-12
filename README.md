@@ -5,6 +5,24 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.11
+
+- Story plays inside the walking world (`scripts/story/story_director.gd`, script in
+  `scripts/story/story_data.gd`): title cards, actors who walk to their marks, over-the-shoulder
+  dialogue cameras, emotes, choices, a NEXT GOAL panel with a beacon, a versus card before story
+  duels, the bond card reveal, save and resume. The Prologue and Chapter 1 are rewritten for it.
+- New Domino City (`scripts/roam/new_domino_builder.gd`): boulevard, stadium, Sector Security, the
+  Tops and its garden, a Duel Runner showcase, cafe terrace, night market, holo billboards. Jack and
+  Akiza live there now. It is the fifth world.
+- The highway is a 2.6 km ring (`scripts/turbo/turbo_ride.gd`) through six zones with two exits
+  (Satellite and New Domino), jump ramps and a one-lap race against the other riders.
+- Bigger Domino City (`scripts/roam/domino_plus.gd`): KaibaCorp Plaza in front of the tower, the
+  harbor and Domino Pier, the Duel Dome and Domino High forecourts. Three more buildings to enter
+  (`scripts/roam/interiors.gd`): KaibaCorp Lobby with the Duel Simulator, Burger World, the Game
+  Center with a prize claw. Kaiba, Pegasus, Marik, Weevil and Rex are out in the city.
+- Expert AI: plays its whole turn out before choosing the first move, looks for Extra Deck lines,
+  and leads attacks into face-downs with the monster it can best afford to lose.
+
 ## What is in 0.10
 
 - Duel Academy mode (`scripts/core/academy.gd`, `scripts/menu/academy_hub.gd`): entrance exam, the three
@@ -96,4 +114,7 @@ tools/             fetch_cards.py
 ```
 godot --headless --path . res://tests/test_runner.tscn        # rules tests
 godot --path . -- --duel --autoplay --deck=yusei --opp=yuma    # watch AI vs AI
+godot --headless --path . -- --story=ch1 --story-auto          # play a chapter by itself (duels skipped)
+godot --headless --path . -- --roam --district=domino "--walk-to=@0,80;0,91" --walk-quit   # collision check
+godot --path . -- --roam --district=newdomino "--tour=a:0,6,30,0,2,0;b:20,5,20,0,1,0"      # camera shots to /tmp
 ```

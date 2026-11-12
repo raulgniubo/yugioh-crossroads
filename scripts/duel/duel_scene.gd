@@ -348,7 +348,7 @@ func _finish() -> void:
 	if "--auto-story" in OS.get_cmdline_user_args():
 		get_tree().create_timer(2.0).timeout.connect(func():
 			Router.story_result = "won" if state.winner == ME else "lost"
-			Router.go(Router.STORY))
+			Router.go(Router.duel_config.get("return_to", Router.STORY)))
 	if _human_test:
 		print("PROMPTS: ", _asked)
 	print("DUEL OVER: winner %d (%s) LP %d vs %d turn %d" % [state.winner, state.win_reason, state.players[0].lp, state.players[1].lp, state.turn])

@@ -4,12 +4,15 @@ extends Control
 
 const LANDMARKS := [
 	{"name": "Kame Game", "pos": Vector2(-10, -19.5), "size": Vector2(9.5, 6), "color": Color("ffd166"), "enter": true},
-	{"name": "KaibaCorp", "pos": Vector2(0, -47), "size": Vector2(12, 12), "color": Color("7cc4ff")},
+	{"name": "KaibaCorp", "pos": Vector2(0, -62), "size": Vector2(16, 12), "color": Color("7cc4ff"), "enter": true},
 	{"name": "Duel Dome", "pos": Vector2(-50, 0), "size": Vector2(16, 22), "color": Color("b48cff")},
 	{"name": "Domino High", "pos": Vector2(50, 0), "size": Vector2(14, 24), "color": Color("ffe9a8")},
 	{"name": "Clock Tower", "pos": Vector2(0, 46), "size": Vector2(7, 7), "color": Color("9ad6c8")},
-	{"name": "Arcade", "pos": Vector2(12.5, -16.5), "size": Vector2(6, 9), "color": Color("5affc0")},
-	{"name": "Cafe", "pos": Vector2(24, -12.5), "size": Vector2(8, 6), "color": Color("ffb030")},
+	{"name": "Game Center", "pos": Vector2(12.5, -16.5), "size": Vector2(6, 9), "color": Color("5affc0"), "enter": true},
+	{"name": "Burger World", "pos": Vector2(24, -12.5), "size": Vector2(8, 6), "color": Color("ffb030"), "enter": true},
+	{"name": "KaibaCorp Plaza", "pos": Vector2(0, -45.5), "size": Vector2(54, 19), "color": Color("3a86ff"), "park": true},
+	{"name": "Harbor", "pos": Vector2(0, 55), "size": Vector2(60, 12), "color": Color("c9a76a"), "park": true},
+	{"name": "Domino Pier", "pos": Vector2(0, 77), "size": Vector2(7.5, 30), "color": Color("7cf0ff")},
 	{"name": "Central Park", "pos": Vector2(19, 19), "size": Vector2(22, 22), "color": Color("4fbf6a"), "park": true},
 	{"name": "Mart", "pos": Vector2(-24, -13), "size": Vector2(9, 5), "color": Color("9fb4c8")},
 	{"name": "Ramen", "pos": Vector2(9.6, 26.5), "size": Vector2(3, 3.6), "color": Color("ff7a5a")},
@@ -22,6 +25,8 @@ var layout := {}        # {"island": radius, "landmarks": [...], "paths": [[a, b
 var player_pos := Vector2.ZERO
 var player_yaw := 0.0
 var inside := ""
+var inside_at := Vector2(-10, -19.5)   # where the building you are in stands on the map
+var inside_name := "Kame Game"
 var npcs: Array = []   # [{pos: Vector2, state: "duel"|"beaten"|"talk", name}]
 var accent := Color("2de2e6")
 var _font: Font
@@ -52,17 +57,25 @@ func _draw() -> void:
 	var scale := (minf(size.x, size.y - 90.0) / span) if full else (2.4 if layout.has("island") else 3.3)
 	var origin := Vector2.ZERO if full or inside != "" else player_pos
 	if inside != "":
-		origin = Vector2(-10, -19.5) if not full else Vector2.ZERO
+		origin = inside_at if not full else Vector2.ZERO
 	var to_map := func(w: Vector2) -> Vector2: return center + (w - origin) * scale
 	var marks: Array = layout.get("landmarks", LANDMARKS)
 	if layout.has("island"):
 		# Sea, sand, grass and footpaths
 		var rad := float(layout["island"])
-		draw_rect(Rect2(to_map.call(Vector2(-80, -80)), Vector2(160, 160) * scale), Color(0.05, 0.16, 0.26))
-		draw_circle(to_map.call(Vector2.ZERO), (rad + 6.0) * scale, Color(0.74, 0.67, 0.5))
-		draw_circle(to_map.call(Vector2.ZERO), (rad - 6.0) * scale, Color(0.2, 0.36, 0.2))
-		for pth in layout.get("paths", []):
-			draw_line(to_map.call(pth[0]), to_map.call(pth[1]), Color(0.8, 0.76, 0.66), maxf(3.0, 4.0 * scale))
+		if layout.get("city", false):
+			# A paved city square with dark roads.
+			draw_rect(Rect2(to_map.call(Vector2(-80, -80)), Vector2(160, 160) * scale), Color(0.07, 0.08, 0.11))
+			draw_rect(Rect2(to_map.call(Vector2(-rad, -rad)), Vector2(rad, rad) * 2.0 * scale), Color(0.46, 0.5, 0.57))
+			for pth in layout.get("paths", []):
+				draw_line(to_map.call(pth[0]), to_map.call(pth[1]), Color(0.13, 0.14, 0.19), maxf(4.0, 10.0 * scale))
+				draw_line(to_map.call(pth[0]), to_map.call(pth[1]), Color(0.49, 0.77, 1.0, 0.5), 1.0)
+		else:
+			draw_rect(Rect2(to_map.call(Vector2(-80, -80)), Vector2(160, 160) * scale), Color(0.05, 0.16, 0.26))
+			draw_circle(to_map.call(Vector2.ZERO), (rad + 6.0) * scale, Color(0.74, 0.67, 0.5))
+			draw_circle(to_map.call(Vector2.ZERO), (rad - 6.0) * scale, Color(0.2, 0.36, 0.2))
+			for pth in layout.get("paths", []):
+				draw_line(to_map.call(pth[0]), to_map.call(pth[1]), Color(0.8, 0.76, 0.66), maxf(3.0, 4.0 * scale))
 	else:
 		draw_rect(Rect2(to_map.call(Vector2(-64, -64)), Vector2(128, 128) * scale), Color(0.09, 0.1, 0.13))
 	for qx in ([-1, 1] if not layout.has("island") else []):
@@ -103,7 +116,7 @@ func _draw() -> void:
 			draw_string_outline(_font, p + Vector2(9, 6), Loc.t(str(n["name"])), HORIZONTAL_ALIGNMENT_LEFT, -1, 17, 4, Color(0, 0, 0, 0.85))
 			draw_string(_font, p + Vector2(9, 6), Loc.t(str(n["name"])), HORIZONTAL_ALIGNMENT_LEFT, -1, 17, col.lightened(0.3))
 	# You
-	var me: Vector2 = to_map.call(player_pos if inside == "" else Vector2(-10, -17.0))
+	var me: Vector2 = to_map.call(player_pos if inside == "" else inside_at + Vector2(0, 2.5))
 	var fwd := Vector2(sin(player_yaw), cos(player_yaw)) * -1.0
 	var side := Vector2(-fwd.y, fwd.x)
 	var k := 11.0 if full else 9.0
@@ -111,8 +124,8 @@ func _draw() -> void:
 	draw_polyline(PackedVector2Array([me + fwd * k * 1.25, me - fwd * k * 0.7 + side * k * 0.8, me - fwd * k * 0.25, me - fwd * k * 0.7 - side * k * 0.8, me + fwd * k * 1.25]), accent, 2.0)
 	if full:
 		draw_string(_bold, Vector2(34, 54), Loc.t(title), HORIZONTAL_ALIGNMENT_LEFT, -1, 40, Color.WHITE)
-		var where := "You are inside Kame Game" if inside != "" else area
-		draw_string(_font, Vector2(36, 82), Loc.t(where), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, accent)
+		var where := (Loc.t("You are inside %s") % Loc.t(inside_name)) if inside != "" else Loc.t(area)
+		draw_string(_font, Vector2(36, 82), where, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, accent)
 		var lx := size.x - 600.0
 		for item in [["wants to duel", Color("ff5a6e")], ["beaten", Color("5aff9a")], ["talk", Color(1, 1, 1, 0.85)]]:
 			draw_circle(Vector2(lx, 47), 6.0, item[1])

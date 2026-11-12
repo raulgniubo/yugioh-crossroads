@@ -341,6 +341,37 @@ static func _deep_main(s: DuelState, p: int) -> Dictionary:
 				var sc2 := _score_after(sim, p, second, true)
 				if sc2 > line:
 					line = sc2
+				# Extra Deck turns take three plays (two materials, then the summon): look one
+				# step further whenever the second play puts a material on the field.
+				if second["do"] in ["summon", "special_hand", "activate"] and not sim.players[p].extra.is_empty():
+					var sim2 := sim.clone()
+					if apply(sim2, p, _map_action(sim2, second)).is_empty() or sim2.is_over():
+						continue
+					for x in sim2.players[p].extra:
+						if sim2.can_extra_summon(p, x):
+							var sc3 := _score_after(sim2, p, {"do": "extra", "card": x}, true)
+							if sc3 > line:
+								line = sc3
+			# Then keep playing the best follow-up for as long as the position keeps improving:
+			# this is what finds the four and five card turns.
+			var roll := sim
+			var depth := 0
+			while depth < 3 and not roll.is_over():
+				depth += 1
+				var top := line
+				var pick := {}
+				for nxt in _candidates(roll, p):
+					var scn := _score_after(roll, p, nxt, true)
+					if scn > top + 1.0:
+						top = scn
+						pick = nxt
+				if pick.is_empty():
+					break
+				var nxt_sim := roll.clone()
+				if apply(nxt_sim, p, _map_action(nxt_sim, pick)).is_empty():
+					break
+				roll = nxt_sim
+				line = top
 		if line > best_score + 40.0:
 			best_score = line
 			best = first
@@ -354,6 +385,7 @@ static func _deep_attack(s: DuelState, p: int, attackers: Array) -> Dictionary:
 	var o := s.opponent(p)
 	var best := {}
 	var best_score := _after_battle(s.clone(), p, true)
+	var traps: int = s.players[o].set_cards().filter(func(c): return not c.face_up).size()
 	for m in attackers:
 		var targets: Array = [null] if s.can_direct_attack_with(p, m) else []
 		for t in s.players[o].monsters():
@@ -371,6 +403,12 @@ static func _deep_attack(s: DuelState, p: int, attackers: Array) -> Dictionary:
 			if ev.is_empty():
 				continue
 			var sc := _after_battle(sim, p, false)
+			# Face-down Spells and Traps: the first attack of the turn is the one that walks into
+			# them, so lead with the monster this side can best afford to lose. Once an attack
+			# has gone through untouched, the rest are much safer.
+			if traps > 0 and not sim.is_over():
+				var risk := (1.0 - pow(0.62, float(traps))) * (1.0 if s.players[p].attacks_this_turn == 0 or s.players[p].attacks_turn != s.turn else 0.35)
+				sc -= risk * (float(m.atk()) * 0.9 + 420.0) * 0.55
 			if sc > best_score + 20.0:
 				best_score = sc
 				best = {"do": "attack", "card": m, "target": t}
@@ -665,6 +703,16 @@ static func _evaluate_expert(s: DuelState, p: int, o: int) -> float:
 		score -= v2 * 1.05
 	score += 330.0 * (me.hand.size() - opp.hand.size())
 	score += 450.0 * me.set_cards().size() - 520.0 * opp.set_cards().size()
+	# Their face-downs could be a Mirror Force or a Torrential Tribute: a third and fourth
+	# attacker on the field is mostly something to lose.
+	var hidden: int = opp.set_cards().filter(func(c): return not c.face_up).size()
+	if hidden > 0:
+		var out := 0
+		for m in me.monsters():
+			if m.attack_pos:
+				out += 1
+				if out > 2:
+					score -= (float(m.atk()) * 0.9 + 420.0) * 0.22 * minf(2.0, float(hidden))
 	# An empty field against attackers is an emergency.
 	if me.monsters().is_empty() and not opp.monsters().is_empty():
 		score -= 900.0

@@ -18,6 +18,9 @@ var _bikes: Array = []       # [holder, base position, phase]
 var _trails: Array = []
 var _lines: Array = []
 var _t := 0.0
+var _zones := {"satellite": [], "tops": [], "tunnel": [], "bridge": []}   # scenery by stretch of road
+var zone := ""
+var curve := 0.0             # how hard the road is bending (ride mode); swings the far scenery
 
 
 func build(a: Color, b: Color) -> void:
@@ -26,7 +29,84 @@ func build(a: Color, b: Color) -> void:
 	_build_road()
 	_build_sides()
 	_build_skyline()
+	_build_tunnel()
+	_build_bridge()
 	_build_speed_lines()
+	set_zone("")
+
+
+## Which stretch of the highway is showing: "satellite", "tops", "tunnel", "bridge", or ""
+## for the mixed skyline used in duels.
+func set_zone(z: String) -> void:
+	zone = z
+	for k in _zones:
+		var on: bool = k == z or (z == "" and k in ["satellite", "tops"])
+		for n in _zones[k]:
+			(n as Node3D).visible = on
+	if _road:
+		var ga := accent
+		var gb := accent2
+		if z == "tops":
+			ga = Color("7cc4ff")
+			gb = Color("f2f2f2")
+		elif z == "tunnel":
+			ga = Color("ffd23a")
+			gb = Color("ffd23a")
+		elif z == "bridge":
+			ga = Color("5affd0")
+			gb = Color("7cc4ff")
+		_road.set_shader_parameter("glow_a", ga)
+		_road.set_shader_parameter("glow_b", gb)
+
+
+func _build_tunnel() -> void:
+	# Ribs of light overhead and close walls.
+	for i in 16:
+		var rib := Node3D.new()
+		_box(rib, Vector3(0.6, 0.5, 31.0), Vector3(0, 9.0, 0), _solid(Color(0.1, 0.1, 0.13)))
+		_box(rib, Vector3(0.25, 0.12, 30.0), Vector3(0, 8.7, 0), _glow(Color(1.0, 0.85, 0.45), 3.5))
+		for s: float in [-1.0, 1.0]:
+			_box(rib, Vector3(0.6, 9.0, 0.6), Vector3(0, 4.5, s * 15.2), _solid(Color(0.1, 0.1, 0.13)))
+			_box(rib, Vector3(9.6, 9.0, 0.3), Vector3(5.0, 4.5, s * 15.6), _solid(Color(0.06, 0.065, 0.085)))
+			_box(rib, Vector3(9.6, 0.2, 0.1), Vector3(5.0, 2.2, s * 15.4), _glow(Color(1.0, 0.85, 0.45), 2.0))
+		_box(rib, Vector3(9.6, 0.3, 31.0), Vector3(5.0, 9.4, 0), _solid(Color(0.05, 0.055, 0.075)))
+		_prop(rib, -SPAN / 2.0 + i * (SPAN / 16.0))
+		_zones["tunnel"].append(rib)
+
+
+func _build_bridge() -> void:
+	# Open water on both sides, suspension towers and cables going by.
+	var water := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(400, 400)
+	water.mesh = pm
+	var wm := StandardMaterial3D.new()
+	wm.albedo_color = Color(0.02, 0.07, 0.13)
+	wm.roughness = 0.05
+	wm.metallic = 0.6
+	water.material_override = wm
+	water.position = Vector3(0, -6.0, 0)
+	add_child(water)
+	_zones["bridge"].append(water)
+	for i in 4:
+		var tower := Node3D.new()
+		for s: float in [-1.0, 1.0]:
+			_box(tower, Vector3(1.6, 34.0, 1.6), Vector3(0, 13.0, s * 15.6), _solid(Color(0.75, 0.78, 0.84)))
+			_box(tower, Vector3(0.3, 30.0, 0.3), Vector3(0.9, 13.0, s * 15.6), _glow(Color("5affd0"), 2.2))
+			for k in 9:
+				var c := _box(tower, Vector3(0.12, 26.0 - k * 2.4, 0.12), Vector3(-18.0 + k * 4.4, 13.0 - k * 1.2 + 1.0, s * 15.6), _solid(Color(0.8, 0.82, 0.86)))
+				c.rotation.z = 0.0
+		_box(tower, Vector3(1.6, 1.6, 32.8), Vector3(0, 29.0, 0), _solid(Color(0.75, 0.78, 0.84)))
+		_prop(tower, -SPAN / 2.0 + 20.0 + i * (SPAN / 4.0))
+		_zones["bridge"].append(tower)
+	# A far shore of lights.
+	for s: float in [-1.0, 1.0]:
+		for i in 14:
+			var far := Node3D.new()
+			var hgt := 6.0 + float((i * 37) % 23)
+			_box(far, Vector3(9.0, hgt, 6.0), Vector3(0, hgt / 2.0 - 6.0, s * (120.0 + float((i * 13) % 40))), _glow(Color(0.25, 0.4, 0.6), 0.5))
+			_prop(far, -SPAN / 2.0 + i * (SPAN / 14.0), 0.05)
+			_zones["bridge"].append(far)
 
 
 func _build_road() -> void:
@@ -175,12 +255,13 @@ void fragment() {
 			var mat := ShaderMaterial.new()
 			mat.shader = win
 			mat.set_shader_parameter("seed", rng.randf() * 50.0)
-			mat.set_shader_parameter("tint", [Color(1.0, 0.82, 0.5), Color(0.5, 0.85, 1.0), Color(1.0, 0.5, 0.75)][rng.randi() % 3])
+			mat.set_shader_parameter("tint", [Color(1.0, 0.72, 0.4), Color(1.0, 0.5, 0.75)][rng.randi() % 2] if i % 2 == 0 else [Color(0.6, 0.88, 1.0), Color(0.95, 0.97, 1.0)][rng.randi() % 2])
 			var z: float = side * rng.randf_range(26.0, 70.0)
 			_box(t, Vector3(w, h, d), Vector3(0, h / 2.0 - 4.0, z), mat)
 			if rng.randf() < 0.4:
 				_box(t, Vector3(w * 0.9, 0.5, 0.3), Vector3(0, h - 4.0, z - side * d / 2.0), _glow([accent, accent2][rng.randi() % 2], 2.5))
 			_prop(t, rng.randf_range(-SPAN / 2.0, SPAN / 2.0), 0.18 + 6.0 / absf(z))
+			_zones["satellite" if i % 2 == 0 else "tops"].append(t)
 
 
 func _build_speed_lines() -> void:
@@ -292,6 +373,8 @@ func _process(delta: float) -> void:
 		n.position.x -= speed * delta * float(p[1])
 		if n.position.x < -SPAN / 2.0:
 			n.position.x += SPAN
+		# A bend in the road swings whatever is ahead to one side.
+		n.position.z = -curve * maxf(0.0, n.position.x) * maxf(0.0, n.position.x) * 0.0035
 	for l in _lines:
 		var mi: MeshInstance3D = l[0]
 		mi.position.x -= speed * delta * float(l[1])

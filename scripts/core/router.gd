@@ -90,10 +90,6 @@ func _debug_args() -> void:
 			Settings.card_folder = a.substr(9)
 			Cards.clear_cache()
 			Portraits.clear_cache()
-		elif a.begins_with("--story="):
-			story = {"chapter": a.substr(8), "step": 0, "flags": {}}
-			await get_tree().process_frame
-			go(STORY)
 		elif a.begins_with("--district="):
 			roam["district"] = a.substr(11)
 		elif a.begins_with("--tod="):
@@ -109,6 +105,14 @@ func _debug_args() -> void:
 			duel_config["turbo"] = true
 		elif a == "--ride":
 			go(RIDE)
+		elif a.begins_with("--story="):
+			var parts := a.substr(8).split(":")
+			await get_tree().create_timer(0.5).timeout
+			if parts.size() > 1:
+				StoryProgress.save_position(parts[0], int(parts[1]), {})
+				StoryDirector.begin(parts[0], true)
+			else:
+				StoryDirector.begin(parts[0])
 		elif a.begins_with("--field="):
 			duel_config["field"] = a.substr(8)
 		elif a.begins_with("--deck="):

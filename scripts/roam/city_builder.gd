@@ -27,6 +27,7 @@ var _signals: Array = []       # traffic light lamps [[red, yellow, green] mater
 var _time := 0.0
 var player: Node3D
 var make_solid := true
+var wide := false             # the full city: DominoPlus builds the outer walls
 
 
 func build(t: Dictionary, time_of_day: String) -> void:
@@ -37,7 +38,10 @@ func build(t: Dictionary, time_of_day: String) -> void:
 	_build_landmarks()
 	_build_street_furniture()
 	_build_traffic()
-	_build_walls()
+	if wide:
+		DominoPlus.build(self)
+	else:
+		_build_walls()
 	apply_tod(time_of_day)
 
 
@@ -230,7 +234,8 @@ func apply_tod(t: String) -> void:
 		m.set_shader_parameter("day", 1.0 if tod == "day" else (0.5 if tod == "sunset" else 0.0))
 	for l in _lamp_lights:
 		l.light_energy = 2.4 * L["lamps"]
-		l.visible = L["lamps"] > 0.0
+		l.set_meta("want", L["lamps"] > 0.0)
+		l.visible = L["lamps"] > 0.0 and not l.get_meta("far", false)
 	for b in _lamp_bulbs:
 		b.emission_energy_multiplier = 0.2 + 4.0 * L["lamps"]
 	for n in _neon:
@@ -238,7 +243,7 @@ func apply_tod(t: String) -> void:
 		var lab: Label3D = n[0]
 		lab.modulate = Color(c.r, c.g, c.b) * (0.8 + 1.6 * L["neon"])
 		(n[1] as OmniLight3D).light_energy = 1.8 * L["neon"]
-	var road: ShaderMaterial = get_meta("road_mat", null)
+	var road: ShaderMaterial = get_meta("road_mat") if has_meta("road_mat") else null
 	if road:
 		road.set_shader_parameter("wet", 1.0 if tod != "day" else 0.45)
 
@@ -545,23 +550,27 @@ func _kame_boxes() -> void:
 
 func _rest_of_landmarks() -> void:
 	# KaibaCorp Tower
-	var kc := prop("corp_tower", Vector3(0, 0, -50), 0.0, 78.0, true)
+	# In the full city the tower stands back, behind its plaza.
+	var kz := -16.0 if wide else 0.0
+	var kc := prop("corp_tower", Vector3(0, 0, -50 + kz), 0.0, 78.0, true)
 	if kc:
-		collide(kc)
+		# The model's base flares out wider than anything you can bump into, so in the full
+		# city the solid part is pulled in to where the steps start.
+		collide(kc, 0.78 if wide else 0.9)
 		var beacon := OmniLight3D.new()
 		beacon.light_color = Color("7cc4ff")
 		beacon.light_energy = 6.0
 		beacon.omni_range = 40.0
-		beacon.position = Vector3(0, 40, -44)
+		beacon.position = Vector3(0, 40, -44 + kz)
 		add_child(beacon)
 	else:
 		var tower := window_material(Color(0.28, 0.34, 0.48), 7.0, Color("7cc4ff"))
 		tower.set_shader_parameter("style", 1.0)
-		box(Vector3(14, 72, 14), Vector3(0, 36, -48), tower)
-		box(Vector3(18, 5, 18), Vector3(0, 2.5, -48), mat(Color(0.78, 0.82, 0.9), 0.25, 0.7))
-		box(Vector3(10, 6, 10), Vector3(0, 75, -48), mat(Color(0.7, 0.75, 0.85), 0.3, 0.8))
-		neon_sign("KC", Vector3(0, 62, -40.9), Color("7cc4ff"), 1100, 0.0, false)
-	neon_sign("KAIBACORP", Vector3(0, 6.2, -38.95), Color("aee0ff"), 260)
+		box(Vector3(14, 72, 14), Vector3(0, 36, -48 + kz), tower)
+		box(Vector3(18, 5, 18), Vector3(0, 2.5, -48 + kz), mat(Color(0.78, 0.82, 0.9), 0.25, 0.7))
+		box(Vector3(10, 6, 10), Vector3(0, 75, -48 + kz), mat(Color(0.7, 0.75, 0.85), 0.3, 0.8))
+		neon_sign("KC", Vector3(0, 62, -40.9 + kz), Color("7cc4ff"), 1100, 0.0, false)
+	neon_sign("KAIBACORP", Vector3(0, 6.2, -38.95 + kz), Color("aee0ff"), 260)
 	# Landmarks at the far end of each road
 	var dome := prop("duel_dome", Vector3(-54, 0, 0), PI / 2, 34.0)
 	if dome:
@@ -907,11 +916,41 @@ func _move_cars(delta: float) -> void:
 		if before_cross and not green:
 			target = 0.0
 		c["speed"] = move_toward(c["speed"], target, delta * (14.0 if target < c["speed"] else 5.0))
-		p += float(c["dir"]) * c["speed"] * delta
-		if p > 40.0:
-			p = -40.0
-		elif p < -40.0:
-			p = 40.0
+		if wide:
+			# The avenues end at plazas now, so traffic turns around at the end of each one.
+			var lane: float = c["lane"]
+			var d: float = c["dir"]
+			if c.has("turn"):
+				var t: float = float(c["turn"]) + delta * maxf(float(c["speed"]), 3.0) * 0.55 / (PI * absf(lane))
+				var ang := t * PI
+				var along := d * (31.0 + absf(lane) * sin(ang))
+				var across := lane * cos(ang)
+				var vel_along := d * cos(ang)
+				var vel_across := -lane / absf(lane) * sin(ang)
+				if c["axis"] == "x":
+					n.position = Vector3(along, 0, across)
+					n.rotation.y = atan2(vel_along, vel_across)
+				else:
+					n.position = Vector3(across, 0, along)
+					n.rotation.y = atan2(vel_across, vel_along)
+				if t >= 1.0:
+					c.erase("turn")
+					c["lane"] = -lane
+					c["dir"] = -d
+					c["pos"] = d * 31.0
+				else:
+					c["turn"] = t
+				continue
+			p += d * float(c["speed"]) * delta
+			if p * d > 31.0:
+				c["turn"] = 0.0
+				p = d * 31.0
+		else:
+			p += float(c["dir"]) * c["speed"] * delta
+			if p > 40.0:
+				p = -40.0
+			elif p < -40.0:
+				p = 40.0
 		c["pos"] = p
 		if c["axis"] == "x":
 			n.position = Vector3(p, 0, c["lane"])

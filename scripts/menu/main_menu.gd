@@ -25,6 +25,7 @@ func _ready() -> void:
 	_build_profile_chip()
 	_build_footer()
 	_intro()
+	Router.roam["story"] = ""
 	if Router.menu_open == "select":
 		Router.menu_open = ""
 		_on_free_duel.call_deferred()
@@ -307,7 +308,7 @@ func _intro() -> void:
 		item.modulate.a = 0.0
 		tw.tween_property(item, "modulate:a", 1.0, 0.5).set_delay(0.5 + i * 0.08)
 	await get_tree().create_timer(0.6).timeout
-	if not Profile.created and not "--shot" in str(OS.get_cmdline_user_args()):
+	if not Profile.created and not "--shot" in str(OS.get_cmdline_user_args()) and not "--story" in str(OS.get_cmdline_user_args()):
 		_open_profile(true)
 	elif _items.size() > 0 and not _panel_open:
 		_items[1].grab_focus()
@@ -351,10 +352,7 @@ func _on_story() -> void:
 		cont.text = "▶  Continue where you left off"
 		cont.custom_minimum_size = Vector2(0, 72)
 		cont.add_theme_font_size_override("font_size", 28)
-		cont.pressed.connect(func():
-			Router.story = pos
-			Router.story_result = ""
-			Router.go(Router.STORY))
+		cont.pressed.connect(func(): StoryDirector.begin(str(pos["chapter"]), true))
 		p.body.add_child(cont)
 	p.add_section("Chapters")
 	var unlocked := StoryProgress.unlocked()
@@ -367,10 +365,7 @@ func _on_story() -> void:
 		b.add_theme_font_size_override("font_size", 24)
 		b.disabled = not ok
 		var id: String = c["id"]
-		b.pressed.connect(func():
-			Router.story = {"chapter": id, "step": 0, "flags": {}}
-			Router.story_result = ""
-			Router.go(Router.STORY))
+		b.pressed.connect(func(): StoryDirector.begin(id))
 		p.body.add_child(b)
 	add_child(p)
 	_open_panel(p)
