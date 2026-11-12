@@ -38,6 +38,8 @@ var _vs: Label
 var _go: Button
 var _starting := false
 var _t := 0.0
+var _pending: Array = []      # [TextureRect, key]: roster portraits still to load, a couple per frame
+var _retouch := false
 
 
 func _ready() -> void:
@@ -55,7 +57,9 @@ func _ready() -> void:
 	_my_deck = cfg.get("player_deck", "yugi")
 	if not CardData.has_deck(_my_deck):
 		_my_deck = "echo" if CardData.has_deck("echo") else "yugi"
-	_field = str(cfg.get("field", "auto"))
+	_field = str(cfg.get("field", Settings.field_theme))
+	if _field != "auto" and not FieldThemes.THEMES.has(_field):
+		_field = "auto"
 	var dim := ColorRect.new()
 	dim.color = Color(0.012, 0.02, 0.045, 0.985)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -108,6 +112,21 @@ func _process(delta: float) -> void:
 	if _vs:
 		var s := 1.0 + sin(_t * 2.4) * 0.04
 		_vs.scale = Vector2(s, s)
+	# Portraits load a couple per frame, so the screen opens at once and fills in.
+	for i in 2:
+		if _pending.is_empty():
+			break
+		var job: Array = _pending.pop_front()
+		if is_instance_valid(job[0]):
+			(job[0] as TextureRect).texture = Portraits.get_portrait(job[1])
+			(job[0] as TextureRect).modulate.a = 0.0
+			create_tween().tween_property(job[0], "modulate:a", 1.0, 0.2)
+		_retouch = true
+	if _pending.is_empty() and _retouch:
+		# Asking again keeps the two big portraits among the few that stay animated.
+		_retouch = false
+		Portraits.get_portrait(_me)
+		Portraits.get_portrait(_opp)
 	if _go and not _starting:
 		_go.modulate = Color(1, 1, 1).lerp(Color(1.25, 1.25, 1.25), 0.5 + 0.5 * sin(_t * 3.0))
 
@@ -328,6 +347,7 @@ func _build_tabs() -> void:
 
 
 func _refresh_grid() -> void:
+	_pending.clear()
 	for c in _grid.get_children():
 		_grid.remove_child(c)
 		c.queue_free()
@@ -370,7 +390,10 @@ func _roster_card(key: String) -> Control:
 	tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(tint)
 	var pt := TextureRect.new()
-	pt.texture = Portraits.get_portrait(key)
+	if Portraits._cache.has(key):
+		pt.texture = Portraits.get_portrait(key)
+	else:
+		_pending.append([pt, key])
 	pt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	pt.stretch_mode = TextureRect.STRETCH_SCALE
 	pt.size = Vector2(CELL.x, CELL.x * 640.0 / 512.0)

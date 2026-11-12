@@ -85,8 +85,8 @@ func _build_menu() -> void:
 	add_child(_menu_box)
 	var entries := [
 		["STORY", "Prologue and Chapter 1 are here", _on_story],
-		["FREE ROAM", "Walk Domino City, talk and take street duels", _on_roam],
-		["FREE DUEL", "Duel a rival with a story deck", _on_free_duel],
+		["FREE ROAM", "Walk Domino City and Duel Academy", _on_roam],
+		["FREE DUEL", "Pick both duelists, your deck and the arena", _on_free_duel],
 		["DECK", "Your cards and decks", _on_deck],
 		["SETTINGS", "Display, audio and card art", _on_settings],
 	]
@@ -306,6 +306,7 @@ func _intro() -> void:
 
 func _open_panel(p: SidePanel) -> void:
 	_panel_open = true
+	p.z_index = 100
 	p.closed.connect(func():
 		_panel_open = false
 		if _items.size() > 1:

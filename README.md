@@ -5,6 +5,19 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.9
+
+- Duel rules: chains (both players answer back and forth, last in resolves first), Continuous, Field,
+  Equip, Quick-Play and Ritual Spells, Counter Traps, Continuous Traps, choosing your own targets,
+  taking control, bouncing to hand, banishing, Exodia. About 170 Spell and Trap cards are data-driven
+  in `scripts/duel/spell_rules.gd`.
+- Deck builder and booster packs: win Duel Points, buy packs from four eras at the card shop, build a
+  30 to 60 card deck (`scripts/core/collection.gd`, `scripts/menu/deck_builder.gd`, `pack_shop.gd`).
+- Duel Academy island: a second free-roam district reached by ferry from Domino City.
+- Free Duel: new setup screen (both duelists, deck preview, difficulty, arena), every duelist has a
+  unique model, duelists stand in the arena with opening and victory shots, result screen with stats.
+- Not in yet: monster effects as chain links, tokens, Pendulum and Link monsters.
+
 ## Playing a build
 
 Builds come from GitHub Actions (Actions tab > latest **Build** run > Artifacts).

@@ -47,9 +47,9 @@ func own_file(key: String) -> String:
 const STANDINS := {
 	"yugi": "duelist_m2", "kaiba": "duelist_m6", "joey": "duelist_m5", "mai": "duelist_f1",
 	"bakura": "duelist_m1", "marik": "duelist_m7", "pegasus": "duelist_m3", "weevil": "student_boy", "rex": "duelist_m4",
-	"jaden": "duelist_m1", "chazz": "duelist_m3", "zane": "duelist_m5", "alexis": "duelist_f2", "syrus": "duelist_m4", "aster": "duelist_m7",
-	"yusei": "duelist_m2", "jack": "duelist_m5", "crow": "student_boy", "akiza": "duelist_f3", "kalin": "duelist_m7",
-	"yuma": "duelist_m4", "shark": "duelist_m1", "kite": "duelist_m3", "vector": "office_worker",
+	"jaden": "duelist_m8", "chazz": "duelist_m9", "zane": "duelist_m10", "alexis": "duelist_f2", "syrus": "duelist_m11", "aster": "duelist_m12",
+	"yusei": "duelist_m13", "jack": "duelist_m14", "crow": "duelist_m15", "akiza": "duelist_f3", "kalin": "duelist_m16",
+	"yuma": "duelist_m17", "shark": "duelist_m18", "kite": "duelist_m19", "vector": "office_worker",
 	"kid": "street_duelist", "vendor": "shopkeeper", "guard": "office_worker", "lumen": "student_girl",
 }
 

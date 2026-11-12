@@ -116,6 +116,8 @@ func _debug_args() -> void:
 				menu._open_profile(true)
 			elif what == "deck":
 				menu._on_deck()
+			elif what == "settings":
+				menu._on_settings()
 			elif what == "packs":
 				var ps := PackShop.new()
 				ps.z_index = 100
