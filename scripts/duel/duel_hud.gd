@@ -399,6 +399,8 @@ func _build_phase() -> void:
 	ask.text = "Ask me in every phase"
 	ask.button_pressed = phase_prompts
 	ask.add_theme_font_size_override("font_size", 17)
+	for col in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color", "font_focus_color"]:
+		ask.add_theme_color_override(col, UITheme.TEXT)
 	ask.tooltip_text = "Draw, Standby, Battle start, Main 2 and End Phase: get a prompt whenever one of your cards could be activated."
 	ask.toggled.connect(func(on): phase_prompts = on)
 	box.add_child(ask)
