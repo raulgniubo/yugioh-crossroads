@@ -27,6 +27,9 @@ func _ready() -> void:
 	theme = UITheme.build()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	Music.play("menu")
+	Pad.walk_mode = false
+	Pad.both_sticks = false
+	Pad.hint("A  next     B  menu     Right stick  pointer")
 	_build()
 	var s: Dictionary = Router.story
 	chapter = s.get("chapter", "prologue")

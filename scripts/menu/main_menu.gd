@@ -14,6 +14,9 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	Music.play("menu")
 	Sfx.ambience("")
+	Pad.walk_mode = false
+	Pad.both_sticks = false
+	Pad.hint("D-pad  move     A  select     B  back     Right stick  pointer")
 	_build_background()
 	_build_overlay()
 	_build_title()

@@ -26,6 +26,7 @@ Sfx="*res://scripts/core/sfx.gd"
 Music="*res://scripts/core/music.gd"
 Router="*res://scripts/core/router.gd"
 Collection="*res://scripts/core/collection.gd"
+Pad="*res://scripts/core/pad.gd"
 
 [display]
 

@@ -35,6 +35,9 @@ signal _turn_finished
 
 func _ready() -> void:
 	get_viewport().physics_object_picking = true
+	Pad.walk_mode = false
+	Pad.both_sticks = true
+	Pad.hint("Stick  pointer     A  select     B  back     X  next phase     Y Y  end turn     Start  menu")
 	Music.play("duel")
 	DuelAudio.reset()
 	board = DuelBoard.new()
@@ -1088,7 +1091,25 @@ func _on_board_card_hovered(card: Card3D, inside: bool) -> void:
 	hud.inspect(inst, hidden)
 
 
+var _end_armed := 0.0
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventJoypadButton and event.pressed and _my_turn():
+		if event.button_index == JOY_BUTTON_X:
+			_on_phase_button("battle")
+			get_viewport().set_input_as_handled()
+			return
+		if event.button_index == JOY_BUTTON_Y:
+			# Twice, so a slip of the thumb does not end your turn.
+			var now := Time.get_ticks_msec() / 1000.0
+			if now - _end_armed < 1.4:
+				_on_phase_button("end")
+			else:
+				_end_armed = now
+				Router.toast("Press Y again to end your turn")
+			get_viewport().set_input_as_handled()
+			return
 	if event.is_action_pressed("ui_pause"):
 		if mode != "" or hud.actions_visible():
 			_cancel_mode()

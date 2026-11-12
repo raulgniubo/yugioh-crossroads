@@ -68,6 +68,9 @@ func _ready() -> void:
 				mp.layout = district["map"]
 	Music.play({"": "city", "academy": "academy"}.get(str(district.get("builder", "")), str(district.get("theme", "city"))))
 	Sfx.ambience({"": "city", "academy": "sea"}.get(str(district.get("builder", "")), "wind" if district.get("theme", "") == "satellite" else "hum"))
+	Pad.walk_mode = true
+	Pad.both_sticks = false
+	Pad.hint("Left stick  walk     Right stick  look     A  talk / enter     LB  run     Y  map     X  card shop     Back  worlds     Start  menu")
 	extras = RoamExtras.new()
 	extras.scene = self
 	add_child(extras)
@@ -279,10 +282,14 @@ func _physics_process(delta: float) -> void:
 		var look := Input.get_joy_axis(0, JOY_AXIS_RIGHT_X)
 		if absf(look) > 0.2:
 			_yaw -= look * delta * 2.5
+		var look_y := Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y)
+		if absf(look_y) > 0.25:
+			_pitch = clampf(_pitch - look_y * delta * 1.4, -1.1, 0.15)
 		if Input.is_key_pressed(KEY_Q):
 			_yaw += delta * 2.0
 	input = input.limit_length(1.0)
-	var run := Input.is_key_pressed(KEY_SHIFT) or Input.is_joy_button_pressed(0, JOY_BUTTON_LEFT_SHOULDER)
+	var run := Input.is_key_pressed(KEY_SHIFT) or Input.is_joy_button_pressed(0, JOY_BUTTON_LEFT_SHOULDER) or Input.get_joy_axis(0, JOY_AXIS_TRIGGER_RIGHT) > 0.4
+	Pad.overlay = _talking or _overlay_open or _pause != null
 	var basis := Basis(Vector3.UP, _yaw)
 	var dir := basis * Vector3(input.x, 0, input.y)
 	var target := dir * (RUN if run else SPEED)
