@@ -993,6 +993,10 @@ func resolve_attack() -> Array:
 		events.append_array(_after_attack(attacker))
 		return events
 	var target_was_def: bool = not target.attack_pos
+	# "When this card inflicts battle damage to your opponent" counts every kind of battle,
+	# not only direct attacks, and works for the monster that was attacked too.
+	var lp_opp := players[opp].lp
+	var lp_me := players[p].lp
 	if target.attack_pos:
 		var t := atk_of(target, false, attacker, true)
 		if a > t:
@@ -1016,6 +1020,11 @@ func resolve_attack() -> Array:
 			if EffectRunner.fx(target).get("double_damage_attacked", false):
 				dmg *= 2
 			events.append_array(_battle_damage(p, dmg, target, attacker))
+	if not is_over():
+		if players[opp].lp < lp_opp and players[p].field.has(attacker):
+			events.append_array(EffectRunner.trigger(self, attacker, "damage"))
+		if players[p].lp < lp_me and players[opp].field.has(target):
+			events.append_array(EffectRunner.trigger(self, target, "damage"))
 	# Red Dragon Archfiend: after attacking a Defense monster, burn all of them.
 	if target_was_def and EffectRunner.fx(attacker).get("kill_def_all", false) and players[p].field.has(attacker):
 		var defs := []

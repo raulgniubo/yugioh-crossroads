@@ -12,7 +12,7 @@ var _bg: StyleBoxFlat
 
 
 func _init(title_text: String, subtitle: String) -> void:
-	custom_minimum_size = Vector2(520, 84)
+	custom_minimum_size = Vector2(560, 76)
 	focus_mode = Control.FOCUS_ALL
 	flat = true
 	_bg = UITheme.button_box(Color(0.08, 0.14, 0.24, 0.0), Color(1, 1, 1, 0.0), 14)
@@ -24,16 +24,16 @@ func _init(title_text: String, subtitle: String) -> void:
 	add_child(_content)
 	_bar = ColorRect.new()
 	_bar.color = UITheme.ACCENT
-	_bar.position = Vector2(18, 26)
-	_bar.size = Vector2(4, 32)
+	_bar.position = Vector2(18, 22)
+	_bar.size = Vector2(4, 30)
 	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_content.add_child(_bar)
-	_title = UITheme.label(title_text, 40, UITheme.TEXT, UITheme.title_font())
-	_title.position = Vector2(40, 6)
+	_title = UITheme.label(title_text, 36, UITheme.TEXT, UITheme.title_font())
+	_title.position = Vector2(40, 4)
 	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_content.add_child(_title)
-	_sub = UITheme.label(subtitle, 17, UITheme.TEXT_DIM)
-	_sub.position = Vector2(42, 50)
+	_sub = UITheme.label(subtitle, 16, UITheme.TEXT_DIM)
+	_sub.position = Vector2(42, 45)
 	_sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_content.add_child(_sub)
 	mouse_entered.connect(func(): _target = 1.0)

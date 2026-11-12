@@ -259,7 +259,7 @@ func _versus(t: Dictionary) -> Control:
 	v.add_theme_constant_override("separation", 6)
 	row.add_child(v)
 	v.add_child(UITheme.label("OPPONENT", 15, UITheme.DANGER, UITheme.semi_font()))
-	var nm := UITheme.label(str(t["name"]), 34, Color.WHITE, UITheme.title_font())
+	var nm := UITheme.label(Loc.t(str(t["name"])), 34, Color.WHITE, UITheme.title_font())
 	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(nm)
 	v.add_child(UITheme.label(Loc.t("%s Deck") % CardData.deck_name(str(t["deck"])), 20, UITheme.TEXT_DIM))
@@ -396,7 +396,7 @@ func _show_news() -> void:
 	box.custom_minimum_size = Vector2(820, 0)
 	shade.add_child(box)
 	var v := _vbox(box, 14, 40)
-	var good := not ("FAILED" in str(_news[0]) or "LOST" in str(_news[0]) or "KNOCKED" in str(_news[0]))
+	var good: bool = Academy.last_good
 	var head := UITheme.label(Loc.t(str(_news[0])), 54, UITheme.GOLD if good else UITheme.DANGER, UITheme.title_font())
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

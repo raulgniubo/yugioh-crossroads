@@ -14,6 +14,8 @@ func _ready() -> void:
 	_test_banish()
 	_test_spell_rules()
 	_test_full_rules()
+	_test_turbo()
+	_test_vault()
 	var stress := OS.get_environment("STRESS_FOLDER")
 	if stress != "":
 		CardData.load_external(stress)
@@ -287,7 +289,118 @@ func _run(s: DuelState, p: int, act: Dictionary) -> Array:
 			return s.special_from_hand(p, act["card"])
 		"ignite":
 			return s.ignite(p, act["card"])
+		"speed":
+			return s.speed_world(p, int(act["cost"]))
 	return []
+
+
+func _test_vault() -> void:
+	# Giant Germ: 500 damage when it dies in battle.
+	var s := _new_state(31)
+	_battle_ready(s)
+	var big := _fake(s, 0, "Big", 2000, 0, 0)
+	var germ := _fake(s, 1, "Giant Germ", 1000, 100, 0)
+	var lp0 := s.players[0].lp
+	var lp1 := s.players[1].lp
+	s.attack(0, big, germ)
+	check(s.players[1].lp == lp1 - 1000 and s.players[0].lp == lp0 - 500, "Giant Germ burns 500 when destroyed by battle")
+	# Airknight Parshath: piercing, and a draw when it deals damage.
+	s = _new_state(32)
+	_battle_ready(s)
+	var air := _fake(s, 0, "Airknight Parshath", 1900, 1400, 0)
+	var wall := _fake(s, 1, "Wall", 0, 500, 0)
+	wall.attack_pos = false
+	var hand := s.players[0].hand.size()
+	lp1 = s.players[1].lp
+	s.attack(0, air, wall)
+	check(s.players[1].lp == lp1 - 1400, "Airknight Parshath pierces")
+	check(s.players[0].hand.size() == hand + 1, "Airknight Parshath draws after dealing damage")
+	# Goblin Attack Force goes to Defense after attacking.
+	s = _new_state(33)
+	_battle_ready(s)
+	var gob := _fake(s, 0, "Goblin Attack Force", 2300, 0, 0)
+	var t := _fake(s, 1, "Target", 1500, 1000, 0)
+	s.attack(0, gob, t)
+	check(not gob.attack_pos, "Goblin Attack Force changes to Defense Position after attacking")
+	# Exiled Force tributes itself to destroy a monster.
+	s = _new_state(34)
+	s.begin_turn()
+	var ex := _fake(s, 0, "Exiled Force", 1000, 1000, 0)
+	var foe := _fake(s, 1, "Foe", 2800, 2000, 0)
+	check(s.can_ignite(0, ex), "Exiled Force can use its effect")
+	s.ignite(0, ex)
+	s.chain_resolve()
+	check(not s.players[1].monsters().has(foe) and not s.players[0].monsters().has(ex), "Exiled Force tributes itself and destroys a monster")
+	# The Forbidden/Limited list limits what a deck may hold.
+	check(CardData.rarity(89631139) >= 2, "A 3000 ATK monster is a Super or Ultra Rare")
+	print("vault tests done")
+
+
+func _test_turbo() -> void:
+	var s := _new_state(21)
+	s.turbo = true
+	s.begin_turn()
+	check(s.players[0].speed == 0 and s.players[1].speed == 0, "Turbo: no Speed Counters on the first turn")
+	var pot := s._make(55144522, 0)   # Pot of Greed
+	s.players[0].hand.append(pot)
+	check(s.speed_need(pot) == 5, "Turbo: a heavy Spell needs 5 Speed Counters")
+	check(not s.can_activate(0, pot), "Turbo: Spells cannot be played without the speed")
+	s.end_turn()
+	s.begin_turn()
+	check(s.players[0].speed == 1 and s.players[1].speed == 1, "Turbo: both riders gain 1 Speed Counter each Standby Phase")
+	s.players[1].speed = 8
+	s._damage(1, 2300)
+	check(s.players[1].speed == 6, "Turbo: 2300 damage costs 2 Speed Counters (%d)" % s.players[1].speed)
+	s._damage(1, 900)
+	check(s.players[1].speed == 6, "Turbo: under 1000 damage costs nothing")
+	# Speed World 2, the three effects.
+	s.players[1].speed = 12
+	var hand_before := s.players[1].hand.size()
+	check(s.can_speed_world(1, 7), "Turbo: 7 counters can be spent to draw")
+	s.speed_world(1, 7)
+	check(s.players[1].hand.size() == hand_before + 1 and s.players[1].speed == 5, "Turbo: Speed World 2 draws 1 for 7")
+	check(not s.can_speed_world(1, 4), "Turbo: Speed World 2 is once per turn")
+	s.end_turn()
+	s.begin_turn()
+	s.players[0].speed = 10
+	var lp := s.players[1].lp
+	var spells: int = s.players[0].hand.filter(func(c): return not c.is_monster() and not c.is_trap()).size()
+	s.speed_world(0, 4)
+	check(s.players[1].lp == lp - 800 * spells and spells >= 1, "Turbo: Speed World 2 burns 800 for each Speed Spell in hand (%d)" % spells)
+	check(s.can_activate(0, pot), "Turbo: with enough speed the Spell can be played")
+	var c2 := s.clone()
+	check(c2.turbo and c2.players[0].speed == s.players[0].speed, "Turbo: a copy of the duel keeps the Speed Counters")
+	# Whole games with the AI on both sides stay sound.
+	for seed in 6:
+		var g := _new_state(900 + seed, "yusei", "kaiba", true, true)
+		g.turbo = true
+		var guard := 0
+		while not g.is_over() and guard < 120:
+			guard += 1
+			g.begin_turn()
+			if g.is_over():
+				break
+			var p := g.current
+			var steps := 0
+			while steps < 20:
+				steps += 1
+				var act := DuelAI.next_main_action(g, p, 2)
+				if act.is_empty() or _run(g, p, act).is_empty():
+					break
+			if g.can_enter_battle():
+				g.enter_battle()
+				steps = 0
+				while steps < 10 and not g.is_over():
+					steps += 1
+					var atk := DuelAI.next_attack(g, p, 2)
+					if atk.is_empty() or g.declare_attack(p, atk["card"], atk["target"]).is_empty():
+						break
+					g.resolve_attack()
+			if not g.is_over():
+				g.end_turn()
+		check(g.is_over(), "Turbo: an AI game reaches an end (seed %d)" % seed)
+		check(g.players[0].speed <= 12 and g.players[1].speed <= 12, "Turbo: Speed Counters stay within 12")
+	print("turbo tests done")
 
 
 

@@ -26,7 +26,12 @@ const PACKS := [
 	{"key": "GX", "name": "Academy Heroes", "color": Color("ff3a4d"), "blurb": "Cards from the GX era."},
 	{"key": "5D's", "name": "Signer's Road", "color": Color("2de2e6"), "blurb": "Cards from the 5D's era."},
 	{"key": "ZEXAL", "name": "Overlay Network", "color": Color("ffd23a"), "blurb": "Cards from the ZEXAL era."},
+	{"key": "Vault", "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
 ]
+## Solid Normal Monsters that round out the Vault.
+const VAULT_EXTRAS := ["Gemini Elf", "Vorse Raider", "Luster Dragon", "Mad Dog of Darkness", "Insect Knight", "Gene-Warped Warwolf",
+	"Archfiend Soldier", "Sabersaurus", "Alexandrite Dragon", "Summoned Skull", "Luster Dragon #2", "Mystical Elf", "Giant Soldier of Stone",
+	"La Jinn the Mystical Genie of the Lamp", "Dark Blade", "Blazing Inpachi", "Neo the Magic Swordsman", "Sky Scout"]
 
 var owned := {}          # card id -> copies
 var main: Array = []     # card ids
@@ -230,6 +235,18 @@ func pool(era: String) -> Array:
 	if _pools.has(era):
 		return _pools[era]
 	var ids := {}
+	if era == "Vault":
+		# Every card the game has rules for that the four era packs do not hand out.
+		var taken := {}
+		for other in ["Duel Monsters", "GX", "5D's", "ZEXAL"]:
+			for id in pool(other):
+				taken[id] = true
+		for name in SpellRules.FX.keys() + CardEffects.FX.keys() + VAULT_EXTRAS:
+			var id: int = CardData.NAME_TO_ID.get(str(name).to_lower(), 0)
+			if id != 0 and not taken.has(id) and not CardData.get_card(id).is_empty():
+				ids[id] = true
+		_pools[era] = ids.keys()
+		return _pools[era]
 	for k in Characters.ORDER:
 		var d: Dictionary = Characters.DATA[k]
 		if str(d.get("era", "")) != era or not CardData.has_deck(str(d["deck"])):

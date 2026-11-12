@@ -276,12 +276,12 @@ func _quest_row(qd: Dictionary) -> Control:
 static func world_cards(on_pick: Callable, current := "") -> Control:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
-	for w in RoamData.WORLDS:
+	for w in RoamData.WORLDS + [["highway", "5D's  ·  Turbo Duels", "Ride your runner down the night highway and duel at full speed.", Color("ff8a3a")]]:
 		var key: String = w[0]
-		var d := RoamData.district(key)
+		var d: Dictionary = RoamData.district(key) if key != "highway" else {"name": "New Domino Highway"}
 		var col: Color = w[3]
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(520, 104)
+		b.custom_minimum_size = Vector2(520, 96)
 		b.disabled = key == current
 		for st in ["normal", "hover", "pressed", "focus", "disabled"]:
 			var sb := UITheme.button_box(Color(col.darkened(0.72), 0.95) if st != "hover" else Color(col.darkened(0.55), 0.98), col if st in ["hover", "focus"] else Color(col, 0.35), 16)

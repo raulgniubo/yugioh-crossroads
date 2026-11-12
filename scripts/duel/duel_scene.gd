@@ -123,6 +123,7 @@ func _start() -> void:
 	state.turbo = cfg.get("turbo", false)
 	if state.turbo:
 		hud.enable_turbo()
+		hud.speed_need = func(inst): return state.speed_need(inst)
 	state.manual = [not _autoplay, false]
 	hud.auto_answer = _human_test
 	var opp_list := CardData.legend_deck(opp_deck) if _ai_level >= 2 else CardData.deck_list(opp_deck)
@@ -1334,6 +1335,8 @@ func _run_ai(act: Dictionary, who: int) -> Array:
 			return state.change_position(who, act["card"])
 		"ignite":
 			return state.ignite(who, act["card"])
+		"speed":
+			return state.speed_world(who, int(act["cost"]))
 	return []
 
 

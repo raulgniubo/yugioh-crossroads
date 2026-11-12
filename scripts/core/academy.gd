@@ -34,6 +34,7 @@ const FALLBACK_DECKS := ["jaden", "joey", "kaiba", "yugi", "yusei", "yuma"]
 
 static var _loaded := false
 static var d := {}
+static var last_good := true      # was the last resolved result good news?
 
 
 static func _defaults() -> Dictionary:
@@ -180,10 +181,10 @@ static func resolve(won: bool) -> Array:
 				else:
 					d["dorm"] = int(d["dorm"]) + 1
 					col.dp += 600
-					out = ["PROMOTED TO %s" % str(DORMS[int(d["dorm"])]["name"]).to_upper(), "A new jacket is waiting for you on the island.", "+600 Duel Points"]
+					out = [Loc.t("PROMOTED TO %s") % Loc.t(str(DORMS[int(d["dorm"])]["name"])).to_upper(), "A new jacket is waiting for you on the island.", "+600 Duel Points"]
 			elif won:
 				col.dp += 150
-				out = ["EXAM PASSED", "A pass, but you needed %d class wins this week to move up. Next week." % NEED_WINS, "+150 Duel Points"]
+				out = ["EXAM PASSED", Loc.t("A pass, but you needed %d class wins this week to move up. Next week.") % NEED_WINS, "+150 Duel Points"]
 			else:
 				out = ["EXAM FAILED", "A new week starts Monday. Win your class duels and try again."]
 			d["week"] = int(d["week"]) + 1
@@ -194,6 +195,7 @@ static func resolve(won: bool) -> Array:
 			out = _tourney_result(won)
 	col.save()
 	save()
+	last_good = won
 	return out
 
 
@@ -244,7 +246,7 @@ static func tourney_today() -> Dictionary:
 		return {}
 	var r := int(d["tourney"]["round"])
 	return {"kind": "tourney", "char": o["char"], "name": o["name"], "deck": o["deck"], "difficulty": mini(3, int(o["power"]) + (1 if r == 2 else 0)),
-		"title": "Academy Tournament: " + tourney_round_name(r)}
+		"title": Loc.t("Academy Tournament: ") + Loc.t(tourney_round_name(r))}
 
 
 static func _tourney_result(won: bool) -> Array:
@@ -279,7 +281,7 @@ static func _tourney_result(won: bool) -> Array:
 			t["rounds"].append(nx)
 		t["done"] = true
 		t["round"] = t["rounds"].size() - 1
-		return ["KNOCKED OUT", "Out in the %s. The bracket shows who went on to win." % tourney_round_name(r).to_lower()]
+		return ["KNOCKED OUT", Loc.t("Out in the %s. The bracket shows who went on to win.") % Loc.t(tourney_round_name(r)).to_lower()]
 	if next.size() == 1:
 		t["done"] = true
 		t["won"] = true
@@ -289,4 +291,4 @@ static func _tourney_result(won: bool) -> Array:
 		return ["TOURNAMENT CHAMPION", "You won the Academy Tournament. The trophy goes on your shelf.", "+1500 Duel Points"]
 	t["round"] = r + 1
 	col.dp += 200
-	return ["%s WON" % tourney_round_name(r).to_upper(), "You are through to the %s." % tourney_round_name(r + 1).to_lower(), "+200 Duel Points"]
+	return [Loc.t("%s WON") % Loc.t(tourney_round_name(r)).to_upper(), Loc.t("You are through to the %s.") % Loc.t(tourney_round_name(r + 1)).to_lower(), "+200 Duel Points"]

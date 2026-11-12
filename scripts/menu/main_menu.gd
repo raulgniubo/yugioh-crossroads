@@ -87,12 +87,13 @@ func _build_title() -> void:
 
 func _build_menu() -> void:
 	_menu_box = VBoxContainer.new()
-	_menu_box.position = Vector2(100, 372)
-	_menu_box.add_theme_constant_override("separation", 6)
+	_menu_box.position = Vector2(100, 356)
+	_menu_box.add_theme_constant_override("separation", 2)
 	add_child(_menu_box)
 	var entries := [
 		["STORY", "Prologue and Chapter 1 are here", _on_story],
 		["DUEL ACADEMY", "Entrance exam, three dorms, weekly exams, the tournament", _on_academy],
+		["TURBO DUEL", "Ride the New Domino Highway. Speed Counters, Speed Spells", _on_turbo],
 		["FREE ROAM", "Four worlds to walk. Duel anyone you meet", _on_roam],
 		["FREE DUEL", "Pick both duelists, your deck and the arena", _on_free_duel],
 		["DECK", "Your cards and decks", _on_deck],
@@ -329,6 +330,9 @@ func _on_roam() -> void:
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	p.body.add_child(hint)
 	p.body.add_child(CityGuide.world_cards(func(key):
+		if key == "highway":
+			Router.go(Router.RIDE)
+			return
 		Router.roam["district"] = key
 		Router.roam["pos"] = null
 		Router.roam.erase("yaw")
@@ -389,6 +393,11 @@ func _on_settings() -> void:
 
 func _on_quit() -> void:
 	get_tree().quit()
+
+
+func _on_turbo() -> void:
+	Sfx.play("gong", -6.0)
+	Router.go(Router.RIDE)
 
 
 func _on_academy() -> void:

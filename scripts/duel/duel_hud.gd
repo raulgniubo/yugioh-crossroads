@@ -440,6 +440,7 @@ func _process(delta: float) -> void:
 		_tick_gauges(delta)
 
 
+var speed_need := Callable()     # Turbo Duels: how many Speed Counters a Spell needs
 var _gauges: Array = []          # one speedometer per player
 var _gauge_val := [0.0, 0.0]
 var _gauge_to := [0, 0]
@@ -853,6 +854,10 @@ func inspect(inst, hidden := false) -> void:
 		var st_names := {"quick": "Quick-Play Spell", "cont": "Continuous Spell", "field": "Field Spell", "equip": "Equip Spell",
 				"ritual": "Ritual Spell", "ctrap": "Continuous Trap", "counter": "Counter Trap"}
 		_chip(str(st_names.get(SpellRules.kind(inst), "Trap" if is_trap else "Spell")), Color("ff4dd2") if is_trap else Color("2de2a0"))
+		if speed_need.is_valid() and not is_trap:
+			var need: int = speed_need.call(inst)
+			if need > 0:
+				_chip(Loc.t("Speed Spell  ·  needs %d") % need, Color("ff8a3a"))
 		_inspect_stat_row.visible = false
 		var body := str(d.get("text", d.get("desc", "")))
 		var rule := SpellRules.note(inst) if inst != null and not hidden else ""

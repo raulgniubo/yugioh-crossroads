@@ -257,6 +257,10 @@ func fast_travel(pos: Vector3, title: String) -> void:
 func travel_world(key: String) -> void:
 	if key == _key:
 		return
+	if key == "highway":
+		Sfx.play("gong", -6.0)
+		Router.go(Router.RIDE)
+		return
 	Sfx.play("special", -4.0)
 	Router.toast(Loc.t("Traveling to %s...") % Loc.t(str(RoamData.district(key).get("name", key))))
 	Router.roam["district"] = key

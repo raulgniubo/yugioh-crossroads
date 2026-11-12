@@ -215,8 +215,8 @@ func _build_ui() -> void:
 	root.add_child(_gauge)
 	_radar = Control.new()
 	_radar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_radar.offset_left = -420
-	_radar.offset_right = 420
+	_radar.offset_left = -260
+	_radar.offset_right = 520
 	_radar.offset_top = 34
 	_radar.offset_bottom = 110
 	_radar.mouse_filter = Control.MOUSE_FILTER_IGNORE

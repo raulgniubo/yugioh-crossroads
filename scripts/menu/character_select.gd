@@ -18,6 +18,7 @@ var _picking := "opp"
 var _era := ""
 var _difficulty := 1
 var _match_btn: CheckButton
+var _turbo_btn: CheckButton
 var _my_deck := "yugi"
 var _field := "auto"
 var _root: Control
@@ -553,10 +554,16 @@ func _build_setup() -> void:
 	asp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ahead.add_child(asp)
 	_match_btn = CheckButton.new()
-	_match_btn.text = "Match: best of 3"
+	_match_btn.text = "Best of 3"
 	_match_btn.tooltip_text = "Play up to three duels. Between duels you can swap cards with your Side Deck."
 	for cn in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color"]:
 		_match_btn.add_theme_color_override(cn, UITheme.TEXT)
+	_turbo_btn = CheckButton.new()
+	_turbo_btn.text = "Turbo"
+	_turbo_btn.tooltip_text = "A Turbo Duel: both duelists ride. Spells need Speed Counters, and Speed World 2 lets you spend them."
+	for cn in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color"]:
+		_turbo_btn.add_theme_color_override(cn, Color("ff8a3a"))
+	ahead.add_child(_turbo_btn)
 	ahead.add_child(_match_btn)
 	var arow := HBoxContainer.new()
 	arow.add_theme_constant_override("separation", 10)
@@ -711,7 +718,8 @@ func _start_duel() -> void:
 	var is_match: bool = _match_btn != null and _match_btn.button_pressed
 	Router.match_state = {"wins": [0, 0], "game": 1, "last_loser": -1,
 		"orig": {"main": Collection.main.duplicate(), "side": Collection.side.duplicate()}} if is_match else {}
-	start.emit({"player_char": _me, "opponent": _opp, "player_deck": _my_deck, "difficulty": _difficulty, "field": _field, "match": is_match})
+	start.emit({"player_char": _me, "opponent": _opp, "player_deck": _my_deck, "difficulty": _difficulty, "field": _field, "match": is_match,
+		"turbo": _turbo_btn != null and _turbo_btn.button_pressed})
 
 
 func _unhandled_input(event: InputEvent) -> void:
