@@ -66,7 +66,8 @@ func _ready() -> void:
 			mp.area = str(district.get("area", ""))
 			if district.has("map"):
 				mp.layout = district["map"]
-	Music.play("menu")
+	Music.play({"": "city", "academy": "academy"}.get(str(district.get("builder", "")), str(district.get("theme", "city"))))
+	Sfx.ambience({"": "city", "academy": "sea"}.get(str(district.get("builder", "")), "wind" if district.get("theme", "") == "satellite" else "hum"))
 	extras = RoamExtras.new()
 	extras.scene = self
 	add_child(extras)
@@ -525,6 +526,10 @@ func _update_fill() -> void:
 
 
 func _set_inside(where: String) -> void:
+	if where != _inside:
+		Sfx.play("door", -4.0)
+		Music.play("shop" if where != "" else "city")
+		Sfx.ambience("shop" if where != "" else "city")
 	_inside = where
 	# A soft fill light that travels with the camera, so you are never a silhouette indoors.
 	_update_fill()

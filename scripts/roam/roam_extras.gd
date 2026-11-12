@@ -26,6 +26,8 @@ var _fence_mat: ShaderMaterial
 var _key := "domino"
 var _tick := 0.0
 var _edge_shown := 0.0
+var _step := 0.0
+var _blip := 0.0
 
 
 func _ready() -> void:
@@ -476,7 +478,7 @@ func _check_quests(announce: bool) -> void:
 			_save()
 			if announce or true:
 				Router.toast("Quest complete: %s   +%d Duel Points" % [r["name"], r["reward"]])
-				Sfx.play("win", -8.0)
+				Sfx.play("quest", -3.0)
 
 
 # ------------------------------------------------------------------ every frame
@@ -528,6 +530,18 @@ func _process(delta: float) -> void:
 		_edge_shown = 1.2
 	elif _edge_shown <= 0.0 and _edge_label.modulate.a > 0.9:
 		scene.create_tween().tween_property(_edge_label, "modulate:a", 0.0, 0.4)
+	# Footsteps while you move, and a little voice blip for every few letters of dialogue.
+	var sp := Vector2(scene._player.velocity.x, scene._player.velocity.z).length()
+	if sp > 0.6 and scene._player.is_on_floor():
+		_step += delta * sp
+		if _step > 1.55:
+			_step = 0.0
+			Sfx.play("step", -13.0, 0.9 + randf() * 0.25)
+	if scene._talking and scene._dlg_text.visible_ratio < 1.0:
+		_blip += delta
+		if _blip > 0.055:
+			_blip = 0.0
+			Sfx.play("blip", -13.0, 0.75 + (hash(str(scene._dlg_npc.get("id", ""))) % 9) * 0.07)
 	# Who you have talked to, for the quests.
 	_tick += delta
 	if scene._talking and not scene._dlg_npc.is_empty():

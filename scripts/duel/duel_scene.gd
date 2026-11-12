@@ -36,6 +36,7 @@ signal _turn_finished
 func _ready() -> void:
 	get_viewport().physics_object_picking = true
 	Music.play("duel")
+	DuelAudio.reset()
 	board = DuelBoard.new()
 	var cfg0: Dictionary = Router.duel_config
 	board.theme = FieldThemes.resolve(str(cfg0.get("field", Settings.field_theme)), str(cfg0.get("opponent", "kaiba")))
@@ -331,6 +332,8 @@ func _finish() -> void:
 		Profile.record_result(won)
 		earned = Collection.reward(won and not _surrendered, _ai_level)
 	Sfx.play("win" if won else "lose")
+	Music.play("victory" if won else "defeat")
+	Sfx.play("cheer", -4.0 if won else -12.0)
 	hud.say(AI, Characters.line(_opp_key, "lose" if won else "win"))
 	# The winner gets the camera.
 	var champ := ME if won else AI
@@ -365,6 +368,7 @@ func _play(events: Array) -> void:
 
 func _play_event(ev: Dictionary) -> void:
 	var p: int = ev.get("player", 0)
+	DuelAudio.on_event(ev, state)
 	match ev["type"]:
 		"turn":
 			var mine := p == ME

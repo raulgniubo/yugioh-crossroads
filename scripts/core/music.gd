@@ -8,10 +8,29 @@ const TRACKS := {
 	"menu": {"bpm": 92.0, "bars": 8, "drums": false, "gain": 0.55,
 		"chords": [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62],
 			[57, 60, 64], [53, 57, 60], [50, 53, 57], [52, 56, 59]]},
-	"duel": {"bpm": 128.0, "bars": 8, "drums": true, "gain": 0.5,
+	"duel": {"bpm": 128.0, "bars": 8, "drums": true, "gain": 0.6, "lead": 0.13,
 		"chords": [[50, 53, 57], [50, 53, 57], [46, 50, 53], [48, 52, 55],
 			[50, 53, 57], [55, 58, 62], [46, 50, 53], [52, 55, 59]]},
+	# Someone is nearly out of Life Points: faster, higher, more urgent.
+	"duel_tense": {"bpm": 148.0, "bars": 4, "drums": true, "gain": 0.62, "lead": 0.16,
+		"chords": [[52, 55, 59], [50, 53, 57], [48, 52, 55], [47, 51, 54]]},
+	"victory": {"bpm": 132.0, "bars": 4, "drums": true, "gain": 0.6, "lead": 0.16,
+		"chords": [[60, 64, 67], [65, 69, 72], [67, 71, 74], [60, 64, 67]]},
+	"defeat": {"bpm": 68.0, "bars": 4, "drums": false, "gain": 0.5,
+		"chords": [[57, 60, 64], [53, 56, 60], [55, 58, 62], [52, 55, 59]]},
+	# The worlds, each with its own mood.
+	"city": {"bpm": 104.0, "bars": 4, "drums": true, "soft": true, "gain": 0.5, "lead": 0.1,
+		"chords": [[60, 64, 67], [57, 60, 64], [53, 57, 60], [55, 59, 62]]},
+	"academy": {"bpm": 114.0, "bars": 4, "drums": true, "soft": true, "gain": 0.5, "lead": 0.11,
+		"chords": [[62, 66, 69], [59, 62, 66], [55, 59, 62], [57, 61, 64]]},
+	"satellite": {"bpm": 96.0, "bars": 4, "drums": true, "gain": 0.52, "lead": 0.09,
+		"chords": [[52, 55, 59], [48, 52, 55], [50, 53, 57], [47, 50, 54]]},
+	"heartland": {"bpm": 122.0, "bars": 4, "drums": true, "soft": true, "gain": 0.5, "lead": 0.12,
+		"chords": [[65, 69, 72], [62, 65, 69], [58, 62, 65], [60, 64, 67]]},
+	"shop": {"bpm": 84.0, "bars": 4, "drums": false, "gain": 0.5, "lead": 0.08,
+		"chords": [[60, 64, 67], [65, 69, 72], [62, 65, 69], [67, 71, 74]]},
 }
+const ORDER := ["menu", "duel", "city", "duel_tense", "victory", "defeat", "academy", "satellite", "heartland", "shop"]
 
 var _streams := {}
 var _players: Array[AudioStreamPlayer] = []
@@ -35,13 +54,19 @@ func _ready() -> void:
 
 
 func play(track: String) -> void:
+	if not TRACKS.has(track):
+		track = "menu"
 	_wanted = track
 	if _streams.has(track):
 		_switch(track)
 
 
 func _render_all() -> void:
-	for name in ["menu", "duel"]:
+	# The track someone is waiting for jumps the queue.
+	var todo: Array = ORDER.duplicate()
+	while not todo.is_empty():
+		var name: String = _wanted if todo.has(_wanted) else todo[0]
+		todo.erase(name)
 		var stream := _render(TRACKS[name])
 		call_deferred("_on_rendered", name, stream)
 
@@ -63,7 +88,7 @@ func _switch(track: String) -> void:
 	nxt.volume_db = -40.0
 	nxt.play()
 	var tw := create_tween().set_parallel()
-	tw.tween_property(nxt, "volume_db", -6.0, 1.5)
+	tw.tween_property(nxt, "volume_db", -3.0, 1.2)
 	tw.tween_property(old, "volume_db", -80.0, 1.2)
 	tw.chain().tween_callback(old.stop)
 
@@ -93,6 +118,21 @@ func _render(t: Dictionary) -> AudioStreamWAV:
 	var phases := [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 	var bass_phase := 0.0
 	var arp_phase := 0.0
+	var lead_phase := 0.0
+	var lead_gain: float = float(t.get("lead", 0.0))
+	var soft: bool = t.get("soft", false)
+	# The tune: one note per 8th (or a rest), picked from the chord with a few steps in between.
+	var tune: Array = []
+	for bar_i in bars:
+		var ch: Array = chords[bar_i]
+		var pool := [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[0] + 24, ch[1] + 24, ch[2] + 12 + 2]
+		var last := 2
+		for e in 8:
+			if rng.randf() < 0.22 and e != 0:
+				tune.append(0)
+			else:
+				last = clampi(last + rng.randi_range(-2, 2), 0, pool.size() - 1)
+				tune.append(pool[last])
 	for i in n:
 		var bar := (i / bar_len) % bars
 		var chord: Array = chords[bar]
@@ -124,18 +164,24 @@ func _render(t: Dictionary) -> AudioStreamWAV:
 		arp_phase = fmod(arp_phase + _hz(arp_note) / RATE, 1.0)
 		var tri := 1.0 - 4.0 * absf(arp_phase - 0.5)
 		s += tri * 0.12 * exp(-in_step * 4.0)
+		if lead_gain > 0.0:
+			var note: int = tune[((i / eighth) % (bars * 8))]
+			if note > 0:
+				lead_phase = fmod(lead_phase + _hz(note) / RATE, 1.0)
+				var sq := (1.0 if lead_phase < 0.35 else -1.0) * 0.6 + sin(lead_phase * TAU) * 0.6
+				s += sq * lead_gain * exp(-in_eighth * 2.2) * minf(1.0, in_eighth * 40.0)
 		if t["drums"]:
 			var in_beat := float(i % int(beat * RATE)) / (beat * RATE)
 			# Kick on every beat
 			var kf := 50.0 + 120.0 * exp(-in_beat * 30.0)
-			s += sin(TAU * kf * in_beat * beat) * exp(-in_beat * 9.0) * 0.45
+			s += sin(TAU * kf * in_beat * beat) * exp(-in_beat * 9.0) * (0.25 if soft else 0.5)
 			# Hats on the off-beat 8ths
 			if in_eighth < 0.25 and (i / eighth) % 2 == 1:
 				s += rng.randf_range(-1.0, 1.0) * 0.06 * (1.0 - in_eighth * 4.0)
 			# Snare on 2 and 4
 			var beat_idx := (in_bar / int(beat * RATE)) % 4
 			if beat_idx == 1 or beat_idx == 3:
-				s += rng.randf_range(-1.0, 1.0) * 0.16 * exp(-in_beat * 14.0)
+				s += rng.randf_range(-1.0, 1.0) * (0.08 if soft else 0.18) * exp(-in_beat * 14.0)
 		buf[i] = s * float(t["gain"])
 	var bytes := PackedByteArray()
 	bytes.resize(n * 2)

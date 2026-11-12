@@ -13,6 +13,7 @@ func _ready() -> void:
 	theme = UITheme.build()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	Music.play("menu")
+	Sfx.ambience("")
 	_build_background()
 	_build_overlay()
 	_build_title()
