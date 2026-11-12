@@ -110,6 +110,8 @@ class PlayerState:
 	var attacks_this_turn := 0
 	var attacks_turn := -1
 	var spell_turn := -1          # last turn this player activated a Spell (Nitro Warrior)
+	var speed := 0                # Speed Counters (Turbo Duels)
+	var speed_turn := -1          # last turn this player used a Speed World 2 effect
 	var no_summon_turn := -1      # Scapegoat: no Summons for the rest of this turn (Sets are fine)
 
 	func set_cards() -> Array[CardInst]:
@@ -141,6 +143,12 @@ var win_reason := ""
 var _uid := 0
 ## Extra cards in the opening hand (Hard mode gives the AI +1).
 var bonus_cards := [0, 0]
+## Turbo Duel: Speed World 2 is in play. Both riders gain a Speed Counter each Standby Phase,
+## lose them to big hits, need them to play Spells, and can spend them on its three effects.
+var turbo := false
+const SPEED_MAX := 12
+const SPEED_HEAVY := ["Raigeki", "Dark Hole", "Monster Reborn", "Pot of Greed", "Heavy Storm", "Harpie's Feather Duster",
+	"Change of Heart", "Graceful Charity", "Lightning Vortex", "Card Destruction"]
 var _rng := RandomNumberGenerator.new()
 
 ## --- Player decisions -------------------------------------------------------------------
@@ -308,6 +316,9 @@ func begin_turn(step := false) -> Array:
 func begin_standby() -> Array:
 	phase = Phase.STANDBY
 	var events := [{"type": "phase", "phase": phase}]
+	if turbo and turn > 1:
+		for q in [current, opponent(current)]:
+			events.append_array(_speed(q, 1))
 	events.append_array(EffectRunner.standby(self, current))
 	if not is_over():
 		events.append_array(SpellRules.standby(self, current))
@@ -537,6 +548,10 @@ func can_activate(p: int, c: CardInst) -> bool:
 	if sp.is_empty():
 		return false
 	var ps := players[p]
+	if turbo and not c.is_trap():
+		# Speed World 2 holds the Field Zone, and Spells need speed.
+		if sp["k"] == "field" or ps.speed < speed_need(c):
+			return false
 	if ps.hand.has(c):
 		if c.is_trap():
 			return false
@@ -1355,12 +1370,91 @@ func _on_leave_field(c: CardInst, by_battle: bool) -> Array:
 	return events
 
 
+# ------------------------------------------------------------------ Turbo Duels
+
+func _speed(p: int, delta: int) -> Array:
+	var ps := players[p]
+	var to := clampi(ps.speed + delta, 0, SPEED_MAX)
+	if to == ps.speed:
+		return []
+	var d := to - ps.speed
+	ps.speed = to
+	return [{"type": "speed", "player": p, "speed": to, "delta": d}]
+
+
+## Speed Counters a Spell needs before it can be played in a Turbo Duel (0 outside one).
+func speed_need(c: CardInst) -> int:
+	if not turbo or c.is_monster() or c.is_trap():
+		return 0
+	var k := SpellRules.kind(c)
+	var n := 2 if k in ["quick", "equip"] else 3
+	if c.cname() in SPEED_HEAVY:
+		n += 2
+	return n
+
+
+## The three effects of Speed World 2: spend 4, 7 or 10 Speed Counters, once per turn.
+func can_speed_world(p: int, cost: int) -> bool:
+	if not turbo or p != current or not _in_main() or is_over():
+		return false
+	var ps := players[p]
+	if ps.speed < cost or ps.speed_turn == turn:
+		return false
+	match cost:
+		4:
+			return ps.hand.any(func(c): return not c.is_monster() and not c.is_trap())
+		7:
+			return not ps.deck.is_empty()
+		10:
+			return not _field_cards(opponent(p)).is_empty()
+	return false
+
+
+func _field_cards(q: int) -> Array:
+	var out: Array = players[q].monsters()
+	for c in players[q].spells:
+		if c != null:
+			out.append(c)
+	return out
+
+
+func speed_world(p: int, cost: int) -> Array:
+	if not can_speed_world(p, cost):
+		return []
+	var ps := players[p]
+	ps.speed_turn = turn
+	var events := _speed(p, -cost)
+	match cost:
+		4:
+			var n: int = ps.hand.filter(func(c): return not c.is_monster() and not c.is_trap()).size()
+			events.append({"type": "effect", "player": p, "card": null, "text": Loc.t("Speed World 2: %d damage for the Speed Spells in hand!") % (800 * n)})
+			events.append_array(_damage(opponent(p), 800 * n))
+		7:
+			events.append({"type": "effect", "player": p, "card": null, "text": "Speed World 2: draw 1 card"})
+			events.append_array(_draw(p))
+		10:
+			var cands := _field_cards(opponent(p))
+			var best = cands[0]
+			for c in cands:
+				if c.is_monster() and (not best.is_monster() or c.atk() > best.atk()):
+					best = c
+			var t = pick1(p, "Speed World 2: destroy 1 card", cands, best, null)
+			events.append({"type": "effect", "player": p, "card": null, "text": "Speed World 2: destroy 1 card"})
+			if t.is_monster():
+				events.append_array(_destroy(t))
+			else:
+				events.append_array(_destroy_st(t))
+	return events
+
+
 func _damage(p: int, amount: int) -> Array:
 	if amount <= 0:
 		return []
 	var ps := players[p]
 	ps.lp = maxi(0, ps.lp - amount)
 	var events := [{"type": "lp", "player": p, "lp": ps.lp, "delta": -amount}]
+	if turbo and amount >= 1000:
+		events.append_array(_speed(p, -(amount / 1000)))
 	if ps.lp == 0:
 		if winner == p and players[opponent(p)].lp == 0:
 			# Both duelists reached zero in the same resolution: nobody wins.
@@ -1604,6 +1698,8 @@ func clone() -> DuelState:
 		np.skip_draw = ps.skip_draw
 		np.no_summon_turn = ps.no_summon_turn
 		np.spell_turn = ps.spell_turn
+		np.speed = ps.speed
+		np.speed_turn = ps.speed_turn
 		np.attacks_this_turn = ps.attacks_this_turn
 		np.attacks_turn = ps.attacks_turn
 		s.players.append(np)
@@ -1648,6 +1744,7 @@ func clone() -> DuelState:
 			s.pending_attack["target"] = map.get(pending_attack["target"].uid, pending_attack["target"])
 	s.current = current
 	s.turn = turn
+	s.turbo = turbo
 	s.phase = phase
 	s.normal_summoned = normal_summoned
 	s.winner = winner
@@ -1748,10 +1845,10 @@ func responses(p: int, window: String, subject = null) -> Array:
 	if is_over():
 		return out
 	for c in ps.spells:
-		if c != null and not c.face_up and SpellRules.fits(self, p, c, window, subject):
+		if c != null and not c.face_up and SpellRules.fits(self, p, c, window, subject) and ps.speed >= speed_need(c):
 			out.append(c)
 	for c in ps.hand:
-		if not c.is_monster() and SpellRules.fits(self, p, c, window, subject):
+		if not c.is_monster() and SpellRules.fits(self, p, c, window, subject) and ps.speed >= speed_need(c):
 			out.append(c)
 	if window == "attack":
 		if not pending_attack.is_empty() and pending_attack["player"] != p:

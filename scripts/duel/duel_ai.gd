@@ -19,6 +19,10 @@ const EXPERT := 3
 
 
 static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionary:
+	if s.turbo and level > EASY:
+		var sw := _speed_world(s, p)
+		if not sw.is_empty():
+			return sw
 	if level >= EXPERT:
 		return _deep_main(s, p)
 	if level >= HARD:
@@ -292,6 +296,22 @@ static func _lookahead_main(s: DuelState, p: int) -> Dictionary:
 	return best
 
 
+## Turbo Duels: when to cash Speed Counters in on Speed World 2.
+static func _speed_world(s: DuelState, p: int) -> Dictionary:
+	var me := s.players[p]
+	var opp := s.players[s.opponent(p)]
+	var spells: int = me.hand.filter(func(c): return not c.is_monster() and not c.is_trap()).size()
+	# Burn for the win, or when the hand is full of Speed Spells and there is speed to spare.
+	if s.can_speed_world(p, 4) and (800 * spells >= opp.lp or (spells >= 2 and me.speed >= 8)):
+		return {"do": "speed", "cost": 4}
+	# Remove a monster that nothing on this side can beat.
+	if s.can_speed_world(p, 10) and _strongest_atk(opp) > maxi(_strongest_atk(me), 1900):
+		return {"do": "speed", "cost": 10}
+	if s.can_speed_world(p, 7) and me.hand.size() <= 2 and me.speed >= 9:
+		return {"do": "speed", "cost": 7}
+	return {}
+
+
 # ------------------------------------------------------------------ Expert
 
 ## Two plays ahead: score every first play, then for the best few try every follow-up, and
@@ -510,6 +530,8 @@ static func apply(s: DuelState, p: int, act: Dictionary) -> Array:
 			return s.special_from_hand(p, act["card"])
 		"ignite":
 			return s.ignite(p, act["card"])
+		"speed":
+			return s.speed_world(p, int(act["cost"]))
 	return []
 
 

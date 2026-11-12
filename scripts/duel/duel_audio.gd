@@ -72,6 +72,6 @@ static func on_event(ev: Dictionary, state: DuelState) -> void:
 					low = true
 			if low != tense and not state.is_over():
 				tense = low
-				Music.play("duel_tense" if low else "duel")
+				Music.play("duel_tense" if low else ("turbo" if state.turbo else "duel"))
 		"win":
 			pass

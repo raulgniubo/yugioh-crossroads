@@ -123,7 +123,7 @@ func _build_more() -> void:
 	add["gasp"] = _crowd(1.0, 0.4, false, r)
 	call_deferred("_add_sounds", add)
 	var loops := {}
-	for kind in ["city", "sea", "wind", "hum", "crowd", "shop"]:
+	for kind in ["city", "sea", "wind", "hum", "crowd", "shop", "engine"]:
 		loops["amb_" + kind] = _ambience(6.0, kind, r)
 		call_deferred("_add_sounds", loops.duplicate())
 		loops.clear()
@@ -184,6 +184,12 @@ func _ambience(dur: float, kind: String, r: RandomNumberGenerator) -> AudioStrea
 				a += 0.3 * (x - a)
 				ph += TAU * 82.0 / RATE
 				v = sin(ph) * 0.07 + sin(ph * 1.5) * 0.04 + a * 0.02 + sin(ph * 12.0) * 0.012 * (0.5 + 0.5 * sin(TAU * t / 2.0))
+			"engine":
+				# A runner at speed: a growling saw with wind over it.
+				a += 0.12 * (x - a)
+				ph += TAU * 74.0 / RATE
+				var saw := fmod(ph / TAU, 1.0) * 2.0 - 1.0
+				v = saw * 0.05 + sin(ph * 0.5) * 0.06 + sin(ph * 2.0) * 0.025 * (0.6 + 0.4 * sin(TAU * t * 2.0)) + a * 0.5
 			"crowd":
 				a += 0.35 * (x - a)
 				b += 0.05 * (x - b)

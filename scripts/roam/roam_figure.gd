@@ -13,6 +13,7 @@ var _time := randf() * 10.0
 var _anim: AnimationPlayer = null
 var _cur_clip := ""
 var _hold := 0.0          # seconds a one-off clip (cheer) still owns the animation
+var _riding := false
 
 
 func setup(char_key: String, color: Color, display_name := "", show_name := true) -> void:
@@ -40,6 +41,61 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 		l.modulate = Color(1, 1, 1, 0.95)
 		l.outline_modulate = Color(0, 0, 0, 0.8)
 		add_child(l)
+
+
+## Sit this person on a duel runner: knees up, leaning forward, hands on the bars. The pose
+## is set once on the skeleton and the walk and idle animations are switched off.
+func ride_pose() -> void:
+	_riding = true
+	if _model == null:
+		return
+	var ap := Avatars.anim_player(_model)
+	if ap:
+		ap.stop()
+		ap.active = false
+	var sk := Avatars._skeleton(_model)
+	if sk == null:
+		return
+	sk.reset_bone_poses()
+	var map: Dictionary = _model.get_meta("human_bones", {})
+	var turn := func(human: String, axis: Vector3, deg: float):
+		var idx := sk.find_bone(str(map.get(human, human)))
+		if idx < 0:
+			idx = sk.find_bone(human.to_lower())
+		if idx < 0:
+			return
+		var g := sk.get_bone_global_pose(idx)
+		g.basis = Basis(axis, deg_to_rad(deg)) * g.basis
+		sk.set_bone_global_pose(idx, g)
+	# Point a limb (from this bone to its first child) along a direction, in the model's own
+	# space where +Z is forward and +Y is up. Works whatever pose the model rests in.
+	var aim := func(human: String, dir: Vector3):
+		var idx := sk.find_bone(str(map.get(human, human)))
+		if idx < 0:
+			return
+		var kids := sk.get_bone_children(idx)
+		if kids.is_empty():
+			return
+		var g := sk.get_bone_global_pose(idx)
+		var cur: Vector3 = (sk.get_bone_global_pose(kids[0]).origin - g.origin).normalized()
+		if cur.length() < 0.5:
+			return
+		g.basis = Basis(Quaternion(cur, dir.normalized())) * g.basis
+		sk.set_bone_global_pose(idx, g)
+	# Parents before children: each move carries everything below it along.
+	turn.call("Spine", Vector3.RIGHT, 38.0)
+	turn.call("Head", Vector3.RIGHT, -30.0)
+	for side in ["Left", "Right"]:
+		var idx := sk.find_bone(str(map.get(side + "UpperArm", "")))
+		var sx := 1.0
+		if idx >= 0:
+			sx = 1.0 if sk.get_bone_global_rest(idx).origin.x >= 0.0 else -1.0
+		aim.call(side + "UpperArm", Vector3(0.16 * sx, -0.42, 0.9))
+		aim.call(side + "LowerArm", Vector3(-0.06 * sx, -0.12, 1.0))
+		aim.call(side + "UpperLeg", Vector3(0.3 * sx, -0.36, 0.9))
+		aim.call(side + "LowerLeg", Vector3(0.0, -0.6, -0.8))
+	# Sit down onto the saddle.
+	_model.position.y = -0.2
 
 
 ## Put a Duel Academy dorm jacket on this person.
@@ -93,6 +149,8 @@ func _collect_bones() -> void:
 
 
 func _process(delta: float) -> void:
+	if _riding:
+		return
 	_time += delta
 	var walk := clampf(_speed / 4.0, 0.0, 1.6)
 	_phase += delta * (2.0 + _speed * 2.2)

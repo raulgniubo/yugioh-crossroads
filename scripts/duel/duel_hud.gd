@@ -11,6 +11,7 @@ signal cancel_pressed
 signal direct_attack_pressed
 signal pause_action(action: String)
 signal extra_pressed
+signal speed_pressed
 signal extra_chosen(inst)
 signal _response_picked(choice)
 
@@ -430,6 +431,99 @@ func _pill_box(col: Color) -> StyleBoxFlat:
 	sb.content_margin_top = 2
 	sb.content_margin_bottom = 2
 	return sb
+
+
+# ------------------------------------------------------------------ Turbo Duel: Speed Counters
+
+func _process(delta: float) -> void:
+	if not _gauges.is_empty():
+		_tick_gauges(delta)
+
+
+var _gauges: Array = []          # one speedometer per player
+var _gauge_val := [0.0, 0.0]
+var _gauge_to := [0, 0]
+var _gauge_kick := [0.0, 0.0]
+var _btn_speed: Button
+
+
+## Show the two speedometers and the Speed World 2 button.
+func enable_turbo() -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_phase_box.add_child(row)
+	_phase_box.move_child(row, 0)
+	_phase_box.offset_top -= 170
+	for p in [1, 0]:
+		var g := Control.new()
+		g.custom_minimum_size = Vector2(144, 150)
+		g.draw.connect(func(): _draw_gauge(g, p))
+		g.tooltip_text = "Speed Counters. Both riders gain 1 each Standby Phase and lose 1 for every 1000 damage taken at once."
+		row.add_child(g)
+		_gauges.append([g, p])
+	_btn_speed = Button.new()
+	_btn_speed.text = "Speed World 2"
+	_btn_speed.custom_minimum_size = Vector2(294, 50)
+	_btn_speed.add_theme_color_override("font_color", Color("ff8a3a"))
+	_btn_speed.tooltip_text = "Spend Speed Counters, once per turn: 4 to burn, 7 to draw, 10 to destroy a card."
+	_btn_speed.pressed.connect(func(): speed_pressed.emit())
+	_phase_box.add_child(_btn_speed)
+	_phase_box.move_child(_btn_speed, 4)
+
+
+func set_speed(p: int, value: int, delta := 0) -> void:
+	_gauge_to[p] = value
+	if delta != 0:
+		_gauge_kick[p] = 1.0
+
+
+func set_speed_button(enabled: bool) -> void:
+	if _btn_speed:
+		_btn_speed.disabled = not enabled
+
+
+func _tick_gauges(delta: float) -> void:
+	for p in 2:
+		_gauge_val[p] = lerpf(_gauge_val[p], float(_gauge_to[p]), clampf(delta * 6.0, 0.0, 1.0))
+		_gauge_kick[p] = maxf(0.0, _gauge_kick[p] - delta * 1.6)
+	for g in _gauges:
+		(g[0] as Control).queue_redraw()
+
+
+func _draw_gauge(g: Control, p: int) -> void:
+	var col := Color("ff8a3a") if p == 0 else Color("2de2e6")
+	var c := Vector2(g.size.x / 2.0, 82.0)
+	var r := 62.0
+	var a0 := deg_to_rad(150.0)
+	var a1 := deg_to_rad(390.0)
+	var v: float = _gauge_val[p]
+	var kick: float = _gauge_kick[p]
+	g.draw_circle(c, r + 8.0, Color(0.02, 0.03, 0.06, 0.88))
+	g.draw_arc(c, r + 8.0, 0.0, TAU, 48, Color(col, 0.35 + kick * 0.5), 2.0, true)
+	g.draw_arc(c, r, a0, a1, 40, Color(1, 1, 1, 0.12), 7.0, true)
+	if v > 0.02:
+		g.draw_arc(c, r, a0, lerpf(a0, a1, v / 12.0), 40, col.lightened(kick * 0.5), 7.0, true)
+	for i in 13:
+		var a := lerpf(a0, a1, i / 12.0)
+		var dir := Vector2(cos(a), sin(a))
+		var big := i % 4 == 0 or i == 7 or i == 10
+		g.draw_line(c + dir * (r - (13.0 if big else 8.0)), c + dir * (r - 3.0), Color(1, 1, 1, 0.75 if big else 0.3), 2.0 if big else 1.0)
+	# The marks where Speed World 2 pays out.
+	for mark in [4, 7, 10]:
+		var am := lerpf(a0, a1, mark / 12.0)
+		g.draw_circle(c + Vector2(cos(am), sin(am)) * (r + 1.0), 3.5, UITheme.GOLD if v >= mark - 0.05 else Color(1, 1, 1, 0.25))
+	var an := lerpf(a0, a1, v / 12.0)
+	g.draw_line(c, c + Vector2(cos(an), sin(an)) * (r - 16.0), Color.WHITE, 3.0, true)
+	g.draw_circle(c, 5.0, col)
+	var font := UITheme.title_font()
+	var num := str(_gauge_to[p])
+	var ns := font.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, 34)
+	g.draw_string(font, c + Vector2(-ns.x / 2.0, 44.0), num, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Color.WHITE)
+	var who: String = (Loc.t("You") if p == 0 else Loc.t("Rival")).to_upper()
+	var f2 := UITheme.semi_font()
+	var ws := f2.get_string_size(who, HORIZONTAL_ALIGNMENT_LEFT, -1, 13)
+	g.draw_string(f2, Vector2(c.x - ws.x / 2.0, 14.0), who, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
 
 
 func set_phase_buttons(battle_text: String, battle_enabled: bool, end_enabled: bool) -> void:

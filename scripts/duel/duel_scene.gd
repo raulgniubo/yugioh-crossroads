@@ -43,6 +43,11 @@ func _ready() -> void:
 	board = DuelBoard.new()
 	var cfg0: Dictionary = Router.duel_config
 	board.theme = FieldThemes.resolve(str(cfg0.get("field", Settings.field_theme)), str(cfg0.get("opponent", "kaiba")))
+	if cfg0.get("turbo", false):
+		board.turbo = true
+		board.theme = {"key": "highway", "name": "New Domino Highway", "base": Color("05070d"), "accent": Color("ff8a3a"), "accent2": Color("2de2e6"),
+			"pattern": 1, "sky_top": Color("03040a"), "sky_horizon": Color("26163a"), "fog": Color("0c0a18")}
+		Music.play("turbo")
 	add_child(board)
 	var layer := CanvasLayer.new()
 	add_child(layer)
@@ -63,6 +68,7 @@ func _ready() -> void:
 	hud.direct_attack_pressed.connect(_on_direct_attack)
 	hud.pause_action.connect(_on_pause_action)
 	hud.extra_pressed.connect(_on_extra_pressed)
+	hud.speed_pressed.connect(_on_speed_pressed)
 	hud.extra_chosen.connect(_on_extra_chosen)
 	_start()
 
@@ -114,6 +120,9 @@ func _start() -> void:
 		else:
 			first = AI
 	state.defer_fx = true
+	state.turbo = cfg.get("turbo", false)
+	if state.turbo:
+		hud.enable_turbo()
 	state.manual = [not _autoplay, false]
 	hud.auto_answer = _human_test
 	var opp_list := CardData.legend_deck(opp_deck) if _ai_level >= 2 else CardData.deck_list(opp_deck)
@@ -143,6 +152,10 @@ func _start() -> void:
 			board.intro_flyover(2.5)
 		await get_tree().create_timer(0.5).timeout
 		hud.say(AI, Characters.line(_opp_key, "intro"))
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--rider-shot="):
+			board.duelist_shot(int(a.substr(13)), 0.1)
+			await get_tree().create_timer(30.0).timeout
 	await hud.banner("DUEL!", UITheme.ACCENT)
 	if "--ask-test" in OS.get_cmdline_user_args():
 		await _play(events)
@@ -511,6 +524,11 @@ func _play_event(ev: Dictionary) -> void:
 				hud.remove_hand_card(ev["card"])
 			hud.effect_text(ev["text"])
 			await board.anim_hand_effect(p, ev["card"])
+		"speed":
+			hud.set_speed(p, ev["speed"], ev["delta"])
+			if board.track:
+				board.track.target_speed = 22.0 + 3.2 * float(state.players[ME].speed + state.players[AI].speed) / 2.0
+			Sfx.play("charge" if ev["delta"] > 0 else "error", -9.0, 1.0 + 0.05 * float(ev["speed"]))
 		"effect":
 			if ev["card"] != null:
 				board.pulse(ev["card"], UITheme.GOLD)
@@ -618,6 +636,7 @@ func _my_turn() -> bool:
 
 
 func _refresh() -> void:
+	hud.set_speed_button(_my_turn() and (state.can_speed_world(ME, 4) or state.can_speed_world(ME, 7) or state.can_speed_world(ME, 10)))
 	if not _my_turn():
 		hud.set_phase_buttons("", false, false)
 		hud.set_extra_button(state.players[ME].extra.size() if state.players.size() > 0 else 0, 0, false)
@@ -835,6 +854,31 @@ func _on_board_card_clicked(card: Card3D) -> void:
 		return
 	_menu_card = inst
 	hud.show_actions(board.screen_pos(inst) + Vector2(60, 0), opts)
+
+
+## Speed World 2: pick which of its three effects to pay for.
+func _on_speed_pressed() -> void:
+	if not _my_turn():
+		return
+	_cancel_mode()
+	var costs := []
+	var labels := []
+	var spells: int = state.players[ME].hand.filter(func(c): return not c.is_monster() and not c.is_trap()).size()
+	for pair in [[4, Loc.t("4 counters: %d damage (800 for each Speed Spell in your hand)") % (800 * spells)],
+			[7, Loc.t("7 counters: draw 1 card")], [10, Loc.t("10 counters: destroy 1 card on their field")]]:
+		if state.can_speed_world(ME, pair[0]):
+			costs.append(pair[0])
+			labels.append(pair[1])
+	if costs.is_empty():
+		Router.toast("Not enough Speed Counters yet")
+		return
+	labels.append(Loc.t("Cancel"))
+	var pick: int = await hud.ask_choice(Loc.t("Speed World 2   ·   you have %d Speed Counters") % state.players[ME].speed, labels)
+	if pick < 0 or pick >= costs.size():
+		return
+	Sfx.play("gong", -6.0)
+	await _act("speed_world", [ME, costs[pick]])
+	_refresh()
 
 
 func _on_extra_pressed() -> void:

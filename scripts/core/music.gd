@@ -27,10 +27,14 @@ const TRACKS := {
 		"chords": [[52, 55, 59], [48, 52, 55], [50, 53, 57], [47, 50, 54]]},
 	"heartland": {"bpm": 122.0, "bars": 4, "drums": true, "soft": true, "gain": 0.5, "lead": 0.12,
 		"chords": [[65, 69, 72], [62, 65, 69], [58, 62, 65], [60, 64, 67]]},
+	# Turbo Duels: fast and driving.
+	"turbo": {"bpm": 156.0, "bars": 8, "drums": true, "gain": 0.62, "lead": 0.16,
+		"chords": [[52, 55, 59], [52, 55, 59], [48, 52, 55], [50, 54, 57],
+			[52, 55, 59], [55, 59, 62], [57, 60, 64], [59, 62, 66]]},
 	"shop": {"bpm": 84.0, "bars": 4, "drums": false, "gain": 0.5, "lead": 0.08,
 		"chords": [[60, 64, 67], [65, 69, 72], [62, 65, 69], [67, 71, 74]]},
 }
-const ORDER := ["menu", "duel", "city", "duel_tense", "victory", "defeat", "academy", "satellite", "heartland", "shop"]
+const ORDER := ["menu", "duel", "city", "duel_tense", "victory", "defeat", "academy", "satellite", "heartland", "shop", "turbo"]
 
 var _streams := {}
 var _players: Array[AudioStreamPlayer] = []

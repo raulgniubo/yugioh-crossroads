@@ -25,6 +25,8 @@ var _cam_tween: Tween
 var camera: Camera3D
 var _battle_mode := false
 var theme: Dictionary = FieldThemes.resolve("auto", "")
+var turbo := false           # a Turbo Duel: the field rides down a highway
+var track: TurboTrack
 var _cards := {}  # uid -> Card3D
 var _gy_cards: Array = [[], []]
 var _ban_cards: Array = [[], []]
@@ -48,7 +50,13 @@ func _ready() -> void:
 	_rng.randomize()
 	_build_environment()
 	_build_mat()
-	_build_arena()
+	if turbo:
+		track = TurboTrack.new()
+		track.name = "Track"
+		add_child(track)
+		track.build(theme["accent"], theme["accent2"])
+	else:
+		_build_arena()
 	_build_zones()
 	_build_decks()
 
@@ -234,6 +242,9 @@ void fragment() {
 	ALBEDO = col;
 }
 """
+	if turbo:
+		# The field is a hologram over the road: let the highway show through it.
+		sh.code = sh.code.replace("ALBEDO = col;", "ALBEDO = col; ALPHA = clamp(0.42 + dot(col, vec3(1.0)) * 1.6, 0.0, 1.0);")
 	var m := ShaderMaterial.new()
 	m.shader = sh
 	m.set_shader_parameter("base", theme["base"])
@@ -1804,6 +1815,12 @@ const DUELIST_Z := 6.7
 
 ## The two duelists stand at their ends of the field, each on a lit plate.
 func add_duelists(me_key: String, opp_key: String) -> void:
+	if turbo:
+		for p in 2:
+			var col: Color = theme["accent"] if p == 0 else theme["accent2"]
+			var side := 1.0 if p == 0 else -1.0
+			_duelists[p] = track.add_rider(p, me_key if p == 0 else opp_key, Vector3(0, 0, side * DUELIST_Z), col)
+		return
 	for p in 2:
 		var key := me_key if p == 0 else opp_key
 		var side := 1.0 if p == 0 else -1.0

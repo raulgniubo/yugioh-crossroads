@@ -5,6 +5,7 @@ const MAIN_MENU := "res://scenes/main_menu.tscn"
 const DUEL := "res://scenes/duel.tscn"
 const STORY := "res://scenes/story.tscn"
 const ROAM := "res://scenes/roam.tscn"
+const RIDE := "res://scenes/turbo_ride.tscn"
 
 ## Free roam: where you are and what just happened there.
 var roam := {"district": "domino", "pos": null, "last_duel": "", "result": ""}
@@ -104,6 +105,10 @@ func _debug_args() -> void:
 			go(ROAM)
 		elif a.begins_with("--opp="):
 			duel_config["opponent"] = a.substr(6)
+		elif a == "--turbo":
+			duel_config["turbo"] = true
+		elif a == "--ride":
+			go(RIDE)
 		elif a.begins_with("--field="):
 			duel_config["field"] = a.substr(8)
 		elif a.begins_with("--deck="):
