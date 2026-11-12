@@ -51,7 +51,13 @@ const STANDINS := {
 	"yusei": "duelist_m13", "jack": "duelist_m14", "crow": "duelist_m15", "akiza": "duelist_f3", "kalin": "duelist_m16",
 	"yuma": "duelist_m17", "shark": "duelist_m18", "kite": "duelist_m19", "vector": "office_worker",
 	"kid": "street_duelist", "vendor": "shopkeeper", "guard": "office_worker", "lumen": "student_girl",
+	"professor": "duelist_m3", "red_student": "student_boy", "yellow_student": "duelist_m4", "blue_student": "duelist_m7",
 }
+## Duel Academy jackets. Painted over stand-in models only, never over a model you supplied.
+const DORM_COLORS := {"red": Color("d9342b"), "yellow": Color("f2c230"), "blue": Color("2f6fe0")}
+const UNIFORMS := {"jaden": "red", "syrus": "red", "red_student": "red", "yellow_student": "yellow",
+	"chazz": "blue", "alexis": "blue", "zane": "blue", "blue_student": "blue"}
+var _uniform_shader: Shader
 
 
 ## True when this character is shown with a stand-in, not their own model.
@@ -239,6 +245,8 @@ func load_model(key: String) -> Node3D:
 			apply_tints(g)
 		if key == "player" and path.begins_with("res://"):
 			apply_hero_color(g, Profile.color(), Profile.look_outfit)
+		if UNIFORMS.has(key) and is_standin(key):
+			apply_uniform(g, DORM_COLORS[UNIFORMS[key]])
 		return r
 	_register()
 	var gltf := GLTFDocument.new()
@@ -399,6 +407,87 @@ void fragment() {
 				sm.set_shader_parameter("from_hue", 0.065)
 				sm.set_shader_parameter("band", 0.05)
 				sm.set_shader_parameter("min_sat", 0.62)
+			mi.set_surface_override_material(i, sm)
+
+
+## Paint a dorm jacket on a model: the torso and sleeves take the dorm color with white trim at
+## the collar, cuffs and hem. Works on the rest pose, so it follows the body when it moves.
+func apply_uniform(scene: Node, color: Color) -> void:
+	if _uniform_shader == null:
+		_uniform_shader = Shader.new()
+		_uniform_shader.code = """
+shader_type spatial;
+uniform sampler2D tex : source_color, filter_linear_mipmap;
+uniform vec3 coat : source_color = vec3(0.85, 0.2, 0.17);
+uniform float h = 1.7;
+uniform float top = 0.80;
+uniform float hem_y = 0.50;
+uniform mat4 to_root;
+varying vec3 lp;
+void vertex() { lp = (to_root * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	vec4 t = texture(tex, UV);
+	float y = lp.y / h;
+	float x = abs(lp.x) / h;
+	float arm = smoothstep(0.115, 0.135, x);
+	float lo = mix(hem_y, hem_y + 0.065, arm);
+	float body = smoothstep(lo, lo + 0.012, y) * (1.0 - smoothstep(top, top + 0.012, y)) * (1.0 - smoothstep(0.375, 0.39, x));
+	float lum = dot(t.rgb, vec3(0.3, 0.59, 0.11));
+	vec3 cloth = coat * (0.5 + 0.7 * lum);
+	float hem = (1.0 - smoothstep(hem_y + 0.03, hem_y + 0.04, y)) * (1.0 - arm);
+	float cuff = arm * (1.0 - smoothstep(hem_y + 0.085, hem_y + 0.09, y));
+	float collar = smoothstep(top - 0.022, top - 0.017, y) * (1.0 - smoothstep(0.07, 0.08, x));
+	float zip = (1.0 - smoothstep(0.006, 0.009, x)) * step(0.0, lp.z);
+	float trim = clamp(hem + cuff + collar + zip, 0.0, 1.0);
+	cloth = mix(cloth, vec3(0.95) * (0.6 + 0.5 * lum), trim);
+	ALBEDO = mix(t.rgb, cloth, body);
+	ROUGHNESS = 0.85;
+	SPECULAR = 0.2;
+}
+"""
+	# Skinned vertices reach the shader in the skeleton's space (often centimeters), so hand it
+	# the transform back to the model's own space, where the feet are at 0 and Y is up.
+	var skel := _skeleton(scene)
+	for mi in _meshes(scene):
+		if mi.mesh == null:
+			continue
+		var box := mi.mesh.get_aabb()
+		if box.size.y < 0.01:
+			continue
+		var top := 0.80
+		var hem := 0.50
+		var rel := Transform3D.IDENTITY
+		var n: Node = skel if (skel != null and mi.skin != null) else mi
+		while n != null and n != scene:
+			if n is Node3D:
+				rel = (n as Node3D).transform * rel
+			n = n.get_parent()
+		# The jacket runs from the hips to the base of the neck, wherever this body has them.
+		if skel != null and mi.skin != null:
+			for b in skel.get_bone_count():
+				var bn := skel.get_bone_name(b).to_lower()
+				var by: float = (rel * skel.get_bone_global_rest(b).origin).y / box.size.y
+				if bn.ends_with("neck") or bn == "neck":
+					top = clampf(by - 0.012, 0.62, 0.88)
+				elif bn.ends_with("hips") or bn == "hips" or bn.ends_with("pelvis"):
+					hem = clampf(by - 0.035, 0.40, 0.58)
+		for i in mi.mesh.get_surface_count():
+			var mat := mi.get_active_material(i)
+			var tex: Texture2D = null
+			if mat is BaseMaterial3D:
+				tex = (mat as BaseMaterial3D).albedo_texture
+			elif mat is ShaderMaterial:
+				tex = (mat as ShaderMaterial).get_shader_parameter("tex")
+			if tex == null:
+				continue
+			var sm := ShaderMaterial.new()
+			sm.shader = _uniform_shader
+			sm.set_shader_parameter("tex", tex)
+			sm.set_shader_parameter("coat", color)
+			sm.set_shader_parameter("h", box.size.y)
+			sm.set_shader_parameter("top", top)
+			sm.set_shader_parameter("hem_y", hem)
+			sm.set_shader_parameter("to_root", rel)
 			mi.set_surface_override_material(i, sm)
 
 

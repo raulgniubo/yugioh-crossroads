@@ -176,8 +176,13 @@ func _build_walkers() -> void:
 		var f := RoamFigure.new()
 		add_child(f)
 		var people := ["student_boy", "student_girl", "office_worker", "stylish_woman", "street_duelist", "shopkeeper"]
+		var campus: bool = Router.roam.get("district", "") == "academy"
+		if campus:
+			people = ["student_boy", "student_girl", "street_duelist", "stylish_woman"]
 		var mkey: String = people[i % people.size()] if Avatars.has_avatar(people[i % people.size()]) else "walker_%d" % i
 		f.setup(mkey, palette[rng.randi() % palette.size()], "", false)
+		if campus:
+			f.wear_uniform(Avatars.DORM_COLORS[["red", "yellow", "blue"][i % 3]])
 		var body := AnimatableBody3D.new()
 		body.sync_to_physics = false
 		var cs := CollisionShape3D.new()
@@ -247,6 +252,7 @@ func _build_player() -> void:
 	_figure = RoamFigure.new()
 	_player.add_child(_figure)
 	_figure.setup("player", Profile.color(), "", false)
+	_dress_player()
 	_yaw = float(Router.roam.get("yaw", district.get("yaw", PI)))
 	_figure.rotation.y = _yaw + PI
 	_pivot = Node3D.new()
@@ -375,6 +381,14 @@ func _build_npcs() -> void:
 		_add_npc(d, ShopInterior.AT)
 
 
+## On Academy Island an enrolled student wears the jacket of their dorm.
+func _dress_player() -> void:
+	if Router.roam.get("district", "") == "academy":
+		var c = Academy.uniform_color()
+		if c is Color:
+			_figure.wear_uniform(c)
+
+
 func _add_npc(d: Dictionary, offset: Vector3) -> void:
 	if true:
 		var f := RoamFigure.new()
@@ -387,6 +401,8 @@ func _add_npc(d: Dictionary, offset: Vector3) -> void:
 		if not Avatars.has_avatar(model_key) and d.has("model") and Avatars.has_avatar(d["model"]):
 			model_key = d["model"]
 		f.setup(model_key, _npc_color(d), _npc_name(d))
+		if d.has("dorm"):
+			f.wear_uniform(Avatars.DORM_COLORS[d["dorm"]])
 		var body := StaticBody3D.new()
 		var cs := CollisionShape3D.new()
 		var cap := CapsuleShape3D.new()
@@ -448,6 +464,24 @@ func _build_places() -> void:
 		city.add_child(sign_l)
 		var pad := city.box(Vector3(2.4, 0.03, 1.4), (tr["pos"] as Vector3) + Vector3(0, 0.24, 0), city.glow_mat(Color("7fd8ff"), 1.2), false)
 		pad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if Router.roam.get("district", "") == "academy":
+		# The exam office: the door of the main building opens Duel Academy mode.
+		var door := Vector3(0, 0, -31.0)
+		_spots.append({"pos": door, "range": 2.6, "label": "Exam office: class duels, exams, tournament", "action": _open_academy})
+		var office := Label3D.new()
+		office.text = Loc.t("▼  EXAM OFFICE")
+		office.font_size = 64
+		office.pixel_size = 0.006
+		office.outline_size = 14
+		office.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		office.modulate = Color("ffd166")
+		office.position = door + Vector3(0, 3.4, 0)
+		city.add_child(office)
+		var omat := city.box(Vector3(3.0, 0.03, 1.6), door + Vector3(0, 0.2, 0), city.glow_mat(Color("ffd166"), 1.3), false)
+		omat.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		Academy.load_data()
+		if not Academy.d.get("pending", {}).is_empty() and Router.story_result != "":
+			_open_academy.call_deferred()
 	if district.get("builder", "") != "":
 		return
 	ShopInterior.build(city)
@@ -553,6 +587,24 @@ func _open_overlay(panel: Control) -> void:
 	panel.connect("closed", func(): _overlay_open = false)
 
 
+func _open_academy() -> void:
+	_overlay_open = true
+	Router.roam["pos"] = _player.position
+	Router.roam["yaw"] = _yaw
+	var hub := AcademyHub.new()
+	hub.return_to = Router.ROAM
+	_ui.add_child(hub)
+	hub.closed.connect(func():
+		_overlay_open = false
+		var rot := _figure.rotation.y
+		_figure.queue_free()
+		_figure = RoamFigure.new()
+		_player.add_child(_figure)
+		_figure.setup("player", Profile.color(), "", false)
+		_dress_player()
+		_figure.rotation.y = rot)
+
+
 func _open_look() -> void:
 	_overlay_open = true
 	var ed := ProfileEditor.new(false)
@@ -564,6 +616,7 @@ func _open_look() -> void:
 		_figure = RoamFigure.new()
 		_player.add_child(_figure)
 		_figure.setup("player", Profile.color(), "", false)
+		_dress_player()
 		_figure.rotation.y = rot)
 
 

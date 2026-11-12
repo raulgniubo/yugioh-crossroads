@@ -626,6 +626,7 @@ const METHOD_COLORS := {
 	"synchro": Color("6dff9a"),
 	"xyz": Color("ffd23a"),
 	"reborn": Color("ffe9a8"),
+	"ritual": Color("5aa8ff"),
 }
 
 
@@ -657,6 +658,13 @@ func anim_special(p: int, inst, zone: int, method: String, materials: Array) -> 
 		remove_from_gy(inst)
 	var at := monster_zone_pos(p, zone) + Vector3(0, 0.02, 0)
 	var core := at + Vector3(0, 1.6, 0)
+	var grand: bool = method in ["fusion", "synchro", "xyz", "ritual"]
+	if grand:
+		# The camera drops low and looks up at the summon while the field goes dark.
+		var side := 1.0 if at.x <= 0.0 else -1.0
+		cam_shot(at + Vector3(2.6 * side, 1.5, 4.6 if p == 0 else 5.4), core + Vector3(0, 0.5, 0), 0.5)
+		_dim_field(1.9)
+		_summon_scene(method, at, core, col, materials.size())
 	# Materials spiral into the core and vanish
 	var tw: Tween = create_tween().set_parallel() if materials.size() > 0 else null
 	for m in materials:
@@ -680,6 +688,8 @@ func anim_special(p: int, inst, zone: int, method: String, materials: Array) -> 
 		await tw.finished
 	else:
 		await _wait(0.45)
+	if grand:
+		await _wait(0.55)
 	for m in materials:
 		var mc := card_for(m)
 		if mc:
@@ -699,7 +709,14 @@ func anim_special(p: int, inst, zone: int, method: String, materials: Array) -> 
 	_burst(at, col, 2.2)
 	if method == "xyz":
 		set_overlays(inst)
+	if grand:
+		for i in 3:
+			_burst(at, col.lightened(0.2 * i), 2.6 + i * 1.2)
+		_sparks(at + Vector3(0, 0.4, 0), col.lightened(0.3), 70)
+		shake(0.9)
 	await hologram(inst, at, true)
+	if grand:
+		cam_release(0.6)
 
 
 func set_overlays(inst) -> void:
@@ -747,6 +764,119 @@ func _ring_fx(at: Vector3, color: Color, size: float, delay: float, rise: float)
 	tw.tween_property(m, "albedo_color:a", 0.0, Settings.t(0.35))
 	tw.parallel().tween_property(mi, "scale", Vector3(size * 1.8, 1, size * 1.8), Settings.t(0.35))
 	tw.tween_callback(mi.queue_free)
+
+
+## The lights go down for a big summon and come back.
+func _dim_field(dur: float) -> void:
+	var veil := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(60, 60)
+	veil.mesh = q
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_color = Color(0, 0, 0.03, 0.0)
+	veil.material_override = m
+	veil.rotation.x = -PI / 2.0
+	veil.position = Vector3(0, 0.012, 0)
+	add_child(veil)
+	var tw := create_tween()
+	tw.tween_property(m, "albedo_color:a", 0.62, Settings.t(0.3))
+	tw.tween_interval(Settings.t(dur))
+	tw.tween_property(m, "albedo_color:a", 0.0, Settings.t(0.5))
+	tw.tween_callback(veil.queue_free)
+
+
+## The set piece for each kind of Extra Deck or Ritual Summon.
+func _summon_scene(method: String, at: Vector3, core: Vector3, col: Color, count: int) -> void:
+	match method:
+		"synchro":
+			# Green rings stack up into a tunnel and a pillar of light runs through them.
+			for i in maxi(3, count + 2):
+				_ring_fx(at + Vector3(0, 0.2 + i * 0.55, 0), col, 1.0 - i * 0.05, 0.1 * i, 0.5)
+			var beam := _beam(at, true)
+			(beam.material_override as StandardMaterial3D).albedo_color = Color(col, 0.0)
+			var tw := create_tween()
+			tw.tween_interval(Settings.t(0.45))
+			tw.tween_property(beam.material_override, "albedo_color:a", 0.5, Settings.t(0.15))
+			tw.tween_property(beam.material_override, "albedo_color:a", 0.0, Settings.t(0.9))
+			tw.tween_callback(beam.queue_free)
+			_star_shower(core, Color.WHITE, 26)
+		"xyz":
+			# A galaxy opens on the floor and pulls everything in before it bursts.
+			for i in 5:
+				_spin_ring(at + Vector3(0, 0.05, 0), col.lerp(Color("b15cff"), i / 5.0), 2.2 - i * 0.36, 1.2 + i * 0.5)
+			_vortex(core, Color("b15cff"))
+			_star_shower(core + Vector3(0, 1.0, 0), col, 30)
+		"fusion":
+			# Two colors spiral into each other.
+			_swirl(core, Color("ff8a3a"))
+			_swirl(core + Vector3(0, 0.2, 0), Color("3aa0ff"))
+			for i in 3:
+				_spin_ring(core, col.lightened(i * 0.15), 1.6 - i * 0.4, 2.0 + i)
+		"ritual":
+			# A circle of blue flames around the altar, then the light comes down.
+			for i in 8:
+				var a := TAU * i / 8.0
+				var fp := at + Vector3(cos(a) * 1.25, 0, sin(a) * 1.25)
+				for k in 3:
+					_ring_fx(fp + Vector3(0, 0.05, 0), col.lerp(Color.WHITE, k * 0.25), 0.16, 0.05 * i + 0.1 * k, 1.1)
+			_spin_ring(at + Vector3(0, 0.05, 0), col, 1.9, 1.5)
+			var b2 := _beam(at, true)
+			(b2.material_override as StandardMaterial3D).albedo_color = Color(col, 0.0)
+			var tw2 := create_tween()
+			tw2.tween_interval(Settings.t(0.5))
+			tw2.tween_property(b2.material_override, "albedo_color:a", 0.45, Settings.t(0.2))
+			tw2.tween_property(b2.material_override, "albedo_color:a", 0.0, Settings.t(0.8))
+			tw2.tween_callback(b2.queue_free)
+
+
+## A flat ring that spins on the floor and shrinks away.
+func _spin_ring(at: Vector3, color: Color, radius: float, turns: float) -> void:
+	var mi := MeshInstance3D.new()
+	var t := TorusMesh.new()
+	t.inner_radius = radius - 0.05
+	t.outer_radius = radius
+	t.rings = 40
+	t.ring_segments = 5
+	mi.mesh = t
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.albedo_color = Color(color, 0.0)
+	mi.material_override = m
+	mi.position = at
+	mi.scale = Vector3(1.0, 0.2, 0.55)
+	add_child(mi)
+	var tw := create_tween().set_parallel()
+	tw.tween_property(m, "albedo_color:a", 0.95, Settings.t(0.2))
+	tw.tween_property(mi, "rotation:y", TAU * turns, Settings.t(1.1))
+	tw.chain().tween_property(mi, "scale", Vector3(0.02, 0.02, 0.02), Settings.t(0.25))
+	tw.chain().tween_callback(mi.queue_free)
+
+
+## Points of light that fall inward to a spot.
+func _star_shower(to: Vector3, color: Color, amount: int) -> void:
+	for i in amount:
+		var s := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 0.035
+		sm.height = 0.07
+		sm.radial_segments = 6
+		sm.rings = 3
+		s.mesh = sm
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.albedo_color = color
+		s.material_override = m
+		var ang := randf() * TAU
+		s.position = to + Vector3(cos(ang) * randf_range(1.5, 3.2), randf_range(0.5, 3.0), sin(ang) * randf_range(1.5, 3.2))
+		add_child(s)
+		var tw := create_tween()
+		tw.tween_interval(Settings.t(randf() * 0.4))
+		tw.tween_property(s, "position", to, Settings.t(0.5)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_callback(s.queue_free)
 
 
 func _swirl(at: Vector3, color: Color) -> void:
@@ -1079,7 +1209,7 @@ func anim_battle(p: int, inst, target) -> void:
 	await _wait(0.3)
 	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.82) + Vector3(0, 0.25, 0))
 	await _move(c, hit, 0.16, 0.15)
-	_impact(goal + Vector3(0, 0.15, 0), Color("ff8a5c"))
+	_attr_hit(inst, home.origin, goal + Vector3(0, 0.15, 0))
 	await _wait(0.25)
 	await _move(c, home, 0.32, 0.3)
 	cam_release(0.45)
@@ -1102,6 +1232,62 @@ func _battle_shot(p: int, from: Vector3, goal: Vector3) -> void:
 	else:
 		var mid := from.lerp(goal, 0.5)
 		cam_shot(Vector3(mid.x * 0.5 + 1.5, 2.6, goal.z + 5.0), mid + Vector3(0, 0.6, 0), 0.35)
+
+
+const ATTR_COLORS := {"FIRE": Color("ff5a2a"), "WATER": Color("3aa0ff"), "WIND": Color("6dff9a"), "EARTH": Color("d99a4a"),
+	"LIGHT": Color("fff2a8"), "DARK": Color("b15cff"), "DIVINE": Color("ffd23a")}
+
+
+## An attack lands the way its monster's Attribute would: fire erupts, water splashes out in
+## rings, wind spins, earth cracks and shakes, light comes down as a beam, dark opens a rift.
+func _attr_hit(inst, from: Vector3, at: Vector3) -> void:
+	var attr := str(inst.data.get("attribute", "")) if inst != null else ""
+	var col: Color = ATTR_COLORS.get(attr, Color("ff8a5c"))
+	_link_beam(from + Vector3(0, 0.5, 0), at + Vector3(0, 0.2, 0), col)
+	_impact(at, col)
+	match attr:
+		"FIRE":
+			for i in 3:
+				_ring_fx(at + Vector3(0, 0.1, 0), col.lerp(Color("ffd23a"), i / 3.0), 0.5 + i * 0.25, i * 0.06, 1.6)
+			_sparks(at, Color("ffd23a"), 50)
+			Sfx.play("effect", -6.0, 0.7)
+		"WATER":
+			for i in 4:
+				_burst(at + Vector3(0, 0.02 * i, 0), col.lightened(i * 0.12), 1.2 + i * 0.7)
+			_ring_fx(at, Color("c8f0ff"), 0.6, 0.1, 0.9)
+			Sfx.play("whoosh", -5.0, 0.8)
+		"WIND":
+			_swirl(at + Vector3(0, 0.6, 0), col)
+			_ring_fx(at, col, 0.9, 0.0, 1.4)
+			_ring_fx(at, col.lightened(0.3), 0.6, 0.12, 1.8)
+			Sfx.play("whoosh", -3.0, 1.4)
+		"EARTH":
+			shake(0.9)
+			_shatter(at, col)
+			_burst(at, col.darkened(0.2), 2.4)
+			Sfx.play("impact", -5.0, 0.6)
+		"LIGHT":
+			var beam := _beam(at, true)
+			(beam.material_override as StandardMaterial3D).albedo_color = Color(col, 0.45)
+			var tw := create_tween()
+			tw.tween_property(beam.material_override, "albedo_color:a", 0.0, Settings.t(0.55))
+			tw.tween_callback(beam.queue_free)
+			_flash(at + Vector3(0, 1.2, 0), col)
+			Sfx.play("sparkle", -4.0)
+		"DARK":
+			_vortex(at + Vector3(0, 0.6, 0), col)
+			_rift(at)
+			Sfx.play("banish", -8.0, 0.8)
+		"DIVINE":
+			var b2 := _beam(at, true)
+			(b2.material_override as StandardMaterial3D).albedo_color = Color(col, 0.55)
+			var tw2 := create_tween()
+			tw2.tween_property(b2.material_override, "albedo_color:a", 0.0, Settings.t(0.8))
+			tw2.tween_callback(b2.queue_free)
+			for i in 3:
+				_burst(at, col, 1.5 + i)
+			shake(1.0)
+			Sfx.play("gong", -6.0)
 
 
 ## Hit: a flash, a ring, sparks flying out and a hard shake.
@@ -1207,7 +1393,7 @@ func anim_attack(p: int, inst, target) -> void:
 	await _move(c, lift, 0.3, 0.0)
 	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.82) + Vector3(0, 0.25, 0))
 	await _move(c, hit, 0.16, 0.15)
-	_impact(goal + Vector3(0, 0.15, 0), Color("ff8a5c"))
+	_attr_hit(inst, home.origin, goal + Vector3(0, 0.15, 0))
 	await _wait(0.25)
 	await _move(c, home, 0.32, 0.3)
 	cam_release(0.45)

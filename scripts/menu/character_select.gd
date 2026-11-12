@@ -17,6 +17,7 @@ var _opp := "kaiba"
 var _picking := "opp"
 var _era := ""
 var _difficulty := 1
+var _match_btn: CheckButton
 var _my_deck := "yugi"
 var _field := "auto"
 var _root: Control
@@ -532,9 +533,9 @@ func _build_setup() -> void:
 	var drow := HBoxContainer.new()
 	drow.add_theme_constant_override("separation", 8)
 	v.add_child(drow)
-	for i in 3:
+	for i in 4:
 		var db := Button.new()
-		db.text = ["Easy", "Normal", "Hard"][i]
+		db.text = ["Easy", "Normal", "Hard", "Expert"][i]
 		db.toggle_mode = true
 		db.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		db.add_theme_stylebox_override("hover_pressed", UITheme.button_box(UITheme.ACCENT, UITheme.ACCENT))
@@ -545,7 +546,18 @@ func _build_setup() -> void:
 		_diff_btns.append(db)
 	_diff_note = UITheme.label("", 15, UITheme.TEXT_DIM)
 	v.add_child(_diff_note)
-	_section(v, "ARENA")
+	var ahead := HBoxContainer.new()
+	v.add_child(ahead)
+	ahead.add_child(UITheme.label("ARENA", 16, UITheme.ACCENT, UITheme.semi_font()))
+	var asp := Control.new()
+	asp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ahead.add_child(asp)
+	_match_btn = CheckButton.new()
+	_match_btn.text = "Match: best of 3"
+	_match_btn.tooltip_text = "Play up to three duels. Between duels you can swap cards with your Side Deck."
+	for cn in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color"]:
+		_match_btn.add_theme_color_override(cn, UITheme.TEXT)
+	ahead.add_child(_match_btn)
 	var arow := HBoxContainer.new()
 	arow.add_theme_constant_override("separation", 10)
 	v.add_child(arow)
@@ -640,7 +652,8 @@ func _refresh_setup() -> void:
 	for i in _diff_btns.size():
 		_diff_btns[i].set_pressed_no_signal(i == _difficulty)
 	_diff_note.text = ["Relaxed. Makes mistakes and leaves openings.", "Plays sensibly and attacks when it can.",
-			"Thinks ahead, brings a tuned deck and starts with one extra card."][_difficulty]
+			"Thinks ahead, brings a tuned deck and starts with one extra card.",
+			"Plans two plays ahead and sees your counterattack coming. Tuned deck, one extra card."][_difficulty]
 	var th := FieldThemes.resolve(_field, _opp)
 	_field_name.text = (Loc.t("Auto  ·  %s") % th["name"]) if _field == "auto" else str(th["name"])
 	_field_swatch.color = th["accent"]
@@ -695,7 +708,10 @@ func _start_duel() -> void:
 	tw2.tween_property(flash, "color:a", 1.0, 0.14)
 	tw2.tween_property(flash, "color", Color(0, 0, 0, 1), 0.2)
 	await tw2.finished
-	start.emit({"player_char": _me, "opponent": _opp, "player_deck": _my_deck, "difficulty": _difficulty, "field": _field})
+	var is_match: bool = _match_btn != null and _match_btn.button_pressed
+	Router.match_state = {"wins": [0, 0], "game": 1, "last_loser": -1,
+		"orig": {"main": Collection.main.duplicate(), "side": Collection.side.duplicate()}} if is_match else {}
+	start.emit({"player_char": _me, "opponent": _opp, "player_deck": _my_deck, "difficulty": _difficulty, "field": _field, "match": is_match})
 
 
 func _unhandled_input(event: InputEvent) -> void:

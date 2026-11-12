@@ -42,6 +42,12 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 		add_child(l)
 
 
+## Put a Duel Academy dorm jacket on this person.
+func wear_uniform(color: Color) -> void:
+	if _model:
+		Avatars.apply_uniform(_model, color)
+
+
 ## Play a one-off motion ("victory"), then fall back to idle. Returns false without one.
 func play_once(motion: String, loops := 1) -> bool:
 	if _model == null or _anim == null:

@@ -279,6 +279,36 @@ static func get_card(id: int) -> Dictionary:
 	return d
 
 
+## How rare a card is: 0 Common, 1 Rare, 2 Super Rare, 3 Ultra Rare. Worked out from the card
+## itself, so every copy of a card always has the same rarity.
+static func rarity(id: int) -> int:
+	var d := get_card(id)
+	if d.is_empty():
+		return 0
+	var frame := str(d.get("frame", ""))
+	var atk := int(d.get("atk", 0))
+	var lv := int(d.get("level", 0))
+	if d.get("kind", "") == "monster":
+		if frame in ["fusion", "synchro", "xyz", "ritual"]:
+			return 3 if atk >= 2800 else 2
+		if atk >= 3000 or lv >= 8:
+			return 3
+		if atk >= 2400 or lv >= 7:
+			return 2
+		if lv >= 5 or (frame == "effect" and atk >= 1900):
+			return 1
+		return 1 if (id % 7 == 0) else 0
+	# Spells and Traps: a steady share of them shine.
+	var h := id % 20
+	if h == 0:
+		return 3
+	if h <= 2:
+		return 2
+	if h <= 6:
+		return 1
+	return 0
+
+
 static func is_extra(id: int) -> bool:
 	return get_card(id).get("frame", "") in ["fusion", "synchro", "xyz"]
 

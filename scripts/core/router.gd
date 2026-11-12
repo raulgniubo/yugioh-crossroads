@@ -17,6 +17,8 @@ var story_result := ""
 var duel_config := {"player_deck": "yugi", "opponent_deck": "kaiba"}
 ## Set before going to the main menu to land on a screen there ("select" = Free Duel setup).
 var menu_open := ""
+## A best-of-3 Match in progress: {"wins": [you, them], "game": n, "last_loser": 0/1, "orig": {main, side}}.
+var match_state := {}
 
 var _fade: ColorRect
 var _toast: Label
@@ -112,6 +114,17 @@ func _debug_args() -> void:
 			var menu := get_tree().current_scene
 			if what == "select":
 				menu._on_free_duel()
+			elif what.begins_with("academy"):
+				Academy.load_data()
+				if what != "academy":
+					Academy.d["enrolled"] = true
+					Academy.d["dorm"] = 1 if "yellow" in what or "tourney" in what else (2 if "blue" in what else 0)
+					Academy.d["day"] = 2
+					Academy.d["wins"] = 1
+					Academy.d["log"] = [true, false]
+					if "tourney" in what:
+						Academy.tourney_new()
+				menu._on_academy()
 			elif what == "profile":
 				menu._open_profile(true)
 			elif what == "deck":

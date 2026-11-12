@@ -28,6 +28,9 @@ func _ready() -> void:
 	if Router.menu_open == "select":
 		Router.menu_open = ""
 		_on_free_duel.call_deferred()
+	elif Router.menu_open == "academy":
+		Router.menu_open = ""
+		_on_academy.call_deferred()
 
 
 func _build_background() -> void:
@@ -84,12 +87,13 @@ func _build_title() -> void:
 
 func _build_menu() -> void:
 	_menu_box = VBoxContainer.new()
-	_menu_box.position = Vector2(100, 420)
+	_menu_box.position = Vector2(100, 372)
 	_menu_box.add_theme_constant_override("separation", 6)
 	add_child(_menu_box)
 	var entries := [
 		["STORY", "Prologue and Chapter 1 are here", _on_story],
-		["FREE ROAM", "Walk Domino City and Duel Academy", _on_roam],
+		["DUEL ACADEMY", "Entrance exam, three dorms, weekly exams, the tournament", _on_academy],
+		["FREE ROAM", "Four worlds to walk. Duel anyone you meet", _on_roam],
 		["FREE DUEL", "Pick both duelists, your deck and the arena", _on_free_duel],
 		["DECK", "Your cards and decks", _on_deck],
 		["SETTINGS", "Display, audio and card art", _on_settings],
@@ -385,6 +389,17 @@ func _on_settings() -> void:
 
 func _on_quit() -> void:
 	get_tree().quit()
+
+
+func _on_academy() -> void:
+	var hub := AcademyHub.new()
+	hub.z_index = 100
+	add_child(hub)
+	_panel_open = true
+	hub.closed.connect(func():
+		_panel_open = false
+		if _items.size() > 1:
+			_items[1].grab_focus())
 
 
 func _on_free_duel() -> void:

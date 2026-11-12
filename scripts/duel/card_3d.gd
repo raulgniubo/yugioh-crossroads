@@ -107,6 +107,7 @@ func setup(id: int) -> void:
 	var face := Cards.get_face(id)
 	_front_mat.albedo_texture = face
 	_front_mat.emission_texture = face
+	_front_mat.next_pass = Foil.layer_3d(CardData.rarity(id))
 	var back := Cards.get_back()
 	_back_mat.albedo_texture = back
 	_back_mat.emission_texture = back

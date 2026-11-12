@@ -1289,8 +1289,19 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 		if n:
 			create_tween().tween_property(n, "modulate:a", 0.0, 0.3)
 	var tied: bool = stats.get("draw", false)
-	var v := _overlay_panel("DRAW" if tied else ("VICTORY" if won else "DEFEAT"), reason,
+	var mt: Dictionary = stats.get("match", {})
+	var title := "DRAW" if tied else ("VICTORY" if won else "DEFEAT")
+	if not mt.is_empty():
+		if mt["over"]:
+			title = "MATCH WON" if mt["won"] else "MATCH LOST"
+		else:
+			title = "DRAW" if tied else ("DUEL WON" if won else "DUEL LOST")
+	var v := _overlay_panel(title, reason,
 			Color.WHITE if tied else (UITheme.ACCENT if won else UITheme.DANGER), true)
+	if not mt.is_empty():
+		var score := UITheme.label(Loc.t("MATCH   %d  -  %d") % [int(mt["wins"][0]), int(mt["wins"][1])], 40, UITheme.GOLD, UITheme.title_font())
+		score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(score)
 	if not stats.is_empty():
 		var row := HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -1320,8 +1331,13 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 		else:
 			first = _overlay_button(v, "Try Again", "rematch")
 			_overlay_button(v, "Quit to Menu", "menu")
+	elif not mt.is_empty() and not mt["over"]:
+		first = _overlay_button(v, "Next duel", "next_game")
+		if mt.get("side", false):
+			_overlay_button(v, "Side Deck", "side_deck")
+		_overlay_button(v, "Main Menu", "menu")
 	else:
-		first = _overlay_button(v, "Rematch", "rematch")
+		first = _overlay_button(v, "New match" if not mt.is_empty() else "Rematch", "rematch")
 		if stats.get("free", false):
 			_overlay_button(v, "Change duelists", "select")
 		_overlay_button(v, "Main Menu", "menu")

@@ -50,6 +50,17 @@ func _ready() -> void:
 			hn += 1
 	print("Hard vs Normal: Hard won %d of %d" % [hn, games])
 	check(hn * 100 >= games * 60, "Hard beats Normal clearly (%d/%d)" % [hn, games])
+	var xh := 0
+	var xgames := int(OS.get_environment("XH_GAMES")) if OS.get_environment("XH_GAMES") != "" else 30
+	var t0 := Time.get_ticks_msec()
+	for seed in xgames:
+		var k: String = keys[seed % keys.size()]
+		var first_x := seed % 2 == 0
+		var w := _ai_vs_ai(700 + seed, k, k, 3 if first_x else 2, 2 if first_x else 3)
+		if (w == 0) == first_x:
+			xh += 1
+	print("Expert vs Hard: Expert won %d of %d  (%.1f s per game)" % [xh, xgames, (Time.get_ticks_msec() - t0) / 1000.0 / maxf(1.0, xgames)])
+	check(xh * 100 >= xgames * 40, "Expert holds its own against Hard (%d/%d)" % [xh, xgames])
 	print("TESTS DONE, failures: %d" % failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -192,7 +203,7 @@ func _test_battle_math() -> void:
 
 
 func _ai_vs_ai(seed: int, a := "yugi", b := "kaiba", lv_a := 1, lv_b := 1) -> int:
-	var s := _new_state(seed, a, b, lv_a == 2, lv_b == 2)
+	var s := _new_state(seed, a, b, lv_a >= 2, lv_b >= 2)
 	var start_total := _total(s)
 	var guard := 0
 	while not s.is_over() and guard < 200:

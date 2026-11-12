@@ -1,20 +1,26 @@
 class_name DuelAI
 extends RefCounted
-## Opponent brain with three levels.
+## Opponent brain with four levels.
 ##   0 Easy:   plays its best monster, attacks only when it clearly wins, makes mistakes.
 ##   1 Normal: sensible summons, spells and attacks.
 ##   2 Hard:   clears the strongest threats first with the smallest monster that wins,
 ##             plays around face-downs, saves removal for real threats, goes defensive
 ##             when behind, and sets up Synchro/Xyz/Fusion plays.
+##   3 Expert: plans two plays ahead instead of one, tries every attack order on a copy of
+##             the duel before committing, counts card advantage, and holds back when the
+##             other side has face-downs waiting and nothing to gain by overextending.
 ## Each call returns the next action, or {} when done.
 ## Actions: {"do": "activate"|"summon"|"set"|"flip"|"position"|"attack"|"extra", ...}
 
 const EASY := 0
 const NORMAL := 1
 const HARD := 2
+const EXPERT := 3
 
 
 static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionary:
+	if level >= EXPERT:
+		return _deep_main(s, p)
 	if level >= HARD:
 		return _lookahead_main(s, p)
 	# Normal plays like the old Hard heuristics.
@@ -128,6 +134,8 @@ static func next_attack(s: DuelState, p: int, level := NORMAL) -> Dictionary:
 	attackers.sort_custom(func(a, b): return s.atk_of(a, true) > s.atk_of(b, true))
 	if s.can_direct_attack(p):
 		return {"do": "attack", "card": attackers[0], "target": null}
+	if level >= EXPERT:
+		return _deep_attack(s, p, attackers)
 	# Monsters that can go straight for the Life Points (Toons, Fane, Leghul...)
 	for m in attackers:
 		if s.can_direct_attack_with(p, m) and level > EASY:
@@ -284,6 +292,88 @@ static func _lookahead_main(s: DuelState, p: int) -> Dictionary:
 	return best
 
 
+# ------------------------------------------------------------------ Expert
+
+## Two plays ahead: score every first play, then for the best few try every follow-up, and
+## take the first step of the best line. Finds lines Hard misses (tribute then revive, clear
+## the way with a Spell and then summon, set a Trap before swinging).
+static func _deep_main(s: DuelState, p: int) -> Dictionary:
+	var candidates := _candidates(s, p)
+	var base := _score_after(s, p, {}, true)
+	if candidates.is_empty():
+		return {}
+	var scored := []
+	for act in candidates:
+		var sc := _score_after(s, p, act, true)
+		if sc > -1e8:
+			scored.append([sc, act])
+	scored.sort_custom(func(a, b): return a[0] > b[0])
+	var best_score := base
+	var best := {}
+	for i in mini(4, scored.size()):
+		var first: Dictionary = scored[i][1]
+		var line: float = scored[i][0]
+		# Where does this play lead?
+		var sim := s.clone()
+		var ev := apply(sim, p, _map_action(sim, first))
+		if not ev.is_empty() and not sim.is_over():
+			for second in _candidates(sim, p):
+				var sc2 := _score_after(sim, p, second, true)
+				if sc2 > line:
+					line = sc2
+		if line > best_score + 40.0:
+			best_score = line
+			best = first
+	return best
+
+
+## Try every attacker and target on a copy of the duel, let the rest of the battle and the
+## opponent's answer play out, and keep the attack that leaves the best position. Holding
+## back is an option too.
+static func _deep_attack(s: DuelState, p: int, attackers: Array) -> Dictionary:
+	var o := s.opponent(p)
+	var best := {}
+	var best_score := _after_battle(s.clone(), p, true)
+	for m in attackers:
+		var targets: Array = [null] if s.can_direct_attack_with(p, m) else []
+		for t in s.players[o].monsters():
+			targets.append(t)
+		for t in targets:
+			var sim := s.clone()
+			var a = sim.find_uid(m.uid)
+			var tt = sim.find_uid(t.uid) if t != null else null
+			if a == null or (t != null and tt == null):
+				continue
+			# A face-down could be anything: assume a solid wall, not the best case.
+			if tt != null and not tt.face_up and sim.atk_of(a, true) < 1900 and sim.players[p].lp <= 2500:
+				continue
+			var ev := sim.attack(p, a, tt)
+			if ev.is_empty():
+				continue
+			var sc := _after_battle(sim, p, false)
+			if sc > best_score + 20.0:
+				best_score = sc
+				best = {"do": "attack", "card": m, "target": t}
+	return best
+
+
+## Finish the Battle Phase greedily (unless `stop`), let the other side swing back, and score.
+static func _after_battle(sim: DuelState, p: int, stop: bool) -> float:
+	var guard := 0
+	while not stop and guard < 10 and not sim.is_over():
+		guard += 1
+		var attackers: Array = sim.players[p].monsters().filter(func(m): return sim.can_attack(p, m))
+		if attackers.is_empty():
+			break
+		attackers.sort_custom(func(a, b): return sim.atk_of(a, true) > sim.atk_of(b, true))
+		var a: Dictionary = {"do": "attack", "card": attackers[0], "target": null} if sim.can_direct_attack(p) else _hard_attack(attackers, sim.players[sim.opponent(p)])
+		if a.is_empty():
+			break
+		if sim.attack(p, a["card"], a["target"]).is_empty():
+			break
+	return _reply_and_score(sim, p)
+
+
 static func _candidates(s: DuelState, p: int) -> Array:
 	var out := []
 	var me := s.players[p]
@@ -323,7 +413,7 @@ static func _candidates(s: DuelState, p: int) -> Array:
 	return out
 
 
-static func _score_after(s: DuelState, p: int, act: Dictionary) -> float:
+static func _score_after(s: DuelState, p: int, act: Dictionary, expert := false) -> float:
 	var sim := s.clone()
 	if not act.is_empty():
 		var ev := apply(sim, p, _map_action(sim, act))
@@ -339,6 +429,8 @@ static func _score_after(s: DuelState, p: int, act: Dictionary) -> float:
 			if a.is_empty():
 				break
 			sim.attack(p, a["card"], a["target"])
+	if expert:
+		return _reply_and_score(sim, p)
 	# Let the opponent swing back with what's already on their field.
 	if not sim.is_over():
 		var o := sim.opponent(p)
@@ -352,7 +444,37 @@ static func _score_after(s: DuelState, p: int, act: Dictionary) -> float:
 			if b.is_empty():
 				break
 			sim.attack(o, b["card"], b["target"])
-	return _evaluate(sim, p)
+	return _evaluate(sim, p, expert)
+
+
+## Expert only: play the other side's whole next turn (draw, plays, attacks) the way a strong
+## opponent would, then score what is left. This is what lets Expert see a counterattack coming.
+static func _reply_and_score(sim: DuelState, p: int) -> float:
+	if sim.is_over():
+		return _evaluate(sim, p, true)
+	var o := sim.opponent(p)
+	sim.manual = [false, false]
+	sim.end_turn()
+	if not sim.is_over():
+		sim.current = o
+		sim.begin_turn()
+	if not sim.is_over():
+		sim.phase = DuelState.Phase.MAIN1
+		var guard := 0
+		while guard < 6 and not sim.is_over():
+			guard += 1
+			var a := _heuristic_main(sim, o, HARD)
+			if a.is_empty() or apply(sim, o, a).is_empty():
+				break
+	if not sim.is_over() and sim.can_enter_battle():
+		sim.enter_battle()
+		var guard2 := 0
+		while guard2 < 10 and not sim.is_over():
+			guard2 += 1
+			var b := next_attack(sim, o, HARD)
+			if b.is_empty() or sim.attack(o, b["card"], b["target"]).is_empty():
+				break
+	return _evaluate(sim, p, true)
 
 
 static func _map_action(sim: DuelState, act: Dictionary) -> Dictionary:
@@ -481,15 +603,59 @@ static func choose_response(s: DuelState, p: int, window: String, options: Array
 
 
 ## Board + life point evaluation from player p's point of view.
-static func _evaluate(s: DuelState, p: int) -> float:
+static func _evaluate(s: DuelState, p: int, expert := false) -> float:
 	if s.is_over():
 		return 1e8 if s.winner == p else -1e8
 	var o := s.opponent(p)
+	if expert:
+		return _evaluate_expert(s, p, o)
 	var score := float(s.players[p].lp) * 0.8 - float(s.players[o].lp) * 1.3
 	score += _board(s.players[p]) - _board(s.players[o])
 	score += 150.0 * (s.players[p].hand.size() - s.players[o].hand.size())
 	score += 400.0 * (s.players[p].set_cards().size() - s.players[o].set_cards().size())
 	return score
+
+
+## Expert's view of a position: cards matter more than Life Points until Life Points get
+## low, a monster is worth what it can beat, and cards in hand are worth keeping.
+static func _evaluate_expert(s: DuelState, p: int, o: int) -> float:
+	var me := s.players[p]
+	var opp := s.players[o]
+	var score := 0.0
+	# Life Points: every point counts double once you are in range of one big hit.
+	score += _lp_value(me.lp) - _lp_value(opp.lp) * 1.15
+	var my_best := 0
+	var opp_best := 0
+	for m in me.monsters():
+		my_best = maxi(my_best, m.atk() if m.attack_pos else 0)
+	for m in opp.monsters():
+		opp_best = maxi(opp_best, m.atk() if (m.face_up and m.attack_pos) else 0)
+	for m in me.monsters():
+		var v := float(maxi(m.atk(), m.def())) * 0.9 + 420.0 + 220.0 * m.overlays.size()
+		# A monster that would just be run over next turn is worth less.
+		if m.attack_pos and m.atk() < opp_best:
+			v *= 0.55
+		score += v
+	for m in opp.monsters():
+		var v2 := float(maxi(m.atk(), m.def())) * 0.9 + 420.0 + 220.0 * m.overlays.size()
+		if m.face_up and m.attack_pos and m.atk() < my_best:
+			v2 *= 0.55
+		score -= v2 * 1.05
+	score += 330.0 * (me.hand.size() - opp.hand.size())
+	score += 450.0 * me.set_cards().size() - 520.0 * opp.set_cards().size()
+	# An empty field against attackers is an emergency.
+	if me.monsters().is_empty() and not opp.monsters().is_empty():
+		score -= 900.0
+	if opp.monsters().is_empty() and not me.monsters().is_empty():
+		score += 500.0
+	return score
+
+
+static func _lp_value(lp: int) -> float:
+	var v := float(lp) * 0.7
+	if lp <= 3000:
+		v -= float(3000 - lp) * 0.9
+	return v
 
 
 static func _board(ps: DuelState.PlayerState) -> float:

@@ -166,6 +166,10 @@ const STORY_CAST := {
 	"kid": {"name": "Rookie Duelist", "short": "Rookie", "era": "Duel Monsters", "color": Color("f0a040"), "title": "Street duelist",
 		"deck": "joey", "personality": "kind"},
 	"vendor": {"name": "Card Vendor", "short": "Vendor", "era": "Duel Monsters", "color": Color("40c0a0"), "title": "Kame Game regular"},
+	"professor": {"name": "Exam Proctor", "short": "Proctor", "era": "GX", "color": Color("c9a76a"), "title": "Academy faculty", "personality": "cocky"},
+	"red_student": {"name": "Red Dorm Student", "short": "Student", "era": "GX", "color": Color("d9342b"), "title": "Slifer Red", "personality": "wild"},
+	"yellow_student": {"name": "Yellow Dorm Student", "short": "Student", "era": "GX", "color": Color("f2c230"), "title": "Ra Yellow", "personality": "cool"},
+	"blue_student": {"name": "Blue Dorm Student", "short": "Student", "era": "GX", "color": Color("2f6fe0"), "title": "Obelisk Blue", "personality": "cocky"},
 	"guard": {"name": "KaibaCorp Guard", "short": "Guard", "era": "Duel Monsters", "color": Color("4070e0"), "title": "Security"},
 }
 

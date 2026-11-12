@@ -91,14 +91,22 @@ func _start() -> void:
 	var opp: Dictionary = Characters.get_char(_opp_key)
 	var my_deck: String = cfg.get("player_deck", "yugi")
 	var opp_deck: String = cfg.get("opponent_deck", opp.get("deck", "kaiba"))
-	var opp_name: String = opp.get("name", "Rival")
+	var opp_name: String = str(cfg.get("opponent_name", opp.get("name", "Rival")))
 	_me_key = cfg.get("player_char", "player")
 	var me_info := Portraits.info(_me_key)
 	var me_name: String = me_info.get("name", Profile.duelist_name)
 	hud.set_names(me_name, opp_name)
 	hud.set_portraits(_me_key, _opp_key)
 	var first := randi() % 2
-	if not _autoplay and not cfg.has("first"):
+	var ms: Dictionary = Router.match_state if cfg.get("match", false) else {}
+	if not _autoplay and not ms.is_empty() and int(ms.get("last_loser", -1)) >= 0:
+		# In a Match the loser of the last duel decides who starts.
+		hud.banner(Loc.t("MATCH  ·  DUEL %d") % int(ms["game"]), UITheme.GOLD)
+		if int(ms["last_loser"]) == ME:
+			first = ME if await hud.ask_choice("You lost the last duel, so you choose", ["Go first", "Go second"]) == 0 else AI
+		else:
+			first = AI
+	elif not _autoplay and not cfg.has("first"):
 		# Coin toss: the winner decides who takes the first turn.
 		var toss := randi() % 2
 		if toss == ME:
@@ -347,9 +355,25 @@ func _finish() -> void:
 	var why: String = "You surrendered." if _surrendered else state.win_reason
 	if earned > 0:
 		why += Loc.t("\n+%d Duel Points  (you have %d)") % [earned, Collection.dp]
+	var match_info := {}
+	if cfg.get("match", false) and not Router.match_state.is_empty() and not _autoplay:
+		var ms: Dictionary = Router.match_state
+		if not tied:
+			ms["wins"][0 if won else 1] += 1
+			ms["last_loser"] = AI if won else ME
+		ms["game"] = int(ms["game"]) + 1
+		var over: bool = ms["wins"][0] >= 2 or ms["wins"][1] >= 2
+		match_info = {"wins": ms["wins"], "over": over, "won": ms["wins"][0] >= 2,
+			"side": cfg.get("player_deck", "") == "custom" and not (Collection.side.is_empty() and Collection.main == ms["orig"]["main"])}
+		if over:
+			if ms["wins"][0] >= 2:
+				Collection.dp += 200
+				why += Loc.t("
+Match won: +%d Duel Points") % 200
+			_restore_match_deck()
 	hud.show_result(won, why, cfg.get("story", false), cfg.get("lose_ok", false), cfg.get("continue_label", "Continue Story"),
 			{"turns": state.turn, "lp": [state.players[ME].lp, state.players[AI].lp], "names": [state.players[ME].name, state.players[AI].name],
-			"free": not cfg.has("return_to") and not cfg.get("story", false), "draw": tied})
+			"free": not cfg.has("return_to") and not cfg.get("story", false), "draw": tied, "match": match_info})
 	_won = won
 
 
@@ -520,7 +544,7 @@ func _play_event(ev: Dictionary) -> void:
 			var method: String = ev["method"]
 			if p == ME:
 				hud.remove_hand_card(ev["card"])
-			var titles := {"fusion": "FUSION SUMMON", "synchro": "SYNCHRO SUMMON", "xyz": "XYZ SUMMON", "reborn": "REVIVED"}
+			var titles := {"fusion": "FUSION SUMMON", "synchro": "SYNCHRO SUMMON", "xyz": "XYZ SUMMON", "reborn": "REVIVED", "ritual": "RITUAL SUMMON"}
 			Sfx.play("special")
 			hud.say(p, Characters.line(_speaker(p), "ace"))
 			hud.react(p, "ace")
@@ -1142,15 +1166,37 @@ func _on_pause_action(action: String) -> void:
 			if state.current == AI or busy:
 				_finish()
 		"rematch":
+			if Router.duel_config.get("match", false):
+				_restore_match_deck()
+				Router.match_state = {"wins": [0, 0], "game": 1, "last_loser": -1,
+					"orig": {"main": Collection.main.duplicate(), "side": Collection.side.duplicate()}}
 			Router.go(Router.DUEL)
+		"next_game":
+			Router.go(Router.DUEL)
+		"side_deck":
+			var sw := SideSwap.new()
+			hud.add_child(sw)
+			sw.done.connect(func(): Router.go(Router.DUEL))
 		"select":
+			_restore_match_deck()
 			Router.menu_open = "select"
 			Router.go(Router.MAIN_MENU)
 		"story_continue":
 			Router.story_result = "won" if _won else "lost"
 			Router.go(Router.duel_config.get("return_to", Router.STORY))
 		"menu":
+			_restore_match_deck()
 			Router.go(Router.MAIN_MENU)
+
+
+## Side Deck swaps only last for the Match: put the deck back the way it was built.
+func _restore_match_deck() -> void:
+	var ms: Dictionary = Router.match_state
+	if ms.has("orig"):
+		Collection.main = (ms["orig"]["main"] as Array).duplicate()
+		Collection.side = (ms["orig"]["side"] as Array).duplicate()
+		Collection.save()
+	Router.match_state = {}
 
 
 # ------------------------------------------------------------------ AI

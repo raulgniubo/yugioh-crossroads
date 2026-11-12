@@ -112,7 +112,10 @@ func _open(pack: Dictionary) -> void:
 	_refresh()
 	for c in _reveal.get_children():
 		c.queue_free()
-	Sfx.play("special", -2.0)
+	# The opening scene plays first; the row below keeps what you pulled on screen after it.
+	var scene := PackOpening.new(pulls, before.duplicate(), pack.get("color", UITheme.ACCENT), str(pack.get("name", "")))
+	add_child(scene)
+	await scene.closed
 	for i in pulls.size():
 		var id: int = pulls[i]
 		var holder := VBoxContainer.new()
@@ -124,6 +127,7 @@ func _open(pack: Dictionary) -> void:
 		tr.stretch_mode = TextureRect.STRETCH_SCALE
 		tr.pivot_offset = Vector2(93, 135)
 		holder.add_child(tr)
+		Foil.apply(tr, CardData.rarity(id))
 		var is_new: bool = int(before.get(id, 0)) == 0
 		var tag := UITheme.label("NEW!" if is_new else "", 18, Color("ffd23a"), UITheme.title_font())
 		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
