@@ -244,20 +244,98 @@ func _borrow_clips(g: Node) -> void:
 			if String(n).to_lower().contains(m):
 				src_name = n
 				break
-		if src_name == "":
+		if src_name == "" or lib.has_animation(m):
 			continue
-		var a: Animation = dap.get_animation(src_name).duplicate(true)
-		for t in range(a.get_track_count() - 1, -1, -1):
-			var bone := String(a.track_get_path(t)).get_slice(":", 1)
-			if skel.find_bone(bone) < 0:
-				a.remove_track(t)
+		lib.add_animation(m, _retarget(dap.get_animation(src_name), dskel, skel, skel_path, ratio))
+
+
+## Re-make a donor clip for another skeleton of the same family. The two can be bound in
+## different poses (one arms-out, one arms-down) with bones rolled differently, so copying the
+## numbers across bends everything the wrong way. Instead: work out how far each donor bone has
+## turned from its own rest pose, in world terms, and turn the matching bone the same amount
+## from where the donor's rest would put it.
+func _retarget(src: Animation, dskel: Skeleton3D, skel: Skeleton3D, skel_path: String, ratio: float) -> Animation:
+	var dn := dskel.get_bone_count()
+	var rot_t := {}
+	var pos_t := {}
+	for t in src.get_track_count():
+		var bi := dskel.find_bone(String(src.track_get_path(t)).get_slice(":", 1))
+		if bi < 0:
+			continue
+		if src.track_get_type(t) == Animation.TYPE_ROTATION_3D:
+			rot_t[bi] = t
+		elif src.track_get_type(t) == Animation.TYPE_POSITION_3D:
+			pos_t[bi] = t
+	# Which donor bone drives each of this skeleton's bones, and the turn that lines its
+	# rest direction up with the donor's.
+	var tn := skel.get_bone_count()
+	var from_donor: Array = []
+	var fix: Array = []
+	for tb in tn:
+		var b := dskel.find_bone(skel.get_bone_name(tb))
+		from_donor.append(b)
+		var c := Basis.IDENTITY
+		if b >= 0:
+			var kids := dskel.get_bone_children(b)
+			var tk := skel.find_bone(dskel.get_bone_name(kids[0])) if kids.size() > 0 else -1
+			if tk >= 0:
+				var dd := (dskel.get_bone_global_rest(kids[0]).origin - dskel.get_bone_global_rest(b).origin).normalized()
+				var td := (skel.get_bone_global_rest(tk).origin - skel.get_bone_global_rest(tb).origin).normalized()
+				if dd.length() > 0.5 and td.length() > 0.5 and td.dot(dd) < 0.99999 and td.dot(dd) > -0.999:
+					c = Basis(Quaternion(td, dd))
+			else:
+				var par := skel.get_bone_parent(tb)
+				if par >= 0:
+					c = fix[par]
+		fix.append(c)
+	var out := Animation.new()
+	out.length = src.length
+	out.loop_mode = src.loop_mode
+	var track_of := {}
+	for tb in tn:
+		if from_donor[tb] >= 0:
+			var ti := out.add_track(Animation.TYPE_ROTATION_3D)
+			out.track_set_path(ti, NodePath("%s:%s" % [skel_path, skel.get_bone_name(tb)]))
+			track_of[tb] = ti
+	var hip := skel.find_bone("Hips")
+	var dhip := dskel.find_bone("Hips")
+	var hip_track := -1
+	if hip >= 0 and dhip >= 0:
+		hip_track = out.add_track(Animation.TYPE_POSITION_3D)
+		out.track_set_path(hip_track, NodePath("%s:Hips" % skel_path))
+	var hip_parent_inv := Transform3D.IDENTITY
+	if hip >= 0 and skel.get_bone_parent(hip) >= 0:
+		hip_parent_inv = skel.get_bone_global_rest(skel.get_bone_parent(hip)).affine_inverse()
+	var frames := int(ceil(src.length * 30.0)) + 1
+	for f in frames:
+		var t := minf(float(f) / 30.0, src.length)
+		# The donor's pose at this moment, bone by bone, in skeleton space.
+		var dg: Array = []
+		dg.resize(dn)
+		for b in dn:
+			var loc := dskel.get_bone_rest(b)
+			if rot_t.has(b):
+				loc.basis = Basis(src.rotation_track_interpolate(rot_t[b], t))
+			if pos_t.has(b):
+				loc.origin = src.position_track_interpolate(pos_t[b], t)
+			var dp := dskel.get_bone_parent(b)
+			dg[b] = (dg[dp] * loc) if dp >= 0 else loc
+		var tg: Array = []
+		tg.resize(tn)
+		for tb in tn:
+			var par := skel.get_bone_parent(tb)
+			var pg: Basis = tg[par] if par >= 0 else Basis.IDENTITY
+			var b: int = from_donor[tb]
+			if b < 0:
+				tg[tb] = pg * skel.get_bone_rest(tb).basis.orthonormalized()
 				continue
-			a.track_set_path(t, NodePath("%s:%s" % [skel_path, bone]))
-			if a.track_get_type(t) == Animation.TYPE_POSITION_3D and not is_equal_approx(ratio, 1.0):
-				for k in a.track_get_key_count(t):
-					a.track_set_key_value(t, k, (a.track_get_key_value(t, k) as Vector3) * ratio)
-		if not lib.has_animation(m):
-			lib.add_animation(m, a)
+			var turned := (dg[b] as Transform3D).basis.orthonormalized() * dskel.get_bone_global_rest(b).basis.orthonormalized().inverse()
+			var gb: Basis = turned * (fix[tb] as Basis) * skel.get_bone_global_rest(tb).basis.orthonormalized()
+			tg[tb] = gb
+			out.rotation_track_insert_key(track_of[tb], t, (pg.inverse() * gb).orthonormalized().get_rotation_quaternion())
+		if hip_track >= 0:
+			out.position_track_insert_key(hip_track, t, hip_parent_inv * ((dg[dhip] as Transform3D).origin * ratio))
+	return out
 
 
 ## The model's AnimationPlayer, if it came with animations (walk/idle...).

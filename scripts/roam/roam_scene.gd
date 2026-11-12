@@ -848,11 +848,13 @@ func _update_near() -> void:
 		var area := _area_name()
 		if area != "" and _loc_area.text != Loc.t(area):
 			_loc_area.text = Loc.t(area)
-	if _near.is_empty():
-		for sp in _spots:
-			if (sp["pos"] as Vector3).distance_to(_player.global_position) < float(sp["range"]):
-				_near_spot = sp
-				break
+	# A door and a person can both be in reach: whichever is closer gets the prompt.
+	for sp in _spots:
+		var sd := (sp["pos"] as Vector3).distance_to(_player.global_position)
+		if sd < float(sp["range"]) and (_near.is_empty() or sd < best_d):
+			_near_spot = sp
+			_near = {}
+			break
 	if _prompt:
 		_prompt.visible = (not _near.is_empty() or not _near_spot.is_empty()) and not _talking and _pause == null and not _overlay_open
 		if _prompt.visible:
@@ -1308,6 +1310,10 @@ func _debug() -> void:
 			tcam.fov = 62.0
 			add_child(tcam)
 			tcam.current = true
+			for arg2 in OS.get_cmdline_user_args():
+				if arg2.begins_with("--npc-anim="):
+					for n in _npcs:
+						(n[1] as RoamFigure).play_once(arg2.trim_prefix("--npc-anim="), 99)
 			for part in a.trim_prefix("--tour=").split(";"):
 				var bits := part.split(":")
 				var e2 := bits[1].split(",")

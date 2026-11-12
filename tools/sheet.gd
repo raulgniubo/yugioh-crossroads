@@ -29,10 +29,35 @@ func _ready() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-35, 30, 0)
 	add_child(sun)
+	# --keys=yugi,joey --ts=0,0.4,0.8 : characters loaded the way the game loads them (so a
+	# model dropped in the card folder and its borrowed clips), one column per moment.
+	var keys: Array = []
+	var times: Array = [-1.0]
+	var yaw := 0.0
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--keys="): keys = Array(a.trim_prefix("--keys=").split(","))
+		if a.begins_with("--ts="):
+			times = []
+			for x in a.trim_prefix("--ts=").split(","):
+				times.append(float(x))
+		if a.begins_with("--yaw="): yaw = float(a.trim_prefix("--yaw="))
+	if not keys.is_empty():
+		names = []
+		cols = times.size()
+		for k in keys:
+			for t in times:
+				names.append("%s@%s" % [k, str(t)])
 	var rows := int(ceil(names.size() / float(cols)))
 	for i in names.size():
-		var ps: PackedScene = load(dir.path_join(names[i]))
-		var n: Node3D = ps.instantiate()
+		var n: Node3D
+		if not keys.is_empty():
+			n = Avatars.load_model(String(names[i]).get_slice("@", 0))
+			if n == null:
+				continue
+			n.rotation.y = yaw
+		else:
+			var ps: PackedScene = load(dir.path_join(names[i]))
+			n = ps.instantiate()
 		var holder := Node3D.new()
 		add_child(holder)
 		holder.add_child(n)
@@ -50,6 +75,7 @@ func _ready() -> void:
 				var ti := (i + int(arg.trim_prefix("--tint="))) % Profile.COLORS.size()
 				Avatars.apply_hero_color(n, Profile.COLORS[ti], 2 if names[i].contains("rider") else 0)
 		var ap := _ap(n)
+		var continue_label := false
 		if ap:
 			var want := "idle"
 			var at := -1.0
@@ -58,7 +84,18 @@ func _ready() -> void:
 				if a.begins_with("--t="): at = float(a.trim_prefix("--t="))
 			if want == "calm":
 				Avatars._calm_idle(ap)
+			if not keys.is_empty():
+				at = float(String(names[i]).get_slice("@", 1))
+				var ck := Avatars.clip(ap, want)
+				if ck != "":
+					ap.play(ck)
+					if at >= 0.0:
+						ap.seek(at, true)
+						ap.pause()
+				continue_label = true
 			for c in ap.get_animation_list():
+				if continue_label:
+					break
 				if String(c).to_lower().contains(want):
 					ap.play(c)
 					if at >= 0.0:

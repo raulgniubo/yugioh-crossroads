@@ -8,7 +8,7 @@ const DISTRICTS := {
 		"theme": "battlecity",
 		"travel": {"to": "academy", "pos": Vector3(-18, 0, 8.4), "label": "Take the ferry bus to Duel Academy"},
 		"npcs": [
-			{"id": "yugi", "char": "yugi", "pos": Vector3(-9, 0, -14), "face": 0.0,
+			{"id": "yugi", "char": "yugi", "pos": Vector3(-6.6, 0, -12.6), "face": 0.0,
 				"lines": ["Hey, {player}! Grandpa says the shop is getting a new shipment today.", "Whenever you want a real test, I'll be here."],
 				"duel": {"deck": "yugi", "difficulty": 2, "intro": "Let's see how much you've grown!"}},
 			{"id": "joey", "char": "joey", "pos": Vector3(12, 0, 6), "face": -1.6,
