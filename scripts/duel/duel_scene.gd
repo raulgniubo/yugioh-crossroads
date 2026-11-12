@@ -114,7 +114,7 @@ func _start() -> void:
 			first = AI
 	elif not _autoplay and not cfg.has("first"):
 		# A coin toss or rock-paper-scissors, played out: the winner decides who starts.
-		if _human_test:
+		if _human_test or "--end-test" in OS.get_cmdline_user_args():
 			first = randi() % 2
 		else:
 			var og := OpeningGame.new()
@@ -362,7 +362,9 @@ func _finish() -> void:
 	var earned := 0
 	if not _autoplay:
 		Profile.record_result(won)
-		earned = Collection.reward(won and not _surrendered, _ai_level)
+		var my_lp: int = state.players[ME].lp
+		earned = Collection.reward(won and not _surrendered, _ai_level, {"opponent": _opp_key, "lp": my_lp,
+			"flawless": my_lp >= DuelState.START_LP, "turns": state.turn})
 	Sfx.play("win" if won else "lose")
 	Music.play("victory" if won else "defeat")
 	Sfx.play("cheer", -4.0 if won else -12.0)
@@ -374,8 +376,6 @@ func _finish() -> void:
 	board.duelist_orbit(champ)
 	var cfg: Dictionary = Router.duel_config
 	var why: String = "You surrendered." if _surrendered else state.win_reason
-	if earned > 0:
-		why += Loc.t("\n+%d Duel Points  (you have %d)") % [earned, Collection.dp]
 	var match_info := {}
 	if cfg.get("match", false) and not Router.match_state.is_empty() and not _autoplay:
 		var ms: Dictionary = Router.match_state
@@ -394,6 +394,7 @@ Match won: +%d Duel Points") % 200
 			_restore_match_deck()
 	hud.show_result(won, why, cfg.get("story", false), cfg.get("lose_ok", false), cfg.get("continue_label", "Continue Story"),
 			{"turns": state.turn, "lp": [state.players[ME].lp, state.players[AI].lp], "names": [state.players[ME].name, state.players[AI].name],
+			"reward": Collection.last_reward.duplicate() if earned > 0 else [], "earned": earned,
 			"free": not cfg.has("return_to") and not cfg.get("story", false), "draw": tied, "match": match_info})
 	_won = won
 

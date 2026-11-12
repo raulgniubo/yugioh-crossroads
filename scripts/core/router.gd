@@ -150,10 +150,18 @@ func _debug_args() -> void:
 				menu._on_deck()
 			elif what == "settings":
 				menu._on_settings()
-			elif what == "packs" or what == "packopen":
+			elif what.begins_with("deckshop"):
+				var ds := DeckShop.new()
+				ds.z_index = 100
+				menu.add_child(ds)
+				if what.ends_with("2"):
+					ds._show_tab.call_deferred(1)
+			elif what.begins_with("packs") or what == "packopen":
 				var ps := PackShop.new()
 				ps.z_index = 100
 				menu.add_child(ps)
+				if what.length() == 6:
+					ps._show_tab.call_deferred(int(what.substr(5)))
 				if what == "packopen":
 					Collection.dp += 500
 					await get_tree().create_timer(0.6).timeout

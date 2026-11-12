@@ -57,9 +57,7 @@ static func build(city: CityBuilder) -> void:
 	glass.emission = Color(0.55, 0.75, 0.9)
 	glass.emission_energy_multiplier = 0.25
 	city.box(Vector3(0.05, 2.1, 1.1), o + Vector3(-6.85, 1.35, 3.4), glass, false)
-	city.box(Vector3(1.7, 2.6, 0.12), o + Vector3(0, 1.3, HALF.y - 0.04), city.mat(Color(0.28, 0.18, 0.12), 0.6), false)
-	city.box(Vector3(1.2, 1.2, 0.05), o + Vector3(0, 1.75, HALF.y - 0.11), city.glow_mat(Color(0.7, 0.85, 1.0), 0.9), false)
-	_sign(city, "EXIT", o + Vector3(0, 2.95, HALF.y - 0.12), PI, Color("7dffb0"), 70)
+	city.exit_door(o + Vector3(0, 0, HALF.y))
 	_sign(city, "KAME GAME", o + Vector3(0, 3.35, -HALF.y + 0.12), 0.0, Color("ffd166"), 130)
 	_sign(city, "NEW BOOSTERS IN STOCK", o + Vector3(4.3, 3.3, -HALF.y + 0.12), 0.0, Color("ff8ac0"), 54)
 	_sign(city, "DUEL TABLES  ·  FREE PLAY", o + Vector3(HALF.x - 0.12, 3.2, 2.6), -PI / 2, Color("7cc4ff"), 54)
@@ -145,7 +143,12 @@ static func _dress(city: CityBuilder, o: Vector3) -> void:
 	case_light.position = case_at + Vector3(0, 3.6, 0)
 	case_light.rotation.x = -PI / 2
 	city.add_child(case_light)
-	_sign(city, "TODAY'S BEST", case_at + Vector3(0, 2.0, 0.36), 0.0, Color("ffd166"), 30)
+	# A little hanging board over the case, lettered on both faces.
+	city.box(Vector3(1.5, 0.34, 0.05), case_at + Vector3(0, 2.02, 0), city.mat(Color(0.14, 0.09, 0.06), 0.6), false)
+	for wire: float in [-0.6, 0.6]:
+		city.box(Vector3(0.012, HEIGHT - 2.19, 0.012), case_at + Vector3(wire, 2.19 + (HEIGHT - 2.19) / 2.0, 0), brass, false)
+	_sign(city, "TODAY'S BEST", case_at + Vector3(0, 2.02, 0.03), 0.0, Color("ffd166"), 30, true)
+	_sign(city, "TODAY'S BEST", case_at + Vector3(0, 2.02, -0.03), PI, Color("ffd166"), 30, true)
 	# Pennants strung across the ceiling.
 	var cols := [Color("d9342b"), Color("f2c230"), Color("2f6fe0"), Color("2aa46a"), Color("f2f2f2")]
 	for row: float in [-1.6, 1.9]:
@@ -220,8 +223,9 @@ static func _dress(city: CityBuilder, o: Vector3) -> void:
 	tail.rotation = Vector3(PI / 2, 0, 0.9)
 
 
-static func _sign(city: CityBuilder, text: String, pos: Vector3, rot: float, color: Color, size: int) -> void:
+static func _sign(city: CityBuilder, text: String, pos: Vector3, rot: float, color: Color, size: int, one_face := false) -> void:
 	var l := Label3D.new()
+	l.double_sided = not one_face
 	l.text = text
 	l.font = load("res://assets/fonts/Rajdhani-SemiBold.ttf")
 	l.font_size = size

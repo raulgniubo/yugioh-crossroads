@@ -231,6 +231,14 @@ func _player_fig() -> RoamFigure:
 	return scene._figure
 
 
+## Whoever is talking moves their hands; everybody else stands and listens.
+func _speaker(who: String) -> void:
+	for k in _actors.keys() + ["player"]:
+		var f := _fig(str(k))
+		if f is RoamFigure and is_instance_valid(f):
+			(f as RoamFigure).speak(str(k) == who and who != "")
+
+
 func _fig(key: String) -> Node3D:
 	if key == "player":
 		return scene._figure
@@ -277,6 +285,9 @@ func _place(st: Dictionary, instant := false) -> void:
 	var at: Vector3 = st["at"]
 	fig.position = st.get("from", at) if not instant else at
 	fig.setup(key, Characters.get_char(key).get("color", Color.WHITE), "", false)
+	fig.lively = false
+	fig.greets = false
+	fig.watch = scene._player
 	_actors[key] = fig
 	var face = st.get("face", "player")
 	if face is String:
@@ -439,7 +450,7 @@ func _run() -> void:
 
 ## The walking HUD (map, place name, key help) steps aside for cutscenes.
 func _hud(on: bool) -> void:
-	for n in [scene._map, scene._loc_name, scene._loc_area, scene._prompt]:
+	for n in [scene._map, scene._loc_name, scene._loc_area, scene._prompt, scene._plate, scene._purse]:
 		if n and is_instance_valid(n):
 			n.visible = on
 	if scene.extras and scene.extras._hud:
@@ -475,6 +486,7 @@ func _cutscene(on: bool) -> void:
 		_goal_box.visible = false
 		_hud(false)
 	else:
+		_speaker("")
 		_hud(true)
 		_fill.visible = false
 		scene._cam.current = true
@@ -715,6 +727,7 @@ func _say(st: Dictionary) -> void:
 	_light_shot()
 	var who := str(st.get("s", ""))
 	_face_each_other(who)
+	_speaker(who if not st.has("anim") else "")
 	_shot_for(who, st.get("cam", "") == "wide")
 	if st.has("fx"):
 		_do_flash_or_shake(str(st["fx"]))
@@ -938,7 +951,7 @@ func _start_duel(d: Dictionary) -> void:
 	StoryProgress.save_position(chapter, step, flags)
 	Router.roam["pos"] = scene._player.position
 	Router.roam["yaw"] = scene._yaw
-	var deck: String = Router.duel_config.get("player_deck", "echo")
+	var deck: String = Collection.active_deck()
 	if not CardData.has_deck(deck):
 		deck = "echo"
 	var opp_deck := str(d.get("opp_deck", d["opponent"]))

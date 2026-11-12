@@ -266,7 +266,7 @@ func _versus(t: Dictionary) -> Control:
 	var diff: String = ["Easy", "Normal", "Hard", "Expert"][clampi(int(t["difficulty"]), 0, 3)]
 	var dc: Color = [Color("5affa0"), Color("7cc4ff"), Color("ffb030"), Color("ff4d6d")][clampi(int(t["difficulty"]), 0, 3)]
 	v.add_child(UITheme.label(Loc.t(diff).to_upper(), 22, dc, UITheme.title_font()))
-	v.add_child(UITheme.label(Loc.t("Your deck: %s") % CardData.deck_name(str(Router.duel_config.get("player_deck", "echo"))), 17, UITheme.TEXT_DIM))
+	v.add_child(UITheme.label(Loc.t("Your deck: %s") % CardData.deck_name(Collection.active_deck()), 17, UITheme.TEXT_DIM))
 	return row
 
 

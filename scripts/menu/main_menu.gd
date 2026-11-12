@@ -87,6 +87,14 @@ func _build_title() -> void:
 
 
 func _build_menu() -> void:
+	var purse := DpPurse.new()
+	purse.anchor_left = 1.0
+	purse.anchor_right = 1.0
+	purse.offset_left = -330
+	purse.offset_right = -60
+	purse.offset_top = 40
+	purse.offset_bottom = 102
+	add_child(purse)
 	_menu_box = VBoxContainer.new()
 	_menu_box.position = Vector2(100, 356)
 	_menu_box.add_theme_constant_override("separation", 2)
@@ -97,7 +105,7 @@ func _build_menu() -> void:
 		["TURBO DUEL", "Ride the New Domino Highway. Speed Counters, Speed Spells", _on_turbo],
 		["FREE ROAM", "Four worlds to walk. Duel anyone you meet", _on_roam],
 		["FREE DUEL", "Pick both duelists, your deck and the arena", _on_free_duel],
-		["DECK", "Your cards and decks", _on_deck],
+		["MY DECKS", "Pick the deck you duel with. Build, rename, save", _on_deck],
 		["SETTINGS", "Display, audio and card art", _on_settings],
 	]
 	if OS.has_feature("pc"):
@@ -372,7 +380,7 @@ func _on_story() -> void:
 
 
 func _on_deck() -> void:
-	var db := DeckBuilder.new()
+	var db := DeckMenu.new()
 	db.z_index = 100
 	add_child(db)
 	_panel_open = true

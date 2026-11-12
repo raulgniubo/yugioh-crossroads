@@ -289,8 +289,9 @@ func add_rider(index: int, key: String, at: Vector3, color: Color) -> RoamFigure
 	holder.position = at
 	add_child(holder)
 	var ps = load(RUNNERS[index % RUNNERS.size()])
-	if ps is PackedScene:
-		var bike: Node3D = ps.instantiate()
+	var own_bike := CityBuilder.own_instance(["runner_a", "runner_b"][index % 2])
+	if own_bike != null or ps is PackedScene:
+		var bike: Node3D = own_bike if own_bike != null else ps.instantiate()
 		holder.add_child(bike)
 		var box := _aabb(bike, Transform3D())
 		var s := 2.55 / maxf(0.01, maxf(box.size.x, box.size.z))

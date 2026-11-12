@@ -15,6 +15,23 @@ var _cur_clip := ""
 var _hold := 0.0          # seconds a one-off clip (cheer) still owns the animation
 var _riding := false
 
+## Everyday life. `watch` is who this person notices (the player): they turn their head, and
+## wave or nod when you walk up. `stance` is what they do when standing still: "stand", "sit"
+## or "browse" (looking over shelves). `lively` people shift, scratch, check their phone.
+var watch: Node3D = null
+var stance := "stand"
+var lively := true
+var greets := true
+var _speaking := false
+var _look: HeadLook = null
+var _fidget_t := randf_range(2.5, 9.0)
+var _greet_cd := 0.0
+var _was_near := false
+var _warm: Array = []
+var _warm_t := randf_range(0.2, 1.2)
+var _stand_clip := ""
+var _started := false
+
 
 func setup(char_key: String, color: Color, display_name := "", show_name := true) -> void:
 	key = char_key
@@ -24,9 +41,14 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 		await get_tree().process_frame
 		_face_plus_z()
 		_anim = Avatars.anim_player(_model)
+		if Avatars.gesture(_model, "stand2" if (hash(char_key) % 3 == 0) else "stand") != "":
+			_anim = Avatars.anim_player(_model)
+			_stand_clip = "g_stand2" if (hash(char_key) % 3 == 0) else "g_stand"
+			_warm = ["wave", "chat", "agree", "alert", "scratch", "listen", "phone"]
 		if _anim == null:
 			Avatars._relax_pose(_model)
 			_collect_bones()
+		_add_head_look()
 	else:
 		_build_standin(color)
 	if show_name and display_name != "":
@@ -41,6 +63,113 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 		l.modulate = Color(1, 1, 1, 0.95)
 		l.outline_modulate = Color(0, 0, 0, 0.8)
 		add_child(l)
+
+
+func _add_head_look() -> void:
+	var sk := Avatars._skeleton(_model)
+	if sk == null:
+		return
+	var h := Avatars.bone(_model, "Head")
+	if h < 0:
+		return
+	_look = HeadLook.new()
+	_look.head = h
+	_look.neck = sk.find_bone("neck")
+	if _look.neck < 0:
+		_look.neck = sk.find_bone("Neck")
+	sk.add_child(_look)
+	var to_sk := sk.global_transform.basis.orthonormalized().inverse() * global_transform.basis.orthonormalized()
+	_look.up = (to_sk * Vector3.UP).normalized()
+	_look.right = (to_sk * Vector3.RIGHT).normalized()
+
+
+## Talking: hands move while the lines are on screen.
+func speak(on: bool) -> void:
+	if on == _speaking:
+		return
+	_speaking = on
+	_cur_clip = ""
+	if on:
+		_hold = 0.0
+
+
+## A one-off everyday motion from the shared library ("wave", "agree", "bow", "cheer", ...).
+func gesture(motion: String, blend := 0.3) -> bool:
+	if _model == null or _riding:
+		return false
+	var c := Avatars.gesture(_model, motion)
+	if c == "":
+		return false
+	_anim = Avatars.anim_player(_model)
+	_anim.speed_scale = 1.0
+	_anim.play(c, blend)
+	_hold = _anim.get_animation(c).length - 0.3
+	_cur_clip = ""
+	return true
+
+
+func _idle_clip() -> String:
+	if stance == "sit" or stance == "rest":
+		# "sit": upright at a table, hands busy. "rest": leaning on the knees, on a bench.
+		var c := Avatars.gesture(_model, "sittalk" if (stance == "sit" or _speaking) else "sit")
+		if c != "":
+			return c
+	if _speaking:
+		var c2 := Avatars.gesture(_model, "chat")
+		if c2 != "":
+			return c2
+	if _stand_clip != "":
+		return _stand_clip
+	return Avatars.clip(_anim, "idle")
+
+
+func _live(delta: float) -> void:
+	# Fit the everyday motions to this model a little at a time, so nothing stutters later.
+	if not _warm.is_empty():
+		_warm_t -= delta
+		if _warm_t <= 0.0:
+			_warm_t = 0.35
+			Avatars.gesture(_model, _warm.pop_front())
+	_greet_cd -= delta
+	var near := false
+	var want_yaw := 0.0
+	var want_pitch := 0.0
+	if watch and is_instance_valid(watch) and watch != self:
+		var local := to_local(watch.global_position + Vector3(0, 1.5, 0)) - Vector3(0, 1.5, 0)
+		var dist := Vector2(local.x, local.z).length()
+		if dist < 5.5 and dist > 0.25:
+			var ang := atan2(local.x, local.z)
+			if absf(ang) < 1.75:
+				want_yaw = clampf(ang, -1.15, 1.15)
+				want_pitch = clampf(-atan2(local.y, dist), -0.3, 0.3)
+		near = dist < 3.4
+	if _look:
+		var k := 1.0 - exp(-delta * 5.0)
+		_look.yaw = lerpf(_look.yaw, want_yaw if stance == "stand" or absf(want_yaw) < 0.9 else 0.0, k)
+		_look.pitch = lerpf(_look.pitch, want_pitch, k)
+	if _speed >= 0.3 or _hold > 0.0 or _speaking:
+		_was_near = near
+		return
+	# Someone walks up: a wave or a nod, once in a while.
+	if near and not _was_near and greets and _greet_cd <= 0.0 and stance == "stand":
+		_greet_cd = randf_range(35.0, 60.0)
+		gesture("wave" if randf() < 0.6 else "agree")
+		if _hold > 4.0:
+			_hold = 4.0
+		_fidget_t = randf_range(6.0, 12.0)
+	_was_near = near
+	if not lively or _hold > 0.0:
+		return
+	_fidget_t -= delta
+	if _fidget_t <= 0.0:
+		_fidget_t = randf_range(9.0, 22.0)
+		var pool: Array = []
+		if stance == "stand":
+			pool = ["alert", "scratch", "listen", "phone", "alert", "listen"]
+		elif stance == "browse":
+			pool = ["checkout", "checkout", "scratch", "listen"]
+		if not pool.is_empty() and gesture(str(pool[randi() % pool.size()]), 0.45) and _hold > 6.5:
+			_hold = 6.5
 
 
 ## Sit this person on a duel runner: knees up, leaning forward, hands on the bars. The pose
@@ -106,11 +235,19 @@ func wear_uniform(color: Color) -> void:
 
 ## Play a one-off motion ("victory"), then fall back to idle. Returns false without one.
 func play_once(motion: String, loops := 1) -> bool:
-	if _model == null or _anim == null:
+	if _model == null:
 		return false
-	var c := Avatars.clip(_anim, motion)
+	if _anim == null:
+		_anim = Avatars.anim_player(_model)
+	if _anim == null and Avatars.gesture(_model, "stand") == "":
+		return false
+	var lib_motion: String = {"victory": "cheer", "lose": "stomp", "bow": "bow", "cheer": "cheer2"}.get(motion, "")
+	var c := Avatars.gesture(_model, lib_motion) if lib_motion != "" else ""
+	if c == "":
+		c = Avatars.clip(_anim, motion)
 	if c == "" or (motion != "idle" and c == Avatars.clip(_anim, "idle")):
 		return false
+	_anim = Avatars.anim_player(_model)
 	_anim.speed_scale = 1.0
 	_anim.play(c, 0.2)
 	_hold = _anim.get_animation(c).length * loops - 0.25
@@ -155,14 +292,23 @@ func _process(delta: float) -> void:
 	var walk := clampf(_speed / 4.0, 0.0, 1.6)
 	_phase += delta * (2.0 + _speed * 2.2)
 	var s := sin(_phase)
+	if _model:
+		_live(delta)
 	if _hold > 0.0:
 		_hold -= delta
-		return
+		if _speed < 0.3:
+			return
+		_hold = 0.0       # started walking: drop the gesture
 	if _model and _anim:
-		var want := Avatars.clip(_anim, "idle") if _speed < 0.3 else Avatars.clip(_anim, "run" if _speed > 5.5 else "walk")
+		var want := _idle_clip() if _speed < 0.3 else Avatars.clip(_anim, "run" if _speed > 5.5 else "walk")
 		if want != "" and want != _cur_clip:
+			var first := not _started
+			_started = true
 			_cur_clip = want
-			_anim.play(want, 0.25)
+			_anim.play(want, 0.35)
+			if first and _speed < 0.3:
+				# Nobody breathes in step with the person next to them.
+				_anim.seek(randf() * _anim.get_animation(want).length, true)
 		if _speed >= 0.3:
 			_anim.speed_scale = clampf(_speed / (6.5 if _speed > 5.5 else 1.6), 0.6, 1.8)
 		else:

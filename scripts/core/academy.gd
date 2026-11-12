@@ -126,7 +126,7 @@ static func today() -> Dictionary:
 static func duel_config(t: Dictionary) -> Dictionary:
 	return {
 		"opponent": t["char"], "opponent_deck": t["deck"], "opponent_name": t["name"],
-		"player_deck": Engine.get_main_loop().root.get_node("Router").duel_config.get("player_deck", "echo"), "player_char": "player",
+		"player_deck": Engine.get_main_loop().root.get_node("Collection").active_deck(), "player_char": "player",
 		"difficulty": t["difficulty"], "field": "academy",
 		"story": true, "lose_ok": true, "return_to": "res://scenes/main_menu.tscn", "continue_label": "Back to the Academy",
 	}

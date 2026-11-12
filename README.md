@@ -5,6 +5,39 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.13
+
+- Everybody is alive (`scripts/roam/roam_figure.gd`, `scripts/roam/head_look.gd`). A shared library
+  of 16 everyday motions (`assets/models/anim/gestures.glb`) is fitted to every character, yours
+  included: a natural standing idle, looking around, scratching, a phone call, talking with their
+  hands. People turn their head to watch you, wave or nod when you walk up, sit at the duel table,
+  and shop customers wander from shelf to shelf. The loser of a duel sulks while the winner cheers.
+- Whoever is talking has their portrait in the dialogue box, in the street and in shops.
+- My Decks (`scripts/menu/deck_menu.gd`): B in the city, the pause menu or the main menu. Five
+  slots for decks you build plus your shelf of ready-made decks. Pick the one to duel with, edit,
+  rename, empty, or copy a ready-made deck into a slot to make your own version.
+- The shop sells ready-made decks (`scripts/menu/deck_shop.gd`): every duelist's deck and ten
+  theme decks (water, fire, wind, dragon, warrior, spellcaster, fiend, machine, beast, insect).
+  Buying one adds all its cards to your collection. The Echo Deck and whatever you were already
+  dueling with stay free.
+- 18 booster packs on three shelves: six series sets, six monster-type sets, and elements, Spells
+  and Traps. Between them every card in the game can be pulled.
+- Duel Points: wins pay bonuses (first win of the day, first win against a duelist, streaks, no
+  damage, close call, quick win) with a breakdown on the result screen, and a purse is always on
+  screen in the city and the main menu.
+- Small things: a plate behind the location text, a named Star Chips counter that explains itself,
+  real exit doors, speech-bubble markers, painted rock-paper-scissors hands.
+- Yugi's grandpa runs Kame Game (slot `grandpa.glb`).
+
+## Your own buildings and props
+
+Put a GLB in `<card folder>/places/`, named after the thing it replaces: `card_shop.glb`,
+`corp_tower.glb`, `duel_dome.glb`, `school.glb`, `clock_tower.glb`, `academy_main.glb`,
+`dorm_red.glb`, `dorm_yellow.glb`, `dorm_blue.glb`, `lighthouse.glb`, `shop_counter.glb`,
+`shop_shelf.glb`, `card_rack.glb`, `duel_table.glb`, `dragon_statue.glb`, `duel_stage.glb`,
+`arcade_cabinet.glb`, `runner_a.glb`, `runner_b.glb`. The model is fitted to the same spot and
+size as the game's own; its front should face +Z.
+
 ## What is in 0.12
 
 - Who goes first is played, not announced (`scripts/duel/opening_game.gd`): call a coin toss and

@@ -1,7 +1,7 @@
 class_name PackShop
 extends Control
-## The booster counter: five foil packs on a lit shelf. Pick one up to see what is in it, what
-## you already own from it and a few of its best cards, then open it.
+## The booster counter: foil packs on a lit shelf, three shelves to flip between. Pick one up to
+## see what is in it, what you already own from it and a few of its best cards, then open it.
 
 signal closed
 
@@ -9,6 +9,9 @@ var _dp: Label
 var _shelf: HBoxContainer
 var _slots: Array = []          # [{button, wrap, pack}]
 var _sel := -1
+var _tab := 0
+var _packs: Array = []          # the packs on the shelf being shown
+var _tab_btns: Array = []
 var _backdrop: TextureRect
 var _name: Label
 var _blurb: Label
@@ -67,14 +70,29 @@ func _ready() -> void:
 	head.add_child(purse)
 	_dp = UITheme.label("", 34, UITheme.GOLD, UITheme.title_font())
 	purse.add_child(_dp)
+	# Which shelf.
+	var tabs := HBoxContainer.new()
+	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
+	tabs.add_theme_constant_override("separation", 12)
+	v.add_child(tabs)
+	for ti in Collection.PACK_TABS.size():
+		var tb := Button.new()
+		tb.toggle_mode = true
+		tb.text = "  %s  " % Loc.t(str(Collection.PACK_TABS[ti]))
+		tb.add_theme_font_size_override("font_size", 24)
+		tb.custom_minimum_size = Vector2(0, 50)
+		tb.pressed.connect(func(): _show_tab(ti))
+		tabs.add_child(tb)
+		_tab_btns.append(tb)
+	var hint := UITheme.label("Q / E  or  LB / RB", 16, UITheme.TEXT_DIM)
+	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	tabs.add_child(hint)
 	# The shelf.
 	_shelf = HBoxContainer.new()
 	_shelf.alignment = BoxContainer.ALIGNMENT_CENTER
 	_shelf.add_theme_constant_override("separation", 34)
-	_shelf.custom_minimum_size = Vector2(0, 456)
+	_shelf.custom_minimum_size = Vector2(0, 430)
 	v.add_child(_shelf)
-	for i in Collection.PACKS.size():
-		_shelf.add_child(_slot(i))
 	var plank := ColorRect.new()
 	plank.color = Color(UITheme.ACCENT, 0.5)
 	plank.custom_minimum_size = Vector2(0, 3)
@@ -120,7 +138,7 @@ func _ready() -> void:
 	_open_btn.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.GOLD, 0.22), UITheme.GOLD, 16))
 	_open_btn.add_theme_stylebox_override("hover", UITheme.button_box(Color(UITheme.GOLD, 0.4), Color.WHITE, 16))
 	_open_btn.add_theme_stylebox_override("focus", UITheme.button_box(Color(UITheme.GOLD, 0.4), Color.WHITE, 16))
-	_open_btn.pressed.connect(func(): _open(Collection.PACKS[_sel]))
+	_open_btn.pressed.connect(func(): _open(_packs[_sel]))
 	buy.add_child(_open_btn)
 	var done := Button.new()
 	done.text = "Leave the counter"
@@ -137,25 +155,41 @@ func _ready() -> void:
 	_featured.add_theme_constant_override("separation", 12)
 	right.add_child(_featured)
 	_last = _featured
-	_refresh()
-	_select(0, true)
-	(_slots[0]["button"] as Button).grab_focus.call_deferred()
+	_show_tab(0)
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.25)
 
 
+func _show_tab(t: int) -> void:
+	if _busy:
+		return
+	_tab = t
+	for i in _tab_btns.size():
+		(_tab_btns[i] as Button).button_pressed = i == t
+	for c in _shelf.get_children():
+		_shelf.remove_child(c)
+		c.queue_free()
+	_slots.clear()
+	_packs = Collection.PACKS.filter(func(p): return int(p.get("tab", 0)) == t)
+	_sel = -1
+	for i in _packs.size():
+		_shelf.add_child(_slot(i))
+	_select(0, true)
+	(_slots[0]["button"] as Button).grab_focus.call_deferred()
+
+
 func _slot(i: int) -> Control:
-	var pack: Dictionary = Collection.PACKS[i]
+	var pack: Dictionary = _packs[i]
 	var b := Button.new()
 	b.flat = true
-	b.custom_minimum_size = Vector2(250, 452)
+	b.custom_minimum_size = Vector2(250, 428)
 	b.focus_mode = Control.FOCUS_ALL
 	for st in ["normal", "hover", "pressed", "focus"]:
 		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
 	var wrap := PackWrapper.new().setup(pack)
 	wrap.custom_minimum_size = Vector2(250, 384)
 	wrap.size = Vector2(250, 384)
-	wrap.position = Vector2(0, 60)
+	wrap.position = Vector2(0, 40)
 	wrap.pivot_offset = Vector2(125, 384)
 	b.add_child(wrap)
 	b.pressed.connect(func():
@@ -171,7 +205,7 @@ func _slot(i: int) -> Control:
 	wrap.position.y = -60
 	var tw := wrap.create_tween().set_parallel()
 	tw.tween_property(wrap, "modulate:a", 1.0, 0.25).set_delay(0.1 + i * 0.07)
-	tw.tween_property(wrap, "position:y", 60.0, 0.4).set_delay(0.1 + i * 0.07).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(wrap, "position:y", 40.0, 0.4).set_delay(0.1 + i * 0.07).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	return b
 
 
@@ -193,7 +227,7 @@ func _select(i: int, quiet := false) -> void:
 	_sel = i
 	if not quiet:
 		Sfx.play("hover", -10.0)
-	var pack: Dictionary = Collection.PACKS[i]
+	var pack: Dictionary = _packs[i]
 	var col: Color = pack["color"]
 	var w: PackWrapper = _slots[i]["wrap"]
 	if w._art:
@@ -253,7 +287,7 @@ func _refresh() -> void:
 	_dp.text = Loc.t("%d DP") % Collection.dp
 	if _sel < 0:
 		return
-	var pack: Dictionary = Collection.PACKS[_sel]
+	var pack: Dictionary = _packs[_sel]
 	var pool: Array = Collection.pool(str(pack["key"]))
 	var have := 0
 	for id in pool:
@@ -266,8 +300,8 @@ func _refresh() -> void:
 		_open_btn.text = "Needs the card database"
 		_open_btn.disabled = true
 	else:
-		_open_btn.text = Loc.t("Open  ·  %d DP") % Collection.PACK_PRICE
-		_open_btn.disabled = Collection.dp < Collection.PACK_PRICE
+		_open_btn.text = Loc.t("Open  ·  %d DP") % Collection.pack_price(pack)
+		_open_btn.disabled = Collection.dp < Collection.pack_price(pack)
 
 
 func _open(pack: Dictionary) -> void:
@@ -295,7 +329,7 @@ func _open(pack: Dictionary) -> void:
 	w.position.y = -60
 	var back := w.create_tween().set_parallel()
 	back.tween_property(w, "modulate:a", 1.0, 0.2)
-	back.tween_property(w, "position:y", 60.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	back.tween_property(w, "position:y", 40.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_last_title.text = Loc.t("YOU PULLED")
 	for c in _featured.get_children():
 		c.queue_free()
@@ -312,6 +346,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
 		_close()
+	elif _busy:
+		return
+	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_Q, KEY_E]) \
+			or (event is InputEventJoypadButton and event.pressed and event.button_index in [JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER]):
+		var back: bool = (event is InputEventKey and event.keycode == KEY_Q) or (event is InputEventJoypadButton and event.button_index == JOY_BUTTON_LEFT_SHOULDER)
+		get_viewport().set_input_as_handled()
+		Sfx.play("click")
+		_show_tab(posmod(_tab + (-1 if back else 1), Collection.PACK_TABS.size()))
 
 
 func _close() -> void:

@@ -160,6 +160,7 @@ const STORY_CAST := {
 			"win": ["Told you. Go home."], "lose": ["...Lucky."]}},
 	"lumen": {"name": "Lumen", "short": "Lumen", "era": "Crossroads", "color": Color("8ff0ff"), "title": "A glitchy duel spirit"},
 	"shopkeeper": {"name": "Old Shopkeeper", "short": "Shopkeeper", "era": "Crossroads", "color": Color("c9a76a"), "title": "Card shop owner"},
+	"grandpa": {"name": "Solomon Muto", "short": "Grandpa", "era": "Duel Monsters", "color": Color("c9a76a"), "title": "Owner of Kame Game"},
 	"hunter": {"name": "Rare Hunter", "short": "Rare Hunter", "era": "Duel Monsters", "color": Color("6b4a9e"), "title": "One of Vellum's men",
 		"deck": "yusei", "personality": "dark",
 		"lines": {"intro": ["Your rare cards belong to Vellum now."], "ace": ["Behold... a power from another time!"]}},

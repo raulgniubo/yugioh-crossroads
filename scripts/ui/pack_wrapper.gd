@@ -17,7 +17,7 @@ var _semi: Font
 
 func setup(p: Dictionary) -> PackWrapper:
 	pack = p
-	var path := "res://assets/ui/packs/%s.jpg" % ART.get(str(p.get("key", "")), "")
+	var path := "res://assets/ui/packs/%s.jpg" % ART.get(str(p.get("key", "")), str(p.get("key", "")))
 	if ResourceLoader.exists(path):
 		_art = load(path)
 	return self

@@ -6,6 +6,8 @@ extends Control
 
 signal closed
 
+var picked := false      # "Duel with this deck" was pressed in here
+
 var _grid: GridContainer
 var _deck_list: VBoxContainer
 var _count: Label
@@ -55,7 +57,8 @@ func _ready() -> void:
 	_use_btn.add_theme_font_size_override("font_size", 22)
 	_use_btn.pressed.connect(func():
 		if Collection.deck_ok():
-			Router.duel_config["player_deck"] = "custom"
+			picked = true
+			Collection.use_deck("custom")
 			Router.toast(Loc.t("You'll duel with %s") % Collection.deck_name)
 		_refresh_count())
 	head.add_child(_use_btn)
@@ -424,7 +427,7 @@ func _refresh_count() -> void:
 			parts.append("%s (%d, max %d)" % [x[0], x[1], x[2]])
 		_warn.text = Loc.t("Not allowed by the Forbidden/Limited list: ") + ", ".join(parts)
 	_count.add_theme_color_override("font_color", UITheme.TEXT_DIM if ok else UITheme.DANGER)
-	var using: bool = Router.duel_config.get("player_deck", "") == "custom"
+	var using: bool = Collection.active == "custom"
 	_use_btn.text = "  ✓ Using this deck  " if using and ok else "  Duel with this deck  "
 	_use_btn.disabled = not ok
 
@@ -455,8 +458,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _close() -> void:
-	if not Collection.deck_ok() and Router.duel_config.get("player_deck", "") == "custom":
-		Router.duel_config["player_deck"] = "echo"
+	Collection._apply_active()
+	if not Collection.deck_ok() and Collection.active == "custom":
 		Router.toast(Loc.t("Your deck needs %d to %d cards, so the Echo Deck is back in use") % [Collection.MAIN_MIN, Collection.MAIN_MAX])
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 0.0, 0.2)

@@ -685,7 +685,7 @@ func _challenge() -> void:
 		deck = ["yusei", "jaden", "kaiba", "yugi", "joey"][absi(key.hash()) % 5]
 	Router.match_state = {}
 	Router.duel_config = {
-		"opponent": key, "opponent_deck": deck, "player_deck": Router.duel_config.get("player_deck", "echo"), "player_char": "player",
+		"opponent": key, "opponent_deck": deck, "player_deck": Collection.active_deck(), "player_char": "player",
 		"difficulty": int(info["difficulty"]), "turbo": true, "story": true, "lose_ok": true, "return_to": Router.RIDE,
 		"continue_label": Loc.t("Back to the highway"),
 	}

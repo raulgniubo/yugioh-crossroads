@@ -50,7 +50,7 @@ const STANDINS := {
 	"jaden": "duelist_m8", "chazz": "duelist_m9", "zane": "duelist_m10", "alexis": "duelist_f2", "syrus": "duelist_m11", "aster": "duelist_m12",
 	"yusei": "duelist_m13", "jack": "duelist_m14", "crow": "duelist_m15", "akiza": "duelist_f3", "kalin": "duelist_m16",
 	"yuma": "duelist_m17", "shark": "duelist_m18", "kite": "duelist_m19", "vector": "office_worker",
-	"kid": "street_duelist", "vendor": "shopkeeper", "guard": "office_worker", "lumen": "student_girl",
+	"kid": "street_duelist", "vendor": "shopkeeper", "grandpa": "shopkeeper", "guard": "office_worker", "lumen": "student_girl",
 	"professor": "duelist_m3", "red_student": "student_boy", "yellow_student": "duelist_m4", "blue_student": "duelist_m7",
 }
 ## Duel Academy jackets. Painted over stand-in models only, never over a model you supplied.
@@ -254,7 +254,7 @@ func _borrow_clips(g: Node) -> void:
 ## numbers across bends everything the wrong way. Instead: work out how far each donor bone has
 ## turned from its own rest pose, in world terms, and turn the matching bone the same amount
 ## from where the donor's rest would put it.
-func _retarget(src: Animation, dskel: Skeleton3D, skel: Skeleton3D, skel_path: String, ratio: float) -> Animation:
+func _retarget(src: Animation, dskel: Skeleton3D, skel: Skeleton3D, skel_path: String, ratio: float, fps := 30.0) -> Animation:
 	var dn := dskel.get_bone_count()
 	var rot_t := {}
 	var pos_t := {}
@@ -306,9 +306,9 @@ func _retarget(src: Animation, dskel: Skeleton3D, skel: Skeleton3D, skel_path: S
 	var hip_parent_inv := Transform3D.IDENTITY
 	if hip >= 0 and skel.get_bone_parent(hip) >= 0:
 		hip_parent_inv = skel.get_bone_global_rest(skel.get_bone_parent(hip)).affine_inverse()
-	var frames := int(ceil(src.length * 30.0)) + 1
+	var frames := int(ceil(src.length * fps)) + 1
 	for f in frames:
-		var t := minf(float(f) / 30.0, src.length)
+		var t := minf(float(f) / fps, src.length)
 		# The donor's pose at this moment, bone by bone, in skeleton space.
 		var dg: Array = []
 		dg.resize(dn)
@@ -336,6 +336,71 @@ func _retarget(src: Animation, dskel: Skeleton3D, skel: Skeleton3D, skel_path: S
 		if hip_track >= 0:
 			out.position_track_insert_key(hip_track, t, hip_parent_inv * ((dg[dhip] as Transform3D).origin * ratio))
 	return out
+
+
+const GESTURES := "res://assets/models/anim/gestures.glb"
+var _gest: Node = null           # the shared library of everyday motions (wave, chat, sit, ...)
+var _gest_cache := {}            # "<model file>|<clip>" -> Animation, made once per model file
+
+
+## An everyday motion from the shared library, fitted to this model: "stand", "stand2", "alert",
+## "agree", "wave", "sit", "sittalk", "scratch", "listen", "chat", "checkout", "cheer", "cheer2",
+## "phone", "stomp", "bow". Returns the clip name to play, or "" when this model cannot use it
+## (no skeleton of the usual family). The clip is made the first time it is asked for.
+func gesture(model: Node, motion: String) -> String:
+	var ap := anim_player(model)
+	var skel := _first_skeleton(model)
+	if skel == null:
+		return ""
+	var nm := "g_" + motion
+	if ap and ap.has_animation(nm):
+		return nm
+	if model.has_meta("no_gestures"):
+		return ""
+	if _gest == null or not is_instance_valid(_gest):
+		var ps = load(GESTURES)
+		if not (ps is PackedScene):
+			return ""
+		_gest = ps.instantiate()
+	var dap := anim_player(_gest)
+	var dskel := _first_skeleton(_gest)
+	if dap == null or dskel == null or not dap.has_animation(nm):
+		return ""
+	var shared := 0
+	for b in dskel.get_bone_count():
+		if skel.find_bone(dskel.get_bone_name(b)) >= 0:
+			shared += 1
+	if shared < int(dskel.get_bone_count() * 0.8):
+		model.set_meta("no_gestures", true)
+		return ""
+	if ap == null:
+		ap = AnimationPlayer.new()
+		ap.name = "AnimationPlayer"
+		skel.get_parent().add_child(ap)
+		ap.root_node = ap.get_path_to(skel.get_parent())
+		ap.add_animation_library("", AnimationLibrary.new())
+	elif ap.get_animation_library_list().is_empty():
+		ap.add_animation_library("", AnimationLibrary.new())
+	var lib := ap.get_animation_library(ap.get_animation_library_list()[0])
+	var root := ap.get_node_or_null(ap.root_node)
+	if root == null:
+		return ""
+	var skel_path := str(root.get_path_to(skel))
+	var ck := "%s|%s|%s" % [str(model.get_meta("file", "")), skel_path, nm]
+	var anim: Animation = _gest_cache.get(ck) if model.has_meta("file") else null
+	if anim == null:
+		var ratio := 1.0
+		var hip_a := skel.find_bone("Hips")
+		var hip_b := dskel.find_bone("Hips")
+		if hip_a >= 0 and hip_b >= 0 and absf(dskel.get_bone_global_rest(hip_b).origin.y) > 0.0001:
+			ratio = skel.get_bone_global_rest(hip_a).origin.y / dskel.get_bone_global_rest(hip_b).origin.y
+		anim = _retarget(dap.get_animation(nm), dskel, skel, skel_path, ratio, 20.0)
+		if nm in ["g_stand", "g_stand2", "g_sit", "g_sittalk", "g_chat", "g_listen"]:
+			anim.loop_mode = Animation.LOOP_LINEAR
+		if model.has_meta("file"):
+			_gest_cache[ck] = anim
+	lib.add_animation(nm, anim)
+	return nm
 
 
 ## The model's AnimationPlayer, if it came with animations (walk/idle...).
@@ -470,6 +535,7 @@ func load_model(key: String) -> Node3D:
 			g = _merge_clip_files(key, path, g)
 			_borrow_clips(g)
 		var r := Node3D.new()
+		r.set_meta("file", path)
 		r.set_meta("human_bones", _guess_human_map(g))
 		r.set_meta("animated", anim_player(g) != null)
 		r.add_child(g)

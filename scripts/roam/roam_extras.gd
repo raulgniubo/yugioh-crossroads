@@ -15,7 +15,8 @@ var _beacon: Node3D
 var _trail: Array = []
 var _hud: Control
 var _wp_label: Label
-var _chip_label: Label
+var _chip_label: Button
+var _chip_card: Control
 var _edge_label: Label
 var _chips: Array = []          # [{node, pos, idx}]
 var _got := {}                  # district -> [chip indices]
@@ -85,7 +86,7 @@ func _build_hud() -> void:
 	bar.add_theme_constant_override("separation", 8)
 	_hud.add_child(bar)
 	for b in [["M   Map", func(): open_guide("places")], ["G   Worlds", func(): open_guide("travel")],
-			["C   Card shop", guide_to_shop], ["J   Quests", func(): open_guide("quests")]]:
+			["C   Card shop", guide_to_shop], ["J   Quests", func(): open_guide("quests")], ["B   Decks", func(): scene.open_decks()]]:
 		var btn := Button.new()
 		btn.text = b[0]
 		btn.focus_mode = Control.FOCUS_NONE
@@ -93,10 +94,15 @@ func _build_hud() -> void:
 		btn.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.03, 0.05, 0.09, 0.78), Color(1, 1, 1, 0.14), 12))
 		btn.pressed.connect(b[1])
 		bar.add_child(btn)
-	_chip_label = UITheme.label("", 22, UITheme.GOLD, UITheme.title_font())
-	_chip_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
-	_chip_label.add_theme_constant_override("outline_size", 6)
-	_chip_label.tooltip_text = "Star Chips found in this world"
+	# Star Chips: a named counter you can click to be told what they are.
+	_chip_label = Button.new()
+	_chip_label.focus_mode = Control.FOCUS_NONE
+	_chip_label.add_theme_font_size_override("font_size", 19)
+	_chip_label.add_theme_color_override("font_color", UITheme.GOLD)
+	_chip_label.add_theme_color_override("font_hover_color", Color.WHITE)
+	_chip_label.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.09, 0.07, 0.02, 0.82), Color(UITheme.GOLD, 0.55), 12))
+	_chip_label.tooltip_text = "Star Chips found in this world. Click to see what they are."
+	_chip_label.pressed.connect(explain_chips)
 	bar.add_child(_chip_label)
 	_wp_label = UITheme.label("", 26, Color("ffe9a8"), UITheme.title_font())
 	_wp_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -136,6 +142,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		open_guide("travel")
 	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C) or (pad and event.button_index == JOY_BUTTON_X):
 		guide_to_shop()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_B:
+		scene.open_decks()
+		scene.get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_J:
 		open_guide("quests")
 	elif pad and event.button_index == JOY_BUTTON_Y:
@@ -431,10 +440,55 @@ func _build_chips() -> void:
 
 
 func _refresh_chip_label() -> void:
-	_chip_label.text = "   ★ %d / %d" % [(_got.get(_key, []) as Array).size(), _chip_spots().size()]
+	_chip_label.text = Loc.t("Star Chips  %d / %d") % [(_got.get(_key, []) as Array).size(), _chip_spots().size()]
+
+
+## What the spinning gold stars are, said plainly. Shown the first time you pick one up, and
+## whenever you click the counter.
+func explain_chips() -> void:
+	if _chip_card and is_instance_valid(_chip_card):
+		_chip_card.queue_free()
+	var total := _chip_spots().size()
+	var card := PanelContainer.new()
+	_chip_card = card
+	var sb := UITheme.panel_box(Color(0.07, 0.055, 0.02, 0.96), 18, Color(UITheme.GOLD, 0.85))
+	sb.content_margin_left = 26
+	sb.content_margin_right = 26
+	sb.content_margin_top = 16
+	sb.content_margin_bottom = 16
+	card.add_theme_stylebox_override("panel", sb)
+	card.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	card.offset_top = 130
+	card.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	card.add_child(v)
+	var t := UITheme.label("STAR CHIPS", 30, UITheme.GOLD, UITheme.title_font())
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(t)
+	for line in [Loc.t("The spinning gold stars around town are Star Chips. Walk into one to pick it up."),
+			Loc.t("Each one pays %d Duel Points. Find all %d in a world for a bonus of %d.") % [CHIP_DP, total, CHIPS_ALL_DP],
+			Loc.t("The counter at the top shows how many you have found here. Quests (J) track them too.")]:
+		var l := UITheme.label(line, 21, UITheme.TEXT)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(l)
+	_hud.add_child(card)
+	card.modulate.a = 0.0
+	var tw := card.create_tween()
+	tw.tween_property(card, "modulate:a", 1.0, 0.25)
+	tw.tween_interval(9.0)
+	tw.tween_property(card, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(card.queue_free)
 
 
 func _collect(c: Dictionary) -> void:
+	var first_ever := true
+	for k in _got:
+		if not (_got[k] as Array).is_empty():
+			first_ever = false
+	if first_ever:
+		explain_chips()
 	var got: Array = _got.get(_key, [])
 	got.append(c["idx"])
 	_got[_key] = got

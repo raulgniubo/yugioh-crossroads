@@ -118,7 +118,78 @@ static var _model_cache := {}
 
 
 func has_model(name: String) -> bool:
-	return ResourceLoader.exists(MODELS % name)
+	return ResourceLoader.exists(MODELS % name) or own_place(name) != ""
+
+
+## Your own building or prop: <card folder>/places/<name>.glb replaces the game's model of the
+## same name (card_shop, corp_tower, duel_table, ...). It is fitted to the same spot and size.
+static var _own_places := {}
+
+
+static func own_place(name: String) -> String:
+	var p := Settings.card_folder.path_join("places/%s.glb" % name)
+	return p if FileAccess.file_exists(p) else ""
+
+
+static func own_instance(name: String) -> Node3D:
+	var p := own_place(name)
+	if p == "":
+		return null
+	var src = _own_places.get(p)
+	if src == null or not is_instance_valid(src):
+		src = Avatars._load_glb(p)
+		if src == null:
+			return null
+		_own_places[p] = src
+	var copy = (src as Node).duplicate()
+	return copy as Node3D
+
+
+## The way out of a room: a framed double door on the +Z wall, daylight in its glass, brass
+## handles, a doormat and a lit EXIT sign above. `at` is the floor point on the wall's inner face.
+func exit_door(at: Vector3, leaf := Color(0.42, 0.27, 0.16), frame := Color(0.2, 0.13, 0.08), width := 1.9) -> void:
+	var fm := mat(frame, 0.6)
+	var lm := mat(leaf, 0.55)
+	var dark := mat(leaf.darkened(0.25), 0.6)
+	var brass := mat(Color(0.86, 0.68, 0.3), 0.3, 0.8)
+	var day := glow_mat(Color(0.78, 0.9, 1.0), 1.25)
+	var h := 2.5
+	# Daylight behind the door, the frame around it.
+	box(Vector3(width + 0.5, h + 0.45, 0.1), at + Vector3(0, (h + 0.45) / 2.0, -0.03), fm, false)
+	for sx: float in [-1.0, 1.0]:
+		box(Vector3(0.16, h + 0.12, 0.2), at + Vector3(sx * (width / 2.0 + 0.08), (h + 0.12) / 2.0, -0.1), fm, false)
+		# One leaf: rail and stile frame, a tall pane above, a panel below, a handle.
+		var cx := sx * width / 4.0
+		var lw := width / 2.0 - 0.03
+		box(Vector3(lw, h, 0.07), at + Vector3(cx, h / 2.0, -0.11), lm, false)
+		box(Vector3(lw - 0.3, 1.15, 0.03), at + Vector3(cx, 1.62, -0.15), day, false)
+		box(Vector3(0.035, 1.15, 0.045), at + Vector3(cx, 1.62, -0.155), lm, false)
+		box(Vector3(lw - 0.3, 0.035, 0.045), at + Vector3(cx, 1.62, -0.155), lm, false)
+		box(Vector3(lw - 0.3, 0.72, 0.025), at + Vector3(cx, 0.52, -0.15), dark, false)
+		var handle := cyl(0.022, 0.022, 0.5, at + Vector3(sx * 0.11, 1.08, -0.2), brass)
+		handle.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for hy: float in [0.86, 1.3]:
+			box(Vector3(0.03, 0.03, 0.07), at + Vector3(sx * 0.11, hy, -0.17), brass, false)
+		box(Vector3(lw, 0.16, 0.085), at + Vector3(cx, 0.08, -0.115), brass, false)
+	box(Vector3(width + 0.32, 0.18, 0.2), at + Vector3(0, h + 0.09, -0.1), fm, false)
+	box(Vector3(0.02, h, 0.08), at + Vector3(0, h / 2.0, -0.115), fm, false)
+	# Light spilling in over the threshold, and a mat to wipe your feet on.
+	box(Vector3(width, 0.012, 0.5), at + Vector3(0, 0.008, -0.42), glow_mat(Color(0.85, 0.93, 1.0), 0.5), false)
+	box(Vector3(width - 0.1, 0.03, 0.95), at + Vector3(0, 0.02, -0.95), mat(Color(0.16, 0.3, 0.22), 0.95), false)
+	box(Vector3(width - 0.4, 0.034, 0.65), at + Vector3(0, 0.02, -0.95), mat(Color(0.24, 0.42, 0.3), 0.95), false)
+	# EXIT, lit.
+	box(Vector3(1.0, 0.36, 0.08), at + Vector3(0, h + 0.5, -0.1), mat(Color(0.05, 0.1, 0.07), 0.5), false)
+	box(Vector3(0.92, 0.28, 0.03), at + Vector3(0, h + 0.5, -0.15), glow_mat(Color("38e08a"), 1.6), false)
+	var l := Label3D.new()
+	l.text = "EXIT"
+	l.font = load("res://assets/fonts/Rajdhani-SemiBold.ttf")
+	l.font_size = 56
+	l.pixel_size = 0.0045
+	l.outline_size = 0
+	l.modulate = Color(0.02, 0.1, 0.05)
+	l.position = at + Vector3(0, h + 0.5, -0.17)
+	l.rotation.y = PI
+	add_child(l)
 
 
 ## Place a Meshy-made model. Scaled so its largest side (or its height, if `by_height`) is `size`,
@@ -126,11 +197,15 @@ func has_model(name: String) -> bool:
 func prop(name: String, pos: Vector3, rot: float, size: float, by_height := false, parent: Node3D = null) -> Node3D:
 	if not has_model(name):
 		return null
-	var ps: PackedScene = _model_cache.get(name)
-	if ps == null:
-		ps = load(MODELS % name)
-		_model_cache[name] = ps
-	var inst: Node3D = ps.instantiate()
+	var inst: Node3D = own_instance(name)
+	if inst == null:
+		if not ResourceLoader.exists(MODELS % name):
+			return null
+		var ps: PackedScene = _model_cache.get(name)
+		if ps == null:
+			ps = load(MODELS % name)
+			_model_cache[name] = ps
+		inst = ps.instantiate()
 	var holder := Node3D.new()
 	holder.add_child(inst)
 	var box := _aabb(inst, Transform3D.IDENTITY)

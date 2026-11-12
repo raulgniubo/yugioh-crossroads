@@ -1420,6 +1420,47 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 			val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			bv.add_child(val)
 			row.add_child(box)
+		# What the duel paid, line by line, then the total and your purse.
+		var pay: Array = stats.get("reward", [])
+		if not pay.is_empty():
+			var box := PanelContainer.new()
+			var psb := UITheme.panel_box(Color(0.09, 0.07, 0.02, 0.9), 14, Color(UITheme.GOLD, 0.6))
+			psb.content_margin_left = 22
+			psb.content_margin_right = 22
+			psb.content_margin_top = 10
+			psb.content_margin_bottom = 10
+			box.add_theme_stylebox_override("panel", psb)
+			box.custom_minimum_size = Vector2(480, 0)
+			box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			var pv := VBoxContainer.new()
+			pv.add_theme_constant_override("separation", 2)
+			box.add_child(pv)
+			for line in pay:
+				var label := str(line[0])
+				if label.begins_with("Win streak x"):
+					label = Loc.t("Win streak x%d") % int(label.trim_prefix("Win streak x"))
+				else:
+					label = Loc.t(label)
+				var row2 := HBoxContainer.new()
+				var ll := UITheme.label(label, 22, UITheme.TEXT)
+				ll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				row2.add_child(ll)
+				row2.add_child(UITheme.label("+%d" % int(line[1]), 22, UITheme.GOLD, UITheme.semi_font()))
+				pv.add_child(row2)
+			var rule := ColorRect.new()
+			rule.color = Color(UITheme.GOLD, 0.5)
+			rule.custom_minimum_size = Vector2(0, 2)
+			pv.add_child(rule)
+			var tot := HBoxContainer.new()
+			var tl := UITheme.label(Loc.t("DUEL POINTS EARNED"), 20, UITheme.GOLD, UITheme.semi_font())
+			tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			tot.add_child(tl)
+			tot.add_child(UITheme.label("+%d" % int(stats.get("earned", 0)), 34, UITheme.GOLD, UITheme.title_font()))
+			pv.add_child(tot)
+			var have := UITheme.label(Loc.t("You now have %d DP") % Collection.dp, 18, UITheme.TEXT_DIM)
+			have.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			pv.add_child(have)
+			v.add_child(box)
 		var gap := Control.new()
 		gap.custom_minimum_size = Vector2(0, 14)
 		v.add_child(gap)

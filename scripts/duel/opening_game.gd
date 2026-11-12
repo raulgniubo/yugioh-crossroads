@@ -465,6 +465,17 @@ func _draw_coin(ci: Control, at: Vector2, r: float, angle: float, flat: bool) ->
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
+static var _hand_tex := {}
+
+
+static func _hand_art(kind: int) -> Texture2D:
+	if _hand_tex.has(kind):
+		return _hand_tex[kind]
+	var path := "res://assets/ui/hands/%s.png" % ["rock", "paper", "scissors"][clampi(kind, 0, 2)]
+	_hand_tex[kind] = load(path) if ResourceLoader.exists(path) else null
+	return _hand_tex[kind]
+
+
 func _finger(ci: Control, from: Vector2, to: Vector2, w: float, fill: Color, line: Color) -> void:
 	ci.draw_line(from, to, line, w + 7.0)
 	ci.draw_circle(to, (w + 7.0) / 2.0, line)
@@ -474,6 +485,19 @@ func _finger(ci: Control, from: Vector2, to: Vector2, w: float, fill: Color, lin
 
 ## A gloved hand throwing rock (0), paper (1) or scissors (2). It points along +X before `rot`.
 func _draw_hand(ci: Control, at: Vector2, scale: float, kind: int, color: Color, rot: float, mirror := false) -> void:
+	# Painted hands when the art is there; the drawn ones below are the fallback.
+	var art: Texture2D = _hand_art(kind)
+	if art != null:
+		var sz := 150.0
+		# The art points up; the hand is thrown along +X, so turn it a quarter. A soft glow in the
+		# duelist's color sits behind it.
+		ci.draw_set_transform(at, 0.0, Vector2(scale, scale))
+		for g in 4:
+			ci.draw_circle(Vector2.ZERO, 62.0 + g * 14.0, Color(color.r, color.g, color.b, 0.07))
+		ci.draw_set_transform_matrix(Transform2D(rot, Vector2(scale, scale * (-1.0 if mirror else 1.0)), 0.0, at) * Transform2D(PI / 2.0, Vector2.ZERO))
+		ci.draw_texture_rect(art, Rect2(-sz / 2.0, -sz / 2.0, sz, sz), false, Color.WHITE.lerp(color.lightened(0.5), 0.18))
+		ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		return
 	var fill := color.lerp(Color.WHITE, 0.72)
 	var line := color.darkened(0.6)
 	ci.draw_set_transform(at, rot, Vector2(scale, scale * (-1.0 if mirror else 1.0)))

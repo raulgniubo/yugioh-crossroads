@@ -1859,6 +1859,8 @@ func add_duelists(me_key: String, opp_key: String) -> void:
 		fig.scale = Vector3.ONE * 1.2
 		add_child(fig)
 		fig.setup(key, col, "", false)
+		fig.lively = false
+		fig.greets = false
 		_duelists[p] = fig
 		var spot := SpotLight3D.new()
 		spot.light_color = Color.WHITE.lerp(col, 0.25)
@@ -1882,6 +1884,8 @@ func duelist_shot(p: int, dur := 0.6, cheer := false, aside := 0.0) -> void:
 	cam_shot(Vector3(-1.35 * side, 1.55, z - side * 3.6), Vector3((0.1 - aside) * side, 1.45, z), dur)
 	if cheer:
 		(_duelists[p] as RoamFigure).play_once("victory", 2)
+		if _duelists.has(1 - p):
+			(_duelists[1 - p] as RoamFigure).play_once("lose")
 
 
 ## Park the camera on the opening shot (your rival) while the VS card is up.

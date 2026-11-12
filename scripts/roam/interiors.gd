@@ -70,8 +70,13 @@ static func build(city: CityBuilder, key: String) -> void:
 		city.add_child(l)
 		city.box(Vector3(1.6, 0.06, 0.5), o + p + Vector3(0, 0.42, 0), city.glow_mat(Color.WHITE.lerp(trim, 0.25), 2.6), false)
 	# The way out.
-	city.box(Vector3(2.0, 2.6, 0.08), o + Vector3(0, 1.3, half.y - 0.02), city.glow_mat(Color("7dffb0"), 0.5), false)
-	_sign(city, "EXIT", o + Vector3(0, 2.95, half.y - 0.1), PI, Color("7dffb0"), 64)
+	match key:
+		"kc_lobby":
+			city.exit_door(o + Vector3(0, 0, half.y), Color(0.62, 0.68, 0.78), Color(0.16, 0.2, 0.3), 2.3)
+		"arcade":
+			city.exit_door(o + Vector3(0, 0, half.y), Color(0.22, 0.18, 0.36), Color(0.1, 0.08, 0.18))
+		_:
+			city.exit_door(o + Vector3(0, 0, half.y), Color(0.72, 0.24, 0.18), Color(0.95, 0.88, 0.72))
 	match key:
 		"kc_lobby":
 			_sign(city, "KAIBACORP", o + Vector3(0, 4.9, -half.y + 0.12), 0.0, Color("7cc4ff"), 170)

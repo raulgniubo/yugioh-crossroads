@@ -25,6 +25,10 @@ var _prompt: Label
 var _dlg: PanelContainer
 var _dlg_name: Label
 var _dlg_text: Label
+var _dlg_face: TextureRect
+var _plate: Control
+var _purse: Control
+var _dlg_fig: RoamFigure
 var _dlg_buttons: HBoxContainer
 var _dlg_lines: Array = []
 var _dlg_index := 0
@@ -109,8 +113,7 @@ func _load_progress() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(SAVE_PATH) == OK:
 		_beaten = cfg.get_value("roam", "beaten", {})
-		if cfg.has_section_key("roam", "deck") and CardData.has_deck(cfg.get_value("roam", "deck", "")):
-			Router.duel_config["player_deck"] = cfg.get_value("roam", "deck")
+	Router.duel_config["player_deck"] = Collection.active_deck()
 
 
 func _save_progress() -> void:
@@ -209,6 +212,8 @@ func _build_walkers() -> void:
 			people = ["student_boy", "student_girl", "street_duelist", "stylish_woman"]
 		var mkey: String = people[i % people.size()] if Avatars.has_avatar(people[i % people.size()]) else "walker_%d" % i
 		f.setup(mkey, palette[rng.randi() % palette.size()], "", false)
+		f.watch = _player
+		f.greets = false
 		if campus:
 			f.wear_uniform(Avatars.DORM_COLORS[["red", "yellow", "blue"][i % 3]])
 		var body := AnimatableBody3D.new()
@@ -232,7 +237,7 @@ func _build_walkers() -> void:
 		var d := {"id": "walker_%d" % i, "char": mkey if Characters.STORY_CAST.has(mkey) else "", "name": "Passerby", "color": Color.GRAY,
 				"lines": [WALK_LINES[i % WALK_LINES.size()], "A duel? Right here? ...Sure, why not."],
 				"duel": {"deck": decks[rng.randi() % decks.size()] if not decks.is_empty() else "joey", "difficulty": i % 2, "intro": "Let's make it quick!"}}
-		var marker := Label3D.new()
+		var marker := Sprite3D.new()
 		marker.visible = false
 		f.add_child(marker)
 		_npcs.append([d, f, marker])
@@ -263,6 +268,45 @@ func _move_walkers(delta: float) -> void:
 		if not talking_to:
 			var heading: Vector3 = (b - a).normalized() * float(w["dir"])
 			f.rotation.y = lerp_angle(f.rotation.y, atan2(heading.x, heading.z), 1.0 - exp(-delta * 8.0))
+
+
+## People who drift around a room: shop customers going from shelf to shelf. They stop to look,
+## pick something up, scratch their head, then move on. They wait if you stand in the way.
+var _wanderers: Array = []
+
+
+func _move_wanderers(delta: float) -> void:
+	if walkers_frozen or story != null:
+		return
+	for w in _wanderers:
+		var f: RoamFigure = w["fig"]
+		if _talking and _dlg_npc.get("id", "") == str(w["id"]):
+			f.set_speed(0.0)
+			continue
+		var k := 1.0 - exp(-delta * 6.0)
+		if w["pause"] > 0.0:
+			w["pause"] -= delta
+			f.set_speed(0.0)
+			f.rotation.y = lerp_angle(f.rotation.y, float(w["face"]), k)
+			continue
+		var pt: Array = w["pts"][w["i"]]
+		var to: Vector3 = (pt[0] as Vector3) - f.position
+		to.y = 0.0
+		if to.length() < 0.1:
+			w["pause"] = randf_range(5.0, 11.0)
+			w["face"] = pt[1]
+			w["k"] = (int(w["k"]) + 1) % (w["order"] as Array).size()
+			w["i"] = int(w["order"][w["k"]])
+			f.set_speed(0.0)
+			f._fidget_t = randf_range(1.2, 3.0)
+			continue
+		if f.global_position.distance_to(_player.global_position) < 1.25:
+			f.set_speed(0.0)
+			continue
+		var step := minf(1.05 * delta, to.length())
+		f.position += to.normalized() * step
+		f.rotation.y = lerp_angle(f.rotation.y, atan2(to.x, to.z), k)
+		f.set_speed(1.05)
 
 
 # ------------------------------------------------------------------ player & camera
@@ -373,6 +417,7 @@ func _physics_process(delta: float) -> void:
 		_light_t = 0.35
 		_cull_lights()
 	_move_walkers(delta)
+	_move_wanderers(delta)
 	_update_near()
 
 
@@ -463,9 +508,19 @@ func _add_npc(d: Dictionary, offset: Vector3) -> void:
 		if not Avatars.has_avatar(model_key) and d.has("model") and Avatars.has_avatar(d["model"]):
 			model_key = d["model"]
 		f.setup(model_key, _npc_color(d), _npc_name(d))
+		f.watch = _player
+		f.stance = str(d.get("pose", "browse" if d.has("wander") else "stand"))
+		f.greets = not d.get("aloof", false)
 		if d.has("dorm"):
 			f.wear_uniform(Avatars.DORM_COLORS[d["dorm"]])
-		var body := StaticBody3D.new()
+		var body: PhysicsBody3D = AnimatableBody3D.new() if d.has("wander") else StaticBody3D.new()
+		if body is AnimatableBody3D:
+			(body as AnimatableBody3D).sync_to_physics = false
+			var pts: Array = []
+			for w in d["wander"]:
+				pts.append([(w[0] as Vector3) + offset, float(w[1])])
+			_wanderers.append({"id": d["id"], "fig": f, "pts": pts, "i": 0, "pause": randf_range(2.0, 7.0), "face": float(d.get("face", 0.0)),
+				"order": d.get("order", range(pts.size())), "k": 0})
 		var cs := CollisionShape3D.new()
 		var cap := CapsuleShape3D.new()
 		cap.radius = 0.35
@@ -474,12 +529,12 @@ func _add_npc(d: Dictionary, offset: Vector3) -> void:
 		cs.position.y = 0.85
 		body.add_child(cs)
 		f.add_child(body)
-		var marker := Label3D.new()
-		marker.font_size = 90
-		marker.outline_size = 14
+		var marker := Sprite3D.new()
+		marker.pixel_size = 0.0019
 		marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		marker.shaded = false
+		marker.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		marker.position = Vector3(0, 2.45, 0)
-		marker.font = load("res://assets/fonts/Rajdhani-SemiBold.ttf")
 		f.add_child(marker)
 		var entry := [d, f, marker]
 		_npcs.append(entry)
@@ -760,48 +815,25 @@ func _open_look() -> void:
 		_figure.rotation.y = rot)
 
 
-func _open_deck_picker() -> void:
-	_overlay_open = true
-	var p := SidePanel.new("Choose your deck", 620)
-	var current: String = Router.duel_config.get("player_deck", "echo")
-	var keys: Array = ["custom", "echo"]
-	for k in Characters.ORDER:
-		if Characters.available(k):
-			keys.append(Characters.DATA[k]["deck"])
-	for k in keys:
-		if not CardData.has_deck(k):
-			continue
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(0, 64)
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.add_theme_font_size_override("font_size", 24)
-		b.text = ("●  " if k == current else "     ") + CardData.deck_name(k)
-		var key: String = k
-		b.pressed.connect(func():
-			Router.duel_config["player_deck"] = key
-			var cfg := ConfigFile.new()
-			cfg.load(SAVE_PATH)
-			cfg.set_value("roam", "deck", key)
-			cfg.save(SAVE_PATH)
-			Router.toast(Loc.t("Deck set: %s") % CardData.deck_name(key))
-			p.close())
-		p.body.add_child(b)
-	p.closed.connect(func(): _overlay_open = false)
-	_ui.add_child(p)
+## My Decks, from anywhere: the B key, the bar at the top, the pause menu, the shop counter.
+func open_decks() -> void:
+	if _overlay_open or _talking or story != null and story._cut:
+		return
+	_open_overlay(DeckMenu.new())
 
 
 func _refresh_marker(n: Array) -> void:
 	var d: Dictionary = n[0]
-	var m: Label3D = n[2]
+	var m: Sprite3D = n[2]
 	if not d.has("duel"):
-		m.text = "…"
-		m.modulate = Color(1, 1, 1, 0.8)
+		m.texture = load("res://assets/ui/markers/talk.png")
+		m.modulate = Color(1, 1, 1, 0.92)
 	elif _beaten.has(d["id"]):
-		m.text = "✓"
-		m.modulate = Color("5cf2a0")
+		m.texture = load("res://assets/ui/markers/done.png")
+		m.modulate = Color.WHITE
 	else:
-		m.text = "!"
-		m.modulate = Color("ffd166")
+		m.texture = load("res://assets/ui/markers/duel.png")
+		m.modulate = Color.WHITE
 
 
 ## Which part of town the player is standing in (shown under the city name).
@@ -839,7 +871,7 @@ func _update_near() -> void:
 	for n in _npcs:
 		var f: Node3D = n[1]
 		var dist := f.global_position.distance_to(_player.global_position)
-		var m: Label3D = n[2]
+		var m: Sprite3D = n[2]
 		m.position.y = 2.45 + sin(Time.get_ticks_msec() / 300.0) * 0.06
 		if dist < best_d:
 			best_d = dist
@@ -930,6 +962,19 @@ func _talk() -> void:
 			var want_yaw := atan2(to.x, to.z) + 0.6
 			create_tween().tween_property(self, "_yaw", _yaw + wrapf(want_yaw - _yaw, -PI, PI), 0.45).set_trans(Tween.TRANS_SINE)
 	_dlg.visible = true
+	_dlg_fig = null
+	for n in _npcs:
+		if n[0] == d:
+			_dlg_fig = n[1]
+	_dlg_face.visible = _dlg_fig != null and _dlg_fig.key != "" and Avatars.has_avatar(_dlg_fig.key)
+	if _dlg_face.visible:
+		var tex := Portraits.get_portrait(_dlg_fig.key)
+		if tex is ViewportTexture and not Avatars._stages.has(_dlg_fig.key):
+			Portraits._forget(_dlg_fig.key)
+			tex = Portraits.get_portrait(_dlg_fig.key)
+		_dlg_face.texture = tex
+	if _dlg_fig:
+		_dlg_fig.speak(true)
 	_dlg_name.text = _npc_name(d).to_upper()
 	_dlg_name.add_theme_color_override("font_color", _npc_color(d).lightened(0.3))
 	_show_line()
@@ -944,34 +989,20 @@ func _show_line() -> void:
 	create_tween().tween_property(_dlg_text, "visible_ratio", 1.0, 0.02 * _dlg_text.text.length())
 	var last := _dlg_index == _dlg_lines.size() - 1
 	if last and _dlg_npc.has("shop"):
-		var deck_btn := Button.new()
-		deck_btn.text = "  Choose my deck  "
-		deck_btn.add_theme_font_size_override("font_size", 26)
-		deck_btn.pressed.connect(func():
-			_end_talk()
-			_open_deck_picker())
-		_dlg_buttons.add_child(deck_btn)
-		var bye := Button.new()
-		var packs := Button.new()
-		packs.text = "  Buy packs  "
-		packs.add_theme_font_size_override("font_size", 26)
-		packs.pressed.connect(func():
-			_end_talk()
-			_open_overlay(PackShop.new()))
-		_dlg_buttons.add_child(packs)
-		_dlg_buttons.move_child(packs, 0)
-		var build := Button.new()
-		build.text = "  Build my deck  "
-		build.add_theme_font_size_override("font_size", 26)
-		build.pressed.connect(func():
-			_end_talk()
-			_open_overlay(DeckBuilder.new()))
-		_dlg_buttons.add_child(build)
-		bye.text = "  Just looking  "
-		bye.add_theme_font_size_override("font_size", 26)
-		bye.pressed.connect(_end_talk)
-		_dlg_buttons.add_child(bye)
-		deck_btn.grab_focus.call_deferred()
+		var first: Button = null
+		for item in [["  Booster packs  ", func(): _open_overlay(PackShop.new())], ["  Ready-made decks  ", func(): _open_overlay(DeckShop.new())],
+				["  My decks  ", open_decks], ["  Just looking  ", func(): pass]]:
+			var sb := Button.new()
+			sb.text = Loc.t(str(item[0]))
+			sb.add_theme_font_size_override("font_size", 26)
+			var act: Callable = item[1]
+			sb.pressed.connect(func():
+				_end_talk()
+				act.call())
+			_dlg_buttons.add_child(sb)
+			if first == null:
+				first = sb
+		first.grab_focus.call_deferred()
 	elif last and _dlg_npc.get("trade", false):
 		_trade_buttons()
 	elif last and _dlg_npc.has("gift") and not _shop_flag("gift_" + str(_dlg_npc["id"])):
@@ -1156,6 +1187,11 @@ func _advance() -> void:
 func _end_talk() -> void:
 	_talking = false
 	_dlg.visible = false
+	if _dlg_fig and is_instance_valid(_dlg_fig):
+		_dlg_fig.speak(false)
+		if not _dlg_npc.has("duel") and randf() < 0.5:
+			_dlg_fig.gesture("agree" if randf() < 0.5 else "wave")
+			_dlg_fig._hold = minf(_dlg_fig._hold, 3.2)
 	for c in _dlg_buttons.get_children():
 		c.queue_free()
 
@@ -1171,7 +1207,7 @@ func _start_duel() -> void:
 		opp_key = d["id"]
 	Router.duel_config = {
 		"opponent": opp_key, "opponent_deck": duel.get("deck", "joey"),
-		"player_deck": Router.duel_config.get("player_deck", "echo"), "player_char": "player",
+		"player_deck": Collection.active_deck(), "player_char": "player",
 		"difficulty": duel.get("difficulty", 1), "field": district.get("theme", "battlecity"),
 		"story": true, "lose_ok": true, "return_to": Router.ROAM, "continue_label": Loc.t("Back to %s") % Loc.t(str(district.get("name", "town"))),
 	}
@@ -1185,18 +1221,42 @@ func _build_ui() -> void:
 	_ui = CanvasLayer.new()
 	add_child(_ui)
 	# Location card, top left.
+	var plate := PanelContainer.new()
+	var plate_box := UITheme.panel_box(Color(0.02, 0.035, 0.07, 0.78), 16, Color(_theme["accent"], 0.4))
+	plate_box.content_margin_left = 22
+	plate_box.content_margin_right = 26
+	plate_box.content_margin_top = 8
+	plate_box.content_margin_bottom = 10
+	plate.add_theme_stylebox_override("panel", plate_box)
+	plate.position = Vector2(30, 24)
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui.add_child(plate)
+	_plate = plate
 	var loc := VBoxContainer.new()
-	loc.position = Vector2(48, 36)
-	_ui.add_child(loc)
+	loc.add_theme_constant_override("separation", -2)
+	loc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.add_child(loc)
 	_loc_name = UITheme.label(district.get("name", "").to_upper(), 46, Color.WHITE, UITheme.title_font())
 	loc.add_child(_loc_name)
 	_loc_area = UITheme.label(district.get("area", ""), 22, _theme["accent"], UITheme.semi_font())
 	loc.add_child(_loc_area)
-	_counter = UITheme.label("", 20, UITheme.TEXT_DIM)
+	_counter = UITheme.label("", 20, Color(0.86, 0.9, 0.97, 0.92))
 	loc.add_child(_counter)
+	# Duel Points, under the map: always in sight.
+	var purse := DpPurse.new()
+	purse.anchor_left = 1.0
+	purse.anchor_right = 1.0
+	purse.offset_left = -292
+	purse.offset_right = -36
+	purse.offset_top = 300
+	purse.offset_bottom = 362
+	_ui.add_child(purse)
+	_purse = purse
 	_update_counter()
 	# Controls, bottom left.
-	var help := UITheme.label("WASD / stick  move     Shift  run     Drag  look     Scroll  zoom     E  talk / enter     M  map     T  time of day     Esc  menu", 18, Color(1, 1, 1, 0.5))
+	var help := UITheme.label("WASD / stick  move     Shift  run     Drag  look     Scroll  zoom     E  talk / enter     M  map     B  decks     T  time of day     Esc  menu", 18, Color(1, 1, 1, 0.62))
+	help.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	help.add_theme_constant_override("outline_size", 5)
 	help.anchor_top = 1.0
 	help.anchor_bottom = 1.0
 	help.position = Vector2(48, -50)
@@ -1264,14 +1324,30 @@ func _build_ui() -> void:
 	_dlg.offset_bottom = -60
 	_dlg.visible = false
 	_ui.add_child(_dlg)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 22)
+	_dlg.add_child(row)
+	_dlg_face = TextureRect.new()
+	_dlg_face.custom_minimum_size = Vector2(150, 176)
+	_dlg_face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_dlg_face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_dlg_face.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var face_bg := Panel.new()
+	face_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	face_bg.show_behind_parent = true
+	face_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	face_bg.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.09, 0.14, 0.22, 0.95), 16, Color(UITheme.ACCENT, 0.5)))
+	_dlg_face.add_child(face_bg)
+	row.add_child(_dlg_face)
 	var v := VBoxContainer.new()
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.add_theme_constant_override("separation", 10)
-	_dlg.add_child(v)
+	row.add_child(v)
 	_dlg_name = UITheme.label("", 28, UITheme.ACCENT, UITheme.title_font())
 	v.add_child(_dlg_name)
 	_dlg_text = UITheme.label("", 30, Color.WHITE)
 	_dlg_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_dlg_text.custom_minimum_size = Vector2(1180, 90)
+	_dlg_text.custom_minimum_size = Vector2(1000, 90)
 	v.add_child(_dlg_text)
 	_dlg_buttons = HBoxContainer.new()
 	_dlg_buttons.add_theme_constant_override("separation", 14)
@@ -1311,6 +1387,14 @@ func _open_pause() -> void:
 	resume.custom_minimum_size = Vector2(320, 60)
 	resume.pressed.connect(_close_pause)
 	v.add_child(resume)
+	var decks := Button.new()
+	decks.text = "My Decks"
+	decks.custom_minimum_size = Vector2(320, 60)
+	decks.disabled = story != null and story._cut
+	decks.pressed.connect(func():
+		_close_pause()
+		open_decks())
+	v.add_child(decks)
 	var menu := Button.new()
 	menu.text = "Main Menu"
 	menu.custom_minimum_size = Vector2(320, 60)
@@ -1349,6 +1433,32 @@ func _debug() -> void:
 			for i in 2:
 				await get_tree().create_timer(0.4).timeout
 				_advance()
+		elif a.begins_with("--roam-open="):
+			# decks | deckshop | packs, then (decks only) buy-and-copy exercise with --roam-open=flow
+			await get_tree().create_timer(1.5).timeout
+			var what := a.substr(12)
+			if what == "flow":
+				Collection.dp += 5000
+				print("FLOW buy ", Collection.buy_deck("deck_dragon"), " owned=", Collection.decks_owned)
+				var dm := DeckMenu.new()
+				_open_overlay(dm)
+				await get_tree().create_timer(0.5).timeout
+				dm._sel = {"type": "ready", "i": -1, "key": "deck_dragon"}
+				dm._rebuild()
+				dm._use()
+				print("FLOW active ", Collection.active_deck(), " cfg=", Router.duel_config["player_deck"])
+				dm._copy("deck_dragon")
+				await get_tree().create_timer(0.3).timeout
+				print("FLOW copied sel=", dm._sel, " slot=", Collection.slot, " active=", Collection.active_deck())
+				dm._use()
+				print("FLOW custom ", Collection.active_deck(), " name=", Collection.deck_name, " n=", Collection.main.size())
+				dm._do_rename("Test Deck")
+				dm._clear()
+				dm._clear()
+				print("FLOW cleared active=", Collection.active_deck(), " empty=", Collection.slot_empty(int(dm._sel["i"])))
+				dm._close()
+			else:
+				_open_overlay(DeckShop.new() if what == "deckshop" else (PackShop.new() if what == "packs" else DeckMenu.new()))
 		elif a == "--shop":
 			await get_tree().create_timer(0.6).timeout
 			await _travel("kame")
