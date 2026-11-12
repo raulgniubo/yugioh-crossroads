@@ -122,6 +122,144 @@ func _load_glb(path: String) -> Node:
 	return gltf.generate_scene(state)
 
 
+## Animation files that sit beside a dropped-in model. Most tools export one file per motion,
+## so characters/yugi.glb can come with yugi_walk.glb, yugi_run.glb, yugi_idle.glb and
+## yugi_victory.glb: the clip in each is added to the model under the name after the underscore.
+func _merge_clip_files(key: String, path: String, g: Node) -> Node:
+	var dir := DirAccess.open(path.get_base_dir())
+	if dir == null:
+		return g
+	var extras: Array = []
+	for f in dir.get_files():
+		var lf := f.to_lower()
+		if lf.begins_with(key.to_lower() + "_") and lf.ends_with(".glb"):
+			extras.append(f)
+	if extras.is_empty():
+		return g
+	# Walk first: if the main file has no skeleton animation of its own, the walk file
+	# becomes the body and the rest are added to it.
+	extras.sort_custom(func(a, b): return int(a.to_lower().contains("walk")) > int(b.to_lower().contains("walk")))
+	var main_ap := anim_player(g)
+	for f in extras:
+		var motion: String = f.get_basename().substr(key.length() + 1).to_lower()
+		var scene := _load_glb(path.get_base_dir().path_join(f))
+		if scene == null:
+			continue
+		var ap2 := anim_player(scene)
+		if ap2 == null or ap2.get_animation_list().is_empty():
+			scene.free()
+			continue
+		if main_ap == null:
+			g.free()
+			g = scene
+			main_ap = ap2
+			var lib0 := ap2.get_animation_library(ap2.get_animation_library_list()[0])
+			var i0 := 0
+			for n in lib0.get_animation_list():
+				lib0.rename_animation(n, motion if i0 == 0 else "%s_%d" % [motion, i0 + 1])
+				i0 += 1
+			continue
+		var lib := main_ap.get_animation_library(main_ap.get_animation_library_list()[0])
+		var i := 0
+		for n in ap2.get_animation_list():
+			var nm := motion if i == 0 else "%s_%d" % [motion, i + 1]
+			if not lib.has_animation(nm):
+				lib.add_animation(nm, ap2.get_animation(n).duplicate())
+			i += 1
+		scene.free()
+	return g
+
+
+const DONOR := "res://assets/models/people/duelist_m2.glb"
+const MOTIONS := ["idle", "walk", "run", "victory"]
+var _donor: Node = null          # a bundled model kept around for its animations
+
+
+func _first_skeleton(n: Node) -> Skeleton3D:
+	if n is Skeleton3D:
+		return n
+	for c in n.get_children():
+		var sk := _first_skeleton(c)
+		if sk:
+			return sk
+	return null
+
+
+## A dropped-in model that is rigged but has no idle / walk / run / victory of its own gets
+## the game's. Auto-riggers give every character the same skeleton, so the bundled clips fit
+## any model whose bones carry the same names; anything else is left alone.
+func _borrow_clips(g: Node) -> void:
+	var skel := _first_skeleton(g)
+	if skel == null:
+		return
+	var ap := anim_player(g)
+	var missing: Array = []
+	for m: String in MOTIONS:
+		var have := false
+		if ap:
+			for n in ap.get_animation_list():
+				if String(n).to_lower().contains(m):
+					have = true
+		if not have:
+			missing.append(m)
+	if missing.is_empty():
+		return
+	if _donor == null or not is_instance_valid(_donor):
+		var ps = load(DONOR)
+		if not (ps is PackedScene):
+			return
+		_donor = ps.instantiate()
+	var dap := anim_player(_donor)
+	var dskel := _first_skeleton(_donor)
+	if dap == null or dskel == null:
+		return
+	# Only when the skeletons really are the same family.
+	var shared := 0
+	for b in dskel.get_bone_count():
+		if skel.find_bone(dskel.get_bone_name(b)) >= 0:
+			shared += 1
+	if shared < int(dskel.get_bone_count() * 0.8):
+		return
+	if ap == null:
+		ap = AnimationPlayer.new()
+		ap.name = "AnimationPlayer"
+		g.add_child(ap)
+		ap.add_animation_library("", AnimationLibrary.new())
+	elif ap.get_animation_library_list().is_empty():
+		ap.add_animation_library("", AnimationLibrary.new())
+	var lib := ap.get_animation_library(ap.get_animation_library_list()[0])
+	var root := ap.get_node_or_null(ap.root_node)
+	if root == null:
+		return
+	var skel_path := str(root.get_path_to(skel))
+	# Taller or shorter than the donor: scale how far the hips travel to match.
+	var ratio := 1.0
+	var hip_a := skel.find_bone("Hips")
+	var hip_b := dskel.find_bone("Hips")
+	if hip_a >= 0 and hip_b >= 0 and absf(dskel.get_bone_global_rest(hip_b).origin.y) > 0.0001:
+		ratio = skel.get_bone_global_rest(hip_a).origin.y / dskel.get_bone_global_rest(hip_b).origin.y
+	for m: String in missing:
+		var src_name := ""
+		for n in dap.get_animation_list():
+			if String(n).to_lower().contains(m):
+				src_name = n
+				break
+		if src_name == "":
+			continue
+		var a: Animation = dap.get_animation(src_name).duplicate(true)
+		for t in range(a.get_track_count() - 1, -1, -1):
+			var bone := String(a.track_get_path(t)).get_slice(":", 1)
+			if skel.find_bone(bone) < 0:
+				a.remove_track(t)
+				continue
+			a.track_set_path(t, NodePath("%s:%s" % [skel_path, bone]))
+			if a.track_get_type(t) == Animation.TYPE_POSITION_3D and not is_equal_approx(ratio, 1.0):
+				for k in a.track_get_key_count(t):
+					a.track_set_key_value(t, k, (a.track_get_key_value(t, k) as Vector3) * ratio)
+		if not lib.has_animation(m):
+			lib.add_animation(m, a)
+
+
 ## The model's AnimationPlayer, if it came with animations (walk/idle...).
 func anim_player(model: Node) -> AnimationPlayer:
 	if model is AnimationPlayer:
@@ -141,9 +279,17 @@ func _calm_idle(ap: AnimationPlayer) -> void:
 		if String(n).to_lower().contains("idle"):
 			src_name = n
 			break
-	if src_name == "" or ap.has_animation("Calm_Idle"):
+	if ap.has_animation("Calm_Idle") or ap.get_animation_list().is_empty():
 		return
+	# No idle clip at all (a model that only came with a walk): stand in the skeleton's own
+	# rest pose instead, so nobody is left frozen mid-stride or in a T-pose.
+	var from_rest := src_name == ""
+	if from_rest:
+		src_name = clip(ap, "walk")
+		if src_name == "":
+			return
 	var src := ap.get_animation(src_name)
+	var root := ap.get_node_or_null(ap.root_node)
 	# Arms hang the way they do mid-stride: the average of the walk's arm keys.
 	var rest := {}
 	var walk_name := ""
@@ -175,9 +321,25 @@ func _calm_idle(ap: AnimationPlayer) -> void:
 	for t in src.get_track_count():
 		if src.track_get_key_count(t) == 0:
 			continue
+		var v = src.track_get_key_value(t, 0)
+		if from_rest:
+			var tp := String(src.track_get_path(t))
+			var skel := root.get_node_or_null(NodePath(tp.get_slice(":", 0))) as Skeleton3D if root else null
+			var bi := skel.find_bone(tp.get_slice(":", 1)) if skel else -1
+			if bi < 0:
+				continue
+			var rp := skel.get_bone_rest(bi)
+			match src.track_get_type(t):
+				Animation.TYPE_ROTATION_3D:
+					v = rp.basis.get_rotation_quaternion()
+				Animation.TYPE_POSITION_3D:
+					v = rp.origin
+				Animation.TYPE_SCALE_3D:
+					v = rp.basis.get_scale()
+				_:
+					continue
 		var ti := a.add_track(src.track_get_type(t))
 		a.track_set_path(ti, src.track_get_path(t))
-		var v = src.track_get_key_value(t, 0)
 		if src.track_get_type(t) == Animation.TYPE_ROTATION_3D and rest.has(String(src.track_get_path(t))):
 			v = rest[String(src.track_get_path(t))]
 		var bone := String(src.track_get_path(t)).get_slice(":", 1).to_lower()
@@ -226,6 +388,9 @@ func load_model(key: String) -> Node3D:
 		var g := _load_glb(path)
 		if g == null:
 			return null
+		if not path.begins_with("res://"):
+			g = _merge_clip_files(key, path, g)
+			_borrow_clips(g)
 		var r := Node3D.new()
 		r.set_meta("human_bones", _guess_human_map(g))
 		r.set_meta("animated", anim_player(g) != null)

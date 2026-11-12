@@ -94,6 +94,16 @@ func _debug_args() -> void:
 			roam["district"] = a.substr(11)
 		elif a.begins_with("--tod="):
 			roam["tod"] = a.substr(6)
+		elif a.begins_with("--clips="):
+			# Which animations does this character's model end up with? (checks dropped-in files)
+			var ck := a.substr(8)
+			var cm := Avatars.load_model(ck)
+			var cap := Avatars.anim_player(cm) if cm else null
+			print("CLIPS ", ck, " file=", Avatars.path_for(ck), " -> ", cap.get_animation_list() if cap else "no animation player",
+					"  idle=", Avatars.clip(cap, "idle") if cap else "", " walk=", Avatars.clip(cap, "walk") if cap else "",
+					" run=", Avatars.clip(cap, "run") if cap else "", " victory=", Avatars.clip(cap, "victory") if cap else "")
+			if cm:
+				cm.free()
 		elif a.begins_with("--gfx="):
 			Settings.graphics = int(a.substr(6))
 		elif a == "--roam":

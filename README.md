@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## Your own character models
+
+Put a rigged GLB (or VRM) in `<card folder>/characters/`, named after the character: `yugi.glb`,
+`kaiba.glb`, `player.glb`... (the card folder is `Documents/Crossroads/assets` unless changed in
+Settings). It replaces the stand-in on the next launch.
+
+- Animations inside the file are used when their names contain `idle`, `walk`, `run` or `victory`.
+- One file per motion works too: `yugi_walk.glb`, `yugi_run.glb`, `yugi_idle.glb`, `yugi_victory.glb`.
+- Whatever is still missing is borrowed from the game's own clips when the skeleton has the same
+  bone names (Meshy's auto-rig does). `godot --headless --path . -- --clips=yugi` prints what a
+  character ends up with.
+
 ## What is in 0.11
 
 - Story plays inside the walking world (`scripts/story/story_director.gd`, script in
