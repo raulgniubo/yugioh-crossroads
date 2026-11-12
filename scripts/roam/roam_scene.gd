@@ -57,7 +57,7 @@ func _ready() -> void:
 	_build_places()
 	city.player = _player
 	_build_ui()
-	if district.get("builder", "") != "academy" and _player.position.distance_to(ShopInterior.AT) < 30.0:
+	if district.get("builder", "") == "" and _player.position.distance_to(ShopInterior.AT) < 30.0:
 		_set_inside("kame")
 	if _map:
 		for mp in [_map, _map_full]:
@@ -111,7 +111,13 @@ func _after_duel() -> void:
 # ------------------------------------------------------------------ world
 
 func _build_world() -> void:
-	city = AcademyBuilder.new() if district.get("builder", "") == "academy" else CityBuilder.new()
+	match str(district.get("builder", "")):
+		"academy":
+			city = AcademyBuilder.new()
+		"arena":
+			city = ArenaDistrict.new()
+		_:
+			city = CityBuilder.new()
 	add_child(city)
 	var key: String = Router.roam.get("district", "domino")
 	if not Router.roam.has("tod_" + key) and district.has("tod") and not Router.roam.has("tod"):
@@ -425,7 +431,7 @@ func _build_places() -> void:
 		city.add_child(sign_l)
 		var pad := city.box(Vector3(2.4, 0.03, 1.4), (tr["pos"] as Vector3) + Vector3(0, 0.24, 0), city.glow_mat(Color("7fd8ff"), 1.2), false)
 		pad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	if district.get("builder", "") == "academy":
+	if district.get("builder", "") != "":
 		return
 	ShopInterior.build(city)
 	var at := ShopInterior.AT
