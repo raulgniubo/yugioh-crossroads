@@ -132,6 +132,8 @@ const MONSTER_EFFECTS := {
 
 ## Filled from the downloaded card database (tools/fetch_cards.py), if present.
 static var EXT := {}
+## Tokens made during a duel (Sheep Tokens...): id -> card data. Not real cards, never in a deck.
+static var TOKENS := {}
 static var NAME_TO_ID := {}
 
 const DECKS := {
@@ -264,7 +266,9 @@ const NAMED_DECKS := {
 
 static func get_card(id: int) -> Dictionary:
 	var d: Dictionary
-	if not CARDS.has(id) and EXT.has(id):
+	if TOKENS.has(id):
+		d = TOKENS[id].duplicate()
+	elif not CARDS.has(id) and EXT.has(id):
 		d = EXT[id].duplicate()
 	else:
 		d = CARDS.get(id, {"name": "Unknown", "frame": "normal"}).duplicate()
@@ -299,7 +303,7 @@ static func deck_name(deck_key: String) -> String:
 const ADDONS := {
 	"yugi": {"Magic Cylinder": 1, "Mystical Space Typhoon": 1, "Book of Secret Arts": 1, "Yami": 1, "Magic Jammer": 1, "Black Luster Ritual": 1, "Black Luster Soldier": 1},
 	"kaiba": {"Shrink": 1, "Enemy Controller": 1, "Ring of Destruction": 1, "Mountain": 1, "Dragon Treasure": 1, "Negate Attack": 1},
-	"joey": {"Graceful Charity": 1, "Sogen": 1, "Lightning Blade": 1, "Call of the Haunted": 1, "Rush Recklessly": 1},
+	"joey": {"Graceful Charity": 1, "Sogen": 1, "Lightning Blade": 1, "Call of the Haunted": 1, "Rush Recklessly": 1, "Scapegoat": 1},
 	"mai": {"Harpies' Hunting Ground": 2, "Harpie's Feather Duster": 1, "Gravity Bind": 1, "Follow Wind": 1},
 	"bakura": {"Yami": 2, "Dark Energy": 1, "Call of the Haunted": 1, "Dark Core": 1},
 	"marik": {"Nightmare Wheel": 2, "Mystic Plasma Zone": 1, "Malevolent Nuzzler": 1, "Magic Jammer": 1},

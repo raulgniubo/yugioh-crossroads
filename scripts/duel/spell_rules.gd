@@ -63,6 +63,8 @@ const FX := {
 	"Dark Core": {"k": "normal", "t": "any_face", "cost": "discard", "do": [["banish", "target"]]},
 	# ---------------------------------------------------------------- Quick-Play Spells
 	"Mystical Space Typhoon": {"k": "quick", "t": "any_st", "do": [["destroy", "target"]]},
+	"Scapegoat": {"k": "quick", "do": [["tokens", 4, "Sheep Token", 73915052, 0, 0, 1, "EARTH", "Beast"]]},
+	"Forbidden Chalice": {"k": "quick", "t": "any_face", "dmg": true, "do": [["atk", "target", 400, "eot"], ["negate_fx", "target"]]},
 	"Rush Recklessly": {"k": "quick", "t": "any_face", "do": [["atk", "target", 700, "eot"]]},
 	"Shrink": {"k": "quick", "t": "any_face", "do": [["halve", "target"]]},
 	"Book of Moon": {"k": "quick", "t": "any_face", "do": [["flip_down", "target"]]},
@@ -165,7 +167,7 @@ const FX := {
 	"Zero Gravity": {"k": "trap", "win": ["free"], "do": [["change_pos", "all_face_mons"]]},
 	"Dimensional Prison": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["banish", "attacker"]]},
 	"Sakuretsu Armor": {"k": "trap", "win": ["attack"], "do": [["destroy", "attacker"]]},
-	"Mirror Force": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["destroy", "opp_atk_mons"]]},
+	"Mirror Force": {"k": "trap", "win": ["attack"], "do": [["destroy", "opp_atk_mons"]]},
 	"Magic Cylinder": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["damage_attacker_atk"]]},
 	"Negate Attack": {"k": "counter", "win": ["attack"], "neg": [], "do": [["end_battle"]]},
 	"Waboku": {"k": "trap", "win": ["free"], "do": [["no_battle_damage"], ["protect"]]},
@@ -177,6 +179,9 @@ const FX := {
 	"Scrap-Iron Scarecrow": {"k": "trap", "win": ["attack"], "reset": true, "do": [["negate_attack"]]},
 	# ---------------------------------------------------------------- Counter Traps
 	"Solemn Judgment": {"k": "counter", "neg": ["spell", "trap", "summon"], "cost": "half_lp"},
+	"Divine Wrath": {"k": "counter", "neg": ["fx"], "cost": "discard"},
+	"Skill Drain": {"k": "ctrap", "win": ["free"], "cost": "lp1000", "drain": true},
+	"Breakthrough Skill": {"k": "trap", "win": ["free"], "t": "opp_face", "do": [["negate_fx", "target"]]},
 	"Magic Jammer": {"k": "counter", "neg": ["spell"], "cost": "discard"},
 	"Seven Tools of the Bandit": {"k": "counter", "neg": ["trap"], "cost": "lp1000"},
 	"Dark Bribe": {"k": "counter", "neg": ["spell", "trap"], "do": [["opp_draw", 1]]},
@@ -280,6 +285,14 @@ static func fits(s: DuelState, p: int, c, window: String, subject) -> bool:
 		return false
 	if blocked(s, c):
 		return false
+	# Spell Speed: only a Counter Trap can answer a Counter Trap.
+	if window == "chain" and subject is Dictionary and str(subject.get("spec", {}).get("k", "")) == "counter" and k != "counter":
+		return false
+	# Damage Step: only cards that change ATK / DEF (and Counter Traps) may be activated.
+	if window == "damage":
+		if sp.has("legacy") or (k != "counter" and not dmg_ok(sp)):
+			return false
+		window = "free"
 	if sp.has("legacy"):
 		return s._trap_fits(p, c, window, null if subject is Dictionary else subject)
 	if k == "counter" and not sp.has("win"):
@@ -301,6 +314,25 @@ static func fits(s: DuelState, p: int, c, window: String, subject) -> bool:
 		if subject.atk() < int(sp.get("subj_atk_min", 0)) or subject.atk() > int(sp.get("subj_atk_max", 99999)):
 			return false
 	return feasible(s, p, c, window, subject)
+
+
+## May this card be activated during the Damage Step? (ATK / DEF changers only.)
+static func dmg_ok(sp: Dictionary) -> bool:
+	if sp.has("dmg"):
+		return bool(sp["dmg"])
+	for a in sp.get("do", []):
+		if str(a[0]) in ["atk", "def", "halve", "atk_all"]:
+			return true
+	return false
+
+
+## Is a face-up Spell/Trap with this passive flag on the field (Skill Drain's "drain")?
+static func field_flag(s: DuelState, flag: String) -> bool:
+	for q in 2:
+		for st in _up(s, q):
+			if st.face_up and spec(st).get(flag, false) and not blocked(s, st):
+				return true
+	return false
 
 
 ## Would activating this card do anything right now?
@@ -380,6 +412,7 @@ static func pay_cost(s: DuelState, p: int, c, sp: Dictionary) -> Array:
 		for h in ps.hand:
 			if h != c and (worst == null or s._card_value(h) < s._card_value(worst)):
 				worst = h
+		worst = s.pick1(p, "%s: discard 1 card as the cost" % c.cname(), ps.hand.filter(func(h): return h != c), worst, c)
 		if worst != null:
 			ps.hand.erase(worst)
 			s._to_gy(ps, worst)
@@ -397,6 +430,7 @@ static func pay_cost(s: DuelState, p: int, c, sp: Dictionary) -> Array:
 		for m in ps.monsters():
 			if weak == null or s.atk_of(m, false) < s.atk_of(weak, false):
 				weak = m
+		weak = s.pick1(p, "%s: Tribute 1 monster as the cost" % c.cname(), ps.monsters(), weak, c)
 		if weak != null:
 			ps.field[ps.field.find(weak)] = null
 			s._to_gy(ps, weak)
@@ -482,7 +516,17 @@ static func _ev(p: int, c, text: String) -> Dictionary:
 
 
 ## Cards a selector names. ctx: {"target", "subject"}
+## Monsters picked out by a selector, minus any that are unaffected by this kind of card.
 static func _sel(s: DuelState, p: int, c, sel: String, ctx: Dictionary) -> Array:
+	var out: Array = []
+	for x in _sel_raw(s, p, c, sel, ctx):
+		if c != null and c.is_trap() and x.is_monster() and (EffectRunner.fx(x).get("trap_immune", false) or x.cname() == "Elemental HERO Wildheart"):
+			continue
+		out.append(x)
+	return out
+
+
+static func _sel_raw(s: DuelState, p: int, c, sel: String, ctx: Dictionary) -> Array:
 	var opp_i := s.opponent(p)
 	var mine := s.players[p]
 	var opp := s.players[opp_i]
@@ -595,6 +639,9 @@ static func _negate(s: DuelState, p: int, c, link: Dictionary) -> Array:
 	if subj is Dictionary:
 		subj["negated"] = true
 		events.append(_ev(p, c, "%s negates %s" % [c.cname(), subj["card"].cname()]))
+		var sc = subj["card"]
+		if subj["kind"] == "fx" and s.players[sc.owner].field.has(sc):
+			events.append_array(s._destroy(sc))
 	elif subj != null:
 		events.append(_ev(p, c, "%s negates the summon of %s" % [c.cname(), subj.cname()]))
 		if s.players[subj.owner].field.has(subj):
@@ -618,15 +665,13 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			if need > 0:
 				events.append_array(s._draw(p, need))
 		"discard":
-			for i in int(a[1]):
-				var worst = null
-				for h in ps.hand:
-					if worst == null or s._card_value(h) < s._card_value(worst):
-						worst = h
-				if worst != null:
-					ps.hand.erase(worst)
-					s._to_gy(ps, worst)
-					events.append({"type": "discard", "player": p, "card": worst})
+			var by_value: Array = ps.hand.duplicate()
+			by_value.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			var dn := mini(int(a[1]), by_value.size())
+			for worst in s.choose(p, "%s: discard %d card%s" % [c.cname(), dn, "" if dn == 1 else "s"], ps.hand, dn, by_value.slice(0, dn), false, c):
+				ps.hand.erase(worst)
+				s._to_gy(ps, worst)
+				events.append({"type": "discard", "player": p, "card": worst})
 		"card_destruction":
 			for q in [p, opp_i]:
 				var qs := s.players[q]
@@ -637,7 +682,7 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 					events.append({"type": "discard", "player": q, "card": h})
 				events.append_array(s._draw(q, n))
 		"avarice":
-			for g in s._best_monsters(ps.gy, 5):
+			for g in s.choose(p, "%s: shuffle 5 monsters from your Graveyard into the Deck" % c.cname(), s._best_monsters(ps.gy, 99), 5, s._best_monsters(ps.gy, 5), false, c):
 				ps.gy.erase(g)
 				ps.deck.append(g)
 				events.append({"type": "gy_to_deck", "player": p, "card": g, "deck": ps.deck.size()})
@@ -694,10 +739,10 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				ps.lp += n
 				events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": n})
 		"revive":
-			var pool: Array = ps.gy if a[1] == "own_gy" else ps.gy + opp.gy
+			var pool: Array = (ps.gy if a[1] == "own_gy" else ps.gy + opp.gy).filter(func(x): return s.can_revive(x))
 			var pick: Array = s._best_monsters(pool, 1)
 			if not pick.is_empty() and ps.free_zone() != -1:
-				var m = pick[0]
+				var m = s.pick1(p, "%s: Special Summon 1 monster from the Graveyard" % c.cname(), pool, pick[0], c)
 				s.players[m.owner].gy.erase(m)
 				m.owner = p
 				events.append_array(s._special(p, m, "reborn"))
@@ -760,20 +805,22 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				t.face_up = true
 				events.append({"type": "position", "player": t.owner, "card": t, "zone": s.players[t.owner].field.find(t)})
 		"search":
-			var got: Array = EffectRunner._take(ps.deck, a[1], 1)
+			var got: Array = EffectRunner._pick(s, p, c, "add 1 card from your Deck to your hand", ps.deck, a[1], 1)
 			for g in got:
 				ps.deck.erase(g)
 				ps.hand.append(g)
 				events.append({"type": "search", "player": p, "card": g, "deck": ps.deck.size()})
 			s._shuffle(ps.deck)
 		"gy_to_hand":
-			for g in EffectRunner._take(ps.gy, a[1], int(a[2])):
+			for g in EffectRunner._pick(s, p, c, "add from your Graveyard to your hand", ps.gy, a[1], int(a[2])):
 				ps.gy.erase(g)
 				ps.hand.append(g)
 				events.append({"type": "gy_to_hand", "player": p, "card": g})
 		"bury":
 			var pick: Array = s._best_monsters(ps.deck, 1)
 			if not pick.is_empty():
+				pick = [s.pick1(p, "%s: send 1 monster from your Deck to the Graveyard" % c.cname(), s._best_monsters(ps.deck, 99), pick[0], c)]
+				s._shuffle(ps.deck)
 				ps.deck.erase(pick[0])
 				s._to_gy(ps, pick[0])
 				events.append({"type": "mill", "player": p, "card": pick[0], "deck": ps.deck.size()})
@@ -792,7 +839,30 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 		"miracle_fusion":
 			var opts := _gy_fusions(s, p, a[1])
 			if not opts.is_empty():
-				events.append_array(s._do_fusion(p, opts[0], true))
+				var fcards: Array = []
+				for o in opts:
+					fcards.append(o["card"])
+				var want = s.pick1(p, "%s: Fusion Summon which monster?" % c.cname(), fcards, fcards[0], c)
+				for o in opts:
+					if o["card"] == want:
+						events.append_array(s._do_fusion(p, o, true))
+						break
+		"tokens":
+			# ["tokens", n, name, id, atk, def, level, attribute, race]: n Tokens in Defense Position.
+			CardData.TOKENS[int(a[3])] = {"name": str(a[2]), "frame": "token", "atk": int(a[4]), "def": int(a[5]), "level": int(a[6]),
+					"attribute": str(a[7]), "race": str(a[8]), "no_tribute_summon": true,
+					"desc": "This card can be used as a \"%s\". It cannot be Tributed for a Tribute Summon." % str(a[2])}
+			ps.no_summon_turn = s.turn
+			for i in int(a[1]):
+				if ps.free_zone() == -1:
+					break
+				events.append_array(s._special(p, s._make(int(a[3]), p), "effect", "def"))
+			s.last_summoned = null
+		"negate_fx":
+			for t in _sel(s, p, c, str(a[1]), ctx):
+				t.negated_turn = s.turn
+				t.negated = true
+				events.append(_ev(p, t, "%s's effects are negated this turn" % t.cname()))
 	return events
 
 
@@ -838,13 +908,46 @@ static func ritual_plan(s: DuelState, p: int, c) -> Dictionary:
 	return best
 
 
+## Everything that could be Tributed for this Ritual Monster, cheapest first.
+static func _ritual_pool(s: DuelState, p: int, h) -> Array:
+	var ps := s.players[p]
+	var pool: Array = []
+	for x in ps.hand:
+		if x != h and x.is_monster() and x.frame() != "ritual":
+			pool.append(x)
+	pool.append_array(ps.monsters())
+	pool.sort_custom(func(a, b): return s._card_value(a) < s._card_value(b))
+	return pool
+
+
 static func _do_ritual(s: DuelState, p: int, c) -> Array:
 	var plan := ritual_plan(s, p, c)
 	var events := []
 	if plan.is_empty():
 		return events
 	var ps := s.players[p]
-	for t in plan["tributes"]:
+	# Which Ritual Monster, then which Tributes (their Levels must reach its Level): the player's call.
+	var able: Array = []
+	for h in ps.hand:
+		if h.is_monster() and h.frame() == "ritual":
+			var text: String = str(h.data.get("desc", h.data.get("text", "")))
+			if not text.contains(c.cname()) and not str(c.data.get("desc", c.data.get("text", ""))).contains(h.cname()):
+				continue
+			var sum := 0
+			for x in _ritual_pool(s, p, h):
+				sum += maxi(1, x.level())
+			if sum >= h.level():
+				able.append(h)
+	var m = s.pick1(p, "%s: Ritual Summon which monster?" % c.cname(), able, plan["monster"], c)
+	var pool := _ritual_pool(s, p, m)
+	var tributes: Array = []
+	var total := 0
+	while total < m.level() and not pool.is_empty():
+		var t = s.pick1(p, "%s: Tribute (Levels %d of %d)" % [m.cname(), total, m.level()], pool, pool[0], c)
+		pool.erase(t)
+		tributes.append(t)
+		total += maxi(1, t.level())
+	for t in tributes:
 		if ps.hand.has(t):
 			ps.hand.erase(t)
 			s._to_gy(ps, t)
@@ -853,8 +956,8 @@ static func _do_ritual(s: DuelState, p: int, c) -> Array:
 			ps.field[ps.field.find(t)] = null
 			s._to_gy(ps, t)
 			events.append({"type": "tribute", "player": p, "card": t})
-	var m = plan["monster"]
 	ps.hand.erase(m)
+	m.proper = true
 	events.append_array(s._special(p, m, "ritual"))
 	events.append_array(EffectRunner.on_summon(s, p, m, "special"))
 	return events
@@ -966,7 +1069,7 @@ static func can_attack(s: DuelState, p: int, c) -> bool:
 			var sp := spec(st)
 			if sp.has("lock_atk_min") and s.atk_of(c, false) >= int(sp["lock_atk_min"]):
 				return false
-			if sp.has("lock_lv_min") and c.level() >= int(sp["lock_lv_min"]):
+			if sp.has("lock_lv_min") and c.frame() != "xyz" and c.level() >= int(sp["lock_lv_min"]):
 				return false
 			if sp.get("one_attack", false) and s.players[p].attacks_this_turn >= 1 and s.players[p].attacks_turn == s.turn:
 				return false

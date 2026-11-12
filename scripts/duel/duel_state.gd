@@ -7,11 +7,12 @@ extends RefCounted
 ## Battle, Main 2, End. One Normal Summon or Set per turn, tributes for
 ## Level 5+, flip summons, position changes, direct attacks and damage.
 
-enum Phase { DRAW, MAIN1, BATTLE, MAIN2, END }
+enum Phase { DRAW, MAIN1, BATTLE, MAIN2, END, STANDBY }
 
 const START_LP := 8000
 const HAND_LIMIT := 6
 const ZONES := 5
+const DRAW := 2    # winner value when nobody wins
 
 
 class CardInst:
@@ -46,6 +47,12 @@ class CardInst:
 	var control_until := -1
 	var def_mod_t := 0
 	var def_mod_turn := -1
+	var proper := false           # Extra Deck / Ritual monster that was summoned the proper way (may be revived)
+	var negated := false          # effects negated right now (Skill Drain and friends); kept fresh by _cleanup
+	var negated_turn := -1
+
+	func is_token() -> bool:
+		return data.get("frame", "") == "token"
 
 	func reset_mods() -> void:
 		atk_mod = 0
@@ -102,6 +109,7 @@ class PlayerState:
 	var skip_draw := 0
 	var attacks_this_turn := 0
 	var attacks_turn := -1
+	var no_summon_turn := -1      # Scapegoat: no Summons for the rest of this turn (Sets are fine)
 
 	func set_cards() -> Array[CardInst]:
 		var out: Array[CardInst] = []
@@ -133,6 +141,88 @@ var _uid := 0
 ## Extra cards in the opening hand (Hard mode gives the AI +1).
 var bonus_cards := [0, 0]
 var _rng := RandomNumberGenerator.new()
+
+## --- Player decisions -------------------------------------------------------------------
+## The rules never wait for input. A human's choices are found beforehand by trying the action
+## on a clone (DuelScene._run), asked one by one, then replayed here in the same order.
+var manual := [false, false]     # which players pick for themselves (the rest take `auto`)
+var answers: Array = []          # queued answers: card uids, or [index] for an option
+var need = null                  # the first decision a trial run could not answer
+
+## --- Monster effects on the chain ---------------------------------------------------------
+## With defer_fx on (the duel screen), a triggered or ignition effect is not run on the spot:
+## it waits in pending_fx, fx_to_chain() makes it a chain link, and chain_resolve() runs it.
+var defer_fx := false
+var pending_fx: Array = []
+
+
+## Pick n of cands. `auto` is what the rules would take on their own (AI, tests, a forced pick).
+func choose(who: int, prompt: String, cands: Array, n := 1, auto: Array = [], optional := false, source: CardInst = null) -> Array:
+	var uniq: Array = []
+	for x in cands:
+		if x != null and not uniq.has(x):
+			uniq.append(x)
+	if auto.is_empty() and not optional:
+		auto = uniq.slice(0, n)
+	if not manual[who] or uniq.is_empty() or (uniq.size() <= n and not optional):
+		return auto
+	if not answers.is_empty():
+		var ans: Array = answers.pop_front()
+		var out: Array = []
+		for uid in ans:
+			for x in uniq:
+				if x.uid == int(uid) and not out.has(x):
+					out.append(x)
+		if out.size() == n or (optional and out.is_empty()):
+			return out
+		return auto
+	if need == null:
+		var ids: Array = []
+		for x in uniq:
+			ids.append(x.uid)
+		need = {"who": who, "prompt": prompt, "cands": ids, "n": n, "optional": optional,
+				"source": source.uid if source != null else -1}
+	return auto
+
+
+## Pick one of a few labelled options (a position, yes / no). Returns its index.
+func choose_option(who: int, prompt: String, labels: Array, auto := 0, source: CardInst = null) -> int:
+	if not manual[who]:
+		return auto
+	if not answers.is_empty():
+		var ans: Array = answers.pop_front()
+		if ans.size() == 1 and int(ans[0]) >= 0 and int(ans[0]) < labels.size():
+			return int(ans[0])
+		return auto
+	if need == null:
+		need = {"who": who, "prompt": prompt, "options": labels, "source": source.uid if source != null else -1}
+	return auto
+
+
+## Triggered effects waiting to activate go onto the chain, the turn player's first.
+func fx_to_chain() -> Array:
+	var events := []
+	var ordered: Array = []
+	for q in [current, opponent(current)]:
+		for f in pending_fx:
+			if f["player"] == q:
+				ordered.append(f)
+	pending_fx.clear()
+	for f in ordered:
+		var c: CardInst = f["card"]
+		var q: int = f["player"]
+		if is_over():
+			break
+		# "You can ..." effects are the owner's call.
+		if not f["ctx"].get("_ign", false) and "you can" in str(c.data.get("desc", "")).to_lower():
+			if choose_option(q, "Activate the effect of %s?" % c.cname(), ["Activate", "Don't"], 0, c) == 1:
+				continue
+		chain.append({"player": q, "card": c, "kind": "fx", "spec": {"k": "fx"}, "target": null, "subject": null,
+				"window": "open", "negated": false, "zone": -1, "actions": f["actions"], "ctx": f["ctx"]})
+		events.append({"type": "effect", "player": q, "card": c, "text": "%s: effect activated" % c.cname()})
+		if chain.size() > 1:
+			events.append({"type": "chain", "player": q, "card": c, "n": chain.size()})
+	return events
 
 
 func setup(deck_a: Array[int], deck_b: Array[int], name_a: String, name_b: String, first := 0, seed := -1,
@@ -188,7 +278,7 @@ func is_over() -> bool:
 
 # ------------------------------------------------------------------ turn flow
 
-func begin_turn() -> Array:
+func begin_turn(step := false) -> Array:
 	redirected.clear()
 	turn += 1
 	normal_summoned = false
@@ -203,14 +293,29 @@ func begin_turn() -> Array:
 			events.append_array(_draw(current))
 		if is_over():
 			return events
+	if step:
+		return events
+	events.append_array(begin_standby())
+	if is_over():
+		return events
+	events.append_array(begin_main1())
+	return events
+
+
+## The duel screen walks the turn phase by phase (begin_turn(true), begin_standby, begin_main1)
+## so both players get their chance to act in each one.
+func begin_standby() -> Array:
+	phase = Phase.STANDBY
+	var events := [{"type": "phase", "phase": phase}]
 	events.append_array(EffectRunner.standby(self, current))
 	if not is_over():
 		events.append_array(SpellRules.standby(self, current))
-	if is_over():
-		return events
-	phase = Phase.MAIN1
-	events.append({"type": "phase", "phase": phase})
 	return events
+
+
+func begin_main1() -> Array:
+	phase = Phase.MAIN1
+	return [{"type": "phase", "phase": phase}]
 
 
 func can_enter_battle() -> bool:
@@ -232,19 +337,30 @@ func enter_main2() -> Array:
 
 
 func end_turn() -> Array:
+	var events := begin_end()
+	events.append_array(finish_turn())
+	return events
+
+
+func begin_end() -> Array:
 	phase = Phase.END
 	var events := [{"type": "phase", "phase": phase}]
 	events.append_array(EffectRunner.end_phase(self, current))
+	return events
+
+
+func finish_turn() -> Array:
+	var events := []
 	var ps := players[current]
-	while ps.hand.size() > HAND_LIMIT:
-		# Prototype: discard the weakest card automatically.
-		var worst := ps.hand[0]
-		for c in ps.hand:
-			if _card_value(c) < _card_value(worst):
-				worst = c
-		ps.hand.erase(worst)
-		_to_gy(ps, worst)
-		events.append({"type": "discard", "player": current, "card": worst})
+	var over := ps.hand.size() - HAND_LIMIT
+	if over > 0:
+		# Hand limit: the turn player discards down to six, their pick.
+		var by_value: Array = ps.hand.duplicate()
+		by_value.sort_custom(func(a, b): return _card_value(a) < _card_value(b))
+		for worst in choose(current, "Hand limit: discard %d card%s" % [over, "" if over == 1 else "s"], ps.hand, over, by_value.slice(0, over)):
+			ps.hand.erase(worst)
+			_to_gy(ps, worst)
+			events.append({"type": "discard", "player": current, "card": worst})
 	# Monsters borrowed until the End Phase go home.
 	for m in ps.monsters():
 		if m.control_until == turn:
@@ -326,16 +442,29 @@ func can_normal_summon(p: int, c: CardInst) -> bool:
 		return false
 	if not c.is_monster() or not players[p].hand.has(c):
 		return false
+	# Ritual and Extra Deck monsters, and "Cannot be Normal Summoned/Set" monsters, need their own summon.
+	if c.frame() in ["ritual", "fusion", "synchro", "xyz", "token"] or "cannot be normal summoned" in str(c.data.get("desc", "")).to_lower():
+		return false
 	var need := tributes_needed(c)
 	var mons := players[p].monsters().size()
 	if need == 0:
 		return mons < ZONES
-	return mons >= need
+	return tributable(p).size() >= need
+
+
+## Monsters this player may Tribute for a Tribute Summon (Sheep Tokens and the like may not be).
+func tributable(p: int) -> Array:
+	return players[p].monsters().filter(func(m): return not m.data.get("no_tribute_summon", false))
 
 
 func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> Array:
 	if not can_normal_summon(p, c) or tributes.size() != tributes_needed(c):
 		return []
+	if not set_card and players[p].no_summon_turn == turn:
+		return []
+	for t in tributes:
+		if t.data.get("no_tribute_summon", false):
+			return []
 	var ps := players[p]
 	var events := []
 	for t in tributes:
@@ -479,7 +608,9 @@ func chain_add(p: int, c: CardInst, target = null, window := "open", subject = n
 	else:
 		return []
 	if target == null and not sp.has("legacy") and SpellRules._needs_target(sp):
-		target = SpellRules.auto_target(self, p, c)
+		var auto_t = SpellRules.auto_target(self, p, c)
+		var picked := choose(p, "Choose a target for %s" % c.cname(), SpellRules.targets(self, p, c), 1, [auto_t] if auto_t != null else [], false, c)
+		target = picked[0] if not picked.is_empty() else auto_t
 	var link := {"player": p, "card": c, "kind": "trap" if c.is_trap() else "spell", "spec": sp, "target": target,
 			"subject": subject, "window": window, "negated": false, "zone": zone}
 	events.append_array(SpellRules.pay_cost(self, p, c, sp))
@@ -498,6 +629,15 @@ func chain_resolve() -> Array:
 		var p: int = link["player"]
 		var sp: Dictionary = link["spec"]
 		var ps := players[p]
+		if link["kind"] == "fx":
+			# A monster effect. It still resolves if the monster has left the field.
+			if link["negated"] or c.negated:
+				events.append({"type": "effect", "player": p, "card": c, "text": "%s's effect is negated" % c.cname()})
+			else:
+				var ctx: Dictionary = link["ctx"].duplicate()
+				ctx["_now"] = true
+				events.append_array(EffectRunner.run_list(self, p, c, link["actions"], ctx))
+			continue
 		var here := ps.spells.has(c) or ps.field_spell == c
 		var stays: bool = SpellRules.PERSIST.has(sp["k"])
 		if link["negated"] or (not here and stays):
@@ -559,7 +699,7 @@ func _legacy_spell(p: int, c: CardInst, choice = null) -> Array:
 	var ps := players[p]
 	var fusion_plan := {}
 	if c.data.get("effect", "") == "fusion":
-		var options := fusion_targets(p, c)
+		var options := fusion_targets(p, c, false, true, choice)
 		for o in options:
 			if choice == null or o["card"] == choice:
 				fusion_plan = o
@@ -592,6 +732,7 @@ func _legacy_spell(p: int, c: CardInst, choice = null) -> Array:
 			for g in players[opponent(p)].gy:
 				if picks.size() < 5 and not picks.has(g):
 					picks.append(g)
+			picks = choose(p, "Soul Release: banish %d from their Graveyard" % picks.size(), players[opponent(p)].gy, picks.size(), picks, false, c)
 			for g in picks:
 				events.append_array(_banish(g))
 		"dark_core":
@@ -600,14 +741,21 @@ func _legacy_spell(p: int, c: CardInst, choice = null) -> Array:
 			for h in ps.hand:
 				if worst == null or _card_value(h) < _card_value(worst):
 					worst = h
+			worst = pick1(p, "Dark Core: discard 1 card", ps.hand, worst, c)
 			if worst:
 				ps.hand.erase(worst)
 				_to_gy(ps, worst)
 				events.append({"type": "discard", "player": p, "card": worst})
-			events.append_array(_banish(_strongest_face_up(opponent(p))))
+			var ups: Array = []
+			for q in 2:
+				for m in players[q].monsters():
+					if m.face_up:
+						ups.append(m)
+			events.append_array(_banish(pick1(p, "Dark Core: banish 1 face-up monster", ups, _strongest_face_up(opponent(p)), c)))
 		"burial_dd":
 			# Return up to 3 of your banished monsters to the Graveyard.
-			for g in _best_monsters(ps.banished, 3):
+			var b3: Array = _best_monsters(ps.banished, 3)
+			for g in choose(p, "Return %d banished monsters to the Graveyard" % b3.size(), _best_monsters(ps.banished, 99), b3.size(), b3, false, c):
 				ps.banished.erase(g)
 				ps.gy.append(g)
 				events.append({"type": "unbanish", "player": p, "card": g})
@@ -615,14 +763,21 @@ func _legacy_spell(p: int, c: CardInst, choice = null) -> Array:
 			# Special Summon your strongest banished monster.
 			var back: Array = _best_monsters(ps.banished, 1)
 			if not back.is_empty():
+				back = [pick1(p, "Special Summon 1 of your banished monsters", _best_monsters(ps.banished, 99), back[0], c)]
 				ps.banished.erase(back[0])
 				events.append({"type": "unbanish", "player": p, "card": back[0], "to": "field"})
 				events.append_array(_special(p, back[0], "reborn"))
 				events.append_array(EffectRunner.on_summon(self, p, back[0], "special"))
 		"mst":
-			var st: Array = players[opponent(p)].set_cards()
+			# Any Spell or Trap on the field, set or face-up, theirs or yours.
+			var st: Array = []
+			for q in [opponent(p), p]:
+				for x in players[q].spells + [players[q].field_spell]:
+					if x != null and x != c:
+						st.append(x)
+			var theirs: Array = players[opponent(p)].set_cards()
 			if not st.is_empty():
-				events.append_array(_destroy_st(st[0]))
+				events.append_array(_destroy_st(pick1(p, "Destroy 1 Spell or Trap", st, theirs[0] if not theirs.is_empty() else st[0], c)))
 		"swords":
 			players[p].swords_left = 3
 			for m in players[opponent(p)].monsters():
@@ -633,12 +788,24 @@ func _legacy_spell(p: int, c: CardInst, choice = null) -> Array:
 			events.append_array(_do_fusion(p, fusion_plan))
 		"reborn":
 			var revive := _best_in_gy()
+			var dead: Array = []
+			for q in [p, opponent(p)]:
+				for g in players[q].gy:
+					if can_revive(g):
+						dead.append(g)
+			revive = pick1(p, "Special Summon 1 monster from either Graveyard", dead, revive, c)
 			if revive:
 				players[revive.owner].gy.erase(revive)
 				revive.owner = p
 				events.append_array(_special(p, revive, "reborn"))
 				events.append_array(EffectRunner.on_summon(self, p, revive, "special"))
 	return events
+
+
+## One card of the player's choosing (auto when the rules or the AI decide).
+func pick1(who: int, prompt: String, cands: Array, auto: CardInst = null, source: CardInst = null) -> CardInst:
+	var got := choose(who, prompt, cands, 1, [auto] if auto != null else [], false, source)
+	return got[0] if not got.is_empty() else auto
 
 
 func _strongest_face_up(p: int) -> CardInst:
@@ -726,8 +893,44 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 		players[p].attacks_turn = turn
 		players[p].attacks_this_turn = 0
 	players[p].attacks_this_turn += 1
-	pending_attack = {"player": p, "attacker": attacker, "target": target, "negated": false}
+	pending_attack = {"player": p, "attacker": attacker, "target": target, "negated": false,
+			"opp_count": players[opponent(p)].monsters().size()}
 	return [{"type": "attack", "player": p, "card": attacker, "target": target}]
+
+
+## Replay: the number of monsters on the defender's side changed after the attack was declared,
+## so the attacker picks again (a new target, a direct attack if the way is clear, or no attack).
+func replay_needed() -> bool:
+	if pending_attack.is_empty() or pending_attack["negated"] or is_over():
+		return false
+	var p: int = pending_attack["player"]
+	var a: CardInst = pending_attack["attacker"]
+	if not players[p].field.has(a) or not a.face_up or not a.attack_pos:
+		return false
+	return players[opponent(p)].monsters().size() != int(pending_attack.get("opp_count", -1))
+
+
+func replay_attack(target: CardInst) -> Array:
+	if pending_attack.is_empty():
+		return []
+	var p: int = pending_attack["player"]
+	var a: CardInst = pending_attack["attacker"]
+	if target == null and not can_direct_attack_with(p, a):
+		return cancel_attack()
+	if target != null and not players[opponent(p)].field.has(target):
+		return cancel_attack()
+	pending_attack["target"] = target
+	pending_attack["opp_count"] = players[opponent(p)].monsters().size()
+	return [{"type": "effect", "player": p, "card": a, "text": "Replay!"}, {"type": "attack", "player": p, "card": a, "target": target}]
+
+
+func cancel_attack() -> Array:
+	if pending_attack.is_empty():
+		return []
+	var p: int = pending_attack["player"]
+	var a: CardInst = pending_attack["attacker"]
+	pending_attack = {}
+	return [{"type": "attack_stopped", "player": p, "card": a}]
 
 
 func resolve_attack() -> Array:
@@ -884,6 +1087,14 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 
 ## Every card headed for the Graveyard goes through here, so "banish instead" effects work.
 func _to_gy(ps: PlayerState, c: CardInst) -> void:
+	if c.is_token():
+		return   # Tokens are not cards: they simply stop existing.
+	if not c.overlays.is_empty():
+		# An Xyz Monster's materials go to the Graveyard when it leaves the field.
+		var mats: Array = c.overlays.duplicate()
+		c.overlays.clear()
+		for o in mats:
+			players[o.owner].gy.append(o)
 	if c.orig_owner != -1:
 		# A borrowed monster goes to its real owner's Graveyard.
 		c.owner = c.orig_owner
@@ -916,6 +1127,8 @@ func _gy_redirect(c: CardInst = null) -> bool:
 func _banish(c: CardInst) -> Array:
 	if c == null:
 		return []
+	if c.is_token():
+		return _vanish(c)
 	for q in 2:
 		var ps := players[q]
 		var from := ""
@@ -1003,6 +1216,11 @@ func _monster_left(m: CardInst) -> Array:
 ## Sweep up Equip cards whose monster is gone (tributed, used as material...).
 func _cleanup() -> Array:
 	var events := []
+	# Effect negation (Skill Drain and one-turn negations) is re-derived from what is on the field.
+	var drain := SpellRules.field_flag(self, "drain")
+	for q in 2:
+		for m in players[q].monsters():
+			m.negated = m.face_up and (drain or m.negated_turn == turn)
 	for q in 2:
 		for st in players[q].spells.duplicate():
 			if st == null or not st.face_up:
@@ -1017,8 +1235,20 @@ func _cleanup() -> Array:
 	return events
 
 
+## A Token leaving the field any way at all just disappears.
+func _vanish(c: CardInst) -> Array:
+	for q in 2:
+		var z := players[q].field.find(c)
+		if z != -1:
+			players[q].field[z] = null
+			return [{"type": "destroy", "player": q, "card": c, "zone": z}]
+	return []
+
+
 ## Return a card on the field to its owner's hand (Extra Deck monsters go back to the Extra Deck).
 func _bounce(c: CardInst) -> Array:
+	if c != null and c.is_token():
+		return _vanish(c)
 	for q in 2:
 		var ps := players[q]
 		var from := ""
@@ -1123,7 +1353,12 @@ func _damage(p: int, amount: int) -> Array:
 	ps.lp = maxi(0, ps.lp - amount)
 	var events := [{"type": "lp", "player": p, "lp": ps.lp, "delta": -amount}]
 	if ps.lp == 0:
-		_set_winner(opponent(p), "%s's Life Points hit zero." % ps.name)
+		if winner == p and players[opponent(p)].lp == 0:
+			# Both duelists reached zero in the same resolution: nobody wins.
+			winner = DRAW
+			win_reason = "Both duelists' Life Points hit zero. The duel is a draw."
+		else:
+			_set_winner(opponent(p), "%s's Life Points hit zero." % ps.name)
 		events.append({"type": "win", "player": winner, "reason": win_reason})
 	return events
 
@@ -1134,12 +1369,13 @@ func _best_in_gy() -> CardInst:
 	var best: CardInst = null
 	for ps in players:
 		for c in ps.gy:
-			if c.is_monster() and (best == null or c.atk() > best.atk()):
+			if can_revive(c) and (best == null or c.atk() > best.atk()):
 				best = c
 	return best
 
 
-func _special(p: int, c: CardInst, method: String) -> Array:
+## pos: "" = the summoner chooses Attack or face-up Defense, "atk" / "def" = the effect says which.
+func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 	var ps := players[p]
 	var zone := ps.free_zone()
 	if zone == -1:
@@ -1147,22 +1383,34 @@ func _special(p: int, c: CardInst, method: String) -> Array:
 		return []
 	ps.field[zone] = c
 	c.face_up = true
-	c.attack_pos = true
+	c.attack_pos = pos != "def"
+	if pos == "" and manual[p]:
+		c.attack_pos = choose_option(p, "Special Summon %s in:" % c.cname(), ["Attack Position", "Defense Position"], 0, c) == 0
 	c.summoned_turn = turn
 	c.pos_changed_turn = -1
 	c.attacked_turn = -1
 	c.reset_mods()
 	last_summoned = c
-	return [{"type": "special", "player": p, "card": c, "zone": zone, "method": method}]
+	var events := [{"type": "special", "player": p, "card": c, "zone": zone, "method": method}]
+	if not c.attack_pos:
+		events.append({"type": "position", "player": p, "card": c, "zone": zone})
+	return events
+
+
+## Ritual and Extra Deck monsters can only come back if they were first summoned the proper way.
+func can_revive(c: CardInst) -> bool:
+	return c.is_monster() and not c.is_token() and (c.proper or not c.frame() in ["ritual", "fusion", "synchro", "xyz"])
 
 
 ## Every Fusion Monster that can be made right now with Polymerization `poly`.
 ## Each option: {"card", "hand": [materials], "field": [materials]}
-func fusion_targets(p: int, poly: CardInst = null, from_gy := false) -> Array:
+## `ask` (only while resolving, for the one Fusion Monster in `only`): when a material could come
+## from the hand or from the field, the player says which.
+func fusion_targets(p: int, poly: CardInst = null, from_gy := false, ask := false, only: CardInst = null) -> Array:
 	var ps := players[p]
 	var out := []
 	for f in ps.extra:
-		if f.frame() != "fusion":
+		if f.frame() != "fusion" or (only != null and f != only):
 			continue
 		var pool_hand: Array = ps.hand.duplicate() if not from_gy else ps.gy.duplicate()
 		if poly:
@@ -1180,6 +1428,12 @@ func fusion_targets(p: int, poly: CardInst = null, from_gy := false) -> Array:
 				if h.id == mid:
 					found = h
 					break
+			if ask and found:
+				var on_field: Array = pool_field.filter(func(m): return m.id == mid)
+				if not on_field.is_empty():
+					var got := pick1(p, "Fusion material: use which %s?" % found.cname(), [found, on_field[0]], found, f)
+					if got != found:
+						found = null
 			if found:
 				pool_hand.erase(found)
 				used_hand.append(found)
@@ -1221,6 +1475,7 @@ func _do_fusion(p: int, plan: Dictionary, banish := false) -> Array:
 			events.append({"type": "material", "player": p, "card": m, "from": "field", "zone": z})
 	var f: CardInst = plan["card"]
 	ps.extra.erase(f)
+	f.proper = true
 	events.append_array(_special(p, f, "fusion"))
 	events.append_array(EffectRunner.on_summon(self, p, f, "fusion"))
 	return events
@@ -1234,12 +1489,13 @@ func extra_materials(p: int, c: CardInst) -> Array:
 			mons.append(m)
 	var out := []
 	if c.frame() == "xyz":
-		var same := mons.filter(func(m): return m.level() == c.level() and m.frame() not in ["xyz"])
+		var same := mons.filter(func(m): return m.level() == c.level() and m.frame() not in ["xyz", "token"])
 		same.sort_custom(func(a, b): return a.atk() < b.atk())
 		for i in same.size():
 			for j in range(i + 1, same.size()):
 				out.append([same[i], same[j]])
 	elif c.frame() == "synchro":
+		mons = mons.filter(func(m): return m.frame() != "xyz")   # Xyz Monsters have a Rank, not a Level
 		var n := mons.size()
 		for mask in range(1, 1 << n):
 			var sel := []
@@ -1266,7 +1522,7 @@ func _sum_atk(arr: Array) -> int:
 
 
 func can_extra_summon(p: int, c: CardInst) -> bool:
-	if p != current or not _in_main() or is_over() or not players[p].extra.has(c):
+	if p != current or not _in_main() or is_over() or not players[p].extra.has(c) or players[p].no_summon_turn == turn:
 		return false
 	if c.frame() != "synchro" and c.frame() != "xyz":
 		return false
@@ -1294,6 +1550,7 @@ func extra_summon(p: int, c: CardInst, materials: Array = []) -> Array:
 			_to_gy(ps, m)
 		events.append({"type": "material", "player": p, "card": m, "from": "field", "zone": z, "overlay": xyz})
 	ps.extra.erase(c)
+	c.proper = true
 	events.append_array(_special(p, c, c.frame()))
 	if not xyz:
 		for m in materials:
@@ -1336,6 +1593,7 @@ func clone() -> DuelState:
 		np.field_spell = _clone_card(ps.field_spell, map) if ps.field_spell != null else null
 		np.no_attack_turn = ps.no_attack_turn
 		np.skip_draw = ps.skip_draw
+		np.no_summon_turn = ps.no_summon_turn
 		np.attacks_this_turn = ps.attacks_this_turn
 		np.attacks_turn = ps.attacks_turn
 		s.players.append(np)
@@ -1346,8 +1604,16 @@ func clone() -> DuelState:
 				var n: CardInst = map[c.uid]
 				n.equipped_to = map.get(c.equipped_to.uid) if c.equipped_to != null else null
 				n.linked = map.get(c.linked.uid) if c.linked != null else null
+	for f in pending_fx:
+		var nf: Dictionary = f.duplicate()
+		nf["card"] = map.get(f["card"].uid, f["card"])
+		nf["ctx"] = _clone_ctx(f["ctx"], map)
+		s.pending_fx.append(nf)
+	s.defer_fx = defer_fx
 	for l in chain:
 		var nl: Dictionary = l.duplicate()
+		if nl.has("ctx"):
+			nl["ctx"] = _clone_ctx(l["ctx"], map)
 		nl["card"] = map.get(l["card"].uid, l["card"])
 		if l["target"] != null:
 			nl["target"] = map.get(l["target"].uid, l["target"])
@@ -1380,6 +1646,14 @@ func clone() -> DuelState:
 	return s
 
 
+func _clone_ctx(ctx: Dictionary, map: Dictionary) -> Dictionary:
+	var out := {}
+	for k in ctx:
+		var v = ctx[k]
+		out[k] = map.get(v.uid, v) if v is CardInst else v
+	return out
+
+
 func _clone_card(c: CardInst, map: Dictionary) -> CardInst:
 	if map.has(c.uid):
 		return map[c.uid]
@@ -1410,6 +1684,9 @@ func _clone_card(c: CardInst, map: Dictionary) -> CardInst:
 	n.control_until = c.control_until
 	n.def_mod_t = c.def_mod_t
 	n.def_mod_turn = c.def_mod_turn
+	n.proper = c.proper
+	n.negated = c.negated
+	n.negated_turn = c.negated_turn
 	map[c.uid] = n
 	for o in c.overlays:
 		n.overlays.append(_clone_card(o, map))
@@ -1422,9 +1699,13 @@ func find_uid(uid: int) -> CardInst:
 			for c in list:
 				if c.uid == uid:
 					return c
-		for c in ps.field + ps.spells:
+		for c in ps.field + ps.spells + [ps.field_spell]:
 			if c != null and c.uid == uid:
 				return c
+			if c != null:
+				for o in c.overlays:
+					if o.uid == uid:
+						return o
 	return null
 
 
@@ -1531,9 +1812,9 @@ func _legacy_trap(p: int, c: CardInst, subject = null) -> Array:
 		subject = null
 	match c.data.get("effect", ""):
 		"mirror_force":
-			pending_attack["negated"] = true
+			# Does not negate the attack: an attacker that survives (unaffected by Traps) keeps attacking.
 			for m in players[opp].monsters():
-				if m.attack_pos and m.cname() != "Elemental HERO Wildheart":
+				if m.attack_pos and not EffectRunner.fx(m).get("trap_immune", false) and m.cname() != "Elemental HERO Wildheart":
 					events.append_array(_destroy(m))
 		"sakuretsu":
 			events.append_array(_destroy(pending_attack["attacker"]))
@@ -1565,7 +1846,7 @@ func _legacy_trap(p: int, c: CardInst, subject = null) -> Array:
 # ------------------------------------------------------------------ monster effects from hand / on summon
 
 func can_special_from_hand(p: int, c: CardInst) -> bool:
-	if p != current or not _in_main() or is_over() or not players[p].hand.has(c):
+	if p != current or not _in_main() or is_over() or not players[p].hand.has(c) or players[p].no_summon_turn == turn:
 		return false
 	if c.cname() == "Cyber Dragon":
 		return players[p].monsters().is_empty() and not players[opponent(p)].monsters().is_empty() and players[p].free_zone() != -1

@@ -13,6 +13,7 @@ func _ready() -> void:
 	_test_effects()
 	_test_banish()
 	_test_spell_rules()
+	_test_full_rules()
 	var stress := OS.get_environment("STRESS_FOLDER")
 	if stress != "":
 		CardData.load_external(stress)
@@ -650,3 +651,167 @@ func _test_effects() -> void:
 	var bird := _fake(s, 1, "Wind bird", 1000, 1000, 0, {"attribute": "WIND"})
 	check(s.atk_of(bird, false) == 1300, "Harpie Lady 1 powers up WIND monsters")
 	print("effects tests done")
+
+
+## The duel screen's way of running an action: try it on a copy, answer each choice, replay.
+## `pick` gets the need and returns card uids (or [index] for an option).
+func _decide(s: DuelState, fn: Callable, pick: Callable) -> Array:
+	var answers: Array = []
+	for guard in 30:
+		var sim := s.clone()
+		sim.manual = s.manual.duplicate()
+		sim.answers = answers.duplicate(true)
+		fn.call(sim)
+		if sim.need == null:
+			break
+		answers.append(pick.call(sim.need))
+	s.answers = answers
+	s.need = null
+	var ev: Array = fn.call(s)
+	s.answers = []
+	return ev
+
+
+func _test_full_rules() -> void:
+	# Hand limit: the player picks the discard, not the rules
+	var s := _main_ready(71)
+	s.manual = [true, false]
+	s.players[0].hand.clear()
+	var hand: Array = []
+	for i in 8:
+		hand.append(_fake(s, 0, "H%d" % i, 1000 + i * 100, 1000, -1))
+		s.players[0].hand.append(hand[i])
+	var asked := []
+	_decide(s, func(st): return st.end_turn(), func(need):
+		asked.append(need)
+		return [hand[7].uid, hand[6].uid])
+	check(asked.size() == 1 and asked[0]["n"] == 2, "Hand limit asks for 2 discards")
+	check(s.players[0].gy.has(hand[7]) and s.players[0].gy.has(hand[6]) and s.players[0].hand.has(hand[0]), "Hand limit discards the cards the player chose")
+	# Monster Reborn: choose which monster, and its position
+	s = _main_ready(72)
+	s.manual = [true, false]
+	var big := _fake(s, 0, "Big", 3000, 1000, -1)
+	var small := _fake(s, 1, "Small", 500, 1000, -1)
+	s.players[0].gy.append(big)
+	s.players[1].gy.append(small)
+	var reborn := _st(s, 0, "Monster Reborn", "hand", "spell", {"effect": "reborn"})
+	var needs := []
+	_decide(s, func(st): return st.activate(0, st.find_uid(reborn.uid)), func(need):
+		needs.append(need)
+		return [1] if need.has("options") else [small.uid])
+	check(s.players[0].field.has(small) and not small.attack_pos, "Monster Reborn brings back the chosen monster in the chosen position")
+	check(needs.size() == 2, "Monster Reborn asks for the monster and the position (asked %d)" % needs.size())
+	# Extra Deck monsters only come back if they were properly summoned
+	s = _main_ready(73)
+	var fus := _fake(s, 0, "Fusion Guy", 2800, 2000, -1, {"frame": "fusion"})
+	s.players[0].gy.append(fus)
+	check(not s.can_revive(fus), "A Fusion Monster that was never Fusion Summoned cannot be revived")
+	fus.proper = true
+	check(s.can_revive(fus), "A properly summoned Fusion Monster can be revived")
+	var rit := _fake(s, 0, "Ritual Guy", 2000, 2000, -1, {"frame": "ritual", "level": 4})
+	s.players[0].hand.append(rit)
+	check(not s.can_normal_summon(0, rit), "Ritual Monsters cannot be Normal Summoned")
+	var nomi := _fake(s, 0, "Nomi", 2000, 2000, -1, {"desc": "Cannot be Normal Summoned/Set. Must first be Special Summoned."})
+	s.players[0].hand.append(nomi)
+	check(not s.can_normal_summon(0, nomi), "'Cannot be Normal Summoned' monsters cannot be Normal Summoned")
+	# Monster effects use the chain when deferred, and can be negated there
+	s = _main_ready(74)
+	s.defer_fx = true
+	var prize := _st(s, 1, "Waboku", "set", "trap")
+	var bug := _fake(s, 0, "Granmarg the Rock Monarch", 2400, 1000, -1)
+	s.players[0].hand.append(bug)
+	s.normal_summon(0, bug, [])
+	check(s.players[1].spells.has(prize) and s.pending_fx.size() == 1, "A summon effect waits to go on the chain")
+	s.fx_to_chain()
+	check(s.chain.size() == 1 and s.chain[0]["kind"] == "fx", "The effect is a chain link")
+	var wrath := _st(s, 1, "Divine Wrath", "set", "trap")
+	s.players[1].hand.append(_fake(s, 1, "Fodder", 100, 100, -1))
+	check(s.responses(1, "chain", s.chain.back()).has(wrath), "Divine Wrath can answer a monster effect")
+	s.chain_add(1, wrath, null, "chain", s.chain.back())
+	check(not SpellRules.fits(s, 0, _st(s, 0, "Mystical Space Typhoon", "set", "spell"), "chain", s.chain.back()), "Only a Counter Trap can answer a Counter Trap")
+	s.chain_resolve()
+	check(s.players[1].spells.has(prize) and not s.players[0].field.has(bug), "Divine Wrath negates the effect and destroys the monster")
+	# Without a negation the deferred effect resolves on the chain
+	s = _main_ready(741)
+	s.defer_fx = true
+	prize = _st(s, 1, "Waboku", "set", "trap")
+	bug = _fake(s, 0, "Granmarg the Rock Monarch", 2400, 1000, -1)
+	s.players[0].hand.append(bug)
+	s.normal_summon(0, bug, [])
+	s.fx_to_chain()
+	s.chain_resolve()
+	check(not s.players[1].spells.has(prize), "The effect resolves when the chain does")
+	# Tokens
+	s = _main_ready(75)
+	var goat := _st(s, 0, "Scapegoat")
+	s.activate(0, goat)
+	var toks: Array = s.players[0].monsters()
+	check(toks.size() == 4 and toks[0].is_token() and not toks[0].attack_pos, "Scapegoat makes 4 Sheep Tokens in Defense Position")
+	var gy0 := s.players[0].gy.size()
+	s._destroy(toks[0])
+	check(s.players[0].gy.size() == gy0 and s.players[0].monsters().size() == 3, "A destroyed Token does not go to the Graveyard")
+	var boss := _fake(s, 0, "Boss", 2500, 2000, -1, {"level": 6})
+	s.players[0].hand.append(boss)
+	s.turn += 2
+	check(not s.can_normal_summon(0, boss), "Sheep Tokens cannot be Tributed for a Tribute Summon")
+	# Skill Drain
+	s = _main_ready(76)
+	var eff := _fake(s, 0, "Luster Dragon", 1900, 1600, 0)
+	var drain := _st(s, 0, "Skill Drain", "set", "trap")
+	s.activate(0, drain)
+	check(s.players[0].lp == 7000 and eff.negated, "Skill Drain costs 1000 and negates face-up monsters")
+	check(EffectRunner.fx(eff).is_empty(), "A negated monster has no effects")
+	s._destroy_st(drain)
+	s._cleanup()
+	check(not eff.negated, "Effects return when Skill Drain leaves")
+	# Replay
+	s = _main_ready(77)
+	s.phase = DuelState.Phase.BATTLE
+	var atk := _fake(s, 0, "Attacker", 2000, 1000, 0)
+	var d1 := _fake(s, 1, "D1", 1000, 1000, 0)
+	s.declare_attack(0, atk, d1)
+	check(not s.replay_needed(), "No replay while nothing changed")
+	var d2 := _fake(s, 1, "D2", 500, 1000, 1)
+	check(s.replay_needed(), "A new monster on the defender's side causes a replay")
+	s.replay_attack(d2)
+	s.resolve_attack()
+	check(not s.players[1].field.has(d2) and s.players[1].field.has(d1), "The replayed attack hits the new target")
+	# Damage Step: only ATK / DEF changers
+	s = _main_ready(78)
+	s.phase = DuelState.Phase.BATTLE
+	var a2 := _fake(s, 0, "A2", 1500, 1000, 0)
+	var b2 := _fake(s, 1, "B2", 1800, 1000, 0)
+	var rush := _st(s, 0, "Rush Recklessly", "set", "spell")
+	var typhoon := _st(s, 0, "Mystical Space Typhoon", "set", "spell")
+	_st(s, 1, "Waboku", "set", "trap")
+	s.declare_attack(0, a2, b2)
+	var dmg_opts := s.responses(0, "damage")
+	check(dmg_opts.has(rush) and not dmg_opts.has(typhoon), "Damage Step allows Rush Recklessly but not Mystical Space Typhoon")
+	# A draw
+	s = _main_ready(79)
+	s.players[0].lp = 500
+	s.players[1].lp = 500
+	s._damage(0, 1000)
+	s._damage(1, 1000)
+	check(s.winner == DuelState.DRAW, "Both players at 0 in the same resolution is a draw")
+	# Phases one at a time
+	s = _new_state(80)
+	s.begin_turn(true)
+	check(s.phase == DuelState.Phase.DRAW, "Stepped turn stops in the Draw Phase")
+	s.begin_standby()
+	check(s.phase == DuelState.Phase.STANDBY, "Then the Standby Phase")
+	s.begin_main1()
+	check(s.phase == DuelState.Phase.MAIN1, "Then Main Phase 1")
+	# Mirror Force does not stop a monster that Traps cannot touch
+	s = _main_ready(81)
+	s.phase = DuelState.Phase.BATTLE
+	var wild := _fake(s, 0, "Elemental HERO Wildheart", 1500, 1600, 0)
+	var other := _fake(s, 0, "Other", 1500, 1000, 1)
+	var prey := _fake(s, 1, "Prey", 1000, 1000, 0)
+	var mf := _st(s, 1, "Mirror Force", "set", "trap")
+	s.declare_attack(0, wild, prey)
+	s.chain_add(1, mf, null, "attack", null)
+	s.chain_resolve()
+	s.resolve_attack()
+	check(s.players[0].field.has(wild) and not s.players[0].field.has(other) and not s.players[1].field.has(prey), "Wildheart survives Mirror Force and finishes its attack")
+	print("full rules tests done")

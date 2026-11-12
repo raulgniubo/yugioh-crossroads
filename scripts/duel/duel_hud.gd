@@ -370,10 +370,10 @@ func _build_phase() -> void:
 	pills.add_theme_constant_override("separation", 6)
 	pills.alignment = BoxContainer.ALIGNMENT_END
 	box.add_child(pills)
-	for txt in ["DP", "M1", "BP", "M2", "EP"]:
+	for txt in ["DP", "SP", "M1", "BP", "M2", "EP"]:
 		var l := UITheme.label(txt, 20, UITheme.TEXT_DIM, UITheme.semi_font())
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		l.custom_minimum_size = Vector2(52, 36)
+		l.custom_minimum_size = Vector2(43, 36)
 		l.add_theme_stylebox_override("normal", _pill_box(Color(0.05, 0.08, 0.13, 0.8)))
 		pills.add_child(l)
 		_phase_labels.append(l)
@@ -396,8 +396,11 @@ func _build_phase() -> void:
 
 
 func set_phase(phase: int, my_turn: bool) -> void:
+	# Pills run Draw, Standby, Main 1, Battle, Main 2, End.
+	var slot: int = {DuelState.Phase.DRAW: 0, DuelState.Phase.STANDBY: 1, DuelState.Phase.MAIN1: 2, DuelState.Phase.BATTLE: 3,
+			DuelState.Phase.MAIN2: 4, DuelState.Phase.END: 5}.get(phase, 0)
 	for i in _phase_labels.size():
-		var on := i == phase
+		var on := i == slot
 		var l := _phase_labels[i]
 		l.add_theme_color_override("font_color", UITheme.BG if on else UITheme.TEXT_DIM)
 		var col: Color = (UITheme.ACCENT if my_turn else Color("8a6dff")) if on else Color(0.05, 0.08, 0.13, 0.8)
@@ -887,11 +890,63 @@ func hide_prompt() -> void:
 
 ## Ask the player whether to respond with one of `options` (cards). Returns the card or null.
 ## Pick one card from a list (targets, materials...). `hidden` cards are shown face-down.
-func ask_pick(text: String, options: Array, button := "Select", cancel := "Cancel", hidden: Array = []):
-	return await ask_response(text, options, button, cancel, hidden, Color("7fd8ff"))
+## `labels` (uid -> text) adds a caption under each card, e.g. where it is. An empty `cancel` means the pick is required.
+func ask_pick(text: String, options: Array, button := "Select", cancel := "Cancel", hidden: Array = [], labels := {}):
+	return await ask_response(text, options, button, cancel, hidden, Color("7fd8ff"), labels)
 
 
-func ask_response(text: String, options: Array, button := "Activate", cancel := "Don't activate", hidden: Array = [], tint := Color("ff4dd2")):
+signal _choice_picked(index: int)
+
+
+## A question with a few labelled answers (a position, yes / no, go first or second). Returns the index.
+func ask_choice(text: String, answers: Array, card = null) -> int:
+	var root := PanelContainer.new()
+	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.06, 0.11, 0.97), 22, Color(UITheme.ACCENT, 0.7)))
+	root.z_index = 60
+	add_child(root)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 22)
+	root.add_child(h)
+	if card != null:
+		var tr := TextureRect.new()
+		tr.texture = Cards.get_face(card.id)
+		tr.custom_minimum_size = Vector2(170, 248)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		h.add_child(tr)
+		inspect(card)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	h.add_child(v)
+	var t := UITheme.label(text, 30, Color.WHITE, UITheme.title_font())
+	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	t.custom_minimum_size = Vector2(440, 0)
+	v.add_child(t)
+	var first: Button = null
+	for i in answers.size():
+		var b := Button.new()
+		b.text = str(answers[i])
+		b.custom_minimum_size = Vector2(440, 56)
+		if i == 0:
+			b.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.ACCENT, 0.25), UITheme.ACCENT, 14))
+			first = b
+		b.pressed.connect(func(): _choice_picked.emit(i))
+		v.add_child(b)
+	root.reset_size()
+	await get_tree().process_frame
+	var vs := get_viewport_rect().size
+	root.position = Vector2((vs.x - root.size.x) / 2.0, vs.y * 0.3)
+	root.modulate.a = 0.0
+	create_tween().tween_property(root, "modulate:a", 1.0, 0.15)
+	if first:
+		first.grab_focus()
+	var idx: int = await _choice_picked
+	root.queue_free()
+	return idx
+
+
+func ask_response(text: String, options: Array, button := "Activate", cancel := "Don't activate", hidden: Array = [], tint := Color("ff4dd2"), labels := {}):
 	var root := PanelContainer.new()
 	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.06, 0.02, 0.08, 0.97) if tint == Color("ff4dd2") else Color(0.03, 0.06, 0.11, 0.97), 22, Color(tint, 0.7)))
 	root.z_index = 60
@@ -901,9 +956,19 @@ func ask_response(text: String, options: Array, button := "Activate", cancel := 
 	root.add_child(v)
 	var t := UITheme.label(text, 30, Color.WHITE, UITheme.title_font())
 	v.add_child(t)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 14)
-	v.add_child(row)
+	# Up to nine across; long lists (a Deck search) wrap and scroll.
+	var row := GridContainer.new()
+	row.columns = clampi(options.size(), 1, 9)
+	row.add_theme_constant_override("h_separation", 14)
+	row.add_theme_constant_override("v_separation", 12)
+	if options.size() > 18:
+		var sc := ScrollContainer.new()
+		sc.custom_minimum_size = Vector2(9 * 124 + 20, 500)
+		sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		v.add_child(sc)
+		sc.add_child(row)
+	else:
+		v.add_child(row)
 	for c in options:
 		var col := VBoxContainer.new()
 		var tr := TextureRect.new()
@@ -920,16 +985,21 @@ func ask_response(text: String, options: Array, button := "Activate", cancel := 
 			if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 				_response_picked.emit(c))
 		col.add_child(tr)
+		if labels.has(c.uid) and str(labels[c.uid]) != "":
+			var cap := UITheme.label(str(labels[c.uid]), 15, UITheme.TEXT_DIM)
+			cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			col.add_child(cap)
 		var b := Button.new()
 		b.text = button
 		b.add_theme_stylebox_override("normal", UITheme.button_box(Color(tint, 0.25), tint, 14))
 		b.pressed.connect(func(): _response_picked.emit(c))
 		col.add_child(b)
 		row.add_child(col)
-	var no := Button.new()
-	no.text = cancel
-	no.pressed.connect(func(): _response_picked.emit(null))
-	v.add_child(no)
+	if cancel != "":
+		var no := Button.new()
+		no.text = cancel
+		no.pressed.connect(func(): _response_picked.emit(null))
+		v.add_child(no)
 	root.reset_size()
 	var vs := get_viewport_rect().size
 	await get_tree().process_frame
@@ -1193,7 +1263,9 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 	for n in [_phase_box, _inspect_panel, _hand_root]:
 		if n:
 			create_tween().tween_property(n, "modulate:a", 0.0, 0.3)
-	var v := _overlay_panel("VICTORY" if won else "DEFEAT", reason, UITheme.ACCENT if won else UITheme.DANGER, true)
+	var tied: bool = stats.get("draw", false)
+	var v := _overlay_panel("DRAW" if tied else ("VICTORY" if won else "DEFEAT"), reason,
+			Color.WHITE if tied else (UITheme.ACCENT if won else UITheme.DANGER), true)
 	if not stats.is_empty():
 		var row := HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
