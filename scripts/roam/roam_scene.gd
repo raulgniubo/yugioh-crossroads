@@ -42,6 +42,7 @@ var _spots: Array = []        # [{pos: Vector3, range: float, label: String, act
 var _near_spot: Dictionary = {}
 var _inside := ""
 var _outside_pos := Vector3(-10, 0, -13.6)
+var _outside_yaw := PI
 var _map: RoamMap
 var _map_full: RoamMap
 var _loc_name: Label
@@ -55,6 +56,7 @@ var _lights: Array = []        # every lamp in the world, for _cull_lights
 var _chat_turn := {}           # npc id -> how many times you have talked this visit
 var _light_t := 0.0
 var walkers_frozen := false       # the story's Hollows: nobody on the street moves
+var _rooms := {}                  # rooms you can walk into in this district (door filled in)
 
 
 func _ready() -> void:
@@ -72,9 +74,9 @@ func _ready() -> void:
 	_build_ui()
 	if district.get("builder", "") == "" and _player.position.distance_to(ShopInterior.AT) < 30.0:
 		_set_inside("kame")
-	elif district.get("builder", "") == "":
-		for rk in Interiors.ROOMS:
-			if _player.position.distance_to(Interiors.ROOMS[rk]["at"]) < 30.0:
+	else:
+		for rk in _rooms:
+			if _player.position.distance_to(_rooms[rk]["at"]) < 30.0:
 				_set_inside(rk)
 	if _map:
 		for mp in [_map, _map_full]:
@@ -616,34 +618,43 @@ func _build_places() -> void:
 		var rmat := city.box(Vector3(3.0, 0.03, 1.6), ramp + Vector3(0, 0.2, 0), city.glow_mat(Color("ff8a3a"), 1.3), false)
 		rmat.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if Router.roam.get("district", "") == "academy":
-		# The exam office: the door of the main building opens Duel Academy mode.
-		var door := Vector3(0, 0, -31.0)
-		_spots.append({"pos": door, "range": 2.6, "label": "Exam office: class duels, exams, tournament", "action": _open_academy})
-		var office := Label3D.new()
-		office.text = Loc.t("▼  EXAM OFFICE")
-		office.font_size = 64
-		office.pixel_size = 0.006
-		office.outline_size = 14
-		office.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		office.modulate = Color("ffd166")
-		office.position = door + Vector3(0, 3.4, 0)
-		city.add_child(office)
-		var omat := city.box(Vector3(3.0, 0.03, 1.6), door + Vector3(0, 0.2, 0), city.glow_mat(Color("ffd166"), 1.3), false)
-		omat.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# The exam office: a desk inside the main hall opens Duel Academy mode.
+		var desk: Vector3 = AcademyRooms.ROOMS["ac_hall"]["at"] + Vector3(6.6, 0, 5.4)
+		_spots.append({"pos": desk, "range": 2.0, "label": "Exam office: class duels, exams, tournament", "action": _open_academy})
 		Academy.load_data()
 		if not Academy.d.get("pending", {}).is_empty() and Router.story_result != "":
 			_open_academy.call_deferred()
+	# Rooms you can walk into: the KaibaCorp lobby, Burger World and the arcade in Domino; the
+	# main hall and the three dorms on Academy Island.
+	var dk: String = str(Router.roam.get("district", "domino"))
+	if not RoamData.DISTRICTS.has(dk):
+		dk = "domino"
+	var doors: Dictionary = city.get_meta("doors", {})
+	for rk in Interiors.rooms_in(dk):
+		var rd: Dictionary = Interiors.all_rooms()[rk].duplicate()
+		if not rd.has("door"):
+			if not doors.has(str(rd.get("door_of", ""))):
+				continue
+			rd["door"] = doors[str(rd["door_of"])][0]
+			rd["out"] = doors[str(rd["door_of"])][1]
+		_rooms[rk] = rd
 	if district.get("builder", "") != "":
+		_build_rooms()
 		return
 	ShopInterior.build(city)
-	# More doors: the KaibaCorp lobby, Burger World and the arcade.
-	for rk in Interiors.ROOMS:
-		var room: Dictionary = Interiors.ROOMS[rk]
+	_build_rooms()
+	_build_kame_spots()
+
+
+func _build_rooms() -> void:
+	for rk in _rooms:
+		var room: Dictionary = _rooms[rk]
 		Interiors.build(city, rk)
 		var door: Vector3 = room["door"]
+		var out: Vector3 = room.get("out", Vector3(0, 0, 1))
 		var inside_at: Vector3 = room["at"]
 		var half: Vector2 = room["half"]
-		_spots.append({"pos": door + Vector3(0, 0, 0.9), "range": 2.3, "label": str(room["label"]), "action": func(): _travel(rk)})
+		_spots.append({"pos": door + out * 0.9, "range": 2.3, "label": str(room["label"]), "action": func(): _travel(rk)})
 		_spots.append({"pos": inside_at + Vector3(0, 0, half.y - 0.7), "range": 1.7, "label": "Leave", "action": func(): _travel("")})
 		var dl := Label3D.new()
 		dl.text = Loc.t("▼  ENTER")
@@ -652,13 +663,17 @@ func _build_places() -> void:
 		dl.outline_size = 14
 		dl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		dl.modulate = Color(room["trim"]).lightened(0.3)
-		dl.position = door + Vector3(0, 3.0, 0.9)
+		dl.position = door + out * 0.9 + Vector3(0, 3.0, 0)
 		city.add_child(dl)
-		var dmat := city.box(Vector3(2.2, 0.03, 1.2), door + Vector3(0, 0.18, 0.9), city.glow_mat(room["trim"], 1.3), false)
+		var dmat := city.box(Vector3(2.2, 0.03, 1.2), door + out * 0.9 + Vector3(0, 0.18, 0), city.glow_mat(room["trim"], 1.3), false)
+		dmat.rotation.y = atan2(out.x, out.z)
 		dmat.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		if str(Router.roam.get("story", "")) == "":
-			for d in Interiors.PEOPLE.get(rk, []):
+			for d in Interiors.people(rk):
 				_add_npc(d, inside_at)
+
+
+func _build_kame_spots() -> void:
 	var at := ShopInterior.AT
 	_spots.append({"pos": Vector3(-10, 0, -15.4), "range": 2.3, "label": "Enter Kame Game", "action": func(): _travel("kame")})
 	_spots.append({"pos": at + Vector3(0, 0, 4.3), "range": 1.7, "label": "Leave the shop", "action": func(): _travel("")})
@@ -688,16 +703,19 @@ func _travel(where: String) -> void:
 	await tw.finished
 	if where == "kame":
 		_outside_pos = Vector3(-10, 0, -13.6)
+		_outside_yaw = PI
 		_player.position = ShopInterior.AT + Vector3(0, 0, 3.2)
 		_yaw = 0.0
-	elif Interiors.ROOMS.has(where):
-		var room: Dictionary = Interiors.ROOMS[where]
-		_outside_pos = (room["door"] as Vector3) + Vector3(0, 0, 2.2)
+	elif _rooms.has(where):
+		var room: Dictionary = _rooms[where]
+		var out2: Vector3 = room.get("out", Vector3(0, 0, 1))
+		_outside_pos = (room["door"] as Vector3) + out2 * 2.2
+		_outside_yaw = atan2(out2.x, out2.z) + PI
 		_player.position = (room["at"] as Vector3) + Vector3(0, 0, (room["half"] as Vector2).y - 1.8)
 		_yaw = 0.0
 	else:
 		_player.position = _outside_pos
-		_yaw = PI
+		_yaw = _outside_yaw
 	_player.velocity = Vector3.ZERO
 	_figure.rotation.y = _yaw + PI
 	_pivot.position = _player.position + Vector3(0, 1.45, 0)
@@ -752,24 +770,25 @@ func _set_inside(where: String) -> void:
 		Music.play("shop" if where != "" else "city")
 		Sfx.ambience("shop" if where != "" else "city")
 	_inside = where
-	if Interiors.ROOMS.has(where):
-		Music.play(str(Interiors.ROOMS[where]["music"]))
+	if _rooms.has(where):
+		Music.play(str(_rooms[where]["music"]))
 	# A soft fill light that travels with the camera, so you are never a silhouette indoors.
 	_update_fill()
 	_arm.spring_length = 3.6 if where != "" else 6.0
 	if _loc_name:
 		_loc_name.text = "KAME GAME" if where != "" else str(district.get("name", "")).to_upper()
 		_loc_area.text = "Card shop" if where != "" else str(district.get("area", ""))
-		if Interiors.ROOMS.has(where):
-			_loc_name.text = Loc.t(str(Interiors.ROOMS[where]["name"])).to_upper()
-			_loc_area.text = Loc.t(str(Interiors.ROOMS[where]["area"]))
+		if _rooms.has(where):
+			_loc_name.text = Loc.t(str(_rooms[where]["name"])).to_upper()
+			_loc_area.text = Loc.t(str(_rooms[where]["area"]))
 	for mp in [_map, _map_full]:
 		if mp == null:
 			continue
-		if Interiors.ROOMS.has(where):
-			var door: Vector3 = Interiors.ROOMS[where]["door"]
-			mp.inside_at = Vector2(door.x, door.z - 2.5)
-			mp.inside_name = str(Interiors.ROOMS[where]["name"])
+		if _rooms.has(where):
+			var door: Vector3 = _rooms[where]["door"]
+			var od: Vector3 = _rooms[where].get("out", Vector3(0, 0, 1))
+			mp.inside_at = Vector2(door.x - od.x * 2.5, door.z - od.z * 2.5)
+			mp.inside_name = str(_rooms[where]["name"])
 		else:
 			mp.inside_at = Vector2(-10, -19.5)
 			mp.inside_name = "Kame Game"
@@ -1190,8 +1209,7 @@ func _end_talk() -> void:
 	if _dlg_fig and is_instance_valid(_dlg_fig):
 		_dlg_fig.speak(false)
 		if not _dlg_npc.has("duel") and randf() < 0.5:
-			_dlg_fig.gesture("agree" if randf() < 0.5 else "wave")
-			_dlg_fig._hold = minf(_dlg_fig._hold, 3.2)
+			_dlg_fig.do_nod()
 	for c in _dlg_buttons.get_children():
 		c.queue_free()
 
@@ -1459,6 +1477,9 @@ func _debug() -> void:
 				dm._close()
 			else:
 				_open_overlay(DeckShop.new() if what == "deckshop" else (PackShop.new() if what == "packs" else DeckMenu.new()))
+		elif a == "--doors":
+			for rk in _rooms:
+				print("DOOR ", rk, " ", _rooms[rk]["door"], " out ", _rooms[rk].get("out", Vector3(0, 0, 1)))
 		elif a == "--shop":
 			await get_tree().create_timer(0.6).timeout
 			await _travel("kame")

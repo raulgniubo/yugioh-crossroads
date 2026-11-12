@@ -41,10 +41,10 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 		await get_tree().process_frame
 		_face_plus_z()
 		_anim = Avatars.anim_player(_model)
-		if Avatars.gesture(_model, "stand2" if (hash(char_key) % 3 == 0) else "stand") != "":
+		if Avatars.rest_idle(_model) != "":
 			_anim = Avatars.anim_player(_model)
-			_stand_clip = "g_stand2" if (hash(char_key) % 3 == 0) else "g_stand"
-			_warm = ["wave", "chat", "agree", "alert", "scratch", "listen", "phone"]
+			_stand_clip = "g_rest"
+			_warm = ["wave", "chat", "scratch", "listen", "phone", "cheer"]
 		if _anim == null:
 			Avatars._relax_pose(_model)
 			_collect_bones()
@@ -77,10 +77,30 @@ func _add_head_look() -> void:
 	_look.neck = sk.find_bone("neck")
 	if _look.neck < 0:
 		_look.neck = sk.find_bone("Neck")
+	for side in [["LeftUpperArm", "LeftLowerArm"], ["RightUpperArm", "RightLowerArm"]]:
+		var ua := Avatars.bone(_model, side[0])
+		var la := Avatars.bone(_model, side[1])
+		if ua >= 0 and la >= 0:
+			var sx := signf(sk.get_bone_global_rest(ua).origin.x - sk.get_bone_global_rest(Avatars.bone(_model, "Hips")).origin.x) if Avatars.bone(_model, "Hips") >= 0 else 1.0
+			_look.arms.append([ua, la, sx if sx != 0.0 else 1.0])
 	sk.add_child(_look)
 	var to_sk := sk.global_transform.basis.orthonormalized().inverse() * global_transform.basis.orthonormalized()
 	_look.up = (to_sk * Vector3.UP).normalized()
 	_look.right = (to_sk * Vector3.RIGHT).normalized()
+	# Which way is "out" for each arm, measured along the figure's own right.
+	var hips := Avatars.bone(_model, "Hips")
+	for a in _look.arms:
+		var off: Vector3 = sk.get_bone_global_rest(a[0]).origin - (sk.get_bone_global_rest(hips).origin if hips >= 0 else Vector3.ZERO)
+		a[2] = 1.0 if off.dot(_look.right) >= 0.0 else -1.0
+
+
+## A small nod hello, done with the head alone.
+func do_nod() -> void:
+	if _look == null:
+		return
+	var tw := create_tween()
+	tw.tween_property(_look, "nod", 1.0, 0.22).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(_look, "nod", 0.0, 0.35).set_trans(Tween.TRANS_SINE)
 
 
 ## Talking: hands move while the lines are on screen.
@@ -153,9 +173,10 @@ func _live(delta: float) -> void:
 	# Someone walks up: a wave or a nod, once in a while.
 	if near and not _was_near and greets and _greet_cd <= 0.0 and stance == "stand":
 		_greet_cd = randf_range(35.0, 60.0)
-		gesture("wave" if randf() < 0.6 else "agree")
-		if _hold > 4.0:
-			_hold = 4.0
+		if randf() < 0.5 and gesture("wave"):
+			_hold = minf(_hold, 3.4)
+		else:
+			do_nod()
 		_fidget_t = randf_range(6.0, 12.0)
 	_was_near = near
 	if not lively or _hold > 0.0:
@@ -165,9 +186,9 @@ func _live(delta: float) -> void:
 		_fidget_t = randf_range(9.0, 22.0)
 		var pool: Array = []
 		if stance == "stand":
-			pool = ["alert", "scratch", "listen", "phone", "alert", "listen"]
+			pool = ["scratch", "listen", "phone"]
 		elif stance == "browse":
-			pool = ["checkout", "checkout", "scratch", "listen"]
+			pool = ["listen", "scratch"]
 		if not pool.is_empty() and gesture(str(pool[randi() % pool.size()]), 0.45) and _hold > 6.5:
 			_hold = 6.5
 

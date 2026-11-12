@@ -68,6 +68,7 @@ func _ready() -> void:
 	hud.direct_attack_pressed.connect(_on_direct_attack)
 	hud.pause_action.connect(_on_pause_action)
 	hud.extra_pressed.connect(_on_extra_pressed)
+	board.extra_clicked.connect(_on_extra_pressed)
 	hud.speed_pressed.connect(_on_speed_pressed)
 	hud.extra_chosen.connect(_on_extra_chosen)
 	_start()
@@ -114,7 +115,7 @@ func _start() -> void:
 			first = AI
 	elif not _autoplay and not cfg.has("first"):
 		# A coin toss or rock-paper-scissors, played out: the winner decides who starts.
-		if _human_test or "--end-test" in OS.get_cmdline_user_args():
+		if _human_test or "--end-test" in OS.get_cmdline_user_args() or "--skip-opening" in OS.get_cmdline_user_args():
 			first = randi() % 2
 		else:
 			var og := OpeningGame.new()
@@ -143,6 +144,8 @@ func _start() -> void:
 	_update_counts()
 	hud.set_phase_buttons("", false, false)
 	hud.set_extra_button(state.players[ME].extra.size(), 0, false)
+	board.set_extra_count(ME, state.players[ME].extra.size(), 0)
+	board.set_extra_count(AI, state.players[AI].extra.size())
 	board.add_duelists(_me_key, _opp_key)
 	var fly := "--no-fly" not in OS.get_cmdline_user_args()
 	if not _autoplay:
@@ -152,14 +155,14 @@ func _start() -> void:
 			{"key": _me_key, "name": me_name, "color": me_info.get("color", Profile.color()), "sub": Loc.t("%s Deck") % CardData.deck_name(my_deck)},
 			{"key": _opp_key, "name": opp_name, "color": opp.get("color", UITheme.DANGER),
 				"sub": Loc.t("%s  ·  %s Deck") % [Loc.t(str(opp.get("title", ""))), CardData.deck_name(opp_deck)]})
-		hud.say(AI, Characters.line(_opp_key, "intro"))
+		_talk(AI, "intro", 1.0, 0.0)
 		if fly:
 			await board.intro_duelists()
 	else:
 		if fly:
 			board.intro_flyover(2.5)
 		await get_tree().create_timer(0.5).timeout
-		hud.say(AI, Characters.line(_opp_key, "intro"))
+		_talk(AI, "intro", 1.0, 0.0)
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--rider-shot="):
 			board.duelist_shot(int(a.substr(13)), 0.1)
@@ -415,6 +418,24 @@ func _play(events: Array) -> void:
 		_turn_finished.emit()
 
 
+## A duelist says a line and acts it out at the table. `chance` keeps chatter from piling up.
+var _last_talk := [-10.0, -10.0]
+
+
+func _talk(p: int, kind: String, chance := 1.0, min_gap := 2.5) -> void:
+	if _autoplay or randf() > chance:
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - float(_last_talk[p]) < min_gap:
+		return
+	var line := Characters.line(_speaker(p) if p == ME else _opp_key, kind)
+	if line == "":
+		return
+	_last_talk[p] = now
+	hud.say(p, line)
+	board.duelist_gesture(p, kind)
+
+
 func _play_event(ev: Dictionary) -> void:
 	var p: int = ev.get("player", 0)
 	DuelAudio.on_event(ev, state)
@@ -423,7 +444,7 @@ func _play_event(ev: Dictionary) -> void:
 			var mine := p == ME
 			Sfx.play("turn")
 			if randf() < 0.45:
-				hud.say(p, Characters.line(_speaker(p), "turn"))
+				_talk(p, "turn", 1.0, 0.0)
 			await hud.banner("YOUR TURN" if mine else Loc.t("%s'S TURN") % state.players[AI].name.to_upper(),
 					UITheme.ACCENT if mine else Color("a08cff"))
 		"phase":
@@ -435,7 +456,7 @@ func _play_event(ev: Dictionary) -> void:
 				var col: Color = UITheme.DANGER if ph == DuelState.Phase.BATTLE else (UITheme.ACCENT if state.current == ME else Color("a08cff"))
 				await hud.phase_sweep(names[ph], col)
 				if ph == DuelState.Phase.END and state.current == AI and randf() < 0.3:
-					hud.say(AI, Characters.line(_opp_key, "taunt"))
+					_talk(AI, "taunt")
 		"draw":
 			_update_counts()
 			Sfx.play("draw", -6.0)
@@ -450,14 +471,16 @@ func _play_event(ev: Dictionary) -> void:
 			if ev["type"] == "summon":
 				get_tree().create_timer(Settings.t(0.5)).timeout.connect(func(): Sfx.play("summon", -4.0))
 			if is_ace:
-				hud.say(p, Characters.line(_speaker(p), "ace"))
+				_talk(p, "ace", 1.0, 0.0)
 				hud.react(p, "ace")
 			if ev["type"] == "summon" and _pending_tributes > 0:
 				hud.banner("TRIBUTE SUMMON", UITheme.GOLD)
 			_pending_tributes = 0
 			await board.anim_summon(p, ev["card"], ev["zone"], ev["type"] == "set")
-			if p == ME and ev["type"] == "summon" and ev["card"].atk() >= 2000 and randf() < 0.65:
-				hud.say(AI, Characters.line(_opp_key, "react"))
+			if p == ME and ev["type"] == "summon" and ev["card"].atk() >= 2000:
+				_talk(AI, "react", 0.65)
+			elif p == AI and ev["type"] == "summon" and ev["card"].atk() >= 2000:
+				_talk(ME, "react", 0.4)
 		"tribute":
 			_pending_tributes += 1
 			Sfx.play("spell", -4.0, 0.8)
@@ -472,6 +495,7 @@ func _play_event(ev: Dictionary) -> void:
 				hud.remove_hand_card(ev["card"])
 			hud.inspect(ev["card"])
 			Sfx.play("spell")
+			_talk(p, "spell", 0.3)
 			if SpellRules.kind(ev["card"]) in ["field", "equip", "cont", "ritual", "quick"]:
 				var titles := {"field": "FIELD SPELL", "equip": "EQUIP SPELL", "cont": "CONTINUOUS SPELL", "ritual": "RITUAL SPELL", "quick": "QUICK-PLAY SPELL"}
 				hud.effect_text("%s  ·  %s" % [titles[SpellRules.kind(ev["card"])], ev["card"].cname()], Color("7dffc8"))
@@ -505,7 +529,7 @@ func _play_event(ev: Dictionary) -> void:
 			await board.anim_spell_done(ev["card"])
 		"attack":
 			if ev["target"] == null or randf() < 0.3:
-				hud.say(p, Characters.line(_speaker(p), "attack"))
+				_talk(p, "attack")
 			Sfx.play("attack")
 			await board.anim_declare(p, ev["card"], ev["target"])
 		"battle":
@@ -516,9 +540,11 @@ func _play_event(ev: Dictionary) -> void:
 		"set_st":
 			if p == ME:
 				hud.remove_hand_card(ev["card"])
+			_talk(p, "set", 0.25)
 			Sfx.play("card")
 			await board.anim_set_st(p, ev["card"], ev["zone"])
 		"trap":
+			_talk(p, "trap", 0.7, 0.0)
 			Sfx.play("spell", 0.0, 0.8)
 			hud.inspect(ev["card"])
 			hud.banner(str(ev["card"].data["name"]).to_upper(), Color("ff4dd2"))
@@ -555,8 +581,8 @@ func _play_event(ev: Dictionary) -> void:
 		"swords_end":
 			hud.effect_text("Swords of Revealing Light fades")
 		"destroy":
-			if p == AI and randf() < 0.5:
-				hud.say(AI, Characters.line(_opp_key, "destroyed"))
+			if randf() < (0.5 if p == AI else 0.3):
+				_talk(p, "destroyed")
 			board.hide_stats_for(ev["card"])
 			Sfx.play("destroy", -3.0)
 			await board.anim_destroy(ev["card"], ev.get("overlays", []))
@@ -573,7 +599,7 @@ func _play_event(ev: Dictionary) -> void:
 				hud.remove_hand_card(ev["card"])
 			var titles := {"fusion": "FUSION SUMMON", "synchro": "SYNCHRO SUMMON", "xyz": "XYZ SUMMON", "reborn": "REVIVED", "ritual": "RITUAL SUMMON"}
 			Sfx.play("special")
-			hud.say(p, Characters.line(_speaker(p), "ace"))
+			_talk(p, "ace", 1.0, 0.0)
 			hud.react(p, "ace")
 			hud.banner(titles.get(method, "SPECIAL SUMMON"), board.METHOD_COLORS.get(method, UITheme.ACCENT))
 			var mats := _materials.duplicate()
@@ -617,9 +643,10 @@ func _play_event(ev: Dictionary) -> void:
 				hud.react(p, "hurt")
 				if p == AI and ev["lp"] <= 2000 and not _said_low:
 					_said_low = true
-					hud.say(AI, Characters.line(_opp_key, "low"))
+					_talk(AI, "low", 1.0, 0.0)
 				elif ev["delta"] <= -1000:
-					hud.say(p, Characters.line(_speaker(p), "hurt"))
+					_talk(p, "hurt")
+					_talk(1 - p, "big_hit", 0.55)
 			else:
 				Sfx.play("heal")
 			await get_tree().create_timer(Settings.t(0.45)).timeout
@@ -649,6 +676,9 @@ func _refresh() -> void:
 	if not _my_turn():
 		hud.set_phase_buttons("", false, false)
 		hud.set_extra_button(state.players[ME].extra.size() if state.players.size() > 0 else 0, 0, false)
+		if state.players.size() > 1:
+			board.set_extra_count(ME, state.players[ME].extra.size(), 0)
+			board.set_extra_count(AI, state.players[AI].extra.size())
 		hud.set_playable([])
 		_clear_glows()
 		return
@@ -666,6 +696,8 @@ func _refresh() -> void:
 		if state.can_extra_summon(ME, x):
 			ready += 1
 	hud.set_extra_button(state.players[ME].extra.size(), ready, true)
+	board.set_extra_count(ME, state.players[ME].extra.size(), ready)
+	board.set_extra_count(AI, state.players[AI].extra.size())
 	var playable := []
 	for c in state.players[ME].hand:
 		if state.can_normal_summon(ME, c) or state.can_activate(ME, c) or state.can_special_from_hand(ME, c) or (c.is_trap() and state.can_set_st(ME, c)):

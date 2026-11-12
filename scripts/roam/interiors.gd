@@ -44,8 +44,29 @@ const PEOPLE := {
 }
 
 
+## Every room, from every district: Domino's here, the academy's in AcademyRooms.
+static func all_rooms() -> Dictionary:
+	var out := ROOMS.duplicate()
+	out.merge(AcademyRooms.ROOMS)
+	return out
+
+
+static func people(key: String) -> Array:
+	return PEOPLE.get(key, AcademyRooms.PEOPLE.get(key, []))
+
+
+## The rooms you can walk into in one district.
+static func rooms_in(district_key: String) -> Dictionary:
+	var out := {}
+	var all := all_rooms()
+	for k in all:
+		if str(all[k].get("district", "domino")) == district_key:
+			out[k] = all[k]
+	return out
+
+
 static func build(city: CityBuilder, key: String) -> void:
-	var r: Dictionary = ROOMS[key]
+	var r: Dictionary = all_rooms()[key]
 	var o: Vector3 = r["at"]
 	var half: Vector2 = r["half"]
 	var hgt: float = r["height"]
@@ -75,8 +96,18 @@ static func build(city: CityBuilder, key: String) -> void:
 			city.exit_door(o + Vector3(0, 0, half.y), Color(0.62, 0.68, 0.78), Color(0.16, 0.2, 0.3), 2.3)
 		"arcade":
 			city.exit_door(o + Vector3(0, 0, half.y), Color(0.22, 0.18, 0.36), Color(0.1, 0.08, 0.18))
+		"ac_hall":
+			city.exit_door(o + Vector3(0, 0, half.y), Color(0.5, 0.3, 0.18), Color(0.86, 0.7, 0.32), 2.6)
+		"dorm_red":
+			city.exit_door(o + Vector3(0, 0, half.y), Color(0.62, 0.2, 0.16), Color(0.36, 0.22, 0.14))
+		"dorm_yellow":
+			city.exit_door(o + Vector3(0, 0, half.y), Color(0.6, 0.44, 0.24), Color(0.85, 0.7, 0.2))
+		"dorm_blue":
+			city.exit_door(o + Vector3(0, 0, half.y), Color(0.9, 0.92, 0.96), Color(0.18, 0.32, 0.7), 2.6)
 		_:
 			city.exit_door(o + Vector3(0, 0, half.y), Color(0.72, 0.24, 0.18), Color(0.95, 0.88, 0.72))
+	if AcademyRooms.ROOMS.has(key):
+		AcademyRooms.dress(city, key, o, half, hgt)
 	match key:
 		"kc_lobby":
 			_sign(city, "KAIBACORP", o + Vector3(0, 4.9, -half.y + 0.12), 0.0, Color("7cc4ff"), 170)

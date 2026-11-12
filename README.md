@@ -5,6 +5,21 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.14
+
+- Natural standing: every character gets a calm idle built from their own skeleton (arms by the
+  sides, legs under the hips, breathing, weight shift). Everyday gestures move only the upper
+  body, odd-looking ones were dropped, and hellos are a wave or a nod.
+- Duels: the Extra Deck is a pile on the field (left of your Spell & Trap row, click it); a new
+  VS card; both duelists talk more (traps, spells, big hits, reactions) and act it out at the
+  table. "Pause in every phase" is explained on screen. The card panel is centered and only adds
+  a note when the game plays a card differently.
+- Free Duel: a Back button top left and a clear ME / OPPONENT switch over the roster.
+- Main menu: the Duel Points purse no longer covers the profile chip.
+- Duel Academy: a bigger island with a beach, the old woods and a ruined dorm, practice fields,
+  stands around the duel field and a lookout. You can walk into the main hall (card shop, indoor
+  arena, exam office) and all three dorms (`scripts/roam/academy_rooms.gd`).
+
 ## What is in 0.13
 
 - Everybody is alive (`scripts/roam/roam_figure.gd`, `scripts/roam/head_look.gd`). A shared library

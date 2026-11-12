@@ -86,7 +86,7 @@ func _ready() -> void:
 				Avatars._calm_idle(ap)
 			if not keys.is_empty():
 				at = float(String(names[i]).get_slice("@", 1))
-				var ck := Avatars.gesture(n, want.trim_prefix("g_")) if want.begins_with("g_") else Avatars.clip(ap, want)
+				var ck := (Avatars.rest_idle(n) if want == "g_rest" else Avatars.gesture(n, want.trim_prefix("g_"))) if want.begins_with("g_") else Avatars.clip(ap, want)
 				if ck != "":
 					ap.play(ck)
 					if at >= 0.0:

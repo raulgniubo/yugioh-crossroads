@@ -90,10 +90,10 @@ func _build_menu() -> void:
 	var purse := DpPurse.new()
 	purse.anchor_left = 1.0
 	purse.anchor_right = 1.0
-	purse.offset_left = -330
-	purse.offset_right = -60
-	purse.offset_top = 40
-	purse.offset_bottom = 102
+	purse.offset_left = -700
+	purse.offset_right = -440
+	purse.offset_top = 50
+	purse.offset_bottom = 114
 	add_child(purse)
 	_menu_box = VBoxContainer.new()
 	_menu_box.position = Vector2(100, 356)
@@ -287,13 +287,6 @@ func _build_footer() -> void:
 	var left := UITheme.label(Loc.t("Private fan project  ·  Prototype %s") % version, 16, Color(1, 1, 1, 0.35))
 	_anchor_bottom(left, 120, 900)
 	add_child(left)
-	var art_text := "Card art: real images" if Cards.has_real_images() else "Card art: placeholders"
-	var art := UITheme.label(art_text, 16, Color(1, 1, 1, 0.35))
-	art.anchor_left = 1.0
-	art.anchor_right = 1.0
-	_anchor_bottom(art, -480, -60)
-	art.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	add_child(art)
 
 
 func _anchor_bottom(c: Control, left: float, right: float) -> void:

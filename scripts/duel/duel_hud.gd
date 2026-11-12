@@ -398,18 +398,23 @@ func _build_phase() -> void:
 	_btn_extra.custom_minimum_size = Vector2(294, 50)
 	_btn_extra.add_theme_color_override("font_color", Color("ffd23a"))
 	_btn_extra.pressed.connect(func(): extra_pressed.emit())
+	_btn_extra.visible = false
 	box.add_child(_btn_extra)
 	# Each phase of either turn is a chance to use Set cards and Quick-Play Spells. This switches
 	# those reminders off for players who only want to be asked about attacks, summons and chains.
 	var ask := CheckButton.new()
-	ask.text = "Ask me in every phase"
+	ask.text = "Pause in every phase"
 	ask.button_pressed = phase_prompts
 	ask.add_theme_font_size_override("font_size", 17)
 	for col in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color", "font_focus_color"]:
 		ask.add_theme_color_override(col, UITheme.TEXT)
-	ask.tooltip_text = "Draw, Standby, Battle start, Main 2 and End Phase: get a prompt whenever one of your cards could be activated."
+	ask.tooltip_text = "On: the duel stops in the Draw, Standby, Battle and End Phase whenever one of your Set cards or Quick-Play Spells could be used there.\nOff: you are only asked during summons, attacks and chains."
 	ask.toggled.connect(func(on): phase_prompts = on)
 	box.add_child(ask)
+	var ask_help := UITheme.label("Stops the duel when a Set card could be used. Off = only during attacks and chains.", 14, UITheme.TEXT_DIM)
+	ask_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ask_help.custom_minimum_size = Vector2(294, 0)
+	box.add_child(ask_help)
 
 
 func set_phase(phase: int, my_turn: bool) -> void:
@@ -535,7 +540,9 @@ func set_phase_buttons(battle_text: String, battle_enabled: bool, end_enabled: b
 
 
 func set_extra_button(count: int, ready: int, enabled: bool) -> void:
-	_btn_extra.visible = count > 0
+	# The Extra Deck lives on the field now (left of your Spell & Trap row); this button stays
+	# hidden and only keeps the old keyboard path working.
+	_btn_extra.visible = false
 	_btn_extra.tooltip_text = "Your Fusion, Synchro and Xyz monsters wait in the Extra Deck."
 	_btn_extra.text = (Loc.t("✸ SUMMON READY  (%d)") % ready) if ready > 0 else Loc.t("Extra Deck  %d") % count
 	_btn_extra.disabled = not enabled or count == 0
@@ -650,95 +657,16 @@ func phase_sweep(text: String, color: Color) -> void:
 
 ## Full-screen VS intro.
 func vs_intro(left: Dictionary, right: Dictionary) -> void:
-	var root := Control.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(root)
-	var vs_size := get_viewport_rect().size
-	var bg := ColorRect.new()
-	bg.color = Color(0.01, 0.015, 0.03, 0.96)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.add_child(bg)
-	var sides := []
-	for i in 2:
-		var d: Dictionary = left if i == 0 else right
-		var col: Color = d["color"]
-		var half := Control.new()
-		half.size = Vector2(vs_size.x * 0.62, vs_size.y)
-		half.position = Vector2(-vs_size.x * 0.1 if i == 0 else vs_size.x * 0.48, 0)
-		half.clip_contents = true
-		root.add_child(half)
-		var tint := ColorRect.new()
-		tint.color = col.darkened(0.6)
-		tint.size = half.size
-		half.add_child(tint)
-		var pt := TextureRect.new()
-		pt.texture = Portraits.get_portrait(d["key"])
-		pt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		pt.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		pt.size = Vector2(vs_size.y * 0.8, vs_size.y)
-		pt.position = Vector2((half.size.x - pt.size.x) / 2.0 + (60 if i == 0 else -60), 0)
-		pt.flip_h = i == 1 and Portraits.has_real(d["key"])
-		half.add_child(pt)
-		var sg := Gradient.new()
-		sg.colors = PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0.85)])
-		var sgt := GradientTexture2D.new()
-		sgt.gradient = sg
-		sgt.fill_from = Vector2(0, 0)
-		sgt.fill_to = Vector2(0, 1)
-		var shade := TextureRect.new()
-		shade.texture = sgt
-		shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		shade.stretch_mode = TextureRect.STRETCH_SCALE
-		shade.size = Vector2(half.size.x, half.size.y * 0.5)
-		shade.position = Vector2(0, half.size.y * 0.5)
-		half.add_child(shade)
-		var name_l := UITheme.label(str(d["name"]).to_upper(), 96, Color.WHITE, UITheme.title_font())
-		name_l.add_theme_color_override("font_shadow_color", Color(col, 0.8))
-		name_l.add_theme_constant_override("shadow_outline_size", 24)
-		var sub := UITheme.label(str(d["sub"]), 30, col.lightened(0.45), UITheme.semi_font())
-		var info := VBoxContainer.new()
-		info.add_child(name_l)
-		info.add_child(sub)
-		info.position = Vector2(vs_size.x * 0.16 if i == 0 else 40, vs_size.y - 220)
-		half.add_child(info)
-		half.rotation = deg_to_rad(-6 if i == 0 else -6)
-		half.pivot_offset = half.size / 2.0
-		sides.append(half)
-	var vs := UITheme.label("VS", 220, Color.WHITE, UITheme.title_font())
-	vs.add_theme_color_override("font_shadow_color", Color(UITheme.ACCENT, 0.9))
-	vs.add_theme_constant_override("shadow_outline_size", 40)
-	vs.size = Vector2(500, 260)
-	vs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vs.position = Vector2((vs_size.x - 500) / 2.0, (vs_size.y - 260) / 2.0)
-	vs.pivot_offset = Vector2(250, 130)
-	vs.scale = Vector2(3, 3)
-	vs.modulate.a = 0.0
-	root.add_child(vs)
-	var l: Control = sides[0]
-	var r: Control = sides[1]
-	var lx := l.position.x
-	var rx := r.position.x
-	l.position.x -= vs_size.x * 0.7
-	r.position.x += vs_size.x * 0.7
-	Sfx.play("turn")
-	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-	tw.tween_property(l, "position:x", lx, 0.55)
-	tw.tween_property(r, "position:x", rx, 0.55).set_delay(0.12)
-	tw.tween_property(vs, "scale", Vector2.ONE, 0.35).set_delay(0.5).set_trans(Tween.TRANS_BACK)
-	tw.tween_property(vs, "modulate:a", 1.0, 0.2).set_delay(0.5)
-	tw.tween_callback(func(): Sfx.play("vs")).set_delay(0.55)
-	await tw.finished
-	await get_tree().create_timer(1.5).timeout
-	var out := create_tween().set_parallel()
-	out.tween_property(root, "modulate:a", 0.0, 0.35)
-	await out.finished
-	root.queue_free()
+	var card := VsCard.new(left, right)
+	add_child(card)
+	await card.play()
+	card.queue_free()
 
 
 # ------------------------------------------------------------------ inspector
 
-var _inspect_chips: HBoxContainer
+var _inspect_chips: HFlowContainer
+var _inspect_note: Label
 var _inspect_atk: Label
 var _inspect_def: Label
 var _inspect_stat_row: HBoxContainer
@@ -766,12 +694,16 @@ func _build_inspector() -> void:
 	_inspect_name = UITheme.label("", 28, Color.WHITE, UITheme.title_font())
 	_inspect_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_inspect_name.custom_minimum_size = Vector2(320, 0)
+	_inspect_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(_inspect_name)
-	_inspect_chips = HBoxContainer.new()
-	_inspect_chips.add_theme_constant_override("separation", 6)
+	_inspect_chips = HFlowContainer.new()
+	_inspect_chips.add_theme_constant_override("h_separation", 6)
+	_inspect_chips.add_theme_constant_override("v_separation", 6)
+	_inspect_chips.alignment = FlowContainer.ALIGNMENT_CENTER
 	v.add_child(_inspect_chips)
 	_inspect_stat_row = HBoxContainer.new()
 	_inspect_stat_row.add_theme_constant_override("separation", 10)
+	_inspect_stat_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_child(_inspect_stat_row)
 	_inspect_atk = _stat_box("ATK", Color("ff6b6b"))
 	_inspect_def = _stat_box("DEF", Color("6bc8ff"))
@@ -779,8 +711,16 @@ func _build_inspector() -> void:
 	_inspect_text = UITheme.label("", 15, UITheme.TEXT_DIM)
 	_inspect_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_inspect_text.custom_minimum_size = Vector2(320, 0)
-	_inspect_text.max_lines_visible = 6
+	_inspect_text.max_lines_visible = 9
+	_inspect_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(_inspect_text)
+	# Only shown when this game plays the card differently from what the card says.
+	_inspect_note = UITheme.label("", 15, Color("ffcf6b"), UITheme.semi_font())
+	_inspect_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_inspect_note.custom_minimum_size = Vector2(320, 0)
+	_inspect_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_inspect_note.visible = false
+	v.add_child(_inspect_note)
 	_inspect_panel.modulate.a = 0.0
 
 
@@ -822,6 +762,7 @@ func inspect(inst, hidden := false) -> void:
 		create_tween().tween_property(_inspect_panel, "modulate:a", 1.0, 0.15)
 	for c in _inspect_chips.get_children():
 		c.queue_free()
+	_inspect_note.visible = false
 	if hidden:
 		_inspect_tex.texture = Cards.get_back()
 		_inspect_name.text = "Face-down card"
@@ -844,10 +785,9 @@ func inspect(inst, hidden := false) -> void:
 		var txt := str(d.get("desc", ""))
 		var nm := str(d.get("name", ""))
 		var note := str(CardEffects.of(nm).get("note", CardData.MONSTER_EFFECTS.get(nm, "")))
-		if note != "":
-			txt = Loc.t("IN THIS GAME: ") + note + "\n\n" + txt
-		elif frame == "effect" or (frame in ["synchro", "xyz", "fusion"] and txt.length() > 80):
-			txt += Loc.t("\n(This effect isn't in the game yet. It plays with its stats.)")
+		if note == "" and (frame == "effect" or (frame in ["synchro", "xyz", "fusion"] and txt.length() > 80)):
+			_inspect_note.text = Loc.t("Not in this game yet: this card plays with its ATK and DEF only.")
+			_inspect_note.visible = true
 		_inspect_text.text = txt if txt != "" else "Normal Monster"
 	else:
 		var is_trap: bool = str(d.get("kind", "")) == "trap"
@@ -860,8 +800,10 @@ func inspect(inst, hidden := false) -> void:
 				_chip(Loc.t("Speed Spell  ·  needs %d") % need, Color("ff8a3a"))
 		_inspect_stat_row.visible = false
 		var body := str(d.get("text", d.get("desc", "")))
-		var rule := SpellRules.note(inst) if inst != null and not hidden else ""
-		_inspect_text.text = (Loc.t("IN THIS GAME: ") + rule + "\n\n" + body) if rule != "" else body
+		_inspect_text.text = body
+		if SpellRules.spec(inst).is_empty():
+			_inspect_note.text = Loc.t("Not in this game yet: you can still Set it as a bluff.")
+			_inspect_note.visible = true
 
 
 # ------------------------------------------------------------------ hand

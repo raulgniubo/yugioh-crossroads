@@ -84,6 +84,9 @@ const BONE_ALIASES := {
 	"RightLowerLeg": ["rightleg", "calf_r", "r_calf", "rightlowerleg", "shin.r"],
 	"LeftFoot": ["leftfoot", "foot_l", "l_foot", "foot.l"],
 	"LeftToes": ["lefttoebase", "toe_l", "l_toe", "lefttoes", "toe.l"],
+	"RightFoot": ["rightfoot", "foot_r", "r_foot", "foot.r"],
+	"LeftHand": ["lefthand", "hand_l", "l_hand", "hand.l"],
+	"RightHand": ["righthand", "hand_r", "r_hand", "hand.r"],
 }
 
 
@@ -395,12 +398,169 @@ func gesture(model: Node, motion: String) -> String:
 		if hip_a >= 0 and hip_b >= 0 and absf(dskel.get_bone_global_rest(hip_b).origin.y) > 0.0001:
 			ratio = skel.get_bone_global_rest(hip_a).origin.y / dskel.get_bone_global_rest(hip_b).origin.y
 		anim = _retarget(dap.get_animation(nm), dskel, skel, skel_path, ratio, 20.0)
+		# Standing motions only move the top half: the legs keep the calm stance of the idle,
+		# so going in and out of a gesture never shuffles the feet.
+		if nm in ["g_wave", "g_chat", "g_scratch", "g_listen", "g_phone", "g_agree", "g_checkout", "g_alert"] and rest_idle(model) != "":
+			_plant_legs(anim, ap.get_animation("g_rest"))
 		if nm in ["g_stand", "g_stand2", "g_sit", "g_sittalk", "g_chat", "g_listen"]:
 			anim.loop_mode = Animation.LOOP_LINEAR
 		if model.has_meta("file"):
 			_gest_cache[ck] = anim
 	lib.add_animation(nm, anim)
 	return nm
+
+
+func _plant_legs(anim: Animation, rest: Animation) -> void:
+	var keep := {}
+	for t in rest.get_track_count():
+		var bn := String(rest.track_get_path(t)).get_slice(":", 1)
+		var lb := bn.to_lower()
+		if lb.contains("leg") or lb.contains("foot") or lb.contains("toe") or lb.contains("thigh") or lb.contains("calf") or lb == "hips" or lb == "pelvis":
+			keep[str(rest.track_get_path(t)) + "#" + str(rest.track_get_type(t))] = t
+	for t in anim.get_track_count():
+		var key := str(anim.track_get_path(t)) + "#" + str(anim.track_get_type(t))
+		if not keep.has(key):
+			continue
+		var src: int = keep[key]
+		for k in range(anim.track_get_key_count(t) - 1, -1, -1):
+			anim.track_remove_key(t, k)
+		var steps := int(ceil(anim.length / 0.2))
+		for k in steps + 1:
+			var tt := minf(k * 0.2, anim.length)
+			var rt := fmod(tt, rest.length)
+			if anim.track_get_type(t) == Animation.TYPE_ROTATION_3D:
+				anim.rotation_track_insert_key(t, tt, rest.rotation_track_interpolate(src, rt))
+			else:
+				anim.position_track_insert_key(t, tt, rest.position_track_interpolate(src, rt))
+
+
+## A calm, natural standing loop made from the model's own skeleton: legs straight under the
+## hips, arms hanging close to the body with a soft bend at the elbow, slow breathing and a little
+## weight shift. Every rigged humanoid gets the same relaxed posture this way, whatever shape its
+## body is. Returns the clip name ("g_rest"), or "" without the bones it needs.
+func rest_idle(model: Node) -> String:
+	var skel := _first_skeleton(model)
+	if skel == null:
+		return ""
+	var ap := anim_player(model)
+	if ap and ap.has_animation("g_rest"):
+		return "g_rest"
+	var need := {}
+	for h in ["Hips", "Head", "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm", "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg"]:
+		var i := bone(model, h)
+		if i < 0:
+			return ""
+		need[h] = i
+	if ap == null:
+		ap = AnimationPlayer.new()
+		ap.name = "AnimationPlayer"
+		skel.get_parent().add_child(ap)
+		ap.root_node = ap.get_path_to(skel.get_parent())
+		ap.add_animation_library("", AnimationLibrary.new())
+	elif ap.get_animation_library_list().is_empty():
+		ap.add_animation_library("", AnimationLibrary.new())
+	var lib := ap.get_animation_library(ap.get_animation_library_list()[0])
+	var root := ap.get_node_or_null(ap.root_node)
+	if root == null:
+		return ""
+	var skel_path := str(root.get_path_to(skel))
+	var ck := "%s|%s|g_rest" % [str(model.get_meta("file", "")), skel_path]
+	var cached: Animation = _gest_cache.get(ck) if model.has_meta("file") else null
+	if cached:
+		lib.add_animation("g_rest", cached)
+		return "g_rest"
+	var n := skel.get_bone_count()
+	var order: Array = []
+	var placed := {}
+	while order.size() < n:
+		var moved := false
+		for i in n:
+			if not placed.has(i) and (skel.get_bone_parent(i) < 0 or placed.has(skel.get_bone_parent(i))):
+				order.append(i)
+				placed[i] = true
+				moved = true
+		if not moved:
+			return ""
+	var gr := func(i: int) -> Vector3: return skel.get_bone_global_rest(i).origin
+	var u: Vector3 = (gr.call(need["Head"]) - gr.call(need["Hips"])).normalized()
+	var r: Vector3 = (gr.call(need["RightUpperLeg"]) - gr.call(need["LeftUpperLeg"]))
+	r = (r - u * r.dot(u)).normalized()
+	var f := u.cross(r).normalized()
+	var first_child := func(i: int, toward: int) -> int:
+		# The child that leads toward `toward` (forearm for an upper arm, and so on).
+		for c in skel.get_bone_children(i):
+			if c == toward:
+				return c
+		var kids := skel.get_bone_children(i)
+		return kids[0] if kids.size() > 0 else -1
+	# Where each limb should point, in the skeleton's space.
+	var aims := {}
+	for side in [["Left", -1.0], ["Right", 1.0]]:
+		var out: Vector3 = r * float(side[1])
+		aims[need[side[0] + "UpperArm"]] = [need[side[0] + "LowerArm"], (out * 0.11 - u + f * 0.03).normalized()]
+		var hand := bone(model, side[0] + "Hand")
+		aims[need[side[0] + "LowerArm"]] = [hand, (out * 0.05 - u + f * 0.3).normalized()]
+		aims[need[side[0] + "UpperLeg"]] = [need[side[0] + "LowerLeg"], (out * 0.05 - u + f * 0.02).normalized()]
+		var foot := bone(model, side[0] + "Foot")
+		aims[need[side[0] + "LowerLeg"]] = [foot, (-u + f * 0.0).normalized()]
+	var spine: Array = []
+	for nm in ["Spine", "Spine01", "Spine02", "spine", "Chest", "UpperChest"]:
+		var si := skel.find_bone(nm)
+		if si >= 0:
+			spine.append(si)
+	var neck := skel.find_bone("neck")
+	if neck < 0:
+		neck = skel.find_bone("Neck")
+	var hips: int = need["Hips"]
+	var hip_h: float = gr.call(hips).dot(u)
+	var a := Animation.new()
+	a.length = 4.8
+	a.loop_mode = Animation.LOOP_LINEAR
+	var tracks := {}
+	for i in n:
+		var ti := a.add_track(Animation.TYPE_ROTATION_3D)
+		a.track_set_path(ti, NodePath("%s:%s" % [skel_path, skel.get_bone_name(i)]))
+		tracks[i] = ti
+	var hip_t := a.add_track(Animation.TYPE_POSITION_3D)
+	a.track_set_path(hip_t, NodePath("%s:%s" % [skel_path, skel.get_bone_name(hips)]))
+	var steps := 24
+	for k in steps + 1:
+		var t := a.length * k / float(steps)
+		var ph := TAU * t / a.length
+		var breath := sin(ph * 2.0)            # two breaths a loop
+		var sway := sin(ph)                    # weight drifts from one foot to the other
+		var g := {}
+		for i in order:
+			var par := skel.get_bone_parent(i)
+			var loc := skel.get_bone_rest(i)
+			var gi: Transform3D = (g[par] * loc) if par >= 0 else loc
+			if i == hips:
+				gi.origin += r * sway * 0.012 * hip_h - u * 0.004 * hip_h * (1.0 - absf(sway))
+				gi.basis = Basis(f, -sway * 0.018) * gi.basis
+			if spine.has(i):
+				gi.basis = Basis(r, breath * 0.012) * Basis(f, sway * 0.012) * gi.basis
+			if i == neck or i == need["Head"]:
+				gi.basis = Basis(r, -breath * 0.01) * Basis(u, sin(ph + 1.3) * 0.03) * gi.basis
+			if aims.has(i) and int(aims[i][0]) >= 0:
+				var c: int = aims[i][0]
+				var cur := ((gi * skel.get_bone_rest(c)).origin - gi.origin).normalized()
+				var want: Vector3 = aims[i][1]
+				if i == need["LeftUpperArm"] or i == need["RightUpperArm"]:
+					want = Basis(f, (0.012 * sin(ph + (0.0 if i == need["LeftUpperArm"] else 1.0)))) * want
+				if cur.length() > 0.5 and absf(cur.dot(want)) < 0.99999:
+					gi.basis = Basis(Quaternion(cur, want)) * gi.basis
+			g[i] = gi
+		for i in n:
+			var par := skel.get_bone_parent(i)
+			var lb: Basis = ((g[par] as Transform3D).basis.inverse() * (g[i] as Transform3D).basis) if par >= 0 else (g[i] as Transform3D).basis
+			a.rotation_track_insert_key(tracks[i], t, lb.orthonormalized().get_rotation_quaternion())
+		var hp := skel.get_bone_parent(hips)
+		var ho: Vector3 = ((g[hp] as Transform3D).affine_inverse() * (g[hips] as Transform3D).origin) if hp >= 0 else (g[hips] as Transform3D).origin
+		a.position_track_insert_key(hip_t, t, ho)
+	if model.has_meta("file"):
+		_gest_cache[ck] = a
+	lib.add_animation("g_rest", a)
+	return "g_rest"
 
 
 ## The model's AnimationPlayer, if it came with animations (walk/idle...).

@@ -78,17 +78,24 @@ func _ready() -> void:
 	add_child(_root)
 	resized.connect(_center)
 	_center()
+	# A clear way out, top left.
+	var top_back := Button.new()
+	top_back.text = "  ◀  Back  "
+	top_back.add_theme_font_size_override("font_size", 24)
+	top_back.position = Vector2(64, 38)
+	top_back.size = Vector2(150, 56)
+	top_back.tooltip_text = "Back to the main menu (Esc)"
+	top_back.pressed.connect(close)
+	_root.add_child(top_back)
 	var header := UITheme.label("FREE DUEL", 58, Color.WHITE, UITheme.title_font())
-	header.position = Vector2(64, 28)
+	header.position = Vector2(236, 28)
 	_root.add_child(header)
 	var bar := ColorRect.new()
 	bar.color = UITheme.ACCENT
-	bar.position = Vector2(66, 98)
+	bar.position = Vector2(238, 98)
 	bar.size = Vector2(118, 4)
 	_root.add_child(bar)
-	var hint := UITheme.label("Tap YOU or OPPONENT, then pick a duelist below", 20, UITheme.TEXT_DIM)
-	hint.position = Vector2(330, 58)
-	_root.add_child(hint)
+	_build_picker()
 	_build_slots()
 	_build_setup()
 	_build_tabs()
@@ -315,7 +322,7 @@ func _refresh_slots() -> void:
 		tsb.content_margin_top = 2
 		tsb.content_margin_bottom = 2
 		sl["tag_bg"].add_theme_stylebox_override("panel", tsb)
-		sl["tag"].text = ("YOU" if side == "me" else "OPPONENT") + ("  ·  CHOOSING" if active else "")
+		sl["tag"].text = Loc.t("YOU") if side == "me" else Loc.t("OPPONENT")
 		if changed:
 			var b: Control = sl["button"]
 			b.scale = Vector2(0.96, 0.96)
@@ -326,6 +333,51 @@ func _refresh_slots() -> void:
 
 
 # ------------------------------------------------------------------ roster
+
+var _pick_btns := {}
+var _pick_title: Label
+
+
+## Who the roster is choosing for, said loudly: two big switches over the roster.
+func _build_picker() -> void:
+	var box := HBoxContainer.new()
+	box.position = Vector2(604, 662)
+	box.add_theme_constant_override("separation", 10)
+	_root.add_child(box)
+	_pick_title = UITheme.label("", 26, Color.WHITE, UITheme.title_font())
+	_pick_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	box.add_child(_pick_title)
+	for side in ["me", "opp"]:
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(190, 48)
+		b.add_theme_font_size_override("font_size", 20)
+		b.pressed.connect(func():
+			_picking = side
+			Sfx.play("card", -8.0)
+			_refresh_all())
+		box.add_child(b)
+		_pick_btns[side] = b
+
+
+func _refresh_picker() -> void:
+	if _pick_title == null:
+		return
+	_pick_title.text = Loc.t("PICK YOUR DUELIST:") if _picking == "me" else Loc.t("PICK YOUR OPPONENT:")
+	for side in _pick_btns:
+		var b: Button = _pick_btns[side]
+		var on: bool = side == _picking
+		var col: Color = Portraits.info(_me if side == "me" else _opp).get("color", UITheme.ACCENT)
+		b.text = ("✓  " if on else "") + (Loc.t("ME") if side == "me" else Loc.t("OPPONENT"))
+		var sb := UITheme.button_box(col if on else Color(0.05, 0.08, 0.14, 0.9), col if on else Color(1, 1, 1, 0.2), 12)
+		for st in ["normal", "hover", "pressed", "focus"]:
+			b.add_theme_stylebox_override(st, sb)
+		for fc in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			b.add_theme_color_override(fc, Color(0.02, 0.04, 0.08) if on else Color.WHITE)
+		b.tooltip_text = "Choose who you play as" if side == "me" else "Choose who you duel against"
+	for side in _slots:
+		var pb: Control = _slots[side]["button"]
+		pb.modulate = Color.WHITE if side == _picking else Color(0.62, 0.64, 0.7)
+
 
 func _build_tabs() -> void:
 	var row := HBoxContainer.new()
@@ -672,6 +724,7 @@ func _refresh_setup() -> void:
 
 func _refresh_all() -> void:
 	_refresh_slots()
+	_refresh_picker()
 	_refresh_grid()
 	for i in _tabs.size():
 		var era: String = "" if i == 0 else Characters.ERAS[i - 1]

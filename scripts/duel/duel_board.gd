@@ -15,6 +15,7 @@ const CAM_TARGET := Vector3(0, 0, 1.15)
 
 signal ace_summoned(inst)
 signal direct_clicked
+signal extra_clicked
 
 ## Cinematic camera: blends from the table view toward cam_pos / cam_target by cam_weight.
 var cam_pos := Vector3(0, 4, 12)
@@ -36,6 +37,10 @@ const BANISH_COLOR := Color("b06cff")
 var _opp_hand: Array[Card3D] = []
 var _deck_piles: Array[Node3D] = []
 var _deck_labels: Array[Label3D] = []
+var _extra_piles: Array[Node3D] = []
+var _extra_labels: Array[Label3D] = []
+var _extra_ready: Label3D
+var _extra_ring: MeshInstance3D
 var _shake := 0.0
 var _time := 0.0
 var _zone_shader: Shader
@@ -79,6 +84,11 @@ func deck_pos(p: int) -> Vector3:
 
 func gy_pos(p: int) -> Vector3:
 	return Vector3(SIDE_X, 0.01, MONSTER_ROW) if p == 0 else Vector3(-SIDE_X, 0.01, -MONSTER_ROW)
+
+
+## The Extra Deck: face down, left of the Spell & Trap row (across from the Deck).
+func extra_pos(p: int) -> Vector3:
+	return Vector3(-SIDE_X, 0.01, SPELL_ROW) if p == 0 else Vector3(SIDE_X, 0.01, -SPELL_ROW)
 
 
 ## The Field Zone: left of the monster row.
@@ -364,6 +374,7 @@ func _build_zones() -> void:
 		_zone(gy_pos(p), Vector2(0.72, 0.98), col, 0.6)
 		_zone(banish_pos(p), Vector2(0.72, 0.98), BANISH_COLOR, 0.35)
 		_zone(field_pos(p), Vector2(0.72, 0.98), Color("3ddc97"), 0.5)
+		_zone(extra_pos(p), Vector2(0.72, 0.98), Color("b06bff"), 0.6)
 		var bl := Label3D.new()
 		bl.text = "BANISHED"
 		bl.font = UITheme.semi_font()
@@ -405,6 +416,86 @@ func _build_decks() -> void:
 		add_child(lbl)
 		_deck_labels.append(lbl)
 		set_deck_count(p, 0)
+		# The Extra Deck pile. Yours opens when you click it.
+		var ep := Node3D.new()
+		ep.position = extra_pos(p)
+		add_child(ep)
+		var eb := MeshInstance3D.new()
+		var ebox := BoxMesh.new()
+		ebox.size = Vector3(Card3D.SIZE.x, 1.0, Card3D.SIZE.y)
+		eb.mesh = ebox
+		var em := StandardMaterial3D.new()
+		em.albedo_color = Color("2a1a3d")
+		eb.material_override = em
+		ep.add_child(eb)
+		var etop := Card3D.new()
+		etop.setup(0)
+		etop.set_pickable(p == 0)
+		if p == 0:
+			etop.clicked.connect(func(_c): extra_clicked.emit())
+			etop.hovered.connect(func(_c, inside): etop.set_glow(inside, Color("b06bff")))
+		ep.add_child(etop)
+		_extra_piles.append(ep)
+		var el := Label3D.new()
+		el.font = UITheme.title_font()
+		el.font_size = 48
+		el.pixel_size = 0.004
+		el.outline_size = 12
+		el.modulate = Color("d9b8ff")
+		el.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		el.position = extra_pos(p) + Vector3(0, 0.45, 0.55 if p == 0 else -0.55)
+		add_child(el)
+		_extra_labels.append(el)
+		set_extra_count(p, 0)
+	_extra_ready = Label3D.new()
+	_extra_ready.text = "SUMMON READY"
+	_extra_ready.font = UITheme.title_font()
+	_extra_ready.font_size = 40
+	_extra_ready.pixel_size = 0.004
+	_extra_ready.outline_size = 12
+	_extra_ready.modulate = Color("ffd23a")
+	_extra_ready.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_extra_ready.position = extra_pos(0) + Vector3(0, 0.75, 0.2)
+	_extra_ready.visible = false
+	add_child(_extra_ready)
+	_extra_ring = MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = 0.62
+	tm.outer_radius = 0.7
+	_extra_ring.mesh = tm
+	var rm := StandardMaterial3D.new()
+	rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	rm.albedo_color = Color("ffd23a")
+	_extra_ring.material_override = rm
+	_extra_ring.position = extra_pos(0) + Vector3(0, 0.02, 0)
+	_extra_ring.scale = Vector3(1, 0.3, 1.25)
+	_extra_ring.visible = false
+	add_child(_extra_ring)
+
+
+func set_extra_count(p: int, count: int, ready := 0) -> void:
+	if p >= _extra_piles.size():
+		return
+	var h := maxf(0.004, count * 0.012)
+	var pile := _extra_piles[p]
+	var body := pile.get_child(0) as MeshInstance3D
+	body.scale = Vector3(1, h, 1)
+	body.position.y = h / 2.0
+	var top := pile.get_child(1) as Card3D
+	top.transform = Transform3D(table_basis(p, false, true), Vector3(0, h + 0.004, 0))
+	pile.visible = count > 0
+	_extra_labels[p].text = str(count) if count > 0 else ""
+	if p == 0 and _extra_ready:
+		_extra_ready.visible = ready > 0
+		_extra_ring.visible = ready > 0
+		_extra_ready.text = Loc.t("SUMMON READY") if ready == 1 else Loc.t("SUMMON READY  x%d") % ready
+
+
+func _process_extra(t: float) -> void:
+	if _extra_ring and _extra_ring.visible:
+		var k := 1.0 + sin(t * 4.0) * 0.06
+		_extra_ring.scale = Vector3(k, 0.3, 1.25 * k)
+		_extra_ready.position.y = extra_pos(0).y + 0.75 + sin(t * 3.0) * 0.05
 
 
 func set_deck_count(p: int, count: int) -> void:
@@ -1873,6 +1964,28 @@ func add_duelists(me_key: String, opp_key: String) -> void:
 		spot.look_at(Vector3(0, 1.3, side * DUELIST_Z))
 
 
+## The duelist at the table acts out what they just said.
+const TALK_MOVES := {"intro": "bow", "taunt": "chat", "ace": "cheer", "attack": "agree", "react": "scratch",
+	"destroyed": "stomp", "low": "alert", "hurt": "alert", "trap": "agree", "spell": "chat", "set": "listen",
+	"big_hit": "cheer", "comeback": "cheer", "turn": "", "draw_pressure": "scratch"}
+
+
+func duelist_gesture(p: int, kind: String) -> void:
+	if not _duelists.has(p) or not (_duelists[p] is RoamFigure):
+		return
+	var fig: RoamFigure = _duelists[p]
+	var move := str(TALK_MOVES.get(kind, "chat"))
+	if move == "":
+		fig.do_nod()
+		return
+	if move == "cheer":
+		fig.play_once("cheer")
+	elif not fig.gesture(move, 0.25):
+		fig.do_nod()
+	# Big moves run long; trim them so the duelist is back in their stance soon.
+	fig._hold = minf(fig._hold, 3.0 if move in ["stomp", "cheer", "bow"] else 2.4)
+
+
 ## Close-up on one duelist (0 = you, 1 = opponent), from the front and slightly below.
 ## `aside` slides the duelist toward the left of the frame, leaving room for a panel.
 func duelist_shot(p: int, dur := 0.6, cheer := false, aside := 0.0) -> void:
@@ -1956,6 +2069,7 @@ func shake(amount: float) -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
+	_process_extra(_time)
 	_shake = move_toward(_shake, 0.0, delta * 1.6)
 	var sway := Vector3(sin(_time * 0.35) * 0.06, sin(_time * 0.5) * 0.04, 0)
 	var s := _shake * _shake * 0.35
