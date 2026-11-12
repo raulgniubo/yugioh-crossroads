@@ -313,9 +313,21 @@ func _open_panel(p: SidePanel) -> void:
 			_items[1].grab_focus())
 
 
+## Free Roam starts with a choice of world.
 func _on_roam() -> void:
-	Router.roam["district"] = "domino"
-	Router.go(Router.ROAM)
+	var p := SidePanel.new("Free Roam", 640)
+	p.z_index = 100
+	var hint := UITheme.label("Pick a world. Inside, press G any time to jump to another one.", 18, UITheme.TEXT_DIM)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	p.body.add_child(hint)
+	p.body.add_child(CityGuide.world_cards(func(key):
+		Router.roam["district"] = key
+		Router.roam["pos"] = null
+		Router.roam.erase("yaw")
+		Router.roam.erase("tod")
+		Router.go(Router.ROAM)))
+	add_child(p)
+	_open_panel(p)
 
 
 func _on_story() -> void:

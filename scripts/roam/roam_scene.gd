@@ -44,6 +44,7 @@ var _loc_name: Label
 var _loc_area: Label
 var _fader: ColorRect
 var _overlay_open := false
+var extras: RoamExtras
 
 
 func _ready() -> void:
@@ -66,6 +67,9 @@ func _ready() -> void:
 			if district.has("map"):
 				mp.layout = district["map"]
 	Music.play("menu")
+	extras = RoamExtras.new()
+	extras.scene = self
+	add_child(extras)
 	_update_fill()
 	_after_duel()
 	_debug()
@@ -183,7 +187,14 @@ func _build_walkers() -> void:
 		var w := {"id": "walker_%d" % i, "fig": f, "a": routes[i][0], "b": routes[i][1], "t": rng.randf(), "dir": 1.0 if rng.randf() > 0.5 else -1.0,
 			"speed": rng.randf_range(1.1, 1.6), "pause": 0.0}
 		_walkers.append(w)
-		var d := {"id": "walker_%d" % i, "name": "Passerby", "color": Color.GRAY, "lines": [WALK_LINES[i % WALK_LINES.size()]]}
+		# Anybody on the street will duel you if you ask.
+		var decks: Array = []
+		for k in Characters.ORDER:
+			if CardData.has_deck(Characters.DATA[k]["deck"]):
+				decks.append(Characters.DATA[k]["deck"])
+		var d := {"id": "walker_%d" % i, "char": mkey if Characters.STORY_CAST.has(mkey) else "", "name": "Passerby", "color": Color.GRAY,
+				"lines": [WALK_LINES[i % WALK_LINES.size()], "A duel? Right here? ...Sure, why not."],
+				"duel": {"deck": decks[rng.randi() % decks.size()] if not decks.is_empty() else "joey", "difficulty": i % 2, "intro": "Let's make it quick!"}}
 		var marker := Label3D.new()
 		marker.visible = false
 		f.add_child(marker)
@@ -407,9 +418,7 @@ func _refresh_map_people() -> void:
 
 
 func _toggle_map() -> void:
-	_map_full.visible = not _map_full.visible
-	_map.visible = not _map_full.visible
-	Sfx.play("click")
+	extras.open_guide("places")
 
 
 # ------------------------------------------------------------------ places you can enter

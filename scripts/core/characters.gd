@@ -149,6 +149,11 @@ const DATA := {
 ## Fallback lines by personality, used when a character has nothing specific to say.
 ## Story-only cast (not in the Free Duel roster).
 const STORY_CAST := {
+	"student_boy": {"name": "Student Duelist", "short": "Student", "era": "Crossroads", "color": Color("7cc4ff"), "title": "Duels between classes", "personality": "wild"},
+	"student_girl": {"name": "Schoolgirl Duelist", "short": "Student", "era": "Crossroads", "color": Color("ff8ac0"), "title": "Top of her class", "personality": "kind"},
+	"office_worker": {"name": "Office Duelist", "short": "Salaryman", "era": "Crossroads", "color": Color("9fb4c8"), "title": "Lunch break champion", "personality": "cool"},
+	"stylish_woman": {"name": "Stylish Duelist", "short": "Stylish Duelist", "era": "Crossroads", "color": Color("c94f8a"), "title": "Duels in heels", "personality": "cocky"},
+	"street_duelist": {"name": "Street Duelist", "short": "Street Duelist", "era": "Crossroads", "color": Color("f0a040"), "title": "Any corner, any time", "personality": "wild"},
 	"kairo": {"name": "Kairo Vance", "short": "Kairo", "era": "Crossroads", "color": Color("e04848"), "title": "The Rival",
 		"deck": "kairo", "ace_name": "Red-Eyes Black Dragon", "personality": "cool",
 		"lines": {"intro": ["Stay out of my way."], "ace": ["This echo is mine now."], "taunt": ["You're slow."],
