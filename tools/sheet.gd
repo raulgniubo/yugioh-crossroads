@@ -50,6 +50,8 @@ func _ready() -> void:
 			for a in OS.get_cmdline_user_args():
 				if a.begins_with("--clip="): want = a.trim_prefix("--clip=")
 				if a.begins_with("--t="): at = float(a.trim_prefix("--t="))
+			if want == "calm":
+				Avatars._calm_idle(ap)
 			for c in ap.get_animation_list():
 				if String(c).to_lower().contains(want):
 					ap.play(c)

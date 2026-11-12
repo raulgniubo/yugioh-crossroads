@@ -5,10 +5,10 @@ extends Node3D
 
 const TODS := ["night", "sunset", "day"]
 const TOD_LOOK := {
-	"night": {"top": Color("060818"), "horizon": Color("3a2160"), "ground": Color("0c0a14"), "sun": Color("8fa8ff"), "sun_e": 0.35, "sun_rot": Vector3(-40, 30, 0),
-		"amb": 0.75, "fog": Color("1a1236"), "fog_d": 0.010, "windows": 1.0, "lamps": 1.0, "neon": 1.0, "exposure": 1.0},
-	"sunset": {"top": Color("2a3a78"), "horizon": Color("ff9a5a"), "ground": Color("3a2420"), "sun": Color("ffb070"), "sun_e": 1.6, "sun_rot": Vector3(-9, -60, 0),
-		"amb": 0.8, "fog": Color("b06a5a"), "fog_d": 0.008, "windows": 0.3, "lamps": 0.5, "neon": 0.7, "exposure": 1.0},
+	"night": {"top": Color("060818"), "horizon": Color("3a2160"), "ground": Color("0c0a14"), "sun": Color("9db4ff"), "sun_e": 0.75, "sun_rot": Vector3(-48, 30, 0),
+		"amb": 1.25, "fog": Color("1a1236"), "fog_d": 0.007, "windows": 1.0, "lamps": 1.0, "neon": 1.0, "exposure": 1.25},
+	"sunset": {"top": Color("2a3a78"), "horizon": Color("ff9a5a"), "ground": Color("3a2420"), "sun": Color("ffb880"), "sun_e": 1.9, "sun_rot": Vector3(-15, -60, 0),
+		"amb": 1.2, "fog": Color("b06a5a"), "fog_d": 0.006, "windows": 0.3, "lamps": 0.5, "neon": 0.7, "exposure": 1.15},
 	"day": {"top": Color("3a7ad8"), "horizon": Color("bcd8f0"), "ground": Color("5a6070"), "sun": Color("fff4e0"), "sun_e": 2.2, "sun_rot": Vector3(-52, -35, 0),
 		"amb": 1.0, "fog": Color("b8cce0"), "fog_d": 0.004, "windows": 0.06, "lamps": 0.0, "neon": 0.25, "exposure": 0.95},
 }

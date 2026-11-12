@@ -66,6 +66,7 @@ func _ready() -> void:
 			if district.has("map"):
 				mp.layout = district["map"]
 	Music.play("menu")
+	_update_fill()
 	_after_duel()
 	_debug()
 
@@ -123,6 +124,7 @@ func _cycle_tod() -> void:
 	var next: String = CityBuilder.TODS[(i + 1) % CityBuilder.TODS.size()]
 	Router.roam["tod"] = next
 	city.apply_tod(next)
+	_update_fill()
 	Router.toast({"night": "Night", "sunset": "Sunset", "day": "Daytime"}[next])
 
 
@@ -482,20 +484,35 @@ func _travel_district(key: String) -> void:
 	Router.go(Router.ROAM)
 
 
-func _set_inside(where: String) -> void:
-	_inside = where
-	# A soft fill light that travels with the camera, so you are never a silhouette indoors.
+## A soft light that travels with the camera, so the hero is never a silhouette
+## indoors, at night or against the sunset.
+func _update_fill() -> void:
+	if _cam == null:
+		return
 	var fill: OmniLight3D = _cam.get_node_or_null("Fill")
 	if fill == null:
 		fill = OmniLight3D.new()
 		fill.name = "Fill"
-		fill.light_color = Color(1.0, 0.93, 0.82)
-		fill.light_energy = 1.5
-		fill.omni_range = 9.0
 		fill.omni_attenuation = 0.6
 		fill.shadow_enabled = false
 		_cam.add_child(fill)
-	fill.visible = where != ""
+	var t: String = city.tod if city else "day"
+	if _inside != "":
+		fill.light_color = Color(1.0, 0.93, 0.82)
+		fill.light_energy = 1.5
+		fill.omni_range = 9.0
+		fill.visible = true
+	else:
+		fill.light_color = Color(0.75, 0.82, 1.0) if t == "night" else Color(1.0, 0.86, 0.72)
+		fill.light_energy = 1.1 if t == "night" else 0.7
+		fill.omni_range = 13.0
+		fill.visible = t != "day"
+
+
+func _set_inside(where: String) -> void:
+	_inside = where
+	# A soft fill light that travels with the camera, so you are never a silhouette indoors.
+	_update_fill()
 	_arm.spring_length = 3.6 if where != "" else 6.0
 	if _loc_name:
 		_loc_name.text = "KAME GAME" if where != "" else str(district.get("name", "")).to_upper()

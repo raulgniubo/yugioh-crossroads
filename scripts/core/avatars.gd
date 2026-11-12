@@ -138,6 +138,31 @@ func _calm_idle(ap: AnimationPlayer) -> void:
 	if src_name == "" or ap.has_animation("Calm_Idle"):
 		return
 	var src := ap.get_animation(src_name)
+	# Arms hang the way they do mid-stride: the average of the walk's arm keys.
+	var rest := {}
+	var walk_name := ""
+	for n in ap.get_animation_list():
+		if String(n).to_lower().contains("walk"):
+			walk_name = n
+			break
+	if walk_name != "":
+		var w := ap.get_animation(walk_name)
+		for t in w.get_track_count():
+			if w.track_get_type(t) != Animation.TYPE_ROTATION_3D or w.track_get_key_count(t) == 0:
+				continue
+			var wb := String(w.track_get_path(t)).get_slice(":", 1).to_lower()
+			if not (wb.contains("arm") or wb.contains("shoulder") or wb.contains("hand")):
+				continue
+			var first: Quaternion = w.track_get_key_value(t, 0)
+			var acc := Vector4.ZERO
+			for k in w.track_get_key_count(t):
+				var q: Quaternion = w.track_get_key_value(t, k)
+				if q.dot(first) < 0.0:
+					q = -q
+				acc += Vector4(q.x, q.y, q.z, q.w)
+			if acc.length() > 0.001:
+				acc = acc.normalized()
+				rest[String(w.track_get_path(t))] = Quaternion(acc.x, acc.y, acc.z, acc.w)
 	var a := Animation.new()
 	a.length = 3.6
 	a.loop_mode = Animation.LOOP_LINEAR
@@ -147,6 +172,8 @@ func _calm_idle(ap: AnimationPlayer) -> void:
 		var ti := a.add_track(src.track_get_type(t))
 		a.track_set_path(ti, src.track_get_path(t))
 		var v = src.track_get_key_value(t, 0)
+		if src.track_get_type(t) == Animation.TYPE_ROTATION_3D and rest.has(String(src.track_get_path(t))):
+			v = rest[String(src.track_get_path(t))]
 		var bone := String(src.track_get_path(t)).get_slice(":", 1).to_lower()
 		if src.track_get_type(t) == Animation.TYPE_ROTATION_3D and v is Quaternion and (bone.begins_with("spine") or bone == "head" or bone.contains("arm")):
 			var amt := 0.022 if bone.begins_with("spine") else (-0.03 if bone == "head" else 0.012)
