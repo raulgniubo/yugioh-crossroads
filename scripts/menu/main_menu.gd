@@ -21,6 +21,9 @@ func _ready() -> void:
 	_build_profile_chip()
 	_build_footer()
 	_intro()
+	if Router.menu_open == "select":
+		Router.menu_open = ""
+		_on_free_duel.call_deferred()
 
 
 func _build_background() -> void:

@@ -21,6 +21,7 @@ var _lp_bars: Array[ColorRect] = [null, null]
 var _lp_values := [8000.0, 8000.0]
 var _count_labels: Array[Label] = [null, null]
 var _hand_root: Control
+var _phase_box: Control
 var _hand: Array = []  # [{inst, node}]
 var _hand_hover := -1
 var _playable := {}
@@ -354,6 +355,7 @@ func _float_number(p: int, delta: int) -> void:
 
 func _build_phase() -> void:
 	var box := VBoxContainer.new()
+	_phase_box = box
 	box.anchor_left = 1.0
 	box.anchor_right = 1.0
 	box.anchor_top = 0.5
@@ -1126,18 +1128,34 @@ func _clear_overlay() -> void:
 		_overlay = null
 
 
-func _overlay_panel(title: String, subtitle: String, title_color: Color) -> VBoxContainer:
+## `side` keeps the left of the screen clear (for the winner's close-up) and puts the panel on the right.
+func _overlay_panel(title: String, subtitle: String, title_color: Color, side := false) -> VBoxContainer:
 	_clear_overlay()
 	_overlay = Control.new()
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_overlay)
-	var dim := ColorRect.new()
-	dim.color = Color(0.01, 0.02, 0.04, 0.78)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_overlay.add_child(dim)
+	if side:
+		var grad := Gradient.new()
+		grad.offsets = PackedFloat32Array([0.0, 0.42, 0.7, 1.0])
+		grad.colors = PackedColorArray([Color(0.01, 0.02, 0.04, 0.0), Color(0.01, 0.02, 0.04, 0.25), Color(0.01, 0.02, 0.04, 0.86), Color(0.01, 0.02, 0.04, 0.94)])
+		var gt := GradientTexture2D.new()
+		gt.gradient = grad
+		var shade := TextureRect.new()
+		shade.texture = gt
+		shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		shade.stretch_mode = TextureRect.STRETCH_SCALE
+		shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_overlay.add_child(shade)
+	else:
+		var dim := ColorRect.new()
+		dim.color = Color(0.01, 0.02, 0.04, 0.78)
+		dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_overlay.add_child(dim)
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	if side:
+		center.anchor_left = 0.52
 	_overlay.add_child(center)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 14)
@@ -1171,8 +1189,33 @@ func _overlay_button(v: VBoxContainer, text: String, action: String) -> Button:
 	return b
 
 
-func show_result(won: bool, reason: String, story := false, lose_ok := false, cont := "Continue Story") -> void:
-	var v := _overlay_panel("VICTORY" if won else "DEFEAT", reason, UITheme.ACCENT if won else UITheme.DANGER)
+func show_result(won: bool, reason: String, story := false, lose_ok := false, cont := "Continue Story", stats := {}) -> void:
+	for n in [_phase_box, _inspect_panel, _hand_root]:
+		if n:
+			create_tween().tween_property(n, "modulate:a", 0.0, 0.3)
+	var v := _overlay_panel("VICTORY" if won else "DEFEAT", reason, UITheme.ACCENT if won else UITheme.DANGER, true)
+	if not stats.is_empty():
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 14)
+		v.add_child(row)
+		var lp: Array = stats.get("lp", [0, 0])
+		for item in [["TURNS", str(stats.get("turns", 0)), Color.WHITE], ["YOUR LP", str(lp[0]), UITheme.ACCENT], ["THEIR LP", str(lp[1]), UITheme.DANGER]]:
+			var box := PanelContainer.new()
+			box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.04, 0.07, 0.12, 0.9), 14, Color(item[2], 0.35)))
+			box.custom_minimum_size = Vector2(150, 0)
+			var bv := VBoxContainer.new()
+			box.add_child(bv)
+			var cap := UITheme.label(item[0], 15, UITheme.TEXT_DIM, UITheme.semi_font())
+			cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			bv.add_child(cap)
+			var val := UITheme.label(item[1], 40, item[2], UITheme.title_font())
+			val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			bv.add_child(val)
+			row.add_child(box)
+		var gap := Control.new()
+		gap.custom_minimum_size = Vector2(0, 14)
+		v.add_child(gap)
 	var first: Button
 	if story:
 		if won or lose_ok:
@@ -1182,6 +1225,8 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 			_overlay_button(v, "Quit to Menu", "menu")
 	else:
 		first = _overlay_button(v, "Rematch", "rematch")
+		if stats.get("free", false):
+			_overlay_button(v, "Change duelists", "select")
 		_overlay_button(v, "Main Menu", "menu")
 	first.grab_focus()
 

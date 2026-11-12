@@ -137,8 +137,12 @@ func _make_placeholder_face(id: int) -> Texture2D:
 	var root := Control.new()
 	root.size = Vector2(CARD_SIZE)
 	vp.add_child(root)
-	var is_spell: bool = d.get("kind", "monster") == "spell"
-	var frame := Color("1a8f80") if is_spell else Color("c79a55")
+	var kind: String = d.get("kind", "monster")
+	var is_trap := kind == "trap"
+	var is_spell: bool = kind == "spell" or is_trap
+	var ftype: String = d.get("frame", "normal")
+	var frame: Color = {"spell": Color("1a8f80"), "trap": Color("a8327a"), "effect": Color("c9783e"), "fusion": Color("8a55b8"),
+			"synchro": Color("d8d8dc"), "xyz": Color("3a3a44"), "ritual": Color("4d7fd0")}.get(ftype, Color("c79a55"))
 	var frame_dark := frame.darkened(0.45)
 	_rect(root, Vector2.ZERO, Vector2(CARD_SIZE), Color("101318"))
 	_rect(root, Vector2(8, 8), Vector2(404, 596), frame, 10)
@@ -146,12 +150,17 @@ func _make_placeholder_face(id: int) -> Texture2D:
 	_rect(root, Vector2(22, 22), Vector2(376, 54), frame.lightened(0.25), 6)
 	_label(root, d.get("name", "Unknown"), Vector2(32, 22), Vector2(300, 54), _font_title, 30, Color("161616"))
 	# Attribute badge
-	var attr: String = "SPELL" if is_spell else str(d.get("attribute", "DARK"))
-	var colors: Array = ATTRIBUTE_COLORS.get(attr, [Color("0f3d3a"), Color("2de2c6")])
+	var attr: String = ("TRAP" if is_trap else "SPELL") if is_spell else str(d.get("attribute", "DARK"))
+	var colors: Array = ATTRIBUTE_COLORS.get(attr, [Color("3d0f2c"), Color("e24da0")] if is_trap else [Color("0f3d3a"), Color("2de2c6")])
 	_rect(root, Vector2(340, 26), Vector2(48, 46), colors[1], 23)
 	_label(root, attr.substr(0, 1), Vector2(340, 26), Vector2(48, 46), _font_title, 28, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	# Level / type line
-	var line := "SPELL CARD" if is_spell else "★".repeat(int(d.get("level", 4)))
+	var sub: String = str(d.get("st", "")).capitalize()
+	if sub == "Normal":
+		sub = ""
+	var line := ("%s %s CARD" % [sub.to_upper(), "TRAP" if is_trap else "SPELL"]).strip_edges() if is_spell else "★".repeat(int(d.get("level", 4)))
+	if ftype == "xyz":
+		frame_dark = Color("f0d060")
 	_label(root, line, Vector2(30, 80), Vector2(360, 34), _font_title, 26, frame_dark.darkened(0.3), HORIZONTAL_ALIGNMENT_RIGHT)
 	# Artwork: attribute gradient with a big monogram
 	var art_box := _rect(root, Vector2(46, 118), Vector2(328, 300), Color.BLACK, 2)
@@ -180,15 +189,18 @@ func _make_placeholder_face(id: int) -> Texture2D:
 	mono.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.5))
 	mono.add_theme_constant_override("shadow_offset_y", 6)
 	# Text box
-	_rect(root, Vector2(26, 430), Vector2(368, 160), Color("efe3c6") if not is_spell else Color("d9efe9"), 4)
+	_rect(root, Vector2(26, 430), Vector2(368, 160), Color("efe3c6") if not is_spell else (Color("efd9e6") if is_trap else Color("d9efe9")), 4)
 	if is_spell:
-		var desc := _label(root, str(d.get("text", "")), Vector2(38, 440), Vector2(344, 140), _font_body, 22, Color("1b1b1b"))
+		var body: String = str(d.get("text", d.get("desc", "")))
+		var desc := _label(root, body, Vector2(38, 438), Vector2(344, 146), _font_body, 15 if body.length() > 150 else 19, Color("1b1b1b"))
+		desc.clip_contents = true
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		desc.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 		desc.clip_text = false
 	else:
 		_label(root, "[ %s ]" % d.get("race", ""), Vector2(38, 438), Vector2(344, 36), _font_title, 26, Color("1b1b1b"))
-		_label(root, "Normal Monster", Vector2(38, 474), Vector2(344, 30), _font_body, 18, Color("555555"))
+		_label(root, {"effect": "Effect Monster", "fusion": "Fusion Monster", "synchro": "Synchro Monster", "xyz": "Xyz Monster",
+				"ritual": "Ritual Monster"}.get(ftype, "Normal Monster"), Vector2(38, 474), Vector2(344, 30), _font_body, 18, Color("555555"))
 		_rect(root, Vector2(38, 540), Vector2(344, 2), Color("1b1b1b"))
 		_label(root, "ATK/%d   DEF/%d" % [d.get("atk", 0), d.get("def", 0)], Vector2(38, 544), Vector2(344, 40),
 				_font_title, 30, Color("1b1b1b"), HORIZONTAL_ALIGNMENT_RIGHT)

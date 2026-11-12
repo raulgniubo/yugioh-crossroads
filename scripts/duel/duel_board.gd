@@ -1531,6 +1531,127 @@ func cam_release(dur := 0.5) -> void:
 	_cam_tween.tween_property(self, "cam_weight", 0.0, Settings.t(dur))
 
 
+# ------------------------------------------------------------------ duelists
+
+var _duelists := {}   # player index -> RoamFigure
+var _aside := 0.0
+const DUELIST_Z := 6.7
+
+
+## The two duelists stand at their ends of the field, each on a lit plate.
+func add_duelists(me_key: String, opp_key: String) -> void:
+	for p in 2:
+		var key := me_key if p == 0 else opp_key
+		var side := 1.0 if p == 0 else -1.0
+		var col: Color = theme["accent"] if p == 0 else theme["accent2"]
+		var plate := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 1.25
+		cm.bottom_radius = 1.45
+		cm.height = 0.5
+		plate.mesh = cm
+		var pm := StandardMaterial3D.new()
+		pm.albedo_color = Color(theme["base"]).lightened(0.1)
+		pm.metallic = 0.6
+		pm.roughness = 0.35
+		plate.material_override = pm
+		plate.position = Vector3(0, -0.25, side * DUELIST_Z)
+		add_child(plate)
+		var ring := MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = 1.12
+		tm.outer_radius = 1.24
+		ring.mesh = tm
+		var rm := StandardMaterial3D.new()
+		rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		rm.albedo_color = col
+		rm.emission_enabled = true
+		rm.emission = col
+		rm.emission_energy_multiplier = 2.5
+		ring.material_override = rm
+		ring.position = Vector3(0, 0.02, side * DUELIST_Z)
+		ring.scale = Vector3(1, 0.25, 1)
+		add_child(ring)
+		var fig := RoamFigure.new()
+		fig.position = Vector3(0, 0.0, side * DUELIST_Z)
+		fig.rotation.y = PI if p == 0 else 0.0
+		fig.scale = Vector3.ONE * 1.2
+		add_child(fig)
+		fig.setup(key, col, "", false)
+		_duelists[p] = fig
+		var spot := SpotLight3D.new()
+		spot.light_color = Color.WHITE.lerp(col, 0.25)
+		spot.light_energy = 7.0
+		spot.spot_range = 9.0
+		spot.spot_angle = 30.0
+		spot.shadow_enabled = false
+		spot.position = Vector3(1.6 * side, 5.2, side * (DUELIST_Z - 2.6))
+		add_child(spot)
+		spot.look_at(Vector3(0, 1.3, side * DUELIST_Z))
+
+
+## Close-up on one duelist (0 = you, 1 = opponent), from the front and slightly below.
+## `aside` slides the duelist toward the left of the frame, leaving room for a panel.
+func duelist_shot(p: int, dur := 0.6, cheer := false, aside := 0.0) -> void:
+	if not _duelists.has(p):
+		return
+	var side := 1.0 if p == 0 else -1.0
+	var z := side * DUELIST_Z
+	_aside = aside
+	cam_shot(Vector3(-1.35 * side, 1.55, z - side * 3.6), Vector3((0.1 - aside) * side, 1.45, z), dur)
+	if cheer:
+		(_duelists[p] as RoamFigure).play_once("victory", 2)
+
+
+## Park the camera on the opening shot (your rival) while the VS card is up.
+func intro_hold() -> void:
+	if _duelists.size() < 2:
+		return
+	if _cam_tween:
+		_cam_tween.kill()
+	cam_pos = Vector3(2.2, 1.2, -DUELIST_Z + 4.6)
+	cam_target = Vector3(0.0, 1.55, -DUELIST_Z)
+	cam_weight = 1.0
+
+
+## Opening: a look at your rival, then at you from behind, then up and over to the table.
+func intro_duelists() -> void:
+	if _duelists.size() < 2:
+		await intro_flyover(2.6)
+		return
+	var oz := -DUELIST_Z
+	intro_hold()
+	var tw := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(self, "cam_pos", Vector3(1.2, 1.5, oz + 3.3), 1.5)
+	_cam_tween = tw
+	await get_tree().create_timer(1.5).timeout
+	tw.kill()
+	# Over your own shoulder, looking down the field at them.
+	cam_pos = Vector3(1.5, 2.3, DUELIST_Z + 3.4)
+	cam_target = Vector3(-0.3, 1.2, 0.0)
+	var tw2 := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw2.tween_property(self, "cam_pos", Vector3(0.9, 2.7, DUELIST_Z + 2.4), 1.2)
+	_cam_tween = tw2
+	await get_tree().create_timer(1.2).timeout
+	tw2.kill()
+	var tw3 := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	tw3.tween_property(self, "cam_weight", 0.0, 1.0)
+	_cam_tween = tw3
+	await tw3.finished
+
+
+## Slow drift around whoever the camera is on. Call after duelist_shot.
+func duelist_orbit(p: int, dur := 6.0) -> void:
+	if not _duelists.has(p):
+		return
+	var side := 1.0 if p == 0 else -1.0
+	var z := side * DUELIST_Z
+	if _cam_tween:
+		_cam_tween.kill()
+	_cam_tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_cam_tween.tween_property(self, "cam_pos", Vector3(0.6 * side, 1.75, z - side * 3.9), dur)
+
+
 ## Opening shot: a sweep over the arena that settles on the table.
 func intro_flyover(dur := 3.2) -> void:
 	cam_pos = Vector3(-16, 5.5, 15)

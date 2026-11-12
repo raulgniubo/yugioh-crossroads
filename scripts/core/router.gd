@@ -15,6 +15,8 @@ var story_result := ""
 
 ## Set by the menu before starting a duel.
 var duel_config := {"player_deck": "yugi", "opponent_deck": "kaiba"}
+## Set before going to the main menu to land on a screen there ("select" = Free Duel setup).
+var menu_open := ""
 
 var _fade: ColorRect
 var _toast: Label

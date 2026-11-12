@@ -100,17 +100,29 @@ func _start() -> void:
 	_update_counts()
 	hud.set_phase_buttons("", false, false)
 	hud.set_extra_button(state.players[ME].extra.size(), 0, false)
-	if "--no-fly" not in OS.get_cmdline_user_args():
-		board.intro_flyover(3.6 if not _autoplay else 2.5)
+	board.add_duelists(_me_key, _opp_key)
+	var fly := "--no-fly" not in OS.get_cmdline_user_args()
 	if not _autoplay:
+		if fly:
+			board.intro_hold()
 		await hud.vs_intro(
 			{"key": _me_key, "name": me_name, "color": me_info.get("color", Profile.color()), "sub": "%s Deck" % CardData.deck_name(my_deck)},
 			{"key": _opp_key, "name": opp_name, "color": opp.get("color", UITheme.DANGER),
 				"sub": "%s  ·  %s Deck" % [opp.get("title", ""), CardData.deck_name(opp_deck)]})
+		hud.say(AI, Characters.line(_opp_key, "intro"))
+		if fly:
+			await board.intro_duelists()
 	else:
+		if fly:
+			board.intro_flyover(2.5)
 		await get_tree().create_timer(0.5).timeout
-	hud.say(AI, Characters.line(_opp_key, "intro"))
+		hud.say(AI, Characters.line(_opp_key, "intro"))
 	await hud.banner("DUEL!", UITheme.ACCENT)
+	if "--end-test" in OS.get_cmdline_user_args():
+		state.winner = AI if "--lose" in OS.get_cmdline_user_args() else ME
+		state.win_reason = "Test finish."
+		_finish()
+		return
 	await _play(events)
 	await hud.banner("You go first" if first == ME else "%s goes first" % opp.get("short", opp_name), UITheme.TEXT)
 	_loop()
@@ -160,12 +172,18 @@ func _finish() -> void:
 		earned = Collection.reward(won and not _surrendered, _ai_level)
 	Sfx.play("win" if won else "lose")
 	hud.say(AI, Characters.line(_opp_key, "lose" if won else "win"))
-	await get_tree().create_timer(1.2).timeout
+	# The winner gets the camera.
+	var champ := ME if won else AI
+	board.duelist_shot(champ, 0.9, true, 1.0)
+	await get_tree().create_timer(1.5).timeout
+	board.duelist_orbit(champ)
 	var cfg: Dictionary = Router.duel_config
 	var why: String = "You surrendered." if _surrendered else state.win_reason
 	if earned > 0:
 		why += "\n+%d Duel Points  (you have %d)" % [earned, Collection.dp]
-	hud.show_result(won, why, cfg.get("story", false), cfg.get("lose_ok", false), cfg.get("continue_label", "Continue Story"))
+	hud.show_result(won, why, cfg.get("story", false), cfg.get("lose_ok", false), cfg.get("continue_label", "Continue Story"),
+			{"turns": state.turn, "lp": [state.players[ME].lp, state.players[AI].lp], "names": [state.players[ME].name, state.players[AI].name],
+			"free": not cfg.has("return_to") and not cfg.get("story", false)})
 	_won = won
 
 
@@ -899,6 +917,9 @@ func _on_pause_action(action: String) -> void:
 				_finish()
 		"rematch":
 			Router.go(Router.DUEL)
+		"select":
+			Router.menu_open = "select"
+			Router.go(Router.MAIN_MENU)
 		"story_continue":
 			Router.story_result = "won" if _won else "lost"
 			Router.go(Router.duel_config.get("return_to", Router.STORY))

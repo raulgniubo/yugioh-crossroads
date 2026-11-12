@@ -12,6 +12,7 @@ var _speed := 0.0
 var _time := randf() * 10.0
 var _anim: AnimationPlayer = null
 var _cur_clip := ""
+var _hold := 0.0          # seconds a one-off clip (cheer) still owns the animation
 
 
 func setup(char_key: String, color: Color, display_name := "", show_name := true) -> void:
@@ -39,6 +40,20 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 		l.modulate = Color(1, 1, 1, 0.95)
 		l.outline_modulate = Color(0, 0, 0, 0.8)
 		add_child(l)
+
+
+## Play a one-off motion ("victory"), then fall back to idle. Returns false without one.
+func play_once(motion: String, loops := 1) -> bool:
+	if _model == null or _anim == null:
+		return false
+	var c := Avatars.clip(_anim, motion)
+	if c == "" or (motion != "idle" and c == Avatars.clip(_anim, "idle")):
+		return false
+	_anim.speed_scale = 1.0
+	_anim.play(c, 0.2)
+	_hold = _anim.get_animation(c).length * loops - 0.25
+	_cur_clip = ""
+	return true
 
 
 func set_speed(s: float) -> void:
@@ -76,6 +91,9 @@ func _process(delta: float) -> void:
 	var walk := clampf(_speed / 4.0, 0.0, 1.6)
 	_phase += delta * (2.0 + _speed * 2.2)
 	var s := sin(_phase)
+	if _hold > 0.0:
+		_hold -= delta
+		return
 	if _model and _anim:
 		var want := Avatars.clip(_anim, "idle") if _speed < 0.3 else Avatars.clip(_anim, "run" if _speed > 5.5 else "walk")
 		if want != "" and want != _cur_clip:
