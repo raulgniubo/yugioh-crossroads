@@ -412,7 +412,7 @@ static func pay_cost(s: DuelState, p: int, c, sp: Dictionary) -> Array:
 		for h in ps.hand:
 			if h != c and (worst == null or s._card_value(h) < s._card_value(worst)):
 				worst = h
-		worst = s.pick1(p, "%s: discard 1 card as the cost" % c.cname(), ps.hand.filter(func(h): return h != c), worst, c)
+		worst = s.pick1(p, Loc.t("%s: discard 1 card as the cost") % c.cname(), ps.hand.filter(func(h): return h != c), worst, c)
 		if worst != null:
 			ps.hand.erase(worst)
 			s._to_gy(ps, worst)
@@ -430,7 +430,7 @@ static func pay_cost(s: DuelState, p: int, c, sp: Dictionary) -> Array:
 		for m in ps.monsters():
 			if weak == null or s.atk_of(m, false) < s.atk_of(weak, false):
 				weak = m
-		weak = s.pick1(p, "%s: Tribute 1 monster as the cost" % c.cname(), ps.monsters(), weak, c)
+		weak = s.pick1(p, Loc.t("%s: Tribute 1 monster as the cost") % c.cname(), ps.monsters(), weak, c)
 		if weak != null:
 			ps.field[ps.field.find(weak)] = null
 			s._to_gy(ps, weak)
@@ -606,7 +606,7 @@ static func resolve(s: DuelState, link: Dictionary) -> Array:
 		var t = ctx["target"]
 		if t == null or not targets(s, p, c).has(t):
 			link["stays"] = false
-			events.append(_ev(p, c, "%s has no target" % c.cname()))
+			events.append(_ev(p, c, Loc.t("%s has no target") % c.cname()))
 			return events
 	if k == "counter" and not sp.get("neg", []).is_empty():
 		events.append_array(_negate(s, p, c, link))
@@ -617,7 +617,7 @@ static func resolve(s: DuelState, link: Dictionary) -> Array:
 	if (k == "equip" or sp.get("equip", false)) and not sp.has("do"):
 		var t = ctx["target"]
 		c.equipped_to = t
-		events.append(_ev(p, c, "%s is equipped to %s" % [c.cname(), t.cname()]))
+		events.append(_ev(p, c, Loc.t("%s is equipped to %s") % [c.cname(), t.cname()]))
 		if sp.get("control", false):
 			events.append_array(s._take_control(t, p, -1))
 			if not s.players[p].field.has(t):
@@ -638,12 +638,12 @@ static func _negate(s: DuelState, p: int, c, link: Dictionary) -> Array:
 	var subj = link.get("subject")
 	if subj is Dictionary:
 		subj["negated"] = true
-		events.append(_ev(p, c, "%s negates %s" % [c.cname(), subj["card"].cname()]))
+		events.append(_ev(p, c, Loc.t("%s negates %s") % [c.cname(), subj["card"].cname()]))
 		var sc = subj["card"]
 		if subj["kind"] == "fx" and s.players[sc.owner].field.has(sc):
 			events.append_array(s._destroy(sc))
 	elif subj != null:
-		events.append(_ev(p, c, "%s negates the summon of %s" % [c.cname(), subj.cname()]))
+		events.append(_ev(p, c, Loc.t("%s negates the summon of %s") % [c.cname(), subj.cname()]))
 		if s.players[subj.owner].field.has(subj):
 			events.append_array(s._destroy(subj))
 	return events
@@ -668,7 +668,7 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			var by_value: Array = ps.hand.duplicate()
 			by_value.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
 			var dn := mini(int(a[1]), by_value.size())
-			for worst in s.choose(p, "%s: discard %d card%s" % [c.cname(), dn, "" if dn == 1 else "s"], ps.hand, dn, by_value.slice(0, dn), false, c):
+			for worst in s.choose(p, Loc.t("%s: discard %d card%s") % [c.cname(), dn, "" if dn == 1 else "s"], ps.hand, dn, by_value.slice(0, dn), false, c):
 				ps.hand.erase(worst)
 				s._to_gy(ps, worst)
 				events.append({"type": "discard", "player": p, "card": worst})
@@ -682,7 +682,7 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 					events.append({"type": "discard", "player": q, "card": h})
 				events.append_array(s._draw(q, n))
 		"avarice":
-			for g in s.choose(p, "%s: shuffle 5 monsters from your Graveyard into the Deck" % c.cname(), s._best_monsters(ps.gy, 99), 5, s._best_monsters(ps.gy, 5), false, c):
+			for g in s.choose(p, Loc.t("%s: shuffle 5 monsters from your Graveyard into the Deck") % c.cname(), s._best_monsters(ps.gy, 99), 5, s._best_monsters(ps.gy, 5), false, c):
 				ps.gy.erase(g)
 				ps.deck.append(g)
 				events.append({"type": "gy_to_deck", "player": p, "card": g, "deck": ps.deck.size()})
@@ -742,7 +742,7 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			var pool: Array = (ps.gy if a[1] == "own_gy" else ps.gy + opp.gy).filter(func(x): return s.can_revive(x))
 			var pick: Array = s._best_monsters(pool, 1)
 			if not pick.is_empty() and ps.free_zone() != -1:
-				var m = s.pick1(p, "%s: Special Summon 1 monster from the Graveyard" % c.cname(), pool, pick[0], c)
+				var m = s.pick1(p, Loc.t("%s: Special Summon 1 monster from the Graveyard") % c.cname(), pool, pick[0], c)
 				s.players[m.owner].gy.erase(m)
 				m.owner = p
 				events.append_array(s._special(p, m, "reborn"))
@@ -768,20 +768,20 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 					t.atk_mod_turn = s.turn
 				else:
 					t.atk_mod += int(a[2])
-				events.append(_ev(p, t, "%s: %+d ATK" % [t.cname(), int(a[2])]))
+				events.append(_ev(p, t, Loc.t("%s: %+d ATK") % [t.cname(), int(a[2])]))
 		"def":
 			for t in _sel(s, p, c, str(a[1]), ctx):
 				t.def_mod_t = int(a[2])
 				t.def_mod_turn = s.turn
-				events.append(_ev(p, t, "%s: %+d DEF" % [t.cname(), int(a[2])]))
+				events.append(_ev(p, t, Loc.t("%s: %+d DEF") % [t.cname(), int(a[2])]))
 		"halve":
 			for t in _sel(s, p, c, str(a[1]), ctx):
 				t.half_turn = s.turn
-				events.append(_ev(p, t, "%s's ATK is halved" % t.cname()))
+				events.append(_ev(p, t, Loc.t("%s's ATK is halved") % t.cname()))
 		"halve_perm":
 			for t in _sel(s, p, c, str(a[1]), ctx):
 				t.atk_mod -= t.atk() / 2
-				events.append(_ev(p, t, "%s's ATK is halved" % t.cname()))
+				events.append(_ev(p, t, Loc.t("%s's ATK is halved") % t.cname()))
 		"flip_down":
 			for t in _sel(s, p, c, str(a[1]), ctx):
 				if s.players[t.owner].field.has(t) and t.face_up:
@@ -819,7 +819,7 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 		"bury":
 			var pick: Array = s._best_monsters(ps.deck, 1)
 			if not pick.is_empty():
-				pick = [s.pick1(p, "%s: send 1 monster from your Deck to the Graveyard" % c.cname(), s._best_monsters(ps.deck, 99), pick[0], c)]
+				pick = [s.pick1(p, Loc.t("%s: send 1 monster from your Deck to the Graveyard") % c.cname(), s._best_monsters(ps.deck, 99), pick[0], c)]
 				s._shuffle(ps.deck)
 				ps.deck.erase(pick[0])
 				s._to_gy(ps, pick[0])
@@ -842,7 +842,7 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				var fcards: Array = []
 				for o in opts:
 					fcards.append(o["card"])
-				var want = s.pick1(p, "%s: Fusion Summon which monster?" % c.cname(), fcards, fcards[0], c)
+				var want = s.pick1(p, Loc.t("%s: Fusion Summon which monster?") % c.cname(), fcards, fcards[0], c)
 				for o in opts:
 					if o["card"] == want:
 						events.append_array(s._do_fusion(p, o, true))
@@ -851,7 +851,7 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			# ["tokens", n, name, id, atk, def, level, attribute, race]: n Tokens in Defense Position.
 			CardData.TOKENS[int(a[3])] = {"name": str(a[2]), "frame": "token", "atk": int(a[4]), "def": int(a[5]), "level": int(a[6]),
 					"attribute": str(a[7]), "race": str(a[8]), "no_tribute_summon": true,
-					"desc": "This card can be used as a \"%s\". It cannot be Tributed for a Tribute Summon." % str(a[2])}
+					"desc": Loc.t("This card can be used as a \"%s\". It cannot be Tributed for a Tribute Summon.") % str(a[2])}
 			ps.no_summon_turn = s.turn
 			for i in int(a[1]):
 				if ps.free_zone() == -1:
@@ -862,7 +862,7 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			for t in _sel(s, p, c, str(a[1]), ctx):
 				t.negated_turn = s.turn
 				t.negated = true
-				events.append(_ev(p, t, "%s's effects are negated this turn" % t.cname()))
+				events.append(_ev(p, t, Loc.t("%s's effects are negated this turn") % t.cname()))
 	return events
 
 
@@ -938,12 +938,12 @@ static func _do_ritual(s: DuelState, p: int, c) -> Array:
 				sum += maxi(1, x.level())
 			if sum >= h.level():
 				able.append(h)
-	var m = s.pick1(p, "%s: Ritual Summon which monster?" % c.cname(), able, plan["monster"], c)
+	var m = s.pick1(p, Loc.t("%s: Ritual Summon which monster?") % c.cname(), able, plan["monster"], c)
 	var pool := _ritual_pool(s, p, m)
 	var tributes: Array = []
 	var total := 0
 	while total < m.level() and not pool.is_empty():
-		var t = s.pick1(p, "%s: Tribute (Levels %d of %d)" % [m.cname(), total, m.level()], pool, pool[0], c)
+		var t = s.pick1(p, Loc.t("%s: Tribute (Levels %d of %d)") % [m.cname(), total, m.level()], pool, pool[0], c)
 		pool.erase(t)
 		tributes.append(t)
 		total += maxi(1, t.level())
@@ -1107,7 +1107,7 @@ static func standby(s: DuelState, p: int) -> Array:
 						continue
 				if sp.get("counter_standby", false):
 					st.counter += 1
-					events.append(_ev(p, st, "%s charges (%d)" % [st.cname(), st.counter]))
+					events.append(_ev(p, st, Loc.t("%s charges (%d)") % [st.cname(), st.counter]))
 				for a in sp.get("standby", []):
 					events.append_array(_run(s, p, st, a, {}))
 			else:
@@ -1148,7 +1148,7 @@ static func fire(s: DuelState, p: int, c) -> Array:
 	if not can_fire(s, p, c):
 		return []
 	var n: int = c.counter * int(spec(c)["cannon"])
-	var events := [_ev(p, c, "%s fires for %d!" % [c.cname(), n])]
+	var events := [_ev(p, c, Loc.t("%s fires for %d!") % [c.cname(), n])]
 	events.append_array(s._destroy_st(c))
 	events.append_array(s._damage(s.opponent(p), n))
 	return events

@@ -112,7 +112,7 @@ func _after_duel() -> void:
 				_refresh_marker(n)
 			var name: String = _npc_name(n[0])
 			await get_tree().create_timer(0.8).timeout
-			Router.toast(("You beat %s!" % name) if won else ("%s wins this time. Try again!" % name))
+			Router.toast((Loc.t("You beat %s!") % name) if won else (Loc.t("%s wins this time. Try again!") % name))
 	_update_counter()
 
 
@@ -437,7 +437,7 @@ func _build_places() -> void:
 		var tr: Dictionary = district["travel"]
 		_spots.append({"pos": tr["pos"], "range": 2.6, "label": tr["label"], "action": func(): _travel_district(str(tr["to"]))})
 		var sign_l := Label3D.new()
-		sign_l.text = "▼  FERRY"
+		sign_l.text = Loc.t("▼  FERRY")
 		sign_l.font = UITheme.semi_font()
 		sign_l.font_size = 64
 		sign_l.pixel_size = 0.005
@@ -459,7 +459,7 @@ func _build_places() -> void:
 	var mat_mesh := city.box(Vector3(2.2, 0.03, 1.2), Vector3(-10, 0.18, -15.4), city.glow_mat(Color("ffd166"), 1.3), false)
 	mat_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var arrow := Label3D.new()
-	arrow.text = "▼  ENTER"
+	arrow.text = Loc.t("▼  ENTER")
 	arrow.font = UITheme.semi_font()
 	arrow.font_size = 64
 	arrow.pixel_size = 0.005
@@ -499,7 +499,7 @@ func _travel_district(key: String) -> void:
 		return
 	_overlay_open = true
 	Sfx.play("special", -4.0)
-	Router.toast("The ferry to %s..." % RoamData.district(key).get("name", key))
+	Router.toast(Loc.t("The ferry to %s...") % Loc.t(str(RoamData.district(key).get("name", key))))
 	Router.roam["district"] = key
 	Router.roam["pos"] = null
 	Router.roam.erase("yaw")
@@ -590,7 +590,7 @@ func _open_deck_picker() -> void:
 			cfg.load(SAVE_PATH)
 			cfg.set_value("roam", "deck", key)
 			cfg.save(SAVE_PATH)
-			Router.toast("Deck set: %s" % CardData.deck_name(key))
+			Router.toast(Loc.t("Deck set: %s") % CardData.deck_name(key))
 			p.close())
 		p.body.add_child(b)
 	p.closed.connect(func(): _overlay_open = false)
@@ -632,7 +632,7 @@ func _update_near() -> void:
 	if _prompt:
 		_prompt.visible = (not _near.is_empty() or not _near_spot.is_empty()) and not _talking and _pause == null and not _overlay_open
 		if _prompt.visible:
-			_prompt.text = ("E   Talk to %s" % _npc_name(_near)) if not _near.is_empty() else ("E   %s" % _near_spot["label"])
+			_prompt.text = (Loc.t("E   Talk to %s") % Loc.t(_npc_name(_near))) if not _near.is_empty() else ("E   %s" % Loc.t(str(_near_spot["label"])))
 	if _map:
 		_map.player_pos = Vector2(_player.position.x, _player.position.z)
 		_map.player_yaw = _figure.rotation.y + PI
@@ -656,7 +656,7 @@ func _talk() -> void:
 	_talking = true
 	_dlg_lines = []
 	for l in d.get("lines", []):
-		_dlg_lines.append(str(l).replace("{player}", Profile.duelist_name))
+		_dlg_lines.append(Loc.t(str(l)).replace("{player}", Profile.duelist_name))
 	if d.has("duel"):
 		var duel: Dictionary = d["duel"]
 		if _beaten.has(d["id"]):
@@ -763,7 +763,7 @@ func _start_duel() -> void:
 		"opponent": opp_key, "opponent_deck": duel.get("deck", "joey"),
 		"player_deck": Router.duel_config.get("player_deck", "echo"), "player_char": "player",
 		"difficulty": duel.get("difficulty", 1), "field": district.get("theme", "battlecity"),
-		"story": true, "lose_ok": true, "return_to": Router.ROAM, "continue_label": "Back to %s" % district.get("name", "town"),
+		"story": true, "lose_ok": true, "return_to": Router.ROAM, "continue_label": Loc.t("Back to %s") % Loc.t(str(district.get("name", "town"))),
 	}
 	_end_talk()
 	Router.go(Router.DUEL)
@@ -878,7 +878,7 @@ func _update_counter() -> void:
 			total += 1
 			if _beaten.has(d["id"]):
 				won += 1
-	_counter.text = "Street duels won  %d / %d" % [won, total]
+	_counter.text = Loc.t("Street duels won  %d / %d") % [won, total]
 
 
 func _open_pause() -> void:

@@ -27,7 +27,7 @@ var _fps: Label
 func _process(_delta: float) -> void:
 	_fps.visible = Settings.show_fps
 	if _fps.visible:
-		_fps.text = "%d FPS" % Engine.get_frames_per_second()
+		_fps.text = Loc.t("%d FPS") % Engine.get_frames_per_second()
 
 
 func _ready() -> void:

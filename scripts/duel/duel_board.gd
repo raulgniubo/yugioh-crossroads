@@ -1473,7 +1473,7 @@ func show_direct_target(on: bool) -> void:
 			bar.rotation.y = PI / 2 * i
 			_direct.add_child(bar)
 		_direct_label = Label3D.new()
-		_direct_label.text = "DIRECT ATTACK"
+		_direct_label.text = Loc.t("DIRECT ATTACK")
 		_direct_label.font = UITheme.title_font()
 		_direct_label.font_size = 96
 		_direct_label.pixel_size = 0.0042

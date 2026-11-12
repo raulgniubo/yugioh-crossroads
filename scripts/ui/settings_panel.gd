@@ -29,6 +29,21 @@ static func open(parent: Node) -> SidePanel:
 			Settings.save_settings())
 		p.add_row("Resolution", res)
 
+	p.add_section("Language")
+	var lang := OptionButton.new()
+	lang.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	for i in Loc.LANGS.size():
+		lang.add_item(Loc.LANGS[i][1], i)
+		if Loc.LANGS[i][0] == Settings.language:
+			lang.select(i)
+	lang.item_selected.connect(func(i):
+		Settings.language = Loc.LANGS[i][0]
+		Settings.apply()
+		Settings.save_settings()
+		# Everything on screen was built in the old language: reload the scene.
+		Router.go(parent.get_tree().current_scene.scene_file_path))
+	p.add_row("Language / Idioma", lang)
+
 	var gfx := OptionButton.new()
 	for i in Settings.GRAPHICS.size():
 		gfx.add_item(Settings.GRAPHICS[i], i)

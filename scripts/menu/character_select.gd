@@ -290,7 +290,7 @@ func _refresh_slots() -> void:
 		sl["name"].text = str(info.get("name", "")).to_upper()
 		sl["title"].text = str(info.get("title", ""))
 		var deck_key := _deck_of(side)
-		sl["sub"].text = "%s  ·  %s Deck" % [info.get("era", ""), CardData.deck_name(deck_key)]
+		sl["sub"].text = Loc.t("%s  ·  %s Deck") % [info.get("era", ""), CardData.deck_name(deck_key)]
 		var ace := 0
 		if side == "opp":
 			ace = int(Characters.get_char(key).get("ace", 0))
@@ -373,7 +373,7 @@ func _roster_card(key: String) -> Control:
 	b.custom_minimum_size = CELL
 	b.clip_contents = true
 	b.flat = true
-	b.tooltip_text = "%s\n%s" % [info.get("name", ""), info.get("title", "")]
+	b.tooltip_text = "%s\n%s" % [info.get("name", ""), Loc.t(str(info.get("title", "")))]
 	var is_me := key == _me
 	var is_opp := key == _opp
 	var chosen := (is_me and _picking == "me") or (is_opp and _picking == "opp")
@@ -444,7 +444,7 @@ func _roster_card(key: String) -> Control:
 		b.add_child(lock)
 	b.pressed.connect(func():
 		if not ok:
-			Router.toast("Download the full card database to unlock %s" % info.get("short", ""))
+			Router.toast(Loc.t("Download the full card database to unlock %s") % info.get("short", ""))
 			return
 		_choose(key))
 	b.mouse_entered.connect(func():
@@ -628,11 +628,11 @@ func _refresh_deck_row() -> void:
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tr.custom_minimum_size = Vector2(66, 96)
-		tr.tooltip_text = "%s\nATK %d" % [CardData.get_card(id).get("name", ""), mons[i][0]]
+		tr.tooltip_text = Loc.t("%s\nATK %d") % [CardData.get_card(id).get("name", ""), mons[i][0]]
 		tr.modulate.a = 0.0
 		_deck_row.add_child(tr)
 		create_tween().tween_property(tr, "modulate:a", 1.0, 0.2).set_delay(i * 0.04)
-	_deck_note.text = "%d cards  ·  %d monsters  ·  %d Spells and Traps  ·  %d in the Extra Deck" % [
+	_deck_note.text = Loc.t("%d cards  ·  %d monsters  ·  %d Spells and Traps  ·  %d in the Extra Deck") % [
 			all.size(), all.size() - others, others, CardData.extra_list(_my_deck).size()]
 
 
@@ -642,12 +642,12 @@ func _refresh_setup() -> void:
 	_diff_note.text = ["Relaxed. Makes mistakes and leaves openings.", "Plays sensibly and attacks when it can.",
 			"Thinks ahead, brings a tuned deck and starts with one extra card."][_difficulty]
 	var th := FieldThemes.resolve(_field, _opp)
-	_field_name.text = ("Auto  ·  %s" % th["name"]) if _field == "auto" else str(th["name"])
+	_field_name.text = (Loc.t("Auto  ·  %s") % th["name"]) if _field == "auto" else str(th["name"])
 	_field_swatch.color = th["accent"]
 	var o := Characters.get_char(_opp)
 	var said := Characters.line(_opp, "intro")
 	_quote.text = "%s:  \"%s\"" % [str(o.get("short", "")).to_upper(), said] if said != "" else ""
-	_reward.text = "Win +%d Duel Points  ·  Lose +40" % (120 + 60 * _difficulty)
+	_reward.text = Loc.t("Win +%d Duel Points  ·  Lose +40") % (120 + 60 * _difficulty)
 
 
 func _refresh_all() -> void:

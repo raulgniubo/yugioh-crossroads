@@ -253,7 +253,7 @@ func _build_profile_chip() -> void:
 func _refresh_chip() -> void:
 	_chip_avatar.texture = Portraits.get_portrait("player")
 	_chip_name.text = Profile.duelist_name
-	_chip_sub.text = "Duelist Lv %d   ·   %d W  %d L" % [Profile.level(), Profile.wins, Profile.losses]
+	_chip_sub.text = Loc.t("Duelist Lv %d   ·   %d W  %d L") % [Profile.level(), Profile.wins, Profile.losses]
 
 
 func _open_profile(first: bool) -> void:
@@ -270,7 +270,7 @@ func _open_profile(first: bool) -> void:
 
 func _build_footer() -> void:
 	var version: String = ProjectSettings.get_setting("application/config/version", "0.1")
-	var left := UITheme.label("Private fan project  ·  Prototype %s" % version, 16, Color(1, 1, 1, 0.35))
+	var left := UITheme.label(Loc.t("Private fan project  ·  Prototype %s") % version, 16, Color(1, 1, 1, 0.35))
 	_anchor_bottom(left, 120, 900)
 	add_child(left)
 	var art_text := "Card art: real images" if Cards.has_real_images() else "Card art: placeholders"
@@ -355,7 +355,7 @@ func _on_story() -> void:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(0, 96)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.text = "%s   ·   %s\n%s" % [c["title"].to_upper(), c["era"], c["name"] if ok else ("Locked" if StoryData.SCRIPTS.has(c["id"]) else "Coming soon")]
+		b.text = "%s   ·   %s\n%s" % [Loc.t(c["title"]).to_upper(), c["era"], Loc.t(c["name"]) if ok else Loc.t("Locked" if StoryData.SCRIPTS.has(c["id"]) else "Coming soon")]
 		b.add_theme_font_size_override("font_size", 24)
 		b.disabled = not ok
 		var id: String = c["id"]

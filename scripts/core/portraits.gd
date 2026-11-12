@@ -64,7 +64,7 @@ func _find_file(key: String) -> String:
 func info(key: String) -> Dictionary:
 	if key == "player":
 		return {"name": Profile.duelist_name, "short": Profile.duelist_name, "era": "Crossroads",
-				"color": Profile.color(), "title": "Duelist Lv %d" % Profile.level()}
+				"color": Profile.color(), "title": Loc.t("Duelist Lv %d") % Profile.level()}
 	return Characters.get_char(key)
 
 

@@ -47,7 +47,7 @@ func _ready() -> void:
 	_use_btn.pressed.connect(func():
 		if Collection.deck_ok():
 			Router.duel_config["player_deck"] = "custom"
-			Router.toast("You'll duel with %s" % Collection.deck_name)
+			Router.toast(Loc.t("You'll duel with %s") % Collection.deck_name)
 		_refresh_count())
 	head.add_child(_use_btn)
 	var done := Button.new()
@@ -243,7 +243,7 @@ func _rebuild_deck() -> void:
 func _refresh_count() -> void:
 	var n := Collection.main.size()
 	var ok := Collection.deck_ok()
-	_count.text = "Main %d  (needs %d to %d)     Extra %d / %d     DP %d" % [n, Collection.MAIN_MIN, Collection.MAIN_MAX, Collection.extra.size(), Collection.EXTRA_MAX, Collection.dp]
+	_count.text = Loc.t("Main %d  (needs %d to %d)     Extra %d / %d     DP %d") % [n, Collection.MAIN_MIN, Collection.MAIN_MAX, Collection.extra.size(), Collection.EXTRA_MAX, Collection.dp]
 	_count.add_theme_color_override("font_color", UITheme.TEXT_DIM if ok else UITheme.DANGER)
 	var using: bool = Router.duel_config.get("player_deck", "") == "custom"
 	_use_btn.text = "  ✓ Using this deck  " if using and ok else "  Duel with this deck  "
@@ -256,13 +256,13 @@ func _show(id: int) -> void:
 	_detail_name.text = str(d.get("name", ""))
 	var lines := []
 	if d["kind"] == "monster":
-		lines.append("Level %d  ·  %s  ·  %s" % [int(d.get("level", 0)), d.get("attribute", ""), d.get("race", "")])
-		lines.append("ATK %d   DEF %d" % [int(d.get("atk", 0)), int(d.get("def", 0))])
+		lines.append(Loc.t("Level %d  ·  %s  ·  %s") % [int(d.get("level", 0)), d.get("attribute", ""), d.get("race", "")])
+		lines.append(Loc.t("ATK %d   DEF %d") % [int(d.get("atk", 0)), int(d.get("def", 0))])
 		var note := str(CardEffects.of(str(d.get("name", ""))).get("note", ""))
 		if note != "":
-			lines.append("IN THIS GAME: " + note)
+			lines.append(Loc.t("IN THIS GAME: ") + note)
 	lines.append(str(d.get("desc", d.get("text", ""))))
-	lines.append("You own %d." % Collection.count(id))
+	lines.append(Loc.t("You own %d.") % Collection.count(id))
 	_detail_text.text = "\n\n".join(lines)
 
 
@@ -275,7 +275,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _close() -> void:
 	if not Collection.deck_ok() and Router.duel_config.get("player_deck", "") == "custom":
 		Router.duel_config["player_deck"] = "echo"
-		Router.toast("Your deck needs %d to %d cards, so the Echo Deck is back in use" % [Collection.MAIN_MIN, Collection.MAIN_MAX])
+		Router.toast(Loc.t("Your deck needs %d to %d cards, so the Echo Deck is back in use") % [Collection.MAIN_MIN, Collection.MAIN_MAX])
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 0.0, 0.2)
 	await tw.finished

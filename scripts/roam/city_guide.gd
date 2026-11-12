@@ -151,7 +151,7 @@ func _matches(e: Dictionary, q: String) -> bool:
 		return true
 	var hay := (str(e["name"]) + " " + str(e["sub"])).to_lower()
 	if e.get("shop", false):
-		hay += " card shop store packs buy cards deck"
+		hay += Loc.t(" card shop store packs buy cards deck")
 	for word in q.to_lower().split(" ", false):
 		if not hay.contains(word):
 			return false
@@ -267,7 +267,7 @@ func _quest_row(qd: Dictionary) -> Control:
 	bar.show_percentage = false
 	bar.custom_minimum_size = Vector2(0, 10)
 	v.add_child(bar)
-	v.add_child(UITheme.label("%d / %d      Reward: %d Duel Points%s" % [qd["have"], qd["goal"], qd["reward"], "  (collected)" if done else ""], 16,
+	v.add_child(UITheme.label(Loc.t("%d / %d      Reward: %d Duel Points%s") % [qd["have"], qd["goal"], qd["reward"], Loc.t("  (collected)") if done else ""], 16,
 			UITheme.GOLD if done else UITheme.TEXT))
 	return pc
 
@@ -295,7 +295,7 @@ static func world_cards(on_pick: Callable, current := "") -> Control:
 		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		inner.add_theme_constant_override("separation", 0)
 		b.add_child(inner)
-		var top := UITheme.label("%s%s" % [str(d.get("name", key)).to_upper(), "     YOU ARE HERE" if key == current else ""], 30, Color.WHITE, UITheme.title_font())
+		var top := UITheme.label("%s%s" % [Loc.t(str(d.get("name", key))).to_upper(), Loc.t("     YOU ARE HERE") if key == current else ""], 30, Color.WHITE, UITheme.title_font())
 		top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		inner.add_child(top)
 		var era := UITheme.label(str(w[1]), 17, col.lightened(0.3), UITheme.semi_font())
@@ -373,7 +373,7 @@ func _draw_map() -> void:
 			tries += 1
 		taken.append(lr)
 		_map.draw_rect(lr, Color(0.02, 0.035, 0.065, 0.8))
-		_map.draw_string(font, lp, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 19, Color.WHITE if lit else col.lightened(0.45))
+		_map.draw_string(font, lp, Loc.t(text), HORIZONTAL_ALIGNMENT_LEFT, -1, 19, Color.WHITE if lit else col.lightened(0.45))
 	# People: dots only. The name shows for the one you point at or picked.
 	for e in _entries:
 		if e["kind"] != "person":
@@ -391,7 +391,7 @@ func _draw_map() -> void:
 			var text := str(e["name"])
 			var ts := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 19)
 			_map.draw_rect(Rect2(c + Vector2(12, -15), ts + Vector2(10, 6)), Color(0.02, 0.035, 0.065, 0.92))
-			_map.draw_string(font, c + Vector2(17, 4), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 19, Color.WHITE)
+			_map.draw_string(font, c + Vector2(17, 4), Loc.t(text), HORIZONTAL_ALIGNMENT_LEFT, -1, 19, Color.WHITE)
 	# Waypoint and a line to it.
 	var pp := _to_map(scene._player.position)
 	if extras.has_waypoint():
@@ -410,7 +410,7 @@ func _draw_map() -> void:
 	var lx := 18.0
 	for l in legend:
 		_map.draw_circle(Vector2(lx + 6, _map.size.y - 20), 5.0, l[1])
-		_map.draw_string(font, Vector2(lx + 18, _map.size.y - 14), l[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1, 1, 1, 0.7))
+		_map.draw_string(font, Vector2(lx + 18, _map.size.y - 14), Loc.t(l[0]), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1, 1, 1, 0.7))
 		lx += 40.0 + font.get_string_size(l[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
 
 

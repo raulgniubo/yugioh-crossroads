@@ -91,8 +91,8 @@ func _draw() -> void:
 			var label: String = l["name"] + ("  (enter)" if l.get("enter", false) else "")
 			var w := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 19).x
 			var ly := (-sz.y / 2.0 - 8.0) if l.get("enter", false) else (sz.y / 2.0 + 20.0)
-			draw_string_outline(_font, p + Vector2(-w / 2.0, ly), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 19, 5, Color(0, 0, 0, 0.85))
-			draw_string(_font, p + Vector2(-w / 2.0, ly), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 19, col.lightened(0.45))
+			draw_string_outline(_font, p + Vector2(-w / 2.0, ly), Loc.t(label), HORIZONTAL_ALIGNMENT_LEFT, -1, 19, 5, Color(0, 0, 0, 0.85))
+			draw_string(_font, p + Vector2(-w / 2.0, ly), Loc.t(label), HORIZONTAL_ALIGNMENT_LEFT, -1, 19, col.lightened(0.45))
 	# People
 	for n in npcs:
 		var p: Vector2 = to_map.call(n["pos"])
@@ -100,8 +100,8 @@ func _draw() -> void:
 		draw_circle(p, 6.0 if full else 4.5, Color(0, 0, 0, 0.7))
 		draw_circle(p, 4.5 if full else 3.2, col)
 		if full:
-			draw_string_outline(_font, p + Vector2(9, 6), n["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 17, 4, Color(0, 0, 0, 0.85))
-			draw_string(_font, p + Vector2(9, 6), n["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 17, col.lightened(0.3))
+			draw_string_outline(_font, p + Vector2(9, 6), Loc.t(str(n["name"])), HORIZONTAL_ALIGNMENT_LEFT, -1, 17, 4, Color(0, 0, 0, 0.85))
+			draw_string(_font, p + Vector2(9, 6), Loc.t(str(n["name"])), HORIZONTAL_ALIGNMENT_LEFT, -1, 17, col.lightened(0.3))
 	# You
 	var me: Vector2 = to_map.call(player_pos if inside == "" else Vector2(-10, -17.0))
 	var fwd := Vector2(sin(player_yaw), cos(player_yaw)) * -1.0
@@ -110,17 +110,17 @@ func _draw() -> void:
 	draw_colored_polygon(PackedVector2Array([me + fwd * k * 1.25, me - fwd * k * 0.7 + side * k * 0.8, me - fwd * k * 0.25, me - fwd * k * 0.7 - side * k * 0.8]), Color.WHITE)
 	draw_polyline(PackedVector2Array([me + fwd * k * 1.25, me - fwd * k * 0.7 + side * k * 0.8, me - fwd * k * 0.25, me - fwd * k * 0.7 - side * k * 0.8, me + fwd * k * 1.25]), accent, 2.0)
 	if full:
-		draw_string(_bold, Vector2(34, 54), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 40, Color.WHITE)
+		draw_string(_bold, Vector2(34, 54), Loc.t(title), HORIZONTAL_ALIGNMENT_LEFT, -1, 40, Color.WHITE)
 		var where := "You are inside Kame Game" if inside != "" else area
-		draw_string(_font, Vector2(36, 82), where, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, accent)
+		draw_string(_font, Vector2(36, 82), Loc.t(where), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, accent)
 		var lx := size.x - 600.0
 		for item in [["wants to duel", Color("ff5a6e")], ["beaten", Color("5aff9a")], ["talk", Color(1, 1, 1, 0.85)]]:
 			draw_circle(Vector2(lx, 47), 6.0, item[1])
-			draw_string(_font, Vector2(lx + 13, 54), item[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1, 1, 1, 0.75))
+			draw_string(_font, Vector2(lx + 13, 54), Loc.t(item[0]), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1, 1, 1, 0.75))
 			lx += 26.0 + _font.get_string_size(item[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x + 18.0
-		draw_string(_font, Vector2(lx + 8, 54), "M / Esc  close", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1, 1, 1, 0.5))
+		draw_string(_font, Vector2(lx + 8, 54), Loc.t("M / Esc  close"), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1, 1, 1, 0.5))
 	else:
-		draw_string_outline(_font, Vector2(14, size.y - 12), "M  map", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color(0, 0, 0, 0.8))
-		draw_string(_font, Vector2(14, size.y - 12), "M  map", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1, 1, 1, 0.75))
+		draw_string_outline(_font, Vector2(14, size.y - 12), Loc.t("M  map"), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color(0, 0, 0, 0.8))
+		draw_string(_font, Vector2(14, size.y - 12), Loc.t("M  map"), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1, 1, 1, 0.75))
 		draw_string_outline(_font, Vector2(size.x / 2.0 - 5, 20), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color(0, 0, 0, 0.8))
 		draw_string(_font, Vector2(size.x / 2.0 - 5, 20), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, accent)

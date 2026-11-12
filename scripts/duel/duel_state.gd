@@ -216,11 +216,11 @@ func fx_to_chain() -> Array:
 			break
 		# "You can ..." effects are the owner's call.
 		if not f["ctx"].get("_ign", false) and "you can" in str(c.data.get("desc", "")).to_lower():
-			if choose_option(q, "Activate the effect of %s?" % c.cname(), ["Activate", "Don't"], 0, c) == 1:
+			if choose_option(q, Loc.t("Activate the effect of %s?") % c.cname(), ["Activate", "Don't"], 0, c) == 1:
 				continue
 		chain.append({"player": q, "card": c, "kind": "fx", "spec": {"k": "fx"}, "target": null, "subject": null,
 				"window": "open", "negated": false, "zone": -1, "actions": f["actions"], "ctx": f["ctx"]})
-		events.append({"type": "effect", "player": q, "card": c, "text": "%s: effect activated" % c.cname()})
+		events.append({"type": "effect", "player": q, "card": c, "text": Loc.t("%s: effect activated") % c.cname()})
 		if chain.size() > 1:
 			events.append({"type": "chain", "player": q, "card": c, "n": chain.size()})
 	return events
@@ -358,7 +358,7 @@ func finish_turn() -> Array:
 		# Hand limit: the turn player discards down to six, their pick.
 		var by_value: Array = ps.hand.duplicate()
 		by_value.sort_custom(func(a, b): return _card_value(a) < _card_value(b))
-		for worst in choose(current, "Hand limit: discard %d card%s" % [over, "" if over == 1 else "s"], ps.hand, over, by_value.slice(0, over)):
+		for worst in choose(current, Loc.t("Hand limit: discard %d card%s") % [over, "" if over == 1 else "s"], ps.hand, over, by_value.slice(0, over)):
 			ps.hand.erase(worst)
 			_to_gy(ps, worst)
 			events.append({"type": "discard", "player": current, "card": worst})
@@ -386,7 +386,7 @@ func _draw(p: int, count := 1) -> Array:
 	for i in count:
 		var ps := players[p]
 		if ps.deck.is_empty():
-			_set_winner(opponent(p), "%s has no cards left to draw." % ps.name)
+			_set_winner(opponent(p), Loc.t("%s has no cards left to draw.") % ps.name)
 			events.append({"type": "win", "player": winner, "reason": win_reason})
 			return events
 		var c: CardInst = ps.deck.pop_back()
@@ -410,7 +410,7 @@ func _check_exodia() -> Array:
 			if EXODIA.has(h.cname()):
 				have[h.cname()] = true
 		if have.size() == 5:
-			_set_winner(q, "%s assembled all five pieces of Exodia!" % players[q].name)
+			_set_winner(q, Loc.t("%s assembled all five pieces of Exodia!") % players[q].name)
 			return [{"type": "effect", "player": q, "card": null, "text": "EXODIA! OBLITERATE!"},
 					{"type": "win", "player": winner, "reason": win_reason}]
 	return []
@@ -610,7 +610,7 @@ func chain_add(p: int, c: CardInst, target = null, window := "open", subject = n
 		return []
 	if target == null and not sp.has("legacy") and SpellRules._needs_target(sp):
 		var auto_t = SpellRules.auto_target(self, p, c)
-		var picked := choose(p, "Choose a target for %s" % c.cname(), SpellRules.targets(self, p, c), 1, [auto_t] if auto_t != null else [], false, c)
+		var picked := choose(p, Loc.t("Choose a target for %s") % c.cname(), SpellRules.targets(self, p, c), 1, [auto_t] if auto_t != null else [], false, c)
 		target = picked[0] if not picked.is_empty() else auto_t
 	var link := {"player": p, "card": c, "kind": "trap" if c.is_trap() else "spell", "spec": sp, "target": target,
 			"subject": subject, "window": window, "negated": false, "zone": zone}
@@ -635,7 +635,7 @@ func chain_resolve() -> Array:
 		if link["kind"] == "fx":
 			# A monster effect. It still resolves if the monster has left the field.
 			if link["negated"] or c.negated:
-				events.append({"type": "effect", "player": p, "card": c, "text": "%s's effect is negated" % c.cname()})
+				events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s's effect is negated") % c.cname()})
 			else:
 				var ctx: Dictionary = link["ctx"].duplicate()
 				ctx["_now"] = true
@@ -644,7 +644,7 @@ func chain_resolve() -> Array:
 		var here := ps.spells.has(c) or ps.field_spell == c
 		var stays: bool = SpellRules.PERSIST.has(sp["k"])
 		if link["negated"] or (not here and stays):
-			events.append({"type": "effect", "player": p, "card": c, "text": "%s is negated" % c.cname()})
+			events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s is negated") % c.cname()})
 		elif sp.has("legacy"):
 			events.append_array(_legacy_trap(p, c, link["subject"]) if c.is_trap() else _legacy_spell(p, c, link["target"]))
 			stays = false
@@ -735,7 +735,7 @@ func _legacy_spell(p: int, c: CardInst, choice = null) -> Array:
 			for g in players[opponent(p)].gy:
 				if picks.size() < 5 and not picks.has(g):
 					picks.append(g)
-			picks = choose(p, "Soul Release: banish %d from their Graveyard" % picks.size(), players[opponent(p)].gy, picks.size(), picks, false, c)
+			picks = choose(p, Loc.t("Soul Release: banish %d from their Graveyard") % picks.size(), players[opponent(p)].gy, picks.size(), picks, false, c)
 			for g in picks:
 				events.append_array(_banish(g))
 		"dark_core":
@@ -758,7 +758,7 @@ func _legacy_spell(p: int, c: CardInst, choice = null) -> Array:
 		"burial_dd":
 			# Return up to 3 of your banished monsters to the Graveyard.
 			var b3: Array = _best_monsters(ps.banished, 3)
-			for g in choose(p, "Return %d banished monsters to the Graveyard" % b3.size(), _best_monsters(ps.banished, 99), b3.size(), b3, false, c):
+			for g in choose(p, Loc.t("Return %d banished monsters to the Graveyard") % b3.size(), _best_monsters(ps.banished, 99), b3.size(), b3, false, c):
 				ps.banished.erase(g)
 				ps.gy.append(g)
 				events.append({"type": "unbanish", "player": p, "card": g})
@@ -956,7 +956,7 @@ func resolve_attack() -> Array:
 	for m in players[opp].monsters():
 		if m.face_up and m.attack_pos and EffectRunner.fx(m).get("negate_attack_once", false) and m.ignite_turn != turn:
 			m.ignite_turn = turn
-			return [{"type": "effect", "player": opp, "card": m, "text": "%s negates the attack!" % m.cname()},
+			return [{"type": "effect", "player": opp, "card": m, "text": Loc.t("%s negates the attack!") % m.cname()},
 				{"type": "attack_stopped", "player": p, "card": attacker}]
 	var events := [{"type": "battle", "player": p, "card": attacker, "target": target}]
 	var a := atk_of(attacker, true, target, true)
@@ -973,7 +973,7 @@ func resolve_attack() -> Array:
 		events.append_array(EffectRunner.trigger(self, target, "flip"))
 	var kill_def: bool = attacker.cname() == "Zubaba Knight" or EffectRunner.fx(attacker).get("kill_def", false)
 	if kill_def and not target.attack_pos:
-		events.append({"type": "effect", "player": p, "card": attacker, "text": "%s destroys it outright!" % attacker.cname()})
+		events.append({"type": "effect", "player": p, "card": attacker, "text": Loc.t("%s destroys it outright!") % attacker.cname()})
 		events.append_array(_battle_kill(attacker, target))
 		events.append_array(_after_attack(attacker))
 		return events
@@ -1008,7 +1008,7 @@ func resolve_attack() -> Array:
 			if not m.attack_pos:
 				defs.append(m)
 		if not defs.is_empty():
-			events.append({"type": "effect", "player": p, "card": attacker, "text": "%s scorches every Defense monster!" % attacker.cname()})
+			events.append({"type": "effect", "player": p, "card": attacker, "text": Loc.t("%s scorches every Defense monster!") % attacker.cname()})
 			for m in defs:
 				events.append_array(_destroy(m))
 	events.append_array(_after_attack(attacker))
@@ -1021,7 +1021,7 @@ func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 		return []
 	if _shield == loser:
 		_shield = null
-		return [{"type": "effect", "player": loser.owner, "card": loser, "text": "%s is not destroyed" % loser.cname()}]
+		return [{"type": "effect", "player": loser.owner, "card": loser, "text": Loc.t("%s is not destroyed") % loser.cname()}]
 	var events := _battle_destroy(loser)
 	var died := not players[loser.owner].field.has(loser) and players[loser.owner].gy.has(loser)
 	if not died:
@@ -1062,7 +1062,7 @@ func _battle_destroy(c: CardInst) -> Array:
 	if ps.protect_turn == turn:
 		return []
 	if EffectRunner.survives_battle(self, c):
-		return [{"type": "effect", "player": c.owner, "card": c, "text": "%s isn't destroyed!" % c.cname()}]
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s isn't destroyed!") % c.cname()}]
 	if c.cname() == "Gogogo Golem" and not c.attack_pos and c.used_turn != turn:
 		c.used_turn = turn
 		return [{"type": "effect", "player": c.owner, "card": c, "text": "Gogogo Golem holds on!"}]
@@ -1337,7 +1337,7 @@ func _on_leave_field(c: CardInst, by_battle: bool) -> Array:
 				if d.is_monster() and d.atk() <= 1500:
 					ps.deck.erase(d)
 					ps.hand.append(d)
-					events.append({"type": "effect", "player": p, "card": c, "text": "Sangan adds %s to the hand" % d.cname()})
+					events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("Sangan adds %s to the hand") % d.cname()})
 					events.append({"type": "search", "player": p, "card": d, "deck": ps.deck.size()})
 					break
 		"Winged Kuriboh":
@@ -1348,7 +1348,7 @@ func _on_leave_field(c: CardInst, by_battle: bool) -> Array:
 				for d in ps.deck:
 					if d.is_monster() and d.atk() <= 1500 and d.data.get("attribute", "") == "DARK" and not CardData.is_extra(d.id):
 						ps.deck.erase(d)
-						events.append({"type": "effect", "player": p, "card": c, "text": "Mystic Tomato calls %s" % d.cname()})
+						events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("Mystic Tomato calls %s") % d.cname()})
 						events.append_array(_special(p, d, "effect"))
 						break
 	events.append_array(EffectRunner.trigger(self, c, "gy"))
@@ -1367,7 +1367,7 @@ func _damage(p: int, amount: int) -> Array:
 			winner = DRAW
 			win_reason = "Both duelists' Life Points hit zero. The duel is a draw."
 		else:
-			_set_winner(opponent(p), "%s's Life Points hit zero." % ps.name)
+			_set_winner(opponent(p), Loc.t("%s's Life Points hit zero.") % ps.name)
 		events.append({"type": "win", "player": winner, "reason": win_reason})
 	return events
 
@@ -1394,7 +1394,7 @@ func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 	c.face_up = true
 	c.attack_pos = pos != "def"
 	if pos == "" and manual[p]:
-		c.attack_pos = choose_option(p, "Special Summon %s in:" % c.cname(), ["Attack Position", "Defense Position"], 0, c) == 0
+		c.attack_pos = choose_option(p, Loc.t("Special Summon %s in:") % c.cname(), ["Attack Position", "Defense Position"], 0, c) == 0
 	c.summoned_turn = turn
 	c.pos_changed_turn = -1
 	c.attacked_turn = -1
@@ -1440,7 +1440,7 @@ func fusion_targets(p: int, poly: CardInst = null, from_gy := false, ask := fals
 			if ask and found:
 				var on_field: Array = pool_field.filter(func(m): return m.id == mid)
 				if not on_field.is_empty():
-					var got := pick1(p, "Fusion material: use which %s?" % found.cname(), [found, on_field[0]], found, f)
+					var got := pick1(p, Loc.t("Fusion material: use which %s?") % found.cname(), [found, on_field[0]], found, f)
 					if got != found:
 						found = null
 			if found:
@@ -1824,7 +1824,7 @@ func respond(p: int, c: CardInst, subject = null) -> Array:
 	if c.cname() == "Shield Warrior" and ps.gy.has(c) and not pending_attack.is_empty() and pending_attack["target"] != null:
 		events.append_array(_banish(c))
 		_shield = pending_attack["target"]
-		events.append({"type": "effect", "player": p, "card": c, "text": "Shield Warrior protects %s" % _shield.cname()})
+		events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("Shield Warrior protects %s") % _shield.cname()})
 		return events
 	if c.cname() == "Number 39: Utopia":
 		c.used_turn = turn
@@ -1910,7 +1910,7 @@ func summon_triggers(p: int, c: CardInst) -> Array:
 			for g in ps.gy:
 				if g.is_monster() and g.level() <= 2 and not CardData.is_extra(g.id):
 					ps.gy.erase(g)
-					events.append({"type": "effect", "player": p, "card": c, "text": "Junk Synchron revives %s" % g.cname()})
+					events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("Junk Synchron revives %s") % g.cname()})
 					var ev := _special(p, g, "reborn")
 					if not ev.is_empty():
 						g.attack_pos = false
@@ -1922,7 +1922,7 @@ func summon_triggers(p: int, c: CardInst) -> Array:
 			for h in ps.hand:
 				if h.is_monster() and h.level() == 4:
 					ps.hand.erase(h)
-					events.append({"type": "effect", "player": p, "card": c, "text": "Goblindbergh brings out %s" % h.cname()})
+					events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("Goblindbergh brings out %s") % h.cname()})
 					events.append_array(_special(p, h, "effect"))
 					c.attack_pos = false
 					events.append({"type": "position", "player": p, "card": c, "zone": ps.field.find(c)})

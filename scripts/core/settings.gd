@@ -18,6 +18,7 @@ var sfx_volume := 0.8
 var anim_speed := 1.0
 var card_folder := ""
 var field_theme := "auto"
+var language := "en"
 var show_fps := false
 ## 0 = Performance, 1 = High, 2 = Ultra (global illumination).
 var graphics := 1
@@ -39,6 +40,9 @@ func _ready() -> void:
 	card_folder = default_card_folder()
 	_ensure_buses()
 	load_settings()
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--lang="):
+			language = a.substr(7)
 	apply()
 
 
@@ -58,6 +62,7 @@ func load_settings() -> void:
 	anim_speed = cfg.get_value("game", "anim_speed", anim_speed)
 	card_folder = cfg.get_value("game", "card_folder", card_folder)
 	field_theme = cfg.get_value("game", "field_theme", field_theme)
+	language = cfg.get_value("game", "language", language)
 	show_fps = cfg.get_value("display", "show_fps", show_fps)
 	graphics = cfg.get_value("display", "graphics", graphics)
 
@@ -72,12 +77,14 @@ func save_settings() -> void:
 	cfg.set_value("game", "anim_speed", anim_speed)
 	cfg.set_value("game", "card_folder", card_folder)
 	cfg.set_value("game", "field_theme", field_theme)
+	cfg.set_value("game", "language", language)
 	cfg.set_value("display", "show_fps", show_fps)
 	cfg.set_value("display", "graphics", graphics)
 	cfg.save(PATH)
 
 
 func apply() -> void:
+	Loc.setup(language)
 	_apply_audio()
 	if not _is_desktop():
 		changed.emit()

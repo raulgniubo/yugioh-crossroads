@@ -50,7 +50,7 @@ func _ready() -> void:
 func _on_joy(device: int, on: bool) -> void:
 	connected = not Input.get_connected_joypads().is_empty()
 	if on:
-		Router.toast("Controller connected: %s" % Input.get_joy_name(device))
+		Router.toast(Loc.t("Controller connected: %s") % Input.get_joy_name(device))
 		Sfx.play("equip", -6.0)
 	elif not connected:
 		Router.toast("Controller disconnected")

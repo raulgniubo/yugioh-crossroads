@@ -225,4 +225,4 @@ static func line(key: String, kind: String) -> String:
 		arr = PERSONALITY_LINES["wild"].get(kind, [])
 	if arr.is_empty():
 		return ""
-	return arr[randi() % arr.size()]
+	return Loc.t(str(arr[randi() % arr.size()]))

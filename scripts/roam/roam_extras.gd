@@ -189,10 +189,10 @@ func set_waypoint(pos: Vector3, title: String) -> void:
 			scene.city.add_child(ch)
 			_trail.append(ch)
 	_beacon.position = waypoint
-	(_beacon.get_node("Tag") as Label3D).text = "▼ " + title
+	(_beacon.get_node("Tag") as Label3D).text = "▼ " + Loc.t(title)
 	_beacon.visible = true
 	Sfx.play("special", -8.0)
-	Router.toast("Follow the beacon to %s" % title)
+	Router.toast(Loc.t("Follow the beacon to %s") % Loc.t(title))
 
 
 func clear_waypoint() -> void:
@@ -258,7 +258,7 @@ func travel_world(key: String) -> void:
 	if key == _key:
 		return
 	Sfx.play("special", -4.0)
-	Router.toast("Traveling to %s..." % RoamData.district(key).get("name", key))
+	Router.toast(Loc.t("Traveling to %s...") % Loc.t(str(RoamData.district(key).get("name", key))))
 	Router.roam["district"] = key
 	Router.roam["pos"] = null
 	Router.roam.erase("yaw")
@@ -411,10 +411,10 @@ func _collect(c: Dictionary) -> void:
 	var total := _chip_spots().size()
 	if got.size() == total:
 		Collection.dp += CHIPS_ALL_DP
-		Router.toast("Every Star Chip in %s! +%d Duel Points" % [scene.district.get("name", ""), CHIPS_ALL_DP])
+		Router.toast(Loc.t("Every Star Chip in %s! +%d Duel Points") % [Loc.t(str(scene.district.get("name", ""))), CHIPS_ALL_DP])
 		Sfx.play("win", -6.0)
 	else:
-		Router.toast("Star Chip %d of %d   +%d Duel Points" % [got.size(), total, CHIP_DP])
+		Router.toast(Loc.t("Star Chip %d of %d   +%d Duel Points") % [got.size(), total, CHIP_DP])
 	Collection.save()
 	_refresh_chip_label()
 	_save()
@@ -451,15 +451,15 @@ func quest_rows() -> Array:
 	for k in _got:
 		all_chips += (_got[k] as Array).size()
 	var rows := [
-		{"id": _key + "_hello", "name": "Meet the locals", "text": "Talk to 4 different people in %s." % place,
+		{"id": _key + "_hello", "name": "Meet the locals", "text": Loc.t("Talk to 4 different people in %s.") % place,
 			"have": mini(4, (_talked.get(_key, []) as Array).size()), "goal": 4, "reward": 150},
-		{"id": _key + "_shop", "name": "Shopping trip", "text": "Find the card shop in %s and talk to whoever runs it. (Press C for directions.)" % place,
+		{"id": _key + "_shop", "name": "Shopping trip", "text": Loc.t("Find the card shop in %s and talk to whoever runs it. (Press C for directions.)") % place,
 			"have": 1 if _talked.get(_key + "_shop", false) else 0, "goal": 1, "reward": 100},
-		{"id": _key + "_streets", "name": "Street champion", "text": "Win duels against 3 different duelists in %s." % place,
+		{"id": _key + "_streets", "name": "Street champion", "text": Loc.t("Win duels against 3 different duelists in %s.") % place,
 			"have": mini(3, beaten), "goal": 3, "reward": 300},
-		{"id": _key + "_boss", "name": "Beat %s" % boss_name, "text": "%s is the one to beat in %s. Win that duel." % [boss_name, place],
+		{"id": _key + "_boss", "name": Loc.t("Beat %s") % boss_name, "text": Loc.t("%s is the one to beat in %s. Win that duel.") % [boss_name, place],
 			"have": 1 if scene._beaten.has(boss) else 0, "goal": 1, "reward": 400},
-		{"id": _key + "_chips", "name": "Star hunter", "text": "Collect 8 Star Chips in %s." % place,
+		{"id": _key + "_chips", "name": "Star hunter", "text": Loc.t("Collect 8 Star Chips in %s.") % place,
 			"have": mini(8, (_got.get(_key, []) as Array).size()), "goal": 8, "reward": 250},
 		{"id": "world_tour", "name": "World tour", "text": "Set foot in all four worlds. (Press G to travel.)", "have": worlds, "goal": RoamData.WORLDS.size(), "reward": 400},
 		{"id": "chip_master", "name": "Chip master", "text": "Collect 30 Star Chips across every world.", "have": mini(30, all_chips), "goal": 30, "reward": 600},
@@ -477,7 +477,7 @@ func _check_quests(announce: bool) -> void:
 			Collection.save()
 			_save()
 			if announce or true:
-				Router.toast("Quest complete: %s   +%d Duel Points" % [r["name"], r["reward"]])
+				Router.toast(Loc.t("Quest complete: %s   +%d Duel Points") % [Loc.t(str(r["name"])), r["reward"]])
 				Sfx.play("quest", -3.0)
 
 
@@ -504,7 +504,7 @@ func _process(delta: float) -> void:
 		to.y = 0
 		var dist := to.length()
 		if dist < 3.2:
-			Router.toast("You have arrived: %s" % _wp_name)
+			Router.toast(Loc.t("You have arrived: %s") % Loc.t(_wp_name))
 			Sfx.play("click")
 			clear_waypoint()
 		else:
@@ -525,7 +525,7 @@ func _process(delta: float) -> void:
 	_edge_shown = maxf(0.0, _edge_shown - delta)
 	if scene._inside == "" and _edge_distance(p) < 2.6:
 		if _edge_shown <= 0.0:
-			_edge_label.text = "This is the edge of %s.   Press G to travel to another world." % scene.district.get("name", "the area")
+			_edge_label.text = Loc.t("This is the edge of %s.   Press G to travel to another world.") % Loc.t(str(scene.district.get("name", "the area")))
 			scene.create_tween().tween_property(_edge_label, "modulate:a", 1.0, 0.2)
 		_edge_shown = 1.2
 	elif _edge_shown <= 0.0 and _edge_label.modulate.a > 0.9:

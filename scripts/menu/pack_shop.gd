@@ -32,7 +32,7 @@ func _ready() -> void:
 	_dp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_dp.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	head.add_child(_dp)
-	_hint = UITheme.label("%d cards per pack. Win duels to earn Duel Points." % Collection.PACK_SIZE, 20, UITheme.TEXT_DIM)
+	_hint = UITheme.label(Loc.t("%d cards per pack. Win duels to earn Duel Points.") % Collection.PACK_SIZE, 20, UITheme.TEXT_DIM)
 	v.add_child(_hint)
 	_row = HBoxContainer.new()
 	_row.add_theme_constant_override("separation", 22)
@@ -71,13 +71,13 @@ func _pack_card(pack: Dictionary) -> Control:
 	for id in pool:
 		if Collection.count(id) > 0:
 			have += 1
-	var info := UITheme.label("%s\nYou have %d of %d cards." % [pack["blurb"], have, pool.size()], 17, UITheme.TEXT_DIM)
+	var info := UITheme.label(Loc.t("%s\nYou have %d of %d cards.") % [pack["blurb"], have, pool.size()], 17, UITheme.TEXT_DIM)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	info.set_meta("pack", pack["key"])
 	v.add_child(info)
 	var b := Button.new()
-	b.text = "Open  ·  %d DP" % Collection.PACK_PRICE
+	b.text = Loc.t("Open  ·  %d DP") % Collection.PACK_PRICE
 	b.add_theme_font_size_override("font_size", 24)
 	b.set_meta("buy", true)
 	b.disabled = pool.is_empty()
@@ -89,7 +89,7 @@ func _pack_card(pack: Dictionary) -> Control:
 
 
 func _refresh() -> void:
-	_dp.text = "%d DP" % Collection.dp
+	_dp.text = Loc.t("%d DP") % Collection.dp
 	for p in _row.get_children():
 		for b in p.get_child(0).get_children():
 			if b is Button and b.has_meta("buy") and not b.text.begins_with("Needs"):
@@ -100,7 +100,7 @@ func _refresh() -> void:
 				for id in pool:
 					if Collection.count(id) > 0:
 						have += 1
-				b.text = b.text.get_slice("\n", 0) + "\nYou have %d of %d cards." % [have, pool.size()]
+				b.text = b.text.get_slice("\n", 0) + Loc.t("\nYou have %d of %d cards.") % [have, pool.size()]
 
 
 func _open(pack: Dictionary) -> void:
@@ -142,7 +142,7 @@ func _open(pack: Dictionary) -> void:
 	var names := []
 	for id in pulls:
 		names.append(str(CardData.get_card(id).get("name", "?")))
-	_hint.text = "You pulled: " + ", ".join(names)
+	_hint.text = Loc.t("You pulled: ") + ", ".join(names)
 
 
 func _unhandled_input(event: InputEvent) -> void:

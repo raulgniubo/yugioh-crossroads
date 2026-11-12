@@ -36,7 +36,7 @@ func path_for(key: String) -> String:
 ## A model the player dropped in: characters/<key>.vrm or .glb in the card folder.
 func own_file(key: String) -> String:
 	for ext in ["vrm", "glb"]:
-		var p := Settings.card_folder.path_join("characters/%s.%s" % [key, ext])
+		var p := Settings.card_folder.path_join(Loc.t("characters/%s.%s") % [key, ext])
 		if FileAccess.file_exists(p):
 			return p
 	return ""

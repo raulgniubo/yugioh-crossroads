@@ -259,10 +259,10 @@ var _pile_panel: Control
 
 
 func set_counts(p: int, deck: int, hand: int, gy: int, banished := 0) -> void:
-	var t := "Deck %d   ·   Hand %d   ·   GY %d" % [deck, hand, gy]
+	var t := Loc.t("Deck %d   ·   Hand %d   ·   GY %d") % [deck, hand, gy]
 	if banished > 0:
-		t += "   ·   Banished %d" % banished
-	_count_labels[p].text = t + "     ▸ view"
+		t += Loc.t("   ·   Banished %d") % banished
+	_count_labels[p].text = t + Loc.t("     ▸ view")
 
 
 ## Every card in a player's Graveyard and banished pile.
@@ -442,7 +442,7 @@ func set_phase_buttons(battle_text: String, battle_enabled: bool, end_enabled: b
 func set_extra_button(count: int, ready: int, enabled: bool) -> void:
 	_btn_extra.visible = count > 0
 	_btn_extra.tooltip_text = "Your Fusion, Synchro and Xyz monsters wait in the Extra Deck."
-	_btn_extra.text = ("✸ SUMMON READY  (%d)" % ready) if ready > 0 else "Extra Deck  %d" % count
+	_btn_extra.text = (Loc.t("✸ SUMMON READY  (%d)") % ready) if ready > 0 else Loc.t("Extra Deck  %d") % count
 	_btn_extra.disabled = not enabled or count == 0
 	_btn_extra.add_theme_color_override("font_color", Color("ffd23a") if ready > 0 else UITheme.TEXT_DIM)
 
@@ -750,9 +750,9 @@ func inspect(inst, hidden := false) -> void:
 		var nm := str(d.get("name", ""))
 		var note := str(CardEffects.of(nm).get("note", CardData.MONSTER_EFFECTS.get(nm, "")))
 		if note != "":
-			txt = "IN THIS GAME: " + note + "\n\n" + txt
+			txt = Loc.t("IN THIS GAME: ") + note + "\n\n" + txt
 		elif frame == "effect" or (frame in ["synchro", "xyz", "fusion"] and txt.length() > 80):
-			txt += "\n(This effect isn't in the game yet. It plays with its stats.)"
+			txt += Loc.t("\n(This effect isn't in the game yet. It plays with its stats.)")
 		_inspect_text.text = txt if txt != "" else "Normal Monster"
 	else:
 		var is_trap: bool = str(d.get("kind", "")) == "trap"
@@ -762,7 +762,7 @@ func inspect(inst, hidden := false) -> void:
 		_inspect_stat_row.visible = false
 		var body := str(d.get("text", d.get("desc", "")))
 		var rule := SpellRules.note(inst) if inst != null and not hidden else ""
-		_inspect_text.text = ("IN THIS GAME: " + rule + "\n\n" + body) if rule != "" else body
+		_inspect_text.text = (Loc.t("IN THIS GAME: ") + rule + "\n\n" + body) if rule != "" else body
 
 
 # ------------------------------------------------------------------ hand
@@ -1175,7 +1175,7 @@ func summon_cinematic(card_name: String, atk: int, def: int, color: Color, mine:
 	name_l.add_theme_constant_override("outline_size", 10)
 	name_l.position = Vector2(-900 if mine else vs.x + 100, vs.y - bar_h - 150)
 	root.add_child(name_l)
-	var stats := UITheme.label("ATK %d   ·   DEF %d" % [atk, def], 30, Color(color.lightened(0.4)), UITheme.semi_font())
+	var stats := UITheme.label(Loc.t("ATK %d   ·   DEF %d") % [atk, def], 30, Color(color.lightened(0.4)), UITheme.semi_font())
 	stats.position = Vector2(vs.x * 0.08, vs.y - bar_h + 38)
 	stats.modulate.a = 0.0
 	root.add_child(stats)

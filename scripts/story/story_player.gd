@@ -180,7 +180,7 @@ func _portrait(left: bool) -> TextureRect:
 
 
 func _sub(text: String) -> String:
-	return text.replace("{player}", Profile.duelist_name)
+	return Loc.t(text).replace("{player}", Profile.duelist_name)
 
 
 func _chapter_card() -> void:
@@ -189,7 +189,7 @@ func _chapter_card() -> void:
 		if c["id"] == chapter:
 			info = c
 	_box.modulate.a = 0.0
-	var l := UITheme.label(str(info.get("title", "")).to_upper(), 28, UITheme.ACCENT, UITheme.semi_font())
+	var l := UITheme.label(Loc.t(str(info.get("title", ""))).to_upper(), 28, UITheme.ACCENT, UITheme.semi_font())
 	var n := UITheme.label(str(info.get("name", "")), 96, Color.WHITE, UITheme.title_font())
 	var vb := VBoxContainer.new()
 	vb.add_child(l)

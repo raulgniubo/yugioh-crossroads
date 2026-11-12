@@ -124,9 +124,9 @@ func _start() -> void:
 		if fly:
 			board.intro_hold()
 		await hud.vs_intro(
-			{"key": _me_key, "name": me_name, "color": me_info.get("color", Profile.color()), "sub": "%s Deck" % CardData.deck_name(my_deck)},
+			{"key": _me_key, "name": me_name, "color": me_info.get("color", Profile.color()), "sub": Loc.t("%s Deck") % CardData.deck_name(my_deck)},
 			{"key": _opp_key, "name": opp_name, "color": opp.get("color", UITheme.DANGER),
-				"sub": "%s  ·  %s Deck" % [opp.get("title", ""), CardData.deck_name(opp_deck)]})
+				"sub": Loc.t("%s  ·  %s Deck") % [Loc.t(str(opp.get("title", ""))), CardData.deck_name(opp_deck)]})
 		hud.say(AI, Characters.line(_opp_key, "intro"))
 		if fly:
 			await board.intro_duelists()
@@ -142,7 +142,7 @@ func _start() -> void:
 		for h in state.players[ME].hand:
 			lab[h.uid] = "Your hand"
 		if "--ask-choice" in OS.get_cmdline_user_args():
-			await hud.ask_choice("Special Summon %s in:" % state.players[ME].hand[0].cname(), ["Attack Position", "Defense Position"], state.players[ME].hand[0])
+			await hud.ask_choice(Loc.t("Special Summon %s in:") % state.players[ME].hand[0].cname(), ["Attack Position", "Defense Position"], state.players[ME].hand[0])
 		else:
 			await hud.ask_pick("Hand limit: discard 2 cards   (1 of 2)", state.players[ME].hand, "Select", "", [], lab)
 		return
@@ -152,7 +152,7 @@ func _start() -> void:
 		_finish()
 		return
 	await _play(events)
-	await hud.banner("You go first" if first == ME else "%s goes first" % opp.get("short", opp_name), UITheme.TEXT)
+	await hud.banner("You go first" if first == ME else Loc.t("%s goes first") % opp.get("short", opp_name), UITheme.TEXT)
 	_loop()
 
 
@@ -196,7 +196,7 @@ func _loop() -> void:
 func _phase_window(phase_name: String) -> void:
 	if state.is_over() or _finished:
 		return
-	await _window(state.current, "phase", null, "%s. Activate a card?" % phase_name)
+	await _window(state.current, "phase", null, Loc.t("%s. Activate a card?") % phase_name)
 
 
 # ------------------------------------------------------------------ running the rules
@@ -257,12 +257,12 @@ func _where(c) -> String:
 	for q in 2:
 		var ps: DuelState.PlayerState = state.players[q]
 		var who := "Your" if q == ME else "Their"
-		if ps.hand.has(c): return who + " hand"
-		if ps.field.has(c) or ps.spells.has(c) or ps.field_spell == c: return who + " field"
-		if ps.gy.has(c): return who + " Graveyard"
+		if ps.hand.has(c): return who + Loc.t(" hand")
+		if ps.field.has(c) or ps.spells.has(c) or ps.field_spell == c: return who + Loc.t(" field")
+		if ps.gy.has(c): return who + Loc.t(" Graveyard")
 		if ps.deck.has(c): return who + " Deck"
-		if ps.banished.has(c): return who + " banished"
-		if ps.extra.has(c): return who + " Extra Deck"
+		if ps.banished.has(c): return who + Loc.t(" banished")
+		if ps.extra.has(c): return who + Loc.t(" Extra Deck")
 	return ""
 
 
@@ -288,7 +288,7 @@ func _ask(need: Dictionary) -> Array:
 	while picked.size() < n and not cands.is_empty():
 		var text := str(need["prompt"])
 		if n > 1:
-			text += "   (%d of %d)" % [picked.size() + 1, n]
+			text += Loc.t("   (%d of %d)") % [picked.size() + 1, n]
 		var hidden: Array = []
 		var labels := {}
 		for x in cands:
@@ -346,7 +346,7 @@ func _finish() -> void:
 	var cfg: Dictionary = Router.duel_config
 	var why: String = "You surrendered." if _surrendered else state.win_reason
 	if earned > 0:
-		why += "\n+%d Duel Points  (you have %d)" % [earned, Collection.dp]
+		why += Loc.t("\n+%d Duel Points  (you have %d)") % [earned, Collection.dp]
 	hud.show_result(won, why, cfg.get("story", false), cfg.get("lose_ok", false), cfg.get("continue_label", "Continue Story"),
 			{"turns": state.turn, "lp": [state.players[ME].lp, state.players[AI].lp], "names": [state.players[ME].name, state.players[AI].name],
 			"free": not cfg.has("return_to") and not cfg.get("story", false), "draw": tied})
@@ -378,7 +378,7 @@ func _play_event(ev: Dictionary) -> void:
 			Sfx.play("turn")
 			if randf() < 0.45:
 				hud.say(p, Characters.line(_speaker(p), "turn"))
-			await hud.banner("YOUR TURN" if mine else "%s'S TURN" % state.players[AI].name.to_upper(),
+			await hud.banner("YOUR TURN" if mine else Loc.t("%s'S TURN") % state.players[AI].name.to_upper(),
 					UITheme.ACCENT if mine else Color("a08cff"))
 		"phase":
 			var ph: int = ev["phase"]
@@ -436,12 +436,12 @@ func _play_event(ev: Dictionary) -> void:
 			await board.anim_reset(p, ev["card"], int(ev["zone"]))
 		"chain":
 			Sfx.play("spell", -2.0, 1.25)
-			hud.banner("CHAIN %d" % int(ev["n"]), Color("ffd23a"))
+			hud.banner(Loc.t("CHAIN %d") % int(ev["n"]), Color("ffd23a"))
 			await get_tree().create_timer(Settings.t(0.35)).timeout
 		"control":
 			Sfx.play("special", -3.0)
 			board.hide_stats_for(ev["card"])
-			hud.effect_text("%s changes sides!" % ev["card"].cname(), Color("ff8ad8"))
+			hud.effect_text(Loc.t("%s changes sides!") % ev["card"].cname(), Color("ff8ad8"))
 			await board.anim_control(p, ev["card"], int(ev["zone"]))
 		"bounce":
 			board.hide_stats_for(ev["card"])
@@ -537,7 +537,7 @@ func _play_event(ev: Dictionary) -> void:
 			if ev["from"] == "hand" and int(ev.get("side", p)) == ME:
 				hud.remove_hand_card(ev["card"])
 			Sfx.play("destroy", -6.0)
-			hud.effect_text("%s is banished" % ev["card"].cname(), Color("c9a0ff"))
+			hud.effect_text(Loc.t("%s is banished") % ev["card"].cname(), Color("c9a0ff"))
 			await board.anim_banish(ev["card"], ev["from"], int(ev.get("side", p)))
 		"unbanish":
 			board.remove_from_banished(ev["card"])
@@ -666,8 +666,8 @@ func _on_hand_card_pressed(inst, at: Vector2) -> void:
 	if inst.is_monster():
 		var can := state.can_normal_summon(ME, inst)
 		var need := state.tributes_needed(inst)
-		var suffix := "" if need == 0 else " (%d tribute%s)" % [need, "" if need == 1 else "s"]
-		var opts := [["summon", "Summon" + suffix, can], ["set", "Set", can]]
+		var suffix := "" if need == 0 else Loc.t(" (%d tribute%s)") % [need, "" if need == 1 else "s"]
+		var opts := [["summon", Loc.t("Summon") + suffix, can], ["set", "Set", can]]
 		if inst.cname() == "Cyber Dragon":
 			opts.push_front(["special_hand", "Special Summon", state.can_special_from_hand(ME, inst)])
 		hud.show_actions(at, opts)
@@ -708,7 +708,7 @@ func _on_action(action: String) -> void:
 					_menu_card = c
 					var list := []
 					for o in opts:
-						list.append(["fuse:%d" % o["card"].uid, o["card"].data["name"], true])
+						list.append([Loc.t("fuse:%d") % o["card"].uid, o["card"].data["name"], true])
 					hud.show_actions(get_viewport().get_mouse_position(), list)
 					return
 			await _activate_flow(ME, c, null)
@@ -737,7 +737,7 @@ func _on_action(action: String) -> void:
 
 func _refresh_tribute() -> void:
 	var need := state.tributes_needed(_pending_card)
-	hud.show_prompt("Choose %d monster%s to tribute" % [need - _tributes.size(), "" if need - _tributes.size() == 1 else "s"])
+	hud.show_prompt(Loc.t("Choose %d monster%s to tribute") % [need - _tributes.size(), "" if need - _tributes.size() == 1 else "s"])
 	_clear_glows()
 	for m in state.tributable(ME):
 		var c := board.card_for(m)
@@ -764,7 +764,7 @@ func _on_board_card_clicked(card: Card3D) -> void:
 		if not inst.face_up and state.can_activate(ME, inst):
 			st_opts.append(["activate", "Activate", true])
 		if SpellRules.can_fire(state, ME, inst):
-			st_opts.append(["fire", "Fire (%d damage)" % (inst.counter * int(SpellRules.spec(inst)["cannon"])), true])
+			st_opts.append(["fire", Loc.t("Fire (%d damage)") % (inst.counter * int(SpellRules.spec(inst)["cannon"])), true])
 		if not st_opts.is_empty():
 			_menu_card = inst
 			hud.show_actions(board.screen_pos(inst) + Vector2(60, 0), st_opts)
@@ -802,7 +802,7 @@ func _on_board_card_clicked(card: Card3D) -> void:
 	if state.phase == DuelState.Phase.MAIN1 and state.can_enter_battle() and inst.face_up and inst.attack_pos and inst.attacked_turn != state.turn:
 		opts.append(["attack", "Attack", true])
 	if state.can_ignite(ME, inst):
-		opts.append(["ignite", "Effect: " + str(EffectRunner.ignite_spec(inst).get("label", "Activate")), true])
+		opts.append(["ignite", Loc.t("Effect: ") + str(EffectRunner.ignite_spec(inst).get("label", "Activate")), true])
 	if state.can_flip_summon(ME, inst):
 		opts.append(["flip", "Flip Summon", true])
 	if state.can_change_position(ME, inst):
@@ -830,10 +830,10 @@ func _on_extra_pressed() -> void:
 				status = "Use Polymerization" if has_poly else "Needs Polymerization"
 			"synchro":
 				ok = state.can_extra_summon(ME, x)
-				status = "Synchro Summon" if ok else "Tuner + %d levels" % x.level()
+				status = "Synchro Summon" if ok else Loc.t("Tuner + %d levels") % x.level()
 			"xyz":
 				ok = state.can_extra_summon(ME, x)
-				status = "Xyz Summon" if ok else "2 Level %d monsters" % x.level()
+				status = "Xyz Summon" if ok else Loc.t("2 Level %d monsters") % x.level()
 		opts.append([x, status, ok])
 	hud.show_extra(opts)
 
@@ -866,8 +866,8 @@ func _material_candidates() -> Array:
 
 func _refresh_materials() -> void:
 	var what := "Synchro" if _extra_target.frame() == "synchro" else "Xyz"
-	var hint := "a Tuner plus monsters adding up to Level %d" % _extra_target.level() if what == "Synchro" else "2 Level %d monsters" % _extra_target.level()
-	hud.show_prompt("%s Summon %s: pick %s" % [what, _extra_target.data["name"], hint], true, "Auto-pick")
+	var hint := Loc.t("a Tuner plus monsters adding up to Level %d") % _extra_target.level() if what == "Synchro" else Loc.t("2 Level %d monsters") % _extra_target.level()
+	hud.show_prompt(Loc.t("%s Summon %s: pick %s") % [what, _extra_target.data["name"], hint], true, "Auto-pick")
 	_clear_glows()
 	for m in _material_candidates():
 		var c := board.card_for(m)
@@ -899,7 +899,7 @@ func _do_attack(p: int, attacker, target) -> void:
 	var ev: Array = await _act("declare_attack", [p, attacker, target], false)
 	if ev.is_empty():
 		return
-	await _window(state.opponent(p), "attack", null, "%s attacks! Respond?" % attacker.data["name"])
+	await _window(state.opponent(p), "attack", null, Loc.t("%s attacks! Respond?") % attacker.data["name"])
 	# Replay: the defender's monsters changed, so the attacker chooses again.
 	var replays := 0
 	while state.replay_needed() and replays < 3:
@@ -914,11 +914,11 @@ func _do_attack(p: int, attacker, target) -> void:
 		else:
 			var labels := []
 			for m in opts:
-				labels.append("Attack %s" % (m.cname() if m.face_up else "the face-down monster"))
+				labels.append(Loc.t("Attack %s") % (m.cname() if m.face_up else "the face-down monster"))
 			if state.can_direct_attack_with(p, attacker):
 				labels.append("Attack directly")
 			labels.append("Stop the attack")
-			var idx: int = await hud.ask_choice("Replay! Their monsters changed. %s:" % attacker.cname(), labels, attacker)
+			var idx: int = await hud.ask_choice(Loc.t("Replay! Their monsters changed. %s:") % attacker.cname(), labels, attacker)
 			go = idx < labels.size() - 1
 			pick = opts[idx] if idx < opts.size() else null
 		if not go:
@@ -938,7 +938,7 @@ func _after_summon(p: int) -> void:
 		await _settle()
 		return
 	state.last_summoned = null
-	await _window(state.opponent(p), "summon", subj, "%s was summoned. Respond?" % subj.data["name"])
+	await _window(state.opponent(p), "summon", subj, Loc.t("%s was summoned. Respond?") % subj.data["name"])
 
 
 ## Activate a Spell/Trap with the full chain: target, the other player's response, then resolve.
@@ -970,7 +970,7 @@ func _pick_target(who: int, c):
 		if x.owner != who and not x.face_up:
 			hidden.append(x)
 	_flow = true
-	var pick = await hud.ask_pick("Choose a target for %s" % c.cname(), cands, "Select", "Cancel", hidden)
+	var pick = await hud.ask_pick(Loc.t("Choose a target for %s") % c.cname(), cands, "Select", "Cancel", hidden)
 	_flow = false
 	return pick
 
@@ -1004,7 +1004,7 @@ func _window(first: int, window: String, subject, prompt: String) -> void:
 			else:
 				var text := prompt
 				if win == "chain":
-					text = "Chain to %s%s?" % [state.chain.back()["card"].cname(), "'s effect" if state.chain.back()["kind"] == "fx" else ""]
+					text = Loc.t("Chain to %s%s?") % [state.chain.back()["card"].cname(), "'s effect" if state.chain.back()["kind"] == "fx" else ""]
 				elif window == "battle_start":
 					text = "The Battle Phase begins. Respond?"
 				choice = await hud.ask_response(text, opts)
@@ -1048,9 +1048,9 @@ func _start_attack(inst) -> void:
 	if state.can_direct_attack(ME):
 		hud.show_prompt("No monsters in the way. Click their side of the field to attack directly!", false)
 	elif state.can_direct_attack_with(ME, inst):
-		hud.show_prompt("Click a monster, or their side of the field: %s can attack directly!" % inst.data.get("name", ""), false)
+		hud.show_prompt(Loc.t("Click a monster, or their side of the field: %s can attack directly!") % inst.data.get("name", ""), false)
 	else:
-		hud.show_prompt("Tap a monster to attack with %s" % inst.data.get("name", ""), false)
+		hud.show_prompt(Loc.t("Tap a monster to attack with %s") % inst.data.get("name", ""), false)
 
 
 func _on_direct_attack() -> void:
