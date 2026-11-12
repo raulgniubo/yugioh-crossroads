@@ -211,7 +211,7 @@ static func _best_summon(s: DuelState, p: int, opp_best: int, level: int) -> Dic
 	var me := s.players[p]
 	var options := []
 	for c in me.hand:
-		if not s.can_normal_summon(p, c):
+		if not s.can_normal_summon(p, c) or me.no_summon_turn == s.turn:
 			continue
 		var need := s.tributes_needed(c)
 		var tributes := _weakest(me, need)
@@ -243,7 +243,8 @@ static func _best_summon(s: DuelState, p: int, opp_best: int, level: int) -> Dic
 
 
 static func _weakest(ps: DuelState.PlayerState, count: int) -> Array:
-	var mons := ps.monsters()
+	# Only monsters that may be Tributed for a Tribute Summon (Sheep Tokens may not).
+	var mons := ps.monsters().filter(func(m): return not m.data.get("no_tribute_summon", false))
 	mons.sort_custom(func(a, b): return a.atk() < b.atk())
 	return mons.slice(0, count)
 
@@ -298,7 +299,8 @@ static func _candidates(s: DuelState, p: int) -> Array:
 		if s.can_normal_summon(p, c):
 			var need := s.tributes_needed(c)
 			var tributes := _weakest(me, need)
-			out.append({"do": "summon", "card": c, "tributes": tributes})
+			if me.no_summon_turn != s.turn:
+				out.append({"do": "summon", "card": c, "tributes": tributes})
 			out.append({"do": "set", "card": c, "tributes": tributes})
 	for c in me.spells:
 		if c != null and not c.face_up and s.can_activate(p, c):

@@ -1075,11 +1075,9 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	if zone == -1:
 		return []
 	ps.field[zone] = null
-	_to_gy(ps, c)
-	var events := [{"type": "destroy", "player": c.owner, "card": c, "zone": zone, "overlays": c.overlays.duplicate()}]
-	for o in c.overlays:
-		_to_gy(ps, o)
-	c.overlays.clear()
+	var mats: Array = c.overlays.duplicate()
+	_to_gy(ps, c)   # its Xyz Materials go with it
+	var events := [{"type": "destroy", "player": c.owner, "card": c, "zone": zone, "overlays": mats}]
 	events.append_array(_on_leave_field(c, by_battle))
 	events.append_array(_monster_left(c))
 	return events

@@ -252,7 +252,7 @@ func _total(s: DuelState) -> int:
 		for st in ps.spells:
 			t += 1 if st != null else 0
 		for m in ps.monsters():
-			t += 1 + m.overlays.size()
+			t += (0 if m.is_token() else 1) + m.overlays.size()
 	return t
 
 
