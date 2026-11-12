@@ -136,10 +136,14 @@ func _debug_args() -> void:
 				menu._on_deck()
 			elif what == "settings":
 				menu._on_settings()
-			elif what == "packs":
+			elif what == "packs" or what == "packopen":
 				var ps := PackShop.new()
 				ps.z_index = 100
 				menu.add_child(ps)
+				if what == "packopen":
+					Collection.dp += 500
+					await get_tree().create_timer(0.6).timeout
+					ps._open(Collection.PACKS[0])
 				await get_tree().create_timer(0.6).timeout
 				ps._open(Collection.PACKS[1])
 		elif a.begins_with("--speed="):

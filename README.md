@@ -5,6 +5,26 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.10
+
+- Duel Academy mode (`scripts/core/academy.gd`, `scripts/menu/academy_hub.gd`): entrance exam, the three
+  dorms (Slifer Red, Ra Yellow, Obelisk Blue), weeks of three class duels and a Friday exam, an
+  8-duelist tournament bracket. Students wear dorm jackets (`Avatars.apply_uniform`), and so do you.
+- Turbo Duels: Speed World 2 rules in `DuelState` (Speed Counters, Spells need speed, the 4 / 7 / 10
+  effects), the highway board (`scripts/duel/turbo_track.gd`) and a ride mode, New Domino Highway
+  (`scripts/turbo/turbo_ride.gd`).
+- Expert AI (level 3 in `scripts/duel/duel_ai.gd`): two plays ahead, tries attack orders, plays the
+  opponent's reply turn before it commits.
+- Deck builder: five recipe slots, Side Deck, filters and sorting, optional Forbidden/Limited list.
+  Free Duel can be a best-of-3 Match with side decking (`scripts/duel/side_swap.gd`).
+- Presentation: card rarities with foil shaders (`scripts/ui/foil.gd`), a pack-opening scene
+  (`scripts/menu/pack_opening.gd`), attack effects by Attribute, big Fusion / Synchro / Xyz / Ritual scenes.
+- Cities: City Guide with search and directions, world travel, Satellite and Heartland, Star Chips,
+  quests, street chatter. Sound and music everywhere. Controller support (`scripts/core/pad.gd`).
+- English and Spanish (`scripts/core/loc.gd`, `scripts/core/es_strings.gd`). Card names and card text
+  stay in English because the card database has no Spanish.
+- A fifth pack, the Duelist's Vault: every scripted card the story duelists do not play.
+
 ## What is in 0.9
 
 - Duel rules: chains (both players answer back and forth, last in resolves first), Continuous, Field,
@@ -22,8 +42,7 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
   End Phases, at the start of the Battle Phase and of Main Phase 2. Damage Step limits, replays,
   Tokens, Skill Drain, effect negation, draws, coin toss, 40 to 60 card decks, revive limits for
   Ritual and Extra Deck monsters. The choice system is `DuelState.choose` + `DuelScene._run`.
-- Out of scope: Pendulum and Link monsters (no cards from those eras are in the game), Match play
-  with a Side Deck, the Forbidden/Limited list.
+- Out of scope: Pendulum and Link monsters (no cards from those eras are in the game).
 
 ## Playing a build
 

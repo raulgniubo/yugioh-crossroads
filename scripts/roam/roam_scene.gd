@@ -464,6 +464,23 @@ func _build_places() -> void:
 		city.add_child(sign_l)
 		var pad := city.box(Vector3(2.4, 0.03, 1.4), (tr["pos"] as Vector3) + Vector3(0, 0.24, 0), city.glow_mat(Color("7fd8ff"), 1.2), false)
 		pad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if Router.roam.get("district", "") == "satellite":
+		# The garage door leads out onto the highway.
+		var ramp := Vector3(-10, 0, 16.2)
+		_spots.append({"pos": ramp, "range": 2.6, "label": "Ride onto the highway (Turbo Duels)", "action": func():
+			Sfx.play("gong", -6.0)
+			Router.go(Router.RIDE)})
+		var rl := Label3D.new()
+		rl.text = Loc.t("▼  HIGHWAY")
+		rl.font_size = 64
+		rl.pixel_size = 0.006
+		rl.outline_size = 14
+		rl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		rl.modulate = Color("ff8a3a")
+		rl.position = ramp + Vector3(0, 3.2, 0)
+		city.add_child(rl)
+		var rmat := city.box(Vector3(3.0, 0.03, 1.6), ramp + Vector3(0, 0.2, 0), city.glow_mat(Color("ff8a3a"), 1.3), false)
+		rmat.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if Router.roam.get("district", "") == "academy":
 		# The exam office: the door of the main building opens Duel Academy mode.
 		var door := Vector3(0, 0, -31.0)

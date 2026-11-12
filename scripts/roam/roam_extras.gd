@@ -490,8 +490,60 @@ func _check_quests(announce: bool) -> void:
 const ARROWS := ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"]
 
 
+## Street chatter: every few seconds someone nearby says something, in a little bubble over
+## their head. And the people standing around turn to look at you when you come close.
+const BARKS := ["Nice Duel Disk!", "Did you see that last duel?", "I need one more rare card...", "Who's the top duelist around here?",
+	"My deck is finally ready.", "Heard the card shop restocked.", "I pulled an Ultra Rare today!", "Wanna duel later?",
+	"That combo was unreal.", "I should really trade my doubles.", "One day I'll go pro.", "Heart of the cards, right?"]
+var _bark_in := 4.0
+var _bark: Label3D
+
+
+func _street_life(delta: float, p: Vector3) -> void:
+	if scene._inside != "":
+		return
+	for n in scene._npcs:
+		var fig: Node3D = n[1]
+		if not is_instance_valid(fig) or not n[0].has("face"):
+			continue
+		var to := p - fig.global_position
+		var want: float = atan2(to.x, to.z) if to.length() < 5.5 else float(n[0]["face"])
+		fig.rotation.y = lerp_angle(fig.rotation.y, want, clampf(delta * 3.0, 0.0, 1.0))
+	_bark_in -= delta
+	if _bark_in > 0.0 or scene._overlay_open:
+		return
+	_bark_in = randf_range(5.0, 9.0)
+	var near := []
+	for w in scene._walkers:
+		var f: Node3D = w["fig"]
+		if is_instance_valid(f) and f.global_position.distance_to(p) < 13.0:
+			near.append(f)
+	if near.is_empty():
+		return
+	var who: Node3D = near[randi() % near.size()]
+	if _bark and is_instance_valid(_bark):
+		_bark.queue_free()
+	_bark = Label3D.new()
+	_bark.text = Loc.t(BARKS[randi() % BARKS.size()])
+	_bark.font_size = 36
+	_bark.pixel_size = 0.0042
+	_bark.outline_size = 12
+	_bark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_bark.modulate = Color(1, 1, 1, 0.0)
+	_bark.outline_modulate = Color(0.02, 0.03, 0.06, 0.9)
+	_bark.position = Vector3(0, 2.25, 0)
+	who.add_child(_bark)
+	var tw := _bark.create_tween()
+	tw.tween_property(_bark, "modulate:a", 1.0, 0.25)
+	tw.tween_interval(2.8)
+	tw.tween_property(_bark, "modulate:a", 0.0, 0.4)
+	tw.tween_callback(_bark.queue_free)
+	Sfx.play("blip", -16.0, randf_range(0.9, 1.3))
+
+
 func _process(delta: float) -> void:
 	var p: Vector3 = scene._player.position
+	_street_life(delta, p)
 	if _fence_mat:
 		_fence_mat.set_shader_parameter("player", p)
 	var t := Time.get_ticks_msec() / 1000.0
