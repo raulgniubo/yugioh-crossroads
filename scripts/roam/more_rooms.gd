@@ -462,6 +462,61 @@ static func spruce(city: CityBuilder, key: String, o: Vector3, half: Vector2, hg
 			city.add_child(globe)
 			city.cyl(0.5, 0.6, 0.5, o + Vector3(-5.2, 0.25, -2.6), dark, null, 16)
 			city.cyl(0.62, 0.62, 0.03, o + Vector3(-5.2, 0.52, -2.6), city.glow_mat(Color("7cc4ff"), 2.0), null, 20)
+		"ac_hall":
+			# Dorm banners down the middle of the hall, chandeliers, a trophy case and the
+			# tournament board by the door.
+			var dcols := [Color("d9342b"), Color("e8b020"), Color("2a5cd0")]
+			for k in 3:
+				var bx := -7.0 + k * 7.0
+				city.box(Vector3(2.2, 0.1, 0.1), o + Vector3(bx, hgt - 0.5, -2.0), dark, false)
+				city.box(Vector3(2.0, 3.6, 0.04), o + Vector3(bx, hgt - 2.4, -2.0), city.mat(dcols[k], 0.85), false)
+				city.box(Vector3(2.0, 0.3, 0.05), o + Vector3(bx, hgt - 4.1, -2.0), city.mat(Color(0.95, 0.9, 0.7), 0.6, 0.3), false)
+				city.box(Vector3(0.9, 0.9, 0.05), o + Vector3(bx, hgt - 2.0, -2.0), city.glow_mat(dcols[k].lightened(0.5), 0.5), false)
+			for cx: float in [-8.0, 0.0, 8.0]:
+				for cz: float in [-5.0, 4.0]:
+					var cp := o + Vector3(cx, hgt - 1.3, cz)
+					city.cyl(0.02, 0.02, 1.2, cp + Vector3(0, 0.7, 0), dark, null, 6)
+					city.cyl(0.7, 0.5, 0.12, cp, city.mat(Color(0.86, 0.68, 0.3), 0.3, 0.8), null, 16)
+					for b in 6:
+						var ang := b * TAU / 6.0
+						city.cyl(0.06, 0.08, 0.2, cp + Vector3(cos(ang) * 0.6, 0.14, sin(ang) * 0.6), city.glow_mat(Color(1.0, 0.92, 0.72), 3.0), null, 6)
+					var cl := OmniLight3D.new()
+					cl.light_color = Color(1.0, 0.9, 0.72)
+					cl.light_energy = 1.4
+					cl.omni_range = 9.0
+					cl.position = cp + Vector3(0, -0.2, 0)
+					city.add_child(cl)
+			# Trophy case.
+			var tc := o + Vector3(9.0, 0, half.y - 0.45)
+			city.box(Vector3(3.2, 0.5, 0.7), tc + Vector3(0, 0.25, 0), city.mat(Color(0.34, 0.2, 0.11), 0.6))
+			var glass := city.mat(Color(0.8, 0.95, 1.0, 0.22), 0.05)
+			glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			city.box(Vector3(3.2, 1.6, 0.7), tc + Vector3(0, 1.3, 0), glass, false)
+			city.box(Vector3(3.3, 0.08, 0.8), tc + Vector3(0, 2.14, 0), city.mat(Color(0.34, 0.2, 0.11), 0.6), false)
+			city.box(Vector3(3.1, 1.56, 0.04), tc + Vector3(0, 1.3, 0.3), city.mat(Color(0.08, 0.12, 0.3), 0.9), false)
+			city.box(Vector3(3.0, 0.04, 0.5), tc + Vector3(0, 2.08, 0), city.glow_mat(Color(1.0, 0.92, 0.7), 2.4), false)
+			city.box(Vector3(3.0, 0.03, 0.6), tc + Vector3(0, 0.515, 0), city.mat(Color(0.5, 0.1, 0.14), 0.9), false)
+			var gold := city.glow_mat(Color(0.95, 0.74, 0.25), 0.35)
+			for k in 4:
+				var tp := tc + Vector3(-1.2 + k * 0.8, 0.53, 0)
+				var big := 1.0 + (k % 2) * 0.35
+				city.cyl(0.12 * big, 0.14 * big, 0.08, tp + Vector3(0, 0.04, 0), city.mat(Color(0.12, 0.1, 0.1), 0.5), null, 10)
+				city.cyl(0.03 * big, 0.05 * big, 0.3 * big, tp + Vector3(0, 0.08 + 0.15 * big, 0), gold, null, 8)
+				city.cyl(0.2 * big, 0.06 * big, 0.36 * big, tp + Vector3(0, 0.08 + 0.48 * big, 0), gold, null, 12)
+			_sign(city, "HALL OF CHAMPIONS", tc + Vector3(0, 2.6, -0.36), PI, Color("ffd166"), 84)
+			var tl := OmniLight3D.new()
+			tl.light_color = Color(1.0, 0.88, 0.6)
+			tl.light_energy = 1.2
+			tl.omni_range = 4.0
+			tl.position = tc + Vector3(0, 1.6, -0.8)
+			city.add_child(tl)
+			# The Dorm Cup board: a little bracket drawn in light.
+			var bb := o + Vector3(-9.0, 2.0, half.y - 0.06)
+			city.box(Vector3(3.0, 1.8, 0.06), bb, dark, false)
+			for r in 3:
+				for i in (4 >> r):
+					city.box(Vector3(0.6, 0.05, 0.02), bb + Vector3(1.0 - r * 0.8, -0.6 + (i + 0.5) * (1.3 / (4 >> r)), -0.05), city.glow_mat(Color("7cc4ff"), 1.4), false)
+			_sign(city, "DORM CUP", bb + Vector3(0, 1.15, -0.05), PI, Color("7cc4ff"), 54)
 		"dorm_red":
 			# A rag rug, a noticeboard and laundry on a line: lived in, a little shabby.
 			city.box(Vector3(3.0, 0.02, 2.0), o + Vector3(0.5, 0.012, 1.6), city.mat(Color(0.7, 0.3, 0.22), 0.95), false)
@@ -487,6 +542,80 @@ static func spruce(city: CityBuilder, key: String, o: Vector3, half: Vector2, hg
 				l.omni_range = 5.0
 				l.position = lp + Vector3(0, 1.8, 0)
 				city.add_child(l)
+
+
+## The card shop's second coat: pendant lamps over the floor, a game in progress on each
+## duel table, a spinning booster above the counter and the card of the day by the door.
+static func kame(city: CityBuilder, o: Vector3, _half: Vector2, hgt: float) -> void:
+	var dark := city.mat(Color(0.16, 0.12, 0.1), 0.6)
+	for k in 3:
+		var lp := o + Vector3(-4.0 + k * 4.0, hgt - 1.0, 1.4)
+		city.cyl(0.015, 0.015, 0.9, lp + Vector3(0, 0.5, 0), dark, null, 6)
+		city.cyl(0.1, 0.34, 0.26, lp, city.mat(Color(0.2, 0.5, 0.4), 0.5, 0.3), null, 12)
+		city.cyl(0.12, 0.12, 0.04, lp + Vector3(0, -0.13, 0), city.glow_mat(Color(1.0, 0.9, 0.7), 2.6), null, 10)
+		var l := OmniLight3D.new()
+		l.light_color = Color(1.0, 0.88, 0.66)
+		l.light_energy = 1.2
+		l.omni_range = 5.5
+		l.position = lp + Vector3(0, -0.3, 0)
+		city.add_child(l)
+	# A game in progress on both duel tables: a playmat, two decks, cards face down and face up.
+	var pool: Array = [89631139, 46986414, 70781052, 74677422, 44508094, 84013237, 23995346, 11901678]
+	var day := int(Time.get_unix_time_from_system() / 86400.0)
+	for t in 2:
+		var tc := o + Vector3(-3.9 if t == 0 else 4.0, 1.1, 2.9)
+		city.box(Vector3(0.95, 0.008, 0.6), tc, city.mat(Color(0.08, 0.2, 0.36) if t == 0 else Color(0.3, 0.1, 0.14), 0.9), false)
+		city.box(Vector3(0.95, 0.01, 0.012), tc, city.glow_mat(Color("7cc4ff") if t == 0 else Color("ff9a7a"), 0.9), false)
+		for k in 6:
+			var card := Sprite3D.new()
+			var up := (k + t) % 3 != 0
+			card.texture = Cards.get_face(int(pool[(k + t * 3 + day) % pool.size()])) if up else Cards.get_back()
+			if card.texture == null:
+				card.texture = Cards.get_back()
+			card.pixel_size = 0.15 / maxf(1.0, card.texture.get_height())
+			card.rotation.x = -PI / 2.0
+			card.rotation.y = (0.0 if k < 3 else PI) + (PI / 2.0 if k % 3 == 2 and not up else 0.0)
+			card.shaded = false
+			card.position = tc + Vector3(-0.26 + (k % 3) * 0.26, 0.012, 0.15 if k < 3 else -0.15)
+			city.add_child(card)
+		for sz: float in [-1.0, 1.0]:
+			city.box(Vector3(0.1, 0.06, 0.15), tc + Vector3(0.4 * sz, 0.035, 0.18 * sz), city.mat(Color(0.14, 0.4, 0.8) if sz > 0.0 else Color(0.8, 0.2, 0.2), 0.5), false)
+	# A booster pack turning slowly over the counter.
+	var pack := Node3D.new()
+	pack.position = o + Vector3(1.6, 2.5, -2.9)
+	city.add_child(pack)
+	city.box(Vector3(0.42, 0.62, 0.09), Vector3.ZERO, city.glow_mat(Color("e0559a"), 0.35), false, pack)
+	city.box(Vector3(0.44, 0.1, 0.06), Vector3(0, 0.3, 0), city.mat(Color(0.95, 0.95, 1.0), 0.3, 0.8), false, pack)
+	city.box(Vector3(0.44, 0.1, 0.06), Vector3(0, -0.3, 0), city.mat(Color(0.95, 0.95, 1.0), 0.3, 0.8), false, pack)
+	city.box(Vector3(0.2, 0.2, 0.06), Vector3(0, 0.02, 0), city.glow_mat(Color("ffe9a8"), 1.6), false, pack)
+	var spin := pack.create_tween().set_loops()
+	spin.tween_property(pack, "rotation:y", TAU, 6.0).from(0.0)
+	var bob := pack.create_tween().set_loops()
+	bob.tween_property(pack, "position:y", pack.position.y + 0.12, 1.6).set_trans(Tween.TRANS_SINE)
+	bob.tween_property(pack, "position:y", pack.position.y, 1.6).set_trans(Tween.TRANS_SINE)
+	city.cyl(0.02, 0.02, 0.5, o + Vector3(1.6, 1.4, -2.9), dark, null, 6)
+	city.cyl(0.26, 0.26, 0.03, o + Vector3(1.6, 1.66, -2.9), city.glow_mat(Color("ff8ac0"), 1.8), null, 16)
+	# Card of the day: a pedestal by the door with a card turning slowly in its own light.
+	var pc := o + Vector3(-1.75, 0, 4.25)
+	city.cyl(0.26, 0.32, 1.0, pc + Vector3(0, 0.5, 0), city.mat(Color(0.2, 0.15, 0.12), 0.5), null, 12)
+	city.cyl(0.3, 0.3, 0.04, pc + Vector3(0, 1.02, 0), city.glow_mat(Color("ffd166"), 1.6), null, 16)
+	var prize := Sprite3D.new()
+	prize.texture = Cards.get_face(int(pool[day % pool.size()]))
+	if prize.texture == null:
+		prize.texture = Cards.get_back()
+	prize.pixel_size = 0.52 / maxf(1.0, prize.texture.get_height())
+	prize.shaded = false
+	prize.position = pc + Vector3(0, 1.4, 0)
+	city.add_child(prize)
+	var turn := prize.create_tween().set_loops()
+	turn.tween_property(prize, "rotation:y", TAU, 9.0).from(0.0)
+	var pl := OmniLight3D.new()
+	pl.light_color = Color("ffd98a")
+	pl.light_energy = 1.2
+	pl.omni_range = 3.0
+	pl.position = pc + Vector3(0, 1.6, -0.4)
+	city.add_child(pl)
+	_sign(city, "CARD OF THE DAY", pc + Vector3(0, 1.9, 0), PI, Color("ffe9a8"), 32)
 
 
 ## What the buildings look like from the street: a sign and awning for the two Domino doors,

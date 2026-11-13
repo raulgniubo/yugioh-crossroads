@@ -51,6 +51,9 @@ var _paused := false
 var _t := 0.0
 var _rng := RandomNumberGenerator.new()
 # race
+var _blur: SpeedBlur
+var _combo := 0               # boost pads chained without a gap
+var _combo_t := 0.0
 var _lines: SpeedLines
 var _pop_l: Label
 var _draft := 0.0             # seconds spent tucked in behind another rider
@@ -299,6 +302,8 @@ func _spawn_thing(x: float) -> void:
 func _build_ui() -> void:
 	_ui = CanvasLayer.new()
 	add_child(_ui)
+	_blur = SpeedBlur.new()
+	_ui.add_child(_blur)
 	_lines = SpeedLines.new()
 	_ui.add_child(_lines)
 	_pop_l = UITheme.label("", 44, Color("5affd0"), UITheme.title_font())
@@ -579,7 +584,16 @@ func _process(delta: float) -> void:
 					if _boost <= 0.0:
 						Sfx.play("whoosh", -2.0, 1.3)
 						Sfx.play("charge", -4.0, 1.4)
-					_boost = 2.6
+					# Chain pads without letting the boost run out and the chain pays more each time.
+					if not th.get("hit", false):
+						th["hit"] = true
+						_combo = _combo + 1 if _combo_t > 0.0 else 1
+						_combo_t = 4.5
+						if _combo >= 2:
+							Collection.dp += 5 * _combo
+							Sfx.play("coin", -8.0, 1.0 + 0.1 * _combo)
+							_pop(Loc.t("BOOST CHAIN x%d  +%d") % [_combo, 5 * _combo], Color("5affd0"))
+					_boost = 2.6 + minf(1.2, 0.3 * _combo)
 				"chip":
 					_chips += 1
 					Collection.dp += 15
@@ -675,6 +689,20 @@ func _tricks(delta: float) -> void:
 	if _flame:
 		_flame.visible = _boost > 0.0
 		_flame.scale = Vector3(1.0 + sin(_t * 50.0) * 0.2, 0.8 + sin(_t * 37.0) * 0.25 + minf(_boost, 1.0) * 0.4, 1.0)
+	_blur.amount = clampf((_speed - 34.0) / 26.0, 0.0, 0.75) + (0.25 if _boost > 0.0 else 0.0)
+	_combo_t = maxf(0.0, _combo_t - delta)
+	if _combo_t <= 0.0:
+		_combo = 0
+	# Passing a rider is worth a shout and a few points.
+	if _race != "count":
+		for r in _riders:
+			var was: float = r.get("was_x", float(r["x"]))
+			if was > 0.5 and float(r["x"]) <= 0.5 and absf(float(r["x"])) < 6.0 and _speed > 30.0:
+				Collection.dp += 10
+				_lines.kick(0.4)
+				Sfx.play("whoosh", -5.0, 1.6)
+				_pop("OVERTAKE  +10", Color("ff8a3a"))
+			r["was_x"] = float(r["x"])
 	# The engine note climbs with the speedometer and screams on a boost.
 	Sfx.ambience_pitch(0.72 + _speed / 52.0 + (0.18 if _boost > 0.0 else 0.0) + sin(_t * 31.0) * 0.01)
 	_lines.amount = clampf((_speed - 32.0) / 30.0, 0.0, 0.8) + (0.25 if _boost > 0.0 else 0.0) + (0.15 if drafting else 0.0)
@@ -766,6 +794,7 @@ func _finish_race() -> void:
 
 func _recycle(th: Dictionary) -> void:
 	th["missed"] = false
+	th["hit"] = false
 	(th["node"] as Node3D).queue_free()
 	_things.erase(th)
 	_spawn_thing(_rng.randf_range(150.0, 260.0))

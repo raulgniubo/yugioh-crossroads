@@ -134,16 +134,36 @@ void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
 	float x = wp.x + offset;
 	float z = wp.z;
-	// Asphalt, smeared along the direction of travel.
-	float grain = hash(vec2(floor(x * (0.25 / blur)), floor(z * 9.0)));
-	vec3 col = vec3(0.035, 0.04, 0.055) + grain * 0.02;
-	// Lane dashes.
-	float dash = step(0.5, fract(x / 9.0));
+	// How much road one pixel covers here: detail finer than that is faded out instead of
+	// being left to shimmer, which is what made the surface crawl at speed.
+	float px = max(fwidth(wp.x), fwidth(wp.z));
+	float fine = 1.0 - smoothstep(0.02, 0.12, px);
+	// Asphalt: grain stretched along the direction of travel, more the faster you go.
+	float stretch = 0.25 / blur;
+	float g1 = hash(vec2(floor(x * stretch), floor(z * 9.0)));
+	float g2 = hash(vec2(floor(x * stretch * 0.31 + 7.0), floor(z * 3.0)));
+	vec3 col = vec3(0.034, 0.039, 0.054) + (g1 * 0.018 + g2 * 0.012) * fine;
+	// Long streaks worn into each lane by tires.
+	float lane_c = abs(fract(z / 4.4 + 0.5) - 0.5) * 4.4;
+	float wear = smoothstep(1.5, 0.5, abs(lane_c - 1.1)) * (0.6 + 0.4 * g2);
+	col *= 1.0 - wear * 0.22;
+	// Expansion joints flick past: at speed they are what tells you how fast you are going.
+	float jx = fract(x / 22.0);
+	float joint = (1.0 - smoothstep(0.0, 0.012 + px * 0.03, min(jx, 1.0 - jx)));
+	col = mix(col, vec3(0.012, 0.014, 0.02), joint * 0.8);
+	// Lane dashes: they stretch into streaks as speed builds, with soft ends so they never strobe.
+	float duty = clamp(0.5 + (blur - 1.0) * 0.12, 0.5, 0.78);
+	float dx = fract(x / 9.0);
+	float edge = 0.03 + px * 0.25 + (blur - 1.0) * 0.05;
+	float dash = smoothstep(0.0, edge, dx) * smoothstep(duty, duty - edge, dx);
 	for (int i = -2; i <= 2; i++) {
 		float lz = float(i) * 4.4;
 		float d = abs(z - lz);
-		float line = 1.0 - smoothstep(0.07, 0.11, d);
-		col = mix(col, vec3(0.75, 0.8, 0.9), line * dash * 0.75);
+		float line = 1.0 - smoothstep(0.07, 0.11 + px, d);
+		col = mix(col, vec3(0.78, 0.83, 0.93), line * dash * 0.8);
+		// Cat's eyes between the dashes, lit by your headlight.
+		float eye = (1.0 - smoothstep(0.03, 0.07 + px, d)) * (1.0 - smoothstep(0.0, 0.02 + px * 0.2, abs(dx - 0.86)));
+		col += vec3(1.0, 0.75, 0.3) * eye * 0.9;
 	}
 	// Solid lines just inside the barriers, and rumble strips beyond them.
 	float sl = 1.0 - smoothstep(0.06, 0.1, abs(abs(z) - 11.2));
@@ -180,6 +200,53 @@ void fragment() {
 	mi.material_override = _road
 	mi.position = Vector3(0, -0.08, 0)
 	add_child(mi)
+
+
+var _scroll: Array[ShaderMaterial] = []
+var _barrier_sh: Shader
+
+
+## Concrete barrier with lit panels and chevrons that slide past with the road.
+func _barrier_mat(col: Color, pitch := 1.0) -> ShaderMaterial:
+	if _barrier_sh == null:
+		_barrier_sh = Shader.new()
+		_barrier_sh.code = """
+shader_type spatial;
+render_mode unshaded;
+uniform float offset = 0.0;
+uniform float blur = 1.0;
+uniform float pitch = 1.0;
+uniform vec3 tint : source_color = vec3(0.2, 0.9, 0.9);
+varying vec3 wp;
+float hash(float p) { return fract(sin(p * 127.1) * 43758.5453); }
+void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	float x = wp.x + offset;
+	float px = fwidth(wp.x);
+	vec3 col = vec3(0.06, 0.068, 0.09) * (0.8 + 0.2 * hash(floor(x / 6.0)));
+	// Panel seams.
+	float seam = fract(x / 6.0);
+	col *= 1.0 - 0.5 * (1.0 - smoothstep(0.0, 0.01 + px * 0.05, min(seam, 1.0 - seam)));
+	// A light slot in every panel; at speed the slots smear into one streak.
+	float len = clamp(0.35 + (blur - 1.0) * 0.2, 0.35, 0.92);
+	float slot_x = smoothstep(0.5 - len * 0.5 - 0.03, 0.5 - len * 0.5 + 0.03, seam) * smoothstep(0.5 + len * 0.5 + 0.03, 0.5 + len * 0.5 - 0.03, seam);
+	float band = fract(wp.y * pitch * 0.9);
+	float slot_y = smoothstep(0.38, 0.44, band) * smoothstep(0.62, 0.56, band);
+	float on = step(0.25, hash(floor(x / 6.0) + 9.0));
+	col += tint * slot_x * slot_y * on * 1.6;
+	// Chevrons on the lowest band.
+	float ch = abs(fract((x + abs(wp.y - 0.45) * 1.2) / 3.0) - 0.5);
+	col += tint * (1.0 - smoothstep(0.03, 0.09 + px * 0.2, ch)) * step(wp.y, 0.9) * 0.35;
+	float fade = 1.0 - smoothstep(60.0, 120.0, abs(wp.x));
+	ALBEDO = col * fade;
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = _barrier_sh
+	m.set_shader_parameter("tint", col)
+	m.set_shader_parameter("pitch", pitch)
+	_scroll.append(m)
+	return m
 
 
 func _glow(color: Color, energy := 2.5) -> StandardMaterial3D:
@@ -222,8 +289,11 @@ func _build_sides() -> void:
 	for side in [-1.0, 1.0]:
 		var col: Color = accent if side > 0.0 else accent2
 		var wall := Node3D.new()
-		_box(wall, Vector3(260, 1.1, 0.5), Vector3(0, 0.45, side * 14.2), _solid(Color(0.07, 0.08, 0.11)))
-		_box(wall, Vector3(260, 0.08, 0.08), Vector3(0, 0.95, side * 13.92), _glow(col, 3.0))
+		_box(wall, Vector3(260, 1.1, 0.5), Vector3(0, 0.45, side * 14.2), _barrier_mat(col))
+		_box(wall, Vector3(260, 0.08, 0.08), Vector3(0, 1.02, side * 13.92), _glow(col, 3.0))
+		# A second, taller sound wall behind it with slim light slots, so the edge of the road
+		# reads as a wall of streaks at speed.
+		_box(wall, Vector3(260, 3.2, 0.3), Vector3(0, 2.6, side * 15.4), _barrier_mat(col.lerp(Color.WHITE, 0.3), 2.0))
 		add_child(wall)
 		for i in 10:
 			var post := Node3D.new()
@@ -240,8 +310,17 @@ func _build_sides() -> void:
 	for i in 2:
 		var gantry := Node3D.new()
 		_box(gantry, Vector3(0.5, 0.6, 30.0), Vector3(0, 8.2, 0), _solid(Color(0.09, 0.1, 0.14)))
-		_box(gantry, Vector3(0.12, 1.6, 9.0), Vector3(-0.2, 7.2, -6.0), _glow(accent2.darkened(0.3), 1.6))
-		_box(gantry, Vector3(0.12, 1.6, 9.0), Vector3(-0.2, 7.2, 6.0), _glow(accent.darkened(0.3), 1.6))
+		# Overhead signs: lane arrows and a moving readout, not blank panels.
+		for gs in [[-6.0, accent2], [6.0, accent]]:
+			var panel := MeshInstance3D.new()
+			var qm := QuadMesh.new()
+			qm.size = Vector2(9.0, 1.7)
+			panel.mesh = qm
+			panel.material_override = _holo(gs[1], 3.0 + i * 2.0 + float(gs[0]))
+			panel.rotation.y = -PI / 2.0
+			panel.position = Vector3(-0.3, 7.2, float(gs[0]))
+			gantry.add_child(panel)
+			_box(gantry, Vector3(0.14, 1.9, 9.2), Vector3(-0.2, 7.2, float(gs[0])), _solid(Color(0.05, 0.06, 0.09)))
 		_prop(gantry, -SPAN / 2.0 + 30.0 + i * (SPAN / 2.0))
 
 
@@ -738,6 +817,9 @@ func _process(delta: float) -> void:
 	speed = lerpf(speed, target_speed, clampf(delta * 1.5, 0.0, 1.0))
 	_offset = fmod(_offset + speed * delta, 1260.0)
 	_far_off += speed * delta
+	for sm in _scroll:
+		sm.set_shader_parameter("offset", _offset)
+		sm.set_shader_parameter("blur", clampf(speed / 22.0, 0.8, 3.0))
 	if _sweep:
 		_sweep.set_shader_parameter("offset", _far_off)
 	if _road:

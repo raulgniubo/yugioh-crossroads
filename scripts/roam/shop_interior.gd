@@ -45,7 +45,8 @@ static func build(city: CityBuilder) -> void:
 		city.collide(city.prop("shop_shelf", o + Vector3(6.45, 0, z), -PI / 2, 2.7, true))
 	city.collide(city.prop("card_rack", o + Vector3(-2.6, 0, -0.4), 0.4, 1.9, true), 0.7)
 	city.collide(city.prop("card_rack", o + Vector3(2.7, 0, 0.2), -0.6, 1.9, true), 0.7)
-	city.collide(city.prop("duel_table", o + Vector3(-3.9, 0, 2.9), 0.0, 2.5), 0.75)
+	var dt0 := city.prop("duel_table", o + Vector3(-3.9, 0, 2.9), 0.0, 2.5)
+	city.collide(dt0, 0.75)
 	city.collide(city.prop("duel_table", o + Vector3(4.0, 0, 2.9), 0.0, 2.5), 0.75)
 	city.collide(city.prop("arcade_cabinet", o + Vector3(6.35, 0, 3.6), -PI / 2, 1.9, true))
 	city.collide(city.prop("vending", o + Vector3(-6.45, 0, -4.2), PI / 2, 1.95, true))
@@ -58,6 +59,7 @@ static func build(city: CityBuilder) -> void:
 	glass.emission_energy_multiplier = 0.25
 	city.box(Vector3(0.05, 2.1, 1.1), o + Vector3(-6.85, 1.35, 3.4), glass, false)
 	city.exit_door(o + Vector3(0, 0, HALF.y))
+	MoreRooms.kame(city, o, HALF, HEIGHT)
 	_sign(city, "KAME GAME", o + Vector3(0, 3.35, -HALF.y + 0.12), 0.0, Color("ffd166"), 130)
 	_sign(city, "NEW BOOSTERS IN STOCK", o + Vector3(4.3, 3.3, -HALF.y + 0.12), 0.0, Color("ff8ac0"), 54)
 	_sign(city, "DUEL TABLES  ·  FREE PLAY", o + Vector3(HALF.x - 0.12, 3.2, 2.6), -PI / 2, Color("7cc4ff"), 54)
