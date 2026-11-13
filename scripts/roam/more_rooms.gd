@@ -317,6 +317,145 @@ static func _library(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -
 	city.add_child(globe)
 
 
+## A second coat for the older rooms: daylight windows, wall art, ceiling fixtures, plants and
+## floor detail. Everything goes on walls, corners and the ceiling, clear of the furniture.
+static func spruce(city: CityBuilder, key: String, o: Vector3, half: Vector2, hgt: float, trim: Color) -> void:
+	if not key in ["burger", "arcade", "kc_lobby", "dorm_red", "dorm_yellow", "dorm_blue", "ac_hall"]:
+		return
+	var dark := city.mat(Color(0.14, 0.15, 0.19), 0.6, 0.2)
+	# Skirting board and a ceiling cornice all the way round.
+	for sx: float in [-1.0, 1.0]:
+		city.box(Vector3(0.06, 0.16, half.y * 2), o + Vector3(sx * (half.x - 0.03), 0.08, 0), dark, false)
+		city.box(Vector3(0.14, 0.14, half.y * 2), o + Vector3(sx * (half.x - 0.07), hgt - 0.07, 0), dark, false)
+	for sz: float in [-1.0, 1.0]:
+		city.box(Vector3(half.x * 2, 0.16, 0.06), o + Vector3(0, 0.08, sz * (half.y - 0.03)), dark, false)
+		city.box(Vector3(half.x * 2, 0.14, 0.14), o + Vector3(0, hgt - 0.07, sz * (half.y - 0.07)), dark, false)
+	# Windows high on both side walls. Night-blue for the arcade, daylight everywhere else.
+	var sky := Color(0.14, 0.12, 0.3) if key == "arcade" else Color(0.62, 0.84, 1.0)
+	var wy := minf(hgt - 1.0, 2.6 if hgt < 5.0 else hgt * 0.62)
+	var wh := 1.1 if hgt < 5.0 else 2.4
+	var n := maxi(2, int(half.y / 2.2))
+	for sx: float in [-1.0, 1.0]:
+		for k in n:
+			var z := -half.y + (k + 0.5) * (half.y * 2.0 / n)
+			_window(city, o + Vector3(sx * (half.x - 0.03), wy, z), 1.5, wh, false, sky)
+			if key != "arcade":
+				# A patch of light on the floor under each window.
+				var pool := city.box(Vector3(1.8, 0.012, 1.5), o + Vector3(sx * (half.x - 1.6), 0.012, z), city.glow_mat(Color(1.0, 0.96, 0.82), 0.22), false)
+				pool.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Framed pictures between the windows on the door wall.
+	var frames := [Color("d9342b"), Color("2a6cff"), Color("f0c040"), Color("3fbf8a"), Color("c85ad0")]
+	for k in 4:
+		var fx := -half.x + 1.4 + k * ((half.x * 2.0 - 2.8) / 3.0)
+		if absf(fx) < 1.8:
+			continue
+		city.box(Vector3(0.9, 0.7, 0.05), o + Vector3(fx, 1.9, half.y - 0.04), dark, false)
+		city.box(Vector3(0.78, 0.58, 0.06), o + Vector3(fx, 1.9, half.y - 0.045), city.glow_mat(frames[(k + key.length()) % frames.size()].lerp(trim, 0.3), 0.35), false)
+	# Potted plants in the two front corners.
+	for sx: float in [-1.0, 1.0]:
+		var pp := o + Vector3(sx * (half.x - 0.55), 0, half.y - 0.55)
+		city.cyl(0.24, 0.18, 0.44, pp + Vector3(0, 0.22, 0), city.mat(Color(0.82, 0.8, 0.76), 0.7), null, 10)
+		for b in 3:
+			var leaf := MeshInstance3D.new()
+			var ls := SphereMesh.new()
+			ls.radius = 0.3 - b * 0.06
+			ls.height = 0.7 - b * 0.1
+			leaf.mesh = ls
+			leaf.material_override = city.mat(Color(0.16, 0.46 + b * 0.06, 0.22), 0.9)
+			leaf.position = pp + Vector3((b - 1) * 0.12, 0.75 + b * 0.22, (b % 2) * 0.1)
+			city.add_child(leaf)
+	match key:
+		"burger":
+			# Checkerboard strip down the middle, pendant lamps, a jukebox and an OPEN sign.
+			for k in 14:
+				for r in 2:
+					if (k + r) % 2 == 0:
+						city.box(Vector3(0.5, 0.012, 0.5), o + Vector3(-3.25 + k * 0.5, 0.013, 3.6 + r * 0.5), city.mat(Color(0.96, 0.94, 0.9), 0.5), false)
+			for k in 4:
+				var lx := -4.5 + k * 3.0
+				city.cyl(0.015, 0.015, 0.9, o + Vector3(lx, hgt - 0.45, 1.2), dark, null, 6)
+				city.cyl(0.08, 0.3, 0.26, o + Vector3(lx, hgt - 1.0, 1.2), city.mat(Color(0.86, 0.2, 0.16), 0.4, 0.3), null, 12)
+				city.cyl(0.1, 0.1, 0.04, o + Vector3(lx, hgt - 1.13, 1.2), city.glow_mat(Color(1.0, 0.9, 0.7), 2.4), null, 10)
+			var jb := o + Vector3(-half.x + 0.6, 0, -1.0)
+			city.box(Vector3(0.7, 1.5, 0.9), jb + Vector3(0, 0.75, 0), city.mat(Color(0.5, 0.12, 0.14), 0.4, 0.3))
+			city.box(Vector3(0.06, 0.6, 0.7), jb + Vector3(0.36, 1.05, 0), city.glow_mat(Color(1.0, 0.75, 0.3), 1.4), false)
+			for k in 3:
+				city.box(Vector3(0.07, 1.3, 0.06), jb + Vector3(0.37, 0.75, -0.36 + k * 0.36), city.glow_mat([Color("2de2e6"), Color("ff4fd8"), Color("ffd166")][k], 1.6), false)
+			_sign(city, "OPEN", o + Vector3(half.x - 0.12, 2.9, 3.4), -PI / 2.0, Color("ff5a5a"), 70)
+		"arcade":
+			# Neon tubes across the ceiling, a starry carpet and a prize wall.
+			for k in 5:
+				city.box(Vector3(half.x * 1.7, 0.05, 0.05), o + Vector3(0, hgt - 0.2, -half.y + 1.5 + k * 2.3), city.glow_mat([Color("ff4fd8"), Color("2de2e6"), Color("ffd166"), Color("7dff6a"), Color("7c8cff")][k], 2.4), false)
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 21
+			for k in 46:
+				var st := city.box(Vector3(0.16, 0.011, 0.16), o + Vector3(rng.randf_range(-half.x + 0.5, half.x - 0.5), 0.012, rng.randf_range(-half.y + 0.5, half.y - 0.5)),
+					city.glow_mat([Color("ff4fd8"), Color("2de2e6"), Color("ffd166")][k % 3], 0.9), false)
+				st.rotation.y = rng.randf() * PI
+				st.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			var pw := o + Vector3(-half.x + 0.25, 0, 2.6)
+			city.box(Vector3(0.4, 2.4, 3.0), pw + Vector3(0, 1.2, 0), dark)
+			for r in 3:
+				for c in 5:
+					var toy := MeshInstance3D.new()
+					var ts := SphereMesh.new()
+					ts.radius = 0.16
+					ts.height = 0.32
+					toy.mesh = ts
+					toy.material_override = city.mat([Color("ff8ac0"), Color("7cc4ff"), Color("ffd166"), Color("7dffb0"), Color("c85ad0")][(r + c) % 5], 0.6)
+					toy.position = pw + Vector3(0.26, 0.5 + r * 0.7, -1.1 + c * 0.55)
+					city.add_child(toy)
+			_sign(city, "PRIZES", pw + Vector3(0.24, 2.7, 0), PI / 2.0, Color("ffd166"), 60)
+		"kc_lobby":
+			# Light lines in the floor leading to the desk, tall banners and a slow holo globe.
+			for sx: float in [-1.0, 1.0]:
+				city.box(Vector3(0.06, 0.012, half.y * 2 - 3.0), o + Vector3(sx * 1.6, 0.013, 0.6), city.glow_mat(Color("2a6cff"), 1.6), false)
+				city.box(Vector3(1.1, 3.4, 0.04), o + Vector3(sx * 4.6, hgt - 2.0, -half.y + 0.1), city.glow_mat(Color("17306e"), 0.6), false)
+				city.box(Vector3(0.7, 0.7, 0.05), o + Vector3(sx * 4.6, hgt - 1.2, -half.y + 0.13), city.glow_mat(Color("7cc4ff"), 1.4), false)
+				# Waiting benches along the side walls.
+				city.box(Vector3(0.6, 0.12, 2.6), o + Vector3(sx * (half.x - 0.7), 0.46, 2.4), city.mat(Color(0.9, 0.92, 0.96), 0.4))
+				for lz: float in [-1.1, 1.1]:
+					city.box(Vector3(0.5, 0.42, 0.1), o + Vector3(sx * (half.x - 0.7), 0.21, 2.4 + lz), dark, false)
+			var globe := MeshInstance3D.new()
+			var gm := SphereMesh.new()
+			gm.radius = 0.6
+			gm.height = 1.2
+			globe.mesh = gm
+			var gmat := city.glow_mat(Color("5aa8ff"), 1.2)
+			gmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			gmat.albedo_color = Color(0.4, 0.7, 1.0, 0.45)
+			globe.material_override = gmat
+			globe.position = o + Vector3(-5.2, 1.7, -2.6)
+			city.add_child(globe)
+			city.cyl(0.5, 0.6, 0.5, o + Vector3(-5.2, 0.25, -2.6), dark, null, 16)
+			city.cyl(0.62, 0.62, 0.03, o + Vector3(-5.2, 0.52, -2.6), city.glow_mat(Color("7cc4ff"), 2.0), null, 20)
+		"dorm_red":
+			# A rag rug, a noticeboard and laundry on a line: lived in, a little shabby.
+			city.box(Vector3(3.0, 0.02, 2.0), o + Vector3(0.5, 0.012, 1.6), city.mat(Color(0.7, 0.3, 0.22), 0.95), false)
+			city.box(Vector3(2.4, 0.021, 1.4), o + Vector3(0.5, 0.013, 1.6), city.mat(Color(0.86, 0.68, 0.4), 0.95), false)
+			city.box(Vector3(1.6, 1.0, 0.05), o + Vector3(2.6, 1.7, -half.y + 0.05), city.mat(Color(0.62, 0.46, 0.28), 0.9), false)
+			for k in 6:
+				city.box(Vector3(0.3, 0.38, 0.02), o + Vector3(2.0 + (k % 3) * 0.6, 1.5 + (k / 3) * 0.44, -half.y + 0.09), city.mat([Color("f2f2ee"), Color("ffd166"), Color("7cc4ff")][k % 3], 0.9), false)
+			city.box(Vector3(half.x * 1.2, 0.015, 0.015), o + Vector3(-1.0, hgt - 0.55, 2.8), dark, false)
+			for k in 5:
+				city.box(Vector3(0.4, 0.5, 0.02), o + Vector3(-3.4 + k * 1.1, hgt - 0.82, 2.8), city.mat([Color("d9342b"), Color("f2f2ee"), Color("26364f"), Color("d9342b"), Color("f0c040")][k], 0.9), false)
+		"dorm_yellow", "dorm_blue":
+			# A long carpet runner in the dorm color and standing lamps.
+			var cc := Color("d8a520") if key == "dorm_yellow" else Color("1f4fa8")
+			city.box(Vector3(2.2, 0.02, half.y * 2 - 2.0), o + Vector3(0, 0.012, 0.3), city.mat(cc, 0.95), false)
+			city.box(Vector3(1.8, 0.021, half.y * 2 - 2.4), o + Vector3(0, 0.013, 0.3), city.mat(cc.lightened(0.25), 0.95), false)
+			for sx: float in [-1.0, 1.0]:
+				var lp := o + Vector3(sx * (half.x - 0.6), 0, -half.y + 0.7)
+				city.cyl(0.03, 0.14, 1.7, lp + Vector3(0, 0.85, 0), city.mat(Color(0.86, 0.68, 0.3), 0.3, 0.8), null, 8)
+				city.cyl(0.14, 0.22, 0.3, lp + Vector3(0, 1.8, 0), city.glow_mat(Color(1.0, 0.9, 0.7), 1.8), null, 12)
+				var l := OmniLight3D.new()
+				l.light_color = Color(1.0, 0.88, 0.68)
+				l.light_energy = 1.3
+				l.omni_range = 5.0
+				l.position = lp + Vector3(0, 1.8, 0)
+				city.add_child(l)
+
+
 ## What the buildings look like from the street: a sign and awning for the two Domino doors,
 ## and a small columned library building on the island.
 static func build_outside(city: CityBuilder, district: String) -> void:

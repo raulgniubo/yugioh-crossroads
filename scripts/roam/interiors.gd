@@ -117,6 +117,7 @@ static func build(city: CityBuilder, key: String) -> void:
 		AcademyRooms.dress(city, key, o, half, hgt)
 	if MoreRooms.ROOMS.has(key):
 		MoreRooms.dress(city, key, o, half, hgt)
+	MoreRooms.spruce(city, key, o, half, hgt, trim)
 	match key:
 		"kc_lobby":
 			_sign(city, "KAIBACORP", o + Vector3(0, 4.9, -half.y + 0.12), 0.0, Color("7cc4ff"), 170)

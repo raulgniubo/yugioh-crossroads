@@ -63,6 +63,7 @@ func setup(roam: Node) -> void:
 		_decor_domino()
 	_build_seats()
 	_room_extras()
+	_build_routines()
 	duels = StreetDuels.new()
 	add_child(duels)
 	# Story scenes stage their own crowd; the street duels sit out a chapter.
@@ -473,15 +474,78 @@ func chat_pair(at: Vector3, yaw: float, a: String, b: String, dorm_a := "", dorm
 	_solid(0.75, 1.7, at)
 
 
+## People with somewhere to be: each walks a loop of stops and does something at every one
+## (looks over a shop window, checks a phone, watches the fountain), then moves on.
+const ROUTINES := {
+	"domino": [
+		["office_worker", "", [[Vector3(13.0, 0.2, 12.2), 0.8, "stand", 5.0, "scratch"], [Vector3(15.6, 0.2, 15.2), 0.75, "stand", 7.0, "listen"], [Vector3(8.4, 0.16, 8.2), 2.6, "stand", 6.0, "phone"]]],
+		["student_girl", "", [[Vector3(-12.4, 0.16, -13.6), PI, "browse", 6.0, ""], [Vector3(-18.0, 0.16, -9.6), PI, "browse", 5.0, ""], [Vector3(-8.2, 0.16, -8.2), 0.8, "stand", 6.5, "phone"]]],
+		["stylish_woman", "", [[Vector3(12.6, 0.2, -39.2), 0.3, "stand", 6.0, "checkout"], [Vector3(10.6, 0.2, -41.6), -0.5, "stand", 7.0, "phone"], [Vector3(16.0, 0.2, -37.2), 2.4, "stand", 5.0, "listen"]]],
+		["duelist_m9", "", [[Vector3(-12.5, 0.2, 57.4), 0.0, "stand", 7.0, "listen"], [Vector3(-4.0, 0.2, 58.6), 0.0, "stand", 6.0, "phone"], [Vector3(6.0, 0.2, 57.6), 0.0, "stand", 6.0, "scratch"]]],
+	],
+	"academy": [
+		["student_boy", "red", [[Vector3(2.4, 0.1, 2.0), -2.4, "stand", 6.0, "phone"], [Vector3(2.6, 0.1, 9.6), 0.0, "stand", 4.0, "checkout"], [Vector3(-16.6, 0.1, 27.4), -1.2, "browse", 7.0, ""]]],
+		["student_girl", "blue", [[Vector3(22.5, 0.1, -17.6), PI, "stand", 9.0, "cheer"], [Vector3(14.0, 0.1, -5.6), 1.0, "stand", 5.0, "phone"], [Vector3(3.0, 0.1, -14.0), -0.8, "stand", 6.0, "listen"]]],
+		["student_boy", "yellow", [[Vector3(-3.2, 0.1, 40.0), 0.6, "stand", 6.0, "checkout"], [Vector3(-2.6, 0.1, 54.0), 0.0, "stand", 8.0, "listen"], [Vector3(-2.4, 0.1, 22.0), 2.2, "stand", 5.0, "phone"]]],
+	],
+}
+var _routines: Array = []
+
+
+func _build_routines() -> void:
+	if str(Router.roam.get("story", "")) != "":
+		return
+	for r in ROUTINES.get(key, []):
+		var stops: Array = r[2]
+		var f := _person(str(r[0]), stops[0][0], float(stops[0][1]), "stand", str(r[1]))
+		f.watch = null
+		_routines.append({"fig": f, "stops": stops, "i": 0, "wait": randf_range(1.0, 6.0), "walking": false})
+
+
+func _move_routines(delta: float) -> void:
+	for r in _routines:
+		var f: RoamFigure = r["fig"]
+		var stops: Array = r["stops"]
+		if not r["walking"]:
+			r["wait"] = float(r["wait"]) - delta
+			if float(r["wait"]) <= 0.0:
+				r["i"] = (int(r["i"]) + 1) % stops.size()
+				r["walking"] = true
+				f.stance = "stand"
+				f._cur_clip = ""
+			continue
+		var stop: Array = stops[int(r["i"])]
+		var to: Vector3 = stop[0]
+		var d := Vector3(to.x - f.position.x, 0, to.z - f.position.z)
+		if d.length() < 0.12:
+			# Arrived: turn to what they came for and do their thing.
+			r["walking"] = false
+			r["wait"] = float(stop[3]) + randf_range(0.0, 3.0)
+			f.set_speed(0.0)
+			f.position.y = to.y
+			f.rotation.y = float(stop[1])
+			f.stance = str(stop[2])
+			f._cur_clip = ""
+			if str(stop[4]) != "":
+				f.gesture(str(stop[4]), 0.3)
+				f._hold = minf(4.0, float(stop[3]) * 0.6)
+			continue
+		var step_len := minf(d.length(), 1.35 * delta)
+		f.position += d.normalized() * step_len
+		f.position.y = lerpf(f.position.y, to.y, clampf(delta * 3.0, 0.0, 1.0))
+		f.rotation.y = lerp_angle(f.rotation.y, atan2(d.x, d.z), clampf(delta * 7.0, 0.0, 1.0))
+		f.set_speed(1.35)
+
+
 ## People who are just there: in line at the counter, on the arcade cabinets, talking in the hall.
 ## They have nothing to say to you, which is what makes a room feel busy.
 func _room_extras() -> void:
 	var rooms := Interiors.all_rooms()
 	var extras := {
 		"burger": [["line", Vector3(-1.2, 0, -2.2), PI, "office_worker", ""], ["line", Vector3(-1.2, 0, -1.2), PI, "student_girl", ""],
-			["pair", Vector3(1.6, 0, 3.2), 0.4, "duelist_m5", "stylish_woman"]],
+			["pair", Vector3(-0.4, 0, 0.5), 0.4, "duelist_m5", "stylish_woman"]],
 		"arcade": [["line", Vector3(-1.5, 0, -3.3), PI, "student_boy", ""], ["line", Vector3(1.5, 0, -3.3), PI, "duelist_f1", ""],
-			["pair", Vector3(-0.2, 0, 2.6), 1.2, "student_girl", "duelist_m9"]],
+			["pair", Vector3(0.0, 0, 0.0), 1.2, "student_girl", "duelist_m9"]],
 		"kc_lobby": [["pair", Vector3(3.8, 0, 3.0), 0.8, "office_worker", "stylish_woman"], ["line", Vector3(-2.2, 0, -2.2), PI, "office_worker", ""]],
 		"ac_hall": [["pair", Vector3(-6.0, 0, 4.5), 0.5, "student_boy", "student_girl", "red", "blue"], ["pair", Vector3(7.0, 0, 1.0), -0.9, "student_girl", "student_boy", "yellow", "red"],
 			["line", Vector3(-9.5, 0, -2.0), 1.4, "student_boy", "blue"]],
@@ -783,6 +847,7 @@ func _decor_academy() -> void:
 # ------------------------------------------------------------------ every frame
 
 func _process(delta: float) -> void:
+	_move_routines(delta)
 	_t += delta
 	var pp: Vector3 = scene._player.global_position
 	var outside: bool = scene._inside == ""
