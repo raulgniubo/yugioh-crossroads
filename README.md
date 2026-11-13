@@ -5,6 +5,30 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.16
+
+- Duels: anime cut-ins (a slanted band with the duelist's live portrait, speed lines and big
+  words) for ace summons, heavy and direct attacks, Trap activations and the finishing blow;
+  speed lines burst out where a hit lands; damage numbers pop in the middle and fly into the
+  Life Point plate. The arena crowd is now real little people who bounce, raise their arms, wave
+  glow sticks and pop camera flashes.
+- Deck Builder: new three-column layout. Card detail on the left, your deck in the middle as
+  actual cards (Main, Extra, Side) with a monsters / Spells / Traps bar, and your collection on
+  the right. Cards pop when added and lift when you point at them. My Decks shows each deck's
+  best monster. Both screens share a new animated backdrop.
+- Domino City and Duel Academy: street duels you can watch (two duelists, holograms, Life
+  Points, a cheering crowd) in the KaibaCorp plaza, at the harbor and on the practice fields;
+  three new places to enter: your own room (rest to pass time, build decks at the desk, a
+  trophy shelf), Domino Mart (a free lucky draw every day) and the Academy Library (a duel quiz
+  that pays Duel Points, strategy books, a new building on the island). Shops and halls have
+  more people in them. Building walls got real windows with frames, sills, blinds and doors,
+  lawns got a proper grass look, and there are more people walking.
+- Turbo Duels: runners surge forward when their monster attacks and shake and throw sparks
+  when their rider takes damage.
+- Story: characters are framed above the dialogue box, the box has the speaker's color, a name
+  tab and a tall portrait that slides in, and chapter title cards are big and animated.
+- Two more daily challenges (watch a street duel, answer a quiz).
+
 ## What is in 0.15
 
 - Open world pass for Domino City and Duel Academy: street detail everywhere (bins, planters,

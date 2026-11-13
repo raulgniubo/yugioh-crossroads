@@ -65,7 +65,9 @@ func setup(roam: Node) -> void:
 	_room_extras()
 	duels = StreetDuels.new()
 	add_child(duels)
-	duels.setup(self, key)
+	# Story scenes stage their own crowd; the street duels sit out a chapter.
+	if str(Router.roam.get("story", "")) == "":
+		duels.setup(self, key)
 	if "--sit" in OS.get_cmdline_user_args():
 		get_tree().create_timer(0.5).timeout.connect(debug_sit)
 	_build_errands()

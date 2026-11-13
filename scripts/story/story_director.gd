@@ -58,6 +58,9 @@ var _flash: ColorRect
 var _card: Control
 var _typing: Tween
 var _choice_box: VBoxContainer
+var _box_style: StyleBoxFlat
+var _name_tab: PanelContainer
+var _name_style: StyleBoxFlat
 
 
 func _ready() -> void:
@@ -118,14 +121,19 @@ func _build_ui() -> void:
 		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_ui.add_child(bar)
 		_bars.append(bar)
-	# Dialogue box.
+	# Dialogue box: dark glass with the speaker's color down the left edge, their name on a
+	# tab above it and their portrait standing up out of the corner.
 	_box = PanelContainer.new()
-	_box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.05, 0.1, 0.92), 20, Color(1, 1, 1, 0.14)))
+	_box_style = UITheme.panel_box(Color(0.025, 0.04, 0.085, 0.93), 22, Color(1, 1, 1, 0.16))
+	_box_style.border_width_left = 6
+	_box_style.shadow_color = Color(0, 0, 0, 0.45)
+	_box_style.shadow_size = 18
+	_box.add_theme_stylebox_override("panel", _box_style)
 	_box.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	_box.offset_left = 220
-	_box.offset_right = -220
-	_box.offset_top = -268
-	_box.offset_bottom = -92
+	_box.offset_left = 250
+	_box.offset_right = -250
+	_box.offset_top = -262
+	_box.offset_bottom = -88
 	_box.visible = false
 	_box.mouse_filter = Control.MOUSE_FILTER_STOP
 	_box.gui_input.connect(func(e):
@@ -133,42 +141,63 @@ func _build_ui() -> void:
 			_advance_wanted = true)
 	_ui.add_child(_box)
 	var m := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		m.add_theme_constant_override("margin_" + side, 22)
+	m.add_theme_constant_override("margin_left", 196)
+	m.add_theme_constant_override("margin_right", 26)
+	m.add_theme_constant_override("margin_top", 26)
+	m.add_theme_constant_override("margin_bottom", 18)
 	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_box.add_child(m)
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 22)
+	h.add_theme_constant_override("separation", 18)
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	m.add_child(h)
-	_portrait = TextureRect.new()
-	_portrait.custom_minimum_size = Vector2(120, 132)
-	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	h.add_child(_portrait)
-	var v := VBoxContainer.new()
-	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	v.add_theme_constant_override("separation", 4)
-	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	h.add_child(v)
-	_name = UITheme.label("", 26, UITheme.ACCENT, UITheme.title_font())
-	_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(_name)
 	_text = RichTextLabel.new()
 	_text.bbcode_enabled = true
 	_text.fit_content = false
 	_text.scroll_active = false
+	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_text.add_theme_font_size_override("normal_font_size", 25)
-	_text.add_theme_font_size_override("italics_font_size", 25)
-	_text.add_theme_color_override("default_color", UITheme.TEXT)
+	_text.add_theme_font_size_override("normal_font_size", 28)
+	_text.add_theme_font_size_override("italics_font_size", 28)
+	_text.add_theme_constant_override("line_separation", 5)
+	_text.add_theme_color_override("default_color", Color(0.95, 0.97, 1.0))
 	_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(_text)
-	_more = UITheme.label("▼", 22, UITheme.ACCENT)
+	h.add_child(_text)
+	_more = UITheme.label("▼", 24, UITheme.ACCENT)
 	_more.size_flags_vertical = Control.SIZE_SHRINK_END
 	_more.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(_more)
+	# The portrait is not laid out by the box: it stands 70 px taller than it.
+	_portrait = TextureRect.new()
+	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_portrait.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	_portrait.offset_left = 262
+	_portrait.offset_right = 262 + 176
+	_portrait.offset_top = -88 - 236
+	_portrait.offset_bottom = -90
+	_portrait.visible = false
+	_ui.add_child(_portrait)
+	_name_tab = PanelContainer.new()
+	_name_style = UITheme.panel_box(UITheme.ACCENT, 12, UITheme.ACCENT)
+	_name_style.content_margin_left = 20
+	_name_style.content_margin_right = 20
+	_name_style.content_margin_top = 4
+	_name_style.content_margin_bottom = 4
+	_name_style.skew = Vector2(0.18, 0.0)
+	_name_tab.add_theme_stylebox_override("panel", _name_style)
+	_name_tab.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	_name_tab.offset_left = 452
+	_name_tab.offset_top = -262 - 24
+	_name_tab.offset_bottom = -262 + 20
+	_name_tab.grow_horizontal = Control.GROW_DIRECTION_END
+	_name_tab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_name_tab.visible = false
+	_ui.add_child(_name_tab)
+	_name = UITheme.label("", 26, Color(0.02, 0.05, 0.09), UITheme.title_font())
+	_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_name_tab.add_child(_name)
 	_choice_box = VBoxContainer.new()
 	_choice_box.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	_choice_box.offset_left = -360
@@ -545,36 +574,71 @@ func _do_scene(st: Dictionary) -> bool:
 
 
 func _title_card(title: String, sub: String, chapter_line: String) -> void:
+	var big := chapter_line != ""
+	var root := Control.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui.add_child(root)
+	# A slash of light across the dark, the same shape the duel cut-ins use.
+	var band := ColorRect.new()
+	band.set_anchors_preset(Control.PRESET_FULL_RECT)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bm := ShaderMaterial.new()
+	bm.shader = CutIn._shader(CutIn.BAND, "band")
+	for kv in [["center", 0.5], ["half_h", 0.2 if big else 0.14], ["slant", -0.07], ["dir", 1.0], ["tint", UITheme.GOLD if big else UITheme.ACCENT], ["progress", 0.0], ["fade", 1.0]]:
+		bm.set_shader_parameter(kv[0], kv[1])
+	band.material = bm
+	root.add_child(band)
 	var v := VBoxContainer.new()
 	v.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	v.offset_left = -700
-	v.offset_right = 700
-	v.offset_top = -110
+	v.offset_left = -800
+	v.offset_right = 800
+	v.offset_top = -150 if big else -100
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	v.modulate.a = 0.0
+	v.add_theme_constant_override("separation", 6)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_ui.add_child(v)
-	if chapter_line != "":
-		var c := UITheme.label(Loc.t(chapter_line).to_upper(), 24, UITheme.GOLD, UITheme.semi_font())
+	v.rotation = -0.04
+	v.pivot_offset = Vector2(800, 100)
+	root.add_child(v)
+	var parts: Array = []
+	if big:
+		var c := UITheme.label(Loc.t(chapter_line).to_upper(), 30, UITheme.GOLD.lightened(0.3), UITheme.semi_font())
 		c.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		v.add_child(c)
-	var t := UITheme.label(Loc.t(title).to_upper(), 72 if chapter_line != "" else 60, Color.WHITE, UITheme.title_font())
+		parts.append(c)
+	var t := UITheme.label(Loc.t(title).to_upper(), 104 if big else 70, Color.WHITE, UITheme.title_font())
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	t.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	t.add_theme_constant_override("outline_size", 12)
 	v.add_child(t)
+	parts.append(t)
 	var line := ColorRect.new()
 	line.color = UITheme.ACCENT
-	line.custom_minimum_size = Vector2(0, 3)
+	line.custom_minimum_size = Vector2(0, 4)
+	line.scale.x = 0.0
 	v.add_child(line)
-	var s := UITheme.label(Loc.t(sub), 26, UITheme.TEXT_DIM)
+	var s := UITheme.label(Loc.t(sub), 30, Color(0.9, 0.94, 1.0, 0.9), UITheme.semi_font())
 	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(s)
+	parts.append(s)
+	for pt in parts:
+		(pt as Control).modulate.a = 0.0
 	Sfx.play("gong", -8.0)
-	var tw := create_tween()
-	tw.tween_property(v, "modulate:a", 1.0, 0.5)
-	tw.tween_interval(1.9 if chapter_line != "" else 1.4)
-	tw.tween_property(v, "modulate:a", 0.0, 0.5)
-	await tw.finished
-	v.queue_free()
+	Sfx.play("whoosh", -9.0)
+	await get_tree().process_frame
+	line.pivot_offset = Vector2(line.size.x / 2.0, 0)
+	var tw := create_tween().set_parallel()
+	tw.tween_method(func(x: float): bm.set_shader_parameter("progress", x), 0.0, 1.0, 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(line, "scale:x", 1.0, 0.5).set_delay(0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	for i in parts.size():
+		tw.tween_property(parts[i], "modulate:a", 1.0, 0.3).set_delay(0.15 + i * 0.14)
+	tw.tween_property(v, "position:x", v.position.x + 30.0, 2.8 if big else 2.2)
+	await get_tree().create_timer(2.3 if big else 1.7).timeout
+	var out := create_tween().set_parallel()
+	out.tween_method(func(x: float): bm.set_shader_parameter("fade", x), 1.0, 0.0, 0.4)
+	out.tween_property(v, "modulate:a", 0.0, 0.35)
+	await out.finished
+	root.queue_free()
 
 
 func _shot_for(speaker: String, wide: bool) -> void:
@@ -682,7 +746,9 @@ func _shot_for(speaker: String, wide: bool) -> void:
 		if want.distance_to(from) < 1.1:
 			want = from + (want - from).normalized() * 1.1
 	_cam_pos = want
-	_cam_look = look
+	# Aim at the chest, not the eyes: the face then sits in the upper half of the frame,
+	# clear of the dialogue box.
+	_cam_look = look - Vector3(0, 0.12 if is_spirit else 0.3, 0)
 	# Lumen keeps out of the lens: she hovers beside the conversation, on the far side.
 	_spirit_park = null
 	if _spirit and is_instance_valid(_spirit) and not is_spirit:
@@ -735,16 +801,38 @@ func _say(st: Dictionary) -> void:
 	var text := Loc.t(str(st["t"])).replace("{player}", Profile.duelist_name)
 	_box.visible = true
 	_more.visible = false
+	var m := _text.get_parent().get_parent() as MarginContainer
 	if who == "":
 		_name.text = ""
+		_name_tab.visible = false
 		_portrait.visible = false
+		m.add_theme_constant_override("margin_left", 34)
+		_box_style.border_color = Color(1, 1, 1, 0.16)
 		_text.text = "[i]%s[/i]" % text
 	else:
+		var col: Color = Profile.color() if who == "player" else Color(info.get("color", UITheme.ACCENT))
+		col = col.lightened(0.15)
+		var changed := _name.text != (Profile.duelist_name if who == "player" else Loc.t(str(info.get("name", who)))).to_upper()
 		_name.text = (Profile.duelist_name if who == "player" else Loc.t(str(info.get("name", who)))).to_upper()
-		_name.add_theme_color_override("font_color", Profile.color() if who == "player" else Color(info.get("color", UITheme.ACCENT)).lightened(0.25))
+		_name_style.bg_color = col
+		_name_style.border_color = col.lightened(0.3)
+		_name.add_theme_color_override("font_color", Color(0.02, 0.05, 0.09) if col.get_luminance() > 0.35 else Color.WHITE)
+		_name_tab.visible = true
+		_name_tab.reset_size()
+		_box_style.border_color = col
+		m.add_theme_constant_override("margin_left", 196)
 		_portrait.visible = true
 		_portrait.texture = _face(who)
 		_text.text = text
+		# A new speaker steps in: the portrait and the name tab slide up into place.
+		if changed and not _skip:
+			_portrait.modulate.a = 0.0
+			_portrait.offset_top = -88 - 236 + 26
+			_portrait.offset_bottom = -90 + 26
+			var pt := create_tween().set_parallel()
+			pt.tween_property(_portrait, "modulate:a", 1.0, 0.14)
+			pt.tween_property(_portrait, "offset_top", -88.0 - 236.0, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			pt.tween_property(_portrait, "offset_bottom", -90.0, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	if st.has("emote"):
 		_emote(who, str(st["emote"]))
 	if st.has("anim"):
@@ -1191,6 +1279,10 @@ func _end(st: Dictionary) -> void:
 ## Test helper: save what is on screen to /tmp/story_<chapter>_<tag>.png.
 func _snap(tag: String, wait := 1.0) -> void:
 	await get_tree().create_timer(wait).timeout
+	# Nothing is drawn without a window, so there is no frame to wait for (or to save).
+	if DisplayServer.get_name() == "headless":
+		print("STORY shot ", tag, " (headless, not saved)")
+		return
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("/tmp/story_%s_%s.png" % [chapter, tag])
 	print("STORY shot ", tag)
@@ -1230,6 +1322,12 @@ static func begin(id: String, resume := false) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
+	# The portrait and the name tab live outside the box, so they follow it when it hides.
+	if _box and not _box.visible:
+		_portrait.visible = false
+		_name_tab.visible = false
+	if _more and _more.visible:
+		_more.position.y += sin(_t * 6.0) * 0.25
 	# Actors walking to their marks.
 	for m in _moving.duplicate():
 		var f: RoamFigure = m[0]

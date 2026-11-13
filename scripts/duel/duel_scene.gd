@@ -553,6 +553,8 @@ func _play_event(ev: Dictionary) -> void:
 			elif randf() < 0.3:
 				_talk(p, "attack")
 			Sfx.play("attack")
+			if board.track:
+				board.track.surge(p)
 			await board.anim_declare(p, ev["card"], ev["target"])
 		"battle":
 			get_tree().create_timer(Settings.t(0.12)).timeout.connect(func(): Sfx.play("impact"))
@@ -670,6 +672,8 @@ func _play_event(ev: Dictionary) -> void:
 				hud.cut_in(1 - p, Loc.t("FINISHING BLOW!"), Characters.line(_speaker(ME) if p == AI else _opp_key, "win"), UITheme.GOLD, 0.8, true)
 			if ev["delta"] < 0:
 				board.shake(0.5 if ev["delta"] > -2000 else 0.8)
+				if board.track:
+					board.track.wobble(p, ev["delta"] <= -2000)
 				Sfx.play("damage")
 				hud.react(p, "hurt")
 				if p == AI and ev["lp"] <= 2000 and not _said_low:

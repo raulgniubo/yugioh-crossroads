@@ -600,6 +600,57 @@ void fragment() {
 	return fig
 
 
+var _fx := {}      # rider index -> {"surge": 1..0, "wobble": 1..0, "sparks": node}
+
+
+## The rider guns it for a moment: used when their monster attacks.
+func surge(i: int) -> void:
+	if i >= _bikes.size():
+		return
+	var fx: Dictionary = _fx.get(i, {})
+	fx["surge"] = 1.0
+	_fx[i] = fx
+	target_speed += 3.0
+	get_tree().create_timer(1.2).timeout.connect(func(): target_speed -= 3.0)
+
+
+## The runner shakes and throws sparks: used when its rider takes damage.
+func wobble(i: int, hard := false) -> void:
+	if i >= _bikes.size():
+		return
+	var fx: Dictionary = _fx.get(i, {})
+	fx["wobble"] = 1.0 if not hard else 1.5
+	if not fx.has("sparks") or not is_instance_valid(fx["sparks"]):
+		var sp := CPUParticles3D.new()
+		sp.amount = 40
+		sp.lifetime = 0.5
+		sp.one_shot = false
+		sp.explosiveness = 0.2
+		sp.direction = Vector3(-1, 0.4, 0)
+		sp.spread = 28.0
+		sp.initial_velocity_min = 6.0
+		sp.initial_velocity_max = 14.0
+		sp.gravity = Vector3(0, -12, 0)
+		sp.scale_amount_min = 0.5
+		sp.scale_amount_max = 1.2
+		var qm := QuadMesh.new()
+		qm.size = Vector2(0.07, 0.07)
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		m.albedo_color = Color(1.0, 0.75, 0.3)
+		m.emission_enabled = true
+		m.emission = Color(1.0, 0.6, 0.2)
+		m.emission_energy_multiplier = 4.0
+		qm.material = m
+		sp.mesh = qm
+		sp.position = Vector3(-0.9, 0.12, 0)
+		(_bikes[i][0] as Node3D).add_child(sp)
+		fx["sparks"] = sp
+	(fx["sparks"] as CPUParticles3D).emitting = true
+	_fx[i] = fx
+
+
 ## Move a rider (ride mode drives the runners itself). `lean` tips the runner into a turn.
 func place_rider(i: int, at: Vector3, lean := 0.0) -> void:
 	if i < _bikes.size():
@@ -662,8 +713,26 @@ func _process(delta: float) -> void:
 			h.rotation.x = lerpf(h.rotation.x, float(b[3]), clampf(delta * 8.0, 0.0, 1.0))
 			continue
 		var sway := sin(_t * 0.7 + ph)
-		h.position = base + Vector3(sin(_t * 0.43 + ph) * 0.5, absf(sin(_t * 9.0 + ph)) * 0.012, sway * 0.28)
-		h.rotation.x = cos(_t * 0.7 + ph) * 0.07
+		var idx := _bikes.find(b)
+		var fx: Dictionary = _fx.get(idx, {})
+		# A surge is a short burst ahead with the front wheel light; a wobble is a hit taken.
+		var surge := 0.0
+		var wob := 0.0
+		if fx.has("surge"):
+			fx["surge"] = float(fx["surge"]) - delta / 0.9
+			surge = sin(clampf(1.0 - float(fx["surge"]), 0.0, 1.0) * PI)
+			if float(fx["surge"]) <= 0.0:
+				fx.erase("surge")
+		if fx.has("wobble"):
+			fx["wobble"] = float(fx["wobble"]) - delta / 0.8
+			wob = clampf(float(fx["wobble"]), 0.0, 1.0)
+			if float(fx["wobble"]) <= 0.0:
+				fx.erase("wobble")
+				if fx.has("sparks") and is_instance_valid(fx["sparks"]):
+					(fx["sparks"] as CPUParticles3D).emitting = false
+		h.position = base + Vector3(sin(_t * 0.43 + ph) * 0.5 + surge * 2.4 - wob * 0.9, absf(sin(_t * 9.0 + ph)) * 0.012, sway * 0.28 + sin(_t * 24.0) * 0.22 * wob)
+		h.rotation.x = cos(_t * 0.7 + ph) * 0.07 + sin(_t * 31.0) * 0.16 * wob
+		h.rotation.z = surge * 0.2
 	for tr in _trails:
 		tr.scale.x = 0.5 + speed / 40.0 + sin(_t * 30.0) * 0.04
 	for bc in _beacons:
