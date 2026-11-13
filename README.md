@@ -5,6 +5,28 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.19
+
+- Tournaments: register at a tournament desk, earn Finals Badges by beating duelists around
+  that world (each win also takes a card from their deck), then play an eight-duelist knockout
+  on a bracket screen. Domino Street Championship (six badges, finals at the KaibaCorp plaza
+  at night with a crowd) and the Academy Dorm Cup (four badges, your three rivals are in the
+  draw). Champions get Duel Points, three rare cards and a trophy that appears in your room.
+- Story: Chapter 2, "Slifer Red, Last of Its Kind". Free Joey at the pier, then follow the next
+  crack to Duel Academy. Three duels, two bonds.
+- Free Duel: Survival mode (opponents keep coming, Life Points carry over, best streak saved)
+  and a starting hand of 4 to 7 cards.
+- Duels: response prompts explain why the duel stopped and what your choice does; the loser
+  drops their head before the winner celebrates.
+- Turbo Duels: Slipstream. The rider 2000 or more Life Points behind gains an extra Speed
+  Counter each Standby Phase.
+- Worlds: the three Academy rivals have new things to say each time you beat them; the lost
+  card favor in Domino and the deck box favor at the Academy are now three-part and two-part
+  stories; rain is visible; the old dorm ghost looks like one.
+- Fixes found by testing: speakers no longer stare at the floor in story close-ups; a hill no
+  longer covers the Academy lookout.
+- Dev: `--spot=`, `--result-action=`, `--tourney=`, `--parse-all`.
+
 ## What is in 0.18
 
 - Academy uniforms: the white blocks on jackets are gone; trim is thin piping now.
