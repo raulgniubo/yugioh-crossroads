@@ -93,8 +93,10 @@ static func build() -> Theme:
 	t.set_color("font_hover_pressed_color", "Button", Comic.INK)
 	t.set_color("font_focus_color", "Button", Color.WHITE)
 	t.set_color("font_disabled_color", "Button", Color(1, 1, 1, 0.42))
+	# No outline on button text: the selected state uses dark words on a bright fill, and an
+	# ink outline around ink letters turns to mush.
 	t.set_color("font_outline_color", "Button", Color(Comic.INK, 0.9))
-	t.set_constant("outline_size", "Button", 5)
+	t.set_constant("outline_size", "Button", 0)
 	t.set_stylebox("normal", "Button", comic_button(Color("2f66e8")))
 	t.set_stylebox("hover", "Button", comic_button(Comic.ORANGE))
 	t.set_stylebox("pressed", "Button", comic_button(Comic.YELLOW))

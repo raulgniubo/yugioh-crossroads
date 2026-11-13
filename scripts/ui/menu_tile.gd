@@ -18,9 +18,10 @@ var _t := 0.0
 
 func _init(kicker: String, title_text: String, subtitle: String, tint: Color, glyph: String, size: Vector2, badge := "", big := false) -> void:
 	color = tint
-	_kicker = kicker.to_upper()
-	_title = title_text
-	_sub = subtitle
+	# Drawn text does not translate itself the way a Label does.
+	_kicker = Loc.t(kicker).to_upper()
+	_title = Loc.t(title_text)
+	_sub = Loc.t(subtitle)
 	_glyph = glyph
 	_badge = badge
 	_big = big

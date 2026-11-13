@@ -326,7 +326,7 @@ func _show_featured(instant: bool) -> void:
 		_featured.size = rest.size
 		_band_color = Color(d.get("color", Comic.BLUE))
 		_feat_ribbon.set_meta("name", str(d.get("short", key)).to_upper())
-		_feat_ribbon.set_meta("era", str(d.get("era", "")).to_upper())
+		_feat_ribbon.set_meta("era", Loc.t(str(d.get("era", ""))).to_upper())
 		_feat_ribbon.set_meta("color", _band_color)
 		_feat_ribbon.queue_redraw()
 	if instant:

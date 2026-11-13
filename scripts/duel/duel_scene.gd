@@ -175,7 +175,7 @@ func _start() -> void:
 			board.duelist_gesture(0, "intro")
 			await get_tree().create_timer(2.0).timeout
 			# Over your shoulder, the whole field between you and them.
-			board.cam_cut(Vector3(3.0, 2.5, dz + 3.9), Vector3(-0.3, 1.5, -dz))
+			board.cam_cut(Vector3(3.0, 2.5, dz + 3.9), Vector3(-2.4, 1.2, -dz))
 			board.cam_drift(Vector3(2.6, 2.7, dz + 3.5), 8.0)
 			await hud.vs_slam(me_col, opp_col)
 			var og := OpeningGame.new()

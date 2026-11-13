@@ -2500,4 +2500,5 @@ const ES := {
 	"Where your card pictures live. Press Enter to save.": "Dónde están las imágenes de tus cartas. Presiona Enter para guardar.",
 	"Put a picture named back.jpg in this folder and it becomes the back of every card.": "Pon una imagen llamada back.jpg en esta carpeta y será el reverso de todas las cartas.",
 	"TURN": "TURNO",
+	"%d W  %d L": "%d V  %d D",
 }

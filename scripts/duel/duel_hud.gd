@@ -1862,7 +1862,7 @@ func _overlay_button(v: VBoxContainer, text: String, action: String) -> Button:
 
 
 func show_result(won: bool, reason: String, story := false, lose_ok := false, cont := "Continue Story", stats := {}) -> void:
-	for n in [_phase_box, _inspect_panel, _hand_root, _plates[1], _menu_btn]:
+	for n in [_phase_box, _inspect_panel, _hand_root, _plates[0], _plates[1], _menu_btn]:
 		if n:
 			create_tween().tween_property(n, "modulate:a", 0.0, 0.3)
 	var tied: bool = stats.get("draw", false)

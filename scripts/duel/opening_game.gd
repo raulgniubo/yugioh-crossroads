@@ -166,9 +166,9 @@ func _big_button(text: String, draw_icon: Callable, accent: Color) -> Button:
 	b.custom_minimum_size = Vector2(230, 140)
 	var base := Color(0.1, 0.24, 0.62, 0.96)
 	b.add_theme_stylebox_override("normal", Comic.box(base, 18, 0.0, 4, 7))
-	b.add_theme_stylebox_override("hover", Comic.box(base.lerp(accent, 0.45), 18, 0.0, 4, 7))
-	var foc := Comic.box(base.lerp(accent, 0.45), 18, 0.0, 4, 7)
-	foc.border_color = Color.WHITE
+	b.add_theme_stylebox_override("hover", Comic.box(Comic.ORANGE, 18, 0.0, 4, 7))
+	var foc := Comic.box(base.lightened(0.12), 18, 0.0, 4, 7)
+	foc.border_color = Comic.YELLOW
 	b.add_theme_stylebox_override("focus", foc)
 	b.add_theme_stylebox_override("pressed", Comic.box(Comic.YELLOW, 18, 0.0, 4, 3))
 	var icon := Control.new()

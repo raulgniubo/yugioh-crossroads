@@ -8,8 +8,26 @@ const SIZE := Vector2i(512, 640)
 var _cache := {}
 
 
+var _look := ""
+
+
 func _ready() -> void:
-	Profile.changed.connect(func(): _forget("player"))
+	_look = _look_sig()
+	Profile.changed.connect(_on_profile)
+
+
+## The player's picture is only thrown away when something you can see changed. A win or a
+## loss also saves the profile, and that must not blank the portrait on screen.
+func _on_profile() -> void:
+	var now := _look_sig()
+	if now != _look:
+		_look = now
+		_forget("player")
+
+
+func _look_sig() -> String:
+	return str([Profile.gender, Profile.color_index, Profile.emblem, Profile.tints, Profile.look_body, Profile.look_hair,
+			Profile.look_outfit, Profile.look_height, Profile.duelist_name])
 
 
 func folder() -> String:
