@@ -527,6 +527,45 @@ func card_for(inst) -> Card3D:
 	return _cards.get(inst.uid)
 
 
+var deal_fast := false
+var _holos := {}      # card uid -> MonsterHolo
+
+
+## Keep one hologram over every face-up monster on the field, and break the ones that left.
+func sync_holos(state) -> void:
+	var seen := {}
+	for p in state.players.size():
+		for m in state.players[p].monsters():
+			if m == null or not m.face_up:
+				continue
+			var c := card_for(m)
+			if c == null:
+				continue
+			seen[m.uid] = true
+			var h: MonsterHolo = _holos.get(m.uid)
+			if h == null or not is_instance_valid(h):
+				h = MonsterHolo.new()
+				add_child(h)
+				h.setup(m, c, ATTR_COLORS.get(str(m.data.get("attribute", "")), UITheme.ACCENT), Settings.t(0.75))
+				_holos[m.uid] = h
+			h.card = c
+			h.set_defense(not m.attack_pos)
+	for uid in _holos.keys():
+		if not seen.has(uid):
+			var h2: MonsterHolo = _holos[uid]
+			if is_instance_valid(h2):
+				h2.shatter()
+			_holos.erase(uid)
+
+
+## The hologram standing over a card, if there is one.
+func holo_for(inst) -> MonsterHolo:
+	if inst == null:
+		return null
+	var h: MonsterHolo = _holos.get(inst.uid)
+	return h if h != null and is_instance_valid(h) else null
+
+
 func _move(c: Card3D, to: Transform3D, dur: float, arc := 0.6) -> void:
 	var from := c.transform
 	var q0 := from.basis.get_rotation_quaternion()
@@ -566,16 +605,28 @@ func anim_draw(p: int, inst, deck_count: int) -> void:
 	c.transform = Transform3D(table_basis(p, false, true), deck_pos(p) + Vector3(0, deck_count * 0.006 + 0.02, 0))
 	set_deck_count(p, deck_count)
 	if p == 0:
-		await _move(c, _near_camera_xform(), 0.35, 0.8)
+		if deal_fast:
+			# Dealing: the card is already on its way to the hand when the next one leaves the deck.
+			var fly := func():
+				await _move(c, _near_camera_xform(), 0.24, 0.7)
+				var ftw := create_tween()
+				ftw.tween_method(c.set_alpha, 1.0, 0.0, Settings.t(0.08))
+				await ftw.finished
+				_cards.erase(inst.uid)
+				c.queue_free()
+			fly.call()
+			await _wait(0.16)
+			return
+		await _move(c, _near_camera_xform(), 0.3, 0.8)
 		var tw := create_tween()
-		tw.tween_method(c.set_alpha, 1.0, 0.0, Settings.t(0.12))
+		tw.tween_method(c.set_alpha, 1.0, 0.0, Settings.t(0.1))
 		await tw.finished
 		_cards.erase(inst.uid)
 		c.queue_free()
 	else:
 		_opp_hand.append(c)
 		_layout_opp_hand()
-		await _wait(0.22)
+		await _wait(0.1 if deal_fast else 0.2)
 
 
 ## Removes a card from the opponent's 3D hand and returns its node.
@@ -598,10 +649,10 @@ func anim_summon(p: int, inst, zone: int, set_card: bool) -> void:
 	c.set_pickable(true)
 	var to := Transform3D(table_basis(p, not set_card, not set_card), monster_zone_pos(p, zone) + Vector3(0, 0.02, 0))
 	var hover := Transform3D(to.basis, to.origin + Vector3(0, 1.1, 0))
-	await _move(c, hover, 0.38, 0.4)
+	await _move(c, hover, 0.3, 0.4)
 	if not _orbs.is_empty():
 		await _consume_orbs(to.origin)
-	await _move(c, to, 0.14, 0.0)
+	await _move(c, to, 0.11, 0.0)
 	_burst(to.origin, UITheme.ACCENT if p == 0 else Color("a08cff"), 1.0 if set_card else 1.6)
 	shake(0.12 if set_card else 0.25)
 	if not set_card:
@@ -1313,10 +1364,24 @@ func anim_battle(p: int, inst, target) -> void:
 	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.82) + Vector3(0, 0.25, 0))
 	await _move(c, hit, 0.16, 0.15)
 	_attr_hit(inst, home.origin, goal + Vector3(0, 0.15, 0))
+	var th := holo_for(target)
+	if th:
+		th.hit()
+	await hit_stop(0.1 if target != null else 0.14)
 	await _wait(0.25)
 	await _move(c, home, 0.32, 0.3)
 	cam_release(0.45)
 	c.set_glow(false)
+
+
+## Freeze the whole table for a blink when a hit lands. Skipped when the duel is being
+## fast-forwarded, so tests and the Very fast setting keep their pace.
+func hit_stop(sec: float) -> void:
+	if Engine.time_scale > 1.01 or Settings.anim_speed > 2.0:
+		return
+	Engine.time_scale = 0.06
+	await get_tree().create_timer(sec, true, false, true).timeout
+	Engine.time_scale = 1.0
 
 
 func anim_attack_stopped(inst) -> void:
@@ -1497,6 +1562,10 @@ func anim_attack(p: int, inst, target) -> void:
 	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.82) + Vector3(0, 0.25, 0))
 	await _move(c, hit, 0.16, 0.15)
 	_attr_hit(inst, home.origin, goal + Vector3(0, 0.15, 0))
+	var th := holo_for(target)
+	if th:
+		th.hit()
+	await hit_stop(0.1 if target != null else 0.14)
 	await _wait(0.25)
 	await _move(c, home, 0.32, 0.3)
 	cam_release(0.45)

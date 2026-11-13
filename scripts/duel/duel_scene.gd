@@ -455,6 +455,7 @@ func _talk(p: int, kind: String, chance := 1.0, min_gap := 2.5) -> void:
 func _play_event(ev: Dictionary) -> void:
 	var p: int = ev.get("player", 0)
 	DuelAudio.on_event(ev, state)
+	_feed_event(ev, p)
 	match ev["type"]:
 		"turn":
 			var mine := p == ME
@@ -476,6 +477,8 @@ func _play_event(ev: Dictionary) -> void:
 		"draw":
 			_update_counts()
 			Sfx.play("draw", -6.0)
+			# The opening hands are dealt briskly; a draw during the duel takes its moment.
+			board.deal_fast = state.turn <= 0
 			await board.anim_draw(p, ev["card"], ev["deck"])
 			if p == ME:
 				hud.add_hand_card(ev["card"])
@@ -688,7 +691,52 @@ func _play_event(ev: Dictionary) -> void:
 	_update_counts()
 
 
+## One line in the play-by-play for what the other side does (and for what happens to you).
+func _feed_event(ev: Dictionary, p: int) -> void:
+	if _autoplay:
+		return
+	var c = ev.get("card")
+	var cn := str(c.cname()) if c != null and c.has_method("cname") else ""
+	var theirs := p == AI
+	match str(ev["type"]):
+		"summon":
+			if theirs:
+				hud.feed(p, "▲", Loc.t("Summoned %s  (%d ATK)") % [cn, int(c.atk())])
+		"set":
+			if theirs:
+				hud.feed(p, "▣", Loc.t("Set a monster face-down"))
+		"set_st":
+			if theirs:
+				hud.feed(p, "▣", Loc.t("Set a card face-down"))
+		"activate":
+			if theirs:
+				hud.feed(p, "✦", Loc.t("Activated %s") % cn)
+		"trap":
+			if theirs:
+				hud.feed(p, "!", Loc.t("Trap: %s") % cn)
+		"special":
+			if theirs:
+				hud.feed(p, "★", Loc.t("Special Summoned %s") % cn)
+		"flip":
+			if theirs:
+				hud.feed(p, "↻", Loc.t("Flipped %s face-up") % cn)
+		"attack":
+			if theirs:
+				var tg = ev.get("target")
+				if tg == null:
+					hud.feed(p, "⚔", Loc.t("%s attacks you directly") % cn)
+				else:
+					hud.feed(p, "⚔", Loc.t("%s attacks %s") % [cn, str(tg.cname()) if tg.face_up else Loc.t("your face-down monster")])
+		"destroy":
+			if c != null and c.owner == ME and cn != "":
+				hud.feed(AI, "✕", Loc.t("Your %s was destroyed") % cn)
+		"effect":
+			if theirs and cn != "":
+				hud.feed(p, "✦", Loc.t("Effect: %s") % cn)
+
+
 func _update_counts() -> void:
+	board.sync_holos(state)
 	for p in 2:
 		var ps := state.players[p]
 		hud.set_counts(p, ps.deck.size(), ps.hand.size(), ps.gy.size(), ps.banished.size())
@@ -1488,3 +1536,5 @@ func _demo_actions() -> void:
 
 func _exit_tree() -> void:
 	Settings.pace = 1.0
+	if Engine.time_scale < 1.0:
+		Engine.time_scale = 1.0

@@ -206,6 +206,7 @@ func set_portraits(a: String, b: String) -> void:
 
 ## A short line in a speech bubble next to the duelist. Doesn't block.
 var _cut_at: Array = [0, 0]
+var _feed: VBoxContainer
 var _coach: PanelContainer
 var _coach_label: Label
 var _coach_text := ""
@@ -343,10 +344,15 @@ func set_lp(p: int, lp: int, delta: int) -> void:
 	var from: float = _lp_values[p]
 	_lp_values[p] = lp
 	var lbl := _lp_labels[p]
+	# The count runs down as the damage number lands on the plate, not before.
+	var lag := Settings.t(0.62 if absi(delta) >= 1000 else 0.5) if delta != 0 else 0.0
 	var tw := create_tween()
-	tw.tween_method(func(v: float): lbl.text = str(int(round(v))), from, float(lp), Settings.t(0.7))
+	tw.tween_interval(lag)
+	tw.tween_method(func(v: float): lbl.text = str(int(round(v))), from, float(lp), Settings.t(0.55))
 	var bar := _lp_bars[p]
-	create_tween().tween_property(bar, "size:x", 250.0 * clampf(lp / 8000.0, 0.0, 1.0), Settings.t(0.7))
+	var btw := create_tween()
+	btw.tween_interval(lag)
+	btw.tween_property(bar, "size:x", 250.0 * clampf(lp / 8000.0, 0.0, 1.0), Settings.t(0.55)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	var col := UITheme.DANGER if delta < 0 else Color("4fd18b")
 	lbl.add_theme_color_override("font_color", col)
 	create_tween().tween_method(func(c: Color): lbl.add_theme_color_override("font_color", c), col, Color.WHITE, Settings.t(1.0))
@@ -912,12 +918,16 @@ func add_hand_card(inst) -> void:
 	glow.visible = false
 	glow.name = "Glow"
 	tr.add_child(glow)
-	tr.position = Vector2(300, -80)
+	tr.position = Vector2(520, -330)
+	tr.rotation = 0.5
+	tr.scale = Vector2(0.6, 0.6)
 	tr.modulate.a = 0.0
 	_hand_root.add_child(tr)
 	var entry := {"inst": inst, "node": tr}
 	_hand.append(entry)
 	tr.mouse_entered.connect(func():
+		if _hand_hover != _hand.find(entry):
+			Sfx.play("blip", -20.0, 1.5)
 		_hand_hover = _hand.find(entry)
 		hand_card_hovered.emit(inst)
 		_layout_hand())
@@ -927,6 +937,10 @@ func add_hand_card(inst) -> void:
 		_layout_hand())
 	tr.gui_input.connect(func(e):
 		if (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT) or (e is InputEventScreenTouch and e.pressed):
+			# A quick press-in so the click is felt before the menu opens.
+			var ptw := tr.create_tween()
+			ptw.tween_property(tr, "scale", Vector2(1.1, 1.1), 0.05)
+			ptw.tween_property(tr, "scale", Vector2(1.22, 1.22), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			hand_card_pressed.emit(inst, tr.global_position + Vector2(tr.size.x / 2.0, 0)))
 	_layout_hand()
 
@@ -951,28 +965,46 @@ func set_playable(insts: Array) -> void:
 		_playable[i] = true
 	for e in _hand:
 		(e["node"].get_node("Glow") as Panel).visible = _playable.has(e["inst"])
+	_layout_hand()
 
 
 func _layout_hand() -> void:
 	var n := _hand.size()
 	var spacing := minf(HAND_CARD.x * 0.82, 1050.0 / maxf(n, 1))
+	var hover_i := _hand_hover
+	for i in n:
+		if _hand[i]["inst"] == _focused:
+			hover_i = i
 	for i in n:
 		var node: Control = _hand[i]["node"]
 		var offset := i - (n - 1) / 2.0
-		var hovered: bool = i == _hand_hover or _hand[i]["inst"] == _focused
+		var hovered: bool = i == hover_i
 		var target := Vector2(offset * spacing - HAND_CARD.x / 2.0, -HAND_CARD.y * 0.72 + absf(offset) * 6.0)
 		var rot := deg_to_rad(offset * 2.5)
 		var sc := 1.0
+		# Cards you can play right now sit a little higher than the rest.
+		if _playable.has(_hand[i]["inst"]):
+			target.y -= 16.0
 		if hovered:
-			target.y = -HAND_CARD.y - 40
+			target.y = -HAND_CARD.y - 46
 			rot = 0.0
-			sc = 1.18
+			sc = 1.22
+		elif hover_i >= 0:
+			# The neighbors make room for the card you are pointing at.
+			var away := float(i - hover_i)
+			target.x += signf(away) * maxf(0.0, 62.0 - absf(away) * 18.0) * (1.0 if spacing < HAND_CARD.x * 0.8 else 0.6)
 		node.z_index = 10 if hovered else i
-		var tw := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		tw.tween_property(node, "position", target, 0.18)
-		tw.tween_property(node, "rotation", rot, 0.18)
-		tw.tween_property(node, "scale", Vector2(sc, sc), 0.18)
-		tw.tween_property(node, "modulate:a", 1.0, 0.18)
+		# One tween per card: a new layout replaces the old move instead of fighting it.
+		var old: Tween = node.get_meta("tw", null)
+		if old and old.is_valid():
+			old.kill()
+		var tw := create_tween().set_parallel().set_trans(Tween.TRANS_BACK if hovered else Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		var d := 0.13 if hovered else 0.17
+		tw.tween_property(node, "position", target, d)
+		tw.tween_property(node, "rotation", rot, d)
+		tw.tween_property(node, "scale", Vector2(sc, sc), d)
+		tw.tween_property(node, "modulate:a", 1.0, 0.14)
+		node.set_meta("tw", tw)
 
 
 # ------------------------------------------------------------------ prompts & menus
@@ -1294,6 +1326,49 @@ func actions_visible() -> bool:
 ## Ace monster moment: letterbox bars, the monster's name sweeping in, its stats.
 func summon_cinematic(card_name: String, atk: int, def: int, color: Color, mine: bool) -> void:
 	await cut_in(0 if mine else 1, card_name.to_upper(), Loc.t("ATK %d   ·   DEF %d") % [atk, def], color, 0.95, true)
+
+
+## The play-by-play: one short line per thing the other side just did, stacked under the menu
+## button and fading out on their own. `icon` is a single symbol shown in the side's color.
+func feed(p: int, icon: String, text: String) -> void:
+	if _feed == null:
+		_feed = VBoxContainer.new()
+		_feed.position = Vector2(236, 22)
+		_feed.custom_minimum_size = Vector2(400, 0)
+		_feed.add_theme_constant_override("separation", 6)
+		_feed.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_feed)
+	var col: Color = UITheme.ACCENT if p == 0 else Color("b59cff")
+	var pc := PanelContainer.new()
+	var sb := UITheme.panel_box(Color(0.03, 0.05, 0.1, 0.8), 10, Color(col, 0.4))
+	sb.border_width_left = 4
+	sb.content_margin_left = 12
+	sb.content_margin_right = 14
+	sb.content_margin_top = 5
+	sb.content_margin_bottom = 5
+	pc.add_theme_stylebox_override("panel", sb)
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pc.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 9)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pc.add_child(h)
+	h.add_child(UITheme.label(icon, 18, col, UITheme.title_font()))
+	var l := UITheme.label(text, 17, UITheme.TEXT, UITheme.semi_font())
+	l.clip_text = true
+	l.custom_minimum_size = Vector2(mini(350, 40 + text.length() * 9), 0)
+	h.add_child(l)
+	_feed.add_child(pc)
+	while _feed.get_child_count() > 3:
+		var first := _feed.get_child(0)
+		_feed.remove_child(first)
+		first.queue_free()
+	pc.modulate.a = 0.0
+	var tw := pc.create_tween()
+	tw.tween_property(pc, "modulate:a", 1.0, 0.15)
+	tw.tween_interval(6.5)
+	tw.tween_property(pc, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(pc.queue_free)
 
 
 ## An anime cut-in for one side: their portrait, big words and a small line.
