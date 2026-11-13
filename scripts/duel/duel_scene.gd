@@ -568,6 +568,8 @@ func _play_event(ev: Dictionary) -> void:
 			Sfx.play("draw", -6.0)
 			# The opening hands are dealt briskly; a draw during the duel takes its moment.
 			board.deal_fast = state.turn <= 0
+			if state.turn > 0:
+				board.duelist_body(p, "draw")
 			await board.anim_draw(p, ev["card"], ev["deck"])
 			if p == ME:
 				hud.add_hand_card(ev["card"])
@@ -584,6 +586,8 @@ func _play_event(ev: Dictionary) -> void:
 			if ev["type"] == "summon" and _pending_tributes > 0:
 				hud.banner("TRIBUTE SUMMON", UITheme.GOLD)
 			_pending_tributes = 0
+			if ev["type"] == "summon":
+				board.duelist_body(p, "summon", 1.4 if is_ace else 1.0)
 			await board.anim_summon(p, ev["card"], ev["zone"], ev["type"] == "set")
 			if p == ME and ev["type"] == "summon" and ev["card"].atk() >= 2000:
 				_talk(AI, "react", 0.65)
@@ -646,6 +650,7 @@ func _play_event(ev: Dictionary) -> void:
 				board.duelist_gesture(p, "attack")
 			elif randf() < 0.3:
 				_talk(p, "attack")
+			board.duelist_body(p, "attack", 1.3 if direct or int(atk_card.atk()) >= 2400 else 1.0)
 			Sfx.play("attack")
 			if board.track:
 				board.track.surge(p)
@@ -774,6 +779,7 @@ func _play_event(ev: Dictionary) -> void:
 				# The last hit of the duel: the winner gets the screen.
 				hud.cut_in(1 - p, Loc.t("FINISHING BLOW!"), Characters.line(_speaker(ME) if p == AI else _opp_key, "win"), UITheme.GOLD, 0.8, true)
 			if ev["delta"] < 0:
+				board.duelist_body(p, "hurt", float(-ev["delta"]) / 1500.0)
 				board.shake(0.5 if ev["delta"] > -2000 else 0.8)
 				if board.track:
 					board.track.wobble(p, ev["delta"] <= -2000)

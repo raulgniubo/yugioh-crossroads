@@ -5,6 +5,28 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.20
+
+- Turbo: ten Speed Spell cards (Full Throttle, Tailwind, Pit Stop, Slipstream Strike, Twin Turbo,
+  Afterburner, Road Clear, Overtake, Redline, Shockwave). Each needs a number of Speed Counters,
+  the big ones spend them. Both riders get a set shuffled in for every Turbo Duel.
+- Turbo: the road and barriers are drawn by shaders that stay sharp at speed (stretched lane
+  dashes, expansion joints, cat's eyes, scrolling chevrons), a blur at the screen edges that
+  grows with speed, holo gantry signs, boost chains and overtake bonuses on the ride.
+- Tournaments: the Highway Grand Prix (press G at the start line; race a lap, then a Turbo
+  Duel, three rounds; a better finish means more Speed Counters at the start) and the
+  Crossroads Cup at the Domino harbor for anyone holding the three other titles, with a Turbo
+  Duel in the semifinal.
+- Story: Chapter 3, "The Last Lap". New Domino and Satellite, three duels (two of them Turbo
+  Duels), one bond.
+- New Domino City: people talking, walking their rounds and waiting at the stadium, two street
+  duels to watch or join, Security drones, runners circling the ring road, benches to sit on,
+  four favors, weather, and two places to walk into: the Stadium Concourse and the cafe.
+- Satellite and Heartland: a first pass of the same (people, a street duel, weather).
+- Kame Game: pendant lamps, a game in progress on both duel tables, a card of the day by the
+  door. Academy main hall: dorm banners, chandeliers, a trophy case and the Dorm Cup board.
+- Duels: duelists step into their attacks, stagger when they take damage and rise on a summon.
+
 ## What is in 0.19
 
 - Tournaments: register at a tournament desk, earn Finals Badges by beating duelists around

@@ -1003,7 +1003,7 @@ func _layout_hand() -> void:
 			target.x += signf(away) * maxf(0.0, 62.0 - absf(away) * 18.0) * (1.0 if spacing < HAND_CARD.x * 0.8 else 0.6)
 		node.z_index = 10 if hovered else i
 		# One tween per card: a new layout replaces the old move instead of fighting it.
-		var old: Tween = node.get_meta("tw", null)
+		var old: Tween = node.get_meta("tw") if node.has_meta("tw") else null
 		if old and old.is_valid():
 			old.kill()
 		var tw := create_tween().set_parallel().set_trans(Tween.TRANS_BACK if hovered else Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)

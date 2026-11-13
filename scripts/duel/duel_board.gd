@@ -2066,6 +2066,58 @@ func duelist_gesture(p: int, kind: String) -> void:
 	fig._hold = minf(fig._hold, 3.0 if move in ["stomp", "cheer", "bow"] else 2.4)
 
 
+## The duelist's whole body sells the moment: a step into an attack, a stagger when hit,
+## a pull of the arm on a draw. Works with any model, since it moves the figure itself.
+var _body_tw := {}
+
+func duelist_body(p: int, kind: String, strength := 1.0) -> void:
+	if not _duelists.has(p) or not is_instance_valid(_duelists[p]):
+		return
+	var fig: Node3D = _duelists[p]
+	var side := 1.0 if p == 0 else -1.0
+	var home := Vector3(0, 0.0, side * DUELIST_Z)
+	if _body_tw.has(p) and _body_tw[p] and (_body_tw[p] as Tween).is_valid():
+		(_body_tw[p] as Tween).kill()
+	fig.position = home
+	fig.rotation.x = 0.0
+	fig.rotation.z = 0.0
+	var tw := create_tween()
+	_body_tw[p] = tw
+	match kind:
+		"attack":
+			# Wind up, then throw the whole body at the field.
+			tw.tween_property(fig, "rotation:x", -0.1, 0.12)
+			tw.parallel().tween_property(fig, "position:z", home.z + side * 0.12, 0.12)
+			tw.tween_property(fig, "rotation:x", 0.24 * strength, 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			tw.parallel().tween_property(fig, "position:z", home.z - side * 0.5 * strength, 0.1)
+			tw.tween_interval(0.35)
+			tw.tween_property(fig, "rotation:x", 0.0, 0.3).set_trans(Tween.TRANS_SINE)
+			tw.parallel().tween_property(fig, "position:z", home.z, 0.3).set_trans(Tween.TRANS_SINE)
+		"hurt":
+			# Knocked back on the heels, a shudder, then squaring up again.
+			var k := clampf(strength, 0.4, 1.6)
+			tw.tween_property(fig, "rotation:x", -0.22 * k, 0.07)
+			tw.parallel().tween_property(fig, "position:z", home.z + side * 0.42 * k, 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			for i in 3:
+				tw.tween_property(fig, "rotation:z", 0.07 * k * (1.0 if i % 2 == 0 else -1.0), 0.05)
+			tw.tween_property(fig, "rotation:z", 0.0, 0.05)
+			tw.tween_interval(0.2)
+			tw.tween_property(fig, "rotation:x", 0.0, 0.35).set_trans(Tween.TRANS_SINE)
+			tw.parallel().tween_property(fig, "position:z", home.z, 0.4).set_trans(Tween.TRANS_SINE)
+		"summon":
+			# Up on the toes as the card hits the disk.
+			tw.tween_property(fig, "position:y", 0.14 * strength, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			tw.parallel().tween_property(fig, "rotation:x", 0.12 * strength, 0.1)
+			tw.tween_property(fig, "position:y", 0.0, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			tw.tween_property(fig, "rotation:x", 0.0, 0.25)
+		"draw":
+			tw.tween_property(fig, "rotation:x", -0.08, 0.1)
+			tw.tween_property(fig, "rotation:x", 0.06, 0.12)
+			tw.tween_property(fig, "rotation:x", 0.0, 0.2)
+		_:
+			tw.tween_interval(0.01)
+
+
 ## Close-up on one duelist (0 = you, 1 = opponent), from the front and slightly below.
 ## `aside` slides the duelist toward the left of the frame, leaving room for a panel.
 func duelist_shot(p: int, dur := 0.6, cheer := false, aside := 0.0) -> void:
