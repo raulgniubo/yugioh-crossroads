@@ -9,6 +9,16 @@ const SITES := {
 		{"at": Vector3(4.8, 0.2, -40.2), "yaw": 0.0, "a": "street_duelist", "b": "duelist_m5", "decks": ["joey", "rex"], "fans": 4},
 		{"at": Vector3(-9.0, 0.2, 53.0), "yaw": 0.0, "a": "duelist_f1", "b": "student_boy", "decks": ["mai", "weevil"], "fans": 3},
 	],
+	"newdomino": [
+		{"at": Vector3(23.5, 0.1, -13.5), "yaw": 0.0, "a": "street_duelist", "b": "duelist_f1", "decks": ["crow", "akiza"], "fans": 4},
+		{"at": Vector3(-26.5, 0.1, 19.0), "yaw": 0.0, "a": "duelist_m9", "b": "duelist_m5", "decks": ["jack", "yusei"], "fans": 3},
+	],
+	"satellite": [
+		{"at": Vector3(-21.0, 0.05, 20.0), "yaw": 0.6, "a": "street_duelist", "b": "duelist_m5", "decks": ["crow", "yusei"], "fans": 3},
+	],
+	"heartland": [
+		{"at": Vector3(0.0, 0.05, -30.0), "yaw": 0.0, "a": "student_boy", "b": "duelist_f1", "decks": ["yuma", "kite"], "fans": 3},
+	],
 	"academy": [
 		{"at": Vector3(18.0, 0.16, -22.0), "yaw": 0.0, "a": "student_boy", "b": "student_girl", "decks": ["jaden", "alexis"], "fans": 3, "dorms": ["red", "blue"]},
 		{"at": Vector3(27.0, 0.16, -22.0), "yaw": 0.0, "a": "duelist_m9", "b": "student_boy", "decks": ["chazz", "syrus"], "fans": 2, "dorms": ["blue", "yellow"]},

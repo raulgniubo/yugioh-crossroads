@@ -28,6 +28,24 @@ const PEOPLE := ["student_boy", "student_girl", "office_worker", "stylish_woman"
 
 ## Favors people ask of you. "giver" is the id of someone in the district.
 const ERRANDS := {
+	"newdomino": [
+		{"id": "nd_wrench", "giver": "nd_rider", "thing": "the torque wrench", "at": Vector3(-26.0, 0, -5.6),
+			"ask": ["I lent my torque wrench to a guy at the Runner Showcase and he never brought it back.", "It's got orange tape on the handle. If you're headed up that way, grab it for me?"],
+			"wait": ["The showcase is north-west, past Security. Orange tape on the handle."],
+			"done": ["That's her! Twelve years I've had this wrench. Here, for the legwork."], "reward": 300},
+		{"id": "nd_part", "giver": "nd_rider", "thing": "a runner fuel cell", "at": Vector3(14.0, 0, 37.6),
+			"ask": ["Since you're so good at finding things: a courier dropped a fuel cell for me somewhere in the Daimon Market.", "It glows blue. Hard to miss, unless a cook has put it under a counter."],
+			"wait": ["The market row, south-east. Blue glow."],
+			"done": ["Still sealed. You just saved somebody's race. Take this, and come ride the ring some time."], "reward": 450},
+		{"id": "nd_collar", "giver": "nd_resident", "thing": "a diamond cat collar", "at": Vector3(20.6, 0, 20.4),
+			"ask": ["My cat came home from her walk without her collar. It is, I'm afraid, rather valuable.", "She likes the fountain and the square by the card shop. Would you look? I don't go down there."],
+			"wait": ["Somewhere between the fountain and the card shop, I imagine."],
+			"done": ["Oh, wonderful. She will pretend she never lost it. Please, take this for your trouble."], "reward": 400},
+		{"id": "nd_mic", "giver": "nd_mc", "thing": "the lucky microphone", "at": Vector3(-14.5, 0, 22.4),
+			"ask": ["Disaster! My lucky microphone! I had it at the cafe this morning and now I'm announcing with a spare!", "The crowd can TELL. Please, the cafe terrace, south-west!"],
+			"wait": ["The cafe terrace! South-west! Hurry, the qualifiers start soon!"],
+			"done": ["LAAADIES AND GENTLEMEN, it's BACK! You, my friend, are a hero of the sport. Take this!"], "reward": 350},
+	],
 	"domino": [
 		{"id": "dom_card", "giver": "kid", "thing": "a lost card", "at": Vector3(21.0, 0, 62.5),
 			"ask": ["Oh no, oh no... I dropped my best card somewhere by the harbor benches.", "If you see it, could you bring it back? I'll make it worth your while!"],
@@ -70,10 +88,15 @@ func setup(roam: Node) -> void:
 	errands = roam.extras._errands if roam.extras else {}
 	_build_clouds()
 	_build_halos()
-	if key == "academy":
-		_decor_academy()
-	else:
-		_decor_domino()
+	match key:
+		"academy":
+			_decor_academy()
+		"newdomino":
+			_decor_newdomino()
+		"satellite", "heartland":
+			_decor_arena()
+		_:
+			_decor_domino()
 	_build_seats()
 	_room_extras()
 	_build_routines()
@@ -729,6 +752,20 @@ func _night_shift() -> void:
 ## People with somewhere to be: each walks a loop of stops and does something at every one
 ## (looks over a shop window, checks a phone, watches the fountain), then moves on.
 const ROUTINES := {
+	"newdomino": [
+		["office_worker", "", [[Vector3(-8.6, 0.06, 36.0), 0.6, "stand", 5.0, "phone"], [Vector3(-9.2, 0.06, 13.0), 1.4, "stand", 6.0, "checkout"], [Vector3(-9.0, 0.06, -18.0), 0.9, "stand", 7.0, "listen"]]],
+		["stylish_woman", "", [[Vector3(26.5, 0.06, 23.6), 0.0, "browse", 6.0, ""], [Vector3(9.0, 0.06, 24.0), -1.2, "stand", 5.0, "phone"], [Vector3(14.0, 0.06, 38.4), 0.0, "browse", 7.0, ""]]],
+		["student_girl", "", [[Vector3(9.0, 0.06, -6.0), -1.0, "stand", 6.0, "cheer"], [Vector3(9.2, 0.06, -24.0), -0.6, "stand", 8.0, "checkout"], [Vector3(18.6, 0.06, -6.4), 1.0, "stand", 5.0, "listen"]]],
+		["duelist_m9", "", [[Vector3(-20.0, 0.06, -5.6), -0.6, "stand", 7.0, "checkout"], [Vector3(-27.0, 0.06, 12.4), 1.2, "stand", 5.0, "phone"], [Vector3(-10.0, 0.06, 22.6), 2.0, "stand", 6.0, "scratch"]]],
+	],
+	"satellite": [
+		["street_duelist", "", [[Vector3(-14.0, 0.02, 24.0), 1.2, "stand", 6.0, "scratch"], [Vector3(14.0, 0.02, 24.0), -1.2, "stand", 6.0, "checkout"], [Vector3(0.0, 0.02, 14.0), 0.0, "stand", 7.0, "listen"]]],
+		["duelist_m5", "", [[Vector3(24.0, 0.02, -8.0), -1.5, "stand", 6.0, "phone"], [Vector3(24.0, 0.02, 10.0), -1.5, "stand", 6.0, "checkout"]]],
+	],
+	"heartland": [
+		["student_girl", "", [[Vector3(-14.0, 0.02, 25.0), 1.2, "stand", 6.0, "phone"], [Vector3(14.0, 0.02, 25.0), -1.2, "stand", 6.0, "cheer"], [Vector3(0.0, 0.02, 14.0), 0.0, "stand", 7.0, "listen"]]],
+		["office_worker", "", [[Vector3(-23.0, 0.02, -6.0), 1.5, "stand", 6.0, "phone"], [Vector3(-23.0, 0.02, 12.0), 1.5, "stand", 6.0, "checkout"]]],
+	],
 	"domino": [
 		["office_worker", "", [[Vector3(13.0, 0.2, 12.2), 0.8, "stand", 5.0, "scratch"], [Vector3(15.6, 0.2, 15.2), 0.75, "stand", 7.0, "listen"], [Vector3(8.4, 0.16, 8.2), 2.6, "stand", 6.0, "phone"]]],
 		["student_girl", "", [[Vector3(-12.4, 0.16, -13.6), PI, "browse", 6.0, ""], [Vector3(-18.0, 0.16, -9.6), PI, "browse", 5.0, ""], [Vector3(-8.2, 0.16, -8.2), 0.8, "stand", 6.5, "phone"]]],
@@ -1038,6 +1075,147 @@ func _decor_domino() -> void:
 
 # ------------------------------------------------------------------ Duel Academy
 
+## New Domino City: tidy, bright and busy. Planters and bikes along the boulevard, people on
+## their way somewhere, Security drones overhead and runners circling the highway ring.
+var _drones: Array = []          # [node, center, radius, speed, phase, height]
+var _ring_runners: Array = []    # [node, along, speed, lane]
+
+func _decor_newdomino() -> void:
+	var g := 0.06
+	var k := 0
+	for z: float in [36.0, 29.0, 22.0, 15.0, -5.0, -11.5, -18.0, -24.5]:
+		for sx: float in [-1.0, 1.0]:
+			var p := Vector3(sx * 8.9, g, z + 3.2)
+			match k % 4:
+				0: planter(p, 1.8, PI / 2)
+				1: bin(Vector3(sx * 7.4, g, z + 1.6))
+				2: bike(p, PI / 2 + 0.2, [Color("ff8a3a"), Color("2de2e6"), Color("f2f6ff")][k % 3])
+				3: planter(p, 1.8, PI / 2, false)
+			k += 1
+	a_sign(Vector3(-11.6, g, 26.6), 0.9, Color("ff8ac0"))
+	a_sign(Vector3(9.4, g, 39.0), -0.6, Color("ffd166"))
+	a_sign(Vector3(25.6, g, 23.4), 0.3, Color("7cc4ff"))
+	mailbox(Vector3(-7.4, g, 43.0), PI / 2)
+	crate_stack(Vector3(26.5, g, 41.6), 3)
+	crate_stack(Vector3(8.6, g, 42.4), 2)
+	signpost(Vector3(7.6, g, 10.6), [["Stadium", PI / 2], ["Security HQ", PI], ["The Tops", 0.0], ["Highway Gate", -PI / 2]])
+	cat(Vector3(22.0, g, 39.6), 2.4, Color(0.92, 0.9, 0.86), "the market cat")
+	cat(Vector3(41.0, g, -12.0), 0.6, Color(0.24, 0.22, 0.26), "a Tops cat with a diamond collar")
+	flock(Vector3(-5.0, g, 14.5), 8, Color(0.86, 0.88, 0.92))
+	flock(Vector3(12.0, g, -14.0), 6, Color(0.86, 0.88, 0.92))
+	butterflies(Vector3(37.0, 0.9, -6.0), 7)
+	butterflies(Vector3(10.5, 1.0, 37.0), 4)
+	butterflies(Vector3(-10.5, 1.0, 23.0), 4)
+	if str(Router.roam.get("story", "")) == "":
+		chat_pair(Vector3(-8.8, g, 19.0), 0.5, "office_worker", "stylish_woman")
+		chat_pair(Vector3(9.2, g, 31.0), -0.8, "student_girl", "duelist_f1")
+		chat_pair(Vector3(-9.4, g, -22.0), 0.2, "duelist_m5", "student_boy")
+		chat_pair(Vector3(22.0, g, -3.6), 1.5, "stylish_woman", "office_worker")
+		chat_pair(Vector3(-24.0, g, -3.4), -1.5, "duelist_m9", "office_worker")
+		chat_pair(Vector3(17.5, g, 38.2), 1.3, "street_duelist", "student_girl")
+		chat_pair(Vector3(-13.6, g, 34.6), 2.2, "duelist_f1", "student_boy")
+		# Fans waiting at the stadium doors and people looking over the runners in the showcase.
+		for i in 4:
+			var f := _person(PEOPLE[(i * 3 + 1) % PEOPLE.size()], Vector3(-7.6 + i * 1.5 + (6.0 if i > 1 else 0.0), g, -24.6 - (i % 2) * 0.9), PI, "stand")
+			f.watch = null
+		_person("office_worker", Vector3(-25.0, g, -7.4), PI + 0.4, "browse").watch = null
+		_person("student_boy", Vector3(-30.6, g, -7.2), PI - 0.3, "browse").watch = null
+	# Security drones: small white bodies with a blinking light, each flying its own loop.
+	for d in [[Vector3(0, 0, 4), 13.0, 0.35, 7.5], [Vector3(-30, 0, 2), 9.0, -0.5, 9.0], [Vector3(20, 0, 28), 8.0, 0.45, 6.5], [Vector3(0, 0, -24), 11.0, -0.3, 10.0]]:
+		var n := Node3D.new()
+		add_child(n)
+		_ball(0.28, Vector3.ZERO, _m(Color(0.92, 0.94, 0.98), 0.3, 0.5), n, Vector3(1.0, 0.5, 1.4))
+		_box(Vector3(1.1, 0.03, 0.12), Vector3.ZERO, _m(Color(0.2, 0.22, 0.28), 0.5), n)
+		_box(Vector3(0.12, 0.03, 1.1), Vector3.ZERO, _m(Color(0.2, 0.22, 0.28), 0.5), n)
+		for rx: float in [-0.55, 0.55]:
+			_cyl(0.18, 0.18, 0.02, Vector3(rx, 0.04, 0), _m(Color(0.6, 0.8, 1.0, 0.5), 0.3), n, 10)
+		var eye := StandardMaterial3D.new()
+		eye.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		eye.albedo_color = Color("3a86ff")
+		_ball(0.08, Vector3(0, -0.1, 0.3), eye, n)
+		n.set_meta("eye", eye)
+		_drones.append([n, d[0], float(d[1]), float(d[2]), randf() * TAU, float(d[3])])
+	# Runners on the ring road overhead: streaks of light doing laps.
+	for i in 7:
+		var r := Node3D.new()
+		add_child(r)
+		var col: Color = [Color("ff8a3a"), Color("2de2e6"), Color("ff5a7a"), Color("f2f6ff")][i % 4]
+		var gm := StandardMaterial3D.new()
+		gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		gm.albedo_color = col
+		_box(Vector3(0.5, 0.5, 1.9), Vector3(0, 0.35, 0), _m(Color(0.12, 0.13, 0.17), 0.4, 0.4), r)
+		_box(Vector3(0.3, 0.12, 0.2), Vector3(0, 0.45, 1.0), gm, r)
+		var trail := StandardMaterial3D.new()
+		trail.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		trail.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		trail.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		trail.albedo_color = Color(col, 0.5)
+		_box(Vector3(0.24, 0.1, 5.0), Vector3(0, 0.3, -3.4), trail, r)
+		_ring_runners.append([r, i * 71.0, 26.0 + (i % 3) * 7.0, -2.4 if i % 2 == 0 else 2.4])
+
+
+## Where a runner is after `d` meters around the ring road (a square with its corners cut).
+func _ring_at(d: float, lane: float) -> Array:
+	var half_x := 60.0 + lane
+	var z0 := -62.0 - lane
+	var z1 := 54.0 + lane
+	var w := half_x * 2.0
+	var h := z1 - z0
+	d = fposmod(d, (w + h) * 2.0)
+	if d < w:
+		return [Vector3(-half_x + d, 15.6, z1), PI / 2.0]
+	d -= w
+	if d < h:
+		return [Vector3(half_x, 15.6, z1 - d), PI]
+	d -= h
+	if d < w:
+		return [Vector3(half_x - d, 15.6, z0), -PI / 2.0]
+	d -= w
+	return [Vector3(-half_x, 15.6, z0 + d), 0.0]
+
+
+## Satellite and Heartland: a first pass. People talking around the ring, a few things at the
+## edges, birds, and somebody always on the move.
+func _decor_arena() -> void:
+	var g := 0.02
+	var junk := key == "satellite"
+	for i in 6:
+		var ang := i * TAU / 6.0 + 0.5
+		var p := Vector3(cos(ang) * 30.0, g, sin(ang) * 30.0)
+		if junk:
+			crate_stack(p, 2 + i % 3)
+			if i % 2 == 0:
+				cone(p + Vector3(1.4, 0, 0.6))
+		else:
+			planter(p, 2.2, -ang + PI / 2)
+			if i % 2 == 0:
+				bin(p + Vector3(1.8, 0, 0.4))
+	if junk:
+		bike(Vector3(-27.0, g, 14.0), 0.7, Color("ff8a3a"))
+		bike(Vector3(26.0, g, -16.0), 2.2, Color("8a8f98"))
+		cat(Vector3(-18.0, g, -27.0), 1.2, Color(0.45, 0.4, 0.36), "a junkyard cat")
+		flock(Vector3(8.0, g, 27.0), 6, Color(0.2, 0.2, 0.24))
+	else:
+		a_sign(Vector3(-12.0, g, 30.0), 0.5, Color("ffd23a"))
+		a_sign(Vector3(13.0, g, 29.0), -0.5, Color("7cc4ff"))
+		cat(Vector3(18.0, g, -27.0), -1.2, Color(0.95, 0.8, 0.5), "a very round cat")
+		flock(Vector3(-8.0, g, 27.0), 8)
+		butterflies(Vector3(20.0, 1.0, 26.0), 5)
+		butterflies(Vector3(-26.0, 1.0, -12.0), 4)
+	if str(Router.roam.get("story", "")) == "":
+		var folk: Array = ["street_duelist", "duelist_m5", "duelist_m9", "duelist_f1"] if junk else ["student_girl", "student_boy", "office_worker", "stylish_woman"]
+		chat_pair(Vector3(-10.0, g, 28.5), 1.3, folk[0], folk[1])
+		chat_pair(Vector3(27.5, g, 3.0), 0.2, folk[2], folk[3])
+		chat_pair(Vector3(-27.5, g, -3.0), 0.4, folk[1], folk[2])
+		chat_pair(Vector3(9.0, g, -27.0), 1.6, folk[3], folk[0])
+		# A few people at the ring ropes, watching whoever is up.
+		for i in 4:
+			var ang := 0.6 + i * 0.75
+			var wp := Vector3(cos(ang) * 9.6, g, sin(ang) * 7.2 + (0.0 if i < 2 else 0.0))
+			var w := _person(folk[i % folk.size()], wp, atan2(-wp.x, -wp.z), "stand")
+			w.watch = null
+
+
 func _decor_academy() -> void:
 	_island_extras()
 	# Hedges and flower beds along the main walk, lanterns at the forks.
@@ -1134,6 +1312,18 @@ func _process(delta: float) -> void:
 			n.rotation.z = sin(_t * 0.8 + int(n.get_meta("boat"))) * 0.05
 			if n.position.x > 220.0:
 				n.position.x = -220.0
+	for d in _drones:
+		var dn: Node3D = d[0]
+		var a := _t * float(d[3]) + float(d[4])
+		var c: Vector3 = d[1]
+		dn.position = c + Vector3(cos(a) * float(d[2]), float(d[5]) + sin(_t * 1.3 + float(d[4])) * 0.35, sin(a) * float(d[2]))
+		dn.rotation.y = -a + (0.0 if float(d[3]) > 0.0 else PI)
+		((dn.get_meta("eye")) as StandardMaterial3D).albedo_color = Color("ff3a4a") if fmod(_t + float(d[4]), 1.2) < 0.25 else Color("3a86ff")
+	for rr in _ring_runners:
+		rr[1] = float(rr[1]) + float(rr[2]) * delta
+		var at := _ring_at(float(rr[1]), float(rr[3]))
+		(rr[0] as Node3D).position = at[0]
+		(rr[0] as Node3D).rotation.y = float(at[1])
 	_birds(delta, pp)
 	# Chatting pairs trade turns.
 	for pr in _pairs:

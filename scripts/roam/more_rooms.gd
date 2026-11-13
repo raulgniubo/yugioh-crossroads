@@ -15,8 +15,35 @@ const ROOMS := {
 	"ac_class": {"district": "academy", "name": "Lecture Hall", "area": "Today's class is in session", "at": Vector3(800, 0, -400), "half": Vector2(8.0, 7.0), "height": 5.0,
 		"door": Vector3(36.4, 0, -19.0), "out": Vector3(-1, 0, 0), "label": "Enter the lecture hall", "music": "shop",
 		"floor": Color(0.5, 0.36, 0.24), "wall": Color(0.92, 0.9, 0.84), "trim": Color("7cc4ff")},
+	"nd_stadium": {"district": "newdomino", "name": "Stadium Concourse", "area": "Fortune Cup qualifiers, gates A and B", "at": Vector3(720, 0, 400), "half": Vector2(11.0, 8.0), "height": 7.0,
+		"door": Vector3(0, 0, -29.6), "out": Vector3(0, 0, 1), "label": "Enter the stadium", "music": "shop",
+		"floor": Color(0.2, 0.22, 0.28), "wall": Color(0.86, 0.88, 0.93), "trim": Color("ffd166")},
+	"nd_cafe": {"district": "newdomino", "name": "Cafe Terrace", "area": "Coffee, cake and table duels", "at": Vector3(800, 0, 400), "half": Vector2(7.0, 5.5), "height": 3.6,
+		"door": Vector3(-25.4, 0, 31.0), "out": Vector3(1, 0, 0), "label": "Enter the cafe", "music": "shop",
+		"floor": Color(0.5, 0.36, 0.26), "wall": Color(0.96, 0.9, 0.86), "trim": Color("ff8ac0")},
 }
 const PEOPLE := {
+	"nd_stadium": [
+		{"id": "st_clerk", "char": "", "model": "stylish_woman", "name": "Ticket Clerk", "color": Color("ffd166"), "pos": Vector3(0, 0, -5.6), "face": 0.0,
+			"lines": ["Welcome to New Domino Stadium. Tonight is sold out. Tomorrow is sold out. The qualifiers on the concourse are free.", "The exhibition duelist by Gate B takes all comers. The crowd loves a new face."]},
+		{"id": "st_champ", "char": "", "model": "duelist_m9", "name": "Exhibition Duelist", "color": Color("ff5a7a"), "pos": Vector3(6.4, 0, 0.6), "face": -1.2,
+			"lines": ["Forty thousand seats up those stairs. Every one of them boos a slow player.", "Step up. Let's give the early crowd something to shout about."],
+			"duel": {"deck": "jack", "difficulty": 3, "intro": "Lights on. Crowd up. Duel!"}},
+		{"id": "st_fan1", "char": "", "model": "student_boy", "name": "Wide-eyed Fan", "color": Color("7cc4ff"), "pos": Vector3(-1.4, 0, 1.6), "face": PI,
+			"lines": ["That's the real Fortune Cup. I've never been this close to it.", "They say the winner's name goes on the base. There's room for one more."]},
+		{"id": "st_fan2", "char": "", "model": "duelist_f1", "name": "Season Ticket Holder", "color": Color("ffd166"), "pos": Vector3(-6.8, 0, -1.2), "face": 1.3,
+			"lines": ["Gate A is the cheap seats. Best view in the house, don't let anyone tell you different.", "I bring my deck to every match. You never know when they'll call someone down from the stands."],
+			"duel": {"deck": "crow", "difficulty": 2, "intro": "Call ME down from the stands!"}},
+	],
+	"nd_cafe": [
+		{"id": "cafe_barista", "char": "", "model": "stylish_woman", "name": "Barista", "color": Color("ff8ac0"), "pos": Vector3(-2.6, 0, -3.9), "face": 0.0,
+			"lines": ["Welcome in. The house blend is called Synchro: two beans, one cup, more than the sum.", "Order at the register. The table by the window is the duel table, so mind your cup."]},
+		{"id": "cafe_duelist", "char": "", "model": "duelist_m5", "name": "Table Regular", "color": Color("ffd166"), "pos": Vector3(4.2, 0, 1.3), "face": -1.57,
+			"lines": ["I've held this table since opening. Six duels, six wins, four coffees.", "Sit. Shuffle. Loser buys the next round."],
+			"duel": {"deck": "akiza", "difficulty": 2, "intro": "Loser buys!"}},
+		{"id": "cafe_writer", "char": "", "model": "office_worker", "name": "Duel Reporter", "color": Color("7cc4ff"), "pos": Vector3(-4.6, 0, 1.8), "face": 1.2,
+			"lines": ["I'm writing up the Grand Prix on the highway. The riders say the Speed Spells decide it, not the engines.", "If you win the Crossroads Cup, I want the first interview. I'll buy the coffee."]},
+	],
 	"ac_class": [
 		{"id": "class_prof", "char": "", "model": "office_worker", "name": "Professor Halden", "color": Color("7cc4ff"), "pos": Vector3(-2.6, 0, -5.0), "face": 0.3,
 			"lines": ["Sit anywhere. Today's lesson is the same as every day: read the field before you read your hand.", "Your class duel is at the front when you are ready. Friday decides who moves up a dorm."]},
@@ -44,6 +71,10 @@ const PEOPLE := {
 			"duel": {"deck": "syrus", "difficulty": 2, "intro": "Chapter twelve: applied dueling!"}},
 	],
 }
+const CUP_LINES := ["The Fortune Cup. Taller than you thought, and a lot shinier.", "Names are engraved round the base. The newest one is still bright.",
+	"You can see your own face in it. It looks like it belongs there.", "A small plate reads: 'To the duelist the whole city cheered for.'"]
+const COFFEES := ["A Synchro blend, strong and smooth. You feel sharper already.", "Caramel latte with a little dragon drawn in the foam. You almost don't want to drink it.",
+	"Espresso. One sip and the whole table comes into focus.", "Iced mocha. The barista slips a cookie onto the saucer.", "Matcha, bright green, served with a nod of respect."]
 const TIPS := ["A face-down monster in Defense is safer than a weak one in Attack.", "Hold your removal for their best monster, not their first.",
 	"If your hand is empty, the duel is deciding itself without you. Keep cards.", "Tribute the monster they are about to destroy anyway.",
 	"A Trap you never use still made them play around it.", "Direct attacks win duels. Clear the way first."]
@@ -55,6 +86,8 @@ static func dress(city: CityBuilder, key: String, o: Vector3, half: Vector2, hgt
 		"mart": _mart(city, o, half, hgt)
 		"ac_library": _library(city, o, half, hgt)
 		"ac_class": _lecture(city, o, half, hgt)
+		"nd_stadium": _stadium(city, o, half, hgt)
+		"nd_cafe": _cafe(city, o, half, hgt)
 
 
 static func _sign(city: CityBuilder, text: String, pos: Vector3, rot: float, color: Color, size: int) -> void:
@@ -702,6 +735,11 @@ static func add_spots(scene: Node) -> void:
 			"mart":
 				scene._spots.append({"pos": o + Vector3(half.x - 2.0, 0, half.y - 1.6), "range": 1.4, "label": "Lucky draw  ·  free once a day", "action": func(): _lucky(scene)})
 				scene._spots.append({"pos": o + Vector3(-half.x + 1.7, 0, 0.4), "range": 1.4, "label": "Buy a drink  ·  10 DP", "action": func(): scene.life._drink() if scene.life else null})
+			"nd_stadium":
+				scene._spots.append({"pos": o + Vector3(0.0, 0, -0.2), "range": 1.6, "label": "Look at the Fortune Cup", "action": func(): Router.toast(Loc.t(CUP_LINES[randi() % CUP_LINES.size()]))})
+				scene._spots.append({"pos": o + Vector3(-7.4, 0, 3.4), "range": 1.5, "label": "Fan quiz  ·  win Duel Points", "action": func(): _quiz(scene)})
+			"nd_cafe":
+				scene._spots.append({"pos": o + Vector3(0.6, 0, -2.6), "range": 1.4, "label": "Order a coffee  ·  15 DP", "action": func(): _coffee()})
 			"ac_class":
 				scene._spots.append({"pos": o + Vector3(1.8, 0, -4.2), "range": 1.6, "label": "Step up for today's class duel", "action": func(): _class_duel(scene)})
 				scene._spots.append({"pos": o + Vector3(0.0, 0, 3.4), "range": 1.4, "label": "Sit in on the lesson (quiz)", "action": func(): _quiz(scene)})
@@ -765,6 +803,222 @@ static func _lecture(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -
 	for sx: float in [-1.0, 1.0]:
 		for k in 3:
 			_window(city, o + Vector3(sx * (half.x - 0.03), 3.0, -4.0 + k * 4.0), 1.8, 1.8, false)
+
+
+## A cup at the cafe: costs a little, comes with a duel tip from whoever is at the next table.
+static func _coffee() -> void:
+	if Collection.dp < 15:
+		Router.toast(Loc.t("Not enough Duel Points for a coffee."))
+		return
+	Collection.dp -= 15
+	Collection.save()
+	Sfx.play("pickup", -6.0)
+	Router.toast(Loc.t(COFFEES[randi() % COFFEES.size()]))
+	await Engine.get_main_loop().create_timer(2.6).timeout
+	Router.toast(Loc.t("Overheard at the next table: %s") % Loc.t(TIPS[randi() % TIPS.size()]))
+
+
+## The stadium concourse: the Fortune Cup on a lit plinth, the ticket desk, two gates up to
+## the stands, a wall of screens and banners in the three league colors.
+static func _stadium(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> void:
+	var steel := city.mat(Color(0.82, 0.85, 0.9), 0.3, 0.6)
+	var dark := city.mat(Color(0.1, 0.11, 0.15), 0.5, 0.3)
+	var gold := city.glow_mat(Color(0.95, 0.74, 0.25), 0.4)
+	# A runway of light from the door to the cup, and a ring on the floor around it.
+	city.box(Vector3(2.4, 0.012, half.y * 2 - 1.0), o + Vector3(0, 0.012, 0.3), city.mat(Color(0.5, 0.1, 0.14), 0.9), false)
+	for sx: float in [-1.0, 1.0]:
+		city.box(Vector3(0.06, 0.014, half.y * 2 - 1.0), o + Vector3(sx * 1.2, 0.014, 0.3), city.glow_mat(Color("ffd166"), 1.6), false)
+	var ring := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = 2.3
+	tm.outer_radius = 2.42
+	tm.rings = 48
+	ring.mesh = tm
+	ring.material_override = city.glow_mat(Color("ffd166"), 2.0)
+	ring.scale = Vector3(1, 0.1, 1)
+	ring.position = o + Vector3(0, 0.03, -1.4)
+	city.add_child(ring)
+	# The cup: a stepped plinth, the trophy turning slowly, four rope posts.
+	var pc := o + Vector3(0, 0, -1.4)
+	city.cyl(1.1, 1.25, 0.4, pc + Vector3(0, 0.2, 0), dark, null, 24)
+	city.cyl(0.8, 0.9, 0.5, pc + Vector3(0, 0.65, 0), city.mat(Color(0.86, 0.88, 0.93), 0.4), null, 24)
+	city.cyl(0.82, 0.82, 0.03, pc + Vector3(0, 0.91, 0), city.glow_mat(Color("ffd166"), 2.2), null, 24)
+	var cup := Node3D.new()
+	cup.position = pc + Vector3(0, 0.93, 0)
+	city.add_child(cup)
+	city.cyl(0.3, 0.36, 0.14, Vector3(0, 0.07, 0), gold, cup, 16)
+	city.cyl(0.07, 0.12, 0.5, Vector3(0, 0.39, 0), gold, cup, 10)
+	city.cyl(0.46, 0.12, 0.7, Vector3(0, 0.99, 0), gold, cup, 20)
+	city.cyl(0.5, 0.5, 0.05, Vector3(0, 1.36, 0), gold, cup, 20)
+	for hx: float in [-1.0, 1.0]:
+		city.box(Vector3(0.06, 0.5, 0.06), Vector3(hx * 0.56, 1.0, 0), gold, false, cup)
+		city.box(Vector3(0.2, 0.06, 0.06), Vector3(hx * 0.48, 1.26, 0), gold, false, cup)
+		city.box(Vector3(0.2, 0.06, 0.06), Vector3(hx * 0.42, 0.76, 0), gold, false, cup)
+	var spin := cup.create_tween().set_loops()
+	spin.tween_property(cup, "rotation:y", TAU, 14.0).from(0.0)
+	var cl := SpotLight3D.new()
+	cl.light_color = Color(1.0, 0.92, 0.7)
+	cl.light_energy = 6.0
+	cl.spot_range = 9.0
+	cl.spot_angle = 22.0
+	cl.position = pc + Vector3(0, hgt - 0.4, 0)
+	cl.rotation.x = -PI / 2.0
+	city.add_child(cl)
+	for a in 4:
+		var ang := a * TAU / 4.0 + PI / 4.0
+		var rp := pc + Vector3(cos(ang) * 1.9, 0, sin(ang) * 1.9)
+		city.cyl(0.05, 0.07, 0.95, rp + Vector3(0, 0.475, 0), steel, null, 8)
+		city.cyl(0.09, 0.09, 0.05, rp + Vector3(0, 0.96, 0), gold, null, 8)
+		var nx := pc + Vector3(cos(ang + TAU / 4.0) * 1.9, 0, sin(ang + TAU / 4.0) * 1.9)
+		var rope := city.box(Vector3(0.04, 0.04, rp.distance_to(nx)), (rp + nx) / 2.0 + Vector3(0, 0.8, 0), city.mat(Color(0.62, 0.1, 0.14), 0.8), false)
+		rope.look_at_from_position(rope.position, nx + Vector3(0, 0.8, 0), Vector3.UP)
+	# The ticket desk under a wall of screens.
+	city.box(Vector3(6.4, 1.05, 0.9), o + Vector3(0, 0.525, -half.y + 1.6), city.mat(Color(0.16, 0.18, 0.24), 0.4, 0.3))
+	city.box(Vector3(6.6, 0.07, 1.1), o + Vector3(0, 1.08, -half.y + 1.6), steel, false)
+	city.box(Vector3(6.4, 0.1, 0.04), o + Vector3(0, 0.6, -half.y + 2.06), city.glow_mat(Color("ffd166"), 1.8), false)
+	_sign(city, "TICKETS  ·  QUALIFIERS", o + Vector3(0, 1.75, -half.y + 2.1), 0.0, Color("ffe9a8"), 48)
+	var cols := [Color("ff5a7a"), Color("ffd166"), Color("7cc4ff")]
+	for k in 3:
+		var sp := o + Vector3(-4.6 + k * 4.6, 4.3, -half.y + 0.08)
+		city.box(Vector3(4.2, 2.5, 0.1), sp, dark, false)
+		city.box(Vector3(4.0, 2.3, 0.06), sp + Vector3(0, 0, 0.05), city.glow_mat(cols[k].darkened(0.55), 0.9), false)
+		city.box(Vector3(4.0, 0.08, 0.07), sp + Vector3(0, -0.8, 0.06), city.glow_mat(cols[k], 2.0), false)
+		_sign(city, ["TONIGHT  20:00", "FORTUNE CUP", "GRAND PRIX  ·  LIVE"][k], sp + Vector3(0, 0.45, 0.1), 0.0, Color.WHITE, 60)
+		_sign(city, ["THE KING  vs  ???", "QUALIFIERS OPEN", "HIGHWAY RING"][k], sp + Vector3(0, -0.3, 0.1), 0.0, cols[k].lightened(0.4), 40)
+	# Gates up to the stands on both side walls: a lit arch and stairs fading into the glare.
+	for sx: float in [-1.0, 1.0]:
+		var gp := o + Vector3(sx * (half.x - 0.06), 0, 1.0)
+		city.box(Vector3(0.1, 3.4, 3.0), gp + Vector3(0, 1.7, 0), city.glow_mat(Color(0.9, 0.95, 1.0), 1.7), false)
+		city.box(Vector3(0.3, 3.8, 0.4), gp + Vector3(-sx * 0.1, 1.9, -1.7), steel, false)
+		city.box(Vector3(0.3, 3.8, 0.4), gp + Vector3(-sx * 0.1, 1.9, 1.7), steel, false)
+		city.box(Vector3(0.3, 0.4, 3.8), gp + Vector3(-sx * 0.1, 3.8, 0), steel, false)
+		for st in 4:
+			city.box(Vector3(0.5, 0.2, 2.8), gp + Vector3(-sx * (0.4 + st * 0.5), 0.1 + (3 - st) * 0.2, 0), city.mat(Color(0.7, 0.72, 0.78), 0.6), false)
+		_sign(city, "GATE A" if sx < 0.0 else "GATE B", gp + Vector3(-sx * 0.3, 4.4, 0), -sx * PI / 2.0, Color("ffd166"), 64)
+		# League banners between the gates and the back wall.
+		for k in 2:
+			var bp := o + Vector3(sx * (half.x - 0.08), hgt - 2.6, -3.6 - k * 2.4)
+			city.box(Vector3(0.05, 3.4, 1.5), bp, city.mat(cols[(k + (0 if sx < 0.0 else 1)) % 3], 0.85), false)
+			city.box(Vector3(0.06, 0.7, 0.7), bp + Vector3(-sx * 0.01, 0.6, 0), city.glow_mat(Color(1, 1, 1), 0.5), false)
+		# Benches and a planter near the door.
+		city.box(Vector3(2.6, 0.12, 0.6), o + Vector3(sx * 6.4, 0.46, half.y - 1.0), city.mat(Color(0.9, 0.92, 0.96), 0.4))
+		for lz: float in [-1.1, 1.1]:
+			city.box(Vector3(0.1, 0.42, 0.5), o + Vector3(sx * 6.4 + lz, 0.21, half.y - 1.0), dark, false)
+		city.cyl(0.4, 0.32, 0.6, o + Vector3(sx * 3.6, 0.3, half.y - 0.9), city.mat(Color(0.86, 0.88, 0.93), 0.5), null, 12)
+		var leaf := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 0.55
+		sm.height = 1.2
+		leaf.mesh = sm
+		leaf.material_override = city.mat(Color(0.2, 0.5, 0.28), 0.95)
+		leaf.position = o + Vector3(sx * 3.6, 1.1, half.y - 0.9)
+		city.add_child(leaf)
+	# The quiz stand by Gate A, and a crowd murmur of light on the ceiling.
+	var qs := o + Vector3(-8.4, 0, 3.6)
+	city.box(Vector3(1.2, 1.0, 0.7), qs + Vector3(0, 0.5, 0), city.mat(Color(0.14, 0.2, 0.42), 0.5))
+	city.box(Vector3(1.3, 0.06, 0.8), qs + Vector3(0, 1.03, 0), steel, false)
+	city.box(Vector3(1.0, 0.7, 0.06), qs + Vector3(0, 1.6, -0.2), city.glow_mat(Color("7cc4ff"), 1.2), false)
+	_sign(city, "FAN QUIZ", qs + Vector3(0, 2.2, -0.2), 0.0, Color("7cc4ff"), 44)
+	_sign(city, "NEW DOMINO STADIUM", o + Vector3(0, hgt - 0.7, -half.y + 0.14), 0.0, Color("ffd166"), 110)
+	for k in 5:
+		city.box(Vector3(half.x * 2 - 1.0, 0.05, 0.12), o + Vector3(0, hgt - 0.03, -half.y + 2.0 + k * 3.0), city.glow_mat(Color(0.9, 0.95, 1.0), 2.0), false)
+
+
+## The cafe: a long counter with the machine and a cake case, a menu board, round tables,
+## a booth under the window and the duel table everyone keeps an eye on.
+static func _cafe(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> void:
+	var wood := city.mat(Color(0.42, 0.27, 0.17), 0.6)
+	var cream := city.mat(Color(0.96, 0.93, 0.88), 0.7)
+	var dark := city.mat(Color(0.14, 0.12, 0.12), 0.5, 0.2)
+	var pink := city.mat(Color(0.95, 0.6, 0.72), 0.8)
+	# Checkered floor in front of the counter.
+	for ix in 14:
+		for iz in 3:
+			if (ix + iz) % 2 == 0:
+				city.box(Vector3(0.98, 0.012, 0.98), o + Vector3(-6.5 + ix, 0.012, -2.5 + iz), cream, false)
+	# The counter along the back, register, machine, cake case.
+	city.box(Vector3(9.0, 1.05, 0.9), o + Vector3(-1.4, 0.525, -3.3), wood)
+	city.box(Vector3(9.2, 0.07, 1.1), o + Vector3(-1.4, 1.08, -3.3), cream, false)
+	city.box(Vector3(9.0, 0.5, 0.04), o + Vector3(-1.4, 0.6, -2.84), pink, false)
+	city.box(Vector3(0.5, 0.36, 0.4), o + Vector3(0.6, 1.3, -3.3), dark, false)
+	city.box(Vector3(0.4, 0.22, 0.03), o + Vector3(0.6, 1.58, -3.2), city.glow_mat(Color("7cc4ff"), 1.2), false)
+	city.box(Vector3(1.1, 0.7, 0.6), o + Vector3(-4.6, 1.46, -3.4), city.mat(Color(0.75, 0.77, 0.8), 0.25, 0.8), false)
+	for k in 2:
+		city.cyl(0.05, 0.05, 0.22, o + Vector3(-4.85 + k * 0.5, 1.2, -3.05), dark, null, 8)
+	city.box(Vector3(0.3, 0.06, 0.03), o + Vector3(-4.6, 1.7, -3.09), city.glow_mat(Color("ff8a3a"), 2.0), false)
+	var glass := city.mat(Color(0.85, 0.95, 1.0, 0.22), 0.05)
+	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	city.box(Vector3(2.2, 0.6, 0.7), o + Vector3(-2.0, 1.42, -3.3), glass, false)
+	var cakes := [Color("ffd9e6"), Color("6b3a22"), Color("fff3c4"), Color("c8e6a0"), Color("ff9aa8")]
+	for k in 5:
+		city.cyl(0.14, 0.14, 0.14, o + Vector3(-2.8 + k * 0.4, 1.2, -3.3), city.mat(cakes[k], 0.8), null, 12)
+		city.cyl(0.03, 0.03, 0.04, o + Vector3(-2.8 + k * 0.4, 1.29, -3.3), city.mat(Color("d9342b"), 0.5), null, 6)
+	# Shelves of cups and jars behind, and the menu board.
+	for lvl in 2:
+		city.box(Vector3(5.0, 0.05, 0.3), o + Vector3(-3.4, 1.9 + lvl * 0.5, -half.y + 0.2), wood, false)
+		for k in 11:
+			var jc: Color = [Color(0.95, 0.95, 0.95), Color(0.6, 0.36, 0.2), Color(0.9, 0.7, 0.5), Color(0.5, 0.7, 0.6)][(k + lvl) % 4]
+			city.cyl(0.07, 0.06, 0.16 + (k % 3) * 0.04, o + Vector3(-5.6 + k * 0.44, 2.02 + lvl * 0.5, -half.y + 0.2), city.mat(jc, 0.5), null, 8)
+	city.box(Vector3(3.4, 1.5, 0.06), o + Vector3(2.4, 2.35, -half.y + 0.06), dark, false)
+	_sign(city, "TODAY'S MENU", o + Vector3(2.4, 2.9, -half.y + 0.12), 0.0, Color("ffd9e6"), 40)
+	_sign(city, "SYNCHRO BLEND  ·  15", o + Vector3(2.4, 2.52, -half.y + 0.12), 0.0, Color.WHITE, 26)
+	_sign(city, "TUNER LATTE  ·  15", o + Vector3(2.4, 2.26, -half.y + 0.12), 0.0, Color.WHITE, 26)
+	_sign(city, "STARDUST CAKE  ·  ask", o + Vector3(2.4, 2.0, -half.y + 0.12), 0.0, Color.WHITE, 26)
+	_sign(city, "ORDER HERE", o + Vector3(0.6, 2.05, -2.84), 0.0, Color("ff8ac0"), 34)
+	# Round tables with two chairs each; the one by the window is the duel table.
+	for tp: Vector3 in [Vector3(-4.6, 0, 0.6), Vector3(-1.4, 0, 2.6), Vector3(1.4, 0, 0.4), Vector3(4.6, 0, 2.6)]:
+		var c := o + tp
+		city.cyl(0.6, 0.6, 0.05, c + Vector3(0, 0.76, 0), cream, null, 20)
+		city.cyl(0.05, 0.05, 0.74, c + Vector3(0, 0.37, 0), dark, null, 8)
+		city.cyl(0.3, 0.34, 0.04, c + Vector3(0, 0.02, 0), dark, null, 12)
+		for a: float in [0.4, 3.5]:
+			var cp := c + Vector3(cos(a) * 0.95, 0, sin(a) * 0.95)
+			city.cyl(0.22, 0.22, 0.05, cp + Vector3(0, 0.46, 0), pink, null, 12)
+			city.cyl(0.03, 0.03, 0.46, cp + Vector3(0, 0.23, 0), dark, null, 6)
+			city.box(Vector3(0.36, 0.4, 0.04), cp + Vector3(cos(a) * 0.2, 0.72, sin(a) * 0.2), wood, false).rotation.y = -a + PI / 2.0
+		city.cyl(0.05, 0.04, 0.09, c + Vector3(0.2, 0.83, 0.1), cream, null, 8)
+		city.cyl(0.08, 0.08, 0.012, c + Vector3(0.2, 0.79, 0.1), cream, null, 10)
+	var dt := o + Vector3(4.6, 0.79, 2.6)
+	city.box(Vector3(0.8, 0.008, 0.5), dt, city.mat(Color(0.1, 0.22, 0.4), 0.9), false)
+	for k in 4:
+		var card := Sprite3D.new()
+		card.texture = Cards.get_back()
+		card.pixel_size = 0.13 / maxf(1.0, card.texture.get_height())
+		card.rotation.x = -PI / 2.0
+		card.rotation.y = 0.0 if k < 2 else PI
+		card.shaded = false
+		card.position = dt + Vector3(-0.12 + (k % 2) * 0.24, 0.01, 0.12 if k < 2 else -0.12)
+		city.add_child(card)
+	# A booth along the left wall and a wide window on the right with the terrace light.
+	city.box(Vector3(0.7, 0.45, 5.0), o + Vector3(-half.x + 0.4, 0.225, 1.6), pink)
+	city.box(Vector3(0.16, 1.0, 5.0), o + Vector3(-half.x + 0.1, 0.9, 1.6), pink, false)
+	_window(city, o + Vector3(half.x - 0.03, 1.9, 1.4), 4.6, 1.6, false, Color(0.72, 0.88, 1.0))
+	var pool := city.box(Vector3(2.0, 0.012, 4.4), o + Vector3(half.x - 1.4, 0.013, 1.4), city.glow_mat(Color(1.0, 0.95, 0.85), 0.2), false)
+	pool.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Warm pendant lamps over the tables and plants in the corners.
+	for lp: Vector3 in [Vector3(-4.6, 0, 0.6), Vector3(-1.4, 0, 2.6), Vector3(1.4, 0, 0.4), Vector3(4.6, 0, 2.6)]:
+		var at := o + Vector3(lp.x, hgt - 0.9, lp.z)
+		city.cyl(0.012, 0.012, 0.8, at + Vector3(0, 0.45, 0), dark, null, 6)
+		city.cyl(0.08, 0.26, 0.2, at, pink, null, 12)
+		city.cyl(0.1, 0.1, 0.03, at + Vector3(0, -0.1, 0), city.glow_mat(Color(1.0, 0.88, 0.7), 2.8), null, 10)
+		var l := OmniLight3D.new()
+		l.light_color = Color(1.0, 0.86, 0.7)
+		l.light_energy = 0.9
+		l.omni_range = 4.5
+		l.position = at + Vector3(0, -0.3, 0)
+		city.add_child(l)
+	for cx: float in [-1.0, 1.0]:
+		var pp := o + Vector3(cx * (half.x - 0.6), 0, half.y - 0.6)
+		city.cyl(0.3, 0.24, 0.5, pp + Vector3(0, 0.25, 0), cream, null, 12)
+		var leaf := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 0.5
+		sm.height = 1.3
+		leaf.mesh = sm
+		leaf.material_override = city.mat(Color(0.22, 0.5, 0.3), 0.95)
+		leaf.position = pp + Vector3(0, 1.1, 0)
+		city.add_child(leaf)
+	_sign(city, "CAFE", o + Vector3(-3.4, hgt - 0.5, -half.y + 0.12), 0.0, Color("ff8ac0"), 90)
 
 
 static func _rest(scene: Node) -> void:

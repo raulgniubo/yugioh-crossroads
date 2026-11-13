@@ -99,7 +99,7 @@ func _ready() -> void:
 	extras.scene = self
 	extras.story_mode = in_story
 	add_child(extras)
-	if str(Router.roam.get("district", "domino")) in ["domino", "academy"] or not RoamData.DISTRICTS.has(str(Router.roam.get("district", "domino"))):
+	if true:
 		life = WorldLife.new()
 		add_child(life)
 		life.setup(self)

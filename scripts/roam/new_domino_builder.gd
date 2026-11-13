@@ -111,12 +111,15 @@ func _plaza() -> void:
 		var bench := prop("bench", p, -a + PI / 2, 2.0)
 		if bench:
 			collide(bench, 0.8)
+			places.append(["bench", p, -a + PI / 2])
 	var f1 := prop("fountain", Vector3(-16, 0, 16), 0.0, 5.5)
 	if f1:
 		collide(f1, 0.85)
+		places.append(["fountain", Vector3(-16, 0, 16), 0.0])
 	var f2 := prop("fountain", Vector3(16, 0, -10), 0.0, 5.5)
 	if f2:
 		collide(f2, 0.85)
+		places.append(["fountain", Vector3(16, 0, -10), 0.0])
 
 
 func _stadium() -> void:
@@ -387,6 +390,7 @@ func _market() -> void:
 	var vend := prop("vending", Vector3(27.5, 0, 36.0), -PI / 2, 2.0, true)
 	if vend:
 		collide(vend, 0.9)
+		places.append(["vending", Vector3(27.5, 0, 36.0), -PI / 2])
 
 
 ## Planted strips along the boulevard and the cross street, so the white city has some green.
