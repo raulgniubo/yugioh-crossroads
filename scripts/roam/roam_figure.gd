@@ -166,7 +166,8 @@ func _live(delta: float) -> void:
 	if _look:
 		var k := 1.0 - exp(-delta * 5.0)
 		_look.yaw = lerpf(_look.yaw, want_yaw if stance == "stand" or absf(want_yaw) < 0.9 else 0.0, k)
-		_look.pitch = lerpf(_look.pitch, want_pitch, k)
+		# The talking clip hunches forward; lift the chin so a speaker looks at who they talk to.
+		_look.pitch = lerpf(_look.pitch, want_pitch - (0.3 if _speaking and stance == "stand" else 0.0), k)
 	if _speed >= 0.3 or _hold > 0.0 or _speaking:
 		_was_near = near
 		return

@@ -87,7 +87,7 @@ static func _slash(board: Node3D, at: Vector3, col: Color, tilt: float, offset :
 	tw.tween_callback(mi.queue_free)
 
 
-static func _beam(board: Node3D, a: Vector3, b: Vector3, col: Color, radius := 0.24) -> void:
+static func _beam(board: Node3D, a: Vector3, b: Vector3, col: Color, radius := 0.4) -> void:
 	var mi := MeshInstance3D.new()
 	var cm := CylinderMesh.new()
 	cm.top_radius = radius

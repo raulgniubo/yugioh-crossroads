@@ -93,7 +93,7 @@ func _debug_cine() -> void:
 		await board.anim_destroy(foe)
 		if "--fx-demo" in OS.get_cmdline_user_args():
 			# Every strike kind, then the signature card effects, one after another.
-			for id in [6368038, 70781052, 46986414, 89631139]:
+			for id in [6368038, 70781052, 46986414, 89631139, 13039848]:
 				StrikeFx.play(board, state._make(id, ME), board.monster_zone_pos(ME, 2), board.monster_zone_pos(AI, 2))
 				await get_tree().create_timer(1.0).timeout
 			for nm in ["Raigeki", "Dark Hole", "Mirror Force", "Swords of Revealing Light", "Monster Reborn", "Magic Cylinder"]:
@@ -104,6 +104,7 @@ func _debug_cine() -> void:
 
 
 func _start() -> void:
+	print("DUEL START vs ", Router.duel_config.get("opponent", "?"), " cfg keys ", Router.duel_config.keys())
 	if "--cine" in OS.get_cmdline_user_args() or "--battle-demo" in OS.get_cmdline_user_args():
 		_debug_cine()
 	var cfg: Dictionary = Router.duel_config
@@ -456,6 +457,13 @@ Match won: +%d Duel Points") % 200
 			Router.toast(Loc.t("Gauntlet cleared!  +400 Duel Points"))
 	hud.gauntlet_next = g_next
 	hud.gauntlet_label = (Loc.t("GAUNTLET  ·  duel %d of %d") % [int(g.get("stage", 1)), int(g.get("total", 3))]) if not g.is_empty() else ""
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--result-action="):
+			# Dev: press one of the result buttons by itself.
+			var act := a.trim_prefix("--result-action=")
+			get_tree().create_timer(1.0).timeout.connect(func():
+				print("RESULT action ", act, " gauntlet_next=", hud.gauntlet_next, " vs=", Collection.versus(_opp_key), " decks=", Collection.decks_owned.size())
+				_on_pause_action(act))
 	hud.show_result(won, why, cfg.get("story", false), cfg.get("lose_ok", false), cfg.get("continue_label", "Continue Story"),
 			{"turns": state.turn, "lp": [state.players[ME].lp, state.players[AI].lp], "names": [state.players[ME].name, state.players[AI].name],
 			"reward": Collection.last_reward.duplicate() if earned > 0 else [], "earned": earned,
@@ -1473,6 +1481,8 @@ func _on_pause_action(action: String) -> void:
 			var gc: Dictionary = Router.duel_config
 			var gg: Dictionary = gc["gauntlet"]
 			var rest: Array = gg["left"]
+			if rest.is_empty():
+				return
 			gc["opponent"] = rest.pop_front()
 			gc.erase("opponent_deck")
 			gc["my_lp"] = maxi(1000, state.players[ME].lp)

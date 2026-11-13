@@ -1688,6 +1688,24 @@ func _debug() -> void:
 		elif a.begins_with("--enter="):
 			await get_tree().create_timer(0.6).timeout
 			await _travel(a.trim_prefix("--enter="))
+		elif a.begins_with("--spot="):
+			# Dev: stand on the first spot whose label contains this text and use it.
+			await get_tree().create_timer(2.5).timeout
+			var want := a.trim_prefix("--spot=").to_lower()
+			var found := false
+			for sp in _spots:
+				if str(sp["label"]).to_lower().contains(want):
+					found = true
+					_player.global_position = sp["pos"] + Vector3(0, 0.3, 0)
+					print("SPOT use: ", sp["label"], " at ", sp["pos"])
+					await (sp["action"] as Callable).call()
+					break
+			if not found:
+				print("SPOT not found: ", want)
+			await get_tree().create_timer(3.0).timeout
+			print("SPOT done dp=", Collection.dp, " scene=", get_tree().current_scene.name if get_tree().current_scene else "?")
+			if "--spot-quit" in OS.get_cmdline_user_args():
+				get_tree().quit()
 		elif a.begins_with("--tour="):
 			# Several free-camera shots in one run: --tour=name:x,y,z,lx,ly,lz;name2:...
 			await get_tree().create_timer(1.2).timeout

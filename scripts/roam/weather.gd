@@ -9,6 +9,7 @@ var raining := false
 var _drops: GPUParticles3D
 var _splash: GPUParticles3D
 var _hiss: AudioStreamPlayer
+var _veil: ColorRect
 var _dimmed := ""
 var _base := {}
 
@@ -37,11 +38,11 @@ func setup(roam: Node) -> void:
 	pm.gravity = Vector3(0, -6.0, 0)
 	_drops.process_material = pm
 	var streak := BoxMesh.new()
-	streak.size = Vector3(0.014, 0.5, 0.014)
+	streak.size = Vector3(0.03, 0.7, 0.03)
 	var sm := StandardMaterial3D.new()
 	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	sm.albedo_color = Color(0.78, 0.86, 1.0, 0.34)
+	sm.albedo_color = Color(0.82, 0.9, 1.0, 0.5)
 	streak.material = sm
 	_drops.draw_pass_1 = streak
 	_drops.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -84,6 +85,38 @@ func setup(roam: Node) -> void:
 	_splash.draw_pass_1 = ring
 	_splash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_splash)
+	# Rain on the lens: fine slanted streaks over the whole picture, so it reads at any distance.
+	var layer := CanvasLayer.new()
+	layer.layer = 0
+	add_child(layer)
+	_veil = ColorRect.new()
+	_veil.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = """
+shader_type canvas_item;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+void fragment() {
+	vec2 uv = UV * vec2(16.0 / 9.0, 1.0);
+	float a = 0.0;
+	for (int i = 0; i < 3; i++) {
+		float fi = float(i);
+		vec2 g = uv * vec2(90.0 + fi * 50.0, 5.0 + fi * 2.5);
+		g.x += g.y * 0.6;
+		g.y += TIME * (9.0 + fi * 4.0);
+		vec2 id = floor(g);
+		vec2 f = fract(g);
+		float on = step(0.86 - fi * 0.03, hash(id + fi * 17.0));
+		float line = smoothstep(0.5, 0.42, abs(f.x - 0.5) * 2.0 + 0.3) * smoothstep(0.0, 0.3, f.y) * smoothstep(1.0, 0.5, f.y);
+		a += on * line * (0.2 - fi * 0.045);
+	}
+	COLOR = vec4(0.85, 0.92, 1.0, a);
+}
+"""
+	var vm := ShaderMaterial.new()
+	vm.shader = sh
+	_veil.material = vm
+	layer.add_child(_veil)
 	_hiss = AudioStreamPlayer.new()
 	_hiss.bus = "SFX"
 	_hiss.volume_db = -19.0
@@ -114,6 +147,7 @@ func _process(_delta: float) -> void:
 	var at: Vector3 = cam.global_position if cam else scene._player.global_position
 	_drops.visible = outside
 	_splash.visible = outside
+	_veil.visible = outside
 	_drops.global_position = Vector3(at.x, at.y + 9.0, at.z)
 	var pp: Vector3 = scene._player.global_position
 	_splash.global_position = Vector3(pp.x, pp.y + 0.06, pp.z)

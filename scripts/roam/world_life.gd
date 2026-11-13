@@ -560,8 +560,22 @@ func _island_extras() -> void:
 			"aloof": true, "lines": ["...you can see me. Nobody has stayed past dark in years.", "One duel. That is all I ever wanted from this place."],
 			"duel": {"deck": "bakura", "difficulty": 3, "intro": "...draw."}}, Vector3.ZERO)
 		_ghost = (scene._npcs.back() as Array)[1]
+		# Washed in pale blue light with a cold glow at the feet: not quite solid.
+		var veil := StandardMaterial3D.new()
+		veil.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		veil.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		veil.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		veil.albedo_color = Color(0.45, 0.75, 1.0, 0.5)
+		veil.rim_enabled = true
 		for mi in _ghost.find_children("*", "MeshInstance3D", true, false):
-			(mi as MeshInstance3D).transparency = 0.45
+			(mi as MeshInstance3D).material_overlay = veil
+			(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var gl2 := OmniLight3D.new()
+		gl2.light_color = Color("8fd8ff")
+		gl2.light_energy = 1.8
+		gl2.omni_range = 4.0
+		gl2.position.y = 1.0
+		_ghost.add_child(gl2)
 	# Rolling hills behind the dorms and along the north shore (scenery: nobody walks there).
 	var hill := city.grass_material(1.3)
 	for h in [[Vector3(-52, 0, -30), 13.0, 6.0], [Vector3(-38, 0, -44), 10.0, 4.5], [Vector3(46, 0, -40), 12.0, 5.5], [Vector3(56, 0, -22), 9.0, 4.0], [Vector3(58, 0, 14), 8.0, 3.0], [Vector3(-58, 0, 6), 9.0, 3.6]]:
