@@ -14,6 +14,16 @@ const TRACKS := {
 	# Someone is nearly out of Life Points: faster, higher, more urgent.
 	"duel_tense": {"bpm": 148.0, "bars": 4, "drums": true, "gain": 0.62, "lead": 0.16,
 		"chords": [[52, 55, 59], [50, 53, 57], [48, 52, 55], [47, 51, 54]]},
+	# Rival themes, picked by who you are facing.
+	"duel_rival": {"bpm": 138.0, "bars": 8, "drums": true, "gain": 0.62, "lead": 0.15,
+		"chords": [[52, 55, 59], [52, 55, 59], [48, 52, 55], [50, 54, 57],
+			[52, 55, 59], [45, 48, 52], [47, 50, 54], [47, 51, 54]]},
+	"duel_dark": {"bpm": 116.0, "bars": 8, "drums": true, "gain": 0.6, "lead": 0.12,
+		"chords": [[45, 48, 52], [45, 48, 51], [41, 45, 48], [43, 46, 50],
+			[45, 48, 52], [44, 47, 51], [41, 45, 48], [40, 44, 47]]},
+	"duel_wild": {"bpm": 152.0, "bars": 8, "drums": true, "gain": 0.6, "lead": 0.16,
+		"chords": [[57, 61, 64], [57, 61, 64], [53, 57, 60], [55, 59, 62],
+			[57, 61, 64], [62, 66, 69], [53, 57, 60], [52, 56, 59]]},
 	"victory": {"bpm": 132.0, "bars": 4, "drums": true, "gain": 0.6, "lead": 0.16,
 		"chords": [[60, 64, 67], [65, 69, 72], [67, 71, 74], [60, 64, 67]]},
 	"defeat": {"bpm": 68.0, "bars": 4, "drums": false, "gain": 0.5,
@@ -34,7 +44,7 @@ const TRACKS := {
 	"shop": {"bpm": 84.0, "bars": 4, "drums": false, "gain": 0.5, "lead": 0.08,
 		"chords": [[60, 64, 67], [65, 69, 72], [62, 65, 69], [67, 71, 74]]},
 }
-const ORDER := ["menu", "duel", "city", "duel_tense", "victory", "defeat", "academy", "satellite", "heartland", "shop", "turbo"]
+const ORDER := ["menu", "duel", "city", "duel_tense", "victory", "defeat", "academy", "satellite", "heartland", "shop", "turbo", "duel_rival", "duel_dark", "duel_wild"]
 
 var _streams := {}
 var _players: Array[AudioStreamPlayer] = []

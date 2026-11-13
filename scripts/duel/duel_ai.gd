@@ -18,6 +18,16 @@ const HARD := 2
 const EXPERT := 3
 
 
+## How each seat likes to play, set by the duel scene: "" (by the book), "aggro" (attacks into
+## even trades and face-downs, summons in Attack), "wall" (sets when in doubt, attacks only
+## when it clearly wins). The look-ahead levels decide on their own and ignore this.
+static var styles: Array = ["", ""]
+
+
+static func _style(p: int) -> String:
+	return str(styles[p]) if p >= 0 and p < styles.size() else ""
+
+
 static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionary:
 	if s.turbo and level > EASY:
 		var sw := _speed_world(s, p)
@@ -144,13 +154,28 @@ static func next_attack(s: DuelState, p: int, level := NORMAL) -> Dictionary:
 	for m in attackers:
 		if s.can_direct_attack_with(p, m) and level > EASY:
 			return {"do": "attack", "card": m, "target": null}
+	var st := _style(p)
 	if level == EASY:
 		for m in attackers:
 			for t in opp.monsters():
-				if t.face_up and t.attack_pos and m.atk() > t.atk() + 300:
+				if t.face_up and t.attack_pos and m.atk() > t.atk() + (300 if st != "aggro" else 0):
+					return {"do": "attack", "card": m, "target": t}
+				if st == "aggro" and not t.face_up and m.atk() >= 1500:
 					return {"do": "attack", "card": m, "target": t}
 		return {}
-	return _hard_attack(attackers, opp)
+	var pick := _hard_attack(attackers, opp)
+	if st == "aggro" and pick.is_empty():
+		# Reckless: trade evenly, and swing at anything face-down.
+		for m in attackers:
+			for t in opp.monsters():
+				if (t.face_up and t.attack_pos and m.atk() == t.atk() and m.atk() > 0) or (not t.face_up and m.atk() >= 1200):
+					return {"do": "attack", "card": m, "target": t}
+	elif st == "wall" and not pick.is_empty() and pick.get("target") != null:
+		# Careful: leaves face-down monsters alone unless the attacker is big.
+		var tg: DuelState.CardInst = pick["target"]
+		if not tg.face_up and (pick["card"] as DuelState.CardInst).atk() < 1900:
+			return {}
+	return pick
 
 
 static func _best_target(m: DuelState.CardInst, targets: Array, facedown_min: int) -> DuelState.CardInst:
@@ -247,7 +272,9 @@ static func _best_summon(s: DuelState, p: int, opp_best: int, level: int) -> Dic
 	options.sort_custom(func(a, b): return a["card"].atk() > b["card"].atk())
 	var top: Dictionary = options[0]
 	var card: DuelState.CardInst = top["card"]
-	if card.atk() >= opp_best or s.players[s.opponent(p)].monsters().is_empty():
+	var st := _style(p)
+	var edge := 0 if st == "" else (-500 if st == "aggro" else 300)
+	if card.atk() >= opp_best + edge or s.players[s.opponent(p)].monsters().is_empty():
 		return {"do": "summon", "card": card, "tributes": top["tributes"]}
 	# Too weak to attack: set the best defender instead.
 	options.sort_custom(func(a, b): return a["card"].def() > b["card"].def())

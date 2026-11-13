@@ -4,6 +4,7 @@ class_name DuelAudio
 
 const SPECIAL := {"fusion": "fusion", "synchro": "synchro", "xyz": "xyz", "ritual": "ritual"}
 static var tense := false
+static var theme := "duel"      # what to go back to when nobody is in danger
 
 
 static func reset() -> void:
@@ -72,6 +73,6 @@ static func on_event(ev: Dictionary, state: DuelState) -> void:
 					low = true
 			if low != tense and not state.is_over():
 				tense = low
-				Music.play("duel_tense" if low else ("turbo" if state.turbo else "duel"))
+				Music.play("duel_tense" if low else ("turbo" if state.turbo else theme))
 		"win":
 			pass

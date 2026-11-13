@@ -903,12 +903,16 @@ void fragment() {
 	float body = smoothstep(lo, lo + 0.012, y) * (1.0 - smoothstep(top, top + 0.012, y)) * (1.0 - smoothstep(0.375, 0.39, x));
 	float lum = dot(t.rgb, vec3(0.3, 0.59, 0.11));
 	vec3 cloth = coat * (0.5 + 0.7 * lum);
-	float hem = (1.0 - smoothstep(hem_y + 0.03, hem_y + 0.04, y)) * (1.0 - arm);
-	float cuff = arm * (1.0 - smoothstep(hem_y + 0.085, hem_y + 0.09, y));
-	float collar = smoothstep(top - 0.022, top - 0.017, y) * (1.0 - smoothstep(0.07, 0.08, x));
-	float zip = (1.0 - smoothstep(0.006, 0.009, x)) * step(0.0, lp.z);
-	float trim = clamp(hem + cuff + collar + zip, 0.0, 1.0);
-	cloth = mix(cloth, vec3(0.95) * (0.6 + 0.5 * lum), trim);
+	// Trim is thin piping, not panels: a line just above the hem, one at each cuff, a narrow
+	// zip, and two short collar tabs. Soft edges, and off-white so it sits in the cloth.
+	float hem = smoothstep(hem_y + 0.012, hem_y + 0.017, y) * (1.0 - smoothstep(hem_y + 0.024, hem_y + 0.029, y)) * (1.0 - arm);
+	float cuff = arm * smoothstep(hem_y + 0.072, hem_y + 0.076, y) * (1.0 - smoothstep(hem_y + 0.083, hem_y + 0.087, y));
+	float tab = smoothstep(top - 0.03, top - 0.024, y) * smoothstep(0.012, 0.018, x) * (1.0 - smoothstep(0.04, 0.048, x)) * step(0.0, lp.z);
+	float zip = (1.0 - smoothstep(0.003, 0.006, x)) * step(0.0, lp.z) * (1.0 - smoothstep(top - 0.03, top - 0.02, y));
+	float trim = clamp(hem + cuff + tab + zip, 0.0, 1.0) * 0.85;
+	// A slightly darker yoke over the shoulders gives the jacket some shape.
+	cloth *= mix(1.0, 0.82, smoothstep(top - 0.07, top - 0.03, y));
+	cloth = mix(cloth, mix(vec3(0.93, 0.92, 0.88), coat, 0.12) * (0.62 + 0.45 * lum), trim);
 	ALBEDO = mix(t.rgb, cloth, body);
 	ROUGHNESS = 0.85;
 	SPECULAR = 0.2;

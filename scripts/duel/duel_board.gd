@@ -1364,6 +1364,7 @@ func anim_battle(p: int, inst, target) -> void:
 	await _wait(0.3)
 	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.82) + Vector3(0, 0.25, 0))
 	await _move(c, hit, 0.16, 0.15)
+	StrikeFx.play(self, inst, home.origin, goal)
 	_attr_hit(inst, home.origin, goal + Vector3(0, 0.15, 0))
 	var th := holo_for(target)
 	if th:
@@ -1562,6 +1563,7 @@ func anim_attack(p: int, inst, target) -> void:
 	await _move(c, lift, 0.3, 0.0)
 	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.82) + Vector3(0, 0.25, 0))
 	await _move(c, hit, 0.16, 0.15)
+	StrikeFx.play(self, inst, home.origin, goal)
 	_attr_hit(inst, home.origin, goal + Vector3(0, 0.15, 0))
 	var th := holo_for(target)
 	if th:

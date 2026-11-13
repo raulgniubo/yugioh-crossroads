@@ -25,6 +25,7 @@ var _pending_tributes := 0
 var _said_low := false
 var _won := false
 var _ai_level := 1
+var _theme := "duel"          # the music for this opponent
 var _materials: Array = []
 ## Dev: the AI plays your side too, but through the human path, with prompts answered at random.
 var _human_test := "--human-test" in OS.get_cmdline_user_args()
@@ -58,6 +59,8 @@ func _ready() -> void:
 	board.card_hovered.connect(_on_board_card_hovered)
 	board.direct_clicked.connect(_on_direct_attack)
 	board.ace_summoned.connect(func(inst):
+		Sfx.play("gong", -9.0, 1.2)
+		Sfx.play("rare", -8.0)
 		hud.summon_cinematic(inst.cname(), int(inst.data.get("atk", 0)), int(inst.data.get("def", 0)),
 			board._frame_color(inst), inst.owner == ME))
 	hud.hand_card_pressed.connect(_on_hand_card_pressed)
@@ -85,6 +88,14 @@ func _debug_cine() -> void:
 		await board.anim_declare(ME, inst, foe)
 		await board.anim_battle(ME, inst, foe)
 		await board.anim_destroy(foe)
+		if "--fx-demo" in OS.get_cmdline_user_args():
+			# Every strike kind, then the signature card effects, one after another.
+			for id in [6368038, 70781052, 46986414, 89631139]:
+				StrikeFx.play(board, state._make(id, ME), board.monster_zone_pos(ME, 2), board.monster_zone_pos(AI, 2))
+				await get_tree().create_timer(1.0).timeout
+			for nm in ["Raigeki", "Dark Hole", "Mirror Force", "Swords of Revealing Light", "Monster Reborn", "Magic Cylinder"]:
+				StrikeFx.card(board, nm, ME)
+				await get_tree().create_timer(1.3).timeout
 		return
 	board.hologram(inst, board.monster_zone_pos(ME, 2))
 
@@ -95,6 +106,13 @@ func _start() -> void:
 	var cfg: Dictionary = Router.duel_config
 	_opp_key = cfg.get("opponent", "kaiba")
 	_ai_level = int(cfg.get("difficulty", 1))
+	# Who you face decides how they play and what you hear.
+	var mood := str(Characters.get_char(_opp_key).get("personality", ""))
+	DuelAI.styles = ["", {"cocky": "aggro", "wild": "aggro", "cool": "wall"}.get(mood, "")]
+	if not cfg.get("turbo", false):
+		_theme = {"cocky": "duel_rival", "cool": "duel_rival", "dark": "duel_dark", "wild": "duel_wild"}.get(mood, "duel")
+		Music.play(_theme)
+		DuelAudio.theme = _theme
 	var opp: Dictionary = Characters.get_char(_opp_key)
 	var my_deck: String = cfg.get("player_deck", "yugi")
 	var opp_deck: String = cfg.get("opponent_deck", opp.get("deck", "kaiba"))
@@ -518,6 +536,8 @@ func _play_event(ev: Dictionary) -> void:
 			if SpellRules.kind(ev["card"]) in ["field", "equip", "cont", "ritual", "quick"]:
 				var titles := {"field": "FIELD SPELL", "equip": "EQUIP SPELL", "cont": "CONTINUOUS SPELL", "ritual": "RITUAL SPELL", "quick": "QUICK-PLAY SPELL"}
 				hud.effect_text("%s  ·  %s" % [titles[SpellRules.kind(ev["card"])], ev["card"].cname()], Color("7dffc8"))
+			var sig_name := str(ev["card"].data.get("name", ""))
+			get_tree().create_timer(Settings.t(0.45)).timeout.connect(func(): StrikeFx.card(board, sig_name, p))
 			await board.anim_activate(p, ev["card"], int(ev.get("zone", 2)))
 		"st_settle":
 			await board.anim_settle(p, ev["card"], int(ev["zone"]))
@@ -583,6 +603,8 @@ func _play_event(ev: Dictionary) -> void:
 			Sfx.play("spell", 0.0, 0.8)
 			hud.inspect(ev["card"])
 			hud.banner(str(ev["card"].data["name"]).to_upper(), Color("ff4dd2"))
+			var trap_name := str(ev["card"].data.get("name", ""))
+			get_tree().create_timer(Settings.t(0.5)).timeout.connect(func(): StrikeFx.card(board, trap_name, p))
 			await board.anim_trap(p, ev["card"], ev["zone"])
 		"st_done":
 			await board.anim_spell_done(ev["card"])
@@ -683,6 +705,11 @@ func _play_event(ev: Dictionary) -> void:
 				board.shake(0.5 if ev["delta"] > -2000 else 0.8)
 				if board.track:
 					board.track.wobble(p, ev["delta"] <= -2000)
+				# A heavy hit cuts to the one who took it for a moment.
+				if ev["delta"] <= -2000 and int(ev["lp"]) > 0 and not _autoplay and not board.track:
+					board.duelist_gesture(p, "hurt")
+					board.duelist_shot(p, 0.35, false, 0.6)
+					get_tree().create_timer(Settings.t(1.1)).timeout.connect(func(): board.cam_release(0.5))
 				Sfx.play("damage")
 				hud.react(p, "hurt")
 				if p == AI and ev["lp"] <= 2000 and not _said_low:
@@ -1544,3 +1571,4 @@ func _exit_tree() -> void:
 	Settings.pace = 1.0
 	if Engine.time_scale < 1.0:
 		Engine.time_scale = 1.0
+	DuelAI.styles = ["", ""]
