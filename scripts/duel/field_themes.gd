@@ -24,7 +24,7 @@ const THEMES := {
 		"pattern": 0, "sky_top": Color("2f7fd6"), "sky_horizon": Color("bfe3ff"), "fog": Color("cfe8ff"), "surface": 1, "day": true},
 	"volcano": {"name": "Molten Caldera", "base": Color("120806"), "accent": Color("ff7a2a"), "accent2": Color("ffd23a"),
 		"pattern": 0, "sky_top": Color("120404"), "sky_horizon": Color("7a1c0a"), "fog": Color("3a0f06"), "surface": 2},
-	"peak": {"name": "Frozen Summit", "base": Color("1b2230"), "accent": Color("9fe8ff"), "accent2": Color("ffffff"),
+	"peak": {"dark_paint": true, "name": "Frozen Summit", "base": Color("1b2230"), "accent": Color("9fe8ff"), "accent2": Color("ffffff"),
 		"pattern": 0, "sky_top": Color("3a6fc4"), "sky_horizon": Color("dcefff"), "fog": Color("e6f2ff"), "surface": 3, "day": true},
 	"ruins": {"name": "Sunken Ruins", "base": Color("2a2012"), "accent": Color("ffe9a8"), "accent2": Color("7cf0e0"),
 		"pattern": 0, "sky_top": Color("3a5fae"), "sky_horizon": Color("ffcf8a"), "fog": Color("f2c890"), "surface": 4, "day": true},

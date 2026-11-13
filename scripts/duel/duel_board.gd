@@ -10,8 +10,8 @@ const ZONE_SPACING := 1.3
 const MONSTER_ROW := 1.05
 const SPELL_ROW := 2.35
 const SIDE_X := 4.15
-const CAM_POS := Vector3(0, 9.0, 6.9)
-const CAM_TARGET := Vector3(0, 0, 1.15)
+const CAM_POS := Vector3(0, 10.2, 5.2)
+const CAM_TARGET := Vector3(0, 0, 0.98)
 
 signal ace_summoned(inst)
 signal direct_clicked
@@ -197,6 +197,7 @@ uniform vec3 accent : source_color = vec3(0.18, 0.89, 0.9);
 uniform vec3 accent2 : source_color = vec3(0.48, 0.36, 1.0);
 uniform int pattern = 0;
 uniform int surface = 0;
+uniform float dark_paint = 0.0;
 //GROUND//
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -260,16 +261,21 @@ void fragment() {
 	float ring2 = line_aa(abs(r - 1.55), 0.015);
 	float dash = step(0.5, fract((a + TIME * 0.15) * 12.0 / 6.28318));
 	float ring3 = line_aa(abs(r - 1.85), 0.012) * dash;
-	col += side * (ring1 * 0.5 + ring2 * 0.25 + ring3 * 0.35) * mix(1.0, 0.55, wild);
+	// Outdoors the middle is one painted circle, like the center of a pitch.
+	vec3 paint = mix(mix(side, vec3(1.0), 0.7), vec3(0.08, 0.14, 0.36), dark_paint);
+	col += side * (ring1 * 0.5 + ring2 * 0.25 + ring3 * 0.35) * (1.0 - wild);
+	col = mix(col, paint, line_aa(abs(r - 1.4), 0.016) * 0.6 * wild);
 	// Center divider and a sweeping scan line
 	float mid = line_aa(abs(p.y), 0.025);
-	col += mix(accent, accent2, 0.5) * mid * 0.35 * vig;
+	col += mix(accent, accent2, 0.5) * mid * 0.35 * vig * (1.0 - wild);
+	col = mix(col, paint, line_aa(abs(p.y), 0.014) * 0.5 * wild);
 	float sweep = 1.0 - smoothstep(0.0, 0.6, abs(p.x - (fract(TIME * 0.08) * 16.0 - 8.0)));
 	col += side * sweep * 0.05 * vig * (1.0 - wild);
 	// Frame around the mat
 	vec2 e = abs(p) - vec2(5.75, 3.6);
 	float frame = line_aa(abs(max(e.x, e.y)), 0.03);
-	col += side * frame * 0.8;
+	col += side * frame * 0.8 * (1.0 - wild);
+	col = mix(col, paint, line_aa(abs(max(e.x, e.y)), 0.02) * 0.7 * wild);
 	ALBEDO = col;
 }
 """
@@ -280,6 +286,7 @@ void fragment() {
 	var m := ShaderMaterial.new()
 	m.shader = sh
 	m.set_shader_parameter("surface", int(theme.get("surface", 0)))
+	m.set_shader_parameter("dark_paint", 1.0 if theme.get("dark_paint", false) else 0.0)
 	m.set_shader_parameter("base", theme["base"])
 	m.set_shader_parameter("accent", theme["accent"])
 	m.set_shader_parameter("accent2", theme["accent2"])
@@ -356,21 +363,69 @@ func _build_arena() -> void:
 	add_child(motes)
 
 
-func _zone(pos: Vector3, size: Vector2, color: Color, intensity: float) -> MeshInstance3D:
+## One zone, painted on the ground like a line on a sports field: a thin outline with bolder
+## corners and a small icon in the middle saying what goes there. No glow, no filled plate.
+## icon: 1 monster, 2 Spell/Trap, 3 Deck, 4 Graveyard, 5 banished, 6 Field Spell, 7 Extra Deck.
+func _zone(pos: Vector3, size: Vector2, color: Color, intensity: float, icon := 0, flip := false) -> MeshInstance3D:
 	if _zone_shader == null:
 		_zone_shader = Shader.new()
 		_zone_shader.code = """
 shader_type spatial;
-render_mode unshaded, blend_add, cull_disabled, depth_draw_never;
+render_mode unshaded, cull_disabled, depth_draw_never;
 uniform vec4 color : source_color = vec4(0.18, 0.89, 0.9, 1.0);
 uniform float intensity = 0.6;
+uniform int icon = 0;
+uniform float dark_paint = 0.0;
+uniform vec2 extent = vec2(1.0, 1.0);
+uniform float flip = 1.0;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float sd_box(vec2 p, vec2 b, float r) {
+	vec2 q = abs(p) - b + r;
+	return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+}
+float fill(float d) { return 1.0 - smoothstep(0.0, 0.06, d); }
 void fragment() {
-	vec2 d = abs(UV * 2.0 - 1.0);
-	float edge = max(d.x, d.y);
-	float border = smoothstep(0.88, 0.95, edge) * (1.0 - smoothstep(0.97, 1.0, edge));
-	float corner = step(0.7, d.x) * step(0.78, d.y);
-	float a = border * (0.55 + corner * 1.2) + 0.05;
-	ALBEDO = color.rgb * a * intensity;
+	vec2 p = (UV - 0.5) * extent;
+	float d = sd_box(p, extent * 0.5 - 0.03, 0.075);
+	float aa = fwidth(d) * 1.2;
+	float w = 0.011;
+	float line = 1.0 - smoothstep(w, w + aa, abs(d));
+	vec2 q = abs(p) / (extent * 0.5);
+	float corner = step(0.56, q.x) * step(0.62, q.y);
+	float bold = (1.0 - smoothstep(w * 2.3, w * 2.3 + aa, abs(d + 0.008))) * corner;
+	// Paint wears: a few specks are missing.
+	float wear = 0.72 + 0.28 * step(0.22, hash(floor(p * 46.0)));
+	float a = max(line * 0.8, bold) * wear;
+	vec2 ip = p / 0.15;
+	ip.y *= flip;
+	float ic = 0.0;
+	if (icon == 1) {
+		float s = pow(abs(ip.x), 0.62) + pow(abs(ip.y), 0.62);
+		ic = 1.0 - smoothstep(0.92, 1.02, s);
+	} else if (icon == 2) {
+		float r = length(ip);
+		ic = max(1.0 - smoothstep(0.1, 0.16, abs(r - 0.72)), 1.0 - smoothstep(0.2, 0.26, r));
+	} else if (icon == 3) {
+		ic = 1.0 - smoothstep(0.07, 0.12, abs(sd_box(ip, vec2(0.5, 0.74), 0.12)));
+		ic = max(ic, 1.0 - smoothstep(0.05, 0.1, abs(sd_box(ip, vec2(0.22, 0.34), 0.08))));
+	} else if (icon == 4) {
+		float bar_v = fill(sd_box(ip, vec2(0.13, 0.8), 0.04));
+		float bar_h = fill(sd_box(ip + vec2(0.0, 0.28), vec2(0.5, 0.13), 0.04));
+		ic = max(bar_v, bar_h);
+	} else if (icon == 5) {
+		vec2 r = vec2(ip.x + ip.y, ip.x - ip.y) * 0.7071;
+		ic = max(fill(sd_box(r, vec2(0.12, 0.8), 0.04)), fill(sd_box(r, vec2(0.8, 0.12), 0.04)));
+	} else if (icon == 6) {
+		float tri = max(abs(ip.x) * 1.25 - ip.y * 0.72 - 0.42, ip.y - 0.62);
+		ic = fill(tri);
+	} else if (icon == 7) {
+		float ang = atan(ip.x, -ip.y);
+		float r = length(ip);
+		ic = 1.0 - smoothstep(0.0, 0.08, r - (0.52 + 0.3 * cos(ang * 5.0)));
+	}
+	a = max(a, ic * 0.42 * wear);
+	ALBEDO = mix(mix(color.rgb, vec3(1.0), 0.62), mix(color.rgb * 0.3, vec3(0.05, 0.1, 0.3), 0.6), dark_paint);
+	ALPHA = a * clamp(0.5 + intensity * 0.45, 0.0, 0.95);
 }
 """
 	var mi := MeshInstance3D.new()
@@ -381,6 +436,10 @@ void fragment() {
 	m.shader = _zone_shader
 	m.set_shader_parameter("color", color)
 	m.set_shader_parameter("intensity", intensity)
+	m.set_shader_parameter("icon", icon)
+	m.set_shader_parameter("extent", size)
+	m.set_shader_parameter("flip", -1.0 if flip else 1.0)
+	m.set_shader_parameter("dark_paint", 1.0 if theme.get("dark_paint", false) else 0.0)
 	mi.material_override = m
 	mi.position = pos + Vector3(0, 0.002, 0)
 	add_child(mi)
@@ -390,16 +449,15 @@ void fragment() {
 func _build_zones() -> void:
 	for p in 2:
 		var col: Color = theme["accent"] if p == 0 else theme["accent2"]
-		# In daylight the zone plates glow less, or they wash the ground out.
-		var dim := 0.5 if theme.get("day", false) else 1.0
+		var up := p == 1
 		for z in 5:
-			_zone(monster_zone_pos(p, z), Vector2(0.98, 0.98), col, 0.9 * dim)
-			_zone(spell_zone_pos(p, z), Vector2(0.72, 0.98), col, 0.45 * dim)
-		_zone(deck_pos(p), Vector2(0.72, 0.98), col, 0.6)
-		_zone(gy_pos(p), Vector2(0.72, 0.98), col, 0.6)
-		_zone(banish_pos(p), Vector2(0.72, 0.98), BANISH_COLOR, 0.35)
-		_zone(field_pos(p), Vector2(0.72, 0.98), Color("3ddc97"), 0.5)
-		_zone(extra_pos(p), Vector2(0.72, 0.98), Color("b06bff"), 0.6)
+			_zone(monster_zone_pos(p, z), Vector2(0.98, 0.98), col, 0.9, 1, up)
+			_zone(spell_zone_pos(p, z), Vector2(0.72, 0.98), col, 0.6, 2, up)
+		_zone(deck_pos(p), Vector2(0.72, 0.98), col, 0.6, 3, up)
+		_zone(gy_pos(p), Vector2(0.72, 0.98), col, 0.6, 4, up)
+		_zone(banish_pos(p), Vector2(0.72, 0.98), BANISH_COLOR, 0.35, 5, up)
+		_zone(field_pos(p), Vector2(0.72, 0.98), Color("3ddc97"), 0.6, 6, up)
+		_zone(extra_pos(p), Vector2(0.72, 0.98), Color("b06bff"), 0.6, 7, up)
 		var bl := Label3D.new()
 		bl.text = "BANISHED"
 		bl.font = UITheme.semi_font()
@@ -683,7 +741,7 @@ func anim_summon(p: int, inst, zone: int, set_card: bool) -> void:
 	if not _orbs.is_empty():
 		await _consume_orbs(to.origin)
 	await _move(c, to, 0.11, 0.0)
-	_burst(to.origin, UITheme.ACCENT if p == 0 else Color("a08cff"), 1.0 if set_card else 1.6)
+	_burst(to.origin, Comic.SKY if p == 0 else Color("ff8a98"), 1.0 if set_card else 1.6)
 	shake(0.12 if set_card else 0.25)
 	if not set_card:
 		await hologram(inst, to.origin)
@@ -1831,7 +1889,7 @@ func refresh_stats(state: DuelState) -> void:
 			seen[m.uid] = true
 			var pair: Array = _stats.get(m.uid, [])
 			if pair.is_empty():
-				pair = [_stat_label(), _stat_label(), _stat_label()]
+				pair = [_stat_label(), _stat_label(), _stat_label(), _star_badge(m)]
 				pair[2].text = "/"
 				pair[2].modulate = Color(1, 1, 1, 0.4)
 				_stats[m.uid] = pair
@@ -1841,6 +1899,8 @@ func refresh_stats(state: DuelState) -> void:
 			pair[0].position = base + off + Vector3(-0.27, 0, 0)
 			pair[1].position = base + off + Vector3(0.27, 0, 0)
 			pair[2].position = base + off
+			# The Level or Rank star sits on the card's corner nearest you.
+			pair[3].position = base + Vector3(-0.4 if m.attack_pos else -0.5, 0.1, 0.36 if m.attack_pos else 0.24)
 			var shown_atk := state.atk_of(m, false)
 			pair[0].text = "?" if hidden else str(shown_atk)
 			if not hidden and shown_atk != m.atk():
@@ -1856,6 +1916,7 @@ func refresh_stats(state: DuelState) -> void:
 			pair[1].font_size = 72 if not m.attack_pos else 54
 			for l in pair:
 				l.visible = true
+			pair[3].visible = not hidden
 	for uid in _stats.keys():
 		if not seen.has(uid):
 			for l in _stats[uid]:
@@ -1867,6 +1928,52 @@ func hide_stats_for(inst) -> void:
 	if _stats.has(inst.uid):
 		for l in _stats[inst.uid]:
 			l.visible = false
+
+
+static var _star_tex: Array = [null, null]
+
+
+## A star with the Level in it (gold star), or the Rank (black star, gold number) for Xyz.
+func _star_badge(m) -> Sprite3D:
+	var xyz: bool = str(m.data.get("frame", "")) == "xyz"
+	var k := 1 if xyz else 0
+	if _star_tex[k] == null:
+		var n := 96
+		var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+		var outer := Comic.star(Vector2(n, n) / 2.0, n * 0.49, 0.52)
+		var inner := Comic.star(Vector2(n, n) / 2.0, n * 0.39, 0.52)
+		var fill := Color("23263a") if xyz else Color("ffd23a")
+		var rim := Color("ffd23a") if xyz else Color("0a1236")
+		for y in n:
+			for x in n:
+				var pt := Vector2(x + 0.5, y + 0.5)
+				if Geometry2D.is_point_in_polygon(pt, inner):
+					img.set_pixel(x, y, fill.lightened(0.25 * (1.0 - float(y) / n)) if not xyz else fill)
+				elif Geometry2D.is_point_in_polygon(pt, outer):
+					img.set_pixel(x, y, rim)
+		_star_tex[k] = ImageTexture.create_from_image(img)
+	var sp := Sprite3D.new()
+	sp.texture = _star_tex[k]
+	sp.pixel_size = 0.0042
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sp.no_depth_test = true
+	sp.render_priority = 2
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	add_child(sp)
+	var l := Label3D.new()
+	l.text = str(int(m.data.get("level", 0)))
+	l.font = UITheme.title_font()
+	l.font_size = 56
+	l.pixel_size = 0.0035
+	l.modulate = Color("ffd23a") if xyz else Color("0a1236")
+	l.outline_size = 0 if not xyz else 6
+	l.outline_modulate = Color(0, 0, 0, 0.9)
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	l.render_priority = 3
+	l.position = Vector3(0, 0.0, 0.012)
+	sp.add_child(l)
+	return sp
 
 
 func _stat_label() -> Label3D:

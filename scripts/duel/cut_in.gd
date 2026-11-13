@@ -23,20 +23,25 @@ void fragment() {
 	// The leading edge is slanted too, so the band reads as a slash.
 	float lead = progress * 1.25 - (uv.y - center) * 0.35;
 	float wipe = 1.0 - smoothstep(lead - 0.02, lead, x);
-	// Dark glass with the duelist's color bleeding in from their side.
-	vec3 col = mix(vec3(0.02, 0.03, 0.06), tint * 0.55, pow(1.0 - x, 1.6) * 0.9);
-	// Speed lines racing along the band.
+	// A bright printed band in the duelist's color: lighter toward their side, halftone dots,
+	// white speed streaks, a pale rail and an ink line along both edges.
+	vec3 col = mix(tint * 0.34, tint * 0.95 + vec3(0.06), pow(1.0 - x, 1.3));
+	vec2 g = FRAGCOORD.xy / 13.0;
+	g.x += mod(floor(g.y), 2.0) * 0.5;
+	float dr = clamp(0.5 - x * 0.75, 0.0, 0.46);
+	float dots = 1.0 - smoothstep(dr - 0.06, dr, length(fract(g) - 0.5));
+	col += vec3(1.0) * dots * 0.11 * step(0.02, dr);
 	float row = floor((uv.y - c) * 90.0);
 	float sp = 1.5 + hash(row) * 3.0;
 	float ln = fract(x * (1.0 + hash(row + 9.0) * 2.0) - TIME * sp * dir * dir + hash(row + 3.0));
 	float streak = smoothstep(0.0, 0.5, ln) * smoothstep(1.0, 0.5, ln) * step(0.55, hash(row + 5.0));
-	col += tint * streak * 0.35;
-	col += vec3(1.0) * streak * 0.08;
-	// Bright rails along both edges.
-	float rail = smoothstep(half_h - 0.012, half_h - 0.006, d) * inside;
-	col = mix(col, tint * 1.6 + vec3(0.3), rail);
+	col += vec3(1.0) * streak * 0.3;
+	float rail = smoothstep(half_h - 0.02, half_h - 0.014, d) * inside;
+	col = mix(col, vec3(1.0, 0.96, 0.72), rail);
+	float ink = smoothstep(half_h - 0.0075, half_h - 0.005, d) * inside;
+	col = mix(col, vec3(0.04, 0.07, 0.21), ink);
 	float a = inside * wipe * fade;
-	COLOR = vec4(col, a * mix(0.93, 1.0, rail));
+	COLOR = vec4(col, a * mix(0.96, 1.0, rail));
 }
 """
 
@@ -82,6 +87,18 @@ void fragment() {
 }
 """
 
+const BLUR := """
+shader_type canvas_item;
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
+uniform float amount = 0.0;
+void fragment() {
+	vec3 c = textureLod(screen_tex, SCREEN_UV, amount * 3.4).rgb;
+	c = mix(c, c * vec3(0.5, 0.56, 0.85), amount * 0.65);
+	COLOR = vec4(c, 1.0);
+}
+"""
+
+static var _blur_sh: Shader
 static var _band_sh: Shader
 static var _face_sh: Shader
 static var _lines_sh: Shader
@@ -100,6 +117,9 @@ static func _shader(code: String, slot: String) -> Shader:
 			_lines_sh = sh
 	return sh
 
+
+## Where the eyes sit in a portrait, as a fraction of its height from the top.
+const EYE_LINE := 0.29
 
 ## Show a cut-in for player `p` (0 = you, bottom band from the left; 1 = rival, top band from
 ## the right). `key` is the character, `title` the big words, `sub` the small line under them.
@@ -123,6 +143,26 @@ func _run(p: int, key: String, title: String, sub: String, color: Color, hold: f
 	var center := 0.2 if p == 0 else 0.78
 	var half_h := 0.135 if big else 0.105
 	var slant := -0.1
+	# The big moments get the eye close-up: one band across the middle, the camera tight on the
+	# duelist's eyes, and the field out of focus behind it.
+	var eyes := big
+	var blur: ColorRect = null
+	var blur_m: ShaderMaterial = null
+	if eyes:
+		center = 0.46
+		half_h = 0.165
+		if _blur_sh == null:
+			_blur_sh = Shader.new()
+			_blur_sh.code = BLUR
+		blur = ColorRect.new()
+		blur.set_anchors_preset(Control.PRESET_FULL_RECT)
+		blur.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		blur_m = ShaderMaterial.new()
+		blur_m.shader = _blur_sh
+		blur_m.set_shader_parameter("amount", 0.0)
+		blur.material = blur_m
+		add_child(blur)
+		create_tween().tween_method(func(v: float): blur_m.set_shader_parameter("amount", v), 0.0, 1.0, Settings.t(0.18))
 	var band := ColorRect.new()
 	band.set_anchors_preset(Control.PRESET_FULL_RECT)
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -143,14 +183,21 @@ func _run(p: int, key: String, title: String, sub: String, color: Color, hold: f
 	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var fh := vs.y * (half_h * 2.0 + 0.12)
 	face.size = Vector2(fh * 0.8, fh)
+	if eyes:
+		# The whole portrait is as tall as the screen, so only the strip around the eyes
+		# (about a quarter of the way down the picture) shows inside the band.
+		face.size = Vector2(vs.y * 0.8, vs.y) * 2.05
 	face.flip_h = p == 1
 	var fm := ShaderMaterial.new()
 	fm.shader = _shader(FACE, "face")
-	for kv in [["center", center], ["half_h", half_h], ["slant", slant], ["tint", color], ["fade", 1.0]]:
+	for kv in [["center", center], ["half_h", half_h], ["slant", slant], ["tint", color], ["fade", 1.0], ["over", 0.0 if eyes else 0.05]]:
 		fm.set_shader_parameter(kv[0], kv[1])
 	face.material = fm
 	var face_x := vs.x * 0.06 if p == 0 else vs.x * 0.94 - face.size.x
 	var face_y := vs.y * (center + (0.05 if p == 0 else -0.05) - half_h - 0.1)
+	if eyes:
+		face_x = vs.x * (0.22 if p == 0 else 0.78) - face.size.x / 2.0
+		face_y = vs.y * (center + (0.026 if p == 0 else -0.026)) - face.size.y * EYE_LINE
 	face.position = Vector2(face_x - dir * vs.x * 0.35, face_y)
 	add_child(face)
 	# The words, leaning the same way as the band.
@@ -158,22 +205,22 @@ func _run(p: int, key: String, title: String, sub: String, color: Color, hold: f
 	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	words.rotation = -0.056
 	add_child(words)
-	var tl := UITheme.label(title, 92 if big else 68, Color.WHITE, UITheme.title_font())
-	tl.add_theme_color_override("font_outline_color", Color(color.darkened(0.55), 0.95))
-	tl.add_theme_constant_override("outline_size", 14)
+	var tl := UITheme.label(title, 104 if big else 76, Color.WHITE, Comic.shout_font())
+	tl.add_theme_color_override("font_outline_color", Comic.INK)
+	tl.add_theme_constant_override("outline_size", 18)
 	tl.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
 	tl.add_theme_constant_override("shadow_offset_x", 5)
 	tl.add_theme_constant_override("shadow_offset_y", 5)
 	words.add_child(tl)
-	var sl := UITheme.label(sub, 30, color.lightened(0.55), UITheme.semi_font())
-	sl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	var sl := UITheme.label(sub, 32, Comic.YELLOW, UITheme.title_font())
+	sl.add_theme_color_override("font_outline_color", Comic.INK)
 	sl.add_theme_constant_override("outline_size", 8)
 	words.add_child(sl)
 	await get_tree().process_frame
 	if not is_inside_tree():
 		return
 	# Long names shrink to fit the space beside the portrait.
-	var room := vs.x * 0.62
+	var room := vs.x * (0.5 if eyes else 0.62)
 	if tl.size.x > room:
 		tl.scale = Vector2.ONE * (room / tl.size.x)
 	if sl.size.x > room:
@@ -181,6 +228,8 @@ func _run(p: int, key: String, title: String, sub: String, color: Color, hold: f
 	var tw_w := tl.size.x * tl.scale.x
 	var sub_w := sl.size.x * sl.scale.x
 	var text_x := face_x + face.size.x + 40.0 if p == 0 else face_x - 40.0 - maxf(tw_w, sub_w)
+	if eyes:
+		text_x = vs.x * 0.45 if p == 0 else vs.x * 0.55 - maxf(tw_w, sub_w)
 	var text_y := vs.y * center - (tl.size.y * tl.scale.y + (sl.size.y if sub != "" else 0.0)) * 0.5 + 10.0
 	tl.position = Vector2.ZERO
 	sl.position = Vector2(6 if p == 0 else maxf(tw_w, sub_w) - sub_w - 6, tl.size.y * tl.scale.y - 6)
@@ -209,6 +258,8 @@ func _run(p: int, key: String, title: String, sub: String, color: Color, hold: f
 		bm.set_shader_parameter("fade", v)
 		fm.set_shader_parameter("fade", v)
 	out.tween_method(fade_all, 1.0, 0.0, Settings.t(0.2))
+	if blur_m:
+		out.tween_method(func(v: float): blur_m.set_shader_parameter("amount", v), 1.0, 0.0, Settings.t(0.2))
 	out.tween_property(words, "modulate:a", 0.0, Settings.t(0.15))
 	out.tween_property(words, "position:x", text_x - dir * vs.x * 0.2, Settings.t(0.2)).set_ease(Tween.EASE_IN)
 	out.tween_property(face, "position:x", face_x + dir * vs.x * 0.12, Settings.t(0.2)).set_ease(Tween.EASE_IN)

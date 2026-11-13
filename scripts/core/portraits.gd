@@ -42,9 +42,14 @@ func get_portrait(key: String, hi := false) -> Texture2D:
 	return tex
 
 
+## Sent after every cached portrait was thrown away: anything showing one must ask again.
+signal flushed
+
+
 func clear_cache() -> void:
 	for k in _cache.keys():
 		_forget(k)
+	flushed.emit()
 
 
 func _forget(key: String) -> void:

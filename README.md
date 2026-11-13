@@ -5,6 +5,38 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.21
+
+- A new look for the whole game: bright comic panels in place of the dark neon. Slanted slabs,
+  ink outlines, halftone dots, a chunky title face (Lilita One) and a loud one for VS, banners
+  and damage numbers (Bangers). Both fonts are under the SIL Open Font License, see
+  `assets/fonts`.
+- Duel screen: a big slanted panel per duelist in the corner (blue for you, red for them) with
+  the live 3D character and the Life Points on a ribbon; comic speech boxes with a name tag; one
+  pill for turn number and phase; round icon buttons (Graveyards, card log, duel menu); a card
+  log of everything played; the card panel wears a header in the card's frame color.
+- Big moments (ace summons, the finishing blow) cut to an eye close-up band with the field
+  blurred behind it.
+- The field: a steeper camera, zones painted on the ground as thin outlines with a small icon
+  (no glowing plates), a Level or Rank star on every monster next to ATK / DEF, and six open-air
+  fields (Meadow, Volcano, Frozen Summit, Ruins, Tide, Shadow Realm) you can pick in Free Duel.
+  Out in the world the field follows where you are standing.
+- Duel controls: drag a card from your hand onto the field, drag a monster onto a target to
+  attack, tap anywhere to close a menu, tap your deck for Graveyards, the duel menu and
+  Surrender. Every button answers on the press.
+- Rules feel: nothing is chosen for you any more (targets, Xyz Materials, optional effects all
+  ask), an effect shows on the field before its prompt, banners stay clear of the animation,
+  Ego Boost only during an attack, Goblindbergh's effect no longer fires twice.
+- The opening happens on the field: both duelists are introduced by the camera, VS lands over
+  the live table and rock-paper-scissors is played right there. New challenge and defeat poses;
+  the loser slumps and the winner celebrates.
+- Card sleeves: a library in Settings, the opponent's ace on their sleeve, and `back.jpg` in
+  your card folder becomes the default back.
+- Home screen, Free Duel, Settings and the duelist creator are rebuilt. The creator has height,
+  twelve colors, titles to unlock, an opening line, a victory line and a sleeve.
+- More sound in duels (crowd, draws, summons, hits), louder music during a duel.
+- Settings: frame rate. Unlimited by default, or 30 / 60 / 120 / 144 / 240, or match the screen.
+
 ## What is in 0.20
 
 - Turbo: ten Speed Spell cards (Full Throttle, Tailwind, Pit Stop, Slipstream Strike, Twin Turbo,

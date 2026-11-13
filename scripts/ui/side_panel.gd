@@ -15,14 +15,14 @@ func _init(title_text: String, width := 640.0) -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_dim = ColorRect.new()
-	_dim.color = Color(0, 0, 0, 0.55)
+	_dim.color = Color(0.02, 0.05, 0.24, 0.62)
 	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_dim.gui_input.connect(func(e):
 		if e is InputEventMouseButton and e.pressed:
 			close())
 	add_child(_dim)
 	_panel = PanelContainer.new()
-	_panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.045, 0.07, 0.12, 0.96), 24, Color(UITheme.ACCENT, 0.25)))
+	_panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.0895, 0.198, 0.468, 0.96), 24, Color(UITheme.ACCENT, 0.25)))
 	_panel.anchor_left = 1.0
 	_panel.anchor_right = 1.0
 	_panel.anchor_top = 0.0

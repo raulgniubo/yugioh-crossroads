@@ -7,7 +7,7 @@ extends RefCounted
 static func _card(p: SidePanel, title: String, glyph: String, tint: Color) -> VBoxContainer:
 	var pc := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.06, 0.09, 0.15, 0.9)
+	sb.bg_color = Color(0.106, 0.222, 0.495, 0.9)
 	sb.set_corner_radius_all(18)
 	sb.border_color = Color(tint, 0.28)
 	sb.set_border_width_all(1)
@@ -87,6 +87,17 @@ static func open(parent: Node) -> SidePanel:
 		Settings.save_settings()
 		Router.toast("Applies next time a scene loads"))
 	_row(disp, "Graphics", "Shadows, reflections and fog. Lower it if the game stutters.", gfx)
+	if desktop:
+		var cap := OptionButton.new()
+		for i in Settings.FPS_CAPS.size():
+			cap.add_item(Loc.t(Settings.fps_name(Settings.FPS_CAPS[i])), i)
+			if Settings.FPS_CAPS[i] == Settings.fps_cap:
+				cap.select(i)
+		cap.item_selected.connect(func(i):
+			Settings.fps_cap = Settings.FPS_CAPS[i]
+			Settings.apply_fps()
+			Settings.save_settings())
+		_row(disp, "Frame rate", "Unlimited runs as fast as your computer can. A cap keeps it cooler and quieter.", cap)
 	var fps := CheckButton.new()
 	fps.button_pressed = Settings.show_fps
 	fps.toggled.connect(func(on):
@@ -152,11 +163,11 @@ static func open(parent: Node) -> SidePanel:
 		b.toggle_mode = true
 		b.button_pressed = sid == Settings.sleeve
 		b.tooltip_text = Loc.t(str(e["name"]))
-		var nb := UITheme.button_box(Color(0.03, 0.05, 0.09, 0.9), Color(1, 1, 1, 0.12), 12)
-		var on := UITheme.button_box(Color(0.1, 0.07, 0.18, 0.95), Color("ffd98a"), 12)
+		var nb := UITheme.button_box(Color(0.073, 0.172, 0.441, 0.9), Color(1, 1, 1, 0.12), 12)
+		var on := UITheme.button_box(Color(0.15, 0.198, 0.522, 0.95), Color("ffd98a"), 12)
 		on.set_border_width_all(3)
 		b.add_theme_stylebox_override("normal", nb)
-		b.add_theme_stylebox_override("hover", UITheme.button_box(Color(0.06, 0.08, 0.14, 0.95), Color("b98cff"), 12))
+		b.add_theme_stylebox_override("hover", UITheme.button_box(Color(0.106, 0.21, 0.486, 0.95), Color("b98cff"), 12))
 		b.add_theme_stylebox_override("pressed", on)
 		b.add_theme_stylebox_override("focus", UITheme.button_box(Color(0, 0, 0, 0), Color("b98cff"), 12))
 		var tr := TextureRect.new()

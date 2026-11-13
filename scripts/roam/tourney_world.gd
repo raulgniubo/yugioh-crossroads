@@ -152,7 +152,7 @@ func _build_desk(id: String) -> void:
 
 func _build_chip() -> void:
 	_chip = PanelContainer.new()
-	var sb := UITheme.panel_box(Color(0.03, 0.05, 0.1, 0.86), 14, Color(UITheme.GOLD, 0.6))
+	var sb := UITheme.panel_box(Color(0.073, 0.172, 0.45, 0.86), 14, Color(UITheme.GOLD, 0.6))
 	sb.content_margin_left = 16
 	sb.content_margin_right = 16
 	sb.content_margin_top = 8

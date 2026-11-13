@@ -159,7 +159,7 @@ func _build_you(dorm: Dictionary) -> void:
 		var reached := Academy.enrolled() and int(Academy.d["dorm"]) >= i
 		var pill := PanelContainer.new()
 		pill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		pill.add_theme_stylebox_override("panel", UITheme.button_box(c.darkened(0.2) if reached else Color(0.1, 0.12, 0.18), Color.WHITE if here else c.darkened(0.3), 10))
+		pill.add_theme_stylebox_override("panel", UITheme.button_box(c.darkened(0.2) if reached else Color(0.15, 0.26, 0.522), Color.WHITE if here else c.darkened(0.3), 10))
 		var l := UITheme.label(str(dd["name"]), 17, Color.WHITE if reached else Color(1, 1, 1, 0.4), UITheme.semi_font())
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		l.custom_minimum_size = Vector2(0, 40)
@@ -245,7 +245,7 @@ func _versus(t: Dictionary) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
 	var frame := PanelContainer.new()
-	frame.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.05, 0.09), 14, Color(1, 1, 1, 0.14)))
+	frame.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.073, 0.172, 0.441), 14, Color(1, 1, 1, 0.14)))
 	frame.custom_minimum_size = Vector2(190, 230)
 	frame.clip_contents = true
 	var tex := TextureRect.new()
@@ -392,7 +392,7 @@ func _show_news() -> void:
 	add_child(shade)
 	var box := PanelContainer.new()
 	var dcol: Color = Academy.dorm()["color"]
-	box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.04, 0.06, 0.11, 0.98), 22, dcol))
+	box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.084, 0.185, 0.459, 0.98), 22, dcol))
 	box.custom_minimum_size = Vector2(820, 0)
 	shade.add_child(box)
 	var v := _vbox(box, 14, 40)

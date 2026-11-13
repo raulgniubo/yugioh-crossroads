@@ -94,7 +94,7 @@ func _build_hud() -> void:
 		btn.text = b[0]
 		btn.focus_mode = Control.FOCUS_NONE
 		btn.add_theme_font_size_override("font_size", 19)
-		btn.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.03, 0.05, 0.09, 0.78), Color(1, 1, 1, 0.14), 12))
+		btn.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.073, 0.172, 0.441, 0.78), Color(1, 1, 1, 0.14), 12))
 		btn.pressed.connect(b[1])
 		bar.add_child(btn)
 	# Star Chips: a named counter you can click to be told what they are.

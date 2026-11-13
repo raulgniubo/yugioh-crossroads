@@ -71,7 +71,7 @@ func _ready() -> void:
 	if _field != "auto" and not FieldThemes.THEMES.has(_field):
 		_field = "auto"
 	var dim := ColorRect.new()
-	dim.color = Color(0.012, 0.02, 0.045, 0.985)
+	dim.color = Color(0.035, 0.09, 0.34, 0.985)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
@@ -95,8 +95,11 @@ func _ready() -> void:
 	top_back.tooltip_text = "Back to the main menu (Esc)"
 	top_back.pressed.connect(close)
 	_root.add_child(top_back)
-	var header := UITheme.label("FREE DUEL", 58, Color.WHITE, UITheme.title_font())
-	header.position = Vector2(188, 28)
+	var header := UITheme.label("FREE DUEL", 64, Color.WHITE, Comic.shout_font())
+	header.add_theme_color_override("font_outline_color", Comic.INK)
+	header.add_theme_constant_override("outline_size", 16)
+	header.rotation = -0.02
+	header.position = Vector2(188, 26)
 	_root.add_child(header)
 	var bar := ColorRect.new()
 	bar.color = UITheme.ACCENT
@@ -158,14 +161,17 @@ func _draw_backdrop() -> void:
 	var mid := o.x + 599.0
 	var top := o.y + 104.0
 	var bot := o.y + 566.0
-	_backdrop.draw_colored_polygon(PackedVector2Array([Vector2(0, top), Vector2(mid + 70, top), Vector2(mid - 70, bot), Vector2(0, bot)]), Color(a, 0.16))
-	_backdrop.draw_colored_polygon(PackedVector2Array([Vector2(mid + 70, top), Vector2(o.x + 1146, top), Vector2(o.x + 1146, bot), Vector2(mid - 70, bot)]), Color(b, 0.16))
-	_backdrop.draw_line(Vector2(mid + 70, top), Vector2(mid - 70, bot), Color(1, 1, 1, 0.5), 3.0, true)
-	_backdrop.draw_line(Vector2(0, top), Vector2(o.x + 1146, top), Color(1, 1, 1, 0.08), 1.0)
-	_backdrop.draw_line(Vector2(0, bot), Vector2(size.x, bot), Color(1, 1, 1, 0.08), 1.0)
-	for i in 7:
-		var x := fmod(_t * 0.0 + i * 190.0, 1146.0)
-		_backdrop.draw_line(Vector2(o.x + x + 60, top), Vector2(o.x + x - 40, bot), Color(1, 1, 1, 0.025), 28.0)
+	# Two printed halves in the duelists' colors, split by an inked slash.
+	var left := PackedVector2Array([Vector2(0, top), Vector2(mid + 70, top), Vector2(mid - 70, bot), Vector2(0, bot)])
+	var right := PackedVector2Array([Vector2(mid + 70, top), Vector2(o.x + 1146, top), Vector2(o.x + 1146, bot), Vector2(mid - 70, bot)])
+	_backdrop.draw_polygon(left, PackedColorArray([Color(a.darkened(0.2), 0.75), Color(a, 0.8), Color(a.darkened(0.45), 0.85), Color(a.darkened(0.55), 0.8)]))
+	_backdrop.draw_polygon(right, PackedColorArray([Color(b, 0.8), Color(b.darkened(0.2), 0.75), Color(b.darkened(0.55), 0.8), Color(b.darkened(0.45), 0.85)]))
+	Comic.dots(_backdrop, left, Color(1, 1, 1, 0.12), Vector2(1, 0), 16.0, 7.0, 0.6)
+	Comic.dots(_backdrop, right, Color(1, 1, 1, 0.12), Vector2(0, 1), 16.0, 7.0, 0.6)
+	_backdrop.draw_line(Vector2(0, top), Vector2(o.x + 1146, top), Comic.INK, 6.0)
+	_backdrop.draw_line(Vector2(0, bot), Vector2(o.x + 1146, bot), Comic.INK, 6.0)
+	_backdrop.draw_line(Vector2(mid + 70, top), Vector2(mid - 70, bot), Comic.INK, 14.0, true)
+	_backdrop.draw_line(Vector2(mid + 70, top), Vector2(mid - 70, bot), Color.WHITE, 6.0, true)
 
 
 func _enter() -> void:
@@ -214,7 +220,7 @@ func _build_slots() -> void:
 		b.add_child(pt)
 		var grad := Gradient.new()
 		grad.offsets = PackedFloat32Array([0.0, 0.42, 1.0])
-		grad.colors = PackedColorArray([Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.92)])
+		grad.colors = PackedColorArray([Color(Comic.INK, 0.0), Color(Comic.INK, 0.0), Color(Comic.INK, 0.9)])
 		var gt := GradientTexture2D.new()
 		gt.gradient = grad
 		gt.fill_from = Vector2(0.5, 0.0)
@@ -241,7 +247,7 @@ func _build_slots() -> void:
 		ace.rotation = deg_to_rad(6.0)
 		ace.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(ace)
-		var name_l := UITheme.label("", 46, Color.WHITE, UITheme.title_font())
+		var name_l := Comic.label("", 46, Color.WHITE, 10)
 		name_l.position = Vector2(20, PANEL_SIZE.y - 132)
 		name_l.size = Vector2(PANEL_SIZE.x - 150, 52)
 		name_l.clip_text = true
@@ -256,15 +262,17 @@ func _build_slots() -> void:
 		b.add_child(sub)
 		_slots[side] = {"button": b, "portrait": pt, "name": name_l, "title": title_l, "sub": sub, "tag": tag,
 				"tag_bg": tag_bg, "ace": ace, "glow": glow, "key": ""}
-	_vs = UITheme.label("VS", 92, Color.WHITE, UITheme.title_font())
+	_vs = UITheme.label("VS", 104, Comic.YELLOW, Comic.shout_font())
 	_vs.position = Vector2(549, 286)
 	_vs.size = Vector2(100, 100)
 	_vs.pivot_offset = Vector2(50, 50)
 	_vs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_vs.add_theme_color_override("font_outline_color", Color(0.02, 0.04, 0.08))
-	_vs.add_theme_constant_override("outline_size", 14)
-	_vs.add_theme_color_override("font_shadow_color", Color(UITheme.ACCENT, 0.8))
-	_vs.add_theme_constant_override("shadow_outline_size", 26)
+	_vs.add_theme_color_override("font_outline_color", Comic.INK)
+	_vs.add_theme_constant_override("outline_size", 22)
+	_vs.add_theme_color_override("font_shadow_color", Comic.ORANGE_DEEP)
+	_vs.add_theme_constant_override("shadow_offset_x", 5)
+	_vs.add_theme_constant_override("shadow_offset_y", 6)
+	_vs.add_theme_constant_override("shadow_outline_size", 22)
 	_vs.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_vs)
 
@@ -328,7 +336,7 @@ func _refresh_slots() -> void:
 			ace = _deck_ace(deck_key)
 		sl["ace"].texture = Cards.get_face(ace) if ace != 0 else null
 		var active: bool = side == _picking
-		var sb := UITheme.button_box(Color(0.03, 0.05, 0.09, 0.0), col if active else Color(1, 1, 1, 0.16), 20)
+		var sb := UITheme.button_box(Color(0.073, 0.172, 0.441, 0.0), col if active else Color(1, 1, 1, 0.16), 20)
 		sb.set_border_width_all(4 if active else 1)
 		sb.set_content_margin_all(0)
 		if active:
@@ -389,7 +397,7 @@ func _refresh_picker() -> void:
 		var on: bool = side == _picking
 		var col: Color = Portraits.info(_me if side == "me" else _opp).get("color", UITheme.ACCENT)
 		b.text = ("●  " if on else "") + (Loc.t("My duelist") if side == "me" else Loc.t("My opponent"))
-		var sb := UITheme.button_box(col if on else Color(0.05, 0.08, 0.14, 0.9), col if on else Color(1, 1, 1, 0.2), 12)
+		var sb := UITheme.button_box(col if on else Color(0.095, 0.21, 0.486, 0.9), col if on else Color(1, 1, 1, 0.2), 12)
 		for st in ["normal", "hover", "pressed", "focus"]:
 			b.add_theme_stylebox_override(st, sb)
 		for fc in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
@@ -455,7 +463,7 @@ func _roster_card(key: String) -> Control:
 	var col: Color = info.get("color", UITheme.ACCENT)
 	for st in ["normal", "hover", "pressed", "focus"]:
 		var lit: bool = chosen or st == "hover" or st == "focus"
-		var sb := UITheme.button_box(Color(0.05, 0.08, 0.13, 1), col if lit else Color(1, 1, 1, 0.08), 12)
+		var sb := UITheme.button_box(Color(0.095, 0.21, 0.477, 1), col if lit else Color(1, 1, 1, 0.08), 12)
 		sb.set_border_width_all(3 if lit else 1)
 		sb.set_content_margin_all(0)
 		b.add_theme_stylebox_override(st, sb)
@@ -476,7 +484,7 @@ func _roster_card(key: String) -> Control:
 	pt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(pt)
 	var band := ColorRect.new()
-	band.color = Color(0, 0, 0, 0.78)
+	band.color = Color(Comic.INK, 0.86)
 	band.anchor_top = 1.0
 	band.anchor_right = 1.0
 	band.anchor_bottom = 1.0
@@ -571,7 +579,7 @@ func _section(v: VBoxContainer, text: String) -> void:
 
 func _build_setup() -> void:
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.04, 0.07, 0.12, 0.96), 22, Color(UITheme.ACCENT, 0.3)))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.084, 0.198, 0.468, 0.96), 22, Color(UITheme.ACCENT, 0.3)))
 	panel.position = Vector2(1166, 104)
 	panel.custom_minimum_size = Vector2(690, 936)
 	panel.size = Vector2(690, 936)
@@ -751,15 +759,13 @@ func _build_setup() -> void:
 	_go.text = "DUEL!"
 	_go.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_go.custom_minimum_size = Vector2(0, 86)
-	_go.add_theme_font_size_override("font_size", 54)
-	_go.add_theme_font_override("font", UITheme.title_font())
-	_go.add_theme_color_override("font_color", Color(0.02, 0.05, 0.08))
-	_go.add_theme_color_override("font_hover_color", Color(0.02, 0.05, 0.08))
-	_go.add_theme_color_override("font_pressed_color", Color(0.02, 0.05, 0.08))
-	_go.add_theme_stylebox_override("normal", UITheme.button_box(UITheme.ACCENT, UITheme.ACCENT, 14))
-	_go.add_theme_stylebox_override("hover", UITheme.button_box(UITheme.ACCENT.lightened(0.25), Color.WHITE, 14))
-	_go.add_theme_stylebox_override("pressed", UITheme.button_box(UITheme.ACCENT.darkened(0.15), Color.WHITE, 14))
-	_go.add_theme_stylebox_override("focus", UITheme.button_box(UITheme.ACCENT.lightened(0.15), Color.WHITE, 14))
+	_go.add_theme_font_size_override("font_size", 64)
+	_go.add_theme_font_override("font", Comic.shout_font())
+	_go.add_theme_constant_override("outline_size", 14)
+	for st in [["normal", Comic.ORANGE], ["hover", Comic.YELLOW], ["pressed", Comic.ORANGE_DEEP], ["focus", Comic.ORANGE.lightened(0.15)]]:
+		var gsb := Comic.box(st[1], 16, 0.14, 5, 8)
+		_go.add_theme_stylebox_override(str(st[0]), gsb)
+	_go.add_theme_color_override("font_pressed_color", Color.WHITE)
 	_go.pressed.connect(_start_duel)
 	row.add_child(_go)
 

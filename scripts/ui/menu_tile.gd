@@ -1,107 +1,36 @@
 class_name MenuTile
 extends Button
-## A big card on the home screen: a colored kicker, a title, a line under it, a huge faint
-## symbol in the corner and an optional badge. Lifts and lights up under the pointer or focus.
+## A slanted comic ribbon on the home screen: orange with halftone dots, a bold outlined title,
+## a small kicker tab on its top edge and a line of small print. The big one (Story) is gold.
+## It lifts, brightens and leans a little under the pointer or focus.
 
-var color := UITheme.ACCENT
+var color := Comic.ORANGE
+var _kicker := ""
+var _title := ""
+var _sub := ""
+var _glyph := ""
+var _badge := ""
+var _big := false
 var _hover := 0.0
 var _target := 0.0
-var _box: StyleBoxFlat
-var _glyph: Label
-var _title: Label
-var _bar: ColorRect
-var _sheen: ColorRect
+var _t := 0.0
 
 
 func _init(kicker: String, title_text: String, subtitle: String, tint: Color, glyph: String, size: Vector2, badge := "", big := false) -> void:
 	color = tint
+	_kicker = kicker.to_upper()
+	_title = title_text
+	_sub = subtitle
+	_glyph = glyph
+	_badge = badge
+	_big = big
 	custom_minimum_size = size
 	self.size = size
 	focus_mode = Control.FOCUS_ALL
-	clip_contents = true
-	_box = StyleBoxFlat.new()
-	_box.bg_color = Color(0.035, 0.05, 0.09, 0.9)
-	_box.set_corner_radius_all(22)
-	_box.border_color = Color(tint, 0.35)
-	_box.set_border_width_all(2)
-	_box.shadow_color = Color(0, 0, 0, 0.5)
-	_box.shadow_size = 14
-	_box.shadow_offset = Vector2(0, 6)
+	flat = true
+	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
-		add_theme_stylebox_override(st, _box)
-	# A wash of the tile's color from the top-left corner.
-	var grad := Gradient.new()
-	grad.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
-	grad.colors = PackedColorArray([Color(tint, 0.34), Color(tint, 0.07), Color(tint, 0.0)])
-	var gt := GradientTexture2D.new()
-	gt.gradient = grad
-	gt.fill_from = Vector2(0, 0)
-	gt.fill_to = Vector2(1, 1)
-	var wash := TextureRect.new()
-	wash.texture = gt
-	wash.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	wash.stretch_mode = TextureRect.STRETCH_SCALE
-	wash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	wash.offset_left = 2
-	wash.offset_top = 2
-	wash.offset_right = -2
-	wash.offset_bottom = -2
-	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(wash)
-	_glyph = UITheme.label(glyph, int(size.y * (0.95 if big else 1.05)), Color(tint.lightened(0.3), 0.13), UITheme.title_font())
-	_glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_glyph.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_glyph.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_glyph.offset_right = -14
-	add_child(_glyph)
-	_bar = ColorRect.new()
-	_bar.color = tint
-	_bar.position = Vector2(0, 22)
-	_bar.size = Vector2(5, size.y - 44)
-	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_bar)
-	var pad := 28.0
-	var k := UITheme.label(kicker.to_upper(), 16 if not big else 18, tint.lightened(0.35), UITheme.semi_font())
-	k.position = Vector2(pad, 18 if not big else 24)
-	k.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(k)
-	_title = UITheme.label(title_text, 38 if not big else 54, Color.WHITE, UITheme.title_font())
-	_title.position = Vector2(pad, 36 if not big else 50)
-	_title.size = Vector2(size.x - pad * 2, 60 if not big else 80)
-	_title.clip_text = true
-	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_title)
-	var s := UITheme.label(subtitle, 16 if not big else 19, Color(0.8, 0.87, 0.97, 0.78))
-	s.position = Vector2(pad + 2, size.y - (58 if not big else 76))
-	s.size = Vector2(size.x - pad * 2 - 6, 46 if not big else 56)
-	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	s.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	s.clip_text = true
-	s.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(s)
-	if badge != "":
-		var b := UITheme.label(badge, 15, Color(0.03, 0.05, 0.09), UITheme.semi_font())
-		var bb := StyleBoxFlat.new()
-		bb.bg_color = tint.lightened(0.25)
-		bb.set_corner_radius_all(10)
-		bb.content_margin_left = 10
-		bb.content_margin_right = 10
-		bb.content_margin_top = 2
-		bb.content_margin_bottom = 2
-		b.add_theme_stylebox_override("normal", bb)
-		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(b)
-		b.reset_size()
-		b.position = Vector2(size.x - b.size.x - 18, 16)
-	# A band of light that crosses the tile when it wakes up.
-	_sheen = ColorRect.new()
-	_sheen.color = Color(1, 1, 1, 0.07)
-	_sheen.size = Vector2(70, size.y * 2.0)
-	_sheen.rotation = 0.35
-	_sheen.position = Vector2(-140, -size.y * 0.4)
-	_sheen.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_sheen)
+		add_theme_stylebox_override(st, StyleBoxEmpty.new())
 	pivot_offset = size / 2.0
 	mouse_entered.connect(func(): _wake())
 	mouse_exited.connect(func(): _target = 1.0 if has_focus() else 0.0)
@@ -111,19 +40,71 @@ func _init(kicker: String, title_text: String, subtitle: String, tint: Color, gl
 
 func _wake() -> void:
 	if _target < 0.5:
-		_sheen.position.x = -140
-		create_tween().tween_property(_sheen, "position:x", size.x + 80, 0.45).set_trans(Tween.TRANS_SINE)
+		Sfx.play("blip", -16.0, 1.25)
 	_target = 1.0
 
 
 func _process(delta: float) -> void:
-	_hover = move_toward(_hover, _target, delta * 7.0)
+	_t += delta
+	var before := _hover
+	_hover = move_toward(_hover, _target, delta * 8.0)
 	var e := ease(_hover, -2.0)
-	scale = Vector2.ONE * (1.0 + 0.025 * e)
+	scale = Vector2.ONE * (1.0 + 0.045 * e)
+	rotation = -0.012 * e
 	z_index = 1 if e > 0.01 else 0
-	_box.border_color = Color(color.lerp(Color.WHITE, 0.3 * e), 0.35 + 0.65 * e)
-	_box.bg_color = Color(0.035, 0.05, 0.09, 0.9).lerp(Color(color.darkened(0.78), 0.96), e)
-	_box.shadow_color = Color(0, 0, 0, 0.5).lerp(Color(color, 0.55), e)
-	_box.shadow_size = int(14 + 14 * e)
-	_glyph.add_theme_color_override("font_color", Color(color.lightened(0.3), 0.13 + 0.2 * e))
-	_bar.size.x = 5.0 + 4.0 * e
+	if before != _hover or _hover > 0.0:
+		queue_redraw()
+
+
+func _draw() -> void:
+	var e := ease(_hover, -2.0)
+	var down := is_pressed()
+	var skew := 30.0 if _big else 22.0
+	var r := Rect2(Vector2(4, 12), size - Vector2(8, 24))
+	var top := Comic.YELLOW if _big else Comic.ORANGE
+	var bottom := Comic.ORANGE if _big else Comic.ORANGE_DEEP
+	top = top.lerp(Color("fff3a8"), 0.55 * e)
+	bottom = bottom.lerp(Comic.YELLOW, 0.5 * e)
+	if down:
+		top = top.darkened(0.12)
+		bottom = bottom.darkened(0.12)
+	var pts := Comic.slab(self, r, skew, top, bottom, 5.0, Vector2(0, 3) if down else Vector2(3, 9.0 + 3.0 * e))
+	Comic.dots(self, pts, Color(1, 1, 1, 0.3), Vector2(1, 0.2), 14.0, 6.5, 0.62)
+	# A stripe of light across the top.
+	draw_polyline(PackedVector2Array([pts[0] + Vector2(10, 7), pts[1] + Vector2(-14, 7)]), Color(1, 1, 1, 0.5), 3.0, true)
+	var f := Comic.chunky_font()
+	# The big faint symbol on the right.
+	if _glyph != "":
+		var gs := int(r.size.y * (0.82 if _big else 0.78))
+		var gw := UITheme.semi_font().get_string_size(_glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, gs).x
+		draw_string(UITheme.semi_font(), Vector2(r.end.x - gw - skew - 18, r.position.y + r.size.y * 0.5 + gs * 0.34), _glyph,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, gs, Color(Comic.INK, 0.16 + 0.08 * e))
+	var pad := 30.0 + skew * 0.5
+	var room := r.size.x - pad - skew - 20.0
+	# The title, shrunk until it fits.
+	var ts := 58 if _big else 42
+	while ts > 22 and f.get_string_size(_title, HORIZONTAL_ALIGNMENT_LEFT, -1, ts).x > room:
+		ts -= 2
+	var has_sub := _sub != ""
+	var base_y := r.position.y + r.size.y * (0.56 if has_sub else 0.62) + ts * 0.2
+	if _big:
+		base_y = r.position.y + r.size.y * 0.55
+	Comic.text(self, f, Vector2(pad, base_y), _title, ts, Color.WHITE, 12 if _big else 10)
+	if has_sub:
+		var sf := UITheme.semi_font()
+		var ss := 21 if _big else 18
+		draw_string(sf, Vector2(pad - 4, base_y + (34 if _big else 25)), _sub, HORIZONTAL_ALIGNMENT_LEFT, room + 10, ss, Color(Comic.INK, 0.92))
+	# The kicker rides the top edge on its own dark tab.
+	if _kicker != "":
+		var ks := 19 if _big else 16
+		var kw := f.get_string_size(_kicker, HORIZONTAL_ALIGNMENT_LEFT, -1, ks).x
+		var tab := Rect2(pad - 8, 0, kw + 36, 28 if _big else 25)
+		Comic.slab(self, tab, 8.0, Comic.INK, Comic.INK, 0.0, Vector2.ZERO)
+		Comic.text(self, f, tab.position + Vector2(20, tab.size.y - 7), _kicker, ks, Comic.YELLOW, 0)
+	if _badge != "":
+		var bw := f.get_string_size(_badge, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+		var br := Rect2(r.end.x - bw - 62, 2, bw + 34, 30)
+		Comic.slab(self, br, 8.0, Comic.RED, Comic.RED_DEEP, 3.0, Vector2(0, 3))
+		Comic.text(self, f, br.position + Vector2(19, 23), _badge, 18, Color.WHITE, 4)
+	if has_focus() and not is_hovered():
+		Comic.outline(self, pts, Color(1, 1, 1, 0.75 + 0.25 * sin(_t * 6.0)), 3.0)

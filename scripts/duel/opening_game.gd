@@ -164,16 +164,19 @@ func _clear_buttons() -> void:
 func _big_button(text: String, draw_icon: Callable, accent: Color) -> Button:
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(230, 140)
-	b.add_theme_stylebox_override("normal", UITheme.button_box(Color(accent, 0.12), Color(accent, 0.6), 18))
-	b.add_theme_stylebox_override("hover", UITheme.button_box(Color(accent, 0.3), accent, 18))
-	b.add_theme_stylebox_override("focus", UITheme.button_box(Color(accent, 0.3), Color.WHITE, 18))
-	b.add_theme_stylebox_override("pressed", UITheme.button_box(Color(accent, 0.45), Color.WHITE, 18))
+	var base := Color(0.1, 0.24, 0.62, 0.96)
+	b.add_theme_stylebox_override("normal", Comic.box(base, 18, 0.0, 4, 7))
+	b.add_theme_stylebox_override("hover", Comic.box(base.lerp(accent, 0.45), 18, 0.0, 4, 7))
+	var foc := Comic.box(base.lerp(accent, 0.45), 18, 0.0, 4, 7)
+	foc.border_color = Color.WHITE
+	b.add_theme_stylebox_override("focus", foc)
+	b.add_theme_stylebox_override("pressed", Comic.box(Comic.YELLOW, 18, 0.0, 4, 3))
 	var icon := Control.new()
 	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.draw.connect(func(): draw_icon.call(icon))
 	b.add_child(icon)
-	var l := UITheme.label(Loc.t(text), 24, Color.WHITE, UITheme.title_font())
+	var l := Comic.label(Loc.t(text), 23, Color.WHITE, 6)
 	l.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	l.offset_top = -40
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

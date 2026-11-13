@@ -49,7 +49,7 @@ func _ready() -> void:
 	_toast.add_theme_font_override("font", load("res://assets/fonts/Rajdhani-SemiBold.ttf"))
 	_toast.add_theme_font_size_override("font_size", 30)
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.04, 0.08, 0.14, 0.92)
+	sb.bg_color = Color(0.084, 0.21, 0.486, 0.92)
 	sb.border_color = Color(0.17, 0.89, 0.9, 0.6)
 	sb.set_border_width_all(1)
 	sb.set_corner_radius_all(14)

@@ -1159,6 +1159,9 @@ func _sharpen(key: String) -> void:
 		var old: String = _hi.pop_back()
 		if _stages.has(old):
 			(_stages[old] as SubViewport).size = STAGE_SIZE
+			# A portrait that is holding its last frame has to draw once more at the new size.
+			if not _live.has(old):
+				(_stages[old] as SubViewport).render_target_update_mode = SubViewport.UPDATE_ONCE
 
 
 const LIVE_MAX := 5
@@ -1178,6 +1181,9 @@ func _touch(key: String) -> void:
 
 func _freeze_later(key: String) -> void:
 	await get_tree().create_timer(0.6).timeout
+	# Never freeze a picture that has not been drawn yet (a slow frame, or one just resized).
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
 	if _stages.has(key) and not _live.has(key):
 		(_stages[key] as SubViewport).render_target_update_mode = SubViewport.UPDATE_DISABLED
 

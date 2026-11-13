@@ -126,10 +126,11 @@ func _build_ui() -> void:
 	# Dialogue box: dark glass with the speaker's color down the left edge, their name on a
 	# tab above it and their portrait standing up out of the corner.
 	_box = PanelContainer.new()
-	_box_style = UITheme.panel_box(Color(0.025, 0.04, 0.085, 0.93), 22, Color(1, 1, 1, 0.16))
-	_box_style.border_width_left = 6
-	_box_style.shadow_color = Color(0, 0, 0, 0.45)
-	_box_style.shadow_size = 18
+	# A comic speech box: bold white, thick ink outline, hard shadow. The speaker's color is
+	# the stripe down its left edge and their name tag.
+	_box_style = Comic.box(Comic.CREAM, 22, 0.0, 5, 9)
+	_box_style.set_content_margin_all(18)
+	_box_style.border_width_left = 14
 	_box.add_theme_stylebox_override("panel", _box_style)
 	_box.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	_box.offset_left = 250
@@ -162,10 +163,11 @@ func _build_ui() -> void:
 	_text.add_theme_font_size_override("normal_font_size", 28)
 	_text.add_theme_font_size_override("italics_font_size", 28)
 	_text.add_theme_constant_override("line_separation", 5)
-	_text.add_theme_color_override("default_color", Color(0.95, 0.97, 1.0))
+	_text.add_theme_color_override("default_color", Comic.INK)
+	_text.add_theme_font_override("normal_font", UITheme.body_font())
 	_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(_text)
-	_more = UITheme.label("▼", 24, UITheme.ACCENT)
+	_more = UITheme.label("▼", 26, Comic.ORANGE_DEEP)
 	_more.size_flags_vertical = Control.SIZE_SHRINK_END
 	_more.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(_more)
@@ -182,7 +184,7 @@ func _build_ui() -> void:
 	_portrait.visible = false
 	_ui.add_child(_portrait)
 	_name_tab = PanelContainer.new()
-	_name_style = UITheme.panel_box(UITheme.ACCENT, 12, UITheme.ACCENT)
+	_name_style = Comic.box(UITheme.ACCENT, 10, 0.18, 4, 4)
 	_name_style.content_margin_left = 20
 	_name_style.content_margin_right = 20
 	_name_style.content_margin_top = 4
@@ -197,7 +199,7 @@ func _build_ui() -> void:
 	_name_tab.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_name_tab.visible = false
 	_ui.add_child(_name_tab)
-	_name = UITheme.label("", 26, Color(0.02, 0.05, 0.09), UITheme.title_font())
+	_name = Comic.label("", 27, Color.WHITE, 7)
 	_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_name_tab.add_child(_name)
 	_choice_box = VBoxContainer.new()
@@ -209,7 +211,7 @@ func _build_ui() -> void:
 	_ui.add_child(_choice_box)
 	# NEXT GOAL panel.
 	_goal_box = PanelContainer.new()
-	_goal_box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.05, 0.1, 0.86), 16, Color(UITheme.GOLD, 0.6)))
+	_goal_box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.073, 0.172, 0.45, 0.86), 16, Color(UITheme.GOLD, 0.6)))
 	_goal_box.position = Vector2(44, 168)
 	_goal_box.custom_minimum_size = Vector2(430, 0)
 	_goal_box.visible = false
@@ -840,7 +842,7 @@ func _say(st: Dictionary) -> void:
 		_name_tab.visible = false
 		_portrait.visible = false
 		m.add_theme_constant_override("margin_left", 34)
-		_box_style.border_color = Color(1, 1, 1, 0.16)
+		_box_style.border_color = Comic.INK
 		_text.text = "[i]%s[/i]" % text
 	else:
 		var col: Color = Profile.color() if who == "player" else Color(info.get("color", UITheme.ACCENT))
@@ -848,11 +850,11 @@ func _say(st: Dictionary) -> void:
 		var changed := _name.text != (Profile.duelist_name if who == "player" else Loc.t(str(info.get("name", who)))).to_upper()
 		_name.text = (Profile.duelist_name if who == "player" else Loc.t(str(info.get("name", who)))).to_upper()
 		_name_style.bg_color = col
-		_name_style.border_color = col.lightened(0.3)
-		_name.add_theme_color_override("font_color", Color(0.02, 0.05, 0.09) if col.get_luminance() > 0.35 else Color.WHITE)
+		_name_style.border_color = Comic.INK
+		_name.add_theme_color_override("font_color", Color.WHITE)
 		_name_tab.visible = true
 		_name_tab.reset_size()
-		_box_style.border_color = col
+		_box_style.border_color = Comic.INK
 		m.add_theme_constant_override("margin_left", 196)
 		_portrait.visible = true
 		_portrait.texture = _face(who)

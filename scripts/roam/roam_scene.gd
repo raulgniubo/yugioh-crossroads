@@ -24,6 +24,7 @@ var _ui: CanvasLayer
 var _prompt: Label
 var _dlg: PanelContainer
 var _dlg_name: Label
+var _dlg_tag: StyleBoxFlat
 var _dlg_text: Label
 var _dlg_face: TextureRect
 var _plate: Control
@@ -1161,7 +1162,7 @@ func _talk() -> void:
 	if _dlg_fig:
 		_dlg_fig.speak(true)
 	_dlg_name.text = _npc_name(d).to_upper()
-	_dlg_name.add_theme_color_override("font_color", _npc_color(d).lightened(0.3))
+	_dlg_tag.bg_color = _npc_color(d).darkened(0.05) if _npc_color(d).get_luminance() < 0.7 else _npc_color(d).darkened(0.35)
 	_show_line()
 	Sfx.play("click")
 
@@ -1412,7 +1413,7 @@ func _build_ui() -> void:
 	add_child(_ui)
 	# Location card, top left.
 	var plate := PanelContainer.new()
-	var plate_box := UITheme.panel_box(Color(0.02, 0.035, 0.07, 0.78), 16, Color(_theme["accent"], 0.4))
+	var plate_box := UITheme.panel_box(Color(0.062, 0.154, 0.423, 0.78), 16, Color(_theme["accent"], 0.4))
 	plate_box.content_margin_left = 22
 	plate_box.content_margin_right = 26
 	plate_box.content_margin_top = 8
@@ -1484,7 +1485,7 @@ func _build_ui() -> void:
 	_prompt = Label.new()
 	_prompt.add_theme_font_override("font", UITheme.semi_font())
 	_prompt.add_theme_font_size_override("font_size", 30)
-	var sb := UITheme.panel_box(Color(0.03, 0.06, 0.1, 0.9), 14, Color(UITheme.ACCENT, 0.6))
+	var sb := UITheme.panel_box(Color(0.073, 0.185, 0.45, 0.9), 14, Color(UITheme.ACCENT, 0.6))
 	sb.content_margin_left = 26
 	sb.content_margin_right = 26
 	sb.content_margin_top = 8
@@ -1503,7 +1504,9 @@ func _build_ui() -> void:
 	_ui.add_child(_prompt)
 	# Dialogue box.
 	_dlg = PanelContainer.new()
-	_dlg.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.05, 0.09, 0.94), 22, Color(UITheme.ACCENT, 0.4)))
+	var dsb := Comic.box(Comic.CREAM, 22, 0.0, 5, 9)
+	dsb.set_content_margin_all(20)
+	_dlg.add_theme_stylebox_override("panel", dsb)
 	_dlg.anchor_left = 0.5
 	_dlg.anchor_right = 0.5
 	_dlg.anchor_top = 1.0
@@ -1526,16 +1529,24 @@ func _build_ui() -> void:
 	face_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	face_bg.show_behind_parent = true
 	face_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	face_bg.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.09, 0.14, 0.22, 0.95), 16, Color(UITheme.ACCENT, 0.5)))
+	face_bg.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.139, 0.285, 0.558, 0.95), 16, Color(UITheme.ACCENT, 0.5)))
 	_dlg_face.add_child(face_bg)
 	row.add_child(_dlg_face)
 	var v := VBoxContainer.new()
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.add_theme_constant_override("separation", 10)
 	row.add_child(v)
-	_dlg_name = UITheme.label("", 28, UITheme.ACCENT, UITheme.title_font())
+	# The name sits on a slanted tag in the speaker's color.
+	_dlg_name = Comic.label("", 26, Color.WHITE, 7)
+	_dlg_tag = Comic.box(Comic.BLUE, 10, 0.18, 4, 4)
+	_dlg_tag.content_margin_left = 20
+	_dlg_tag.content_margin_right = 20
+	_dlg_tag.content_margin_top = 2
+	_dlg_tag.content_margin_bottom = 2
+	_dlg_name.add_theme_stylebox_override("normal", _dlg_tag)
+	_dlg_name.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	v.add_child(_dlg_name)
-	_dlg_text = UITheme.label("", 30, Color.WHITE)
+	_dlg_text = UITheme.label("", 30, Comic.INK)
 	_dlg_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_dlg_text.custom_minimum_size = Vector2(1000, 90)
 	v.add_child(_dlg_text)

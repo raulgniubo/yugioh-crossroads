@@ -87,7 +87,7 @@ func _build() -> void:
 	_left = _portrait(true)
 	_right = _portrait(false)
 	_box = PanelContainer.new()
-	_box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.05, 0.1, 0.94), 24, Color(UITheme.ACCENT, 0.4)))
+	_box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.073, 0.172, 0.45, 0.94), 24, Color(UITheme.ACCENT, 0.4)))
 	_box.anchor_left = 0.5
 	_box.anchor_right = 0.5
 	_box.anchor_top = 1.0

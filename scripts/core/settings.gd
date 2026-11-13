@@ -22,6 +22,9 @@ var sleeve := "default"         # the back of your own cards in a duel (see Card
 var field_theme := "auto"
 var language := "en"
 var show_fps := false
+## Frame rate: 0 = unlimited, -1 = match the screen (V-Sync), otherwise the cap.
+var fps_cap := 0
+const FPS_CAPS := [0, 30, 60, 120, 144, 240, -1]
 ## 0 = Performance, 1 = High, 2 = Ultra (global illumination).
 var graphics := 1
 const GRAPHICS := ["Performance", "High", "Ultra"]
@@ -68,6 +71,7 @@ func load_settings() -> void:
 	sleeve = str(cfg.get_value("game", "sleeve", sleeve))
 	show_fps = cfg.get_value("display", "show_fps", show_fps)
 	graphics = cfg.get_value("display", "graphics", graphics)
+	fps_cap = int(cfg.get_value("display", "fps_cap", fps_cap))
 
 
 func save_settings() -> void:
@@ -84,7 +88,21 @@ func save_settings() -> void:
 	cfg.set_value("game", "sleeve", sleeve)
 	cfg.set_value("display", "show_fps", show_fps)
 	cfg.set_value("display", "graphics", graphics)
+	cfg.set_value("display", "fps_cap", fps_cap)
 	cfg.save(PATH)
+
+
+## The frame rate cap. V-Sync is what held the game at the screen's 60, so every choice but
+## "Match screen" turns it off.
+func apply_fps() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if fps_cap < 0 else DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = maxi(fps_cap, 0)
+
+
+static func fps_name(cap: int) -> String:
+	return "Unlimited" if cap == 0 else ("Match screen (V-Sync)" if cap < 0 else "%d FPS" % cap)
 
 
 func apply() -> void:
@@ -93,6 +111,7 @@ func apply() -> void:
 	if not _is_desktop():
 		changed.emit()
 		return
+	apply_fps()
 	if fullscreen:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 	else:

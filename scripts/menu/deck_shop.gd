@@ -91,7 +91,7 @@ func _ready() -> void:
 	# The deck you are holding.
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(560, 0)
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.04, 0.065, 0.11, 0.92), 20, Color(UITheme.GOLD, 0.3)))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.084, 0.191, 0.459, 0.92), 20, Color(UITheme.GOLD, 0.3)))
 	body.add_child(panel)
 	var pm := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:

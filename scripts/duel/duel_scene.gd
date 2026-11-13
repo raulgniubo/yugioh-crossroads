@@ -263,13 +263,16 @@ func _start() -> void:
 				else:
 					board.duelist_gesture(rs, "intro")
 				await get_tree().create_timer(2.5).timeout
-	await hud.banner("DUEL!", UITheme.ACCENT)
+	await hud.banner("DUEL!", Comic.YELLOW)
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--cutin="):
 			# Dev: hold a cut-in on screen for a screenshot. me | opp | big | hit
 			var what := a.trim_prefix("--cutin=")
 			get_tree().create_timer(5.0).timeout.connect(func():
-				if what == "hit":
+				if what == "say":
+					hud.say(0, "My turn. Draw!")
+					hud.say(1, "You're wasting my time. Let's get this over with.")
+				elif what == "hit":
 					hud.impact(Vector3(0, 0.3, -1.5), Color("ff5a7a"), 1.0)
 					hud._float_number(1, -2400)
 				elif what == "opp":
@@ -603,14 +606,14 @@ func _play_event(ev: Dictionary) -> void:
 			if randf() < 0.45:
 				_talk(p, "turn", 1.0, 0.0)
 			await hud.banner("YOUR TURN" if mine else Loc.t("%s'S TURN") % state.players[AI].name.to_upper(),
-					UITheme.ACCENT if mine else Color("a08cff"))
+					Comic.SKY if mine else Color("ff7a8a"))
 		"phase":
 			var ph: int = ev["phase"]
-			hud.set_phase(ph, state.current == ME)
+			hud.set_phase(ph, state.current == ME, state.turn)
 			board.set_battle_mode(ph == DuelState.Phase.BATTLE)
 			var names := {DuelState.Phase.BATTLE: "BATTLE PHASE", DuelState.Phase.MAIN2: "MAIN PHASE 2", DuelState.Phase.END: "END PHASE"}
 			if names.has(ph):
-				var col: Color = UITheme.DANGER if ph == DuelState.Phase.BATTLE else (UITheme.ACCENT if state.current == ME else Color("a08cff"))
+				var col: Color = UITheme.DANGER if ph == DuelState.Phase.BATTLE else (Comic.BLUE if state.current == ME else Comic.RED)
 				await hud.phase_sweep(names[ph], col)
 				if ph == DuelState.Phase.END and state.current == AI and randf() < 0.3:
 					_talk(AI, "taunt")
@@ -697,7 +700,7 @@ func _play_event(ev: Dictionary) -> void:
 			var direct: bool = ev["target"] == null
 			# Big swings get a cut-in instead of a bubble: the attacker's name, shouted.
 			if not _autoplay and (direct or int(atk_card.atk()) >= 2400):
-				hud.cut_in(p, str(atk_card.cname()).to_upper(), Loc.t("Direct attack!") if direct else Loc.t("Attack!"), UITheme.ACCENT if p == ME else Color("ff5a7a"), 0.45)
+				hud.cut_in(p, str(atk_card.cname()).to_upper(), Loc.t("Direct attack!") if direct else Loc.t("Attack!"), Comic.BLUE if p == ME else Color("ff5a7a"), 0.45)
 				board.duelist_gesture(p, "attack")
 			elif randf() < 0.3:
 				_talk(p, "attack")
@@ -713,7 +716,7 @@ func _play_event(ev: Dictionary) -> void:
 			var hit_at: Vector3 = board._attack_goal(p, ev["target"])
 			var heavy: bool = ev["target"] == null or int(ev["card"].atk()) >= 2400
 			get_tree().create_timer(Settings.t(0.46)).timeout.connect(func():
-				hud.impact(hit_at + Vector3(0, 0.3, 0), UITheme.ACCENT if p == ME else Color("ff5a7a"), 1.0 if heavy else 0.55))
+				hud.impact(hit_at + Vector3(0, 0.3, 0), Comic.SKY if p == ME else Color("ff5a7a"), 1.0 if heavy else 0.55))
 			await board.anim_battle(p, ev["card"], ev["target"])
 		"attack_stopped":
 			await board.anim_attack_stopped(ev["card"])
@@ -965,7 +968,7 @@ func _refresh() -> void:
 		for m in state.players[ME].monsters():
 			var c := board.card_for(m)
 			if c and (state.can_attack(ME, m) or state.can_flip_summon(ME, m) or state.can_change_position(ME, m)):
-				c.set_glow(true, UITheme.ACCENT)
+				c.set_glow(true, Comic.SKY)
 
 
 ## A few words on what is open to you right now, so a glowing card is never a riddle.
@@ -1889,6 +1892,22 @@ func _run_ai(act: Dictionary, who: int) -> Array:
 
 func _demo_actions() -> void:
 	await get_tree().create_timer(0.6).timeout
+	if "--demo-say" in OS.get_cmdline_user_args():
+		var t := Timer.new()
+		t.wait_time = 2.4
+		t.autostart = true
+		add_child(t)
+		var both := func():
+			hud.say(0, "My turn. Draw!")
+			hud.say(1, "You're wasting my time. Let's get this over with.")
+		t.timeout.connect(both)
+		both.call()
+	if "--demo-big" in OS.get_cmdline_user_args():
+		hud.cut_in(0, "DARK MAGICIAN", "ATK 2500   ·   DEF 2100", Color("a070ff"), 30.0, true)
+		return
+	if "--demo-opp" in OS.get_cmdline_user_args():
+		hud.cut_in(1, "BLUE-EYES WHITE DRAGON", "Attack!", Comic.RED, 30.0)
+		return
 	if "--demo-deck" in OS.get_cmdline_user_args():
 		_on_deck_clicked()
 		return
