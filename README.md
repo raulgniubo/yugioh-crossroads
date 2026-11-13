@@ -7,7 +7,8 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
 ## What is in 0.21
 
-- A new look for the whole game: bright comic panels in place of the dark neon. Slanted slabs,
+- A new look for the whole game: bright comic pages in place of the dark neon, deep navy cards
+  on top of them, cream chips and dropdowns, orange for what is picked. Slanted slabs,
   ink outlines, halftone dots, a chunky title face (Lilita One) and a loud one for VS, banners
   and damage numbers (Bangers). Both fonts are under the SIL Open Font License, see
   `assets/fonts`.

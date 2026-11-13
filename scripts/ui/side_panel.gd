@@ -22,7 +22,7 @@ func _init(title_text: String, width := 640.0) -> void:
 			close())
 	add_child(_dim)
 	_panel = PanelContainer.new()
-	_panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.0895, 0.198, 0.468, 0.96), 24, Color(UITheme.ACCENT, 0.25)))
+	_panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.066, 0.118, 0.302, 0.96), 24, Color(UITheme.ACCENT, 0.25)))
 	_panel.anchor_left = 1.0
 	_panel.anchor_right = 1.0
 	_panel.anchor_top = 0.0

@@ -37,7 +37,7 @@ func _ready() -> void:
 	add_child(center)
 	var panel := PanelContainer.new()
 	var accent: Color = scene._theme.get("accent", UITheme.ACCENT)
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.0785, 0.185, 0.459, 0.98), 24, Color(accent, 0.45)))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.058, 0.109, 0.294, 0.98), 24, Color(accent, 0.45)))
 	center.add_child(panel)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 22)
@@ -205,7 +205,7 @@ func _fill() -> void:
 func _row(e: Dictionary) -> Control:
 	var pc := PanelContainer.new()
 	var on: bool = _selected == e
-	pc.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.117, 0.247, 0.522, 0.95) if on else Color(0.095, 0.21, 0.477, 0.9), 14,
+	pc.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.086, 0.154, 0.353, 0.95) if on else Color(0.07, 0.127, 0.31, 0.9), 14,
 			Color(e["color"], 0.9) if on else Color(1, 1, 1, 0.07)))
 	pc.mouse_filter = Control.MOUSE_FILTER_STOP
 	pc.gui_input.connect(func(ev):
@@ -253,7 +253,7 @@ func _row(e: Dictionary) -> Control:
 func _quest_row(qd: Dictionary) -> Control:
 	var pc := PanelContainer.new()
 	var done: bool = qd["done"]
-	pc.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.095, 0.21, 0.477, 0.9), 14, Color(UITheme.GOLD, 0.5) if done else Color(1, 1, 1, 0.07)))
+	pc.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.07, 0.127, 0.31, 0.9), 14, Color(UITheme.GOLD, 0.5) if done else Color(1, 1, 1, 0.07)))
 	var v := VBoxContainer.new()
 	pc.add_child(v)
 	v.add_child(UITheme.label(("✔  " if done else "") + str(qd["name"]), 23, UITheme.GOLD if done else Color.WHITE, UITheme.semi_font()))

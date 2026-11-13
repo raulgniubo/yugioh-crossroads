@@ -48,7 +48,7 @@ func _ready() -> void:
 	add_child(veil)
 	var q: Array = QUESTIONS[randi() % QUESTIONS.size()]
 	var pc := PanelContainer.new()
-	var sb := UITheme.panel_box(Color(0.073, 0.172, 0.45, 0.97), 22, Color(UITheme.GOLD, 0.6))
+	var sb := UITheme.panel_box(Color(0.054, 0.0996, 0.285, 0.97), 22, Color(UITheme.GOLD, 0.6))
 	sb.set_content_margin_all(34)
 	pc.add_theme_stylebox_override("panel", sb)
 	pc.set_anchors_preset(Control.PRESET_CENTER)

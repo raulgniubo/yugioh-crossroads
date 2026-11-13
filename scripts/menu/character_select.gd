@@ -71,7 +71,7 @@ func _ready() -> void:
 	if _field != "auto" and not FieldThemes.THEMES.has(_field):
 		_field = "auto"
 	var dim := ColorRect.new()
-	dim.color = Color(0.035, 0.09, 0.34, 0.985)
+	dim.color = Color(0.07, 0.2, 0.62, 0.985)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
@@ -336,7 +336,7 @@ func _refresh_slots() -> void:
 			ace = _deck_ace(deck_key)
 		sl["ace"].texture = Cards.get_face(ace) if ace != 0 else null
 		var active: bool = side == _picking
-		var sb := UITheme.button_box(Color(0.073, 0.172, 0.441, 0.0), col if active else Color(1, 1, 1, 0.16), 20)
+		var sb := UITheme.button_box(Color(0.054, 0.0996, 0.277, 0.0), col if active else Color(1, 1, 1, 0.16), 20)
 		sb.set_border_width_all(4 if active else 1)
 		sb.set_content_margin_all(0)
 		if active:
@@ -397,11 +397,11 @@ func _refresh_picker() -> void:
 		var on: bool = side == _picking
 		var col: Color = Portraits.info(_me if side == "me" else _opp).get("color", UITheme.ACCENT)
 		b.text = ("●  " if on else "") + (Loc.t("My duelist") if side == "me" else Loc.t("My opponent"))
-		var sb := UITheme.button_box(col if on else Color(0.095, 0.21, 0.486, 0.9), col if on else Color(1, 1, 1, 0.2), 12)
+		var sb := UITheme._chip_box(col if on else Comic.CREAM)
 		for st in ["normal", "hover", "pressed", "focus"]:
 			b.add_theme_stylebox_override(st, sb)
 		for fc in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-			b.add_theme_color_override(fc, Color(0.02, 0.04, 0.08) if on else Color.WHITE)
+			b.add_theme_color_override(fc, Comic.INK)
 		b.tooltip_text = "Choose who you play as" if side == "me" else "Choose who you duel against"
 	for side in _slots:
 		var pb: Control = _slots[side]["button"]
@@ -463,7 +463,7 @@ func _roster_card(key: String) -> Control:
 	var col: Color = info.get("color", UITheme.ACCENT)
 	for st in ["normal", "hover", "pressed", "focus"]:
 		var lit: bool = chosen or st == "hover" or st == "focus"
-		var sb := UITheme.button_box(Color(0.095, 0.21, 0.477, 1), col if lit else Color(1, 1, 1, 0.08), 12)
+		var sb := UITheme.button_box(Color(0.07, 0.127, 0.31, 1), col if lit else Color(1, 1, 1, 0.08), 12)
 		sb.set_border_width_all(3 if lit else 1)
 		sb.set_content_margin_all(0)
 		b.add_theme_stylebox_override(st, sb)
@@ -579,7 +579,7 @@ func _section(v: VBoxContainer, text: String) -> void:
 
 func _build_setup() -> void:
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.084, 0.198, 0.468, 0.96), 22, Color(UITheme.ACCENT, 0.3)))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.062, 0.118, 0.302, 0.96), 22, Color(UITheme.ACCENT, 0.3)))
 	panel.position = Vector2(1166, 104)
 	panel.custom_minimum_size = Vector2(690, 936)
 	panel.size = Vector2(690, 936)
@@ -694,9 +694,10 @@ func _build_setup() -> void:
 		lp_b.text = Loc.t("%d Life Points") % _lp
 		first_b.text = Loc.t(["Rock-paper-scissors", "I go first", "They go first"][_first + 1])
 		g_b.text = Loc.t(["Single opponent", "Gauntlet: 3 in a row", "Survival: endless"][_run])
-		g_b.add_theme_color_override("font_color", UITheme.GOLD if _run > 0 else UITheme.TEXT)
+		g_b.add_theme_color_override("font_color", Comic.ORANGE_DEEP if _run > 0 else Comic.INK)
 		hand_b.text = Loc.t("Hand of %d") % _hand_n
 	for rb in [lp_b, hand_b, first_b, g_b]:
+		UITheme.chip(rb)
 		rb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		rb.add_theme_font_size_override("font_size", 14)
 		rb.clip_text = true

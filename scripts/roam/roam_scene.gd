@@ -1413,7 +1413,7 @@ func _build_ui() -> void:
 	add_child(_ui)
 	# Location card, top left.
 	var plate := PanelContainer.new()
-	var plate_box := UITheme.panel_box(Color(0.062, 0.154, 0.423, 0.78), 16, Color(_theme["accent"], 0.4))
+	var plate_box := UITheme.panel_box(Color(0.046, 0.0867, 0.26, 0.78), 16, Color(_theme["accent"], 0.4))
 	plate_box.content_margin_left = 22
 	plate_box.content_margin_right = 26
 	plate_box.content_margin_top = 8
@@ -1485,7 +1485,7 @@ func _build_ui() -> void:
 	_prompt = Label.new()
 	_prompt.add_theme_font_override("font", UITheme.semi_font())
 	_prompt.add_theme_font_size_override("font_size", 30)
-	var sb := UITheme.panel_box(Color(0.073, 0.185, 0.45, 0.9), 14, Color(UITheme.ACCENT, 0.6))
+	var sb := UITheme.panel_box(Color(0.054, 0.109, 0.285, 0.9), 14, Color(UITheme.ACCENT, 0.6))
 	sb.content_margin_left = 26
 	sb.content_margin_right = 26
 	sb.content_margin_top = 8
@@ -1529,7 +1529,7 @@ func _build_ui() -> void:
 	face_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	face_bg.show_behind_parent = true
 	face_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	face_bg.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.139, 0.285, 0.558, 0.95), 16, Color(UITheme.ACCENT, 0.5)))
+	face_bg.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.102, 0.181, 0.387, 0.95), 16, Color(UITheme.ACCENT, 0.5)))
 	_dlg_face.add_child(face_bg)
 	row.add_child(_dlg_face)
 	var v := VBoxContainer.new()

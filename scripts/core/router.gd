@@ -34,6 +34,7 @@ func _process(_delta: float) -> void:
 
 
 func _ready() -> void:
+	get_tree().node_added.connect(_on_node_added)
 	layer = 100
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_fade = ColorRect.new()
@@ -49,7 +50,7 @@ func _ready() -> void:
 	_toast.add_theme_font_override("font", load("res://assets/fonts/Rajdhani-SemiBold.ttf"))
 	_toast.add_theme_font_size_override("font_size", 30)
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.084, 0.21, 0.486, 0.92)
+	sb.bg_color = Color(0.062, 0.127, 0.319, 0.92)
 	sb.border_color = Color(0.17, 0.89, 0.9, 0.6)
 	sb.set_border_width_all(1)
 	sb.set_corner_radius_all(14)
@@ -230,3 +231,17 @@ func toast(message: String) -> void:
 	tw.tween_property(_toast, "modulate:a", 1.0, 0.2)
 	tw.tween_interval(1.8)
 	tw.tween_property(_toast, "modulate:a", 0.0, 0.4)
+
+
+## Plain toggle buttons (a word, nothing inside, no look of their own) become choice chips.
+func _on_node_added(n: Node) -> void:
+	if n.get_class() == "Button":
+		_chip_later.call_deferred(n)
+
+
+func _chip_later(n: Node) -> void:
+	if not is_instance_valid(n):
+		return
+	var b := n as Button
+	if b.toggle_mode and b.text != "" and b.get_child_count() == 0 and not b.has_theme_stylebox_override("normal"):
+		UITheme.chip(b)

@@ -281,7 +281,7 @@ func show_piles(p: int) -> void:
 			hide_piles())
 	_pile_panel.add_child(dim)
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.084, 0.185, 0.459, 0.97), 22, Color(UITheme.ACCENT, 0.4)))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.062, 0.109, 0.294, 0.97), 22, Color(UITheme.ACCENT, 0.4)))
 	_pile_panel.add_child(panel)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
@@ -456,7 +456,7 @@ func _build_phase() -> void:
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	ask_row.add_child(info)
 	var tip := PanelContainer.new()
-	var tsb := UITheme.panel_box(Color(0.073, 0.172, 0.45, 0.97), 14, Color(UITheme.ACCENT, 0.6))
+	var tsb := UITheme.panel_box(Color(0.054, 0.0996, 0.285, 0.97), 14, Color(UITheme.ACCENT, 0.6))
 	tsb.set_content_margin_all(14)
 	tip.add_theme_stylebox_override("panel", tsb)
 	tip.visible = false
@@ -666,7 +666,7 @@ func show_extra(options: Array) -> void:
 			hide_extra())
 	_extra_panel.add_child(dim)
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.084, 0.185, 0.459, 0.97), 22, Color("ffd23a", 0.4)))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.062, 0.109, 0.294, 0.97), 22, Color("ffd23a", 0.4)))
 	panel.set_anchors_preset(Control.PRESET_CENTER)
 	_extra_panel.add_child(panel)
 	var v := VBoxContainer.new()
@@ -906,7 +906,7 @@ var _inspect_stat_row: HBoxContainer
 
 func _build_inspector() -> void:
 	_inspect_panel = PanelContainer.new()
-	_inspect_panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.073, 0.172, 0.45, 0.92), 20, Color(UITheme.ACCENT, 0.25)))
+	_inspect_panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.054, 0.0996, 0.285, 0.92), 20, Color(UITheme.ACCENT, 0.25)))
 	_inspect_panel.anchor_top = 0.5
 	_inspect_panel.anchor_bottom = 0.5
 	_inspect_panel.offset_left = 30
@@ -1257,7 +1257,7 @@ func _layout_hand() -> void:
 
 func _build_prompt() -> void:
 	_prompt = PanelContainer.new()
-	_prompt.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.084, 0.198, 0.468, 0.92), 16, Color(UITheme.ACCENT, 0.5)))
+	_prompt.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.062, 0.118, 0.302, 0.92), 16, Color(UITheme.ACCENT, 0.5)))
 	_prompt.anchor_left = 0.5
 	_prompt.anchor_right = 0.5
 	_prompt.offset_top = 36
@@ -1279,7 +1279,7 @@ func _build_prompt() -> void:
 	_prompt.visible = false
 	# The coach line: what you can do right now, in a few words.
 	_coach = PanelContainer.new()
-	var csb := UITheme.panel_box(Color(0.073, 0.172, 0.441, 0.78), 14, Color(UITheme.ACCENT, 0.28))
+	var csb := UITheme.panel_box(Color(0.054, 0.0996, 0.277, 0.78), 14, Color(UITheme.ACCENT, 0.28))
 	csb.content_margin_left = 18
 	csb.content_margin_right = 18
 	csb.content_margin_top = 7
@@ -1347,7 +1347,7 @@ func ask_choice(text: String, answers: Array, card = null) -> int:
 		return randi() % answers.size()
 	await stage_clear()
 	var root := PanelContainer.new()
-	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.073, 0.185, 0.459, 0.97), 22, Color(UITheme.ACCENT, 0.7)))
+	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.054, 0.109, 0.294, 0.97), 22, Color(UITheme.ACCENT, 0.7)))
 	root.z_index = 60
 	add_child(root)
 	var h := HBoxContainer.new()
@@ -1398,7 +1398,7 @@ func ask_response(text: String, options: Array, button := "Activate", cancel := 
 		return null if (cancel != "" and randf() < 0.3) or options.is_empty() else options[randi() % options.size()]
 	await stage_clear()
 	var root := PanelContainer.new()
-	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.106, 0.135, 0.432, 0.97) if tint == Color("ff4dd2") else Color(0.073, 0.185, 0.459, 0.97), 22, Color(tint, 0.7)))
+	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.078, 0.073, 0.268, 0.97) if tint == Color("ff4dd2") else Color(0.054, 0.109, 0.294, 0.97), 22, Color(tint, 0.7)))
 	root.z_index = 60
 	add_child(root)
 	var v := VBoxContainer.new()
@@ -1472,7 +1472,7 @@ func ask_response(text: String, options: Array, button := "Activate", cancel := 
 ## Small floating callout for card effects.
 func effect_text(text: String, color := Color("ffd23a")) -> void:
 	var l := UITheme.label(text, 30, Color.WHITE, UITheme.semi_font())
-	var sb := UITheme.button_box(Color(0.073, 0.16, 0.432, 0.92), color, 16)
+	var sb := UITheme.button_box(Color(0.054, 0.091, 0.268, 0.92), color, 16)
 	sb.content_margin_left = 22
 	sb.content_margin_right = 22
 	l.add_theme_stylebox_override("normal", sb)
@@ -1708,7 +1708,7 @@ func feed(p: int, icon: String, text: String) -> void:
 		add_child(_feed)
 	var col: Color = Comic.SKY if p == 0 else Color("ff9aa6")
 	var pc := PanelContainer.new()
-	var sb := UITheme.panel_box(Color(0.073, 0.172, 0.45, 0.8), 10, Color(col, 0.4))
+	var sb := UITheme.panel_box(Color(0.054, 0.0996, 0.285, 0.8), 10, Color(col, 0.4))
 	sb.border_width_left = 4
 	sb.content_margin_left = 12
 	sb.content_margin_right = 14
@@ -1887,7 +1887,7 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 		var lp: Array = stats.get("lp", [0, 0])
 		for item in [["TURNS", str(stats.get("turns", 0)), Color.WHITE], ["YOUR LP", str(lp[0]), Comic.SKY], ["THEIR LP", str(lp[1]), Color("ff8a98")]]:
 			var box := PanelContainer.new()
-			box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.084, 0.198, 0.468, 0.9), 14, Color(item[2], 0.35)))
+			box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.062, 0.118, 0.302, 0.9), 14, Color(item[2], 0.35)))
 			box.custom_minimum_size = Vector2(150, 0)
 			var bv := VBoxContainer.new()
 			box.add_child(bv)

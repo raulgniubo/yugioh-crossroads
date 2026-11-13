@@ -38,7 +38,7 @@ func _ready() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.084, 0.198, 0.468, 0.97), 26, Color(UITheme.ACCENT, 0.3)))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.062, 0.118, 0.302, 0.97), 26, Color(UITheme.ACCENT, 0.3)))
 	center.add_child(panel)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 36)
@@ -153,8 +153,8 @@ func _ready() -> void:
 		sbn.toggle_mode = true
 		sbn.button_pressed = sid == Settings.sleeve
 		sbn.tooltip_text = Loc.t(str(e["name"]))
-		sbn.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.073, 0.172, 0.441, 0.9), Color(1, 1, 1, 0.12), 10))
-		var son := UITheme.button_box(Color(0.15, 0.198, 0.522, 0.95), Color("ffd98a"), 10)
+		sbn.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.054, 0.0996, 0.277, 0.9), Color(1, 1, 1, 0.12), 10))
+		var son := UITheme.button_box(Color(0.11, 0.118, 0.353, 0.95), Color("ffd98a"), 10)
 		son.set_border_width_all(3)
 		sbn.add_theme_stylebox_override("pressed", son)
 		var st := TextureRect.new()
@@ -217,7 +217,8 @@ func _ready() -> void:
 func _build_preview() -> Control:
 	var frame := PanelContainer.new()
 	frame.custom_minimum_size = Vector2(520, 760)
-	var fsb := UITheme.panel_box(Color(0.062, 0.154, 0.423, 1), 22, Color(1, 1, 1, 0.1))
+	# A bright stage behind the figure, so the duelist is the lightest thing on the card.
+	var fsb := UITheme.panel_box(Color(0.14, 0.4, 0.9, 1), 22, Color(1, 1, 1, 0.1))
 	fsb.set_content_margin_all(0)
 	frame.add_theme_stylebox_override("panel", fsb)
 	var svc := SubViewportContainer.new()

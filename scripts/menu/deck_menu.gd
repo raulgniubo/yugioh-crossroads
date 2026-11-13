@@ -74,7 +74,7 @@ func _ready() -> void:
 	left_scroll.add_child(_list)
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.084, 0.191, 0.459, 0.92), 20, Color(UITheme.ACCENT, 0.25)))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.062, 0.113, 0.294, 0.92), 20, Color(UITheme.ACCENT, 0.25)))
 	body.add_child(panel)
 	var pm := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
@@ -356,7 +356,7 @@ func _tile(id: int, n: int) -> Control:
 	Foil.apply(tr, CardData.rarity(id))
 	if n > 1:
 		var badge := PanelContainer.new()
-		var bsb := UITheme.panel_box(Color(0.062, 0.16, 0.432, 0.94), 9, Color(UITheme.GOLD, 0.9))
+		var bsb := UITheme.panel_box(Color(0.046, 0.091, 0.268, 0.94), 9, Color(UITheme.GOLD, 0.9))
 		bsb.content_margin_left = 7
 		bsb.content_margin_right = 7
 		bsb.content_margin_top = 0

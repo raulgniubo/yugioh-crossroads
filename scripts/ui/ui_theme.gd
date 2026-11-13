@@ -4,8 +4,10 @@ extends RefCounted
 ## ink outlines and hard drop shadows (see Comic for the drawing helpers).
 
 const BG := Color("0a1a52")
-const PANEL := Color(0.07, 0.17, 0.46, 0.95)
-const PANEL_LIGHT := Color(0.13, 0.28, 0.66, 0.95)
+const PANEL := Color(0.045, 0.08, 0.25, 0.96)
+const PANEL_LIGHT := Color(0.09, 0.16, 0.42, 0.96)
+## The bright line around a deep navy card.
+const EDGE := Color(0.42, 0.62, 1.0, 0.95)
 const ACCENT := Color("ffa51f")
 const ACCENT_2 := Color("3a86ff")
 const TEXT := Color("ffffff")
@@ -39,7 +41,7 @@ static func panel_box(color := PANEL, radius := 18, border := Color(1, 1, 1, 0.0
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = color
 	# A faint edge becomes the ink outline; a colored one keeps its color, drawn boldly.
-	sb.border_color = Comic.INK if border.a < 0.5 else Color(border, 1.0)
+	sb.border_color = EDGE if border.a < 0.5 else Color(border, 1.0)
 	sb.set_border_width_all(3)
 	sb.set_corner_radius_all(radius)
 	sb.set_content_margin_all(18)
@@ -68,6 +70,29 @@ static func button_box(bg: Color, border: Color, radius := 12) -> StyleBoxFlat:
 ## The standard slanted comic button, in any color.
 static func comic_button(fill: Color, skew := 0.14) -> StyleBoxFlat:
 	return Comic.box(fill, 12, skew, 3, 5)
+
+
+static func _chip_box(fill: Color) -> StyleBoxFlat:
+	var sb := Comic.box(fill, 12, 0.14, 3, 4)
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
+	return sb
+
+
+## A choice chip: cream with ink words, orange when it is the one picked. Every plain toggle
+## button gets this automatically (see Router), other buttons can ask for it.
+static func chip(b: Button, on_color := Comic.ORANGE) -> void:
+	b.add_theme_stylebox_override("normal", _chip_box(Comic.CREAM))
+	b.add_theme_stylebox_override("hover", _chip_box(Color("fff1b8")))
+	b.add_theme_stylebox_override("pressed", _chip_box(on_color))
+	b.add_theme_stylebox_override("hover_pressed", _chip_box(on_color.lightened(0.18)))
+	var dis := _chip_box(Color(0.62, 0.68, 0.82, 0.55))
+	dis.shadow_size = 0
+	dis.border_color = Color(Comic.INK, 0.4)
+	b.add_theme_stylebox_override("disabled", dis)
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+		b.add_theme_color_override(c, Comic.INK)
+	b.add_theme_color_override("font_disabled_color", Color(Comic.INK, 0.5))
 
 
 ## Paint one button as a primary (orange) or any other color, keeping the comic shape.
@@ -126,19 +151,21 @@ static func build() -> Theme:
 	t.set_icon("grabber", "HSlider", _dot(20, Color.WHITE))
 	t.set_icon("grabber_highlight", "HSlider", _dot(22, Comic.YELLOW))
 
-	# Option buttons and popups
-	t.set_stylebox("normal", "OptionButton", Comic.box(Color(0.1, 0.22, 0.56), 12, 0.0, 3, 3))
-	t.set_stylebox("hover", "OptionButton", Comic.box(Color(0.14, 0.3, 0.7), 12, 0.0, 3, 3))
-	t.set_stylebox("pressed", "OptionButton", Comic.box(Color(0.14, 0.3, 0.7), 12, 0.0, 3, 3))
+	# Dropdowns are cream boxes with ink words, like the chips: bright things on a deep card.
+	t.set_stylebox("normal", "OptionButton", Comic.box(Comic.CREAM, 12, 0.0, 3, 3))
+	t.set_stylebox("hover", "OptionButton", Comic.box(Color("fff1b8"), 12, 0.0, 3, 3))
+	t.set_stylebox("pressed", "OptionButton", Comic.box(Color("fff1b8"), 12, 0.0, 3, 3))
 	var ofoc := Comic.box(Color(0, 0, 0, 0), 12, 0.0, 3, 0)
-	ofoc.border_color = Color(1, 1, 1, 0.85)
+	ofoc.border_color = ACCENT
 	t.set_stylebox("focus", "OptionButton", ofoc)
 	t.set_font("font", "OptionButton", body_font())
 	t.set_font_size("font_size", "OptionButton", 20)
-	t.set_color("font_pressed_color", "OptionButton", Color.WHITE)
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+		t.set_color(c, "OptionButton", Comic.INK)
+	t.set_constant("modulate_arrow", "OptionButton", 1)
 	t.set_constant("outline_size", "OptionButton", 0)
-	t.set_stylebox("panel", "PopupMenu", panel_box(Color(0.08, 0.18, 0.5, 0.99), 12))
-	t.set_stylebox("hover", "PopupMenu", button_box(Color(ACCENT, 0.85), Color(0, 0, 0, 0), 8))
+	t.set_stylebox("panel", "PopupMenu", panel_box(Color(0.05, 0.09, 0.28, 0.99), 12))
+	t.set_stylebox("hover", "PopupMenu", button_box(Color(ACCENT, 0.9), Color(0, 0, 0, 0), 8))
 	t.set_font_size("font_size", "PopupMenu", 20)
 
 	# Checkbox as toggle
@@ -150,10 +177,14 @@ static func build() -> Theme:
 	for s in ["normal", "hover", "pressed", "focus", "hover_pressed"]:
 		t.set_stylebox(s, "CheckButton", StyleBoxEmpty.new())
 
-	t.set_stylebox("normal", "LineEdit", Comic.box(Color(0.04, 0.1, 0.3, 0.95), 10, 0.0, 3, 0))
-	var lef := Comic.box(Color(0.04, 0.1, 0.3, 0.95), 10, 0.0, 3, 0)
+	t.set_stylebox("normal", "LineEdit", Comic.box(Comic.CREAM, 10, 0.0, 3, 0))
+	var lef := Comic.box(Comic.CREAM, 10, 0.0, 4, 0)
 	lef.border_color = ACCENT
 	t.set_stylebox("focus", "LineEdit", lef)
+	t.set_color("font_color", "LineEdit", Comic.INK)
+	t.set_color("font_placeholder_color", "LineEdit", Color(Comic.INK, 0.45))
+	t.set_color("caret_color", "LineEdit", Comic.INK)
+	t.set_color("selection_color", "LineEdit", Color(ACCENT, 0.5))
 	return t
 
 

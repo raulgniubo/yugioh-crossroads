@@ -29,7 +29,7 @@ var _warn: Label
 
 func _panel(pad := 16) -> PanelContainer:
 	var pc := PanelContainer.new()
-	var sb := UITheme.panel_box(Color(0.073, 0.172, 0.45, 0.82), 18, Color(UITheme.ACCENT, 0.22))
+	var sb := UITheme.panel_box(Color(0.054, 0.0996, 0.285, 0.82), 18, Color(UITheme.ACCENT, 0.22))
 	sb.set_content_margin_all(pad)
 	pc.add_theme_stylebox_override("panel", sb)
 	return pc

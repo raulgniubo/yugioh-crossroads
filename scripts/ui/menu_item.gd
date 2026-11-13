@@ -15,7 +15,7 @@ func _init(title_text: String, subtitle: String) -> void:
 	custom_minimum_size = Vector2(560, 76)
 	focus_mode = Control.FOCUS_ALL
 	flat = true
-	_bg = UITheme.button_box(Color(0.128, 0.285, 0.576, 0.0), Color(1, 1, 1, 0.0), 14)
+	_bg = UITheme.button_box(Color(0.094, 0.181, 0.404, 0.0), Color(1, 1, 1, 0.0), 14)
 	for s in ["normal", "hover", "pressed", "focus", "disabled"]:
 		add_theme_stylebox_override(s, _bg)
 	_content = Control.new()
@@ -49,7 +49,7 @@ func _process(delta: float) -> void:
 	_bar.size.y = lerpf(32.0, 52.0, e)
 	_bar.position.y = (84.0 - _bar.size.y) / 2.0
 	_bar.color = UITheme.ACCENT.lerp(Color.WHITE, 0.35 * e)
-	_bg.bg_color = Color(0.128, 0.31, 0.594, 0.55 * e)
+	_bg.bg_color = Color(0.094, 0.199, 0.421, 0.55 * e)
 	_bg.border_color = Color(UITheme.ACCENT, 0.35 * e)
 	_title.add_theme_color_override("font_color", UITheme.TEXT.lerp(Color.WHITE, e))
 	_sub.modulate.a = lerpf(0.75, 1.0, e)

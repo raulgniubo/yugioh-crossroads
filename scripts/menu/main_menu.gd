@@ -400,7 +400,7 @@ func _build_profile_chip() -> void:
 	add_child(chip)
 	var frame := Panel.new()
 	var fsb := StyleBoxFlat.new()
-	fsb.bg_color = Color(0.05, 0.12, 0.4)
+	fsb.bg_color = Color(0.0373, 0.0622, 0.238)
 	fsb.set_corner_radius_all(46)
 	frame.add_theme_stylebox_override("panel", fsb)
 	frame.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW

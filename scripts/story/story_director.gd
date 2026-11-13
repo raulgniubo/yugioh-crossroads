@@ -211,7 +211,7 @@ func _build_ui() -> void:
 	_ui.add_child(_choice_box)
 	# NEXT GOAL panel.
 	_goal_box = PanelContainer.new()
-	_goal_box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.073, 0.172, 0.45, 0.86), 16, Color(UITheme.GOLD, 0.6)))
+	_goal_box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.054, 0.0996, 0.285, 0.86), 16, Color(UITheme.GOLD, 0.6)))
 	_goal_box.position = Vector2(44, 168)
 	_goal_box.custom_minimum_size = Vector2(430, 0)
 	_goal_box.visible = false
