@@ -2071,7 +2071,7 @@ func duelist_gesture(p: int, kind: String) -> void:
 var _body_tw := {}
 
 func duelist_body(p: int, kind: String, strength := 1.0) -> void:
-	if not _duelists.has(p) or not is_instance_valid(_duelists[p]):
+	if turbo or not _duelists.has(p) or not is_instance_valid(_duelists[p]) or not (_duelists[p] is RoamFigure):
 		return
 	var fig: Node3D = _duelists[p]
 	var side := 1.0 if p == 0 else -1.0
