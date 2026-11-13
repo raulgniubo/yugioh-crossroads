@@ -30,6 +30,10 @@ func setup(roam: Node, world: Node) -> void:
 		Router.story_result = ""
 		Router.roam["tourney"] = ""
 		var res := Tournament.resolve(back, won)
+		print("TOURNEY back won=", won, " stage=", Tournament.st(back)["stage"], " round=", Tournament.st(back)["round"], " next=", Tournament.my_match(back).get("name", "-"))
+		if "--tourney=play" in OS.get_cmdline_user_args():
+			get_tree().quit()
+			return
 		_refresh()
 		_show_bracket.call_deferred(back, res)
 	for a in OS.get_cmdline_user_args():
@@ -37,6 +41,14 @@ func setup(roam: Node, world: Node) -> void:
 			# Dev: jump to a stage. qualify | finals | won | lose | bracket
 			var what := a.trim_prefix("--tourney=")
 			var tid: String = Tournament.in_district(district)[0]
+			if what == "play":
+				Tournament.register(tid)
+				Tournament.start_finals(tid)
+				Router.roam["tourney"] = tid
+				Router.roam["last_duel"] = ""
+				Router.duel_config = Tournament.duel_config(tid)
+				get_tree().create_timer(1.5).timeout.connect(func(): Router.go(Router.DUEL))
+				return
 			Tournament.register(tid)
 			if what != "qualify":
 				Tournament.start_finals(tid)

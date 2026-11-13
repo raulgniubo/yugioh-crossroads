@@ -170,6 +170,27 @@ static func _home(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> v
 	leaf.position = o + Vector3(half.x - 0.5, 0.8, half.y - 0.6)
 	city.add_child(leaf)
 	_sign(city, "HOME", o + Vector3(-2.6, 2.6, -half.y + 0.12), 0.0, Color("7cc4ff"), 90)
+	# Tournament trophies you have won stand on a low cabinet by the bed, one per title.
+	var k := 0
+	for tid in Tournament.DEFS:
+		if Tournament.titles(str(tid)) <= 0:
+			continue
+		if k == 0:
+			city.box(Vector3(0.6, 0.7, 1.8), o + Vector3(-half.x + 0.4, 0.35, 2.4), wood)
+		var tp := o + Vector3(-half.x + 0.4, 0.7, 1.9 + k * 0.9)
+		var tcol: Color = Tournament.DEFS[tid]["color"]
+		city.box(Vector3(0.3, 0.1, 0.3), tp + Vector3(0, 0.05, 0), dark, false)
+		city.cyl(0.035, 0.05, 0.22, tp + Vector3(0, 0.21, 0), gold, null, 8)
+		city.cyl(0.2, 0.08, 0.36, tp + Vector3(0, 0.5, 0), gold, null, 14)
+		city.box(Vector3(0.5, 0.05, 0.05), tp + Vector3(0, 0.56, 0), gold, false)
+		city.box(Vector3(0.22, 0.07, 0.02), tp + Vector3(0.16, 0.05, 0), city.glow_mat(tcol, 1.2), false)
+		var tl := OmniLight3D.new()
+		tl.light_color = Color(1.0, 0.85, 0.5)
+		tl.light_energy = 0.8
+		tl.omni_range = 2.2
+		tl.position = tp + Vector3(0.4, 0.7, 0)
+		city.add_child(tl)
+		k += 1
 
 
 static func _mart(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> void:
@@ -637,7 +658,13 @@ static func _shelf() -> void:
 	var wins := 0
 	var beaten: Dictionary = Collection.record.get("beaten", {})
 	wins = beaten.size()
+	var cups: Array = []
+	for tid in Tournament.DEFS:
+		if Tournament.titles(str(tid)) > 0:
+			cups.append(Loc.t(str(Tournament.DEFS[tid]["name"])) + (" x%d" % Tournament.titles(str(tid)) if Tournament.titles(str(tid)) > 1 else ""))
 	Router.toast(Loc.t("Your shelf: %d different duelists beaten, %d cards collected, %d Duel Points saved.") % [wins, Collection.owned.size(), Collection.dp])
+	if not cups.is_empty():
+		Router.toast.call_deferred(Loc.t("Trophies: %s") % ", ".join(cups))
 
 
 static func _lucky(scene: Node) -> void:
