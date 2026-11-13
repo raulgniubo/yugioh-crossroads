@@ -113,6 +113,21 @@ func _debug_args() -> void:
 			duel_config["opponent"] = a.substr(6)
 		elif a == "--turbo":
 			duel_config["turbo"] = true
+		elif a == "--parse-all":
+			# Dev: load every script so a parse error anywhere shows up, then quit.
+			var todo: Array = ["res://scripts"]
+			var count := 0
+			while not todo.is_empty():
+				var dir: String = todo.pop_back()
+				for sub in DirAccess.get_directories_at(dir):
+					todo.append(dir + "/" + sub)
+				for f in DirAccess.get_files_at(dir):
+					if f.ends_with(".gd"):
+						count += 1
+						if load(dir + "/" + f) == null:
+							print("PARSE FAIL ", dir, "/", f)
+			print("PARSE checked ", count, " scripts")
+			get_tree().quit()
 		elif a.begins_with("--lp="):
 			duel_config["lp"] = int(a.substr(5))
 		elif a.begins_with("--oppdeck="):

@@ -21,6 +21,7 @@ var _waves: Array = []
 var errands := {}               # id -> 0 not started, 1 looking, 2 item found, 3 done
 var seated := false
 var duels: StreetDuels
+var tourney: TourneyWorld
 var _seat_out := Vector3.ZERO
 
 const PEOPLE := ["student_boy", "student_girl", "office_worker", "stylish_woman", "street_duelist", "duelist_f1", "duelist_m5", "duelist_m9"]
@@ -64,6 +65,9 @@ func setup(roam: Node) -> void:
 	_build_seats()
 	_room_extras()
 	_build_routines()
+	tourney = TourneyWorld.new()
+	add_child(tourney)
+	tourney.setup(scene, self)
 	duels = StreetDuels.new()
 	add_child(duels)
 	# Story scenes stage their own crowd; the street duels sit out a chapter.

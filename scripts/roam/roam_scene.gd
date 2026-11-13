@@ -152,6 +152,8 @@ func _after_duel() -> void:
 				_beaten[who] = true
 				_save_progress()
 				_refresh_marker(n)
+				if life and life.tourney:
+					life.tourney.street_win(who, str((n[0] as Dictionary).get("duel", {}).get("deck", "")))
 			var name: String = _npc_name(n[0])
 			await get_tree().create_timer(0.8).timeout
 			Router.toast((Loc.t("You beat %s!") % name) if won else (Loc.t("%s wins this time. Try again!") % name))
