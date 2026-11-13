@@ -168,6 +168,20 @@ func _start() -> void:
 			board.duelist_shot(int(a.substr(13)), 0.1)
 			await get_tree().create_timer(30.0).timeout
 	await hud.banner("DUEL!", UITheme.ACCENT)
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--cutin="):
+			# Dev: hold a cut-in on screen for a screenshot. me | opp | big | hit
+			var what := a.trim_prefix("--cutin=")
+			get_tree().create_timer(5.0).timeout.connect(func():
+				if what == "hit":
+					hud.impact(Vector3(0, 0.3, -1.5), Color("ff5a7a"), 1.0)
+					hud._float_number(1, -2400)
+				elif what == "opp":
+					hud.cut_in(1, "BLUE-EYES WHITE DRAGON", "Attack!", Color("ff5a7a"), 30.0)
+				elif what == "big":
+					hud.cut_in(0, "DARK MAGICIAN", "ATK 2500   ·   DEF 2100", Color("a070ff"), 30.0, true)
+				else:
+					hud.cut_in(0, "TRAP CARD!", "Mirror Force", Color("ff4dd2"), 30.0))
 	if "--ask-test" in OS.get_cmdline_user_args():
 		await _play(events)
 		var lab := {}
@@ -530,12 +544,22 @@ func _play_event(ev: Dictionary) -> void:
 		"spell_done":
 			await board.anim_spell_done(ev["card"])
 		"attack":
-			if ev["target"] == null or randf() < 0.3:
+			var atk_card = ev["card"]
+			var direct: bool = ev["target"] == null
+			# Big swings get a cut-in instead of a bubble: the attacker's name, shouted.
+			if not _autoplay and (direct or int(atk_card.atk()) >= 2400):
+				hud.cut_in(p, str(atk_card.cname()).to_upper(), Loc.t("Direct attack!") if direct else Loc.t("Attack!"), UITheme.ACCENT if p == ME else Color("ff5a7a"), 0.45)
+				board.duelist_gesture(p, "attack")
+			elif randf() < 0.3:
 				_talk(p, "attack")
 			Sfx.play("attack")
 			await board.anim_declare(p, ev["card"], ev["target"])
 		"battle":
 			get_tree().create_timer(Settings.t(0.12)).timeout.connect(func(): Sfx.play("impact"))
+			var hit_at: Vector3 = board._attack_goal(p, ev["target"])
+			var heavy: bool = ev["target"] == null or int(ev["card"].atk()) >= 2400
+			get_tree().create_timer(Settings.t(0.46)).timeout.connect(func():
+				hud.impact(hit_at + Vector3(0, 0.3, 0), UITheme.ACCENT if p == ME else Color("ff5a7a"), 1.0 if heavy else 0.55))
 			await board.anim_battle(p, ev["card"], ev["target"])
 		"attack_stopped":
 			await board.anim_attack_stopped(ev["card"])
@@ -546,7 +570,9 @@ func _play_event(ev: Dictionary) -> void:
 			Sfx.play("card")
 			await board.anim_set_st(p, ev["card"], ev["zone"])
 		"trap":
-			_talk(p, "trap", 0.7, 0.0)
+			if not _autoplay:
+				hud.cut_in(p, Loc.t("TRAP CARD!"), str(ev["card"].data["name"]), Color("ff4dd2"), 0.4)
+				board.duelist_gesture(p, "trap")
 			Sfx.play("spell", 0.0, 0.8)
 			hud.inspect(ev["card"])
 			hud.banner(str(ev["card"].data["name"]).to_upper(), Color("ff4dd2"))
@@ -639,8 +665,11 @@ func _play_event(ev: Dictionary) -> void:
 			board.set_deck_count(p, ev["deck"])
 		"lp":
 			hud.set_lp(p, ev["lp"], ev["delta"])
+			if ev["delta"] < 0 and int(ev["lp"]) <= 0 and not _autoplay:
+				# The last hit of the duel: the winner gets the screen.
+				hud.cut_in(1 - p, Loc.t("FINISHING BLOW!"), Characters.line(_speaker(ME) if p == AI else _opp_key, "win"), UITheme.GOLD, 0.8, true)
 			if ev["delta"] < 0:
-				board.shake(0.5)
+				board.shake(0.5 if ev["delta"] > -2000 else 0.8)
 				Sfx.play("damage")
 				hud.react(p, "hurt")
 				if p == AI and ev["lp"] <= 2000 and not _said_low:

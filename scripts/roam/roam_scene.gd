@@ -208,6 +208,9 @@ const ROUTES := [
 	[Vector3(7.4, 0, -8), Vector3(7.4, 0, -29)],
 	[Vector3(-8, 0, 7.4), Vector3(-29, 0, 7.4)],
 	[Vector3(-4.0, 0, -10), Vector3(4.0, 0, -10)],
+	[Vector3(-7.4, 0, -8), Vector3(-7.4, 0, -29)],
+	[Vector3(-14, 0, 57.8), Vector3(14, 0, 57.8)],
+	[Vector3(-29, 0, -7.4), Vector3(-8, 0, -7.4)],
 ]
 var _walkers: Array = []  # {fig, a, b, t, dir, body}
 
@@ -729,6 +732,8 @@ func _build_rooms() -> void:
 		if str(Router.roam.get("story", "")) == "":
 			for d in Interiors.people(rk):
 				_add_npc(d, inside_at)
+	MoreRooms.build_outside(city, str(Router.roam.get("district", "domino")))
+	MoreRooms.add_spots(self)
 
 
 func _build_kame_spots() -> void:

@@ -20,6 +20,7 @@ var _amb_t := 3.0
 var _waves: Array = []
 var errands := {}               # id -> 0 not started, 1 looking, 2 item found, 3 done
 var seated := false
+var duels: StreetDuels
 var _seat_out := Vector3.ZERO
 
 const PEOPLE := ["student_boy", "student_girl", "office_worker", "stylish_woman", "street_duelist", "duelist_f1", "duelist_m5", "duelist_m9"]
@@ -61,6 +62,10 @@ func setup(roam: Node) -> void:
 	else:
 		_decor_domino()
 	_build_seats()
+	_room_extras()
+	duels = StreetDuels.new()
+	add_child(duels)
+	duels.setup(self, key)
 	if "--sit" in OS.get_cmdline_user_args():
 		get_tree().create_timer(0.5).timeout.connect(debug_sit)
 	_build_errands()
@@ -466,6 +471,35 @@ func chat_pair(at: Vector3, yaw: float, a: String, b: String, dorm_a := "", dorm
 	_solid(0.75, 1.7, at)
 
 
+## People who are just there: in line at the counter, on the arcade cabinets, talking in the hall.
+## They have nothing to say to you, which is what makes a room feel busy.
+func _room_extras() -> void:
+	var rooms := Interiors.all_rooms()
+	var extras := {
+		"burger": [["line", Vector3(-1.2, 0, -2.2), PI, "office_worker", ""], ["line", Vector3(-1.2, 0, -1.2), PI, "student_girl", ""],
+			["pair", Vector3(1.6, 0, 3.2), 0.4, "duelist_m5", "stylish_woman"]],
+		"arcade": [["line", Vector3(-1.5, 0, -3.3), PI, "student_boy", ""], ["line", Vector3(1.5, 0, -3.3), PI, "duelist_f1", ""],
+			["pair", Vector3(-0.2, 0, 2.6), 1.2, "student_girl", "duelist_m9"]],
+		"kc_lobby": [["pair", Vector3(3.8, 0, 3.0), 0.8, "office_worker", "stylish_woman"], ["line", Vector3(-2.2, 0, -2.2), PI, "office_worker", ""]],
+		"ac_hall": [["pair", Vector3(-6.0, 0, 4.5), 0.5, "student_boy", "student_girl", "red", "blue"], ["pair", Vector3(7.0, 0, 1.0), -0.9, "student_girl", "student_boy", "yellow", "red"],
+			["line", Vector3(-9.5, 0, -2.0), 1.4, "student_boy", "blue"]],
+		"dorm_blue": [["pair", Vector3(4.0, 0, 3.0), 0.3, "student_boy", "student_girl", "blue", "blue"]],
+		"dorm_yellow": [["pair", Vector3(-3.5, 0, 2.6), -0.4, "student_girl", "student_boy", "yellow", "yellow"]],
+		"mart": [["line", Vector3(4.4, 0, -0.9), PI, "student_boy", ""]],
+		"ac_library": [["line", Vector3(-7.9, 0, -1.0), -PI / 2.0, "student_girl", "red"], ["line", Vector3(7.9, 0, -3.0), PI / 2.0, "student_boy", "blue"]],
+	}
+	for rk in extras:
+		if not rooms.has(rk) or str(rooms[rk].get("district", "domino")) != key:
+			continue
+		var o: Vector3 = rooms[rk]["at"]
+		for e in extras[rk]:
+			if e[0] == "pair":
+				chat_pair(o + (e[1] as Vector3), float(e[2]), str(e[3]), str(e[4]), str(e[5]) if e.size() > 5 else "", str(e[6]) if e.size() > 6 else "")
+			else:
+				var f := _person(str(e[3]), o + (e[1] as Vector3), float(e[2]), "browse" if rk in ["mart", "ac_library", "arcade"] else "stand", str(e[4]))
+				f.watch = null
+
+
 func sitter(seat_pos: Vector3, rot: float, model: String, dorm := "") -> void:
 	var dir := Vector3(sin(rot), 0, cos(rot))
 	_person(model, seat_pos + dir * 0.02, rot, "rest", dorm)
@@ -674,7 +708,7 @@ func _decor_domino() -> void:
 	butterflies(Vector3(19.0, 1.0, 22.0), 5)
 	# People who are just out and about.
 	chat_pair(Vector3(12.0, 0.16, 20.5), 0.9, "stylish_woman", "office_worker")
-	chat_pair(Vector3(-22.5, 0.16, -8.6), -0.6, "student_girl", "student_boy")
+	chat_pair(Vector3(-20.2, 0.16, -8.0), -0.6, "student_girl", "student_boy")
 	chat_pair(DominoPlus.PLAZA + Vector3(-8.5, 0.02, 4.0), 2.2, "duelist_m5", "street_duelist")
 	chat_pair(Vector3(10.0, 0.02, 57.0), 1.57, "duelist_f1", "office_worker")
 

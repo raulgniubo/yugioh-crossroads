@@ -15,7 +15,7 @@ func _build_ground() -> void:
 	box(Vector3(900, 0.2, 900), Vector3(0, -0.75, 0), sea, false)
 	# Sand, then grass, then stone paths
 	cyl(SHORE + 4.0, SHORE + 9.0, 1.0, Vector3(0, -0.5, 0), mat(Color(0.86, 0.78, 0.58), 0.95), null, 48)
-	cyl(SHORE - 8.0, SHORE - 5.0, 0.3, Vector3(0, -0.06, 0), mat(Color(0.3, 0.52, 0.24), 0.95), null, 48)
+	cyl(SHORE - 8.0, SHORE - 5.0, 0.3, Vector3(0, -0.06, 0), grass_material(1.5), null, 48)
 	var floor_body := StaticBody3D.new()
 	var cs := CollisionShape3D.new()
 	var sh := BoxShape3D.new()
@@ -148,7 +148,7 @@ func _build_street_furniture() -> void:
 		else:
 			tree(p, 1.1)
 	for p in [Vector3(-12, 0, 16), Vector3(-22, 0, 20), Vector3(10, 0, 14), Vector3(-10, 0, -10), Vector3(12, 0, -14), Vector3(28, 0, 8),
-			Vector3(-16, 0, 34), Vector3(-26, 0, 30), Vector3(30, 0, 18), Vector3(-44, 0, -8), Vector3(10, 0, -24), Vector3(-12, 0, -24), Vector3(34, 0, -22)]:
+			Vector3(-16, 0, 34), Vector3(30, 0, 18), Vector3(-44, 0, -8), Vector3(10, 0, -24), Vector3(-12, 0, -24), Vector3(34, 0, -22)]:
 		tree(p, rng.randf_range(0.9, 1.25))
 	# Lamps and benches along the main path
 	for z in [50.0, 38.0, 26.0, 13.0, -13.0, -24.0]:

@@ -24,10 +24,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	theme = UITheme.build()
-	var bg := ColorRect.new()
-	bg.color = Color(0.015, 0.025, 0.05, 0.97)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
+	add_child(MenuBackdrop.new())
 	var m := MarginContainer.new()
 	m.set_anchors_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right"]:
@@ -189,10 +186,23 @@ func _add_row(entry: Dictionary, title: String, sub: String, col: Color, dim: bo
 	b.add_child(h)
 	var chip := ColorRect.new()
 	chip.color = Color(col, 0.35 if dim else 0.95)
-	chip.custom_minimum_size = Vector2(8, 46)
+	chip.custom_minimum_size = Vector2(6, 46)
 	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(chip)
+	# The deck's best monster, peeking out like the top card of the box.
+	var ace := _ace_of(entry)
+	var thumb := TextureRect.new()
+	thumb.texture = Cards.get_face(ace) if ace > 0 else Cards.get_back()
+	thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	thumb.stretch_mode = TextureRect.STRETCH_SCALE
+	thumb.custom_minimum_size = Vector2(44, 64)
+	thumb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	thumb.pivot_offset = Vector2(22, 32)
+	thumb.rotation = -0.07
+	thumb.modulate = Color(1, 1, 1, 0.35 if dim else 1.0)
+	thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(thumb)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", -2)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -222,6 +232,23 @@ func _add_row(entry: Dictionary, title: String, sub: String, col: Color, dim: bo
 		_rebuild())
 	_list.add_child(b)
 	_rows.append({"button": b, "entry": entry})
+
+
+func _ace_of(entry: Dictionary) -> int:
+	if entry["type"] != "slot":
+		return Collection.deck_ace(str(entry["key"]))
+	var best := 0
+	var score := -1
+	var lists := _cards_of(entry)
+	for id in (lists[1] as Array) + (lists[0] as Array):
+		var d := CardData.get_card(int(id))
+		if d.get("kind", "") != "monster":
+			continue
+		var sc := CardData.rarity(int(id)) * 10000 + int(d.get("atk", 0))
+		if sc > score:
+			score = sc
+			best = int(id)
+	return best
 
 
 func _cards_of(entry: Dictionary) -> Array:

@@ -14,6 +14,7 @@ func _ready() -> void:
 		if a.begins_with("--out="): out = a.trim_prefix("--out=")
 		if a.begins_with("--dp="): Collection.dp = int(a.trim_prefix("--dp="))
 		if a.begins_with("--lang="): Loc.setup(a.trim_prefix("--lang="))
+		if a.begins_with("--slot="): Collection.load_slot(int(a.trim_prefix("--slot=")))
 	var bg := ColorRect.new()
 	bg.color = Color(0.2, 0.25, 0.3)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -24,6 +25,7 @@ func _ready() -> void:
 		"deckshop": ps = DeckShop.new()
 		"purse": ps = DpPurse.new()
 		"free": ps = CharacterSelect.new()
+		"builder": ps = DeckBuilder.new()
 		"rps":
 			var og := OpeningGame.new()
 			og.me_key = "player"

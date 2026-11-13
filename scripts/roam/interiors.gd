@@ -48,11 +48,12 @@ const PEOPLE := {
 static func all_rooms() -> Dictionary:
 	var out := ROOMS.duplicate()
 	out.merge(AcademyRooms.ROOMS)
+	out.merge(MoreRooms.ROOMS)
 	return out
 
 
 static func people(key: String) -> Array:
-	return PEOPLE.get(key, AcademyRooms.PEOPLE.get(key, []))
+	return PEOPLE.get(key, AcademyRooms.PEOPLE.get(key, MoreRooms.PEOPLE.get(key, [])))
 
 
 ## The rooms you can walk into in one district.
@@ -104,10 +105,18 @@ static func build(city: CityBuilder, key: String) -> void:
 			city.exit_door(o + Vector3(0, 0, half.y), Color(0.6, 0.44, 0.24), Color(0.85, 0.7, 0.2))
 		"dorm_blue":
 			city.exit_door(o + Vector3(0, 0, half.y), Color(0.9, 0.92, 0.96), Color(0.18, 0.32, 0.7), 2.6)
+		"home":
+			city.exit_door(o + Vector3(0, 0, half.y), Color(0.5, 0.34, 0.2), Color(0.9, 0.9, 0.92))
+		"mart":
+			city.exit_door(o + Vector3(0, 0, half.y), Color(0.7, 0.9, 0.95), Color(0.2, 0.5, 0.36), 2.4)
+		"ac_library":
+			city.exit_door(o + Vector3(0, 0, half.y), Color(0.34, 0.2, 0.11), Color(0.86, 0.68, 0.3), 2.4)
 		_:
 			city.exit_door(o + Vector3(0, 0, half.y), Color(0.72, 0.24, 0.18), Color(0.95, 0.88, 0.72))
 	if AcademyRooms.ROOMS.has(key):
 		AcademyRooms.dress(city, key, o, half, hgt)
+	if MoreRooms.ROOMS.has(key):
+		MoreRooms.dress(city, key, o, half, hgt)
 	match key:
 		"kc_lobby":
 			_sign(city, "KAIBACORP", o + Vector3(0, 4.9, -half.y + 0.12), 0.0, Color("7cc4ff"), 170)

@@ -98,38 +98,171 @@ func _stage_ring() -> void:
 			up.look_at(Vector3(sx * 12.2, 3.0, 0))
 
 
+const CROWD_SH := """
+shader_type spatial;
+render_mode cull_back;
+uniform int part = 0;            // 0 body, 1 head, 2 arms, 3 glow stick
+varying vec3 lp;
+varying float h;
+float hash(float p) { return fract(sin(p * 78.233) * 43758.5453); }
+void vertex() {
+	float id = float(INSTANCE_ID);
+	h = hash(id + 5.0);
+	float ph = hash(id) * 6.283;
+	// Some fans are calm, some never sit still, and now and then a wave goes round the stands.
+	float excite = 0.5 + 0.5 * sin(TIME * 0.5 + hash(id + 2.0) * 6.283);
+	float ang = atan(MODEL_MATRIX[3].x, MODEL_MATRIX[3].z);
+	float wave = smoothstep(0.6, 1.0, sin(TIME * 1.1 - ang * 2.0));
+	float jump = abs(sin(TIME * (3.0 + hash(id + 1.0) * 2.5) + ph)) * (0.03 + 0.16 * max(excite * excite * 0.6, wave));
+	lp = VERTEX;
+	if (part >= 2) {
+		float up = max(wave, smoothstep(0.7, 0.95, excite));
+		if (part == 3 && h < 0.72) { VERTEX *= 0.0; }
+		vec3 pv = VERTEX - vec3(0.0, 0.62, 0.0);
+		float a = up * (2.5 + 0.3 * sin(TIME * 7.0 + ph));
+		float c = cos(a); float s = sin(a);
+		pv = vec3(pv.x, pv.y * c - pv.z * s, pv.y * s + pv.z * c);
+		VERTEX = pv + vec3(0.0, 0.62, 0.0);
+	}
+	VERTEX.y += jump;
+	VERTEX.x += sin(TIME * 1.3 + ph) * 0.03;
+}
+void fragment() {
+	vec3 col = COLOR.rgb;
+	if (part == 1) {
+		vec3 skin = mix(vec3(0.96, 0.8, 0.66), vec3(0.42, 0.28, 0.2), h * h);
+		vec3 hair = mix(vec3(0.08, 0.06, 0.05), mix(vec3(0.55, 0.35, 0.12), vec3(0.85, 0.75, 0.4), fract(h * 7.0)), step(0.45, fract(h * 3.0)));
+		float cap = smoothstep(0.76, 0.8, lp.y - lp.z * 0.35);
+		col = mix(skin, hair, cap);
+	} else if (part == 2) {
+		col = mix(col, mix(vec3(0.96, 0.8, 0.66), vec3(0.42, 0.28, 0.2), h * h), step(lp.y, 0.34) * step(0.5, fract(h * 11.0)));
+	}
+	ALBEDO = col;
+	ROUGHNESS = 0.85;
+	if (part == 3) {
+		vec3 g = fract(h * 5.0) < 0.34 ? vec3(0.2, 0.95, 1.0) : (fract(h * 5.0) < 0.67 ? vec3(1.0, 0.3, 0.75) : vec3(1.0, 0.85, 0.2));
+		ALBEDO = g;
+		EMISSION = g * 3.0;
+	}
+}
+"""
+
+const FLASH_SH := """
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled;
+float hash(float p) { return fract(sin(p * 91.7) * 43758.5453); }
+varying float id;
+void vertex() {
+	id = float(INSTANCE_ID);
+	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
+}
+void fragment() {
+	float on = step(0.985, hash(id + floor(TIME * 9.0) * 13.0));
+	float d = length(UV - 0.5) * 2.0;
+	float star = max(0.0, 1.0 - d) + max(0.0, 0.25 - abs(UV.x - 0.5) * abs(UV.y - 0.5) * 60.0);
+	ALBEDO = vec3(1.0, 0.98, 0.9);
+	ALPHA = clamp(star, 0.0, 1.0) * on;
+}
+"""
+
+var _crowd_mesh: ArrayMesh
+
+
+## One fan: body, head, two arms and a glow stick, each its own surface so the shader can tell
+## them apart. Low-poly on purpose; there are a thousand of them.
+func _fan_mesh() -> ArrayMesh:
+	if _crowd_mesh:
+		return _crowd_mesh
+	var sh := Shader.new()
+	sh.code = CROWD_SH
+	var am := ArrayMesh.new()
+	var parts: Array = []
+	var body := CapsuleMesh.new()
+	body.radius = 0.2
+	body.height = 0.66
+	body.radial_segments = 8
+	body.rings = 2
+	parts.append([[body, Transform3D(Basis.IDENTITY, Vector3(0, 0.33, 0))]])
+	var head := SphereMesh.new()
+	head.radius = 0.15
+	head.height = 0.3
+	head.radial_segments = 10
+	head.rings = 5
+	parts.append([[head, Transform3D(Basis.IDENTITY, Vector3(0, 0.78, 0))]])
+	var arm := CapsuleMesh.new()
+	arm.radius = 0.06
+	arm.height = 0.42
+	arm.radial_segments = 6
+	arm.rings = 1
+	parts.append([[arm, Transform3D(Basis.IDENTITY, Vector3(-0.26, 0.42, 0))], [arm, Transform3D(Basis.IDENTITY, Vector3(0.26, 0.42, 0))]])
+	var stick := BoxMesh.new()
+	stick.size = Vector3(0.045, 0.34, 0.045)
+	parts.append([[stick, Transform3D(Basis.IDENTITY, Vector3(0.26, 0.06, 0))]])
+	for k in parts.size():
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for piece in parts[k]:
+			st.append_from(piece[0], 0, piece[1])
+		st.commit(am)
+		var m := ShaderMaterial.new()
+		m.shader = sh
+		m.set_shader_parameter("part", k)
+		am.surface_set_material(k, m)
+	_crowd_mesh = am
+	return am
+
+
 func _crowd(center: Vector3, radius_from: float, radius_to: float, rows: int, arc_from: float, arc_to: float, base_y: float, step_h: float) -> void:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true
-	var cap := CapsuleMesh.new()
-	cap.radius = 0.22
-	cap.height = 0.9
-	cap.radial_segments = 8
-	cap.rings = 2
-	var cm := StandardMaterial3D.new()
-	cm.vertex_color_use_as_albedo = true
-	cm.roughness = 0.9
-	cap.material = cm
-	mm.mesh = cap
-	var per_row := 70
-	mm.instance_count = rows * per_row
+	mm.mesh = _fan_mesh()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 3
-	var palette := [Color("e0533f"), Color("3f7be0"), Color("e8e8ee"), Color("2b2b33"), Color("f0c040"), Color("3fbf8a"), Color("8a4fd9")]
-	var i := 0
+	var palette := [Color("e0533f"), Color("3f7be0"), Color("e8e8ee"), Color("2b2b33"), Color("f0c040"), Color("3fbf8a"), Color("8a4fd9"), Color("d9d2c4"), Color("26364f")]
+	var spots: Array = []
 	for r in rows:
 		var rad := lerpf(radius_from, radius_to, float(r) / maxf(1.0, rows - 1.0))
+		# Rows fill by how long they are, with the odd empty seat.
+		var per_row := int(rad * absf(arc_to - arc_from) / 0.62)
 		for k in per_row:
-			var a := lerpf(arc_from, arc_to, (k + rng.randf() * 0.5) / per_row)
-			var p := center + Vector3(sin(a) * rad, base_y + r * step_h + 0.45, cos(a) * rad)
-			mm.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * rng.randf_range(0.9, 1.1)), p))
-			mm.set_instance_color(i, palette[rng.randi() % palette.size()].darkened(rng.randf() * 0.4))
-			i += 1
+			if rng.randf() < 0.1:
+				continue
+			var a := lerpf(arc_from, arc_to, (k + 0.2 + rng.randf() * 0.6) / per_row)
+			spots.append([a, rad, base_y + r * step_h + 0.02])
+	mm.instance_count = spots.size()
+	for i in spots.size():
+		var a: float = spots[i][0]
+		var p := center + Vector3(sin(a) * float(spots[i][1]), float(spots[i][2]), cos(a) * float(spots[i][1]))
+		var sc := rng.randf_range(0.9, 1.12)
+		# Facing the field; arms lift toward it.
+		var bs := Basis(Vector3.UP, a + PI + rng.randf_range(-0.25, 0.25)).scaled(Vector3(sc, sc * rng.randf_range(0.92, 1.08), sc))
+		mm.set_instance_transform(i, Transform3D(bs, p))
+		mm.set_instance_color(i, palette[rng.randi() % palette.size()].darkened(rng.randf() * 0.35))
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mmi)
+	# Camera flashes popping all over the stands.
+	var fm := MultiMesh.new()
+	fm.transform_format = MultiMesh.TRANSFORM_3D
+	var q := QuadMesh.new()
+	q.size = Vector2(1.5, 1.5)
+	var fsh := Shader.new()
+	fsh.code = FLASH_SH
+	var fmat := ShaderMaterial.new()
+	fmat.shader = fsh
+	q.material = fmat
+	fm.mesh = q
+	fm.instance_count = mini(90, spots.size())
+	for i in fm.instance_count:
+		var sp: Array = spots[rng.randi() % spots.size()]
+		fm.set_instance_transform(i, Transform3D(Basis.IDENTITY, center + Vector3(sin(float(sp[0])) * float(sp[1]), float(sp[2]) + 0.8, cos(float(sp[0])) * float(sp[1]))))
+	var fmi := MultiMeshInstance3D.new()
+	fmi.multimesh = fm
+	fmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	fmi.extra_cull_margin = 4.0
+	add_child(fmi)
 
 
 func _stands(radius: float, rows: int, arc_from: float, arc_to: float, color: Color) -> void:

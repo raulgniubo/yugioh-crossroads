@@ -424,6 +424,45 @@ func _build_ground() -> void:
 
 # ------------------------------------------------------------------ buildings
 
+## Lawn: patches, mowing stripes and fine blades, so grass never reads as one flat color.
+func grass_material(bright := 1.0) -> ShaderMaterial:
+	var sh: Shader
+	if has_meta("grass_shader"):
+		sh = get_meta("grass_shader")
+	else:
+		sh = Shader.new()
+		sh.code = """
+shader_type spatial;
+uniform float bright = 1.0;
+varying vec3 wp;
+float h(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+float n(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h(i), h(i + vec2(1.0, 0.0)), f.x), mix(h(i + vec2(0.0, 1.0)), h(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	// Soft patches of lighter and darker lawn, mowing stripes, and fine blades up close.
+	float patch = n(wp.xz * 0.35) * 0.6 + n(wp.xz * 1.4) * 0.4;
+	float stripe = 0.5 + 0.5 * sin(wp.x * 2.2);
+	float blades = n(wp.xz * vec2(60.0, 14.0)) * n(wp.xz * vec2(13.0, 55.0));
+	vec3 dark = vec3(0.09, 0.24, 0.09) * bright;
+	vec3 light = vec3(0.24, 0.44, 0.13) * bright;
+	vec3 col = mix(dark, light, patch * 0.7 + stripe * 0.12);
+	col *= 0.82 + blades * 0.5;
+	// A few clover-yellow flecks.
+	col += vec3(0.5, 0.45, 0.1) * step(0.985, h(floor(wp.xz * 9.0))) * 0.5;
+	ALBEDO = col;
+	ROUGHNESS = 0.95;
+}
+"""
+		set_meta("grass_shader", sh)
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	m.set_shader_parameter("bright", bright)
+	return m
+
+
 func window_material(tint: Color, seed: float, storefront: Color) -> ShaderMaterial:
 	var sh: Shader
 	if has_meta("win_shader"):
@@ -471,19 +510,58 @@ void fragment() {
 			emit += shop.rgb * pane * on * (0.25 + glow_strength * 0.9) * 0.6;
 			emit += shop.rgb * strip * (0.2 + glow_strength * 1.6);
 			col = mix(col, shop.rgb * 0.5, strip);
+			// A striped awning lip over the windows and a dark plinth along the pavement.
+			float awn = step(2.4, wp.y) * step(wp.y, 2.6) * step(0.08, sx) * step(sx, 0.92);
+			col = mix(col, mix(shop.rgb * 0.8, vec3(0.92), step(0.5, fract(u / 0.5))), awn);
+			col = mix(col, wall.rgb * 0.4, step(wp.y, 0.25));
+			// Window frames, and a door in every third bay.
+			float fr = pane * (1.0 - step(0.11, sx) * step(sx, 0.89) * step(0.32, wp.y) * step(wp.y, 2.33));
+			col = mix(col, vec3(0.16, 0.17, 0.2), fr);
+			float bay = floor(u / 4.0);
+			float door = step(0.66, h(vec2(bay, 7.0))) * step(0.36, sx) * step(sx, 0.64) * step(0.25, wp.y) * step(wp.y, 2.3);
+			col = mix(col, shop.rgb * 0.22 + 0.04, door);
+			col = mix(col, vec3(0.8, 0.7, 0.4), door * step(abs(sx - 0.6), 0.008) * step(abs(wp.y - 1.2), 0.12));
+			emit *= 1.0 - door * 0.8;
 		} else {
-			vec2 cell = floor(vec2(u / 1.7, wp.y / 3.2));
-			vec2 f = fract(vec2(u / 1.7, wp.y / 3.2));
-			float win = step(0.14, f.x) * step(f.x, 0.86) * step(0.25, f.y) * step(f.y, 0.86);
+			vec2 g = vec2(u / 1.7, wp.y / 3.2);
+			vec2 cell = floor(g);
+			vec2 f = fract(g);
+			// A pilaster every third bay breaks up the wall.
+			float pil = step(fract(u / 5.1), 0.07);
+			col = mix(col, wall.rgb * 1.18 + 0.02, pil);
+			float wx0 = 0.16; float wx1 = 0.84; float wy0 = 0.24; float wy1 = 0.84;
+			float open = step(wx0, f.x) * step(f.x, wx1) * step(wy0, f.y) * step(f.y, wy1);
+			float inner = step(wx0 + 0.045, f.x) * step(f.x, wx1 - 0.045) * step(wy0 + 0.03, f.y) * step(f.y, wy1 - 0.03);
+			float frame = open * (1.0 - inner);
+			float glass = open * inner;
+			// Mullions: one down the middle, and on some windows one across.
+			float mull = glass * max(step(abs(f.x - 0.5), 0.014), step(abs(f.y - 0.58), 0.011) * step(0.5, h(cell + 9.0)));
+			// A sill under every window and the rain streaks below it.
+			float sill = step(wx0 - 0.04, f.x) * step(f.x, wx1 + 0.04) * step(wy0 - 0.055, f.y) * step(f.y, wy0);
+			float stain = step(wx0, f.x) * step(f.x, wx1) * step(f.y, wy0 - 0.055) * (f.y / (wy0 - 0.055));
+			col *= 1.0 - 0.16 * stain * h(cell + 21.0);
+			// Blinds pulled part of the way down on some of them.
+			float bl = h(cell + 11.0);
+			float blinds = glass * step(wy1 - bl * 0.55 * (wy1 - wy0), f.y) * step(0.45, h(cell + 13.0));
 			float lit = step(0.45, h(cell));
 			vec3 sky = mix(vec3(0.05, 0.07, 0.12), vec3(0.45, 0.6, 0.8), day);
-			col = mix(col, sky * (0.6 + 0.4 * h(cell + 2.0)), win);
-			rough = mix(rough, 0.05, win);
-			metal = mix(metal, 0.5, win);
+			vec3 gcol = sky * (0.6 + 0.4 * h(cell + 2.0)) * (0.75 + 0.6 * (f.y - wy0));
+			col = mix(col, gcol, glass);
+			col = mix(col, vec3(0.82, 0.8, 0.74) * (0.65 + 0.3 * h(cell + 17.0)), blinds);
+			col = mix(col, wall.rgb * 1.45 + 0.07, frame);
+			col = mix(col, wall.rgb * 1.3 + 0.05, sill);
+			col = mix(col, wall.rgb * 1.3 + 0.1, mull);
+			// The odd air conditioner hanging under a window.
+			float ac = step(0.84, h(cell + 31.0)) * step(0.52, f.x) * step(f.x, 0.8) * step(0.05, f.y) * step(f.y, 0.185);
+			col = mix(col, vec3(0.74, 0.75, 0.77) * (0.8 + 0.2 * step(0.5, fract(f.y * 60.0))), ac);
+			rough = mix(rough, 0.05, glass * (1.0 - blinds));
+			metal = mix(metal, 0.5, glass * (1.0 - blinds));
 			float warmth = h(cell + 5.0);
 			vec3 wc = mix(glow.rgb, vec3(0.7, 0.85, 1.0), step(0.75, warmth));
-			emit += wc * win * lit * glow_strength * (0.6 + h(cell + 3.1) * 1.4);
+			emit += wc * glass * (1.0 - mull) * (1.0 - blinds * 0.55) * lit * glow_strength * (0.6 + h(cell + 3.1) * 1.4);
 		}
+		// Street grime: walls are darker near the pavement.
+		col *= mix(0.78, 1.0, smoothstep(0.0, 5.0, wp.y));
 	} else if (wn.y > 0.5) {
 		col = wall.rgb * 0.45;
 	}
@@ -685,20 +763,7 @@ func _rest_of_landmarks() -> void:
 	neon_sign("DUEL DISK  ·  NOW ONLINE", Vector3(29.1, 12, -16), theme["accent2"], 160, -PI / 2)
 	neon_sign("HOTEL", Vector3(-25, 9.5, 17.45), Color("ff6060"), 150, 0.0)
 	# Park
-	var grass_sh := Shader.new()
-	grass_sh.code = """
-shader_type spatial;
-varying vec3 wp;
-float h(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
-void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
-void fragment() {
-	float v = h(floor(wp.xz * 6.0)) * 0.25 + h(floor(wp.xz * 1.3)) * 0.2;
-	ALBEDO = vec3(0.12, 0.26, 0.11) * (0.8 + v);
-	ROUGHNESS = 0.95;
-}
-"""
-	var grass := ShaderMaterial.new()
-	grass.shader = grass_sh
+	var grass := grass_material()
 	box(Vector3(22, 0.22, 22), Vector3(19, 0.11, 19), grass, false)
 	var hedge := mat(Color(0.1, 0.22, 0.1), 0.95)
 	box(Vector3(9, 0.7, 0.6), Vector3(12.5, 0.35, 8.2), hedge)

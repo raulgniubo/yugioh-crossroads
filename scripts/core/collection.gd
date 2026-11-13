@@ -468,6 +468,8 @@ const DAILY := [
 	{"k": "sit", "goal": 1, "name": "Today: take a break", "text": "Sit down on a bench for a moment.", "reward": 40},
 	{"k": "cat", "goal": 1, "name": "Today: make a friend", "text": "Pet a cat.", "reward": 40},
 	{"k": "errand", "goal": 1, "name": "Today: lend a hand", "text": "Finish a favor for someone in town.", "reward": 150},
+	{"k": "watch", "goal": 1, "name": "Today: front row", "text": "Stop and watch a street duel.", "reward": 50},
+	{"k": "quiz", "goal": 1, "name": "Today: know your rules", "text": "Answer a duel quiz correctly.", "reward": 80},
 ]
 
 

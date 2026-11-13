@@ -205,6 +205,7 @@ func set_portraits(a: String, b: String) -> void:
 
 
 ## A short line in a speech bubble next to the duelist. Doesn't block.
+var _cut_at: Array = [0, 0]
 var _coach: PanelContainer
 var _coach_label: Label
 var _coach_text := ""
@@ -353,16 +354,36 @@ func set_lp(p: int, lp: int, delta: int) -> void:
 
 
 func _float_number(p: int, delta: int) -> void:
-	var l := UITheme.label(("%+d" % delta), 84, UITheme.DANGER if delta < 0 else Color("4fd18b"), UITheme.title_font())
-	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
-	l.add_theme_constant_override("outline_size", 14)
+	var big := absi(delta) >= 1000
+	var l := UITheme.label(("%+d" % delta), 104 if big else 76, UITheme.DANGER if delta < 0 else Color("4fd18b"), UITheme.title_font())
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	l.add_theme_constant_override("outline_size", 16)
 	var vs := get_viewport_rect().size
-	l.position = Vector2(vs.x * 0.5 - 120, vs.y * (0.62 if p == 0 else 0.22))
 	_float_root.add_child(l)
-	var tw := create_tween().set_parallel()
-	tw.tween_property(l, "position:y", l.position.y - 90, Settings.t(1.1)).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	tw.tween_property(l, "modulate:a", 0.0, Settings.t(0.5)).set_delay(Settings.t(0.7))
-	tw.chain().tween_callback(l.queue_free)
+	l.reset_size()
+	l.pivot_offset = l.size / 2.0
+	l.position = Vector2(vs.x * 0.5 - l.size.x / 2.0, vs.y * (0.6 if p == 0 else 0.24) - l.size.y / 2.0)
+	l.scale = Vector2(0.3, 0.3)
+	l.rotation = -0.06 if p == 0 else 0.06
+	# Where it ends up: on top of that player's Life Points.
+	var plate := _plates[p]
+	var goal := l.position - Vector2(0, 90)
+	if plate:
+		goal = plate.global_position + plate.size * Vector2(0.55, 0.45) - l.size / 2.0
+	var tw := create_tween()
+	tw.tween_property(l, "scale", Vector2.ONE * (1.25 if big else 1.1), Settings.t(0.12)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "scale", Vector2.ONE, Settings.t(0.1))
+	tw.tween_interval(Settings.t(0.38 if big else 0.25))
+	tw.tween_property(l, "position", goal, Settings.t(0.32)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(l, "scale", Vector2.ONE * 0.32, Settings.t(0.32)).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(l, "modulate:a", 0.25, Settings.t(0.32)).set_ease(Tween.EASE_IN)
+	tw.tween_callback(l.queue_free)
+	# The plate takes the hit when the number arrives.
+	if plate:
+		var pt := create_tween()
+		pt.tween_interval(Settings.t(0.85 if big else 0.72))
+		pt.tween_property(plate, "modulate", Color(1.9, 0.7, 0.7) if delta < 0 else Color(0.8, 1.7, 1.0), Settings.t(0.05))
+		pt.tween_property(plate, "modulate", Color.WHITE, Settings.t(0.35))
 
 
 # ------------------------------------------------------------------ phases
@@ -1272,55 +1293,25 @@ func actions_visible() -> bool:
 
 ## Ace monster moment: letterbox bars, the monster's name sweeping in, its stats.
 func summon_cinematic(card_name: String, atk: int, def: int, color: Color, mine: bool) -> void:
-	var root := Control.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.z_index = 40
-	add_child(root)
-	var vs := get_viewport_rect().size
-	var bar_h := 120.0
-	var bars: Array[ColorRect] = []
-	for top in [true, false]:
-		var b := ColorRect.new()
-		b.color = Color(0, 0, 0, 0.92)
-		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		b.size = Vector2(vs.x, bar_h)
-		b.position = Vector2(0, -bar_h if top else vs.y)
-		root.add_child(b)
-		bars.append(b)
-	var stripe := ColorRect.new()
-	stripe.color = Color(color, 0.85)
-	stripe.size = Vector2(vs.x, 4)
-	stripe.position = Vector2(0, vs.y - bar_h - 2)
-	stripe.modulate.a = 0.0
-	root.add_child(stripe)
-	var name_l := UITheme.label(card_name.to_upper(), 76, Color.WHITE, UITheme.title_font())
-	name_l.add_theme_color_override("font_outline_color", Color(color, 0.9))
-	name_l.add_theme_constant_override("outline_size", 10)
-	name_l.position = Vector2(-900 if mine else vs.x + 100, vs.y - bar_h - 150)
-	root.add_child(name_l)
-	var stats := UITheme.label(Loc.t("ATK %d   ·   DEF %d") % [atk, def], 30, Color(color.lightened(0.4)), UITheme.semi_font())
-	stats.position = Vector2(vs.x * 0.08, vs.y - bar_h + 38)
-	stats.modulate.a = 0.0
-	root.add_child(stats)
-	await get_tree().process_frame
-	var target_x := vs.x * 0.08 if mine else vs.x * 0.92 - name_l.size.x
-	if not mine:
-		stats.position.x = vs.x * 0.92 - 360
-	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(bars[0], "position:y", 0.0, Settings.t(0.3))
-	tw.tween_property(bars[1], "position:y", vs.y - bar_h, Settings.t(0.3))
-	tw.tween_property(stripe, "modulate:a", 1.0, Settings.t(0.3))
-	tw.tween_property(name_l, "position:x", target_x, Settings.t(0.45)).set_delay(Settings.t(0.1))
-	tw.tween_property(stats, "modulate:a", 1.0, Settings.t(0.3)).set_delay(Settings.t(0.35))
-	await tw.finished
-	await get_tree().create_timer(Settings.t(1.0)).timeout
-	var out := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	out.tween_property(bars[0], "position:y", -bar_h, Settings.t(0.3))
-	out.tween_property(bars[1], "position:y", vs.y, Settings.t(0.3))
-	out.tween_property(root, "modulate:a", 0.0, Settings.t(0.3))
-	await out.finished
-	root.queue_free()
+	await cut_in(0 if mine else 1, card_name.to_upper(), Loc.t("ATK %d   ·   DEF %d") % [atk, def], color, 0.95, true)
+
+
+## An anime cut-in for one side: their portrait, big words and a small line.
+func cut_in(p: int, title: String, sub: String, color: Color, hold := 0.6, big := false) -> void:
+	var now := Time.get_ticks_msec()
+	if now - int(_cut_at[p]) < 900 and not big:
+		return
+	_cut_at[p] = now
+	await CutIn.play(self, p, str(portrait_keys[p]), title, sub, color, hold, big)
+
+
+## Speed lines bursting out from a point on the table (where a hit lands).
+func impact(world: Vector3, color: Color, strength := 1.0) -> void:
+	var cam := get_viewport().get_camera_3d()
+	var at := get_viewport_rect().size * 0.5
+	if cam and not cam.is_position_behind(world):
+		at = cam.unproject_position(world)
+	CutIn.impact(self, at, color, strength)
 
 
 func banner(text: String, color := Color.WHITE) -> void:

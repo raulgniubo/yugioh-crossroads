@@ -27,34 +27,76 @@ var _name_edit: LineEdit
 var _warn: Label
 
 
+func _panel(pad := 16) -> PanelContainer:
+	var pc := PanelContainer.new()
+	var sb := UITheme.panel_box(Color(0.03, 0.05, 0.1, 0.82), 18, Color(UITheme.ACCENT, 0.22))
+	sb.set_content_margin_all(pad)
+	pc.add_theme_stylebox_override("panel", sb)
+	return pc
+
+
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	theme = UITheme.build()
-	var bg := ColorRect.new()
-	bg.color = Color(0.015, 0.025, 0.05, 0.97)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
+	add_child(MenuBackdrop.new())
 	var m := MarginContainer.new()
 	m.set_anchors_preset(Control.PRESET_FULL_RECT)
-	for side in ["left", "right", "top", "bottom"]:
-		m.add_theme_constant_override("margin_" + side, 44)
+	for side in ["left", "right"]:
+		m.add_theme_constant_override("margin_" + side, 40)
+	m.add_theme_constant_override("margin_top", 26)
+	m.add_theme_constant_override("margin_bottom", 30)
 	add_child(m)
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 14)
+	root.add_theme_constant_override("separation", 12)
 	m.add_child(root)
-	# Header
+	# ---- top bar: back, title, the five saved decks, the name, and the two big buttons
 	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 18)
+	head.add_theme_constant_override("separation", 12)
 	root.add_child(head)
-	head.add_child(UITheme.label("DECK BUILDER", 54, Color.WHITE, UITheme.title_font()))
+	var back := Button.new()
+	back.text = "◀  Back"
+	back.add_theme_font_size_override("font_size", 18)
+	back.custom_minimum_size = Vector2(104, 44)
+	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	back.pressed.connect(_close)
+	head.add_child(back)
+	head.add_child(UITheme.label("DECK BUILDER", 44, Color.WHITE, UITheme.title_font()))
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(18, 0)
+	head.add_child(gap)
+	for i in Collection.SLOTS:
+		var sb := Button.new()
+		sb.toggle_mode = true
+		sb.custom_minimum_size = Vector2(50, 44)
+		sb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		sb.text = str(i + 1)
+		sb.tooltip_text = "Switch to this saved deck"
+		for st in ["pressed", "hover_pressed"]:
+			sb.add_theme_stylebox_override(st, UITheme.button_box(UITheme.ACCENT, UITheme.ACCENT, 10))
+		sb.add_theme_color_override("font_pressed_color", Color(0.02, 0.05, 0.08))
+		sb.add_theme_color_override("font_hover_pressed_color", Color(0.02, 0.05, 0.08))
+		sb.pressed.connect(func():
+			Collection.load_slot(i)
+			Sfx.play("card", -4.0)
+			_refresh_all())
+		head.add_child(sb)
+		_slot_btns.append(sb)
+	_name_edit = LineEdit.new()
+	_name_edit.custom_minimum_size = Vector2(260, 44)
+	_name_edit.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_name_edit.max_length = 22
+	_name_edit.placeholder_text = "Deck name"
+	_name_edit.text_changed.connect(func(t):
+		Collection.deck_name = t.strip_edges() if t.strip_edges() != "" else "My Deck"
+		Collection.save())
+	head.add_child(_name_edit)
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(sp)
-	_count = UITheme.label("", 22, UITheme.TEXT_DIM, UITheme.semi_font())
-	head.add_child(_count)
 	_use_btn = Button.new()
-	_use_btn.add_theme_font_size_override("font_size", 22)
+	_use_btn.add_theme_font_size_override("font_size", 20)
+	_use_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_use_btn.pressed.connect(func():
 		if Collection.deck_ok():
 			picked = true
@@ -64,40 +106,64 @@ func _ready() -> void:
 	head.add_child(_use_btn)
 	var done := Button.new()
 	done.text = "  Done  "
-	done.add_theme_font_size_override("font_size", 22)
+	done.add_theme_font_size_override("font_size", 20)
+	done.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	done.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.ACCENT, 0.9), UITheme.ACCENT))
+	done.add_theme_color_override("font_color", Color(0.02, 0.05, 0.08))
 	done.pressed.connect(_close)
 	head.add_child(done)
-	# Recipes: five slots, a name, starter recipes and the Forbidden/Limited switch.
-	var rec := HBoxContainer.new()
-	rec.add_theme_constant_override("separation", 8)
-	root.add_child(rec)
-	rec.add_child(UITheme.label("RECIPE", 18, UITheme.ACCENT, UITheme.semi_font()))
-	for i in Collection.SLOTS:
-		var sb := Button.new()
-		sb.toggle_mode = true
-		sb.custom_minimum_size = Vector2(54, 44)
-		sb.text = str(i + 1)
-		sb.tooltip_text = "Switch to this saved deck"
-		sb.add_theme_stylebox_override("pressed", UITheme.button_box(UITheme.ACCENT, UITheme.ACCENT))
-		sb.add_theme_stylebox_override("hover_pressed", UITheme.button_box(UITheme.ACCENT, UITheme.ACCENT))
-		sb.add_theme_color_override("font_pressed_color", Color(0.02, 0.05, 0.08))
-		sb.add_theme_color_override("font_hover_pressed_color", Color(0.02, 0.05, 0.08))
-		sb.pressed.connect(func():
-			Collection.load_slot(i)
-			Sfx.play("card", -4.0)
-			_refresh_all())
-		rec.add_child(sb)
-		_slot_btns.append(sb)
-	_name_edit = LineEdit.new()
-	_name_edit.custom_minimum_size = Vector2(250, 44)
-	_name_edit.max_length = 22
-	_name_edit.placeholder_text = "Deck name"
-	_name_edit.text_changed.connect(func(t):
-		Collection.deck_name = t.strip_edges() if t.strip_edges() != "" else "My Deck"
-		Collection.save())
-	rec.add_child(_name_edit)
+	_warn = UITheme.label("", 16, UITheme.DANGER)
+	_warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_warn.visible = false
+	root.add_child(_warn)
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 16)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_child(body)
+	# ---- left: the card you are pointing at
+	var lp := _panel(14)
+	lp.custom_minimum_size = Vector2(330, 0)
+	body.add_child(lp)
+	var left := VBoxContainer.new()
+	left.add_theme_constant_override("separation", 10)
+	lp.add_child(left)
+	_detail_tex = TextureRect.new()
+	_detail_tex.custom_minimum_size = Vector2(300, 438)
+	_detail_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_detail_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_detail_tex.texture = Cards.get_back()
+	left.add_child(_detail_tex)
+	_detail_name = UITheme.label("Point at a card", 24, Color.WHITE, UITheme.title_font())
+	_detail_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	left.add_child(_detail_name)
+	var dscroll := ScrollContainer.new()
+	dscroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	dscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	left.add_child(dscroll)
+	_detail_text = UITheme.label("Click a card in your collection to add it. Click a card in your deck to take it out. Right-click a deck card to move it to the Side Deck.", 16, UITheme.TEXT_DIM)
+	_detail_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_detail_text.custom_minimum_size = Vector2(290, 0)
+	dscroll.add_child(_detail_text)
+	# ---- middle: your deck, as cards
+	var dp := _panel(16)
+	dp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dp.size_flags_stretch_ratio = 1.0
+	body.add_child(dp)
+	var mid := VBoxContainer.new()
+	mid.add_theme_constant_override("separation", 8)
+	dp.add_child(mid)
+	var dh := HBoxContainer.new()
+	dh.add_theme_constant_override("separation", 14)
+	mid.add_child(dh)
+	dh.add_child(UITheme.label("YOUR DECK", 18, UITheme.ACCENT, UITheme.semi_font()))
+	_count = UITheme.label("", 18, UITheme.TEXT, UITheme.semi_font())
+	dh.add_child(_count)
+	var dsp := Control.new()
+	dsp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dh.add_child(dsp)
 	var starter := OptionButton.new()
-	starter.custom_minimum_size = Vector2(230, 44)
+	starter.custom_minimum_size = Vector2(210, 38)
+	starter.add_theme_font_size_override("font_size", 16)
 	starter.add_item("Fill from a starter...")
 	var keys := []
 	for k in CardData.DECKS.keys() + CardData.NAMED_DECKS.keys():
@@ -111,93 +177,83 @@ func _ready() -> void:
 		Router.toast(Loc.t("Recipe loaded. %d cards skipped because you do not own them yet.") % missing if missing > 0 else "Recipe loaded")
 		starter.select(0)
 		_refresh_all())
-	rec.add_child(starter)
+	dh.add_child(starter)
 	var clear := Button.new()
 	clear.text = "Empty deck"
+	clear.add_theme_font_size_override("font_size", 16)
 	clear.pressed.connect(func():
 		Collection.main.clear()
 		Collection.extra.clear()
 		Collection.side.clear()
 		Collection.save()
 		_refresh_all())
-	rec.add_child(clear)
-	var rsp := Control.new()
-	rsp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rec.add_child(rsp)
-	var ban := CheckButton.new()
-	ban.text = "Forbidden/Limited list"
-	ban.tooltip_text = "Optional. Forbidden cards cannot be used, Limited cards 1 copy, Semi-Limited 2. Applies to the decks you build."
-	ban.button_pressed = Collection.banlist
-	for cn in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color"]:
-		ban.add_theme_color_override(cn, UITheme.TEXT)
-	ban.toggled.connect(func(on):
-		Collection.banlist = on
-		Collection.save()
-		_refresh_all())
-	rec.add_child(ban)
-	_warn = UITheme.label("", 16, UITheme.DANGER)
-	_warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_warn.visible = false
-	root.add_child(_warn)
-	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 22)
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(body)
-	# Card detail
-	var left := VBoxContainer.new()
-	left.custom_minimum_size = Vector2(330, 0)
-	left.add_theme_constant_override("separation", 10)
-	body.add_child(left)
-	_detail_tex = TextureRect.new()
-	_detail_tex.custom_minimum_size = Vector2(330, 482)
-	_detail_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_detail_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_detail_tex.texture = Cards.get_back()
-	left.add_child(_detail_tex)
-	_detail_name = UITheme.label("Hover a card", 26, Color.WHITE, UITheme.title_font())
-	_detail_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	left.add_child(_detail_name)
-	var dscroll := ScrollContainer.new()
-	dscroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	dscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	left.add_child(dscroll)
-	_detail_text = UITheme.label("Click a card in your collection to add it to the deck. Click a card in the deck to take it out.", 17, UITheme.TEXT_DIM)
-	_detail_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_detail_text.custom_minimum_size = Vector2(320, 0)
-	dscroll.add_child(_detail_text)
-	# Collection
-	var mid := VBoxContainer.new()
-	mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	mid.add_theme_constant_override("separation", 10)
-	body.add_child(mid)
+	dh.add_child(clear)
+	# What the deck is made of, as one bar.
+	_mix = Control.new()
+	_mix.custom_minimum_size = Vector2(0, 30)
+	_mix.draw.connect(_draw_mix)
+	mid.add_child(_mix)
+	var rs := ScrollContainer.new()
+	rs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	rs.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	mid.add_child(rs)
+	_deck_list = VBoxContainer.new()
+	_deck_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_deck_list.add_theme_constant_override("separation", 6)
+	rs.add_child(_deck_list)
+	# ---- right: everything you own
+	var cp := _panel(16)
+	cp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cp.size_flags_stretch_ratio = 1.0
+	body.add_child(cp)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 8)
+	cp.add_child(col)
 	var bar := HBoxContainer.new()
-	bar.add_theme_constant_override("separation", 8)
-	mid.add_child(bar)
+	bar.add_theme_constant_override("separation", 6)
+	col.add_child(bar)
 	bar.add_child(UITheme.label("COLLECTION", 18, UITheme.ACCENT, UITheme.semi_font()))
-	for f in [["all", "All"], ["monster", "Monsters"], ["spell", "Spells"], ["trap", "Traps"], ["extra", "Extra Deck"]]:
+	var bsp := Control.new()
+	bsp.custom_minimum_size = Vector2(6, 0)
+	bar.add_child(bsp)
+	for f in [["all", "All"], ["monster", "Monsters"], ["spell", "Spells"], ["trap", "Traps"], ["extra", "Extra"]]:
 		var b := Button.new()
 		b.text = f[1]
 		b.toggle_mode = true
-		b.add_theme_stylebox_override("hover_pressed", UITheme.button_box(UITheme.ACCENT, UITheme.ACCENT))
+		b.add_theme_font_size_override("font_size", 16)
+		var on := UITheme.button_box(UITheme.ACCENT, UITheme.ACCENT, 10)
+		on.content_margin_left = 12
+		on.content_margin_right = 12
+		var off := UITheme.button_box(Color(1, 1, 1, 0.05), Color(1, 1, 1, 0.14), 10)
+		off.content_margin_left = 12
+		off.content_margin_right = 12
+		b.add_theme_stylebox_override("normal", off)
+		for st in ["pressed", "hover_pressed"]:
+			b.add_theme_stylebox_override(st, on)
+		b.add_theme_color_override("font_pressed_color", Color(0.02, 0.05, 0.08))
+		b.add_theme_color_override("font_hover_pressed_color", Color(0.02, 0.05, 0.08))
 		var key: String = f[0]
 		b.pressed.connect(func():
 			_filter = key
 			_rebuild_grid())
 		bar.add_child(b)
 		_filter_btns[key] = b
+	var bar2 := HBoxContainer.new()
+	bar2.add_theme_constant_override("separation", 6)
+	col.add_child(bar2)
 	var search := LineEdit.new()
 	search.placeholder_text = "Search name or card text"
-	search.custom_minimum_size = Vector2(250, 0)
+	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	search.clear_button_enabled = true
+	search.add_theme_font_size_override("font_size", 16)
 	search.text_changed.connect(func(t):
 		_search = t.to_lower()
 		_rebuild_grid())
-	bar.add_child(search)
-	# Second row: Attribute, Level, sort order, and where a click sends the card.
-	var bar2 := HBoxContainer.new()
-	bar2.add_theme_constant_override("separation", 8)
-	mid.add_child(bar2)
+	bar2.add_child(search)
 	var attr := OptionButton.new()
+	attr.add_theme_font_size_override("font_size", 16)
+	attr.fit_to_longest_item = false
+	attr.custom_minimum_size = Vector2(150, 0)
 	attr.add_item("Any Attribute")
 	for a in ["DARK", "LIGHT", "EARTH", "WATER", "FIRE", "WIND", "DIVINE"]:
 		attr.add_item(a)
@@ -206,6 +262,9 @@ func _ready() -> void:
 		_rebuild_grid())
 	bar2.add_child(attr)
 	var lv := OptionButton.new()
+	lv.add_theme_font_size_override("font_size", 16)
+	lv.fit_to_longest_item = false
+	lv.custom_minimum_size = Vector2(140, 0)
 	for t in ["Any Level", "Level 1 to 4", "Level 5 and 6", "Level 7 and up"]:
 		lv.add_item(t)
 	lv.item_selected.connect(func(i):
@@ -213,50 +272,83 @@ func _ready() -> void:
 		_rebuild_grid())
 	bar2.add_child(lv)
 	var so := OptionButton.new()
+	so.add_theme_font_size_override("font_size", 16)
+	so.fit_to_longest_item = false
+	so.custom_minimum_size = Vector2(130, 0)
 	for t in ["Sort: type", "Sort: ATK", "Sort: Level", "Sort: name"]:
 		so.add_item(t)
 	so.item_selected.connect(func(i):
 		_sort = i
 		_rebuild_grid())
 	bar2.add_child(so)
-	var b2sp := Control.new()
-	b2sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bar2.add_child(b2sp)
+	var gscroll := ScrollContainer.new()
+	gscroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	gscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(gscroll)
+	_grid = GridContainer.new()
+	_grid.columns = 6
+	_grid.add_theme_constant_override("h_separation", 8)
+	_grid.add_theme_constant_override("v_separation", 8)
+	gscroll.add_child(_grid)
+	var foot := HBoxContainer.new()
+	foot.add_theme_constant_override("separation", 18)
+	col.add_child(foot)
+	_owned_l = UITheme.label("", 15, UITheme.TEXT_DIM)
+	foot.add_child(_owned_l)
+	var fsp := Control.new()
+	fsp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	foot.add_child(fsp)
 	var side_t := CheckButton.new()
-	side_t.text = "Clicks add to the Side Deck"
+	side_t.text = "Add to Side Deck"
+	side_t.add_theme_font_size_override("font_size", 15)
 	side_t.tooltip_text = "The Side Deck holds up to 15 cards you can swap in between the duels of a best-of-3 Match."
 	for cn in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color"]:
 		side_t.add_theme_color_override(cn, UITheme.TEXT)
 	side_t.toggled.connect(func(on):
 		_to_side = on
 		_rebuild_grid())
-	bar2.add_child(side_t)
-	var gscroll := ScrollContainer.new()
-	gscroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	gscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	mid.add_child(gscroll)
-	_grid = GridContainer.new()
-	_grid.columns = 7
-	_grid.add_theme_constant_override("h_separation", 8)
-	_grid.add_theme_constant_override("v_separation", 8)
-	gscroll.add_child(_grid)
-	# Deck
-	var right := VBoxContainer.new()
-	right.custom_minimum_size = Vector2(400, 0)
-	right.add_theme_constant_override("separation", 8)
-	body.add_child(right)
-	right.add_child(UITheme.label("YOUR DECK", 18, UITheme.ACCENT, UITheme.semi_font()))
-	var rs := ScrollContainer.new()
-	rs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	rs.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	right.add_child(rs)
-	_deck_list = VBoxContainer.new()
-	_deck_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_deck_list.add_theme_constant_override("separation", 4)
-	rs.add_child(_deck_list)
+	foot.add_child(side_t)
+	var ban := CheckButton.new()
+	ban.text = "Forbidden/Limited list"
+	ban.add_theme_font_size_override("font_size", 15)
+	ban.tooltip_text = "Optional. Forbidden cards cannot be used, Limited cards 1 copy, Semi-Limited 2. Applies to the decks you build."
+	ban.button_pressed = Collection.banlist
+	for cn in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color"]:
+		ban.add_theme_color_override(cn, UITheme.TEXT)
+	ban.toggled.connect(func(on):
+		Collection.banlist = on
+		Collection.save()
+		_refresh_all())
+	foot.add_child(ban)
 	_refresh_all()
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.25)
+
+
+var _mix: Control
+var _owned_l: Label
+var _last_added := -1
+
+
+## One bar for the whole Main Deck: monsters, Spells and Traps by share, with their counts.
+func _draw_mix() -> void:
+	var w := _mix.size.x
+	var n := [0, 0, 0]
+	for id in Collection.main:
+		var k := str(CardData.get_card(id).get("kind", "monster"))
+		n[0 if k == "monster" else (1 if k == "spell" else 2)] += 1
+	var total: int = n[0] + n[1] + n[2]
+	var cols := [Color("d9903a"), Color("2bb59a"), Color("c8457f")]
+	var names := ["Monsters", "Spells", "Traps"]
+	var font := UITheme.semi_font()
+	_mix.draw_style_box(UITheme.panel_box(Color(1, 1, 1, 0.05), 8, Color(1, 1, 1, 0.08)), Rect2(0, 0, w, 10))
+	var x := 0.0
+	for i in 3:
+		if total > 0 and n[i] > 0:
+			var seg: float = w * float(n[i]) / float(total)
+			_mix.draw_style_box(UITheme.panel_box(cols[i], 5, cols[i]), Rect2(x + 1, 0, maxf(2.0, seg - 2.0), 10))
+			x += seg
+		_mix.draw_string(font, Vector2(i * 150.0, 27), "%s %d" % [Loc.t(names[i]), n[i]], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, cols[i].lightened(0.25))
 
 
 func _refresh_all() -> void:
@@ -295,6 +387,7 @@ func _rebuild_grid() -> void:
 		(_filter_btns[k] as Button).set_pressed_no_signal(k == _filter)
 	for c in _grid.get_children():
 		c.queue_free()
+	var shown := 0
 	for id in _sorted(Collection.owned.keys()):
 		var d := CardData.get_card(id)
 		var is_extra: bool = str(d.get("frame", "")) in ["fusion", "synchro", "xyz"]
@@ -311,11 +404,15 @@ func _rebuild_grid() -> void:
 			if d["kind"] != "monster" or (_level == 1 and l > 4) or (_level == 2 and (l < 5 or l > 6)) or (_level == 3 and l < 7):
 				continue
 		_grid.add_child(_tile(id))
+		shown += 1
+	if _owned_l:
+		_owned_l.text = Loc.t("%d of %d cards shown") % [shown, Collection.owned.size()]
 
 
 func _tile(id: int) -> Control:
 	var holder := Control.new()
-	holder.custom_minimum_size = Vector2(124, 181)
+	holder.custom_minimum_size = Vector2(112, 163)
+	holder.pivot_offset = Vector2(56, 81)
 	var tr := TextureRect.new()
 	tr.texture = Cards.get_face(id)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -343,7 +440,13 @@ func _tile(id: int) -> Control:
 			badge.text += ["   FORBIDDEN", "   LIMITED", "   SEMI"][lim]
 		tr.modulate = Color.WHITE if Collection.can_add(id, _to_side) else Color(0.5, 0.5, 0.56)
 	refresh.call()
-	tr.mouse_entered.connect(func(): _show(id))
+	tr.mouse_entered.connect(func():
+		_show(id)
+		holder.z_index = 2
+		holder.create_tween().tween_property(holder, "scale", Vector2(1.07, 1.07), 0.08))
+	tr.mouse_exited.connect(func():
+		holder.z_index = 0
+		holder.create_tween().tween_property(holder, "scale", Vector2.ONE, 0.1))
 	tr.gui_input.connect(func(e):
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 			if Collection.can_add(id, _to_side):
@@ -353,6 +456,7 @@ func _tile(id: int) -> Control:
 					Collection.add(id)
 				Sfx.play("card", -4.0)
 				refresh.call()
+				_last_added = id
 				_rebuild_deck()
 			else:
 				Sfx.play("click", -6.0))
@@ -363,31 +467,58 @@ func _tile(id: int) -> Control:
 func _rebuild_deck() -> void:
 	for c in _deck_list.get_children():
 		c.queue_free()
-	for section in [["MAIN DECK", Collection.main], ["EXTRA DECK", Collection.extra], ["SIDE DECK", Collection.side]]:
+	var popped := false
+	for section in [["MAIN DECK", Collection.main, Collection.MAIN_MAX, 10], ["EXTRA DECK", Collection.extra, Collection.EXTRA_MAX, 10], ["SIDE DECK", Collection.side, Collection.SIDE_MAX, 10]]:
 		var ids: Array = section[1]
 		var is_side: bool = section[0] == "SIDE DECK"
-		_deck_list.add_child(UITheme.label("%s  ·  %d" % [Loc.t(section[0]), ids.size()], 16, UITheme.GOLD if is_side else UITheme.TEXT_DIM, UITheme.semi_font()))
-		if is_side and ids.is_empty():
-			var tip := UITheme.label("Empty. Right-click a card in your deck to move it here, or turn on the Side Deck switch.", 14, UITheme.TEXT_DIM)
+		var is_main: bool = section[0] == "MAIN DECK"
+		var head := HBoxContainer.new()
+		head.add_theme_constant_override("separation", 10)
+		_deck_list.add_child(head)
+		head.add_child(UITheme.label(Loc.t(section[0]), 15, UITheme.GOLD if is_side else UITheme.TEXT_DIM, UITheme.semi_font()))
+		var short: bool = is_main and (ids.size() < Collection.MAIN_MIN or ids.size() > Collection.MAIN_MAX)
+		var ct := "%d" % ids.size() + ((Loc.t("  (needs %d to %d)") % [Collection.MAIN_MIN, Collection.MAIN_MAX]) if is_main else " / %d" % int(section[2]))
+		head.add_child(UITheme.label(ct, 15, UITheme.DANGER if short else Color.WHITE, UITheme.semi_font()))
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 5)
+		flow.add_theme_constant_override("v_separation", 5)
+		_deck_list.add_child(flow)
+		if ids.is_empty():
+			var tip := UITheme.label({"MAIN DECK": "Empty. Click cards in your collection to add them here.",
+				"EXTRA DECK": "Fusion, Synchro and Xyz monsters you add go here.",
+				"SIDE DECK": "Optional. Right-click a deck card to move it here."}[section[0]], 14, UITheme.TEXT_DIM)
 			tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			tip.custom_minimum_size = Vector2(520, 0)
 			_deck_list.add_child(tip)
-		var seen := {}
 		for id in _sorted(ids):
-			if seen.has(id):
-				continue
-			seen[id] = true
-			var d := CardData.get_card(id)
-			var b := Button.new()
-			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-			b.custom_minimum_size = Vector2(0, 36)
-			b.add_theme_font_size_override("font_size", 17)
-			var stat := ("  %d" % int(d.get("atk", 0))) if d["kind"] == "monster" else ("  " + str(d["kind"]).capitalize())
-			b.text = "%d×  %s%s" % [ids.count(id), d.get("name", "?"), stat]
-			b.clip_text = true
-			b.mouse_entered.connect(func(): _show(id))
-			b.tooltip_text = "Click: take out.  Right-click: move to or from the Side Deck."
-			b.gui_input.connect(func(e):
-				if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT:
+			var card := TextureRect.new()
+			card.texture = Cards.get_face(id)
+			card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			card.stretch_mode = TextureRect.STRETCH_SCALE
+			card.custom_minimum_size = Vector2(62, 90)
+			card.pivot_offset = Vector2(31, 45)
+			card.mouse_filter = Control.MOUSE_FILTER_STOP
+			card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			flow.add_child(card)
+			# The card you just added pops, so your eye lands on it.
+			if id == _last_added and not popped:
+				popped = true
+				card.scale = Vector2(1.35, 1.35)
+				card.modulate = Color(1.6, 1.6, 1.6)
+				var tw := card.create_tween().set_parallel()
+				tw.tween_property(card, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				tw.tween_property(card, "modulate", Color.WHITE, 0.3)
+			card.mouse_entered.connect(func():
+				_show(id)
+				card.z_index = 2
+				card.create_tween().tween_property(card, "scale", Vector2(1.12, 1.12), 0.08))
+			card.mouse_exited.connect(func():
+				card.z_index = 0
+				card.create_tween().tween_property(card, "scale", Vector2.ONE, 0.1))
+			card.gui_input.connect(func(e):
+				if not (e is InputEventMouseButton and e.pressed):
+					return
+				if e.button_index == MOUSE_BUTTON_RIGHT:
 					if is_side:
 						Collection.side.erase(id)
 						if Collection.can_add(id):
@@ -399,26 +530,28 @@ func _rebuild_deck() -> void:
 						Collection.side.append(id)
 					Collection.save()
 					Sfx.play("card", -6.0, 1.2)
-					_refresh_all())
-			b.pressed.connect(func():
-				if is_side:
-					Collection.remove_side(id)
-				else:
-					Collection.remove(id)
-				Sfx.play("card", -6.0, 0.8)
-				_rebuild_deck()
-				for t in _grid.get_children():
-					if t.has_meta("refresh"):
-						(t.get_meta("refresh") as Callable).call())
-			_deck_list.add_child(b)
+					_last_added = -1
+					_refresh_all()
+				elif e.button_index == MOUSE_BUTTON_LEFT:
+					if is_side:
+						Collection.remove_side(id)
+					else:
+						Collection.remove(id)
+					Sfx.play("card", -6.0, 0.8)
+					_last_added = -1
+					_rebuild_deck()
+					for t in _grid.get_children():
+						if t.has_meta("refresh"):
+							(t.get_meta("refresh") as Callable).call())
+	_last_added = -1
+	_mix.queue_redraw()
 	_refresh_count()
 
 
 func _refresh_count() -> void:
 	var n := Collection.main.size()
 	var ok := Collection.deck_ok()
-	_count.text = Loc.t("Main %d  (needs %d to %d)     Extra %d / %d     Side %d / %d     DP %d") % [n, Collection.MAIN_MIN, Collection.MAIN_MAX,
-		Collection.extra.size(), Collection.EXTRA_MAX, Collection.side.size(), Collection.SIDE_MAX, Collection.dp]
+	_count.text = Loc.t("%d cards") % n
 	var bad := Collection.illegal()
 	_warn.visible = not bad.is_empty()
 	if not bad.is_empty():
@@ -426,7 +559,7 @@ func _refresh_count() -> void:
 		for x in bad:
 			parts.append("%s (%d, max %d)" % [x[0], x[1], x[2]])
 		_warn.text = Loc.t("Not allowed by the Forbidden/Limited list: ") + ", ".join(parts)
-	_count.add_theme_color_override("font_color", UITheme.TEXT_DIM if ok else UITheme.DANGER)
+	_count.add_theme_color_override("font_color", Color.WHITE if ok else UITheme.DANGER)
 	var using: bool = Collection.active == "custom"
 	_use_btn.text = "  ✓ Using this deck  " if using and ok else "  Duel with this deck  "
 	_use_btn.disabled = not ok
