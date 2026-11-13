@@ -62,6 +62,16 @@ func get_art(id: int) -> Texture2D:
 	return tex
 
 
+## The backs in the duel being played: [yours, the opponent's]. Empty = everybody's default.
+var duel_backs: Array = []
+
+
+func duel_back(owner: int) -> Texture2D:
+	if owner >= 0 and owner < duel_backs.size() and duel_backs[owner] != null:
+		return duel_backs[owner]
+	return get_back()
+
+
 func get_back() -> Texture2D:
 	if _back_texture == null:
 		_back_texture = _make_back()

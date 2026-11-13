@@ -67,6 +67,10 @@ func _ready() -> void:
 		hud.summon_cinematic(inst.cname(), int(inst.data.get("atk", 0)), int(inst.data.get("def", 0)),
 			board._frame_color(inst), inst.owner == ME))
 	hud.hand_card_pressed.connect(_on_hand_card_pressed)
+	hud.hand_drag.connect(_on_hand_drag)
+	hud.can_drag = func(inst): return _my_turn() and mode == "" and not _drop_plan(inst).is_empty()
+	hud.drop_handler = _on_hand_drop
+	board.deck_clicked.connect(_on_deck_clicked)
 	hud.hand_card_hovered.connect(func(inst): hud.inspect(inst))
 	hud.phase_button.connect(_on_phase_button)
 	hud.action_chosen.connect(_on_action)
@@ -149,6 +153,8 @@ func _start() -> void:
 			og.opp_color = Color(opp.get("color", Color("ff5a6e")))
 			hud.add_child(og)
 			first = ME if await og.finished else AI
+	if "--first=me" in OS.get_cmdline_user_args():
+		first = ME
 	state.defer_fx = true
 	state.turbo = cfg.get("turbo", false)
 	if state.turbo:
@@ -703,11 +709,15 @@ func _play_event(ev: Dictionary) -> void:
 						hud.speed_fx.kick(0.35)
 			Sfx.play("charge" if ev["delta"] > 0 else "error", -9.0, 1.0 + 0.05 * float(ev["speed"]))
 		"effect":
-			if ev["card"] != null:
+			var on_field: bool = ev["card"] != null and board.card_for(ev["card"]) != null and (state.players[0].field.has(ev["card"]) or state.players[1].field.has(ev["card"]))
+			if on_field:
+				board.effect_burst(ev["card"], UITheme.GOLD)
+			elif ev["card"] != null:
 				board.pulse(ev["card"], UITheme.GOLD)
 			hud.effect_text(ev["text"])
-			Sfx.play("heal", -6.0, 1.3)
-			await get_tree().create_timer(Settings.t(0.5)).timeout
+			Sfx.play("effect", -3.0)
+			Sfx.play("sparkle", -10.0, 1.2)
+			await get_tree().create_timer(Settings.t(0.75 if on_field else 0.5)).timeout
 		"search":
 			if p == ME:
 				hud.add_hand_card(ev["card"])
@@ -993,9 +1003,142 @@ func _on_phase_button(action: String) -> void:
 		_turn_finished.emit()
 
 
+## What dropping a hand card on each of your rows would do: [monster row, back row].
+## An entry is [action id, the word shown over the row]; missing rows do nothing.
+func _drop_plan(inst) -> Dictionary:
+	var plan := {}
+	if inst.is_monster():
+		if inst.cname() == "Cyber Dragon" and state.can_special_from_hand(ME, inst):
+			plan[0] = ["special_hand", "SPECIAL SUMMON"]
+		elif state.can_normal_summon(ME, inst):
+			plan[0] = ["summon", "SUMMON"]
+		if state.can_normal_summon(ME, inst):
+			plan[1] = ["set", "SET"]
+	elif inst.is_trap():
+		if state.can_set_st(ME, inst):
+			plan[0] = ["set_st", "SET"]
+			plan[1] = ["set_st", "SET"]
+	else:
+		if state.can_activate(ME, inst):
+			plan[0] = ["activate", "ACTIVATE"]
+		if state.can_set_st(ME, inst):
+			plan[1] = ["set_st", "SET"]
+			if not plan.has(0):
+				plan[0] = ["set_st", "SET"]
+	return plan
+
+
+func _on_hand_drag(inst, on: bool) -> void:
+	if not on:
+		board.show_drop([], false)
+		return
+	var plan := _drop_plan(inst)
+	_menu_card = null
+	board.show_drop([Loc.t(str(plan[0][1])) if plan.has(0) else "", Loc.t(str(plan[1][1])) if plan.has(1) else ""], true)
+
+
+## A hand card let go over the table. True when it lands on a row that takes it.
+func _on_hand_drop(inst, at: Vector2) -> bool:
+	if not _my_turn() or mode != "":
+		return false
+	var plan := _drop_plan(inst)
+	var row := board.drop_row(at)
+	if not plan.has(row):
+		return false
+	_menu_card = inst
+	Sfx.play("card", -4.0)
+	_on_action.call_deferred(str(plan[row][0]))
+	return true
+
+
+## Your own deck: the things you would reach for it to do.
+func _on_deck_clicked() -> void:
+	if _finished or hud.overlay_visible():
+		return
+	if hud.actions_visible() and _menu_card == null and _deck_menu:
+		hud.hide_actions()
+		_deck_menu = false
+		return
+	_cancel_mode()
+	_menu_card = null
+	_deck_menu = true
+	hud.show_actions(board.camera.unproject_position(board.deck_pos(ME)) + Vector2(-420, -60), [
+		["piles", "Graveyards", true], ["pause", "Duel menu", true], ["surrender", "Surrender", true]])
+
+
+var _deck_menu := false
+var _closed_card = null          # the card whose menu this very tap just closed
+var _closed_at := 0
+var _drag_atk := {}              # a press on one of your monsters that may turn into a drag
+
+
+func _input(event: InputEvent) -> void:
+	if _drag_atk.is_empty():
+		return
+	if event is InputEventMouseMotion and not _drag_atk["on"]:
+		if (event.position as Vector2).distance_to(_drag_atk["from"]) < 22.0 or not _my_turn():
+			return
+		_drag_atk["on"] = true
+		var a = _drag_atk["inst"]
+		hud.hide_actions()
+		_menu_card = null
+		if mode != "attack":
+			# Dragging out of Main Phase 1 aims the same way; the Battle Phase starts on release.
+			_clear_glows()
+			var ac := board.card_for(a)
+			if ac:
+				ac.set_glow(true, UITheme.GOLD)
+			for t in state.attack_targets(ME):
+				var tc := board.card_for(t)
+				if tc:
+					tc.set_glow(true, UITheme.DANGER)
+			board.start_aim(a)
+			board.show_direct_target(state.can_direct_attack(ME) or state.can_direct_attack_with(ME, a))
+	elif event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var d := _drag_atk
+		_drag_atk = {}
+		if not d["on"]:
+			return
+		var hit := board.enemy_card_at(event.position, state.attack_targets(ME))
+		var direct: bool = hit == null and board.side_at(event.position) == 1
+		_drag_attack_go(d["inst"], hit.inst if hit else null, direct)
+
+
+func _drag_attack_go(a, target, direct: bool) -> void:
+	var aiming := mode == "attack"
+	if target == null and not direct:
+		# Let go over nothing: a tap-style attack keeps waiting for its target, a drag is dropped.
+		if not aiming:
+			_cancel_mode()
+		return
+	if not _my_turn():
+		_cancel_mode()
+		return
+	_cancel_mode()
+	if state.phase == DuelState.Phase.MAIN1:
+		if not state.can_enter_battle():
+			return
+		await _act("enter_battle", [])
+		await _window(AI, "battle_start", null, "")
+	if not _my_turn() or not state.can_attack(ME, a):
+		return
+	if target != null and state.attack_targets(ME).has(target):
+		await _do_attack(ME, a, target)
+	elif target == null and (state.can_direct_attack(ME) or state.can_direct_attack_with(ME, a)):
+		await _do_attack(ME, a, null)
+	else:
+		Sfx.play("error", -8.0)
+
+
 func _on_hand_card_pressed(inst, at: Vector2) -> void:
 	if not _my_turn() or mode != "":
 		return
+	if hud.actions_visible() and _menu_card == inst:
+		# A second tap on the same card puts it back.
+		hud.hide_actions()
+		_menu_card = null
+		return
+	_deck_menu = false
 	_menu_card = inst
 	hud.inspect(inst)
 	hud.focus_hand_card(inst)
@@ -1015,6 +1158,18 @@ func _on_hand_card_pressed(inst, at: Vector2) -> void:
 
 
 func _on_action(action: String) -> void:
+	if action in ["surrender", "piles", "pause"]:
+		_deck_menu = false
+		match action:
+			"surrender":
+				var sure := await hud.ask_choice(Loc.t("Surrender this duel?"), [Loc.t("Keep dueling"), Loc.t("Surrender")])
+				if sure == 1:
+					_on_pause_action("surrender")
+			"piles":
+				hud.show_piles(ME)
+			"pause":
+				_on_pause_action("open")
+		return
 	var c = _menu_card
 	_menu_card = null
 	if c == null or not _my_turn():
@@ -1083,14 +1238,22 @@ func _refresh_tribute() -> void:
 
 
 func _on_board_card_clicked(card: Card3D) -> void:
-	if not _my_turn() or hud.actions_visible():
-		hud.hide_actions()
+	var reopened: bool = (hud.actions_visible() and _menu_card != null and _menu_card == card.inst) or (_closed_card != null and _closed_card == card.inst and Time.get_ticks_msec() - _closed_at < 120)
+	_closed_card = null
+	hud.hide_actions()
+	_deck_menu = false
+	if not _my_turn() or reopened:
+		# A second tap on the card whose menu is open just closes it.
+		_menu_card = null
 		return
 	var inst = card.inst
 	if inst == null:
 		return
 	var mine: bool = state.players[ME].field.has(inst)
 	var theirs: bool = state.players[AI].field.has(inst)
+	if mine and mode in ["", "attack"] and inst.face_up and inst.attack_pos and (state.can_attack(ME, inst)
+			or (state.phase == DuelState.Phase.MAIN1 and state.can_enter_battle() and inst.attacked_turn != state.turn)):
+		_drag_atk = {"inst": inst, "from": get_viewport().get_mouse_position(), "on": false}
 	if mode == "materials":
 		if mine:
 			_toggle_material(inst)
@@ -1449,7 +1612,7 @@ func _cancel_mode() -> void:
 
 
 func _on_board_card_hovered(card: Card3D, inside: bool) -> void:
-	if mode == "attack" and card.inst != null and state.players[AI].field.has(card.inst):
+	if (mode == "attack" or not _drag_atk.is_empty()) and card.inst != null and state.players[AI].field.has(card.inst):
 		board.set_aim_target(card if inside else null)
 	if not inside or card.inst == null:
 		return
@@ -1489,6 +1652,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		_cancel_mode()
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT and hud.actions_visible():
+		# A tap anywhere else puts the card's menu away. Cards on the table still get the tap.
+		_closed_card = _menu_card
+		_closed_at = Time.get_ticks_msec()
+		hud.hide_actions()
+		_menu_card = null
+		_deck_menu = false
 
 
 func _on_pause_action(action: String) -> void:
@@ -1672,6 +1842,14 @@ func _run_ai(act: Dictionary, who: int) -> Array:
 
 func _demo_actions() -> void:
 	await get_tree().create_timer(0.6).timeout
+	if "--demo-deck" in OS.get_cmdline_user_args():
+		_on_deck_clicked()
+		return
+	if "--demo-drop" in OS.get_cmdline_user_args():
+		for c in state.players[ME].hand:
+			if c.is_monster() and not _drop_plan(c).is_empty():
+				_on_hand_drag(c, true)
+				return
 	for c in state.players[ME].hand:
 		if c.is_monster():
 			hud.inspect(c)

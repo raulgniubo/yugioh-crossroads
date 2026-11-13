@@ -102,13 +102,13 @@ func _quad(mat: StandardMaterial3D, z: float) -> MeshInstance3D:
 	return mi
 
 
-func setup(id: int) -> void:
+func setup(id: int, owner := -1) -> void:
 	card_id = id
 	var face := Cards.get_face(id)
 	_front_mat.albedo_texture = face
 	_front_mat.emission_texture = face
 	_front_mat.next_pass = Foil.layer_3d(CardData.rarity(id))
-	var back := Cards.get_back()
+	var back := Cards.duel_back(owner)
 	_back_mat.albedo_texture = back
 	_back_mat.emission_texture = back
 

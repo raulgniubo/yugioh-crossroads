@@ -16,6 +16,7 @@ const CAM_TARGET := Vector3(0, 0, 1.15)
 signal ace_summoned(inst)
 signal direct_clicked
 signal extra_clicked
+signal deck_clicked
 
 ## Cinematic camera: blends from the table view toward cam_pos / cam_target by cam_weight.
 var cam_pos := Vector3(0, 4, 12)
@@ -408,8 +409,11 @@ func _build_decks() -> void:
 		body.material_override = bm
 		pile.add_child(body)
 		var top := Card3D.new()
-		top.setup(0)
-		top.set_pickable(false)
+		top.setup(0, p)
+		top.set_pickable(p == 0)
+		if p == 0:
+			top.clicked.connect(func(_c): deck_clicked.emit())
+			top.hovered.connect(func(_c, inside): top.set_glow(inside, Color("ffd98a")))
 		pile.add_child(top)
 		_deck_piles.append(pile)
 		var lbl := Label3D.new()
@@ -435,7 +439,7 @@ func _build_decks() -> void:
 		eb.material_override = em
 		ep.add_child(eb)
 		var etop := Card3D.new()
-		etop.setup(0)
+		etop.setup(0, p)
 		etop.set_pickable(p == 0)
 		if p == 0:
 			etop.clicked.connect(func(_c): extra_clicked.emit())
@@ -520,7 +524,7 @@ func set_deck_count(p: int, count: int) -> void:
 
 func _new_card(inst) -> Card3D:
 	var c := Card3D.new()
-	c.setup(inst.id)
+	c.setup(inst.id, int(inst.owner))
 	c.inst = inst
 	add_child(c)
 	c.clicked.connect(func(card): card_clicked.emit(card))
@@ -1348,6 +1352,73 @@ func pulse(inst, color: Color) -> void:
 	tw.tween_callback(func(): if is_instance_valid(c): c.set_glow(false))
 
 
+## A monster's effect goes off: it lifts off the table, a ring bursts out from under it and
+## light pours up through the card.
+func effect_burst(inst, color: Color) -> void:
+	var c := card_for(inst)
+	if c == null:
+		return
+	c.set_glow(true, color)
+	var at := c.global_position
+	var ring := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = 0.42
+	tm.outer_radius = 0.5
+	tm.rings = 40
+	ring.mesh = tm
+	var rm := StandardMaterial3D.new()
+	rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	rm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	rm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	rm.albedo_color = Color(color, 0.95)
+	ring.material_override = rm
+	ring.scale = Vector3(0.6, 0.12, 0.6)
+	ring.position = Vector3(at.x, 0.05, at.z)
+	add_child(ring)
+	var beam := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.5
+	cm.bottom_radius = 0.42
+	cm.height = 2.6
+	cm.cap_top = false
+	cm.cap_bottom = false
+	beam.mesh = cm
+	var bm := StandardMaterial3D.new()
+	bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	bm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	bm.albedo_color = Color(color, 0.32)
+	beam.material_override = bm
+	beam.position = Vector3(at.x, 1.3, at.z)
+	beam.scale = Vector3(1, 0.05, 1)
+	add_child(beam)
+	var light := OmniLight3D.new()
+	light.light_color = color
+	light.light_energy = 0.0
+	light.omni_range = 4.5
+	light.position = Vector3(at.x, 0.8, at.z)
+	add_child(light)
+	var d := Settings.t(1.0)
+	var tw := create_tween().set_parallel()
+	tw.tween_property(ring, "scale", Vector3(3.4, 0.12, 3.4), 0.6 * d).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+	tw.tween_property(rm, "albedo_color:a", 0.0, 0.6 * d)
+	tw.tween_property(beam, "scale", Vector3(1, 1, 1), 0.18 * d).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+	tw.tween_property(bm, "albedo_color:a", 0.0, 0.45 * d).set_delay(0.25 * d)
+	tw.tween_property(light, "light_energy", 5.0, 0.1 * d)
+	tw.tween_property(light, "light_energy", 0.0, 0.5 * d).set_delay(0.12 * d)
+	tw.tween_method(c.flash, 3.0, 0.0, 0.7 * d)
+	var home := c.position
+	tw.tween_property(c, "position:y", home.y + 0.32, 0.14 * d).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(c, "position:y", home.y, 0.3 * d).set_delay(0.4 * d).set_trans(Tween.TRANS_SINE)
+	tw.chain().tween_callback(func():
+		ring.queue_free()
+		beam.queue_free()
+		light.queue_free()
+		if is_instance_valid(c):
+			c.set_glow(false))
+
+
 ## Declaring an attack: the attacker rises and leans toward its target.
 func anim_declare(p: int, inst, target) -> void:
 	var c := card_for(inst)
@@ -1801,6 +1872,106 @@ func screen_pos(inst) -> Vector2:
 	return camera.unproject_position(c.global_position)
 
 
+# ------------------------------------------------------------------ dropping a card from the hand
+
+var _drop_bands: Array = []      # [front row, back row]: {node, mat, label, on}
+
+
+## Where on the table a point of the screen lands.
+func table_point(screen: Vector2) -> Vector3:
+	var o := camera.project_ray_origin(screen)
+	var d := camera.project_ray_normal(screen)
+	if absf(d.y) < 0.001:
+		return Vector3(0, -100, 0)
+	return o + d * ((0.02 - o.y) / d.y)
+
+
+## 0 = your half of the field, 1 = theirs, -1 = off the table.
+func side_at(screen: Vector2) -> int:
+	var w := table_point(screen)
+	if absf(w.x) > 5.6 or absf(w.z) > 3.5:
+		return -1
+	return 0 if w.z > 0.0 else 1
+
+
+## Which of your two rows a dropped card lands in: 0 = monster row, 1 = back row, -1 = neither.
+func drop_row(screen: Vector2) -> int:
+	var w := table_point(screen)
+	if absf(w.x) > 5.4 or w.z < 0.3 or w.z > 3.4:
+		return -1
+	return 0 if w.z < (MONSTER_ROW + SPELL_ROW) / 2.0 else 1
+
+
+## The opponent's monster nearest to a point of the screen, if one is close enough.
+func enemy_card_at(screen: Vector2, monsters: Array) -> Card3D:
+	var best: Card3D = null
+	var best_d := 95.0 * get_viewport().get_visible_rect().size.y / 1080.0
+	for inst in monsters:
+		var c := card_for(inst)
+		if c == null:
+			continue
+		var d := camera.unproject_position(c.global_position).distance_to(screen)
+		if d < best_d:
+			best_d = d
+			best = c
+	return best
+
+
+## Light up your rows while a card is being dragged. labels = [front row text, back row text];
+## an empty text leaves that row dark.
+func show_drop(labels: Array, on: bool) -> void:
+	if _drop_bands.is_empty():
+		if not on:
+			return
+		for r in 2:
+			var z := MONSTER_ROW if r == 0 else SPELL_ROW
+			var mi := MeshInstance3D.new()
+			var pm := PlaneMesh.new()
+			pm.size = Vector2(ZONE_SPACING * 5.0 + 0.3, 1.2)
+			mi.mesh = pm
+			var m := StandardMaterial3D.new()
+			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+			m.albedo_color = Color(theme["accent"], 0.12)
+			mi.material_override = m
+			mi.position = Vector3(0, 0.03, z)
+			add_child(mi)
+			var l := Label3D.new()
+			l.font = UITheme.title_font()
+			l.font_size = 110
+			l.pixel_size = 0.0042
+			l.outline_size = 20
+			l.outline_modulate = Color(0, 0, 0, 0.75)
+			l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			l.no_depth_test = true
+			l.position = Vector3(0, 0.5, z)
+			add_child(l)
+			_drop_bands.append({"node": mi, "mat": m, "label": l, "on": false})
+	for r in 2:
+		var b: Dictionary = _drop_bands[r]
+		var text := str(labels[r]) if on and r < labels.size() else ""
+		b["on"] = text != ""
+		(b["node"] as Node3D).visible = text != ""
+		(b["label"] as Label3D).visible = text != ""
+		(b["label"] as Label3D).text = text
+
+
+func _update_drop() -> void:
+	if _drop_bands.is_empty():
+		return
+	var row := drop_row(get_viewport().get_mouse_position())
+	for r in 2:
+		var b: Dictionary = _drop_bands[r]
+		if not b["on"]:
+			continue
+		var hot := r == row
+		var pulse := 0.5 + 0.5 * sin(_time * 6.0)
+		(b["mat"] as StandardMaterial3D).albedo_color = Color(Color("ffd98a") if hot else Color(theme["accent"]), (0.3 + 0.12 * pulse) if hot else (0.08 + 0.05 * pulse))
+		(b["label"] as Label3D).modulate = Color("fff2c8") if hot else Color(Color(theme["accent"]).lightened(0.5), 0.75)
+		(b["label"] as Label3D).position.y = 0.5 + (0.12 if hot else 0.0)
+
+
 # ------------------------------------------------------------------ direct attack target
 
 var _direct: Node3D
@@ -1922,6 +2093,7 @@ func _make_arrow() -> Node3D:
 
 
 func _update_arrow() -> void:
+	_update_drop()
 	if _arrow == null or not _arrow.visible or _aim_from == null or not is_instance_valid(_aim_from):
 		return
 	var from := _aim_from.global_position + Vector3(0, 0.25, 0)

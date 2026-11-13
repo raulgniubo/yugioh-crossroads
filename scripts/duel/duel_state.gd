@@ -223,7 +223,8 @@ func fx_to_chain() -> Array:
 		if is_over():
 			break
 		# "You can ..." effects are the owner's call.
-		if not f["ctx"].get("_ign", false) and "you can" in str(c.data.get("desc", "")).to_lower():
+		var text := str(c.data.get("desc", "")).to_lower()
+		if not f["ctx"].get("_ign", false) and ("you can" in text or text.length() < 100 or " can " in str(EffectRunner.fx(c).get("note", "")).to_lower()):
 			if choose_option(q, Loc.t("Activate the effect of %s?") % c.cname(), ["Activate", "Don't"], 0, c) == 1:
 				continue
 		chain.append({"player": q, "card": c, "kind": "fx", "spec": {"k": "fx"}, "target": null, "subject": null,
@@ -2018,6 +2019,10 @@ func special_from_hand(p: int, c: CardInst) -> Array:
 func summon_triggers(p: int, c: CardInst) -> Array:
 	var ps := players[p]
 	var events := []
+	# Cards with a written effect list run through EffectRunner (once, on the chain, with the
+	# player choosing). The fixed versions below are only for cards that have none.
+	if EffectRunner.fx(c).has("summon"):
+		return events
 	match c.cname():
 		"Junk Synchron":
 			if ps.free_zone() == -1:

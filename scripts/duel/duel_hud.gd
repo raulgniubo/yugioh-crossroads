@@ -5,6 +5,7 @@ extends Control
 
 signal hand_card_pressed(inst, at: Vector2)
 signal hand_card_hovered(inst)
+signal hand_drag(inst, on: bool)
 signal phase_button(action: String)
 signal action_chosen(action: String)
 signal cancel_pressed
@@ -54,6 +55,8 @@ var _extra_panel: Control
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Everything in a duel answers on the press, not on the release: taps feel instant.
+	get_tree().node_added.connect(_snap_button)
 	_build_plates()
 	_build_phase()
 	_build_inspector()
@@ -82,6 +85,11 @@ func _ready() -> void:
 	_banner.modulate.a = 0.0
 	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_banner)
+
+
+func _snap_button(n: Node) -> void:
+	if n is BaseButton and not (n is OptionButton) and is_ancestor_of(n):
+		(n as BaseButton).action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 
 
 # ------------------------------------------------------------------ plates
@@ -910,22 +918,24 @@ func add_hand_card(inst) -> void:
 	tr.size = HAND_CARD
 	tr.pivot_offset = HAND_CARD / 2.0
 	tr.mouse_filter = Control.MOUSE_FILTER_STOP
-	var glow := Panel.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0, 0, 0, 0)
-	sb.border_color = UITheme.ACCENT
-	sb.set_border_width_all(3)
-	sb.set_corner_radius_all(8)
-	sb.expand_margin_left = 4
-	sb.expand_margin_right = 4
-	sb.expand_margin_top = 4
-	sb.expand_margin_bottom = 4
-	glow.add_theme_stylebox_override("panel", sb)
-	glow.set_anchors_preset(Control.PRESET_FULL_RECT)
-	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	glow.visible = false
-	glow.name = "Glow"
-	tr.add_child(glow)
+	# Two rims: a soft one for "you can play this", a bright gold one for the card in hand.
+	for rim in [["Glow", UITheme.ACCENT, 2, 16], ["Sel", Color("ffd98a"), 3, 26]]:
+		var glow := Panel.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0, 0, 0, 0)
+		sb.border_color = Color(rim[1]).lightened(0.25)
+		sb.set_border_width_all(int(rim[2]))
+		sb.set_corner_radius_all(9)
+		sb.set_expand_margin_all(3)
+		sb.shadow_color = Color(rim[1], 0.55)
+		sb.shadow_size = int(rim[3])
+		sb.draw_center = false
+		glow.add_theme_stylebox_override("panel", sb)
+		glow.set_anchors_preset(Control.PRESET_FULL_RECT)
+		glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		glow.visible = false
+		glow.name = str(rim[0])
+		tr.add_child(glow)
 	tr.position = Vector2(520, -330)
 	tr.rotation = 0.5
 	tr.scale = Vector2(0.6, 0.6)
@@ -945,12 +955,61 @@ func add_hand_card(inst) -> void:
 		_layout_hand())
 	tr.gui_input.connect(func(e):
 		if (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT) or (e is InputEventScreenTouch and e.pressed):
-			# A quick press-in so the click is felt before the menu opens.
-			var ptw := tr.create_tween()
-			ptw.tween_property(tr, "scale", Vector2(1.1, 1.1), 0.05)
-			ptw.tween_property(tr, "scale", Vector2(1.22, 1.22), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			Sfx.play("card", -12.0, 1.25)
+			_drag = {"entry": entry, "from": get_viewport().get_mouse_position(), "on": false}
 			hand_card_pressed.emit(inst, tr.global_position + Vector2(tr.size.x / 2.0, 0)))
 	_layout_hand()
+
+
+# ------------------------------------------------------------------ dragging a card out of the hand
+
+var _drag := {}                  # {entry, from, on}
+var can_drag := Callable()       # (inst) -> bool, set by the duel
+var drop_handler := Callable()   # (inst, screen position) -> bool: true when the card was played
+
+
+func _input(event: InputEvent) -> void:
+	if _drag.is_empty():
+		return
+	var entry: Dictionary = _drag["entry"]
+	var node: Control = entry["node"]
+	if not is_instance_valid(node) or not _hand.has(entry):
+		_drag = {}
+		return
+	if event is InputEventMouseMotion:
+		var mp: Vector2 = event.position
+		if not _drag["on"]:
+			if mp.distance_to(_drag["from"]) < 16.0 or not (can_drag.is_valid() and can_drag.call(entry["inst"])):
+				return
+			_drag["on"] = true
+			hide_actions()
+			var old: Tween = node.get_meta("tw") if node.has_meta("tw") else null
+			if old and old.is_valid():
+				old.kill()
+			node.set_meta("held", true)
+			node.z_index = 60
+			node.modulate.a = 0.94
+			Sfx.play("whoosh", -14.0, 1.4)
+			hand_drag.emit(entry["inst"], true)
+		node.global_position = mp - HAND_CARD / 2.0
+		node.scale = node.scale.lerp(Vector2(0.86, 0.86), 0.35)
+		node.rotation = lerpf(node.rotation, clampf(event.relative.x * 0.012, -0.3, 0.3), 0.3)
+	elif event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var was_on: bool = _drag["on"]
+		_drag = {}
+		if not was_on:
+			return
+		hand_drag.emit(entry["inst"], false)
+		var played: bool = drop_handler.is_valid() and drop_handler.call(entry["inst"], event.position)
+		if played:
+			# It stays where it was dropped until the summon takes it off the hand.
+			get_tree().create_timer(2.5).timeout.connect(func():
+				if is_instance_valid(node) and node.has_meta("held"):
+					node.remove_meta("held")
+					_layout_hand())
+		else:
+			node.remove_meta("held")
+			_layout_hand()
 
 
 func remove_hand_card(inst) -> void:
@@ -971,8 +1030,6 @@ func set_playable(insts: Array) -> void:
 	_playable.clear()
 	for i in insts:
 		_playable[i] = true
-	for e in _hand:
-		(e["node"].get_node("Glow") as Panel).visible = _playable.has(e["inst"])
 	_layout_hand()
 
 
@@ -985,6 +1042,11 @@ func _layout_hand() -> void:
 			hover_i = i
 	for i in n:
 		var node: Control = _hand[i]["node"]
+		var chosen: bool = _hand[i]["inst"] == _focused
+		(node.get_node("Sel") as Panel).visible = chosen
+		(node.get_node("Glow") as Panel).visible = _playable.has(_hand[i]["inst"]) and not chosen
+		if node.has_meta("held"):
+			continue
 		var offset := i - (n - 1) / 2.0
 		var hovered: bool = i == hover_i
 		var target := Vector2(offset * spacing - HAND_CARD.x / 2.0, -HAND_CARD.y * 0.72 + absf(offset) * 6.0)
@@ -1007,7 +1069,7 @@ func _layout_hand() -> void:
 		if old and old.is_valid():
 			old.kill()
 		var tw := create_tween().set_parallel().set_trans(Tween.TRANS_BACK if hovered else Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		var d := 0.13 if hovered else 0.17
+		var d := 0.09 if hovered else 0.15
 		tw.tween_property(node, "position", target, d)
 		tw.tween_property(node, "rotation", rot, d)
 		tw.tween_property(node, "scale", Vector2(sc, sc), d)
@@ -1251,47 +1313,100 @@ func effect_text(text: String, color := Color("ffd23a")) -> void:
 
 const ACTION_ICONS := {
 	"summon": "▲", "set": "▼", "activate": "✦", "flip": "⟳", "position": "⟲",
-	"attack": "⚔", "direct": "⚔", "fuse": "✸",
+	"attack": "⚔", "direct": "⚔", "fuse": "✸", "set_st": "▼", "special_hand": "★", "ignite": "✦", "fire": "✹",
+	"surrender": "⚑", "piles": "☰", "pause": "⚙",
 }
 var _focused = null
 
 
-## options: [[action_id, label, enabled], ...]  Pill buttons that pop out beside `at`.
+const ACTION_HINTS := {
+	"summon": "Face-up, in Attack Position", "set": "Face-down, in Defense Position", "set_st": "Face-down. Use it on a later turn",
+	"activate": "Use its effect right now", "flip": "Turn it face-up", "position": "Switch its battle position",
+	"attack": "Pick a target, or go direct", "fuse": "Fusion Summon this monster", "special_hand": "Does not use your Normal Summon",
+	"ignite": "Use this monster's effect", "fire": "Spend its counters", "surrender": "Give up this duel", "piles": "Look through both Graveyards",
+	"pause": "Settings, rules and more",
+}
+
+
+## options: [[action_id, label, enabled], ...]  Cards of choice that pop out beside `at`.
 ## `at` is the right edge / vertical middle of the card that was tapped.
 func show_actions(at: Vector2, options: Array) -> void:
 	for c in _menu.get_children():
 		_menu.remove_child(c)
 		c.queue_free()
-	_menu.add_theme_constant_override("separation", 8)
-	var i := 0
+	_menu.add_theme_constant_override("separation", 7)
 	for o in options:
 		var id: String = o[0]
 		var key := id.split(":")[0]
+		var col: Color = UITheme.DANGER if key in ["attack", "direct", "surrender"] else (Color("ffd23a") if key in ["fuse", "special_hand", "ignite"] else (Color("b98cff") if key in ["set", "set_st"] else UITheme.ACCENT))
 		var b := Button.new()
-		b.text = "%s   %s" % [ACTION_ICONS.get(key, "•"), o[1]]
 		b.disabled = not o[2]
-		b.custom_minimum_size = Vector2(250, 56)
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.add_theme_font_size_override("font_size", 25)
-		var col: Color = UITheme.DANGER if key in ["attack", "direct"] else (Color("ffd23a") if key == "fuse" else UITheme.ACCENT)
-		var normal := UITheme.button_box(Color(0.03, 0.06, 0.11, 0.97), Color(col, 0.7), 28)
-		normal.shadow_color = Color(0, 0, 0, 0.55)
-		normal.shadow_size = 12
-		var hover := UITheme.button_box(Color(col, 0.3), col, 28)
-		hover.set_border_width_all(3)
-		b.add_theme_stylebox_override("normal", normal)
-		b.add_theme_stylebox_override("hover", hover)
-		b.add_theme_stylebox_override("focus", hover)
-		b.add_theme_stylebox_override("pressed", UITheme.button_box(col, col, 28))
+		b.custom_minimum_size = Vector2(330, 66)
+		b.focus_mode = Control.FOCUS_ALL
+		var normal := StyleBoxFlat.new()
+		normal.bg_color = Color(0.035, 0.055, 0.1, 0.97)
+		normal.set_corner_radius_all(14)
+		normal.border_color = Color(col, 0.55)
+		normal.set_border_width_all(1)
+		normal.border_width_left = 5
+		normal.shadow_color = Color(0, 0, 0, 0.6)
+		normal.shadow_size = 14
+		normal.shadow_offset = Vector2(0, 4)
+		var hover: StyleBoxFlat = normal.duplicate()
+		hover.bg_color = Color(col.darkened(0.72), 0.98)
+		hover.border_color = col.lightened(0.2)
+		hover.set_border_width_all(2)
+		hover.border_width_left = 5
+		hover.shadow_color = Color(col, 0.45)
+		hover.shadow_size = 18
+		var down: StyleBoxFlat = hover.duplicate()
+		down.bg_color = Color(col.darkened(0.45), 1.0)
+		var off: StyleBoxFlat = normal.duplicate()
+		off.bg_color = Color(0.05, 0.06, 0.08, 0.9)
+		off.border_color = Color(1, 1, 1, 0.12)
+		for st in [["normal", normal], ["hover", hover], ["focus", hover], ["pressed", down], ["disabled", off]]:
+			b.add_theme_stylebox_override(str(st[0]), st[1])
+		var row := HBoxContainer.new()
+		row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		row.offset_left = 16
+		row.offset_right = -14
+		row.add_theme_constant_override("separation", 14)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(row)
+		var tile := PanelContainer.new()
+		tile.custom_minimum_size = Vector2(42, 42)
+		tile.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var tb := StyleBoxFlat.new()
+		tb.bg_color = Color(col, 0.2 if o[2] else 0.06)
+		tb.set_corner_radius_all(10)
+		tb.border_color = Color(col, 0.8 if o[2] else 0.2)
+		tb.set_border_width_all(2)
+		tile.add_theme_stylebox_override("panel", tb)
+		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var glyph := UITheme.label(str(ACTION_ICONS.get(key, "•")), 24, col.lightened(0.35) if o[2] else Color(1, 1, 1, 0.3))
+		glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		glyph.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		tile.add_child(glyph)
+		row.add_child(tile)
+		var words := VBoxContainer.new()
+		words.alignment = BoxContainer.ALIGNMENT_CENTER
+		words.add_theme_constant_override("separation", -2)
+		words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var title := UITheme.label(Loc.t(str(o[1])), 25, Color.WHITE if o[2] else Color(1, 1, 1, 0.35), UITheme.title_font())
+		words.add_child(title)
+		if ACTION_HINTS.has(key):
+			var sub := UITheme.label(Loc.t(str(ACTION_HINTS[key])) if o[2] else Loc.t("Not possible right now"), 15, Color(col.lightened(0.5), 0.8) if o[2] else Color(1, 1, 1, 0.3))
+			words.add_child(sub)
+		row.add_child(words)
 		b.pressed.connect(func():
+			Sfx.play("click", -6.0, 1.1)
 			hide_actions()
 			action_chosen.emit(id))
+		b.mouse_entered.connect(func():
+			if not b.disabled:
+				Sfx.play("blip", -18.0, 1.3))
 		_menu.add_child(b)
-		b.modulate.a = 0.0
-		b.position.x = -30
-		var tw := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		tw.tween_property(b, "modulate:a", 1.0, 0.1).set_delay(i * 0.03)
-		i += 1
 	_menu.visible = true
 	_menu.reset_size()
 	var sz := _menu.get_combined_minimum_size()
@@ -1300,11 +1415,13 @@ func show_actions(at: Vector2, options: Array) -> void:
 	if x + sz.x > vs.x - 10:
 		x = at.x - sz.x - 200
 	_menu.position = Vector2(clampf(x, 10, vs.x - sz.x - 10), clampf(at.y - sz.y / 2.0, 10, vs.y - sz.y - 10))
-	_menu.modulate.a = 1.0
-	var slide := create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	var target := _menu.position
-	_menu.position.x -= 24
-	slide.tween_property(_menu, "position", target, 0.14)
+	# One quick pop, no waiting: the menu is usable on the frame it appears.
+	_menu.pivot_offset = Vector2(0, sz.y / 2.0)
+	_menu.scale = Vector2(0.9, 0.9)
+	_menu.modulate.a = 0.6
+	var pop := create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	pop.tween_property(_menu, "scale", Vector2.ONE, 0.09)
+	pop.tween_property(_menu, "modulate:a", 1.0, 0.05)
 	Sfx.play("hover", -8.0, 1.3)
 	for c in _menu.get_children():
 		if c is Button and not c.disabled:
