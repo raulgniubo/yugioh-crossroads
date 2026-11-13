@@ -13,6 +13,18 @@ const PERSIST := ["cont", "field", "equip", "ctrap"]
 const ATTRS := ["DARK", "LIGHT", "EARTH", "WATER", "FIRE", "WIND", "DIVINE"]
 
 const FX := {
+	# ---------------------------------------------------------------- Speed Spells (Turbo Duels)
+	# "speed" is how many Speed Counters you must have; a "speedN" cost spends N of them.
+	"Speed Spell - Full Throttle": {"k": "normal", "speed": 0, "do": [["speed", 2]]},
+	"Speed Spell - Tailwind": {"k": "normal", "speed": 2, "do": [["draw", 1]]},
+	"Speed Spell - Pit Stop": {"k": "normal", "speed": 2, "do": [["heal", 1200]]},
+	"Speed Spell - Slipstream Strike": {"k": "quick", "speed": 3, "t": "any_face", "do": [["atk", "target", 800, "eot"]]},
+	"Speed Spell - Twin Turbo": {"k": "normal", "speed": 4, "do": [["draw", 2], ["discard", 1]]},
+	"Speed Spell - Afterburner": {"k": "normal", "speed": 4, "do": [["damage", 800]]},
+	"Speed Spell - Road Clear": {"k": "quick", "speed": 5, "t": "any_st", "do": [["destroy", "target"]]},
+	"Speed Spell - Overtake": {"k": "normal", "speed": 6, "cost": "speed3", "do": [["destroy", "opp_best_def"]]},
+	"Speed Spell - Redline": {"k": "normal", "speed": 8, "cost": "speed6", "do": [["damage", 2000]]},
+	"Speed Spell - Shockwave": {"k": "normal", "speed": 7, "cost": "speed4", "do": [["destroy", "opp_st"]]},
 	# ---------------------------------------------------------------- Normal Spells
 	"Heavy Storm": {"k": "normal", "do": [["destroy", "all_st"]]},
 	"Harpie's Feather Duster": {"k": "normal", "do": [["destroy", "opp_st"]]},
@@ -398,6 +410,8 @@ static func _can_pay(s: DuelState, p: int, c, sp: Dictionary) -> bool:
 		return ps.hand.size() - (1 if ps.hand.has(c) else 0) >= 1
 	if cost.begins_with("lp"):
 		return ps.lp > int(cost.substr(2))
+	if cost.begins_with("speed"):
+		return ps.speed >= int(cost.substr(5))
 	if cost == "tribute":
 		return not ps.monsters().is_empty()
 	return true
@@ -407,6 +421,9 @@ static func pay_cost(s: DuelState, p: int, c, sp: Dictionary) -> Array:
 	var ps := s.players[p]
 	var events := []
 	var cost: String = str(sp.get("cost", ""))
+	if cost.begins_with("speed"):
+		events.append_array(s._speed(p, -int(cost.substr(5))))
+		return events
 	if cost == "discard":
 		var worst = null
 		for h in ps.hand:
@@ -688,6 +705,8 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				events.append({"type": "gy_to_deck", "player": p, "card": g, "deck": ps.deck.size()})
 			s._shuffle(ps.deck)
 			events.append_array(s._draw(p, 2))
+		"speed":
+			events.append_array(s._speed(p, int(a[1])))
 		"damage":
 			events.append_array(s._damage(opp_i, int(a[1])))
 		"self_damage":

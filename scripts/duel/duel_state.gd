@@ -1401,6 +1401,9 @@ func _speed(p: int, delta: int) -> Array:
 func speed_need(c: CardInst) -> int:
 	if not turbo or c.is_monster() or c.is_trap():
 		return 0
+	var sp0 := SpellRules.spec(c)
+	if sp0.has("speed"):
+		return int(sp0["speed"])
 	var k := SpellRules.kind(c)
 	var n := 2 if k in ["quick", "equip"] else 3
 	if c.cname() in SPEED_HEAVY:

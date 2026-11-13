@@ -6,6 +6,16 @@ extends RefCounted
 ## Effect monsters are played as vanilla stats for now (effects come with the full rules engine).
 
 const CARDS := {
+	99100001: {"name": "Speed Spell - Full Throttle", "frame": "spell", "text": "Gain 2 Speed Counters.", "speed_spell": true},
+	99100002: {"name": "Speed Spell - Tailwind", "frame": "spell", "text": "Needs 2 Speed Counters. Draw 1 card.", "speed_spell": true},
+	99100003: {"name": "Speed Spell - Pit Stop", "frame": "spell", "text": "Needs 2 Speed Counters. Gain 1200 Life Points.", "speed_spell": true},
+	99100004: {"name": "Speed Spell - Slipstream Strike", "frame": "spell", "text": "Needs 3 Speed Counters. Target 1 face-up monster: it gains 800 ATK until the end of this turn.", "speed_spell": true},
+	99100005: {"name": "Speed Spell - Twin Turbo", "frame": "spell", "text": "Needs 4 Speed Counters. Draw 2 cards, then discard 1 card.", "speed_spell": true},
+	99100006: {"name": "Speed Spell - Afterburner", "frame": "spell", "text": "Needs 4 Speed Counters. Inflict 800 damage to your opponent.", "speed_spell": true},
+	99100007: {"name": "Speed Spell - Road Clear", "frame": "spell", "text": "Needs 5 Speed Counters. Destroy 1 Spell or Trap on the field.", "speed_spell": true},
+	99100008: {"name": "Speed Spell - Overtake", "frame": "spell", "text": "Needs 6 Speed Counters. Spend 3 Speed Counters: destroy the monster your opponent controls with the highest DEF.", "speed_spell": true},
+	99100009: {"name": "Speed Spell - Redline", "frame": "spell", "text": "Needs 8 Speed Counters. Spend 6 Speed Counters: inflict 2000 damage to your opponent.", "speed_spell": true},
+	99100010: {"name": "Speed Spell - Shockwave", "frame": "spell", "text": "Needs 7 Speed Counters. Spend 4 Speed Counters: destroy every Spell and Trap your opponent controls.", "speed_spell": true},
 	# ---------------------------------------------------------------- Yugi
 	46986414: {"name": "Dark Magician", "frame": "normal", "atk": 2500, "def": 2100, "level": 7, "attribute": "DARK", "race": "Spellcaster"},
 	70781052: {"name": "Summoned Skull", "frame": "normal", "atk": 2500, "def": 1200, "level": 6, "attribute": "DARK", "race": "Fiend"},
@@ -132,6 +142,9 @@ const MONSTER_EFFECTS := {
 
 ## Filled from the downloaded card database (tools/fetch_cards.py), if present.
 const MIN_DECK := 40
+## The Speed Spells every rider carries in a Turbo Duel.
+const SPEED_SPELLS := [99100001, 99100002, 99100003, 99100004, 99100005, 99100006, 99100007, 99100008, 99100009, 99100010]
+
 static var EXT := {}
 ## Tokens made during a duel (Sheep Tokens...): id -> card data. Not real cards, never in a deck.
 static var TOKENS := {}

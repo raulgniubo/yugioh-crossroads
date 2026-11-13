@@ -160,7 +160,16 @@ func _start() -> void:
 	var extra_hand := int(cfg.get("hand", 5)) - 5
 	state.bonus_cards = [extra_hand, extra_hand + (1 if _ai_level >= 2 else 0)]
 	board.state_ref = state
-	var events := state.setup(CardData.deck_list(my_deck), opp_list, me_name, opp_name, first, -1,
+	var my_list: Array[int] = CardData.deck_list(my_deck)
+	if state.turbo:
+		# Every runner carries a kit of Speed Spells on top of the rider's own deck: the two
+		# starters always, plus four more that change from duel to duel.
+		for side_list in [my_list, opp_list]:
+			var kit: Array = CardData.SPEED_SPELLS.slice(2)
+			kit.shuffle()
+			for id in [CardData.SPEED_SPELLS[0], CardData.SPEED_SPELLS[0], CardData.SPEED_SPELLS[1]] + kit.slice(0, 4):
+				side_list.append(int(id))
+	var events := state.setup(my_list, opp_list, me_name, opp_name, first, -1,
 			CardData.extra_list(my_deck), CardData.extra_list(opp_deck))
 	# House rules from Free Duel: starting Life Points (and what a Gauntlet carried over).
 	_start_lp = [int(cfg.get("lp", DuelState.START_LP)), int(cfg.get("lp", DuelState.START_LP))]

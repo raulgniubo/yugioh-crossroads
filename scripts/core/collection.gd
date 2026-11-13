@@ -622,7 +622,7 @@ func pool(era: String) -> Array:
 				taken[id] = true
 		for name in SpellRules.FX.keys() + CardEffects.FX.keys() + VAULT_EXTRAS:
 			var id: int = CardData.NAME_TO_ID.get(str(name).to_lower(), 0)
-			if id != 0 and not taken.has(id) and not CardData.get_card(id).is_empty():
+			if id != 0 and not taken.has(id) and not CardData.get_card(id).is_empty() and not CardData.get_card(id).get("speed_spell", false):
 				ids[id] = true
 		_pools[era] = ids.keys()
 		return _pools[era]
