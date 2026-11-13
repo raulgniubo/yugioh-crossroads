@@ -656,6 +656,8 @@ func _tricks(delta: float) -> void:
 	if _flame:
 		_flame.visible = _boost > 0.0
 		_flame.scale = Vector3(1.0 + sin(_t * 50.0) * 0.2, 0.8 + sin(_t * 37.0) * 0.25 + minf(_boost, 1.0) * 0.4, 1.0)
+	# The engine note climbs with the speedometer and screams on a boost.
+	Sfx.ambience_pitch(0.72 + _speed / 52.0 + (0.18 if _boost > 0.0 else 0.0) + sin(_t * 31.0) * 0.01)
 	_lines.amount = clampf((_speed - 32.0) / 30.0, 0.0, 0.8) + (0.25 if _boost > 0.0 else 0.0) + (0.15 if drafting else 0.0)
 
 
@@ -809,6 +811,7 @@ func _take_exit() -> void:
 	var e: Dictionary = EXITS[_exit]
 	_paused = true
 	Sfx.play("whoosh", -2.0, 0.7)
+	Sfx.ambience_pitch(1.0)
 	Sfx.ambience("")
 	Pad.walk_mode = false
 	Router.toast(Loc.t("Exit: %s") % Loc.t(str(e["name"])))
@@ -826,7 +829,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	var pad: bool = event is InputEventJoypadButton and event.pressed
 	if event.is_action_pressed("ui_cancel"):
 		_paused = true
-		Sfx.ambience("")
+		Sfx.ambience_pitch(1.0)
+	Sfx.ambience("")
 		Pad.walk_mode = false
 		Router.roam.erase("ride_s")
 		Router.go(Router.MAIN_MENU)

@@ -164,9 +164,14 @@ func _build_environment() -> void:
 		add_child(l)
 	camera = Camera3D.new()
 	camera.fov = 44
-	camera.position = CAM_POS
+	if turbo:
+		# Lower and further back on the road: the far rider and the skyline stay in the picture.
+		cam_home = Vector3(0, 7.0, 9.3)
+		cam_home_target = Vector3(0, 0.0, 0.55)
+		camera.fov = 46
+	camera.position = cam_home
 	add_child(camera)
-	camera.look_at(CAM_TARGET)
+	camera.look_at(cam_home_target)
 	camera.current = true
 
 
@@ -528,6 +533,8 @@ func card_for(inst) -> Card3D:
 	return _cards.get(inst.uid)
 
 
+var cam_home := CAM_POS
+var cam_home_target := CAM_TARGET
 var deal_fast := false
 var _holos := {}      # card uid -> MonsterHolo
 
@@ -2147,8 +2154,8 @@ func _process(delta: float) -> void:
 	var sway := Vector3(sin(_time * 0.35) * 0.06, sin(_time * 0.5) * 0.04, 0)
 	var s := _shake * _shake * 0.35
 	var jitter := Vector3(_rng.randf_range(-s, s), _rng.randf_range(-s, s), 0)
-	var pos := CAM_POS.lerp(cam_pos, cam_weight) + sway * (1.0 - cam_weight) + jitter
-	var tgt := CAM_TARGET.lerp(cam_target, cam_weight) + jitter * 0.5
+	var pos := cam_home.lerp(cam_pos, cam_weight) + sway * (1.0 - cam_weight) + jitter
+	var tgt := cam_home_target.lerp(cam_target, cam_weight) + jitter * 0.5
 	camera.position = pos
 	camera.look_at(tgt)
 	_update_arrow()

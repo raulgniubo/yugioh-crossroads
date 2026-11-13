@@ -50,6 +50,8 @@ func _ready() -> void:
 		board.theme = {"key": "highway", "name": "New Domino Highway", "base": Color("05070d"), "accent": Color("ff8a3a"), "accent2": Color("2de2e6"),
 			"pattern": 1, "sky_top": Color("03040a"), "sky_horizon": Color("26163a"), "fog": Color("0c0a18")}
 		Music.play("turbo")
+		Sfx.ambience("engine", -21.0)
+		Sfx.ambience_pitch(0.8)
 	add_child(board)
 	var layer := CanvasLayer.new()
 	add_child(layer)
@@ -645,6 +647,7 @@ func _play_event(ev: Dictionary) -> void:
 			hud.set_speed(p, ev["speed"], ev["delta"])
 			if board.track:
 				board.track.target_speed = 22.0 + 3.2 * float(state.players[ME].speed + state.players[AI].speed) / 2.0
+				Sfx.ambience_pitch(0.8 + 0.045 * float(state.players[ME].speed + state.players[AI].speed) / 2.0)
 				if hud.speed_fx:
 					hud.speed_fx.amount = 0.12 + 0.035 * float(state.players[ME].speed + state.players[AI].speed) / 2.0
 					if ev["delta"] > 0:
@@ -1615,3 +1618,6 @@ func _exit_tree() -> void:
 	if Engine.time_scale < 1.0:
 		Engine.time_scale = 1.0
 	DuelAI.styles = ["", ""]
+	if board and board.turbo:
+		Sfx.ambience_pitch(1.0)
+		Sfx.ambience("")

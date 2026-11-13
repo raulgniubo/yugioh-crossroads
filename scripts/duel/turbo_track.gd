@@ -550,6 +550,14 @@ func add_rider(index: int, key: String, at: Vector3, color: Color) -> RoamFigure
 		# The models are built nose toward -X: turn them to face down the road.
 		bike.rotation.y = PI if box.size.x >= box.size.z else PI / 2.0
 		bike.position = Vector3(box.get_center().x * s, -box.position.y * s, box.get_center().z * s)
+		# Each rider's runner wears their color: a thin coat over the model's own paint.
+		var coat := StandardMaterial3D.new()
+		coat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		coat.albedo_color = Color(color, 0.34)
+		coat.metallic = 0.6
+		coat.roughness = 0.35
+		for mi in bike.find_children("*", "MeshInstance3D", true, false):
+			(mi as MeshInstance3D).material_overlay = coat
 	var fig := RoamFigure.new()
 	fig.rotation.y = PI / 2.0
 	fig.position = Vector3(-0.2, 0.0, 0.0)

@@ -255,6 +255,12 @@ func _ambience(dur: float, kind: String, r: RandomNumberGenerator) -> AudioStrea
 
 
 ## Background sound for where you are: "city", "sea", "wind", "hum", "crowd", "shop" or "" for none.
+## Bend the pitch of whatever ambience is playing (an engine that follows the throttle).
+func ambience_pitch(pitch: float) -> void:
+	if not _amb.is_empty():
+		(_amb[_amb_on] as AudioStreamPlayer).pitch_scale = clampf(pitch, 0.4, 2.5)
+
+
 func ambience(kind: String, volume_db := -16.0) -> void:
 	_amb_want = kind
 	if _amb.is_empty():
