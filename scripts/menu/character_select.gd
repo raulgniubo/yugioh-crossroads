@@ -9,8 +9,8 @@ signal closed
 
 const W := 1920.0
 const H := 1080.0
-const PANEL_SIZE := Vector2(470, 500)
-const CELL := Vector2(130, 158)
+const PANEL_SIZE := Vector2(506, 438)
+const CELL := Vector2(113, 132)
 
 var _me := "player"
 var _opp := "kaiba"
@@ -108,11 +108,12 @@ func _ready() -> void:
 	_build_setup()
 	_build_tabs()
 	_grid = GridContainer.new()
-	_grid.columns = 13
-	_grid.add_theme_constant_override("h_separation", 8)
-	_grid.position = Vector2(64, 722)
-	_grid.add_theme_constant_override("h_separation", 8)
-	_grid.add_theme_constant_override("v_separation", 8)
+	# Nine across, three rows: the roster owns the bottom left and never reaches the setup
+	# column on the right.
+	_grid.columns = 9
+	_grid.position = Vector2(64, 632)
+	_grid.add_theme_constant_override("h_separation", 7)
+	_grid.add_theme_constant_override("v_separation", 7)
 	_root.add_child(_grid)
 	_refresh_all()
 	_enter()
@@ -143,8 +144,8 @@ func _process(delta: float) -> void:
 	if _pending.is_empty() and _retouch:
 		# Asking again keeps the two big portraits among the few that stay animated.
 		_retouch = false
-		Portraits.get_portrait(_me)
-		Portraits.get_portrait(_opp)
+		Portraits.get_portrait(_me, true)
+		Portraits.get_portrait(_opp, true)
 	if _go and not _starting:
 		_go.modulate = Color(1, 1, 1).lerp(Color(1.25, 1.25, 1.25), 0.5 + 0.5 * sin(_t * 3.0))
 
@@ -154,11 +155,11 @@ func _draw_backdrop() -> void:
 	var o := _root.position if _root else Vector2.ZERO
 	var a: Color = Portraits.info(_me).get("color", UITheme.ACCENT)
 	var b: Color = Portraits.info(_opp).get("color", UITheme.DANGER)
-	var mid := o.x + 590.0
-	var top := o.y + 118.0
-	var bot := o.y + 652.0
-	_backdrop.draw_colored_polygon(PackedVector2Array([Vector2(0, top), Vector2(mid + 70, top), Vector2(mid - 70, bot), Vector2(0, bot)]), Color(a, 0.13))
-	_backdrop.draw_colored_polygon(PackedVector2Array([Vector2(mid + 70, top), Vector2(o.x + 1146, top), Vector2(o.x + 1146, bot), Vector2(mid - 70, bot)]), Color(b, 0.13))
+	var mid := o.x + 599.0
+	var top := o.y + 104.0
+	var bot := o.y + 566.0
+	_backdrop.draw_colored_polygon(PackedVector2Array([Vector2(0, top), Vector2(mid + 70, top), Vector2(mid - 70, bot), Vector2(0, bot)]), Color(a, 0.16))
+	_backdrop.draw_colored_polygon(PackedVector2Array([Vector2(mid + 70, top), Vector2(o.x + 1146, top), Vector2(o.x + 1146, bot), Vector2(mid - 70, bot)]), Color(b, 0.16))
 	_backdrop.draw_line(Vector2(mid + 70, top), Vector2(mid - 70, bot), Color(1, 1, 1, 0.5), 3.0, true)
 	_backdrop.draw_line(Vector2(0, top), Vector2(o.x + 1146, top), Color(1, 1, 1, 0.08), 1.0)
 	_backdrop.draw_line(Vector2(0, bot), Vector2(size.x, bot), Color(1, 1, 1, 0.08), 1.0)
@@ -190,7 +191,7 @@ func _build_slots() -> void:
 		b.flat = true
 		b.clip_contents = true
 		b.size = PANEL_SIZE
-		b.position = Vector2(64 if side == "me" else 646, 136)
+		b.position = Vector2(64 if side == "me" else 628, 116)
 		b.pivot_offset = PANEL_SIZE / 2.0
 		b.pressed.connect(func():
 			_picking = side
@@ -207,6 +208,7 @@ func _build_slots() -> void:
 		pt.stretch_mode = TextureRect.STRETCH_SCALE
 		pt.size = Vector2(PANEL_SIZE.x, PANEL_SIZE.x * 640.0 / 512.0)
 		pt.position = Vector2(0, 6)
+		pt.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 		pt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pt.flip_h = side == "opp"
 		b.add_child(pt)
@@ -255,7 +257,7 @@ func _build_slots() -> void:
 		_slots[side] = {"button": b, "portrait": pt, "name": name_l, "title": title_l, "sub": sub, "tag": tag,
 				"tag_bg": tag_bg, "ace": ace, "glow": glow, "key": ""}
 	_vs = UITheme.label("VS", 92, Color.WHITE, UITheme.title_font())
-	_vs.position = Vector2(540, 318)
+	_vs.position = Vector2(549, 286)
 	_vs.size = Vector2(100, 100)
 	_vs.pivot_offset = Vector2(50, 50)
 	_vs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -305,7 +307,7 @@ func _refresh_slots() -> void:
 		var col: Color = info.get("color", UITheme.ACCENT)
 		var changed: bool = sl["key"] != key
 		sl["key"] = key
-		sl["portrait"].texture = Portraits.get_portrait(key)
+		sl["portrait"].texture = Portraits.get_portrait(key, true)
 		sl["name"].text = str(info.get("name", "")).to_upper()
 		sl["title"].text = str(info.get("title", ""))
 		var deck_key := _deck_of(side)
@@ -360,7 +362,7 @@ var _pick_title: Label
 ## Who the roster is choosing for, said loudly: two big switches over the roster.
 func _build_picker() -> void:
 	var box := HBoxContainer.new()
-	box.position = Vector2(500, 48)
+	box.position = Vector2(604, 580)
 	box.add_theme_constant_override("separation", 10)
 	_root.add_child(box)
 	_pick_title = UITheme.label("", 20, UITheme.TEXT_DIM, UITheme.semi_font())
@@ -368,7 +370,7 @@ func _build_picker() -> void:
 	box.add_child(_pick_title)
 	for side in ["me", "opp"]:
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(180, 42)
+		b.custom_minimum_size = Vector2(150, 42)
 		b.add_theme_font_size_override("font_size", 18)
 		b.pressed.connect(func():
 			_picking = side
@@ -400,7 +402,7 @@ func _refresh_picker() -> void:
 
 func _build_tabs() -> void:
 	var row := HBoxContainer.new()
-	row.position = Vector2(64, 668)
+	row.position = Vector2(64, 580)
 	row.add_theme_constant_override("separation", 8)
 	_root.add_child(row)
 	var tabs := [["", "ALL"]]
@@ -478,11 +480,11 @@ func _roster_card(key: String) -> Control:
 	band.anchor_top = 1.0
 	band.anchor_right = 1.0
 	band.anchor_bottom = 1.0
-	band.offset_top = -32
+	band.offset_top = -28
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(band)
-	var n := UITheme.label(("YOU" if key == "player" else str(info.get("short", ""))).to_upper(), 20, Color.WHITE, UITheme.title_font())
-	n.position = Vector2(8, 3)
+	var n := UITheme.label(("YOU" if key == "player" else str(info.get("short", ""))).to_upper(), 18, Color.WHITE, UITheme.title_font())
+	n.position = Vector2(8, 2)
 	n.size = Vector2(CELL.x - 12, 26)
 	n.clip_text = true
 	band.add_child(n)
@@ -570,15 +572,16 @@ func _section(v: VBoxContainer, text: String) -> void:
 func _build_setup() -> void:
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.04, 0.07, 0.12, 0.96), 22, Color(UITheme.ACCENT, 0.3)))
-	panel.position = Vector2(1176, 86)
-	panel.custom_minimum_size = Vector2(680, 540)
+	panel.position = Vector2(1166, 104)
+	panel.custom_minimum_size = Vector2(690, 936)
+	panel.size = Vector2(690, 936)
 	_root.add_child(panel)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 6)
+	v.add_theme_constant_override("separation", 9)
 	panel.add_child(v)
 	_quote = UITheme.label("", 20, UITheme.TEXT)
-	_quote.position = Vector2(1180, 52)
-	_quote.size = Vector2(676, 26)
+	_quote.position = Vector2(1170, 60)
+	_quote.size = Vector2(686, 26)
 	_quote.add_theme_font_size_override("font_size", 17)
 	_quote.clip_text = true
 	_quote.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -734,16 +737,21 @@ func _build_setup() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	v.add_child(row)
+	# Everything above takes what it needs; the button row sits on the floor of the column.
+	var push := Control.new()
+	push.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(push)
+	v.move_child(push, row.get_index())
 	var rnd := Button.new()
 	rnd.text = "Random rival"
-	rnd.custom_minimum_size = Vector2(0, 52)
+	rnd.custom_minimum_size = Vector2(0, 86)
 	rnd.pressed.connect(_random_opponent)
 	row.add_child(rnd)
 	_go = Button.new()
 	_go.text = "DUEL!"
 	_go.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_go.custom_minimum_size = Vector2(0, 52)
-	_go.add_theme_font_size_override("font_size", 36)
+	_go.custom_minimum_size = Vector2(0, 86)
+	_go.add_theme_font_size_override("font_size", 54)
 	_go.add_theme_font_override("font", UITheme.title_font())
 	_go.add_theme_color_override("font_color", Color(0.02, 0.05, 0.08))
 	_go.add_theme_color_override("font_hover_color", Color(0.02, 0.05, 0.08))

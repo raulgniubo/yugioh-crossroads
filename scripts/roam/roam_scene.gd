@@ -162,6 +162,41 @@ func _after_duel() -> void:
 
 # ------------------------------------------------------------------ world
 
+## The duel field for a duel started where you are standing: a park gives a meadow, the
+## waterfront the shallows, the old woods the Shadow Realm; otherwise the district's own.
+func _field_here() -> String:
+	var here: String = district.get("theme", "battlecity")
+	if _inside != "":
+		return here
+	var p := _player.global_position
+	var key := str(Router.roam.get("district", "domino"))
+	for lm in (district.get("map", {}) as Dictionary).get("landmarks", []):
+		if lm.get("park", false):
+			var c: Vector2 = lm["pos"]
+			var sz: Vector2 = lm["size"]
+			if absf(p.x - c.x) < sz.x / 2.0 + 1.0 and absf(p.z - c.y) < sz.y / 2.0 + 1.0:
+				return "meadow"
+	match key:
+		"domino":
+			if p.z > 50.0:
+				return "tide"
+			if p.z < -38.0:
+				return "kaibacorp"
+		"academy":
+			if p.x < -32.0 and p.z > 28.0:
+				return "shadow"
+			if p.z > 54.0 or absf(p.x) > 52.0:
+				return "tide"
+			if p.x > 40.0 and p.z < -24.0:
+				return "volcano"
+			if absf(p.x) > 24.0 or absf(p.z) > 30.0:
+				return "meadow"
+		"satellite":
+			if p.length() > 30.0:
+				return "ruins"
+	return here
+
+
 func _build_world() -> void:
 	match str(district.get("builder", "")):
 		"academy":
@@ -1363,7 +1398,7 @@ func _start_duel() -> void:
 	Router.duel_config = {
 		"opponent": opp_key, "opponent_deck": duel.get("deck", "joey"),
 		"player_deck": Collection.active_deck(), "player_char": "player",
-		"difficulty": duel.get("difficulty", 1), "field": district.get("theme", "battlecity"),
+		"difficulty": duel.get("difficulty", 1), "field": _field_here(),
 		"story": true, "lose_ok": true, "return_to": Router.ROAM, "continue_label": Loc.t("Back to %s") % Loc.t(str(district.get("name", "town"))),
 	}
 	_end_talk()

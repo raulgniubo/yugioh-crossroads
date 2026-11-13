@@ -173,7 +173,8 @@ func choose(who: int, prompt: String, cands: Array, n := 1, auto: Array = [], op
 			uniq.append(x)
 	if auto.is_empty() and not optional:
 		auto = uniq.slice(0, n)
-	if not manual[who] or uniq.is_empty() or (uniq.size() <= n and not optional):
+	# A human always makes the pick, even when there is only one card it could be.
+	if not manual[who] or uniq.is_empty() or (uniq.size() < n and not optional):
 		return auto
 	if not answers.is_empty():
 		var ans: Array = answers.pop_front()
@@ -1944,7 +1945,8 @@ func respond(p: int, c: CardInst, subject = null) -> Array:
 		return events
 	if c.cname() == "Number 39: Utopia":
 		c.used_turn = turn
-		var o: CardInst = c.overlays.pop_back()
+		var o: CardInst = pick1(p, Loc.t("%s: detach 1 material") % c.cname(), c.overlays, c.overlays.back(), c)
+		c.overlays.erase(o)
 		_to_gy(ps, o)
 		events.append({"type": "detach", "player": p, "card": c, "material": o})
 		if not pending_attack.is_empty():

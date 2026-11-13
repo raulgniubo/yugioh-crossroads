@@ -18,6 +18,7 @@ var sfx_volume := 0.8
 var anim_speed := 1.0
 var pace := 1.0          # extra speed on top, set by the duel (the opponent's turn runs quicker)
 var card_folder := ""
+var sleeve := "default"         # the back of your own cards in a duel (see Cards.sleeves)
 var field_theme := "auto"
 var language := "en"
 var show_fps := false
@@ -64,6 +65,7 @@ func load_settings() -> void:
 	card_folder = cfg.get_value("game", "card_folder", card_folder)
 	field_theme = cfg.get_value("game", "field_theme", field_theme)
 	language = cfg.get_value("game", "language", language)
+	sleeve = str(cfg.get_value("game", "sleeve", sleeve))
 	show_fps = cfg.get_value("display", "show_fps", show_fps)
 	graphics = cfg.get_value("display", "graphics", graphics)
 
@@ -79,6 +81,7 @@ func save_settings() -> void:
 	cfg.set_value("game", "card_folder", card_folder)
 	cfg.set_value("game", "field_theme", field_theme)
 	cfg.set_value("game", "language", language)
+	cfg.set_value("game", "sleeve", sleeve)
 	cfg.set_value("display", "show_fps", show_fps)
 	cfg.set_value("display", "graphics", graphics)
 	cfg.save(PATH)

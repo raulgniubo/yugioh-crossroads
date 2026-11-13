@@ -72,14 +72,151 @@ func duel_back(owner: int) -> Texture2D:
 	return get_back()
 
 
+## The default back of every card. A picture you put in the card folder as back.jpg (or
+## back.png) is used when there is one; otherwise the game draws its own.
 func get_back() -> Texture2D:
 	if _back_texture == null:
-		_back_texture = _make_back()
+		for ext in ["jpg", "png", "jpeg", "webp"]:
+			_back_texture = _load_image(Settings.card_folder.path_join("back." + ext))
+			if _back_texture != null:
+				break
+		if _back_texture == null:
+			_back_texture = _make_back()
 	return _back_texture
+
+
+# ---------------------------------------------------------------- sleeves
+
+## Monsters that have a sleeve of their own. Only the ones this game knows are offered.
+const SLEEVE_ART := [89631139, 46986414, 74677422, 44508094, 84013237, 70781052, 23995346, 11901678, 60800381, 35809262,
+	70095154, 73580471, 70902743, 93717133, 5405694, 10000020, 10000000, 10000010, 38033121, 6983839]
+var _sleeve_cache := {}
+
+
+## Every back you can put on your own cards: [{id, name}]. "default" is the plain back.
+func sleeves() -> Array:
+	var out: Array = [{"id": "default", "name": "Classic"}, {"id": "crossroads", "name": "Crossroads"}]
+	for id in SLEEVE_ART:
+		var d := CardData.get_card(int(id))
+		if not d.is_empty() and str(d.get("name", "")) != "":
+			out.append({"id": "art:%d" % int(id), "name": str(d["name"])})
+	return out
+
+
+func sleeve_texture(sid: String) -> Texture2D:
+	if sid == "" or sid == "default":
+		return get_back()
+	if _sleeve_cache.has(sid):
+		return _sleeve_cache[sid]
+	var tex: Texture2D = null
+	if sid == "crossroads":
+		tex = _make_back()
+	elif sid.begins_with("art:"):
+		tex = _make_sleeve(int(sid.trim_prefix("art:")))
+	if tex == null:
+		tex = get_back()
+	_sleeve_cache[sid] = tex
+	return tex
+
+
+## The back of your own cards.
+func player_back() -> Texture2D:
+	return sleeve_texture(Settings.sleeve)
+
+
+## A character's own sleeve: their ace monster, when the game knows it.
+func back_for_char(key: String) -> Texture2D:
+	var ace := int(Characters.get_char(key).get("ace", 0))
+	if ace > 0 and not CardData.get_card(ace).is_empty():
+		return sleeve_texture("art:%d" % ace)
+	return get_back()
+
+
+## A sleeve built around one monster: its artwork filling the card, darkened at the edges,
+## inside a double gold frame with the name along the bottom.
+func _make_sleeve(id: int) -> Texture2D:
+	var d := get_card(id)
+	var art := _load_image(Settings.card_folder.path_join("art/%d.jpg" % id))
+	var vp := _new_viewport()
+	var root := Control.new()
+	root.size = Vector2(CARD_SIZE)
+	vp.add_child(root)
+	var tint: Color = ATTRIBUTE_COLORS.get(d.get("attribute", ""), [Color("2a3350"), Color("5a6ea8")])[1]
+	_rect(root, Vector2.ZERO, Vector2(CARD_SIZE), Color("07090f"))
+	var w := float(CARD_SIZE.x)
+	var h := float(CARD_SIZE.y)
+	if art != null:
+		var tr := TextureRect.new()
+		tr.texture = art
+		tr.position = Vector2(14, 14)
+		tr.size = Vector2(w - 28, h - 28)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		tr.clip_contents = true
+		root.add_child(tr)
+	else:
+		# No artwork on disk: a crest in the monster's color with its initials.
+		var grad := Gradient.new()
+		grad.set_color(0, tint.lightened(0.15))
+		grad.set_color(1, Color(0.03, 0.04, 0.08, 1))
+		var gt := GradientTexture2D.new()
+		gt.gradient = grad
+		gt.fill = GradientTexture2D.FILL_RADIAL
+		gt.fill_from = Vector2(0.5, 0.45)
+		gt.fill_to = Vector2(0.5, -0.1)
+		var bg := TextureRect.new()
+		bg.texture = gt
+		bg.position = Vector2(14, 14)
+		bg.size = Vector2(w - 28, h - 28)
+		bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		root.add_child(bg)
+		var initials := ""
+		for word in str(d.get("name", "?")).replace("-", " ").split(" ", false):
+			if initials.length() < 3 and word.length() > 0:
+				initials += word[0].to_upper()
+		_label(root, initials, Vector2(0, h * 0.26), Vector2(w, h * 0.36), _font_title, 150, Color(1, 1, 1, 0.92), HORIZONTAL_ALIGNMENT_CENTER)
+	# Vignette, so the frame and the name read on any picture.
+	var vg := Gradient.new()
+	vg.offsets = PackedFloat32Array([0.0, 0.62, 1.0])
+	vg.colors = PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 0.12), Color(0, 0, 0, 0.82)])
+	var vt := GradientTexture2D.new()
+	vt.gradient = vg
+	vt.fill = GradientTexture2D.FILL_RADIAL
+	vt.fill_from = Vector2(0.5, 0.46)
+	vt.fill_to = Vector2(0.5, -0.22)
+	var vr := TextureRect.new()
+	vr.texture = vt
+	vr.position = Vector2(14, 14)
+	vr.size = Vector2(w - 28, h - 28)
+	vr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	root.add_child(vr)
+	for fr in [[8.0, 5, Color("d9b25a")], [20.0, 2, Color(1.0, 0.9, 0.62, 0.85)]]:
+		var frame := Panel.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0, 0, 0, 0)
+		sb.draw_center = false
+		sb.border_color = fr[2]
+		sb.set_border_width_all(int(fr[1]))
+		sb.set_corner_radius_all(14)
+		frame.add_theme_stylebox_override("panel", sb)
+		frame.position = Vector2(float(fr[0]), float(fr[0]))
+		frame.size = Vector2(w - float(fr[0]) * 2.0, h - float(fr[0]) * 2.0)
+		root.add_child(frame)
+	# Corner studs and the name plate.
+	for cx: float in [34.0, w - 34.0]:
+		for cy: float in [34.0, h - 34.0]:
+			var stud := _rect(root, Vector2(cx - 9, cy - 9), Vector2(18, 18), Color("d9b25a"), 9)
+			stud.rotation = PI / 4.0
+			stud.pivot_offset = Vector2(9, 9)
+	_rect(root, Vector2(48, h - 84), Vector2(w - 96, 44), Color(0.03, 0.04, 0.07, 0.86), 10)
+	_rect(root, Vector2(48, h - 86), Vector2(w - 96, 2), Color("d9b25a"))
+	_label(root, str(d.get("name", "")).to_upper(), Vector2(56, h - 84), Vector2(w - 112, 44), _font_title, 24, Color("ffe9b0"), HORIZONTAL_ALIGNMENT_CENTER)
+	return vp.get_texture()
 
 
 func clear_cache() -> void:
 	_face_cache.clear()
+	_sleeve_cache.clear()
 	_art_cache.clear()
 	for c in get_children():
 		c.queue_free()

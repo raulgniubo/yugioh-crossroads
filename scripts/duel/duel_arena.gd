@@ -21,6 +21,13 @@ func build_arena(t: Dictionary) -> void:
 			_junkyard()
 		"heartland":
 			_heartland()
+		"meadow", "volcano", "peak", "ruins", "tide":
+			_wild(str(t.get("key", "")))
+			return
+		"shadow":
+			_void()
+			_stone_rim(Color(0.12, 0.06, 0.18))
+			return
 		_:
 			_void()
 	_stage_ring()
@@ -41,6 +48,8 @@ func _process(delta: float) -> void:
 		n.rotation.y += delta * float(n.get_meta("spin", 0.1))
 	for b in _bob:
 		(b[0] as Node3D).position.y = float(b[1]) + sin(_time * float(b[2])) * 0.4
+	for h in _spin_z:
+		(h as Node3D).rotation.z += delta * float((h as Node3D).get_meta("spin_z", 0.4))
 
 
 # ------------------------------------------------------------------ shared pieces
@@ -477,6 +486,215 @@ func _heartland() -> void:
 		var a := rng.randf() * TAU
 		var d := rng.randf_range(35.0, 75.0)
 		building(Vector3(sin(a) * d, -10, cos(a) * d), Vector3(rng.randf_range(6, 12), rng.randf_range(20, 60), rng.randf_range(6, 12)), rng)
+
+
+# ------------------------------------------------------------------ fields out in the world
+
+## A low stone border around the playmat, for fields with no stage under them.
+func _stone_rim(col: Color) -> void:
+	var m := mat(col, 0.9)
+	for side in [-1, 1]:
+		box(Vector3(12.9, 0.22, 0.42), Vector3(0, 0.02, side * 4.02), m, false)
+		box(Vector3(0.42, 0.22, 8.4), Vector3(side * 6.22, 0.02, 0), m, false)
+	for sx in [-1, 1]:
+		for sz in [-1, 1]:
+			box(Vector3(0.7, 0.5, 0.7), Vector3(sx * 6.22, 0.12, sz * 4.02), mat(col.lightened(0.12), 0.85), false)
+
+
+func _blob(pos: Vector3, size: Vector3, m: Material) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.5
+	sm.height = 1.0
+	sm.radial_segments = 14
+	sm.rings = 7
+	mi.mesh = sm
+	mi.material_override = m
+	mi.scale = size
+	mi.position = pos
+	add_child(mi)
+	return mi
+
+
+func _cone(pos: Vector3, r: float, h: float, m: Material, sides := 7, top := 0.0) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = top
+	cm.bottom_radius = r
+	cm.height = h
+	cm.radial_segments = sides
+	mi.mesh = cm
+	mi.material_override = m
+	mi.position = pos + Vector3(0, h / 2.0, 0)
+	add_child(mi)
+	return mi
+
+
+## The land around an open-air field: the same painted ground as the mat running out to the
+## horizon, and what belongs in that place standing on it.
+func _wild(kind: String) -> void:
+	var surface := int(theme.get("surface", 1))
+	var ground := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(260, 260)
+	ground.mesh = pm
+	var sh := Shader.new()
+	sh.code = """
+shader_type spatial;
+render_mode unshaded;
+uniform int surface = 1;
+uniform vec3 haze : source_color = vec3(0.8, 0.9, 1.0);
+""" + FieldThemes.GROUND_GLSL + """
+void fragment() {
+	vec2 p = (UV - 0.5) * 260.0;
+	vec3 col = ground_color(p, surface, TIME) * 0.92;
+	float far = smoothstep(26.0, 120.0, length(p));
+	ALBEDO = mix(col, haze, far * 0.85);
+}
+"""
+	var gm := ShaderMaterial.new()
+	gm.shader = sh
+	gm.set_shader_parameter("surface", surface)
+	gm.set_shader_parameter("haze", theme["fog"])
+	ground.material_override = gm
+	ground.position = Vector3(0, -0.03, 0)
+	add_child(ground)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77 + surface
+	# Somewhere to stand: a ring of places around the field, never on it.
+	var spots: Array = []
+	for i in 46:
+		var a := rng.randf() * TAU
+		var d := rng.randf_range(13.0, 58.0)
+		var p := Vector3(sin(a) * d, 0, cos(a) * d)
+		if absf(p.x) < 9.5 and absf(p.z) < 10.5:
+			continue
+		spots.append(p)
+	match kind:
+		"meadow":
+			_stone_rim(Color(0.62, 0.6, 0.55))
+			for i in spots.size():
+				var p: Vector3 = spots[i]
+				if i % 3 == 0:
+					_blob(p + Vector3(0, 0.25, 0), Vector3(rng.randf_range(0.8, 2.0), rng.randf_range(0.5, 1.0), rng.randf_range(0.8, 1.6)), mat(Color(0.55, 0.56, 0.58), 0.95))
+				else:
+					var s := rng.randf_range(0.8, 1.5)
+					cyl(0.14 * s, 0.24 * s, 2.4 * s, p + Vector3(0, 1.2 * s, 0), mat(Color(0.34, 0.23, 0.14), 0.95))
+					for k in 3:
+						_blob(p + Vector3(rng.randf_range(-0.6, 0.6) * s, (2.7 + k * 0.6) * s, rng.randf_range(-0.6, 0.6) * s), Vector3.ONE * rng.randf_range(1.8, 2.6) * s,
+								mat(Color(0.16, 0.42, 0.16).lerp(Color(0.34, 0.6, 0.2), rng.randf()), 0.95))
+			for i in 9:
+				var a := i * TAU / 9.0 + 0.3
+				_blob(Vector3(sin(a) * 95.0, -6.0, cos(a) * 95.0), Vector3(rng.randf_range(60, 90), rng.randf_range(22, 40), rng.randf_range(50, 80)), mat(Color(0.2, 0.46, 0.2).lerp(Color(0.5, 0.7, 0.5), 0.35), 1.0))
+			# A windmill on the hill behind the far duelist.
+			var wm := Vector3(-16.0, 0, -30.0)
+			_cone(wm, 2.2, 8.0, mat(Color(0.92, 0.9, 0.84), 0.9), 10, 1.4)
+			_cone(wm + Vector3(0, 8.0, 0), 1.9, 2.2, mat(Color(0.62, 0.22, 0.16), 0.8), 10)
+			var hub := Node3D.new()
+			hub.position = wm + Vector3(0, 7.0, 1.7)
+			add_child(hub)
+			for k in 4:
+				var blade := box(Vector3(0.9, 5.2, 0.08), Vector3(0, 2.8, 0), mat(Color(0.95, 0.93, 0.88), 0.8), false, hub)
+				blade.position = Vector3(sin(k * PI / 2.0) * 2.8, cos(k * PI / 2.0) * 2.8, 0)
+				blade.rotation.z = -k * PI / 2.0
+			hub.set_meta("spin_z", 0.5)
+			_spin_z.append(hub)
+		"volcano":
+			_stone_rim(Color(0.1, 0.08, 0.08))
+			var basalt := mat(Color(0.09, 0.075, 0.07), 0.95)
+			for i in spots.size():
+				var p: Vector3 = spots[i]
+				if i % 4 == 0:
+					cyl(rng.randf_range(1.0, 2.6), rng.randf_range(1.2, 3.0), 0.05, p + Vector3(0, 0.0, 0), glow_mat(Color("ff6a1a"), 2.6), null, 12)
+				else:
+					var h := rng.randf_range(1.2, 5.5)
+					_cone(p, rng.randf_range(0.6, 1.8), h, basalt, 5 + i % 3).rotation.z = rng.randf_range(-0.2, 0.2)
+			var vc := Vector3(8.0, 0, -62.0)
+			_cone(vc, 30.0, 26.0, mat(Color(0.11, 0.08, 0.075), 1.0), 12, 7.0)
+			cyl(6.6, 6.6, 0.3, vc + Vector3(0, 25.9, 0), glow_mat(Color("ff7a1a"), 4.0), null, 12)
+			for k in 3:
+				box(Vector3(1.6 - k * 0.3, 14.0, 0.3), vc + Vector3(-5.0 + k * 5.0, 17.0 - k * 2.0, 22.0 - k * 2.5), glow_mat(Color("ff5a10"), 3.0), false).rotation.x = -0.72
+			_cone(Vector3(-52.0, 0, -44.0), 18.0, 14.0, mat(Color(0.1, 0.08, 0.075), 1.0), 9, 4.0)
+			var glow := OmniLight3D.new()
+			glow.light_color = Color("ff6a2a")
+			glow.light_energy = 3.0
+			glow.omni_range = 26.0
+			glow.position = Vector3(0, 5.0, -8.0)
+			add_child(glow)
+		"peak":
+			_stone_rim(Color(0.5, 0.53, 0.6))
+			var stone := mat(Color(0.36, 0.38, 0.44), 0.95)
+			var snow := mat(Color(0.93, 0.96, 1.0), 0.8)
+			for i in spots.size():
+				var p: Vector3 = spots[i]
+				if i % 3 == 0:
+					# A pine: three stacked cones dusted white.
+					var s := rng.randf_range(0.8, 1.4)
+					cyl(0.12 * s, 0.2 * s, 1.0 * s, p + Vector3(0, 0.5 * s, 0), mat(Color(0.28, 0.2, 0.14), 0.95))
+					for k in 3:
+						_cone(p + Vector3(0, (0.8 + k * 1.0) * s, 0), (1.3 - k * 0.32) * s, 1.6 * s, mat(Color(0.1, 0.28, 0.2).lerp(Color(0.9, 0.95, 1.0), 0.18 + k * 0.14), 0.9), 8)
+				else:
+					var bs := Vector3(rng.randf_range(1.0, 3.0), rng.randf_range(0.8, 2.0), rng.randf_range(1.0, 2.4))
+					_blob(p + Vector3(0, bs.y * 0.3, 0), bs, stone)
+					_blob(p + Vector3(0, bs.y * 0.62, 0), bs * Vector3(0.8, 0.5, 0.8), snow)
+			for i in 11:
+				var a := i * TAU / 11.0 + 0.2
+				var d := rng.randf_range(75.0, 110.0)
+				var h := rng.randf_range(34.0, 62.0)
+				var at := Vector3(sin(a) * d, -6.0, cos(a) * d)
+				_cone(at, h * 0.62, h, mat(Color(0.34, 0.38, 0.48), 1.0), 7)
+				_cone(at + Vector3(0, h * 0.58, 0), h * 0.265, h * 0.43, snow, 7)
+		"ruins":
+			_stone_rim(Color(0.66, 0.58, 0.44))
+			var sandstone := mat(Color(0.72, 0.62, 0.44), 0.95)
+			for i in spots.size():
+				var p: Vector3 = spots[i]
+				match i % 4:
+					0:
+						var h := rng.randf_range(2.0, 6.5)
+						cyl(0.5, 0.56, h, p + Vector3(0, h / 2.0, 0), sandstone, null, 12)
+						box(Vector3(1.4, 0.3, 1.4), p + Vector3(0, 0.15, 0), sandstone, false)
+						if h > 5.0:
+							box(Vector3(1.5, 0.4, 1.5), p + Vector3(0, h + 0.2, 0), sandstone, false)
+					1:
+						var lying := cyl(0.46, 0.5, rng.randf_range(2.0, 4.0), p + Vector3(0, 0.46, 0), sandstone, null, 12)
+						lying.rotation = Vector3(PI / 2.0, rng.randf() * TAU, 0)
+					2:
+						_blob(p + Vector3(0, 0.1, 0), Vector3(rng.randf_range(4.0, 9.0), rng.randf_range(0.8, 1.8), rng.randf_range(3.0, 7.0)), mat(Color(0.8, 0.68, 0.44), 1.0))
+					3:
+						box(Vector3(rng.randf_range(1.0, 2.2), rng.randf_range(0.6, 1.6), rng.randf_range(1.0, 2.0)), p + Vector3(0, 0.4, 0), sandstone, false).rotation.y = rng.randf() * TAU
+			# A gate behind the far duelist and pyramids on the horizon.
+			for sx: float in [-1.0, 1.0]:
+				cyl(0.8, 0.9, 9.0, Vector3(sx * 4.6, 4.5, -15.0), sandstone, null, 12)
+			box(Vector3(12.0, 1.3, 2.0), Vector3(0, 9.6, -15.0), sandstone, false)
+			for py in [[Vector3(-40, 0, -70), 30.0], [Vector3(26, 0, -86), 40.0], [Vector3(70, 0, -40), 22.0]]:
+				_cone(py[0], float(py[1]), float(py[1]) * 0.78, mat(Color(0.78, 0.66, 0.44), 1.0), 4).rotation.y = PI / 4.0
+		"tide":
+			# The field sits on a stone slab in knee-deep water.
+			box(Vector3(14.6, 0.5, 9.6), Vector3(0, -0.29, 0), mat(Color(0.6, 0.62, 0.6), 0.9), false)
+			_stone_rim(Color(0.7, 0.72, 0.7))
+			for i in spots.size():
+				var p: Vector3 = spots[i]
+				if i % 3 == 0:
+					# A palm: a leaning trunk and a fan of leaves.
+					var lean := rng.randf_range(-0.2, 0.2)
+					var h := rng.randf_range(4.0, 6.5)
+					_blob(p + Vector3(0, -0.2, 0), Vector3(5.0, 0.9, 5.0), mat(Color(0.86, 0.78, 0.56), 1.0))
+					var trunk := cyl(0.14, 0.24, h, p + Vector3(0, h / 2.0, 0), mat(Color(0.5, 0.38, 0.24), 0.95), null, 8)
+					trunk.rotation.z = lean
+					var top := p + Vector3(-sin(lean) * h * 0.5, h * 0.98, 0)
+					for k in 7:
+						var leaf := box(Vector3(2.6, 0.06, 0.6), top, mat(Color(0.16, 0.5, 0.22), 0.9), false)
+						leaf.rotation = Vector3(0, k * TAU / 7.0, -0.45)
+						leaf.position += Vector3(cos(-k * TAU / 7.0), -0.25, sin(-k * TAU / 7.0)) * 1.1
+				else:
+					_blob(p + Vector3(0, 0.0, 0), Vector3(rng.randf_range(1.0, 3.2), rng.randf_range(0.8, 2.2), rng.randf_range(1.0, 2.6)), mat(Color(0.42, 0.44, 0.46), 0.95))
+			for i in 6:
+				var a := i * TAU / 6.0 + 0.5
+				_blob(Vector3(sin(a) * 100.0, -4.0, cos(a) * 100.0), Vector3(rng.randf_range(40, 70), rng.randf_range(14, 26), rng.randf_range(30, 50)), mat(Color(0.2, 0.5, 0.28), 1.0))
+
+
+var _spin_z: Array = []
 
 
 func _void() -> void:

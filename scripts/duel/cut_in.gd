@@ -118,8 +118,10 @@ static func play(host: Control, p: int, key: String, title: String, sub: String,
 func _run(p: int, key: String, title: String, sub: String, color: Color, hold: float, big: bool) -> void:
 	var vs := get_viewport_rect().size
 	var dir := 1.0 if p == 0 else -1.0
-	var center := 0.6 if p == 0 else 0.3
-	var half_h := 0.2 if big else 0.15
+	# Your cut-in runs along the top of the picture and theirs along the bottom, each away
+	# from that side's own monsters, so the summon or attack under it stays in view.
+	var center := 0.2 if p == 0 else 0.78
+	var half_h := 0.135 if big else 0.105
 	var slant := -0.1
 	var band := ColorRect.new()
 	band.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -131,7 +133,7 @@ func _run(p: int, key: String, title: String, sub: String, color: Color, hold: f
 	band.material = bm
 	add_child(band)
 	# The duelist: the live 3D portrait when there is a model, the drawn one otherwise.
-	var tex: Texture2D = Avatars.portrait(key)
+	var tex: Texture2D = Avatars.portrait(key, true)
 	if tex == null:
 		tex = Portraits.get_portrait(key)
 	var face := TextureRect.new()

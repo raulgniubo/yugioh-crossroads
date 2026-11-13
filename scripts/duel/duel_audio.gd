@@ -9,7 +9,7 @@ static var theme := "duel"      # what to go back to when nobody is in danger
 
 static func reset() -> void:
 	tense = false
-	Sfx.ambience("crowd", -22.0)
+	Sfx.ambience("crowd", -12.0)
 
 
 static func on_event(ev: Dictionary, state: DuelState) -> void:
@@ -18,6 +18,17 @@ static func on_event(ev: Dictionary, state: DuelState) -> void:
 			Sfx.play("gong", -6.0)
 		"phase":
 			Sfx.play("phase", -10.0, 0.8 + 0.08 * int(ev.get("phase", 0)))
+		"draw":
+			Sfx.play("draw", -1.0)
+		"summon":
+			Sfx.play("impact", -9.0, 1.2)
+			var sc = ev.get("card")
+			if sc != null and int(sc.data.get("atk", 0)) >= 2300:
+				Sfx.play("cheer", -9.0)
+			elif sc != null and int(sc.data.get("atk", 0)) >= 1800:
+				Sfx.play("gasp", -15.0, 1.1)
+		"destroy":
+			Sfx.play("gasp", -13.0)
 		"set":
 			Sfx.play("set", -2.0)
 		"set_st":
@@ -40,6 +51,7 @@ static func on_event(ev: Dictionary, state: DuelState) -> void:
 		"battle":
 			if ev.get("target") == null:
 				Sfx.play("direct", -1.0)
+				Sfx.play("cheer", -10.0)
 		"attack_stopped":
 			Sfx.play("negate", -4.0)
 		"tribute", "material":
@@ -65,7 +77,9 @@ static func on_event(ev: Dictionary, state: DuelState) -> void:
 			if delta < 0:
 				Sfx.play("lp_drain", -5.0)
 				if delta <= -2000:
-					Sfx.play("gasp" if int(ev.get("player", 0)) == 0 else "cheer", -9.0)
+					Sfx.play("gasp" if int(ev.get("player", 0)) == 0 else "cheer", -5.0)
+				elif delta <= -800:
+					Sfx.play("gasp" if int(ev.get("player", 0)) == 0 else "cheer", -12.0)
 			# The music turns urgent once either duelist is at 2000 or less.
 			var low := false
 			for ps in state.players:
@@ -75,4 +89,4 @@ static func on_event(ev: Dictionary, state: DuelState) -> void:
 				tense = low
 				Music.play("duel_tense" if low else ("turbo" if state.turbo else theme))
 		"win":
-			pass
+			Sfx.play("cheer", -3.0)

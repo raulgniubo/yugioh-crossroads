@@ -16,6 +16,7 @@ var me_name := "You"
 var opp_name := "Rival"
 var me_color := Color("2de2e6")
 var opp_color := Color("ff5a6e")
+var board: DuelBoard            # set by the duel: the duelists act the game out
 
 var _mode := ""                 # "coin" or "rps"
 var _stage: Control
@@ -50,30 +51,41 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--opening="):
 			_mode = a.trim_prefix("--opening=")
+	# No curtain: this plays out over the field, between the two duelists.
 	var shade := ColorRect.new()
 	shade.color = Color(0.01, 0.02, 0.05, 0.0)
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(shade)
-	create_tween().tween_property(shade, "color:a", 0.78, 0.3)
+	create_tween().tween_property(shade, "color:a", 0.22, 0.3)
 	var col := VBoxContainer.new()
 	col.set_anchors_preset(Control.PRESET_FULL_RECT)
-	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	col.add_theme_constant_override("separation", 14)
+	col.offset_top = 46
+	col.offset_bottom = -36
+	col.alignment = BoxContainer.ALIGNMENT_BEGIN
+	col.add_theme_constant_override("separation", 6)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(col)
-	_title = UITheme.label(Loc.t("WHO GOES FIRST?"), 58, Color.WHITE, UITheme.title_font())
+	_title = UITheme.label(Loc.t("WHO GOES FIRST?"), 50, Color.WHITE, UITheme.title_font())
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	_title.add_theme_constant_override("shadow_outline_size", 16)
 	col.add_child(_title)
-	_line = UITheme.label("", 26, UITheme.TEXT_DIM, UITheme.semi_font())
+	_line = UITheme.label("", 25, Color(0.86, 0.92, 1.0), UITheme.semi_font())
 	_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_line.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
+	_line.add_theme_constant_override("shadow_outline_size", 10)
 	col.add_child(_line)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 36)
+	row.add_theme_constant_override("separation", 10)
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(row)
 	row.add_child(_side(0))
 	_stage = Control.new()
 	_stage.custom_minimum_size = Vector2(760, 440)
+	_stage.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stage.draw.connect(_draw_stage)
 	row.add_child(_stage)
@@ -93,33 +105,22 @@ func _ready() -> void:
 	_run.call_deferred()
 
 
-## One duelist's corner: portrait, name, and the line they call out.
+## One duelist's corner: only the line they call out. The duelists themselves are standing
+## right there on the field.
 func _side(who: int) -> Control:
 	var c: Color = me_color if who == 0 else opp_color
 	var v := VBoxContainer.new()
-	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	v.add_theme_constant_override("separation", 8)
+	v.alignment = BoxContainer.ALIGNMENT_BEGIN
 	v.custom_minimum_size = Vector2(300, 0)
-	var frame := PanelContainer.new()
-	frame.add_theme_stylebox_override("panel", UITheme.panel_box(Color(c.darkened(0.75), 0.9), 20, Color(c, 0.9)))
-	frame.custom_minimum_size = Vector2(250, 300)
-	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var pic := TextureRect.new()
-	pic.texture = Portraits.get_portrait(me_key if who == 0 else opp_key)
-	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	pic.custom_minimum_size = Vector2(230, 280)
-	pic.flip_h = who == 1
-	frame.add_child(pic)
-	v.add_child(frame)
-	var nm := UITheme.label((me_name if who == 0 else opp_name).to_upper(), 28, Color.WHITE, UITheme.title_font())
-	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	nm.clip_text = true
-	nm.custom_minimum_size = Vector2(300, 0)
-	v.add_child(nm)
-	var say := UITheme.label("", 24, c.lightened(0.45), UITheme.semi_font())
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var pad := Control.new()
+	pad.custom_minimum_size = Vector2(0, 40)
+	v.add_child(pad)
+	var say := UITheme.label("", 34, c.lightened(0.55), UITheme.title_font())
 	say.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	say.custom_minimum_size = Vector2(300, 34)
+	say.custom_minimum_size = Vector2(300, 44)
+	say.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
+	say.add_theme_constant_override("shadow_outline_size", 14)
 	v.add_child(say)
 	_say[who] = say
 	return v
@@ -346,6 +347,9 @@ func _rps() -> int:
 			await get_tree().create_timer(0.08).timeout
 		_hand = [mine, theirs]
 		_hand_pop = [1.45, 1.45]
+		if board:
+			board.duelist_body(0, "attack", 0.8)
+			board.duelist_body(1, "attack", 0.8)
 		Sfx.play("impact", -6.0, 1.3)
 		_speak(0, Loc.t(HANDS[mine]) + "!")
 		_speak(1, Loc.t(HANDS[theirs]) + "!")
@@ -362,6 +366,10 @@ func _rps() -> int:
 		_hand_pop[0 if won else 1] = 1.5
 		_burst(_stage.size / 2.0 + Vector2(-190 if won else 190, 0), me_color if won else opp_color, 34)
 		Sfx.play("sparkle" if won else "phase", -4.0)
+		if board:
+			board.duelist_gesture(0 if won else 1, "big_hit")
+			board.duelist_gesture(1 if won else 0, "react")
+			Sfx.play("cheer", -12.0)
 		await get_tree().create_timer(1.0).timeout
 		return 0 if won else 1
 	return 0
@@ -405,15 +413,9 @@ func _burst(at: Vector2, color: Color, n: int) -> void:
 
 func _draw_stage() -> void:
 	var c := _stage.size / 2.0
-	# The table: a soft ellipse of light with a rim.
+	# No drawn table: the real field is right underneath.
 	var table := c + Vector2(0, 150)
-	for i in 6:
-		var k := 1.0 - i / 6.0
-		_stage.draw_set_transform(table, 0.0, Vector2(1.0, 0.24))
-		_stage.draw_circle(Vector2.ZERO, 330.0 * k, Color(0.25, 0.55, 0.8, 0.045))
 	_stage.draw_set_transform(table, 0.0, Vector2(1.0, 0.24))
-	_stage.draw_arc(Vector2.ZERO, 330.0, 0, TAU, 72, Color(UITheme.ACCENT, 0.5), 3.0)
-	_stage.draw_arc(Vector2.ZERO, 250.0, 0, TAU, 72, Color(UITheme.ACCENT, 0.2), 2.0)
 	if _ring >= 0.0:
 		_stage.draw_arc(Vector2.ZERO, 60.0 + _ring * 420.0, 0, TAU, 64, Color(1.0, 0.85, 0.4, 0.9 * (1.0 - _ring / 0.7)), 5.0)
 	_stage.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

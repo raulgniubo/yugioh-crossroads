@@ -38,6 +38,8 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 	_model = Avatars.load_model(char_key) if char_key != "" else null
 	if _model:
 		add_child(_model)
+		if char_key == "player":
+			_model.scale *= Profile.height()
 		await get_tree().process_frame
 		_face_plus_z()
 		_anim = Avatars.anim_player(_model)
@@ -263,7 +265,7 @@ func play_once(motion: String, loops := 1) -> bool:
 		_anim = Avatars.anim_player(_model)
 	if _anim == null and Avatars.gesture(_model, "stand") == "":
 		return false
-	var lib_motion: String = {"victory": "cheer", "lose": "stomp", "bow": "bow", "cheer": "cheer2"}.get(motion, "")
+	var lib_motion: String = {"victory": "cheer", "lose": "defeat", "bow": "bow", "cheer": "cheer2"}.get(motion, "")
 	var c := Avatars.gesture(_model, lib_motion) if lib_motion != "" else ""
 	if c == "":
 		c = Avatars.clip(_anim, motion)

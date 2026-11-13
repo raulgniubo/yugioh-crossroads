@@ -28,7 +28,8 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_before = {"name": Profile.duelist_name, "body": Profile.look_body, "hair": Profile.look_hair,
-			"outfit": Profile.look_outfit, "color": Profile.color_index, "gender": Profile.gender}
+			"outfit": Profile.look_outfit, "color": Profile.color_index, "gender": Profile.gender,
+			"height": Profile.look_height, "title": Profile.title, "intro": Profile.intro, "win": Profile.win_line, "sleeve": Settings.sleeve}
 	var dim := ColorRect.new()
 	dim.color = Color(0.01, 0.02, 0.04, 0.9)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -43,12 +44,21 @@ func _ready() -> void:
 	h.add_theme_constant_override("separation", 36)
 	panel.add_child(h)
 	h.add_child(_build_preview())
+	var right := VBoxContainer.new()
+	right.add_theme_constant_override("separation", 10)
+	right.custom_minimum_size = Vector2(720, 0)
+	h.add_child(right)
+	right.add_child(UITheme.label("NEW DUELIST" if _first_time else "YOUR DUELIST", 54, Color.WHITE, UITheme.title_font()))
+	right.add_child(UITheme.label("This is you in the story, the cities and every duel.", 19, UITheme.TEXT_DIM))
+	# Everything you can change scrolls; the buttons under it stay put.
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(720, 640)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	right.add_child(scroll)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 12)
-	v.custom_minimum_size = Vector2(640, 0)
-	h.add_child(v)
-	v.add_child(UITheme.label("NEW DUELIST" if _first_time else "YOUR DUELIST", 54, Color.WHITE, UITheme.title_font()))
-	v.add_child(UITheme.label("This is you in the story, the cities and every duel.", 19, UITheme.TEXT_DIM))
+	v.add_theme_constant_override("separation", 10)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(v)
 	v.add_child(_section("NAME"))
 	_name_edit = LineEdit.new()
 	_name_edit.text = "" if _first_time else Profile.duelist_name
@@ -67,20 +77,25 @@ func _ready() -> void:
 	v.add_child(_hair_row)
 	_fill_hair()
 	_choice_row(v, "outfit", "OUTFIT", Profile.HERO_OUTFITS, func(i): Profile.look_outfit = i)
+	var hnames: Array = []
+	for hh in Profile.HEIGHTS:
+		hnames.append(str(hh[0]))
+	_choice_row(v, "height", "HEIGHT", hnames, func(i): Profile.look_height = i)
 	v.add_child(_section("SIGNATURE COLOR   ·   repaints your outfit and hair streak"))
-	var cr := HBoxContainer.new()
-	cr.add_theme_constant_override("separation", 12)
+	var cr := HFlowContainer.new()
+	cr.add_theme_constant_override("h_separation", 10)
+	cr.add_theme_constant_override("v_separation", 10)
 	v.add_child(cr)
 	var cbtns: Array = []
 	for i in Profile.COLORS.size():
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(64, 64)
+		b.custom_minimum_size = Vector2(50, 50)
 		b.toggle_mode = true
-		b.tooltip_text = ["Teal", "Blue", "Violet", "Crimson", "Orange", "Green"][i]
+		b.tooltip_text = Profile.COLOR_NAMES[i]
 		var c: Color = Profile.COLORS[i]
 		for st in ["normal", "hover", "pressed", "focus", "hover_pressed"]:
-			var sb := UITheme.button_box(c, Color.WHITE if st in ["pressed", "hover_pressed", "focus"] else Color(c, 0.0), 32)
-			sb.set_border_width_all(5)
+			var sb := UITheme.button_box(c, Color.WHITE if st in ["pressed", "hover_pressed", "focus"] else Color(c, 0.0), 25)
+			sb.set_border_width_all(4)
 			b.add_theme_stylebox_override(st, sb)
 		b.pressed.connect(func():
 			Profile.color_index = i
@@ -88,14 +103,80 @@ func _ready() -> void:
 		cr.add_child(b)
 		cbtns.append(b)
 	_rows["color"] = cbtns
+	# Who you are on the name plate, and what you say.
+	v.add_child(_section("TITLE   ·   shown under your name"))
+	var title_pick := OptionButton.new()
+	title_pick.custom_minimum_size = Vector2(0, 48)
+	for i in Profile.TITLES.size():
+		var open := Profile.title_open(i)
+		var text := Loc.t("Duelist Lv %d  (your level)") % Profile.level() if i == 0 else Loc.t(str(Profile.TITLES[i][0]))
+		title_pick.add_item(text if open else text + Loc.t("   (locked)"), i)
+		title_pick.set_item_disabled(i, not open)
+	title_pick.select(Profile.title if Profile.title_open(Profile.title) else 0)
+	title_pick.item_selected.connect(func(i):
+		Profile.title = i
+		_soft_change())
+	v.add_child(title_pick)
+	v.add_child(_section("OPENING LINE   ·   what you say when a duel starts"))
+	var intro_pick := OptionButton.new()
+	intro_pick.custom_minimum_size = Vector2(0, 48)
+	for i in Profile.INTROS.size():
+		intro_pick.add_item(Loc.t("Surprise me each time") if i == 0 else Loc.t(str(Profile.INTROS[i])), i)
+	intro_pick.select(Profile.intro)
+	intro_pick.item_selected.connect(func(i):
+		Profile.intro = i
+		_soft_change())
+	v.add_child(intro_pick)
+	v.add_child(_section("VICTORY LINE"))
+	var win_pick := OptionButton.new()
+	win_pick.custom_minimum_size = Vector2(0, 48)
+	for i in Profile.WINS.size():
+		win_pick.add_item(Loc.t("Surprise me each time") if i == 0 else Loc.t(str(Profile.WINS[i])), i)
+	win_pick.select(Profile.win_line)
+	win_pick.item_selected.connect(func(i):
+		Profile.win_line = i
+		_soft_change())
+	v.add_child(win_pick)
+	v.add_child(_section("CARD SLEEVE   ·   the back of your cards"))
+	var sl_scroll := ScrollContainer.new()
+	sl_scroll.custom_minimum_size = Vector2(0, 150)
+	sl_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(sl_scroll)
+	var sl_row := HBoxContainer.new()
+	sl_row.add_theme_constant_override("separation", 10)
+	sl_scroll.add_child(sl_row)
+	var sl_btns: Array = []
+	for e in Cards.sleeves():
+		var sid := str(e["id"])
+		var sbn := Button.new()
+		sbn.custom_minimum_size = Vector2(88, 128)
+		sbn.toggle_mode = true
+		sbn.button_pressed = sid == Settings.sleeve
+		sbn.tooltip_text = Loc.t(str(e["name"]))
+		sbn.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.03, 0.05, 0.09, 0.9), Color(1, 1, 1, 0.12), 10))
+		var son := UITheme.button_box(Color(0.1, 0.07, 0.18, 0.95), Color("ffd98a"), 10)
+		son.set_border_width_all(3)
+		sbn.add_theme_stylebox_override("pressed", son)
+		var st := TextureRect.new()
+		st.texture = Cards.sleeve_texture(sid)
+		st.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		st.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		st.position = Vector2(7, 7)
+		st.size = Vector2(74, 114)
+		st.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sbn.add_child(st)
+		sbn.pressed.connect(func():
+			Settings.sleeve = sid
+			for other in sl_btns:
+				(other[0] as Button).set_pressed_no_signal(str(other[1]) == sid)
+			Sfx.play("card", -8.0))
+		sl_btns.append([sbn, sid])
+		sl_row.add_child(sbn)
 	_summary = UITheme.label("", 18, UITheme.GOLD, UITheme.semi_font())
-	v.add_child(_summary)
-	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 6)
-	v.add_child(spacer)
+	right.add_child(_summary)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
-	v.add_child(row)
+	right.add_child(row)
 	if not _first_time:
 		var cancel := Button.new()
 		cancel.text = "Cancel"
@@ -111,6 +192,7 @@ func _ready() -> void:
 		Profile.look_hair = randi() % 2
 		Profile.look_outfit = randi() % 3
 		Profile.color_index = randi() % Profile.COLORS.size()
+		Profile.look_height = randi() % Profile.HEIGHTS.size()
 		_fill_hair()
 		_changed())
 	row.add_child(rnd)
@@ -292,8 +374,14 @@ func _changed() -> void:
 	Profile.changed.emit()
 
 
+## A change that does not touch the model (title, lines): no rebuild, just the summary.
+func _soft_change() -> void:
+	Sfx.play("card", -10.0)
+	_refresh()
+
+
 func _refresh() -> void:
-	var current := {"body": Profile.look_body, "hair": Profile.look_hair, "outfit": Profile.look_outfit, "color": Profile.color_index}
+	var current := {"body": Profile.look_body, "hair": Profile.look_hair, "outfit": Profile.look_outfit, "color": Profile.color_index, "height": Profile.look_height}
 	for key in _rows:
 		for i in (_rows[key] as Array).size():
 			if is_instance_valid(_rows[key][i]):
@@ -301,8 +389,8 @@ func _refresh() -> void:
 	var n := _name_edit.text.strip_edges()
 	Profile.duelist_name = n if n != "" else "Duelist"
 	if _summary:
-		_summary.text = "%s  ·  %s  ·  %s" % [Profile.HERO_HAIR[Profile.look_body][Profile.look_hair],
-				Profile.HERO_OUTFITS[Profile.look_outfit], ["Teal", "Blue", "Violet", "Crimson", "Orange", "Green"][Profile.color_index]]
+		_summary.text = "%s  ·  %s  ·  %s  ·  %s" % [Loc.t(str(Profile.HERO_HAIR[Profile.look_body][Profile.look_hair])),
+				Loc.t(str(Profile.HERO_OUTFITS[Profile.look_outfit])), Loc.t(str(Profile.COLOR_NAMES[Profile.color_index])), Profile.title_text()]
 
 
 func _save() -> void:
@@ -313,6 +401,7 @@ func _save() -> void:
 	Profile.duelist_name = _name_edit.text.strip_edges()
 	Profile.created = true
 	Profile.save()
+	Settings.save_settings()
 	Portraits._forget("player")
 	_close()
 
@@ -324,6 +413,11 @@ func _cancel() -> void:
 	Profile.look_outfit = _before["outfit"]
 	Profile.color_index = _before["color"]
 	Profile.gender = _before["gender"]
+	Profile.look_height = _before["height"]
+	Profile.title = _before["title"]
+	Profile.intro = _before["intro"]
+	Profile.win_line = _before["win"]
+	Settings.sleeve = _before["sleeve"]
 	Portraits._forget("player")
 	Profile.changed.emit()
 	_close()

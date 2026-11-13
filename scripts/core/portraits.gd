@@ -20,10 +20,13 @@ func has_real(key: String) -> bool:
 	return _find_file(key) != "" or Avatars.has_avatar(key)
 
 
-func get_portrait(key: String) -> Texture2D:
+## `hi` = this one is about to be shown big: render it at double size (3D portraits only).
+func get_portrait(key: String, hi := false) -> Texture2D:
+	if hi and Avatars.has_avatar(key):
+		Avatars.portrait(key, true)
 	if _cache.has(key):
 		return _cache[key]
-	var tex: Texture2D = Avatars.portrait(key) if Avatars.has_avatar(key) else null
+	var tex: Texture2D = Avatars.portrait(key, hi) if Avatars.has_avatar(key) else null
 	if tex != null:
 		_cache[key] = tex
 		return tex
@@ -64,7 +67,7 @@ func _find_file(key: String) -> String:
 func info(key: String) -> Dictionary:
 	if key == "player":
 		return {"name": Profile.duelist_name, "short": Profile.duelist_name, "era": "Crossroads",
-				"color": Profile.color(), "title": Loc.t("Duelist Lv %d") % Profile.level()}
+				"color": Profile.color(), "title": Profile.title_text()}
 	return Characters.get_char(key)
 
 

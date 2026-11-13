@@ -478,7 +478,8 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 		"detach", "detach2":
 			var n := 2 if ig["cost"] == "detach2" else 1
 			for i in n:
-				var o = c.overlays.pop_back()
+				var o = s.pick1(p, Loc.t("%s: detach 1 material") % c.cname(), c.overlays, c.overlays.back(), c)
+				c.overlays.erase(o)
 				s._to_gy(ps, o)
 			events.append({"type": "detach", "player": p, "card": c})
 	events.append_array(run_list(s, p, c, ig["do"], ctx))

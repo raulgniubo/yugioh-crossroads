@@ -233,6 +233,11 @@ static func available(key: String) -> bool:
 
 
 static func line(key: String, kind: String) -> String:
+	# Your own duelist says the lines you picked for them.
+	if key == "player" and kind == "intro" and Profile.intro > 0:
+		return Loc.t(str(Profile.INTROS[Profile.intro]))
+	if key == "player" and kind == "win" and Profile.win_line > 0:
+		return Loc.t(str(Profile.WINS[Profile.win_line]))
 	var own: Dictionary = PLAYER_LINES if key == "player" else DATA.get(key, STORY_CAST.get(key, {})).get("lines", {})
 	var arr: Array = own.get(kind, [])
 	if arr.is_empty() and key != "player":

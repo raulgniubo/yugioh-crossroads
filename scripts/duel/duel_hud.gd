@@ -63,6 +63,7 @@ func _ready() -> void:
 	_build_hand()
 	_build_prompt()
 	var menu_btn := Button.new()
+	_menu_btn = menu_btn
 	menu_btn.text = "☰  MENU"
 	menu_btn.position = Vector2(36, 30)
 	menu_btn.custom_minimum_size = Vector2(150, 52)
@@ -85,6 +86,23 @@ func _ready() -> void:
 	_banner.modulate.a = 0.0
 	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_banner)
+
+
+var _menu_btn: Button
+
+
+## The frame of the duel screen (Life Point plates, phases, menu, card panel). Off during the
+## opening so the picture is clean, back on when the cards are dealt.
+func set_chrome(on: bool) -> void:
+	for n in [_plates[0], _plates[1], _phase_box, _menu_btn, _inspect_panel, _feed, _coach]:
+		if n != null and is_instance_valid(n):
+			if on:
+				(n as CanvasItem).visible = true if n != _coach or _coach_text != "" else false
+				(n as CanvasItem).modulate.a = 0.0 if n != _inspect_panel else (n as CanvasItem).modulate.a
+				if n != _inspect_panel:
+					create_tween().tween_property(n, "modulate:a", 1.0, 0.4)
+			else:
+				(n as CanvasItem).visible = false
 
 
 func _snap_button(n: Node) -> void:
@@ -225,6 +243,9 @@ var _coach_text := ""
 
 
 func say(p: int, text: String) -> void:
+	if text.strip_edges() != "":
+		# A voice blip so a line is heard as well as read: yours a little higher than theirs.
+		Sfx.play("hey", -11.0, 1.15 if p == 0 else 0.82)
 	if text == "":
 		return
 	var b := _bubbles[p]
@@ -739,6 +760,118 @@ func phase_sweep(text: String, color: Color) -> void:
 	band.queue_free()
 
 
+## A name plate along the bottom of the picture while the camera is on a duelist: a slanted
+## band in their color, the name, and a line under it. Slides in, holds, slides away.
+func name_plate(p: int, title: String, sub: String, color: Color, hold := 1.5, quote := "") -> void:
+	var vs := get_viewport_rect().size
+	var right := p == 1
+	var root := Control.new()
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.z_index = 70
+	add_child(root)
+	var w := 760.0
+	var y := vs.y - 230.0
+	var band := Polygon2D.new()
+	var slant := 46.0
+	band.polygon = PackedVector2Array([Vector2(slant, 0), Vector2(w, 0), Vector2(w - slant, 124), Vector2(0, 124)])
+	band.color = Color(color.darkened(0.72), 0.94)
+	root.add_child(band)
+	var edge := Polygon2D.new()
+	edge.polygon = PackedVector2Array([Vector2(slant, 0), Vector2(slant + 16, 0), Vector2(16, 124), Vector2(0, 124)]) if not right else PackedVector2Array([Vector2(w - 16, 0), Vector2(w, 0), Vector2(w - slant, 124), Vector2(w - slant - 16, 124)])
+	edge.color = color.lightened(0.15)
+	root.add_child(edge)
+	var line := ColorRect.new()
+	line.color = Color(color.lightened(0.3), 0.9)
+	line.position = Vector2(slant + 30, 78)
+	line.size = Vector2(w - slant * 2 - 60, 2)
+	root.add_child(line)
+	var nm := UITheme.label(title.to_upper(), 62, Color.WHITE, UITheme.title_font())
+	nm.position = Vector2(slant + 34, 0)
+	nm.size = Vector2(w - slant * 2 - 60, 78)
+	nm.clip_text = true
+	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT if right else HORIZONTAL_ALIGNMENT_LEFT
+	nm.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	root.add_child(nm)
+	var sb := UITheme.label(sub, 24, color.lightened(0.6), UITheme.semi_font())
+	sb.position = Vector2(slant + 34, 82)
+	sb.size = Vector2(w - slant * 2 - 60, 36)
+	sb.clip_text = true
+	sb.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT if right else HORIZONTAL_ALIGNMENT_LEFT
+	root.add_child(sb)
+	if quote != "":
+		var q := UITheme.label("“" + quote + "”", 30, Color.WHITE, UITheme.semi_font())
+		q.position = Vector2(slant + 10, -64)
+		q.size = Vector2(w - slant - 20, 54)
+		q.clip_text = true
+		q.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT if right else HORIZONTAL_ALIGNMENT_LEFT
+		q.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		q.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+		q.add_theme_constant_override("shadow_outline_size", 12)
+		q.modulate.a = 0.0
+		root.add_child(q)
+		create_tween().tween_property(q, "modulate:a", 1.0, 0.3).set_delay(0.45)
+		Sfx.play("hey", -11.0, 1.15 if p == 0 else 0.82)
+	var rest_x := vs.x - w - 70.0 if right else 70.0
+	var off_x := vs.x + 40.0 if right else -w - 40.0
+	root.position = Vector2(off_x, y)
+	Sfx.play("whoosh", -10.0, 1.2)
+	var tw := create_tween()
+	tw.tween_property(root, "position:x", rest_x, 0.28).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+	tw.tween_property(root, "position:x", rest_x + (-26.0 if right else 26.0), hold)
+	tw.tween_property(root, "position:x", off_x, 0.22).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN)
+	tw.tween_callback(root.queue_free)
+
+
+## "VS" hits the middle of the picture over the live field, then gets out of the way.
+func vs_slam(left: Color, right: Color) -> void:
+	var vs := get_viewport_rect().size
+	var root := Control.new()
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.z_index = 70
+	root.position = vs / 2.0
+	add_child(root)
+	var flash := ColorRect.new()
+	flash.color = Color(1, 1, 1, 0.0)
+	flash.position = -vs / 2.0
+	flash.size = vs
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(flash)
+	for i in 2:
+		var streak := Polygon2D.new()
+		var sx := -1.0 if i == 0 else 1.0
+		streak.polygon = PackedVector2Array([Vector2(sx * 90, -8), Vector2(sx * (vs.x / 2.0 + 60), -3), Vector2(sx * (vs.x / 2.0 + 60), 3), Vector2(sx * 90, 8)])
+		streak.color = Color(left if i == 0 else right, 0.9)
+		streak.scale.x = 0.0
+		root.add_child(streak)
+		create_tween().tween_property(streak, "scale:x", 1.0, 0.22).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+	var l := UITheme.label("VS", 250, Color("fff4d2"), UITheme.title_font())
+	l.add_theme_color_override("font_outline_color", Color("3a2a05"))
+	l.add_theme_constant_override("outline_size", 26)
+	l.add_theme_color_override("font_shadow_color", Color(1.0, 0.75, 0.2, 0.55))
+	l.add_theme_constant_override("shadow_outline_size", 60)
+	l.size = Vector2(600, 300)
+	l.position = Vector2(-300, -150)
+	l.pivot_offset = Vector2(300, 150)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.scale = Vector2(3.2, 3.2)
+	l.modulate.a = 0.0
+	root.add_child(l)
+	Sfx.play("vs", -2.0)
+	Sfx.play("impact", -6.0, 0.8)
+	var tw := create_tween().set_parallel()
+	tw.tween_property(l, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN)
+	tw.tween_property(l, "modulate:a", 1.0, 0.12)
+	tw.tween_property(flash, "color:a", 0.55, 0.05).set_delay(0.18)
+	tw.tween_property(flash, "color:a", 0.0, 0.35).set_delay(0.24)
+	await get_tree().create_timer(0.95).timeout
+	var out := create_tween().set_parallel()
+	out.tween_property(root, "modulate:a", 0.0, 0.25)
+	out.tween_property(l, "scale", Vector2(0.6, 0.6), 0.25)
+	await out.finished
+	root.queue_free()
+
+
 ## Full-screen VS intro.
 func vs_intro(left: Dictionary, right: Dictionary) -> void:
 	var card := VsCard.new(left, right)
@@ -879,6 +1012,13 @@ func inspect(inst, hidden := false) -> void:
 		if txt == "":
 			txt = note
 		_inspect_text.text = txt if txt != "" else ("Normal Monster" if frame == "normal" else "")
+		# Xyz Materials are public: say what is under the card.
+		if frame == "xyz" and "overlays" in inst:
+			var names: Array = []
+			for o in inst.overlays:
+				names.append(str(o.data.get("name", "?")))
+			_inspect_note.text = (Loc.t("Xyz Materials (%d): ") % names.size() + ", ".join(names)) if not names.is_empty() else Loc.t("No Xyz Materials left.")
+			_inspect_note.visible = true
 	else:
 		var is_trap: bool = str(d.get("kind", "")) == "trap"
 		var st_names := {"quick": "Quick-Play Spell", "cont": "Continuous Spell", "field": "Field Spell", "equip": "Equip Spell",
@@ -1169,6 +1309,7 @@ func ask_choice(text: String, answers: Array, card = null) -> int:
 	if auto_answer:
 		await get_tree().process_frame
 		return randi() % answers.size()
+	await stage_clear()
 	var root := PanelContainer.new()
 	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.06, 0.11, 0.97), 22, Color(UITheme.ACCENT, 0.7)))
 	root.z_index = 60
@@ -1219,6 +1360,7 @@ func ask_response(text: String, options: Array, button := "Activate", cancel := 
 	if auto_answer:
 		await get_tree().process_frame
 		return null if (cancel != "" and randf() < 0.3) or options.is_empty() else options[randi() % options.size()]
+	await stage_clear()
 	var root := PanelContainer.new()
 	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.06, 0.02, 0.08, 0.97) if tint == Color("ff4dd2") else Color(0.03, 0.06, 0.11, 0.97), 22, Color(tint, 0.7)))
 	root.z_index = 60
@@ -1302,7 +1444,7 @@ func effect_text(text: String, color := Color("ffd23a")) -> void:
 	add_child(l)
 	l.reset_size()
 	var vs := get_viewport_rect().size
-	l.position = Vector2((vs.x - l.size.x) / 2.0, vs.y * 0.24)
+	l.position = Vector2((vs.x - l.size.x) / 2.0, vs.y * 0.17)
 	l.modulate.a = 0.0
 	var tw := create_tween()
 	tw.tween_property(l, "modulate:a", 1.0, 0.15)
@@ -1504,11 +1646,23 @@ func feed(p: int, icon: String, text: String) -> void:
 
 
 ## An anime cut-in for one side: their portrait, big words and a small line.
+var _stage_busy := 0              # a cut-in or banner owns the screen until this tick
+
+
+## Wait until the last cut-in or banner has left the screen. Prompts call this first, so a
+## question never lands on top of an animation.
+func stage_clear() -> void:
+	while Time.get_ticks_msec() < _stage_busy:
+		await get_tree().process_frame
+
+
 func cut_in(p: int, title: String, sub: String, color: Color, hold := 0.6, big := false) -> void:
 	var now := Time.get_ticks_msec()
 	if now - int(_cut_at[p]) < 900 and not big:
 		return
 	_cut_at[p] = now
+	if hold < 5.0:
+		_stage_busy = maxi(_stage_busy, now + int((hold + 0.6) * 1000.0))
 	await CutIn.play(self, p, str(portrait_keys[p]), title, sub, color, hold, big)
 
 
@@ -1521,12 +1675,15 @@ func impact(world: Vector3, color: Color, strength := 1.0) -> void:
 	CutIn.impact(self, at, color, strength)
 
 
-func banner(text: String, color := Color.WHITE) -> void:
+## `high` puts the words along the top of the picture, clear of the monsters on the field.
+func banner(text: String, color := Color.WHITE, high := false) -> void:
 	_banner.text = text
 	_banner.add_theme_color_override("font_color", color)
+	_banner.add_theme_font_size_override("font_size", 78 if high else 110)
 	_banner.reset_size()
 	var vs := get_viewport_rect().size
-	_banner.position = Vector2((vs.x - _banner.size.x) / 2.0 - 60, vs.y * 0.4 - _banner.size.y / 2.0)
+	_stage_busy = maxi(_stage_busy, Time.get_ticks_msec() + int(Settings.t(0.9) * 1000.0))
+	_banner.position = Vector2((vs.x - _banner.size.x) / 2.0 - 60, vs.y * (0.115 if high else 0.4) - _banner.size.y / 2.0)
 	var x := _banner.position.x
 	var tw := create_tween()
 	tw.set_parallel()

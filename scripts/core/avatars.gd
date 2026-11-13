@@ -367,6 +367,8 @@ func gesture(model: Node, motion: String) -> String:
 		_gest = ps.instantiate()
 	var dap := anim_player(_gest)
 	var dskel := _first_skeleton(_gest)
+	if dap != null and dskel != null and MADE_POSES.has(nm) and not dap.has_animation(nm):
+		_make_pose_clip(dap, dskel, nm)
 	if dap == null or dskel == null or not dap.has_animation(nm):
 		return ""
 	var shared := 0
@@ -400,7 +402,7 @@ func gesture(model: Node, motion: String) -> String:
 		anim = _retarget(dap.get_animation(nm), dskel, skel, skel_path, ratio, 20.0)
 		# Standing motions only move the top half: the legs keep the calm stance of the idle,
 		# so going in and out of a gesture never shuffles the feet.
-		if nm in ["g_wave", "g_chat", "g_scratch", "g_listen", "g_phone", "g_agree", "g_checkout", "g_alert"] and rest_idle(model) != "":
+		if nm in ["g_wave", "g_chat", "g_scratch", "g_listen", "g_phone", "g_agree", "g_checkout", "g_alert", "g_challenge", "g_defeat"] and rest_idle(model) != "":
 			_plant_legs(anim, ap.get_animation("g_rest"))
 		if nm in ["g_stand", "g_stand2", "g_sit", "g_sittalk", "g_chat", "g_listen"]:
 			anim.loop_mode = Animation.LOOP_LINEAR
@@ -408,6 +410,106 @@ func gesture(model: Node, motion: String) -> String:
 			_gest_cache[ck] = anim
 	lib.add_animation(nm, anim)
 	return nm
+
+
+## Poses built here, not recorded. Each one starts from the calm stand and moves a few bones.
+##   challenge: the right arm winds back, then is thrown out to point straight down the field,
+##              left fist on the hip, shoulders squared to the opponent.
+##   defeat:    the head drops, the back rounds and the arms hang. It stays that way.
+const MADE_POSES := {
+	"g_challenge": {"length": 2.8, "back": 2.1, "order": ["Spine01", "Spine", "neck", "RightArm", "RightForeArm", "LeftArm", "LeftForeArm"],
+		"poses": [
+			[0.28, {"Spine01": 0.3, "RightArm": Vector3(-0.75, 0.4, -0.5), "RightForeArm": Vector3(-0.2, 0.9, 0.35), "LeftArm": Vector3(0.5, -0.85, 0.1), "LeftForeArm": Vector3(-0.5, -0.2, 0.84)}],
+			[0.5, {"Spine01": -0.36, "neck": 0.3, "RightArm": Vector3(-0.3, 0.16, 1.0), "RightForeArm": Vector3(-0.3, 0.16, 1.0), "LeftArm": Vector3(0.62, -0.75, -0.2), "LeftForeArm": Vector3(-0.55, -0.1, 0.83)}],
+		]},
+	"g_defeat": {"length": 30.0, "back": -1.0, "order": ["Spine02", "Spine01", "Spine", "neck", "Head", "RightArm", "RightForeArm", "LeftArm", "LeftForeArm"],
+		"poses": [
+			[0.35, {"Spine01": Vector2(0.1, 0.0), "neck": Vector2(0.2, 0.0)}],
+			[0.9, {"Spine02": Vector2(0.12, 0.0), "Spine01": Vector2(0.2, 0.0), "Spine": Vector2(0.16, 0.0), "neck": Vector2(0.4, 0.0), "Head": Vector2(0.32, 0.12),
+				"RightArm": Vector3(-0.12, -1.0, 0.2), "RightForeArm": Vector3(-0.04, -1.0, 0.28), "LeftArm": Vector3(0.12, -1.0, 0.2), "LeftForeArm": Vector3(0.04, -1.0, 0.28)}],
+		]},
+}
+
+
+func _bone_basis(sk: Skeleton3D, bi: int) -> Basis:
+	if bi < 0:
+		return Basis.IDENTITY
+	return _bone_basis(sk, sk.get_bone_parent(bi)) * Basis(sk.get_bone_pose_rotation(bi))
+
+
+func _make_pose_clip(dap: AnimationPlayer, dskel: Skeleton3D, nm: String) -> void:
+	var base: Animation = dap.get_animation("g_stand")
+	if base == null or not MADE_POSES.has(nm):
+		return
+	var def: Dictionary = MADE_POSES[nm]
+	var anim := Animation.new()
+	anim.length = float(def["length"])
+	var tracks := {}                # bone name -> rotation track index in the new clip
+	for t in base.get_track_count():
+		var nt := anim.add_track(base.track_get_type(t))
+		anim.track_set_path(nt, base.track_get_path(t))
+		if base.track_get_key_count(t) == 0:
+			continue
+		var v = base.track_get_key_value(t, 0)
+		anim.track_insert_key(nt, 0.0, v)
+		anim.track_insert_key(nt, anim.length, v)
+		var bn := String(base.track_get_path(t)).get_slice(":", 1)
+		if base.track_get_type(t) == Animation.TYPE_ROTATION_3D:
+			tracks[bn] = nt
+			var bi := dskel.find_bone(bn)
+			if bi >= 0:
+				dskel.set_bone_pose_rotation(bi, v)
+	# A pose says, bone by bone: Vector3 = point this way (the model's own space: +Z forward,
+	# +X its left), float = turn about straight up, Vector2 = (bow forward, turn).
+	# Worked out parents first, so arms follow the torso.
+	var order: Array = def["order"]
+	var idle := {}
+	for bn in order:
+		var bi := dskel.find_bone(bn)
+		if bi >= 0:
+			idle[bn] = dskel.get_bone_pose_rotation(bi)
+	var keyed := []
+	for pose in def["poses"]:
+		for bn in idle:
+			dskel.set_bone_pose_rotation(dskel.find_bone(bn), idle[bn])
+		var want: Dictionary = pose[1]
+		var got := {}
+		for bn in order:
+			var bi := dskel.find_bone(bn)
+			if bi < 0 or not tracks.has(bn):
+				continue
+			var q: Quaternion = idle[bn]
+			if want.has(bn):
+				var pg := _bone_basis(dskel, dskel.get_bone_parent(bi)).orthonormalized()
+				var w = want[bn]
+				if w is Vector3:
+					var cur := (pg * dskel.get_bone_rest(bi).basis.orthonormalized())
+					var arc := Quaternion(cur.y.normalized(), (w as Vector3).normalized())
+					q = (pg.inverse() * (Basis(arc) * cur)).get_rotation_quaternion()
+				else:
+					var turn := Basis(Vector3.UP, float(w)) if w is float else Basis(Vector3.UP, (w as Vector2).y) * Basis(Vector3.RIGHT, (w as Vector2).x)
+					q = (pg.inverse() * (turn * (pg * Basis(q)))).get_rotation_quaternion()
+			dskel.set_bone_pose_rotation(bi, q)
+			got[bn] = q
+		keyed.append([float(pose[0]), got])
+	var back := float(def["back"])
+	for bn in order:
+		if not tracks.has(bn) or not idle.has(bn):
+			continue
+		var nt: int = tracks[bn]
+		anim.track_remove_key_at_time(nt, anim.length)
+		anim.track_insert_key(nt, 0.08, idle[bn])
+		for kp in keyed:
+			anim.track_insert_key(nt, kp[0], kp[1][bn])
+		var last: Quaternion = keyed[keyed.size() - 1][1][bn]
+		if back > 0.0:
+			anim.track_insert_key(nt, back, last)
+			anim.track_insert_key(nt, minf(back + 0.5, anim.length), idle[bn])
+		else:
+			anim.track_insert_key(nt, anim.length, last)
+		dskel.set_bone_pose_rotation(dskel.find_bone(bn), idle[bn])
+	var lib := dap.get_animation_library(dap.get_animation_library_list()[0])
+	lib.add_animation(nm, anim)
 
 
 func _plant_legs(anim: Animation, rest: Animation) -> void:
@@ -1014,9 +1116,18 @@ func _meshes(n: Node) -> Array[MeshInstance3D]:
 # ------------------------------------------------------------------ live portraits
 
 ## A live 3D portrait (upper body, idle motion). Null if there's no VRM.
-func portrait(key: String) -> Texture2D:
+const HI_SIZE := Vector2i(1024, 1280)
+const HI_MAX := 4
+var _hi: Array[String] = []      # the few portraits being shown big right now
+
+
+## `hi` asks for the portrait at double size, for when it fills a large part of the screen.
+## Only the last few asked for stay that sharp; the rest go back to the normal size.
+func portrait(key: String, hi := false) -> Texture2D:
 	if _stages.has(key):
 		_touch(key)
+		if hi:
+			_sharpen(key)
 		return (_stages[key] as SubViewport).get_texture()
 	var model := load_model(key)
 	if model == null:
@@ -1032,9 +1143,22 @@ func portrait(key: String) -> Texture2D:
 	stage.set_script(preload("res://scripts/core/avatar_stage.gd"))
 	vp.add_child(stage)
 	stage.call("setup", model)
+	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
 	_stages[key] = vp
 	_touch(key)
+	if hi:
+		_sharpen(key)
 	return vp.get_texture()
+
+
+func _sharpen(key: String) -> void:
+	_hi.erase(key)
+	_hi.push_front(key)
+	(_stages[key] as SubViewport).size = HI_SIZE
+	while _hi.size() > HI_MAX:
+		var old: String = _hi.pop_back()
+		if _stages.has(old):
+			(_stages[old] as SubViewport).size = STAGE_SIZE
 
 
 const LIVE_MAX := 5

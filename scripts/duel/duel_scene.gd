@@ -28,6 +28,7 @@ var _ai_level := 1
 var _start_lp: Array = [8000, 8000]
 var _theme := "duel"          # the music for this opponent
 var _materials: Array = []
+var _opened := false             # the opening already played on the field
 ## Dev: the AI plays your side too, but through the human path, with prompts answered at random.
 var _human_test := "--human-test" in OS.get_cmdline_user_args()
 var _asked := {}
@@ -36,14 +37,21 @@ signal _turn_finished
 
 
 func _ready() -> void:
+	# Backs of the cards: your own sleeve, and the opponent's ace on theirs.
+	var cfg0: Dictionary = Router.duel_config
+	var me0 := str(cfg0.get("player_char", "player"))
+	Cards.duel_backs = [Cards.player_back() if (me0 == "player" or Settings.sleeve != "default") else Cards.back_for_char(me0),
+			Cards.back_for_char(str(cfg0.get("opponent", "kaiba")))]
 	get_viewport().physics_object_picking = true
 	Pad.walk_mode = false
 	Pad.both_sticks = true
 	Pad.hint("Stick  pointer     A  select     B  back     X  next phase     Y Y  end turn     Start  menu")
 	Music.play("duel")
 	DuelAudio.reset()
+	# A duel is the loud part of the game: music and effects come up, the crowd is in the room.
+	Sfx.boost_db = 4.0
+	Music.set_boost(3.5)
 	board = DuelBoard.new()
-	var cfg0: Dictionary = Router.duel_config
 	board.theme = FieldThemes.resolve(str(cfg0.get("field", Settings.field_theme)), str(cfg0.get("opponent", "kaiba")))
 	if cfg0.get("turbo", false):
 		board.turbo = true
@@ -144,7 +152,34 @@ func _start() -> void:
 		if _human_test or "--end-test" in OS.get_cmdline_user_args() or "--skip-opening" in OS.get_cmdline_user_args():
 			first = randi() % 2
 		else:
+			# The opening plays on the field itself: a look at each duelist with their name
+			# across the bottom, the two of them squared up, VS, and the game for the first turn
+			# right there between them.
+			board.add_duelists(_me_key, _opp_key)
+			hud.set_chrome(false)
+			var dz := DuelBoard.DUELIST_Z
+			var opp_col := Color(opp.get("color", UITheme.DANGER))
+			var me_col: Color = me_info.get("color", Profile.color())
+			var opp_sub: String = Loc.t("%s Deck") % CardData.deck_name(opp_deck)
+			if str(opp.get("title", "")) != "":
+				opp_sub = "%s  ·  %s" % [Loc.t(str(opp["title"])), opp_sub]
+			board.cam_cut(Vector3(2.4, 1.25, -dz + 4.8), Vector3(0.0, 1.5, -dz))
+			board.cam_drift(Vector3(1.3, 1.5, -dz + 3.4), 2.6)
+			await get_tree().create_timer(0.3).timeout
+			hud.name_plate(1, opp_name, opp_sub, opp_col, 1.9, Loc.t(Characters.line(_opp_key, "intro")))
+			board.duelist_gesture(1, "intro")
+			await get_tree().create_timer(2.5).timeout
+			board.cam_cut(Vector3(-2.4, 1.25, dz - 4.8), Vector3(0.0, 1.5, dz))
+			board.cam_drift(Vector3(-1.3, 1.5, dz - 3.4), 2.2)
+			hud.name_plate(0, me_name, Loc.t("%s Deck") % CardData.deck_name(my_deck), me_col, 1.5, Loc.t(Characters.line(_me_key, "intro")))
+			board.duelist_gesture(0, "intro")
+			await get_tree().create_timer(2.0).timeout
+			# Over your shoulder, the whole field between you and them.
+			board.cam_cut(Vector3(3.0, 2.5, dz + 3.9), Vector3(-0.3, 1.5, -dz))
+			board.cam_drift(Vector3(2.6, 2.7, dz + 3.5), 8.0)
+			await hud.vs_slam(me_col, opp_col)
 			var og := OpeningGame.new()
+			og.board = board
 			og.me_key = _me_key
 			og.opp_key = _opp_key
 			og.me_name = me_name
@@ -153,6 +188,9 @@ func _start() -> void:
 			og.opp_color = Color(opp.get("color", Color("ff5a6e")))
 			hud.add_child(og)
 			first = ME if await og.finished else AI
+			_opened = true
+			board.cam_release(1.1)
+			hud.set_chrome(true)
 	if "--first=me" in OS.get_cmdline_user_args():
 		first = ME
 	state.defer_fx = true
@@ -197,15 +235,16 @@ func _start() -> void:
 	hud.set_extra_button(state.players[ME].extra.size(), 0, false)
 	board.set_extra_count(ME, state.players[ME].extra.size(), 0)
 	board.set_extra_count(AI, state.players[AI].extra.size())
-	board.add_duelists(_me_key, _opp_key)
+	if not _opened:
+		board.add_duelists(_me_key, _opp_key)
 	var fly := "--no-fly" not in OS.get_cmdline_user_args()
-	if not _autoplay:
+	if _opened:
+		await get_tree().create_timer(0.7).timeout
+	elif not _autoplay:
 		if fly:
 			board.intro_hold()
-		await hud.vs_intro(
-			{"key": _me_key, "name": me_name, "color": me_info.get("color", Profile.color()), "sub": Loc.t("%s Deck") % CardData.deck_name(my_deck)},
-			{"key": _opp_key, "name": opp_name, "color": opp.get("color", UITheme.DANGER),
-				"sub": Loc.t("%s  ·  %s Deck") % [Loc.t(str(opp.get("title", ""))), CardData.deck_name(opp_deck)]})
+		hud.name_plate(1, opp_name, Loc.t("%s Deck") % CardData.deck_name(opp_deck), Color(opp.get("color", UITheme.DANGER)), 1.4)
+		board.duelist_gesture(1, "intro")
 		_talk(AI, "intro", 1.0, 0.0)
 		if fly:
 			await board.intro_duelists()
@@ -216,8 +255,14 @@ func _start() -> void:
 		_talk(AI, "intro", 1.0, 0.0)
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--rider-shot="):
-			board.duelist_shot(int(a.substr(13)), 0.1)
-			await get_tree().create_timer(30.0).timeout
+			var rs := int(a.substr(13))
+			board.duelist_shot(rs, 0.1)
+			for k in 12:
+				if "--pose-lose" in OS.get_cmdline_user_args():
+					(board._duelists[rs] as RoamFigure).play_once("lose")
+				else:
+					board.duelist_gesture(rs, "intro")
+				await get_tree().create_timer(2.5).timeout
 	await hud.banner("DUEL!", UITheme.ACCENT)
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--cutin="):
@@ -590,7 +635,7 @@ func _play_event(ev: Dictionary) -> void:
 				_talk(p, "ace", 1.0, 0.0)
 				hud.react(p, "ace")
 			if ev["type"] == "summon" and _pending_tributes > 0:
-				hud.banner("TRIBUTE SUMMON", UITheme.GOLD)
+				hud.banner("TRIBUTE SUMMON", UITheme.GOLD, true)
 			_pending_tributes = 0
 			if ev["type"] == "summon":
 				board.duelist_body(p, "summon", 1.4 if is_ace else 1.0)
@@ -626,7 +671,7 @@ func _play_event(ev: Dictionary) -> void:
 			await board.anim_reset(p, ev["card"], int(ev["zone"]))
 		"chain":
 			Sfx.play("spell", -2.0, 1.25)
-			hud.banner(Loc.t("CHAIN %d") % int(ev["n"]), Color("ffd23a"))
+			hud.banner(Loc.t("CHAIN %d") % int(ev["n"]), Color("ffd23a"), true)
 			await get_tree().create_timer(Settings.t(0.35)).timeout
 		"control":
 			Sfx.play("special", -3.0)
@@ -684,7 +729,7 @@ func _play_event(ev: Dictionary) -> void:
 				board.duelist_gesture(p, "trap")
 			Sfx.play("spell", 0.0, 0.8)
 			hud.inspect(ev["card"])
-			hud.banner(str(ev["card"].data["name"]).to_upper(), Color("ff4dd2"))
+			hud.banner(str(ev["card"].data["name"]).to_upper(), Color("ff4dd2"), true)
 			var trap_name := str(ev["card"].data.get("name", ""))
 			get_tree().create_timer(Settings.t(0.5)).timeout.connect(func(): StrikeFx.card(board, trap_name, p))
 			await board.anim_trap(p, ev["card"], ev["zone"])
@@ -749,7 +794,7 @@ func _play_event(ev: Dictionary) -> void:
 			Sfx.play("special")
 			_talk(p, "ace", 1.0, 0.0)
 			hud.react(p, "ace")
-			hud.banner(titles.get(method, "SPECIAL SUMMON"), board.METHOD_COLORS.get(method, UITheme.ACCENT))
+			hud.banner(titles.get(method, "SPECIAL SUMMON"), board.METHOD_COLORS.get(method, UITheme.ACCENT), true)
 			var mats := _materials.duplicate()
 			_materials.clear()
 			await board.anim_special(p, ev["card"], ev["zone"], method, mats)
@@ -1488,8 +1533,10 @@ func _pick_target(who: int, c):
 	var cands := SpellRules.targets(state, who, c)
 	if cands.is_empty():
 		return null
-	if cands.size() == 1 or who == AI or _autoplay:
-		return SpellRules.auto_target(state, who, c) if (who == AI or _autoplay) else cands[0]
+	if who == AI or _autoplay:
+		return SpellRules.auto_target(state, who, c)
+	if _human_test:
+		return cands[0]
 	var hidden := []
 	for x in cands:
 		if x.owner != who and not x.face_up:
@@ -1859,6 +1906,8 @@ func _demo_actions() -> void:
 
 func _exit_tree() -> void:
 	Settings.pace = 1.0
+	Sfx.boost_db = 0.0
+	Music.set_boost(0.0)
 	if Engine.time_scale < 1.0:
 		Engine.time_scale = 1.0
 	DuelAI.styles = ["", ""]

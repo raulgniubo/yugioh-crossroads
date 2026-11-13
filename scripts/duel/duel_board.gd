@@ -150,9 +150,16 @@ func _build_environment() -> void:
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
+	if theme.get("day", false):
+		# Open air: a real sun, a paler haze and no night-time bloom on everything.
+		env.ambient_light_color = Color(theme["sky_horizon"]).lerp(Color.WHITE, 0.5)
+		env.ambient_light_energy = 0.95
+		env.fog_density = 0.0035
+		env.glow_intensity = 0.25
+		sky_mat.sun_angle_max = 8.0
 	var key := DirectionalLight3D.new()
-	key.light_color = Color("e6f3ff")
-	key.light_energy = 0.75
+	key.light_color = Color("fff1d6") if theme.get("day", false) else Color("e6f3ff")
+	key.light_energy = 1.25 if theme.get("day", false) else 0.75
 	key.rotation_degrees = Vector3(-62, -18, 0)
 	key.shadow_enabled = true
 	add_child(key)
@@ -189,6 +196,8 @@ uniform vec3 base : source_color = vec3(0.025, 0.045, 0.085);
 uniform vec3 accent : source_color = vec3(0.18, 0.89, 0.9);
 uniform vec3 accent2 : source_color = vec3(0.48, 0.36, 1.0);
 uniform int pattern = 0;
+uniform int surface = 0;
+//GROUND//
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 
@@ -239,6 +248,11 @@ void fragment() {
 	vec3 col = base * (0.55 + 0.9 * vig);
 	// Patterned floor, brighter near the center
 	col += side * pattern_value(p) * 0.075 * vig;
+	float wild = step(0.5, float(surface));
+	if (surface > 0) {
+		// Open-air fields: the ground is the mat, the markings are painted on it.
+		col = ground_color(p, surface, TIME) * (0.78 + 0.3 * vig);
+	}
 	// Rotating emblem rings in the middle
 	float r = length(p);
 	float a = atan(p.y, p.x);
@@ -246,12 +260,12 @@ void fragment() {
 	float ring2 = line_aa(abs(r - 1.55), 0.015);
 	float dash = step(0.5, fract((a + TIME * 0.15) * 12.0 / 6.28318));
 	float ring3 = line_aa(abs(r - 1.85), 0.012) * dash;
-	col += side * (ring1 * 0.5 + ring2 * 0.25 + ring3 * 0.35);
+	col += side * (ring1 * 0.5 + ring2 * 0.25 + ring3 * 0.35) * mix(1.0, 0.55, wild);
 	// Center divider and a sweeping scan line
 	float mid = line_aa(abs(p.y), 0.025);
 	col += mix(accent, accent2, 0.5) * mid * 0.35 * vig;
 	float sweep = 1.0 - smoothstep(0.0, 0.6, abs(p.x - (fract(TIME * 0.08) * 16.0 - 8.0)));
-	col += side * sweep * 0.05 * vig;
+	col += side * sweep * 0.05 * vig * (1.0 - wild);
 	// Frame around the mat
 	vec2 e = abs(p) - vec2(5.75, 3.6);
 	float frame = line_aa(abs(max(e.x, e.y)), 0.03);
@@ -262,8 +276,10 @@ void fragment() {
 	if turbo:
 		# The field is a hologram over the road: let the highway show through it.
 		sh.code = sh.code.replace("ALBEDO = col;", "ALBEDO = col; ALPHA = clamp(0.42 + dot(col, vec3(1.0)) * 1.6, 0.0, 1.0);")
+	sh.code = sh.code.replace("//GROUND//", FieldThemes.GROUND_GLSL)
 	var m := ShaderMaterial.new()
 	m.shader = sh
+	m.set_shader_parameter("surface", int(theme.get("surface", 0)))
 	m.set_shader_parameter("base", theme["base"])
 	m.set_shader_parameter("accent", theme["accent"])
 	m.set_shader_parameter("accent2", theme["accent2"])
@@ -374,9 +390,11 @@ void fragment() {
 func _build_zones() -> void:
 	for p in 2:
 		var col: Color = theme["accent"] if p == 0 else theme["accent2"]
+		# In daylight the zone plates glow less, or they wash the ground out.
+		var dim := 0.5 if theme.get("day", false) else 1.0
 		for z in 5:
-			_zone(monster_zone_pos(p, z), Vector2(0.98, 0.98), col, 0.9)
-			_zone(spell_zone_pos(p, z), Vector2(0.72, 0.98), col, 0.45)
+			_zone(monster_zone_pos(p, z), Vector2(0.98, 0.98), col, 0.9 * dim)
+			_zone(spell_zone_pos(p, z), Vector2(0.72, 0.98), col, 0.45 * dim)
 		_zone(deck_pos(p), Vector2(0.72, 0.98), col, 0.6)
 		_zone(gy_pos(p), Vector2(0.72, 0.98), col, 0.6)
 		_zone(banish_pos(p), Vector2(0.72, 0.98), BANISH_COLOR, 0.35)
@@ -2142,6 +2160,23 @@ func cam_shot(pos: Vector3, target: Vector3, dur := 0.45) -> void:
 	_cam_tween.tween_property(self, "cam_weight", 1.0, Settings.t(dur))
 
 
+## Cut straight to a shot, no travel.
+func cam_cut(pos: Vector3, target: Vector3) -> void:
+	if _cam_tween:
+		_cam_tween.kill()
+	cam_pos = pos
+	cam_target = target
+	cam_weight = 1.0
+
+
+## Slide slowly from the current shot toward another spot, for a little life in a held shot.
+func cam_drift(pos: Vector3, dur: float) -> void:
+	if _cam_tween:
+		_cam_tween.kill()
+	_cam_tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_cam_tween.tween_property(self, "cam_pos", pos, dur)
+
+
 func cam_release(dur := 0.5) -> void:
 	if _cam_tween:
 		_cam_tween.kill()
@@ -2217,7 +2252,7 @@ func add_duelists(me_key: String, opp_key: String) -> void:
 
 
 ## The duelist at the table acts out what they just said.
-const TALK_MOVES := {"intro": "bow", "taunt": "chat", "ace": "cheer", "attack": "agree", "react": "scratch",
+const TALK_MOVES := {"intro": "challenge", "taunt": "chat", "ace": "cheer", "attack": "agree", "react": "scratch",
 	"destroyed": "stomp", "low": "alert", "hurt": "alert", "trap": "agree", "spell": "chat", "set": "listen",
 	"big_hit": "cheer", "comeback": "cheer", "turn": "", "draw_pressure": "scratch"}
 
@@ -2232,10 +2267,13 @@ func duelist_gesture(p: int, kind: String) -> void:
 		return
 	if move == "cheer":
 		fig.play_once("cheer")
-	elif not fig.gesture(move, 0.25):
+	elif not fig.gesture(move, 0.18 if move == "challenge" else 0.25):
+		print("GESTURE FAILED ", move)
 		fig.do_nod()
+	if "--pose-debug" in OS.get_cmdline_user_args():
+		print("POSE ", move, " playing=", fig._anim.current_animation if fig._anim else "none", " hold=", fig._hold, " t=", Time.get_ticks_msec())
 	# Big moves run long; trim them so the duelist is back in their stance soon.
-	fig._hold = minf(fig._hold, 3.0 if move in ["stomp", "cheer", "bow"] else 2.4)
+	fig._hold = minf(fig._hold, 3.0 if move in ["stomp", "cheer", "bow", "challenge"] else 2.4)
 
 
 ## The duelist's whole body sells the moment: a step into an attack, a stagger when hit,

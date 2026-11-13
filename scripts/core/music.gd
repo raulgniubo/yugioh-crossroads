@@ -91,6 +91,16 @@ func _on_rendered(name: String, stream: AudioStreamWAV) -> void:
 		_switch(name)
 
 
+var _boost := 0.0
+
+
+## Turn the music up (or back down) by this many dB, now and for the tracks that follow.
+func set_boost(db: float) -> void:
+	_boost = db
+	if not _players.is_empty() and _players[_active].playing:
+		create_tween().tween_property(_players[_active], "volume_db", -3.0 + _boost, 0.6)
+
+
 func _switch(track: String) -> void:
 	if _current == track:
 		return
@@ -102,7 +112,7 @@ func _switch(track: String) -> void:
 	nxt.volume_db = -40.0
 	nxt.play()
 	var tw := create_tween().set_parallel()
-	tw.tween_property(nxt, "volume_db", -3.0, 1.2)
+	tw.tween_property(nxt, "volume_db", -3.0 + _boost, 1.2)
 	tw.tween_property(old, "volume_db", -80.0, 1.2)
 	tw.chain().tween_callback(old.stop)
 

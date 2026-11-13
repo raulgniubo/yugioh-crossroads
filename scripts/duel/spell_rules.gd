@@ -81,7 +81,7 @@ const FX := {
 	"Shrink": {"k": "quick", "t": "any_face", "do": [["halve", "target"]]},
 	"Book of Moon": {"k": "quick", "t": "any_face", "do": [["flip_down", "target"]]},
 	"Enemy Controller": {"k": "quick", "t": "opp_face", "do": [["change_pos", "target"]]},
-	"Ego Boost": {"k": "quick", "t": "own_face", "do": [["atk", "target", 1000, "eot"]]},
+	"Ego Boost": {"k": "quick", "win": ["attack"], "t": "any_face", "do": [["atk", "target", 1000, "eot"]]},
 	"Forbidden Lance": {"k": "quick", "t": "any_face", "do": [["atk", "target", -800, "eot"]]},
 	"Offerings to the Doomed": {"k": "quick", "t": "any_face", "do": [["destroy", "target"], ["skip_draw", 1]]},
 	"The Reliable Guardian": {"k": "quick", "t": "any_face", "do": [["def", "target", 700]]},

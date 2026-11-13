@@ -63,9 +63,14 @@ func stream(name: String) -> AudioStream:
 	return _sounds.get(name)
 
 
+## Extra loudness for everything played while it is set (a duel turns it up, then back to 0).
+var boost_db := 0.0
+
+
 func play(name: String, volume_db := 0.0, pitch := 1.0) -> void:
 	if not _sounds.has(name):
 		return
+	volume_db = minf(volume_db + boost_db, 6.0)
 	var now := Time.get_ticks_msec()
 	if now - int(_last.get(name, -1000)) < 45:
 		return
