@@ -25,6 +25,7 @@ var _pending_tributes := 0
 var _said_low := false
 var _won := false
 var _ai_level := 1
+var _start_lp: Array = [8000, 8000]
 var _theme := "duel"          # the music for this opponent
 var _materials: Array = []
 ## Dev: the AI plays your side too, but through the human path, with prompts answered at random.
@@ -157,6 +158,14 @@ func _start() -> void:
 	board.state_ref = state
 	var events := state.setup(CardData.deck_list(my_deck), opp_list, me_name, opp_name, first, -1,
 			CardData.extra_list(my_deck), CardData.extra_list(opp_deck))
+	# House rules from Free Duel: starting Life Points (and what a Gauntlet carried over).
+	_start_lp = [int(cfg.get("lp", DuelState.START_LP)), int(cfg.get("lp", DuelState.START_LP))]
+	if cfg.has("my_lp"):
+		_start_lp[ME] = int(cfg["my_lp"])
+	for p in 2:
+		if _start_lp[p] != DuelState.START_LP:
+			state.players[p].lp = _start_lp[p]
+			hud.set_lp(p, _start_lp[p], 0)
 	for p in 2:
 		board.set_deck_count(p, state.players[p].deck.size() + 5 + state.bonus_cards[p])
 	_update_counts()
@@ -401,7 +410,10 @@ func _finish() -> void:
 		Profile.record_result(won)
 		var my_lp: int = state.players[ME].lp
 		earned = Collection.reward(won and not _surrendered, _ai_level, {"opponent": _opp_key, "lp": my_lp,
-			"flawless": my_lp >= DuelState.START_LP, "turns": state.turn})
+			"flawless": my_lp >= int(_start_lp[ME]), "turns": state.turn})
+		var got := Collection.note_result(_opp_key, won and not _surrendered)
+		if got != "":
+			Router.toast(Loc.t("Third win over %s: their deck is now in My Decks.") % str(Characters.get_char(_opp_key).get("short", _opp_key)))
 	Sfx.play("win" if won else "lose")
 	Music.play("victory" if won else "defeat")
 	Sfx.play("cheer", -4.0 if won else -12.0)
@@ -429,6 +441,19 @@ func _finish() -> void:
 				why += Loc.t("
 Match won: +%d Duel Points") % 200
 			_restore_match_deck()
+	# Gauntlet: three duelists in a row on one pool of Life Points.
+	var g: Dictionary = cfg.get("gauntlet", {})
+	var g_next := false
+	if not g.is_empty() and not _autoplay:
+		var left: Array = g.get("left", [])
+		if won and not left.is_empty():
+			g_next = true
+		elif won:
+			Collection.dp += 400
+			Collection.save()
+			Router.toast(Loc.t("Gauntlet cleared!  +400 Duel Points"))
+	hud.gauntlet_next = g_next
+	hud.gauntlet_label = (Loc.t("GAUNTLET  ·  duel %d of %d") % [int(g.get("stage", 1)), int(g.get("total", 3))]) if not g.is_empty() else ""
 	hud.show_result(won, why, cfg.get("story", false), cfg.get("lose_ok", false), cfg.get("continue_label", "Continue Story"),
 			{"turns": state.turn, "lp": [state.players[ME].lp, state.players[AI].lp], "names": [state.players[ME].name, state.players[AI].name],
 			"reward": Collection.last_reward.duplicate() if earned > 0 else [], "earned": earned,
@@ -1426,12 +1451,30 @@ func _on_pause_action(action: String) -> void:
 			if state.current == AI or busy:
 				_finish()
 		"rematch":
+			if Router.duel_config.has("gauntlet"):
+				# Start the whole run again from the first duelist.
+				var rg: Dictionary = Router.duel_config["gauntlet"]
+				var order: Array = rg.get("all", []).duplicate()
+				Router.duel_config["opponent"] = order.pop_front()
+				rg["left"] = order
+				rg["stage"] = 1
+				Router.duel_config.erase("my_lp")
 			if Router.duel_config.get("match", false):
 				_restore_match_deck()
 				Router.match_state = {"wins": [0, 0], "game": 1, "last_loser": -1,
 					"orig": {"main": Collection.main.duplicate(), "side": Collection.side.duplicate()}}
 			Router.go(Router.DUEL)
 		"next_game":
+			Router.go(Router.DUEL)
+		"gauntlet_next":
+			var gc: Dictionary = Router.duel_config
+			var gg: Dictionary = gc["gauntlet"]
+			var rest: Array = gg["left"]
+			gc["opponent"] = rest.pop_front()
+			gc.erase("opponent_deck")
+			gc["my_lp"] = maxi(1000, state.players[ME].lp)
+			gg["stage"] = int(gg.get("stage", 1)) + 1
+			gc["field"] = "auto"
 			Router.go(Router.DUEL)
 		"side_deck":
 			var sw := SideSwap.new()

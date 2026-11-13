@@ -17,6 +17,12 @@ var _opp := "kaiba"
 var _picking := "opp"
 var _era := ""
 var _difficulty := 1
+var _their_pick: OptionButton
+var _their_keys: Array = []
+var _their_deck := ""
+var _lp := 8000
+var _first := -1           # -1 play the opening game, 0 me, 1 them
+var _gauntlet := false
 var _match_btn: CheckButton
 var _turbo_btn: CheckButton
 var _my_deck := "yugi"
@@ -260,6 +266,8 @@ func _build_slots() -> void:
 
 
 func _deck_of(side: String) -> String:
+	if side == "opp" and _their_deck != "":
+		return _their_deck
 	return _my_deck if side == "me" else str(Characters.get_char(_opp).get("deck", ""))
 
 
@@ -300,6 +308,15 @@ func _refresh_slots() -> void:
 		sl["title"].text = str(info.get("title", ""))
 		var deck_key := _deck_of(side)
 		sl["sub"].text = Loc.t("%s  ·  %s Deck") % [info.get("era", ""), CardData.deck_name(deck_key)]
+		if side == "opp":
+			var rec := Collection.versus(key)
+			# Your record against them, and how close you are to earning their deck.
+			var bits: Array = [Loc.t("%s Deck") % CardData.deck_name(deck_key)]
+			if rec[0] + rec[1] > 0:
+				bits.append(Loc.t("%d W  %d L") % [rec[0], rec[1]])
+			if rec[0] < 3 and not Collection.decks_owned.has(str(info.get("deck", ""))):
+				bits.append(Loc.t("unlocks in %d wins") % (3 - rec[0]))
+			sl["sub"].text = "  ·  ".join(bits)
 		var ace := 0
 		if side == "opp":
 			ace = int(Characters.get_char(key).get("ace", 0))
@@ -551,14 +568,14 @@ func _section(v: VBoxContainer, text: String) -> void:
 func _build_setup() -> void:
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.04, 0.07, 0.12, 0.96), 22, Color(UITheme.ACCENT, 0.3)))
-	panel.position = Vector2(1176, 130)
-	panel.custom_minimum_size = Vector2(680, 512)
+	panel.position = Vector2(1176, 86)
+	panel.custom_minimum_size = Vector2(680, 540)
 	_root.add_child(panel)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
 	panel.add_child(v)
 	_quote = UITheme.label("", 20, UITheme.TEXT)
-	_quote.position = Vector2(1180, 84)
+	_quote.position = Vector2(1180, 52)
 	_quote.size = Vector2(676, 26)
 	_quote.add_theme_font_size_override("font_size", 17)
 	_quote.clip_text = true
@@ -573,10 +590,27 @@ func _build_setup() -> void:
 	v.add_child(_deck_pick)
 	_deck_row = HBoxContainer.new()
 	_deck_row.add_theme_constant_override("separation", 8)
-	_deck_row.custom_minimum_size = Vector2(0, 96)
+	_deck_row.custom_minimum_size = Vector2(0, 70)
 	v.add_child(_deck_row)
 	_deck_note = UITheme.label("", 15, UITheme.TEXT_DIM)
 	v.add_child(_deck_note)
+	var trow := HBoxContainer.new()
+	trow.add_theme_constant_override("separation", 10)
+	v.add_child(trow)
+	trow.add_child(UITheme.label("THEIR DECK", 16, UITheme.ACCENT, UITheme.semi_font()))
+	_their_pick = OptionButton.new()
+	_their_pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_their_pick.add_theme_font_size_override("font_size", 16)
+	_their_pick.add_item("Their own deck")
+	_their_keys = [""]
+	for k in CardData.DECKS.keys() + CardData.NAMED_DECKS.keys():
+		if CardData.has_deck(k) and str(k) != "custom":
+			_their_keys.append(str(k))
+			_their_pick.add_item(CardData.deck_name(k))
+	_their_pick.item_selected.connect(func(i):
+		_their_deck = _their_keys[i]
+		_refresh_slots())
+	trow.add_child(_their_pick)
 	var dhead := HBoxContainer.new()
 	v.add_child(dhead)
 	dhead.add_child(UITheme.label("DIFFICULTY", 16, UITheme.ACCENT, UITheme.semi_font()))
@@ -634,6 +668,36 @@ func _build_setup() -> void:
 				cb.button_pressed = k == 1
 				(pair[0] as Button).set_pressed_no_signal(k == 0)
 				(pair[1] as Button).set_pressed_no_signal(k == 1))
+	# House rules: each button steps through its choices.
+	v.add_child(UITheme.label("RULES", 16, UITheme.ACCENT, UITheme.semi_font()))
+	var rrow := HBoxContainer.new()
+	rrow.add_theme_constant_override("separation", 6)
+	v.add_child(rrow)
+	var lp_b := Button.new()
+	var first_b := Button.new()
+	var g_b := Button.new()
+	var paint := func():
+		lp_b.text = Loc.t("%d Life Points") % _lp
+		first_b.text = Loc.t(["Rock-paper-scissors", "I go first", "They go first"][_first + 1])
+		g_b.text = Loc.t("Gauntlet: 3 in a row") if _gauntlet else Loc.t("Gauntlet off")
+		g_b.add_theme_color_override("font_color", UITheme.GOLD if _gauntlet else UITheme.TEXT)
+	for rb in [lp_b, first_b, g_b]:
+		rb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		rb.add_theme_font_size_override("font_size", 16)
+		rrow.add_child(rb)
+	lp_b.tooltip_text = "Starting Life Points for both duelists."
+	first_b.tooltip_text = "Who takes the first turn."
+	g_b.tooltip_text = "Face three duelists in a row. Your Life Points carry over. Clear it for a bonus."
+	lp_b.pressed.connect(func():
+		_lp = {4000: 8000, 8000: 16000, 16000: 4000}[_lp]
+		paint.call())
+	first_b.pressed.connect(func():
+		_first = (_first + 2) % 3 - 1
+		paint.call())
+	g_b.pressed.connect(func():
+		_gauntlet = not _gauntlet
+		paint.call())
+	paint.call()
 	v.add_child(UITheme.label("ARENA", 16, UITheme.ACCENT, UITheme.semi_font()))
 	var arow := HBoxContainer.new()
 	arow.add_theme_constant_override("separation", 10)
@@ -661,13 +725,13 @@ func _build_setup() -> void:
 	v.add_child(row)
 	var rnd := Button.new()
 	rnd.text = "Random rival"
-	rnd.custom_minimum_size = Vector2(0, 60)
+	rnd.custom_minimum_size = Vector2(0, 52)
 	rnd.pressed.connect(_random_opponent)
 	row.add_child(rnd)
 	_go = Button.new()
 	_go.text = "DUEL!"
 	_go.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_go.custom_minimum_size = Vector2(0, 60)
+	_go.custom_minimum_size = Vector2(0, 52)
 	_go.add_theme_font_size_override("font_size", 36)
 	_go.add_theme_font_override("font", UITheme.title_font())
 	_go.add_theme_color_override("font_color", Color(0.02, 0.05, 0.08))
@@ -722,7 +786,7 @@ func _refresh_deck_row() -> void:
 		tr.texture = Cards.get_face(id)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tr.custom_minimum_size = Vector2(66, 96)
+		tr.custom_minimum_size = Vector2(48, 70)
 		tr.tooltip_text = Loc.t("%s\nATK %d") % [CardData.get_card(id).get("name", ""), mons[i][0]]
 		tr.modulate.a = 0.0
 		_deck_row.add_child(tr)
@@ -795,8 +859,23 @@ func _start_duel() -> void:
 	var is_match: bool = _match_btn != null and _match_btn.button_pressed
 	Router.match_state = {"wins": [0, 0], "game": 1, "last_loser": -1,
 		"orig": {"main": Collection.main.duplicate(), "side": Collection.side.duplicate()}} if is_match else {}
-	start.emit({"player_char": _me, "opponent": _opp, "player_deck": _my_deck, "difficulty": _difficulty, "field": _field, "match": is_match,
-		"turbo": _turbo_btn != null and _turbo_btn.button_pressed})
+	var cfg := {"player_char": _me, "opponent": _opp, "player_deck": _my_deck, "difficulty": _difficulty, "field": _field, "match": is_match and not _gauntlet,
+		"turbo": _turbo_btn != null and _turbo_btn.button_pressed, "lp": _lp}
+	if _their_deck != "":
+		cfg["opponent_deck"] = _their_deck
+	if _first >= 0:
+		cfg["first"] = _first
+	if _gauntlet:
+		# The duelist you picked first, then two more drawn from everyone else.
+		var others: Array = []
+		for k in Characters.ORDER:
+			if str(k) != _opp and str(k) != _me and CardData.has_deck(str(Characters.DATA[k].get("deck", ""))):
+				others.append(str(k))
+		others.shuffle()
+		var run: Array = [_opp] + others.slice(0, 2)
+		cfg["gauntlet"] = {"all": run.duplicate(), "left": run.slice(1), "stage": 1, "total": run.size()}
+		Router.match_state = {}
+	start.emit(cfg)
 
 
 func _unhandled_input(event: InputEvent) -> void:

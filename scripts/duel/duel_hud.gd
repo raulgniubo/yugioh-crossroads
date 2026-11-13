@@ -205,6 +205,8 @@ func set_portraits(a: String, b: String) -> void:
 
 
 ## A short line in a speech bubble next to the duelist. Doesn't block.
+var gauntlet_next := false
+var gauntlet_label := ""
 var speed_fx: SpeedLines   # only in a Turbo Duel
 var _cut_at: Array = [0, 0]
 var _feed: VBoxContainer
@@ -1572,8 +1574,11 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 		if mt.get("side", false):
 			_overlay_button(v, "Side Deck", "side_deck")
 		_overlay_button(v, "Main Menu", "menu")
+	elif gauntlet_next:
+		first = _overlay_button(v, "Next opponent", "gauntlet_next")
+		_overlay_button(v, "Main Menu", "menu")
 	else:
-		first = _overlay_button(v, "New match" if not mt.is_empty() else "Rematch", "rematch")
+		first = _overlay_button(v, "New match" if not mt.is_empty() else ("Run it again" if gauntlet_label != "" else "Rematch"), "rematch")
 		if stats.get("free", false):
 			_overlay_button(v, "Change duelists", "select")
 		_overlay_button(v, "Main Menu", "menu")

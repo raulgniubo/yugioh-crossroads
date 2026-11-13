@@ -226,6 +226,31 @@ func deck_info(key: String) -> Dictionary:
 
 
 ## The card that goes on a deck's box: its rarest, strongest monster.
+## Wins and losses against one duelist: [wins, losses].
+func versus(key: String) -> Array:
+	var vs: Dictionary = record.get("vs", {})
+	var r: Array = vs.get(key, [0, 0])
+	return [int(r[0]), int(r[1])]
+
+
+## Count a finished duel against `key`. The third win over a duelist unlocks their deck as a
+## ready-made deck; returns that deck's key when it happens, "" otherwise.
+func note_result(key: String, won: bool) -> String:
+	var vs: Dictionary = record.get("vs", {})
+	var r := versus(key)
+	r[0 if won else 1] += 1
+	vs[key] = r
+	record["vs"] = vs
+	var unlocked := ""
+	if won and r[0] == 3:
+		var deck := str(Characters.get_char(key).get("deck", ""))
+		if deck != "" and CardData.has_deck(deck) and not decks_owned.has(deck):
+			decks_owned.append(deck)
+			unlocked = deck
+	save()
+	return unlocked
+
+
 func deck_ace(key: String) -> int:
 	var best := 0
 	var score := -1
