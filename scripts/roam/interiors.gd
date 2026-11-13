@@ -111,6 +111,8 @@ static func build(city: CityBuilder, key: String) -> void:
 			city.exit_door(o + Vector3(0, 0, half.y), Color(0.7, 0.9, 0.95), Color(0.2, 0.5, 0.36), 2.4)
 		"ac_library":
 			city.exit_door(o + Vector3(0, 0, half.y), Color(0.34, 0.2, 0.11), Color(0.86, 0.68, 0.3), 2.4)
+		"ac_class":
+			city.exit_door(o + Vector3(0, 0, half.y), Color(0.46, 0.3, 0.18), Color(0.3, 0.42, 0.62), 2.4)
 		_:
 			city.exit_door(o + Vector3(0, 0, half.y), Color(0.72, 0.24, 0.18), Color(0.95, 0.88, 0.72))
 	if AcademyRooms.ROOMS.has(key):

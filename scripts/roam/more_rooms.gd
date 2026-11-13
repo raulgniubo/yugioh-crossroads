@@ -12,8 +12,19 @@ const ROOMS := {
 	"ac_library": {"district": "academy", "name": "Academy Library", "area": "Strategy books and the duel quiz", "at": Vector3(720, 0, -400), "half": Vector2(9.0, 7.0), "height": 5.6,
 		"door": Vector3(-19.0, 0, 28.5), "out": Vector3(1, 0, 0), "label": "Enter the library", "music": "shop",
 		"floor": Color(0.38, 0.25, 0.16), "wall": Color(0.88, 0.82, 0.7), "trim": Color("ffd166")},
+	"ac_class": {"district": "academy", "name": "Lecture Hall", "area": "Today's class is in session", "at": Vector3(800, 0, -400), "half": Vector2(8.0, 7.0), "height": 5.0,
+		"door": Vector3(36.4, 0, -19.0), "out": Vector3(-1, 0, 0), "label": "Enter the lecture hall", "music": "shop",
+		"floor": Color(0.5, 0.36, 0.24), "wall": Color(0.92, 0.9, 0.84), "trim": Color("7cc4ff")},
 }
 const PEOPLE := {
+	"ac_class": [
+		{"id": "class_prof", "char": "", "model": "office_worker", "name": "Professor Halden", "color": Color("7cc4ff"), "pos": Vector3(-2.6, 0, -5.0), "face": 0.3,
+			"lines": ["Sit anywhere. Today's lesson is the same as every day: read the field before you read your hand.", "Your class duel is at the front when you are ready. Friday decides who moves up a dorm."]},
+		{"id": "class_a", "char": "", "model": "student_girl", "name": "Front-row Student", "color": Color("ffd166"), "pos": Vector3(-3.3, 0, -0.6), "face": PI, "dorm": "yellow", "pose": "sit", "aloof": true,
+			"lines": ["Shh. I'm writing down everything he says.", "If you beat the class duel, tell me how. For science."]},
+		{"id": "class_b", "char": "", "model": "student_boy", "name": "Sleepy Student", "color": Color("ff6b6b"), "pos": Vector3(3.3, 0, 1.6), "face": PI, "dorm": "red", "pose": "sit", "aloof": true,
+			"lines": ["...zzz... huh? I was resting my eyes.", "Wake me when it's a duel."]},
+	],
 	"mart": [
 		{"id": "mart_clerk", "char": "", "model": "office_worker", "name": "Night Clerk", "color": Color("3fbf8a"), "pos": Vector3(4.2, 0, -3.3), "face": -0.6,
 			"lines": ["Welcome to Domino Mart. The lucky draw by the door is free once a day.", "Duelists come in at 3 a.m. for sleeves and instant noodles. Every night."]},
@@ -43,6 +54,7 @@ static func dress(city: CityBuilder, key: String, o: Vector3, half: Vector2, hgt
 		"home": _home(city, o, half, hgt)
 		"mart": _mart(city, o, half, hgt)
 		"ac_library": _library(city, o, half, hgt)
+		"ac_class": _lecture(city, o, half, hgt)
 
 
 static func _sign(city: CityBuilder, text: String, pos: Vector3, rot: float, color: Color, size: int) -> void:
@@ -485,6 +497,25 @@ static func build_outside(city: CityBuilder, district: String) -> void:
 		sign.double_sided = true
 		# A path over to the main walk.
 		city.box(Vector3(17.5, 0.12, 2.6), Vector3(-9.6, 0.1, 28.5), city.mat(Color(0.82, 0.8, 0.74), 0.9), false)
+		# The lecture hall, east of the practice fields: brick, tall windows, a clock over the door.
+		var lc := Vector3(41.5, 0.1, -19.0)
+		var brick := city.mat(Color(0.62, 0.34, 0.26), 0.9)
+		city.box(Vector3(9.4, 0.4, 11.4), lc + Vector3(0, 0.2, 0), city.mat(Color(0.8, 0.78, 0.74), 0.9))
+		city.box(Vector3(8.6, 5.6, 10.6), lc + Vector3(0, 3.0, 0), brick)
+		city.box(Vector3(9.2, 0.4, 11.2), lc + Vector3(0, 5.9, 0), stone, false)
+		for k in 3:
+			city.box(Vector3(9.0 - k * 2.4, 0.5, 10.8), lc + Vector3(0, 6.3 + k * 0.5, 0), roof, false)
+		city.box(Vector3(0.2, 3.0, 2.0), lc + Vector3(-4.32, 1.9, 0), dark, false)
+		city.box(Vector3(0.3, 0.3, 2.6), lc + Vector3(-4.4, 3.55, 0), stone, false)
+		for z: float in [-3.4, 3.4]:
+			city.box(Vector3(0.12, 2.4, 1.3), lc + Vector3(-4.32, 2.9, z), city.glow_mat(Color(1.0, 0.9, 0.66), 0.6), false)
+			city.box(Vector3(0.16, 0.14, 1.6), lc + Vector3(-4.34, 1.64, z), stone, false)
+		city.cyl(0.7, 0.7, 0.12, lc + Vector3(-4.36, 4.8, 0), city.glow_mat(Color(0.96, 0.96, 0.9), 0.5), null, 20).rotation.z = PI / 2.0
+		city.box(Vector3(0.06, 0.5, 0.05), lc + Vector3(-4.46, 4.98, 0), dark, false)
+		city.box(Vector3(0.06, 0.05, 0.36), lc + Vector3(-4.46, 4.8, 0.16), dark, false)
+		var ls := city.neon_sign("LECTURE HALL", lc + Vector3(-4.5, 4.0, 0), Color("7cc4ff"), 60, -PI / 2.0, false)
+		ls.double_sided = true
+		city.box(Vector3(6.0, 0.12, 2.6), Vector3(34.0, 0.1, -19.0), city.mat(Color(0.82, 0.8, 0.74), 0.9), false)
 		return
 	if district != "domino":
 		return
@@ -521,9 +552,69 @@ static func add_spots(scene: Node) -> void:
 			"mart":
 				scene._spots.append({"pos": o + Vector3(half.x - 2.0, 0, half.y - 1.6), "range": 1.4, "label": "Lucky draw  ·  free once a day", "action": func(): _lucky(scene)})
 				scene._spots.append({"pos": o + Vector3(-half.x + 1.7, 0, 0.4), "range": 1.4, "label": "Buy a drink  ·  10 DP", "action": func(): scene.life._drink() if scene.life else null})
+			"ac_class":
+				scene._spots.append({"pos": o + Vector3(1.8, 0, -4.2), "range": 1.6, "label": "Step up for today's class duel", "action": func(): _class_duel(scene)})
+				scene._spots.append({"pos": o + Vector3(0.0, 0, 3.4), "range": 1.4, "label": "Sit in on the lesson (quiz)", "action": func(): _quiz(scene)})
 			"ac_library":
 				scene._spots.append({"pos": o + Vector3(-2.6, 0, 4.6), "range": 1.4, "label": "Take the duel quiz", "action": func(): _quiz(scene)})
 				scene._spots.append({"pos": o + Vector3(4.6, 0, 3.0), "range": 1.3, "label": "Read a strategy book", "action": func(): Router.toast(Loc.t(TIPS[randi() % TIPS.size()]))})
+
+
+## Today's class duel (or Friday's exam), straight from the room instead of the office menu.
+static func _class_duel(scene: Node) -> void:
+	Academy.load_data()
+	if not Academy.enrolled():
+		Router.toast(Loc.t("You are not enrolled yet. See the exam office in the main hall first."))
+		return
+	var t := Academy.today()
+	if t.is_empty():
+		Router.toast(Loc.t("No class today. Come back tomorrow."))
+		return
+	Router.toast(Loc.t("%s  ·  %s steps up to face you.") % [Loc.t(str(t.get("title", "Class Duel"))), Loc.t(str(t.get("name", "Your classmate")))])
+	await scene.get_tree().create_timer(1.1).timeout
+	Router.roam["pos"] = scene._player.position
+	Router.roam["yaw"] = scene._yaw
+	Academy.start(t)
+	var cfg := Academy.duel_config(t)
+	cfg["return_to"] = Router.ROAM
+	cfg["continue_label"] = Loc.t("Back to the Academy")
+	Router.duel_config = cfg
+	Sfx.play("summon", -4.0)
+	Router.go(Router.DUEL)
+
+
+static func _lecture(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> void:
+	var wood := city.mat(Color(0.46, 0.3, 0.18), 0.6)
+	var dark := city.mat(Color(0.1, 0.14, 0.12), 0.7)
+	# Blackboard across the front with a chalk tray, and a duel diagram drawn on it.
+	city.box(Vector3(9.0, 2.4, 0.1), o + Vector3(0, 2.3, -half.y + 0.08), dark, false)
+	city.box(Vector3(9.3, 0.12, 0.2), o + Vector3(0, 1.04, -half.y + 0.14), wood, false)
+	var chalk := city.glow_mat(Color(0.95, 0.96, 0.9), 0.5)
+	for r in 2:
+		for c in 5:
+			city.box(Vector3(0.62, 0.04, 0.02), o + Vector3(-3.0 + c * 0.8, 1.8 + r * 0.95, -half.y + 0.14), chalk, false)
+			city.box(Vector3(0.62, 0.04, 0.02), o + Vector3(-3.0 + c * 0.8, 2.5 + r * 0.95 - 0.35, -half.y + 0.14), chalk, false)
+			city.box(Vector3(0.04, 0.38, 0.02), o + Vector3(-3.3 + c * 0.8, 2.0 + r * 0.95, -half.y + 0.14), chalk, false)
+			city.box(Vector3(0.04, 0.38, 0.02), o + Vector3(-2.7 + c * 0.8, 2.0 + r * 0.95, -half.y + 0.14), chalk, false)
+	_sign(city, "ATK > DEF ?", o + Vector3(2.9, 2.6, -half.y + 0.16), 0.0, Color(0.95, 0.96, 0.9), 60)
+	_sign(city, "LECTURE HALL", o + Vector3(0, hgt - 0.5, -half.y + 0.14), 0.0, Color("7cc4ff"), 90)
+	# The teacher's podium and a duel mat on the floor at the front.
+	city.box(Vector3(1.2, 1.1, 0.7), o + Vector3(-2.6, 0.55, -4.0), wood)
+	city.box(Vector3(3.6, 0.02, 2.4), o + Vector3(2.4, 0.013, -4.3), city.mat(Color(0.16, 0.34, 0.5), 0.9), false)
+	city.box(Vector3(3.2, 0.022, 0.05), o + Vector3(2.4, 0.016, -4.3), city.glow_mat(Color("7cc4ff"), 1.0), false)
+	# Rows of desks with benches, a center aisle.
+	for r in 4:
+		var z := -1.2 + r * 1.5
+		for sx: float in [-1.0, 1.0]:
+			city.box(Vector3(4.6, 0.07, 0.6), o + Vector3(sx * 3.5, 0.78, z), wood)
+			city.box(Vector3(4.6, 0.7, 0.05), o + Vector3(sx * 3.5, 0.4, z - 0.28), wood, false)
+			city.box(Vector3(4.6, 0.07, 0.4), o + Vector3(sx * 3.5, 0.44, z + 0.6), wood, false)
+			for k in 3:
+				if (r + k) % 2 == 0:
+					city.box(Vector3(0.36, 0.03, 0.26), o + Vector3(sx * 3.5 - 1.5 + k * 1.5, 0.83, z), city.mat(Color(0.94, 0.92, 0.86), 0.9), false)
+	for sx: float in [-1.0, 1.0]:
+		for k in 3:
+			_window(city, o + Vector3(sx * (half.x - 0.03), 3.0, -4.0 + k * 4.0), 1.8, 1.8, false)
 
 
 static func _rest(scene: Node) -> void:

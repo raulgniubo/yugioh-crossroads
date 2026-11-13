@@ -535,6 +535,91 @@ func _market() -> void:
 	crate_stack(Vector3(7.6, 0.2, z + 0.5), 2)
 
 
+## Rivals with names, one per dorm, who remember whether you beat them; a ghost who only duels
+## after dark at the old dorm; and a livelier island: hills, a lantern path, a busy beach.
+const RIVALS := [
+	{"id": "rival_red", "char": "", "model": "street_duelist", "name": "Rin Akagi", "color": Color("ff6b6b"), "dorm": "red", "pos": Vector3(-20.0, 0.1, 9.5), "face": 2.2,
+		"lines": ["Rin Akagi, Red dorm. Everybody says Red is the bottom. I say the bottom is where you push off from.", "You look like you can take a hit. Let's find out."],
+		"duel": {"deck": "jaden", "difficulty": 1, "intro": "No holding back!"}},
+	{"id": "rival_yellow", "char": "", "model": "duelist_m5", "name": "Dax Morrow", "color": Color("ffd166"), "dorm": "yellow", "pos": Vector3(26.0, 0.1, -1.0), "face": -1.9,
+		"lines": ["Dax Morrow. I keep a notebook on every duelist in this school. Your page is still blank.", "Give me something to write down."],
+		"duel": {"deck": "syrus", "difficulty": 2, "intro": "Page one. Begin."}},
+	{"id": "rival_blue", "char": "", "model": "duelist_f1", "name": "Celeste Vane", "color": Color("7cc4ff"), "dorm": "blue", "pos": Vector3(-26.4, 0.1, -9.0), "face": 0.9,
+		"lines": ["Celeste Vane. Top of Blue, three terms running. People stop talking when I walk in. You didn't.", "Interesting. Show me why."],
+		"duel": {"deck": "alexis", "difficulty": 3, "intro": "Do try to keep up."}},
+]
+var _ghost: Node3D
+
+
+func _island_extras() -> void:
+	if str(Router.roam.get("story", "")) == "":
+		for r in RIVALS:
+			scene._add_npc(r, Vector3.ZERO)
+		# The ghost of the old dorm: there only at night.
+		scene._add_npc({"id": "old_dorm_ghost", "char": "", "model": "duelist_m9", "name": "The One Who Stayed", "color": Color("9fe8ff"), "pos": Vector3(-49.0, 0.3, 42.6), "face": 1.9,
+			"aloof": true, "lines": ["...you can see me. Nobody has stayed past dark in years.", "One duel. That is all I ever wanted from this place."],
+			"duel": {"deck": "bakura", "difficulty": 3, "intro": "...draw."}}, Vector3.ZERO)
+		_ghost = (scene._npcs.back() as Array)[1]
+		for mi in _ghost.find_children("*", "MeshInstance3D", true, false):
+			(mi as MeshInstance3D).transparency = 0.45
+	# Rolling hills behind the dorms and along the north shore (scenery: nobody walks there).
+	var hill := city.grass_material(1.3)
+	for h in [[Vector3(-52, 0, -30), 13.0, 6.0], [Vector3(-38, 0, -44), 10.0, 4.5], [Vector3(46, 0, -40), 12.0, 5.5], [Vector3(56, 0, -22), 9.0, 4.0], [Vector3(58, 0, 14), 8.0, 3.0], [Vector3(-58, 0, 6), 9.0, 3.6]]:
+		var c: Vector3 = h[0]
+		if Vector2(c.x, c.z).length() > 66.0:
+			c = c.normalized() * 66.0
+		_ball(float(h[1]), c + Vector3(0, -0.3, 0), hill, null, Vector3(1.0, float(h[2]) / float(h[1]), 1.0))
+		_solid(float(h[1]) * 0.8, float(h[2]), c + Vector3(0, float(h[2]) * 0.5, 0))
+		for k in 3:
+			city.tree(c + Vector3(cos(k * 2.1) * float(h[1]) * 0.75, 0, sin(k * 2.1) * float(h[1]) * 0.75), 1.1 + k * 0.15)
+	# A lantern path into the old woods.
+	for k in 7:
+		var lp := Vector3(-22.0 - k * 3.3, 0.1, 31.0 + k * 1.7)
+		_box(Vector3(1.6, 0.05, 1.0), lp + Vector3(0, 0.02, 0), _m(Color(0.6, 0.56, 0.48), 0.95))
+		if k % 2 == 0:
+			_cyl(0.05, 0.07, 1.3, lp + Vector3(0.9, 0.65, 0.7), _m(Color(0.2, 0.16, 0.12), 0.8), null, 6)
+			var lan := _box(Vector3(0.26, 0.32, 0.26), lp + Vector3(0.9, 1.45, 0.7), city.glow_mat(Color(1.0, 0.74, 0.4), 1.0))
+			_lanterns.append(lan)
+			var gl := OmniLight3D.new()
+			gl.light_color = Color(1.0, 0.76, 0.46)
+			gl.omni_range = 5.0
+			gl.light_energy = 0.0
+			gl.position = lp + Vector3(0.9, 1.5, 0.7)
+			add_child(gl)
+			_lanterns.append(gl)
+	# The beach: a volleyball net, a ball, a sandcastle, a drinks hut and people.
+	var bc := Vector3(48.0, 0.12, 52.0)
+	for px: float in [-3.0, 3.0]:
+		_cyl(0.06, 0.06, 2.4, bc + Vector3(px, 1.2, 6.0), _m(Color(0.9, 0.9, 0.9), 0.5), null, 6)
+	_box(Vector3(6.0, 0.9, 0.03), bc + Vector3(0, 1.85, 6.0), _mesh_net())
+	_ball(0.22, bc + Vector3(1.2, 0.3, 4.8), _m(Color(0.98, 0.96, 0.9), 0.6))
+	for k in 4:
+		_cyl(0.3 - k * 0.05, 0.36 - k * 0.05, 0.3, bc + Vector3(-5.0, 0.15 + k * 0.3, 2.0), _m(Color(0.86, 0.76, 0.52), 0.95), null, 10)
+	_box(Vector3(2.6, 2.2, 1.6), bc + Vector3(-7.0, 1.1, -5.0), _m(Color(0.5, 0.34, 0.2), 0.8))
+	_box(Vector3(3.2, 0.12, 2.2), bc + Vector3(-7.0, 2.3, -5.0), _m(Color(0.86, 0.3, 0.26), 0.8))
+	_box(Vector3(2.8, 0.08, 0.5), bc + Vector3(-7.0, 1.0, -3.95), _m(Color(0.86, 0.8, 0.66), 0.7))
+	_solid(1.6, 2.0, bc + Vector3(-7.0, 1.0, -5.0))
+	scene._spots.append({"pos": Vector3(bc.x - 7.0, 0, bc.z - 3.0), "range": 1.5, "label": "Buy a drink  ·  10 DP", "action": _drink})
+	if str(Router.roam.get("story", "")) == "":
+		chat_pair(bc + Vector3(2.0, 0, 3.0), 0.4, "student_girl", "student_boy", "yellow", "red")
+		var w1 := _person("student_boy", bc + Vector3(-1.6, 0, 7.2), PI, "stand", "blue")
+		w1.watch = null
+		var w2 := _person("student_girl", bc + Vector3(1.4, 0, 4.6), 0.0, "stand", "red")
+		w2.watch = null
+		_pairs_cheer.append(w1)
+		_pairs_cheer.append(w2)
+
+
+var _pairs_cheer: Array = []
+
+
+func _mesh_net() -> StandardMaterial3D:
+	var m := _m(Color(1, 1, 1, 0.35), 0.9)
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return m
+
+
 var _lanterns: Array = []
 const FORTUNES := ["Your next pack hides something shiny. Probably.", "Beware a face-down card on the right.", "Today favors the bold: attack first.",
 	"A rival is thinking about you. Duel them.", "Patience. The card you need is three draws away.", "Luck is with LIGHT monsters today."]
@@ -586,6 +671,9 @@ func _night_shift() -> void:
 		return
 	_shift = city.tod
 	var night := city.tod == "night"
+	if _ghost and is_instance_valid(_ghost):
+		# By day the ghost is simply not there (parked out of reach under the island).
+		_ghost.position.y = 0.3 if night else -40.0
 	for l in _lanterns:
 		if l is OmniLight3D:
 			(l as OmniLight3D).light_energy = 1.6 if city.tod != "day" else 0.0
@@ -908,6 +996,7 @@ func _decor_domino() -> void:
 # ------------------------------------------------------------------ Duel Academy
 
 func _decor_academy() -> void:
+	_island_extras()
 	# Hedges and flower beds along the main walk, lanterns at the forks.
 	for z: float in [44.0, 32.0, 20.0, -11.0, -17.0]:
 		for sx: float in [-1.0, 1.0]:
