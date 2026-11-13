@@ -458,6 +458,8 @@ func _person(model: String, pos: Vector3, rot: float, stance := "stand", dorm :=
 	f.watch = scene._player
 	if dorm != "":
 		f.wear_uniform(Avatars.DORM_COLORS[dorm])
+	if pos.length() < 200.0:
+		_day_people.append(f)      # outdoors (rooms sit far out past 400)
 	return f
 
 
@@ -472,6 +474,129 @@ func chat_pair(at: Vector3, yaw: float, a: String, b: String, dorm_a := "", dorm
 	fb.watch = null
 	_pairs.append([fa, fb, randf_range(0.5, 3.0), 0])
 	_solid(0.75, 1.7, at)
+
+
+## The harbor market: four stalls under striped canopies with lanterns strung between them.
+## Each one does something: rare singles, hot food, a fortune, and a duel puzzle board.
+func _market() -> void:
+	var stalls := [
+		{"x": 10.0, "name": "RARE SINGLES", "col": Color("d9342b"), "who": "shopkeeper", "label": "Buy a mystery rare  ·  250 DP", "do": "single"},
+		{"x": 14.6, "name": "TAKOYAKI", "col": Color("f0a030"), "who": "office_worker", "label": "Buy takoyaki  ·  20 DP", "do": "food"},
+		{"x": 19.2, "name": "FORTUNES", "col": Color("8a4fd9"), "who": "stylish_woman", "label": "Have your fortune read", "do": "fortune"},
+		{"x": 23.8, "name": "DUEL PUZZLES", "col": Color("2a8cff"), "who": "student_boy", "label": "Try the puzzle board", "do": "quiz"},
+	]
+	var z := 54.6
+	var wood := _m(Color(0.42, 0.28, 0.16), 0.8)
+	for st in stalls:
+		var c := Vector3(float(st["x"]), 0.2, z)
+		var col: Color = st["col"]
+		_box(Vector3(3.2, 0.9, 1.0), c + Vector3(0, 0.45, 0), wood)
+		_box(Vector3(3.4, 0.06, 1.2), c + Vector3(0, 0.93, 0), _m(Color(0.86, 0.8, 0.68), 0.7))
+		_solid(1.5, 1.2, c + Vector3(0, 0.6, 0))
+		for px: float in [-1.6, 1.6]:
+			for pz: float in [-0.55, 0.9]:
+				_cyl(0.05, 0.05, 2.7, c + Vector3(px, 1.35, pz), wood, null, 6)
+		# Striped canopy, sloping down toward the customers.
+		for k in 8:
+			var strip := _box(Vector3(0.44, 0.05, 2.0), c + Vector3(-1.54 + k * 0.44, 2.72, 0.15), _m(col if k % 2 == 0 else Color(0.95, 0.94, 0.9), 0.8))
+			strip.rotation.x = 0.22
+		var sign := Label3D.new()
+		sign.text = str(st["name"])
+		sign.font = UITheme.title_font()
+		sign.font_size = 56
+		sign.pixel_size = 0.006
+		sign.outline_size = 10
+		sign.modulate = col.lightened(0.55)
+		sign.position = c + Vector3(0, 2.25, -0.86)
+		sign.rotation.y = PI
+		add_child(sign)
+		# Goods on the counter.
+		for k in 6:
+			_box(Vector3(0.3, 0.14 + (k % 3) * 0.06, 0.3), c + Vector3(-1.25 + k * 0.5, 1.03 + (k % 3) * 0.03, -0.1), _m([col, col.lightened(0.4), Color(0.95, 0.9, 0.7)][k % 3], 0.6))
+		# A paper lantern on each corner, lit after dark.
+		for px: float in [-1.6, 1.6]:
+			var lan := _ball(0.2, c + Vector3(px, 2.35, -0.6), city.glow_mat(Color(1.0, 0.72, 0.36), 1.6), null, Vector3(1, 1.25, 1))
+			_lanterns.append(lan)
+		var glow := OmniLight3D.new()
+		glow.light_color = Color(1.0, 0.76, 0.46)
+		glow.light_energy = 0.0
+		glow.omni_range = 6.0
+		glow.position = c + Vector3(0, 2.2, -0.8)
+		add_child(glow)
+		_lanterns.append(glow)
+		var keeper := _person(str(st["who"]), c + Vector3(0, 0, 0.95), PI, "stand")
+		keeper.watch = scene._player
+		_day_people.erase(keeper)
+		var what := str(st["do"])
+		scene._spots.append({"pos": Vector3(c.x, 0, z - 1.6), "range": 1.5, "label": str(st["label"]), "action": func(): _stall(what)})
+	bunting(Vector3(8.2, 3.3, z - 0.6), Vector3(25.6, 3.3, z - 0.6), 18)
+	city.neon_sign("HARBOR MARKET", Vector3(17.0, 4.3, z - 0.6), Color("ffd166"), 70, PI, false)
+	crate_stack(Vector3(26.4, 0.2, z + 0.4), 3)
+	crate_stack(Vector3(7.6, 0.2, z + 0.5), 2)
+
+
+var _lanterns: Array = []
+const FORTUNES := ["Your next pack hides something shiny. Probably.", "Beware a face-down card on the right.", "Today favors the bold: attack first.",
+	"A rival is thinking about you. Duel them.", "Patience. The card you need is three draws away.", "Luck is with LIGHT monsters today."]
+
+
+func _stall(what: String) -> void:
+	match what:
+		"single":
+			if Collection.dp < 250:
+				Router.toast("Not enough Duel Points")
+				Sfx.play("error", -6.0)
+				return
+			var pools: Array = []
+			for era in ["Duel Monsters", "GX", "5D's", "ZEXAL"]:
+				pools.append_array(Collection.pool(era))
+			var rare: Array = pools.filter(func(id): return CardData.rarity(int(id)) >= 2)
+			if rare.is_empty():
+				rare = pools
+			if rare.is_empty():
+				return
+			Collection.dp -= 250
+			var id: int = rare[randi() % rare.size()]
+			Collection.owned[id] = mini(3, int(Collection.owned.get(id, 0)) + 1)
+			Collection.save()
+			Sfx.play("rare", -4.0)
+			Router.toast(Loc.t("The seller slides a sleeve across: %s. It is in your collection.") % str(CardData.get_card(id).get("name", "?")))
+		"food":
+			if Collection.dp < 20:
+				Router.toast("Not enough Duel Points")
+				return
+			Collection.dp -= 20
+			Collection.save()
+			Sfx.play("fizz", -8.0)
+			Router.toast(Loc.t("Six takoyaki, too hot to eat. You eat them anyway."))
+		"fortune":
+			Sfx.play("sparkle", -6.0)
+			Router.toast("\"" + Loc.t(FORTUNES[absi(hash(Time.get_date_string_from_system())) % FORTUNES.size()]) + "\"")
+		"quiz":
+			MoreRooms._quiz(scene)
+
+
+var _shift := ""
+var _day_people: Array = []      # go home when it gets dark
+
+
+## The crowd changes with the hour: half of the bystanders go home at night.
+func _night_shift() -> void:
+	if _shift == city.tod:
+		return
+	_shift = city.tod
+	var night := city.tod == "night"
+	for l in _lanterns:
+		if l is OmniLight3D:
+			(l as OmniLight3D).light_energy = 1.6 if city.tod != "day" else 0.0
+		elif l is MeshInstance3D:
+			((l as MeshInstance3D).material_override as StandardMaterial3D).emission_energy_multiplier = 3.2 if city.tod != "day" else 0.6
+	for i in _day_people.size():
+		var f: Node3D = _day_people[i]
+		if is_instance_valid(f):
+			f.visible = not night or i % 2 == 0
+	for r in _routines:
+		(r["fig"] as Node3D).visible = not night or _routines.find(r) % 2 == 0
 
 
 ## People with somewhere to be: each walks a loop of stops and does something at every one
@@ -724,6 +849,7 @@ func _save() -> void:
 # ------------------------------------------------------------------ Domino City
 
 func _decor_domino() -> void:
+	_market()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 404
 	# Along the kerbs: bins, planters, hydrants, bikes. Kept clear of the crossings.
@@ -848,6 +974,7 @@ func _decor_academy() -> void:
 
 func _process(delta: float) -> void:
 	_move_routines(delta)
+	_night_shift()
 	_t += delta
 	var pp: Vector3 = scene._player.global_position
 	var outside: bool = scene._inside == ""

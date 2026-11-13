@@ -57,6 +57,7 @@ var _chat_turn := {}           # npc id -> how many times you have talked this v
 var _light_t := 0.0
 var walkers_frozen := false       # the story's Hollows: nobody on the street moves
 var life: WorldLife                # street dressing, animals, benches, favors (Domino and the Academy)
+var weather: Weather
 var _jump := false
 var _hop_test := "--hop" in OS.get_cmdline_user_args()   # dev: jump now and then on a walk test
 var _squash := 0.0
@@ -102,6 +103,9 @@ func _ready() -> void:
 		life = WorldLife.new()
 		add_child(life)
 		life.setup(self)
+		weather = Weather.new()
+		add_child(weather)
+		weather.setup(self)
 	_update_fill()
 	if in_story:
 		if _counter:
@@ -760,6 +764,11 @@ func _build_kame_spots() -> void:
 func _travel(where: String) -> void:
 	if _overlay_open:
 		return
+	# Some places keep hours.
+	if where in ["burger", "ac_library"] and city.tod == "night" and story == null:
+		Router.toast(Loc.t("Closed for the night. It opens again in the morning."))
+		Sfx.play("error", -8.0)
+		return
 	_overlay_open = true
 	if life:
 		life.stand_up()
@@ -1324,6 +1333,12 @@ func _end_talk() -> void:
 			_dlg_fig.do_nod()
 	for c in _dlg_buttons.get_children():
 		c.queue_free()
+
+
+## Start a duel against someone who is not a talkable character (a street duel's winner).
+func duel_with(d: Dictionary) -> void:
+	_dlg_npc = d
+	_start_duel()
 
 
 func _start_duel() -> void:

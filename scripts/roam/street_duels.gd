@@ -110,6 +110,12 @@ func _build(s: Dictionary) -> void:
 	# Stop and watch.
 	var wp: Vector3 = root.to_global(Vector3(0, 0, 4.2))
 	scene._spots.append({"pos": Vector3(wp.x, 0, wp.z), "range": 2.0, "label": "Watch the duel", "action": func(): _watch(d)})
+	# Or step in: whoever is ahead will take you on with their own deck.
+	var cp: Vector3 = root.to_global(Vector3(0, 0, -4.2))
+	var site_id := "street_%d_%d" % [int((s["at"] as Vector3).x), int((s["at"] as Vector3).z)]
+	d["decks"] = s["decks"]
+	d["names"] = [str(s["a"]), str(s["b"])]
+	scene._spots.append({"pos": Vector3(cp.x, 0, cp.z), "range": 2.0, "label": "Challenge the winner", "action": func(): _challenge(d, site_id)})
 	_duels.append(d)
 
 
@@ -123,6 +129,15 @@ func _watch(d: Dictionary) -> void:
 	if scene._figure:
 		scene._figure.gesture("cheer", 0.25)
 		scene._figure._hold = 1.6
+
+
+func _challenge(d: Dictionary, site_id: String) -> void:
+	var who := 0 if int(d["lp"][0]) >= int(d["lp"][1]) else 1
+	var deck := str((d["decks"] as Array)[who])
+	Router.toast(Loc.t("The %s duelist turns to you: \"You want next? Fine. Let's go.\"") % (Loc.t("blue") if who == 0 else Loc.t("red")))
+	await get_tree().create_timer(1.0).timeout
+	scene.duel_with({"id": site_id, "char": "", "name": "Street Duelist", "model": str((d["names"] as Array)[who]),
+		"duel": {"deck": deck, "difficulty": 2, "intro": "Winner stays on!"}})
 
 
 func _zone_pos(i: int, k: int) -> Vector3:

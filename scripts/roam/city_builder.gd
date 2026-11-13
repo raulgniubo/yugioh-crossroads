@@ -588,6 +588,26 @@ func building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator) -> void:
 	var shops := [theme["accent"], theme["accent2"], Color("ff5a7a"), Color("5affc0"), Color("ffd060"), Color("7aa8ff")]
 	var m := window_material(tints[rng.randi() % tints.size()], rng.randf() * 100.0 + float(rng.randi() % 2), shops[rng.randi() % shops.size()])
 	box(size, pos + Vector3(0, size.y / 2.0, 0), m)
+	# Street level: a shop on each long side with a canvas awning and a lit name board.
+	var names := ["RAMEN", "BOOKS", "DUEL GEAR", "CAFE", "BAKERY", "RECORDS", "FLOWERS", "NOODLES", "TOYS", "TAILOR", "CAMERA", "TEA HOUSE", "BIKES", "CURRY", "COMICS", "HOBBY"]
+	var along_x := size.x >= size.z
+	for side: float in [-1.0, 1.0]:
+		var shop_col: Color = shops[rng.randi() % shops.size()]
+		var w := (size.x if along_x else size.z) * 0.72
+		var out := (size.z if along_x else size.x) / 2.0
+		var c := pos + (Vector3(0, 0, side * out) if along_x else Vector3(side * out, 0, 0))
+		var awn := box(Vector3(w, 0.1, 1.1) if along_x else Vector3(1.1, 0.1, w), c + (Vector3(0, 2.72, side * 0.5) if along_x else Vector3(side * 0.5, 2.72, 0)),
+			mat(shop_col.darkened(0.25), 0.85), false)
+		if along_x:
+			awn.rotation.x = side * 0.2
+		else:
+			awn.rotation.z = -side * 0.2
+		var board := box(Vector3(w * 0.7, 0.62, 0.1) if along_x else Vector3(0.1, 0.62, w * 0.7), c + (Vector3(0, 3.55, side * 0.08) if along_x else Vector3(side * 0.08, 3.55, 0)),
+			mat(Color(0.08, 0.09, 0.12), 0.6), false)
+		board.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var rot := (0.0 if side > 0.0 else PI) if along_x else (PI / 2.0 if side > 0.0 else -PI / 2.0)
+		var sign := neon_sign(names[rng.randi() % names.size()], c + (Vector3(0, 3.55, side * 0.15) if along_x else Vector3(side * 0.15, 3.55, 0)), shop_col.lightened(0.3), 44, rot, false)
+		sign.pixel_size = 0.008
 	# Roof: parapet, AC units, water tank or antenna
 	var roof := pos + Vector3(0, size.y, 0)
 	var trim := mat(Color(0.25, 0.25, 0.28), 0.8)
