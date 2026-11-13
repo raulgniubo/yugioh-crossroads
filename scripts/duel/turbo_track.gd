@@ -600,6 +600,49 @@ void fragment() {
 	return fig
 
 
+var _sweep: ShaderMaterial
+
+
+## Light from the street lamps sliding over the duel field as you ride under them, plus the
+## road's own glow pulsing along its length. Lay it just above the board.
+func lamp_sweep(size: Vector2, y := 0.03) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = size
+	mi.mesh = pm
+	var sh := Shader.new()
+	sh.code = """
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
+uniform float offset = 0.0;
+uniform vec3 warm : source_color = vec3(1.0, 0.9, 0.72);
+uniform vec3 glow_a : source_color = vec3(1.0, 0.54, 0.23);
+uniform vec3 glow_b : source_color = vec3(0.18, 0.89, 0.9);
+varying vec3 wp;
+void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	// A soft bar of lamp light every 16 m of road, slanted a little like a real shadow edge.
+	float x = wp.x + offset + wp.z * 0.35;
+	float lamp = pow(max(0.0, cos(x * 6.2832 / 16.0)), 10.0);
+	// Thin fast streaks along the lanes.
+	float lane = pow(max(0.0, cos((wp.x + offset * 1.0) * 6.2832 / 5.0 + wp.z * 3.0)), 40.0) * step(0.5, fract(wp.z * 0.37 + 0.2));
+	vec3 col = warm * lamp * 0.16 + mix(glow_b, glow_a, step(0.0, wp.z)) * lane * 0.1;
+	vec2 e = abs(UV - 0.5) * 2.0;
+	float fade = smoothstep(1.0, 0.75, max(e.x, e.y));
+	ALBEDO = col * fade;
+	ALPHA = clamp((lamp * 0.16 + lane * 0.1) * fade, 0.0, 1.0);
+}
+"""
+	_sweep = ShaderMaterial.new()
+	_sweep.shader = sh
+	_sweep.set_shader_parameter("glow_a", accent)
+	_sweep.set_shader_parameter("glow_b", accent2)
+	mi.material_override = _sweep
+	mi.position.y = y
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+
 var _fx := {}      # rider index -> {"surge": 1..0, "wobble": 1..0, "sparks": node}
 
 
@@ -687,6 +730,8 @@ func _process(delta: float) -> void:
 	speed = lerpf(speed, target_speed, clampf(delta * 1.5, 0.0, 1.0))
 	_offset = fmod(_offset + speed * delta, 1260.0)
 	_far_off += speed * delta
+	if _sweep:
+		_sweep.set_shader_parameter("offset", _far_off)
 	if _road:
 		_road.set_shader_parameter("offset", _offset)
 		_road.set_shader_parameter("blur", clampf(speed / 22.0, 0.8, 3.0))

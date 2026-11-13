@@ -60,6 +60,7 @@ func _ready() -> void:
 		track.name = "Track"
 		add_child(track)
 		track.build(theme["accent"], theme["accent2"])
+		add_child(track.lamp_sweep(Vector2(17.0, 11.0), 0.045))
 	else:
 		_build_arena()
 	_build_zones()

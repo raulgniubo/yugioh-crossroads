@@ -205,6 +205,7 @@ func set_portraits(a: String, b: String) -> void:
 
 
 ## A short line in a speech bubble next to the duelist. Doesn't block.
+var speed_fx: SpeedLines   # only in a Turbo Duel
 var _cut_at: Array = [0, 0]
 var _feed: VBoxContainer
 var _coach: PanelContainer
@@ -523,6 +524,10 @@ var _btn_speed: Button
 
 ## Show the two speedometers and the Speed World 2 button.
 func enable_turbo() -> void:
+	speed_fx = SpeedLines.new(Color(0.7, 0.92, 1.0))
+	speed_fx.amount = 0.12
+	add_child(speed_fx)
+	move_child(speed_fx, 0)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER

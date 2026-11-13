@@ -51,6 +51,10 @@ var _paused := false
 var _t := 0.0
 var _rng := RandomNumberGenerator.new()
 # race
+var _lines: SpeedLines
+var _pop_l: Label
+var _draft := 0.0             # seconds spent tucked in behind another rider
+var _flame: MeshInstance3D
 var _test_on := false         # --ride-test: an autopilot rides a race lap, then takes an exit
 var _test_z := 0.0
 var _race := ""               # "", "count", "on", "done"
@@ -276,6 +280,19 @@ func _spawn_thing(x: float) -> void:
 func _build_ui() -> void:
 	_ui = CanvasLayer.new()
 	add_child(_ui)
+	_lines = SpeedLines.new()
+	_ui.add_child(_lines)
+	_pop_l = UITheme.label("", 44, Color("5affd0"), UITheme.title_font())
+	_pop_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	_pop_l.add_theme_constant_override("outline_size", 10)
+	_pop_l.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_pop_l.offset_top = 210
+	_pop_l.offset_left = -500
+	_pop_l.offset_right = 500
+	_pop_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_pop_l.modulate.a = 0.0
+	_pop_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui.add_child(_pop_l)
 	var root := Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.theme = UITheme.build()
@@ -559,6 +576,7 @@ func _process(delta: float) -> void:
 						_boost = 0.0
 						_speed = minf(_speed, 18.0)
 						_z += signf(_z - float(th["z"]) + 0.01) * 2.4
+	_tricks(delta)
 	_place_camera(clampf(delta * 5.0, 0.0, 1.0))
 	# Prompts.
 	var at_start := fposmod(_s, LAP) > LAP - 90.0 or fposmod(_s, LAP) < 12.0
@@ -579,6 +597,66 @@ func _process(delta: float) -> void:
 		_info.text = Loc.t("Riders beaten %d / %d     Star Chips %d     Races won %d     Best lap %s") % [_beaten.size(), RIVALS.size(), _chips, _wins, _clock(_best) if _best > 0.0 else "--"]
 	_gauge.queue_redraw()
 	_radar.queue_redraw()
+
+
+## A short shout in the middle of the screen: SLIPSTREAM, NEAR MISS.
+func _pop(text: String, col: Color) -> void:
+	_pop_l.text = Loc.t(text)
+	_pop_l.add_theme_color_override("font_color", col)
+	_pop_l.modulate.a = 1.0
+	_pop_l.scale = Vector2(1.3, 1.3)
+	_pop_l.pivot_offset = Vector2(500, 30)
+	var tw := _pop_l.create_tween()
+	tw.tween_property(_pop_l, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(0.7)
+	tw.tween_property(_pop_l, "modulate:a", 0.0, 0.3)
+
+
+## Tucked in behind someone for a moment gives a free burst; so does shaving past a hauler.
+func _tricks(delta: float) -> void:
+	var drafting := false
+	if _race != "count" and _y < 0.1:
+		for r in _riders:
+			var dx := float(r["x"])
+			if dx > 2.0 and dx < 15.0 and absf(float(r["z"]) - _z) < 1.5:
+				drafting = true
+	_draft = _draft + delta if drafting else maxf(0.0, _draft - delta * 2.0)
+	if _draft > 1.3:
+		_draft = 0.0
+		_boost = maxf(_boost, 1.8)
+		_lines.kick(0.7)
+		Sfx.play("whoosh", -3.0, 1.4)
+		_pop("SLIPSTREAM!", Color("5affd0"))
+	for th in _things:
+		if th["kind"] != "hauler" or th.get("missed", false):
+			continue
+		var gap := absf(float(th["z"]) - _z)
+		if absf(float(th["x"])) < 3.0 and gap >= 1.9 and gap < 3.3 and _speed > 38.0 and _stun <= 0.0:
+			th["missed"] = true
+			_boost = maxf(_boost, 1.0)
+			Collection.dp += 5
+			_lines.kick(0.5)
+			Sfx.play("coin", -8.0, 1.4)
+			_pop("NEAR MISS  +5", Color("ffd23a"))
+	# Exhaust flame while a boost is burning.
+	if _flame == null and track.rider_node(0):
+		_flame = MeshInstance3D.new()
+		var pm := PrismMesh.new()
+		pm.size = Vector3(0.5, 2.2, 0.3)
+		_flame.mesh = pm
+		_flame.rotation.z = PI / 2.0
+		_flame.position = Vector3(-2.2, 0.55, 0)
+		var fm := StandardMaterial3D.new()
+		fm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		fm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		fm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		fm.albedo_color = Color(0.4, 1.0, 0.85, 0.9)
+		_flame.material_override = fm
+		track.rider_node(0).add_child(_flame)
+	if _flame:
+		_flame.visible = _boost > 0.0
+		_flame.scale = Vector3(1.0 + sin(_t * 50.0) * 0.2, 0.8 + sin(_t * 37.0) * 0.25 + minf(_boost, 1.0) * 0.4, 1.0)
+	_lines.amount = clampf((_speed - 32.0) / 30.0, 0.0, 0.8) + (0.25 if _boost > 0.0 else 0.0) + (0.15 if drafting else 0.0)
 
 
 func _clock(t: float) -> String:
@@ -662,6 +740,7 @@ func _finish_race() -> void:
 
 
 func _recycle(th: Dictionary) -> void:
+	th["missed"] = false
 	(th["node"] as Node3D).queue_free()
 	_things.erase(th)
 	_spawn_thing(_rng.randf_range(150.0, 260.0))

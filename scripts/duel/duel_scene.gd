@@ -558,6 +558,8 @@ func _play_event(ev: Dictionary) -> void:
 			Sfx.play("attack")
 			if board.track:
 				board.track.surge(p)
+				if hud.speed_fx:
+					hud.speed_fx.kick(0.5)
 			await board.anim_declare(p, ev["card"], ev["target"])
 		"battle":
 			get_tree().create_timer(Settings.t(0.12)).timeout.connect(func(): Sfx.play("impact"))
@@ -596,6 +598,10 @@ func _play_event(ev: Dictionary) -> void:
 			hud.set_speed(p, ev["speed"], ev["delta"])
 			if board.track:
 				board.track.target_speed = 22.0 + 3.2 * float(state.players[ME].speed + state.players[AI].speed) / 2.0
+				if hud.speed_fx:
+					hud.speed_fx.amount = 0.12 + 0.035 * float(state.players[ME].speed + state.players[AI].speed) / 2.0
+					if ev["delta"] > 0:
+						hud.speed_fx.kick(0.35)
 			Sfx.play("charge" if ev["delta"] > 0 else "error", -9.0, 1.0 + 0.05 * float(ev["speed"]))
 		"effect":
 			if ev["card"] != null:

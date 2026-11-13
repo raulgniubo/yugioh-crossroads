@@ -5,6 +5,24 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.17
+
+- Duel feel: face-up monsters now stand over their cards as holograms for as long as they are
+  on the field (they float, lean into attacks, flash when hit, dim in Defense and break into
+  pixels when they leave). Hits freeze the table for a blink. Life Points count down as the
+  damage number lands. The opening hands are dealt faster and summons are a touch quicker.
+  The hand makes room for the card you point at, playable cards sit higher, and a click has a
+  press-in. A small play-by-play next to the menu button lists what the opponent just did.
+- Story: the prologue and chapter 1 were restaged line by line with gestures, reactions from
+  the people listening, close-ups and low hero shots, silent beats, and a camera that slowly
+  pushes in during every line.
+- Worlds: Burger World, the Game Center, the KaibaCorp lobby and the dorms got windows with
+  daylight, wall art, plants, lamps, rugs and their own touches (a jukebox, neon tubes, a prize
+  wall, a holo globe). People with routines walk between stops in Domino and on the island.
+- Turbo: speed lines at the edge of the screen in Turbo Duels and on the highway, lamp light
+  sweeping over the duel field, slipstream boosts for tucking in behind a rider, near-miss
+  bonuses for shaving past a hauler, and an exhaust flame while boosting.
+
 ## What is in 0.16
 
 - Duels: anime cut-ins (a slanted band with the duelist's live portrait, speed lines and big
