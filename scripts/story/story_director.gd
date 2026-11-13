@@ -58,6 +58,8 @@ var _flash: ColorRect
 var _card: Control
 var _typing: Tween
 var _choice_box: VBoxContainer
+var _shot_mode := ""       # "", "close" or "low" for the line being spoken
+var _push := 0.0            # how far the camera has crept in during this line
 var _box_style: StyleBoxFlat
 var _name_tab: PanelContainer
 var _name_style: StyleBoxFlat
@@ -461,6 +463,8 @@ func _run() -> void:
 			else:
 				_start_duel(st["duel"])
 				return
+		elif st.has("act"):
+			await _act_step(st)
 		elif st.has("fx"):
 			await _fx(st)
 		elif st.has("tod"):
@@ -723,7 +727,19 @@ func _shot_for(speaker: String, wide: bool) -> void:
 	var look := Vector3(at.x, (f.global_position.y if is_spirit else 0.0) + eye, at.z)
 	# A little above eye level, looking slightly down: clears tills and other counter clutter.
 	var lift := 0.15 if is_spirit else 0.42
-	var want := Vector3(at.x, 0, at.z) + away * (dist + (0.4 if is_spirit else 1.1)) + right * 0.7 * _shot_side + Vector3(0, look.y + lift, 0)
+	var back := 0.4 if is_spirit else 1.1
+	var side_off := 0.7
+	if _shot_mode == "close" and not is_spirit:
+		# Right in on the face for the lines that matter.
+		back = 0.15
+		lift = 0.2
+		side_off = 0.45
+	elif _shot_mode == "low" and not is_spirit:
+		# From below, looking up: someone who thinks they own the street.
+		back = 0.7
+		lift = -0.75
+		side_off = 0.9
+	var want := Vector3(at.x, 0, at.z) + away * (dist + back) + right * side_off * _shot_side + Vector3(0, look.y + lift, 0)
 	# Never put the camera inside a wall or a shelf: pull it in until the view is clear.
 	var from := look + Vector3(0, lift, 0)
 	var q := PhysicsRayQueryParameters3D.create(from, want)
@@ -748,7 +764,8 @@ func _shot_for(speaker: String, wide: bool) -> void:
 	_cam_pos = want
 	# Aim at the chest, not the eyes: the face then sits in the upper half of the frame,
 	# clear of the dialogue box.
-	_cam_look = look - Vector3(0, 0.12 if is_spirit else 0.3, 0)
+	_cam_look = look - Vector3(0, 0.12 if is_spirit else (0.12 if _shot_mode in ["close", "low"] else 0.3), 0)
+	_push = 0.0
 	# Lumen keeps out of the lens: she hovers beside the conversation, on the far side.
 	_spirit_park = null
 	if _spirit and is_instance_valid(_spirit) and not is_spirit:
@@ -794,9 +811,25 @@ func _say(st: Dictionary) -> void:
 	var who := str(st.get("s", ""))
 	_face_each_other(who)
 	_speaker(who if not st.has("anim") else "")
-	_shot_for(who, st.get("cam", "") == "wide")
+	_shot_mode = str(st.get("cam", ""))
+	_shot_for(who, _shot_mode == "wide")
 	if st.has("fx"):
 		_do_flash_or_shake(str(st["fx"]))
+	if st.has("sfx") and not _skip:
+		Sfx.play(str(st["sfx"]), -5.0)
+	# "do": the speaker acts the line out. "react": others answer with a mark over their head
+	# a beat later, e.g. {"lumen": "!"}.
+	if st.has("do") and not _skip:
+		var df := _fig(who if who != "" else "player")
+		if df is RoamFigure:
+			(df as RoamFigure).gesture(str(st["do"]), 0.2)
+			(df as RoamFigure)._hold = 2.2
+	if st.has("react") and not _skip:
+		var marks: Dictionary = st["react"]
+		for rk in marks:
+			var rwho := str(rk)
+			var rmark := str(marks[rk])
+			get_tree().create_timer(0.45).timeout.connect(func(): _emote(rwho, rmark))
 	var info := Characters.get_char(who) if who != "" and who != "player" else {}
 	var text := Loc.t(str(st["t"])).replace("{player}", Profile.duelist_name)
 	_box.visible = true
@@ -1069,6 +1102,36 @@ func _do_flash_or_shake(kind: String) -> void:
 	elif kind == "shake":
 		_shake = 0.6
 		Sfx.play("impact", -6.0, 0.6)
+
+
+## A beat with no words: someone gestures, maybe with a mark over their head, and the camera
+## holds on them. {"act": "kaiba", "do": "wave", "emote": "!", "wait": 1.0, "cam": "close"}
+func _act_step(st: Dictionary) -> void:
+	if _skip:
+		return
+	var who := str(st["act"])
+	_cutscene(true)
+	_box.visible = false
+	_shot_mode = str(st.get("cam", ""))
+	_face_each_other(who)
+	_shot_for(who, _shot_mode == "wide")
+	var f := _fig(who)
+	if f is RoamFigure and st.has("do"):
+		var motion := str(st["do"])
+		if motion in ["victory", "lose", "cheer"]:
+			(f as RoamFigure).play_once("victory" if motion == "cheer" else motion)
+		else:
+			(f as RoamFigure).gesture(motion, 0.2)
+			(f as RoamFigure)._hold = float(st.get("wait", 1.1)) + 0.6
+	if st.has("emote"):
+		_emote(who, str(st["emote"]))
+	if st.has("sfx"):
+		Sfx.play(str(st["sfx"]), -5.0)
+	var left := float(st.get("wait", 1.1)) if not _auto else 0.3
+	while left > 0.0 and not _skip and not _advance_wanted:
+		await get_tree().process_frame
+		left -= get_process_delta_time()
+	_advance_wanted = false
 
 
 func _fx(st: Dictionary) -> void:
@@ -1374,6 +1437,11 @@ func _process(delta: float) -> void:
 	if _cut:
 		_shake = maxf(0.0, _shake - delta)
 		var w := clampf(delta * 4.5, 0.0, 1.0)
+		# No shot is ever quite still: the camera creeps in while a line is on screen.
+		if _box and _box.visible and _push < 0.4:
+			var step_in := delta * (0.075 if _shot_mode == "close" else 0.05)
+			_push += step_in
+			_cam_pos += (_cam_look - _cam_pos).normalized() * step_in
 		_cam.global_position = _cam.global_position.lerp(_cam_pos, w)
 		var jitter := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * _shake * 0.08
 		var cur := -_cam.global_transform.basis.z
