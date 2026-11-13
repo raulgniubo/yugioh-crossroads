@@ -171,6 +171,11 @@ func _start() -> void:
 				side_list.append(int(id))
 	var events := state.setup(my_list, opp_list, me_name, opp_name, first, -1,
 			CardData.extra_list(my_deck), CardData.extra_list(opp_deck))
+	# Grand Prix: your lap decides how many Speed Counters each rider starts with.
+	if state.turbo and cfg.has("speed_start"):
+		for p in 2:
+			state.players[p].speed = clampi(int((cfg["speed_start"] as Array)[p]), 0, DuelState.SPEED_MAX)
+			hud.set_speed(p, state.players[p].speed, 0)
 	# House rules from Free Duel: starting Life Points (and what a Gauntlet carried over).
 	_start_lp = [int(cfg.get("lp", DuelState.START_LP)), int(cfg.get("lp", DuelState.START_LP))]
 	if cfg.has("my_lp"):

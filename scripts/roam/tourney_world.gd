@@ -41,6 +41,9 @@ func setup(roam: Node, world: Node) -> void:
 			# Dev: jump to a stage. qualify | finals | won | lose | bracket
 			var what := a.trim_prefix("--tourney=")
 			var tid: String = Tournament.in_district(district)[0]
+			for a2 in OS.get_cmdline_user_args():
+				if a2.begins_with("--tourney-id="):
+					tid = a2.trim_prefix("--tourney-id=")
 			if what == "play":
 				Tournament.register(tid)
 				Tournament.start_finals(tid)
@@ -96,7 +99,7 @@ func _build_desk(id: String) -> void:
 	life._cyl(0.03, 0.03, 0.14, Vector3(0.8, 1.02, 0), gold, root, 8)
 	life._box(Vector3(0.22, 0.05, 0.22), Vector3(0.8, 0.96, 0), dark, root)
 	var sign := Label3D.new()
-	sign.text = Loc.t("TOURNAMENT DESK")
+	sign.text = Loc.t(str(d["name"])).to_upper() if d.has("requires") else Loc.t("TOURNAMENT DESK")
 	sign.font = UITheme.title_font()
 	sign.font_size = 60
 	sign.pixel_size = 0.006
@@ -106,7 +109,7 @@ func _build_desk(id: String) -> void:
 	root.add_child(sign)
 	life._solid(1.5, 1.0, at + Vector3(0, 0.5, 0))
 	var front: Vector3 = at + Basis(Vector3.UP, float(d["desk_yaw"])) * Vector3(0, 0, 1.7)
-	scene._spots.append({"pos": Vector3(front.x, 0, front.z), "range": 2.0, "label": "Tournament desk", "action": func(): _desk(id)})
+	scene._spots.append({"pos": Vector3(front.x, 0, front.z), "range": 2.0, "label": "Crossroads Cup desk" if d.has("requires") else "Tournament desk", "action": func(): _desk(id)})
 	# The finals crowd: people in a half ring, spotlights and a banner. Hidden until the finals.
 	var crowd := Node3D.new()
 	add_child(crowd)
@@ -200,7 +203,19 @@ func _desk(id: String) -> void:
 		"finals":
 			_show_bracket(id, {})
 		_:
+			var lack := Tournament.missing(id)
+			if not lack.is_empty():
+				Router.toast(Loc.t("Champions only. You still need: %s") % ", ".join(lack))
+				Sfx.play("error", -8.0)
+				return
 			Tournament.register(id)
+			if int(d["need"]) <= 0:
+				# No qualifying round: straight to the draw.
+				Tournament.start_finals(id)
+				Sfx.play("quest", -3.0)
+				_refresh()
+				_show_bracket(id, {})
+				return
 			Sfx.play("quest", -3.0)
 			Router.toast(Loc.t("You are entered in the %s!") % Loc.t(str(d["name"])))
 			get_tree().create_timer(2.6).timeout.connect(func(): Router.toast(Loc.t(str(d["blurb"]))))

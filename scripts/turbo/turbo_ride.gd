@@ -88,12 +88,31 @@ func _ready() -> void:
 		Router.roam["turbo_rival"] = ""
 	_build_world()
 	_build_ui()
+	# Back from a Grand Prix duel: settle the round and show the bracket.
+	Tournament.load_data()
+	if str(Router.roam.get("tourney", "")) == "turbo" and Router.story_result != "":
+		var gp_won := Router.story_result == "won"
+		Router.story_result = ""
+		Router.roam["tourney"] = ""
+		came_back = true
+		var res := Tournament.resolve("turbo", gp_won)
+		print("GP back won=", gp_won, " stage=", Tournament.st("turbo")["stage"], " next=", Tournament.my_match("turbo").get("name", "-"))
+		_gp_panel.call_deferred(res)
 	Music.play("turbo")
 	Sfx.ambience("engine", -14.0)
 	Pad.walk_mode = true
 	Pad.hint("Left stick  steer     RT  throttle     LT  brake     A  duel / exit     X  race     B  back")
 	if "--ride-test" in OS.get_cmdline_user_args():
 		_self_test.call_deferred()
+	if "--gp" in OS.get_cmdline_user_args() and not came_back:
+		_test_on = true
+		Engine.time_scale = 8.0
+		Tournament.register("turbo")
+		Tournament.start_finals("turbo")
+		_gp = true
+		_start_race.call_deferred()
+	elif "--gp" in OS.get_cmdline_user_args():
+		get_tree().create_timer(1.0).timeout.connect(get_tree().quit)
 	if not came_back:
 		Router.toast.call_deferred("The highway ring. Pull alongside a rider and press E to duel, or take an exit lane down to a city.")
 
@@ -588,7 +607,7 @@ func _process(delta: float) -> void:
 		var key := str(_riders[_near]["info"]["key"])
 		_prompt.text = Loc.t("E   Turbo Duel with %s") % str(Characters.get_char(key).get("name", key))
 	elif at_start and _race == "":
-		_prompt.text = Loc.t("R   Start a race: one lap against every rider")
+		_prompt.text = Loc.t("R   Start a race: one lap against every rider        G   Highway Grand Prix")
 	else:
 		_prompt.text = ""
 	if _race == "on":
@@ -733,6 +752,10 @@ func _finish_race() -> void:
 		Sfx.play("cheer", -4.0)
 	Music.play("victory" if pos == 1 else "turbo")
 	Router.toast(Loc.t("Lap %s.   +%d Duel Points") % [_clock(_race_t), prize])
+	if _gp:
+		_gp = false
+		_gp_duel(pos)
+		return
 	await get_tree().create_timer(3.5).timeout
 	_big.text = ""
 	_race = ""
@@ -746,6 +769,60 @@ func _recycle(th: Dictionary) -> void:
 	(th["node"] as Node3D).queue_free()
 	_things.erase(th)
 	_spawn_thing(_rng.randf_range(150.0, 260.0))
+
+
+# ------------------------------------------------------------------ Highway Grand Prix
+
+var _gp := false       # the lap being raced is a Grand Prix heat
+
+
+## The bracket, over the road. "Race" starts the heat for your next round.
+func _gp_panel(result := {}) -> void:
+	if _paused and result.is_empty():
+		return
+	_paused = true
+	var p := BracketPanel.new("turbo", result)
+	_ui.add_child(p)
+	p.closed.connect(func(): _paused = false)
+	p.play.connect(func():
+		p.queue_free()
+		_paused = false
+		_gp = true
+		_race = ""
+		_start_race())
+
+
+## G at the start line: enter the Grand Prix, or look at where you stand in it.
+func _gp_key() -> void:
+	var s := Tournament.st("turbo")
+	if str(s["stage"]) != "finals":
+		if _beaten.size() < 2 and not "--gp" in OS.get_cmdline_user_args():
+			Router.toast(Loc.t("The Grand Prix is for riders who have won 2 Turbo Duels on this road. You have %d.") % _beaten.size())
+			Sfx.play("error", -8.0)
+			return
+		Tournament.register("turbo")
+		Tournament.start_finals("turbo")
+		Sfx.play("quest", -3.0)
+		Router.toast(Loc.t(str(Tournament.DEFS["turbo"]["blurb"])))
+	_gp_panel()
+
+
+## The heat is over: your place becomes your starting Speed Counters, then the duel begins.
+func _gp_duel(place: int) -> void:
+	var start: int = [4, 3, 2][place - 1] if place <= 3 else 1
+	Router.toast(Loc.t("Heat finished: place %d. You start the duel with %d Speed Counters.") % [place, start])
+	await get_tree().create_timer(3.2).timeout
+	var cfg := Tournament.duel_config("turbo")
+	cfg["return_to"] = Router.RIDE
+	cfg["speed_start"] = [start, 2]
+	cfg["continue_label"] = Loc.t("Back to the bracket")
+	Router.roam["tourney"] = "turbo"
+	Router.roam["turbo_rival"] = ""
+	Router.roam["ride_s"] = 0.0
+	Router.match_state = {}
+	Router.duel_config = cfg
+	print("GP duel vs ", cfg["opponent_name"], " speed ", cfg["speed_start"])
+	Router.go(Router.DUEL)
 
 
 func _challenge() -> void:
@@ -834,6 +911,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		Pad.walk_mode = false
 		Router.roam.erase("ride_s")
 		Router.go(Router.MAIN_MENU)
+	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_G) or (pad and event.button_index == JOY_BUTTON_Y):
+		var gm := fposmod(_s, LAP)
+		if _race == "" and (gm > LAP - 90.0 or gm < 12.0):
+			_gp_key()
 	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R) or (pad and event.button_index == JOY_BUTTON_X):
 		var m := fposmod(_s, LAP)
 		if _race == "" and (m > LAP - 90.0 or m < 12.0):

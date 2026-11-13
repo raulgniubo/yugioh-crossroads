@@ -91,6 +91,10 @@ func _ready() -> void:
 		foot.add_child(go)
 		go.grab_focus.call_deferred()
 		note.text = Loc.t("Next: %s, %s Deck.") % [str(opp["name"]), CardData.deck_name(str(opp["deck"]))]
+		if Tournament.is_turbo(id):
+			note.text += "   " + Loc.t("This round is a Turbo Duel.")
+			if Tournament.DEFS[id].get("all_turbo", false):
+				go.text = "  " + Loc.t("Race, then duel %s") % str(opp["name"]) + "  "
 	else:
 		close.grab_focus.call_deferred()
 	await get_tree().process_frame

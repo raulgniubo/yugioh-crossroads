@@ -175,9 +175,9 @@ static func _home(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> v
 	for tid in Tournament.DEFS:
 		if Tournament.titles(str(tid)) <= 0:
 			continue
-		if k == 0:
-			city.box(Vector3(0.6, 0.7, 1.8), o + Vector3(-half.x + 0.4, 0.35, 2.4), wood)
-		var tp := o + Vector3(-half.x + 0.4, 0.7, 1.9 + k * 0.9)
+		# Each trophy stands on its own block of the cabinet.
+		city.box(Vector3(0.6, 0.7, 0.8), o + Vector3(-half.x + 0.4, 0.35, 0.4 + k * 0.8), wood)
+		var tp := o + Vector3(-half.x + 0.4, 0.7, 0.4 + k * 0.8)
 		var tcol: Color = Tournament.DEFS[tid]["color"]
 		city.box(Vector3(0.3, 0.1, 0.3), tp + Vector3(0, 0.05, 0), dark, false)
 		city.cyl(0.035, 0.05, 0.22, tp + Vector3(0, 0.21, 0), gold, null, 8)

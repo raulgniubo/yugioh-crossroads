@@ -18,6 +18,18 @@ const DEFS := {
 		"pool": [{"char": "jaden", "diff": 2}, {"char": "chazz", "diff": 2}, {"char": "alexis", "diff": 2}, {"char": "syrus", "diff": 1}, {"char": "zane", "diff": 3}, {"char": "aster", "diff": 3},
 			{"char": "street_duelist", "name": "Rin Akagi", "deck": "jaden", "diff": 1}, {"char": "duelist_m5", "name": "Dax Morrow", "deck": "syrus", "diff": 2},
 			{"char": "duelist_f1", "name": "Celeste Vane", "deck": "alexis", "diff": 3}]},
+	"turbo": {"name": "Highway Grand Prix", "district": "ride", "need": 0, "field": "highway", "color": Color("ff8a3a"), "all_turbo": true, "prize_dp": 2000,
+		"blurb": "Three rounds on the ring. Before each Turbo Duel you race a lap: the better you finish, the more Speed Counters you start with.",
+		"pool": [{"char": "yusei", "diff": 2}, {"char": "jack", "diff": 3}, {"char": "crow", "diff": 1}, {"char": "akiza", "diff": 2}, {"char": "kalin", "diff": 2},
+			{"char": "duelist_m9", "name": "Night Courier", "deck": "zane", "diff": 2}, {"char": "duelist_f1", "name": "Sector Queen", "deck": "mai", "diff": 2},
+			{"char": "street_duelist", "name": "Satellite Ace", "deck": "joey", "diff": 1}, {"char": "duelist_m5", "name": "Overpass Ghost", "deck": "bakura", "diff": 3}]},
+	"cup": {"name": "Crossroads Cup", "district": "domino", "need": 0, "field": "crossroads", "color": Color("c9a0ff"), "prize_dp": 4000,
+		"requires": ["domino", "academy", "turbo"], "turbo_rounds": [1],
+		"desk": Vector3(-22.0, 0.2, 57.4), "desk_yaw": PI,
+		"blurb": "Champions only. Duelists from every era, a Turbo Duel in the semifinal, and one title above all the others.",
+		"pool": [{"char": "yugi", "diff": 3}, {"char": "kaiba", "diff": 3}, {"char": "jaden", "diff": 3}, {"char": "zane", "diff": 3}, {"char": "yusei", "diff": 3},
+			{"char": "jack", "diff": 3}, {"char": "yuma", "diff": 3}, {"char": "kite", "diff": 3}, {"char": "shark", "diff": 3}, {"char": "aster", "diff": 3},
+			{"char": "marik", "diff": 3}, {"char": "pegasus", "diff": 3}]},
 }
 
 static var _loaded := false
@@ -52,6 +64,21 @@ static func in_district(district: String) -> Array:
 		if str(DEFS[id]["district"]) == district:
 			out.append(str(id))
 	return out
+
+
+## The trophies you still need before this tournament lets you in ([] when it is open).
+static func missing(id: String) -> Array:
+	var out: Array = []
+	for need in DEFS[id].get("requires", []):
+		if titles(str(need)) <= 0:
+			out.append(Loc.t(str(DEFS[need]["name"])))
+	return out
+
+
+## Is this round fought on runners?
+static func is_turbo(id: String) -> bool:
+	var d: Dictionary = DEFS[id]
+	return d.get("all_turbo", false) or (d.get("turbo_rounds", []) as Array).has(int(st(id)["round"]))
 
 
 static func titles(id: String) -> int:
@@ -140,7 +167,7 @@ static func duel_config(id: String) -> Dictionary:
 	return {"opponent": str(opp["char"]), "opponent_name": str(opp["name"]), "opponent_deck": str(opp["deck"]),
 		"player_deck": Collection.active_deck(), "player_char": "player", "difficulty": int(opp["diff"]),
 		"field": str(d["field"]), "story": true, "lose_ok": true, "return_to": Router.ROAM, "tourney": id,
-		"continue_label": Loc.t("Back to the bracket")}
+		"turbo": is_turbo(id), "continue_label": Loc.t("Back to the bracket")}
 
 
 ## Play out one round of the bracket. Matches without you are decided by who is stronger, with
