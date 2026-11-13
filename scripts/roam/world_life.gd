@@ -33,6 +33,14 @@ const ERRANDS := {
 			"ask": ["Oh no, oh no... I dropped my best card somewhere by the harbor benches.", "If you see it, could you bring it back? I'll make it worth your while!"],
 			"wait": ["Any luck? I dropped it down by the harbor, near the benches."],
 			"done": ["My card! You found it! Here, take this. You earned it."], "reward": 250},
+		{"id": "dom_card2", "giver": "kid", "thing": "a torn card sleeve", "at": Vector3(26.0, 0, 52.2),
+			"ask": ["Wait. Look at the corner. This isn't my card. Mine has a little star I drew on the sleeve. Somebody swapped it!", "The takoyaki man at the harbor market said someone was hanging around the stalls. Could you look there?"],
+			"wait": ["The harbor market, by the stalls. Anything that looks out of place."],
+			"done": ["A torn sleeve... with a star on it. That's mine! And there's paint on it. Blue paint."], "reward": 150},
+		{"id": "dom_card3", "giver": "kid", "thing": "the card with the star", "at": Vector3(24.5, 0, -24.5),
+			"ask": ["Blue paint like that is only in one place: the back alleys behind the cafe, where they painted the shutters.", "One more look? Please? It's the first rare card I ever pulled."],
+			"wait": ["The back alleys behind the cafe. Be careful back there."],
+			"done": ["THAT'S IT! That's the real one! You went all over the city for a kid's card.", "I'm going to be a duelist like you. Here. I saved up. Don't say no."], "reward": 600},
 		{"id": "dom_parcel", "giver": "vendor", "thing": "the parcel", "at": Vector3(-3.5, 0, -41.0),
 			"ask": ["A courier left my parcel of sleeves in the KaibaCorp plaza by mistake.", "My knees aren't what they were. Would you fetch it for me?"],
 			"wait": ["The parcel should still be in the plaza, up north by the tower."],
@@ -43,6 +51,10 @@ const ERRANDS := {
 			"ask": ["I left my deck box on the beach this morning and now I can't find it...", "If you're heading that way, could you look for it? Please?"],
 			"wait": ["It's a small blue box. I think I left it near the umbrellas on the beach."],
 			"done": ["You found it! Oh man, thank you. I thought I'd have to tell my brother. Take this!"], "reward": 250},
+		{"id": "ac_deckbox2", "giver": "syrus", "thing": "Syrus's missing card", "at": Vector3(-33.0, 0, 36.6),
+			"ask": ["The box is back, but my best card isn't in it. I think... I think I know where it is.", "I went to the old dorm path last night to practice where nobody could watch. I got scared and ran. Could you look by the lanterns?"],
+			"wait": ["The lantern path into the old woods. I'm not going back there in the dark."],
+			"done": ["You found it. You went out there for me.", "My brother says a duelist is only as good as the friends who show up. I think I finally get it. Thank you."], "reward": 500},
 		{"id": "ac_notes", "giver": "professor", "thing": "the lecture notes", "at": Vector3(41.5, 0, -34.0),
 			"ask": ["I was reading at the lookout and the wind took my lecture notes right out of my hands.", "Would you be so kind as to gather them up?"],
 			"wait": ["The lookout is past the practice fields, at the north-east cliff."],
@@ -544,12 +556,21 @@ func _market() -> void:
 const RIVALS := [
 	{"id": "rival_red", "char": "", "model": "street_duelist", "name": "Rin Akagi", "color": Color("ff6b6b"), "dorm": "red", "pos": Vector3(-20.0, 0.1, 9.5), "face": 2.2,
 		"lines": ["Rin Akagi, Red dorm. Everybody says Red is the bottom. I say the bottom is where you push off from.", "You look like you can take a hit. Let's find out."],
-		"duel": {"deck": "jaden", "difficulty": 1, "intro": "No holding back!"}},
+		"after": [["You beat me. Fair and square. I went back to the dorm and rebuilt my whole deck that night.", "Nobody ever bothered to beat me properly before. They just looked down. Rematch?"],
+			["My little brother thinks you're a legend now. Thanks for that. I have to hear about it at dinner.", "One more. I've got a new trick."],
+			["When you move up a dorm, don't forget where the floor is. Some of us like it down here.", "Duel me any time, {player}."]],
+		"duel": {"deck": "jaden", "difficulty": 2, "intro": "No holding back!"}},
 	{"id": "rival_yellow", "char": "", "model": "duelist_m5", "name": "Dax Morrow", "color": Color("ffd166"), "dorm": "yellow", "pos": Vector3(26.0, 0.1, -1.0), "face": -1.9,
 		"lines": ["Dax Morrow. I keep a notebook on every duelist in this school. Your page is still blank.", "Give me something to write down."],
+		"after": [["Page one: 'Does not play the obvious card.' Page two is blank again. I don't like blank pages.", "Again. For the notebook."],
+			["I showed my notes on you to the professor. He asked if he could keep them. I said no.", "I have a theory about your opening hands. Test it with me."],
+			["Last page: 'Beat me three ways. Never the same way twice.' I'm starting a second notebook.", "Whenever you're ready."]],
 		"duel": {"deck": "syrus", "difficulty": 2, "intro": "Page one. Begin."}},
 	{"id": "rival_blue", "char": "", "model": "duelist_f1", "name": "Celeste Vane", "color": Color("7cc4ff"), "dorm": "blue", "pos": Vector3(-26.4, 0.1, -9.0), "face": 0.9,
 		"lines": ["Celeste Vane. Top of Blue, three terms running. People stop talking when I walk in. You didn't.", "Interesting. Show me why."],
+		"after": [["...I lost. I have not said those words out loud since first year. They taste terrible.", "Again. Now."],
+			["I told the Blue dorm it was a fluke. Nobody believed me. I'm not sure I did either.", "Humor me."],
+			["You know what the worst part is? It's more fun now. Don't tell anyone I said that.", "Shall we?"]],
 		"duel": {"deck": "alexis", "difficulty": 3, "intro": "Do try to keep up."}},
 ]
 var _ghost: Node3D
@@ -582,7 +603,7 @@ func _island_extras() -> void:
 		_ghost.add_child(gl2)
 	# Rolling hills behind the dorms and along the north shore (scenery: nobody walks there).
 	var hill := city.grass_material(1.3)
-	for h in [[Vector3(-52, 0, -30), 13.0, 6.0], [Vector3(-38, 0, -44), 10.0, 4.5], [Vector3(46, 0, -40), 12.0, 5.5], [Vector3(56, 0, -22), 9.0, 4.0], [Vector3(58, 0, 14), 8.0, 3.0], [Vector3(-58, 0, 6), 9.0, 3.6]]:
+	for h in [[Vector3(-52, 0, -30), 13.0, 6.0], [Vector3(-38, 0, -44), 10.0, 4.5], [Vector3(60, 0, -34), 7.0, 3.6], [Vector3(56, 0, -22), 9.0, 4.0], [Vector3(58, 0, 14), 8.0, 3.0], [Vector3(-58, 0, 6), 9.0, 3.6]]:
 		var c: Vector3 = h[0]
 		if Vector2(c.x, c.z).length() > 66.0:
 			c = c.normalized() * 66.0
@@ -592,7 +613,7 @@ func _island_extras() -> void:
 			city.tree(c + Vector3(cos(k * 2.1) * float(h[1]) * 0.75, 0, sin(k * 2.1) * float(h[1]) * 0.75), 1.1 + k * 0.15)
 	# A lantern path into the old woods.
 	for k in 7:
-		var lp := Vector3(-22.0 - k * 3.3, 0.1, 31.0 + k * 1.7)
+		var lp := Vector3(-30.0 - k * 2.4, 0.1, 36.0 + k * 0.9)
 		_box(Vector3(1.6, 0.05, 1.0), lp + Vector3(0, 0.02, 0), _m(Color(0.6, 0.56, 0.48), 0.95))
 		if k % 2 == 0:
 			_cyl(0.05, 0.07, 1.3, lp + Vector3(0.9, 0.65, 0.7), _m(Color(0.2, 0.16, 0.12), 0.8), null, 6)
@@ -884,10 +905,14 @@ func _drink() -> void:
 # ------------------------------------------------------------------ favors
 
 func _errand_for(npc_id: String) -> Dictionary:
+	# Favors can run in a chain: the same person asks for the next thing once the last is done.
+	var last := {}
 	for e in ERRANDS.get(key, []):
 		if e["giver"] == npc_id:
-			return e
-	return {}
+			last = e
+			if int(errands.get(e["id"], 0)) < 3:
+				return e
+	return last
 
 
 func _build_errands() -> void:

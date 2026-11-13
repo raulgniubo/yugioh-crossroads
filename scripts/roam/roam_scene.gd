@@ -1079,6 +1079,12 @@ func _talk() -> void:
 		var turn: int = int(_chat_turn.get(d["id"], 0))
 		say = topics[turn % topics.size()]
 		_chat_turn[d["id"]] = turn + 1
+	# People with a story to them talk differently once you have beaten them.
+	if d.has("after") and _beaten.has(d["id"]):
+		var acts: Array = d["after"]
+		var seen: int = int(_chat_turn.get(str(d["id"]) + "_after", 0))
+		say = acts[mini(seen, acts.size() - 1)]
+		_chat_turn[str(d["id"]) + "_after"] = seen + 1
 	var favor: Array = life.errand_talk(d) if life and story == null else []
 	if not favor.is_empty():
 		say = favor
@@ -1087,7 +1093,9 @@ func _talk() -> void:
 		_dlg_lines.append(Loc.t(str(l)).replace("{player}", Profile.duelist_name))
 	if d.has("duel") and favor.is_empty():
 		var duel: Dictionary = d["duel"]
-		if _beaten.has(d["id"]):
+		if _beaten.has(d["id"]) and d.has("after"):
+			pass
+		elif _beaten.has(d["id"]):
 			_dlg_lines.append("Rematch? I won't go easy on you this time.")
 		else:
 			_dlg_lines.append("So? Are we dueling or what?")

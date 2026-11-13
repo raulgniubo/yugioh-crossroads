@@ -319,6 +319,12 @@ func begin_standby() -> Array:
 	if turbo and turn > 1:
 		for q in [current, opponent(current)]:
 			events.append_array(_speed(q, 1))
+		# Slipstream: whoever is behind by 2000 or more tucks in and gains one extra.
+		var gap: int = players[current].lp - players[opponent(current)].lp
+		if absi(gap) >= 2000:
+			var behind := current if gap < 0 else opponent(current)
+			events.append_array(_speed(behind, 1))
+			events.append({"type": "effect", "player": behind, "card": null, "text": Loc.t("Slipstream: +1 Speed Counter for the rider behind")})
 	events.append_array(EffectRunner.standby(self, current))
 	if not is_over():
 		events.append_array(SpellRules.standby(self, current))

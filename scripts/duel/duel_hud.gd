@@ -205,6 +205,7 @@ func set_portraits(a: String, b: String) -> void:
 
 
 ## A short line in a speech bubble next to the duelist. Doesn't block.
+var ask_why := ""             # shown under the next response prompt, then cleared
 var gauntlet_next := false
 var gauntlet_label := ""
 var speed_fx: SpeedLines   # only in a Turbo Duel
@@ -1165,6 +1166,13 @@ func ask_response(text: String, options: Array, button := "Activate", cancel := 
 	root.add_child(v)
 	var t := UITheme.label(text, 30, Color.WHITE, UITheme.title_font())
 	v.add_child(t)
+	if ask_why != "":
+		# One plain line on why the duel stopped and what your choice does.
+		var why := UITheme.label(ask_why, 19, UITheme.TEXT_DIM)
+		why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		why.custom_minimum_size = Vector2(620, 0)
+		v.add_child(why)
+		ask_why = ""
 	# Up to nine across; long lists (a Deck search) wrap and scroll.
 	var row := GridContainer.new()
 	row.columns = clampi(options.size(), 1, 9)

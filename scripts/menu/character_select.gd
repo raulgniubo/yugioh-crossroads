@@ -23,6 +23,8 @@ var _their_deck := ""
 var _lp := 8000
 var _first := -1           # -1 play the opening game, 0 me, 1 them
 var _gauntlet := false
+var _run := 0               # 0 single, 1 gauntlet of three, 2 survival
+var _hand_n := 5
 var _match_btn: CheckButton
 var _turbo_btn: CheckButton
 var _my_deck := "yugi"
@@ -676,14 +678,17 @@ func _build_setup() -> void:
 	var lp_b := Button.new()
 	var first_b := Button.new()
 	var g_b := Button.new()
+	var hand_b := Button.new()
 	var paint := func():
 		lp_b.text = Loc.t("%d Life Points") % _lp
 		first_b.text = Loc.t(["Rock-paper-scissors", "I go first", "They go first"][_first + 1])
-		g_b.text = Loc.t("Gauntlet: 3 in a row") if _gauntlet else Loc.t("Gauntlet off")
-		g_b.add_theme_color_override("font_color", UITheme.GOLD if _gauntlet else UITheme.TEXT)
-	for rb in [lp_b, first_b, g_b]:
+		g_b.text = Loc.t(["Single opponent", "Gauntlet: 3 in a row", "Survival: endless"][_run])
+		g_b.add_theme_color_override("font_color", UITheme.GOLD if _run > 0 else UITheme.TEXT)
+		hand_b.text = Loc.t("Hand of %d") % _hand_n
+	for rb in [lp_b, hand_b, first_b, g_b]:
 		rb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		rb.add_theme_font_size_override("font_size", 16)
+		rb.add_theme_font_size_override("font_size", 14)
+		rb.clip_text = true
 		rrow.add_child(rb)
 	lp_b.tooltip_text = "Starting Life Points for both duelists."
 	first_b.tooltip_text = "Who takes the first turn."
@@ -694,8 +699,14 @@ func _build_setup() -> void:
 	first_b.pressed.connect(func():
 		_first = (_first + 2) % 3 - 1
 		paint.call())
+	g_b.tooltip_text = "Single opponent, a Gauntlet of three in a row, or Survival: opponents keep coming until you lose. Your Life Points carry over."
+	hand_b.tooltip_text = "How many cards each duelist starts with."
+	hand_b.pressed.connect(func():
+		_hand_n = {5: 6, 6: 7, 7: 4, 4: 5}[_hand_n]
+		paint.call())
 	g_b.pressed.connect(func():
-		_gauntlet = not _gauntlet
+		_run = (_run + 1) % 3
+		_gauntlet = _run > 0
 		paint.call())
 	paint.call()
 	v.add_child(UITheme.label("ARENA", 16, UITheme.ACCENT, UITheme.semi_font()))
@@ -860,7 +871,7 @@ func _start_duel() -> void:
 	Router.match_state = {"wins": [0, 0], "game": 1, "last_loser": -1,
 		"orig": {"main": Collection.main.duplicate(), "side": Collection.side.duplicate()}} if is_match else {}
 	var cfg := {"player_char": _me, "opponent": _opp, "player_deck": _my_deck, "difficulty": _difficulty, "field": _field, "match": is_match and not _gauntlet,
-		"turbo": _turbo_btn != null and _turbo_btn.button_pressed, "lp": _lp}
+		"turbo": _turbo_btn != null and _turbo_btn.button_pressed, "lp": _lp, "hand": _hand_n}
 	if _their_deck != "":
 		cfg["opponent_deck"] = _their_deck
 	if _first >= 0:
@@ -873,7 +884,7 @@ func _start_duel() -> void:
 				others.append(str(k))
 		others.shuffle()
 		var run: Array = [_opp] + others.slice(0, 2)
-		cfg["gauntlet"] = {"all": run.duplicate(), "left": run.slice(1), "stage": 1, "total": run.size()}
+		cfg["gauntlet"] = {"all": run.duplicate(), "left": run.slice(1), "stage": 1, "total": run.size(), "endless": _run == 2}
 		Router.match_state = {}
 	start.emit(cfg)
 

@@ -157,7 +157,8 @@ func _start() -> void:
 	state.manual = [not _autoplay, false]
 	hud.auto_answer = _human_test
 	var opp_list := CardData.legend_deck(opp_deck) if _ai_level >= 2 else CardData.deck_list(opp_deck)
-	state.bonus_cards = [0, 1 if _ai_level >= 2 else 0]
+	var extra_hand := int(cfg.get("hand", 5)) - 5
+	state.bonus_cards = [extra_hand, extra_hand + (1 if _ai_level >= 2 else 0)]
 	board.state_ref = state
 	var events := state.setup(CardData.deck_list(my_deck), opp_list, me_name, opp_name, first, -1,
 			CardData.extra_list(my_deck), CardData.extra_list(opp_deck))
@@ -423,6 +424,14 @@ func _finish() -> void:
 	hud.say(AI, Characters.line(_opp_key, "lose" if won else "win"))
 	# The winner gets the camera.
 	var champ := ME if won else AI
+	# The loser drops their head first, then the winner gets the camera and celebrates.
+	if not tied and not board.track:
+		var loser := AI if won else ME
+		var lf = board._duelists.get(loser)
+		if lf is RoamFigure:
+			(lf as RoamFigure).play_once("lose")
+		board.duelist_shot(loser, 0.5, false, 0.8)
+		await get_tree().create_timer(1.3).timeout
 	board.duelist_shot(champ, 0.9, not tied, 1.0)
 	await get_tree().create_timer(1.5).timeout
 	board.duelist_orbit(champ)
@@ -449,14 +458,27 @@ Match won: +%d Duel Points") % 200
 	var g_next := false
 	if not g.is_empty() and not _autoplay:
 		var left: Array = g.get("left", [])
-		if won and not left.is_empty():
+		if g.get("endless", false):
+			# Survival: there is always someone next, until you lose.
+			g_next = won
+			var best := int(Collection.record.get("survival_best", 0))
+			var streak := int(g.get("stage", 1)) - (0 if won else 1)
+			if streak > best:
+				Collection.record["survival_best"] = streak
+				Collection.save()
+			if won:
+				Collection.dp += 60 * int(g.get("stage", 1))
+				Collection.save()
+			else:
+				Router.toast(Loc.t("Survival over: %d wins in a row.  Best: %d") % [streak, maxi(best, streak)])
+		elif won and not left.is_empty():
 			g_next = true
 		elif won:
 			Collection.dp += 400
 			Collection.save()
 			Router.toast(Loc.t("Gauntlet cleared!  +400 Duel Points"))
 	hud.gauntlet_next = g_next
-	hud.gauntlet_label = (Loc.t("GAUNTLET  ·  duel %d of %d") % [int(g.get("stage", 1)), int(g.get("total", 3))]) if not g.is_empty() else ""
+	hud.gauntlet_label = "" if g.is_empty() else ((Loc.t("SURVIVAL  ·  duel %d") % int(g.get("stage", 1))) if g.get("endless", false) else (Loc.t("GAUNTLET  ·  duel %d of %d") % [int(g.get("stage", 1)), int(g.get("total", 3))]))
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--result-action="):
 			# Dev: press one of the result buttons by itself.
@@ -1327,6 +1349,13 @@ func _window(first: int, window: String, subject, prompt: String) -> void:
 					text = Loc.t("Chain to %s%s?") % [state.chain.back()["card"].cname(), "'s effect" if state.chain.back()["kind"] == "fx" else ""]
 				elif window == "battle_start":
 					text = "The Battle Phase begins. Respond?"
+				hud.ask_why = Loc.t({
+					"attack": "Your opponent declared an attack. A Trap or Quick-Play Spell can answer it before it lands. Pick a card to use it, or let the attack go through.",
+					"summon": "A monster was just summoned. This is your chance to answer the summon with a Trap. Pick a card to use it, or let it stand.",
+					"chain": "A card or effect was just activated. You can chain one of yours on top of it: the last card played resolves first.",
+					"battle_start": "Cards that work at the start of the Battle Phase can be used now.",
+					"phase": "You have a card that can be used in this phase. Use it now or keep it for later.",
+				}.get(win, "You have a card that can respond right now. Use it or keep it."))
 				choice = await hud.ask_response(text, opts)
 		if choice != null:
 			if choice.is_monster() or (choice.cname() == "Kuriboh" and state.players[who].hand.has(choice)):
@@ -1481,6 +1510,13 @@ func _on_pause_action(action: String) -> void:
 			var gc: Dictionary = Router.duel_config
 			var gg: Dictionary = gc["gauntlet"]
 			var rest: Array = gg["left"]
+			if rest.is_empty() and gg.get("endless", false):
+				# Survival: draw the next opponent from everyone, and they get tougher as you go.
+				for k in Characters.ORDER:
+					if str(k) != str(gc.get("opponent", "")) and CardData.has_deck(str(Characters.DATA[k].get("deck", ""))):
+						rest.append(str(k))
+				rest.shuffle()
+				gc["difficulty"] = clampi(1 + int(gg.get("stage", 1)) / 3, 1, 3)
 			if rest.is_empty():
 				return
 			gc["opponent"] = rest.pop_front()
