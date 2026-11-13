@@ -5,6 +5,26 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.18
+
+- Academy uniforms: the white blocks on jackets are gone; trim is thin piping now.
+- Duels: attacks land by monster type (blade slash, claws, jaws, beam, spell blast, crushing
+  blow); well-known Spells and Traps have their own look on the field (lightning, a black hole,
+  a barrier, falling swords, a revival pillar, cylinders, a storm); a heavy hit cuts to the
+  duelist who took it; opponents play to their personality (reckless, careful or by the book)
+  and each personality has its own duel theme; ace summons get a stinger.
+- Free Duel: starting Life Points (4000 / 8000 / 16000), who goes first, the opponent's deck,
+  your win-loss record against each duelist, their deck unlocked after three wins, and a
+  Gauntlet of three duelists in a row on one pool of Life Points.
+- Turbo Duels: a lower, wider camera that keeps the road and the far rider in view, engine sound
+  that climbs with speed, and each rider's runner in their color.
+- Domino City: a harbor market (rare singles, takoyaki, fortunes, duel puzzles) with lanterns
+  at night; named shops with awnings on the plain buildings; rain on some visits; fewer people
+  out at night and Burger World closes; you can challenge the winner of a street duel.
+- Duel Academy: a lecture hall where you take today's class duel or exam in person; three named
+  rivals, one per dorm; a ghost at the old dorm who only appears at night; hills, a lantern path
+  to the old woods and a livelier beach with a drinks hut.
+
 ## What is in 0.17
 
 - Duel feel: face-up monsters now stand over their cards as holograms for as long as they are

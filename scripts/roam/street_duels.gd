@@ -134,7 +134,7 @@ func _watch(d: Dictionary) -> void:
 func _challenge(d: Dictionary, site_id: String) -> void:
 	var who := 0 if int(d["lp"][0]) >= int(d["lp"][1]) else 1
 	var deck := str((d["decks"] as Array)[who])
-	Router.toast(Loc.t("The %s duelist turns to you: \"You want next? Fine. Let's go.\"") % (Loc.t("blue") if who == 0 else Loc.t("red")))
+	Router.toast(Loc.t("The %s duelist turns to you. You want next? Fine. Let's go.") % (Loc.t("blue") if who == 0 else Loc.t("red")))
 	await get_tree().create_timer(1.0).timeout
 	scene.duel_with({"id": site_id, "char": "", "name": "Street Duelist", "model": str((d["names"] as Array)[who]),
 		"duel": {"deck": deck, "difficulty": 2, "intro": "Winner stays on!"}})

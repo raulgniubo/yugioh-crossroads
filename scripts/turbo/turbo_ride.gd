@@ -830,7 +830,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		_paused = true
 		Sfx.ambience_pitch(1.0)
-	Sfx.ambience("")
+		Sfx.ambience("")
 		Pad.walk_mode = false
 		Router.roam.erase("ride_s")
 		Router.go(Router.MAIN_MENU)

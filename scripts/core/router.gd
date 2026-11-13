@@ -113,6 +113,12 @@ func _debug_args() -> void:
 			duel_config["opponent"] = a.substr(6)
 		elif a == "--turbo":
 			duel_config["turbo"] = true
+		elif a.begins_with("--lp="):
+			duel_config["lp"] = int(a.substr(5))
+		elif a.begins_with("--oppdeck="):
+			duel_config["opponent_deck"] = a.substr(10)
+		elif a == "--gauntlet":
+			duel_config["gauntlet"] = {"all": ["kaiba", "joey", "mai"], "left": ["joey", "mai"], "stage": 1, "total": 3}
 		elif a == "--ride":
 			go(RIDE)
 		elif a.begins_with("--story="):
