@@ -74,7 +74,7 @@ func _ready() -> void:
 	left_scroll.add_child(_list)
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.062, 0.113, 0.294, 0.92), 20, Color(UITheme.ACCENT, 0.25)))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.052, 0.0824, 0.156, 0.92), 20, Color(UITheme.ACCENT, 0.25)))
 	body.add_child(panel)
 	var pm := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
@@ -195,7 +195,7 @@ func _add_row(entry: Dictionary, title: String, sub: String, col: Color, dim: bo
 	var thumb := TextureRect.new()
 	thumb.texture = Cards.get_face(ace) if ace > 0 else Cards.get_back()
 	thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	thumb.stretch_mode = TextureRect.STRETCH_SCALE
+	thumb.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	thumb.custom_minimum_size = Vector2(44, 64)
 	thumb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	thumb.pivot_offset = Vector2(22, 32)
@@ -351,12 +351,12 @@ func _tile(id: int, n: int) -> Control:
 	tr.texture = Cards.get_face(id)
 	tr.custom_minimum_size = Vector2(118, 172)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tr.stretch_mode = TextureRect.STRETCH_SCALE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.tooltip_text = str(CardData.get_card(id).get("name", ""))
 	Foil.apply(tr, CardData.rarity(id))
 	if n > 1:
 		var badge := PanelContainer.new()
-		var bsb := UITheme.panel_box(Color(0.046, 0.091, 0.268, 0.94), 9, Color(UITheme.GOLD, 0.9))
+		var bsb := UITheme.panel_box(Color(0.032, 0.058, 0.125, 0.94), 9, Color(UITheme.GOLD, 0.9))
 		bsb.content_margin_left = 7
 		bsb.content_margin_right = 7
 		bsb.content_margin_top = 0

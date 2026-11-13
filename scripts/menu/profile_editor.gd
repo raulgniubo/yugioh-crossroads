@@ -11,8 +11,10 @@ var _name_edit: LineEdit
 var _vp: SubViewport
 var _stage: Node3D
 var _figure: RoamFigure
+const FRONT := 0.35
 var _spin := 0.35
-var _auto_spin := true
+var _auto_spin := false
+var _idle_t := 0.0
 var _drag := false
 var _rows := {}          # key -> [buttons]
 var _hair_row: HBoxContainer
@@ -38,7 +40,7 @@ func _ready() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.062, 0.118, 0.302, 0.97), 26, Color(UITheme.ACCENT, 0.3)))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.052, 0.088, 0.165, 0.97), 26, Color(UITheme.ACCENT, 0.3)))
 	center.add_child(panel)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 36)
@@ -153,8 +155,8 @@ func _ready() -> void:
 		sbn.toggle_mode = true
 		sbn.button_pressed = sid == Settings.sleeve
 		sbn.tooltip_text = Loc.t(str(e["name"]))
-		sbn.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.054, 0.0996, 0.277, 0.9), Color(1, 1, 1, 0.12), 10))
-		var son := UITheme.button_box(Color(0.11, 0.118, 0.353, 0.95), Color("ffd98a"), 10)
+		sbn.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.042, 0.0676, 0.136, 0.9), Color(1, 1, 1, 0.12), 10))
+		var son := UITheme.button_box(Color(0.112, 0.088, 0.225, 0.95), Color("ffd98a"), 10)
 		son.set_border_width_all(3)
 		sbn.add_theme_stylebox_override("pressed", son)
 		var st := TextureRect.new()
@@ -217,8 +219,7 @@ func _ready() -> void:
 func _build_preview() -> Control:
 	var frame := PanelContainer.new()
 	frame.custom_minimum_size = Vector2(520, 760)
-	# A bright stage behind the figure, so the duelist is the lightest thing on the card.
-	var fsb := UITheme.panel_box(Color(0.14, 0.4, 0.9, 1), 22, Color(1, 1, 1, 0.1))
+	var fsb := UITheme.panel_box(Color(0.06, 0.09, 0.19, 1), 14, Color(1, 1, 1, 0.1))
 	fsb.set_content_margin_all(0)
 	frame.add_theme_stylebox_override("panel", fsb)
 	var svc := SubViewportContainer.new()
@@ -230,7 +231,7 @@ func _build_preview() -> Control:
 	_vp = SubViewport.new()
 	_vp.own_world_3d = true
 	_vp.transparent_bg = true
-	_vp.msaa_3d = Viewport.MSAA_4X
+	_vp.msaa_3d = Settings.small_view_msaa()
 	svc.add_child(_vp)
 	_stage = Node3D.new()
 	_vp.add_child(_stage)
@@ -294,13 +295,18 @@ func _on_preview_input(ev: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
-	if _auto_spin:
-		_spin += delta * 0.45
-	# The right stick turns the preview too.
+	# The figure faces you and just breathes. Drag (or the right stick) turns it; let go and
+	# it eases back to face the front again.
 	var rx := Input.get_joy_axis(0, JOY_AXIS_RIGHT_X)
 	if absf(rx) > 0.25:
-		_auto_spin = false
 		_spin += rx * delta * 2.5
+		_idle_t = 0.0
+	elif _drag:
+		_idle_t = 0.0
+	else:
+		_idle_t += delta
+		if _idle_t > 1.2:
+			_spin = lerp_angle(_spin, FRONT, clampf(delta * 3.0, 0.0, 1.0))
 	if _figure and is_instance_valid(_figure):
 		_figure.rotation.y = _spin
 

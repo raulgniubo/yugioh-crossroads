@@ -411,6 +411,8 @@ func _build_player() -> void:
 	_pivot.add_child(_arm)
 	_cam = Camera3D.new()
 	_cam.fov = 60
+	_cam.near = 0.12
+	_cam.far = 1200.0
 	_arm.add_child(_cam)
 	_cam.current = true
 
@@ -615,6 +617,8 @@ func _add_npc(d: Dictionary, offset: Vector3) -> void:
 		f.watch = _player
 		f.stance = str(d.get("pose", "browse" if d.has("wander") else "stand"))
 		f.greets = not d.get("aloof", false)
+		if f.stance == "sit" and d.get("seat", true):
+			f.seat_if_needed()
 		if d.has("dorm"):
 			f.wear_uniform(Avatars.DORM_COLORS[d["dorm"]])
 		var body: PhysicsBody3D = AnimatableBody3D.new() if d.has("wander") else StaticBody3D.new()
@@ -1162,7 +1166,11 @@ func _talk() -> void:
 	if _dlg_fig:
 		_dlg_fig.speak(true)
 	_dlg_name.text = _npc_name(d).to_upper()
-	_dlg_tag.bg_color = _npc_color(d).darkened(0.05) if _npc_color(d).get_luminance() < 0.7 else _npc_color(d).darkened(0.35)
+	# Nameless passers-by get the district's color, not grey.
+	var tag_col: Color = _npc_color(d)
+	if tag_col.s < 0.2:
+		tag_col = Color(_theme["accent"])
+	_dlg_tag.bg_color = tag_col.darkened(0.05) if tag_col.get_luminance() < 0.7 else tag_col.darkened(0.35)
 	_show_line()
 	Sfx.play("click")
 
@@ -1413,7 +1421,7 @@ func _build_ui() -> void:
 	add_child(_ui)
 	# Location card, top left.
 	var plate := PanelContainer.new()
-	var plate_box := UITheme.panel_box(Color(0.046, 0.0867, 0.26, 0.78), 16, Color(_theme["accent"], 0.4))
+	var plate_box := UITheme.panel_box(Color(0.032, 0.0532, 0.116, 0.78), 16, Color(_theme["accent"], 0.4))
 	plate_box.content_margin_left = 22
 	plate_box.content_margin_right = 26
 	plate_box.content_margin_top = 8
@@ -1445,15 +1453,26 @@ func _build_ui() -> void:
 	_purse = purse
 	_update_counter()
 	# Controls, bottom left.
-	var help := UITheme.label("WASD / stick  move     Shift  run     Drag  look     Scroll  zoom     E  talk / enter     M  map     B  decks     T  time of day     Esc  menu", 18, Color(1, 1, 1, 0.62))
-	help.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
-	help.add_theme_constant_override("outline_size", 5)
-	help.anchor_top = 1.0
-	help.anchor_bottom = 1.0
-	help.position = Vector2(48, -50)
-	help.offset_top = -50
-	help.offset_left = 48
-	_ui.add_child(help)
+	var help := UITheme.label("WASD / stick  move     Shift  run     Drag  look     Scroll  zoom     E  talk / enter     M  map     B  decks     T  time of day     Esc  menu", 17, Color(0.93, 0.95, 1.0, 0.95))
+	# On a dark strip of its own, so it reads over grass, sand and bright paving alike.
+	var help_bar := PanelContainer.new()
+	var hb := StyleBoxFlat.new()
+	hb.bg_color = Color(0.03, 0.05, 0.11, 0.72)
+	hb.set_corner_radius_all(8)
+	hb.content_margin_left = 16
+	hb.content_margin_right = 16
+	hb.content_margin_top = 6
+	hb.content_margin_bottom = 6
+	help_bar.add_theme_stylebox_override("panel", hb)
+	help_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	help_bar.add_child(help)
+	help_bar.anchor_top = 1.0
+	help_bar.anchor_bottom = 1.0
+	help_bar.offset_left = 40
+	help_bar.offset_top = -62
+	help_bar.offset_bottom = -22
+	help_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_ui.add_child(help_bar)
 	_help = help
 	# Maps: a small one in the corner, the full one on M.
 	_map = RoamMap.new()
@@ -1485,7 +1504,7 @@ func _build_ui() -> void:
 	_prompt = Label.new()
 	_prompt.add_theme_font_override("font", UITheme.semi_font())
 	_prompt.add_theme_font_size_override("font_size", 30)
-	var sb := UITheme.panel_box(Color(0.054, 0.109, 0.285, 0.9), 14, Color(UITheme.ACCENT, 0.6))
+	var sb := UITheme.panel_box(Color(0.042, 0.078, 0.145, 0.9), 14, Color(UITheme.ACCENT, 0.6))
 	sb.content_margin_left = 26
 	sb.content_margin_right = 26
 	sb.content_margin_top = 8
@@ -1504,7 +1523,7 @@ func _build_ui() -> void:
 	_ui.add_child(_prompt)
 	# Dialogue box.
 	_dlg = PanelContainer.new()
-	var dsb := Comic.box(Comic.CREAM, 22, 0.0, 5, 9)
+	var dsb := UITheme.panel_box(Color(0.03, 0.045, 0.1, 0.95), 14, Color(1, 1, 1, 0.14))
 	dsb.set_content_margin_all(20)
 	_dlg.add_theme_stylebox_override("panel", dsb)
 	_dlg.anchor_left = 0.5
@@ -1529,7 +1548,7 @@ func _build_ui() -> void:
 	face_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	face_bg.show_behind_parent = true
 	face_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	face_bg.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.102, 0.181, 0.387, 0.95), 16, Color(UITheme.ACCENT, 0.5)))
+	face_bg.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.102, 0.158, 0.265, 0.95), 16, Color(UITheme.ACCENT, 0.5)))
 	_dlg_face.add_child(face_bg)
 	row.add_child(_dlg_face)
 	var v := VBoxContainer.new()
@@ -1537,7 +1556,7 @@ func _build_ui() -> void:
 	v.add_theme_constant_override("separation", 10)
 	row.add_child(v)
 	# The name sits on a slanted tag in the speaker's color.
-	_dlg_name = Comic.label("", 26, Color.WHITE, 7)
+	_dlg_name = Comic.label("", 26, Color.WHITE, 0)
 	_dlg_tag = Comic.box(Comic.BLUE, 10, 0.18, 4, 4)
 	_dlg_tag.content_margin_left = 20
 	_dlg_tag.content_margin_right = 20
@@ -1546,7 +1565,7 @@ func _build_ui() -> void:
 	_dlg_name.add_theme_stylebox_override("normal", _dlg_tag)
 	_dlg_name.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	v.add_child(_dlg_name)
-	_dlg_text = UITheme.label("", 30, Comic.INK)
+	_dlg_text = UITheme.label("", 30, Color(0.95, 0.97, 1.0))
 	_dlg_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_dlg_text.custom_minimum_size = Vector2(1000, 90)
 	v.add_child(_dlg_text)

@@ -75,7 +75,7 @@ func _ready() -> void:
 	rounds.offset_bottom = -28
 	rounds.alignment = BoxContainer.ALIGNMENT_END
 	add_child(rounds)
-	for def in [["piles", "Graveyards and banished cards", Comic.BLUE], ["log", "Card log: everything played this duel", Comic.BLUE], ["gear", "Duel menu", Comic.ORANGE]]:
+	for def in [["piles", "Graveyards and banished cards", Comic.BLUE], ["log", "Card log: everything played this duel", Comic.BLUE], ["gear", "Duel menu", Comic.BLUE]]:
 		var rb := RoundButton.new(str(def[0]), def[2])
 		rb.tooltip_text = str(def[1])
 		rounds.add_child(rb)
@@ -95,13 +95,12 @@ func _ready() -> void:
 	_banner = UITheme.label("", 110, Color.WHITE, Comic.shout_font())
 	_banner.set_anchors_preset(Control.PRESET_CENTER)
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_banner.add_theme_color_override("font_outline_color", Comic.INK)
-	_banner.add_theme_constant_override("outline_size", 22)
-	_banner.add_theme_color_override("font_shadow_color", Color(Comic.INK, 0.6))
-	_banner.add_theme_constant_override("shadow_offset_x", 6)
-	_banner.add_theme_constant_override("shadow_offset_y", 8)
-	_banner.add_theme_constant_override("shadow_outline_size", 22)
-	_banner.rotation = -0.035
+	_banner.add_theme_color_override("font_outline_color", Color(Comic.INK, 0.85))
+	_banner.add_theme_constant_override("outline_size", 8)
+	_banner.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.55))
+	_banner.add_theme_constant_override("shadow_offset_x", 0)
+	_banner.add_theme_constant_override("shadow_offset_y", 6)
+	_banner.add_theme_constant_override("shadow_outline_size", 16)
 	_banner.modulate.a = 0.0
 	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_banner)
@@ -214,12 +213,12 @@ func say(p: int, text: String) -> void:
 	b.set_line(player_names[p], text)
 	var vs := get_viewport_rect().size
 	if p == 1:
-		b.position = Vector2(vs.x - DuelistPanel.SIZE.x - b.size.x + 34, 96)
+		b.position = Vector2(vs.x - DuelistPanel.SIZE.x - b.size.x + 30, 96)
 	else:
-		b.position = Vector2(DuelistPanel.SIZE.x - 34, vs.y - 178 - b.size.y)
+		b.position = Vector2(DuelistPanel.SIZE.x - 40, vs.y - DuelistPanel.SIZE.y - 30 - b.size.y)
 	b.pivot_offset = Vector2(b.size.x if p == 1 else 0.0, 0.0 if p == 1 else b.size.y)
-	b.scale = Vector2(0.6, 0.6)
-	b.rotation = -0.06 if p == 0 else 0.06
+	b.scale = Vector2(0.8, 0.8)
+	b.rotation = 0.0
 	if b.has_meta("tw"):
 		var old: Tween = b.get_meta("tw")
 		if old and old.is_valid():
@@ -281,7 +280,7 @@ func show_piles(p: int) -> void:
 			hide_piles())
 	_pile_panel.add_child(dim)
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.062, 0.109, 0.294, 0.97), 22, Color(UITheme.ACCENT, 0.4)))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.052, 0.078, 0.156, 0.97), 22, Color(UITheme.ACCENT, 0.4)))
 	_pile_panel.add_child(panel)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
@@ -309,7 +308,7 @@ func show_piles(p: int) -> void:
 			tr.texture = Cards.get_face(inst.id)
 			tr.custom_minimum_size = Vector2(124, 181)
 			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			tr.stretch_mode = TextureRect.STRETCH_SCALE
+			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			tr.mouse_filter = Control.MOUSE_FILTER_STOP
 			tr.mouse_entered.connect(func(): inspect(inst))
 			row.add_child(tr)
@@ -352,8 +351,8 @@ func set_lp(p: int, lp: int, delta: int) -> void:
 func _float_number(p: int, delta: int) -> void:
 	var big := absi(delta) >= 1000
 	var l := UITheme.label(("%+d" % delta), 128 if big else 92, UITheme.DANGER if delta < 0 else Color("4fd18b"), Comic.shout_font())
-	l.add_theme_color_override("font_outline_color", Comic.INK)
-	l.add_theme_constant_override("outline_size", 22)
+	l.add_theme_color_override("font_outline_color", Color(Comic.INK, 0.9))
+	l.add_theme_constant_override("outline_size", 10)
 	var vs := get_viewport_rect().size
 	_float_root.add_child(l)
 	l.reset_size()
@@ -406,7 +405,7 @@ func _build_phase() -> void:
 	_btn_battle = Button.new()
 	_btn_battle.text = "Battle Phase"
 	_btn_battle.custom_minimum_size = Vector2(336, 58)
-	UITheme.paint_button(_btn_battle, Comic.ORANGE)
+	UITheme.paint_button(_btn_battle, UITheme.ACCENT)
 	_btn_battle.pressed.connect(func(): phase_button.emit("battle"))
 	box.add_child(_btn_battle)
 	_btn_end = Button.new()
@@ -426,7 +425,7 @@ func _build_phase() -> void:
 	var ask_row := HBoxContainer.new()
 	ask_row.add_theme_constant_override("separation", 6)
 	var ask_bg := PanelContainer.new()
-	var asb := Comic.box(Color(Comic.INK, 0.72), 14, 0.0, 0, 0)
+	var asb := Comic.box(Color(0.035, 0.055, 0.12, 0.8), 10, 0.0, 0, 0)
 	asb.content_margin_left = 14
 	asb.content_margin_right = 8
 	asb.content_margin_top = 4
@@ -456,7 +455,7 @@ func _build_phase() -> void:
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	ask_row.add_child(info)
 	var tip := PanelContainer.new()
-	var tsb := UITheme.panel_box(Color(0.054, 0.0996, 0.285, 0.97), 14, Color(UITheme.ACCENT, 0.6))
+	var tsb := UITheme.panel_box(Color(0.042, 0.0676, 0.145, 0.97), 14, Color(UITheme.ACCENT, 0.6))
 	tsb.set_content_margin_all(14)
 	tip.add_theme_stylebox_override("panel", tsb)
 	tip.visible = false
@@ -503,33 +502,29 @@ func set_phase(phase: int, my_turn: bool, turn := -1) -> void:
 
 func _draw_pill() -> void:
 	var c := _pill
-	var top := Comic.BLUE if _pill_mine else Comic.RED
-	var bottom := Comic.BLUE_DEEP if _pill_mine else Comic.RED_DEEP
-	var grow := _pill_pop * 5.0
-	var r := Rect2(2 - grow, 6 - grow * 0.5, 330 + grow * 2.0, 88 + grow)
-	var pts := Comic.slab(c, r, 22.0, top.lightened(0.1 + _pill_pop * 0.3), bottom, 5.0, Vector2(0, 7))
-	Comic.dots(c, pts, Color(1, 1, 1, 0.16), Vector2(1, 0), 13.0, 5.0, 0.6)
-	# The small top line sits on its own dark tab.
+	var col := Comic.BLUE if _pill_mine else Comic.RED
+	var r := Rect2(2, 8, 332, 88)
+	var pts := Comic.slab(c, r, 20.0, Color(0.05, 0.075, 0.16, 0.95).lerp(col, 0.25 + _pill_pop * 0.5), Color(0.025, 0.04, 0.09, 0.97), 1.0, Vector2(0, 4))
+	# The side's color on the leading edge.
+	c.draw_polyline(PackedVector2Array([pts[0], pts[3]]), col.lightened(0.25), 5.0, true)
 	var who: String = Loc.t("YOUR TURN") if _pill_mine else Loc.t("RIVAL'S TURN")
 	var head := Loc.t("TURN %d") % _pill_turn
 	var f := Comic.chunky_font()
-	var hw := f.get_string_size(head, HORIZONTAL_ALIGNMENT_LEFT, -1, 21).x
-	var tab := Comic.quad(Rect2(26, -4, hw + 40, 34), 9.0)
-	Comic.shape(c, tab, Comic.YELLOW, Comic.ORANGE, 4.0, Vector2(0, 4))
-	Comic.text(c, f, Vector2(48, 22), head, 21, Comic.INK, 0)
-	Comic.text(c, UITheme.semi_font(), Vector2(hw + 80, 27), who, 19, Color(1, 1, 1, 0.95), 5)
-	var nm: String = Loc.t(PHASE_NAMES[_pill_phase])
-	var size := 38
+	var sf := Comic.button_font()
+	var hw := sf.get_string_size(head, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
+	c.draw_string(sf, Vector2(40, 36), head, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, UITheme.ACCENT)
+	c.draw_string(sf, Vector2(40 + hw + 12, 36), "·  " + who, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(1, 1, 1, 0.8))
+	var nm: String = Loc.t(PHASE_NAMES[_pill_phase]).to_upper()
+	var size := 40
 	while size > 22 and f.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > 226.0:
 		size -= 2
-	Comic.text(c, f, Vector2(30, 76), nm, size, Color.WHITE, 10)
+	Comic.text(c, f, Vector2(32, 80), nm, size, Color.WHITE, 2)
 	# The arrow: three chevrons that run when it is your turn.
 	for i in 3:
 		var ph := fposmod(_pill_t * 1.6 - i * 0.22, 1.0) if _pill_mine else 0.3
-		var x := 262.0 + i * 20.0
-		var a := (0.45 + 0.55 * (1.0 - ph)) if _pill_mine else 0.4
-		var tri := PackedVector2Array([Vector2(x, 44), Vector2(x + 18, 60), Vector2(x, 76), Vector2(x + 8, 60)])
-		c.draw_colored_polygon(tri, Color(Comic.YELLOW, a))
+		var x := 268.0 + i * 16.0
+		var a := (0.35 + 0.65 * (1.0 - ph)) if _pill_mine else 0.3
+		c.draw_polyline(PackedVector2Array([Vector2(x, 50), Vector2(x + 10, 62), Vector2(x, 74)]), Color(UITheme.ACCENT, a), 3.0, true)
 
 
 # ------------------------------------------------------------------ Turbo Duel: Speed Counters
@@ -666,7 +661,7 @@ func show_extra(options: Array) -> void:
 			hide_extra())
 	_extra_panel.add_child(dim)
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.062, 0.109, 0.294, 0.97), 22, Color("ffd23a", 0.4)))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.052, 0.078, 0.156, 0.97), 22, Color("ffd23a", 0.4)))
 	panel.set_anchors_preset(Control.PRESET_CENTER)
 	_extra_panel.add_child(panel)
 	var v := VBoxContainer.new()
@@ -688,7 +683,7 @@ func show_extra(options: Array) -> void:
 		tr.texture = Cards.get_face(inst.id)
 		tr.custom_minimum_size = Vector2(170, 248)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tr.stretch_mode = TextureRect.STRETCH_SCALE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tr.modulate = Color.WHITE if o[2] else Color(0.55, 0.55, 0.6)
 		tr.mouse_entered.connect(func(): inspect(inst))
 		col.add_child(tr)
@@ -739,8 +734,8 @@ func phase_sweep(text: String, color: Color) -> void:
 	line_bot.color = Comic.YELLOW
 	line_bot.size.y = 5
 	var l := UITheme.label(text, 88, Color.WHITE, Comic.shout_font())
-	l.add_theme_color_override("font_outline_color", Comic.INK)
-	l.add_theme_constant_override("outline_size", 18)
+	l.add_theme_color_override("font_outline_color", Color(Comic.INK, 0.85))
+	l.add_theme_constant_override("outline_size", 8)
 	l.size = Vector2(vs.x, 120)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -749,7 +744,7 @@ func phase_sweep(text: String, color: Color) -> void:
 	band.add_child(l)
 	Sfx.play("turn", -2.0, 1.25)
 	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-	tw.tween_property(band, "color:a", 0.8, Settings.t(0.15))
+	tw.tween_property(band, "color:a", 0.45, Settings.t(0.15))
 	tw.tween_property(line_top, "size:x", vs.x, Settings.t(0.35))
 	tw.tween_property(line_bot, "size:x", vs.x, Settings.t(0.35))
 	tw.tween_property(line_bot, "position:x", 0.0, Settings.t(0.35))
@@ -858,12 +853,12 @@ func vs_slam(left: Color, right: Color) -> void:
 		root.add_child(streak)
 		create_tween().tween_property(streak, "scale:x", 1.0, 0.22).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
 	var l := UITheme.label("VS", 290, Comic.YELLOW, Comic.shout_font())
-	l.add_theme_color_override("font_outline_color", Comic.INK)
-	l.add_theme_constant_override("outline_size", 40)
-	l.add_theme_color_override("font_shadow_color", Color(Comic.ORANGE_DEEP, 0.95))
-	l.add_theme_constant_override("shadow_offset_x", 10)
-	l.add_theme_constant_override("shadow_offset_y", 12)
-	l.add_theme_constant_override("shadow_outline_size", 40)
+	l.add_theme_color_override("font_outline_color", Color(Comic.INK, 0.9))
+	l.add_theme_constant_override("outline_size", 12)
+	l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
+	l.add_theme_constant_override("shadow_offset_x", 0)
+	l.add_theme_constant_override("shadow_offset_y", 10)
+	l.add_theme_constant_override("shadow_outline_size", 24)
 	l.size = Vector2(600, 300)
 	l.position = Vector2(-300, -150)
 	l.pivot_offset = Vector2(300, 150)
@@ -906,7 +901,7 @@ var _inspect_stat_row: HBoxContainer
 
 func _build_inspector() -> void:
 	_inspect_panel = PanelContainer.new()
-	_inspect_panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.054, 0.0996, 0.285, 0.92), 20, Color(UITheme.ACCENT, 0.25)))
+	_inspect_panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.042, 0.0676, 0.145, 0.92), 20, Color(UITheme.ACCENT, 0.25)))
 	_inspect_panel.anchor_top = 0.5
 	_inspect_panel.anchor_bottom = 0.5
 	_inspect_panel.offset_left = 30
@@ -1257,7 +1252,7 @@ func _layout_hand() -> void:
 
 func _build_prompt() -> void:
 	_prompt = PanelContainer.new()
-	_prompt.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.062, 0.118, 0.302, 0.92), 16, Color(UITheme.ACCENT, 0.5)))
+	_prompt.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.052, 0.088, 0.165, 0.92), 16, Color(UITheme.ACCENT, 0.5)))
 	_prompt.anchor_left = 0.5
 	_prompt.anchor_right = 0.5
 	_prompt.offset_top = 36
@@ -1279,7 +1274,7 @@ func _build_prompt() -> void:
 	_prompt.visible = false
 	# The coach line: what you can do right now, in a few words.
 	_coach = PanelContainer.new()
-	var csb := UITheme.panel_box(Color(0.054, 0.0996, 0.277, 0.78), 14, Color(UITheme.ACCENT, 0.28))
+	var csb := UITheme.panel_box(Color(0.042, 0.0676, 0.136, 0.78), 14, Color(UITheme.ACCENT, 0.28))
 	csb.content_margin_left = 18
 	csb.content_margin_right = 18
 	csb.content_margin_top = 7
@@ -1347,7 +1342,7 @@ func ask_choice(text: String, answers: Array, card = null) -> int:
 		return randi() % answers.size()
 	await stage_clear()
 	var root := PanelContainer.new()
-	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.054, 0.109, 0.294, 0.97), 22, Color(UITheme.ACCENT, 0.7)))
+	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.042, 0.078, 0.156, 0.97), 22, Color(UITheme.ACCENT, 0.7)))
 	root.z_index = 60
 	add_child(root)
 	var h := HBoxContainer.new()
@@ -1398,7 +1393,7 @@ func ask_response(text: String, options: Array, button := "Activate", cancel := 
 		return null if (cancel != "" and randf() < 0.3) or options.is_empty() else options[randi() % options.size()]
 	await stage_clear()
 	var root := PanelContainer.new()
-	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.078, 0.073, 0.268, 0.97) if tint == Color("ff4dd2") else Color(0.054, 0.109, 0.294, 0.97), 22, Color(tint, 0.7)))
+	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.072, 0.038, 0.125, 0.97) if tint == Color("ff4dd2") else Color(0.042, 0.078, 0.156, 0.97), 22, Color(tint, 0.7)))
 	root.z_index = 60
 	add_child(root)
 	var v := VBoxContainer.new()
@@ -1472,7 +1467,7 @@ func ask_response(text: String, options: Array, button := "Activate", cancel := 
 ## Small floating callout for card effects.
 func effect_text(text: String, color := Color("ffd23a")) -> void:
 	var l := UITheme.label(text, 30, Color.WHITE, UITheme.semi_font())
-	var sb := UITheme.button_box(Color(0.054, 0.091, 0.268, 0.92), color, 16)
+	var sb := UITheme.button_box(Color(0.042, 0.058, 0.125, 0.92), color, 16)
 	sb.content_margin_left = 22
 	sb.content_margin_right = 22
 	l.add_theme_stylebox_override("normal", sb)
@@ -1522,12 +1517,15 @@ func show_actions(at: Vector2, options: Array) -> void:
 		b.custom_minimum_size = Vector2(330, 66)
 		b.focus_mode = Control.FOCUS_ALL
 		# A slanted comic ribbon in the action's own color.
-		var normal := Comic.box(col.darkened(0.08), 14, 0.1, 4, 6)
-		var hover := Comic.box(col.lightened(0.22), 14, 0.1, 4, 6)
+		var normal := Comic.box(Color(0.05, 0.075, 0.16, 0.96).lerp(col, 0.55), 8, 0.1, 1, 6)
+		normal.border_color = Color(col.lightened(0.35), 0.9)
+		normal.border_width_left = 5
+		var hover := Comic.box(col.lightened(0.08), 8, 0.1, 1, 6)
 		hover.border_color = Color.WHITE
-		var down := Comic.box(Comic.YELLOW, 14, 0.1, 4, 2)
-		var off := Comic.box(Color(0.2, 0.27, 0.48, 0.92), 14, 0.1, 3, 0)
-		off.border_color = Color(Comic.INK, 0.5)
+		hover.set_border_width_all(2)
+		hover.border_width_left = 5
+		var down := Comic.box(col.darkened(0.2), 8, 0.1, 1, 2)
+		var off := Comic.box(Color(0.06, 0.08, 0.14, 0.9), 8, 0.1, 1, 0)
 		for st in [["normal", normal], ["hover", hover], ["focus", hover], ["pressed", down], ["disabled", off]]:
 			b.add_theme_stylebox_override(str(st[0]), st[1])
 		var row := HBoxContainer.new()
@@ -1557,7 +1555,7 @@ func show_actions(at: Vector2, options: Array) -> void:
 		words.add_theme_constant_override("separation", -2)
 		words.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var title := Comic.label(Loc.t(str(o[1])), 26, Color.WHITE if o[2] else Color(1, 1, 1, 0.4), 6 if o[2] else 0)
+		var title := Comic.label(Loc.t(str(o[1])), 27, Color.WHITE if o[2] else Color(1, 1, 1, 0.4), 2 if o[2] else 0)
 		words.add_child(title)
 		if ACTION_HINTS.has(key):
 			var sub := UITheme.label(Loc.t(str(ACTION_HINTS[key])) if o[2] else Loc.t("Not possible right now"), 15, Color(1, 1, 1, 0.92) if o[2] else Color(1, 1, 1, 0.35), UITheme.semi_font())
@@ -1642,7 +1640,7 @@ func show_log() -> void:
 	_log_panel.z_index = 40
 	add_child(_log_panel)
 	var dim := ColorRect.new()
-	dim.color = Color(0.02, 0.05, 0.2, 0.5)
+	dim.color = Color(0, 0, 0, 0.5)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.gui_input.connect(func(e):
 		if e is InputEventMouseButton and e.pressed:
@@ -1708,7 +1706,7 @@ func feed(p: int, icon: String, text: String) -> void:
 		add_child(_feed)
 	var col: Color = Comic.SKY if p == 0 else Color("ff9aa6")
 	var pc := PanelContainer.new()
-	var sb := UITheme.panel_box(Color(0.054, 0.0996, 0.285, 0.8), 10, Color(col, 0.4))
+	var sb := UITheme.panel_box(Color(0.042, 0.0676, 0.145, 0.8), 10, Color(col, 0.4))
 	sb.border_width_left = 4
 	sb.content_margin_left = 12
 	sb.content_margin_right = 14
@@ -1760,6 +1758,79 @@ func cut_in(p: int, title: String, sub: String, color: Color, hold := 0.6, big :
 	await CutIn.play(self, p, str(portrait_keys[p]), title, sub, color, hold, big)
 
 
+## The opponent plays a Spell or springs a Trap: the card is held up big, with its name and
+## what it does, long enough to read, before anything happens. Await it.
+func showcase(inst, kicker: String, color: Color, who := "") -> void:
+	if inst == null or auto_answer:
+		return
+	inspect(inst)
+	var hold := maxf(1.5, Settings.t(2.0))
+	_stage_busy = maxi(_stage_busy, Time.get_ticks_msec() + int((hold + 0.6) * 1000.0))
+	var vs := get_viewport_rect().size
+	var root := Control.new()
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.z_index = 55
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(root)
+	var shade := ColorRect.new()
+	shade.color = Color(0.01, 0.02, 0.05, 0.0)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(shade)
+	var card := TextureRect.new()
+	card.texture = Cards.get_face(inst.id)
+	card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	card.size = Vector2(330, 481)
+	card.pivot_offset = card.size / 2.0
+	var cx := vs.x * 0.5 - 420.0
+	card.position = Vector2(cx, vs.y * 0.5 - 250.0)
+	card.rotation = -0.12
+	card.scale = Vector2(0.5, 0.5)
+	card.modulate.a = 0.0
+	root.add_child(card)
+	var panel := PanelContainer.new()
+	var psb := UITheme.panel_box(Color(0.035, 0.055, 0.12, 0.95), 12, Color(color, 0.8))
+	psb.border_width_left = 6
+	psb.set_content_margin_all(22)
+	panel.add_theme_stylebox_override("panel", psb)
+	panel.position = Vector2(cx + 372.0, vs.y * 0.5 - 150.0)
+	panel.custom_minimum_size = Vector2(520, 0)
+	panel.modulate.a = 0.0
+	root.add_child(panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	panel.add_child(v)
+	v.add_child(UITheme.label((kicker + ("   ·   " + who.to_upper() if who != "" else "")), 20, color.lightened(0.35), Comic.button_font()))
+	var nm := Comic.label(str(inst.data.get("name", "")), 44)
+	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nm.custom_minimum_size = Vector2(476, 0)
+	v.add_child(nm)
+	var body := str(_inspect_text.text)
+	if body.length() > 260:
+		body = body.substr(0, 257) + "..."
+	var tl := UITheme.label(body, 20, UITheme.TEXT)
+	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tl.custom_minimum_size = Vector2(476, 0)
+	v.add_child(tl)
+	Sfx.play("whoosh", -8.0, 0.9)
+	var tin := create_tween().set_parallel()
+	tin.tween_property(shade, "color:a", 0.45, 0.2)
+	tin.tween_property(card, "modulate:a", 1.0, 0.12)
+	tin.tween_property(card, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tin.tween_property(card, "rotation", -0.03, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tin.tween_property(panel, "modulate:a", 1.0, 0.2).set_delay(0.12)
+	tin.tween_property(panel, "position:x", panel.position.x + 18.0, hold + 0.3)
+	await get_tree().create_timer(hold).timeout
+	if not is_instance_valid(root):
+		return
+	var out := create_tween().set_parallel()
+	out.tween_property(root, "modulate:a", 0.0, 0.22)
+	out.tween_property(card, "scale", Vector2(0.86, 0.86), 0.22)
+	await out.finished
+	root.queue_free()
+
+
 ## Speed lines bursting out from a point on the table (where a hit lands).
 func impact(world: Vector3, color: Color, strength := 1.0) -> void:
 	var cam := get_viewport().get_camera_3d()
@@ -1806,7 +1877,7 @@ func _overlay_panel(title: String, subtitle: String, title_color: Color, side :=
 	if side:
 		var grad := Gradient.new()
 		grad.offsets = PackedFloat32Array([0.0, 0.42, 0.7, 1.0])
-		grad.colors = PackedColorArray([Color(0.03, 0.08, 0.32, 0.0), Color(0.03, 0.08, 0.32, 0.25), Color(0.03, 0.09, 0.36, 0.88), Color(0.02, 0.06, 0.3, 0.95)])
+		grad.colors = PackedColorArray([Color(0.01, 0.02, 0.05, 0.0), Color(0.01, 0.02, 0.05, 0.25), Color(0.015, 0.025, 0.06, 0.86), Color(0.015, 0.025, 0.06, 0.94)])
 		var gt := GradientTexture2D.new()
 		gt.gradient = grad
 		var shade := TextureRect.new()
@@ -1817,7 +1888,7 @@ func _overlay_panel(title: String, subtitle: String, title_color: Color, side :=
 		_overlay.add_child(shade)
 	else:
 		var dim := ColorRect.new()
-		dim.color = Color(0.03, 0.08, 0.32, 0.8)
+		dim.color = Color(0.01, 0.02, 0.05, 0.78)
 		dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 		_overlay.add_child(dim)
 	var center := CenterContainer.new()
@@ -1831,12 +1902,12 @@ func _overlay_panel(title: String, subtitle: String, title_color: Color, side :=
 	center.add_child(v)
 	var t := UITheme.label(title, 150, title_color, Comic.shout_font())
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	t.add_theme_color_override("font_outline_color", Comic.INK)
-	t.add_theme_constant_override("outline_size", 28)
-	t.add_theme_color_override("font_shadow_color", Color(Comic.INK, 0.7))
-	t.add_theme_constant_override("shadow_offset_x", 7)
-	t.add_theme_constant_override("shadow_offset_y", 9)
-	t.add_theme_constant_override("shadow_outline_size", 28)
+	t.add_theme_color_override("font_outline_color", Color(Comic.INK, 0.9))
+	t.add_theme_constant_override("outline_size", 10)
+	t.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.55))
+	t.add_theme_constant_override("shadow_offset_x", 0)
+	t.add_theme_constant_override("shadow_offset_y", 8)
+	t.add_theme_constant_override("shadow_outline_size", 20)
 	v.add_child(t)
 	if subtitle != "":
 		var s := UITheme.label(subtitle, 24, UITheme.TEXT_DIM)
@@ -1887,7 +1958,7 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 		var lp: Array = stats.get("lp", [0, 0])
 		for item in [["TURNS", str(stats.get("turns", 0)), Color.WHITE], ["YOUR LP", str(lp[0]), Comic.SKY], ["THEIR LP", str(lp[1]), Color("ff8a98")]]:
 			var box := PanelContainer.new()
-			box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.062, 0.118, 0.302, 0.9), 14, Color(item[2], 0.35)))
+			box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.052, 0.088, 0.165, 0.9), 14, Color(item[2], 0.35)))
 			box.custom_minimum_size = Vector2(150, 0)
 			var bv := VBoxContainer.new()
 			box.add_child(bv)

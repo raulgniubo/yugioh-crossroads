@@ -90,7 +90,7 @@ func _rebuild() -> void:
 			tr.texture = Cards.get_face(id)
 			tr.custom_minimum_size = Vector2(104, 152)
 			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			tr.stretch_mode = TextureRect.STRETCH_SCALE
+			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			tr.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 			tr.tooltip_text = str(CardData.get_card(id).get("name", ""))
 			var from_main: bool = pair[2]

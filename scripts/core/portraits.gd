@@ -102,7 +102,7 @@ func _make_placeholder(key: String) -> Texture2D:
 	vp.size = SIZE
 	vp.transparent_bg = true
 	vp.own_world_3d = true
-	vp.msaa_3d = Viewport.MSAA_4X
+	vp.msaa_3d = Settings.small_view_msaa()
 	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	add_child(vp)
 	var root := Control.new()

@@ -5,18 +5,21 @@ extends Node3D
 
 const TODS := ["night", "sunset", "day"]
 const TOD_LOOK := {
-	"night": {"top": Color("060818"), "horizon": Color("3a2160"), "ground": Color("0c0a14"), "sun": Color("9db4ff"), "sun_e": 0.75, "sun_rot": Vector3(-48, 30, 0),
-		"amb": 1.25, "fog": Color("1a1236"), "fog_d": 0.007, "windows": 1.0, "lamps": 1.0, "neon": 1.0, "exposure": 1.25},
-	"sunset": {"top": Color("2a3a78"), "horizon": Color("ff9a5a"), "ground": Color("3a2420"), "sun": Color("ffb880"), "sun_e": 1.9, "sun_rot": Vector3(-15, -60, 0),
-		"amb": 1.2, "fog": Color("b06a5a"), "fog_d": 0.006, "windows": 0.3, "lamps": 0.5, "neon": 0.7, "exposure": 1.15},
-	"day": {"top": Color("3a7ad8"), "horizon": Color("bcd8f0"), "ground": Color("5a6070"), "sun": Color("fff4e0"), "sun_e": 2.2, "sun_rot": Vector3(-52, -35, 0),
-		"amb": 1.0, "fog": Color("c4d6ea"), "fog_d": 0.0026, "windows": 0.06, "lamps": 0.0, "neon": 0.25, "exposure": 0.95},
+	"night": {"top": Color("050816"), "horizon": Color("2c2458"), "ground": Color("0c0a14"), "sun": Color("a9bcff"), "sun_e": 0.8, "sun_rot": Vector3(-48, 30, 0),
+		"amb": 1.3, "fog": Color("1a1638"), "fog_d": 0.0036, "windows": 1.0, "lamps": 1.0, "neon": 1.0, "exposure": 1.25,
+		"cloud": 0.34, "cloud_col": Color("5a5f8c"), "cloud_shade": Color("191a34"), "stars": 1.0, "shadow": 0.6, "lift": 0.1},
+	"sunset": {"top": Color("27367a"), "horizon": Color("ffa063"), "ground": Color("3a2420"), "sun": Color("ffb47a"), "sun_e": 1.9, "sun_rot": Vector3(-15, -60, 0),
+		"amb": 1.2, "fog": Color("c07a62"), "fog_d": 0.0028, "windows": 0.3, "lamps": 0.5, "neon": 0.7, "exposure": 1.12,
+		"cloud": 0.48, "cloud_col": Color("ffc79a"), "cloud_shade": Color("7a4a66"), "stars": 0.0, "shadow": 0.72, "lift": 0.03},
+	"day": {"top": Color("2f74d6"), "horizon": Color("b8dcf6"), "ground": Color("5a6070"), "sun": Color("fff0d2"), "sun_e": 2.1, "sun_rot": Vector3(-50, -35, 0),
+		"amb": 1.2, "fog": Color("cfe2f2"), "fog_d": 0.0011, "windows": 0.06, "lamps": 0.0, "neon": 0.25, "exposure": 0.98,
+		"cloud": 0.46, "cloud_col": Color("ffffff"), "cloud_shade": Color("9fb4d0"), "stars": 0.0, "shadow": 0.78, "lift": 0.0},
 }
 
 var theme: Dictionary
 var env: Environment
 var sun: DirectionalLight3D
-var sky_mat: ProceduralSkyMaterial
+var sky_mat: ShaderMaterial
 var tod := "night"
 var cars: Array = []          # [node, lane_z or lane_x, dir, axis, speed]
 var _window_mats: Array[ShaderMaterial] = []
@@ -48,11 +51,223 @@ func build(t: Dictionary, time_of_day: String) -> void:
 
 # ------------------------------------------------------------------ helpers
 
+## A plain painted surface. Anything matte gets a fine grain laid over it in world space (so it
+## never stretches, whatever the shape or size of the thing), which is what stops big walls and
+## floors from reading as flat blocks of one color.
+static var _grain: Texture2D
+static var _grain_n: Texture2D
+
+
+static func _grain_textures() -> void:
+	if _grain != null:
+		return
+	var fn := FastNoiseLite.new()
+	fn.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	fn.frequency = 0.016
+	fn.fractal_octaves = 3
+	fn.fractal_gain = 0.6
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(0.9, 0.9, 0.9))
+	ramp.set_color(1, Color(1.0, 1.0, 1.0))
+	var t := NoiseTexture2D.new()
+	t.width = 256
+	t.height = 256
+	t.seamless = true
+	t.generate_mipmaps = true
+	t.noise = fn
+	t.color_ramp = ramp
+	_grain = t
+	var fn2 := FastNoiseLite.new()
+	fn2.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	fn2.frequency = 0.03
+	fn2.fractal_octaves = 3
+	var nt := NoiseTexture2D.new()
+	nt.width = 256
+	nt.height = 256
+	nt.seamless = true
+	nt.generate_mipmaps = true
+	nt.as_normal_map = true
+	nt.bump_strength = 2.0
+	nt.noise = fn2
+	_grain_n = nt
+
+
 func mat(c: Color, rough := 0.85, metal := 0.0) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = c
 	m.roughness = rough
 	m.metallic = metal
+	if rough >= 0.6 and metal < 0.3:
+		_grain_textures()
+		m.albedo_texture = _grain
+		m.normal_enabled = true
+		m.normal_texture = _grain_n
+		m.normal_scale = 0.22
+		m.uv1_triplanar = true
+		m.uv1_world_triplanar = true
+		m.uv1_scale = Vector3(0.42, 0.42, 0.42)
+		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	return m
+
+
+## A real surface: planks, roof tiles, rock, sand, brick, plaster, paving or concrete. The pattern
+## is worked out from where each point is in the world, with relief the sun picks out, so it
+## lines up across neighbouring blocks and never stretches.
+const SURF := {"plaster": 0, "wood": 1, "roof": 2, "rock": 3, "sand": 4, "brick": 5, "paving": 6, "concrete": 7, "bark": 8}
+static var _surf_shader: Shader
+
+
+func surf(kind: String, c: Color, tile := 1.0) -> ShaderMaterial:
+	if _surf_shader == null:
+		_surf_shader = Shader.new()
+		_surf_shader.code = """
+shader_type spatial;
+uniform vec3 base : source_color = vec3(0.7);
+uniform int kind = 0;
+uniform float tile = 1.0;
+varying vec3 wp;
+varying vec3 wn;
+float h1(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float n2(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h1(i), h1(i + vec2(1.0, 0.0)), f.x), mix(h1(i + vec2(0.0, 1.0)), h1(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+float h3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float n3(vec3 p) {
+	vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	float a = mix(mix(h3(i), h3(i + vec3(1.0, 0.0, 0.0)), f.x), mix(h3(i + vec3(0.0, 1.0, 0.0)), h3(i + vec3(1.0, 1.0, 0.0)), f.x), f.y);
+	float b = mix(mix(h3(i + vec3(0.0, 0.0, 1.0)), h3(i + vec3(1.0, 0.0, 1.0)), f.x), mix(h3(i + vec3(0.0, 1.0, 1.0)), h3(i + vec3(1.0, 1.0, 1.0)), f.x), f.y);
+	return mix(a, b, f.z);
+}
+float fbm3(vec3 p) { return n3(p) * 0.5 + n3(p * 2.1) * 0.3 + n3(p * 4.3) * 0.2; }
+void vertex() {
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+void fragment() {
+	// Flat-face mapping: floors and roofs from above, walls from the side they face.
+	vec3 an = abs(wn);
+	vec2 uv = (an.y > 0.55) ? wp.xz : ((an.x > an.z) ? vec2(wp.z, wp.y) : vec2(wp.x, wp.y));
+	uv /= tile;
+	vec3 col = base;
+	float hgt = 0.0;
+	float rough = 0.85;
+	float grain = fbm3(wp * 6.0);
+	if (kind == 1) {
+		// Planks: long boards with a gap between, a little grain along each one.
+		vec2 g = vec2(uv.x * 0.45, uv.y * 4.2);
+		if (an.y > 0.55) { g = vec2(uv.y * 0.45, uv.x * 4.2); }
+		float row = floor(g.y);
+		g.x += h1(vec2(row, 3.0)) * 7.0;
+		vec2 f = fract(g);
+		float gap = smoothstep(0.0, 0.07, f.y) * smoothstep(1.0, 0.93, f.y) * smoothstep(0.0, 0.012, f.x) * smoothstep(1.0, 0.988, f.x);
+		float streak = n2(vec2(g.x * 3.0, g.y * 26.0));
+		col *= 0.8 + 0.3 * h1(vec2(row, floor(g.x))) ;
+		col *= 0.88 + streak * 0.2;
+		col *= mix(0.45, 1.0, gap);
+		hgt = gap * 0.6 + streak * 0.12;
+		rough = 0.78;
+	} else if (kind == 2) {
+		// Roof tiles: overlapping rows, each tile rounded at the bottom.
+		vec2 g = uv * vec2(2.6, 3.4);
+		float row = floor(g.y);
+		g.x += mod(row, 2.0) * 0.5;
+		vec2 f = fract(g);
+		float edge = smoothstep(0.0, 0.08, f.x) * smoothstep(1.0, 0.92, f.x);
+		float lip = smoothstep(0.0, 0.22, f.y);
+		col *= 0.78 + 0.32 * h1(vec2(floor(g.x), row));
+		col *= mix(0.55, 1.0, lip) * mix(0.7, 1.0, edge);
+		hgt = (1.0 - f.y) * 0.8 * edge;
+		rough = 0.7;
+	} else if (kind == 3) {
+		// Rock: broken strata, cracks and lighter weathered patches.
+		float strata = n2(vec2(wp.y * 1.3 + fbm3(wp * 0.35) * 3.0, 0.0));
+		float crack = smoothstep(0.42, 0.5, abs(fbm3(wp * 0.9) - 0.5) * 2.0 + 0.3);
+		float big = fbm3(wp * 0.16);
+		col *= 0.86 + strata * 0.16 + big * 0.14;
+		col = mix(col * 0.8, col, crack);
+		col *= 0.95 + grain * 0.1;
+		// A little moss on the flat tops only.
+		col = mix(col, vec3(0.22, 0.34, 0.14) * (0.8 + grain * 0.4), smoothstep(0.84, 0.95, wn.y) * smoothstep(0.4, 0.7, big + grain * 0.3) * 0.8);
+		hgt = strata * 0.5 + crack * 0.5 + grain * 0.3;
+		rough = 0.95;
+	} else if (kind == 4) {
+		// Sand: wind ripples, damp darker patches and a sparkle of shell grit.
+		float rip = sin((wp.x * 0.8 + wp.z * 2.6) + n2(wp.xz * 0.6) * 5.0);
+		float damp = fbm3(wp * 0.12);
+		col *= 0.9 + rip * 0.035 + damp * 0.14;
+		col *= 0.94 + n2(wp.xz * 40.0) * 0.1;
+		col += vec3(0.25) * step(0.992, h1(floor(wp.xz * 22.0)));
+		hgt = rip * 0.25 + n2(wp.xz * 18.0) * 0.2;
+		rough = 0.96;
+	} else if (kind == 5) {
+		// Brick: staggered courses with mortar lines.
+		vec2 g = uv * vec2(3.6, 9.0);
+		float row = floor(g.y);
+		g.x += mod(row, 2.0) * 0.5;
+		vec2 f = fract(g);
+		float mortar = smoothstep(0.0, 0.05, f.x) * smoothstep(1.0, 0.95, f.x) * smoothstep(0.0, 0.11, f.y) * smoothstep(1.0, 0.89, f.y);
+		col *= 0.8 + 0.34 * h1(vec2(floor(g.x), row));
+		col = mix(vec3(0.72, 0.7, 0.66) * 0.8, col, mortar);
+		col *= 0.92 + grain * 0.16;
+		hgt = mortar * 0.7 + grain * 0.15;
+		rough = 0.88;
+	} else if (kind == 6) {
+		// Paving: stone slabs of two sizes, worn edges, the odd darker stone.
+		vec2 g = uv * 1.0;
+		float row = floor(g.y);
+		g.x = g.x * 0.62 + mod(row, 2.0) * 0.5 + h1(vec2(row, 9.0)) * 0.3;
+		vec2 f = fract(g);
+		float joint = smoothstep(0.0, 0.035, f.x) * smoothstep(1.0, 0.965, f.x) * smoothstep(0.0, 0.05, f.y) * smoothstep(1.0, 0.95, f.y);
+		float tone = h1(vec2(floor(g.x), row));
+		col *= 0.86 + 0.2 * tone;
+		col *= 0.92 + fbm3(wp * 2.2) * 0.16;
+		col = mix(col * 0.5, col, joint);
+		hgt = joint * 0.7 + grain * 0.1;
+		rough = mix(0.92, 0.78, joint);
+	} else if (kind == 7) {
+		// Concrete: cast panels with seams, stains running down from the top.
+		vec2 f = fract(uv * vec2(0.25, 0.33));
+		float seam = smoothstep(0.0, 0.01, f.x) * smoothstep(1.0, 0.99, f.x) * smoothstep(0.0, 0.014, f.y) * smoothstep(1.0, 0.986, f.y);
+		float stain = n2(vec2(uv.x * 1.6, uv.y * 0.12)) * n2(uv * 0.4);
+		col *= 0.9 + grain * 0.16 - stain * 0.16;
+		col = mix(col * 0.6, col, seam);
+		hgt = seam * 0.5 + grain * 0.2;
+		rough = 0.9;
+	} else if (kind == 8) {
+		// Bark: deep ridges running up the trunk.
+		float ridge = n2(vec2(atan(wn.x, wn.z) * 7.0 + wp.y * 0.6, wp.y * 2.2));
+		col *= 0.6 + ridge * 0.7;
+		hgt = ridge;
+		rough = 0.95;
+	} else {
+		// Plaster: soft blotches, fine grain, a little weathering near the ground.
+		float blotch = fbm3(wp * 0.5);
+		col *= 0.92 + blotch * 0.12 + grain * 0.06;
+		hgt = grain * 0.35 + blotch * 0.2;
+		rough = 0.9;
+	}
+	ALBEDO = col;
+	ROUGHNESS = rough;
+	SPECULAR = 0.3;
+	// Relief without needing UVs: tilt the normal by how the height changes across the screen.
+	vec3 dpx = dFdx(VERTEX);
+	vec3 dpy = dFdy(VERTEX);
+	float dhx = dFdx(hgt);
+	float dhy = dFdy(hgt);
+	vec3 r1 = cross(dpy, NORMAL);
+	vec3 r2 = cross(NORMAL, dpx);
+	float det = dot(dpx, r1);
+	vec3 grad = sign(det) * (dhx * r1 + dhy * r2);
+	float fade = clamp(1.0 - length(VERTEX) / 60.0, 0.0, 1.0);
+	NORMAL = normalize(abs(det) * NORMAL - 0.035 * fade * grad);
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = _surf_shader
+	m.set_shader_parameter("base", c)
+	m.set_shader_parameter("kind", int(SURF.get(kind, 0)))
+	m.set_shader_parameter("tile", tile)
 	return m
 
 
@@ -64,13 +279,60 @@ func glow_mat(c: Color, energy := 2.0) -> StandardMaterial3D:
 	return m
 
 
+## Flat things lying on the ground (paths, plazas, painted lines, rugs) are often laid one over
+## another. Two tops at the same height flicker, so each new one is lifted clear of whatever
+## flat thing is already under it. `no_grass` is where the ground is covered.
+var no_grass: Array[Rect2] = []
+var _flats := {}                 # grid cell -> [[Rect2, top height]]
+const FLAT_GAP := 0.007
+
+
+func _settle_flat(size: Vector3, pos: Vector3) -> Vector3:
+	var r := Rect2(pos.x - size.x / 2.0, pos.z - size.z / 2.0, size.x, size.z)
+	var top := pos.y + size.y / 2.0
+	var c0 := Vector2i(floori(r.position.x / 24.0), floori(r.position.y / 24.0))
+	var c1 := Vector2i(floori(r.end.x / 24.0), floori(r.end.y / 24.0))
+	var cells: Array[Vector2i] = []
+	if (c1.x - c0.x + 1) * (c1.y - c0.y + 1) > 64:
+		cells.append(Vector2i(99999, 99999))      # huge slabs (the whole road) live in one shared list
+	else:
+		for cx in range(c0.x, c1.x + 1):
+			for cz in range(c0.y, c1.y + 1):
+				cells.append(Vector2i(cx, cz))
+	var look: Array[Vector2i] = cells.duplicate()
+	if not look.has(Vector2i(99999, 99999)):
+		look.append(Vector2i(99999, 99999))
+	var start := top
+	for _pass in 6:
+		var moved := false
+		for cell in look:
+			for e in _flats.get(cell, []):
+				var other_top: float = e[1]
+				if absf(other_top - top) < FLAT_GAP - 0.0002 and top >= other_top - 0.0005 and (e[0] as Rect2).intersects(r):
+					top = other_top + FLAT_GAP
+					moved = true
+		if not moved:
+			break
+	var lift := top - start
+	for cell in cells:
+		if not _flats.has(cell):
+			_flats[cell] = []
+		(_flats[cell] as Array).append([r, top])
+	if top < 0.6 and top > -0.2 and size.x * size.z >= 1.5:
+		no_grass.append(r)
+	return pos + Vector3(0, lift, 0)
+
+
 func box(size: Vector3, pos: Vector3, m: Material, solid := true, parent: Node3D = null) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var bm := BoxMesh.new()
 	bm.size = size
 	mi.mesh = bm
 	mi.material_override = m
-	mi.position = pos
+	var at := pos
+	if parent == null and size.y <= 0.35 and size.x * size.z >= 0.25:
+		at = _settle_flat(size, pos)
+	mi.position = at
 	(parent if parent else self).add_child(mi)
 	if solid and make_solid:
 		var body := StaticBody3D.new()
@@ -95,7 +357,63 @@ func cyl(r_top: float, r_bottom: float, h: float, pos: Vector3, m: Material, par
 	mi.material_override = m
 	mi.position = pos
 	(parent if parent else self).add_child(mi)
+	if parent == null and h <= 0.5 and r_top >= 1.5 and pos.y < 0.6 and pos.y > -0.2 and r_top < 30.0:
+		no_grass.append(Rect2(pos.x - r_top * 0.86, pos.z - r_top * 0.86, r_top * 1.72, r_top * 1.72))
 	return mi
+
+
+## Open water around an island: turquoise shallows fading to deep blue, small waves that catch
+## the sun, and lines of foam rolling up the beach. `shore` is how far from `center` the
+## waterline is.
+func water_material(shore: float, center := Vector2.ZERO) -> ShaderMaterial:
+	var sh := Shader.new()
+	sh.code = """
+shader_type spatial;
+uniform float shore = 79.0;
+uniform vec2 center = vec2(0.0);
+uniform vec3 deep : source_color = vec3(0.03, 0.2, 0.42);
+uniform vec3 shallow : source_color = vec3(0.16, 0.62, 0.68);
+uniform float lum = 1.0;
+varying vec3 wp;
+float h1(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float n2(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h1(i), h1(i + vec2(1.0, 0.0)), f.x), mix(h1(i + vec2(0.0, 1.0)), h1(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+float waves(vec2 p, float t) {
+	return n2(p * 0.45 + vec2(t * 0.22, t * 0.1)) * 0.55 + n2(p * 1.3 - vec2(t * 0.25, -t * 0.3)) * 0.3 + n2(p * 3.4 + vec2(-t * 0.4, t * 0.5)) * 0.15;
+}
+void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	vec2 p = wp.xz;
+	float t = TIME;
+	float d = length(p - center) - shore;
+	float w = waves(p, t);
+	float e = 0.35;
+	float wx = waves(p + vec2(e, 0.0), t) - w;
+	float wz = waves(p + vec2(0.0, e), t) - w;
+	float near = clamp(1.0 - length(VERTEX) / 140.0, 0.0, 1.0);
+	NORMAL_MAP = vec3(0.5 - wx * 2.2 * near, 0.5 - wz * 2.2 * near, 1.0);
+	vec3 col = mix(shallow, deep, smoothstep(-2.0, 38.0, d));
+	col *= 0.9 + w * 0.22;
+	// Foam: a ragged white edge at the waterline and a few lines rolling in behind it.
+	float rag = n2(p * 0.9 + vec2(t * 0.15, 0.0)) * 1.6;
+	float edge = 1.0 - smoothstep(0.0, 1.5, d + rag - sin(t * 0.8) * 0.5);
+	float roll = smoothstep(0.82, 1.0, sin(d * 1.15 - t * 0.9 + rag * 2.0)) * (1.0 - smoothstep(1.0, 11.0, d));
+	float foam = clamp(edge + roll * (0.4 + 0.6 * n2(p * 2.5 + t * 0.3)), 0.0, 1.0);
+	col = mix(col, vec3(0.96, 0.99, 1.0), foam * 0.9);
+	ALBEDO = col * lum;
+	ROUGHNESS = mix(0.07, 0.6, foam);
+	METALLIC = 0.15;
+	SPECULAR = 0.8;
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	m.set_shader_parameter("shore", shore)
+	m.set_shader_parameter("center", center)
+	_water_mats.append(m)
+	return m
 
 
 func solid_cyl(r: float, h: float, pos: Vector3) -> void:
@@ -196,8 +514,92 @@ func exit_door(at: Vector3, leaf := Color(0.42, 0.27, 0.16), frame := Color(0.2,
 
 ## Place a Meshy-made model. Scaled so its largest side (or its height, if `by_height`) is `size`,
 ## sitting on the ground at `pos`, turned by `rot` (radians). Model fronts face +Z.
+const TREE_KINDS := ["tree", "sakura", "palm"]
+## Models that are meant to shine. Everything else (buildings, benches, trees) is matte: the
+## shiny patches these models sometimes come with only make reflections crawl and sparkle.
+const SHINY_PROPS := ["kei_car", "sedan", "motorcycle", "vending", "arcade_cabinet", "holo_pylon", "ferry"]
+var _tree_spots: Array[Vector3] = []
+static var _matte_done := {}
+static var _sway_shader: Shader
+static var _sway_mats := {}
+
+
+## No two trees in the same spot.
+func _tree_fits(pos: Vector3, gap := 3.2) -> bool:
+	for t in _tree_spots:
+		if Vector2(t.x - pos.x, t.z - pos.z).length() < gap:
+			return false
+	_tree_spots.append(pos)
+	return true
+
+
+func _matte(name: String, inst: Node) -> void:
+	if _matte_done.has(name) or name in SHINY_PROPS:
+		return
+	_matte_done[name] = true
+	for mi in Avatars._meshes(inst):
+		if mi.mesh == null:
+			continue
+		for i in mi.mesh.get_surface_count():
+			var m := mi.mesh.surface_get_material(i) as BaseMaterial3D
+			if m == null:
+				continue
+			m.metallic = 0.0
+			m.metallic_texture = null
+			m.roughness_texture = null
+			m.roughness = 0.82
+			m.metallic_specular = 0.35
+			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+
+
+## Trees move a little in the wind, let some light through their leaves and keep a trace of
+## their color at night instead of going grey.
+func _sway(inst: Node) -> void:
+	if _sway_shader == null:
+		_sway_shader = Shader.new()
+		_sway_shader.code = """
+shader_type spatial;
+render_mode world_vertex_coords;
+uniform sampler2D tex : source_color, filter_linear_mipmap_anisotropic;
+uniform float night_lift = 0.0;
+void vertex() {
+	float h = max(VERTEX.y - NODE_POSITION_WORLD.y - 1.2, 0.0);
+	float ph = NODE_POSITION_WORLD.x * 0.7 + NODE_POSITION_WORLD.z * 0.5;
+	float w = sin(TIME * 1.1 + ph) * 0.6 + sin(TIME * 2.3 + ph * 1.7 + VERTEX.x * 0.8) * 0.4;
+	VERTEX.x += w * 0.014 * h;
+	VERTEX.z += cos(TIME * 0.9 + ph + VERTEX.z * 0.5) * 0.009 * h;
+}
+void fragment() {
+	vec4 t = texture(tex, UV);
+	ALBEDO = t.rgb;
+	ROUGHNESS = 0.9;
+	SPECULAR = 0.12;
+	BACKLIGHT = t.rgb * 0.3;
+	EMISSION = t.rgb * night_lift;
+}
+"""
+	for mi in Avatars._meshes(inst):
+		if mi.mesh == null:
+			continue
+		for i in mi.mesh.get_surface_count():
+			var m := mi.mesh.surface_get_material(i) as BaseMaterial3D
+			if m == null or m.albedo_texture == null:
+				continue
+			var sm: ShaderMaterial = _sway_mats.get(m)
+			if sm == null:
+				sm = ShaderMaterial.new()
+				sm.shader = _sway_shader
+				sm.set_shader_parameter("tex", m.albedo_texture)
+				_sway_mats[m] = sm
+			mi.set_surface_override_material(i, sm)
+			if not _tree_mats.has(sm):
+				_tree_mats.append(sm)
+
+
 func prop(name: String, pos: Vector3, rot: float, size: float, by_height := false, parent: Node3D = null) -> Node3D:
 	if not has_model(name):
+		return null
+	if name in TREE_KINDS and parent == null and not _tree_fits(pos):
 		return null
 	var inst: Node3D = own_instance(name)
 	if inst == null:
@@ -208,6 +610,9 @@ func prop(name: String, pos: Vector3, rot: float, size: float, by_height := fals
 			ps = load(MODELS % name)
 			_model_cache[name] = ps
 		inst = ps.instantiate()
+		_matte(name, inst)
+	if name in TREE_KINDS:
+		_sway(inst)
 	var holder := Node3D.new()
 	holder.add_child(inst)
 	var box := _aabb(inst, Transform3D.IDENTITY)
@@ -218,6 +623,14 @@ func prop(name: String, pos: Vector3, rot: float, size: float, by_height := fals
 	holder.position = pos
 	holder.rotation.y = rot
 	holder.set_meta("size", box.size * k)
+	if parent == null and not (name in TREE_KINDS) and pos.y < 0.6:
+		# Nothing grows under a building or a bench.
+		var foot := box.size * k
+		var square: bool = absf(sin(rot * 2.0)) > 0.2
+		var fx: float = maxf(foot.x, foot.z) if square else (foot.z if absf(sin(rot)) > 0.7 else foot.x)
+		var fz: float = maxf(foot.x, foot.z) if square else (foot.x if absf(sin(rot)) > 0.7 else foot.z)
+		if fx * fz > 0.6:
+			no_grass.append(Rect2(pos.x - fx / 2.0, pos.z - fz / 2.0, fx, fz))
 	(parent if parent else self).add_child(holder)
 	if parent == null and name in ["bench", "vending", "fountain"]:
 		places.append([name, pos, rot])
@@ -257,14 +670,248 @@ func collide(holder: Node3D, shrink := 0.9) -> void:
 	holder.add_child(body)
 
 
+# ------------------------------------------------------------------ ground detail
+
+## Tufts of grass, small flowers and pebbles over a round patch of lawn. They stay off anything
+## paved or built on (`no_grass`), thin out with the "Ground detail" setting, and are split into
+## chunks so only the ones near you are drawn.
+func scatter_detail(center: Vector2, radius: float, y: float, bright := 1.0, seed := 77) -> void:
+	var level := int(Settings.gfx.get("detail", 2))
+	if level <= 0:
+		return
+	var per_m2: float = [0.0, 0.8, 1.7, 3.0][clampi(level, 0, 3)]
+	# What is covered, by 8 m cell, so each point only checks what is near it.
+	var grid := {}
+	for r in no_grass:
+		var g := r.grow(0.12)
+		for cx in range(floori(g.position.x / 8.0), floori(g.end.x / 8.0) + 1):
+			for cz in range(floori(g.position.y / 8.0), floori(g.end.y / 8.0) + 1):
+				var k := Vector2i(cx, cz)
+				if not grid.has(k):
+					grid[k] = []
+				(grid[k] as Array).append(g)
+	var tuft := _tuft_mesh()
+	var flower := _flower_mesh()
+	var pebble := _pebble_mesh()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	var chunk := 22.0
+	var n := int(ceil(radius / chunk))
+	var dark := Color(0.1, 0.27, 0.1) * bright
+	var light := Color(0.27, 0.47, 0.14) * bright
+	var petals := [Color("ffffff"), Color("ffe066"), Color("ff9ac8"), Color("b79cff"), Color("ff7a5a"), Color("8fd3ff")]
+	for ix in range(-n, n):
+		for iz in range(-n, n):
+			var c0 := center + Vector2(ix * chunk, iz * chunk)
+			if (c0 + Vector2(chunk, chunk) * 0.5 - center).length() > radius + chunk * 0.7:
+				continue
+			var tufts: Array = []
+			var flowers: Array = []
+			var pebbles: Array = []
+			var want := int(chunk * chunk * per_m2)
+			for i in want:
+				var p := c0 + Vector2(rng.randf() * chunk, rng.randf() * chunk)
+				if (p - center).length() > radius:
+					continue
+				var blocked := false
+				for r in grid.get(Vector2i(floori(p.x / 8.0), floori(p.y / 8.0)), []):
+					if (r as Rect2).has_point(p):
+						blocked = true
+						break
+				if blocked:
+					continue
+				var roll := rng.randf()
+				var xf := Transform3D(Basis(Vector3.UP, rng.randf() * TAU), Vector3(p.x, y, p.y))
+				if roll < 0.86:
+					var sc := rng.randf_range(0.7, 1.5)
+					tufts.append([xf.scaled_local(Vector3(sc, sc * rng.randf_range(0.7, 1.3), sc)), dark.lerp(light, rng.randf())])
+				elif roll < 0.965:
+					var sf := rng.randf_range(0.8, 1.3)
+					flowers.append([xf.scaled_local(Vector3(sf, sf, sf)), petals[rng.randi() % petals.size()]])
+				else:
+					var sp := rng.randf_range(0.5, 1.6)
+					pebbles.append([xf.scaled_local(Vector3(sp, sp * rng.randf_range(0.4, 0.7), sp * rng.randf_range(0.7, 1.2))), Color(0.5, 0.5, 0.5).lerp(Color(0.72, 0.7, 0.66), rng.randf())])
+			var mid := Vector3(c0.x + chunk / 2.0, y, c0.y + chunk / 2.0)
+			_detail_chunk(tuft, tufts, mid, 62.0)
+			_detail_chunk(flower, flowers, mid, 48.0)
+			_detail_chunk(pebble, pebbles, mid, 40.0)
+
+
+func _detail_chunk(mesh: Mesh, items: Array, mid: Vector3, see: float) -> void:
+	if items.is_empty():
+		return
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = mesh
+	mm.instance_count = items.size()
+	for i in items.size():
+		var xf: Transform3D = items[i][0]
+		xf.origin -= mid
+		mm.set_instance_transform(i, xf)
+		mm.set_instance_color(i, items[i][1])
+	var mi := MultiMeshInstance3D.new()
+	mi.multimesh = mm
+	mi.position = mid
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.visibility_range_end = see
+	mi.visibility_range_end_margin = 4.0
+	add_child(mi)
+
+
+static var _detail_meshes := {}
+
+
+func _crossed_quads(w: float, h: float, shader_code: String, key: String) -> Mesh:
+	if _detail_meshes.has(key):
+		return _detail_meshes[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for a in [0.0, PI / 2.0]:
+		var dx := cos(a) * w / 2.0
+		var dz := sin(a) * w / 2.0
+		var pts := [Vector3(-dx, 0, -dz), Vector3(dx, 0, dz), Vector3(dx, h, dz), Vector3(-dx, h, -dz)]
+		var uvs := [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
+		for i in [0, 1, 2, 0, 2, 3]:
+			st.set_normal(Vector3.UP)
+			st.set_uv(uvs[i])
+			st.add_vertex(pts[i])
+	var mesh := st.commit()
+	var sh := Shader.new()
+	sh.code = shader_code
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	mesh.surface_set_material(0, m)
+	_detail_meshes[key] = mesh
+	return mesh
+
+
+func _tuft_mesh() -> Mesh:
+	return _crossed_quads(0.46, 0.25, """
+shader_type spatial;
+render_mode cull_disabled, shadows_disabled;
+varying float tip;
+void vertex() {
+	tip = 1.0 - UV.y;
+	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	VERTEX.x += sin(TIME * 1.6 + w.x * 0.9 + w.z * 0.6) * 0.035 * tip;
+	NORMAL = vec3(0.0, 1.0, 0.0);
+}
+float h1(float p) { return fract(sin(p * 127.1) * 43758.5453); }
+void fragment() {
+	// Seven blades, each its own height and lean, tapering to a point.
+	float a = 0.0;
+	for (int i = 0; i < 7; i++) {
+		float fi = float(i);
+		float cx = (fi + 0.5) / 7.0 + (h1(fi) - 0.5) * 0.08;
+		float top = 0.45 + h1(fi + 7.0) * 0.55;
+		float t = (1.0 - UV.y) / top;
+		float lean = (h1(fi + 3.0) - 0.5) * 0.22 * t * t;
+		float half_w = 0.05 * (1.0 - t);
+		a = max(a, step(abs(UV.x - cx - lean), half_w) * step(t, 1.0));
+	}
+	if (a < 0.5) { discard; }
+	ALBEDO = COLOR.rgb * mix(0.8, 1.18, tip);
+	// Lit like the lawn it grows from, whichever side of the blade faces you.
+	NORMAL = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+	ROUGHNESS = 0.95;
+	SPECULAR = 0.1;
+}
+""", "tuft")
+
+
+func _flower_mesh() -> Mesh:
+	return _crossed_quads(0.2, 0.3, """
+shader_type spatial;
+render_mode cull_disabled, shadows_disabled;
+void vertex() {
+	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	VERTEX.x += sin(TIME * 1.4 + w.x * 1.1 + w.z * 0.7) * 0.03 * (1.0 - UV.y);
+	NORMAL = vec3(0.0, 1.0, 0.0);
+}
+void fragment() {
+	vec2 p = UV - vec2(0.5, 0.26);
+	p.y *= 0.67;
+	float r = length(p);
+	float petal = step(r, 0.2 + 0.05 * cos(atan(p.y, p.x) * 5.0));
+	float heart = step(r, 0.06);
+	float stem = step(abs(UV.x - 0.5), 0.035) * step(0.3, UV.y);
+	if (petal + stem < 0.5) { discard; }
+	vec3 c = mix(vec3(0.2, 0.42, 0.14), COLOR.rgb, petal);
+	c = mix(c, vec3(1.0, 0.8, 0.2), heart);
+	ALBEDO = c;
+	NORMAL = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+	ROUGHNESS = 0.9;
+}
+""", "flower")
+
+
+func _pebble_mesh() -> Mesh:
+	if _detail_meshes.has("pebble"):
+		return _detail_meshes["pebble"]
+	var sm := SphereMesh.new()
+	sm.radius = 0.11
+	sm.height = 0.2
+	sm.radial_segments = 7
+	sm.rings = 4
+	var m := StandardMaterial3D.new()
+	m.vertex_color_use_as_albedo = true
+	m.roughness = 0.9
+	sm.material = m
+	_detail_meshes["pebble"] = sm
+	return sm
+
+
+## A boulder: a ball pushed about by noise, flat-shaded so it has chiselled faces. `size` is its
+## rough width, height and depth. Used in clusters for cliffs and sea rocks.
+func rock(pos: Vector3, size: Vector3, m: Material, seed := 1, rot := 0.0) -> MeshInstance3D:
+	var fn := FastNoiseLite.new()
+	fn.seed = seed
+	fn.frequency = 0.9
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_smooth_group(-1)
+	var rings := 6
+	var segs := 9
+	var pts: Array = []
+	for r in rings + 1:
+		var row: Array = []
+		var v := float(r) / rings
+		for sgi in segs:
+			var u := float(sgi) / segs
+			var d := Vector3(sin(v * PI) * cos(u * TAU), cos(v * PI), sin(v * PI) * sin(u * TAU))
+			var k := 1.0 + fn.get_noise_3dv(d * 1.6) * 0.42 + fn.get_noise_3dv(d * 4.0) * 0.12
+			var p := d * k
+			p.y = maxf(p.y, -0.55)          # sits flat on the ground
+			row.append(p * size * 0.5)
+		pts.append(row)
+	for r in rings:
+		for sgi in segs:
+			var a: Vector3 = pts[r][sgi]
+			var b: Vector3 = pts[r][(sgi + 1) % segs]
+			var c: Vector3 = pts[r + 1][sgi]
+			var d2: Vector3 = pts[r + 1][(sgi + 1) % segs]
+			for v3 in [a, b, c, b, d2, c]:
+				st.add_vertex(v3)
+	st.generate_normals()
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = m
+	mi.position = pos
+	mi.rotation.y = rot
+	add_child(mi)
+	return mi
+
+
 # ------------------------------------------------------------------ environment
 
 func _build_env() -> void:
 	var we := WorldEnvironment.new()
 	env = Environment.new()
 	var sky := Sky.new()
-	sky_mat = ProceduralSkyMaterial.new()
-	sky_mat.sun_angle_max = 25
+	sky_mat = ShaderMaterial.new()
+	sky_mat.shader = _sky_shader()
+	sky.radiance_size = Sky.RADIANCE_SIZE_128
 	sky.sky_material = sky_mat
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
@@ -277,32 +924,112 @@ func _build_env() -> void:
 	env.glow_hdr_threshold = 0.9
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	env.fog_enabled = true
-	env.fog_sky_affect = 0.4
-	env.volumetric_fog_density = 0.012
+	env.fog_sky_affect = 0.15
+	env.fog_aerial_perspective = 0.5
+	env.volumetric_fog_density = 0.0035
 	env.volumetric_fog_anisotropy = 0.6
-	env.volumetric_fog_length = 60.0
+	env.volumetric_fog_length = 80.0
 	env.adjustment_enabled = true
-	env.adjustment_saturation = 1.12
-	env.adjustment_contrast = 1.05
+	env.adjustment_saturation = 1.1
+	env.adjustment_contrast = 1.04
 	Settings.tune_environment(env)
 	we.environment = env
 	add_child(we)
 	sun = DirectionalLight3D.new()
-	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 70.0
-	sun.shadow_blur = 1.5
+	Settings.tune_sun(sun)
 	add_child(sun)
+	Settings.gfx_changed.connect(_on_gfx_changed)
+
+
+func _on_gfx_changed() -> void:
+	Settings.tune_environment(env)
+	Settings.tune_sun(sun)
+
+
+## The sky: a soft gradient, a sun with a halo, drifting-looking cloud banks lit from the sun's
+## side, and stars at night. Still (nothing moves in it), so it costs nothing after the first frame.
+static var _sky_sh: Shader
+
+
+func _sky_shader() -> Shader:
+	if _sky_sh == null:
+		_sky_sh = Shader.new()
+		_sky_sh.code = """
+shader_type sky;
+uniform vec3 top : source_color = vec3(0.2, 0.45, 0.85);
+uniform vec3 horizon : source_color = vec3(0.72, 0.86, 0.96);
+uniform vec3 ground : source_color = vec3(0.35, 0.38, 0.44);
+uniform vec3 sun_col : source_color = vec3(1.0, 0.95, 0.85);
+uniform vec3 cloud_col : source_color = vec3(1.0);
+uniform vec3 cloud_shade : source_color = vec3(0.6, 0.7, 0.82);
+uniform float cloud = 0.45;
+uniform float stars = 0.0;
+float h1(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float n2(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h1(i), h1(i + vec2(1.0, 0.0)), f.x), mix(h1(i + vec2(0.0, 1.0)), h1(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+float fbm(vec2 p) {
+	float v = 0.0; float a = 0.5;
+	for (int i = 0; i < 5; i++) { v += n2(p) * a; p = p * 2.03 + vec2(13.1, 7.7); a *= 0.5; }
+	return v;
+}
+void sky() {
+	vec3 d = normalize(EYEDIR);
+	float y = d.y;
+	vec3 col = mix(horizon, top, pow(clamp(y, 0.0, 1.0), 0.5));
+	if (y < 0.0) {
+		col = mix(horizon * 0.9, ground, clamp(-y * 5.0, 0.0, 1.0));
+	}
+	float sd = 0.0;
+	if (LIGHT0_ENABLED) {
+		sd = max(dot(d, LIGHT0_DIRECTION), 0.0);
+		col += sun_col * (pow(sd, 900.0) * 5.0 + pow(sd, 40.0) * 0.22 + pow(sd, 6.0) * 0.08);
+	}
+	if (y > 0.0) {
+		if (stars > 0.01) {
+			vec2 sp = d.xz / (y + 0.35) * 90.0;
+			float st = step(0.9965, h1(floor(sp))) * smoothstep(0.02, 0.25, y);
+			col += vec3(0.9, 0.95, 1.0) * st * stars * (0.5 + 0.5 * h1(floor(sp) + 3.0));
+		}
+		vec2 uv = d.xz / (y + 0.16) * 1.1;
+		float c = fbm(uv + vec2(4.0, 1.5));
+		float wisps = fbm(uv * 2.7 + 11.0);
+		float m = smoothstep(1.0 - cloud - 0.08, 1.0 - cloud + 0.2, c * 0.8 + wisps * 0.2 + 0.18);
+		vec2 toward = LIGHT0_ENABLED ? LIGHT0_DIRECTION.xz : vec2(0.3, 0.2);
+		float lit = clamp((c - fbm(uv + vec2(4.0, 1.5) + toward * 0.22)) * 3.5 + 0.55, 0.0, 1.0);
+		vec3 cc = mix(cloud_shade, cloud_col, lit);
+		cc += sun_col * pow(sd, 8.0) * 0.25;
+		m *= smoothstep(0.0, 0.12, y);
+		col = mix(col, cc, m * 0.94);
+	}
+	COLOR = col;
+}
+"""
+	return _sky_sh
+
+
+var _tree_mats: Array = []
+var _water_mats: Array = []
 
 
 func apply_tod(t: String) -> void:
 	tod = t if TOD_LOOK.has(t) else "night"
 	var L: Dictionary = TOD_LOOK[tod]
 	var accent: Color = theme.get("accent", Color.CYAN)
-	sky_mat.sky_top_color = L["top"]
-	sky_mat.sky_horizon_color = L["horizon"]
-	sky_mat.ground_horizon_color = (L["horizon"] as Color).darkened(0.3)
-	sky_mat.ground_bottom_color = L["ground"]
-	sky_mat.sun_angle_max = 30 if tod == "sunset" else 15
+	sky_mat.set_shader_parameter("top", L["top"])
+	sky_mat.set_shader_parameter("horizon", L["horizon"])
+	sky_mat.set_shader_parameter("ground", L["ground"])
+	sky_mat.set_shader_parameter("sun_col", L["sun"])
+	sky_mat.set_shader_parameter("cloud", L["cloud"])
+	sky_mat.set_shader_parameter("cloud_col", L["cloud_col"])
+	sky_mat.set_shader_parameter("cloud_shade", L["cloud_shade"])
+	sky_mat.set_shader_parameter("stars", L["stars"])
+	sun.shadow_opacity = L["shadow"]
+	for tm in _tree_mats:
+		(tm as ShaderMaterial).set_shader_parameter("night_lift", L["lift"])
+	for wm in _water_mats:
+		(wm as ShaderMaterial).set_shader_parameter("lum", {"night": 0.4, "sunset": 0.8}.get(tod, 1.0))
 	sun.light_color = L["sun"]
 	sun.light_energy = L["sun_e"]
 	sun.rotation_degrees = L["sun_rot"]
@@ -496,6 +1223,7 @@ void fragment() {
 	col = mix(col, wall.rgb * 0.55, band);
 	float rough = 0.85;
 	float metal = 0.0;
+	float hgt = -mortar * 0.25 - band * 0.2;
 	vec3 emit = vec3(0.0);
 	if (abs(wn.y) < 0.5) {
 		if (wp.y < 3.3) {
@@ -504,8 +1232,9 @@ void fragment() {
 			float pane = step(0.08, sx) * step(sx, 0.92) * step(0.25, wp.y) * step(wp.y, 2.4);
 			float strip = step(2.6, wp.y) * step(wp.y, 3.0) * step(0.08, sx) * step(sx, 0.92);
 			col = mix(col, vec3(0.05, 0.06, 0.08), pane);
-			rough = mix(rough, 0.06, pane);
-			metal = pane * 0.3;
+			rough = mix(rough, 0.14, pane);
+			metal = pane * 0.2;
+			hgt = -pane * 0.6;
 			float on = step(0.3, h(floor(vec2(u / 4.0, 3.0))));
 			emit += shop.rgb * pane * on * (0.25 + glow_strength * 0.9) * 0.6;
 			emit += shop.rgb * strip * (0.2 + glow_strength * 1.6);
@@ -554,8 +1283,12 @@ void fragment() {
 			// The odd air conditioner hanging under a window.
 			float ac = step(0.84, h(cell + 31.0)) * step(0.52, f.x) * step(f.x, 0.8) * step(0.05, f.y) * step(f.y, 0.185);
 			col = mix(col, vec3(0.74, 0.75, 0.77) * (0.8 + 0.2 * step(0.5, fract(f.y * 60.0))), ac);
-			rough = mix(rough, 0.05, glass * (1.0 - blinds));
-			metal = mix(metal, 0.5, glass * (1.0 - blinds));
+			// The glass sits back in the wall: the frame throws a shadow down its top and one side.
+			float recess = max(smoothstep(wy1 - 0.1, wy1 - 0.03, f.y), smoothstep(wx0 + 0.11, wx0 + 0.045, f.x) * 0.8);
+			col *= 1.0 - 0.42 * recess * glass;
+			hgt = frame * 0.9 + sill * 1.3 + pil * 0.5 + mull * 0.5 - glass * 0.7 + ac * 1.6;
+			rough = mix(rough, 0.16, glass * (1.0 - blinds));
+			metal = mix(metal, 0.25, glass * (1.0 - blinds));
 			float warmth = h(cell + 5.0);
 			vec3 wc = mix(glow.rgb, vec3(0.7, 0.85, 1.0), step(0.75, warmth));
 			emit += wc * glass * (1.0 - mull) * (1.0 - blinds * 0.55) * lit * glow_strength * (0.6 + h(cell + 3.1) * 1.4);
@@ -569,6 +1302,15 @@ void fragment() {
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	EMISSION = emit;
+	// Relief the light can catch: frames and sills stand proud, glass and mortar sit back.
+	vec3 dpx = dFdx(VERTEX);
+	vec3 dpy = dFdy(VERTEX);
+	vec3 r1 = cross(dpy, NORMAL);
+	vec3 r2 = cross(NORMAL, dpx);
+	float det = dot(dpx, r1);
+	vec3 grad = sign(det) * (dFdx(hgt) * r1 + dFdy(hgt) * r2);
+	float fade = clamp(1.0 - length(VERTEX) / 70.0, 0.0, 1.0);
+	NORMAL = normalize(abs(det) * NORMAL - 0.03 * fade * grad);
 }
 """
 		set_meta("win_shader", sh)
@@ -831,9 +1573,13 @@ func _rest_of_landmarks() -> void:
 
 func tree(p: Vector3, s: float) -> void:
 	var kind := "sakura" if int(absf(p.x * 7.0 + p.z * 3.0)) % 3 == 0 else "tree"
-	if prop(kind, p + Vector3(0, 0.2, 0), fmod(p.x * 13.0, TAU), 5.2 * s, true):
+	for t in _tree_spots:
+		if Vector2(t.x - p.x, t.z - p.z).length() < 3.2:
+			return
+	if prop(kind, p + Vector3(0, 0.0, 0), fmod(p.x * 13.0, TAU), 5.2 * s, true):
 		solid_cyl(0.35 * s, 3.0, p + Vector3(0, 1.5, 0))
 		return
+	_tree_spots.append(p)
 	var bark := mat(Color(0.3, 0.2, 0.13), 0.95)
 	cyl(0.12 * s, 0.22 * s, 2.2 * s, p + Vector3(0, 1.1 * s, 0), bark)
 	var rng := RandomNumberGenerator.new()

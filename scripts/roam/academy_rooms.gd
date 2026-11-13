@@ -6,14 +6,14 @@ const ROOMS := {
 	"ac_hall": {"district": "academy", "door_of": "academy_main", "name": "Academy Main Hall", "area": "Card shop, duel arena and the exam office",
 		"at": Vector3(400, 0, -400), "half": Vector2(15.0, 11.0), "height": 8.0, "label": "Enter the main building", "music": "shop",
 		"floor": Color(0.78, 0.74, 0.66), "wall": Color(0.95, 0.91, 0.82), "trim": Color("e0b04a")},
-	"dorm_red": {"district": "academy", "door_of": "dorm_red", "name": "Red Dorm", "area": "Small rooms, big hearts",
-		"at": Vector3(480, 0, -400), "half": Vector2(6.5, 5.0), "height": 3.4, "label": "Enter the Red Dorm", "music": "shop",
+	"dorm_red": {"district": "academy", "door_of": "dorm_red", "name": "Red Dorm", "area": "Common room, bedrooms upstairs",
+		"at": Vector3(480, 0, -400), "half": Vector2(6.5, 7.4), "height": 6.2, "label": "Enter the Red Dorm", "music": "shop",
 		"floor": Color(0.52, 0.36, 0.24), "wall": Color(0.9, 0.82, 0.7), "trim": Color("d9342b")},
-	"dorm_yellow": {"district": "academy", "door_of": "dorm_yellow", "name": "Yellow Dorm", "area": "Study hall and the curry kitchen",
-		"at": Vector3(560, 0, -400), "half": Vector2(9.0, 6.5), "height": 4.4, "label": "Enter the Yellow Dorm", "music": "shop",
+	"dorm_yellow": {"district": "academy", "door_of": "dorm_yellow", "name": "Yellow Dorm", "area": "Study hall, kitchen, bedrooms upstairs",
+		"at": Vector3(560, 0, -400), "half": Vector2(9.0, 8.8), "height": 6.3, "label": "Enter the Yellow Dorm", "music": "shop",
 		"floor": Color(0.74, 0.6, 0.4), "wall": Color(0.98, 0.93, 0.74), "trim": Color("f2c230")},
-	"dorm_blue": {"district": "academy", "door_of": "dorm_blue", "name": "Blue Dorm", "area": "The grand hall",
-		"at": Vector3(640, 0, -400), "half": Vector2(12.5, 9.5), "height": 7.5, "label": "Enter the Blue Dorm", "music": "shop",
+	"dorm_blue": {"district": "academy", "door_of": "dorm_blue", "name": "Blue Dorm", "area": "The grand hall and the suites",
+		"at": Vector3(640, 0, -400), "half": Vector2(12.5, 11.8), "height": 8.0, "label": "Enter the Blue Dorm", "music": "shop",
 		"floor": Color(0.86, 0.87, 0.9), "wall": Color(0.93, 0.95, 0.99), "trim": Color("2f6fe0")},
 }
 
@@ -30,9 +30,9 @@ const PEOPLE := {
 		{"id": "ac_arena", "char": "", "model": "duelist_m4", "dorm": "yellow", "name": "Arena Champion", "color": Color("f2c230"), "pos": Vector3(-6.0, 0, -5.2), "face": 0.3,
 			"lines": ["The indoor arena is for practice. Nobody is grading you here.", "...But I'm still not losing."],
 			"duel": {"deck": "deck_machine", "difficulty": 2, "intro": "Arena rules. Winner keeps the stage."}},
-		{"id": "ac_fan_a", "char": "", "model": "student_girl", "dorm": "blue", "name": "Spectator", "color": Color("2f6fe0"), "pos": Vector3(-12.2, 0, 1.0), "face": 1.2, "pose": "sit",
+		{"id": "ac_fan_a", "char": "", "model": "student_girl", "dorm": "blue", "name": "Spectator", "color": Color("2f6fe0"), "pos": Vector3(-12.2, 0, 2.3), "face": 3.3, "pose": "sit", "seat": false,
 			"chats": [["I come here between classes just to watch."], ["Somebody summoned a ten-thousand ATK monster in here last week. The floor still has a mark."]]},
-		{"id": "ac_fan_b", "char": "", "model": "street_duelist", "dorm": "red", "name": "Spectator", "color": Color("d9342b"), "pos": Vector3(-0.2, 0, 1.0), "face": -1.2, "pose": "sit",
+		{"id": "ac_fan_b", "char": "", "model": "street_duelist", "dorm": "red", "name": "Spectator", "color": Color("d9342b"), "pos": Vector3(-0.2, 0, 2.3), "face": 2.95, "pose": "sit", "seat": false,
 			"chats": [["Go on, challenge the champion. I want to see a good duel."]]},
 	],
 	"dorm_red": [
@@ -44,24 +44,24 @@ const PEOPLE := {
 			"duel": {"deck": "deck_warrior", "difficulty": 1, "intro": "Dish duty is on the line!"}},
 	],
 	"dorm_yellow": [
-		{"id": "yel_cook", "char": "", "model": "shopkeeper", "name": "Dorm Cook", "color": Color("f2c230"), "pos": Vector3(5.6, 0, -4.4), "face": 0.0,
+		{"id": "yel_cook", "char": "", "model": "shopkeeper", "name": "Dorm Cook", "color": Color("f2c230"), "pos": Vector3(5.6, 0, -6.6), "face": 0.0,
 			"chats": [["Curry's on! Yellow dorm curry wins more duels than any card.", "Second helpings are free if you win a duel in the study hall."]]},
-		{"id": "yel_study", "char": "", "model": "student_girl", "dorm": "yellow", "name": "Yellow Dorm Scholar", "color": Color("f2c230"), "pos": Vector3(-4.6, 0, -1.4), "face": 1.57, "pose": "sit",
+		{"id": "yel_study", "char": "", "model": "student_girl", "dorm": "yellow", "name": "Yellow Dorm Scholar", "color": Color("f2c230"), "pos": Vector3(-4.6, 0, -0.68), "face": 3.1416, "pose": "sit", "seat": false,
 			"lines": ["I've charted the odds for every pack in the shop. Want to see my spreadsheet?", "No? A duel, then. I'll show you the numbers in action."],
 			"duel": {"deck": "deck_arcane", "difficulty": 2, "intro": "Probability is on my side."}},
-		{"id": "yel_reader", "char": "", "model": "student_boy", "dorm": "yellow", "name": "Yellow Dorm Student", "color": Color("f2c230"), "pos": Vector3(-1.2, 0, 2.6), "face": -1.57, "pose": "sit",
+		{"id": "yel_reader", "char": "", "model": "student_boy", "dorm": "yellow", "name": "Yellow Dorm Student", "color": Color("f2c230"), "pos": Vector3(-1.0, 0, 3.32), "face": 3.1416, "pose": "sit", "seat": false,
 			"chats": [["The library closes at nine, so I moved in here.", "The Blue dorm has a chandelier. We have a chalkboard. We use the chalkboard."]]},
 	],
 	"dorm_blue": [
 		{"id": "blue_butler", "char": "", "model": "office_worker", "name": "Dorm Steward", "color": Color("2f6fe0"), "pos": Vector3(0, 0, 5.4), "face": 3.14,
 			"chats": [["Welcome to the Blue dorm. Please wipe your feet. Twice.", "The grand hall is open to visitors until curfew."]]},
-		{"id": "blue_queen", "char": "", "model": "stylish_woman", "dorm": "blue", "name": "Blue Dorm Senior", "color": Color("2f6fe0"), "pos": Vector3(-8.0, 0, -1.0), "face": 1.2, "pose": "sit",
+		{"id": "blue_queen", "char": "", "model": "stylish_woman", "dorm": "blue", "name": "Blue Dorm Senior", "color": Color("2f6fe0"), "pos": Vector3(-7.7, 0, 1.52), "face": 3.1416, "pose": "sit", "seat": false,
 			"lines": ["A visitor from the lower dorms. How brave.", "Shall we see if you belong in this hall?"],
 			"duel": {"deck": "deck_wind", "difficulty": 2, "intro": "Elegance first."}},
 		{"id": "blue_elite", "char": "blue_student", "name": "Blue Dorm Elite", "color": Color("2f6fe0"), "pos": Vector3(7.6, 0, -3.0), "face": -1.0,
 			"lines": ["Top of the ranking table. Third year running.", "You can try. Everyone tries."],
 			"duel": {"deck": "deck_dragon", "difficulty": 3, "intro": "Know your place."}},
-		{"id": "blue_piano", "char": "", "model": "student_girl", "dorm": "blue", "name": "Blue Dorm Student", "color": Color("2f6fe0"), "pos": Vector3(-9.6, 0, -6.6), "face": 0.6,
+		{"id": "blue_piano", "char": "", "model": "student_girl", "dorm": "blue", "name": "Blue Dorm Student", "color": Color("2f6fe0"), "pos": Vector3(-9.4, 0, -5.0), "face": 3.1416,
 			"chats": [["Nobody actually plays the piano. It's just here to look expensive."]]},
 	],
 }
@@ -315,14 +315,16 @@ static func _red(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> vo
 	# Fridge, a small TV on a crate, posters and a window.
 	city.box(Vector3(0.8, 1.6, 0.7), o + Vector3(half.x - 0.5, 0.8, -half.y + 0.5), city.mat(Color(0.92, 0.92, 0.9), 0.4, 0.2))
 	city.box(Vector3(0.04, 0.5, 0.04), o + Vector3(half.x - 0.85, 1.1, -half.y + 0.86), city.mat(Color(0.6, 0.6, 0.62), 0.3, 0.8), false)
-	city.box(Vector3(1.2, 0.6, 0.6), o + Vector3(half.x - 0.7, 0.3, 0.8), wood)
-	city.box(Vector3(0.9, 0.6, 0.5), o + Vector3(half.x - 0.7, 0.9, 0.8), city.mat(Color(0.12, 0.12, 0.14), 0.5))
-	city.box(Vector3(0.03, 0.46, 0.38), o + Vector3(half.x - 1.16, 0.92, 0.8), city.glow_mat(Color("7cc4ff"), 0.9), false)
+	city.box(Vector3(1.2, 0.6, 0.6), o + Vector3(half.x - 0.7, 0.3, -half.y + 2.2), wood)
+	city.box(Vector3(0.9, 0.6, 0.5), o + Vector3(half.x - 0.7, 0.9, -half.y + 2.2), city.mat(Color(0.12, 0.12, 0.14), 0.5))
+	city.box(Vector3(0.03, 0.46, 0.38), o + Vector3(half.x - 1.16, 0.92, -half.y + 2.2), city.glow_mat(Color("7cc4ff"), 0.9), false)
 	for k in 3:
 		city.box(Vector3(0.7, 0.9, 0.02), o + Vector3(-1.8 + k * 1.6, 2.1, -half.y + 0.06), city.mat([Color("ffd166"), Color("7dd3ff"), Color("ff8a8a")][k], 0.8), false)
-	city.box(Vector3(0.06, 1.2, 1.8), o + Vector3(half.x - 0.04, 1.9, -1.8), city.glow_mat(Color(1.0, 0.86, 0.6), 1.0), false)
-	_light(city, o + Vector3(0, hgt - 0.6, 0), Color(1.0, 0.8, 0.55), 2.0, 9.0)
-	_ball(city, o + Vector3(0, hgt - 0.35, -0.6), 0.16, city.glow_mat(Color(1.0, 0.82, 0.5), 3.0))
+	_light(city, o + Vector3(0, hgt - 0.6, -1.0), Color(1.0, 0.8, 0.55), 2.0, 9.0)
+	_ball(city, o + Vector3(0, hgt - 0.35, -1.0), 0.16, city.glow_mat(Color(1.0, 0.82, 0.5), 3.0))
+	_upstairs(city, o, half, hgt, {"h": 3.4, "side": 1.0, "rooms": 3, "wood": city.surf("wood", Color(0.5, 0.34, 0.22)),
+		"wall": city.surf("wood", Color(0.72, 0.56, 0.4)), "floor": city.surf("wood", Color(0.6, 0.44, 0.3)), "rail": city.mat(Color(0.3, 0.2, 0.13), 0.7),
+		"accent": Color("c8322a"), "first": 101})
 
 
 # ------------------------------------------------------------------ yellow dorm
@@ -378,6 +380,9 @@ static func _yellow(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) ->
 	for x: float in [-4.0, 0.0, 4.0]:
 		_light(city, o + Vector3(x, hgt - 0.5, 0), Color(1.0, 0.92, 0.72), 1.6, 9.0)
 		city.box(Vector3(1.4, 0.06, 0.4), o + Vector3(x, hgt - 0.05, 0), city.glow_mat(Color(1.0, 0.95, 0.8), 2.0), false)
+	_upstairs(city, o, half, hgt, {"h": 3.4, "side": -1.0, "rooms": 4, "wood": city.surf("wood", Color(0.6, 0.42, 0.26)),
+		"wall": city.surf("plaster", Color(0.98, 0.93, 0.76)), "floor": city.surf("wood", Color(0.7, 0.54, 0.36)), "rail": city.mat(Color(0.5, 0.36, 0.2), 0.6),
+		"accent": Color("f2c230"), "first": 201})
 
 
 # ------------------------------------------------------------------ blue dorm
@@ -393,16 +398,30 @@ static func _blue(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> v
 		city.box(Vector3(0.1, 0.022, half.y * 2 - 2.0), o + Vector3(sx * 1.6, 0.013, 1.0), gold, false)
 	# Grand staircase up to a landing on the back wall.
 	var steps := 9
+	var sz0 := -half.y + 6.25                 # the first step; the ninth meets the landing
 	for i in steps:
 		var y := (i + 1) * 0.28
-		city.box(Vector3(5.0, 0.28, 0.5), o + Vector3(0, y - 0.14, -half.y + 4.4 - i * 0.5), white)
-		city.box(Vector3(3.2, 0.02, 0.5), o + Vector3(0, y + 0.01, -half.y + 4.4 - i * 0.5), blue, false)
+		city.box(Vector3(5.0, 0.28, 0.5), o + Vector3(0, y - 0.14, sz0 - i * 0.5), white, false)
+		city.box(Vector3(5.0, y - 0.28, 0.5), o + Vector3(0, (y - 0.28) / 2.0, sz0 - i * 0.5), white, false)
+		city.box(Vector3(3.2, 0.02, 0.5), o + Vector3(0, y + 0.01, sz0 - i * 0.5), blue, false)
+	# What your feet walk on: one smooth ramp under the steps, and a wall each side of it.
+	_ramp(city, o + Vector3(0, 0, sz0 + 0.5), o + Vector3(0, steps * 0.28, sz0 - steps * 0.5 + 0.25), 5.0)
+	for sx: float in [-1.0, 1.0]:
+		_block(city, Vector3(0.12, 3.6, 4.6), o + Vector3(sx * 2.56, 1.8, sz0 - 2.0))
 	city.box(Vector3(half.x * 2, 0.3, 2.0), o + Vector3(0, steps * 0.28 - 0.15, -half.y + 1.0), white)
+	city.box(Vector3(half.x * 2, 0.02, 1.2), o + Vector3(0, steps * 0.28 + 0.01, -half.y + 1.0), blue, false)
 	for sx: float in [-1.0, 1.0]:
 		for i in steps + 1:
-			city.cyl(0.04, 0.04, 0.9, o + Vector3(sx * 2.5, i * 0.28 + 0.45, -half.y + 4.6 - i * 0.5), gold)
-		var rail := city.box(Vector3(0.1, 0.1, 5.2), o + Vector3(sx * 2.5, steps * 0.14 + 0.9, -half.y + 2.4), gold, false)
+			city.cyl(0.04, 0.04, 0.9, o + Vector3(sx * 2.5, i * 0.28 + 0.45, sz0 + 0.25 - i * 0.5), gold)
+		var rail := city.box(Vector3(0.1, 0.1, 5.2), o + Vector3(sx * 2.5, steps * 0.14 + 0.9, sz0 - 2.0), gold, false)
 		rail.rotation.x = atan2(steps * 0.28, steps * 0.5)
+		# A balustrade along the landing either side of the stairs.
+		var la := 2.6
+		var lb := half.x - 0.1
+		city.box(Vector3(lb - la, 0.08, 0.08), o + Vector3(sx * (la + lb) / 2.0, steps * 0.28 + 0.95, -half.y + 1.95), gold, false)
+		for k in 8:
+			city.cyl(0.035, 0.035, 0.95, o + Vector3(sx * lerpf(la, lb, k / 7.0), steps * 0.28 + 0.475, -half.y + 1.95), gold, null, 8)
+		_block(city, Vector3(lb - la, 1.1, 0.1), o + Vector3(sx * (la + lb) / 2.0, steps * 0.28 + 0.55, -half.y + 1.95))
 	_sign(city, "BLUE DORM", o + Vector3(0, hgt - 1.0, -half.y + 0.12), 0.0, Color("9cc8ff"), 150)
 	# Portraits of past champions along the landing.
 	for k in 4:
@@ -460,9 +479,198 @@ static func _blue(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> v
 	var py := city.prop("holo_pylon", o + Vector3(half.x - 1.0, 0, -4.0), -PI / 2, 3.2, true)
 	if py:
 		city.collide(py, 0.5)
+	_upstairs(city, o, half, hgt, {"h": 3.8, "side": 1.0, "rooms": 4, "wood": white,
+		"wall": city.surf("plaster", Color(0.93, 0.95, 0.99)), "floor": city.mat(Color(0.82, 0.84, 0.9), 0.35, 0.1), "rail": gold,
+		"accent": Color("2f5fc0"), "first": 301, "depth": 5.4})
 	for sx: float in [-1.0, 1.0]:
 		_plant(city, o + Vector3(sx * (half.x - 1.0), 0, half.y - 1.2), 1.5)
 		city.box(Vector3(0.06, 3.6, 2.0), o + Vector3(sx * (half.x - 0.04), 3.4, 3.0), city.glow_mat(Color(0.75, 0.88, 1.0), 0.9), false)
 		for fz: float in [-1.0, 1.0]:
 			city.box(Vector3(0.1, 3.8, 0.12), o + Vector3(sx * (half.x - 0.08), 3.4, 3.0 + fz * 1.0), gold, false)
 		city.box(Vector3(0.1, 0.12, 2.1), o + Vector3(sx * (half.x - 0.08), 5.25, 3.0), gold, false)
+
+
+# ------------------------------------------------------------------ upstairs
+
+## An invisible ramp from `foot` (on the floor) up to `head`, `width` wide. Steps are only for
+## show: this is what you actually walk on, so climbing is smooth.
+static func _ramp(city: CityBuilder, foot: Vector3, head: Vector3, width: float) -> void:
+	var run := Vector2(head.x - foot.x, head.z - foot.z).length()
+	var rise := head.y - foot.y
+	var length := sqrt(run * run + rise * rise)
+	var body := StaticBody3D.new()
+	var cs := CollisionShape3D.new()
+	var sh := BoxShape3D.new()
+	sh.size = Vector3(width, 0.2, length)
+	cs.shape = sh
+	body.add_child(cs)
+	city.add_child(body)
+	var mid := (foot + head) / 2.0
+	# Local +Z runs up the slope; drop it half its thickness so the top face is the walking line.
+	var fwd := (head - foot).normalized()
+	var right := Vector3.UP.cross(fwd).normalized()
+	var up := fwd.cross(right).normalized()
+	body.transform = Transform3D(Basis(right, up, fwd), mid - up * 0.1)
+
+
+## The upper floor of a dorm: a gallery over the entrance, reached by a staircase along one
+## side wall, with a row of bedrooms you can walk into. cfg: h (floor height), side (which wall
+## the stairs climb: -1 left, 1 right), rooms, wood / wall / floor / rail materials, accent
+## color, first (number on the first door), depth.
+static func _upstairs(city: CityBuilder, o: Vector3, half: Vector2, hgt: float, cfg: Dictionary) -> void:
+	var H: float = cfg["h"]
+	var side: float = cfg["side"]
+	var depth: float = cfg.get("depth", 4.7)
+	var wood: Material = cfg["wood"]
+	var wall: Material = cfg["wall"]
+	var floor_m: Material = cfg["floor"]
+	var rail_m: Material = cfg["rail"]
+	var accent: Color = cfg["accent"]
+	var n: int = cfg["rooms"]
+	var ze := half.y - depth                   # the gallery's open edge
+	var zw := ze + 1.55                        # the wall the bedroom doors are in
+	var stair_w := 1.5
+	var xs := side * (half.x - stair_w / 2.0)
+	# The floor and the beam along its edge.
+	city.box(Vector3(half.x * 2, 0.24, depth), o + Vector3(0, H - 0.12, half.y - depth / 2.0), floor_m)
+	city.box(Vector3(half.x * 2, 0.36, 0.22), o + Vector3(0, H - 0.2, ze + 0.02), wood, false)
+	city.box(Vector3(half.x * 2, 0.04, depth - 0.1), o + Vector3(0, H - 0.26, half.y - depth / 2.0), city.mat(Color(0.82, 0.8, 0.76), 0.9), false)
+	for px: float in [-half.x * 0.5, half.x * 0.5]:
+		city.box(Vector3(0.26, H - 0.24, 0.26), o + Vector3(px, (H - 0.24) / 2.0, ze + 0.1), wood, false)
+		city.solid_cyl(0.2, H - 0.3, o + Vector3(px, (H - 0.3) / 2.0, ze + 0.1))
+	for lx: float in [-half.x * 0.5, half.x * 0.5]:
+		_light(city, o + Vector3(lx, H - 0.6, half.y - depth / 2.0), Color(1.0, 0.9, 0.72), 1.3, 6.5)
+		city.box(Vector3(0.8, 0.05, 0.3), o + Vector3(lx, H - 0.3, half.y - depth / 2.0), city.glow_mat(Color(1.0, 0.94, 0.8), 2.0), false)
+	# ---- the staircase
+	var run := H * 1.5
+	var z0 := ze - run
+	var foot := o + Vector3(xs, 0, z0)
+	var head := o + Vector3(xs, H, ze)
+	_ramp(city, foot + Vector3(0, 0, -0.25), head + Vector3(0, 0, 0.0), stair_w)
+	var count := int(ceil(H / 0.19))
+	var rise := H / count
+	var tread := run / count
+	for i in count:
+		city.box(Vector3(stair_w - 0.08, 0.06, tread + 0.05), o + Vector3(xs, (i + 1) * rise - 0.03, z0 + (i + 0.5) * tread), floor_m, false)
+		city.box(Vector3(stair_w - 0.12, rise - 0.06, 0.04), o + Vector3(xs, (i + 0.5) * rise - 0.03, z0 + i * tread + 0.02), wood, false)
+	var slope := atan2(H, run)
+	var length := sqrt(run * run + H * H)
+	var inner := xs - side * (stair_w / 2.0)             # the open side of the stairs
+	for sx2: float in [inner, xs + side * (stair_w / 2.0 - 0.06)]:
+		var stringer := city.box(Vector3(0.1, 0.36, length), o + Vector3(sx2, H / 2.0 - 0.12, z0 + run / 2.0), wood, false)
+		stringer.rotation.x = -slope
+	var hand := city.box(Vector3(0.08, 0.08, length), o + Vector3(inner, H / 2.0 + 0.98, z0 + run / 2.0), rail_m, false)
+	hand.rotation.x = -slope
+	for i in range(0, count + 1, 2):
+		city.box(Vector3(0.06, 0.98, 0.06), o + Vector3(inner, i * rise + 0.49, z0 + i * tread), rail_m, false)
+	# Nobody steps off the open side: a thin wall that follows the handrail.
+	var guard := StaticBody3D.new()
+	var gcs := CollisionShape3D.new()
+	var gsh := BoxShape3D.new()
+	gsh.size = Vector3(0.1, 1.2, length)
+	gcs.shape = gsh
+	guard.add_child(gcs)
+	city.add_child(guard)
+	guard.position = o + Vector3(inner, H / 2.0 + 0.6, z0 + run / 2.0)
+	guard.rotation.x = -slope
+	# ---- the railing along the gallery, open where the stairs arrive
+	var open_a := minf(inner, xs + side * stair_w / 2.0)
+	var open_b := maxf(inner, xs + side * stair_w / 2.0)
+	var spans: Array = [[-half.x, open_a], [open_b, half.x]]
+	for sp in spans:
+		var a: float = sp[0]
+		var b: float = sp[1]
+		if b - a < 0.3:
+			continue
+		city.box(Vector3(b - a, 0.08, 0.08), o + Vector3((a + b) / 2.0, H + 1.0, ze + 0.08), rail_m, false)
+		city.box(Vector3(b - a, 0.05, 0.05), o + Vector3((a + b) / 2.0, H + 0.5, ze + 0.08), rail_m, false)
+		var posts := int((b - a) / 1.1) + 1
+		for k in posts + 1:
+			city.box(Vector3(0.06, 1.0, 0.06), o + Vector3(lerpf(a, b, float(k) / posts), H + 0.5, ze + 0.08), rail_m, false)
+		_block(city, Vector3(b - a, 1.2, 0.1), o + Vector3((a + b) / 2.0, H + 0.6, ze + 0.08))
+	# A runner down the corridor.
+	city.box(Vector3(half.x * 2 - stair_w - 0.6, 0.015, 0.9), o + Vector3(-side * (stair_w / 2.0), H + 0.01, ze + 0.85), city.mat(accent.darkened(0.15), 0.9), false)
+	# ---- the bedrooms
+	var room_h := hgt - H
+	var bw := (half.x * 2) / n
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(cfg["first"])
+	var blanket := city.mat(accent, 0.85)
+	var linen := city.mat(Color(0.95, 0.94, 0.9), 0.9)
+	var dark := city.mat(Color(0.16, 0.16, 0.2), 0.6)
+	var posters := [Color("ffd166"), Color("7dd3ff"), Color("ff8a8a"), Color("b79cff"), Color("8be0a4")]
+	for i in n:
+		var xa := -half.x + i * bw
+		var xb := xa + bw
+		var xm := (xa + xb) / 2.0
+		var dw := 1.15
+		# The corridor wall with its doorway, and the wall between this room and the next.
+		for seg in [[xa, xm - dw / 2.0], [xm + dw / 2.0, xb]]:
+			var sa: float = seg[0]
+			var sb: float = seg[1]
+			city.box(Vector3(sb - sa, room_h, 0.14), o + Vector3((sa + sb) / 2.0, H + room_h / 2.0, zw), wall)
+		city.box(Vector3(dw, room_h - 2.15, 0.14), o + Vector3(xm, H + 2.15 + (room_h - 2.15) / 2.0, zw), wall, false)
+		for fx: float in [-1.0, 1.0]:
+			city.box(Vector3(0.09, 2.2, 0.2), o + Vector3(xm + fx * (dw / 2.0 + 0.02), H + 1.1, zw), wood, false)
+		city.box(Vector3(dw + 0.22, 0.1, 0.2), o + Vector3(xm, H + 2.2, zw), wood, false)
+		# The door stands open, swung back against the wall inside.
+		var leaf := city.box(Vector3(dw - 0.08, 2.08, 0.05), o + Vector3(xm - dw / 2.0 + 0.04, H + 1.05, zw + 0.07 + (dw - 0.08) / 2.0), wood, false)
+		leaf.rotation.y = PI / 2.0
+		city.box(Vector3(0.05, 0.12, 0.05), o + Vector3(xm - dw / 2.0 + 0.1, H + 1.02, zw + dw - 0.12), city.mat(Color(0.86, 0.7, 0.32), 0.3, 0.8), false)
+		_sign(city, str(int(cfg["first"]) + i), o + Vector3(xm + dw / 2.0 + 0.42, H + 1.75, zw - 0.09), PI, accent.lightened(0.45), 34)
+		if i > 0:
+			city.box(Vector3(0.14, room_h, half.y - zw), o + Vector3(xa, H + room_h / 2.0, (zw + half.y) / 2.0), wall)
+		# Bed along the outside wall, under the window.
+		var bx := xm + (0.25 if i % 2 == 0 else -0.25)
+		var bz := half.y - 0.62
+		city.box(Vector3(2.05, 0.3, 1.0), o + Vector3(bx, H + 0.2, bz), wood, false)
+		city.box(Vector3(1.95, 0.16, 0.92), o + Vector3(bx, H + 0.42, bz), linen, false)
+		city.box(Vector3(1.25, 0.1, 0.96), o + Vector3(bx + 0.34, H + 0.5, bz), blanket, false)
+		city.box(Vector3(0.42, 0.12, 0.6), o + Vector3(bx - 0.72, H + 0.55, bz), linen, false)
+		city.box(Vector3(0.08, 0.75, 1.0), o + Vector3(bx - 1.02, H + 0.5, bz), wood, false)
+		_block(city, Vector3(2.1, 0.7, 1.0), o + Vector3(bx, H + 0.35, bz))
+		# Window over the bed: frame, glass with daylight, a cross bar and a sill.
+		var wy := H + 1.65
+		city.box(Vector3(1.5, 1.2, 0.06), o + Vector3(xm, wy, half.y - 0.03), wood, false)
+		city.box(Vector3(1.32, 1.02, 0.03), o + Vector3(xm, wy, half.y - 0.07), city.glow_mat(Color(0.72, 0.88, 1.0), 1.1), false)
+		city.box(Vector3(0.05, 1.02, 0.04), o + Vector3(xm, wy, half.y - 0.09), wood, false)
+		city.box(Vector3(1.32, 0.05, 0.04), o + Vector3(xm, wy, half.y - 0.09), wood, false)
+		city.box(Vector3(1.6, 0.06, 0.2), o + Vector3(xm, wy - 0.64, half.y - 0.1), wood, false)
+		for cs2: float in [-1.0, 1.0]:
+			city.box(Vector3(0.3, 1.3, 0.05), o + Vector3(xm + cs2 * 0.86, wy, half.y - 0.12), blanket, false)
+		# Desk and chair against the side wall, a lamp, a few cards and a book.
+		var dx := xa + 0.42 if i % 2 == 0 else xb - 0.42
+		var ds := 1.0 if i % 2 == 0 else -1.0
+		var dz := zw + 0.95
+		city.box(Vector3(0.6, 0.06, 1.2), o + Vector3(dx, H + 0.76, dz), wood, false)
+		for lz: float in [-0.52, 0.52]:
+			city.box(Vector3(0.52, 0.74, 0.06), o + Vector3(dx, H + 0.37, dz + lz), wood, false)
+		_block(city, Vector3(0.6, 0.8, 1.2), o + Vector3(dx, H + 0.4, dz))
+		city.cyl(0.025, 0.025, 0.34, o + Vector3(dx - ds * 0.12, H + 0.96, dz - 0.4), dark, null, 8)
+		city.cyl(0.05, 0.13, 0.12, o + Vector3(dx - ds * 0.12, H + 1.16, dz - 0.4), blanket, null, 10)
+		for k in 3:
+			var card := city.box(Vector3(0.13, 0.008, 0.19), o + Vector3(dx + ds * 0.02, H + 0.8, dz + 0.02 + k * 0.17), city.mat(posters[(i + k) % posters.size()], 0.6), false)
+			card.rotation.y = rng.randf_range(-0.4, 0.4)
+		city.box(Vector3(0.42, 0.05, 0.42), o + Vector3(dx + ds * 0.62, H + 0.46, dz), wood, false)
+		city.box(Vector3(0.05, 0.5, 0.42), o + Vector3(dx + ds * 0.84, H + 0.72, dz), wood, false)
+		for c in [Vector2(-0.18, -0.18), Vector2(0.18, -0.18), Vector2(-0.18, 0.18), Vector2(0.18, 0.18)]:
+			city.box(Vector3(0.04, 0.44, 0.04), o + Vector3(dx + ds * 0.62 + c.x, H + 0.22, dz + c.y), wood, false)
+		# A rug, a shelf with a trophy and books, two posters, a ceiling light.
+		city.box(Vector3(1.7, 0.014, 1.15), o + Vector3(xm, H + 0.008, zw + 1.35), city.mat(accent.lerp(Color(0.9, 0.86, 0.78), 0.55), 0.95), false)
+		city.box(Vector3(1.3, 0.016, 0.8), o + Vector3(xm, H + 0.009, zw + 1.35), city.mat(accent.darkened(0.1), 0.95), false)
+		var shx := xb - 0.12 if i % 2 == 0 else xa + 0.12
+		city.box(Vector3(0.22, 0.04, 1.3), o + Vector3(shx - ds * 0.04, H + 1.6, zw + 1.6), wood, false)
+		for b2 in 5:
+			var bh := 0.2 + 0.05 * ((b2 * 2 + i) % 3)
+			city.box(Vector3(0.16, bh, 0.06), o + Vector3(shx - ds * 0.04, H + 1.62 + bh / 2.0, zw + 1.1 + b2 * 0.09), city.mat(posters[(b2 + i) % posters.size()].darkened(0.2), 0.8), false)
+		city.cyl(0.05, 0.03, 0.14, o + Vector3(shx - ds * 0.04, H + 1.69, zw + 2.05), city.mat(Color(0.9, 0.74, 0.3), 0.3, 0.8), null, 10)
+		for k in 2:
+			var pz := zw + 0.6 + k * 1.2
+			var px2 := (xb - 0.08) if i % 2 == 0 else (xa + 0.08)
+			if i == n - 1 and i % 2 == 0:
+				px2 = xb - 0.01
+			if i == 0 and i % 2 == 1:
+				px2 = xa + 0.01
+			city.box(Vector3(0.02, 0.8, 0.58), o + Vector3(px2, H + 2.25 - k * 0.0, pz), city.mat(posters[(i * 2 + k + 1) % posters.size()], 0.85), false)
+		_light(city, o + Vector3(xm, hgt - 0.5, zw + 1.5), Color(1.0, 0.92, 0.78), 1.1, 5.0)
+		_ball(city, o + Vector3(xm, hgt - 0.22, zw + 1.5), 0.12, city.glow_mat(Color(1.0, 0.92, 0.75), 2.6))

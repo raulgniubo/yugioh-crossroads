@@ -83,9 +83,7 @@ func _build_hud() -> void:
 	scene._ui.add_child(_hud)
 	var bar := HBoxContainer.new()
 	_bar = bar
-	bar.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	bar.offset_top = 26
-	bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	bar.position = Vector2(600, 26)
 	bar.add_theme_constant_override("separation", 8)
 	_hud.add_child(bar)
 	for b in [["M   Map", func(): open_guide("places")], ["G   Worlds", func(): open_guide("travel")],
@@ -94,7 +92,7 @@ func _build_hud() -> void:
 		btn.text = b[0]
 		btn.focus_mode = Control.FOCUS_NONE
 		btn.add_theme_font_size_override("font_size", 19)
-		btn.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.054, 0.0996, 0.277, 0.78), Color(1, 1, 1, 0.14), 12))
+		btn.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.042, 0.0676, 0.136, 0.78), Color(1, 1, 1, 0.14), 12))
 		btn.pressed.connect(b[1])
 		bar.add_child(btn)
 	# Star Chips: a named counter you can click to be told what they are.
@@ -163,8 +161,46 @@ func has_waypoint() -> bool:
 	return _wp_on
 
 
+## Where the beacon really leads. Rooms are built far out past the edge of the map, so a place
+## or person inside one is reached through its front door: the beacon stands at the door while
+## you are outside, at the way out while you are in some other room, and on the spot itself
+## once you are in the same room.
+var _wp_true := Vector3.ZERO
+
+
+func _room_of(pos: Vector3) -> String:
+	for rk in scene._rooms:
+		var at: Vector3 = scene._rooms[rk]["at"]
+		var half: Vector2 = scene._rooms[rk]["half"]
+		if absf(pos.x - at.x) < half.x + 3.0 and absf(pos.z - at.z) < half.y + 3.0:
+			return str(rk)
+	return ""
+
+
+func _wp_resolve() -> Vector3:
+	return reach_point(_wp_true)
+
+
+## The point to walk to right now to get to `target` (see _wp_true).
+func reach_point(target: Vector3) -> Vector3:
+	var target_room := _room_of(target)
+	var here: String = str(scene._inside)
+	if target_room == here or (target_room == "" and here == ""):
+		return target
+	if here != "" and scene._rooms.has(here):
+		var at: Vector3 = scene._rooms[here]["at"]
+		var half: Vector2 = scene._rooms[here]["half"]
+		return at + Vector3(0, 0, half.y - 0.7)
+	if here != "":
+		return target
+	var room: Dictionary = scene._rooms[target_room]
+	return (room["door"] as Vector3) + (room.get("out", Vector3(0, 0, 1)) as Vector3) * 0.9
+
+
 func set_waypoint(pos: Vector3, title: String) -> void:
-	waypoint = Vector3(pos.x, 0, pos.z)
+	_wp_true = Vector3(pos.x, 0, pos.z)
+	waypoint = _wp_resolve()
+	waypoint.y = 0.0
 	_wp_name = title
 	_wp_on = true
 	if _beacon == null:
@@ -679,6 +715,10 @@ func _say_over(who: Node3D, text: String, hold: float) -> void:
 
 
 func _process(delta: float) -> void:
+	# The button row sits in the middle of the top edge, but never under the place plate.
+	if _bar and scene._plate:
+		var vsx: float = scene.get_viewport().get_visible_rect().size.x
+		_bar.position.x = maxf((vsx - _bar.size.x) / 2.0, scene._plate.position.x + scene._plate.size.x + 18.0)
 	var p: Vector3 = scene._player.position
 	_street_life(delta, p)
 	if _fence_mat:
@@ -693,10 +733,19 @@ func _process(delta: float) -> void:
 			_collect(c)
 	# The way to the waypoint.
 	if _wp_on:
+		var real := _wp_resolve()
+		real.y = 0.0
+		if real.distance_to(waypoint) > 0.5:
+			waypoint = real
+			_beacon.position = waypoint
+		var at_target := waypoint.distance_to(Vector3(_wp_true.x, 0, _wp_true.z)) < 0.6
 		var to := waypoint - p
 		to.y = 0
 		var dist := to.length()
-		if dist < 3.2:
+		if dist < 3.2 and not at_target:
+			# At the door (or the way out): the beacon moves on once you are through it.
+			_wp_label.visible = false
+		elif dist < 3.2:
 			Router.toast(Loc.t("You have arrived: %s") % Loc.t(_wp_name))
 			Sfx.play("click")
 			clear_waypoint()

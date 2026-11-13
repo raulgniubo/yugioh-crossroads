@@ -251,6 +251,69 @@ func ride_pose() -> void:
 	_model.position.y = -0.2
 
 
+## Somebody who sits needs something to sit on. Looks under them once the room is built and,
+## if there is no seat there already, puts a small stool in.
+func seat_if_needed() -> void:
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	if not is_inside_tree():
+		return
+	var space := get_world_3d().direct_space_state
+	var from := global_position + Vector3(0, 0.95, 0)
+	var q := PhysicsRayQueryParameters3D.create(from, global_position + Vector3(0, 0.2, 0), 1)
+	var hit := space.intersect_ray(q)
+	if not hit.is_empty():
+		return
+	var back := -global_transform.basis.z.normalized()
+	var q2 := PhysicsRayQueryParameters3D.create(from + back * 0.18, global_position + back * 0.18 + Vector3(0, 0.2, 0), 1)
+	if not space.intersect_ray(q2).is_empty():
+		return
+	var wood := StandardMaterial3D.new()
+	wood.albedo_color = Color(0.36, 0.25, 0.16)
+	wood.roughness = 0.7
+	var pad := StandardMaterial3D.new()
+	pad.albedo_color = Color(0.2, 0.22, 0.3)
+	pad.roughness = 0.9
+	var stool := Node3D.new()
+	add_child(stool)
+	stool.position = Vector3(0, 0, -0.06)
+	var top := MeshInstance3D.new()
+	var tm := CylinderMesh.new()
+	tm.top_radius = 0.24
+	tm.bottom_radius = 0.24
+	tm.height = 0.07
+	tm.radial_segments = 18
+	top.mesh = tm
+	top.material_override = pad
+	top.position.y = SEAT_H - 0.035
+	stool.add_child(top)
+	var rim := MeshInstance3D.new()
+	var rm := CylinderMesh.new()
+	rm.top_radius = 0.25
+	rm.bottom_radius = 0.23
+	rm.height = 0.05
+	rm.radial_segments = 18
+	rim.mesh = rm
+	rim.material_override = wood
+	rim.position.y = SEAT_H - 0.09
+	stool.add_child(rim)
+	for k in 4:
+		var a := PI / 4.0 + k * PI / 2.0
+		var leg := MeshInstance3D.new()
+		var lm := CylinderMesh.new()
+		lm.top_radius = 0.022
+		lm.bottom_radius = 0.028
+		lm.height = SEAT_H - 0.1
+		lm.radial_segments = 8
+		leg.mesh = lm
+		leg.material_override = wood
+		leg.position = Vector3(cos(a) * 0.17, (SEAT_H - 0.1) / 2.0, sin(a) * 0.17)
+		stool.add_child(leg)
+
+
+const SEAT_H := 0.46
+
+
 ## Put a Duel Academy dorm jacket on this person.
 func wear_uniform(color: Color) -> void:
 	if _model:

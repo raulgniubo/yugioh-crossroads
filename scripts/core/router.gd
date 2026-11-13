@@ -34,6 +34,9 @@ func _process(_delta: float) -> void:
 
 
 func _ready() -> void:
+	# One look everywhere: the game's theme becomes the default for every control, also the
+	# ones on screens that never set a theme of their own.
+	ThemeDB.get_default_theme().merge_with(UITheme.build())
 	get_tree().node_added.connect(_on_node_added)
 	layer = 100
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -50,7 +53,7 @@ func _ready() -> void:
 	_toast.add_theme_font_override("font", load("res://assets/fonts/Rajdhani-SemiBold.ttf"))
 	_toast.add_theme_font_size_override("font_size", 30)
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.062, 0.127, 0.319, 0.92)
+	sb.bg_color = Color(0.052, 0.098, 0.185, 0.92)
 	sb.border_color = Color(0.17, 0.89, 0.9, 0.6)
 	sb.set_border_width_all(1)
 	sb.set_corner_radius_all(14)
@@ -210,17 +213,17 @@ func go(path: String) -> void:
 	_busy = true
 	_fade.mouse_filter = Control.MOUSE_FILTER_STOP
 	var tw := create_tween()
-	tw.tween_property(_fade, "color:a", 1.0, 0.35)
+	tw.tween_property(_fade, "color:a", 1.0, 0.16)
 	await tw.finished
 	get_tree().paused = false
 	get_tree().change_scene_to_file(path)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var tw2 := create_tween()
-	tw2.tween_property(_fade, "color:a", 0.0, 0.5)
-	await tw2.finished
+	# The new screen takes clicks straight away; the fade-in is only for the eye.
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_busy = false
+	var tw2 := create_tween()
+	tw2.tween_property(_fade, "color:a", 0.0, 0.22)
 
 
 func toast(message: String) -> void:
@@ -235,6 +238,9 @@ func toast(message: String) -> void:
 
 ## Plain toggle buttons (a word, nothing inside, no look of their own) become choice chips.
 func _on_node_added(n: Node) -> void:
+	if n is BaseButton and not (n is OptionButton):
+		# Every button answers on the press, not on the release: taps feel instant.
+		(n as BaseButton).action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 	if n.get_class() == "Button":
 		_chip_later.call_deferred(n)
 

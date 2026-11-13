@@ -80,8 +80,10 @@ const FX := {
 	"Rush Recklessly": {"k": "quick", "t": "any_face", "do": [["atk", "target", 700, "eot"]]},
 	"Shrink": {"k": "quick", "t": "any_face", "do": [["halve", "target"]]},
 	"Book of Moon": {"k": "quick", "t": "any_face", "do": [["flip_down", "target"]]},
-	"Enemy Controller": {"k": "quick", "t": "opp_face", "do": [["change_pos", "target"]]},
-	"Ego Boost": {"k": "quick", "win": ["attack"], "t": "any_face", "do": [["atk", "target", 1000, "eot"]]},
+	"Enemy Controller": {"k": "quick", "modes": [
+		{"label": "Change the battle position of 1 of their face-up monsters", "t": "opp_face", "do": [["change_pos", "target"]]},
+		{"label": "Tribute 1 monster: take control of 1 of their face-up monsters until the End Phase", "t": "opp_face", "cost": "tribute", "do": [["control", "target", "eot"]]}]},
+	"Ego Boost": {"k": "quick", "win": ["attack"], "own_direct": true, "do": [["atk", "attacker", 1000, "eot"]]},
 	"Forbidden Lance": {"k": "quick", "t": "any_face", "do": [["atk", "target", -800, "eot"]]},
 	"Offerings to the Doomed": {"k": "quick", "t": "any_face", "do": [["destroy", "target"], ["skip_draw", 1]]},
 	"The Reliable Guardian": {"k": "quick", "t": "any_face", "do": [["def", "target", 700]]},
@@ -208,10 +210,24 @@ const LEGACY_WIN := {"mirror_force": "attack", "magic_cylinder": "attack", "saku
 static var _derived := {}
 
 
+static var _moded := {}
+
+
 static func spec(c) -> Dictionary:
 	var name: String = c.cname()
 	if FX.has(name):
-		return FX[name]
+		var base: Dictionary = FX[name]
+		if base.has("modes"):
+			# The chosen effect's keys laid over the card's own (the list stays, for the menu).
+			var mi := clampi(int(c.mode), 0, (base["modes"] as Array).size() - 1)
+			var key := "%s#%d" % [name, mi]
+			if not _moded.has(key):
+				var merged: Dictionary = base.duplicate()
+				for k in base["modes"][mi]:
+					merged[k] = base["modes"][mi][k]
+				_moded[key] = merged
+			return _moded[key]
+		return base
 	if _derived.has(name):
 		return _derived[name]
 	var d := _derive(c)
@@ -317,7 +333,11 @@ static func fits(s: DuelState, p: int, c, window: String, subject) -> bool:
 	var wins: Array = sp.get("win", ["free"] if k == "quick" else [])
 	if not (wins.has("free") or wins.has(window)):
 		return false
-	if wins.has("attack") and not wins.has("free"):
+	if sp.get("own_direct", false):
+		# Ego Boost: when one of your own monsters declares a direct attack.
+		if s.pending_attack.is_empty() or s.pending_attack["player"] != p or s.pending_attack["target"] != null or window != "attack":
+			return false
+	elif wins.has("attack") and not wins.has("free"):
 		if s.pending_attack.is_empty() or s.pending_attack["player"] == p or window != "attack":
 			return false
 	if wins.has("summon") and not wins.has("free"):
@@ -325,7 +345,22 @@ static func fits(s: DuelState, p: int, c, window: String, subject) -> bool:
 			return false
 		if subject.atk() < int(sp.get("subj_atk_min", 0)) or subject.atk() > int(sp.get("subj_atk_max", 99999)):
 			return false
+	if sp.has("modes"):
+		return not open_modes(s, p, c, window, subject).is_empty()
 	return feasible(s, p, c, window, subject)
+
+
+## Which of a multi-effect card's effects could be used right now (indices into "modes").
+static func open_modes(s: DuelState, p: int, c, window: String, subject) -> Array:
+	var out: Array = []
+	var base: Dictionary = FX.get(c.cname(), {})
+	var keep: int = c.mode
+	for mi in (base.get("modes", []) as Array).size():
+		c.mode = mi
+		if feasible(s, p, c, window, subject):
+			out.append(mi)
+	c.mode = keep
+	return out
 
 
 ## May this card be activated during the Damage Step? (ATK / DEF changers only.)
@@ -596,6 +631,19 @@ static func _sel_raw(s: DuelState, p: int, c, sel: String, ctx: Dictionary) -> A
 					v = -v
 				if best == null or v > (s.def_of(best) if sel == "opp_best_def" else (s.atk_of(best, false) * (-1 if sel == "opp_weakest" else 1))):
 					best = m
+			if best != null and ctx.has("link"):
+				if sel == "opp_weakest":
+					# Share the Pain: the other player decides which of their monsters goes.
+					best = s.pick1(opp_i, Loc.t("%s: choose 1 of your monsters to give up") % c.cname(), opp.monsters(), best, c)
+				else:
+					# A tie is the player's call.
+					var bv: int = s.def_of(best) if sel == "opp_best_def" else s.atk_of(best, false)
+					var ties: Array = []
+					for m in pool:
+						if m.face_up and not (sel == "opp_best_atk_pos" and not m.attack_pos) and (s.def_of(m) if sel == "opp_best_def" else s.atk_of(m, false)) == bv:
+							ties.append(m)
+					if ties.size() > 1:
+						best = s.pick1(p, Loc.t("%s: these are tied. Choose 1") % c.cname(), ties, best, c)
 			if best != null:
 				out.append(best)
 		"opp_st", "own_st", "all_st", "fields":

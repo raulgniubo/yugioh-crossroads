@@ -34,42 +34,18 @@ func _ready() -> void:
 		_on_academy.call_deferred()
 
 
-const DUOTONE := """
-shader_type canvas_item;
-// The city behind the menu, printed in blues: dark navy shadows, royal blue mids, sky highlights,
-// with a little of its real color left in and halftone dots in the bright parts.
-void fragment() {
-	vec3 c = texture(TEXTURE, UV).rgb;
-	float l = smoothstep(0.02, 0.8, dot(c, vec3(0.3, 0.59, 0.11)));
-	vec3 lo = vec3(0.03, 0.08, 0.36);
-	vec3 mid = vec3(0.09, 0.34, 0.93);
-	vec3 hi = vec3(0.62, 0.88, 1.0);
-	vec3 col = l < 0.5 ? mix(lo, mid, l * 2.0) : mix(mid, hi, l * 2.0 - 1.0);
-	col = mix(col, c, 0.22);
-	vec2 g = FRAGCOORD.xy / 8.0;
-	g.x += mod(floor(g.y), 2.0) * 0.5;
-	float dr = clamp(l * 0.62, 0.0, 0.48);
-	float dots = 1.0 - smoothstep(dr - 0.08, dr, length(fract(g) - 0.5));
-	col += vec3(0.25, 0.3, 0.3) * dots * smoothstep(0.35, 0.9, l);
-	COLOR = vec4(col, 1.0);
-}
-"""
-
-
 func _build_background() -> void:
 	var svc := SubViewportContainer.new()
 	svc.stretch = true
 	svc.set_anchors_preset(Control.PRESET_FULL_RECT)
 	svc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sh := Shader.new()
-	sh.code = DUOTONE
-	var sm := ShaderMaterial.new()
-	sm.shader = sh
-	svc.material = sm
 	add_child(svc)
 	var vp := SubViewport.new()
-	vp.msaa_3d = Viewport.MSAA_2X
+	vp.msaa_3d = Viewport.MSAA_2X if int(Settings.gfx["aa"]) >= 2 else Viewport.MSAA_DISABLED
 	vp.own_world_3d = true
+	# The city behind the menu is a backdrop: three quarters of the pixels are plenty, and
+	# it keeps the home screen quick.
+	vp.scaling_3d_scale = 0.75 * Settings.scale_3d()
 	svc.add_child(vp)
 	var bg := Node3D.new()
 	bg.set_script(MenuBackground)
@@ -77,80 +53,63 @@ func _build_background() -> void:
 
 
 func _build_overlay() -> void:
-	# Big slanted bands of color over the city, like panels on a printed page: deep blue on the
-	# left where the menu sits, a band in the featured duelist's color on the right.
-	_bands = Control.new()
-	_bands.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_bands.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_bands.draw.connect(_draw_bands)
-	add_child(_bands)
-
-
-var _bands: Control
-var _band_color := Comic.BLUE
-var _band_t := 0.0
-
-
-func _draw_bands() -> void:
-	var vs := get_viewport_rect().size
-	var c := _bands
-	# Left: the menu's own deep blue page.
-	var left := PackedVector2Array([Vector2(0, 0), Vector2(vs.x * 0.47, 0), Vector2(vs.x * 0.36, vs.y), Vector2(0, vs.y)])
-	c.draw_polygon(left, PackedColorArray([Color(0.04, 0.12, 0.42, 0.93), Color(0.05, 0.2, 0.6, 0.82), Color(0.03, 0.1, 0.4, 0.9), Color(0.02, 0.06, 0.3, 0.96)]))
-	Comic.dots(c, left, Color(1, 1, 1, 0.07), Vector2(1, 0), 18.0, 8.0, 0.55)
-	c.draw_polyline(PackedVector2Array([left[1], left[2]]), Comic.INK, 10.0, true)
-	c.draw_polyline(PackedVector2Array([left[1] + Vector2(14, 0), left[2] + Vector2(14, 0)]), Color(1, 1, 1, 0.85), 5.0, true)
-	c.draw_polyline(PackedVector2Array([left[1] + Vector2(30, 0), left[2] + Vector2(30, 0)]), Color(Comic.YELLOW, 0.9), 8.0, true)
-	# Right: a band in the color of whoever is on show.
-	var x0 := vs.x * 0.69
-	var band := PackedVector2Array([Vector2(x0 + 150, 0), Vector2(vs.x, 0), Vector2(vs.x, vs.y), Vector2(x0 - 110, vs.y)])
-	var col := _band_color
-	c.draw_polygon(band, PackedColorArray([Color(col.lightened(0.15), 0.72), Color(col, 0.78), Color(col.darkened(0.45), 0.9), Color(col.darkened(0.35), 0.78)]))
-	Comic.dots(c, band, Color(1, 1, 1, 0.16), Vector2(0, 1), 20.0, 9.0, 0.7)
-	c.draw_polyline(PackedVector2Array([band[0], band[3]]), Comic.INK, 10.0, true)
-	c.draw_polyline(PackedVector2Array([band[0] - Vector2(14, 0), band[3] - Vector2(14, 0)]), Color(1, 1, 1, 0.8), 5.0, true)
-	# Speed streaks drifting across the band.
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 11
-	for i in 9:
-		var y := rng.randf() * vs.y
-		var w := rng.randf_range(120.0, 380.0)
-		var x := x0 + fposmod(rng.randf() * 900.0 + _band_t * rng.randf_range(60.0, 160.0), vs.x - x0 + w) - w
-		c.draw_rect(Rect2(x, y, w, rng.randf_range(2.0, 5.0)), Color(1, 1, 1, 0.16))
-
-
-func _process(delta: float) -> void:
-	_band_t += delta
-	if _bands:
-		_bands.queue_redraw()
+	# The real city in its own colors. Dark on the left where the menu sits, clear on the
+	# right where the duelists stand; a little shade top and bottom to frame it.
+	var grad := Gradient.new()
+	grad.offsets = PackedFloat32Array([0.0, 0.42, 0.7, 1.0])
+	grad.colors = PackedColorArray([Color(0.015, 0.025, 0.06, 0.94), Color(0.015, 0.025, 0.06, 0.8), Color(0.015, 0.025, 0.06, 0.2), Color(0.015, 0.025, 0.06, 0.0)])
+	var gt := GradientTexture2D.new()
+	gt.gradient = grad
+	gt.width = 256
+	gt.height = 4
+	var tr := TextureRect.new()
+	tr.texture = gt
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_SCALE
+	tr.anchor_bottom = 1.0
+	tr.anchor_right = 0.8
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(tr)
+	var vg := Gradient.new()
+	vg.offsets = PackedFloat32Array([0.0, 0.18, 0.62, 1.0])
+	vg.colors = PackedColorArray([Color(0, 0, 0, 0.5), Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.0), Color(0.01, 0.02, 0.05, 0.78)])
+	var vt := GradientTexture2D.new()
+	vt.gradient = vg
+	vt.fill_from = Vector2(0, 0)
+	vt.fill_to = Vector2(0, 1)
+	vt.width = 4
+	vt.height = 256
+	var vr := TextureRect.new()
+	vr.texture = vt
+	vr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	vr.stretch_mode = TextureRect.STRETCH_SCALE
+	vr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(vr)
 
 
 func _build_title() -> void:
 	_title_box = Control.new()
-	_title_box.position = Vector2(64, 150)
+	_title_box.position = Vector2(70, 158)
 	_title_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_title_box.rotation = -0.03
 	add_child(_title_box)
-	var big := UITheme.label("CROSSROADS", 104, Color.WHITE, Comic.shout_font())
-	big.position = Vector2(0, 16)
-	big.add_theme_color_override("font_outline_color", Comic.INK)
-	big.add_theme_constant_override("outline_size", 24)
-	big.add_theme_color_override("font_shadow_color", Comic.ORANGE_DEEP)
-	big.add_theme_constant_override("shadow_offset_x", 6)
-	big.add_theme_constant_override("shadow_offset_y", 8)
-	big.add_theme_constant_override("shadow_outline_size", 24)
-	_title_box.add_child(big)
-	var small := Comic.label("YU-GI-OH!", 26, Comic.INK, 0)
-	var ssb := Comic.box(Comic.YELLOW, 6, 0.2, 3, 3)
-	ssb.content_margin_left = 16
-	ssb.content_margin_right = 16
-	ssb.content_margin_top = 0
-	ssb.content_margin_bottom = 0
-	small.add_theme_stylebox_override("normal", ssb)
-	small.position = Vector2(6, 0)
+	var small := UITheme.label("Y U - G I - O H !", 22, UITheme.ACCENT, Comic.button_font())
+	small.position = Vector2(4, 0)
 	_title_box.add_child(small)
-	var tag := Comic.label("Four eras. One story.", 22, Comic.YELLOW, 6)
-	tag.position = Vector2(196, 2)
+	var big := UITheme.label("CROSSROADS", 112, Color.WHITE, Comic.shout_font())
+	big.position = Vector2(-2, 12)
+	big.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.55))
+	big.add_theme_constant_override("shadow_offset_x", 0)
+	big.add_theme_constant_override("shadow_offset_y", 6)
+	big.add_theme_constant_override("shadow_outline_size", 14)
+	_title_box.add_child(big)
+	var rule := ColorRect.new()
+	rule.color = UITheme.ACCENT
+	rule.position = Vector2(4, 140)
+	rule.size = Vector2(72, 4)
+	_title_box.add_child(rule)
+	var tag := UITheme.label("Four eras. One story.", 20, Color(0.82, 0.86, 0.95))
+	tag.position = Vector2(90, 128)
 	_title_box.add_child(tag)
 
 
@@ -173,7 +132,7 @@ func _story_line() -> Array:
 
 func _build_menu() -> void:
 	_menu_box = Control.new()
-	_menu_box.position = Vector2(64, 318)
+	_menu_box.position = Vector2(64, 336)
 	add_child(_menu_box)
 	Tournament.load_data()
 	var won := 0
@@ -182,8 +141,8 @@ func _build_menu() -> void:
 			won += 1
 	var st := _story_line()
 	# The Story banner on top, then three rows of ribbons. Each row steps back along the slant.
-	var story := MenuTile.new(str(st[0]), str(st[1]), str(st[2]), Comic.YELLOW, "✦", Vector2(720, 176), "", true)
-	story.position = Vector2(30, 0)
+	var story := MenuTile.new(str(st[0]), str(st[1]), str(st[2]), UITheme.ACCENT, "", Vector2(736, 150), "", true)
+	story.position = Vector2(24, 0)
 	story.pressed.connect(_on_story)
 	story.pressed.connect(func(): Sfx.play("click", -6.0))
 	_menu_box.add_child(story)
@@ -196,35 +155,35 @@ func _build_menu() -> void:
 		[["School life", "DUEL ACADEMY", "Exams, dorms, the weekly cup.", "✎", _on_academy, ""],
 			["Your cards", "MY DECKS", "Build, rename, pick a deck.", "❖", _on_deck, ""]],
 	]
-	var y := 190.0
+	var y := 160.0
 	for ri in rows.size():
-		var x := 20.0 - ri * 10.0
+		var x := 16.0 - ri * 8.0
 		for e in rows[ri]:
-			var tile := MenuTile.new(str(e[0]), str(e[1]), str(e[2]), Comic.ORANGE, str(e[3]), Vector2(356, 126), str(e[5]), false)
+			var tile := MenuTile.new(str(e[0]), str(e[1]), str(e[2]), UITheme.ACCENT, "", Vector2(364, 112), str(e[5]), false)
 			tile.position = Vector2(x, y)
 			tile.pressed.connect(e[4])
 			tile.pressed.connect(func(): Sfx.play("click", -6.0))
 			_menu_box.add_child(tile)
 			_items.append(tile)
-			x += 356.0 + 10.0
-		y += 126.0 + 4.0
+			x += 364.0 + 2.0
+		y += 112.0 + 6.0
 	# Settings and Quit are round buttons in the corner.
 	var rounds := HBoxContainer.new()
 	rounds.add_theme_constant_override("separation", 14)
 	rounds.anchor_top = 1.0
 	rounds.anchor_bottom = 1.0
 	rounds.offset_left = 64
-	rounds.offset_top = -128
-	rounds.offset_bottom = -52
+	rounds.offset_top = -112
+	rounds.offset_bottom = -48
 	add_child(rounds)
-	var gear := RoundButton.new("gear", Comic.BLUE, 76.0)
+	var gear := RoundButton.new("gear", Comic.BLUE, 64.0)
 	gear.tooltip_text = "Settings"
 	gear.focus_mode = Control.FOCUS_ALL
 	gear.pressed.connect(_on_settings)
 	rounds.add_child(gear)
 	_items.append(gear)
 	if OS.has_feature("pc"):
-		var quit := RoundButton.new("power", Comic.RED, 76.0)
+		var quit := RoundButton.new("power", Comic.RED, 64.0)
 		quit.tooltip_text = "Quit"
 		quit.focus_mode = Control.FOCUS_ALL
 		quit.pressed.connect(_on_quit)
@@ -267,17 +226,19 @@ func _on_tournaments() -> void:
 	_open_panel(p)
 
 
-var _featured: TextureRect
 var _chip_avatar: TextureRect
 var _chip_name: Label
 var _chip_sub: Label
 
 
-## The duelist on show: one big live character on the right, their name on a ribbon, and the
-## band behind them in their color. A new one steps in every few seconds.
-var _feat_idx := 0
-var _feat_ribbon: Control
+## A lineup of duelists on the right: four at a time at a comfortable size (whole heads,
+## nothing blown up), each with a name tag. One of them steps out for a new face every few
+## seconds, so over a minute you meet most of the roster.
+const LINEUP := 4
+var _line: Array = []            # [{tex: TextureRect, tag: Control, key: String, home: Vector2}]
 var _feat_keys: Array = []
+var _feat_next := 0
+var _feat_turn := 0
 
 
 func _build_featured() -> void:
@@ -291,91 +252,114 @@ func _build_featured() -> void:
 			_feat_keys.append(str(key))
 	if _feat_keys.is_empty():
 		_feat_keys = Characters.ORDER.duplicate()
-	_feat_idx = randi() % _feat_keys.size()
-	_featured = TextureRect.new()
-	_featured.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_featured.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_featured.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(_featured)
-	_feat_ribbon = Control.new()
-	_feat_ribbon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_feat_ribbon.draw.connect(_draw_feat_ribbon)
-	holder.add_child(_feat_ribbon)
-	_show_featured(true)
-	var t := Timer.new()
-	t.wait_time = 5.0
-	t.autostart = true
-	t.timeout.connect(func():
-		_feat_idx = (_feat_idx + 1) % _feat_keys.size()
-		_show_featured(false))
-	add_child(t)
-
-
-func _feat_rest() -> Rect2:
+	_feat_keys.shuffle()
 	var vs := get_viewport_rect().size
-	var h := vs.y * 0.94
-	return Rect2(vs.x - h * 0.8 - 40.0, vs.y - h, h * 0.8, h)
+	# Back to front, so the two in the middle stand a step ahead of the outer two.
+	var plan := [[0, 0.80, -34.0], [3, 0.80, -34.0], [1, 1.0, 0.0], [2, 1.0, 0.0]]
+	_line.resize(LINEUP)
+	for e in plan:
+		var i: int = e[0]
+		var sc: float = e[1]
+		var sz := Vector2(330, 412) * sc
+		var cx := vs.x - 880.0 + i * 232.0
+		var home := Vector2(cx - sz.x / 2.0, vs.y - 150.0 - sz.y + float(e[2]))
+		var tex := TextureRect.new()
+		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tex.material = _fade_mat()
+		holder.add_child(tex)
+		tex.size = sz
+		tex.position = home
+		if sc < 1.0:
+			tex.modulate = Color(0.82, 0.86, 0.95)
+		var tag := Control.new()
+		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tag.position = Vector2(cx, home.y + sz.y - 26.0)
+		tag.draw.connect(_draw_name_tag.bind(tag))
+		holder.add_child(tag)
+		_line[i] = {"tex": tex, "tag": tag, "key": "", "home": home}
+	for i in LINEUP:
+		_set_lineup(i, str(_feat_keys[_feat_next % _feat_keys.size()]), true)
+		_feat_next += 1
+	if _feat_keys.size() > LINEUP:
+		var t := Timer.new()
+		t.wait_time = 3.2
+		t.autostart = true
+		t.timeout.connect(func():
+			_set_lineup([1, 3, 2, 0][_feat_turn % LINEUP], str(_feat_keys[_feat_next % _feat_keys.size()]), false)
+			_feat_turn += 1
+			_feat_next += 1)
+		add_child(t)
 
 
-func _show_featured(instant: bool) -> void:
-	var key := str(_feat_keys[_feat_idx])
+## The busts melt into the street at the waist instead of ending in a hard cut.
+var _fade: ShaderMaterial
+
+
+func _fade_mat() -> ShaderMaterial:
+	if _fade == null:
+		var sh := Shader.new()
+		sh.code = """
+shader_type canvas_item;
+void fragment() {
+	vec4 c = texture(TEXTURE, UV) * COLOR;
+	c.a *= 1.0 - smoothstep(0.80, 0.985, UV.y);
+	COLOR = c;
+}
+"""
+		_fade = ShaderMaterial.new()
+		_fade.shader = sh
+	return _fade
+
+
+func _set_lineup(i: int, key: String, instant: bool) -> void:
+	var slot: Dictionary = _line[i]
+	var tex: TextureRect = slot["tex"]
+	var tag: Control = slot["tag"]
 	var d := Characters.get_char(key)
-	var rest := _feat_rest()
 	var swap := func():
-		_featured.texture = Portraits.get_portrait(key, true)
-		_featured.size = rest.size
-		_band_color = Color(d.get("color", Comic.BLUE))
-		_feat_ribbon.set_meta("name", str(d.get("short", key)).to_upper())
-		_feat_ribbon.set_meta("era", Loc.t(str(d.get("era", ""))).to_upper())
-		_feat_ribbon.set_meta("color", _band_color)
-		_feat_ribbon.queue_redraw()
+		slot["key"] = key
+		tex.texture = Portraits.get_portrait(key)
+		tag.set_meta("name", str(d.get("short", key)).to_upper())
+		tag.set_meta("color", Color(d.get("color", Comic.BLUE)))
+		tag.queue_redraw()
+	var home: Vector2 = slot["home"]
 	if instant:
 		swap.call()
-		_featured.position = rest.position + Vector2(120, 0)
-		_featured.modulate.a = 0.0
-		_feat_ribbon.modulate.a = 0.0
+		tex.modulate.a = 0.0
+		tag.modulate.a = 0.0
+		tex.position = home + Vector2(40, 0)
 		var tw0 := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		tw0.tween_property(_featured, "position", rest.position, 0.6).set_delay(0.3)
-		tw0.tween_property(_featured, "modulate:a", 1.0, 0.4).set_delay(0.3)
-		tw0.tween_property(_feat_ribbon, "modulate:a", 1.0, 0.3).set_delay(0.6)
+		tw0.tween_property(tex, "position", home, 0.5).set_delay(0.25 + i * 0.08)
+		tw0.tween_property(tex, "modulate:a", 1.0, 0.35).set_delay(0.25 + i * 0.08)
+		tw0.tween_property(tag, "modulate:a", 1.0, 0.3).set_delay(0.5 + i * 0.08)
 		return
 	var tw := create_tween()
 	tw.set_parallel()
-	tw.tween_property(_featured, "position:x", rest.position.x + 160.0, 0.22).set_ease(Tween.EASE_IN)
-	tw.tween_property(_featured, "modulate:a", 0.0, 0.2)
-	tw.tween_property(_feat_ribbon, "modulate:a", 0.0, 0.15)
+	tw.tween_property(tex, "modulate:a", 0.0, 0.25)
+	tw.tween_property(tag, "modulate:a", 0.0, 0.2)
+	tw.tween_property(tex, "position:y", home.y + 14.0, 0.25)
 	tw.chain().tween_callback(func():
 		swap.call()
-		_featured.position.x = rest.position.x - 140.0)
-	tw.chain().tween_property(_featured, "position:x", rest.position.x, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(_featured, "modulate:a", 1.0, 0.2)
-	tw.parallel().tween_property(_feat_ribbon, "modulate:a", 1.0, 0.25).set_delay(0.15)
+		tex.position = home + Vector2(0, 14))
+	tw.chain().tween_property(tex, "position", home, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(tex, "modulate:a", 1.0, 0.3)
+	tw.parallel().tween_property(tag, "modulate:a", 1.0, 0.3).set_delay(0.1)
 
 
-func _draw_feat_ribbon() -> void:
-	var c := _feat_ribbon
+func _draw_name_tag(c: Control) -> void:
 	if not c.has_meta("name"):
 		return
-	var vs := get_viewport_rect().size
 	var nm := str(c.get_meta("name"))
-	var era := str(c.get_meta("era"))
 	var col: Color = c.get_meta("color")
 	var f := Comic.chunky_font()
-	var size := 78
-	while size > 40 and f.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > 440.0:
-		size -= 4
-	var w := maxf(f.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x + 120.0, 360.0)
-	var r := Rect2(vs.x - w - 70.0, vs.y - 196.0, w, 104.0)
-	Comic.slab(c, r, 26.0, Comic.INK, Color(0.04, 0.07, 0.25), 0.0, Vector2(0, 8))
-	var pts := Comic.quad(r, 26.0)
-	c.draw_polyline(PackedVector2Array([pts[0], pts[1]]), Comic.YELLOW, 6.0, true)
-	c.draw_polyline(PackedVector2Array([pts[3], pts[2]]), col.lightened(0.3), 6.0, true)
-	Comic.text(c, f, Vector2(r.position.x + 56, r.position.y + 50 + size * 0.34), nm, size, Color.WHITE, 12)
-	if era != "":
-		var ew := f.get_string_size(era, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
-		var tab := Rect2(r.position.x + 70, r.position.y - 26, ew + 40, 32)
-		Comic.slab(c, tab, 8.0, col.lightened(0.2), col.darkened(0.1), 4.0, Vector2(0, 3))
-		Comic.text(c, f, tab.position + Vector2(22, 24), era, 20, Color.WHITE, 5)
+	var size := 30
+	var w := f.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x + 44.0
+	var r := Rect2(-w / 2.0, 0, w, 38)
+	var pts := Comic.slab(c, r, 10.0, Color(0.05, 0.075, 0.16, 0.94), Color(0.03, 0.045, 0.1, 0.96), 1.0, Vector2(0, 3))
+	c.draw_polyline(PackedVector2Array([pts[0], pts[3]]), col.lightened(0.2), 4.0, true)
+	c.draw_string(f, Vector2(r.position.x + 24, 28), nm, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color.WHITE)
 
 
 ## The profile bar in the top left: your face, name and title, your Duel Points and how far
@@ -400,7 +384,7 @@ func _build_profile_chip() -> void:
 	add_child(chip)
 	var frame := Panel.new()
 	var fsb := StyleBoxFlat.new()
-	fsb.bg_color = Color(0.0373, 0.0622, 0.238)
+	fsb.bg_color = Color(0.0211, 0.026, 0.0897)
 	fsb.set_corner_radius_all(46)
 	frame.add_theme_stylebox_override("panel", fsb)
 	frame.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
@@ -414,19 +398,19 @@ func _build_profile_chip() -> void:
 	_chip_avatar.position = Vector2(-10, -4)
 	_chip_avatar.size = Vector2(112, 140)
 	frame.add_child(_chip_avatar)
-	_chip_name = Comic.label("", 34, Color.WHITE, 8)
+	_chip_name = Comic.label("", 34, Color.WHITE)
 	_chip_name.position = Vector2(126, 14)
 	_chip_name.size = Vector2(290, 40)
 	_chip_name.clip_text = true
 	_chip_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.add_child(_chip_name)
-	_chip_sub = UITheme.label("", 18, Comic.YELLOW, UITheme.semi_font())
+	_chip_sub = UITheme.label("", 18, UITheme.TEXT_DIM, UITheme.semi_font())
 	_chip_sub.position = Vector2(128, 58)
 	_chip_sub.size = Vector2(290, 26)
 	_chip_sub.clip_text = true
 	_chip_sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.add_child(_chip_sub)
-	_chip_dp = Comic.label("", 32, Comic.YELLOW, 8)
+	_chip_dp = Comic.label("", 32, Comic.YELLOW)
 	_chip_dp.position = Vector2(476, 14)
 	_chip_dp.size = Vector2(190, 40)
 	_chip_dp.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -441,32 +425,30 @@ func _build_profile_chip() -> void:
 func _draw_chip() -> void:
 	var c := _chip
 	var hot := c.is_hovered()
-	var pts := Comic.slab(c, Rect2(50, 8, 640, 92), 20.0, Comic.BLUE.lightened(0.2 if hot else 0.08), Comic.BLUE_DEEP, 5.0, Vector2(0, 7))
-	Comic.dots(c, pts, Color(1, 1, 1, 0.14), Vector2(1, 0), 13.0, 5.5, 0.5)
-	# A darker pocket on the right for the Duel Points and the level.
-	Comic.slab(c, Rect2(424, 14, 256, 80), 16.0, Color(Comic.INK, 0.78), Color(Comic.INK, 0.9), 0.0, Vector2.ZERO)
+	var pts := Comic.slab(c, Rect2(50, 10, 640, 88), 18.0, Color(0.07, 0.1, 0.2, 0.92) if hot else Color(0.05, 0.075, 0.16, 0.9), Color(0.03, 0.045, 0.1, 0.94), 1.0, Vector2(0, 4))
+	if hot:
+		Comic.outline(c, pts, UITheme.ACCENT, 2.0)
 	# The coin.
-	var cc := Vector2(456, 37)
-	c.draw_circle(cc, 15.0, Comic.INK)
-	c.draw_circle(cc, 12.5, Color("c98a00"))
-	c.draw_circle(cc, 10.0, Comic.YELLOW)
-	c.draw_colored_polygon(PackedVector2Array([cc + Vector2(0, -7), cc + Vector2(5, 0), cc + Vector2(0, 7), cc + Vector2(-5, 0)]), Color("a86a00"))
+	var cc := Vector2(456, 39)
+	c.draw_circle(cc, 12.0, Color("c98a00"))
+	c.draw_circle(cc, 9.5, Comic.YELLOW)
+	c.draw_colored_polygon(PackedVector2Array([cc + Vector2(0, -6), cc + Vector2(4.5, 0), cc + Vector2(0, 6), cc + Vector2(-4.5, 0)]), Color("a86a00"))
+	c.draw_line(Vector2(428, 22), Vector2(412, 88), Color(1, 1, 1, 0.12), 1.5, true)
 	# The level and how far along it is (three wins a level).
-	var f := Comic.chunky_font()
-	Comic.text(c, f, Vector2(440, 84), Loc.t("Lv %d") % Profile.level(), 20, Color.WHITE, 5)
-	var bar := Rect2(506, 70, 150, 14)
-	c.draw_rect(bar.grow(3.0), Comic.INK)
-	c.draw_rect(bar, Color(0.1, 0.2, 0.5))
-	c.draw_rect(Rect2(bar.position, Vector2(bar.size.x * float(Profile.wins % 3) / 3.0, bar.size.y)), Comic.GREEN)
+	var f := Comic.button_font()
+	c.draw_string(f, Vector2(440, 82), Loc.t("Lv %d") % Profile.level(), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color.WHITE)
+	var bar := Rect2(500, 70, 156, 8)
+	c.draw_rect(bar, Color(1, 1, 1, 0.14))
+	c.draw_rect(Rect2(bar.position, Vector2(bar.size.x * float(Profile.wins % 3) / 3.0, bar.size.y)), UITheme.ACCENT)
 	# The ring around the face.
-	c.draw_arc(Vector2(56, 56), 49.0, 0.0, TAU, 48, Comic.INK, 9.0, true)
-	c.draw_arc(Vector2(56, 56), 48.0, 0.0, TAU, 48, Comic.YELLOW if hot else Color.WHITE, 4.0, true)
+	c.draw_arc(Vector2(56, 56), 48.0, 0.0, TAU, 48, UITheme.ACCENT if hot else Color(1, 1, 1, 0.85), 3.0, true)
 
 
 func _on_flushed() -> void:
 	_refresh_chip()
-	if _featured:
-		_show_featured(true)
+	for i in _line.size():
+		if _line[i] != null and str(_line[i]["key"]) != "":
+			(_line[i]["tex"] as TextureRect).texture = Portraits.get_portrait(str(_line[i]["key"]))
 
 
 func _refresh_chip() -> void:
@@ -509,18 +491,20 @@ func _intro() -> void:
 	_title_box.modulate.a = 0.0
 	_title_box.position.x -= 40
 	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(_title_box, "modulate:a", 1.0, 0.9).set_delay(0.2)
-	tw.tween_property(_title_box, "position:x", _title_box.position.x + 40, 1.0).set_delay(0.2)
+	tw.tween_property(_title_box, "modulate:a", 1.0, 0.35)
+	tw.tween_property(_title_box, "position:x", _title_box.position.x + 40, 0.45)
 	for i in _items.size():
 		var item := _items[i]
 		item.modulate.a = 0.0
-		tw.tween_property(item, "modulate:a", 1.0, 0.4).set_delay(0.35 + i * 0.05)
+		tw.tween_property(item, "modulate:a", 1.0, 0.18).set_delay(0.04 + i * 0.022)
 		if item.get_parent() is Container:
 			continue
 		var home := item.position
-		item.position = home + Vector2(-30, 14)
-		tw.tween_property(item, "position", home, 0.5).set_delay(0.35 + i * 0.05)
-	await get_tree().create_timer(0.6).timeout
+		item.position = home + Vector2(-18, 8)
+		tw.tween_property(item, "position", home, 0.24).set_delay(0.04 + i * 0.022)
+	await get_tree().create_timer(0.22).timeout
+	if not is_inside_tree() or Router._busy:
+		return
 	if not Profile.created and not "--shot" in str(OS.get_cmdline_user_args()) and not "--story" in str(OS.get_cmdline_user_args()):
 		_open_profile(true)
 	elif _items.size() > 0 and not _panel_open:

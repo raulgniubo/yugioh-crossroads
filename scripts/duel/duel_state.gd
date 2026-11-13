@@ -50,6 +50,7 @@ class CardInst:
 	var proper := false           # Extra Deck / Ritual monster that was summoned the proper way (may be revived)
 	var negated := false          # effects negated right now (Skill Drain and friends); kept fresh by _cleanup
 	var negated_turn := -1
+	var mode := 0                 # which of a card's effects was chosen (Enemy Controller and friends)
 
 	func is_token() -> bool:
 		return data.get("frame", "") == "token"
@@ -577,6 +578,12 @@ func can_activate(p: int, c: CardInst) -> bool:
 		return false
 	if sp.has("legacy"):
 		return _legacy_can(p, c)
+	# A card written for a moment (an attack, a summon) can only be used in that moment.
+	var wins: Array = sp.get("win", [])
+	if not wins.is_empty() and not wins.has("free"):
+		return false
+	if sp.has("modes"):
+		return not SpellRules.open_modes(self, p, c, "open", null).is_empty()
 	return SpellRules.feasible(self, p, c, "open", null)
 
 
@@ -631,6 +638,16 @@ func chain_add(p: int, c: CardInst, target = null, window := "open", subject = n
 		events.append({"type": "trap", "player": p, "card": c, "zone": zone})
 	else:
 		return []
+	if sp.has("modes"):
+		# A card with more than one effect: the player says which one, before anything else.
+		var open: Array = SpellRules.open_modes(self, p, c, window, subject)
+		if open.is_empty():
+			return []
+		var labels: Array = []
+		for mi in open:
+			labels.append(str(sp["modes"][mi]["label"]))
+		c.mode = open[choose_option(p, Loc.t("%s: which effect?") % c.cname(), labels, 0, c)]
+		sp = SpellRules.spec(c)
 	if target == null and not sp.has("legacy") and SpellRules._needs_target(sp):
 		var auto_t = SpellRules.auto_target(self, p, c)
 		var picked := choose(p, Loc.t("Choose a target for %s") % c.cname(), SpellRules.targets(self, p, c), 1, [auto_t] if auto_t != null else [], false, c)
@@ -742,6 +759,9 @@ func _legacy_spell(p: int, c: CardInst, choice = null) -> Array:
 		"fissure":
 			var target := _lowest_face_up(opponent(p))
 			if target:
+				var tied: Array = players[opponent(p)].monsters().filter(func(m): return m.face_up and atk_of(m, false) == atk_of(target, false))
+				if tied.size() > 1:
+					target = pick1(p, Loc.t("%s: these are tied. Choose 1") % c.cname(), tied, target, c)
 				events.append_array(_destroy(target))
 		"raigeki":
 			for m in players[opponent(p)].monsters():
@@ -1816,6 +1836,7 @@ func _clone_card(c: CardInst, map: Dictionary) -> CardInst:
 	n.proper = c.proper
 	n.negated = c.negated
 	n.negated_turn = c.negated_turn
+	n.mode = c.mode
 	map[c.uid] = n
 	for o in c.overlays:
 		n.overlays.append(_clone_card(o, map))

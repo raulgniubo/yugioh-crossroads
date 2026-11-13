@@ -18,7 +18,7 @@ func _init(px := Vector2(420, 600)) -> void:
 	_vp = SubViewport.new()
 	_vp.own_world_3d = true
 	_vp.transparent_bg = true
-	_vp.msaa_3d = Viewport.MSAA_4X
+	_vp.msaa_3d = Settings.small_view_msaa()
 	add_child(_vp)
 	_stage = Node3D.new()
 	_vp.add_child(_stage)

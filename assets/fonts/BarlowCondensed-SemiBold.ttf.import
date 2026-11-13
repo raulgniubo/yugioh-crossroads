@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://xt5w7m2aqyei"
-path="res://.godot/imported/Bangers-Regular.ttf-1096e4d6e36d932f856599d7c9cc030f.fontdata"
+uid="uid://i5eg160vmbqy"
+path="res://.godot/imported/BarlowCondensed-SemiBold.ttf-a61dd99857b2d1cd6578199d7509bfaf.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/Bangers-Regular.ttf"
-dest_files=["res://.godot/imported/Bangers-Regular.ttf-1096e4d6e36d932f856599d7c9cc030f.fontdata"]
+source_file="res://assets/fonts/BarlowCondensed-SemiBold.ttf"
+dest_files=["res://.godot/imported/BarlowCondensed-SemiBold.ttf-a61dd99857b2d1cd6578199d7509bfaf.fontdata"]
 
 [params]
 

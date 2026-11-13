@@ -7,15 +7,21 @@ const PIER := 12.0     # how much further out the pier sits than it used to
 
 
 func _build_ground() -> void:
-	# The sea
-	var sea := StandardMaterial3D.new()
-	sea.albedo_color = Color(0.07, 0.3, 0.46)
-	sea.roughness = 0.08
-	sea.metallic = 0.35
-	box(Vector3(900, 0.2, 900), Vector3(0, -0.75, 0), sea, false)
+	# The sea: one big sheet with waves and foam on the beach.
+	var sea := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(1400, 1400)
+	pm.subdivide_width = 4
+	pm.subdivide_depth = 4
+	sea.mesh = pm
+	sea.material_override = water_material(SHORE + 7.3)
+	sea.position = Vector3(0, -0.65, 0)
+	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(sea)
+	box(Vector3(900, 0.2, 900), Vector3(0, -2.4, 0), mat(Color(0.05, 0.16, 0.28), 0.9), false)
 	# Sand, then grass, then stone paths
-	cyl(SHORE + 4.0, SHORE + 9.0, 1.0, Vector3(0, -0.5, 0), mat(Color(0.86, 0.78, 0.58), 0.95), null, 48)
-	cyl(SHORE - 8.0, SHORE - 5.0, 0.3, Vector3(0, -0.06, 0), grass_material(1.5), null, 48)
+	cyl(SHORE + 4.0, SHORE + 9.0, 1.0, Vector3(0, -0.5, 0), surf("sand", Color(0.8, 0.72, 0.54)), null, 64)
+	cyl(SHORE - 8.0, SHORE - 5.0, 0.3, Vector3(0, -0.06, 0), grass_material(1.5), null, 64)
 	var floor_body := StaticBody3D.new()
 	var cs := CollisionShape3D.new()
 	var sh := BoxShape3D.new()
@@ -24,7 +30,7 @@ func _build_ground() -> void:
 	floor_body.add_child(cs)
 	floor_body.position = Vector3(0, -0.41, 0)
 	add_child(floor_body)
-	var path := _tile_material(Color(0.72, 0.68, 0.6), 1.4)
+	var path := surf("paving", Color(0.74, 0.7, 0.62), 1.15)
 	box(Vector3(5.0, 0.12, 62.0 + PIER), Vector3(0, 0.1, 17.0 + PIER / 2.0), path, false)       # dock -> plaza -> academy
 	box(Vector3(5.0, 0.12, 24.0), Vector3(0, 0.1, -20.0), path, false)
 	box(Vector3(34.0, 0.12, 4.0), Vector3(-19.0, 0.1, 6.0), path, false)    # west to the red dorm
@@ -46,7 +52,7 @@ func _build_ground() -> void:
 		ring.position.y = 0.19
 		add_child(ring)
 	# Wooden pier
-	var wood := mat(Color(0.5, 0.36, 0.22), 0.85)
+	var wood := surf("wood", Color(0.56, 0.4, 0.25))
 	box(Vector3(5.0, 0.3, 22.0), Vector3(0, 0.05, 59.0 + PIER), wood, false)
 	for i in 6:
 		for sx in [-1, 1]:
@@ -110,8 +116,8 @@ func _build_landmarks() -> void:
 	if boat:
 		_bobbers.append([boat, -0.7])
 	# The volcano behind the school
-	var rock := mat(Color(0.26, 0.2, 0.18), 0.95)
-	cyl(16.0, 95.0, 70.0, Vector3(-30, 34, -175), rock, null, 14)
+	var rock_m := surf("rock", Color(0.34, 0.27, 0.24))
+	cyl(16.0, 95.0, 70.0, Vector3(-30, 34, -175), rock_m, null, 22)
 	cyl(13.0, 13.0, 1.0, Vector3(-30, 68.6, -175), glow_mat(Color(1.0, 0.36, 0.1), 3.0), null, 14)
 	var glow := OmniLight3D.new()
 	glow.light_color = Color(1.0, 0.4, 0.15)
@@ -119,15 +125,30 @@ func _build_landmarks() -> void:
 	glow.omni_range = 70.0
 	glow.position = Vector3(-30, 76, -175)
 	add_child(glow)
-	# Cliffs along the north shore
+	# Cliffs along the north shore: clusters of weathered boulders, big ones behind, rubble
+	# and sea rocks in front.
+	var cliff_m := surf("rock", Color(0.5, 0.44, 0.38))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5
-	for i in 14:
-		var a := PI * 0.62 + i * (PI * 0.78 / 13.0) + PI * 0.5
-		var r := SHORE + 6.0 + rng.randf_range(0, 6)
-		var h := rng.randf_range(5.0, 12.0)
-		var m := cyl(rng.randf_range(4, 7), rng.randf_range(7, 11), h, Vector3(cos(a) * r, h / 2.0 - 1.0, sin(a) * r - 4.0), rock, null, 7)
-		m.rotation.y = rng.randf() * TAU
+	for i in 16:
+		var a := PI * 0.62 + i * (PI * 0.78 / 15.0) + PI * 0.5
+		var r := SHORE + 7.0 + rng.randf_range(0, 5)
+		var h := rng.randf_range(7.0, 15.0)
+		var base := Vector3(cos(a) * r, -1.0, sin(a) * r - 4.0)
+		rock(base + Vector3(0, h * 0.28, 0), Vector3(rng.randf_range(13, 18), h * 1.5, rng.randf_range(11, 15)), cliff_m, 40 + i, rng.randf() * TAU)
+		for k in 3:
+			var off := Vector3(rng.randf_range(-7, 7), 0, rng.randf_range(-6, 6))
+			var hs := rng.randf_range(2.5, 6.5)
+			rock(base + off + Vector3(0, hs * 0.2, 0), Vector3(rng.randf_range(4, 8), hs * 1.4, rng.randf_range(4, 7)), cliff_m, 200 + i * 7 + k, rng.randf() * TAU)
+	# A few rocks standing in the shallows all the way round.
+	for i in 22:
+		var a2 := rng.randf() * TAU
+		var r2 := SHORE + rng.randf_range(8.5, 20.0)
+		var p2 := Vector3(cos(a2) * r2, -0.9, sin(a2) * r2)
+		if absf(p2.x) < 12.0 and p2.z > 60.0:
+			continue
+		var s2 := rng.randf_range(1.2, 3.6)
+		rock(p2 + Vector3(0, s2 * 0.25, 0), Vector3(s2 * rng.randf_range(1.0, 1.6), s2 * 1.2, s2), cliff_m, 500 + i, rng.randf() * TAU)
 
 
 func _build_street_furniture() -> void:
@@ -175,6 +196,9 @@ func _build_street_furniture() -> void:
 	for sx in [-1, 1]:
 		cyl(0.1, 0.1, 5.0, Vector3(sx * 6.0, 2.5, 47.0 + PIER), mat(Color(0.2, 0.2, 0.24), 0.4, 0.7))
 	_build_new_places()
+	_dress_dorms()
+	# Last, once everything paved or built is known: grass, flowers and pebbles on the lawns.
+	scatter_detail(Vector2.ZERO, SHORE - 9.0, 0.09, 1.5)
 
 
 func _build_traffic() -> void:
@@ -232,7 +256,7 @@ func _build_new_places() -> void:
 			collide(g, 0.85)
 	neon_sign("DUEL FIELD", fc + Vector3(0, 6.5, -9.0), Color("b48cff"), 140, 0.0, false)
 	# The beach in the south-east: sand, umbrellas and towels.
-	var sand := mat(Color(0.9, 0.82, 0.6), 0.95)
+	var sand := surf("sand", Color(0.82, 0.74, 0.55))
 	cyl(16.0, 18.0, 0.2, Vector3(48.0, 0.0, 50.0), sand, null, 32)
 	var cols := [Color("ff5a5a"), Color("ffd166"), Color("5ac8ff"), Color("7dffb0"), Color("ff8ad4")]
 	for k in 6:
@@ -247,7 +271,7 @@ func _build_new_places() -> void:
 		if p.distance_to(Vector3(-46, 0, 42)) < 7.5 or Vector2(p.x, p.z).length() > SHORE - 6.0:
 			continue
 		tree(p, rng.randf_range(1.0, 1.5))
-	var ruin := mat(Color(0.5, 0.48, 0.46), 0.95)
+	var ruin := surf("brick", Color(0.52, 0.47, 0.44))
 	var rc := Vector3(-46.0, 0, 42.0)
 	box(Vector3(9.0, 0.3, 7.0), rc + Vector3(0, 0.15, 0), ruin)
 	box(Vector3(9.0, 4.2, 0.4), rc + Vector3(0, 2.1, -3.3), ruin)
@@ -256,7 +280,7 @@ func _build_new_places() -> void:
 	box(Vector3(3.4, 1.4, 0.4), rc + Vector3(-2.6, 0.7, 3.3), ruin)
 	for k in 3:
 		box(Vector3(1.0, 1.3, 0.06), rc + Vector3(-3.0 + k * 3.0, 2.6, -3.08), glow_mat(Color(0.5, 0.3, 0.8), 0.6), false)
-	var boards := mat(Color(0.36, 0.26, 0.18), 0.9)
+	var boards := surf("wood", Color(0.4, 0.29, 0.2))
 	for k in 4:
 		var b := box(Vector3(2.6, 0.18, 0.06), rc + Vector3(-3.0 + (k % 2) * 6.0, 1.9 + (k / 2) * 0.7, -3.0), boards, false)
 		b.rotation.z = 0.3 * (1 if k % 2 == 0 else -1)
@@ -279,14 +303,112 @@ func _build_new_places() -> void:
 	neon_sign("PRACTICE FIELDS", courts + Vector3(4.5, 3.4, -3.6), Color("7cc4ff"), 90, 0.0, false)
 	# A cliff-top lookout with a telescope, north-east.
 	var lk := Vector3(40.0, 0, -36.0)
-	cyl(4.0, 4.4, 0.4, lk + Vector3(0, 0.2, 0), mat(Color(0.6, 0.58, 0.54), 0.9), null, 20)
+	cyl(4.0, 4.4, 0.4, lk + Vector3(0, 0.2, 0), surf("paving", Color(0.64, 0.62, 0.58), 0.9), null, 20)
 	for k in 10:
 		var a := PI * 1.1 + k * 0.12
 		cyl(0.06, 0.06, 1.0, lk + Vector3(cos(a) * 3.8, 0.9, sin(a) * 3.8), mat(Color(0.25, 0.25, 0.28), 0.4, 0.6))
 	var tel := cyl(0.12, 0.2, 1.2, lk + Vector3(1.4, 1.5, -1.6), mat(Color(0.7, 0.62, 0.3), 0.3, 0.8))
 	tel.rotation.x = 0.9
 	cyl(0.04, 0.06, 1.1, lk + Vector3(1.4, 0.75, -1.6), mat(Color(0.25, 0.25, 0.28), 0.4, 0.6))
-	box(Vector3(14.0, 0.12, 4.0), Vector3(33.0, 0.1, -30.0), _tile_material(Color(0.72, 0.68, 0.6), 1.4), false)
+	box(Vector3(14.0, 0.12, 4.0), Vector3(33.0, 0.1, -30.0), surf("paving", Color(0.74, 0.7, 0.62), 1.15), false)
+
+
+## Each dorm gets a proper front yard: a paved forecourt, flower beds with a stone edge, a low
+## hedge, lanterns by the door and a notice board.
+func _dress_dorms() -> void:
+	var stone := surf("paving", Color(0.7, 0.67, 0.6), 0.8)
+	var edge := surf("rock", Color(0.6, 0.57, 0.52))
+	var soil := mat(Color(0.3, 0.2, 0.13), 0.95)
+	var hedge := mat(Color(0.14, 0.36, 0.14), 0.95)
+	var wood := surf("wood", Color(0.46, 0.33, 0.2))
+	var iron := mat(Color(0.14, 0.15, 0.18), 0.45, 0.7)
+	var blooms := {"dorm_red": [Color("ff5a4a"), Color("ffb347")], "dorm_yellow": [Color("ffd84a"), Color("ffffff")], "dorm_blue": [Color("6fa8ff"), Color("e8e4ff")]}
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 90
+	for key in ["dorm_red", "dorm_yellow", "dorm_blue"]:
+		if not doors.has(key):
+			continue
+		var door: Vector3 = doors[key][0]
+		var out: Vector3 = doors[key][1]
+		var side := Vector3(out.z, 0, -out.x)
+		var yaw := atan2(out.x, out.z)
+		var yard := Node3D.new()
+		yard.position = door + out * 0.2
+		yard.rotation.y = yaw
+		add_child(yard)
+		# Forecourt (local +Z is out from the door).
+		var court := box(Vector3(6.4, 0.1, 5.0), Vector3(0, 0.12, 2.9), stone, false, yard)
+		court.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var c0 := door + out * 3.1
+		no_grass.append(Rect2(c0.x - 3.6, c0.z - 3.6, 7.2, 7.2))
+		for sx: float in [-1.0, 1.0]:
+			# A raised flower bed either side of the door, stone edge all round.
+			var bed := Vector3(sx * 5.6, 0, 1.6)
+			box(Vector3(4.2, 0.34, 1.7), bed + Vector3(0, 0.17, 0), edge, false, yard)
+			box(Vector3(3.9, 0.1, 1.4), bed + Vector3(0, 0.36, 0), soil, false, yard)
+			for k in 26:
+				var fp := bed + Vector3(rng.randf_range(-1.8, 1.8), 0.4, rng.randf_range(-0.55, 0.55))
+				var stem := cyl(0.012, 0.016, 0.3, fp + Vector3(0, 0.15, 0), hedge, yard, 5)
+				stem.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				var head := MeshInstance3D.new()
+				var sm := SphereMesh.new()
+				sm.radius = rng.randf_range(0.07, 0.12)
+				sm.height = sm.radius * 1.5
+				sm.radial_segments = 8
+				sm.rings = 4
+				head.mesh = sm
+				head.material_override = mat((blooms[key] as Array)[k % 2], 0.8)
+				head.position = fp + Vector3(0, 0.33, 0)
+				head.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				yard.add_child(head)
+			for k in 7:
+				var leaf := MeshInstance3D.new()
+				var lm := SphereMesh.new()
+				lm.radius = 0.28
+				lm.height = 0.36
+				lm.radial_segments = 8
+				lm.rings = 4
+				leaf.mesh = lm
+				leaf.material_override = hedge
+				leaf.position = bed + Vector3(-1.8 + k * 0.6, 0.46, rng.randf_range(-0.3, 0.3))
+				yard.add_child(leaf)
+			# A lantern on a post at each front corner of the forecourt.
+			var lp := Vector3(sx * 3.0, 0, 5.2)
+			cyl(0.05, 0.07, 2.3, lp + Vector3(0, 1.15, 0), iron, yard, 8)
+			box(Vector3(0.3, 0.38, 0.3), lp + Vector3(0, 2.45, 0), glow_mat(Color(1.0, 0.86, 0.6), 1.2), false, yard)
+			box(Vector3(0.38, 0.05, 0.38), lp + Vector3(0, 2.67, 0), iron, false, yard)
+			box(Vector3(0.38, 0.05, 0.38), lp + Vector3(0, 2.24, 0), iron, false, yard)
+			var wl := lp.rotated(Vector3.UP, yaw) + yard.position
+			var l := OmniLight3D.new()
+			l.light_color = Color(1.0, 0.84, 0.6)
+			l.light_energy = 2.0
+			l.omni_range = 7.0
+			l.position = wl + Vector3(0, 2.5, 0)
+			add_child(l)
+			_lamp_lights.append(l)
+			solid_cyl(0.12, 2.4, wl + Vector3(0, 1.2, 0))
+			var wb := bed.rotated(Vector3.UP, yaw) + yard.position
+			no_grass.append(Rect2(wb.x - 2.4, wb.z - 2.4, 4.8, 4.8))
+			if make_solid:
+				var body := StaticBody3D.new()
+				var cs := CollisionShape3D.new()
+				var bs := BoxShape3D.new()
+				bs.size = Vector3(4.2, 0.6, 1.7)
+				cs.shape = bs
+				body.add_child(cs)
+				body.position = bed + Vector3(0, 0.3, 0)
+				body.collision_layer = 2
+				yard.add_child(body)
+		# The notice board, off to one side.
+		var nb := Vector3(-4.6, 0, 4.6)
+		for sx2: float in [-0.7, 0.7]:
+			box(Vector3(0.1, 1.9, 0.1), nb + Vector3(sx2, 0.95, 0), wood, false, yard)
+		box(Vector3(1.6, 1.0, 0.08), nb + Vector3(0, 1.35, 0), wood, false, yard)
+		box(Vector3(1.4, 0.8, 0.02), nb + Vector3(0, 1.35, 0.05), mat(Color(0.42, 0.3, 0.2), 0.95), false, yard)
+		for k in 5:
+			var note := box(Vector3(0.26, 0.32, 0.01), nb + Vector3(-0.5 + (k % 3) * 0.5, 1.5 - (k / 3) * 0.36, 0.07), mat([Color("fff6d8"), Color("d8f0ff"), Color("ffe0e0")][k % 3], 0.9), false, yard)
+			note.rotation.z = rng.randf_range(-0.12, 0.12)
+		box(Vector3(1.8, 0.08, 0.3), nb + Vector3(0, 1.92, 0), surf("roof", Color(0.6, 0.25, 0.2)), false, yard)
 
 
 var _spinners: Array = []

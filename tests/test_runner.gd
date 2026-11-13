@@ -14,6 +14,7 @@ func _ready() -> void:
 	_test_banish()
 	_test_spell_rules()
 	_test_full_rules()
+	_test_choices()
 	_test_turbo()
 	_test_vault()
 	var stress := OS.get_environment("STRESS_FOLDER")
@@ -779,6 +780,168 @@ func _test_effects() -> void:
 
 ## The duel screen's way of running an action: try it on a copy, answer each choice, replay.
 ## `pick` gets the need and returns card uids (or [index] for an option).
+## v0.22: nothing is chosen for the player, and cards only work at their own moment.
+func _test_choices() -> void:
+	# Enemy Controller: asks which effect, then which target
+	var s := _main_ready(81)
+	s.manual = [true, false]
+	var a := _fake(s, 1, "Foe A", 1800, 1000, 0)
+	var b := _fake(s, 1, "Foe B", 2400, 1000, 1)
+	var mine := _fake(s, 0, "Mine", 500, 500, 0)
+	var ec := _st(s, 0, "Enemy Controller")
+	var needs := []
+	_decide(s, func(st): return st.activate(0, st.find_uid(ec.uid)), func(need):
+		needs.append(need)
+		return [0] if need.has("options") else [b.uid])
+	check(needs.size() == 2 and needs[0].has("options") and (needs[0]["options"] as Array).size() == 2, "Enemy Controller asks which effect, then the target (asked %d)" % needs.size())
+	check(not b.attack_pos and a.attack_pos, "Enemy Controller changes the position of the chosen monster")
+	# The other effect: Tribute, then take control until the End Phase
+	s = _main_ready(82)
+	s.manual = [true, false]
+	a = _fake(s, 1, "Foe A", 1800, 1000, 0)
+	mine = _fake(s, 0, "Mine", 500, 500, 0)
+	ec = _st(s, 0, "Enemy Controller")
+	needs = []
+	_decide(s, func(st): return st.activate(0, st.find_uid(ec.uid)), func(need):
+		needs.append(need)
+		if need.has("options"):
+			return [1]
+		return [need["cands"][0]])
+	check(s.players[0].field.has(a) and s.players[0].gy.has(mine), "Enemy Controller's second effect Tributes and takes control")
+	check(needs.size() == 3, "Enemy Controller (control) asks effect, target and the Tribute (asked %d)" % needs.size())
+	# With no monster to Tribute only the first effect is offered
+	s = _main_ready(83)
+	a = _fake(s, 1, "Foe A", 1800, 1000, 0)
+	ec = _st(s, 0, "Enemy Controller")
+	check(SpellRules.open_modes(s, 0, ec, "open", null) == [0], "Enemy Controller: no Tribute, no second effect")
+	# A lone target still asks
+	s = _main_ready(84)
+	s.manual = [true, false]
+	a = _fake(s, 1, "Only", 1800, 1000, 0)
+	var mst := _st(s, 0, "Book of Moon")
+	needs = []
+	_decide(s, func(st): return st.activate(0, st.find_uid(mst.uid)), func(need):
+		needs.append(need)
+		return [a.uid])
+	check(needs.size() == 1 and not a.face_up, "A card with one possible target still asks for it")
+	# Ego Boost: not in the Main Phase, not on their attack, only on your own direct attack
+	s = _main_ready(85)
+	mine = _fake(s, 0, "Mine", 1500, 500, 0)
+	var ego := _st(s, 0, "Ego Boost")
+	check(not s.can_activate(0, ego), "Ego Boost cannot be activated in the Main Phase")
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(0, mine, null)
+	check(SpellRules.fits(s, 0, ego, "attack", null), "Ego Boost fits when your monster attacks directly")
+	s = _main_ready(86)
+	mine = _fake(s, 0, "Mine", 1500, 500, 0)
+	a = _fake(s, 1, "Foe", 1000, 500, 0)
+	ego = _st(s, 0, "Ego Boost")
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(0, mine, a)
+	check(not SpellRules.fits(s, 0, ego, "attack", null), "Ego Boost does not fit an attack on a monster")
+	# Smashing Ground: a tie is the player's choice
+	s = _main_ready(87)
+	s.manual = [true, false]
+	a = _fake(s, 1, "Wall A", 1000, 2000, 0)
+	b = _fake(s, 1, "Wall B", 500, 2000, 1)
+	var sg := _st(s, 0, "Smashing Ground")
+	needs = []
+	_decide(s, func(st): return st.activate(0, st.find_uid(sg.uid)), func(need):
+		needs.append(need)
+		return [b.uid])
+	check(needs.size() == 1 and s.players[1].gy.has(b) and s.players[1].field.has(a), "Smashing Ground asks when the highest DEF is tied")
+	# Traps and Quick-Plays cannot be used the turn they were Set
+	s = _main_ready(88)
+	a = _fake(s, 1, "Foe", 1800, 1000, 0)
+	var jar := _st(s, 0, "Jar of Greed", "set", "trap")
+	jar.set_turn = s.turn
+	check(not s.can_activate(0, jar), "A Trap cannot be activated the turn it was Set")
+	jar.set_turn = s.turn - 1
+	check(s.can_activate(0, jar), "A Trap Set last turn can be activated")
+	var bm := _st(s, 0, "Book of Moon", "set")
+	bm.set_turn = s.turn
+	check(not s.can_activate(0, bm), "A Quick-Play Spell cannot be activated the turn it was Set")
+	# First turn: no Battle Phase
+	s = _new_state(89)
+	s.begin_turn()
+	check(not s.can_enter_battle(), "No Battle Phase on the first turn of the duel")
+	# One Normal Summon or Set per turn; a summoned monster cannot change position that turn
+	s = _main_ready(90)
+	var h1 := _fake(s, 0, "H1", 1000, 1000, -1)
+	var h2 := _fake(s, 0, "H2", 1000, 1000, -1)
+	s.players[0].hand.append(h1)
+	s.players[0].hand.append(h2)
+	s.normal_summon(0, h1, [], false)
+	check(not s.can_normal_summon(0, h2), "Only one Normal Summon or Set per turn")
+	check(not s.can_change_position(0, h1), "A monster cannot change position the turn it was summoned")
+	# A Set monster cannot be Flip Summoned the same turn
+	s = _main_ready(91)
+	h1 = _fake(s, 0, "H1", 1000, 1000, -1)
+	s.players[0].hand.append(h1)
+	s.normal_summon(0, h1, [], true)
+	check(not s.can_flip_summon(0, h1), "A monster Set this turn cannot be Flip Summoned")
+	# A monster that attacked cannot change position; one that changed position can still attack
+	s = _main_ready(92)
+	mine = _fake(s, 0, "Mine", 1500, 500, 0)
+	mine.summoned_turn = 1
+	a = _fake(s, 1, "Foe", 1000, 500, 0)
+	s.phase = DuelState.Phase.BATTLE
+	s.attack(0, mine, a)
+	s.phase = DuelState.Phase.MAIN2
+	check(not s.can_change_position(0, mine), "A monster that attacked cannot change position in Main Phase 2")
+	# Defense Position monsters cannot attack
+	s = _main_ready(93)
+	mine = _fake(s, 0, "Mine", 1500, 500, 0)
+	mine.attack_pos = false
+	s.phase = DuelState.Phase.BATTLE
+	check(not s.can_attack(0, mine), "A Defense Position monster cannot attack")
+	# No direct attack while they have a monster
+	s = _main_ready(94)
+	mine = _fake(s, 0, "Mine", 1500, 500, 0)
+	a = _fake(s, 1, "Foe", 1000, 500, 0)
+	s.phase = DuelState.Phase.BATTLE
+	check(not s.can_direct_attack(0), "No direct attack while the opponent controls a monster")
+	# Attacking a Defense Position monster with higher DEF: the attacker takes the difference, nothing dies
+	s = _main_ready(95)
+	mine = _fake(s, 0, "Mine", 1500, 500, 0)
+	a = _fake(s, 1, "Wall", 0, 2000, 0)
+	a.attack_pos = false
+	s.phase = DuelState.Phase.BATTLE
+	var lp0: int = s.players[0].lp
+	s.attack(0, mine, a)
+	check(s.players[0].lp == lp0 - 500 and s.players[0].field.has(mine) and s.players[1].field.has(a), "Attacking into higher DEF costs the difference and destroys nothing")
+	# Equal ATK in Attack Position: both are destroyed, no damage
+	s = _main_ready(96)
+	mine = _fake(s, 0, "Mine", 1500, 500, 0)
+	a = _fake(s, 1, "Foe", 1500, 500, 0)
+	s.phase = DuelState.Phase.BATTLE
+	lp0 = s.players[0].lp
+	var lp1: int = s.players[1].lp
+	s.attack(0, mine, a)
+	check(not s.players[0].field.has(mine) and not s.players[1].field.has(a) and s.players[0].lp == lp0 and s.players[1].lp == lp1, "Equal ATK: both destroyed, no damage")
+	# Destroying a Defense Position monster deals no damage
+	s = _main_ready(97)
+	mine = _fake(s, 0, "Mine", 2000, 500, 0)
+	a = _fake(s, 1, "Wall", 0, 1000, 0)
+	a.attack_pos = false
+	s.phase = DuelState.Phase.BATTLE
+	lp1 = s.players[1].lp
+	s.attack(0, mine, a)
+	check(s.players[1].lp == lp1 and not s.players[1].field.has(a), "Destroying a Defense Position monster deals no battle damage")
+	# Level 5-6 need one Tribute, 7 and up need two
+	s = _main_ready(98)
+	var lv6 := _fake(s, 0, "Six", 2400, 1000, -1, {"level": 6})
+	var lv8 := _fake(s, 0, "Eight", 3000, 2500, -1, {"level": 8})
+	check(s.tributes_needed(lv6) == 1 and s.tributes_needed(lv8) == 2, "Tribute counts: 1 for Level 5-6, 2 for Level 7+")
+	# Decking out loses the duel
+	s = _main_ready(99)
+	s.players[1].deck.clear()
+	s.current = 0
+	s.end_turn()
+	s.begin_turn()
+	check(s.is_over() and s.winner == 0, "A player who cannot draw loses")
+
+
 func _decide(s: DuelState, fn: Callable, pick: Callable) -> Array:
 	var answers: Array = []
 	for guard in 30:

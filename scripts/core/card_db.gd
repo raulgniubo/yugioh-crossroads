@@ -146,14 +146,20 @@ func _make_sleeve(id: int) -> Texture2D:
 	var w := float(CARD_SIZE.x)
 	var h := float(CARD_SIZE.y)
 	if art != null:
+		# The picture fills the sleeve, centered, cut to the frame. (Size goes last: a
+		# TextureRect that still follows its texture's size would grow to the picture.)
+		var clip := Control.new()
+		clip.position = Vector2(14, 14)
+		clip.size = Vector2(w - 28, h - 28)
+		clip.clip_contents = true
+		root.add_child(clip)
 		var tr := TextureRect.new()
-		tr.texture = art
-		tr.position = Vector2(14, 14)
-		tr.size = Vector2(w - 28, h - 28)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		tr.clip_contents = true
-		root.add_child(tr)
+		tr.texture = art
+		clip.add_child(tr)
+		tr.position = Vector2.ZERO
+		tr.size = clip.size
 	else:
 		# No artwork on disk: a crest in the monster's color with its initials.
 		var grad := Gradient.new()

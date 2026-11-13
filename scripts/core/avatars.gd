@@ -981,8 +981,54 @@ void fragment() {
 			mi.set_surface_override_material(i, sm)
 
 
-## Paint a dorm jacket on a model: the torso and sleeves take the dorm color with white trim at
-## the collar, cuffs and hem. Works on the rest pose, so it follows the body when it moves.
+## Paint a dorm jacket on a model: the torso and sleeves take the dorm color, with thin piping at
+## the collar, down the zip and along the hem. The mask is worked out from where each vertex is
+## in the rest pose (baked into the mesh once), so it stays glued to the body however the model
+## moves, sits or bends. Skinned vertices reach the shader already moved, so they can't be used.
+var _rest_cache := {}            # "file|mesh name" -> ArrayMesh with the rest pose in CUSTOM0
+
+
+func _with_rest_pose(mesh: Mesh, cache_key: String) -> ArrayMesh:
+	if mesh.has_meta("rest_baked"):
+		return mesh
+	if cache_key != "" and _rest_cache.has(cache_key):
+		return _rest_cache[cache_key]
+	var src := mesh as ArrayMesh
+	if src == null:
+		return null
+	var out := ArrayMesh.new()
+	for bs in src.get_blend_shape_count():
+		out.add_blend_shape(src.get_blend_shape_name(bs))
+	out.blend_shape_mode = src.blend_shape_mode
+	var custom_bits: int = Mesh.ARRAY_FORMAT_CUSTOM_MASK << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
+	for i in src.get_surface_count():
+		var arrays := src.surface_get_arrays(i)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var rest := PackedFloat32Array()
+		rest.resize(verts.size() * 3)
+		for v in verts.size():
+			var p := verts[v]
+			rest[v * 3] = p.x
+			rest[v * 3 + 1] = p.y
+			rest[v * 3 + 2] = p.z
+		arrays[Mesh.ARRAY_CUSTOM0] = rest
+		var fmt: int = src.surface_get_format(i)
+		fmt = (fmt & ~custom_bits) | (Mesh.ARRAY_CUSTOM_RGB_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
+		# Only the flag bits and the custom formats matter here; the rest is read off the arrays.
+		var all_custom: int = 0
+		for ci in 4:
+			all_custom |= Mesh.ARRAY_FORMAT_CUSTOM_MASK << (Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT + ci * Mesh.ARRAY_FORMAT_CUSTOM_BITS)
+		var flags: int = fmt & (all_custom | Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS)
+		out.add_surface_from_arrays(src.surface_get_primitive_type(i), arrays, src.surface_get_blend_shape_arrays(i), {}, flags)
+		out.surface_set_material(i, src.surface_get_material(i))
+		out.surface_set_name(i, src.surface_get_name(i))
+	out.custom_aabb = src.custom_aabb
+	out.set_meta("rest_baked", true)
+	if cache_key != "":
+		_rest_cache[cache_key] = out
+	return out
+
+
 func apply_uniform(scene: Node, color: Color) -> void:
 	if _uniform_shader == null:
 		_uniform_shader = Shader.new()
@@ -995,7 +1041,7 @@ uniform float top = 0.80;
 uniform float hem_y = 0.50;
 uniform mat4 to_root;
 varying vec3 lp;
-void vertex() { lp = (to_root * vec4(VERTEX, 1.0)).xyz; }
+void vertex() { lp = (to_root * vec4(CUSTOM0.xyz, 1.0)).xyz; }
 void fragment() {
 	vec4 t = texture(tex, UV);
 	float y = lp.y / h;
@@ -1005,13 +1051,11 @@ void fragment() {
 	float body = smoothstep(lo, lo + 0.012, y) * (1.0 - smoothstep(top, top + 0.012, y)) * (1.0 - smoothstep(0.375, 0.39, x));
 	float lum = dot(t.rgb, vec3(0.3, 0.59, 0.11));
 	vec3 cloth = coat * (0.5 + 0.7 * lum);
-	// Trim is thin piping, not panels: a line just above the hem, one at each cuff, a narrow
-	// zip, and two short collar tabs. Soft edges, and off-white so it sits in the cloth.
+	// Thin piping only: a line just above the hem, a narrow zip and a line round the collar.
 	float hem = smoothstep(hem_y + 0.012, hem_y + 0.017, y) * (1.0 - smoothstep(hem_y + 0.024, hem_y + 0.029, y)) * (1.0 - arm);
-	float cuff = arm * smoothstep(hem_y + 0.072, hem_y + 0.076, y) * (1.0 - smoothstep(hem_y + 0.083, hem_y + 0.087, y));
-	float tab = smoothstep(top - 0.03, top - 0.024, y) * smoothstep(0.012, 0.018, x) * (1.0 - smoothstep(0.04, 0.048, x)) * step(0.0, lp.z);
 	float zip = (1.0 - smoothstep(0.003, 0.006, x)) * step(0.0, lp.z) * (1.0 - smoothstep(top - 0.03, top - 0.02, y));
-	float trim = clamp(hem + cuff + tab + zip, 0.0, 1.0) * 0.85;
+	float collar = smoothstep(top - 0.014, top - 0.009, y) * (1.0 - smoothstep(0.075, 0.09, x));
+	float trim = clamp(hem + zip + collar, 0.0, 1.0) * 0.8;
 	// A slightly darker yoke over the shoulders gives the jacket some shape.
 	cloth *= mix(1.0, 0.82, smoothstep(top - 0.07, top - 0.03, y));
 	cloth = mix(cloth, mix(vec3(0.93, 0.92, 0.88), coat, 0.12) * (0.62 + 0.45 * lum), trim);
@@ -1020,25 +1064,48 @@ void fragment() {
 	SPECULAR = 0.2;
 }
 """
-	# Skinned vertices reach the shader in the skeleton's space (often centimeters), so hand it
-	# the transform back to the model's own space, where the feet are at 0 and Y is up.
 	var skel := _skeleton(scene)
+	var file := ""
+	var up: Node = scene
+	while up != null and file == "":
+		file = str(up.get_meta("file", ""))
+		up = up.get_parent()
 	for mi in _meshes(scene):
 		if mi.mesh == null:
 			continue
 		var box := mi.mesh.get_aabb()
 		if box.size.y < 0.01:
 			continue
+		var baked := _with_rest_pose(mi.mesh, (file + "|" + str(scene.get_path_to(mi))) if file != "" else "")
+		if baked == null:
+			continue
+		if baked != mi.mesh:
+			# Keep whatever the model had set on the mesh node itself.
+			var keep: Array = []
+			for i in mi.mesh.get_surface_count():
+				keep.append(mi.get_surface_override_material(i))
+			mi.mesh = baked
+			for i in keep.size():
+				mi.set_surface_override_material(i, keep[i])
 		var top := 0.80
 		var hem := 0.50
+		var skinned: bool = skel != null and mi.skin != null
 		var rel := Transform3D.IDENTITY
-		var n: Node = skel if (skel != null and mi.skin != null) else mi
+		var n: Node = skel if skinned else mi
 		while n != null and n != scene:
 			if n is Node3D:
 				rel = (n as Node3D).transform * rel
 			n = n.get_parent()
+		# Mesh space -> skeleton space at rest: what the skin does to a vertex when nothing moves.
+		var bind := Transform3D.IDENTITY
+		if skinned and mi.skin.get_bind_count() > 0:
+			var bi := mi.skin.get_bind_bone(0)
+			if bi < 0:
+				bi = skel.find_bone(mi.skin.get_bind_name(0))
+			if bi >= 0:
+				bind = skel.get_bone_global_rest(bi) * mi.skin.get_bind_pose(0)
 		# The jacket runs from the hips to the base of the neck, wherever this body has them.
-		if skel != null and mi.skin != null:
+		if skinned:
 			for b in skel.get_bone_count():
 				var bn := skel.get_bone_name(b).to_lower()
 				var by: float = (rel * skel.get_bone_global_rest(b).origin).y / box.size.y
@@ -1062,7 +1129,7 @@ void fragment() {
 			sm.set_shader_parameter("h", box.size.y)
 			sm.set_shader_parameter("top", top)
 			sm.set_shader_parameter("hem_y", hem)
-			sm.set_shader_parameter("to_root", rel)
+			sm.set_shader_parameter("to_root", rel * bind)
 			mi.set_surface_override_material(i, sm)
 
 
@@ -1136,7 +1203,7 @@ func portrait(key: String, hi := false) -> Texture2D:
 	vp.size = STAGE_SIZE
 	vp.transparent_bg = true
 	vp.own_world_3d = true
-	vp.msaa_3d = Viewport.MSAA_4X
+	vp.msaa_3d = Settings.small_view_msaa()
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(vp)
 	var stage := Node3D.new()
@@ -1177,6 +1244,23 @@ func _touch(key: String) -> void:
 		var old: String = _live.pop_back()
 		if _stages.has(old):
 			_freeze_later(old)
+
+
+## Live portraits are small moving busts: drawing each on every other frame halves what they
+## cost and nobody can tell. They take turns, so the load is even from frame to frame.
+var _tick := 0
+
+
+func _process(_delta: float) -> void:
+	_tick += 1
+	for i in _live.size():
+		var vp: SubViewport = _stages.get(_live[i])
+		if vp == null:
+			continue
+		if (_tick + i) % 2 == 0:
+			vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+		elif vp.render_target_update_mode == SubViewport.UPDATE_ALWAYS:
+			vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 
 
 func _freeze_later(key: String) -> void:

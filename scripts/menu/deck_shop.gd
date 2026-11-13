@@ -91,7 +91,7 @@ func _ready() -> void:
 	# The deck you are holding.
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(560, 0)
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.062, 0.113, 0.294, 0.92), 20, Color(UITheme.GOLD, 0.3)))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.052, 0.0824, 0.156, 0.92), 20, Color(UITheme.GOLD, 0.3)))
 	body.add_child(panel)
 	var pm := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
@@ -261,7 +261,7 @@ func _select(i: int, quiet := false) -> void:
 		tr.texture = Cards.get_face(pool[k])
 		tr.custom_minimum_size = Vector2(118, 172)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tr.stretch_mode = TextureRect.STRETCH_SCALE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tr.tooltip_text = str(CardData.get_card(pool[k]).get("name", ""))
 		Foil.apply(tr, CardData.rarity(pool[k]))
 		_keys.add_child(tr)

@@ -263,7 +263,7 @@ func _thumb(id: int, k: int, owned: bool, is_new: bool) -> Control:
 	tr.texture = Cards.get_face(id)
 	tr.custom_minimum_size = Vector2(138, 201)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tr.stretch_mode = TextureRect.STRETCH_SCALE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.pivot_offset = Vector2(69, 100)
 	tr.tooltip_text = str(CardData.get_card(id).get("name", ""))
 	holder.add_child(tr)

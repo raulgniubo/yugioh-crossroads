@@ -48,7 +48,7 @@ func _process(_d: float) -> void:
 func _draw() -> void:
 	var r := Rect2(Vector2.ZERO, size)
 	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.054, 0.0996, 0.277, 0.93 if full else 0.8)
+	bg.bg_color = Color(0.042, 0.0676, 0.136, 0.93 if full else 0.8)
 	bg.set_corner_radius_all(26 if full else 20)
 	bg.border_color = Color(accent, 0.55)
 	bg.set_border_width_all(2)

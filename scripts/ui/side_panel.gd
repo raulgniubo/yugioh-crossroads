@@ -22,7 +22,7 @@ func _init(title_text: String, width := 640.0) -> void:
 			close())
 	add_child(_dim)
 	_panel = PanelContainer.new()
-	_panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.066, 0.118, 0.302, 0.96), 24, Color(UITheme.ACCENT, 0.25)))
+	_panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.057, 0.088, 0.165, 0.96), 24, Color(UITheme.ACCENT, 0.25)))
 	_panel.anchor_left = 1.0
 	_panel.anchor_right = 1.0
 	_panel.anchor_top = 0.0
@@ -64,12 +64,12 @@ func _init(title_text: String, width := 640.0) -> void:
 
 func _ready() -> void:
 	_dim.modulate.a = 0.0
-	_panel.position.x += 80
-	_panel.modulate.a = 0.0
+	_panel.position.x += 36
+	_panel.modulate.a = 0.35
 	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(_dim, "modulate:a", 1.0, 0.25)
-	tw.tween_property(_panel, "position:x", _panel.position.x - 80, 0.35)
-	tw.tween_property(_panel, "modulate:a", 1.0, 0.25)
+	tw.tween_property(_dim, "modulate:a", 1.0, 0.14)
+	tw.tween_property(_panel, "position:x", _panel.position.x - 36, 0.16)
+	tw.tween_property(_panel, "modulate:a", 1.0, 0.1)
 
 
 func _unhandled_input(event: InputEvent) -> void:

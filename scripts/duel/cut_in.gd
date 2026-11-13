@@ -23,25 +23,19 @@ void fragment() {
 	// The leading edge is slanted too, so the band reads as a slash.
 	float lead = progress * 1.25 - (uv.y - center) * 0.35;
 	float wipe = 1.0 - smoothstep(lead - 0.02, lead, x);
-	// A bright printed band in the duelist's color: lighter toward their side, halftone dots,
-	// white speed streaks, a pale rail and an ink line along both edges.
-	vec3 col = mix(tint * 0.34, tint * 0.95 + vec3(0.06), pow(1.0 - x, 1.3));
-	vec2 g = FRAGCOORD.xy / 13.0;
-	g.x += mod(floor(g.y), 2.0) * 0.5;
-	float dr = clamp(0.5 - x * 0.75, 0.0, 0.46);
-	float dots = 1.0 - smoothstep(dr - 0.06, dr, length(fract(g) - 0.5));
-	col += vec3(1.0) * dots * 0.11 * step(0.02, dr);
-	float row = floor((uv.y - c) * 90.0);
+	// A deep band in the duelist's color: dark at the far end, lit toward their side, thin
+	// speed streaks, and a fine bright line along both edges.
+	vec3 deep = mix(vec3(0.03, 0.05, 0.11), tint * 0.22, 0.6);
+	vec3 col = mix(deep, tint * 0.72 + vec3(0.04), pow(1.0 - x, 1.6));
+	float row = floor((uv.y - c) * 110.0);
 	float sp = 1.5 + hash(row) * 3.0;
 	float ln = fract(x * (1.0 + hash(row + 9.0) * 2.0) - TIME * sp * dir * dir + hash(row + 3.0));
-	float streak = smoothstep(0.0, 0.5, ln) * smoothstep(1.0, 0.5, ln) * step(0.55, hash(row + 5.0));
-	col += vec3(1.0) * streak * 0.3;
-	float rail = smoothstep(half_h - 0.02, half_h - 0.014, d) * inside;
-	col = mix(col, vec3(1.0, 0.96, 0.72), rail);
-	float ink = smoothstep(half_h - 0.0075, half_h - 0.005, d) * inside;
-	col = mix(col, vec3(0.04, 0.07, 0.21), ink);
+	float streak = smoothstep(0.0, 0.5, ln) * smoothstep(1.0, 0.5, ln) * step(0.62, hash(row + 5.0));
+	col += vec3(1.0) * streak * 0.16;
+	float rail = smoothstep(half_h - 0.0085, half_h - 0.006, d) * inside;
+	col = mix(col, mix(vec3(1.0), tint, 0.25), rail * 0.95);
 	float a = inside * wipe * fade;
-	COLOR = vec4(col, a * mix(0.96, 1.0, rail));
+	COLOR = vec4(col, a * mix(0.94, 1.0, rail));
 }
 """
 

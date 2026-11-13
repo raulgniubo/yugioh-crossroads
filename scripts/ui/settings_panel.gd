@@ -7,7 +7,7 @@ extends RefCounted
 static func _card(p: SidePanel, title: String, glyph: String, tint: Color) -> VBoxContainer:
 	var pc := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.078, 0.136, 0.328, 0.9)
+	sb.bg_color = Color(0.072, 0.108, 0.196, 0.9)
 	sb.set_corner_radius_all(18)
 	sb.border_color = Color(tint, 0.28)
 	sb.set_border_width_all(1)
@@ -78,15 +78,6 @@ static func open(parent: Node) -> SidePanel:
 			Settings.apply()
 			Settings.save_settings())
 		_row(disp, "Resolution", "Window size when not fullscreen.", res)
-	var gfx := OptionButton.new()
-	for i in Settings.GRAPHICS.size():
-		gfx.add_item(Settings.GRAPHICS[i], i)
-	gfx.select(Settings.graphics)
-	gfx.item_selected.connect(func(i):
-		Settings.graphics = i
-		Settings.save_settings()
-		Router.toast("Applies next time a scene loads"))
-	_row(disp, "Graphics", "Shadows, reflections and fog. Lower it if the game stutters.", gfx)
 	if desktop:
 		var cap := OptionButton.new()
 		for i in Settings.FPS_CAPS.size():
@@ -104,6 +95,8 @@ static func open(parent: Node) -> SidePanel:
 		Settings.show_fps = on
 		Settings.save_settings())
 	_row(disp, "Show FPS", "A frame counter in the corner.", fps)
+
+	_graphics_card(p)
 
 	var aud := _card(p, "Audio", "♪", Color("ff8ac0"))
 	_row(aud, "Master", "", _slider(Settings.master_volume, func(v): Settings.master_volume = v))
@@ -156,35 +149,43 @@ static func open(parent: Node) -> SidePanel:
 	grid.add_theme_constant_override("v_separation", 12)
 	sl.add_child(grid)
 	var picks: Array = []
+	var thumbs: Array = []       # filled in a few at a time once the panel is on screen
 	for e in Cards.sleeves():
 		var sid := str(e["id"])
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(104, 172)
+		b.custom_minimum_size = Vector2(120, 178)
 		b.toggle_mode = true
+		b.clip_contents = true
 		b.button_pressed = sid == Settings.sleeve
 		b.tooltip_text = Loc.t(str(e["name"]))
-		var nb := UITheme.button_box(Color(0.054, 0.0996, 0.277, 0.9), Color(1, 1, 1, 0.12), 12)
-		var on := UITheme.button_box(Color(0.11, 0.118, 0.353, 0.95), Color("ffd98a"), 12)
+		var nb := UITheme.button_box(Color(0.042, 0.0676, 0.136, 0.9), Color(1, 1, 1, 0.12), 12)
+		var on := UITheme.button_box(Color(0.112, 0.088, 0.225, 0.95), Color("ffd98a"), 12)
 		on.set_border_width_all(3)
 		b.add_theme_stylebox_override("normal", nb)
-		b.add_theme_stylebox_override("hover", UITheme.button_box(Color(0.078, 0.127, 0.319, 0.95), Color("b98cff"), 12))
+		b.add_theme_stylebox_override("hover", UITheme.button_box(Color(0.072, 0.098, 0.185, 0.95), Color("b98cff"), 12))
 		b.add_theme_stylebox_override("pressed", on)
 		b.add_theme_stylebox_override("focus", UITheme.button_box(Color(0, 0, 0, 0), Color("b98cff"), 12))
 		var tr := TextureRect.new()
-		tr.texture = Cards.sleeve_texture(sid)
+		thumbs.append([tr, sid])
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tr.position = Vector2(8, 8)
-		tr.size = Vector2(88, 128)
 		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(tr)
-		var nm := UITheme.label(Loc.t(str(e["name"])), 12, UITheme.TEXT_DIM)
-		nm.position = Vector2(4, 140)
-		nm.size = Vector2(96, 28)
+		tr.position = Vector2(16, 8)
+		tr.size = Vector2(88, 128)
+		# The name stays inside its own tile: two short lines, cut with "..." if it is longer.
+		var nm := UITheme.label(Loc.t(str(e["name"])), 13, UITheme.TEXT_DIM, UITheme.semi_font())
 		nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		nm.clip_text = true
+		nm.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		nm.max_lines_visible = 2
+		nm.add_theme_constant_override("line_spacing", -3)
 		nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		nm.clip_contents = true
 		b.add_child(nm)
+		nm.position = Vector2(6, 138)
+		nm.size = Vector2(108, 34)
 		b.pressed.connect(func():
 			Settings.sleeve = sid
 			Settings.save_settings()
@@ -214,7 +215,69 @@ static func open(parent: Node) -> SidePanel:
 	art.add_child(back_hint)
 
 	parent.add_child(p)
+	_fill_thumbs(p, thumbs)
 	return p
+
+
+## The sleeve pictures load after the panel is already open, so opening it is instant.
+static func _fill_thumbs(p: SidePanel, thumbs: Array) -> void:
+	await p.get_tree().process_frame
+	for t in thumbs:
+		if not is_instance_valid(p) or not is_instance_valid(t[0]):
+			return
+		(t[0] as TextureRect).texture = Cards.sleeve_texture(str(t[1]))
+		await p.get_tree().process_frame
+
+
+## Graphics: a preset on top, then every effect on its own switch. Touch one and the preset
+## reads "Custom"; pick a preset and every switch moves to match.
+static func _graphics_card(p: SidePanel) -> void:
+	var g := _card(p, "Graphics", "◆", Color("ffb62e"))
+	var sync: Array = []         # callables that re-read the settings into the controls
+	var preset := OptionButton.new()
+	for i in Settings.GFX_PRESET_NAMES.size():
+		preset.add_item(Settings.GFX_PRESET_NAMES[i], i)
+	preset.add_item("Custom", 9)
+	var refresh := func():
+		for c in sync:
+			(c as Callable).call()
+	sync.append(func():
+		preset.select(Settings.gfx_preset if Settings.gfx_preset >= 0 else Settings.GFX_PRESET_NAMES.size()))
+	preset.item_selected.connect(func(i):
+		if i < Settings.GFX_PRESET_NAMES.size():
+			Settings.set_gfx_preset(i)
+			Settings.save_settings()
+		refresh.call())
+	_row(g, "Preset", "Low is the fastest, Ultra the prettiest. If the game feels slow, go down one step.", preset)
+	var pick := func(key: String, names: Array, title: String, hint: String):
+		var ob := OptionButton.new()
+		for i in names.size():
+			ob.add_item(str(names[i]), i)
+		sync.append(func(): ob.select(clampi(int(Settings.gfx[key]), 0, names.size() - 1)))
+		ob.item_selected.connect(func(i):
+			Settings.set_gfx(key, i)
+			Settings.save_settings()
+			refresh.call())
+		_row(g, title, hint, ob)
+	var flip := func(key: String, title: String, hint: String):
+		var cb := CheckButton.new()
+		sync.append(func(): cb.set_pressed_no_signal(bool(Settings.gfx[key])))
+		cb.toggled.connect(func(on):
+			Settings.set_gfx(key, on)
+			Settings.save_settings()
+			refresh.call())
+		_row(g, title, hint, cb)
+	pick.call("res", Settings.RES_NAMES, "3D resolution", "How sharp the 3D picture is. The biggest speed gain on Retina and 4K screens. Menus and text always stay sharp.")
+	pick.call("aa", Settings.AA_NAMES, "Edge smoothing", "Takes the stair-steps off edges.")
+	pick.call("shadows", Settings.SHADOW_NAMES, "Shadows", "How sharp the sun's shadows are and how far they reach.")
+	flip.call("ao", "Soft corner shading", "Darkens corners and the ground under things.")
+	flip.call("reflect", "Reflections", "Wet streets and water mirror the world.")
+	flip.call("glow", "Glow", "Lights and neon bloom a little.")
+	flip.call("fog", "Light haze", "Soft haze in the air and light shafts. Costs a lot.")
+	flip.call("gi", "Bounce light", "Light bounces off walls and floors. The most expensive one.")
+	pick.call("detail", Settings.DETAIL_NAMES, "Ground detail", "Grass tufts, flowers and pebbles. Shows the next time a place loads.")
+	pick.call("people", Settings.PEOPLE_NAMES, "People in the world", "How busy the streets are. Shows the next time a place loads.")
+	refresh.call()
 
 
 static func _slider(value: float, setter: Callable) -> HSlider:

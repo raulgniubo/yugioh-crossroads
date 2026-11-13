@@ -5,6 +5,36 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.22
+
+- The look, again: the comic style is gone. Menus and the duel screen are now dark glass over
+  the real city, thin light edges, soft shadows, one amber accent, and a sharp narrow italic
+  face (Barlow Condensed, SIL Open Font License, see `assets/fonts`). Same layout as 0.21.
+- Home screen: a lineup of four duelists at a normal size that changes one face at a time,
+  instead of one very large character.
+- Free Duel: arenas are picked from pictures, and picking a duelist is instant.
+- Duels: the opponent's Spells and Traps are held up with their name and text before they
+  resolve, and the opponent plays at normal speed. Both Graveyards open with a click. Set cards
+  of the opponent stay hidden when you point at them. Cards with more than one effect (Enemy
+  Controller) ask which one, and effects that pick "the weakest" or "the strongest" ask you
+  when there is a tie. Ego Boost can only be used when it should. More rules tests.
+- Graphics settings: Low, Medium, High and Ultra presets, plus a switch for each effect (3D
+  resolution, edge smoothing, shadows, soft corner shading, reflections, glow, haze, bounce
+  light, ground detail, people in the world). Change one and the preset reads Custom.
+- Worlds: a sky with clouds and stars, less haze, softer shadows, a grain on painted surfaces,
+  real surface patterns (paving, planks, roof tiles, rock, sand, brick), grass tufts, flowers
+  and pebbles on lawns, trees that sway, sea with waves and foam, boulder cliffs.
+- Duel Academy: dorm front yards, and inside each dorm a staircase you can walk up to a
+  gallery of bedrooms you can walk into. The grand staircase in the Blue Dorm can be climbed.
+- Fixed: white patches and wrong colors on dorm jackets (the jacket is now painted from the
+  rest pose, so it stays put when someone walks or sits), people sitting on thin air, two
+  trees in one spot, ground slabs that flickered where they overlapped, the card shop beacon
+  at the Academy pointing out to sea (it now leads to the right door), the place name
+  overlapping the top buttons.
+- Speed: menus open at once (buttons act on press, shorter fades), live portraits draw on
+  every other frame, and the 3D picture is no longer drawn at full Retina / 4K size unless
+  you pick Native.
+
 ## What is in 0.21
 
 - A new look for the whole game: bright comic pages in place of the dark neon, deep navy cards

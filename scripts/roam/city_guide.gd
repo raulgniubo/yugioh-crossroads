@@ -37,7 +37,7 @@ func _ready() -> void:
 	add_child(center)
 	var panel := PanelContainer.new()
 	var accent: Color = scene._theme.get("accent", UITheme.ACCENT)
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.058, 0.109, 0.294, 0.98), 24, Color(accent, 0.45)))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.047, 0.078, 0.156, 0.98), 24, Color(accent, 0.45)))
 	center.add_child(panel)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 22)
@@ -159,7 +159,7 @@ func _matches(e: Dictionary, q: String) -> bool:
 
 
 func _dist(e: Dictionary) -> float:
-	var a: Vector3 = e["pos"]
+	var a: Vector3 = extras.reach_point(e["pos"]) if extras else e["pos"]
 	var b: Vector3 = scene._player.position
 	return Vector2(a.x - b.x, a.z - b.z).length()
 
@@ -205,7 +205,7 @@ func _fill() -> void:
 func _row(e: Dictionary) -> Control:
 	var pc := PanelContainer.new()
 	var on: bool = _selected == e
-	pc.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.086, 0.154, 0.353, 0.95) if on else Color(0.07, 0.127, 0.31, 0.9), 14,
+	pc.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.082, 0.128, 0.225, 0.95) if on else Color(0.062, 0.098, 0.174, 0.9), 14,
 			Color(e["color"], 0.9) if on else Color(1, 1, 1, 0.07)))
 	pc.mouse_filter = Control.MOUSE_FILTER_STOP
 	pc.gui_input.connect(func(ev):
@@ -244,7 +244,7 @@ func _row(e: Dictionary) -> Control:
 	go.text = "Go"
 	go.tooltip_text = "Travel straight there"
 	go.pressed.connect(func():
-		extras.fast_travel(e["pos"], str(e["name"]))
+		extras.fast_travel(extras.reach_point(e["pos"]), str(e["name"]))
 		close())
 	h.add_child(go)
 	return pc
@@ -253,7 +253,7 @@ func _row(e: Dictionary) -> Control:
 func _quest_row(qd: Dictionary) -> Control:
 	var pc := PanelContainer.new()
 	var done: bool = qd["done"]
-	pc.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.07, 0.127, 0.31, 0.9), 14, Color(UITheme.GOLD, 0.5) if done else Color(1, 1, 1, 0.07)))
+	pc.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.062, 0.098, 0.174, 0.9), 14, Color(UITheme.GOLD, 0.5) if done else Color(1, 1, 1, 0.07)))
 	var v := VBoxContainer.new()
 	pc.add_child(v)
 	v.add_child(UITheme.label(("✔  " if done else "") + str(qd["name"]), 23, UITheme.GOLD if done else Color.WHITE, UITheme.semi_font()))
@@ -355,7 +355,7 @@ func _draw_map() -> void:
 	for e in _entries:
 		if e["kind"] != "place":
 			continue
-		var c := _to_map(e["pos"])
+		var c := _to_map(extras.reach_point(e["pos"]) if extras else e["pos"])
 		var sz: Vector2 = (e["size"] as Vector2) * s
 		var col: Color = e["color"]
 		var lit: bool = e == _selected or e == _hover
@@ -381,7 +381,7 @@ func _draw_map() -> void:
 		var node: Node3D = e["node"]
 		if is_instance_valid(node):
 			e["pos"] = node.position
-		var c := _to_map(e["pos"])
+		var c := _to_map(extras.reach_point(e["pos"]) if extras else e["pos"])
 		var lit: bool = e == _selected or e == _hover
 		_map.draw_circle(c, 8.0 if lit else 5.5, Color(0, 0, 0, 0.6))
 		_map.draw_circle(c, 6.5 if lit else 4.0, e["color"])
@@ -418,7 +418,7 @@ func _nearest(at: Vector2):
 	var best = null
 	var best_d := 26.0
 	for e in _entries:
-		var d := _to_map(e["pos"]).distance_to(at)
+		var d := _to_map(extras.reach_point(e["pos"]) if extras else e["pos"]).distance_to(at)
 		if e["kind"] == "place":
 			d = maxf(0.0, d - minf((e["size"] as Vector2).x, (e["size"] as Vector2).y) * 2.0)
 		if d < best_d:

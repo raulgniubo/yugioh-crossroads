@@ -17,6 +17,7 @@ signal ace_summoned(inst)
 signal direct_clicked
 signal extra_clicked
 signal deck_clicked
+signal pile_clicked(p: int)
 
 ## Cinematic camera: blends from the table view toward cam_pos / cam_target by cam_weight.
 var cam_pos := Vector3(0, 4, 12)
@@ -263,8 +264,8 @@ void fragment() {
 	float ring3 = line_aa(abs(r - 1.85), 0.012) * dash;
 	// Outdoors the middle is one painted circle, like the center of a pitch.
 	vec3 paint = mix(mix(side, vec3(1.0), 0.7), vec3(0.08, 0.14, 0.36), dark_paint);
-	col += side * (ring1 * 0.5 + ring2 * 0.25 + ring3 * 0.35) * (1.0 - wild);
-	col = mix(col, paint, line_aa(abs(r - 1.4), 0.016) * 0.6 * wild);
+	// (No emblem in the middle any more: the center of the field stays clear.)
+	col += side * (ring1 + ring2 + ring3) * 0.0;
 	// Center divider and a sweeping scan line
 	float mid = line_aa(abs(p.y), 0.025);
 	col += mix(accent, accent2, 0.5) * mid * 0.35 * vig * (1.0 - wild);
@@ -386,16 +387,16 @@ float sd_box(vec2 p, vec2 b, float r) {
 float fill(float d) { return 1.0 - smoothstep(0.0, 0.06, d); }
 void fragment() {
 	vec2 p = (UV - 0.5) * extent;
-	float d = sd_box(p, extent * 0.5 - 0.03, 0.075);
+	float d = sd_box(p, extent * 0.5 - 0.03, 0.085);
 	float aa = fwidth(d) * 1.2;
-	float w = 0.011;
+	float w = 0.009;
 	float line = 1.0 - smoothstep(w, w + aa, abs(d));
+	// The corners are drawn a little heavier, fading smoothly into the sides.
 	vec2 q = abs(p) / (extent * 0.5);
-	float corner = step(0.56, q.x) * step(0.62, q.y);
-	float bold = (1.0 - smoothstep(w * 2.3, w * 2.3 + aa, abs(d + 0.008))) * corner;
-	// Paint wears: a few specks are missing.
-	float wear = 0.72 + 0.28 * step(0.22, hash(floor(p * 46.0)));
-	float a = max(line * 0.8, bold) * wear;
+	float corner = smoothstep(0.5, 0.9, q.x) * smoothstep(0.5, 0.9, q.y);
+	float bold = (1.0 - smoothstep(w * 1.9, w * 1.9 + aa, abs(d))) * corner;
+	float wear = 1.0;
+	float a = max(line * 0.75, bold);
 	vec2 ip = p / 0.15;
 	ip.y *= flip;
 	float ic = 0.0;
@@ -492,15 +493,9 @@ func _build_decks() -> void:
 			top.hovered.connect(func(_c, inside): top.set_glow(inside, Color("ffd98a")))
 		pile.add_child(top)
 		_deck_piles.append(pile)
-		var lbl := Label3D.new()
-		lbl.font = UITheme.title_font()
-		lbl.font_size = 64
-		lbl.pixel_size = 0.004
-		lbl.outline_size = 12
-		lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		lbl.position = deck_pos(p) + Vector3(0, 0.5, 0.55 if p == 0 else -0.55)
-		add_child(lbl)
+		var lbl := _count_chip(deck_pos(p) + Vector3(0, 0, 0.7 if p == 0 else -0.7), Color.WHITE)
 		_deck_labels.append(lbl)
+		_gy_labels.append(_count_chip(gy_pos(p) + Vector3(0, 0, 0.7 if p == 0 else -0.7), Color("c9d6ff")))
 		set_deck_count(p, 0)
 		# The Extra Deck pile. Yours opens when you click it.
 		var ep := Node3D.new()
@@ -522,15 +517,7 @@ func _build_decks() -> void:
 			etop.hovered.connect(func(_c, inside): etop.set_glow(inside, Color("b06bff")))
 		ep.add_child(etop)
 		_extra_piles.append(ep)
-		var el := Label3D.new()
-		el.font = UITheme.title_font()
-		el.font_size = 48
-		el.pixel_size = 0.004
-		el.outline_size = 12
-		el.modulate = Color("d9b8ff")
-		el.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		el.position = extra_pos(p) + Vector3(0, 0.45, 0.55 if p == 0 else -0.55)
-		add_child(el)
+		var el := _count_chip(extra_pos(p) + Vector3(0, 0, 0.7 if p == 0 else -0.7), Color("d9b8ff"))
 		_extra_labels.append(el)
 		set_extra_count(p, 0)
 	_extra_ready = Label3D.new()
@@ -559,6 +546,47 @@ func _build_decks() -> void:
 	add_child(_extra_ring)
 
 
+var _gy_labels: Array[Label3D] = []
+
+
+## A pile's count: a number on a small dark chip painted on the table just outside the pile,
+## where it never sits half on the cards.
+func _count_chip(pos: Vector3, color: Color) -> Label3D:
+	var l := Label3D.new()
+	l.font = Comic.button_font()
+	l.font_size = 60
+	l.pixel_size = 0.0036
+	l.outline_size = 0
+	l.modulate = color
+	l.rotation = Vector3(-PI / 2.0, 0, 0)
+	l.position = pos + Vector3(0, 0.014, 0)
+	l.render_priority = 2
+	l.visible = false
+	add_child(l)
+	var chip := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(0.46, 0.27)
+	chip.mesh = q
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_color = Color(0.03, 0.045, 0.1, 0.82)
+	chip.material_override = m
+	chip.position = Vector3(0, 0, -0.004)
+	l.add_child(chip)
+	return l
+
+
+func _set_chip(l: Label3D, text: String) -> void:
+	l.text = text
+	l.visible = text != ""
+
+
+func set_gy_count(p: int, count: int) -> void:
+	if p < _gy_labels.size():
+		_set_chip(_gy_labels[p], str(count) if count > 0 else "")
+
+
 func set_extra_count(p: int, count: int, ready := 0) -> void:
 	if p >= _extra_piles.size():
 		return
@@ -570,7 +598,7 @@ func set_extra_count(p: int, count: int, ready := 0) -> void:
 	var top := pile.get_child(1) as Card3D
 	top.transform = Transform3D(table_basis(p, false, true), Vector3(0, h + 0.004, 0))
 	pile.visible = count > 0
-	_extra_labels[p].text = str(count) if count > 0 else ""
+	_set_chip(_extra_labels[p], str(count) if count > 0 else "")
 	if p == 0 and _extra_ready:
 		_extra_ready.visible = ready > 0
 		_extra_ring.visible = ready > 0
@@ -593,7 +621,7 @@ func set_deck_count(p: int, count: int) -> void:
 	var top := pile.get_child(1) as Card3D
 	top.transform = Transform3D(table_basis(p, false, true), Vector3(0, h + 0.004, 0))
 	pile.visible = count > 0
-	_deck_labels[p].text = str(count)
+	_set_chip(_deck_labels[p], str(count) if count > 0 else "")
 
 
 # ------------------------------------------------------------------ cards
@@ -1743,6 +1771,7 @@ func _add_to_banished(inst) -> void:
 	c.setup(inst.id)
 	c.inst = inst
 	c.set_pickable(true)
+	c.clicked.connect(func(_c): pile_clicked.emit(int(inst.owner)))
 	c.hovered.connect(func(card, inside): card_hovered.emit(card, inside))
 	add_child(c)
 	var pile: Array = _ban_cards[p]
@@ -1862,6 +1891,8 @@ func _add_to_gy(inst) -> void:
 	c.inst = inst
 	c.set_pickable(true)
 	c.hovered.connect(func(card, inside): card_hovered.emit(card, inside))
+	# Tap a Graveyard to look through it (yours or theirs).
+	c.clicked.connect(func(_c): pile_clicked.emit(p))
 	add_child(c)
 	var pile: Array = _gy_cards[p]
 	var y := 0.02 + pile.size() * 0.015

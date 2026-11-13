@@ -79,6 +79,7 @@ func _ready() -> void:
 	hud.can_drag = func(inst): return _my_turn() and mode == "" and not _drop_plan(inst).is_empty()
 	hud.drop_handler = _on_hand_drop
 	board.deck_clicked.connect(_on_deck_clicked)
+	board.pile_clicked.connect(func(p): hud.show_piles(p))
 	hud.hand_card_hovered.connect(func(inst): hud.inspect(inst))
 	hud.phase_button.connect(_on_phase_button)
 	hud.action_chosen.connect(_on_action)
@@ -666,8 +667,15 @@ func _play_event(ev: Dictionary) -> void:
 				var titles := {"field": "FIELD SPELL", "equip": "EQUIP SPELL", "cont": "CONTINUOUS SPELL", "ritual": "RITUAL SPELL", "quick": "QUICK-PLAY SPELL"}
 				hud.effect_text("%s  ·  %s" % [titles[SpellRules.kind(ev["card"])], ev["card"].cname()], Color("7dffc8"))
 			var sig_name := str(ev["card"].data.get("name", ""))
-			get_tree().create_timer(Settings.t(0.45)).timeout.connect(func(): StrikeFx.card(board, sig_name, p))
-			await board.anim_activate(p, ev["card"], int(ev.get("zone", 2)))
+			if p == AI and not _autoplay:
+				# Their Spell lands on the field, then it is held up to be read before it does anything.
+				await board.anim_activate(p, ev["card"], int(ev.get("zone", 2)))
+				await hud.showcase(ev["card"], Loc.t("SPELL CARD"), Color("3fd9a8"), state.players[AI].name)
+				StrikeFx.card(board, sig_name, p)
+				await get_tree().create_timer(Settings.t(0.3)).timeout
+			else:
+				get_tree().create_timer(Settings.t(0.45)).timeout.connect(func(): StrikeFx.card(board, sig_name, p))
+				await board.anim_activate(p, ev["card"], int(ev.get("zone", 2)))
 		"st_settle":
 			await board.anim_settle(p, ev["card"], int(ev["zone"]))
 		"st_reset":
@@ -727,15 +735,19 @@ func _play_event(ev: Dictionary) -> void:
 			Sfx.play("card")
 			await board.anim_set_st(p, ev["card"], ev["zone"])
 		"trap":
-			if not _autoplay:
-				hud.cut_in(p, Loc.t("TRAP CARD!"), str(ev["card"].data["name"]), Color("ff4dd2"), 0.4)
-				board.duelist_gesture(p, "trap")
 			Sfx.play("spell", 0.0, 0.8)
 			hud.inspect(ev["card"])
-			hud.banner(str(ev["card"].data["name"]).to_upper(), Color("ff4dd2"), true)
-			var trap_name := str(ev["card"].data.get("name", ""))
-			get_tree().create_timer(Settings.t(0.5)).timeout.connect(func(): StrikeFx.card(board, trap_name, p))
+			if not _autoplay:
+				board.duelist_gesture(p, "trap")
+			# The card turns face-up on the field first, then it is held up to be read.
 			await board.anim_trap(p, ev["card"], ev["zone"])
+			if not _autoplay and p == AI:
+				await hud.showcase(ev["card"], Loc.t("TRAP CARD"), Color("ff4dd2"), state.players[AI].name)
+			elif not _autoplay:
+				hud.banner(str(ev["card"].data["name"]).to_upper(), Color("ff4dd2"), true)
+				await get_tree().create_timer(Settings.t(0.45)).timeout
+			StrikeFx.card(board, str(ev["card"].data.get("name", "")), p)
+			await get_tree().create_timer(Settings.t(0.35)).timeout
 		"st_done":
 			await board.anim_spell_done(ev["card"])
 		"destroy_st":
@@ -910,6 +922,7 @@ func _update_counts() -> void:
 		var ps := state.players[p]
 		hud.set_counts(p, ps.deck.size(), ps.hand.size(), ps.gy.size(), ps.banished.size())
 		hud.piles[p] = [ps.gy, ps.banished]
+		board.set_gy_count(p, ps.gy.size())
 
 
 # ------------------------------------------------------------------ player input
@@ -1517,7 +1530,7 @@ func _after_summon(p: int) -> void:
 ## Activate a Spell/Trap with the full chain: target, the other player's response, then resolve.
 func _activate_flow(who: int, c, target) -> void:
 	var sp := SpellRules.spec(c)
-	if target == null and who == ME and not _autoplay and not sp.has("legacy") and SpellRules._needs_target(sp):
+	if target == null and who == ME and not _autoplay and not sp.has("legacy") and not sp.has("modes") and SpellRules._needs_target(sp):
 		target = await _pick_target(who, c)
 		if target == null:
 			return
@@ -1596,7 +1609,7 @@ func _window(first: int, window: String, subject, prompt: String) -> void:
 			else:
 				var target = null
 				var sp := SpellRules.spec(choice)
-				if not sp.has("legacy") and SpellRules._needs_target(sp):
+				if not sp.has("legacy") and not sp.has("modes") and SpellRules._needs_target(sp):
 					target = await _pick_target(who, choice)
 					_flow = true
 					if target == null:
@@ -1667,9 +1680,9 @@ func _on_board_card_hovered(card: Card3D, inside: bool) -> void:
 	if not inside or card.inst == null:
 		return
 	var inst = card.inst
-	var hidden: bool = not inst.face_up and inst.owner == AI and state.players[AI].field.has(inst)
-	if state.players[AI].hand.has(inst):
-		hidden = true
+	# Anything of theirs that is face-down (monsters, Set Spells and Traps) or in their hand stays secret.
+	var theirs: bool = state.players[AI].field.has(inst) or state.players[AI].spells.has(inst) or state.players[AI].field_spell == inst
+	var hidden: bool = (theirs and not inst.face_up) or state.players[AI].hand.has(inst)
 	hud.inspect(inst, hidden)
 
 
@@ -1795,7 +1808,8 @@ func _restore_match_deck() -> void:
 
 func _ai_turn(who: int) -> void:
 	# The other side's turn runs a notch quicker: you are watching, not deciding.
-	Settings.pace = 1.35 if who != ME else 1.0
+	# The opponent's turn plays at the same speed as yours: you need to see what they do.
+	Settings.pace = 1.0
 	await _ai_wait(0.45)
 	var steps := 0
 	while steps < 20 and not state.is_over() and not _finished:

@@ -503,7 +503,24 @@ func _person(model: String, pos: Vector3, rot: float, stance := "stand", dorm :=
 
 
 ## Two people talking: they take turns, one moves their hands while the other listens.
+## "People in the world" in the graphics settings: how many of the people who are only there
+## for atmosphere actually turn up. Anyone you can talk to or duel is always there.
+var _crowd_n := 0
+
+
+func _crowd_ok() -> bool:
+	_crowd_n += 1
+	var level := int(Settings.gfx.get("people", 1))
+	if level >= 2:
+		return true
+	if level == 1:
+		return _crowd_n % 4 != 0
+	return _crowd_n % 3 == 1
+
+
 func chat_pair(at: Vector3, yaw: float, a: String, b: String, dorm_a := "", dorm_b := "") -> void:
+	if not _crowd_ok():
+		return
 	var dir := Vector3(sin(yaw), 0, cos(yaw))
 	var fa := _person(a, at - dir * 0.55, yaw, "stand", dorm_a)
 	var fb := _person(b, at + dir * 0.55, yaw + PI, "stand", dorm_b)
@@ -856,6 +873,8 @@ func _room_extras() -> void:
 
 
 func sitter(seat_pos: Vector3, rot: float, model: String, dorm := "") -> void:
+	if not _crowd_ok():
+		return
 	var dir := Vector3(sin(rot), 0, cos(rot))
 	_person(model, seat_pos + dir * 0.02, rot, "rest", dorm)
 

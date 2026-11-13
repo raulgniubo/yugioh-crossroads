@@ -168,7 +168,7 @@ func _run() -> void:
 		tr.texture = Cards.get_back()
 		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tr.stretch_mode = TextureRect.STRETCH_SCALE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(tr)
 		var tag := UITheme.label("", 20, Color.WHITE, UITheme.title_font())

@@ -71,7 +71,7 @@ func _ready() -> void:
 	if _field != "auto" and not FieldThemes.THEMES.has(_field):
 		_field = "auto"
 	var dim := ColorRect.new()
-	dim.color = Color(0.07, 0.2, 0.62, 0.985)
+	dim.color = Color(0.02, 0.032, 0.075, 0.985)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
@@ -96,10 +96,7 @@ func _ready() -> void:
 	top_back.pressed.connect(close)
 	_root.add_child(top_back)
 	var header := UITheme.label("FREE DUEL", 64, Color.WHITE, Comic.shout_font())
-	header.add_theme_color_override("font_outline_color", Comic.INK)
-	header.add_theme_constant_override("outline_size", 16)
-	header.rotation = -0.02
-	header.position = Vector2(188, 26)
+	header.position = Vector2(188, 22)
 	_root.add_child(header)
 	var bar := ColorRect.new()
 	bar.color = UITheme.ACCENT
@@ -161,17 +158,14 @@ func _draw_backdrop() -> void:
 	var mid := o.x + 599.0
 	var top := o.y + 104.0
 	var bot := o.y + 566.0
-	# Two printed halves in the duelists' colors, split by an inked slash.
+	# Two halves washed in the duelists' colors, split by a slash of light.
 	var left := PackedVector2Array([Vector2(0, top), Vector2(mid + 70, top), Vector2(mid - 70, bot), Vector2(0, bot)])
 	var right := PackedVector2Array([Vector2(mid + 70, top), Vector2(o.x + 1146, top), Vector2(o.x + 1146, bot), Vector2(mid - 70, bot)])
-	_backdrop.draw_polygon(left, PackedColorArray([Color(a.darkened(0.2), 0.75), Color(a, 0.8), Color(a.darkened(0.45), 0.85), Color(a.darkened(0.55), 0.8)]))
-	_backdrop.draw_polygon(right, PackedColorArray([Color(b, 0.8), Color(b.darkened(0.2), 0.75), Color(b.darkened(0.55), 0.8), Color(b.darkened(0.45), 0.85)]))
-	Comic.dots(_backdrop, left, Color(1, 1, 1, 0.12), Vector2(1, 0), 16.0, 7.0, 0.6)
-	Comic.dots(_backdrop, right, Color(1, 1, 1, 0.12), Vector2(0, 1), 16.0, 7.0, 0.6)
-	_backdrop.draw_line(Vector2(0, top), Vector2(o.x + 1146, top), Comic.INK, 6.0)
-	_backdrop.draw_line(Vector2(0, bot), Vector2(o.x + 1146, bot), Comic.INK, 6.0)
-	_backdrop.draw_line(Vector2(mid + 70, top), Vector2(mid - 70, bot), Comic.INK, 14.0, true)
-	_backdrop.draw_line(Vector2(mid + 70, top), Vector2(mid - 70, bot), Color.WHITE, 6.0, true)
+	_backdrop.draw_polygon(left, PackedColorArray([Color(a.darkened(0.5), 0.5), Color(a.darkened(0.2), 0.55), Color(a.darkened(0.65), 0.6), Color(a.darkened(0.75), 0.55)]))
+	_backdrop.draw_polygon(right, PackedColorArray([Color(b.darkened(0.2), 0.55), Color(b.darkened(0.5), 0.5), Color(b.darkened(0.75), 0.55), Color(b.darkened(0.65), 0.6)]))
+	_backdrop.draw_line(Vector2(0, top), Vector2(o.x + 1146, top), Color(1, 1, 1, 0.14), 1.5)
+	_backdrop.draw_line(Vector2(0, bot), Vector2(o.x + 1146, bot), Color(1, 1, 1, 0.14), 1.5)
+	_backdrop.draw_line(Vector2(mid + 70, top), Vector2(mid - 70, bot), Color(1, 1, 1, 0.85), 3.0, true)
 
 
 func _enter() -> void:
@@ -202,7 +196,7 @@ func _build_slots() -> void:
 		b.pressed.connect(func():
 			_picking = side
 			Sfx.play("card", -8.0)
-			_refresh_all())
+			_refresh_pick())
 		_root.add_child(b)
 		var glow := ColorRect.new()
 		glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -247,7 +241,7 @@ func _build_slots() -> void:
 		ace.rotation = deg_to_rad(6.0)
 		ace.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(ace)
-		var name_l := Comic.label("", 46, Color.WHITE, 10)
+		var name_l := Comic.label("", 46, Color.WHITE)
 		name_l.position = Vector2(20, PANEL_SIZE.y - 132)
 		name_l.size = Vector2(PANEL_SIZE.x - 150, 52)
 		name_l.clip_text = true
@@ -262,17 +256,17 @@ func _build_slots() -> void:
 		b.add_child(sub)
 		_slots[side] = {"button": b, "portrait": pt, "name": name_l, "title": title_l, "sub": sub, "tag": tag,
 				"tag_bg": tag_bg, "ace": ace, "glow": glow, "key": ""}
-	_vs = UITheme.label("VS", 104, Comic.YELLOW, Comic.shout_font())
+	_vs = UITheme.label("VS", 104, Color.WHITE, Comic.shout_font())
 	_vs.position = Vector2(549, 286)
 	_vs.size = Vector2(100, 100)
 	_vs.pivot_offset = Vector2(50, 50)
 	_vs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_vs.add_theme_color_override("font_outline_color", Comic.INK)
-	_vs.add_theme_constant_override("outline_size", 22)
-	_vs.add_theme_color_override("font_shadow_color", Comic.ORANGE_DEEP)
-	_vs.add_theme_constant_override("shadow_offset_x", 5)
-	_vs.add_theme_constant_override("shadow_offset_y", 6)
-	_vs.add_theme_constant_override("shadow_outline_size", 22)
+	_vs.add_theme_color_override("font_outline_color", Color(Comic.INK, 0.9))
+	_vs.add_theme_constant_override("outline_size", 10)
+	_vs.add_theme_color_override("font_shadow_color", Color(UITheme.ACCENT, 0.7))
+	_vs.add_theme_constant_override("shadow_offset_x", 0)
+	_vs.add_theme_constant_override("shadow_offset_y", 0)
+	_vs.add_theme_constant_override("shadow_outline_size", 26)
 	_vs.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_vs)
 
@@ -336,7 +330,7 @@ func _refresh_slots() -> void:
 			ace = _deck_ace(deck_key)
 		sl["ace"].texture = Cards.get_face(ace) if ace != 0 else null
 		var active: bool = side == _picking
-		var sb := UITheme.button_box(Color(0.054, 0.0996, 0.277, 0.0), col if active else Color(1, 1, 1, 0.16), 20)
+		var sb := UITheme.button_box(Color(0.042, 0.0676, 0.136, 0.0), col if active else Color(1, 1, 1, 0.16), 20)
 		sb.set_border_width_all(4 if active else 1)
 		sb.set_content_margin_all(0)
 		if active:
@@ -383,7 +377,7 @@ func _build_picker() -> void:
 		b.pressed.connect(func():
 			_picking = side
 			Sfx.play("card", -8.0)
-			_refresh_all())
+			_refresh_pick())
 		box.add_child(b)
 		_pick_btns[side] = b
 
@@ -397,11 +391,11 @@ func _refresh_picker() -> void:
 		var on: bool = side == _picking
 		var col: Color = Portraits.info(_me if side == "me" else _opp).get("color", UITheme.ACCENT)
 		b.text = ("●  " if on else "") + (Loc.t("My duelist") if side == "me" else Loc.t("My opponent"))
-		var sb := UITheme._chip_box(col if on else Comic.CREAM)
+		var sb := UITheme._chip_box(col if on else Color(0.09, 0.13, 0.25, 0.94))
 		for st in ["normal", "hover", "pressed", "focus"]:
 			b.add_theme_stylebox_override(st, sb)
 		for fc in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-			b.add_theme_color_override(fc, Comic.INK)
+			b.add_theme_color_override(fc, (Comic.INK if col.get_luminance() > 0.45 else Color.WHITE) if on else UITheme.TEXT)
 		b.tooltip_text = "Choose who you play as" if side == "me" else "Choose who you duel against"
 	for side in _slots:
 		var pb: Control = _slots[side]["button"]
@@ -430,23 +424,41 @@ func _build_tabs() -> void:
 		_tabs.append(b)
 
 
+var _grid_keys: Array = []
+
+
+func _cell_sig(key: String) -> String:
+	return "%s|%s|%s" % [key == _me, key == _opp, _picking]
+
+
 func _refresh_grid() -> void:
-	_pending.clear()
-	for c in _grid.get_children():
-		_grid.remove_child(c)
-		c.queue_free()
 	# Your own duelist is always the first tile, whoever you are choosing for.
 	var keys: Array = ["player"]
 	for k in Characters.ORDER:
 		if _era == "" or Characters.DATA[k]["era"] == _era:
 			keys.append(k)
-	var i := 0
+	if keys == _grid_keys and _grid.get_child_count() == keys.size():
+		# Same roster: only the tiles whose badge or frame changed are swapped. A pick is instant.
+		for i in keys.size():
+			var cell := _grid.get_child(i)
+			var sig := _cell_sig(str(keys[i]))
+			if str(cell.get_meta("sig", "")) != sig:
+				var fresh := _roster_card(str(keys[i]))
+				fresh.set_meta("sig", sig)
+				_grid.remove_child(cell)
+				cell.queue_free()
+				_grid.add_child(fresh)
+				_grid.move_child(fresh, i)
+		return
+	_grid_keys = keys
+	_pending.clear()
+	for c in _grid.get_children():
+		_grid.remove_child(c)
+		c.queue_free()
 	for key in keys:
 		var card := _roster_card(key)
+		card.set_meta("sig", _cell_sig(str(key)))
 		_grid.add_child(card)
-		card.modulate.a = 0.0
-		create_tween().tween_property(card, "modulate:a", 1.0, 0.14).set_delay(i * 0.01)
-		i += 1
 
 
 func _roster_card(key: String) -> Control:
@@ -463,7 +475,7 @@ func _roster_card(key: String) -> Control:
 	var col: Color = info.get("color", UITheme.ACCENT)
 	for st in ["normal", "hover", "pressed", "focus"]:
 		var lit: bool = chosen or st == "hover" or st == "focus"
-		var sb := UITheme.button_box(Color(0.07, 0.127, 0.31, 1), col if lit else Color(1, 1, 1, 0.08), 12)
+		var sb := UITheme.button_box(Color(0.062, 0.098, 0.174, 1), col if lit else Color(1, 1, 1, 0.08), 12)
 		sb.set_border_width_all(3 if lit else 1)
 		sb.set_content_margin_all(0)
 		b.add_theme_stylebox_override(st, sb)
@@ -555,7 +567,19 @@ func _choose(key: String) -> void:
 	else:
 		_opp = key
 	Sfx.play("card", -6.0)
-	_refresh_all()
+	_refresh_pick()
+
+
+## After a pick: just the two big slots, the tiles that changed, and what depends on who is
+## dueling. Nothing is rebuilt, so the tap answers at once.
+func _refresh_pick() -> void:
+	_refresh_slots()
+	_refresh_picker()
+	_refresh_grid()
+	if _deck_keys.find(_my_deck) != -1:
+		_deck_pick.select(_deck_keys.find(_my_deck))
+	_refresh_deck_row()
+	_refresh_setup()
 
 
 func _random_opponent() -> void:
@@ -568,7 +592,7 @@ func _random_opponent() -> void:
 	_picking = "opp"
 	_opp = pool[randi() % pool.size()]
 	Sfx.play("card", -6.0)
-	_refresh_all()
+	_refresh_pick()
 
 
 # ------------------------------------------------------------------ match setup
@@ -579,7 +603,7 @@ func _section(v: VBoxContainer, text: String) -> void:
 
 func _build_setup() -> void:
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.062, 0.118, 0.302, 0.96), 22, Color(UITheme.ACCENT, 0.3)))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.052, 0.088, 0.165, 0.96), 22, Color(UITheme.ACCENT, 0.3)))
 	panel.position = Vector2(1166, 104)
 	panel.custom_minimum_size = Vector2(690, 936)
 	panel.size = Vector2(690, 936)
@@ -642,7 +666,7 @@ func _build_setup() -> void:
 		_pick_style(db)
 		db.pressed.connect(func():
 			_difficulty = i + 1
-			_refresh_all())
+			_refresh_setup())
 		drow.add_child(db)
 		_diff_btns.append(db)
 	_diff_note = UITheme.label("", 15, UITheme.TEXT_DIM)
@@ -694,7 +718,7 @@ func _build_setup() -> void:
 		lp_b.text = Loc.t("%d Life Points") % _lp
 		first_b.text = Loc.t(["Rock-paper-scissors", "I go first", "They go first"][_first + 1])
 		g_b.text = Loc.t(["Single opponent", "Gauntlet: 3 in a row", "Survival: endless"][_run])
-		g_b.add_theme_color_override("font_color", Comic.ORANGE_DEEP if _run > 0 else Comic.INK)
+		g_b.add_theme_color_override("font_color", UITheme.GOLD if _run > 0 else UITheme.TEXT)
 		hand_b.text = Loc.t("Hand of %d") % _hand_n
 	for rb in [lp_b, hand_b, first_b, g_b]:
 		UITheme.chip(rb)
@@ -722,27 +746,23 @@ func _build_setup() -> void:
 		paint.call())
 	paint.call()
 	v.add_child(UITheme.label("ARENA", 16, UITheme.ACCENT, UITheme.semi_font()))
-	var arow := HBoxContainer.new()
-	arow.add_theme_constant_override("separation", 10)
-	v.add_child(arow)
-	var prev := Button.new()
-	prev.text = "◀"
-	prev.pressed.connect(func(): _step_field(-1))
-	arow.add_child(prev)
+	# Every arena as a small picture of its ground and sky, so you can see what you pick.
+	_field_name = UITheme.label("", 18, UITheme.TEXT_DIM, UITheme.semi_font())
+	v.add_child(_field_name)
 	_field_swatch = ColorRect.new()
-	_field_swatch.custom_minimum_size = Vector2(10, 40)
-	arow.add_child(_field_swatch)
-	_field_name = UITheme.label("", 22, Color.WHITE, UITheme.semi_font())
-	_field_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_field_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	arow.add_child(_field_name)
-	var next := Button.new()
-	next.text = "▶"
-	next.pressed.connect(func(): _step_field(1))
-	arow.add_child(next)
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	v.add_child(spacer)
+	var asc := ScrollContainer.new()
+	asc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	asc.custom_minimum_size = Vector2(0, 210)
+	asc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(asc)
+	var agrid := HFlowContainer.new()
+	agrid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	agrid.add_theme_constant_override("h_separation", 8)
+	agrid.add_theme_constant_override("v_separation", 8)
+	asc.add_child(agrid)
+	for key in ["auto"] + FieldThemes.ORDER:
+		agrid.add_child(_arena_tile(str(key)))
+
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	v.add_child(row)
@@ -760,13 +780,9 @@ func _build_setup() -> void:
 	_go.text = "DUEL!"
 	_go.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_go.custom_minimum_size = Vector2(0, 86)
-	_go.add_theme_font_size_override("font_size", 64)
+	_go.add_theme_font_size_override("font_size", 60)
 	_go.add_theme_font_override("font", Comic.shout_font())
-	_go.add_theme_constant_override("outline_size", 14)
-	for st in [["normal", Comic.ORANGE], ["hover", Comic.YELLOW], ["pressed", Comic.ORANGE_DEEP], ["focus", Comic.ORANGE.lightened(0.15)]]:
-		var gsb := Comic.box(st[1], 16, 0.14, 5, 8)
-		_go.add_theme_stylebox_override(str(st[0]), gsb)
-	_go.add_theme_color_override("font_pressed_color", Color.WHITE)
+	UITheme.paint_button(_go, UITheme.ACCENT)
 	_go.pressed.connect(_start_duel)
 	row.add_child(_go)
 
@@ -780,6 +796,97 @@ func _pick_style(b: Button) -> void:
 		b.add_theme_stylebox_override(st, on)
 	for c in ["font_pressed_color", "font_hover_pressed_color"]:
 		b.add_theme_color_override(c, Color(0.02, 0.05, 0.08))
+
+
+const ARENA_SHADER := """
+shader_type canvas_item;
+uniform vec3 sky_top : source_color = vec3(0.02, 0.05, 0.12);
+uniform vec3 sky_low : source_color = vec3(0.1, 0.3, 0.5);
+uniform vec3 base : source_color = vec3(0.03, 0.05, 0.1);
+uniform vec3 accent : source_color = vec3(0.2, 0.9, 0.9);
+uniform int surface = 0;
+//GROUND//
+void fragment() {
+	vec2 uv = UV;
+	float horizon = 0.4;
+	vec3 col;
+	if (uv.y < horizon) {
+		col = mix(sky_top, sky_low, pow(uv.y / horizon, 1.4));
+	} else {
+		// The ground, seen at an angle: near at the bottom of the picture.
+		float d = (uv.y - horizon) / (1.0 - horizon);
+		vec2 p = vec2((uv.x - 0.5) * 9.0 / (0.22 + d), 3.2 / (0.22 + d));
+		if (surface > 0) {
+			col = ground_color(p * 0.55, surface, TIME);
+		} else {
+			vec2 g = abs(fract(p * 0.5) - 0.5);
+			float line = 1.0 - smoothstep(0.0, 0.06, min(g.x, g.y));
+			col = base * 1.6 + accent * line * 0.55 * d;
+		}
+		col = mix(sky_low, col, smoothstep(0.0, 0.18, d));
+		// The outline of the duel field painted on it.
+		vec2 f = vec2((uv.x - 0.5) / (0.36 + d * 0.62), d);
+		float box = step(abs(f.x), 0.5) * step(0.12, d) * step(d, 0.92);
+		float edge = box * (1.0 - step(abs(f.x), 0.47) * step(0.16, d) * step(d, 0.88));
+		col = mix(col, mix(accent, vec3(1.0), 0.5), edge * 0.7);
+	}
+	COLOR = vec4(col, 1.0);
+}
+"""
+static var _arena_sh: Shader
+var _arena_tiles := {}           # key -> [Button, ShaderMaterial]
+
+
+func _arena_tile(key: String) -> Button:
+	if _arena_sh == null:
+		_arena_sh = Shader.new()
+		_arena_sh.code = ARENA_SHADER.replace("//GROUND//", FieldThemes.GROUND_GLSL)
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(158, 98)
+	b.toggle_mode = true
+	b.clip_contents = true
+	b.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.05, 0.075, 0.16, 0.9), Color(1, 1, 1, 0.14), 8))
+	b.add_theme_stylebox_override("hover", UITheme.button_box(Color(0.09, 0.13, 0.25, 0.95), Color(UITheme.ACCENT, 0.9), 8))
+	var on := UITheme.button_box(Color(0.09, 0.13, 0.25, 0.95), UITheme.ACCENT, 8)
+	on.set_border_width_all(3)
+	b.add_theme_stylebox_override("pressed", on)
+	b.add_theme_stylebox_override("hover_pressed", on)
+	var pic := ColorRect.new()
+	var m := ShaderMaterial.new()
+	m.shader = _arena_sh
+	pic.material = m
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(pic)
+	pic.position = Vector2(4, 4)
+	pic.size = Vector2(150, 68)
+	var l := UITheme.label("", 14, UITheme.TEXT, UITheme.semi_font())
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.clip_text = true
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(l)
+	l.position = Vector2(4, 74)
+	l.size = Vector2(150, 20)
+	l.name = "Name"
+	b.pressed.connect(func():
+		_field = key
+		Sfx.play("card", -10.0)
+		_refresh_setup())
+	_arena_tiles[key] = [b, m]
+	return b
+
+
+func _paint_arena(key: String) -> void:
+	var th := FieldThemes.resolve(key, _opp)
+	var m: ShaderMaterial = _arena_tiles[key][1]
+	m.set_shader_parameter("sky_top", th.get("sky_top", Color("02050c")))
+	m.set_shader_parameter("sky_low", th.get("sky_horizon", Color("0f2b44")))
+	m.set_shader_parameter("base", th["base"])
+	m.set_shader_parameter("accent", th["accent"])
+	m.set_shader_parameter("surface", int(th.get("surface", 0)))
+	var b: Button = _arena_tiles[key][0]
+	(b.get_node("Name") as Label).text = (Loc.t("Auto") + "  ·  " + Loc.t(str(th["name"]))) if key == "auto" else Loc.t(str(th["name"]))
+	b.tooltip_text = Loc.t("The opponent's home field") if key == "auto" else Loc.t(str(th["name"]))
+	b.set_pressed_no_signal(key == _field)
 
 
 func _step_field(dir: int) -> void:
@@ -829,7 +936,8 @@ func _refresh_setup() -> void:
 			"Plans two plays ahead and sees your counterattack coming. Tuned deck, one extra card."][_difficulty]
 	var th := FieldThemes.resolve(_field, _opp)
 	_field_name.text = (Loc.t("Auto  ·  %s") % th["name"]) if _field == "auto" else str(th["name"])
-	_field_swatch.color = th["accent"]
+	for ak in _arena_tiles:
+		_paint_arena(str(ak))
 	var o := Characters.get_char(_opp)
 	var said := Characters.line(_opp, "intro")
 	_quote.text = "%s:  \"%s\"" % [str(o.get("short", "")).to_upper(), said] if said != "" else ""

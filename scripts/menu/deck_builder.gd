@@ -29,7 +29,7 @@ var _warn: Label
 
 func _panel(pad := 16) -> PanelContainer:
 	var pc := PanelContainer.new()
-	var sb := UITheme.panel_box(Color(0.054, 0.0996, 0.285, 0.82), 18, Color(UITheme.ACCENT, 0.22))
+	var sb := UITheme.panel_box(Color(0.042, 0.0676, 0.145, 0.82), 18, Color(UITheme.ACCENT, 0.22))
 	sb.set_content_margin_all(pad)
 	pc.add_theme_stylebox_override("panel", sb)
 	return pc
@@ -416,7 +416,7 @@ func _tile(id: int) -> Control:
 	var tr := TextureRect.new()
 	tr.texture = Cards.get_face(id)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tr.stretch_mode = TextureRect.STRETCH_SCALE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.set_anchors_preset(Control.PRESET_FULL_RECT)
 	tr.mouse_filter = Control.MOUSE_FILTER_STOP
 	tr.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -494,7 +494,7 @@ func _rebuild_deck() -> void:
 			var card := TextureRect.new()
 			card.texture = Cards.get_face(id)
 			card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			card.stretch_mode = TextureRect.STRETCH_SCALE
+			card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			card.custom_minimum_size = Vector2(62, 90)
 			card.pivot_offset = Vector2(31, 45)
 			card.mouse_filter = Control.MOUSE_FILTER_STOP
