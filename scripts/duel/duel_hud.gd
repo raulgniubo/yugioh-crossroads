@@ -244,9 +244,10 @@ func react(p: int, kind: String) -> void:
 	var tw := create_tween()
 	if kind == "hurt":
 		pt.modulate = Color(1.6, 0.6, 0.6)
+		var hx := float(pt.get_meta("home_x", 0.0))
 		for i in 6:
-			tw.tween_property(pt, "position:x", (8.0 if i % 2 == 0 else -8.0), 0.04)
-		tw.tween_property(pt, "position:x", 0.0, 0.04)
+			tw.tween_property(pt, "position:x", hx + (8.0 if i % 2 == 0 else -8.0), 0.04)
+		tw.tween_property(pt, "position:x", hx, 0.04)
 		tw.parallel().tween_property(pt, "modulate", Color.WHITE, 0.4)
 	else:
 		tw.tween_property(pt, "scale", Vector2(1.12, 1.12), 0.15)
@@ -1009,7 +1010,8 @@ func inspect(inst, hidden := false) -> void:
 		c.queue_free()
 	_inspect_note.visible = false
 	if hidden:
-		_inspect_tex.texture = Cards.get_back()
+		# The same back the card wears on the table: its owner's sleeve.
+		_inspect_tex.texture = Cards.duel_back(int(inst.owner))
 		_inspect_head.add_theme_stylebox_override("panel", _head_box(HEAD_COLORS["hidden"]))
 		_inspect_name.text = "Face-down card"
 		_inspect_stat_row.visible = false
@@ -1425,7 +1427,7 @@ func ask_response(text: String, options: Array, button := "Activate", cancel := 
 		var col := VBoxContainer.new()
 		var tr := TextureRect.new()
 		var secret := hidden.has(c)
-		tr.texture = Cards.get_back() if secret else Cards.get_face(c.id)
+		tr.texture = Cards.duel_back(int(c.owner)) if secret else Cards.get_face(c.id)
 		var small := options.size() > 6
 		tr.custom_minimum_size = Vector2(110, 161) if small else Vector2(150, 219)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

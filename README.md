@@ -5,6 +5,47 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.24
+
+- Buildings: the last pre-made apartment blocks, the cafe and the corner store in Domino are
+  gone. In their place stand buildings made in the game's own kit (`scripts/roam/street_kit.gd`):
+  flats with balconies and washing on the line, Burger World with a striped awning and tables
+  outside, Domino Mart with its shelves showing through the glass. The kit also builds the
+  patched-up parts store in Satellite and the glass lounge in Heartland and New Domino.
+- Flicker: the pre-made models that are left (card shop, school, dome, clock tower, the main
+  Academy) were being drawn from both sides, and where two thin faces lay on each other they
+  fought over every pixel. They are drawn from the outside only now. The same goes for your
+  own models in `<card folder>/places`.
+- Dorms: three houses on one plan, each a step up. Red is the plank house. Yellow is a tiled
+  manor with a front gable, dormers and flower boxes. Blue is a white castle: battlements,
+  four round towers with pointed roofs, a keep with a round window. All three have stairs you
+  can climb outside and bedrooms off the gallery; the Yellow rooms have a proper bed and an
+  armchair, the Blue suites a four-poster, a fireplace and a chandelier.
+- Your own main Academy building: put `academy_main.glb` in `<card folder>/places`. The island
+  fits itself to it: the ground you walk on is read off the model, the way in is put where a
+  walk up the middle meets the building, statues and people move out in front, and both maps
+  show it at its real size. `dorm_red.glb`, `dorm_yellow.glb` and `dorm_blue.glb` work the
+  same way.
+- Satellite is a place now: cracked concrete and a patched road, heaps of scrap on mounds of
+  earth, a runner garage you can walk into (a runner on the lift, a welder at work), homes
+  made of shipping containers, power lines, a fire in a barrel, a painted wall, a fence of tin
+  and wire, the unfinished highway hanging over the north edge, a crane and smokestacks.
+- Heartland too: glass towers in pale colors, a monorail doing laps overhead, a big wheel
+  turning beyond the roofs, balloons, floating screens, arches of light at the ways in,
+  flower beds, strings of lamps, an ice cream cart, sweeper robots on their rounds.
+- New Domino: team banners down the boulevard, painted crossings, screens on posts.
+- Turbo: a new road (asphalt with worn lanes, joints, studs, wet reflections), a concrete
+  barrier, a glass wall with the city going by behind it, proper lamp posts, a tiled tunnel
+  with strip lights, fans and emergency doors, and a freight truck that looks like one. The
+  road and walls now bend with the scenery on a curve, and the grain is fixed to the road so
+  it no longer swims when the speed changes.
+- Portraits: everyone is framed the same way, at the same scale, with room for any hair. No
+  more hair cut off on the home screen or in the duel corner, and a small duelist looks small.
+- Duels: pointing at a face-down card shows its owner's card back. An arm that carries a duel
+  disk keeps the disk's own colors when the character wears a dorm jacket.
+- People on benches sit up instead of slumping over their knees.
+- Tournaments has a card per event: trophy, where it is, badges earned, prize.
+
 ## What is in 0.23
 
 - Duel arenas are real places now. Sixteen of them, each with its own ground under the cards

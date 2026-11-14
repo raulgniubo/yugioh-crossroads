@@ -77,27 +77,200 @@ func _door(name: String, holder: Node3D, inset := 0.0) -> void:
 
 
 func _build_buildings() -> void:
-	var main := prop("academy_main", Vector3(0, 0.05, -46.0), 0.0, 52.0)
-	collide(main, 0.82)
-	_door("academy_main", main, 0.0)
-	neon_sign("DUEL ACADEMY", Vector3(0, 9.5, -30.5), Color("ffe9a8"), 260, 0.0, false)
-	# The red dorm: our own plank house. Stairs outside, a walkway, and bedroom doors up there.
-	var red := plank_dorm(Vector3(-43.0, 0.05, 8.0), PI / 2, Color("c8322a"))
-	var front: Array = red.get_meta("front")
-	doors["dorm_red"] = [Vector3((front[0] as Vector3).x, 0, (front[0] as Vector3).z), front[1]]
-	var ups: Array = red.get_meta("upper_doors")
-	for i in ups.size():
-		doors["red_room_%d" % (i + 1)] = ups[i]
-	set_meta("doors", doors)
+	if own_place("academy_main") != "":
+		_own_academy()
+	else:
+		var main := prop("academy_main", Vector3(0, 0.05, -46.0), 0.0, 52.0)
+		collide(main, 0.82)
+		_door("academy_main", main, 0.0)
+		neon_sign("DUEL ACADEMY", Vector3(0, 9.5, -30.5), Color("ffe9a8"), 260, 0.0, false)
+	# The three dorms are our own houses, each a step up from the last: a plank house for Red,
+	# a tiled manor with a front gable for Yellow, a white castle for Blue. Stairs outside, a
+	# gallery along the upper floor, bedrooms that open onto it. (Drop your own dorm_red.glb,
+	# dorm_yellow.glb or dorm_blue.glb in <card folder>/places and that model stands there
+	# in place of ours.)
+	if own_place("dorm_red") != "":
+		_own_dorm("dorm_red", Vector3(-43.0, 0.05, 8.0), PI / 2, 14.0)
+	else:
+		var red := plank_dorm(Vector3(-43.0, 0.05, 8.0), PI / 2, Color("c8322a"))
+		_dorm_doors("dorm_red", "red_room_%d", red)
 	neon_sign("RED DORM", Vector3(-38.0, 2.65, 8.0), Color("ff8a7a"), 70, PI / 2, false)
-	var yel := prop("dorm_yellow", Vector3(42.0, 0.05, -6.0), -PI / 2, 16.0)
-	collide(yel, 0.85)
-	_door("dorm_yellow", yel, 0.6)
-	neon_sign("YELLOW DORM", Vector3(33.4, 5.4, -6.0), Color("ffd166"), 110, -PI / 2, false)
-	var blu := prop("dorm_blue", Vector3(-30.0, 0.05, -26.0), 0.35, 22.0)
-	collide(blu, 0.85)
-	_door("dorm_blue", blu, 0.6)
-	neon_sign("BLUE DORM", Vector3(-27.5, 7.0, -15.5), Color("7cc4ff"), 120, 0.35, false)
+	if own_place("dorm_yellow") != "":
+		_own_dorm("dorm_yellow", Vector3(42.0, 0.05, -4.0), -PI / 2, 17.0)
+	else:
+		var yel := plank_dorm(Vector3(43.0, 0.05, -3.0), -PI / 2, Color("e8b21e"), true, {
+			"wall": surf("plaster", Color(0.96, 0.9, 0.7)), "dark": surf("wood", Color(0.5, 0.34, 0.2)), "deck": surf("wood", Color(0.62, 0.46, 0.3)),
+			"roof": surf("roof", Color(0.78, 0.56, 0.16)), "w": 17.0, "d": 7.6, "floor": 3.3, "rise": 3.0, "boxes": true, "manor": true})
+		_dorm_doors("dorm_yellow", "yel_room_%d", yel)
+		neon_sign("YELLOW DORM", Vector3(37.3, 2.95, -3.0), Color("ffe07a"), 70, -PI / 2, false)
+	if own_place("dorm_blue") != "":
+		_own_dorm("dorm_blue", Vector3(-34.0, 0.05, -25.0), 0.35, 24.0)
+	else:
+		var blu := plank_dorm(Vector3(-39.5, 0.05, -23.5), 0.35, Color("2f6fe0"), true, {
+			"wall": surf("brick", Color(0.86, 0.88, 0.94), 1.6), "dark": mat(Color(0.74, 0.78, 0.86), 0.5, 0.1), "deck": mat(Color(0.7, 0.73, 0.8), 0.6),
+			"roof": surf("roof", Color(0.18, 0.3, 0.6)), "w": 22.0, "d": 9.0, "floor": 3.8, "columns": true, "castle": true})
+		_dorm_doors("dorm_blue", "blue_room_%d", blu)
+		var bf: Array = blu.get_meta("front")
+		neon_sign("BLUE DORM", (bf[0] as Vector3) + (bf[1] as Vector3) * 1.75 + Vector3(0, 3.45, 0), Color("9cc8ff"), 70, 0.35, false)
+		# Two clipped trees in stone urns by the door.
+		for sx: float in [-1.0, 1.0]:
+			var up := (bf[0] as Vector3) + (bf[1] as Vector3) * 2.6 + (bf[1] as Vector3).cross(Vector3.UP) * sx * 2.4
+			cyl(0.34, 0.24, 0.7, up + Vector3(0, 0.35, 0), mat(Color(0.9, 0.92, 0.96), 0.4, 0.1), null, 14)
+			cyl(0.4, 0.34, 0.1, up + Vector3(0, 0.75, 0), mat(Color(0.86, 0.7, 0.32), 0.3, 0.8), null, 14)
+			var bush := MeshInstance3D.new()
+			var sm := SphereMesh.new()
+			sm.radius = 0.42
+			sm.height = 0.8
+			bush.mesh = sm
+			bush.material_override = mat(Color(0.14, 0.4, 0.2), 0.95)
+			bush.position = up + Vector3(0, 1.15, 0)
+			add_child(bush)
+			solid_cyl(0.36, 1.4, up + Vector3(0, 0.7, 0))
+		# A paved way from the path to the castle doors.
+		var way := box(Vector3(3.4, 0.12, 9.0), Vector3(-33.6, 0.1, -16.0), surf("paving", Color(0.74, 0.7, 0.62), 1.15), false)
+		way.rotation.y = 0.75
+
+
+## Your own model of a dorm: stood where ours would be, with a door in the middle of its front.
+func _own_dorm(key: String, at: Vector3, yaw: float, size: float) -> void:
+	var house := prop(key, at, yaw, size)
+	collide(house, 0.85)
+	_door(key, house, 0.6)
+
+
+# ------------------------------------------------------------------ your own main building
+
+const OWN_SIZE := 60.0        # its longest side, in meters
+const OWN_FRONT := -24.5      # where its front edge stands (just behind the fountain)
+var _own_rect := Rect2()      # its footprint on the island
+var _own_grid := PackedFloat32Array()
+var _own_nx := 0
+var _own_nz := 0
+
+
+## Your own model of the main building (<card folder>/places/academy_main.glb). It can be any
+## shape, so nothing about it is assumed. It is stood with its front edge at the end of the
+## path from the plaza, and the island is fitted to it: the ground you can walk on is read off
+## the model itself (up a ramp, onto a terrace, stopped by a wall), the way in is put where a
+## walk straight up the middle first meets the building, and people and statues that would end
+## up inside it are moved out in front.
+func _own_academy() -> void:
+	var main := prop("academy_main", Vector3(0, 0.05, -46.0), 0.0, OWN_SIZE)
+	var sz: Vector3 = main.get_meta("size")
+	main.position.z = OWN_FRONT - sz.z / 2.0
+	_own_rect = Rect2(-sz.x / 2.0, main.position.z - sz.z / 2.0, sz.x, sz.z)
+	no_grass.append(_own_rect)
+	_own_heights(main, sz)
+	# The way in: walk up the middle from the front until something stands in the way.
+	var door_z := OWN_FRONT
+	var z := OWN_FRONT - 0.5
+	while z > OWN_FRONT - sz.z * 0.45:
+		if maxf(ground_at(0.0, z), maxf(ground_at(-0.8, z), ground_at(0.8, z))) > 1.3:
+			break
+		door_z = z
+		z -= 0.5
+	doors["academy_main"] = [Vector3(0, 0, door_z + 0.4), Vector3(0, 0, 1)]
+	set_meta("doors", doors)
+	set_meta("map_fix", {"Main Building": [Vector2(0, main.position.z), Vector2(sz.x, sz.z)], "Main Hall": [Vector2(0, door_z + 0.4), Vector2(4, 3)]})
+	print("OWN academy_main size=", sz, " door z=", door_z, " grid=", _own_nx, "x", _own_nz)
+
+
+## How high the model stands at each square meter of its footprint, taken from its vertices and
+## kept on disk so a big model is only measured once. That grid is the ground you walk on.
+func _own_heights(main: Node3D, sz: Vector3) -> void:
+	_own_nx = int(ceil(sz.x)) + 1
+	_own_nz = int(ceil(sz.z)) + 1
+	var path := own_place("academy_main")
+	var cache := "user://place_cache/academy_main_%d_%d_%dx%d.bin" % [FileAccess.get_modified_time(path), int(OWN_SIZE * 10.0), _own_nx, _own_nz]
+	if FileAccess.file_exists(cache):
+		var bytes := FileAccess.get_file_as_bytes(cache)
+		if bytes.size() == _own_nx * _own_nz * 4:
+			_own_grid = bytes.to_float32_array()
+	if _own_grid.size() != _own_nx * _own_nz:
+		_own_grid = PackedFloat32Array()
+		_own_grid.resize(_own_nx * _own_nz)
+		_own_grid.fill(-2.0)
+		var inst := main.get_child(0) as Node3D
+		for mi in Avatars._meshes(inst):
+			if mi.mesh == null:
+				continue
+			# Mesh space -> the holder's space (which has its origin at the middle of the footprint).
+			var xf := Transform3D.IDENTITY
+			var n: Node = mi
+			while n != null and n != main:
+				if n is Node3D:
+					xf = (n as Node3D).transform * xf
+				n = n.get_parent()
+			for si in mi.mesh.get_surface_count():
+				var verts: PackedVector3Array = mi.mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]
+				for v in verts.size():
+					var p := xf * verts[v]
+					var ix := int(p.x + sz.x / 2.0 + 0.5)
+					var iz := int(p.z + sz.z / 2.0 + 0.5)
+					if ix < 0 or iz < 0 or ix >= _own_nx or iz >= _own_nz:
+						continue
+					var at := iz * _own_nx + ix
+					if p.y > _own_grid[at]:
+						_own_grid[at] = p.y
+		DirAccess.make_dir_recursive_absolute("user://place_cache")
+		var out := FileAccess.open(cache, FileAccess.WRITE)
+		if out:
+			out.store_buffer(_own_grid.to_byte_array())
+	if not make_solid:
+		return
+	var shape := HeightMapShape3D.new()
+	shape.map_width = _own_nx
+	shape.map_depth = _own_nz
+	shape.map_data = _own_grid
+	var body := StaticBody3D.new()
+	var cs := CollisionShape3D.new()
+	cs.shape = shape
+	# The grid's first point is the footprint's corner; the shape is centred on its middle.
+	cs.position = Vector3((_own_nx - 1) / 2.0 - sz.x / 2.0, 0, (_own_nz - 1) / 2.0 - sz.z / 2.0)
+	body.add_child(cs)
+	main.add_child(body)
+
+
+## How high your own main building stands at this spot of the island (below zero: open ground).
+func ground_at(x: float, z: float) -> float:
+	if _own_grid.is_empty() or not _own_rect.has_point(Vector2(x, z)):
+		return -2.0
+	var ix := clampi(int(x - _own_rect.position.x + 0.5), 0, _own_nx - 1)
+	var iz := clampi(int(z - _own_rect.position.y + 0.5), 0, _own_nz - 1)
+	return _own_grid[iz * _own_nx + ix]
+
+
+## Somebody or something that was placed for the game's own main building may now be standing
+## inside yours: move them straight out in front of it, to open ground.
+func clear_spot(p: Vector3) -> Vector3:
+	if _own_grid.is_empty() or not _own_rect.grow(1.0).has_point(Vector2(p.x, p.z)):
+		return p
+	var q := p
+	var tries := 0
+	while tries < 80 and _blocked(q.x, q.z):
+		q.z += 0.5
+		tries += 1
+	if q.z != p.z:
+		q.z += 0.8
+	return q
+
+
+func _blocked(x: float, z: float) -> bool:
+	for dx: float in [-0.9, 0.0, 0.9]:
+		for dz: float in [-0.9, 0.0, 0.9]:
+			if ground_at(x + dx, z + dz) > 0.3:
+				return true
+	return false
+
+
+## Register a plank dorm's front door and its upstairs bedroom doors.
+func _dorm_doors(key: String, room_fmt: String, house: Node3D) -> void:
+	var front: Array = house.get_meta("front")
+	doors[key] = [Vector3((front[0] as Vector3).x, 0, (front[0] as Vector3).z), front[1]]
+	var ups: Array = house.get_meta("upper_doors")
+	for i in ups.size():
+		doors[room_fmt % (i + 1)] = ups[i]
+	set_meta("doors", doors)
 
 
 func _build_landmarks() -> void:
@@ -195,8 +368,8 @@ func _build_street_furniture() -> void:
 	collide(prop("vending", Vector3(4.2, 0.1, 44.0 + PIER), -PI / 2, 1.95, true))
 	collide(prop("fountain", Vector3(0, 0.12, -18.5), 0.0, 5.0), 0.8)
 	# A statue by the school steps and banners at the dock
-	collide(prop("dragon_statue", Vector3(-9.0, 0.1, -26.0), 0.5, 4.5, true), 0.6)
-	collide(prop("dragon_statue", Vector3(9.0, 0.1, -26.0), -0.5, 4.5, true), 0.6)
+	collide(prop("dragon_statue", clear_spot(Vector3(-9.0, 0.1, -26.0)), 0.5, 4.5, true), 0.6)
+	collide(prop("dragon_statue", clear_spot(Vector3(9.0, 0.1, -26.0)), -0.5, 4.5, true), 0.6)
 	neon_sign("WELCOME TO DUEL ACADEMY", Vector3(0, 4.8, 47.0 + PIER), theme["accent2"], 120, PI, false)
 	for sx in [-1, 1]:
 		cyl(0.1, 0.1, 5.0, Vector3(sx * 6.0, 2.5, 47.0 + PIER), mat(Color(0.2, 0.2, 0.24), 0.4, 0.7))

@@ -6,6 +6,26 @@ extends Node3D
 
 const RUNNERS := ["res://assets/models/vehicles/runner_a.glb", "res://assets/models/vehicles/runner_b.glb"]
 const SPAN := 160.0          # props wrap around inside this length of road
+## What every surface that slides past shares: the distance travelled, the blur of speed, the
+## bend of the road, and noise fixed to the road so nothing swims when the speed changes.
+const GLSL := """
+uniform float offset = 0.0;
+uniform float blur = 1.0;
+uniform float curve = 0.0;
+varying vec3 wp;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vnoise(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+void vertex() {
+	// Where this point is on the straight road; the bend is applied after, so the paint and
+	// the panels ride round a curve with everything else instead of sliding across it.
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	float ahead = max(0.0, wp.x);
+	VERTEX.z -= curve * ahead * ahead * 0.0035;
+}
+"""
 
 var speed := 26.0
 var target_speed := 26.0
@@ -63,20 +83,77 @@ func set_zone(z: String) -> void:
 			gb = Color("7cc4ff")
 		_road.set_shader_parameter("glow_a", ga)
 		_road.set_shader_parameter("glow_b", gb)
+		_road.set_shader_parameter("indoors", 1.0 if z == "tunnel" else 0.0)
 
 
 func _build_tunnel() -> void:
-	# Ribs of light overhead and close walls.
-	for i in 16:
+	# Tiled walls and a roof with two rows of strip lights slide past with the road; ribs, fans
+	# and phone niches go by as solid things.
+	var shell := Node3D.new()
+	for s: float in [-1.0, 1.0]:
+		_run(shell, Vector3(260, 9.6, 0.4), Vector3(0, 4.8, s * 15.9), _tunnel_mat(0, Color(1.0, 0.72, 0.2)))
+		# A kerb walkway along each wall with a rail.
+		_run(shell, Vector3(260, 0.5, 1.0), Vector3(0, 0.25, s * 15.2), _bend(_solid(Color(0.12, 0.125, 0.14))))
+		_run(shell, Vector3(260, 0.05, 0.05), Vector3(0, 1.45, s * 14.8), _bend(_solid(Color(0.5, 0.52, 0.56))))
+		_run(shell, Vector3(260, 0.06, 0.12), Vector3(0, 0.52, s * 14.72), _bend(_glow(Color(1.0, 0.75, 0.25), 2.4)))
+	_run(shell, Vector3(260, 0.4, 32.2), Vector3(0, 9.6, 0), _tunnel_mat(1, Color(1.0, 0.9, 0.7)))
+	add_child(shell)
+	_zones["tunnel"].append(shell)
+	var conc := _solid(Color(0.16, 0.165, 0.18))
+	var dark := _solid(Color(0.07, 0.072, 0.08))
+	for i in 8:
 		var rib := Node3D.new()
-		_box(rib, Vector3(0.6, 0.5, 31.0), Vector3(0, 9.0, 0), _solid(Color(0.1, 0.1, 0.13)))
-		_box(rib, Vector3(0.25, 0.12, 30.0), Vector3(0, 8.7, 0), _glow(Color(1.0, 0.85, 0.45), 3.5))
+		# A concrete portal frame: a leg each side and a haunched beam.
 		for s: float in [-1.0, 1.0]:
-			_box(rib, Vector3(0.6, 9.0, 0.6), Vector3(0, 4.5, s * 15.2), _solid(Color(0.1, 0.1, 0.13)))
-			_box(rib, Vector3(9.6, 9.0, 0.3), Vector3(5.0, 4.5, s * 15.6), _solid(Color(0.06, 0.065, 0.085)))
-			_box(rib, Vector3(9.6, 0.2, 0.1), Vector3(5.0, 2.2, s * 15.4), _glow(Color(1.0, 0.85, 0.45), 2.0))
-		_box(rib, Vector3(9.6, 0.3, 31.0), Vector3(5.0, 9.4, 0), _solid(Color(0.05, 0.055, 0.075)))
-		_prop(rib, -SPAN / 2.0 + i * (SPAN / 16.0))
+			_box(rib, Vector3(0.9, 9.4, 0.5), Vector3(0, 4.7, s * 15.5), conc)
+			var haunch := _box(rib, Vector3(0.9, 0.5, 2.4), Vector3(0, 8.7, s * 14.4), conc)
+			haunch.rotation.x = s * 0.5
+			# Rail posts on the walkway, in step with the ribs.
+			for k in 4:
+				_box(rib, Vector3(0.05, 0.95, 0.05), Vector3(k * 5.0, 0.98, s * 14.8), _solid(Color(0.5, 0.52, 0.56)))
+		_box(rib, Vector3(0.9, 0.5, 31.4), Vector3(0, 9.2, 0), conc)
+		if i % 2 == 0:
+			# Jet fans, a pair hung from the roof.
+			for fz: float in [-3.4, 3.4]:
+				var fan := MeshInstance3D.new()
+				var cm := CylinderMesh.new()
+				cm.top_radius = 0.62
+				cm.bottom_radius = 0.62
+				cm.height = 3.6
+				cm.radial_segments = 14
+				fan.mesh = cm
+				fan.material_override = _solid(Color(0.34, 0.35, 0.38))
+				fan.rotation.z = PI / 2.0
+				fan.position = Vector3(10.0, 8.3, fz)
+				rib.add_child(fan)
+				for e: float in [-1.0, 1.0]:
+					var lip := MeshInstance3D.new()
+					var lm := CylinderMesh.new()
+					lm.top_radius = 0.7
+					lm.bottom_radius = 0.7
+					lm.height = 0.14
+					lm.radial_segments = 14
+					lip.mesh = lm
+					lip.material_override = dark
+					lip.rotation.z = PI / 2.0
+					lip.position = Vector3(10.0 + e * 1.8, 8.3, fz)
+					rib.add_child(lip)
+				_box(rib, Vector3(0.1, 0.8, 0.1), Vector3(9.0, 9.0, fz), dark)
+				_box(rib, Vector3(0.1, 0.8, 0.1), Vector3(11.0, 9.0, fz), dark)
+		else:
+			# An emergency niche in each wall: a recess, an orange door, a light over it.
+			for s: float in [-1.0, 1.0]:
+				_box(rib, Vector3(2.2, 2.6, 0.2), Vector3(10.0, 1.8, s * 15.66), dark)
+				_box(rib, Vector3(0.9, 2.1, 0.08), Vector3(10.0, 1.55, s * 15.54), _solid(Color(0.8, 0.36, 0.08)))
+				_box(rib, Vector3(1.2, 0.2, 0.1), Vector3(10.0, 2.95, s * 15.52), _glow(Color(1.0, 0.5, 0.15), 3.0))
+				_box(rib, Vector3(0.5, 0.7, 0.3), Vector3(11.0, 1.5, s * 15.5), _solid(Color(0.75, 0.1, 0.08)))
+		var lamp := OmniLight3D.new()
+		lamp.light_color = Color(1.0, 0.9, 0.7)
+		lamp.light_energy = 2.4
+		lamp.omni_range = 14.0
+		lamp.position = Vector3(5.0, 7.6, 0)
+		rib.add_child(lamp)
+		_prop(rib, -SPAN / 2.0 + i * (SPAN / 8.0))
 		_zones["tunnel"].append(rib)
 
 
@@ -119,77 +196,84 @@ func _build_road() -> void:
 	var mi := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(260, 30)
+	pm.subdivide_width = 120
+	pm.subdivide_depth = 2
 	mi.mesh = pm
 	var sh := Shader.new()
 	sh.code = """
 shader_type spatial;
 render_mode unshaded;
-uniform float offset = 0.0;
-uniform float blur = 1.0;
 uniform vec3 glow_a : source_color = vec3(1.0, 0.54, 0.23);
 uniform vec3 glow_b : source_color = vec3(0.18, 0.89, 0.9);
-varying vec3 wp;
-float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+uniform float wet = 0.7;
+uniform float indoors = 0.0;
+""" + GLSL + """
 void fragment() {
 	float x = wp.x + offset;
 	float z = wp.z;
-	// How much road one pixel covers here: detail finer than that is faded out instead of
-	// being left to shimmer, which is what made the surface crawl at speed.
+	// How much road one pixel covers: anything finer than that fades out instead of shimmering.
 	float px = max(fwidth(wp.x), fwidth(wp.z));
-	float fine = 1.0 - smoothstep(0.02, 0.12, px);
-	// Asphalt: grain stretched along the direction of travel, more the faster you go.
-	float stretch = 0.25 / blur;
-	float g1 = hash(vec2(floor(x * stretch), floor(z * 9.0)));
-	float g2 = hash(vec2(floor(x * stretch * 0.31 + 7.0), floor(z * 3.0)));
-	vec3 col = vec3(0.034, 0.039, 0.054) + (g1 * 0.018 + g2 * 0.012) * fine;
-	// Long streaks worn into each lane by tires.
-	float lane_c = abs(fract(z / 4.4 + 0.5) - 0.5) * 4.4;
-	float wear = smoothstep(1.5, 0.5, abs(lane_c - 1.1)) * (0.6 + 0.4 * g2);
-	col *= 1.0 - wear * 0.22;
-	// Expansion joints flick past: at speed they are what tells you how fast you are going.
-	float jx = fract(x / 22.0);
-	float joint = (1.0 - smoothstep(0.0, 0.012 + px * 0.03, min(jx, 1.0 - jx)));
-	col = mix(col, vec3(0.012, 0.014, 0.02), joint * 0.8);
-	// Lane dashes: they stretch into streaks as speed builds, with soft ends so they never strobe.
-	float duty = clamp(0.5 + (blur - 1.0) * 0.12, 0.5, 0.78);
-	float dx = fract(x / 9.0);
-	float edge = 0.03 + px * 0.25 + (blur - 1.0) * 0.05;
-	float dash = smoothstep(0.0, edge, dx) * smoothstep(duty, duty - edge, dx);
-	for (int i = -2; i <= 2; i++) {
-		float lz = float(i) * 4.4;
+	float fine = 1.0 - smoothstep(0.03, 0.22, px);
+	float az = abs(z);
+	// Asphalt. The grain is fixed to the road (it never changes size with speed), stretched a
+	// little along the way you travel, with paler stones showing through close up.
+	float big = vnoise(vec2(x * 0.11, z * 0.5));
+	float grain = vnoise(vec2(x * 2.6, z * 9.0));
+	float stone = step(0.94, hash(floor(vec2(x * 11.0, z * 11.0)))) * (1.0 - smoothstep(0.015, 0.05, px));
+	vec3 col = vec3(0.052, 0.055, 0.066) * (0.78 + 0.4 * big) + vec3(0.03) * (grain - 0.5) * fine + vec3(0.035, 0.035, 0.04) * stone;
+	// Five lanes, 4.4 m each. Tyres polish two tracks down every lane; the middle stays darker
+	// with dripped oil.
+	float lane_u = fract(z / 4.4 + 0.5) - 0.5;
+	float track_w = exp(-pow((abs(lane_u) * 4.4 - 0.95) / 0.42, 2.0));
+	float in_lanes = 1.0 - smoothstep(10.8, 11.1, az);
+	col *= 1.0 + 0.2 * track_w * in_lanes;
+	col *= 1.0 - 0.16 * exp(-pow(lane_u * 4.4 / 0.3, 2.0)) * in_lanes * (0.5 + 0.5 * big);
+	// Joints across the road every 20 m and the odd tar repair.
+	float jx = fract(x / 20.0);
+	float joint = 1.0 - smoothstep(0.0, 0.004 + px * 0.04, min(jx, 1.0 - jx));
+	col = mix(col, vec3(0.014, 0.015, 0.02), joint * 0.85 * step(az, 13.6));
+	float snake = 1.0 - smoothstep(0.0, 0.05 + px, abs(z - 3.0 * sin(x * 0.045) - 4.4 * floor(vnoise(vec2(x * 0.004, 2.0)) * 5.0 - 2.0)));
+	col = mix(col, vec3(0.02, 0.021, 0.026), snake * 0.55 * step(0.62, vnoise(vec2(x * 0.02, 5.0))) * in_lanes);
+	// Lane lines: dashes 4 m on, 8 m off. At speed their ends smear instead of strobing.
+	float dx = fract(x / 12.0);
+	float edge = 0.012 + px * 0.2 + (blur - 1.0) * 0.03;
+	float dash = smoothstep(0.0, edge, dx) * smoothstep(0.34 + (blur - 1.0) * 0.06, 0.34 + (blur - 1.0) * 0.06 - edge, dx);
+	vec3 paint = vec3(0.8, 0.83, 0.88) * (0.82 + 0.18 * grain);
+	for (int i = 0; i < 4; i++) {
+		float lz = (float(i) - 1.5) * 4.4;
 		float d = abs(z - lz);
-		float line = 1.0 - smoothstep(0.07, 0.11 + px, d);
-		col = mix(col, vec3(0.78, 0.83, 0.93), line * dash * 0.8);
-		// Cat's eyes between the dashes, lit by your headlight.
-		float eye = (1.0 - smoothstep(0.03, 0.07 + px, d)) * (1.0 - smoothstep(0.0, 0.02 + px * 0.2, abs(dx - 0.86)));
-		col += vec3(1.0, 0.75, 0.3) * eye * 0.9;
+		float line = 1.0 - smoothstep(0.075, 0.095 + px, d);
+		col = mix(col, paint, line * dash * 0.92);
+		// A reflector stud in the gap after every dash.
+		float eye = (1.0 - smoothstep(0.04, 0.07 + px, d)) * (1.0 - smoothstep(0.0, 0.006 + px * 0.06, abs(dx - 0.67)));
+		col += vec3(1.0, 0.78, 0.36) * eye * 1.1;
 	}
-	// Solid lines just inside the barriers, and rumble strips beyond them.
-	float sl = 1.0 - smoothstep(0.06, 0.1, abs(abs(z) - 11.2));
-	col = mix(col, vec3(0.8, 0.84, 0.92), sl * 0.6);
-	float rum = step(0.5, fract(x / 1.6)) * (1.0 - smoothstep(0.25, 0.3, abs(abs(z) - 11.75)));
-	col = mix(col, mix(glow_b, glow_a, step(0.0, z)) * 0.55, rum * 0.7);
-	// Wet road: the street lamps and the neon smear into long streaks.
-	float lamp = pow(max(0.0, cos((x + 4.0 * step(0.0, z)) * 6.2832 / 16.0)), 24.0);
-	float lz = 1.0 - smoothstep(0.0, 5.5, abs(abs(z) - 9.6));
-	col += vec3(1.0, 0.88, 0.7) * lamp * lz * 0.2;
-	float sheen = hash(vec2(floor(x * 0.06), floor(z * 2.5)));
-	col += mix(glow_b, glow_a, step(0.0, z)) * smoothstep(5.0, 12.4, abs(z)) * (0.05 + sheen * 0.07);
-	// Glowing edges.
-	float ea = 1.0 - smoothstep(0.0, 0.9, abs(z - 12.4));
-	float eb = 1.0 - smoothstep(0.0, 0.9, abs(z + 12.4));
-	col += glow_a * ea * 1.4 + glow_b * eb * 1.4;
-	// Chevrons racing down the middle lanes.
-	float chev = abs(fract((x - abs(z) * 0.8) / 14.0) - 0.5);
-	float cz = 1.0 - smoothstep(6.0, 9.5, abs(z));
-	col += mix(glow_b, glow_a, step(0.0, z)) * (1.0 - smoothstep(0.02, 0.06, chev)) * 0.22 * cz;
-	// Hex plating under the paint, only just visible.
-	vec2 hx = vec2(x * 0.5, z * 0.5);
-	float hl = 1.0 - smoothstep(0.02, 0.05, min(fract(hx.x), fract(hx.y)));
-	col += vec3(0.05, 0.07, 0.1) * hl * 0.5;
+	// Solid edge lines, a rumble strip outside them, then the hard shoulder up to the barrier.
+	float solid_l = 1.0 - smoothstep(0.08, 0.1 + px, abs(az - 11.0));
+	col = mix(col, paint, solid_l * 0.9);
+	float rum = smoothstep(0.3, 0.5, fract(x / 0.9)) * smoothstep(1.0, 0.8, fract(x / 0.9)) * (1.0 - smoothstep(0.2, 0.26, abs(az - 11.55)));
+	col *= 1.0 - rum * 0.35 * fine;
+	float shoulder = smoothstep(11.9, 12.1, az);
+	col = mix(col, col * 0.8 + vec3(0.012) * grain, shoulder);
+	// Hatching on the shoulder: slanted bars, sparse.
+	float hatch = step(0.93, fract((x + az * 1.4) / 6.0)) * shoulder * (1.0 - smoothstep(13.3, 13.5, az));
+	col = mix(col, paint * 0.7, hatch * 0.4);
+	// A wet road gives the light back. Lamps stand every 16 m on both sides, staggered: each
+	// lays a long soft streak toward you.
+	float lamp_x = cos((x + 4.0 * step(0.0, z)) * 6.2832 / 16.0) * 0.5 + 0.5;
+	float lamp = pow(lamp_x, 5.0) * exp(-pow((az - 9.4) / 3.4, 2.0));
+	col += vec3(1.0, 0.87, 0.68) * lamp * 0.2 * wet * (0.65 + 0.35 * grain) * (1.0 - indoors);
+	// Indoors the strip lights in the ceiling run down the road as two long bars of glare.
+	float bars = exp(-pow((az - 5.2) / 1.5, 2.0)) * (0.7 + 0.3 * smoothstep(0.1, 0.2, fract(x / 6.0)) * smoothstep(0.9, 0.8, fract(x / 6.0)));
+	col += vec3(1.0, 0.9, 0.7) * bars * 0.16 * wet * indoors;
+	// The barrier's strip of light bleeds across the shoulder.
+	col += mix(glow_b, glow_a, step(0.0, z)) * exp(-(13.95 - az) * 0.6) * 0.3 * wet * step(az, 13.95);
+	// Signs and lit windows going by overhead throw their color down too.
+	float gx = (x * 0.5 + 3.0) / 36.0;
+	float pool = pow(max(0.0, cos(gx * 6.2832)), 6.0) * (0.45 + 0.55 * hash(vec2(floor(gx + 0.5), 3.0)));
+	col += mix(glow_a, glow_b, step(0.5, hash(vec2(floor(gx + 0.5), 9.0)))) * pool * smoothstep(13.0, 2.0, az) * 0.06 * wet * (1.0 - indoors);
 	// Fade into the dark far away.
-	float fade = 1.0 - smoothstep(60.0, 120.0, abs(wp.x));
+	float fade = 1.0 - smoothstep(70.0, 126.0, abs(wp.x));
 	ALBEDO = col * fade;
 }
 """
@@ -199,6 +283,7 @@ void fragment() {
 	_road.set_shader_parameter("glow_b", accent2)
 	mi.material_override = _road
 	mi.position = Vector3(0, -0.08, 0)
+	mi.extra_cull_margin = 60.0
 	add_child(mi)
 
 
@@ -206,47 +291,194 @@ var _scroll: Array[ShaderMaterial] = []
 var _barrier_sh: Shader
 
 
-## Concrete barrier with lit panels and chevrons that slide past with the road.
-func _barrier_mat(col: Color, pitch := 1.0) -> ShaderMaterial:
+## The low barrier: cast concrete in 6 m lengths, stained where the rain runs off it, a
+## reflector on every length and the glow of its light strip down its face.
+func _barrier_mat(col: Color, _pitch := 1.0) -> ShaderMaterial:
 	if _barrier_sh == null:
 		_barrier_sh = Shader.new()
 		_barrier_sh.code = """
 shader_type spatial;
 render_mode unshaded;
-uniform float offset = 0.0;
-uniform float blur = 1.0;
-uniform float pitch = 1.0;
 uniform vec3 tint : source_color = vec3(0.2, 0.9, 0.9);
-varying vec3 wp;
-float hash(float p) { return fract(sin(p * 127.1) * 43758.5453); }
-void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+""" + GLSL + """
 void fragment() {
 	float x = wp.x + offset;
-	float px = fwidth(wp.x);
-	vec3 col = vec3(0.06, 0.068, 0.09) * (0.8 + 0.2 * hash(floor(x / 6.0)));
-	// Panel seams.
+	float px = max(fwidth(wp.x), fwidth(wp.y));
+	float fine = 1.0 - smoothstep(0.03, 0.2, px);
+	float y = wp.y;
+	vec3 col = vec3(0.17, 0.175, 0.19) * (0.8 + 0.3 * vnoise(vec2(x * 0.7, y * 3.0)));
+	col += vec3(0.03) * (vnoise(vec2(x * 7.0, y * 16.0)) - 0.5) * fine;
+	// Rain streaks down from the top edge.
+	float streak = vnoise(vec2(x * 3.5, 1.0)) * smoothstep(0.1, 1.0, y);
+	col *= 1.0 - 0.3 * smoothstep(0.55, 0.9, streak);
+	// Joints between the lengths, a lifting slot at the foot of each.
 	float seam = fract(x / 6.0);
-	col *= 1.0 - 0.5 * (1.0 - smoothstep(0.0, 0.01 + px * 0.05, min(seam, 1.0 - seam)));
-	// A light slot in every panel; at speed the slots smear into one streak.
-	float len = clamp(0.35 + (blur - 1.0) * 0.2, 0.35, 0.92);
-	float slot_x = smoothstep(0.5 - len * 0.5 - 0.03, 0.5 - len * 0.5 + 0.03, seam) * smoothstep(0.5 + len * 0.5 + 0.03, 0.5 + len * 0.5 - 0.03, seam);
-	float band = fract(wp.y * pitch * 0.9);
-	float slot_y = smoothstep(0.38, 0.44, band) * smoothstep(0.62, 0.56, band);
-	float on = step(0.25, hash(floor(x / 6.0) + 9.0));
-	col += tint * slot_x * slot_y * on * 1.6;
-	// Chevrons on the lowest band.
-	float ch = abs(fract((x + abs(wp.y - 0.45) * 1.2) / 3.0) - 0.5);
-	col += tint * (1.0 - smoothstep(0.03, 0.09 + px * 0.2, ch)) * step(wp.y, 0.9) * 0.35;
-	float fade = 1.0 - smoothstep(60.0, 120.0, abs(wp.x));
+	col *= 1.0 - 0.55 * (1.0 - smoothstep(0.0, 0.006 + px * 0.04, min(seam, 1.0 - seam)));
+	float slot = (1.0 - smoothstep(0.045, 0.05 + px * 0.05, abs(seam - 0.5))) * (1.0 - smoothstep(0.1, 0.12, y));
+	col = mix(col, vec3(0.02), slot);
+	// A black and white marker board at mid height and an amber reflector on it.
+	float mark = (1.0 - smoothstep(0.08, 0.085 + px * 0.05, abs(seam - 0.2))) * smoothstep(0.42, 0.44, y) * (1.0 - smoothstep(0.72, 0.74, y));
+	col = mix(col, mix(vec3(0.85), vec3(0.04), step(0.5, fract((y - 0.42) / 0.15))), mark * fine);
+	float refl = 1.0 - smoothstep(0.03, 0.04 + px * 0.1, length(vec2((seam - 0.75) * 6.0, y - 0.55)));
+	col += vec3(1.0, 0.62, 0.14) * refl * 1.2;
+	// Its own light strip washes down the face.
+	col += tint * 0.42 * smoothstep(0.2, 1.05, y) * (0.8 + 0.2 * vnoise(vec2(x * 0.5, 3.0)));
+	float fade = 1.0 - smoothstep(70.0, 126.0, abs(wp.x));
 	ALBEDO = col * fade;
 }
 """
 	var m := ShaderMaterial.new()
 	m.shader = _barrier_sh
 	m.set_shader_parameter("tint", col)
-	m.set_shader_parameter("pitch", pitch)
 	_scroll.append(m)
 	return m
+
+
+var _glass_sh: Shader
+
+
+## The tall wall behind the barrier: panes of tinted glass in steel frames. Through them the
+## city goes by: two depths of lit windows and street lamps, each sliding at its own pace.
+func _glass_mat(col: Color) -> ShaderMaterial:
+	if _glass_sh == null:
+		_glass_sh = Shader.new()
+		_glass_sh.code = """
+shader_type spatial;
+render_mode unshaded;
+uniform vec3 tint : source_color = vec3(0.2, 0.9, 0.9);
+uniform float side = 1.0;
+""" + GLSL + """
+vec3 lights(float x, float y, float par, float scale, float seed) {
+	vec2 g = vec2((x + offset * par) * scale, y * scale * 1.5 + seed);
+	vec2 cell = floor(g);
+	vec2 f = fract(g) - 0.5;
+	float on = step(0.68, hash(cell + seed));
+	vec2 jit = vec2(hash(cell + 3.1), hash(cell + 7.7)) - 0.5;
+	float d = length(f - jit * 0.6);
+	float warm = hash(cell + 11.0);
+	vec3 c = mix(vec3(1.0, 0.72, 0.4), mix(vec3(0.6, 0.85, 1.0), vec3(1.0, 0.45, 0.75), step(0.8, warm)), step(0.45, warm));
+	return c * smoothstep(0.2, 0.03, d) * on;
+}
+void fragment() {
+	float x = wp.x + offset;
+	float y = wp.y;
+	float px = max(fwidth(wp.x), fwidth(wp.y));
+	float u = fract(x / 4.0);
+	// Glass: nearly black, a little of the sky's color toward the top.
+	vec3 col = vec3(0.012, 0.018, 0.03) + tint * 0.035 * smoothstep(1.0, 4.2, y);
+	// The city behind it, out of focus. Near lights pass quicker than far ones.
+	col += lights(wp.x, y, 0.42, 0.55, 0.0) * 0.55;
+	col += lights(wp.x, y, 0.2, 1.1, 20.0) * 0.3;
+	// A long reflection of the road's own lamps slides along the glass.
+	float lamp = pow(cos((x + 4.0 * step(0.0, side)) * 6.2832 / 16.0) * 0.5 + 0.5, 12.0);
+	col += vec3(1.0, 0.88, 0.7) * lamp * 0.1 * smoothstep(4.2, 2.0, y);
+	// Frames: a post every 4 m, a rail top and bottom, a thin transom.
+	float post = 1.0 - smoothstep(0.022, 0.024 + px * 0.06, min(u, 1.0 - u));
+	float rail = max(1.0 - smoothstep(0.1, 0.12, y - 1.0), smoothstep(4.02, 4.04, y));
+	float tran = 1.0 - smoothstep(0.025, 0.03 + px * 0.2, abs(y - 2.7));
+	float frame = max(post, max(rail, tran * 0.8));
+	vec3 steel = vec3(0.1, 0.105, 0.12) * (0.85 + 0.3 * vnoise(vec2(x * 2.0, y * 2.0))) + tint * 0.05;
+	col = mix(col, steel, frame);
+	// A line of light along the top rail.
+	col += tint * (1.0 - smoothstep(0.03, 0.05, abs(y - 4.12))) * 1.3;
+	float fade = 1.0 - smoothstep(70.0, 126.0, abs(wp.x));
+	ALBEDO = col * fade;
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = _glass_sh
+	m.set_shader_parameter("tint", col)
+	_scroll.append(m)
+	return m
+
+
+var _tile_sh: Shader
+
+
+## Tunnel walls and roof. kind 0: the wall, cream tile to shoulder height with a band of the
+## road's color, bare concrete above with a cable tray. kind 1: the roof, dark, with two rows
+## of strip lights.
+func _tunnel_mat(kind: int, col: Color) -> ShaderMaterial:
+	if _tile_sh == null:
+		_tile_sh = Shader.new()
+		_tile_sh.code = """
+shader_type spatial;
+render_mode unshaded;
+uniform vec3 tint : source_color = vec3(1.0, 0.8, 0.3);
+uniform int kind = 0;
+""" + GLSL + """
+void fragment() {
+	float x = wp.x + offset;
+	float px = max(fwidth(wp.x), max(fwidth(wp.y), fwidth(wp.z)));
+	float fine = 1.0 - smoothstep(0.02, 0.14, px);
+	vec3 col;
+	if (kind == 0) {
+		float y = wp.y;
+		// Tiles 0.6 by 0.3, laid brick fashion, grout between, a few replaced in another shade.
+		vec2 g = vec2(x / 0.6 + 0.5 * floor(y / 0.3), y / 0.3);
+		vec2 cell = floor(g);
+		vec2 f = fract(g);
+		float grout = max(1.0 - smoothstep(0.0, 0.03 + px * 1.5, min(f.x, 1.0 - f.x)), 1.0 - smoothstep(0.0, 0.06 + px * 3.0, min(f.y, 1.0 - f.y)));
+		vec3 tile = vec3(0.56, 0.54, 0.47) * (0.86 + 0.14 * hash(cell)) * mix(1.0, 0.8, step(0.96, hash(cell + 5.0)));
+		tile = mix(tile, vec3(0.26, 0.25, 0.23), grout * fine * 0.8);
+		// Soot climbs from the road and hangs under the lights.
+		tile *= 0.62 + 0.38 * smoothstep(0.1, 1.6, y);
+		tile *= 0.85 + 0.15 * vnoise(vec2(x * 0.3, y * 0.8));
+		// The band: two tiles high, in the color of this stretch.
+		float band = smoothstep(1.78, 1.8, y) * (1.0 - smoothstep(2.38, 2.4, y));
+		tile = mix(tile, tint * 0.5 * (0.85 + 0.15 * hash(cell)), band * (1.0 - grout * 0.6 * fine));
+		// Above the tile: concrete with form marks, a cable tray, a pipe.
+		vec3 conc = vec3(0.12, 0.122, 0.13) * (0.8 + 0.3 * vnoise(vec2(x * 0.5, y * 1.5)));
+		float form = fract(x / 2.4);
+		conc *= 1.0 - 0.3 * (1.0 - smoothstep(0.0, 0.01 + px * 0.2, min(form, 1.0 - form)));
+		float tray = smoothstep(5.0, 5.03, y) * (1.0 - smoothstep(5.36, 5.39, y));
+		conc = mix(conc, vec3(0.05, 0.052, 0.06) + vec3(0.04) * step(0.5, fract(x / 0.4)), tray);
+		float pipe = 1.0 - smoothstep(0.07, 0.09, abs(y - 6.0));
+		conc = mix(conc, vec3(0.3, 0.16, 0.1) * (0.7 + 0.5 * smoothstep(0.09, 0.0, abs(y - 6.03))), pipe);
+		col = mix(tile, conc, smoothstep(3.0, 3.02, y));
+		// Light from the roof strips: brightest high on the tile, gone at the foot.
+		col *= 0.75 + 0.65 * smoothstep(0.0, 3.0, y) * (1.0 - smoothstep(3.0, 8.0, y));
+		// A lit sign box every 48 m: a green field with a white figure and an arrow.
+		float sx = fract(x / 48.0) * 48.0 - 24.0;
+		vec2 sg = vec2(sx, y - 2.75);
+		float box = step(abs(sg.x), 0.75) * step(abs(sg.y), 0.3);
+		float fig = step(length(sg - vec2(-0.3, 0.1)), 0.08) + step(abs(sg.x + 0.3), 0.06) * step(abs(sg.y + 0.08), 0.12);
+		float arrow = step(abs(sg.y), 0.045) * step(abs(sg.x - 0.25), 0.3) + step(abs(sg.y) + (sg.x - 0.45), 0.16) * step(0.45, sg.x) * step(sg.x, 0.62);
+		col = mix(col, vec3(0.05, 0.75, 0.35) * 1.3 + vec3(1.0) * clamp(fig + arrow, 0.0, 1.0), box);
+	} else {
+		// The roof: black concrete, and the lights: fittings 3 m long in two rows.
+		float z = abs(wp.z);
+		col = vec3(0.03, 0.031, 0.036) * (0.8 + 0.4 * vnoise(vec2(x * 0.4, wp.z * 0.4)));
+		float along = fract(x / 6.0);
+		float lit = smoothstep(0.08, 0.1, along) * smoothstep(0.62, 0.6, along);
+		float row = 1.0 - smoothstep(0.32, 0.36, abs(z - 5.2));
+		float housing = 1.0 - smoothstep(0.5, 0.54, abs(z - 5.2));
+		col = mix(col, vec3(0.08, 0.082, 0.09), housing * step(0.04, along) * step(along, 0.66));
+		col = mix(col, vec3(1.0, 0.93, 0.76) * 2.2, row * lit);
+		// Glow round each fitting.
+		col += vec3(1.0, 0.85, 0.6) * exp(-pow((z - 5.2) / 1.6, 2.0)) * lit * 0.12;
+		// A duct down the middle with a seam every few meters.
+		float duct = 1.0 - smoothstep(0.7, 0.74, z);
+		col = mix(col, vec3(0.07, 0.072, 0.08) * (0.8 + 0.2 * step(0.04, fract(x / 3.0))), duct);
+	}
+	float fade = 1.0 - smoothstep(70.0, 126.0, abs(wp.x));
+	ALBEDO = col * fade;
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = _tile_sh
+	m.set_shader_parameter("tint", col)
+	m.set_shader_parameter("kind", kind)
+	_scroll.append(m)
+	return m
+
+
+## A long box cut into enough pieces along the road that it can follow a bend.
+func _run(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> MeshInstance3D:
+	var mi := _box(parent, size, pos, mat)
+	(mi.mesh as BoxMesh).subdivide_width = 120
+	mi.extra_cull_margin = 60.0
+	return mi
 
 
 func _glow(color: Color, energy := 2.5) -> StandardMaterial3D:
@@ -285,21 +517,52 @@ func _prop(node: Node3D, x: float, parallax := 1.0) -> void:
 
 
 func _build_sides() -> void:
-	# Barriers with light strips, lamp arches overhead, and the odd sign gantry.
+	# A concrete barrier with a strip of light along its top, a wall of glass behind it with
+	# the city going by on the far side, and lamps leaning in over the road.
+	var steel := _solid(Color(0.14, 0.15, 0.18))
 	for side in [-1.0, 1.0]:
 		var col: Color = accent if side > 0.0 else accent2
 		var wall := Node3D.new()
-		_box(wall, Vector3(260, 1.1, 0.5), Vector3(0, 0.45, side * 14.2), _barrier_mat(col))
-		_box(wall, Vector3(260, 0.08, 0.08), Vector3(0, 1.02, side * 13.92), _glow(col, 3.0))
-		# A second, taller sound wall behind it with slim light slots, so the edge of the road
-		# reads as a wall of streaks at speed.
-		_box(wall, Vector3(260, 3.2, 0.3), Vector3(0, 2.6, side * 15.4), _barrier_mat(col.lerp(Color.WHITE, 0.3), 2.0))
+		_run(wall, Vector3(260, 1.1, 0.5), Vector3(0, 0.45, side * 14.2), _barrier_mat(col))
+		_run(wall, Vector3(260, 0.07, 0.1), Vector3(0, 1.03, side * 14.0), _bend(_glow(col, 3.2)))
+		_run(wall, Vector3(260, 0.05, 0.6), Vector3(0, 1.01, side * 14.25), _bend(_solid(Color(0.08, 0.085, 0.1))))
 		add_child(wall)
+		# The glass wall stands only out in the open: in the tunnel the tunnel is the wall.
+		var glass := Node3D.new()
+		var gm := _glass_mat(col)
+		gm.set_shader_parameter("side", side)
+		_run(glass, Vector3(260, 3.3, 0.16), Vector3(0, 2.62, side * 15.3), gm)
+		add_child(glass)
+		for zk in ["satellite", "tops", "bridge"]:
+			_zones[zk].append(glass)
 		for i in 10:
 			var post := Node3D.new()
-			_box(post, Vector3(0.3, 7.0, 0.3), Vector3(0, 3.5, side * 14.6), _solid(Color(0.1, 0.11, 0.15)))
-			_box(post, Vector3(0.25, 0.25, 3.4), Vector3(0, 6.9, side * 13.0), _solid(Color(0.1, 0.11, 0.15)))
-			_box(post, Vector3(0.5, 0.1, 1.2), Vector3(0, 6.75, side * 11.8), _glow(Color(1.0, 0.95, 0.82), 4.0))
+			# A tapered column, an arm curving out over the road in three pieces, the lamp head.
+			var pole := MeshInstance3D.new()
+			var cm := CylinderMesh.new()
+			cm.top_radius = 0.09
+			cm.bottom_radius = 0.16
+			cm.height = 7.4
+			cm.radial_segments = 8
+			pole.mesh = cm
+			pole.material_override = steel
+			pole.position = Vector3(0, 3.7, side * 14.75)
+			post.add_child(pole)
+			_box(post, Vector3(0.5, 0.5, 0.5), Vector3(0, 0.25, side * 14.75), steel)
+			for k in 3:
+				var arm := _box(post, Vector3(0.1, 0.1, 1.15), Vector3(0, 7.45 + k * 0.16 - k * k * 0.05, side * (14.2 - k * 1.05)), steel)
+				arm.rotation.x = side * (0.34 - k * 0.2)
+			_box(post, Vector3(0.34, 0.12, 1.3), Vector3(0, 7.56, side * 11.3), steel)
+			_box(post, Vector3(0.26, 0.05, 1.1), Vector3(0, 7.48, side * 11.3), _glow(Color(1.0, 0.95, 0.82), 4.5))
+			# A soft cone of light under the head.
+			var cone := MeshInstance3D.new()
+			var qm := QuadMesh.new()
+			qm.size = Vector2(9.0, 7.4)
+			cone.mesh = qm
+			cone.material_override = _cone_mat()
+			cone.position = Vector3(0, 3.75, side * 11.3)
+			cone.rotation.y = PI / 2.0
+			post.add_child(cone)
 			var lamp := OmniLight3D.new()
 			lamp.light_color = Color(1.0, 0.9, 0.75)
 			lamp.light_energy = 2.2
@@ -307,21 +570,89 @@ func _build_sides() -> void:
 			lamp.position = Vector3(0, 6.2, side * 11.5)
 			post.add_child(lamp)
 			_prop(post, -SPAN / 2.0 + i * (SPAN / 10.0) + (4.0 if side > 0.0 else 0.0))
+			for zk in ["satellite", "tops", "bridge"]:
+				_zones[zk].append(post)
 	for i in 2:
 		var gantry := Node3D.new()
-		_box(gantry, Vector3(0.5, 0.6, 30.0), Vector3(0, 8.2, 0), _solid(Color(0.09, 0.1, 0.14)))
+		# A truss across the road on two legs, carrying the signs.
+		for gy: float in [7.9, 8.6]:
+			_box(gantry, Vector3(0.14, 0.14, 30.4), Vector3(0, gy, 0), steel)
+		for k in 16:
+			var brace := _box(gantry, Vector3(0.08, 0.92, 0.08), Vector3(0, 8.25, -14.2 + k * 1.9), steel)
+			brace.rotation.x = 0.7 if k % 2 == 0 else -0.7
+		for side in [-1.0, 1.0]:
+			_box(gantry, Vector3(0.36, 8.7, 0.36), Vector3(0, 4.35, side * 15.0), steel)
 		# Overhead signs: lane arrows and a moving readout, not blank panels.
 		for gs in [[-6.0, accent2], [6.0, accent]]:
 			var panel := MeshInstance3D.new()
-			var qm := QuadMesh.new()
-			qm.size = Vector2(9.0, 1.7)
-			panel.mesh = qm
+			var qm2 := QuadMesh.new()
+			qm2.size = Vector2(9.0, 1.7)
+			panel.mesh = qm2
 			panel.material_override = _holo(gs[1], 3.0 + i * 2.0 + float(gs[0]))
 			panel.rotation.y = -PI / 2.0
-			panel.position = Vector3(-0.3, 7.2, float(gs[0]))
+			panel.position = Vector3(-0.3, 7.0, float(gs[0]))
 			gantry.add_child(panel)
-			_box(gantry, Vector3(0.14, 1.9, 9.2), Vector3(-0.2, 7.2, float(gs[0])), _solid(Color(0.05, 0.06, 0.09)))
+			_box(gantry, Vector3(0.14, 1.9, 9.2), Vector3(-0.2, 7.0, float(gs[0])), _solid(Color(0.05, 0.06, 0.09)))
 		_prop(gantry, -SPAN / 2.0 + 30.0 + i * (SPAN / 2.0))
+		for zk in ["satellite", "tops", "bridge"]:
+			_zones[zk].append(gantry)
+
+
+var _cone_sh: Shader
+var _bent: Array[ShaderMaterial] = []
+
+
+## The haze under a street lamp: brightest at the head, gone before it reaches the road.
+func _cone_mat() -> ShaderMaterial:
+	if _cone_sh == null:
+		_cone_sh = Shader.new()
+		_cone_sh.code = """
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
+void fragment() {
+	float down = UV.y;
+	float half_w = 0.04 + down * 0.46;
+	float across = 1.0 - smoothstep(half_w * 0.2, half_w, abs(UV.x - 0.5));
+	ALBEDO = vec3(1.0, 0.9, 0.72);
+	ALPHA = across * pow(1.0 - down, 1.6) * 0.16;
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = _cone_sh
+	return m
+
+
+var _bend_sh := {}
+
+
+## A plain glowing or solid strip that still has to follow the bend of the road.
+func _bend(src: StandardMaterial3D) -> ShaderMaterial:
+	var lit := src.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED
+	if not _bend_sh.has(lit):
+		var sh := Shader.new()
+		sh.code = """
+shader_type spatial;
+""" + ("" if lit else "render_mode unshaded;") + """
+uniform vec3 tint : source_color = vec3(1.0);
+uniform float energy = 1.0;
+uniform float curve = 0.0;
+void vertex() {
+	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	float ahead = max(0.0, w.x);
+	VERTEX.z -= curve * ahead * ahead * 0.0035;
+}
+void fragment() {
+	ALBEDO = tint * energy;
+	ROUGHNESS = 0.6;
+}
+"""
+		_bend_sh[lit] = sh
+	var m := ShaderMaterial.new()
+	m.shader = _bend_sh[lit]
+	m.set_shader_parameter("tint", src.albedo_color)
+	m.set_shader_parameter("energy", 1.0 if lit else maxf(1.0, src.emission_energy_multiplier * 0.6))
+	_bent.append(m)
+	return m
 
 
 func _build_skyline() -> void:
@@ -815,16 +1146,22 @@ func _aabb(n: Node, xf: Transform3D) -> AABB:
 func _process(delta: float) -> void:
 	_t += delta
 	speed = lerpf(speed, target_speed, clampf(delta * 1.5, 0.0, 1.0))
-	_offset = fmod(_offset + speed * delta, 1260.0)
+	# Every repeat on the road (6, 12, 16, 20, 36, 48 ... meters) divides this, so nothing
+	# jumps when the count starts over.
+	_offset = fmod(_offset + speed * delta, 5760.0)
 	_far_off += speed * delta
 	for sm in _scroll:
 		sm.set_shader_parameter("offset", _offset)
 		sm.set_shader_parameter("blur", clampf(speed / 22.0, 0.8, 3.0))
+		sm.set_shader_parameter("curve", curve)
+	for bm2 in _bent:
+		bm2.set_shader_parameter("curve", curve)
 	if _sweep:
 		_sweep.set_shader_parameter("offset", _far_off)
 	if _road:
 		_road.set_shader_parameter("offset", _offset)
 		_road.set_shader_parameter("blur", clampf(speed / 22.0, 0.8, 3.0))
+		_road.set_shader_parameter("curve", curve)
 	for p in _props:
 		var n: Node3D = p[0]
 		n.position.x -= speed * delta * float(p[1])

@@ -3,6 +3,7 @@ extends SkeletonModifier3D
 ## Small touches on top of whatever animation is playing:
 ## - turns the head (and a little of the neck) toward something: yaw to the side, pitch up/down;
 ## - `nod` dips the head forward (0..1), for a hello;
+## - `sit_up` straightens the back of somebody sitting slumped on a bench;
 ## - brings hanging arms in closer to the body. Shared motions are made on a broad-shouldered
 ##   body, and on slimmer characters the arms float away from the hips like a wrestler's.
 ## Angles are in the figure's own space.
@@ -13,6 +14,8 @@ var nod := 0.0
 var head := -1
 var neck := -1
 var arms: Array = []          # [[upper arm, forearm, side sign], ...]
+var spine := -1
+var sit_up := 0.0             # radians to straighten a slumped back; the arms keep their line
 var tuck := 0.55              # how much of an arm's outward lean to keep (1 = untouched)
 var up := Vector3.UP          # the figure's up and right, as the skeleton sees them
 var right := Vector3.RIGHT
@@ -22,6 +25,16 @@ func _process_modification() -> void:
 	var sk := get_skeleton()
 	if sk == null:
 		return
+	if spine >= 0 and sit_up > 0.003:
+		# The bench motion slumps right over the knees. Lean the back up from the hips and turn
+		# the arms the other way by as much, so the hands stay down on the legs.
+		var gs := sk.get_bone_global_pose(spine)
+		gs.basis = Basis(right, -sit_up) * gs.basis
+		sk.set_bone_global_pose(spine, gs)
+		for a in arms:
+			var ga := sk.get_bone_global_pose(a[0])
+			ga.basis = Basis(right, sit_up * 0.8) * ga.basis
+			sk.set_bone_global_pose(a[0], ga)
 	if tuck < 0.999:
 		var down := -up
 		for a in arms:

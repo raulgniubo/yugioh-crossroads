@@ -224,6 +224,14 @@ func _build_world() -> void:
 			Router.roam["tod"] = a.trim_prefix("--tod=")
 	city.build(_theme, Router.roam.get("tod", "night"))
 	city.grade(str(Router.roam.get("district", "domino")))
+	# A building you supplied yourself goes on the maps at the size and place it really has.
+	var fix: Dictionary = city.get_meta("map_fix", {})
+	if not fix.is_empty() and district.has("map"):
+		district = district.duplicate(true)
+		for lm in district["map"].get("landmarks", []):
+			if fix.has(str(lm["name"])):
+				lm["pos"] = fix[str(lm["name"])][0]
+				lm["size"] = fix[str(lm["name"])][1]
 
 
 func _cycle_tod() -> void:
@@ -659,6 +667,8 @@ func _add_npc(d: Dictionary, offset: Vector3) -> void:
 		var f := RoamFigure.new()
 		add_child(f)
 		f.position = d["pos"] + offset
+		if city and city.has_method("clear_spot"):
+			f.position = city.call("clear_spot", f.position)
 		f.rotation.y = d.get("face", 0.0)
 		var model_key: String = d.get("char", "")
 		if model_key == "":
@@ -1849,6 +1859,36 @@ func _debug() -> void:
 			print("SPOT done dp=", Collection.dp, " scene=", get_tree().current_scene.name if get_tree().current_scene else "?")
 			if "--spot-quit" in OS.get_cmdline_user_args():
 				get_tree().quit()
+		elif a == "--seats":
+			# Dev: a close picture of everybody who is sitting down, in this world and its rooms.
+			await get_tree().create_timer(3.0).timeout
+			var scam := Camera3D.new()
+			scam.fov = 50.0
+			scam.near = 0.1
+			add_child(scam)
+			scam.current = true
+			var sn := 0
+			for node in find_children("*", "", true, false):
+				if not is_instance_valid(node) or not (node is RoamFigure) or not ((node as RoamFigure).stance in ["sit", "rest"]):
+					continue
+				var sf := node as RoamFigure
+				var sat := sf.global_position
+				_player.global_position = sat + sf.global_transform.basis.z.normalized() * 3.5 + Vector3(0, 0.4, 0)
+				await get_tree().create_timer(1.5).timeout
+				if not is_instance_valid(sf):
+					continue
+				var fwd := sf.global_transform.basis.z.normalized()
+				var sidev := sf.global_transform.basis.x.normalized()
+				for view in 2:
+					scam.global_position = sat + fwd * (2.1 if view == 0 else 0.3) + sidev * (1.3 if view == 0 else 2.4) + Vector3(0, 1.2, 0)
+					scam.look_at(sat + Vector3(0, 0.7, 0), Vector3.UP)
+					for i in 6:
+						await get_tree().process_frame
+					await RenderingServer.frame_post_draw
+					get_viewport().get_texture().get_image().save_png("/tmp/seat_%s_%d%s.png" % [str(Router.roam.get("district", "domino")), sn, "ab"[view]])
+				print("seat ", sn, " ", sf.stance, " ", sf.key, " at ", sat.snapped(Vector3(0.1, 0.1, 0.1)))
+				sn += 1
+			get_tree().quit()
 		elif a.begins_with("--tour="):
 			# Several free-camera shots in one run: --tour=name:x,y,z,lx,ly,lz;name2:...
 			await get_tree().create_timer(1.2).timeout
@@ -1866,6 +1906,10 @@ func _debug() -> void:
 				var e2 := bits[1].split(",")
 				tcam.global_position = Vector3(float(e2[0]), float(e2[1]), float(e2[2]))
 				var tg := Vector3(float(e2[3]), float(e2[4]), float(e2[5]))
+				if bits[0].begins_with("me"):
+					# Shots named me... are measured from the player, for a close look at the model.
+					tcam.global_position += _player.global_position
+					tg += _player.global_position
 				if tcam.global_position.distance_to(_player.global_position) > 160.0:
 					_player.global_position = Vector3(tg.x, 0.3, tg.z)
 				tcam.look_at(tg, Vector3.UP)

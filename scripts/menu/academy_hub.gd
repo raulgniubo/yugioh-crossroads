@@ -23,9 +23,9 @@ func _ready() -> void:
 	if not Academy.d.get("pending", {}).is_empty() and Router.story_result != "":
 		_news = Academy.resolve(Router.story_result == "won")
 		Router.story_result = ""
-	var dim := ColorRect.new()
-	dim.color = Color(0.012, 0.02, 0.045, 0.985)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# The same glass backdrop as the other big menus, lit in your dorm's color.
+	var dim := MenuBackdrop.new(0.985, (Academy.dorm()["color"] as Color).lerp(Color.WHITE, 0.15))
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 	var glow := Control.new()
 	glow.set_anchors_preset(Control.PRESET_FULL_RECT)

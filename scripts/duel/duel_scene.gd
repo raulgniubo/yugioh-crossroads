@@ -287,6 +287,25 @@ func _start() -> void:
 		var lab := {}
 		for h in state.players[ME].hand:
 			lab[h.uid] = "Your hand"
+		if "--ask-gy" in OS.get_cmdline_user_args():
+			# Dev: a full graveyard and a couple of banished cards, with the viewer open.
+			var mine: DuelState.PlayerState = state.players[ME]
+			for k in mini(7, mine.deck.size()):
+				mine.gy.append(mine.deck.pop_back())
+			for k in mini(2, mine.deck.size()):
+				mine.banished.append(mine.deck.pop_back())
+			_refresh()
+			hud.show_piles(ME)
+			return
+		if "--ask-respond" in OS.get_cmdline_user_args():
+			# Dev: the question you get when a Trap can answer an attack.
+			hud.ask_why = Loc.t("Your opponent declared an attack. A Trap or Quick-Play Spell can answer it before it lands. Pick a card to use it, or let the attack go through.")
+			await hud.ask_response("Your opponent attacks. Respond?", state.players[ME].hand.slice(0, 2))
+			return
+		if "--ask-mode" in OS.get_cmdline_user_args():
+			# Dev: a card with two effects asks which one you want.
+			await hud.ask_choice(Loc.t("%s: choose an effect") % "Enemy Controller", ["Change a monster's battle position", "Tribute 1 monster: take control of a monster until the End Phase"], state.players[ME].hand[0])
+			return
 		if "--ask-choice" in OS.get_cmdline_user_args():
 			await hud.ask_choice(Loc.t("Special Summon %s in:") % state.players[ME].hand[0].cname(), ["Attack Position", "Defense Position"], state.players[ME].hand[0])
 		else:

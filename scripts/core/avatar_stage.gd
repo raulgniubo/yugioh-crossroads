@@ -51,40 +51,72 @@ func setup(model: Node3D) -> void:
 	_frame()
 
 
+## Everybody is framed the same way. The picture shows the same stretch of the world for every
+## duelist (VIEW_H meters top to bottom) and hangs off the head bone, so heads line up and a
+## small person looks small next to a tall one. Only somebody whose hair would still leave the
+## picture is stepped back from, and only as far as it takes to fit.
+const VIEW_H := 1.22
+const HEAD_AT := 0.5        # where the head bone sits in the picture (0 top, 1 bottom)
+const VIEW_MAX := 1.62
+
+
 func _frame() -> void:
-	# Frame from the mesh bounds: works for any VRM, whatever its bones are called.
 	var box := AABB()
 	var first := true
 	for mi in Avatars._meshes(_model):
 		var b: AABB = mi.global_transform * mi.get_aabb()
 		box = b if first else box.merge(b)
 		first = false
-	var top := box.end.y if not first else 1.6
-	var height := box.size.y if not first else 1.6
-	var cx := box.get_center().x if not first else 0.0
-	var cz := box.get_center().z if not first else 0.0
-	var look := Vector3(cx, top - height * 0.17, cz)
+	var head := Vector3(box.get_center().x, box.end.y - box.size.y * 0.14, box.get_center().z) if not first else Vector3(0, 1.45, 0)
 	var sk := Avatars._skeleton(_model)
 	if sk and Avatars.bone(_model, "Head") != -1:
-		var hp := (sk.global_transform * sk.get_bone_global_pose(Avatars.bone(_model, "Head"))).origin
-		look = hp + Vector3(0, -0.1, 0)
-		height = maxf(hp.y * 1.12, 0.5)
+		head = (sk.global_transform * sk.get_bone_global_pose(Avatars.bone(_model, "Head"))).origin
+	var view := VIEW_H
+	var aspect := 0.8
+	var vp := get_viewport()
+	if vp and vp.size.y > 0:
+		aspect = float(vp.size.x) / float(vp.size.y)
+	# How far the hair (or a hat, or horns) reaches above and to the side of the head.
+	var reach := _head_reach(head)
+	view = maxf(view, (reach.y + 0.06) / HEAD_AT)
+	view = maxf(view, 2.0 * (reach.x + 0.05) / aspect)
+	view = minf(view, VIEW_MAX)
+	var look := head + Vector3(0, view * (0.5 - HEAD_AT), 0)
 	_head = look
 	# Which way does the face point? VRM 0.x faces -Z after import, 1.0 faces +Z.
 	var face := 1.0 if _head_forward() >= 0.0 else -1.0
-	var dist := height * 0.85
-	# Tall hair and hats stay in the picture: pull back until the very top of the model fits,
-	# with a little air above it.
-	if not first:
-		var need := (top - look.y) + 0.07
-		var half := tan(deg_to_rad(_cam.fov * 0.5)) * dist
-		if need > half:
-			var extra := need - half
-			# Half of it by looking a little higher, the rest by stepping back.
-			look.y += extra * 0.5
-			dist = (need - extra * 0.5) / tan(deg_to_rad(_cam.fov * 0.5))
-	_cam.position = look + Vector3(0, height * 0.02, face * dist)
+	var dist := (view / 2.0) / tan(deg_to_rad(_cam.fov * 0.5))
+	_cam.position = look + Vector3(0, 0, face * dist)
 	_cam.look_at(look)
+
+
+## x: the widest the model gets from the head sideways, y: the highest it gets above the head
+## bone, both taken from the real vertices at head height and up (hair, hats, horns, wings of
+## hair), not from the mesh's bounding box, which is often wrong on a rigged model.
+func _head_reach(head: Vector3) -> Vector2:
+	var up := 0.0
+	var half := 0.0
+	var sk := Avatars._skeleton(_model)
+	for mi in Avatars._meshes(_model):
+		if mi.mesh == null:
+			continue
+		var xf := mi.global_transform
+		if sk != null and mi.skin != null and mi.skin.get_bind_count() > 0:
+			var bi := mi.skin.get_bind_bone(0)
+			if bi < 0:
+				bi = sk.find_bone(mi.skin.get_bind_name(0))
+			if bi >= 0:
+				xf = sk.global_transform * sk.get_bone_global_rest(bi) * mi.skin.get_bind_pose(0)
+		for si in mi.mesh.get_surface_count():
+			var verts: PackedVector3Array = mi.mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]
+			var step := maxi(1, verts.size() / 9000)
+			for v in range(0, verts.size(), step):
+				var p := xf * verts[v]
+				if p.y < head.y - 0.02:
+					continue
+				up = maxf(up, p.y - head.y)
+				half = maxf(half, absf(p.x - head.x))
+	return Vector2(half, up)
 
 
 func _head_forward() -> float:

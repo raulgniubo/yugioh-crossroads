@@ -489,7 +489,7 @@ func butterflies(center: Vector3, n := 5) -> void:
 func _person(model: String, pos: Vector3, rot: float, stance := "stand", dorm := "") -> RoamFigure:
 	var f := RoamFigure.new()
 	add_child(f)
-	f.position = pos
+	f.position = city.call("clear_spot", pos) if city.has_method("clear_spot") else pos
 	f.rotation.y = rot
 	f.setup(model if Avatars.has_avatar(model) else "student_boy", Color.GRAY, "", false)
 	f.stance = stance
@@ -1271,45 +1271,85 @@ func _ring_at(d: float, lane: float) -> Array:
 	return [Vector3(-half_x, 15.6, z0 + d), 0.0]
 
 
-## Satellite and Heartland: a first pass. People talking around the ring, a few things at the
-## edges, birds, and somebody always on the move.
+## Satellite and Heartland: the small things and the people that go with the scenery
+## ArenaScenery builds. Satellite gets its clutter, its crows and the folk round the fire and
+## in the garage; Heartland its sweeper robots, an ice cream queue and people out for the day.
+var _bots: Array = []            # sweeper robots: [node, radius, speed, phase, eye material]
+
+
 func _decor_arena() -> void:
 	var g := 0.02
 	var junk := key == "satellite"
-	for i in 6:
-		var ang := i * TAU / 6.0 + 0.5
-		var p := Vector3(cos(ang) * 30.0, g, sin(ang) * 30.0)
-		if junk:
-			crate_stack(p, 2 + i % 3)
-			if i % 2 == 0:
-				cone(p + Vector3(1.4, 0, 0.6))
-		else:
-			planter(p, 2.2, -ang + PI / 2)
-			if i % 2 == 0:
-				bin(p + Vector3(1.8, 0, 0.4))
+	var story := str(Router.roam.get("story", "")) != ""
 	if junk:
-		bike(Vector3(-27.0, g, 14.0), 0.7, Color("ff8a3a"))
-		bike(Vector3(26.0, g, -16.0), 2.2, Color("8a8f98"))
+		for cs in [[Vector3(24.5, g, 21.0), 3], [Vector3(-28.5, g, -4.5), 2], [Vector3(5.0, g, -24.5), 3], [Vector3(-21.0, g, 25.5), 2], [Vector3(17.0, g, -3.5), 2]]:
+			crate_stack(cs[0], cs[1])
+		cone(Vector3(3.3, g, -8.0))
+		cone(Vector3(3.5, g, -10.6))
+		cone(Vector3(-3.2, g, -9.4))
+		bike(Vector3(-28.0, g, 10.5), 0.7, Color("ff8a3a"))
+		bike(Vector3(17.5, g, -22.0), 2.2, Color("8a8f98"))
 		cat(Vector3(-18.0, g, -27.0), 1.2, Color(0.45, 0.4, 0.36), "a junkyard cat")
-		flock(Vector3(8.0, g, 27.0), 6, Color(0.2, 0.2, 0.24))
+		cat(Vector3(27.6, g, 1.2), -1.9, Color(0.16, 0.15, 0.17), "a cat that owns the container stairs")
+		flock(Vector3(-4.0, g, 31.0), 7, Color(0.12, 0.12, 0.15))
+		flock(Vector3(15.0, g, -27.0), 5, Color(0.12, 0.12, 0.15))
+		manhole(Vector3(1.2, g, 8.5))
+		manhole(Vector3(-14.0, g, 20.6))
+		if not story:
+			var folk: Array = ["street_duelist", "duelist_m5", "duelist_m9", "duelist_f1"]
+			# Two warming their hands at the barrel, a mechanic at the welder, one eyeing the runner.
+			_person(folk[1], Vector3(12.4, g, 23.8), atan2(-1.4, -0.6), "stand").watch = null
+			_person(folk[3], Vector3(10.0, g, 24.3), atan2(1.0, -1.1), "stand").watch = null
+			_person(folk[2], Vector3(-11.5, g, 20.1), 0.0, "browse").watch = null
+			_person(folk[0], Vector3(-8.9, g, 17.7), 0.0, "stand").watch = null
+			chat_pair(Vector3(21.0, g, 6.0), 0.2, folk[2], folk[3])
+			chat_pair(Vector3(-27.5, g, -3.0), 0.4, folk[1], folk[2])
+			chat_pair(Vector3(-9.0, g, -27.0), 1.6, folk[3], folk[0])
+			chat_pair(Vector3(-26.0, g, 6.5), -1.3, folk[0], folk[1])
 	else:
 		a_sign(Vector3(-12.0, g, 30.0), 0.5, Color("ffd23a"))
 		a_sign(Vector3(13.0, g, 29.0), -0.5, Color("7cc4ff"))
+		bin(Vector3(14.6, g, 11.6))
+		bin(Vector3(-14.6, g, 11.6))
+		bin(Vector3(15.0, g, -13.0))
 		cat(Vector3(18.0, g, -27.0), -1.2, Color(0.95, 0.8, 0.5), "a very round cat")
 		flock(Vector3(-8.0, g, 27.0), 8)
-		butterflies(Vector3(20.0, 1.0, 26.0), 5)
-		butterflies(Vector3(-26.0, 1.0, -12.0), 4)
-	if str(Router.roam.get("story", "")) == "":
-		var folk: Array = ["street_duelist", "duelist_m5", "duelist_m9", "duelist_f1"] if junk else ["student_girl", "student_boy", "office_worker", "stylish_woman"]
-		chat_pair(Vector3(-10.0, g, 28.5), 1.3, folk[0], folk[1])
-		chat_pair(Vector3(27.5, g, 3.0), 0.2, folk[2], folk[3])
-		chat_pair(Vector3(-27.5, g, -3.0), 0.4, folk[1], folk[2])
-		chat_pair(Vector3(9.0, g, -27.0), 1.6, folk[3], folk[0])
+		flock(Vector3(16.0, g, 8.0), 6, Color(0.92, 0.92, 0.96))
+		butterflies(Vector3(19.8, 1.0, 26.3), 6)
+		butterflies(Vector3(-31.2, 1.0, 10.7), 5)
+		butterflies(Vector3(-18.9, 1.0, 27.0), 5)
+		butterflies(Vector3(31.5, 1.0, 9.6), 4)
+		# Sweeper robots: a white dome on a skirt of brushes, doing slow laps of the plaza.
+		for bd in [[10.6, 0.16, 0.0], [19.0, -0.1, 2.0], [28.5, 0.07, 4.0]]:
+			var n := Node3D.new()
+			add_child(n)
+			_cyl(0.42, 0.46, 0.16, Vector3(0, 0.08, 0), _m(Color(0.22, 0.24, 0.3), 0.6), n, 14)
+			_ball(0.4, Vector3(0, 0.3, 0), _m(Color(0.95, 0.96, 0.98), 0.25, 0.1), n, Vector3(1.0, 0.8, 1.0))
+			_cyl(0.43, 0.43, 0.04, Vector3(0, 0.2, 0), _m(Color("ff7ac8") if _bots.size() % 2 == 0 else Color("5ae0ff"), 0.4), n, 14)
+			var eye := StandardMaterial3D.new()
+			eye.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			eye.albedo_color = Color("5ae0ff")
+			_box(Vector3(0.3, 0.07, 0.04), Vector3(0, 0.4, 0.34), eye, n)
+			_cyl(0.015, 0.015, 0.3, Vector3(0, 0.72, -0.1), _m(Color(0.22, 0.24, 0.3), 0.6), n, 5)
+			_ball(0.045, Vector3(0, 0.89, -0.1), eye, n)
+			_bots.append([n, float(bd[0]), float(bd[1]), float(bd[2]), eye])
+		if not story:
+			var folk2: Array = ["student_girl", "student_boy", "office_worker", "stylish_woman"]
+			# The ice cream seller and somebody making up their mind; two by the balloons.
+			_person(folk2[3], Vector3(11.85, g, 24.67), -0.4, "stand").watch = null
+			_person(folk2[1], Vector3(11.2, g, 26.9), PI - 0.4, "browse").watch = null
+			chat_pair(Vector3(-10.4, g, 27.4), 1.3, folk2[0], folk2[1])
+			chat_pair(Vector3(27.5, g, 3.0), 0.2, folk2[2], folk2[3])
+			chat_pair(Vector3(-27.5, g, -3.0), 0.4, folk2[1], folk2[2])
+			chat_pair(Vector3(9.0, g, -27.0), 1.6, folk2[3], folk2[0])
+			_person(folk2[2], Vector3(-19.5, g, -11.5), atan2(-4.5, -6.5), "browse").watch = null
+	if not story:
+		var ring: Array = ["street_duelist", "duelist_m5", "duelist_m9", "duelist_f1"] if junk else ["student_girl", "student_boy", "office_worker", "stylish_woman"]
 		# A few people at the ring ropes, watching whoever is up.
 		for i in 4:
 			var ang := 0.6 + i * 0.75
-			var wp := Vector3(cos(ang) * 9.6, g, sin(ang) * 7.2 + (0.0 if i < 2 else 0.0))
-			var w := _person(folk[i % folk.size()], wp, atan2(-wp.x, -wp.z), "stand")
+			var wp := Vector3(cos(ang) * 9.6, g, sin(ang) * 7.2)
+			var w := _person(ring[i % ring.size()], wp, atan2(-wp.x, -wp.z), "stand")
 			w.watch = null
 
 
@@ -1336,7 +1376,7 @@ func _decor_academy() -> void:
 		var out: Vector3 = doors[dk][1]
 		var side := out.cross(Vector3.UP)
 		for s: float in [-1.0, 1.0]:
-			var fp: Vector3 = d + out * (3.0 if dk == "dorm_red" else 1.4) + side * s * (2.4 if dk != "academy_main" else 4.2)
+			var fp: Vector3 = d + out * (3.0 if str(dk).begins_with("dorm_") else 1.4) + side * s * (2.4 if dk != "academy_main" else 4.2)
 			_cyl(0.05, 0.06, 4.6, fp + Vector3(0, 2.3, 0), _m(Color(0.85, 0.85, 0.88), 0.3, 0.7))
 			var fl := _box(Vector3(1.3, 0.8, 0.02), fp + Vector3(0, 4.0, 0) + side * 0.7, _m(flag_at.get(dk, Color.WHITE), 0.8))
 			fl.rotation.y = atan2(side.x, side.z) + PI / 2
@@ -1420,6 +1460,12 @@ func _process(delta: float) -> void:
 		dn.position = c + Vector3(cos(a) * float(d[2]), float(d[5]) + sin(_t * 1.3 + float(d[4])) * 0.35, sin(a) * float(d[2]))
 		dn.rotation.y = -a + (0.0 if float(d[3]) > 0.0 else PI)
 		((dn.get_meta("eye")) as StandardMaterial3D).albedo_color = Color("ff3a4a") if fmod(_t + float(d[4]), 1.2) < 0.25 else Color("3a86ff")
+	for bt in _bots:
+		var bn: Node3D = bt[0]
+		var ba := _t * float(bt[2]) + float(bt[3])
+		bn.position = Vector3(cos(ba) * float(bt[1]), 0.02, sin(ba) * float(bt[1]))
+		bn.rotation.y = -ba + (0.0 if float(bt[2]) > 0.0 else PI)
+		(bt[4] as StandardMaterial3D).albedo_color = Color("ffffff") if fmod(_t * 0.7 + float(bt[3]), 2.0) < 0.2 else Color("5ae0ff")
 	for rr in _ring_runners:
 		rr[1] = float(rr[1]) + float(rr[2]) * delta
 		var at := _ring_at(float(rr[1]), float(rr[3]))

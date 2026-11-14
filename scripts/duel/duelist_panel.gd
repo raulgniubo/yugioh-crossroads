@@ -28,8 +28,8 @@ func _init(p: int) -> void:
 	clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if p == 0:
 		# Yours leans out a little over the top edge.
-		clip.position = Vector2(0, -70)
-		clip.size = Vector2(190, SIZE.y + 70)
+		clip.position = Vector2(0, -130)
+		clip.size = Vector2(190, SIZE.y + 130)
 	else:
 		clip.position = Vector2(SIZE.x - 190, 0)
 		clip.size = Vector2(190, SIZE.y - 2)
@@ -37,8 +37,11 @@ func _init(p: int) -> void:
 	portrait = TextureRect.new()
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	portrait.size = Vector2(208, 260)
-	portrait.position = Vector2(-9, 0) if p == 0 else Vector2(-9, -6)
+	# The picture is framed with room for the tallest hair, so it is shown larger than the
+	# strip it sits in and placed so the head lands where the strip is.
+	portrait.size = Vector2(316, 395)
+	portrait.position = Vector2(-63, -41) if p == 0 else Vector2(-63, -85)
+	portrait.set_meta("home_x", portrait.position.x)
 	portrait.pivot_offset = portrait.size / 2.0
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip.add_child(portrait)

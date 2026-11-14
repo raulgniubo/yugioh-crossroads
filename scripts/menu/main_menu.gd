@@ -193,7 +193,7 @@ func _build_menu() -> void:
 
 ## The four tournaments at a glance, and a way to go straight to each one's desk.
 func _on_tournaments() -> void:
-	var p := SidePanel.new("Tournaments", 720)
+	var p := SidePanel.new("Tournaments", 760)
 	p.z_index = 100
 	var hint := UITheme.label("Beat duelists out in the world to earn Finals Badges, then win the bracket. Three titles open the Crossroads Cup.", 18, UITheme.TEXT_DIM)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -201,16 +201,8 @@ func _on_tournaments() -> void:
 	Tournament.load_data()
 	for id in Tournament.DEFS:
 		var d: Dictionary = Tournament.DEFS[id]
-		var titles := Tournament.titles(str(id))
-		var missing: Array = Tournament.missing(str(id))
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(0, 104)
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		var state := Loc.t("Champion  x%d") % titles if titles > 0 else (Loc.t("Locked: needs %s") % ", ".join(missing) if not missing.is_empty() else Loc.t("Open. Go to the desk to enter."))
-		b.text = "%s\n%s" % [Loc.t(str(d["name"])).to_upper(), state]
-		b.add_theme_font_size_override("font_size", 24)
-		b.add_theme_color_override("font_color", Color(d.get("color", UITheme.ACCENT)).lightened(0.4))
-		b.disabled = not missing.is_empty()
+		var b := TourneyCard.new(str(id))
+		b.disabled = not Tournament.missing(str(id)).is_empty()
 		var district := str(d.get("district", "domino"))
 		b.pressed.connect(func():
 			if district == "ride":
@@ -268,9 +260,11 @@ func _build_featured() -> void:
 	for e in plan:
 		var i: int = e[0]
 		var sc: float = e[1]
-		var sz := Vector2(340, 425) * sc
+		# The picture shows a wider piece of the world than the bust it used to (room for any
+		# hair), so the slot is bigger and the slots overlap: what overlaps is empty air.
+		var sz := Vector2(592, 740) * sc
 		var cx := vs.x - 905.0 + i * 244.0
-		var home := Vector2(cx - sz.x / 2.0, vs.y - 150.0 - sz.y + float(e[2]))
+		var home := Vector2(cx - sz.x / 2.0, vs.y - 62.0 - sz.y + float(e[2]))
 		var tex := TextureRect.new()
 		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -281,7 +275,7 @@ func _build_featured() -> void:
 		tex.position = home
 		var tag := Control.new()
 		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tag.position = Vector2(cx, home.y + sz.y - 26.0)
+		tag.position = Vector2(cx, home.y + sz.y - 114.0)
 		tag.draw.connect(_draw_name_tag.bind(tag))
 		holder.add_child(tag)
 		_line[i] = {"tex": tex, "tag": tag, "key": "", "home": home, "pool": pools[i], "at": 0, "dim": 0.82 if sc < 1.0 else 1.0}
@@ -318,7 +312,9 @@ uniform float dim = 1.0;
 void fragment() {
 	vec4 c = texture(TEXTURE, UV) * COLOR;
 	c.rgb = mix(c.rgb * dim, vec3(0.035, 0.05, 0.11), shade);
-	c.a *= 1.0 - smoothstep(0.80, 0.985, UV.y);
+	c.a *= 1.0 - smoothstep(0.74, 0.9, UV.y);
+	// Nothing ends in a hard line at the edge of its picture.
+	c.a *= smoothstep(0.0, 0.05, UV.x) * smoothstep(1.0, 0.95, UV.x) * smoothstep(0.0, 0.03, UV.y);
 	COLOR = c;
 }
 """
@@ -336,7 +332,7 @@ func _set_lineup(i: int, key: String, instant: bool) -> void:
 	var d := Characters.get_char(key)
 	var swap := func():
 		slot["key"] = key
-		tex.texture = Portraits.get_portrait(key)
+		tex.texture = Portraits.get_portrait(key, true)
 		tag.set_meta("name", str(d.get("short", key)).to_upper())
 		tag.set_meta("color", Color(d.get("color", Comic.BLUE)))
 		tag.queue_redraw()
@@ -463,7 +459,7 @@ func _on_flushed() -> void:
 	_refresh_chip()
 	for i in _line.size():
 		if _line[i] != null and str(_line[i]["key"]) != "":
-			(_line[i]["tex"] as TextureRect).texture = Portraits.get_portrait(str(_line[i]["key"]))
+			(_line[i]["tex"] as TextureRect).texture = Portraits.get_portrait(str(_line[i]["key"]), true)
 
 
 func _refresh_chip() -> void:

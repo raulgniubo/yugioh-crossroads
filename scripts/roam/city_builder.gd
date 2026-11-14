@@ -548,6 +548,27 @@ func _tree_fits(pos: Vector3, gap := 3.2) -> bool:
 	return true
 
 
+## The pre-made models come with every surface drawn from both sides. Where two faces of a thin
+## part (a pane of glass, a wall panel, a roof tile) lie on top of each other, the far one's back
+## and the near one's front fight over every pixel and the surface shimmers in shards. Drawing
+## front faces only leaves one of the two to draw, so there is nothing to fight. Trees keep both
+## sides: their leaves are single sheets.
+static var _one_sided := {}
+
+
+static func one_sided(name: String, inst: Node) -> void:
+	if _one_sided.has(name) or name.trim_prefix("own:") in TREE_KINDS or name in ["food_stall", "bus_stop"]:
+		return          # (the stall's curtain and the shelter's panels are single sheets too)
+	_one_sided[name] = true
+	for mi in Avatars._meshes(inst):
+		if mi.mesh == null:
+			continue
+		for i in mi.mesh.get_surface_count():
+			var m := mi.mesh.surface_get_material(i) as BaseMaterial3D
+			if m != null and m.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED:
+				m.cull_mode = BaseMaterial3D.CULL_BACK
+
+
 func _matte(name: String, inst: Node) -> void:
 	if _matte_done.has(name) or name in SHINY_PROPS:
 		return
@@ -617,6 +638,8 @@ func prop(name: String, pos: Vector3, rot: float, size: float, by_height := fals
 	if name in TREE_KINDS and parent == null and not _tree_fits(pos):
 		return null
 	var inst: Node3D = own_instance(name)
+	if inst != null and not ("--two-sided" in OS.get_cmdline_user_args()):
+		one_sided("own:" + name, inst)
 	if inst == null:
 		if not ResourceLoader.exists(MODELS % name):
 			return null
@@ -625,6 +648,8 @@ func prop(name: String, pos: Vector3, rot: float, size: float, by_height := fals
 			ps = load(MODELS % name)
 			_model_cache[name] = ps
 		inst = ps.instantiate()
+		if not ("--two-sided" in OS.get_cmdline_user_args()):
+			one_sided(name, inst)
 		_matte(name, inst)
 	if name in TREE_KINDS:
 		_sway(inst)
@@ -742,20 +767,23 @@ class BoxBatch:
 ## `walkable` everything you can stand on or bump into is solid: walk up the stairs, along the
 ## walkway, up to the doors. Returns the holder; its "upper_doors" meta lists where the bedroom
 ## doors are in the world, as [floor point, outward direction].
-func plank_dorm(at: Vector3, yaw: float, trim: Color, walkable := true) -> Node3D:
+## `style` makes it another house on the same plan: "wall", "dark" (frames, posts, rails), "deck"
+## and "roof" materials, and "w", "d", "floor" sizes. The red dorm is planks, the yellow one
+## plaster and timber, the blue one white stone under slate.
+func plank_dorm(at: Vector3, yaw: float, trim: Color, walkable := true, style := {}) -> Node3D:
 	var h := Node3D.new()
 	h.position = at
 	h.rotation.y = yaw
 	add_child(h)
-	var wall := surf("wood", Color(0.62, 0.45, 0.3))
-	var dark := surf("wood", Color(0.36, 0.25, 0.17))
-	var deck := surf("wood", Color(0.5, 0.37, 0.25))
-	var roof_m := surf("roof", trim.darkened(0.18))
+	var wall: Material = style.get("wall", surf("wood", Color(0.62, 0.45, 0.3)))
+	var dark: Material = style.get("dark", surf("wood", Color(0.36, 0.25, 0.17)))
+	var deck: Material = style.get("deck", surf("wood", Color(0.5, 0.37, 0.25)))
+	var roof_m: Material = style.get("roof", surf("roof", trim.darkened(0.18)))
 	var paint := mat(trim, 0.8)
 	var glass := glow_mat(Color(1.0, 0.86, 0.6), 0.5)
-	var W := 13.0
-	var D := 6.0
-	var F := 3.0                      # height of one floor
+	var W: float = style.get("w", 13.0)
+	var D: float = style.get("d", 6.0)
+	var F: float = style.get("floor", 3.0)                      # height of one floor
 	var walk := 1.6                   # depth of the walkway
 	var zf := D / 2.0                 # the front wall
 	var on: bool = walkable and make_solid
@@ -769,8 +797,9 @@ func plank_dorm(at: Vector3, yaw: float, trim: Color, walkable := true) -> Node3
 		for cz: float in [-zf, zf]:
 			box(Vector3(0.24, F * 2.0, 0.24), Vector3(cx, F, cz), dark, false, h)
 	# Roof: one long prism over the house and the walkway, a plank gable showing at each end.
+	var castle: bool = style.get("castle", false)
 	var span := D + walk + 1.2
-	var rise := 2.3
+	var rise: float = style.get("rise", 2.3)
 	var rz := walk / 2.0
 	var pm := PrismMesh.new()
 	pm.size = Vector3(span, rise, W + 0.9)
@@ -779,6 +808,7 @@ func plank_dorm(at: Vector3, yaw: float, trim: Color, walkable := true) -> Node3
 	roof.material_override = roof_m
 	roof.rotation.y = PI / 2.0
 	roof.position = Vector3(0, F * 2.0 + rise / 2.0 + 0.04, rz)
+	roof.visible = not castle
 	h.add_child(roof)
 	# The gable ends poke out a hand's width so the planks show under the tiles.
 	for sx: float in [-1.0, 1.0]:
@@ -789,16 +819,29 @@ func plank_dorm(at: Vector3, yaw: float, trim: Color, walkable := true) -> Node3
 		g.material_override = dark
 		g.rotation.y = PI / 2.0
 		g.position = Vector3(sx * (W / 2.0 + 0.47), F * 2.0 + (rise - 0.35) / 2.0, rz)
+		g.visible = not castle
 		h.add_child(g)
-	box(Vector3(W + 1.0, 0.16, 0.16), Vector3(0, F * 2.0 + rise + 0.04, rz), dark, false, h)
+	box(Vector3(W + 1.0, 0.16, 0.16), Vector3(0, F * 2.0 + rise + 0.04, rz), dark, false, h).visible = not castle
+	if style.get("manor", false):
+		_manor_roof(h, W, D, F, walk, span, rise, rz, wall, dark, roof_m, paint, glass)
+	if castle:
+		_castle_top(h, W, D, F, walk, wall, dark, roof_m, paint, glass, on)
 	# ---- the walkway and what holds it up
 	var wz := zf + walk / 2.0
 	box(Vector3(W, 0.16, walk), Vector3(0, F - 0.08, wz), deck, false, h)
 	_dorm_solid(h, on, Vector3(W, 0.16, walk), Vector3(0, F - 0.08, wz))
 	box(Vector3(W, 0.22, 0.14), Vector3(0, F - 0.2, zf + walk - 0.07), dark, false, h)
+	var gilt := mat(Color(0.86, 0.7, 0.32), 0.3, 0.8)
 	for k in 5:
 		var px := -W / 2.0 + 0.2 + k * (W - 0.4) / 4.0
-		box(Vector3(0.18, F * 2.0 - 0.1, 0.18), Vector3(px, F - 0.05, zf + walk - 0.1), dark, false, h)
+		if style.get("columns", false):
+			# Round columns on square bases with gilt capitals, for the grand house.
+			cyl(0.13, 0.15, F * 2.0 - 0.1, Vector3(px, F - 0.05, zf + walk - 0.1), dark, h, 12)
+			box(Vector3(0.38, 0.3, 0.38), Vector3(px, 0.15, zf + walk - 0.1), dark, false, h)
+			for cy: float in [F - 0.36, F * 2.0 - 0.2]:
+				box(Vector3(0.36, 0.12, 0.36), Vector3(px, cy, zf + walk - 0.1), gilt, false, h)
+		else:
+			box(Vector3(0.18, F * 2.0 - 0.1, 0.18), Vector3(px, F - 0.05, zf + walk - 0.1), dark, false, h)
 		_dorm_solid(h, on, Vector3(0.2, F - 0.2, 0.2), Vector3(px, (F - 0.2) / 2.0, zf + walk - 0.1))
 		var brace := box(Vector3(0.1, 0.1, 0.9), Vector3(px, F - 0.5, zf + walk - 0.45), dark, false, h)
 		brace.rotation.x = 0.75
@@ -812,7 +855,7 @@ func plank_dorm(at: Vector3, yaw: float, trim: Color, walkable := true) -> Node3
 	box(Vector3(0.09, 0.09, walk), Vector3(-W / 2.0 + 0.05, F + 1.0, wz), dark, false, h)
 	_dorm_solid(h, on, Vector3(0.1, 1.15, walk), Vector3(-W / 2.0 + 0.05, F + 0.575, wz))
 	# ---- the outside stairs, down the +X side
-	var run := 4.7
+	var run := F * 1.57
 	var x0 := W / 2.0
 	var steps := 16
 	var slope := atan2(F, run)
@@ -845,7 +888,7 @@ func plank_dorm(at: Vector3, yaw: float, trim: Color, walkable := true) -> Node3
 	var xf := h.transform
 	var out := xf.basis * Vector3(0, 0, 1)
 	for i in 4:
-		var dx := -W / 2.0 + 1.75 + i * 3.17
+		var dx := -W / 2.0 + 1.75 + i * (W - 3.5) / 3.0
 		box(Vector3(1.24, 2.3, 0.1), Vector3(dx, F + 1.15, zf + 0.03), dark, false, h)
 		box(Vector3(1.0, 2.1, 0.08), Vector3(dx, F + 1.05, zf + 0.07), mat(trim.darkened(0.3), 0.7), false, h)
 		box(Vector3(0.8, 0.8, 0.03), Vector3(dx, F + 1.5, zf + 0.115), mat(trim.darkened(0.42), 0.7), false, h)
@@ -860,13 +903,32 @@ func plank_dorm(at: Vector3, yaw: float, trim: Color, walkable := true) -> Node3
 			_plank_window(h, Vector3(wx, F + 1.55, zf), dark, glass, 0.95, 1.05)
 	for sx: float in [-1.0, 1.0]:
 		for k in 2:
-			_plank_window(h, Vector3(sx * (2.6 + k * 2.5), 1.75, zf), dark, glass, 1.2, 1.3)
+			var gx := sx * (W * 0.2 + k * W * 0.19)
+			_plank_window(h, Vector3(gx, 1.75, zf), dark, glass, 1.2, 1.3)
+			if style.get("manor", false):
+				for ex: float in [-1.0, 1.0]:
+					box(Vector3(0.42, 1.5, 0.06), Vector3(gx + ex * 0.95, 1.75, zf + 0.05), paint, false, h)
+			if style.get("boxes", false):
+				# A flower box under each ground floor window.
+				box(Vector3(1.5, 0.22, 0.3), Vector3(gx, 0.9, zf + 0.2), dark, false, h)
+				for b in 6:
+					var bloom := MeshInstance3D.new()
+					var bm := SphereMesh.new()
+					bm.radius = 0.11
+					bm.height = 0.18
+					bm.radial_segments = 8
+					bm.rings = 4
+					bloom.mesh = bm
+					bloom.material_override = mat(Color("ffd84a") if b % 2 == 0 else Color("ffffff"), 0.8)
+					bloom.position = Vector3(gx - 0.6 + b * 0.24, 1.07, zf + 0.2)
+					bloom.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+					h.add_child(bloom)
 		for fy: float in [1.75, F + 1.55]:
 			var side_w := _plank_window(h, Vector3(sx * W / 2.0, fy, -0.6), dark, glass, 1.1, 1.2)
 			side_w.rotation.y = sx * PI / 2.0
 	for k in 4:
-		_plank_window(h, Vector3(-4.8 + k * 3.2, F + 1.55, -zf), dark, glass, 1.0, 1.1).rotation.y = PI
-		_plank_window(h, Vector3(-4.8 + k * 3.2, 1.75, -zf), dark, glass, 1.0, 1.1).rotation.y = PI
+		_plank_window(h, Vector3(-W * 0.37 + k * W * 0.246, F + 1.55, -zf), dark, glass, 1.0, 1.1).rotation.y = PI
+		_plank_window(h, Vector3(-W * 0.37 + k * W * 0.246, 1.75, -zf), dark, glass, 1.0, 1.1).rotation.y = PI
 	# The front door: a double door under a little porch roof in the dorm's color.
 	box(Vector3(2.5, 2.7, 0.12), Vector3(0, 1.35, zf + 0.03), dark, false, h)
 	for sx: float in [-1.0, 1.0]:
@@ -874,14 +936,205 @@ func plank_dorm(at: Vector3, yaw: float, trim: Color, walkable := true) -> Node3
 		box(Vector3(0.7, 0.9, 0.03), Vector3(sx * 0.53, 1.75, zf + 0.125), glass, false, h)
 		box(Vector3(0.05, 0.4, 0.07), Vector3(sx * 0.1, 1.2, zf + 0.15), mat(Color(0.86, 0.7, 0.32), 0.3, 0.8), false, h)
 	box(Vector3(3.2, 0.5, 0.06), Vector3(0, F - 0.55, zf + walk - 0.16), paint, false, h)
+	if style.get("columns", false):
+		# A gilt line under the eaves, a crest over the door and a finial at each end of the ridge.
+		box(Vector3(W + 0.1, 0.07, D + 0.1), Vector3(0, F * 2.0 - 0.34, 0), gilt, false, h)
+		box(Vector3(W + 0.09, 0.06, D + 0.09), Vector3(0, F + 0.14, 0), gilt, false, h)
+		var crest := cyl(0.55, 0.55, 0.08, Vector3(0, F - 0.55, zf + walk - 0.1), gilt, h, 6)
+		crest.rotation.x = PI / 2.0
+		var gem := cyl(0.36, 0.36, 0.1, Vector3(0, F - 0.55, zf + walk - 0.08), paint, h, 6)
+		gem.rotation.x = PI / 2.0
+		for sx: float in [-1.0, 1.0]:
+			if not castle:
+				cyl(0.0, 0.1, 0.7, Vector3(sx * (W / 2.0 + 0.4), F * 2.0 + rise + 0.45, rz), gilt, h, 8)
 	h.set_meta("upper_doors", ups)
-	h.set_meta("size", Vector3(W, F * 2.0 + rise, D + walk))
+	h.set_meta("size", Vector3(W, F * 2.0 + (10.0 if castle else rise), D + walk))
 	h.set_meta("front", [xf * Vector3(0, 0, zf), out])
 	var c := xf * Vector3(run / 2.0, 0, walk / 2.0)
 	var fx: float = (W + run + 1.0) if absf(sin(yaw)) < 0.7 else (D + walk + 1.0)
 	var fz: float = (D + walk + 1.0) if absf(sin(yaw)) < 0.7 else (W + run + 1.0)
 	no_grass.append(Rect2(c.x - fx / 2.0, c.z - fz / 2.0, fx, fz))
 	return h
+
+
+## What lifts the yellow dorm over the red one: a big gable over the front door with a round
+## window in it, dormers along the roof, a brick chimney.
+func _manor_roof(h: Node3D, W: float, D: float, F: float, walk: float, span: float, rise: float, rz: float,
+		wall: Material, dark: Material, roof_m: Material, paint: Material, glass: Material) -> void:
+	var eave_z := rz + span / 2.0
+	# The front gable: its ridge runs out from the main ridge to just past the eave.
+	var gw := 5.6
+	var gh := rise * 0.86
+	var gm := PrismMesh.new()
+	gm.size = Vector3(gw, gh, span / 2.0 + 0.5)
+	var gable := MeshInstance3D.new()
+	gable.mesh = gm
+	gable.material_override = roof_m
+	gable.position = Vector3(0, F * 2.0 + gh / 2.0 + 0.05, rz + span / 4.0 + 0.25)
+	h.add_child(gable)
+	var fm := PrismMesh.new()
+	fm.size = Vector3(gw - 0.7, gh - 0.4, 0.12)
+	var face := MeshInstance3D.new()
+	face.mesh = fm
+	face.material_override = wall
+	face.position = Vector3(0, F * 2.0 + (gh - 0.4) / 2.0 + 0.05, eave_z + 0.46)
+	h.add_child(face)
+	for sx: float in [-1.0, 1.0]:
+		# Barge boards up the edge of the gable.
+		var board := box(Vector3(0.14, 0.2, sqrt(gh * gh + gw * gw / 4.0) + 0.2), Vector3.ZERO, dark, false, h)
+		board.transform = Transform3D(Basis(Vector3.UP, PI / 2.0) * Basis(Vector3.RIGHT, sx * atan2(gh, gw / 2.0)), Vector3(sx * gw / 4.0, F * 2.0 + gh / 2.0 + 0.1, eave_z + 0.54))
+	var ring := cyl(0.62, 0.62, 0.1, Vector3(0, F * 2.0 + gh * 0.4, eave_z + 0.5), dark, h, 20)
+	ring.rotation.x = PI / 2.0
+	var pane := cyl(0.5, 0.5, 0.12, Vector3(0, F * 2.0 + gh * 0.4, eave_z + 0.51), glass, h, 20)
+	pane.rotation.x = PI / 2.0
+	box(Vector3(0.06, 1.0, 0.14), Vector3(0, F * 2.0 + gh * 0.4, eave_z + 0.52), dark, false, h)
+	box(Vector3(1.0, 0.06, 0.14), Vector3(0, F * 2.0 + gh * 0.4, eave_z + 0.52), dark, false, h)
+	# Dormers: two either side of the gable, each with its own little roof and a lit window.
+	for dx: float in [-W * 0.36, -W * 0.2, W * 0.2, W * 0.36]:
+		var dz := rz + span * 0.27
+		var dy := F * 2.0 + rise * 0.46
+		box(Vector3(1.3, 1.2, 1.7), Vector3(dx, dy + 0.3, dz), wall, false, h)
+		box(Vector3(0.9, 0.8, 0.05), Vector3(dx, dy + 0.38, dz + 0.86), glass, false, h)
+		box(Vector3(1.06, 0.07, 0.08), Vector3(dx, dy - 0.06, dz + 0.88), dark, false, h)
+		box(Vector3(0.05, 0.8, 0.07), Vector3(dx, dy + 0.38, dz + 0.88), dark, false, h)
+		var dm := PrismMesh.new()
+		dm.size = Vector3(1.7, 0.7, 2.0)
+		var dr := MeshInstance3D.new()
+		dr.mesh = dm
+		dr.material_override = roof_m
+		dr.position = Vector3(dx, dy + 1.25, dz + 0.05)
+		h.add_child(dr)
+	# A chimney on the back slope, with a cap and two pots.
+	var cz := rz - span * 0.2
+	var brick := surf("brick", Color(0.62, 0.36, 0.28))
+	box(Vector3(1.0, rise + 0.9, 0.8), Vector3(W * 0.3, F * 2.0 + (rise + 0.9) / 2.0, cz), brick, false, h)
+	box(Vector3(1.2, 0.14, 1.0), Vector3(W * 0.3, F * 2.0 + rise + 0.95, cz), dark, false, h)
+	for px: float in [-0.25, 0.25]:
+		cyl(0.12, 0.15, 0.4, Vector3(W * 0.3 + px, F * 2.0 + rise + 1.2, cz), mat(Color(0.6, 0.34, 0.24), 0.9), h, 8)
+	# A weather vane on the ridge and the dorm's color along it.
+	box(Vector3(W + 1.02, 0.1, 0.2), Vector3(0, F * 2.0 + rise + 0.14, rz), paint, false, h)
+	cyl(0.02, 0.02, 1.1, Vector3(-W * 0.3, F * 2.0 + rise + 0.7, rz), dark, h, 6)
+	box(Vector3(0.7, 0.04, 0.04), Vector3(-W * 0.3, F * 2.0 + rise + 1.1, rz), dark, false, h)
+	box(Vector3(0.26, 0.2, 0.03), Vector3(-W * 0.3 + 0.36, F * 2.0 + rise + 1.1, rz), paint, false, h)
+
+
+## What makes the blue dorm a castle: battlements in place of a pitched roof, a stone canopy
+## over the gallery, a round tower with a pointed roof and a flag on each corner, and a square
+## keep rising out of the middle with a great round window over the door. Our own design.
+func _castle_top(h: Node3D, W: float, D: float, F: float, walk: float, wall: Material, dark: Material,
+		roof_m: Material, paint: Material, glass: Material, on: bool) -> void:
+	var batch := BoxBatch.new()
+	var zf := D / 2.0
+	var top := F * 2.0
+	var gilt := mat(Color(0.86, 0.7, 0.32), 0.3, 0.8)
+	var lit := glow_mat(Color(1.0, 0.86, 0.6), 1.2)
+	# Flat roof, the canopy over the gallery, and a parapet with merlons right round both.
+	box(Vector3(W + 0.5, 0.36, D + 0.5), Vector3(0, top + 0.18, 0), dark, false, h)
+	box(Vector3(W + 0.5, 0.36, walk + 0.5), Vector3(0, top + 0.18, zf + walk / 2.0), dark, false, h)
+	var z0 := -zf - 0.2
+	var z1 := zf + walk + 0.2
+	batch.add(Vector3(W + 0.6, 0.6, 0.36), Vector3(0, top + 0.66, z1), wall)
+	batch.add(Vector3(W + 0.6, 0.6, 0.36), Vector3(0, top + 0.66, z0), wall)
+	for sx: float in [-1.0, 1.0]:
+		batch.add(Vector3(0.36, 0.6, z1 - z0), Vector3(sx * (W / 2.0 + 0.2), top + 0.66, (z0 + z1) / 2.0), wall)
+	var mx := -W / 2.0 + 0.2
+	while mx < W / 2.0:
+		batch.add(Vector3(0.7, 0.62, 0.4), Vector3(mx, top + 1.27, z1), wall)
+		batch.add(Vector3(0.7, 0.62, 0.4), Vector3(mx, top + 1.27, z0), wall)
+		mx += 1.4
+	var mz := z0 + 0.9
+	while mz < z1 - 0.4:
+		for sx: float in [-1.0, 1.0]:
+			batch.add(Vector3(0.4, 0.62, 0.7), Vector3(sx * (W / 2.0 + 0.2), top + 1.27, mz), wall)
+		mz += 1.4
+	# A corbel table under the parapet: small blocks all the way along the front.
+	var cx := -W / 2.0 + 0.3
+	while cx < W / 2.0:
+		batch.add(Vector3(0.24, 0.3, 0.3), Vector3(cx, top - 0.16, z1 - 0.04), dark)
+		cx += 0.7
+	# Corner towers.
+	var tall := top + 3.4
+	for sx: float in [-1.0, 1.0]:
+		for sz: float in [-1.0, 1.0]:
+			var tp := Vector3(sx * (W / 2.0 + 0.35), 0, sz * (zf - 1.9))
+			cyl(1.9, 2.05, tall, tp + Vector3(0, tall / 2.0, 0), wall, h, 20)
+			cyl(2.2, 2.0, 0.5, tp + Vector3(0, tall - 0.1, 0), dark, h, 20)
+			for k in 8:
+				var a := k * TAU / 8.0
+				batch.add(Vector3(0.7, 0.7, 0.36), tp + Vector3(cos(a) * 1.98, tall + 0.5, sin(a) * 1.98), wall, Basis(Vector3.UP, -a + PI / 2.0))
+			cyl(0.0, 1.8, 3.6, tp + Vector3(0, tall + 1.9, 0), roof_m, h, 16)
+			cyl(1.86, 1.86, 0.14, tp + Vector3(0, tall + 0.14, 0), gilt, h, 16)
+			cyl(0.02, 0.03, 2.0, tp + Vector3(0, tall + 4.6, 0), gilt, h, 6)
+			box(Vector3(0.95, 0.5, 0.03), tp + Vector3(0.5, tall + 5.3, 0), paint, false, h)
+			_ball_at(h, tp + Vector3(0, tall + 3.75, 0), 0.14, gilt)
+			# Narrow windows up the outward side, lit.
+			for wy: float in [F * 0.55, F + 1.4, top + 1.3]:
+				var out := Vector3(sx, 0, sz).normalized()
+				var slit := box(Vector3(0.3, 1.1, 0.08), tp + out * 1.98 + Vector3(0, wy, 0), lit, false, h)
+				slit.rotation.y = atan2(out.x, out.z)
+				var hood := box(Vector3(0.5, 0.1, 0.16), tp + out * 2.0 + Vector3(0, wy + 0.62, 0), dark, false, h)
+				hood.rotation.y = atan2(out.x, out.z)
+			_dorm_solid(h, on, Vector3(3.3, tall, 3.3), tp + Vector3(0, tall / 2.0, 0))
+	# The keep.
+	var kw := minf(7.0, W * 0.34)
+	var kh := 4.8
+	var kc := Vector3(0, top + 0.36, -0.4)
+	box(Vector3(kw, kh, 5.4), kc + Vector3(0, kh / 2.0, 0), wall, false, h)
+	box(Vector3(kw + 0.5, 0.4, 5.9), kc + Vector3(0, kh, 0), dark, false, h)
+	var km := -kw / 2.0 + 0.1
+	while km < kw / 2.0:
+		batch.add(Vector3(0.66, 0.6, 0.36), kc + Vector3(km, kh + 0.5, 2.8), wall)
+		batch.add(Vector3(0.66, 0.6, 0.36), kc + Vector3(km, kh + 0.5, -2.8), wall)
+		km += 1.3
+	for kz: float in [-1.9, -0.6, 0.7, 2.0]:
+		for sx: float in [-1.0, 1.0]:
+			batch.add(Vector3(0.36, 0.6, 0.66), kc + Vector3(sx * (kw / 2.0 + 0.1), kh + 0.5, kz), wall)
+	var spire := cyl(0.0, kw * 0.62, 4.2, kc + Vector3(0, kh + 2.3, 0), roof_m, h, 4)
+	spire.rotation.y = PI / 4.0
+	cyl(0.03, 0.04, 2.6, kc + Vector3(0, kh + 5.6, 0), gilt, h, 6)
+	box(Vector3(1.5, 0.8, 0.03), kc + Vector3(0.78, kh + 6.4, 0), paint, false, h)
+	box(Vector3(0.5, 0.26, 0.035), kc + Vector3(0.78, kh + 6.4, 0), gilt, false, h)
+	# The round window: a gilt ring, glass lit from inside, stone bars like the spokes of a wheel.
+	var rw := kc + Vector3(0, kh * 0.52, 2.72)
+	var rim := cyl(1.4, 1.4, 0.16, rw, gilt, h, 28)
+	rim.rotation.x = PI / 2.0
+	var rose := cyl(1.22, 1.22, 0.2, rw + Vector3(0, 0, 0.01), glow_mat(Color(0.62, 0.8, 1.0), 1.3), h, 28)
+	rose.rotation.x = PI / 2.0
+	for k in 4:
+		var bar := box(Vector3(2.4, 0.08, 0.08), rw + Vector3(0, 0, 0.12), dark, false, h)
+		bar.rotation.z = k * PI / 4.0
+	var eye := cyl(0.3, 0.3, 0.26, rw + Vector3(0, 0, 0.02), paint, h, 12)
+	eye.rotation.x = PI / 2.0
+	for sx: float in [-1.0, 1.0]:
+		box(Vector3(0.5, 2.0, 0.08), kc + Vector3(sx * (kw / 2.0 - 0.9), kh * 0.5, 2.72), lit, false, h)
+		box(Vector3(0.66, 0.12, 0.14), kc + Vector3(sx * (kw / 2.0 - 0.9), kh * 0.5 + 1.08, 2.74), dark, false, h)
+	# The way in: an arch over the doors, long banners either side.
+	var arch := cyl(1.5, 1.5, 0.16, Vector3(0, 2.7, zf + 0.02), dark, h, 24)
+	arch.rotation.x = PI / 2.0
+	var fan := cyl(1.24, 1.24, 0.18, Vector3(0, 2.7, zf + 0.03), glass, h, 24)
+	fan.rotation.x = PI / 2.0
+	for k in 3:
+		var spoke := box(Vector3(0.06, 1.24, 0.06), Vector3(0, 2.7 + 0.62, zf + 0.13), dark, false, h)
+		spoke.transform = Transform3D(Basis(Vector3.BACK, (k - 1) * 0.7), Vector3(sin(-(k - 1) * 0.7) * 0.62, 2.7 + cos((k - 1) * 0.7) * 0.62, zf + 0.13))
+	for sx: float in [-1.0, 1.0]:
+		batch.add(Vector3(0.95, 2.5, 0.05), Vector3(sx * 3.4, F - 1.62, zf + walk - 0.02), paint)
+		batch.add(Vector3(0.95, 0.12, 0.06), Vector3(sx * 3.4, F - 0.5, zf + walk - 0.02), gilt)
+		batch.add(Vector3(0.5, 0.5, 0.06), Vector3(sx * 3.4, F - 1.5, zf + walk), gilt, Basis(Vector3.BACK, PI / 4.0))
+		batch.add(Vector3(0.95, 0.1, 0.06), Vector3(sx * 3.4, F - 2.86, zf + walk - 0.02), gilt)
+	batch.commit(h)
+
+
+func _ball_at(h: Node3D, at: Vector3, r: float, m: Material) -> void:
+	var mi := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = r
+	sm.height = r * 2.0
+	sm.radial_segments = 10
+	sm.rings = 5
+	mi.mesh = sm
+	mi.material_override = m
+	mi.position = at
+	h.add_child(mi)
 
 
 func _dorm_solid(h: Node3D, on: bool, size: Vector3, pos: Vector3, rot := Vector3.ZERO) -> void:
@@ -1631,8 +1884,12 @@ void fragment() {
 	return m
 
 
-func building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator) -> void:
+## With `flats` it is a block people live in: pale walls, a balcony at nearly every window with
+## washing and plants on it, a canopy over the way in, a water tank on the roof.
+func building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator, flats := false) -> void:
 	var tints := [Color(0.42, 0.3, 0.26), Color(0.32, 0.32, 0.36), Color(0.5, 0.46, 0.4), Color(0.26, 0.3, 0.38), Color(0.55, 0.38, 0.3), Color(0.36, 0.38, 0.34)]
+	if flats:
+		tints = [Color(0.78, 0.72, 0.6), Color(0.7, 0.62, 0.58), Color(0.62, 0.68, 0.72), Color(0.74, 0.66, 0.52), Color(0.66, 0.7, 0.62)]
 	var shops := [theme["accent"], theme["accent2"], Color("ff5a7a"), Color("5affc0"), Color("ffd060"), Color("7aa8ff")]
 	var m := window_material(tints[rng.randi() % tints.size()], rng.randf() * 100.0 + float(rng.randi() % 2), shops[rng.randi() % shops.size()])
 	box(size, pos + Vector3(0, size.y / 2.0, 0), m)
@@ -1660,7 +1917,7 @@ func building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator) -> void:
 		var sign := neon_sign(names[rng.randi() % names.size()], c + (Vector3(0, 3.55, side * 0.15) if along_x else Vector3(side * 0.15, 3.55, 0)), shop_col.lightened(0.3), 44, rot, false)
 		sign.pixel_size = 0.008
 	if make_solid and pos.y > -1.0:
-		_dress_building(pos, size, rng, shops[rng.randi() % shops.size()])
+		_dress_building(pos, size, rng, shops[rng.randi() % shops.size()], flats)
 	# Roof: parapet, AC units, water tank or antenna
 	var roof := pos + Vector3(0, size.y, 0)
 	var trim := mat(Color(0.25, 0.25, 0.28), 0.8)
@@ -1671,7 +1928,7 @@ func building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator) -> void:
 	var metal := mat(Color(0.6, 0.62, 0.66), 0.4, 0.6)
 	for i in rng.randi_range(1, 3):
 		box(Vector3(1.2, 0.8, 1.0), roof + Vector3(rng.randf_range(-size.x / 3, size.x / 3), 0.4, rng.randf_range(-size.z / 3, size.z / 3)), metal, false)
-	match rng.randi() % 3:
+	match 0 if flats else rng.randi() % 3:
 		0:
 			var tank := roof + Vector3(size.x * 0.2, 0, -size.z * 0.15)
 			for lx in [-0.6, 0.6]:
@@ -1697,13 +1954,16 @@ func building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator) -> void:
 ## conditioners, drain pipes, a fire escape, and a stair hut and vents on the roof. All of it is
 ## real geometry lined up with the painted windows, merged into one mesh per building, and only
 ## drawn when you are near enough to tell.
-func _dress_building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator, tint: Color) -> void:
+func _dress_building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator, tint: Color, flats := false) -> void:
 	var batch := BoxBatch.new()
 	var stone := mat(Color(0.62, 0.6, 0.57), 0.85)
 	var dark := mat(Color(0.14, 0.15, 0.18), 0.5, 0.5)
 	var metal := mat(Color(0.7, 0.72, 0.75), 0.4, 0.5)
 	var cloth := mat(tint.darkened(0.2), 0.85)
 	var slab := mat(Color(0.5, 0.49, 0.47), 0.85)
+	var pot := mat(Color(0.6, 0.36, 0.24), 0.9)
+	var leaf := mat(Color(0.18, 0.42, 0.2), 0.95)
+	var wash := [mat(Color(0.95, 0.95, 0.93), 0.95), mat(Color(0.5, 0.66, 0.86), 0.95), mat(Color(0.9, 0.5, 0.46), 0.95), mat(Color(0.94, 0.84, 0.5), 0.95)]
 	var hgt := size.y
 	# The four faces: [outward normal, along the wall, half depth, half width]
 	var faces := [[Vector3(0, 0, 1), Vector3(1, 0, 0), size.z / 2.0, size.x / 2.0], [Vector3(0, 0, -1), Vector3(1, 0, 0), size.z / 2.0, size.x / 2.0],
@@ -1736,6 +1996,8 @@ func _dress_building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator, ti
 		while (col + 0.5) * 1.7 <= c_along + half - 0.5:
 			var u2 := (col + 0.5) * 1.7 - c_along
 			var kind := rng.randi() % 10          # 0-1 balconies, 2 awnings, the rest plain
+			if flats:
+				kind = 0 if kind < 8 else 3
 			var floor_i := 1
 			while (floor_i + 1) * 3.2 < hgt - 0.6:
 				var y0 := floor_i * 3.2
@@ -1763,8 +2025,12 @@ func _dress_building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator, ti
 					for sx: float in [-0.73, 0.73]:
 						batch.add(Vector3(0.045, 0.045, 0.78), at + t * sx + Vector3(0, 1.7, 0) + n * 0.39, dark, basis)
 					if rng.randf() < 0.5:
-						batch.add(Vector3(0.3, 0.3, 0.3), at + t * 0.45 + Vector3(0, 0.86, 0) + n * 0.5, mat(Color(0.6, 0.36, 0.24), 0.9), basis)
-						batch.add(Vector3(0.34, 0.3, 0.34), at + t * 0.45 + Vector3(0, 1.14, 0) + n * 0.5, mat(Color(0.18, 0.42, 0.2), 0.95), basis)
+						batch.add(Vector3(0.3, 0.3, 0.3), at + t * 0.45 + Vector3(0, 0.86, 0) + n * 0.5, pot, basis)
+						batch.add(Vector3(0.34, 0.3, 0.34), at + t * 0.45 + Vector3(0, 1.14, 0) + n * 0.5, leaf, basis)
+					if flats and rng.randf() < 0.45:
+						# Washing over the rail: two or three things in a row.
+						for wi in rng.randi_range(2, 3):
+							batch.add(Vector3(0.3, rng.randf_range(0.36, 0.6), 0.03), at + t * (-0.5 + wi * 0.36) + Vector3(0, 1.42, 0) + n * 0.81, wash[rng.randi() % wash.size()], basis)
 				elif kind == 2:
 					# An awning over the window.
 					batch.add(Vector3(1.3, 0.05, 0.6), at + Vector3(0, 2.78, 0) + n * 0.28, cloth, basis * Basis(Vector3(1, 0, 0), 0.5))
@@ -1792,14 +2058,20 @@ func _dress_building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator, ti
 ## The Game Center: our own two-storey arcade. Dark walls, a wide glass front with the glow of
 ## the cabinets behind it, neon piping, a canopy studded with bulbs, round windows upstairs and
 ## a big sign on the roof. `pos` is the middle of its footprint, the front faces +Z.
-func arcade_building(pos: Vector3, w := 9.0, d := 9.0) -> void:
+func arcade_building(at: Vector3, w := 9.0, d := 9.0, yaw := 0.0) -> Node3D:
+	var h := Node3D.new()
+	h.position = at
+	h.rotation.y = yaw
+	add_child(h)
+	var pos := Vector3.ZERO
 	var hgt := 8.4
 	var body := surf("plaster", Color(0.13, 0.11, 0.24))
 	var trim := mat(Color(0.08, 0.07, 0.14), 0.5, 0.3)
 	var mint := glow_mat(Color("5affc0"), 2.6)
 	var pink := glow_mat(Color("ff5ab4"), 2.6)
 	var gold := glow_mat(Color("ffd23a"), 2.4)
-	box(Vector3(w, hgt, d), pos + Vector3(0, hgt / 2.0, 0), body)
+	box(Vector3(w, hgt, d), pos + Vector3(0, hgt / 2.0, 0), body, false, h)
+	_dorm_solid(h, make_solid, Vector3(w, hgt, d), Vector3(0, hgt / 2.0, 0))
 	var batch := BoxBatch.new()
 	var front := pos + Vector3(0, 0, d / 2.0)
 	# The glass front: three tall panes either side of the door, cabinets glowing inside.
@@ -1832,42 +2104,44 @@ func arcade_building(pos: Vector3, w := 9.0, d := 9.0) -> void:
 		batch.add(Vector3(0.09, 0.09, d + 0.1), pos + Vector3(w / 2.0 + 0.05, y, 0), mint if y < 4.0 else pink)
 	for sx: float in [-w / 2.0 - 0.04, w / 2.0 + 0.04]:
 		batch.add(Vector3(0.09, hgt - 4.0, 0.09), Vector3(pos.x + sx, 3.5 + (hgt - 4.0) / 2.0, front.z + 0.04), pink)
-	batch.commit(self)
+	batch.commit(h)
 	for i in 4:
 		var wx := -w / 2.0 + 1.4 + i * (w - 2.8) / 3.0
-		var ring := cyl(0.62, 0.62, 0.1, front + Vector3(wx, 5.6, 0.03), trim, null, 20)
+		var ring := cyl(0.62, 0.62, 0.1, front + Vector3(wx, 5.6, 0.03), trim, h, 20)
 		ring.rotation.x = PI / 2.0
-		var pane := cyl(0.5, 0.5, 0.12, front + Vector3(wx, 5.6, 0.035), glow_mat(glows[(i * 2 + 1) % glows.size()], 1.0), null, 20)
+		var pane := cyl(0.5, 0.5, 0.12, front + Vector3(wx, 5.6, 0.035), glow_mat(glows[(i * 2 + 1) % glows.size()], 1.0), h, 20)
 		pane.rotation.x = PI / 2.0
 	# The side that faces the road gets round windows and a tall blade sign too.
 	for i in 3:
 		var wz := -d / 2.0 + 1.8 + i * (d - 3.6) / 2.0
-		var ring2 := cyl(0.62, 0.62, 0.1, pos + Vector3(-w / 2.0 - 0.03, 5.6, wz), trim, null, 20)
+		var ring2 := cyl(0.62, 0.62, 0.1, pos + Vector3(-w / 2.0 - 0.03, 5.6, wz), trim, h, 20)
 		ring2.rotation.z = PI / 2.0
-		var pane2 := cyl(0.5, 0.5, 0.12, pos + Vector3(-w / 2.0 - 0.035, 5.6, wz), glow_mat(glows[i * 2 % glows.size()], 1.0), null, 20)
+		var pane2 := cyl(0.5, 0.5, 0.12, pos + Vector3(-w / 2.0 - 0.035, 5.6, wz), glow_mat(glows[i * 2 % glows.size()], 1.0), h, 20)
 		pane2.rotation.z = PI / 2.0
-		box(Vector3(0.08, 2.4, 1.6), pos + Vector3(-w / 2.0 - 0.02, 1.6, wz), glass, false)
-		box(Vector3(0.03, 1.0, 0.8), pos + Vector3(-w / 2.0 - 0.07, 1.3, wz), glow_mat(glows[(i + 3) % glows.size()], 1.2), false)
-	box(Vector3(0.9, 4.6, 0.24), pos + Vector3(-w / 2.0 - 0.6, 5.4, d / 2.0 - 0.9), trim, false)
-	box(Vector3(0.7, 4.3, 0.28), pos + Vector3(-w / 2.0 - 0.6, 5.4, d / 2.0 - 0.9), glow_mat(Color("ff5ab4"), 1.6), false)
+		box(Vector3(0.08, 2.4, 1.6), pos + Vector3(-w / 2.0 - 0.02, 1.6, wz), glass, false, h)
+		box(Vector3(0.03, 1.0, 0.8), pos + Vector3(-w / 2.0 - 0.07, 1.3, wz), glow_mat(glows[(i + 3) % glows.size()], 1.2), false, h)
+	box(Vector3(0.9, 4.6, 0.24), pos + Vector3(-w / 2.0 - 0.6, 5.4, d / 2.0 - 0.9), trim, false, h)
+	box(Vector3(0.7, 4.3, 0.28), pos + Vector3(-w / 2.0 - 0.6, 5.4, d / 2.0 - 0.9), glow_mat(Color("ff5ab4"), 1.6), false, h)
 	# Roof sign and parapet.
-	box(Vector3(w + 0.3, 0.5, 0.3), pos + Vector3(0, hgt + 0.25, d / 2.0), trim, false)
-	box(Vector3(w + 0.3, 0.5, 0.3), pos + Vector3(0, hgt + 0.25, -d / 2.0), trim, false)
-	box(Vector3(0.3, 0.5, d), pos + Vector3(w / 2.0, hgt + 0.25, 0), trim, false)
-	box(Vector3(0.3, 0.5, d), pos + Vector3(-w / 2.0, hgt + 0.25, 0), trim, false)
-	box(Vector3(6.4, 1.7, 0.2), pos + Vector3(0, hgt + 1.5, d / 2.0 - 0.6), trim, false)
+	box(Vector3(w + 0.3, 0.5, 0.3), pos + Vector3(0, hgt + 0.25, d / 2.0), trim, false, h)
+	box(Vector3(w + 0.3, 0.5, 0.3), pos + Vector3(0, hgt + 0.25, -d / 2.0), trim, false, h)
+	box(Vector3(0.3, 0.5, d), pos + Vector3(w / 2.0, hgt + 0.25, 0), trim, false, h)
+	box(Vector3(0.3, 0.5, d), pos + Vector3(-w / 2.0, hgt + 0.25, 0), trim, false, h)
+	box(Vector3(6.4, 1.7, 0.2), pos + Vector3(0, hgt + 1.5, d / 2.0 - 0.6), trim, false, h)
 	for sx: float in [-2.6, 2.6]:
-		box(Vector3(0.12, 1.2, 0.12), pos + Vector3(sx, hgt + 0.6, d / 2.0 - 0.6), trim, false)
-	neon_sign("GAME CENTER", pos + Vector3(0, hgt + 1.5, d / 2.0 - 0.48), Color("5affc0"), 150, 0.0)
-	neon_sign("ARCADE", pos + Vector3(-w / 2.0 - 0.08, 7.3, 0), Color("ffd23a"), 120, -PI / 2)
+		box(Vector3(0.12, 1.2, 0.12), pos + Vector3(sx, hgt + 0.6, d / 2.0 - 0.6), trim, false, h)
+	sign_on(h, "GAME CENTER", Vector3(0, hgt + 1.5, d / 2.0 - 0.48), Color("5affc0"), 150, 0.0)
+	sign_on(h, "ARCADE", Vector3(-w / 2.0 - 0.08, 7.3, 0), Color("ffd23a"), 120, -PI / 2)
 	var l := OmniLight3D.new()
 	l.light_color = Color("5affc0")
 	l.light_energy = 2.4
 	l.omni_range = 9.0
 	l.position = front + Vector3(0, 2.6, 2.2)
-	add_child(l)
+	h.add_child(l)
 	_lamp_lights.append(l)
-	no_grass.append(Rect2(pos.x - w / 2.0, pos.z - d / 2.0, w, d))
+	var r := maxf(w, d) + 1.0
+	no_grass.append(Rect2(at.x - r / 2.0, at.z - r / 2.0, r, r))
+	return h
 
 
 ## Domino is a city in the middle of a tournament: poster columns on the corners showing real
@@ -1975,33 +2249,24 @@ func _build_buildings() -> void:
 				var along := -12.0 + i * 8.0
 				var h := rng.randf_range(10.0, 30.0)
 				var w := rng.randf_range(6.8, 7.8)
-				var back_rot := 0.0 if qz < 0 else PI
-				var side_rot := PI / 2 if qx < 0 else -PI / 2
-				if i % 3 == 1 and has_model("apartment"):
-					collide(prop("apartment", Vector3(qx * 21.0 + along, 0.16, qz * 32.0), back_rot, rng.randf_range(15.0, 20.0), true))
-				else:
-					building(Vector3(qx * 21.0 + along, 0, qz * 33.0), Vector3(w, h, 7.5), rng)
+				if i % 3 == 1:
+					h = rng.randf_range(15.0, 21.0)
+				building(Vector3(qx * 21.0 + along, 0, qz * 33.0), Vector3(w, h, 7.5), rng, i % 3 == 1)
 				h = rng.randf_range(10.0, 30.0)
-				if i % 3 == 2 and has_model("apartment"):
-					collide(prop("apartment", Vector3(qx * 32.0, 0.16, qz * 21.0 + along), side_rot, rng.randf_range(15.0, 20.0), true))
-				else:
-					building(Vector3(qx * 33.0, 0, qz * 21.0 + along), Vector3(7.5, h, w), rng)
-	# Mid-block buildings so streets feel like streets.
-	var mids := [[Vector3(-24, 0, -13), Vector3(8, 9, 7), "konbini", 0.0], [Vector3(24, 0, -12.5), Vector3(8, 14, 7), "cafe" if has_model("cafe") else "apartment", 0.0],
-			[Vector3(-25, 0, 22), Vector3(8, 11, 9), "apartment", PI], [Vector3(-14, 0, 25), Vector3(7, 7, 7), "konbini", PI / 2],
-			[Vector3(14, 0, -27), Vector3(6, 18, 6), "apartment", -PI / 2]]
+				if i % 3 == 2:
+					h = rng.randf_range(15.0, 21.0)
+				building(Vector3(qx * 33.0, 0, qz * 21.0 + along), Vector3(7.5, h, w), rng, i % 3 == 2)
+	# Mid-block buildings so streets feel like streets: our own corner stores, a cafe, and flats.
+	var mids := [[Vector3(-24, 0, -13), Vector3(8, 9, 7), "mart", 0.0], [Vector3(24, 0, -12.5), Vector3(8, 14, 7), "cafe", 0.0],
+			[Vector3(-25, 0, 22), Vector3(8, 11, 9), "flats", PI], [Vector3(-14, 0, 25), Vector3(7, 7, 7), "mart", PI / 2],
+			[Vector3(14, 0, -27), Vector3(6, 18, 6), "flats", -PI / 2]]
 	for b in mids:
-		var holder: Node3D = null
-		if b[2] == "konbini":
-			holder = prop("konbini", b[0] + Vector3(0, 0.16, 0), b[3], 9.0)
-		elif b[2] == "cafe":
-			holder = prop("cafe", b[0] + Vector3(0, 0.16, 0), b[3], 9.0, true)
+		if b[2] == "flats":
+			building(b[0], (b[1] as Vector3) + Vector3(0, 4, 0), rng, true)
 		else:
-			holder = prop("apartment", b[0] + Vector3(0, 0.16, 0), b[3], (b[1] as Vector3).y + 4.0, true)
-		if holder:
-			collide(holder)
-		else:
-			building(b[0], b[1], rng)
+			var first: bool = b == mids[0]
+			StreetKit.shop(self, b[2], (b[0] as Vector3) + Vector3(0, 0.16, 0), b[3], (b[1] as Vector3).x, (b[1] as Vector3).z - 0.5,
+					"DOMINO MART" if first else ("BURGER WORLD" if b[2] == "cafe" else ""))
 
 
 func neon_sign(text: String, pos: Vector3, color: Color, size := 120, rot := 0.0, light := true) -> Label3D:
@@ -2025,6 +2290,11 @@ func neon_sign(text: String, pos: Vector3, color: Color, size := 120, rot := 0.0
 	add_child(o)
 	_neon.append([l, o, color])
 	return l
+
+
+## A neon sign placed in a holder's own space (see neon_sign).
+func sign_on(h: Node3D, text: String, lpos: Vector3, color: Color, size := 120, lrot := 0.0, light := true) -> Label3D:
+	return neon_sign(text, h.transform * lpos, color, size, h.rotation.y + lrot, light)
 
 
 func _build_landmarks() -> void:
@@ -2103,7 +2373,6 @@ func _rest_of_landmarks() -> void:
 	# Neon around town
 	neon_sign("CARD SHOP", Vector3(-29.1, 6, -13), Color("ff5ab4"), 140, PI / 2)
 	neon_sign("GAME CENTER", Vector3(29.1, 5, 10), Color("5affc0"), 150, -PI / 2)
-	neon_sign("BURGER WORLD" if not has_model("cafe") else "CAFE", Vector3(24, 6.6, -8.3), Color("ffb030"), 140, 0.0)
 	neon_sign("BATTLE CITY", Vector3(-29.1, 16, 14), theme["accent"], 280, PI / 2)
 	neon_sign("DUEL DISK  ·  NOW ONLINE", Vector3(29.1, 12, -16), theme["accent2"], 160, -PI / 2)
 	neon_sign("HOTEL", Vector3(-25, 9.5, 17.45), Color("ff6060"), 150, 0.0)

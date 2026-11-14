@@ -30,7 +30,68 @@ func build(t: Dictionary, time_of_day: String) -> void:
 	_billboards()
 	_backdrop()
 	_edges()
+	_identity()
 	apply_tod(time_of_day)
+
+
+## What tells you this is the clean city on a race week: team banners down the boulevard,
+## painted crossings where the two roads meet, and screens on posts that never stop moving.
+func _identity() -> void:
+	var batch := BoxBatch.new()
+	var pole := mat(Color(0.9, 0.92, 0.95), 0.3, 0.6)
+	var teams := [Color("ff8a3a"), Color("2de2e6"), Color("f2f6ff"), Color("ff5a7a"), Color("ffd166")]
+	var cloths: Array = []
+	for tc in teams:
+		cloths.append(mat(tc, 0.85))
+	var ink := mat(Color(0.08, 0.09, 0.13), 0.8)
+	var n := 0
+	var zs: Array = []
+	for k in 5:
+		zs.append(40.0 - k * 7.0)
+	for k in 4:
+		zs.append(-8.0 - k * 6.5)
+	for z: float in zs:
+		for s: float in [-1.0, 1.0]:
+			var p := Vector3(s * 7.2, 0, z)
+			# An arm off the lamp post, a banner hanging from it with a team mark.
+			batch.add(Vector3(0.9, 0.05, 0.05), p + Vector3(s * 0.45, 4.3, 0), pole)
+			batch.add(Vector3(0.7, 1.9, 0.03), p + Vector3(s * 0.5, 3.32, 0), cloths[n % cloths.size()])
+			batch.add(Vector3(0.7, 0.16, 0.035), p + Vector3(s * 0.5, 4.1, 0), ink)
+			batch.add(Vector3(0.34, 0.34, 0.035), p + Vector3(s * 0.5, 3.5, 0), ink, Basis(Vector3.BACK, PI / 4.0))
+			batch.add(Vector3(0.18, 0.18, 0.04), p + Vector3(s * 0.5, 3.5, 0), cloths[(n + 2) % cloths.size()], Basis(Vector3.BACK, PI / 4.0))
+			batch.add(Vector3(0.5, 0.05, 0.035), p + Vector3(s * 0.5, 2.62, 0), ink)
+			n += 1
+	# Crossings: white bars over the dark lanes on all four sides of the junction.
+	var paint := mat(Color(0.9, 0.92, 0.95), 0.7)
+	for side: float in [-1.0, 1.0]:
+		for i in 9:
+			batch.add(Vector3(0.55, 0.012, 2.6), Vector3(-4.6 + i * 1.15, 0.088, 4.0 + side * 6.4), paint)
+		for i in 7:
+			batch.add(Vector3(2.6, 0.012, 0.55), Vector3(side * 7.4, 0.088, 0.6 + i * 1.15), paint)
+	batch.commit(self)
+	# Screens on slim posts by the plaza and the market, each running its own loop.
+	var spots := [[Vector3(-13.5, 0, 13.5), 2.4, Color("2de2e6")], [Vector3(13.5, 0, -6.0), -0.8, Color("ff8a3a")], [Vector3(22.0, 0, 19.5), -2.2, Color("ff5a7a")], [Vector3(-14.5, 0, -8.5), 0.8, Color("ffd166")]]
+	for i in spots.size():
+		var sp: Vector3 = spots[i][0]
+		var h := Node3D.new()
+		h.position = sp
+		h.rotation.y = spots[i][1]
+		add_child(h)
+		for sx: float in [-1.0, 1.0]:
+			cyl(0.06, 0.09, 4.4, Vector3(sx * 2.0, 2.2, 0), pole, h, 8)
+		box(Vector3(4.6, 0.1, 0.16), Vector3(0, 4.45, 0), pole, false, h)
+		box(Vector3(4.6, 0.1, 0.16), Vector3(0, 2.1, 0), pole, false, h)
+		var panel := MeshInstance3D.new()
+		var qm := QuadMesh.new()
+		qm.size = Vector2(4.3, 2.2)
+		panel.mesh = qm
+		panel.material_override = ArenaScenery._holo(spots[i][2], 2.0 + i * 3.1)
+		panel.position = Vector3(0, 3.28, 0)
+		panel.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		h.add_child(panel)
+		box(Vector3(4.3, 2.2, 0.03), Vector3(0, 3.28, -0.03), mat(Color(0.04, 0.05, 0.08), 0.4, 0.3), false, h)
+		for sx: float in [-1.0, 1.0]:
+			solid_cyl(0.14, 2.4, h.transform * Vector3(sx * 2.0, 1.2, 0))
 
 
 func _lamp(at: Vector3, color := Color(0.85, 0.93, 1.0)) -> void:
@@ -210,10 +271,7 @@ func _tops() -> void:
 	else:
 		box(Vector3(8, 5, 9), SHOP + Vector3(6, 2.5, 0), window_material(Color(0.4, 0.3, 0.26), 5.0, Color("ffd166")))
 	neon_sign("CARD SHOP", SHOP + Vector3(1.4, 5.6, 0), Color("ffd166"), 110, -PI / 2)
-	var cafe := prop("cafe", Vector3(-30, 0, 30), PI / 2, 9.0)
-	if cafe:
-		collide(cafe, 0.9)
-	neon_sign("CAFE LA GEEN", Vector3(-25.2, 5.2, 30), Color("ff8ac0"), 90, PI / 2, false)
+	StreetKit.shop(self, "lounge", Vector3(-30.5, 0.06, 30), PI / 2, 9.0, 7.0, "CAFE NOVA")
 	var vend := prop("vending", Vector3(-24.5, 0, 22.5), PI / 2, 2.0, true)
 	if vend:
 		collide(vend, 0.9)

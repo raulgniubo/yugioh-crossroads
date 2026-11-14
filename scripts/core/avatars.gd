@@ -988,7 +988,10 @@ void fragment() {
 var _rest_cache := {}            # "file|mesh name" -> ArrayMesh with the rest pose in CUSTOM0
 
 
-func _with_rest_pose(mesh: Mesh, cache_key: String) -> ArrayMesh:
+## `fore` lists the skin's bind indices that belong to a forearm or hand: the fourth number
+## stored with each vertex is how much of it they carry, so a shader can tell forearm from waist
+## even when the arms hang right beside the body.
+func _with_rest_pose(mesh: Mesh, cache_key: String, fore := {}) -> ArrayMesh:
 	if mesh.has_meta("rest_baked"):
 		return mesh
 	if cache_key != "" and _rest_cache.has(cache_key):
@@ -1005,15 +1008,25 @@ func _with_rest_pose(mesh: Mesh, cache_key: String) -> ArrayMesh:
 		var arrays := src.surface_get_arrays(i)
 		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 		var rest := PackedFloat32Array()
-		rest.resize(verts.size() * 3)
+		rest.resize(verts.size() * 4)
+		var bones = arrays[Mesh.ARRAY_BONES]
+		var weights = arrays[Mesh.ARRAY_WEIGHTS]
+		var per := 0
+		if not fore.is_empty() and bones != null and weights != null and verts.size() > 0:
+			per = bones.size() / verts.size()
 		for v in verts.size():
 			var p := verts[v]
-			rest[v * 3] = p.x
-			rest[v * 3 + 1] = p.y
-			rest[v * 3 + 2] = p.z
+			rest[v * 4] = p.x
+			rest[v * 4 + 1] = p.y
+			rest[v * 4 + 2] = p.z
+			var fw := 0.0
+			for k in per:
+				if fore.has(int(bones[v * per + k])):
+					fw += float(weights[v * per + k])
+			rest[v * 4 + 3] = fw
 		arrays[Mesh.ARRAY_CUSTOM0] = rest
 		var fmt: int = src.surface_get_format(i)
-		fmt = (fmt & ~custom_bits) | (Mesh.ARRAY_CUSTOM_RGB_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
+		fmt = (fmt & ~custom_bits) | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
 		# Only the flag bits and the custom formats matter here; the rest is read off the arrays.
 		var all_custom: int = 0
 		for ci in 4:
@@ -1040,8 +1053,24 @@ uniform float h = 1.7;
 uniform float top = 0.80;
 uniform float hem_y = 0.50;
 uniform mat4 to_root;
+uniform vec3 el_l;
+uniform vec3 wr_l;
+uniform float lim_l = 100.0;
+uniform vec3 el_r;
+uniform vec3 wr_r;
+uniform float lim_r = 100.0;
 varying vec3 lp;
-void vertex() { lp = (to_root * vec4(CUSTOM0.xyz, 1.0)).xyz; }
+varying float fore;
+void vertex() {
+	lp = (to_root * vec4(CUSTOM0.xyz, 1.0)).xyz;
+	fore = CUSTOM0.a;
+}
+float off_sleeve(vec3 p, vec3 a, vec3 b, float lim) {
+	vec3 ab = b - a;
+	float along = dot(p - a, ab) / max(dot(ab, ab), 0.0001);
+	float d = length(p - (a + ab * clamp(along, 0.0, 1.0)));
+	return smoothstep(lim, lim * 1.1, d) * smoothstep(-0.3, -0.18, along) * (1.0 - smoothstep(1.6, 1.8, along));
+}
 void fragment() {
 	vec4 t = texture(tex, UV);
 	float y = lp.y / h;
@@ -1049,6 +1078,11 @@ void fragment() {
 	float arm = smoothstep(0.115, 0.135, x);
 	float lo = mix(hem_y, hem_y + 0.065, arm);
 	float body = smoothstep(lo, lo + 0.012, y) * (1.0 - smoothstep(top, top + 0.012, y)) * (1.0 - smoothstep(0.375, 0.39, x));
+	// Something strapped to a forearm (a duel disk, a gauntlet) is not sleeve: past the sleeve's
+	// own thickness from the bone it keeps its real colors.
+	float on_fore = smoothstep(0.35, 0.65, fore);
+	body *= 1.0 - off_sleeve(lp, el_l, wr_l, lim_l) * on_fore;
+	body *= 1.0 - off_sleeve(lp, el_r, wr_r, lim_r) * on_fore;
 	float lum = dot(t.rgb, vec3(0.3, 0.59, 0.11));
 	vec3 cloth = coat * (0.5 + 0.7 * lum);
 	// Thin piping only: a line just above the hem, a narrow zip and a line round the collar.
@@ -1076,7 +1110,19 @@ void fragment() {
 		var box := mi.mesh.get_aabb()
 		if box.size.y < 0.01:
 			continue
-		var baked := _with_rest_pose(mi.mesh, (file + "|" + str(scene.get_path_to(mi))) if file != "" else "")
+		var fore_binds := {}
+		if skel != null and mi.skin != null:
+			var hmap := _guess_human_map(scene)
+			var arm_bones := {}
+			for hn in ["LeftLowerArm", "RightLowerArm", "LeftHand", "RightHand"]:
+				if hmap.has(hn):
+					arm_bones[str(hmap[hn])] = true
+			for bnd in mi.skin.get_bind_count():
+				var bone_i := mi.skin.get_bind_bone(bnd)
+				var bone_name := str(mi.skin.get_bind_name(bnd)) if bone_i < 0 else skel.get_bone_name(bone_i)
+				if arm_bones.has(bone_name):
+					fore_binds[bnd] = true
+		var baked := _with_rest_pose(mi.mesh, (file + "|" + str(scene.get_path_to(mi))) if file != "" else "", fore_binds)
 		if baked == null:
 			continue
 		if baked != mi.mesh:
@@ -1113,6 +1159,7 @@ void fragment() {
 					top = clampf(by - 0.012, 0.62, 0.88)
 				elif bn.ends_with("hips") or bn == "hips" or bn.ends_with("pelvis"):
 					hem = clampf(by - 0.035, 0.40, 0.58)
+		var sleeves := _sleeve_limits(scene, skel, mi, rel, rel * bind, (file + "|" + str(scene.get_path_to(mi))) if file != "" else "") if skinned else []
 		for i in mi.mesh.get_surface_count():
 			var mat := mi.get_active_material(i)
 			var tex: Texture2D = null
@@ -1130,7 +1177,89 @@ void fragment() {
 			sm.set_shader_parameter("top", top)
 			sm.set_shader_parameter("hem_y", hem)
 			sm.set_shader_parameter("to_root", rel * bind)
+			for k in sleeves.size():
+				var sl: Array = sleeves[k]
+				sm.set_shader_parameter("el_l" if k == 0 else "el_r", sl[0])
+				sm.set_shader_parameter("wr_l" if k == 0 else "wr_r", sl[1])
+				sm.set_shader_parameter("lim_l" if k == 0 else "lim_r", sl[2])
 			mi.set_surface_override_material(i, sm)
+
+
+## For each arm: [elbow, wrist, how far from the bone the sleeve reaches]. A forearm that is
+## much thicker than the other one is carrying something (a duel disk, a gauntlet); there the
+## reach is the plain forearm's thickness, so the jacket color stops at the sleeve and whatever
+## is strapped on keeps its own colors. A plain arm gets a reach of 100: no limit.
+var _sleeve_cache := {}
+
+
+func _sleeve_limits(scene: Node, skel: Skeleton3D, mi: MeshInstance3D, rel: Transform3D, to_root: Transform3D, cache_key: String) -> Array:
+	if cache_key != "" and _sleeve_cache.has(cache_key):
+		return _sleeve_cache[cache_key]
+	var map := _guess_human_map(scene)
+	var out: Array = []
+	var arms: Array = []
+	var kind_of := {}        # bone name -> [arm index, 0 upper / 1 forearm]
+	for side in ["Left", "Right"]:
+		var up := skel.find_bone(str(map.get(side + "UpperArm", "")))
+		var lo := skel.find_bone(str(map.get(side + "LowerArm", "")))
+		var hand := skel.find_bone(str(map.get(side + "Hand", "")))
+		if up < 0 or lo < 0 or hand < 0:
+			return []
+		kind_of[skel.get_bone_name(up)] = [arms.size(), 0]
+		kind_of[skel.get_bone_name(lo)] = [arms.size(), 1]
+		arms.append([rel * skel.get_bone_global_rest(up).origin, rel * skel.get_bone_global_rest(lo).origin, rel * skel.get_bone_global_rest(hand).origin, [], []])
+	# Which of the skin's binds are arm bones.
+	var bind_kind := {}
+	for bnd in mi.skin.get_bind_count():
+		var bone_i := mi.skin.get_bind_bone(bnd)
+		var bone_name := str(mi.skin.get_bind_name(bnd)) if bone_i < 0 else skel.get_bone_name(bone_i)
+		if kind_of.has(bone_name):
+			bind_kind[bnd] = kind_of[bone_name]
+	for si in mi.mesh.get_surface_count():
+		var arrays := mi.mesh.surface_get_arrays(si)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var bones = arrays[Mesh.ARRAY_BONES]
+		var weights = arrays[Mesh.ARRAY_WEIGHTS]
+		if bones == null or weights == null or verts.is_empty():
+			continue
+		var per: int = bones.size() / verts.size()
+		for v in verts.size():
+			# The bone that carries most of this vertex says which part of the body it is.
+			var best := -1
+			var best_w := 0.0
+			for k in per:
+				var wgt := float(weights[v * per + k])
+				if wgt > best_w:
+					best_w = wgt
+					best = int(bones[v * per + k])
+			if best_w < 0.6 or not bind_kind.has(best):
+				continue
+			var bk: Array = bind_kind[best]
+			var arm: Array = arms[bk[0]]
+			var p := to_root * verts[v]
+			var a0: Vector3 = arm[0] if bk[1] == 0 else arm[1]
+			var a1: Vector3 = arm[1] if bk[1] == 0 else arm[2]
+			var ax := a1 - a0
+			var t := clampf((p - a0).dot(ax) / maxf(ax.length_squared(), 0.0001), 0.0, 1.0)
+			if bk[1] == 0 and t < 0.35:
+				continue          # the shoulder end of the upper arm is half chest
+			(arm[3 + int(bk[1])] as Array).append((p - (a0 + ax * t)).length())
+	# How thick each forearm is, ignoring the odd stray vertex. A forearm much thicker than the
+	# other one is carrying something: there the sleeve is only as thick as the plain arm.
+	var thick: Array = []
+	for arm: Array in arms:
+		var fore: Array = arm[4]
+		fore.sort()
+		thick.append(float(fore[int(fore.size() * 0.97)]) if fore.size() > 8 else 0.0)
+	for i in arms.size():
+		var other: float = thick[1 - i]
+		var lim := 100.0
+		if other > 0.0 and float(thick[i]) > other * 1.3:
+			lim = other * 1.08
+		out.append([arms[i][1], arms[i][2], lim])
+	if cache_key != "":
+		_sleeve_cache[cache_key] = out
+	return out
 
 
 func apply_tints(scene: Node) -> void:
@@ -1184,7 +1313,7 @@ func _meshes(n: Node) -> Array[MeshInstance3D]:
 
 ## A live 3D portrait (upper body, idle motion). Null if there's no VRM.
 const HI_SIZE := Vector2i(1024, 1280)
-const HI_MAX := 4
+const HI_MAX := 6
 var _hi: Array[String] = []      # the few portraits being shown big right now
 
 

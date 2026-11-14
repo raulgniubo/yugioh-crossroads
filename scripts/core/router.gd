@@ -173,6 +173,15 @@ func _debug_args() -> void:
 				menu._open_panel(SettingsPanel.open_profile(menu, func(): menu._open_profile(false)))
 			elif what == "profile":
 				menu._open_profile(true)
+			elif what == "tournaments":
+				menu._on_tournaments()
+			elif what == "builder":
+				menu._on_deck()
+				await get_tree().create_timer(0.5).timeout
+				for n in menu.find_children("*", "", true, false):
+					if n is DeckMenu:
+						n._edit(0)
+						break
 			elif what == "deck":
 				menu._on_deck()
 			elif what == "settings":

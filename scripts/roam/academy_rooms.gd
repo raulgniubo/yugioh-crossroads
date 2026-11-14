@@ -28,6 +28,30 @@ const ROOMS := {
 	"red_room_4": {"district": "academy", "door_of": "red_room_4", "name": "Red Dorm, Room 4", "area": "The quiet one at the end",
 		"at": Vector3(540, 0, -470), "half": Vector2(3.0, 2.6), "height": 2.9, "label": "Enter room 4", "music": "shop", "step": 0.75,
 		"floor": Color(0.5, 0.36, 0.25), "wall": Color(0.9, 0.82, 0.7), "trim": Color("d9342b")},
+	"yel_room_1": {"district": "academy", "door_of": "yel_room_1", "name": "Yellow Dorm, Room 1", "area": "A study timetable taped to every surface",
+		"at": Vector3(480, 0, -500), "half": Vector2(3.7, 3.1), "height": 3.1, "label": "Enter room 1", "music": "shop", "step": 0.75,
+		"floor": Color(0.7, 0.56, 0.38), "wall": Color(0.98, 0.93, 0.76), "trim": Color("f2c230")},
+	"yel_room_2": {"district": "academy", "door_of": "yel_room_2", "name": "Yellow Dorm, Room 2", "area": "Somebody is growing herbs on the windowsill",
+		"at": Vector3(500, 0, -500), "half": Vector2(3.7, 3.1), "height": 3.1, "label": "Enter room 2", "music": "shop", "step": 0.75,
+		"floor": Color(0.7, 0.56, 0.38), "wall": Color(0.98, 0.93, 0.76), "trim": Color("f2c230")},
+	"yel_room_3": {"district": "academy", "door_of": "yel_room_3", "name": "Yellow Dorm, Room 3", "area": "Trophies from three quiz bowls",
+		"at": Vector3(520, 0, -500), "half": Vector2(3.7, 3.1), "height": 3.1, "label": "Enter room 3", "music": "shop", "step": 0.75,
+		"floor": Color(0.7, 0.56, 0.38), "wall": Color(0.98, 0.93, 0.76), "trim": Color("f2c230")},
+	"yel_room_4": {"district": "academy", "door_of": "yel_room_4", "name": "Yellow Dorm, Room 4", "area": "Neat as a pin, books in height order",
+		"at": Vector3(540, 0, -500), "half": Vector2(3.7, 3.1), "height": 3.1, "label": "Enter room 4", "music": "shop", "step": 0.75,
+		"floor": Color(0.7, 0.56, 0.38), "wall": Color(0.98, 0.93, 0.76), "trim": Color("f2c230")},
+	"blue_room_1": {"district": "academy", "door_of": "blue_room_1", "name": "Blue Dorm, Room 1", "area": "A suite with its own trophy shelf",
+		"at": Vector3(480, 0, -530), "half": Vector2(4.6, 3.6), "height": 3.6, "label": "Enter room 1", "music": "shop", "step": 0.75,
+		"floor": Color(0.34, 0.25, 0.2), "wall": Color(0.8, 0.84, 0.92), "trim": Color("2f6fe0")},
+	"blue_room_2": {"district": "academy", "door_of": "blue_room_2", "name": "Blue Dorm, Room 2", "area": "Silk curtains and a very large mirror",
+		"at": Vector3(500, 0, -530), "half": Vector2(4.6, 3.6), "height": 3.6, "label": "Enter room 2", "music": "shop", "step": 0.75,
+		"floor": Color(0.34, 0.25, 0.2), "wall": Color(0.8, 0.84, 0.92), "trim": Color("2f6fe0")},
+	"blue_room_3": {"district": "academy", "door_of": "blue_room_3", "name": "Blue Dorm, Room 3", "area": "Chess set mid-game by the window",
+		"at": Vector3(520, 0, -530), "half": Vector2(4.6, 3.6), "height": 3.6, "label": "Enter room 3", "music": "shop", "step": 0.75,
+		"floor": Color(0.34, 0.25, 0.2), "wall": Color(0.8, 0.84, 0.92), "trim": Color("2f6fe0")},
+	"blue_room_4": {"district": "academy", "door_of": "blue_room_4", "name": "Blue Dorm, Room 4", "area": "The corner suite, with the best view",
+		"at": Vector3(540, 0, -530), "half": Vector2(4.6, 3.6), "height": 3.6, "label": "Enter room 4", "music": "shop", "step": 0.75,
+		"floor": Color(0.34, 0.25, 0.2), "wall": Color(0.8, 0.84, 0.92), "trim": Color("2f6fe0")},
 }
 
 const PEOPLE := {
@@ -81,8 +105,10 @@ const PEOPLE := {
 
 
 static func dress(city: CityBuilder, key: String, o: Vector3, half: Vector2, hgt: float) -> void:
-	if key.begins_with("red_room_"):
-		_bedroom(city, o, half, hgt, int(key.trim_prefix("red_room_")))
+	if key.contains("_room_"):
+		var dorm := key.get_slice("_", 0)
+		_bedroom(city, o, half, hgt, int(key.get_slice("_", 2)) + {"red": 0, "yel": 4, "blue": 8}.get(dorm, 0),
+				{"red": Color("c8322a"), "yel": Color("e8b21e"), "blue": Color("2f5fc0")}.get(dorm, Color("c8322a")), dorm)
 		return
 	match key:
 		"ac_hall": _hall(city, o, half, hgt)
@@ -710,13 +736,125 @@ static func _upstairs(city: CityBuilder, o: Vector3, half: Vector2, hgt: float, 
 		_ball(city, o + Vector3(xm, hgt - 0.22, zw + 1.5), 0.12, city.glow_mat(Color(1.0, 0.92, 0.75), 2.6))
 
 
+## What the better dorms have that the red one does not. Yellow: a proper bed with a headboard
+## and a bedside lamp, an armchair by a reading lamp, a bookcase, a plant. Blue: a four-poster
+## with curtains, a chandelier, a fireplace with a mirror over it, a sofa, a rug with a gold edge.
+static func _fine_bedroom(city: CityBuilder, o: Vector3, half: Vector2, hgt: float, n: int, trim: Color, dorm: String,
+		wood: Material, pale: Material, linen: Material, cloth: Material, cover: Material) -> void:
+	var grand := dorm == "blue"
+	var gilt := city.mat(Color(0.86, 0.7, 0.32), 0.3, 0.8)
+	var bw := 1.9 if grand else 1.25
+	var bp := o + Vector3(-half.x + bw / 2.0 + 0.12, 0, -half.y + 1.25)
+	# The bed, head to the back wall.
+	city.box(Vector3(bw + 0.1, 0.3, 2.2), bp + Vector3(0, 0.3, 0), pale, false)
+	city.box(Vector3(bw, 0.2, 2.1), bp + Vector3(0, 0.55, 0), linen, false)
+	city.box(Vector3(bw + 0.04, 0.12, 1.35), bp + Vector3(0, 0.67, 0.36), cloth if grand else cover, false)
+	city.box(Vector3(bw + 0.05, 0.05, 0.22), bp + Vector3(0, 0.71, -0.2), linen, false)
+	for px: float in ([-0.45, 0.45] if grand else [0.0]):
+		city.box(Vector3(0.6, 0.14, 0.38), bp + Vector3(px, 0.72, -0.78), linen, false)
+	city.box(Vector3(bw + 0.2, 1.3 if grand else 1.0, 0.1), bp + Vector3(0, 0.75 if grand else 0.6, -1.1), wood, false)
+	if grand:
+		city.box(Vector3(bw - 0.3, 0.08, 0.12), bp + Vector3(0, 1.45, -1.1), gilt, false)
+		for c in [Vector2(-1.0, -1.0), Vector2(1.0, -1.0), Vector2(-1.0, 1.0), Vector2(1.0, 1.0)]:
+			city.cyl(0.05, 0.06, 2.5, bp + Vector3(c.x * (bw / 2.0 + 0.02), 1.25, c.y * 1.06), wood, null, 8)
+			_ball(city, bp + Vector3(c.x * (bw / 2.0 + 0.02), 2.56, c.y * 1.06), 0.08, gilt)
+		city.box(Vector3(bw + 0.2, 0.06, 2.3), bp + Vector3(0, 2.5, 0), cloth, false)
+		for sx: float in [-1.0, 1.0]:
+			city.box(Vector3(0.05, 0.36, 2.3), bp + Vector3(sx * (bw / 2.0 + 0.08), 2.3, 0), cloth, false)
+			city.box(Vector3(0.06, 1.7, 0.3), bp + Vector3(sx * (bw / 2.0 + 0.06), 1.6, -0.95), cloth, false)
+		city.box(Vector3(bw + 0.2, 0.36, 0.05), bp + Vector3(0, 2.3, 1.13), cloth, false)
+		city.box(Vector3(bw + 0.22, 0.05, 0.06), bp + Vector3(0, 2.13, 1.14), gilt, false)
+	_block(city, Vector3(bw + 0.2, 1.0, 2.3), bp + Vector3(0, 0.5, 0))
+	# Bedside table and lamp.
+	var nt := bp + Vector3(bw / 2.0 + 0.42, 0, -0.85)
+	city.box(Vector3(0.5, 0.55, 0.45), nt + Vector3(0, 0.275, 0), wood, false)
+	city.box(Vector3(0.4, 0.03, 0.02), nt + Vector3(0, 0.36, 0.23), gilt, false)
+	city.cyl(0.03, 0.06, 0.26, nt + Vector3(0, 0.68, 0), gilt, null, 8)
+	city.cyl(0.1, 0.16, 0.2, nt + Vector3(0, 0.9, 0), city.glow_mat(Color(1.0, 0.86, 0.6), 1.6), null, 12)
+	_light(city, nt + Vector3(0, 1.0, 0.2), Color(1.0, 0.86, 0.62), 0.8, 3.2)
+	_block(city, Vector3(0.5, 0.6, 0.45), nt + Vector3(0, 0.3, 0))
+	# The front left corner: a chair to read in, a tall lamp, a bookcase.
+	var ac := o + Vector3(-half.x + 0.75, 0, half.y - 0.9)
+	var seat: Material = cloth if grand else city.mat(Color(0.5, 0.36, 0.24), 0.9)
+	city.box(Vector3(0.85 if not grand else 1.7, 0.36, 0.8), ac + Vector3(0.0 if not grand else 0.42, 0.24, 0), seat, false)
+	city.box(Vector3(0.85 if not grand else 1.7, 0.6, 0.18), ac + Vector3(0.0 if not grand else 0.42, 0.66, -0.34), seat, false)
+	for sx: float in [-1.0, 1.0]:
+		city.box(Vector3(0.16, 0.3, 0.8), ac + Vector3((0.0 if not grand else 0.42) + sx * (0.42 if not grand else 0.85), 0.52, 0), seat, false)
+	if grand:
+		for k in 2:
+			city.box(Vector3(0.4, 0.4, 0.12), ac + Vector3(0.0 + k * 0.85, 0.6, -0.2), city.mat(Color(0.94, 0.92, 0.86), 0.9), false).rotation.x = -0.3
+	_block(city, Vector3(1.0 if not grand else 1.9, 0.8, 0.9), ac + Vector3(0.0 if not grand else 0.42, 0.4, 0))
+	var fl := ac + Vector3(-0.3, 0, -0.9)
+	city.cyl(0.02, 0.02, 1.6, fl + Vector3(0, 0.8, 0), gilt if grand else city.mat(Color(0.16, 0.16, 0.2), 0.5), null, 6)
+	city.cyl(0.16, 0.2, 0.03, fl + Vector3(0, 0.02, 0), gilt if grand else city.mat(Color(0.16, 0.16, 0.2), 0.5), null, 10)
+	city.cyl(0.12, 0.22, 0.26, fl + Vector3(0, 1.66, 0), city.glow_mat(Color(1.0, 0.88, 0.64), 1.5), null, 12)
+	_light(city, fl + Vector3(0.2, 1.5, 0.2), Color(1.0, 0.86, 0.62), 0.9, 3.6)
+	# Bookcase on the front wall, right of the door.
+	var bc := o + Vector3(half.x - 1.5, 0, half.y - 0.22)
+	city.box(Vector3(1.5, 2.1, 0.36), bc + Vector3(0, 1.05, 0), wood, false)
+	var spines := [Color("c8322a"), Color("2f6fe0"), Color("3fbf8a"), Color("f2c230"), Color("b79cff"), Color("e8e4d8"), Color("5a4634")]
+	for row in 4:
+		city.box(Vector3(1.38, 0.03, 0.34), bc + Vector3(0, 0.3 + row * 0.5, -0.02), pale, false)
+		for k in 11:
+			var bh := 0.24 + 0.06 * ((k * 3 + row + n) % 3)
+			city.box(Vector3(0.1, bh, 0.22), bc + Vector3(-0.6 + k * 0.12, 0.32 + row * 0.5 + bh / 2.0, -0.1), city.mat((spines[(k + row * 2 + n) % spines.size()] as Color).darkened(0.1), 0.8), false)
+	_block(city, Vector3(1.5, 2.1, 0.4), bc + Vector3(0, 1.05, 0))
+	# A plant in a pot.
+	var pl := o + Vector3(half.x - 0.45, 0, -half.y + 0.45)
+	city.cyl(0.2, 0.15, 0.36, pl + Vector3(0, 0.18, 0), gilt if grand else city.mat(Color(0.6, 0.36, 0.24), 0.9), null, 10)
+	for k in 5:
+		var leaf := _ball(city, pl + Vector3(cos(k * 1.26) * 0.14, 0.62 + (k % 2) * 0.2, sin(k * 1.26) * 0.14), 0.2, city.mat(Color(0.16, 0.42, 0.2), 0.95))
+		leaf.scale = Vector3(0.7, 1.2, 0.7)
+	if not grand:
+		return
+	# Blue only. The fireplace on the right wall: stone surround, a fire, a gilt mirror above.
+	var fp := o + Vector3(half.x - 0.2, 0, -0.6)
+	var stone := city.mat(Color(0.92, 0.93, 0.96), 0.5)
+	city.box(Vector3(0.4, 1.3, 1.7), fp + Vector3(0, 0.65, 0), stone, false)
+	city.box(Vector3(0.5, 0.1, 1.9), fp + Vector3(-0.03, 1.34, 0), stone, false)
+	city.box(Vector3(0.1, 0.8, 1.0), fp + Vector3(-0.17, 0.42, 0), city.mat(Color(0.05, 0.04, 0.04), 0.9), false)
+	for k in 3:
+		city.cyl(0.0, 0.12 - k * 0.02, 0.36 + k * 0.08, fp + Vector3(-0.2, 0.26 + k * 0.03, -0.2 + k * 0.2), city.glow_mat([Color(1.0, 0.5, 0.1), Color(1.0, 0.72, 0.2), Color(1.0, 0.36, 0.08)][k], 3.0), null, 6)
+	_light(city, fp + Vector3(-0.6, 0.5, 0), Color(1.0, 0.6, 0.3), 1.6, 4.5)
+	city.box(Vector3(0.05, 1.1, 1.3), fp + Vector3(-0.2, 2.1, 0), gilt, false)
+	city.box(Vector3(0.03, 0.94, 1.14), fp + Vector3(-0.23, 2.1, 0), city.mat(Color(0.7, 0.82, 0.9), 0.05, 0.6), false)
+	for k in 2:
+		city.cyl(0.04, 0.06, 0.3, fp + Vector3(-0.1, 1.54, -0.7 + k * 1.4), gilt, null, 8)
+	_block(city, Vector3(0.5, 1.4, 1.9), fp + Vector3(0, 0.7, 0))
+	# A chandelier: a gilt ring with a light at each quarter.
+	var ch := o + Vector3(0.3, hgt - 0.75, 0.4)
+	city.cyl(0.02, 0.02, 0.7, ch + Vector3(0, 0.38, 0), gilt, null, 6)
+	var ring := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = 0.5
+	tm.outer_radius = 0.56
+	ring.mesh = tm
+	ring.material_override = gilt
+	ring.position = ch
+	city.add_child(ring)
+	for k in 6:
+		var ca := k * TAU / 6.0
+		city.cyl(0.03, 0.04, 0.16, ch + Vector3(cos(ca) * 0.53, 0.1, sin(ca) * 0.53), city.glow_mat(Color(1.0, 0.9, 0.7), 3.0), null, 6)
+	_light(city, ch + Vector3(0, -0.3, 0), Color(1.0, 0.9, 0.72), 1.4, 6.5)
+	# A wide rug with a gold border under the middle of the room.
+	city.box(Vector3(3.6, 0.006, 2.6), o + Vector3(0.9, 0.004, 0.9), gilt, false)
+	city.box(Vector3(3.36, 0.006, 2.36), o + Vector3(0.9, 0.007, 0.9), city.mat(trim.darkened(0.25), 0.95), false)
+
+
 ## One small red dorm bedroom: a bunk bed, a desk under the window, a wardrobe, a low table
 ## with a half-built deck on it. `n` changes the colors and what is lying about.
-static func _bedroom(city: CityBuilder, o: Vector3, half: Vector2, hgt: float, n: int) -> void:
-	var wood := city.surf("wood", Color(0.5, 0.35, 0.23))
-	var pale := city.surf("wood", Color(0.7, 0.54, 0.38))
+static func _bedroom(city: CityBuilder, o: Vector3, half: Vector2, hgt: float, n: int, trim := Color("c8322a"), dorm := "red") -> void:
+	var wood: Material = city.surf("wood", Color(0.5, 0.35, 0.23))
+	var pale: Material = city.surf("wood", Color(0.7, 0.54, 0.38))
+	if dorm == "blue":
+		# The blue dorm's rooms are white and gilt, not bare planks.
+		wood = city.mat(Color(0.88, 0.9, 0.95), 0.4, 0.1)
+		pale = city.mat(Color(0.96, 0.96, 0.99), 0.35, 0.1)
+	elif dorm == "yel":
+		wood = city.surf("wood", Color(0.6, 0.42, 0.26))
+		pale = city.surf("wood", Color(0.8, 0.64, 0.42))
 	var linen := city.mat(Color(0.95, 0.94, 0.9), 0.9)
-	var red := city.mat(Color("c8322a"), 0.8)
+	var red := city.mat(trim, 0.8)
 	var covers := [Color("c8322a"), Color("2f6fe0"), Color("3fbf8a"), Color("f2c230")]
 	var cover := city.mat(covers[(n - 1) % covers.size()], 0.85)
 	var posters := [Color("ffd166"), Color("7dd3ff"), Color("ff8a8a"), Color("b79cff"), Color("8be0a4")]
@@ -726,19 +864,22 @@ static func _bedroom(city: CityBuilder, o: Vector3, half: Vector2, hgt: float, n
 	for i in range(-3, 4):
 		city.box(Vector3(0.03, hgt, 0.02), o + Vector3(i * 0.85, hgt / 2.0, -half.y + 0.03), wood, false)
 	city.box(Vector3(half.x * 2, 0.16, 0.16), o + Vector3(0, hgt - 0.09, 0), wood, false)
+	if dorm != "red":
+		_fine_bedroom(city, o, half, hgt, n, trim, dorm, wood, pale, linen, red, cover)
 	# Bunk bed against the left wall.
 	var bp := o + Vector3(-half.x + 0.6, 0, -0.5)
-	for lv in 2:
+	for lv in (2 if dorm == "red" else 0):
 		var y := 0.42 + lv * 1.25
 		city.box(Vector3(0.98, 0.14, 2.05), bp + Vector3(0, y, 0), pale, false)
 		city.box(Vector3(0.9, 0.14, 1.9), bp + Vector3(0, y + 0.14, 0), linen, false)
 		city.box(Vector3(0.92, 0.1, 1.1), bp + Vector3(0, y + 0.23, 0.38), cover if lv == 0 else red, false)
 		city.box(Vector3(0.5, 0.12, 0.34), bp + Vector3(0, y + 0.26, -0.72), linen, false)
-	for c in [Vector2(-0.46, -1.0), Vector2(0.46, -1.0), Vector2(-0.46, 1.0), Vector2(0.46, 1.0)]:
-		city.box(Vector3(0.08, 2.35, 0.08), bp + Vector3(c.x, 1.18, c.y), wood, false)
-	for k in 4:
-		city.box(Vector3(0.05, 0.05, 0.5), bp + Vector3(0.48, 0.75 + k * 0.3, 0.75), wood, false)
-	_block(city, Vector3(1.05, 2.35, 2.1), bp + Vector3(0, 1.18, 0))
+	if dorm == "red":
+		for c in [Vector2(-0.46, -1.0), Vector2(0.46, -1.0), Vector2(-0.46, 1.0), Vector2(0.46, 1.0)]:
+			city.box(Vector3(0.08, 2.35, 0.08), bp + Vector3(c.x, 1.18, c.y), wood, false)
+		for k in 4:
+			city.box(Vector3(0.05, 0.05, 0.5), bp + Vector3(0.48, 0.75 + k * 0.3, 0.75), wood, false)
+		_block(city, Vector3(1.05, 2.35, 2.1), bp + Vector3(0, 1.18, 0))
 	# Desk under the window on the back wall, a chair, a lamp, cards laid out.
 	var dp := o + Vector3(0.9, 0, -half.y + 0.42)
 	city.box(Vector3(1.5, 0.06, 0.62), dp + Vector3(0, 0.76, 0), pale, false)
@@ -770,14 +911,15 @@ static func _bedroom(city: CityBuilder, o: Vector3, half: Vector2, hgt: float, n
 	for hz: float in [-0.08, 0.08]:
 		city.box(Vector3(0.03, 0.2, 0.03), wp + Vector3(-0.33, 1.05, hz), city.mat(Color(0.86, 0.7, 0.32), 0.3, 0.8), false)
 	_block(city, Vector3(0.66, 2.0, 1.2), wp + Vector3(0, 1.0, 0))
-	city.box(Vector3(0.24, 0.04, 1.3), o + Vector3(half.x - 0.14, 1.7, -1.1), pale, false)
-	for b in 6:
-		var bh := 0.2 + 0.05 * ((b * 2 + n) % 3)
-		city.box(Vector3(0.17, bh, 0.06), o + Vector3(half.x - 0.14, 1.72 + bh / 2.0, -1.62 + b * 0.09), city.mat(posters[(b + n) % posters.size()].darkened(0.2), 0.8), false)
-	city.cyl(0.05, 0.03, 0.15, o + Vector3(half.x - 0.14, 1.8, -0.65), city.mat(Color(0.9, 0.74, 0.3), 0.3, 0.8), null, 10)
+	if dorm != "blue":
+		city.box(Vector3(0.24, 0.04, 1.3), o + Vector3(half.x - 0.14, 1.7, -1.1), pale, false)
+		for b in 6:
+			var bh := 0.2 + 0.05 * ((b * 2 + n) % 3)
+			city.box(Vector3(0.17, bh, 0.06), o + Vector3(half.x - 0.14, 1.72 + bh / 2.0, -1.62 + b * 0.09), city.mat(posters[(b + n) % posters.size()].darkened(0.2), 0.8), false)
+		city.cyl(0.05, 0.03, 0.15, o + Vector3(half.x - 0.14, 1.8, -0.65), city.mat(Color(0.9, 0.74, 0.3), 0.3, 0.8), null, 10)
 	# Low table and cushions in the middle, a rug under them.
 	var t := o + Vector3(0.6, 0, 0.7)
-	city.box(Vector3(1.9, 0.014, 1.3), t + Vector3(0, 0.008, 0), city.mat(Color(0.74, 0.3, 0.24), 0.95), false)
+	city.box(Vector3(1.9, 0.014, 1.3), t + Vector3(0, 0.008, 0), city.mat(trim.darkened(0.15), 0.95), false)
 	city.box(Vector3(1.5, 0.016, 0.95), t + Vector3(0, 0.01, 0), city.mat(Color(0.86, 0.76, 0.6), 0.95), false)
 	city.box(Vector3(1.0, 0.06, 0.6), t + Vector3(0, 0.34, 0), pale, false)
 	for c in [Vector2(-0.44, -0.24), Vector2(0.44, -0.24), Vector2(-0.44, 0.24), Vector2(0.44, 0.24)]:

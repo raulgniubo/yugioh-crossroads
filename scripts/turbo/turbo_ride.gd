@@ -107,6 +107,12 @@ func _ready() -> void:
 	Pad.hint("Left stick  steer     RT  throttle     LT  brake     A  duel / exit     X  race     B  back")
 	if "--ride-test" in OS.get_cmdline_user_args():
 		_self_test.call_deferred()
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--ride-at="):
+			# Dev: start at this point of the lap with the throttle held, for a picture of a zone.
+			_s = float(a.trim_prefix("--ride-at="))
+			_apply_zone()
+			Input.action_press("ui_up")
 	if "--gp" in OS.get_cmdline_user_args() and not came_back:
 		_test_on = true
 		Engine.time_scale = 8.0
@@ -290,11 +296,60 @@ func _spawn_thing(x: float) -> void:
 			mi2.material_override = track._glow(Color("ffd23a"), 3.5)
 			node.add_child(mi2)
 		"hauler":
-			track._box(node, Vector3(6.5, 2.6, 2.6), Vector3(0, 1.7, 0), track._solid(Color(0.16, 0.18, 0.24)))
-			track._box(node, Vector3(1.8, 1.8, 2.4), Vector3(4.2, 1.3, 0), track._solid(Color(0.3, 0.12, 0.1)))
-			track._box(node, Vector3(0.1, 0.5, 2.2), Vector3(-3.3, 1.2, 0), track._glow(Color("ff3030"), 3.0))
-			track._box(node, Vector3(6.4, 0.08, 0.08), Vector3(0, 0.5, 1.32), track._glow(Color("ff8a3a"), 2.0))
-			track._box(node, Vector3(6.4, 0.08, 0.08), Vector3(0, 0.5, -1.32), track._glow(Color("ff8a3a"), 2.0))
+			# A freight truck seen from behind: a ribbed box trailer on a chassis, mud flaps, a
+			# bar of tail lights, hazard chevrons on the doors, and the cab out in front.
+			var body := track._solid([Color(0.62, 0.64, 0.68), Color(0.2, 0.3, 0.46), Color(0.5, 0.2, 0.16), Color(0.24, 0.36, 0.3)][_rng.randi() % 4])
+			var dark := track._solid(Color(0.07, 0.075, 0.09))
+			var steel := track._solid(Color(0.4, 0.42, 0.46))
+			track._box(node, Vector3(6.6, 2.5, 2.5), Vector3(0, 2.15, 0), body)
+			for k in 12:
+				track._box(node, Vector3(0.06, 2.4, 2.56), Vector3(-3.1 + k * 0.56, 2.15, 0), body)
+			track._box(node, Vector3(6.7, 0.12, 2.56), Vector3(0, 3.42, 0), steel)
+			track._box(node, Vector3(6.7, 0.14, 2.56), Vector3(0, 0.9, 0), steel)
+			track._box(node, Vector3(6.2, 0.3, 1.1), Vector3(0, 0.7, 0), dark)
+			# Rear doors: two leaves with lock bars and red and white chevrons along the bottom.
+			for sz: float in [-1.0, 1.0]:
+				track._box(node, Vector3(0.05, 2.3, 1.18), Vector3(-3.32, 2.15, sz * 0.62), body)
+				for bar: float in [0.25, 0.8]:
+					track._box(node, Vector3(0.05, 2.3, 0.05), Vector3(-3.36, 2.15, sz * bar), steel)
+			for k in 8:
+				var ch := track._box(node, Vector3(0.03, 0.3, 0.2), Vector3(-3.38, 1.12, -1.05 + k * 0.3), track._glow(Color("ff3030") if k % 2 == 0 else Color("f2f2f2"), 1.2))
+				ch.rotation.x = 0.6
+			track._box(node, Vector3(0.1, 0.16, 2.4), Vector3(-3.36, 0.72, 0), dark)
+			for sz: float in [-1.0, 1.0]:
+				track._box(node, Vector3(0.08, 0.2, 0.5), Vector3(-3.4, 0.72, sz * 0.9), track._glow(Color("ff2a2a"), 4.0))
+				track._box(node, Vector3(0.08, 0.14, 0.16), Vector3(-3.4, 0.72, sz * 0.5), track._glow(Color("ff9a30"), 3.0))
+				track._box(node, Vector3(0.04, 0.6, 0.7), Vector3(-2.9, 0.4, sz * 0.9), dark)
+				track._box(node, Vector3(0.08, 0.08, 0.08), Vector3(-3.3, 3.4, sz * 1.2), track._glow(Color("ff2a2a"), 3.0))
+				# Three axles of twin wheels.
+				for ax: float in [-2.3, -1.2, 2.2]:
+					var wheel := MeshInstance3D.new()
+					var cm := CylinderMesh.new()
+					cm.top_radius = 0.5
+					cm.bottom_radius = 0.5
+					cm.height = 0.62
+					cm.radial_segments = 14
+					wheel.mesh = cm
+					wheel.material_override = dark
+					wheel.rotation.x = PI / 2.0
+					wheel.position = Vector3(ax, 0.5, sz * 0.98)
+					node.add_child(wheel)
+				# Marker lights down each side.
+				for k in 5:
+					track._box(node, Vector3(0.14, 0.07, 0.04), Vector3(-2.8 + k * 1.4, 0.92, sz * 1.29), track._glow(Color("ff9a30"), 2.6))
+			# The cab.
+			track._box(node, Vector3(2.0, 2.4, 2.4), Vector3(4.6, 1.75, 0), track._solid(Color(0.75, 0.2, 0.14)))
+			track._box(node, Vector3(0.6, 1.4, 2.3), Vector3(3.4, 2.6, 0), dark)
+			track._box(node, Vector3(0.05, 0.8, 2.0), Vector3(5.62, 2.3, 0), track._solid(Color(0.1, 0.14, 0.2)))
+			for sz: float in [-1.0, 1.0]:
+				track._box(node, Vector3(0.1, 0.5, 0.06), Vector3(5.2, 2.5, sz * 1.36), steel)
+				track._box(node, Vector3(0.06, 0.16, 0.4), Vector3(5.62, 1.0, sz * 0.85), track._glow(Color(1.0, 0.96, 0.85), 4.0))
+			var beams := OmniLight3D.new()
+			beams.light_color = Color(1.0, 0.25, 0.2)
+			beams.light_energy = 1.6
+			beams.omni_range = 5.0
+			beams.position = Vector3(-4.0, 0.9, 0)
+			node.add_child(beams)
 	add_child(node)
 	_things.append({"kind": kind, "node": node, "x": x, "z": z})
 

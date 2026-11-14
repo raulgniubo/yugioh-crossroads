@@ -36,14 +36,14 @@ void fragment() {
 static var _sh: Shader
 
 
-func _init(a := 0.98) -> void:
+func _init(a := 0.98, tint := UITheme.ACCENT) -> void:
 	if _sh == null:
 		_sh = Shader.new()
 		_sh.code = CODE
 	var m := ShaderMaterial.new()
 	m.shader = _sh
 	m.set_shader_parameter("alpha", a)
-	m.set_shader_parameter("tint", UITheme.ACCENT)
+	m.set_shader_parameter("tint", tint)
 	material = m
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE

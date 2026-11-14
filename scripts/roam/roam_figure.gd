@@ -79,6 +79,12 @@ func _add_head_look() -> void:
 	_look.neck = sk.find_bone("neck")
 	if _look.neck < 0:
 		_look.neck = sk.find_bone("Neck")
+	# The lowest bone of the back: the one that hangs off the hips, whatever the rig calls it.
+	var hip_i := Avatars.bone(_model, "Hips")
+	for b in sk.get_bone_count():
+		if hip_i >= 0 and sk.get_bone_parent(b) == hip_i and sk.get_bone_name(b).to_lower().contains("spine"):
+			_look.spine = b
+			break
 	for side in [["LeftUpperArm", "LeftLowerArm"], ["RightUpperArm", "RightLowerArm"]]:
 		var ua := Avatars.bone(_model, side[0])
 		var la := Avatars.bone(_model, side[1])
@@ -390,6 +396,8 @@ func _process(delta: float) -> void:
 			elif stance == "rest":
 				seat_shift = Vector3(-0.11, 0, 0.31)
 		var k := 1.0 - exp(-delta * 8.0)
+		if _look:
+			_look.sit_up = lerpf(_look.sit_up, 0.36 if (stance == "rest" and _speed < 0.3 and _hold <= 0.0 and not _speaking) else 0.0, k)
 		_model.position.x = lerpf(_model.position.x, seat_shift.x, k)
 		_model.position.z = lerpf(_model.position.z, seat_shift.z, k)
 	if _hold > 0.0:

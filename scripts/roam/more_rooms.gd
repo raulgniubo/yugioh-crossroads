@@ -4,7 +4,7 @@ class_name MoreRooms
 
 const ROOMS := {
 	"home": {"name": "Your Room", "area": "Crossroads Apartments, second floor", "at": Vector3(720, 0, 400), "half": Vector2(5.0, 4.2), "height": 3.2,
-		"door": Vector3(-25, 0, 18.3), "out": Vector3(0, 0, -1), "label": "Go up to your room", "music": "shop",
+		"door": Vector3(-25, 0, 17.4), "out": Vector3(0, 0, -1), "label": "Go up to your room", "music": "shop",
 		"floor": Color(0.6, 0.46, 0.32), "wall": Color(0.9, 0.88, 0.82), "trim": Color("7cc4ff")},
 	"mart": {"name": "Domino Mart", "area": "Open all night", "at": Vector3(800, 0, 400), "half": Vector2(7.0, 5.0), "height": 3.6,
 		"door": Vector3(-24, 0, -9.1), "out": Vector3(0, 0, 1), "label": "Enter Domino Mart", "music": "shop",
@@ -19,7 +19,7 @@ const ROOMS := {
 		"door": Vector3(0, 0, -29.6), "out": Vector3(0, 0, 1), "label": "Enter the stadium", "music": "shop",
 		"floor": Color(0.2, 0.22, 0.28), "wall": Color(0.86, 0.88, 0.93), "trim": Color("ffd166")},
 	"nd_cafe": {"district": "newdomino", "name": "Cafe Terrace", "area": "Coffee, cake and table duels", "at": Vector3(800, 0, 400), "half": Vector2(7.0, 5.5), "height": 3.6,
-		"door": Vector3(-25.4, 0, 31.0), "out": Vector3(1, 0, 0), "label": "Enter the cafe", "music": "shop",
+		"door": Vector3(-26.5, 0, 27.1), "out": Vector3(1, 0, 0), "label": "Enter the cafe", "music": "shop",
 		"floor": Color(0.5, 0.36, 0.26), "wall": Color(0.96, 0.9, 0.86), "trim": Color("ff8ac0")},
 }
 const PEOPLE := {
@@ -703,7 +703,7 @@ static func build_outside(city: CityBuilder, district: String) -> void:
 	if district != "domino":
 		return
 	# Your building: an awning, a name plate and a warm light over the door.
-	var d := Vector3(-25, 0, 18.3)
+	var d := Vector3(-25, 0, 17.47)
 	city.box(Vector3(2.6, 0.12, 1.3), d + Vector3(0, 3.0, -0.7), city.mat(Color(0.16, 0.5, 0.56), 0.7), false)
 	city.box(Vector3(2.6, 0.3, 0.06), d + Vector3(0, 2.86, -1.33), city.mat(Color(0.9, 0.92, 0.94), 0.7), false)
 	city.box(Vector3(1.7, 2.6, 0.1), d + Vector3(0, 1.46, 0.02), city.mat(Color(0.2, 0.26, 0.34), 0.5), false)
@@ -716,7 +716,6 @@ static func build_outside(city: CityBuilder, district: String) -> void:
 	lamp.omni_range = 5.0
 	lamp.position = d + Vector3(0, 2.6, -1.0)
 	city.add_child(lamp)
-	city.neon_sign("DOMINO MART  24H", Vector3(-24, 4.5, -8.8), Color("7dffb0"), 60, 0.0, false)
 
 
 ## The things you can do inside each room.
