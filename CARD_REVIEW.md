@@ -5,9 +5,9 @@ The list of cards that passed is `scripts/core/card_exact.gd`. Normal monsters a
 
 ## Where it stands
 
-- Effect monsters checked and exact: **181**
-- Effect monsters waiting to be rebuilt: **79**
-- Spells and Traps exact: **161**
+- Effect monsters checked and exact: **196**
+- Effect monsters waiting to be rebuilt: **64**
+- Spells and Traps exact: **162**
 - Spells and Traps waiting to be rebuilt: **14**
 
 A card that is waiting is not in packs, shops, prizes or the deck builder, and the ready-made decks use a stand-in for it. It comes back by itself the day it is added to the exact list.
@@ -20,18 +20,13 @@ A card that is waiting is not in packs, shops, prizes or the deck builder, and t
 - Blackwing - Sirocco the Dawn
 - Breaker the Magical Warrior
 - Cat Shark
-- Cyber Angel Benten
-- Cyber Angel Dakini
-- Cyber Angel Idaten
 - Cyber Barrier Dragon
 - Cyber Blader
 - Cyber Dragon Zwei
 - Cyber Phoenix
 - Cyber Valley
 - Destiny HERO - Diamond Dude
-- Destiny HERO - Disk Commander
 - Destiny HERO - Doom Lord
-- Destiny HERO - Malicious
 - Dimensional Alchemist
 - Dragon Piper
 - Elemental HERO Rampart Blaster
@@ -66,13 +61,6 @@ A card that is waiting is not in packs, shops, prizes or the deck builder, and t
 - Starliege Paladynamo
 - Stygian Street Patrol
 - Submarineroid
-- Toon Cannon Soldier
-- Toon Dark Magician Girl
-- Toon Gemini Elf
-- Toon Goblin Attack Force
-- Toon Masked Sorcerer
-- Toon Mermaid
-- Toon Summoned Skull
 - Truckroid
 - Twin-Sword Marauder
 - Umbral Horror Ghost
@@ -80,9 +68,6 @@ A card that is waiting is not in packs, shops, prizes or the deck builder, and t
 - Umbral Horror Will o' the Wisp
 - Vampire Lord
 - Viser Des
-- XYZ-Dragon Cannon
-- Y-Dragon Head
-- Z-Metal Tank
 - Barrier Resonator
 - Blackwing - Vayu the Emblem of Honor
 - Dark Necrofear

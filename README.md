@@ -5,6 +5,19 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.30
+
+- **More hairstyles and outfits.** Four hairstyles per body now (new: Swept Back and Wild Mane, Twin Tails and Long Waves) and five outfits (new: the Satellite Jacket for a 5D's look on foot, and Heartland Casual for ZEXAL). Any hairstyle goes with any outfit: the head of one model rides on the body of another. All of them take every color in the creator.
+- **The Curator, Vellum and Ren have their own models** instead of borrowed ones.
+- **Cards rebuilt to their printed text**, each with its own test:
+  - **Toons.** Toon World is in the game (pay 1000 LP). The big Toons (Mermaid, Summoned Skull, Dark Magician Girl) come from the hand only while you control it, Summoned Skull and Dark Magician Girl by Tributing a monster. Mermaid and Summoned Skull pay 500 LP to attack. The big ones attack directly unless the other side has a Toon, and then they must attack a Toon. The small ones (Gemini Elf, Masked Sorcerer, Goblin Attack Force, Cannon Soldier) attack directly only with your Toon World out and no Toon across the table. When Toon World is destroyed, they all go with it. Pegasus plays three copies.
+  - **X, Y and Z.** Y-Dragon Head and Z-Metal Tank equip to their partners as Union monsters, give 400 and 600 ATK and DEF, are destroyed in place of the monster they ride on, and come back off as monsters. XYZ-Dragon Cannon is called from the Extra Deck by banishing all three, with no Polymerization, and its discard effect can hit any card and be used as often as you can pay.
+  - **Destiny HERO - Malicious** is used from the Graveyard (your deck, then "Effect from the Graveyard"). **Disk Commander** draws 2 only when it comes back from the Graveyard, once per Duel, and not the turn it was sent there.
+  - **Cyber Angels.** Benten searches a LIGHT Fairy when Tributed. Idaten fetches a Ritual Spell when Ritual Summoned and gives every Ritual Monster 1000 ATK and DEF when Tributed. Dakini makes the opponent give up a monster of their choice, gives your Ritual Monsters piercing, and brings a Ritual card back in your End Phase.
+- **Fix:** enrolled at Duel Academy, your duelist keeps every color you picked; the dorm jacket is your top, repainted.
+
+Still waiting: 54 effect monsters and 14 Spells and Traps are out of the game until they are rebuilt (the list is in CARD_REVIEW.md).
+
 ## What is in 0.29
 
 A repair build first: several things looked wrong in 0.27 and 0.28, and they are fixed here.
