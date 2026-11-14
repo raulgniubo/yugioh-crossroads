@@ -5,6 +5,36 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.23
+
+- Duel arenas are real places now. Sixteen of them, each with its own ground under the cards
+  and its own scenery and crowd: a steel floor in the Kaiba Corp Dome, a varnished court ringed
+  in dorm colors at Duel Academy, a wet rooftop over Battle City, a pier at sunset, a marble
+  hall for the Blue Dorm, a lawn on the cliff by the Red Dorm, a closed highway overpass at
+  night, a junkyard, Heartland's glowing tiles, and the six open-air fields. Every duelist has
+  a home field (Jaden the Red Dorm cliff, Yusei the highway, Kaiba the dome). The Free Duel
+  picker shows a picture of each one (made by `tools/arena_shots.tscn`).
+- The Red Dorm on Academy Island is our own plank house: stairs outside that you can climb,
+  a walkway along the upper floor, and four bedrooms you enter from it.
+- Domino: buildings have real ledges, pilasters, balconies, awnings, air conditioners, pipes
+  and fire escapes. A new Game Center replaces the old arcade model. Poster columns and a
+  giant screen show real cards; shop fronts spill light onto the pavement at night.
+- Academy: dorm banners on the lamp posts, bunting and pennants round the plaza, the crest in
+  the paving, smoke off the volcano, and duels on the lawn you can stop and watch.
+- Booster packs and deck boxes show a real card from inside them (the pack's strongest
+  monster, the deck's ace) in place of the old made-up pictures.
+- Home screen: the four duelists are one from each series, each slot swapping only inside its
+  series. Tall hair and hats fit in the portraits.
+- Settings are split into tabs (Display, Graphics, Audio, Gameplay, Card art). Card sleeves
+  moved to "My duelist", opened from the profile bar, next to the character editor.
+- Story scenes: two people talking are filmed together and the camera holds while they go
+  back and forth. It cuts only when somebody new speaks or for a marked close-up.
+- Fixed: getting stuck by the dorm stairs (their sides are closed in, the top no longer has
+  a lip, and anyone boxed in on all sides is put back a few steps), seated people sinking
+  into benches (the hall has real benches and everyone sits on the seat), patterns that
+  shimmered at a distance (fine detail now fades out before it is smaller than a pixel),
+  the milky haze on overcast days, the Back button over the Free Duel title.
+
 ## What is in 0.22
 
 - The look, again: the comic style is gone. Menus and the duel screen are now dark glass over

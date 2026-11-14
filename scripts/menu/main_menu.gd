@@ -231,13 +231,12 @@ var _chip_name: Label
 var _chip_sub: Label
 
 
-## A lineup of duelists on the right: four at a time at a comfortable size (whole heads,
-## nothing blown up), each with a name tag. One of them steps out for a new face every few
-## seconds, so over a minute you meet most of the roster.
+## A lineup of duelists on the right: four at a time, one from each series (Duel Monsters, GX,
+## 5D's, ZEXAL), each with a name tag. Every few seconds one of them steps out for another
+## duelist from the same series, so all four eras are always on screen.
 const LINEUP := 4
-var _line: Array = []            # [{tex: TextureRect, tag: Control, key: String, home: Vector2}]
-var _feat_keys: Array = []
-var _feat_next := 0
+const LINEUP_ERAS := ["Duel Monsters", "GX", "5D's", "ZEXAL"]
+var _line: Array = []            # [{tex, tag, key, home, pool, at}]
 var _feat_turn := 0
 
 
@@ -247,50 +246,62 @@ func _build_featured() -> void:
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(holder)
 	move_child(holder, 2)
+	var pools: Array = [[], [], [], []]
+	var spare: Array = []
 	for key in Characters.ORDER:
-		if Avatars.has_avatar(str(key)):
-			_feat_keys.append(str(key))
-	if _feat_keys.is_empty():
-		_feat_keys = Characters.ORDER.duplicate()
-	_feat_keys.shuffle()
+		if not Avatars.has_avatar(str(key)):
+			continue
+		var era := LINEUP_ERAS.find(str(Characters.get_char(str(key)).get("era", "")))
+		if era >= 0:
+			(pools[era] as Array).append(str(key))
+		else:
+			spare.append(str(key))
+	for pool in pools:
+		(pool as Array).shuffle()
+		if (pool as Array).is_empty():
+			# Nobody from that series has a model yet: anyone will do.
+			(pool as Array).append_array(spare if not spare.is_empty() else Characters.ORDER.slice(0, 1))
 	var vs := get_viewport_rect().size
 	# Back to front, so the two in the middle stand a step ahead of the outer two.
-	var plan := [[0, 0.80, -34.0], [3, 0.80, -34.0], [1, 1.0, 0.0], [2, 1.0, 0.0]]
+	var plan := [[0, 0.82, -30.0], [3, 0.82, -30.0], [1, 1.0, 0.0], [2, 1.0, 0.0]]
 	_line.resize(LINEUP)
 	for e in plan:
 		var i: int = e[0]
 		var sc: float = e[1]
-		var sz := Vector2(330, 412) * sc
-		var cx := vs.x - 880.0 + i * 232.0
+		var sz := Vector2(340, 425) * sc
+		var cx := vs.x - 905.0 + i * 244.0
 		var home := Vector2(cx - sz.x / 2.0, vs.y - 150.0 - sz.y + float(e[2]))
 		var tex := TextureRect.new()
 		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tex.material = _fade_mat()
+		tex.material = _fade_mat().duplicate()
 		holder.add_child(tex)
 		tex.size = sz
 		tex.position = home
-		if sc < 1.0:
-			tex.modulate = Color(0.82, 0.86, 0.95)
 		var tag := Control.new()
 		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tag.position = Vector2(cx, home.y + sz.y - 26.0)
 		tag.draw.connect(_draw_name_tag.bind(tag))
 		holder.add_child(tag)
-		_line[i] = {"tex": tex, "tag": tag, "key": "", "home": home}
+		_line[i] = {"tex": tex, "tag": tag, "key": "", "home": home, "pool": pools[i], "at": 0, "dim": 0.82 if sc < 1.0 else 1.0}
 	for i in LINEUP:
-		_set_lineup(i, str(_feat_keys[_feat_next % _feat_keys.size()]), true)
-		_feat_next += 1
-	if _feat_keys.size() > LINEUP:
-		var t := Timer.new()
-		t.wait_time = 3.2
-		t.autostart = true
-		t.timeout.connect(func():
-			_set_lineup([1, 3, 2, 0][_feat_turn % LINEUP], str(_feat_keys[_feat_next % _feat_keys.size()]), false)
+		_set_lineup(i, str((_line[i]["pool"] as Array)[0]), true)
+	var t := Timer.new()
+	t.wait_time = 3.4
+	t.autostart = true
+	t.timeout.connect(func():
+		# Take turns; a series with only one duelist keeps the one it has.
+		for tries in LINEUP:
+			var slot: Dictionary = _line[[1, 3, 2, 0][_feat_turn % LINEUP]]
 			_feat_turn += 1
-			_feat_next += 1)
-		add_child(t)
+			var pool: Array = slot["pool"]
+			if pool.size() < 2:
+				continue
+			slot["at"] = (int(slot["at"]) + 1) % pool.size()
+			_set_lineup(_line.find(slot), str(pool[int(slot["at"])]), false)
+			break)
+	add_child(t)
 
 
 ## The busts melt into the street at the waist instead of ending in a hard cut.
@@ -302,8 +313,11 @@ func _fade_mat() -> ShaderMaterial:
 		var sh := Shader.new()
 		sh.code = """
 shader_type canvas_item;
+uniform float shade = 0.0;          // 1 = a dark silhouette (while one duelist swaps for another)
+uniform float dim = 1.0;
 void fragment() {
 	vec4 c = texture(TEXTURE, UV) * COLOR;
+	c.rgb = mix(c.rgb * dim, vec3(0.035, 0.05, 0.11), shade);
 	c.a *= 1.0 - smoothstep(0.80, 0.985, UV.y);
 	COLOR = c;
 }
@@ -317,6 +331,8 @@ func _set_lineup(i: int, key: String, instant: bool) -> void:
 	var slot: Dictionary = _line[i]
 	var tex: TextureRect = slot["tex"]
 	var tag: Control = slot["tag"]
+	var mat: ShaderMaterial = tex.material
+	mat.set_shader_parameter("dim", slot["dim"])
 	var d := Characters.get_char(key)
 	var swap := func():
 		slot["key"] = key
@@ -331,21 +347,20 @@ func _set_lineup(i: int, key: String, instant: bool) -> void:
 		tag.modulate.a = 0.0
 		tex.position = home + Vector2(40, 0)
 		var tw0 := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		tw0.tween_property(tex, "position", home, 0.5).set_delay(0.25 + i * 0.08)
-		tw0.tween_property(tex, "modulate:a", 1.0, 0.35).set_delay(0.25 + i * 0.08)
-		tw0.tween_property(tag, "modulate:a", 1.0, 0.3).set_delay(0.5 + i * 0.08)
+		tw0.tween_property(tex, "position", home, 0.4).set_delay(0.1 + i * 0.05)
+		tw0.tween_property(tex, "modulate:a", 1.0, 0.3).set_delay(0.1 + i * 0.05)
+		tw0.tween_property(tag, "modulate:a", 1.0, 0.25).set_delay(0.25 + i * 0.05)
 		return
+	# A clean swap: the duelist goes to a dark silhouette, the next one steps into it, and
+	# the light comes back up. Nobody is ever see-through.
+	Portraits.get_portrait(key)            # start drawing the next face now
 	var tw := create_tween()
-	tw.set_parallel()
-	tw.tween_property(tex, "modulate:a", 0.0, 0.25)
-	tw.tween_property(tag, "modulate:a", 0.0, 0.2)
-	tw.tween_property(tex, "position:y", home.y + 14.0, 0.25)
-	tw.chain().tween_callback(func():
-		swap.call()
-		tex.position = home + Vector2(0, 14))
-	tw.chain().tween_property(tex, "position", home, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(tex, "modulate:a", 1.0, 0.3)
-	tw.parallel().tween_property(tag, "modulate:a", 1.0, 0.3).set_delay(0.1)
+	tw.tween_method(func(v: float): mat.set_shader_parameter("shade", v), 0.0, 1.0, 0.2)
+	tw.parallel().tween_property(tag, "modulate:a", 0.0, 0.15)
+	tw.tween_callback(swap)
+	tw.tween_interval(0.16)
+	tw.tween_method(func(v: float): mat.set_shader_parameter("shade", v), 1.0, 0.0, 0.3)
+	tw.parallel().tween_property(tag, "modulate:a", 1.0, 0.25)
 
 
 func _draw_name_tag(c: Control) -> void:
@@ -415,7 +430,7 @@ func _build_profile_chip() -> void:
 	_chip_dp.size = Vector2(190, 40)
 	_chip_dp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.add_child(_chip_dp)
-	chip.pressed.connect(func(): _open_profile(false))
+	chip.pressed.connect(func(): _open_panel(SettingsPanel.open_profile(self, func(): _open_profile(false))))
 	Profile.changed.connect(_refresh_chip)
 	Collection.changed.connect(_refresh_chip)
 	Portraits.flushed.connect(_on_flushed)

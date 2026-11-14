@@ -10,19 +10,42 @@ var _bob: Array = []  # [node, base_y, speed]
 func build_arena(t: Dictionary) -> void:
 	theme = t
 	make_solid = false
-	match str(t.get("key", "crossroads")):
+	var key := str(t.get("key", "crossroads"))
+	match key:
 		"battlecity":
+			_land(Vector2(34, 28))
 			_rooftop()
+			_rooftop_extras()
 		"kaibacorp":
+			_land(Vector2(80, 80))
 			_dome()
+			_dome_extras()
 		"academy":
+			_land(Vector2(80, 80))
 			_academy()
+			_hall_extras()
 		"satellite":
+			_land(Vector2(180, 180))
 			_junkyard()
+			_junk_extras()
 		"heartland":
+			_land(Vector2(180, 180))
 			_heartland()
+		"reddorm":
+			_reddorm()
+			return
+		"bluehall":
+			_bluehall()
+			return
+		"highway":
+			_highway()
+			_light_windows(1.0)
+			return
+		"pier":
+			_pier()
+			return
 		"meadow", "volcano", "peak", "ruins", "tide":
-			_wild(str(t.get("key", "")))
+			_wild(key)
 			return
 		"shadow":
 			_void()
@@ -31,7 +54,543 @@ func build_arena(t: Dictionary) -> void:
 		_:
 			_void()
 	_stage_ring()
-	_light_windows(0.5 if str(t.get("key", "")) in ["satellite", "heartland"] else 1.0)
+	_light_windows(0.5 if key in ["satellite", "heartland"] else 1.0)
+
+
+## The ground the field is painted on, running out as far as `size`: the same surface as the
+## mat, so the mat is simply the marked-out part of the floor.
+func _land(size: Vector2, at := Vector3(0, -0.03, 0), haze := 0.85) -> MeshInstance3D:
+	var ground := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = size
+	ground.mesh = pm
+	var sh := Shader.new()
+	sh.code = """
+shader_type spatial;
+render_mode unshaded;
+uniform int surface = 1;
+uniform vec2 size = vec2(100.0);
+uniform vec2 shift = vec2(0.0);
+uniform float haze_amount = 0.85;
+uniform vec3 haze : source_color = vec3(0.8, 0.9, 1.0);
+""" + FieldThemes.GROUND_GLSL + """
+void fragment() {
+	vec2 p = (UV - 0.5) * size + shift;
+	vec3 col = ground_color(p, surface, TIME) * 0.92;
+	float far = smoothstep(26.0, 120.0, length(p));
+	ALBEDO = mix(col, haze, far * haze_amount);
+}
+"""
+	var gm := ShaderMaterial.new()
+	gm.shader = sh
+	gm.set_shader_parameter("surface", int(theme.get("surface", 1)))
+	gm.set_shader_parameter("size", size)
+	gm.set_shader_parameter("shift", Vector2(at.x, at.z))
+	gm.set_shader_parameter("haze_amount", haze)
+	gm.set_shader_parameter("haze", theme["fog"])
+	ground.material_override = gm
+	ground.position = at
+	add_child(ground)
+	return ground
+
+
+## People watching from given spots: [position, which way they face].
+func _fans(spots: Array, seed := 9) -> void:
+	if spots.is_empty():
+		return
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = _fan_mesh()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	var palette: Array = theme.get("crowd", [Color("e0533f"), Color("3f7be0"), Color("e8e8ee"), Color("2b2b33"), Color("f0c040"), Color("3fbf8a"), Color("8a4fd9"), Color("d9d2c4"), Color("26364f")])
+	mm.instance_count = spots.size()
+	for i in spots.size():
+		var sc := rng.randf_range(0.9, 1.12)
+		var bs := Basis(Vector3.UP, float(spots[i][1]) + rng.randf_range(-0.2, 0.2)).scaled(Vector3(sc, sc * rng.randf_range(0.92, 1.08), sc))
+		mm.set_instance_transform(i, Transform3D(bs, spots[i][0]))
+		mm.set_instance_color(i, (palette[rng.randi() % palette.size()] as Color).darkened(rng.randf() * 0.25))
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mmi)
+
+
+## A row of onlookers from a to b, all turned toward the middle of the field.
+func _fan_row(a: Vector3, b: Vector3, n: int, seed := 9) -> void:
+	var spots: Array = []
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed * 7 + n
+	for i in n:
+		var p := a.lerp(b, (i + rng.randf_range(0.2, 0.8)) / n)
+		spots.append([p, atan2(-p.x, -p.z)])
+	_fans(spots, seed)
+
+
+## A string of little flags from a to b, sagging in the middle.
+func _bunting(a: Vector3, b: Vector3, cols: Array, n := 14) -> void:
+	for i in n:
+		var t := (i + 0.5) / n
+		var p := a.lerp(b, t) - Vector3(0, sin(t * PI) * 0.7, 0)
+		var f := box(Vector3(0.34, 0.42, 0.02), p - Vector3(0, 0.2, 0), mat(cols[i % cols.size()], 0.8), false)
+		f.rotation.y = atan2(b.x - a.x, b.z - a.z) + PI / 2.0
+		f.rotation.z = 0.2 * sin(i * 1.7)
+	var rope := box(Vector3(0.025, 0.025, a.distance_to(b)), (a + b) / 2.0 - Vector3(0, 0.3, 0), mat(Color(0.2, 0.18, 0.16), 0.8), false)
+	rope.look_at_from_position(rope.position, b - Vector3(0, 0.3, 0))
+
+
+## A flag on a pole, the cloth held out flat enough to read from above.
+func _flag(at: Vector3, col: Color, height := 4.2, yaw := 0.0) -> void:
+	cyl(0.05, 0.07, height, at + Vector3(0, height / 2.0, 0), mat(Color(0.75, 0.76, 0.8), 0.35, 0.7), null, 8)
+	var cloth := box(Vector3(1.7, 0.03, 1.0), at + Vector3(0.9 * cos(yaw), height - 0.55, -0.9 * sin(yaw)), mat(col, 0.8), false)
+	cloth.rotation.y = yaw
+	cloth.rotation.x = 0.5
+	var trim := box(Vector3(1.7, 0.035, 0.14), at + Vector3(0.9 * cos(yaw), height - 0.55, -0.9 * sin(yaw)), mat(Color(0.95, 0.9, 0.75), 0.8), false)
+	trim.rotation.y = yaw
+	trim.rotation.x = 0.5
+
+
+# ------------------------------------------------------------------ what stands by the field
+
+## Duel hall: the three dorms sit along the sidelines behind low boards in their colors.
+func _hall_extras() -> void:
+	var cols := [Color("d02030"), Color("f0c040"), Color("3070e0")]
+	for sx: float in [-1.0, 1.0]:
+		for k in 3:
+			var z := -3.0 + k * 3.0
+			var col: Color = cols[(k + (0 if sx < 0.0 else 1)) % 3]
+			box(Vector3(0.18, 0.7, 2.7), Vector3(sx * 8.0, 0.35, z), mat(col, 0.6), false)
+			box(Vector3(0.22, 0.06, 2.74), Vector3(sx * 8.0, 0.72, z), mat(Color(0.95, 0.92, 0.85), 0.5), false)
+			# A bench of students behind each board.
+			box(Vector3(0.5, 0.42, 2.5), Vector3(sx * 9.0, 0.21, z), mat(Color(0.3, 0.2, 0.14), 0.6), false)
+			theme["crowd"] = [col, col.lightened(0.2), col.darkened(0.2), Color("e8e8ee")]
+			_fan_row(Vector3(sx * 9.0, 0.42, z - 1.1), Vector3(sx * 9.0, 0.42, z + 1.1), 4, 20 + k + int(sx) * 5)
+		theme.erase("crowd")
+	for k in 3:
+		_flag(Vector3(-4.6 + k * 4.6, 0, -8.2), cols[k], 5.0, 0.0)
+	# A referee's table with a bell on the near side line.
+	box(Vector3(1.6, 0.74, 0.7), Vector3(-9.6, 0.37, 5.2), mat(Color(0.86, 0.84, 0.8), 0.6), false)
+	cyl(0.12, 0.16, 0.14, Vector3(-9.6, 0.82, 5.2), mat(Color(0.9, 0.74, 0.3), 0.3, 0.8), null, 12)
+
+
+func _dome_extras() -> void:
+	# Camera crews and floor lights along the sidelines, crash barriers behind them.
+	var steel := mat(Color(0.5, 0.55, 0.65), 0.35, 0.8)
+	for sx: float in [-1.0, 1.0]:
+		for k in 5:
+			var z := -4.2 + k * 2.1
+			box(Vector3(0.12, 0.9, 1.9), Vector3(sx * 8.9, 0.45, z), steel, false)
+			box(Vector3(0.14, 0.2, 1.9), Vector3(sx * 8.9, 0.75, z), glow_mat(theme["accent"], 1.2), false)
+		for k in 3:
+			var at := Vector3(sx * 7.9, 0, -3.0 + k * 3.0)
+			cyl(0.2, 0.26, 0.16, at + Vector3(0, 0.08, 0), mat(Color(0.12, 0.13, 0.16), 0.4, 0.6), null, 12)
+			cyl(0.16, 0.16, 0.03, at + Vector3(0, 0.17, 0), glow_mat(Color(0.85, 0.93, 1.0), 3.0), null, 12)
+		_fan_row(Vector3(sx * 10.0, 0, -4.0), Vector3(sx * 10.0, 0, 4.0), 9, 31)
+
+
+func _rooftop_extras() -> void:
+	# Air units, a water tank, vents and cables: the clutter of a real roof, off to the sides.
+	var metal := mat(Color(0.55, 0.57, 0.62), 0.4, 0.6)
+	var dark := mat(Color(0.16, 0.16, 0.19), 0.6)
+	for e in [[Vector3(-9.2, 0, -2.8), 1.5], [Vector3(-9.6, 0, 1.4), 1.2], [Vector3(9.4, 0, 2.6), 1.5], [Vector3(9.0, 0, -1.2), 1.1]]:
+		var at: Vector3 = e[0]
+		var sz: float = e[1]
+		box(Vector3(sz, 0.9, sz * 0.8), at + Vector3(0, 0.45, 0), metal, false)
+		cyl(sz * 0.3, sz * 0.3, 0.05, at + Vector3(0, 0.92, 0), dark, null, 14)
+		for k in 4:
+			box(Vector3(sz * 0.56, 0.02, 0.05), at + Vector3(0, 0.95, 0), metal, false).rotation.y = k * PI / 4.0
+	for sx: float in [-1.0, 1.0]:
+		var pipe := cyl(0.09, 0.09, 9.0, Vector3(sx * 8.1, 0.14, 0), mat(Color(0.5, 0.3, 0.2), 0.6, 0.4), null, 8)
+		pipe.rotation.x = PI / 2.0
+	cyl(1.3, 1.3, 2.2, Vector3(-11.8, 2.3, -6.0), mat(Color(0.45, 0.32, 0.22), 0.9), null, 14)
+	cyl(0.0, 1.4, 0.7, Vector3(-11.8, 3.75, -6.0), mat(Color(0.3, 0.22, 0.16), 0.9), null, 14)
+	for lx in [-0.8, 0.8]:
+		for lz in [-0.8, 0.8]:
+			cyl(0.07, 0.07, 1.2, Vector3(-11.8 + lx, 0.6, -6.0 + lz), dark, null, 6)
+	_fan_row(Vector3(-8.6, 0, 5.6), Vector3(-11.5, 0, 3.0), 4, 41)
+	_fan_row(Vector3(8.6, 0, -5.6), Vector3(11.5, 0, -3.4), 4, 42)
+
+
+func _junk_extras() -> void:
+	# Oil drums with fires in them, tyres, a wrecked car and a few locals on the sidelines.
+	var drum := mat(Color(0.3, 0.2, 0.14), 0.7, 0.3)
+	for e in [Vector3(-8.2, 0, -3.2), Vector3(8.3, 0, 3.0), Vector3(-8.6, 0, 3.8), Vector3(8.0, 0, -3.9)]:
+		cyl(0.32, 0.32, 0.9, e + Vector3(0, 0.45, 0), drum, null, 12)
+		cyl(0.26, 0.26, 0.04, e + Vector3(0, 0.9, 0), glow_mat(Color(1.0, 0.5, 0.12), 4.0), null, 12)
+		var l := OmniLight3D.new()
+		l.light_color = Color(1.0, 0.55, 0.2)
+		l.light_energy = 2.2
+		l.omni_range = 5.0
+		l.position = e + Vector3(0, 1.3, 0)
+		add_child(l)
+	var rubber := mat(Color(0.06, 0.06, 0.07), 0.9)
+	for e in [[Vector3(-9.4, 0, 0.4), 3], [Vector3(9.3, 0, -0.6), 4], [Vector3(-7.6, 0, 5.4), 2]]:
+		for k in int(e[1]):
+			var tyre := MeshInstance3D.new()
+			var tm := TorusMesh.new()
+			tm.inner_radius = 0.2
+			tm.outer_radius = 0.42
+			tyre.mesh = tm
+			tyre.material_override = rubber
+			tyre.position = (e[0] as Vector3) + Vector3(sin(k * 2.1) * 0.08, 0.11 + k * 0.21, cos(k * 1.3) * 0.08)
+			add_child(tyre)
+	var wreck := prop("sedan", Vector3(10.6, 0, 3.6), 2.3, 4.2)
+	if wreck:
+		wreck.rotation.z = 0.06
+	_fan_row(Vector3(-10.4, 0, -2.4), Vector3(-10.0, 0, 2.6), 5, 51)
+	_fan_row(Vector3(10.2, 0, -3.0), Vector3(10.6, 0, 0.8), 4, 52)
+
+
+# ------------------------------------------------------------------ new places
+
+## The lawn on the cliff beside the red dorm, at sunset: the plank dorm behind, the sea below,
+## the volcano on the horizon, students watching from the grass.
+func _reddorm() -> void:
+	_land(Vector2(70, 64), Vector3(-6, -0.03, 2), 0.0)
+	# The headland drops away on the far side and the right: rock, then the sea.
+	var rock_m := surf("rock", Color(0.44, 0.36, 0.3))
+	box(Vector3(70, 14, 2.0), Vector3(-6, -7.05, -29.2), rock_m, false)
+	box(Vector3(2.0, 14, 64), Vector3(28.2, -7.05, 2), rock_m, false)
+	box(Vector3(70, 14, 2.0), Vector3(-6, -7.05, 33.2), rock_m, false)
+	box(Vector3(2.0, 14, 64), Vector3(-40.2, -7.05, 2), rock_m, false)
+	for i in 14:
+		rock(Vector3(-36.0 + i * 5.0, -1.2, -29.5 + sin(i * 2.3) * 1.2), Vector3(6.5, 4.5 + (i % 3), 5.0), rock_m, 70 + i, i * 0.9)
+		rock(Vector3(28.6 + sin(i * 1.7), -1.4, -28.0 + i * 4.6), Vector3(5.0, 4.0 + (i % 2) * 1.5, 6.5), rock_m, 90 + i, i * 0.6)
+	var sea := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(1400, 1400)
+	sea.mesh = pm
+	var wm := water_material(-4000.0)
+	wm.set_shader_parameter("deep", Color(0.1, 0.22, 0.42))
+	wm.set_shader_parameter("shallow", Color(0.6, 0.45, 0.4))
+	sea.material_override = wm
+	sea.position = Vector3(0, -12.0, 0)
+	add_child(sea)
+	# The dorm, up on the left behind the far duelist, lamps lit.
+	plank_dorm(Vector3(-17.0, 0, -17.5), 0.5, Color("c8322a"), false)
+	for k in 3:
+		var l := OmniLight3D.new()
+		l.light_color = Color(1.0, 0.8, 0.5)
+		l.light_energy = 2.4
+		l.omni_range = 7.0
+		l.position = Vector3(-19.0 + k * 3.4, 4.6, -13.0 - k * 1.8)
+		add_child(l)
+	# The volcano, far off across the water, and the lighthouse on the point.
+	var cone := cyl(10.0, 62.0, 46.0, Vector3(60, 10, -210), surf("rock", Color(0.3, 0.22, 0.24)), null, 22)
+	cone.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	cyl(9.0, 9.0, 0.6, Vector3(60, 33.2, -210), glow_mat(Color(1.0, 0.4, 0.12), 3.0), null, 14)
+	prop("lighthouse", Vector3(22.0, 0, -24.0), 0.0, 17.0, true)
+	# Trees, a fence along the cliff edge, bunting from the dorm to a pole.
+	for p in [Vector3(-13, 0, 9), Vector3(13.5, 0, -11), Vector3(-24, 0, 4), Vector3(17, 0, 10), Vector3(-30, 0, -8), Vector3(6, 0, -22)]:
+		prop("sakura" if int(p.x) % 2 == 0 else "tree", p, p.x, 6.0, true)
+	var wood := surf("wood", Color(0.42, 0.3, 0.2))
+	for i in 26:
+		var fx := -36.0 + i * 2.5
+		box(Vector3(0.14, 1.1, 0.14), Vector3(fx, 0.55, -27.6), wood, false)
+		box(Vector3(2.5, 0.1, 0.08), Vector3(fx + 1.25, 0.9, -27.6), wood, false)
+		box(Vector3(2.5, 0.1, 0.08), Vector3(fx + 1.25, 0.5, -27.6), wood, false)
+	for i in 22:
+		var fz := -27.6 + i * 2.6
+		box(Vector3(0.14, 1.1, 0.14), Vector3(26.6, 0.55, fz), wood, false)
+		box(Vector3(0.08, 0.1, 2.6), Vector3(26.6, 0.9, fz + 1.3), wood, false)
+	var reds := [Color("d9342b"), Color("fff0d8"), Color("f2a23a")]
+	cyl(0.06, 0.08, 4.6, Vector3(8.6, 2.3, -6.4), wood, null, 8)
+	cyl(0.06, 0.08, 4.6, Vector3(-8.6, 2.3, -6.4), wood, null, 8)
+	_bunting(Vector3(-8.6, 4.5, -6.4), Vector3(8.6, 4.5, -6.4), reds, 22)
+	_flag(Vector3(-8.2, 0, 4.6), Color("c8322a"), 4.4, 0.4)
+	_flag(Vector3(8.2, 0, -4.6), Color("c8322a"), 4.4, PI + 0.4)
+	# Students on picnic rugs and a bench, watching.
+	theme["crowd"] = [Color("c8322a"), Color("d9483a"), Color("e8e8ee"), Color("b02822"), Color("f2c230"), Color("2f6fe0")]
+	for e in [[Vector3(-8.6, 0, -1.6), Color("f2e8d0")], [Vector3(8.8, 0, 1.4), Color("e85a4a")], [Vector3(-9.2, 0, 2.6), Color("7ab8e8")]]:
+		var at: Vector3 = e[0]
+		var rug := box(Vector3(1.9, 0.02, 2.5), at + Vector3(0, 0.012, 0), mat(e[1], 0.95), false)
+		rug.rotation.y = 0.2 * signf(at.x)
+		_fan_row(at + Vector3(0, -0.5, -0.9), at + Vector3(0, -0.5, 0.9), 3, int(at.z * 10.0) + 60)
+	box(Vector3(0.5, 0.45, 2.6), Vector3(9.4, 0.22, -2.6), wood, false)
+	_fan_row(Vector3(9.4, 0.42, -3.6), Vector3(9.4, 0.42, -1.6), 3, 66)
+	theme.erase("crowd")
+	for i in 5:
+		var basket := Vector3(-9.6 + (i % 2) * 18.6, 0, -0.4 + i * 0.9)
+		cyl(0.18, 0.14, 0.2, basket + Vector3(0, 0.1, 0), surf("wood", Color(0.62, 0.46, 0.28)), null, 10)
+
+
+## The blue dorm's great hall: marble, columns, banners, a chandelier, a rope line of
+## students down each side and more up on the balcony.
+func _bluehall() -> void:
+	_land(Vector2(48, 44), Vector3(0, -0.03, 0), 0.0)
+	var white := mat(Color(0.93, 0.94, 0.97), 0.3, 0.1)
+	var gold := mat(Color(0.86, 0.7, 0.32), 0.3, 0.8)
+	var blue := mat(Color("2f5fc0"), 0.75)
+	var wall := surf("plaster", Color(0.86, 0.89, 0.95))
+	var H := 16.0
+	box(Vector3(48, H, 0.6), Vector3(0, H / 2.0, -22), wall, false)
+	box(Vector3(48, H, 0.6), Vector3(0, H / 2.0, 22), wall, false)
+	for sx: float in [-1.0, 1.0]:
+		box(Vector3(0.6, H, 44), Vector3(sx * 24, H / 2.0, 0), wall, false)
+	box(Vector3(48, 0.5, 44), Vector3(0, H + 0.25, 0), mat(Color(0.2, 0.24, 0.36), 0.9), false)
+	for k in 5:
+		box(Vector3(48, 0.5, 0.5), Vector3(0, H - 0.25, -18.0 + k * 9.0), gold, false)
+	# Tall windows with evening light on the back wall and both sides, a banner between each.
+	for k in 5:
+		var wx := -16.0 + k * 8.0
+		box(Vector3(3.4, 9.4, 0.2), Vector3(wx, 7.2, -21.6), gold, false)
+		box(Vector3(3.0, 9.0, 0.22), Vector3(wx, 7.2, -21.58), glow_mat(Color(0.5, 0.68, 1.0), 1.3), false)
+		box(Vector3(0.12, 9.0, 0.26), Vector3(wx, 7.2, -21.56), gold, false)
+		for by: float in [4.4, 7.2, 10.0]:
+			box(Vector3(3.0, 0.1, 0.26), Vector3(wx, by, -21.56), gold, false)
+		if k < 4:
+			box(Vector3(1.8, 7.5, 0.1), Vector3(wx + 4.0, 8.0, -21.5), blue, false)
+			box(Vector3(2.0, 0.24, 0.16), Vector3(wx + 4.0, 11.8, -21.5), gold, false)
+			box(Vector3(1.0, 1.0, 0.12), Vector3(wx + 4.0, 9.0, -21.42), gold, false).rotation.z = PI / 4.0
+	for sx: float in [-1.0, 1.0]:
+		for k in 4:
+			var wz := -13.5 + k * 9.0
+			box(Vector3(0.22, 9.0, 3.0), Vector3(sx * 23.6, 7.2, wz), glow_mat(Color(0.5, 0.68, 1.0), 1.1), false)
+			box(Vector3(0.26, 9.4, 0.14), Vector3(sx * 23.56, 7.2, wz - 1.6), gold, false)
+			box(Vector3(0.26, 9.4, 0.14), Vector3(sx * 23.56, 7.2, wz + 1.6), gold, false)
+	# Two rows of columns.
+	for sx: float in [-1.0, 1.0]:
+		for k in 5:
+			var cp := Vector3(sx * 12.5, 0, -16.0 + k * 8.0)
+			cyl(0.62, 0.7, H, cp + Vector3(0, H / 2.0, 0), white, null, 20)
+			cyl(0.95, 0.95, 0.5, cp + Vector3(0, 0.25, 0), gold, null, 20)
+			cyl(1.0, 0.72, 0.7, cp + Vector3(0, H - 0.35, 0), gold, null, 20)
+	# The balcony over the back, full of students.
+	box(Vector3(47, 0.5, 5.0), Vector3(0, 5.2, -19.4), white, false)
+	box(Vector3(47, 0.12, 0.12), Vector3(0, 6.5, -17.0), gold, false)
+	for k in 48:
+		cyl(0.05, 0.05, 1.0, Vector3(-23.0 + k * 0.98, 6.0, -17.0), gold, null, 6)
+	theme["crowd"] = [Color("2f5fc0"), Color("3c74dc"), Color("e8ecf6"), Color("1f3f8a"), Color("f0f0f6")]
+	_fan_row(Vector3(-21, 5.45, -17.8), Vector3(21, 5.45, -17.8), 40, 71)
+	_fan_row(Vector3(-21, 5.45, -19.0), Vector3(21, 5.45, -19.0), 34, 72)
+	# Blue runners down both sidelines, gold posts and a rope, a line of students behind.
+	for sx: float in [-1.0, 1.0]:
+		box(Vector3(1.5, 0.02, 12.0), Vector3(sx * 7.9, 0.012, 0), blue, false)
+		box(Vector3(0.08, 0.022, 12.0), Vector3(sx * 7.2, 0.014, 0), gold, false)
+		box(Vector3(0.08, 0.022, 12.0), Vector3(sx * 8.6, 0.014, 0), gold, false)
+		for k in 7:
+			var pp := Vector3(sx * 9.0, 0, -5.4 + k * 1.8)
+			cyl(0.05, 0.05, 1.0, pp + Vector3(0, 0.5, 0), gold, null, 8)
+			cyl(0.11, 0.14, 0.06, pp + Vector3(0, 0.03, 0), gold, null, 10)
+			cyl(0.08, 0.08, 0.08, pp + Vector3(0, 1.02, 0), gold, null, 10)
+		var rope := box(Vector3(0.05, 0.05, 10.8), Vector3(sx * 9.0, 0.88, 0), mat(Color(0.5, 0.1, 0.16), 0.8), false)
+		rope.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_fan_row(Vector3(sx * 9.8, 0, -5.0), Vector3(sx * 9.8, 0, 5.0), 11, 73 + int(sx))
+		_fan_row(Vector3(sx * 10.7, 0, -4.6), Vector3(sx * 10.7, 0, 4.6), 9, 75 + int(sx))
+	theme.erase("crowd")
+	# The chandelier.
+	var ch := Vector3(0, 11.5, 0)
+	cyl(0.06, 0.06, 4.5, ch + Vector3(0, 2.3, 0), gold, null, 8)
+	for tier in 3:
+		var r := 3.2 - tier * 0.95
+		var ring := MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = r - 0.06
+		tm.outer_radius = r + 0.06
+		tm.rings = 48
+		ring.mesh = tm
+		ring.material_override = gold
+		ring.position = ch + Vector3(0, -tier * 0.9, 0)
+		add_child(ring)
+		for k in 12:
+			var a := k * TAU / 12.0
+			var bulb := MeshInstance3D.new()
+			var sm := SphereMesh.new()
+			sm.radius = 0.14
+			sm.height = 0.28
+			bulb.mesh = sm
+			bulb.material_override = glow_mat(Color(1.0, 0.94, 0.78), 4.0)
+			bulb.position = ch + Vector3(cos(a) * r, -tier * 0.9 + 0.2, sin(a) * r)
+			add_child(bulb)
+	var cl := OmniLight3D.new()
+	cl.light_color = Color(1.0, 0.93, 0.8)
+	cl.light_energy = 5.0
+	cl.omni_range = 30.0
+	cl.position = ch - Vector3(0, 2.0, 0)
+	add_child(cl)
+	for sx: float in [-1.0, 1.0]:
+		var fl := OmniLight3D.new()
+		fl.light_color = Color(0.75, 0.86, 1.0)
+		fl.light_energy = 2.4
+		fl.omni_range = 16.0
+		fl.position = Vector3(sx * 14, 6, 4)
+		add_child(fl)
+
+
+## A closed stretch of elevated highway at night: barriers, lamps, a gantry sign, parked duel
+## runners and cones on the lane, the city lit up far below on both sides.
+func _highway() -> void:
+	var deck := _land(Vector2(320, 21), Vector3(0, -0.03, 0), 0.0)
+	deck.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var concrete := surf("concrete", Color(0.5, 0.5, 0.54))
+	var steel := mat(Color(0.5, 0.53, 0.6), 0.35, 0.8)
+	box(Vector3(320, 3.0, 21), Vector3(0, -1.56, 0), concrete, false)
+	for sz: float in [-1.0, 1.0]:
+		box(Vector3(320, 0.95, 0.5), Vector3(0, 0.47, sz * 10.3), concrete, false)
+		box(Vector3(320, 0.08, 0.1), Vector3(0, 1.25, sz * 10.3), steel, false)
+		box(Vector3(320, 0.06, 0.04), Vector3(0, 0.7, sz * 10.03), glow_mat(Color(1.0, 0.55, 0.12), 1.4), false)
+		for k in 21:
+			var lx := -150.0 + k * 15.0
+			cyl(0.11, 0.15, 7.0, Vector3(lx, 3.5, sz * 10.6), steel, null, 8)
+			var arm := box(Vector3(0.12, 0.12, 2.6), Vector3(lx, 6.9, sz * 9.4), steel, false)
+			arm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			box(Vector3(0.5, 0.1, 0.9), Vector3(lx, 6.8, sz * 8.4), glow_mat(Color(1.0, 0.8, 0.5), 3.0), false)
+			if absf(lx) < 40.0:
+				var l := OmniLight3D.new()
+				l.light_color = Color(1.0, 0.78, 0.48)
+				l.light_energy = 2.6
+				l.omni_range = 11.0
+				l.position = Vector3(lx, 6.2, sz * 8.2)
+				add_child(l)
+		# Pillars holding the road up.
+		for k in 9:
+			box(Vector3(2.4, 40, 2.4), Vector3(-128.0 + k * 32.0, -23.0, sz * 6.0), concrete, false)
+	# A gantry over the road behind each duelist... along the road, that is left and right.
+	for sx: float in [-1.0, 1.0]:
+		var gx := sx * 19.0
+		for sz: float in [-1.0, 1.0]:
+			cyl(0.18, 0.22, 8.4, Vector3(gx, 4.2, sz * 10.8), steel, null, 8)
+		box(Vector3(0.4, 0.5, 21.6), Vector3(gx, 8.2, 0), steel, false)
+		box(Vector3(0.2, 2.2, 8.0), Vector3(gx - sx * 0.2, 6.9, -3.0), mat(Color(0.05, 0.22, 0.14), 0.6), false)
+		var txt := neon_sign("DUEL LANE  ·  CLOSED TO TRAFFIC", Vector3(gx - sx * 0.34, 6.9, -3.0), Color("e8fff0"), 70, -sx * PI / 2.0, false)
+		txt.pixel_size = 0.011
+		box(Vector3(0.2, 1.2, 1.2), Vector3(gx - sx * 0.2, 6.9, 5.4), glow_mat(Color(1.0, 0.3, 0.2), 2.4), false)
+	# Cones and striped boards closing the lane, duel runners parked up, a few riders watching.
+	var cone_m := mat(Color(1.0, 0.45, 0.08), 0.7)
+	for sx: float in [-1.0, 1.0]:
+		for k in 7:
+			var cp := Vector3(sx * (7.4 + (k % 2) * 0.5), 0, -4.8 + k * 1.6)
+			cyl(0.03, 0.17, 0.5, cp + Vector3(0, 0.25, 0), cone_m, null, 10)
+			box(Vector3(0.4, 0.03, 0.4), cp + Vector3(0, 0.015, 0), cone_m, false)
+		for k in 2:
+			var bp := Vector3(sx * 12.5, 0, -4.5 + k * 9.0)
+			box(Vector3(0.14, 0.9, 3.2), bp + Vector3(0, 0.75, 0), mat(Color(0.95, 0.95, 0.9), 0.6), false)
+			for q in 4:
+				box(Vector3(0.15, 0.3, 0.4), bp + Vector3(0, 0.75, -1.2 + q * 0.8), mat(Color(0.9, 0.2, 0.14), 0.6), false)
+			for leg: float in [-1.3, 1.3]:
+				box(Vector3(0.7, 0.06, 0.08), bp + Vector3(0, 0.03, leg), steel, false)
+				box(Vector3(0.06, 0.75, 0.06), bp + Vector3(0, 0.38, leg), steel, false)
+	for e in [[Vector3(-8.8, 0, 6.6), 0.5], [Vector3(-10.2, 0, 7.4), 0.9], [Vector3(8.9, 0, -6.6), PI + 0.5], [Vector3(10.4, 0, -7.2), PI + 0.2]]:
+		prop("motorcycle", e[0], e[1], 2.3)
+	_fan_row(Vector3(-9.2, 0, 4.4), Vector3(-10.4, 0, 1.6), 3, 81)
+	_fan_row(Vector3(9.2, 0, -4.4), Vector3(10.4, 0, -1.8), 3, 82)
+	# The city below and around: towers rising past the road on both sides.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 404
+	for i in 70:
+		var side := -1.0 if i % 2 == 0 else 1.0
+		var d := rng.randf_range(24.0, 120.0)
+		var x := rng.randf_range(-150.0, 150.0)
+		var hgt := rng.randf_range(30.0, 95.0)
+		var w := rng.randf_range(8.0, 16.0)
+		building(Vector3(x, -42.0, side * d), Vector3(w, hgt, w), rng)
+	var haze := OmniLight3D.new()
+	haze.light_color = theme["accent2"]
+	haze.light_energy = 1.2
+	haze.omni_range = 40.0
+	haze.position = Vector3(0, 9, 0)
+	add_child(haze)
+
+
+## An old wooden pier at sunset: planks over the water, mooring posts and rope, crates and
+## barrels, a boat tied up, warehouses and cranes across the harbor.
+func _pier() -> void:
+	_land(Vector2(34, 24), Vector3(0, -0.03, 0), 0.0)
+	var wood := surf("wood", Color(0.42, 0.3, 0.2))
+	var dark := surf("wood", Color(0.28, 0.2, 0.14))
+	box(Vector3(34, 0.5, 24), Vector3(0, -0.3, 0), dark, false)
+	var sea := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(1400, 1400)
+	sea.mesh = pm
+	var wm := water_material(-4000.0)
+	wm.set_shader_parameter("deep", Color(0.12, 0.26, 0.42))
+	wm.set_shader_parameter("shallow", Color(0.7, 0.5, 0.4))
+	sea.material_override = wm
+	sea.position = Vector3(0, -2.2, 0)
+	add_child(sea)
+	# Piles under the deck and mooring posts with rope along the edges.
+	for ix in 8:
+		for iz in 4:
+			cyl(0.28, 0.3, 4.4, Vector3(-15.8 + ix * 4.5, -2.4, -10.6 + iz * 7.0), dark, null, 10)
+	var rope_m := mat(Color(0.72, 0.62, 0.44), 0.9)
+	for sz: float in [-1.0, 1.0]:
+		for k in 12:
+			var pp := Vector3(-16.4 + k * 3.0, 0, sz * 11.6)
+			cyl(0.16, 0.18, 1.1, pp + Vector3(0, 0.5, 0), dark, null, 10)
+			cyl(0.2, 0.2, 0.08, pp + Vector3(0, 1.08, 0), wood, null, 10)
+			if k < 11:
+				var r := box(Vector3(3.0, 0.06, 0.06), pp + Vector3(1.5, 0.72, 0), rope_m, false)
+				r.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for sx: float in [-1.0, 1.0]:
+		for k in 8:
+			var pp := Vector3(sx * 16.6, 0, -10.5 + k * 3.0)
+			cyl(0.16, 0.18, 1.1, pp + Vector3(0, 0.5, 0), dark, null, 10)
+	# Crates, barrels, nets and coiled rope along the sidelines.
+	var crate := surf("wood", Color(0.6, 0.46, 0.3))
+	for e in [[Vector3(-8.6, 0, -2.6), 1.0], [Vector3(-9.5, 0, -1.5), 0.8], [Vector3(-8.7, 1.0, -2.5), 0.7], [Vector3(8.8, 0, 2.4), 1.1], [Vector3(9.8, 0, 1.2), 0.8],
+			[Vector3(-9.0, 0, 3.4), 0.9], [Vector3(9.2, 0, -3.6), 1.0], [Vector3(9.3, 1.0, -3.5), 0.6]]:
+		var sz3: float = e[1]
+		var c := box(Vector3(sz3, sz3, sz3), (e[0] as Vector3) + Vector3(0, sz3 / 2.0, 0), crate, false)
+		c.rotation.y = (e[0] as Vector3).x * 0.37
+	var barrel := mat(Color(0.36, 0.22, 0.14), 0.75)
+	for e in [Vector3(-8.0, 0, 0.6), Vector3(-8.7, 0, 1.2), Vector3(8.2, 0, -0.8), Vector3(10.4, 0, -1.8), Vector3(8.0, 0, 4.6)]:
+		cyl(0.36, 0.36, 0.95, e + Vector3(0, 0.475, 0), barrel, null, 14)
+		for by: float in [0.2, 0.75]:
+			cyl(0.375, 0.375, 0.05, e + Vector3(0, by, 0), mat(Color(0.3, 0.3, 0.32), 0.4, 0.7), null, 14)
+	for e in [Vector3(-10.4, 0, 0.2), Vector3(10.0, 0, 3.6)]:
+		for k in 3:
+			var coil := MeshInstance3D.new()
+			var tm := TorusMesh.new()
+			tm.inner_radius = 0.28
+			tm.outer_radius = 0.42
+			coil.mesh = tm
+			coil.material_override = rope_m
+			coil.position = e + Vector3(0, 0.07 + k * 0.13, 0)
+			add_child(coil)
+	var net := box(Vector3(2.4, 0.03, 1.8), Vector3(-9.6, 0.02, 5.6), mat(Color(0.2, 0.36, 0.34), 0.9), false)
+	net.rotation.y = 0.4
+	# Lamps at the corners of the field, warm against the dusk.
+	for sx: float in [-1.0, 1.0]:
+		for sz: float in [-1.0, 1.0]:
+			var lp := Vector3(sx * 7.6, 0, sz * 5.2)
+			cyl(0.07, 0.1, 3.4, lp + Vector3(0, 1.7, 0), mat(Color(0.14, 0.15, 0.18), 0.45, 0.7), null, 8)
+			box(Vector3(0.34, 0.42, 0.34), lp + Vector3(0, 3.6, 0), glow_mat(Color(1.0, 0.8, 0.5), 2.2), false)
+			var l := OmniLight3D.new()
+			l.light_color = Color(1.0, 0.76, 0.46)
+			l.light_energy = 2.0
+			l.omni_range = 8.0
+			l.position = lp + Vector3(0, 3.4, 0)
+			add_child(l)
+	# A boat tied up alongside, and the far side of the harbor.
+	var boat := prop("ferry", Vector3(-23.0, -2.6, -2.0), PI / 2.0 + 0.1, 15.0)
+	if boat:
+		_bob.append([boat, -2.6, 0.5])
+	var brick := surf("brick", Color(0.5, 0.3, 0.24))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 12
+	for i in 9:
+		var wx := -70.0 + i * 17.0
+		var wh := rng.randf_range(8.0, 14.0)
+		box(Vector3(15.0, wh, 12.0), Vector3(wx, wh / 2.0 - 2.0, -64.0), brick, false)
+		var roofb := box(Vector3(15.6, 0.6, 12.6), Vector3(wx, wh - 1.7, -64.0), surf("roof", Color(0.36, 0.3, 0.3)), false)
+		roofb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for k in 3:
+			box(Vector3(2.2, 2.6, 0.2), Vector3(wx - 4.5 + k * 4.5, 1.0, -57.9), glow_mat(Color(1.0, 0.78, 0.45), 0.9), false)
+	box(Vector3(170, 1.6, 6.0), Vector3(0, -1.8, -56.0), surf("concrete", Color(0.5, 0.48, 0.46)), false)
+	var crane_m := mat(Color(0.8, 0.36, 0.14), 0.6, 0.3)
+	for cx: float in [-40.0, 12.0, 52.0]:
+		box(Vector3(1.4, 30, 1.4), Vector3(cx, 13.0, -55.0), crane_m, false)
+		box(Vector3(1.4, 30, 1.4), Vector3(cx + 7.0, 13.0, -55.0), crane_m, false)
+		box(Vector3(9.8, 1.4, 1.6), Vector3(cx + 3.5, 28.0, -55.0), crane_m, false)
+		var jib := box(Vector3(1.2, 1.2, 30.0), Vector3(cx + 3.5, 29.6, -46.0), crane_m, false)
+		jib.rotation.x = 0.12
+	prop("lighthouse", Vector3(64.0, -2.0, -30.0), 0.0, 22.0, true)
+	# Dock workers and kids watching from the crates.
+	_fan_row(Vector3(-10.6, 0, -4.4), Vector3(-10.9, 0, -0.8), 4, 91)
+	_fan_row(Vector3(10.6, 0, 0.2), Vector3(11.0, 0, 3.0), 3, 92)
+	_fan_row(Vector3(-11.2, 0, 2.4), Vector3(-11.0, 0, 5.0), 3, 93)
 
 
 func _light_windows(strength: float) -> void:

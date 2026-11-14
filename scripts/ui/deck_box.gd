@@ -12,17 +12,18 @@ var _title_font: Font
 var _semi: Font
 
 
+## The cover is the deck's own ace monster.
+var _region := Rect2()
+
+
 func setup(entry: Dictionary) -> DeckBox:
 	info = entry
-	var art := str(entry.get("art", ""))
-	var path := "res://assets/ui/packs/%s.jpg" % art
-	if art != "" and ResourceLoader.exists(path):
-		_art = load(path)
-	else:
-		var ace := Collection.deck_ace(str(entry.get("key", "")))
-		if ace != 0:
-			_art = Cards.get_face(ace)
-			_card_art = true
+	var ace := Collection.deck_ace(str(entry.get("key", "")))
+	if ace != 0:
+		var got := Cards.cover_art(ace)
+		_art = got[0]
+		_region = got[1]
+		_card_art = true
 	return self
 
 
@@ -48,18 +49,9 @@ func _draw() -> void:
 	var band := h * 0.24
 	var art_r := Rect2(6, 6, w - 12, h - band - 8)
 	if _art:
-		var ts := _art.get_size()
-		var src := Rect2(Vector2.ZERO, ts)
-		if _card_art:
-			src = Rect2(ts.x * 0.12, ts.y * 0.18, ts.x * 0.76, ts.y * 0.45)
-		var want := art_r.size.x / art_r.size.y
-		if src.size.x / src.size.y > want:
-			var nw := src.size.y * want
-			src = Rect2(src.position.x + (src.size.x - nw) / 2.0, src.position.y, nw, src.size.y)
-		else:
-			var nh := src.size.x / want
-			src = Rect2(src.position.x, src.position.y + (src.size.y - nh) * 0.3, src.size.x, nh)
-		draw_texture_rect_region(_art, art_r, src)
+		draw_texture_rect_region(_art, art_r, Cards.cover_fit(_region, art_r.size))
+		draw_rect(art_r, Color(col, 0.08))
+		draw_rect(art_r, Color(col.lightened(0.4), 0.4), false, 1.5)
 	else:
 		draw_rect(art_r, col.darkened(0.5))
 	# Shade into the band.

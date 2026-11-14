@@ -286,7 +286,8 @@ void fragment() {
 	sh.code = sh.code.replace("//GROUND//", FieldThemes.GROUND_GLSL)
 	var m := ShaderMaterial.new()
 	m.shader = sh
-	m.set_shader_parameter("surface", int(theme.get("surface", 0)))
+	# A Turbo Duel's field is a hologram over the road, never painted ground.
+	m.set_shader_parameter("surface", 0 if turbo else int(theme.get("surface", 0)))
 	m.set_shader_parameter("dark_paint", 1.0 if theme.get("dark_paint", false) else 0.0)
 	m.set_shader_parameter("base", theme["base"])
 	m.set_shader_parameter("accent", theme["accent"])

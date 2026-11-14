@@ -265,6 +265,40 @@ func deck_ace(key: String) -> int:
 	return best
 
 
+## The card on the front of each booster pack: a real card that is in it. The strongest, rarest
+## monster in the pack (a Spell or Trap for the packs that have no monsters), and never the same
+## card on two packs. {pack key: card id}
+var _covers := {}
+
+
+func pack_cover(key: String) -> int:
+	if _covers.is_empty():
+		var used := {}
+		for p in PACKS:
+			var ids: Array = pool(str(p["key"])).duplicate()
+			var monsters: Array = ids.filter(func(id): return CardData.get_card(id).get("kind", "") == "monster")
+			if not monsters.is_empty():
+				ids = monsters
+			ids.sort_custom(func(a, b):
+				var ra := CardData.rarity(a)
+				var rb := CardData.rarity(b)
+				if ra != rb:
+					return ra > rb
+				var aa := int(CardData.get_card(a).get("atk", 0))
+				var ab := int(CardData.get_card(b).get("atk", 0))
+				return aa > ab if aa != ab else a < b)
+			var pick := 0
+			for id in ids:
+				if not used.has(id):
+					pick = id
+					break
+			if pick == 0 and not ids.is_empty():
+				pick = ids[0]
+			used[pick] = true
+			_covers[str(p["key"])] = pick
+	return int(_covers.get(key, 0))
+
+
 func slot_empty(i: int) -> bool:
 	if i == slot:
 		return main.is_empty() and extra.is_empty()

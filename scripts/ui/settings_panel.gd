@@ -29,6 +29,7 @@ static func _card(p: SidePanel, title: String, glyph: String, tint: Color) -> VB
 	rule.color = Color(tint, 0.22)
 	rule.custom_minimum_size = Vector2(0, 1)
 	v.add_child(rule)
+	pc.set_meta("tab", title)
 	p.body.add_child(pc)
 	return v
 
@@ -139,7 +140,105 @@ static func open(parent: Node) -> SidePanel:
 		Settings.save_settings())
 	_row(game, "Duel field", "Where duels are played when the duel itself does not say.", field)
 
-	# Sleeves: the back of your own cards in every duel.
+	var art := _card(p, "Card art", "▤", Color("3ddc97"))
+	var folder := LineEdit.new()
+	folder.text = Settings.card_folder
+	folder.text_submitted.connect(func(t):
+		Settings.card_folder = t.strip_edges()
+		Settings.save_settings()
+		Cards.clear_cache()
+		Portraits.clear_cache()
+		Router.toast("Card folder saved"))
+	_row(art, "Folder", "Where your card pictures live. Press Enter to save.", folder)
+	var status := UITheme.label("", 16, UITheme.TEXT_DIM)
+	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	status.text = ("Real card images found." if Cards.has_real_images()
+			else "No card images found, using placeholders. Run tools/fetch_cards.py with --out pointing at this folder.")
+	art.add_child(status)
+	var back_hint := UITheme.label("Put a picture named back.jpg in this folder and it becomes the back of every card.", 16, UITheme.TEXT_DIM)
+	back_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	art.add_child(back_hint)
+
+	_tabs(p)
+	parent.add_child(p)
+	return p
+
+
+## One section on screen at a time, picked from a row of tabs across the top. The panel
+## remembers which one you were on.
+static var _tab_at := {}
+
+
+static func _tabs(p: SidePanel, store := "settings") -> void:
+	var cards: Array = p.body.get_children()
+	if cards.size() < 2:
+		return
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 8)
+	p.body.add_child(bar)
+	p.body.move_child(bar, 0)
+	var btns: Array = []
+	var show := func(i: int):
+		_tab_at[store] = i
+		for k in cards.size():
+			(cards[k] as Control).visible = k == i
+			(btns[k] as Button).set_pressed_no_signal(k == i)
+	for i in cards.size():
+		var b := Button.new()
+		b.toggle_mode = true
+		b.text = str((cards[i] as Control).get_meta("tab", "Section"))
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, 46)
+		b.pressed.connect(show.bind(i))
+		bar.add_child(b)
+		btns.append(b)
+	show.call(clampi(int(_tab_at.get(store, 0)), 0, cards.size() - 1))
+
+
+## Your own things, opened from the profile bar on the home screen: the duelist you play as,
+## and what your cards look like.
+static func open_profile(parent: Node, edit_character: Callable) -> SidePanel:
+	var p := SidePanel.new("My duelist", 820)
+	p.body.add_theme_constant_override("separation", 16)
+	var who := _card(p, "Character", "◉", Color("7cc4ff"))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 20)
+	who.add_child(row)
+	var face := TextureRect.new()
+	face.texture = Portraits.get_portrait("player")
+	face.custom_minimum_size = Vector2(190, 238)
+	face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	face.clip_contents = true
+	row.add_child(face)
+	var words := VBoxContainer.new()
+	words.add_theme_constant_override("separation", 6)
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(words)
+	words.add_child(UITheme.label(Profile.duelist_name, 40, UITheme.TEXT, UITheme.title_font()))
+	words.add_child(UITheme.label(Profile.title_text(), 20, UITheme.ACCENT, UITheme.semi_font()))
+	words.add_child(UITheme.label(Loc.t("Level %d   ·   %d wins   ·   %d losses") % [Profile.level(), Profile.wins, Profile.losses], 18, UITheme.TEXT_DIM))
+	words.add_child(UITheme.label(Loc.t("%d Duel Points") % Collection.dp, 18, UITheme.GOLD))
+	var edit := Button.new()
+	edit.text = "Edit my character"
+	edit.custom_minimum_size = Vector2(0, 54)
+	UITheme.paint_button(edit, UITheme.ACCENT)
+	edit.pressed.connect(func():
+		p.close()
+		edit_character.call())
+	words.add_child(edit)
+	var hint := UITheme.label("Name, body, hair, outfit, height, color and title.", 15, UITheme.TEXT_DIM)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	words.add_child(hint)
+	who.get_parent().set_meta("tab", "Character")
+	_sleeves_card(p)
+	_tabs(p, "profile")
+	parent.add_child(p)
+	return p
+
+
+## Sleeves: the back of your own cards in every duel.
+static func _sleeves_card(p: SidePanel) -> void:
 	var sl := _card(p, "Card sleeves", "❖", Color("b98cff"))
 	var sl_hint := UITheme.label("The back of your cards in a duel. Opponents use their own ace monster.", 15, UITheme.TEXT_DIM)
 	sl_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -195,32 +294,14 @@ static func open(parent: Node) -> SidePanel:
 		picks.append([b, sid])
 		grid.add_child(b)
 
-	var art := _card(p, "Card art", "▤", Color("3ddc97"))
-	var folder := LineEdit.new()
-	folder.text = Settings.card_folder
-	folder.text_submitted.connect(func(t):
-		Settings.card_folder = t.strip_edges()
-		Settings.save_settings()
-		Cards.clear_cache()
-		Portraits.clear_cache()
-		Router.toast("Card folder saved"))
-	_row(art, "Folder", "Where your card pictures live. Press Enter to save.", folder)
-	var status := UITheme.label("", 16, UITheme.TEXT_DIM)
-	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status.text = ("Real card images found." if Cards.has_real_images()
-			else "No card images found, using placeholders. Run tools/fetch_cards.py with --out pointing at this folder.")
-	art.add_child(status)
-	var back_hint := UITheme.label("Put a picture named back.jpg in this folder and it becomes the back of every card.", 16, UITheme.TEXT_DIM)
-	back_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	art.add_child(back_hint)
-
-	parent.add_child(p)
+	sl.get_parent().set_meta("tab", "Card sleeves")
 	_fill_thumbs(p, thumbs)
-	return p
 
 
 ## The sleeve pictures load after the panel is already open, so opening it is instant.
 static func _fill_thumbs(p: SidePanel, thumbs: Array) -> void:
+	if not p.is_inside_tree():
+		await p.tree_entered
 	await p.get_tree().process_frame
 	for t in thumbs:
 		if not is_instance_valid(p) or not is_instance_valid(t[0]):

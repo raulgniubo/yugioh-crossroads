@@ -131,10 +131,11 @@ func _dim() -> void:
 		return
 	_dimmed = city.tod
 	_base = {"sun": city.sun.light_energy, "fog": city.env.fog_density, "amb": city.env.ambient_light_energy}
-	city.sun.light_energy = float(_base["sun"]) * 0.55
-	city.env.fog_density = float(_base["fog"]) * 2.4 + 0.004
-	city.env.ambient_light_energy = float(_base["amb"]) * 0.82
-	city.env.fog_light_color = city.env.fog_light_color.lerp(Color(0.5, 0.56, 0.64), 0.5)
+	# Overcast, not milky: a dimmer sun and a touch more air, but the world keeps its contrast.
+	city.sun.light_energy = float(_base["sun"]) * 0.7
+	city.env.fog_density = float(_base["fog"]) * 1.4 + 0.0006
+	city.env.ambient_light_energy = float(_base["amb"]) * 0.9
+	city.env.fog_light_color = city.env.fog_light_color.lerp(Color(0.5, 0.56, 0.64), 0.35)
 
 
 func _process(_delta: float) -> void:

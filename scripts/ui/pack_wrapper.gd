@@ -15,11 +15,17 @@ var _title_font: Font
 var _semi: Font
 
 
+## The cover is a real card from the pack: its strongest monster.
+var _region := Rect2()
+
+
 func setup(p: Dictionary) -> PackWrapper:
 	pack = p
-	var path := "res://assets/ui/packs/%s.jpg" % ART.get(str(p.get("key", "")), str(p.get("key", "")))
-	if ResourceLoader.exists(path):
-		_art = load(path)
+	var cover := Collection.pack_cover(str(p.get("key", "")))
+	if cover != 0:
+		var got := Cards.cover_art(cover)
+		_art = got[0]
+		_region = got[1]
 	return self
 
 
@@ -57,11 +63,15 @@ func _draw() -> void:
 	draw_rect(Rect2(0, seal if torn else 0.0, w, h - (seal if torn else 0.0)), col.darkened(0.7))
 	var art_r := Rect2(0, seal, w, h - seal * 2.0)
 	if _art:
-		# Cover-fit the illustration into the window.
-		var ts := _art.get_size()
-		var k := maxf(art_r.size.x / ts.x, art_r.size.y / ts.y)
-		var src := Rect2((ts - art_r.size / k) / 2.0, art_r.size / k)
-		draw_texture_rect_region(_art, art_r, src)
+		# The monster fills the wrapper, lit in the pack's color: a glow behind the name band
+		# and a shade at the top so the seal and the tag read.
+		draw_texture_rect_region(_art, art_r, Cards.cover_fit(_region, art_r.size))
+		for i in 10:
+			draw_rect(Rect2(0, art_r.position.y + art_r.size.y * (0.45 + 0.055 * i), w, art_r.size.y * 0.055 + 1), Color(col.darkened(0.55), 0.075 * i))
+		for i in 6:
+			draw_rect(Rect2(0, art_r.position.y + art_r.size.y * 0.03 * i, w, art_r.size.y * 0.03 + 1), Color(0, 0, 0, 0.3 - 0.05 * i))
+		draw_rect(art_r, Color(col, 0.1))
+		draw_rect(art_r.grow(-5), Color(col.lightened(0.5), 0.35), false, 1.5)
 	else:
 		for i in 12:
 			draw_rect(Rect2(0, art_r.position.y + art_r.size.y * i / 12.0, w, art_r.size.y / 12.0 + 1), col.darkened(0.2 + i * 0.05))

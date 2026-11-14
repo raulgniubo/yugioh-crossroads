@@ -152,7 +152,11 @@ void fragment() {
 	vec3 col = base;
 	float hgt = 0.0;
 	float rough = 0.85;
-	float grain = fbm3(wp * 6.0);
+	// Size of one pixel on the surface, and the size of the pattern drawn on it. Once the
+	// pattern is smaller than a few pixels it is faded to its average, so nothing shimmers.
+	float fw = max(length(fwidth(wp)), 0.0001);
+	float period = 0.2;
+	float grain = mix(0.5, fbm3(wp * 6.0), 1.0 - smoothstep(0.03, 0.1, fw));
 	if (kind == 1) {
 		// Planks: long boards with a gap between, a little grain along each one.
 		vec2 g = vec2(uv.x * 0.45, uv.y * 4.2);
@@ -167,6 +171,7 @@ void fragment() {
 		col *= mix(0.45, 1.0, gap);
 		hgt = gap * 0.6 + streak * 0.12;
 		rough = 0.78;
+		period = 0.24 * tile;
 	} else if (kind == 2) {
 		// Roof tiles: overlapping rows, each tile rounded at the bottom.
 		vec2 g = uv * vec2(2.6, 3.4);
@@ -179,6 +184,7 @@ void fragment() {
 		col *= mix(0.55, 1.0, lip) * mix(0.7, 1.0, edge);
 		hgt = (1.0 - f.y) * 0.8 * edge;
 		rough = 0.7;
+		period = 0.3 * tile;
 	} else if (kind == 3) {
 		// Rock: broken strata, cracks and lighter weathered patches.
 		float strata = n2(vec2(wp.y * 1.3 + fbm3(wp * 0.35) * 3.0, 0.0));
@@ -191,6 +197,7 @@ void fragment() {
 		col = mix(col, vec3(0.22, 0.34, 0.14) * (0.8 + grain * 0.4), smoothstep(0.84, 0.95, wn.y) * smoothstep(0.4, 0.7, big + grain * 0.3) * 0.8);
 		hgt = strata * 0.5 + crack * 0.5 + grain * 0.3;
 		rough = 0.95;
+		period = 1.2;
 	} else if (kind == 4) {
 		// Sand: wind ripples, damp darker patches and a sparkle of shell grit.
 		float rip = sin((wp.x * 0.8 + wp.z * 2.6) + n2(wp.xz * 0.6) * 5.0);
@@ -200,6 +207,7 @@ void fragment() {
 		col += vec3(0.25) * step(0.992, h1(floor(wp.xz * 22.0)));
 		hgt = rip * 0.25 + n2(wp.xz * 18.0) * 0.2;
 		rough = 0.96;
+		period = 0.35;
 	} else if (kind == 5) {
 		// Brick: staggered courses with mortar lines.
 		vec2 g = uv * vec2(3.6, 9.0);
@@ -212,6 +220,7 @@ void fragment() {
 		col *= 0.92 + grain * 0.16;
 		hgt = mortar * 0.7 + grain * 0.15;
 		rough = 0.88;
+		period = 0.11 * tile;
 	} else if (kind == 6) {
 		// Paving: stone slabs of two sizes, worn edges, the odd darker stone.
 		vec2 g = uv * 1.0;
@@ -225,6 +234,7 @@ void fragment() {
 		col = mix(col * 0.5, col, joint);
 		hgt = joint * 0.7 + grain * 0.1;
 		rough = mix(0.92, 0.78, joint);
+		period = 1.0 * tile;
 	} else if (kind == 7) {
 		// Concrete: cast panels with seams, stains running down from the top.
 		vec2 f = fract(uv * vec2(0.25, 0.33));
@@ -234,12 +244,14 @@ void fragment() {
 		col = mix(col * 0.6, col, seam);
 		hgt = seam * 0.5 + grain * 0.2;
 		rough = 0.9;
+		period = 3.0 * tile;
 	} else if (kind == 8) {
 		// Bark: deep ridges running up the trunk.
 		float ridge = n2(vec2(atan(wn.x, wn.z) * 7.0 + wp.y * 0.6, wp.y * 2.2));
 		col *= 0.6 + ridge * 0.7;
 		hgt = ridge;
 		rough = 0.95;
+		period = 0.4;
 	} else {
 		// Plaster: soft blotches, fine grain, a little weathering near the ground.
 		float blotch = fbm3(wp * 0.5);
@@ -247,6 +259,9 @@ void fragment() {
 		hgt = grain * 0.35 + blotch * 0.2;
 		rough = 0.9;
 	}
+	float keep = 1.0 - smoothstep(period * 0.1, period * 0.42, fw);
+	col = mix(base * 0.92, col, keep);
+	hgt *= keep;
 	ALBEDO = col;
 	ROUGHNESS = rough;
 	SPECULAR = 0.3;
@@ -670,6 +685,231 @@ func collide(holder: Node3D, shrink := 0.9) -> void:
 	holder.add_child(body)
 
 
+# ------------------------------------------------------------------ many boxes, one mesh
+
+## Hundreds of small boxes (railings, ledges, pipes, sills) built into a single mesh with one
+## surface per material, so a detailed building costs a handful of draw calls instead of one per
+## box.
+class BoxBatch:
+	var tools := {}          # Material -> SurfaceTool
+	const FACES := [
+		[Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1)], [Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, -1)],
+		[Vector3(0, 1, 0), Vector3(0, 0, 1), Vector3(1, 0, 0)], [Vector3(0, -1, 0), Vector3(0, 0, -1), Vector3(1, 0, 0)],
+		[Vector3(0, 0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0)], [Vector3(0, 0, -1), Vector3(-1, 0, 0), Vector3(0, 1, 0)],
+	]
+
+	func add(size: Vector3, pos: Vector3, m: Material, basis := Basis.IDENTITY) -> void:
+		var st: SurfaceTool = tools.get(m)
+		if st == null:
+			st = SurfaceTool.new()
+			st.begin(Mesh.PRIMITIVE_TRIANGLES)
+			tools[m] = st
+		var h := size / 2.0
+		for f in FACES:
+			var n: Vector3 = f[0]
+			var a: Vector3 = f[1]
+			var b: Vector3 = f[2]
+			var c := n * h
+			var ua := a * h
+			var ub := b * h
+			var quad := [c - ua - ub, c + ua - ub, c + ua + ub, c - ua + ub]
+			var wn := (basis * n).normalized()
+			for i in [0, 2, 1, 0, 3, 2]:
+				st.set_normal(wn)
+				st.add_vertex(pos + basis * (quad[i] as Vector3))
+
+	func commit(parent: Node3D, see := 0.0) -> MeshInstance3D:
+		if tools.is_empty():
+			return null
+		var mesh := ArrayMesh.new()
+		for m in tools:
+			(tools[m] as SurfaceTool).commit(mesh)
+			mesh.surface_set_material(mesh.get_surface_count() - 1, m)
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		if see > 0.0:
+			mi.visibility_range_end = see
+			mi.visibility_range_end_margin = 6.0
+		parent.add_child(mi)
+		return mi
+
+
+# ------------------------------------------------------------------ the plank dorm
+
+## A two-storey plank house with a tiled gable roof: common room below, a row of bedrooms above
+## that open onto an outside walkway, and an outside staircase up to it. Built in its own space
+## (front faces +Z, the staircase comes down on the +X side) so it can be turned any way. With
+## `walkable` everything you can stand on or bump into is solid: walk up the stairs, along the
+## walkway, up to the doors. Returns the holder; its "upper_doors" meta lists where the bedroom
+## doors are in the world, as [floor point, outward direction].
+func plank_dorm(at: Vector3, yaw: float, trim: Color, walkable := true) -> Node3D:
+	var h := Node3D.new()
+	h.position = at
+	h.rotation.y = yaw
+	add_child(h)
+	var wall := surf("wood", Color(0.62, 0.45, 0.3))
+	var dark := surf("wood", Color(0.36, 0.25, 0.17))
+	var deck := surf("wood", Color(0.5, 0.37, 0.25))
+	var roof_m := surf("roof", trim.darkened(0.18))
+	var paint := mat(trim, 0.8)
+	var glass := glow_mat(Color(1.0, 0.86, 0.6), 0.5)
+	var W := 13.0
+	var D := 6.0
+	var F := 3.0                      # height of one floor
+	var walk := 1.6                   # depth of the walkway
+	var zf := D / 2.0                 # the front wall
+	var on: bool = walkable and make_solid
+	# ---- the house
+	box(Vector3(W, F * 2.0, D), Vector3(0, F, 0), wall, false, h)
+	_dorm_solid(h, on, Vector3(W, F * 2.0, D), Vector3(0, F, 0))
+	box(Vector3(W + 0.1, 0.5, D + 0.1), Vector3(0, 0.25, 0), surf("rock", Color(0.5, 0.48, 0.45)), false, h)
+	box(Vector3(W + 0.06, 0.22, D + 0.06), Vector3(0, F, 0), dark, false, h)
+	box(Vector3(W + 0.08, 0.3, D + 0.08), Vector3(0, F * 2.0 - 0.15, 0), paint, false, h)
+	for cx: float in [-W / 2.0, W / 2.0]:
+		for cz: float in [-zf, zf]:
+			box(Vector3(0.24, F * 2.0, 0.24), Vector3(cx, F, cz), dark, false, h)
+	# Roof: one long prism over the house and the walkway, a plank gable showing at each end.
+	var span := D + walk + 1.2
+	var rise := 2.3
+	var rz := walk / 2.0
+	var pm := PrismMesh.new()
+	pm.size = Vector3(span, rise, W + 0.9)
+	var roof := MeshInstance3D.new()
+	roof.mesh = pm
+	roof.material_override = roof_m
+	roof.rotation.y = PI / 2.0
+	roof.position = Vector3(0, F * 2.0 + rise / 2.0 + 0.04, rz)
+	h.add_child(roof)
+	# The gable ends poke out a hand's width so the planks show under the tiles.
+	for sx: float in [-1.0, 1.0]:
+		var gm := PrismMesh.new()
+		gm.size = Vector3(span - 1.0, rise - 0.35, 0.12)
+		var g := MeshInstance3D.new()
+		g.mesh = gm
+		g.material_override = dark
+		g.rotation.y = PI / 2.0
+		g.position = Vector3(sx * (W / 2.0 + 0.47), F * 2.0 + (rise - 0.35) / 2.0, rz)
+		h.add_child(g)
+	box(Vector3(W + 1.0, 0.16, 0.16), Vector3(0, F * 2.0 + rise + 0.04, rz), dark, false, h)
+	# ---- the walkway and what holds it up
+	var wz := zf + walk / 2.0
+	box(Vector3(W, 0.16, walk), Vector3(0, F - 0.08, wz), deck, false, h)
+	_dorm_solid(h, on, Vector3(W, 0.16, walk), Vector3(0, F - 0.08, wz))
+	box(Vector3(W, 0.22, 0.14), Vector3(0, F - 0.2, zf + walk - 0.07), dark, false, h)
+	for k in 5:
+		var px := -W / 2.0 + 0.2 + k * (W - 0.4) / 4.0
+		box(Vector3(0.18, F * 2.0 - 0.1, 0.18), Vector3(px, F - 0.05, zf + walk - 0.1), dark, false, h)
+		_dorm_solid(h, on, Vector3(0.2, F - 0.2, 0.2), Vector3(px, (F - 0.2) / 2.0, zf + walk - 0.1))
+		var brace := box(Vector3(0.1, 0.1, 0.9), Vector3(px, F - 0.5, zf + walk - 0.45), dark, false, h)
+		brace.rotation.x = 0.75
+	# Railing along the front and across the far end; open at the stairs end.
+	var rail_z := zf + walk - 0.08
+	box(Vector3(W, 0.09, 0.09), Vector3(0, F + 1.0, rail_z), dark, false, h)
+	box(Vector3(W, 0.06, 0.06), Vector3(0, F + 0.5, rail_z), dark, false, h)
+	for k in 27:
+		box(Vector3(0.05, 1.0, 0.05), Vector3(-W / 2.0 + 0.1 + k * (W - 0.2) / 26.0, F + 0.5, rail_z), dark, false, h)
+	_dorm_solid(h, on, Vector3(W, 1.15, 0.1), Vector3(0, F + 0.575, rail_z))
+	box(Vector3(0.09, 0.09, walk), Vector3(-W / 2.0 + 0.05, F + 1.0, wz), dark, false, h)
+	_dorm_solid(h, on, Vector3(0.1, 1.15, walk), Vector3(-W / 2.0 + 0.05, F + 0.575, wz))
+	# ---- the outside stairs, down the +X side
+	var run := 4.7
+	var x0 := W / 2.0
+	var steps := 16
+	var slope := atan2(F, run)
+	var length := sqrt(run * run + F * F)
+	for i in steps:
+		var t := (i + 0.5) / steps
+		box(Vector3(run / steps + 0.05, 0.07, walk - 0.1), Vector3(x0 + run * (1.0 - t), F * t + F / steps / 2.0 - 0.035, wz), deck, false, h)
+	for sz2: float in [zf + 0.06, zf + walk - 0.06]:
+		var stringer := box(Vector3(length, 0.32, 0.1), Vector3(x0 + run / 2.0, F / 2.0 - 0.14, sz2), dark, false, h)
+		stringer.rotation.z = -slope
+		var hand := box(Vector3(length, 0.08, 0.08), Vector3(x0 + run / 2.0, F / 2.0 + 0.98, sz2), dark, false, h)
+		hand.rotation.z = -slope
+		for i in range(0, steps + 1, 3):
+			var t2 := float(i) / steps
+			box(Vector3(0.06, 1.0, 0.06), Vector3(x0 + run * (1.0 - t2), F * t2 + 0.5, sz2), dark, false, h)
+		# A wall each side from the ground up to the handrail, stepped, so you can't slip
+		# off the edge or walk in underneath.
+		for k in 5:
+			var xa := x0 + run * float(k) / 5.0
+			var xb := x0 + run * float(k + 1) / 5.0
+			var top_y := F * (1.0 - float(k) / 5.0) + 1.15
+			_dorm_solid(h, on, Vector3(xb - xa, top_y, 0.1), Vector3((xa + xb) / 2.0, top_y / 2.0, sz2))
+	# What you walk on: one smooth ramp under the steps.
+	_dorm_solid(h, on, Vector3(length + 0.3, 0.2, walk), Vector3(x0 + run / 2.0, F / 2.0 - 0.1 * cos(slope), wz), Vector3(0, 0, -slope))
+	_dorm_solid(h, on, Vector3(0.12, F - 0.3, walk), Vector3(x0 + 0.06, (F - 0.3) / 2.0, wz))
+	for k in 2:
+		box(Vector3(0.16, F * (0.5 - k * 0.0), 0.16), Vector3(x0 + run * 0.5, F * 0.25, zf + 0.1 + k * (walk - 0.2)), dark, false, h)
+	# ---- doors and windows
+	var ups: Array = []
+	var xf := h.transform
+	var out := xf.basis * Vector3(0, 0, 1)
+	for i in 4:
+		var dx := -W / 2.0 + 1.75 + i * 3.17
+		box(Vector3(1.24, 2.3, 0.1), Vector3(dx, F + 1.15, zf + 0.03), dark, false, h)
+		box(Vector3(1.0, 2.1, 0.08), Vector3(dx, F + 1.05, zf + 0.07), mat(trim.darkened(0.3), 0.7), false, h)
+		box(Vector3(0.8, 0.8, 0.03), Vector3(dx, F + 1.5, zf + 0.115), mat(trim.darkened(0.42), 0.7), false, h)
+		box(Vector3(0.8, 0.7, 0.03), Vector3(dx, F + 0.55, zf + 0.115), mat(trim.darkened(0.42), 0.7), false, h)
+		box(Vector3(0.05, 0.14, 0.07), Vector3(dx + 0.38, F + 1.05, zf + 0.14), mat(Color(0.86, 0.7, 0.32), 0.3, 0.8), false, h)
+		box(Vector3(0.3, 0.2, 0.03), Vector3(dx, F + 2.42, zf + 0.07), mat(Color(0.94, 0.9, 0.8), 0.8), false, h)
+		box(Vector3(0.22, 0.26, 0.2), Vector3(dx - 0.85, F + 2.1, zf + 0.14), glow_mat(Color(1.0, 0.84, 0.58), 1.4), false, h)
+		ups.append([xf * Vector3(dx, F, zf), out])
+		# A window beside each door.
+		var wx := dx + 1.5
+		if wx < W / 2.0 - 0.6:
+			_plank_window(h, Vector3(wx, F + 1.55, zf), dark, glass, 0.95, 1.05)
+	for sx: float in [-1.0, 1.0]:
+		for k in 2:
+			_plank_window(h, Vector3(sx * (2.6 + k * 2.5), 1.75, zf), dark, glass, 1.2, 1.3)
+		for fy: float in [1.75, F + 1.55]:
+			var side_w := _plank_window(h, Vector3(sx * W / 2.0, fy, -0.6), dark, glass, 1.1, 1.2)
+			side_w.rotation.y = sx * PI / 2.0
+	for k in 4:
+		_plank_window(h, Vector3(-4.8 + k * 3.2, F + 1.55, -zf), dark, glass, 1.0, 1.1).rotation.y = PI
+		_plank_window(h, Vector3(-4.8 + k * 3.2, 1.75, -zf), dark, glass, 1.0, 1.1).rotation.y = PI
+	# The front door: a double door under a little porch roof in the dorm's color.
+	box(Vector3(2.5, 2.7, 0.12), Vector3(0, 1.35, zf + 0.03), dark, false, h)
+	for sx: float in [-1.0, 1.0]:
+		box(Vector3(1.02, 2.4, 0.08), Vector3(sx * 0.53, 1.2, zf + 0.08), mat(trim.darkened(0.25), 0.7), false, h)
+		box(Vector3(0.7, 0.9, 0.03), Vector3(sx * 0.53, 1.75, zf + 0.125), glass, false, h)
+		box(Vector3(0.05, 0.4, 0.07), Vector3(sx * 0.1, 1.2, zf + 0.15), mat(Color(0.86, 0.7, 0.32), 0.3, 0.8), false, h)
+	box(Vector3(3.2, 0.5, 0.06), Vector3(0, F - 0.55, zf + walk - 0.16), paint, false, h)
+	h.set_meta("upper_doors", ups)
+	h.set_meta("size", Vector3(W, F * 2.0 + rise, D + walk))
+	h.set_meta("front", [xf * Vector3(0, 0, zf), out])
+	var c := xf * Vector3(run / 2.0, 0, walk / 2.0)
+	var fx: float = (W + run + 1.0) if absf(sin(yaw)) < 0.7 else (D + walk + 1.0)
+	var fz: float = (D + walk + 1.0) if absf(sin(yaw)) < 0.7 else (W + run + 1.0)
+	no_grass.append(Rect2(c.x - fx / 2.0, c.z - fz / 2.0, fx, fz))
+	return h
+
+
+func _dorm_solid(h: Node3D, on: bool, size: Vector3, pos: Vector3, rot := Vector3.ZERO) -> void:
+	if not on:
+		return
+	var body := StaticBody3D.new()
+	var cs := CollisionShape3D.new()
+	var sh := BoxShape3D.new()
+	sh.size = size
+	cs.shape = sh
+	body.add_child(cs)
+	body.position = pos
+	body.rotation = rot
+	h.add_child(body)
+
+
+func _plank_window(h: Node3D, at: Vector3, frame: Material, glass: Material, w: float, ht: float) -> Node3D:
+	var n := Node3D.new()
+	n.position = at
+	h.add_child(n)
+	box(Vector3(w + 0.2, ht + 0.2, 0.1), Vector3(0, 0, 0.03), frame, false, n)
+	box(Vector3(w, ht, 0.04), Vector3(0, 0, 0.07), glass, false, n)
+	box(Vector3(0.05, ht, 0.05), Vector3(0, 0, 0.1), frame, false, n)
+	box(Vector3(w, 0.05, 0.05), Vector3(0, 0.05, 0.1), frame, false, n)
+	box(Vector3(w + 0.36, 0.07, 0.2), Vector3(0, -ht / 2.0 - 0.12, 0.1), frame, false, n)
+	return n
+
+
 # ------------------------------------------------------------------ ground detail
 
 ## Tufts of grass, small flowers and pebbles over a round patch of lawn. They stay off anything
@@ -1011,6 +1251,54 @@ void sky() {
 
 var _tree_mats: Array = []
 var _water_mats: Array = []
+var _pool_mats: Array = []
+
+
+## Each world has its own color: the Academy bright and warm, Domino rich with deeper shadows,
+## Satellite dusty and drained, the cities of the future clean and cool.
+func grade(district_key: String) -> void:
+	var g: Array = {"academy": [1.16, 1.04, 1.0], "domino": [1.1, 1.08, 0.98], "satellite": [0.9, 1.1, 0.96],
+			"newdomino": [1.06, 1.05, 1.02], "heartland": [1.2, 1.02, 1.04]}.get(district_key, [1.1, 1.04, 1.0])
+	env.adjustment_enabled = true
+	env.adjustment_saturation = g[0]
+	env.adjustment_contrast = g[1]
+	env.adjustment_brightness = g[2]
+
+
+## Light spilling out of a shop front onto the pavement: a soft pool that fades with distance
+## from the window, lit only when the windows are.
+func light_pool(at: Vector3, width: float, depth: float, col: Color, yaw := 0.0) -> void:
+	var sh: Shader
+	if has_meta("pool_shader"):
+		sh = get_meta("pool_shader")
+	else:
+		sh = Shader.new()
+		sh.code = """
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, shadows_disabled, cull_disabled;
+uniform vec3 tint : source_color = vec3(1.0, 0.8, 0.5);
+uniform float power = 1.0;
+void fragment() {
+	float along = 1.0 - smoothstep(0.25, 0.5, abs(UV.x - 0.5));
+	float outw = pow(1.0 - UV.y, 1.6);
+	ALBEDO = tint;
+	ALPHA = along * outw * 0.42 * power;
+}
+"""
+		set_meta("pool_shader", sh)
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	m.set_shader_parameter("tint", col)
+	var q := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(width, depth)
+	q.mesh = pm
+	q.material_override = m
+	q.position = at
+	q.rotation.y = yaw
+	q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(q)
+	_pool_mats.append(m)
 
 
 func apply_tod(t: String) -> void:
@@ -1028,6 +1316,8 @@ func apply_tod(t: String) -> void:
 	sun.shadow_opacity = L["shadow"]
 	for tm in _tree_mats:
 		(tm as ShaderMaterial).set_shader_parameter("night_lift", L["lift"])
+	for pmat in _pool_mats:
+		(pmat as ShaderMaterial).set_shader_parameter("power", L["windows"])
 	for wm in _water_mats:
 		(wm as ShaderMaterial).set_shader_parameter("lum", {"night": 0.4, "sunset": 0.8}.get(tod, 1.0))
 	sun.light_color = L["sun"]
@@ -1072,7 +1362,8 @@ float n(vec2 p) {
 }
 void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
-	float grain = n(wp.xz * 9.0) * 0.5 + n(wp.xz * 31.0) * 0.5;
+	float fw = length(fwidth(wp.xz));
+	float grain = mix(0.5, n(wp.xz * 9.0) * 0.5 + n(wp.xz * 31.0) * 0.5, 1.0 - smoothstep(0.02, 0.09, fw));
 	float patches = n(wp.xz * 0.35);
 	float puddle = smoothstep(0.64, 0.7, n(wp.xz * 0.22 + 7.3) * 0.7 + patches * 0.3) * wet;
 	vec3 base = vec3(0.055, 0.056, 0.065) * (0.8 + grain * 0.4) * (0.85 + patches * 0.3);
@@ -1099,8 +1390,9 @@ void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
 	vec2 g = wp.xz / tile;
 	vec2 f = fract(g);
-	float line = 1.0 - step(0.035, f.x) * step(0.035, f.y);
-	float v = h(floor(g)) * 0.12;
+	float fw = max(fwidth(g.x), fwidth(g.y));
+	float line = (1.0 - step(0.035, f.x) * step(0.035, f.y)) * (1.0 - smoothstep(0.012, 0.06, fw));
+	float v = h(floor(g)) * 0.12 * (1.0 - smoothstep(0.2, 0.6, fw));
 	ALBEDO = base.rgb * (0.92 + v) * mix(1.0, 0.55, line);
 	ROUGHNESS = mix(0.7, 0.9, line);
 }
@@ -1172,13 +1464,14 @@ void fragment() {
 	// Soft patches of lighter and darker lawn, mowing stripes, and fine blades up close.
 	float patch = n(wp.xz * 0.35) * 0.6 + n(wp.xz * 1.4) * 0.4;
 	float stripe = 0.5 + 0.5 * sin(wp.x * 2.2);
-	float blades = n(wp.xz * vec2(60.0, 14.0)) * n(wp.xz * vec2(13.0, 55.0));
+	float fw = length(fwidth(wp.xz));
+	float blades = mix(0.25, n(wp.xz * vec2(60.0, 14.0)) * n(wp.xz * vec2(13.0, 55.0)), 1.0 - smoothstep(0.006, 0.03, fw));
 	vec3 dark = vec3(0.09, 0.24, 0.09) * bright;
 	vec3 light = vec3(0.24, 0.44, 0.13) * bright;
 	vec3 col = mix(dark, light, patch * 0.7 + stripe * 0.12);
 	col *= 0.82 + blades * 0.5;
 	// A few clover-yellow flecks.
-	col += vec3(0.5, 0.45, 0.1) * step(0.985, h(floor(wp.xz * 9.0))) * 0.5;
+	col += vec3(0.5, 0.45, 0.1) * step(0.985, h(floor(wp.xz * 9.0))) * 0.5 * (1.0 - smoothstep(0.02, 0.08, fw));
 	ALBEDO = col;
 	ROUGHNESS = 0.95;
 }
@@ -1211,15 +1504,20 @@ float h(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233)) + seed) * 43758
 void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz); }
 void fragment() {
 	float u = abs(wn.x) > 0.5 ? wp.z : wp.x;
+	// How much wall one pixel covers. Detail finer than that is faded out instead of being
+	// left to sparkle and crawl as the camera moves.
+	float fw = max(fwidth(u), fwidth(wp.y));
+	float fine = 1.0 - smoothstep(0.02, 0.07, fw);
+	float mid = 1.0 - smoothstep(0.05, 0.18, fw);
 	vec3 col = wall.rgb;
 	// Brick/concrete texture: running bond for style 0, panels for style 1
 	vec2 b = vec2(u / (style > 0.5 ? 1.6 : 0.5), wp.y / (style > 0.5 ? 1.2 : 0.25));
 	b.x += style > 0.5 ? 0.0 : step(1.0, mod(floor(b.y), 2.0)) * 0.5;
 	vec2 bf = fract(b);
-	float mortar = 1.0 - step(0.06, bf.x) * step(0.08, bf.y);
-	col *= (0.9 + h(floor(b)) * 0.18) * mix(1.0, 0.7, mortar);
+	float mortar = (1.0 - step(0.06, bf.x) * step(0.08, bf.y)) * fine;
+	col *= mix(0.97, (0.9 + h(floor(b)) * 0.18) * mix(1.0, 0.7, mortar), max(fine, mid * 0.5));
 	// Floor bands
-	float band = step(fract(wp.y / 3.2), 0.07);
+	float band = step(fract(wp.y / 3.2), 0.07) * mid;
 	col = mix(col, wall.rgb * 0.55, band);
 	float rough = 0.85;
 	float metal = 0.0;
@@ -1241,10 +1539,10 @@ void fragment() {
 			col = mix(col, shop.rgb * 0.5, strip);
 			// A striped awning lip over the windows and a dark plinth along the pavement.
 			float awn = step(2.4, wp.y) * step(wp.y, 2.6) * step(0.08, sx) * step(sx, 0.92);
-			col = mix(col, mix(shop.rgb * 0.8, vec3(0.92), step(0.5, fract(u / 0.5))), awn);
+			col = mix(col, mix(shop.rgb * 0.8, vec3(0.92), mix(0.5, step(0.5, fract(u / 0.5)), mid)), awn);
 			col = mix(col, wall.rgb * 0.4, step(wp.y, 0.25));
 			// Window frames, and a door in every third bay.
-			float fr = pane * (1.0 - step(0.11, sx) * step(sx, 0.89) * step(0.32, wp.y) * step(wp.y, 2.33));
+			float fr = mid * pane * (1.0 - step(0.11, sx) * step(sx, 0.89) * step(0.32, wp.y) * step(wp.y, 2.33));
 			col = mix(col, vec3(0.16, 0.17, 0.2), fr);
 			float bay = floor(u / 4.0);
 			float door = step(0.66, h(vec2(bay, 7.0))) * step(0.36, sx) * step(sx, 0.64) * step(0.25, wp.y) * step(wp.y, 2.3);
@@ -1256,17 +1554,24 @@ void fragment() {
 			vec2 cell = floor(g);
 			vec2 f = fract(g);
 			// A pilaster every third bay breaks up the wall.
-			float pil = step(fract(u / 5.1), 0.07);
+			float pil = step(fract(u / 5.1), 0.07) * mid;
 			col = mix(col, wall.rgb * 1.18 + 0.02, pil);
 			float wx0 = 0.16; float wx1 = 0.84; float wy0 = 0.24; float wy1 = 0.84;
-			float open = step(wx0, f.x) * step(f.x, wx1) * step(wy0, f.y) * step(f.y, wy1);
-			float inner = step(wx0 + 0.045, f.x) * step(f.x, wx1 - 0.045) * step(wy0 + 0.03, f.y) * step(f.y, wy1 - 0.03);
+			// Soft edges one pixel wide, so window outlines never stair-step or twinkle.
+			float ax = clamp(fwidth(g.x), 0.0005, 0.25);
+			float ay = clamp(fwidth(g.y), 0.0005, 0.25);
+			float open = smoothstep(wx0 - ax, wx0 + ax, f.x) * smoothstep(wx1 + ax, wx1 - ax, f.x) * smoothstep(wy0 - ay, wy0 + ay, f.y) * smoothstep(wy1 + ay, wy1 - ay, f.y);
+			float inner = smoothstep(wx0 + 0.045 - ax, wx0 + 0.045 + ax, f.x) * smoothstep(wx1 - 0.045 + ax, wx1 - 0.045 - ax, f.x) * smoothstep(wy0 + 0.03 - ay, wy0 + 0.03 + ay, f.y) * smoothstep(wy1 - 0.03 + ay, wy1 - 0.03 - ay, f.y);
+			// Far away, windows melt into the wall instead of flickering.
+			float far_fade = 1.0 - smoothstep(0.35, 0.9, max(ax, ay) * 2.0);
+			open *= far_fade;
+			inner *= far_fade;
 			float frame = open * (1.0 - inner);
 			float glass = open * inner;
 			// Mullions: one down the middle, and on some windows one across.
-			float mull = glass * max(step(abs(f.x - 0.5), 0.014), step(abs(f.y - 0.58), 0.011) * step(0.5, h(cell + 9.0)));
+			float mull = glass * mid * max(step(abs(f.x - 0.5), 0.014), step(abs(f.y - 0.58), 0.011) * step(0.5, h(cell + 9.0)));
 			// A sill under every window and the rain streaks below it.
-			float sill = step(wx0 - 0.04, f.x) * step(f.x, wx1 + 0.04) * step(wy0 - 0.055, f.y) * step(f.y, wy0);
+			float sill = step(wx0 - 0.04, f.x) * step(f.x, wx1 + 0.04) * step(wy0 - 0.055, f.y) * step(f.y, wy0) * mid * far_fade;
 			float stain = step(wx0, f.x) * step(f.x, wx1) * step(f.y, wy0 - 0.055) * (f.y / (wy0 - 0.055));
 			col *= 1.0 - 0.16 * stain * h(cell + 21.0);
 			// Blinds pulled part of the way down on some of them.
@@ -1282,7 +1587,8 @@ void fragment() {
 			col = mix(col, wall.rgb * 1.3 + 0.1, mull);
 			// The odd air conditioner hanging under a window.
 			float ac = step(0.84, h(cell + 31.0)) * step(0.52, f.x) * step(f.x, 0.8) * step(0.05, f.y) * step(f.y, 0.185);
-			col = mix(col, vec3(0.74, 0.75, 0.77) * (0.8 + 0.2 * step(0.5, fract(f.y * 60.0))), ac);
+			ac *= mid;
+			col = mix(col, vec3(0.74, 0.75, 0.77) * (0.8 + 0.2 * fine * step(0.5, fract(f.y * 60.0))), ac);
 			// The glass sits back in the wall: the frame throws a shadow down its top and one side.
 			float recess = max(smoothstep(wy1 - 0.1, wy1 - 0.03, f.y), smoothstep(wx0 + 0.11, wx0 + 0.045, f.x) * 0.8);
 			col *= 1.0 - 0.42 * recess * glass;
@@ -1348,8 +1654,13 @@ func building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator) -> void:
 			mat(Color(0.08, 0.09, 0.12), 0.6), false)
 		board.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		var rot := (0.0 if side > 0.0 else PI) if along_x else (PI / 2.0 if side > 0.0 else -PI / 2.0)
+		if make_solid and pos.y > -1.0:
+			# PlaneMesh UV.y runs along local +Z: turn the pool so its bright edge is at the wall.
+			light_pool(c + (Vector3(0, 0.19, side * 1.5) if along_x else Vector3(side * 1.5, 0.19, 0)), w, 3.0, shop_col.lerp(Color(1.0, 0.9, 0.7), 0.5), rot)
 		var sign := neon_sign(names[rng.randi() % names.size()], c + (Vector3(0, 3.55, side * 0.15) if along_x else Vector3(side * 0.15, 3.55, 0)), shop_col.lightened(0.3), 44, rot, false)
 		sign.pixel_size = 0.008
+	if make_solid and pos.y > -1.0:
+		_dress_building(pos, size, rng, shops[rng.randi() % shops.size()])
 	# Roof: parapet, AC units, water tank or antenna
 	var roof := pos + Vector3(0, size.y, 0)
 	var trim := mat(Color(0.25, 0.25, 0.28), 0.8)
@@ -1379,6 +1690,279 @@ func building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator) -> void:
 			b.material_override = tip
 			b.position = roof + Vector3(-size.x * 0.25, 6.1, size.z * 0.2)
 			add_child(b)
+
+
+## What makes a block of flats look built instead of painted: ledges and a cornice you can see
+## the edge of, pilasters between the shop windows, balconies with railings, window awnings, air
+## conditioners, drain pipes, a fire escape, and a stair hut and vents on the roof. All of it is
+## real geometry lined up with the painted windows, merged into one mesh per building, and only
+## drawn when you are near enough to tell.
+func _dress_building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator, tint: Color) -> void:
+	var batch := BoxBatch.new()
+	var stone := mat(Color(0.62, 0.6, 0.57), 0.85)
+	var dark := mat(Color(0.14, 0.15, 0.18), 0.5, 0.5)
+	var metal := mat(Color(0.7, 0.72, 0.75), 0.4, 0.5)
+	var cloth := mat(tint.darkened(0.2), 0.85)
+	var slab := mat(Color(0.5, 0.49, 0.47), 0.85)
+	var hgt := size.y
+	# The four faces: [outward normal, along the wall, half depth, half width]
+	var faces := [[Vector3(0, 0, 1), Vector3(1, 0, 0), size.z / 2.0, size.x / 2.0], [Vector3(0, 0, -1), Vector3(1, 0, 0), size.z / 2.0, size.x / 2.0],
+			[Vector3(1, 0, 0), Vector3(0, 0, 1), size.x / 2.0, size.z / 2.0], [Vector3(-1, 0, 0), Vector3(0, 0, 1), size.x / 2.0, size.z / 2.0]]
+	var escape_face := rng.randi() % 4 if hgt > 13.0 else -1
+	for fi in faces.size():
+		var n: Vector3 = faces[fi][0]
+		var t: Vector3 = faces[fi][1]
+		var out: float = faces[fi][2]
+		var half: float = faces[fi][3]
+		var basis := Basis(t, Vector3.UP, n) if t.cross(Vector3.UP).dot(n) > 0.0 else Basis(-t, Vector3.UP, n)
+		var wall := pos + n * out
+		var c_along: float = (pos.x if absf(t.x) > 0.5 else pos.z)
+		# A ledge over the shops, a string course half way up tall buildings, the cornice.
+		batch.add(Vector3(half * 2.0 + 0.5, 0.2, 0.46), wall + Vector3(0, 3.28, 0) + n * 0.2, stone, basis)
+		batch.add(Vector3(half * 2.0 + 0.7, 0.34, 0.6), wall + Vector3(0, hgt - 0.3, 0) + n * 0.24, stone, basis)
+		batch.add(Vector3(half * 2.0 + 0.5, 0.12, 0.3), wall + Vector3(0, hgt - 0.62, 0) + n * 0.12, slab, basis)
+		# Pilasters between the shop windows (the painted bays are 4 m wide).
+		var bay := ceili((c_along - half) / 4.0)
+		while bay * 4.0 <= c_along + half:
+			var u := bay * 4.0 - c_along
+			if absf(u) < half - 0.15:
+				batch.add(Vector3(0.36, 3.2, 0.2), wall + t * u + Vector3(0, 1.6, 0) + n * 0.09, stone, basis)
+				batch.add(Vector3(0.46, 0.22, 0.26), wall + t * u + Vector3(0, 0.11, 0) + n * 0.12, slab, basis)
+			bay += 1
+		# A drain pipe down one edge.
+		batch.add(Vector3(0.1, hgt - 0.5, 0.1), wall + t * (half - 0.35) + Vector3(0, hgt / 2.0 - 0.1, 0) + n * 0.07, dark, basis)
+		# Window by window (the painted windows sit on a 1.7 m by 3.2 m grid).
+		var col := ceili((c_along - half + 0.5) / 1.7 - 0.5)
+		while (col + 0.5) * 1.7 <= c_along + half - 0.5:
+			var u2 := (col + 0.5) * 1.7 - c_along
+			var kind := rng.randi() % 10          # 0-1 balconies, 2 awnings, the rest plain
+			var floor_i := 1
+			while (floor_i + 1) * 3.2 < hgt - 0.6:
+				var y0 := floor_i * 3.2
+				var at := wall + t * u2 + Vector3(0, y0, 0)
+				if fi == escape_face and absf(u2) < 1.0:
+					# Fire escape: a landing at every floor, a ladder between them, a rail.
+					batch.add(Vector3(2.4, 0.07, 0.95), at + Vector3(0, 0.6, 0) + n * 0.5, dark, basis)
+					batch.add(Vector3(2.4, 0.05, 0.05), at + Vector3(0, 1.6, 0) + n * 0.95, dark, basis)
+					batch.add(Vector3(2.4, 0.04, 0.04), at + Vector3(0, 1.1, 0) + n * 0.95, dark, basis)
+					for sx: float in [-1.17, 1.17]:
+						batch.add(Vector3(0.05, 1.0, 0.05), at + t * sx + Vector3(0, 1.1, 0) + n * 0.95, dark, basis)
+						batch.add(Vector3(0.05, 0.05, 0.9), at + t * sx + Vector3(0, 1.6, 0) + n * 0.5, dark, basis)
+					var ladder := Basis(Vector3(1, 0, 0), 0.0)
+					batch.add(Vector3(0.06, 3.2, 0.06), at + t * 0.75 + Vector3(0, 2.2, 0) + n * 0.8, dark, basis)
+					batch.add(Vector3(0.06, 3.2, 0.06), at + t * 0.3 + Vector3(0, 2.2, 0) + n * 0.8, dark, basis)
+					for rung in 8:
+						batch.add(Vector3(0.45, 0.04, 0.04), at + t * 0.525 + Vector3(0, 0.8 + rung * 0.4, 0) + n * 0.8, dark, basis * ladder)
+				elif kind <= 1 and absf(u2) < half - 1.1:
+					# A balcony: slab, three rails, posts and a little something on it.
+					batch.add(Vector3(1.5, 0.1, 0.8), at + Vector3(0, 0.66, 0) + n * 0.4, slab, basis)
+					for ry: float in [1.15, 1.42, 1.7]:
+						batch.add(Vector3(1.5, 0.045, 0.045), at + Vector3(0, ry, 0) + n * 0.78, dark, basis)
+					for sx: float in [-0.73, 0.0, 0.73]:
+						batch.add(Vector3(0.045, 1.0, 0.045), at + t * sx + Vector3(0, 1.2, 0) + n * 0.78, dark, basis)
+					for sx: float in [-0.73, 0.73]:
+						batch.add(Vector3(0.045, 0.045, 0.78), at + t * sx + Vector3(0, 1.7, 0) + n * 0.39, dark, basis)
+					if rng.randf() < 0.5:
+						batch.add(Vector3(0.3, 0.3, 0.3), at + t * 0.45 + Vector3(0, 0.86, 0) + n * 0.5, mat(Color(0.6, 0.36, 0.24), 0.9), basis)
+						batch.add(Vector3(0.34, 0.3, 0.34), at + t * 0.45 + Vector3(0, 1.14, 0) + n * 0.5, mat(Color(0.18, 0.42, 0.2), 0.95), basis)
+				elif kind == 2:
+					# An awning over the window.
+					batch.add(Vector3(1.3, 0.05, 0.6), at + Vector3(0, 2.78, 0) + n * 0.28, cloth, basis * Basis(Vector3(1, 0, 0), 0.5))
+				else:
+					# A sill you can see the edge of, and now and then an air conditioner.
+					batch.add(Vector3(1.3, 0.07, 0.16), at + Vector3(0, 0.72, 0) + n * 0.08, stone, basis)
+					if rng.randf() < 0.14:
+						batch.add(Vector3(0.7, 0.46, 0.4), at + t * 0.2 + Vector3(0, 0.4, 0) + n * 0.2, metal, basis)
+						batch.add(Vector3(0.5, 0.3, 0.02), at + t * 0.2 + Vector3(0, 0.4, 0) + n * 0.41, dark, basis)
+				floor_i += 1
+			col += 1
+	# On the roof: the stair hut with its door, two vents and a run of duct.
+	var roof := pos + Vector3(0, hgt, 0)
+	var hut := roof + Vector3(size.x * 0.18, 1.2, size.z * 0.12)
+	batch.add(Vector3(2.4, 2.4, 2.8), hut, stone)
+	batch.add(Vector3(2.6, 0.14, 3.0), hut + Vector3(0, 1.26, 0), slab)
+	batch.add(Vector3(0.9, 1.9, 0.06), hut + Vector3(0, -0.25, 1.42), dark)
+	for k in 2:
+		batch.add(Vector3(0.5, 0.7, 0.5), roof + Vector3(-size.x * 0.25 + k * 1.2, 0.35, -size.z * 0.2), metal)
+		batch.add(Vector3(0.62, 0.08, 0.62), roof + Vector3(-size.x * 0.25 + k * 1.2, 0.74, -size.z * 0.2), dark)
+	batch.add(Vector3(size.x * 0.5, 0.3, 0.3), roof + Vector3(-size.x * 0.1, 0.25, size.z * 0.3), metal)
+	batch.commit(self, 110.0)
+
+
+## The Game Center: our own two-storey arcade. Dark walls, a wide glass front with the glow of
+## the cabinets behind it, neon piping, a canopy studded with bulbs, round windows upstairs and
+## a big sign on the roof. `pos` is the middle of its footprint, the front faces +Z.
+func arcade_building(pos: Vector3, w := 9.0, d := 9.0) -> void:
+	var hgt := 8.4
+	var body := surf("plaster", Color(0.13, 0.11, 0.24))
+	var trim := mat(Color(0.08, 0.07, 0.14), 0.5, 0.3)
+	var mint := glow_mat(Color("5affc0"), 2.6)
+	var pink := glow_mat(Color("ff5ab4"), 2.6)
+	var gold := glow_mat(Color("ffd23a"), 2.4)
+	box(Vector3(w, hgt, d), pos + Vector3(0, hgt / 2.0, 0), body)
+	var batch := BoxBatch.new()
+	var front := pos + Vector3(0, 0, d / 2.0)
+	# The glass front: three tall panes either side of the door, cabinets glowing inside.
+	var glass := mat(Color(0.05, 0.07, 0.12), 0.1, 0.3)
+	var glows := [Color("5affc0"), Color("ff5ab4"), Color("ffd23a"), Color("7cc4ff"), Color("b06bff"), Color("ff8a3a")]
+	for i in 6:
+		var px := -w / 2.0 + 0.85 + i * (w - 1.7) / 5.0
+		if absf(px) < 1.1:
+			continue
+		batch.add(Vector3(1.25, 2.7, 0.08), front + Vector3(px, 1.6, 0.02), glass)
+		batch.add(Vector3(0.7, 1.2, 0.03), front + Vector3(px, 1.2, 0.07), glow_mat(glows[i % glows.size()], 1.3))
+		batch.add(Vector3(0.5, 0.36, 0.035), front + Vector3(px, 2.2, 0.07), glow_mat(glows[(i + 2) % glows.size()], 2.0))
+		batch.add(Vector3(1.37, 0.08, 0.14), front + Vector3(px, 2.99, 0.05), trim)
+		batch.add(Vector3(1.37, 0.12, 0.14), front + Vector3(px, 0.22, 0.05), trim)
+		for sx: float in [-0.66, 0.66]:
+			batch.add(Vector3(0.07, 2.8, 0.14), front + Vector3(px + sx, 1.6, 0.05), trim)
+	# The door, set back under a canopy with a row of bulbs along its edge.
+	batch.add(Vector3(2.0, 2.6, 0.1), front + Vector3(0, 1.3, 0.02), mat(Color(0.03, 0.04, 0.08), 0.2, 0.3))
+	for sx: float in [-0.5, 0.5]:
+		batch.add(Vector3(0.9, 2.3, 0.05), front + Vector3(sx, 1.2, 0.09), mat(Color(0.2, 0.5, 0.6), 0.12, 0.4))
+		batch.add(Vector3(0.05, 0.5, 0.06), front + Vector3(sx * 0.2, 1.2, 0.14), mat(Color(0.86, 0.7, 0.32), 0.3, 0.8))
+	batch.add(Vector3(4.2, 0.3, 1.9), front + Vector3(0, 3.25, 0.95), trim)
+	batch.add(Vector3(4.2, 0.08, 0.08), front + Vector3(0, 3.12, 1.86), mint)
+	for i in 11:
+		batch.add(Vector3(0.12, 0.12, 0.12), front + Vector3(-1.9 + i * 0.38, 3.02, 1.7), gold if i % 2 == 0 else pink)
+	# Neon piping round the building, and round windows upstairs.
+	for y: float in [3.5, hgt - 0.5]:
+		batch.add(Vector3(w + 0.1, 0.09, 0.09), front + Vector3(0, y, 0.05), mint if y < 4.0 else pink)
+		batch.add(Vector3(0.09, 0.09, d + 0.1), pos + Vector3(-w / 2.0 - 0.05, y, 0), mint if y < 4.0 else pink)
+		batch.add(Vector3(0.09, 0.09, d + 0.1), pos + Vector3(w / 2.0 + 0.05, y, 0), mint if y < 4.0 else pink)
+	for sx: float in [-w / 2.0 - 0.04, w / 2.0 + 0.04]:
+		batch.add(Vector3(0.09, hgt - 4.0, 0.09), Vector3(pos.x + sx, 3.5 + (hgt - 4.0) / 2.0, front.z + 0.04), pink)
+	batch.commit(self)
+	for i in 4:
+		var wx := -w / 2.0 + 1.4 + i * (w - 2.8) / 3.0
+		var ring := cyl(0.62, 0.62, 0.1, front + Vector3(wx, 5.6, 0.03), trim, null, 20)
+		ring.rotation.x = PI / 2.0
+		var pane := cyl(0.5, 0.5, 0.12, front + Vector3(wx, 5.6, 0.035), glow_mat(glows[(i * 2 + 1) % glows.size()], 1.0), null, 20)
+		pane.rotation.x = PI / 2.0
+	# The side that faces the road gets round windows and a tall blade sign too.
+	for i in 3:
+		var wz := -d / 2.0 + 1.8 + i * (d - 3.6) / 2.0
+		var ring2 := cyl(0.62, 0.62, 0.1, pos + Vector3(-w / 2.0 - 0.03, 5.6, wz), trim, null, 20)
+		ring2.rotation.z = PI / 2.0
+		var pane2 := cyl(0.5, 0.5, 0.12, pos + Vector3(-w / 2.0 - 0.035, 5.6, wz), glow_mat(glows[i * 2 % glows.size()], 1.0), null, 20)
+		pane2.rotation.z = PI / 2.0
+		box(Vector3(0.08, 2.4, 1.6), pos + Vector3(-w / 2.0 - 0.02, 1.6, wz), glass, false)
+		box(Vector3(0.03, 1.0, 0.8), pos + Vector3(-w / 2.0 - 0.07, 1.3, wz), glow_mat(glows[(i + 3) % glows.size()], 1.2), false)
+	box(Vector3(0.9, 4.6, 0.24), pos + Vector3(-w / 2.0 - 0.6, 5.4, d / 2.0 - 0.9), trim, false)
+	box(Vector3(0.7, 4.3, 0.28), pos + Vector3(-w / 2.0 - 0.6, 5.4, d / 2.0 - 0.9), glow_mat(Color("ff5ab4"), 1.6), false)
+	# Roof sign and parapet.
+	box(Vector3(w + 0.3, 0.5, 0.3), pos + Vector3(0, hgt + 0.25, d / 2.0), trim, false)
+	box(Vector3(w + 0.3, 0.5, 0.3), pos + Vector3(0, hgt + 0.25, -d / 2.0), trim, false)
+	box(Vector3(0.3, 0.5, d), pos + Vector3(w / 2.0, hgt + 0.25, 0), trim, false)
+	box(Vector3(0.3, 0.5, d), pos + Vector3(-w / 2.0, hgt + 0.25, 0), trim, false)
+	box(Vector3(6.4, 1.7, 0.2), pos + Vector3(0, hgt + 1.5, d / 2.0 - 0.6), trim, false)
+	for sx: float in [-2.6, 2.6]:
+		box(Vector3(0.12, 1.2, 0.12), pos + Vector3(sx, hgt + 0.6, d / 2.0 - 0.6), trim, false)
+	neon_sign("GAME CENTER", pos + Vector3(0, hgt + 1.5, d / 2.0 - 0.48), Color("5affc0"), 150, 0.0)
+	neon_sign("ARCADE", pos + Vector3(-w / 2.0 - 0.08, 7.3, 0), Color("ffd23a"), 120, -PI / 2)
+	var l := OmniLight3D.new()
+	l.light_color = Color("5affc0")
+	l.light_energy = 2.4
+	l.omni_range = 9.0
+	l.position = front + Vector3(0, 2.6, 2.2)
+	add_child(l)
+	_lamp_lights.append(l)
+	no_grass.append(Rect2(pos.x - w / 2.0, pos.z - d / 2.0, w, d))
+
+
+## Domino is a city in the middle of a tournament: poster columns on the corners showing real
+## cards, banners on the lamp posts, and a giant screen over the crossing that cycles through
+## the cards of the day.
+var _screen_mat: StandardMaterial3D
+var _screen_ids: Array = []
+var _screen_t := 0.0
+
+
+func _screen_show(id: int) -> void:
+	var got := Cards.cover_art(id)
+	var tex: Texture2D = got[0]
+	if tex == null:
+		return
+	var region: Rect2 = got[1]
+	var ts := tex.get_size()
+	_screen_mat.albedo_texture = tex
+	_screen_mat.uv1_scale = Vector3(region.size.x / ts.x, region.size.y / ts.y, 1.0)
+	_screen_mat.uv1_offset = Vector3(region.position.x / ts.x, region.position.y / ts.y, 0.0)
+
+
+func _tournament_dressing() -> void:
+	var ids: Array = []
+	for id in Collection.all_cards():
+		var d := CardData.get_card(id)
+		if d.get("kind", "") == "monster" and CardData.rarity(id) >= 2:
+			ids.append(id)
+	if ids.is_empty():
+		return
+	ids.sort()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 808
+	var iron := mat(Color(0.12, 0.13, 0.16), 0.5, 0.6)
+	var k := 0
+	for at in [Vector3(-9.2, 0.16, -9.2), Vector3(10.8, 0.16, 15.2), Vector3(-9.4, 0.16, 20.0), Vector3(9.4, 0.16, -22.0), Vector3(-22.0, 0.16, 9.2), Vector3(22.0, 0.16, -9.2)]:
+		cyl(0.62, 0.62, 2.9, at + Vector3(0, 1.45, 0), mat(Color(0.86, 0.84, 0.78), 0.8), null, 18)
+		cyl(0.72, 0.72, 0.16, at + Vector3(0, 0.08, 0), iron, null, 18)
+		cyl(0.76, 0.66, 0.22, at + Vector3(0, 3.0, 0), iron, null, 18)
+		cyl(0.0, 0.7, 0.4, at + Vector3(0, 3.3, 0), mat(Color(0.2, 0.4, 0.34), 0.5, 0.4), null, 18)
+		solid_cyl(0.66, 3.0, at + Vector3(0, 1.5, 0))
+		for f in 3:
+			var a := f * TAU / 3.0 + k * 0.4
+			var pm := StandardMaterial3D.new()
+			pm.albedo_texture = Cards.get_face(ids[rng.randi() % ids.size()])
+			pm.roughness = 0.5
+			pm.emission_enabled = true
+			pm.emission_texture = pm.albedo_texture
+			pm.emission_energy_multiplier = 0.25
+			var q := MeshInstance3D.new()
+			var qm := QuadMesh.new()
+			qm.size = Vector2(0.92, 1.34)
+			q.mesh = qm
+			q.material_override = pm
+			q.position = at + Vector3(sin(a) * 0.635, 1.55, cos(a) * 0.635)
+			q.rotation.y = a
+			q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(q)
+		k += 1
+	# The big screen, on a frame over the south-west corner, facing the crossing.
+	var sp := Vector3(-12.5, 9.5, 12.5)
+	var holder := Node3D.new()
+	holder.position = sp
+	holder.rotation.y = -PI / 4.0 + PI
+	add_child(holder)
+	box(Vector3(8.6, 5.4, 0.5), Vector3.ZERO, iron, false, holder)
+	for sx: float in [-3.6, 3.6]:
+		box(Vector3(0.4, 9.5, 0.4), Vector3(sx, -7.4, -0.1), iron, false, holder)
+	_screen_mat = StandardMaterial3D.new()
+	_screen_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_screen_mat.albedo_color = Color(0.9, 0.9, 0.9)
+	_screen_ids = []
+	for i in 8:
+		_screen_ids.append(ids[rng.randi() % ids.size()])
+	_screen_show(_screen_ids[0])
+	var q2 := MeshInstance3D.new()
+	var qm2 := QuadMesh.new()
+	qm2.size = Vector2(4.8, 4.8)
+	q2.mesh = qm2
+	q2.material_override = _screen_mat
+	q2.position = Vector3(-1.7, 0, 0.27)
+	q2.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	holder.add_child(q2)
+	box(Vector3(3.2, 4.8, 0.02), Vector3(2.5, 0, 0.26), glow_mat(Color(0.05, 0.08, 0.16), 0.6), false, holder)
+	var live := neon_sign("CARD OF\nTHE HOUR", sp + holder.transform.basis * Vector3(2.5, 0.9, 0.3), Color("ffd766"), 90, holder.rotation.y, false)
+	live.pixel_size = 0.012
+	var tag := neon_sign("BATTLE CITY  ·  LIVE", sp + holder.transform.basis * Vector3(2.5, -1.4, 0.3), Color("ff5a7a"), 60, holder.rotation.y, false)
+	tag.pixel_size = 0.009
+	var glow := OmniLight3D.new()
+	glow.light_color = Color(0.7, 0.8, 1.0)
+	glow.light_energy = 2.0
+	glow.omni_range = 14.0
+	glow.position = sp + holder.transform.basis * Vector3(0, -1.0, 3.0)
+	add_child(glow)
+	_lamp_lights.append(glow)
 
 
 func _build_buildings() -> void:
@@ -1502,9 +2086,8 @@ func _rest_of_landmarks() -> void:
 		neon_sign("DOMINO HIGH", Vector3(38.5, 12.5, 0), Color("ffe9a8"), 220, -PI / 2, false)
 	prop("clock_tower", Vector3(0, 0, 46), PI, 30.0, true)
 	# Inside the blocks
-	collide(prop("arcade", Vector3(12.5, 0.16, -16.5), -PI / 2, 9.0))
-	if has_model("arcade"):
-		neon_sign("ARCADE", Vector3(7.6, 6.4, -16.5), Color("5affc0"), 150, -PI / 2)
+	arcade_building(Vector3(12.5, 0.16, -16.4), 9.0, 9.0)
+	_tournament_dressing()
 	collide(prop("food_stall", Vector3(9.6, 0.16, 26.5), -PI / 2, 3.6), 0.8)
 	if has_model("food_stall"):
 		var lantern := OmniLight3D.new()
@@ -1724,6 +2307,12 @@ func _build_street_furniture() -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
+	if _screen_mat and _screen_ids.size() > 1:
+		_screen_t += delta
+		if _screen_t > 6.0:
+			_screen_t = 0.0
+			_screen_ids.push_back(_screen_ids.pop_front())
+			_screen_show(_screen_ids[0])
 	var holo := get_node_or_null("Holo")
 	if holo:
 		holo.rotation.y += delta * 0.8

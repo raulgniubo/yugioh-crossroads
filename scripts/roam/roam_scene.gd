@@ -168,7 +168,8 @@ func _after_duel() -> void:
 func _field_here() -> String:
 	var here: String = district.get("theme", "battlecity")
 	if _inside != "":
-		return here
+		# Indoors, the room decides.
+		return {"dorm_blue": "bluehall", "dorm_red": "reddorm", "dorm_yellow": "academy", "kc_lobby": "kaibacorp"}.get(_inside, here)
 	var p := _player.global_position
 	var key := str(Router.roam.get("district", "domino"))
 	for lm in (district.get("map", {}) as Dictionary).get("landmarks", []):
@@ -186,6 +187,10 @@ func _field_here() -> String:
 		"academy":
 			if p.x < -32.0 and p.z > 28.0:
 				return "shadow"
+			if p.x < -26.0 and absf(p.z - 6.0) < 16.0:
+				return "reddorm"
+			if p.x < -16.0 and p.z < -12.0 and p.z > -40.0:
+				return "bluehall"
 			if p.z > 54.0 or absf(p.x) > 52.0:
 				return "tide"
 			if p.x > 40.0 and p.z < -24.0:
@@ -218,6 +223,7 @@ func _build_world() -> void:
 		if a.begins_with("--tod="):
 			Router.roam["tod"] = a.trim_prefix("--tod=")
 	city.build(_theme, Router.roam.get("tod", "night"))
+	city.grade(str(Router.roam.get("district", "domino")))
 
 
 func _cycle_tod() -> void:
@@ -495,6 +501,7 @@ func _physics_process(delta: float) -> void:
 		_air = true
 	_jump = false
 	_player.move_and_slide()
+	_unstick(delta, input.length() > 0.4)
 	var flat := Vector2(_player.velocity.x, _player.velocity.z)
 	_figure.set_speed(flat.length() if not _air else 0.0)
 	var turn := 0.0
@@ -595,6 +602,51 @@ func _build_npcs() -> void:
 
 
 ## On Academy Island an enrolled student wears the jacket of their dorm.
+## A safety net: if you are boxed in on every side (wedged between two things), you are put
+## back where you last walked freely. Places you can simply walk out of never trigger it.
+var _good_spots: Array[Vector3] = []
+var _good_t := 0.0
+var _stuck_t := 0.0
+var _stuck_from := Vector3.ZERO
+
+
+func _unstick(delta: float, pushing: bool) -> void:
+	if _overlay_open or _talking or (life and life.seated):
+		_stuck_t = 0.0
+		return
+	_good_t += delta
+	var here := _player.global_position
+	if _good_t > 0.5 and _player.is_on_floor():
+		_good_t = 0.0
+		if _good_spots.is_empty() or _good_spots[-1].distance_to(here) > 1.2:
+			_good_spots.append(here)
+			if _good_spots.size() > 10:
+				_good_spots.pop_front()
+	if not pushing or here.distance_to(_stuck_from) > 0.12:
+		_stuck_from = here
+		_stuck_t = 0.0
+		return
+	_stuck_t += delta
+	if _stuck_t < 0.7:
+		return
+	_stuck_t = 0.0
+	var free := 0
+	for i in 8:
+		var a := i * TAU / 8.0
+		if not _player.test_move(_player.global_transform, Vector3(cos(a), 0, sin(a)) * 0.3):
+			free += 1
+	if free >= 2 or _good_spots.size() < 2:
+		return
+	# Boxed in. Go back to a spot from a few steps ago that is not this one.
+	for k in range(_good_spots.size() - 1, -1, -1):
+		if _good_spots[k].distance_to(here) > 1.5:
+			_player.global_position = _good_spots[k] + Vector3(0, 0.05, 0)
+			_player.velocity = Vector3.ZERO
+			_good_spots.resize(k + 1)
+			Router.toast(Loc.t("You were stuck, so you were moved back a few steps."))
+			return
+
+
 func _dress_player() -> void:
 	if Router.roam.get("district", "") == "academy":
 		var c = Academy.uniform_color()
@@ -761,18 +813,18 @@ func _build_rooms() -> void:
 		var out: Vector3 = room.get("out", Vector3(0, 0, 1))
 		var inside_at: Vector3 = room["at"]
 		var half: Vector2 = room["half"]
-		_spots.append({"pos": door + out * 0.9, "range": 2.3, "label": str(room["label"]), "action": func(): _travel(rk)})
+		_spots.append({"pos": door + out * (0.9 if not room.has("step") else 0.6), "range": 2.3 if not room.has("step") else 1.3, "label": str(room["label"]), "action": func(): _travel(rk)})
 		_spots.append({"pos": inside_at + Vector3(0, 0, half.y - 0.7), "range": 1.7, "label": "Leave", "action": func(): _travel("")})
 		var dl := Label3D.new()
 		dl.text = Loc.t("▼  ENTER")
-		dl.font_size = 64
+		dl.font_size = 64 if not room.has("step") else 34
 		dl.pixel_size = 0.006
 		dl.outline_size = 14
 		dl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		dl.modulate = Color(room["trim"]).lightened(0.3)
-		dl.position = door + out * 0.9 + Vector3(0, 3.0, 0)
+		dl.position = door + out * 0.9 + Vector3(0, 3.0 if not room.has("step") else 2.45, 0)
 		city.add_child(dl)
-		var dmat := city.box(Vector3(2.2, 0.03, 1.2), door + out * 0.9 + Vector3(0, 0.18, 0), city.glow_mat(room["trim"], 1.3), false)
+		var dmat := city.box(Vector3(2.2, 0.03, 1.2) if not room.has("step") else Vector3(1.0, 0.02, 0.5), door + out * (0.9 if not room.has("step") else 0.45) + Vector3(0, 0.18 if not room.has("step") else 0.02, 0), city.glow_mat(room["trim"], 1.3), false)
 		dmat.rotation.y = atan2(out.x, out.z)
 		dmat.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		if str(Router.roam.get("story", "")) == "":
@@ -836,7 +888,7 @@ func _travel(where: String) -> void:
 	elif _rooms.has(where):
 		var room: Dictionary = _rooms[where]
 		var out2: Vector3 = room.get("out", Vector3(0, 0, 1))
-		_outside_pos = (room["door"] as Vector3) + out2 * 2.2
+		_outside_pos = (room["door"] as Vector3) + out2 * float(room.get("step", 2.2))
 		_outside_yaw = atan2(out2.x, out2.z) + PI
 		_player.position = (room["at"] as Vector3) + Vector3(0, 0, (room["half"] as Vector2).y - 1.8)
 		_yaw = 0.0
@@ -1750,6 +1802,22 @@ func _debug() -> void:
 				print("WALK to ", goal, " ", "ok" if flat < 0.5 else "BLOCKED", " at ", _player.global_position.snapped(Vector3(0.1, 0.1, 0.1)), " spot=", _near_spot.get("label", ""), " npc=", _near.get("id", ""))
 			if "--walk-quit" in OS.get_cmdline_user_args():
 				get_tree().quit()
+		elif a.begins_with("--probe="):
+			# Dev: what would a body the player's size bump into here? --probe=x,y,z;x,y,z
+			await get_tree().create_timer(1.0).timeout
+			for part in a.trim_prefix("--probe=").split(";"):
+				var pv := part.split(",")
+				var at := Vector3(float(pv[0]), float(pv[1]), float(pv[2]))
+				var q := PhysicsShapeQueryParameters3D.new()
+				var sph := SphereShape3D.new()
+				sph.radius = 0.36
+				q.shape = sph
+				q.transform = Transform3D(Basis.IDENTITY, at)
+				q.exclude = [_player.get_rid()]
+				for hit in get_world_3d().direct_space_state.intersect_shape(q, 8):
+					var col: Node = hit["collider"]
+					var shp: Shape3D = (col.get_child(0) as CollisionShape3D).shape if col.get_child_count() > 0 and col.get_child(0) is CollisionShape3D else null
+					print("PROBE ", at, " hits ", col.get_path(), " at ", (col as Node3D).global_position.snapped(Vector3(0.01, 0.01, 0.01)), " size ", (shp as BoxShape3D).size if shp is BoxShape3D else shp)
 		elif a.begins_with("--what="):
 			# What is standing here? Lists every mesh within 4 m of x,z.
 			await get_tree().create_timer(1.0).timeout

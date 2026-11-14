@@ -72,7 +72,18 @@ func _frame() -> void:
 	_head = look
 	# Which way does the face point? VRM 0.x faces -Z after import, 1.0 faces +Z.
 	var face := 1.0 if _head_forward() >= 0.0 else -1.0
-	_cam.position = look + Vector3(0, height * 0.02, face * height * 0.85)
+	var dist := height * 0.85
+	# Tall hair and hats stay in the picture: pull back until the very top of the model fits,
+	# with a little air above it.
+	if not first:
+		var need := (top - look.y) + 0.07
+		var half := tan(deg_to_rad(_cam.fov * 0.5)) * dist
+		if need > half:
+			var extra := need - half
+			# Half of it by looking a little higher, the rest by stepping back.
+			look.y += extra * 0.5
+			dist = (need - extra * 0.5) / tan(deg_to_rad(_cam.fov * 0.5))
+	_cam.position = look + Vector3(0, height * 0.02, face * dist)
 	_cam.look_at(look)
 
 

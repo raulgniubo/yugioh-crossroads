@@ -59,6 +59,10 @@ var _card: Control
 var _typing: Tween
 var _choice_box: VBoxContainer
 var _shot_mode := ""       # "", "close" or "low" for the line being spoken
+var _shot_kind := ""       # what the camera is doing now: "two" (two people), "single", "wide"
+var _shot_pair: Array = [] # who the two-shot is holding
+var _prev_spk := ""
+var _cut_now := false      # the next camera move is a cut, not a glide
 var _push := 0.0            # how far the camera has crept in during this line
 var _box_style: StyleBoxFlat
 var _name_tab: PanelContainer
@@ -695,7 +699,82 @@ func _shot_for(speaker: String, wide: bool) -> void:
 		_cam_pos = best_w
 		_cam_look = look_w
 		_spirit_park = null
+		_cut_now = _shot_kind != "wide"
+		_shot_kind = "wide"
+		_shot_pair = []
+		_prev_spk = speaker
 		return
+	# Two people talking are filmed together, from the side, and the camera stays put while
+	# they go back and forth. It only cuts when somebody else speaks or for a marked moment.
+	if not (_shot_mode in ["close", "low"]):
+		var partner := "player"
+		if speaker == "player":
+			partner = _last_other if (_last_other != "" and _actors.has(_last_other)) else ""
+			if partner == "":
+				var near := 99.0
+				for k in _actors:
+					if _actors[k] == _spirit and _actors.size() > 1:
+						continue
+					var dk := _pos_of(str(k)).distance_to(at)
+					if dk < near and dk > 0.3:
+						near = dk
+						partner = str(k)
+		elif _prev_spk != "" and _prev_spk != speaker and _prev_spk != "player" and _actors.has(_prev_spk) and _pos_of(_prev_spk).distance_to(at) < 7.0:
+			partner = _prev_spk
+		if speaker != "player":
+			_last_other = speaker
+		_prev_spk = speaker
+		if partner != "" and partner != speaker:
+			var b := _pos_of(partner)
+			var gap := Vector2(b.x - at.x, b.z - at.z).length()
+			if gap > 0.5 and gap < 9.0:
+				var pair := [speaker, partner]
+				pair.sort()
+				var fb := _fig(partner)
+				var eye_a := (f.global_position.y + 0.82) if (f == _spirit and _spirit) else 1.5
+				var eye_b := (fb.global_position.y + 0.82) if (fb and fb == _spirit and _spirit) else 1.5
+				var mid := (Vector3(at.x, 0, at.z) + Vector3(b.x, 0, b.z)) / 2.0
+				var look2 := mid + Vector3(0, (eye_a + eye_b) / 2.0 - 0.22, 0)
+				if pair == _shot_pair and _shot_kind == "two":
+					# Same two: hold the shot, lean the framing a touch toward whoever speaks.
+					_cam_look = look2 + (Vector3(at.x, 0, at.z) - mid).limit_length(0.3)
+					return
+				var axis := Vector3(b.x - at.x, 0, b.z - at.z).normalized()
+				var perp := axis.cross(Vector3.UP).normalized()
+				var best_pos := look2 + perp * 3.0
+				var best_reach := -1.0
+				for side: float in [_shot_side, -_shot_side]:
+					# A little toward the listener's end, so the first speaker's face is the one we see.
+					var want2 := mid + perp * side * (2.0 + gap * 0.72) + axis * gap * 0.28 + Vector3(0, look2.y + 0.35, 0)
+					var q2 := PhysicsRayQueryParameters3D.create(look2, want2)
+					q2.exclude = [scene._player.get_rid()]
+					var h2 := space.intersect_ray(q2)
+					var reach2 := look2.distance_to(want2)
+					if not h2.is_empty():
+						reach2 = look2.distance_to(h2["position"]) * 0.86
+						want2 = look2 + (want2 - look2).normalized() * maxf(reach2, 1.3)
+					if reach2 > best_reach + 0.3:
+						best_reach = reach2
+						best_pos = want2
+						_shot_side = side
+					if h2.is_empty():
+						break
+				if best_reach > 1.7:
+					_cam_pos = best_pos
+					_cam_look = look2
+					_push = 0.0
+					_cut_now = true
+					_shot_kind = "two"
+					_shot_pair = pair
+					_spirit_park = null
+					if _spirit and is_instance_valid(_spirit) and f != _spirit and fb != _spirit:
+						_spirit_park = mid - perp * _shot_side * 1.6
+					return
+	else:
+		_prev_spk = speaker
+	_cut_now = true
+	_shot_kind = "single"
+	_shot_pair = []
 	_shot_side = -_shot_side
 	# Over the shoulder: the camera stands just behind whoever is listening.
 	var listener: Vector3 = scene._player.global_position
@@ -1441,6 +1520,13 @@ func _process(delta: float) -> void:
 			var step_in := delta * (0.075 if _shot_mode == "close" else 0.05)
 			_push += step_in
 			_cam_pos += (_cam_look - _cam_pos).normalized() * step_in
+		# A change of shot is a clean cut. Inside a shot the camera only ever eases.
+		if _cut_now:
+			_cut_now = false
+			_cam.global_position = _cam_pos
+			if _cam_pos.distance_to(_cam_look) > 0.1:
+				_cam.look_at(_cam_look, Vector3.UP)
+		w = clampf(delta * 1.8, 0.0, 1.0)
 		_cam.global_position = _cam.global_position.lerp(_cam_pos, w)
 		var jitter := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * _shake * 0.08
 		var cur := -_cam.global_transform.basis.z

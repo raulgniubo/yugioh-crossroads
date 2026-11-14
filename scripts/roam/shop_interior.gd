@@ -79,15 +79,16 @@ static func _dress(city: CityBuilder, o: Vector3) -> void:
 		var c := o + Vector3(0.2 + (2.35 if k % 2 == 0 else -2.35), 0.02, 1.5 + (1.25 if k < 2 else -1.25))
 		city.cyl(0.16, 0.16, 0.012, c, city.mat(Color(0.85, 0.7, 0.36), 0.8))
 	# The pack wall behind the counter: this season's boosters, framed and lit.
-	var keys := ["dm", "gx", "5ds", "zexal", "vault"]
+	var keys := ["Duel Monsters", "GX", "5D's", "ZEXAL", "Vault"]
 	for i in 5:
 		var px := -1.72 + i * 0.86
 		var at := o + Vector3(px, 2.25, -HALF.y + 0.06)
 		city.box(Vector3(0.72, 1.02, 0.05), at, brass, false)
-		var path := "res://assets/ui/packs/%s.jpg" % keys[i]
-		if ResourceLoader.exists(path):
+		# Each poster is the real card on the front of that pack.
+		var poster: Texture2D = Cards.get_face(Collection.pack_cover(keys[i])) if Collection.pack_cover(keys[i]) != 0 else null
+		if poster:
 			var pm := StandardMaterial3D.new()
-			pm.albedo_texture = load(path)
+			pm.albedo_texture = poster
 			pm.emission_enabled = true
 			pm.emission_texture = pm.albedo_texture
 			pm.emission_energy_multiplier = 0.45

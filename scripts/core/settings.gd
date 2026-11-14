@@ -33,7 +33,7 @@ const GFX_PRESET_NAMES := ["Low", "Medium", "High", "Ultra"]
 const GFX_PRESETS := [
 	{"res": 1, "aa": 0, "shadows": 1, "ao": false, "reflect": false, "glow": false, "fog": false, "gi": false, "detail": 0, "people": 0},
 	{"res": 2, "aa": 1, "shadows": 2, "ao": false, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 1, "people": 1},
-	{"res": 3, "aa": 2, "shadows": 3, "ao": true, "reflect": true, "glow": true, "fog": false, "gi": false, "detail": 2, "people": 1},
+	{"res": 3, "aa": 2, "shadows": 3, "ao": true, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 2, "people": 1},
 	{"res": 4, "aa": 3, "shadows": 3, "ao": true, "reflect": true, "glow": true, "fog": true, "gi": true, "detail": 3, "people": 2},
 ]
 ## How many lines the 3D picture is drawn at before it is fitted to the window. On a Retina
@@ -134,7 +134,10 @@ func tune_environment(e: Environment) -> void:
 	e.ssao_intensity = 1.6
 	e.ssao_power = 1.4
 	e.ssr_enabled = fplus and bool(gfx["reflect"])
-	e.ssr_max_steps = 48
+	e.ssr_max_steps = 40
+	e.ssr_fade_in = 0.25
+	e.ssr_fade_out = 1.2
+	e.ssr_depth_tolerance = 0.3
 	e.ssil_enabled = fplus and bool(gfx["gi"])
 	e.sdfgi_enabled = fplus and bool(gfx["gi"])
 	e.volumetric_fog_enabled = fplus and bool(gfx["fog"])

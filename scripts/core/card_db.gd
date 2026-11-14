@@ -62,6 +62,32 @@ func get_art(id: int) -> Texture2D:
 	return tex
 
 
+## The picture of a card for a cover (a pack wrapper, a deck box): its artwork, and which part of
+## that texture to show. If only the full card face is on disk, the art window is cut out of it.
+## Returns [texture, region].
+func cover_art(id: int) -> Array:
+	var tex := get_art(id)
+	if tex == null:
+		return [null, Rect2()]
+	var ts := tex.get_size()
+	var region := Rect2(Vector2.ZERO, ts)
+	if ts.x / maxf(ts.y, 1.0) < 0.82:
+		# A full card face: the artwork sits in a square window under the name bar.
+		region = Rect2(ts.x * 0.125, ts.y * 0.185, ts.x * 0.75, ts.x * 0.75)
+	return [tex, region]
+
+
+## Fit `region` of a picture into `into` so it fills it (cut, never stretched). `focus` is
+## which part to keep when it has to cut: 0 = top / left, 0.5 = middle.
+func cover_fit(region: Rect2, into: Vector2, focus := Vector2(0.5, 0.35)) -> Rect2:
+	var want := into.x / maxf(into.y, 1.0)
+	if region.size.x / maxf(region.size.y, 1.0) > want:
+		var nw := region.size.y * want
+		return Rect2(region.position.x + (region.size.x - nw) * focus.x, region.position.y, nw, region.size.y)
+	var nh := region.size.x / want
+	return Rect2(region.position.x, region.position.y + (region.size.y - nh) * focus.y, region.size.x, nh)
+
+
 ## The backs in the duel being played: [yours, the opponent's]. Empty = everybody's default.
 var duel_backs: Array = []
 

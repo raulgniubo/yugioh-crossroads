@@ -71,7 +71,7 @@ func _ready() -> void:
 	if _field != "auto" and not FieldThemes.THEMES.has(_field):
 		_field = "auto"
 	var dim := ColorRect.new()
-	dim.color = Color(0.02, 0.032, 0.075, 0.985)
+	dim.color = Color(0.02, 0.032, 0.075, 1.0)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
@@ -96,11 +96,11 @@ func _ready() -> void:
 	top_back.pressed.connect(close)
 	_root.add_child(top_back)
 	var header := UITheme.label("FREE DUEL", 64, Color.WHITE, Comic.shout_font())
-	header.position = Vector2(188, 22)
+	header.position = Vector2(226, 22)
 	_root.add_child(header)
 	var bar := ColorRect.new()
 	bar.color = UITheme.ACCENT
-	bar.position = Vector2(190, 98)
+	bar.position = Vector2(228, 98)
 	bar.size = Vector2(118, 4)
 	_root.add_child(bar)
 	_build_picker()
@@ -798,51 +798,22 @@ func _pick_style(b: Button) -> void:
 		b.add_theme_color_override(c, Color(0.02, 0.05, 0.08))
 
 
-const ARENA_SHADER := """
-shader_type canvas_item;
-uniform vec3 sky_top : source_color = vec3(0.02, 0.05, 0.12);
-uniform vec3 sky_low : source_color = vec3(0.1, 0.3, 0.5);
-uniform vec3 base : source_color = vec3(0.03, 0.05, 0.1);
-uniform vec3 accent : source_color = vec3(0.2, 0.9, 0.9);
-uniform int surface = 0;
-//GROUND//
-void fragment() {
-	vec2 uv = UV;
-	float horizon = 0.4;
-	vec3 col;
-	if (uv.y < horizon) {
-		col = mix(sky_top, sky_low, pow(uv.y / horizon, 1.4));
-	} else {
-		// The ground, seen at an angle: near at the bottom of the picture.
-		float d = (uv.y - horizon) / (1.0 - horizon);
-		vec2 p = vec2((uv.x - 0.5) * 9.0 / (0.22 + d), 3.2 / (0.22 + d));
-		if (surface > 0) {
-			col = ground_color(p * 0.55, surface, TIME);
-		} else {
-			vec2 g = abs(fract(p * 0.5) - 0.5);
-			float line = 1.0 - smoothstep(0.0, 0.06, min(g.x, g.y));
-			col = base * 1.6 + accent * line * 0.55 * d;
-		}
-		col = mix(sky_low, col, smoothstep(0.0, 0.18, d));
-		// The outline of the duel field painted on it.
-		vec2 f = vec2((uv.x - 0.5) / (0.36 + d * 0.62), d);
-		float box = step(abs(f.x), 0.5) * step(0.12, d) * step(d, 0.92);
-		float edge = box * (1.0 - step(abs(f.x), 0.47) * step(0.16, d) * step(d, 0.88));
-		col = mix(col, mix(accent, vec3(1.0), 0.5), edge * 0.7);
-	}
-	COLOR = vec4(col, 1.0);
-}
-"""
-static var _arena_sh: Shader
-var _arena_tiles := {}           # key -> [Button, ShaderMaterial]
+## The arena picker: a real picture of each place (made by tools/arena_shots), its name under
+## it. "Auto" shows whichever place the opponent calls home.
+var _arena_tiles := {}           # key -> [Button, TextureRect]
+static var _arena_pics := {}
+
+
+static func arena_picture(key: String) -> Texture2D:
+	if not _arena_pics.has(key):
+		var path := "res://assets/arenas/%s.jpg" % key
+		_arena_pics[key] = load(path) if ResourceLoader.exists(path) else null
+	return _arena_pics[key]
 
 
 func _arena_tile(key: String) -> Button:
-	if _arena_sh == null:
-		_arena_sh = Shader.new()
-		_arena_sh.code = ARENA_SHADER.replace("//GROUND//", FieldThemes.GROUND_GLSL)
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(158, 98)
+	b.custom_minimum_size = Vector2(158, 112)
 	b.toggle_mode = true
 	b.clip_contents = true
 	b.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.05, 0.075, 0.16, 0.9), Color(1, 1, 1, 0.14), 8))
@@ -851,41 +822,50 @@ func _arena_tile(key: String) -> Button:
 	on.set_border_width_all(3)
 	b.add_theme_stylebox_override("pressed", on)
 	b.add_theme_stylebox_override("hover_pressed", on)
-	var pic := ColorRect.new()
-	var m := ShaderMaterial.new()
-	m.shader = _arena_sh
-	pic.material = m
+	var pic := TextureRect.new()
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	pic.clip_contents = true
 	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(pic)
 	pic.position = Vector2(4, 4)
-	pic.size = Vector2(150, 68)
-	var l := UITheme.label("", 14, UITheme.TEXT, UITheme.semi_font())
+	pic.size = Vector2(150, 84)
+	if key == "auto":
+		var tag := UITheme.label("AUTO", 13, Color(0.06, 0.07, 0.12), UITheme.semi_font())
+		var tb := StyleBoxFlat.new()
+		tb.bg_color = UITheme.ACCENT
+		tb.set_corner_radius_all(4)
+		tb.content_margin_left = 7
+		tb.content_margin_right = 7
+		tb.content_margin_top = 1
+		tb.content_margin_bottom = 1
+		tag.add_theme_stylebox_override("normal", tb)
+		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(tag)
+		tag.position = Vector2(8, 8)
+	var l := UITheme.label("", 13, UITheme.TEXT, UITheme.semi_font())
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.clip_text = true
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(l)
-	l.position = Vector2(4, 74)
+	l.position = Vector2(4, 90)
 	l.size = Vector2(150, 20)
 	l.name = "Name"
 	b.pressed.connect(func():
 		_field = key
 		Sfx.play("card", -10.0)
 		_refresh_setup())
-	_arena_tiles[key] = [b, m]
+	_arena_tiles[key] = [b, pic]
 	return b
 
 
 func _paint_arena(key: String) -> void:
 	var th := FieldThemes.resolve(key, _opp)
-	var m: ShaderMaterial = _arena_tiles[key][1]
-	m.set_shader_parameter("sky_top", th.get("sky_top", Color("02050c")))
-	m.set_shader_parameter("sky_low", th.get("sky_horizon", Color("0f2b44")))
-	m.set_shader_parameter("base", th["base"])
-	m.set_shader_parameter("accent", th["accent"])
-	m.set_shader_parameter("surface", int(th.get("surface", 0)))
+	(_arena_tiles[key][1] as TextureRect).texture = arena_picture(str(th["key"]))
 	var b: Button = _arena_tiles[key][0]
-	(b.get_node("Name") as Label).text = (Loc.t("Auto") + "  ·  " + Loc.t(str(th["name"]))) if key == "auto" else Loc.t(str(th["name"]))
-	b.tooltip_text = Loc.t("The opponent's home field") if key == "auto" else Loc.t(str(th["name"]))
+	(b.get_node("Name") as Label).text = Loc.t(str(th["name"]))
+	b.tooltip_text = (Loc.t("The opponent's home field") + ":  " if key == "auto" else "") + Loc.t(str(th["name"])) + "\n" + Loc.t(str(th.get("blurb", "")))
 	b.set_pressed_no_signal(key == _field)
 
 

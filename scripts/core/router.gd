@@ -169,6 +169,8 @@ func _debug_args() -> void:
 					if "tourney" in what:
 						Academy.tourney_new()
 				menu._on_academy()
+			elif what == "me":
+				menu._open_panel(SettingsPanel.open_profile(menu, func(): menu._open_profile(false)))
 			elif what == "profile":
 				menu._open_profile(true)
 			elif what == "deck":

@@ -616,7 +616,85 @@ const RIVALS := [
 var _ghost: Node3D
 
 
+## Two students in the middle of a duel on the lawn, a painted mat between them, their monsters
+## standing over it as holograms, and a ring of others watching. Something to walk up to.
+func lawn_duel(at: Vector3, yaw: float, dorm_a: String, dorm_b: String) -> void:
+	var dir := Vector3(sin(yaw), 0, cos(yaw))
+	var side := Vector3(dir.z, 0, -dir.x)
+	var mat_m := _m(Color(0.16, 0.2, 0.3), 0.7)
+	var pad := _box(Vector3(2.6, 0.03, 4.4), at + Vector3(0, 0.04, 0), mat_m)
+	pad.rotation.y = yaw
+	pad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var line := StandardMaterial3D.new()
+	line.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	line.albedo_color = Color(0.6, 0.9, 1.0)
+	for k in [-1.0, 0.0, 1.0]:
+		var ln := _box(Vector3(2.4, 0.034, 0.04), at + dir * (k * 1.9) + Vector3(0, 0.045, 0), line)
+		ln.rotation.y = yaw
+	# Monsters as holograms: real cards from the game standing over each half of the mat.
+	var picks: Array = []
+	for id in Collection.all_cards():
+		var d := CardData.get_card(id)
+		if d.get("kind", "") == "monster" and int(d.get("level", 4)) <= 4:
+			picks.append(id)
+	picks.sort()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(at.x * 13.0 + at.z * 7.0)
+	for k in [-1.0, 1.0]:
+		if picks.is_empty():
+			break
+		var got := Cards.cover_art(picks[rng.randi() % picks.size()])
+		var tex: Texture2D = got[0]
+		if tex == null:
+			continue
+		var region: Rect2 = got[1]
+		var hm := StandardMaterial3D.new()
+		hm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		hm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		hm.albedo_color = Color(0.85, 0.95, 1.0, 0.82)
+		hm.albedo_texture = tex
+		hm.uv1_scale = Vector3(region.size.x / tex.get_size().x, region.size.y / tex.get_size().y, 1.0)
+		hm.uv1_offset = Vector3(region.position.x / tex.get_size().x, region.position.y / tex.get_size().y, 0.0)
+		hm.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
+		hm.cull_mode = BaseMaterial3D.CULL_DISABLED
+		var q := MeshInstance3D.new()
+		var qm := QuadMesh.new()
+		qm.size = Vector2(1.25, 1.25)
+		q.mesh = qm
+		q.material_override = hm
+		q.position = at + dir * (k * 0.95) + Vector3(0, 1.15, 0)
+		q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(q)
+		_bobs.append([q, 1.15, rng.randf() * 3.0])
+		var glow := OmniLight3D.new()
+		glow.light_color = Color(0.6, 0.85, 1.0)
+		glow.light_energy = 0.9
+		glow.omni_range = 3.0
+		glow.position = at + dir * (k * 0.95) + Vector3(0, 0.6, 0)
+		add_child(glow)
+	var fa := _person("student_boy", at - dir * 2.9, yaw, "stand", dorm_a)
+	var fb := _person("student_girl", at + dir * 2.9, yaw + PI, "stand", dorm_b)
+	fa.watch = null
+	fb.watch = null
+	_pairs.append([fa, fb, randf_range(0.5, 2.0), 0])
+	var models := ["student_girl", "student_boy", "street_duelist", "stylish_woman", "student_boy"]
+	var dorms := ["red", "yellow", "blue"]
+	for i in 5:
+		if not _crowd_ok():
+			continue
+		var along := -2.4 + i * 1.2
+		var sp := at + dir * along + side * (2.6 if i % 2 == 0 else -2.7)
+		var w := _person(models[i % models.size()], sp, atan2(at.x - sp.x, at.z - sp.z), "stand", dorms[i % 3])
+		w.watch = null
+	_solid(1.6, 1.7, at)
+
+
+var _bobs: Array = []
+
+
 func _island_extras() -> void:
+	lawn_duel(Vector3(-10.5, 0.1, 10.5), 0.5, "red", "blue")
+	lawn_duel(Vector3(26.0, 0.1, 9.5), 2.1, "yellow", "red")
 	if str(Router.roam.get("story", "")) == "":
 		for r in RIVALS:
 			scene._add_npc(r, Vector3.ZERO)
@@ -1252,11 +1330,13 @@ func _decor_academy() -> void:
 	var flag_at := {"dorm_red": Color("d9342b"), "dorm_yellow": Color("f2c230"), "dorm_blue": Color("2f6fe0"), "academy_main": Color("ffe9a8")}
 	var doors: Dictionary = city.get_meta("doors", {})
 	for dk in doors:
+		if not flag_at.has(dk):
+			continue
 		var d: Vector3 = doors[dk][0]
 		var out: Vector3 = doors[dk][1]
 		var side := out.cross(Vector3.UP)
 		for s: float in [-1.0, 1.0]:
-			var fp: Vector3 = d + out * 1.4 + side * s * (2.4 if dk != "academy_main" else 4.2)
+			var fp: Vector3 = d + out * (3.0 if dk == "dorm_red" else 1.4) + side * s * (2.4 if dk != "academy_main" else 4.2)
 			_cyl(0.05, 0.06, 4.6, fp + Vector3(0, 2.3, 0), _m(Color(0.85, 0.85, 0.88), 0.3, 0.7))
 			var fl := _box(Vector3(1.3, 0.8, 0.02), fp + Vector3(0, 4.0, 0) + side * 0.7, _m(flag_at.get(dk, Color.WHITE), 0.8))
 			fl.rotation.y = atan2(side.x, side.z) + PI / 2
@@ -1305,6 +1385,8 @@ func _process(delta: float) -> void:
 	_move_routines(delta)
 	_night_shift()
 	_t += delta
+	for b in _bobs:
+		(b[0] as Node3D).position.y = float(b[1]) + sin(_t * 1.4 + float(b[2])) * 0.07
 	var pp: Vector3 = scene._player.global_position
 	var outside: bool = scene._inside == ""
 	var night: bool = city.tod == "night"

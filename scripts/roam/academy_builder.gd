@@ -81,10 +81,15 @@ func _build_buildings() -> void:
 	collide(main, 0.82)
 	_door("academy_main", main, 0.0)
 	neon_sign("DUEL ACADEMY", Vector3(0, 9.5, -30.5), Color("ffe9a8"), 260, 0.0, false)
-	var red := prop("dorm_red", Vector3(-42.0, 0.05, 8.0), PI / 2, 15.0)
-	collide(red, 0.85)
-	_door("dorm_red", red, 0.6)
-	neon_sign("RED DORM", Vector3(-33.8, 4.6, 8.0), Color("ff6b6b"), 110, PI / 2, false)
+	# The red dorm: our own plank house. Stairs outside, a walkway, and bedroom doors up there.
+	var red := plank_dorm(Vector3(-43.0, 0.05, 8.0), PI / 2, Color("c8322a"))
+	var front: Array = red.get_meta("front")
+	doors["dorm_red"] = [Vector3((front[0] as Vector3).x, 0, (front[0] as Vector3).z), front[1]]
+	var ups: Array = red.get_meta("upper_doors")
+	for i in ups.size():
+		doors["red_room_%d" % (i + 1)] = ups[i]
+	set_meta("doors", doors)
+	neon_sign("RED DORM", Vector3(-38.0, 2.65, 8.0), Color("ff8a7a"), 70, PI / 2, false)
 	var yel := prop("dorm_yellow", Vector3(42.0, 0.05, -6.0), -PI / 2, 16.0)
 	collide(yel, 0.85)
 	_door("dorm_yellow", yel, 0.6)
@@ -197,6 +202,7 @@ func _build_street_furniture() -> void:
 		cyl(0.1, 0.1, 5.0, Vector3(sx * 6.0, 2.5, 47.0 + PIER), mat(Color(0.2, 0.2, 0.24), 0.4, 0.7))
 	_build_new_places()
 	_dress_dorms()
+	_school_colors()
 	# Last, once everything paved or built is known: grass, flowers and pebbles on the lawns.
 	scatter_detail(Vector2.ZERO, SHORE - 9.0, 0.09, 1.5)
 
@@ -409,6 +415,94 @@ func _dress_dorms() -> void:
 			var note := box(Vector3(0.26, 0.32, 0.01), nb + Vector3(-0.5 + (k % 3) * 0.5, 1.5 - (k / 3) * 0.36, 0.07), mat([Color("fff6d8"), Color("d8f0ff"), Color("ffe0e0")][k % 3], 0.9), false, yard)
 			note.rotation.z = rng.randf_range(-0.12, 0.12)
 		box(Vector3(1.8, 0.08, 0.3), nb + Vector3(0, 1.92, 0), surf("roof", Color(0.6, 0.25, 0.2)), false, yard)
+
+
+## The three dorms are everywhere you look: banners in their colors on the lamp posts down the
+## main path, bunting over the plaza, a pennant on a mast for each dorm, the school crest in
+## the plaza paving, and smoke drifting off the volcano.
+func _school_colors() -> void:
+	var cols := [Color("d02030"), Color("f0c040"), Color("3070e0")]
+	var k := 0
+	for z in [50.0, 38.0, 26.0, 13.0, -13.0, -24.0]:
+		for sx in [-1, 1]:
+			var lp := Vector3(sx * 3.4, 0.1, z)
+			var col: Color = cols[k % 3]
+			var cloth := box(Vector3(0.04, 1.5, 0.6), lp + Vector3(sx * 0.12, 3.1, 0.42), mat(col, 0.8), false)
+			cloth.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			box(Vector3(0.05, 0.16, 0.62), lp + Vector3(sx * 0.12, 2.42, 0.42), mat(Color(0.95, 0.9, 0.78), 0.8), false)
+			box(Vector3(0.05, 0.05, 0.7), lp + Vector3(sx * 0.12, 3.88, 0.4), mat(Color(0.2, 0.2, 0.24), 0.5, 0.5), false)
+			k += 1
+	# Bunting from four masts round the plaza to the middle one.
+	var mast_m := mat(Color(0.8, 0.8, 0.84), 0.35, 0.6)
+	for i in 6:
+		var a := i * TAU / 6.0 + 0.3
+		var mp := Vector3(cos(a) * 10.4, 0, sin(a) * 10.4)
+		cyl(0.06, 0.09, 6.0, mp + Vector3(0, 3.0, 0), mast_m, null, 8)
+		solid_cyl(0.12, 3.0, mp + Vector3(0, 1.5, 0))
+		var a2 := (i + 1) * TAU / 6.0 + 0.3
+		var np := Vector3(cos(a2) * 10.4, 0, sin(a2) * 10.4)
+		for q in 12:
+			var t := (q + 0.5) / 12.0
+			var fp := (mp.lerp(np, t)) + Vector3(0, 5.8 - sin(t * PI) * 1.1, 0)
+			var flag := box(Vector3(0.36, 0.44, 0.02), fp - Vector3(0, 0.22, 0), mat(cols[(q + i) % 3], 0.8), false)
+			flag.rotation.y = atan2(np.x - mp.x, np.z - mp.z) + PI / 2.0
+			flag.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# A long pennant flying from the top of each mast.
+		var pen := box(Vector3(1.5, 0.5, 0.03), mp + Vector3(0.78, 5.9, 0), mat(cols[i % 3], 0.8), false)
+		pen.rotation.y = a + 0.6
+		pen.position = mp + Vector3(cos(-a - 0.6) * 0.78, 5.9, sin(-a - 0.6) * 0.78)
+	# The crest in the plaza: three wedges in the dorm colors round a gold disc.
+	for i in 3:
+		var a3 := i * TAU / 3.0 - PI / 2.0
+		var wedge := box(Vector3(2.4, 0.02, 1.0), Vector3(cos(a3) * 1.9, 0.19, sin(a3) * 1.9), mat(cols[i], 0.7), false)
+		wedge.rotation.y = -a3
+		wedge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	cyl(0.9, 0.9, 0.03, Vector3(0, 0.2, 0), mat(Color(0.86, 0.7, 0.32), 0.35, 0.7), null, 24)
+	# Smoke off the crater.
+	var smoke := GPUParticles3D.new()
+	smoke.amount = 26
+	smoke.lifetime = 14.0
+	smoke.preprocess = 14.0
+	var ppm := ParticleProcessMaterial.new()
+	ppm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	ppm.emission_sphere_radius = 7.0
+	ppm.direction = Vector3(0.35, 1.0, 0.1)
+	ppm.spread = 12.0
+	ppm.initial_velocity_min = 3.0
+	ppm.initial_velocity_max = 5.0
+	ppm.gravity = Vector3(0.5, 0.2, 0.0)
+	ppm.scale_min = 0.6
+	ppm.scale_max = 1.4
+	var ramp := Curve.new()
+	ramp.add_point(Vector2(0.0, 0.35))
+	ramp.add_point(Vector2(1.0, 1.0))
+	var ct := CurveTexture.new()
+	ct.curve = ramp
+	ppm.scale_curve = ct
+	var fade := Gradient.new()
+	fade.set_color(0, Color(0.5, 0.42, 0.4, 0.0))
+	fade.add_point(0.15, Color(0.42, 0.38, 0.38, 0.55))
+	fade.set_color(fade.get_point_count() - 1, Color(0.7, 0.7, 0.74, 0.0))
+	var gt := GradientTexture1D.new()
+	gt.gradient = fade
+	ppm.color_ramp = gt
+	smoke.process_material = ppm
+	var puff := SphereMesh.new()
+	puff.radius = 9.0
+	puff.height = 14.0
+	puff.radial_segments = 10
+	puff.rings = 6
+	var pm := StandardMaterial3D.new()
+	pm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	pm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	pm.vertex_color_use_as_albedo = true
+	pm.disable_fog = true
+	puff.material = pm
+	smoke.draw_pass_1 = puff
+	smoke.position = Vector3(-30, 72, -175)
+	smoke.visibility_aabb = AABB(Vector3(-80, -10, -80), Vector3(220, 160, 160))
+	smoke.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(smoke)
 
 
 var _spinners: Array = []

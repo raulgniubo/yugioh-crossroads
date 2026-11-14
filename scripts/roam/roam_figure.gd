@@ -276,7 +276,7 @@ func seat_if_needed() -> void:
 	pad.roughness = 0.9
 	var stool := Node3D.new()
 	add_child(stool)
-	stool.position = Vector3(0, 0, -0.06)
+	stool.position = Vector3.ZERO
 	var top := MeshInstance3D.new()
 	var tm := CylinderMesh.new()
 	tm.top_radius = 0.24
@@ -311,7 +311,7 @@ func seat_if_needed() -> void:
 		stool.add_child(leg)
 
 
-const SEAT_H := 0.46
+const SEAT_H := 0.5
 
 
 ## Put a Duel Academy dorm jacket on this person.
@@ -381,6 +381,17 @@ func _process(delta: float) -> void:
 	var s := sin(_phase)
 	if _model:
 		_live(delta)
+		# Sitting: the motions were made with the body well behind the feet, so slide the model
+		# forward until the hips are over this node. A seat is then simply "where the node is".
+		var seat_shift := Vector3.ZERO
+		if _speed < 0.3 and _hold <= 0.0:
+			if stance == "sit":
+				seat_shift = Vector3(0.14, 0, 0.29)
+			elif stance == "rest":
+				seat_shift = Vector3(-0.11, 0, 0.31)
+		var k := 1.0 - exp(-delta * 8.0)
+		_model.position.x = lerpf(_model.position.x, seat_shift.x, k)
+		_model.position.z = lerpf(_model.position.z, seat_shift.z, k)
 	if _hold > 0.0:
 		_hold -= delta
 		if _speed < 0.3:
