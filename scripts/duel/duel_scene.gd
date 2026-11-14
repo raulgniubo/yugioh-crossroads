@@ -670,6 +670,10 @@ func _finish() -> void:
 	if _finished:
 		return
 	_finished = true
+	# A duel takes an hour of the day (puzzles are off the clock).
+	if _puzzle.is_empty():
+		WorldClock.add_minutes(WorldClock.DUEL_COST)
+		WorldClock.save_data()
 	_cancel_mode()
 	hud.set_phase_buttons("", false, false)
 	hud.set_playable([])

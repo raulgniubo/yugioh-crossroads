@@ -1,30 +1,60 @@
 class_name Weather
 extends Node3D
 ## Rain: streaks falling around the camera, splash rings on the ground, a darker and hazier
-## sky, and the hiss of it. It rains on some visits and not others; indoors you only hear it.
+## sky, and the hiss of it. It comes and goes with the clock (WorldClock.rains): a shower
+## clouds over, falls for a while and clears. Indoors you only hear it. In Satellite it is not
+## rain but dust: the air goes brown and thick.
 
 var scene: Node
 var city: CityBuilder
-var raining := false
+var raining := false           # it is coming down right now (or dust is up)
+var wet := 0.0                 # 0 dry .. 1 pouring; follows the weather over half a minute
+var dust := false
+var _built := false
+var _force := 0                # dev: 1 always rain, -1 never
 var _drops: GPUParticles3D
 var _splash: GPUParticles3D
 var _hiss: AudioStreamPlayer
 var _veil: ColorRect
-var _dimmed := ""
-var _base := {}
+var _tick := 0.0
+var _told := false
 
 
 func setup(roam: Node) -> void:
 	scene = roam
 	city = roam.city
 	var args := OS.get_cmdline_user_args()
-	var t := Time.get_datetime_dict_from_system()
-	var roll := absi(hash("%s-%d-%d-%s" % [Time.get_date_string_from_system(), int(t["hour"]) / 3, 7, str(Router.roam.get("district", ""))])) % 100
-	raining = "--rain" in args or (roll < 28 and not "--dry" in args and str(Router.roam.get("story", "")) == "")
-	if str(Router.roam.get("district", "")) == "museum":
-		raining = false
-	if not raining:
+	_force = 1 if "--rain" in args else (-1 if "--dry" in args else 0)
+	dust = str(Router.roam.get("district", "")) == "satellite"
+	if city:
+		city.look_hook = _dim
+	if _wants():
+		# Already raining when you arrive: no slow start.
+		wet = 1.0
+		_build()
+		_apply()
+		city.refresh_look()
+		Router.toast.call_deferred("A dust storm is blowing through." if dust else "It is raining.")
+		_told = true
+
+
+## Should it be coming down right now?
+func _wants() -> bool:
+	if _force != 0:
+		return _force > 0
+	var d := str(Router.roam.get("district", ""))
+	if d == "museum":
+		return false
+	# A story scene plays in the weather it was written for; the free parts of a chapter follow the clock.
+	if str(Router.roam.get("story", "")) != "" and not bool(Router.roam.get("story_free", false)):
+		return false
+	return WorldClock.rains(d)
+
+
+func _build() -> void:
+	if _built:
 		return
+	_built = true
 	_drops = GPUParticles3D.new()
 	_drops.amount = 900
 	_drops.lifetime = 0.9
@@ -124,38 +154,78 @@ void fragment() {
 	_hiss.volume_db = -19.0
 	_hiss.pitch_scale = 1.35
 	add_child(_hiss)
-	Router.toast.call_deferred("It is raining.")
+	if dust:
+		_drops.visible = false
+		_splash.visible = false
 
 
-## Make the hour look wet: less sun, more haze. Called again whenever the time of day changes.
+## The hour, made wet: less sun, more haze, by how hard it is coming down. Runs after every
+## change of look, so it always sits on top of the right time of day.
 func _dim() -> void:
-	if city == null or city.env == null or city.sun == null:
+	if city == null or city.env == null or city.sun == null or wet <= 0.001:
 		return
-	_dimmed = city.tod
-	_base = {"sun": city.sun.light_energy, "fog": city.env.fog_density, "amb": city.env.ambient_light_energy}
+	if dust:
+		city.sun.light_energy *= lerpf(1.0, 0.62, wet)
+		city.env.fog_density = city.env.fog_density * lerpf(1.0, 2.6, wet) + 0.0012 * wet
+		city.env.fog_light_color = city.env.fog_light_color.lerp(Color(0.62, 0.48, 0.34), 0.6 * wet)
+		return
 	# Overcast, not milky: a dimmer sun and a touch more air, but the world keeps its contrast.
-	city.sun.light_energy = float(_base["sun"]) * 0.7
-	city.env.fog_density = float(_base["fog"]) * 1.4 + 0.0006
-	city.env.ambient_light_energy = float(_base["amb"]) * 0.9
-	city.env.fog_light_color = city.env.fog_light_color.lerp(Color(0.5, 0.56, 0.64), 0.35)
+	city.sun.light_energy *= lerpf(1.0, 0.7, wet)
+	city.env.fog_density = city.env.fog_density * lerpf(1.0, 1.4, wet) + 0.0006 * wet
+	city.env.ambient_light_energy *= lerpf(1.0, 0.9, wet)
+	city.env.fog_light_color = city.env.fog_light_color.lerp(Color(0.5, 0.56, 0.64), 0.35 * wet)
 
 
-func _process(_delta: float) -> void:
-	if not raining or scene == null or scene._player == null:
+func _apply() -> void:
+	if not _built:
 		return
-	if _dimmed != city.tod:
-		_dim()
+	var outside: bool = str(scene._inside) == ""
+	var show := outside and wet > 0.02 and not dust
+	_drops.visible = show
+	_splash.visible = show
+	_veil.visible = show
+	_drops.amount_ratio = clampf(wet, 0.05, 1.0)
+	_splash.amount_ratio = clampf(wet, 0.05, 1.0)
+	_veil.modulate.a = wet
+
+
+func _process(delta: float) -> void:
+	if scene == null or scene._player == null:
+		return
+	_tick -= delta
+	var want := _wants()
+	if want and not _built:
+		_build()
+	if want != raining:
+		raining = want
+		if want and not _told:
+			Router.toast("The wind is picking up dust." if dust else "It is starting to rain.")
+		elif not want and wet > 0.5:
+			Router.toast("The dust is settling." if dust else "The rain is letting up.")
+		_told = false
+	var before := wet
+	wet = move_toward(wet, 1.0 if want else 0.0, delta / 24.0)
+	if not _built:
+		return
+	if not is_equal_approx(before, wet) and _tick <= 0.0:
+		# The sky follows a few times a second while it is clouding over or clearing.
+		_tick = 0.25
+		city.refresh_look()
+	_apply()
+	if wet <= 0.02:
+		if _hiss.playing:
+			_hiss.stop()
+		return
 	var outside: bool = str(scene._inside) == ""
 	var cam := get_viewport().get_camera_3d()
 	var at: Vector3 = cam.global_position if cam else scene._player.global_position
-	_drops.visible = outside
-	_splash.visible = outside
-	_veil.visible = outside
 	_drops.global_position = Vector3(at.x, at.y + 9.0, at.z)
 	var pp: Vector3 = scene._player.global_position
 	_splash.global_position = Vector3(pp.x, pp.y + 0.06, pp.z)
+	if dust:
+		return
 	if _hiss.stream == null:
 		_hiss.stream = Sfx.stream("water")
 	if _hiss.stream != null and not _hiss.playing:
 		_hiss.play()
-	_hiss.volume_db = -19.0 if outside else -31.0
+	_hiss.volume_db = lerpf(-40.0, -19.0 if outside else -31.0, wet)

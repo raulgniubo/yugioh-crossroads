@@ -966,6 +966,12 @@ func sitter(seat_pos: Vector3, rot: float, model: String, dorm := "") -> void:
 
 func _build_seats() -> void:
 	var i := 0
+	if "--count-seats" in OS.get_cmdline_user_args():
+		var n := 0
+		for pl in city.places:
+			if pl[0] == "bench":
+				n += 1
+		print("SEATS ", key, " benches=", n)
 	for pl in city.places:
 		var pos: Vector3 = pl[1]
 		var rot: float = pl[2]
@@ -1009,12 +1015,14 @@ func sit(seat: Vector3, rot: float) -> void:
 	Collection.daily_bump("sit")
 	Collection.save()
 	Router.toast(Loc.t("You take a seat. Move to stand up."))
+	scene.wait_menu(true)
 
 
 func stand_up() -> void:
 	if not seated:
 		return
 	seated = false
+	scene.wait_menu(false)
 	scene._figure.stance = "stand"
 	scene._figure._cur_clip = ""
 	scene._player.global_position = Vector3(_seat_out.x, scene._player.global_position.y, _seat_out.z)
@@ -1441,7 +1449,7 @@ func _process(delta: float) -> void:
 	var night: bool = city.tod == "night"
 	# Clouds drift; they pick up the color of the hour.
 	var cm: StandardMaterial3D = get_meta("cloud_mat")
-	var want := Color(1, 1, 1, 0.85) if city.tod == "day" else (Color(1.0, 0.72, 0.6, 0.8) if city.tod == "sunset" else Color(0.22, 0.24, 0.36, 0.7))
+	var want := Color(1, 1, 1, 0.85) if city.tod == "day" else (Color(1.0, 0.72, 0.6, 0.8) if city.tod in ["sunset", "dawn"] else Color(0.22, 0.24, 0.36, 0.7))
 	cm.albedo_color = cm.albedo_color.lerp(want, clampf(delta * 1.5, 0.0, 1.0))
 	for c in _clouds:
 		var n: Node3D = c[0]

@@ -14,7 +14,13 @@ const TOD_LOOK := {
 	"day": {"top": Color("2f74d6"), "horizon": Color("b8dcf6"), "ground": Color("5a6070"), "sun": Color("fff0d2"), "sun_e": 2.1, "sun_rot": Vector3(-50, -35, 0),
 		"amb": 1.2, "fog": Color("cfe2f2"), "fog_d": 0.0011, "windows": 0.06, "lamps": 0.0, "neon": 0.25, "exposure": 0.98,
 		"cloud": 0.46, "cloud_col": Color("ffffff"), "cloud_shade": Color("9fb4d0"), "stars": 0.0, "shadow": 0.78, "lift": 0.0},
+	"dawn": {"top": Color("31478f"), "horizon": Color("ffc3a0"), "ground": Color("3a3038"), "sun": Color("ffd6b0"), "sun_e": 1.5, "sun_rot": Vector3(-14, 118, 0),
+		"amb": 1.2, "fog": Color("d6a892"), "fog_d": 0.0030, "windows": 0.35, "lamps": 0.5, "neon": 0.6, "exposure": 1.1,
+		"cloud": 0.5, "cloud_col": Color("ffd9c0"), "cloud_shade": Color("7c6a8c"), "stars": 0.12, "shadow": 0.7, "lift": 0.04},
 }
+## What goes with a look besides the sky: how bright the water is, how much of the day the
+## windows show, how wet the road looks.
+const TOD_MORE := {"night": [0.4, 0.0, 1.0], "sunset": [0.8, 0.5, 1.0], "day": [1.0, 1.0, 0.45], "dawn": [0.8, 0.5, 0.8]}
 
 var theme: Dictionary
 var env: Environment
@@ -1561,8 +1567,54 @@ void fragment() {
 
 func apply_tod(t: String) -> void:
 	tod = t if TOD_LOOK.has(t) else "night"
-	var L: Dictionary = TOD_LOOK[tod]
-	var accent: Color = theme.get("accent", Color.CYAN)
+	var L: Dictionary = (TOD_LOOK[tod] as Dictionary).duplicate()
+	L["more"] = TOD_MORE[tod]
+	_apply_look(L)
+
+
+## Somewhere between two looks (the clock moving from one part of the day to the next).
+## `k` 0 is all `a`, 1 is all `b`. The named time of day is whichever is closer.
+func apply_mix(a: String, b: String, k: float) -> void:
+	if not TOD_LOOK.has(a) or not TOD_LOOK.has(b) or a == b or k <= 0.001:
+		if tod != a or _mixed:
+			_mixed = false
+			apply_tod(a)
+		return
+	_mixed = true
+	tod = b if k >= 0.5 else a
+	var A: Dictionary = TOD_LOOK[a]
+	var B: Dictionary = TOD_LOOK[b]
+	var L := {}
+	for key in A:
+		var va = A[key]
+		var vb = B[key]
+		if va is Color:
+			L[key] = (va as Color).lerp(vb, k)
+		elif va is Vector3:
+			L[key] = (va as Vector3).lerp(vb, k)
+		else:
+			L[key] = lerpf(float(va), float(vb), k)
+	var ma: Array = TOD_MORE[a]
+	var mb: Array = TOD_MORE[b]
+	L["more"] = [lerpf(ma[0], mb[0], k), lerpf(ma[1], mb[1], k), lerpf(ma[2], mb[2], k)]
+	_apply_look(L)
+
+
+var _mixed := false
+var _look_now := {}
+## Called after every change of look (the weather dims the hour from here).
+var look_hook: Callable
+
+
+## Put the current look on again (after something that sits on top of it changed).
+func refresh_look() -> void:
+	if not _look_now.is_empty():
+		_apply_look(_look_now)
+
+
+func _apply_look(L: Dictionary) -> void:
+	_look_now = L
+	var more: Array = L.get("more", TOD_MORE.get(tod, [1.0, 1.0, 0.45]))
 	sky_mat.set_shader_parameter("top", L["top"])
 	sky_mat.set_shader_parameter("horizon", L["horizon"])
 	sky_mat.set_shader_parameter("ground", L["ground"])
@@ -1577,7 +1629,7 @@ func apply_tod(t: String) -> void:
 	for pmat in _pool_mats:
 		(pmat as ShaderMaterial).set_shader_parameter("power", L["windows"])
 	for wm in _water_mats:
-		(wm as ShaderMaterial).set_shader_parameter("lum", {"night": 0.4, "sunset": 0.8}.get(tod, 1.0))
+		(wm as ShaderMaterial).set_shader_parameter("lum", more[0])
 	sun.light_color = L["sun"]
 	sun.light_energy = L["sun_e"]
 	sun.rotation_degrees = L["sun_rot"]
@@ -1588,21 +1640,30 @@ func apply_tod(t: String) -> void:
 	env.tonemap_exposure = L["exposure"]
 	for m in _window_mats:
 		m.set_shader_parameter("glow_strength", L["windows"])
-		m.set_shader_parameter("day", 1.0 if tod == "day" else (0.5 if tod == "sunset" else 0.0))
+		m.set_shader_parameter("day", more[1])
+	var lamps_on: bool = float(L["lamps"]) > 0.02
 	for l in _lamp_lights:
-		l.light_energy = 2.4 * L["lamps"]
-		l.set_meta("want", L["lamps"] > 0.0)
-		l.visible = L["lamps"] > 0.0 and not l.get_meta("far", false)
+		l.light_energy = 2.4 * float(L["lamps"])
+		l.set_meta("want", lamps_on)
+		l.visible = lamps_on and not l.get_meta("far", false)
 	for b in _lamp_bulbs:
-		b.emission_energy_multiplier = 0.2 + 4.0 * L["lamps"]
+		b.emission_energy_multiplier = 0.2 + 4.0 * float(L["lamps"])
 	for n in _neon:
 		var c: Color = n[2]
 		var lab: Label3D = n[0]
-		lab.modulate = Color(c.r, c.g, c.b) * (0.8 + 1.6 * L["neon"])
-		(n[1] as OmniLight3D).light_energy = 1.8 * L["neon"]
+		lab.modulate = Color(c.r, c.g, c.b) * (0.8 + 1.6 * float(L["neon"]))
+		(n[1] as OmniLight3D).light_energy = 1.8 * float(L["neon"])
 	var road: ShaderMaterial = get_meta("road_mat") if has_meta("road_mat") else null
 	if road:
-		road.set_shader_parameter("wet", 1.0 if tod != "day" else 0.45)
+		road.set_shader_parameter("wet", more[2])
+	_after_look()
+	if look_hook.is_valid():
+		look_hook.call()
+
+
+## For the other builders: what else changes with the hour.
+func _after_look() -> void:
+	pass
 
 
 # ------------------------------------------------------------------ ground

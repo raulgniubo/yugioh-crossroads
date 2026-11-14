@@ -90,6 +90,22 @@ func _ready() -> void:
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list.add_theme_constant_override("separation", 8)
 	scroll.add_child(_list)
+	# The clock, and a way to let time go by without walking to a bench.
+	if not bool(scene.get("_own_tod")):
+		var clock := HBoxContainer.new()
+		clock.add_theme_constant_override("separation", 6)
+		left.add_child(clock)
+		var now := UITheme.label("%s  ·  %s" % [WorldClock.text(), Loc.t("Wait until")], 17, UITheme.GOLD, UITheme.semi_font())
+		now.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		clock.add_child(now)
+		for k in ["morning", "midday", "evening", "night"]:
+			var wb := Button.new()
+			wb.text = Loc.t(str(WorldClock.WAIT_NAMES[k]))
+			wb.add_theme_font_size_override("font_size", 16)
+			wb.pressed.connect(func():
+				close()
+				scene.pass_time(k))
+			clock.add_child(wb)
 	var hint := UITheme.label("M / Esc  close      Click the map or a row to select", 16, UITheme.TEXT_DIM)
 	left.add_child(hint)
 	# ---- right: the map

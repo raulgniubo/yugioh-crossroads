@@ -238,12 +238,21 @@ func _build_world() -> void:
 	var key: String = Router.roam.get("district", "domino")
 	if city is CityBuilder and str(district.get("builder", "")) == "":
 		(city as CityBuilder).wide = true
-	if not Router.roam.has("tod_" + key) and district.has("tod") and not Router.roam.has("tod"):
-		Router.roam["tod"] = district["tod"]
+	# The hour comes from the clock. A story scene and the museum (where it is always night)
+	# set their own, and so does --tod= for testing.
+	_own_tod = str(Router.roam.get("story", "")) != "" or key == "museum"
+	if key == "museum":
+		Router.roam["tod"] = "night"
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--tod="):
 			Router.roam["tod"] = a.trim_prefix("--tod=")
-	city.build(_theme, Router.roam.get("tod", "night"))
+			_own_tod = true
+	if _own_tod and not Router.roam.has("tod"):
+		Router.roam["tod"] = district.get("tod", "day")
+	city.build(_theme, str(Router.roam.get("tod", "night")) if _own_tod else WorldClock.look())
+	if not _own_tod:
+		var cm := WorldClock.mix()
+		city.apply_mix(str(cm[0]), str(cm[1]), float(cm[2]))
 	city.grade(str(Router.roam.get("district", "domino")))
 	# A building you supplied yourself goes on the maps at the size and place it really has.
 	var fix: Dictionary = city.get_meta("map_fix", {})
@@ -255,15 +264,106 @@ func _build_world() -> void:
 				lm["size"] = fix[str(lm["name"])][1]
 
 
+var _own_tod := false            # this place keeps its own hour (a story scene, the museum)
+var _clock_tick := 0.0
+var _clock_tod := ""
+var _clock_l: Label
+
+
+## Admin only: jump the clock to the next part of the day.
 func _cycle_tod() -> void:
-	var i := CityBuilder.TODS.find(city.tod)
-	var next: String = CityBuilder.TODS[(i + 1) % CityBuilder.TODS.size()]
-	Router.roam["tod"] = next
-	city.apply_tod(next)
-	_update_fill()
-	if _inside == "":
-		Sfx.world_air(str(Router.roam.get("district", "domino")), str(district.get("builder", "")), str(district.get("theme", "")), next)
-	Router.toast({"night": "Night", "sunset": "Sunset", "day": "Daytime"}[next])
+	if not Saves.admin or _own_tod:
+		return
+	var order := ["morning", "midday", "evening", "night"]
+	var m := WorldClock.minutes
+	var next := "morning"
+	for k in order:
+		if float(WorldClock.WAIT[k]) > m + 1.0:
+			next = k
+			break
+	pass_time(next, false)
+
+
+## Let time go by until `when` (morning | midday | evening | night), with a fade.
+func pass_time(when: String, fade := true) -> void:
+	if _own_tod:
+		return
+	if fade and _fader != null:
+		var tw := create_tween()
+		tw.tween_property(_fader, "color:a", 1.0, 0.45)
+		await tw.finished
+	WorldClock.wait_until(when)
+	_clock_tick = 0.0
+	_follow_clock(0.0)
+	Router.toast(Loc.t("%s. Day %d.") % [Loc.t(str(WorldClock.WAIT_NAMES[when])), WorldClock.day])
+	Sfx.play("bell", -10.0)
+	if fade and _fader != null:
+		var tw2 := create_tween()
+		tw2.tween_property(_fader, "color:a", 0.0, 0.6)
+
+
+var _wait_box: PanelContainer
+
+
+## Sitting on a bench: a small menu to let time go by. `on` false takes it away.
+func wait_menu(on: bool) -> void:
+	if _wait_box != null and is_instance_valid(_wait_box):
+		_wait_box.queue_free()
+		_wait_box = null
+	if not on or _own_tod or _ui == null:
+		return
+	_wait_box = PanelContainer.new()
+	_wait_box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.032, 0.0532, 0.116, 0.92), 16, Color(UITheme.GOLD, 0.5)))
+	_wait_box.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_wait_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_wait_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_wait_box.offset_bottom = -150
+	_ui.add_child(_wait_box)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	_wait_box.add_child(v)
+	var head := UITheme.label(Loc.t("Wait here until..."), 22, UITheme.GOLD, UITheme.semi_font())
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(head)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	v.add_child(row)
+	for k in ["morning", "midday", "evening", "night"]:
+		var b := Button.new()
+		b.text = "  %s  " % Loc.t(str(WorldClock.WAIT_NAMES[k]))
+		b.custom_minimum_size = Vector2(130, 52)
+		b.add_theme_font_size_override("font_size", 21)
+		b.pressed.connect(func(): pass_time(k))
+		row.add_child(b)
+	var foot := UITheme.label(Loc.t("Move to stand up."), 16, UITheme.TEXT_DIM)
+	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(foot)
+
+
+## The world follows the clock: the look of the sky, the lamps, the sounds, the label.
+func _follow_clock(delta: float) -> void:
+	if _own_tod or city == null:
+		if _clock_l:
+			_clock_l.visible = false
+		return
+	if delta > 0.0 and _pause == null and not _overlay_open:
+		WorldClock.advance(delta)
+	_clock_tick -= delta
+	if _clock_tick > 0.0:
+		return
+	_clock_tick = 0.25
+	var cm := WorldClock.mix()
+	if float(cm[2]) > 0.001 or city.tod != str(cm[0]):
+		city.apply_mix(str(cm[0]), str(cm[1]), float(cm[2]))
+	if city.tod != _clock_tod:
+		_clock_tod = city.tod
+		Router.roam["tod"] = city.tod
+		_update_fill()
+		if _inside == "":
+			Sfx.world_air(str(Router.roam.get("district", "domino")), str(district.get("builder", "")), str(district.get("theme", "")), city.tod)
+	if _clock_l:
+		_clock_l.visible = true
+		_clock_l.text = "%s   ·   %s   ·   %s" % [WorldClock.text(), Loc.t(WorldClock.part()), Loc.t("Day %d") % WorldClock.day]
 
 
 # ------------------------------------------------------------------ pedestrians
@@ -498,7 +598,12 @@ func _cull_lights() -> void:
 			l.visible = bool(l.get_meta("want")) and not far
 
 
+func _exit_tree() -> void:
+	WorldClock.save_data()
+
+
 func _physics_process(delta: float) -> void:
+	_follow_clock(delta)
 	var input := Vector2.ZERO
 	if not _talking and _pause == null and not _overlay_open and not (_map_full and _map_full.visible):
 		if Input.is_key_pressed(KEY_W) or Input.is_action_pressed("ui_up"):
@@ -1616,6 +1721,10 @@ func _build_ui() -> void:
 	loc.add_child(_loc_area)
 	_counter = UITheme.label("", 20, Color(0.86, 0.9, 0.97, 0.92))
 	loc.add_child(_counter)
+	# The clock, under the place name.
+	_clock_l = UITheme.label("", 20, UITheme.GOLD, UITheme.semi_font())
+	_clock_l.visible = false
+	loc.add_child(_clock_l)
 	# Duel Points, under the map: always in sight.
 	var purse := DpPurse.new()
 	purse.anchor_left = 1.0
@@ -1628,7 +1737,7 @@ func _build_ui() -> void:
 	_purse = purse
 	_update_counter()
 	# Controls, bottom left.
-	var help := UITheme.label("WASD / stick  move     Shift  run     Drag  look     Scroll  zoom     E  talk / enter     L  ask Lumen     M  map     B  decks     T  time of day     Esc  menu", 17, Color(0.93, 0.95, 1.0, 0.95))
+	var help := UITheme.label("WASD / stick  move     Shift  run     Drag  look     Scroll  zoom     E  talk / enter     L  ask Lumen     M  map     B  decks     Esc  menu", 17, Color(0.93, 0.95, 1.0, 0.95))
 	# On a dark strip of its own, so it reads over grass, sand and bright paving alike.
 	var help_bar := PanelContainer.new()
 	var hb := StyleBoxFlat.new()

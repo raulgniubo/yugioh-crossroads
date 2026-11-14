@@ -47,9 +47,8 @@ func _process(delta: float) -> void:
 			l.light_energy = float(f[1]) * (0.94 + n * 0.06)
 
 
-func apply_tod(t: String) -> void:
-	super.apply_tod(t)
-	_light_windows(0.6 if t != "day" else 0.1)
+func _after_look() -> void:
+	_light_windows(0.6 if tod != "day" else 0.1)
 
 
 func _floor_and_ring() -> void:
