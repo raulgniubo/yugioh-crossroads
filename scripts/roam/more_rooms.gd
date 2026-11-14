@@ -467,6 +467,13 @@ static func spruce(city: CityBuilder, key: String, o: Vector3, half: Vector2, hg
 					city.glow_mat([Color("ff4fd8"), Color("2de2e6"), Color("ffd166")][k % 3], 0.9), false)
 				st.rotation.y = rng.randf() * PI
 				st.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			# Three cabinets you can play, each under its own sign on the back wall.
+			var names := ["PUZZLES", "HIGHER OR LOWER", "CARD MATCH"]
+			var tints := [Color("ffd166"), Color("5affc0"), Color("ff8ad8")]
+			for k in 3:
+				var cx := -3.2 + 3.2 * k
+				_sign(city, Loc.t(names[k]), o + Vector3(cx, 2.62, -half.y + 0.14), 0.0, tints[k], 52)
+				city.box(Vector3(1.5, 0.05, 1.5), o + Vector3(cx, 0.03, -half.y + 2.5), city.glow_mat(tints[k], 1.1), false)
 			var pw := o + Vector3(-half.x + 0.25, 0, 2.6)
 			city.box(Vector3(0.4, 2.4, 3.0), pw + Vector3(0, 1.2, 0), dark)
 			for r in 3:
@@ -739,7 +746,9 @@ static func add_spots(scene: Node) -> void:
 			"burger":
 				scene._spots.append({"pos": ro + Vector3(0, 0, -0.6), "range": 1.7, "label": "Order the burger set  ·  25 DP  ·  +500 LP in your next duel", "action": func(): _burger()})
 			"arcade":
-				scene._spots.append({"pos": ro + Vector3(0, 0, -rh.y + 2.5), "range": 1.8, "label": "Play Higher or Lower  ·  10 DP", "action": func(): ArcadeGame.open(scene)})
+				scene._spots.append({"pos": ro + Vector3(0, 0, -rh.y + 2.5), "range": 1.5, "label": "Play Higher or Lower  ·  10 DP", "action": func(): ArcadeGame.open(scene)})
+				scene._spots.append({"pos": ro + Vector3(-3.2, 0, -rh.y + 2.5), "range": 1.5, "label": "Duel Puzzles  ·  win in one turn", "action": func(): PuzzleBoard.open(scene)})
+				scene._spots.append({"pos": ro + Vector3(3.2, 0, -rh.y + 2.5), "range": 1.5, "label": "Play Card Match  ·  10 DP", "action": func(): MemoryGame.open(scene)})
 			"dorm_yellow":
 				scene._spots.append({"pos": ro + Vector3(-3.0, 0, 1.6), "range": 1.6, "label": "Join the study group (quiz)", "action": func(): _quiz(scene)})
 			"dorm_blue":
@@ -864,7 +873,7 @@ static func _scrap_pull() -> void:
 	if Collection.dp < 150:
 		Router.toast(Loc.t("Not enough Duel Points. A pull from the scrap bin costs 150."))
 		return
-	var ids: Array = CardData.EXT.keys()
+	var ids: Array = Collection.every_playable()
 	if ids.is_empty():
 		Router.toast(Loc.t("The bin is empty today."))
 		return

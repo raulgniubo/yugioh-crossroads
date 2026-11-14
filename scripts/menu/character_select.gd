@@ -464,11 +464,13 @@ func _refresh_grid() -> void:
 func _roster_card(key: String) -> Control:
 	var info := Portraits.info(key)
 	var ok := key == "player" or Characters.available(key)
+	var met := Unlocks.opponent(key)
+	ok = ok and met
 	var b := Button.new()
 	b.custom_minimum_size = CELL
 	b.clip_contents = true
 	b.flat = true
-	b.tooltip_text = "%s\n%s" % [info.get("name", ""), Loc.t(str(info.get("title", "")))]
+	b.tooltip_text = "%s\n%s" % [info.get("name", ""), Loc.t(str(info.get("title", "")))] if met else Unlocks.opponent_why(key)
 	var is_me := key == _me
 	var is_opp := key == _opp
 	var chosen := (is_me and _picking == "me") or (is_opp and _picking == "opp")

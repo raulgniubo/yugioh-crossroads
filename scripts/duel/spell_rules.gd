@@ -37,7 +37,7 @@ const FX := {
 	"Upstart Goblin": {"k": "normal", "do": [["draw", 1], ["opp_heal", 1000]]},
 	"Jar of Greed": {"k": "trap", "win": ["free"], "do": [["draw", 1]]},
 	"Pot of Avarice": {"k": "normal", "do": [["avarice"]]},
-	"Tribute to the Doomed": {"k": "normal", "t": "any_mon", "cost": "discard", "do": [["destroy", "target"]]},
+	"Tribute to The Doomed": {"k": "normal", "t": "any_mon", "cost": "discard", "do": [["destroy", "target"]]},
 	"Lightning Vortex": {"k": "normal", "cost": "discard", "do": [["destroy", "opp_face_mons"]]},
 	"Smashing Ground": {"k": "normal", "do": [["destroy", "opp_best_def"]]},
 	"Hammer Shot": {"k": "normal", "do": [["destroy", "best_atk_any"]]},
@@ -284,6 +284,12 @@ static func _derive(c) -> Dictionary:
 
 ## True when this card is locked out by Royal Decree / Imperial Order.
 static func blocked(s: DuelState, c) -> bool:
+	# Photon Cerberus: no Trap Cards on the turn it was Normal Summoned, while it is face-up.
+	if c.is_trap():
+		for q in 2:
+			for m in s.players[q].monsters():
+				if m.face_up and m.normal_turn == s.turn and EffectRunner.fx(m).get("no_traps_normal_turn", false):
+					return true
 	for q in 2:
 		for st in s.players[q].spells:
 			if st == null or not st.face_up or st == c:
@@ -397,7 +403,8 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 				if ps.deck.size() < int(a[1]):
 					return false
 			"destroy", "bounce", "banish", "flip_down", "change_pos", "control", "to_def":
-				if a[1] != "target" and a[1] != "attacker" and a[1] != "summoned" and _sel(s, p, c, str(a[1]), {}).is_empty():
+				# (A card that stays on the field for what it does afterwards can be played with nothing to hit: Burning Land.)
+				if a[1] != "target" and a[1] != "attacker" and a[1] != "summoned" and _sel(s, p, c, str(a[1]), {}).is_empty() and not (str(sp.get("k", "")) in ["cont", "ctrap"]):
 					return false
 			"revive":
 				if ps.free_zone() == -1 or s._best_monsters(ps.gy if a[1] == "own_gy" else ps.gy + opp.gy, 1).is_empty():

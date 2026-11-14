@@ -217,9 +217,17 @@ func tune_sun(l: DirectionalLight3D) -> void:
 
 
 func _ready() -> void:
+	# Before anything reads a save: a load, a new game or leaving admin mode asked for last run.
+	Saves.apply_pending()
+	Saves.read_admin()
 	card_folder = default_card_folder()
 	_ensure_buses()
 	load_settings()
+	# A game folder beside the game wins over the old default place (a folder you picked
+	# yourself in Settings is left alone).
+	var beside := Saves.game_dir().path_join(Saves.DATA_NAME)
+	if DirAccess.dir_exists_absolute(beside) and (card_folder == "" or card_folder == old_default_folder() or not DirAccess.dir_exists_absolute(card_folder)):
+		card_folder = beside
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--lang="):
 			language = a.substr(7)
@@ -227,7 +235,16 @@ func _ready() -> void:
 	apply_graphics()
 
 
+## Where the game's own folder is looked for first: "Crossroads Data" beside the game. It
+## holds the cards, your own models and the saves. Without it, Documents/Crossroads/assets.
 func default_card_folder() -> String:
+	var beside := Saves.game_dir().path_join(Saves.DATA_NAME)
+	if DirAccess.dir_exists_absolute(beside):
+		return beside
+	return old_default_folder()
+
+
+func old_default_folder() -> String:
 	return OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS).path_join("Crossroads/assets")
 
 

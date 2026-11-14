@@ -944,6 +944,11 @@ func _travel(where: String) -> void:
 func _travel_district(key: String) -> void:
 	if _overlay_open:
 		return
+	# Worlds open as the story reaches them.
+	if story == null and not Unlocks.world(key):
+		Router.toast(Unlocks.world_why(key))
+		Sfx.play("error", -8.0)
+		return
 	_overlay_open = true
 	await travel_card(key)
 	Router.roam["district"] = key
@@ -1180,6 +1185,9 @@ func _update_near() -> void:
 		_prompt.visible = (not _near.is_empty() or not _near_spot.is_empty()) and not _talking and _pause == null and not _overlay_open
 		if _prompt.visible:
 			_prompt.text = (Loc.t("E   Talk to %s") % Loc.t(_npc_name(_near))) if not _near.is_empty() else ("E   %s" % Loc.t(str(_near_spot["label"])))
+			# How strong a duelist is, before you walk into the duel.
+			if not _near.is_empty() and _near.has("duel"):
+				_prompt.text += "     " + Unlocks.stars(int((_near["duel"] as Dictionary).get("difficulty", 1)), bool((_near["duel"] as Dictionary).get("rare", false)))
 	if _map:
 		_map.player_pos = Vector2(_player.position.x, _player.position.z)
 		_map.player_yaw = _figure.rotation.y + PI

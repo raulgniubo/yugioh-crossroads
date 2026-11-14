@@ -282,7 +282,10 @@ static func world_cards(on_pick: Callable, current := "") -> Control:
 		var col: Color = w[3]
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(520, 96)
-		b.disabled = key == current
+		var open_now := Unlocks.world(key)
+		b.disabled = key == current or not open_now
+		if not open_now:
+			b.tooltip_text = Unlocks.world_why(key)
 		for st in ["normal", "hover", "pressed", "focus", "disabled"]:
 			var sb := UITheme.button_box(Color(col.darkened(0.72), 0.95) if st != "hover" else Color(col.darkened(0.55), 0.98), col if st in ["hover", "focus"] else Color(col, 0.35), 16)
 			sb.set_border_width_all(2)

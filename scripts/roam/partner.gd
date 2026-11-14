@@ -152,14 +152,18 @@ func _lost_card_tick(delta: float, pp: Vector3) -> void:
 
 ## A rare card you do not have three of yet.
 func _rare_pick() -> int:
-	var ids: Array = CardData.EXT.keys()
+	var ids: Array = Collection.every_playable()
 	if ids.is_empty():
 		return 0
-	for i in 300:
+	var fallback := 0
+	for i in 400:
 		var id := int(ids[randi() % ids.size()])
-		if CardData.rarity(id) >= 2 and int(Collection.owned.get(id, 0)) < 3 and not CardData.is_extra(id):
+		if int(Collection.owned.get(id, 0)) >= 3 or CardData.is_extra(id):
+			continue
+		if CardData.rarity(id) >= 2:
 			return id
-	return 0
+		fallback = id
+	return fallback
 
 
 func _home() -> Vector3:

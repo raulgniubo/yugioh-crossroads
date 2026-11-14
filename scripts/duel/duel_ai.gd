@@ -24,6 +24,16 @@ const EXPERT := 3
 static var styles: Array = ["", ""]
 
 
+## Each seat's ace (a card id, 0 for none), set by the duel scene. A duelist plays toward
+## their ace: they give up weaker monsters to bring it out, and count it for more than its ATK
+## while it stands, so they protect it and you feel it when it lands.
+static var aces: Array = [0, 0]
+
+
+static func _ace(p: int) -> int:
+	return int(aces[p]) if p >= 0 and p < aces.size() else 0
+
+
 static func _style(p: int) -> String:
 	return str(styles[p]) if p >= 0 and p < styles.size() else ""
 
@@ -257,6 +267,8 @@ static func _best_summon(s: DuelState, p: int, opp_best: int, level: int) -> Dic
 			lost += t.atk()
 		var margin := 600 if level < HARD else 300
 		var worth := c.atk() >= lost + margin or (level == HARD and c.atk() > opp_best and lost < opp_best)
+		if level > EASY and c.id == _ace(p) and _ace(p) != 0:
+			return {"do": "summon", "card": c, "tributes": tributes}   # the ace comes out whenever it can
 		if need > 0 and not worth:
 			continue
 		options.append({"card": c, "tributes": tributes})
@@ -698,6 +710,7 @@ static func _evaluate(s: DuelState, p: int, expert := false) -> float:
 		return _evaluate_expert(s, p, o)
 	var score := float(s.players[p].lp) * 0.8 - float(s.players[o].lp) * 1.3
 	score += _board(s.players[p]) - _board(s.players[o])
+	score += _ace_value(s, p) - _ace_value(s, o)
 	score += 150.0 * (s.players[p].hand.size() - s.players[o].hand.size())
 	score += 400.0 * (s.players[p].set_cards().size() - s.players[o].set_cards().size())
 	return score
@@ -728,6 +741,7 @@ static func _evaluate_expert(s: DuelState, p: int, o: int) -> float:
 		if m.face_up and m.attack_pos and m.atk() < my_best:
 			v2 *= 0.55
 		score -= v2 * 1.05
+	score += _ace_value(s, p) - _ace_value(s, o)
 	score += 330.0 * (me.hand.size() - opp.hand.size())
 	score += 450.0 * me.set_cards().size() - 520.0 * opp.set_cards().size()
 	# Their face-downs could be a Mirror Force or a Torrential Tribute: a third and fourth
@@ -746,6 +760,21 @@ static func _evaluate_expert(s: DuelState, p: int, o: int) -> float:
 	if opp.monsters().is_empty() and not me.monsters().is_empty():
 		score += 500.0
 	return score
+
+
+## What a seat's ace adds to its side of the board: a lot while it stands, a little while it
+## waits in the hand (so it is not the card thrown away for a cost).
+static func _ace_value(s: DuelState, p: int) -> float:
+	var ace := _ace(p)
+	if ace == 0:
+		return 0.0
+	for m in s.players[p].monsters():
+		if m.id == ace and m.face_up:
+			return 900.0
+	for h in s.players[p].hand:
+		if h.id == ace:
+			return 250.0
+	return 0.0
 
 
 static func _lp_value(lp: int) -> float:

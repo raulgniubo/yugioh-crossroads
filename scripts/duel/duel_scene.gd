@@ -10,6 +10,8 @@ var board: DuelBoard
 var hud: DuelHUD
 var busy := false
 var mode := ""  # "", "tribute", "attack"
+var _shown = null                 # the monster whose arrival show just played
+var _puzzle := {}                 # a duel puzzle: win this turn (see Puzzles)
 var _pending_card = null
 var _pending_set := false
 var _tributes: Array = []
@@ -37,6 +39,19 @@ signal _turn_finished
 
 
 func _ready() -> void:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--show=") or a.begins_with("--strike="):
+			# Dev: hold a card's arrival or attack show on screen for a screenshot (by card id).
+			var cid := int(a.get_slice("=", 1))
+			var strike := a.begins_with("--strike=")
+			get_tree().create_timer(4.0).timeout.connect(func():
+				var cd: Dictionary = Cards.get_card(cid).duplicate()
+				cd["id"] = cid
+				SummonShow.dev_hold = 30.0
+				if strike:
+					SummonShow.strike(self, cd, true)
+				else:
+					SummonShow.play(self, cd, true))
 	# Backs of the cards: your own sleeve, and the opponent's ace on theirs.
 	var cfg0: Dictionary = Router.duel_config
 	var me0 := str(cfg0.get("player_char", "player"))
@@ -72,6 +87,8 @@ func _ready() -> void:
 	board.ace_summoned.connect(func(inst):
 		Sfx.play("gong", -9.0, 1.2)
 		Sfx.play("rare", -8.0)
+		if inst == _shown:
+			return   # it already had its own arrival (SummonShow)
 		hud.summon_cinematic(inst.cname(), int(inst.data.get("atk", 0)), int(inst.data.get("def", 0)),
 			board._frame_color(inst), inst.owner == ME))
 	hud.hand_card_pressed.connect(_on_hand_card_pressed)
@@ -126,6 +143,10 @@ func _start() -> void:
 	# Who you face decides how they play and what you hear.
 	var mood := str(Characters.get_char(_opp_key).get("personality", ""))
 	DuelAI.styles = ["", {"cocky": "aggro", "wild": "aggro", "cool": "wall"}.get(mood, "")]
+	var opp_ace := int(Characters.get_char(_opp_key).get("ace", 0))
+	if opp_ace == 0:
+		opp_ace = int(CardData.NAME_TO_ID.get(str(Characters.get_char(_opp_key).get("ace_name", "")).to_lower(), 0))
+	DuelAI.aces = [0, opp_ace]
 	if not cfg.get("turbo", false):
 		_theme = {"cocky": "duel_rival", "cool": "duel_rival", "dark": "duel_dark", "wild": "duel_wild"}.get(mood, "duel")
 		# A boss brings their own music.
@@ -143,6 +164,11 @@ func _start() -> void:
 	hud.set_names(me_name, opp_name)
 	hud.set_portraits(_me_key, _opp_key)
 	var first := randi() % 2
+	_puzzle = Puzzles.by_id(str(cfg.get("puzzle", "")))
+	if not _puzzle.is_empty():
+		cfg["first"] = ME
+		opp_name = Loc.t("Puzzle")
+		hud.set_names(me_name, opp_name)
 	var ms: Dictionary = Router.match_state if cfg.get("match", false) else {}
 	if not _autoplay and not ms.is_empty() and int(ms.get("last_loser", -1)) >= 0:
 		# In a Match the loser of the last duel decides who starts.
@@ -217,8 +243,17 @@ func _start() -> void:
 			kit.shuffle()
 			for id in [CardData.SPEED_SPELLS[0], CardData.SPEED_SPELLS[0], CardData.SPEED_SPELLS[1]] + kit.slice(0, 4):
 				side_list.append(int(id))
-	var events := state.setup(my_list, opp_list, me_name, opp_name, first, -1,
-			CardData.extra_list(my_deck), CardData.extra_list(opp_deck))
+	var events: Array
+	if not _puzzle.is_empty():
+		first = ME
+		events = Puzzles.begin(state, _puzzle)
+		state.players[ME].name = me_name
+		state.players[AI].name = opp_name
+		cfg["my_lp"] = int(_puzzle.get("my_lp", 4000))
+		cfg["opp_lp"] = int(_puzzle.get("opp_lp", 4000))
+	else:
+		events = state.setup(my_list, opp_list, me_name, opp_name, first, -1,
+				CardData.extra_list(my_deck), CardData.extra_list(opp_deck))
 	# Grand Prix: your lap decides how many Speed Counters each rider starts with.
 	if state.turbo and cfg.has("speed_start"):
 		for p in 2:
@@ -337,6 +372,16 @@ func _start() -> void:
 		_finish()
 		return
 	await _play(events)
+	if not _puzzle.is_empty():
+		# The position is laid out, then it is your move: this turn is the only one you get.
+		Settings.pace = 0.45
+		await _play(Puzzles.place(state, _puzzle))
+		Settings.pace = 1.0
+		_update_counts()
+		hud.effect_text(Loc.t(str(_puzzle.get("hint", ""))))
+		await hud.banner("WIN THIS TURN", UITheme.GOLD, true)
+		_loop()
+		return
 	await hud.banner("You go first" if first == ME else Loc.t("%s goes first") % opp.get("short", opp_name), UITheme.TEXT)
 	_loop()
 
@@ -371,6 +416,10 @@ func _loop() -> void:
 		if state.is_over():
 			break
 		_cancel_mode()
+		if not _puzzle.is_empty():
+			# The one turn is over and they are still standing.
+			state._set_winner(AI, "The turn ended and they are still standing.")
+			break
 		await _act("begin_end", [])
 		await _phase_window("End Phase")
 		if state.is_over():
@@ -518,7 +567,12 @@ func _finish() -> void:
 		print("PROMPTS: ", _asked)
 	print("DUEL OVER: winner %d (%s) LP %d vs %d turn %d" % [state.winner, state.win_reason, state.players[0].lp, state.players[1].lp, state.turn])
 	var earned := 0
-	if not _autoplay:
+	if not _puzzle.is_empty():
+		# A puzzle is not a duel on your record: solving it pays once, and that is all.
+		if won:
+			earned = Puzzles.mark(str(_puzzle["id"]))
+			Collection.last_reward = [["Puzzle solved", earned]] if earned > 0 else []
+	elif not _autoplay:
 		Profile.record_result(won)
 		var my_lp: int = state.players[ME].lp
 		earned = Collection.reward(won and not _surrendered, _ai_level, {"opponent": _opp_key, "lp": my_lp,
@@ -703,6 +757,13 @@ func _play_event(ev: Dictionary) -> void:
 			var is_ace: bool = ev["type"] == "summon" and (ev["card"].level() >= 7 or ev["card"].id == Characters.get_char(_opp_key).get("ace", 0))
 			if ev["type"] == "summon":
 				get_tree().create_timer(Settings.t(0.5)).timeout.connect(func(): Sfx.play("summon", -4.0))
+			# A big monster arrives: its own show, in its own colors (see SummonShow).
+			if ev["type"] == "summon" and not _autoplay and SummonShow.wants(ev["card"].data):
+				var sd: Dictionary = (ev["card"].data as Dictionary).duplicate()
+				sd["id"] = ev["card"].id
+				_shown = ev["card"]
+				SummonShow.play(self, sd, p == ME)
+				await get_tree().create_timer(Settings.t(1.5)).timeout
 			if is_ace:
 				_talk(p, "ace", 1.0, 0.0)
 				hud.react(p, "ace")
@@ -778,7 +839,14 @@ func _play_event(ev: Dictionary) -> void:
 			var atk_card = ev["card"]
 			var direct: bool = ev["target"] == null
 			# Big swings get a cut-in instead of a bubble: the attacker's name, shouted.
-			if not _autoplay and (direct or int(atk_card.atk()) >= 2400):
+			# A signature monster calls its attack by name, with its own picture across the screen.
+			if not _autoplay and SummonShow.attack_name(atk_card.data) != "":
+				var ad: Dictionary = (atk_card.data as Dictionary).duplicate()
+				ad["id"] = atk_card.id
+				SummonShow.strike(self, ad, p == ME)
+				board.duelist_gesture(p, "attack")
+				await get_tree().create_timer(Settings.t(0.75)).timeout
+			elif not _autoplay and (direct or int(atk_card.atk()) >= 2400):
 				hud.cut_in(p, str(atk_card.cname()).to_upper(), Loc.t("Direct attack!") if direct else Loc.t("Attack!"), Comic.BLUE if p == ME else Color("ff5a7a"), 0.45)
 				board.duelist_gesture(p, "attack")
 			elif randf() < 0.3:
@@ -883,11 +951,21 @@ func _play_event(ev: Dictionary) -> void:
 			var method: String = ev["method"]
 			if p == ME:
 				hud.remove_hand_card(ev["card"])
+			if method == "puzzle":
+				Sfx.play("card", -6.0)
+				await board.anim_special(p, ev["card"], ev["zone"], method, [])
+				return
 			var titles := {"fusion": "FUSION SUMMON", "synchro": "SYNCHRO SUMMON", "xyz": "XYZ SUMMON", "reborn": "REVIVED", "ritual": "RITUAL SUMMON"}
 			Sfx.play("special")
 			_talk(p, "ace", 1.0, 0.0)
 			hud.react(p, "ace")
 			hud.banner(titles.get(method, "SPECIAL SUMMON"), board.METHOD_COLORS.get(method, UITheme.ACCENT), true)
+			if not _autoplay and SummonShow.wants(ev["card"].data):
+				var sd2: Dictionary = (ev["card"].data as Dictionary).duplicate()
+				sd2["id"] = ev["card"].id
+				_shown = ev["card"]
+				SummonShow.play(self, sd2, p == ME)
+				await get_tree().create_timer(Settings.t(1.5)).timeout
 			var mats := _materials.duplicate()
 			_materials.clear()
 			await board.anim_special(p, ev["card"], ev["zone"], method, mats)
@@ -1150,7 +1228,7 @@ func _on_phase_button(action: String) -> void:
 func _drop_plan(inst) -> Dictionary:
 	var plan := {}
 	if inst.is_monster():
-		if inst.cname() == "Cyber Dragon" and state.can_special_from_hand(ME, inst):
+		if state.can_special_from_hand(ME, inst):
 			plan[0] = ["special_hand", "SPECIAL SUMMON"]
 		elif state.can_normal_summon(ME, inst):
 			plan[0] = ["summon", "SUMMON"]
@@ -1290,7 +1368,8 @@ func _on_hand_card_pressed(inst, at: Vector2) -> void:
 		var need := state.tributes_needed(inst)
 		var suffix := "" if need == 0 else Loc.t(" (%d tribute%s)") % [need, "" if need == 1 else "s"]
 		var opts := [["summon", Loc.t("Summon") + suffix, can], ["set", "Set", can]]
-		if inst.cname() == "Cyber Dragon":
+		# Every monster with its own way out of the hand gets the button, not only Cyber Dragon.
+		if inst.cname() == "Cyber Dragon" or EffectRunner.has_special_hand(inst) or state.can_special_from_hand(ME, inst):
 			opts.push_front(["special_hand", "Special Summon", state.can_special_from_hand(ME, inst)])
 		hud.show_actions(at, opts)
 	elif inst.is_trap():
@@ -2025,6 +2104,7 @@ func _exit_tree() -> void:
 	if Engine.time_scale < 1.0:
 		Engine.time_scale = 1.0
 	DuelAI.styles = ["", ""]
+	DuelAI.aces = [0, 0]
 	if board and board.turbo:
 		Sfx.ambience_pitch(1.0)
 		Sfx.ambience("")

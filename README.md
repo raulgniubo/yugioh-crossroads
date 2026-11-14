@@ -5,6 +5,37 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.27
+
+**Your game in one folder, with real saves**
+- The game now looks for a folder called `Crossroads Data` right beside it (cards, assets and saves all in one place). If it is not there, it uses the folder you pick in Settings, same as before.
+- Three save slots plus an autosave, in the Story panel. A save holds the whole game: story, cards, Duel Points, decks, every world. Saving over a slot asks first.
+- New Game, and Restart the whole game in Settings (asks twice). Save slots are kept.
+- Story difficulty (Easy, Normal, Hard), changeable at any time.
+- Admin mode in Settings, behind a PIN: everything open for testing, and your own game is put aside untouched until you turn it off.
+
+**Cards: only cards that work**
+- New test tool, the card drill (`tools/card_drill.gd`): every card in the game plays a full test duel, every effect monster is put through 36 situations next to a blank twin, and every Spell and Trap is played on a set of standard fields.
+- The drill found 25 monsters that had a note instead of an effect. 15 now have their real effect. 10 are out of the game until they can be built properly.
+- Special Summon from the hand now works for you with every monster that has that rule (it only showed for Cyber Dragon).
+- Tokens are no longer cards you can pull or own. Burning Land can be played with no Field Spell out. Xyz monsters that ask for three materials need three.
+- Packs, shops, prizes, the lost card and the scrap pile only hand out cards that are in the game. A card from an older build that had no working effect is swapped once for one that works.
+- `CARD_REVIEW.md` lists the cards whose rules are probably simpler than their printed text.
+
+**Progress that connects everything**
+- Worlds open with the story. Each world's shops sell that world's era. Themed packs open with wins.
+- Free Duel opponents open when you beat them. Duelists show 1 to 5 stars.
+- First win over a duelist: their ace. Second win: another card from their deck. Third win: their deck.
+- Opponents now play toward their ace.
+
+**Duels**
+- 22 signature monsters have their own arrival and their own named attack, built around the card's picture. Every other Level 7 or higher monster gets an arrival by Attribute.
+
+**New things to do**
+- Duel Puzzles in the Game Center: nine positions, win this turn. Each one is checked by a solver.
+- Card Match, a second new cabinet.
+- Three bond scenes (Joey, Jaden, Yusei) in the Story panel, opened by story progress and two wins.
+
 ## What is in 0.26
 
 Speed, sound, and things to do indoors.

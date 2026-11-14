@@ -25,6 +25,11 @@ var _busy := false
 var _t := 0.0
 
 
+## What each world's card shop keeps on its shelf.
+const WORLD_PACKS := {"domino": ["Duel Monsters", "Vault"], "academy": ["GX", "Vault"], "satellite": ["5D's", "beyond"], "newdomino": ["5D's", "beyond", "Vault"],
+	"heartland": ["ZEXAL", "beyond"]}
+
+
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -171,6 +176,14 @@ func _show_tab(t: int) -> void:
 		c.queue_free()
 	_slots.clear()
 	_packs = Collection.PACKS.filter(func(p): return int(p.get("tab", 0)) == t)
+	# A shop inside a world sells that world's own cards (and the Vault). The full shelf is
+	# in the main menu.
+	var here := str(Router.roam.get("district", "")) if get_tree().current_scene and "district" in get_tree().current_scene and "_npcs" in get_tree().current_scene else ""
+	if here != "" and WORLD_PACKS.has(here) and t == 0:
+		var mine: Array = WORLD_PACKS[here]
+		var kept: Array = _packs.filter(func(p): return str(p["key"]) in mine)
+		if not kept.is_empty():
+			_packs = kept
 	_sel = -1
 	for i in _packs.size():
 		_shelf.add_child(_slot(i))
@@ -302,6 +315,10 @@ func _refresh() -> void:
 	else:
 		_open_btn.text = Loc.t("Open  ·  %d DP") % Collection.pack_price(pack)
 		_open_btn.disabled = Collection.dp < Collection.pack_price(pack)
+		# Packs open with the story and with wins: say why this one is still shut.
+		if not Unlocks.pack(str(pack["key"])):
+			_open_btn.text = Unlocks.pack_why(str(pack["key"]))
+			_open_btn.disabled = true
 
 
 func _open(pack: Dictionary) -> void:
@@ -310,7 +327,8 @@ func _open(pack: Dictionary) -> void:
 	var before := Collection.owned.duplicate()
 	var pulls := Collection.open_pack(str(pack["key"]))
 	if pulls.is_empty():
-		Router.toast("Not enough Duel Points")
+		if Unlocks.pack(str(pack["key"])):
+			Router.toast("Not enough Duel Points")
 		Sfx.play("blip", -6.0, 0.6)
 		return
 	_busy = true

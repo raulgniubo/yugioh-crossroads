@@ -178,6 +178,13 @@ static func no_tribute(s: DuelState, p: int, c) -> bool:
 static func _cond(s: DuelState, p: int, cond: String) -> bool:
 	var mine := s.players[p].monsters()
 	var theirs := s.players[s.opponent(p)].monsters()
+	if cond.begins_with("own_summoned_race:"):
+		# One of your monsters of these Types was Summoned this turn (Shark Stickers).
+		var races := cond.substr(18).split("|")
+		for m in mine:
+			if m.face_up and m.summoned_turn == s.turn and str(m.data.get("race", "")) in races:
+				return true
+		return false
 	if cond.begins_with("own_has:"):
 		for m in mine:
 			if m.face_up and CardEffects.matches(m.data, {"has": cond.substr(8)}):
@@ -207,6 +214,15 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 				if g.is_monster() and str(g.data.get("attribute", "")) == "DARK":
 					n += 1
 			return n == 3
+	return false
+
+
+## Does this monster have its own way to be Special Summoned from the hand?
+static func has_special_hand(c) -> bool:
+	var f := fx(c)
+	for k in ["special_hand_if", "special_tribute2", "special_tribute_attr", "special_banish_ld", "eltanin"]:
+		if f.has(k):
+			return true
 	return false
 
 
@@ -427,7 +443,20 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 			"search":
 				if _take(s.players[p].deck, a[1], 1).is_empty():
 					return false
+			"copy_level":
+				if _level_sources(s, c, a[1]).is_empty():
+					return false
 	return true
+
+
+## Other face-up monsters on the field that fit a filter and have a Level (Copy Plant).
+static func _level_sources(s: DuelState, c, f: Dictionary) -> Array:
+	var out := []
+	for q in 2:
+		for m in s.players[q].monsters():
+			if m != c and m.face_up and m.frame() != "xyz" and m.level() > 0 and CardEffects.matches(m.data, f):
+				out.append(m)
+	return out
 
 
 static func ignite(s: DuelState, p: int, c) -> Array:
@@ -557,6 +586,55 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"declare_level":
+			# Gagaga Magician: declare a Level from 1 to 8, until the end of this turn.
+			var want := 4
+			for m in ps.monsters():
+				if m != c and m.face_up and m.frame() != "xyz" and m.level() >= 1 and m.level() <= 8:
+					want = m.level()
+			var labels := []
+			for lv in range(1, 9):
+				labels.append(Loc.t("Level %d") % lv)
+			var got := s.choose_option(p, Loc.t("%s: declare a Level") % name, labels, want - 1, c)
+			c.lv_set = clampi(got + 1, 1, 8)
+			c.lv_turn = s.turn
+			events.append(_ev(p, c, Loc.t("%s becomes Level %d") % [name, c.lv_set]))
+		"copy_level":
+			# Copy Plant: its Level becomes another monster's, until the end of this turn.
+			var srcs := _level_sources(s, c, a[1])
+			if not srcs.is_empty():
+				var pick: Array = _pick(s, p, c, Loc.t("%s: copy whose Level?") % name, srcs, {"monster": true}, 1)
+				var from = pick[0] if not pick.is_empty() else srcs[0]
+				c.lv_set = from.level()
+				c.lv_turn = s.turn
+				events.append(_ev(p, c, Loc.t("%s becomes Level %d") % [name, c.lv_set]))
+		"tenacious":
+			# Captain Tenacious: bring back a Destiny HERO destroyed by battle since your last Standby Phase,
+			# if this card was already face-up when it fell.
+			var best = null
+			for g in ps.gy:
+				if g.cname().contains("Destiny HERO") and g.died_turn >= s.turn - 2 and g.died_turn >= 0 and c.summoned_turn <= g.died_turn and s.can_revive(g):
+					if best == null or g.atk() > best.atk():
+						best = g
+			if best != null and ps.free_zone() != -1:
+				ps.gy.erase(best)
+				events.append(_ev(p, c, Loc.t("%s brings back %s") % [name, best.cname()]))
+				events.append_array(s._special(p, best, "reborn"))
+		"shark_drake":
+			# Number 32: Shark Drake. The monster it just destroyed returns to their side with 1000 less ATK,
+			# and Shark Drake attacks once more.
+			var victim = ctx.get("victim")
+			var attacking: bool = s.current == p and c.attacked_turn == s.turn   # it won a battle on its own turn: it was the attacker
+			if victim != null and attacking and c.used_turn != s.turn and not c.overlays.is_empty() and opp.gy.has(victim) and opp.free_zone() != -1:
+				c.used_turn = s.turn
+				var mat = c.overlays.pop_back()
+				s._to_gy(s.players[mat.owner], mat)
+				events.append({"type": "detach", "player": p, "card": c, "material": mat})
+				opp.gy.erase(victim)
+				events.append(_ev(p, c, Loc.t("%s drags %s back for another round") % [name, victim.cname()]))
+				events.append_array(s._special(opp_i, victim, "reborn", "atk"))
+				victim.atk_mod -= 1000
+				c.attack_count = maxi(0, c.attack_count - 1)
 		"draw":
 			events.append(_ev(p, c, Loc.t("%s: draw %d") % [name, a[1]]))
 			events.append_array(s._draw(p, int(a[1])))

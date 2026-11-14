@@ -575,6 +575,28 @@ func _on_story() -> void:
 		var id: String = c["id"]
 		b.pressed.connect(func(): StoryDirector.begin(id))
 		p.body.add_child(b)
+	p.add_section("Bond scenes")
+	for bd in StoryData.BONDS:
+		var who := str(Characters.get_char(str(bd["who"])).get("short", bd["who"]))
+		var wins: int = Collection.versus(str(bd["who"]))[0]
+		var open: bool = Saves.admin or (unlocked.has(bd["after"]) and wins >= int(bd["wins"]))
+		var seen := StoryProgress.recalls("side_" + str(bd["id"]).substr(5))
+		var bb := Button.new()
+		bb.custom_minimum_size = Vector2(0, 64)
+		bb.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		bb.add_theme_font_size_override("font_size", 22)
+		if open:
+			bb.text = "%s%s   ·   %s" % ["✔  " if seen else "", who, Loc.t(str(bd["name"]))]
+		elif not unlocked.has(bd["after"]):
+			bb.text = Loc.t("%s   ·   opens later in the story") % who
+		else:
+			bb.text = Loc.t("%s   ·   beat them %d times to open (%d so far)") % [who, int(bd["wins"]), wins]
+		bb.disabled = not open
+		var bid := str(bd["id"])
+		bb.pressed.connect(func(): StoryDirector.begin(bid))
+		p.body.add_child(bb)
+	p.add_section("Saves and difficulty")
+	SavesUI.story_block(p.body, self)
 	add_child(p)
 	_open_panel(p)
 

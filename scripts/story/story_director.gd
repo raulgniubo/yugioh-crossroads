@@ -1391,7 +1391,7 @@ func _start_duel(d: Dictionary) -> void:
 	Router.match_state = {}
 	Router.duel_config = {
 		"opponent": d["opponent"], "opponent_deck": opp_deck, "player_deck": deck, "player_char": "player",
-		"difficulty": d.get("difficulty", 1), "field": d.get("field", "battlecity"), "turbo": d.get("turbo", false),
+		"difficulty": clampi(int(d.get("difficulty", 1)) + Saves.story_difficulty() - 1, 0, 3), "field": d.get("field", "battlecity"), "turbo": d.get("turbo", false),
 		"story": true, "lose_ok": d.get("lose_ok", false), "return_to": Router.ROAM, "continue_label": Loc.t("Continue Story"),
 	}
 	# Boss rules: {"opp_lp": 12000, "lp": 8000, "rule": "The Curator starts with 12000 Life Points."}
@@ -1988,11 +1988,19 @@ func _end(st: Dictionary) -> void:
 	print("STORY END: ", chapter)
 	_cutscene(true)
 	_box.visible = false
-	StoryProgress.clear_position()
+	var side := chapter.begins_with("bond_")
+	var pay := 500
+	if side:
+		# A side scene pays once, and hands the "continue" slot back to the chapter you were in.
+		StoryProgress.restore_position()
+		pay = 0 if StoryProgress.recalls("side_" + chapter.substr(5)) else 300
+		StoryProgress.remember("side_" + chapter.substr(5))
+	else:
+		StoryProgress.clear_position()
 	var next := str(st.get("unlock", ""))
 	if next != "":
 		StoryProgress.unlock(next)
-	Collection.dp += 500
+	Collection.dp += pay
 	Collection.save()
 	Music.play("victory")
 	var shade := ColorRect.new()
@@ -2012,7 +2020,7 @@ func _end(st: Dictionary) -> void:
 	var t := UITheme.label(Loc.t(str(st["end"])).to_upper(), 70, UITheme.GOLD, UITheme.title_font())
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t)
-	var r := UITheme.label(Loc.t("+500 Duel Points"), 28, UITheme.ACCENT)
+	var r := UITheme.label(Loc.t("+%d Duel Points") % pay if pay > 0 else Loc.t("You have seen this one before"), 28, UITheme.ACCENT)
 	r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(r)
 	if st.has("teaser"):
@@ -2072,6 +2080,8 @@ static func begin(id: String, resume := false) -> void:
 	if resume:
 		at = int(StoryProgress.position()["step"])
 	else:
+		if id.begins_with("bond_"):
+			StoryProgress.stash_position()   # a side scene: the chapter you were in keeps its place
 		StoryProgress.save_position(id, 0, {})
 	# Dev: --story-step=N starts the chapter at that step (for checking one scene).
 	for a in OS.get_cmdline_user_args():

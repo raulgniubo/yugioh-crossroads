@@ -104,6 +104,7 @@ static func open(parent: Node) -> SidePanel:
 		Settings.apply_graphics()
 		Settings.save_settings())
 	_row(disp, "Hold 60 FPS", "When a scene gets heavy the 3D picture is drawn a little softer instead of slower, and sharpened again when there is room.", hold)
+	SavesUI.settings_block(func(title, help, control): _row(disp, title, help, control), parent)
 
 	_graphics_card(p)
 

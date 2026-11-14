@@ -51,11 +51,17 @@ class CardInst:
 	var negated := false          # effects negated right now (Skill Drain and friends); kept fresh by _cleanup
 	var negated_turn := -1
 	var mode := 0                 # which of a card's effects was chosen (Enemy Controller and friends)
+	var normal_turn := -1         # the turn it was Normal Summoned (Photon Cerberus)
+	var lv_set := 0               # a Level it was given by an effect (Gagaga Magician, Copy Plant, Infernity Avenger)
+	var lv_turn := -1             # ...through this turn (-1: for as long as it stays on the field)
+	var died_turn := -1           # the turn it was destroyed by battle (Captain Tenacious)
 
 	func is_token() -> bool:
 		return data.get("frame", "") == "token"
 
 	func reset_mods() -> void:
+		lv_set = 0
+		lv_turn = -1
 		atk_mod = 0
 		atk_mod_t = 0
 		atk_mod_turn = -1
@@ -83,7 +89,7 @@ class CardInst:
 		return int(data.get("def", 0))
 
 	func level() -> int:
-		return int(data.get("level", 0))
+		return lv_set if lv_set > 0 else int(data.get("level", 0))
 
 	func frame() -> String:
 		return str(data.get("frame", "normal"))
@@ -296,6 +302,10 @@ func begin_turn(step := false) -> Array:
 	normal_summoned = false
 	phase = Phase.DRAW
 	var events := [{"type": "turn", "player": current, "turn": turn}, {"type": "phase", "phase": phase}]
+	for q in 2:
+		for m in players[q].monsters():
+			if m.lv_set > 0 and m.lv_turn != -1 and m.lv_turn < turn:
+				m.lv_set = 0   # a Level declared "until the end of this turn" is over
 	events.append_array(_cleanup())
 	if turn > 1:
 		if players[current].skip_draw > 0:
@@ -329,6 +339,11 @@ func begin_standby() -> Array:
 			events.append_array(_speed(behind, 1))
 			events.append({"type": "effect", "player": behind, "card": null, "text": Loc.t("Slipstream: +1 Speed Counter for the rider behind")})
 	events.append_array(EffectRunner.standby(self, current))
+	# Destiny HERO - Defender: in face-up Defense Position, the turn player draws 1 card.
+	for m in players[opponent(current)].monsters():
+		if not is_over() and m.face_up and not m.attack_pos and EffectRunner.fx(m).has("opp_standby_draw"):
+			events.append({"type": "effect", "player": opponent(current), "card": m, "text": Loc.t("%s: the turn player draws 1 card") % m.cname()})
+			events.append_array(_draw(current, int(EffectRunner.fx(m)["opp_standby_draw"])))
 	if not is_over():
 		events.append_array(SpellRules.standby(self, current))
 	return events
@@ -353,8 +368,20 @@ func enter_battle() -> Array:
 func enter_main2() -> Array:
 	if phase != Phase.BATTLE:
 		return []
+	var events := _end_battle()
 	phase = Phase.MAIN2
-	return [{"type": "phase", "phase": phase}]
+	events.push_front({"type": "phase", "phase": phase})
+	return events
+
+
+## The end of the Battle Phase: monsters that are banished after they attack (Big Jaws).
+func _end_battle() -> Array:
+	var events := []
+	for m in players[current].monsters():
+		if m.attacked_turn == turn and m.face_up and EffectRunner.fx(m).get("banish_after_attack", false):
+			events.append({"type": "effect", "player": current, "card": m, "text": Loc.t("%s is banished at the end of the Battle Phase") % m.cname()})
+			events.append_array(_banish(m))
+	return events
 
 
 func end_turn() -> Array:
@@ -364,8 +391,10 @@ func end_turn() -> Array:
 
 
 func begin_end() -> Array:
+	var after_battle: Array = _end_battle() if phase == Phase.BATTLE else []
 	phase = Phase.END
 	var events := [{"type": "phase", "phase": phase}]
+	events.append_array(after_battle)
 	events.append_array(EffectRunner.end_phase(self, current))
 	return events
 
@@ -459,6 +488,10 @@ func tributes_needed(c: CardInst) -> int:
 
 
 func can_normal_summon(p: int, c: CardInst) -> bool:
+	if CardEffects.of(c.cname()).get("one_only", false):
+		for m in players[p].monsters():
+			if m.face_up and m.cname() == c.cname():
+				return false   # "You can only control 1"
 	if p != current or not _in_main() or normal_summoned or is_over():
 		return false
 	if not c.is_monster() or not players[p].hand.has(c):
@@ -508,9 +541,17 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 	normal_summoned = true
 	events.append({"type": "set" if set_card else "summon", "player": p, "card": c, "zone": zone})
 	if not set_card:
+		c.normal_turn = turn
 		last_summoned = c
 		events.append_array(summon_triggers(p, c))
 		events.append_array(EffectRunner.on_summon(self, p, c, "normal"))
+		# Dark Verger: when a Plant Tuner is Normal Summoned to your side, it comes back from the Graveyard.
+		if c.is_tuner() and str(c.data.get("race", "")) == "Plant":
+			for g in ps.gy.duplicate():
+				if ps.free_zone() != -1 and CardEffects.of(g.cname()).get("revive_on_plant_tuner", false):
+					ps.gy.erase(g)
+					events.append({"type": "effect", "player": p, "card": g, "text": Loc.t("%s returns from the Graveyard") % g.cname()})
+					events.append_array(_special(p, g, "reborn", "atk"))
 	return events
 
 
@@ -1074,10 +1115,39 @@ func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 	if _shield == loser:
 		_shield = null
 		return [{"type": "effect", "player": loser.owner, "card": loser, "text": Loc.t("%s is not destroyed") % loser.cname()}]
+	# Dark Ruler Ha Des: monsters destroyed in battle by your Fiends have their effects negated.
+	var wp := 0 if players[0].field.has(winner_c) else 1
+	if str(winner_c.data.get("race", "")) == "Fiend":
+		for h in players[wp].monsters():
+			if h.face_up and EffectRunner.fx(h).get("fiend_negate", false):
+				loser.negated = true
+				loser.negated_turn = turn
+	var loser_lv := loser.level()
 	var events := _battle_destroy(loser)
 	var died := not players[loser.owner].field.has(loser) and players[loser.owner].gy.has(loser)
 	if not died:
 		return events
+	loser.died_turn = turn
+	var lp_side := players[loser.owner]
+	# Rescueroid: a "roid" of yours destroyed by battle comes back to your hand.
+	if loser.cname().contains("roid"):
+		for r in lp_side.monsters():
+			if r.face_up and r != loser and EffectRunner.fx(r).get("rescue_roid", false):
+				lp_side.gy.erase(loser)
+				lp_side.hand.append(loser)
+				events.append({"type": "effect", "player": loser.owner, "card": r, "text": Loc.t("%s returns %s to the hand") % [r.cname(), loser.cname()]})
+				events.append({"type": "gy_to_hand", "player": loser.owner, "card": loser})
+				break
+	# Infernity Avenger: with no cards in hand, it rises from the Graveyard at the destroyed monster's Level.
+	if lp_side.hand.is_empty() and wp != loser.owner and loser.cname() != "Infernity Avenger":
+		for g in lp_side.gy.duplicate():
+			if g != loser and lp_side.free_zone() != -1 and CardEffects.of(g.cname()).get("avenger", false):
+				lp_side.gy.erase(g)
+				events.append({"type": "effect", "player": loser.owner, "card": g, "text": Loc.t("%s rises at Level %d") % [g.cname(), loser_lv]})
+				events.append_array(_special(loser.owner, g, "reborn", "def"))
+				g.lv_set = loser_lv
+				g.lv_turn = -1
+				break
 	winner_c.killed_turn = turn
 	if players[winner_c.owner].field.has(winner_c):
 		events.append_array(EffectRunner.trigger(self, winner_c, "kill", {"victim": loser}))
@@ -1141,6 +1211,14 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	var events := [{"type": "destroy", "player": c.owner, "card": c, "zone": zone, "overlays": mats}]
 	events.append_array(_on_leave_field(c, by_battle))
 	events.append_array(_monster_left(c))
+	# Revival Rose: when a Level 5 or higher Plant of yours is destroyed, it comes back from the Graveyard.
+	if str(c.data.get("race", "")) == "Plant" and int(c.data.get("level", 0)) >= 5:
+		for g in ps.gy.duplicate():
+			if g != c and ps.free_zone() != -1 and CardEffects.of(g.cname()).get("revive_on_plant5", false):
+				ps.gy.erase(g)
+				events.append({"type": "effect", "player": c.owner, "card": g, "text": Loc.t("%s blooms again") % g.cname()})
+				events.append_array(_special(c.owner, g, "reborn"))
+				break
 	return events
 
 
@@ -1383,7 +1461,7 @@ func _on_leave_field(c: CardInst, by_battle: bool) -> Array:
 	var p := c.owner
 	var ps := players[p]
 	var events := []
-	match c.cname():
+	match c.cname() if not c.negated else "":
 		"Sangan":
 			for d in ps.deck:
 				if d.is_monster() and d.atk() <= 1500:
@@ -1542,6 +1620,8 @@ func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 
 ## Ritual and Extra Deck monsters can only come back if they were first summoned the proper way.
 func can_revive(c: CardInst) -> bool:
+	if CardEffects.of(c.cname()).get("no_revive", false):
+		return false   # "Cannot be Special Summoned from the GY" (Dark Ruler Ha Des)
 	return c.is_monster() and not c.is_token() and (c.proper or not c.frame() in ["ritual", "fusion", "synchro", "xyz"])
 
 
@@ -1634,11 +1714,25 @@ func extra_materials(p: int, c: CardInst) -> Array:
 	if c.frame() == "xyz":
 		var same := mons.filter(func(m): return m.level() == c.level() and m.frame() not in ["xyz", "token"])
 		same.sort_custom(func(a, b): return a.atk() < b.atk())
-		for i in same.size():
-			for j in range(i + 1, same.size()):
-				out.append([same[i], same[j]])
+		# "3 Level 4 monsters" asks for three; most ask for two.
+		var want := 2
+		var first_line := str(c.data.get("desc", c.data.get("text", ""))).strip_edges()
+		if first_line.length() > 1 and first_line.substr(0, 1).is_valid_int() and first_line.substr(1, 6) == " Level":
+			want = clampi(int(first_line.substr(0, 1)), 2, 5)
+		if want == 2:
+			for i in same.size():
+				for j in range(i + 1, same.size()):
+					out.append([same[i], same[j]])
+		else:
+			for mask in range(1, 1 << same.size()):
+				var pick := []
+				for i in same.size():
+					if mask & (1 << i):
+						pick.append(same[i])
+				if pick.size() == want:
+					out.append(pick)
 	elif c.frame() == "synchro":
-		mons = mons.filter(func(m): return m.frame() != "xyz")   # Xyz Monsters have a Rank, not a Level
+		mons = mons.filter(func(m): return m.frame() != "xyz" and not EffectRunner.fx(m).get("no_synchro", false))   # Xyz Monsters have a Rank, not a Level
 		var n := mons.size()
 		for mask in range(1, 1 << n):
 			var sel := []
@@ -1837,6 +1931,10 @@ func _clone_card(c: CardInst, map: Dictionary) -> CardInst:
 	n.negated = c.negated
 	n.negated_turn = c.negated_turn
 	n.mode = c.mode
+	n.normal_turn = c.normal_turn
+	n.lv_set = c.lv_set
+	n.lv_turn = c.lv_turn
+	n.died_turn = c.died_turn
 	map[c.uid] = n
 	for o in c.overlays:
 		n.overlays.append(_clone_card(o, map))
@@ -1885,12 +1983,26 @@ func responses(p: int, window: String, subject = null) -> Array:
 	var ps := players[p]
 	if is_over():
 		return out
+	# Infernity Beast: while it attacks with its owner's hand empty, the other side cannot use Spells or Traps.
+	var st_locked := false
+	if not pending_attack.is_empty() and pending_attack["player"] != p and not pending_attack.get("negated", false):
+		var atk_c: CardInst = pending_attack["attacker"]
+		if EffectRunner.fx(atk_c).get("lock_st_if_hand_empty", false) and players[pending_attack["player"]].hand.is_empty():
+			st_locked = true
 	for c in ps.spells:
-		if c != null and not c.face_up and SpellRules.fits(self, p, c, window, subject) and ps.speed >= speed_need(c):
+		if not st_locked and c != null and not c.face_up and SpellRules.fits(self, p, c, window, subject) and ps.speed >= speed_need(c):
 			out.append(c)
 	for c in ps.hand:
-		if not c.is_monster() and SpellRules.fits(self, p, c, window, subject) and ps.speed >= speed_need(c):
+		if not st_locked and not c.is_monster() and SpellRules.fits(self, p, c, window, subject) and ps.speed >= speed_need(c):
 			out.append(c)
+	# Blackwing - Kalut the Moon Shadow: from the hand in the Damage Step, when your Blackwing battles.
+	if window == "damage" and not pending_attack.is_empty() and not pending_attack.get("negated", false):
+		var mine := _kalut_target(p)
+		if mine != null:
+			for c in ps.hand:
+				if CardEffects.of(c.cname()).has("hand_boost_family"):
+					out.append(c)
+					break
 	if window == "attack":
 		if not pending_attack.is_empty() and pending_attack["player"] != p:
 			for c in ps.hand:
@@ -1942,9 +2054,32 @@ func _trap_fits(p: int, c: CardInst, window: String, subject: CardInst) -> bool:
 
 
 ## Activate a response card (trap, Kuriboh from hand, Utopia's effect).
+## The monster of player `p` that is battling right now, if it belongs to the family Kalut helps.
+func _kalut_target(p: int) -> CardInst:
+	if pending_attack.is_empty():
+		return null
+	for m in [pending_attack["attacker"], pending_attack["target"]]:
+		if m != null and players[p].field.has(m) and m.face_up and m.cname().contains("Blackwing"):
+			return m
+	return null
+
+
 func respond(p: int, c: CardInst, subject = null) -> Array:
 	var ps := players[p]
 	var events := []
+	var boost: Array = CardEffects.of(c.cname()).get("hand_boost_family", [])
+	if not boost.is_empty() and ps.hand.has(c):
+		var who := _kalut_target(p)
+		if who == null:
+			return events
+		ps.hand.erase(c)
+		_to_gy(ps, c)
+		if who.atk_mod_turn != turn:
+			who.atk_mod_turn = turn
+			who.atk_mod_t = 0
+		who.atk_mod_t += int(boost[1])
+		events.append({"type": "hand_effect", "player": p, "card": c, "text": Loc.t("%s: %s gains %d ATK") % [c.cname(), who.cname(), int(boost[1])]})
+		return events
 	if c.cname() == "Kuriboh" and ps.hand.has(c):
 		ps.hand.erase(c)
 		_to_gy(ps, c)

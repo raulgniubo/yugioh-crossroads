@@ -103,7 +103,7 @@ const FX := {
 	"Black Tyranno": {"note": "Can attack directly if the opponent only has Defense Position monsters.", "direct_if": "opp_all_def"},
 	"Leghul": {"note": "Can attack directly.", "direct": true},
 	"Mystic Lamp": {"note": "Can attack directly.", "direct": true},
-	"Big Jaws": {"note": "Strong for its level."},
+	"Big Jaws": {"note": "At the end of the Battle Phase, if this card attacked: it is banished.", "banish_after_attack": true},
 	"Big Piece Golem": {"note": "No tribute needed if you have no monsters and the opponent does.", "no_tribute_if": "opp_only"},
 	"Medium Piece Golem": {"note": "Summoned: Special Summon a Level 3 or lower EARTH monster from the Deck.",
 		"any_summon": [["special", "deck", {"attr": "EARTH", "max_lv": 3}, "atk", 1]]},
@@ -116,8 +116,7 @@ const FX := {
 		"ignite": {"cost": "discard", "do": [["special", "deck", {"has": "Harpie", "not": "Harpie Channeler"}, "def", 1]], "label": "Discard 1: call a Harpie from the Deck"}},
 	"Harpie's Pet Dragon": {"note": "Gains 300 ATK for each Harpie Lady on the field.", "atk_per": ["field_named:Harpie Lady", 300]},
 	"Birdface": {"note": "Destroyed by battle: add a Harpie Lady from the Deck.", "death": [["search", {"has": "Harpie Lady"}]]},
-	"Dark Ruler Ha Des": {"note": "Strong Fiend boss."},
-	"Dark Necrofear": {"note": "A Fiend boss with high DEF."},
+	"Dark Ruler Ha Des": {"note": "Cannot be Special Summoned from the Graveyard. Monsters destroyed in battle by your Fiends have their effects negated.", "no_revive": true, "fiend_negate": true},
 	"Pumpking the King of Ghosts": {"note": "Gains 100 ATK during each of your Standby Phases.", "standby": [["perm_atk", 100]]},
 	"Gernia": {"note": "Destroyed: comes back at your next Standby (simplified: revives in Defense right away once).", "gy": [["revive_self", "def"]]},
 	"Makyura the Destructor": {"note": "Sent to the GY: draw 1.", "gy": [["draw", 1]]},
@@ -178,10 +177,10 @@ const FX := {
 	"Cyber Angel Benten": {"note": "Destroys a monster by battle: damage equal to its DEF.", "kill": [["damage_victim_def"]]},
 	"Cyber Angel Dakini": {"note": "Summoned: the opponent sends a monster to the GY. Piercing.", "any_summon": [["destroy", "weakest"]], "piercing": true},
 	"Cyber Angel Idaten": {"note": "Summoned: gains 1000 ATK.", "any_summon": [["perm_atk", 1000]]},
-	"Destiny HERO - Captain Tenacious": {"note": "A small D-HERO."},
+	"Destiny HERO - Captain Tenacious": {"note": "Your Standby Phase: Special Summon a Destiny HERO that was destroyed by battle since your last Standby Phase while this card was face-up.", "standby": [["tenacious"]]},
 	"Destiny HERO - Dasher": {"note": "Tribute another monster: +1000 ATK this turn. Goes to Defense after attacking.", "def_after_attack": true,
 		"ignite": {"cost": "tribute_other", "do": [["self_atk", 1000]], "label": "Tribute a monster: +1000 ATK"}},
-	"Destiny HERO - Defender": {"note": "A tough wall."},
+	"Destiny HERO - Defender": {"note": "While in face-up Defense Position, during your opponent's Standby Phase: your opponent draws 1 card.", "opp_standby_draw": 1},
 	"Destiny HERO - Diamond Dude": {"note": "Once per turn: if the top card is a Spell, draw it.",
 		"ignite": {"cost": "none", "do": [["top_spell_draw"]], "label": "Check the top card"}},
 	"Destiny HERO - Disk Commander": {"note": "Special Summoned: draw 2 (once per duel).", "special_only": [["draw_once", 2]]},
@@ -210,8 +209,7 @@ const FX := {
 	"Blackwing - Fane the Steel Chain": {"note": "Can attack directly. Deals damage: an opponent's monster goes to Defense.", "direct": true, "damage": [["opp_to_def"]]},
 	"Blackwing - Blizzard the Far North": {"note": "Normal Summoned: revive a Level 4 or lower Blackwing in Defense.",
 		"summon": [["special", "gy", {"has": "Blackwing", "max_lv": 4}, "def", 1]]},
-	"Blackwing - Kalut the Moon Shadow": {"note": "A Blackwing tuner."},
-	"Blackwing - Vayu the Emblem of Honor": {"note": "A Blackwing tuner."},
+	"Blackwing - Kalut the Moon Shadow": {"note": "From your hand in the Damage Step, when your Blackwing battles: send it to the Graveyard and that monster gains 1400 ATK until the end of the turn.", "hand_boost_family": ["Blackwing", 1400]},
 	"Twilight Rose Knight": {"note": "Normal Summoned: Special Summon a Level 4 or lower Plant from your hand.",
 		"summon": [["special", "hand", {"race": "Plant", "max_lv": 4}, "atk", 1]]},
 	"Botanical Lion": {"note": "Gains 300 ATK for each Plant you control.", "atk_per": ["own_race:Plant", 300]},
@@ -219,21 +217,18 @@ const FX := {
 		"ignite": {"cost": "tribute_plant", "do": [["special", "deck", {"race": "Plant"}, "atk", 1]], "label": "Tribute a Plant: call one from the Deck"}},
 	"Evil Thorn": {"note": "Tribute it: 300 damage, then Special Summon up to 2 Evil Thorn from the Deck.",
 		"ignite": {"cost": "tribute_self", "do": [["damage", 300], ["special", "deck", {"name": "Evil Thorn"}, "atk", 2]], "label": "Tribute: 300 damage + more Thorns"}},
-	"Revival Rose": {"note": "A Plant tuner support."},
+	"Revival Rose": {"note": "When a Level 5 or higher Plant you control is destroyed: Special Summon this card from your Graveyard.", "revive_on_plant5": true},
 	"Rose Tentacles": {"note": "Destroys a Plant by battle: 300 damage.", "kill": [["damage_if_victim_race", "Plant", 300]]},
 	"Splendid Rose": {"note": "Once per turn: halve an opponent's monster's ATK.", "ignite": {"cost": "none", "do": [["opp_half"]], "label": "Halve a monster's ATK"}},
-	"Copy Plant": {"note": "A Plant tuner."},
-	"Dark Verger": {"note": "A Plant tuner."},
-	"Phoenixian Seed": {"note": "A Plant support."},
-	"Barrier Resonator": {"note": "A tuner."},
+	"Copy Plant": {"note": "Once per turn: its Level becomes the Level of another Plant on the field, until the end of the turn.", "ignite": {"cost": "none", "do": [["copy_level", {"race": "Plant"}]], "label": "Copy a Plant's Level"}},
+	"Dark Verger": {"note": "When a Plant Tuner is Normal Summoned to your side: Special Summon this card from your Graveyard in Attack Position.", "revive_on_plant_tuner": true},
 	"Dark Resonator": {"note": "Once per turn, survives destruction by battle.", "survive_once": true},
 	"Nitro Synchron": {"note": "Used for a Synchro: draw 1.", "material": [["draw", 1]]},
 	"Sinister Sprocket": {"note": "Used for a Synchro: destroy a face-up Spell/Trap.", "material": [["destroy", "set_st"]]},
 	"Quillbolt Hedgehog": {"note": "Special Summon from your hand while you control a tuner.", "special_hand_if": "own_tuner"},
 	"Batteryman AA": {"note": "Gains 1000 ATK for each Batteryman AA you control.", "atk_per": ["own_named:Batteryman AA", 1000]},
-	"T.G. Blade Blaster": {"note": "A huge Synchro."},
 	"Infernity Archfiend": {"note": "Special Summoned: add an Infernity card from the Deck.", "special_only": [["search", {"has": "Infernity"}]]},
-	"Infernity Beast": {"note": "A hand-empty attacker."},
+	"Infernity Beast": {"note": "If it attacks while you have no cards in hand, your opponent cannot activate Spells or Traps until after the Damage Step.", "lock_st_if_hand_empty": true},
 	"Infernity Guardian": {"note": "With an empty hand it can't be destroyed by battle.", "hand_empty_guard": true},
 	"Infernity Dwarf": {"note": "With an empty hand, your monsters deal piercing damage.", "piercing_if": "hand_empty"},
 	"Infernity Necromancer": {"note": "Summoned in Defense. With an empty hand: once per turn revive an Infernity.",
@@ -241,7 +236,7 @@ const FX := {
 	"Infernity Mirage": {"note": "With an empty hand, tribute it: revive 2 Infernity monsters.",
 		"ignite": {"cost": "tribute_self", "cond": "hand_empty", "do": [["special", "gy", {"has": "Infernity"}, "atk", 2]], "label": "Tribute: revive 2 Infernity"}},
 	"Infernity Knight": {"note": "Destroyed: comes back in Defense if your hand has 2+ cards (discarding 2).", "gy": [["revive_self_discard2"]]},
-	"Infernity Avenger": {"note": "A tuner for empty-hand decks."},
+	"Infernity Avenger": {"note": "When another monster of yours is destroyed by battle while you have no cards in hand: Special Summon this card from your Graveyard at that monster's Level.", "avenger": true},
 	"Infernity Doom Dragon": {"note": "With an empty hand, once per turn: destroy a monster and deal half its ATK.",
 		"ignite": {"cost": "none", "cond": "hand_empty", "do": [["destroy_half_damage"], ["no_attack_turn"]], "label": "Destroy a monster, burn half its ATK"}},
 	"Gyroid": {"note": "Once per turn, survives destruction by battle.", "survive_once": true},
@@ -251,21 +246,17 @@ const FX := {
 	"Super Vehicroid Jumbo Drill": {"note": "Piercing damage.", "piercing": true},
 	"Truckroid": {"note": "Destroys a monster by battle: gains its ATK.", "kill": [["gain_victim_atk"]]},
 	"Expressroid": {"note": "Summoned: add 2 roid monsters from the GY to the hand.", "any_summon": [["gy_to_hand", {"has": "roid", "not": "Expressroid"}, 2]]},
-	"Rescueroid": {"note": "A roid helper."},
-	"Jetroid": {"note": "A roid wall."},
-	"Patroid": {"note": "A roid scout."},
+	"Rescueroid": {"note": "When a \"roid\" monster you control is destroyed by battle: it returns to your hand.", "rescue_roid": true},
 	"Mad Archfiend": {"note": "Piercing damage.", "piercing": true},
 	"Juragedo": {"note": "Tribute it: one of your monsters gains 1000 ATK this turn.",
 		"ignite": {"cost": "tribute_self", "do": [["best_own_atk", 1000]], "label": "Tribute: +1000 ATK to a monster"}},
-	"Gagaga Magician": {"note": "A Level-changing Spellcaster."},
+	"Gagaga Magician": {"note": "Once per turn: declare a Level from 1 to 8; it becomes that Level until the end of the turn. You can only control 1. Cannot be Synchro Material.", "ignite": {"cost": "none", "do": [["declare_level"]], "label": "Declare a Level (1 to 8)"}, "one_only": true, "no_synchro": true},
 	"Gagaga Cowboy": {"note": "Detach 1: gains 1000 ATK this turn.", "ignite": {"cost": "detach", "do": [["self_atk", 1000]], "label": "Detach: +1000 ATK"}},
 
 	# ---- ZEXAL
 	"Number 17: Leviathan Dragon": {"note": "Detach 1: gains 500 ATK.", "ignite": {"cost": "detach", "do": [["perm_atk", 500]], "label": "Detach: +500 ATK"}},
-	"Number 32: Shark Drake": {"note": "A Rank 4 shark boss."},
-	"Number 43: Manipulator of Souls": {"note": "A Rank 2 Number."},
+	"Number 32: Shark Drake": {"note": "Once per turn, when it attacks and destroys a monster: detach 1 material; that monster returns to their field in Attack Position with 1000 less ATK, and this card attacks once more.", "kill": [["shark_drake"]]},
 	"Number 62: Galaxy-Eyes Prime Photon Dragon": {"note": "Detach 1 in battle: gains 200 ATK per Rank of Xyz monsters on the field.", "atk_attack": 1600},
-	"Number 65: Djinn Buster": {"note": "A Rank 2 Number."},
 	"Black Ray Lancer": {"note": "Detach 1: negate a monster (its ATK becomes 0 here).", "ignite": {"cost": "detach", "do": [["opp_zero"]], "label": "Detach: zero a monster's ATK"}},
 	"Starliege Paladynamo": {"note": "Detach 2: an opponent's monster's ATK becomes 0.", "ignite": {"cost": "detach2", "do": [["opp_zero"]], "label": "Detach 2: zero a monster's ATK"}},
 	"Cat Shark": {"note": "Can't be destroyed by battle.", "battle_immune": true},
@@ -279,15 +270,14 @@ const FX := {
 	"Photon Lizard": {"note": "Tribute it: add a Level 4 or lower Photon from the Deck.",
 		"ignite": {"cost": "tribute_self", "do": [["search", {"has": "Photon", "max_lv": 4}]], "label": "Tribute: search a Photon"}},
 	"Photon Leo": {"note": "Normal Summoned: the opponent shuffles their hand away and redraws.", "summon": [["opp_redraw"]]},
-	"Photon Cerberus": {"note": "A Photon monster."},
+	"Photon Cerberus": {"note": "On the turn it is Normal Summoned, neither player can activate Trap Cards while it is face-up.", "no_traps_normal_turn": true},
 	"Double Shark": {"note": "Can attack twice each Battle Phase.", "double_attack": true},
 	"Spear Shark": {"note": "Piercing damage.", "piercing": true},
 	"Hammer Shark": {"note": "Once per turn: Special Summon a Level 3 or lower WATER monster from your hand.",
 		"ignite": {"cost": "none", "do": [["special", "hand", {"attr": "WATER", "max_lv": 3}, "atk", 1]], "label": "Call a WATER monster"}},
 	"Eagle Shark": {"note": "No tribute if the opponent has 2+ monsters.", "no_tribute_if": "opp_two"},
 	"Sharkraken": {"note": "Special Summon from hand by tributing a WATER monster.", "special_tribute_attr": "WATER"},
-	"Shark Stickers": {"note": "A Fish helper."},
-	"Saber Shark": {"note": "A Level-changing shark."},
+	"Shark Stickers": {"note": "When a Fish, Sea Serpent or Aqua monster is Summoned to your side: you can Special Summon this card from your hand. Cannot be Synchro Material.", "special_hand_if": "own_summoned_race:Fish|Sea Serpent|Aqua", "no_synchro": true},
 	"Skull Kraken": {"note": "Normal Summoned: destroy a set Spell/Trap.", "summon": [["destroy", "set_st"]]},
 	"Twin-Sword Marauder": {"note": "Piercing; attacks twice against Defense monsters.", "piercing": true, "double_vs_def": true},
 	"Umbral Horror Ghost": {"note": "Special Summon from your hand; then call a Level 4 or lower Fiend from your hand too.",
@@ -299,12 +289,16 @@ const FX := {
 }
 
 
+## A card's effect: written by hand here, or read from the card's own text by the effect
+## reader (tools/effect_reader.py, see CardEffectsAuto).
 static func of(name: String) -> Dictionary:
-	return FX.get(name, {})
+	if FX.has(name):
+		return FX[name]
+	return CardEffectsAuto.FX.get(name, {})
 
 
 static func has(name: String) -> bool:
-	return FX.has(name) and not FX[name].is_empty()
+	return (FX.has(name) and not FX[name].is_empty()) or CardEffectsAuto.FX.has(name)
 
 
 ## Does a card match a filter dictionary?

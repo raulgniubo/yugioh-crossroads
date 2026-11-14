@@ -13,6 +13,11 @@ static func _load() -> ConfigFile:
 
 
 static func unlocked() -> Array:
+	if Saves.admin:
+		var every: Array = []
+		for ch in StoryData.CHAPTERS:
+			every.append(ch["id"])
+		return every
 	return _load().get_value("story", "unlocked", ["prologue"])
 
 
@@ -32,6 +37,9 @@ static func save_position(chapter: String, step: int, flags: Dictionary) -> void
 	cfg.set_value("story", "flags", flags)
 	cfg.set_value("story", "script", SCRIPT_VERSION)
 	cfg.save(PATH)
+	# The autosave slot follows the story: every goal and every duel writes it.
+	if not Saves.admin and Engine.get_main_loop() and Engine.get_main_loop().root.has_node("Collection"):
+		Saves.save_to("autosave")
 
 
 static func position() -> Dictionary:
@@ -42,6 +50,31 @@ static func position() -> Dictionary:
 		return {"chapter": "", "step": 0, "flags": {}}
 	return {"chapter": cfg.get_value("story", "chapter", ""), "step": cfg.get_value("story", "step", 0),
 			"flags": cfg.get_value("story", "flags", {})}
+
+
+## A side scene borrows the "where you stopped" slot: the chapter's own place is put aside
+## when one starts and comes back when it ends.
+static func stash_position() -> void:
+	var cfg := _load()
+	if str(cfg.get_value("story", "chapter", "")).begins_with("bond_"):
+		return
+	cfg.set_value("story", "stash", [cfg.get_value("story", "chapter", ""), cfg.get_value("story", "step", 0), cfg.get_value("story", "flags", {})])
+	cfg.save(PATH)
+
+
+static func restore_position() -> void:
+	var cfg := _load()
+	var st: Array = cfg.get_value("story", "stash", [])
+	if st.size() == 3:
+		cfg.set_value("story", "chapter", st[0])
+		cfg.set_value("story", "step", st[1])
+		cfg.set_value("story", "flags", st[2])
+	else:
+		cfg.set_value("story", "chapter", "")
+		cfg.set_value("story", "step", 0)
+		cfg.set_value("story", "flags", {})
+	cfg.set_value("story", "stash", [])
+	cfg.save(PATH)
 
 
 static func clear_position() -> void:

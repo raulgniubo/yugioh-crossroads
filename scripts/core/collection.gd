@@ -119,6 +119,7 @@ func _ready() -> void:
 			forced = true
 	if not forced:
 		_apply_active.call_deferred()
+	_trade_in.call_deferred()
 
 
 ## Before there was a deck shelf, any duelist's deck could be picked for free. Whatever you were
@@ -399,6 +400,56 @@ func illegal() -> Array:
 	return out
 
 
+## Older versions could hand out a card the game has no rules for (the lost card of the day,
+## the scrap pile). Any such card you hold is swapped, once, for one that works, of the same
+## kind and about the same strength, in your collection and in every deck that used it.
+func _trade_in() -> void:
+	if CardData.EXT.is_empty():
+		return   # no card folder yet: nothing can be judged
+	var swap := {}
+	for id in owned.keys():
+		if playable(int(id)) or CardData.get_card(int(id)).is_empty():
+			continue
+		var d := CardData.get_card(int(id))
+		var kind := str(d.get("kind", "monster"))
+		var best := 0
+		var best_gap := 1 << 30
+		var rng := RandomNumberGenerator.new()
+		rng.seed = int(id)
+		var pool_ids: Array = all_cards()
+		for i in 60:
+			var cand: int = pool_ids[rng.randi() % pool_ids.size()]
+			var cd := CardData.get_card(cand)
+			if str(cd.get("kind", "monster")) != kind or str(cd.get("frame", "")) in ["fusion", "synchro", "xyz"]:
+				continue
+			var gap := absi(int(cd.get("atk", 0)) - int(d.get("atk", 0))) + absi(int(cd.get("level", 0)) - int(d.get("level", 0))) * 300
+			if gap < best_gap:
+				best_gap = gap
+				best = cand
+		if best != 0:
+			swap[int(id)] = best
+	if swap.is_empty():
+		return
+	for id in swap:
+		var n := int(owned.get(id, 0))
+		owned.erase(id)
+		owned[swap[id]] = mini(3, int(owned.get(swap[id], 0)) + n)
+	for list in [main, extra, side]:
+		for i in (list as Array).size():
+			if swap.has(int(list[i])):
+				list[i] = swap[int(list[i])]
+	for sl in slots:
+		for part in ["main", "extra", "side"]:
+			var arr: Array = (sl as Dictionary).get(part, [])
+			for i in arr.size():
+				if swap.has(int(arr[i])):
+					arr[i] = swap[int(arr[i])]
+	save()
+	var count := swap.size()
+	get_tree().create_timer(3.0).timeout.connect(func():
+		Router.toast(Loc.t("%d cards that had no working effect were swapped for cards that do") % count))
+
+
 ## A new duelist starts with the Echo starter deck (and a little more).
 func _starter() -> void:
 	for key in ["echo", "yugi"]:
@@ -510,6 +561,12 @@ func reward(won: bool, difficulty: int, info := {}) -> int:
 			if prize != 0:
 				owned[prize] = mini(3, int(owned.get(prize, 0)) + 1)
 				last_reward.append(["New card: " + str(CardData.get_card(prize).get("name", "")), 0])
+		elif versus(opp)[0] == 1 and str(info.get("deck", "")) != "":
+			# The second win: one more card from their deck. (The third gives you the deck.)
+			var again := _prize_card("", str(info.get("deck", "")))
+			if again != 0:
+				owned[again] = mini(3, int(owned.get(again, 0)) + 1)
+				last_reward.append(["New card: " + str(CardData.get_card(again).get("name", "")), 0])
 		if info.get("rare", false):
 			last_reward.append(["Beat a night duelist", 300])
 	var streak := int(record.get("streak", 0)) + 1
@@ -661,7 +718,46 @@ func _in_theme(theme: String, id: int) -> bool:
 
 
 ## Every card that can be pulled from any pack.
+## Every card that is in the game at all: the cards with working rules, plus every Normal
+## monster in the database (those need no rules). Nothing outside this list can be found,
+## bought or won, so every card you hold does what it says.
+## The card lists are worked out once and kept, and thrown away when the card folder changes
+## (a new folder picked in Settings, or the data arriving after the first look).
+func _fresh() -> void:
+	if int(_pools.get("_n", -1)) != CardData.EXT.size():
+		_pools = {"_n": CardData.EXT.size()}
+		_covers = {}
+
+
+func every_playable() -> Array:
+	_fresh()
+	if _pools.has("**"):
+		return _pools["**"]
+	var ids := {}
+	for id in all_cards():
+		ids[id] = true
+	for id in CardData.EXT:
+		var d: Dictionary = CardData.EXT[id]
+		# (Tokens are listed as Normal monsters in the card file: they are not cards you can own.)
+		if str(d.get("frame", "")) == "normal" and int(d.get("level", 0)) > 0 and not str(d.get("name", "")).contains("Token"):
+			ids[int(id)] = true
+	_pools["**"] = ids.keys()
+	return _pools["**"]
+
+
+## Is this card in the game?
+func playable(id: int) -> bool:
+	_fresh()
+	if not _pools.has("set"):
+		var st := {}
+		for i in every_playable():
+			st[i] = true
+		_pools["set"] = st
+	return (_pools["set"] as Dictionary).has(id) or id == CardData.LUMEN
+
+
 func all_cards() -> Array:
+	_fresh()
 	if _pools.has("*"):
 		return _pools["*"]
 	var ids := {}
@@ -674,6 +770,7 @@ func all_cards() -> Array:
 
 ## Every card that can come out of an era's pack: the cards its duelists play.
 func pool(era: String) -> Array:
+	_fresh()
 	if _pools.has(era):
 		return _pools[era]
 	var ids := {}
@@ -690,7 +787,7 @@ func pool(era: String) -> Array:
 		for other in ["Duel Monsters", "GX", "5D's", "ZEXAL"]:
 			for id in pool(other):
 				taken[id] = true
-		for name in SpellRules.FX.keys() + CardEffects.FX.keys() + VAULT_EXTRAS:
+		for name in SpellRules.FX.keys() + CardEffects.FX.keys() + CardEffectsAuto.FX.keys() + VAULT_EXTRAS:
 			var id: int = CardData.NAME_TO_ID.get(str(name).to_lower(), 0)
 			if id != 0 and not taken.has(id) and not CardData.get_card(id).is_empty() and not CardData.get_card(id).get("speed_spell", false):
 				ids[id] = true
@@ -708,6 +805,9 @@ func pool(era: String) -> Array:
 
 ## Buy and open a pack. Returns the card ids pulled (empty if you can't afford it).
 func open_pack(era: String) -> Array:
+	if not Unlocks.pack(era):
+		Router.toast(Unlocks.pack_why(era))
+		return []
 	var cards := pool(era)
 	var price := PACK_PRICE
 	for p in PACKS:

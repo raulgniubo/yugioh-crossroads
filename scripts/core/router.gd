@@ -110,6 +110,22 @@ func _ready() -> void:
 	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_toast)
 	_probe = "--perf-probe" in OS.get_cmdline_user_args()
+	if "--unlock-audit" in OS.get_cmdline_user_args():
+		# Dev: what a player at this point of the story can reach.
+		var w := []
+		for k in Unlocks.WORLD_STAGE:
+			w.append("%s=%s" % [k, Unlocks.world(k)])
+		var pk := []
+		for k in ["Duel Monsters", "Vault", "GX", "5D's", "ZEXAL", "dragons"]:
+			pk.append("%s=%s" % [k, Unlocks.pack(k)])
+		var op := 0
+		for k in Characters.ORDER:
+			op += 1 if Unlocks.opponent(k) else 0
+		print("UNLOCKS stage=", Unlocks.stage(), " wins=", Unlocks.wins(), " worlds ", w, " packs ", pk, " free duel opponents ", op, "/", Characters.ORDER.size(),
+			" admin=", Saves.admin, " cards=", Collection.owned.size(), " playable=", Collection.every_playable().size(), " data=", Saves.data_dir())
+	if "--save-test" in OS.get_cmdline_user_args():
+		# Dev: write slot 1, say what is in it, and ask for it to be loaded on the next run.
+		_save_test.call_deferred()
 	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 	_fps = Label.new()
 	_fps.position = Vector2(12, 8)
@@ -163,6 +179,9 @@ func _debug_args() -> void:
 			duel_config["opponent"] = a.substr(6)
 		elif a == "--turbo":
 			duel_config["turbo"] = true
+		elif a.begins_with("--puzzle="):
+			duel_config["puzzle"] = a.substr(9)   # dev: start a duel puzzle
+			duel_config["opponent"] = "professor"
 		elif a == "--parse-all":
 			# Dev: load every script so a parse error anywhere shows up, then quit.
 			var todo: Array = ["res://scripts"]
@@ -232,6 +251,18 @@ func _debug_args() -> void:
 				menu._on_deck()
 			elif what == "settings":
 				menu._on_settings()
+			elif what.begins_with("story"):
+				menu._on_story()
+				if what == "storysaves":
+					# Dev: scroll the story panel down to the saves.
+					await get_tree().create_timer(0.4).timeout
+					for n in menu.find_children("*", "ScrollContainer", true, false):
+						(n as ScrollContainer).scroll_vertical = 100000
+			elif what == "settingsend":
+				menu._on_settings()
+				await get_tree().create_timer(0.4).timeout
+				for n in menu.find_children("*", "ScrollContainer", true, false):
+					(n as ScrollContainer).scroll_vertical = 100000
 			elif what.begins_with("deckshop"):
 				var ds := DeckShop.new()
 				ds.z_index = 100
@@ -308,3 +339,11 @@ func _chip_later(n: Node) -> void:
 	var b := n as Button
 	if b.toggle_mode and b.text != "" and b.get_child_count() == 0 and not b.has_theme_stylebox_override("normal"):
 		UITheme.chip(b)
+
+
+func _save_test() -> void:
+	print("SAVETEST dir=", Saves.saves_dir(), " game_dir=", Saves.game_dir(), " saved=", Saves.save_to("slot1"), " info=", Saves.info("slot1"), " admin=", Saves.admin, " diff=", Saves.story_difficulty())
+	var f := FileAccess.open(Saves.PENDING, FileAccess.WRITE)
+	f.store_string("load:slot1")
+	f.close()
+	get_tree().quit()
