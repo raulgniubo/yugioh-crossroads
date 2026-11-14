@@ -53,6 +53,7 @@ var _overlay_open := false
 var extras: RoamExtras
 var _help: Label
 var story: StoryDirector          # set while a story chapter is being played in this world
+var partner: Node3D                # Lumen, floating along (free roam)
 var _lights: Array = []        # every lamp in the world, for _cull_lights
 var _chat_turn := {}           # npc id -> how many times you have talked this visit
 var _light_t := 0.0
@@ -120,6 +121,11 @@ func _ready() -> void:
 		add_child(story)
 	else:
 		_after_duel()
+		# Lumen, your partner, floats along in the open world. (A story chapter stages its own.)
+		if str(district.get("builder", "")) != "museum":
+			var pal := Partner.new()
+			add_child(pal)
+			pal.setup(self)
 	_debug()
 
 
@@ -145,6 +151,7 @@ func _after_duel() -> void:
 	if who == "":
 		return
 	var won := Router.story_result == "won"
+	Partner.note = "won" if won else "lost"
 	Router.roam["last_duel"] = ""
 	Router.story_result = ""
 	for n in _npcs:
@@ -211,6 +218,8 @@ func _build_world() -> void:
 			city = ArenaDistrict.new()
 		"newdomino":
 			city = NewDominoBuilder.new()
+		"museum":
+			city = MuseumDistrict.new()
 		_:
 			city = CityBuilder.new()
 	add_child(city)
@@ -1110,8 +1119,17 @@ func _update_near() -> void:
 	var best_d := TALK_RANGE
 	for n in _npcs:
 		var f: Node3D = n[1]
-		var dist := f.global_position.distance_to(_player.global_position)
 		var m: Sprite3D = n[2]
+		if (n[0] as Dictionary).get("night", false):
+			# The rare ones only come out after dark.
+			var out: bool = city.tod == "night"
+			if f.visible != out:
+				f.visible = out
+				m.visible = out
+				f.position.y += 80.0 if out else -80.0
+			if not out:
+				continue
+		var dist := f.global_position.distance_to(_player.global_position)
 		m.position.y = 2.45 + sin(Time.get_ticks_msec() / 300.0) * 0.06
 		if dist < best_d:
 			best_d = dist
@@ -1472,6 +1490,8 @@ func _start_duel() -> void:
 		"difficulty": duel.get("difficulty", 1), "field": _field_here(),
 		"story": true, "lose_ok": true, "return_to": Router.ROAM, "continue_label": Loc.t("Back to %s") % Loc.t(str(district.get("name", "town"))),
 	}
+	if duel.get("rare", false):
+		Router.duel_config["rare"] = true
 	_end_talk()
 	Router.go(Router.DUEL)
 
@@ -1515,7 +1535,7 @@ func _build_ui() -> void:
 	_purse = purse
 	_update_counter()
 	# Controls, bottom left.
-	var help := UITheme.label("WASD / stick  move     Shift  run     Drag  look     Scroll  zoom     E  talk / enter     M  map     B  decks     T  time of day     Esc  menu", 17, Color(0.93, 0.95, 1.0, 0.95))
+	var help := UITheme.label("WASD / stick  move     Shift  run     Drag  look     Scroll  zoom     E  talk / enter     L  ask Lumen     M  map     B  decks     T  time of day     Esc  menu", 17, Color(0.93, 0.95, 1.0, 0.95))
 	# On a dark strip of its own, so it reads over grass, sand and bright paving alike.
 	var help_bar := PanelContainer.new()
 	var hb := StyleBoxFlat.new()

@@ -40,6 +40,8 @@ func has_real(key: String) -> bool:
 
 ## `hi` = this one is about to be shown big: render it at double size (3D portraits only).
 func get_portrait(key: String, hi := false) -> Texture2D:
+	if key == "lumen":
+		return LumenSpirit.portrait(self)
 	if hi and Avatars.has_avatar(key):
 		Avatars.portrait(key, true)
 	if _cache.has(key):

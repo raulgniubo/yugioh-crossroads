@@ -128,6 +128,9 @@ func _start() -> void:
 	DuelAI.styles = ["", {"cocky": "aggro", "wild": "aggro", "cool": "wall"}.get(mood, "")]
 	if not cfg.get("turbo", false):
 		_theme = {"cocky": "duel_rival", "cool": "duel_rival", "dark": "duel_dark", "wild": "duel_wild"}.get(mood, "duel")
+		# A boss brings their own music.
+		if cfg.has("music"):
+			_theme = str(cfg["music"])
 		Music.play(_theme)
 		DuelAudio.theme = _theme
 	var opp: Dictionary = Characters.get_char(_opp_key)
@@ -225,6 +228,8 @@ func _start() -> void:
 	_start_lp = [int(cfg.get("lp", DuelState.START_LP)), int(cfg.get("lp", DuelState.START_LP))]
 	if cfg.has("my_lp"):
 		_start_lp[ME] = int(cfg["my_lp"])
+	if cfg.has("opp_lp"):
+		_start_lp[AI] = int(cfg["opp_lp"])
 	for p in 2:
 		if _start_lp[p] != DuelState.START_LP:
 			state.players[p].lp = _start_lp[p]
@@ -249,6 +254,11 @@ func _start() -> void:
 		_talk(AI, "intro", 1.0, 0.0)
 		if fly:
 			await board.intro_duelists()
+		# Boss rules are said out loud before the first draw.
+		if cfg.has("rule"):
+			hud.effect_text(Loc.t(str(cfg["rule"])))
+			await hud.banner("SPECIAL RULE", UITheme.GOLD, true)
+		get_tree().create_timer(2.5).timeout.connect(func(): _lumen("start"))
 	else:
 		if fly:
 			board.intro_flyover(2.5)
@@ -502,7 +512,8 @@ func _finish() -> void:
 		Profile.record_result(won)
 		var my_lp: int = state.players[ME].lp
 		earned = Collection.reward(won and not _surrendered, _ai_level, {"opponent": _opp_key, "lp": my_lp,
-			"flawless": my_lp >= int(_start_lp[ME]), "turns": state.turn})
+			"flawless": my_lp >= int(_start_lp[ME]), "turns": state.turn,
+			"deck": str(Router.duel_config.get("opponent_deck", Characters.get_char(_opp_key).get("deck", ""))), "rare": bool(Router.duel_config.get("rare", false))})
 		var got := Collection.note_result(_opp_key, won and not _surrendered)
 		if got != "":
 			Router.toast(Loc.t("Third win over %s: their deck is now in My Decks.") % str(Characters.get_char(_opp_key).get("short", _opp_key)))
@@ -601,6 +612,34 @@ func _play(events: Array) -> void:
 var _last_talk := [-10.0, -10.0]
 
 
+## Lumen, your partner, has an opinion about the duel. Each kind of remark once per duel.
+const LUMEN_SAYS := {
+	"start": ["I'm in your deck! Draw me, draw me!", "Okay. Deep breath. I believe in you. Also in me. Mostly you."],
+	"me": ["That's me! Hi! One monster for your hand, coming right up!", "I'm on the field! Don't look at my ATK. Look at my heart."],
+	"my_ace": ["Ooh, the big one! Get them!", "THERE it is! I love this part!"],
+	"their_ace": ["That's their best monster. Don't panic. I'm panicking, but you shouldn't.", "Uh oh. Big. Very big. You have a plan, right?"],
+	"ace_down": ["You took down their ace! Did you see their face?!", "Their best monster is GONE! Keep going!"],
+	"ace_lost": ["Your ace... okay. Okay! We can still do this.", "It's fine! We have more cards! ...We have more cards, right?"],
+	"my_low": ["Your Life Points are low. I'm not worried. *bzzt* I'm a little worried.", "Careful! One more hit like that and we're done!"],
+	"their_low": ["They're almost out! One more push!", "They're on the ropes! Finish it!"],
+}
+var _lumen_box: LumenBubble
+var _lumen_said := {}
+
+
+func _lumen(kind: String) -> void:
+	if _autoplay or _lumen_said.has(kind) or not LumenBubble.with_you() or not LUMEN_SAYS.has(kind):
+		return
+	if _lumen_box == null:
+		_lumen_box = LumenBubble.new(26.0, -330.0)
+		add_child(_lumen_box)
+	if _lumen_box.showing():
+		return
+	_lumen_said[kind] = true
+	var lines: Array = LUMEN_SAYS[kind]
+	_lumen_box.say(str(lines[randi() % lines.size()]))
+
+
 func _talk(p: int, kind: String, chance := 1.0, min_gap := 2.5) -> void:
 	if _autoplay or randf() > chance:
 		return
@@ -657,6 +696,9 @@ func _play_event(ev: Dictionary) -> void:
 			if is_ace:
 				_talk(p, "ace", 1.0, 0.0)
 				hud.react(p, "ace")
+				_lumen("my_ace" if p == ME else "their_ace")
+			elif p == ME and ev["type"] == "summon" and ev["card"].id == CardData.LUMEN:
+				_lumen("me")
 			if ev["type"] == "summon" and _pending_tributes > 0:
 				hud.banner("TRIBUTE SUMMON", UITheme.GOLD, true)
 			_pending_tributes = 0
@@ -808,7 +850,14 @@ func _play_event(ev: Dictionary) -> void:
 		"swords_end":
 			hud.effect_text("Swords of Revealing Light fades")
 		"destroy":
-			if randf() < (0.5 if p == AI else 0.3):
+			var gone = ev["card"]
+			var ace_id: int = int(Characters.get_char(_opp_key).get("ace", 0)) if p == AI else 0
+			if gone != null and gone.is_monster() and gone.face_up and (gone.level() >= 7 or (ace_id != 0 and gone.id == ace_id)):
+				# Their best monster just went down: that gets a real reaction.
+				_talk(p, "ace_lost", 1.0, 0.0)
+				hud.react(p, "hurt")
+				_lumen("ace_down" if p == AI else "ace_lost")
+			elif randf() < (0.5 if p == AI else 0.3):
 				_talk(p, "destroyed")
 			board.hide_stats_for(ev["card"])
 			Sfx.play("destroy", -3.0)
@@ -882,6 +931,9 @@ func _play_event(ev: Dictionary) -> void:
 				if p == AI and ev["lp"] <= 2000 and not _said_low:
 					_said_low = true
 					_talk(AI, "low", 1.0, 0.0)
+					_lumen("their_low")
+				if p == ME and int(ev["lp"]) <= 2000 and int(ev["lp"]) > 0:
+					_lumen("my_low")
 				elif ev["delta"] <= -1000:
 					_talk(p, "hurt")
 					_talk(1 - p, "big_hit", 0.55)

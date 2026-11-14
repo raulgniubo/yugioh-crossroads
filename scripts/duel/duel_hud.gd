@@ -1996,7 +1996,12 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 				var ll := UITheme.label(label, 22, UITheme.TEXT)
 				ll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				row2.add_child(ll)
-				row2.add_child(UITheme.label("+%d" % int(line[1]), 22, UITheme.GOLD, UITheme.semi_font()))
+				# A card prize has no points on it: it shows as a card.
+				if label.begins_with("New card: "):
+					label = Loc.t("New card: %s") % Loc.t(label.trim_prefix("New card: "))
+					ll.text = label
+					ll.add_theme_color_override("font_color", Color("9ff0ff"))
+				row2.add_child(UITheme.label(("+%d" % int(line[1])) if int(line[1]) > 0 else "★", 22, UITheme.GOLD, UITheme.semi_font()))
 				pv.add_child(row2)
 			var rule := ColorRect.new()
 			rule.color = Color(UITheme.GOLD, 0.5)

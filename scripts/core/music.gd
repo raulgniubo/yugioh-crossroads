@@ -43,8 +43,16 @@ const TRACKS := {
 			[52, 55, 59], [55, 59, 62], [57, 60, 64], [59, 62, 66]]},
 	"shop": {"bpm": 84.0, "bars": 4, "drums": false, "gain": 0.5, "lead": 0.08,
 		"chords": [[60, 64, 67], [65, 69, 72], [62, 65, 69], [67, 71, 74]]},
+	# Story: a memory playing back, the Curator's museum, and the last duel.
+	"memory": {"bpm": 66.0, "bars": 4, "drums": false, "gain": 0.5, "lead": 0.1,
+		"chords": [[53, 57, 60, 64], [55, 59, 62], [52, 55, 59], [57, 60, 64]]},
+	"museum": {"bpm": 58.0, "bars": 4, "drums": false, "gain": 0.5, "lead": 0.06,
+		"chords": [[50, 53, 57], [49, 53, 56], [48, 51, 55], [47, 50, 54]]},
+	"finale": {"bpm": 132.0, "bars": 8, "drums": true, "gain": 0.62, "lead": 0.16,
+		"chords": [[48, 52, 55], [55, 59, 62], [57, 60, 64], [53, 57, 60],
+			[48, 52, 55], [55, 59, 62], [53, 57, 60], [55, 59, 62]]},
 }
-const ORDER := ["menu", "duel", "city", "duel_tense", "victory", "defeat", "academy", "satellite", "heartland", "shop", "turbo", "duel_rival", "duel_dark", "duel_wild"]
+const ORDER := ["menu", "duel", "city", "duel_tense", "victory", "defeat", "academy", "satellite", "heartland", "shop", "turbo", "duel_rival", "duel_dark", "duel_wild", "memory", "museum", "finale"]
 
 var _streams := {}
 var _players: Array[AudioStreamPlayer] = []

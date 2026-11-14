@@ -359,10 +359,27 @@ func _make_placeholder_face(id: int) -> Texture2D:
 	tr.size = Vector2(320, 292)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art_box.add_child(tr)
+	if d.get("partner", false):
+		# Lumen's own card: she is on it, alive, instead of a monogram.
+		var live := TextureRect.new()
+		live.texture = LumenSpirit.portrait(self)
+		live.position = Vector2(4, 4)
+		live.size = Vector2(320, 292)
+		live.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		live.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		art_box.add_child(live)
+		# Draw for a moment (her picture needs a few frames to exist), then hold still.
+		vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		LumenSpirit.wake(2.5)
+		get_tree().create_timer(2.0).timeout.connect(func():
+			if is_instance_valid(vp):
+				vp.render_target_update_mode = SubViewport.UPDATE_DISABLED)
 	var initials := ""
 	for word in str(d.get("name", "?")).split(" ", false):
 		if initials.length() < 2 and word.length() > 0 and word[0] == word[0].to_upper():
 			initials += word[0]
+	if d.get("partner", false):
+		initials = ""
 	var mono := _label(art_box, initials, Vector2(4, 4), Vector2(320, 292), _font_title, 150,
 			Color(1, 1, 1, 0.82), HORIZONTAL_ALIGNMENT_CENTER)
 	mono.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.5))
@@ -378,8 +395,14 @@ func _make_placeholder_face(id: int) -> Texture2D:
 		desc.clip_text = false
 	else:
 		_label(root, "[ %s ]" % d.get("race", ""), Vector2(38, 438), Vector2(344, 36), _font_title, 26, Color("1b1b1b"))
-		_label(root, {"effect": "Effect Monster", "fusion": "Fusion Monster", "synchro": "Synchro Monster", "xyz": "Xyz Monster",
-				"ritual": "Ritual Monster"}.get(ftype, "Normal Monster"), Vector2(38, 474), Vector2(344, 30), _font_body, 18, Color("555555"))
+		if str(d.get("text", "")) != "":
+			var fx_text := _label(root, str(d["text"]), Vector2(38, 470), Vector2(344, 70), _font_body, 12, Color("2b2b2b"))
+			fx_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			fx_text.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+			fx_text.clip_text = false
+		else:
+			_label(root, {"effect": "Effect Monster", "fusion": "Fusion Monster", "synchro": "Synchro Monster", "xyz": "Xyz Monster",
+					"ritual": "Ritual Monster"}.get(ftype, "Normal Monster"), Vector2(38, 474), Vector2(344, 30), _font_body, 18, Color("555555"))
 		_rect(root, Vector2(38, 540), Vector2(344, 2), Color("1b1b1b"))
 		_label(root, "ATK/%d   DEF/%d" % [d.get("atk", 0), d.get("def", 0)], Vector2(38, 544), Vector2(344, 40),
 				_font_title, 30, Color("1b1b1b"), HORIZONTAL_ALIGNMENT_RIGHT)

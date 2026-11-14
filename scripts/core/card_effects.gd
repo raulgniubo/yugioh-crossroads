@@ -16,6 +16,14 @@ class_name CardEffects
 ## Filters:   {"name", "has", "race", "attr", "max_lv", "lv", "max_atk", "min_atk", "not", "monster"}
 
 const FX := {
+	# ---- The Head Archivist's shelf
+	"Apprentice Magician": {"note": "Destroyed by battle: Special Summon a Level 2 or lower Spellcaster from your Deck in Defense Position.", "death": [["special", "deck", {"race": "Spellcaster", "max_lv": 2}, "def", 1]]},
+	"Breaker the Magical Warrior": {"note": "Normal Summoned: gains 300 ATK.", "summon": [["perm_atk", 300]]},
+	"Dark Magician Girl": {"note": "Gains 300 ATK for every Dark Magician in the Graveyards.", "atk_per": ["gy_named:Dark Magician", 300]},
+	"Magician of Faith": {"note": "Flip: draw 1 card.", "flip": [["draw", 1]]},
+	# ---- Your partner
+	"Lumen, Echo Spirit": {"note": "Normal Summoned: add 1 monster with 1500 or less ATK from your Deck to your hand. Destroyed by battle: you take no battle damage this turn.",
+		"summon": [["search", {"max_atk": 1500}]], "death": [["no_battle_damage"]]},
 	# ---- The Duelist's Vault: classic monsters from outside the story decks
 	"Giant Rat": {"note": "Destroyed by battle and sent to the Graveyard: Special Summon a EARTH monster with 1500 or less ATK from your Deck in Attack Position.", "death": [["special", "deck", {"attr": "EARTH", "max_atk": 1500}, "atk", 1]]},
 	"Shining Angel": {"note": "Destroyed by battle and sent to the Graveyard: Special Summon a LIGHT monster with 1500 or less ATK from your Deck in Attack Position.", "death": [["special", "deck", {"attr": "LIGHT", "max_atk": 1500}, "atk", 1]]},

@@ -21,6 +21,8 @@ func setup(roam: Node) -> void:
 	var t := Time.get_datetime_dict_from_system()
 	var roll := absi(hash("%s-%d-%d-%s" % [Time.get_date_string_from_system(), int(t["hour"]) / 3, 7, str(Router.roam.get("district", ""))])) % 100
 	raining = "--rain" in args or (roll < 28 and not "--dry" in args and str(Router.roam.get("story", "")) == "")
+	if str(Router.roam.get("district", "")) == "museum":
+		raining = false
 	if not raining:
 		return
 	_drops = GPUParticles3D.new()

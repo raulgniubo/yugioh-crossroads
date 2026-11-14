@@ -67,6 +67,22 @@ var _push := 0.0            # how far the camera has crept in during this line
 var _box_style: StyleBoxFlat
 var _name_tab: PanelContainer
 var _name_style: StyleBoxFlat
+var _solver: StoryCamera
+var _stepped_out: Array = []   # bystanders hidden while a scene plays where they stood
+var _shot_subs: Array = []     # who the current wide shot holds
+var _audit := false
+var _dir := {}                 # a directed camera move in progress
+var _cap: Label
+var _cap_tw: Tween
+var _echo_on := false
+var _echo_fx: ColorRect
+var _echo_frame: Panel
+var _echo_tag: Label
+var _echo_tint := Color(1.0, 0.9, 0.74)
+var _echo_music := ""
+var _hint_t := 0.0
+var _goal_how: Label
+var _lead_to = null            # where Lumen is leading you (Vector3) while a goal is open
 
 
 func _ready() -> void:
@@ -77,8 +93,11 @@ func _ready() -> void:
 	if str(pos["chapter"]) == chapter:
 		step = int(pos["step"])
 		flags = pos["flags"]
+	_solver = StoryCamera.new(scene)
+	_solver.skip_rids = [scene._player.get_rid()]
+	_audit = "--story-audit" in OS.get_cmdline_user_args()
 	_cam = Camera3D.new()
-	_cam.fov = 46.0
+	_cam.fov = StoryCamera.FOV
 	add_child(_cam)
 	# A soft light that rides on the cutscene camera, so faces read at night and indoors.
 	_fill = OmniLight3D.new()
@@ -87,6 +106,7 @@ func _ready() -> void:
 	_fill.visible = false
 	_cam.add_child(_fill)
 	_build_ui()
+	_build_cine_ui()
 	# Portraits are drawn live from the models: start them now so nobody's first line shows
 	# an empty frame.
 	Portraits.get_portrait("player")
@@ -104,6 +124,14 @@ func _ready() -> void:
 		Router.story_result = ""
 		step += 1
 	_rebuild_cast()
+	if flags.has("_echo"):
+		# The memory carried on into another world: put the frame back.
+		_echo_on = true
+		scene._figure.visible = false
+		_echo_fx.visible = true
+		_echo_frame.visible = true
+		_echo_tag.visible = true
+		_echo_tag.text = "  " + Loc.t("ECHO") + "  ·  " + Loc.t(str(flags["_echo"])).to_upper() + "  "
 	_run.call_deferred()
 
 
@@ -230,6 +258,10 @@ func _build_ui() -> void:
 	_goal_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_goal_text.custom_minimum_size = Vector2(390, 0)
 	gv.add_child(_goal_text)
+	_goal_how = UITheme.label("", 16, Color(0.78, 0.9, 1.0), UITheme.semi_font())
+	_goal_how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_goal_how.custom_minimum_size = Vector2(390, 0)
+	gv.add_child(_goal_how)
 	_goal_dist = UITheme.label("", 17, UITheme.TEXT_DIM)
 	gv.add_child(_goal_dist)
 	_flash = ColorRect.new()
@@ -271,6 +303,8 @@ func _speaker(who: String) -> void:
 		var f := _fig(str(k))
 		if f is RoamFigure and is_instance_valid(f):
 			(f as RoamFigure).speak(str(k) == who and who != "")
+		elif f is LumenSpirit and str(k) == who:
+			(f as LumenSpirit).speak(2.2)
 
 
 func _fig(key: String) -> Node3D:
@@ -293,9 +327,17 @@ func _rebuild_cast() -> void:
 	for i in mini(step, _steps.size()):
 		if (_steps[i] as Dictionary).has("scene"):
 			last_scene = i
+	flags.erase("_echo")
+	for i in mini(step, _steps.size()):
+		var es: Dictionary = _steps[i]
+		if es.has("echo") and _passes(es):
+			if es["echo"] is bool:
+				flags.erase("_echo")
+			else:
+				flags["_echo"] = str(es["echo"])
 	for i in range(maxi(0, last_scene), mini(step, _steps.size())):
 		var st: Dictionary = _steps[i]
-		if st.has("if") and not flags.has(st["if"]):
+		if not _passes(st):
 			continue
 		if st.has("actor"):
 			_place(st, true)
@@ -314,46 +356,68 @@ func _rebuild_cast() -> void:
 func _place(st: Dictionary, instant := false) -> void:
 	var key := str(st["actor"])
 	_remove(key)
+	var at: Vector3 = st["at"]
+	if scene.city and scene.city.has_method("ground_at") and scene._inside == "":
+		at.y = maxf(at.y, float(scene.city.ground_at(at.x, at.z)))
+	if st.get("spirit", false):
+		# Lumen: a duel spirit, small and made of light, floating at shoulder height.
+		var sp := LumenSpirit.new()
+		scene.add_child(sp)
+		sp.position = Vector3(at.x, at.y + 1.1, at.z)
+		sp.watch = scene._player
+		sp.set_bonds(StoryProgress.bonds())
+		_actors[key] = sp
+		if st.get("caged", false):
+			# Held in the Curator's frame: she does not follow anybody.
+			sp.mood = "sad"
+			if _spirit == null or not is_instance_valid(_spirit):
+				_spirit = null
+			return
+		_spirit = sp
+		if scene.partner and is_instance_valid(scene.partner):
+			scene.partner.visible = false
+		if not instant:
+			sp.scale = Vector3.ONE * 0.01
+			create_tween().tween_property(sp, "scale", Vector3.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			sp.glitch(0.5)
+		return
+	# Stand on whatever floor is really there (a raised slab, a pier deck), not through it.
+	var fq := PhysicsRayQueryParameters3D.create(at + Vector3(0, 1.5, 0), at + Vector3(0, -0.5, 0))
+	fq.exclude = [scene._player.get_rid()]
+	var fhit: Dictionary = scene.get_world_3d().direct_space_state.intersect_ray(fq)
+	if not fhit.is_empty():
+		var fy: float = (fhit["position"] as Vector3).y
+		if fy > at.y + 0.03 and fy < at.y + 1.0:
+			at.y = fy
 	var fig := RoamFigure.new()
 	scene.add_child(fig)
-	var at: Vector3 = st["at"]
 	fig.position = st.get("from", at) if not instant else at
 	fig.setup(key, Characters.get_char(key).get("color", Color.WHITE), "", false)
 	fig.lively = false
 	fig.greets = false
 	fig.watch = scene._player
+	if st.has("coat"):
+		fig.wear_uniform(st["coat"])
+	if st.has("pale"):
+		# Washed out, like something kept behind glass for too long.
+		var wash := StandardMaterial3D.new()
+		wash.albedo_color = Color(0.96, 0.95, 0.9, float(st["pale"]))
+		wash.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		wash.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+		wash.roughness = 0.9
+		for mi in fig.find_children("*", "MeshInstance3D", true, false):
+			(mi as MeshInstance3D).material_overlay = wash
 	_actors[key] = fig
+	if _audit:
+		var why := _solver.blocked_at(at)
+		if why != "":
+			print("ACTOR BLOCKED step ", step, " ", key, " at ", at, " ", why)
 	var face = st.get("face", "player")
 	if face is String:
 		var to: Vector3 = _pos_of(str(face)) - at
 		fig.rotation.y = atan2(to.x, to.z)
 	else:
 		fig.rotation.y = float(face)
-	if st.get("spirit", false):
-		# A duel spirit: small, glowing, floating at shoulder height.
-		fig.scale = Vector3.ONE * 0.55
-		fig.position.y = 1.1
-		var l := OmniLight3D.new()
-		l.light_color = Color("9ff0ff")
-		l.light_energy = 1.1
-		l.omni_range = 4.0
-		l.position.y = 1.0
-		fig.add_child(l)
-		var halo := MeshInstance3D.new()
-		var sm := SphereMesh.new()
-		sm.radius = 0.8
-		sm.height = 1.6
-		halo.mesh = sm
-		var hm := StandardMaterial3D.new()
-		hm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		hm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		hm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-		hm.albedo_color = Color(0.5, 0.95, 1.0, 0.1)
-		hm.cull_mode = BaseMaterial3D.CULL_FRONT
-		halo.material_override = hm
-		halo.position.y = 0.95
-		fig.add_child(halo)
-		_spirit = fig
 	if st.get("hollow", false):
 		_make_hollow(fig)
 	if not instant and st.has("from"):
@@ -425,12 +489,32 @@ func _run() -> void:
 		return
 	while step < _steps.size():
 		var st: Dictionary = _steps[step]
-		if st.has("if") and not flags.has(st["if"]):
+		if not _passes(st):
 			step += 1
 			continue
 		if _auto:
 			print("STORY step ", step, " ", st.keys())
-		if st.has("scene"):
+			for a in OS.get_cmdline_user_args():
+				if a.begins_with("--story-until=") and step > int(a.trim_prefix("--story-until=")):
+					get_tree().quit()
+					return
+		if st.has("echo"):
+			await _echo(st)
+		elif st.has("shot") and not st.has("t"):
+			await _shot_step(st)
+		elif st.has("cap") and not st.has("t"):
+			await _cap_step(st)
+		elif st.has("credits"):
+			await _credits(st)
+		elif st.has("remember"):
+			StoryProgress.remember(str(st["remember"]))
+		elif st.has("music"):
+			Music.play(str(st["music"]))
+		elif st.has("sfx") and not st.has("t") and not st.has("act"):
+			Sfx.play(str(st["sfx"]), float(st.get("vol", -5.0)), float(st.get("pitch", 1.0)))
+		elif st.has("turn"):
+			_turn(st)
+		elif st.has("scene"):
 			if await _do_scene(st):
 				return
 		elif st.has("actor"):
@@ -485,6 +569,26 @@ func _run() -> void:
 
 
 ## The walking HUD (map, place name, key help) steps aside for cutscenes.
+## Does this step play? "if": a choice made this chapter or something the story remembers.
+## "unless": the opposite.
+func _passes(st: Dictionary) -> bool:
+	if st.has("if") and not (flags.has(st["if"]) or StoryProgress.recalls(str(st["if"]))):
+		return false
+	if st.has("unless") and (flags.has(st["unless"]) or StoryProgress.recalls(str(st["unless"]))):
+		return false
+	return true
+
+
+## {"turn": who, "to": who or where}: someone turns to face something.
+func _turn(st: Dictionary) -> void:
+	var f := _fig(str(st["turn"]))
+	if f == null:
+		return
+	var to := _spot(st["to"]) - f.global_position
+	if Vector2(to.x, to.z).length() > 0.1:
+		create_tween().tween_property(f, "rotation:y", f.rotation.y + angle_difference(f.rotation.y, atan2(to.x, to.z)), 0.35)
+
+
 func _hud(on: bool) -> void:
 	for n in [scene._map, scene._loc_name, scene._loc_area, scene._prompt, scene._plate, scene._purse]:
 		if n and is_instance_valid(n):
@@ -522,6 +626,15 @@ func _cutscene(on: bool) -> void:
 		_goal_box.visible = false
 		_hud(false)
 	else:
+		for f in _stepped_out:
+			if is_instance_valid(f):
+				(f as Node3D).visible = true
+		_stepped_out.clear()
+		_shot_kind = ""
+		_shot_pair = []
+		_dir = {}
+		_cam.fov = StoryCamera.FOV
+		_caption("")
 		_speaker("")
 		_hud(true)
 		_fill.visible = false
@@ -552,6 +665,9 @@ func _do_scene(st: Dictionary) -> bool:
 	await tw.finished
 	for k in _actors.keys():
 		_remove(k)
+	_dir = {}
+	_cam.fov = StoryCamera.FOV
+	_caption("")
 	_freeze(false)
 	if sc.has("tod"):
 		scene.city.apply_tod(str(sc["tod"]))
@@ -648,213 +764,284 @@ func _title_card(title: String, sub: String, chapter_line: String) -> void:
 	root.queue_free()
 
 
+## Who a shot is about: where they stand, how tall, how much they matter, which way they face.
+func _subject(key: String, w := 1.0, toward = null) -> Dictionary:
+	var f := _fig(key)
+	var p := _pos_of(key)
+	if key == "player" and scene._figure:
+		p = scene._figure.global_position
+	var head := _head_h(f)
+	# Someone still walking to their mark is filmed where they will stop.
+	for m in _moving:
+		if m[0] == f and (m[1] as Vector3).distance_to(p) < 5.0:
+			p = Vector3(m[1].x, p.y, m[1].z)
+	var face := Vector3.ZERO
+	if toward != null:
+		var t: Vector3 = toward
+		face = Vector3(t.x - p.x, 0, t.z - p.z)
+		face = face.normalized() if face.length() > 0.2 else Vector3.ZERO
+	elif f and not (f == _spirit):
+		face = Vector3(sin(f.rotation.y), 0, cos(f.rotation.y))
+	return StoryCamera.sub(p, head, w, face)
+
+
+## How high this person's face is (Grandpa is a head shorter than Kaiba).
+func _head_h(f: Node3D) -> float:
+	if f is RoamFigure and (f as RoamFigure)._model:
+		var sk := Avatars._skeleton((f as RoamFigure)._model)
+		var hb := Avatars.bone((f as RoamFigure)._model, "Head")
+		if sk and hb >= 0:
+			# (Someone who has just popped in is still growing to full size: measure them
+			# as they will be.)
+			var grown := maxf(0.001, f.scale.y)
+			var y := ((sk.global_transform * sk.get_bone_global_pose(hb).origin).y - f.global_position.y) / grown
+			if y > 0.3 and y < 2.6:
+				return y + 0.1
+	if f is LumenSpirit:
+		return (f as LumenSpirit).head_height
+	return 1.56
+
+
+func _cast() -> Array:
+	var out: Array = [scene._figure]
+	if _spirit and is_instance_valid(_spirit):
+		out.append(_spirit)
+	return out
+
+
+## Bystanders standing in the middle of a scene step out of it until the camera lets go.
+func _make_room(spots: Array) -> void:
+	var cast: Array = _actors.values()
+	cast.append(scene._figure)
+	for f in _solver.crowding(spots, 1.5, cast):
+		(f as Node3D).visible = false
+		_stepped_out.append(f)
+
+
+## Where Lumen waits while other people talk: past them as the camera sees it and a little
+## to one side, small in the background, never between the lens and a face.
+func _behind(focus: Vector3) -> Vector3:
+	var away_cam := Vector3(focus.x - _cam_pos.x, 0, focus.z - _cam_pos.z)
+	if away_cam.length() < 0.1:
+		return focus
+	away_cam = away_cam.normalized()
+	return focus + away_cam * 1.5 + away_cam.cross(Vector3.UP) * 1.1 * _shot_side
+
+
+## Take the shot the solver likes best. Returns its score.
+func _take(best: Array, kind: String, pair: Array) -> void:
+	_cam_pos = best[0]
+	_cam_look = best[1]
+	_push = 0.0
+	_cut_now = true
+	_shot_kind = kind
+	_shot_pair = pair
+	_shot_subs = []
+
+
+func _wide_cands(subs: Array) -> Array:
+	var mid := Vector3.ZERO
+	var heads: Array = []
+	for su in subs:
+		mid += su["p"] as Vector3
+		heads.append((su["p"] as Vector3) + Vector3(0, float(su["h"]), 0))
+	mid /= float(subs.size())
+	var spread := 1.6
+	for su in subs:
+		spread = maxf(spread, Vector2((su["p"] as Vector3).x - mid.x, (su["p"] as Vector3).z - mid.z).length())
+	var cands: Array = []
+	var start := _t * 0.05 + 0.6
+	for i in 12:
+		var ang := start + float(i) * TAU / 12.0
+		for dk: float in [1.0, 1.35, 0.8]:
+			for lift: float in [2.5 + spread * 0.12, 1.75, 3.6 + spread * 0.15]:
+				var cam := mid + Basis(Vector3.UP, ang) * Vector3(0, lift, (3.6 + spread * 1.15) * dk)
+				cands.append([cam, StoryCamera.aim_for(cam, heads, 0.22), -0.4 * float(i) - (0.0 if dk == 1.0 else 3.0) - (0.0 if lift < 3.0 and lift > 2.0 else 2.5)])
+	return cands
+
+
+## A shot that holds a set of things in one frame (people, a rift, a doorway).
+func _shot_group(subs: Array) -> void:
+	if subs.is_empty():
+		return
+	var mid := Vector3.ZERO
+	var spots: Array = []
+	for su in subs:
+		mid += su["p"] as Vector3
+		spots.append(su["p"])
+	mid /= float(subs.size())
+	_make_room(spots)
+	_solver.survey(mid, 22.0, _actors.values() + [scene._figure])
+	var best := _solver.pick(_wide_cands(subs), subs)
+	_take(best, "wide", [])
+	_shot_subs = subs
+	_spirit_park = null
+
+
 func _shot_for(speaker: String, wide: bool) -> void:
-	# Frame whoever is talking: a little to one side, at eye level, the listener's shoulder
-	# just out of frame. Sides alternate so a conversation cuts back and forth.
-	var at := _pos_of(speaker if speaker != "" else "player")
-	var f := _fig(speaker if speaker != "" else "player")
-	var facing := Vector3(sin(f.rotation.y), 0, cos(f.rotation.y)) if f else Vector3.FORWARD
-	if speaker == "player" and scene._figure:
-		facing = Vector3(sin(scene._figure.rotation.y), 0, cos(scene._figure.rotation.y))
-	var right := facing.cross(Vector3.UP).normalized()
-	var eye := 1.5
-	if f == _spirit and _spirit:
-		eye = 0.82
-	var space: PhysicsDirectSpaceState3D = scene.get_world_3d().direct_space_state
+	var who := speaker if speaker != "" else "player"
+	var f := _fig(who)
+	if f == null:
+		who = "player"
+		f = scene._figure
+	var at := _pos_of(who)
 	if wide or speaker == "":
-		# Everyone nearby in one frame, from a little above, drifting slowly round them.
+		# Everyone nearby in one frame, from a little above.
 		var here: Vector3 = scene._player.global_position
-		var mid: Vector3 = here
-		var n := 1
-		var spread := 2.5
+		var subs: Array = [_subject("player", 1.0 if who == "player" else 0.7)]
+		var others: Array = []
 		for k in _actors:
 			var ap: Vector3 = (_actors[k] as Node3D).global_position
-			var d := Vector2(ap.x - here.x, ap.z - here.z).length()
-			if d > 12.0:
+			var dk := Vector2(ap.x - here.x, ap.z - here.z).length()
+			if dk > 12.0:
 				continue
-			mid += ap
-			n += 1
-			spread = maxf(spread, d)
-		mid /= float(n)
-		mid.y = 0.0
-		var look_w := mid + Vector3(0, 1.25, 0)
-		var best_w := look_w + Vector3(0, 2.0, 4.0)
-		var best_len := -1.0
-		# Try a few directions and keep the one with the clearest view (indoors most are walls).
-		for i in 8:
-			var ang := _t * 0.05 + 0.6 + float(i) * TAU / 8.0
-			var want_w := mid + Basis(Vector3.UP, ang) * Vector3(0, 2.6 + spread * 0.12, 4.2 + spread * 0.75)
-			var qw := PhysicsRayQueryParameters3D.create(look_w, want_w)
-			qw.exclude = [scene._player.get_rid()]
-			var hw := space.intersect_ray(qw)
-			var reach := look_w.distance_to(want_w)
-			if not hw.is_empty():
-				reach = look_w.distance_to(hw["position"]) * 0.88
-				want_w = look_w + (want_w - look_w).normalized() * reach
-			if reach > best_len + 0.4:
-				best_len = reach
-				best_w = want_w
-			if hw.is_empty():
-				break
-		_cam_pos = best_w
-		_cam_look = look_w
-		_spirit_park = null
-		_cut_now = _shot_kind != "wide"
-		_shot_kind = "wide"
-		_shot_pair = []
+			if _actors[k] == _spirit and _actors.size() > 1 and str(k) != who:
+				continue
+			others.append([0.0 if str(k) == who else dk, str(k)])
+		# The scene is about whoever is close: people across the room are set dressing.
+		others.sort_custom(func(a, b): return a[0] < b[0])
+		for i in mini(others.size(), 4):
+			var ok := str(others[i][1])
+			subs.append(_subject(ok, 1.0 if ok == who else (0.6 if float(others[i][0]) < 5.0 else 0.25)))
+		if _shot_kind == "wide" and not _shot_subs.is_empty() and _shot_subs.size() == subs.size() and _solver.rate(_cam_pos, _cam_look, subs) > 62.0:
+			_prev_spk = speaker
+			return
+		_shot_group(subs)
 		_prev_spk = speaker
 		return
-	# Two people talking are filmed together, from the side, and the camera stays put while
-	# they go back and forth. It only cuts when somebody else speaks or for a marked moment.
-	if not (_shot_mode in ["close", "low"]):
-		var partner := "player"
-		if speaker == "player":
-			partner = _last_other if (_last_other != "" and _actors.has(_last_other)) else ""
-			if partner == "":
-				var near := 99.0
-				for k in _actors:
-					if _actors[k] == _spirit and _actors.size() > 1:
-						continue
-					var dk := _pos_of(str(k)).distance_to(at)
-					if dk < near and dk > 0.3:
-						near = dk
-						partner = str(k)
-		elif _prev_spk != "" and _prev_spk != speaker and _prev_spk != "player" and _actors.has(_prev_spk) and _pos_of(_prev_spk).distance_to(at) < 7.0:
-			partner = _prev_spk
-		if speaker != "player":
-			_last_other = speaker
-		_prev_spk = speaker
-		if partner != "" and partner != speaker:
-			var b := _pos_of(partner)
-			var gap := Vector2(b.x - at.x, b.z - at.z).length()
-			if gap > 0.5 and gap < 9.0:
-				var pair := [speaker, partner]
-				pair.sort()
-				var fb := _fig(partner)
-				var eye_a := (f.global_position.y + 0.82) if (f == _spirit and _spirit) else 1.5
-				var eye_b := (fb.global_position.y + 0.82) if (fb and fb == _spirit and _spirit) else 1.5
-				var mid := (Vector3(at.x, 0, at.z) + Vector3(b.x, 0, b.z)) / 2.0
-				var look2 := mid + Vector3(0, (eye_a + eye_b) / 2.0 - 0.22, 0)
-				if pair == _shot_pair and _shot_kind == "two":
-					# Same two: hold the shot, lean the framing a touch toward whoever speaks.
-					_cam_look = look2 + (Vector3(at.x, 0, at.z) - mid).limit_length(0.3)
-					return
-				var axis := Vector3(b.x - at.x, 0, b.z - at.z).normalized()
-				var perp := axis.cross(Vector3.UP).normalized()
-				var best_pos := look2 + perp * 3.0
-				var best_reach := -1.0
-				for side: float in [_shot_side, -_shot_side]:
-					# A little toward the listener's end, so the first speaker's face is the one we see.
-					var want2 := mid + perp * side * (2.0 + gap * 0.72) + axis * gap * 0.28 + Vector3(0, look2.y + 0.35, 0)
-					var q2 := PhysicsRayQueryParameters3D.create(look2, want2)
-					q2.exclude = [scene._player.get_rid()]
-					var h2 := space.intersect_ray(q2)
-					var reach2 := look2.distance_to(want2)
-					if not h2.is_empty():
-						reach2 = look2.distance_to(h2["position"]) * 0.86
-						want2 = look2 + (want2 - look2).normalized() * maxf(reach2, 1.3)
-					if reach2 > best_reach + 0.3:
-						best_reach = reach2
-						best_pos = want2
-						_shot_side = side
-					if h2.is_empty():
-						break
-				if best_reach > 1.7:
-					_cam_pos = best_pos
-					_cam_look = look2
-					_push = 0.0
-					_cut_now = true
-					_shot_kind = "two"
-					_shot_pair = pair
-					_spirit_park = null
-					if _spirit and is_instance_valid(_spirit) and f != _spirit and fb != _spirit:
-						_spirit_park = mid - perp * _shot_side * 1.6
-					return
-	else:
-		_prev_spk = speaker
-	_cut_now = true
-	_shot_kind = "single"
-	_shot_pair = []
-	_shot_side = -_shot_side
-	# Over the shoulder: the camera stands just behind whoever is listening.
-	var listener: Vector3 = scene._player.global_position
-	if speaker == "player":
-		# The player answers whoever spoke last; failing that, the nearest person.
-		var best := 99.0
-		listener = at + facing * 2.6
-		if _last_other != "" and _actors.has(_last_other):
-			listener = (_actors[_last_other] as Node3D).global_position
-		else:
+	var is_spirit: bool = _spirit != null and f == _spirit
+	var special := _shot_mode in ["close", "low"]
+	# Who is being spoken to.
+	var partner := "player"
+	if who == "player":
+		partner = _last_other if (_last_other != "" and _actors.has(_last_other)) else ""
+		if partner == "":
+			var near := 99.0
 			for k in _actors:
 				if _actors[k] == _spirit and _actors.size() > 1:
 					continue
-				var p: Vector3 = (_actors[k] as Node3D).global_position
-				var d := Vector2(p.x - at.x, p.z - at.z).length()
-				if d < best and d > 0.3:
-					best = d
-					listener = p
-	elif speaker != "":
-		_last_other = speaker
-	var away := Vector3(listener.x - at.x, 0, listener.z - at.z)
+				var dk := _pos_of(str(k)).distance_to(at)
+				if dk < near and dk > 0.3:
+					near = dk
+					partner = str(k)
+	elif _prev_spk != "" and _prev_spk != who and _prev_spk != "player" and _actors.has(_prev_spk) and _pos_of(_prev_spk).distance_to(at) < 7.0:
+		partner = _prev_spk
+	if who != "player":
+		_last_other = who
+	_prev_spk = speaker
+	var b := _pos_of(partner) if partner != "" else at + Vector3(sin(f.rotation.y), 0, cos(f.rotation.y)) * 2.4
+	# An NPC turns to whoever they talk to as the line starts; you stand the way you stand.
+	var sa := _subject(who, 1.0, b) if who != "player" else _subject(who, 1.0)
+	var gap := Vector2(b.x - at.x, b.z - at.z).length()
+	var best_two: Array = []
+	var pair := [who, partner]
+	pair.sort()
+	# Two people talking are filmed together, from the side, and the camera stays put while
+	# they go back and forth. It only cuts when somebody else speaks, for a marked moment,
+	# or when the view stops being clear.
+	if not special and partner != "" and partner != who and gap > 0.5 and gap < 9.0:
+		var sb := _subject(partner, 0.8, at) if partner == "player" else _subject(partner, 0.8)
+		var subs2: Array = [sa, sb]
+		var ha: Vector3 = (sa["p"] as Vector3) + Vector3(0, float(sa["h"]), 0)
+		var hb: Vector3 = (sb["p"] as Vector3) + Vector3(0, float(sb["h"]), 0)
+		var mid: Vector3 = ((sa["p"] as Vector3) + (sb["p"] as Vector3)) / 2.0
+		_make_room([sa["p"], sb["p"], mid])
+		_solver.survey(mid, 16.0, [f, _fig(partner)] + ([_spirit] if _spirit and is_instance_valid(_spirit) else []))
+		if pair == _shot_pair and _shot_kind == "two" and _solver.rate(_cam_pos, _cam_look, subs2) > 60.0:
+			# Same two: hold the shot, lean the framing a touch toward whoever speaks.
+			_cam_look = StoryCamera.aim_for(_cam_pos, [ha, hb], 0.34) + (Vector3(at.x, 0, at.z) - Vector3(mid.x, 0, mid.z)).limit_length(0.3)
+			return
+		var axis := Vector3(b.x - at.x, 0, b.z - at.z).normalized()
+		var perp := axis.cross(Vector3.UP).normalized()
+		var eye_mid := (ha.y + hb.y) / 2.0
+		var cands: Array = []
+		for side: float in [_shot_side, -_shot_side]:
+			for along: float in [0.28, 0.1, 0.45, -0.12, 0.62]:
+				for dk: float in [1.0, 1.3, 0.8, 1.65]:
+					for lift: float in [0.3, 0.8, 1.4, 2.1]:
+						var cam := Vector3(mid.x, 0, mid.z) + perp * side * (2.0 + gap * 0.72) * dk + axis * gap * along + Vector3(0, eye_mid + lift, 0)
+						var bonus := (0.0 if side == _shot_side else -3.0) - absf(along - 0.28) * 14.0 - absf(dk - 1.0) * 9.0 - (lift - 0.3) * (lift - 0.3) * 7.0
+						cands.append([cam, StoryCamera.aim_for(cam, [ha, hb], 0.34), bonus])
+		best_two = _solver.pick(cands, subs2)
+		if float(best_two[2]) > 66.0:
+			_take(best_two, "two", pair)
+			var off_side: float = ((best_two[0] as Vector3) - mid).dot(perp)
+			if absf(off_side) > 0.01:
+				_shot_side = signf(off_side)
+			_spirit_park = null
+			if _spirit and is_instance_valid(_spirit) and f != _spirit and _fig(partner) != _spirit:
+				_spirit_park = _behind(Vector3(mid.x, 0, mid.z))
+			return
+	# One person: from in front, a little to one side, the listener just out of frame.
+	_shot_side = -_shot_side
+	var away := Vector3(b.x - at.x, 0, b.z - at.z)
 	if away.length() < 0.4:
-		away = facing
-	var is_spirit: bool = _spirit != null and f == _spirit
-	var dist := clampf(away.length(), 1.4, 2.3)
+		away = Vector3(sin(f.rotation.y), 0, cos(f.rotation.y))
+	var d0 := clampf(away.length(), 1.4, 2.3) + 1.1
 	away = away.normalized()
-	right = away.cross(Vector3.UP).normalized()
-	var look := Vector3(at.x, (f.global_position.y if is_spirit else 0.0) + eye, at.z)
-	# A little above eye level, looking slightly down: clears tills and other counter clutter.
-	var lift := 0.15 if is_spirit else 0.42
-	var back := 0.4 if is_spirit else 1.1
-	var side_off := 0.7
-	if _shot_mode == "close" and not is_spirit:
+	var head: Vector3 = (sa["p"] as Vector3) + Vector3(0, float(sa["h"]), 0)
+	_make_room([sa["p"]])
+	_solver.survey(sa["p"], 12.0, [f] + ([_spirit] if _spirit and is_instance_valid(_spirit) else []))
+	var dists: Array = [d0, d0 + 0.9, d0 - 0.6, d0 + 2.0]
+	var lifts: Array = [0.42, 0.9, 0.1, 1.5]
+	var frac := 0.32
+	if is_spirit:
+		dists = [1.7, 2.3, 1.3, 3.0]
+		lifts = [0.15, 0.45, -0.1, 0.8]
+		frac = 0.2
+	elif _shot_mode == "close":
 		# Right in on the face for the lines that matter.
-		back = 0.15
-		lift = 0.2
-		side_off = 0.45
-	elif _shot_mode == "low" and not is_spirit:
+		dists = [1.45, 1.8, 1.2, 2.3]
+		lifts = [0.2, 0.05, 0.45, 0.8]
+		frac = 0.16
+	elif _shot_mode == "low":
 		# From below, looking up: someone who thinks they own the street.
-		back = 0.7
-		lift = -0.75
-		side_off = 0.9
-	var want := Vector3(at.x, 0, at.z) + away * (dist + back) + right * side_off * _shot_side + Vector3(0, look.y + lift, 0)
-	# Never put the camera inside a wall or a shelf: pull it in until the view is clear.
-	var from := look + Vector3(0, lift, 0)
-	var q := PhysicsRayQueryParameters3D.create(from, want)
-	q.exclude = [scene._player.get_rid()]
-	var hit := space.intersect_ray(q)
-	if not hit.is_empty() and from.distance_to(hit["position"]) < 1.5:
-		# Something right beside the speaker (a counter, a railing): shoot from the other
-		# shoulder and higher up instead of pushing the lens into it.
-		_shot_side = -_shot_side
-		want = Vector3(at.x, 0, at.z) + away * (dist + 1.1) + right * 0.7 * _shot_side + Vector3(0, look.y + lift + 0.5, 0)
-		from = look + Vector3(0, lift + 0.5, 0)
-		q = PhysicsRayQueryParameters3D.create(from, want)
-		q.exclude = [scene._player.get_rid()]
-		hit = space.intersect_ray(q)
-	if _auto and "--story-rays" in OS.get_cmdline_user_args():
-		print("RAY step ", step, " speaker=", speaker, " from=", from.snapped(Vector3(0.1, 0.1, 0.1)), " want=", want.snapped(Vector3(0.1, 0.1, 0.1)), " hit=", (hit["position"] as Vector3).snapped(Vector3(0.1, 0.1, 0.1)) if not hit.is_empty() else "none", " ", (hit["collider"] as Node).get_parent().name if not hit.is_empty() else "")
-	if not hit.is_empty():
-		var hp: Vector3 = hit["position"]
-		want = from + (hp - from) * 0.86
-		if want.distance_to(from) < 1.1:
-			want = from + (want - from).normalized() * 1.1
-	_cam_pos = want
-	# Aim at the chest, not the eyes: the face then sits in the upper half of the frame,
-	# clear of the dialogue box.
-	_cam_look = look - Vector3(0, 0.12 if is_spirit else (0.12 if _shot_mode in ["close", "low"] else 0.3), 0)
-	_push = 0.0
+		dists = [2.0, 2.5, 1.6, 3.0]
+		lifts = [-0.75, -0.5, -0.95, -0.2]
+		frac = 0.12
+	var cands1: Array = []
+	for ai in 8:
+		var ang: float = [0.32, -0.32, 0.62, -0.62, 1.0, -1.0, 1.4, -1.4][ai] * _shot_side
+		var dir := Basis(Vector3.UP, ang) * away
+		for di in dists.size():
+			for li in lifts.size():
+				var cam1 := Vector3(at.x, 0, at.z) + dir * float(dists[di]) + Vector3(0, head.y - 0.06 + float(lifts[li]), 0)
+				cands1.append([cam1, StoryCamera.aim_for(cam1, [head], frac), -1.6 * float(ai) - 3.0 * float(di) - 2.5 * float(li)])
+	var best_one := _solver.pick(cands1, [sa])
+	if not best_two.is_empty() and float(best_two[2]) > float(best_one[2]) + 4.0:
+		# Nothing clean from the front either: the two-shot was the clearer view after all.
+		_take(best_two, "two", pair)
+		_spirit_park = null
+		return
+	if float(best_one[2]) < 45.0 and not special:
+		# Boxed in. Step back and show the whole scene instead.
+		var keep_cam := best_one
+		var subs_w: Array = [sa]
+		if partner != "":
+			subs_w.append(_subject(partner, 0.7, at))
+		_solver.survey(sa["p"], 22.0, [f, _fig(partner)] + ([_spirit] if _spirit and is_instance_valid(_spirit) else []))
+		var best_w := _solver.pick(_wide_cands(subs_w), subs_w)
+		if float(best_w[2]) > float(keep_cam[2]) + 6.0:
+			_take(best_w, "wide", [])
+			_shot_subs = subs_w
+			_spirit_park = null
+			return
+	_take(best_one, "single", [])
 	# Lumen keeps out of the lens: she hovers beside the conversation, on the far side.
 	_spirit_park = null
 	if _spirit and is_instance_valid(_spirit) and not is_spirit:
-		var d2 := Vector3(listener.x - at.x, 0, listener.z - at.z)
-		_spirit_park = Vector3(at.x, 0, at.z) + d2 * 0.2 - right * _shot_side * 1.5
+		var to_cam: Vector3 = (best_one[0] as Vector3) - at
+		var rt := Vector3(to_cam.x, 0, to_cam.z).normalized().cross(Vector3.UP)
+		_spirit_park = _behind(Vector3(at.x, 0, at.z))
 
 
 ## A character's portrait. They are drawn live from the model, and that little stage can be
 ## thrown away behind our back (a new look, a settings change), so make sure it still exists.
 func _face(key: String) -> Texture2D:
 	var tex := Portraits.get_portrait(key)
+	if key == "lumen":
+		LumenSpirit.wake(12.0)
+		return tex
 	if tex is ViewportTexture and not Avatars._stages.has(key):
 		Portraits._forget(key)
 		tex = Portraits.get_portrait(key)
@@ -868,6 +1055,11 @@ func _face_each_other(speaker: String) -> void:
 	if f == null or f.is_processing() == false:
 		return
 	var to: Vector3 = scene._player.global_position - f.global_position
+	# Answering somebody else who just spoke and stands close by: look at them, not at you.
+	if _prev_spk != "" and _prev_spk != speaker and _prev_spk != "player" and _actors.has(_prev_spk):
+		var other: Vector3 = (_actors[_prev_spk] as Node3D).global_position - f.global_position
+		if Vector2(other.x, other.z).length() < 7.0 and Vector2(other.x, other.z).length() > 0.3:
+			to = other
 	var tw := create_tween()
 	tw.tween_property(f, "rotation:y", lerp_angle(f.rotation.y, atan2(to.x, to.z), 1.0), 0.3)
 	var back: Vector3 = f.global_position - scene._player.global_position
@@ -890,7 +1082,22 @@ func _say(st: Dictionary) -> void:
 	_face_each_other(who)
 	_speaker(who if not st.has("anim") else "")
 	_shot_mode = str(st.get("cam", ""))
-	_shot_for(who, _shot_mode == "wide")
+	_caption("")
+	if st.has("shot"):
+		_start_directed(st["shot"])
+	elif st.get("keep", false) and not _dir.is_empty():
+		pass
+	else:
+		if not _dir.is_empty():
+			_dir = {}
+			_cam.fov = StoryCamera.FOV
+			_shot_kind = ""
+		_shot_for(who, _shot_mode == "wide")
+	if _audit and _dir.is_empty():
+		var asub: Array = [_subject(who if who != "" else "player")]
+		asub[0]["f"] = Vector3.ZERO
+		var rating := _solver.rate(_cam_pos, _cam_look, asub)
+		print("CAM %s step %d %s %s %s %s" % ["ok " if rating > 60.0 else "BAD", step, _shot_kind, who, _solver.explain(_cam_pos, _cam_look, asub), str(_solver.last)])
 	if st.has("fx"):
 		_do_flash_or_shake(str(st["fx"]))
 	if st.has("sfx") and not _skip:
@@ -902,6 +1109,8 @@ func _say(st: Dictionary) -> void:
 		if df is RoamFigure:
 			(df as RoamFigure).gesture(str(st["do"]), 0.2)
 			(df as RoamFigure)._hold = 2.2
+		elif df is LumenSpirit:
+			(df as LumenSpirit).gesture(str(st["do"]))
 	if st.has("react") and not _skip:
 		var marks: Dictionary = st["react"]
 		for rk in marks:
@@ -934,6 +1143,7 @@ func _say(st: Dictionary) -> void:
 		m.add_theme_constant_override("margin_left", 196)
 		_portrait.visible = true
 		_portrait.texture = _face(who)
+		_portrait.self_modulate = Color(1.45, 1.45, 1.55) if who == "curator" else Color.WHITE
 		_text.text = text
 		# A new speaker steps in: the portrait and the name tab slide up into place.
 		if changed and not _skip:
@@ -973,8 +1183,8 @@ func _say(st: Dictionary) -> void:
 		await get_tree().create_timer(0.5).timeout
 		# --story-shots=3,17,40 saves a picture of those steps (for checking the staging).
 		for a in OS.get_cmdline_user_args():
-			if a.begins_with("--story-shots=") and str(step) in a.trim_prefix("--story-shots=").split(","):
-				await get_tree().create_timer(1.6).timeout
+			if a.begins_with("--story-shots=") and (a == "--story-shots=all" or str(step) in a.trim_prefix("--story-shots=").split(",")):
+				await get_tree().create_timer(1.0).timeout
 				await RenderingServer.frame_post_draw
 				get_viewport().get_texture().get_image().save_png("/tmp/story_%s_%d.png" % [chapter, step])
 				print("STORY shot ", step)
@@ -1105,6 +1315,9 @@ func _choose(options: Array) -> void:
 	while picked[0] < 0:
 		await get_tree().process_frame
 	flags[str(options[picked[0]][1])] = true
+	# Choices whose name starts with "m_" are remembered for good: later chapters look back.
+	if str(options[picked[0]][1]).begins_with("m_"):
+		StoryProgress.remember(str(options[picked[0]][1]))
 	for c in _choice_box.get_children():
 		c.queue_free()
 	Sfx.play("click")
@@ -1116,6 +1329,12 @@ func _do_goal(st: Dictionary) -> void:
 	var at: Vector3 = st["at"] if st.has("at") else _pos_of(str(st.get("who", "player")))
 	_goal = st
 	_goal_text.text = Loc.t(str(st["goal"]))
+	# How to do it, in one line. Every goal has one: the default is the beacon.
+	var how := str(st.get("how", "Follow the gold beacon. Lumen flies ahead to show the way." if (_spirit and is_instance_valid(_spirit)) else "Follow the gold beacon. The arrow at the top shows which way."))
+	_goal_how.text = Loc.t(how)
+	_goal_how.visible = how != ""
+	_lead_to = at
+	_hint_t = 0.0
 	_goal_box.visible = true
 	_goal_box.modulate.a = 0.0
 	create_tween().tween_property(_goal_box, "modulate:a", 1.0, 0.4)
@@ -1138,8 +1357,21 @@ func _do_goal(st: Dictionary) -> void:
 			scene.extras.waypoint = Vector3(at.x, 0, at.z)
 		var d := Vector2(scene._player.global_position.x - at.x, scene._player.global_position.z - at.z).length()
 		_goal_dist.text = Loc.t("%d m away") % int(d)
+		_lead_to = at
 		if d < r:
 			break
+		# Standing around? Lumen says it again, in her own words.
+		_hint_t += get_process_delta_time()
+		if _hint_t > 28.0 and _spirit is LumenSpirit:
+			_hint_t = 0.0
+			var hint := str(st.get("hint", "This way! %s. Follow me!"))
+			if "%s" in hint:
+				hint = Loc.t(hint) % Loc.t(str(st["goal"]))
+			Router.toast("Lumen:  " + Loc.t(hint))
+			(_spirit as LumenSpirit).speak(2.0)
+			(_spirit as LumenSpirit).hop()
+			Sfx.play("blip", -8.0, 1.25)
+	_lead_to = null
 	scene.extras.clear_waypoint()
 	_goal_box.visible = false
 	_goal = {}
@@ -1162,6 +1394,10 @@ func _start_duel(d: Dictionary) -> void:
 		"difficulty": d.get("difficulty", 1), "field": d.get("field", "battlecity"), "turbo": d.get("turbo", false),
 		"story": true, "lose_ok": d.get("lose_ok", false), "return_to": Router.ROAM, "continue_label": Loc.t("Continue Story"),
 	}
+	# Boss rules: {"opp_lp": 12000, "lp": 8000, "rule": "The Curator starts with 12000 Life Points."}
+	for k in ["opp_lp", "my_lp", "hand", "rule", "music"]:
+		if d.has(k):
+			Router.duel_config[k] = d[k]
 	_cutscene(true)
 	_box.visible = false
 	await _versus(str(d["opponent"]))
@@ -1192,7 +1428,12 @@ func _act_step(st: Dictionary) -> void:
 	_box.visible = false
 	_shot_mode = str(st.get("cam", ""))
 	_face_each_other(who)
-	_shot_for(who, _shot_mode == "wide")
+	if st.has("shot"):
+		_start_directed(st["shot"])
+	elif not (st.get("keep", false) and not _dir.is_empty()):
+		_dir = {}
+		_cam.fov = StoryCamera.FOV
+		_shot_for(who, _shot_mode == "wide")
 	var f := _fig(who)
 	if f is RoamFigure and st.has("do"):
 		var motion := str(st["do"])
@@ -1291,6 +1532,390 @@ void fragment() {
 	_shake = 0.8
 
 
+# ------------------------------------------------------------------ cinematics
+# Directed camera moves, captions, and Echoes (memory scenes). Steps:
+#   {"shot": {...}, "cap": "caption", "bg": true}      a camera move; "bg" lets the next lines play over it
+#   {"s": ..., "t": ..., "shot": {...}} or "keep": true  a line spoken over a directed move
+#   {"cap": "text"}                                      a caption over whatever the camera shows
+#   {"echo": "Title", "sub": "..."} ... {"echo": false}  everything between plays as a memory
+# Shot spec: "on" who or where it looks (key or Vector3), "on_to" where the look ends up,
+#   "ang" yaw of the camera around that point (number or [from, to]), or "face" the same but
+#   measured from the way the person faces (0 = straight in front of them),
+#   "d" distance, "h" camera height, "look_h" height of the point it looks at,
+#   "from"/"to" exact camera positions instead, "t" seconds, "fov" (number or [from, to]).
+
+func _pair(v, fallback: float) -> Array:
+	if v == null:
+		return [fallback, fallback]
+	if v is Array:
+		return [float(v[0]), float(v[1])]
+	return [float(v), float(v)]
+
+
+func _spot(v) -> Vector3:
+	if v is Vector3:
+		return v
+	return _pos_of(str(v))
+
+
+func _start_directed(spec: Dictionary) -> void:
+	var on = spec.get("on", "player")
+	var d := {"on": on, "on_to": spec.get("on_to", null), "t": 0.0, "dur": float(spec.get("t", 4.0)),
+		"d": _pair(spec.get("d", null), 4.0), "h": _pair(spec.get("h", null), 1.7),
+		"fov": _pair(spec.get("fov", null), StoryCamera.FOV), "look_h": float(spec.get("look_h", 1.25 if on is String else 0.0)),
+		"look_h_to": float(spec.get("look_h_to", spec.get("look_h", 1.25 if spec.get("on_to", on) is String else 0.0)))}
+	var base := 0.0
+	if spec.has("face"):
+		var f := _fig(str(on)) if on is String else null
+		base = f.rotation.y if f else 0.0
+		d["ang"] = _pair(spec["face"], 0.0)
+		d["ang"] = [base + float(d["ang"][0]), base + float(d["ang"][1])]
+	else:
+		d["ang"] = _pair(spec.get("ang", null), 0.0)
+	if spec.has("from"):
+		d["from"] = spec["from"]
+		d["to"] = spec.get("to", spec["from"])
+	elif maxf(float(d["d"][0]), float(d["d"][1])) <= 9.5:
+		# (Big establishing shots stand far off and high up: nothing to clear.)
+		_clear_view(d, spec.has("face"))
+	_dir = d
+	_shot_kind = "directed"
+	_shot_pair = []
+	_spirit_park = null
+	_eval_directed(0.0)
+	if _echo_on and not _skip:
+		# A new panel of the memory: a soft white blink between pictures.
+		_flash.color = Color(1, 1, 1, 0.55)
+		create_tween().tween_property(_flash, "color", Color(1, 1, 1, 0), 0.45)
+
+
+## A directed move says roughly where the camera goes. If a rack, a post or a wall would sit
+## between the lens and what it is looking at, swing the whole move round a little until the
+## view is clear. The move keeps its shape; only where it stands changes.
+func _clear_view(d: Dictionary, face_shot := false) -> void:
+	var feet := _spot(d["on"])
+	var look_h := maxf(0.6, float(d["look_h"]))
+	var cast: Array = [scene._figure]
+	if d["on"] is String and _fig(str(d["on"])) != null:
+		cast.append(_fig(str(d["on"])))
+	_solver.survey(feet, maxf(float(d["d"][0]), float(d["d"][1])) + 6.0, cast)
+	var sub: Array = [StoryCamera.sub(feet, look_h, 1.0)]
+	if not (d["on"] is String):
+		# Looking at a place: what matters is the people standing around it.
+		sub = []
+		for k in _actors:
+			var ap: Vector3 = (_actors[k] as Node3D).global_position
+			if Vector2(ap.x - feet.x, ap.z - feet.z).length() < 4.5 and absf(ap.y - feet.y) < 2.0:
+				sub.append(_subject(str(k), 1.0))
+				cast.append(_actors[k])
+		if sub.is_empty() or sub.size() > 2:
+			return
+		_solver.survey(feet, maxf(float(d["d"][0]), float(d["d"][1])) + 6.0, cast)
+	var swings: Array = [0.0, 0.3, -0.3, 0.6, -0.6, 0.95, -0.95, 1.4, -1.4]
+	if face_shot:
+		# A shot of somebody's face stays in front of them.
+		swings = [0.0, 0.25, -0.25, 0.5, -0.5, 0.75, -0.75]
+		var ff := _fig(str(d["on"])) if d["on"] is String else null
+		if ff:
+			sub[0]["f"] = Vector3(sin(ff.rotation.y), 0, cos(ff.rotation.y))
+	var best := 0.0
+	var best_s := -1e9
+	var base_s := -1e9
+	for off: float in swings:
+		var total := 0.0
+		for k: float in [0.0, 0.5, 1.0]:
+			var ang := lerpf(float(d["ang"][0]), float(d["ang"][1]), k) + off
+			var cam := feet + Vector3(sin(ang), 0, cos(ang)) * lerpf(float(d["d"][0]), float(d["d"][1]), k) + Vector3(0, lerpf(float(d["h"][0]), float(d["h"][1]), k), 0)
+			total += _solver.rate(cam, feet + Vector3(0, float(d["look_h"]), 0), sub)
+		total -= absf(off) * 9.0
+		if off == 0.0:
+			base_s = total
+			best_s = total
+			if total > 285.0:
+				break
+		elif total > best_s + 1.0 and total > base_s + 60.0:
+			# Only leave the planned line for a view that is clearly better.
+			best_s = total
+			best = off
+	d["ang"] = [float(d["ang"][0]) + best, float(d["ang"][1]) + best]
+	if _audit:
+		print("DIRECTED step ", step, " swing ", best, " score ", snappedf(best_s / 3.0, 0.1))
+
+
+func _eval_directed(delta: float) -> void:
+	var d := _dir
+	d["t"] = float(d["t"]) + delta
+	var k := clampf(float(d["t"]) / maxf(0.01, float(d["dur"])), 0.0, 1.0)
+	k = k * k * (3.0 - 2.0 * k)
+	var a := _spot(d["on"]) + Vector3(0, float(d["look_h"]), 0)
+	var look := a
+	if d["on_to"] != null:
+		look = a.lerp(_spot(d["on_to"]) + Vector3(0, float(d["look_h_to"]), 0), k)
+	var cam: Vector3
+	if d.has("from"):
+		cam = (d["from"] as Vector3).lerp(d["to"], k)
+	else:
+		var ang := lerpf(float(d["ang"][0]), float(d["ang"][1]), k)
+		var dist := lerpf(float(d["d"][0]), float(d["d"][1]), k)
+		var feet := look - Vector3(0, lerpf(float(d["look_h"]), float(d["look_h_to"]), k), 0)
+		cam = feet + Vector3(sin(ang), 0, cos(ang)) * dist + Vector3(0, lerpf(float(d["h"][0]), float(d["h"][1]), k), 0)
+		# Never through a wall: come in along the line of sight until the view is clear.
+		var hit := _solver._ray(look, cam)
+		if hit >= 0.0:
+			cam = look + (cam - look).normalized() * maxf(0.8, hit * 0.9)
+	_cam_pos = cam
+	_cam_look = look
+	_cam.fov = lerpf(float(d["fov"][0]), float(d["fov"][1]), k)
+	_cam.global_position = cam + Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * _shake * 0.08
+	if cam.distance_to(look) > 0.05:
+		_cam.look_at(look, Vector3.UP)
+
+
+func _shot_step(st: Dictionary) -> void:
+	_cutscene(true)
+	_light_shot()
+	_box.visible = false
+	_start_directed(st["shot"])
+	if st.has("sfx") and not _skip:
+		Sfx.play(str(st["sfx"]), -5.0)
+	if st.has("music"):
+		Music.play(str(st["music"]))
+	if st.has("cap"):
+		_caption(str(st["cap"]))
+	if st.get("bg", false) or _skip:
+		return
+	var left := float(st["shot"].get("t", 4.0))
+	if st.has("cap"):
+		left = maxf(left, 1.6 + str(st["cap"]).length() * 0.045)
+	if _auto:
+		left = 0.4
+		await _auto_shot()
+	_advance_wanted = false
+	while left > 0.0 and not _skip and not _advance_wanted:
+		await get_tree().process_frame
+		left -= get_process_delta_time()
+	_advance_wanted = false
+	if st.has("cap"):
+		_caption("")
+
+
+func _auto_shot() -> void:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--story-shots=") and (a == "--story-shots=all" or str(step) in a.trim_prefix("--story-shots=").split(",")):
+			_dir["t"] = float(_dir.get("dur", 1.0)) * 0.5
+			await get_tree().create_timer(1.0).timeout
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png("/tmp/story_%s_%d.png" % [chapter, step])
+			print("STORY shot ", step)
+
+
+## A line of narration on the picture itself (no box): for cinematics and memories.
+func _caption(text: String) -> void:
+	if _cap_tw and _cap_tw.is_valid():
+		_cap_tw.kill()
+	if text == "":
+		if _cap.visible:
+			_cap_tw = create_tween()
+			_cap_tw.tween_property(_cap, "modulate:a", 0.0, 0.25)
+			_cap_tw.tween_callback(func(): _cap.visible = false)
+		return
+	_cap.text = Loc.t(text).replace("{player}", Profile.duelist_name)
+	_cap.visible = true
+	_cap.modulate.a = 0.0
+	_cap_tw = create_tween()
+	_cap_tw.tween_property(_cap, "modulate:a", 1.0, 0.35)
+
+
+func _cap_step(st: Dictionary) -> void:
+	_cutscene(true)
+	_box.visible = false
+	_caption(str(st["cap"]))
+	if _skip:
+		return
+	var left := 1.8 + str(st["cap"]).length() * 0.05
+	if _auto:
+		left = 0.3
+	_advance_wanted = false
+	while left > 0.0 and not _skip and not _advance_wanted:
+		await get_tree().process_frame
+		left -= get_process_delta_time()
+	_advance_wanted = false
+	_caption("")
+
+
+## A memory begins (or ends): the picture loses its color, the edges soften, a frame closes in.
+func _echo(st: Dictionary) -> void:
+	var on: bool = not (st["echo"] is bool)
+	if on == _echo_on:
+		return
+	_cutscene(true)
+	_box.visible = false
+	_caption("")
+	Sfx.play("special", -6.0, 0.7 if on else 1.2)
+	if not _skip:
+		var tw := create_tween()
+		tw.tween_property(_flash, "color", Color(1, 1, 1, 1), 0.3)
+		await tw.finished
+	_echo_on = on
+	# A memory is somebody else's: you are not in the picture.
+	scene._figure.visible = not on
+	if on:
+		flags["_echo"] = str(st["echo"])
+	else:
+		flags.erase("_echo")
+	_echo_fx.visible = on
+	_echo_frame.visible = on
+	_echo_tag.visible = on
+	if on:
+		_echo_tint = st.get("tint", Color(1.0, 0.9, 0.74))
+		(_echo_fx.material as ShaderMaterial).set_shader_parameter("tint", _echo_tint)
+		_echo_tag.text = "  " + Loc.t("ECHO") + "  ·  " + Loc.t(str(st["echo"])).to_upper() + "  "
+		_echo_music = Music._wanted
+		Music.play(str(st.get("music", "memory")))
+		if st.has("sub") and not _skip:
+			await _title_card(str(st["echo"]), str(st["sub"]), "Echo")
+	else:
+		_dir = {}
+		_cam.fov = StoryCamera.FOV
+		if _echo_music != "":
+			Music.play(_echo_music)
+	create_tween().tween_property(_flash, "color", Color(1, 1, 1, 0), 0.7)
+
+
+const ECHO_SHADER := """
+shader_type canvas_item;
+uniform sampler2D screen : hint_screen_texture, filter_linear;
+uniform vec3 tint = vec3(1.0, 0.9, 0.74);
+float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+void fragment() {
+	vec2 uv = SCREEN_UV;
+	vec2 px = SCREEN_PIXEL_SIZE;
+	float d = distance(uv, vec2(0.5));
+	float soft = smoothstep(0.22, 0.62, d) * 3.5;
+	vec3 c = texture(screen, uv).rgb * 0.4;
+	c += texture(screen, uv + vec2(px.x, px.y) * soft).rgb * 0.15;
+	c += texture(screen, uv + vec2(-px.x, px.y) * soft).rgb * 0.15;
+	c += texture(screen, uv + vec2(px.x, -px.y) * soft).rgb * 0.15;
+	c += texture(screen, uv + vec2(-px.x, -px.y) * soft).rgb * 0.15;
+	float g = dot(c, vec3(0.299, 0.587, 0.114));
+	vec3 mem = mix(vec3(g), c, 0.3) * tint * 1.12 + vec3(0.035);
+	mem = mix(mem, vec3(1.0), smoothstep(0.75, 1.0, g) * 0.35);
+	mem += (hash(uv * 900.0 + fract(TIME) * 37.0) - 0.5) * 0.06;
+	mem *= mix(0.4, 1.0, smoothstep(0.82, 0.28, d));
+	COLOR = vec4(mem, 1.0);
+}
+"""
+
+
+func _build_cine_ui() -> void:
+	_echo_fx = ColorRect.new()
+	_echo_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_echo_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = ECHO_SHADER
+	var sm := ShaderMaterial.new()
+	sm.shader = sh
+	_echo_fx.material = sm
+	_echo_fx.visible = false
+	_ui.add_child(_echo_fx)
+	_ui.move_child(_echo_fx, 0)
+	# The frame of the picture: a memory is something you look at, not somewhere you are.
+	_echo_frame = Panel.new()
+	_echo_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_echo_frame.offset_left = 46
+	_echo_frame.offset_right = -46
+	_echo_frame.offset_top = 96
+	_echo_frame.offset_bottom = -96
+	_echo_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fs := StyleBoxFlat.new()
+	fs.bg_color = Color(0, 0, 0, 0)
+	fs.border_color = Color(1, 0.98, 0.92, 0.9)
+	fs.set_border_width_all(5)
+	fs.set_corner_radius_all(14)
+	fs.shadow_color = Color(1, 0.95, 0.8, 0.25)
+	fs.shadow_size = 18
+	_echo_frame.add_theme_stylebox_override("panel", fs)
+	_echo_frame.visible = false
+	_ui.add_child(_echo_frame)
+	_ui.move_child(_echo_frame, 1)
+	_echo_tag = UITheme.label("", 22, Comic.INK, UITheme.semi_font())
+	_echo_tag.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	_echo_tag.offset_left = 78
+	_echo_tag.offset_top = 82
+	var ts := StyleBoxFlat.new()
+	ts.bg_color = Color(1, 0.98, 0.92, 0.95)
+	ts.set_corner_radius_all(6)
+	ts.content_margin_top = 3
+	ts.content_margin_bottom = 3
+	_echo_tag.add_theme_stylebox_override("normal", ts)
+	_echo_tag.visible = false
+	_ui.add_child(_echo_tag)
+	_ui.move_child(_echo_tag, 2)
+	_cap = UITheme.label("", 34, Color(1, 1, 1), UITheme.semi_font())
+	_cap.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_cap.offset_left = 220
+	_cap.offset_right = -220
+	_cap.offset_top = -250
+	_cap.offset_bottom = -112
+	_cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_cap.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	_cap.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_cap.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_cap.add_theme_constant_override("outline_size", 10)
+	_cap.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
+	_cap.add_theme_constant_override("shadow_offset_y", 3)
+	_cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_cap.visible = false
+	_ui.add_child(_cap)
+
+
+## The names at the very end.
+func _credits(st: Dictionary) -> void:
+	_cutscene(true)
+	_box.visible = false
+	_caption("")
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(shade)
+	var tw := create_tween()
+	tw.tween_property(shade, "color:a", 1.0, 1.2)
+	await tw.finished
+	var v := VBoxContainer.new()
+	v.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	v.add_theme_constant_override("separation", 10)
+	v.alignment = BoxContainer.ALIGNMENT_BEGIN
+	shade.add_child(v)
+	for line in st["credits"]:
+		var txt := str(line)
+		var big := txt.begins_with("#")
+		var l := UITheme.label(Loc.t(txt.trim_prefix("#")).replace("{player}", Profile.duelist_name), 58 if big else 28, UITheme.GOLD if big else Color(0.92, 0.95, 1.0), UITheme.title_font() if big else UITheme.semi_font())
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size = Vector2(0, 110 if big else 0)
+		l.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		v.add_child(l)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var h := get_viewport().get_visible_rect().size.y
+	v.position.y = h
+	var total := v.size.y + h
+	var dur := total / 95.0
+	if _auto:
+		dur = 1.0
+	var roll := create_tween()
+	roll.tween_property(v, "position:y", -v.size.y, dur)
+	_advance_wanted = false
+	_skip = false
+	while roll.is_running() and not _skip:
+		if _advance_wanted:
+			roll.set_speed_scale(6.0)
+		await get_tree().process_frame
+	roll.kill()
+	_advance_wanted = false
+	shade.queue_free()
+
+
 ## A blank card in the Echo Deck fills in.
 func _bond(st: Dictionary) -> void:
 	_cutscene(true)
@@ -1299,6 +1924,10 @@ func _bond(st: Dictionary) -> void:
 	if id != 0 and not CardData.get_card(id).is_empty():
 		Collection.owned[id] = mini(3, int(Collection.owned.get(id, 0)) + 1)
 		Collection.save()
+	StoryProgress.remember("bond_" + str(st["bond"]).to_lower().replace(" ", "_"))
+	if _spirit is LumenSpirit:
+		(_spirit as LumenSpirit).set_bonds(StoryProgress.bonds())
+		(_spirit as LumenSpirit).spin()
 	var shade := ColorRect.new()
 	shade.color = Color(0, 0, 0, 0.0)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1444,6 +2073,11 @@ static func begin(id: String, resume := false) -> void:
 		at = int(StoryProgress.position()["step"])
 	else:
 		StoryProgress.save_position(id, 0, {})
+	# Dev: --story-step=N starts the chapter at that step (for checking one scene).
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--story-step="):
+			at = clampi(int(a.trim_prefix("--story-step=")), 0, maxi(0, steps.size() - 1))
+			StoryProgress.save_position(id, at, {})
 	# The scene that step belongs to decides where to load.
 	var sc := {}
 	for i in mini(at + 1, steps.size()):
@@ -1471,7 +2105,7 @@ func _process(delta: float) -> void:
 		_more.position.y += sin(_t * 6.0) * 0.25
 	# Actors walking to their marks.
 	for m in _moving.duplicate():
-		var f: RoamFigure = m[0]
+		var f: Node3D = m[0]
 		if not is_instance_valid(f):
 			_moving.erase(m)
 			continue
@@ -1479,6 +2113,8 @@ func _process(delta: float) -> void:
 		var flat := Vector3(to.x - f.global_position.x, 0, to.z - f.global_position.z)
 		if flat.length() < 0.15:
 			f.set_speed(0.0)
+			if absf(to.y - f.global_position.y) < 1.0:
+				f.global_position.y = to.y
 			var face = m[3] if m.size() > 3 else null
 			if face is String:
 				var look := _pos_of(str(face)) - f.global_position
@@ -1493,7 +2129,9 @@ func _process(delta: float) -> void:
 		f.set_speed(float(m[2]))
 	# Lumen bobs in the air and trails the player between scenes.
 	if _spirit and is_instance_valid(_spirit):
-		_spirit.position.y = 1.1 + sin(_t * 2.2) * 0.12
+		_spirit.position.y = scene._player.global_position.y + 1.2 + sin(_t * 2.2) * 0.12
+		if _cut and _spirit is LumenSpirit:
+			(_spirit as LumenSpirit).look_at_point = null
 		if _cut and _spirit_park != null:
 			var park: Vector3 = _spirit_park
 			var sp := _spirit.global_position
@@ -1501,7 +2139,20 @@ func _process(delta: float) -> void:
 			_spirit.global_position = Vector3(lerpf(sp.x, park.x, k), sp.y, lerpf(sp.z, park.z, k))
 			var mid: Vector3 = _cam_look - _spirit.global_position
 			_spirit.rotation.y = lerp_angle(_spirit.rotation.y, atan2(mid.x, mid.z), k)
+		elif not _cut and _lead_to != null and Vector2((_lead_to as Vector3).x - scene._player.global_position.x, (_lead_to as Vector3).z - scene._player.global_position.z).length() > 4.0:
+			# A goal is open: she flies a few steps ahead, toward it, and looks back for you.
+			var lead: Vector3 = _lead_to
+			var pp: Vector3 = scene._player.global_position
+			var dirg := Vector3(lead.x - pp.x, 0, lead.z - pp.z).normalized()
+			var ahead: Vector3 = pp + dirg * 2.6 + dirg.cross(Vector3.UP) * 0.5
+			var sp2 := _spirit.global_position
+			var kk := clampf(delta * 3.5, 0.0, 1.0)
+			_spirit.global_position = Vector3(lerpf(sp2.x, ahead.x, kk), pp.y + 1.25 + sin(_t * 2.2) * 0.12, lerpf(sp2.z, ahead.z, kk))
+			if _spirit is LumenSpirit:
+				(_spirit as LumenSpirit).look_at_point = (pp + Vector3(0, 1.4, 0)) if fmod(_t, 5.0) < 1.6 else (lead + Vector3(0, 1.2, 0))
 		elif not _cut:
+			if _spirit is LumenSpirit:
+				(_spirit as LumenSpirit).look_at_point = null
 			var want: Vector3 = scene._player.global_position + Basis(Vector3.UP, scene._yaw) * Vector3(0.8, 0, 0.6)
 			var p := _spirit.global_position
 			_spirit.global_position = Vector3(lerpf(p.x, want.x, clampf(delta * 3.0, 0.0, 1.0)), p.y, lerpf(p.z, want.z, clampf(delta * 3.0, 0.0, 1.0)))
@@ -1512,7 +2163,10 @@ func _process(delta: float) -> void:
 		if cam:
 			var d := cam.global_position - blade.global_position
 			blade.rotation.y = atan2(d.x, d.z)
-	if _cut:
+	if _cut and not _dir.is_empty():
+		_shake = maxf(0.0, _shake - delta)
+		_eval_directed(delta)
+	elif _cut:
 		_shake = maxf(0.0, _shake - delta)
 		var w := clampf(delta * 4.5, 0.0, 1.0)
 		# No shot is ever quite still: the camera creeps in while a line is on screen.

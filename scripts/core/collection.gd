@@ -104,6 +104,12 @@ func _ready() -> void:
 		_adopt_old_deck()
 	if owned.is_empty():
 		_starter()
+	# Lumen, your partner: every duelist has her card, old saves included.
+	if int(owned.get(CardData.LUMEN, 0)) < 1:
+		owned[CardData.LUMEN] = 1
+		if not main.has(CardData.LUMEN) and main.size() < 60:
+			main.append(CardData.LUMEN)
+		save.call_deferred()
 	_fill_slots()
 	if not decks_owned.has("echo"):
 		decks_owned.append("echo")
@@ -499,6 +505,13 @@ func reward(won: bool, difficulty: int, info := {}) -> int:
 			beaten[opp] = true
 			record["beaten"] = beaten
 			last_reward.append(["First win against this duelist", 100])
+			# And a card out of their deck: their ace if they have one, else their best.
+			var prize := _prize_card(opp, str(info.get("deck", "")))
+			if prize != 0:
+				owned[prize] = mini(3, int(owned.get(prize, 0)) + 1)
+				last_reward.append(["New card: " + str(CardData.get_card(prize).get("name", "")), 0])
+		if info.get("rare", false):
+			last_reward.append(["Beat a night duelist", 300])
 	var streak := int(record.get("streak", 0)) + 1
 	record["streak"] = streak
 	if streak >= 2:
@@ -515,6 +528,29 @@ func reward(won: bool, difficulty: int, info := {}) -> int:
 	dp += n
 	save()
 	return n
+
+
+## The card you win the first time you beat someone: their ace, or the rarest card in their
+## deck that you do not already have three of.
+func _prize_card(opp: String, deck: String) -> int:
+	var ace := int(Characters.get_char(opp).get("ace", 0))
+	if ace == 0:
+		var ace_name := str(Characters.get_char(opp).get("ace_name", ""))
+		ace = int(CardData.NAME_TO_ID.get(ace_name.to_lower(), 0))
+	if ace != 0 and int(owned.get(ace, 0)) < 3 and str(CardData.get_card(ace).get("name", "Unknown")) != "Unknown":
+		return ace
+	if deck == "" or not CardData.has_deck(deck):
+		return 0
+	var best := 0
+	var best_r := -1
+	for id in CardData.deck_list(deck):
+		if int(owned.get(id, 0)) >= 3 or CardData.get_card(id).get("speed_spell", false):
+			continue
+		var r := CardData.rarity(id) * 10 + (1 if CardData.get_card(id).get("kind", "") == "monster" else 0)
+		if r > best_r:
+			best_r = r
+			best = id
+	return best
 
 
 ## Today's challenges: three small things to do, new every day.

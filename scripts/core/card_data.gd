@@ -16,6 +16,9 @@ const CARDS := {
 	99100008: {"name": "Speed Spell - Overtake", "frame": "spell", "text": "Needs 6 Speed Counters. Spend 3 Speed Counters: destroy the monster your opponent controls with the highest DEF.", "speed_spell": true},
 	99100009: {"name": "Speed Spell - Redline", "frame": "spell", "text": "Needs 8 Speed Counters. Spend 6 Speed Counters: inflict 2000 damage to your opponent.", "speed_spell": true},
 	99100010: {"name": "Speed Spell - Shockwave", "frame": "spell", "text": "Needs 7 Speed Counters. Spend 4 Speed Counters: destroy every Spell and Trap your opponent controls.", "speed_spell": true},
+	# Your partner. She is in the Echo Deck from the first day and grows with every bond.
+	99200001: {"name": "Lumen, Echo Spirit", "frame": "effect", "atk": 500, "def": 500, "level": 2, "attribute": "LIGHT", "race": "Fairy", "partner": true,
+		"text": "Normal Summoned: add 1 monster with 1500 or less ATK from your Deck to your hand. Destroyed by battle: you take no battle damage this turn. Gains 300 ATK and DEF for every bond you have made."},
 	# ---------------------------------------------------------------- Yugi
 	46986414: {"name": "Dark Magician", "frame": "normal", "atk": 2500, "def": 2100, "level": 7, "attribute": "DARK", "race": "Spellcaster"},
 	70781052: {"name": "Summoned Skull", "frame": "normal", "atk": 2500, "def": 1200, "level": 6, "attribute": "DARK", "race": "Fiend"},
@@ -142,6 +145,8 @@ const MONSTER_EFFECTS := {
 
 ## Filled from the downloaded card database (tools/fetch_cards.py), if present.
 const MIN_DECK := 40
+## Lumen, your partner spirit, as a card.
+const LUMEN := 99200001
 ## The Speed Spells every rider carries in a Turbo Duel.
 const SPEED_SPELLS := [99100001, 99100002, 99100003, 99100004, 99100005, 99100006, 99100007, 99100008, 99100009, 99100010]
 
@@ -154,7 +159,7 @@ const DECKS := {
 	# Story: the player's Echo Deck (early game) and Kairo's deck.
 	"echo": {
 		"name": "Echo",
-		"cards": {91152256: 3, 48305365: 2, 69140098: 2, 14898066: 2, 41392891: 2, 32452818: 2, 15025844: 2,
+		"cards": {99200001: 1, 91152256: 3, 48305365: 2, 69140098: 2, 14898066: 2, 41392891: 2, 32452818: 2, 15025844: 2,
 			28279543: 2, 40640057: 2, 26202165: 1, 70781052: 1,
 			55144522: 1, 66788016: 1, 72302403: 1, 62279055: 1, 12607053: 2, 4206964: 1, 84257639: 2},
 	},
@@ -219,6 +224,17 @@ const DECKS := {
 ## Decks for the wider cast, by card name. They need the card database to resolve.
 ## Effect monsters play as their stats for now.
 const NAMED_DECKS := {
+	# Story bosses.
+	"curator": {"name": "The Collection", "cards": {"Blue-Eyes White Dragon": 2, "Dark Magician": 2, "Red-Eyes Black Dragon": 1, "Summoned Skull": 2,
+		"Elemental HERO Neos": 2, "Cyber Dragon": 2, "Zaborg the Thunder Monarch": 1, "Vorse Raider": 2, "Gemini Elf": 2, "La Jinn the Mystical Genie of the Lamp": 2,
+		"Luster Dragon": 2, "Mystic Tomato": 1, "Sangan": 1, "Man-Eater Bug": 1, "Shining Angel": 2,
+		"Monster Reborn": 1, "Pot of Greed": 1, "Dark Hole": 1, "Raigeki": 1, "Mystical Space Typhoon": 2, "Swords of Revealing Light": 1, "Fissure": 1,
+		"Mirror Force": 1, "Magic Cylinder": 1, "Sakuretsu Armor": 2, "Negate Attack": 1, "Trap Hole": 1}},
+	"vellum": {"name": "The Catalogue", "cards": {"Dark Magician": 2, "Dark Magician Girl": 1, "Kycoo the Ghost Destroyer": 2,
+		"Breaker the Magical Warrior": 1, "Magician of Faith": 2, "Old Vindictive Magician": 2, "Apprentice Magician": 2, "Man-Eater Bug": 2,
+		"Gemini Elf": 3, "Summoned Skull": 2, "Sangan": 1, "Mystic Tomato": 2, "Exiled Force": 1, "Airknight Parshath": 1,
+		"Monster Reborn": 1, "Pot of Greed": 1, "Dark Hole": 1, "Mystical Space Typhoon": 2, "Swords of Revealing Light": 1, "Fissure": 2,
+		"Magic Cylinder": 1, "Sakuretsu Armor": 2, "Negate Attack": 1, "Trap Hole": 2, "Bottomless Trap Hole": 1, "Waboku": 1}},
 	# Theme decks sold at the card shop.
 	"deck_water": {"name": "Rising Tide", "cards": {"Granadora": 2, "Big Jaws": 3, "Hammer Shark": 3, "Spear Shark": 2, "Saber Shark": 2, "Cure Mermaid": 2,
 		"Mother Grizzly": 2, "Double Shark": 1, "Sharkraken": 2, "Eagle Shark": 1, "Revival Jam": 1,
@@ -328,6 +344,10 @@ static func get_card(id: int) -> Dictionary:
 	else:
 		d = CARDS.get(id, {"name": "Unknown", "frame": "normal"}).duplicate()
 	d["id"] = id
+	if id == LUMEN:
+		var grow := 300 * mini(5, StoryProgress.bonds())
+		d["atk"] = 500 + grow
+		d["def"] = 500 + grow
 	var frame: String = d.get("frame", "")
 	d["kind"] = "trap" if frame == "trap" else ("spell" if frame == "spell" else "monster")
 	return d

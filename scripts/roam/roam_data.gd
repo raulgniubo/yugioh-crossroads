@@ -8,6 +8,9 @@ const DISTRICTS := {
 		"theme": "battlecity",
 		"travel": {"to": "academy", "pos": Vector3(-18, 0, 8.4), "label": "Take the ferry bus to Duel Academy"},
 		"npcs": [
+			{"id": "night_domino", "char": "", "model": "duelist_m7", "name": "The Midnight Collector", "color": Color("b78cff"), "pos": Vector3(8.0, 0, -40.2), "face": 0.2, "night": true, "aloof": true,
+				"lines": ["I only come out when the plaza is empty. Fewer witnesses.", "Every card I own was won after midnight. Yours will be too."],
+				"duel": {"deck": "kaiba", "difficulty": 3, "intro": "The night shift starts now.", "rare": true}},
 			{"id": "yugi", "char": "yugi", "pos": Vector3(-6.6, 0, -12.6), "face": 0.0,
 				"lines": ["Hey, {player}! Grandpa says the shop is getting a new shipment today.", "Whenever you want a real test, I'll be here."],
 				"duel": {"deck": "yugi", "difficulty": 2, "intro": "Let's see how much you've grown!"}},
@@ -134,6 +137,9 @@ const DISTRICTS := {
 		], "paths": [[Vector2(0, 60), Vector2(0, -32)], [Vector2(-40, 10), Vector2(-40, 38)], [Vector2(-41, 38), Vector2(-19, 38)], [Vector2(19, 46), Vector2(41, 46)], [Vector2(41, 37), Vector2(41, 55)], [Vector2(3, -20), Vector2(19, -20)], [Vector2(26, -30), Vector2(40, -30)], [Vector2(-2, 6), Vector2(-36, 6)], [Vector2(2, -4), Vector2(38, -4)],
 			[Vector2(-30, 5), Vector2(-30, -17)], [Vector2(19, 2), Vector2(19, 32)], [Vector2(19, 30), Vector2(43, 30)]]},
 		"npcs": [
+			{"id": "night_academy", "char": "", "model": "duelist_m10", "name": "The Lighthouse Ghost", "color": Color("9fe0ff"), "pos": Vector3(6.0, 0, 46.0), "face": -0.5, "night": true, "aloof": true,
+				"lines": ["They say a graduate still walks the island at night, looking for one more duel.", "They are right."],
+				"duel": {"deck": "zane", "difficulty": 3, "intro": "Class is in session.", "rare": true}},
 			{"id": "jaden", "char": "jaden", "pos": Vector3(3.5, 0, 3), "face": 2.4,
 				"lines": ["Hey, {player}! You made it to the island! Sweet!", "Lunch can wait. A duel can't. Get your game on!"],
 				"duel": {"deck": "jaden", "difficulty": 2, "intro": "Get your game on!"}},
@@ -203,6 +209,9 @@ const DISTRICTS := {
 			{"name": "Bus Stop", "pos": Vector2(-6, 24), "size": Vector2(5, 3), "color": Color("7cc4ff")},
 		], "paths": [[Vector2(0, 34), Vector2(0, 6)], [Vector2(-22, 20), Vector2(22, 20)], [Vector2(-22, 20), Vector2(-22, -14)], [Vector2(22, 20), Vector2(22, -14)], [Vector2(-22, -24), Vector2(22, -24)]]},
 		"npcs": [
+			{"id": "night_satellite", "char": "", "model": "duelist_m16", "name": "The Scrap King", "color": Color("ff8a3a"), "pos": Vector3(4.6, 0, 33.0), "face": 3.4, "night": true, "aloof": true,
+				"lines": ["Daytime is for fixing. Night is for finding out what the fix was worth.", "Lose, and I keep a card. Win, and you keep one of mine. Fair?"],
+				"duel": {"deck": "kalin", "difficulty": 3, "intro": "Nobody leaves the yard with a full deck.", "rare": true}},
 			{"id": "yusei", "char": "yusei", "pos": Vector3(-8, 0, 11), "face": 0.4,
 				"lines": ["This runner was scrap a month ago. Now she flies.", "You duel? Then let's ride. On foot will do today."],
 				"duel": {"deck": "yusei", "difficulty": 2, "intro": "Let's rev it up!"}},
@@ -242,6 +251,9 @@ const DISTRICTS := {
 			{"name": "Runner Gate", "pos": Vector2(0, 49), "size": Vector2(15, 3), "color": Color("ff8a3a"), "enter": true},
 		], "paths": [[Vector2(0, 48), Vector2(0, -42)], [Vector2(-46, 4), Vector2(46, 4)]]},
 		"npcs": [
+			{"id": "night_newdomino", "char": "", "model": "stylish_woman", "name": "The Ring Phantom", "color": Color("2de2e6"), "pos": Vector3(-4.6, 0, 13.6), "face": 0.3, "night": true, "aloof": true,
+				"lines": ["Up there they race in the dark. Down here I wait for whoever is brave enough to walk.", "Standing still is harder than it looks. Show me."],
+				"duel": {"deck": "jack", "difficulty": 3, "intro": "No engines. Just nerve.", "rare": true}},
 			{"id": "jack", "char": "jack", "pos": Vector3(3.5, 0, -27.5), "face": 0.3,
 				"lines": ["There is only one King, and you are looking at him.", "Entertain me, challenger."],
 				"duel": {"deck": "jack", "difficulty": 2, "intro": "Bow before the King!"}},
@@ -277,6 +289,25 @@ const DISTRICTS := {
 				"duel": {"deck": "crow", "difficulty": 1, "intro": "Order up!"}},
 		],
 	},
+	# Story only: the Curator's museum. Not on the travel map.
+	"museum": {
+		"name": "The Museum",
+		"area": "Between the ages",
+		"theme": "crossroads",
+		"builder": "museum",
+		"start": Vector3(0, 0, 39),
+		"yaw": 0.0,
+		"tod": "night",
+		"hidden": true,
+		"routes": [],
+		"map": {"island": 60.0, "landmarks": [
+			{"name": "Gallery I", "pos": Vector2(0, 22), "size": Vector2(26, 15), "color": Color("ffcf8a")},
+			{"name": "Gallery II", "pos": Vector2(0, 2), "size": Vector2(26, 15), "color": Color("9fe0ff")},
+			{"name": "Gallery III", "pos": Vector2(0, -18), "size": Vector2(26, 15), "color": Color("ffa3c4")},
+			{"name": "Exhibit Zero", "pos": Vector2(0, -44), "size": Vector2(20, 20), "color": Color("ffd98a")},
+		], "paths": [[Vector2(0, 42), Vector2(0, -32)]]},
+		"npcs": [],
+	},
 	"heartland": {
 		"name": "Heartland City",
 		"area": "Heartland Plaza",
@@ -296,6 +327,9 @@ const DISTRICTS := {
 			{"name": "Fountain", "pos": Vector2(0, 17), "size": Vector2(5, 5), "color": Color("7cc4ff"), "park": true},
 		], "paths": [[Vector2(0, 34), Vector2(0, 21)], [Vector2(-22, 22), Vector2(22, 22)], [Vector2(-20, 22), Vector2(-20, -14)], [Vector2(20, 22), Vector2(20, -14)], [Vector2(-20, -22), Vector2(20, -22)]]},
 		"npcs": [
+			{"id": "night_heartland", "char": "", "model": "duelist_m12", "name": "The Neon Oracle", "color": Color("ff5ab4"), "pos": Vector3(6.0, 0, -24.0), "face": 0.2, "night": true, "aloof": true,
+				"lines": ["The tower lights tell me who is coming. Tonight they said: someone with a little light of their own.", "Let us see if the lights were right."],
+				"duel": {"deck": "kite", "difficulty": 3, "intro": "The stars already know how this ends.", "rare": true}},
 			{"id": "yuma", "char": "yuma", "pos": Vector3(-5, 0, 12), "face": 0.3,
 				"lines": ["I'm feeling the flow! Wait, are you a duelist too?", "Then high-five the sky and let's duel!"],
 				"duel": {"deck": "yuma", "difficulty": 1, "intro": "I'm feeling the flow!"}},

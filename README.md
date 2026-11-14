@@ -5,6 +5,22 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.25
+
+Story mode, start to finish.
+
+- **A complete story.** Prologue, four chapters and a final chapter with an ending and credits. Chapter 4 (Heartland) and the finale (the Curator's museum, a new place built for the story) are new. The older chapters were reworked so the plot runs through all of them: who Lumen is, why Kairo works for the Curator, and what the Curator is building.
+- **Cinematics.** Directed camera moves with captions for chapter openings, entrances, reveals and endings (`{"shot": {...}, "cap": "..."}` in `story_data.gd`).
+- **Echoes.** Memory scenes: the picture turns to a tinted, framed panel and a short flashback plays inside the game world (`{"echo": "Title"}` ... `{"echo": false}`).
+- **A camera that checks its own shots.** Every dialogue shot is picked from many candidate positions and scored: is the speaker in frame and above the dialogue box, is a wall, a prop or a bystander in front of them, is the lens inside something, do we see a face. `--story-audit` prints a line per shot for testing.
+- **Clear goals.** Every goal has a one-line "how", Lumen flies ahead toward it, and she repeats the hint if you stand around.
+- **Lumen, your partner.** She is a real spirit now (built in code, no model file): she floats beside you in every world, comments on what she sees, leads you to one lost card per world per day, answers when you press L (what to do next, today's challenges, small talk), reacts during duels, and has her own card in the Echo Deck that grows with every bond.
+- **Choices that are remembered.** How you treat Kairo in chapter 2 decides whether you have to duel him in the finale.
+- **Boss duels with special rules** (more Life Points for Vellum and the Curator, their own music).
+- **Night duelists.** One rare, strong duelist per world who only shows up at night.
+- **Card prizes.** The first win against any duelist gives you a card from their deck (their ace when they have one).
+- Effect monsters in the ready-made decks: the audit tool (`tools/fx_audit.gd`) now reports no effect monster playing as plain ATK/DEF.
+
 ## What is in 0.24
 
 - Buildings: the last pre-made apartment blocks, the cafe and the corner store in Domino are

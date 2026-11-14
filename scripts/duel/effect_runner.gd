@@ -74,6 +74,13 @@ static func _count(s: DuelState, owner: int, spec: String) -> int:
 	var n := 0
 	if kind == "own_banished":
 		return s.players[owner].banished.size()
+	if kind == "gy_named":
+		# Copies of one card in both Graveyards (Dark Magician Girl counts Dark Magicians).
+		for q in 2:
+			for g in s.players[q].gy:
+				if g.cname() == val:
+					n += 1
+		return n
 	if kind == "all_banished_monsters":
 		for q in 2:
 			for b in s.players[q].banished:

@@ -86,6 +86,13 @@ func setup(roam: Node) -> void:
 	city = roam.city
 	key = str(Router.roam.get("district", "domino"))
 	errands = roam.extras._errands if roam.extras else {}
+	if key == "museum":
+		# The Curator's museum has no street life: nothing in it is allowed to change.
+		tourney = TourneyWorld.new()
+		add_child(tourney)
+		duels = StreetDuels.new()
+		add_child(duels)
+		return
 	_build_clouds()
 	_build_halos()
 	match key:
@@ -1422,6 +1429,8 @@ func _decor_academy() -> void:
 # ------------------------------------------------------------------ every frame
 
 func _process(delta: float) -> void:
+	if key == "museum":
+		return
 	_move_routines(delta)
 	_night_shift()
 	_t += delta
