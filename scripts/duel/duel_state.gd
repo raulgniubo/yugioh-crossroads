@@ -56,6 +56,13 @@ class CardInst:
 	var lv_turn := -1             # ...through this turn (-1: for as long as it stays on the field)
 	var died_turn := -1           # the turn it was destroyed by battle (Captain Tenacious)
 	var gy_turn := -9          # the turn it last went to the Graveyard
+	var hit_def_turn := -1        # the turn it attacked a Defense Position monster (Twin-Sword Marauder)
+	var tmp_atk := 0              # an ATK change that lasts through turn `tmp_until` (Bazoo the Soul-Eater)
+	var tmp_until := -1
+	var back_pos := ""            # in the Graveyard: Special Summon it at its owner's next Standby Phase (Revival Jam)
+	var lv_aura := false          # its Level is set by its own continuous effect right now (Harpie Channeler)
+	var leave_banish := false   # "banish it when it leaves the field" (Quillbolt Hedgehog)
+	var shrunk := false         # Max Warrior: halved and Level 2 until its controller's next Standby Phase
 	var wedge := false            # a Wedge Counter (Blackwing Armor Master)
 	var flag_turn := -1           # "this card's effect was applied this turn" (Stardust Dragon)
 	var once := false             # a once-while-in-the-Graveyard / once-per-Duel effect is spent
@@ -81,6 +88,12 @@ class CardInst:
 		zero_turn = -1
 		attack_count = 0
 		attack_count_turn = -1
+		shrunk = false
+		hit_def_turn = -1
+		tmp_atk = 0
+		tmp_until = -1
+		lv_aura = false
+		counter = 0
 
 	func cname() -> String:
 		return str(data.get("name", ""))
@@ -123,6 +136,7 @@ class PlayerState:
 	var no_damage_turn := -1
 	var no_effect_damage_turn := -1   # effect damage is 0 this turn (Cyber Kirin, Hallowed Life Barrier)
 	var name_lock := {}               # card name -> turn: cards and effects with that name cannot be activated that turn (Sangan)
+	var exiles: Array = []            # [{"card", "to", "left", "atk_pos"}]: banished until this player's 2nd Standby Phase (Destiny HERO - Doom Lord)
 	var once_names := {}              # card name -> turn its once-per-turn effect was used
 	var protect_turn := -1
 	var swords_left := 0
@@ -453,6 +467,7 @@ func begin_end() -> Array:
 				events.append({"type": "effect", "player": q, "card": g, "text": Loc.t("%s returns") % g.cname()})
 				events.append_array(_special(q, g, "reborn"))
 	events.append_array(EffectRunner.end_phase(self, current))
+	events.append_array(EffectRunner.end_phase_any(self))
 	return events
 
 
@@ -602,6 +617,9 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 		c.normal_turn = turn
 		last_summoned = c
 		events.append_array(summon_triggers(p, c))
+		if tributes.is_empty() and int(c.data.get("level", 0)) >= 5:
+			# Normal Summoned without Tributing by its own rule (Galaxy Knight).
+			events.append_array(EffectRunner.trigger(self, c, "free_summon"))
 		events.append_array(EffectRunner.on_summon(self, p, c, "normal"))
 		# Dark Verger: when a Plant Tuner is Normal Summoned to your side, it comes back from the Graveyard.
 		if c.is_tuner() and str(c.data.get("race", "")) == "Plant":
@@ -977,6 +995,7 @@ func can_attack(p: int, c: CardInst) -> bool:
 			and c.face_up and c.attack_pos and attacks_left(c) > 0 and SpellRules.can_attack(self, p, c)
 			and not (EffectRunner.fx(c).get("summon_sick", false) and c.summoned_turn == turn)
 			and players[p].lp >= int(EffectRunner.fx(c).get("attack_cost", 0))
+			and not (EffectRunner.fx(c).get("attack_tribute", false) and players[p].monsters().size() < 2)
 			and not (EffectRunner.fx(c).get("no_attack_with_others", false) and players[p].monsters().size() > 1)
 			and players[opponent(p)].swords_left == 0)
 
@@ -1017,6 +1036,18 @@ func gy_effects(p: int) -> Array:
 		if EffectRunner.gy_can(self, p, g):
 			out.append(g)
 	return out
+
+
+## "You can discard this card; ..." (Harpie Queen): an effect a monster uses from your hand
+## in your Main Phase.
+func can_hand_ignite(p: int, c: CardInst) -> bool:
+	return p == current and _in_main() and not is_over() and players[p].hand.has(c) and EffectRunner.hand_can(self, p, c)
+
+
+func hand_ignite(p: int, c: CardInst) -> Array:
+	if not can_hand_ignite(p, c):
+		return []
+	return EffectRunner.hand_run(self, p, c)
 
 
 func gy_ignite(p: int, c: CardInst) -> Array:
@@ -1138,8 +1169,23 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	if toll > 0:
 		players[p].lp -= toll
 		paid.append({"type": "lp", "player": p, "lp": players[p].lp, "delta": -toll})
+	if EffectRunner.fx(attacker).get("attack_tribute", false):
+		# "Cannot declare an attack unless you Tribute 1 monster" (Insect Queen).
+		var fodder: Array = players[p].monsters().filter(func(m): return m != attacker)
+		var least: CardInst = fodder[0]
+		for m in fodder:
+			if atk_of(m, false) < atk_of(least, false):
+				least = m
+		least = pick1(p, Loc.t("%s: Tribute 1 monster to attack") % attacker.cname(), fodder, least, attacker)
+		players[p].field[players[p].field.find(least)] = null
+		_to_gy(players[p], least)
+		paid.append({"type": "tribute", "player": p, "card": least})
+		paid.append_array(EffectRunner.trigger(self, least, "tributed"))
+		paid.append_array(_monster_left(least))
 	attacker.attacked_turn = turn
 	_shield = null
+	if target != null and not target.attack_pos:
+		attacker.hit_def_turn = turn
 	if attacker.attack_count_turn != turn:
 		attacker.attack_count_turn = turn
 		attacker.attack_count = 0
@@ -1447,7 +1493,12 @@ func _to_gy(ps: PlayerState, c: CardInst) -> void:
 		c.orig_owner = -1
 		c.control_until = -1
 		ps = players[c.owner]
-	if _gy_redirect(c):
+	if c.leave_banish:
+		# Brought back on the condition that it is banished when it leaves the field.
+		c.leave_banish = false
+		ps.banished.append(c)
+		redirected.append(c)
+	elif _gy_redirect(c):
 		ps.banished.append(c)
 		redirected.append(c)
 	else:
@@ -1613,6 +1664,24 @@ func _cleanup() -> Array:
 						if m0.face_up and m0.attack_pos and m0.frame() != "xyz" and m0.level() >= int(SpellRules.spec(st0)["force_def_lv_min"]):
 							m0.attack_pos = false
 							events.append({"type": "position", "player": q1, "card": m0, "zone": players[q1].field.find(m0)})
+	# "While you control a Dragon monster, this card's Level becomes 7" (Harpie Channeler).
+	for qa in 2:
+		for ma in players[qa].monsters():
+			var la: Array = EffectRunner.fx(ma).get("lv_with_race", [])
+			if la.is_empty():
+				continue
+			var on := false
+			if ma.face_up and not ma.negated:
+				for other in players[qa].monsters():
+					if other.face_up and str(other.data.get("race", "")) == str(la[0]):
+						on = true
+			if on and (ma.lv_set == 0 or ma.lv_aura):
+				ma.lv_set = int(la[1])
+				ma.lv_turn = -1
+				ma.lv_aura = true
+			elif not on and ma.lv_aura:
+				ma.lv_set = 0
+				ma.lv_aura = false
 	# Effect negation (Skill Drain and one-turn negations) is re-derived from what is on the field.
 	var drain := SpellRules.field_flag(self, "drain")
 	for q in 2:
@@ -1646,6 +1715,8 @@ func _vanish(c: CardInst) -> Array:
 func _bounce(c: CardInst) -> Array:
 	if c != null and c.is_token():
 		return _vanish(c)
+	if c != null and c.leave_banish and (players[0].field.has(c) or players[1].field.has(c)):
+		return _banish(c)
 	for q in 2:
 		var ps := players[q]
 		var from := ""
@@ -1870,6 +1941,11 @@ func can_revive(c: CardInst) -> bool:
 		return false   # "Cannot be Special Summoned (from the GY)": Dark Ruler Ha Des, Blackwing - Blizzard
 	if CardEffects.of(c.cname()).get("no_revive_same_turn", false) and c.gy_turn == turn:
 		return false   # Destiny HERO - Disk Commander: not the turn it was sent to the Graveyard
+	if not c.proper:
+		# "Must first be Special Summoned (from your hand) by ...": no coming back before that.
+		var words := str(c.data.get("desc", "")).to_lower()
+		if words.contains("must first be special summoned"):
+			return false
 	return c.is_monster() and not c.is_token() and (c.proper or not c.frame() in ["ritual", "fusion", "synchro", "xyz"])
 
 
@@ -2006,7 +2082,7 @@ static func material_rule(c: CardInst) -> Dictionary:
 
 
 static func _fits(m: CardInst, f: Dictionary) -> bool:
-	if f.has("name") and m.cname() != f["name"] and str(CardEffects.of(m.cname()).get("name_as", "")) != f["name"]:
+	if f.has("name") and m.cname() != f["name"] and str(CardEffects.of(m.cname()).get("name_as", "")) != f["name"] and str(CardEffects.of(m.cname()).get("name_as_fg", "")) != f["name"]:
 		return false
 	if f.has("has") and not m.cname().contains(str(f["has"])):
 		return false
@@ -2162,6 +2238,12 @@ func extra_summon(p: int, c: CardInst, materials: Array = []) -> Array:
 	events.append_array(_special(p, c, c.frame()))
 	if not xyz:
 		for m in materials:
+			# "...for the Synchro Summon of a "Nitro" Synchro Monster" / "of a DARK Synchro Monster".
+			var mf := EffectRunner.fx(m)
+			if mf.has("material_for") and not c.cname().contains(str(mf["material_for"])):
+				continue
+			if mf.has("material_attr") and str(c.data.get("attribute", "")) != str(mf["material_attr"]):
+				continue
 			events.append_array(EffectRunner.trigger(self, m, "material"))
 	var ctx_kind := c.frame()
 	events.append_array(EffectRunner.on_summon(self, p, c, ctx_kind))
@@ -2199,6 +2281,9 @@ func clone() -> DuelState:
 		np.no_effect_damage_turn = ps.no_effect_damage_turn
 		np.name_lock = ps.name_lock.duplicate()
 		np.once_names = ps.once_names.duplicate()
+		np.exiles = []
+		for ex in ps.exiles:
+			np.exiles.append({"card": map.get(ex["card"], ex["card"]), "to": ex["to"], "left": ex["left"], "atk_pos": ex["atk_pos"]})
 		np.protect_turn = ps.protect_turn
 		np.swords_left = ps.swords_left
 		np.field_spell = _clone_card(ps.field_spell, map) if ps.field_spell != null else null
@@ -2310,6 +2395,13 @@ func _clone_card(c: CardInst, map: Dictionary) -> CardInst:
 	n.lv_turn = c.lv_turn
 	n.died_turn = c.died_turn
 	n.gy_turn = c.gy_turn
+	n.leave_banish = c.leave_banish
+	n.tmp_atk = c.tmp_atk
+	n.tmp_until = c.tmp_until
+	n.back_pos = c.back_pos
+	n.lv_aura = c.lv_aura
+	n.hit_def_turn = c.hit_def_turn
+	n.shrunk = c.shrunk
 	n.wedge = c.wedge
 	n.flag_turn = c.flag_turn
 	n.once = c.once

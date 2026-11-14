@@ -227,6 +227,67 @@ static func _toggle(on: bool) -> Texture2D:
 	return ImageTexture.create_from_image(img)
 
 
+## The card shop's sections, as a row of chips at the top of each shop screen. The screen you are
+## on is lit; picking another one swaps the screens without leaving the counter.
+static func shop_sections(host: Control, current: String) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	for it in [["packs", "Booster packs"], ["decks", "Ready-made decks"], ["mine", "My decks"]]:
+		var b := Button.new()
+		b.text = "  %s  " % Loc.t(str(it[1]))
+		b.toggle_mode = true
+		b.button_pressed = str(it[0]) == current
+		b.add_theme_font_size_override("font_size", 20)
+		b.custom_minimum_size = Vector2(0, 46)
+		var what := str(it[0])
+		b.pressed.connect(func():
+			if what == current:
+				b.set_pressed_no_signal(true)
+			else:
+				host.call("_switch", what))
+		row.add_child(b)
+	return row
+
+
+## Swap one shop screen for another. Whoever was waiting for the first one to close now waits
+## for the second one instead.
+static func shop_swap(from: Control, what: String) -> void:
+	var next: Control = PackShop.new() if what == "packs" else (DeckShop.new() if what == "decks" else DeckMenu.new())
+	next.z_index = from.z_index
+	from.get_parent().add_child(next)
+	for c in from.get_signal_connection_list("closed"):
+		if not next.is_connected("closed", c["callable"]):
+			next.connect("closed", c["callable"])
+	Sfx.play("click")
+	from.queue_free()
+
+
+## A full-screen 2D screen over the 3D world: stop drawing the world behind it while it is up.
+## (The shop ran at the world's frame rate because the whole city was still being drawn under it.)
+static var _covers := 0
+
+static func cover_3d(screen: Control) -> void:
+	screen.get_tree().create_timer(0.3).timeout.connect(func():
+		if is_instance_valid(screen) and screen.is_inside_tree() and not screen.has_meta("covering"):
+			screen.set_meta("covering", true)
+			_covers += 1
+			screen.get_tree().root.disable_3d = true)
+	screen.tree_exiting.connect(func(): uncover_3d(screen))
+
+
+static func uncover_3d(screen: Control) -> void:
+	if not screen.has_meta("covering"):
+		screen.set_meta("covering", false)   # closed before the timer: never cover
+		return
+	if not bool(screen.get_meta("covering")):
+		return
+	screen.set_meta("covering", false)
+	_covers = maxi(0, _covers - 1)
+	if _covers == 0 and screen.is_inside_tree():
+		screen.get_tree().root.disable_3d = false
+
+
 static func label(text: String, size := 20, color := TEXT, font: Font = null) -> Label:
 	var l := Label.new()
 	l.text = text

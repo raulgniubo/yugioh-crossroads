@@ -50,6 +50,8 @@ func _process(delta: float) -> void:
 				RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME) / 1000, RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)]
 			line += "\n3D %dx%d (%d%%)   %s   %s" % [int(px.x), int(px.y), int(vp.scaling_3d_scale * 100.0), Settings.gfx_preset_name(), RenderingServer.get_current_rendering_method()]
 			line += "\nscript %.1f ms   physics %.1f ms   nodes %d" % [Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0, int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))]
+			if _click_ms >= 0.0:
+				line += "\nlast click answered in %.0f ms" % _click_ms
 		else:
 			line += "   (F3)"
 		_fps.text = line
@@ -62,6 +64,24 @@ func _process(delta: float) -> void:
 
 
 var _probe := false
+
+# How long the game takes to answer a click: from the press arriving to the end of the frame
+# that draws the answer. Shown in the F3 readout. (What the screen adds after that is not ours.)
+var _click_at := 0
+var _click_ms := -1.0
+var _click_wait := false
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and not _click_wait:
+		_click_at = Time.get_ticks_usec()
+		_click_wait = true
+		RenderingServer.frame_post_draw.connect(_click_drawn, CONNECT_ONE_SHOT)
+
+
+func _click_drawn() -> void:
+	_click_ms = (Time.get_ticks_usec() - _click_at) / 1000.0
+	_click_wait = false
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -301,7 +321,7 @@ func go(path: String) -> void:
 	_busy = true
 	_fade.mouse_filter = Control.MOUSE_FILTER_STOP
 	var tw := create_tween()
-	tw.tween_property(_fade, "color:a", 1.0, 0.16)
+	tw.tween_property(_fade, "color:a", 1.0, 0.09)
 	await tw.finished
 	get_tree().paused = false
 	get_tree().change_scene_to_file(path)
@@ -314,13 +334,13 @@ func go(path: String) -> void:
 	tw2.tween_property(_fade, "color:a", 0.0, 0.22)
 
 
-func toast(message: String) -> void:
+func toast(message: String, hold := 1.8) -> void:
 	_toast.text = message
 	_toast.reset_size()
 	_toast.position.x = (_toast.get_viewport_rect().size.x - _toast.size.x) / 2.0
 	var tw := create_tween()
 	tw.tween_property(_toast, "modulate:a", 1.0, 0.2)
-	tw.tween_interval(1.8)
+	tw.tween_interval(hold)
 	tw.tween_property(_toast, "modulate:a", 0.0, 0.4)
 
 

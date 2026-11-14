@@ -30,12 +30,16 @@ static func story_block(body: VBoxContainer, host: Node) -> void:
 	diff_row.add_theme_constant_override("separation", 10)
 	body.add_child(diff_row)
 	var dl := _line("Difficulty", 20)
+	# A wrapping label with no width of its own folds to one letter a line and drags the row tall.
+	dl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	dl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	diff_row.add_child(dl)
 	var opt := OptionButton.new()
 	for nm in ["Easy", "Normal", "Hard"]:
 		opt.add_item(Loc.t(nm))
 	opt.select(Saves.story_difficulty())
 	opt.custom_minimum_size = Vector2(150, 52)
+	opt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	opt.tooltip_text = Loc.t("You can change this any time. It changes how well story opponents play, not what happens.")
 	opt.item_selected.connect(func(i): Saves.set_story_difficulty(i))
 	diff_row.add_child(opt)

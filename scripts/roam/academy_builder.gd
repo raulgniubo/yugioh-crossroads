@@ -94,7 +94,7 @@ func _build_buildings() -> void:
 	else:
 		var red := plank_dorm(Vector3(-43.0, 0.05, 8.0), PI / 2, Color("c8322a"))
 		_dorm_doors("dorm_red", "red_room_%d", red)
-	neon_sign("RED DORM", Vector3(-38.0, 2.65, 8.0), Color("ff8a7a"), 70, PI / 2, false)
+	_dorm_plate("RED DORM", Vector3(-38.0, 2.65, 8.0), PI / 2, Color("ff8a7a"))
 	if own_place("dorm_yellow") != "":
 		_own_dorm("dorm_yellow", Vector3(42.0, 0.05, -4.0), -PI / 2, 17.0)
 	else:
@@ -102,7 +102,7 @@ func _build_buildings() -> void:
 			"wall": surf("plaster", Color(0.96, 0.9, 0.7)), "dark": surf("wood", Color(0.5, 0.34, 0.2)), "deck": surf("wood", Color(0.62, 0.46, 0.3)),
 			"roof": surf("roof", Color(0.78, 0.56, 0.16)), "w": 17.0, "d": 7.6, "floor": 3.3, "rise": 3.0, "boxes": true, "manor": true})
 		_dorm_doors("dorm_yellow", "yel_room_%d", yel)
-		neon_sign("YELLOW DORM", Vector3(37.3, 2.95, -3.0), Color("ffe07a"), 70, -PI / 2, false)
+		_dorm_plate("YELLOW DORM", Vector3(37.3, 2.95, -3.0), -PI / 2, Color("ffe07a"))
 	if own_place("dorm_blue") != "":
 		_own_dorm("dorm_blue", Vector3(-34.0, 0.05, -25.0), 0.35, 24.0)
 	else:
@@ -111,7 +111,7 @@ func _build_buildings() -> void:
 			"roof": surf("roof", Color(0.18, 0.3, 0.6)), "w": 22.0, "d": 9.0, "floor": 3.8, "columns": true, "castle": true})
 		_dorm_doors("dorm_blue", "blue_room_%d", blu)
 		var bf: Array = blu.get_meta("front")
-		neon_sign("BLUE DORM", (bf[0] as Vector3) + (bf[1] as Vector3) * 1.75 + Vector3(0, 3.45, 0), Color("9cc8ff"), 70, 0.35, false)
+		_dorm_plate("BLUE DORM", (bf[0] as Vector3) + (bf[1] as Vector3) * 1.75 + Vector3(0, 3.25, 0), 0.35, Color("9cc8ff"))
 		# Two clipped trees in stone urns by the door.
 		for sx: float in [-1.0, 1.0]:
 			var up := (bf[0] as Vector3) + (bf[1] as Vector3) * 2.6 + (bf[1] as Vector3).cross(Vector3.UP) * sx * 2.4
@@ -264,6 +264,21 @@ func _blocked(x: float, z: float) -> bool:
 
 
 ## Register a plank dorm's front door and its upstairs bedroom doors.
+## A dorm's name over its door: a dark plate with a gilt edge, so the letters read against any
+## wall. (Pale letters floating in front of the porch board were half lost in it.)
+func _dorm_plate(text: String, at: Vector3, rot: float, tint: Color) -> void:
+	var out := Vector3(0, 0, 1).rotated(Vector3.UP, rot)
+	var plate := box(Vector3(3.5, 0.66, 0.07), at - out * 0.06, mat(Color(0.07, 0.09, 0.16), 0.55, 0.2), false)
+	plate.rotation.y = rot
+	for sy: float in [-1.0, 1.0]:
+		var edge := box(Vector3(3.6, 0.06, 0.09), at - out * 0.06 + Vector3(0, sy * 0.33, 0), mat(Color(0.86, 0.7, 0.32), 0.3, 0.8), false)
+		edge.rotation.y = rot
+	var l := neon_sign(text, at, tint.lerp(Color.WHITE, 0.55), 76, rot, false)
+	l.outline_size = 10
+	l.outline_modulate = Color(0.02, 0.03, 0.06)
+	l.modulate = tint.lerp(Color.WHITE, 0.55) * 1.25
+
+
 func _dorm_doors(key: String, room_fmt: String, house: Node3D) -> void:
 	var front: Array = house.get_meta("front")
 	doors[key] = [Vector3((front[0] as Vector3).x, 0, (front[0] as Vector3).z), front[1]]

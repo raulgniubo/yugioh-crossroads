@@ -12,6 +12,7 @@ const ANIM_SPEEDS := {"Normal": 1.0, "Fast": 1.6, "Very fast": 2.6}
 
 var fullscreen := false
 var resolution := Vector2i(1600, 900)
+var fs_resolution := Vector2i.ZERO   # in fullscreen: the size the 3D picture is drawn at (ZERO: the screen's own)
 var master_volume := 0.8
 var music_volume := 0.7
 var sfx_volume := 0.8
@@ -171,12 +172,23 @@ func _apply_scale() -> void:
 	var lines: int = RES_LINES[clampi(int(gfx["res"]), 0, RES_LINES.size() - 1)]
 	var h := float(vp.size.y)
 	var k := 1.0 if (lines == 0 or h <= float(lines)) else clampf(float(lines) / h, 0.35, 1.0)
+	if fullscreen and fs_resolution.y > 0 and h > float(fs_resolution.y):
+		# Fullscreen at a lower resolution: the 3D picture is drawn that small and scaled up.
+		k = minf(k, clampf(float(fs_resolution.y) / h, 0.3, 1.0))
 	k = clampf(k * (auto_k if hold_fps else 1.0), 0.3, 1.0)
 	var fplus := RenderingServer.get_current_rendering_method() == "forward_plus"
 	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if (fplus and k < 0.99) else Viewport.SCALING_3D_MODE_BILINEAR
 	vp.fsr_sharpness = 0.35
 	if not is_equal_approx(vp.scaling_3d_scale, k):
 		vp.scaling_3d_scale = k
+
+
+## The size the 3D picture is drawn at right now, in pixels.
+func render_size() -> Vector2i:
+	if not is_inside_tree():
+		return Vector2i.ZERO
+	var vp := get_tree().root
+	return Vector2i(Vector2(vp.size) * vp.scaling_3d_scale)
 
 
 ## The 3D scale the window is using right now (other 3D views match it).
@@ -255,6 +267,7 @@ func load_settings() -> void:
 		return
 	fullscreen = cfg.get_value("display", "fullscreen", fullscreen)
 	resolution = cfg.get_value("display", "resolution", resolution)
+	fs_resolution = cfg.get_value("display", "fs_resolution", fs_resolution)
 	master_volume = cfg.get_value("audio", "master", master_volume)
 	music_volume = cfg.get_value("audio", "music", music_volume)
 	sfx_volume = cfg.get_value("audio", "sfx", sfx_volume)
@@ -291,6 +304,7 @@ func save_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("display", "fullscreen", fullscreen)
 	cfg.set_value("display", "resolution", resolution)
+	cfg.set_value("display", "fs_resolution", fs_resolution)
 	cfg.set_value("audio", "master", master_volume)
 	cfg.set_value("audio", "music", music_volume)
 	cfg.set_value("audio", "sfx", sfx_volume)
@@ -343,6 +357,7 @@ func apply() -> void:
 			DisplayServer.window_set_position(usable.position + (usable.size - size) / 2)
 	# Resizing the window can rebuild the screen buffers with V-Sync back on: set it once more.
 	apply_fps.call_deferred()
+	_apply_scale.call_deferred()
 	changed.emit()
 
 

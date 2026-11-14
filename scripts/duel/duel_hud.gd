@@ -1579,13 +1579,9 @@ func show_actions(at: Vector2, options: Array) -> void:
 	if x + sz.x > vs.x - 10:
 		x = at.x - sz.x - 200
 	_menu.position = Vector2(clampf(x, 10, vs.x - sz.x - 10), clampf(at.y - sz.y / 2.0, 10, vs.y - sz.y - 10))
-	# One quick pop, no waiting: the menu is usable on the frame it appears.
-	_menu.pivot_offset = Vector2(0, sz.y / 2.0)
-	_menu.scale = Vector2(0.9, 0.9)
-	_menu.modulate.a = 0.6
-	var pop := create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	pop.tween_property(_menu, "scale", Vector2.ONE, 0.09)
-	pop.tween_property(_menu, "modulate:a", 1.0, 0.05)
+	# No pop, no fade: the menu is there, whole, on the frame of the click.
+	_menu.scale = Vector2.ONE
+	_menu.modulate.a = 1.0
 	Sfx.play("hover", -8.0, 1.3)
 	for c in _menu.get_children():
 		if c is Button and not c.disabled:

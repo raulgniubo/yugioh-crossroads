@@ -148,6 +148,10 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 				if weakest >= c.atk():
 					continue
 			return {"do": "special_hand", "card": c}
+	# 4f. Effects used from the hand by discarding the card (Harpie Queen fetches her field)
+	for c in me.hand:
+		if s.can_hand_ignite(p, c) and me.field_spell == null:
+			return {"do": "hand_ignite", "card": c}
 	# 4e. Effects used from the Graveyard (Destiny HERO - Malicious)
 	for g in s.gy_effects(p):
 		return {"do": "gy_ignite", "card": g}
@@ -653,6 +657,8 @@ static func apply(s: DuelState, p: int, act: Dictionary) -> Array:
 			return s.ignite(p, act["card"])
 		"gy_ignite":
 			return s.gy_ignite(p, act["card"])
+		"hand_ignite":
+			return s.hand_ignite(p, act["card"])
 		"speed":
 			return s.speed_world(p, int(act["cost"]))
 	return []

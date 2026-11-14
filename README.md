@@ -14,9 +14,22 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
   - **X, Y and Z.** Y-Dragon Head and Z-Metal Tank equip to their partners as Union monsters, give 400 and 600 ATK and DEF, are destroyed in place of the monster they ride on, and come back off as monsters. XYZ-Dragon Cannon is called from the Extra Deck by banishing all three, with no Polymerization, and its discard effect can hit any card and be used as often as you can pay.
   - **Destiny HERO - Malicious** is used from the Graveyard (your deck, then "Effect from the Graveyard"). **Disk Commander** draws 2 only when it comes back from the Graveyard, once per Duel, and not the turn it was sent there.
   - **Cyber Angels.** Benten searches a LIGHT Fairy when Tributed. Idaten fetches a Ritual Spell when Ritual Summoned and gives every Ritual Monster 1000 ATK and DEF when Tributed. Dakini makes the opponent give up a monster of their choice, gives your Ritual Monsters piercing, and brings a Ritual card back in your End Phase.
+  - **Yusei's helpers.** Quillbolt Hedgehog comes back from the Graveyard while you control a Tuner and is banished when it leaves the field. Nitro Synchron draws only for a "Nitro" Synchro Monster. Sinister Sprocket destroys a face-up Spell or Trap, only for a DARK Synchro Monster. Max Warrior drops to Level 2 and half strength after a kill, until your next Standby Phase.
+  - **Galaxy.** Galaxy Soldier comes out of the hand in Defense by sending another LIGHT monster to the Graveyard, and searches once per turn. Galaxy Knight, summoned without Tribute, loses 1000 ATK for the turn and brings Galaxy-Eyes Photon Dragon back in Defense.
+  - **From the Graveyard and the hand.** Stygian Street Patrol banishes itself to call a Fiend from the hand. Harpie Queen is discarded to fetch Harpies' Hunting Ground (her card in your hand has an "Effect" button). Revival Jam comes back at your next Standby Phase if you pay.
+  - **Also to their full text now:** Twin-Sword Marauder, Freed the Brave Wanderer, Gilasaurus (the opponent may revive a monster), Breaker the Magical Warrior (Spell Counter), Black Luster Soldier - Envoy of the Beginning (banish, or a second attack after a kill), Bazoo the Soul-Eater, Harpie Channeler, Insect Queen (Tribute to attack, Token at the End Phase) and Destiny HERO - Doom Lord (the monster returns two Standby Phases later).
 - **Fix:** enrolled at Duel Academy, your duelist keeps every color you picked; the dorm jacket is your top, repainted.
 
-Still waiting: 54 effect monsters and 14 Spells and Traps are out of the game until they are rebuilt (the list is in CARD_REVIEW.md).
+**From your notes on 0.29**
+- **Resolution works in fullscreen.** In fullscreen the Resolution box now sets the size the 3D picture is drawn at (lower is softer and faster; menus and text stay sharp), and the line under it shows the size in use. In a window it is still the window's size.
+- **Clicks.** The action menu of a card appears whole on the frame of the click, with no pop or fade. Scene changes fade out faster. The game reads input right before every frame. F3 now also shows "last click answered in N ms", the time from the press to the frame that shows the answer.
+- **The student by the Academy entrance** no longer swerves left and right when you walk along his path: a walker picks a side once and keeps it until you are clear.
+- **Dorm doors.** No post stands in front of a dorm's front door any more, the Blue Dorm's door no longer flickers, and each dorm's name is on a dark plate over the door where it can be read.
+- **Stars.** The prompt says "Strength" before the stars, and the first time you walk up to a duelist a tip says what they mean.
+- **Card shop.** Booster packs, Ready-made decks and My decks are one tap apart at the top of the shop screens. The world behind a shop screen is no longer drawn while the shop is open, so the shop runs smoothly.
+- **Story panel.** The Difficulty row no longer falls apart. Every chapter says that it starts from the beginning, and the chapter you are in the middle of asks before starting over.
+
+Still waiting: 46 effect monsters and 14 Spells and Traps are out of the game until they are rebuilt (the list is in CARD_REVIEW.md).
 
 ## What is in 0.29
 

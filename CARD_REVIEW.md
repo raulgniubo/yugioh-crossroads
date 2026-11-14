@@ -5,8 +5,8 @@ The list of cards that passed is `scripts/core/card_exact.gd`. Normal monsters a
 
 ## Where it stands
 
-- Effect monsters checked and exact: **196**
-- Effect monsters waiting to be rebuilt: **64**
+- Effect monsters checked and exact: **214**
+- Effect monsters waiting to be rebuilt: **46**
 - Spells and Traps exact: **162**
 - Spells and Traps waiting to be rebuilt: **14**
 
@@ -15,10 +15,7 @@ A card that is waiting is not in packs, shops, prizes or the deck builder, and t
 ## Effect monsters waiting to be rebuilt
 
 - Apprentice Magician
-- Bazoo the Soul-Eater
-- Black Luster Soldier - Envoy of the Beginning
 - Blackwing - Sirocco the Dawn
-- Breaker the Magical Warrior
 - Cat Shark
 - Cyber Barrier Dragon
 - Cyber Blader
@@ -26,43 +23,28 @@ A card that is waiting is not in packs, shops, prizes or the deck builder, and t
 - Cyber Phoenix
 - Cyber Valley
 - Destiny HERO - Diamond Dude
-- Destiny HERO - Doom Lord
 - Dimensional Alchemist
 - Dragon Piper
 - Elemental HERO Rampart Blaster
 - Elemental HERO Wildheart
 - Exploder Dragonwing
-- Freed the Brave Wanderer
 - Gagaga Cowboy
-- Galaxy Knight
-- Galaxy Soldier
 - Gernia
-- Gilasaurus
-- Harpie Channeler
-- Harpie Queen
 - Infernity Archfiend
 - Infernity Guardian
-- Insect Queen
 - Kycoo the Ghost Destroyer
 - Makyura the Destructor
-- Max Warrior
 - Medium Piece Golem
-- Nitro Synchron
 - Nitro Warrior
 - Number 62: Galaxy-Eyes Prime Photon Dragon
 - Pumpking the King of Ghosts
-- Quillbolt Hedgehog
-- Revival Jam
 - Rose Tentacles
-- Sinister Sprocket
 - Skull Kraken
 - Skull-Mark Ladybug
 - Splendid Rose
 - Starliege Paladynamo
-- Stygian Street Patrol
 - Submarineroid
 - Truckroid
-- Twin-Sword Marauder
 - Umbral Horror Ghost
 - Umbral Horror Unform
 - Umbral Horror Will o' the Wisp

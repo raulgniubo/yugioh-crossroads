@@ -594,7 +594,27 @@ func _on_story() -> void:
 		b.add_theme_font_size_override("font_size", 24)
 		b.disabled = not ok
 		var id: String = c["id"]
-		b.pressed.connect(func(): StoryDirector.begin(id))
+		# A chapter in this list always starts from its first scene. Say so, and ask before
+		# throwing away the place you are at in it (Continue is the way back to that).
+		var mid: bool = ok and str(pos["chapter"]) == id and int(pos.get("step", 0)) > 0
+		if ok:
+			# On the right of the tile, where there is room for it at a readable size.
+			var how := UITheme.label(Loc.t("You are here. Tapping starts this chapter over. Use Continue to pick up where you were.") if mid else Loc.t("Starts from the beginning"),
+					18, UITheme.GOLD if mid else UITheme.TEXT_DIM, UITheme.semi_font())
+			how.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
+			how.offset_left = -330.0 if mid else -250.0
+			how.offset_right = -22.0
+			how.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			how.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			how.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			b.add_child(how)
+			b.clip_text = true
+		b.pressed.connect(func():
+			if mid:
+				SavesUI._ask(self, "Start this chapter over from its first scene? To pick up where you were, close this and use Continue.", "Start over", func(): StoryDirector.begin(id))
+			else:
+				StoryDirector.begin(id))
 		p.body.add_child(b)
 	p.add_section("Bond scenes")
 	for bd in StoryData.BONDS:

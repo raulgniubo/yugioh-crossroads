@@ -22,6 +22,9 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 	if c.atk_mod_turn == s.turn:
 		b += c.atk_mod_t
 	b += c.atk_mod
+	if c.tmp_until >= s.turn:
+		b += c.tmp_atk
+	b += int(f.get("atk_per_counter", 0)) * c.counter
 	if battling and attacking:
 		if vs != null:
 			b += int(f.get("atk_attack", 0))
@@ -109,7 +112,7 @@ static func _count(s: DuelState, owner: int, spec: String) -> int:
 					if str(m.data.get("race", "")) == val:
 						n += 1
 				"own_named", "field_named":
-					if m.cname() == val or str(fx(m).get("name_as", "")) == val:
+					if m.cname() == val or str(fx(m).get("name_as", "")) == val or str(fx(m).get("name_as_fg", "")) == val:
 						n += 1
 	return n
 
@@ -164,7 +167,13 @@ static func _st_count(ps) -> int:
 
 static func max_attacks(c) -> int:
 	var f := fx(c)
-	return 2 if f.get("double_attack", false) or f.get("double_vs_def", false) else 1
+	if f.get("double_vs_def", false):
+		# Twin-Sword Marauder: a second attack in a row only after it attacked a Defense Position monster.
+		return 2 if c.hit_def_turn != -1 and c.hit_def_turn == c.attack_count_turn else 1
+	if f.get("double_after_kill", false):
+		# Black Luster Soldier - Envoy of the Beginning: one of its two effects each turn.
+		return 2 if c.killed_turn != -1 and c.killed_turn == c.attack_count_turn and c.ignite_turn != c.killed_turn else 1
+	return 2 if f.get("double_attack", false) else 1
 
 
 static func piercing(s: DuelState, p: int, c) -> bool:
@@ -254,7 +263,7 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 ## Does this monster have its own way to be Special Summoned from the hand?
 static func has_special_hand(c) -> bool:
 	var f := fx(c)
-	for k in ["special_hand_if", "special_tribute2", "special_tribute_attr", "special_banish_ld", "eltanin", "special_toon"]:
+	for k in ["special_hand_if", "special_tribute2", "special_tribute_attr", "special_banish_ld", "eltanin", "special_toon", "special_discard_attr"]:
 		if f.has(k):
 			return true
 	return false
@@ -271,6 +280,12 @@ static func can_special_hand(s: DuelState, p: int, c) -> bool:
 		return not _light_machines(s, p).is_empty()
 	if f.has("special_hand_if"):
 		return _cond(s, p, str(f["special_hand_if"]))
+	if f.has("special_discard_attr"):
+		# Galaxy Soldier: send 1 other monster of that Attribute from your hand to the Graveyard.
+		for h in s.players[p].hand:
+			if h != c and h.is_monster() and str(h.data.get("attribute", "")) == str(f["special_discard_attr"]):
+				return true
+		return false
 	if f.has("special_toon"):
 		# From the hand while you control Toon World, Tributing that many monsters first.
 		return s.toon_world(p) and s.players[p].monsters().size() >= int(f["special_toon"])
@@ -349,6 +364,21 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 			s._to_gy(ps, m)
 			events.append({"type": "tribute", "player": p, "card": m})
 			events.append_array(EffectRunner.trigger(s, m, "tributed"))
+	if f.has("special_discard_attr"):
+		var pay: Array = ps.hand.filter(func(h): return h != c and h.is_monster() and str(h.data.get("attribute", "")) == str(f["special_discard_attr"]))
+		var least = pay[0]
+		for h in pay:
+			if s._card_value(h) < s._card_value(least):
+				least = h
+		least = s.pick1(p, Loc.t("%s: send 1 other %s monster from your hand to the Graveyard") % [c.cname(), str(f["special_discard_attr"])], pay, least, c)
+		ps.hand.erase(least)
+		s._to_gy(ps, least)
+		events.append({"type": "discard", "player": p, "card": least})
+		events.append_array(trigger(s, least, "gy"))
+		ps.hand.erase(c)
+		events.append_array(s._special(p, c, "effect", "def"))
+		events.append_array(on_summon(s, p, c, "special"))
+		return events
 	if int(f.get("special_toon", 0)) > 0:
 		var need_t := int(f["special_toon"])
 		var all_t := ps.monsters()
@@ -367,8 +397,12 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 	ps.hand.erase(c)
 	if f.get("half_if_special", false):
 		c.set_meta("special_from_hand", true)
+	c.proper = true   # summoned by its own procedure: it may be brought back later
 	events.append_array(s._special(p, c, "effect"))
 	events.append_array(on_summon(s, p, c, "special"))
+	if f.has("hand_special"):
+		# "If Summoned this way: ..." (Gilasaurus)
+		events.append_array(run_list(s, p, c, f["hand_special"], {}))
 	return events
 
 
@@ -415,7 +449,37 @@ static func trigger(s: DuelState, c, key: String, ctx := {}) -> Array:
 
 static func standby(s: DuelState, p: int) -> Array:
 	var events := []
+	# "Special Summon it during your next Standby Phase" (Revival Jam).
+	for g in s.players[p].gy.duplicate():
+		if g.back_pos == "":
+			continue
+		var pos: String = g.back_pos
+		g.back_pos = ""
+		if s.players[p].free_zone() != -1 and s.can_revive(g):
+			s.players[p].gy.erase(g)
+			events.append(_ev(p, g, Loc.t("%s comes back from the Graveyard") % g.cname()))
+			events.append_array(s._special(p, g, "reborn", pos))
+			events.append_array(on_summon(s, p, g, "special"))
+	# Destiny HERO - Doom Lord: the banished monster returns in your 2nd Standby Phase after.
+	for ex in s.players[p].exiles.duplicate():
+		ex["left"] = int(ex["left"]) - 1
+		if int(ex["left"]) > 0:
+			continue
+		s.players[p].exiles.erase(ex)
+		var back = ex["card"]
+		var home: DuelState.PlayerState = s.players[int(ex["to"])]
+		if home.banished.has(back) and home.free_zone() != -1:
+			home.banished.erase(back)
+			events.append(_ev(int(ex["to"]), back, Loc.t("%s returns to the field") % back.cname()))
+			events.append_array(s._special(int(ex["to"]), back, "return", "atk" if ex["atk_pos"] else "def"))
 	for m in s.players[p].monsters():
+		if m.shrunk:
+			# Max Warrior is itself again.
+			m.shrunk = false
+			m.lv_set = 0
+			m.atk_mod += m.atk() / 2
+			m.def_mod += m.def() / 2
+			events.append(_ev(p, m, Loc.t("%s is back to full strength") % m.cname()))
 		if m.face_up and fx(m).has("standby"):
 			events.append_array(run_list(s, p, m, fx(m)["standby"], {}))
 	return events
@@ -429,6 +493,16 @@ static func end_phase(s: DuelState, p: int) -> Array:
 	return events
 
 
+## "During the End Phase" effects that do not care whose turn it is.
+static func end_phase_any(s: DuelState) -> Array:
+	var events := []
+	for q in [s.current, s.opponent(s.current)]:
+		for m in s.players[q].monsters():
+			if m.face_up and fx(m).has("end_any"):
+				events.append_array(run_list(s, q, m, fx(m)["end_any"], {}))
+	return events
+
+
 # ------------------------------------------------------------------ ignition effects
 
 ## "You can banish this card from your GY; ..." Can this card in the Graveyard do that now?
@@ -438,15 +512,52 @@ static func gy_can(s: DuelState, p: int, c) -> bool:
 		return false
 	if int(s.players[p].name_lock.get(c.cname(), -1)) == s.turn:
 		return false
+	if g.has("cond") and not _cond(s, p, str(g["cond"])):
+		return false
+	if g.get("revive_self", false):
+		return s.players[p].free_zone() != -1
 	for a in g.get("do", []):
 		if a[0] == "special" and a[1] == "deck":
 			if s.players[p].free_zone() == -1 or _take(s.players[p].deck, a[2], 1).is_empty():
 				return false
+		if a[0] == "special" and a[1] == "hand":
+			if s.players[p].free_zone() == -1 or _take(s.players[p].hand, a[2], 1).is_empty():
+				return false
 	return true
+
+
+## An effect used from the hand by discarding the card itself.
+static func hand_can(s: DuelState, p: int, c) -> bool:
+	var g: Dictionary = fx(c).get("hand_ignite", {})
+	if g.is_empty() or int(s.players[p].name_lock.get(c.cname(), -1)) == s.turn:
+		return false
+	for a in g.get("do", []):
+		if a[0] == "search" and _take(s.players[p].deck, a[1], 1).is_empty():
+			return false
+	return true
+
+
+static func hand_run(s: DuelState, p: int, c) -> Array:
+	var g: Dictionary = fx(c)["hand_ignite"]
+	var ps := s.players[p]
+	var events := [_ev(p, c, Loc.t("%s is discarded for its effect") % c.cname())]
+	ps.hand.erase(c)
+	s._to_gy(ps, c)
+	events.append({"type": "discard", "player": p, "card": c})
+	events.append_array(run_list(s, p, c, g.get("do", []), {}))
+	return events
 
 
 static func gy_run(s: DuelState, p: int, c) -> Array:
 	var g: Dictionary = fx(c)["gy_ignite"]
+	if g.get("revive_self", false):
+		# "If this card is in your GY: You can Special Summon this card" (Quillbolt Hedgehog).
+		s.players[p].gy.erase(c)
+		var back := [_ev(p, c, Loc.t("%s comes back from the Graveyard") % c.cname())]
+		back.append_array(s._special(p, c, "reborn"))
+		c.leave_banish = bool(g.get("banish_on_leave", false))
+		back.append_array(on_summon(s, p, c, "special"))
+		return back
 	var events := [_ev(p, c, Loc.t("%s is banished from the Graveyard for its effect") % c.cname())]
 	s.players[p].gy.erase(c)
 	s.players[p].banished.append(c)
@@ -514,7 +625,21 @@ static func can_ignite(s: DuelState, p: int, c) -> bool:
 	if ig.has("cond") and not _cond(s, p, str(ig["cond"])):
 		return false
 	var ps := s.players[p]
+	if ig.get("name_once", false) and int(ps.once_names.get(c.cname(), -1)) == s.turn:
+		return false   # "You can only use this effect of ... once per turn"
+	if ig.get("need_atk_pos", false) and not c.attack_pos:
+		return false
+	if ig.get("no_attack_yet", false) and ps.attacks_turn == s.turn and ps.attacks_this_turn > 0:
+		return false   # "You cannot declare an attack the turn you activate this effect"
+	if ig.get("not_after_double", false) and c.attack_count_turn == s.turn and c.attack_count >= 2:
+		return false   # it already used its other effect this turn
 	match str(ig.get("cost", "none")):
+		"counter":
+			if c.counter < 1:
+				return false
+		"banish_gy_light2":
+			if ps.gy.filter(func(g): return g.is_monster() and str(g.data.get("attribute", "")) == "LIGHT").size() < 2:
+				return false
 		"discard_family":
 			var has_one := false
 			for h in ps.hand:
@@ -570,14 +695,26 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 							n_cards += 1
 					if n_cards == 0:
 						return false
+				elif str(a[1]) == "st_pick":
+					if _all_st(s).is_empty():
+						return false
+				elif str(a[1]) == "atk_above_self":
+					if _stronger_than(s, c).is_empty():
+						return false
 				elif str(a[1]).begins_with("best") or str(a[1]) in ["atk_below_self", "weakest"]:
 					if opp.monsters().is_empty() and not (a[1] == "best_any" and not opp.set_cards().is_empty()):
 						return false
 			"opp_half", "opp_zero", "destroy_half_damage":
 				if opp.monsters().is_empty():
 					return false
+			"exile_opp":
+				if opp.monsters().is_empty():
+					return false
 			"banish":
-				if s._strongest_face_up(s.opponent(p)) == null and not (a[1] == "best_any" and (not opp.monsters().is_empty() or not opp.set_cards().is_empty())):
+				if str(a[1]) == "field_mon":
+					if opp.monsters().is_empty() and s.players[p].monsters().size() < 2:
+						return false
+				elif s._strongest_face_up(s.opponent(p)) == null and not (a[1] == "best_any" and (not opp.monsters().is_empty() or not opp.set_cards().is_empty())):
 					return false
 			"banish_own_gy_boost":
 				if s._best_monsters(s.players[p].gy, 1).is_empty():
@@ -616,6 +753,28 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 	return true
 
 
+## Every Spell and Trap on the field, either side, Set ones included.
+static func _all_st(s: DuelState) -> Array:
+	var out := []
+	for q in 2:
+		for st in s.players[q].spells:
+			if st != null and not st.is_monster():
+				out.append(st)
+		if s.players[q].field_spell != null:
+			out.append(s.players[q].field_spell)
+	return out
+
+
+## Face-up monsters on the field with more ATK than this one (Freed the Brave Wanderer).
+static func _stronger_than(s: DuelState, c) -> Array:
+	var out := []
+	for q in 2:
+		for m in s.players[q].monsters():
+			if m != c and m.face_up and s.atk_of(m, false) > s.atk_of(c, false):
+				out.append(m)
+	return out
+
+
 ## Other face-up monsters on the field that fit a filter and have a Level (Copy Plant).
 static func _level_sources(s: DuelState, c, f: Dictionary) -> Array:
 	var out := []
@@ -635,8 +794,18 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 	var ps := s.players[p]
 	var events := [_ev(p, c, Loc.t("%s activates its effect") % c.cname())]
 	c.ignite_turn = s.turn
+	if ig.get("name_once", false):
+		ps.once_names[c.cname()] = s.turn
 	var ctx := {"_ign": true}
 	match str(ig.get("cost", "none")):
+		"counter":
+			c.counter -= 1
+			events.append(_ev(p, c, Loc.t("%s removes its Spell Counter") % c.cname()))
+		"banish_gy_light2":
+			var lights: Array = ps.gy.filter(func(g): return g.is_monster() and str(g.data.get("attribute", "")) == "LIGHT")
+			lights.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			for g in s.choose(p, Loc.t("%s: banish 2 LIGHT monsters from your Graveyard") % c.cname(), lights, 2, lights.slice(0, 2), false, c):
+				events.append_array(s._banish(g))
 		"discard", "discard_monster", "discard_family":
 			var pick = null
 			var can: Array = []
@@ -913,7 +1082,9 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 					"damage_victim_def":
 						amt = v.def()
 					"damage_victim_level":
-						amt = v.level() * int(a[1])
+						# "...and sends it to the GY: damage equal to its original Level x 100".
+						if s.players[0].gy.has(v) or s.players[1].gy.has(v):
+							amt = int(v.data.get("level", 0)) * int(a[1])
 					"damage_if_victim_race":
 						amt = int(a[2]) if str(v.data.get("race", "")) == a[1] else 0
 				if amt > 0:
@@ -945,7 +1116,11 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			var src: Array = ps.deck if a[1] == "deck" else (ps.hand if a[1] == "hand" else ps.gy)
 			var n: int = int(a[4]) if a.size() > 4 else 1
 			var pool: Array = src.filter(func(x): return s.can_revive(x)) if a[1] == "gy" else src.filter(func(x): return not CardEffects.of(x.cname()).get("no_special", false))
-			for d in _pick(s, p, c, Loc.t("Special Summon from your %s") % ("Deck" if a[1] == "deck" else ("hand" if a[1] == "hand" else "Graveyard")), pool, a[2], n):
+			var flt: Dictionary = a[2]
+			if a[1] == "gy":
+				flt = flt.duplicate()
+				flt["zone"] = "gy"
+			for d in _pick(s, p, c, Loc.t("Special Summon from your %s") % ("Deck" if a[1] == "deck" else ("hand" if a[1] == "hand" else "Graveyard")), pool, flt, n):
 				if ps.free_zone() == -1:
 					break
 				src.erase(d)
@@ -986,6 +1161,15 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			# ["banish", "best"]: the opponent's strongest face-up monster. "best_any": or a set card.
 			var t = s._strongest_face_up(opp_i)
 			var bcan: Array = opp.monsters().filter(func(m): return m.face_up)
+			if str(a[1]) == "field_mon":
+				# "Target 1 monster on the field": either side, face-down ones too.
+				bcan = opp.monsters() + ps.monsters().filter(func(m): return m != c)
+				if t == null:
+					t = _best_opp(s, p)
+				if t == null and not s.manual[p]:
+					return events          # the AI does not banish its own monster
+				if t == null and not bcan.is_empty():
+					t = bcan[0]
 			if str(a[1]) == "best_any":
 				bcan = opp.monsters() + opp.set_cards()
 				if t == null:
@@ -1011,14 +1195,21 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			picks.reverse()
 			var own_all: Array = picks.duplicate()
 			picks = picks.slice(0, int(a[1]))
+			if picks.size() > 1 and s.manual[p]:
+				# "up to 3": how many is the player's call.
+				var labels := []
+				for i in picks.size():
+					labels.append(str(i + 1))
+				picks = picks.slice(0, s.choose_option(p, Loc.t("%s: banish how many monsters?") % name, labels, picks.size() - 1, c) + 1)
 			if not picks.is_empty():
 				picks = s.choose(p, Loc.t("%s: banish %d from your Graveyard") % [name, picks.size()], own_all, picks.size(), picks, false, c)
 			for g in picks:
 				events.append_array(s._banish(g))
 			if not picks.is_empty():
-				c.atk_mod_t = (c.atk_mod_t if c.atk_mod_turn == s.turn else 0) + int(a[2]) * picks.size()
-				c.atk_mod_turn = s.turn
-				events.append(_ev(p, c, Loc.t("%s gains %d ATK") % [name, int(a[2]) * picks.size()]))
+				# "...until the end of your opponent's turn".
+				c.tmp_atk = (c.tmp_atk if c.tmp_until >= s.turn else 0) + int(a[2]) * picks.size()
+				c.tmp_until = s.turn + 1
+				events.append(_ev(p, c, Loc.t("%s gains %d ATK until the end of your opponent's turn") % [name, int(a[2]) * picks.size()]))
 		"banish_killer_and_self":
 			var k = ctx.get("killer")
 			events.append(_ev(p, c, Loc.t("%s drags its attacker out of the duel") % name))
@@ -1065,6 +1256,71 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 		"perm_atk":
 			c.atk_mod += int(a[1])
 			events.append(_ev(p, c, Loc.t("%s gains %d ATK") % [name, a[1]]))
+		"counter_self":
+			# "Place 1 Spell Counter on it (max. 1)".
+			if c.counter < int(a[1]):
+				c.counter += 1
+				events.append(_ev(p, c, Loc.t("%s gets a Spell Counter") % name))
+		"exile_opp":
+			# Destiny HERO - Doom Lord: banish 1 of their monsters until your 2nd Standby Phase after this.
+			var gone = _best_opp(s, p, "", c, Loc.t("banish 1 monster until your 2nd Standby Phase from now"))
+			if gone != null and c.attack_pos and ps.field.has(c):
+				var was_atk: bool = gone.attack_pos or not gone.face_up
+				var is_tok: bool = gone.is_token()
+				events.append(_ev(p, c, Loc.t("%s sends %s away") % [name, gone.cname() if gone.face_up else Loc.t("a Set monster")]))
+				events.append_array(s._banish(gone))
+				if not is_tok and opp.banished.has(gone):
+					ps.exiles.append({"card": gone, "to": opp_i, "left": 2, "atk_pos": was_atk})
+			ps.no_attack_turn = s.turn
+		"opp_may_revive":
+			# Gilasaurus: your opponent can Special Summon 1 monster from their Graveyard.
+			var theirs: Array = opp.gy.filter(func(g): return g.is_monster() and s.can_revive(g))
+			if not theirs.is_empty() and opp.free_zone() != -1:
+				var top = theirs[0]
+				for g in theirs:
+					if g.atk() > top.atk():
+						top = g
+				var got: Array = s.choose(opp_i, Loc.t("%s: you may Special Summon 1 monster from your Graveyard") % name, theirs, 1, [top], true, c)
+				if not got.is_empty():
+					opp.gy.erase(got[0])
+					events.append(_ev(opp_i, c, Loc.t("%s lets %s come back") % [name, got[0].cname()]))
+					events.append_array(s._special(opp_i, got[0], "reborn"))
+					events.append_array(on_summon(s, opp_i, got[0], "special"))
+		"pay_revive_standby":
+			# Revival Jam: pay LP now, it returns in Defense at your next Standby Phase.
+			if ps.gy.has(c) and ps.lp > int(a[1]):
+				var yes := ps.lp > int(a[1]) + 2000
+				if s.manual[p]:
+					yes = s.choose_option(p, Loc.t("%s: pay %d LP to bring it back at your next Standby Phase?") % [name, int(a[1])], [Loc.t("Yes"), Loc.t("No")], 0, c) == 0
+				if yes:
+					ps.lp -= int(a[1])
+					events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": -int(a[1])})
+					c.back_pos = "def"
+					events.append(_ev(p, c, Loc.t("%s will be back at your next Standby Phase") % name))
+		"token_if_killed":
+			# Insect Queen, End Phase: it destroyed a monster by battle this turn.
+			if c.killed_turn == s.turn and c.flag_turn != s.turn and ps.free_zone() != -1:
+				c.flag_turn = s.turn
+				CardData.TOKENS[int(a[2])] = {"name": str(a[1]), "frame": "token", "atk": int(a[3]), "def": int(a[4]), "level": int(a[5]),
+						"attribute": str(a[6]), "race": str(a[7]), "desc": Loc.t("This card can be used as a \"%s\".") % str(a[1])}
+				events.append(_ev(p, c, Loc.t("%s lays an egg: %s") % [name, str(a[1])]))
+				events.append_array(s._special(p, s._make(int(a[2]), p), "effect", "atk"))
+		"max_shrink":
+			# Max Warrior destroyed a monster by battle: Level 2, original ATK and DEF halved,
+			# until your next Standby Phase.
+			if not c.shrunk and s.players[p].field.has(c):
+				c.shrunk = true
+				c.lv_set = 2
+				c.lv_turn = -1
+				c.atk_mod -= c.atk() / 2
+				c.def_mod -= c.def() / 2
+				events.append(_ev(p, c, Loc.t("%s is spent: Level 2 with half its ATK and DEF until your next Standby Phase") % name))
+		"self_atk_turn":
+			if c.atk_mod_turn != s.turn:
+				c.atk_mod_turn = s.turn
+				c.atk_mod_t = 0
+			c.atk_mod_t += int(a[1])
+			events.append(_ev(p, c, Loc.t("%s: %d ATK until the end of this turn") % [name, int(a[1])]))
 		"ritual_boost":
 			# Cyber Angel Idaten, Tributed: every Ritual Monster you control gains ATK and DEF.
 			var any_r := false
@@ -1324,6 +1580,44 @@ static func _destroy_action(s: DuelState, p: int, c, what: String, ctx: Dictiona
 					events.append(_ev(p, c, Loc.t("%s destroys a set card") % c.cname()))
 					events.append_array(s._destroy_st(got))
 					return events
+		"st_pick":
+			# "Target 1 Spell/Trap on the field; destroy that target" (Breaker the Magical Warrior).
+			var every: Array = _all_st(s)
+			var theirs4: Array = every.filter(func(x): return x.owner == opp_i)
+			if not every.is_empty():
+				var got4 = s.pick1(p, Loc.t("%s: destroy 1 Spell or Trap") % c.cname(), every, theirs4[0] if not theirs4.is_empty() else every[0], c)
+				events.append(_ev(p, c, Loc.t("%s destroys %s") % [c.cname(), got4.cname() if got4.face_up else Loc.t("a Set card")]))
+				events.append_array(s._destroy_st(got4))
+			return events
+		"atk_above_self":
+			# Freed the Brave Wanderer: 1 face-up monster on the field with more ATK than this card.
+			var big: Array = _stronger_than(s, c)
+			var theirs5: Array = big.filter(func(x): return opp.field.has(x))
+			if not big.is_empty() and s.players[p].field.has(c) and c.face_up:
+				var top5 = theirs5[0] if not theirs5.is_empty() else big[0]
+				for m in theirs5:
+					if s.atk_of(m, false) > s.atk_of(top5, false):
+						top5 = m
+				targets.append(s.pick1(p, Loc.t("%s: destroy 1 monster with more ATK") % c.cname(), big, top5, c))
+		"faceup_st_pick":
+			# Sinister Sprocket: 1 face-up Spell or Trap Card, on either side.
+			var ups3: Array = []
+			for q in [opp_i, p]:
+				for st in s.players[q].spells:
+					if st != null and st.face_up:
+						ups3.append(st)
+				if s.players[q].field_spell != null:
+					ups3.append(s.players[q].field_spell)
+			var theirs3: Array = ups3.filter(func(x): return x.owner == opp_i)
+			if theirs3.is_empty() and not s.manual[p]:
+				return events          # the AI does not blow up its own cards
+			if not ups3.is_empty() and s.manual[p] and s.choose_option(p, Loc.t("%s: destroy 1 face-up Spell or Trap?") % c.cname(), [Loc.t("Yes"), Loc.t("No")], 0, c) == 1:
+				return events
+			if not ups3.is_empty():
+				var got3 = s.pick1(p, Loc.t("%s: destroy 1 face-up Spell or Trap") % c.cname(), ups3, theirs3[0] if not theirs3.is_empty() else ups3[0], c)
+				events.append(_ev(p, c, Loc.t("%s destroys %s") % [c.cname(), got3.cname()]))
+				events.append_array(s._destroy_st(got3))
+			return events
 		"any_pick":
 			# "Target 1 card your opponent controls; destroy that target": a monster, a Spell or Trap
 			# (face-up or Set), or their Field Spell.

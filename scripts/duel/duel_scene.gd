@@ -1374,6 +1374,8 @@ func _on_hand_card_pressed(inst, at: Vector2) -> void:
 		# Every monster with its own way out of the hand gets the button, not only Cyber Dragon.
 		if inst.cname() == "Cyber Dragon" or EffectRunner.has_special_hand(inst) or state.can_special_from_hand(ME, inst):
 			opts.push_front(["special_hand", "Special Summon", state.can_special_from_hand(ME, inst)])
+		if EffectRunner.fx(inst).has("hand_ignite"):
+			opts.append(["hand_fx", Loc.t("Effect: ") + Loc.t(str(EffectRunner.fx(inst)["hand_ignite"].get("label", "Discard it"))), state.can_hand_ignite(ME, inst)])
 		hud.show_actions(at, opts)
 	elif inst.is_trap():
 		hud.show_actions(at, [["set_st", "Set", state.can_set_st(ME, inst)]])
@@ -1459,6 +1461,8 @@ func _on_action(action: String) -> void:
 		"special_hand":
 			await _act("special_from_hand", [ME, c], false)
 			await _after_summon(ME)
+		"hand_fx":
+			await _act("hand_ignite", [ME, c], false)
 		"position":
 			await _act("change_position", [ME, c])
 
@@ -2078,6 +2082,8 @@ func _run_ai(act: Dictionary, who: int) -> Array:
 			return state.ignite(who, act["card"])
 		"gy_ignite":
 			return state.gy_ignite(who, act["card"])
+		"hand_ignite":
+			return state.hand_ignite(who, act["card"])
 		"speed":
 			return state.speed_world(who, int(act["cost"]))
 	return []
@@ -2102,8 +2108,30 @@ func _demo_actions() -> void:
 	if "--demo-opp" in OS.get_cmdline_user_args():
 		hud.cut_in(1, "BLUE-EYES WHITE DRAGON", "Attack!", Comic.RED, 30.0)
 		return
-	if "--demo-deck" in OS.get_cmdline_user_args():
-		_on_deck_clicked()
+	if "--demo-clicks" in OS.get_cmdline_user_args():
+		# Click probe: what a press on a hand card costs, and how long the frames after it take.
+		await get_tree().create_timer(2.0).timeout
+		for i in 8:
+			var hand: Array = state.players[ME].hand
+			if hand.is_empty():
+				break
+			var hc = hand[i % hand.size()]
+			hud.inspect(hc)
+			await get_tree().process_frame
+			var t0 := Time.get_ticks_usec()
+			_on_hand_card_pressed(hc, Vector2.ZERO)
+			var t1 := Time.get_ticks_usec()
+			await get_tree().process_frame
+			var t2 := Time.get_ticks_usec()
+			await get_tree().process_frame
+			var t3 := Time.get_ticks_usec()
+			await get_tree().process_frame
+			var t4 := Time.get_ticks_usec()
+			print("CLICK %s handler %.2f ms, frames after: %.1f %.1f %.1f ms  (menu %s)" % [hc.cname(), (t1 - t0) / 1000.0, (t2 - t1) / 1000.0, (t3 - t2) / 1000.0, (t4 - t3) / 1000.0, str(hud.actions_visible())])
+			await get_tree().create_timer(0.5).timeout
+			hud.hide_actions()
+			_menu_card = null
+			await get_tree().create_timer(0.3).timeout
 		return
 	if "--demo-drop" in OS.get_cmdline_user_args():
 		for c in state.players[ME].hand:

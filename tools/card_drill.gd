@@ -595,11 +595,25 @@ func _scene(id: int, k: int, twin: bool, entry, nm: String) -> String:
 				if hid != 0:
 					me.field[2] = null
 					_put(s, 0, hid, 2)
+			if entry is Dictionary and str((entry as Dictionary).get("ignite", {}).get("cost", "")) == "banish_gy_light2":
+				# Two LIGHT monsters to pay with, and something stronger across the table.
+				for lname in ["Mystical Elf", "Blue-Eyes White Dragon"]:
+					me.gy.append(s._make(_id(lname), 0))
+				_put(s, 1, _id("Dark Magician"), 2)
 			note = "can%s" % s.can_ignite(0, m)
 			if s.can_ignite(0, m):
 				s.ignite(0, m)
 		12:  # Special Summon from the hand by its own rule
 			me.hand.append(m)
+			if entry is Dictionary and (entry as Dictionary).has("hand_ignite"):
+				# An effect used by discarding it from the hand: give the Deck what it fetches.
+				for a in entry["hand_ignite"].get("do", []):
+					if a[0] == "search" and (a[1] as Dictionary).has("name") and _id(str(a[1]["name"])) != 0:
+						me.deck.append(s._make(_id(str(a[1]["name"])), 0))
+				var could := s.can_hand_ignite(0, m)
+				if could:
+					s.hand_ignite(0, m)
+				return "hand%s%s" % [could, _sig(s, m)]
 			var out: Array = []
 			for setup in 4:
 				var t := _arena()
@@ -688,13 +702,18 @@ func _scene(id: int, k: int, twin: bool, entry, nm: String) -> String:
 			s.players[0].field[0] = m
 			m.summoned_turn = 1
 			_put(s, 0, _id("Celtic Guardian"), 1)
-			_put(s, 0, _id("Silver Fang"), 2)
+			if nm == "Nitro Synchron":
+				# A "Nitro" Synchro Monster is Level 7: its Tuner and one Level 5.
+				s.players[0].field[1] = null
+				_put(s, 0, _find({"lv": 5}, nm), 2)
+			else:
+				_put(s, 0, _id("Silver Fang"), 2)
 			var fs2 := s._make(_id("Banner of Courage"), 1)
 			opp.spells[1] = fs2
 			var ss2 := s._make(_id("Mirror Force"), 1)
 			ss2.face_up = false
 			opp.spells[0] = ss2
-			for x in ["Junk Warrior", "Stardust Dragon", "Number 39: Utopia", "Number 17: Leviathan Dragon", "Gaia Knight, the Force of Earth"]:
+			for x in ["Nitro Warrior", "Red Dragon Archfiend", "Junk Warrior", "Stardust Dragon", "Number 39: Utopia", "Number 17: Leviathan Dragon", "Gaia Knight, the Force of Earth"]:
 				if _id(x) != 0:
 					me.extra.append(s._make(_id(x), 0))
 			for x in me.extra.duplicate():
@@ -878,6 +897,7 @@ func _scene(id: int, k: int, twin: bool, entry, nm: String) -> String:
 		37:  # in the Graveyard with a copy in the Deck: an effect used from there
 			me.gy.append(m)
 			me.deck.append(s._make(id, 0))
+			_put(s, 0, _id("Junk Synchron"), 1)   # a Tuner, for the ones that ask for one
 			note = "can%s" % s.gy_effects(0).has(m)
 			if s.gy_effects(0).has(m):
 				s.gy_ignite(0, m)

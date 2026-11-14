@@ -833,8 +833,9 @@ func plank_dorm(at: Vector3, yaw: float, trim: Color, walkable := true, style :=
 	_dorm_solid(h, on, Vector3(W, 0.16, walk), Vector3(0, F - 0.08, wz))
 	box(Vector3(W, 0.22, 0.14), Vector3(0, F - 0.2, zf + walk - 0.07), dark, false, h)
 	var gilt := mat(Color(0.86, 0.7, 0.32), 0.3, 0.8)
-	for k in 5:
-		var px := -W / 2.0 + 0.2 + k * (W - 0.4) / 4.0
+	# Six posts, so that none of them stands in front of the front door.
+	for k in 6:
+		var px := -W / 2.0 + 0.2 + k * (W - 0.4) / 5.0
 		if style.get("columns", false):
 			# Round columns on square bases with gilt capitals, for the grand house.
 			cyl(0.13, 0.15, F * 2.0 - 0.1, Vector3(px, F - 0.05, zf + walk - 0.1), dark, h, 12)
@@ -1111,13 +1112,14 @@ func _castle_top(h: Node3D, W: float, D: float, F: float, walk: float, wall: Mat
 		box(Vector3(0.5, 2.0, 0.08), kc + Vector3(sx * (kw / 2.0 - 0.9), kh * 0.5, 2.72), lit, false, h)
 		box(Vector3(0.66, 0.12, 0.14), kc + Vector3(sx * (kw / 2.0 - 0.9), kh * 0.5 + 1.08, 2.74), dark, false, h)
 	# The way in: an arch over the doors, long banners either side.
-	var arch := cyl(1.5, 1.5, 0.16, Vector3(0, 2.7, zf + 0.02), dark, h, 24)
+	# (Both discs sit behind the door's own boards: flush with them, the two flickered.)
+	var arch := cyl(1.5, 1.5, 0.16, Vector3(0, 2.7, zf - 0.03), dark, h, 24)
 	arch.rotation.x = PI / 2.0
-	var fan := cyl(1.24, 1.24, 0.18, Vector3(0, 2.7, zf + 0.03), glass, h, 24)
+	var fan := cyl(1.24, 1.24, 0.18, Vector3(0, 2.7, zf - 0.03), glass, h, 24)
 	fan.rotation.x = PI / 2.0
 	for k in 3:
-		var spoke := box(Vector3(0.06, 1.24, 0.06), Vector3(0, 2.7 + 0.62, zf + 0.13), dark, false, h)
-		spoke.transform = Transform3D(Basis(Vector3.BACK, (k - 1) * 0.7), Vector3(sin(-(k - 1) * 0.7) * 0.62, 2.7 + cos((k - 1) * 0.7) * 0.62, zf + 0.13))
+		var spoke := box(Vector3(0.06, 1.24, 0.06), Vector3(0, 2.7 + 0.62, zf + 0.085), dark, false, h)
+		spoke.transform = Transform3D(Basis(Vector3.BACK, (k - 1) * 0.7), Vector3(sin(-(k - 1) * 0.7) * 0.62, 2.7 + cos((k - 1) * 0.7) * 0.62, zf + 0.085))
 	for sx: float in [-1.0, 1.0]:
 		batch.add(Vector3(0.95, 2.5, 0.05), Vector3(sx * 3.4, F - 1.62, zf + walk - 0.02), paint)
 		batch.add(Vector3(0.95, 0.12, 0.06), Vector3(sx * 3.4, F - 0.5, zf + walk - 0.02), gilt)

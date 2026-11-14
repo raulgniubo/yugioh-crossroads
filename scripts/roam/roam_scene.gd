@@ -287,6 +287,7 @@ const ROUTES := [
 	[Vector3(-14, 0, 57.8), Vector3(14, 0, 57.8)],
 	[Vector3(-29, 0, -7.4), Vector3(-8, 0, -7.4)],
 ]
+var _stars_told := false
 var _walkers: Array = []  # {fig, a, b, t, dir, body}
 
 
@@ -348,7 +349,13 @@ func _move_walkers(delta: float) -> void:
 		var talking_to: bool = _talking and _dlg_npc.get("id", "") == str(w["id"])
 		if w["pause"] > 0.0:
 			w["pause"] -= delta
-		var moving: bool = not talking_to and w["pause"] <= 0.0 and not (near_player and _prompt and _prompt.visible and _near.get("id", "") == str(w["id"]) and _player.velocity.length() < 0.5)
+		# They wait for you when you stop beside them. A short grace keeps them from starting and
+		# stopping over and over while you shuffle about next to them.
+		if near_player and _prompt and _prompt.visible and _near.get("id", "") == str(w["id"]) and _player.velocity.length() < 0.5:
+			w["hold"] = 0.7
+		else:
+			w["hold"] = maxf(0.0, float(w.get("hold", 0.0)) - delta)
+		var moving: bool = not talking_to and w["pause"] <= 0.0 and float(w.get("hold", 0.0)) <= 0.0
 		if moving:
 			w["t"] += w["dir"] * w["speed"] * delta / len
 			if w["t"] > 1.0 or w["t"] < 0.0:
@@ -359,9 +366,18 @@ func _move_walkers(delta: float) -> void:
 		var along: Vector3 = (b - a).normalized()
 		var side_dir := along.cross(Vector3.UP)
 		var rel: Vector3 = _player.global_position - (a.lerp(b, w["t"]))
-		var want_side := 0.0
-		if rel.length() < 2.4:
-			want_side = -signf(rel.dot(side_dir) if absf(rel.dot(side_dir)) > 0.05 else 1.0) * 1.0
+		# They pick a side once, when you are in their way, and keep it until you are clear. (Choosing
+		# again every frame made a walker swerve left and right when you walked along its own path.)
+		var ahead: float = rel.dot(along * float(w["dir"]))
+		var lateral: float = rel.dot(side_dir)
+		var pick := float(w.get("side_pick", 0.0))
+		if pick == 0.0:
+			if rel.length() < 2.4 and ahead > -0.3 and absf(lateral) < 1.1:
+				pick = -1.0 if lateral >= 0.0 else 1.0
+		elif rel.length() > 2.9 or ahead < -1.2:
+			pick = 0.0
+		w["side_pick"] = pick
+		var want_side := pick * 0.9
 		w["side"] = lerpf(float(w.get("side", 0.0)), want_side, 1.0 - exp(-delta * 4.0))
 		var pos := a.lerp(b, w["t"]) + Vector3(0, 0.16, 0) + side_dir * float(w["side"])
 		f.position = pos
@@ -859,6 +875,10 @@ func _build_rooms() -> void:
 		dl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		dl.modulate = Color(room["trim"]).lightened(0.3)
 		dl.position = door + out * 0.9 + Vector3(0, 3.0 if not room.has("step") else 2.45, 0)
+		if str(rk).begins_with("dorm_"):
+			# A dorm has its name plate over the door: the arrow hangs out in front, under it.
+			dl.position = door + out * 2.3 + Vector3(0, 2.15, 0)
+			dl.font_size = 52
 		city.add_child(dl)
 		var dmat := city.box(Vector3(2.2, 0.03, 1.2) if not room.has("step") else Vector3(1.0, 0.02, 0.5), door + out * (0.9 if not room.has("step") else 0.45) + Vector3(0, 0.18 if not room.has("step") else 0.02, 0), city.glow_mat(room["trim"], 1.3), false)
 		dmat.rotation.y = atan2(out.x, out.z)
@@ -1191,7 +1211,13 @@ func _update_near() -> void:
 			_prompt.text = (Loc.t("E   Talk to %s") % Loc.t(_npc_name(_near))) if not _near.is_empty() else ("E   %s" % Loc.t(str(_near_spot["label"])))
 			# How strong a duelist is, before you walk into the duel.
 			if not _near.is_empty() and _near.has("duel"):
-				_prompt.text += "     " + Unlocks.stars(int((_near["duel"] as Dictionary).get("difficulty", 1)), bool((_near["duel"] as Dictionary).get("rare", false)))
+				_prompt.text += "     " + Loc.t("Strength") + " " + Unlocks.stars(int((_near["duel"] as Dictionary).get("difficulty", 1)), bool((_near["duel"] as Dictionary).get("rare", false)))
+				if not _stars_told:
+					# Say once what the stars are.
+					_stars_told = true
+					if not _shop_flag("tip_stars"):
+						_shop_set("tip_stars", true)
+						Router.toast(Loc.t("The stars show how strong a duelist is: 1 is a beginner, 5 is the best there is."), 5.0)
 	if _map:
 		_map.player_pos = Vector2(_player.position.x, _player.position.z)
 		_map.player_yaw = _figure.rotation.y + PI

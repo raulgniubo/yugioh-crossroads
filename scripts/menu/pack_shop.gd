@@ -69,6 +69,11 @@ func _ready() -> void:
 	head.add_child(title_box)
 	title_box.add_child(UITheme.label("BOOSTER PACKS", 56, Color.WHITE, UITheme.title_font()))
 	title_box.add_child(UITheme.label(Loc.t("%d cards per pack. Win duels to earn Duel Points.") % Collection.PACK_SIZE, 20, UITheme.TEXT_DIM))
+	head.add_child(UITheme.shop_sections(self, "packs"))
+	var head_gap := Control.new()
+	head_gap.custom_minimum_size = Vector2(18, 0)
+	head.add_child(head_gap)
+	UITheme.cover_3d(self)
 	var purse := PanelContainer.new()
 	purse.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.1, 0.08, 0.02, 0.9), 16, Color(UITheme.GOLD, 0.8)))
 	purse.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -374,9 +379,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		_show_tab(posmod(_tab + (-1 if back else 1), Collection.PACK_TABS.size()))
 
 
+func _switch(what: String) -> void:
+	if not _busy:
+		UITheme.shop_swap(self, what)
+
+
 func _close() -> void:
 	if _busy:
 		return
+	UITheme.uncover_3d(self)
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 0.0, 0.2)
 	await tw.finished

@@ -47,6 +47,8 @@ func _ready() -> void:
 	head.add_child(tb)
 	tb.add_child(UITheme.label("READY-MADE DECKS", 54, Color.WHITE, UITheme.title_font()))
 	tb.add_child(UITheme.label("A full deck in a box. Yours to duel with right away, and every card in it joins your collection.", 20, UITheme.TEXT_DIM))
+	head.add_child(UITheme.shop_sections(self, "decks"))
+	UITheme.cover_3d(self)
 	var purse := PanelContainer.new()
 	purse.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.1, 0.08, 0.02, 0.9), 16, Color(UITheme.GOLD, 0.8)))
 	purse.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -322,7 +324,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		_show_tab(1 - _tab)
 
 
+func _switch(what: String) -> void:
+	UITheme.shop_swap(self, what)
+
+
 func _close() -> void:
+	UITheme.uncover_3d(self)
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 0.0, 0.2)
 	await tw.finished

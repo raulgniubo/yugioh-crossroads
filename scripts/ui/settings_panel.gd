@@ -63,22 +63,54 @@ static func open(parent: Node) -> SidePanel:
 	if desktop:
 		var fs := CheckButton.new()
 		fs.button_pressed = Settings.fullscreen
+		_row(disp, "Fullscreen", "Fill the whole screen.", fs)
+		# One Resolution box for both modes. In a window it is the window's size. In fullscreen it is
+		# the size the 3D picture is drawn at (the screen keeps its own resolution, so menus and
+		# text stay sharp), and the line under it shows the size in use.
+		var res := OptionButton.new()
+		_row(disp, "Resolution", "Window size.", res)
+		var res_hint: Label = res.get_parent().get_child(0).get_child(1)
+		var res_note := func():
+			if not is_instance_valid(res_hint):
+				return
+			if Settings.fullscreen:
+				var rs := Settings.render_size()
+				res_hint.text = Loc.t("The 3D picture is drawn at %d x %d now. Lower runs faster; menus and text stay sharp.") % [rs.x, rs.y]
+			else:
+				res_hint.text = Loc.t("Window size.")
+		var res_fill := func():
+			res.clear()
+			if Settings.fullscreen:
+				res.add_item(Loc.t("Native (your screen)"), 0)
+				res.select(0)
+			for i in Settings.RESOLUTIONS.size():
+				var r: Vector2i = Settings.RESOLUTIONS[i]
+				res.add_item("%d x %d" % [r.x, r.y], i + 1)
+				if r == (Settings.fs_resolution if Settings.fullscreen else Settings.resolution):
+					res.select(res.item_count - 1)
+			res_note.call()
+		var res_later := func():
+			# The window and the 3D scale settle a moment after a change.
+			if p.is_inside_tree():
+				p.get_tree().create_timer(0.35).timeout.connect(res_note)
+		res_fill.call()
+		res_later.call()
+		res.item_selected.connect(func(at):
+			var id := res.get_item_id(at)
+			if Settings.fullscreen:
+				Settings.fs_resolution = Vector2i.ZERO if id == 0 else Settings.RESOLUTIONS[id - 1]
+			else:
+				Settings.resolution = Settings.RESOLUTIONS[id - 1]
+			Settings.apply()
+			Settings.save_settings()
+			res_note.call()
+			res_later.call())
 		fs.toggled.connect(func(on):
 			Settings.fullscreen = on
 			Settings.apply()
-			Settings.save_settings())
-		_row(disp, "Fullscreen", "Fill the whole screen.", fs)
-		var res := OptionButton.new()
-		for i in Settings.RESOLUTIONS.size():
-			var r: Vector2i = Settings.RESOLUTIONS[i]
-			res.add_item("%d x %d" % [r.x, r.y], i)
-			if r == Settings.resolution:
-				res.select(i)
-		res.item_selected.connect(func(i):
-			Settings.resolution = Settings.RESOLUTIONS[i]
-			Settings.apply()
-			Settings.save_settings())
-		_row(disp, "Resolution", "Window size when not fullscreen.", res)
+			Settings.save_settings()
+			res_fill.call()
+			res_later.call())
 	if desktop:
 		var cap := OptionButton.new()
 		for i in Settings.FPS_CAPS.size():

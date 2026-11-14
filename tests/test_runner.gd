@@ -20,6 +20,8 @@ func _ready() -> void:
 	_test_toons()
 	_test_unions()
 	_test_heroes_angels()
+	_test_batch_31()
+	_test_batch_32()
 	var stress := OS.get_environment("STRESS_FOLDER")
 	if stress != "":
 		CardData.load_external(stress)
@@ -293,6 +295,8 @@ func _run(s: DuelState, p: int, act: Dictionary) -> Array:
 			return s.special_from_hand(p, act["card"])
 		"ignite":
 			return s.ignite(p, act["card"])
+		"hand_ignite":
+			return s.hand_ignite(p, act["card"])
 		"gy_ignite":
 			return s.gy_ignite(p, act["card"])
 		"speed":
@@ -1375,3 +1379,295 @@ func _test_heroes_angels() -> void:
 	s._to_gy(s.players[0], ben)
 	EffectRunner.trigger(s, ben, "tributed")
 	check(s.players[0].hand.has(fairy), "Benten Tributed: a LIGHT Fairy monster comes from the Deck")
+
+
+## Quillbolt Hedgehog, Stygian Street Patrol, the two Synchro helpers, Galaxy Soldier and Knight,
+## Max Warrior and Twin-Sword Marauder, to their printed text.
+func _test_batch_31() -> void:
+	# Quillbolt Hedgehog: back from the Graveyard only beside a Tuner; banished when it leaves.
+	var s := _main_ready(831)
+	var hog := _fake(s, 0, "Quillbolt Hedgehog", 800, 800, -1, {"level": 2})
+	s.players[0].gy.append(hog)
+	check(not s.gy_effects(0).has(hog), "Quillbolt Hedgehog stays in the Graveyard with no Tuner")
+	_fake(s, 0, "Tuner", 500, 500, 0, {"tuner": true, "level": 3})
+	check(s.gy_effects(0).has(hog), "With a Tuner it can come back")
+	_run(s, 0, {"do": "gy_ignite", "card": hog})
+	check(s.players[0].field.has(hog), "Quillbolt Hedgehog is Special Summoned from the Graveyard")
+	s._destroy(hog)
+	check(s.players[0].banished.has(hog) and not s.players[0].gy.has(hog), "and it is banished when it leaves the field")
+	# Stygian Street Patrol: burn by the original Level; from the Graveyard it calls a Fiend from the hand.
+	s = _main_ready(832)
+	s.phase = DuelState.Phase.BATTLE
+	var pat := _fake(s, 0, "Stygian Street Patrol", 1600, 1200, 0, {"race": "Fiend", "attribute": "DARK"})
+	var six := _fake(s, 1, "Six Stars", 1000, 1000, 0, {"level": 6})
+	var lp1: int = s.players[1].lp
+	s.attack(0, pat, six)
+	check(s.players[1].lp == lp1 - 600 - 600, "Stygian Street Patrol: 600 battle damage, then 600 for a Level 6")
+	s = _main_ready(833)
+	pat = _fake(s, 0, "Stygian Street Patrol", 1600, 1200, -1, {"race": "Fiend", "attribute": "DARK"})
+	s.players[0].gy.append(pat)
+	var big := _fake(s, 0, "Big Fiend", 2400, 1000, -1, {"race": "Fiend", "level": 6})
+	s.players[0].hand = [big]
+	check(not s.gy_effects(0).has(pat), "Stygian Street Patrol: a Fiend over 2000 ATK does not count")
+	var imp := _fake(s, 0, "Imp", 2000, 0, -1, {"race": "Fiend", "level": 6})
+	s.players[0].hand.append(imp)
+	check(s.gy_effects(0).has(pat), "A Fiend with 2000 ATK does")
+	_run(s, 0, {"do": "gy_ignite", "card": pat})
+	check(s.players[0].banished.has(pat) and s.players[0].field.has(imp) and s.players[0].hand.has(big), "Patrol is banished and the Fiend comes from the hand")
+	# Nitro Synchron draws only for a "Nitro" Synchro; Sinister Sprocket only for a DARK one.
+	for round in 2:
+		s = _main_ready(834 + round)
+		var nit := _fake(s, 0, "Nitro Synchron", 300, 100, 0, {"tuner": true, "level": 2})
+		_fake(s, 0, "Four", 1000, 1000, 1, {"level": 4})
+		var syn := _fake(s, 0, "Nitro Something" if round == 0 else "Plain Synchro", 2400, 1800, -1, {"frame": "synchro", "level": 6})
+		s.players[0].extra = [syn]
+		var h0: int = s.players[0].hand.size()
+		check(s.can_extra_summon(0, syn), "The test Synchro can be made")
+		s.extra_summon(0, syn)
+		check(s.players[0].gy.has(nit), "Nitro Synchron went to the Graveyard as material")
+		if round == 0:
+			check(s.players[0].hand.size() == h0 + 1, "Nitro Synchron draws for a Nitro Synchro Monster")
+		else:
+			check(s.players[0].hand.size() == h0, "and not for any other Synchro Monster")
+	for round in 2:
+		s = _main_ready(836 + round)
+		_fake(s, 0, "Sinister Sprocket", 400, 0, 0, {"tuner": true, "level": 1, "attribute": "DARK"})
+		_fake(s, 0, "Five", 1000, 1000, 1, {"level": 5})
+		var syn2 := _fake(s, 0, "Test Synchro", 2400, 1800, -1, {"frame": "synchro", "level": 6, "attribute": "DARK" if round == 0 else "WIND"})
+		s.players[0].extra = [syn2]
+		var up := _st(s, 1, "Mountain", "hand")
+		s.players[1].spells[0] = up
+		up.face_up = true
+		var down := _st(s, 1, "Mirror Force", "set", "trap")
+		s.extra_summon(0, syn2)
+		if round == 0:
+			check(s.players[1].gy.has(up) and s.players[1].spells.has(down), "Sinister Sprocket destroys a face-up Spell or Trap for a DARK Synchro, never a Set one")
+		else:
+			check(not s.players[1].gy.has(up), "and does nothing for a Synchro Monster that is not DARK")
+	# Galaxy Soldier: another LIGHT monster from the hand pays for it; it arrives in Defense and searches.
+	s = _main_ready(838)
+	var sol := _fake(s, 0, "Galaxy Soldier", 2000, 0, -1, {"level": 5, "attribute": "LIGHT", "race": "Machine"})
+	var dark := _fake(s, 0, "Dark One", 1000, 1000, -1, {"attribute": "DARK"})
+	s.players[0].hand = [sol, dark]
+	check(not EffectRunner.can_special_hand(s, 0, sol), "Galaxy Soldier needs another LIGHT monster in the hand")
+	var light := _fake(s, 0, "Light One", 1000, 1000, -1, {"attribute": "LIGHT"})
+	s.players[0].hand.append(light)
+	var gal := _fake(s, 0, "Galaxy Friend", 1500, 1000, -1, {"attribute": "LIGHT"})
+	s.players[0].deck.append(gal)
+	check(EffectRunner.can_special_hand(s, 0, sol), "With one it can come out")
+	EffectRunner.special_hand(s, 0, sol)
+	check(s.players[0].field.has(sol) and not sol.attack_pos and s.players[0].gy.has(light), "Galaxy Soldier arrives in Defense and the LIGHT monster is in the Graveyard")
+	check(s.players[0].hand.has(gal) and s.players[0].hand.has(dark), "and it adds a Galaxy monster from the Deck")
+	# Galaxy Knight: no Tribute beside a Photon or Galaxy monster, 1000 ATK weaker this turn, Galaxy-Eyes returns.
+	s = _main_ready(839)
+	var kn := _fake(s, 0, "Galaxy Knight", 2800, 2600, -1, {"level": 8, "attribute": "LIGHT"})
+	s.players[0].hand = [kn]
+	_fake(s, 0, "Photon Friend", 1000, 1000, 0, {"attribute": "LIGHT"})
+	var eyes := _fake(s, 0, "Galaxy-Eyes Photon Dragon", 3000, 2500, -1, {"level": 8, "attribute": "LIGHT", "race": "Dragon"})
+	s.players[0].gy.append(eyes)
+	s.normal_summoned = false
+	check(s.tributes_needed(kn) == 0, "Galaxy Knight needs no Tribute beside a Photon monster")
+	s.normal_summon(0, kn, [], false)
+	check(s.players[0].field.has(kn) and s.atk_of(kn, false) == 1800, "Summoned that way it has 1800 ATK this turn")
+	check(s.players[0].field.has(eyes) and not eyes.attack_pos, "and Galaxy-Eyes Photon Dragon comes back in Defense")
+	s.turn += 1
+	check(s.atk_of(kn, false) == 2800, "Next turn Galaxy Knight is at 2800 again")
+	# Max Warrior: +400 on the attack; after a kill it is Level 2 at half strength until your next Standby Phase.
+	s = _main_ready(840)
+	s.phase = DuelState.Phase.BATTLE
+	var mx := _fake(s, 0, "Max Warrior", 1800, 800, 0)
+	var prey := _fake(s, 1, "Prey", 2000, 1000, 0)
+	s.attack(0, mx, prey)
+	check(s.players[1].gy.has(prey), "Max Warrior at 2200 beats a 2000 ATK monster")
+	check(mx.level() == 2 and s.atk_of(mx, false) == 900 and s.def_of(mx) == 400, "then it is Level 2 with 900 ATK and 400 DEF")
+	EffectRunner.standby(s, 0)
+	check(mx.level() == 4 and s.atk_of(mx, false) == 1800 and s.def_of(mx) == 800, "and itself again at your next Standby Phase")
+	# Twin-Sword Marauder: the second attack only after it attacked a Defense Position monster.
+	s = _main_ready(841)
+	s.phase = DuelState.Phase.BATTLE
+	var tw := _fake(s, 0, "Twin-Sword Marauder", 1600, 1000, 0)
+	var a1 := _fake(s, 1, "Standing", 1000, 1000, 0)
+	_fake(s, 1, "Other", 1000, 1000, 1)
+	s.attack(0, tw, a1)
+	check(not s.can_attack(0, tw), "Twin-Sword Marauder: no second attack after hitting an Attack Position monster")
+	s = _main_ready(842)
+	s.phase = DuelState.Phase.BATTLE
+	tw = _fake(s, 0, "Twin-Sword Marauder", 1600, 1000, 0)
+	var d1 := _fake(s, 1, "Crouching", 1000, 1000, 0)
+	d1.attack_pos = false
+	_fake(s, 1, "Other", 1000, 1000, 1)
+	var lp2: int = s.players[1].lp
+	s.attack(0, tw, d1)
+	check(s.players[1].lp == lp2 - 600, "It pierces a Defense Position monster")
+	check(s.can_attack(0, tw), "and may attack once more after that")
+
+
+## Freed, Gilasaurus, Revival Jam, Breaker, the Envoy of the Beginning, Bazoo, Harpie Channeler,
+## Insect Queen and Doom Lord, to their printed text.
+func _test_batch_32() -> void:
+	# Freed: 2 LIGHT monsters from the Graveyard, and only a monster with MORE ATK than Freed.
+	var s := _main_ready(851)
+	var freed := _fake(s, 0, "Freed the Brave Wanderer", 1700, 1200, 0, {"attribute": "LIGHT"})
+	var weak := _fake(s, 1, "Weak", 1500, 1000, 0)
+	var l1 := _fake(s, 0, "L1", 1000, 1000, -1, {"attribute": "LIGHT"})
+	var l2 := _fake(s, 0, "L2", 1000, 1000, -1, {"attribute": "LIGHT"})
+	s.players[0].gy = [l1]
+	check(not s.can_ignite(0, freed), "Freed needs 2 LIGHT monsters in the Graveyard")
+	s.players[0].gy.append(l2)
+	check(not s.can_ignite(0, freed), "and a monster with more ATK than his to aim at")
+	var strong := _fake(s, 1, "Strong", 2400, 1000, 1)
+	check(s.can_ignite(0, freed), "With both he can use it")
+	_run(s, 0, {"do": "ignite", "card": freed})
+	check(s.players[1].gy.has(strong) and s.players[1].field.has(weak), "Freed destroys the stronger monster and leaves the weaker one")
+	check(s.players[0].banished.has(l1) and s.players[0].banished.has(l2), "and both LIGHT monsters are banished")
+	# Gilasaurus: from the hand for free, and the opponent may bring a monster back.
+	s = _main_ready(852)
+	var gila := _fake(s, 0, "Gilasaurus", 1400, 400, -1, {"level": 3, "race": "Dinosaur"})
+	s.players[0].hand = [gila]
+	var dead := _fake(s, 1, "Fallen", 2500, 2000, -1)
+	s.players[1].gy = [dead]
+	EffectRunner.special_hand(s, 0, gila)
+	check(s.players[0].field.has(gila), "Gilasaurus is Special Summoned from the hand")
+	check(s.players[1].field.has(dead), "and the opponent Special Summons a monster from their Graveyard")
+	# Revival Jam: pay 1000 now, back in Defense at your next Standby Phase, not before.
+	s = _main_ready(853)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	var jam := _fake(s, 0, "Revival Jam", 1500, 500, 0, {"race": "Aqua", "attribute": "WATER"})
+	var hitter := _fake(s, 1, "Hitter", 2000, 1000, 0)
+	var lp0: int = s.players[0].lp
+	s.attack(1, hitter, jam)
+	check(s.players[0].gy.has(jam) and s.players[0].lp == lp0 - 500 - 1000, "Revival Jam: 500 battle damage and 1000 LP paid")
+	check(not s.players[0].field.has(jam), "It does not come back at once")
+	EffectRunner.standby(s, 0)
+	check(s.players[0].field.has(jam) and not jam.attack_pos, "It is back in Defense at your next Standby Phase")
+	# Breaker: a Spell Counter on a Normal Summon, 300 ATK for it, spent to destroy a Spell or Trap.
+	s = _main_ready(854)
+	var br := _fake(s, 0, "Breaker the Magical Warrior", 1600, 1000, -1, {"race": "Spellcaster", "attribute": "DARK"})
+	s.players[0].hand = [br]
+	s.normal_summoned = false
+	s.normal_summon(0, br, [], false)
+	check(br.counter == 1 and s.atk_of(br, false) == 1900, "Breaker Normal Summoned: 1 Spell Counter and 1900 ATK")
+	var trap := _st(s, 1, "Mirror Force", "set", "trap")
+	check(s.can_ignite(0, br), "With a counter and a Spell or Trap on the field it can use its effect")
+	_run(s, 0, {"do": "ignite", "card": br})
+	check(s.players[1].gy.has(trap) and br.counter == 0 and s.atk_of(br, false) == 1600, "The counter is gone, the Set card is destroyed, Breaker is at 1600")
+	check(not s.can_ignite(0, br), "No counter, no effect")
+	var br2 := _fake(s, 0, "Breaker the Magical Warrior", 1600, 1000, -1, {"race": "Spellcaster"})
+	s._special(0, br2, "effect")
+	EffectRunner.on_summon(s, 0, br2, "special")
+	check(br2.counter == 0, "Special Summoned, Breaker gets no counter")
+	# Envoy of the Beginning: banish OR a second attack after a kill, never both.
+	s = _main_ready(855)
+	var bls := _fake(s, 0, "Black Luster Soldier - Envoy of the Beginning", 3000, 2500, 0, {"level": 8, "attribute": "LIGHT"})
+	var v1 := _fake(s, 1, "V1", 1000, 1000, 0)
+	var v2 := _fake(s, 1, "V2", 1200, 1000, 1)
+	s.phase = DuelState.Phase.BATTLE
+	s.attack(0, bls, v1)
+	check(s.can_attack(0, bls), "The Envoy may attack again after destroying a monster by battle")
+	s.attack(0, bls, v2)
+	check(not s.can_attack(0, bls), "but only once more")
+	s.phase = DuelState.Phase.MAIN2
+	_fake(s, 1, "V3", 900, 900, 2)
+	check(not s.can_ignite(0, bls), "After the second attack it cannot also banish this turn")
+	s = _main_ready(856)
+	bls = _fake(s, 0, "Black Luster Soldier - Envoy of the Beginning", 3000, 2500, 0, {"level": 8, "attribute": "LIGHT"})
+	var hidden := _fake(s, 1, "Hidden", 500, 2000, 0)
+	hidden.face_up = false
+	hidden.attack_pos = false
+	check(s.can_ignite(0, bls), "The Envoy can target a face-down monster")
+	_run(s, 0, {"do": "ignite", "card": bls})
+	check(s.players[1].banished.has(hidden), "and banish it")
+	s.phase = DuelState.Phase.BATTLE
+	check(not s.can_attack(0, bls), "It cannot attack the turn it banished")
+	# Bazoo: 300 for each, through the end of the opponent's next turn.
+	s = _main_ready(857)
+	var baz := _fake(s, 0, "Bazoo the Soul-Eater", 1600, 900, 0)
+	for i in 3:
+		s.players[0].gy.append(_fake(s, 0, "Soul %d" % i, 1000, 1000, -1))
+	_run(s, 0, {"do": "ignite", "card": baz})
+	check(s.players[0].banished.size() == 3 and s.atk_of(baz, false) == 2500, "Bazoo banishes 3 and has 2500 ATK")
+	s.turn += 1
+	check(s.atk_of(baz, false) == 2500, "It keeps the ATK through the opponent's turn")
+	s.turn += 1
+	check(s.atk_of(baz, false) == 1600, "and is back to 1600 after that")
+	# Harpie Channeler: the discard must be a Harpie card; Level 7 beside a Dragon.
+	s = _main_ready(858)
+	var ch := _fake(s, 0, "Harpie Channeler", 1400, 1300, 0, {"race": "Winged Beast", "attribute": "WIND"})
+	var lady := _fake(s, 0, "Harpie Lady 1", 1300, 1400, -1, {"race": "Winged Beast"})
+	s.players[0].deck.append(lady)
+	s.players[0].hand = [_fake(s, 0, "Something Else", 1000, 1000, -1)]
+	check(not s.can_ignite(0, ch), "Harpie Channeler cannot discard a card that is not a Harpie card")
+	var hunt := _st(s, 0, "Harpies' Hunting Ground")
+	check(s.can_ignite(0, ch), "A Harpie Spell will do")
+	_run(s, 0, {"do": "ignite", "card": ch})
+	check(s.players[0].gy.has(hunt) and s.players[0].field.has(lady) and not lady.attack_pos, "It discards the Harpie card and calls a Harpie in Defense")
+	var ch2 := _fake(s, 0, "Harpie Channeler", 1400, 1300, 2, {"race": "Winged Beast"})
+	s.players[0].hand.append(_st(s, 0, "Harpies' Hunting Ground"))
+	check(not s.can_ignite(0, ch2), "Only one Harpie Channeler effect each turn")
+	s._cleanup()
+	check(ch.level() == 4, "Harpie Channeler is Level 4 with no Dragon")
+	var pet := _fake(s, 0, "Pet Dragon", 1200, 600, 3, {"race": "Dragon"})
+	s._cleanup()
+	check(ch.level() == 7, "and Level 7 while you control a Dragon")
+	s.players[0].field[3] = null
+	s._cleanup()
+	check(ch.level() == 4 and pet != null, "and Level 4 again when the Dragon is gone")
+	# Insect Queen: a Tribute for every attack; a Token at the End Phase after a kill.
+	s = _main_ready(859)
+	s.phase = DuelState.Phase.BATTLE
+	var queen := _fake(s, 0, "Insect Queen", 2200, 2400, 0, {"level": 7, "race": "Insect"})
+	var food := _fake(s, 1, "Food", 1000, 1000, 0)
+	check(not s.can_attack(0, queen), "Insect Queen cannot attack with nothing to Tribute")
+	var grub := _fake(s, 0, "Grub", 300, 300, 1, {"race": "Insect"})
+	check(s.atk_of(queen, false) == 2600, "Insect Queen: 200 ATK for each Insect on the field")
+	check(s.can_attack(0, queen), "With another monster she can")
+	s.attack(0, queen, food)
+	check(s.players[0].gy.has(grub) and s.players[1].gy.has(food), "The other monster is Tributed and the attack goes through")
+	EffectRunner.end_phase_any(s)
+	var tok: Array = s.players[0].monsters().filter(func(m): return m.is_token())
+	check(tok.size() == 1 and tok[0].attack_pos and tok[0].atk() == 100, "End Phase: an Insect Monster Token in Attack Position")
+	EffectRunner.end_phase_any(s)
+	check(s.players[0].monsters().filter(func(m): return m.is_token()).size() == 1, "Only one Token each turn")
+	# Doom Lord: gone until your 2nd Standby Phase after, and no attacks that turn.
+	s = _main_ready(860)
+	var doom := _fake(s, 0, "Destiny HERO - Doom Lord", 600, 800, 0, {"level": 3, "attribute": "DARK"})
+	var prey := _fake(s, 1, "Prey", 2800, 2000, 0)
+	doom.attack_pos = false
+	check(not s.can_ignite(0, doom), "Doom Lord must be in Attack Position")
+	doom.attack_pos = true
+	_run(s, 0, {"do": "ignite", "card": doom})
+	check(s.players[1].banished.has(prey), "Doom Lord banishes the monster")
+	s.phase = DuelState.Phase.BATTLE
+	check(not s.can_attack(0, doom), "and you cannot attack that turn")
+	EffectRunner.standby(s, 0)
+	check(s.players[1].banished.has(prey), "It is still gone at your 1st Standby Phase after")
+	EffectRunner.standby(s, 0)
+	check(s.players[1].field.has(prey) and prey.attack_pos, "and returns to their field at the 2nd")
+	# Harpie Queen and Channeler are "Harpie Lady" only on the field and in the Graveyard.
+	var queen_d := {"name": "Harpie Queen", "kind": "monster", "frame": "effect"}
+	check(not CardEffects.matches(queen_d, {"name": "Harpie Lady"}), "Harpie Queen in the Deck is not a Harpie Lady")
+	check(CardEffects.matches(queen_d, {"name": "Harpie Lady", "zone": "gy"}), "In the Graveyard she is")
+	check(CardEffects.matches({"name": "Harpie Lady 1", "kind": "monster", "frame": "effect"}, {"name": "Harpie Lady"}), "Harpie Lady 1 always is")
+	# "Must first be Special Summoned": no revival before its own summon, fine after it.
+	s = _main_ready(861)
+	var env := _fake(s, 0, "Black Luster Soldier - Envoy of the Beginning", 3000, 2500, -1, {"level": 8, "attribute": "LIGHT", "desc": "Cannot be Normal Summoned/Set. Must first be Special Summoned (from your hand) by banishing 1 LIGHT and 1 DARK monster from your GY."})
+	s.players[0].gy = [env]
+	check(not s.can_revive(env), "The Envoy cannot be revived before it was summoned its own way")
+	s.players[0].gy = [_fake(s, 0, "Li", 1000, 1000, -1, {"attribute": "LIGHT"}), _fake(s, 0, "Da", 1000, 1000, -1, {"attribute": "DARK"})]
+	s.players[0].hand = [env]
+	check(EffectRunner.can_special_hand(s, 0, env), "With a LIGHT and a DARK monster in the Graveyard it can come out")
+	EffectRunner.special_hand(s, 0, env)
+	s._destroy(env)
+	check(s.players[0].gy.has(env) and s.can_revive(env), "After that it can be brought back from the Graveyard")
+	# Harpie Queen: discarded from the hand, she fetches Harpies' Hunting Ground.
+	s = _main_ready(862)
+	var hq := _fake(s, 0, "Harpie Queen", 1900, 1200, -1, {"race": "Winged Beast", "attribute": "WIND"})
+	s.players[0].hand = [hq]
+	check(not s.can_hand_ignite(0, hq), "Harpie Queen: nothing to fetch with no Hunting Ground in the Deck")
+	var hg := _st(s, 0, "Harpies' Hunting Ground")
+	s.players[0].hand.erase(hg)
+	s.players[0].deck.append(hg)
+	check(s.can_hand_ignite(0, hq), "With one in the Deck she can be discarded")
+	_run(s, 0, {"do": "hand_ignite", "card": hq})
+	check(s.players[0].gy.has(hq) and s.players[0].hand.has(hg), "Harpie Queen goes to the Graveyard and Harpies' Hunting Ground comes to the hand")
