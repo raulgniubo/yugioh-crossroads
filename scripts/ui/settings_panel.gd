@@ -95,7 +95,15 @@ static func open(parent: Node) -> SidePanel:
 	fps.toggled.connect(func(on):
 		Settings.show_fps = on
 		Settings.save_settings())
-	_row(disp, "Show FPS", "A frame counter in the corner.", fps)
+	_row(disp, "Show FPS", "A frame counter in the corner. Press F3 any time for the full readout: where the time goes.", fps)
+	var hold := CheckButton.new()
+	hold.button_pressed = Settings.hold_fps
+	hold.toggled.connect(func(on):
+		Settings.hold_fps = on
+		Settings.auto_k = 1.0
+		Settings.apply_graphics()
+		Settings.save_settings())
+	_row(disp, "Hold 60 FPS", "When a scene gets heavy the 3D picture is drawn a little softer instead of slower, and sharpened again when there is room.", hold)
 
 	_graphics_card(p)
 

@@ -51,6 +51,7 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 			Avatars._relax_pose(_model)
 			_collect_bones()
 		_add_head_look()
+		Avatars.request_lods(_model)
 	else:
 		_build_standin(color)
 	if show_name and display_name != "":

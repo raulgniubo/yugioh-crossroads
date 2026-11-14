@@ -18,6 +18,12 @@ const ROOMS := {
 	"nd_stadium": {"district": "newdomino", "name": "Stadium Concourse", "area": "Fortune Cup qualifiers, gates A and B", "at": Vector3(720, 0, 400), "half": Vector2(11.0, 8.0), "height": 7.0,
 		"door": Vector3(0, 0, -29.6), "out": Vector3(0, 0, 1), "label": "Enter the stadium", "music": "shop",
 		"floor": Color(0.2, 0.22, 0.28), "wall": Color(0.86, 0.88, 0.93), "trim": Color("ffd166")},
+	"hl_lounge": {"district": "heartland", "name": "Heartland Lounge", "area": "Juice bar, cake and table duels", "at": Vector3(720, 0, 400), "half": Vector2(7.0, 5.5), "height": 3.6,
+		"door": Vector3(-20.63, 0, -15.33), "out": Vector3(0.783, 0, 0.622), "label": "Enter the lounge", "music": "heartland",
+		"floor": Color(0.86, 0.8, 0.9), "wall": Color(0.98, 0.95, 1.0), "trim": Color("ff5ab4")},
+	"sat_shack": {"district": "satellite", "name": "The Scrap Trader", "area": "Parts, junk and the odd rare card", "at": Vector3(720, 0, 400), "half": Vector2(7.0, 5.0), "height": 3.4,
+		"door": Vector3(-21.63, 0, -13.33), "out": Vector3(0.783, 0, 0.622), "label": "Enter the Scrap Trader", "music": "satellite",
+		"floor": Color(0.3, 0.27, 0.24), "wall": Color(0.5, 0.42, 0.34), "trim": Color("ff8a3a")},
 	"nd_cafe": {"district": "newdomino", "name": "Cafe Terrace", "area": "Coffee, cake and table duels", "at": Vector3(800, 0, 400), "half": Vector2(7.0, 5.5), "height": 3.6,
 		"door": Vector3(-26.5, 0, 27.1), "out": Vector3(1, 0, 0), "label": "Enter the cafe", "music": "shop",
 		"floor": Color(0.5, 0.36, 0.26), "wall": Color(0.96, 0.9, 0.86), "trim": Color("ff8ac0")},
@@ -88,6 +94,8 @@ static func dress(city: CityBuilder, key: String, o: Vector3, half: Vector2, hgt
 		"ac_class": _lecture(city, o, half, hgt)
 		"nd_stadium": _stadium(city, o, half, hgt)
 		"nd_cafe": _cafe(city, o, half, hgt)
+		"hl_lounge": _cafe(city, o, half, hgt)
+		"sat_shack": _mart(city, o, half, hgt)
 
 
 static func _sign(city: CityBuilder, text: String, pos: Vector3, rot: float, color: Color, size: int) -> void:
@@ -720,6 +728,27 @@ static func build_outside(city: CityBuilder, district: String) -> void:
 
 ## The things you can do inside each room.
 static func add_spots(scene: Node) -> void:
+	# Rooms that had people in them and nothing to do.
+	var every: Dictionary = Interiors.all_rooms()
+	for key in ["burger", "arcade", "dorm_yellow", "dorm_blue", "dorm_red"]:
+		if not scene._rooms.has(key) or not every.has(key):
+			continue
+		var ro: Vector3 = every[key]["at"]
+		var rh: Vector2 = every[key]["half"]
+		match key:
+			"burger":
+				scene._spots.append({"pos": ro + Vector3(0, 0, -0.6), "range": 1.7, "label": "Order the burger set  ·  25 DP  ·  +500 LP in your next duel", "action": func(): _burger()})
+			"arcade":
+				scene._spots.append({"pos": ro + Vector3(0, 0, -rh.y + 2.5), "range": 1.8, "label": "Play Higher or Lower  ·  10 DP", "action": func(): ArcadeGame.open(scene)})
+			"dorm_yellow":
+				scene._spots.append({"pos": ro + Vector3(-3.0, 0, 1.6), "range": 1.6, "label": "Join the study group (quiz)", "action": func(): _quiz(scene)})
+			"dorm_blue":
+				scene._spots.append({"pos": ro + Vector3(rh.x - 1.6, 0, -1.0), "range": 1.6, "label": "Look at the trophy case", "action": func(): Router.toast(Loc.t(TROPHIES[randi() % TROPHIES.size()]))})
+			"dorm_red":
+				scene._spots.append({"pos": ro + Vector3(rh.x - 1.6, 0, 1.0), "range": 1.6, "label": "Read the dorm notice board", "action": func(): Router.toast(Loc.t(TIPS[randi() % TIPS.size()]))})
+	# The Satellite garage: tune your Duel Runner for Turbo Duels.
+	if str(Router.roam.get("district", "")) == "satellite":
+		scene._spots.append({"pos": Vector3(-10.5, 0, 19.0), "range": 2.2, "label": "Tune your Duel Runner", "action": func(): _tune()})
 	for key in ROOMS:
 		if not scene._rooms.has(key):
 			continue
@@ -739,6 +768,12 @@ static func add_spots(scene: Node) -> void:
 				scene._spots.append({"pos": o + Vector3(-7.4, 0, 3.4), "range": 1.5, "label": "Fan quiz  ·  win Duel Points", "action": func(): _quiz(scene)})
 			"nd_cafe":
 				scene._spots.append({"pos": o + Vector3(0.6, 0, -2.6), "range": 1.4, "label": "Order a coffee  ·  15 DP", "action": func(): _coffee()})
+			"hl_lounge":
+				scene._spots.append({"pos": o + Vector3(0.6, 0, -2.6), "range": 1.4, "label": "Order a juice  ·  15 DP", "action": func(): _coffee()})
+				scene._spots.append({"pos": o + Vector3(-4.4, 0, 2.6), "range": 1.6, "label": "Fan quiz  ·  win Duel Points", "action": func(): _quiz(scene)})
+			"sat_shack":
+				scene._spots.append({"pos": o + Vector3(half.x - 2.0, 0, half.y - 1.6), "range": 1.6, "label": "Scrap pull  ·  150 DP  ·  a random card", "action": func(): _scrap_pull()})
+				scene._spots.append({"pos": o + Vector3(-half.x + 1.7, 0, 0.4), "range": 1.4, "label": "Buy a drink  ·  10 DP", "action": func(): scene.life._drink() if scene.life else null})
 			"ac_class":
 				scene._spots.append({"pos": o + Vector3(1.8, 0, -4.2), "range": 1.6, "label": "Step up for today's class duel", "action": func(): _class_duel(scene)})
 				scene._spots.append({"pos": o + Vector3(0.0, 0, 3.4), "range": 1.4, "label": "Sit in on the lesson (quiz)", "action": func(): _quiz(scene)})
@@ -805,6 +840,71 @@ static func _lecture(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -
 
 
 ## A cup at the cafe: costs a little, comes with a duel tip from whoever is at the next table.
+const TROPHIES := ["Blue Dorm, tag champions, four years running. Somebody polishes these every morning.", "A cracked trophy at the back: 'Second place'. It has been turned to face the wall.",
+	"The newest plaque has no name on it yet. The steward says it is waiting for you."]
+
+
+## Burger World's set meal: you start your next duel with a little more Life.
+static func _burger() -> void:
+	if Router.roam.get("fed", false):
+		Router.toast(Loc.t("You are still full. Go and duel somebody first."))
+		return
+	if Collection.dp < 25:
+		Router.toast(Loc.t("Not enough Duel Points for the burger set."))
+		return
+	Collection.dp -= 25
+	Collection.save()
+	Router.roam["fed"] = true
+	Sfx.play("pickup", -6.0)
+	Router.toast(Loc.t("Burger, fries and a shake. You will start your next duel with 500 extra Life Points."))
+
+
+## The Scrap Trader: one card out of the bin. Mostly common, now and then gold.
+static func _scrap_pull() -> void:
+	if Collection.dp < 150:
+		Router.toast(Loc.t("Not enough Duel Points. A pull from the scrap bin costs 150."))
+		return
+	var ids: Array = CardData.EXT.keys()
+	if ids.is_empty():
+		Router.toast(Loc.t("The bin is empty today."))
+		return
+	var want := 3 if randf() < 0.06 else (2 if randf() < 0.2 else (1 if randf() < 0.5 else 0))
+	var got := 0
+	for i in 400:
+		var id := int(ids[randi() % ids.size()])
+		if CardData.rarity(id) == want and int(Collection.owned.get(id, 0)) < 3 and not CardData.is_extra(id):
+			got = id
+			break
+	if got == 0:
+		Router.toast(Loc.t("Nothing but bolts in the bin this time. He does not charge you."))
+		return
+	Collection.dp -= 150
+	Collection.owned[got] = mini(3, int(Collection.owned.get(got, 0)) + 1)
+	Collection.save()
+	Sfx.play("rare" if want >= 2 else "pickup")
+	Router.toast((Loc.t("Out of the scrap bin: %s!") if want >= 2 else Loc.t("Out of the scrap bin: %s.")) % Loc.t(str(CardData.get_card(got).get("name", ""))))
+
+
+## Runner tuning at the Satellite garage: each level starts you with one more Speed Counter
+## in every Turbo Duel.
+const TUNE_COST := [600, 1500]
+
+static func _tune() -> void:
+	var lvl := int(Collection.record.get("runner_tune", 0))
+	if lvl >= TUNE_COST.size():
+		Router.toast(Loc.t("Your runner is tuned as far as it goes: you start every Turbo Duel with 2 Speed Counters."))
+		return
+	var cost: int = TUNE_COST[lvl]
+	if Collection.dp < cost:
+		Router.toast(Loc.t("Tuning level %d costs %d Duel Points. Each level starts you with one more Speed Counter in Turbo Duels.") % [lvl + 1, cost])
+		return
+	Collection.dp -= cost
+	Collection.record["runner_tune"] = lvl + 1
+	Collection.save()
+	Sfx.play("rare")
+	Router.toast(Loc.t("Runner tuned to level %d. You now start every Turbo Duel with %d Speed Counters.") % [lvl + 1, lvl + 1])
+
+
 static func _coffee() -> void:
 	if Collection.dp < 15:
 		Router.toast(Loc.t("Not enough Duel Points for a coffee."))

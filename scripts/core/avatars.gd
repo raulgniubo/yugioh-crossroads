@@ -1414,3 +1414,104 @@ func forget(key: String) -> void:
 	if _stages.has(key):
 		_stages[key].queue_free()
 		_stages.erase(key)
+
+
+# ------------------------------------------------------------------ lighter versions for distance
+# Character models are loaded as they are: every figure is drawn with all of its triangles
+# even when it is a few pixels tall at the far end of the street. Here each heavy mesh gets
+# a set of lighter versions (LODs), worked out in the background, and the renderer switches
+# between them by size on screen. Nothing changes up close.
+
+var _lod_done := {}        # original mesh -> mesh with lighter versions
+var _lod_busy := {}        # original mesh -> true while being worked out
+var _lod_users := {}       # original mesh -> [WeakRef to a MeshInstance3D, ...]
+const LOD_MIN_TRIS := 5000
+
+
+func request_lods(model: Node) -> void:
+	if model == null or _closing or DisplayServer.get_name() == "headless" or "--no-lods" in OS.get_cmdline_user_args():
+		return
+	for n in model.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		var src := mi.mesh as ArrayMesh
+		if src == null or src.has_meta("has_lods"):
+			continue
+		if _lod_done.has(src):
+			mi.mesh = _lod_done[src]
+			continue
+		var users: Array = _lod_users.get(src, [])
+		users.append(weakref(mi))
+		_lod_users[src] = users
+		if _lod_busy.has(src):
+			continue
+		var tris := 0
+		for i in src.get_surface_count():
+			var il := src.surface_get_array_index_len(i)
+			tris += (il if il > 0 else src.surface_get_array_len(i)) / 3
+		if tris < LOD_MIN_TRIS:
+			src.set_meta("has_lods", true)
+			_lod_users.erase(src)
+			continue
+		_lod_busy[src] = true
+		# Read the mesh here (the main thread); the heavy part runs on a worker.
+		var surfaces: Array = []
+		for i in src.get_surface_count():
+			if src.surface_get_primitive_type(i) != Mesh.PRIMITIVE_TRIANGLES:
+				surfaces.clear()
+				break
+			surfaces.append([src.surface_get_arrays(i), src.surface_get_blend_shape_arrays(i), src.surface_get_material(i), src.surface_get_name(i),
+				src.surface_get_format(i) & ~((1 << Mesh.ARRAY_MAX) - 1)])
+		if surfaces.is_empty():
+			src.set_meta("has_lods", true)
+			continue
+		var shapes: Array = []
+		for b in src.get_blend_shape_count():
+			shapes.append(src.get_blend_shape_name(b))
+		var mode := src.blend_shape_mode
+		_lod_tasks.append(WorkerThreadPool.add_task(_lod_work.bind(src, surfaces, shapes, mode)))
+
+
+var _lod_tasks: Array = []
+var _closing := false
+
+
+## Leaving the game: let the workers finish before anything they touch is taken away.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_PREDELETE or what == NOTIFICATION_EXIT_TREE:
+		_closing = true
+		for t in _lod_tasks:
+			if not WorkerThreadPool.is_task_completed(t):
+				WorkerThreadPool.wait_for_task_completion(t)
+		_lod_tasks.clear()
+
+
+func _lod_work(src: ArrayMesh, surfaces: Array, shapes: Array, mode: int) -> void:
+	var im := ImporterMesh.new()
+	for b in shapes:
+		im.add_blend_shape(str(b))
+	im.set_blend_shape_mode(mode)
+	for su in surfaces:
+		im.add_surface(Mesh.PRIMITIVE_TRIANGLES, su[0], su[1], {}, su[2], str(su[3]), int(su[4]))
+	im.generate_lods(25.0, 60.0, [])
+	if not _closing:
+		_lod_ready.call_deferred(src, im)
+
+
+func _lod_ready(src: ArrayMesh, im: ImporterMesh) -> void:
+	if _closing:
+		return
+	var out := im.get_mesh()
+	_lod_busy.erase(src)
+	if out == null or out.get_surface_count() != src.get_surface_count():
+		src.set_meta("has_lods", true)
+		return
+	out.set_meta("has_lods", true)
+	for mk in src.get_meta_list():
+		if mk != "has_lods":
+			out.set_meta(mk, src.get_meta(mk))
+	_lod_done[src] = out
+	for w in _lod_users.get(src, []):
+		var mi = (w as WeakRef).get_ref()
+		if mi != null and is_instance_valid(mi) and (mi as MeshInstance3D).mesh == src:
+			(mi as MeshInstance3D).mesh = out
+	_lod_users.erase(src)

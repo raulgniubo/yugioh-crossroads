@@ -224,12 +224,22 @@ func _start() -> void:
 		for p in 2:
 			state.players[p].speed = clampi(int((cfg["speed_start"] as Array)[p]), 0, DuelState.SPEED_MAX)
 			hud.set_speed(p, state.players[p].speed, 0)
+	# A runner tuned at the Satellite garage starts with Speed Counters already on the dial.
+	var tune := int(Collection.record.get("runner_tune", 0))
+	if state.turbo and tune > 0 and not cfg.has("speed_start") and not _autoplay:
+		state.players[ME].speed = clampi(state.players[ME].speed + tune, 0, DuelState.SPEED_MAX)
+		hud.set_speed(ME, state.players[ME].speed, 0)
 	# House rules from Free Duel: starting Life Points (and what a Gauntlet carried over).
 	_start_lp = [int(cfg.get("lp", DuelState.START_LP)), int(cfg.get("lp", DuelState.START_LP))]
 	if cfg.has("my_lp"):
 		_start_lp[ME] = int(cfg["my_lp"])
 	if cfg.has("opp_lp"):
 		_start_lp[AI] = int(cfg["opp_lp"])
+	# A burger set from Burger World: 500 extra Life Points, once.
+	if Router.roam.get("fed", false) and not _autoplay:
+		Router.roam["fed"] = false
+		_start_lp[ME] += 500
+		get_tree().create_timer(3.0).timeout.connect(func(): Router.toast(Loc.t("Well fed: +500 Life Points.")))
 	for p in 2:
 		if _start_lp[p] != DuelState.START_LP:
 			state.players[p].lp = _start_lp[p]

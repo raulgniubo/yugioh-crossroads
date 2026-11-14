@@ -93,7 +93,7 @@ func _ready() -> void:
 			if district.has("map"):
 				mp.layout = district["map"]
 	Music.play({"": "city", "academy": "academy"}.get(str(district.get("builder", "")), str(district.get("theme", "city"))))
-	Sfx.ambience({"": "city", "academy": "sea"}.get(str(district.get("builder", "")), "wind" if district.get("theme", "") == "satellite" else "hum"))
+	Sfx.world_air(str(Router.roam.get("district", "domino")), str(district.get("builder", "")), str(district.get("theme", "")), str(city.tod) if city else "day")
 	Pad.walk_mode = true
 	Pad.both_sticks = false
 	Pad.hint("Left stick  walk     Right stick  look     A  talk / enter     LB  run     Y  map     X  card shop     Back  worlds     Start  menu")
@@ -126,6 +126,14 @@ func _ready() -> void:
 			var pal := Partner.new()
 			add_child(pal)
 			pal.setup(self)
+	# Everything is built: make it cheap to draw (see PerfPass).
+	var saved := PerfPass.apply(self)
+	if "--perf-probe" in OS.get_cmdline_user_args():
+		print("PERFPASS ", saved)
+		PerfPass.census(self)
+	if _figure:
+		for mi in _figure.find_children("*", "GeometryInstance3D", true, false):
+			(mi as GeometryInstance3D).visibility_range_end = 0.0
 	_debug()
 
 
@@ -249,6 +257,8 @@ func _cycle_tod() -> void:
 	Router.roam["tod"] = next
 	city.apply_tod(next)
 	_update_fill()
+	if _inside == "":
+		Sfx.world_air(str(Router.roam.get("district", "domino")), str(district.get("builder", "")), str(district.get("theme", "")), next)
 	Router.toast({"night": "Night", "sunset": "Sunset", "day": "Daytime"}[next])
 
 
@@ -825,6 +835,9 @@ func _build_places() -> void:
 
 
 func _build_rooms() -> void:
+	# Rooms need floors and walls you can stand on, also in worlds whose scenery has no bodies.
+	var solid_before: bool = city.make_solid
+	city.make_solid = true
 	for rk in _rooms:
 		var room: Dictionary = _rooms[rk]
 		Interiors.build(city, rk)
@@ -849,6 +862,7 @@ func _build_rooms() -> void:
 		if str(Router.roam.get("story", "")) == "":
 			for d in Interiors.people(rk):
 				_add_npc(d, inside_at)
+	city.make_solid = solid_before
 	MoreRooms.build_outside(city, str(Router.roam.get("district", "domino")))
 	MoreRooms.add_spots(self)
 
@@ -950,7 +964,7 @@ func travel_card(key: String) -> void:
 
 func _outdoor_sound() -> void:
 	Music.play({"": "city", "academy": "academy"}.get(str(district.get("builder", "")), str(district.get("theme", "city"))))
-	Sfx.ambience({"": "city", "academy": "sea"}.get(str(district.get("builder", "")), "wind" if district.get("theme", "") == "satellite" else "hum"))
+	Sfx.world_air(str(Router.roam.get("district", "domino")), str(district.get("builder", "")), str(district.get("theme", "")), str(city.tod) if city else "day")
 
 
 ## A soft light that travels with the camera, so the hero is never a silhouette
@@ -1719,6 +1733,18 @@ func _close_pause() -> void:
 
 func _debug() -> void:
 	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--enter="):
+			# Dev: walk into a room right away and say what there is to do in it.
+			await get_tree().create_timer(1.5).timeout
+			_travel(a.trim_prefix("--enter="))
+			await get_tree().create_timer(2.5).timeout
+			var here: Array = []
+			for sp in _spots:
+				if (sp["pos"] as Vector3).distance_to(_player.position) < 30.0:
+					here.append(str(sp["label"]))
+			print("ENTER ", a.trim_prefix("--enter="), " inside=", _inside, " at=", _player.position.snapped(Vector3.ONE), " of ", _spots.size(), " spots=", here)
+			if "--arcade" in OS.get_cmdline_user_args():
+				ArcadeGame.open(self)
 		if a.begins_with("--roam-talk="):
 			var who := a.substr(12)
 			await get_tree().create_timer(1.0).timeout

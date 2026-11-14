@@ -22,6 +22,10 @@ var sleeve := "default"         # the back of your own cards in a duel (see Card
 var field_theme := "auto"
 var language := "en"
 var show_fps := false
+## "Hold the frame rate": when the picture gets heavy the 3D view is drawn a little softer
+## instead of slower, and sharpened again when there is room. `auto_k` is that factor.
+var hold_fps := true
+var auto_k := 1.0
 ## Frame rate: 0 = unlimited, -1 = match the screen (V-Sync), otherwise the cap.
 var fps_cap := 0
 const FPS_CAPS := [0, 30, 60, 120, 144, 240, -1]
@@ -33,7 +37,7 @@ const GFX_PRESET_NAMES := ["Low", "Medium", "High", "Ultra"]
 const GFX_PRESETS := [
 	{"res": 1, "aa": 0, "shadows": 1, "ao": false, "reflect": false, "glow": false, "fog": false, "gi": false, "detail": 0, "people": 0},
 	{"res": 2, "aa": 1, "shadows": 2, "ao": false, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 1, "people": 1},
-	{"res": 3, "aa": 2, "shadows": 3, "ao": true, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 2, "people": 1},
+	{"res": 3, "aa": 2, "shadows": 2, "ao": true, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 2, "people": 1},
 	{"res": 4, "aa": 3, "shadows": 3, "ao": true, "reflect": true, "glow": true, "fog": true, "gi": true, "detail": 3, "people": 2},
 ]
 ## How many lines the 3D picture is drawn at before it is fitted to the window. On a Retina
@@ -106,7 +110,59 @@ func apply_graphics() -> void:
 	RenderingServer.positional_soft_shadow_filter_set_quality(
 		[RenderingServer.SHADOW_QUALITY_HARD, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM][sh])
 	vp.positional_shadow_atlas_size = [1024, 1024, 2048, 4096][sh]
+	# How soon far-away models switch to their lighter versions (bigger = sooner = faster).
+	vp.mesh_lod_threshold = [5.0, 3.0, 2.0, 1.0][clampi(int(gfx.get("detail", 2)), 0, 3)]
 	gfx_changed.emit()
+
+
+## The frame rate the game tries to hold: the cap you picked, else 60.
+func fps_target() -> float:
+	if fps_cap > 0:
+		return float(mini(fps_cap, 60)) if fps_cap < 60 else 60.0
+	return 60.0
+
+
+var _hold_t := 0.0
+var _hold_frames := 0
+var _hold_ceiling := 1.0      # raising past this dropped frames a moment ago
+var _hold_cool := 0.0
+var _hold_good := 0.0
+
+
+## Called every frame by the Router. Watches the frame rate and trades sharpness for speed.
+func hold_tick(delta: float, in_3d: bool) -> void:
+	if not hold_fps or not in_3d or DisplayServer.get_name() == "headless":
+		if auto_k != 1.0 and not hold_fps:
+			auto_k = 1.0
+			_apply_scale()
+		return
+	_hold_t += delta
+	_hold_frames += 1
+	_hold_cool = maxf(0.0, _hold_cool - delta)
+	if _hold_t < 0.75:
+		return
+	var fps := float(_hold_frames) / _hold_t
+	_hold_t = 0.0
+	_hold_frames = 0
+	var want := fps_target()
+	var vp := get_tree().root.get_viewport_rid()
+	var spent := RenderingServer.viewport_get_measured_render_time_cpu(vp) + RenderingServer.viewport_get_measured_render_time_gpu(vp)
+	var before := auto_k
+	if fps < want * 0.92:
+		# Too slow: soften. A big miss takes a bigger step.
+		auto_k = maxf(0.5, auto_k * (0.86 if fps < want * 0.75 else 0.93))
+		_hold_ceiling = before
+		_hold_cool = 12.0
+		_hold_good = 0.0
+	elif auto_k < 1.0:
+		_hold_good += 0.75
+		var room := spent > 0.1 and spent < (1000.0 / want) * 0.62
+		var may_try := _hold_good > (2.0 if room else 9.0)
+		if may_try and (_hold_cool <= 0.0 or auto_k * 1.05 < _hold_ceiling):
+			auto_k = minf(1.0, auto_k * 1.05)
+			_hold_good = 0.0
+	if not is_equal_approx(before, auto_k):
+		_apply_scale()
 
 
 func _apply_scale() -> void:
@@ -114,6 +170,7 @@ func _apply_scale() -> void:
 	var lines: int = RES_LINES[clampi(int(gfx["res"]), 0, RES_LINES.size() - 1)]
 	var h := float(vp.size.y)
 	var k := 1.0 if (lines == 0 or h <= float(lines)) else clampf(float(lines) / h, 0.35, 1.0)
+	k = clampf(k * (auto_k if hold_fps else 1.0), 0.3, 1.0)
 	var fplus := RenderingServer.get_current_rendering_method() == "forward_plus"
 	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if (fplus and k < 0.99) else Viewport.SCALING_3D_MODE_BILINEAR
 	vp.fsr_sharpness = 0.35
@@ -189,6 +246,7 @@ func load_settings() -> void:
 	language = cfg.get_value("game", "language", language)
 	sleeve = str(cfg.get_value("game", "sleeve", sleeve))
 	show_fps = cfg.get_value("display", "show_fps", show_fps)
+	hold_fps = bool(cfg.get_value("display", "hold_fps", hold_fps))
 	if cfg.has_section_key("graphics", "preset"):
 		gfx_preset = int(cfg.get_value("graphics", "preset", gfx_preset))
 		gfx = (GFX_PRESETS[clampi(gfx_preset, 0, GFX_PRESETS.size() - 1)] as Dictionary).duplicate()
@@ -216,6 +274,7 @@ func save_settings() -> void:
 	cfg.set_value("game", "language", language)
 	cfg.set_value("game", "sleeve", sleeve)
 	cfg.set_value("display", "show_fps", show_fps)
+	cfg.set_value("display", "hold_fps", hold_fps)
 	cfg.set_value("graphics", "preset", gfx_preset)
 	for k in gfx:
 		cfg.set_value("graphics", k, gfx[k])

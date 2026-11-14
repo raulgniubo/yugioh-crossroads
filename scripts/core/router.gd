@@ -27,10 +27,54 @@ var _busy := false
 var _fps: Label
 
 
-func _process(_delta: float) -> void:
+var _perf_t := 0.0
+var _perf_full := false
+var _probe_t := 0.0
+
+
+func _process(delta: float) -> void:
+	var cam := get_viewport().get_camera_3d()
+	Settings.hold_tick(delta, cam != null and not _busy)
 	_fps.visible = Settings.show_fps
-	if _fps.visible:
-		_fps.text = Loc.t("%d FPS") % Engine.get_frames_per_second()
+	_perf_t += delta
+	if _fps.visible and _perf_t > 0.25:
+		_perf_t = 0.0
+		var line := Loc.t("%d FPS") % Engine.get_frames_per_second()
+		if _perf_full:
+			# The numbers that say where the time goes. F3 shows and hides them.
+			var vp := get_viewport()
+			var rid := vp.get_viewport_rid()
+			var px := Vector2(vp.size) * vp.scaling_3d_scale
+			line += "   CPU %.1f ms   GPU %.1f ms" % [RenderingServer.viewport_get_measured_render_time_cpu(rid), RenderingServer.viewport_get_measured_render_time_gpu(rid)]
+			line += "\n%d draws   %dk triangles   %d objects" % [RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+				RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME) / 1000, RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)]
+			line += "\n3D %dx%d (%d%%)   %s   %s" % [int(px.x), int(px.y), int(vp.scaling_3d_scale * 100.0), Settings.gfx_preset_name(), RenderingServer.get_current_rendering_method()]
+			line += "\nscript %.1f ms   physics %.1f ms   nodes %d" % [Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0, int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))]
+		else:
+			line += "   (F3)"
+		_fps.text = line
+	if _probe:
+		_probe_t += delta
+		if _probe_t > 3.0:
+			_probe_t = 0.0
+			print("PERF draws ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), " tris ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME),
+				" objects ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME), " nodes ", int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)))
+
+
+var _probe := false
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F3:
+		if not Settings.show_fps:
+			Settings.show_fps = true
+			_perf_full = true
+		elif not _perf_full:
+			_perf_full = true
+		else:
+			_perf_full = false
+			Settings.show_fps = false
+		Settings.save_settings()
 
 
 func _ready() -> void:
@@ -65,6 +109,8 @@ func _ready() -> void:
 	_toast.modulate.a = 0.0
 	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_toast)
+	_probe = "--perf-probe" in OS.get_cmdline_user_args()
+	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 	_fps = Label.new()
 	_fps.position = Vector2(12, 8)
 	_fps.add_theme_font_size_override("font_size", 18)

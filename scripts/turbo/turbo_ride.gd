@@ -497,6 +497,8 @@ func _apply_zone() -> void:
 	if track.zone != str(zn[2]):
 		track.set_zone(str(zn[2]))
 		Sfx.play("whoosh", -6.0, 0.8)
+		# Inside the tunnel the engine booms back off the walls.
+		Sfx.ambience("tunnel" if "tunnel" in str(zn[2]) else "engine", -13.0 if "tunnel" in str(zn[2]) else -14.0)
 	if _zone_l:
 		_zone_l.text = Loc.t(str(zn[3]))
 

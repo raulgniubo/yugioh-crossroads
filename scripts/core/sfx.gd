@@ -67,10 +67,15 @@ func stream(name: String) -> AudioStream:
 var boost_db := 0.0
 
 
+## Level trims from the sound audit (--sound-audit), in dB.
+const TRIM := {"direct": -4.0, "destroy": -3.5, "attack": -3.5, "pack_rip": -3.0, "impact": -3.0, "vs": -1.5}
+
+
 func play(name: String, volume_db := 0.0, pitch := 1.0) -> void:
 	if not _sounds.has(name):
 		return
-	volume_db = minf(volume_db + boost_db, 6.0)
+	# The loudest hits were sitting 10 dB over everything else: bring them back into the mix.
+	volume_db = minf(volume_db + boost_db + float(TRIM.get(name, 0.0)), 6.0)
 	var now := Time.get_ticks_msec()
 	if now - int(_last.get(name, -1000)) < 45:
 		return
@@ -174,6 +179,148 @@ func _build_more() -> void:
 		loops["amb_" + kind] = _ambience(6.0, kind, r)
 		call_deferred("_add_sounds", loops.duplicate())
 		loops.clear()
+	# Each world has its own air. These are longer, so the loop is harder to hear.
+	for kind in ["satellite", "heartland", "newdomino", "museum", "night", "tunnel"]:
+		loops["amb_" + kind] = _world_air(13.0, kind, r)
+		call_deferred("_add_sounds", loops.duplicate())
+		loops.clear()
+	call_deferred("_audit")
+
+
+## The background of a place, built from a few layers: a bed of filtered noise, slow swells,
+## and small events scattered through the loop (a clank, a whoosh, a chime, a cricket).
+func _world_air(dur: float, kind: String, r: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(dur * RATE)
+	var buf := PackedFloat32Array()
+	buf.resize(n)
+	var a := 0.0
+	var b := 0.0
+	var c := 0.0
+	var ph := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var x := r.randf_range(-1.0, 1.0)
+		var v := 0.0
+		match kind:
+			"satellite":
+				# Wind through scrap: a low moan that rises and falls, with grit on top.
+				a += (0.012 + 0.02 * (0.5 + 0.5 * sin(TAU * t / dur * 2.0))) * (x - a)
+				b += 0.003 * (x - b)
+				c += 0.3 * (x - c)
+				ph += TAU * (48.0 + 6.0 * sin(TAU * t / dur)) / RATE
+				v = (a - b) * 2.6 + sin(ph) * 0.035 + (x - c) * 0.012 * (0.5 + 0.5 * sin(TAU * t / dur * 5.0))
+			"heartland":
+				# A happy crowd a block away, under a bright electric shimmer.
+				a += 0.3 * (x - a)
+				b += 0.04 * (x - b)
+				ph += TAU * 392.0 / RATE
+				v = (a - b) * 0.42 * (0.75 + 0.25 * sin(TAU * t / dur * 4.0)) + (sin(ph) + sin(ph * 1.5)) * 0.006 * (0.5 + 0.5 * sin(TAU * t / dur * 3.0))
+			"newdomino":
+				# A clean city: a soft power hum, and far overhead the ring road.
+				a += 0.02 * (x - a)
+				b += 0.002 * (x - b)
+				ph += TAU * 96.0 / RATE
+				v = sin(ph) * 0.03 + sin(ph * 2.0) * 0.012 + (a - b) * 1.2 * (0.5 + 0.5 * sin(TAU * t / dur * 2.0))
+			"museum":
+				# Almost nothing: air, and two glass tones that never quite agree.
+				a += 0.004 * (x - a)
+				ph += TAU * 220.0 / RATE
+				v = a * 1.6 + sin(ph) * 0.012 * (0.5 + 0.5 * sin(TAU * t / dur)) + sin(ph * 1.498) * 0.01 * (0.5 + 0.5 * sin(TAU * t / dur * 2.0 + 1.0))
+			"night":
+				# A warm night: far traffic and crickets.
+				a += 0.008 * (x - a)
+				ph += TAU * 4300.0 / RATE
+				var chirp := maxf(0.0, sin(TAU * t * 17.0)) * maxf(0.0, sin(TAU * t / dur * 13.0 * 0.5))
+				v = a * 2.0 + sin(ph) * 0.02 * chirp * chirp + sin(ph * 1.07) * 0.012 * maxf(0.0, sin(TAU * t * 13.0 + 1.0)) * maxf(0.0, sin(TAU * t / dur * 7.0 + 2.0))
+			"tunnel":
+				# An engine inside concrete: the same growl, boomier, with the walls rushing past.
+				a += 0.05 * (x - a)
+				b += 0.4 * (x - b)
+				ph += TAU * 74.0 / RATE
+				var saw := fmod(ph / TAU, 1.0) * 2.0 - 1.0
+				v = saw * 0.04 + sin(ph * 0.5) * 0.1 + sin(ph * 0.25) * 0.06 + a * 0.9 + (x - b) * 0.02 * (0.5 + 0.5 * sin(TAU * t * 5.5))
+		buf[i] = v * 0.5
+	# Things that happen now and then.
+	var events := {"satellite": 5, "heartland": 3, "newdomino": 2, "museum": 2, "night": 0, "tunnel": 0}
+	for e in int(events.get(kind, 0)):
+		var at := int(r.randf_range(0.08, 0.86) * n)
+		var len_e := int(RATE * (0.5 if kind == "satellite" else 1.6))
+		var f0 := r.randf_range(180.0, 420.0)
+		var lp := 0.0
+		for i in mini(len_e, n - at - 1):
+			var k := float(i) / len_e
+			var s := 0.0
+			match kind:
+				"satellite":
+					# Metal knocking on metal somewhere in the yard.
+					s = (sin(TAU * f0 * i / RATE) + 0.6 * sin(TAU * f0 * 2.76 * i / RATE) + 0.4 * sin(TAU * f0 * 5.4 * i / RATE)) * exp(-k * 9.0) * 0.07
+				"heartland":
+					# The monorail going over: a rising, falling rush of air.
+					lp += (0.03 + 0.2 * sin(k * PI)) * (r.randf_range(-1.0, 1.0) - lp)
+					s = lp * sin(k * PI) * 0.22
+				"newdomino":
+					# A runner on the ring, far away.
+					s = sin(TAU * (120.0 + 90.0 * sin(k * PI)) * i / RATE) * sin(k * PI) * 0.02
+				"museum":
+					# One soft bell, a long way down a hall.
+					s = (sin(TAU * f0 * 2.0 * i / RATE) + 0.5 * sin(TAU * f0 * 4.02 * i / RATE)) * exp(-k * 4.0) * 0.02
+			buf[at + i] += s
+	var fade := int(0.8 * RATE)
+	for i in fade:
+		var kf := float(i) / fade
+		buf[i] = buf[i] * kf + buf[n - fade + i] * (1.0 - kf)
+	buf.resize(n - fade)
+	var w := _to_wav(buf)
+	w.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	w.loop_begin = 0
+	w.loop_end = buf.size()
+	return w
+
+
+## The background for a world and an hour. Used wherever you walk.
+func world_air(district: String, builder: String, theme: String, tod: String) -> void:
+	var kind := "city"
+	var vol := -16.0
+	if builder == "academy":
+		kind = "sea"
+	elif builder == "museum":
+		kind = "museum"
+		vol = -13.0
+	elif builder == "newdomino":
+		kind = "newdomino"
+	elif theme == "satellite":
+		kind = "satellite"
+		vol = -14.0
+	elif theme == "heartland":
+		kind = "heartland"
+		vol = -15.0
+	# After dark the two older towns go quiet: crickets instead of traffic.
+	if tod == "night" and kind == "city":
+		kind = "night"
+		vol = -15.0
+	ambience(kind, vol)
+
+
+## --sound-audit: how loud is everything? Prints the level of every sound (dB, 0 is full
+## scale) so nothing sits far above or below the rest.
+func _audit() -> void:
+	if not "--sound-audit" in OS.get_cmdline_user_args():
+		return
+	var names: Array = _sounds.keys()
+	names.sort()
+	for nm in names:
+		var w = _sounds[nm]
+		if not (w is AudioStreamWAV):
+			continue
+		var sm := _samples(w)
+		if sm.is_empty():
+			continue
+		var sum := 0.0
+		var peak := 0.0
+		for v in sm:
+			sum += v * v
+			peak = maxf(peak, absf(v))
+		print("SOUND %-22s rms %6.1f dB   peak %6.1f dB   %.2f s" % [nm, 20.0 * log(maxf(1e-6, sqrt(sum / sm.size()))) / log(10.0), 20.0 * log(maxf(1e-6, peak)) / log(10.0), float(sm.size()) / RATE])
 
 
 func _add_sounds(more: Dictionary) -> void:
@@ -350,7 +497,12 @@ func _to_wav(buf: PackedFloat32Array) -> AudioStreamWAV:
 	var bytes := PackedByteArray()
 	bytes.resize(buf.size() * 2)
 	for i in buf.size():
-		bytes.encode_s16(i * 2, int(clampf(buf[i], -1.0, 1.0) * 32767.0))
+		# Peaks are rounded off instead of chopped flat: no crackle on the big hits.
+		var v := buf[i]
+		var mag := absf(v)
+		if mag > 0.8:
+			v = signf(v) * (0.8 + 0.2 * tanh((mag - 0.8) / 0.2))
+		bytes.encode_s16(i * 2, int(clampf(v, -1.0, 1.0) * 32767.0))
 	var w := AudioStreamWAV.new()
 	w.format = AudioStreamWAV.FORMAT_16_BITS
 	w.mix_rate = RATE

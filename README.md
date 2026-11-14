@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.26
+
+Speed, sound, and things to do indoors.
+
+- **Lighter worlds.** Character models now get lighter versions for distance (worked out in the background when a model loads), small props are not drawn from far away, tiny things cast no shadow, lamps fade out with distance, and round shapes use only as many sides as they need (`scripts/roam/perf_pass.gd`, `Avatars.request_lods`). Measured on the test renderer: 20 to 65% fewer triangles per frame depending on the world.
+- **Hold 60 FPS** (Settings, Display, on by default): when a scene gets heavy the 3D picture is drawn a little softer instead of slower, and sharpened again when there is room.
+- **F3** shows where the time goes: FPS, CPU and GPU milliseconds, draw calls, triangles, the 3D resolution in use.
+- **High** now uses two shadow splits instead of four (Ultra keeps four).
+- **Sound.** Every world has its own background: Satellite wind and metal, Heartland crowd and monorail, New Domino's hum and the ring road, the museum's quiet, crickets at night in Domino, and a boomier engine inside the Turbo tunnels. The loudest hit sounds were clipping and sat about 10 dB over everything else: they are rounded off and trimmed (`--sound-audit` prints every level).
+- **Things to do indoors.** Burger World sells a set meal (+500 Life Points in your next duel), the Game Center has a playable cabinet (Higher or Lower, with your own card pictures), the Yellow dorm has a study group quiz, the Blue dorm a trophy case, and two buildings that were only fronts now open: the Heartland Lounge and the Scrap Trader in Satellite (150 DP for a random card).
+- **Runner tuning** at the Satellite garage: two levels, each starts you with one more Speed Counter in Turbo Duels.
+
 ## What is in 0.25
 
 Story mode, start to finish.
