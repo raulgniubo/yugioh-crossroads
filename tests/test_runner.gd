@@ -322,7 +322,106 @@ func _test_vault() -> void:
 	var gob := _fake(s, 0, "Goblin Attack Force", 2300, 0, 0)
 	var t := _fake(s, 1, "Target", 1500, 1000, 0)
 	s.attack(0, gob, t)
-	check(not gob.attack_pos, "Goblin Attack Force changes to Defense Position after attacking")
+	check(gob.attack_pos, "Goblin Attack Force is still in Attack Position right after the attack")
+	s.enter_main2()
+	check(not gob.attack_pos, "Goblin Attack Force changes to Defense Position at the end of the Battle Phase")
+	s.end_turn()
+	s.begin_turn()
+	s.end_turn()
+	s.begin_turn()
+	check(not s.can_change_position(0, gob), "Goblin Attack Force cannot change position on your next turn")
+	# ---- the aces, by their printed text
+	# Number 39: Utopia with no material is destroyed when it is targeted for an attack.
+	s = _new_state(34)
+	_battle_ready(s)
+	var uto := _put(s, 1, CardData.NAME_TO_ID["number 39: utopia"], 0)
+	var uto_hit := _fake(s, 0, "Hitter", 1000, 0, 0)
+	s.declare_attack(0, uto_hit, uto)
+	check(not s.players[1].field.has(uto), "Utopia with no material is destroyed when attacked")
+	# Number 17: Leviathan Dragon cannot attack directly without material.
+	s = _new_state(35)
+	_battle_ready(s)
+	var lev := _put(s, 0, CardData.NAME_TO_ID["number 17: leviathan dragon"], 0)
+	check(not s.can_direct_attack_with(0, lev), "Leviathan Dragon cannot attack directly without material")
+	lev.overlays = [s._make(40640057, 0)]
+	check(s.can_direct_attack_with(0, lev), "Leviathan Dragon attacks directly with material")
+	# Stardust Dragon: Tribute to negate a destruction effect, and it returns in the End Phase.
+	s = _new_state(36)
+	_battle_ready(s)
+	s.phase = DuelState.Phase.MAIN1
+	s.current = 1
+	var star := _put(s, 0, CardData.NAME_TO_ID["stardust dragon"], 0)
+	var sd_friend := _fake(s, 0, "Friend", 1000, 1000, 1)
+	var rg := s._make(CardData.NAME_TO_ID["smashing ground"], 1)
+	s.players[1].hand.append(rg)
+	s.chain_add(1, rg, null, "open", null)
+	check(s.responses(0, "chain", s.chain.back()).has(star), "Stardust Dragon is offered against a destruction Spell")
+	s.respond(0, star, null)
+	s.chain_resolve()
+	check(s.players[0].field.has(sd_friend) and s.players[0].gy.has(star), "Stardust Dragon negated it and went to the Graveyard")
+	s.begin_end()
+	check(s.players[0].field.has(star), "Stardust Dragon returns in the End Phase")
+	# Red Dragon Archfiend: in your End Phase, your monsters that did not attack are destroyed.
+	s = _new_state(37)
+	_battle_ready(s)
+	var rda := _put(s, 0, CardData.NAME_TO_ID["red dragon archfiend"], 0)
+	var rda_lazy := _fake(s, 0, "Lazy", 1000, 1000, 1)
+	s.begin_end()
+	check(s.players[0].field.has(rda) and not s.players[0].field.has(rda_lazy), "Red Dragon Archfiend destroys your monsters that did not attack")
+	# Blackwing Armor Master: Wedge Counter, then 0 ATK and DEF.
+	s = _new_state(38)
+	_battle_ready(s)
+	var am := _put(s, 0, CardData.NAME_TO_ID["blackwing armor master"], 0)
+	var am_wall := _fake(s, 1, "Wall", 3000, 3000, 0)
+	s.attack(0, am, am_wall)
+	check(am_wall.wedge and s.players[0].field.has(am) and s.players[0].lp == DuelState.START_LP, "Armor Master places a Wedge Counter and takes no damage")
+	s.phase = DuelState.Phase.MAIN2
+	check(s.can_ignite(0, am), "Armor Master can remove the Wedge Counters")
+	s.ignite(0, am)
+	check(s.atk_of(am_wall, false) == 0 and s.def_of(am_wall) == 0, "The wedged monster drops to 0 ATK and DEF")
+	# Galaxy-Eyes Photon Dragon: both monsters leave the battle and come back at the end of the Battle Phase.
+	s = _new_state(39)
+	_battle_ready(s)
+	var ge := _put(s, 0, CardData.NAME_TO_ID["galaxy-eyes photon dragon"], 0)
+	var ge_xyz := _put(s, 1, CardData.NAME_TO_ID["number 39: utopia"], 0)
+	ge_xyz.overlays = [s._make(40640057, 1), s._make(40640057, 1)]
+	s.declare_attack(0, ge, ge_xyz)
+	check(s.responses(0, "attack", ge).has(ge), "Galaxy-Eyes is offered in the Battle Step")
+	s.respond(0, ge, ge)
+	s.resolve_attack()
+	check(not s.players[0].field.has(ge) and not s.players[1].field.has(ge_xyz), "Both monsters are banished")
+	s.enter_main2()
+	check(s.players[0].field.has(ge) and s.players[1].field.has(ge_xyz) and s.atk_of(ge, false) == 4000, "They return, and Galaxy-Eyes gained 500 for each material (got %d)" % s.atk_of(ge, false))
+	# Black Rose Dragon: banish a Plant, a Defense monster is forced to Attack with 0 ATK.
+	s = _new_state(40)
+	_battle_ready(s)
+	s.phase = DuelState.Phase.MAIN1
+	var br := _put(s, 0, CardData.NAME_TO_ID["black rose dragon"], 0)
+	s.players[0].gy.append(s._make(CardData.NAME_TO_ID["lord poison"], 0))
+	var br_turtle := _fake(s, 1, "Turtle", 1500, 2500, 0)
+	br_turtle.attack_pos = false
+	check(s.can_ignite(0, br), "Black Rose Dragon can use its effect")
+	s.ignite(0, br)
+	check(br_turtle.attack_pos and s.atk_of(br_turtle, false) == 0 and s.players[0].banished.size() == 1, "The Defense monster is in Attack Position with 0 ATK")
+	# Dark Magician Girl counts Magician of Black Chaos too.
+	s = _new_state(41)
+	_battle_ready(s)
+	var dmg := _put(s, 0, CardData.NAME_TO_ID["dark magician girl"], 0)
+	s.players[1].gy.append(s._make(CardData.NAME_TO_ID["dark magician"], 1))
+	if CardData.NAME_TO_ID.has("magician of black chaos"):
+		s.players[0].gy.append(s._make(CardData.NAME_TO_ID["magician of black chaos"], 0))
+		check(s.atk_of(dmg, false) == 2600, "Dark Magician Girl gains 300 for each (got %d)" % s.atk_of(dmg, false))
+	# Synchro materials by name: Junk Warrior needs Junk Synchron.
+	s = _new_state(42)
+	_battle_ready(s)
+	s.phase = DuelState.Phase.MAIN1
+	var jw := s._make(CardData.NAME_TO_ID["junk warrior"], 0)
+	s.players[0].extra.append(jw)
+	var other_tuner := _fake(s, 0, "Some Tuner", 500, 500, 0, {"level": 3, "tuner": true})
+	_fake(s, 0, "Level Two", 500, 500, 1, {"level": 2})
+	check(not s.can_extra_summon(0, jw), "Junk Warrior cannot be made with another Tuner")
+	other_tuner.data["name"] = "Junk Synchron"
+	check(s.can_extra_summon(0, jw), "Junk Warrior can be made with Junk Synchron")
 	# Exiled Force tributes itself to destroy a monster.
 	s = _new_state(34)
 	s.begin_turn()

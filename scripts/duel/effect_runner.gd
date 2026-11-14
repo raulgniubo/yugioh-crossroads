@@ -78,7 +78,7 @@ static func _count(s: DuelState, owner: int, spec: String) -> int:
 		# Copies of one card in both Graveyards (Dark Magician Girl counts Dark Magicians).
 		for q in 2:
 			for g in s.players[q].gy:
-				if g.cname() == val:
+				if g.cname() in val.split("|"):
 					n += 1
 		return n
 	if kind == "all_banished_monsters":
@@ -446,6 +446,24 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 			"copy_level":
 				if _level_sources(s, c, a[1]).is_empty():
 					return false
+			"rose_bind":
+				var has_plant := false
+				for g in s.players[p].gy:
+					if g.is_monster() and str(g.data.get("race", "")) == "Plant":
+						has_plant = true
+				var has_def := false
+				for m in opp.monsters():
+					if not m.attack_pos:
+						has_def = true
+				if not has_plant or not has_def:
+					return false
+			"wedge_release":
+				var any_wedge := false
+				for m in opp.monsters():
+					if m.wedge:
+						any_wedge = true
+				if not any_wedge:
+					return false
 	return true
 
 
@@ -586,6 +604,63 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"rda_end":
+			# Red Dragon Archfiend, your End Phase: your other monsters that did not attack are destroyed.
+			var idle := []
+			for m in ps.monsters():
+				if m != c and m.attacked_turn != s.turn:
+					idle.append(m)
+			if not idle.is_empty():
+				events.append(_ev(p, c, Loc.t("%s destroys your monsters that did not attack") % name))
+				for m in idle:
+					events.append_array(s._destroy(m))
+		"black_rose":
+			# Black Rose Dragon, Synchro Summoned: you can destroy all cards on the field.
+			var mine_n := ps.monsters().size() + ps.set_cards().size()
+			var their_n := opp.monsters().size() + opp.set_cards().size()
+			var yes := s.choose_option(p, Loc.t("%s: destroy all cards on the field?") % name, ["Destroy everything", "Leave the field as it is"], 0 if their_n > mine_n else 1, c) == 0
+			if yes:
+				events.append(_ev(p, c, Loc.t("%s destroys every card on the field") % name))
+				for q in 2:
+					for m in s.players[q].monsters():
+						events.append_array(s._destroy(m))
+					for st in s.players[q].spells.duplicate():
+						if st != null:
+							events.append_array(s._destroy_st(st))
+					if s.players[q].field_spell != null:
+						events.append_array(s._destroy_st(s.players[q].field_spell))
+		"rose_bind":
+			# Black Rose Dragon: banish a Plant from your Graveyard; one of their Defense Position
+			# monsters is turned to face-up Attack Position with 0 ATK until the end of the turn.
+			var plants := []
+			for g in ps.gy:
+				if g.is_monster() and str(g.data.get("race", "")) == "Plant":
+					plants.append(g)
+			var defs := []
+			for m in opp.monsters():
+				if not m.attack_pos:
+					defs.append(m)
+			if not plants.is_empty() and not defs.is_empty():
+				plants.sort_custom(func(x, y): return x.atk() < y.atk())
+				var cost: Array = s.choose(p, Loc.t("%s: banish 1 Plant from your Graveyard") % name, plants, 1, [plants[0]], false, c)
+				events.append_array(s._banish(cost[0] if not cost.is_empty() else plants[0]))
+				defs.sort_custom(func(x, y): return x.def() > y.def())
+				var tg: Array = s.choose(p, Loc.t("%s: choose 1 Defense Position monster") % name, defs, 1, [defs[0]], false, c)
+				var t = tg[0] if not tg.is_empty() else defs[0]
+				t.face_up = true
+				t.attack_pos = true
+				t.zero_turn = s.turn
+				events.append({"type": "position", "player": opp_i, "card": t, "zone": opp.field.find(t)})
+				events.append(_ev(p, c, Loc.t("%s is forced into Attack Position with 0 ATK") % t.cname()))
+		"wedge_release":
+			# Blackwing Armor Master: remove the Wedge Counters; those monsters drop to 0 ATK and DEF this turn.
+			for m in opp.monsters():
+				if m.wedge:
+					m.wedge = false
+					m.zero_turn = s.turn
+					m.def_mod_turn = s.turn
+					m.def_mod_t = -m.def()
+					events.append(_ev(p, c, Loc.t("%s drops to 0 ATK and DEF") % m.cname()))
 		"declare_level":
 			# Gagaga Magician: declare a Level from 1 to 8, until the end of this turn.
 			var want := 4

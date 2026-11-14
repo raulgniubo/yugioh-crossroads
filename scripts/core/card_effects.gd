@@ -19,7 +19,7 @@ const FX := {
 	# ---- The Head Archivist's shelf
 	"Apprentice Magician": {"note": "Destroyed by battle: Special Summon a Level 2 or lower Spellcaster from your Deck in Defense Position.", "death": [["special", "deck", {"race": "Spellcaster", "max_lv": 2}, "def", 1]]},
 	"Breaker the Magical Warrior": {"note": "Normal Summoned: gains 300 ATK.", "summon": [["perm_atk", 300]]},
-	"Dark Magician Girl": {"note": "Gains 300 ATK for every Dark Magician in the Graveyards.", "atk_per": ["gy_named:Dark Magician", 300]},
+	"Dark Magician Girl": {"note": "Gains 300 ATK for every Dark Magician or Magician of Black Chaos in the Graveyards.", "atk_per": ["gy_named:Dark Magician|Magician of Black Chaos", 300]},
 	"Magician of Faith": {"note": "Flip: draw 1 card.", "flip": [["draw", 1]]},
 	# ---- Your partner
 	"Lumen, Echo Spirit": {"note": "Normal Summoned: add 1 monster with 1500 or less ATK from your Deck to your hand. Destroyed by battle: you take no battle damage this turn.",
@@ -45,8 +45,8 @@ const FX := {
 	"Airknight Parshath": {"note": "Piercing damage. Deals battle damage to the opponent: draw 1 card.", "piercing": true, "damage": [["draw", 1]]},
 	"Spear Dragon": {"note": "Piercing damage. Changes to Defense Position after it attacks.", "piercing": true, "def_after_attack": true},
 	"Dark Driceratops": {"note": "Piercing damage.", "piercing": true},
-	"Goblin Attack Force": {"note": "Changes to Defense Position after it attacks.", "def_after_attack": true},
-	"Giant Orc": {"note": "Changes to Defense Position after it attacks.", "def_after_attack": true},
+	"Goblin Attack Force": {"note": "If it attacks, it changes to Defense Position at the end of the Battle Phase and cannot change position until the end of your next turn.", "def_end_battle": true, "pos_lock_next_turn": true},
+	"Giant Orc": {"note": "If it attacks, it changes to Defense Position at the end of the Battle Phase and cannot change position until the end of your next turn.", "def_end_battle": true, "pos_lock_next_turn": true},
 	"Axe Dragonute": {"note": "Changes to Defense Position after it attacks.", "def_after_attack": true},
 	"Hayabusa Knight": {"note": "Can attack twice each Battle Phase.", "double_attack": true},
 	"Jinzo #7": {"note": "Can attack directly.", "direct": true},
@@ -178,8 +178,7 @@ const FX := {
 	"Cyber Angel Dakini": {"note": "Summoned: the opponent sends a monster to the GY. Piercing.", "any_summon": [["destroy", "weakest"]], "piercing": true},
 	"Cyber Angel Idaten": {"note": "Summoned: gains 1000 ATK.", "any_summon": [["perm_atk", 1000]]},
 	"Destiny HERO - Captain Tenacious": {"note": "Your Standby Phase: Special Summon a Destiny HERO that was destroyed by battle since your last Standby Phase while this card was face-up.", "standby": [["tenacious"]]},
-	"Destiny HERO - Dasher": {"note": "Tribute another monster: +1000 ATK this turn. Goes to Defense after attacking.", "def_after_attack": true,
-		"ignite": {"cost": "tribute_other", "do": [["self_atk", 1000]], "label": "Tribute a monster: +1000 ATK"}},
+	"Destiny HERO - Dasher": {"note": "Once per turn: Tribute 1 other monster; this card gains 1000 ATK until the end of the turn. If it attacks, it changes to Defense Position at the end of the Battle Phase. Once while it is in your Graveyard: a monster you draw in your Draw Phase can be Special Summoned.", "def_end_battle": true, "gy_summon_drawn": true, "ignite": {"cost": "tribute_other", "do": [["self_atk", 1000]], "label": "Tribute a monster: +1000 ATK"}},
 	"Destiny HERO - Defender": {"note": "While in face-up Defense Position, during your opponent's Standby Phase: your opponent draws 1 card.", "opp_standby_draw": 1},
 	"Destiny HERO - Diamond Dude": {"note": "Once per turn: if the top card is a Spell, draw it.",
 		"ignite": {"cost": "none", "do": [["top_spell_draw"]], "label": "Check the top card"}},
@@ -191,12 +190,12 @@ const FX := {
 	"Granmarg the Rock Monarch": {"note": "Tribute Summoned: destroy a set card.", "summon": [["destroy", "set_st"]]},
 
 	# ---- 5D's
-	"Stardust Dragon": {"note": "Once per turn, survives destruction by battle.", "survive_once": true},
-	"Red Dragon Archfiend": {"note": "Attacks a Defense monster: destroy all the opponent's Defense monsters.", "kill_def_all": true},
-	"Black Rose Dragon": {"note": "Synchro Summoned: destroy every other card on the field.", "synchro": [["destroy", "all_field_other"]]},
+	"Stardust Dragon": {"note": "When a card or effect that would destroy a card on the field is activated: Tribute this card to negate it and destroy it. In the End Phase of that turn it returns from your Graveyard.", "stardust": true},
+	"Red Dragon Archfiend": {"note": "After it attacks a Defense Position monster: destroy all Defense Position monsters your opponent controls. Your End Phase: destroy your other monsters that did not attack this turn.", "kill_def_all": true, "end": [["rda_end"]]},
+	"Black Rose Dragon": {"note": "Synchro Summoned: you can destroy all cards on the field. Once per turn: banish 1 Plant from your Graveyard; 1 Defense Position monster your opponent controls changes to face-up Attack Position with 0 ATK until the end of the turn.", "synchro": [["black_rose"]], "ignite": {"cost": "none", "do": [["rose_bind"]], "label": "Banish a Plant: force a Defense monster to attack with 0 ATK"}},
 	"Junk Warrior": {"note": "Synchro Summoned: gains the ATK of your Level 2 or lower monsters.", "synchro": [["junk_warrior"]]},
 	"Exploder Dragonwing": {"note": "Battles a weaker monster: destroy it and deal damage equal to its ATK.", "kill": [["damage_victim_atk"]]},
-	"Blackwing Armor Master": {"note": "Can't be destroyed by battle; you take no damage from its battles.", "battle_immune": true, "no_damage_involving": true},
+	"Blackwing Armor Master": {"note": "Cannot be destroyed by battle, and you take no battle damage from battles involving it. After it attacks a monster: place a Wedge Counter on that monster. You can remove all Wedge Counters: those monsters drop to 0 ATK and DEF until the end of the turn.", "battle_immune": true, "no_damage_involving": true, "wedge_on_attack": true, "ignite": {"cost": "none", "do": [["wedge_release"]], "label": "Remove Wedge Counters: 0 ATK and DEF"}},
 	"Blackwing Armed Wing": {"note": "Gains 500 ATK attacking a Defense monster; piercing.", "atk_vs_def": 500, "piercing": true},
 	"Blackwing - Bora the Spear": {"note": "Piercing. Special Summon from hand if you control a Blackwing.", "piercing": true, "special_hand_if": "own_has:Blackwing"},
 	"Blackwing - Gale the Whirlwind": {"note": "Special Summon from hand if you control a Blackwing. Once per turn: halve a monster's ATK.",
@@ -247,20 +246,20 @@ const FX := {
 	"Truckroid": {"note": "Destroys a monster by battle: gains its ATK.", "kill": [["gain_victim_atk"]]},
 	"Expressroid": {"note": "Summoned: add 2 roid monsters from the GY to the hand.", "any_summon": [["gy_to_hand", {"has": "roid", "not": "Expressroid"}, 2]]},
 	"Rescueroid": {"note": "When a \"roid\" monster you control is destroyed by battle: it returns to your hand.", "rescue_roid": true},
-	"Mad Archfiend": {"note": "Piercing damage.", "piercing": true},
+	"Mad Archfiend": {"note": "Piercing damage. If it is targeted for an attack while in Attack Position: it changes to Defense Position.", "piercing": true, "def_when_targeted": true},
 	"Juragedo": {"note": "Tribute it: one of your monsters gains 1000 ATK this turn.",
 		"ignite": {"cost": "tribute_self", "do": [["best_own_atk", 1000]], "label": "Tribute: +1000 ATK to a monster"}},
 	"Gagaga Magician": {"note": "Once per turn: declare a Level from 1 to 8; it becomes that Level until the end of the turn. You can only control 1. Cannot be Synchro Material.", "ignite": {"cost": "none", "do": [["declare_level"]], "label": "Declare a Level (1 to 8)"}, "one_only": true, "no_synchro": true},
 	"Gagaga Cowboy": {"note": "Detach 1: gains 1000 ATK this turn.", "ignite": {"cost": "detach", "do": [["self_atk", 1000]], "label": "Detach: +1000 ATK"}},
 
 	# ---- ZEXAL
-	"Number 17: Leviathan Dragon": {"note": "Detach 1: gains 500 ATK.", "ignite": {"cost": "detach", "do": [["perm_atk", 500]], "label": "Detach: +500 ATK"}},
+	"Number 17: Leviathan Dragon": {"note": "Cannot attack directly unless it has material. Once per turn: detach 1 material; it gains 500 ATK.", "direct_needs_material": true, "ignite": {"cost": "detach", "do": [["perm_atk", 500]], "label": "Detach: +500 ATK"}},
 	"Number 32: Shark Drake": {"note": "Once per turn, when it attacks and destroys a monster: detach 1 material; that monster returns to their field in Attack Position with 1000 less ATK, and this card attacks once more.", "kill": [["shark_drake"]]},
 	"Number 62: Galaxy-Eyes Prime Photon Dragon": {"note": "Detach 1 in battle: gains 200 ATK per Rank of Xyz monsters on the field.", "atk_attack": 1600},
 	"Black Ray Lancer": {"note": "Detach 1: negate a monster (its ATK becomes 0 here).", "ignite": {"cost": "detach", "do": [["opp_zero"]], "label": "Detach: zero a monster's ATK"}},
 	"Starliege Paladynamo": {"note": "Detach 2: an opponent's monster's ATK becomes 0.", "ignite": {"cost": "detach2", "do": [["opp_zero"]], "label": "Detach 2: zero a monster's ATK"}},
 	"Cat Shark": {"note": "Can't be destroyed by battle.", "battle_immune": true},
-	"Galaxy-Eyes Photon Dragon": {"note": "Special Summon from hand by tributing 2 monsters with 2000+ ATK.", "special_tribute2": 2000},
+	"Galaxy-Eyes Photon Dragon": {"note": "Special Summon from your hand by Tributing 2 monsters with 2000 or more ATK. In the Battle Step, while it battles an opponent's monster: banish both until the end of the Battle Phase. If that monster was an Xyz Monster, this card gains 500 ATK for each material it had.", "special_tribute2": 2000, "gepd": true},
 	"Galaxy Knight": {"note": "No tribute if you control a Photon or Galaxy monster.", "no_tribute_if": "own_has:Photon|Galaxy"},
 	"Galaxy Soldier": {"note": "Special Summoned: add a Galaxy monster from the Deck.", "special_only": [["search", {"has": "Galaxy"}]]},
 	"Photon Crusher": {"note": "Switches to Defense after it attacks.", "def_after_attack": true},
@@ -286,6 +285,7 @@ const FX := {
 		"ignite": {"cost": "none", "do": [["self_atk_zero"], ["special", "hand", {"has": "Umbral Horror", "max_atk": 0}, "atk", 1]], "label": "Call an Umbral Horror"}},
 	"Umbral Horror Unform": {"note": "Destroyed by battle: Special Summon 2 Umbral Horror from the Deck.", "death": [["special", "deck", {"has": "Umbral Horror"}, "atk", 2]]},
 	"Umbral Horror Will o' the Wisp": {"note": "Destroyed by battle in Attack Position: destroy the monster that destroyed it.", "death": [["destroy_killer"]]},
+	"Number 39: Utopia": {"note": "When a monster declares an attack: detach 1 material to negate the attack. If it is targeted for an attack while it has no material: it is destroyed.", "destroy_if_attacked_no_material": true},
 }
 
 

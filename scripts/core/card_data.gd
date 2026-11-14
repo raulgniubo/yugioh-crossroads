@@ -435,12 +435,80 @@ const ADDONS := {
 }
 
 
+# ------------------------------------------------------------------ only exact cards
+# A ready-made deck is written with the cards its duelist plays. A card whose rules do not
+# match its printed text yet (see CardExact) is swapped for a stand-in here, and comes back
+# by itself the day it is rebuilt.
+
+const STAND_INS := ["Celtic Guardian", "Gemini Elf", "Vorse Raider", "Luster Dragon", "Mad Dog of Darkness", "Mechanicalchaser", "Archfiend Soldier",
+	"Insect Knight", "Sabersaurus", "Harpie Lady", "Aqua Madoor", "7 Colored Fish", "Giant Soldier of Stone", "Mystical Elf", "Elemental HERO Sparkman",
+	"Elemental HERO Avian", "Elemental HERO Burstinatrix", "Elemental HERO Clayman", "Charcoal Inpachi", "Blazing Inpachi", "Alexandrite Dragon",
+	"Gene-Warped Warwolf", "X-Head Cannon", "Dark Blade", "Battle Ox", "La Jinn the Mystical Genie of the Lamp", "Neo Bug", "Baby Dragon", "Silver Fang", "Feral Imp",
+	"Summoned Skull", "Curse of Dragon", "Luster Dragon #2", "Frostosaurus", "Millennium Shield",
+	"Dark Magician", "Blue-Eyes White Dragon", "Red-Eyes Black Dragon", "Cosmo Queen", "Tri-Horned Dragon", "Elemental HERO Neos", "Rabidragon", "Gogiga Gagagigo"]
+const STAND_SPELLS := ["Fissure", "Hinotama", "Dian Keto the Cure Master", "Smashing Ground"]
+const STAND_TRAPS := ["Sakuretsu Armor", "Jar of Greed", "Waboku"]
+static var _swap_cache := {}
+
+
+## The card itself when its rules are exact, a stand-in when they are not (0: nothing takes its place).
+static func swap(id: int) -> int:
+	if _swap_cache.has(id):
+		return _swap_cache[id]
+	var d := get_card(id)
+	var out := id
+	if not d.is_empty() and str(d.get("name", "Unknown")) != "Unknown" and not CardExact.ok(d):
+		out = _stand_in(id, d)
+	_swap_cache[id] = out
+	return out
+
+
+static func _tier(level: int) -> int:
+	return 0 if level <= 4 else (1 if level <= 6 else 2)
+
+
+static func _stand_in(id: int, d: Dictionary) -> int:
+	if str(d.get("kind", "monster")) != "monster":
+		var names: Array = STAND_TRAPS if str(d.get("kind", "")) == "trap" else STAND_SPELLS
+		return int(NAME_TO_ID.get(str(names[id % names.size()]).to_lower(), 0))
+	if str(d.get("frame", "")) in ["fusion", "synchro", "xyz"]:
+		return 0   # an Extra Deck monster has no stand-in: the Extra Deck is just one card shorter
+	var best := 0
+	var best_score := 1 << 30
+	for n in STAND_INS:
+		var cid := int(NAME_TO_ID.get(str(n).to_lower(), 0))
+		if cid == 0:
+			continue
+		var c := get_card(cid)
+		var score := absi(_tier(int(c.get("level", 4))) - _tier(int(d.get("level", 4)))) * 100000
+		score += 0 if str(c.get("race", "")) == str(d.get("race", "")) else 400
+		score += 0 if str(c.get("attribute", "")) == str(d.get("attribute", "")) else 250
+		score += absi(int(c.get("atk", 0)) - int(d.get("atk", 0))) + (id + cid) % 90
+		if score < best_score:
+			best_score = score
+			best = cid
+	return best
+
+
+static func _swap_all(list: Array[int]) -> Array[int]:
+	var out: Array[int] = []
+	for id in list:
+		var s := swap(id)
+		if s != 0:
+			out.append(s)
+	return out
+
+
 static func deck_list(deck_key: String) -> Array[int]:
 	if deck_key == "custom":
 		var mine: Array[int] = []
 		for id in Engine.get_main_loop().root.get_node("Collection").main:
 			mine.append(int(id))
 		return mine
+	return _swap_all(_deck_list_raw(deck_key))
+
+
+static func _deck_list_raw(deck_key: String) -> Array[int]:
 	var extra_cards: Array[int] = _expand(_resolve(ADDONS.get(deck_key, {}), false))
 	if DECKS.has(deck_key):
 		return to_forty(_expand(DECKS[deck_key]["cards"]) + extra_cards)
@@ -486,8 +554,8 @@ static func extra_list(deck_key: String) -> Array[int]:
 			mine.append(int(id))
 		return mine
 	if DECKS.has(deck_key):
-		return _expand(DECKS[deck_key].get("extra", {}))
-	return _expand(_resolve(NAMED_DECKS.get(deck_key, {}).get("extra", {}), true))
+		return _swap_all(_expand(DECKS[deck_key].get("extra", {})))
+	return _swap_all(_expand(_resolve(NAMED_DECKS.get(deck_key, {}).get("extra", {}), true)))
 
 
 ## Card names -> ids via the database. Unknown or unsupported cards are dropped.
@@ -527,6 +595,7 @@ static func _fill_to_30(counts: Dictionary) -> Array[int]:
 ## Load the downloaded card database. A compact index is cached in user:// so
 ## later launches don't parse the full file again.
 static func load_external(folder: String) -> void:
+	_swap_cache.clear()
 	EXT.clear()
 	NAME_TO_ID.clear()
 	var src := folder.path_join("cards.json")
@@ -642,4 +711,4 @@ static func legend_deck(deck_key: String) -> Array[int]:
 		while added < removed and counts[id] < 3:
 			counts[id] += 1
 			added += 1
-	return to_forty(_expand(counts))
+	return _swap_all(to_forty(_expand(counts)))

@@ -643,6 +643,31 @@ static func _sim_score(s: DuelState, p: int, window: String, c) -> float:
 static func choose_response(s: DuelState, p: int, window: String, options: Array, level := NORMAL) -> DuelState.CardInst:
 	if options.is_empty() or (level == EASY and randf() < 0.4):
 		return null
+	for c in options:
+		if not c.is_monster():
+			continue
+		var f: Dictionary = CardEffects.of(c.cname())
+		# Stardust Dragon: negate their destruction, never your own.
+		if f.get("stardust", false) and not s.chain.is_empty():
+			if int(s.chain.back()["player"]) != p:
+				return c
+			continue
+		# Galaxy-Eyes Photon Dragon: step out of a battle it would lose, or one against an Xyz Monster.
+		if f.get("gepd", false) and not s.pending_attack.is_empty():
+			var other = s.pending_attack["target"] if s.pending_attack["attacker"] == c else s.pending_attack["attacker"]
+			if other != null and (s.atk_of(other, false) >= s.atk_of(c, false) or (other.frame() == "xyz" and not other.overlays.is_empty())):
+				return c
+			continue
+		# Kalut: only when the extra ATK changes who wins.
+		if f.has("hand_boost_family") and not s.pending_attack.is_empty():
+			var mine = s._kalut_target(p)
+			var foe = s.pending_attack["target"] if s.pending_attack["attacker"] == mine else s.pending_attack["attacker"]
+			if mine != null and foe != null and foe.attack_pos:
+				var a0: int = s.atk_of(mine, false)
+				var b0: int = s.atk_of(foe, false)
+				if a0 <= b0 and a0 + int(f["hand_boost_family"][1]) > b0:
+					return c
+			continue
 	var sim_pick := _sim_response(s, p, window, options)
 	if sim_pick != null:
 		return sim_pick

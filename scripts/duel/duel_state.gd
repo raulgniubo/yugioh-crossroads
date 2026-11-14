@@ -55,6 +55,10 @@ class CardInst:
 	var lv_set := 0               # a Level it was given by an effect (Gagaga Magician, Copy Plant, Infernity Avenger)
 	var lv_turn := -1             # ...through this turn (-1: for as long as it stays on the field)
 	var died_turn := -1           # the turn it was destroyed by battle (Captain Tenacious)
+	var wedge := false            # a Wedge Counter (Blackwing Armor Master)
+	var flag_turn := -1           # "this card's effect was applied this turn" (Stardust Dragon)
+	var once := false             # a once-while-in-the-Graveyard / once-per-Duel effect is spent
+	var pos_lock_until := -1      # cannot change battle position through this turn (Goblin Attack Force)
 
 	func is_token() -> bool:
 		return data.get("frame", "") == "token"
@@ -62,6 +66,7 @@ class CardInst:
 	func reset_mods() -> void:
 		lv_set = 0
 		lv_turn = -1
+		wedge = false
 		atk_mod = 0
 		atk_mod_t = 0
 		atk_mod_turn = -1
@@ -168,6 +173,7 @@ var need = null                  # the first decision a trial run could not answ
 ## --- Monster effects on the chain ---------------------------------------------------------
 ## With defer_fx on (the duel screen), a triggered or ignition effect is not run on the spot:
 ## it waits in pending_fx, fx_to_chain() makes it a chain link, and chain_resolve() runs it.
+var gepd_hold: Array = []     # Galaxy-Eyes Photon Dragon: what it banished until the end of the Battle Phase
 var defer_fx := false
 var pending_fx: Array = []
 
@@ -312,7 +318,21 @@ func begin_turn(step := false) -> Array:
 			players[current].skip_draw -= 1
 			events.append({"type": "effect", "player": current, "card": null, "text": "Draw Phase skipped"})
 		else:
-			events.append_array(_draw(current))
+			var drew := _draw(current)
+			events.append_array(drew)
+			# Destiny HERO - Dasher, once while it is in the Graveyard: a monster you draw in your
+			# Draw Phase can be shown and Special Summoned.
+			if not is_over() and not drew.is_empty() and drew[0].get("type", "") == "draw":
+				var got: CardInst = drew[0]["card"]
+				var ps := players[current]
+				for g in ps.gy:
+					if got.is_monster() and not CardData.is_extra(got.id) and not g.once and CardEffects.of(g.cname()).get("gy_summon_drawn", false) and ps.free_zone() != -1 and ps.hand.has(got):
+						if choose_option(current, Loc.t("%s: Special Summon %s, the monster you just drew?") % [g.cname(), got.cname()], ["Special Summon it", "Keep it in hand"], 0, g) == 0:
+							g.once = true
+							ps.hand.erase(got)
+							events.append({"type": "effect", "player": current, "card": g, "text": Loc.t("%s calls out %s") % [g.cname(), got.cname()]})
+							events.append_array(_special(current, got, "effect"))
+						break
 		if is_over():
 			return events
 	if step:
@@ -381,6 +401,25 @@ func _end_battle() -> Array:
 		if m.attacked_turn == turn and m.face_up and EffectRunner.fx(m).get("banish_after_attack", false):
 			events.append({"type": "effect", "player": current, "card": m, "text": Loc.t("%s is banished at the end of the Battle Phase") % m.cname()})
 			events.append_array(_banish(m))
+		elif m.attacked_turn == turn and m.face_up and m.attack_pos and EffectRunner.fx(m).get("def_end_battle", false):
+			# "If this card attacks, it is changed to Defense Position at the end of the Battle Phase."
+			m.attack_pos = false
+			events.append({"type": "position", "player": current, "card": m, "zone": players[current].field.find(m)})
+			if EffectRunner.fx(m).get("pos_lock_next_turn", false):
+				m.pos_lock_until = turn + 2   # ...and stays that way until the end of your next turn
+	# Galaxy-Eyes Photon Dragon: the two monsters it took out of the battle come back.
+	for hold in gepd_hold:
+		for part in [["dragon", "dragon_side"], ["other", "other_side"]]:
+			var c: CardInst = hold[part[0]]
+			var side: int = hold[part[1]]
+			if players[c.owner].banished.has(c) and players[side].free_zone() != -1:
+				players[c.owner].banished.erase(c)
+				events.append({"type": "unbanish", "player": side, "card": c, "to": "field"})
+				events.append_array(_special(side, c, "effect", "atk" if hold[part[0] + "_atk"] else "def"))
+				if part[0] == "dragon" and int(hold["mats"]) > 0:
+					c.atk_mod += 500 * int(hold["mats"])
+					events.append({"type": "effect", "player": side, "card": c, "text": Loc.t("%s gains %d ATK") % [c.cname(), 500 * int(hold["mats"])]})
+	gepd_hold.clear()
 	return events
 
 
@@ -395,6 +434,14 @@ func begin_end() -> Array:
 	phase = Phase.END
 	var events := [{"type": "phase", "phase": phase}]
 	events.append_array(after_battle)
+	# Stardust Dragon: if it was Tributed for its effect this turn, it comes back from the Graveyard.
+	for q in 2:
+		for g in players[q].gy.duplicate():
+			if g.flag_turn == turn and CardEffects.of(g.cname()).get("stardust", false) and players[q].free_zone() != -1:
+				players[q].gy.erase(g)
+				g.flag_turn = -1
+				events.append({"type": "effect", "player": q, "card": g, "text": Loc.t("%s returns") % g.cname()})
+				events.append_array(_special(q, g, "reborn"))
 	events.append_array(EffectRunner.end_phase(self, current))
 	return events
 
@@ -576,7 +623,7 @@ func flip_summon(p: int, c: CardInst) -> Array:
 func can_change_position(p: int, c: CardInst) -> bool:
 	return (p == current and _in_main() and not is_over() and players[p].field.has(c)
 			and c.face_up and c.summoned_turn != turn and c.pos_changed_turn != turn
-			and c.attacked_turn != turn)
+			and c.attacked_turn != turn and c.pos_lock_until < turn)
 
 
 func change_position(p: int, c: CardInst) -> Array:
@@ -927,6 +974,8 @@ func attacks_left(c: CardInst) -> int:
 
 ## Can this monster attack the opponent directly right now?
 func can_direct_attack_with(p: int, c: CardInst) -> bool:
+	if EffectRunner.fx(c).get("direct_needs_material", false) and c.overlays.is_empty():
+		return false   # Number 17: Leviathan Dragon cannot attack directly without material
 	return EffectRunner.can_direct(self, p, c)
 
 
@@ -985,7 +1034,18 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	players[p].attacks_this_turn += 1
 	pending_attack = {"player": p, "attacker": attacker, "target": target, "negated": false,
 			"opp_count": players[opponent(p)].monsters().size()}
-	return [{"type": "attack", "player": p, "card": attacker, "target": target}]
+	var events := [{"type": "attack", "player": p, "card": attacker, "target": target}]
+	if target != null and target.face_up:
+		var tf := EffectRunner.fx(target)
+		# Number 39: Utopia: targeted for an attack with no material left, it is destroyed.
+		if (tf.get("destroy_if_attacked_no_material", false) or target.cname() == "Number 39: Utopia") and target.overlays.is_empty() and not target.negated:
+			events.append({"type": "effect", "player": opponent(p), "card": target, "text": Loc.t("%s has no material left and is destroyed") % target.cname()})
+			events.append_array(_destroy(target))
+		# Mad Archfiend: targeted for an attack in Attack Position, it changes to Defense Position.
+		elif tf.get("def_when_targeted", false) and target.attack_pos:
+			target.attack_pos = false
+			events.append({"type": "position", "player": opponent(p), "card": target, "zone": players[opponent(p)].field.find(target)})
+	return events
 
 
 ## Replay: the number of monsters on the defender's side changed after the attack was declared,
@@ -1104,6 +1164,10 @@ func resolve_attack() -> Array:
 			events.append({"type": "effect", "player": p, "card": attacker, "text": Loc.t("%s scorches every Defense monster!") % attacker.cname()})
 			for m in defs:
 				events.append_array(_destroy(m))
+	# Blackwing Armor Master: a Wedge Counter on the monster it attacked.
+	if EffectRunner.fx(attacker).get("wedge_on_attack", false) and players[p].field.has(attacker) and players[opp].field.has(target) and not target.wedge:
+		target.wedge = true
+		events.append({"type": "effect", "player": p, "card": attacker, "text": Loc.t("A Wedge Counter is placed on %s") % target.cname()})
 	events.append_array(_after_attack(attacker))
 	return events
 
@@ -1705,20 +1769,83 @@ func _do_fusion(p: int, plan: Dictionary, banish := false) -> Array:
 
 
 ## Material sets for a Synchro or Xyz monster, best (cheapest) first.
+static var _mat_rules := {}
+
+## What a Synchro or Xyz Monster's first line of text asks of its materials:
+## {"tuner": filter, "others": filter, "one_other": bool} or {"count": n, "filter": filter}.
+static func material_rule(c: CardInst) -> Dictionary:
+	var key := c.cname()
+	if _mat_rules.has(key):
+		return _mat_rules[key]
+	# The card file's own text (the built-in short texts leave the material line out).
+	var raw := str((CardData.EXT.get(c.id, {}) as Dictionary).get("desc", c.data.get("desc", c.data.get("text", ""))))
+	var line := raw.split("\n")[0].strip_edges()
+	var rule := {}
+	var re := RegEx.new()
+	if c.frame() == "synchro" and line.contains(" + "):
+		var parts := line.split(" + ")
+		var tun := parts[0].strip_edges()
+		var rest := parts[1].strip_edges()
+		var tf := {}
+		re.compile("^\"([^\"]+)\"$")
+		var m := re.search(tun)
+		if m:
+			tf = {"name": m.get_string(1)}
+		else:
+			re.compile("^1 \"([^\"]+)\" Tuner")
+			m = re.search(tun)
+			if m:
+				tf = {"has": m.get_string(1)}
+			else:
+				re.compile("^1 (DARK|LIGHT|EARTH|WATER|FIRE|WIND) Tuner")
+				m = re.search(tun)
+				if m:
+					tf = {"attr": m.get_string(1)}
+		var of := {}
+		re.compile("non-Tuner ([A-Z][A-Za-z\\- ]+?)(?:-Type)? monsters?")
+		m = re.search(rest)
+		if m:
+			var w := m.get_string(1).strip_edges()
+			of = {"attr": w} if w in ["DARK", "LIGHT", "EARTH", "WATER", "FIRE", "WIND"] else {"race": w}
+		rule = {"tuner": tf, "others": of, "one_other": rest.begins_with("1 non-Tuner")}
+	elif c.frame() == "xyz":
+		re.compile("^(\\d) Level \\d+ ?([A-Za-z\\- ]*?)(?:-Type)? monsters")
+		var m2 := re.search(line)
+		if m2:
+			var w2 := m2.get_string(2).strip_edges()
+			var f := {}
+			if w2 != "":
+				f = {"attr": w2} if w2 in ["DARK", "LIGHT", "EARTH", "WATER", "FIRE", "WIND"] else {"race": w2}
+			rule = {"count": int(m2.get_string(1)), "filter": f}
+	_mat_rules[key] = rule
+	return rule
+
+
+static func _fits(m: CardInst, f: Dictionary) -> bool:
+	if f.has("name") and m.cname() != f["name"] and str(CardEffects.of(m.cname()).get("name_as", "")) != f["name"]:
+		return false
+	if f.has("has") and not m.cname().contains(str(f["has"])):
+		return false
+	if f.has("attr") and str(m.data.get("attribute", "")) != f["attr"]:
+		return false
+	if f.has("race") and str(m.data.get("race", "")) != f["race"]:
+		return false
+	return true
+
+
 func extra_materials(p: int, c: CardInst) -> Array:
 	var mons: Array = []
 	for m in players[p].monsters():
 		if m.face_up:
 			mons.append(m)
 	var out := []
+	var rule := material_rule(c)
 	if c.frame() == "xyz":
-		var same := mons.filter(func(m): return m.level() == c.level() and m.frame() not in ["xyz", "token"])
+		var xf: Dictionary = rule.get("filter", {})
+		var same := mons.filter(func(m): return m.level() == c.level() and m.frame() not in ["xyz", "token"] and _fits(m, xf))
 		same.sort_custom(func(a, b): return a.atk() < b.atk())
-		# "3 Level 4 monsters" asks for three; most ask for two.
-		var want := 2
-		var first_line := str(c.data.get("desc", c.data.get("text", ""))).strip_edges()
-		if first_line.length() > 1 and first_line.substr(0, 1).is_valid_int() and first_line.substr(1, 6) == " Level":
-			want = clampi(int(first_line.substr(0, 1)), 2, 5)
+		# "3 Level 4 monsters" asks for three; most ask for two. "2 Level 3 WATER monsters" asks for WATER.
+		var want := clampi(int(rule.get("count", 2)), 2, 5)
 		if want == 2:
 			for i in same.size():
 				for j in range(i + 1, same.size()):
@@ -1741,6 +1868,15 @@ func extra_materials(p: int, c: CardInst) -> Array:
 					sel.append(mons[i])
 			var tuners := sel.filter(func(m): return m.is_tuner())
 			if tuners.size() != 1 or sel.size() < 2:
+				continue
+			# The Tuner it names ("Junk Synchron", a "Blackwing" Tuner, a DARK Tuner) and what the rest must be.
+			if not _fits(tuners[0], rule.get("tuner", {})):
+				continue
+			var others_ok := true
+			for m in sel:
+				if not m.is_tuner() and not _fits(m, rule.get("others", {})):
+					others_ok = false
+			if not others_ok or (rule.get("one_other", false) and sel.size() != 2):
 				continue
 			var total := 0
 			for m in sel:
@@ -1935,6 +2071,10 @@ func _clone_card(c: CardInst, map: Dictionary) -> CardInst:
 	n.lv_set = c.lv_set
 	n.lv_turn = c.lv_turn
 	n.died_turn = c.died_turn
+	n.wedge = c.wedge
+	n.flag_turn = c.flag_turn
+	n.once = c.once
+	n.pos_lock_until = c.pos_lock_until
 	map[c.uid] = n
 	for o in c.overlays:
 		n.overlays.append(_clone_card(o, map))
@@ -1995,6 +2135,17 @@ func responses(p: int, window: String, subject = null) -> Array:
 	for c in ps.hand:
 		if not st_locked and not c.is_monster() and SpellRules.fits(self, p, c, window, subject) and ps.speed >= speed_need(c):
 			out.append(c)
+	# Stardust Dragon: when a card or effect that would destroy a card on the field is activated.
+	if not chain.is_empty() and window == "chain" and SpellRules.would_destroy(chain.back()):
+		for m in ps.monsters():
+			if m.face_up and EffectRunner.fx(m).get("stardust", false):
+				out.append(m)
+				break
+	# Galaxy-Eyes Photon Dragon: in the Battle Step, while it battles an opponent's monster.
+	if window == "attack" and not pending_attack.is_empty() and not pending_attack.get("negated", false) and pending_attack["target"] != null:
+		for m in [pending_attack["attacker"], pending_attack["target"]]:
+			if ps.field.has(m) and m.face_up and EffectRunner.fx(m).get("gepd", false):
+				out.append(m)
 	# Blackwing - Kalut the Moon Shadow: from the hand in the Damage Step, when your Blackwing battles.
 	if window == "damage" and not pending_attack.is_empty() and not pending_attack.get("negated", false):
 		var mine := _kalut_target(p)
@@ -2067,6 +2218,37 @@ func _kalut_target(p: int) -> CardInst:
 func respond(p: int, c: CardInst, subject = null) -> Array:
 	var ps := players[p]
 	var events := []
+	if ps.field.has(c) and EffectRunner.fx(c).get("stardust", false) and not chain.is_empty():
+		# Tribute Stardust Dragon: negate that activation and destroy the card.
+		var link: Dictionary = chain.back()
+		var zone := ps.field.find(c)
+		ps.field[zone] = null
+		_to_gy(ps, c)
+		c.flag_turn = turn
+		events.append({"type": "tribute", "player": p, "card": c})
+		events.append_array(_monster_left(c))
+		link["negated"] = true
+		var bad: CardInst = link["card"]
+		events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s negates %s and destroys it") % [c.cname(), bad.cname()]})
+		if bad.is_monster():
+			events.append_array(_destroy(bad))
+		else:
+			events.append_array(_destroy_st(bad))
+		return events
+	if ps.field.has(c) and EffectRunner.fx(c).get("gepd", false) and not pending_attack.is_empty():
+		# Banish Galaxy-Eyes and the monster it battles until the end of the Battle Phase.
+		var other: CardInst = pending_attack["target"] if pending_attack["attacker"] == c else pending_attack["attacker"]
+		if other == null:
+			return events
+		var o := opponent(p)
+		var hold := {"dragon": c, "dragon_side": p, "dragon_atk": c.attack_pos, "other": other, "other_side": o, "other_atk": other.attack_pos,
+			"mats": other.overlays.size() if other.frame() == "xyz" else 0}
+		events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s takes %s out of the battle") % [c.cname(), other.cname()]})
+		events.append_array(_banish(c))
+		events.append_array(_banish(other))
+		gepd_hold.append(hold)
+		pending_attack["negated"] = true
+		return events
 	var boost: Array = CardEffects.of(c.cname()).get("hand_boost_family", [])
 	if not boost.is_empty() and ps.hand.has(c):
 		var who := _kalut_target(p)

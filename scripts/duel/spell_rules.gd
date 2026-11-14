@@ -300,6 +300,18 @@ static func blocked(s: DuelState, c) -> bool:
 	return false
 
 
+## Would this chain link destroy a card on the field? (Stardust Dragon answers those.)
+static func would_destroy(link: Dictionary) -> bool:
+	if link.get("negated", false):
+		return false
+	var acts: Array = link.get("actions", []) if str(link.get("kind", "")) == "fx" else (link["spec"] as Dictionary).get("do", [])
+	for a in acts:
+		if str(a[0]) in ["destroy", "destroy_half_damage", "destroy_killer", "dice_destroy", "ring"]:
+			return true
+	var tag := str((link.get("spec", {}) as Dictionary).get("legacy", ""))
+	return tag in ["raigeki", "darkhole", "fissure", "mst", "mirror_force", "sakuretsu", "trap_hole", "bottomless", "torrential"]
+
+
 ## Does this card fit the response window? window: attack | summon | chain | battle_start | open
 static func fits(s: DuelState, p: int, c, window: String, subject) -> bool:
 	var sp := spec(c)

@@ -78,6 +78,12 @@ func _initialize() -> void:
 				why = "spell/trap"
 			bad += 1
 			print("NO RULES|", why, "|", nm, "|", id, "|", text.replace("\n", " ").substr(0, 160))
+		var inexact := 0
+		for id in col.every_playable():
+			if not CardExact.ok(CardData.get_card(id)):
+				inexact += 1
+				print("NOT EXACT IN GAME|", CardData.get_card(id).get("name", ""))
+		print("EXACT: ", CardExact.MONSTERS.size(), " effect monsters checked against their text; Spells/Traps not exact yet: ", CardExact.NOT_YET.size(), "; inexact cards still in the game: ", inexact)
 		print("STRICT: ", bad, " cards in the game without rules; ", loose, " equip/field cards run from their text pattern")
 	print("FX coverage: ", covered, " of ", total, " effect-monster slots; ", missing.size(), " different cards missing")
 	var names: Array = missing.keys()

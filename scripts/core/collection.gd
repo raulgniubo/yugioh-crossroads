@@ -594,7 +594,7 @@ func _prize_card(opp: String, deck: String) -> int:
 	if ace == 0:
 		var ace_name := str(Characters.get_char(opp).get("ace_name", ""))
 		ace = int(CardData.NAME_TO_ID.get(ace_name.to_lower(), 0))
-	if ace != 0 and int(owned.get(ace, 0)) < 3 and str(CardData.get_card(ace).get("name", "Unknown")) != "Unknown":
+	if ace != 0 and int(owned.get(ace, 0)) < 3 and str(CardData.get_card(ace).get("name", "Unknown")) != "Unknown" and playable(ace):
 		return ace
 	if deck == "" or not CardData.has_deck(deck):
 		return 0
@@ -741,6 +741,10 @@ func every_playable() -> Array:
 		# (Tokens are listed as Normal monsters in the card file: they are not cards you can own.)
 		if str(d.get("frame", "")) == "normal" and int(d.get("level", 0)) > 0 and not str(d.get("name", "")).contains("Token"):
 			ids[int(id)] = true
+	# Only cards whose rules match their printed text (see CardExact).
+	for id in ids.keys():
+		if not CardExact.ok(CardData.get_card(int(id))):
+			ids.erase(id)
 	_pools["**"] = ids.keys()
 	return _pools["**"]
 
@@ -764,6 +768,9 @@ func all_cards() -> Array:
 	for era in ["Duel Monsters", "GX", "5D's", "ZEXAL", "Vault"]:
 		for id in pool(era):
 			ids[id] = true
+	for id in ids.keys():
+		if not CardExact.ok(CardData.get_card(int(id))):
+			ids.erase(id)
 	_pools["*"] = ids.keys()
 	return _pools["*"]
 
@@ -789,7 +796,7 @@ func pool(era: String) -> Array:
 				taken[id] = true
 		for name in SpellRules.FX.keys() + CardEffects.FX.keys() + CardEffectsAuto.FX.keys() + VAULT_EXTRAS:
 			var id: int = CardData.NAME_TO_ID.get(str(name).to_lower(), 0)
-			if id != 0 and not taken.has(id) and not CardData.get_card(id).is_empty() and not CardData.get_card(id).get("speed_spell", false):
+			if id != 0 and not taken.has(id) and not CardData.get_card(id).is_empty() and not CardData.get_card(id).get("speed_spell", false) and CardExact.ok(CardData.get_card(id)):
 				ids[id] = true
 		_pools[era] = ids.keys()
 		return _pools[era]

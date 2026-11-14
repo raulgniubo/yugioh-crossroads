@@ -226,6 +226,13 @@ func _find(f: Dictionary, not_name := "") -> int:
 			best = id
 			if str(d.get("frame", "")) == "normal":
 				break
+	if best == 0:
+		# Nothing in the game fits: any card in the card file will do for a test.
+		for id in CardData.EXT.keys():
+			var d2: Dictionary = CardData.get_card(int(id))
+			if str(d2.get("name", "")) != not_name and CardEffects.matches(d2, f) and not (str(d2.get("frame", "")) in ["fusion", "synchro", "xyz", "ritual", "link"]):
+				best = int(id)
+				break
 	_found[key] = best
 	return best
 
@@ -273,6 +280,12 @@ func _seed(s: DuelState, entry, self_name: String) -> void:
 				found += 1
 				if found >= 2:
 					break
+		if found == 0:
+			var any := _find(f, self_name)
+			if any != 0:
+				s.players[0].deck.append(s._make(any, 0))
+				s.players[0].gy.append(s._make(any, 0))
+				s.players[0].hand.append(s._make(any, 0))
 	# Any card the effect names outright (Armed Dragon LV5, Phoenixian Cluster Amaryllis...).
 	var strs: Array = []
 	_strings(entry, strs)
@@ -288,10 +301,11 @@ func _seed(s: DuelState, entry, self_name: String) -> void:
 	var re := RegEx.new()
 	re.compile("(?:gy_named|named|own_has|field_named):([^\"\\]]+)")
 	for m in re.search_all(text):
-		var id := _id(m.get_string(1))
-		if id != 0:
-			s.players[0].gy.append(s._make(id, 0))
-			s.players[1].gy.append(s._make(id, 1))
+		for one in m.get_string(1).split("|"):
+			var id := _id(one)
+			if id != 0:
+				s.players[0].gy.append(s._make(id, 0))
+				s.players[1].gy.append(s._make(id, 1))
 
 
 func _filters(v, out: Array) -> void:
@@ -365,7 +379,8 @@ func _monster(id: int) -> String:
 		"discarded", "sent from Deck", "used as material", "banished"]
 	names += ["Special Summoned", "Synchro Summoned", "attacks after a Spell", "a weak monster attacks it", "attacks a weak Plant", "in the Graveyard",
 		"attacks a big wall", "attacks into a Trap", "summoned alone", "destroys a monster that has an effect", "another of yours falls in battle",
-		"in hand while yours battles", "in the Graveyard when a Plant falls or arrives", "in the Graveyard when yours falls", "a turn after yours fell"]
+		"in hand while yours battles", "in the Graveyard when a Plant falls or arrives", "in the Graveyard when yours falls", "a turn after yours fell",
+		"they play a destruction Spell"]
 	for pass_n in 2:
 		empty_hand = pass_n == 1
 		for k in names.size():
@@ -553,6 +568,9 @@ func _scene(id: int, k: int, twin: bool, entry, nm: String) -> String:
 			var set_card := s._make(_id("Mirror Force"), 1)
 			set_card.face_up = false
 			opp.spells[0] = set_card
+			var gy_plant := _find({"race": "Plant"}, nm)
+			if gy_plant != 0:
+				me.gy.append(s._make(gy_plant, 0))
 			var fl2: Array = []
 			_filters(entry, fl2)
 			for f in fl2:
@@ -677,6 +695,9 @@ func _scene(id: int, k: int, twin: bool, entry, nm: String) -> String:
 			_put(s, 1, _id("Celtic Guardian"), 0)
 			var fs3 := s._make(_id("Banner of Courage"), 1)
 			opp.spells[1] = fs3
+			_put(s, 1, _id("Battle Ox"), 1)
+			_put(s, 1, _id("Gemini Elf"), 2)
+			_put(s, 1, _id("Vorse Raider"), 3)
 			if empty_hand:
 				me.hand.clear()
 			s._special(0, m, "special", "atk")
@@ -826,6 +847,18 @@ func _scene(id: int, k: int, twin: bool, entry, nm: String) -> String:
 			s.end_turn()
 			if not s.is_over():
 				s.begin_turn()
+		36:  # the opponent activates a Spell that destroys: can it answer?
+			s.players[0].field[0] = m
+			_put(s, 0, _id("Celtic Guardian"), 1)
+			s.current = 1
+			var bomb := s._make(_id("Smashing Ground"), 1)
+			opp.hand.append(bomb)
+			s.chain_add(1, bomb, null, "open", null)
+			if not s.chain.is_empty() and s.responses(0, "chain", s.chain.back()).has(m):
+				note = "offered"
+				s.respond(0, m, null)
+			s.chain_resolve()
+			s.begin_end()
 	if s.phase == DuelState.Phase.BATTLE and s.current == 0 and not s.is_over() and k in [2, 3, 4, 23, 25, 27, 30]:
 		s.enter_main2()   # the Battle Phase ends: effects that wait for that
 	if empty_hand and k in [2, 3, 4, 9, 10, 11, 14, 15, 16]:
