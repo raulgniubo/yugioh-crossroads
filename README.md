@@ -5,6 +5,19 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.28
+
+**Every card in the game now matches its printed text**
+- New rule, enforced by the game itself: a card with an effect is only in the game once its rules have been checked against its printed text, sentence by sentence. The list is `scripts/core/card_exact.gd`, and `CARD_REVIEW.md` shows what is exact and what is waiting.
+- A card that is waiting is not in packs, shops, prizes or the deck builder, and the ready-made decks use a stand-in for it until it is rebuilt. It comes back by itself.
+- Rebuilt to their full text: Stardust Dragon, Red Dragon Archfiend, Black Rose Dragon, Blackwing Armor Master, Galaxy-Eyes Photon Dragon, Number 39: Utopia, Number 17: Leviathan Dragon, Dark Magician Girl, Destiny HERO - Dasher, Sangan, Magician of Faith, Goblin Attack Force, the D.D. Warriors, Twilight Rose Knight, the Sharks' Level effects, and about 40 more monsters and 27 Spells and Traps.
+- Synchro and Xyz Monsters ask for the materials their first line names: Junk Warrior needs Junk Synchron, Armor Master needs a Blackwing Tuner, Black Ray Lancer needs WATER.
+- Bugs found by reading the rules next to the text: Needle Worm sent 1 card instead of 5, Cyber Prima destroyed Set cards instead of face-up Spells, Elphin could only turn a monster to Defense, Sangan and Winged Kuriboh ran their effect twice.
+
+**Rooms**
+- The Yellow dorm's common room has the manor's panelling, hearth and chandelier; the Blue dorm's has the castle's columns, banners and gold.
+- The Heartland Lounge is a neon night spot now, and the Scrap Trader is rust and tin with its own sign.
+
 ## What is in 0.27
 
 **Your game in one folder, with real saves**

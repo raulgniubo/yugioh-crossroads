@@ -947,6 +947,7 @@ func plank_dorm(at: Vector3, yaw: float, trim: Color, walkable := true, style :=
 		for sx: float in [-1.0, 1.0]:
 			if not castle:
 				cyl(0.0, 0.1, 0.7, Vector3(sx * (W / 2.0 + 0.4), F * 2.0 + rise + 0.45, rz), gilt, h, 8)
+	h.set_meta("static_boxes", true)   # nothing on a dorm moves: PerfPass welds its boards together
 	h.set_meta("upper_doors", ups)
 	h.set_meta("size", Vector3(W, F * 2.0 + (10.0 if castle else rise), D + walk))
 	h.set_meta("front", [xf * Vector3(0, 0, zf), out])

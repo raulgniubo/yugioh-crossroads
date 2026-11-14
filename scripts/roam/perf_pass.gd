@@ -8,8 +8,55 @@ extends RefCounted
 static func apply(root: Node) -> Dictionary:
 	var k: float = [0.75, 0.9, 1.0, 1.35][clampi(int(Settings.gfx.get("detail", 2)), 0, 3)]
 	var stats := {"small": 0, "noshadow": 0, "lights": 0, "people": 0}
+	stats["merged"] = merge_static(root)
 	_walk(root, stats, k, false)
 	return stats
+
+
+## A house built board by board is thousands of little boxes, each one its own draw call.
+## Inside a container marked "static_boxes" (nothing in it ever moves), every plain box that
+## shares a material is welded into one mesh. It looks the same and draws in a handful of calls.
+static func merge_static(root: Node) -> int:
+	var total := 0
+	for h in root.find_children("*", "Node3D", true, false):
+		if h.has_meta("static_boxes"):
+			total += _merge_under(h as Node3D)
+	return total
+
+
+static func _merge_under(h: Node3D) -> int:
+	var groups := {}
+	for n in h.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if not (mi.mesh is BoxMesh) or mi.get_child_count() > 0 or mi.get_script() != null or not mi.is_visible_in_tree() or not mi.get_groups().is_empty() or mi.has_meta("keep"):
+			continue
+		var mat: Material = mi.material_override if mi.material_override != null else (mi.mesh as BoxMesh).material
+		if mat == null or _glows(mi) or mi.transparency > 0.0:
+			continue
+		var key := "%d/%d" % [mat.get_instance_id(), mi.cast_shadow]
+		if not groups.has(key):
+			groups[key] = {"mat": mat, "shadow": mi.cast_shadow, "nodes": []}
+		(groups[key]["nodes"] as Array).append(mi)
+	var merged := 0
+	var inv := h.global_transform.affine_inverse()
+	for key in groups:
+		var nodes: Array = groups[key]["nodes"]
+		if nodes.size() < 6:
+			continue
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for mi in nodes:
+			st.append_from((mi as MeshInstance3D).mesh, 0, inv * (mi as MeshInstance3D).global_transform)
+		var one := MeshInstance3D.new()
+		one.mesh = st.commit()
+		one.material_override = groups[key]["mat"]
+		one.cast_shadow = groups[key]["shadow"]
+		one.set_meta("far", true)   # a whole house: never culled by the small-things rule
+		h.add_child(one)
+		for mi in nodes:
+			(mi as Node).queue_free()
+		merged += nodes.size()
+	return merged
 
 
 ## A bush the size of a football does not need four thousand triangles to look round.

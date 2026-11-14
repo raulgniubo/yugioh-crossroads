@@ -20,10 +20,10 @@ const ROOMS := {
 		"floor": Color(0.2, 0.22, 0.28), "wall": Color(0.86, 0.88, 0.93), "trim": Color("ffd166")},
 	"hl_lounge": {"district": "heartland", "name": "Heartland Lounge", "area": "Juice bar, cake and table duels", "at": Vector3(720, 0, 400), "half": Vector2(7.0, 5.5), "height": 3.6,
 		"door": Vector3(-20.63, 0, -15.33), "out": Vector3(0.783, 0, 0.622), "label": "Enter the lounge", "music": "heartland",
-		"floor": Color(0.86, 0.8, 0.9), "wall": Color(0.98, 0.95, 1.0), "trim": Color("ff5ab4")},
+		"floor": Color(0.13, 0.1, 0.2), "wall": Color(0.2, 0.15, 0.32), "trim": Color("ff5ab4")},
 	"sat_shack": {"district": "satellite", "name": "The Scrap Trader", "area": "Parts, junk and the odd rare card", "at": Vector3(720, 0, 400), "half": Vector2(7.0, 5.0), "height": 3.4,
 		"door": Vector3(-21.63, 0, -13.33), "out": Vector3(0.783, 0, 0.622), "label": "Enter the Scrap Trader", "music": "satellite",
-		"floor": Color(0.3, 0.27, 0.24), "wall": Color(0.5, 0.42, 0.34), "trim": Color("ff8a3a")},
+		"floor": Color(0.2, 0.18, 0.17), "wall": Color(0.33, 0.24, 0.18), "trim": Color("ff8a3a")},
 	"nd_cafe": {"district": "newdomino", "name": "Cafe Terrace", "area": "Coffee, cake and table duels", "at": Vector3(800, 0, 400), "half": Vector2(7.0, 5.5), "height": 3.6,
 		"door": Vector3(-26.5, 0, 27.1), "out": Vector3(1, 0, 0), "label": "Enter the cafe", "music": "shop",
 		"floor": Color(0.5, 0.36, 0.26), "wall": Color(0.96, 0.9, 0.86), "trim": Color("ff8ac0")},
@@ -94,11 +94,51 @@ static func dress(city: CityBuilder, key: String, o: Vector3, half: Vector2, hgt
 		"ac_class": _lecture(city, o, half, hgt)
 		"nd_stadium": _stadium(city, o, half, hgt)
 		"nd_cafe": _cafe(city, o, half, hgt)
-		"hl_lounge": _cafe(city, o, half, hgt)
-		"sat_shack": _mart(city, o, half, hgt)
+		"hl_lounge":
+			# The same bones as the New Domino cafe, repainted night-club dark so the neon carries it.
+			var n0 := city.get_child_count()
+			_skip_signs = ["CAFE", "TODAY'S MENU", "SYNCHRO BLEND  ·  15", "TUNER LATTE  ·  15", "STARDUST CAKE  ·  ask"]
+			_cafe(city, o, half, hgt)
+			_skip_signs = []
+			_retint(city, n0, Color(0.14, 0.1, 0.26), 0.7)
+			_neon_lounge(city, o, half, hgt)
+		"sat_shack":
+			# The mart's shelves, gone to rust: everything in here has been used at least twice.
+			var n1 := city.get_child_count()
+			_skip_signs = ["DOMINO MART"]
+			_mart(city, o, half, hgt)
+			_skip_signs = []
+			_retint(city, n1, Color(0.3, 0.18, 0.11), 0.74)
+			_scrap_shop(city, o, half, hgt)
+
+
+static var _skip_signs: Array = []
+
+
+## Repaint everything a room builder just made (the children added since `from`) toward one
+## color: how a shop's layout is reused with a different look. Lights and glowing things stay.
+static func _retint(city: CityBuilder, from: int, to: Color, k: float) -> void:
+	var done := {}
+	for i in range(from, city.get_child_count()):
+		var n := city.get_child(i)
+		for mi in [n] + n.find_children("*", "MeshInstance3D", true, false):
+			if not (mi is MeshInstance3D):
+				continue
+			var m: Material = (mi as MeshInstance3D).material_override
+			if not (m is StandardMaterial3D) or (m as StandardMaterial3D).emission_enabled or (m as StandardMaterial3D).shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED:
+				continue
+			var id := m.get_instance_id()
+			if not done.has(id):
+				var d := (m as StandardMaterial3D).duplicate() as StandardMaterial3D
+				d.albedo_color = d.albedo_color.lerp(to, k)
+				d.roughness = minf(1.0, d.roughness + 0.15)
+				done[id] = d
+			(mi as MeshInstance3D).material_override = done[id]
 
 
 static func _sign(city: CityBuilder, text: String, pos: Vector3, rot: float, color: Color, size: int) -> void:
+	if text in _skip_signs:
+		return
 	var l := Label3D.new()
 	l.text = text
 	l.font = load("res://assets/fonts/Rajdhani-SemiBold.ttf")
@@ -590,6 +630,164 @@ static func spruce(city: CityBuilder, key: String, o: Vector3, half: Vector2, hg
 				l.omni_range = 5.0
 				l.position = lp + Vector3(0, 1.8, 0)
 				city.add_child(l)
+			if key == "dorm_yellow":
+				_manor_room(city, o, half, hgt)
+			else:
+				_castle_room(city, o, half, hgt)
+
+
+## The Yellow dorm's common room, in the manor's own manner: dark wood to waist height, a hearth
+## with a fire in it, gilt frames on the walls and a ring of lamps overhead.
+static func _manor_room(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> void:
+	var wood := city.mat(Color(0.3, 0.19, 0.11), 0.6)
+	var gilt := city.mat(Color(0.86, 0.68, 0.3), 0.3, 0.8)
+	var cream := city.mat(Color(0.93, 0.88, 0.74), 0.9)
+	# Panelling along both side walls, with a rail on top.
+	for sx: float in [-1.0, 1.0]:
+		var wx := sx * (half.x - 0.06)
+		city.box(Vector3(0.08, 1.1, half.y * 2 - 0.4), o + Vector3(wx, 0.55, 0), wood, false)
+		city.box(Vector3(0.12, 0.06, half.y * 2 - 0.4), o + Vector3(wx, 1.13, 0), gilt, false)
+		for k in 6:
+			city.box(Vector3(0.1, 0.8, 0.05), o + Vector3(wx, 0.55, -half.y + 1.0 + k * (half.y * 2 - 2.0) / 5.0), wood, false)
+		# Two framed pictures a side.
+		for k in 2:
+			var pz := -half.y + 2.4 + k * 3.2
+			city.box(Vector3(0.05, 0.9, 1.2), o + Vector3(wx - sx * 0.03, 2.05, pz), gilt, false)
+			city.box(Vector3(0.05, 0.72, 1.02), o + Vector3(wx - sx * 0.05, 2.05, pz), city.mat([Color("3c6e58"), Color("7a4a2e"), Color("3d5a80"), Color("8a6a3a")][int(k + (0 if sx < 0 else 2))], 0.8), false)
+	# The hearth on the back wall, off to one side so the way through stays clear.
+	var hx := o + Vector3(-half.x + 2.2, 0, -half.y + 0.25)
+	city.box(Vector3(2.2, 1.5, 0.4), hx + Vector3(0, 0.75, 0), cream, false)
+	city.box(Vector3(2.5, 0.12, 0.55), hx + Vector3(0, 1.56, 0.05), wood, false)
+	city.box(Vector3(1.3, 0.95, 0.12), hx + Vector3(0, 0.5, 0.17), city.mat(Color(0.06, 0.05, 0.05), 0.9), false)
+	city.box(Vector3(0.9, 0.16, 0.1), hx + Vector3(0, 0.14, 0.2), city.glow_mat(Color(1.0, 0.45, 0.12), 2.6), false)
+	city.box(Vector3(0.5, 0.3, 0.08), hx + Vector3(0.05, 0.36, 0.2), city.glow_mat(Color(1.0, 0.7, 0.25), 2.2), false)
+	var fire := OmniLight3D.new()
+	fire.light_color = Color(1.0, 0.6, 0.3)
+	fire.light_energy = 1.6
+	fire.omni_range = 5.5
+	fire.position = hx + Vector3(0, 0.6, 0.8)
+	city.add_child(fire)
+	city.box(Vector3(0.4, 0.5, 0.1), hx + Vector3(0, 1.95, 0.06), gilt, false)   # a clock on the mantel
+	# The chandelier: a gilt ring with six lamps.
+	var cx := o + Vector3(0, hgt - 0.75, 0.3)
+	city.cyl(0.02, 0.02, 0.6, cx + Vector3(0, 0.45, 0), gilt, null, 6)
+	for k in 6:
+		var a := float(k) * TAU / 6.0
+		city.box(Vector3(0.75, 0.04, 0.04), cx + Vector3(cos(a) * 0.37, 0.12, sin(a) * 0.37), gilt, false).rotation.y = -a
+		city.cyl(0.05, 0.07, 0.16, cx + Vector3(cos(a) * 0.75, 0.16, sin(a) * 0.75), city.glow_mat(Color(1.0, 0.9, 0.66), 2.4), null, 8)
+
+
+## The Blue dorm's common room, in the castle's manner: pale columns, a checkered floor,
+## long banners and gold along the ceiling.
+static func _castle_room(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> void:
+	var marble := city.mat(Color(0.93, 0.94, 0.97), 0.25, 0.1)
+	var gold := city.mat(Color(0.9, 0.74, 0.32), 0.25, 0.85)
+	var blue := city.mat(Color(0.12, 0.3, 0.66), 0.8)
+	# Columns down both sides.
+	for sx: float in [-1.0, 1.0]:
+		for k in 4:
+			var cp := o + Vector3(sx * (half.x - 0.45), 0, -half.y + 1.3 + k * (half.y * 2 - 2.6) / 3.0)
+			city.cyl(0.2, 0.2, hgt - 0.5, cp + Vector3(0, (hgt - 0.5) / 2.0 + 0.2, 0), marble, null, 12)
+			city.box(Vector3(0.56, 0.2, 0.56), cp + Vector3(0, 0.1, 0), marble, false)
+			city.box(Vector3(0.56, 0.16, 0.56), cp + Vector3(0, hgt - 0.24, 0), gold, false)
+		# Gold along the top of each wall.
+		city.box(Vector3(0.1, 0.14, half.y * 2 - 0.3), o + Vector3(sx * (half.x - 0.07), hgt - 0.5, 0), gold, false)
+	# A checkered border on the floor either side of the runner.
+	for sx: float in [-1.0, 1.0]:
+		for k in int(half.y * 2 - 2):
+			if k % 2 == 0:
+				city.box(Vector3(0.6, 0.016, 0.6), o + Vector3(sx * 1.6, 0.011, -half.y + 1.3 + k), marble, false)
+			else:
+				city.box(Vector3(0.6, 0.016, 0.6), o + Vector3(sx * 2.2, 0.011, -half.y + 1.3 + k), blue, false)
+	# Banners on the back wall and a round window of light between them.
+	for sx: float in [-1.0, 1.0]:
+		city.box(Vector3(0.9, 2.3, 0.04), o + Vector3(sx * 2.3, hgt - 1.6, -half.y + 0.08), blue, false)
+		city.box(Vector3(0.9, 0.12, 0.05), o + Vector3(sx * 2.3, hgt - 0.5, -half.y + 0.09), gold, false)
+		city.box(Vector3(0.18, 2.3, 0.05), o + Vector3(sx * 2.3, hgt - 1.6, -half.y + 0.09), gold, false)
+	city.cyl(0.62, 0.62, 0.06, o + Vector3(0, hgt - 1.25, -half.y + 0.08), city.glow_mat(Color(0.62, 0.8, 1.0), 1.5), null, 24).rotation.x = PI / 2.0
+	city.cyl(0.7, 0.7, 0.04, o + Vector3(0, hgt - 1.25, -half.y + 0.06), gold, null, 24).rotation.x = PI / 2.0
+
+
+## Heartland's own lounge: neon along the ceiling, a bar that glows from inside and a sign you
+## can read from the street.
+static func _neon_lounge(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> void:
+	var pink := city.glow_mat(Color("ff4fd8"), 2.4)
+	var cyan := city.glow_mat(Color("2de2e6"), 2.4)
+	var gold := city.glow_mat(Color("ffd166"), 2.0)
+	# Tubes round the ceiling and two crossing the room.
+	for sx: float in [-1.0, 1.0]:
+		city.box(Vector3(0.05, 0.05, half.y * 2 - 0.5), o + Vector3(sx * (half.x - 0.12), hgt - 0.18, 0), pink if sx < 0 else cyan, false)
+	for sz: float in [-1.0, 1.0]:
+		city.box(Vector3(half.x * 2 - 0.5, 0.05, 0.05), o + Vector3(0, hgt - 0.18, sz * (half.y - 0.12)), cyan if sz < 0 else pink, false)
+	city.box(Vector3(half.x * 1.5, 0.04, 0.04), o + Vector3(0, hgt - 0.3, -1.0), gold, false).rotation.y = 0.5
+	city.box(Vector3(half.x * 1.5, 0.04, 0.04), o + Vector3(0, hgt - 0.3, 1.0), gold, false).rotation.y = -0.5
+	# A glowing skirt along the foot of both side walls, like light under a bar.
+	for sx: float in [-1.0, 1.0]:
+		city.box(Vector3(0.04, 0.1, half.y * 2 - 1.0), o + Vector3(sx * (half.x - 0.05), 0.08, 0), cyan if sx < 0 else pink, false)
+	# Rings on the floor, like stage marks.
+	for k in 3:
+		var rc := o + Vector3(-2.4 + k * 2.4, 0.014, 2.2)
+		city.cyl(0.7, 0.7, 0.012, rc, city.glow_mat([Color("ff4fd8"), Color("ffd166"), Color("2de2e6")][k], 1.0), null, 24)
+		city.cyl(0.6, 0.6, 0.014, rc + Vector3(0, 0.002, 0), city.mat(Color(0.08, 0.07, 0.14), 0.4), null, 24)
+	_sign(city, Loc.t("HEARTLAND LOUNGE"), o + Vector3(-3.0, hgt - 0.55, -half.y + 0.12), 0.0, Color("ff4fd8"), 70)
+	_sign(city, Loc.t("JUICE  ·  CAKE  ·  DUELS"), o + Vector3(-3.0, hgt - 1.0, -half.y + 0.12), 0.0, Color("2de2e6"), 32)
+	_sign(city, Loc.t("TONIGHT'S MENU"), o + Vector3(2.4, 2.9, -half.y + 0.12), 0.0, Color("ffd166"), 40)
+	_sign(city, "PHOTON FIZZ  ·  15", o + Vector3(2.4, 2.52, -half.y + 0.12), 0.0, Color.WHITE, 26)
+	_sign(city, "GALAXY SHAKE  ·  15", o + Vector3(2.4, 2.26, -half.y + 0.12), 0.0, Color.WHITE, 26)
+	_sign(city, "FESTIVAL CAKE  ·  ask", o + Vector3(2.4, 2.0, -half.y + 0.12), 0.0, Color.WHITE, 26)
+	var wash := OmniLight3D.new()
+	wash.light_color = Color(0.9, 0.5, 1.0)
+	wash.light_energy = 0.9
+	wash.omni_range = 9.0
+	wash.position = o + Vector3(0, hgt - 0.6, 0)
+	city.add_child(wash)
+
+
+## Satellite's Scrap Trader: tin on the walls, heaps of parts, tyres, and one hard lamp on a cord.
+static func _scrap_shop(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> void:
+	var rust := city.mat(Color(0.5, 0.27, 0.16), 0.9, 0.3)
+	var tin := city.mat(Color(0.46, 0.48, 0.5), 0.5, 0.7)
+	var dark := city.mat(Color(0.12, 0.12, 0.13), 0.8)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	# Corrugated sheets leaned and nailed along both side walls, none of them straight.
+	for sx: float in [-1.0, 1.0]:
+		for k in 5:
+			var sheet := city.box(Vector3(0.04, rng.randf_range(1.4, 2.3), rng.randf_range(1.0, 1.5)),
+				o + Vector3(sx * (half.x - 0.07), hgt - 1.25 + rng.randf_range(-0.2, 0.15), -half.y + 1.2 + k * (half.y * 2 - 2.4) / 4.0), rust if k % 2 == 0 else tin, false)
+			sheet.rotation.x = rng.randf_range(-0.06, 0.06)
+	# Heaps of parts in the two back corners.
+	for sx: float in [-1.0, 1.0]:
+		var heap := o + Vector3(sx * (half.x - 1.0), 0, -half.y + 0.9)
+		for k in 9:
+			var b := city.box(Vector3(rng.randf_range(0.2, 0.55), rng.randf_range(0.12, 0.4), rng.randf_range(0.2, 0.55)),
+				heap + Vector3(rng.randf_range(-0.55, 0.55), 0.12 + (k / 3) * 0.28, rng.randf_range(-0.4, 0.4)), [rust, tin, dark][k % 3], false)
+			b.rotation = Vector3(rng.randf_range(-0.3, 0.3), rng.randf() * PI, rng.randf_range(-0.3, 0.3))
+		# A stack of tyres next to it.
+		for k in 3:
+			var ty := MeshInstance3D.new()
+			var tm := TorusMesh.new()
+			tm.inner_radius = 0.2
+			tm.outer_radius = 0.38
+			tm.rings = 16
+			tm.ring_segments = 8
+			ty.mesh = tm
+			ty.material_override = dark
+			ty.position = heap + Vector3(-sx * 1.25, 0.1 + k * 0.19, 0.2)
+			city.add_child(ty)
+	# One work lamp on a cord, and what it lights.
+	var lp := o + Vector3(0.8, hgt - 1.1, 0.2)
+	city.box(Vector3(0.015, 1.1, 0.015), lp + Vector3(0, 0.55, 0), dark, false)
+	city.cyl(0.06, 0.2, 0.18, lp, tin, null, 10)
+	city.cyl(0.07, 0.07, 0.05, lp + Vector3(0, -0.1, 0), city.glow_mat(Color(1.0, 0.82, 0.5), 3.0), null, 10)
+	var lamp := OmniLight3D.new()
+	lamp.light_color = Color(1.0, 0.8, 0.52)
+	lamp.light_energy = 1.7
+	lamp.omni_range = 7.0
+	lamp.position = lp + Vector3(0, -0.25, 0)
+	city.add_child(lamp)
+	_sign(city, Loc.t("THE SCRAP TRADER"), o + Vector3(0, hgt - 0.5, -half.y + 0.12), 0.0, Color("ffb03a"), 110)
+	_sign(city, Loc.t("PARTS  ·  JUNK  ·  CARDS"), o + Vector3(0, hgt - 1.0, -half.y + 0.12), 0.0, Color("d9d2c4"), 40)
 
 
 ## The card shop's second coat: pendant lamps over the floor, a game in progress on each
