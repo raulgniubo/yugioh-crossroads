@@ -33,6 +33,9 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 		b += 1000
 	if battling and not attacking:
 		b += int(f.get("atk_attacked", 0))
+	# Speed Warrior: in the Battle Phase of the turn it was Normal Summoned, double its original ATK.
+	if f.get("double_bp_normal_turn", false) and c.normal_turn == s.turn and s.phase == DuelState.Phase.BATTLE:
+		b += c.atk()
 	if f.has("atk_per"):
 		var spec: String = f["atk_per"][0]
 		b += _count(s, c.owner, spec) * int(f["atk_per"][1])
@@ -65,6 +68,14 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 	if c.half_turn == s.turn:
 		b -= (c.atk() + b) / 2
 	return b
+
+
+## DEF from a monster's own effect ("ATK/DEF become...", "gains ATK/DEF for each...").
+static func def_bonus(s: DuelState, c) -> int:
+	var f := fx(c)
+	if f.has("def_per"):
+		return _count(s, c.owner, str(f["def_per"][0])) * int(f["def_per"][1])
+	return 0
 
 
 static func _count(s: DuelState, owner: int, spec: String) -> int:
@@ -111,26 +122,36 @@ static func can_direct(s: DuelState, p: int, c) -> bool:
 		return true
 	match str(f.get("direct_if", "")):
 		"opp_all_def":
+			# "If the only cards your opponent controls are Defense Position monsters"
 			for m in opp.monsters():
 				if m.attack_pos:
 					return false
-			return true
+			return opp.set_cards().is_empty() and opp.field_spell == null and _st_count(opp) == 0
 		"opp_only_ewf":
 			for m in opp.monsters():
 				if m.face_up and not str(m.data.get("attribute", "")) in ["EARTH", "WATER", "FIRE"]:
 					return false
 			return true
 		"opp_all_1600":
+			# "If the only cards your opponent controls are face-up monsters with 1600 or more ATK"
 			for m in opp.monsters():
 				if not m.face_up or s.atk_of(m, false) < 1600:
 					return false
-			return true
+			return opp.field_spell == null and _st_count(opp) == 0
 		"opp_all_stronger":
 			for m in opp.monsters():
 				if s.atk_of(m, false) <= s.atk_of(c, false):
 					return false
 			return true
 	return false
+
+
+static func _st_count(ps) -> int:
+	var n := 0
+	for st in ps.spells:
+		if st != null:
+			n += 1
+	return n
 
 
 static func max_attacks(c) -> int:
@@ -328,6 +349,9 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 static func on_summon(s: DuelState, p: int, c, kind: String) -> Array:
 	var f := fx(c)
 	var events := []
+	var fires: bool = (kind == "normal" and f.has("summon")) or (kind == "flip" and f.has("flip")) or (kind == "synchro" and f.has("synchro")) or (kind in ["special", "synchro", "fusion", "xyz"] and f.has("special_only")) or f.has("any_summon")
+	if fires and _spent(s, p, c):
+		return events
 	if kind == "normal" and f.has("summon"):
 		events.append_array(run_list(s, p, c, f["summon"], {}))
 	if kind == "flip" and f.has("flip"):
@@ -341,9 +365,21 @@ static func on_summon(s: DuelState, p: int, c, kind: String) -> Array:
 	return events
 
 
+## Is this card's effect shut off for its owner right now (a name lock, or its once-per-turn use is spent)?
+static func _spent(s: DuelState, p: int, c) -> bool:
+	var ps := s.players[p]
+	if int(ps.name_lock.get(c.cname(), -1)) == s.turn:
+		return true
+	if fx(c).get("once_turn", false):
+		if int(ps.once_names.get(c.cname(), -1)) == s.turn:
+			return true
+		ps.once_names[c.cname()] = s.turn
+	return false
+
+
 static func trigger(s: DuelState, c, key: String, ctx := {}) -> Array:
 	var f := fx(c)
-	if not f.has(key) or s.is_over():
+	if not f.has(key) or s.is_over() or _spent(s, c.owner, c):
 		return []
 	return run_list(s, c.owner, c, f[key], ctx)
 
@@ -374,12 +410,21 @@ static func can_ignite(s: DuelState, p: int, c) -> bool:
 	var ig := ignite_spec(c)
 	if ig.is_empty() or p != s.current or s.is_over() or not s._in_main():
 		return false
+	if int(s.players[p].name_lock.get(c.cname(), -1)) == s.turn:
+		return false
 	if not s.players[p].field.has(c) or not c.face_up or c.ignite_turn == s.turn:
 		return false
 	if ig.has("cond") and not _cond(s, p, str(ig["cond"])):
 		return false
 	var ps := s.players[p]
 	match str(ig.get("cost", "none")):
+		"discard_family":
+			var has_one := false
+			for h in ps.hand:
+				if h.cname().contains(str(ig.get("family", ""))):
+					has_one = true
+			if not has_one:
+				return false
 		"discard":
 			if ps.hand.is_empty():
 				return false
@@ -486,11 +531,13 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 	c.ignite_turn = s.turn
 	var ctx := {"_ign": true}
 	match str(ig.get("cost", "none")):
-		"discard", "discard_monster":
+		"discard", "discard_monster", "discard_family":
 			var pick = null
 			var can: Array = []
 			for h in ps.hand:
 				if ig["cost"] == "discard_monster" and not h.is_monster():
+					continue
+				if ig["cost"] == "discard_family" and not h.cname().contains(str(ig.get("family", ""))):
 					continue
 				can.append(h)
 				if pick == null or s._card_value(h) < s._card_value(pick) or (ig["cost"] == "discard_monster" and h.atk() > pick.atk()):
@@ -761,6 +808,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			var d = got[0]
 			ps.deck.erase(d)
 			ps.hand.append(d)
+			ctx["searched"] = d
 			s._shuffle(ps.deck)
 			events.append(_ev(p, c, Loc.t("%s adds %s to the hand") % [name, d.cname()]))
 			events.append({"type": "search", "player": p, "card": d, "deck": ps.deck.size()})
@@ -773,7 +821,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 		"special":
 			var src: Array = ps.deck if a[1] == "deck" else (ps.hand if a[1] == "hand" else ps.gy)
 			var n: int = int(a[4]) if a.size() > 4 else 1
-			var pool: Array = src.filter(func(x): return s.can_revive(x)) if a[1] == "gy" else src
+			var pool: Array = src.filter(func(x): return s.can_revive(x)) if a[1] == "gy" else src.filter(func(x): return not CardEffects.of(x.cname()).get("no_special", false))
 			for d in _pick(s, p, c, Loc.t("Special Summon from your %s") % ("Deck" if a[1] == "deck" else ("hand" if a[1] == "hand" else "Graveyard")), pool, a[2], n):
 				if ps.free_zone() == -1:
 					break
@@ -783,7 +831,11 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				events.append(_ev(p, c, Loc.t("%s calls %s") % [name, d.cname()]))
 				var ev := s._special(p, d, "reborn" if a[1] == "gy" else "effect", "def" if a.size() > 3 and a[3] == "def" else ("atk" if a.size() > 3 and a[3] == "atk" else ""))
 				events.append_array(ev)
-				events.append_array(on_summon(s, p, d, "special"))
+				if a.size() > 5 and str(a[5]) == "negated":
+					d.neg_perm = true   # "...but its effects are negated"
+					d.negated = true
+				else:
+					events.append_array(on_summon(s, p, d, "special"))
 		"revive_self", "revive_self_discard2", "pay_revive":
 			if not ps.gy.has(c) or ps.free_zone() == -1:
 				return events
@@ -886,7 +938,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			ps.no_damage_turn = s.turn
 			events.append(_ev(p, c, Loc.t("%s: no battle damage this turn") % name))
 		"self_atk_zero":
-			c.zero_turn = s.turn
+			c.atk_mod = -c.atk()   # "make this card's ATK 0": it stays 0
 		"perm_atk":
 			c.atk_mod += int(a[1])
 			events.append(_ev(p, c, Loc.t("%s gains %d ATK") % [name, a[1]]))
@@ -907,6 +959,62 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				else:
 					t.zero_turn = s.turn
 				events.append(_ev(p, c, Loc.t("%s's ATK is %s this turn") % [t.cname(), "halved" if a[0] == "opp_half" else "0"]))
+		"opp_change_pos":
+			# "Target 1 monster your opponent controls; change that target's battle position."
+			var all_m: Array = opp.monsters()
+			if not all_m.is_empty():
+				var strongest = all_m[0]
+				for m in all_m:
+					if m.attack_pos and (not strongest.attack_pos or s.atk_of(m, false) > s.atk_of(strongest, false)):
+						strongest = m
+				var t2 = s.pick1(p, Loc.t("%s: change the battle position of 1 monster") % name, all_m, strongest, c)
+				if t2.attack_pos:
+					t2.attack_pos = false
+				else:
+					t2.attack_pos = true
+					t2.face_up = true
+				events.append(_ev(p, c, Loc.t("%s changes position") % t2.cname()))
+				events.append({"type": "position", "player": opp_i, "card": t2, "zone": opp.field.find(t2)})
+		"opp_half_perm":
+			# Blackwing - Gale: a face-up monster's ATK and DEF become half of what they are now.
+			var t3 = _best_opp(s, p, "", c, "halve 1 monster's ATK and DEF")
+			if t3 != null and t3.face_up:
+				t3.atk_mod -= s.atk_of(t3, false) / 2
+				t3.def_mod -= s.def_of(t3) / 2
+				events.append(_ev(p, c, Loc.t("%s's ATK and DEF are halved") % t3.cname()))
+		"negate_target":
+			# Black Ray Lancer: a face-up monster's effects are negated until the End Phase.
+			var ups: Array = []
+			for q in 2:
+				for m in s.players[q].monsters():
+					if m.face_up and m != c:
+						ups.append(m)
+			if not ups.is_empty():
+				var auto = s._strongest_face_up(opp_i)
+				var t4 = s.pick1(p, Loc.t("%s: negate 1 monster's effects") % name, ups, auto if auto != null else ups[0], c)
+				t4.negated_turn = s.turn
+				t4.negated = true
+				events.append(_ev(p, c, Loc.t("%s's effects are negated until the End Phase") % t4.cname()))
+		"self_level":
+			# Hammer Shark: this card's Level goes down by 1.
+			c.lv_set = maxi(1, c.level() + int(a[1]))
+			c.lv_turn = -1
+			events.append(_ev(p, c, Loc.t("%s becomes Level %d") % [name, c.lv_set]))
+		"level_all":
+			# Double Shark / Spear Shark: every monster you control that fits, at that Level, moves 1 Level.
+			for m in ps.monsters():
+				if m.face_up and m.frame() != "xyz" and str(m.data.get("race", "")) == str(a[1]) and m.level() == int(a[2]):
+					m.lv_set = m.level() + int(a[3])
+					m.lv_turn = -1
+					events.append(_ev(p, c, Loc.t("%s becomes Level %d") % [m.cname(), m.lv_set]))
+		"no_effect_damage":
+			ps.no_effect_damage_turn = s.turn
+			events.append(_ev(p, c, "No effect damage this turn"))
+		"lock_name":
+			# "...but you cannot activate cards, or the effects of cards, with that name for the rest of this turn."
+			var last = ctx.get("searched")
+			if last != null:
+				ps.name_lock[last.cname()] = s.turn
 		"opp_flip", "opp_to_def":
 			var t = _best_opp(s, p, "atk_pos", c, "switch 1 monster to Defense")
 			if t != null:
@@ -930,11 +1038,12 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				events.append(_ev(p, c, Loc.t("%s makes the opponent discard") % name))
 				events.append({"type": "discard", "player": opp_i, "card": h})
 		"opp_mill":
-			if not opp.deck.is_empty():
-				var d = opp.deck.pop_back()
-				s._to_gy(opp, d)
-				events.append(_ev(p, c, Loc.t("%s sends %s to the GY") % [name, d.cname()]))
-				events.append({"type": "mill", "player": opp_i, "card": d, "deck": opp.deck.size()})
+			for i in int(a[1]) if a.size() > 1 else 1:
+				if not opp.deck.is_empty():
+					var d = opp.deck.pop_back()
+					s._to_gy(opp, d)
+					events.append(_ev(p, c, Loc.t("%s sends %s to the GY") % [name, d.cname()]))
+					events.append({"type": "mill", "player": opp_i, "card": d, "deck": opp.deck.size()})
 		"opp_redraw":
 			var n := opp.hand.size()
 			for h in opp.hand:
@@ -1035,11 +1144,40 @@ static func _destroy_action(s: DuelState, p: int, c, what: String, ctx: Dictiona
 					events.append(_ev(p, c, Loc.t("%s destroys a set card") % c.cname()))
 					events.append_array(s._destroy_st(got))
 					return events
-		"set_st", "all_faceup_spells":
+		"all_faceup_spells":
+			# Cyber Prima: every face-up Spell on the field, both sides.
+			var ups2: Array = []
+			for q in 2:
+				for st in s.players[q].spells:
+					if st != null and st.face_up and st.is_spell():
+						ups2.append(st)
+				if s.players[q].field_spell != null:
+					ups2.append(s.players[q].field_spell)
+			if not ups2.is_empty():
+				events.append(_ev(p, c, Loc.t("%s destroys every face-up Spell") % c.cname()))
+			for st in ups2:
+				events.append_array(s._destroy_st(st))
+			return events
+		"set_any":
+			# Granmarg: 1 Set card on the field, a face-down monster or a Set Spell/Trap.
+			var downs: Array = []
+			for q in [opp_i, p]:
+				for m in s.players[q].monsters():
+					if not m.face_up:
+						downs.append(m)
+				for st in s.players[q].spells:
+					if st != null and not st.face_up:
+						downs.append(st)
+			if not downs.is_empty():
+				var got2 = s.pick1(p, Loc.t("%s: destroy 1 Set card") % c.cname(), downs, downs[0], c)
+				events.append(_ev(p, c, Loc.t("%s destroys a Set card") % c.cname()))
+				events.append_array(s._destroy(got2) if got2.is_monster() and (s.players[0].field.has(got2) or s.players[1].field.has(got2)) else s._destroy_st(got2))
+			return events
+		"set_st":
 			var sts := opp.set_cards()
 			if not sts.is_empty():
 				events.append(_ev(p, c, Loc.t("%s destroys %s") % [c.cname(), "a set card" if what == "set_st" else "Spells"]))
-				for st in (sts if what == "all_faceup_spells" else [s.pick1(p, Loc.t("%s: destroy 1 Spell or Trap") % c.cname(), sts, sts[0], c)]):
+				for st in [s.pick1(p, Loc.t("%s: destroy 1 Spell or Trap") % c.cname(), sts, sts[0], c)]:
 					events.append_array(s._destroy_st(st))
 			return events
 		"all_field_other":

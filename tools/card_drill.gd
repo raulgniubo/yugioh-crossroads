@@ -259,7 +259,7 @@ func _arena() -> DuelState:
 	s.turn = 3
 	s.phase = DuelState.Phase.MAIN1
 	for p in 2:
-		for n in ["Celtic Guardian", "Feral Imp", "Baby Dragon"]:
+		for n in ["Celtic Guardian", "Feral Imp", "Baby Dragon", "Fissure"]:
 			s.players[p].gy.append(s._make(_id(n), p))
 	return s
 
@@ -296,6 +296,11 @@ func _seed(s: DuelState, entry, self_name: String) -> void:
 				s.players[0].deck.insert(0, s._make(nid, 0))
 				s.players[0].hand.append(s._make(nid, 0))
 				s.players[0].gy.append(s._make(nid, 0))
+	# A cost that asks for a card of one family from the hand (Destiny HERO - Dunker).
+	if entry is Dictionary and (entry as Dictionary).has("ignite") and ((entry as Dictionary)["ignite"] as Dictionary).has("family"):
+		var fam := _find({"has": str(entry["ignite"]["family"])}, self_name)
+		if fam != 0:
+			s.players[0].hand.append(s._make(fam, 0))
 	# "gy_named:X" counters and the like.
 	var text := str(entry)
 	var re := RegEx.new()
@@ -454,6 +459,11 @@ func _scene(id: int, k: int, twin: bool, entry, nm: String) -> String:
 				if tr.size() < need:
 					tr.append(f)
 			note = str(s.normal_summon(0, m, tr, false).size() > 0) + str(SpellRules.blocked(s, ss))
+			# ...and it attacks on the turn it was Normal Summoned.
+			if me.field.has(m) and s.can_enter_battle():
+				s.enter_battle()
+				if s.can_attack(0, m) and opp.field[0] != null:
+					note += str(s.atk_of(m, true, opp.field[0], true))
 		1:  # Set, then Flip Summon on the next turn
 			s.players[0].field[0] = m
 			m.face_up = false

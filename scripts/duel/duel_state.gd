@@ -60,6 +60,8 @@ class CardInst:
 	var once := false             # a once-while-in-the-Graveyard / once-per-Duel effect is spent
 	var pos_lock_until := -1      # cannot change battle position through this turn (Goblin Attack Force)
 	var no_tribute_turn := -1     # cannot be Tributed this turn (Mind Control)
+	var def_mod := 0              # a lasting change to DEF (Blackwing - Gale)
+	var neg_perm := false         # its effects are negated for as long as it stays on the field (Junk Synchron's guest)
 	var left_turn := -1           # a Spell/Trap: the turn it left the field (Axe of Despair goes back on the Deck)
 
 	func is_token() -> bool:
@@ -69,6 +71,8 @@ class CardInst:
 		lv_set = 0
 		lv_turn = -1
 		wedge = false
+		def_mod = 0
+		neg_perm = false
 		atk_mod = 0
 		atk_mod_t = 0
 		atk_mod_turn = -1
@@ -117,6 +121,8 @@ class PlayerState:
 	var spells: Array = [null, null, null, null, null]
 	var no_damage_turn := -1
 	var no_effect_damage_turn := -1   # effect damage is 0 this turn (Cyber Kirin, Hallowed Life Barrier)
+	var name_lock := {}               # card name -> turn: cards and effects with that name cannot be activated that turn (Sangan)
+	var once_names := {}              # card name -> turn its once-per-turn effect was used
 	var protect_turn := -1
 	var swords_left := 0
 	var field_spell: CardInst = null
@@ -968,6 +974,7 @@ func can_attack(p: int, c: CardInst) -> bool:
 	return (p == current and phase == Phase.BATTLE and not is_over() and players[p].field.has(c)
 			and c.face_up and c.attack_pos and attacks_left(c) > 0 and SpellRules.can_attack(self, p, c)
 			and not (EffectRunner.fx(c).get("summon_sick", false) and c.summoned_turn == turn)
+			and not (EffectRunner.fx(c).get("no_attack_with_others", false) and players[p].monsters().size() > 1)
 			and players[opponent(p)].swords_left == 0)
 
 
@@ -984,7 +991,8 @@ func can_direct_attack_with(p: int, c: CardInst) -> bool:
 
 
 func can_direct_attack(p: int) -> bool:
-	return players[opponent(p)].monsters().is_empty()
+	# (If every monster they have is one you are not allowed to attack, the way is clear.)
+	return attack_targets(p).is_empty()
 
 
 ## Monster effects activated from the field (once per turn, Main Phase).
@@ -997,7 +1005,20 @@ func ignite(p: int, c: CardInst) -> Array:
 
 
 func attack_targets(p: int) -> Array[CardInst]:
-	return players[opponent(p)].monsters()
+	var out: Array[CardInst] = []
+	var shield := protected_race(opponent(p))
+	for m in players[opponent(p)].monsters():
+		if shield == "" or not (m.face_up and str(m.data.get("race", "")) == shield):
+			out.append(m)
+	return out
+
+
+## Twilight Rose Knight: while it is face-up, the other side cannot attack this player's Plants.
+func protected_race(q: int) -> String:
+	for m in players[q].monsters():
+		if m.face_up and EffectRunner.fx(m).has("protect_race"):
+			return str(EffectRunner.fx(m)["protect_race"])
+	return ""
 
 
 ## Attack in one go (AI simulation and tests). The duel screen uses
@@ -1045,8 +1066,12 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 		if (tf.get("destroy_if_attacked_no_material", false) or target.cname() == "Number 39: Utopia") and target.overlays.is_empty() and not target.negated:
 			events.append({"type": "effect", "player": opponent(p), "card": target, "text": Loc.t("%s has no material left and is destroyed") % target.cname()})
 			events.append_array(_destroy(target))
+		# Cyber Larva: targeted for an attack, its controller takes no battle damage for the rest of the turn.
+		if tf.get("no_damage_when_targeted", false):
+			players[opponent(p)].no_damage_turn = turn
+			events.append({"type": "effect", "player": opponent(p), "card": target, "text": Loc.t("%s: no battle damage for the rest of this turn") % target.cname()})
 		# Mad Archfiend: targeted for an attack in Attack Position, it changes to Defense Position.
-		elif tf.get("def_when_targeted", false) and target.attack_pos:
+		if tf.get("def_when_targeted", false) and target.attack_pos and players[opponent(p)].field.has(target):
 			target.attack_pos = false
 			events.append({"type": "position", "player": opponent(p), "card": target, "zone": players[opponent(p)].field.find(target)})
 	return events
@@ -1168,6 +1193,23 @@ func resolve_attack() -> Array:
 			events.append({"type": "effect", "player": p, "card": attacker, "text": Loc.t("%s scorches every Defense monster!") % attacker.cname()})
 			for m in defs:
 				events.append_array(_destroy(m))
+	# D.D. Warrior (always) and D.D. Warrior Lady (if you want): after damage calculation, both monsters are banished.
+	for pair in [[attacker, target, p], [target, attacker, opp]]:
+		var dd: String = str(EffectRunner.fx(pair[0]).get("dd_after_battle", "")) if not pair[0].negated else ""
+		if dd == "" or is_over():
+			continue
+		var both_here := true
+		for x in pair.slice(0, 2):
+			if not (players[0].field.has(x) or players[1].field.has(x) or players[x.owner].gy.has(x)):
+				both_here = false
+		if not both_here:
+			continue
+		var lost: bool = players[pair[0].owner].gy.has(pair[0])
+		if dd == "may" and choose_option(pair[2], Loc.t("%s: banish it and %s?") % [pair[0].cname(), pair[1].cname()], ["Banish both", "No"], 0 if (lost or atk_of(pair[1], false) >= 1500) else 1, pair[0]) != 0:
+			continue
+		events.append({"type": "effect", "player": pair[2], "card": pair[0], "text": Loc.t("%s takes %s out of the duel with it") % [pair[0].cname(), pair[1].cname()]})
+		events.append_array(_banish(pair[1]))
+		events.append_array(_banish(pair[0]))
 	# Blackwing Armor Master: a Wedge Counter on the monster it attacked.
 	if EffectRunner.fx(attacker).get("wedge_on_attack", false) and players[p].field.has(attacker) and players[opp].field.has(target) and not target.wedge:
 		target.wedge = true
@@ -1237,18 +1279,11 @@ func _after_attack(attacker: CardInst) -> Array:
 ## ATK including effects. `attacking` = it's the attacker in this battle; vs = the other monster.
 func atk_of(c: CardInst, attacking: bool, vs: CardInst = null, battling := false) -> int:
 	var v := c.atk()
-	match c.cname():
-		"Speed Warrior":
-			if phase == Phase.BATTLE and c.summoned_turn == turn:
-				v *= 2
-		"Max Warrior":
-			if attacking:
-				v += 400
 	return maxi(0, v + EffectRunner.atk_bonus(self, c, attacking, vs, battling) + SpellRules.atk_bonus(self, c, attacking and battling, vs))
 
 
 func def_of(c: CardInst) -> int:
-	return maxi(0, c.def() + (c.def_mod_t if c.def_mod_turn == turn else 0) + SpellRules.def_bonus(self, c))
+	return maxi(0, c.def() + c.def_mod + (c.def_mod_t if c.def_mod_turn == turn else 0) + SpellRules.def_bonus(self, c) + EffectRunner.def_bonus(self, c))
 
 
 func _battle_destroy(c: CardInst) -> Array:
@@ -1283,6 +1318,9 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	var events := [{"type": "destroy", "player": c.owner, "card": c, "zone": zone, "overlays": mats}]
 	events.append_array(_on_leave_field(c, by_battle))
 	events.append_array(_monster_left(c))
+	# "When this card on the field is destroyed and sent to the Graveyard" (by battle or by an effect).
+	if players[c.owner].gy.has(c):
+		events.append_array(EffectRunner.trigger(self, c, "destroyed"))
 	# Revival Rose: when a Level 5 or higher Plant of yours is destroyed, it comes back from the Graveyard.
 	if str(c.data.get("race", "")) == "Plant" and int(c.data.get("level", 0)) >= 5:
 		for g in ps.gy.duplicate():
@@ -1471,7 +1509,7 @@ func _cleanup() -> Array:
 	var drain := SpellRules.field_flag(self, "drain")
 	for q in 2:
 		for m in players[q].monsters():
-			m.negated = m.face_up and (drain or m.negated_turn == turn)
+			m.negated = m.face_up and (drain or m.negated_turn == turn or m.neg_perm)
 	for q in 2:
 		for st in players[q].spells.duplicate():
 			if st == null or not st.face_up:
@@ -1544,6 +1582,8 @@ func _take_control(c: CardInst, p: int, until: int) -> Array:
 	var from_p := c.owner
 	if from_p == p or not players[from_p].field.has(c):
 		return []
+	if c.face_up and EffectRunner.fx(c).get("no_control", false):
+		return [{"type": "effect", "player": from_p, "card": c, "text": Loc.t("Control of %s cannot switch") % c.cname()}]
 	var zone := players[p].free_zone()
 	if zone == -1:
 		return _destroy(c)
@@ -1573,26 +1613,7 @@ func _on_leave_field(c: CardInst, by_battle: bool) -> Array:
 	var p := c.owner
 	var ps := players[p]
 	var events := []
-	match c.cname() if not c.negated else "":
-		"Sangan":
-			for d in ps.deck:
-				if d.is_monster() and d.atk() <= 1500:
-					ps.deck.erase(d)
-					ps.hand.append(d)
-					events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("Sangan adds %s to the hand") % d.cname()})
-					events.append({"type": "search", "player": p, "card": d, "deck": ps.deck.size()})
-					break
-		"Winged Kuriboh":
-			ps.no_damage_turn = turn
-			events.append({"type": "effect", "player": p, "card": c, "text": "No battle damage this turn"})
-		"Mystic Tomato":
-			if by_battle and ps.free_zone() != -1:
-				for d in ps.deck:
-					if d.is_monster() and d.atk() <= 1500 and d.data.get("attribute", "") == "DARK" and not CardData.is_extra(d.id):
-						ps.deck.erase(d)
-						events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("Mystic Tomato calls %s") % d.cname()})
-						events.append_array(_special(p, d, "effect"))
-						break
+	# (Sangan, Winged Kuriboh and Mystic Tomato run from their entries in CardEffects like every other card.)
 	events.append_array(EffectRunner.trigger(self, c, "gy"))
 	return events
 
@@ -1734,8 +1755,8 @@ func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 
 ## Ritual and Extra Deck monsters can only come back if they were first summoned the proper way.
 func can_revive(c: CardInst) -> bool:
-	if CardEffects.of(c.cname()).get("no_revive", false):
-		return false   # "Cannot be Special Summoned from the GY" (Dark Ruler Ha Des)
+	if CardEffects.of(c.cname()).get("no_revive", false) or CardEffects.of(c.cname()).get("no_special", false):
+		return false   # "Cannot be Special Summoned (from the GY)": Dark Ruler Ha Des, Blackwing - Blizzard
 	return c.is_monster() and not c.is_token() and (c.proper or not c.frame() in ["ritual", "fusion", "synchro", "xyz"])
 
 
@@ -2012,6 +2033,8 @@ func clone() -> DuelState:
 			np.spells.append(_clone_card(c, map) if c != null else null)
 		np.no_damage_turn = ps.no_damage_turn
 		np.no_effect_damage_turn = ps.no_effect_damage_turn
+		np.name_lock = ps.name_lock.duplicate()
+		np.once_names = ps.once_names.duplicate()
 		np.protect_turn = ps.protect_turn
 		np.swords_left = ps.swords_left
 		np.field_spell = _clone_card(ps.field_spell, map) if ps.field_spell != null else null
@@ -2127,6 +2150,8 @@ func _clone_card(c: CardInst, map: Dictionary) -> CardInst:
 	n.once = c.once
 	n.pos_lock_until = c.pos_lock_until
 	n.no_tribute_turn = c.no_tribute_turn
+	n.def_mod = c.def_mod
+	n.neg_perm = c.neg_perm
 	n.left_turn = c.left_turn
 	map[c.uid] = n
 	for o in c.overlays:
