@@ -11,7 +11,6 @@ const MAIN_MIN := 40
 const MAIN_MAX := 60
 const EXTRA_MAX := 15
 const SIDE_MAX := 15
-const SLOTS := 5
 ## The optional Forbidden/Limited list (a classic-era list). Only applies to decks you build,
 ## and only while the switch in the deck builder is on.
 const FORBIDDEN := ["Pot of Greed", "Graceful Charity", "Raigeki", "Harpie's Feather Duster", "Change of Heart", "Snatch Steal",
@@ -72,13 +71,15 @@ var extra: Array = []
 var dp := 300
 var deck_name := "My Deck"
 var side: Array = []     # Side Deck of the deck in use
-var slots: Array = []    # saved recipes: {name, main, extra, side}
+var slots: Array = []    # your decks: {name, main, extra, side, origin?}
+var dropped: Array = []  # ready-made decks you own whose deck you threw away
 var slot := 0            # which recipe is loaded
 var banlist := false     # play by the Forbidden/Limited list
 var decks_owned: Array = ["echo"]   # ready-made decks you have (the Echo starter, and any you bought)
 var active := "echo"     # the deck you duel with: "custom" (the one you built) or a ready-made deck
 var record := {}         # reward bookkeeping: {"day": "2026-11-12", "streak": 2, "beaten": {key: true}}
 var last_reward: Array = []   # what the last duel paid, line by line: [[label, amount], ...]
+var last_prize := 0           # the card the last duel's opponent handed over (0: none)
 var _pools := {}
 
 
@@ -92,6 +93,7 @@ func _ready() -> void:
 		dp = cfg.get_value("wallet", "dp", dp)
 		side = cfg.get_value("deck", "side", [])
 		slots = cfg.get_value("deck", "slots", [])
+		dropped = cfg.get_value("deck", "dropped", [])
 		slot = int(cfg.get_value("deck", "slot", 0))
 		banlist = bool(cfg.get_value("deck", "banlist", false))
 		record = cfg.get_value("wallet", "record", {})
@@ -113,6 +115,9 @@ func _ready() -> void:
 	_fill_slots()
 	if not decks_owned.has("echo"):
 		decks_owned.append("echo")
+	_grant_decks()
+	_adopt_decks()
+	save.call_deferred()
 	var forced := false
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--deck="):
@@ -183,8 +188,25 @@ func buy_deck(key: String) -> bool:
 		need[id] = int(need.get(id, 0)) + 1
 	for id in need:
 		owned[id] = maxi(int(owned.get(id, 0)), mini(3, int(need[id])))
+	_store_slot()
+	if origin_slot(key) < 0:
+		slots.append(_recipe_slot(key))
 	save()
 	return true
+
+
+## A ready-made deck you own is cards you own: every one of them is in your collection, so the
+## deck builder can use them (decks handed to you by the story or an old save included).
+func _grant_decks() -> void:
+	for key in decks_owned:
+		if not CardData.has_deck(str(key)):
+			continue
+		var need := {}
+		for id in CardData.deck_list(str(key)) + CardData.extra_list(str(key)):
+			need[id] = int(need.get(id, 0)) + 1
+		for id in need:
+			if playable(int(id)):
+				owned[id] = maxi(int(owned.get(id, 0)), mini(3, int(need[id])))
 
 
 ## Copy a ready-made deck you own into a recipe slot and load it, ready to edit.
@@ -320,39 +342,234 @@ func slot_ok(i: int) -> bool:
 	return n >= MAIN_MIN and n <= MAIN_MAX
 
 
-## Five recipe slots. Slot 0 starts as whatever deck you already had.
+## Your own decks: as many as you like, in the order you keep them. There are no empty
+## slots: older saves had five fixed ones, and any empty deck you are not standing on is dropped.
 func _fill_slots() -> void:
-	while slots.size() < SLOTS:
-		var i := slots.size()
-		slots.append({"name": deck_name if i == 0 else "Deck %d" % (i + 1), "main": main.duplicate() if i == 0 else [],
-			"extra": extra.duplicate() if i == 0 else [], "side": side.duplicate() if i == 0 else []})
-	slot = clampi(slot, 0, SLOTS - 1)
+	if slots.is_empty():
+		slots.append({"name": deck_name, "main": main.duplicate(), "extra": extra.duplicate(), "side": side.duplicate()})
+		slot = 0
+	slot = clampi(slot, 0, slots.size() - 1)
+	var keep: Array = []
+	var now := 0
+	for i in slots.size():
+		if i == slot:
+			now = keep.size()
+			keep.append(slots[i])
+		elif not slot_empty(i):
+			keep.append(slots[i])
+	slots = keep
+	slot = now
 
 
 func _store_slot() -> void:
 	if slot < slots.size():
-		slots[slot] = {"name": deck_name, "main": main.duplicate(), "extra": extra.duplicate(), "side": side.duplicate()}
+		var s: Dictionary = slots[slot]
+		s["name"] = deck_name
+		s["main"] = main.duplicate()
+		s["extra"] = extra.duplicate()
+		s["side"] = side.duplicate()
+		slots[slot] = s
 
 
-## Switch to another saved recipe.
-func load_slot(i: int) -> void:
-	_store_slot()
-	slot = clampi(i, 0, SLOTS - 1)
+func _take_slot() -> void:
 	var s: Dictionary = slots[slot]
 	deck_name = str(s.get("name", "Deck %d" % (slot + 1)))
 	main = (s.get("main", []) as Array).duplicate()
 	extra = (s.get("extra", []) as Array).duplicate()
 	side = (s.get("side", []) as Array).duplicate()
-	save()
 
 
-## Copy the deck in use into another slot (overwrites it).
-func copy_to_slot(i: int) -> void:
+## Switch to another saved recipe.
+func load_slot(i: int) -> void:
 	_store_slot()
-	var s: Dictionary = (slots[slot] as Dictionary).duplicate(true)
-	s["name"] = deck_name + " copy"
-	slots[clampi(i, 0, SLOTS - 1)] = s
+	slot = clampi(i, 0, slots.size() - 1)
+	_take_slot()
 	save()
+
+
+## A new, empty deck at the end of the list. Returns where it is.
+func new_slot(title := "") -> int:
+	_store_slot()
+	var used := {}
+	for s in slots:
+		used[str((s as Dictionary).get("name", ""))] = true
+	var n := slots.size() + 1
+	while title == "" and used.has("Deck %d" % n):
+		n += 1
+	slots.append({"name": title if title != "" else "Deck %d" % n, "main": [], "extra": [], "side": []})
+	save()
+	return slots.size() - 1
+
+
+## A copy of deck `i` at the end of the list. Returns where it is.
+func duplicate_slot(i: int) -> int:
+	_store_slot()
+	var s: Dictionary = (slots[clampi(i, 0, slots.size() - 1)] as Dictionary).duplicate(true)
+	s["name"] = (str(s.get("name", "")) + " copy").left(24)
+	s.erase("origin")
+	slots.append(s)
+	save()
+	return slots.size() - 1
+
+
+## Throw deck `i` away. The last deck left is emptied instead: there is always one.
+func delete_slot(i: int) -> void:
+	_store_slot()
+	i = clampi(i, 0, slots.size() - 1)
+	var from := str((slots[i] as Dictionary).get("origin", ""))
+	if from != "" and not dropped.has(from):
+		dropped.append(from)
+	if slots.size() <= 1:
+		slots[0] = {"name": "My Deck", "main": [], "extra": [], "side": []}
+		slot = 0
+		_take_slot()
+	else:
+		slots.remove_at(i)
+		if i < slot:
+			slot -= 1
+		elif i == slot:
+			slot = clampi(slot, 0, slots.size() - 1)
+			_take_slot()
+	save()
+
+
+# ------------------------------------------------------------------ decks you were given or bought
+
+## A deck you buy (or start with) is simply one of your decks: change it as you like. Its
+## original list is kept ("origin" names it), so it can always be put back.
+
+## Where the deck that came from ready-made deck `key` sits in your list, or -1.
+func origin_slot(key: String) -> int:
+	for i in slots.size():
+		if str((slots[i] as Dictionary).get("origin", "")) == key:
+			return i
+	return -1
+
+
+func _recipe_slot(key: String) -> Dictionary:
+	return {"name": CardData.deck_name(key), "main": Array(CardData.deck_list(key)), "extra": Array(CardData.extra_list(key)), "side": [], "origin": key}
+
+
+## Every ready-made deck you own gets its place among your decks (once; one you threw away
+## stays away until you ask for it again at the shop).
+func _adopt_decks() -> void:
+	_store_slot()
+	for key in decks_owned:
+		var k := str(key)
+		if not CardData.has_deck(k) or k == "custom" or origin_slot(k) >= 0 or dropped.has(k):
+			continue
+		# A deck of yours that is still exactly that list is that deck (a new save starts so).
+		var want: Array = Array(CardData.deck_list(k))
+		want.sort()
+		var found := false
+		for sl in slots:
+			var d: Dictionary = sl
+			if d.has("origin"):
+				continue
+			var have: Array = (d.get("main", []) as Array).duplicate()
+			have.sort()
+			if have == want:
+				d["origin"] = k
+				if str(d.get("name", "")) in ["My Deck", ""]:
+					d["name"] = CardData.deck_name(k)
+				found = true
+				break
+		if not found:
+			slots.append(_recipe_slot(k))
+	_take_slot()
+	# Older saves could be dueling with a ready-made deck directly: now that is its own deck.
+	if active != "custom":
+		var at := origin_slot(active)
+		if at >= 0:
+			slot = at
+			_take_slot()
+			active = "custom"
+
+
+## Duel with the deck that came from ready-made deck `key` (it comes back if you threw it away).
+func use_owned(key: String) -> void:
+	_store_slot()
+	dropped.erase(key)
+	var at := origin_slot(key)
+	if at < 0:
+		slots.append(_recipe_slot(key))
+		at = slots.size() - 1
+	slot = at
+	_take_slot()
+	use_deck("custom")
+
+
+func using_origin(key: String) -> bool:
+	return active == "custom" and slot < slots.size() and str((slots[slot] as Dictionary).get("origin", "")) == key
+
+
+## Has deck `i` been changed from the list it came with?
+func slot_changed(i: int) -> bool:
+	var s: Dictionary = slots[i]
+	var key := str(s.get("origin", ""))
+	if key == "" or not CardData.has_deck(key):
+		return false
+	var m: Array = (main if i == slot else (s.get("main", []) as Array)).duplicate()
+	var e: Array = (extra if i == slot else (s.get("extra", []) as Array)).duplicate()
+	var sd: Array = side if i == slot else (s.get("side", []) as Array)
+	var m0: Array = Array(CardData.deck_list(key))
+	var e0: Array = Array(CardData.extra_list(key))
+	m.sort()
+	e.sort()
+	m0.sort()
+	e0.sort()
+	return m != m0 or e != e0 or not sd.is_empty()
+
+
+## Put deck `i` back to the list it came with.
+func restore_slot(i: int) -> void:
+	_store_slot()
+	var s: Dictionary = slots[i]
+	var key := str(s.get("origin", ""))
+	if key == "" or not CardData.has_deck(key):
+		return
+	s["main"] = Array(CardData.deck_list(key))
+	s["extra"] = Array(CardData.extra_list(key))
+	s["side"] = []
+	if i == slot:
+		_take_slot()
+	save()
+
+
+## The deck in use is gone or no longer legal: the first of your decks that is ready takes over
+## (the starter first). Returns its name, or "" when none is ready.
+func fall_back() -> String:
+	_store_slot()
+	var pick := -1
+	var echo := origin_slot("echo")
+	if echo >= 0 and slot_ok(echo):
+		pick = echo
+	for i in slots.size():
+		if pick < 0 and slot_ok(i):
+			pick = i
+	if pick < 0:
+		return ""
+	slot = pick
+	_take_slot()
+	use_deck("custom")
+	return deck_name
+
+
+## Move deck `i` one place up (-1) or down (+1) the list. Returns where it ended up.
+func move_slot(i: int, dir: int) -> int:
+	_store_slot()
+	var j := i + dir
+	if i < 0 or i >= slots.size() or j < 0 or j >= slots.size():
+		return i
+	var t = slots[i]
+	slots[i] = slots[j]
+	slots[j] = t
+	if slot == i:
+		slot = j
+	elif slot == j:
+		slot = i
+	save()
+	return j
 
 
 ## Fill the deck in use from a ready-made recipe, using only cards you own.
@@ -471,6 +688,7 @@ func save() -> void:
 	_store_slot()
 	cfg.set_value("deck", "side", side)
 	cfg.set_value("deck", "slots", slots)
+	cfg.set_value("deck", "dropped", dropped)
 	cfg.set_value("deck", "slot", slot)
 	cfg.set_value("deck", "banlist", banlist)
 	cfg.set_value("wallet", "dp", dp)
@@ -537,6 +755,7 @@ func remove(id: int) -> void:
 ## breakdown. `info` can carry {"opponent": key, "flawless": bool, "turns": int, "lp": int}.
 func reward(won: bool, difficulty: int, info := {}) -> int:
 	last_reward = []
+	last_prize = 0
 	if not won:
 		record["streak"] = 0
 		last_reward.append(["Duel finished", 40])
@@ -552,21 +771,23 @@ func reward(won: bool, difficulty: int, info := {}) -> int:
 	var opp := str(info.get("opponent", ""))
 	if opp != "":
 		var beaten: Dictionary = record.get("beaten", {})
+		# The card they put on the line before the duel (see stake_for), when they did.
+		var staked := int(info.get("stake", 0))
+		var prize := staked
 		if not beaten.has(opp):
 			beaten[opp] = true
 			record["beaten"] = beaten
 			last_reward.append(["First win against this duelist", 100])
 			# And a card out of their deck: their ace if they have one, else their best.
-			var prize := _prize_card(opp, str(info.get("deck", "")))
-			if prize != 0:
-				owned[prize] = mini(3, int(owned.get(prize, 0)) + 1)
-				last_reward.append(["New card: " + str(CardData.get_card(prize).get("name", "")), 0])
-		elif versus(opp)[0] == 1 and str(info.get("deck", "")) != "":
+			if prize == 0 and not info.has("stake"):
+				prize = _prize_card(opp, str(info.get("deck", "")))
+		elif prize == 0 and not info.has("stake") and versus(opp)[0] == 1 and str(info.get("deck", "")) != "":
 			# The second win: one more card from their deck. (The third gives you the deck.)
-			var again := _prize_card("", str(info.get("deck", "")))
-			if again != 0:
-				owned[again] = mini(3, int(owned.get(again, 0)) + 1)
-				last_reward.append(["New card: " + str(CardData.get_card(again).get("name", "")), 0])
+			prize = _prize_card("", str(info.get("deck", "")))
+		if prize != 0:
+			owned[prize] = mini(3, int(owned.get(prize, 0)) + 1)
+			last_prize = prize
+			last_reward.append(["New card: " + str(CardData.get_card(prize).get("name", "")), 0])
 		if info.get("rare", false):
 			last_reward.append(["Beat a night duelist", 300])
 	var streak := int(record.get("streak", 0)) + 1
@@ -589,7 +810,23 @@ func reward(won: bool, difficulty: int, info := {}) -> int:
 
 ## The card you win the first time you beat someone: their ace, or the rarest card in their
 ## deck that you do not already have three of.
-func _prize_card(opp: String, deck: String) -> int:
+## The card a duelist in the worlds puts on the line when they challenge you: "beat me and it
+## is yours". Always the first two times you could win it from them; after that, on some days.
+## A stronger duelist stakes a better card. 0: nothing on the line this time.
+func stake_for(opp: String, deck: String, stars: int) -> int:
+	var wins := int(versus(opp)[0])
+	var beaten: Dictionary = record.get("beaten", {})
+	if not beaten.has(opp):
+		return _prize_card(opp if stars >= 4 else "", deck, stars)
+	if wins <= 1:
+		return _prize_card("", deck, stars)
+	# Later: about one day in three, and the same answer all day.
+	if absi(hash(opp + Time.get_date_string_from_system())) % 100 >= 35:
+		return 0
+	return _prize_card("", deck, stars)
+
+
+func _prize_card(opp: String, deck: String, stars := 5) -> int:
 	var ace := int(Characters.get_char(opp).get("ace", 0))
 	if ace == 0:
 		var ace_name := str(Characters.get_char(opp).get("ace_name", ""))
@@ -598,16 +835,21 @@ func _prize_card(opp: String, deck: String) -> int:
 		return ace
 	if deck == "" or not CardData.has_deck(deck):
 		return 0
-	var best := 0
-	var best_r := -1
+	# Their cards you do not have three of yet, best first. The top duelists give up their best;
+	# the rest reach lower down the list, so a first-year never hands over a rare.
+	var seen := {}
+	var list: Array = []
 	for id in CardData.deck_list(deck):
-		if int(owned.get(id, 0)) >= 3 or CardData.get_card(id).get("speed_spell", false):
+		if seen.has(id) or int(owned.get(id, 0)) >= 3 or CardData.get_card(id).get("speed_spell", false) or not playable(id):
 			continue
-		var r := CardData.rarity(id) * 10 + (1 if CardData.get_card(id).get("kind", "") == "monster" else 0)
-		if r > best_r:
-			best_r = r
-			best = id
-	return best
+		seen[id] = true
+		list.append(id)
+	if list.is_empty():
+		return 0
+	var rank := func(id: int) -> int: return CardData.rarity(id) * 10 + (1 if CardData.get_card(id).get("kind", "") == "monster" else 0)
+	list.sort_custom(func(a, b): return rank.call(a) > rank.call(b))
+	var at: float = [0.75, 0.75, 0.6, 0.35, 0.0, 0.0][clampi(stars, 0, 5)]
+	return list[mini(list.size() - 1, int(list.size() * at))]
 
 
 ## Today's challenges: three small things to do, new every day.

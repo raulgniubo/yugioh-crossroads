@@ -17,6 +17,7 @@ var master_volume := 0.8
 var music_volume := 0.7
 var sfx_volume := 0.8
 var anim_speed := 1.0
+var destiny_draw := true        # Destiny Draw is part of duels (once per duel, when you are in trouble)
 var pace := 1.0          # extra speed on top, set by the duel (the opponent's turn runs quicker)
 var card_folder := ""
 var sleeve := "default"         # the back of your own cards in a duel (see Cards.sleeves)
@@ -167,6 +168,14 @@ func hold_tick(delta: float, in_3d: bool) -> void:
 		_apply_scale()
 
 
+## The least the 3D picture may be scaled down to on the screen that is showing (0: no floor).
+var scale_floor := 0.0:
+	set(v):
+		scale_floor = v
+		if is_inside_tree():
+			_apply_scale()
+
+
 func _apply_scale() -> void:
 	var vp := get_tree().root
 	var lines: int = RES_LINES[clampi(int(gfx["res"]), 0, RES_LINES.size() - 1)]
@@ -176,6 +185,9 @@ func _apply_scale() -> void:
 		# Fullscreen at a lower resolution: the 3D picture is drawn that small and scaled up.
 		k = minf(k, clampf(float(fs_resolution.y) / h, 0.3, 1.0))
 	k = clampf(k * (auto_k if hold_fps else 1.0), 0.3, 1.0)
+	# A screen that is mostly a backdrop (the home screen's city) is never drawn so small that it
+	# turns to blocks behind sharp menus, whatever the duel and world resolution is set to.
+	k = clampf(maxf(k, scale_floor), 0.3, 1.0)
 	var fplus := RenderingServer.get_current_rendering_method() == "forward_plus"
 	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if (fplus and k < 0.99) else Viewport.SCALING_3D_MODE_BILINEAR
 	vp.fsr_sharpness = 0.35
@@ -272,6 +284,7 @@ func load_settings() -> void:
 	music_volume = cfg.get_value("audio", "music", music_volume)
 	sfx_volume = cfg.get_value("audio", "sfx", sfx_volume)
 	anim_speed = cfg.get_value("game", "anim_speed", anim_speed)
+	destiny_draw = bool(cfg.get_value("game", "destiny_draw", destiny_draw))
 	card_folder = cfg.get_value("game", "card_folder", card_folder)
 	field_theme = cfg.get_value("game", "field_theme", field_theme)
 	language = cfg.get_value("game", "language", language)
@@ -309,6 +322,7 @@ func save_settings() -> void:
 	cfg.set_value("audio", "music", music_volume)
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.set_value("game", "anim_speed", anim_speed)
+	cfg.set_value("game", "destiny_draw", destiny_draw)
 	cfg.set_value("game", "card_folder", card_folder)
 	cfg.set_value("game", "field_theme", field_theme)
 	cfg.set_value("game", "language", language)

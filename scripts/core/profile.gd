@@ -140,7 +140,7 @@ func height() -> float:
 ## "title:<tournament>" once you hold it.
 func title_open(i: int) -> bool:
 	var need := str(TITLES[clampi(i, 0, TITLES.size() - 1)][1])
-	if need == "":
+	if need == "" or Saves.admin:
 		return true
 	if need.begins_with("story:"):
 		var order := ["prologue", "ch1", "ch2", "ch3", "ch4", "ch5"]

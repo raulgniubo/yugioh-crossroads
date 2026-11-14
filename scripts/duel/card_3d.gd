@@ -122,6 +122,14 @@ func set_glow(on: bool, color := UITheme.ACCENT) -> void:
 	_glow_mat.set_shader_parameter("color", color)
 
 
+## Step back while the player is choosing among other cards.
+func set_dim(on: bool) -> void:
+	var k := 0.38 if on else 1.0
+	for m in [_front_mat, _back_mat]:
+		m.albedo_color = Color(k, k, k, m.albedo_color.a)
+		m.emission_energy_multiplier = 0.0 if on else 0.18
+
+
 func set_alpha(a: float) -> void:
 	for m in [_front_mat, _back_mat]:
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA if a < 0.999 else BaseMaterial3D.TRANSPARENCY_DISABLED

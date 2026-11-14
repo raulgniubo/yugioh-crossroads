@@ -642,6 +642,112 @@ func card_for(inst) -> Card3D:
 	return _cards.get(inst.uid)
 
 
+# ------------------------------------------------------------------ choosing cards on the field
+
+var _pick_marks := {}    # card uid -> the marker floating over it
+var _pick_dimmed := false
+
+
+## The player has to tap some of these cards: each one gets a bouncing arrow with `word` over
+## it, the ones already chosen turn green, and everything else on the field steps back.
+func show_picks(cands: Array, chosen: Array, word := "TAP", done_word := "CHOSEN") -> void:
+	var keep := {}
+	for inst in cands:
+		var c := card_for(inst)
+		if c == null:
+			continue
+		keep[inst.uid] = true
+		var mk: Node3D = _pick_marks.get(inst.uid)
+		if mk == null or not is_instance_valid(mk):
+			mk = _pick_marker()
+			add_child(mk)
+			_pick_marks[inst.uid] = mk
+		var picked := chosen.has(inst)
+		var col := Color("5df07a") if picked else UITheme.GOLD
+		var tall: bool = holo_for(inst) != null
+		mk.position = c.global_position + Vector3(0, 1.62 if tall else 0.62, 0)
+		mk.set_meta("base_y", mk.position.y)
+		mk.set_meta("picked", picked)
+		var l: Label3D = mk.get_node("word")
+		l.text = Loc.t(done_word if picked else word)
+		l.modulate = col
+		((mk.get_node("arrow") as MeshInstance3D).material_override as StandardMaterial3D).albedo_color = col
+	for uid in _pick_marks.keys():
+		if not keep.has(uid):
+			if is_instance_valid(_pick_marks[uid]):
+				_pick_marks[uid].queue_free()
+			_pick_marks.erase(uid)
+	_pick_dimmed = true
+	for uid in _cards:
+		var c2: Card3D = _cards[uid]
+		if is_instance_valid(c2):
+			c2.set_dim(not keep.has(uid))
+	for uid in _holos:
+		if is_instance_valid(_holos[uid]):
+			(_holos[uid] as MonsterHolo).set_shade(1.0 if keep.has(uid) else 0.4)
+
+
+func clear_picks() -> void:
+	for uid in _pick_marks:
+		if is_instance_valid(_pick_marks[uid]):
+			_pick_marks[uid].queue_free()
+	_pick_marks.clear()
+	if not _pick_dimmed:
+		return
+	_pick_dimmed = false
+	for uid in _cards:
+		if is_instance_valid(_cards[uid]):
+			(_cards[uid] as Card3D).set_dim(false)
+	for uid in _holos:
+		if is_instance_valid(_holos[uid]):
+			(_holos[uid] as MonsterHolo).set_shade(1.0)
+
+
+func _pick_marker() -> Node3D:
+	var n := Node3D.new()
+	var arrow := MeshInstance3D.new()
+	arrow.name = "arrow"
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.19
+	cone.bottom_radius = 0.0
+	cone.height = 0.3
+	cone.radial_segments = 4
+	arrow.mesh = cone
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.no_depth_test = true
+	m.render_priority = 6
+	m.albedo_color = UITheme.GOLD
+	arrow.material_override = m
+	arrow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	n.add_child(arrow)
+	var l := Label3D.new()
+	l.name = "word"
+	l.font = Comic.button_font()
+	l.font_size = 64
+	l.pixel_size = 0.0034
+	l.outline_size = 18
+	l.outline_modulate = Color(0.03, 0.04, 0.09, 0.95)
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	l.render_priority = 7
+	l.outline_render_priority = 6
+	l.position.y = 0.4
+	n.add_child(l)
+	return n
+
+
+func _process_picks(t: float) -> void:
+	for uid in _pick_marks:
+		var mk: Node3D = _pick_marks[uid]
+		if not is_instance_valid(mk):
+			continue
+		var by: float = mk.get_meta("base_y", mk.position.y)
+		var picked: bool = mk.get_meta("picked", false)
+		mk.position.y = by + (0.0 if picked else absf(sin(t * 4.2)) * 0.16)
+		(mk.get_node("arrow") as Node3D).rotation.y = t * 2.4
+
+
 var cam_home := CAM_POS
 var cam_home_target := CAM_TARGET
 var deal_fast := false
@@ -2551,6 +2657,7 @@ func shake(amount: float) -> void:
 func _process(delta: float) -> void:
 	_time += delta
 	_process_extra(_time)
+	_process_picks(_time)
 	_shake = move_toward(_shake, 0.0, delta * 1.6)
 	var sway := Vector3(sin(_time * 0.35) * 0.06, sin(_time * 0.5) * 0.04, 0)
 	var s := _shake * _shake * 0.35

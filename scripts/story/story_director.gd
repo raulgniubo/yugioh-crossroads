@@ -1413,6 +1413,12 @@ func _start_duel(d: Dictionary) -> void:
 	for k in ["opp_lp", "my_lp", "hand", "rule", "music"]:
 		if d.has(k):
 			Router.duel_config[k] = d[k]
+	# The duel a chapter ends on, and any duel with boss rules: they can make a Destiny Draw too.
+	var last_duel := true
+	for i in range(step + 1, _steps.size()):
+		if (_steps[i] as Dictionary).has("duel"):
+			last_duel = false
+	Router.duel_config["destiny_opp"] = last_duel or d.has("opp_lp") or d.has("rule") or bool(d.get("boss", false))
 	_cutscene(true)
 	_box.visible = false
 	await _versus(str(d["opponent"]))

@@ -22,6 +22,9 @@ func _ready() -> void:
 	_test_heroes_angels()
 	_test_batch_31()
 	_test_batch_32()
+	_test_destiny()
+	_test_stakes()
+	_test_decks()
 	var stress := OS.get_environment("STRESS_FOLDER")
 	if stress != "":
 		CardData.load_external(stress)
@@ -1671,3 +1674,145 @@ func _test_batch_32() -> void:
 	check(s.can_hand_ignite(0, hq), "With one in the Deck she can be discarded")
 	_run(s, 0, {"do": "hand_ignite", "card": hq})
 	check(s.players[0].gy.has(hq) and s.players[0].hand.has(hg), "Harpie Queen goes to the Graveyard and Harpies' Hunting Ground comes to the hand")
+
+
+## Destiny Draw: only when you are in trouble, once per duel, and the card you chose is the draw.
+func _test_destiny() -> void:
+	var s := _main_ready(901)
+	s.destiny = true
+	s.destiny_who = [true, true]
+	s.current = 0
+	s.turn = 4
+	s.players[0].lp = 8000
+	s.players[1].lp = 8000
+	check(not s.can_destiny(0), "No Destiny Draw while you are not in trouble")
+	s.players[0].lp = 3900
+	check(s.can_destiny(0), "Less than half of their Life Points: Destiny Draw is offered")
+	s.players[0].lp = 2000
+	s.players[1].lp = 2500
+	check(s.can_destiny(0), "2000 Life Points or less: offered")
+	check(not s.can_destiny(1), "Not on the other duelist's turn")
+	var deck: Array = s.players[0].deck
+	var want: DuelState.CardInst = deck[0]          # the bottom card
+	var hand0: int = s.players[0].hand.size()
+	var deck0: int = deck.size()
+	check(s.set_destiny(0, want), "A card in the Deck can be chosen")
+	var copy := s.clone()
+	check(copy.destiny_next[0] != null and copy.destiny_next[0] != want and copy.destiny_next[0].uid == want.uid, "A copy of the duel keeps the choice, on its own card")
+	var ev := s.begin_turn(true)
+	check(s.players[0].hand.has(want) and s.players[0].hand.size() == hand0 + 1 and s.players[0].deck.size() == deck0 - 1, "The chosen card is the one drawn, and it is the only draw")
+	check(ev.filter(func(e): return e["type"] == "destiny").size() == 1, "The duel says a Destiny Draw happened")
+	check(s.destiny_used[0] and not s.can_destiny(0), "Only once per duel")
+	# Not when the Draw Phase is skipped, not when it is switched off, not for a duelist who may not.
+	s = _main_ready(902)
+	s.destiny = true
+	s.current = 0
+	s.turn = 4
+	s.players[0].lp = 1000
+	s.players[0].skip_draw = 1
+	check(not s.can_destiny(0), "No Destiny Draw when the Draw Phase is skipped")
+	s.players[0].skip_draw = 0
+	s.destiny = false
+	check(not s.can_destiny(0), "Switched off: never offered")
+	s.destiny = true
+	s.destiny_who = [false, true]
+	check(not s.can_destiny(0), "A duelist who may not use it is not offered it")
+	# The computer picks something it can use.
+	s = _main_ready(903)
+	s.destiny = true
+	s.destiny_who = [true, true]
+	s.current = 1
+	s.turn = 4
+	s.players[1].lp = 1500
+	var pick := DuelAI.pick_destiny(s, 1)
+	check(pick != null and s.players[1].deck.has(pick), "The computer chooses a card from its Deck")
+
+
+## The card a duelist puts on the line: there before the first two wins, and it is the card you get.
+func _test_stakes() -> void:
+	var keep_owned: Dictionary = Collection.owned.duplicate()
+	var keep_rec: Dictionary = Collection.record.duplicate(true)
+	var keep_dp: int = Collection.dp
+	Collection.record["beaten"] = {}
+	Collection.record["vs"] = {}
+	var top := Collection.stake_for("kaiba", "kaiba", 5)
+	var low := Collection.stake_for("some_student", "kaiba", 1)
+	check(top != 0 and low != 0, "A duelist you have not beaten puts a card on the line")
+	check(CardData.rarity(top) >= CardData.rarity(low), "A 5 star duelist stakes at least as good a card as a 1 star one")
+	check(Collection.playable(top) and Collection.playable(low), "Only cards that are in the game are staked")
+	var had := int(Collection.owned.get(top, 0))
+	Collection.reward(true, 3, {"opponent": "kaiba", "deck": "kaiba", "stake": top})
+	check(Collection.last_prize == top and int(Collection.owned.get(top, 0)) == mini(3, had + 1), "Winning hands you exactly the staked card")
+	Collection.reward(false, 3, {"opponent": "kaiba", "deck": "kaiba", "stake": top})
+	check(Collection.last_prize == 0, "Losing hands you nothing")
+	Collection.owned = keep_owned
+	Collection.record = keep_rec
+	Collection.dp = keep_dp
+	Collection.save()
+
+
+## As many decks as you like: new, copy, reorder, delete; a bought deck is one of yours and
+## can be put back to its original list.
+func _test_decks() -> void:
+	var c := Collection
+	var keep := {"slots": c.slots.duplicate(true), "slot": c.slot, "main": c.main.duplicate(), "extra": c.extra.duplicate(), "side": c.side.duplicate(),
+		"name": c.deck_name, "active": c.active, "owned": c.owned.duplicate(), "decks": c.decks_owned.duplicate(), "dropped": c.dropped.duplicate()}
+	c.slots = [{"name": "Mine", "main": Array(CardData.deck_list("yugi")), "extra": [], "side": []}]
+	c.slot = 0
+	c._take_slot()
+	c.active = "custom"
+	c.decks_owned = ["echo"]
+	c.dropped = []
+	c._adopt_decks()
+	check(c.slots.size() == 2 and c.origin_slot("echo") == 1, "the starter deck is one of your decks")
+	check(not c.slot_changed(1), "an untouched starter is not marked changed")
+	var n := c.new_slot()
+	check(n == 2 and c.slots.size() == 3 and c.slot_empty(n) and not c.slot_ok(n), "a new deck is added at the end, empty")
+	check(c.slot == 0 and c.deck_name == "Mine", "making a deck does not switch the deck on the table")
+	var d := c.duplicate_slot(0)
+	check(d == 3 and (c.slots[d]["main"] as Array).size() == c.main.size() and str(c.slots[d]["name"]) == "Mine copy", "a deck can be duplicated")
+	var at := c.move_slot(3, -1)
+	check(at == 2 and str(c.slots[2]["name"]) == "Mine copy", "a deck moves up the list")
+	check(c.move_slot(0, -1) == 0, "the first deck cannot move further up")
+	check(c.move_slot(0, 1) == 1 and c.slot == 1 and c.deck_name == "Mine", "the deck in use keeps its place in hand when it moves")
+	c.move_slot(1, -1)
+	# Change the starter, then put it back.
+	var echo := c.origin_slot("echo")
+	c.load_slot(echo)
+	var first: int = c.main[0]
+	c.main.remove_at(0)
+	c.save()
+	check(c.slot_changed(echo), "a starter you edited is marked changed")
+	c.restore_slot(echo)
+	check(not c.slot_changed(echo) and c.main.has(first) and c.main.size() == CardData.deck_list("echo").size(), "the original list can be restored")
+	# Deleting: the list shrinks, the deck in use changes hands, a thrown-away bought deck stays away.
+	c.use_deck("custom")
+	var before: int = c.slots.size()
+	c.delete_slot(echo)
+	check(c.slots.size() == before - 1 and c.origin_slot("echo") == -1 and c.dropped.has("echo"), "a deck can be deleted")
+	c._adopt_decks()
+	check(c.origin_slot("echo") == -1, "a bought deck you deleted does not come back by itself")
+	c.use_owned("echo")
+	check(c.origin_slot("echo") >= 0 and c.using_origin("echo") and not c.dropped.has("echo"), "asking for it again at the shop brings it back, in use")
+	while c.slots.size() > 1:
+		c.delete_slot(c.slots.size() - 1)
+	c.delete_slot(0)
+	check(c.slots.size() == 1 and c.slot_empty(0), "the last deck is emptied, not removed")
+	# Empty decks from the old five slots are dropped when a save loads.
+	c.slots = [{"name": "A", "main": [1, 2], "extra": [], "side": []}, {"name": "Deck 2", "main": [], "extra": [], "side": []},
+		{"name": "C", "main": [3], "extra": [], "side": []}, {"name": "Deck 4", "main": [], "extra": [], "side": []}]
+	c.slot = 2
+	c._take_slot()
+	c._fill_slots()
+	check(c.slots.size() == 2 and c.slot == 1 and str(c.slots[1]["name"]) == "C", "empty slots from old saves are dropped and the deck in hand is kept")
+	c.slots = keep["slots"]
+	c.slot = keep["slot"]
+	c.main = keep["main"]
+	c.extra = keep["extra"]
+	c.side = keep["side"]
+	c.deck_name = keep["name"]
+	c.active = keep["active"]
+	c.owned = keep["owned"]
+	c.decks_owned = keep["decks"]
+	c.dropped = keep["dropped"]
+	c.save()

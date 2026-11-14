@@ -16,6 +16,7 @@ uniform float dim = 0.0;        // 1 in Defense Position
 uniform float power = 0.0;      // 1 while attacking
 uniform float shatter = 0.0;    // 0 whole, 1 gone
 uniform float seed = 0.0;
+uniform float shade = 1.0;      // below 1 while the player is choosing among other cards
 varying vec2 uv;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1)) + seed) * 43758.5453); }
 void vertex() {
@@ -35,10 +36,14 @@ void vertex() {
 void fragment() {
 	vec4 t = texture(art, uv);
 	vec2 c = uv - 0.5;
-	// Soft edges: the picture melts into the air instead of ending in a hard rectangle.
-	float box = smoothstep(0.5, 0.36, max(abs(c.x), abs(c.y)));
-	float oval = 1.0 - smoothstep(0.34, 0.56, length(c * vec2(1.0, 0.92)));
-	float mask = box * mix(1.0, oval, 0.75);
+	// The whole picture is projected (nothing of the monster is trimmed away), and its border
+	// thins out into scan lines, the way a projection ends, instead of stopping in a straight cut.
+	float rad = 0.15;
+	vec2 dd = abs(c) - vec2(0.5 - rad);
+	float sd = length(max(dd, vec2(0.0))) + min(max(dd.x, dd.y), 0.0) - rad;
+	float edge = smoothstep(0.0, -0.11, sd);
+	float lines = sin(uv.y * 210.0 + TIME * 2.4 + seed) * 0.5 + 0.5;
+	float mask = clamp(edge + edge * (1.0 - edge) * (lines - 0.55) * 1.6, 0.0, 1.0);
 	float foot = smoothstep(1.0, 0.82, uv.y);
 	float scan = 0.9 + 0.1 * sin(uv.y * 160.0 - TIME * 5.0);
 	float flick = 0.96 + 0.04 * sin(TIME * 23.0 + seed);
@@ -54,8 +59,8 @@ void fragment() {
 	float n = hash(cell);
 	float alive = step(shatter * 1.1, n);
 	col = mix(col, vec3(1.0), smoothstep(0.0, 0.18, shatter) * step(n, shatter * 1.1 + 0.16));
-	ALBEDO = col;
-	ALPHA = mask * foot * rise * alive * (0.94 - dim * 0.22);
+	ALBEDO = col * shade;
+	ALPHA = mask * foot * rise * alive * (0.94 - dim * 0.22) * mix(0.55, 1.0, shade);
 }
 """
 
@@ -125,6 +130,11 @@ func setup(for_inst, on_card: Node3D, color: Color, delay := 0.0) -> void:
 	if is_instance_valid(card):
 		_rest_y = card.global_position.y
 		global_position = card.global_position
+
+
+func set_shade(v: float) -> void:
+	if _mat:
+		_mat.set_shader_parameter("shade", v)
 
 
 func set_defense(on: bool) -> void:

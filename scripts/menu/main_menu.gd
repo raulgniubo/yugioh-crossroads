@@ -9,7 +9,13 @@ var _title_box: Control
 var _panel_open := false
 
 
+func _exit_tree() -> void:
+	Settings.scale_floor = 0.0
+
+
 func _ready() -> void:
+	# The city behind the menu is a backdrop: keep it sharp even when the 3D resolution is set low.
+	Settings.scale_floor = 0.55
 	theme = UITheme.build()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	Music.play("menu")

@@ -18,6 +18,8 @@ var _actions: HBoxContainer
 var _grid: GridContainer
 var _confirm_clear := false
 var _picker: Control
+var _filter := "all"          # all | ready | not
+var _confirm_restore := false
 
 
 func _ready() -> void:
@@ -118,12 +120,9 @@ func _ready() -> void:
 	_grid.add_theme_constant_override("h_separation", 10)
 	_grid.add_theme_constant_override("v_separation", 10)
 	grid_scroll.add_child(_grid)
-	root.add_child(UITheme.label("More ready-made decks are sold at the card shop counter. Booster packs add single cards to your collection.", 18, UITheme.TEXT_DIM))
+	root.add_child(UITheme.label("More ready-made decks are sold at the card shop counter. A deck you buy is yours to change, and its original list can always be restored. Booster packs add single cards to your collection.", 18, UITheme.TEXT_DIM))
 	# Start on the deck in use.
-	if Collection.active == "custom":
-		_sel = {"type": "slot", "i": Collection.slot, "key": ""}
-	else:
-		_sel = {"type": "ready", "i": -1, "key": Collection.active_deck()}
+	_sel = {"type": "slot", "i": Collection.slot, "key": ""}
 	_rebuild()
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.2)
@@ -147,31 +146,69 @@ func _rebuild() -> void:
 		_list.remove_child(c)
 		c.queue_free()
 	_rows.clear()
-	_list.add_child(UITheme.label("DECKS YOU BUILT", 18, UITheme.ACCENT, UITheme.semi_font()))
-	for i in Collection.SLOTS:
+	_list.add_child(UITheme.label("YOUR DECKS", 18, UITheme.ACCENT, UITheme.semi_font()))
+	# Show all of them, or only the ones that are ready to duel, or only the ones that are not.
+	var frow := HBoxContainer.new()
+	frow.add_theme_constant_override("separation", 8)
+	_list.add_child(frow)
+	var counts := {"all": Collection.slots.size(), "ready": 0, "not": 0}
+	for i in Collection.slots.size():
+		counts["ready" if Collection.slot_ok(i) else "not"] += 1
+	for f in [["all", "All"], ["ready", "Ready"], ["not", "Not ready"]]:
+		var fb := Button.new()
+		fb.toggle_mode = true
+		fb.button_pressed = _filter == f[0]
+		fb.text = "  %s  %d  " % [Loc.t(f[1]), int(counts[f[0]])]
+		fb.custom_minimum_size = Vector2(0, 40)
+		fb.add_theme_font_size_override("font_size", 17)
+		for st in ["pressed", "hover_pressed"]:
+			fb.add_theme_stylebox_override(st, UITheme.button_box(Color(UITheme.ACCENT, 0.9), UITheme.ACCENT, 10))
+		fb.add_theme_color_override("font_pressed_color", Color(0.02, 0.05, 0.08))
+		fb.add_theme_color_override("font_hover_pressed_color", Color(0.02, 0.05, 0.08))
+		fb.pressed.connect(func():
+			_filter = f[0]
+			Sfx.play("click")
+			_rebuild())
+		frow.add_child(fb)
+	var shown := 0
+	for i in Collection.slots.size():
 		var s := _slot_data(i)
 		var n: int = (s.get("main", []) as Array).size()
-		var sub := Loc.t("Empty slot") if Collection.slot_empty(i) else Loc.t("%d cards") % n
-		if not Collection.slot_empty(i) and not Collection.slot_ok(i):
-			sub += "  ·  " + Loc.t("needs %d to %d") % [Collection.MAIN_MIN, Collection.MAIN_MAX]
-		_add_row({"type": "slot", "i": i, "key": ""}, str(s.get("name", "Deck %d" % (i + 1))), sub, UITheme.ACCENT, Collection.slot_empty(i))
-	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(0, 10)
-	_list.add_child(gap)
-	_list.add_child(UITheme.label("READY-MADE DECKS", 18, UITheme.GOLD, UITheme.semi_font()))
-	for key in Collection.decks_owned:
-		if not CardData.has_deck(str(key)):
+		var ok := Collection.slot_ok(i)
+		if (_filter == "ready" and not ok) or (_filter == "not" and ok):
 			continue
-		var e := Collection.deck_info(str(key))
-		var sub2 := Loc.t("Starter deck") if e["kind"] == "starter" else (Loc.t("%s's deck") % Loc.t(str(e["owner"])) if str(e["owner"]) != "" else Loc.t("Theme deck"))
-		_add_row({"type": "ready", "i": -1, "key": str(key)}, Loc.t(str(e["name"])), sub2, e["color"], false)
+		shown += 1
+		var sub := Loc.t("No cards yet") if Collection.slot_empty(i) else Loc.t("%d cards") % n
+		if not ok and not Collection.slot_empty(i):
+			sub += "  ·  " + Loc.t("needs %d to %d") % [Collection.MAIN_MIN, Collection.MAIN_MAX]
+		var col: Color = UITheme.ACCENT
+		var from := str(Collection.slots[i].get("origin", ""))
+		if from != "" and CardData.has_deck(from):
+			# Where it came from, and whether you have changed it since.
+			var e := Collection.deck_info(from)
+			col = e["color"]
+			var whose := Loc.t("Starter deck") if e["kind"] == "starter" else (Loc.t("%s's deck") % Loc.t(str(e["owner"])) if str(e["owner"]) != "" else Loc.t("Theme deck"))
+			sub += "  ·  " + whose + ("  ·  " + Loc.t("changed") if Collection.slot_changed(i) else "")
+		_add_row({"type": "slot", "i": i, "key": ""}, str(s.get("name", "Deck %d" % (i + 1))), sub, col, Collection.slot_empty(i), 1 if ok else 2)
+	if shown == 0:
+		_list.add_child(UITheme.label(Loc.t("No deck here yet.") if _filter == "ready" else Loc.t("Every deck is ready."), 18, UITheme.TEXT_DIM))
+	var add := Button.new()
+	add.text = "+  " + Loc.t("New deck")
+	add.custom_minimum_size = Vector2(0, 58)
+	add.add_theme_font_size_override("font_size", 22)
+	add.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.ACCENT, 0.1), Color(UITheme.ACCENT, 0.6), 14))
+	add.add_theme_stylebox_override("hover", UITheme.button_box(Color(UITheme.ACCENT, 0.24), UITheme.ACCENT, 14))
+	add.add_theme_stylebox_override("focus", UITheme.button_box(Color(UITheme.ACCENT, 0.24), UITheme.ACCENT, 14))
+	add.pressed.connect(_new_deck)
+	_list.add_child(add)
 	_show()
 	for r in _rows:
 		if r["entry"] == _sel:
 			(r["button"] as Button).grab_focus.call_deferred()
 
 
-func _add_row(entry: Dictionary, title: String, sub: String, col: Color, dim: bool) -> void:
+## `ready`: 0 no tag, 1 READY, 2 NOT READY.
+func _add_row(entry: Dictionary, title: String, sub: String, col: Color, dim: bool, ready := 0) -> void:
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(0, 78)
 	b.toggle_mode = true
@@ -217,6 +254,19 @@ func _add_row(entry: Dictionary, title: String, sub: String, col: Color, dim: bo
 	var s := UITheme.label(sub, 17, Color(0.03, 0.14, 0.18, 0.9) if picked else UITheme.TEXT_DIM)
 	s.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(s)
+	if ready > 0 and not _in_use(entry):
+		var rc := Color("5df07a") if ready == 1 else Color("ff8a6a")
+		var rtag := UITheme.label(Loc.t("READY") if ready == 1 else Loc.t("NOT READY"), 15, Color("06121c") if picked else rc, UITheme.title_font())
+		var rp := PanelContainer.new()
+		var rsb := UITheme.panel_box(Color(rc, 0.0), 9, Color(Color("06121c") if picked else rc, 0.75))
+		rsb.set_content_margin_all(5)
+		rsb.content_margin_left = 9
+		rsb.content_margin_right = 9
+		rp.add_theme_stylebox_override("panel", rsb)
+		rp.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		rp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rp.add_child(rtag)
+		h.add_child(rp)
 	if _in_use(entry):
 		var tag := UITheme.label(Loc.t("IN USE"), 18, Color("06121c"), UITheme.title_font())
 		var tp := PanelContainer.new()
@@ -228,6 +278,7 @@ func _add_row(entry: Dictionary, title: String, sub: String, col: Color, dim: bo
 	b.pressed.connect(func():
 		_sel = entry
 		_confirm_clear = false
+		_confirm_restore = false
 		Sfx.play("click")
 		_rebuild())
 	_list.add_child(b)
@@ -294,7 +345,7 @@ func _show() -> void:
 		var i2 := int(_sel["i"])
 		ok = Collection.slot_ok(i2)
 		if Collection.slot_empty(i2):
-			_status.text = Loc.t("This slot is empty. Press Edit to build a deck here, or copy a ready-made deck into it.")
+			_status.text = Loc.t("This deck has no cards yet. Press Edit to build it.")
 		elif not ok:
 			_status.text = Loc.t("Not ready to duel: a Main Deck needs %d to %d cards.") % [Collection.MAIN_MIN, Collection.MAIN_MAX]
 		else:
@@ -315,14 +366,24 @@ func _show() -> void:
 		edit.pressed.connect(func(): _edit(int(_sel["i"])))
 		_actions.add_child(edit)
 		if not Collection.slot_empty(int(_sel["i"])):
-			var clear := _btn(Loc.t("Press again to empty") if _confirm_clear else Loc.t("Empty this slot"))
-			clear.pressed.connect(_clear)
-			_actions.add_child(clear)
-	else:
-		var copy := _btn(Loc.t("Make my own version"))
-		copy.tooltip_text = Loc.t("Copies this deck into one of your slots so you can change its cards.")
-		copy.pressed.connect(func(): _copy(str(_sel["key"])))
-		_actions.add_child(copy)
+			var dup := _btn(Loc.t("Duplicate"))
+			dup.pressed.connect(_duplicate)
+			_actions.add_child(dup)
+		for mv in [[-1, "▲", "Move this deck up the list"], [1, "▼", "Move this deck down the list"]]:
+			var mb := _btn(str(mv[1]))
+			mb.tooltip_text = Loc.t(str(mv[2]))
+			var to: int = int(_sel["i"]) + int(mv[0])
+			mb.disabled = to < 0 or to >= Collection.slots.size()
+			mb.pressed.connect(func(): _move(int(mv[0])))
+			_actions.add_child(mb)
+		if Collection.slot_changed(int(_sel["i"])):
+			var back := _btn(Loc.t("Press again to restore") if _confirm_restore else Loc.t("Restore the original list"))
+			back.tooltip_text = Loc.t("Puts this deck back to the list it came with. The cards you added stay in your collection.")
+			back.pressed.connect(_restore)
+			_actions.add_child(back)
+		var clear := _btn(Loc.t("Press again to delete") if _confirm_clear else Loc.t("Delete"))
+		clear.pressed.connect(_clear)
+		_actions.add_child(clear)
 	# The cards, one tile each, with how many copies.
 	var counts := {}
 	var order: Array = []
@@ -413,17 +474,58 @@ func _clear() -> void:
 		return
 	_confirm_clear = false
 	var i := int(_sel["i"])
-	if i == Collection.slot:
-		Collection.main = []
-		Collection.extra = []
-		Collection.side = []
-		Collection.deck_name = "Deck %d" % (i + 1)
-	else:
-		Collection.slots[i] = {"name": "Deck %d" % (i + 1), "main": [], "extra": [], "side": []}
-	Collection.save()
-	if Collection.active == "custom" and i == Collection.slot:
-		Collection.use_deck("echo")
-		Router.toast(Loc.t("The Echo Deck is back in use"))
+	var was_use := Collection.active == "custom" and i == Collection.slot
+	Collection.delete_slot(i)
+	if was_use:
+		var now := Collection.fall_back()
+		Router.toast(Loc.t("You'll duel with %s") % now if now != "" else Loc.t("None of your decks is ready: the starter list is used until one is."))
+	_sel = {"type": "slot", "i": clampi(i, 0, Collection.slots.size() - 1), "key": ""}
+	_filter = "all"
+	Sfx.play("card", -6.0)
+	_rebuild()
+
+
+func _restore() -> void:
+	if not _confirm_restore:
+		_confirm_restore = true
+		_show()
+		return
+	_confirm_restore = false
+	Collection.restore_slot(int(_sel["i"]))
+	Sfx.play("card", -4.0)
+	Router.toast(Loc.t("Back to the original list"))
+	_rebuild()
+
+
+## A new deck at the end of your list, opened in the builder right away.
+func _new_deck() -> void:
+	var was_slot := Collection.slot
+	var was_custom := Collection.active == "custom"
+	var i := Collection.new_slot()
+	_sel = {"type": "slot", "i": i, "key": ""}
+	_filter = "all"
+	_confirm_clear = false
+	Sfx.play("card", -4.0)
+	if was_custom and was_slot != i:
+		Collection.load_slot(was_slot)
+	_rebuild()
+	_edit(i)
+
+
+func _duplicate() -> void:
+	var i := Collection.duplicate_slot(int(_sel["i"]))
+	_sel = {"type": "slot", "i": i, "key": ""}
+	_filter = "all"
+	_confirm_clear = false
+	Router.toast(Loc.t("Copied. Change it any way you like."))
+	_rebuild()
+
+
+func _move(dir: int) -> void:
+	var j := Collection.move_slot(int(_sel["i"]), dir)
+	_sel = {"type": "slot", "i": j, "key": ""}
+	_confirm_clear = false
+	Sfx.play("click")
 	_rebuild()
 
 
@@ -439,40 +541,6 @@ func _edit(i: int) -> void:
 		Collection.load_slot(was_slot)
 	elif builder.picked:
 		_sel = {"type": "slot", "i": Collection.slot, "key": ""}
-	_rebuild()
-
-
-## Copy a ready-made deck into a slot: the first empty one, or one you choose to overwrite.
-func _copy(key: String) -> void:
-	for i in Collection.SLOTS:
-		if Collection.slot_empty(i):
-			_copy_into(key, i)
-			return
-	if _picker and is_instance_valid(_picker):
-		_picker.queue_free()
-	var p := SidePanel.new(Loc.t("Which slot should it replace?"), 560)
-	_picker = p
-	for i in Collection.SLOTS:
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(0, 64)
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.add_theme_font_size_override("font_size", 24)
-		b.text = "   %s   (%s)" % [str(_slot_data(i).get("name", "")), Loc.t("%d cards") % (_slot_data(i).get("main", []) as Array).size()]
-		b.pressed.connect(func():
-			p.close()
-			_copy_into(key, i))
-		p.body.add_child(b)
-	add_child(p)
-
-
-func _copy_into(key: String, i: int) -> void:
-	var was_slot := Collection.slot
-	var was_custom := Collection.active == "custom"
-	Collection.copy_ready_to_slot(key, i)
-	Router.toast(Loc.t("Copied into slot %d. Change it any way you like.") % (i + 1))
-	_sel = {"type": "slot", "i": i, "key": ""}
-	if was_custom and was_slot != i:
-		Collection.load_slot(was_slot)
 	_rebuild()
 
 

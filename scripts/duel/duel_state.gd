@@ -179,6 +179,12 @@ var win_reason := ""
 var _uid := 0
 ## Extra cards in the opening hand (Hard mode gives the AI +1).
 var bonus_cards := [0, 0]
+## Destiny Draw: once per duel, a duelist in trouble may choose the card of their next draw.
+var destiny := false               # is it part of this duel at all
+var destiny_who := [true, false]   # who may use it
+var destiny_used := [false, false]
+var destiny_next: Array = [null, null]   # the card each side has reached for (drawn in their next Draw Phase)
+const DESTINY_LP := 2000
 ## Turbo Duel: Speed World 2 is in play. Both riders gain a Speed Counter each Standby Phase,
 ## lose them to big hits, need them to play Spells, and can spend them on its three effects.
 var turbo := false
@@ -342,6 +348,14 @@ func begin_turn(step := false) -> Array:
 			players[current].skip_draw -= 1
 			events.append({"type": "effect", "player": current, "card": null, "text": "Draw Phase skipped"})
 		else:
+			var fated: CardInst = destiny_next[current]
+			destiny_next[current] = null
+			if fated != null and players[current].deck.has(fated):
+				# Destiny Draw: the card they reached for is on top.
+				players[current].deck.erase(fated)
+				players[current].deck.append(fated)
+				destiny_used[current] = true
+				events.append({"type": "destiny", "player": current, "card": fated})
 			var drew := _draw(current)
 			events.append_array(drew)
 			# Destiny HERO - Dasher, once while it is in the Graveyard: a monster you draw in your
@@ -366,6 +380,25 @@ func begin_turn(step := false) -> Array:
 		return events
 	events.append_array(begin_main1())
 	return events
+
+
+## Destiny Draw is offered just before your turn begins: you are in trouble (2000 LP or less, or
+## less than half of your opponent's), you have not used it this duel, and you will draw.
+func can_destiny(p: int) -> bool:
+	if not destiny or not destiny_who[p] or destiny_used[p] or is_over() or p != current or turn < 1:
+		return false
+	var ps := players[p]
+	if ps.skip_draw > 0 or ps.deck.is_empty():
+		return false
+	return ps.lp <= DESTINY_LP or ps.lp * 2 < players[opponent(p)].lp
+
+
+## Reach for that card: it is the one your Draw Phase draws.
+func set_destiny(p: int, c: CardInst) -> bool:
+	if not can_destiny(p) or c == null or not players[p].deck.has(c):
+		return false
+	destiny_next[p] = c
+	return true
 
 
 ## The duel screen walks the turn phase by phase (begin_turn(true), begin_standby, begin_main1)
@@ -2281,9 +2314,7 @@ func clone() -> DuelState:
 		np.no_effect_damage_turn = ps.no_effect_damage_turn
 		np.name_lock = ps.name_lock.duplicate()
 		np.once_names = ps.once_names.duplicate()
-		np.exiles = []
-		for ex in ps.exiles:
-			np.exiles.append({"card": map.get(ex["card"], ex["card"]), "to": ex["to"], "left": ex["left"], "atk_pos": ex["atk_pos"]})
+		np.exiles = ps.exiles.duplicate(true)   # their cards are mapped below, once every card has its copy
 		np.protect_turn = ps.protect_turn
 		np.swords_left = ps.swords_left
 		np.field_spell = _clone_card(ps.field_spell, map) if ps.field_spell != null else null
@@ -2296,6 +2327,14 @@ func clone() -> DuelState:
 		np.attacks_this_turn = ps.attacks_this_turn
 		np.attacks_turn = ps.attacks_turn
 		s.players.append(np)
+	for np2 in s.players:
+		for ex in np2.exiles:
+			ex["card"] = map.get(ex["card"].uid, ex["card"])
+	s.destiny = destiny
+	s.destiny_who = destiny_who.duplicate()
+	s.destiny_used = destiny_used.duplicate()
+	for q in 2:
+		s.destiny_next[q] = map.get(destiny_next[q].uid) if destiny_next[q] != null else null
 	# Links between cards (equips, borrowed monsters, the chain, the attack in progress).
 	for ps in players:
 		for c in ps.spells:

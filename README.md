@@ -5,6 +5,40 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.31
+
+- **Destiny Draw.** Once per duel, when your back is against the wall (2000 Life Points or less, or less than half of your opponent's), you may choose the card you draw. Before your turn the edge of the screen lights up gold and you get one big button, "Reach for it", and a small one to draw as usual and keep it for later. Say yes, pick any card in your Deck, and the moment plays: the field goes dark, your duelist is close, a heartbeat, your spirit dives into the Deck, the top card lights up and is ripped off the Deck in a line of light, turned to the screen with DESTINY DRAW over it, and dropped into your hand. About four seconds; a click or a key skips it.
+  - The strongest opponents can do it too, once, when they are the ones losing: 4 and 5 star duelists, Hard in Free Duel, the duel a story chapter ends on and every boss duel. Their card stays face-down. They pick by trying the best cards of their Deck in a copy of the duel and keeping the one that leaves them best off.
+  - On by default. Switch it off for everything in Settings, Gameplay, or for one duel on the Free Duel screen (TYPE, LENGTH, DESTINY DRAW). Never in puzzle duels.
+- **Your spirit comes to the duel.** When you duel as your own duelist, Lumen floats by your panel, alive, and talks from there. She has more to say: a big hit, a direct attack, a Trap, an empty hand, a comeback, the Destiny Draw. The big moments always get a word; the small ones leave her quiet for a while in between.
+- **A card on the line.** Duelists in the worlds now offer a card when you talk to them: it is shown in the talk box, with a line, before you say yes. Win and they hand it over (it is on the result screen and in your collection). The offer is there for your first two wins against that duelist. Stronger duelists stake better cards, and only cards that work in the game are ever offered.
+- **One strength ladder.** The stars follow one order for everybody: Slifer Red students 1 to 2, Ra Yellow 2 to 3, Obelisk Blue 3, the named duelists of the shows by their standing (Yugi, Kaiba, Jaden, Zane, Yusei, Jack, Kite and the like at 5, the rivals at 4, Weevil, Rex and Syrus at 3). How hard somebody plays follows their stars.
+
+**Your decks**
+- **As many decks as you want.** No more five fixed slots: you start with what you have and press **+ New deck**. Each deck can be duplicated, deleted and moved up or down the list. Every deck carries a tag (IN USE, READY, NOT READY) and the list can show all, only the ready ones or only the ones that are not.
+- **A deck you buy is yours.** There is one list now. Your starter and every ready-made deck you own sit in it as ordinary decks you edit directly; "Make my own version" is gone. The game keeps the list a deck came with: a deck you changed says "changed" and has **Restore the original list**. Every card of every ready-made deck you own counts as yours in the builder.
+- **The deck builder no longer moves cards on a tap.** A tap selects a card and puts its buttons under the big picture: Add to deck, Add to Side Deck, Remove, Move to the Side Deck or back. Cards can be dragged from the collection onto the deck (or onto the Side Deck) and dragged back to take them out. A double-click is still the quick way to add or take out one copy. Right-click does nothing.
+- **Counts you can read.** The collection says how many different cards you own, how many copies in total and how many the filters are showing. A collection card shows what you own ("x3") and, on its own strip, how many are in the deck on the table.
+- **Undo** (button, or Ctrl/Cmd+Z), **"are you sure?"** on Empty deck and Fill from a starter, a **Test hand** (five cards, and one more whenever you ask), filters for monster **Type** and for **only what can still be added**, and a line that says how many of the deck's monsters need no Tribute, one or two.
+
+**In a duel**
+- **Choosing what to Tribute** is shown on the cards themselves: a bouncing arrow and the word TRIBUTE over every monster you can give up, CHOSEN in green over the ones you picked, everything else on the field dimmed, and the count in the prompt. Picking Synchro and Xyz materials works the same way.
+- **The menu of a hand card opens above the card**, so the rest of your hand stays clear to tap.
+- **Cut-ins are framed on the face.** The big ones (Finishing Blow) hang by the duelist's eyes whatever the hair; the smaller ones show head and shoulders.
+- **Holograms** are no longer trimmed to an oval: the whole picture is projected and its border thins out into scan lines. What the card's own picture crops off stays cropped.
+- **Lighter arenas.** The still parts of an arena are merged into far fewer pieces to draw (the Kaiba Corp dome went from 870 to 147).
+- **Pause and Settings over a duel** are drawn over your hand, not under it.
+
+**In the worlds**
+- **Sitting down** puts you on the bench (the bench is solid, and it was pushing you off).
+- **The picture in the talk box wears what the person wears**: a student in a red jacket is in a red jacket there too.
+- **Free Duel.** The two big pictures and the grid show every duelist at the same scale, head and shoulders, heads level.
+- **The home screen's city** is no longer drawn at the lowered 3D resolution: it stays sharp behind the menu.
+- **Admin mode opens everything**: tournaments that need trophies, the Academy tournament, titles, and places that close at night.
+- F3: the "script" value is now called what it is, the slowest frame.
+
+Not in this build: the mark on the face of the Spikes hairstyle. It is a lock of hair that hangs over the nose and is joined to it, part of the model's shape, not a stain; it needs the hair reshaped.
+
 ## What is in 0.30
 
 - **More hairstyles and outfits.** Four hairstyles per body now (new: Swept Back and Wild Mane, Twin Tails and Long Waves) and five outfits (new: the Satellite Jacket for a 5D's look on foot, and Heartland Casual for ZEXAL). Any hairstyle goes with any outfit: the head of one model rides on the body of another. All of them take every color in the creator.

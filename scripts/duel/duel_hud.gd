@@ -147,6 +147,7 @@ func _plate(p: int) -> Control:
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 			show_piles(p))
 	_count_labels[p] = dp.counts
+	_fate_labels[p] = dp.fate
 	add_child(dp)
 	_plates[p] = dp
 	var bubble := SpeechBox.new(p)
@@ -257,6 +258,18 @@ func react(p: int, kind: String) -> void:
 ## [graveyard, banished] card lists per player, kept fresh by the scene for the pile viewer.
 var piles: Array = [[[], []], [[], []]]
 var _pile_panel: Control
+
+
+var _fate_labels := [null, null]
+
+## The small Destiny Draw mark on a duelist's panel: 0 not in this duel, 1 still unused, 2 spent.
+func set_destiny(p: int, code: int) -> void:
+	var l: Label = _fate_labels[p]
+	if l == null:
+		return
+	l.visible = code > 0
+	l.modulate = Color(1, 1, 1, 1.0) if code == 1 else Color(0.6, 0.62, 0.7, 0.45)
+	l.tooltip_text = Loc.t("Destiny Draw: still unused") if code == 1 else Loc.t("Destiny Draw: used")
 
 
 func set_counts(p: int, deck: int, hand: int, gy: int, banished := 0) -> void:
@@ -1331,6 +1344,147 @@ func ask_pick(text: String, options: Array, button := "Select", cancel := "Cance
 	return await ask_response(text, options, button, cancel, hidden, Color("7fd8ff"), labels)
 
 
+## Your duel spirit, floating by your panel (bottom left) for the whole duel.
+var _spirit_pic: TextureRect
+var _spirit_t := 0.0
+
+func show_spirit(tex: Texture2D) -> void:
+	if _spirit_pic != null:
+		return
+	_spirit_pic = TextureRect.new()
+	_spirit_pic.texture = tex
+	_spirit_pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_spirit_pic.stretch_mode = TextureRect.STRETCH_SCALE
+	# Pinned to the bottom left corner, above the right end of your panel.
+	_spirit_pic.anchor_left = 0.0
+	_spirit_pic.anchor_right = 0.0
+	_spirit_pic.anchor_top = 1.0
+	_spirit_pic.anchor_bottom = 1.0
+	_spirit_pic.offset_left = 360.0
+	_spirit_pic.offset_right = 580.0
+	_spirit_pic.offset_top = -(DuelistPanel.SIZE.y + 196.0)
+	_spirit_pic.offset_bottom = -(DuelistPanel.SIZE.y + 196.0) + 220.0
+	_spirit_pic.pivot_offset = Vector2(110, 110)
+	_spirit_pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_spirit_pic.modulate.a = 0.0
+	_spirit_pic.z_index = 4
+	add_child(_spirit_pic)
+	create_tween().tween_property(_spirit_pic, "modulate:a", 1.0, 0.6).set_delay(1.2)
+
+
+## She perks up for a moment (when she says something, or something big happens).
+func spirit_pop() -> void:
+	if _spirit_pic == null:
+		return
+	var tw := create_tween()
+	tw.tween_property(_spirit_pic, "scale", Vector2(1.18, 1.18), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_spirit_pic, "scale", Vector2.ONE, 0.3)
+
+
+signal _destiny_picked(yes: bool)
+
+## The offer of a Destiny Draw, before your Draw Phase: the screen's edge lights up gold, one big
+## button to reach for the card you need, one small one to draw as usual. Returns true for yes.
+func ask_destiny() -> bool:
+	if auto_answer:
+		await get_tree().process_frame
+		return true
+	await stage_clear()
+	var vs := get_viewport_rect().size
+	var root := Control.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	root.z_index = 58
+	add_child(root)
+	var shade := ColorRect.new()
+	shade.color = Color(0.01, 0.015, 0.04, 0.0)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(shade)
+	create_tween().tween_property(shade, "color:a", 0.62, 0.25)
+	# A gold frame breathing at the edge of the screen.
+	var frame := Panel.new()
+	frame.set_anchors_preset(Control.PRESET_FULL_RECT)
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fb := StyleBoxFlat.new()
+	fb.draw_center = false
+	fb.border_color = Color("ffd76a")
+	fb.set_border_width_all(8)
+	frame.add_theme_stylebox_override("panel", fb)
+	root.add_child(frame)
+	# Two wider, fainter bands inside it stand in for a glow.
+	for band in [[26, 0.22], [60, 0.09]]:
+		var soft := Panel.new()
+		soft.set_anchors_preset(Control.PRESET_FULL_RECT)
+		soft.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var sbx := StyleBoxFlat.new()
+		sbx.draw_center = false
+		sbx.border_color = Color(1.0, 0.84, 0.42, float(band[1]))
+		sbx.set_border_width_all(int(band[0]))
+		soft.add_theme_stylebox_override("panel", sbx)
+		frame.add_child(soft)
+	var breathe := frame.create_tween().set_loops()
+	breathe.tween_property(frame, "modulate:a", 0.45, 0.6).set_trans(Tween.TRANS_SINE)
+	breathe.tween_property(frame, "modulate:a", 1.0, 0.6).set_trans(Tween.TRANS_SINE)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 14)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.custom_minimum_size = Vector2(760, 0)
+	root.add_child(v)
+	var kick := UITheme.label(Loc.t("YOUR BACK IS AGAINST THE WALL"), 24, Color("fff3c4"), UITheme.semi_font())
+	kick.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(kick)
+	var head := Comic.label(Loc.t("DESTINY DRAW"), 96, Color("ffd76a"), 14)
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(head)
+	var what := UITheme.label(Loc.t("Choose the card you draw this turn. You can do this once per duel."), 24, Color.WHITE, UITheme.semi_font())
+	what.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	what.custom_minimum_size = Vector2(760, 0)   # a wrapping label needs its width to know its height
+	v.add_child(what)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, 10)
+	v.add_child(gap)
+	var yes := Button.new()
+	yes.text = Loc.t("Reach for it")
+	yes.custom_minimum_size = Vector2(520, 92)
+	yes.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	yes.add_theme_font_override("font", UITheme.title_font())
+	yes.add_theme_font_size_override("font_size", 40)
+	yes.add_theme_color_override("font_color", Color("1a1204"))
+	yes.add_theme_color_override("font_hover_color", Color("1a1204"))
+	yes.add_theme_color_override("font_focus_color", Color("1a1204"))
+	yes.add_theme_color_override("font_pressed_color", Color("1a1204"))
+	var yb := Comic.box(Color("ffd76a"), 12, 0.1, 1, 8)
+	var yh := Comic.box(Color("fff0b8"), 12, 0.1, 1, 8)
+	for st in [["normal", yb], ["hover", yh], ["focus", yh], ["pressed", yb]]:
+		yes.add_theme_stylebox_override(str(st[0]), st[1])
+	yes.pressed.connect(func(): _destiny_picked.emit(true))
+	v.add_child(yes)
+	var no := Button.new()
+	no.text = Loc.t("Draw as usual and save it")
+	no.custom_minimum_size = Vector2(380, 54)
+	no.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	no.add_theme_font_size_override("font_size", 22)
+	no.pressed.connect(func(): _destiny_picked.emit(false))
+	v.add_child(no)
+	v.reset_size()
+	await get_tree().process_frame
+	v.reset_size()
+	v.position = Vector2((vs.x - v.size.x) / 2.0, maxf(vs.y * 0.2, (vs.y - v.size.y) / 2.0 - vs.y * 0.06))
+	v.pivot_offset = v.size / 2.0
+	v.scale = Vector2(0.92, 0.92)
+	v.modulate.a = 0.0
+	var pop := create_tween().set_parallel()
+	pop.tween_property(v, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	pop.tween_property(v, "modulate:a", 1.0, 0.1)
+	Sfx.play("special", -6.0, 1.15)
+	yes.grab_focus()
+	var answer: bool = await _destiny_picked
+	root.queue_free()
+	return answer
+
+
 signal _choice_picked(index: int)
 ## Dev: answer every prompt at random (the --human-test run that exercises the manual path).
 var auto_answer := false
@@ -1505,7 +1659,9 @@ const ACTION_HINTS := {
 
 ## options: [[action_id, label, enabled], ...]  Cards of choice that pop out beside `at`.
 ## `at` is the right edge / vertical middle of the card that was tapped.
-func show_actions(at: Vector2, options: Array) -> void:
+## `above`: `at` is the middle of the menu's bottom edge (it opens upward from there, the way
+## it does over a hand card, so it never covers the other cards in your hand).
+func show_actions(at: Vector2, options: Array, above := false) -> void:
 	for c in _menu.get_children():
 		_menu.remove_child(c)
 		c.queue_free()
@@ -1579,6 +1735,8 @@ func show_actions(at: Vector2, options: Array) -> void:
 	if x + sz.x > vs.x - 10:
 		x = at.x - sz.x - 200
 	_menu.position = Vector2(clampf(x, 10, vs.x - sz.x - 10), clampf(at.y - sz.y / 2.0, 10, vs.y - sz.y - 10))
+	if above:
+		_menu.position = Vector2(clampf(at.x - sz.x / 2.0, 10, vs.x - sz.x - 10), maxf(10.0, at.y - sz.y))
 	# No pop, no fade: the menu is there, whole, on the frame of the click.
 	_menu.scale = Vector2.ONE
 	_menu.modulate.a = 1.0
@@ -1587,6 +1745,19 @@ func show_actions(at: Vector2, options: Array) -> void:
 		if c is Button and not c.disabled:
 			c.grab_focus()
 			break
+
+
+## Where a hand card's menu opens: just over the top edge of the card once it is lifted,
+## centered on it.
+func hand_menu_anchor(inst) -> Vector2:
+	var vs := get_viewport_rect().size
+	var n := _hand.size()
+	var spacing := minf(HAND_CARD.x * 0.82, 1050.0 / maxf(n, 1))
+	for i in n:
+		if _hand[i]["inst"] == inst:
+			var offset := i - (n - 1) / 2.0
+			return Vector2(vs.x / 2.0 + offset * spacing, vs.y - HAND_CARD.y - 46.0 - HAND_CARD.y * 0.11 - 18.0)
+	return Vector2(vs.x / 2.0, vs.y - HAND_CARD.y - 90.0)
 
 
 func hand_card_anchor(inst) -> Vector2:
@@ -1871,6 +2042,7 @@ func _overlay_panel(title: String, subtitle: String, title_color: Color, side :=
 	_overlay = Control.new()
 	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	_overlay.z_index = 75   # over the hand cards and every menu: a pause covers the whole table
 	add_child(_overlay)
 	if side:
 		var grad := Gradient.new()
@@ -1967,6 +2139,24 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 			val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			bv.add_child(val)
 			row.add_child(box)
+		# The card they handed over, held up.
+		if int(stats.get("prize", 0)) != 0:
+			var pz := HBoxContainer.new()
+			pz.alignment = BoxContainer.ALIGNMENT_CENTER
+			pz.add_theme_constant_override("separation", 18)
+			var pc := TextureRect.new()
+			pc.texture = Cards.get_face(int(stats["prize"]))
+			pc.custom_minimum_size = Vector2(124, 180)
+			pc.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			pc.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			pz.add_child(pc)
+			var pw := VBoxContainer.new()
+			pw.alignment = BoxContainer.ALIGNMENT_CENTER
+			pw.add_child(UITheme.label(Loc.t("%s HANDS YOU A CARD") % str((stats.get("names", ["", ""]) as Array)[1]).to_upper(), 18, UITheme.GOLD, UITheme.semi_font()))
+			pw.add_child(Comic.label(str(CardData.get_card(int(stats["prize"])).get("name", "")), 34, Color.WHITE, 4))
+			pw.add_child(UITheme.label(Loc.t("It is in your collection now."), 18, UITheme.TEXT_DIM))
+			pz.add_child(pw)
+			v.add_child(pz)
 		# What the duel paid, line by line, then the total and your purse.
 		var pay: Array = stats.get("reward", [])
 		if not pay.is_empty():

@@ -320,11 +320,15 @@ func seat_if_needed() -> void:
 
 const SEAT_H := 0.5
 
+## The dorm jacket this person has on ("" for their own clothes), so their picture matches.
+var coat := ""
+
 
 ## Put a Duel Academy dorm jacket on this person.
 func wear_uniform(color: Color) -> void:
 	if _model == null:
 		return
+	coat = color.to_html(false)
 	if key == "player":
 		# Your own duelist keeps every color you picked; the dorm jacket is the top, repainted.
 		for n in [_model] + _model.find_children("*", "Node3D", true, false):

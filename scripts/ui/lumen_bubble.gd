@@ -78,6 +78,6 @@ func _process(delta: float) -> void:
 
 ## Is she with you at all right now? (Between chapter 4 and the ending the Curator has her.)
 static func with_you() -> bool:
-	if Saves.admin:
+	if Saves.admin or "--with-lumen" in OS.get_cmdline_user_args():
 		return true
 	return not (StoryProgress.unlocked().has("ch5") and not StoryProgress.recalls("finished"))

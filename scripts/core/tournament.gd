@@ -69,6 +69,8 @@ static func in_district(district: String) -> Array:
 ## The trophies you still need before this tournament lets you in ([] when it is open).
 static func missing(id: String) -> Array:
 	var out: Array = []
+	if Saves.admin:
+		return out      # admin mode: nothing is locked
 	for need in DEFS[id].get("requires", []):
 		if titles(str(need)) <= 0:
 			out.append(Loc.t(str(DEFS[need]["name"])))

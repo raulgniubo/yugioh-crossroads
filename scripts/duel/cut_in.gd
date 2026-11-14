@@ -112,8 +112,17 @@ static func _shader(code: String, slot: String) -> Shader:
 	return sh
 
 
-## Where the eyes sit in a portrait, as a fraction of its height from the top.
+## Where the eyes sit in a drawn portrait, as a fraction of its height from the top.
 const EYE_LINE := 0.29
+
+
+## The same for `key`. A 3D portrait hangs off the head bone, which sits in the middle of the
+## picture, and the eyes are a little above it; how much of the picture that is depends on
+## how far the camera had to step back for the hair.
+static func eye_line(key: String) -> float:
+	if not Avatars.has_avatar(key):
+		return EYE_LINE
+	return 0.5 - 0.06 / Avatars.portrait_view(key)
 
 ## Show a cut-in for player `p` (0 = you, bottom band from the left; 1 = rival, top band from
 ## the right). `key` is the character, `title` the big words, `sub` the small line under them.
@@ -191,7 +200,19 @@ func _run(p: int, key: String, title: String, sub: String, color: Color, hold: f
 	var face_y := vs.y * (center + (0.05 if p == 0 else -0.05) - half_h - 0.1)
 	if eyes:
 		face_x = vs.x * (0.22 if p == 0 else 0.78) - face.size.x / 2.0
-		face_y = vs.y * (center + (0.026 if p == 0 else -0.026)) - face.size.y * EYE_LINE
+		# The picture is sized by the world it shows, so a face is the same size in the band
+		# whatever the hair, and it hangs by the eyes.
+		face.size = Vector2(vs.y * 0.8, vs.y) * 2.05 * (Avatars.portrait_view(key) / 1.22 if Avatars.has_avatar(key) else 1.0)
+		face_x = vs.x * (0.22 if p == 0 else 0.78) - face.size.x / 2.0
+		face_y = vs.y * (center + (0.026 if p == 0 else -0.026)) - face.size.y * eye_line(key)
+	elif Avatars.has_avatar(key):
+		# The band holds head and shoulders (about half a metre of the duelist), hung by the
+		# eyes, instead of a small figure down to the waist.
+		fh = vs.y * half_h * 2.0 / 0.52 * Avatars.portrait_view(key)
+		face.size = Vector2(fh * 0.8, fh)
+		face_x = vs.x * 0.14 - face.size.x / 2.0 if p == 0 else vs.x * 0.86 - face.size.x / 2.0
+		var band_c: float = center + ((face_x + face.size.x / 2.0) / vs.x - 0.5) * slant
+		face_y = vs.y * (band_c - half_h * 0.2) - face.size.y * eye_line(key)
 	face.position = Vector2(face_x - dir * vs.x * 0.35, face_y)
 	add_child(face)
 	# The words, leaning the same way as the band.
@@ -222,6 +243,8 @@ func _run(p: int, key: String, title: String, sub: String, color: Color, hold: f
 	var tw_w := tl.size.x * tl.scale.x
 	var sub_w := sl.size.x * sl.scale.x
 	var text_x := face_x + face.size.x + 40.0 if p == 0 else face_x - 40.0 - maxf(tw_w, sub_w)
+	if not eyes and Avatars.has_avatar(key):
+		text_x = vs.x * 0.25 if p == 0 else vs.x * 0.75 - maxf(tw_w, sub_w)
 	if eyes:
 		text_x = vs.x * 0.45 if p == 0 else vs.x * 0.55 - maxf(tw_w, sub_w)
 	var text_y := vs.y * center - (tl.size.y * tl.scale.y + (sl.size.y if sub != "" else 0.0)) * 0.5 + 10.0

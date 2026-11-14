@@ -351,6 +351,40 @@ static func wake(seconds := 6.0) -> void:
 		_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 
 
+## Her, alive, on a see-through picture: for floating her over a 2D screen (beside your duelist
+## in a duel). Returns [the picture's SubViewport, her]. Free the SubViewport to end it.
+static func floating(host: Node, px := 300) -> Array:
+	var vp := SubViewport.new()
+	vp.size = Vector2i(px, px)
+	vp.own_world_3d = true
+	vp.transparent_bg = true
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	vp.msaa_3d = Viewport.MSAA_4X
+	host.add_child(vp)
+	var env := WorldEnvironment.new()
+	var e := Environment.new()
+	e.background_mode = Environment.BG_CLEAR_COLOR
+	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	e.ambient_light_color = Color(0.75, 0.86, 1.0)
+	e.ambient_light_energy = 1.0
+	env.environment = e
+	vp.add_child(env)
+	var sun := DirectionalLight3D.new()
+	sun.rotation = Vector3(-0.7, 0.6, 0)
+	sun.light_energy = 0.8
+	vp.add_child(sun)
+	var l := LumenSpirit.new()
+	l.size = 1.0
+	l.rotation.y = 0.35
+	vp.add_child(l)
+	var cam := Camera3D.new()
+	cam.fov = 30.0
+	cam.position = Vector3(0.0, 0.3, 1.3)
+	vp.add_child(cam)
+	cam.look_at(Vector3(0, 0.27, 0), Vector3.UP)
+	return [vp, l]
+
+
 ## A live portrait for dialogue boxes and menus.
 static func portrait(host: Node) -> Texture2D:
 	if _vp and is_instance_valid(_vp):

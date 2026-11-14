@@ -283,7 +283,7 @@ func _refresh() -> void:
 	if _buy.disabled and not mine:
 		_buy.text = Loc.t("%d DP  ·  you need %d more") % [int(e["price"]), int(e["price"]) - Collection.dp]
 	_use.visible = mine
-	var using := Collection.active_deck() == key
+	var using := Collection.using_origin(key) and Collection.active_deck() == "custom"
 	_use.text = Loc.t("✓ Yours. You are dueling with it.") if using else Loc.t("Yours. Duel with this deck")
 	_use.disabled = using
 	for s in _slots:
@@ -307,7 +307,7 @@ func _do_buy() -> void:
 
 func _do_use() -> void:
 	var e: Dictionary = _entries[_sel]
-	Collection.use_deck(str(e["key"]))
+	Collection.use_owned(str(e["key"]))
 	Sfx.play("coin", -6.0)
 	Router.toast(Loc.t("You'll duel with %s") % Loc.t(str(e["name"])))
 	_refresh()

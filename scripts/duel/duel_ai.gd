@@ -558,6 +558,50 @@ static func _candidates(s: DuelState, p: int) -> Array:
 	return out
 
 
+## Destiny Draw: which card of its Deck does the computer reach for? It tries the most promising
+## ones in a copy of the duel (draw it, play the turn out) and keeps the one that leaves it best off.
+static func pick_destiny(s: DuelState, p: int) -> DuelState.CardInst:
+	var seen := {}
+	var cands: Array = []
+	for c in s.players[p].deck:
+		if not seen.has(c.cname()):
+			seen[c.cname()] = true
+			cands.append(c)
+	if cands.is_empty():
+		return null
+	cands.sort_custom(func(a, b): return s._card_value(a) > s._card_value(b))
+	# Its ace is always worth a look, wherever it ranks.
+	for c in s.players[p].deck:
+		if c.id == _ace(p) and cands.find(c) >= 12:
+			cands.insert(0, c)
+			break
+	var best: DuelState.CardInst = cands[0]
+	var best_v := -1e18
+	for c in cands.slice(0, 12):
+		var sim := s.clone()
+		var mine: DuelState.CardInst = sim.find_uid(c.uid)
+		if mine == null or not sim.set_destiny(p, mine):
+			continue
+		sim.begin_turn()
+		var guard := 0
+		while guard < 14 and not sim.is_over() and sim.current == p:
+			guard += 1
+			var act := next_main_action(sim, p, HARD)
+			if act.is_empty() or apply(sim, p, act).is_empty():
+				break
+		var v := -1e9
+		if sim.is_over():
+			v = 1e9 if sim.winner == p else -1e9
+		else:
+			if sim.can_enter_battle():
+				sim.enter_battle()
+			v = _after_battle(sim, p, sim.phase != DuelState.Phase.BATTLE)
+		if v > best_v:
+			best_v = v
+			best = c
+	return best
+
+
 static func _score_after(s: DuelState, p: int, act: Dictionary, expert := false) -> float:
 	var sim := s.clone()
 	if not act.is_empty():

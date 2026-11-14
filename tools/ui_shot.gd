@@ -35,6 +35,22 @@ func _ready() -> void:
 			ps = og
 		_: ps = DeckMenu.new()
 	add_child(ps)
+	if "--hand" in OS.get_cmdline_user_args() and ps is DeckBuilder:
+		get_tree().create_timer(0.8).timeout.connect((ps as DeckBuilder)._test_hand)
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--pin=") and ps is DeckBuilder:
+			# Dev: tap a card (col = one in the collection, deck = one in the deck) before the picture.
+			var db: DeckBuilder = ps
+			get_tree().create_timer(0.8).timeout.connect(func():
+				if a.ends_with("col"):
+					var t: Control = db._grid.get_child(8)
+					db._select(int(t.get_meta("id")), "col", t)
+				else:
+					for flow in db._deck_list.get_children():
+						if flow is HFlowContainer and flow.get_child_count() > 3:
+							var c: Control = flow.get_child(3)
+							db._select(int(c.get_meta("id")), "main", c)
+							break)
 	if tab > 0 and ps.has_method("_show_tab"):
 		ps.call_deferred("_show_tab", tab)
 	if what == "rps":

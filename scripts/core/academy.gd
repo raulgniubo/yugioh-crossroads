@@ -203,7 +203,7 @@ static func resolve(won: bool) -> Array:
 
 static func tourney_open() -> bool:
 	load_data()
-	return d["enrolled"] and (int(d["dorm"]) >= 1 or d["graduated"])
+	return Saves.admin or (d["enrolled"] and (int(d["dorm"]) >= 1 or d["graduated"]))
 
 
 static func tourney_active() -> bool:

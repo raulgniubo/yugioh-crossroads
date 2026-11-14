@@ -8,6 +8,109 @@ var _bob: Array = []  # [node, base_y, speed]
 
 
 func build_arena(t: Dictionary) -> void:
+	_build(t)
+	_weld()
+
+
+## An arena is hundreds of plain boxes (rows of seats, steps, walls), each its own draw call, and
+## each drawn again in every shadow pass. Boxes that never move and share a material are welded
+## into one mesh. It looks the same and draws in a handful of calls.
+func _weld() -> void:
+	var moving := {}
+	for n in _spin:
+		moving[n] = true
+	for b in _bob:
+		moving[b[0]] = true
+	for n in _spin_z:
+		moving[n] = true
+	_weld_tree(self, moving)
+
+
+## Weld inside this node, then inside every still group of pieces under it (a light tower, a row
+## of banners). Anything that turns or bobs, and everything under it, is left alone.
+func _weld_tree(holder: Node3D, moving: Dictionary) -> void:
+	_weld_in(holder, moving)
+	for n in holder.get_children():
+		if n.get_class() == "Node3D" and n.get_script() == null and not moving.has(n) and not n.has_meta("spin") and not n.has_meta("spin_z"):
+			_weld_tree(n as Node3D, moving)
+
+
+func _weld_in(holder: Node3D, moving: Dictionary) -> void:
+	var groups := {}
+	for n in holder.get_children():
+		var mi := n as MeshInstance3D
+		if mi == null or moving.has(mi) or mi.mesh == null or mi.mesh.get_surface_count() != 1 or mi.get_child_count() > 0 or mi.get_script() != null or not mi.visible or mi.has_meta("keep") or mi.skeleton != NodePath("..") and mi.skin != null:
+			continue
+		var m: Material = mi.material_override if mi.material_override != null else mi.mesh.surface_get_material(0)
+		var bm := m as BaseMaterial3D
+		if bm == null or bm.emission_enabled or bm.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED or mi.transparency > 0.0 or bm.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED:
+			continue
+		# Plain painted pieces differ only in their color: the color goes into the mesh, and they
+		# all share one material. Textured pieces are grouped by the material they already share.
+		var plain: bool = bm.albedo_texture == null and bm.normal_texture == null and not bm.vertex_color_use_as_albedo
+		var key := ("plain/%.1f/%.1f/%d/%d" % [bm.roughness, bm.metallic, bm.cull_mode, mi.cast_shadow]) if plain else ("%d/%d" % [bm.get_instance_id(), mi.cast_shadow])
+		if not groups.has(key):
+			groups[key] = {"mat": bm, "plain": plain, "shadow": mi.cast_shadow, "nodes": []}
+		(groups[key]["nodes"] as Array).append(mi)
+	for key in groups:
+		var nodes: Array = groups[key]["nodes"]
+		if nodes.size() < 4:
+			continue
+		var plain: bool = groups[key]["plain"]
+		var verts := PackedVector3Array()
+		var norms := PackedVector3Array()
+		var uvs := PackedVector2Array()
+		var cols := PackedColorArray()
+		var idx := PackedInt32Array()
+		for node in nodes:
+			var mi := node as MeshInstance3D
+			var a: Array = mi.mesh.surface_get_arrays(0)
+			var v: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+			var nn = a[Mesh.ARRAY_NORMAL]
+			var uu = a[Mesh.ARRAY_TEX_UV]
+			var ii = a[Mesh.ARRAY_INDEX]
+			var xf: Transform3D = mi.transform
+			var nb: Basis = xf.basis.inverse().transposed()
+			var base := verts.size()
+			var m2: Material = mi.material_override if mi.material_override != null else mi.mesh.surface_get_material(0)
+			var col: Color = (m2 as BaseMaterial3D).albedo_color if plain else Color.WHITE
+			for k in v.size():
+				verts.append(xf * v[k])
+				norms.append((nb * (nn[k] as Vector3)).normalized() if nn != null and k < nn.size() else Vector3.UP)
+				uvs.append(uu[k] if uu != null and k < uu.size() else Vector2.ZERO)
+				cols.append(col)
+			if ii != null and ii.size() > 0:
+				for k in ii:
+					idx.append(base + int(k))
+			else:
+				for k in v.size():
+					idx.append(base + k)
+		var arrs := []
+		arrs.resize(Mesh.ARRAY_MAX)
+		arrs[Mesh.ARRAY_VERTEX] = verts
+		arrs[Mesh.ARRAY_NORMAL] = norms
+		arrs[Mesh.ARRAY_TEX_UV] = uvs
+		arrs[Mesh.ARRAY_COLOR] = cols
+		arrs[Mesh.ARRAY_INDEX] = idx
+		var am := ArrayMesh.new()
+		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrs)
+		var one := MeshInstance3D.new()
+		one.mesh = am
+		var shared: BaseMaterial3D = groups[key]["mat"]
+		if plain:
+			shared = shared.duplicate()
+			shared.albedo_color = Color.WHITE
+			shared.vertex_color_use_as_albedo = true
+			shared.vertex_color_is_srgb = true
+		one.material_override = shared
+		one.cast_shadow = groups[key]["shadow"]
+		holder.add_child(one)
+		for node in nodes:
+			holder.remove_child(node)
+			(node as Node).queue_free()
+
+
+func _build(t: Dictionary) -> void:
 	theme = t
 	make_solid = false
 	var key := str(t.get("key", "crossroads"))

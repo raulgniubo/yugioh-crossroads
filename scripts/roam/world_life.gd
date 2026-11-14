@@ -614,7 +614,7 @@ const RIVALS := [
 			["Last page: 'Beat me three ways. Never the same way twice.' I'm starting a second notebook.", "Whenever you're ready."]],
 		"duel": {"deck": "syrus", "difficulty": 2, "intro": "Page one. Begin."}},
 	{"id": "rival_blue", "char": "", "model": "duelist_f1", "name": "Celeste Vane", "color": Color("7cc4ff"), "dorm": "blue", "pos": Vector3(-26.4, 0.1, -9.0), "face": 0.9,
-		"lines": ["Celeste Vane. Top of Blue, three terms running. People stop talking when I walk in. You didn't.", "Interesting. Show me why."],
+		"lines": ["Celeste Vane. Top of my year in Blue, three terms running. People stop talking when I walk in. You didn't.", "Interesting. Show me why."],
 		"after": [["...I lost. I have not said those words out loud since first year. They taste terrible.", "Again. Now."],
 			["I told the Blue dorm it was a fluke. Nobody believed me. I'm not sure I did either.", "Humor me."],
 			["You know what the worst part is? It's more fun now. Don't tell anyone I said that.", "Shall we?"]],

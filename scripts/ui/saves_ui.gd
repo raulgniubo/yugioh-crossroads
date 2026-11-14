@@ -125,11 +125,12 @@ static func _admin_controls(box: HBoxContainer, host: Node) -> void:
 	for c in box.get_children():
 		c.queue_free()
 	if Saves.admin:
-		var badge := _line("ON", 20, UITheme.GOLD)
-		box.add_child(badge)
+		# One button says both things: it is on, and this turns it off. (A separate "ON" label
+		# next to it had no room and folded to one letter a line.)
 		var off := Button.new()
-		off.text = Loc.t("Turn admin mode off")
+		off.text = Loc.t("ON  ·  Turn it off")
 		off.custom_minimum_size = Vector2(280, 46)
+		off.add_theme_color_override("font_color", UITheme.GOLD)
 		off.pressed.connect(func(): _ask(host, "Leave admin mode? The game restarts on your own save, exactly as you left it.", "Leave admin mode", func(): Saves.admin_off()))
 		box.add_child(off)
 		return

@@ -67,7 +67,8 @@ func is_standin(key: String) -> bool:
 
 
 func has_avatar(key: String) -> bool:
-	return key != "" and path_for(key) != ""
+	# "student_boy@d9342b" is the same person in a dorm jacket of that color (portraits only).
+	return key != "" and path_for(key.get_slice("@", 0)) != ""
 
 
 ## Common bone names in rigs from Meshy, Mixamo, Blender's Rigify-lite and VRoid.
@@ -1336,9 +1337,11 @@ func portrait(key: String, hi := false) -> Texture2D:
 		if hi:
 			_sharpen(key)
 		return (_stages[key] as SubViewport).get_texture()
-	var model := load_model(key)
+	var model := load_model(key.get_slice("@", 0))
 	if model == null:
 		return null
+	if "@" in key:
+		apply_uniform(model, Color.html(key.get_slice("@", 1)))
 	var vp := SubViewport.new()
 	vp.size = stage_size()
 	vp.transparent_bg = true

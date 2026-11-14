@@ -27,6 +27,7 @@ var _run := 0               # 0 single, 1 gauntlet of three, 2 survival
 var _hand_n := 5
 var _match_btn: CheckButton
 var _turbo_btn: CheckButton
+var _fate_off_btn: CheckButton          # Destiny Draw switched off for this duel
 var _my_deck := "yugi"
 var _field := "auto"
 var _root: Control
@@ -136,6 +137,8 @@ func _process(delta: float) -> void:
 	for z in _zoom_tiles:
 		if is_instance_valid(z):
 			_fit_tile(z as TextureRect, str((z as TextureRect).get_meta("key", "")))
+	for side in _slots:
+		_fit_slot(_slots[side]["portrait"], str(_slots[side]["key"]))
 	if _zoom_t < 0.0:
 		_zoom_tiles.clear()
 	_zoom_t -= delta
@@ -322,6 +325,7 @@ func _refresh_slots() -> void:
 		var changed: bool = sl["key"] != key
 		sl["key"] = key
 		sl["portrait"].texture = Portraits.get_portrait(key, true)
+		_fit_slot(sl["portrait"], key)
 		sl["name"].text = str(info.get("name", "")).to_upper()
 		sl["title"].text = str(info.get("title", ""))
 		var deck_key := _deck_of(side)
@@ -481,13 +485,28 @@ var _zoom_t := 1.5
 ## enough for the tallest hair, which left most faces small in a tile this size; here the
 ## picture is scaled up so about 0.92 m shows top to bottom, with the head just above the middle.
 func _fit_tile(pt: TextureRect, key: String) -> void:
-	var zoom := 1.0
-	if Avatars.has_avatar(key):
-		zoom = clampf(Avatars.portrait_view(key) / 0.92, 1.0, 1.9)
-	var w := CELL.x * zoom
-	var h := w * 640.0 / 512.0
+	if not Avatars.has_avatar(key):
+		pt.size = Vector2(CELL.x, CELL.x * 640.0 / 512.0)
+		pt.position = Vector2(0, 2)
+		return
+	# Every duelist at the same scale (190 px to the metre) with the head at the same height,
+	# so the grid reads as a line-up: faces big, level with each other, whatever the hair.
+	var h := Avatars.portrait_view(key) * 190.0
+	var w := h * 512.0 / 640.0
 	pt.size = Vector2(w, h)
-	pt.position = Vector2((CELL.x - w) / 2.0, (2.0 + CELL.x * 0.625) - h * 0.5 if zoom > 1.001 else 2.0)
+	pt.position = Vector2((CELL.x - w) / 2.0, 64.0 - h * 0.5)
+
+
+## The two big pictures: head and shoulders, the same size and the same place for everybody.
+func _fit_slot(pt: TextureRect, key: String) -> void:
+	if not Avatars.has_avatar(key):
+		pt.size = Vector2(PANEL_SIZE.x, PANEL_SIZE.x * 640.0 / 512.0)
+		pt.position = Vector2(0, 6)
+		return
+	var h := Avatars.portrait_view(key) * PANEL_SIZE.y / 1.0
+	var w := h * 512.0 / 640.0
+	pt.size = Vector2(w, h)
+	pt.position = Vector2((PANEL_SIZE.x - w) / 2.0, PANEL_SIZE.y * 0.47 - h * 0.5)
 
 
 func _roster_card(key: String) -> Control:
@@ -707,11 +726,14 @@ func _build_setup() -> void:
 	# How the duel is played: on foot or on runners, one duel or a match.
 	_match_btn = CheckButton.new()
 	_turbo_btn = CheckButton.new()
+	_fate_off_btn = CheckButton.new()
+	_fate_off_btn.button_pressed = not Settings.destiny_draw
 	var rules := HBoxContainer.new()
 	rules.add_theme_constant_override("separation", 8)
 	v.add_child(rules)
 	for grp in [[_turbo_btn, "TYPE", ["Standard", "Turbo Duel"], ["A normal duel at the table.", "Both duelists ride runners. Spells need Speed Counters."]],
-			[_match_btn, "LENGTH", ["1 duel", "Best of 3"], ["One duel decides it.", "First to win two duels. You can swap Side Deck cards between duels."]]]:
+			[_match_btn, "LENGTH", ["1 duel", "Best of 3"], ["One duel decides it.", "First to win two duels. You can swap Side Deck cards between duels."]],
+			[_fate_off_btn, "DESTINY DRAW", ["On", "Off"], ["Once per duel, at 2000 Life Points or less (or under half of your opponent's), you choose the card you draw. Hard opponents can do it too.", "Every draw is the top card, as usual."]]]:
 		var cb: CheckButton = grp[0]
 		var gv := VBoxContainer.new()
 		gv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -730,7 +752,7 @@ func _build_setup() -> void:
 			ob.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			ob.add_theme_font_size_override("font_size", 18)
 			_pick_style(ob)
-			ob.button_pressed = k == 0
+			ob.button_pressed = (k == 1) == cb.button_pressed
 			gh.add_child(ob)
 			pair.append(ob)
 		for k in 2:
@@ -1007,7 +1029,8 @@ func _start_duel() -> void:
 	Router.match_state = {"wins": [0, 0], "game": 1, "last_loser": -1,
 		"orig": {"main": Collection.main.duplicate(), "side": Collection.side.duplicate()}} if is_match else {}
 	var cfg := {"player_char": _me, "opponent": _opp, "player_deck": _my_deck, "difficulty": _difficulty, "field": _field, "match": is_match and not _gauntlet,
-		"turbo": _turbo_btn != null and _turbo_btn.button_pressed, "lp": _lp, "hand": _hand_n}
+		"turbo": _turbo_btn != null and _turbo_btn.button_pressed, "lp": _lp, "hand": _hand_n,
+		"destiny": not (_fate_off_btn != null and _fate_off_btn.button_pressed)}
 	if _their_deck != "":
 		cfg["opponent_deck"] = _their_deck
 	if _first >= 0:

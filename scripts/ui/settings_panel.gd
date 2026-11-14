@@ -56,6 +56,7 @@ static func _row(v: VBoxContainer, title: String, hint: String, control: Control
 
 static func open(parent: Node) -> SidePanel:
 	var p := SidePanel.new("Settings", 820)
+	p.z_index = 100   # over whatever screen opened it (a duel's hand cards sit high)
 	p.body.add_theme_constant_override("separation", 16)
 	var desktop := OS.has_feature("pc")
 
@@ -169,6 +170,12 @@ static func open(parent: Node) -> SidePanel:
 		Settings.anim_speed = Settings.ANIM_SPEEDS[keys[i]]
 		Settings.save_settings())
 	_row(game, "Animation speed", "How fast cards and attacks play out.", speed)
+	var fate := CheckButton.new()
+	fate.button_pressed = Settings.destiny_draw
+	fate.toggled.connect(func(on):
+		Settings.destiny_draw = on
+		Settings.save_settings())
+	_row(game, "Destiny Draw", "Once per duel, when you are at 2000 Life Points or less (or under half of your opponent's), you may choose the card you draw. The strongest opponents can do it too.", fate)
 	var field := OptionButton.new()
 	var fkeys := ["auto"] + FieldThemes.ORDER
 	for i in fkeys.size():

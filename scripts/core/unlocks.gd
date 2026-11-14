@@ -74,3 +74,46 @@ static func opponent_why(key: String) -> String:
 static func stars(difficulty: int, rare := false) -> String:
 	var n := clampi(difficulty + 1 + (1 if rare else 0), 1, 5)
 	return "★".repeat(n) + "☆".repeat(5 - n)
+
+
+## One ladder for everybody you can duel in the worlds. The duelists of the four series stand
+## where their series puts them; ordinary people stand below the named rivals of their world;
+## a dorm sets a student's range (Red 1 to 2, Yellow 2 to 3, Blue 3 to 4). Only the rare night
+## duelists reach the top on their own.
+const SERIES_STARS := {
+	"yugi": 5, "kaiba": 5, "marik": 5, "pegasus": 5, "joey": 4, "mai": 4, "bakura": 4, "weevil": 3, "rex": 3,
+	"jaden": 5, "zane": 5, "aster": 5, "chazz": 4, "alexis": 4, "syrus": 3,
+	"yusei": 5, "jack": 5, "crow": 4, "akiza": 4, "kalin": 4,
+	"kite": 5, "yuma": 4, "shark": 4, "vector": 4,
+}
+const DORM_STARS := {"red": [1, 2], "yellow": [2, 3], "blue": [3, 4]}
+
+## Stars (1 to 5) of the person `d` (a world duelist's entry, with its "duel").
+static func stars_of(d: Dictionary) -> int:
+	var duel: Dictionary = d.get("duel", {})
+	if duel.has("stars"):
+		return clampi(int(duel["stars"]), 1, 5)
+	var who := str(d.get("char", ""))
+	if SERIES_STARS.has(who):
+		return int(SERIES_STARS[who])
+	var rare := bool(duel.get("rare", false))
+	var n := clampi(int(duel.get("difficulty", 1)) + 1 + (1 if rare else 0), 1, 5)
+	if rare:
+		return n
+	var dorm := str(d.get("dorm", ""))
+	if dorm == "":
+		for k in DORM_STARS:
+			if who.begins_with(k):          # "blue_student", "red_student"...
+				dorm = k
+	if DORM_STARS.has(dorm):
+		return clampi(n, int(DORM_STARS[dorm][0]), int(DORM_STARS[dorm][1]) - (1 if dorm == "blue" else 0))
+	return mini(n, 3)
+
+
+static func stars_text(n: int) -> String:
+	return "★".repeat(n) + "☆".repeat(5 - n)
+
+
+## How well somebody with that many stars plays (the computer's level), 0 to 3.
+static func level_for(stars_n: int) -> int:
+	return [0, 0, 1, 2, 3, 3][clampi(stars_n, 1, 5)]

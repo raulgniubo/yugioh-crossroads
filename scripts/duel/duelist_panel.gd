@@ -13,6 +13,7 @@ var name_label: Label
 var lp_label: Label
 var lp_bar: ColorRect
 var counts: Label
+var fate: Label                   # "★ DESTINY": gold while this duelist still has a Destiny Draw, dim once it is used
 var _front: Control
 var _active := false
 var _pulse := 0.0
@@ -58,6 +59,10 @@ func _init(p: int) -> void:
 	var tag := UITheme.label("LP", 20, Color(side_color().lightened(0.45), 0.95), UITheme.semi_font())
 	tag.position = Vector2(x0, 74)
 	_front.add_child(tag)
+	fate = UITheme.label("★ " + Loc.t("DESTINY"), 13, Color("ffd76a"), UITheme.semi_font())
+	fate.position = Vector2(x0, 50)
+	fate.visible = false
+	_front.add_child(fate)
 	lp_label = UITheme.label("8000", 66, Color.WHITE, Comic.chunky_font())
 	lp_label.position = Vector2(x0 + 30, 34)
 	lp_label.size = Vector2(BAR_W - 30, 76)

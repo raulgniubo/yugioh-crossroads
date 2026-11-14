@@ -31,6 +31,10 @@ var _plate: Control
 var _purse: Control
 var _dlg_fig: RoamFigure
 var _dlg_buttons: HBoxContainer
+var _dlg_stake: VBoxContainer       # "ON THE LINE": the card a duelist offers if you beat them
+var _dlg_stake_card: TextureRect
+var _stake_id := 0
+const STAKE_LINES := ["Beat me and this card is yours.", "Tell you what: win, and you take this card home.", "I'll put this card on the line. Interested?", "Win and it's yours. Lose and you walk."]
 var _dlg_lines: Array = []
 var _dlg_index := 0
 var _dlg_npc: Dictionary = {}
@@ -543,8 +547,12 @@ func _physics_process(delta: float) -> void:
 		Sfx.play("jump", -9.0)
 		_air = true
 	_jump = false
-	_player.move_and_slide()
-	_unstick(delta, input.length() > 0.4)
+	if life and life.seated:
+		# On a bench: the body stays put (the bench is solid, and it would push you off it).
+		_player.velocity = Vector3.ZERO
+	else:
+		_player.move_and_slide()
+		_unstick(delta, input.length() > 0.4)
 	var flat := Vector2(_player.velocity.x, _player.velocity.z)
 	_figure.set_speed(flat.length() if not _air else 0.0)
 	var turn := 0.0
@@ -916,7 +924,7 @@ func _travel(where: String) -> void:
 	if _overlay_open:
 		return
 	# Some places keep hours.
-	if where in ["burger", "ac_library"] and city.tod == "night" and story == null:
+	if where in ["burger", "ac_library"] and city.tod == "night" and story == null and not Saves.admin:
 		Router.toast(Loc.t("Closed for the night. It opens again in the morning."))
 		Sfx.play("error", -8.0)
 		return
@@ -1211,7 +1219,7 @@ func _update_near() -> void:
 			_prompt.text = (Loc.t("E   Talk to %s") % Loc.t(_npc_name(_near))) if not _near.is_empty() else ("E   %s" % Loc.t(str(_near_spot["label"])))
 			# How strong a duelist is, before you walk into the duel.
 			if not _near.is_empty() and _near.has("duel"):
-				_prompt.text += "     " + Loc.t("Strength") + " " + Unlocks.stars(int((_near["duel"] as Dictionary).get("difficulty", 1)), bool((_near["duel"] as Dictionary).get("rare", false)))
+				_prompt.text += "     " + Loc.t("Strength") + " " + Unlocks.stars_text(Unlocks.stars_of(_near))
 				if not _stars_told:
 					# Say once what the stars are.
 					_stars_told = true
@@ -1295,10 +1303,12 @@ func _talk() -> void:
 			_dlg_fig = n[1]
 	_dlg_face.visible = _dlg_fig != null and _dlg_fig.key != "" and Avatars.has_avatar(_dlg_fig.key)
 	if _dlg_face.visible:
-		var tex := Portraits.get_portrait(_dlg_fig.key)
-		if tex is ViewportTexture and not Avatars._stages.has(_dlg_fig.key):
-			Portraits._forget(_dlg_fig.key)
-			tex = Portraits.get_portrait(_dlg_fig.key)
+		# The picture wears what they wear: a dorm jacket in the world is a dorm jacket here.
+		var pk: String = _dlg_fig.key if _dlg_fig.coat == "" or _dlg_fig.key == "player" else "%s@%s" % [_dlg_fig.key, _dlg_fig.coat]
+		var tex := Portraits.get_portrait(pk)
+		if tex is ViewportTexture and not Avatars._stages.has(pk):
+			Portraits._forget(pk)
+			tex = Portraits.get_portrait(pk)
 		_dlg_face.texture = tex
 	if _dlg_fig:
 		_dlg_fig.speak(true)
@@ -1313,6 +1323,9 @@ func _talk() -> void:
 
 
 func _show_line() -> void:
+	if _dlg_stake != null:
+		_dlg_stake.visible = false
+	_stake_id = 0
 	for c in _dlg_buttons.get_children():
 		c.queue_free()
 	_dlg_text.text = _dlg_lines[_dlg_index]
@@ -1363,6 +1376,16 @@ func _show_line() -> void:
 		_dlg_buttons.add_child(nope)
 		try.grab_focus.call_deferred()
 	elif last and _dlg_npc.has("duel"):
+		# What they put up, so there is a reason to say yes.
+		var sk_key := str(_dlg_npc.get("char", ""))
+		if sk_key == "":
+			sk_key = str(_dlg_npc["id"])
+		_stake_id = Collection.stake_for(sk_key, str((_dlg_npc["duel"] as Dictionary).get("deck", "joey")), Unlocks.stars_of(_dlg_npc))
+		if _stake_id != 0 and _dlg_stake != null:
+			_dlg_stake_card.texture = Cards.get_face(_stake_id)
+			_dlg_stake.visible = true
+			var offer := Loc.t(STAKE_LINES[absi(hash(sk_key)) % STAKE_LINES.size()])
+			_dlg_text.text = _dlg_text.text + "  " + offer + "  [" + str(CardData.get_card(_stake_id).get("name", "")) + "]"
 		var duel_btn := Button.new()
 		duel_btn.text = "  Duel!  "
 		duel_btn.add_theme_font_size_override("font_size", 26)
@@ -1525,6 +1548,8 @@ func _advance() -> void:
 
 func _end_talk() -> void:
 	_talking = false
+	if _dlg_stake != null:
+		_dlg_stake.visible = false
 	_talk_rest = Time.get_ticks_msec() / 1000.0
 	_dlg.visible = false
 	if _dlg_fig and is_instance_valid(_dlg_fig):
@@ -1553,11 +1578,13 @@ func _start_duel() -> void:
 	Router.duel_config = {
 		"opponent": opp_key, "opponent_deck": duel.get("deck", "joey"),
 		"player_deck": Collection.active_deck(), "player_char": "player",
-		"difficulty": duel.get("difficulty", 1), "field": _field_here(),
+		"difficulty": Unlocks.level_for(Unlocks.stars_of(d)), "destiny_opp": Unlocks.stars_of(d) >= 4, "field": _field_here(),
 		"story": true, "lose_ok": true, "return_to": Router.ROAM, "continue_label": Loc.t("Back to %s") % Loc.t(str(district.get("name", "town"))),
 	}
 	if duel.get("rare", false):
 		Router.duel_config["rare"] = true
+	if _stake_id != 0:
+		Router.duel_config["stake"] = _stake_id   # the card they put on the line
 	_end_talk()
 	Router.go(Router.DUEL)
 
@@ -1721,6 +1748,20 @@ func _build_ui() -> void:
 	_dlg_buttons.add_theme_constant_override("separation", 14)
 	_dlg_buttons.alignment = BoxContainer.ALIGNMENT_END
 	v.add_child(_dlg_buttons)
+	# The card a duelist puts on the line, shown at the right of the box when they challenge you.
+	_dlg_stake = VBoxContainer.new()
+	_dlg_stake.add_theme_constant_override("separation", 4)
+	_dlg_stake.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_dlg_stake.visible = false
+	var st_cap := UITheme.label(Loc.t("ON THE LINE"), 15, UITheme.GOLD, UITheme.semi_font())
+	st_cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_dlg_stake.add_child(st_cap)
+	_dlg_stake_card = TextureRect.new()
+	_dlg_stake_card.custom_minimum_size = Vector2(118, 172)
+	_dlg_stake_card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_dlg_stake_card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_dlg_stake.add_child(_dlg_stake_card)
+	row.add_child(_dlg_stake)
 
 
 func _update_counter() -> void:
@@ -1841,19 +1882,20 @@ func _debug() -> void:
 				var dm := DeckMenu.new()
 				_open_overlay(dm)
 				await get_tree().create_timer(0.5).timeout
-				dm._sel = {"type": "ready", "i": -1, "key": "deck_dragon"}
+				dm._sel = {"type": "slot", "i": Collection.origin_slot("deck_dragon"), "key": ""}
 				dm._rebuild()
 				dm._use()
-				print("FLOW active ", Collection.active_deck(), " cfg=", Router.duel_config["player_deck"])
-				dm._copy("deck_dragon")
+				print("FLOW active ", Collection.active_deck(), " slot=", Collection.slot, " name=", Collection.deck_name, " n=", Collection.main.size(), " cfg=", Router.duel_config["player_deck"])
+				dm._duplicate()
 				await get_tree().create_timer(0.3).timeout
-				print("FLOW copied sel=", dm._sel, " slot=", Collection.slot, " active=", Collection.active_deck())
+				print("FLOW copied sel=", dm._sel, " decks=", Collection.slots.size())
 				dm._use()
-				print("FLOW custom ", Collection.active_deck(), " name=", Collection.deck_name, " n=", Collection.main.size())
 				dm._do_rename("Test Deck")
+				dm._move(-1)
+				print("FLOW moved sel=", dm._sel, " slot=", Collection.slot, " name=", Collection.deck_name)
 				dm._clear()
 				dm._clear()
-				print("FLOW cleared active=", Collection.active_deck(), " empty=", Collection.slot_empty(int(dm._sel["i"])))
+				print("FLOW deleted decks=", Collection.slots.size(), " active=", Collection.active_deck(), " now=", Collection.deck_name)
 				dm._close()
 			else:
 				_open_overlay(DeckShop.new() if what == "deckshop" else (PackShop.new() if what == "packs" else DeckMenu.new()))

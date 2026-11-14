@@ -233,6 +233,12 @@ func _start() -> void:
 	var opp_list := CardData.legend_deck(opp_deck) if _ai_level >= 2 else CardData.deck_list(opp_deck)
 	var extra_hand := int(cfg.get("hand", 5)) - 5
 	state.bonus_cards = [extra_hand, extra_hand + (1 if _ai_level >= 2 else 0)]
+	# Destiny Draw: as the Free Duel screen says, else as Settings says. Never in a puzzle.
+	# You always have it; of your opponents, the strong ones do: 4 and 5 stars, and story bosses.
+	state.destiny = bool(cfg.get("destiny", Settings.destiny_draw)) and str(cfg.get("puzzle", "")) == ""
+	state.destiny_who = [true, bool(cfg.get("destiny_opp", _ai_level >= 3 or (_ai_level >= 2 and bool(cfg.get("rare", false)))))]
+	if "--destiny-all" in OS.get_cmdline_user_args():
+		state.destiny_who = [true, true]   # dev: both sides may, whatever the difficulty
 	board.state_ref = state
 	var my_list: Array[int] = CardData.deck_list(my_deck)
 	if state.turbo:
@@ -270,6 +276,8 @@ func _start() -> void:
 		_start_lp[ME] = int(cfg["my_lp"])
 	if cfg.has("opp_lp"):
 		_start_lp[AI] = int(cfg["opp_lp"])
+	if "--destiny-low" in OS.get_cmdline_user_args():
+		_start_lp[ME] = 1500   # dev: you start in trouble, so the Destiny Draw offer comes on your first draw
 	# A burger set from Burger World: 500 extra Life Points, once.
 	if Router.roam.get("fed", false) and not _autoplay:
 		Router.roam["fed"] = false
@@ -289,6 +297,7 @@ func _start() -> void:
 	if not _opened:
 		board.add_duelists(_me_key, _opp_key)
 	var fly := "--no-fly" not in OS.get_cmdline_user_args()
+	_bring_spirit()
 	if _opened:
 		await get_tree().create_timer(0.7).timeout
 	elif not _autoplay:
@@ -390,9 +399,117 @@ func _speaker(p: int) -> String:
 	return _me_key if p == ME else _opp_key
 
 
+# ------------------------------------------------------------------ Destiny Draw
+
+const DestinyShow := preload("res://scripts/duel/destiny_show.gd")
+var _destiny_card = null          # the card the show has already drawn: its draw event is quiet
+
+
+## Before a turn begins: a duelist in trouble may reach for the card they need (once per duel).
+## You are asked; the computer decides for itself. Then the moment plays, and the Draw Phase
+## that follows draws that card.
+func _destiny_step() -> void:
+	var p: int = state.current
+	if "--destiny-dbg" in OS.get_cmdline_user_args():
+		print("DDBG p ", p, " can ", state.can_destiny(p), " on ", state.destiny, " who ", state.destiny_who, " used ", state.destiny_used, " turn ", state.turn, " lp ", state.players[p].lp, " skip ", state.players[p].skip_draw, " fin ", _finished)
+	if not state.can_destiny(p) or _finished:
+		return
+	var pick = null
+	if p == ME and not _autoplay:
+		if _human_test:
+			pick = state.players[ME].deck[randi() % state.players[ME].deck.size()]
+		else:
+			_lumen("destiny")
+			if not await hud.ask_destiny():
+				return
+			var seen := {}
+			var opts: Array = []
+			for c in state.players[ME].deck:
+				if not seen.has(c.cname()):
+					seen[c.cname()] = true
+					opts.append(c)
+			var rank := func(c) -> int: return 0 if c.is_monster() else (1 if c.is_spell() else 2)
+			opts.sort_custom(func(a, b): return rank.call(a) < rank.call(b) if rank.call(a) != rank.call(b) else (a.atk() > b.atk() if a.is_monster() and a.atk() != b.atk() else a.cname() < b.cname()))
+			pick = await hud.ask_pick(Loc.t("Destiny Draw: choose the card you draw"), opts, "Draw this card", "Not now")
+			if pick == null:
+				return
+	else:
+		pick = DuelAI.pick_destiny(state, p)
+	if pick == null or not state.set_destiny(p, pick):
+		return
+	_destiny_card = pick
+	print("DESTINY ", p, " ", pick.cname())
+	if _autoplay or (_human_test and not "--destiny-show" in OS.get_cmdline_user_args()):
+		return
+	hud.hide_actions()
+	var who_name: String = state.players[p].name
+	board.duelist_body(p, "draw")
+	await DestinyShow.play(hud, {
+		"side": p, "key": str(hud.portrait_keys[p]), "who": who_name,
+		"color": UITheme.ACCENT if p == ME else Comic.RED,
+		"back": Cards.duel_back(p), "face": Cards.get_face(pick.id) if p == ME else null, "name": pick.cname() if p == ME else "",
+		"spirit": LumenSpirit.portrait(self) if (p == ME and _me_key == "player" and LumenBubble.with_you()) else null,
+	})
+	if p == AI:
+		_lumen("their_destiny")
+
+
+## Dev: the Destiny Draw offer ("--demo-destiny=ask") or the moment itself, stopped at a stage
+## ("deck", "lift", "title", "face"; "opp..." for the opponent's).
+func _demo_destiny(stage: String) -> void:
+	await get_tree().create_timer(1.0).timeout
+	if stage == "ask":
+		hud.ask_destiny()
+		return
+	var theirs := stage.begins_with("opp")
+	var dc = state.players[AI if theirs else ME].deck[0]
+	for c in state.players[ME].deck:
+		if c.is_monster() and c.level() >= 7:
+			dc = c
+	var dp := AI if theirs else ME
+	DestinyShow.play(hud, {"side": dp, "key": str(hud.portrait_keys[dp]), "who": state.players[dp].name, "color": UITheme.ACCENT if dp == ME else Comic.RED,
+		"back": Cards.duel_back(dp), "face": null if theirs else Cards.get_face(dc.id), "name": dc.cname(),
+		"spirit": null if theirs else LumenSpirit.portrait(self), "freeze": stage.trim_prefix("opp")})
+
+
 func _loop() -> void:
+	if "--count-meshes" in OS.get_cmdline_user_args():
+		# Dev: what the duel scene is made of, by branch (each MeshInstance3D is at least one draw call).
+		var tally := {}
+		for mi in find_children("*", "GeometryInstance3D", true, false):
+			if not (mi as GeometryInstance3D).is_visible_in_tree():
+				continue
+			var path := str(get_path_to(mi)).split("/")
+			var key := "/".join(path.slice(0, mini(3, path.size() - 1)))
+			tally[key] = int(tally.get(key, 0)) + 1
+		var keys := tally.keys()
+		keys.sort_custom(func(a, b): return int(tally[a]) > int(tally[b]))
+		var all_n := 0
+		for k in keys:
+			all_n += int(tally[k])
+		print("MESHES TOTAL ", all_n, " in ", keys.size(), " branches")
+		var kinds := {}
+		var mats := {}
+		for mi in find_children("*", "MeshInstance3D", true, false):
+			if (mi as MeshInstance3D).is_visible_in_tree() and (mi as MeshInstance3D).mesh != null and mi.get_parent().name == "Arena":
+				var kc := (mi as MeshInstance3D).mesh.get_class() + ("+kids" if mi.get_child_count() > 0 else "")
+				var mm: Material = (mi as MeshInstance3D).material_override if (mi as MeshInstance3D).material_override else (mi as MeshInstance3D).mesh.surface_get_material(0)
+				kc += " " + (mm.get_class() if mm else "nomat") + (" glow" if mm is BaseMaterial3D and (mm as BaseMaterial3D).emission_enabled else "") + (" alpha" if mm is BaseMaterial3D and (mm as BaseMaterial3D).transparency != 0 else "")
+				kinds[kc] = int(kinds.get(kc, 0)) + 1
+				if mm:
+					mats[mm.get_instance_id()] = true
+		print("MESHES in Arena by kind ", kinds, " distinct materials ", mats.size())
+		for k in keys.slice(0, 8):
+			print("MESHES ", tally[k], "  ", k)
+		get_tree().quit()
+		return
+	for da in OS.get_cmdline_user_args():
+		if da.begins_with("--demo-destiny"):
+			_demo_destiny(da.trim_prefix("--demo-destiny").trim_prefix("="))
+			return
 	while not state.is_over():
 		# Draw Phase, Standby Phase, then Main Phase 1. Both players may act in each.
+		await _destiny_step()
 		await _act("begin_turn", [true])
 		if state.is_over():
 			break
@@ -575,9 +692,14 @@ func _finish() -> void:
 	elif not _autoplay:
 		Profile.record_result(won)
 		var my_lp: int = state.players[ME].lp
-		earned = Collection.reward(won and not _surrendered, _ai_level, {"opponent": _opp_key, "lp": my_lp,
+		var rinfo := {}
+		if Router.duel_config.has("stake"):
+			rinfo["stake"] = int(Router.duel_config["stake"])   # what they put on the line when they challenged you
+		earned = Collection.reward(won and not _surrendered, _ai_level, rinfo.merged({"opponent": _opp_key, "lp": my_lp,
 			"flawless": my_lp >= int(_start_lp[ME]), "turns": state.turn,
-			"deck": str(Router.duel_config.get("opponent_deck", Characters.get_char(_opp_key).get("deck", ""))), "rare": bool(Router.duel_config.get("rare", false))})
+			"deck": str(Router.duel_config.get("opponent_deck", Characters.get_char(_opp_key).get("deck", ""))), "rare": bool(Router.duel_config.get("rare", false))}))
+		if won:
+			Router.duel_config.erase("stake")   # it changed hands: a rematch is not for the same card
 		var got := Collection.note_result(_opp_key, won and not _surrendered)
 		if got != "":
 			Router.toast(Loc.t("Third win over %s: their deck is now in My Decks.") % str(Characters.get_char(_opp_key).get("short", _opp_key)))
@@ -652,6 +774,7 @@ Match won: +%d Duel Points") % 200
 	hud.show_result(won, why, cfg.get("story", false), cfg.get("lose_ok", false), cfg.get("continue_label", "Continue Story"),
 			{"turns": state.turn, "lp": [state.players[ME].lp, state.players[AI].lp], "names": [state.players[ME].name, state.players[AI].name],
 			"reward": Collection.last_reward.duplicate() if earned > 0 else [], "earned": earned,
+			"prize": Collection.last_prize if (earned > 0 and won) else 0,
 			"free": not cfg.has("return_to") and not cfg.get("story", false), "draw": tied, "match": match_info})
 	_won = won
 
@@ -686,22 +809,54 @@ const LUMEN_SAYS := {
 	"ace_lost": ["Your ace... okay. Okay! We can still do this.", "It's fine! We have more cards! ...We have more cards, right?"],
 	"my_low": ["Your Life Points are low. I'm not worried. *bzzt* I'm a little worried.", "Careful! One more hit like that and we're done!"],
 	"their_low": ["They're almost out! One more push!", "They're on the ropes! Finish it!"],
+	"hit": ["Ow! That one hurt just to watch.", "Okay, that was a lot of Life Points. We still have the rest!"],
+	"direct": ["Right through! Nothing in the way!", "Direct hit! They felt that one!"],
+	"trap": ["A Trap! I KNEW that card looked shifty.", "They were waiting for that. Sneaky."],
+	"topdeck": ["No cards in hand... so the next one has to count. No pressure!", "Empty hand. This is where the good draws happen. Right? Right."],
+	"comeback": ["You're back in it! I never doubted you. *bzzt* Much.", "From almost nothing to THIS? That's my duelist!"],
+	"destiny": ["{player}. The Deck is listening. Ask it for the one card you need!", "This is it. One card can turn this around. Reach for it!"],
+	"their_destiny": ["They can do that too?! Okay. Okay. Stay sharp.", "That was THEIR big draw. Whatever it is, we can take it."],
 }
 var _lumen_box: LumenBubble
 var _lumen_said := {}
+var _lumen_3d: LumenSpirit        # her, floating by your panel (only when you duel as your own duelist)
+var _lumen_at := -100.0
+var _me_was_low := false
+
+
+## Your spirit comes to the duel with you: she floats by your panel and talks from there.
+func _bring_spirit() -> void:
+	if _autoplay or _me_key != "player" or not LumenBubble.with_you() or _lumen_3d != null:
+		return
+	var got: Array = LumenSpirit.floating(self)
+	_lumen_3d = got[1]
+	hud.show_spirit((got[0] as SubViewport).get_texture())
 
 
 func _lumen(kind: String) -> void:
 	if _autoplay or _lumen_said.has(kind) or not LumenBubble.with_you() or not LUMEN_SAYS.has(kind):
 		return
+	# The big moments always get a word; the small ones leave her some quiet in between.
+	var now := Time.get_ticks_msec() / 1000.0
+	var small: bool = kind in ["hit", "direct", "trap", "topdeck"]
+	if small and now - _lumen_at < 14.0:
+		return
 	if _lumen_box == null:
-		_lumen_box = LumenBubble.new(26.0, -330.0)
+		_lumen_box = LumenBubble.new(26.0, -380.0 if _lumen_3d != null else -330.0)
 		add_child(_lumen_box)
 	if _lumen_box.showing():
 		return
 	_lumen_said[kind] = true
+	_lumen_at = now
 	var lines: Array = LUMEN_SAYS[kind]
 	_lumen_box.say(str(lines[randi() % lines.size()]))
+	if _lumen_3d != null:
+		_lumen_3d.speak(2.4)
+		if kind in ["my_ace", "ace_down", "their_low", "destiny", "direct", "me", "comeback"]:
+			_lumen_3d.hop()
+		elif kind in ["their_ace", "my_low", "hit", "ace_lost", "their_destiny"]:
+			_lumen_3d.glitch(0.3)
+		hud.spirit_pop()
 
 
 func _talk(p: int, kind: String, chance := 1.0, min_gap := 2.5) -> void:
@@ -726,6 +881,8 @@ func _play_event(ev: Dictionary) -> void:
 		"turn":
 			var mine := p == ME
 			Sfx.play("turn")
+			if mine and state.players[ME].hand.is_empty() and state.turn > 2:
+				_lumen("topdeck")
 			if randf() < 0.45:
 				_talk(p, "turn", 1.0, 0.0)
 			await hud.banner("YOUR TURN" if mine else Loc.t("%s'S TURN") % state.players[AI].name.to_upper(),
@@ -741,6 +898,17 @@ func _play_event(ev: Dictionary) -> void:
 				if ph == DuelState.Phase.END and state.current == AI and randf() < 0.3:
 					_talk(AI, "taunt")
 		"draw":
+			if _destiny_card != null and ev["card"] == _destiny_card:
+				# The show already took this card off the Deck: it just lands in the hand.
+				_destiny_card = null
+				_update_counts()
+				if p == ME:
+					board.set_deck_count(p, int(ev["deck"]))
+					hud.add_hand_card(ev["card"])
+				else:
+					board.deal_fast = true
+					await board.anim_draw(p, ev["card"], ev["deck"])
+				return
 			_update_counts()
 			Sfx.play("draw", -6.0)
 			# The opening hands are dealt briskly; a draw during the duel takes its moment.
@@ -792,6 +960,8 @@ func _play_event(ev: Dictionary) -> void:
 		"activate":
 			if p == ME:
 				hud.remove_hand_card(ev["card"])
+			elif ev["card"].is_trap():
+				_lumen("trap")
 			hud.inspect(ev["card"])
 			Sfx.play("spell")
 			_talk(p, "spell", 0.3)
@@ -838,6 +1008,8 @@ func _play_event(ev: Dictionary) -> void:
 		"attack":
 			var atk_card = ev["card"]
 			var direct: bool = ev["target"] == null
+			if direct and p == ME:
+				_lumen("direct")
 			# Big swings get a cut-in instead of a bubble: the attacker's name, shouted.
 			# A signature monster calls its attack by name, with its own picture across the screen.
 			if not _autoplay and SummonShow.attack_name(atk_card.data) != "":
@@ -1019,9 +1191,12 @@ func _play_event(ev: Dictionary) -> void:
 				if p == AI and ev["lp"] <= 2000 and not _said_low:
 					_said_low = true
 					_talk(AI, "low", 1.0, 0.0)
-					_lumen("their_low")
+					_lumen("comeback" if _me_was_low else "their_low")
 				if p == ME and int(ev["lp"]) <= 2000 and int(ev["lp"]) > 0:
+					_me_was_low = true
 					_lumen("my_low")
+				elif p == ME and ev["delta"] <= -2000 and int(ev["lp"]) > 0:
+					_lumen("hit")
 				elif ev["delta"] <= -1000:
 					_talk(p, "hurt")
 					_talk(1 - p, "big_hit", 0.55)
@@ -1039,6 +1214,9 @@ func _feed_event(ev: Dictionary, p: int) -> void:
 	var cn := str(c.cname()) if c != null and c.has_method("cname") else ""
 	var theirs := p == AI
 	match str(ev["type"]):
+		"destiny":
+			if theirs:
+				hud.feed(p, "★", Loc.t("Destiny Draw: chose the card they drew"))
 		"summon":
 			if theirs:
 				hud.feed(p, "▲", Loc.t("Summoned %s  (%d ATK)") % [cn, int(c.atk())])
@@ -1081,6 +1259,7 @@ func _update_counts() -> void:
 		var ps := state.players[p]
 		hud.set_counts(p, ps.deck.size(), ps.hand.size(), ps.gy.size(), ps.banished.size())
 		hud.piles[p] = [ps.gy, ps.banished]
+		hud.set_destiny(p, 0 if not (state.destiny and state.destiny_who[p]) else (2 if state.destiny_used[p] else 1))
 		board.set_gy_count(p, ps.gy.size())
 
 
@@ -1201,6 +1380,7 @@ func _coach_line(extra_ready: int) -> String:
 
 
 func _clear_glows() -> void:
+	board.clear_picks()
 	for p in 2:
 		for m in state.players[p].monsters():
 			var c := board.card_for(m)
@@ -1365,7 +1545,7 @@ func _on_hand_card_pressed(inst, at: Vector2) -> void:
 	_menu_card = inst
 	hud.inspect(inst)
 	hud.focus_hand_card(inst)
-	at = hud.hand_card_anchor(inst)
+	at = hud.hand_menu_anchor(inst)
 	if inst.is_monster():
 		var can := state.can_normal_summon(ME, inst)
 		var need := state.tributes_needed(inst)
@@ -1376,11 +1556,11 @@ func _on_hand_card_pressed(inst, at: Vector2) -> void:
 			opts.push_front(["special_hand", "Special Summon", state.can_special_from_hand(ME, inst)])
 		if EffectRunner.fx(inst).has("hand_ignite"):
 			opts.append(["hand_fx", Loc.t("Effect: ") + Loc.t(str(EffectRunner.fx(inst)["hand_ignite"].get("label", "Discard it"))), state.can_hand_ignite(ME, inst)])
-		hud.show_actions(at, opts)
+		hud.show_actions(at, opts, true)
 	elif inst.is_trap():
-		hud.show_actions(at, [["set_st", "Set", state.can_set_st(ME, inst)]])
+		hud.show_actions(at, [["set_st", "Set", state.can_set_st(ME, inst)]], true)
 	else:
-		hud.show_actions(at, [["activate", "Activate", state.can_activate(ME, inst)], ["set_st", "Set", state.can_set_st(ME, inst)]])
+		hud.show_actions(at, [["activate", "Activate", state.can_activate(ME, inst)], ["set_st", "Set", state.can_set_st(ME, inst)]], true)
 
 
 func _on_action(action: String) -> void:
@@ -1469,12 +1649,17 @@ func _on_action(action: String) -> void:
 
 func _refresh_tribute() -> void:
 	var need := state.tributes_needed(_pending_card)
-	hud.show_prompt(Loc.t("Choose %d monster%s to tribute") % [need - _tributes.size(), "" if need - _tributes.size() == 1 else "s"])
+	if need == 1:
+		hud.show_prompt(Loc.t("Tap the monster you give up for %s") % _pending_card.cname())
+	else:
+		hud.show_prompt(Loc.t("Tap %d monsters to give up for %s   ·   %d of %d chosen") % [need, _pending_card.cname(), _tributes.size(), need])
 	_clear_glows()
 	for m in state.tributable(ME):
 		var c := board.card_for(m)
 		if c:
-			c.set_glow(true, UITheme.GOLD if _tributes.has(m) else UITheme.ACCENT)
+			c.set_glow(true, Color("5df07a") if _tributes.has(m) else UITheme.GOLD)
+	# The cards themselves say what to do: an arrow over each one you can give up.
+	board.show_picks(state.tributable(ME), _tributes, "TRIBUTE", "CHOSEN")
 
 
 func _on_board_card_clicked(card: Card3D) -> void:
@@ -1640,7 +1825,8 @@ func _refresh_materials() -> void:
 	for m in _material_candidates():
 		var c := board.card_for(m)
 		if c:
-			c.set_glow(true, Color("ffd23a") if _extra_sel.has(m) else UITheme.ACCENT)
+			c.set_glow(true, Color("5df07a") if _extra_sel.has(m) else UITheme.GOLD)
+	board.show_picks(_material_candidates(), _extra_sel, "TAP", "CHOSEN")
 
 
 func _toggle_material(inst) -> void:
@@ -2108,6 +2294,9 @@ func _demo_actions() -> void:
 	if "--demo-opp" in OS.get_cmdline_user_args():
 		hud.cut_in(1, "BLUE-EYES WHITE DRAGON", "Attack!", Comic.RED, 30.0)
 		return
+	if "--demo-deck" in OS.get_cmdline_user_args():
+		_on_deck_clicked()
+		return
 	if "--demo-clicks" in OS.get_cmdline_user_args():
 		# Click probe: what a press on a hand card costs, and how long the frames after it take.
 		await get_tree().create_timer(2.0).timeout
@@ -2133,6 +2322,42 @@ func _demo_actions() -> void:
 			_menu_card = null
 			await get_tree().create_timer(0.3).timeout
 		return
+	for da in OS.get_cmdline_user_args():
+		if da.begins_with("--demo-tribute"):
+			# Dev: two monsters on your field and a big one in hand, stopped at "what do I give up".
+			var me = state.players[ME]
+			var z := 1
+			var put := []
+			for c in me.deck.duplicate():
+				if z > 2:
+					break
+				if c.is_monster() and c.level() <= 4:
+					me.deck.erase(c)
+					me.field[z] = c
+					c.face_up = true
+					c.attack_pos = true
+					put.append(c)
+					await board.anim_summon(ME, c, z, false)
+					z += 1
+			board.sync_holos(state)
+			var big = null
+			for want in [2, 1]:
+				for c in me.hand + me.deck:
+					if big == null and c.is_monster() and state.tributes_needed(c) == want:
+						big = c
+			if big == null:
+				return
+			if not me.hand.has(big):
+				me.deck.erase(big)
+				me.hand.append(big)
+			_refresh()
+			await get_tree().create_timer(1.5).timeout
+			mode = "tribute"
+			_pending_card = big
+			_pending_set = false
+			_tributes = [put[0]] if da.ends_with("=1") and not put.is_empty() else []
+			_refresh_tribute()
+			return
 	if "--demo-drop" in OS.get_cmdline_user_args():
 		for c in state.players[ME].hand:
 			if c.is_monster() and not _drop_plan(c).is_empty():
