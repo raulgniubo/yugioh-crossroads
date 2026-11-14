@@ -153,13 +153,21 @@ static func admin_on(pin: String) -> bool:
 	var cfg := ConfigFile.new()
 	cfg.load("user://admin.cfg")
 	cfg.set_value("admin", "on", true)
+	cfg.set_value("admin", "known", true)
 	cfg.save("user://admin.cfg")
 	admin = true
 	return true
 
 
+## Has the right PIN been typed on this computer before? Then the switch needs no PIN again.
+static func pin_known() -> bool:
+	var cfg := ConfigFile.new()
+	return cfg.load("user://admin.cfg") == OK and bool(cfg.get_value("admin", "known", false))
+
+
 static func admin_off() -> void:
 	var cfg := ConfigFile.new()
+	cfg.load("user://admin.cfg")
 	cfg.set_value("admin", "on", false)
 	cfg.save("user://admin.cfg")
 	admin = false

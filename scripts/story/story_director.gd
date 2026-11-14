@@ -421,7 +421,14 @@ func _place(st: Dictionary, instant := false) -> void:
 	if st.get("hollow", false):
 		_make_hollow(fig)
 	if not instant and st.has("from"):
-		_moving.append([fig, at, 3.6 if st.get("run", false) else 1.7, face])
+		# An entrance is a few steps, not a hike: nobody starts more than 6 m out ("far" keeps
+		# the full walk for the rare scene that wants it). The walk is at most about three seconds.
+		var start: Vector3 = st["from"]
+		if not st.get("far", false) and start.distance_to(at) > 6.0:
+			start = at + (start - at).normalized() * 6.0
+			start.y = (st["from"] as Vector3).y
+			fig.position = start
+		_moving.append([fig, at, 3.6 if st.get("run", false) else 2.0, face])
 	elif not instant and not st.get("hollow", false):
 		# Pop in with a little scale-up so nobody just appears.
 		var s := fig.scale
@@ -520,7 +527,13 @@ func _run() -> void:
 		elif st.has("actor"):
 			_place(st)
 			if st.has("from") and st.get("wait", true):
-				await _until_arrived(_actors[str(st["actor"])])
+				# Somebody walks in. The last line leaves the screen and the camera turns to them,
+				# so it never looks as if the game stopped listening.
+				_box.visible = false
+				var comer: Node3D = _actors[str(st["actor"])]
+				if _dir.is_empty() and not _skip:
+					_shot_for(str(st["actor"]), true)
+				await _until_arrived(comer)
 		elif st.has("move"):
 			var f = _actors.get(str(st["move"]))
 			if f:

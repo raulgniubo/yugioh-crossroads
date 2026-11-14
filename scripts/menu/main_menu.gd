@@ -273,12 +273,16 @@ func _build_featured() -> void:
 		holder.add_child(tex)
 		tex.size = sz
 		tex.position = home
+		var tex2: TextureRect = tex.duplicate()
+		tex2.material = _fade_mat().duplicate()
+		tex2.modulate.a = 0.0
+		holder.add_child(tex2)
 		var tag := Control.new()
 		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tag.position = Vector2(cx, home.y + sz.y - 114.0)
 		tag.draw.connect(_draw_name_tag.bind(tag))
 		holder.add_child(tag)
-		_line[i] = {"tex": tex, "tag": tag, "key": "", "home": home, "pool": pools[i], "at": 0, "dim": 0.82 if sc < 1.0 else 1.0}
+		_line[i] = {"tex": tex, "tex2": tex2, "tag": tag, "key": "", "home": home, "pool": pools[i], "at": 0, "dim": 0.82 if sc < 1.0 else 1.0}
 	for i in LINEUP:
 		_set_lineup(i, str((_line[i]["pool"] as Array)[0]), true)
 	var t := Timer.new()
@@ -347,16 +351,32 @@ func _set_lineup(i: int, key: String, instant: bool) -> void:
 		tw0.tween_property(tex, "modulate:a", 1.0, 0.3).set_delay(0.1 + i * 0.05)
 		tw0.tween_property(tag, "modulate:a", 1.0, 0.25).set_delay(0.25 + i * 0.05)
 		return
-	# A clean swap: the duelist goes to a dark silhouette, the next one steps into it, and
-	# the light comes back up. Nobody is ever see-through.
-	Portraits.get_portrait(key)            # start drawing the next face now
+	# The next duelist fades in over the one who is leaving, with a small step in from the side.
+	# The picture is asked for a moment early, so it is fully drawn before anyone sees it.
+	var nxt: TextureRect = slot["tex2"]
+	nxt.texture = Portraits.get_portrait(key, true)
+	nxt.material.set_shader_parameter("dim", slot["dim"])
+	nxt.modulate.a = 0.0
+	nxt.position = home + Vector2(26, 0)
 	var tw := create_tween()
-	tw.tween_method(func(v: float): mat.set_shader_parameter("shade", v), 0.0, 1.0, 0.2)
-	tw.parallel().tween_property(tag, "modulate:a", 0.0, 0.15)
-	tw.tween_callback(swap)
-	tw.tween_interval(0.16)
-	tw.tween_method(func(v: float): mat.set_shader_parameter("shade", v), 1.0, 0.0, 0.3)
-	tw.parallel().tween_property(tag, "modulate:a", 1.0, 0.25)
+	tw.tween_interval(0.35)
+	tw.tween_property(tag, "modulate:a", 0.0, 0.18)
+	tw.tween_callback(func():
+		slot["key"] = key
+		tag.set_meta("name", str(d.get("short", key)).to_upper())
+		tag.set_meta("color", Color(d.get("color", Comic.BLUE)))
+		tag.queue_redraw())
+	tw.set_parallel()
+	tw.tween_property(nxt, "modulate:a", 1.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(nxt, "position", home, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(tex, "modulate:a", 0.0, 0.45).set_delay(0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(tex, "position", home + Vector2(-20, 0), 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tw.tween_property(tag, "modulate:a", 1.0, 0.3).set_delay(0.2)
+	tw.set_parallel(false)
+	tw.tween_callback(func():
+		slot["tex"] = nxt
+		slot["tex2"] = tex
+		tex.texture = null)
 
 
 func _draw_name_tag(c: Control) -> void:
@@ -562,6 +582,7 @@ func _on_story() -> void:
 		cont.add_theme_font_size_override("font_size", 28)
 		cont.pressed.connect(func(): StoryDirector.begin(str(pos["chapter"]), true))
 		p.body.add_child(cont)
+	SavesUI.story_block(p.body, self)
 	p.add_section("Chapters")
 	var unlocked := StoryProgress.unlocked()
 	for c in StoryData.CHAPTERS:
@@ -595,8 +616,6 @@ func _on_story() -> void:
 		var bid := str(bd["id"])
 		bb.pressed.connect(func(): StoryDirector.begin(bid))
 		p.body.add_child(bb)
-	p.add_section("Saves and difficulty")
-	SavesUI.story_block(p.body, self)
 	add_child(p)
 	_open_panel(p)
 

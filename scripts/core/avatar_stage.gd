@@ -58,6 +58,9 @@ func setup(model: Node3D) -> void:
 const VIEW_H := 1.22
 const HEAD_AT := 0.5        # where the head bone sits in the picture (0 top, 1 bottom)
 const VIEW_MAX := 1.62
+## How much the picture shows, top to bottom, in meters (wider for tall hair). Small tiles use
+## it to zoom back in on the face.
+var view_h := VIEW_H
 
 
 func _frame() -> void:
@@ -81,6 +84,7 @@ func _frame() -> void:
 	view = maxf(view, (reach.y + 0.06) / HEAD_AT)
 	view = maxf(view, 2.0 * (reach.x + 0.05) / aspect)
 	view = minf(view, VIEW_MAX)
+	view_h = view
 	var look := head + Vector3(0, view * (0.5 - HEAD_AT), 0)
 	_head = look
 	# Which way does the face point? VRM 0.x faces -Z after import, 1.0 faces +Z.

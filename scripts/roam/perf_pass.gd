@@ -5,8 +5,15 @@ extends RefCounted
 ## lighting (and stop casting shadows) at a distance, and people far down the street are skipped.
 ## Every draw call saved here is saved again in each shadow pass.
 
+static var _level := 2
+
+
 static func apply(root: Node) -> Dictionary:
-	var k: float = [0.75, 0.9, 1.0, 1.35][clampi(int(Settings.gfx.get("detail", 2)), 0, 3)]
+	# "Ground detail" decides how much is traded away. Full (Ultra): nothing is hidden with
+	# distance and nothing loses its shadow or its roundness. More (High): things last much
+	# further than before. Some and Off: speed first.
+	_level = clampi(int(Settings.gfx.get("detail", 2)), 0, 3)
+	var k: float = [0.75, 0.9, 1.7, 3.0][_level]
 	var stats := {"small": 0, "noshadow": 0, "lights": 0, "people": 0}
 	stats["merged"] = merge_static(root)
 	_walk(root, stats, k, false)
@@ -120,7 +127,9 @@ static func _walk(n: Node, stats: Dictionary, k: float, in_person: bool) -> void
 			stats["lights"] += 1
 	elif n is GeometryInstance3D and not (n is Label3D) and not (n is SpriteBase3D) and not n.has_meta("far"):
 		var g := n as GeometryInstance3D
-		if person:
+		if _level >= 3:
+			pass                # Full: everything is drawn, however far or small
+		elif person:
 			# Somebody a block and a half away is a few pixels tall.
 			if g.visibility_range_end == 0.0:
 				g.visibility_range_end = 95.0 * k
@@ -129,7 +138,8 @@ static func _walk(n: Node, stats: Dictionary, k: float, in_person: bool) -> void
 		elif g.visibility_range_end == 0.0 and (g is MeshInstance3D):
 			var size: Vector3 = g.get_aabb().size * g.global_transform.basis.get_scale().abs()
 			var big := maxf(size.x, maxf(size.y, size.z))
-			_round_less((g as MeshInstance3D).mesh, big, stats)
+			if _level <= 1:
+				_round_less((g as MeshInstance3D).mesh, big, stats)
 			if big > 0.0 and big < 3.2:
 				# Things that glow are seen from further off (a lamp at night), so they stay longer.
 				var far := clampf(big * 42.0, 40.0, 150.0) * k
@@ -139,7 +149,7 @@ static func _walk(n: Node, stats: Dictionary, k: float, in_person: bool) -> void
 				g.visibility_range_end_margin = 6.0
 				g.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 				stats["small"] += 1
-			if big > 0.0 and big < 0.75 and g.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON:
+			if big > 0.0 and big < (0.75 if _level <= 1 else 0.3) and g.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON:
 				g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				stats["noshadow"] += 1
 	for c in n.get_children():

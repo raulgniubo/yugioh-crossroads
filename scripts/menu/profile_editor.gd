@@ -1,10 +1,16 @@
 class_name ProfileEditor
 extends Control
-## Create or edit your duelist. A full-body 3D preview on the left turns as you choose a body,
-## a hairstyle, an outfit and your signature color. Every change shows at once, here and in the
-## world behind the editor.
+## Create or edit your duelist. A full-body 3D preview on the left turns as you choose. On the
+## right, five tabs: Body (type, age, height, skin, eyes), Hair (style and color), Outfit (the
+## clothes of each series, Duel Academy dorm colors, and the color of every piece), and You
+## (name, title, lines, card sleeve). Every change shows at once, here and in the world behind.
 
 signal closed
+
+## Everything the editor can change on the profile, so Cancel can put it all back.
+const FIELDS := ["duelist_name", "gender", "color_index", "look_body", "look_hair", "look_outfit", "look_height", "look_build",
+	"look_skin", "look_haircol", "look_eyes", "look_top", "look_bottom", "look_shoes", "title", "intro", "win_line"]
+const TABS := ["Body", "Hair", "Outfit", "You"]
 
 var _first_time := false
 var _name_edit: LineEdit
@@ -16,10 +22,15 @@ var _spin := 0.35
 var _auto_spin := false
 var _idle_t := 0.0
 var _drag := false
-var _rows := {}          # key -> [buttons]
-var _hair_row: HBoxContainer
+var _rows := {}          # profile field -> [buttons], lit when their index is the chosen one
+var _pages: Array = []   # one VBoxContainer per tab
+var _tab_btns: Array = []
+var _tab := 0
+var _hair_box: VBoxContainer
+var _outfit_box: VBoxContainer
 var _summary: Label
 var _before := {}
+var _sleeve_before := ""
 
 
 func _init(first_time := false) -> void:
@@ -29,9 +40,9 @@ func _init(first_time := false) -> void:
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	_before = {"name": Profile.duelist_name, "body": Profile.look_body, "hair": Profile.look_hair,
-			"outfit": Profile.look_outfit, "color": Profile.color_index, "gender": Profile.gender,
-			"height": Profile.look_height, "title": Profile.title, "intro": Profile.intro, "win": Profile.win_line, "sleeve": Settings.sleeve}
+	for f in FIELDS:
+		_before[f] = Profile.get(f)
+	_sleeve_before = Settings.sleeve
 	var dim := ColorRect.new()
 	dim.color = Color(0.01, 0.02, 0.04, 0.9)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -48,19 +59,140 @@ func _ready() -> void:
 	h.add_child(_build_preview())
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 10)
-	right.custom_minimum_size = Vector2(720, 0)
+	right.custom_minimum_size = Vector2(760, 0)
 	h.add_child(right)
 	right.add_child(UITheme.label("NEW DUELIST" if _first_time else "YOUR DUELIST", 54, Color.WHITE, UITheme.title_font()))
 	right.add_child(UITheme.label("This is you in the story, the cities and every duel.", 19, UITheme.TEXT_DIM))
-	# Everything you can change scrolls; the buttons under it stay put.
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 8)
+	right.add_child(tabs)
+	for i in TABS.size():
+		var tb := _toggle(str(TABS[i]))
+		tb.custom_minimum_size = Vector2(150, 52)
+		tb.add_theme_font_size_override("font_size", 24)
+		tb.pressed.connect(func(): _show_tab(i))
+		tabs.add_child(tb)
+		_tab_btns.append(tb)
+	# What you pick from scrolls; the tabs above and the buttons under it stay put.
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(720, 640)
+	scroll.custom_minimum_size = Vector2(760, 600)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	right.add_child(scroll)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
-	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(v)
+	var holder := VBoxContainer.new()
+	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(holder)
+	for i in TABS.size():
+		var page := VBoxContainer.new()
+		page.add_theme_constant_override("separation", 10)
+		page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		page.visible = false
+		holder.add_child(page)
+		_pages.append(page)
+	_page_body(_pages[0])
+	_page_hair(_pages[1])
+	_page_outfit(_pages[2])
+	_page_you(_pages[3])
+	_summary = UITheme.label("", 18, UITheme.GOLD, UITheme.semi_font())
+	_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	right.add_child(_summary)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	right.add_child(row)
+	if not _first_time:
+		var cancel := Button.new()
+		cancel.text = "Cancel"
+		cancel.custom_minimum_size = Vector2(0, 60)
+		cancel.pressed.connect(_cancel)
+		row.add_child(cancel)
+	var rnd := Button.new()
+	rnd.text = "Surprise me"
+	rnd.custom_minimum_size = Vector2(0, 60)
+	rnd.pressed.connect(_surprise)
+	row.add_child(rnd)
+	var save := Button.new()
+	save.text = "Start my journey" if _first_time else "Save"
+	save.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	save.custom_minimum_size = Vector2(0, 60)
+	save.add_theme_font_size_override("font_size", 28)
+	save.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.ACCENT, 0.3), UITheme.ACCENT, 14))
+	save.pressed.connect(_save)
+	row.add_child(save)
+	_rebuild_figure()
+	_show_tab(3 if _first_time else 0)
+	_refresh()
+	modulate.a = 0.0
+	create_tween().tween_property(self, "modulate:a", 1.0, 0.3)
+	await get_tree().process_frame
+	if _first_time:
+		_name_edit.grab_focus()
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--creator-tab="):
+			_show_tab(clampi(int(a.trim_prefix("--creator-tab=")), 0, TABS.size() - 1))
+
+
+func _show_tab(i: int) -> void:
+	_tab = i
+	for k in _pages.size():
+		(_pages[k] as Control).visible = k == i
+		(_tab_btns[k] as Button).set_pressed_no_signal(k == i)
+
+
+# ------------------------------------------------------------------ the tabs
+
+func _page_body(v: VBoxContainer) -> void:
+	_choice_row(v, "look_body", "BODY", ["Type A", "Type B"], func(i):
+		Profile.look_body = i
+		Profile.gender = i
+		_fill_hair()
+		_fill_outfits(), true)
+	var builds: Array = []
+	for b in HeroLook.BUILDS:
+		builds.append(str(b[0]))
+	_choice_row(v, "look_build", "AGE", builds, func(i): Profile.look_build = i, true)
+	var hnames: Array = []
+	for hh in HeroLook.HEIGHTS:
+		hnames.append(str(hh[0]))
+	_choice_row(v, "look_height", "HEIGHT", hnames, func(i): Profile.look_height = i, true, 138)
+	_swatches(v, "look_skin", "SKIN", HeroLook.SKIN)
+	_swatches(v, "look_eyes", "EYES", HeroLook.EYES)
+
+
+func _page_hair(v: VBoxContainer) -> void:
+	_hair_box = VBoxContainer.new()
+	_hair_box.add_theme_constant_override("separation", 10)
+	v.add_child(_hair_box)
+	_fill_hair()
+	_swatches(v, "look_haircol", "HAIR COLOR", HeroLook.HAIR)
+	var note := UITheme.label("The streak in your hair follows your signature color (Outfit tab).", 16, UITheme.TEXT_DIM)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(note)
+
+
+func _page_outfit(v: VBoxContainer) -> void:
+	_outfit_box = VBoxContainer.new()
+	_outfit_box.add_theme_constant_override("separation", 10)
+	v.add_child(_outfit_box)
+	_fill_outfits()
+	v.add_child(_section("SIGNATURE COLOR   ·   your trim, your hair streak, your name plate"))
+	var cr := HFlowContainer.new()
+	cr.add_theme_constant_override("h_separation", 10)
+	cr.add_theme_constant_override("v_separation", 10)
+	v.add_child(cr)
+	var cbtns: Array = []
+	for i in Profile.COLORS.size():
+		var b := _swatch(Profile.COLORS[i], Loc.t(str(Profile.COLOR_NAMES[i])))
+		b.pressed.connect(func():
+			Profile.color_index = i
+			_recolor())
+		cr.add_child(b)
+		cbtns.append(b)
+	_rows["color_index"] = cbtns
+	_swatches(v, "look_top", "TOP", HeroLook.CLOTH)
+	_swatches(v, "look_bottom", "BOTTOM", HeroLook.CLOTH)
+	_swatches(v, "look_shoes", "SHOES", HeroLook.CLOTH)
+
+
+func _page_you(v: VBoxContainer) -> void:
 	v.add_child(_section("NAME"))
 	_name_edit = LineEdit.new()
 	_name_edit.text = "" if _first_time else Profile.duelist_name
@@ -69,42 +201,6 @@ func _ready() -> void:
 	_name_edit.add_theme_font_size_override("font_size", 28)
 	_name_edit.text_changed.connect(func(_t): _refresh())
 	v.add_child(_name_edit)
-	_choice_row(v, "body", "BODY", ["Type A", "Type B"], func(i):
-		Profile.look_body = i
-		Profile.gender = i
-		_fill_hair())
-	v.add_child(_section("HAIR"))
-	_hair_row = HBoxContainer.new()
-	_hair_row.add_theme_constant_override("separation", 10)
-	v.add_child(_hair_row)
-	_fill_hair()
-	_choice_row(v, "outfit", "OUTFIT", Profile.HERO_OUTFITS, func(i): Profile.look_outfit = i)
-	var hnames: Array = []
-	for hh in Profile.HEIGHTS:
-		hnames.append(str(hh[0]))
-	_choice_row(v, "height", "HEIGHT", hnames, func(i): Profile.look_height = i)
-	v.add_child(_section("SIGNATURE COLOR   ·   repaints your outfit and hair streak"))
-	var cr := HFlowContainer.new()
-	cr.add_theme_constant_override("h_separation", 10)
-	cr.add_theme_constant_override("v_separation", 10)
-	v.add_child(cr)
-	var cbtns: Array = []
-	for i in Profile.COLORS.size():
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(50, 50)
-		b.toggle_mode = true
-		b.tooltip_text = Profile.COLOR_NAMES[i]
-		var c: Color = Profile.COLORS[i]
-		for st in ["normal", "hover", "pressed", "focus", "hover_pressed"]:
-			var sb := UITheme.button_box(c, Color.WHITE if st in ["pressed", "hover_pressed", "focus"] else Color(c, 0.0), 25)
-			sb.set_border_width_all(4)
-			b.add_theme_stylebox_override(st, sb)
-		b.pressed.connect(func():
-			Profile.color_index = i
-			_changed())
-		cr.add_child(b)
-		cbtns.append(b)
-	_rows["color"] = cbtns
 	# Who you are on the name plate, and what you say.
 	v.add_child(_section("TITLE   ·   shown under your name"))
 	var title_pick := OptionButton.new()
@@ -174,44 +270,28 @@ func _ready() -> void:
 			Sfx.play("card", -8.0))
 		sl_btns.append([sbn, sid])
 		sl_row.add_child(sbn)
-	_summary = UITheme.label("", 18, UITheme.GOLD, UITheme.semi_font())
-	right.add_child(_summary)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	right.add_child(row)
-	if not _first_time:
-		var cancel := Button.new()
-		cancel.text = "Cancel"
-		cancel.custom_minimum_size = Vector2(0, 60)
-		cancel.pressed.connect(_cancel)
-		row.add_child(cancel)
-	var rnd := Button.new()
-	rnd.text = "Surprise me"
-	rnd.custom_minimum_size = Vector2(0, 60)
-	rnd.pressed.connect(func():
-		Profile.look_body = randi() % 2
-		Profile.gender = Profile.look_body
-		Profile.look_hair = randi() % 2
-		Profile.look_outfit = randi() % 3
-		Profile.color_index = randi() % Profile.COLORS.size()
-		Profile.look_height = randi() % Profile.HEIGHTS.size()
-		_fill_hair()
-		_changed())
-	row.add_child(rnd)
-	var save := Button.new()
-	save.text = "Start my journey" if _first_time else "Save"
-	save.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	save.custom_minimum_size = Vector2(0, 60)
-	save.add_theme_font_size_override("font_size", 28)
-	save.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.ACCENT, 0.3), UITheme.ACCENT, 14))
-	save.pressed.connect(_save)
-	row.add_child(save)
-	_rebuild_figure()
-	_refresh()
-	modulate.a = 0.0
-	create_tween().tween_property(self, "modulate:a", 1.0, 0.3)
-	await get_tree().process_frame
-	_name_edit.grab_focus()
+
+
+func _surprise() -> void:
+	Profile.look_body = randi() % 2
+	Profile.gender = Profile.look_body
+	var hs := HeroLook.hairs(Profile.look_body)
+	Profile.look_hair = int(hs[randi() % hs.size()])
+	var os := _outfits_for_body()
+	Profile.look_outfit = int(os[randi() % os.size()])
+	Profile.color_index = randi() % Profile.COLORS.size()
+	Profile.look_height = 1 + randi() % 3
+	Profile.look_build = 1 + randi() % 2
+	Profile.look_skin = randi() % HeroLook.SKIN.size()
+	Profile.look_haircol = randi() % HeroLook.HAIR.size()
+	Profile.look_eyes = randi() % HeroLook.EYES.size()
+	# Clothes: mostly as the outfit was made, now and then a color of its own.
+	Profile.look_top = randi() % HeroLook.CLOTH.size() if randf() < 0.5 else 0
+	Profile.look_bottom = randi() % HeroLook.CLOTH.size() if randf() < 0.35 else 0
+	Profile.look_shoes = randi() % HeroLook.CLOTH.size() if randf() < 0.3 else 0
+	_fill_hair()
+	_fill_outfits()
+	_changed()
 
 
 # ------------------------------------------------------------------ 3D preview
@@ -241,16 +321,17 @@ func _build_preview() -> Control:
 	e.background_color = Color(0, 0, 0, 0)
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	e.ambient_light_color = Color(0.82, 0.88, 1.0)
-	e.ambient_light_energy = 0.75
-	e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	e.ambient_light_energy = 0.5
+	# Plain light, close to one to one: the color you press is the color you see on the figure.
+	e.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	we.environment = e
 	_stage.add_child(we)
 	var key := DirectionalLight3D.new()
-	key.light_energy = 1.25
+	key.light_energy = 0.72
 	key.rotation_degrees = Vector3(-28, 28, 0)
 	_stage.add_child(key)
 	var rim := DirectionalLight3D.new()
-	rim.light_energy = 0.9
+	rim.light_energy = 0.35
 	rim.light_color = Color(0.6, 0.85, 1.0)
 	rim.rotation_degrees = Vector3(-12, 155, 0)
 	_stage.add_child(rim)
@@ -339,44 +420,184 @@ func _toggle(text: String) -> Button:
 	return b
 
 
-func _choice_row(parent: Control, key: String, title: String, options: Array, setter: Callable) -> void:
+## A round color button. `c.a == 0` is the "as it was made" choice: a ring with a slash.
+func _swatch(c: Color, tip: String) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(48, 48)
+	b.toggle_mode = true
+	b.tooltip_text = tip
+	var own := c.a < 0.5
+	var fill := Color(0.09, 0.13, 0.22) if own else c
+	for st in ["normal", "hover", "pressed", "focus", "hover_pressed"]:
+		var lit: bool = st in ["pressed", "hover_pressed", "focus"]
+		var sb := UITheme.button_box(fill, Color.WHITE if lit else (Color(1, 1, 1, 0.28) if own or c.get_luminance() < 0.12 else Color(c, 0.0)), 24)
+		sb.set_border_width_all(4 if lit else 2)
+		b.add_theme_stylebox_override(st, sb)
+	if own:
+		b.text = "/"
+		b.add_theme_font_size_override("font_size", 24)
+		b.add_theme_color_override("font_color", Color(1, 1, 1, 0.6))
+	return b
+
+
+## A row of color buttons for one profile field. Colors only repaint the figure that is
+## standing there; nothing is loaded again, so trying them is instant.
+func _swatches(parent: Control, field: String, title: String, list: Array) -> void:
 	parent.add_child(_section(title))
-	var r := HBoxContainer.new()
-	r.add_theme_constant_override("separation", 10)
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 8)
+	flow.add_theme_constant_override("v_separation", 8)
+	parent.add_child(flow)
+	var btns: Array = []
+	for i in list.size():
+		var hex := str(list[i][1])
+		var b := _swatch(Color(0, 0, 0, 0) if hex == "" else Color(hex), Loc.t(str(list[i][0])))
+		b.pressed.connect(func():
+			Profile.set(field, i)
+			_recolor())
+		flow.add_child(b)
+		btns.append(b)
+	_rows[field] = btns
+
+
+func _choice_row(parent: Control, field: String, title: String, options: Array, setter: Callable, _rebuild := true, width := 196) -> void:
+	parent.add_child(_section(title))
+	var r := HFlowContainer.new()
+	r.add_theme_constant_override("h_separation", 10)
+	r.add_theme_constant_override("v_separation", 10)
 	parent.add_child(r)
 	var btns: Array = []
 	for i in options.size():
-		var b := _toggle(str(options[i]))
+		var b := _toggle(Loc.t(str(options[i])))
+		b.custom_minimum_size.x = width
 		b.pressed.connect(func():
 			setter.call(i)
 			_changed())
 		r.add_child(b)
 		btns.append(b)
-	_rows[key] = btns
+	_rows[field] = btns
 
 
 func _fill_hair() -> void:
-	for c in _hair_row.get_children():
-		_hair_row.remove_child(c)
+	if _hair_box == null:
+		return
+	for c in _hair_box.get_children():
+		_hair_box.remove_child(c)
 		c.queue_free()
+	_hair_box.add_child(_section("HAIRSTYLE"))
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 10)
+	flow.add_theme_constant_override("v_separation", 10)
+	_hair_box.add_child(flow)
+	var have := HeroLook.hairs(Profile.look_body)
+	if not have.has(Profile.look_hair):
+		Profile.look_hair = int(have[0])
 	var btns: Array = []
-	var names: Array = Profile.HERO_HAIR[Profile.look_body]
-	Profile.look_hair = clampi(Profile.look_hair, 0, names.size() - 1)
-	for i in names.size():
-		var b := _toggle(str(names[i]))
+	btns.resize(4)
+	for i in have:
+		var b := _toggle(Loc.t(str(HeroLook.HAIRS[Profile.look_body][i][0])))
 		b.pressed.connect(func():
 			Profile.look_hair = i
 			_changed())
-		_hair_row.add_child(b)
-		btns.append(b)
-	_rows["hair"] = btns
+		flow.add_child(b)
+		btns[i] = b
+	_rows["look_hair"] = btns
 
 
-## A look option changed: rebuild the preview and tell the rest of the game right away.
+## The outfits made for this body.
+func _outfits_for_body() -> Array:
+	var out: Array = []
+	var stem := "hero_m" if Profile.look_body == 0 else "hero_f"
+	for i in HeroLook.OUTFITS.size():
+		for n in [1, 2, 3, 4]:
+			if HeroLook.has_model("%s%d_%s" % [stem, n, HeroLook.OUTFITS[i][2]]):
+				out.append(i)
+				break
+	return out
+
+
+func _fill_outfits() -> void:
+	if _outfit_box == null:
+		return
+	for c in _outfit_box.get_children():
+		_outfit_box.remove_child(c)
+		c.queue_free()
+	_outfit_box.add_child(_section("OUTFIT   ·   one for every series"))
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 10)
+	flow.add_theme_constant_override("v_separation", 10)
+	_outfit_box.add_child(flow)
+	var have := _outfits_for_body()
+	if not have.has(Profile.look_outfit):
+		Profile.look_outfit = int(have[0])
+	var btns: Array = []
+	btns.resize(HeroLook.OUTFITS.size())
+	for i in have:
+		var o: Array = HeroLook.OUTFITS[i]
+		var b := _toggle("%s\n%s" % [Loc.t(str(o[0])), str(o[1])])
+		b.custom_minimum_size = Vector2(236, 76)
+		b.add_theme_font_size_override("font_size", 20)
+		b.pressed.connect(func():
+			Profile.look_outfit = i
+			_fill_outfits()
+			_changed())
+		flow.add_child(b)
+		btns[i] = b
+	_rows["look_outfit"] = btns
+	if bool(HeroLook.OUTFITS[Profile.look_outfit][3]):
+		# Duel Academy: the three dorms, one press each. The blazer takes the dorm's color.
+		_outfit_box.add_child(_section("DORM   ·   Duel Academy jackets"))
+		var dr := HBoxContainer.new()
+		dr.add_theme_constant_override("separation", 10)
+		_outfit_box.add_child(dr)
+		for d in HeroLook.DORMS:
+			var db := Button.new()
+			db.text = Loc.t(str(d[0]))
+			db.custom_minimum_size = Vector2(150, 54)
+			var dc := Color(str(d[1]))
+			db.add_theme_stylebox_override("normal", UITheme.button_box(Color(dc, 0.85), dc.lightened(0.3), 12))
+			db.add_theme_stylebox_override("hover", UITheme.button_box(dc, Color.WHITE, 12))
+			db.add_theme_color_override("font_color", Color.WHITE if dc.get_luminance() < 0.6 else Color(0.08, 0.08, 0.1))
+			db.add_theme_color_override("font_hover_color", Color.WHITE if dc.get_luminance() < 0.6 else Color(0.08, 0.08, 0.1))
+			var want := -1
+			for k in HeroLook.CLOTH.size():
+				if str(HeroLook.CLOTH[k][1]) == str(d[1]):
+					want = k
+			db.pressed.connect(func():
+				Profile.look_top = want
+				_recolor())
+			dr.add_child(db)
+		var plain := Button.new()
+		plain.text = Loc.t("Navy (as made)")
+		plain.custom_minimum_size = Vector2(190, 54)
+		plain.pressed.connect(func():
+			Profile.look_top = 0
+			_recolor())
+		dr.add_child(plain)
+
+
+## A model option changed (body, hairstyle, outfit, age, height): rebuild the preview and tell
+## the rest of the game right away.
 func _changed() -> void:
 	Sfx.play("card", -8.0)
 	Portraits._forget("player")
 	_rebuild_figure()
+	_refresh()
+	Profile.changed.emit()
+
+
+## A color changed: repaint the figure that is already there.
+func _recolor() -> void:
+	Sfx.play("card", -10.0)
+	var painted := false
+	if _figure and is_instance_valid(_figure) and _figure._model:
+		for n in [_figure._model] + _figure._model.find_children("*", "Node3D", true, false):
+			if n.has_meta("hero_mats"):
+				HeroLook.recolor(n, Profile, Profile.color())
+				painted = true
+	if not painted:
+		_rebuild_figure()
+	Portraits._forget("player")
 	_refresh()
 	Profile.changed.emit()
 
@@ -388,21 +609,25 @@ func _soft_change() -> void:
 
 
 func _refresh() -> void:
-	var current := {"body": Profile.look_body, "hair": Profile.look_hair, "outfit": Profile.look_outfit, "color": Profile.color_index, "height": Profile.look_height}
-	for key in _rows:
-		for i in (_rows[key] as Array).size():
-			if is_instance_valid(_rows[key][i]):
-				(_rows[key][i] as Button).set_pressed_no_signal(i == int(current[key]))
-	var n := _name_edit.text.strip_edges()
-	Profile.duelist_name = n if n != "" else "Duelist"
+	for field in _rows:
+		var chosen := int(Profile.get(field))
+		for i in (_rows[field] as Array).size():
+			var b = _rows[field][i]
+			if b != null and is_instance_valid(b):
+				(b as Button).set_pressed_no_signal(i == chosen)
+	if _name_edit:
+		var n := _name_edit.text.strip_edges()
+		Profile.duelist_name = n if n != "" else "Duelist"
 	if _summary:
-		_summary.text = "%s  ·  %s  ·  %s  ·  %s" % [Loc.t(str(Profile.HERO_HAIR[Profile.look_body][Profile.look_hair])),
-				Loc.t(str(Profile.HERO_OUTFITS[Profile.look_outfit])), Loc.t(str(Profile.COLOR_NAMES[Profile.color_index])), Profile.title_text()]
+		_summary.text = "%s  ·  %s  ·  %s  ·  %s  ·  %s" % [Loc.t(str(HeroLook.BUILDS[Profile.look_build][0])),
+				Loc.t(str(HeroLook.HAIRS[Profile.look_body][Profile.look_hair][0])),
+				Loc.t(str(HeroLook.OUTFITS[Profile.look_outfit][0])), Loc.t(str(Profile.COLOR_NAMES[Profile.color_index])), Profile.title_text()]
 
 
 func _save() -> void:
 	if _name_edit.text.strip_edges() == "":
 		Router.toast("Pick a name first")
+		_show_tab(3)
 		_name_edit.grab_focus()
 		return
 	Profile.duelist_name = _name_edit.text.strip_edges()
@@ -414,17 +639,9 @@ func _save() -> void:
 
 
 func _cancel() -> void:
-	Profile.duelist_name = _before["name"]
-	Profile.look_body = _before["body"]
-	Profile.look_hair = _before["hair"]
-	Profile.look_outfit = _before["outfit"]
-	Profile.color_index = _before["color"]
-	Profile.gender = _before["gender"]
-	Profile.look_height = _before["height"]
-	Profile.title = _before["title"]
-	Profile.intro = _before["intro"]
-	Profile.win_line = _before["win"]
-	Settings.sleeve = _before["sleeve"]
+	for f in FIELDS:
+		Profile.set(f, _before[f])
+	Settings.sleeve = _sleeve_before
 	Portraits._forget("player")
 	Profile.changed.emit()
 	_close()

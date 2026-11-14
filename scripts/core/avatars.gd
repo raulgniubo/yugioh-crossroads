@@ -815,9 +815,17 @@ func load_model(key: String) -> Node3D:
 		elif key == "player":
 			apply_tints(g)
 		if key == "player" and path.begins_with("res://"):
-			apply_hero_color(g, Profile.color(), Profile.look_outfit)
+			var parts := HeroLook.models(Profile.look_body, Profile.look_hair, Profile.look_outfit)
+			for a in OS.get_cmdline_user_args():
+				if a.begins_with("--force-head="):
+					parts["head"] = a.trim_prefix("--force-head=")      # dev: try a head swap
+			if HeroLook.has_model(str(parts["body"])):
+				HeroLook.apply(g, str(parts["body"]), str(parts["head"]), Profile, Profile.color())
+			else:
+				apply_hero_color(g, Profile.color(), Profile.look_outfit)
 		if UNIFORMS.has(key) and is_standin(key):
 			apply_uniform(g, DORM_COLORS[UNIFORMS[key]])
+		keep_whole(r)
 		return r
 	_register()
 	var gltf := GLTFDocument.new()
@@ -839,6 +847,7 @@ func load_model(key: String) -> Node3D:
 	_relax_pose(root)
 	if key == "player":
 		apply_tints(scene)
+	keep_whole(root)
 	return root
 
 
@@ -1329,7 +1338,7 @@ func portrait(key: String, hi := false) -> Texture2D:
 	if model == null:
 		return null
 	var vp := SubViewport.new()
-	vp.size = STAGE_SIZE
+	vp.size = stage_size()
 	vp.transparent_bg = true
 	vp.own_world_3d = true
 	vp.msaa_3d = Settings.small_view_msaa()
@@ -1347,6 +1356,21 @@ func portrait(key: String, hi := false) -> Texture2D:
 	return vp.get_texture()
 
 
+## The size every portrait is drawn at when it is not one of the few big ones. Bigger on High
+## and Ultra, so a tile that zooms in on a face stays crisp.
+func stage_size() -> Vector2i:
+	return Vector2i(768, 960) if int(Settings.gfx.get("detail", 2)) >= 2 else STAGE_SIZE
+
+
+## How many meters, top to bottom, the portrait of `key` shows (1.22 for most, more for tall hair).
+func portrait_view(key: String) -> float:
+	if _stages.has(key):
+		var stage: Node = (_stages[key] as SubViewport).get_child(0)
+		if stage and stage.get("view_h") != null:
+			return float(stage.get("view_h"))
+	return 1.22
+
+
 func _sharpen(key: String) -> void:
 	_hi.erase(key)
 	_hi.push_front(key)
@@ -1354,7 +1378,7 @@ func _sharpen(key: String) -> void:
 	while _hi.size() > HI_MAX:
 		var old: String = _hi.pop_back()
 		if _stages.has(old):
-			(_stages[old] as SubViewport).size = STAGE_SIZE
+			(_stages[old] as SubViewport).size = stage_size()
 			# A portrait that is holding its last frame has to draw once more at the new size.
 			if not _live.has(old):
 				(_stages[old] as SubViewport).render_target_update_mode = SubViewport.UPDATE_ONCE
@@ -1416,6 +1440,17 @@ func forget(key: String) -> void:
 		_stages.erase(key)
 
 
+## A character is always drawn with every triangle it has, at any distance: the renderer is
+## told never to pick a lighter version of its meshes (the bundled models carry some from
+## the import). A missing head is far worse than a few more triangles.
+func keep_whole(model: Node) -> void:
+	if model == null:
+		return
+	for mi in _meshes(model):
+		mi.lod_bias = 1000.0
+		mi.extra_cull_margin = maxf(mi.extra_cull_margin, 1.0)
+
+
 # ------------------------------------------------------------------ lighter versions for distance
 # Character models are loaded as they are: every figure is drawn with all of its triangles
 # even when it is a few pixels tall at the far end of the street. Here each heavy mesh gets
@@ -1429,6 +1464,11 @@ const LOD_MIN_TRIS := 5000
 
 
 func request_lods(model: Node) -> void:
+	# Off. The lighter versions came out broken on real machines: at a few steps away figures
+	# lost their heads and half their bodies. Characters are now always drawn whole (see
+	# keep_whole). The code stays for "--char-lods", to look into it one day.
+	if not "--char-lods" in OS.get_cmdline_user_args():
+		return
 	if model == null or _closing or DisplayServer.get_name() == "headless" or "--no-lods" in OS.get_cmdline_user_args():
 		return
 	for n in model.find_children("*", "MeshInstance3D", true, false):

@@ -24,7 +24,7 @@ var language := "en"
 var show_fps := false
 ## "Hold the frame rate": when the picture gets heavy the 3D view is drawn a little softer
 ## instead of slower, and sharpened again when there is room. `auto_k` is that factor.
-var hold_fps := true
+var hold_fps := false
 var auto_k := 1.0
 ## Frame rate: 0 = unlimited, -1 = match the screen (V-Sync), otherwise the cap.
 var fps_cap := 0
@@ -111,7 +111,8 @@ func apply_graphics() -> void:
 		[RenderingServer.SHADOW_QUALITY_HARD, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM][sh])
 	vp.positional_shadow_atlas_size = [1024, 1024, 2048, 4096][sh]
 	# How soon far-away models switch to their lighter versions (bigger = sooner = faster).
-	vp.mesh_lod_threshold = [5.0, 3.0, 2.0, 1.0][clampi(int(gfx.get("detail", 2)), 0, 3)]
+	# On Full nothing ever switches: every model is drawn with all it has.
+	vp.mesh_lod_threshold = [4.0, 2.0, 1.0, 0.0][clampi(int(gfx.get("detail", 2)), 0, 3)]
 	gfx_changed.emit()
 
 
@@ -264,6 +265,7 @@ func load_settings() -> void:
 	sleeve = str(cfg.get_value("game", "sleeve", sleeve))
 	show_fps = cfg.get_value("display", "show_fps", show_fps)
 	hold_fps = bool(cfg.get_value("display", "hold_fps", hold_fps))
+	_looks_first = bool(cfg.get_value("display", "looks_first", false))
 	if cfg.has_section_key("graphics", "preset"):
 		gfx_preset = int(cfg.get_value("graphics", "preset", gfx_preset))
 		gfx = (GFX_PRESETS[clampi(gfx_preset, 0, GFX_PRESETS.size() - 1)] as Dictionary).duplicate()
@@ -276,6 +278,13 @@ func load_settings() -> void:
 	elif cfg.has_section_key("display", "graphics"):
 		graphics = int(cfg.get_value("display", "graphics", 1))
 	fps_cap = int(cfg.get_value("display", "fps_cap", fps_cap))
+	if not _looks_first:
+		# Once, for settings saved before 0.29: the softening goes off. It is off unless you ask.
+		_looks_first = true
+		hold_fps = false
+
+
+var _looks_first := false
 
 
 func save_settings() -> void:
@@ -292,6 +301,7 @@ func save_settings() -> void:
 	cfg.set_value("game", "sleeve", sleeve)
 	cfg.set_value("display", "show_fps", show_fps)
 	cfg.set_value("display", "hold_fps", hold_fps)
+	cfg.set_value("display", "looks_first", true)
 	cfg.set_value("graphics", "preset", gfx_preset)
 	for k in gfx:
 		cfg.set_value("graphics", k, gfx[k])

@@ -26,8 +26,7 @@ func _on_profile() -> void:
 
 
 func _look_sig() -> String:
-	return str([Profile.gender, Profile.color_index, Profile.emblem, Profile.tints, Profile.look_body, Profile.look_hair,
-			Profile.look_outfit, Profile.look_height, Profile.duelist_name])
+	return str([Profile.gender, Profile.emblem, Profile.tints, Profile.look_sig(), Profile.duelist_name])
 
 
 func folder() -> String:

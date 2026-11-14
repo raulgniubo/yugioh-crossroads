@@ -103,7 +103,7 @@ static func open(parent: Node) -> SidePanel:
 		Settings.auto_k = 1.0
 		Settings.apply_graphics()
 		Settings.save_settings())
-	_row(disp, "Hold 60 FPS", "When a scene gets heavy the 3D picture is drawn a little softer instead of slower, and sharpened again when there is room.", hold)
+	_row(disp, "Hold 60 FPS", "Off by default: the picture always stays as sharp as your settings say. On, a heavy scene is drawn a little softer instead of dropping under 60, and sharpened again when there is room. It never limits how fast the game runs.", hold)
 	SavesUI.settings_block(func(title, help, control): _row(disp, title, help, control), parent)
 
 	_graphics_card(p)

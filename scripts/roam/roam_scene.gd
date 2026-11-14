@@ -573,7 +573,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		_yaw -= event.relative.x * 0.006
 		_pitch = clampf(_pitch - event.relative.y * 0.004, -1.1, 0.15)
 	if _talking:
-		if event.is_action_pressed("ui_accept") or (event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_E, KEY_SPACE]):
+		if event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_pause"):
+			# Esc (or B on a pad) always walks away from a conversation, whatever it is asking.
+			_end_talk()
+			get_viewport().set_input_as_handled()
+		elif event.is_action_pressed("ui_accept") or (event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_E, KEY_SPACE]):
 			if _dlg_buttons.get_child_count() == 0:
 				_advance()
 				get_viewport().set_input_as_handled()
@@ -1202,8 +1206,13 @@ func _update_near() -> void:
 			_map_full.inside = _inside
 
 
+var _talk_rest := 0.0          # the moment a talk ended; a key still going down must not start it again
+
+
 func _talk() -> void:
 	if _talking or _overlay_open:
+		return
+	if Time.get_ticks_msec() / 1000.0 - _talk_rest < 0.45:
 		return
 	if _near.is_empty():
 		if not _near_spot.is_empty():
@@ -1338,7 +1347,15 @@ func _show_line() -> void:
 		later.add_theme_font_size_override("font_size", 26)
 		later.pressed.connect(_end_talk)
 		_dlg_buttons.add_child(later)
-		duel_btn.grab_focus.call_deferred()
+		# Tapping through the lines must not land on "Duel!" by accident: the answer waits a
+		# moment before it can be pressed, and "Not now" is the one under your thumb.
+		duel_btn.disabled = true
+		later.disabled = true
+		get_tree().create_timer(0.5).timeout.connect(func():
+			if is_instance_valid(duel_btn) and is_instance_valid(later):
+				duel_btn.disabled = false
+				later.disabled = false
+				later.grab_focus())
 
 
 # ------------------------------------------------------------------ the card shop's regulars
@@ -1482,6 +1499,7 @@ func _advance() -> void:
 
 func _end_talk() -> void:
 	_talking = false
+	_talk_rest = Time.get_ticks_msec() / 1000.0
 	_dlg.visible = false
 	if _dlg_fig and is_instance_valid(_dlg_fig):
 		_dlg_fig.speak(false)
@@ -1719,6 +1737,24 @@ func _open_pause() -> void:
 		_close_pause()
 		open_decks())
 	v.add_child(decks)
+	var sett := Button.new()
+	sett.text = "Settings"
+	sett.custom_minimum_size = Vector2(320, 60)
+	sett.pressed.connect(func():
+		# Graphics, sound, controls: the same panel as on the main menu. How far things are
+		# drawn and how many people are about is decided when a world is built, so if one of
+		# those changed the world is built again right where you stand.
+		var before := [int(Settings.gfx.get("detail", 2)), int(Settings.gfx.get("people", 1))]
+		_close_pause()
+		var sp = SettingsPanel.open(_ui)
+		if sp != null and sp.has_signal("closed"):
+			sp.closed.connect(func():
+				var now := [int(Settings.gfx.get("detail", 2)), int(Settings.gfx.get("people", 1))]
+				if now != before and (story == null or not story._cut):
+					Router.roam["pos"] = _player.position
+					Router.roam["yaw"] = _yaw
+					Router.go(Router.ROAM)))
+	v.add_child(sett)
 	var menu := Button.new()
 	menu.text = "Main Menu"
 	menu.custom_minimum_size = Vector2(320, 60)

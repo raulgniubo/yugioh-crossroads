@@ -752,8 +752,9 @@ class BoxBatch:
 			mesh.surface_set_material(mesh.get_surface_count() - 1, m)
 		var mi := MeshInstance3D.new()
 		mi.mesh = mesh
-		if see > 0.0:
-			mi.visibility_range_end = see
+		var lvl := clampi(int(Settings.gfx.get("detail", 2)), 0, 3)
+		if see > 0.0 and lvl < 3:
+			mi.visibility_range_end = see * (1.7 if lvl == 2 else 1.0)
 			mi.visibility_range_end_margin = 6.0
 		parent.add_child(mi)
 		return mi
@@ -1248,7 +1249,8 @@ func _detail_chunk(mesh: Mesh, items: Array, mid: Vector3, see: float) -> void:
 	mi.multimesh = mm
 	mi.position = mid
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mi.visibility_range_end = see
+	# Grass and flowers: further on More, twice as far on Full.
+	mi.visibility_range_end = see * [1.0, 1.0, 1.4, 2.2][clampi(int(Settings.gfx.get("detail", 2)), 0, 3)]
 	mi.visibility_range_end_margin = 4.0
 	add_child(mi)
 

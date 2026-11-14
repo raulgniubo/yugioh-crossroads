@@ -433,7 +433,9 @@ func _draw_stage() -> void:
 		for i in 2:
 			var x := -190.0 if i == 0 else 190.0
 			var shown: int = _hand[i]
-			_draw_hand(_stage, c + Vector2(x, 10.0 + _hand_bob), 1.7 * float(_hand_pop[i]), shown if shown >= 0 else 0,
+			# Up in the open air above the field, so the duelist standing across from you is never
+			# hidden behind a hand.
+			_draw_hand(_stage, c + Vector2(x, -_stage.size.y * 0.2 + _hand_bob), 1.5 * float(_hand_pop[i]), shown if shown >= 0 else 0,
 					me_color if i == 0 else opp_color, 0.0 if i == 0 else PI, i == 1)
 	for s in _sparks:
 		var a := clampf(1.0 - (_t - s[3]) / 0.9, 0.0, 1.0)

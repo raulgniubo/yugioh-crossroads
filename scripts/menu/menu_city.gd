@@ -24,7 +24,7 @@ func _ready() -> void:
 	add_child(key)
 	_spawn_hero()
 	Profile.changed.connect(func():
-		if Profile.hero_key() + str(Profile.color_index) != _look:
+		if Profile.look_sig() != _look:
 			_spawn_hero())
 	_process(0.0)
 
@@ -32,7 +32,7 @@ func _ready() -> void:
 func _spawn_hero() -> void:
 	if _hero:
 		_hero.queue_free()
-	_look = Profile.hero_key() + str(Profile.color_index)
+	_look = Profile.look_sig()
 	_hero = RoamFigure.new()
 	add_child(_hero)
 	_hero.position = Vector3(8.3, 0.16, 8.9)

@@ -5,6 +5,24 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.29
+
+A repair build first: several things looked wrong in 0.27 and 0.28, and they are fixed here.
+
+- **Characters are whole again.** A speed trick from 0.26 swapped characters for lighter copies of themselves, and on a real machine those copies came out broken: missing heads at a few steps away, torn "lego" bodies up close. It is switched off. Every character is always drawn with its full model.
+- **Looks first.** Ultra takes no shortcuts: nothing is hidden with distance, nothing switches to a lighter model, small things keep their shadows and round things stay round. High keeps things in view much further than before. Only Low and Medium trade looks for speed. "Hold 60 FPS" (which softened the picture in heavy scenes) is off by default and is switched off once on existing settings. It never limited the frame rate; that is the separate "Frame rate" setting.
+- **Settings from inside a world.** Esc, then Settings. If you change how far things are drawn or how many people are about, the world is rebuilt right where you stand.
+- **A much bigger character creator.** Four tabs: Body (type, Kid / Teen / Grown-up, five heights, ten skin tones, eye color), Hair (style and sixteen colors), Outfit (one per series, the three Duel Academy dorm colors in one press, and your own color for the top, the bottom and the shoes, plus your signature color), and You (name, title, lines, card sleeve). Colors repaint the figure on the spot and keep the folds and shading of the clothes.
+- **Free Duel tiles** zoom in on the head and shoulders again, and portraits are drawn sharper on High and Ultra.
+- **The menu lineup** fades from one duelist to the next instead of going dark in between.
+- **Story panel:** difficulty, Save / Load and New Game sit in one row at the top, always in view.
+- **Admin mode** turns into an off switch the moment you unlock it, and needs no PIN after the first time.
+- **Story:** when somebody walks into a scene they start close, the last line leaves the screen and the camera turns to them. No more waiting on a frozen-looking screen.
+- **Talking to a duelist:** Esc always walks away. The Duel / Not now answer waits half a second, so skipping lines cannot start a duel by accident, and "Not now" is the highlighted one.
+- **Rock-paper-scissors:** the hands sit above the field, so the other duelist is not hidden behind them.
+
+Not in this build yet: the rest of the card rebuild (69 monsters and 14 Spells and Traps are still waiting), the card shop makeover, more hairstyles and outfits, and the models for the Curator, Vellum and Ren.
+
 ## What is in 0.28
 
 **Every card in the game now matches its printed text**

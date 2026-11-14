@@ -131,6 +131,16 @@ func _process(delta: float) -> void:
 	if _vs:
 		var s := 1.0 + sin(_t * 2.4) * 0.04
 		_vs.scale = Vector2(s, s)
+	# A tile zooms in on the face. How far depends on how wide that duelist's picture had to be
+	# for the hair, which is only known a moment after the picture is first asked for.
+	for z in _zoom_tiles:
+		if is_instance_valid(z):
+			_fit_tile(z as TextureRect, str((z as TextureRect).get_meta("key", "")))
+	if _zoom_t < 0.0:
+		_zoom_tiles.clear()
+	_zoom_t -= delta
+	if _zoom_tiles.is_empty():
+		_zoom_t = 1.5
 	# Portraits load a couple per frame, so the screen opens at once and fills in.
 	for i in 2:
 		if _pending.is_empty():
@@ -138,6 +148,8 @@ func _process(delta: float) -> void:
 		var job: Array = _pending.pop_front()
 		if is_instance_valid(job[0]):
 			(job[0] as TextureRect).texture = Portraits.get_portrait(job[1])
+			(job[0] as TextureRect).set_meta("key", job[1])
+			_zoom_tiles.append(job[0])
 			(job[0] as TextureRect).modulate.a = 0.0
 			create_tween().tween_property(job[0], "modulate:a", 1.0, 0.2)
 		_retouch = true
@@ -461,6 +473,23 @@ func _refresh_grid() -> void:
 		_grid.add_child(card)
 
 
+var _zoom_tiles: Array = []
+var _zoom_t := 1.5
+
+
+## Fill a roster tile with the duelist's head and shoulders. The portrait itself is framed wide
+## enough for the tallest hair, which left most faces small in a tile this size; here the
+## picture is scaled up so about 0.92 m shows top to bottom, with the head just above the middle.
+func _fit_tile(pt: TextureRect, key: String) -> void:
+	var zoom := 1.0
+	if Avatars.has_avatar(key):
+		zoom = clampf(Avatars.portrait_view(key) / 0.92, 1.0, 1.9)
+	var w := CELL.x * zoom
+	var h := w * 640.0 / 512.0
+	pt.size = Vector2(w, h)
+	pt.position = Vector2((CELL.x - w) / 2.0, (2.0 + CELL.x * 0.625) - h * 0.5 if zoom > 1.001 else 2.0)
+
+
 func _roster_card(key: String) -> Control:
 	var info := Portraits.info(key)
 	var ok := key == "player" or Characters.available(key)
@@ -493,8 +522,10 @@ func _roster_card(key: String) -> Control:
 		_pending.append([pt, key])
 	pt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	pt.stretch_mode = TextureRect.STRETCH_SCALE
-	pt.size = Vector2(CELL.x, CELL.x * 640.0 / 512.0)
-	pt.position = Vector2(0, 2)
+	pt.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	pt.set_meta("key", key)
+	_fit_tile(pt, key)
+	_zoom_tiles.append(pt)
 	pt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(pt)
 	var band := ColorRect.new()
