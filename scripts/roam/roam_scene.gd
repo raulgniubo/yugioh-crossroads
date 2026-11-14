@@ -57,6 +57,8 @@ var _overlay_open := false
 var extras: RoamExtras
 var _help: Label
 var story: StoryDirector          # set while a story chapter is being played in this world
+var quest: StoryDirector          # a chapter that is at "things to do yourself": rides along in the open world
+var quest_locked := false         # the list keeps you here for now: no doors, no travel
 var partner: Node3D                # Lumen, floating along (free roam)
 var _lights: Array = []        # every lamp in the world, for _cull_lights
 var _chat_turn := {}           # npc id -> how many times you have talked this visit
@@ -125,6 +127,14 @@ func _ready() -> void:
 		add_child(story)
 	else:
 		_after_duel()
+		# A chapter that has handed you a list of things to do comes along into the open world.
+		var qid := StoryDirector.quest_pending()
+		Router.roam["quest"] = qid
+		if qid != "":
+			quest = StoryDirector.new()
+			quest.scene = self
+			quest.free = true
+			add_child(quest)
 		# Lumen, your partner, floats along in the open world. (A story chapter stages its own.)
 		if str(district.get("builder", "")) != "museum":
 			var pal := Partner.new()
@@ -170,6 +180,7 @@ func _after_duel() -> void:
 		if n[0]["id"] == who:
 			if won:
 				_beaten[who] = true
+				StoryProgress.bump("street_wins")
 				_save_progress()
 				_refresh_marker(n)
 				if life and life.tourney:
@@ -582,9 +593,12 @@ func _cull_lights() -> void:
 				_lights.append(n)
 	var cam := get_viewport().get_camera_3d()
 	var here: Vector3 = cam.global_position if cam else _player.global_position
-	for l: Light3D in _lights:
-		if not is_instance_valid(l):
+	var dead := false
+	for li in _lights:
+		if not is_instance_valid(li):
+			dead = true
 			continue
+		var l: Light3D = li
 		var reach := 55.0
 		if l is OmniLight3D:
 			reach += (l as OmniLight3D).omni_range
@@ -596,6 +610,8 @@ func _cull_lights() -> void:
 				l.set_meta("want", l.visible)
 			l.set_meta("far", far)
 			l.visible = bool(l.get_meta("want")) and not far
+	if dead:
+		_lights = _lights.filter(func(x): return is_instance_valid(x))
 
 
 func _exit_tree() -> void:
@@ -862,6 +878,24 @@ func _add_npc(d: Dictionary, offset: Vector3) -> void:
 		var entry := [d, f, marker]
 		_npcs.append(entry)
 		_refresh_marker(entry)
+
+
+## The story has this person somewhere else right now: take their everyday self off the street.
+func hide_npcs(ids: Array) -> void:
+	var gone := false
+	for n in _npcs.duplicate():
+		var d: Dictionary = n[0]
+		if ids.has(str(d.get("id", ""))) or (str(d.get("char", "")) != "" and ids.has(str(d.get("char", "")))):
+			var fig = n[1]
+			_walkers = _walkers.filter(func(w): return w["fig"] != fig)
+			_wanderers = _wanderers.filter(func(w): return w["fig"] != fig)
+			if is_instance_valid(fig):
+				(fig as Node).queue_free()
+			_npcs.erase(n)
+			gone = true
+	if gone:
+		_near = {}
+		_refresh_map_people()
 
 
 func _refresh_map_people() -> void:
@@ -1355,6 +1389,10 @@ func _talk() -> void:
 		return
 	if _near.is_empty():
 		if not _near_spot.is_empty():
+			if quest_locked and not _near_spot.has("quest"):
+				Router.toast(Loc.t("Not yet. Finish what you came here for first."))
+				Sfx.play("error", -8.0)
+				return
 			Sfx.play("click")
 			(_near_spot["action"] as Callable).call()
 		return

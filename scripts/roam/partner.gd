@@ -231,6 +231,11 @@ func ask() -> void:
 
 
 func _what_next() -> String:
+	# The chapter has handed you things to do: she reads the next one off the list.
+	if scene.quest != null and is_instance_valid(scene.quest):
+		var todo: String = scene.quest.task_hint()
+		if todo != "":
+			return Loc.t("Next on the list: %s. The beacon is on it. Follow me!") % todo
 	# The story first, if a chapter is waiting.
 	var unlocked: Array = StoryProgress.unlocked()
 	var next := ""

@@ -211,6 +211,25 @@ func _fill() -> void:
 			for e in rows:
 				_list.add_child(_row(e))
 		"quests":
+			# The chapter's own list first.
+			if scene.quest != null and is_instance_valid(scene.quest):
+				var here := str(Router.roam.get("district", "domino"))
+				var rows: Array = scene.quest.task_rows(here, scene.quest._district_at(scene.quest.step))
+				var pc := PanelContainer.new()
+				pc.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.09, 0.08, 0.03, 0.9), 14, Color(UITheme.GOLD, 0.7)))
+				var sv := VBoxContainer.new()
+				sv.add_theme_constant_override("separation", 3)
+				pc.add_child(sv)
+				sv.add_child(UITheme.label(Loc.t("THE STORY"), 15, UITheme.GOLD, UITheme.semi_font()))
+				if scene.quest._task_title:
+					sv.add_child(UITheme.label(scene.quest._task_title.text, 22, Color.WHITE, UITheme.semi_font()))
+				for r in rows:
+					var done: bool = r[1] == "done"
+					var rl := UITheme.label(("✔  " if done else "•  ") + str(r[0]), 17, Color(0.55, 0.9, 0.62) if done else UITheme.TEXT)
+					rl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+					rl.custom_minimum_size = Vector2(500, 0)
+					sv.add_child(rl)
+				_list.add_child(pc)
 			for qd in extras.quest_rows():
 				_list.add_child(_quest_row(qd))
 		"travel":

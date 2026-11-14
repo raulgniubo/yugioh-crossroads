@@ -329,6 +329,9 @@ func fast_travel(pos: Vector3, title: String) -> void:
 func travel_world(key: String) -> void:
 	if key == _key:
 		return
+	if scene.quest_locked:
+		Router.toast(Loc.t("Not yet. Finish what you came here for first."))
+		return
 	if key == "highway":
 		Sfx.play("gong", -6.0)
 		Router.go(Router.RIDE)

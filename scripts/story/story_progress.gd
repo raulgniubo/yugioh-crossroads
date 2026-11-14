@@ -3,7 +3,7 @@ extends RefCounted
 ## Story save: unlocked chapters, current chapter + step, flags. user://story.cfg
 
 const PATH := "user://story.cfg"
-const SCRIPT_VERSION := 3      # bump when chapter scripts are restructured
+const SCRIPT_VERSION := 4      # bump when chapter scripts are restructured
 
 
 static func _load() -> ConfigFile:
@@ -93,6 +93,19 @@ static func remember(flag: String, value = true) -> void:
 	var m: Dictionary = cfg.get_value("story", "memory", {})
 	m[flag] = value
 	cfg.set_value("story", "memory", m)
+	cfg.save(PATH)
+
+
+## A running count the story can ask about ("street_wins": duels won against people in the worlds).
+static func count(key: String) -> int:
+	return int(_load().get_value("story", "counts", {}).get(key, 0))
+
+
+static func bump(key: String, by := 1) -> void:
+	var cfg := _load()
+	var c: Dictionary = cfg.get_value("story", "counts", {})
+	c[key] = int(c.get(key, 0)) + by
+	cfg.set_value("story", "counts", c)
 	cfg.save(PATH)
 
 

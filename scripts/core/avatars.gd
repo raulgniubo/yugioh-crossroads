@@ -51,6 +51,7 @@ const STANDINS := {
 	"yusei": "duelist_m13", "jack": "duelist_m14", "crow": "duelist_m15", "akiza": "duelist_f3", "kalin": "duelist_m16",
 	"yuma": "duelist_m17", "shark": "duelist_m18", "kite": "duelist_m19", "vector": "office_worker",
 	"kid": "street_duelist", "vendor": "shopkeeper", "grandpa": "shopkeeper", "guard": "office_worker", "lumen": "student_girl", "vesper": "stylish_woman", "curator": "shopkeeper", "aurel": "shopkeeper", "vellum": "duelist_m7", "ren": "duelist_m11", "boy_sol": "student_boy", "boy_aurel": "duelist_m11",
+	"dai": "student_boy",
 	"professor": "duelist_m3", "red_student": "student_boy", "yellow_student": "duelist_m4", "blue_student": "duelist_m7",
 }
 ## Duel Academy jackets. Painted over stand-in models only, never over a model you supplied.

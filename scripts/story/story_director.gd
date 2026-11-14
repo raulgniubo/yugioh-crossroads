@@ -20,6 +20,15 @@ extends Node
 ##   {"end": title, "unlock": id}
 
 var scene                       # RoamScene
+var free := false               # riding along in the open world: the chapter is at a list of things to do yourself
+var _in_task := false           # a task's conversation is playing
+var _tasks: Array = []          # the list being worked through (free mode)
+var _task_done := {}            # "index" -> true
+var _task_nodes := {}           # index -> [nodes placed for it]
+var _task_box: PanelContainer
+var _task_list: VBoxContainer
+var _task_title: Label
+var _task_sig := ""
 var chapter := ""
 var step := 0
 var flags := {}
@@ -88,6 +97,8 @@ var _lead_to = null            # where Lumen is leading you (Vector3) while a go
 func _ready() -> void:
 	_auto = "--story-auto" in OS.get_cmdline_user_args()
 	chapter = str(Router.roam.get("story", ""))
+	if free:
+		chapter = str(Router.roam.get("quest", ""))
 	_steps = StoryData.SCRIPTS.get(chapter, [])
 	var pos := StoryProgress.position()
 	if str(pos["chapter"]) == chapter:
@@ -116,6 +127,18 @@ func _ready() -> void:
 		if who != "" and who != "player" and not seen.has(who) and seen.size() < 4:
 			seen[who] = true
 			Portraits.get_portrait(who)
+	if free:
+		# Back from a duel that one of the things to do asked for.
+		if Router.story_result != "" and flags.has("_duel_task"):
+			var ti := str(flags["_duel_task"])
+			flags.erase("_duel_task")
+			if Router.story_result == "won":
+				flags["_after_task"] = ti
+			else:
+				flags["_lost_" + ti] = true
+			Router.story_result = ""
+		_run.call_deferred()
+		return
 	# Coming back from a story duel: note how it went and move on.
 	if Router.story_result != "":
 		flags.erase("won")
@@ -507,80 +530,94 @@ func _run() -> void:
 				if a.begins_with("--story-until=") and step > int(a.trim_prefix("--story-until=")):
 					get_tree().quit()
 					return
-		if st.has("echo"):
-			await _echo(st)
-		elif st.has("shot") and not st.has("t"):
-			await _shot_step(st)
-		elif st.has("cap") and not st.has("t"):
-			await _cap_step(st)
-		elif st.has("credits"):
-			await _credits(st)
-		elif st.has("remember"):
-			StoryProgress.remember(str(st["remember"]))
-		elif st.has("music"):
-			Music.play(str(st["music"]))
-		elif st.has("sfx") and not st.has("t") and not st.has("act"):
-			Sfx.play(str(st["sfx"]), float(st.get("vol", -5.0)), float(st.get("pitch", 1.0)))
-		elif st.has("turn"):
-			_turn(st)
-		elif st.has("scene"):
-			if await _do_scene(st):
-				return
-		elif st.has("actor"):
-			_place(st)
-			if st.has("from") and st.get("wait", true):
-				# Somebody walks in. The last line leaves the screen and the camera turns to them,
-				# so it never looks as if the game stopped listening.
-				_box.visible = false
-				var comer: Node3D = _actors[str(st["actor"])]
-				if _dir.is_empty() and not _skip:
-					_shot_for(str(st["actor"]), true)
-				await _until_arrived(comer)
-		elif st.has("move"):
-			var f = _actors.get(str(st["move"]))
-			if f:
-				_moving.append([f, st["to"], 3.8 if st.get("run", false) else 1.8, st.get("face", null)])
-				if st.get("wait", false):
-					await _until_arrived(f)
-		elif st.has("gone"):
-			_remove(str(st["gone"]))
-		elif st.has("t"):
-			await _say(st)
-		elif st.has("choice"):
-			await _choose(st["choice"])
-		elif st.has("goal"):
-			StoryProgress.save_position(chapter, step, flags)
-			await _do_goal(st)
-		elif st.has("duel"):
-			if _auto and not "--story-duel" in OS.get_cmdline_user_args():
-				if "--story-versus" in OS.get_cmdline_user_args():
-					_cutscene(true)
-					_box.visible = false
-					await _versus(str(st["duel"]["opponent"]))
-					await _snap("vs")
-					_ui.get_child(_ui.get_child_count() - 1).queue_free()
-					_cut = true
-				flags["won"] = true
-				print("STORY: duel skipped (auto) vs ", st["duel"]["opponent"])
-			else:
-				_start_duel(st["duel"])
-				return
-		elif st.has("act"):
-			await _act_step(st)
-		elif st.has("fx"):
-			await _fx(st)
-		elif st.has("tod"):
-			scene.city.apply_tod(str(st["tod"]))
-		elif st.has("bond"):
-			await _bond(st)
-		elif st.has("wait"):
-			if not _skip:
-				await get_tree().create_timer(float(st["wait"])).timeout
-		elif st.has("end"):
-			await _end(st)
+		if await _do_step(st):
 			return
 		step += 1
 	_leave()
+
+
+## Play one step. Returns true when the scene is being replaced (a duel, another world, the end)
+## and nothing more must run here.
+func _do_step(st: Dictionary) -> bool:
+	if st.has("echo"):
+		await _echo(st)
+	elif st.has("shot") and not st.has("t"):
+		await _shot_step(st)
+	elif st.has("cap") and not st.has("t"):
+		await _cap_step(st)
+	elif st.has("credits"):
+		await _credits(st)
+	elif st.has("remember"):
+		StoryProgress.remember(str(st["remember"]))
+	elif st.has("music"):
+		Music.play(str(st["music"]))
+	elif st.has("sfx") and not st.has("t") and not st.has("act"):
+		Sfx.play(str(st["sfx"]), float(st.get("vol", -5.0)), float(st.get("pitch", 1.0)))
+	elif st.has("turn"):
+		_turn(st)
+	elif st.has("scene"):
+		if await _do_scene(st):
+			return true
+	elif st.has("actor"):
+		_place(st)
+		if st.has("from") and st.get("wait", true):
+			# Somebody walks in. The last line leaves the screen and the camera turns to them,
+			# so it never looks as if the game stopped listening.
+			_box.visible = false
+			var comer: Node3D = _actors[str(st["actor"])]
+			if _dir.is_empty() and not _skip:
+				_shot_for(str(st["actor"]), true)
+			await _until_arrived(comer)
+	elif st.has("move"):
+		var f = _actors.get(str(st["move"]))
+		if f:
+			_moving.append([f, st["to"], 3.8 if st.get("run", false) else 1.8, st.get("face", null)])
+			if st.get("wait", false):
+				await _until_arrived(f)
+	elif st.has("gone"):
+		_remove(str(st["gone"]))
+	elif st.has("t"):
+		await _say(st)
+	elif st.has("choice"):
+		await _choose(st["choice"])
+	elif st.has("tasks"):
+		if await _do_tasks(st):
+			return true
+	elif st.has("clash"):
+		await _clash(st["clash"])
+	elif st.has("goal"):
+		if not _in_task:
+			StoryProgress.save_position(chapter, step, flags)
+		await _do_goal(st)
+	elif st.has("duel"):
+		if _auto and not "--story-duel" in OS.get_cmdline_user_args():
+			if "--story-versus" in OS.get_cmdline_user_args():
+				_cutscene(true)
+				_box.visible = false
+				await _versus(str(st["duel"]["opponent"]))
+				await _snap("vs")
+				_ui.get_child(_ui.get_child_count() - 1).queue_free()
+				_cut = true
+			flags["won"] = true
+			print("STORY: duel skipped (auto) vs ", st["duel"]["opponent"])
+		else:
+			_start_duel(st["duel"])
+			return true
+	elif st.has("act"):
+		await _act_step(st)
+	elif st.has("fx"):
+		await _fx(st)
+	elif st.has("tod"):
+		scene.city.apply_tod(str(st["tod"]))
+	elif st.has("bond"):
+		await _bond(st)
+	elif st.has("wait"):
+		if not _skip:
+			await get_tree().create_timer(float(st["wait"])).timeout
+	elif st.has("end"):
+		await _end(st)
+		return true
+	return false
 
 
 ## The walking HUD (map, place name, key help) steps aside for cutscenes.
@@ -1393,6 +1430,546 @@ func _do_goal(st: Dictionary) -> void:
 	Sfx.play("sparkle", -8.0)
 
 
+# ------------------------------------------------------------------ things to do yourself
+
+## {"tasks": [...], "title": "...", "open": ["academy"]}: the chapter stops telling and hands
+## you a list. The world is the open world: every door, every duelist, the map, the clock.
+## Each task is something you go and do, in any order unless it "needs" others first:
+##   {"talk": key, "at": pos, "label": .., "say": [steps], "duel": {..}, "after": [steps], "retry": [steps]}
+##   {"look": pos, "label": .., "say": [steps]}       something to examine
+##   {"go": pos, "r": 3.0, "label": .., "say": [steps]}  a place to reach
+##   {"travel": district, "label": ..}                go to that world yourself (Worlds, G)
+##   {"wins": n, "label": ..}                         win n duels against people in the worlds
+##   {"until": "night", "label": ..}                  the clock has to get there (a bench, or the map)
+## Any task: "in": district (default: where the list began), "when": "night" (only then),
+## "needs": [indices], "optional": true, "thread": name, "flag": name set when done,
+## "face", "hollow", "coat", "spirit" for the person standing there.
+## Returns true when the scene is being replaced.
+func _do_tasks(st: Dictionary) -> bool:
+	var home := _district_at(step)
+	if not free:
+		# Out of the telling and into the open world, where you stand.
+		for w in st.get("open", []):
+			StoryProgress.remember("open_" + str(w))
+		flags["_where"] = home
+		flags.erase("_w0")
+		StoryProgress.save_position(chapter, step, flags)
+		WorldClock.set_look(str(scene.city.tod) if scene.city else "day")
+		WorldClock.save_data()
+		Router.roam["quest"] = chapter
+		Router.roam["story"] = ""
+		Router.roam["pos"] = scene._player.position if home == str(Router.roam.get("district", "")) else null
+		Router.roam["yaw"] = scene._yaw
+		Router.roam.erase("tod")
+		_cutscene(true)
+		_box.visible = false
+		var tw := create_tween()
+		tw.tween_property(_flash, "color", Color(0, 0, 0, 1), 0.35)
+		await tw.finished
+		Router.go(Router.ROAM)
+		return true
+	_tasks = st["tasks"]
+	var here := str(Router.roam.get("district", "domino"))
+	_task_done = flags.get("_done", {})
+	if not flags.has("_w0"):
+		flags["_w0"] = StoryProgress.count("street_wins")
+	flags["_where"] = here
+	StoryProgress.save_position(chapter, step, flags)
+	_build_task_ui(str(st.get("title", "WHAT TO DO")))
+	# Whoever the story has in hand is not also standing around as their everyday self.
+	var away: Array = (st.get("hide", []) as Array).duplicate()
+	for t in _tasks:
+		if (t as Dictionary).has("talk"):
+			away.append(str(t["talk"]))
+	scene.hide_npcs(away)
+	if st.get("hide_all", false):
+		var all: Array = []
+		for n in scene._npcs:
+			all.append(str((n[0] as Dictionary).get("id", "")))
+		scene.hide_npcs(all)
+	scene.quest_locked = bool(st.get("lock", false))
+	if st.get("frozen", false):
+		_freeze(true)
+	# A duel one of them asked for was just won: what they say after it.
+	if flags.has("_after_task"):
+		var ai := int(str(flags["_after_task"]))
+		flags.erase("_after_task")
+		flags["_won_%d" % ai] = true
+		await get_tree().create_timer(0.6).timeout
+		_place_task(ai, here, home)
+		await _task_say(ai, (_tasks[ai] as Dictionary).get("after", []))
+		_finish_task(ai)
+	if _auto:
+		if await _auto_tasks(here, home):
+			return true
+	var beat := 0.0
+	while not _tasks_complete():
+		await get_tree().process_frame
+		if not is_inside_tree():
+			return true
+		beat -= get_process_delta_time()
+		if beat > 0.0 or _in_task:
+			continue
+		beat = 0.25
+		for i in _tasks.size():
+			var t: Dictionary = _tasks[i]
+			if _task_done.has(str(i)) or not _task_open(i):
+				if _task_done.has(str(i)):
+					_clear_task(i)
+				continue
+			var mine := str(t.get("in", home)) == here
+			var now := not t.has("when") or WorldClock.look() == str(t["when"])
+			if t.has("travel"):
+				if here == str(t["travel"]):
+					_finish_task(i)
+			elif t.has("wins"):
+				if StoryProgress.count("street_wins") - int(flags.get("_w0", 0)) >= int(t["wins"]):
+					_finish_task(i)
+			elif t.has("until"):
+				if WorldClock.look() == str(t["until"]):
+					_finish_task(i)
+			elif not mine or not now:
+				_clear_task(i)
+			else:
+				_place_task(i, here, home)
+				if t.has("go") and Vector2(scene._player.global_position.x - (t["go"] as Vector3).x, scene._player.global_position.z - (t["go"] as Vector3).z).length() < float(t.get("r", 3.0)):
+					await _run_task(i)
+		_refresh_task_ui(here, home)
+	# Everything that had to be done is done: back to the telling.
+	scene.quest_locked = false
+	for i in _tasks.size():
+		_clear_task(i)
+	if _task_box:
+		_task_box.visible = false
+	scene.extras.clear_waypoint()
+	Sfx.play("quest", -4.0)
+	Router.toast(Loc.t("The story goes on."))
+	await get_tree().create_timer(1.1).timeout
+	for k in ["_done", "_w0", "_where", "_after_task", "_duel_task"]:
+		flags.erase(k)
+	for k in flags.keys():
+		if str(k).begins_with("_won_") or str(k).begins_with("_lost_"):
+			flags.erase(k)
+	step += 1
+	StoryProgress.save_position(chapter, step, flags)
+	Router.roam.erase("quest")
+	Router.roam["pos"] = scene._player.position
+	if _audit:
+		print("TASKS done step ", step - 1)
+	StoryDirector.begin(chapter, true)
+	return true
+
+
+## The world the story is in at step `at`: the district of the last scene before it.
+func _district_at(at: int) -> String:
+	var d := "domino"
+	for i in mini(at + 1, _steps.size()):
+		if (_steps[i] as Dictionary).has("scene"):
+			d = str(_steps[i]["scene"].get("district", d))
+	return d
+
+
+## Can this task be worked on yet (everything it needs is done)?
+func _task_open(i: int) -> bool:
+	for n in (_tasks[i] as Dictionary).get("needs", []):
+		if not _task_done.has(str(int(n))):
+			return false
+	return true
+
+
+func _tasks_complete() -> bool:
+	for i in _tasks.size():
+		if not _task_done.has(str(i)) and not (_tasks[i] as Dictionary).get("optional", false):
+			return false
+	return true
+
+
+func _task_pos(t: Dictionary):
+	for k in ["at", "look", "go"]:
+		if t.has(k) and t[k] is Vector3:
+			return t[k]
+	return null
+
+
+## Put the person (or the mark) for task `i` into the world, with something to press E on.
+func _place_task(i: int, here: String, home: String) -> void:
+	if _task_nodes.has(i):
+		return
+	var t: Dictionary = _tasks[i]
+	if str(t.get("in", home)) != here:
+		return
+	var made: Array = []
+	var at = _task_pos(t)
+	if at == null:
+		_task_nodes[i] = made
+		return
+	if t.has("talk"):
+		var key := str(t["talk"])
+		var pst := {"actor": key, "at": at, "face": t.get("face", "player")}
+		for k in ["hollow", "coat", "spirit", "pale"]:
+			if t.has(k):
+				pst[k] = t[k]
+		_place(pst, true)
+		made.append(_actors[key])
+		(_actors[key] as Node3D).set_meta("task_key", key)
+	var mark := Label3D.new()
+	mark.text = "!" if t.has("talk") else ("?" if t.has("look") else "▼")
+	mark.font = UITheme.title_font()
+	mark.font_size = 120
+	mark.pixel_size = 0.006
+	mark.outline_size = 22
+	mark.outline_modulate = Color(0.05, 0.04, 0.0, 0.9)
+	mark.modulate = UITheme.GOLD
+	mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	mark.no_depth_test = true
+	mark.render_priority = 4
+	mark.position = (at as Vector3) + Vector3(0, 2.55 if t.has("talk") else 1.5, 0)
+	mark.set_meta("base_y", mark.position.y)
+	scene.add_child(mark)
+	made.append(mark)
+	if not t.has("go"):
+		var label := str(t.get("prompt", ""))
+		if label == "":
+			label = (Loc.t("Talk to %s") % _name_of(str(t["talk"]))) if t.has("talk") else "Take a look"
+		var spot := {"pos": at, "range": 2.3 if t.has("talk") else 1.9, "label": label, "action": func(): _run_task(i), "quest": i}
+		scene._spots.append(spot)
+		made.append(spot)
+	_task_nodes[i] = made
+
+
+func _clear_task(i: int) -> void:
+	if not _task_nodes.has(i):
+		return
+	for n in _task_nodes[i]:
+		if n is Dictionary:
+			scene._spots.erase(n)
+		elif is_instance_valid(n):
+			if (n as Node).has_meta("task_key"):
+				_remove(str((n as Node).get_meta("task_key")))
+			else:
+				(n as Node).queue_free()
+	_task_nodes.erase(i)
+	scene._near_spot = {}
+
+
+func _name_of(key: String) -> String:
+	if key == "lumen":
+		return "Lumen"
+	var c := Characters.get_char(key)
+	return Loc.t(str(c.get("short", c.get("name", key.capitalize()))))
+
+
+## What somebody says, played like any scene: the world steps aside, the camera cuts in.
+func _task_say(i: int, steps: Array) -> void:
+	if steps.is_empty():
+		return
+	_in_task = true
+	scene.story = self
+	# Lumen has things to say too: she comes in close for the conversation.
+	var lumen_here := false
+	for s in steps:
+		if str((s as Dictionary).get("s", "")) == "lumen" and not _actors.has("lumen"):
+			var pp: Vector3 = scene._player.global_position
+			_place({"actor": "lumen", "at": pp + Basis(Vector3.UP, scene._yaw) * Vector3(0.9, 0, 0.4), "face": "player", "spirit": true}, true)
+			lumen_here = true
+			break
+	for s in steps:
+		if _passes(s):
+			await _do_step(s)
+	_cutscene(false)
+	if lumen_here:
+		_remove("lumen")
+		_spirit = null
+		if scene.partner and is_instance_valid(scene.partner):
+			scene.partner.visible = true
+	scene.story = null
+	_in_task = false
+
+
+## Do task `i`: its conversation, then its duel if it has one.
+func _run_task(i: int) -> void:
+	if _in_task or _task_done.has(str(i)):
+		return
+	var t: Dictionary = _tasks[i]
+	var again: bool = flags.has("_lost_%d" % i) and t.has("retry")
+	await _task_say(i, t["retry"] if again else t.get("say", []))
+	if t.has("duel") and not flags.has("_won_%d" % i):
+		if _auto and not "--story-duel" in OS.get_cmdline_user_args():
+			print("STORY: task duel skipped (auto) vs ", t["duel"]["opponent"])
+			flags["_won_%d" % i] = true
+			await _task_say(i, t.get("after", []))
+		else:
+			flags["_duel_task"] = str(i)
+			_in_task = true
+			scene.story = self
+			_start_duel(t["duel"])
+			return
+	_finish_task(i)
+
+
+func _finish_task(i: int) -> void:
+	if _task_done.has(str(i)):
+		return
+	var t: Dictionary = _tasks[i]
+	_task_done[str(i)] = true
+	flags["_done"] = _task_done
+	if t.has("flag"):
+		flags[str(t["flag"])] = true
+	if t.has("remember"):
+		StoryProgress.remember(str(t["remember"]))
+	if t.has("dp"):
+		Collection.dp += int(t["dp"])
+		Collection.save()
+		Router.toast(Loc.t("+%d Duel Points") % int(t["dp"]))
+	StoryProgress.save_position(chapter, step, flags)
+	_clear_task(i)
+	Sfx.play("sparkle", -6.0)
+	if _audit or _auto:
+		print("TASK done ", step, ":", i, " ", str(t.get("label", "")))
+
+
+## --story-auto: do every task by itself, in order, going to other worlds as needed.
+func _auto_tasks(here: String, home: String) -> bool:
+	await get_tree().create_timer(0.6).timeout
+	var guard := 0
+	while not _tasks_complete() and guard < 60:
+		guard += 1
+		for i in _tasks.size():
+			var t: Dictionary = _tasks[i]
+			if _task_done.has(str(i)) or not _task_open(i):
+				continue
+			var where := str(t.get("travel", t.get("in", home)))
+			if where != here:
+				print("TASK auto travel ", here, " -> ", where)
+				StoryProgress.save_position(chapter, step, flags)
+				Router.roam["district"] = where
+				Router.roam["pos"] = null
+				Router.go(Router.ROAM)
+				return true
+			if t.has("wins") or t.has("until") or t.has("travel"):
+				_finish_task(i)
+				continue
+			_place_task(i, here, home)
+			var at = _task_pos(t)
+			if at != null:
+				scene._player.position = Vector3((at as Vector3).x, scene._player.position.y, (at as Vector3).z + 1.4)
+			await get_tree().create_timer(0.3).timeout
+			await _run_task(i)
+	return false
+
+
+func _build_task_ui(title: String) -> void:
+	if _task_box != null:
+		return
+	_task_box = PanelContainer.new()
+	_task_box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.042, 0.0676, 0.145, 0.88), 16, Color(UITheme.GOLD, 0.6)))
+	_task_box.position = Vector2(30, 232)
+	_task_box.custom_minimum_size = Vector2(470, 0)
+	_task_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui.add_child(_task_box)
+	var gm := MarginContainer.new()
+	for side in ["left", "right"]:
+		gm.add_theme_constant_override("margin_" + side, 18)
+	for side in ["top", "bottom"]:
+		gm.add_theme_constant_override("margin_" + side, 12)
+	gm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_task_box.add_child(gm)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gm.add_child(v)
+	var ch := ""
+	for c in StoryData.CHAPTERS:
+		if c["id"] == chapter:
+			ch = Loc.t(str(c["title"])).to_upper() + "   ·   "
+	v.add_child(UITheme.label(ch + Loc.t("YOUR MOVE"), 15, UITheme.GOLD, UITheme.semi_font()))
+	_task_title = UITheme.label(Loc.t(title), 22, Color.WHITE, UITheme.semi_font())
+	_task_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_task_title.custom_minimum_size = Vector2(430, 0)
+	v.add_child(_task_title)
+	_task_list = VBoxContainer.new()
+	_task_list.add_theme_constant_override("separation", 2)
+	_task_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(_task_list)
+	Sfx.play("quest", -6.0)
+
+
+## One line per task, as [text, state] with state "done" | "open" | "away" | "wait".
+func task_rows(here: String, home: String) -> Array:
+	var rows: Array = []
+	for i in _tasks.size():
+		var t: Dictionary = _tasks[i]
+		if not _task_open(i) and not _task_done.has(str(i)):
+			continue
+		var text := Loc.t(str(t.get("label", "")))
+		var state := "open"
+		if _task_done.has(str(i)):
+			state = "done"
+		else:
+			var where := str(t.get("in", home))
+			if not t.has("travel") and not t.has("wins") and not t.has("until") and where != here:
+				text += "   (" + Loc.t(str(RoamData.district(where).get("name", where))) + ")"
+				state = "away"
+			elif t.has("when") and WorldClock.look() != str(t["when"]):
+				text += "   (" + Loc.t({"night": "at night", "day": "by day", "sunset": "in the evening", "dawn": "at dawn"}.get(str(t["when"]), "")) + ")"
+				state = "wait"
+			elif t.has("wins"):
+				text += "   %d / %d" % [mini(int(t["wins"]), StoryProgress.count("street_wins") - int(flags.get("_w0", 0))), int(t["wins"])]
+			if t.get("optional", false):
+				text += "   " + Loc.t("(optional)")
+		rows.append([text, state])
+	return rows
+
+
+func _refresh_task_ui(here: String, home: String) -> void:
+	if _task_box == null:
+		return
+	_task_box.visible = not _cut
+	var rows := task_rows(here, home)
+	var sig := str(rows)
+	if sig != _task_sig:
+		_task_sig = sig
+		for c in _task_list.get_children():
+			_task_list.remove_child(c)
+			c.queue_free()
+		for r in rows:
+			var done: bool = r[1] == "done"
+			var l := UITheme.label(("✔  " if done else "•  ") + str(r[0]), 18,
+					Color(0.55, 0.9, 0.62, 0.85) if done else (Color(0.75, 0.8, 0.9, 0.8) if r[1] in ["away", "wait"] else Color.WHITE), UITheme.semi_font())
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			l.custom_minimum_size = Vector2(430, 0)
+			l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_task_list.add_child(l)
+	# The beacon stands on the nearest thing still to do here.
+	var best = null
+	var best_d := 1e9
+	var best_label := ""
+	for i in _tasks.size():
+		var t: Dictionary = _tasks[i]
+		if _task_done.has(str(i)) or not _task_open(i) or str(t.get("in", home)) != here:
+			continue
+		if t.has("when") and WorldClock.look() != str(t["when"]):
+			continue
+		var at = _task_pos(t)
+		if at == null:
+			continue
+		var d: float = scene.extras.reach_point(at).distance_to(scene._player.global_position)
+		if t.get("optional", false):
+			d += 500.0
+		if d < best_d:
+			best_d = d
+			best = at
+			best_label = Loc.t(str(t.get("label", "")))
+	if best == null:
+		if scene.extras.has_waypoint() and _task_wp:
+			scene.extras.clear_waypoint()
+		_task_wp = false
+	elif not _task_wp or (_task_wp_at as Vector3).distance_to(best) > 0.1:
+		_task_wp = true
+		_task_wp_at = best
+		scene.extras.set_waypoint(best, best_label)
+	# The marks bob.
+	for i in _task_nodes:
+		for n in _task_nodes[i]:
+			if n is Label3D and is_instance_valid(n):
+				(n as Label3D).position.y = float((n as Label3D).get_meta("base_y", 2.5)) + sin(_t * 3.2) * 0.08
+
+
+var _task_wp := false
+var _task_wp_at := Vector3.ZERO
+
+
+## In a word, what to do next (for Lumen, when asked).
+func task_hint() -> String:
+	var here := str(Router.roam.get("district", "domino"))
+	for r in task_rows(here, _district_at(step)):
+		if r[1] != "done":
+			return str(r[0])
+	return ""
+
+
+# ------------------------------------------------------------------ a duel you watch
+
+## {"clash": {"a": key, "b": key, "lp": [4000, 4000], "beats": [[who, "CARD OR MOVE", "line", damage], ...], "win": "a"}}
+## Two duelists who are not you have it out on screen: a cut-in for every big play, Life Points
+## coming down, a winner. `who` is "a" or "b"; `damage` is what the other side loses.
+func _clash(c: Dictionary) -> void:
+	_cutscene(true)
+	_box.visible = false
+	_caption("")
+	var ka := str(c["a"])
+	var kb := str(c["b"])
+	var fa := _fig(ka)
+	var fb := _fig(kb)
+	if fa and fb:
+		var to: Vector3 = fb.global_position - fa.global_position
+		fa.rotation.y = atan2(to.x, to.z)
+		fb.rotation.y = atan2(-to.x, -to.z)
+	var lp: Array = (c.get("lp", [4000, 4000]) as Array).duplicate()
+	var plate := PanelContainer.new()
+	plate.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.05, 0.11, 0.9), 14, Color(UITheme.GOLD, 0.55)))
+	plate.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	plate.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	plate.offset_top = 96
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui.add_child(plate)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 26)
+	plate.add_child(row)
+	var la := UITheme.label("", 30, Color.WHITE, UITheme.title_font())
+	var mid := UITheme.label("VS", 22, UITheme.GOLD, UITheme.title_font())
+	var lb := UITheme.label("", 30, Color.WHITE, UITheme.title_font())
+	row.add_child(la)
+	row.add_child(mid)
+	row.add_child(lb)
+	var show_lp := func():
+		la.text = "%s   %d" % [_name_of(ka).to_upper(), int(lp[0])]
+		lb.text = "%d   %s" % [int(lp[1]), _name_of(kb).to_upper()]
+	show_lp.call()
+	if _dir.is_empty() and not _skip:
+		_shot_for(ka, true)
+	if not _skip:
+		Sfx.play("gong", -6.0)
+		await get_tree().create_timer(0.9).timeout
+	for beat in c.get("beats", []):
+		var who := str(beat[0])
+		var key := ka if who == "a" else kb
+		var col: Color = Characters.get_char(key).get("color", UITheme.ACCENT)
+		if not _skip:
+			_shot_for(key, false)
+			var f := _fig(key)
+			if f is RoamFigure:
+				(f as RoamFigure).gesture("cheer", 0.2)
+			await CutIn.play(_ui, 0 if who == "a" else 1, key, Loc.t(str(beat[1])), Loc.t(str(beat[2])) if beat.size() > 2 else "", col, 0.85, false)
+		var dmg := int(beat[3]) if beat.size() > 3 else 0
+		if dmg > 0:
+			var other := 1 if who == "a" else 0
+			var from := int(lp[other])
+			lp[other] = maxi(0, from - dmg)
+			if not _skip:
+				Sfx.play("hit", -4.0)
+				_shake = 0.35
+				var tw := create_tween()
+				tw.tween_method(func(v: float):
+					var keep: int = int(lp[other])
+					lp[other] = int(v)
+					show_lp.call()
+					lp[other] = keep, float(from), float(lp[other]), 0.5)
+				await tw.finished
+			show_lp.call()
+	var winner := ka if str(c.get("win", "a")) == "a" else kb
+	if not _skip:
+		Sfx.play("win", -6.0)
+		_shot_for(winner, false)
+		mid.text = Loc.t("%s WINS") % _name_of(winner).to_upper()
+		la.visible = false
+		lb.visible = false
+		await get_tree().create_timer(1.4).timeout
+	plate.queue_free()
+	if _audit or _auto:
+		print("CLASH ", ka, " vs ", kb, " -> ", winner)
+
+
 func _start_duel(d: Dictionary) -> void:
 	StoryProgress.save_position(chapter, step, flags)
 	Router.roam["pos"] = scene._player.position
@@ -2114,6 +2691,21 @@ static func begin(id: String, resume := false) -> void:
 	for i in mini(at + 1, steps.size()):
 		if (steps[i] as Dictionary).has("scene"):
 			sc = steps[i]["scene"]
+	router.roam.erase("quest")
+	if at < steps.size() and (steps[at] as Dictionary).has("tasks"):
+		# The chapter is at a list of things to do yourself: that is the open world, with the
+		# list riding along. You come back where you were.
+		var fl: Dictionary = StoryProgress.position()["flags"] if resume else {}
+		var where := str(fl.get("_where", sc.get("district", "domino")))
+		router.roam["story"] = ""
+		router.roam["quest"] = id
+		router.roam["district"] = where
+		router.roam["pos"] = sc.get("pos", null) if where == str(sc.get("district", "domino")) else null
+		router.roam.erase("tod")
+		router.roam.erase("yaw")
+		router.story_result = ""
+		router.go(router.ROAM)
+		return
 	router.roam["story"] = id
 	router.roam["district"] = str(sc.get("district", "domino"))
 	router.roam["pos"] = sc.get("pos", null)
@@ -2122,6 +2714,17 @@ static func begin(id: String, resume := false) -> void:
 		router.roam["yaw"] = sc["yaw"]
 	router.story_result = ""
 	router.go(router.ROAM)
+
+
+## Is a chapter waiting at a list of things to do in the open world? Returns its id, or "".
+static func quest_pending() -> String:
+	var pos := StoryProgress.position()
+	var id := str(pos["chapter"])
+	var steps: Array = StoryData.SCRIPTS.get(id, [])
+	var at := int(pos["step"])
+	if id == "" or at >= steps.size() or not (steps[at] as Dictionary).has("tasks"):
+		return ""
+	return id
 
 
 # ------------------------------------------------------------------ every frame

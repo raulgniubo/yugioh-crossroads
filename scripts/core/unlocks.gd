@@ -25,7 +25,8 @@ static func wins() -> int:
 const WORLD_STAGE := {"domino": 0, "academy": 2, "satellite": 3, "newdomino": 3, "heartland": 4, "highway": 3}
 
 static func world(key: String) -> bool:
-	return Saves.admin or stage() >= int(WORLD_STAGE.get(key, 0))
+	# The story can open a world early, when a chapter sends you there yourself.
+	return Saves.admin or stage() >= int(WORLD_STAGE.get(key, 0)) or StoryProgress.recalls("open_" + key)
 
 
 static func world_why(key: String) -> String:
