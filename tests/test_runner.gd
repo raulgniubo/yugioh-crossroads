@@ -715,7 +715,11 @@ func _test_spell_rules() -> void:
 	var ring := _st(s, 0, "Ring of Destruction", "set", "trap")
 	var lp0 := s.players[0].lp
 	lp = s.players[1].lp
-	s.activate(0, ring, ringed)
+	check(not s.can_activate(0, ring), "Ring of Destruction cannot be used on your own turn")
+	s.current = 1
+	check(SpellRules.fits(s, 0, ring, "phase", null), "Ring of Destruction fits during the opponent's turn")
+	s.chain_add(0, ring, ringed, "phase", null)
+	s.chain_resolve()
 	check(not s.players[1].field.has(ringed) and s.players[0].lp == lp0 - 2000 and s.players[1].lp == lp - 2000, "Ring of Destruction burns both players")
 	s = _main_ready(58)
 	var bnc := _fake(s, 1, "Bounce", 2000, 0, 0)
@@ -923,7 +927,7 @@ func _test_choices() -> void:
 		needs.append(need)
 		return [a.uid])
 	check(needs.size() == 1 and not a.face_up, "A card with one possible target still asks for it")
-	# Ego Boost: not in the Main Phase, not on their attack, only on your own direct attack
+	# Ego Boost: when a monster declares an attack (not in the Main Phase)
 	s = _main_ready(85)
 	mine = _fake(s, 0, "Mine", 1500, 500, 0)
 	var ego := _st(s, 0, "Ego Boost")
@@ -937,7 +941,7 @@ func _test_choices() -> void:
 	ego = _st(s, 0, "Ego Boost")
 	s.phase = DuelState.Phase.BATTLE
 	s.declare_attack(0, mine, a)
-	check(not SpellRules.fits(s, 0, ego, "attack", null), "Ego Boost does not fit an attack on a monster")
+	check(SpellRules.fits(s, 0, ego, "attack", null), "Ego Boost fits when any monster declares an attack")
 	# Smashing Ground: a tie is the player's choice
 	s = _main_ready(87)
 	s.manual = [true, false]

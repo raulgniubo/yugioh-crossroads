@@ -59,6 +59,8 @@ class CardInst:
 	var flag_turn := -1           # "this card's effect was applied this turn" (Stardust Dragon)
 	var once := false             # a once-while-in-the-Graveyard / once-per-Duel effect is spent
 	var pos_lock_until := -1      # cannot change battle position through this turn (Goblin Attack Force)
+	var no_tribute_turn := -1     # cannot be Tributed this turn (Mind Control)
+	var left_turn := -1           # a Spell/Trap: the turn it left the field (Axe of Despair goes back on the Deck)
 
 	func is_token() -> bool:
 		return data.get("frame", "") == "token"
@@ -114,6 +116,7 @@ class PlayerState:
 	var extra: Array[CardInst] = []
 	var spells: Array = [null, null, null, null, null]
 	var no_damage_turn := -1
+	var no_effect_damage_turn := -1   # effect damage is 0 this turn (Cyber Kirin, Hallowed Life Barrier)
 	var protect_turn := -1
 	var swords_left := 0
 	var field_spell: CardInst = null
@@ -555,7 +558,7 @@ func can_normal_summon(p: int, c: CardInst) -> bool:
 
 ## Monsters this player may Tribute for a Tribute Summon (Sheep Tokens and the like may not be).
 func tributable(p: int) -> Array:
-	return players[p].monsters().filter(func(m): return not m.data.get("no_tribute_summon", false))
+	return players[p].monsters().filter(func(m): return not m.data.get("no_tribute_summon", false) and m.no_tribute_turn != turn)
 
 
 func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> Array:
@@ -623,7 +626,8 @@ func flip_summon(p: int, c: CardInst) -> Array:
 func can_change_position(p: int, c: CardInst) -> bool:
 	return (p == current and _in_main() and not is_over() and players[p].field.has(c)
 			and c.face_up and c.summoned_turn != turn and c.pos_changed_turn != turn
-			and c.attacked_turn != turn and c.pos_lock_until < turn)
+			and c.attacked_turn != turn and c.pos_lock_until < turn
+			and not SpellRules.equip_flag(self, c, "no_move"))
 
 
 func change_position(p: int, c: CardInst) -> Array:
@@ -1213,6 +1217,10 @@ func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 				g.lv_turn = -1
 				break
 	winner_c.killed_turn = turn
+	# Junk Barrage: half the destroyed monster's ATK as damage.
+	if SpellRules.equip_flag(self, winner_c, "burn_half_on_kill") and not is_over():
+		events.append({"type": "effect", "player": wp, "card": winner_c, "text": Loc.t("Junk Barrage: %d damage") % (loser.atk() / 2)})
+		events.append_array(_damage(opponent(wp), loser.atk() / 2))
 	if players[winner_c.owner].field.has(winner_c):
 		events.append_array(EffectRunner.trigger(self, winner_c, "kill", {"victim": loser}))
 	events.append_array(EffectRunner.trigger(self, loser, "death", {"killer": winner_c}))
@@ -1261,7 +1269,7 @@ func _battle_damage(p: int, amount: int, dealer: CardInst = null, taker: CardIns
 		return [{"type": "effect", "player": p, "card": taker, "text": "No battle damage!"}]
 	if ps.no_damage_turn == turn or ps.protect_turn == turn:
 		return [{"type": "effect", "player": p, "card": null, "text": "No battle damage!"}]
-	return _damage(p, amount)
+	return _damage(p, amount, true)
 
 
 func _destroy(c: CardInst, by_battle := false) -> Array:
@@ -1307,10 +1315,38 @@ func _to_gy(ps: PlayerState, c: CardInst) -> void:
 		redirected.append(c)
 	else:
 		ps.gy.append(c)
+		# Axe of Despair and friends: sent from the field to the Graveyard, they go back on top of the Deck.
+		var back := str(SpellRules.FX.get(c.cname(), {}).get("deck_top", "")) if not c.is_monster() else ""
+		if back != "" and (c.left_turn == turn or back == "always"):
+			var who := c.owner
+			var okay := true
+			if back == "tribute":
+				okay = not tributable(who).is_empty() and choose_option(who, Loc.t("%s: Tribute 1 monster to put it on top of your Deck?") % c.cname(), ["Tribute a monster", "Leave it in the Graveyard"], 1, c) == 0
+				if okay:
+					var weak: CardInst = null
+					for m in tributable(who):
+						if weak == null or atk_of(m, false) < atk_of(weak, false):
+							weak = m
+					weak = pick1(who, Loc.t("%s: Tribute 1 monster") % c.cname(), tributable(who), weak, c)
+					players[who].field[players[who].field.find(weak)] = null
+					_to_gy(players[who], weak)
+					pending_events.append({"type": "tribute", "player": who, "card": weak})
+			elif back == "lp500":
+				okay = players[who].lp > 500 and choose_option(who, Loc.t("%s: pay 500 LP to put it on top of your Deck?") % c.cname(), ["Pay 500 LP", "Leave it in the Graveyard"], 0, c) == 0
+				if okay:
+					players[who].lp -= 500
+					pending_events.append({"type": "lp", "player": who, "lp": players[who].lp, "delta": -500})
+			if okay and ps.gy.has(c):
+				ps.gy.erase(c)
+				ps.deck.append(c)
+				pending_events.append({"type": "effect", "player": who, "card": c, "text": Loc.t("%s returns to the top of the Deck") % c.cname()})
+				pending_events.append({"type": "gy_to_deck", "player": who, "card": c, "deck": ps.deck.size()})
 
 
 ## Cards banished instead of going to the GY since the last time the scene looked (for the board).
 var redirected: Array = []
+## Things that happened inside _to_gy (it returns nothing): picked up by _cleanup.
+var pending_events: Array = []
 
 
 func _gy_redirect(c: CardInst = null) -> bool:
@@ -1419,6 +1455,18 @@ func _monster_left(m: CardInst) -> Array:
 ## Sweep up Equip cards whose monster is gone (tributed, used as material...).
 func _cleanup() -> Array:
 	var events := []
+	if not pending_events.is_empty():
+		events.append_array(pending_events)
+		pending_events = []
+	# Level Limit - Area B: face-up monsters of that Level or higher are held in Defense Position.
+	for q0 in 2:
+		for st0 in players[q0].spells:
+			if st0 != null and st0.face_up and SpellRules.spec(st0).has("force_def_lv_min"):
+				for q1 in 2:
+					for m0 in players[q1].monsters():
+						if m0.face_up and m0.attack_pos and m0.frame() != "xyz" and m0.level() >= int(SpellRules.spec(st0)["force_def_lv_min"]):
+							m0.attack_pos = false
+							events.append({"type": "position", "player": q1, "card": m0, "zone": players[q1].field.find(m0)})
 	# Effect negation (Skill Drain and one-turn negations) is re-derived from what is on the field.
 	var drain := SpellRules.field_flag(self, "drain")
 	for q in 2:
@@ -1629,10 +1677,12 @@ func speed_world(p: int, cost: int) -> Array:
 	return events
 
 
-func _damage(p: int, amount: int) -> Array:
+func _damage(p: int, amount: int, battle := false) -> Array:
 	if amount <= 0:
 		return []
 	var ps := players[p]
+	if not battle and ps.no_effect_damage_turn == turn:
+		return [{"type": "effect", "player": p, "card": null, "text": "No effect damage this turn!"}]
 	ps.lp = maxi(0, ps.lp - amount)
 	var events := [{"type": "lp", "player": p, "lp": ps.lp, "delta": -amount}]
 	if turbo and amount >= 1000:
@@ -1961,6 +2011,7 @@ func clone() -> DuelState:
 		for c in ps.spells:
 			np.spells.append(_clone_card(c, map) if c != null else null)
 		np.no_damage_turn = ps.no_damage_turn
+		np.no_effect_damage_turn = ps.no_effect_damage_turn
 		np.protect_turn = ps.protect_turn
 		np.swords_left = ps.swords_left
 		np.field_spell = _clone_card(ps.field_spell, map) if ps.field_spell != null else null
@@ -2075,6 +2126,8 @@ func _clone_card(c: CardInst, map: Dictionary) -> CardInst:
 	n.flag_turn = c.flag_turn
 	n.once = c.once
 	n.pos_lock_until = c.pos_lock_until
+	n.no_tribute_turn = c.no_tribute_turn
+	n.left_turn = c.left_turn
 	map[c.uid] = n
 	for o in c.overlays:
 		n.overlays.append(_clone_card(o, map))

@@ -31,7 +31,7 @@ const FX := {
 	"Giant Trunade": {"k": "normal", "do": [["bounce", "all_st"]]},
 	"Change of Heart": {"k": "normal", "t": "opp_mon", "do": [["control", "target", "eot"]]},
 	"Brain Control": {"k": "normal", "t": "opp_face", "cost": "lp800", "do": [["control", "target", "eot"]]},
-	"Mind Control": {"k": "normal", "t": "opp_mon", "do": [["control", "target", "eot"], ["no_attack", "target"]]},
+	"Mind Control": {"k": "normal", "t": "opp_mon", "do": [["control", "target", "eot"], ["no_attack", "target"], ["no_tribute", "target"]]},
 	"Graceful Charity": {"k": "normal", "do": [["draw", 3], ["discard", 2]]},
 	"Card Destruction": {"k": "normal", "do": [["card_destruction"]]},
 	"Upstart Goblin": {"k": "normal", "do": [["draw", 1], ["opp_heal", 1000]]},
@@ -41,8 +41,8 @@ const FX := {
 	"Lightning Vortex": {"k": "normal", "cost": "discard", "do": [["destroy", "opp_face_mons"]]},
 	"Smashing Ground": {"k": "normal", "do": [["destroy", "opp_best_def"]]},
 	"Hammer Shot": {"k": "normal", "do": [["destroy", "best_atk_any"]]},
-	"Nobleman of Crossout": {"k": "normal", "t": "any_fdown", "do": [["banish", "target"]]},
-	"Nobleman of Extermination": {"k": "normal", "t": "any_set_st", "do": [["banish", "target"]]},
+	"Nobleman of Crossout": {"k": "normal", "t": "any_fdown", "do": [["banish", "target"], ["purge_copies", "flip"]]},
+	"Nobleman of Extermination": {"k": "normal", "t": "any_set_st", "do": [["banish", "target"], ["purge_copies", "trap"]]},
 	"De-Spell": {"k": "normal", "t": "any_spell", "do": [["destroy", "target"]]},
 	"Remove Trap": {"k": "normal", "t": "any_face_trap", "do": [["destroy", "target"]]},
 	"Stop Defense": {"k": "normal", "t": "opp_def", "do": [["to_atk", "target"]]},
@@ -51,8 +51,8 @@ const FX := {
 	"Tremendous Fire": {"k": "normal", "do": [["damage", 1000], ["self_damage", 500]]},
 	"Sparks": {"k": "normal", "do": [["damage", 200]]},
 	"Final Flame": {"k": "normal", "do": [["damage", 600]]},
-	"Meteor of Destruction": {"k": "normal", "do": [["damage", 1000]]},
-	"Poison of the Old Man": {"k": "quick", "do": [["heal", 1200]]},
+	"Meteor of Destruction": {"k": "normal", "cond": "opp_lp_over:3000", "do": [["damage", 1000]]},
+	"Poison of the Old Man": {"k": "quick", "modes": [{"label": "Gain 1200 LP", "do": [["heal", 1200]]}, {"label": "Inflict 800 damage to your opponent", "do": [["damage", 800]]}]},
 	"Goblin's Secret Remedy": {"k": "normal", "do": [["heal", 600]]},
 	"Red Medicine": {"k": "normal", "do": [["heal", 500]]},
 	"Blue Medicine": {"k": "normal", "do": [["heal", 400]]},
@@ -64,11 +64,11 @@ const FX := {
 	"The Warrior Returning Alive": {"k": "normal", "do": [["gy_to_hand", {"race": "Warrior"}, 1]]},
 	"Monster Reincarnation": {"k": "normal", "cost": "discard", "do": [["gy_to_hand", {"monster": true}, 1]]},
 	"Dark Factory of Mass Production": {"k": "normal", "do": [["gy_to_hand", {"frame": "normal"}, 2]]},
-	"Share the Pain": {"k": "normal", "cost": "tribute", "do": [["destroy", "opp_weakest"]]},
+	"Share the Pain": {"k": "normal", "cost": "tribute", "do": [["opp_tribute"]]},
 	"Soul Exchange": {"k": "normal", "t": "opp_mon", "do": [["tribute_fodder", "target"]]},
 	"Premature Burial": {"k": "equip", "cost": "lp800", "do": [["revive", "own_gy", "atk", "link"]]},
 	"Miracle Fusion": {"k": "normal", "do": [["miracle_fusion", {"has": "Elemental HERO"}]]},
-	"Card of Sanctity": {"k": "normal", "do": [["draw_to", 6]]},
+	"Card of Sanctity": {"k": "normal", "do": [["sanctity"]]},
 	"Dian Keto the Cure Master": {"k": "normal", "do": [["heal", 1000]]},
 	"Nightmare's Steelcage": {"k": "normal", "do": [["no_attacks_both", 2]]},
 	"Book of Taiyou": {"k": "normal", "t": "any_fdown", "do": [["flip_up", "target"]]},
@@ -83,7 +83,7 @@ const FX := {
 	"Enemy Controller": {"k": "quick", "modes": [
 		{"label": "Change the battle position of 1 of their face-up monsters", "t": "opp_face", "do": [["change_pos", "target"]]},
 		{"label": "Tribute 1 monster: take control of 1 of their face-up monsters until the End Phase", "t": "opp_face", "cost": "tribute", "do": [["control", "target", "eot"]]}]},
-	"Ego Boost": {"k": "quick", "win": ["attack"], "own_direct": true, "do": [["atk", "attacker", 1000, "eot"]]},
+	"Ego Boost": {"k": "quick", "win": ["attack"], "any_attack": true, "t": "any_face", "do": [["atk", "target", 1000, "eot"]]},
 	"Forbidden Lance": {"k": "quick", "t": "any_face", "do": [["atk", "target", -800, "eot"]]},
 	"Offerings to the Doomed": {"k": "quick", "t": "any_face", "do": [["destroy", "target"], ["skip_draw", 1]]},
 	"The Reliable Guardian": {"k": "quick", "t": "any_face", "do": [["def", "target", 700]]},
@@ -92,7 +92,7 @@ const FX := {
 	"Banner of Courage": {"k": "cont", "bp_boost": 200},
 	"Burning Land": {"k": "cont", "do": [["destroy", "fields"]], "each_standby": [["self_damage", 500]]},
 	"Messenger of Peace": {"k": "cont", "lock_atk_min": 1500, "upkeep": 100},
-	"Level Limit - Area B": {"k": "cont", "lock_lv_min": 4, "do": [["to_def", "lv4_all"]]},
+	"Level Limit - Area B": {"k": "cont", "force_def_lv_min": 4, "do": [["to_def", "lv4_all"]]},
 	"The Dark Door": {"k": "cont", "one_attack": true},
 	"Dimensional Fissure": {"k": "cont", "redirect": "mon"},
 	"Wave-Motion Cannon": {"k": "cont", "counter_standby": true, "cannon": 1000},
@@ -118,17 +118,17 @@ const FX := {
 	"Necrovalley": {"k": "field", "boost": [[{"has": "Gravekeeper"}, 500, 500]]},
 	"Chorus of Sanctuary": {"k": "field", "def_pos_boost": 500},
 	# ---------------------------------------------------------------- Equip Spells
-	"Axe of Despair": {"k": "equip", "atk": 1000},
-	"Malevolent Nuzzler": {"k": "equip", "atk": 700},
-	"Horn of the Unicorn": {"k": "equip", "atk": 700, "def": 700},
+	"Axe of Despair": {"k": "equip", "atk": 1000, "deck_top": "tribute"},
+	"Malevolent Nuzzler": {"k": "equip", "atk": 700, "deck_top": "lp500"},
+	"Horn of the Unicorn": {"k": "equip", "atk": 700, "def": 700, "deck_top": "field"},
 	"Black Pendant": {"k": "equip", "atk": 500, "on_leave": [["damage", 500]]},
 	"United We Stand": {"k": "equip", "atk_per": ["own_face_mons", 800], "def_per": ["own_face_mons", 800]},
 	"Mage Power": {"k": "equip", "atk_per": ["own_st", 500], "def_per": ["own_st", 500]},
 	"Megamorph": {"k": "equip", "megamorph": true},
 	"Fairy Meteor Crush": {"k": "equip", "pierce": true},
-	"Big Bang Shot": {"k": "equip", "atk": 400, "pierce": true},
-	"Lightning Blade": {"k": "equip", "must": {"race": "Warrior"}, "atk": 800},
-	"Sword of Deep-Seated": {"k": "equip", "atk": 500, "def": 500},
+	"Big Bang Shot": {"k": "equip", "atk": 400, "pierce": true, "banish_on_leave": true},
+	"Lightning Blade": {"k": "equip", "must": {"race": "Warrior"}, "atk": 800, "all_boost": [[{"attr": "WATER"}, -500]]},
+	"Sword of Deep-Seated": {"k": "equip", "atk": 500, "def": 500, "deck_top": "always"},
 	"Legendary Sword": {"k": "equip", "must": {"race": "Warrior"}, "atk": 300, "def": 300},
 	"Beast Fangs": {"k": "equip", "must": {"race": "Beast"}, "atk": 300, "def": 300},
 	"Dark Energy": {"k": "equip", "must": {"race": "Fiend"}, "atk": 300, "def": 300},
@@ -150,16 +150,16 @@ const FX := {
 	"Elf's Light": {"k": "equip", "must": {"attr": "LIGHT"}, "atk": 400, "def": -200},
 	"Sword of Dark Destruction": {"k": "equip", "must": {"attr": "DARK"}, "atk": 400, "def": -200},
 	"Snatch Steal": {"k": "equip", "t": "opp_face", "control": true, "standby": [["opp_heal", 1000]]},
-	"Cyclon Laser": {"k": "equip", "atk": 300, "pierce": true},
+	"Cyclon Laser": {"k": "equip", "must": {"name": "Gradius"}, "atk": 300, "pierce": true},
 	"Spark Blaster": {"k": "equip", "atk": 300},
 	"Assault Armor": {"k": "equip", "must": {"race": "Warrior"}, "atk": 300},
-	"Junk Barrage": {"k": "equip", "atk": 300},
+	"Junk Barrage": {"k": "equip", "burn_half_on_kill": true},
 	"Mist Body": {"k": "equip", "no_battle_death": true},
 	"Heart of Clear Water": {"k": "equip", "no_battle_death": true},
 	"Ring of Magnetism": {"k": "equip", "atk": -500, "def": -500},
 	# ---------------------------------------------------------------- Normal Traps
-	"Ring of Destruction": {"k": "trap", "win": ["free"], "t": "any_face", "do": [["ring"]]},
-	"Dust Tornado": {"k": "trap", "win": ["free"], "t": "opp_st", "do": [["destroy", "target"]]},
+	"Ring of Destruction": {"k": "trap", "win": ["free"], "cond": "opp_turn", "t": "opp_face_atk_le_lp", "do": [["ring"]]},
+	"Dust Tornado": {"k": "trap", "win": ["free"], "t": "opp_st", "do": [["destroy", "target"], ["may_set"]]},
 	"Compulsory Evacuation Device": {"k": "trap", "win": ["free"], "t": "any_mon", "do": [["bounce", "target"]]},
 	"Raigeki Break": {"k": "trap", "win": ["free"], "t": "any_card", "cost": "discard", "do": [["destroy", "target"]]},
 	"Threatening Roar": {"k": "trap", "win": ["free"], "do": [["no_attacks"]]},
@@ -169,14 +169,14 @@ const FX := {
 	"Reckless Greed": {"k": "trap", "win": ["free"], "do": [["draw", 2], ["skip_draw", 2]]},
 	"Widespread Ruin": {"k": "trap", "win": ["attack"], "do": [["destroy", "opp_best_atk_pos"]]},
 	"Enchanted Javelin": {"k": "trap", "win": ["attack"], "do": [["heal_attacker_atk"]]},
-	"Shadow Spell": {"k": "ctrap", "win": ["free"], "t": "opp_face", "equip": true, "atk": -700, "no_attack": true},
-	"Spellbinding Circle": {"k": "ctrap", "win": ["free"], "t": "opp_face", "equip": true, "no_attack": true},
-	"Nightmare Wheel": {"k": "ctrap", "win": ["free"], "t": "opp_face", "equip": true, "no_attack": true, "standby": [["damage", 500]]},
+	"Shadow Spell": {"k": "ctrap", "win": ["free"], "t": "opp_face", "equip": true, "atk": -700, "no_attack": true, "no_move": true},
+	"Spellbinding Circle": {"k": "ctrap", "win": ["free"], "t": "opp_face", "equip": true, "no_attack": true, "no_move": true},
+	"Nightmare Wheel": {"k": "ctrap", "win": ["free"], "t": "opp_face", "equip": true, "no_attack": true, "no_move": true, "standby": [["damage", 500]]},
 	"Call of the Haunted": {"k": "ctrap", "win": ["free"], "do": [["revive", "own_gy", "atk", "link"]]},
 	"Gravity Bind": {"k": "ctrap", "win": ["free"], "lock_lv_min": 4},
 	"Royal Decree": {"k": "ctrap", "win": ["free"], "block": "trap"},
 	"Imperial Order": {"k": "ctrap", "win": ["free"], "block": "spell", "upkeep": 700},
-	"Macro Cosmos": {"k": "ctrap", "win": ["free"], "redirect": "all"},
+	"Macro Cosmos": {"k": "ctrap", "win": ["free"], "redirect": "all", "do": [["may_special_named", "Helios - The Primordial Sun"]]},
 	"Windstorm of Etaqua": {"k": "trap", "win": ["free"], "do": [["change_pos", "opp_face_mons"]]},
 	"Zero Gravity": {"k": "trap", "win": ["free"], "do": [["change_pos", "all_face_mons"]]},
 	"Dimensional Prison": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["banish", "attacker"]]},
@@ -185,7 +185,7 @@ const FX := {
 	"Magic Cylinder": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["damage_attacker_atk"]]},
 	"Negate Attack": {"k": "counter", "win": ["attack"], "neg": [], "do": [["end_battle"]]},
 	"Waboku": {"k": "trap", "win": ["free"], "do": [["no_battle_damage"], ["protect"]]},
-	"Hallowed Life Barrier": {"k": "trap", "win": ["free"], "cost": "discard", "do": [["no_battle_damage"]]},
+	"Hallowed Life Barrier": {"k": "trap", "win": ["free"], "cost": "discard", "do": [["no_damage_turn"], ["protect"]]},
 	"Trap Hole": {"k": "trap", "win": ["summon"], "subj_atk_min": 1000, "normal_only": true, "do": [["destroy", "summoned"]]},
 	"Bottomless Trap Hole": {"k": "trap", "win": ["summon"], "subj_atk_min": 1500, "do": [["destroy", "summoned"], ["banish", "summoned"]]},
 	"Torrential Tribute": {"k": "trap", "win": ["summon"], "do": [["destroy", "all_mons"]]},
@@ -201,7 +201,7 @@ const FX := {
 	"Dark Bribe": {"k": "counter", "neg": ["spell", "trap"], "do": [["opp_draw", 1]]},
 	"Horn of Heaven": {"k": "counter", "neg": ["summon"], "cost": "tribute"},
 	"Spell Shield Type-8": {"k": "counter", "neg": ["spell"], "cost": "discard"},
-	"Trap Jammer": {"k": "counter", "neg": ["trap"]},
+	"Trap Jammer": {"k": "counter", "neg": ["trap"], "cond": "battle_phase"},
 	"Cursed Seal of the Forbidden Spell": {"k": "counter", "neg": ["spell"], "cost": "discard"},
 }
 
@@ -331,6 +331,8 @@ static func fits(s: DuelState, p: int, c, window: String, subject) -> bool:
 		return false
 	if blocked(s, c):
 		return false
+	if sp.has("cond") and not cond_ok(s, p, str(sp["cond"])):
+		return false
 	# Spell Speed: only a Counter Trap can answer a Counter Trap.
 	if window == "chain" and subject is Dictionary and str(subject.get("spec", {}).get("k", "")) == "counter" and k != "counter":
 		return false
@@ -351,9 +353,9 @@ static func fits(s: DuelState, p: int, c, window: String, subject) -> bool:
 	var wins: Array = sp.get("win", ["free"] if k == "quick" else [])
 	if not (wins.has("free") or wins.has(window)):
 		return false
-	if sp.get("own_direct", false):
-		# Ego Boost: when one of your own monsters declares a direct attack.
-		if s.pending_attack.is_empty() or s.pending_attack["player"] != p or s.pending_attack["target"] != null or window != "attack":
+	if sp.get("any_attack", false):
+		# Ego Boost: when any monster declares an attack.
+		if s.pending_attack.is_empty() or window != "attack":
 			return false
 	elif wins.has("attack") and not wins.has("free"):
 		if s.pending_attack.is_empty() or s.pending_attack["player"] == p or window != "attack":
@@ -401,9 +403,23 @@ static func field_flag(s: DuelState, flag: String) -> bool:
 
 
 ## Would activating this card do anything right now?
+## A card's own "only if / only during" condition.
+static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
+	if cond.begins_with("opp_lp_over:"):
+		return s.players[s.opponent(p)].lp > int(cond.substr(12))
+	match cond:
+		"battle_phase":
+			return s.phase == DuelState.Phase.BATTLE
+		"opp_turn":
+			return s.current != p
+	return true
+
+
 static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 	var sp := spec(c)
 	if not _can_pay(s, p, c, sp):
+		return false
+	if sp.has("cond") and not cond_ok(s, p, str(sp["cond"])):
 		return false
 	if _needs_target(sp) and targets(s, p, c).is_empty():
 		return false
@@ -444,6 +460,11 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 					return false
 			"avarice":
 				if s._best_monsters(ps.gy, 5).size() < 5:
+					return false
+			"sanctity":
+				# "(min. 1 total)": there has to be at least one other card to banish.
+				var others := ps.monsters().size() + ps.set_cards().size() + (ps.hand.size() - (1 if ps.hand.has(c) else 0))
+				if others < 1:
 					return false
 			"damage_per":
 				if _sel(s, p, c, str(a[1]), {}).is_empty():
@@ -526,6 +547,7 @@ static func targets(s: DuelState, p: int, c) -> Array:
 				"opp_mon": ok = not mine
 				"opp_face": ok = not mine and m.face_up
 				"opp_def": ok = not mine and not m.attack_pos
+				"opp_face_atk_le_lp": ok = not mine and m.face_up and s.atk_of(m, false) <= s.players[q].lp
 				"own_mon": ok = mine
 				"own_face": ok = mine and m.face_up
 				"any_face": ok = m.face_up
@@ -748,6 +770,76 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			var need := int(a[1]) - ps.hand.size()
 			if need > 0:
 				events.append_array(s._draw(p, need))
+		"sanctity":
+			# Card of Sanctity: banish every other card you control and in your hand, then draw until you hold 2.
+			for h in ps.hand.duplicate():
+				if h != c:
+					events.append_array(s._banish(h))
+			for m in ps.monsters():
+				events.append_array(s._banish(m))
+			for st in ps.spells.duplicate():
+				if st != null and st != c:
+					events.append_array(s._banish(st))
+			if ps.field_spell != null and ps.field_spell != c:
+				events.append_array(s._banish(ps.field_spell))
+			var need2 := 2 - ps.hand.size()
+			if need2 > 0:
+				events.append_array(s._draw(p, need2))
+		"opp_tribute":
+			# Share the Pain: the opponent Tributes 1 monster of their choice.
+			var theirs: Array = opp.monsters()
+			if not theirs.is_empty():
+				var weak2 = theirs[0]
+				for m in theirs:
+					if s.atk_of(m, false) < s.atk_of(weak2, false):
+						weak2 = m
+				var gone2 = s.pick1(s.opponent(p), Loc.t("%s: Tribute 1 of your monsters") % c.cname(), theirs, weak2, c)
+				opp.field[opp.field.find(gone2)] = null
+				s._to_gy(opp, gone2)
+				events.append({"type": "tribute", "player": s.opponent(p), "card": gone2})
+				events.append_array(s._monster_left(gone2))
+		"no_tribute":
+			for t in _sel(s, p, c, str(a[1]), ctx):
+				t.no_tribute_turn = s.turn
+		"no_damage_turn":
+			# Hallowed Life Barrier: no damage of any kind from the opponent's cards this turn.
+			ps.no_damage_turn = s.turn
+			ps.no_effect_damage_turn = s.turn
+		"may_set":
+			# Dust Tornado: then you can Set 1 Spell/Trap from your hand.
+			var cands: Array = ps.hand.filter(func(h): return not h.is_monster() and kind(h) != "field")
+			if not cands.is_empty() and ps.spells.find(null) != -1:
+				var pick: Array = s.choose(p, Loc.t("%s: Set 1 Spell or Trap from your hand?") % c.cname(), cands, 1, [], true, c)
+				if not pick.is_empty():
+					var st2 = pick[0]
+					var z := ps.spells.find(null)
+					ps.hand.erase(st2)
+					ps.spells[z] = st2
+					st2.face_up = false
+					st2.set_turn = s.turn
+					events.append({"type": "set_st", "player": p, "card": st2, "zone": z})
+		"may_special_named":
+			# Macro Cosmos: you can Special Summon the named monster from your hand or Deck.
+			var found = null
+			for src in [ps.hand, ps.deck]:
+				for h in src:
+					if found == null and h.cname() == str(a[1]):
+						found = h
+			if found != null and ps.free_zone() != -1 and s.choose_option(p, Loc.t("%s: Special Summon %s?") % [c.cname(), str(a[1])], ["Special Summon it", "No"], 0, c) == 0:
+				ps.hand.erase(found)
+				ps.deck.erase(found)
+				events.append_array(s._special(p, found, "effect"))
+		"purge_copies":
+			# Nobleman of Crossout / Extermination: if what was banished was a Flip monster (or a Trap),
+			# both players banish every copy of it from their Main Decks.
+			var t0 = ctx.get("target")
+			if t0 != null:
+				var is_it: bool = t0.is_trap() if str(a[1]) == "trap" else (CardEffects.of(t0.cname()).has("flip") or str(t0.data.get("desc", t0.data.get("text", ""))).begins_with("FLIP"))
+				if is_it:
+					for q in 2:
+						for d in s.players[q].deck.duplicate():
+							if d.cname() == t0.cname():
+								events.append_array(s._banish(d))
 		"discard":
 			var by_value: Array = ps.hand.duplicate()
 			by_value.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
@@ -915,11 +1007,13 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 		"ring":
 			var t = ctx.get("target")
 			if t != null and s.players[t.owner].field.has(t):
-				var n: int = s.atk_of(t, false)
+				# Destroy it, take damage equal to its original ATK, then deal the same to the opponent.
+				var n: int = int(t.data.get("atk", 0))
 				events.append_array(s._destroy(t))
-				events.append_array(s._damage(0, n))
-				if not s.is_over():
-					events.append_array(s._damage(1, n))
+				var before: int = ps.lp
+				events.append_array(s._damage(p, n))
+				if not s.is_over() and ps.lp < before:
+					events.append_array(s._damage(s.opponent(p), before - ps.lp))
 		"ritual":
 			events.append_array(_do_ritual(s, p, c))
 		"miracle_fusion":
@@ -1073,6 +1167,9 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs) -> int:
 			for boost in sp.get("boost", []):
 				if CardEffects.matches(c.data, boost[0]):
 					b += int(boost[1])
+			for boost in sp.get("all_boost", []):
+				if c.face_up and CardEffects.matches(c.data, boost[0]):
+					b += int(boost[1])
 			if st.equipped_to == c:
 				b += int(sp.get("atk", 0))
 				if sp.has("atk_per"):
@@ -1217,6 +1314,12 @@ static func left_field(s: DuelState, c) -> Array:
 		events.append_array(s._return_control(c.equipped_to))
 	for a in sp.get("on_leave", []):
 		events.append_array(_run(s, p, c, a, {}))
+	# Big Bang Shot: when it leaves the field, the equipped monster is banished.
+	if sp.get("banish_on_leave", false) and c.equipped_to != null and (s.players[0].field.has(c.equipped_to) or s.players[1].field.has(c.equipped_to)):
+		var gone = c.equipped_to
+		c.equipped_to = null
+		events.append_array(s._banish(gone))
+	c.left_turn = s.turn
 	c.equipped_to = null
 	c.linked = null
 	c.counter = 0
