@@ -19,7 +19,7 @@ import numpy as np
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PEOPLE = os.path.join(HERE, "..", "assets", "models", "people")
+PEOPLE = os.environ.get("HERO_PEOPLE", os.path.join(HERE, "..", "assets", "models", "people"))
 IDS = {"none": 0, "skin": 40, "hair": 80, "top": 120, "bottom": 160, "shoes": 200, "eyes": 220, "accent": 240}
 CT = {5120: np.int8, 5121: np.uint8, 5122: np.int16, 5123: np.uint16, 5125: np.uint32, 5126: np.float32}
 NC = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT4": 16}
@@ -421,6 +421,8 @@ def main():
         table[n] = build(n, preview)
         print(n, json.dumps(table[n]))
     json.dump(table, open(path, "w"), indent=1, sort_keys=True)
+    if os.environ.get("HERO_NO_GD"):
+        return
     lines = ["class_name HeroMasks", "## Made by tools/hero_masks.py. The usual color of each part of every built-in hero model,",
              "## so the game can repaint it. Do not edit by hand.", "", "const REFS := {"]
     for n in sorted(table):

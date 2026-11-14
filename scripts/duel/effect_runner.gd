@@ -18,7 +18,7 @@ static func _ev(p: int, c, text: String) -> Dictionary:
 ## ATK change from effects. vs = the other monster in battle (null for direct / not battling).
 static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> int:
 	var f := fx(c)
-	var b := 0
+	var b := union_boost(s, c)
 	if c.atk_mod_turn == s.turn:
 		b += c.atk_mod_t
 	b += c.atk_mod
@@ -73,9 +73,10 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 ## DEF from a monster's own effect ("ATK/DEF become...", "gains ATK/DEF for each...").
 static func def_bonus(s: DuelState, c) -> int:
 	var f := fx(c)
+	var u := union_boost(s, c)
 	if f.has("def_per"):
-		return _count(s, c.owner, str(f["def_per"][0])) * int(f["def_per"][1])
-	return 0
+		return u + _count(s, c.owner, str(f["def_per"][0])) * int(f["def_per"][1])
+	return u
 
 
 static func _count(s: DuelState, owner: int, spec: String) -> int:
@@ -120,6 +121,13 @@ static func can_direct(s: DuelState, p: int, c) -> bool:
 	var f := fx(c)
 	if f.get("direct", false):
 		return true
+	# Toons. The small ones need your Toon World and no Toon across the table; the big ones
+	# only need the other side to have no Toon.
+	var toon := int(f.get("toon", 0))
+	if toon == 1 and not c.negated:
+		return s.toon_world(p) and not s.has_toon(s.opponent(p))
+	if toon == 2 and not c.negated:
+		return not s.has_toon(s.opponent(p))
 	match str(f.get("direct_if", "")):
 		"opp_all_def":
 			# "If the only cards your opponent controls are Defense Position monsters"
@@ -162,6 +170,11 @@ static func max_attacks(c) -> int:
 static func piercing(s: DuelState, p: int, c) -> bool:
 	if fx(c).get("piercing", false):
 		return true
+	if c.frame() == "ritual":
+		# Cyber Angel Dakini: while it is face-up, every Ritual Monster you control pierces.
+		for m in s.players[p].monsters():
+			if m.face_up and not m.negated and fx(m).get("ritual_pierce", false):
+				return true
 	if s.players[p].hand.is_empty():
 		for m in s.players[p].monsters():
 			if m.face_up and fx(m).get("piercing_if", "") == "hand_empty":
@@ -241,7 +254,7 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 ## Does this monster have its own way to be Special Summoned from the hand?
 static func has_special_hand(c) -> bool:
 	var f := fx(c)
-	for k in ["special_hand_if", "special_tribute2", "special_tribute_attr", "special_banish_ld", "eltanin"]:
+	for k in ["special_hand_if", "special_tribute2", "special_tribute_attr", "special_banish_ld", "eltanin", "special_toon"]:
 		if f.has(k):
 			return true
 	return false
@@ -250,7 +263,7 @@ static func has_special_hand(c) -> bool:
 ## Special Summon from the hand by its own rule (Bora, Gale, Vice Dragon, Photon Thrasher...).
 static func can_special_hand(s: DuelState, p: int, c) -> bool:
 	var f := fx(c)
-	if s.players[p].free_zone() == -1:
+	if s.players[p].free_zone() == -1 and int(f.get("special_toon", 0)) == 0:
 		return false
 	if f.get("special_banish_ld", false):
 		return _gy_attr(s, p, "LIGHT") != null and _gy_attr(s, p, "DARK") != null
@@ -258,6 +271,9 @@ static func can_special_hand(s: DuelState, p: int, c) -> bool:
 		return not _light_machines(s, p).is_empty()
 	if f.has("special_hand_if"):
 		return _cond(s, p, str(f["special_hand_if"]))
+	if f.has("special_toon"):
+		# From the hand while you control Toon World, Tributing that many monsters first.
+		return s.toon_world(p) and s.players[p].monsters().size() >= int(f["special_toon"])
 	if f.has("special_tribute2"):
 		var n := 0
 		for m in s.players[p].monsters():
@@ -332,6 +348,19 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 			ps.field[ps.field.find(m)] = null
 			s._to_gy(ps, m)
 			events.append({"type": "tribute", "player": p, "card": m})
+			events.append_array(EffectRunner.trigger(s, m, "tributed"))
+	if int(f.get("special_toon", 0)) > 0:
+		var need_t := int(f["special_toon"])
+		var all_t := ps.monsters()
+		all_t.sort_custom(func(a, b): return s.atk_of(a, false) < s.atk_of(b, false))
+		var picks_t: Array = all_t.slice(0, need_t)
+		picks_t = s.choose(p, Loc.t("%s: Tribute %d monster%s") % [c.cname(), need_t, "" if need_t == 1 else "s"], all_t, need_t, picks_t, false, c)
+		for m in picks_t:
+			ps.field[ps.field.find(m)] = null
+			s._to_gy(ps, m)
+			events.append({"type": "tribute", "player": p, "card": m})
+			events.append_array(EffectRunner.trigger(s, m, "tributed"))
+			events.append_array(s._monster_left(m))
 	if f.get("special_banish_ld", false):
 		for attr in ["LIGHT", "DARK"]:
 			events.append_array(s._banish(_gy_attr(s, p, attr, c)))
@@ -402,17 +431,85 @@ static func end_phase(s: DuelState, p: int) -> Array:
 
 # ------------------------------------------------------------------ ignition effects
 
+## "You can banish this card from your GY; ..." Can this card in the Graveyard do that now?
+static func gy_can(s: DuelState, p: int, c) -> bool:
+	var g: Dictionary = fx(c).get("gy_ignite", {})
+	if g.is_empty() or not s.players[p].gy.has(c):
+		return false
+	if int(s.players[p].name_lock.get(c.cname(), -1)) == s.turn:
+		return false
+	for a in g.get("do", []):
+		if a[0] == "special" and a[1] == "deck":
+			if s.players[p].free_zone() == -1 or _take(s.players[p].deck, a[2], 1).is_empty():
+				return false
+	return true
+
+
+static func gy_run(s: DuelState, p: int, c) -> Array:
+	var g: Dictionary = fx(c)["gy_ignite"]
+	var events := [_ev(p, c, Loc.t("%s is banished from the Graveyard for its effect") % c.cname())]
+	s.players[p].gy.erase(c)
+	s.players[p].banished.append(c)
+	events.append({"type": "banish", "player": p, "card": c})
+	events.append_array(run_list(s, p, c, g.get("do", []), {}))
+	return events
+
+
+## A Union monster's once-per-turn move: onto a partner as an Equip Card, or back off it as a monster.
+static func _union(s: DuelState, p: int, c) -> Array:
+	var ps := s.players[p]
+	c.ignite_turn = s.turn
+	if ps.spells.has(c):
+		var was = c.equipped_to
+		ps.spells[ps.spells.find(c)] = null
+		c.equipped_to = null
+		var ev := [_ev(p, c, Loc.t("%s comes off %s") % [c.cname(), was.cname() if was != null else "?"])]
+		ev.append_array(s._special(p, c, "effect"))
+		return ev
+	var hosts := s.union_hosts(p, c)
+	var best = hosts[0]
+	for h in hosts:
+		if s.atk_of(h, false) > s.atk_of(best, false):
+			best = h
+	best = s.pick1(p, Loc.t("%s: equip it to which monster?") % c.cname(), hosts, best, c)
+	ps.field[ps.field.find(c)] = null
+	ps.spells[ps.spells.find(null)] = c
+	c.equipped_to = best
+	c.face_up = true
+	c.attack_pos = true
+	var gain := int(fx(c)["union"].get("boost", 0))
+	return [_ev(p, c, Loc.t("%s is equipped to %s: +%d ATK and DEF") % [c.cname(), best.cname(), gain])]
+
+
+## ATK and DEF a monster gets from the Union monsters equipped to it.
+static func union_boost(s: DuelState, c) -> int:
+	var b := 0
+	for u in s.unions_on(c):
+		if not u.negated:
+			b += int(fx(u).get("union", {}).get("boost", 0))
+	return b
+
+
 static func ignite_spec(c) -> Dictionary:
+	if fx(c).has("union"):
+		return {"label": "Equip to a partner / unequip"}
 	return fx(c).get("ignite", {})
 
 
 static func can_ignite(s: DuelState, p: int, c) -> bool:
+	if fx(c).has("union"):
+		# Once per turn, either: equip it to one of its partners, or take it off and Special Summon it.
+		if p != s.current or s.is_over() or not s._in_main() or c.ignite_turn == s.turn or c.negated:
+			return false
+		if s.players[p].spells.has(c):
+			return c.face_up and c.equipped_to != null and s.players[p].free_zone() != -1
+		return s.players[p].field.has(c) and c.face_up and not s.union_hosts(p, c).is_empty() and s.players[p].spells.find(null) != -1
 	var ig := ignite_spec(c)
 	if ig.is_empty() or p != s.current or s.is_over() or not s._in_main():
 		return false
 	if int(s.players[p].name_lock.get(c.cname(), -1)) == s.turn:
 		return false
-	if not s.players[p].field.has(c) or not c.face_up or c.ignite_turn == s.turn:
+	if not s.players[p].field.has(c) or not c.face_up or (c.ignite_turn == s.turn and not ig.get("repeat", false)):
 		return false
 	if ig.has("cond") and not _cond(s, p, str(ig["cond"])):
 		return false
@@ -466,7 +563,14 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 	for a in actions:
 		match a[0]:
 			"destroy":
-				if str(a[1]).begins_with("best") or str(a[1]) in ["atk_below_self", "weakest"]:
+				if str(a[1]) == "any_pick":
+					var n_cards: int = opp.monsters().size() + (1 if opp.field_spell != null else 0)
+					for st in opp.spells:
+						if st != null:
+							n_cards += 1
+					if n_cards == 0:
+						return false
+				elif str(a[1]).begins_with("best") or str(a[1]) in ["atk_below_self", "weakest"]:
 					if opp.monsters().is_empty() and not (a[1] == "best_any" and not opp.set_cards().is_empty()):
 						return false
 			"opp_half", "opp_zero", "destroy_half_damage":
@@ -525,6 +629,8 @@ static func _level_sources(s: DuelState, c, f: Dictionary) -> Array:
 static func ignite(s: DuelState, p: int, c) -> Array:
 	if not can_ignite(s, p, c):
 		return []
+	if fx(c).has("union"):
+		return _union(s, p, c)
 	var ig := ignite_spec(c)
 	var ps := s.players[p]
 	var events := [_ev(p, c, Loc.t("%s activates its effect") % c.cname())]
@@ -547,10 +653,26 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 			s._to_gy(ps, pick)
 			ctx["discarded"] = pick
 			events.append({"type": "discard", "player": p, "card": pick})
+		"tribute_any":
+			# "Tribute 1 monster": any of yours, this one included. The weakest other one by default.
+			var anyp = null
+			var anyc: Array = ps.monsters()
+			for m in anyc:
+				if m != c and (anyp == null or s.atk_of(m, false) < s.atk_of(anyp, false)):
+					anyp = m
+			if anyp == null:
+				anyp = c
+			anyp = s.pick1(p, Loc.t("%s: Tribute 1 monster") % c.cname(), anyc, anyp, c)
+			ps.field[ps.field.find(anyp)] = null
+			s._to_gy(ps, anyp)
+			events.append({"type": "tribute", "player": p, "card": anyp})
+			events.append_array(EffectRunner.trigger(s, anyp, "tributed"))
+			events.append_array(s._monster_left(anyp))
 		"tribute_self":
 			ps.field[ps.field.find(c)] = null
 			s._to_gy(ps, c)
 			events.append({"type": "tribute", "player": p, "card": c})
+			events.append_array(EffectRunner.trigger(s, c, "tributed"))
 		"tribute_other", "tribute_plant":
 			var pick = null
 			var can: Array = []
@@ -571,6 +693,7 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 			ps.field[ps.field.find(pick)] = null
 			s._to_gy(ps, pick)
 			events.append({"type": "tribute", "player": p, "card": pick})
+			events.append_array(EffectRunner.trigger(s, pick, "tributed"))
 		"banish_gy_dark":
 			events.append_array(s._banish(_gy_attr(s, p, "DARK", c)))
 		"banish_gy_monster":
@@ -942,6 +1065,62 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 		"perm_atk":
 			c.atk_mod += int(a[1])
 			events.append(_ev(p, c, Loc.t("%s gains %d ATK") % [name, a[1]]))
+		"ritual_boost":
+			# Cyber Angel Idaten, Tributed: every Ritual Monster you control gains ATK and DEF.
+			var any_r := false
+			for m in ps.monsters():
+				if m.face_up and m.frame() == "ritual":
+					m.atk_mod += int(a[1])
+					m.def_mod += int(a[1])
+					any_r = true
+			if any_r:
+				events.append(_ev(p, c, Loc.t("%s: your Ritual Monsters gain %d ATK and DEF") % [name, a[1]]))
+		"add_ritual_spell":
+			# Cyber Angel Idaten, Ritual Summoned: 1 Ritual Spell from your Deck or Graveyard to your hand.
+			var rs: Array = []
+			for x in ps.deck + ps.gy:
+				if not x.is_monster() and str(SpellRules.spec(x).get("k", "")) == "ritual":
+					rs.append(x)
+			if not rs.is_empty():
+				var gotr = s.pick1(p, Loc.t("%s: add 1 Ritual Spell to your hand") % name, rs, rs[0], c)
+				ps.deck.erase(gotr)
+				ps.gy.erase(gotr)
+				ps.hand.append(gotr)
+				events.append(_ev(p, c, Loc.t("%s adds %s to the hand") % [name, gotr.cname()]))
+				events.append({"type": "to_hand", "player": p, "card": gotr})
+		"recover_ritual":
+			# Cyber Angel Dakini, your End Phase: 1 Ritual Monster or 1 "Machine Angel Ritual" from your Graveyard.
+			var back_r: Array = []
+			for x in ps.gy:
+				if (x.is_monster() and x.frame() == "ritual") or x.cname() == "Machine Angel Ritual":
+					back_r.append(x)
+			if not back_r.is_empty():
+				var best_r = back_r[0]
+				for x in back_r:
+					if x.is_monster() and (not best_r.is_monster() or x.atk() > best_r.atk()):
+						best_r = x
+				var gotb = s.pick1(p, Loc.t("%s: add 1 Ritual Monster or Machine Angel Ritual from your Graveyard to your hand") % name, back_r, best_r, c)
+				ps.gy.erase(gotb)
+				ps.hand.append(gotb)
+				events.append(_ev(p, c, Loc.t("%s returns %s to the hand") % [name, gotb.cname()]))
+				events.append({"type": "to_hand", "player": p, "card": gotb})
+		"opp_sends":
+			# Cyber Angel Dakini, Ritual Summoned: the opponent sends 1 monster they control to the
+			# Graveyard, and they choose which. (Sent, not destroyed.)
+			var theirs: Array = opp.monsters()
+			if not theirs.is_empty():
+				var weak = theirs[0]
+				for x in theirs:
+					if s.atk_of(x, false) < s.atk_of(weak, false):
+						weak = x
+				var gone = s.pick1(opp_i, Loc.t("%s: send 1 of your monsters to the Graveyard") % name, theirs, weak, c)
+				var zg := opp.field.find(gone)
+				opp.field[zg] = null
+				s._to_gy(opp, gone)
+				events.append(_ev(p, c, Loc.t("%s: %s is sent to the Graveyard") % [name, gone.cname()]))
+				events.append({"type": "destroy", "player": opp_i, "card": gone, "zone": zg})
+				events.append_array(s._monster_left(gone))
+				events.append_array(trigger(s, gone, "gy"))
 		"best_own_atk":
 			var best = null
 			for m in ps.monsters():
@@ -1089,6 +1268,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 						ps.field[zone] = null
 						s._to_gy(ps, c)
 						events.append({"type": "tribute", "player": p, "card": c})
+						events.append_array(EffectRunner.trigger(s, c, "tributed"))
 						src.erase(d)
 						events.append(_ev(p, c, Loc.t("%s levels up!") % name))
 						events.append_array(s._special(p, d, "effect"))
@@ -1144,6 +1324,25 @@ static func _destroy_action(s: DuelState, p: int, c, what: String, ctx: Dictiona
 					events.append(_ev(p, c, Loc.t("%s destroys a set card") % c.cname()))
 					events.append_array(s._destroy_st(got))
 					return events
+		"any_pick":
+			# "Target 1 card your opponent controls; destroy that target": a monster, a Spell or Trap
+			# (face-up or Set), or their Field Spell.
+			var every: Array = opp.monsters()
+			for st in opp.spells:
+				if st != null:
+					every.append(st)
+			if opp.field_spell != null:
+				every.append(opp.field_spell)
+			if every.is_empty():
+				return events
+			var want = _best_opp(s, p)
+			var gotx = s.pick1(p, Loc.t("%s: destroy 1 card") % c.cname(), every, want if want != null else every[0], c)
+			if opp.field.has(gotx):
+				targets.append(gotx)
+			else:
+				events.append(_ev(p, c, Loc.t("%s destroys %s") % [c.cname(), gotx.cname() if gotx.face_up else Loc.t("a set card")]))
+				events.append_array(s._destroy_st(gotx))
+				return events
 		"all_faceup_spells":
 			# Cyber Prima: every face-up Spell on the field, both sides.
 			var ups2: Array = []

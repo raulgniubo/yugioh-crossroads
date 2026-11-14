@@ -70,6 +70,16 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 	for c in pool:
 		if c.is_monster() or not s.can_activate(p, c):
 			continue
+		if c.cname() == "Toon World":
+			# It does nothing by itself, so no look ahead would ever play it: a Toon deck opens
+			# its world as soon as it has a Toon that needs one.
+			var wants := false
+			for h in me.hand + me.monsters():
+				if h.is_monster() and EffectRunner.fx(h).has("toon"):
+					wants = true
+			if wants and not s.toon_world(p) and me.lp > 2000:
+				return {"do": "activate", "card": c}
+			continue
 		if not SpellRules.spec(c).has("legacy"):
 			# Cards from the Spell/Trap table: play it if a quick look ahead says the board gets better.
 			if idle < -1e8:
@@ -129,10 +139,26 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 	# 4b. Special Summons from hand (Cyber Dragon, Bora, Gale...)
 	for c in me.hand:
 		if s.can_special_from_hand(p, c):
+			var cost_n := int(EffectRunner.fx(c).get("special_toon", 0))
+			if cost_n > 0:
+				# Only trade up: the monster given up must be weaker than the Toon that arrives.
+				var weakest := 99999
+				for m in me.monsters():
+					weakest = mini(weakest, s.atk_of(m, false))
+				if weakest >= c.atk():
+					continue
 			return {"do": "special_hand", "card": c}
+	# 4e. Effects used from the Graveyard (Destiny HERO - Malicious)
+	for g in s.gy_effects(p):
+		return {"do": "gy_ignite", "card": g}
 	# 4d. Monster effects on the field
 	for m in me.monsters():
 		if s.can_ignite(p, m):
+			var ig := EffectRunner.ignite_spec(m)
+			if ig.get("repeat", false) and str(ig.get("cost", "")).begins_with("tribute"):
+				# Feeding the whole board to a cannon is only worth it when it ends the duel.
+				if opp.lp > 500 * me.monsters().size():
+					continue
 			return {"do": "ignite", "card": m}
 	# 4c. Set traps (and Mystical Space Typhoon / spells we're holding back)
 	for c in me.hand:
@@ -150,9 +176,27 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 	return {}
 
 
+## The next attack to make. A monster that may only attack certain targets (a big Toon facing
+## a Toon) picks among those; one whose pick is not allowed sits this attack out.
 static func next_attack(s: DuelState, p: int, level := NORMAL) -> Dictionary:
+	var skip: Array = []
+	for tries in 6:
+		var a := _next_attack(s, p, level, skip)
+		if a.is_empty() or s.attack_allowed(p, a["card"], a.get("target")):
+			return a
+		var m: DuelState.CardInst = a["card"]
+		var t := _best_target(m, s.attack_targets_for(p, m), 1500)
+		if t != null and (not t.face_up or s.atk_of(m, true) > (s.atk_of(t, true) if t.attack_pos else t.def())):
+			return {"do": "attack", "card": m, "target": t}
+		skip.append(m)
+	return {}
+
+
+static func _next_attack(s: DuelState, p: int, level: int, skip: Array) -> Dictionary:
 	var opp := s.players[s.opponent(p)]
-	var attackers: Array = s.players[p].monsters().filter(func(m): return s.can_attack(p, m))
+	# (A monster that charges Life Points to attack never spends the last of them.)
+	var my_lp: int = s.players[p].lp
+	var attackers: Array = s.players[p].monsters().filter(func(m): return s.can_attack(p, m) and not skip.has(m) and my_lp > int(EffectRunner.fx(m).get("attack_cost", 0)) * 2)
 	if attackers.is_empty():
 		return {}
 	attackers.sort_custom(func(a, b): return s.atk_of(a, true) > s.atk_of(b, true))
@@ -607,6 +651,8 @@ static func apply(s: DuelState, p: int, act: Dictionary) -> Array:
 			return s.special_from_hand(p, act["card"])
 		"ignite":
 			return s.ignite(p, act["card"])
+		"gy_ignite":
+			return s.gy_ignite(p, act["card"])
 		"speed":
 			return s.speed_world(p, int(act["cost"]))
 	return []

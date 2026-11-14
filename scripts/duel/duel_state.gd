@@ -55,6 +55,7 @@ class CardInst:
 	var lv_set := 0               # a Level it was given by an effect (Gagaga Magician, Copy Plant, Infernity Avenger)
 	var lv_turn := -1             # ...through this turn (-1: for as long as it stays on the field)
 	var died_turn := -1           # the turn it was destroyed by battle (Captain Tenacious)
+	var gy_turn := -9          # the turn it last went to the Graveyard
 	var wedge := false            # a Wedge Counter (Blackwing Armor Master)
 	var flag_turn := -1           # "this card's effect was applied this turn" (Stardust Dragon)
 	var once := false             # a once-while-in-the-Graveyard / once-per-Duel effect is spent
@@ -585,6 +586,7 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 		ps.field[ps.field.find(t)] = null
 		_to_gy(ps, t)
 		events.append({"type": "tribute", "player": p, "card": t})
+		events.append_array(EffectRunner.trigger(self, t, "tributed"))
 	var zone := ps.free_zone()
 	ps.hand.erase(c)
 	ps.field[zone] = c
@@ -974,6 +976,7 @@ func can_attack(p: int, c: CardInst) -> bool:
 	return (p == current and phase == Phase.BATTLE and not is_over() and players[p].field.has(c)
 			and c.face_up and c.attack_pos and attacks_left(c) > 0 and SpellRules.can_attack(self, p, c)
 			and not (EffectRunner.fx(c).get("summon_sick", false) and c.summoned_turn == turn)
+			and players[p].lp >= int(EffectRunner.fx(c).get("attack_cost", 0))
 			and not (EffectRunner.fx(c).get("no_attack_with_others", false) and players[p].monsters().size() > 1)
 			and players[opponent(p)].swords_left == 0)
 
@@ -1002,6 +1005,86 @@ func can_ignite(p: int, c: CardInst) -> bool:
 
 func ignite(p: int, c: CardInst) -> Array:
 	return EffectRunner.ignite(self, p, c)
+
+
+## Effects that are activated from the Graveyard (Destiny HERO - Malicious): the cards of
+## `p` that could use theirs right now.
+func gy_effects(p: int) -> Array:
+	var out := []
+	if p != current or not _in_main() or is_over():
+		return out
+	for g in players[p].gy:
+		if EffectRunner.gy_can(self, p, g):
+			out.append(g)
+	return out
+
+
+func gy_ignite(p: int, c: CardInst) -> Array:
+	if not gy_effects(p).has(c):
+		return []
+	return EffectRunner.gy_run(self, p, c)
+
+
+## Union monsters riding on `m` as Equip Cards (Y-Dragon Head, Z-Metal Tank).
+func unions_on(m: CardInst) -> Array:
+	var out := []
+	for q in 2:
+		for st in players[q].spells:
+			if st != null and st.face_up and st.is_monster() and st.equipped_to == m:
+				out.append(st)
+	return out
+
+
+## The monsters a Union monster on the field could be equipped to right now.
+func union_hosts(p: int, c: CardInst) -> Array:
+	var out := []
+	var names: Array = EffectRunner.fx(c).get("union", {}).get("to", [])
+	for m in players[p].monsters():
+		if m != c and m.face_up and names.has(m.cname()):
+			out.append(m)
+	return out
+
+
+## Toon monsters: anything with "Toon" in its name, and Manga Ryu-Ran.
+func is_toon(m: CardInst) -> bool:
+	if m == null or not m.is_monster():
+		return false
+	var n := m.cname()
+	return n.begins_with("Toon ") or n.contains(" Toon ") or n.ends_with(" Toon") or n == "Manga Ryu-Ran"
+
+
+func has_toon(q: int) -> bool:
+	for m in players[q].monsters():
+		if m.face_up and is_toon(m):
+			return true
+	return false
+
+
+## Does this player have a face-up "Toon World"?
+func toon_world(q: int) -> bool:
+	for st in players[q].spells:
+		if st != null and st.face_up and st.cname() == "Toon World":
+			return true
+	return false
+
+
+## What this one monster may attack. The big Toons (Toon Mermaid, Toon Summoned Skull, Toon Dark
+## Magician Girl) must go for a Toon monster when the other side has one.
+func attack_targets_for(p: int, attacker: CardInst) -> Array[CardInst]:
+	var out := attack_targets(p)
+	if attacker != null and int(EffectRunner.fx(attacker).get("toon", 0)) == 2 and has_toon(opponent(p)):
+		var only: Array[CardInst] = []
+		for m in out:
+			if m.face_up and is_toon(m):
+				only.append(m)
+		return only
+	return out
+
+
+func attack_allowed(p: int, attacker: CardInst, target) -> bool:
+	if target == null:
+		return can_direct_attack_with(p, attacker)
+	return attack_targets_for(p, attacker).has(target)
 
 
 func attack_targets(p: int) -> Array[CardInst]:
@@ -1047,6 +1130,14 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 		return []
 	if target != null and not players[opponent(p)].field.has(target):
 		return []
+	if target != null and not attack_targets_for(p, attacker).has(target):
+		return []
+	# "You must pay 500 LP to declare an attack with this monster" (Toon Mermaid, Toon Summoned Skull).
+	var toll := int(EffectRunner.fx(attacker).get("attack_cost", 0))
+	var paid := []
+	if toll > 0:
+		players[p].lp -= toll
+		paid.append({"type": "lp", "player": p, "lp": players[p].lp, "delta": -toll})
 	attacker.attacked_turn = turn
 	_shield = null
 	if attacker.attack_count_turn != turn:
@@ -1059,7 +1150,7 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	players[p].attacks_this_turn += 1
 	pending_attack = {"player": p, "attacker": attacker, "target": target, "negated": false,
 			"opp_count": players[opponent(p)].monsters().size()}
-	var events := [{"type": "attack", "player": p, "card": attacker, "target": target}]
+	var events := paid + [{"type": "attack", "player": p, "card": attacker, "target": target}]
 	if target != null and target.face_up:
 		var tf := EffectRunner.fx(target)
 		# Number 39: Utopia: targeted for an attack with no material left, it is destroyed.
@@ -1312,6 +1403,13 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	var zone := ps.field.find(c)
 	if zone == -1:
 		return []
+	# "If the equipped monster would be destroyed by battle or card effect, destroy this card instead."
+	var riders := unions_on(c)
+	if not riders.is_empty():
+		var u: CardInst = riders[0]
+		var saved := [{"type": "effect", "player": u.owner, "card": u, "text": Loc.t("%s is destroyed in place of %s") % [u.cname(), c.cname()]}]
+		saved.append_array(_destroy_st(u))
+		return saved
 	ps.field[zone] = null
 	var mats: Array = c.overlays.duplicate()
 	_to_gy(ps, c)   # its Xyz Materials go with it
@@ -1336,6 +1434,7 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 func _to_gy(ps: PlayerState, c: CardInst) -> void:
 	if c.is_token():
 		return   # Tokens are not cards: they simply stop existing.
+	c.gy_turn = turn
 	if not c.overlays.is_empty():
 		# An Xyz Monster's materials go to the Graveyard when it leaves the field.
 		var mats: Array = c.overlays.duplicate()
@@ -1369,6 +1468,7 @@ func _to_gy(ps: PlayerState, c: CardInst) -> void:
 					players[who].field[players[who].field.find(weak)] = null
 					_to_gy(players[who], weak)
 					pending_events.append({"type": "tribute", "player": who, "card": weak})
+					pending_events.append_array(EffectRunner.trigger(self, weak, "tributed"))
 			elif back == "lp500":
 				okay = players[who].lp > 500 and choose_option(who, Loc.t("%s: pay 500 LP to put it on top of your Deck?") % c.cname(), ["Pay 500 LP", "Leave it in the Graveyard"], 0, c) == 0
 				if okay:
@@ -1470,9 +1570,17 @@ func _destroy_st(c: CardInst) -> Array:
 		return []
 	else:
 		ps.spells[zone] = null
+	var was_up := c.face_up
 	_to_gy(ps, c)
 	var events := [{"type": "destroy_st", "player": c.owner, "card": c, "zone": zone}]
 	events.append_array(SpellRules.left_field(self, c))
+	if was_up and c.cname() == "Toon World":
+		# "If "Toon World" on the field is destroyed, destroy this card": every Toon that says so.
+		for q in 2:
+			for m in players[q].monsters():
+				if m.face_up and EffectRunner.fx(m).has("toon") and not m.negated:
+					events.append({"type": "effect", "player": q, "card": m, "text": Loc.t("Toon World is gone: %s is destroyed") % m.cname()})
+					events.append_array(_destroy(m))
 	return events
 
 
@@ -1750,6 +1858,9 @@ func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 	var events := [{"type": "special", "player": p, "card": c, "zone": zone, "method": method}]
 	if not c.attack_pos:
 		events.append({"type": "position", "player": p, "card": c, "zone": zone})
+	if method == "reborn":
+		# "If this card is Special Summoned from the GY" (Destiny HERO - Disk Commander).
+		events.append_array(EffectRunner.trigger(self, c, "revived"))
 	return events
 
 
@@ -1757,6 +1868,8 @@ func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 func can_revive(c: CardInst) -> bool:
 	if CardEffects.of(c.cname()).get("no_revive", false) or CardEffects.of(c.cname()).get("no_special", false):
 		return false   # "Cannot be Special Summoned (from the GY)": Dark Ruler Ha Des, Blackwing - Blizzard
+	if CardEffects.of(c.cname()).get("no_revive_same_turn", false) and c.gy_turn == turn:
+		return false   # Destiny HERO - Disk Commander: not the turn it was sent to the Graveyard
 	return c.is_monster() and not c.is_token() and (c.proper or not c.frame() in ["ritual", "fusion", "synchro", "xyz"])
 
 
@@ -1968,14 +2081,65 @@ func _sum_atk(arr: Array) -> int:
 func can_extra_summon(p: int, c: CardInst) -> bool:
 	if p != current or not _in_main() or is_over() or not players[p].extra.has(c) or players[p].no_summon_turn == turn:
 		return false
+	if EffectRunner.fx(c).has("contact"):
+		return not contact_materials(p, c).is_empty() and (players[p].free_zone() != -1 or _contact_frees_zone(p, c))
 	if c.frame() != "synchro" and c.frame() != "xyz":
 		return false
 	return not extra_materials(p, c).is_empty()
 
 
+## XYZ-Dragon Cannon and its kind: "Special Summoned (from your Extra Deck) by banishing the above
+## cards you control". The named cards count wherever you control them face-up: as monsters, or
+## as Union monsters riding as Equip Cards. Returns one card per name, or [] when one is missing.
+func contact_materials(p: int, c: CardInst) -> Array:
+	var out := []
+	for nm in EffectRunner.fx(c).get("contact", []):
+		var got: CardInst = null
+		for m in players[p].monsters():
+			if m.face_up and m.cname() == str(nm) and not out.has(m):
+				got = m
+				break
+		if got == null:
+			for st in players[p].spells:
+				if st != null and st.face_up and st.is_monster() and st.cname() == str(nm) and not out.has(st):
+					got = st
+					break
+		if got == null:
+			return []
+		out.append(got)
+	return out
+
+
+func _contact_frees_zone(p: int, c: CardInst) -> bool:
+	for m in contact_materials(p, c):
+		if players[p].field.has(m):
+			return true
+	return false
+
+
+func _contact_summon(p: int, c: CardInst) -> Array:
+	var ps := players[p]
+	var events := []
+	for m in contact_materials(p, c):
+		if ps.spells.has(m):
+			ps.spells[ps.spells.find(m)] = null
+			m.equipped_to = null
+			ps.banished.append(m)
+			events.append({"type": "banish", "player": p, "card": m})
+		else:
+			events.append_array(_banish(m))
+	ps.extra.erase(c)
+	c.proper = true
+	events.append_array(_special(p, c, "fusion"))
+	events.append_array(EffectRunner.on_summon(self, p, c, "fusion"))
+	return events
+
+
 func extra_summon(p: int, c: CardInst, materials: Array = []) -> Array:
 	if not can_extra_summon(p, c):
 		return []
+	if EffectRunner.fx(c).has("contact"):
+		return _contact_summon(p, c)
 	if materials.is_empty():
 		materials = extra_materials(p, c)[0]
 	var ps := players[p]
@@ -2145,6 +2309,7 @@ func _clone_card(c: CardInst, map: Dictionary) -> CardInst:
 	n.lv_set = c.lv_set
 	n.lv_turn = c.lv_turn
 	n.died_turn = c.died_turn
+	n.gy_turn = c.gy_turn
 	n.wedge = c.wedge
 	n.flag_turn = c.flag_turn
 	n.once = c.once
@@ -2304,6 +2469,7 @@ func respond(p: int, c: CardInst, subject = null) -> Array:
 		_to_gy(ps, c)
 		c.flag_turn = turn
 		events.append({"type": "tribute", "player": p, "card": c})
+		events.append_array(EffectRunner.trigger(self, c, "tributed"))
 		events.append_array(_monster_left(c))
 		link["negated"] = true
 		var bad: CardInst = link["card"]

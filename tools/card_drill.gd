@@ -385,7 +385,7 @@ func _monster(id: int) -> String:
 	names += ["Special Summoned", "Synchro Summoned", "attacks after a Spell", "a weak monster attacks it", "attacks a weak Plant", "in the Graveyard",
 		"attacks a big wall", "attacks into a Trap", "summoned alone", "destroys a monster that has an effect", "another of yours falls in battle",
 		"in hand while yours battles", "in the Graveyard when a Plant falls or arrives", "in the Graveyard when yours falls", "a turn after yours fell",
-		"they play a destruction Spell"]
+		"they play a destruction Spell", "used from the Graveyard", "Special Summoned from the Graveyard", "Tributed beside a Ritual Monster"]
 	for pass_n in 2:
 		empty_hand = pass_n == 1
 		for k in names.size():
@@ -589,6 +589,12 @@ func _scene(id: int, k: int, twin: bool, entry, nm: String) -> String:
 					me.field[2] = null
 					_put(s, 0, fid3, 2)
 					break
+			if entry is Dictionary and (entry as Dictionary).has("union"):
+				# A Union monster needs the partner it rides on.
+				var hid := _id(str(entry["union"]["to"][0]))
+				if hid != 0:
+					me.field[2] = null
+					_put(s, 0, hid, 2)
 			note = "can%s" % s.can_ignite(0, m)
 			if s.can_ignite(0, m):
 				s.ignite(0, m)
@@ -869,6 +875,28 @@ func _scene(id: int, k: int, twin: bool, entry, nm: String) -> String:
 				s.respond(0, m, null)
 			s.chain_resolve()
 			s.begin_end()
+		37:  # in the Graveyard with a copy in the Deck: an effect used from there
+			me.gy.append(m)
+			me.deck.append(s._make(id, 0))
+			note = "can%s" % s.gy_effects(0).has(m)
+			if s.gy_effects(0).has(m):
+				s.gy_ignite(0, m)
+		38:  # Special Summoned from the Graveyard, a turn after it went there
+			me.gy.append(m)
+			m.gy_turn = s.turn - 2
+			me.gy.erase(m)
+			s._special(0, m, "reborn")
+		39:  # Tributed while a Ritual Monster of yours is on the field
+			s.players[0].field[0] = m
+			var rit := _id("Cyber Angel Benten" if nm != "Cyber Angel Benten" else "Cyber Angel Dakini")
+			if rit != 0:
+				_put(s, 0, rit, 1)
+			var fairy := _find({"attr": "LIGHT", "race": "Fairy"}, nm)
+			if fairy != 0:
+				me.deck.append(s._make(fairy, 0))
+			s.players[0].field[0] = null
+			s._to_gy(me, m)
+			EffectRunner.trigger(s, m, "tributed")
 	if s.phase == DuelState.Phase.BATTLE and s.current == 0 and not s.is_over() and k in [2, 3, 4, 23, 25, 27, 30]:
 		s.enter_main2()   # the Battle Phase ends: effects that wait for that
 	if empty_hand and k in [2, 3, 4, 9, 10, 11, 14, 15, 16]:

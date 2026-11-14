@@ -17,6 +17,9 @@ func _ready() -> void:
 	_test_choices()
 	_test_turbo()
 	_test_vault()
+	_test_toons()
+	_test_unions()
+	_test_heroes_angels()
 	var stress := OS.get_environment("STRESS_FOLDER")
 	if stress != "":
 		CardData.load_external(stress)
@@ -290,6 +293,8 @@ func _run(s: DuelState, p: int, act: Dictionary) -> Array:
 			return s.special_from_hand(p, act["card"])
 		"ignite":
 			return s.ignite(p, act["card"])
+		"gy_ignite":
+			return s.gy_ignite(p, act["card"])
 		"speed":
 			return s.speed_world(p, int(act["cost"]))
 	return []
@@ -1205,3 +1210,168 @@ func _test_full_rules() -> void:
 	s.resolve_attack()
 	check(s.players[0].field.has(wild) and not s.players[0].field.has(other) and not s.players[1].field.has(prey), "Wildheart survives Mirror Force and finishes its attack")
 	print("full rules tests done")
+
+
+## The Toons, to their printed text: Toon World, who may come out, who may attack whom, the toll.
+func _test_toons() -> void:
+	var s := _main_ready(801)
+	var tw := _st(s, 0, "Toon World")
+	var mer := _fake(s, 0, "Toon Mermaid", 1400, 1500, -1)
+	s.players[0].hand.append(mer)
+	var skull := _fake(s, 0, "Toon Summoned Skull", 2500, 1200, -1, {"level": 6})
+	s.players[0].hand.append(skull)
+	check(not s.can_special_from_hand(0, mer), "Toon Mermaid stays in the hand without Toon World")
+	var lp0: int = s.players[0].lp
+	_run(s, 0, {"do": "activate", "card": tw})
+	check(s.players[0].lp == lp0 - 1000, "Toon World costs 1000 LP to activate")
+	check(s.toon_world(0) and not s.toon_world(1), "Toon World is face-up on its owner's side only")
+	check(s.can_special_from_hand(0, mer), "With Toon World out, Toon Mermaid can be Special Summoned from the hand")
+	check(not s.can_special_from_hand(0, skull), "Toon Summoned Skull needs a monster to Tribute")
+	_run(s, 0, {"do": "special_hand", "card": mer})
+	check(s.players[0].field.has(mer), "Toon Mermaid arrives")
+	check(s.can_special_from_hand(0, skull), "Now there is a Tribute for Toon Summoned Skull")
+	var wall := _fake(s, 1, "Wall", 2000, 2000, 0)
+	s.phase = DuelState.Phase.BATTLE
+	check(not s.can_attack(0, mer), "Toon Mermaid cannot attack the turn it is Special Summoned")
+	mer.summoned_turn = s.turn - 2
+	check(s.can_attack(0, mer) and s.can_direct_attack_with(0, mer), "Later it attacks directly, past their monster")
+	var mine: int = s.players[0].lp
+	var theirs: int = s.players[1].lp
+	s.attack(0, mer, null)
+	check(s.players[0].lp == mine - 500, "Toon Mermaid pays 500 LP to declare its attack")
+	check(s.players[1].lp == theirs - 1400, "and hits directly for 1400")
+	# A Toon across the table: the big Toons must attack it and nothing else.
+	var gator := _fake(s, 1, "Toon Alligator", 800, 1600, 1, {"frame": "normal"})
+	mer.attack_count = 0
+	mer.attacked_turn = -1
+	check(not s.can_direct_attack_with(0, mer), "With a Toon across the table, no direct attack")
+	check(s.attack_targets_for(0, mer).size() == 1 and s.attack_targets_for(0, mer)[0] == gator, "It may only attack the Toon")
+	check(s.declare_attack(0, mer, wall).is_empty(), "An attack on the non-Toon is refused")
+	# The small Toons need their own Toon World to go direct.
+	var elf := _fake(s, 0, "Toon Gemini Elf", 1900, 900, 2)
+	elf.summoned_turn = s.turn - 2
+	s.players[1].field[1] = null
+	check(s.can_direct_attack_with(0, elf), "Toon Gemini Elf attacks directly with Toon World out and no Toon across the table")
+	var elf2 := _fake(s, 1, "Toon Gemini Elf", 1900, 900, 3)
+	check(not s.can_direct_attack_with(0, elf), "but not when the other side has a Toon")
+	s.players[1].field[3] = null
+	# No toll, no attack.
+	s.players[0].lp = 400
+	check(not s.can_attack(0, mer), "Toon Mermaid cannot attack without 500 LP to pay")
+	s.players[0].lp = 4000
+	# Toon World destroyed: every Toon that says so goes with it.
+	s._destroy_st(tw)
+	check(s.players[0].gy.has(mer) and s.players[0].gy.has(elf), "When Toon World is destroyed the Toons are destroyed")
+	check(s.players[1].field.has(wall), "and nothing else is")
+	# Toon Cannon Soldier: Tribute any monster, as often as there are monsters.
+	s = _main_ready(802)
+	var cannon := _fake(s, 0, "Toon Cannon Soldier", 1400, 1300, 0)
+	var fodder := _fake(s, 0, "Fodder", 300, 300, 1)
+	var before: int = s.players[1].lp
+	check(s.can_ignite(0, cannon), "Toon Cannon Soldier can fire")
+	_run(s, 0, {"do": "ignite", "card": cannon})
+	check(s.players[1].lp == before - 500 and s.players[0].gy.has(fodder), "It Tributes a monster for 500 damage")
+	check(s.can_ignite(0, cannon), "and can fire again the same turn (no once per turn on the card)")
+	_run(s, 0, {"do": "ignite", "card": cannon})
+	check(s.players[1].lp == before - 1000 and s.players[0].gy.has(cannon), "The second shot Tributes itself")
+
+
+## X, Y and Z: Union equips, the stand-in rule, and XYZ-Dragon Cannon by banishing all three.
+func _test_unions() -> void:
+	var s := _main_ready(811)
+	var x := _fake(s, 0, "X-Head Cannon", 1800, 1500, 0, {"frame": "normal"})
+	var y := _fake(s, 0, "Y-Dragon Head", 1500, 1600, 1)
+	var z := _fake(s, 0, "Z-Metal Tank", 1500, 1300, 2)
+	check(s.can_ignite(0, y), "Y-Dragon Head can equip to X-Head Cannon")
+	_run(s, 0, {"do": "ignite", "card": y})
+	check(s.players[0].spells.has(y) and y.equipped_to == x and not s.players[0].field.has(y), "Y-Dragon Head becomes an Equip Card on X-Head Cannon")
+	check(s.atk_of(x, false) == 2200 and s.def_of(x) == 1900, "X-Head Cannon gains 400 ATK and DEF")
+	check(not s.can_ignite(0, y), "Once per turn: it cannot come straight back off")
+	# The equipped monster would be destroyed: the Union goes instead.
+	s._destroy(x)
+	check(s.players[0].field.has(x) and s.players[0].gy.has(y), "Y-Dragon Head is destroyed in place of X-Head Cannon")
+	check(s.atk_of(x, false) == 1800, "and the bonus is gone with it")
+	# Z rides, then comes off again next turn.
+	_run(s, 0, {"do": "ignite", "card": z})
+	check(z.equipped_to == x and s.atk_of(x, false) == 2400, "Z-Metal Tank gives 600")
+	z.ignite_turn = -1
+	check(s.can_ignite(0, z), "Next turn Z-Metal Tank can be taken off")
+	_run(s, 0, {"do": "ignite", "card": z})
+	check(s.players[0].field.has(z) and z.equipped_to == null and s.atk_of(x, false) == 1800, "Z-Metal Tank is Special Summoned back and the bonus ends")
+	# XYZ-Dragon Cannon: banish the three you control, one of them riding as an Equip Card.
+	s = _main_ready(812)
+	x = _fake(s, 0, "X-Head Cannon", 1800, 1500, 0, {"frame": "normal"})
+	y = _fake(s, 0, "Y-Dragon Head", 1500, 1600, 1)
+	z = _fake(s, 0, "Z-Metal Tank", 1500, 1300, 2)
+	var xyz := _fake(s, 0, "XYZ-Dragon Cannon", 2800, 2600, -1, {"frame": "fusion", "level": 8})
+	s.players[0].extra.append(xyz)
+	_run(s, 0, {"do": "ignite", "card": z})
+	check(s.can_extra_summon(0, xyz), "XYZ-Dragon Cannon can be called with X, Y and an equipped Z")
+	_run(s, 0, {"do": "extra", "card": xyz})
+	check(s.players[0].field.has(xyz), "XYZ-Dragon Cannon arrives")
+	check(s.players[0].banished.has(x) and s.players[0].banished.has(y) and s.players[0].banished.has(z), "X, Y and Z are banished, not sent to the Graveyard")
+	# Its effect: discard 1, destroy any 1 card of theirs, as often as you can pay.
+	var foe := _fake(s, 1, "Foe", 3000, 3000, 0)
+	var trap := _st(s, 1, "Mirror Force", "set", "trap")
+	s.players[0].hand.clear()
+	s.players[0].hand.append(_fake(s, 0, "Junk A", 100, 100, -1))
+	s.players[0].hand.append(_fake(s, 0, "Junk B", 100, 100, -1))
+	_run(s, 0, {"do": "ignite", "card": xyz})
+	check(s.players[1].gy.has(foe), "XYZ-Dragon Cannon discards 1 and destroys their monster")
+	check(s.can_ignite(0, xyz), "and can do it again the same turn")
+	_run(s, 0, {"do": "ignite", "card": xyz})
+	check(s.players[1].gy.has(trap) and s.players[0].hand.is_empty(), "The second discard destroys their Set card")
+
+
+## Destiny HERO - Disk Commander and Malicious, and the Cyber Angels' Tribute effects.
+func _test_heroes_angels() -> void:
+	# Malicious: banish it from the Graveyard, another one comes from the Deck.
+	var s := _main_ready(821)
+	var mal := _fake(s, 0, "Destiny HERO - Malicious", 800, 800, -1, {"level": 6})
+	var mal2 := _fake(s, 0, "Destiny HERO - Malicious", 800, 800, -1, {"level": 6})
+	s.players[0].gy.append(mal)
+	s.players[0].deck.append(mal2)
+	check(s.gy_effects(0).has(mal), "Malicious in the Graveyard can use its effect")
+	_run(s, 0, {"do": "gy_ignite", "card": mal})
+	check(s.players[0].banished.has(mal) and s.players[0].field.has(mal2), "Malicious is banished and another is Special Summoned from the Deck")
+	check(s.gy_effects(0).is_empty(), "With no Malicious left in the Graveyard there is nothing to use")
+	# Disk Commander: not the turn it went to the Graveyard; revived, it draws 2, once per Duel.
+	s = _main_ready(822)
+	var disk := _fake(s, 0, "Destiny HERO - Disk Commander", 300, 300, 0, {"level": 1})
+	s._destroy(disk)
+	check(not s.can_revive(disk), "Disk Commander cannot come back the turn it was sent to the Graveyard")
+	disk.gy_turn = s.turn - 1
+	check(s.can_revive(disk), "A later turn it can")
+	var hand0: int = s.players[0].hand.size()
+	s.players[0].gy.erase(disk)
+	s._special(0, disk, "reborn")
+	check(s.players[0].hand.size() == hand0 + 2, "Special Summoned from the Graveyard, Disk Commander draws 2")
+	s.players[0].field[s.players[0].field.find(disk)] = null
+	s._special(0, disk, "reborn")
+	check(s.players[0].hand.size() == hand0 + 2, "Only once per Duel")
+	var disk2 := _fake(s, 0, "Destiny HERO - Disk Commander", 300, 300, -1, {"level": 1})
+	s._special(0, disk2, "effect")
+	check(s.players[0].hand.size() == hand0 + 2, "and not when it is Special Summoned from somewhere else")
+	# Cyber Angel Idaten Tributed: every Ritual Monster you control gains 1000 ATK and DEF.
+	s = _main_ready(823)
+	var ida := _fake(s, 0, "Cyber Angel Idaten", 1600, 2000, 0, {"frame": "ritual", "level": 6})
+	var dak := _fake(s, 0, "Cyber Angel Dakini", 2700, 2400, 1, {"frame": "ritual", "level": 8})
+	s.players[0].field[0] = null
+	s._to_gy(s.players[0], ida)
+	EffectRunner.trigger(s, ida, "tributed")
+	check(s.atk_of(dak, false) == 3700 and s.def_of(dak) == 3400, "Idaten Tributed: Dakini gains 1000 ATK and DEF")
+	# Dakini: every Ritual Monster you control pierces; the opponent gives up a monster of their choice.
+	check(EffectRunner.piercing(s, 0, dak), "Dakini gives your Ritual Monsters piercing")
+	var plain := _fake(s, 0, "Plain", 1000, 1000, 2)
+	check(not EffectRunner.piercing(s, 0, plain), "but not your other monsters")
+	var a := _fake(s, 1, "Strong", 2600, 2000, 0)
+	var b := _fake(s, 1, "Weak", 400, 400, 1)
+	EffectRunner.trigger(s, dak, "ritual_summoned")
+	check(s.players[1].gy.has(b) and s.players[1].field.has(a), "Dakini Ritual Summoned: the opponent sends a monster of their choice to the Graveyard")
+	# Benten Tributed: a LIGHT Fairy from the Deck.
+	var ben := _fake(s, 0, "Cyber Angel Benten", 1800, 1500, -1, {"frame": "ritual", "level": 6})
+	var fairy := _fake(s, 0, "Shining Friend", 1300, 1100, -1, {"attribute": "LIGHT", "race": "Fairy"})
+	s.players[0].deck.append(fairy)
+	s._to_gy(s.players[0], ben)
+	EffectRunner.trigger(s, ben, "tributed")
+	check(s.players[0].hand.has(fairy), "Benten Tributed: a LIGHT Fairy monster comes from the Deck")

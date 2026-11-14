@@ -795,7 +795,9 @@ func load_model(key: String) -> Node3D:
 			return null
 		if not path.begins_with("res://"):
 			g = _merge_clip_files(key, path, g)
-			_borrow_clips(g)
+		# A rigged model without an idle, walk, run or victory of its own gets the game's
+		# (yours, and the bundled ones that came from the rigger with no clips).
+		_borrow_clips(g)
 		var r := Node3D.new()
 		r.set_meta("file", path)
 		r.set_meta("human_bones", _guess_human_map(g))

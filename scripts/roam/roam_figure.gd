@@ -323,8 +323,16 @@ const SEAT_H := 0.5
 
 ## Put a Duel Academy dorm jacket on this person.
 func wear_uniform(color: Color) -> void:
-	if _model:
-		Avatars.apply_uniform(_model, color)
+	if _model == null:
+		return
+	if key == "player":
+		# Your own duelist keeps every color you picked; the dorm jacket is the top, repainted.
+		for n in [_model] + _model.find_children("*", "Node3D", true, false):
+			if n.has_meta("hero_mats"):
+				for m in n.get_meta("hero_mats"):
+					(m as ShaderMaterial).set_shader_parameter("top_to", Color(color.r, color.g, color.b, 1.0))
+				return
+	Avatars.apply_uniform(_model, color)
 
 
 ## Play a one-off motion ("victory"), then fall back to idle. Returns false without one.

@@ -89,6 +89,7 @@ const FX := {
 	"The Reliable Guardian": {"k": "quick", "t": "any_face", "do": [["def", "target", 700]]},
 	"De-Fusion": {"k": "quick", "t": "any_fusion", "do": [["bounce", "target"]]},
 	# ---------------------------------------------------------------- Continuous Spells
+	"Toon World": {"k": "cont", "cost": "lp1000"},
 	"Banner of Courage": {"k": "cont", "bp_boost": 200},
 	"Burning Land": {"k": "cont", "do": [["destroy", "fields"]], "each_standby": [["self_damage", 500]]},
 	"Messenger of Peace": {"k": "cont", "lock_atk_min": 1500, "upkeep": 100},
@@ -527,6 +528,7 @@ static func pay_cost(s: DuelState, p: int, c, sp: Dictionary) -> Array:
 			ps.field[ps.field.find(weak)] = null
 			s._to_gy(ps, weak)
 			events.append({"type": "tribute", "player": p, "card": weak})
+			events.append_array(EffectRunner.trigger(s, weak, "tributed"))
 	return events
 
 
@@ -797,6 +799,7 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				opp.field[opp.field.find(gone2)] = null
 				s._to_gy(opp, gone2)
 				events.append({"type": "tribute", "player": s.opponent(p), "card": gone2})
+				events.append_array(EffectRunner.trigger(s, gone2, "tributed"))
 				events.append_array(s._monster_left(gone2))
 		"no_tribute":
 			for t in _sel(s, p, c, str(a[1]), ctx):
@@ -1132,14 +1135,18 @@ static func _do_ritual(s: DuelState, p: int, c) -> Array:
 			ps.hand.erase(t)
 			s._to_gy(ps, t)
 			events.append({"type": "discard", "player": p, "card": t})
+			# A Ritual Tribute from the hand is a Tribute too ("If this card is Tributed").
+			events.append_array(EffectRunner.trigger(s, t, "tributed"))
 		else:
 			ps.field[ps.field.find(t)] = null
 			s._to_gy(ps, t)
 			events.append({"type": "tribute", "player": p, "card": t})
+			events.append_array(EffectRunner.trigger(s, t, "tributed"))
 	ps.hand.erase(m)
 	m.proper = true
 	events.append_array(s._special(p, m, "ritual"))
 	events.append_array(EffectRunner.on_summon(s, p, m, "special"))
+	events.append_array(EffectRunner.trigger(s, m, "ritual_summoned"))
 	return events
 
 

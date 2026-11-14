@@ -1282,8 +1282,11 @@ func _on_deck_clicked() -> void:
 	_cancel_mode()
 	_menu_card = null
 	_deck_menu = true
-	hud.show_actions(board.camera.unproject_position(board.deck_pos(ME)) + Vector2(-420, -60), [
-		["piles", "Graveyards", true], ["pause", "Duel menu", true], ["surrender", "Surrender", true]])
+	var deck_opts := [["piles", "Graveyards", true], ["pause", "Duel menu", true], ["surrender", "Surrender", true]]
+	if _my_turn() and not state.gy_effects(ME).is_empty():
+		# A card in your Graveyard can use its effect from there (Destiny HERO - Malicious).
+		deck_opts.push_front(["gyfx", "Effect from the Graveyard", true])
+	hud.show_actions(board.camera.unproject_position(board.deck_pos(ME)) + Vector2(-420, -60), deck_opts)
 
 
 var _deck_menu := false
@@ -1308,7 +1311,7 @@ func _input(event: InputEvent) -> void:
 			var ac := board.card_for(a)
 			if ac:
 				ac.set_glow(true, UITheme.GOLD)
-			for t in state.attack_targets(ME):
+			for t in state.attack_targets_for(ME, a):
 				var tc := board.card_for(t)
 				if tc:
 					tc.set_glow(true, UITheme.DANGER)
@@ -1319,7 +1322,7 @@ func _input(event: InputEvent) -> void:
 		_drag_atk = {}
 		if not d["on"]:
 			return
-		var hit := board.enemy_card_at(event.position, state.attack_targets(ME))
+		var hit := board.enemy_card_at(event.position, state.attack_targets_for(ME, d["inst"]))
 		var direct: bool = hit == null and board.side_at(event.position) == 1
 		_drag_attack_go(d["inst"], hit.inst if hit else null, direct)
 
@@ -1342,7 +1345,7 @@ func _drag_attack_go(a, target, direct: bool) -> void:
 		await _window(AI, "battle_start", null, "")
 	if not _my_turn() or not state.can_attack(ME, a):
 		return
-	if target != null and state.attack_targets(ME).has(target):
+	if target != null and state.attack_targets_for(ME, a).has(target):
 		await _do_attack(ME, a, target)
 	elif target == null and (state.can_direct_attack(ME) or state.can_direct_attack_with(ME, a)):
 		await _do_attack(ME, a, null)
@@ -1379,9 +1382,21 @@ func _on_hand_card_pressed(inst, at: Vector2) -> void:
 
 
 func _on_action(action: String) -> void:
-	if action in ["surrender", "piles", "pause"]:
+	if action in ["surrender", "piles", "pause", "gyfx"]:
 		_deck_menu = false
 		match action:
+			"gyfx":
+				var can_g: Array = state.gy_effects(ME)
+				if can_g.is_empty() or not _my_turn():
+					return
+				var g_labels := []
+				for g in can_g:
+					g_labels.append("%s: %s" % [g.cname(), Loc.t(str(EffectRunner.fx(g)["gy_ignite"].get("label", "Activate")))])
+				g_labels.append(Loc.t("Not now"))
+				var gi: int = await hud.ask_choice(Loc.t("Use which effect from your Graveyard?"), g_labels)
+				if gi >= 0 and gi < can_g.size() and _my_turn():
+					await _act("gy_ignite", [ME, can_g[gi]], false)
+					await _after_summon(ME)
 			"surrender":
 				var sure := await hud.ask_choice(Loc.t("Surrender this duel?"), [Loc.t("Keep dueling"), Loc.t("Surrender")])
 				if sure == 1:
@@ -1484,6 +1499,9 @@ func _on_board_card_clicked(card: Card3D) -> void:
 		var st_opts := []
 		if not inst.face_up and state.can_activate(ME, inst):
 			st_opts.append(["activate", "Activate", true])
+		if state.can_ignite(ME, inst):
+			# A Union monster riding as an Equip Card: take it off and Special Summon it.
+			st_opts.append(["ignite", Loc.t("Effect: ") + str(EffectRunner.ignite_spec(inst).get("label", "Activate")), true])
 		if SpellRules.can_fire(state, ME, inst):
 			st_opts.append(["fire", Loc.t("Fire (%d damage)") % (inst.counter * int(SpellRules.spec(inst)["cannon"])), true])
 		if not st_opts.is_empty():
@@ -1650,7 +1668,7 @@ func _do_attack(p: int, attacker, target) -> void:
 	var replays := 0
 	while state.replay_needed() and replays < 3:
 		replays += 1
-		var opts: Array = state.attack_targets(p)
+		var opts: Array = state.attack_targets_for(p, attacker)
 		var pick = null
 		var go := true
 		if p == AI or _autoplay:
@@ -1794,7 +1812,7 @@ func _start_attack(inst) -> void:
 	_attacker = inst
 	_clear_glows()
 	board.card_for(inst).set_glow(true, UITheme.GOLD)
-	for t in state.attack_targets(ME):
+	for t in state.attack_targets_for(ME, inst):
 		var c := board.card_for(t)
 		if c:
 			c.set_glow(true, UITheme.DANGER)
@@ -2058,6 +2076,8 @@ func _run_ai(act: Dictionary, who: int) -> Array:
 			return state.change_position(who, act["card"])
 		"ignite":
 			return state.ignite(who, act["card"])
+		"gy_ignite":
+			return state.gy_ignite(who, act["card"])
 		"speed":
 			return state.speed_world(who, int(act["cost"]))
 	return []
