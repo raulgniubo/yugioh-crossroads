@@ -2051,6 +2051,7 @@ func _refresh_task_ui(here: String, home: String) -> void:
 	# Never over the map, the menu or anything else that is open on top of the world.
 	var covered: bool = scene != null and (scene._overlay_open or scene._pause != null or (scene._map_full != null and scene._map_full.visible))
 	_task_box.visible = not _cut and not covered
+	_task_box.size = Vector2.ZERO          # (never taller than what is in it)
 	var rows := task_rows(here, home)
 	var sig := str(rows) + str(task_small)
 	if sig != _task_sig:

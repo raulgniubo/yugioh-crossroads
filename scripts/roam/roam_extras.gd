@@ -62,6 +62,10 @@ func _load() -> void:
 		_visited = cfg.get_value("x", "visited", {})
 		_done = cfg.get_value("x", "done", {})
 		_errands = cfg.get_value("x", "errands", {})
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--errands="):          # dev: favors at a stage, e.g. --errands=nd_wrench:1,nd_part:2
+			for kv in a.substr(10).split(","):
+				_errands[kv.get_slice(":", 0)] = int(kv.get_slice(":", 1))
 
 
 func _save() -> void:
@@ -135,8 +139,112 @@ func open_guide(tab := "places") -> void:
 	scene._open_overlay(CityGuide.new(scene, self, tab))
 
 
+# ------------------------------------------------------------------ on your list (free roam)
+
+## What you have taken on out here in the open world, in one small box: the favors people asked
+## of you and you said yes to. Nothing of the story is ever in it (a chapter's own list only
+## exists in Story). Small by default: the first thing and a count; Tab (R3) opens it out.
+var _list_box: PanelContainer
+var _list_title: Label
+var _list_rows: VBoxContainer
+var _list_more: Label
+var _list_sig := "-"
+var _list_tick := 0.0
+static var list_small := true
+
+
+func free_list() -> Array:
+	var rows: Array = []
+	var worlds: Array = WorldLife.ERRANDS.keys()
+	worlds.sort_custom(func(a, b): return str(a) == _key and str(b) != _key)      # what is here comes first
+	for wk in worlds:
+		for e in WorldLife.ERRANDS[wk]:
+			var st := int(_errands.get(e["id"], 0))
+			if st != 1 and st != 2:
+				continue
+			var away := "" if str(wk) == _key else "   (" + Loc.t(str(RoamData.district(str(wk)).get("name", wk))) + ")"
+			if st == 1:
+				rows.append(Loc.t("Find %s") % Loc.t(str(e["thing"])) + away)
+			else:
+				var who := str(e["giver"])
+				for d in RoamData.district(str(wk)).get("npcs", []):
+					if str((d as Dictionary).get("id", "")) == who:
+						who = Loc.t(str(d.get("name", who)))
+				rows.append(Loc.t("Bring %s back to %s") % [Loc.t(str(e["thing"])), who] + away)
+	return rows
+
+
+func _free_list_step(delta: float) -> void:
+	_list_tick -= delta
+	if _list_tick > 0.0:
+		return
+	_list_tick = 0.4
+	var rows := free_list() if (not story_mode and scene.quest == null) else []
+	if _list_box == null:
+		if rows.is_empty():
+			return
+		_list_box = PanelContainer.new()
+		_list_box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.042, 0.0676, 0.145, 0.88), 16, Color(UITheme.GOLD, 0.6)))
+		_list_box.position = Vector2(30, 232)
+		_list_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_hud.add_child(_list_box)
+		var gm := MarginContainer.new()
+		for side in ["left", "right"]:
+			gm.add_theme_constant_override("margin_" + side, 16)
+		for side in ["top", "bottom"]:
+			gm.add_theme_constant_override("margin_" + side, 9)
+		gm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_list_box.add_child(gm)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 3)
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		gm.add_child(v)
+		v.add_child(UITheme.label(Loc.t("ON YOUR LIST"), 13, UITheme.GOLD, UITheme.semi_font()))
+		_list_title = UITheme.label("", 19, Color.WHITE, UITheme.semi_font())
+		_list_title.custom_minimum_size.x = 348.0
+		_list_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(_list_title)
+		_list_rows = VBoxContainer.new()
+		_list_rows.add_theme_constant_override("separation", 1)
+		_list_rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(_list_rows)
+		_list_more = UITheme.label("", 14, Color(0.72, 0.78, 0.9, 0.85))
+		v.add_child(_list_more)
+	var covered: bool = scene._overlay_open or scene._pause != null or (scene._map_full != null and scene._map_full.visible) or scene._talking
+	_list_box.visible = not rows.is_empty() and not covered
+	_list_box.size = Vector2.ZERO          # (never taller than what is in it)
+	var sig := str(rows) + str(list_small)
+	if sig == _list_sig or rows.is_empty():
+		return
+	_list_sig = sig
+	var key_name := "R3" if Pad.connected else "Tab"
+	var wide := 380.0 if list_small else 500.0
+	_list_box.custom_minimum_size.x = wide
+	_list_title.custom_minimum_size.x = wide - 32.0
+	_list_title.text = str(rows[0])
+	for c in _list_rows.get_children():
+		_list_rows.remove_child(c)
+		c.queue_free()
+	_list_rows.visible = not list_small and rows.size() > 1
+	for i in range(1, rows.size()):
+		var l := UITheme.label("•  " + str(rows[i]), 18, Color.WHITE, UITheme.semi_font())
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size = Vector2(wide - 40.0, 0)
+		_list_rows.add_child(l)
+	_list_more.visible = rows.size() > 1
+	_list_more.text = (Loc.t("%d on your list   ·   %s  show the list") % [rows.size(), key_name]) if list_small else (Loc.t("%s  hide the list") % key_name)
+	_list_box.size = Vector2.ZERO
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if _busy() or story_mode:
+		return
+	if _list_box != null and _list_box.visible and ((event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB) \
+			or (event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_RIGHT_STICK)):
+		list_small = not list_small
+		_list_tick = 0.0
+		Sfx.play("click", -10.0)
+		get_viewport().set_input_as_handled()
 		return
 	var pad: bool = event is InputEventJoypadButton and event.pressed
 	if (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_G) or (pad and event.button_index == JOY_BUTTON_BACK):
@@ -723,6 +831,7 @@ func _process(delta: float) -> void:
 		var vsx: float = scene.get_viewport().get_visible_rect().size.x
 		_bar.position.x = maxf((vsx - _bar.size.x) / 2.0, scene._plate.position.x + scene._plate.size.x + 18.0)
 	var p: Vector3 = scene._player.position
+	_free_list_step(delta)
 	_street_life(delta, p)
 	if _fence_mat:
 		_fence_mat.set_shader_parameter("player", p)

@@ -5,6 +5,13 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.9
+
+**On your list, in Free Roam.** A small box for what you have taken on out in the open world, and only that: the favors people asked of you and you said yes to ("Find a lost card", "Bring the parcel back to ..."). What is in the world you are standing in comes first, favors waiting in another world say where. It shows the first thing and a count; Tab (R3 on a controller) opens the whole list. With nothing accepted there is no box. Nothing of the story is ever in it: a chapter's own list only exists when you come in through Story.
+
+- There are 11 favors today (Domino, New Domino, the Academy). Tournaments keep their own line under the place name, and the quests on J are a checklist you do not have to accept, so they stay on J.
+- Both boxes (this one and the chapter list in Story) can no longer come out taller than what is in them.
+
 ## What is in 0.33.8
 
 **The house reacts.** The stands, the cameras and the lights were running on their own clock, whatever happened on the field. Now the place answers the duel.
