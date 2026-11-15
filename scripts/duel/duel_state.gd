@@ -69,6 +69,7 @@ class CardInst:
 	var pos_lock_until := -1      # cannot change battle position through this turn (Goblin Attack Force)
 	var no_tribute_turn := -1     # cannot be Tributed this turn (Mind Control)
 	var def_mod := 0              # a lasting change to DEF (Blackwing - Gale)
+	var cowboy_turn := -1         # Gagaga Cowboy used its Attack Position effect this turn
 	var zero_perm := false        # its ATK is 0 for as long as it stays on the field (Starliege Paladynamo's target)
 	var bonus_attacks := 0        # extra attacks this Battle Phase (Rose Tentacles), counted on bonus_attacks_turn
 	var bonus_attacks_turn := -1
@@ -85,6 +86,7 @@ class CardInst:
 		def_mod = 0
 		neg_perm = false
 		zero_perm = false
+		cowboy_turn = -1
 		bonus_attacks = 0
 		bonus_attacks_turn = -1
 		atk_mod = 0
@@ -563,6 +565,8 @@ func _card_value(c: CardInst) -> int:
 
 func _draw(p: int, count := 1) -> Array:
 	var events := []
+	var was_empty := turn > 0 and players[p].hand.is_empty()      # (the opening hand is dealt, not drawn)
+	var drawn: Array = []
 	for i in count:
 		var ps := players[p]
 		if ps.deck.is_empty():
@@ -571,8 +575,19 @@ func _draw(p: int, count := 1) -> Array:
 			return events
 		var c: CardInst = ps.deck.pop_back()
 		ps.hand.append(c)
+		drawn.append(c)
 		events.append({"type": "draw", "player": p, "card": c, "deck": ps.deck.size()})
 	events.append_array(_check_exodia())
+	# "When you draw a card(s) while you have no cards in your hand, and you draw this card: You can
+	# reveal this card; Special Summon it from your hand" (Infernity Archfiend).
+	if was_empty and not is_over():
+		for d in drawn:
+			if players[p].hand.has(d) and d.is_monster() and EffectRunner.fx(d).get("draw_summon", false) and players[p].free_zone() != -1:
+				if choose_option(p, Loc.t("%s: reveal it and Special Summon it?") % d.cname(), [Loc.t("Special Summon it"), Loc.t("Keep it in your hand")], 0, d) == 0:
+					players[p].hand.erase(d)
+					events.append({"type": "effect", "player": p, "card": d, "text": Loc.t("%s is revealed and Special Summoned") % d.cname()})
+					events.append_array(_special(p, d, "effect"))
+					events.append_array(EffectRunner.on_summon(self, p, d, "special"))
 	return events
 
 
@@ -2525,6 +2540,7 @@ func _clone_card(c: CardInst, map: Dictionary) -> CardInst:
 	n.def_mod = c.def_mod
 	n.neg_perm = c.neg_perm
 	n.zero_perm = c.zero_perm
+	n.cowboy_turn = c.cowboy_turn
 	n.bonus_attacks = c.bonus_attacks
 	n.bonus_attacks_turn = c.bonus_attacks_turn
 	n.left_turn = c.left_turn

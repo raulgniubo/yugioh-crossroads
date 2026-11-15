@@ -5,6 +5,14 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.4
+
+Three more monsters do exactly what their card says (229 effect monsters done, 24 to go), each proven by the game's tests.
+
+- **Gagaga Cowboy:** detach 1 material, and the result depends on its battle position. Attack Position: this turn, attacking a monster it gains 1000 ATK and that monster loses 500, during the Damage Step only. Defense Position: 800 damage to your opponent. (It used to be a flat +1000 for the turn.)
+- **Umbral Horror Will o' the Wisp:** Normal or Special Summoned, you can make its Level the Level of another Umbral Horror monster you control or in your Graveyard. It only takes its killer along when it was destroyed in Attack Position.
+- **Infernity Archfiend:** drawn while your hand was empty, you can reveal it and Special Summon it. Special Summoned with no cards in your hand, you can add 1 Infernity card (monster, Spell or Trap) from your Deck to your hand.
+
 ## What is in 0.33.3
 
 Five more monsters do exactly what their card says (226 effect monsters done, 27 to go), each proven by the game's tests.

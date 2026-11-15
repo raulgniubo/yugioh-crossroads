@@ -218,7 +218,7 @@ const FX := {
 	"Sinister Sprocket": {"note": "Sent to the Graveyard for the Synchro Summon of a DARK Synchro Monster: you can destroy 1 face-up Spell or Trap.", "material": [["destroy", "faceup_st_pick"]], "material_attr": "DARK"},
 	"Quillbolt Hedgehog": {"note": "In your Graveyard while you control a Tuner: Special Summon it. It is banished when it leaves the field.", "gy_ignite": {"revive_self": true, "banish_on_leave": true, "cond": "own_tuner", "label": "Special Summon it (banished when it leaves the field)"}},
 	"Batteryman AA": {"note": "Gains 1000 ATK for each Batteryman AA you control.", "atk_per": ["own_named:Batteryman AA", 1000]},
-	"Infernity Archfiend": {"note": "Special Summoned: add an Infernity card from the Deck.", "special_only": [["search", {"has": "Infernity"}]]},
+	"Infernity Archfiend": {"note": "Drawn while your hand was empty: you can reveal it and Special Summon it. Special Summoned with no cards in your hand: you can add 1 Infernity card from your Deck to your hand.", "draw_summon": true, "special_only": [["need", "hand_empty"], ["search", {"has": "Infernity", "monster": false}]]},
 	"Infernity Beast": {"note": "If it attacks while you have no cards in hand, your opponent cannot activate Spells or Traps until after the Damage Step.", "lock_st_if_hand_empty": true},
 	"Infernity Guardian": {"note": "While your hand is empty it cannot be destroyed by battle or by card effects.", "hand_empty_guard": true},
 	"Infernity Dwarf": {"note": "With an empty hand, your monsters deal piercing damage.", "piercing_if": "hand_empty"},
@@ -241,7 +241,8 @@ const FX := {
 	"Juragedo": {"note": "Tribute it: one of your monsters gains 1000 ATK this turn.",
 		"ignite": {"cost": "tribute_self", "do": [["best_own_atk", 1000]], "label": "Tribute: +1000 ATK to a monster"}},
 	"Gagaga Magician": {"note": "Once per turn: declare a Level from 1 to 8; it becomes that Level until the end of the turn. You can only control 1. Cannot be Synchro Material.", "ignite": {"cost": "none", "do": [["declare_level"]], "label": "Declare a Level (1 to 8)"}, "one_only": true, "no_synchro": true},
-	"Gagaga Cowboy": {"note": "Detach 1: gains 1000 ATK this turn.", "ignite": {"cost": "detach", "do": [["self_atk", 1000]], "label": "Detach: +1000 ATK"}},
+	"Gagaga Cowboy": {"note": "Detach 1 material. In Attack Position: this turn, attacking a monster it gains 1000 ATK and that monster loses 500 ATK during the Damage Step. In Defense Position: 800 damage to the opponent.",
+		"ignite": {"cost": "detach", "do": [["cowboy"]], "label": "Detach 1: Attack Position +1000 / -500 in battle, Defense Position 800 damage"}},
 
 	# ---- ZEXAL
 	"Number 17: Leviathan Dragon": {"note": "Cannot attack directly unless it has material. Once per turn: detach 1 material; it gains 500 ATK.", "direct_needs_material": true, "ignite": {"cost": "detach", "do": [["perm_atk", 500]], "label": "Detach: +500 ATK"}},
@@ -276,7 +277,8 @@ const FX := {
 	"Umbral Horror Ghoul": {"note": "Once per turn: its ATK becomes 0 to Special Summon an Umbral Horror (0 ATK) from hand.",
 		"ignite": {"cost": "none", "do": [["self_atk_zero"], ["special", "hand", {"has": "Umbral Horror", "max_atk": 0}, "atk", 1]], "label": "Call an Umbral Horror"}},
 	"Umbral Horror Unform": {"note": "Destroyed by battle while attacking a monster: you can Special Summon 2 Umbral Horror monsters from your Deck. Once per turn.", "once_turn": true, "death": [["need_attacking"], ["need_deck", {"has": "Umbral Horror"}, 2], ["special", "deck", {"has": "Umbral Horror"}, "", 2]]},
-	"Umbral Horror Will o' the Wisp": {"note": "Destroyed by battle in Attack Position: destroy the monster that destroyed it.", "death": [["destroy_killer"]]},
+	"Umbral Horror Will o' the Wisp": {"note": "Normal or Special Summoned: you can make its Level the Level of another Umbral Horror monster you control or in your Graveyard. Destroyed by battle in Attack Position: destroy the monster that destroyed it.",
+		"summon": [["wisp_level"]], "special_only": [["wisp_level"]], "death": [["need_was_atk"], ["destroy_killer"]]},
 	"Number 39: Utopia": {"note": "When a monster declares an attack: detach 1 material to negate the attack. If it is targeted for an attack while it has no material: it is destroyed.", "destroy_if_attacked_no_material": true},
 }
 

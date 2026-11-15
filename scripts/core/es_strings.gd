@@ -4211,4 +4211,11 @@ const ES := {
 	"Banish the top card of your Deck: +500 ATK this turn": "Destierra la carta superior de tu Deck: +500 ATK este turno",
 	"Detach 2: an opponent's monster gets 0 ATK and loses its effects": "Desacopla 2: un monstruo del rival queda con 0 ATK y pierde sus efectos",
 	"Monster": "Monstruo",
+	"%s: +1000 ATK when it attacks a monster this turn, and that monster loses 500": "%s: +1000 ATK cuando ataque a un monstruo este turno, y ese monstruo pierde 500",
+	"Detach 1: Attack Position +1000 / -500 in battle, Defense Position 800 damage": "Desacopla 1: en Ataque +1000 / -500 en batalla, en Defensa 800 de daño",
+	"%s: take the Level of which Umbral Horror monster?": "%s: ¿tomar el Nivel de qué monstruo Umbral Horror?",
+	"%s is now Level %d": "%s ahora es de Nivel %d",
+	"%s: reveal it and Special Summon it?": "%s: ¿mostrarlo e Invocarlo de Modo Especial?",
+	"Keep it in your hand": "Dejarlo en tu mano",
+	"%s is revealed and Special Summoned": "%s es mostrado e Invocado de Modo Especial",
 }

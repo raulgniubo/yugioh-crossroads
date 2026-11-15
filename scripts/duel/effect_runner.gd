@@ -25,6 +25,13 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 	if c.tmp_until >= s.turn:
 		b += c.tmp_atk
 	b += int(f.get("atk_per_counter", 0)) * c.counter
+	# Gagaga Cowboy, Attack Position effect: attacking an opponent's monster it gains 1000 ATK and
+	# that monster loses 500 ATK, during the Damage Step only.
+	if battling and vs != null:
+		if attacking and c.cowboy_turn == s.turn:
+			b += 1000
+		elif not attacking and vs.cowboy_turn == s.turn:
+			b -= 500
 	if battling and attacking:
 		if vs != null:
 			b += int(f.get("atk_attack", 0))
@@ -912,6 +919,11 @@ static func run_list(s: DuelState, p: int, c, actions: Array, ctx: Dictionary) -
 			if not _cond(s, p, str(a[1])):
 				break
 			continue
+		if str(a[0]) == "need_was_atk":
+			# "When this Attack Position card is destroyed..." (Umbral Horror Will o' the Wisp).
+			if not c.attack_pos:
+				break
+			continue
 		if str(a[0]) == "need_attacking":
 			# "...while attacking a monster" (Umbral Horror Unform).
 			if s.battle_attacker != c or not s.battle_vs_monster:
@@ -1510,6 +1522,35 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			s._to_gy(opp, sent_c)
 			s._shuffle(opp.deck)
 			events.append({"type": "mill", "player": opp_i, "card": sent_c, "deck": opp.deck.size()})
+		"wisp_level":
+			# Umbral Horror Will o' the Wisp: you can target 1 other "Umbral Horror" monster you
+			# control or in your GY; this card's Level becomes that monster's current Level.
+			var uh: Array = []
+			for m2 in ps.monsters():
+				if m2 != c and m2.face_up and m2.frame() != "xyz" and m2.cname().contains("Umbral Horror"):
+					uh.append(m2)
+			for g2 in ps.gy:
+				if g2 != c and g2.is_monster() and g2.frame() != "xyz" and g2.cname().contains("Umbral Horror"):
+					uh.append(g2)
+			if uh.is_empty() or not ps.field.has(c):
+				return events
+			var best_lv = uh[0]
+			for u in uh:
+				if u.level() > best_lv.level():
+					best_lv = u
+			var lv_pick: Array = s.choose(p, Loc.t("%s: take the Level of which Umbral Horror monster?") % name, uh, 1, [best_lv], true, c)
+			if lv_pick.is_empty():
+				return events
+			c.lv_set = lv_pick[0].level()
+			c.lv_turn = -1
+			events.append(_ev(p, c, Loc.t("%s is now Level %d") % [name, c.lv_set]))
+		"cowboy":
+			# Gagaga Cowboy: what the effect does depends on its battle position right now.
+			if c.attack_pos:
+				c.cowboy_turn = s.turn
+				events.append(_ev(p, c, Loc.t("%s: +1000 ATK when it attacks a monster this turn, and that monster loses 500") % name))
+			else:
+				events.append_array(run(s, p, c, ["damage", 800], ctx))
 		"zero_negate_opp":
 			# Starliege Paladynamo: 1 face-up monster the opponent controls; its ATK becomes 0 and its
 			# effects are negated, for as long as it stays on the field.

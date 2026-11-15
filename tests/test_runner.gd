@@ -2174,3 +2174,71 @@ func _test_batch_34() -> void:
 	s.enter_battle()
 	check(s.attacks_left(rose) == 3, "Rose Tentacles with 2 Plants across the field: 3 attacks this turn")
 	check(not s.can_revive(rose) or not s.players[0].gy.has(rose), "It cannot be Special Summoned")
+	# Gagaga Cowboy: one effect, two results, by the position it is in when it resolves.
+	s = _main_ready(880)
+	var cow := _fake(s, 0, "Gagaga Cowboy", 1500, 2400, 0, {"frame": "xyz"})
+	cow.overlays = [s._make(40640057, 0), s._make(40640057, 0)]
+	var tgt := _fake(s, 1, "Target", 2200, 1000, 0)
+	_run(s, 0, {"do": "ignite", "card": cow})
+	check(cow.overlays.size() == 1 and s.atk_of(cow, false) == 1500, "Gagaga Cowboy in Attack Position: 1 material detached, no change outside of battle")
+	check(s.atk_of(cow, true, tgt, true) == 2500 and s.atk_of(tgt, false, cow, true) == 1700, "Attacking a monster: 2500 against 1700 during the Damage Step")
+	s.phase = DuelState.Phase.BATTLE
+	s.attack(0, cow, tgt)
+	check(s.players[1].gy.has(tgt) and s.players[0].field.has(cow), "It wins the battle it would have lost")
+	s = _main_ready(881)
+	var cow2 := _fake(s, 0, "Gagaga Cowboy", 1500, 2400, 0, {"frame": "xyz"})
+	cow2.attack_pos = false
+	cow2.overlays = [s._make(40640057, 0)]
+	var lp8: int = s.players[1].lp
+	_run(s, 0, {"do": "ignite", "card": cow2})
+	check(s.players[1].lp == lp8 - 800 and cow2.overlays.is_empty(), "In Defense Position: 800 damage to the opponent")
+	# Umbral Horror Will o' the Wisp: a Level from another Umbral Horror; only in Attack Position does it take its killer along.
+	s = _main_ready(882)
+	var wisp := _fake(s, 0, "Umbral Horror Will o' the Wisp", 0, 0, -1, {"race": "Fiend", "level": 1})
+	var gh := _fake(s, 0, "Umbral Horror Ghoul", 1800, 0, -1, {"race": "Fiend", "level": 4})
+	s.players[0].gy.append(gh)
+	s.players[0].hand = [wisp]
+	s.normal_summoned = false
+	s.normal_summon(0, wisp, [], false)
+	check(wisp.level() == 4, "Will o' the Wisp Normal Summoned takes the Level of an Umbral Horror in the Graveyard")
+	s.turn += 2
+	s.begin_turn()
+	check(wisp.level() == 4, "The Level stays")
+	s = _main_ready(883)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	var wisp2 := _fake(s, 0, "Umbral Horror Will o' the Wisp", 0, 0, 0, {"race": "Fiend", "level": 1})
+	var slayer := _fake(s, 1, "Slayer", 1500, 1000, 0)
+	s.attack(1, slayer, wisp2)
+	check(s.players[1].gy.has(slayer), "Destroyed by battle in Attack Position it destroys the monster that did it")
+	s = _main_ready(884)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	var wisp3 := _fake(s, 0, "Umbral Horror Will o' the Wisp", 0, 0, 0, {"race": "Fiend", "level": 1})
+	wisp3.attack_pos = false
+	var slayer2 := _fake(s, 1, "Slayer", 1500, 1000, 0)
+	s.attack(1, slayer2, wisp3)
+	check(s.players[0].gy.has(wisp3) and s.players[1].field.has(slayer2), "Destroyed in Defense Position it does not")
+	# Infernity Archfiend: drawn into an empty hand it can come straight out, and then it searches.
+	s = _main_ready(885)
+	var arch := _fake(s, 0, "Infernity Archfiend", 1800, 1200, -1, {"race": "Fiend", "attribute": "DARK"})
+	var inf_spell := _st(s, 0, "Infernity Launcher", "hand", "spell")
+	s.players[0].hand = []
+	s.players[0].deck.append(inf_spell)
+	s.players[0].deck.append(arch)
+	s._draw(0, 1)
+	check(s.players[0].field.has(arch), "Infernity Archfiend drawn with an empty hand is Special Summoned")
+	check(s.players[0].hand.has(inf_spell), "Special Summoned with an empty hand it adds an Infernity card (a Spell counts) to the hand")
+	s = _main_ready(886)
+	var arch2 := _fake(s, 0, "Infernity Archfiend", 1800, 1200, -1, {"race": "Fiend"})
+	var keep := _fake(s, 0, "Something", 1000, 1000, -1)
+	s.players[0].hand = [keep]
+	s.players[0].deck.append(arch2)
+	s._draw(0, 1)
+	check(s.players[0].hand.has(arch2), "Drawn while there are other cards in hand it stays in the hand")
+	var inf2 := _fake(s, 0, "Infernity Beast", 1600, 1200, -1, {"race": "Beast"})
+	s.players[0].deck.append(inf2)
+	s.players[0].hand.erase(arch2)
+	s._special(0, arch2, "effect")
+	EffectRunner.on_summon(s, 0, arch2, "special")
+	check(s.players[0].deck.has(inf2), "Special Summoned while there is a card in hand: no search")
