@@ -328,7 +328,7 @@ func _header() -> PackedStringArray:
 	out.append("")
 	out.append("== SETTINGS ==")
 	out.append("preset: %s   %s" % [Settings.gfx_preset_name(), str(Settings.gfx)])
-	out.append("frame cap: %s   hold the frame rate: %s   fullscreen: %s   fullscreen 3D size: %s" % [Settings.fps_name(Settings.fps_cap), str(Settings.hold_fps), str(Settings.fullscreen), str(Settings.fs_resolution)])
+	out.append("v-sync: %s   frame cap: %s   hold the frame rate: %s   fullscreen: %s   fullscreen 3D size: %s" % [str(Settings.vsync), Settings.fps_name(Settings.fps_cap), str(Settings.hold_fps), str(Settings.fullscreen), str(Settings.fs_resolution)])
 	out.append("")
 	out.append("== WHERE ==")
 	var cs := get_tree().current_scene

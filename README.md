@@ -5,6 +5,20 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.11
+
+Fixes and requests from playing 0.33.10 on the Mac.
+
+- **Card shop counters and spinner racks show real cards.** The glass counter and the spinner racks in Kame Game and in the Academy card shop were bought-in models with cards painted on as a blur. They are built by the game now: two sloping shelves of real, sharp cards from your own card folder behind glass, a till, and racks with a real card in every pocket.
+- **Deck boxes show the right card.** Yugi's deck has had Dark Magician all along (two copies), but its box showed whatever card in it hits hardest, so it showed Black Luster Soldier, and Joey's showed Black Skull Dragon. A duelist's box now shows that duelist's own card, and a deck named after a card shows that card.
+- **Academy Grounds, a new duel field.** A duel started out of doors on the island now happens on the Academy lawn: the Academy behind the far duelist, the red dorm on the left and the yellow one on the right, the dorm colors on flag poles, cherry trees, the volcano, the sea. (It was a meadow with a windmill.) Indoors at the Academy you still get the arena hall.
+- **The library's walkway stops at the main path.** It was laid to a fixed length and ran on across the main walk, pale, with grass growing through it. Side paths now stop where they meet paving, use the same stone, and have no grass in them. The lecture hall's walkway too.
+- **V-Sync is its own switch**, next to the frame cap, so you can have 60 FPS with V-Sync. (It was the last entry of the cap list.)
+- **Free Duel: it is plain which side you are picking.** That side's panel stands forward under a pulsing ribbon ("PICKING YOUR OPPONENT" / "PICKING YOUR DUELIST"); the other steps back, smaller and dark.
+- **People cost less to draw.** Past 26 m a person is drawn from the lighter version of the model sooner, past 55 m sooner still: a quarter fewer triangles on a Domino street at Ultra (1.98 million to 1.44 million) with no difference you can see in a side-by-side picture. On Max everybody keeps every triangle. Not measured on a real graphics card yet.
+
+Not done: room furniture is still plain boxes, buildings keep sharp corners, no new street clutter.
+
 ## What is in 0.33.10
 
 **Interiors, in every world.** All 28 rooms you can walk into (shops, cafes, lobbies, the arcade, your room, the dorms and their bedrooms, the library, the lecture hall, the stadium concourse) were furnished but plain: one flat color on the floor, one on the walls. Every one of them is finished now, from one shared builder, so no room was left out.

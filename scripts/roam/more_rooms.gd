@@ -898,7 +898,8 @@ static func build_outside(city: CityBuilder, district: String) -> void:
 		var sign := city.neon_sign("LIBRARY", c + Vector3(5.1, 5.1, 0), Color("ffd166"), 80, PI / 2.0, false)
 		sign.double_sided = true
 		# A path over to the main walk.
-		city.box(Vector3(17.5, 0.12, 2.6), Vector3(-9.6, 0.1, 28.5), city.mat(Color(0.82, 0.8, 0.74), 0.9), false)
+		# (It stops where it meets the main walk, and no grass grows through it.)
+		city.side_path(Vector3(-18.35, 0.1, 28.5), Vector3(1, 0, 0), 17.5, 2.6, city.surf("paving", Color(0.74, 0.7, 0.62), 1.15))
 		# The lecture hall, east of the practice fields: brick, tall windows, a clock over the door.
 		var lc := Vector3(41.5, 0.1, -19.0)
 		var brick := city.mat(Color(0.62, 0.34, 0.26), 0.9)
@@ -917,7 +918,7 @@ static func build_outside(city: CityBuilder, district: String) -> void:
 		city.box(Vector3(0.06, 0.05, 0.36), lc + Vector3(-4.46, 4.8, 0.16), dark, false)
 		var ls := city.neon_sign("LECTURE HALL", lc + Vector3(-4.5, 4.0, 0), Color("7cc4ff"), 60, -PI / 2.0, false)
 		ls.double_sided = true
-		city.box(Vector3(6.0, 0.12, 2.6), Vector3(34.0, 0.1, -19.0), city.mat(Color(0.82, 0.8, 0.74), 0.9), false)
+		city.side_path(Vector3(37.0, 0.1, -19.0), Vector3(-1, 0, 0), 6.0, 2.6, city.surf("paving", Color(0.74, 0.7, 0.62), 1.15))
 		return
 	if district != "domino":
 		return

@@ -147,7 +147,7 @@ func _build(t: Dictionary) -> void:
 		"pier":
 			_pier()
 			return
-		"meadow", "volcano", "peak", "ruins", "tide":
+		"campus", "meadow", "volcano", "peak", "ruins", "tide":
 			_wild(key)
 			return
 		"shadow":
@@ -1484,6 +1484,68 @@ void fragment() {
 			continue
 		spots.append(p)
 	match kind:
+		"campus":
+			# A duel on the island looks like the island: the Academy itself behind the far duelist,
+			# the red dorm on the left and the yellow one on the right, the three dorm colors on
+			# flag poles, cherry trees, the volcano, and the sea all the way round.
+			_stone_rim(Color(0.8, 0.78, 0.72))
+			var main := prop("academy_main", Vector3(0, -0.05, -50.0), 0.0, 52.0)
+			if main == null:
+				box(Vector3(40, 14, 16), Vector3(0, 7, -46), mat(Color(0.9, 0.9, 0.92), 0.7), false)
+				for dk in 3:
+					_blob(Vector3(-13.0 + dk * 13.0, 15.0, -46.0), Vector3(9, 7, 9), mat([Color("c8322a"), Color("e8b21e"), Color("2f6fe0")][dk], 0.5))
+			var red := plank_dorm(Vector3(-36.0, -0.02, -6.0), PI / 2, Color("c8322a"), false)
+			red.set_meta("far", true)
+			plank_dorm(Vector3(36.0, -0.02, -10.0), -PI / 2, Color("e8b21e"), false, {"wall": surf("plaster", Color(0.93, 0.88, 0.74)), "roof": surf("roof", Color(0.5, 0.36, 0.2))})
+			# A paved walk from the field up to the Academy doors.
+			box(Vector3(5.0, 0.06, 20.0), Vector3(0, 0.0, -16.5), _tile_material(Color(0.8, 0.76, 0.68), 1.0), false)
+			var dorm_cols := [Color("d02030"), Color("f0c040"), Color("3070e0")]
+			for k in 6:
+				var fx := (-1.0 if k < 3 else 1.0) * (9.5 + (k % 3) * 3.4)
+				_flag(Vector3(fx, 0, -9.0 - (k % 3) * 2.2), dorm_cols[k % 3], 5.2, 0.0)
+			for i in spots.size():
+				var p: Vector3 = spots[i]
+				if p.z < -22.0 or absf(p.x) > 26.0 or (absf(p.x) < 4.0 and p.z < -5.0):
+					continue          # (the Academy, the dorms and the walk stand there)
+				if i % 3 == 0:
+					var sak := prop("sakura", p, rng.randf() * TAU, rng.randf_range(5.0, 7.0), true)
+					if sak == null:
+						_blob(p + Vector3(0, 2.6, 0), Vector3.ONE * 3.0, mat(Color(0.98, 0.72, 0.8), 0.9))
+				elif i % 3 == 1:
+					var s := rng.randf_range(0.8, 1.4)
+					cyl(0.14 * s, 0.24 * s, 2.4 * s, p + Vector3(0, 1.2 * s, 0), mat(Color(0.34, 0.23, 0.14), 0.95))
+					for k in 3:
+						_blob(p + Vector3(rng.randf_range(-0.6, 0.6) * s, (2.7 + k * 0.6) * s, rng.randf_range(-0.6, 0.6) * s), Vector3.ONE * rng.randf_range(1.8, 2.6) * s,
+								mat(Color(0.16, 0.42, 0.16).lerp(Color(0.34, 0.6, 0.2), rng.randf()), 0.95))
+				else:
+					_blob(p + Vector3(0, 0.25, 0), Vector3(rng.randf_range(0.8, 1.6), rng.randf_range(0.4, 0.8), rng.randf_range(0.8, 1.4)), mat(Color(0.6, 0.6, 0.62), 0.95))
+			# The island's volcano behind the Academy, and the sea: the lawn ends, the water begins.
+			_cone(Vector3(58.0, 0, -96.0), 34.0, 30.0, mat(Color(0.36, 0.3, 0.28), 1.0), 12, 7.0)
+			_cone(Vector3(-70.0, 0, -90.0), 26.0, 16.0, mat(Color(0.24, 0.44, 0.24), 1.0), 10, 6.0)
+			var sea := MeshInstance3D.new()
+			var tm := TorusMesh.new()
+			tm.inner_radius = 78.0
+			tm.outer_radius = 400.0
+			tm.rings = 48
+			tm.ring_segments = 4
+			sea.mesh = tm
+			sea.scale = Vector3(1, 0.002, 1)
+			sea.position = Vector3(0, 0.05, 0)
+			sea.material_override = mat(Color(0.12, 0.42, 0.66), 0.08, 0.3)
+			sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(sea)
+			var beach := MeshInstance3D.new()
+			var bm := TorusMesh.new()
+			bm.inner_radius = 70.0
+			bm.outer_radius = 80.0
+			bm.rings = 48
+			bm.ring_segments = 4
+			beach.mesh = bm
+			beach.scale = Vector3(1, 0.002, 1)
+			beach.position = Vector3(0, 0.03, 0)
+			beach.material_override = mat(Color(0.86, 0.78, 0.58), 0.95)
+			beach.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(beach)
 		"meadow":
 			_stone_rim(Color(0.62, 0.6, 0.55))
 			for i in spots.size():

@@ -1506,6 +1506,34 @@ func clear_detail(at: Vector3, size: Vector2, yaw := 0.0) -> void:
 				mm.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3.ZERO), xf.origin))
 
 
+## A side path from a door to the nearest paving that is already there: it runs from `from` along
+## `dir` and STOPS where it meets that paving (it used to be laid to a fixed length and ran on
+## over the main walk). The grass under it is taken out. Returns how long it came out.
+func side_path(from: Vector3, dir: Vector3, max_len: float, width: float, m: Material) -> float:
+	dir = dir.normalized()
+	var length := max_len
+	var d := 0.4
+	var left_door := false       # (the steps and the mat at the door are paving too: get clear of those first)
+	while d < max_len:
+		var p := from + dir * d
+		var hit := false
+		for r in no_grass:
+			if r.get_area() >= 8.0 and r.has_point(Vector2(p.x, p.z)):
+				hit = true
+				break
+		if hit and left_door:
+			length = d + 0.08
+			break
+		if not hit:
+			left_door = true
+		d += 0.2
+	var mid := from + dir * (length * 0.5)
+	var along_x := absf(dir.x) > absf(dir.z)
+	box(Vector3(length, 0.12, width) if along_x else Vector3(width, 0.12, length), mid, m, false)
+	clear_detail(mid, Vector2(length, width) if along_x else Vector2(width, length))
+	return length
+
+
 ## Is any of this patch of lawn already paved (a path, a plaza)? For things that belong on grass.
 func on_paving(at: Vector3, size: Vector2, yaw := 0.0) -> bool:
 	var b := Basis(Vector3.UP, yaw)

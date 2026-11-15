@@ -458,6 +458,7 @@ var _pace := 0                # 0 every frame, 1 every 2nd, 2 every 4th, 3 resti
 var _acc := 0.0
 var _slot := randi() % 4
 var _shadow_parts: Array = []
+var _lod_parts: Array = []
 var always_live := false
 
 
@@ -470,6 +471,16 @@ func _set_pace(p: int) -> void:
 	_acc = 0.0
 	if _anim:
 		_anim.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_IDLE if p == 0 else AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
+	if _model and Settings.gfx_preset != Settings.GFX_PRESETS.size() - 1 and not ("--no-lodbias" in OS.get_cmdline_user_args()):
+		# People are the heaviest thing on a street (a real report: 1.6 million triangles of them,
+		# a third of the frame). Past 26 m a person is drawn from the lighter version of the
+		# model sooner, past 55 m sooner still. On Max everybody keeps every triangle.
+		if _lod_parts.is_empty():
+			_lod_parts = _model.find_children("*", "GeometryInstance3D", true, false)
+		var bias: float = [1.0, 0.5, 0.28, 0.28][clampi(p, 0, 3)]
+		for g in _lod_parts:
+			if is_instance_valid(g):
+				(g as GeometryInstance3D).lod_bias = bias
 	if far_now != far_was and _model:
 		# From that far a person's shadow is a smudge, and it is the most expensive smudge there is.
 		if _shadow_parts.is_empty():

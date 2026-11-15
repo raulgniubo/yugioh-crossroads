@@ -122,7 +122,14 @@ static func open(parent: Node) -> SidePanel:
 			Settings.fps_cap = Settings.FPS_CAPS[i]
 			Settings.apply_fps()
 			Settings.save_settings())
-		_row(disp, "Frame rate", "Unlimited runs as fast as your computer can. A cap keeps it cooler and quieter.", cap)
+		_row(disp, "Frame rate cap", "Unlimited runs as fast as your computer can. A cap keeps it cooler and quieter.", cap)
+		var vs := CheckButton.new()
+		vs.button_pressed = Settings.vsync
+		vs.toggled.connect(func(on):
+			Settings.vsync = on
+			Settings.apply_fps()
+			Settings.save_settings())
+		_row(disp, "V-Sync", "Waits for the screen before showing each picture, so the picture never tears. The game then runs at your screen's rate at most. Works together with the cap: 60 FPS with V-Sync on is a steady 60.", vs)
 	var fps := CheckButton.new()
 	fps.button_pressed = Settings.show_fps
 	fps.toggled.connect(func(on):

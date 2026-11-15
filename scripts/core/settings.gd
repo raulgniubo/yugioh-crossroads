@@ -30,7 +30,10 @@ var hold_fps := false
 var auto_k := 1.0
 ## Frame rate: 0 = unlimited, -1 = match the screen (V-Sync), otherwise the cap.
 var fps_cap := 0
-const FPS_CAPS := [0, 30, 60, 120, 144, 240, -1]
+const FPS_CAPS := [0, 30, 60, 120, 144, 240]
+## V-Sync is its own switch: it stops tearing by waiting for the screen, and it works together
+## with any cap (60 FPS with V-Sync on is a steady, tear-free 60).
+var vsync := false
 ## Graphics. Every effect has its own switch; a preset fills them all in, and changing any one
 ## of them by hand turns the preset into "Custom".
 signal gfx_changed
@@ -453,6 +456,9 @@ func load_settings() -> void:
 	elif cfg.has_section_key("display", "graphics"):
 		graphics = int(cfg.get_value("display", "graphics", 1))
 	fps_cap = int(cfg.get_value("display", "fps_cap", fps_cap))
+	vsync = bool(cfg.get_value("display", "vsync", fps_cap < 0))
+	if fps_cap < 0:
+		fps_cap = 0          # (older saves: "Match screen" was one of the caps)
 	if not _looks_first:
 		# Once, for settings saved before 0.29: the softening goes off. It is off unless you ask.
 		_looks_first = true
@@ -488,20 +494,20 @@ func save_settings() -> void:
 	for k in gfx:
 		cfg.set_value("graphics", k, gfx[k])
 	cfg.set_value("display", "fps_cap", fps_cap)
+	cfg.set_value("display", "vsync", vsync)
 	cfg.save(PATH)
 
 
-## The frame rate cap. V-Sync is what held the game at the screen's 60, so every choice but
-## "Match screen" turns it off.
+## The frame rate cap and V-Sync, each on its own.
 func apply_fps() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
-	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if fps_cap < 0 else DisplayServer.VSYNC_DISABLED)
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = maxi(fps_cap, 0)
 
 
 static func fps_name(cap: int) -> String:
-	return "Unlimited" if cap == 0 else ("Match screen (V-Sync)" if cap < 0 else "%d FPS" % cap)
+	return "Unlimited" if cap <= 0 else "%d FPS" % cap
 
 
 func apply() -> void:

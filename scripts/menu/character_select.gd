@@ -163,6 +163,11 @@ func _process(delta: float) -> void:
 		Portraits.get_portrait(_opp, true)
 	if _go and not _starting:
 		_go.modulate = Color(1, 1, 1).lerp(Color(1.25, 1.25, 1.25), 0.5 + 0.5 * sin(_t * 3.0))
+	# The ribbon on the side being chosen breathes, so the eye lands on it.
+	for side in _slots:
+		var rb2: Control = _slots[side].get("ribbon")
+		if rb2 and rb2.visible:
+			rb2.modulate = Color(1, 1, 1).lerp(Color(1.3, 1.3, 1.3), 0.5 + 0.5 * sin(_t * 4.0))
 
 
 ## Two tinted halves split by a slash, in each duelist's color.
@@ -269,8 +274,18 @@ func _build_slots() -> void:
 		sub.size = Vector2(PANEL_SIZE.x - 150, 24)
 		sub.clip_text = true
 		b.add_child(sub)
+		# The side the roster is choosing for says so, in a ribbon across the top of its panel.
+		var ribbon := PanelContainer.new()
+		ribbon.position = Vector2(0, 0)
+		ribbon.size = Vector2(PANEL_SIZE.x, 40)
+		ribbon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ribbon.visible = false
+		b.add_child(ribbon)
+		var ribbon_l := UITheme.label("", 22, Color.WHITE, UITheme.title_font())
+		ribbon_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		ribbon.add_child(ribbon_l)
 		_slots[side] = {"button": b, "portrait": pt, "name": name_l, "title": title_l, "sub": sub, "tag": tag,
-				"tag_bg": tag_bg, "ace": ace, "glow": glow, "key": ""}
+				"tag_bg": tag_bg, "ace": ace, "glow": glow, "key": "", "ribbon": ribbon, "ribbon_l": ribbon_l}
 	_vs = UITheme.label("VS", 104, Color.WHITE, Comic.shout_font())
 	_vs.position = Vector2(549, 286)
 	_vs.size = Vector2(100, 100)
@@ -401,7 +416,7 @@ func _build_picker() -> void:
 func _refresh_picker() -> void:
 	if _pick_title == null:
 		return
-	_pick_title.text = Loc.t("The roster below changes:")
+	_pick_title.text = Loc.t("You are picking:")
 	for side in _pick_btns:
 		var b: Button = _pick_btns[side]
 		var on: bool = side == _picking
@@ -415,7 +430,29 @@ func _refresh_picker() -> void:
 		b.tooltip_text = "Choose who you play as" if side == "me" else "Choose who you duel against"
 	for side in _slots:
 		var pb: Control = _slots[side]["button"]
-		pb.modulate = Color.WHITE if side == _picking else Color(0.62, 0.64, 0.7)
+		var on2: bool = side == _picking
+		# The side being chosen stands forward at full color under a ribbon that says so; the
+		# other one steps back, smaller and dark.
+		var want_mod := Color.WHITE if on2 else Color(0.36, 0.38, 0.46)
+		var want_scale := Vector2.ONE if on2 else Vector2(0.93, 0.93)
+		var tw := pb.create_tween().set_parallel(true)
+		tw.tween_property(pb, "modulate", want_mod, 0.18)
+		tw.tween_property(pb, "scale", want_scale, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		pb.z_index = 1 if on2 else 0
+		var col2: Color = Portraits.info(_me if side == "me" else _opp).get("color", UITheme.ACCENT)
+		var rb: PanelContainer = _slots[side]["ribbon"]
+		rb.visible = on2
+		var rsb := StyleBoxFlat.new()
+		rsb.bg_color = col2
+		rsb.corner_radius_top_left = 16
+		rsb.corner_radius_top_right = 16
+		rsb.content_margin_top = 6
+		rsb.content_margin_bottom = 6
+		rb.add_theme_stylebox_override("panel", rsb)
+		var rl: Label = _slots[side]["ribbon_l"]
+		rl.text = "▼   " + (Loc.t("PICKING YOUR DUELIST") if side == "me" else Loc.t("PICKING YOUR OPPONENT")) + "   ▼"
+		rl.add_theme_color_override("font_color", Comic.INK if col2.get_luminance() > 0.45 else Color.WHITE)
+		(_slots[side]["tag_bg"] as Control).position.y = 52.0 if on2 else 16.0
 
 
 func _build_tabs() -> void:

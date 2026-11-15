@@ -211,7 +211,7 @@ func _field_here() -> String:
 			var c: Vector2 = lm["pos"]
 			var sz: Vector2 = lm["size"]
 			if absf(p.x - c.x) < sz.x / 2.0 + 1.0 and absf(p.z - c.y) < sz.y / 2.0 + 1.0:
-				return "meadow"
+				return "campus" if key == "academy" else "meadow"
 	match key:
 		"domino":
 			if p.z > 50.0:
@@ -229,8 +229,9 @@ func _field_here() -> String:
 				return "tide"
 			if p.x > 40.0 and p.z < -24.0:
 				return "volcano"
-			if absf(p.x) > 24.0 or absf(p.z) > 30.0:
-				return "meadow"
+			# Anywhere else out of doors on the island: the Academy grounds, with the school
+			# behind you. (It was a meadow with a windmill, which is nowhere on this island.)
+			return "campus"
 		"satellite":
 			if p.length() > 30.0:
 				return "ruins"

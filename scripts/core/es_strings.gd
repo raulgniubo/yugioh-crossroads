@@ -4227,4 +4227,11 @@ const ES := {
 	"Find %s": "Encuentra %s",
 	"Bring %s back to %s": "Lleva %s de vuelta a %s",
 	"%d on your list   ·   %s  show the list": "%d en tu lista   ·   %s  ver la lista",
+	"PICKING YOUR DUELIST": "ELIGIENDO TU DUELISTA",
+	"PICKING YOUR OPPONENT": "ELIGIENDO TU RIVAL",
+	"You are picking:": "Estás eligiendo:",
+	"Frame rate cap": "Límite de FPS",
+	"Waits for the screen before showing each picture, so the picture never tears. The game then runs at your screen's rate at most. Works together with the cap: 60 FPS with V-Sync on is a steady 60.": "Espera a la pantalla antes de mostrar cada imagen, así la imagen nunca se corta. El juego va como mucho a la frecuencia de tu pantalla. Funciona junto con el límite: 60 FPS con V-Sync activado son 60 estables.",
+	"Academy Grounds": "Jardines de la Academia",
+	"The lawn in front of the Academy, the dorms either side, the sea all round.": "El césped frente a la Academia, los dormitorios a cada lado, el mar alrededor.",
 }

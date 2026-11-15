@@ -35,14 +35,15 @@ static func build(city: CityBuilder) -> void:
 		var bulb := city.cyl(0.22, 0.34, 0.2, o + p + Vector3(0, 0.35, 0), city.glow_mat(Color(1.0, 0.86, 0.6), 2.4))
 		bulb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# Furniture
-	city.collide(city.prop("shop_counter", o + Vector3(0, 0, -2.9), 0.0, 4.8), 0.95)
+	# (Built, with real cards behind the glass: the bought-in counter had cards painted on as a blur.)
+	ShopFittings.counter(city, o + Vector3(0, 0, -2.9), 0.0, 4.8)
 	for x in [-5.6, -3.0, 3.0, 5.6]:
 		city.collide(city.prop("shop_shelf", o + Vector3(x, 0, -4.45), 0.0, 2.7, true))
 	for z in [-2.2, 0.6]:
 		city.collide(city.prop("shop_shelf", o + Vector3(-6.45, 0, z), PI / 2, 2.7, true))
 		city.collide(city.prop("shop_shelf", o + Vector3(6.45, 0, z), -PI / 2, 2.7, true))
-	city.collide(city.prop("card_rack", o + Vector3(-2.6, 0, -0.4), 0.4, 1.9, true), 0.7)
-	city.collide(city.prop("card_rack", o + Vector3(2.7, 0, 0.2), -0.6, 1.9, true), 0.7)
+	ShopFittings.spinner(city, o + Vector3(-2.6, 0, -0.4), 0.4)
+	ShopFittings.spinner(city, o + Vector3(2.7, 0, 0.2), -0.6)
 	var dt0 := city.prop("duel_table", o + Vector3(-3.9, 0, 2.9), 0.0, 2.5)
 	city.collide(dt0, 0.75)
 	city.collide(city.prop("duel_table", o + Vector3(4.0, 0, 2.9), 0.0, 2.5), 0.75)

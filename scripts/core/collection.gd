@@ -281,9 +281,32 @@ func note_result(key: String, won: bool) -> String:
 
 
 func deck_ace(key: String) -> int:
+	var ids: Array = CardData.extra_list(key) + CardData.deck_list(key)
+	# A duelist's deck shows that duelist's own card (Yugi's shows Dark Magician, not whatever
+	# in it happens to hit hardest), and a deck named after a card shows that card.
+	for who in Characters.DATA:
+		var c: Dictionary = Characters.DATA[who]
+		if str(c.get("deck", "")) == key and int(c.get("ace", 0)) != 0 and ids.has(int(c["ace"])):
+			return int(c["ace"])
+	var title := CardData.deck_name(key).to_lower()
+	if title != "":
+		var named := 0
+		var named_atk := -1
+		for id in ids:
+			var nd := CardData.get_card(id)
+			var nm := str(nd.get("name", "")).to_lower()
+			if nd.get("kind", "") != "monster":
+				continue
+			if nm == title:
+				return id
+			if nm.contains(title) and not CardData.extra_list(key).has(id) and int(nd.get("atk", 0)) > named_atk:
+				named_atk = int(nd.get("atk", 0))
+				named = id
+		if named != 0:
+			return named
 	var best := 0
 	var score := -1
-	for id in CardData.extra_list(key) + CardData.deck_list(key):
+	for id in ids:
 		var d := CardData.get_card(id)
 		if d.get("kind", "") != "monster":
 			continue

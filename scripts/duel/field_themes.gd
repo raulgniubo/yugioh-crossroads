@@ -3,7 +3,7 @@ extends RefCounted
 ## Duel field looks. "auto" picks the opponent's home field.
 
 const ORDER := ["crossroads", "kaibacorp", "battlecity", "pier", "academy", "reddorm", "bluehall", "satellite", "highway", "heartland",
-	"meadow", "volcano", "peak", "ruins", "tide", "shadow"]
+	"campus", "meadow", "volcano", "peak", "ruins", "tide", "shadow"]
 
 ## Every field is a place. "surface" picks how its ground is painted (see GROUND_GLSL; the mat
 ## and the land around it share it), "day" lights it like the open air.
@@ -40,6 +40,8 @@ const THEMES := {
 		"blurb": "A bright plaza of glowing tiles in the city of the future."},
 	# Fields out in the world: the ground itself is the playmat. "surface" picks how it is
 	# painted (see GROUND_GLSL), "day" lights the place like the open air.
+	"campus": {"name": "Academy Grounds", "base": Color("13240f"), "accent": Color("ffe9a8"), "accent2": Color("ffffff"),
+		"pattern": 0, "sky_top": Color("2f7fd6"), "sky_horizon": Color("bfe3ff"), "fog": Color("cfe8ff"), "surface": 1, "day": true, "blurb": "The lawn in front of the Academy, the dorms either side, the sea all round."},
 	"meadow": {"name": "Windmill Meadow", "base": Color("13240f"), "accent": Color("fff4c2"), "accent2": Color("ffffff"),
 		"pattern": 0, "sky_top": Color("2f7fd6"), "sky_horizon": Color("bfe3ff"), "fog": Color("cfe8ff"), "surface": 1, "day": true, "blurb": "Grass, a dirt path and a windmill on the hill."},
 	"volcano": {"name": "Molten Caldera", "base": Color("120806"), "accent": Color("ff7a2a"), "accent2": Color("ffd23a"),

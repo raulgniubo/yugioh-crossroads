@@ -268,18 +268,12 @@ static func _hall(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> v
 			_block(city, Vector3(2.4, 0.5, 0.5), sp + Vector3(0, 0.25, 0.02))
 			_block(city, Vector3(2.4, 1.0, 0.1), sp + Vector3(0, 0.5, 0.3))
 	# ---- the card shop (east)
-	var counter := city.prop("shop_counter", o + Vector3(9.2, 0, -7.2), PI, 4.6)
-	if counter:
-		city.collide(counter, 0.95)
-	else:
-		city.box(Vector3(4.6, 1.05, 0.9), o + Vector3(9.2, 0.525, -7.2), city.mat(Color(0.5, 0.36, 0.24), 0.7))
+	ShopFittings.counter(city, o + Vector3(9.2, 0, -7.2), 0.0, 4.6)
 	for x in [6.6, 9.2, 11.8]:
 		var sh := city.prop("shop_shelf", o + Vector3(x, 0, -half.y + 0.5), 0.0, 2.6, true)
 		if sh:
 			city.collide(sh)
-	var rack := city.prop("card_rack", o + Vector3(13.0, 0, -3.6), -0.8, 1.9, true)
-	if rack:
-		city.collide(rack, 0.7)
+	ShopFittings.spinner(city, o + Vector3(13.0, 0, -3.6), -0.8)
 	city.box(Vector3(7.4, 0.9, 0.1), o + Vector3(9.2, 3.6, -half.y + 0.08), city.mat(Color(0.3, 0.12, 0.1), 0.6), false)
 	_sign(city, "ACADEMY CARD SHOP", o + Vector3(9.2, 3.6, -half.y + 0.16), 0.0, Color("ffd166"), 70)
 	var packs := ["Duel Monsters", "GX", "5D's", "ZEXAL", "beyond", "dragons"]
