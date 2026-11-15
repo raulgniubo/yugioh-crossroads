@@ -115,10 +115,85 @@ func _guess_human_map(scene: Node) -> Dictionary:
 	return out
 
 
+# ---- reading ahead. A dropped-in .glb is some 14 MB with its pictures inside: reading one on the
+# spot stalls everything for a moment. `warm` reads it on a worker thread; `_load_glb` then
+# only has to build the scene from what was read.
+var _warm := {}            # path -> [GLTFDocument, GLTFState], filled by the worker
+var _warm_ids := {}        # path -> worker task id (main thread only)
+var _warm_lock := Mutex.new()
+
+
+## Start reading this duelist's model in the background, if it is not on hand already.
+func warm(key: String) -> void:
+	key = key.get_slice("@", 0)
+	if _stages.has(key) or not has_avatar(key):
+		return
+	var path := path_for(key)
+	if path.begins_with("res://"):
+		if not ResourceLoader.has_cached(path) and ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+			ResourceLoader.load_threaded_request(path)
+		return
+	_reap_warm()
+	if not path.ends_with(".glb") or _warm_ids.has(path):
+		return
+	_warm_lock.lock()
+	var have := _warm.has(path)
+	_warm_lock.unlock()
+	if have or _warm_ids.size() >= 2:
+		return
+	_warm_ids[path] = WorkerThreadPool.add_task(_warm_read.bind(path), false, "read a duelist's model")
+
+
+func _warm_read(path: String) -> void:
+	var gltf := GLTFDocument.new()
+	var state := GLTFState.new()
+	state.handle_binary_image = GLTFState.HANDLE_BINARY_EMBED_AS_UNCOMPRESSED
+	var ok := gltf.append_from_file(path, state) == OK
+	_warm_lock.lock()
+	# A file that cannot be read is marked too, so nobody waits on it forever.
+	_warm[path] = [gltf, state] if ok else []
+	_warm_lock.unlock()
+
+
+## Can this duelist be shown right now without stopping to read a file?
+func ready_now(key: String) -> bool:
+	key = key.get_slice("@", 0)
+	if _stages.has(key) or not has_avatar(key):
+		return true
+	var path := path_for(key)
+	if path.begins_with("res://"):
+		return ResourceLoader.has_cached(path) or ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_LOADED
+	if not path.ends_with(".glb"):
+		return true
+	_reap_warm()
+	_warm_lock.lock()
+	var have := _warm.has(path)
+	_warm_lock.unlock()
+	return have
+
+
+## Finished background reads are collected (a worker task has to be waited for once).
+func _reap_warm() -> void:
+	for path in _warm_ids.keys():
+		if WorkerThreadPool.is_task_completed(int(_warm_ids[path])):
+			WorkerThreadPool.wait_for_task_completion(int(_warm_ids[path]))
+			_warm_ids.erase(path)
+
+
 func _load_glb(path: String) -> Node:
 	if path.begins_with("res://"):
 		var ps = load(path)
 		return ps.instantiate() if ps is PackedScene else null
+	if _warm_ids.has(path):
+		# Being read right now: wait for that instead of reading it a second time.
+		WorkerThreadPool.wait_for_task_completion(int(_warm_ids[path]))
+		_warm_ids.erase(path)
+	_warm_lock.lock()
+	var w = _warm.get(path)
+	_warm.erase(path)
+	_warm_lock.unlock()
+	if w is Array and (w as Array).size() == 2:
+		return (w[0] as GLTFDocument).generate_scene(w[1])
 	var gltf := GLTFDocument.new()
 	var state := GLTFState.new()
 	state.handle_binary_image = GLTFState.HANDLE_BINARY_EMBED_AS_UNCOMPRESSED

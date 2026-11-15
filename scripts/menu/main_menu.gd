@@ -40,6 +40,10 @@ func _ready() -> void:
 		_on_academy.call_deferred()
 
 
+var _bg_vp: SubViewport
+var _bg_box: SubViewportContainer
+
+
 func _build_background() -> void:
 	var svc := SubViewportContainer.new()
 	svc.stretch = true
@@ -47,15 +51,47 @@ func _build_background() -> void:
 	svc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(svc)
 	var vp := SubViewport.new()
-	vp.msaa_3d = Viewport.MSAA_2X if int(Settings.gfx["aa"]) >= 2 else Viewport.MSAA_DISABLED
+	vp.msaa_3d = Viewport.MSAA_4X
 	vp.own_world_3d = true
-	# The city behind the menu is a backdrop: three quarters of the pixels are plenty, and
-	# it keeps the home screen quick.
-	vp.scaling_3d_scale = 0.75 * Settings.scale_3d()
 	svc.add_child(vp)
 	var bg := Node3D.new()
 	bg.set_script(MenuBackground)
 	vp.add_child(bg)
+	_bg_vp = vp
+	_bg_box = svc
+	# The city is a picture, not a place you play in: it is drawn a few times at the full
+	# sharpness of the screen and then held, so the home screen costs next to nothing and never
+	# turns to blocks, whatever the 3D resolution is set to. A slow drift keeps it from sitting dead.
+	_shoot_background()
+	get_viewport().size_changed.connect(_shoot_background)
+	Profile.changed.connect(_shoot_background)
+	svc.pivot_offset = get_viewport_rect().size / 2.0
+	var tw := create_tween().set_loops()
+	tw.tween_property(svc, "scale", Vector2(1.035, 1.035), 26.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(svc, "scale", Vector2.ONE, 26.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+var _bg_shots := 0
+
+
+func _shoot_background() -> void:
+	if _bg_vp == null or not is_inside_tree():
+		return
+	# The menu is laid out on a 1080-line canvas; the screen may have many more lines than that.
+	var canvas_h := maxf(1.0, get_viewport_rect().size.y)
+	var screen_h := float(DisplayServer.window_get_size().y)
+	_bg_vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+	_bg_vp.scaling_3d_scale = clampf(clampf(screen_h, 720.0, 1620.0) / canvas_h, 0.5, 2.0)
+	_bg_box.pivot_offset = get_viewport_rect().size / 2.0
+	_bg_shots += 1
+	var mine := _bg_shots
+	# Now, and twice more once everything in it has had time to load.
+	for wait: float in [0.0, 0.35, 1.2]:
+		if wait > 0.0:
+			await get_tree().create_timer(wait).timeout
+		if not is_inside_tree() or mine != _bg_shots:
+			return
+		_bg_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 
 func _build_overlay() -> void:
@@ -291,6 +327,9 @@ func _build_featured() -> void:
 		_line[i] = {"tex": tex, "tex2": tex2, "tag": tag, "key": "", "home": home, "pool": pools[i], "at": 0, "dim": 0.82 if sc < 1.0 else 1.0}
 	for i in LINEUP:
 		_set_lineup(i, str((_line[i]["pool"] as Array)[0]), true)
+	for i in LINEUP:
+		if (_line[i]["pool"] as Array).size() > 1:
+			Avatars.warm(str((_line[i]["pool"] as Array)[1]))
 	var t := Timer.new()
 	t.wait_time = 3.4
 	t.autostart = true
@@ -302,9 +341,20 @@ func _build_featured() -> void:
 			var pool: Array = slot["pool"]
 			if pool.size() < 2:
 				continue
+			var coming := str(pool[(int(slot["at"]) + 1) % pool.size()])
+			if not Avatars.ready_now(coming):
+				# Their model is still being read in the background: somebody else takes this
+				# turn, and nothing on screen waits for a file.
+				Avatars.warm(coming)
+				continue
 			slot["at"] = (int(slot["at"]) + 1) % pool.size()
-			_set_lineup(_line.find(slot), str(pool[int(slot["at"])]), false)
-			break)
+			_set_lineup(_line.find(slot), coming, false)
+			break
+		# Whoever is up next, in every slot, is read ahead of time.
+		for sl in _line:
+			var pl: Array = (sl as Dictionary)["pool"]
+			if pl.size() > 1:
+				Avatars.warm(str(pl[(int((sl as Dictionary)["at"]) + 1) % pl.size()])))
 	add_child(t)
 
 

@@ -40,8 +40,8 @@ func _spawn_hero() -> void:
 	_hero.setup("player", Profile.color(), "", false)
 
 
-func _process(delta: float) -> void:
-	_time += delta
-	var sway := sin(_time * 0.13)
+func _process(_delta: float) -> void:
+	# The picture is taken a few times and held (see the main menu), so the camera stays put.
+	var sway := 0.0
 	_cam.position = Vector3(9.3 + sway * 0.5, 1.3 + cos(_time * 0.1) * 0.06, 12.6)
 	_cam.look_at(Vector3(-1.5 + sway * 0.4, 4.4, -30.0))

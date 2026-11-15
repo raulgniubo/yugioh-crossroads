@@ -5,6 +5,12 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.32.1
+
+- **Home screen.** The city behind the duelists is sharp now. It was being drawn at well under half the lines of the screen; it is drawn at the screen's own sharpness, a few times, and then held as a picture with a slow drift. The home screen costs far less because of it.
+- **No more stalls when the duelists on the home screen change.** A model you dropped in (about 14 MB each) used to be read on the spot when its duelist came up, and everything waited. It is read ahead of time in the background now, and a duelist only steps in once their model is ready.
+- **The mark on the nose** of the Spikes hairstyle in the Academy outfit was a small hole in the face (you could see the hair through it). It is closed, and the lock of hair that hung over it now ends between the eyebrows.
+
 ## What is in 0.32
 
 **The story, told a new way.** Every chapter has been rewritten, start to finish, in one go.
