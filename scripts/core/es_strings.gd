@@ -4196,4 +4196,9 @@ const ES := {
 	"Menus and on-screen text hidden": "Menús y texto en pantalla ocultos",
 	"Max": "Máximo",
 	"Graphics set to %s for this machine. You can change it in Settings.": "Gráficos ajustados en %s para este equipo. Puedes cambiarlo en Ajustes.",
+	"%s: change it to Defense Position?": "%s: ¿cambiarlo a Posición de Defensa?",
+	"Change to Defense Position": "Cambiar a Posición de Defensa",
+	"Leave it in Attack Position": "Dejarlo en Posición de Ataque",
+	"%s: destroy 1 face-up Spell?": "%s: ¿destruir 1 Mágica boca arriba?",
+	"Change its battle position": "Cambiar su posición de batalla",
 }

@@ -191,6 +191,14 @@ static func piercing(s: DuelState, p: int, c) -> bool:
 	return false
 
 
+## True if c cannot be destroyed by a card effect right now.
+static func survives_effect(s: DuelState, c) -> bool:
+	var f := fx(c)
+	if f.get("hand_empty_guard", false) and c.face_up and s.players[c.owner].hand.is_empty():
+		return true
+	return false
+
+
 ## True if c shrugs off being destroyed by battle (and records the once-per-turn use).
 static func survives_battle(s: DuelState, c) -> bool:
 	var f := fx(c)
@@ -453,7 +461,7 @@ static func standby(s: DuelState, p: int) -> Array:
 	for g in s.players[p].gy.duplicate():
 		if g.back_pos == "":
 			continue
-		var pos: String = g.back_pos
+		var pos: String = g.back_pos if g.back_pos != "any" else ""
 		g.back_pos = ""
 		if s.players[p].free_zone() != -1 and s.can_revive(g):
 			s.players[p].gy.erase(g)
@@ -698,6 +706,13 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 				elif str(a[1]) == "st_pick":
 					if _all_st(s).is_empty():
 						return false
+				elif str(a[1]) == "opp_faceup_spell":
+					var any_up := opp.field_spell != null and opp.field_spell.face_up
+					for st3 in opp.spells:
+						if st3 != null and st3.face_up and st3.is_spell():
+							any_up = true
+					if not any_up:
+						return false
 				elif str(a[1]) == "atk_above_self":
 					if _stronger_than(s, c).is_empty():
 						return false
@@ -887,10 +902,18 @@ static func run_list(s: DuelState, p: int, c, actions: Array, ctx: Dictionary) -
 		s.pending_fx.append({"player": p, "card": c, "actions": actions, "ctx": ctx})
 		return []
 	var events := []
+	var was_by := s.effect_by
+	s.effect_by = p
 	for a in actions:
 		if s.is_over():
 			break
+		if str(a[0]) == "need":
+			# ["need", cond]: the rest only happens while this holds ("if you control a ...").
+			if not _cond(s, p, str(a[1])):
+				break
+			continue
 		events.append_array(run(s, p, c, a, ctx))
+	s.effect_by = was_by
 	return events
 
 
@@ -1459,6 +1482,16 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 		"to_def":
 			c.attack_pos = false
 			events.append({"type": "position", "player": p, "card": c, "zone": ps.field.find(c)})
+		"self_switch":
+			# "Once per turn: You can change the battle position of this card" (Skull Kraken).
+			if ps.field.has(c) and c.face_up:
+				c.attack_pos = not c.attack_pos
+				events.append({"type": "position", "player": p, "card": c, "zone": ps.field.find(c)})
+		"back_next_standby":
+			# "During your next Standby Phase ...: Special Summon it from your GY" (Gernia).
+			if ps.gy.has(c):
+				c.back_pos = str(a[1]) if a.size() > 1 else "any"
+				events.append(_ev(p, c, Loc.t("%s will be back at your next Standby Phase") % name))
 		"no_damage":
 			ps.no_damage_turn = s.turn
 			events.append(_ev(p, c, "No damage this turn"))
@@ -1506,6 +1539,16 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				c.atk_mod += sum
 				events.append(_ev(p, c, Loc.t("Junk Warrior gains %d ATK") % sum))
 		"all_dragons_attack":
+			# Dragon Piper: destroy every face-up "Dragon Capture Jar"; only if one was destroyed do
+			# the Dragons turn to Attack Position.
+			var jars := 0
+			for q0 in 2:
+				for st in s.players[q0].spells.duplicate():
+					if st != null and st.face_up and st.cname() == "Dragon Capture Jar":
+						events.append_array(s._destroy_st(st))
+						jars += 1
+			if jars == 0:
+				return events
 			for q in 2:
 				for m in s.players[q].monsters():
 					if m.face_up and not m.attack_pos and str(m.data.get("race", "")) == "Dragon":
@@ -1580,6 +1623,22 @@ static func _destroy_action(s: DuelState, p: int, c, what: String, ctx: Dictiona
 					events.append(_ev(p, c, Loc.t("%s destroys a set card") % c.cname()))
 					events.append_array(s._destroy_st(got))
 					return events
+		"opp_faceup_spell":
+			# "You can target 1 face-up Spell your opponent controls; destroy that target" (Skull Kraken).
+			var ups: Array = []
+			for st2 in opp.spells:
+				if st2 != null and st2.face_up and st2.is_spell():
+					ups.append(st2)
+			if opp.field_spell != null and opp.field_spell.face_up:
+				ups.append(opp.field_spell)
+			if ups.is_empty():
+				return events
+			var got6: Array = s.choose(p, Loc.t("%s: destroy 1 face-up Spell?") % c.cname(), ups, 1, [ups[0]], true, c)
+			if got6.is_empty():
+				return events
+			events.append(_ev(p, c, Loc.t("%s destroys %s") % [c.cname(), got6[0].cname()]))
+			events.append_array(s._destroy_st(got6[0]))
+			return events
 		"st_pick":
 			# "Target 1 Spell/Trap on the field; destroy that target" (Breaker the Magical Warrior).
 			var every: Array = _all_st(s)

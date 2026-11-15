@@ -5,6 +5,20 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.2
+
+Seven more monsters now do exactly what their card says, sentence by sentence (221 effect monsters done, 32 to go). Each one is proven by the game's own tests.
+
+- **Skull-Mark Ladybug:** 1000 Life Points when it is sent to the Graveyard from anywhere (the field, the hand, the Deck), not only from the field.
+- **Infernity Guardian:** with an empty hand it cannot be destroyed by battle or by card effects (it was battle only).
+- **Dragon Piper:** destroys every face-up Dragon Capture Jar, and only then do the Dragons turn to Attack Position.
+- **Skull Kraken:** Normal Summoned, you can destroy 1 face-up Spell your opponent controls (it used to hit Set cards). Once per turn it can change its own battle position.
+- **Gernia:** comes back at your next Standby Phase, and only when an opponent's card effect destroyed it face-up.
+- **Submarineroid:** a direct attack past a monster deals its original ATK; after it battles you can change it to Defense Position.
+- **Medium Piece Golem:** Summoned while you control a Big Piece Golem, you can Special Summon 1 Small Piece Golem from your Deck with its effects negated (it used to call any small EARTH monster, with or without the Big one).
+
+Under the hood the rules now know whose card effect is resolving, so "destroyed by an opponent's card effect" can be told apart from your own.
+
 ## What is in 0.33.1
 
 - **Hero faces.** Five of the looks you can pick had something wrong on the face:

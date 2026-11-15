@@ -206,6 +206,9 @@ var need = null                  # the first decision a trial run could not answ
 var gepd_hold: Array = []     # Galaxy-Eyes Photon Dragon: what it banished until the end of the Battle Phase
 var defer_fx := false
 var pending_fx: Array = []
+## Whose card effect is resolving right now (-1: nobody's). "Destroyed by an opponent's card
+## effect" is read from this.
+var effect_by := -1
 
 
 ## Pick n of cands. `auto` is what the rules would take on their own (AI, tests, a forced pick).
@@ -837,10 +840,16 @@ func chain_resolve() -> Array:
 		if link["negated"] or (not here and stays):
 			events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s is negated") % c.cname()})
 		elif sp.has("legacy"):
+			var was_by := effect_by
+			effect_by = p
 			events.append_array(_legacy_trap(p, c, link["subject"]) if c.is_trap() else _legacy_spell(p, c, link["target"]))
+			effect_by = was_by
 			stays = false
 		else:
+			var was_by2 := effect_by
+			effect_by = p
 			events.append_array(SpellRules.resolve(self, link))
+			effect_by = was_by2
 			stays = stays and link.get("stays", true) and not link["negated"]
 		here = ps.spells.has(c) or ps.field_spell == c
 		if here:
@@ -1303,12 +1312,15 @@ func resolve_attack() -> Array:
 				{"type": "attack_stopped", "player": p, "card": attacker}]
 	var events := [{"type": "battle", "player": p, "card": attacker, "target": target}]
 	var a := atk_of(attacker, true, target, true)
+	if target == null and EffectRunner.fx(attacker).get("direct_orig", false) and not players[opp].monsters().is_empty():
+		# "...when it does so using this effect, the battle damage is the original ATK of this card."
+		a = attacker.atk()
 	if target == null:
 		var before := players[opp].lp
 		events.append_array(_battle_damage(opp, a, attacker, null))
 		if players[opp].lp < before:
 			events.append_array(EffectRunner.trigger(self, attacker, "damage"))
-		events.append_array(_after_attack(attacker))
+		events.append_array(_after_attack(attacker, target))
 		return events
 	if not target.face_up:
 		target.face_up = true
@@ -1318,7 +1330,7 @@ func resolve_attack() -> Array:
 	if kill_def and not target.attack_pos:
 		events.append({"type": "effect", "player": p, "card": attacker, "text": Loc.t("%s destroys it outright!") % attacker.cname()})
 		events.append_array(_battle_kill(attacker, target))
-		events.append_array(_after_attack(attacker))
+		events.append_array(_after_attack(attacker, target))
 		return events
 	var target_was_def: bool = not target.attack_pos
 	# "When this card inflicts battle damage to your opponent" counts every kind of battle,
@@ -1384,7 +1396,7 @@ func resolve_attack() -> Array:
 	if EffectRunner.fx(attacker).get("wedge_on_attack", false) and players[p].field.has(attacker) and players[opp].field.has(target) and not target.wedge:
 		target.wedge = true
 		events.append({"type": "effect", "player": p, "card": attacker, "text": Loc.t("A Wedge Counter is placed on %s") % target.cname()})
-	events.append_array(_after_attack(attacker))
+	events.append_array(_after_attack(attacker, target))
 	return events
 
 
@@ -1439,11 +1451,23 @@ func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 	return events
 
 
-func _after_attack(attacker: CardInst) -> Array:
+func _after_attack(attacker: CardInst, target = null) -> Array:
+	var events := []
 	if players[attacker.owner].field.has(attacker) and attacker.attack_pos and EffectRunner.fx(attacker).get("def_after_attack", false):
 		attacker.attack_pos = false
-		return [{"type": "position", "player": attacker.owner, "card": attacker, "zone": players[attacker.owner].field.find(attacker)}]
-	return []
+		events.append({"type": "position", "player": attacker.owner, "card": attacker, "zone": players[attacker.owner].field.find(attacker)})
+	# "At the end of the Damage Step, if this card battled: You can change this card to Defense
+	# Position" (Submarineroid): whether it attacked or was attacked.
+	for m in [attacker, target]:
+		if m == null or not (m is CardInst):
+			continue
+		var c: CardInst = m
+		if players[c.owner].field.has(c) and c.face_up and c.attack_pos and EffectRunner.fx(c).get("may_def_after_battle", false):
+			var auto := 0 if def_of(c) > atk_of(c, false) else 1
+			if choose_option(c.owner, Loc.t("%s: change it to Defense Position?") % c.cname(), [Loc.t("Change to Defense Position"), Loc.t("Leave it in Attack Position")], auto, c) == 0:
+				c.attack_pos = false
+				events.append({"type": "position", "player": c.owner, "card": c, "zone": players[c.owner].field.find(c)})
+	return events
 
 
 ## ATK including effects. `attacking` = it's the attacker in this battle; vs = the other monster.
@@ -1482,6 +1506,10 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	var zone := ps.field.find(c)
 	if zone == -1:
 		return []
+	# "Cannot be destroyed by card effects" (Infernity Guardian with an empty hand).
+	if not by_battle and EffectRunner.survives_effect(self, c):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is not destroyed") % c.cname()}]
+	var by_opp_fx := not by_battle and effect_by != -1 and effect_by != c.owner and c.face_up
 	# "If the equipped monster would be destroyed by battle or card effect, destroy this card instead."
 	var riders := unions_on(c)
 	if not riders.is_empty():
@@ -1498,6 +1526,9 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	# "When this card on the field is destroyed and sent to the Graveyard" (by battle or by an effect).
 	if players[c.owner].gy.has(c):
 		events.append_array(EffectRunner.trigger(self, c, "destroyed"))
+		# "...was destroyed by an opponent's card effect and sent to your GY" (Gernia).
+		if by_opp_fx:
+			events.append_array(EffectRunner.trigger(self, c, "opp_fx_destroyed"))
 	# Revival Rose: when a Level 5 or higher Plant of yours is destroyed, it comes back from the Graveyard.
 	if str(c.data.get("race", "")) == "Plant" and int(c.data.get("level", 0)) >= 5:
 		for g in ps.gy.duplicate():
@@ -1520,6 +1551,7 @@ func _to_gy(ps: PlayerState, c: CardInst) -> void:
 		c.overlays.clear()
 		for o in mats:
 			players[o.owner].gy.append(o)
+			_sent_to_gy(o)
 	if c.orig_owner != -1:
 		# A borrowed monster goes to its real owner's Graveyard.
 		c.owner = c.orig_owner
@@ -1536,6 +1568,7 @@ func _to_gy(ps: PlayerState, c: CardInst) -> void:
 		redirected.append(c)
 	else:
 		ps.gy.append(c)
+		_sent_to_gy(c)
 		# Axe of Despair and friends: sent from the field to the Graveyard, they go back on top of the Deck.
 		var back := str(SpellRules.FX.get(c.cname(), {}).get("deck_top", "")) if not c.is_monster() else ""
 		if back != "" and (c.left_turn == turn or back == "always"):
@@ -1563,6 +1596,16 @@ func _to_gy(ps: PlayerState, c: CardInst) -> void:
 				ps.deck.append(c)
 				pending_events.append({"type": "effect", "player": who, "card": c, "text": Loc.t("%s returns to the top of the Deck") % c.cname()})
 				pending_events.append({"type": "gy_to_deck", "player": who, "card": c, "deck": ps.deck.size()})
+
+
+## "When this card is sent to the Graveyard" from anywhere: the field, the hand, the Deck, as
+## an Xyz Material (Skull-Mark Ladybug). What it does is picked up by _cleanup.
+func _sent_to_gy(c: CardInst) -> void:
+	if not c.is_monster():
+		return
+	var sent: Array = CardEffects.of(c.cname()).get("sent_gy", [])
+	if not sent.is_empty() and not is_over():
+		pending_events.append_array(EffectRunner.run_list(self, c.owner, c, sent, {}))
 
 
 ## Cards banished instead of going to the GY since the last time the scene looked (for the board).

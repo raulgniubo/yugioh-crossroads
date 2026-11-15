@@ -22,6 +22,7 @@ func _ready() -> void:
 	_test_heroes_angels()
 	_test_batch_31()
 	_test_batch_32()
+	_test_batch_33()
 	_test_destiny()
 	_test_stakes()
 	_test_decks()
@@ -1955,3 +1956,121 @@ func _story_clash(ch: String, c: Dictionary) -> void:
 	check(int(lp[1 - win]) == 0 and int(lp[win]) > 0, "%s: %s against %s ends with the loser at zero" % [ch, str(c.get("a")), str(c.get("b"))])
 	check(not Characters.get_char(str(c.get("a"))).is_empty() and not Characters.get_char(str(c.get("b"))).is_empty(), "%s: both sides of a clash are somebody" % ch)
 
+
+
+## Skull-Mark Ladybug, Infernity Guardian, Dragon Piper, Skull Kraken, Gernia, Submarineroid:
+## each sentence of the printed text, one check at a time.
+func _test_batch_33() -> void:
+	# Skull-Mark Ladybug: 1000 LP when it is sent to the Graveyard, from the field or from the hand.
+	var s := _main_ready(861)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	var bug := _fake(s, 0, "Skull-Mark Ladybug", 500, 1500, 0, {"race": "Insect"})
+	bug.attack_pos = false
+	var hit := _fake(s, 1, "Hitter", 2000, 1000, 0)
+	var lp0: int = s.players[0].lp
+	s.attack(1, hit, bug)
+	s._cleanup()
+	check(s.players[0].gy.has(bug) and s.players[0].lp == lp0 + 1000, "Skull-Mark Ladybug destroyed in Defense: 1000 LP gained")
+	var bug2 := _fake(s, 0, "Skull-Mark Ladybug", 500, 1500, -1, {"race": "Insect"})
+	s.players[0].hand = [bug2]
+	lp0 = s.players[0].lp
+	s.players[0].hand.erase(bug2)
+	s._to_gy(s.players[0], bug2)
+	s._cleanup()
+	check(s.players[0].lp == lp0 + 1000, "Discarded from the hand it gives 1000 LP too")
+	# Infernity Guardian: with an empty hand, neither battle nor a card effect destroys it.
+	s = _main_ready(862)
+	var guard := _fake(s, 0, "Infernity Guardian", 1200, 1700, 0, {"race": "Fiend", "attribute": "DARK"})
+	s.players[0].hand = []
+	s.effect_by = 1
+	s._destroy(guard)
+	s.effect_by = -1
+	check(s.players[0].field.has(guard), "Infernity Guardian with no cards in hand is not destroyed by a card effect")
+	s.players[0].hand = [_fake(s, 0, "Filler", 1000, 1000, -1)]
+	s._destroy(guard)
+	check(not s.players[0].field.has(guard), "With a card in hand it is destroyed like anything else")
+	# Dragon Piper: nothing happens to the Dragons unless a face-up Dragon Capture Jar was destroyed.
+	s = _main_ready(863)
+	var piper := _fake(s, 0, "Dragon Piper", 200, 1800, 0, {"race": "Pyro"})
+	var drake := _fake(s, 1, "Drake", 2000, 1000, 0, {"race": "Dragon"})
+	drake.attack_pos = false
+	EffectRunner.run_list(s, 0, piper, [["all_dragons_attack"]], {"_now": true})
+	check(not drake.attack_pos, "Dragon Piper with no Dragon Capture Jar on the field: the Dragon stays in Defense")
+	var jar := _st(s, 1, "Dragon Capture Jar", "up", "trap")
+	jar.face_up = true
+	EffectRunner.run_list(s, 0, piper, [["all_dragons_attack"]], {"_now": true})
+	check(not s.players[1].spells.has(jar) and drake.attack_pos, "With a face-up Jar: the Jar is destroyed and the Dragon turns to Attack Position")
+	# Skull Kraken: a face-up Spell of the opponent's (not a Set card, not a Trap); and its own switch.
+	s = _main_ready(864)
+	var kr := _fake(s, 0, "Skull Kraken", 600, 1600, -1, {"race": "Aqua", "attribute": "DARK", "level": 3})
+	var set_trap := _st(s, 1, "Mirror Force", "set", "trap")
+	s.players[0].hand = [kr]
+	s.normal_summoned = false
+	s.normal_summon(0, kr, [], false)
+	check(s.players[1].spells.has(set_trap), "Skull Kraken does not touch a Set card")
+	check(s.can_ignite(0, kr), "It can change its own battle position, even on the turn it was summoned")
+	_run(s, 0, {"do": "ignite", "card": kr})
+	check(not kr.attack_pos and not s.can_ignite(0, kr), "It is in Defense now, and that is once per turn")
+	s = _main_ready(865)
+	var kr2 := _fake(s, 0, "Skull Kraken", 600, 1600, -1, {"race": "Aqua", "attribute": "DARK", "level": 3})
+	var up_spell := _st(s, 1, "Banner of Courage", "up", "spell")
+	up_spell.face_up = true
+	s.players[0].hand = [kr2]
+	s.normal_summoned = false
+	s.normal_summon(0, kr2, [], false)
+	check(not s.players[1].spells.has(up_spell), "Normal Summoned, Skull Kraken destroys a face-up Spell the opponent controls")
+	# Gernia: only an opponent's card effect brings it back, and only at its owner's next Standby Phase.
+	s = _main_ready(866)
+	var ger := _fake(s, 0, "Gernia", 1300, 1200, 0, {"race": "Zombie", "attribute": "DARK"})
+	s.effect_by = 1
+	s._destroy(ger)
+	s.effect_by = -1
+	check(s.players[0].gy.has(ger) and ger.back_pos != "", "Gernia destroyed by the opponent's card effect waits in the Graveyard")
+	EffectRunner.standby(s, 0)
+	check(s.players[0].field.has(ger), "It is Special Summoned at its owner's next Standby Phase")
+	s.effect_by = 0
+	s._destroy(ger)
+	s.effect_by = -1
+	check(s.players[0].gy.has(ger) and ger.back_pos == "", "Destroyed by its owner's own effect it stays in the Graveyard")
+	s = _main_ready(867)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	var ger2 := _fake(s, 0, "Gernia", 1300, 1200, 0, {"race": "Zombie"})
+	var hit2 := _fake(s, 1, "Hitter", 2000, 1000, 0)
+	s.attack(1, hit2, ger2)
+	check(s.players[0].gy.has(ger2) and ger2.back_pos == "", "Destroyed by battle it stays in the Graveyard")
+	# Submarineroid: direct with a monster in the way deals its ORIGINAL ATK; after battling it may go to Defense.
+	s = _main_ready(868)
+	s.phase = DuelState.Phase.BATTLE
+	var sub := _fake(s, 0, "Submarineroid", 800, 1800, 0, {"race": "Machine", "attribute": "WATER"})
+	sub.atk_mod = 500
+	var wall := _fake(s, 1, "Wall", 100, 3000, 0)
+	var lp1: int = s.players[1].lp
+	check(s.can_direct_attack_with(0, sub), "Submarineroid can attack directly past a monster")
+	s.attack(0, sub, null)
+	check(s.players[1].lp == lp1 - 800, "Attacking past a monster with a boosted Submarineroid deals its original 800")
+	check(not sub.attack_pos, "After it battled it changed to Defense Position (its DEF is higher)")
+	check(s.players[1].field.has(wall), "The monster it went past is untouched")
+	# Medium Piece Golem: only with a Big Piece Golem on your side, only a Small Piece Golem, and negated.
+	s = _main_ready(869)
+	var med := _fake(s, 0, "Medium Piece Golem", 1600, 0, -1, {"race": "Rock"})
+	var small := _fake(s, 0, "Small Piece Golem", 1100, 0, -1, {"race": "Rock", "level": 3})
+	var other := _fake(s, 0, "Pebble", 300, 300, -1, {"race": "Rock", "level": 1})
+	s.players[0].deck.append(other)
+	s.players[0].deck.append(small)
+	s.players[0].hand = [med]
+	s.normal_summoned = false
+	s.normal_summon(0, med, [], false)
+	check(s.players[0].deck.has(small), "Medium Piece Golem without a Big Piece Golem: nothing is summoned")
+	s = _main_ready(870)
+	_fake(s, 0, "Big Piece Golem", 2100, 0, 1, {"race": "Rock", "level": 5})
+	var med2 := _fake(s, 0, "Medium Piece Golem", 1600, 0, -1, {"race": "Rock"})
+	var small2 := _fake(s, 0, "Small Piece Golem", 1100, 0, -1, {"race": "Rock", "level": 3})
+	var other2 := _fake(s, 0, "Pebble", 300, 300, -1, {"race": "Rock", "level": 1})
+	s.players[0].deck.append(other2)
+	s.players[0].deck.append(small2)
+	s.players[0].hand = [med2]
+	s.normal_summoned = false
+	s.normal_summon(0, med2, [], false)
+	check(s.players[0].field.has(small2) and small2.neg_perm and s.players[0].deck.has(other2), "With a Big Piece Golem: Small Piece Golem comes from the Deck with its effects negated, and nothing else does")
