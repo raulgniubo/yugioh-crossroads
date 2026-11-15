@@ -17,7 +17,7 @@ const DISTRICTS := {
 			{"id": "joey", "char": "joey", "pos": Vector3(12, 0, 6), "face": -1.6,
 				"lines": ["Yo! Ya look like someone who needs a warm-up duel.", "I ain't losin' twice in one day, ya hear?"],
 				"duel": {"deck": "joey", "difficulty": 1, "intro": "Time ta roll the dice!"}},
-			{"id": "mai", "char": "mai", "pos": Vector3(15, 0, -18), "face": -2.4,
+			{"id": "mai", "char": "mai", "pos": Vector3(19, 0, -18), "face": -2.4,
 				"lines": ["You're blocking my view of the skyline, rookie.", "...Fine. One duel. Don't waste my time."],
 				"duel": {"deck": "mai", "difficulty": 2, "intro": "Harpies, show them some manners."}},
 			{"id": "bakura", "char": "bakura", "pos": Vector3(-17, 0, 9), "face": 1.2,

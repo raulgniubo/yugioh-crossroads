@@ -157,7 +157,10 @@ func blocked_at(feet: Vector3) -> String:
 	for b in _all:
 		if not bool(b[4]):
 			continue
-		if (b[1] as AABB).grow(-0.05).has_point((b[0] as Transform3D) * chest):
+		var bb: AABB = b[1]
+		if minf(bb.size.x, minf(bb.size.y, bb.size.z)) <= 0.1:
+			continue
+		if bb.grow(-0.05).has_point((b[0] as Transform3D) * chest):
 			return "(inside a prop near %s)" % str((b[2] as Vector3).snapped(Vector3(0.1, 0.1, 0.1)))
 	return ""
 

@@ -147,6 +147,8 @@ func _ready() -> void:
 		Router.story_result = ""
 		step += 1
 	_rebuild_cast()
+	if flags.has("_away"):
+		scene._figure.visible = false
 	if flags.has("_echo"):
 		# The memory carried on into another world: put the frame back.
 		_echo_on = true
@@ -358,6 +360,9 @@ func _rebuild_cast() -> void:
 				flags.erase("_echo")
 			else:
 				flags["_echo"] = str(es["echo"])
+	if step < _steps.size() and (_steps[step] as Dictionary).has("scene"):
+		# The very next thing is a new scene: nobody from the old one needs putting back.
+		return
 	for i in range(maxi(0, last_scene), mini(step, _steps.size())):
 		var st: Dictionary = _steps[i]
 		if not _passes(st):
@@ -702,6 +707,10 @@ func _do_scene(st: Dictionary) -> bool:
 	var district := str(sc.get("district", Router.roam.get("district", "domino")))
 	if district != str(Router.roam.get("district", "domino")):
 		# Another world: reload there and carry on from the next step.
+		if sc.get("away", false):
+			flags["_away"] = true
+		else:
+			flags.erase("_away")
 		StoryProgress.save_position(chapter, step, flags)
 		Router.roam["district"] = district
 		Router.roam["pos"] = sc.get("pos", null)
@@ -726,6 +735,12 @@ func _do_scene(st: Dictionary) -> bool:
 		Router.roam["tod"] = sc["tod"]
 	var inside := str(sc.get("inside", ""))
 	var pos: Vector3 = sc.get("pos", scene._player.position)
+	# "away": a scene you are not in (meanwhile, somewhere else). You come back with the next one.
+	if sc.get("away", false):
+		flags["_away"] = true
+	else:
+		flags.erase("_away")
+	scene._figure.visible = not flags.has("_away") and not _echo_on
 	scene._player.position = pos
 	scene._player.velocity = Vector3.ZERO
 	scene._yaw = float(sc.get("yaw", scene._yaw))
@@ -1455,6 +1470,9 @@ func _do_tasks(st: Dictionary) -> bool:
 		flags.erase("_w0")
 		StoryProgress.save_position(chapter, step, flags)
 		WorldClock.set_look(str(scene.city.tod) if scene.city else "day")
+		if st.has("clock"):
+			# The list starts at this minute of the day (990 = half past four).
+			WorldClock.minutes = float(st["clock"])
 		WorldClock.save_data()
 		Router.roam["quest"] = chapter
 		Router.roam["story"] = ""
@@ -1487,8 +1505,12 @@ func _do_tasks(st: Dictionary) -> bool:
 		for n in scene._npcs:
 			all.append(str((n[0] as Dictionary).get("id", "")))
 		scene.hide_npcs(all)
+	# People the chapter has left standing in the world while you are free in it.
+	for c in st.get("cast", []):
+		if str((c as Dictionary).get("in", home)) == here:
+			_place(c, true)
 	scene.quest_locked = bool(st.get("lock", false))
-	if st.get("frozen", false):
+	if st.get("frozen", false) or here in (st.get("frozen_in", []) as Array):
 		_freeze(true)
 	# A duel one of them asked for was just won: what they say after it.
 	if flags.has("_after_task"):
@@ -1603,7 +1625,7 @@ func _place_task(i: int, here: String, home: String) -> void:
 	if at == null:
 		_task_nodes[i] = made
 		return
-	if t.has("talk"):
+	if t.has("talk") and not _actors.has(str(t["talk"])):
 		var key := str(t["talk"])
 		var pst := {"actor": key, "at": at, "face": t.get("face", "player")}
 		for k in ["hollow", "coat", "spirit", "pale"]:
@@ -1752,7 +1774,8 @@ func _auto_tasks(here: String, home: String) -> bool:
 			_place_task(i, here, home)
 			var at = _task_pos(t)
 			if at != null:
-				scene._player.position = Vector3((at as Vector3).x, scene._player.position.y, (at as Vector3).z + 1.4)
+				scene._player.position = Vector3((at as Vector3).x, (at as Vector3).y, (at as Vector3).z + 1.4)
+				scene._player.velocity = Vector3.ZERO
 			await get_tree().create_timer(0.3).timeout
 			await _run_task(i)
 	return false

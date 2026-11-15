@@ -79,6 +79,7 @@ func _ready() -> void:
 	_load_progress()
 	_build_world()
 	_build_player()
+	_probe.call_deferred()
 	var in_story := str(Router.roam.get("story", "")) != ""
 	if not in_story:
 		_build_npcs()
@@ -881,6 +882,37 @@ func _add_npc(d: Dictionary, offset: Vector3) -> void:
 
 
 ## The story has this person somewhere else right now: take their everyday self off the street.
+## --spots=x:z,x:z : is each of these spots free to stand on? (For placing story people.)
+func _probe() -> void:
+	var arg := ""
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--spots="):
+			arg = a.substr(8)
+	if arg == "":
+		return
+	await get_tree().create_timer(1.5).timeout
+	var all: Array = []
+	for n in _npcs:
+		all.append(str((n[0] as Dictionary).get("id", "")))
+		if arg.begins_with("npcs"):
+			print("NPC ", (n[0] as Dictionary).get("id", ""), " ", (n[1] as Node3D).position.snappedf(0.1), " face ", snappedf((n[1] as Node3D).rotation.y, 0.1))
+	if arg.begins_with("npcs"):
+		get_tree().quit()
+		return
+	hide_npcs(all)
+	await get_tree().create_timer(0.5).timeout
+	var cam := StoryCamera.new(self)
+	cam.skip_rids = [_player.get_rid()]
+	for pt in arg.split(","):
+		var xz := pt.split(":")
+		var at := Vector3(float(xz[0]), 0, float(xz[1]))
+		if xz.size() > 2 and xz[2] == "s":
+			at += Vector3(400, 0, 400)
+		var why := cam.blocked_at(at)
+		print("PROBE ", pt, " ", "ok" if why == "" else why)
+	get_tree().quit()
+
+
 func hide_npcs(ids: Array) -> void:
 	var gone := false
 	for n in _npcs.duplicate():
@@ -2117,7 +2149,7 @@ func _debug() -> void:
 				print("WALK to ", goal, " ", "ok" if flat < 0.5 else "BLOCKED", " at ", _player.global_position.snapped(Vector3(0.1, 0.1, 0.1)), " spot=", _near_spot.get("label", ""), " npc=", _near.get("id", ""))
 			if "--walk-quit" in OS.get_cmdline_user_args():
 				get_tree().quit()
-		elif a.begins_with("--probe="):
+		elif a.begins_with("--spots="):
 			# Dev: what would a body the player's size bump into here? --probe=x,y,z;x,y,z
 			await get_tree().create_timer(1.0).timeout
 			for part in a.trim_prefix("--probe=").split(";"):

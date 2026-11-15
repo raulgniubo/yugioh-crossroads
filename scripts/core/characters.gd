@@ -168,6 +168,8 @@ const STORY_CAST := {
 		"lines": {"intro": ["Everything gets filed. Even you."], "ace": ["Catalogue number one."], "taunt": ["Noted."],
 			"win": ["Filed under: forgotten."], "lose": ["An error in the record... impossible."]}},
 	"ren": {"name": "Ren Vance", "short": "Ren", "era": "Crossroads", "color": Color("ff9a5a"), "title": "Kairo's little brother"},
+	"koji": {"name": "Koji", "short": "Koji", "era": "GX", "color": Color("e0564a"), "title": "Red dorm second-year"},
+	"mechanic": {"name": "Runner Mechanic", "short": "Mechanic", "era": "5D's", "color": Color("f0a040"), "title": "Keeps the King's runner on the road"},
 	"dai": {"name": "Dai", "short": "Dai", "era": "Crossroads", "color": Color("7cc4ff"), "title": "Friday night regular", "personality": "wild"},
 	"boy_sol": {"name": "A boy with a deck box", "short": "Boy", "era": "Crossroads", "color": Color("c9a76a"), "title": "Long ago"},
 	"boy_aurel": {"name": "A boy with a notebook", "short": "Boy", "era": "Crossroads", "color": Color("f2e6c8"), "title": "Long ago"},
