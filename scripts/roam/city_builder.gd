@@ -1698,11 +1698,14 @@ func _after_look() -> void:
 
 # ------------------------------------------------------------------ ground
 
-func _road_material() -> ShaderMaterial:
+## Driven-on ground: asphalt by default, any dark ground with `tint` (a raw color, as numbers).
+func _road_material(tint := Vector3(0.055, 0.056, 0.065), wet := 1.0) -> ShaderMaterial:
 	var sh := Shader.new()
 	sh.code = """
 shader_type spatial;
 uniform float wet = 1.0;
+uniform float lanes = 0.0;
+uniform vec3 tint = vec3(0.055, 0.056, 0.065);
 varying vec3 wp;
 float h(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float n(vec2 p) {
@@ -1712,10 +1715,37 @@ float n(vec2 p) {
 void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
 	float fw = length(fwidth(wp.xz));
-	float grain = mix(0.5, n(wp.xz * 9.0) * 0.5 + n(wp.xz * 31.0) * 0.5, 1.0 - smoothstep(0.02, 0.09, fw));
+	float near = 1.0 - smoothstep(0.02, 0.09, fw);
+	float mid = 1.0 - smoothstep(0.05, 0.3, fw);
+	float grain = mix(0.5, n(wp.xz * 9.0) * 0.5 + n(wp.xz * 31.0) * 0.5, near);
 	float patches = n(wp.xz * 0.35);
+	float big = n(wp.xz * 0.07 + 3.1);
 	float puddle = smoothstep(0.64, 0.7, n(wp.xz * 0.22 + 7.3) * 0.7 + patches * 0.3) * wet;
-	vec3 base = vec3(0.055, 0.056, 0.065) * (0.8 + grain * 0.4) * (0.85 + patches * 0.3);
+	vec3 base = tint * (0.76 + grain * 0.5) * (0.78 + patches * 0.3 + big * 0.2);
+	// A street that has been driven on: paler bands where the tires run, dirt in the gutters,
+	// darker squares where it was dug up and filled, and fine cracks wandering across.
+	float ax = abs(wp.x);
+	float az = abs(wp.z);
+	float ns = step(ax, 6.0);
+	float ew = step(az, 6.0);
+	float tx = (exp(-pow((ax - 1.7) / 0.5, 2.0)) + exp(-pow((ax - 4.3) / 0.5, 2.0))) * ns;
+	float tz = (exp(-pow((az - 1.7) / 0.5, 2.0)) + exp(-pow((az - 4.3) / 0.5, 2.0))) * ew;
+	float tracks = clamp(max(tx, tz), 0.0, 1.0) * (0.55 + 0.45 * n(wp.xz * 0.8)) * lanes;
+	float gut = (smoothstep(5.0, 6.0, ax) * ns * step(6.0, az) + smoothstep(5.0, 6.0, az) * ew * step(6.0, ax)) * lanes;
+	base = mix(base, base * 1.5 + 0.012, tracks * 0.5);
+	base *= 1.0 - 0.32 * gut * (0.6 + 0.4 * n(wp.xz * 2.3));
+	vec2 rp = wp.xz / 5.0;
+	vec2 rid = floor(rp);
+	vec2 rf = fract(rp);
+	vec2 pc = vec2(0.3 + 0.4 * h(rid + 1.0), 0.3 + 0.4 * h(rid + 2.0));
+	vec2 ps = vec2(0.12 + 0.2 * h(rid + 5.0), 0.1 + 0.16 * h(rid + 6.0));
+	float rpatch = step(0.84, h(rid + 4.0)) * step(abs(rf.x - pc.x), ps.x) * step(abs(rf.y - pc.y), ps.y) * mid;
+	base = mix(base, tint * 0.58 * (0.85 + grain * 0.3), rpatch * 0.75);
+	vec2 cp = wp.xz * 0.42 + vec2(n(wp.xz * 0.55), n(wp.xz * 0.55 + 9.0)) * 1.3;
+	vec2 cf = abs(fract(cp) - 0.5);
+	float crack = (1.0 - smoothstep(0.0, 0.012 + fw * 0.5, min(cf.x, cf.y))) * step(0.5, h(floor(cp) + 2.0)) * mid;
+	base *= 1.0 - 0.5 * crack;
+	base += vec3(0.045) * step(0.93, n(wp.xz * 47.0)) * near;
 	ALBEDO = mix(base, base * 0.7, puddle);
 	ROUGHNESS = mix(mix(0.82, 0.55, wet * 0.4), 0.04, puddle);
 	SPECULAR = mix(0.4, 0.8, puddle);
@@ -1724,6 +1754,8 @@ void fragment() {
 """
 	var m := ShaderMaterial.new()
 	m.shader = sh
+	m.set_shader_parameter("tint", tint)
+	m.set_shader_parameter("wet", wet)
 	return m
 
 
@@ -1735,15 +1767,33 @@ uniform vec4 base : source_color;
 uniform float tile = 1.2;
 varying vec3 wp;
 float h(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+float n(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h(i), h(i + vec2(1.0, 0.0)), f.x), mix(h(i + vec2(0.0, 1.0)), h(i + vec2(1.0, 1.0)), f.x), f.y);
+}
 void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
 	vec2 g = wp.xz / tile;
 	vec2 f = fract(g);
+	vec2 id = floor(g);
 	float fw = max(fwidth(g.x), fwidth(g.y));
-	float line = (1.0 - step(0.035, f.x) * step(0.035, f.y)) * (1.0 - smoothstep(0.012, 0.06, fw));
-	float v = h(floor(g)) * 0.12 * (1.0 - smoothstep(0.2, 0.6, fw));
-	ALBEDO = base.rgb * (0.92 + v) * mix(1.0, 0.55, line);
-	ROUGHNESS = mix(0.7, 0.9, line);
+	float fine = 1.0 - smoothstep(0.012, 0.06, fw);
+	float midd = 1.0 - smoothstep(0.2, 0.6, fw);
+	float line = (1.0 - step(0.035, f.x) * step(0.035, f.y)) * fine;
+	// Slabs that are not all the same: each a shade of its own, the odd one replaced with a
+	// newer, warmer stone, soft stains over the lot, a hairline crack across a few.
+	float v = (h(id) - 0.5) * 0.2 * midd;
+	float newer = step(0.92, h(id + 7.0)) * midd;
+	float stain = smoothstep(0.55, 0.85, n(wp.xz * 0.45 + 4.0)) * 0.14;
+	float worn = n(wp.xz * 0.11) * 0.12;
+	float crack = step(0.9, h(id + 13.0)) * (1.0 - smoothstep(0.0, 0.02 + fw, abs(f.y - (0.3 + 0.4 * f.x + 0.06 * sin(f.x * 19.0))))) * fine;
+	float speck = (n(wp.xz * 38.0) - 0.5) * 0.08 * fine;
+	vec3 col = base.rgb * (0.94 + v - stain - worn + speck);
+	col = mix(col, col * vec3(1.12, 1.06, 0.96), newer);
+	col *= mix(1.0, 0.5, line);
+	col *= 1.0 - 0.45 * crack;
+	ALBEDO = col;
+	ROUGHNESS = mix(0.72, 0.92, line);
 }
 """
 	var m := ShaderMaterial.new()
@@ -1755,6 +1805,7 @@ void fragment() {
 
 func _build_ground() -> void:
 	var road := _road_material()
+	road.set_shader_parameter("lanes", 1.0)      # two streets crossing at the middle, 12 m wide
 	set_meta("road_mat", road)
 	box(Vector3(140, 0.2, 140), Vector3(0, -0.1, 0), road)
 	var walk := _tile_material(Color(0.42, 0.41, 0.44), 1.2)
@@ -1811,14 +1862,23 @@ float n(vec2 p) {
 void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
 	// Soft patches of lighter and darker lawn, mowing stripes, and fine blades up close.
-	float patch = n(wp.xz * 0.35) * 0.6 + n(wp.xz * 1.4) * 0.4;
-	float stripe = 0.5 + 0.5 * sin(wp.x * 2.2);
+	float patch = smoothstep(0.22, 0.78, n(wp.xz * 0.35) * 0.6 + n(wp.xz * 1.4) * 0.4);
+	patch = patch * 0.75 + n(wp.xz * 0.08 + 5.0) * 0.25;
+	float stripe = smoothstep(0.35, 0.65, 0.5 + 0.5 * sin(wp.x * 2.2));
 	float fw = length(fwidth(wp.xz));
 	float blades = mix(0.25, n(wp.xz * vec2(60.0, 14.0)) * n(wp.xz * vec2(13.0, 55.0)), 1.0 - smoothstep(0.006, 0.03, fw));
 	vec3 dark = vec3(0.09, 0.24, 0.09) * bright;
 	vec3 light = vec3(0.24, 0.44, 0.13) * bright;
-	vec3 col = mix(dark, light, patch * 0.7 + stripe * 0.12);
+	vec3 col = mix(dark, light, patch * 0.72 + stripe * 0.2);
 	col *= 0.82 + blades * 0.5;
+	// Worn, drier spots and clumps of darker growth, seen from a few steps away.
+	float dry = smoothstep(0.72, 0.9, n(wp.xz * 0.6 + 11.0));
+	col = mix(col, col * vec3(1.25, 1.12, 0.7), dry * 0.45);
+	col *= 1.0 - 0.22 * smoothstep(0.6, 0.85, n(wp.xz * 2.7 + 3.0)) * (1.0 - smoothstep(0.03, 0.2, fw));
+	// Daisies.
+	vec2 dz = wp.xz * 5.0;
+	float daisy = step(0.985, h(floor(dz) + 19.0)) * (1.0 - smoothstep(0.05, 0.12, length(fract(dz) - 0.5))) * (1.0 - smoothstep(0.012, 0.04, fw));
+	col = mix(col, vec3(0.9, 0.9, 0.82), daisy * 0.85);
 	// A few clover-yellow flecks.
 	col += vec3(0.5, 0.45, 0.1) * step(0.985, h(floor(wp.xz * 9.0))) * 0.5 * (1.0 - smoothstep(0.02, 0.08, fw));
 	ALBEDO = col;
@@ -1879,11 +1939,37 @@ void fragment() {
 			float pane = step(0.08, sx) * step(sx, 0.92) * step(0.25, wp.y) * step(wp.y, 2.4);
 			float strip = step(2.6, wp.y) * step(wp.y, 3.0) * step(0.08, sx) * step(sx, 0.92);
 			col = mix(col, vec3(0.05, 0.06, 0.08), pane);
+			// Behind the glass: a lit back wall, three shelves and what stands on them, each shop
+			// with its own goods. Seen by day too; at night it is what lights the pavement.
+			float bay0 = floor(u / 4.0);
+			float px = clamp((sx - 0.11) / 0.78, 0.0, 1.0);
+			float py = clamp((wp.y - 0.32) / 2.01, 0.0, 1.0);
+			float inner_p = step(0.11, sx) * step(sx, 0.89) * step(0.32, wp.y) * step(wp.y, 2.33);
+			vec3 inside = mix(shop.rgb, vec3(1.0, 0.9, 0.74), 0.7) * (0.3 + 0.55 * py);
+			float sy = py * 2.9 + 0.06;
+			float ry = fract(sy);
+			float shelf_i = floor(sy);
+			float board = step(ry, 0.06);
+			float ix = floor(px * 9.0);
+			float fx2 = fract(px * 9.0);
+			float item_h = 0.3 + 0.5 * h(vec2(ix + bay0 * 13.0, shelf_i + 40.0));
+			float item = step(0.14, fx2) * step(fx2, 0.86) * step(0.06, ry) * step(ry, 0.06 + item_h * 0.8) * step(0.22, h(vec2(ix + bay0 * 7.0, shelf_i + 3.0)));
+			vec3 item_col = 0.3 + 0.7 * vec3(h(vec2(ix, shelf_i + bay0)), h(vec2(ix + 5.0, shelf_i + bay0 + 1.0)), h(vec2(ix + 9.0, shelf_i + bay0 + 2.0)));
+			inside = mix(inside, vec3(0.2, 0.16, 0.13), board * mid);
+			inside = mix(inside, item_col * (0.45 + 0.4 * py), item * mid);
+			float shop_on = step(0.3, h(floor(vec2(u / 4.0, 3.0))));
+			// By day every shop is open; after dark some have closed and stand unlit.
+			float open_k = max(shop_on, day * 0.85);
+			col = mix(col, inside * mix(0.16, 0.5, open_k), inner_p);
+			emit += inside * inner_p * open_k * (0.2 + glow_strength * 0.55);
+			// The street in the glass: sky across the top of the pane and a slanted sheen.
+			float sheen = smoothstep(0.5, 1.0, py) * 0.3 + 0.1 * smoothstep(0.42, 0.5, fract(px * 1.3 + py * 0.55)) * (1.0 - smoothstep(0.5, 0.58, fract(px * 1.3 + py * 0.55)));
+			col = mix(col, vec3(0.5, 0.64, 0.82), sheen * day * inner_p);
 			rough = mix(rough, 0.14, pane);
 			metal = pane * 0.2;
 			hgt = -pane * 0.6;
 			float on = step(0.3, h(floor(vec2(u / 4.0, 3.0))));
-			emit += shop.rgb * pane * on * (0.25 + glow_strength * 0.9) * 0.6;
+			emit += shop.rgb * pane * on * (0.06 + glow_strength * 0.3) * 0.6;
 			emit += shop.rgb * strip * (0.2 + glow_strength * 1.6);
 			col = mix(col, shop.rgb * 0.5, strip);
 			// A striped awning lip over the windows and a dark plinth along the pavement.

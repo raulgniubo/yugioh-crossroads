@@ -108,7 +108,7 @@ func _lamp(at: Vector3, color := Color(0.85, 0.93, 1.0)) -> void:
 
 
 func _ground() -> void:
-	box(Vector3(260, 0.2, 260), Vector3(0, -0.1, 0), mat(Color(0.13, 0.15, 0.19), 0.85))
+	box(Vector3(260, 0.2, 260), Vector3(0, -0.1, 0), _road_material(Vector3(0.085, 0.095, 0.125), 0.0))
 	var white := _tile_material(Color(0.6, 0.64, 0.71), 2.0)
 	box(Vector3(104, 0.06, 104), Vector3(0, 0.03, 0), white, false)
 	# The boulevard: a dark lane with light strips, running from the gate to the stadium.

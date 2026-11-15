@@ -5,6 +5,17 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.5
+
+**Surfaces, in every world.** The ground and the shop fronts were the flattest things in the game. They are worked over now, and because the worlds share these materials, all of them changed at once. Checked in pictures the way a Mac or a PC with a graphics card draws them, by day and at night.
+
+- **Shop windows show a shop.** Behind the glass of every ground-floor shop there is a lit back wall, three shelves and goods on them, different in every shop, with the street mirrored across the top of the pane by day. At night the open shops glow and light the pavement, and the closed ones stand dark. (They were flat dark panes.)
+- **Streets look driven on.** Paler bands where the tires run, dirt in the gutters along the curbs, darker squares where the road was dug up and filled, fine cracks, and grit you can see up close. New Domino and Satellite get the same kind of ground in their own colors instead of one flat tone.
+- **Pavements:** every slab its own shade, the odd one replaced with newer stone, stains, a hairline crack here and there, clearer joints. This is the paving of Domino, the Academy plaza, New Domino and Heartland.
+- **Lawns:** stronger light and dark patches, clearer mowing stripes, dry spots, darker clumps and daisies up close. Domino's park, the Academy grounds, the hill outside town.
+
+Not touched in this build: walls above the ground floor (they already had brick, frames, sills and blinds), props, interiors.
+
 ## What is in 0.33.4
 
 Three more monsters do exactly what their card says (229 effect monsters done, 24 to go), each proven by the game's tests.

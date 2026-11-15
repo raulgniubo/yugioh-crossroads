@@ -139,7 +139,7 @@ func _junk_scene() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5
 	# Beaten earth far out, a slab of cracked concrete where the town stands, two tarred roads.
-	box(Vector3(260, 0.2, 260), Vector3(0, -0.17, 0), mat(Color(0.2, 0.16, 0.13), 0.95), false)
+	box(Vector3(260, 0.2, 260), Vector3(0, -0.17, 0), _road_material(Vector3(0.15, 0.12, 0.095), 0.0), false)
 	box(Vector3(96, 0.1, 96), Vector3(0, -0.06, 0), surf("concrete", Color(0.33, 0.31, 0.29), 0.6), false)
 	box(Vector3(5.0, 0.03, 70), Vector3(0, 0.0, 2), mat(Color(0.1, 0.098, 0.1), 0.9), false)
 	box(Vector3(60, 0.03, 4.0), Vector3(0, 0.0, 20), mat(Color(0.1, 0.098, 0.1), 0.9), false)
