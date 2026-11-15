@@ -69,6 +69,9 @@ class CardInst:
 	var pos_lock_until := -1      # cannot change battle position through this turn (Goblin Attack Force)
 	var no_tribute_turn := -1     # cannot be Tributed this turn (Mind Control)
 	var def_mod := 0              # a lasting change to DEF (Blackwing - Gale)
+	var zero_perm := false        # its ATK is 0 for as long as it stays on the field (Starliege Paladynamo's target)
+	var bonus_attacks := 0        # extra attacks this Battle Phase (Rose Tentacles), counted on bonus_attacks_turn
+	var bonus_attacks_turn := -1
 	var neg_perm := false         # its effects are negated for as long as it stays on the field (Junk Synchron's guest)
 	var left_turn := -1           # a Spell/Trap: the turn it left the field (Axe of Despair goes back on the Deck)
 
@@ -81,6 +84,9 @@ class CardInst:
 		wedge = false
 		def_mod = 0
 		neg_perm = false
+		zero_perm = false
+		bonus_attacks = 0
+		bonus_attacks_turn = -1
 		atk_mod = 0
 		atk_mod_t = 0
 		atk_mod_turn = -1
@@ -209,6 +215,9 @@ var pending_fx: Array = []
 ## Whose card effect is resolving right now (-1: nobody's). "Destroyed by an opponent's card
 ## effect" is read from this.
 var effect_by := -1
+## The monster that declared the battle being worked out, and whether it attacked a monster.
+var battle_attacker: CardInst = null
+var battle_vs_monster := false
 
 
 ## Pick n of cands. `auto` is what the rules would take on their own (AI, tests, a forced pick).
@@ -442,7 +451,21 @@ func enter_battle() -> Array:
 	if not can_enter_battle():
 		return []
 	phase = Phase.BATTLE
-	return [{"type": "phase", "phase": phase}]
+	var events := [{"type": "phase", "phase": phase}]
+	# "At the start of your Battle Phase, for each Plant monster your opponent controls, this card
+	# gains 1 additional attack during each Battle Phase this turn" (Rose Tentacles).
+	for m in players[current].monsters():
+		var per: String = str(EffectRunner.fx(m).get("extra_attack_per_opp_race", "")) if m.face_up and not m.negated else ""
+		if per != "":
+			var n := 0
+			for o in players[opponent(current)].monsters():
+				if o.face_up and str(o.data.get("race", "")) == per:
+					n += 1
+			m.bonus_attacks = n
+			m.bonus_attacks_turn = turn
+			if n > 0:
+				events.append({"type": "effect", "player": current, "card": m, "text": Loc.t("%s can attack %d more times this turn") % [m.cname(), n]})
+	return events
 
 
 func enter_main2() -> Array:
@@ -1044,7 +1067,7 @@ func can_attack(p: int, c: CardInst) -> bool:
 
 func attacks_left(c: CardInst) -> int:
 	var used := c.attack_count if c.attack_count_turn == turn else 0
-	return EffectRunner.max_attacks(c) - used
+	return EffectRunner.max_attacks(c) + (c.bonus_attacks if c.bonus_attacks_turn == turn else 0) - used
 
 
 ## Can this monster attack the opponent directly right now?
@@ -1311,6 +1334,8 @@ func resolve_attack() -> Array:
 			return [{"type": "effect", "player": opp, "card": m, "text": Loc.t("%s negates the attack!") % m.cname()},
 				{"type": "attack_stopped", "player": p, "card": attacker}]
 	var events := [{"type": "battle", "player": p, "card": attacker, "target": target}]
+	battle_attacker = attacker
+	battle_vs_monster = target != null
 	var a := atk_of(attacker, true, target, true)
 	if target == null and EffectRunner.fx(attacker).get("direct_orig", false) and not players[opp].monsters().is_empty():
 		# "...when it does so using this effect, the battle damage is the original ATK of this card."
@@ -1509,7 +1534,8 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	# "Cannot be destroyed by card effects" (Infernity Guardian with an empty hand).
 	if not by_battle and EffectRunner.survives_effect(self, c):
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is not destroyed") % c.cname()}]
-	var by_opp_fx := not by_battle and effect_by != -1 and effect_by != c.owner and c.face_up
+	var by_opp_any := not by_battle and effect_by != -1 and effect_by != c.owner
+	var by_opp_fx := by_opp_any and c.face_up
 	# "If the equipped monster would be destroyed by battle or card effect, destroy this card instead."
 	var riders := unions_on(c)
 	if not riders.is_empty():
@@ -1529,6 +1555,13 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 		# "...was destroyed by an opponent's card effect and sent to your GY" (Gernia).
 		if by_opp_fx:
 			events.append_array(EffectRunner.trigger(self, c, "opp_fx_destroyed"))
+		# The same, face-up or not (Vampire Lord).
+		if by_opp_any:
+			events.append_array(EffectRunner.trigger(self, c, "opp_fx_destroyed_any"))
+		# "Destroyed by an opponent's card (by battle or card effect) and sent to your Graveyard"
+		# (Starliege Paladynamo). In a battle the other monster is always the opponent's.
+		if by_battle or by_opp_any:
+			events.append_array(EffectRunner.trigger(self, c, "opp_destroyed"))
 	# Revival Rose: when a Level 5 or higher Plant of yours is destroyed, it comes back from the Graveyard.
 	if str(c.data.get("race", "")) == "Plant" and int(c.data.get("level", 0)) >= 5:
 		for g in ps.gy.duplicate():
@@ -2491,6 +2524,9 @@ func _clone_card(c: CardInst, map: Dictionary) -> CardInst:
 	n.no_tribute_turn = c.no_tribute_turn
 	n.def_mod = c.def_mod
 	n.neg_perm = c.neg_perm
+	n.zero_perm = c.zero_perm
+	n.bonus_attacks = c.bonus_attacks
+	n.bonus_attacks_turn = c.bonus_attacks_turn
 	n.left_turn = c.left_turn
 	map[c.uid] = n
 	for o in c.overlays:

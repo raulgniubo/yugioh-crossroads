@@ -23,6 +23,7 @@ func _ready() -> void:
 	_test_batch_31()
 	_test_batch_32()
 	_test_batch_33()
+	_test_batch_34()
 	_test_destiny()
 	_test_stakes()
 	_test_decks()
@@ -2074,3 +2075,102 @@ func _test_batch_33() -> void:
 	s.normal_summoned = false
 	s.normal_summon(0, med2, [], false)
 	check(s.players[0].field.has(small2) and small2.neg_perm and s.players[0].deck.has(other2), "With a Big Piece Golem: Small Piece Golem comes from the Deck with its effects negated, and nothing else does")
+
+
+## Vampire Lord, Umbral Horror Unform, Dimensional Alchemist, Starliege Paladynamo, Rose Tentacles.
+func _test_batch_34() -> void:
+	# Vampire Lord: a declared type leaves the opponent's Deck; only an opponent's card effect brings it back.
+	var s := _main_ready(871)
+	s.phase = DuelState.Phase.BATTLE
+	var vamp := _fake(s, 0, "Vampire Lord", 2000, 1500, 0, {"race": "Zombie", "attribute": "DARK", "level": 5})
+	var gy0: int = s.players[1].gy.size()
+	var deck0: int = s.players[1].deck.size()
+	s.attack(0, vamp, null)
+	s._cleanup()
+	check(s.players[1].gy.size() == gy0 + 1 and s.players[1].deck.size() == deck0 - 1 and s.players[1].gy[-1].is_monster(), "Vampire Lord deals damage: the opponent sends 1 Monster (the declared type) from the Deck to the Graveyard")
+	s.effect_by = 1
+	s._destroy(vamp)
+	s.effect_by = -1
+	check(s.players[0].gy.has(vamp) and vamp.back_pos != "", "Destroyed by the opponent's card effect it waits for the next Standby Phase")
+	EffectRunner.standby(s, 0)
+	check(s.players[0].field.has(vamp), "Vampire Lord is back at its owner's next Standby Phase")
+	s = _main_ready(872)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	var vamp2 := _fake(s, 0, "Vampire Lord", 2000, 1500, 0, {"race": "Zombie", "level": 5})
+	var big := _fake(s, 1, "Big", 3000, 1000, 0)
+	s.attack(1, big, vamp2)
+	check(s.players[0].gy.has(vamp2) and vamp2.back_pos == "", "Destroyed by battle it does not come back")
+	# Umbral Horror Unform: only when it was the one attacking, and only if 2 can come out.
+	s = _main_ready(873)
+	s.phase = DuelState.Phase.BATTLE
+	var unf := _fake(s, 0, "Umbral Horror Unform", 0, 0, 0, {"race": "Fiend", "attribute": "DARK"})
+	var u1 := _fake(s, 0, "Umbral Horror Ghoul", 1800, 0, -1, {"race": "Fiend"})
+	var u2 := _fake(s, 0, "Umbral Horror Ghost", 200, 200, -1, {"race": "Fiend", "level": 2})
+	s.players[0].deck.append(u1)
+	s.players[0].deck.append(u2)
+	var foe := _fake(s, 1, "Foe", 1500, 1000, 0)
+	s.attack(0, unf, foe)
+	check(s.players[0].field.has(u1) and s.players[0].field.has(u2), "Umbral Horror Unform destroyed while attacking a monster: 2 Umbral Horror monsters come from the Deck")
+	s = _main_ready(874)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	var unf2 := _fake(s, 0, "Umbral Horror Unform", 0, 0, 0, {"race": "Fiend"})
+	var u3 := _fake(s, 0, "Umbral Horror Ghoul", 1800, 0, -1, {"race": "Fiend"})
+	var u4 := _fake(s, 0, "Umbral Horror Ghost", 200, 200, -1, {"race": "Fiend", "level": 2})
+	s.players[0].deck.append(u3)
+	s.players[0].deck.append(u4)
+	var foe2 := _fake(s, 1, "Foe", 1500, 1000, 0)
+	s.attack(1, foe2, unf2)
+	check(s.players[0].deck.has(u3) and s.players[0].deck.has(u4), "Destroyed while being attacked: nothing comes out")
+	s = _main_ready(875)
+	s.phase = DuelState.Phase.BATTLE
+	var unf3 := _fake(s, 0, "Umbral Horror Unform", 0, 0, 0, {"race": "Fiend"})
+	var u5 := _fake(s, 0, "Umbral Horror Ghoul", 1800, 0, -1, {"race": "Fiend"})
+	s.players[0].deck.append(u5)
+	var foe3 := _fake(s, 1, "Foe", 1500, 1000, 0)
+	s.attack(0, unf3, foe3)
+	check(s.players[0].deck.has(u5), "With only 1 Umbral Horror in the Deck the effect cannot be used")
+	# Dimensional Alchemist: top card banished for 500 ATK this turn; a banished monster back to the hand when it falls.
+	s = _main_ready(876)
+	var alc := _fake(s, 0, "Dimensional Alchemist", 1300, 200, 0, {"race": "Fairy", "attribute": "LIGHT"})
+	var topc := _fake(s, 0, "Top Card", 900, 900, -1)
+	s.players[0].deck.append(topc)
+	check(s.can_ignite(0, alc), "Dimensional Alchemist can use its effect in the Main Phase")
+	_run(s, 0, {"do": "ignite", "card": alc})
+	check(s.players[0].banished.has(topc) and s.atk_of(alc, false) == 1800 and not s.can_ignite(0, alc), "The top card of the Deck is banished, it has 1800 ATK, once per turn")
+	var hand0: int = s.players[0].hand.size()
+	s._destroy(alc)
+	check(s.players[0].hand.has(topc) and s.players[0].hand.size() == hand0 + 1 and not s.players[0].banished.has(topc), "Destroyed and sent to the Graveyard: a banished monster comes to the hand")
+	# Starliege Paladynamo: 0 ATK and no effects for good; a card when the opponent's card destroys it.
+	s = _main_ready(877)
+	var pal := _fake(s, 0, "Starliege Paladynamo", 2000, 1000, 0, {"frame": "xyz", "attribute": "LIGHT"})
+	pal.overlays = [s._make(40640057, 0), s._make(40640057, 0)]
+	var prey := _fake(s, 1, "Prey", 2500, 1000, 0)
+	check(s.can_ignite(0, pal), "Paladynamo with 2 materials can use its effect")
+	_run(s, 0, {"do": "ignite", "card": pal})
+	check(pal.overlays.is_empty() and s.atk_of(prey, false) == 0 and prey.neg_perm, "Both materials are detached; the target has 0 ATK and its effects are negated")
+	s.turn += 1
+	check(s.atk_of(prey, false) == 0, "It is still 0 on the next turn")
+	var hand1: int = s.players[0].hand.size()
+	s.effect_by = 1
+	s._destroy(pal)
+	s.effect_by = -1
+	check(s.players[0].hand.size() == hand1 + 1, "Destroyed by the opponent's card effect: draw 1 card")
+	s = _main_ready(878)
+	var pal2 := _fake(s, 0, "Starliege Paladynamo", 2000, 1000, 0, {"frame": "xyz"})
+	var hand2: int = s.players[0].hand.size()
+	s.effect_by = 0
+	s._destroy(pal2)
+	s.effect_by = -1
+	check(s.players[0].hand.size() == hand2, "Destroyed by its owner's own card: no draw")
+	# Rose Tentacles: one more attack for each Plant the opponent controls when the Battle Phase starts.
+	s = _main_ready(879)
+	var rose := _fake(s, 0, "Rose Tentacles", 2200, 1200, 0, {"race": "Plant", "attribute": "EARTH", "level": 6})
+	_fake(s, 1, "Fern", 500, 500, 0, {"race": "Plant"})
+	_fake(s, 1, "Moss", 400, 400, 1, {"race": "Plant"})
+	_fake(s, 1, "Rock", 300, 300, 2, {"race": "Rock"})
+	s.phase = DuelState.Phase.MAIN1
+	s.enter_battle()
+	check(s.attacks_left(rose) == 3, "Rose Tentacles with 2 Plants across the field: 3 attacks this turn")
+	check(not s.can_revive(rose) or not s.players[0].gy.has(rose), "It cannot be Special Summoned")

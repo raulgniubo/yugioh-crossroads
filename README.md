@@ -5,6 +5,16 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.3
+
+Five more monsters do exactly what their card says (226 effect monsters done, 27 to go), each proven by the game's tests.
+
+- **Vampire Lord:** when it deals battle damage you declare Monster, Spell or Trap, and your opponent sends 1 card of that type from their Deck to the Graveyard (it used to mill the top card). Destroyed by an opponent's card effect, it comes back at your next Standby Phase.
+- **Umbral Horror Unform:** only when it is destroyed while attacking a monster, only if 2 Umbral Horror monsters can come from the Deck, once per turn.
+- **Dimensional Alchemist:** once per turn, banish the top card of your Deck for 500 ATK this turn. Destroyed and sent to the Graveyard: you can add 1 of your banished monsters to your hand. (Its old effect was a different card's.)
+- **Starliege Paladynamo:** detach 2 materials: 1 face-up monster your opponent controls has 0 ATK and its effects negated for as long as it stays on the field (it was one turn, without the negation). Destroyed by an opponent's card, by battle or by effect: draw 1 card.
+- **Rose Tentacles:** cannot be Special Summoned. At the start of your Battle Phase it gets 1 more attack that turn for each Plant your opponent controls.
+
 ## What is in 0.33.2
 
 Seven more monsters now do exactly what their card says, sentence by sentence (221 effect monsters done, 32 to go). Each one is proven by the game's own tests.

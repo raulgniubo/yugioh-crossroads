@@ -66,7 +66,7 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 	# Harpie Lady 1 also powers itself up (it's WIND)
 	if f.has("aura") and str(c.data.get("attribute", "")) == f["aura"][0]:
 		b += int(f["aura"][1])
-	if c.zero_turn == s.turn:
+	if c.zero_turn == s.turn or c.zero_perm:
 		return -c.atk()
 	if c.half_turn == s.turn:
 		b -= (c.atk() + b) / 2
@@ -912,6 +912,20 @@ static func run_list(s: DuelState, p: int, c, actions: Array, ctx: Dictionary) -
 			if not _cond(s, p, str(a[1])):
 				break
 			continue
+		if str(a[0]) == "need_attacking":
+			# "...while attacking a monster" (Umbral Horror Unform).
+			if s.battle_attacker != c or not s.battle_vs_monster:
+				break
+			continue
+		if str(a[0]) == "need_deck":
+			# ["need_deck", filter, n]: exactly n of them must be there to come out, with room for all.
+			var free_n := 0
+			for z in s.players[p].field:
+				if z == null:
+					free_n += 1
+			if _take(s.players[p].deck, a[1], int(a[2])).size() < int(a[2]) or free_n < int(a[2]):
+				break
+			continue
 		events.append_array(run(s, p, c, a, ctx))
 	s.effect_by = was_by
 	return events
@@ -1482,6 +1496,53 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 		"to_def":
 			c.attack_pos = false
 			events.append({"type": "position", "player": p, "card": c, "zone": ps.field.find(c)})
+		"opp_mill_type":
+			# Vampire Lord: declare Monster, Spell or Trap; the opponent sends 1 card of that type
+			# from their Deck to the Graveyard (their pick).
+			var type_i: int = s.choose_option(p, Loc.t("%s: declare a card type") % name, [Loc.t("Monster"), Loc.t("Spell"), Loc.t("Trap")], 0, c)
+			var of_type: Array = opp.deck.filter(func(x): return x.is_monster() if type_i == 0 else (x.is_spell() if type_i == 1 else x.is_trap()))
+			events.append(_ev(p, c, Loc.t("%s declares: %s") % [name, [Loc.t("Monster"), Loc.t("Spell"), Loc.t("Trap")][type_i]]))
+			if of_type.is_empty():
+				return events
+			var sent_pick: Array = s.choose(opp_i, Loc.t("%s: send 1 card of that type from your Deck to the Graveyard") % name, of_type, 1, [of_type[0]], false, c)
+			var sent_c = sent_pick[0] if not sent_pick.is_empty() else of_type[0]
+			opp.deck.erase(sent_c)
+			s._to_gy(opp, sent_c)
+			s._shuffle(opp.deck)
+			events.append({"type": "mill", "player": opp_i, "card": sent_c, "deck": opp.deck.size()})
+		"zero_negate_opp":
+			# Starliege Paladynamo: 1 face-up monster the opponent controls; its ATK becomes 0 and its
+			# effects are negated, for as long as it stays on the field.
+			var ups2: Array = opp.monsters().filter(func(m): return m.face_up)
+			if ups2.is_empty():
+				return events
+			var zt = s.pick1(p, Loc.t("%s: choose the monster whose ATK becomes 0") % name, ups2, s._strongest_face_up(opp_i), c)
+			zt.zero_perm = true
+			zt.neg_perm = true
+			zt.negated = true
+			events.append(_ev(p, c, Loc.t("%s: ATK 0, effects negated") % zt.cname()))
+		"alch_boost":
+			# Dimensional Alchemist: banish the top card of your Deck, and if you do, +500 ATK this turn.
+			if ps.deck.is_empty():
+				return events
+			var top_c = ps.deck[ps.deck.size() - 1]
+			events.append_array(s._banish(top_c))
+			if ps.banished.has(top_c):
+				c.atk_mod_turn = s.turn
+				c.atk_mod_t = 500
+				events.append(_ev(p, c, Loc.t("%s gains %d ATK this turn") % [name, 500]))
+		"banished_to_hand":
+			# "You can target 1 of your banished monsters; add it to your hand."
+			var out_m: Array = ps.banished.filter(func(x): return x.is_monster() and not x.is_token())
+			if out_m.is_empty():
+				return events
+			var back_pick: Array = s.choose(p, Loc.t("%s: add 1 of your banished monsters to your hand?") % name, out_m, 1, s._best_monsters(out_m, 1), true, c)
+			if back_pick.is_empty():
+				return events
+			ps.banished.erase(back_pick[0])
+			ps.hand.append(back_pick[0])
+			events.append({"type": "unbanish", "player": p, "card": back_pick[0], "to": "hand"})
+			events.append({"type": "gy_to_hand", "player": p, "card": back_pick[0]})
 		"self_switch":
 			# "Once per turn: You can change the battle position of this card" (Skull Kraken).
 			if ps.field.has(c) and c.face_up:
