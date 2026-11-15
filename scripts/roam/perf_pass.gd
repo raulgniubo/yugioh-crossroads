@@ -15,12 +15,191 @@ static func apply(root: Node) -> Dictionary:
 	_level = clampi(int(Settings.gfx.get("detail", 2)), 0, 3)
 	var k: float = [0.75, 0.9, 1.7, 3.0][_level]
 	var stats := {"small": 0, "noshadow": 0, "lights": 0, "people": 0}
+	# (Before anything is joined or shared: the pieces are still themselves here.)
+	stats["unfight"] = settle(root)
 	stats["merged"] = merge_static(root)
 	_one_mat.clear()
 	if not ("--no-share" in OS.get_cmdline_user_args()):      # dev: to measure what sharing saves
 		stats.merge(share(root))
 	_walk(root, stats, k, false)
 	return stats
+
+
+## No flicker. Two surfaces lying in the same plane, one over the other, cannot both win: the
+## graphics card picks one per pixel and the pick changes as the camera moves, which is the
+## shimmer on a sign set flush into a wall or a mark painted level with the ground. Here every
+## such pair among the built pieces is found (boxes and flat panels that stand upright, at any
+## turn), and the smaller piece is brought a few millimetres in front: a box grows on that one
+## side (its other sides stay where they are), a flat panel moves out. Bigger overlaps get a
+## bigger step, because far away a few millimetres are not enough for the card to tell apart.
+## Returns how many faces were fixed.
+static func unfight(root: Node, report := false, dry := false) -> int:
+	var frames := {}       # turn key -> {"f": Basis, "faces": [6 lists of [coord, lo_a, hi_a, lo_b, hi_b, node, volume, flat]]}
+	for n in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.mesh == null or mi.is_queued_for_deletion() or not mi.is_visible_in_tree() or mi.get_script() != null or mi.has_meta("keep") or _moves(mi, root):
+			continue
+		var flat_n := Vector3.ZERO      # which way a flat panel faces (its own axes)
+		if mi.mesh is PlaneMesh:
+			flat_n = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][(mi.mesh as PlaneMesh).orientation]
+		elif mi.mesh is QuadMesh:
+			flat_n = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][(mi.mesh as QuadMesh).orientation]
+		elif not (mi.mesh is BoxMesh or mi.mesh is CylinderMesh):
+			continue
+		var round_one := mi.mesh is CylinderMesh       # (a lid, a disc, a plinth: only its top can lie level with something)
+		var gt := mi.global_transform
+		# Upright: one of its axes points straight up or down, the other two lie level.
+		var up_n := 0
+		var level_col := Vector3.ZERO
+		var okay := true
+		for k in 3:
+			var col: Vector3 = gt.basis[k]
+			var len := col.length()
+			if len < 0.00001:
+				okay = false
+			elif absf(col.y) > len * 0.99999:
+				up_n += 1
+			elif absf(col.y) < len * 0.002:
+				level_col = col
+			else:
+				okay = false
+		if not okay or up_n != 1:
+			continue
+		if round_one and absf(gt.basis.y.y) < gt.basis.y.length() * 0.99999:
+			continue
+		var turn := fposmod(atan2(level_col.z, level_col.x), PI * 0.5)
+		var tkey := int(round(rad_to_deg(turn) * 100.0)) % 9000
+		if round_one:
+			turn = 0.0
+			tkey = 0
+		if not frames.has(tkey):
+			frames[tkey] = {"f": Basis.IDENTITY if tkey == 0 else Basis(Vector3.UP, -turn), "faces": [[], [], [], [], [], []]}
+		var fr: Dictionary = frames[tkey]
+		var f: Basis = fr["f"]
+		var bb: AABB = Transform3D(f.inverse(), Vector3.ZERO) * gt * mi.get_aabb()
+		var lo := bb.position
+		var hi := bb.end
+		var vol := maxf(bb.size.x, 0.001) * maxf(bb.size.y, 0.001) * maxf(bb.size.z, 0.001)
+		var facing := Vector3.ZERO
+		if flat_n != Vector3.ZERO:
+			facing = (f.inverse() * (gt.basis * flat_n)).normalized()
+		for ax in 3:
+			var a := (ax + 1) % 3
+			var b := (ax + 2) % 3
+			if hi[a] - lo[a] < 0.02 or hi[b] - lo[b] < 0.02:
+				continue
+			if flat_n != Vector3.ZERO:
+				# A panel has one face: the side it looks out of.
+				if absf(facing[ax]) > 0.9:
+					fr["faces"][ax * 2 + (1 if facing[ax] > 0.0 else 0)].append([hi[ax] if facing[ax] > 0.0 else lo[ax], lo[a], hi[a], lo[b], hi[b], mi, vol, true])
+				continue
+			if round_one and ax != 1:
+				continue
+			if ax != 1:      # (the underside of a box is not something anyone sees)
+				fr["faces"][ax * 2].append([lo[ax], lo[a], hi[a], lo[b], hi[b], mi, vol, false])
+			fr["faces"][ax * 2 + 1].append([hi[ax], lo[a], hi[a], lo[b], hi[b], mi, vol, false])
+	var done := {}
+	var count := 0
+	for tkey in frames:
+		var f2: Basis = frames[tkey]["f"]
+		for fi in 6:
+			var list: Array = frames[tkey]["faces"][fi]
+			list.sort_custom(func(x, y): return x[0] < y[0])
+			var ax2 := fi / 2
+			var sgn := 1.0 if fi % 2 == 1 else -1.0
+			var out_dir := Vector3.ZERO
+			out_dir[ax2] = sgn
+			var out_w := (f2 * out_dir).normalized()
+			for i in list.size():
+				var f1: Array = list[i]
+				var j := i + 1
+				while j < list.size() and list[j][0] - f1[0] < 0.0035:
+					var fb: Array = list[j]
+					j += 1
+					if f1[5] == fb[5]:
+						continue
+					var ov_a := minf(f1[2], fb[2]) - maxf(f1[1], fb[1])
+					var ov_b := minf(f1[4], fb[4]) - maxf(f1[3], fb[3])
+					if ov_a < 0.03 or ov_b < 0.03 or ov_a * ov_b < 0.004:
+						continue
+					if _same_look(f1[5], fb[5]):
+						continue
+					# The panel goes in front of the box; of two alike, the smaller one does.
+					var first_small: bool = f1[6] <= fb[6]
+					if f1[7] != fb[7]:
+						first_small = f1[7]
+					var sm: Array = f1 if first_small else fb
+					var bg: Array = fb if first_small else f1
+					var small: MeshInstance3D = sm[5]
+					var key := "%d/%d/%d" % [small.get_instance_id(), tkey, fi]
+					if done.has(key):
+						continue
+					done[key] = true
+					var want := clampf(sqrt(ov_a * ov_b) * 0.004, 0.005, 0.02)
+					var step: float = want - (sm[0] - bg[0]) * sgn
+					if step <= 0.0:
+						continue
+					var gt2 := small.global_transform
+					if dry:
+						pass
+					elif sm[7] or small.get_child_count() > 0:
+						gt2.origin += out_w * step
+					else:
+						var best := 0
+						for k in 3:
+							if absf(gt2.basis[k].normalized().dot(out_w)) > absf(gt2.basis[best].normalized().dot(out_w)):
+								best = k
+						var size_now := maxf(absf(sm[0] - _other_side(small, f2, ax2, sm[0])), 0.001)
+						gt2.basis[best] = gt2.basis[best] * ((size_now + step) / size_now)
+						gt2.origin += out_w * step * 0.5
+					if not dry:
+						small.global_transform = gt2
+					count += 1
+					if report:
+						var big: MeshInstance3D = bg[5]
+						print("UNFIGHT ", small.get_path(), " ", (small.global_transform * small.get_aabb()).size.snapped(Vector3.ONE * 0.01), " @", small.global_position.snapped(Vector3.ONE * 0.001), " turn ", tkey, " axis ", ax2, " side ", fi % 2, " at ", snappedf(f1[0], 0.0001), "/", snappedf(fb[0], 0.0001), " ov ", snappedf(ov_a * ov_b, 0.01), " WITH ", big.get_path(), " ", (big.global_transform * big.get_aabb()).size.snapped(Vector3.ONE * 0.01), " @", big.global_position.snapped(Vector3.ONE * 0.001))
+	return count
+
+
+## The same, until nothing is left to fix. (A piece brought in front of one neighbour can land
+## level with another, so a few rounds settle it.)
+static func settle(root: Node) -> int:
+	var fought := 0
+	if "--no-unfight" in OS.get_cmdline_user_args():      # dev: to see what it was like before
+		return 0
+	for round_i in 8:
+		var got := unfight(root, "--unfight-list" in OS.get_cmdline_user_args())
+		fought += got
+		if got == 0:
+			break
+	return fought
+
+
+## Is this piece, or anything it hangs from, marked as something that moves?
+static func _moves(n: Node, root: Node) -> bool:
+	while n != null and n != root:
+		if n.has_meta("moves"):
+			return true
+		n = n.get_parent()
+	return false
+
+
+## Where the opposite side of a box is, along one axis of the frame it stands in.
+static func _other_side(mi: MeshInstance3D, f: Basis, ax: int, this_side: float) -> float:
+	var bb: AABB = Transform3D(f.inverse(), Vector3.ZERO) * mi.global_transform * mi.get_aabb()
+	return bb.position[ax] if absf(bb.end[ax] - this_side) < absf(bb.position[ax] - this_side) else bb.end[ax]
+
+
+static func _same_look(a: MeshInstance3D, b: MeshInstance3D) -> bool:
+	var ma: Material = a.get_active_material(0)
+	var mb: Material = b.get_active_material(0)
+	if ma == mb:
+		return true
+	if ma is StandardMaterial3D and mb is StandardMaterial3D:
+		var sa := ma as StandardMaterial3D
+		var sb := mb as StandardMaterial3D
+		return sa.albedo_color.is_equal_approx(sb.albedo_color) and sa.emission_enabled == sb.emission_enabled and (not sa.emission_enabled or sa.emission.is_equal_approx(sb.emission)) and sa.albedo_texture == sb.albedo_texture and sa.transparency == sb.transparency
+	return false
 
 
 ## One box, many places. A city built from code is thousands of boxes, poles and balls, and

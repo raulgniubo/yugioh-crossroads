@@ -5,6 +5,17 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.6
+
+**The flicker hunt, in every world.** Flicker on a wall or on the ground is two surfaces lying in exactly the same plane: the graphics card cannot decide which one is in front, and its pick changes as you move. The game now looks for every such pair after a world is built and brings the smaller piece a few millimetres in front (a box grows on that one side, a flat panel moves out; bigger overlaps get a bigger step, so it also holds from far away). It runs until nothing is left.
+
+- **What it found and fixed:** Domino 195 faces (161 m², among them a stretch of road lying level with the ground under it and the painted patches on the pavements), the Academy 478 (522 m², mostly flat roofs lying level with the top of their own walls), New Domino 36, Satellite 42, Heartland 18. Also the city behind the main menu, the turbo track and the highway ride. A second look after the fix finds none in any of them.
+- It covers boxes, flat panels and round lids standing upright at any turn, the rooms inside buildings included. Things that fly, ride or drift are left alone.
+- **Shadows no longer hop at dawn and dusk.** The sun used to move four times a second while the hour was turning, and every shadow edge in town hopped with it. It moves every frame now.
+- Checked with a new tool that takes two pictures from the same spot a moment apart and marks what changed. On the full renderer at High, a still street changes only where people and cars move.
+
+Not covered: the Ultra preset's bounce light cannot be run on the machine these builds are made on, so flicker from it can only be judged on a real graphics card (press F4 for the report). Tilted pieces (pitched roofs) are not checked by the pass.
+
 ## What is in 0.33.5
 
 **Surfaces, in every world.** The ground and the shop fronts were the flattest things in the game. They are worked over now, and because the worlds share these materials, all of them changed at once. Checked in pictures the way a Mac or a PC with a graphics card draws them, by day and at night.

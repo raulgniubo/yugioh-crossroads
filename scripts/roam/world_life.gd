@@ -128,6 +128,27 @@ func setup(roam: Node) -> void:
 			a.bus = "SFX"
 			add_child(a)
 			_water.append(a)
+	_mark_movers()
+
+
+## Things that fly, ride and drift are parked in one spot until their first move. The pass that
+## clears flicker (PerfPass.unfight) must leave them alone: it is told which ones they are.
+func _mark_movers() -> void:
+	var movers: Array = []
+	for f in _flocks:
+		for b in f["birds"]:
+			movers.append(b["n"])
+	for list: Array in [_gulls, _flutter]:
+		for e in list:
+			movers.append(e["n"])
+	for list: Array in [_clouds, _bobs, _drones, _ring_runners, _bots]:
+		for e in list:
+			movers.append(e[0])
+	movers.append_array(_waves)
+	movers.append_array(_lanterns)
+	for m in movers:
+		if m is Node and is_instance_valid(m):
+			(m as Node).set_meta("moves", true)
 
 
 # ------------------------------------------------------------------ small builders

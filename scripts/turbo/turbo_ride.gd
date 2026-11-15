@@ -187,6 +187,7 @@ func _build_world() -> void:
 	for k in 7:
 		_spawn_thing(60.0 + k * 45.0)
 	_build_fixed()
+	PerfPass.settle(self)      # no two surfaces left lying on top of each other (flicker)
 	_cam = Camera3D.new()
 	_cam.fov = 68.0
 	_cam.far = 500.0

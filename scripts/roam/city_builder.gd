@@ -1600,6 +1600,15 @@ func apply_mix(a: String, b: String, k: float) -> void:
 	_apply_look(L)
 
 
+## Only the sun's place in the sky, every frame while the hour is turning. (The rest of the look
+## changes four times a second, which is plenty for colors; but a sun that moves in steps makes
+## every shadow edge in town hop along with it.)
+func sun_mix(a: String, b: String, k: float) -> void:
+	if sun == null or not TOD_LOOK.has(a) or not TOD_LOOK.has(b) or a == b:
+		return
+	sun.rotation_degrees = (TOD_LOOK[a]["sun_rot"] as Vector3).lerp(TOD_LOOK[b]["sun_rot"], clampf(k, 0.0, 1.0))
+
+
 ## The full renderer (Forward+) works out light the true way, where twice the light is not
 ## twice as bright on screen; the hours of the day were tuned on the light renderer, which
 ## does simpler sums. With the same numbers Forward+ came out with dull sunlit ground and grey

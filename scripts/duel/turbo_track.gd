@@ -54,6 +54,7 @@ func build(a: Color, b: Color) -> void:
 	_build_tunnel()
 	_build_bridge()
 	_build_speed_lines()
+	PerfPass.settle(self)      # no two surfaces left lying on top of each other (flicker)
 	set_zone("")
 
 

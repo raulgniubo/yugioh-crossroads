@@ -12,6 +12,7 @@ func _ready() -> void:
 	city.make_solid = false
 	add_child(city)
 	city.build(FieldThemes.resolve("battlecity", ""), "sunset")
+	PerfPass.settle(city)      # no two surfaces left lying on top of each other (flicker)
 	_cam = Camera3D.new()
 	_cam.fov = 52
 	add_child(_cam)

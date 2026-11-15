@@ -332,6 +332,8 @@ func _debug_args() -> void:
 						elif n is Node3D:
 							(n as Node3D).visible = false
 				await get_tree().create_timer(1.5).timeout
+		if "--unfight-scan" in OS.get_cmdline_user_args():     # dev: list surfaces lying on top of each other, change nothing
+			print("UNFIGHT SCAN finds ", PerfPass.unfight(get_tree().root, true, true))
 		if DisplayServer.get_name() != "headless":
 			var img := get_viewport().get_texture().get_image()
 			img.save_png(shot)

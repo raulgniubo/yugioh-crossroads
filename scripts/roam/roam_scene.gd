@@ -147,6 +147,7 @@ func _ready() -> void:
 		print("PERFPASS ", saved)
 		PerfPass.census(self)
 		PerfPass.kinds(self)
+		print("UNFIGHT second pass still finds ", PerfPass.unfight(self, true, true))
 	if _figure:
 		for mi in _figure.find_children("*", "GeometryInstance3D", true, false):
 			(mi as GeometryInstance3D).visibility_range_end = 0.0
@@ -363,6 +364,9 @@ func _follow_clock(delta: float) -> void:
 		WorldClock.advance(delta)
 	_clock_tick -= delta
 	if _clock_tick > 0.0:
+		var cs := WorldClock.mix()
+		if float(cs[2]) > 0.001:
+			city.sun_mix(str(cs[0]), str(cs[1]), float(cs[2]))
 		return
 	_clock_tick = 0.25
 	var cm := WorldClock.mix()
