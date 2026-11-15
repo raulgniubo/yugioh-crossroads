@@ -71,8 +71,8 @@ static func build(city: CityBuilder, key: String) -> void:
 	var o: Vector3 = r["at"]
 	var half: Vector2 = r["half"]
 	var hgt: float = r["height"]
-	var floor_m := city.mat(r["floor"], 0.55, 0.1)
-	var wall_m := city.mat(r["wall"], 0.9)
+	var floor_m: Material = RoomFinish.floor_material(city, key, r["floor"])
+	var wall_m: Material = RoomFinish.wall_material(city, r["wall"])
 	var trim: Color = r["trim"]
 	city.box(Vector3(half.x * 2 + 0.6, 0.3, half.y * 2 + 0.6), o + Vector3(0, -0.15, 0), floor_m)
 	city.box(Vector3(half.x * 2 + 0.6, 0.3, half.y * 2 + 0.6), o + Vector3(0, hgt + 0.15, 0), city.mat(Color(r["wall"]).darkened(0.25), 0.95), false)
@@ -120,6 +120,7 @@ static func build(city: CityBuilder, key: String) -> void:
 	if MoreRooms.ROOMS.has(key):
 		MoreRooms.dress(city, key, o, half, hgt)
 	MoreRooms.spruce(city, key, o, half, hgt, trim)
+	RoomFinish.apply(city, key, r, o, half, hgt)
 	match key:
 		"kc_lobby":
 			_sign(city, "KAIBACORP", o + Vector3(0, 4.9, -half.y + 0.12), 0.0, Color("7cc4ff"), 170)

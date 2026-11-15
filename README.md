@@ -5,6 +5,22 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.10
+
+**Interiors, in every world.** All 28 rooms you can walk into (shops, cafes, lobbies, the arcade, your room, the dorms and their bedrooms, the library, the lecture hall, the stadium concourse) were furnished but plain: one flat color on the floor, one on the walls. Every one of them is finished now, from one shared builder, so no room was left out.
+
+- **Floors:** real boards in the homely rooms (your room, the dorms and bedrooms, library, lecture hall, main hall, the Scrap Trader), real tiles in the modern ones (KaibaCorp, Burger World, the mart, the cafes, the arcade, the stadium, the lounge). The card shop got real boards too.
+- **Walls:** plaster with a little relief, panelling under the rail in the boarded rooms, flat piers from floor to ceiling in the tiled ones, a skirting board and a cornice in every room that had none.
+- **Ceilings:** beams in the boarded rooms, shallow coffers in the tiled ones, kept clear of the lamps.
+- **Corners:** every room corner is rounded with a quarter column instead of a knife edge.
+- **Shop shelves hold goods, not blocks:** boxes with a label and a lid, bottles with a neck and a cap, tins stacked in twos, flat packs in a pile. In Domino Mart and the Scrap Trader. A shop's goods are one mesh now (they were 192 separate boxes with 192 materials).
+
+**The boxy look, first pass outdoors.** A new rounded box (upright edges rounded, smooth round the bend) replaces the plain one where it shows most: the street planters in every world are cast stone troughs with a lip and a foot, crates have slats and soft corners, mailboxes are rounded, the Academy's flower beds have rounded ends and a coping stone.
+
+Checked in pictures on both renderers. Tests pass, nothing lies in the same plane in any world.
+
+Not done: furniture inside the rooms is still made of plain boxes (counters, beds, desks, shelves' frames), buildings themselves keep their sharp corners, and street clutter and signs were not added to. Those stay on the list.
+
 ## What is in 0.33.9
 
 **On your list, in Free Roam.** A small box for what you have taken on out in the open world, and only that: the favors people asked of you and you said yes to ("Find a lost card", "Bring the parcel back to ..."). What is in the world you are standing in comes first, favors waiting in another world say where. It shows the first thing and a count; Tab (R3 on a controller) opens the whole list. With nothing accepted there is no box. Nothing of the story is ever in it: a chapter's own list only exists when you come in through Story.

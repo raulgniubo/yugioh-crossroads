@@ -538,8 +538,10 @@ func _dress_dorms() -> void:
 		for sx: float in [-1.0, 1.0]:
 			# A raised flower bed either side of the door, stone edge all round.
 			var bed := Vector3(sx * 5.6, 0, 1.6)
-			box(Vector3(4.2, 0.34, 1.7), bed + Vector3(0, 0.17, 0), edge, false, yard)
-			box(Vector3(3.9, 0.1, 1.4), bed + Vector3(0, 0.36, 0), soil, false, yard)
+			# (Rounded ends and a coping stone round the top: a built bed, not a block.)
+			round_box(Vector3(4.2, 0.3, 1.7), bed + Vector3(0, 0.15, 0), edge, 0.4, yard)
+			round_box(Vector3(4.32, 0.08, 1.82), bed + Vector3(0, 0.32, 0), edge, 0.46, yard)
+			round_box(Vector3(3.9, 0.1, 1.4), bed + Vector3(0, 0.36, 0), soil, 0.3, yard)
 			for k in 26:
 				var fp := bed + Vector3(rng.randf_range(-1.8, 1.8), 0.4, rng.randf_range(-0.55, 0.55))
 				var stem := cyl(0.012, 0.016, 0.3, fp + Vector3(0, 0.15, 0), hedge, yard, 5)

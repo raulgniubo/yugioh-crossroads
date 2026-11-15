@@ -106,13 +106,16 @@ static func dress(city: CityBuilder, key: String, o: Vector3, half: Vector2, hgt
 			# The mart's shelves, gone to rust: everything in here has been used at least twice.
 			var n1 := city.get_child_count()
 			_skip_signs = ["DOMINO MART"]
+			_goods_tint = [Color(0.3, 0.18, 0.11), 0.6]
 			_mart(city, o, half, hgt)
+			_goods_tint = []
 			_skip_signs = []
 			_retint(city, n1, Color(0.3, 0.18, 0.11), 0.74)
 			_scrap_shop(city, o, half, hgt)
 
 
 static var _skip_signs: Array = []
+static var _goods_tint: Array = []        # [color, how much]: the scrap shop's goods are the mart's, gone brown
 
 
 ## Repaint everything a room builder just made (the children added since `from`) toward one
@@ -285,15 +288,18 @@ static func _mart(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> v
 	for sz: float in [-1.0, 1.0]:
 		city.box(Vector3(half.x * 2, 0.16, 0.05), o + Vector3(0, hgt - 1.0, sz * (half.y - 0.03)), city.glow_mat(Color("3fbf8a"), 0.8), false)
 		city.box(Vector3(half.x * 2, 0.08, 0.05), o + Vector3(0, hgt - 1.16, sz * (half.y - 0.03)), city.glow_mat(Color("f28c38"), 0.8), false)
-	# Two aisles of shelves stocked with boxes.
+	# Two aisles of shelves stocked with goods.
+	var goods := CityBuilder.BoxBatch.new()
 	for ax: float in [-2.6, 0.2]:
 		city.box(Vector3(0.5, 1.7, 5.0), o + Vector3(ax, 0.85, 0.2), white)
 		for lvl in 4:
 			city.box(Vector3(1.0, 0.04, 5.0), o + Vector3(ax, 0.3 + lvl * 0.42, 0.2), steel, false)
 			for k in 12:
 				for side: float in [-1.0, 1.0]:
-					var hh := rng.randf_range(0.16, 0.32)
-					city.box(Vector3(0.2, hh, 0.3), o + Vector3(ax + side * 0.36, 0.32 + lvl * 0.42 + hh / 2.0, -2.1 + k * 0.4), city.mat(cols[rng.randi() % cols.size()], 0.7), false)
+					# Goods, not blocks: boxes with a label, bottles with a neck and a cap, tins in twos.
+					# All of a shop's goods are one mesh (192 separate boxes before).
+					RoomFinish.goods(goods, city, o + Vector3(ax + side * 0.36, 0.32 + lvl * 0.42, -2.1 + k * 0.4), side, rng, cols, _goods_tint)
+	goods.commit(city, 40.0)
 	# Drink fridges glowing along the left wall.
 	for k in 4:
 		var fz := -3.4 + k * 1.5

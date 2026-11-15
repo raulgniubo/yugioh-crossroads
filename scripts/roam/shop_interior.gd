@@ -12,10 +12,8 @@ static func build(city: CityBuilder) -> void:
 	var wood := city.mat(Color(0.5, 0.36, 0.24), 0.75)
 	var wall := city.mat(Color(0.92, 0.86, 0.74), 0.9)
 	var trim := city.mat(Color(0.32, 0.2, 0.13), 0.7)
-	city.box(Vector3(HALF.x * 2 + 0.6, 0.3, HALF.y * 2 + 0.6), o + Vector3(0, -0.15, 0), wood)
-	# Plank lines on the floor
-	for i in range(-6, 7):
-		city.box(Vector3(0.03, 0.01, HALF.y * 2), o + Vector3(i * 1.0 + 0.5, 0.006, 0), trim, false)
+	# Real boards on the floor (it was one flat color with lines drawn across it).
+	city.box(Vector3(HALF.x * 2 + 0.6, 0.3, HALF.y * 2 + 0.6), o + Vector3(0, -0.15, 0), city.surf("wood", Color(0.5, 0.36, 0.24), 0.8))
 	city.box(Vector3(HALF.x * 2 + 0.6, 0.3, HALF.y * 2 + 0.6), o + Vector3(0, HEIGHT + 0.15, 0), city.mat(Color(0.86, 0.82, 0.74), 0.95), false)
 	for sx in [-1, 1]:
 		city.box(Vector3(0.3, HEIGHT, HALF.y * 2 + 0.6), o + Vector3(sx * (HALF.x + 0.15), HEIGHT / 2.0, 0), wall)

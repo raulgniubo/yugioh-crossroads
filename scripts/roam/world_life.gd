@@ -221,8 +221,12 @@ func planter(p: Vector3, long := 1.6, rot := 0.0, flowers := true) -> void:
 	n.position = p
 	n.rotation.y = rot
 	add_child(n)
-	_box(Vector3(long, 0.5, 0.6), Vector3(0, 0.25, 0), _m(Color(0.62, 0.6, 0.56), 0.9), n)
-	_box(Vector3(long - 0.1, 0.06, 0.5), Vector3(0, 0.5, 0), _m(Color(0.24, 0.16, 0.1), 1.0), n)
+	# (Round corners, a lip round the top and a foot: a cast stone trough, not a block.)
+	var stone := _m(Color(0.62, 0.6, 0.56), 0.9)
+	city.round_box(Vector3(long, 0.42, 0.6), Vector3(0, 0.25, 0), stone, 0.14, n)
+	city.round_box(Vector3(long + 0.08, 0.09, 0.68), Vector3(0, 0.47, 0), _m(Color(0.7, 0.68, 0.64), 0.9), 0.17, n)
+	city.round_box(Vector3(long - 0.14, 0.05, 0.46), Vector3(0, 0.03, 0), _m(Color(0.5, 0.48, 0.45), 0.9), 0.1, n)
+	city.round_box(Vector3(long - 0.1, 0.06, 0.5), Vector3(0, 0.5, 0), _m(Color(0.24, 0.16, 0.1), 1.0), 0.12, n)
 	var leaf := _m(Color(0.22, 0.5, 0.26), 0.9)
 	var cols := [Color("ff6b8a"), Color("ffd166"), Color("ffffff"), Color("c78bff"), Color("ff9a3c")]
 	var k := 0
@@ -256,7 +260,7 @@ func mailbox(p: Vector3, rot := 0.0) -> void:
 	n.position = p
 	n.rotation.y = rot
 	add_child(n)
-	_box(Vector3(0.5, 0.75, 0.45), Vector3(0, 0.85, 0), _m(Color(0.85, 0.16, 0.14), 0.45, 0.2), n)
+	city.round_box(Vector3(0.5, 0.75, 0.45), Vector3(0, 0.85, 0), _m(Color(0.85, 0.16, 0.14), 0.45, 0.2), 0.07, n)
 	_cyl(0.225, 0.225, 0.5, Vector3(0, 1.22, 0), _m(Color(0.85, 0.16, 0.14), 0.45, 0.2), n).rotation.z = PI / 2
 	_box(Vector3(0.3, 0.04, 0.02), Vector3(0, 1.0, 0.23), _m(Color(0.1, 0.1, 0.1)), n)
 	_cyl(0.05, 0.05, 0.5, Vector3(0, 0.25, 0), _m(Color(0.2, 0.2, 0.22), 0.4, 0.6), n)
@@ -278,8 +282,14 @@ func a_sign(p: Vector3, rot: float, col: Color) -> void:
 func crate_stack(p: Vector3, n := 3) -> void:
 	var wood := _m(Color(0.56, 0.4, 0.24), 0.9)
 	for i in n:
-		var b := _box(Vector3(0.7, 0.6, 0.7), p + Vector3((i % 2) * 0.72, 0.3 + (i / 2) * 0.6, 0), wood)
+		var cp := p + Vector3((i % 2) * 0.72, 0.3 + (i / 2) * 0.6, 0)
+		var b := city.round_box(Vector3(0.7, 0.6, 0.7), cp, wood, 0.03, self)
 		b.rotation.y = i * 0.2
+		# Slats and corner battens, so it is a crate and not a cube.
+		var slat := _m(Color(0.44, 0.31, 0.18), 0.9)
+		for sy: float in [-0.2, 0.0, 0.2]:
+			var band := city.round_box(Vector3(0.73, 0.035, 0.73), cp + Vector3(0, sy, 0), slat, 0.04, self)
+			band.rotation.y = i * 0.2
 	_solid(0.6, 1.0, p + Vector3(0.36, 0, 0))
 
 

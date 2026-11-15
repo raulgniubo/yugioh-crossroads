@@ -367,6 +367,61 @@ func box(size: Vector3, pos: Vector3, m: Material, solid := true, parent: Node3D
 	return mi
 
 
+static var _round_boxes := {}
+
+
+## A box with its four upright edges rounded off (and smooth shading round the bend), for the
+## things that read as "made of boxes" when their corners are knife sharp: planters, crates,
+## counters, kiosks. One mesh per size, shared by every copy.
+static func round_box_mesh(size: Vector3, r: float, segs := 5) -> ArrayMesh:
+	r = clampf(r, 0.005, minf(size.x, size.z) * 0.5 - 0.001)
+	var key := "%.3f/%.3f/%.3f/%.3f/%d" % [size.x, size.y, size.z, r, segs]
+	if _round_boxes.has(key):
+		return _round_boxes[key]
+	var hx := size.x * 0.5
+	var hz := size.z * 0.5
+	var hy := size.y * 0.5
+	var ring: Array = []         # [point (x, z), outward direction]
+	var centres := [Vector2(hx - r, hz - r), Vector2(-hx + r, hz - r), Vector2(-hx + r, -hz + r), Vector2(hx - r, -hz + r)]
+	for ci in 4:
+		for k in segs + 1:
+			var a := (ci + k / float(segs)) * PI * 0.5
+			var d := Vector2(cos(a), sin(a))
+			ring.append([(centres[ci] as Vector2) + d * r, d])
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n := ring.size()
+	for i in n:
+		var a0: Array = ring[i]
+		var a1: Array = ring[(i + 1) % n]
+		var p0: Vector2 = a0[0]
+		var p1: Vector2 = a1[0]
+		var n0 := Vector3((a0[1] as Vector2).x, 0, (a0[1] as Vector2).y)
+		var n1 := Vector3((a1[1] as Vector2).x, 0, (a1[1] as Vector2).y)
+		var quad := [[Vector3(p0.x, -hy, p0.y), n0], [Vector3(p1.x, -hy, p1.y), n1], [Vector3(p1.x, hy, p1.y), n1], [Vector3(p0.x, hy, p0.y), n0]]
+		for idx in [0, 2, 1, 0, 3, 2]:
+			st.set_normal(quad[idx][1])
+			st.add_vertex(quad[idx][0])
+		# Lid and bottom: a fan from the middle.
+		for cap: float in [1.0, -1.0]:
+			var tri := [Vector3(0, hy * cap, 0), Vector3(p0.x, hy * cap, p0.y), Vector3(p1.x, hy * cap, p1.y)]
+			for idx2 in ([0, 2, 1] if cap > 0.0 else [0, 1, 2]):
+				st.set_normal(Vector3(0, cap, 0))
+				st.add_vertex(tri[idx2])
+	var mesh := st.commit()
+	_round_boxes[key] = mesh
+	return mesh
+
+
+func round_box(size: Vector3, pos: Vector3, m: Material, r := 0.08, parent: Node3D = null) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = round_box_mesh(size, r)
+	mi.material_override = m
+	mi.position = pos
+	(parent if parent else self).add_child(mi)
+	return mi
+
+
 func cyl(r_top: float, r_bottom: float, h: float, pos: Vector3, m: Material, parent: Node3D = null, segs := 16) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var c := CylinderMesh.new()
