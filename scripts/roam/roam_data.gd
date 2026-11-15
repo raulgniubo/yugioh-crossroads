@@ -125,7 +125,7 @@ const DISTRICTS := {
 			[Vector3(8, 0, -4), Vector3(35, 0, -4)], [Vector3(19, 0, 6), Vector3(19, 0, 24)], [Vector3(-30, 0, 2), Vector3(-30, 0, -14)]],
 		"map": {"island": 72.0, "landmarks": [
 			{"name": "Main Building", "pos": Vector2(0, -44), "size": Vector2(44, 20), "color": Color("ffe9a8")},
-			{"name": "Main Hall", "pos": Vector2(0, -31), "size": Vector2(4, 3), "color": Color("ffd166"), "enter": true},
+			{"name": "Main Hall", "pos": Vector2(0, -31), "size": Vector2(4, 3), "color": Color("ffd166"), "enter": true, "shop": true},
 			{"name": "Red Dorm", "pos": Vector2(-42, 8), "size": Vector2(9, 15), "color": Color("ff6b6b")},
 			{"name": "Yellow Dorm", "pos": Vector2(42.5, -3), "size": Vector2(10, 17), "color": Color("ffd166")},
 			{"name": "Blue Dorm", "pos": Vector2(-39, -23), "size": Vector2(25, 12), "color": Color("7cc4ff")},

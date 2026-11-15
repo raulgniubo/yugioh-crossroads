@@ -499,6 +499,53 @@ const MADE_POSES := {
 			[0.28, {"Spine01": 0.3, "RightArm": Vector3(-0.75, 0.4, -0.5), "RightForeArm": Vector3(-0.2, 0.9, 0.35), "LeftArm": Vector3(0.5, -0.85, 0.1), "LeftForeArm": Vector3(-0.5, -0.2, 0.84)}],
 			[0.5, {"Spine01": -0.36, "neck": 0.3, "RightArm": Vector3(-0.3, 0.16, 1.0), "RightForeArm": Vector3(-0.3, 0.16, 1.0), "LeftArm": Vector3(0.62, -0.75, -0.2), "LeftForeArm": Vector3(-0.55, -0.1, 0.83)}],
 		]},
+	# Everyday business for the people who live a day of their own (see StarLife).
+	# Something in the right hand, held up in front of the chest, and now and then to the mouth.
+	"g_eat": {"length": 9.0, "back": 8.2, "order": ["neck", "Head", "RightArm", "RightForeArm"],
+		"poses": [
+			[0.6, {"neck": Vector2(0.14, 0.0), "RightArm": Vector3(-0.3, -0.9, 0.3), "RightForeArm": Vector3(0.3, 0.45, 0.84)}],
+			[2.8, {"neck": Vector2(0.14, 0.0), "RightArm": Vector3(-0.3, -0.9, 0.3), "RightForeArm": Vector3(0.3, 0.45, 0.84)}],
+			[3.4, {"neck": Vector2(0.22, 0.0), "RightArm": Vector3(-0.3, -0.72, 0.62), "RightForeArm": Vector3(0.42, 0.88, 0.2)}],
+			[4.3, {"neck": Vector2(0.22, 0.0), "RightArm": Vector3(-0.3, -0.72, 0.62), "RightForeArm": Vector3(0.42, 0.88, 0.2)}],
+			[5.0, {"neck": Vector2(0.1, 0.0), "RightArm": Vector3(-0.3, -0.9, 0.3), "RightForeArm": Vector3(0.3, 0.45, 0.84)}],
+		]},
+	# A fan of cards in the left hand, eyes on it; the right hand comes over to move one.
+	"g_read": {"length": 10.0, "back": 9.2, "order": ["neck", "Head", "LeftArm", "LeftForeArm", "RightArm", "RightForeArm"],
+		"poses": [
+			[0.6, {"neck": Vector2(0.26, 0.0), "Head": Vector2(0.18, -0.12), "LeftArm": Vector3(0.3, -0.92, 0.22), "LeftForeArm": Vector3(-0.2, 0.22, 0.95)}],
+			[3.6, {"neck": Vector2(0.26, 0.0), "Head": Vector2(0.18, -0.12), "LeftArm": Vector3(0.3, -0.92, 0.22), "LeftForeArm": Vector3(-0.2, 0.22, 0.95)}],
+			[4.3, {"neck": Vector2(0.3, 0.0), "Head": Vector2(0.2, -0.08), "LeftArm": Vector3(0.3, -0.92, 0.22), "LeftForeArm": Vector3(-0.2, 0.22, 0.95), "RightArm": Vector3(-0.25, -0.86, 0.42), "RightForeArm": Vector3(0.5, 0.2, 0.84)}],
+			[5.4, {"neck": Vector2(0.3, 0.0), "Head": Vector2(0.2, -0.08), "LeftArm": Vector3(0.3, -0.92, 0.22), "LeftForeArm": Vector3(-0.2, 0.22, 0.95), "RightArm": Vector3(-0.25, -0.86, 0.42), "RightForeArm": Vector3(0.5, 0.2, 0.84)}],
+			[6.2, {"neck": Vector2(0.26, 0.0), "Head": Vector2(0.18, -0.12), "LeftArm": Vector3(0.3, -0.92, 0.22), "LeftForeArm": Vector3(-0.2, 0.22, 0.95)}],
+		]},
+	# Bent over something at waist height, both hands on it.
+	"g_tinker": {"length": 9.0, "back": 8.2, "order": ["Spine01", "neck", "RightArm", "RightForeArm", "LeftArm", "LeftForeArm"],
+		"poses": [
+			[0.7, {"Spine01": Vector2(0.3, 0.0), "neck": Vector2(0.2, 0.0), "RightArm": Vector3(-0.22, -0.7, 0.68), "RightForeArm": Vector3(0.18, -0.1, 0.98), "LeftArm": Vector3(0.22, -0.7, 0.68), "LeftForeArm": Vector3(-0.18, -0.1, 0.98)}],
+			[3.0, {"Spine01": Vector2(0.34, 0.08), "neck": Vector2(0.24, 0.0), "RightArm": Vector3(-0.22, -0.62, 0.75), "RightForeArm": Vector3(0.3, 0.1, 0.95), "LeftArm": Vector3(0.22, -0.7, 0.68), "LeftForeArm": Vector3(-0.18, -0.1, 0.98)}],
+			[5.5, {"Spine01": Vector2(0.3, -0.06), "neck": Vector2(0.2, 0.0), "RightArm": Vector3(-0.22, -0.7, 0.68), "RightForeArm": Vector3(0.1, -0.2, 0.97), "LeftArm": Vector3(0.22, -0.7, 0.68), "LeftForeArm": Vector3(-0.18, -0.1, 0.98)}],
+		]},
+	# The Duel Disk arm across the chest, the other hand working at it.
+	"g_disk": {"length": 10.0, "back": 9.2, "order": ["neck", "Head", "LeftArm", "LeftForeArm", "RightArm", "RightForeArm"],
+		"poses": [
+			[0.7, {"neck": Vector2(0.24, 0.0), "Head": Vector2(0.16, -0.2), "LeftArm": Vector3(0.34, -0.9, 0.26), "LeftForeArm": Vector3(-0.6, 0.2, 0.77), "RightArm": Vector3(-0.25, -0.86, 0.42), "RightForeArm": Vector3(0.45, 0.25, 0.86)}],
+			[3.5, {"neck": Vector2(0.24, 0.0), "Head": Vector2(0.16, -0.2), "LeftArm": Vector3(0.34, -0.9, 0.26), "LeftForeArm": Vector3(-0.6, 0.2, 0.77), "RightArm": Vector3(-0.25, -0.86, 0.42), "RightForeArm": Vector3(0.3, 0.32, 0.9)}],
+			[6.0, {"neck": Vector2(0.28, 0.0), "Head": Vector2(0.18, -0.24), "LeftArm": Vector3(0.34, -0.9, 0.26), "LeftForeArm": Vector3(-0.6, 0.2, 0.77), "RightArm": Vector3(-0.25, -0.86, 0.42), "RightForeArm": Vector3(0.5, 0.2, 0.84)}],
+			[8.6, {"neck": Vector2(0.24, 0.0), "Head": Vector2(0.16, -0.2), "LeftArm": Vector3(0.34, -0.9, 0.26), "LeftForeArm": Vector3(-0.6, 0.2, 0.77), "RightArm": Vector3(-0.25, -0.86, 0.42), "RightForeArm": Vector3(0.38, 0.28, 0.88)}],
+		]},
+	# Arms folded, weight back: somebody who is not waiting for anyone.
+	"g_armsx": {"length": 14.0, "back": 13.2, "order": ["Spine01", "RightArm", "RightForeArm", "LeftArm", "LeftForeArm"],
+		"poses": [
+			[0.7, {"Spine01": Vector2(-0.05, 0.0), "RightArm": Vector3(-0.42, -0.86, 0.3), "RightForeArm": Vector3(0.93, 0.18, 0.32), "LeftArm": Vector3(0.42, -0.86, 0.3), "LeftForeArm": Vector3(-0.93, 0.26, 0.26)}],
+			[12.5, {"Spine01": Vector2(-0.05, 0.0), "RightArm": Vector3(-0.42, -0.86, 0.3), "RightForeArm": Vector3(0.93, 0.18, 0.32), "LeftArm": Vector3(0.42, -0.86, 0.3), "LeftForeArm": Vector3(-0.93, 0.26, 0.26)}],
+		]},
+	# Head back, looking at the sky (or out to sea), hands behind the back.
+	"g_skygaze": {"length": 12.0, "back": 11.2, "order": ["neck", "Head", "RightArm", "LeftArm"],
+		"poses": [
+			[0.9, {"neck": Vector2(-0.2, 0.0), "Head": Vector2(-0.22, 0.0), "RightArm": Vector3(-0.2, -0.92, -0.32), "LeftArm": Vector3(0.2, -0.92, -0.32)}],
+			[5.5, {"neck": Vector2(-0.22, 0.0), "Head": Vector2(-0.2, 0.18), "RightArm": Vector3(-0.2, -0.92, -0.32), "LeftArm": Vector3(0.2, -0.92, -0.32)}],
+			[10.5, {"neck": Vector2(-0.2, 0.0), "Head": Vector2(-0.22, -0.1), "RightArm": Vector3(-0.2, -0.92, -0.32), "LeftArm": Vector3(0.2, -0.92, -0.32)}],
+		]},
 	"g_defeat": {"length": 30.0, "back": -1.0, "order": ["Spine02", "Spine01", "Spine", "neck", "Head", "RightArm", "RightForeArm", "LeftArm", "LeftForeArm"],
 		"poses": [
 			[0.35, {"Spine01": Vector2(0.1, 0.0), "neck": Vector2(0.2, 0.0)}],

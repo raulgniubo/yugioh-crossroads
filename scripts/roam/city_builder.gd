@@ -3189,6 +3189,7 @@ func _build_traffic() -> void:
 	for spec in [["x", 2.0, 1.0, -30.0], ["x", -2.0, -1.0, 12.0], ["z", -2.0, 1.0, -8.0], ["z", 2.0, -1.0, 24.0]]:
 		var c := car(colors[rng.randi() % colors.size()])
 		add_child(c)
+		c.set_meta("moves", true)
 		cars.append({"node": c, "axis": spec[0], "lane": spec[1], "dir": spec[2], "pos": spec[3], "speed": 9.0})
 
 

@@ -5,6 +5,26 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.12
+
+**The main characters have a life, and the map is a picture of the world.** In every world, Free Roam only (a chapter keeps its own staging).
+
+**A day of their own.** Yugi, Joey, Mai, Kaiba (Domino), Jaden, Chazz, Alexis (Academy), Yusei, Crow (Satellite), Jack, Akiza (New Domino), Yuma, Shark, Kite (Heartland) are in different places by the hour, four or five stops a day each, and walk between them on foot, around buildings, when the hour turns. Arrive at any hour and they are already where that hour has them.
+
+**They do things.** Going through a deck with cards in hand, eating, a drink, on the phone, practicing a draw, arms crossed watching the crowd, looking at the sky, working on a runner with a wrench, tuning a Duel Disk, napping on the grass (Jaden). Six new held poses so what is in the hand is seen.
+
+**They remember you.** They call you over when you pass (the proud ones nod). What they open with depends on your last duel with them, your winning streak, a new lead card in your deck (they name it), rain, the morning, the night, and they say a word about what you caught them doing. Each asks for a duel in their own words. All lines are new and written for this game: 14 characters, about 240 lines, English and Spanish.
+
+**The map (M) is a picture.** When you arrive the game takes one picture of the world from straight above and paints soft shadows into it from the real heights, so the map shows the actual streets, roofs, trees, paths and sea. It reads the same at noon and at midnight.
+
+- **Big map, the detailed one:** every place named (a gold star for a card shop, a white middle for a door you can walk through, including doors that had no mark before: the library, the lecture hall, your home), everybody as a dot, each main character as their portrait at the spot they are right now, your route, a compass, a scale bar and a legend. Scroll to zoom up to 6x, drag to move, + and - buttons, two fingers on a trackpad.
+- **Who's where:** a new tab listing every main character in this world: where they are, what they are doing, where they go next and at what hour. Guide me puts the beacon on them, Go takes you there.
+- **Small map, the simple one:** a round window onto the same picture around you. No names: a pin per place, a dot per person, portraits for the main characters, the goal diamond held at the rim, and you with a cone for where you look.
+
+Also: places you can only enter no longer all say "Card shop" in the list (only real card shops do).
+
+Not done or not checked: the picture is taken once per visit on the first frame while the screen is dark; I have not seen that on a Mac (here it is one frame). The map has no controller zoom yet (it comes with controller support). Characters dueling each other and coming to find you is 0.33.13, the friendship meter 0.33.14.
+
 ## What is in 0.33.11
 
 Fixes and requests from playing 0.33.10 on the Mac.

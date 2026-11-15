@@ -57,6 +57,7 @@ var _overlay_open := false
 var extras: RoamExtras
 var _help: Label
 var story: StoryDirector          # set while a story chapter is being played in this world
+var stars: StarLife               # the main characters' own day in the open world (free roam)
 var quest: StoryDirector          # a chapter that is at "things to do yourself": rides along in the open world
 var quest_locked := false         # the list keeps you here for now: no doors, no travel
 var partner: Node3D                # Lumen, floating along (free roam)
@@ -95,6 +96,7 @@ func _ready() -> void:
 				_set_inside(rk)
 	if _map:
 		for mp in [_map, _map_full]:
+			mp.world = str(Router.roam.get("district", "domino"))
 			mp.title = str(district.get("name", "")).to_upper()
 			mp.area = str(district.get("area", ""))
 			if district.has("map"):
@@ -142,6 +144,11 @@ func _ready() -> void:
 			var pal := Partner.new()
 			add_child(pal)
 			pal.setup(self)
+		# The main characters live their own day out here (not while a chapter's list rides along).
+		if quest == null:
+			stars = StarLife.new()
+			add_child(stars)
+			stars.setup(self)
 	# Everything is built: make it cheap to draw (see PerfPass).
 	var saved := PerfPass.apply(self)
 	if "--perf-probe" in OS.get_cmdline_user_args():
@@ -152,6 +159,8 @@ func _ready() -> void:
 	if _figure:
 		for mi in _figure.find_children("*", "GeometryInstance3D", true, false):
 			(mi as GeometryInstance3D).visibility_range_end = 0.0
+	# The map is a picture of this world from above, taken now while the screen is still dark.
+	MapPhoto.take(self, str(Router.roam.get("district", "domino")), district)
 	_debug()
 
 
@@ -178,6 +187,7 @@ func _after_duel() -> void:
 		return
 	var won := Router.story_result == "won"
 	Partner.note = "won" if won else "lost"
+	StarLife.note_duel(who, won)
 	Router.roam["last_duel"] = ""
 	Router.story_result = ""
 	for n in _npcs:
@@ -964,7 +974,9 @@ func _refresh_map_people() -> void:
 		var state := "talk"
 		if d.has("duel"):
 			state = "beaten" if _beaten.has(d["id"]) else "duel"
-		list.append({"pos": Vector2(f.position.x, f.position.z), "state": state, "name": _npc_name(d)})
+		var known := str(d.get("char", ""))
+		list.append({"pos": Vector2(f.position.x, f.position.z), "state": state, "name": _npc_name(d), "node": f,
+				"char": known if Characters.DATA.has(known) else ""})
 	_map.npcs = list
 	_map_full.npcs = list
 
@@ -1512,6 +1524,10 @@ func _talk() -> void:
 		var seen: int = int(_chat_turn.get(str(d["id"]) + "_after", 0))
 		say = acts[mini(seen, acts.size() - 1)]
 		_chat_turn[str(d["id"]) + "_after"] = seen + 1
+	# The main characters know you: what they open with depends on your last duel with them,
+	# your streak, your lead card, the hour, the weather, and what you caught them doing.
+	if stars != null and stars.has(str(d["id"])):
+		say = stars.lines(str(d["id"]), say)
 	var favor: Array = life.errand_talk(d) if life and story == null else []
 	if not favor.is_empty():
 		say = favor
@@ -1520,7 +1536,10 @@ func _talk() -> void:
 		_dlg_lines.append(Loc.t(str(l)).replace("{player}", Profile.duelist_name))
 	if d.has("duel") and favor.is_empty():
 		var duel: Dictionary = d["duel"]
-		if _beaten.has(d["id"]) and d.has("after"):
+		var own := stars.ask(str(d["id"]), _beaten.has(d["id"])) if stars != null else ""
+		if own != "":
+			_dlg_lines.append(Loc.t(own))
+		elif _beaten.has(d["id"]) and d.has("after"):
 			pass
 		elif _beaten.has(d["id"]):
 			_dlg_lines.append("Rematch? I won't go easy on you this time.")
@@ -2115,6 +2134,7 @@ func _debug() -> void:
 			await get_tree().create_timer(0.5).timeout
 			_update_near()
 			_talk()
+			print("TALK ", who, ": ", _dlg_lines)
 			for i in 2:
 				await get_tree().create_timer(0.4).timeout
 				_advance()
@@ -2155,6 +2175,9 @@ func _debug() -> void:
 		elif a == "--map":
 			await get_tree().create_timer(0.6).timeout
 			_toggle_map()
+		elif a.begins_with("--map="):
+			await get_tree().create_timer(0.6).timeout
+			extras.open_guide(a.substr(6))
 		elif a.begins_with("--at="):
 			var parts := a.trim_prefix("--at=").split(",")
 			await get_tree().create_timer(0.3).timeout
@@ -2295,7 +2318,11 @@ func _debug() -> void:
 			get_tree().quit()
 		elif a.begins_with("--tour="):
 			# Several free-camera shots in one run: --tour=name:x,y,z,lx,ly,lz;name2:...
-			await get_tree().create_timer(1.2).timeout
+			var tour_wait := 1.2
+			for arg3 in OS.get_cmdline_user_args():
+				if arg3.begins_with("--tour-wait="):
+					tour_wait = float(arg3.trim_prefix("--tour-wait="))
+			await get_tree().create_timer(tour_wait).timeout
 			var tcam := Camera3D.new()
 			tcam.far = 700.0
 			tcam.fov = 62.0

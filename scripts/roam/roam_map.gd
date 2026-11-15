@@ -3,7 +3,7 @@ extends Control
 ## The city map: a small one in the corner while you walk, and a big one on M.
 
 const LANDMARKS := [
-	{"name": "Kame Game", "pos": Vector2(-10, -19.5), "size": Vector2(9.5, 6), "color": Color("ffd166"), "enter": true},
+	{"name": "Kame Game", "pos": Vector2(-10, -19.5), "size": Vector2(9.5, 6), "color": Color("ffd166"), "enter": true, "shop": true},
 	{"name": "KaibaCorp", "pos": Vector2(0, -62), "size": Vector2(16, 12), "color": Color("7cc4ff"), "enter": true},
 	{"name": "Duel Dome", "pos": Vector2(-50, 0), "size": Vector2(16, 22), "color": Color("b48cff")},
 	{"name": "Domino High", "pos": Vector2(50, 0), "size": Vector2(14, 24), "color": Color("ffe9a8")},
@@ -28,8 +28,10 @@ var inside := ""
 var goal := Vector2.INF        # where the current objective is (INF = none)
 var inside_at := Vector2(-10, -19.5)   # where the building you are in stands on the map
 var inside_name := "Kame Game"
-var npcs: Array = []   # [{pos: Vector2, state: "duel"|"beaten"|"talk", name}]
+var npcs: Array = []   # [{pos: Vector2, state: "duel"|"beaten"|"talk", name, char, node}]
 var accent := Color("2de2e6")
+var world := ""        # which world this is a map of (the picture from above is looked up by it)
+var _round: ShaderMaterial
 var _font: Font
 var _bold: Font
 
@@ -42,10 +44,83 @@ func _ready() -> void:
 
 
 func _process(_d: float) -> void:
+	if not full and _round == null and MapPhoto.ready_for(world):
+		# The picture is in: the small map becomes a round window onto it.
+		_round = ShaderMaterial.new()
+		var sh := Shader.new()
+		sh.code = MapArt.ROUND_SHADER
+		_round.shader = sh
+		_round.set_shader_parameter("size", size)
+		material = _round
+		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	queue_redraw()
 
 
+## The small map once the picture of the world is in: a round window around you. Icons only,
+## no names: a pin per place (gold star = card shop, white middle = a door you can enter),
+## a dot per person, a portrait for each main character, the goal, and you.
+func _draw_window() -> void:
+	var c := size / 2.0
+	var rad := minf(size.x, size.y) / 2.0
+	var scale := 4.0
+	var origin := player_pos if inside == "" else inside_at
+	var to_map := func(w: Vector2) -> Vector2: return c + (w - origin) * scale
+	var ext := size / scale
+	MapArt.photo(self, Rect2(Vector2.ZERO, size), Rect2(origin - ext / 2.0, ext))
+	draw_rect(Rect2(Vector2.ZERO, size), Color(MapArt.INK, 0.12))
+	for l in layout.get("landmarks", LANDMARKS):
+		if l.get("park", false):
+			continue
+		var p: Vector2 = to_map.call(l["pos"])
+		if p.distance_to(c) > rad + 10.0:
+			continue
+		MapArt.pin(self, p, l["color"], l.get("shop", false), l.get("enter", false), 5.5)
+	var faces: Array = []
+	for n in npcs:
+		var at: Vector2 = n["pos"]
+		var node = n.get("node")
+		if node != null and is_instance_valid(node):
+			at = Vector2((node as Node3D).position.x, (node as Node3D).position.z)
+		var p: Vector2 = to_map.call(at)
+		if p.distance_to(c) > rad + 16.0:
+			continue
+		if str(n.get("char", "")) != "":
+			faces.append([p, str(n["char"])])
+			continue
+		var col := Color("ff5a6e") if n["state"] == "duel" else (Color("5aff9a") if n["state"] == "beaten" else Color(1, 1, 1, 0.9))
+		draw_circle(p, 4.6, Color(0, 0, 0, 0.7))
+		draw_circle(p, 3.3, col)
+	for f in faces:
+		MapArt.token(self, f[0], 12.0, f[1], Color("ffd166"))
+	# The goal: a gold diamond, held at the rim when it is further off than the window shows.
+	if goal != Vector2.INF:
+		var gp: Vector2 = to_map.call(goal)
+		var off := gp.distance_to(c) > rad - 20.0
+		if off:
+			gp = c + (gp - c).normalized() * (rad - 20.0)
+		var pulse := 1.0 + 0.18 * sin(Time.get_ticks_msec() / 180.0)
+		var gr := 8.0 * pulse
+		var gold := Color("ffd166")
+		draw_colored_polygon(PackedVector2Array([gp + Vector2(0, -gr - 3), gp + Vector2(gr + 3, 0), gp + Vector2(0, gr + 3), gp + Vector2(-gr - 3, 0)]), Color(0, 0, 0, 0.8))
+		draw_colored_polygon(PackedVector2Array([gp + Vector2(0, -gr), gp + Vector2(gr, 0), gp + Vector2(0, gr), gp + Vector2(-gr, 0)]), gold)
+		if not off:
+			draw_arc(gp, gr * 2.0 * pulse, 0, TAU, 24, Color(gold, 0.5), 2.0, true)
+	var me: Vector2 = to_map.call(player_pos if inside == "" else inside_at + Vector2(0, 2.5))
+	MapArt.you(self, me, Vector2(sin(player_yaw), cos(player_yaw)) * -1.0, 9.0, accent)
+	# The rim.
+	draw_arc(c, rad - 9.0, 0, TAU, 72, Color(MapArt.INK, 0.22), 14.0, true)
+	draw_arc(c, rad - 3.0, 0, TAU, 72, Color(MapArt.INK, 0.95), 6.0, true)
+	draw_arc(c, rad - 3.0, 0, TAU, 72, Color(accent, 0.8), 2.0, true)
+	draw_circle(Vector2(c.x, 15.0), 11.5, Color(MapArt.INK, 0.95))
+	draw_arc(Vector2(c.x, 15.0), 11.5, 0, TAU, 24, Color(accent, 0.8), 1.5, true)
+	draw_string(_bold, Vector2(c.x - 5.5, 21.0), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+	MapArt.tag(self, _font, Vector2(c.x, size.y - 40.0), Loc.t("M  map"), 14, Color(1, 1, 1, 0.85))
+
+
 func _draw() -> void:
+	if not full and MapPhoto.ready_for(world):
+		_draw_window()
+		return
 	var r := Rect2(Vector2.ZERO, size)
 	var bg := StyleBoxFlat.new()
 	bg.bg_color = Color(0.042, 0.0676, 0.136, 0.93 if full else 0.8)
