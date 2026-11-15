@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.14
+
+**Friendship and rivalry.** Each of the 14 main characters now keeps track of how well they know you. Free Roam, every world.
+
+- **Five steps.** The friendly ones call it friendship (Stranger, Acquaintance, Friend, Good friend, Best friend), the proud ones a rivalry (Stranger, On their radar, Rival, Fierce rival, Sworn rival). Same ladder, two names.
+- **What moves it:** the first talk of the day with them (+2), a duel with them (+5 if you win, +3 if you lose: a duel is a duel), standing there for their duel with somebody else (+3 with each), turning up when they invited you (+10). Standing them up costs 3.
+- **What each step brings:** 100 Duel Points, then a card from their deck, then 300 Duel Points and another card, and at the top their own lead card and 500 Duel Points. The day they start calling you a friend or a rival they tell you so, and again at the top. From Friend or Rival up they spot you from further away and invite you more often.
+- **Where you see it:** in Who's Where, under each name: a pip per step, the name of the step you are on, and a bar toward the next. A line on screen when it goes up by more than a talk.
+- 28 more lines, English and Spanish.
+
+Not done or not checked: nothing shows the meter while you are talking to them (only the map does), and there is no way to lose a step once you have it. Not played on a Mac. Next is 0.33.15: people watching on every duel field.
+
 ## What is in 0.33.13
 
 **The main characters duel each other, and come to you.** Free Roam, every world.

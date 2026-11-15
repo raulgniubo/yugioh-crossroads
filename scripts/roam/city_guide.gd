@@ -469,6 +469,33 @@ func _who_row(e: Dictionary) -> Control:
 	var far := UITheme.label("%d m" % int(_dist(e)), 15, UITheme.TEXT_DIM)
 	far.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(far)
+	# How well they know you: the step you are on and how far the next one is.
+	if e.has("who") and (e["who"] as Dictionary).has("rank"):
+		var w: Dictionary = e["who"]
+		var bar := Control.new()
+		bar.custom_minimum_size = Vector2(250, 16)
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var rank_text := str(w["rank_name"])
+		var rank := int(w["rank"])
+		var top_rank := int(w["ranks"])
+		var frac := clampf(float(w["frac"]), 0.0, 1.0)
+		bar.draw.connect(func():
+			var font := UITheme.semi_font()
+			var gold := UITheme.GOLD
+			# One pip a step, filled up to where you stand, and a thin bar toward the next.
+			for k in top_rank:
+				var c := Vector2(6.0 + k * 13.0, 8.0)
+				bar.draw_circle(c, 5.0, Color(gold, 0.25))
+				if k < rank:
+					bar.draw_circle(c, 5.0, gold)
+			var x0 := 6.0 + top_rank * 13.0 + 2.0
+			bar.draw_string(font, Vector2(x0, 13.0), rank_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, gold)
+			var x1 := x0 + font.get_string_size(rank_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 10.0
+			if rank < top_rank and x1 < bar.size.x - 30.0:
+				var wd := minf(90.0, bar.size.x - x1 - 4.0)
+				bar.draw_rect(Rect2(x1, 6.0, wd, 4.0), Color(1, 1, 1, 0.14))
+				bar.draw_rect(Rect2(x1, 6.0, wd * frac, 4.0), gold))
+		v.add_child(bar)
 	# Where, what they are doing, and (dimmer) where next.
 	var lines := _who_lines(e)
 	for i in lines.size():
@@ -767,12 +794,15 @@ func _draw_map() -> void:
 		_map.draw_colored_polygon(PackedVector2Array([wp + Vector2(0, -gr - 3), wp + Vector2(gr + 3, 0), wp + Vector2(0, gr + 3), wp + Vector2(-gr - 3, 0)]), Color(0, 0, 0, 0.8))
 		_map.draw_colored_polygon(PackedVector2Array([wp + Vector2(0, -gr), wp + Vector2(gr, 0), wp + Vector2(0, gr), wp + Vector2(-gr, 0)]), Color("ffd166"))
 	# Today's duels between them: crossed swords where it happens, with the hour.
+	var marked: Array = []
 	for m in _meets():
 		if str(m["state"]) == "over":
 			continue
 		var mc := _to_map(m["mid"])
-		if not frame.has_point(mc):
+		# Two duels at the same spot today: the mark is for the next one.
+		if not frame.has_point(mc) or marked.has(m["mid"]):
 			continue
+		marked.append(m["mid"])
 		var live: bool = str(m["state"]) == "now"
 		var pr := 15.0 + (2.0 * sin(Time.get_ticks_msec() / 160.0) if live else 0.0)
 		_map.draw_circle(mc, pr + 2.5, Color("ff5a7a"))

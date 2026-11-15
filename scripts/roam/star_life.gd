@@ -165,6 +165,12 @@ const ASK := {
 	"kite": ["Duel me. I will take what I need from it.", "Again. I have studied your deck since."],
 }
 
+## How well they know you, in points: a talk a day, duels with them, watching their duels,
+## turning up when they ask. Each step up brings something (see _bond_check). The friendly ones
+## call it friendship, the proud ones a rivalry: the same ladder under two names.
+const BOND_STEPS := [0, 12, 35, 70, 110]
+const BOND_NAMES := [["Stranger", "Stranger"], ["Acquaintance", "On their radar"], ["Friend", "Rival"], ["Good friend", "Fierce rival"], ["Best friend", "Sworn rival"]]
+
 var scene: Node
 var _stars: Array = []
 var _cam: StoryCamera
@@ -204,8 +210,69 @@ static func note_duel(who: String, won: bool) -> void:
 	var m := _load_mem()
 	var e: Dictionary = m.get(who, {})
 	e["fresh"] = "won" if won else "lost"
+	e["bond"] = int(e.get("bond", 0)) + (5 if won else 3)       # a duel is a duel: they think more of you either way
 	m[who] = e
 	_save_mem(m)
+
+
+static func rank_of(points: int) -> int:
+	var r := 0
+	for i in BOND_STEPS.size():
+		if points >= int(BOND_STEPS[i]):
+			r = i
+	return r
+
+
+static func rank_name(id: String, rank: int) -> String:
+	return str(BOND_NAMES[clampi(rank, 0, BOND_NAMES.size() - 1)][1 if id in ALOOF else 0])
+
+
+## Points with somebody go up (or down a little). Loud ones show a line on screen.
+func _bond(id: String, n: int, loud := false) -> void:
+	if not TALK.has(id) or n == 0:
+		return
+	var e: Dictionary = _mem.get(id, {})
+	e["bond"] = maxi(0, int(e.get("bond", 0)) + n)
+	_mem[id] = e
+	_save_mem(_mem)
+	if loud and n > 0:
+		Router.toast(Loc.t("Bond with %s +%d") % [_short(id), n])
+	_bond_check(id)
+
+
+## A step up the ladder: say so and hand over what comes with it.
+##   1: 100 Duel Points   2: a card from their deck   3: 300 Duel Points and a card
+##   4: their own lead card and 500 Duel Points
+func _bond_check(id: String) -> void:
+	var e: Dictionary = _mem.get(id, {})
+	var have := int(e.get("rank", 0))
+	var now := rank_of(int(e.get("bond", 0)))
+	if now <= have:
+		return
+	for r in range(have + 1, now + 1):
+		Router.toast(Loc.t("%s now sees you as: %s") % [_short(id), Loc.t(rank_name(id, r))])
+		var dp: int = [0, 100, 0, 300, 500][r]
+		var card := 0
+		if r == 2 or r == 3:
+			card = _gift_from(id)
+		elif r == 4:
+			var key := str((_star(id).get("d", {}) as Dictionary).get("char", id))
+			card = int(Characters.get_char(key).get("ace", 0))
+			if card == 0:
+				card = _gift_from(id)
+		if dp > 0:
+			Collection.dp += dp
+			Router.toast(Loc.t("+%d Duel Points") % dp)
+		if card != 0:
+			Collection.add(card)
+			Router.toast(Loc.t("%s gave you %s.") % [_short(id), Loc.t(str(CardData.get_card(card).get("name", "")))])
+		if r == 2 or r == 4:
+			e["rank_say"] = r
+	e["rank"] = now
+	_mem[id] = e
+	_save_mem(_mem)
+	Collection.save()
+	Sfx.play("quest", -4.0)
 
 
 func setup(roam: Node) -> void:
@@ -218,6 +285,13 @@ func setup(roam: Node) -> void:
 		return
 	for a in OS.get_cmdline_user_args():
 		# --stars-streak=N (testing): as if you had won N in a row, so somebody comes for you.
+		# --stars-bond=id:points (testing): set how well somebody knows you.
+		if a.begins_with("--stars-bond="):
+			var bp := a.substr(13).split(":")
+			if bp.size() == 2:
+				var be: Dictionary = _mem.get(bp[0], {})
+				be["bond"] = int(bp[1])
+				_mem[bp[0]] = be
 		if a.begins_with("--stars-streak="):
 			Collection.record["streak"] = int(a.substr(15))
 			_here_for = 20.0
@@ -244,6 +318,10 @@ func setup(roam: Node) -> void:
 		fig.rotation.y = float(s["stops"][i][2])
 		_start_doing(s, str(s["stops"][i][3]))
 	_build_grid.call_deferred()
+	# A duel just now may have taken you a step up with somebody: tell it once you are back.
+	get_tree().create_timer(2.5).timeout.connect(func():
+		for st in _stars:
+			_bond_check(str(st["id"])))
 
 
 func _build_grid() -> void:
@@ -726,10 +804,12 @@ func _act(s: Dictionary, delta: float) -> void:
 
 ## You come by: they call out (or, the ones who keep to themselves, give you a nod).
 func _hail(s: Dictionary, dist: float) -> void:
-	if dist > 8.0 or float(s["hail"]) > 0.0 or scene._talking or scene.extras == null:
+	var id := str(s["id"])
+	# Somebody who counts you a friend (or a rival) spots you from further off.
+	var reach := 12.0 if rank_of(int((_mem.get(id, {}) as Dictionary).get("bond", 0))) >= 2 else 8.0
+	if dist > reach or float(s["hail"]) > 0.0 or scene._talking or scene.extras == null:
 		return
 	var fig: RoamFigure = s["fig"]
-	var id := str(s["id"])
 	s["hail"] = randf_range(100.0, 150.0)
 	if str(s["doing"]) == "nap":
 		if dist < 4.5:
@@ -811,7 +891,13 @@ func where() -> Array:
 				doing = Loc.t("About to duel %s") % _short(other)
 		if str(s["state"]) == "seek":
 			doing = Loc.t("Looking for you")
+		var pts := int((_mem.get(str(s["id"]), {}) as Dictionary).get("bond", 0))
+		var rank := rank_of(pts)
+		var frac := 1.0
+		if rank + 1 < BOND_STEPS.size():
+			frac = float(pts - int(BOND_STEPS[rank])) / float(int(BOND_STEPS[rank + 1]) - int(BOND_STEPS[rank]))
 		out.append({"id": str(s["id"]), "fig": fig, "d": s["d"], "walking": walking,
+				"bond": pts, "rank": rank, "rank_name": Loc.t(rank_name(str(s["id"]), rank)), "frac": frac, "ranks": BOND_STEPS.size() - 1,
 				"doing": doing, "stop": stops[i][1],
 				"next_min": int(nxt[0]), "next": nxt[1], "one_stop": stops.size() < 2})
 	return out
@@ -887,10 +973,21 @@ func lines(id: String, usual: Array) -> Array:
 		open = _line(id, "hello")
 	if ace != 0:
 		m["ace"] = ace
+	var first_today := int(m.get("day", -1)) != today
 	m["day"] = today
 	m["talks"] = int(m.get("talks", 0)) + 1
+	# The day they start calling you a friend or a rival, they say so before anything else.
+	var said := int(m.get("rank_say", 0))
+	if said != 0:
+		m.erase("rank_say")
+		var word := _line(id, "bond%d" % said)
+		if word != "":
+			out.append(word)
+			open = ""
 	_mem[id] = m
 	_save_mem(_mem)
+	if first_today:
+		_bond(id, 2)
 	if open != "":
 		out.append(open)
 	var doing := _line(id, "do", "sky" if was_nap else str(s["doing"]))
@@ -1020,6 +1117,9 @@ func _bout_done(key: String, w: int, watched: bool) -> void:
 	_save_mem(_mem)
 	Router.toast(Loc.t("%s wins the duel against %s!") % [_short(str(win["id"])), _short(str(lose["id"]))])
 	if watched:
+		# You stood there for it: both of them noticed.
+		_bond(str(win["id"]), 3, true)
+		_bond(str(lose["id"]), 3, true)
 		Collection.dp += 30
 		Collection.daily_bump("watch")
 		Collection.save()
@@ -1196,17 +1296,20 @@ func _invite_talk(s: Dictionary, talks: int, was_nap: bool) -> Array:
 			Router.toast(Loc.t("+%d Duel Points") % 120)
 			Collection.save()
 			Sfx.play("quest", -4.0)
+			_bond(id, 10, true)
 			return [true, _line(id, "met")]
 		if int(inv.get("day", -1)) < _day or now > until:
 			_mem.erase("_invite")
 			_save_mem(_mem)
+			_bond(id, -3)
 			return [false, _line(id, "missed")]
 		return []
 	if not inv.is_empty() and int(inv.get("day", -1)) >= _day:
 		return []                    # somebody else is expecting you today
 	# --stars-invite (testing): ask right away.
 	var force := "--stars-invite" in OS.get_cmdline_user_args()
-	if not force and (talks < 2 or was_nap or int(_mem.get("_invite_day", -1)) == _day or randf() > 0.65):
+	var close := rank_of(int((_mem.get(id, {}) as Dictionary).get("bond", 0))) >= 2
+	if not force and (talks < 2 or was_nap or int(_mem.get("_invite_day", -1)) == _day or randf() > (0.9 if close else 0.6)):
 		return []
 	# A later stop of theirs today, far enough off to be worth a wait.
 	var stops: Array = s["stops"]
