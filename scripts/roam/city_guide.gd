@@ -265,7 +265,7 @@ func _who_lines(e: Dictionary) -> Array:
 	if w["walking"]:
 		first = [Loc.t("Walking to %s") % Loc.t(str(_place_at(w["stop"])[0]))]
 	else:
-		first = [_at_text(p), Loc.t(str(w["doing"]))]
+		first = [_at_text(p), str(w["doing"])]
 	if w["one_stop"]:
 		return first + [Loc.t(str(e["sub"]))]
 	var m := int(w["next_min"])
@@ -317,6 +317,12 @@ func _fill() -> void:
 		"who":
 			var rows: Array = _entries.filter(func(e): return e["kind"] == "person" and e.get("star", false))
 			rows.sort_custom(func(a, b): return _dist(a) < _dist(b))
+			# The duels they have with each other today come first.
+			var meets := _meets()
+			if not meets.is_empty():
+				_list.add_child(UITheme.label(Loc.t("TODAY'S DUELS"), 15, UITheme.GOLD, UITheme.semi_font()))
+				for m in meets:
+					_list.add_child(_meet_row(m))
 			if rows.is_empty():
 				var none := UITheme.label("Nobody you know by name is out here right now. Try another hour, or another world.", 19, UITheme.TEXT_DIM)
 				none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -489,6 +495,50 @@ func _who_row(e: Dictionary) -> Control:
 		extras.fast_travel(extras.reach_point(node.position if is_instance_valid(node) else e["pos"]), str(e["name"]))
 		close())
 	h.add_child(go)
+	return pc
+
+
+func _meets() -> Array:
+	var life = scene.get("stars")
+	if life == null or not is_instance_valid(life) or scene.story != null or scene.quest != null:
+		return []
+	return life.meets_today()
+
+
+func _meet_state(m: Dictionary) -> String:
+	match str(m["state"]):
+		"now":
+			return Loc.t("On now")
+		"soon":
+			return Loc.t("About to start")
+		"over":
+			return Loc.t("Over: %s won") % str(m["winner"])
+	return Loc.t("Later today")
+
+
+## One of today's duels between two main characters: when, who, where, and how it stands.
+func _meet_row(m: Dictionary) -> Control:
+	var pc := PanelContainer.new()
+	var live: bool = str(m["state"]) in ["now", "soon"]
+	pc.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.16, 0.07, 0.09, 0.95) if live else Color(0.062, 0.098, 0.174, 0.9), 14,
+			Color("ff5a7a") if live else Color(1, 1, 1, 0.07)))
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
+	pc.add_child(h)
+	var v := VBoxContainer.new()
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.add_theme_constant_override("separation", 1)
+	h.add_child(v)
+	var at := int(m["at"])
+	v.add_child(UITheme.label("%02d:%02d   %s  vs  %s" % [at / 60, at % 60, str(m["a"]), str(m["b"])], 21, Color.WHITE, UITheme.semi_font()))
+	v.add_child(UITheme.label("%s  ·  %s" % [Loc.t(str(_place_at(m["mid"])[0])), _meet_state(m)], 15, UITheme.TEXT if live else UITheme.TEXT_DIM))
+	if str(m["state"]) != "over":
+		var guide := Button.new()
+		guide.text = "Guide me"
+		guide.pressed.connect(func():
+			extras.set_waypoint(m["mid"], "%s vs %s" % [str(m["a"]), str(m["b"])])
+			close())
+		h.add_child(guide)
 	return pc
 
 
@@ -716,6 +766,23 @@ func _draw_map() -> void:
 		var gr := 11.0 * pulse
 		_map.draw_colored_polygon(PackedVector2Array([wp + Vector2(0, -gr - 3), wp + Vector2(gr + 3, 0), wp + Vector2(0, gr + 3), wp + Vector2(-gr - 3, 0)]), Color(0, 0, 0, 0.8))
 		_map.draw_colored_polygon(PackedVector2Array([wp + Vector2(0, -gr), wp + Vector2(gr, 0), wp + Vector2(0, gr), wp + Vector2(-gr, 0)]), Color("ffd166"))
+	# Today's duels between them: crossed swords where it happens, with the hour.
+	for m in _meets():
+		if str(m["state"]) == "over":
+			continue
+		var mc := _to_map(m["mid"])
+		if not frame.has_point(mc):
+			continue
+		var live: bool = str(m["state"]) == "now"
+		var pr := 15.0 + (2.0 * sin(Time.get_ticks_msec() / 160.0) if live else 0.0)
+		_map.draw_circle(mc, pr + 2.5, Color("ff5a7a"))
+		_map.draw_circle(mc, pr, MapArt.INK)
+		for sx: float in [-1.0, 1.0]:
+			_map.draw_line(mc + Vector2(-7 * sx, 7), mc + Vector2(7 * sx, -7), Color.WHITE, 2.5, true)
+			_map.draw_line(mc + Vector2(-7 * sx, 7) + Vector2(4 * sx, 1), mc + Vector2(-7 * sx, 7) + Vector2(-1 * sx, -4), Color("ffd166"), 2.5, true)
+		var mat := int(m["at"])
+		var mt := (Loc.t("On now") if live else "%02d:%02d" % [mat / 60, mat % 60]) + "   %s vs %s" % [str(m["a"]), str(m["b"])]
+		MapArt.tag(_map, font, mc + Vector2(0, pr + 6.0), mt, 15, Color("ffd0d8"), Color(0, 0, 0, 0), live)
 	# The main characters, on top.
 	for f in faces:
 		var e: Dictionary = f[0]

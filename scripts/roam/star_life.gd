@@ -48,7 +48,7 @@ const ACTS := {
 	"cards": ["read"], "phone": ["phone", "phone", "listen"], "eat": ["eat"],
 	"drink": ["eat"], "practice": ["challenge", "challenge", "stomp", "cheer"], "arms": ["armsx", "armsx", "listen"],
 	"sky": ["skygaze"], "tinker": ["tinker"], "disk": ["disk"], "cheer": ["cheer", "cheer2", "agree"], "chat": ["chat", "agree", "listen"],
-	"nap": [],
+	"nap": [], "duel": ["disk", "armsx", "disk"],
 }
 ## The motions that are the business itself (they run on, with only a breath between).
 const STEADY := ["read", "eat", "tinker", "disk", "armsx", "skygaze"]
@@ -175,6 +175,15 @@ var _tick := 0.0
 ## on it, so they walk round houses, fountains and the duel ring instead of through them.
 var _grid: AStarGrid2D
 var _grid_ready := false
+var _district := "domino"
+var _day := 0
+## The duel two of them are having right now: {key, a, b, d (the show), duels (who runs it)}.
+var _show := {}
+var _told := {}                # duels already announced this visit
+var _slow := 0.0               # the things that are looked at twice a second, not every frame
+var _here_for := 0.0           # seconds since you arrived (nobody comes looking for you at the door)
+var _dare: Dictionary = {}     # whoever is on the way to challenge you
+const SEEK := 2.3
 
 
 static func _load_mem() -> Dictionary:
@@ -202,9 +211,17 @@ static func note_duel(who: String, won: bool) -> void:
 func setup(roam: Node) -> void:
 	scene = roam
 	_mem = _load_mem()
-	var here: Dictionary = DAYS.get(str(Router.roam.get("district", "domino")), {})
+	_district = str(Router.roam.get("district", "domino"))
+	_day = WorldClock.day
+	var here: Dictionary = DAYS.get(_district, {})
 	if here.is_empty():
 		return
+	for a in OS.get_cmdline_user_args():
+		# --stars-streak=N (testing): as if you had won N in a row, so somebody comes for you.
+		if a.begins_with("--stars-streak="):
+			Collection.record["streak"] = int(a.substr(15))
+			_here_for = 20.0
+			_mem.erase("_dare")
 	_cam = StoryCamera.new(scene)
 	for n in scene._npcs:
 		var d: Dictionary = n[0]
@@ -212,8 +229,8 @@ func setup(roam: Node) -> void:
 		if not here.has(id):
 			continue
 		var fig: RoamFigure = n[1]
-		var s := {"id": id, "fig": fig, "d": d, "stops": here[id], "at": -1, "state": "there", "path": [], "doing": "", "act": 2.0, "hail": 0.0,
-				"prop": null, "zzz": null, "stuck": 0.0, "body": null, "spots": {}}
+		var s := {"id": id, "fig": fig, "d": d, "stops": StarMeets.day_with(_district, id, here[id], _day), "base": here[id], "at": -1, "state": "there",
+				"path": [], "doing": "", "act": 2.0, "hail": 0.0, "prop": null, "zzz": null, "stuck": 0.0, "body": null, "spots": {}}
 		for c in fig.get_children():
 			if c is PhysicsBody3D:
 				s["body"] = c
@@ -413,6 +430,13 @@ func _start_doing(s: Dictionary, doing: String) -> void:
 	fig.set_speed(0.0)
 	_drop(s)
 	match doing:
+		"duel":
+			# On their side of the field, waiting for the other one. If today's duel is already
+			# played they just stand and talk it over.
+			if _meet_played(s):
+				s["doing"] = "chat"
+			else:
+				fig.watch = null
 		"nap":
 			# Flat on the grass, hands behind the head by the look of it, and not to be woken.
 			fig.watch = null
@@ -536,6 +560,9 @@ func _process(delta: float) -> void:
 		return
 	var player: Node3D = scene._player
 	var cam := get_viewport().get_camera_3d()
+	if WorldClock.day != _day:
+		_new_day()
+	_here_for += delta
 	for s in _stars:
 		var fig: RoamFigure = s["fig"]
 		if not is_instance_valid(fig):
@@ -547,7 +574,11 @@ func _process(delta: float) -> void:
 			continue
 		var dist := fig.global_position.distance_to(player.global_position)
 		match str(s["state"]):
+			"seek":
+				_seek(s, delta, dist)
 			"there":
+				if _in_show(s):
+					continue            # the duel has them (StreetDuels moves them) until it is decided
 				var i := _stop_now(s["stops"])
 				if i != int(s["at"]) and not scene._overlay_open and _grid_ready:
 					_leave(s, i, dist)
@@ -556,6 +587,30 @@ func _process(delta: float) -> void:
 				_hail(s, dist)
 			"walk":
 				_walk(s, delta, dist, cam)
+	_slow -= delta
+	if _slow <= 0.0:
+		_slow = 0.5
+		_meets_step()
+		_dare_step()
+		_invite_step()
+
+
+## Midnight: tomorrow's duels are other pairs, so everybody's day is put together again.
+func _new_day() -> void:
+	_day = WorldClock.day
+	var here: Dictionary = DAYS.get(_district, {})
+	for s in _stars:
+		var keep: Vector3 = s["stops"][clampi(int(s["at"]), 0, (s["stops"] as Array).size() - 1)][1]
+		s["stops"] = StarMeets.day_with(_district, str(s["id"]), here.get(s["id"], s["base"]), _day)
+		s["spots"] = {}
+		# The same place under its number in the new day, so nobody sets off for where they are.
+		var stops: Array = s["stops"]
+		for i in stops.size():
+			if (stops[i][1] as Vector3).distance_to(keep) < 0.1:
+				s["at"] = i
+		var now := _stop_now(stops)
+		if (stops[now][1] as Vector3).distance_to(keep) < 0.1:
+			s["at"] = now
 
 
 ## Time to go: say so if you are near enough to hear, get up, and set off.
@@ -568,8 +623,16 @@ func _leave(s: Dictionary, i: int, dist: float) -> void:
 	if dist < 9.0 and scene.extras:
 		scene.extras._say_over(fig, _line(str(s["id"]), "leave"), 2.6)
 	s["at"] = i
+	_set_off(s, _spot(s, i))
+	if "--stars-check" in OS.get_cmdline_user_args():
+		print("STAR ", s["id"], " leaves at ", int(WorldClock.minutes), " for stop ", i, " legs ", (s["path"] as Array).size())
+
+
+## Off they go to a spot: round the houses if there is a way on foot, else out of sight and in
+## again at the far end.
+func _set_off(s: Dictionary, to: Vector3) -> void:
+	var fig: RoamFigure = s["fig"]
 	_skip_for(s)
-	var to := _spot(s, i)
 	var from := fig.position
 	var way := _route(from, to)
 	var reach := _clear_until(from, to)
@@ -588,8 +651,6 @@ func _leave(s: Dictionary, i: int, dist: float) -> void:
 		s["path"] = [from + dir * out_len, "jump", to - dir * in_len, to]
 	s["state"] = "walk"
 	s["stuck"] = 0.0
-	if "--stars-check" in OS.get_cmdline_user_args():
-		print("STAR ", s["id"], " leaves at ", int(WorldClock.minutes), " for stop ", i, " legs ", (s["path"] as Array).size())
 
 
 func _walk(s: Dictionary, delta: float, dist: float, cam: Camera3D) -> void:
@@ -690,6 +751,8 @@ func _hail(s: Dictionary, dist: float) -> void:
 func _line(id: String, kind: String, sub := "") -> String:
 	var t: Dictionary = TALK.get(id, {})
 	var got = t.get(kind)
+	if got == null:
+		got = (StarMeets.MORE.get(id, {}) as Dictionary).get(kind)
 	if sub != "" and got is Dictionary:
 		got = (got as Dictionary).get(sub, "")
 	var text := ""
@@ -733,8 +796,23 @@ func where() -> Array:
 		var i := clampi(int(s["at"]), 0, stops.size() - 1)
 		var nxt: Array = stops[(i + 1) % stops.size()]
 		var walking := str(s["state"]) == "walk"
+		var doing := Loc.t(str(DOING_TEXT.get(str(stops[i][3]), "Hanging out")))
+		if str(stops[i][3]) == "duel":
+			# Who it is against: the other name in today's duel at this hour.
+			var other := ""
+			for m in StarMeets.today(_district, _day):
+				if int(m["at"]) == int(stops[i][0]):
+					other = str(m["b"]) if str(m["a"]) == str(s["id"]) else str(m["a"])
+			if _in_show(s):
+				doing = Loc.t("Dueling %s") % _short(other)
+			elif _meet_played(s):
+				doing = Loc.t("Talking over the duel with %s") % _short(other)
+			else:
+				doing = Loc.t("About to duel %s") % _short(other)
+		if str(s["state"]) == "seek":
+			doing = Loc.t("Looking for you")
 		out.append({"id": str(s["id"]), "fig": fig, "d": s["d"], "walking": walking,
-				"doing": str(DOING_TEXT.get(str(stops[i][3]), "Hanging out")), "stop": stops[i][1],
+				"doing": doing, "stop": stops[i][1],
 				"next_min": int(nxt[0]), "next": nxt[1], "one_stop": stops.size() < 2})
 	return out
 
@@ -762,6 +840,12 @@ func lines(id: String, usual: Array) -> Array:
 			s = e
 	if s.is_empty():
 		return usual
+	if _in_show(s):
+		return [_line(id, "busy")]
+	if str(s["state"]) == "seek":
+		# They came for a duel: that is all they have to say.
+		s["talked"] = true
+		return [_line(id, "dare")]
 	var m: Dictionary = _mem.get(id, {})
 	var out: Array = []
 	var was_nap := str(s["doing"]) == "nap"
@@ -777,6 +861,13 @@ func lines(id: String, usual: Array) -> Array:
 	if str(m.get("fresh", "")) != "":
 		open = _line(id, "beat_me" if str(m["fresh"]) == "won" else "beat_you")
 		m["fresh"] = ""
+	elif int((m.get("bout", {}) as Dictionary).get("day", -1)) == today and not bool((m["bout"] as Dictionary).get("told", false)):
+		# Their own duel today: they tell you how it went.
+		var bt: Dictionary = m["bout"]
+		open = _line(id, "bout_won" if bool(bt.get("won", false)) else "bout_lost")
+		if open.contains("%s"):
+			open = open % _short(str(bt.get("vs", "")))
+		bt["told"] = true
 	elif streak >= 3 and int(m.get("streak_day", -1)) != today:
 		open = _line(id, "streak")
 		m["streak_day"] = today
@@ -805,7 +896,379 @@ func lines(id: String, usual: Array) -> Array:
 	var doing := _line(id, "do", "sky" if was_nap else str(s["doing"]))
 	if doing != "" and not was_nap:
 		out.append(doing)
+	var more := _invite_talk(s, int(m.get("talks", 0)), was_nap)
+	if more.size() == 2 and bool(more[0]):
+		return [more[1]]                 # you came to meet them: that is the whole talk
+	if more.size() == 2:
+		out.append(more[1])
 	return out if not out.is_empty() else usual
+
+
+# ------------------------------------------------------------------ their own duels
+
+func _star(id: String) -> Dictionary:
+	for s in _stars:
+		if str(s["id"]) == id and is_instance_valid(s["fig"]):
+			return s
+	return {}
+
+
+## The name people call them by.
+func _short(id: String) -> String:
+	return id.capitalize()
+
+
+func _meet_key(at: int) -> String:
+	return "%s:%d:%d" % [_district, _day, at]
+
+
+## Has the duel this star is standing at already been played today?
+func _meet_played(s: Dictionary) -> bool:
+	var at := int(s["stops"][int(s["at"])][0])
+	return (_mem.get("_bouts", {}) as Dictionary).has(_meet_key(at))
+
+
+func _in_show(s: Dictionary) -> bool:
+	if _show.is_empty():
+		return false
+	if not is_instance_valid(_show["duels"]) or not (_show["duels"] as StreetDuels).bout_on(_show["d"]):
+		return false
+	return is_same(_show["a"], s) or is_same(_show["b"], s)
+
+
+## Are they in the middle of a duel of their own? (No challenging them now.)
+func busy(id: String) -> bool:
+	var s := _star(id)
+	return not s.is_empty() and _in_show(s)
+
+
+func _duels_node() -> StreetDuels:
+	var life = scene.get("life")
+	if life == null or not is_instance_valid(life):
+		return null
+	var dn = life.get("duels")
+	return dn if dn != null and is_instance_valid(dn) else null
+
+
+func _free_spot(p: Vector3) -> bool:
+	_cam.skip_rids = [scene._player.get_rid()]
+	return _cam.blocked_at(p) == ""
+
+
+## Today's duels: say so when one is coming up, and start it once both stand on their side.
+func _meets_step() -> void:
+	if not _show.is_empty() and not _in_show(_show["a"]):
+		_show = {}
+	if not _show.is_empty():
+		return
+	var duels := _duels_node()
+	if duels == null:
+		return
+	var now := WorldClock.minutes
+	for m in StarMeets.today(_district, _day):
+		var at := int(m["at"])
+		var key := _meet_key(at)
+		if (_mem.get("_bouts", {}) as Dictionary).has(key) or now < float(at) or now > float(at + StarMeets.WINDOW + 90):
+			continue
+		var a := _star(str(m["a"]))
+		var b := _star(str(m["b"]))
+		if a.is_empty() or b.is_empty():
+			continue
+		if not _told.has(key):
+			_told[key] = true
+			if now < float(at + 40):
+				Router.toast(Loc.t("%s and %s are about to duel near %s.") % [_short(str(a["id"])), _short(str(b["id"])), Loc.t(StarMeets.place_near(scene.district, m["mid"]))])
+		var ready := true
+		for s in [a, b]:
+			if str(s["state"]) != "there" or str(s["doing"]) != "duel" or int(s["stops"][int(s["at"])][0]) != at:
+				ready = false
+		if not ready:
+			continue
+		var fans := 4 if Settings.gfx_preset >= 2 else 2
+		var d: Dictionary = duels.open_bout(a["fig"], b["fig"], [_short(str(a["id"])), _short(str(b["id"]))], [str(a["id"]), str(b["id"])], fans, float(m["fan_z"]),
+				_free_spot, func(w: int, watched: bool): _bout_done(key, w, watched))
+		_show = {"key": key, "a": a, "b": b, "d": d, "duels": duels, "mid": m["mid"]}
+		if "--stars-check" in OS.get_cmdline_user_args():
+			print("STAR bout opens ", key, " ", a["id"], " vs ", b["id"])
+		return
+
+
+func _bout_done(key: String, w: int, watched: bool) -> void:
+	if _show.is_empty():
+		return
+	var a: Dictionary = _show["a"]
+	var b: Dictionary = _show["b"]
+	_show = {}
+	var win: Dictionary = a if w == 0 else b
+	var lose: Dictionary = b if w == 0 else a
+	var bouts: Dictionary = _mem.get("_bouts", {})
+	for k in bouts.keys():
+		# Only today is kept.
+		var parts := str(k).split(":")
+		if parts.size() < 3 or int(parts[1]) != _day:
+			bouts.erase(k)
+	bouts[key] = {"w": str(win["id"]), "l": str(lose["id"])}
+	_mem["_bouts"] = bouts
+	for pair in [[win, lose, true], [lose, win, false]]:
+		var e: Dictionary = _mem.get(str(pair[0]["id"]), {})
+		e["bout"] = {"vs": str(pair[1]["id"]), "won": bool(pair[2]), "day": _day}
+		_mem[str(pair[0]["id"])] = e
+		pair[0]["doing"] = "chat"
+		pair[0]["act"] = 4.0
+		if is_instance_valid(pair[0]["fig"]):
+			(pair[0]["fig"] as RoamFigure).watch = scene._player
+	_save_mem(_mem)
+	Router.toast(Loc.t("%s wins the duel against %s!") % [_short(str(win["id"])), _short(str(lose["id"]))])
+	if watched:
+		Collection.dp += 30
+		Collection.daily_bump("watch")
+		Collection.save()
+		Router.toast(Loc.t("You watched the whole thing: +%d Duel Points") % 30)
+		Sfx.play("coin", -5.0)
+	if "--stars-check" in OS.get_cmdline_user_args():
+		print("STAR bout over ", key, " winner ", win["id"], " watched ", watched)
+
+
+## For the map: today's duels here. [{at, a, b, mid, state: "later" | "now" | "over", winner}]
+func meets_today() -> Array:
+	var out: Array = []
+	var bouts: Dictionary = _mem.get("_bouts", {})
+	for m in StarMeets.today(_district, _day):
+		if _star(str(m["a"])).is_empty() or _star(str(m["b"])).is_empty():
+			continue
+		var key := _meet_key(int(m["at"]))
+		var state := "later"
+		var winner := ""
+		if bouts.has(key):
+			state = "over"
+			winner = _short(str((bouts[key] as Dictionary).get("w", "")))
+		elif not _show.is_empty() and str(_show["key"]) == key:
+			state = "now"
+		elif WorldClock.minutes > float(int(m["at"]) + StarMeets.WINDOW + 90):
+			continue
+		elif WorldClock.minutes >= float(m["at"]):
+			state = "soon"
+		out.append({"at": int(m["at"]), "a": _short(str(m["a"])), "b": _short(str(m["b"])), "mid": m["mid"], "state": state, "winner": winner})
+	return out
+
+
+# ------------------------------------------------------------------ they come to you
+
+## You keep winning: once a day somebody nearby comes over to put a stop to it.
+func _dare_step() -> void:
+	if not _dare.is_empty() or not _grid_ready or _here_for < 25.0 or scene.extras == null:
+		return
+	if int(Collection.record.get("streak", 0)) < 3:
+		return
+	var days: Dictionary = _mem.get("_dare", {})
+	if int(days.get(_district, -1)) == _day:
+		return
+	if str(scene._inside) != "" or scene._talking or scene._overlay_open or not _show.is_empty():
+		return
+	var pp: Vector3 = scene._player.global_position
+	var best := {}
+	var best_d := 60.0
+	for s in _stars:
+		if str(s["state"]) != "there" or str(s["doing"]) in ["duel", "nap", ""] or not (s["d"] as Dictionary).has("duel"):
+			continue
+		var dd := (s["fig"] as RoamFigure).global_position.distance_to(pp)
+		if dd > 9.0 and dd < best_d:
+			best_d = dd
+			best = s
+	if best.is_empty():
+		return
+	days[_district] = _day
+	_mem["_dare"] = days
+	_save_mem(_mem)
+	_drop(best)
+	best["doing"] = ""
+	(best["fig"] as RoamFigure).stance = "stand"
+	(best["fig"] as RoamFigure)._cur_clip = ""
+	best["state"] = "seek"
+	best["path"] = []
+	best["repath"] = 0.0
+	best["seek_t"] = 0.0
+	best["dared"] = false
+	best["talked"] = false
+	best["wait_t"] = 0.0
+	_dare = best
+	if "--stars-check" in OS.get_cmdline_user_args():
+		print("STAR ", best["id"], " comes to challenge you from ", int(best_d), " m")
+
+
+func _seek(s: Dictionary, delta: float, dist: float) -> void:
+	var fig: RoamFigure = s["fig"]
+	var id := str(s["id"])
+	var player: Node3D = scene._player
+	s["seek_t"] = float(s["seek_t"]) + delta
+	if bool(s["talked"]) and not scene._talking:
+		_seek_over(s, false)               # you heard them out (a yes would have started the duel)
+		return
+	if str(scene._inside) != "" or float(s["seek_t"]) > 55.0:
+		_seek_over(s, false)
+		return
+	if dist < 2.6:
+		fig.set_speed(0.0)
+		var to := player.global_position - fig.global_position
+		fig.rotation.y = lerp_angle(fig.rotation.y, atan2(to.x, to.z), clampf(delta * 8.0, 0.0, 1.0))
+		if not bool(s["dared"]):
+			s["dared"] = true
+			scene.extras._say_over(fig, _line(id, "dare"), 4.0)
+			fig.gesture("challenge", 0.25)
+			if "--stars-check" in OS.get_cmdline_user_args():
+				print("STAR ", id, " reached you after ", snappedf(float(s["seek_t"]), 0.1), " s: ", _line(id, "dare"))
+			Sfx.play("quest", -10.0)
+		s["wait_t"] = float(s["wait_t"]) + delta
+		if float(s["wait_t"]) > 16.0:
+			_seek_over(s, true)
+		return
+	if bool(s["dared"]):
+		# They said their piece. Walk off and so do they.
+		s["wait_t"] = float(s["wait_t"]) + delta
+		if dist > 8.0 or float(s["wait_t"]) > 16.0:
+			_seek_over(s, true)
+			return
+	s["repath"] = float(s["repath"]) - delta
+	var path: Array = s["path"]
+	if float(s["repath"]) <= 0.0 or path.is_empty():
+		s["repath"] = 1.6
+		_skip_for(s)
+		path = _route(fig.position, player.global_position)
+		if path.is_empty():
+			if _clear_until(fig.position, player.global_position) >= dist - 1.0:
+				path = [player.global_position]
+			else:
+				_seek_over(s, false)
+				return
+		s["path"] = path
+	var next: Vector3 = path[0]
+	var d := Vector3(next.x - fig.position.x, 0, next.z - fig.position.z)
+	if d.length() < 0.25:
+		path.pop_front()
+		return
+	fig.position += d.normalized() * minf(d.length(), SEEK * delta)
+	_tick -= delta
+	if _tick <= 0.0:
+		_tick = 0.25
+		fig.position.y = lerpf(fig.position.y, _floor_at(fig.position), 0.6)
+	fig.rotation.y = lerp_angle(fig.rotation.y, atan2(d.x, d.z), clampf(delta * 8.0, 0.0, 1.0))
+	fig.set_speed(SEEK)
+
+
+## Back to their day.
+func _seek_over(s: Dictionary, say: bool) -> void:
+	var fig: RoamFigure = s["fig"]
+	if say and scene.extras and fig.global_position.distance_to(scene._player.global_position) < 10.0:
+		scene.extras._say_over(fig, _line(str(s["id"]), "leave"), 2.6)
+	_dare = {}
+	if "--stars-check" in OS.get_cmdline_user_args():
+		print("STAR ", s["id"], " gives up the challenge and goes back (said goodbye: ", say, ")")
+	s["talked"] = false
+	s["dared"] = false
+	s["at"] = _stop_now(s["stops"])
+	_set_off(s, _spot(s, int(s["at"])))
+
+
+# ------------------------------------------------------------------ come and meet me
+
+## Somebody who knows you a little asks you to come by later; if you do, they have something
+## for you. One invitation at a time, at most one a day.
+## Returns [] for nothing, or [was this the meeting itself, the line].
+func _invite_talk(s: Dictionary, talks: int, was_nap: bool) -> Array:
+	var id := str(s["id"])
+	var now := WorldClock.minutes
+	var inv: Dictionary = _mem.get("_invite", {})
+	if not inv.is_empty() and str(inv.get("who", "")) == id and str(inv.get("district", "")) == _district:
+		var from := float(inv.get("from", 0))
+		var until := float(inv.get("until", 0))
+		if int(inv.get("day", -1)) == _day and now >= from - 25.0 and now <= until:
+			# You came.
+			_mem.erase("_invite")
+			var e: Dictionary = _mem.get(id, {})
+			e["met"] = int(e.get("met", 0)) + 1
+			_mem[id] = e
+			_save_mem(_mem)
+			var gift := _gift_from(id)
+			Collection.dp += 120
+			if gift != 0:
+				Collection.add(gift)
+				Router.toast(Loc.t("%s gave you %s.") % [_short(id), Loc.t(str(CardData.get_card(gift).get("name", "")))])
+			Router.toast(Loc.t("+%d Duel Points") % 120)
+			Collection.save()
+			Sfx.play("quest", -4.0)
+			return [true, _line(id, "met")]
+		if int(inv.get("day", -1)) < _day or now > until:
+			_mem.erase("_invite")
+			_save_mem(_mem)
+			return [false, _line(id, "missed")]
+		return []
+	if not inv.is_empty() and int(inv.get("day", -1)) >= _day:
+		return []                    # somebody else is expecting you today
+	# --stars-invite (testing): ask right away.
+	var force := "--stars-invite" in OS.get_cmdline_user_args()
+	if not force and (talks < 2 or was_nap or int(_mem.get("_invite_day", -1)) == _day or randf() > 0.65):
+		return []
+	# A later stop of theirs today, far enough off to be worth a wait.
+	var stops: Array = s["stops"]
+	for i in stops.size():
+		var st: Array = stops[i]
+		if float(st[0]) < now + 45.0 or float(st[0]) > 1320.0 or str(st[3]) in ["duel", "nap"]:
+			continue
+		var until2 := float(stops[i + 1][0]) if i + 1 < stops.size() else 1439.0
+		var place := StarMeets.place_near(scene.district, st[1])
+		if place == "":
+			continue
+		var hour := "%02d:%02d" % [int(st[0]) / 60, int(st[0]) % 60]
+		_mem["_invite"] = {"who": id, "district": _district, "day": _day, "from": float(st[0]), "until": until2, "place": place, "hour": hour, "pinged": false}
+		_mem["_invite_day"] = _day
+		_save_mem(_mem)
+		Router.toast(Loc.t("New: meet %s at %s around %s") % [_short(id), Loc.t(place), hour])
+		Sfx.play("quest", -6.0)
+		var line := _line(id, "invite")
+		return [false, (line % [Loc.t(place), hour]) if line.count("%s") == 2 else line]
+	return []
+
+
+## A card out of their own deck, not the one they lead with.
+func _gift_from(id: String) -> int:
+	var key := str((_star(id).get("d", {}) as Dictionary).get("char", id))
+	if not CardData.has_deck(key):
+		key = id
+	if not CardData.has_deck(key):
+		return 0
+	var ace := int(Characters.get_char(key).get("ace", 0))
+	var pool: Array = []
+	for c in CardData.deck_list(key):
+		if int(c) != ace and not pool.has(int(c)):
+			pool.append(int(c))
+	return int(pool[randi() % pool.size()]) if not pool.is_empty() else 0
+
+
+## The hour has come and you are in the right world: a nudge, and the way there.
+func _invite_step() -> void:
+	var inv: Dictionary = _mem.get("_invite", {})
+	if inv.is_empty() or bool(inv.get("pinged", false)) or str(inv.get("district", "")) != _district or int(inv.get("day", -1)) != _day:
+		return
+	if WorldClock.minutes < float(inv.get("from", 0)) or WorldClock.minutes > float(inv.get("until", 0)):
+		return
+	var s := _star(str(inv.get("who", "")))
+	if s.is_empty() or str(s["state"]) != "there":
+		return
+	inv["pinged"] = true
+	_mem["_invite"] = inv
+	_save_mem(_mem)
+	Router.toast(Loc.t("%s is waiting for you at %s.") % [_short(str(s["id"])), Loc.t(str(inv.get("place", "")))])
+	if scene.extras and not scene.extras.has_waypoint():
+		scene.extras.set_waypoint((s["fig"] as RoamFigure).position, scene._npc_name(s["d"]))
+
+
+## The line for the "On your list" box: who expects you, where and when ("" if nobody does).
+func invite_row() -> String:
+	var inv: Dictionary = _mem.get("_invite", {})
+	if inv.is_empty() or int(inv.get("day", -1)) != WorldClock.day or WorldClock.minutes > float(inv.get("until", 0)):
+		return ""
+	var away := "" if str(inv.get("district", "")) == _district else "   (" + Loc.t(str(RoamData.district(str(inv.get("district", ""))).get("name", ""))) + ")"
+	return Loc.t("Meet %s: %s, around %s") % [_short(str(inv.get("who", ""))), Loc.t(str(inv.get("place", ""))), str(inv.get("hour", ""))] + away
 
 
 # ------------------------------------------------------------------ dev

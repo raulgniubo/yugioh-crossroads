@@ -168,6 +168,8 @@ func _plaza() -> void:
 	var stage := prop("duel_stage", PLAZA + Vector3(0, 0, 0), 0.0, 9.0)
 	if stage == null:
 		box(Vector3(8, 0.2, 5), PLAZA + Vector3(0, 0.1, 0), mat(Color(0.2, 0.24, 0.32), 0.5), false)
+	else:
+		solid_disc(PLAZA, 4.1, 0.9)
 	for i in 8:
 		var a := TAU * i / 8.0 + 0.39
 		var p := PLAZA + Vector3(cos(a) * 11.0, 0, sin(a) * 11.0)

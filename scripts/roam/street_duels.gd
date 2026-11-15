@@ -129,6 +129,126 @@ func _build(s: Dictionary) -> void:
 	_duels.append(d)
 
 
+## A duel between two people who already stand in the world (two of the main characters): the
+## same show built around them where they stand, played once to a finish, then taken down.
+## `free_at` says whether a world spot is clear to stand on; `done` gets (winner 0 or 1, were
+## you near enough to have watched).
+func open_bout(fa: RoamFigure, fb: RoamFigure, names: Array, decks: Array, fans: int, fan_z: float, free_at: Callable, done: Callable) -> Dictionary:
+	var pa := fa.global_position
+	var pb := fb.global_position
+	var dir := Vector3(pb.x - pa.x, 0, pb.z - pa.z)
+	var root := Node3D.new()
+	add_child(root)
+	root.global_position = Vector3((pa.x + pb.x) / 2.0, minf(pa.y, pb.y) + 0.02, (pa.z + pb.z) / 2.0)
+	root.rotation.y = atan2(-dir.z, dir.x)
+	var half := maxf(dir.length() / 2.0, 2.2)
+	var cols := [Color("2de2e6"), Color("ff5a7a")]
+	var d := {"root": root, "figs": [fa, fb], "lp": [4000, 4000], "lp_l": [], "mons": [[], []], "pool": [], "t": 1.6,
+		"turn": randi() % 2, "over": 0.0, "fans": [], "cols": cols, "near": false, "half": half, "names": names, "decks": decks,
+		"bout": done, "age": 0.0, "seen": 0.0}
+	var edge := StandardMaterial3D.new()
+	edge.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	edge.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	edge.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	edge.albedo_color = Color(1.0, 0.86, 0.5, 0.6)
+	for z: float in [-1.5, 1.5]:
+		life._box(Vector3(4.6, 0.02, 0.05), Vector3(0, 0.03, z), edge, root)
+	for x: float in [-2.3, 2.3]:
+		life._box(Vector3(0.05, 0.02, 3.0), Vector3(x, 0.03, 0), edge, root)
+	life._box(Vector3(0.03, 0.02, 3.0), Vector3(0, 0.03, 0), edge, root)
+	for i in 2:
+		var side := -1.0 if i == 0 else 1.0
+		var zone := StandardMaterial3D.new()
+		zone.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		zone.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		zone.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		zone.albedo_color = Color(cols[i], 0.22)
+		for k in 3:
+			life._box(Vector3(0.62, 0.02, 0.86), Vector3(side * 1.25, 0.035, -1.0 + k * 1.0), zone, root)
+		var f: RoamFigure = d["figs"][i]
+		f.watch = null
+		var l := Label3D.new()
+		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		l.font = UITheme.title_font()
+		l.font_size = 64
+		l.pixel_size = 0.006
+		l.outline_size = 14
+		l.modulate = (cols[i] as Color).lightened(0.3)
+		l.outline_modulate = Color(0, 0, 0, 0.85)
+		l.position = Vector3(side * half, 3.0, 0)
+		root.add_child(l)
+		d["lp_l"].append(l)
+		l.text = _lp_text(d, i)
+		d["pool"].append(_monsters(str(decks[i])))
+	_gather(d, fans, fan_z, free_at, pa.y)
+	_duels.append(d)
+	return d
+
+
+## People gather on the long sides, wherever there is room to stand: one at a time, so
+## nothing stutters when a duel starts.
+func _gather(d: Dictionary, fans: int, fan_z: float, free_at: Callable, floor_y: float) -> void:
+	var root: Node3D = d["root"]
+	for k in fans:
+		await get_tree().create_timer(0.45).timeout
+		if not _duels.has(d) or not is_instance_valid(root) or float(d["over"]) > 0.0:
+			return
+		var zs := -1.0 if k % 2 == 0 else 1.0
+		for attempt in 6:
+			var p := Vector3(randf_range(-2.6, 2.6), 0, zs * (fan_z + randf_range(0.0, 0.9)))
+			var wp: Vector3 = root.to_global(p)
+			if free_at.is_valid() and not free_at.call(Vector3(wp.x, floor_y, wp.z)):
+				continue
+			var fan: RoamFigure = life._person(FANS[randi() % FANS.size()], Vector3.ZERO, 0.0, "stand", "")
+			life.remove_child(fan)
+			life._day_people.erase(fan)        # they are here for the duel, not for the day
+			root.add_child(fan)
+			fan.position = p
+			fan.rotation.y = atan2(-p.x, -p.z)
+			fan.watch = null
+			fan.scale = Vector3.ONE * 0.01
+			fan.create_tween().tween_property(fan, "scale", Vector3.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			d["fans"].append(fan)
+			break
+
+
+## Is this bout still being played?
+func bout_on(d: Dictionary) -> bool:
+	return _duels.has(d)
+
+
+func _close_bout(d: Dictionary) -> void:
+	_duels.erase(d)
+	var root: Node3D = d["root"]
+	for i in 2:
+		for m in (d["mons"][i] as Array).duplicate():
+			_remove(d, i, m)
+		(d["lp_l"][i] as Label3D).queue_free()
+	# The crowd drifts off, then the field goes.
+	for f in d["fans"]:
+		var fan := f as RoamFigure
+		var out := Vector3(fan.position.x, 0, fan.position.z).normalized()
+		fan.rotation.y = atan2(out.x, out.z)
+		fan.set_speed(1.2)
+		var tw := fan.create_tween()
+		tw.tween_property(fan, "position", fan.position + out * 6.0, 5.0)
+		tw.tween_property(fan, "scale", Vector3.ONE * 0.01, 0.3)
+	var tw2 := root.create_tween()
+	tw2.tween_interval(5.6)
+	tw2.tween_callback(root.queue_free)
+
+
+func _lp_text(d: Dictionary, i: int) -> String:
+	if d.has("bout"):
+		return "%s  %d" % [Loc.t(str((d["names"] as Array)[i])).to_upper(), int(d["lp"][i])]
+	return "LP %d" % int(d["lp"][i])
+
+
+## Who is ahead right now (bouts), for anybody who asks.
+func bout_score(d: Dictionary) -> Array:
+	return [int(d["lp"][0]), int(d["lp"][1])]
+
+
 func _watch(d: Dictionary) -> void:
 	var who := 0 if int(d["lp"][0]) >= int(d["lp"][1]) else 1
 	if int(d["lp"][0]) == int(d["lp"][1]):
@@ -251,7 +371,7 @@ func _attack(d: Dictionary, i: int) -> void:
 	var victim := {}
 	var lose_own := false
 	if theirs.is_empty():
-		target = Vector3((HALF - 0.6) * (1.0 if i == 0 else -1.0) - (a["node"] as Node3D).position.x, 1.0, -(a["node"] as Node3D).position.z)
+		target = Vector3((float(d.get("half", HALF)) - 0.6) * (1.0 if i == 0 else -1.0) - (a["node"] as Node3D).position.x, 1.0, -(a["node"] as Node3D).position.z)
 		dmg = int(a["atk"])
 	else:
 		victim = theirs[0]
@@ -265,7 +385,7 @@ func _attack(d: Dictionary, i: int) -> void:
 			lose_own = true
 			dmg = -(int(victim["atk"]) - int(a["atk"]))
 	var fig: RoamFigure = d["figs"][i]
-	fig.gesture("cheer", 0.15)
+	fig.gesture("challenge" if d.has("bout") else "cheer", 0.15)
 	fig._hold = 1.0
 	if d["near"]:
 		Sfx.play("attack", -15.0)
@@ -318,7 +438,7 @@ func _flash(d: Dictionary, at: Vector3, col: Color) -> void:
 func _hurt(d: Dictionary, i: int, amount: int) -> void:
 	d["lp"][i] = maxi(0, int(d["lp"][i]) - amount)
 	var l: Label3D = d["lp_l"][i]
-	l.text = "LP %d" % int(d["lp"][i])
+	l.text = _lp_text(d, i)
 	var base: Color = (d["cols"][i] as Color).lightened(0.3)
 	l.modulate = Color(1.0, 0.25, 0.25)
 	l.create_tween().tween_property(l, "modulate", base, 0.6)
@@ -336,6 +456,7 @@ func _hurt(d: Dictionary, i: int, amount: int) -> void:
 			Router.toast("\"" + Loc.t(SHOUTS[randi() % SHOUTS.size()]) + "\"")
 	if int(d["lp"][i]) <= 0:
 		d["over"] = 5.0
+		d["winner"] = 1 - i
 		(d["figs"][1 - i] as RoamFigure).play_once("victory", 2)
 		fig.play_once("lose", 1)
 		if d["near"]:
@@ -359,12 +480,32 @@ func _process(delta: float) -> void:
 		var root: Node3D = d["root"]
 		var dist := root.global_position.distance_to(pp)
 		d["near"] = dist < 16.0
-		# Far away nobody is watching: let it rest.
-		if dist > 70.0:
+		if d.has("bout"):
+			d["age"] = float(d["age"]) + delta
+			if d["near"]:
+				d["seen"] = float(d["seen"]) + delta
+			if float(d["over"]) <= 0.0:
+				# Nobody near to see it: it is settled off screen. And no duel runs forever:
+				# after a minute and a half whoever is ahead lands the last hit.
+				if dist > 70.0 and float(d["age"]) > 40.0:
+					_hurt(d, randi() % 2, 99999)
+					continue
+				if float(d["age"]) > 92.0:
+					_hurt(d, 0 if int(d["lp"][0]) < int(d["lp"][1]) else 1, 99999)
+					continue
+		elif dist > 70.0:
+			# Far away nobody is watching: let it rest.
 			continue
 		if float(d["over"]) > 0.0:
 			d["over"] = float(d["over"]) - delta
 			if float(d["over"]) <= 0.0:
+				if d.has("bout"):
+					var cb: Callable = d["bout"]
+					var watched: bool = float(d["seen"]) > minf(20.0, float(d["age"]) * 0.4)
+					_close_bout(d)
+					if cb.is_valid():
+						cb.call(int(d.get("winner", 0)), watched)
+					break
 				_reset(d)
 			continue
 		d["t"] = float(d["t"]) - delta

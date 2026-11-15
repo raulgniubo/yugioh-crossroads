@@ -155,6 +155,12 @@ static var list_small := true
 
 func free_list() -> Array:
 	var rows: Array = []
+	# Somebody asked you to come and meet them.
+	var life = scene.get("stars")
+	if life != null and is_instance_valid(life):
+		var meet: String = life.invite_row()
+		if meet != "":
+			rows.append(meet)
 	var worlds: Array = WorldLife.ERRANDS.keys()
 	worlds.sort_custom(func(a, b): return str(a) == _key and str(b) != _key)      # what is here comes first
 	for wk in worlds:

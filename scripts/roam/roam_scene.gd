@@ -49,6 +49,7 @@ var _inside := ""
 var _outside_pos := Vector3(-10, 0, -13.6)
 var _outside_yaw := PI
 var _map: RoamMap
+var _dlg_busy := false        # whoever you are talking to is in a duel of their own: no challenge now
 var _map_full: RoamMap
 var _loc_name: Label
 var _loc_area: Label
@@ -1534,7 +1535,8 @@ func _talk() -> void:
 	Collection.daily_bump("talk")
 	for l in say:
 		_dlg_lines.append(Loc.t(str(l)).replace("{player}", Profile.duelist_name))
-	if d.has("duel") and favor.is_empty():
+	_dlg_busy = stars != null and stars.busy(str(d["id"]))
+	if d.has("duel") and favor.is_empty() and not _dlg_busy:
 		var duel: Dictionary = d["duel"]
 		var own := stars.ask(str(d["id"]), _beaten.has(d["id"])) if stars != null else ""
 		if own != "":
@@ -1636,7 +1638,7 @@ func _show_line() -> void:
 		nope.pressed.connect(_end_talk)
 		_dlg_buttons.add_child(nope)
 		try.grab_focus.call_deferred()
-	elif last and _dlg_npc.has("duel"):
+	elif last and _dlg_npc.has("duel") and not _dlg_busy:
 		# What they put up, so there is a reason to say yes.
 		var sk_key := str(_dlg_npc.get("char", ""))
 		if sk_key == "":

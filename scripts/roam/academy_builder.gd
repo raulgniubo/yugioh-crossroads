@@ -304,6 +304,9 @@ func _build_landmarks() -> void:
 	var stage := prop("duel_stage", Vector3(19.0, 0.1, 30.0), 0.0, 13.0)
 	if stage == null:
 		cyl(6.0, 6.0, 0.3, Vector3(19.0, 0.2, 30.0), mat(Color(0.5, 0.5, 0.56), 0.6), null, 32)
+	else:
+		# It is a stone platform, not a picture of one: you walked straight through it.
+		solid_disc(Vector3(19.0, 0.1, 30.0), 5.9, 1.3)
 	# Ferry at the pier
 	var boat := prop("ferry", Vector3(7.5, -0.7, 62.0 + PIER), 0.2, 15.0)
 	if boat:

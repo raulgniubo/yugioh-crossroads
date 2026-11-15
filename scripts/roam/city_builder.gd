@@ -754,6 +754,22 @@ func _aabb(n: Node, xf: Transform3D) -> AABB:
 
 
 ## Invisible box collider matching a placed prop.
+## A round stone platform you cannot walk through (the duel stage model is about a tenth as
+## high as it is wide, lantern posts aside).
+func solid_disc(center: Vector3, radius: float, height: float) -> void:
+	if not make_solid:
+		return
+	var body := StaticBody3D.new()
+	var cs := CollisionShape3D.new()
+	var sh := CylinderShape3D.new()
+	sh.radius = radius
+	sh.height = height
+	cs.shape = sh
+	cs.position = center + Vector3(0, height / 2.0, 0)
+	body.add_child(cs)
+	add_child(body)
+
+
 func collide(holder: Node3D, shrink := 0.9) -> void:
 	if holder == null or not make_solid:
 		return

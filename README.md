@@ -5,6 +5,20 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.13
+
+**The main characters duel each other, and come to you.** Free Roam, every world.
+
+- **They duel each other.** Every world has one or two duels a day between its main characters at a set hour (Domino: Central Park at 15:00 and 19:00, the Academy: the Plaza at 11:00 and 18:00, Satellite and Heartland: the Duel Ring, New Domino: the square by the card shop). The pair changes from day to day. Both walk there, a field lights up between them, monsters from their own decks are summoned and attack, Life Points count down over their heads, and a few people gather to watch and walk off when it is over. The game tells you when one is about to start. Watch most of it and you get 30 Duel Points.
+- **It is on the map.** Crossed swords where it happens with the hour and the names, and "Today's duels" at the top of Who's Where (later today, on now, or who won) with Guide me.
+- **They talk about it.** Afterwards the winner and the loser each tell you how it went, in their own way. Talk to one in the middle of it and you get told to wait (no challenging them then).
+- **They come looking for you.** With three wins in a row or more, once a day in each world somebody nearby walks up to you and challenges you. Answer (E) and it is the usual duel offer. Ignore them or walk off and they go back to their day.
+- **Come and meet me.** Somebody you have talked to a couple of times may ask you to meet them at a place and hour later that day. It goes on your list ("On your list"), you get a nudge and a beacon when the hour comes, and if you show up they give you a card out of their own deck and 120 Duel Points. Miss it and they will mention it.
+- About 100 more lines, all new, English and Spanish.
+- **The stone duel stages are solid.** The Academy's Duel Field and the one in New Domino's Central Plaza are platforms about a meter high, and you could walk straight through them. Not any more.
+
+Not done or not checked: the duel between two characters is a show (the same one as the street duels), not a real rules duel, and you cannot bet on it. I watched it start and finish here and saw it in pictures, but have not played it on a Mac. The friendship meter is 0.33.14.
+
 ## What is in 0.33.12
 
 **The main characters have a life, and the map is a picture of the world.** In every world, Free Roam only (a chapter keeps its own staging).
