@@ -35,6 +35,10 @@ static func load_data() -> void:
 	if cfg.load(PATH) == OK:
 		minutes = clampf(float(cfg.get_value("clock", "minutes", minutes)), 0.0, DAY - 0.01)
 		day = maxi(1, int(cfg.get_value("clock", "day", day)))
+	# Dev: --clock=420 starts the day at that minute (seven in the morning).
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--clock="):
+			minutes = clampf(float(a.trim_prefix("--clock=")), 0.0, DAY - 0.01)
 
 
 static func save_data() -> void:

@@ -5,6 +5,33 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.32
+
+**The story, told a new way.** Every chapter has been rewritten, start to finish, in one go.
+
+- **Your move.** The story no longer walks you from a scene into a duel and into the next scene. Each chapter stops and hands the world over: a list appears on the left ("YOUR MOVE") and you go and do it, in the order you like. Talk to the people it names, look at the things it points to, win street duels, travel to another world yourself, wait for night. Gold marks stand over what belongs to the story, the beacon points at the nearest one, the map's QUESTS tab has the list, and Lumen tells you what is next when you ask her. Optional lines on the list pay Duel Points and change later scenes. 11 lists across the Prologue and five chapters.
+- **You go there yourself.** Chapter 2 starts with the ferry bus to the Academy. Chapter 3 sends you down to Satellite with a part for Yusei, back and forth for a clamp and a fuel cell, and then home to Domino to ask Grandpa one question. The last chapter sends you to all four cities to ask for help before the door opens.
+- **Several plots.** Besides the Curator and Lumen: who is emptying the frozen duelists' decks in Battle City (and where the shoebox ends up), the cards from other ages that Vellum's people carry, Kaiba's hunt for a door he did not authorize, the name sanded off the trophy plate, Kairo and his brother, a list with two names circled.
+- **The others fight too.** Duels you watch, played out on screen with a cut-in for every big play and the Life Points coming down: Mai against the Rare Hunter, Zane at the lighthouse, Jack against the white runner (and again, in the museum), Yusei on the road, Shark at the south gate, Kaiba against the Head Archivist. Seven of them. In the last chapter everybody you met walks through the door behind you.
+- **Meanwhile.** Scenes cut away to places you are not, and come back.
+- More people with something to say: Mai, Bakura, Rex, Weevil, Syrus, Alexis, Zane, Akiza, Crow, Kalin, Shark, Vector, a mechanic, a card dealer with a nephew.
+- A chapter you had left half way starts again from its beginning, because the scenes are not the same ones. Finished chapters stay finished.
+
+**A clock.**
+- Time passes while you walk: a full day takes about 25 minutes. A duel costs an hour. The time, the part of the day and the day number are under the place name.
+- Morning, day, evening and night blend into each other instead of switching.
+- **Weather follows the clock**, world by world: rain comes and goes in Domino, the Academy, New Domino and Heartland, dust in Satellite, and it fades in and out over about half a minute.
+- **Pass the time.** Sit on any bench and choose Morning, Midday, Evening or Night. The same choice is on the map screen. Some story tasks wait for a time of day.
+- **People who keep hours.** Each world has somebody who is only out in the morning, from five to ten (the Morning Runner, the Dawn Patrol, the First Shift, the Opening Bell, the Balloon Man), next to the duelists who only come out at night. They are on the map only while they are out.
+- The T key for the time of day is in admin mode only now.
+
+**Also**
+- Mai no longer stands inside the cafe wall.
+- A duel you watch frames the two duelists on the same sides as their names.
+- Fixed: the street-light pass could stumble on a light that was already gone.
+- After losing a duel the story sent you into, the spot does not pull you straight back in: walk away, change your deck, come back.
+- Spanish for every new line (4086 strings).
+
 ## What is in 0.31
 
 - **Destiny Draw.** Once per duel, when your back is against the wall (2000 Life Points or less, or less than half of your opponent's), you may choose the card you draw. Before your turn the edge of the screen lights up gold and you get one big button, "Reach for it", and a small one to draw as usual and keep it for later. Say yes, pick any card in your Deck, and the moment plays: the field goes dark, your duelist is close, a heartbeat, your spirit dives into the Deck, the top card lights up and is ripped off the Deck in a line of light, turned to the screen with DESTINY DRAW over it, and dropped into your hand. About four seconds; a click or a key skips it.

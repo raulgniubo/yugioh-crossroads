@@ -46,7 +46,8 @@ const SCRIPTS := {
 		{"s": "player", "t": "I always have him until the last draw.", "emote": "...", "do": "scratch"},
 		{"s": "", "t": "You lost. Badly. The old man behind the counter is waving you over."},
 		{"act": "grandpa", "do": "wave", "emote": "♪", "wait": 1.2},
-		{"s": "", "t": "The shop is emptying out. Nobody is in a hurry to go home, least of all you."},
+		{"shot": {"on": SHOP + Vector3(0.5, 0, 0.6), "look_h": 1.2, "ang": [1.9, 2.5], "d": [5.6, 7.0], "h": [2.5, 3.4], "t": 5.5},
+			"cap": "The shop is emptying out. Nobody is in a hurry to go home, least of all you."},
 		# ---- your move: the shop, before it closes
 		{"tasks": [
 			{"talk": "grandpa", "at": SHOP + Vector3(3.4, 0, -2.5), "face": -0.7, "label": "Talk to Grandpa at the counter", "say": [
@@ -95,7 +96,7 @@ const SCRIPTS := {
 		{"scene": {"district": "domino", "inside": "", "pos": DOOR, "yaw": PI, "tod": "night", "music": "duel_tense"},
 			"title": "The Street Outside", "sub": "Nobody is moving."},
 		{"fx": "freeze"},
-		{"actor": "office_worker", "at": Vector3(-11.0, 0, -9.8), "face": 0.4, "hollow": true},
+		{"actor": "office_worker", "at": Vector3(-11.4, 0, -8.4), "face": 0.4, "hollow": true},
 		{"actor": "stylish_woman", "at": Vector3(-14.5, 0, -8.2), "face": -0.6, "hollow": true},
 		{"actor": "student_girl", "at": Vector3(-12.2, 0, -7.0), "face": 2.4, "hollow": true},
 		{"actor": "lumen", "at": DOOR + Vector3(0.9, 0, 0.7), "face": "player", "spirit": true},
@@ -105,7 +106,7 @@ const SCRIPTS := {
 		{"s": "lumen", "t": "Don't touch them yet. Just... look. I need to see how many. I need to see how bad.", "cam": "close"},
 		# ---- your move: the street, stopped
 		{"tasks": [
-			{"talk": "office_worker", "at": Vector3(-11.0, 0, -9.8), "face": 0.4, "hollow": true, "label": "The man stopped in the middle of a step", "prompt": "Take a closer look", "say": [
+			{"talk": "office_worker", "at": Vector3(-11.4, 0, -8.4), "face": 0.4, "hollow": true, "label": "The man stopped in the middle of a step", "prompt": "Take a closer look", "say": [
 				{"s": "", "t": "One foot off the ground. His tie is still swinging. It has been swinging the same half inch since you walked up.", "cam": "close"},
 				{"s": "player", "t": "He's breathing. But he's not... here.", "cam": "close"},
 				{"s": "lumen", "t": "Hollows. Someone's freezing people inside a single memory. This is bad. This is really, really bad!", "react": {"player": "!"}}]},
@@ -121,7 +122,7 @@ const SCRIPTS := {
 		], "title": "The street has stopped", "lock": true, "hide_all": true, "frozen": true},
 		{"scene": {"district": "domino", "inside": "", "pos": Vector3(-11.6, 0, -11.4), "yaw": PI, "tod": "night", "music": "duel_tense"}},
 		{"fx": "freeze"},
-		{"actor": "office_worker", "at": Vector3(-11.0, 0, -9.8), "face": 0.4, "hollow": true},
+		{"actor": "office_worker", "at": Vector3(-11.4, 0, -8.4), "face": 0.4, "hollow": true},
 		{"actor": "stylish_woman", "at": Vector3(-14.5, 0, -8.2), "face": -0.6, "hollow": true},
 		{"actor": "student_girl", "at": Vector3(-12.2, 0, -7.0), "face": 2.4, "hollow": true},
 		{"actor": "lumen", "at": Vector3(-10.6, 0, -12.2), "face": "player", "spirit": true},
@@ -1147,7 +1148,7 @@ const SCRIPTS := {
 		{"s": "jaden", "t": "This is the best field trip ever. Chazz, isn't this the best field trip ever?", "anim": "cheer"},
 		{"s": "chazz", "t": "I'm here to supervise.", "cam": "low"},
 		{"s": "kite", "t": "If the introductions are finished. There is a boy in my city standing with both fists in the air.", "cam": "close"},
-		{"actor": "kaiba", "at": Vector3(-8.4, 0, -9.4), "from": Vector3(-3, 0, -7), "face": "player"},
+		{"actor": "kaiba", "at": Vector3(-5.6, 0, -9.4), "from": Vector3(0, 0, -7), "face": "player"},
 		{"s": "kaiba", "t": "My tower is drawing the power of four city blocks to hold a door I did not build. You have until sunrise. After that I start sending bills.", "cam": "low", "react": {"joey": "#"}},
 		{"s": "kairo", "t": "It still only opens for the Echo Deck. {player} goes first. The rest of you stay behind them. And whatever you do in there, do not look at the pictures for long.", "cam": "close"},
 		{"s": "yugi", "t": "Wherever that door goes, {player}, you won't be dueling alone. You never were.", "cam": "close"},

@@ -25,6 +25,7 @@ func _ready() -> void:
 	_test_destiny()
 	_test_stakes()
 	_test_decks()
+	_test_clock_and_story()
 	var stress := OS.get_environment("STRESS_FOLDER")
 	if stress != "":
 		CardData.load_external(stress)
@@ -1816,3 +1817,125 @@ func _test_decks() -> void:
 	c.decks_owned = keep["decks"]
 	c.dropped = keep["dropped"]
 	c.save()
+
+
+## v0.32: the world clock, and the shape of the story script (lists, clashes, who is in it).
+func _test_clock_and_story() -> void:
+	var keep_m := WorldClock.minutes
+	var keep_d := WorldClock.day
+	WorldClock._loaded = true
+	WorldClock.minutes = 660.0
+	WorldClock.day = 1
+	check(WorldClock.look() == "day", "eleven in the morning is day")
+	WorldClock.add_minutes(WorldClock.DUEL_COST)
+	check(is_equal_approx(WorldClock.minutes, 720.0), "a duel costs an hour")
+	WorldClock.go_to(1290.0)
+	check(WorldClock.look() == "night" and WorldClock.day == 1, "waiting until night stays in the same day")
+	WorldClock.go_to(450.0)
+	check(WorldClock.day == 2, "waiting for morning is tomorrow")
+	WorldClock.add_minutes(1440.0 * 2.0 + 30.0)
+	check(WorldClock.day == 4 and is_equal_approx(WorldClock.minutes, 480.0), "the clock wraps at midnight")
+	for m in [0.0, 300.0, 390.0, 445.0, 760.0, 1055.0, 1100.0, 1157.0, 1215.0, 1439.0]:
+		WorldClock.minutes = m
+		var mx := WorldClock.mix()
+		check(mx.size() == 3 and float(mx[2]) >= 0.0 and float(mx[2]) <= 1.0 and str(mx[0]) in ["dawn", "day", "sunset", "night"], "the sky blend is sane at minute %d" % int(m))
+	WorldClock.minutes = 1100.0
+	check(WorldClock.look() == "sunset", "the story's sunset reads as sunset")
+	WorldClock.minutes = keep_m
+	WorldClock.day = keep_d
+	# The script: every free list hands back to a scene, asks for things that exist, and can finish.
+	var worlds := ["domino", "academy", "satellite", "newdomino", "heartland", "museum"]
+	var lists := 0
+	var clashes := 0
+	for ch in StoryData.SCRIPTS:
+		var steps: Array = StoryData.SCRIPTS[ch]
+		var set_flags := {"won": true, "lost": true}
+		for st in steps:
+			_story_flags(st, set_flags)
+		for i in steps.size():
+			var st: Dictionary = steps[i]
+			_story_line(ch, st, set_flags)
+			if st.has("clash"):
+				clashes += 1
+				_story_clash(ch, st["clash"])
+			if not st.has("tasks"):
+				continue
+			lists += 1
+			check(i + 1 < steps.size() and (steps[i + 1] as Dictionary).has("scene"), "%s: a free list is followed by a scene" % ch)
+			check(str(st.get("title", "")) != "", "%s: a free list has a title" % ch)
+			var tasks: Array = st["tasks"]
+			var must := 0
+			for ti in tasks.size():
+				var t: Dictionary = tasks[ti]
+				check(str(t.get("label", "")) != "", "%s list %d: task %d says what to do" % [ch, i, ti])
+				var kinds := 0
+				for k in ["talk", "look", "go", "travel", "wins", "until"]:
+					if t.has(k):
+						kinds += 1
+				check(kinds == 1, "%s list %d: task %d is one kind of thing" % [ch, i, ti])
+				if not t.get("optional", false):
+					must += 1
+				for n in t.get("needs", []):
+					check(int(n) >= 0 and int(n) < tasks.size() and int(n) != ti and not (tasks[int(n)] as Dictionary).get("optional", false),
+						"%s list %d: task %d waits on a real, required task" % [ch, i, ti])
+				if t.has("talk"):
+					check(not Characters.get_char(str(t["talk"])).is_empty(), "%s: %s is somebody" % [ch, str(t.get("talk"))])
+				if t.has("in") or t.has("travel"):
+					check(str(t.get("in", t.get("travel"))) in worlds, "%s list %d: task %d is in a real world" % [ch, i, ti])
+				if t.has("when") or t.has("until"):
+					check(str(t.get("when", t.get("until"))) in ["dawn", "day", "sunset", "night"], "%s list %d: task %d names a real time of day" % [ch, i, ti])
+				for part in ["say", "retry", "after"]:
+					for ln in t.get(part, []):
+						_story_line(ch, ln, set_flags)
+						if (ln as Dictionary).has("clash"):
+							clashes += 1
+							_story_clash(ch, ln["clash"])
+				if t.has("duel"):
+					check(t.has("after") and CardData.has_deck(str(t["duel"].get("opp_deck", ""))) or CardData.has_deck(str(t["duel"].get("fallback", "kairo"))), "%s list %d: task %d has a duel that can be played" % [ch, i, ti])
+			check(must >= 1, "%s list %d: there is something that has to be done" % [ch, i])
+	check(lists >= 11, "the story hands over to you at least eleven times (%d)" % lists)
+	check(clashes >= 7, "seven duels are fought by somebody else (%d)" % clashes)
+	check(StoryProgress.SCRIPT_VERSION >= 5, "old saves in the middle of a chapter start that chapter again")
+
+
+func _story_flags(st: Dictionary, into: Dictionary) -> void:
+	for opt in st.get("choice", []):
+		into[str(opt[1])] = true
+	if st.has("remember") and st["remember"] is String:
+		into[str(st["remember"])] = true
+	for t in st.get("tasks", []):
+		for k in ["flag", "remember"]:
+			if (t as Dictionary).has(k):
+				into[str(t[k])] = true
+		for part in ["say", "retry", "after"]:
+			for ln in (t as Dictionary).get(part, []):
+				_story_flags(ln, into)
+
+
+func _story_line(ch: String, st: Dictionary, flags: Dictionary) -> void:
+	if st.has("s") and str(st["s"]) not in ["", "player", "lumen"]:
+		check(not Characters.get_char(str(st["s"])).is_empty(), "%s: the speaker %s is somebody" % [ch, str(st["s"])])
+	for k in ["if", "unless"]:
+		if st.has(k):
+			var known := false
+			for other in StoryData.SCRIPTS:
+				var f := {"won": true, "lost": true}
+				for os in StoryData.SCRIPTS[other]:
+					_story_flags(os, f)
+				if f.has(str(st[k])):
+					known = true
+					break
+			check(known, "%s: the flag %s is set somewhere in the story" % [ch, str(st[k])])
+
+
+func _story_clash(ch: String, c: Dictionary) -> void:
+	var lp: Array = (c.get("lp", [4000, 4000]) as Array).duplicate()
+	for b in c.get("beats", []):
+		check((b as Array).size() >= 3 and str(b[0]) in ["a", "b"], "%s: a clash beat names its side" % ch)
+		if (b as Array).size() > 3:
+			var other := 1 if str(b[0]) == "a" else 0
+			lp[other] = maxi(0, int(lp[other]) - int(b[3]))
+	var win := 0 if str(c.get("win", "a")) == "a" else 1
+	check(int(lp[1 - win]) == 0 and int(lp[win]) > 0, "%s: %s against %s ends with the loser at zero" % [ch, str(c.get("a")), str(c.get("b"))])
+	check(not Characters.get_char(str(c.get("a"))).is_empty() and not Characters.get_char(str(c.get("b"))).is_empty(), "%s: both sides of a clash are somebody" % ch)
+

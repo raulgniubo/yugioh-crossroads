@@ -939,6 +939,8 @@ func _refresh_map_people() -> void:
 		var f: Node3D = n[1]
 		if f.position.distance_to(ShopInterior.AT) < 30.0:
 			continue
+		if (d.get("night", false) or d.has("hours")) and not _npc_out(d):
+			continue
 		var state := "talk"
 		if d.has("duel"):
 			state = "beaten" if _beaten.has(d["id"]) else "duel"
@@ -1336,19 +1338,32 @@ func _area_name() -> String:
 	return ""
 
 
+## Is somebody who keeps hours out right now?
+func _npc_out(d: Dictionary) -> bool:
+	if d.get("night", false):
+		return city.tod == "night"
+	if d.has("hours"):
+		if _own_tod:
+			return false
+		var h := WorldClock.hour()
+		return h >= int(d["hours"][0]) and h < int(d["hours"][1])
+	return true
+
+
 func _update_near() -> void:
 	var best: Dictionary = {}
 	var best_d := TALK_RANGE
 	for n in _npcs:
 		var f: Node3D = n[1]
 		var m: Sprite3D = n[2]
-		if (n[0] as Dictionary).get("night", false):
-			# The rare ones only come out after dark.
-			var out: bool = city.tod == "night"
+		if (n[0] as Dictionary).get("night", false) or (n[0] as Dictionary).has("hours"):
+			# The rare ones only come out after dark; a few keep morning hours.
+			var out: bool = _npc_out(n[0])
 			if f.visible != out:
 				f.visible = out
 				m.visible = out
 				f.position.y += 80.0 if out else -80.0
+				_refresh_map_people.call_deferred()
 			if not out:
 				continue
 		var dist := f.global_position.distance_to(_player.global_position)

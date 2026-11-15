@@ -1080,8 +1080,9 @@ func _shot_for(speaker: String, wide: bool) -> void:
 		_take(best_two, "two", pair)
 		_spirit_park = null
 		return
-	if float(best_one[2]) < 45.0 and not special:
-		# Boxed in. Step back and show the whole scene instead.
+	if float(best_one[2]) < 45.0 and (not special or float(best_one[2]) < 0.0):
+		# Boxed in (a close-up only gives way when there is a wall in it). Step back and show the
+		# whole scene instead.
 		var keep_cam := best_one
 		var subs_w: Array = [sa]
 		if partner != "":
@@ -1554,8 +1555,15 @@ func _do_tasks(st: Dictionary) -> bool:
 				_clear_task(i)
 			else:
 				_place_task(i, here, home)
-				if t.has("go") and Vector2(scene._player.global_position.x - (t["go"] as Vector3).x, scene._player.global_position.z - (t["go"] as Vector3).z).length() < float(t.get("r", 3.0)):
-					await _run_task(i)
+				if t.has("go"):
+					var off := Vector2(scene._player.global_position.x - (t["go"] as Vector3).x, scene._player.global_position.z - (t["go"] as Vector3).z).length()
+					if off > float(t.get("r", 3.0)) + 1.5:
+						_go_armed[i] = true
+					elif off < float(t.get("r", 3.0)) and bool(_go_armed.get(i, not flags.has("_lost_%d" % i))):
+						# After a loss there you walk away first (to change your deck, say) and come
+						# back when you are ready: it does not grab you again where you stand.
+						_go_armed[i] = false
+						await _run_task(i)
 		_refresh_task_ui(here, home)
 	# Everything that had to be done is done: back to the telling.
 	scene.quest_locked = false
@@ -1692,7 +1700,22 @@ func _task_say(i: int, steps: Array) -> void:
 	for s in steps:
 		if str((s as Dictionary).get("s", "")) == "lumen" and not _actors.has("lumen"):
 			var pp: Vector3 = scene._player.global_position
-			_place({"actor": "lumen", "at": pp + Basis(Vector3.UP, scene._yaw) * Vector3(0.9, 0, 0.4), "face": "player", "spirit": true}, true)
+			# Beside you, on whichever side is not a lamp post or a wall.
+			var at_l := pp + Basis(Vector3.UP, scene._yaw) * Vector3(0.9, 0, 0.4)
+			for off: Vector3 in [Vector3(0.9, 0, 0.4), Vector3(-0.9, 0, 0.4), Vector3(0.9, 0, -0.7), Vector3(-0.9, 0, -0.7), Vector3(0, 0, 1.1)]:
+				var cand := pp + Basis(Vector3.UP, scene._yaw) * off
+				if _solver.blocked_at(Vector3(cand.x, pp.y, cand.z)) != "":
+					continue
+				# Not under an awning either: she floats at head height and has to be seen.
+				var up := PhysicsRayQueryParameters3D.create(Vector3(cand.x, pp.y + 0.9, cand.z), Vector3(cand.x, pp.y + 3.4, cand.z))
+				up.exclude = [scene._player.get_rid()]
+				var side := PhysicsRayQueryParameters3D.create(pp + Vector3(0, 1.4, 0), Vector3(cand.x, pp.y + 1.4, cand.z))
+				side.exclude = [scene._player.get_rid()]
+				var space: PhysicsDirectSpaceState3D = scene.get_world_3d().direct_space_state
+				if space.intersect_ray(up).is_empty() and space.intersect_ray(side).is_empty():
+					at_l = cand
+					break
+			_place({"actor": "lumen", "at": at_l, "face": "player", "spirit": true}, true)
 			lumen_here = true
 			break
 	for s in steps:
@@ -1898,6 +1921,7 @@ func _refresh_task_ui(here: String, home: String) -> void:
 				(n as Label3D).position.y = float((n as Label3D).get_meta("base_y", 2.5)) + sin(_t * 3.2) * 0.08
 
 
+var _go_armed := {}
 var _task_wp := false
 var _task_wp_at := Vector3.ZERO
 
@@ -1949,8 +1973,11 @@ func _clash(c: Dictionary) -> void:
 		la.text = "%s   %d" % [_name_of(ka).to_upper(), int(lp[0])]
 		lb.text = "%d   %s" % [int(lp[1]), _name_of(kb).to_upper()]
 	show_lp.call()
-	if _dir.is_empty() and not _skip:
-		_shot_for(ka, true)
+	if not _skip and fa and fb:
+		# The duel takes the camera over from whatever shot came before it.
+		_dir = {}
+		_cam.fov = StoryCamera.FOV
+		_clash_shot(ka, kb)
 	if not _skip:
 		Sfx.play("gong", -6.0)
 		await get_tree().create_timer(0.9).timeout
@@ -1991,6 +2018,35 @@ func _clash(c: Dictionary) -> void:
 	plate.queue_free()
 	if _audit or _auto:
 		print("CLASH ", ka, " vs ", kb, " -> ", winner)
+
+
+## Both duelists in one frame, with `ka` on the left like their name on the plate.
+func _clash_shot(ka: String, kb: String) -> void:
+	var sa := _subject(ka)
+	var sb := _subject(kb)
+	var pa: Vector3 = sa["p"]
+	var pb: Vector3 = sb["p"]
+	var mid := (pa + pb) * 0.5
+	var ab := Vector3(pb.x - pa.x, 0, pb.z - pa.z)
+	var gap := ab.length()
+	if gap < 0.2:
+		_shot_for(ka, true)
+		return
+	# The camera looks along `fwd`; its right-hand side is the way from a to b.
+	var fwd := Vector3.UP.cross(ab / gap)
+	var heads: Array = [pa + Vector3(0, float(sa["h"]), 0), pb + Vector3(0, float(sb["h"]), 0)]
+	var cands: Array = []
+	for ai in 5:
+		var ang: float = [0.0, 0.28, -0.28, 0.55, -0.55][ai]
+		for di in 3:
+			var d: float = gap * 0.85 + 3.0 + 1.3 * float(di)
+			for li in 3:
+				var cam := mid - (Basis(Vector3.UP, ang) * fwd) * d + Vector3(0, [1.7, 2.3, 1.25][li], 0)
+				cands.append([cam, StoryCamera.aim_for(cam, heads, 0.3), -2.0 * float(ai) - 2.5 * float(di) - 1.5 * float(li)])
+	_solver.survey(mid, 22.0, [_fig(ka), _fig(kb)])
+	_take(_solver.pick(cands, [sa, sb]), "wide", [])
+	_shot_subs = [sa, sb]
+	_spirit_park = null
 
 
 func _start_duel(d: Dictionary) -> void:

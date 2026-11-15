@@ -8,6 +8,9 @@ const DISTRICTS := {
 		"theme": "battlecity",
 		"travel": {"to": "academy", "pos": Vector3(-18, 0, 8.4), "label": "Take the ferry bus to Duel Academy"},
 		"npcs": [
+			{"id": "dawn_domino", "char": "", "model": "duelist_f2", "name": "The Morning Runner", "color": Color("ffb86b"), "pos": Vector3(-8.2, 0, -5.8), "face": 2.4, "hours": [5, 10], "aloof": true,
+				"lines": ["Six laps of downtown before the shops open. Then one duel. Always in that order.", "By ten I am at a desk and I am nobody. Catch me before ten."],
+				"duel": {"deck": "joey", "difficulty": 2, "intro": "A quick one. I am on a schedule."}},
 			{"id": "night_domino", "char": "", "model": "duelist_m7", "name": "The Midnight Collector", "color": Color("b78cff"), "pos": Vector3(8.0, 0, -40.2), "face": 0.2, "night": true, "aloof": true,
 				"lines": ["I only come out when the plaza is empty. Fewer witnesses.", "Every card I own was won after midnight. Yours will be too."],
 				"duel": {"deck": "kaiba", "difficulty": 3, "intro": "The night shift starts now.", "rare": true}},
@@ -137,6 +140,9 @@ const DISTRICTS := {
 		], "paths": [[Vector2(0, 60), Vector2(0, -32)], [Vector2(-40, 10), Vector2(-40, 38)], [Vector2(-41, 38), Vector2(-19, 38)], [Vector2(19, 46), Vector2(41, 46)], [Vector2(41, 37), Vector2(41, 55)], [Vector2(3, -20), Vector2(19, -20)], [Vector2(26, -30), Vector2(40, -30)], [Vector2(-2, 6), Vector2(-36, 6)], [Vector2(2, -4), Vector2(38, -4)],
 			[Vector2(-30, 5), Vector2(-30, -17)], [Vector2(19, 2), Vector2(19, 32)], [Vector2(19, 30), Vector2(43, 30)]]},
 		"npcs": [
+			{"id": "dawn_academy", "char": "", "model": "duelist_m4", "name": "The Dawn Patrol", "color": Color("ffb86b"), "pos": Vector3(36.0, 0, 30.0), "face": -1.4, "hours": [5, 10], "aloof": true,
+				"lines": ["Lights-out is a suggestion. Sunrise is a rule. I walk the harbor path every morning before class.", "Duel before breakfast and your hands remember it all day."],
+				"duel": {"deck": "chazz", "difficulty": 2, "intro": "Before the bell, then."}},
 			{"id": "night_academy", "char": "", "model": "duelist_m10", "name": "The Lighthouse Ghost", "color": Color("9fe0ff"), "pos": Vector3(6.0, 0, 46.0), "face": -0.5, "night": true, "aloof": true,
 				"lines": ["They say a graduate still walks the island at night, looking for one more duel.", "They are right."],
 				"duel": {"deck": "zane", "difficulty": 3, "intro": "Class is in session.", "rare": true}},
@@ -209,6 +215,9 @@ const DISTRICTS := {
 			{"name": "Bus Stop", "pos": Vector2(-6, 24), "size": Vector2(5, 3), "color": Color("7cc4ff")},
 		], "paths": [[Vector2(0, 34), Vector2(0, 6)], [Vector2(-22, 20), Vector2(22, 20)], [Vector2(-22, 20), Vector2(-22, -14)], [Vector2(22, 20), Vector2(22, -14)], [Vector2(-22, -24), Vector2(22, -24)]]},
 		"npcs": [
+			{"id": "dawn_satellite", "char": "", "model": "duelist_m15", "name": "The First Shift", "color": Color("ffb86b"), "pos": Vector3(20.0, 0, -15.0), "face": -2.2, "hours": [5, 10], "aloof": true,
+				"lines": ["The good scrap comes in on the night barge. If you are not here by sunup, somebody else has it.", "I found a card in the pile once. Just the once. I have been early every day since."],
+				"duel": {"deck": "crow", "difficulty": 2, "intro": "Winner gets first pick of the pile."}},
 			{"id": "night_satellite", "char": "", "model": "duelist_m16", "name": "The Scrap King", "color": Color("ff8a3a"), "pos": Vector3(4.6, 0, 33.0), "face": 3.4, "night": true, "aloof": true,
 				"lines": ["Daytime is for fixing. Night is for finding out what the fix was worth.", "Lose, and I keep a card. Win, and you keep one of mine. Fair?"],
 				"duel": {"deck": "kalin", "difficulty": 3, "intro": "Nobody leaves the yard with a full deck.", "rare": true}},
@@ -251,6 +260,9 @@ const DISTRICTS := {
 			{"name": "Runner Gate", "pos": Vector2(0, 49), "size": Vector2(15, 3), "color": Color("ff8a3a"), "enter": true},
 		], "paths": [[Vector2(0, 48), Vector2(0, -42)], [Vector2(-46, 4), Vector2(46, 4)]]},
 		"npcs": [
+			{"id": "dawn_newdomino", "char": "", "model": "office_worker", "name": "The Opening Bell", "color": Color("ffb86b"), "pos": Vector3(6.0, 0, 36.0), "face": 3.0, "hours": [5, 10], "aloof": true,
+				"lines": ["The ring is empty for one hour after sunrise. One. I come down from the Tops just to hear it.", "At ten my day starts and I stop being interesting. You have until ten."],
+				"duel": {"deck": "jack", "difficulty": 2, "intro": "Before the market opens."}},
 			{"id": "night_newdomino", "char": "", "model": "stylish_woman", "name": "The Ring Phantom", "color": Color("2de2e6"), "pos": Vector3(-4.6, 0, 13.6), "face": 0.3, "night": true, "aloof": true,
 				"lines": ["Up there they race in the dark. Down here I wait for whoever is brave enough to walk.", "Standing still is harder than it looks. Show me."],
 				"duel": {"deck": "jack", "difficulty": 3, "intro": "No engines. Just nerve.", "rare": true}},
@@ -327,6 +339,9 @@ const DISTRICTS := {
 			{"name": "Fountain", "pos": Vector2(0, 17), "size": Vector2(5, 5), "color": Color("7cc4ff"), "park": true},
 		], "paths": [[Vector2(0, 34), Vector2(0, 21)], [Vector2(-22, 22), Vector2(22, 22)], [Vector2(-20, 22), Vector2(-20, -14)], [Vector2(20, 22), Vector2(20, -14)], [Vector2(-20, -22), Vector2(20, -22)]]},
 		"npcs": [
+			{"id": "dawn_heartland", "char": "", "model": "duelist_m1", "name": "The Balloon Man", "color": Color("ffb86b"), "pos": Vector3(1.2, 0, -8.4), "face": 0.4, "hours": [5, 10], "aloof": true,
+				"lines": ["I fill the festival balloons before anybody is up. Four hundred of them. Nobody ever asks who does it.", "Duel me while the helium settles. I am gone by ten."],
+				"duel": {"deck": "yuma", "difficulty": 2, "intro": "Up, up and away."}},
 			{"id": "night_heartland", "char": "", "model": "duelist_m12", "name": "The Neon Oracle", "color": Color("ff5ab4"), "pos": Vector3(6.0, 0, -24.0), "face": 0.2, "night": true, "aloof": true,
 				"lines": ["The tower lights tell me who is coming. Tonight they said: someone with a little light of their own.", "Let us see if the lights were right."],
 				"duel": {"deck": "kite", "difficulty": 3, "intro": "The stars already know how this ends.", "rare": true}},

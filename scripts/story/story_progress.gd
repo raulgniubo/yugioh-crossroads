@@ -3,7 +3,7 @@ extends RefCounted
 ## Story save: unlocked chapters, current chapter + step, flags. user://story.cfg
 
 const PATH := "user://story.cfg"
-const SCRIPT_VERSION := 4      # bump when chapter scripts are restructured
+const SCRIPT_VERSION := 5      # bump when chapter scripts are restructured
 
 
 static func _load() -> ConfigFile:
