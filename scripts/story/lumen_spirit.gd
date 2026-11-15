@@ -396,11 +396,13 @@ static func portrait(host: Node) -> Texture2D:
 	_vp.own_world_3d = true
 	_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_vp.msaa_3d = Viewport.MSAA_4X
+	# No backdrop of her own: like everybody else's picture she stands on whatever is behind
+	# her (a dark square stuck out over the top of the talk box).
+	_vp.transparent_bg = true
 	host.add_child(_vp)
 	var env := WorldEnvironment.new()
 	var e := Environment.new()
-	e.background_mode = Environment.BG_COLOR
-	e.background_color = Color(0.05, 0.1, 0.2)
+	e.background_mode = Environment.BG_CLEAR_COLOR
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	e.ambient_light_color = Color(0.75, 0.86, 1.0)
 	e.ambient_light_energy = 1.0

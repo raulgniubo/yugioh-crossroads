@@ -38,6 +38,10 @@ func _ready() -> void:
 	elif Router.menu_open == "academy":
 		Router.menu_open = ""
 		_on_academy.call_deferred()
+	elif Router.menu_open == "decks":
+		Router.menu_open = ""
+		_on_deck.call_deferred()
+		Router.toast.call_deferred(Loc.t("Pick or fix your deck, then press Story: it picks up at the duel you lost."))
 
 
 var _bg_vp: SubViewport
@@ -59,6 +63,33 @@ func _build_background() -> void:
 	vp.add_child(bg)
 	_bg_vp = vp
 	_bg_box = svc
+	# Like a photo focused on the duelists: the city behind them is a little soft, a little
+	# darker and a little less colourful, so the people in front are what you look at.
+	var sh := Shader.new()
+	sh.code = """
+shader_type canvas_item;
+uniform float radius = 1.6;
+uniform float dim = 0.72;
+uniform float sat = 0.8;
+void fragment() {
+	vec2 px = TEXTURE_PIXEL_SIZE * radius;
+	vec3 c = vec3(0.0);
+	float w = 0.0;
+	for (int x = -2; x <= 2; x++) {
+		for (int y = -2; y <= 2; y++) {
+			float k = exp(-float(x * x + y * y) / 4.0);
+			c += texture(TEXTURE, UV + vec2(float(x), float(y)) * px).rgb * k;
+			w += k;
+		}
+	}
+	c /= w;
+	float g = dot(c, vec3(0.299, 0.587, 0.114));
+	COLOR = vec4(mix(vec3(g), c, sat) * dim, 1.0);
+}
+"""
+	var soft := ShaderMaterial.new()
+	soft.shader = sh
+	svc.material = soft
 	# The city is a picture, not a place you play in: it is drawn a few times at the full
 	# sharpness of the screen and then held, so the home screen costs next to nothing and never
 	# turns to blocks, whatever the 3D resolution is set to. A slow drift keeps it from sitting dead.

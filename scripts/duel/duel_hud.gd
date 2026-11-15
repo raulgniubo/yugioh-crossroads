@@ -2211,7 +2211,12 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 		if won or lose_ok:
 			first = _overlay_button(v, cont, "story_continue")
 		else:
+			# A duel the story needs you to win: go again, or step away and come back stronger.
 			first = _overlay_button(v, "Try Again", "rematch")
+			if stats.get("task", false):
+				_overlay_button(v, "Back to the world", "story_continue")
+			else:
+				_overlay_button(v, "Change deck", "decks")
 			_overlay_button(v, "Quit to Menu", "menu")
 	elif not mt.is_empty() and not mt["over"]:
 		first = _overlay_button(v, "Next duel", "next_game")

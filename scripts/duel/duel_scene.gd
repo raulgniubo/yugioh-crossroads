@@ -779,7 +779,8 @@ Match won: +%d Duel Points") % 200
 			{"turns": state.turn, "lp": [state.players[ME].lp, state.players[AI].lp], "names": [state.players[ME].name, state.players[AI].name],
 			"reward": Collection.last_reward.duplicate() if earned > 0 else [], "earned": earned,
 			"prize": Collection.last_prize if (earned > 0 and won) else 0,
-			"free": not cfg.has("return_to") and not cfg.get("story", false), "draw": tied, "match": match_info})
+			"free": not cfg.has("return_to") and not cfg.get("story", false), "draw": tied, "match": match_info,
+			"task": cfg.get("task", false)})
 	_won = won
 
 
@@ -2163,6 +2164,11 @@ func _on_pause_action(action: String) -> void:
 			Router.go(Router.duel_config.get("return_to", Router.STORY))
 		"menu":
 			_restore_match_deck()
+			Router.go(Router.MAIN_MENU)
+		"decks":
+			# Lost a duel the story needs: straight to your decks. The story waits at this duel.
+			_restore_match_deck()
+			Router.menu_open = "decks"
 			Router.go(Router.MAIN_MENU)
 
 

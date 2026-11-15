@@ -1747,7 +1747,7 @@ func _run_task(i: int) -> void:
 			flags["_duel_task"] = str(i)
 			_in_task = true
 			scene.story = self
-			_start_duel(t["duel"])
+			_start_duel((t["duel"] as Dictionary).merged({"task": true}))
 			return
 	_finish_task(i)
 
@@ -2066,7 +2066,7 @@ func _start_duel(d: Dictionary) -> void:
 		"story": true, "lose_ok": d.get("lose_ok", false), "return_to": Router.ROAM, "continue_label": Loc.t("Continue Story"),
 	}
 	# Boss rules: {"opp_lp": 12000, "lp": 8000, "rule": "The Curator starts with 12000 Life Points."}
-	for k in ["opp_lp", "my_lp", "hand", "rule", "music"]:
+	for k in ["opp_lp", "my_lp", "hand", "rule", "music", "task"]:
 		if d.has(k):
 			Router.duel_config[k] = d[k]
 	# The duel a chapter ends on, and any duel with boss rules: they can make a Destiny Draw too.
