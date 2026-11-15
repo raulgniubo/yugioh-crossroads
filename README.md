@@ -5,6 +5,15 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.1
+
+- **Hero faces.** Five of the looks you can pick had something wrong on the face:
+  - Ponytail in the Academy outfit: grey strips across the face. They were a handful of broken triangles stretched from the hair all the way down to the feet. Removed (one street woman had the same, also fixed).
+  - Short bob in the Street outfit, long dark hair in the Street and Academy outfits: the nose was a heavy black stroke. It is a soft mark now.
+  - Short bob in the Rider outfit: stray dark dashes above one eyebrow, toned down.
+- Not fixed, because the eyes themselves would have to be painted again: the smeared eye on the dark-haired Academy look and the soft eyes on the slicked-back Street look.
+- **People on the street walk around anybody a chapter has placed in their way**, the same way they walk around you.
+
 ## What is in 0.33
 
 **True colors on the full renderer.** On a Mac or a PC with a real graphics card the game runs on the full renderer (Forward+), and until now it looked pale there: grey streets, lime grass, a milky veil over duel fields. The cause was found: the game's own shaders (sky, streets, grass, windows, duel fields, the toon look) name their colors as plain numbers, and the full renderer brightened every one of them on the way to the screen. That is fixed at the root (`ShaderFix`), and the light of each hour was matched again for the full renderer (a stronger sun, fill light that holds up at night, a tone curve that keeps bright colors colorful). Checked in pictures of every world, day, sunset and night, next to the light renderer.

@@ -482,7 +482,19 @@ func _move_walkers(delta: float) -> void:
 		# Step around you instead of standing in your way.
 		var along: Vector3 = (b - a).normalized()
 		var side_dir := along.cross(Vector3.UP)
-		var rel: Vector3 = _player.global_position - (a.lerp(b, w["t"]))
+		var here: Vector3 = a.lerp(b, w["t"])
+		var rel: Vector3 = _player.global_position - here
+		# The same for anybody a chapter has placed on their path (a frozen duelist, somebody
+		# waiting for you): whoever is nearest is the one they walk around.
+		for dir_node in [story, quest]:
+			if dir_node == null:
+				continue
+			for ak in dir_node._actors:
+				var af: Node3D = dir_node._actors[ak]
+				if is_instance_valid(af) and af.is_visible_in_tree():
+					var r2: Vector3 = af.global_position - here
+					if r2.length() < rel.length():
+						rel = r2
 		# They pick a side once, when you are in their way, and keep it until you are clear. (Choosing
 		# again every frame made a walker swerve left and right when you walked along its own path.)
 		var ahead: float = rel.dot(along * float(w["dir"]))
