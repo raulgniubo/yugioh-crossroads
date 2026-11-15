@@ -704,8 +704,252 @@ func _light_windows(strength: float) -> void:
 		(n[0] as Label3D).modulate = Color(n[2]) * 2.2
 
 
+# ------------------------------------------------------------------ the house reacts
+
+var _flash_mats: Array[ShaderMaterial] = []
+var _spots: Array = []            # [SpotLight3D, where it points, its color, its strength]
+var _cheer := 0.0                 # how loud the house is right now, 0..1
+var _hold := 0.0                  # seconds the cheer stays up before it dies down
+var _pulse := 0.0                 # the lights jumping, 0..1
+var _pulse_col := Color.WHITE
+var _strobe := 0.0                # seconds of strobing left (the last hit of a duel)
+var _sweep := Vector3.ZERO        # where on the field the spotlights are drawn to
+var _dim := 1.0                   # the house lights after a loss
+var _dim_now := 1.0
+
+
+## Something happened on the field: the stands answer it (fans up on their feet, cameras
+## flashing) and the lights jump in the color of what happened and swing toward it.
+## strength 0.3 a good hit .. 1.0 the last hit of the duel. `hold` keeps the house up for a while.
+func react(strength: float, color := Color.WHITE, at := Vector3.ZERO, hold := 0.0) -> void:
+	_cheer = maxf(_cheer, clampf(strength, 0.0, 1.0))
+	_hold = maxf(_hold, hold)
+	_pulse = maxf(_pulse, clampf(strength, 0.0, 1.0))
+	_pulse_col = color
+	_sweep = at
+
+
+## The last hit: the lights strobe and the whole house is up until the result is on screen.
+func finish(color: Color) -> void:
+	react(1.0, color, Vector3.ZERO, 9.0)
+	_strobe = 1.6
+
+
+## You lost: the house sits down and the lights go low and cold.
+func hush() -> void:
+	_cheer = 0.0
+	_hold = 0.0
+	_strobe = 0.0
+	_dim = 0.45
+
+
+## You won: fireworks go up around the arena and confetti comes down over the field.
+func celebrate(colors: Array) -> void:
+	react(1.0, colors[0], Vector3.ZERO, 12.0)
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	# Bursts low over the stands all the way round (most arenas have a roof: nothing goes higher
+	# than the lights), and a fountain of sparks at each corner of the stage.
+	for i in 12:
+		var a := rng.randf() * TAU
+		var r := rng.randf_range(10.0, 15.0)
+		var at := Vector3(sin(a) * r, rng.randf_range(5.5, 9.5), cos(a) * r)
+		get_tree().create_timer(0.2 + i * 0.5 + rng.randf() * 0.3).timeout.connect(_firework.bind(at, colors[i % colors.size()]))
+	for sx: float in [-1.0, 1.0]:
+		for sz: float in [-1.0, 1.0]:
+			_fountain(Vector3(sx * 7.9, 0.1, sz * 5.8), colors[(0 if sz > 0.0 else 1) % colors.size()])
+	var conf := CPUParticles3D.new()
+	conf.amount = 1500
+	conf.lifetime = 7.5
+	conf.preprocess = 1.5
+	conf.one_shot = false
+	conf.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	conf.emission_box_extents = Vector3(10.0, 0.3, 8.0)
+	conf.direction = Vector3(0, -1, 0)
+	conf.spread = 35.0
+	conf.initial_velocity_min = 0.9
+	conf.initial_velocity_max = 1.7
+	conf.gravity = Vector3(0, -0.12, 0)
+	conf.angular_velocity_min = -260.0
+	conf.angular_velocity_max = 260.0
+	conf.angle_max = 360.0
+	conf.scale_amount_min = 0.6
+	conf.scale_amount_max = 1.3
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.16, 0.33, 0.5, 0.66, 0.83, 1.0])
+	g.colors = PackedColorArray([colors[0], Color("ff5a7a"), Color("ffd84a"), colors[1 % colors.size()], Color("5affc0"), Color("ffffff"), Color("7aa8ff")])
+	g.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
+	conf.color_initial_ramp = g
+	var q := QuadMesh.new()
+	q.size = Vector2(0.13, 0.07)
+	var qm := StandardMaterial3D.new()
+	qm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	qm.vertex_color_use_as_albedo = true
+	qm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	qm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	qm.billboard_keep_scale = true
+	q.material = qm
+	conf.mesh = q
+	conf.position = Vector3(0, 9.5, 0)
+	conf.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(conf)
+	get_tree().create_timer(12.0).timeout.connect(func():
+		if is_instance_valid(conf):
+			conf.emitting = false)
+
+
+static var _dot: GradientTexture2D = null
+
+
+## A round spark: bright in the middle, gone at the edge.
+static func _soft_dot() -> GradientTexture2D:
+	if _dot == null:
+		var g := Gradient.new()
+		g.offsets = PackedFloat32Array([0.0, 0.35, 1.0])
+		g.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0.55), Color(1, 1, 1, 0)])
+		_dot = GradientTexture2D.new()
+		_dot.gradient = g
+		_dot.fill = GradientTexture2D.FILL_RADIAL
+		_dot.fill_from = Vector2(0.5, 0.5)
+		_dot.fill_to = Vector2(1.0, 0.5)
+		_dot.width = 32
+		_dot.height = 32
+	return _dot
+
+
+## Stage pyro: a jet of sparks straight up for a few seconds.
+func _fountain(at: Vector3, color: Color) -> void:
+	var p := CPUParticles3D.new()
+	p.amount = 160
+	p.lifetime = 1.1
+	p.direction = Vector3(0, 1, 0)
+	p.spread = 9.0
+	p.initial_velocity_min = 6.0
+	p.initial_velocity_max = 9.0
+	p.gravity = Vector3(0, -9.0, 0)
+	p.scale_amount_min = 0.5
+	p.scale_amount_max = 1.1
+	var q := QuadMesh.new()
+	q.size = Vector2(0.16, 0.16)
+	var qm := StandardMaterial3D.new()
+	qm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	qm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	qm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	qm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	qm.billboard_keep_scale = true
+	qm.albedo_texture = _soft_dot()
+	var col := color.lerp(Color(1.0, 0.9, 0.6), 0.5)
+	qm.albedo_color = Color(col.r * 2.4, col.g * 2.4, col.b * 2.4, 1.0)
+	q.material = qm
+	p.mesh = q
+	p.position = at
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(p)
+	var l := OmniLight3D.new()
+	l.light_color = col
+	l.light_energy = 3.0
+	l.omni_range = 7.0
+	l.position = at + Vector3(0, 1.5, 0)
+	add_child(l)
+	get_tree().create_timer(4.5).timeout.connect(func():
+		if is_instance_valid(p):
+			p.emitting = false
+		if is_instance_valid(l):
+			var tw := create_tween()
+			tw.tween_property(l, "light_energy", 0.0, 0.6)
+			tw.tween_callback(l.queue_free))
+	get_tree().create_timer(6.5).timeout.connect(func():
+		if is_instance_valid(p):
+			p.queue_free())
+
+
+func _firework(at: Vector3, color: Color) -> void:
+	if not is_inside_tree():
+		return
+	Sfx.play("firework", -6.0, randf_range(0.85, 1.2))
+	for layer in 2:
+		var p := CPUParticles3D.new()
+		p.one_shot = true
+		p.explosiveness = 1.0
+		p.amount = 90 if layer == 0 else 40
+		p.lifetime = 1.7 if layer == 0 else 1.1
+		p.direction = Vector3(0, 1, 0)
+		p.spread = 180.0
+		p.initial_velocity_min = 5.0 if layer == 0 else 2.0
+		p.initial_velocity_max = 7.5 if layer == 0 else 3.5
+		p.gravity = Vector3(0, -2.6, 0)
+		p.damping_min = 1.6
+		p.damping_max = 2.4
+		p.scale_amount_min = 0.7
+		p.scale_amount_max = 1.2
+		var curve := Curve.new()
+		curve.add_point(Vector2(0.0, 1.0))
+		curve.add_point(Vector2(0.7, 0.8))
+		curve.add_point(Vector2(1.0, 0.0))
+		p.scale_amount_curve = curve
+		var q := QuadMesh.new()
+		q.size = Vector2(0.34, 0.34)
+		var qm := StandardMaterial3D.new()
+		qm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		qm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		qm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		qm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+		qm.billboard_keep_scale = true
+		qm.albedo_texture = _soft_dot()
+		var col := color if layer == 0 else color.lerp(Color.WHITE, 0.7)
+		qm.albedo_color = Color(col.r * 1.35, col.g * 1.35, col.b * 1.35, 1.0)
+		q.material = qm
+		p.mesh = q
+		p.position = at
+		p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(p)
+		p.emitting = true
+		get_tree().create_timer(2.4).timeout.connect(p.queue_free)
+	var l := OmniLight3D.new()
+	l.light_color = color
+	l.light_energy = 9.0
+	l.omni_range = 26.0
+	l.shadow_enabled = false
+	l.position = at
+	add_child(l)
+	var tw := create_tween()
+	tw.tween_property(l, "light_energy", 0.0, 1.1)
+	tw.tween_callback(l.queue_free)
+	_pulse = maxf(_pulse, 0.5)
+	_pulse_col = color
+
+
+func _react_step(delta: float) -> void:
+	if _hold > 0.0:
+		_hold -= delta
+	else:
+		_cheer = maxf(0.0, _cheer - delta * 0.3)
+	_pulse = maxf(0.0, _pulse - delta * 1.5)
+	_strobe = maxf(0.0, _strobe - delta)
+	_dim_now = move_toward(_dim_now, _dim, delta * 0.5)
+	if _crowd_mesh:
+		for i in _crowd_mesh.get_surface_count():
+			(_crowd_mesh.surface_get_material(i) as ShaderMaterial).set_shader_parameter("cheer", _cheer)
+	for fm in _flash_mats:
+		fm.set_shader_parameter("cheer", _cheer)
+	var strobe_on := _strobe > 0.0 and fmod(_strobe, 0.14) > 0.07
+	for i in _spots.size():
+		var sp: Array = _spots[i]
+		var s: SpotLight3D = sp[0]
+		if not is_instance_valid(s):
+			continue
+		s.light_energy = float(sp[3]) * (1.0 + 1.6 * _pulse + (2.5 if strobe_on else 0.0)) * _dim_now
+		s.light_color = (sp[2] as Color).lerp(_pulse_col, minf(1.0, _pulse * 0.8)).lerp(Color(0.55, 0.65, 1.0), 1.0 - _dim_now)
+		# While the house is up the spotlights leave their marks and hunt over the field.
+		var roam := Vector3(sin(_time * 1.3 + i * 2.1) * 4.5, 0, cos(_time * 1.1 + i * 1.7) * 3.2) * _cheer
+		var tgt: Vector3 = (sp[1] as Vector3).lerp(_sweep, minf(1.0, _pulse)) + roam
+		if tgt.distance_to(s.global_position) > 0.5:
+			s.look_at(tgt, Vector3.UP if absf((tgt - s.global_position).normalized().y) < 0.98 else Vector3.RIGHT)
+
+
 func _process(delta: float) -> void:
 	_time += delta
+	_react_step(delta)
 	for n in _spin:
 		n.rotation.y += delta * float(n.get_meta("spin", 0.1))
 	for b in _bob:
@@ -773,6 +1017,7 @@ const CROWD_SH := """
 shader_type spatial;
 render_mode cull_back;
 uniform int part = 0;            // 0 body, 1 head, 2 arms, 3 glow stick
+uniform float cheer = 0.0;       // 0 a quiet moment .. 1 the whole house on its feet (set by the duel)
 varying vec3 lp;
 varying float h;
 float hash(float p) { return fract(sin(p * 78.233) * 43758.5453); }
@@ -784,10 +1029,13 @@ void vertex() {
 	float excite = 0.5 + 0.5 * sin(TIME * 0.5 + hash(id + 2.0) * 6.283);
 	float ang = atan(MODEL_MATRIX[3].x, MODEL_MATRIX[3].z);
 	float wave = smoothstep(0.6, 1.0, sin(TIME * 1.1 - ang * 2.0));
-	float jump = abs(sin(TIME * (3.0 + hash(id + 1.0) * 2.5) + ph)) * (0.03 + 0.16 * max(excite * excite * 0.6, wave));
+	// When something big happens on the field the fans nearest to losing it go first: at half a
+	// cheer half of them are up, at a full one everybody is.
+	float mine = smoothstep(hash(id + 9.0) * 0.85, hash(id + 9.0) * 0.85 + 0.15, cheer);
+	float jump = abs(sin(TIME * (3.0 + hash(id + 1.0) * 2.5 + mine * 2.0) + ph)) * (0.03 + 0.16 * max(excite * excite * 0.6, wave) + 0.2 * mine);
 	lp = VERTEX;
 	if (part >= 2) {
-		float up = max(wave, smoothstep(0.7, 0.95, excite));
+		float up = max(max(wave, smoothstep(0.7, 0.95, excite)), mine);
 		if (part == 3 && h < 0.72) { VERTEX *= 0.0; }
 		vec3 pv = VERTEX - vec3(0.0, 0.62, 0.0);
 		float a = up * (2.5 + 0.3 * sin(TIME * 7.0 + ph));
@@ -821,6 +1069,7 @@ void fragment() {
 const FLASH_SH := """
 shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled;
+uniform float cheer = 0.0;
 float hash(float p) { return fract(sin(p * 91.7) * 43758.5453); }
 varying float id;
 void vertex() {
@@ -828,7 +1077,7 @@ void vertex() {
 	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
 }
 void fragment() {
-	float on = step(0.985, hash(id + floor(TIME * 9.0) * 13.0));
+	float on = step(0.985 - cheer * 0.16, hash(id + floor(TIME * 9.0) * 13.0));
 	float d = length(UV - 0.5) * 2.0;
 	float star = max(0.0, 1.0 - d) + max(0.0, 0.25 - abs(UV.x - 0.5) * abs(UV.y - 0.5) * 60.0);
 	ALBEDO = vec3(1.0, 0.98, 0.9);
@@ -924,6 +1173,7 @@ func _crowd(center: Vector3, radius_from: float, radius_to: float, rows: int, ar
 	var fmat := ShaderMaterial.new()
 	fmat.shader = fsh
 	q.material = fmat
+	_flash_mats.append(fmat)
 	fm.mesh = q
 	fm.instance_count = mini(90, spots.size())
 	for i in fm.instance_count:
@@ -977,6 +1227,7 @@ func _spotlight(pos: Vector3, target: Vector3, color: Color) -> void:
 	s.position = pos
 	add_child(s)
 	s.look_at_from_position(pos, target)
+	_spots.append([s, target, color, s.light_energy])
 	cyl(0.25, 0.4, 0.6, pos, mat(Color(0.15, 0.15, 0.17), 0.4, 0.7))
 
 

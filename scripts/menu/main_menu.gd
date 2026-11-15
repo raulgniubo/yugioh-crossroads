@@ -282,6 +282,7 @@ func _on_tournaments() -> void:
 				Router.go(Router.RIDE)
 				return
 			Router.roam["district"] = district
+			Router.roam["free"] = true       # Free Roam is free: no chapter list, no story leads
 			Router.roam["pos"] = null
 			Router.roam.erase("yaw")
 			Router.roam.erase("tod")
@@ -650,6 +651,7 @@ func _on_roam() -> void:
 			Router.go(Router.RIDE)
 			return
 		Router.roam["district"] = key
+		Router.roam["free"] = true       # Free Roam is free: no chapter list, no story leads
 		Router.roam["pos"] = null
 		Router.roam.erase("yaw")
 		Router.roam.erase("tod")

@@ -133,10 +133,11 @@ static func open(parent: Node) -> SidePanel:
 	hold.button_pressed = Settings.hold_fps
 	hold.toggled.connect(func(on):
 		Settings.hold_fps = on
+		Settings.hold_gave_up = false
 		Settings.auto_k = 1.0
 		Settings.apply_graphics()
 		Settings.save_settings())
-	_row(disp, "Hold 60 FPS", "Off by default: the picture always stays as sharp as your settings say. On, a heavy scene is drawn a little softer instead of dropping under 60, and sharpened again when there is room. It never limits how fast the game runs.", hold)
+	_row(disp, "Hold 60 FPS (can blur the picture)", "Off by default. Warning: when it is on and the game cannot reach 60, the 3D picture is drawn smaller and looks soft or blurry. It never goes under 1080 lines, and it puts the picture back when being smaller does not make the game faster. If the game looks blurry, turn this off first.", hold)
 	SavesUI.settings_block(func(title, help, control): _row(disp, title, help, control), parent)
 
 	_graphics_card(p)

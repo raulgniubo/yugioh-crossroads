@@ -42,9 +42,9 @@ const GFX_PRESET_NAMES := ["Low", "Medium", "High", "Ultra", "Max"]
 const GFX_PRESETS := [
 	{"res": 0, "aa": 1, "shadows": 1, "ao": false, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 0, "people": 0, "upscale": 1},
 	{"res": 2, "aa": 1, "shadows": 2, "ao": false, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 1, "people": 1, "upscale": 1},
-	{"res": 3, "aa": 2, "shadows": 2, "ao": true, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 2, "people": 1, "upscale": 1},
-	{"res": 3, "aa": 2, "shadows": 3, "ao": true, "reflect": true, "glow": true, "fog": true, "gi": true, "detail": 3, "people": 2, "upscale": 1},
-	{"res": 4, "aa": 3, "shadows": 3, "ao": true, "reflect": true, "glow": true, "fog": true, "gi": true, "detail": 3, "people": 2, "upscale": 1},
+	{"res": 3, "aa": 2, "shadows": 2, "ao": true, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 2, "people": 1, "upscale": 2},
+	{"res": 3, "aa": 2, "shadows": 3, "ao": true, "reflect": true, "glow": true, "fog": true, "gi": true, "detail": 3, "people": 2, "upscale": 2},
+	{"res": 4, "aa": 3, "shadows": 3, "ao": true, "reflect": true, "glow": true, "fog": true, "gi": true, "detail": 3, "people": 2, "upscale": 2},
 ]
 ## How many lines the 3D picture is drawn at before it is fitted to the window. On a Retina
 ## or 4K screen "Native" is a huge number of pixels, and the biggest single cost there is.
@@ -145,7 +145,11 @@ func apply_graphics() -> void:
 		RenderingServer.gi_set_use_half_resolution(not maxed)
 		RenderingServer.environment_set_sdfgi_frames_to_converge(RenderingServer.ENV_SDFGI_CONVERGE_IN_10_FRAMES if maxed else RenderingServer.ENV_SDFGI_CONVERGE_IN_20_FRAMES)
 		RenderingServer.environment_set_sdfgi_frames_to_update_light(RenderingServer.ENV_SDFGI_UPDATE_LIGHT_IN_2_FRAMES if maxed else RenderingServer.ENV_SDFGI_UPDATE_LIGHT_IN_8_FRAMES)
-		RenderingServer.environment_set_volumetric_fog_volume_size(96 if maxed else 64, 96 if maxed else 64)
+		RenderingServer.environment_set_volumetric_fog_volume_size(96 if maxed else 64, 96 if maxed else 48)
+		# (From a real report, an M4 Max on a 4480x2520 screen: haze and bounce light were each
+		# the difference between 30 and a locked 60. Fewer rays per probe, a shallower haze grid.)
+		RenderingServer.environment_set_sdfgi_ray_count(RenderingServer.ENV_SDFGI_RAY_COUNT_16 if maxed else RenderingServer.ENV_SDFGI_RAY_COUNT_8)
+		RenderingServer.environment_set_volumetric_fog_filter_active(true)
 	gfx_changed.emit()
 
 
@@ -156,6 +160,10 @@ func fps_target() -> float:
 	return 60.0
 
 
+const HOLD_FLOOR := 0.75
+var hold_gave_up := false     # shrinking the picture was not helping here (until the next place)
+var _hold_was := 0.0          # the frame rate just before the last step down
+var _hold_gain := 0           # steps down in a row that bought nothing
 var _hold_t := 0.0
 var _hold_frames := 0
 var _hold_ceiling := 1.0      # raising past this dropped frames a moment ago
@@ -182,12 +190,31 @@ func hold_tick(delta: float, in_3d: bool) -> void:
 	var vp := get_tree().root.get_viewport_rid()
 	var spent := RenderingServer.viewport_get_measured_render_time_cpu(vp) + RenderingServer.viewport_get_measured_render_time_gpu(vp)
 	var before := auto_k
+	# Did the last step down buy anything? Where the slow part is not the number of pixels (light
+	# haze, bounce light, many people), a smaller picture is only a worse picture. Two steps
+	# with nothing to show for them and the picture goes back to full, and stays there for
+	# this place.
+	if _hold_was > 0.0:
+		_hold_gain = _hold_gain + 1 if fps < _hold_was * 1.04 else 0
+		_hold_was = 0.0
+		if _hold_gain >= 2:
+			hold_gave_up = true
+			auto_k = 1.0
+			_hold_gain = 0
+			_apply_scale()
+			Router.toast.call_deferred(Loc.t("A smaller picture does not make this place faster, so it stays sharp. For more speed turn down Light haze or Bounce light."))
+			return
+	if hold_gave_up:
+		return
 	if fps < want * 0.92:
-		# Too slow: soften. A big miss takes a bigger step.
-		auto_k = maxf(0.5, auto_k * (0.86 if fps < want * 0.75 else 0.93))
+		# Too slow: soften. A big miss takes a bigger step. Never below three quarters: under
+		# that the picture falls apart long before the frame rate is saved.
+		auto_k = maxf(HOLD_FLOOR, auto_k * (0.9 if fps < want * 0.75 else 0.95))
 		_hold_ceiling = before
 		_hold_cool = 12.0
 		_hold_good = 0.0
+		if auto_k < before:
+			_hold_was = fps
 	elif auto_k < 1.0:
 		_hold_good += 0.75
 		var room := spent > 0.1 and spent < (1000.0 / want) * 0.62
@@ -215,11 +242,18 @@ func _apply_scale() -> void:
 	if fullscreen and fs_resolution.y > 0 and h > float(fs_resolution.y):
 		# Fullscreen at a lower resolution: the 3D picture is drawn that small and scaled up.
 		k = minf(k, clampf(float(fs_resolution.y) / h, 0.3, 1.0))
-	k = clampf(k * (auto_k if hold_fps else 1.0), 0.3, 1.0)
+	var held := hold_fps and auto_k < 0.999
+	if held:
+		# Holding the frame rate may soften the picture, but never to less than 1080 lines (the
+		# "720p" look on a big screen was this going down to 30%).
+		k = maxf(k * auto_k, minf(k, 1080.0 / h))
+	k = clampf(k, 0.3, 1.0)
 	# A screen that is mostly a backdrop (the home screen's city) is never drawn so small that it
 	# turns to blocks behind sharp menus, whatever the duel and world resolution is set to.
 	k = clampf(maxf(k, scale_floor), 0.3, 1.0)
 	var up := clampi(int(gfx.get("upscale", 1)), 0, 2) if upscale_ok() else 0
+	if held and up == 1:
+		up = 2          # a picture shrunk to hold the frame rate is rebuilt, not just stretched
 	var mode := Viewport.SCALING_3D_MODE_BILINEAR
 	if k < 0.99 and up == 1:
 		mode = Viewport.SCALING_3D_MODE_METALFX_SPATIAL if metalfx() else Viewport.SCALING_3D_MODE_FSR
@@ -423,6 +457,10 @@ func load_settings() -> void:
 		# Once, for settings saved before 0.29: the softening goes off. It is off unless you ask.
 		_looks_first = true
 		hold_fps = false
+	if not bool(cfg.get_value("display", "hold_reset_0338", false)):
+		# Once more with 0.33.8: until then it could shrink the picture to 30% (a 720p look on a
+		# big screen). It goes off; whoever wants it turns it on knowing what it does.
+		hold_fps = false
 
 
 var _looks_first := false
@@ -445,6 +483,7 @@ func save_settings() -> void:
 	cfg.set_value("display", "show_fps", show_fps)
 	cfg.set_value("display", "hold_fps", hold_fps)
 	cfg.set_value("display", "looks_first", true)
+	cfg.set_value("display", "hold_reset_0338", true)
 	cfg.set_value("graphics", "preset", gfx_preset)
 	for k in gfx:
 		cfg.set_value("graphics", k, gfx[k])

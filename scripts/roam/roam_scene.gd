@@ -129,7 +129,8 @@ func _ready() -> void:
 	else:
 		_after_duel()
 		# A chapter that has handed you a list of things to do comes along into the open world.
-		var qid := StoryDirector.quest_pending()
+		# (Only when you came in through the story. Free Roam from the menu is free of it.)
+		var qid := "" if bool(Router.roam.get("free", false)) else StoryDirector.quest_pending()
 		Router.roam["quest"] = qid
 		if qid != "":
 			quest = StoryDirector.new()
@@ -637,6 +638,7 @@ func _exit_tree() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_door_marks_step(delta)
 	_follow_clock(delta)
 	var input := Vector2.ZERO
 	if not _talking and _pause == null and not _overlay_open and not (_map_full and _map_full.visible):
@@ -1078,6 +1080,7 @@ func _build_rooms() -> void:
 			dl.position = door + out * 2.3 + Vector3(0, 2.15, 0)
 			dl.font_size = 52
 		city.add_child(dl)
+		_door_mark(dl, door, out)
 		var dmat := city.box(Vector3(2.2, 0.03, 1.2) if not room.has("step") else Vector3(1.0, 0.02, 0.5), door + out * (0.9 if not room.has("step") else 0.45) + Vector3(0, 0.18 if not room.has("step") else 0.02, 0), city.glow_mat(room["trim"], 1.3), false)
 		dmat.rotation.y = atan2(out.x, out.z)
 		dmat.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -1108,6 +1111,37 @@ func _build_kame_spots() -> void:
 	arrow.modulate = Color("ffe9a8")
 	arrow.position = Vector3(-10, 3.0, -15.4)
 	city.add_child(arrow)
+	_door_mark(arrow, Vector3(-10, 0, -16.3), Vector3(0, 0, 1))
+
+
+## A "▼ ENTER" over a door is always drawn in front (an awning or a parasol must not cut it in
+## half), and only shows from the street side of that door and from near enough to matter, so
+## it never floats through a building seen from behind.
+var _door_marks: Array = []      # [Label3D, the door, the way out of it]
+var _door_tick := 0.0
+
+
+func _door_mark(l: Label3D, door: Vector3, out: Vector3) -> void:
+	l.no_depth_test = true
+	l.render_priority = 4
+	l.outline_render_priority = 3
+	_door_marks.append([l, door, out.normalized()])
+
+
+func _door_marks_step(delta: float) -> void:
+	_door_tick -= delta
+	if _door_tick > 0.0 or _player == null:
+		return
+	_door_tick = 0.2
+	var cam := get_viewport().get_camera_3d()
+	var eye: Vector3 = cam.global_position if cam else _player.global_position
+	for m in _door_marks:
+		var l: Label3D = m[0]
+		if not is_instance_valid(l):
+			continue
+		var to: Vector3 = eye - (m[1] as Vector3)
+		to.y = 0.0
+		l.visible = to.length() < 36.0 and to.normalized().dot(m[2]) > 0.15 and (_inside == "")
 
 
 func _travel(where: String) -> void:

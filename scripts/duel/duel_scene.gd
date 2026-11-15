@@ -709,6 +709,11 @@ func _finish() -> void:
 			Router.toast(Loc.t("Third win over %s: their deck is now in My Decks.") % str(Characters.get_char(_opp_key).get("short", _opp_key)))
 	Sfx.play("win" if won else "lose")
 	Music.play("victory" if won else "defeat")
+	if won and board.arena != null:
+		# Yours: fireworks over the arena, confetti over the field, the house on its feet.
+		board.arena.celebrate([Color(board.theme["accent"]), Color("ff5a7a"), Color("ffd84a"), Color(board.theme["accent2"]), Color("5affc0")])
+	elif not won and not tied and board.arena != null:
+		board.arena.hush()
 	Sfx.play("cheer", -4.0 if won else -12.0)
 	hud.say(AI, Characters.line(_opp_key, "lose" if won else "win"))
 	# The winner gets the camera.
@@ -1182,6 +1187,12 @@ func _play_event(ev: Dictionary) -> void:
 				# The last hit of the duel: the winner gets the screen.
 				hud.cut_in(1 - p, Loc.t("FINISHING BLOW!"), Characters.line(_speaker(ME) if p == AI else _opp_key, "win"), UITheme.GOLD, 0.8, true)
 			if ev["delta"] < 0:
+				# The house: a roar for a hit on the other side, a gasp (and red light) for one on yours.
+				var hit_col := Color(1.0, 0.82, 0.3) if p == AI else Color(1.0, 0.3, 0.26)
+				if int(ev["lp"]) <= 0 and board.arena != null:
+					board.arena.finish(hit_col)
+				else:
+					board.house(clampf(float(-ev["delta"]) / 3000.0, 0.25, 0.9), hit_col, Vector3(0, 0, -3.0 if p == AI else 3.0), 0.6)
 				board.duelist_body(p, "hurt", float(-ev["delta"]) / 1500.0)
 				board.shake(0.5 if ev["delta"] > -2000 else 0.8)
 				if board.track:

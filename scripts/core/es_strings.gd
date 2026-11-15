@@ -4218,4 +4218,9 @@ const ES := {
 	"%s: reveal it and Special Summon it?": "%s: ¿mostrarlo e Invocarlo de Modo Especial?",
 	"Keep it in your hand": "Dejarlo en tu mano",
 	"%s is revealed and Special Summoned": "%s es mostrado e Invocado de Modo Especial",
+	"%d of %d done   ·   %s  show the list": "%d de %d hechas   ·   %s  ver la lista",
+	"%s  hide the list": "%s  ocultar la lista",
+	"Hold 60 FPS (can blur the picture)": "Mantener 60 FPS (puede emborronar la imagen)",
+	"Off by default. Warning: when it is on and the game cannot reach 60, the 3D picture is drawn smaller and looks soft or blurry. It never goes under 1080 lines, and it puts the picture back when being smaller does not make the game faster. If the game looks blurry, turn this off first.": "Desactivado por defecto. Aviso: si está activado y el juego no llega a 60, la imagen 3D se dibuja más pequeña y se ve suave o borrosa. Nunca baja de 1080 líneas, y devuelve la imagen a su tamaño cuando hacerla más pequeña no acelera el juego. Si el juego se ve borroso, desactiva esto primero.",
+	"A smaller picture does not make this place faster, so it stays sharp. For more speed turn down Light haze or Bounce light.": "Una imagen más pequeña no hace este lugar más rápido, así que se queda nítida. Para más velocidad baja Bruma ligera o Luz rebotada.",
 }

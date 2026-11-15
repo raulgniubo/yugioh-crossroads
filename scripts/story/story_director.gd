@@ -29,6 +29,10 @@ var _task_box: PanelContainer
 var _task_list: VBoxContainer
 var _task_title: Label
 var _task_sig := ""
+var _task_more: Label                 # the one line under the goal when the list is folded away
+## The list of things to do is folded to its goal and a count until you open it (it was a third
+## of the screen). Remembered while the game runs.
+static var task_small := true
 var chapter := ""
 var step := 0
 var flags := {}
@@ -1479,6 +1483,7 @@ func _do_tasks(st: Dictionary) -> bool:
 			WorldClock.minutes = float(st["clock"])
 		WorldClock.save_data()
 		Router.roam["quest"] = chapter
+		Router.roam["free"] = false
 		Router.roam["story"] = ""
 		Router.roam["pos"] = scene._player.position if home == str(Router.roam.get("district", "")) else null
 		Router.roam["yaw"] = scene._yaw
@@ -1838,14 +1843,14 @@ func _build_task_ui(title: String, goal := "") -> void:
 	_task_box = PanelContainer.new()
 	_task_box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.042, 0.0676, 0.145, 0.88), 16, Color(UITheme.GOLD, 0.6)))
 	_task_box.position = Vector2(30, 232)
-	_task_box.custom_minimum_size = Vector2(500, 0)
+	_task_box.custom_minimum_size = Vector2(380, 0)
 	_task_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui.add_child(_task_box)
 	var gm := MarginContainer.new()
 	for side in ["left", "right"]:
-		gm.add_theme_constant_override("margin_" + side, 18)
+		gm.add_theme_constant_override("margin_" + side, 16)
 	for side in ["top", "bottom"]:
-		gm.add_theme_constant_override("margin_" + side, 12)
+		gm.add_theme_constant_override("margin_" + side, 9)
 	gm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_task_box.add_child(gm)
 	var v := VBoxContainer.new()
@@ -1858,15 +1863,18 @@ func _build_task_ui(title: String, goal := "") -> void:
 			ch = Loc.t(str(c["title"])).to_upper() + "   ·   "
 	# With a goal, the small line names the stretch of the chapter and the big line says what
 	# all of it is for.
-	v.add_child(UITheme.label(ch + (Loc.t(title).to_upper() if goal != "" else Loc.t("YOUR MOVE")), 15, UITheme.GOLD, UITheme.semi_font()))
-	_task_title = UITheme.label(Loc.t(goal if goal != "" else title), 22, Color.WHITE, UITheme.semi_font())
+	v.add_child(UITheme.label(ch + (Loc.t(title).to_upper() if goal != "" else Loc.t("YOUR MOVE")), 13, UITheme.GOLD, UITheme.semi_font()))
+	_task_title = UITheme.label(Loc.t(goal if goal != "" else title), 19, Color.WHITE, UITheme.semi_font())
 	_task_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_task_title.custom_minimum_size = Vector2(460, 0)
+	_task_title.custom_minimum_size = Vector2(348, 0)
 	v.add_child(_task_title)
 	_task_list = VBoxContainer.new()
 	_task_list.add_theme_constant_override("separation", 1)
 	_task_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(_task_list)
+	_task_more = UITheme.label("", 14, Color(0.72, 0.78, 0.9, 0.85))
+	_task_more.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(_task_more)
 	Sfx.play("quest", -6.0)
 
 
@@ -2040,15 +2048,27 @@ func _announce(i: int) -> void:
 func _refresh_task_ui(here: String, home: String) -> void:
 	if _task_box == null:
 		return
-	_task_box.visible = not _cut
+	# Never over the map, the menu or anything else that is open on top of the world.
+	var covered: bool = scene != null and (scene._overlay_open or scene._pause != null or (scene._map_full != null and scene._map_full.visible))
+	_task_box.visible = not _cut and not covered
 	var rows := task_rows(here, home)
-	var sig := str(rows)
+	var sig := str(rows) + str(task_small)
 	if sig != _task_sig:
 		_task_sig = sig
 		for c in _task_list.get_children():
 			_task_list.remove_child(c)
 			c.queue_free()
+		var done_n := 0
 		for r in rows:
+			if r[1] == "done":
+				done_n += 1
+		var key_name := "R3" if Pad.connected else "Tab"
+		_task_list.visible = not task_small
+		_task_box.custom_minimum_size.x = 380.0 if task_small else 500.0
+		_task_title.custom_minimum_size.x = 348.0 if task_small else 460.0
+		_task_more.text = (Loc.t("%d of %d done   ·   %s  show the list") % [done_n, rows.size(), key_name]) if task_small else (Loc.t("%s  hide the list") % key_name)
+		_task_box.size = Vector2.ZERO
+		for r in (rows if not task_small else []):
 			var done: bool = r[1] == "done"
 			var l := UITheme.label(("✔  " if done else "•  ") + str(r[0]), 18,
 					Color(0.55, 0.9, 0.62, 0.85) if done else (Color(0.75, 0.8, 0.9, 0.8) if r[1] in ["away", "wait"] else Color.WHITE), UITheme.semi_font())
@@ -2948,6 +2968,7 @@ static func begin(id: String, resume := false) -> void:
 		if (steps[i] as Dictionary).has("scene"):
 			sc = steps[i]["scene"]
 	router.roam.erase("quest")
+	router.roam["free"] = false          # you came in through the story: its list of things to do rides along
 	if at < steps.size() and (steps[at] as Dictionary).has("tasks"):
 		# The chapter is at a list of things to do yourself: that is the open world, with the
 		# list riding along. You come back where you were.
@@ -3082,6 +3103,13 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not _cut:
+		# The list of things to do: Tab (or a click of the right stick) opens it out and folds it away.
+		if _task_box != null and _task_box.visible and ((event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB) \
+				or (event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_RIGHT_STICK)):
+			task_small = not task_small
+			_task_sig = ""
+			Sfx.play("click", -10.0)
+			get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("ui_accept") or (event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_SPACE, KEY_E, KEY_ENTER]) \
 			or (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):

@@ -348,6 +348,7 @@ func go(path: String) -> void:
 	if _busy:
 		return
 	_busy = true
+	Settings.hold_gave_up = false      # a new place: "hold the frame rate" may try again there
 	_fade.mouse_filter = Control.MOUSE_FILTER_STOP
 	var tw := create_tween()
 	tw.tween_property(_fade, "color:a", 1.0, 0.09)

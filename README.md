@@ -5,6 +5,28 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.8
+
+**The house reacts.** The stands, the cameras and the lights were running on their own clock, whatever happened on the field. Now the place answers the duel.
+
+- **The crowd:** a big summon, a monster destroyed, a hit on Life Points: fans get up, arms and glow sticks in the air, and camera flashes go off all over the stands. A small hit moves some of them, a big one moves everybody, and it dies down again by itself.
+- **The lights:** the arena spotlights jump in the color of what happened (the color of the summon, gold for your hit, red when you are the one hit), swing to where it happened and hunt over the field while the house is up.
+- **The last hit:** the lights strobe and the whole house stays on its feet until the result is on screen.
+- **A win:** fireworks go off low over the stands all the way round, jets of sparks at the four corners of the stage, and confetti comes down over the field. **A loss:** the house sits down and the lights go low and cold.
+- Works in every duel place that has stands or onlookers and lights. Checked on both renderers. Tests pass.
+
+Not in this build: Turbo Duels have no stands, so nothing reacts there yet. Card art in my test pictures is placeholders, so I could not judge the summon and attack effects against real cards.
+
+**Fixes from the first real report (an M4 Max on a 4480x2520 screen) and from playing it:**
+
+- **The "720p" look is gone.** "Hold 60 FPS" could shrink the 3D picture to 30% of the screen (1344x756 on that screen) when a scene could not reach 60, and on that Mac shrinking did not even help, because the slow part was light haze and bounce light, not pixels. Now it never goes under 1080 lines, rebuilds a shrunk picture with MetalFX Temporal (FSR 2 on Windows) instead of stretching it, and when two steps down buy nothing it puts the picture back to full and says so. It is switched off once for everybody with this build, and its name in Settings now says what it can do: "Hold 60 FPS (can blur the picture)".
+- **MetalFX Temporal (FSR 2 on Windows) is the default** on High, Ultra and Max. It was the one setting that looked right on a Retina screen.
+- **Haze and bounce light cost less below Max:** half the rays per light probe, a shallower haze grid. On that Mac each of the two was the difference between 30 and a locked 60. (Not measured after the change: that needs a new F4 report.)
+- **Free Roam is free.** A chapter's list of things to do and its leads only come along when you enter through Story. From Free Roam in the menu there is none of it.
+- **The list of things to do is small now:** the goal, a count ("2 of 5 done") and "Tab  show the list". Tab (R3 on a controller) opens the full list and folds it away again. It no longer shows on top of the map, the pause menu or any other open window.
+- **"ENTER" over a door is never cut in half** by an awning or a parasol, in every world: it is drawn in front, and only from the street side of its door and from near by, so it does not float through buildings.
+- **Academy:** the picnic blankets read as cloth (checks, no grass growing through), and one that lies on paving moves onto the lawn. The same for the duel mats on the lawn.
+
 ## What is in 0.33.7
 
 **Real trim, in every world.** A tower was one tall box with windows drawn on it, which reads as a sheet of paper from the street. Now real pieces stand out from the wall, lined up with the drawn windows, and cast their own shadows.

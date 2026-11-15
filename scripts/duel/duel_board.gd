@@ -299,8 +299,18 @@ void fragment() {
 
 
 ## Floor beyond the mat, corner pylons and drifting particles.
+var arena: DuelArena = null
+
+
+## The place answers what happens on the field: the stands get up, cameras flash, the lights
+## jump in the color of the moment and swing to where it happened. (No arena on the highway.)
+func house(strength: float, color := Color.WHITE, at := Vector3.ZERO, hold := 0.0) -> void:
+	if arena != null and Settings.anim_speed <= 4.0:
+		arena.react(strength, color, at, hold)
+
+
 func _build_arena() -> void:
-	var arena := DuelArena.new()
+	arena = DuelArena.new()
 	arena.name = "Arena"
 	add_child(arena)
 	arena.build_arena(theme)
@@ -1166,6 +1176,7 @@ func _dim_field(dur: float) -> void:
 
 ## The set piece for each kind of Extra Deck or Ritual Summon.
 func _summon_scene(method: String, at: Vector3, core: Vector3, col: Color, count: int) -> void:
+	house(0.6, col, at, 1.2)
 	match method:
 		"synchro":
 			# Green rings stack up into a tunnel and a pillar of light runs through them.
@@ -1756,6 +1767,7 @@ func _impact(at: Vector3, color: Color) -> void:
 	_flash(at + Vector3(0, 0.6, 0), color)
 	_sparks(at, color, 40)
 	shake(0.55)
+	house(0.3, color, at)
 	Sfx.play("impact", -4.0)
 
 
@@ -1801,6 +1813,7 @@ func _sparks(at: Vector3, color: Color, amount: int) -> void:
 
 ## The card bursts into glowing shards that tumble away.
 func _shatter(at: Vector3, color: Color) -> void:
+	house(0.4, color, at)
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.albedo_color = color.lightened(0.3)

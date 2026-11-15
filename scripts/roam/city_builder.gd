@@ -1424,6 +1424,43 @@ func _detail_chunk(mesh: Mesh, items: Array, mid: Vector3, see: float) -> void:
 	mi.visibility_range_end = see * [1.0, 1.0, 1.4, 2.2][clampi(int(Settings.gfx.get("detail", 2)), 0, 3)]
 	mi.visibility_range_end_margin = 4.0
 	add_child(mi)
+	_detail_chunks.append(mi)
+
+
+var _detail_chunks: Array[MultiMeshInstance3D] = []
+
+
+## Something was laid on a lawn after the grass was sown (a picnic blanket, a duel mat): take
+## the grass and flowers out from under it, so they do not grow through it. The patch is a
+## rectangle of `size` (x, z) around `at`, turned by `yaw`.
+func clear_detail(at: Vector3, size: Vector2, yaw := 0.0) -> void:
+	var reach := size.length() * 0.5 + 0.3
+	var inv := Basis(Vector3.UP, -yaw)
+	for mi in _detail_chunks:
+		if not is_instance_valid(mi):
+			continue
+		var mm := mi.multimesh
+		var box := mm.get_aabb()
+		box.position += mi.position
+		if not box.grow(reach).has_point(Vector3(at.x, clampf(at.y, box.position.y, box.end.y), at.z)):
+			continue
+		for i in mm.instance_count:
+			var xf := mm.get_instance_transform(i)
+			var rel: Vector3 = inv * (xf.origin + mi.position - at)
+			if absf(rel.x) < size.x * 0.5 + 0.12 and absf(rel.z) < size.y * 0.5 + 0.12:
+				mm.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3.ZERO), xf.origin))
+
+
+## Is any of this patch of lawn already paved (a path, a plaza)? For things that belong on grass.
+func on_paving(at: Vector3, size: Vector2, yaw := 0.0) -> bool:
+	var b := Basis(Vector3.UP, yaw)
+	for sx: float in [-0.5, 0.0, 0.5]:
+		for sz: float in [-0.5, 0.0, 0.5]:
+			var p := at + b * Vector3(sx * size.x, 0, sz * size.y)
+			for r in no_grass:
+				if r.has_point(Vector2(p.x, p.z)):
+					return true
+	return false
 
 
 static var _detail_meshes := {}

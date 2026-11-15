@@ -652,6 +652,7 @@ func lawn_duel(at: Vector3, yaw: float, dorm_a: String, dorm_b: String) -> void:
 	var mat_m := _m(Color(0.16, 0.2, 0.3), 0.7)
 	var pad := _box(Vector3(2.6, 0.03, 4.4), at + Vector3(0, 0.04, 0), mat_m)
 	pad.rotation.y = yaw
+	city.clear_detail(at, Vector2(2.6, 4.4), yaw)
 	pad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var line := StandardMaterial3D.new()
 	line.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -1421,9 +1422,33 @@ func _decor_academy() -> void:
 			_solid(0.1, 2.0, fp)
 	# Picnic blankets on the plaza lawn, a ball and boards on the beach.
 	for b in [[Vector3(-14.0, 0.1, 22.0), Color("ff6b6b")], [Vector3(13.0, 0.1, 12.0), Color("5ac8ff")], [Vector3(-18.0, 0.1, -6.0), Color("ffd166")]]:
-		var bl := _box(Vector3(2.4, 0.02, 1.8), (b[0] as Vector3) + Vector3(0, 0.04, 0), _m(b[1], 0.95))
+		# A blanket lies on grass: if this spot is partly on a path, it moves over until it is
+		# not (one of them used to hang over the edge of the paving and read as a piece of white
+		# floor that went on too far). The grass under it is taken out, so none grows through.
+		var bp: Vector3 = b[0]
+		var found := not city.on_paving(bp, Vector2(3.0, 2.6), 0.4)
+		for ring in range(1, 7):
+			if found:
+				break
+			for k in 8:
+				var tryp := (b[0] as Vector3) + Vector3(cos(k * TAU / 8.0), 0, sin(k * TAU / 8.0)) * (ring * 1.2)
+				if not city.on_paving(tryp, Vector2(3.0, 2.6), 0.4):
+					bp = tryp
+					found = true
+					break
+		var bcol: Color = b[1]
+		var bl := _box(Vector3(2.4, 0.03, 1.8), bp + Vector3(0, 0.05, 0), _m(bcol, 0.95))
 		bl.rotation.y = 0.4
-		_cyl(0.22, 0.18, 0.2, (b[0] as Vector3) + Vector3(0.5, 0.15, 0.2), _m(Color(0.7, 0.5, 0.3), 0.9))
+		# Checks in a paler shade, so it reads as cloth and not as a slab of floor.
+		var pale := _m(bcol.lerp(Color.WHITE, 0.55), 0.95)
+		var bb := Basis(Vector3.UP, 0.4)
+		for cx in 4:
+			for cz in 3:
+				if (cx + cz) % 2 == 0:
+					var sq := _box(Vector3(0.6, 0.032, 0.6), bp + bb * Vector3(-0.9 + cx * 0.6, 0, -0.6 + cz * 0.6) + Vector3(0, 0.052, 0), pale)
+					sq.rotation.y = 0.4
+		city.clear_detail(bp, Vector2(2.4, 1.8), 0.4)
+		_cyl(0.22, 0.18, 0.2, bp + Vector3(0.5, 0.17, 0.2), _m(Color(0.7, 0.5, 0.3), 0.9))
 	_ball(0.3, Vector3(45.0, 0.42, 44.0), _m(Color("ff5a5a"), 0.5))
 	for i in 3:
 		var sb := _box(Vector3(0.5, 2.0, 0.08), Vector3(53.0 + i * 0.7, 1.05, 45.0), _m([Color("5ac8ff"), Color("ffd166"), Color("ff8ad4")][i], 0.4))
