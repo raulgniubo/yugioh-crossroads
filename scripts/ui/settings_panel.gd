@@ -397,6 +397,7 @@ static func _graphics_card(p: SidePanel) -> void:
 			refresh.call())
 		_row(g, title, hint, cb)
 	pick.call("res", Settings.RES_NAMES, "3D resolution", "How sharp the 3D picture is. The biggest speed gain on Retina and 4K screens. Menus and text always stay sharp.")
+	pick.call("upscale", Settings.upscale_names(), "Upscaling", "When the 3D resolution is below your screen's, this rebuilds the missing sharpness. The second choice is cheap, the third looks closest to full resolution." if Settings.upscale_ok() else "Needs the full renderer. On this machine the picture is simply stretched.")
 	pick.call("aa", Settings.AA_NAMES, "Edge smoothing", "Takes the stair-steps off edges.")
 	pick.call("shadows", Settings.SHADOW_NAMES, "Shadows", "How sharp the sun's shadows are and how far they reach.")
 	flip.call("ao", "Soft corner shading", "Darkens corners and the ground under things.")
@@ -406,6 +407,11 @@ static func _graphics_card(p: SidePanel) -> void:
 	flip.call("gi", "Bounce light", "Light bounces off walls and floors. The most expensive one.")
 	pick.call("detail", Settings.DETAIL_NAMES, "Ground detail", "Grass tufts, flowers and pebbles. Shows the next time a place loads.")
 	pick.call("people", Settings.PEOPLE_NAMES, "People in the world", "How busy the streets are. Shows the next time a place loads.")
+	var test := Button.new()
+	test.text = Loc.t("Run the test")
+	test.custom_minimum_size = Vector2(220, 44)
+	test.pressed.connect(func(): PerfReport.start(p.get_tree()))
+	_row(g, "Performance test", "Measures this screen for half a minute and saves a report in your Crossroads folder (reports). F4 runs it anywhere: do it where the game feels slow.", test)
 	refresh.call()
 
 

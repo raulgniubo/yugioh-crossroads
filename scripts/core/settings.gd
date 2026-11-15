@@ -37,10 +37,10 @@ signal gfx_changed
 
 const GFX_PRESET_NAMES := ["Low", "Medium", "High", "Ultra"]
 const GFX_PRESETS := [
-	{"res": 1, "aa": 0, "shadows": 1, "ao": false, "reflect": false, "glow": false, "fog": false, "gi": false, "detail": 0, "people": 0},
-	{"res": 2, "aa": 1, "shadows": 2, "ao": false, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 1, "people": 1},
-	{"res": 3, "aa": 2, "shadows": 2, "ao": true, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 2, "people": 1},
-	{"res": 4, "aa": 3, "shadows": 3, "ao": true, "reflect": true, "glow": true, "fog": true, "gi": true, "detail": 3, "people": 2},
+	{"res": 1, "aa": 0, "shadows": 1, "ao": false, "reflect": false, "glow": false, "fog": false, "gi": false, "detail": 0, "people": 0, "upscale": 1},
+	{"res": 2, "aa": 1, "shadows": 2, "ao": false, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 1, "people": 1, "upscale": 1},
+	{"res": 3, "aa": 2, "shadows": 2, "ao": true, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 2, "people": 1, "upscale": 1},
+	{"res": 4, "aa": 3, "shadows": 3, "ao": true, "reflect": true, "glow": true, "fog": true, "gi": true, "detail": 3, "people": 2, "upscale": 1},
 ]
 ## How many lines the 3D picture is drawn at before it is fitted to the window. On a Retina
 ## or 4K screen "Native" is a huge number of pixels, and the biggest single cost there is.
@@ -50,6 +50,25 @@ const AA_NAMES := ["Off", "FXAA (fast)", "MSAA 2x", "MSAA 4x (sharpest)"]
 const SHADOW_NAMES := ["Off", "Low", "Medium", "High"]
 const DETAIL_NAMES := ["Off", "Some", "More", "Full"]
 const PEOPLE_NAMES := ["Few", "Normal", "Busy"]
+## How a 3D picture drawn below the window's size is blown back up to it. 0 = plain,
+## 1 = sharpened (FSR 1; MetalFX on a Mac), 2 = rebuilt from several frames (FSR 2; MetalFX
+## Temporal on a Mac). Only does something when "3D resolution" is below the window's own.
+const UPSCALE_NAMES := ["Off", "FSR 1", "FSR 2"]
+const UPSCALE_NAMES_MAC := ["Off", "MetalFX", "MetalFX Temporal"]
+
+
+## True when this Mac draws with Metal, where Apple's own upscaler is the better one.
+static func metalfx() -> bool:
+	return OS.get_name() == "macOS" and RenderingServer.get_current_rendering_driver_name() == "metal"
+
+
+static func upscale_names() -> Array:
+	return UPSCALE_NAMES_MAC if metalfx() else UPSCALE_NAMES
+
+
+## Upscaling needs the full renderer (Forward+). The light one only stretches the picture.
+static func upscale_ok() -> bool:
+	return RenderingServer.get_current_rendering_method() == "forward_plus"
 ## -1 = Custom, otherwise an index into GFX_PRESETS.
 var gfx_preset := 2
 var gfx: Dictionary = GFX_PRESETS[2].duplicate()
@@ -188,8 +207,16 @@ func _apply_scale() -> void:
 	# A screen that is mostly a backdrop (the home screen's city) is never drawn so small that it
 	# turns to blocks behind sharp menus, whatever the duel and world resolution is set to.
 	k = clampf(maxf(k, scale_floor), 0.3, 1.0)
-	var fplus := RenderingServer.get_current_rendering_method() == "forward_plus"
-	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if (fplus and k < 0.99) else Viewport.SCALING_3D_MODE_BILINEAR
+	var up := clampi(int(gfx.get("upscale", 1)), 0, 2) if upscale_ok() else 0
+	var mode := Viewport.SCALING_3D_MODE_BILINEAR
+	if k < 0.99 and up == 1:
+		mode = Viewport.SCALING_3D_MODE_METALFX_SPATIAL if metalfx() else Viewport.SCALING_3D_MODE_FSR
+	elif k < 0.99 and up == 2:
+		# The frame-to-frame upscalers cannot start from less than half the size.
+		k = maxf(k, 0.5)
+		mode = Viewport.SCALING_3D_MODE_METALFX_TEMPORAL if metalfx() else Viewport.SCALING_3D_MODE_FSR2
+	if vp.scaling_3d_mode != mode:
+		vp.scaling_3d_mode = mode
 	vp.fsr_sharpness = 0.35
 	if not is_equal_approx(vp.scaling_3d_scale, k):
 		vp.scaling_3d_scale = k

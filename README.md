@@ -5,6 +5,14 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.32.3
+
+- **Leads instead of a to-do list.** Every list in Story now opens with what it is all for ("Find out what happened to Joey"), and nothing is on it until somebody gives it to you. When a line in a talk gives you a lead, a card pops in at the top right with that person's face, "NEW LEAD", what to do and why. Each open line on the list keeps that reason under it, and the Quests tab of the guide shows who told you and their words.
+- **Things you find yourself.** A few leads are not told to you at all: you notice them when you walk near (the boy counting the frozen duelists, Kalin by the old fence, the sky over the festival). Those are always optional.
+- New lines in every chapter so each lead comes from somebody: Lumen, Syrus, the mechanic, Crow, Yugi and others now point you at the next person and say why.
+- **Performance test (F4, or Settings > Graphics > Run the test).** Stand where the game feels slow and press F4. For about half a minute it measures the screen as it is, then with one thing switched off at a time (shadows, lamps, glow, characters, the place, menus and more), puts everything back, and saves a report in `Crossroads/reports`. That report is what the performance work in 0.33 is built on.
+- **Upscaling** in Settings > Graphics: Off, FSR 1 or FSR 2 (on a Mac with Metal: MetalFX or MetalFX Temporal). It matters when 3D resolution is below your screen's own. The presets keep the cheap one, which is what the game already did; the third choice is new and has not been seen on a real machine yet.
+
 ## What is in 0.32.2
 
 - **Deck builder: dragging that feels like dragging.** Press a card and pull: the card comes with the pointer at full size, leaning the way you pull it. The side it can go to lights up green and says what letting go will do (add it, take it out, into the Side Deck); red when it cannot go there. Let go anywhere on that side. Let go somewhere else and it slides back.

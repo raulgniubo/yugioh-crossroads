@@ -95,6 +95,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_perf_full = false
 			Settings.show_fps = false
 		Settings.save_settings()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F4:
+		PerfReport.start(get_tree())
 
 
 func _ready() -> void:
@@ -299,6 +301,13 @@ func _debug_args() -> void:
 					Collection.dp += 500
 					await get_tree().create_timer(0.6).timeout
 					ps._open(Collection.PACKS[0])
+		elif a.begins_with("--perf="):
+			# Dev: run the performance test after this many seconds, then quit.
+			await get_tree().create_timer(float(a.substr(7))).timeout
+			PerfReport.start(get_tree())
+			while PerfReport.running:
+				await get_tree().create_timer(0.5).timeout
+			get_tree().quit()
 		elif a.begins_with("--speed="):
 			Settings.anim_speed = float(a.substr(8))
 	if duel:

@@ -42,28 +42,28 @@ const SCRIPTS := {
 			"cap": "Friday night at the card shop. The final round of the weekly tournament."},
 		{"shot": {"on": "player", "face": [0.55, 0.25], "d": [3.6, 2.7], "h": 1.6, "t": 5.0},
 			"cap": "Twelve duelists, a folding table, and one trophy shaped like a dragon that somebody glued back together a long time ago."},
-		{"s": "dai", "t": "Second place again, {player}? You had him until that last draw.", "anim": "cheer"},
+		{"s": "dai", "t": "Second place again, {player}? You had him until that last draw.", "told": 3, "anim": "cheer"},
 		{"s": "player", "t": "I always have him until the last draw.", "emote": "...", "do": "scratch"},
-		{"s": "", "t": "You lost. Badly. The old man behind the counter is waving you over."},
+		{"s": "", "t": "You lost. Badly. The old man behind the counter is waving you over.", "lead": 0},
 		{"act": "grandpa", "do": "wave", "emote": "♪", "wait": 1.2},
 		{"shot": {"on": SHOP + Vector3(0.5, 0, 0.6), "look_h": 1.2, "ang": [1.9, 2.5], "d": [5.6, 7.0], "h": [2.5, 3.4], "t": 5.5},
 			"cap": "The shop is emptying out. Nobody is in a hurry to go home, least of all you."},
 		# ---- your move: the shop, before it closes
-		{"tasks": [
-			{"talk": "grandpa", "at": SHOP + Vector3(3.4, 0, -2.5), "face": -0.7, "label": "Talk to Grandpa at the counter", "say": [
+		{"aim": "Close out Friday night at the shop", "tasks": [
+			{"talk": "grandpa", "at": SHOP + Vector3(3.4, 0, -2.5), "face": -0.7, "from": "grandpa", "why": "He is waving you over.", "label": "Talk to Grandpa at the counter", "say": [
 				{"s": "grandpa", "t": "Ha! Don't make that face, {player}. Everyone loses the final their first time.", "do": "chat"},
 				{"s": "player", "t": "It wasn't my first time.", "cam": "close", "emote": "..."},
 				{"s": "grandpa", "t": "...Right. Well. Stick around after closing. I have something for you.", "do": "scratch"},
-				{"s": "grandpa", "t": "And have a look around while I count the register. Six years you've been coming in here, and you still walk straight past half of it.", "do": "chat"}]},
-			{"look": SHOP + Vector3(-5.2, 0, -3.3), "label": "Look at the trophy on its shelf", "prompt": "Look at the trophy", "say": [
+				{"s": "grandpa", "t": "And have a look around while I count the register. Six years you've been coming in here, and you still walk straight past half of it.", "lead": [1, 2], "do": "chat"}]},
+			{"look": SHOP + Vector3(-5.2, 0, -3.3), "from": "grandpa", "why": "Six years, and you still walk straight past half of the shop.", "needs": [0], "label": "Look at the trophy on its shelf", "prompt": "Look at the trophy", "say": [
 				{"s": "", "t": "The dragon trophy, back on its shelf until next Friday. One wing was glued on a long time ago, and the glue has gone yellow.", "cam": "close"},
 				{"s": "", "t": "There is a brass plate under it for the winners' names. The top line has been sanded flat. The one under it says SOLOMON."},
 				{"s": "player", "t": "Grandpa won this thing? He never said.", "emote": "?"}]},
-			{"look": TABLE + Vector3(0, 0, 0.9), "label": "Look at the old folding table", "prompt": "Look at the table", "say": [
+			{"look": TABLE + Vector3(0, 0, 0.9), "from": "grandpa", "why": "The oldest table in the shop. You have never really looked at it.", "needs": [0], "label": "Look at the old folding table", "prompt": "Look at the table", "say": [
 				{"s": "", "t": "Table two is older than every other table in the shop. It does not match anything. Grandpa has turned down money for it twice.", "cam": "close"},
 				{"s": "", "t": "Two sets of initials are carved into the edge. S.M. And next to it a letter that somebody scratched over so many times it is only a groove now."},
 				{"s": "player", "t": "(Who scratches out a name and keeps the table?)", "cam": "close"}]},
-			{"talk": "dai", "at": SHOP + Vector3(3.6, 0, 1.0), "face": -1.9, "label": "Say goodnight to Dai", "optional": true, "say": [
+			{"talk": "dai", "at": SHOP + Vector3(3.6, 0, 1.0), "face": -1.9, "from": "dai", "why": "He always has something to say about your final.", "label": "Say goodnight to Dai", "optional": true, "say": [
 				{"s": "dai", "t": "One card off. Again. You want to know what you do wrong?", "do": "chat"},
 				{"s": "player", "t": "I drew a Trap I couldn't use."},
 				{"s": "dai", "t": "See, you remember the card. You don't remember your face. You looked at your deck like it owed you money, and then you drew.", "cam": "close"},
@@ -103,19 +103,19 @@ const SCRIPTS := {
 		{"shot": {"on": Vector3(-11.8, 0, -7.8), "look_h": 1.2, "ang": [0.9, 0.2], "d": [8.5, 6.0], "h": [2.6, 1.8], "t": 6.5},
 			"cap": "A man stands frozen in the middle of a step. A girl shuffles the same three cards over and over, smiling at nothing."},
 		{"s": "lumen", "t": "Oh no. Oh no no no.", "emote": "!"},
-		{"s": "lumen", "t": "Don't touch them yet. Just... look. I need to see how many. I need to see how bad.", "cam": "close"},
+		{"s": "lumen", "t": "Don't touch them yet. Just... look. I need to see how many. I need to see how bad.", "lead": [0, 1, 2], "cam": "close"},
 		# ---- your move: the street, stopped
-		{"tasks": [
-			{"talk": "office_worker", "at": Vector3(-11.4, 0, -8.4), "face": 0.4, "hollow": true, "label": "The man stopped in the middle of a step", "prompt": "Take a closer look", "say": [
+		{"aim": "Find out what is wrong with the street", "tasks": [
+			{"talk": "office_worker", "at": Vector3(-11.4, 0, -8.4), "face": 0.4, "hollow": true, "from": "lumen", "why": "Nobody on this street is moving.", "label": "The man stopped in the middle of a step", "prompt": "Take a closer look", "say": [
 				{"s": "", "t": "One foot off the ground. His tie is still swinging. It has been swinging the same half inch since you walked up.", "cam": "close"},
 				{"s": "player", "t": "He's breathing. But he's not... here.", "cam": "close"},
 				{"s": "lumen", "t": "Hollows. Someone's freezing people inside a single memory. This is bad. This is really, really bad!", "react": {"player": "!"}}]},
-			{"talk": "stylish_woman", "at": Vector3(-14.5, 0, -8.2), "face": -0.6, "hollow": true, "label": "The woman on the phone", "prompt": "Take a closer look", "say": [
+			{"talk": "stylish_woman", "at": Vector3(-14.5, 0, -8.2), "face": -0.6, "hollow": true, "from": "lumen", "why": "Nobody on this street is moving.", "label": "The woman on the phone", "prompt": "Take a closer look", "say": [
 				{"s": "", "t": "She is holding a phone to her ear and laughing at something. The screen went dark a while ago.", "cam": "close"},
 				{"s": "lumen", "t": "She got good news once. Now she gets it forever. The same sentence, over and over, and she's happy every single time."},
 				{"s": "player", "t": "That doesn't sound so bad.", "emote": "..."},
 				{"s": "lumen", "t": "Ask her what the news was. Go on. ...See? She can't hear it anymore either. *bzzt*", "cam": "close"}]},
-			{"talk": "student_girl", "at": Vector3(-12.2, 0, -7.0), "face": 2.4, "hollow": true, "label": "The girl with three cards", "prompt": "Take a closer look", "say": [
+			{"talk": "student_girl", "at": Vector3(-12.2, 0, -7.0), "face": 2.4, "hollow": true, "from": "lumen", "why": "Nobody on this street is moving.", "label": "The girl with three cards", "prompt": "Take a closer look", "say": [
 				{"s": "", "t": "Three cards. Shuffle. Fan. Smile. Three cards. Shuffle. Fan. Smile.", "cam": "close"},
 				{"s": "player", "t": "She just pulled something she wanted. This is the second after.", "cam": "close"},
 				{"s": "lumen", "t": "It's always the second after. The best one. ...Why do I know that? *bzzt* Why do I KNOW that?", "emote": "?"}]},
@@ -166,26 +166,26 @@ const SCRIPTS := {
 		{"s": "yugi", "t": "Hey, are you okay? You kind of fell out of the sky.", "do": "wave"},
 		{"s": "player", "t": "...Yugi Muto?", "emote": "!", "cam": "close"},
 		{"s": "yugi", "t": "Have we met? Sorry, I'm terrible with faces when I'm worried about a friend.", "emote": "?", "do": "scratch"},
-		{"s": "yugi", "t": "Joey's been strange since this morning. He's out at the end of the pier, dueling the same duel over and over, like he's stuck in it.", "do": "chat"},
+		{"s": "yugi", "t": "Joey's been strange since this morning. He's out at the end of the pier, dueling the same duel over and over, like he's stuck in it.", "lead": 3, "do": "chat"},
 		{"s": "lumen", "t": "(Psst! That's a Hollow! Your friend's been frozen in a memory!)", "cam": "close", "react": {"player": "..."}},
 		{"choice": [["Tell Yugi about the Hollows", "honest"], ["Keep it quiet for now", "quiet"]]},
 		{"if": "honest", "s": "yugi", "t": "Frozen in a memory... I've seen stranger things this week. I believe you."},
 		{"if": "quiet", "s": "yugi", "t": "You know something, don't you? It's okay. Tell me when you're ready."},
 		{"s": "yugi", "t": "I'm Yugi, by the way. And that deck of yours... it feels kind. Strange, but kind.", "do": "wave"},
 		{"s": "yugi", "t": "Kaiba runs this tournament, and his satellites see every card played in this city. If anybody knows what happened to Joey, it's on one of his screens.", "do": "chat"},
-		{"s": "yugi", "t": "But he won't even look at a duelist who isn't on his board. Two wins gets you a Locator Card and your name up there with everybody else's."},
+		{"s": "yugi", "t": "But he won't even look at a duelist who isn't on his board. Two wins gets you a Locator Card and your name up there with everybody else's.", "lead": 0},
 		{"s": "player", "t": "So I duel my way into a meeting.", "cam": "close"},
-		{"s": "yugi", "t": "Welcome to Battle City! I'll go and ask the officials what they've seen. Mai Valentine was the last one to talk to Joey. She's on the east side, by the cafe.", "do": "chat"},
-		{"s": "yugi", "t": "Meet me in front of Kaiba's tower when you're on the board. It's the tall one. You can't miss it. He made sure of that.", "do": "wave"},
+		{"s": "yugi", "t": "Welcome to Battle City! I'll go and ask the officials what they've seen. Mai Valentine was the last one to talk to Joey. She's on the east side, by the cafe.", "lead": 1, "do": "chat"},
+		{"s": "yugi", "t": "Meet me in front of Kaiba's tower when you're on the board. It's the tall one. You can't miss it. He made sure of that.", "told": 5, "do": "wave"},
 		{"move": "yugi", "to": Vector3(-8.5, 0, -7.5), "run": true},
-		{"s": "lumen", "t": "Two wins and one witness. And {player}? That duelist down the street hasn't blinked since we landed.", "emote": "!", "cam": "close"},
+		{"s": "lumen", "t": "Two wins and one witness. And {player}? That duelist down the street hasn't blinked since we landed.", "lead": 2, "emote": "!", "cam": "close"},
 		{"gone": "yugi"},
 		# ---- your move: Battle City by day
-		{"title": "Battle City, day one", "hide": ["joey", "kaiba", "hunter", "marik"],
+		{"title": "Battle City, day one", "aim": "Find out what happened to Joey", "hide": ["joey", "kaiba", "hunter", "marik"],
 			"cast": [{"actor": "joey", "at": PIER + Vector3(0, 0, -2.5), "face": 0.0, "hollow": true}],
 			"tasks": [
-			{"wins": 2, "label": "Win 2 street duels to get on Kaiba's board"},
-			{"talk": "mai", "at": Vector3(19, 0, -18), "face": -2.4, "label": "Ask Mai Valentine about Joey (east side, by the cafe)", "say": [
+			{"wins": 2, "from": "yugi", "why": "Kaiba will not look at a duelist who is not on his board.", "label": "Get on Kaiba's board: win 2 street duels"},
+			{"talk": "mai", "at": Vector3(19, 0, -18), "face": -2.4, "from": "yugi", "why": "She was the last one to talk to Joey.", "label": "Ask Mai Valentine about Joey (east side, by the cafe)", "say": [
 				{"s": "mai", "t": "If you're here for an autograph, hon, the line starts never.", "do": "checkout"},
 				{"s": "player", "t": "Yugi sent me. You saw Joey this morning.", "cam": "close"},
 				{"s": "mai", "t": "I saw something wearing Joey's jacket. End of the pier, disk up, playing one card onto an empty field. I called him three names he hates. Nothing.", "do": "chat"},
@@ -193,20 +193,21 @@ const SCRIPTS := {
 				{"s": "mai", "t": "I don't lose to men in hoods. I lost to that one. He played a monster with a white border. I have never seen a white border in my life, and I have seen everything.", "emote": "#", "cam": "close"},
 				{"s": "lumen", "t": "(A white border... *bzzt* That card isn't from here. That card isn't from NOW.)", "cam": "close"},
 				{"s": "mai", "t": "He said he only works nights. Fine. So do I. If you get to him before I do, save me a piece.", "do": "wave"}]},
-			{"talk": "street_duelist", "at": Vector3(-3.0, 0, 12.0), "face": 2.6, "hollow": true, "label": "Look at the duelist who has not moved", "prompt": "Look closer", "say": [
+			{"talk": "street_duelist", "at": Vector3(-3.0, 0, 12.0), "face": 2.6, "hollow": true, "from": "lumen", "why": "He has not blinked since you landed.", "reveals": [4], "label": "Look at the duelist who has not moved", "prompt": "Look closer", "say": [
 				{"s": "", "t": "He is standing in the middle of the pavement with his duel disk up and one card held high over his head. People walk around him like a lamp post.", "cam": "wide"},
 				{"s": "lumen", "t": "This is a Hollow. Somebody reached in and took the best moment he ever had, and left him standing inside it.", "cam": "close"},
 				{"s": "player", "t": "He looks happy.", "emote": "..."},
 				{"s": "lumen", "t": "He IS happy. That's the trap. *bzzt* He's going to be exactly this happy until he falls over."},
 				{"s": "", "t": "The deck slot on his duel disk is empty. Not one card left in it.", "cam": "close"},
 				{"s": "player", "t": "A duelist with no deck. Did the one who froze him take it?", "emote": "?", "do": "scratch"},
-				{"s": "lumen", "t": "No. Whoever makes Hollows only wants the moment. Somebody ELSE came by afterwards and helped themselves.", "emote": "!"}]},
-			{"talk": "joey", "at": PIER + Vector3(0, 0, -2.5), "face": 0.0, "hollow": true, "optional": true, "label": "See Joey for yourself (the end of the pier)", "prompt": "Talk to Joey", "say": [
+				{"s": "lumen", "t": "No. Whoever makes Hollows only wants the moment. Somebody ELSE came by afterwards and helped themselves.", "emote": "!"},
+				{"s": "lumen", "t": "And we are not the only ones who noticed. That boy across the street has been watching the frozen ones all morning. Counting on his fingers.", "cam": "close", "lead": 4}]},
+			{"talk": "joey", "at": PIER + Vector3(0, 0, -2.5), "face": 0.0, "hollow": true, "optional": true, "from": "yugi", "why": "He is stuck in one duel, out at the end of the pier.", "label": "See Joey for yourself (the end of the pier)", "prompt": "Talk to Joey", "say": [
 				{"s": "joey", "t": "...my turn... draw... my turn... draw...", "emote": "...", "cam": "close"},
 				{"s": "", "t": "Up close you can hear it. He plays the same card onto the same empty field, picks it up, and plays it again. He is grinning the whole time."},
 				{"s": "player", "t": "Hang on, Joey. We're working on it.", "cam": "close"},
 				{"s": "lumen", "t": "He can't hear you. He's hearing a crowd. *bzzt* A big one."}]},
-			{"talk": "bakura", "at": Vector3(-17, 0, 9), "face": 1.2, "optional": true, "dp": 150, "label": "Hear out the boy on the west side (he has been counting)", "say": [
+			{"talk": "bakura", "at": Vector3(-17, 0, 9), "face": 1.2, "optional": true, "dp": 150, "from": "lumen", "why": "He has been watching the frozen ones all morning, counting.", "hidden": true, "label": "Hear out the boy on the west side (he has been counting)", "say": [
 				{"s": "bakura", "t": "Oh! Hello. Sorry. I was counting.", "do": "scratch"},
 				{"s": "player", "t": "Counting what?", "emote": "?"},
 				{"s": "bakura", "t": "The ones who have stopped. Seven since sunrise. I walk the same loop every morning, you see, and one does notice when a person is in precisely the same spot three laps running.", "do": "chat"},
@@ -214,7 +215,7 @@ const SCRIPTS := {
 				{"s": "bakura", "t": "And it always goes quiet first. As if the whole city were holding its breath to listen. Do you ever feel as if the city is listening?", "cam": "close"},
 				{"s": "lumen", "t": "(I like him. He's creepy, but he counts good.)"},
 				{"s": "bakura", "t": "Seven. Do tell me if you find an eighth. I should hate for my numbers to be off.", "do": "wave"}]},
-			{"talk": "yugi", "at": KC + Vector3(-2.2, 0, 4.2), "face": "player", "needs": [0, 1, 2], "label": "Meet Yugi in front of Kaiba's tower (north end of the avenue)", "say": [
+			{"talk": "yugi", "at": KC + Vector3(-2.2, 0, 4.2), "face": "player", "needs": [0, 1, 2], "from": "yugi", "why": "You are on the board, and you know what Mai saw.", "label": "Meet Yugi in front of Kaiba's tower (north end of the avenue)", "say": [
 				{"s": "yugi", "t": "You're on the board! I saw your name come up. Kaiba spelled it right and everything.", "anim": "cheer"},
 				{"s": "player", "t": "Mai lost to a man in a hood, with a card from somewhere else. And somebody is emptying the decks of the frozen ones.", "cam": "close"},
 				{"s": "yugi", "t": "The officials have counted nine people like Joey. Nobody knows what to do with them. They've started putting little fences around them.", "emote": "..."},
@@ -270,19 +271,19 @@ const SCRIPTS := {
 		{"s": "yugi", "t": "I'm going back to the pier. Somebody should be there if Joey wakes up. And {player}... be careful tonight.", "do": "wave"},
 		{"move": "yugi", "to": Vector3(-3.5, 0, 30), "run": true},
 		{"gone": "kaiba"},
-		{"s": "lumen", "t": "Decks don't empty themselves, {player}. Somebody in this city knows who has been helping themselves. Let's ask around the dome before it gets dark.", "cam": "close"},
+		{"s": "lumen", "t": "Decks don't empty themselves, {player}. Somebody in this city knows who has been helping themselves. Let's ask around the dome before it gets dark.", "lead": 0, "cam": "close"},
 		{"gone": "yugi"},
 		# ---- your move: Battle City, into the night
-		{"title": "Battle City, after dark", "hide": ["joey", "yugi", "kaiba", "hunter", "marik", "mai"],
+		{"title": "Battle City, after dark", "aim": "Find who is emptying the decks of the frozen duelists", "hide": ["joey", "yugi", "kaiba", "hunter", "marik", "mai"],
 			"cast": [{"actor": "joey", "at": PIER + Vector3(0, 0, -2.5), "face": 0.0, "hollow": true}],
 			"tasks": [
-			{"talk": "rex", "at": Vector3(-36.2, 0, -4.4), "face": 1.4, "label": "Ask around the dome about the stolen decks (west side)", "say": [
+			{"talk": "rex", "at": Vector3(-36.2, 0, -4.4), "face": 1.4, "from": "lumen", "why": "Somebody around the dome knows who has been helping themselves.", "label": "Ask around the dome about the stolen decks (west side)", "say": [
 				{"s": "rex", "t": "Whoa, whoa. I don't know nothin' about no statues' decks. Who's askin'?", "emote": "!"},
 				{"s": "player", "t": "I didn't say anything about statues.", "cam": "close"},
 				{"act": "rex", "emote": "...", "wait": 1.0, "cam": "close"},
 				{"s": "rex", "t": "It ain't stealin' if the guy ain't usin' 'em! And it was the BUG's idea! I just carry the box!", "do": "stomp"},
-				{"s": "rex", "t": "He's over on the east side by the school, countin' the take. And you never talked to me. Rex Raptor ain't no squealer.", "do": "chat"}]},
-			{"talk": "weevil", "at": Vector3(38.4, 0, 3.4), "face": -1.6, "needs": [0], "dp": 200, "label": "Confront Weevil about the decks (east side, by the school)", "say": [
+				{"s": "rex", "t": "He's over on the east side by the school, countin' the take. And you never talked to me. Rex Raptor ain't no squealer.", "lead": 1, "do": "chat"}]},
+			{"talk": "weevil", "at": Vector3(38.4, 0, 3.4), "face": -1.6, "needs": [0], "dp": 200, "from": "rex", "why": "Rex says the bug has the box, over by the school.", "label": "Confront Weevil about the decks (east side, by the school)", "say": [
 				{"s": "weevil", "t": "Hee hee hee! A customer! Rare cards, one careful owner each, all of them currently... indisposed.", "do": "chat"},
 				{"s": "player", "t": "Those are other people's decks.", "cam": "close"},
 				{"s": "weevil", "t": "Those are INVENTORY. The gentleman in the hood pays double for anything pulled off a statue. I merely supply.", "emote": "♪"},
@@ -294,12 +295,12 @@ const SCRIPTS := {
 				"after": [
 				{"s": "weevil", "t": "My beautiful bugs! Squashed! By a NOBODY!", "do": "stomp", "cam": "close"},
 				{"s": "player", "t": "The box. And where you meet him.", "cam": "close"},
-				{"s": "weevil", "t": "Fine! FINE! Behind the cafe, where the alleys cross. After dark, never before. He doesn't like being seen, and I don't like being seen WITH him.", "do": "chat"},
+				{"s": "weevil", "t": "Fine! FINE! Behind the cafe, where the alleys cross. After dark, never before. He doesn't like being seen, and I don't like being seen WITH him.", "lead": [2, 3], "do": "chat"},
 				{"s": "weevil", "t": "Take them! They smell like statues anyway!"},
 				{"s": "", "t": "A shoebox full of other people's decks, each one held shut with a rubber band. Lumen hovers over it like a small worried lamp."},
 				{"s": "lumen", "t": "We'll get every one of these home. After tonight.", "cam": "close"}]},
-			{"until": "night", "label": "Wait for dark (sit on a bench, or pass time from the map)"},
-			{"go": ALLEY, "r": 3.0, "when": "night", "needs": [1], "label": "Go to the alleys behind the cafe", "say": [
+			{"until": "night", "needs": [1], "from": "weevil", "why": "The man in the hood never shows himself before dark.", "label": "Wait for dark (sit on a bench, or pass time from the map)"},
+			{"go": ALLEY, "r": 3.0, "when": "night", "needs": [1], "from": "weevil", "why": "Behind the cafe, where the alleys cross. That is where he buys.", "label": "Go to the alleys behind the cafe", "say": [
 				{"actor": "hunter", "at": ALLEY + Vector3(2.4, 0, -1.8), "face": "player"},
 				{"actor": "mai", "at": ALLEY + Vector3(-1.4, 0, -2.4), "face": "hunter"},
 				{"s": "", "t": "You are not the first one here. Mai Valentine is standing in the middle of the alley with her duel disk already lit.", "cam": "wide"},
@@ -384,22 +385,23 @@ const SCRIPTS := {
 		{"s": "joey", "t": "You're the one who pulled me out? You duel like you mean it. I like that.", "do": "chat"},
 		{"bond": "Joey Wheeler", "card": 74677422, "text": "Another blank card fills in: an echo of Joey's stubborn heart, drawn in red and black. It is in your collection now."},
 		{"s": "player", "t": "Mai says you owe her for the names she called you.", "cam": "close"},
-		{"s": "joey", "t": "She was HERE? Aw, man. Which names?", "emote": "!", "react": {"yugi": "♪"}},
+		{"s": "joey", "t": "She was HERE? Aw, man. Which names?", "lead": 2, "emote": "!", "react": {"yugi": "♪"}},
 		{"s": "", "t": "You hand over the shoebox. Joey reads the name inside the lid of the first deck and stops smiling.", "cam": "close"},
 		{"s": "joey", "t": "These belong to the ones still stuck. Gimme that. Me and Yug'll walk every one of these back to the guy it came off of. Nobody robs a duelist who can't duel back.", "do": "stomp"},
 		{"s": "lumen", "t": "Two echoes. The deck's waking up! And... oh. Oh no. *bzzt* There's another crack. A big one. Over the water.", "emote": "!", "fx": "shake"},
 		{"s": "player", "t": "Where?", "cam": "close"},
 		{"s": "lumen", "t": "A school on an island. Years from now. Somebody is emptying a whole dormitory.", "cam": "close"},
-		{"s": "yugi", "t": "{player}, look at the west side. That bus stop. The sign says DUEL ACADEMY FERRY. That sign was not there yesterday.", "emote": "!", "cam": "wide"},
+		{"s": "yugi", "t": "{player}, look at the west side. That bus stop. The sign says DUEL ACADEMY FERRY. That sign was not there yesterday.", "lead": 0, "emote": "!", "cam": "wide"},
 		{"s": "lumen", "t": "The cracks aren't holes anymore. They're roads. The ages are getting stitched together, and the stitches are showing!"},
 		{"s": "yugi", "t": "Then go. Joey and I will keep watch here. If the man in the hood comes back to Domino, he'll find both of us awake.", "do": "wave"},
 		{"s": "joey", "t": "And hey, {player}. Next time we duel, I'm awake for it. You ain't seen nothin' yet!", "anim": "cheer"},
+		{"s": "lumen", "t": "And {player}... the two boys at the folding table. That was your grandpa's shop. If you want to ask him about it before we go, now is the time.", "cam": "close", "lead": 1},
 		# ---- your move: leave town when you are ready
-		{"title": "Leaving Domino", "open": ["academy"], "hide": ["joey", "yugi", "hunter", "marik", "owner"],
+		{"title": "Leaving Domino", "aim": "Follow the next crack to the school on the island", "open": ["academy"], "hide": ["joey", "yugi", "hunter", "marik", "owner"],
 			"cast": [{"actor": "joey", "at": PIER + Vector3(0.6, 0, -3.5), "face": 0.0}, {"actor": "yugi", "at": PIER + Vector3(-1.6, 0, -4.4), "face": 0.6}],
 			"tasks": [
-			{"travel": "academy", "label": "Take the ferry bus to Duel Academy (the west side stop, or the map)"},
-			{"talk": "grandpa", "at": SHOP + Vector3(3.4, 0, -2.5), "face": -0.7, "optional": true, "dp": 100, "remember": "asked_table", "label": "Stop by the shop and ask Grandpa about the folding table", "say": [
+			{"travel": "academy", "from": "yugi", "why": "A ferry bus stop that was not there yesterday.", "label": "Take the ferry bus to Duel Academy (the west side stop, or the map)"},
+			{"talk": "grandpa", "at": SHOP + Vector3(3.4, 0, -2.5), "face": -0.7, "optional": true, "dp": 100, "remember": "asked_table", "from": "lumen", "why": "The memory hiding in Kaiba's card was his shop.", "label": "Stop by the shop and ask Grandpa about the folding table", "say": [
 				{"s": "grandpa", "t": "{player}! You look like you have been somewhere. Sit, sit. You want tea? You look like somebody who wants tea.", "do": "wave"},
 				{"s": "player", "t": "Grandpa. Two boys at the folding table. Cards they drew themselves. Does that mean anything to you?", "cam": "close"},
 				{"act": "grandpa", "emote": "...", "wait": 1.2, "cam": "close"},
@@ -409,7 +411,7 @@ const SCRIPTS := {
 				{"s": "grandpa", "t": "I had a friend once who wrote everything down. Dates. Scores. What we had for lunch. He said if nobody wrote a thing down, it had not happened.", "do": "chat"},
 				{"s": "grandpa", "t": "Ask me again when a few more of those cards have filled in. Some stories you have to earn the end of. Go on. You have somewhere to be, I can tell."},
 				{"s": "lumen", "t": "(He looked right at me. {player}, he looked RIGHT at me.)", "emote": "!", "cam": "close"}]},
-			{"talk": "mai", "at": Vector3(19, 0, -18), "face": -2.4, "optional": true, "dp": 150, "label": "Tell Mai that Joey is awake (east side, by the cafe)", "say": [
+			{"talk": "mai", "at": Vector3(19, 0, -18), "face": -2.4, "optional": true, "dp": 150, "from": "joey", "why": "She was at the pier looking for him.", "label": "Tell Mai that Joey is awake (east side, by the cafe)", "say": [
 				{"s": "mai", "t": "Awake? ...Good. Don't tell him I asked.", "cam": "close"},
 				{"s": "player", "t": "He says he was in the middle of the best duel of his life.", "do": "chat"},
 				{"s": "mai", "t": "Of course he was. That idiot's best duel is always the one he's in. It's the only thing I ever liked about him. Don't tell him that either.", "do": "checkout"},
@@ -441,31 +443,32 @@ const SCRIPTS := {
 		{"s": "jaden", "t": "That's Koji. He passed his practice exam on Tuesday. First time ever. He ran the whole way back to tell me.", "cam": "close"},
 		{"s": "lumen", "t": "They're being held in their proudest moment. The second before the best thing that ever happened to them.", "cam": "close"},
 		{"s": "jaden", "t": "I'm not leaving them out here by themselves. Somebody has to keep the gulls off Koji.", "do": "scratch"},
-		{"s": "jaden", "t": "But you can go where I can't right now. Ask around. Sy saw something, I KNOW he did. He just won't tell me, because he thinks I'll do something dumb.", "do": "chat"},
+		{"s": "jaden", "t": "But you can go where I can't right now. Ask around. Sy saw something, I KNOW he did. He just won't tell me, because he thinks I'll do something dumb.", "lead": 0, "do": "chat"},
 		{"s": "player", "t": "Would you?", "emote": "?"},
 		{"s": "jaden", "t": "Obviously! That's why you should hear it first.", "anim": "cheer"},
 		# ---- your move: the island
-		{"title": "The quiet school", "clock": 840, "hide": ["ac_red_2", "student_b", "ac_ghost", "night_academy"],
+		{"title": "The quiet school", "aim": "Find out who is freezing the Red dorm", "clock": 840, "hide": ["ac_red_2", "student_b", "ac_ghost", "night_academy"],
 			"cast": [{"actor": "koji", "at": Vector3(-31.4, 0, 11.6), "face": 2.2, "hollow": true},
 				{"actor": "student_girl", "at": Vector3(-31.8, 0, 4.6), "face": 0.6, "hollow": true},
 				{"actor": "street_duelist", "at": Vector3(-32.4, 0, 8.0), "face": 1.5, "hollow": true}],
 			"tasks": [
-			{"talk": "syrus", "at": Vector3(-36, 0, 12), "face": 1.2, "label": "Talk to Syrus (he saw something)", "say": [
+			{"talk": "syrus", "at": Vector3(-36, 0, 12), "face": 1.2, "from": "jaden", "why": "He saw something, and he will not tell Jaden.", "label": "Talk to Syrus (he saw something)", "say": [
 				{"s": "syrus", "t": "I didn't see anything! ...Did Jaden say I saw something?", "emote": "!"},
 				{"s": "player", "t": "He said you'd tell me, because I'm not him.", "cam": "close"},
 				{"s": "syrus", "t": "That's... okay, that's fair. Three nights ago I couldn't sleep. There was a light on in the old dorm, down in the woods. Nobody has lived there in years.", "do": "chat"},
 				{"s": "syrus", "t": "And somebody walking up from it. Long coat. He stopped right under Koji's window and just... stood there. Like he was sorry about something.", "cam": "close"},
-				{"s": "syrus", "t": "I told my brother. Zane said a duelist doesn't report shadows. He's out at the lighthouse. He's always out at the lighthouse.", "emote": "..."},
+				{"s": "syrus", "t": "I told my brother. Zane said a duelist doesn't report shadows. He's out at the lighthouse. He's always out at the lighthouse.", "lead": 3, "emote": "..."},
+				{"s": "syrus", "t": "Alexis is keeping a list of everybody it has happened to. She is out in front of the school. She will want to hear what I saw from somebody who is not me.", "do": "chat", "lead": 1},
 				{"s": "lumen", "t": "(A long coat. Sorry about something. I know exactly one of those.)", "cam": "close"}]},
-			{"talk": "alexis", "at": Vector3(6, 0, -22), "face": 2.8, "label": "Talk to Alexis Rhodes (she is keeping a list)", "say": [
+			{"talk": "alexis", "at": Vector3(6, 0, -22), "face": 2.8, "from": "syrus", "why": "She is keeping a list of everybody it has happened to.", "needs": [0], "label": "Talk to Alexis Rhodes (in front of the school)", "say": [
 				{"s": "alexis", "t": "You're the one who walked in off no ferry. Good. I need somebody who isn't on my list.", "do": "checkout"},
 				{"s": "player", "t": "List?", "emote": "?"},
 				{"s": "alexis", "t": "Fourteen students. I have checked every one. Different dorms, different years, nothing in common. Except this.", "do": "chat"},
 				{"s": "alexis", "t": "Each of them was frozen within a day of the best result they ever had. A first win. A promotion. Koji passed his practice exam on Tuesday. He was a statue by Wednesday.", "cam": "close"},
 				{"s": "alexis", "t": "Whoever is doing this reads our rankings board before he chooses. He knows exactly who just had the best day of their life."},
 				{"s": "player", "t": "So who is at the top of the board today?", "cam": "close"},
-				{"s": "alexis", "t": "...I didn't want to say it out loud. Chazz Princeton has won nine in a row this week. He's up by the Blue dorm, telling everybody about it.", "emote": "..."}]},
-			{"talk": "chazz", "at": Vector3(-26, 0, -14), "face": 0.8, "needs": [1], "label": "Warn Chazz Princeton (up by the Blue dorm)", "say": [
+				{"s": "alexis", "t": "...I didn't want to say it out loud. Chazz Princeton has won nine in a row this week. He's up by the Blue dorm, telling everybody about it.", "lead": 2, "emote": "..."}]},
+			{"talk": "chazz", "at": Vector3(-26, 0, -14), "face": 0.8, "needs": [1], "from": "alexis", "why": "Nine wins in a row. He is at the top of the board.", "label": "Warn Chazz Princeton (up by the Blue dorm)", "say": [
 				{"s": "chazz", "t": "Nine straight. NINE. Write it down, whoever you are.", "anim": "cheer"},
 				{"s": "player", "t": "You're next. Whoever is freezing students picks the ones on a streak.", "cam": "close"},
 				{"s": "chazz", "t": "Next? The Chazz isn't NEXT for anything. The Chazz is FIRST.", "emote": "#", "cam": "low"},
@@ -480,21 +483,21 @@ const SCRIPTS := {
 				"after": [
 				{"act": "chazz", "do": "stomp", "emote": "#", "wait": 1.1, "cam": "close"},
 				{"s": "chazz", "t": "...That didn't count. I wasn't warmed up.", "cam": "close"},
-				{"s": "chazz", "t": "The abandoned dorm. South-west, down in the woods. He goes back there every night and he doesn't come out till morning.", "do": "chat"},
+				{"s": "chazz", "t": "The abandoned dorm. South-west, down in the woods. He goes back there every night and he doesn't come out till morning.", "lead": 4, "do": "chat"},
 				{"s": "chazz", "t": "I'm telling you because you won. Not because I didn't want to go alone. Write THAT down."}]},
-			{"talk": "zane", "at": Vector3(43, 0, 29), "face": -2.2, "optional": true, "dp": 100, "remember": "zane_watch", "label": "Ask Zane Truesdale for help (the lighthouse)", "say": [
+			{"talk": "zane", "at": Vector3(43, 0, 29), "face": -2.2, "optional": true, "dp": 100, "remember": "zane_watch", "from": "syrus", "why": "Syrus told his brother. His brother did not listen.", "needs": [0], "label": "Ask Zane Truesdale for help (the lighthouse)", "say": [
 				{"s": "zane", "t": "You duel. I can tell by how you stand. Then you know nobody takes your best match from you unless you hand it to them.", "cam": "low"},
 				{"s": "player", "t": "Fourteen students didn't hand anything over.", "cam": "close"},
 				{"s": "zane", "t": "Didn't they? Somebody offered them the one day they would keep, if they could keep only one. I would have had to think about that offer."},
 				{"s": "zane", "t": "I won't chase a coat through the woods on my brother's word. But this is the only harbor on the island. Anything that came here by sea leaves past me.", "do": "chat"},
 				{"s": "zane", "t": "Tell Syrus I listened. He won't believe you.", "cam": "close"}]},
-			{"talk": "jaden", "at": Vector3(-28.4, 0, 9.8), "face": "player", "needs": [0, 2], "label": "Bring it all back to Jaden (the Red dorm)", "say": [
+			{"talk": "jaden", "at": Vector3(-28.4, 0, 9.8), "face": "player", "needs": [0, 2], "from": "chazz", "why": "You know where the long coat goes every night.", "label": "Bring it all back to Jaden (the Red dorm)", "say": [
 				{"s": "jaden", "t": "You got Sy to talk AND you beat Chazz? What have you been DOING all day? This is awesome!", "anim": "cheer"},
 				{"s": "player", "t": "A long coat. The abandoned dorm in the woods. Every night.", "cam": "close"},
 				{"s": "jaden", "t": "The old dorm's off limits. Nobody goes down there after dark. So, obviously, we're going after dark.", "do": "chat"},
-				{"s": "jaden", "t": "I'll get these three inside before the wind picks up. Meet me at the ruins when the sun's gone. We're getting Koji his Wednesday back."}]},
-			{"until": "night", "needs": [4], "label": "Wait for dark (sit on a bench, or pass time from the map)"},
-			{"go": Vector3(-39.0, 0, 36.0), "r": 3.6, "when": "night", "needs": [4], "label": "Go to the abandoned dorm in the old woods (south-west)"},
+				{"s": "jaden", "t": "I'll get these three inside before the wind picks up. Meet me at the ruins when the sun's gone. We're getting Koji his Wednesday back.", "lead": [5, 6]}]},
+			{"until": "night", "needs": [4], "from": "jaden", "why": "Jaden wants to go when the sun is gone.", "label": "Wait for dark (sit on a bench, or pass time from the map)"},
+			{"go": Vector3(-39.0, 0, 36.0), "r": 3.6, "when": "night", "needs": [4], "from": "jaden", "why": "That is where the long coat goes back to.", "label": "Go to the abandoned dorm in the old woods (south-west)"},
 		]},
 		{"scene": {"district": "academy", "inside": "", "pos": Vector3(-39.0, 0, 36.6), "yaw": 2.26, "tod": "night", "music": "duel_tense"}},
 		{"fx": "freeze"},
@@ -649,25 +652,26 @@ const SCRIPTS := {
 		{"s": "player", "t": "Then we catch the white runner.", "cam": "close"},
 		{"s": "jack", "t": "I would run it down again myself. My runner is... being serviced.", "do": "scratch", "emote": "..."},
 		{"s": "jack", "t": "The man you want lives below, in Satellite. Yusei Fudo. He builds runners out of scrap, and one of them beat mine. Once. One time.", "do": "chat"},
-		{"s": "jack", "t": "Take the Highway Gate. Tell him the King sent you. He will find that funnier than he should.", "cam": "low"},
+		{"s": "jack", "t": "Take the Highway Gate. Tell him the King sent you. He will find that funnier than he should.", "told": [2, 3], "cam": "low"},
 		{"move": "jack", "to": Vector3(3.0, 0, 2.0), "face": PI},
-		{"s": "lumen", "t": "Being serviced. Sure. Let's ask the mechanic by the gate what 'serviced' means around here.", "cam": "close"},
+		{"s": "lumen", "t": "Being serviced. Sure. Let's ask the mechanic by the gate what 'serviced' means around here.", "lead": 0, "cam": "close"},
 		{"gone": "jack"},
 		# ---- your move: the King's errand, in two cities
-		{"title": "The King's errand", "open": ["satellite"], "hide": ["nd_rider", "sat_vendor", "night_newdomino", "night_satellite"],
+		{"title": "The King's errand", "aim": "Catch the white runner", "open": ["satellite"], "hide": ["nd_rider", "sat_vendor", "night_newdomino", "night_satellite"],
 			"cast": [{"actor": "office_worker", "at": Vector3(-2.8, 0, 16.4), "face": PI, "hollow": true},
 				{"actor": "stylish_woman", "at": Vector3(2.6, 0, 15.6), "face": PI, "hollow": true},
 				{"actor": "student_girl", "at": Vector3(0.2, 0, 17.6), "face": PI, "hollow": true},
 				{"actor": "street_duelist", "at": Vector3(-1.5, 0, 19.6), "face": PI, "hollow": true, "in": "satellite"},
 				{"actor": "student_boy", "at": Vector3(1.5, 0, 19.6), "face": PI, "hollow": true, "in": "satellite"}],
 			"tasks": [
-			{"talk": "mechanic", "at": Vector3(-5.5, 0, 44.5), "face": 0.6, "remember": "jack_coil", "label": "Ask the Runner Mechanic by the gate about Jack's runner", "say": [
+			{"talk": "mechanic", "at": Vector3(-5.5, 0, 44.5), "face": 0.6, "remember": "jack_coil", "from": "lumen", "why": "Jack says his runner is being serviced. Lumen does not buy it.", "label": "Ask the Runner Mechanic by the gate about Jack's runner", "say": [
 				{"s": "mechanic", "t": "You the one the King's been shouting about? He told you it's being serviced, didn't he.", "do": "chat"},
 				{"s": "mechanic", "t": "It's being scraped off the ring with a shovel. Frame's fine. Ignition coil's cooked right through.", "cam": "close"},
 				{"s": "mechanic", "t": "Nobody up here stocks a coil for a one-of-a-kind engine. There's exactly one man who could wind a new one out of junk, and the King would rather walk."},
 				{"s": "player", "t": "Yusei Fudo.", "cam": "close"},
-				{"s": "mechanic", "t": "Don't say that name near the bike, it'll stall. Here. The dead coil. Take it down to him. And don't tell Jack where the new one came from.", "do": "wave"}]},
-			{"talk": "akiza", "at": Vector3(33.5, 0, -2.0), "face": -1.6, "label": "Talk to Akiza Izinski, who is looking after the frozen ones (east side)", "say": [
+				{"s": "mechanic", "t": "Don't say that name near the bike, it'll stall. Here. The dead coil. Take it down to him. And don't tell Jack where the new one came from.", "do": "wave"},
+				{"s": "mechanic", "t": "And if you want to know what that white thing does to people, ask the girl on the east side. Izinski. Three days she has been sitting with the frozen ones.", "do": "chat", "lead": 1}]},
+			{"talk": "akiza", "at": Vector3(33.5, 0, -2.0), "face": -1.6, "from": "mechanic", "why": "She has been sitting with the frozen ones for three days.", "needs": [0], "label": "Talk to Akiza Izinski, who is looking after the frozen ones (east side)", "say": [
 				{"s": "akiza", "t": "Don't touch them. I mean it. ...Sorry. People keep trying to shake them awake.", "emote": "!"},
 				{"s": "player", "t": "You've been looking after them.", "cam": "close"},
 				{"s": "akiza", "t": "Somebody has to move them out of the sun. I used to be very good at making people keep their distance. It turns out the skill transfers.", "do": "chat"},
@@ -675,8 +679,8 @@ const SCRIPTS := {
 				{"s": "akiza", "t": "And every night, a little after dark, something cold goes around the ring. Once. Slowly. Like somebody walking through a gallery."},
 				{"s": "lumen", "t": "(Like somebody walking through a gallery. *bzzt* Why do I know exactly what that feels like?)", "cam": "close"},
 				{"s": "akiza", "t": "If you are going down to Satellite, tell Yusei the plaza is holding. He will pretend he wasn't worried.", "do": "wave"}]},
-			{"travel": "satellite", "needs": [0], "label": "Take the Highway Gate down to Satellite (the south gate, or the map)"},
-			{"talk": "yusei", "in": "satellite", "at": Vector3(-8, 0, 11), "face": 0.4, "needs": [2], "label": "Find Yusei Fudo at his garage", "say": [
+			{"travel": "satellite", "needs": [0], "from": "jack", "why": "The man who can catch it lives below, in Satellite.", "label": "Take the Highway Gate down to Satellite (the south gate, or the map)"},
+			{"talk": "yusei", "in": "satellite", "at": Vector3(-8, 0, 11), "face": 0.4, "needs": [2], "from": "jack", "why": "He builds runners out of scrap. One of them beat Jack's.", "label": "Find Yusei Fudo at his garage", "say": [
 				{"s": "yusei", "t": "You came down from the Tops on foot. Nobody does that on purpose. What do you need?", "cam": "close"},
 				{"s": "player", "t": "Jack Atlas sent me. About the white runner. And about this.", "do": "chat"},
 				{"s": "", "t": "You hold out the cooked coil. Yusei turns it over once in his fingers and almost smiles."},
@@ -687,8 +691,8 @@ const SCRIPTS := {
 				{"s": "lumen", "t": "The Blank Deck can answer it! It answers echoes. If {player} is on the road when that shard goes by... *bzzt* ...it'll sing.", "emote": "!"},
 				{"s": "player", "t": "I've never been on a Duel Runner.", "do": "scratch"},
 				{"s": "yusei", "t": "Then you learn tonight. I have a frame I rebuilt. It needs a fork clamp and a clean fuel cell before anybody rides it.", "do": "chat"},
-				{"s": "yusei", "t": "Crow has the clamp. The card dealer on the east side hoards cells. Neither of them gives anything away. Good luck."}]},
-			{"talk": "crow", "in": "satellite", "at": Vector3(17, 0, 11.5), "face": -1.9, "needs": [3], "label": "Get the fork clamp from Crow", "say": [
+				{"s": "yusei", "t": "Crow has the clamp. The card dealer on the east side hoards cells. Neither of them gives anything away. Good luck.", "lead": [4, 5]}]},
+			{"talk": "crow", "in": "satellite", "at": Vector3(17, 0, 11.5), "face": -1.9, "needs": [3], "from": "yusei", "why": "The frame needs a fork clamp before anybody rides it.", "reveals": [6], "label": "Get the fork clamp from Crow", "say": [
 				{"s": "crow", "t": "Yusei sent you for my clamp? MY clamp? I pulled that off a Security bike with my own two hands!", "emote": "!", "do": "stomp"},
 				{"s": "player", "t": "It's for catching the white runner.", "cam": "close"},
 				{"s": "crow", "t": "...Those two at the start line. The ones not moving. I taught the short one how to ride.", "emote": "...", "cam": "close"},
@@ -698,21 +702,22 @@ const SCRIPTS := {
 				{"s": "crow", "t": "Again! The road's not gonna go easy on you, so I'm not either!", "anim": "cheer"}],
 				"after": [
 				{"s": "crow", "t": "Okay, okay! You don't fold. Here. One fork clamp, slightly stolen.", "do": "wave"},
-				{"s": "crow", "t": "I'll light up the old bridge tonight so you can see the exit. And don't scratch his paint. He sulks for a week."}]},
-			{"talk": "vendor", "in": "satellite", "at": Vector3(20.2, 0, -13), "face": -2.6, "needs": [3], "label": "Get a clean fuel cell from the Card Dealer (east side)", "prompt": "Talk to the Card Dealer", "say": [
+				{"s": "crow", "t": "I'll light up the old bridge tonight so you can see the exit. And don't scratch his paint. He sulks for a week."},
+				{"s": "crow", "t": "You want to know who is riding that thing? Ask Kalin. He is by the old fence, north side. He does not say much, but he has watched every race this ring ever had.", "do": "chat", "lead": 6}]},
+			{"talk": "vendor", "in": "satellite", "at": Vector3(20.2, 0, -13), "face": -2.6, "needs": [3], "from": "yusei", "why": "The frame needs a clean fuel cell. The card dealer hoards them.", "label": "Get a clean fuel cell from the Card Dealer (east side)", "prompt": "Talk to the Card Dealer", "say": [
 				{"s": "vendor", "t": "Fuel cells? I sell cards. I KEEP fuel cells. Different thing entirely.", "do": "chat"},
 				{"s": "player", "t": "It's for Yusei. For the white runner.", "cam": "close"},
 				{"act": "vendor", "emote": "...", "wait": 1.0, "cam": "close"},
 				{"s": "vendor", "t": "...My nephew is one of the two at the start line. Did he tell you that? Eight days he has been standing there.", "cam": "close"},
 				{"s": "vendor", "t": "Take it. Take two. And when you're out there, win. I don't want a refund. I want my nephew.", "do": "wave"}]},
-			{"talk": "kalin", "in": "satellite", "at": Vector3(-13, 0, -22), "face": 0.5, "optional": true, "dp": 150, "remember": "kalin_vesper", "needs": [3], "label": "Talk to the man by the old fence (he knew the rider)", "prompt": "Talk to Kalin", "say": [
+			{"talk": "kalin", "in": "satellite", "at": Vector3(-13, 0, -22), "face": 0.5, "optional": true, "dp": 150, "remember": "kalin_vesper", "needs": [3], "from": "crow", "why": "Crow says he watches every race from the old fence.", "hidden": true, "label": "Talk to the man by the old fence (he knew the rider)", "prompt": "Talk to Kalin", "say": [
 				{"s": "kalin", "t": "A last lap. Kept perfect, forever. ...There were years I'd have sold mine for a lot less than that.", "cam": "low"},
 				{"s": "player", "t": "You know who is riding the white runner?", "cam": "close"},
 				{"s": "kalin", "t": "I know the line she takes through the third bend. Only one person ever took it. A girl from down here, six years back.", "do": "chat"},
 				{"s": "kalin", "t": "Built her runner out of three dead ones. One lap of the old ring, and nobody in Satellite has touched her time since. The engine seized the next morning."},
 				{"s": "kalin", "t": "She stood at that fence every race day after. Then one day she wasn't at the fence.", "cam": "close"},
 				{"s": "kalin", "t": "If it's her, don't hate her for it. Down here, when somebody offers to let you keep the one good thing, you don't ask who is offering."}]},
-			{"talk": "yusei", "in": "satellite", "at": Vector3(-8, 0, 11), "face": 0.4, "needs": [4, 5], "label": "Bring the parts back to Yusei", "say": [
+			{"talk": "yusei", "in": "satellite", "at": Vector3(-8, 0, 11), "face": 0.4, "needs": [4, 5], "from": "yusei", "why": "You have the clamp and the cell.", "label": "Bring the parts back to Yusei", "say": [
 				{"s": "yusei", "t": "Clamp. Cell. And Crow still has all of his cards, so you didn't make him cry. Good.", "do": "checkout"},
 				{"s": "player", "t": "Akiza says the plaza is holding.", "cam": "close"},
 				{"s": "yusei", "t": "...I wasn't worried.", "emote": "...", "cam": "close"},
@@ -801,13 +806,13 @@ const SCRIPTS := {
 		{"s": "lumen", "t": "One. From a bright city with a tower shaped like a heart. And he is already there.", "cam": "close"},
 		{"s": "yusei", "t": "Your spirit. She flickers when she talks about him. Things that flicker like that are usually missing a part.", "do": "chat"},
 		{"s": "lumen", "t": "I'm not missing a part! ...Am I missing a part? {player}, am I missing a part?", "emote": "?"},
-		{"s": "lumen", "t": "*bzzt* The trophy. In the shop. The line somebody sanded off the plate. I've SEEN what it said! I just can't read it from here!", "emote": "!", "fx": "shake", "cam": "close"},
+		{"s": "lumen", "t": "*bzzt* The trophy. In the shop. The line somebody sanded off the plate. I've SEEN what it said! I just can't read it from here!", "lead": [0, 1], "emote": "!", "fx": "shake", "cam": "close"},
 		{"s": "player", "t": "Then we go home and read it. Before the last crack.", "cam": "close"},
 		# ---- your move: home, for one answer
-		{"title": "A name on a plate", "open": ["satellite", "newdomino"], "hide": ["owner", "hunter", "night_domino", "night_satellite"],
+		{"title": "A name on a plate", "aim": "Read the name that was sanded off the trophy", "open": ["satellite", "newdomino"], "hide": ["owner", "hunter", "night_domino", "night_satellite"],
 			"tasks": [
-			{"travel": "domino", "label": "Go home to Domino City (open the map)"},
-			{"talk": "grandpa", "in": "domino", "at": SHOP + Vector3(3.4, 0, -2.5), "face": -0.7, "remember": "asked_plate", "label": "Ask Grandpa about the name sanded off the trophy (the card shop)", "say": [
+			{"travel": "domino", "from": "lumen", "why": "The trophy is on its shelf in Grandpa's shop.", "label": "Go home to Domino City (open the map)"},
+			{"talk": "grandpa", "in": "domino", "at": SHOP + Vector3(3.4, 0, -2.5), "face": -0.7, "remember": "asked_plate", "from": "lumen", "why": "If anybody knows who sanded it, he does.", "label": "Ask Grandpa about the name sanded off the trophy (the card shop)", "say": [
 				{"s": "grandpa", "t": "Back again, and with engine grease on you this time. I am not going to ask.", "do": "wave"},
 				{"s": "player", "t": "The trophy. Somebody sanded the top name off the plate. Who?", "cam": "close"},
 				{"act": "grandpa", "emote": "...", "wait": 1.4, "cam": "close"},
@@ -820,7 +825,7 @@ const SCRIPTS := {
 				{"s": "grandpa", "t": "Your little light is flickering. Tell her not to pull so hard. Some things come back when they are ready.", "cam": "close"},
 				{"s": "player", "t": "You can see her?", "emote": "!"},
 				{"s": "grandpa", "t": "I can see where she is. Like a word on the tip of my tongue. Go on. You are not finished out there. Neither is she.", "do": "wave"}]},
-			{"talk": "kaiba", "in": "domino", "at": KC + Vector3(0.5, 0, 0.5), "face": "player", "optional": true, "dp": 200, "remember": "kc_tracker", "label": "Bring Kaiba what you have seen (KaibaCorp plaza)", "say": [
+			{"talk": "kaiba", "in": "domino", "at": KC + Vector3(0.5, 0, 0.5), "face": "player", "optional": true, "dp": 200, "remember": "kc_tracker", "from": "yugi", "why": "His instruments have been going since you left.", "hidden": true, "label": "Bring Kaiba what you have seen (KaibaCorp plaza)", "say": [
 				{"s": "kaiba", "t": "You. The printing error. My instruments have been busy since you left.", "cam": "low"},
 				{"s": "kaiba", "t": "Three doors. One over my alley. One over an island that is not on my charts. One over a city that will not be built for decades. They opened in that order, and you were standing under each of them.", "do": "chat"},
 				{"s": "player", "t": "I close them. Somebody else opens them.", "cam": "close"},
@@ -828,11 +833,12 @@ const SCRIPTS := {
 				{"s": "kaiba", "t": "I need a fourth reading to fix the point. You are going to walk under one more of them carrying this.", "cam": "close"},
 				{"s": "", "t": "He drops something the size of a Locator Card into your hand. It is warm, and it is counting."},
 				{"s": "kaiba", "t": "Don't thank me. It's a leash. I like to know where my investments are.", "cam": "low"}]},
-			{"talk": "yugi", "in": "domino", "at": Vector3(-6.6, 0, -11.4), "face": 0.0, "optional": true, "dp": 100, "label": "Check in with Yugi (outside the shop)", "say": [
+			{"talk": "yugi", "in": "domino", "at": Vector3(-6.6, 0, -11.4), "face": 0.0, "optional": true, "dp": 100, "from": "yugi", "why": "He is right outside the shop.", "hidden": true, "notice": 16.0, "reveals": [2], "label": "Check in with Yugi (outside the shop)", "say": [
 				{"s": "yugi", "t": "{player}! Every deck in the shoebox is back with its owner. Joey read each name out loud to them. He says they can hear it.", "anim": "cheer"},
 				{"s": "player", "t": "Have any of them woken up?", "cam": "close"},
 				{"s": "yugi", "t": "Not yet. But nobody new has frozen since you left. I think whoever was doing this in Domino has moved on. I don't know if that's good news. It's just... news.", "emote": "..."},
-				{"s": "yugi", "t": "Grandpa's been quiet. He keeps taking the old trophy down and putting it back. If he tells you why, tell me.", "do": "chat"}]},
+				{"s": "yugi", "t": "Grandpa's been quiet. He keeps taking the old trophy down and putting it back. If he tells you why, tell me.", "do": "chat"},
+				{"s": "yugi", "t": "And Kaiba has had a guard asking after you all day. He says his instruments went crazy the hour you left town. He is at his tower.", "do": "chat", "lead": 2}]},
 		]},
 		{"scene": {"district": "domino", "inside": "kame", "pos": SHOP + Vector3(1.2, 0, 1.6), "yaw": 0.0, "tod": "night", "music": "shop"}},
 		{"actor": "grandpa", "at": SHOP + Vector3(3.4, 0, -2.5), "face": "player"},
@@ -870,16 +876,16 @@ const SCRIPTS := {
 		{"s": "yuma", "t": "You know what? You're my friend now. That's how it works. I just decided.", "do": "wave", "cam": "close"},
 		{"bond": "Yuma Tsukumo", "card": 84013237, "text": "A fifth blank card fills in: an echo of Yuma getting back up, one more time than he was knocked down. It is in your collection now."},
 		{"s": "yuma", "t": "Oh no. Wait. You're not in the Festival book! Nobody gets onto the tower plaza tonight without three stamps!", "emote": "!"},
-		{"s": "yuma", "t": "It's easy! One: win a festival duel, any duel. Two: Shark has the stand on the east side. He'll stamp you if you beat him, which, uh, good luck.", "do": "chat"},
-		{"s": "yuma", "t": "Three: there's a guy with a stamp on the west side who is SUPER friendly. Kind of too friendly. Find me at the fountain when it's full!"},
+		{"s": "yuma", "t": "It's easy! One: win a festival duel, any duel. Two: Shark has the stand on the east side. He'll stamp you if you beat him, which, uh, good luck.", "lead": [0, 1], "do": "chat"},
+		{"s": "yuma", "t": "Three: there's a guy with a stamp on the west side who is SUPER friendly. Kind of too friendly. Find me at the fountain when it's full!", "lead": 2},
 		{"move": "yuma", "to": Vector3(-12, 0, 20), "run": true},
 		{"s": "lumen", "t": "He made a friend in four minutes. *bzzt* {player}, I don't see a single Hollow. So what is the Curator doing here?", "cam": "close"},
 		{"gone": "yuma"},
 		# ---- your move: festival day
-		{"title": "Festival day", "hide": ["night_heartland", "kite"],
+		{"title": "Festival day", "aim": "Get into tonight's final: three stamps", "hide": ["night_heartland", "kite"],
 			"tasks": [
-			{"wins": 1, "label": "Win a festival duel (first stamp)"},
-			{"talk": "shark", "at": Vector3(19, 0, 4), "face": -1.6, "label": "Beat Shark at the east stand (second stamp)", "say": [
+			{"wins": 1, "from": "yuma", "why": "Stamp one: win a festival duel. Any duel.", "label": "Win a festival duel (first stamp)"},
+			{"talk": "shark", "at": Vector3(19, 0, 4), "face": -1.6, "from": "yuma", "why": "Stamp two: Shark has the stand on the east side.", "reveals": [3], "label": "Beat Shark at the east stand (second stamp)", "say": [
 				{"s": "shark", "t": "A stamp book. Let me guess. Yuma sent you.", "cam": "low"},
 				{"s": "player", "t": "He said good luck.", "do": "scratch"},
 				{"s": "shark", "t": "I don't hand out stamps. I hand out losses. If you get one of the first, you've earned it.", "cam": "close"}],
@@ -889,20 +895,20 @@ const SCRIPTS := {
 				"after": [
 				{"s": "shark", "t": "...Tch. Here. Don't frame it.", "do": "checkout", "cam": "close"},
 				{"s": "shark", "t": "While you're running around with that book. There are men in grey up on the roofs, measuring. I chased one off the south gate this morning, and he didn't run like a tourist. He ran like he had somebody to report to.", "do": "chat"},
-				{"s": "lumen", "t": "(Measuring. Measuring for WHAT?)", "cam": "close"},
+				{"s": "lumen", "t": "(Measuring. Measuring for WHAT?)", "lead": 3, "cam": "close"},
 				{"s": "shark", "t": "Yuma thinks today is the best day of the year. I'd like him to keep thinking that. So whatever you're really here for, do it quietly."}]},
-			{"talk": "vector", "at": Vector3(-21, 0, 14), "face": 1.4, "remember": "vector_tip", "label": "Get a stamp from the friendly one (west side)", "say": [
+			{"talk": "vector", "at": Vector3(-21, 0, 14), "face": 1.4, "remember": "vector_tip", "from": "yuma", "why": "Stamp three: the one on the west side who is super friendly.", "label": "Get a stamp from the friendly one (west side)", "say": [
 				{"s": "vector", "t": "A new face! Welcome, welcome! A stamp? Of COURSE you can have a stamp. No duel, no fee. I just love helping. It's sort of my whole thing.", "do": "wave"},
 				{"s": "", "t": "He stamps the book so hard the table jumps. The stamp is a smiling sun. It is a little too happy.", "fx": "shake"},
 				{"s": "vector", "t": "Oh, and a tip, friend to friend! The front way to the tower gets SO crowded. Go round by the east walk. Nobody ever checks the east walk.", "cam": "close"},
 				{"s": "lumen", "t": "(I don't like him. He smiles like somebody reading a recipe.)", "cam": "close"},
 				{"s": "vector", "t": "Have the BEST day!", "anim": "cheer"}]},
-			{"look": Vector3(0, 0, 8), "optional": true, "dp": 100, "label": "Look up at the sky over the tower", "prompt": "Look up", "say": [
+			{"look": Vector3(0, 0, 8), "optional": true, "dp": 100, "from": "lumen", "why": "Men in grey are measuring the city. For what?", "hidden": true, "notice": 5.0, "label": "Look up at the sky over the tower", "prompt": "Look up", "say": [
 				{"s": "", "t": "Above the tower, very high, there is a straight line in the sky. Then another one, at a right angle to it. Like the corner of something.", "cam": "wide"},
 				{"s": "lumen", "t": "That's not a cloud. Clouds don't have corners.", "emote": "!", "cam": "close"},
 				{"s": "player", "t": "It's a frame.", "cam": "close"},
 				{"s": "lumen", "t": "It's a frame the size of the whole CITY. *bzzt* And there's nothing in it yet."}]},
-			{"talk": "yuma", "at": Vector3(-5, 0, 12), "face": "player", "needs": [0, 1, 2], "label": "Show Yuma the full stamp book (the fountain)", "say": [
+			{"talk": "yuma", "at": Vector3(-5, 0, 12), "face": "player", "needs": [0, 1, 2], "from": "yuma", "why": "He said to find him at the fountain when it is full.", "label": "Show Yuma the full stamp book (the fountain)", "say": [
 				{"s": "yuma", "t": "THREE STAMPS! You beat Shark?! Nobody beats Shark on festival day, he gets extra grumpy!", "anim": "cheer"},
 				{"s": "yuma", "t": "Everyone I know is going to be there tonight. All at once, all cheering. It's going to be the best day EVER.", "do": "chat"},
 				{"s": "lumen", "t": "({player}. He said best day. A whole city, one moment, all at the same time. THAT is what the Curator has been saving room for.)", "emote": "!", "cam": "close"}]},
@@ -938,7 +944,7 @@ const SCRIPTS := {
 		{"duel": {"opponent": "kite", "opp_deck": "kite", "fallback": "kaiba", "lose_ok": false, "difficulty": 2, "field": "heartland"}},
 		{"act": "kite", "emote": "...", "wait": 1.0, "cam": "close"},
 		{"s": "kite", "t": "...Your deck does not take. It gives back. I can see it now.", "cam": "close"},
-		{"s": "kite", "t": "He is under the tower, and he will not start until the final does. That is at sundown. I will get my brother away from the plaza. If you are too slow, I will hold you personally responsible.", "do": "chat"},
+		{"s": "kite", "t": "He is under the tower, and he will not start until the final does. That is at sundown. I will get my brother away from the plaza. If you are too slow, I will hold you personally responsible.", "lead": [1, 2], "do": "chat"},
 		{"move": "kite", "to": Vector3(18, 0, -4), "run": true},
 		{"s": "yuma", "t": "That's Kite for 'good luck'. He likes you!", "anim": "cheer"},
 		{"gone": "kite"},
@@ -964,19 +970,20 @@ const SCRIPTS := {
 		{"s": "yuma", "t": "Sundown! That's ages! I'm going to go warm up, and eat something, and warm up again. Don't be late. I'm saving you a spot right at the front!", "anim": "cheer"},
 		{"move": "yuma", "to": Vector3(-12, 0, -4), "run": true},
 		{"s": "lumen", "t": "Sundown, at the foot of the tower. *bzzt* {player}... what if we can't stop it?", "cam": "close"},
+		{"s": "lumen", "t": "And that was Shark's voice a minute ago, down by the south gate. He sounded like somebody who has found something he does not like.", "cam": "close", "lead": 0},
 		{"s": "player", "t": "Then we'll be standing next to him when it happens.", "cam": "close"},
 		{"gone": "yuma"},
 		# ---- your move: the wait
-		{"title": "Before the final", "clock": 990, "hide": ["night_heartland", "kite", "yuma", "shark"],
+		{"title": "Before the final", "aim": "Be at the tower when the final starts", "clock": 990, "hide": ["night_heartland", "kite", "yuma", "shark"],
 			"tasks": [
-			{"talk": "shark", "at": Vector3(1.5, 0, 30), "face": -1.2, "optional": true, "dp": 150, "remember": "saw_list", "label": "Check on Shark at the south gate", "say": [
+			{"talk": "shark", "at": Vector3(1.5, 0, 30), "face": -1.2, "optional": true, "dp": 150, "remember": "saw_list", "from": "lumen", "why": "That was his voice, down by the south gate.", "label": "Check on Shark at the south gate", "say": [
 				{"s": "shark", "t": "One of the hoods had this on him. I was going to throw it in the canal. Then I read it.", "cam": "close"},
 				{"s": "", "t": "It is a list. Every name in the Festival book, in very neat handwriting. Yours has been added at the bottom, in pencil."},
 				{"s": "", "t": "Your name and Yuma's are circled. There is a line joining the two circles.", "cam": "close"},
 				{"s": "lumen", "t": "Why would they circle US? We're the ones trying to stop it!", "emote": "?"},
 				{"s": "shark", "t": "I don't know what that means. I know I don't like it. Stay close to him tonight.", "cam": "low"}]},
-			{"until": "sunset", "label": "Wait for the final. It starts at sunset (sit on a bench, or pass time from the map)"},
-			{"go": Vector3(3.0, 0, -21.0), "r": 3.0, "when": "sunset", "label": "Go to the foot of Heartland Tower"},
+			{"until": "sunset", "from": "kite", "why": "The man in grey will not start until the final does, at sundown.", "label": "Wait for the final. It starts at sunset (sit on a bench, or pass time from the map)"},
+			{"go": Vector3(3.0, 0, -21.0), "r": 3.0, "when": "sunset", "from": "kite", "why": "He is under the tower.", "label": "Go to the foot of Heartland Tower"},
 		]},
 		{"scene": {"district": "heartland", "inside": "", "pos": Vector3(3.0, 0, -20.4), "yaw": 0.0, "tod": "sunset", "music": "duel_dark"}},
 		{"actor": "lumen", "at": Vector3(4.0, 0, -19.6), "face": "player", "spirit": true},
@@ -1090,43 +1097,43 @@ const SCRIPTS := {
 		{"s": "grandpa", "t": "I remember his face when he drew the last card. I remember laughing so hard I knocked the trophy off the table. That is the part worth keeping.", "cam": "close"},
 		{"s": "grandpa", "t": "Go and tell him so. He never once listened to me. He might listen to you.", "do": "wave"},
 		{"s": "kairo", "t": "His door only opens for an Echo Deck, and it shuts behind whoever carries it. You would be walking into his house alone.", "cam": "close"},
-		{"s": "grandpa", "t": "Then do not go alone. You have made friends in four cities, {player}. I can count. Go and ask them.", "do": "chat"},
+		{"s": "grandpa", "t": "Then do not go alone. You have made friends in four cities, {player}. I can count. Go and ask them.", "lead": [1, 2, 3, 4], "do": "chat"},
 		{"s": "kairo", "t": "They can't follow through that door.", "cam": "close"},
-		{"s": "grandpa", "t": "Seto Kaiba has had his satellites pointed at my shop for a week. That boy has never met a door he could not prop open. Ask him first.", "do": "scratch", "react": {"kairo": "!"}},
-		{"s": "kairo", "t": "...I'll wait outside. Nobody has ever come for the ones he framed. I would like to see what it looks like.", "cam": "close"},
+		{"s": "grandpa", "t": "Seto Kaiba has had his satellites pointed at my shop for a week. That boy has never met a door he could not prop open. Ask him first.", "lead": 0, "do": "scratch", "react": {"kairo": "!"}},
+		{"s": "kairo", "t": "...I'll wait outside. Nobody has ever come for the ones he framed. I would like to see what it looks like.", "told": 5, "cam": "close"},
 		# ---- your move: four cities, one night
-		{"title": "Call in every favor", "clock": 1260, "frozen_in": ["heartland"],
+		{"title": "Call in every favor", "aim": "Do not go through that door alone", "clock": 1260, "frozen_in": ["heartland"],
 			"hide": ["owner", "hunter", "marik", "joey", "yuma", "shark", "vector", "hl_vendor", "hl_girl", "hl_boy", "night_heartland", "night_domino", "night_academy", "night_satellite", "chazz", "jack", "crow"],
 			"cast": [{"actor": "yuma", "at": Vector3(0.6, 0, -19.6), "face": 0.6, "hollow": true, "in": "heartland"}],
 			"tasks": [
-			{"talk": "kaiba", "at": KC + Vector3(0.5, 0, 0.5), "face": "player", "label": "Ask Kaiba to hold the door open (KaibaCorp plaza)", "say": [
+			{"talk": "kaiba", "at": KC + Vector3(0.5, 0, 0.5), "face": "player", "from": "grandpa", "why": "That boy has never met a door he could not prop open.", "label": "Ask Kaiba to hold the door open (KaibaCorp plaza)", "say": [
 				{"if": "kc_tracker", "s": "kaiba", "t": "The fourth reading. Your leash logged it the second that light went out over Heartland.", "cam": "low"},
 				{"unless": "kc_tracker", "s": "kaiba", "t": "The fourth reading. I took it without your help, the second that light went out over Heartland.", "cam": "low"},
 				{"s": "kaiba", "t": "The point is fixed. All four doors open into one room, and the nearest wall of that room is the street outside a card shop.", "do": "chat"},
 				{"s": "player", "t": "I need it held open. Long enough for more than one person to walk through.", "cam": "close"},
 				{"s": "kaiba", "t": "You need. ...My tower can hold a door for as long as somebody I respect is on the other side of it. Do not make me regret the wording.", "cam": "close"},
 				{"s": "kaiba", "t": "Midnight. Your grandfather's street. Bring whoever you think is worth the electricity.", "cam": "low"}]},
-			{"talk": "yugi", "at": Vector3(-6.6, 0, -11.4), "face": 0.0, "label": "Ask Yugi and Joey (outside the shop)", "say": [
+			{"talk": "yugi", "at": Vector3(-6.6, 0, -11.4), "face": 0.0, "from": "grandpa", "why": "You made friends in four cities. Go and ask them.", "label": "Ask Yugi and Joey (outside the shop)", "say": [
 				{"s": "yugi", "t": "{player}! We felt it all the way from the pier. The sky over the shop went white.", "do": "wave"},
 				{"s": "player", "t": "He has Lumen. And a friend of mine in Heartland. And everybody he ever framed. I'm going in after them.", "cam": "close"},
 				{"s": "yugi", "t": "Then you're not going by yourself. That deck of yours feels kind. I said so the first day. Kind things shouldn't have to walk into dark places alone.", "cam": "close"},
 				{"s": "yugi", "t": "Joey says nobody else gets stuck the way he was. He's been saying it all week, to everybody. Midnight. We'll be there.", "do": "chat"}]},
-			{"talk": "jaden", "in": "academy", "at": Vector3(3.5, 0, 3), "face": 2.4, "label": "Ask Jaden (Duel Academy)", "say": [
+			{"talk": "jaden", "in": "academy", "at": Vector3(3.5, 0, 3), "face": 2.4, "from": "grandpa", "why": "He makes a losing duel fun. The museum is full of people who need that.", "label": "Ask Jaden (Duel Academy)", "say": [
 				{"s": "jaden", "t": "{player}! Koji took the exam! He FAILED it! He's so happy, he's retaking it Tuesday!", "anim": "cheer"},
 				{"s": "player", "t": "The man who froze him has a museum full of people like that. I'm going to open it. I could use somebody who makes a losing duel fun.", "cam": "close"},
 				{"s": "jaden", "t": "A whole museum of duelists who haven't had a match in years? Do you know how badly those guys are going to want a duel when they wake up? I'm in!", "do": "chat"},
 				{"s": "jaden", "t": "Chazz is in too. He doesn't know yet. I'll tell him it was his idea.", "emote": "♪"}]},
-			{"talk": "yusei", "in": "satellite", "at": Vector3(-8, 0, 11), "face": 0.4, "label": "Ask Yusei (Satellite)", "say": [
+			{"talk": "yusei", "in": "satellite", "at": Vector3(-8, 0, 11), "face": 0.4, "from": "grandpa", "why": "A duelist who can ride, with a runner to leave fast on.", "label": "Ask Yusei (Satellite)", "say": [
 				{"s": "yusei", "t": "You're back, and you're not smiling. What broke?", "cam": "close"},
 				{"s": "player", "t": "He took my partner. And a kid in Heartland who made friends with me in four minutes.", "cam": "close"},
 				{"s": "yusei", "t": "Then we go and get them. That isn't a favor. That's just what you do.", "do": "chat"},
 				{"s": "yusei", "t": "Jack will come if I tell him not to. I'll bring the runner. Wherever this door goes, somebody may need to leave it fast."}]},
-			{"talk": "kite", "in": "heartland", "at": Vector3(-2.6, 0, -18.2), "face": 0.9, "label": "Ask Kite (Heartland, the foot of the tower)", "say": [
+			{"talk": "kite", "in": "heartland", "at": Vector3(-2.6, 0, -18.2), "face": 0.9, "from": "grandpa", "why": "He is standing guard over Yuma.", "label": "Ask Kite (Heartland, the foot of the tower)", "say": [
 				{"s": "kite", "t": "He has not moved. Neither have I.", "cam": "low"},
 				{"s": "player", "t": "I'm going in after the man who did it. Tonight. From my grandfather's street.", "cam": "close"},
 				{"s": "kite", "t": "Shark will hold this plaza. He has been wanting an excuse to be angry at somebody all week.", "do": "chat"},
 				{"s": "kite", "t": "I am coming with you. Not for you. When Yuma wakes up, the first thing he will ask is who went to get him. I intend to have an answer he finds annoying.", "cam": "close"}]},
-			{"talk": "kairo", "at": DOOR + Vector3(1.6, 0, 1.4), "face": "player", "needs": [0, 1, 2, 3, 4], "label": "When everyone is coming, meet Kairo outside the shop", "say": [
+			{"talk": "kairo", "at": DOOR + Vector3(1.6, 0, 1.4), "face": "player", "needs": [0, 1, 2, 3, 4], "from": "kairo", "why": "He is waiting outside. Nobody has ever come for the ones the Curator framed.", "label": "When everyone is coming, meet Kairo outside the shop", "say": [
 				{"s": "kairo", "t": "Four cities. You actually asked all of them.", "cam": "close"},
 				{"s": "kairo", "t": "Nobody ever came for the ones he framed. That was the whole reason it worked. I think he counted on that more than he knew.", "do": "chat"},
 				{"s": "kairo", "t": "It's nearly midnight. They're here.", "cam": "low"}]},

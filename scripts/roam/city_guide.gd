@@ -229,6 +229,18 @@ func _fill() -> void:
 					rl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 					rl.custom_minimum_size = Vector2(500, 0)
 					sv.add_child(rl)
+					if r.size() > 3:
+						if str(r[2]) != "":
+							var sl := UITheme.label("      " + str(r[2]), 15, UITheme.TEXT_DIM)
+							sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+							sl.custom_minimum_size = Vector2(500, 0)
+							sv.add_child(sl)
+						var said: String = scene.quest.lead_quote(int(r[3]))
+						if said != "":
+							var ql := UITheme.label("      \u201c" + said + "\u201d", 14, Color(0.8, 0.78, 0.62, 0.9))
+							ql.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+							ql.custom_minimum_size = Vector2(500, 0)
+							sv.add_child(ql)
 				_list.add_child(pc)
 			for qd in extras.quest_rows():
 				_list.add_child(_quest_row(qd))

@@ -1151,6 +1151,9 @@ func _say(st: Dictionary) -> void:
 	_speaker(who if not st.has("anim") else "")
 	_shot_mode = str(st.get("cam", ""))
 	_caption("")
+	if st.has("lead") and not _skip:
+		for li in (st["lead"] if st["lead"] is Array else [st["lead"]]):
+			_announce(int(li))
 	if st.has("shot"):
 		_start_directed(st["shot"])
 	elif st.get("keep", false) and not _dir.is_empty():
@@ -1494,7 +1497,7 @@ func _do_tasks(st: Dictionary) -> bool:
 		flags["_w0"] = StoryProgress.count("street_wins")
 	flags["_where"] = here
 	StoryProgress.save_position(chapter, step, flags)
-	_build_task_ui(str(st.get("title", "WHAT TO DO")))
+	_build_task_ui(str(st.get("title", "WHAT TO DO")), str(st.get("aim", "")))
 	# Whoever the story has in hand is not also standing around as their everyday self.
 	var away: Array = (st.get("hide", []) as Array).duplicate()
 	for t in _tasks:
@@ -1542,6 +1545,15 @@ func _do_tasks(st: Dictionary) -> bool:
 				continue
 			var mine := str(t.get("in", home)) == here
 			var now := not t.has("when") or WorldClock.look() == str(t["when"])
+			if not _task_listed(i):
+				# A lead nobody has given you yet: whoever it is stands there like anybody else,
+				# and coming close is how you find it.
+				var hp = _task_pos(t)
+				if mine and hp != null:
+					_place_task(i, here, home, true)
+					if Vector2(scene._player.global_position.x - (hp as Vector3).x, scene._player.global_position.z - (hp as Vector3).z).length() < float(t.get("notice", 9.0)):
+						_find_task(i, here, home)
+				continue
 			if t.has("travel"):
 				if here == str(t["travel"]):
 					_finish_task(i)
@@ -1564,6 +1576,14 @@ func _do_tasks(st: Dictionary) -> bool:
 						# back when you are ready: it does not grab you again where you stand.
 						_go_armed[i] = false
 						await _run_task(i)
+		# Leads arrive one at a time, each with the face of whoever gave it.
+		_lead_wait -= 0.25
+		if _lead_wait <= 0.0:
+			for i in _tasks.size():
+				if not _task_done.has(str(i)) and _task_listed(i) and not (flags.get("_seen", {}) as Dictionary).has(str(i)):
+					_announce(i)
+					_lead_wait = 1.4
+					break
 		_refresh_task_ui(here, home)
 	# Everything that had to be done is done: back to the telling.
 	scene.quest_locked = false
@@ -1575,7 +1595,7 @@ func _do_tasks(st: Dictionary) -> bool:
 	Sfx.play("quest", -4.0)
 	Router.toast(Loc.t("The story goes on."))
 	await get_tree().create_timer(1.1).timeout
-	for k in ["_done", "_w0", "_where", "_after_task", "_duel_task"]:
+	for k in ["_done", "_w0", "_where", "_after_task", "_duel_task", "_seen", "_found"]:
 		flags.erase(k)
 	for k in flags.keys():
 		if str(k).begins_with("_won_") or str(k).begins_with("_lost_"):
@@ -1622,7 +1642,7 @@ func _task_pos(t: Dictionary):
 
 
 ## Put the person (or the mark) for task `i` into the world, with something to press E on.
-func _place_task(i: int, here: String, home: String) -> void:
+func _place_task(i: int, here: String, home: String, bare := false) -> void:
 	if _task_nodes.has(i):
 		return
 	var t: Dictionary = _tasks[i]
@@ -1642,6 +1662,9 @@ func _place_task(i: int, here: String, home: String) -> void:
 		_place(pst, true)
 		made.append(_actors[key])
 		(_actors[key] as Node3D).set_meta("task_key", key)
+	if bare:
+		_task_nodes[i] = made
+		return
 	var mark := Label3D.new()
 	mark.text = "!" if t.has("talk") else ("?" if t.has("look") else "▼")
 	mark.font = UITheme.title_font()
@@ -1762,6 +1785,11 @@ func _finish_task(i: int) -> void:
 		flags[str(t["flag"])] = true
 	if t.has("remember"):
 		StoryProgress.remember(str(t["remember"]))
+	if t.has("reveals"):
+		var fnd: Dictionary = flags.get("_found", {})
+		for j in t["reveals"]:
+			fnd[str(int(j))] = true
+		flags["_found"] = fnd
 	if t.has("dp"):
 		Collection.dp += int(t["dp"])
 		Collection.save()
@@ -1804,13 +1832,13 @@ func _auto_tasks(here: String, home: String) -> bool:
 	return false
 
 
-func _build_task_ui(title: String) -> void:
+func _build_task_ui(title: String, goal := "") -> void:
 	if _task_box != null:
 		return
 	_task_box = PanelContainer.new()
 	_task_box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.042, 0.0676, 0.145, 0.88), 16, Color(UITheme.GOLD, 0.6)))
 	_task_box.position = Vector2(30, 232)
-	_task_box.custom_minimum_size = Vector2(470, 0)
+	_task_box.custom_minimum_size = Vector2(500, 0)
 	_task_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui.add_child(_task_box)
 	var gm := MarginContainer.new()
@@ -1828,13 +1856,15 @@ func _build_task_ui(title: String) -> void:
 	for c in StoryData.CHAPTERS:
 		if c["id"] == chapter:
 			ch = Loc.t(str(c["title"])).to_upper() + "   ·   "
-	v.add_child(UITheme.label(ch + Loc.t("YOUR MOVE"), 15, UITheme.GOLD, UITheme.semi_font()))
-	_task_title = UITheme.label(Loc.t(title), 22, Color.WHITE, UITheme.semi_font())
+	# With a goal, the small line names the stretch of the chapter and the big line says what
+	# all of it is for.
+	v.add_child(UITheme.label(ch + (Loc.t(title).to_upper() if goal != "" else Loc.t("YOUR MOVE")), 15, UITheme.GOLD, UITheme.semi_font()))
+	_task_title = UITheme.label(Loc.t(goal if goal != "" else title), 22, Color.WHITE, UITheme.semi_font())
 	_task_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_task_title.custom_minimum_size = Vector2(430, 0)
+	_task_title.custom_minimum_size = Vector2(460, 0)
 	v.add_child(_task_title)
 	_task_list = VBoxContainer.new()
-	_task_list.add_theme_constant_override("separation", 2)
+	_task_list.add_theme_constant_override("separation", 1)
 	_task_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(_task_list)
 	Sfx.play("quest", -6.0)
@@ -1845,7 +1875,7 @@ func task_rows(here: String, home: String) -> Array:
 	var rows: Array = []
 	for i in _tasks.size():
 		var t: Dictionary = _tasks[i]
-		if not _task_open(i) and not _task_done.has(str(i)):
+		if not _task_listed(i):
 			continue
 		var text := Loc.t(str(t.get("label", "")))
 		var state := "open"
@@ -1863,8 +1893,148 @@ func task_rows(here: String, home: String) -> Array:
 				text += "   %d / %d" % [mini(int(t["wins"]), StoryProgress.count("street_wins") - int(flags.get("_w0", 0))), int(t["wins"])]
 			if t.get("optional", false):
 				text += "   " + Loc.t("(optional)")
-		rows.append([text, state])
+		rows.append([text, state, lead_sub(i), i])
 	return rows
+
+
+## "Yugi  ·  Kaiba will not look at anyone who is not on his board."
+func lead_sub(i: int) -> String:
+	var t: Dictionary = _tasks[i]
+	var who := str(t.get("from", ""))
+	var why := Loc.t(str(t.get("why", ""))) if t.has("why") else ""
+	if who == "":
+		return why
+	return _name_of(who) + ("   ·   " + why if why != "" else "")
+
+
+## The words that gave you this lead: "Yugi: ..." ("" when nobody said it in so many words).
+func lead_quote(i: int) -> String:
+	var lines: Array = []
+	for k in range(maxi(0, step - 60), mini(step, _steps.size())):
+		lines.append(_steps[k])
+	for t in _tasks:
+		for part in ["say", "retry", "after"]:
+			lines.append_array((t as Dictionary).get(part, []))
+	var out := ""
+	for ln in lines:
+		var d: Dictionary = ln
+		for key in ["lead", "told"]:
+			if not d.has(key) or not d.has("t"):
+				continue
+			var marks: Array = d[key] if d[key] is Array else [d[key]]
+			if marks.has(i) or marks.has(float(i)):
+				var who := str(d.get("s", ""))
+				var said := Loc.t(str(d["t"])).replace("{player}", Profile.duelist_name)
+				out = (_name_of(who) + ": " if who != "" and who != "player" else "") + said
+	return out
+
+
+## Is this lead on your list (given to you, or found)?
+func _task_listed(i: int) -> bool:
+	if _task_done.has(str(i)):
+		return true
+	if not _task_open(i):
+		return false
+	return not (_tasks[i] as Dictionary).get("hidden", false) or (flags.get("_found", {}) as Dictionary).has(str(i))
+
+
+func _find_task(i: int, here: String, home: String) -> void:
+	var fnd: Dictionary = flags.get("_found", {})
+	fnd[str(i)] = true
+	flags["_found"] = fnd
+	_clear_task(i)
+	_place_task(i, here, home)
+
+
+## The list a "lead" mark on a line points at: the one in play, or the next one coming.
+func _lead_tasks() -> Array:
+	if free and not _tasks.is_empty():
+		return _tasks
+	for k in range(step, _steps.size()):
+		if (_steps[k] as Dictionary).has("tasks"):
+			return _steps[k]["tasks"]
+	return []
+
+
+var _lead_wait := 0.8
+var _lead_live := 0
+
+
+## A lead is handed to you: a card slides in with who it came from, what it is and why.
+func _announce(i: int) -> void:
+	var tasks := _lead_tasks()
+	if i < 0 or i >= tasks.size():
+		return
+	var seen: Dictionary = flags.get("_seen", {})
+	if seen.has(str(i)) or (free and tasks == _tasks and _task_done.has(str(i))):
+		return          # already given, or already done before anybody mentioned it
+	seen[str(i)] = true
+	flags["_seen"] = seen
+	var fnd: Dictionary = flags.get("_found", {})
+	fnd[str(i)] = true
+	flags["_found"] = fnd
+	var t: Dictionary = tasks[i]
+	if _audit or _auto:
+		print("LEAD ", i, " from ", str(t.get("from", "")), ": ", str(t.get("label", "")))
+	if _skip:
+		return
+	var who := str(t.get("from", ""))
+	var pc := PanelContainer.new()
+	pc.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.045, 0.065, 0.14, 0.95), 14, Color(UITheme.GOLD, 0.85)))
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pc.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	pc.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	pc.offset_right = -30
+	pc.offset_top = 286 + 112 * _lead_live
+	_lead_live += 1
+	_ui.add_child(pc)
+	var mg := MarginContainer.new()
+	for side in ["left", "right"]:
+		mg.add_theme_constant_override("margin_" + side, 14)
+	for side in ["top", "bottom"]:
+		mg.add_theme_constant_override("margin_" + side, 10)
+	mg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pc.add_child(mg)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mg.add_child(h)
+	if who != "" and who != "player":
+		var face := TextureRect.new()
+		face.texture = _face(who)
+		face.custom_minimum_size = Vector2(60, 76)
+		face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		h.add_child(face)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(v)
+	v.add_child(UITheme.label(Loc.t("NEW LEAD") + ("   ·   " + _name_of(who).to_upper() if who != "" and who != "player" else ""), 14, UITheme.GOLD, UITheme.semi_font()))
+	var tl := UITheme.label(Loc.t(str(t.get("label", ""))), 19, Color.WHITE, UITheme.semi_font())
+	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tl.custom_minimum_size = Vector2(400, 0)
+	v.add_child(tl)
+	if t.has("why"):
+		var wl := UITheme.label(Loc.t(str(t["why"])), 15, Color(0.78, 0.83, 0.93, 0.9))
+		wl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		wl.custom_minimum_size = Vector2(400, 0)
+		v.add_child(wl)
+	Sfx.play("quest", -9.0, 1.15)
+	pc.modulate.a = 0.0
+	pc.offset_left += 40
+	pc.offset_right += 40
+	var tw := pc.create_tween()
+	tw.set_parallel()
+	tw.tween_property(pc, "modulate:a", 1.0, 0.2)
+	tw.tween_property(pc, "offset_right", -30.0, 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.set_parallel(false)
+	tw.tween_interval(4.6)
+	tw.tween_property(pc, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(func():
+		_lead_live = maxi(0, _lead_live - 1)
+		pc.queue_free())
 
 
 func _refresh_task_ui(here: String, home: String) -> void:
@@ -1883,9 +2053,16 @@ func _refresh_task_ui(here: String, home: String) -> void:
 			var l := UITheme.label(("✔  " if done else "•  ") + str(r[0]), 18,
 					Color(0.55, 0.9, 0.62, 0.85) if done else (Color(0.75, 0.8, 0.9, 0.8) if r[1] in ["away", "wait"] else Color.WHITE), UITheme.semi_font())
 			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			l.custom_minimum_size = Vector2(430, 0)
+			l.custom_minimum_size = Vector2(460, 0)
 			l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			_task_list.add_child(l)
+			if not done and str(r[2]) != "":
+				# Who gave it to you, and what for.
+				var sl := UITheme.label("      " + str(r[2]), 14, Color(0.72, 0.78, 0.9, 0.78))
+				sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				sl.custom_minimum_size = Vector2(460, 0)
+				sl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				_task_list.add_child(sl)
 	# The beacon stands on the nearest thing still to do here.
 	var best = null
 	var best_d := 1e9

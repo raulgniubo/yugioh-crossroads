@@ -1862,12 +1862,28 @@ func _test_clock_and_story() -> void:
 				continue
 			lists += 1
 			check(i + 1 < steps.size() and (steps[i + 1] as Dictionary).has("scene"), "%s: a free list is followed by a scene" % ch)
-			check(str(st.get("title", "")) != "", "%s: a free list has a title" % ch)
+			check(str(st.get("title", "")) != "" or str(st.get("aim", "")) != "", "%s: a free list has a title" % ch)
+			check(str(st.get("aim", "")) != "", "%s list %d: the list says what it is all for" % [ch, i])
+			# Every lead mark on a line before this list points at a lead that exists.
+			var back := i - 1
+			while back >= 0 and not (steps[back] as Dictionary).has("tasks"):
+				for key in ["lead", "told"]:
+					if (steps[back] as Dictionary).has(key):
+						var marks: Array = steps[back][key] if steps[back][key] is Array else [steps[back][key]]
+						for mk in marks:
+							check(int(mk) >= 0 and int(mk) < (st["tasks"] as Array).size(), "%s list %d: a line gives a lead that is on the list" % [ch, i])
+				back -= 1
 			var tasks: Array = st["tasks"]
 			var must := 0
 			for ti in tasks.size():
 				var t: Dictionary = tasks[ti]
 				check(str(t.get("label", "")) != "", "%s list %d: task %d says what to do" % [ch, i, ti])
+				check(str(t.get("why", "")) != "" and (str(t.get("from", "")) == "lumen" or not Characters.get_char(str(t.get("from", ""))).is_empty()),
+					"%s list %d: lead %d has a face and a reason" % [ch, i, ti])
+				if t.get("hidden", false):
+					check(t.get("optional", false), "%s list %d: a lead you have to find is never required (%d)" % [ch, i, ti])
+				for j in t.get("reveals", []):
+					check(int(j) >= 0 and int(j) < tasks.size(), "%s list %d: lead %d turns up a real lead" % [ch, i, ti])
 				var kinds := 0
 				for k in ["talk", "look", "go", "travel", "wins", "until"]:
 					if t.has(k):
