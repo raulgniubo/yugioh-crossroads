@@ -51,6 +51,28 @@ func _ready() -> void:
 							var c: Control = flow.get_child(3)
 							db._select(int(c.get_meta("id")), "main", c)
 							break)
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--drag=") and ps is DeckBuilder:
+			# Dev: grab a collection card and hold it over the deck (main), the Side Deck (side) or
+			# nowhere (none); or grab a deck card and hold it over the collection (col).
+			var db2: DeckBuilder = ps
+			var where := a.trim_prefix("--drag=")
+			get_tree().create_timer(0.8).timeout.connect(func():
+				var src: Control = db2._grid.get_child(2)
+				var from := "col"
+				if where == "col":
+					for flow in db2._deck_list.get_children():
+						if flow is HFlowContainer and flow.get_child_count() > 3:
+							src = flow.get_child(3)
+							from = "main"
+							break
+				else:
+					src = src.get_child(0) if src.get_child_count() > 0 and src.get_child(0) is TextureRect else src
+				db2._grab = {"card": int((src if src.has_meta("id") else src.get_parent()).get_meta("id")), "from": from, "src": src, "at": Vector2.ZERO}
+				var at: Vector2 = {"main": Vector2(640, 300), "side": Vector2(640, 640), "col": Vector2(1050, 400)}.get(where, Vector2(170, 500))
+				get_viewport().warp_mouse(at)
+				Input.warp_mouse(at)
+				db2._start_drag())
 	if tab > 0 and ps.has_method("_show_tab"):
 		ps.call_deferred("_show_tab", tab)
 	if what == "rps":

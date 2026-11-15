@@ -4087,4 +4087,13 @@ const ES := {
 	"I fill the festival balloons before anybody is up. Four hundred of them. Nobody ever asks who does it.": "Inflo los globos del festival antes de que nadie se levante. Cuatrocientos. Nadie pregunta nunca quién lo hace.",
 	"Duel me while the helium settles. I am gone by ten.": "Duela conmigo mientras se asienta el helio. A las diez ya me fui.",
 	"Up, up and away.": "Arriba, arriba y lejos.",
+	"Back to the world": "Volver al mundo",
+	"Change deck": "Cambiar de deck",
+	"The Side Deck cannot take it": "El Side Deck no puede recibirla",
+	"No more copies of this card can go in": "No caben más copias de esta carta",
+	"Let go to take it out of the deck": "Suelta para sacarla del deck",
+	"Let go to put it in the Side Deck": "Suelta para ponerla en el Side Deck",
+	"Let go to move it to the Main Deck": "Suelta para pasarla al Deck Principal",
+	"Let go to add it to your deck": "Suelta para agregarla a tu deck",
+	"Pick or fix your deck, then press Story: it picks up at the duel you lost.": "Elige o arregla tu deck y luego pulsa Historia: retoma en el duelo que perdiste.",
 }

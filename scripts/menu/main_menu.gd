@@ -92,14 +92,10 @@ void fragment() {
 	svc.material = soft
 	# The city is a picture, not a place you play in: it is drawn a few times at the full
 	# sharpness of the screen and then held, so the home screen costs next to nothing and never
-	# turns to blocks, whatever the 3D resolution is set to. A slow drift keeps it from sitting dead.
+	# turns to blocks, whatever the 3D resolution is set to. It stays still (a slow drift looked wrong).
 	_shoot_background()
 	get_viewport().size_changed.connect(_shoot_background)
 	Profile.changed.connect(_shoot_background)
-	svc.pivot_offset = get_viewport_rect().size / 2.0
-	var tw := create_tween().set_loops()
-	tw.tween_property(svc, "scale", Vector2(1.035, 1.035), 26.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw.tween_property(svc, "scale", Vector2.ONE, 26.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 var _bg_shots := 0
@@ -113,7 +109,6 @@ func _shoot_background() -> void:
 	var screen_h := float(DisplayServer.window_get_size().y)
 	_bg_vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 	_bg_vp.scaling_3d_scale = clampf(clampf(screen_h, 720.0, 1620.0) / canvas_h, 0.5, 2.0)
-	_bg_box.pivot_offset = get_viewport_rect().size / 2.0
 	_bg_shots += 1
 	var mine := _bg_shots
 	# Now, and twice more once everything in it has had time to load.

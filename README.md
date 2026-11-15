@@ -5,6 +5,14 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.32.2
+
+- **Deck builder: dragging that feels like dragging.** Press a card and pull: the card comes with the pointer at full size, leaning the way you pull it. The side it can go to lights up green and says what letting go will do (add it, take it out, into the Side Deck); red when it cannot go there. Let go anywhere on that side. Let go somewhere else and it slides back.
+- The gold outline around the card you picked is no longer cut off at the edge of the collection.
+- **Losing a duel the story needs you to win** now offers **Change deck** (straight to My Decks; Story picks up at that duel) or, for a duel from a list, **Back to the world** (change your deck there and talk to them again).
+- **Home screen:** the city stays still, and it is a little soft and dark so the duelists in front stand out.
+- Lumen's picture in the talk box no longer has a dark square behind it.
+
 ## What is in 0.32.1
 
 - **Home screen.** The city behind the duelists is sharp now. It was being drawn at well under half the lines of the screen; it is drawn at the screen's own sharpness, a few times, and then held as a picture with a slow drift. The home screen costs far less because of it.

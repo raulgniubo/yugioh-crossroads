@@ -180,6 +180,7 @@ func _ready() -> void:
 	dp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	dp.size_flags_stretch_ratio = 1.0
 	body.add_child(dp)
+	_dp = dp
 	var mid := VBoxContainer.new()
 	mid.add_theme_constant_override("separation", 8)
 	dp.add_child(mid)
@@ -267,14 +268,18 @@ func _ready() -> void:
 	_deck_list = VBoxContainer.new()
 	_deck_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_deck_list.add_theme_constant_override("separation", 6)
-	rs.add_child(_deck_list)
-	for z in [dp, mid, rs, _deck_list, _mix]:
-		_drop_zone(z, "main")
+	var dpad := MarginContainer.new()
+	dpad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for side_ in ["left", "top", "right", "bottom"]:
+		dpad.add_theme_constant_override("margin_" + side_, 6)
+	rs.add_child(dpad)
+	dpad.add_child(_deck_list)
 	# ---- right: everything you own
 	var cp := _panel(16)
 	cp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cp.size_flags_stretch_ratio = 1.0
 	body.add_child(cp)
+	_cp = cp
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
 	cp.add_child(col)
@@ -380,9 +385,11 @@ func _ready() -> void:
 	_grid.columns = 6
 	_grid.add_theme_constant_override("h_separation", 8)
 	_grid.add_theme_constant_override("v_separation", 8)
-	gscroll.add_child(_grid)
-	for z in [cp, col, gscroll, _grid]:
-		_drop_zone(z, "col")
+	var gpad := MarginContainer.new()
+	for side_ in ["left", "top", "right", "bottom"]:
+		gpad.add_theme_constant_override("margin_" + side_, 8)
+	gscroll.add_child(gpad)
+	gpad.add_child(_grid)
 	var foot := HBoxContainer.new()
 	foot.add_theme_constant_override("separation", 8)
 	col.add_child(foot)
@@ -576,6 +583,8 @@ func _tile(id: int) -> Control:
 		tr.modulate = Color.WHITE if Collection.can_add(id, _to_side) else Color(0.5, 0.5, 0.56)
 	refresh.call()
 	tr.mouse_entered.connect(func():
+		if _drag != null:
+			return
 		_show(id)
 		holder.z_index = 2
 		holder.create_tween().tween_property(holder, "scale", Vector2(1.07, 1.07), 0.08))
@@ -589,10 +598,8 @@ func _tile(id: int) -> Control:
 				# The fast way: one more copy into the deck.
 				_quick_add(id)
 			else:
-				_select(id, "col", holder))
-	tr.set_drag_forwarding(func(_at): return _drag_from(id, "col", tr),
-		func(_at, data): return _can_drop("col", data),
-		func(_at, data): _drop("col", data))
+				_select(id, "col", holder)
+				_grab = {"card": id, "from": "col", "src": tr, "at": get_global_mouse_position()})
 	if _pin.get("from", "") == "col" and int(_pin.get("id", -1)) == id:
 		_place_mark(holder)
 	holder.set_meta("refresh", refresh)
@@ -622,8 +629,8 @@ func _rebuild_deck() -> void:
 		var part: String = "side" if is_side else ("main" if is_main else "extra")
 		var zone: String = "side" if is_side else "main"
 		flow.custom_minimum_size = Vector2(0, 90 if is_side or is_main else 0)
-		_drop_zone(flow, zone)
-		_drop_zone(head, zone)
+		if is_side:
+			_side_head = head
 		var marked := false
 		if ids.is_empty():
 			var tip := UITheme.label({"MAIN DECK": "Empty. Drag cards here from your collection, or tap one and press Add to deck.",
@@ -653,6 +660,8 @@ func _rebuild_deck() -> void:
 				tw.tween_property(card, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 				tw.tween_property(card, "modulate", Color.WHITE, 0.3)
 			card.mouse_entered.connect(func():
+				if _drag != null:
+					return
 				_show(id)
 				card.z_index = 2
 				card.create_tween().tween_property(card, "scale", Vector2(1.12, 1.12), 0.08))
@@ -669,10 +678,8 @@ func _rebuild_deck() -> void:
 						# The fast way: one copy out.
 						_take_out(id, part)
 					else:
-						_select(id, part, card))
-			card.set_drag_forwarding(func(_at): return _drag_from(id, part, card),
-				func(_at, data): return _can_drop(zone, data),
-				func(_at, data): _drop(zone, data))
+						_select(id, part, card)
+						_grab = {"card": id, "from": part, "src": card, "at": get_global_mouse_position()})
 			if not marked and _pin.get("from", "") == part and int(_pin.get("id", -1)) == id:
 				marked = true
 				_place_mark(card)
@@ -704,10 +711,10 @@ func _place_mark(on: Control) -> void:
 	_mark = Panel.new()
 	_mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_mark.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_mark.offset_left = -3
-	_mark.offset_top = -3
-	_mark.offset_right = 3
-	_mark.offset_bottom = 3
+	_mark.offset_left = -2
+	_mark.offset_top = -2
+	_mark.offset_right = 2
+	_mark.offset_bottom = 2
 	var sb := UITheme.panel_box(Color(UITheme.GOLD, 0.0), 6, UITheme.GOLD)
 	sb.set_border_width_all(3)
 	_mark.add_theme_stylebox_override("panel", sb)
@@ -937,23 +944,188 @@ func _refresh_actions() -> void:
 		_act_btn(Loc.t("Add another copy"), Collection.can_add(id, false), func(): _quick_add(id, false))
 
 
-## A panel or strip that takes dropped cards. zone: "main" (the deck), "side", "col" (take it out).
-func _drop_zone(c: Control, zone: String) -> void:
-	c.set_drag_forwarding(Callable(), func(_at, data): return _can_drop(zone, data), func(_at, data): _drop(zone, data))
+# ---- dragging. You grab a card and it comes with the pointer, full size; the side it can go to
+# lights up and says what letting go will do. Made by hand: the engine's own drag starts late,
+# shows a small ghost and only lands on some of the panel.
+var _grab := {}            # the card under the pressed button: {"card", "from", "src", "at"}
+var _drag: Control         # the card in the air
+var _drag_to := ""         # the zone under it: "main" | "side" | "col" | ""
+var _drag_vx := 0.0
+var _dp: Control
+var _cp: Control
+var _side_head: Control
+var _zone_glow: Panel
+var _zone_tag: Label
 
 
-func _drag_from(id: int, from: String, src: Control) -> Variant:
-	var p := TextureRect.new()
-	p.texture = Cards.get_face(id)
-	p.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	p.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	p.size = Vector2(92, 134)
-	p.position = -p.size / 2.0
-	p.modulate.a = 0.92
-	var wrap := Control.new()
-	wrap.add_child(p)
-	src.set_drag_preview(wrap)
-	return {"card": id, "from": from}
+func _input(event: InputEvent) -> void:
+	if _grab.is_empty():
+		return
+	if event is InputEventMouseMotion and _drag == null and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+		if get_global_mouse_position().distance_to(_grab["at"]) > 7.0:
+			_start_drag()
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+		if _drag != null:
+			get_viewport().set_input_as_handled()
+			_end_drag()
+		_grab = {}
+
+
+func _start_drag() -> void:
+	var id := int(_grab["card"])
+	_drag = Control.new()
+	_drag.top_level = true
+	_drag.z_index = 200
+	_drag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_drag)
+	var sz := Vector2(150, 218)
+	var shade := Panel.new()
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0, 0, 0, 0.0)
+	sb.shadow_color = Color(0, 0, 0, 0.55)
+	sb.shadow_size = 22
+	sb.shadow_offset = Vector2(0, 12)
+	sb.set_corner_radius_all(8)
+	shade.add_theme_stylebox_override("panel", sb)
+	shade.size = sz
+	shade.position = -sz / 2.0
+	_drag.add_child(shade)
+	var face := TextureRect.new()
+	face.texture = Cards.get_face(id)
+	face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	face.size = sz
+	face.position = -sz / 2.0
+	_drag.add_child(face)
+	_drag.global_position = get_global_mouse_position()
+	_drag.scale = Vector2(0.55, 0.55)
+	_drag.create_tween().tween_property(_drag, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var src: Control = _grab["src"]
+	if is_instance_valid(src):
+		_grab["was"] = src.modulate
+		src.modulate = Color(src.modulate, 0.3)
+	_zone_glow = Panel.new()
+	_zone_glow.top_level = true
+	_zone_glow.z_index = 150
+	_zone_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_zone_glow.visible = false
+	add_child(_zone_glow)
+	_zone_tag = UITheme.label("", 20, Color.WHITE, UITheme.semi_font())
+	_zone_tag.top_level = true
+	_zone_tag.z_index = 151
+	_zone_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var pill := StyleBoxFlat.new()
+	pill.bg_color = Color(0.02, 0.03, 0.07, 0.92)
+	pill.set_corner_radius_all(18)
+	pill.content_margin_left = 20
+	pill.content_margin_right = 20
+	pill.content_margin_top = 8
+	pill.content_margin_bottom = 8
+	_zone_tag.add_theme_stylebox_override("normal", pill)
+	add_child(_zone_tag)
+	Sfx.play("click", -6.0, 1.2)
+	set_process(true)
+
+
+func _process(delta: float) -> void:
+	if _drag == null:
+		return
+	var m := get_global_mouse_position()
+	var before := _drag.global_position
+	_drag.global_position = before.lerp(m, 1.0 - exp(-30.0 * delta))
+	# It leans the way it is being pulled.
+	_drag_vx = lerpf(_drag_vx, (_drag.global_position.x - before.x) / maxf(delta, 0.001), 1.0 - exp(-12.0 * delta))
+	_drag.rotation = clampf(_drag_vx * 0.00022, -0.16, 0.16)
+	var zone := _zone_at(m)
+	var rect := _zone_rect(zone)
+	var data := {"card": _grab["card"], "from": _grab["from"]}
+	var ok := zone != "" and _can_drop(zone, data)
+	_drag_to = zone if ok else ""
+	var from := str(_grab["from"])
+	var same := zone != "" and (zone == from or (zone == "main" and from == "extra"))
+	_zone_glow.visible = zone != "" and not same
+	_zone_tag.visible = _zone_glow.visible
+	if _zone_glow.visible:
+		var colr := Color(0.35, 0.95, 0.55) if ok else Color(1.0, 0.4, 0.4)
+		var zs := UITheme.panel_box(Color(colr, 0.07), 14, Color(colr, 0.95))
+		zs.set_border_width_all(3)
+		_zone_glow.add_theme_stylebox_override("panel", zs)
+		_zone_glow.global_position = rect.position
+		_zone_glow.size = rect.size
+		_zone_tag.text = Loc.t(_drop_words(zone, from, ok))
+		_zone_tag.add_theme_color_override("font_color", colr.lightened(0.5))
+		_zone_tag.reset_size()
+		_zone_tag.global_position = Vector2(rect.position.x + (rect.size.x - _zone_tag.size.x) / 2.0, rect.end.y - _zone_tag.size.y - 16.0)
+
+
+func _drop_words(zone: String, from: String, ok: bool) -> String:
+	if not ok:
+		if zone == "side":
+			return "The Side Deck cannot take it"
+		return "No more copies of this card can go in"
+	match zone:
+		"col":
+			return "Let go to take it out of the deck"
+		"side":
+			return "Let go to put it in the Side Deck"
+	return "Let go to move it to the Main Deck" if from == "side" else "Let go to add it to your deck"
+
+
+## Which side of the screen is the pointer over?
+func _zone_at(m: Vector2) -> String:
+	if _cp != null and _cp.get_global_rect().has_point(m):
+		return "col"
+	if _dp != null and _dp.get_global_rect().has_point(m):
+		if _side_head != null and is_instance_valid(_side_head) and m.y >= _side_head.global_position.y - 8.0:
+			return "side"
+		return "main"
+	return ""
+
+
+func _zone_rect(zone: String) -> Rect2:
+	if zone == "col":
+		return _cp.get_global_rect()
+	if zone == "":
+		return Rect2()
+	var r := _dp.get_global_rect()
+	if _side_head != null and is_instance_valid(_side_head):
+		var cut := clampf(_side_head.global_position.y - 8.0, r.position.y + 60.0, r.end.y - 60.0)
+		if zone == "side":
+			return Rect2(r.position.x, cut, r.size.x, r.end.y - cut)
+		return Rect2(r.position.x, r.position.y, r.size.x, cut - r.position.y)
+	return r
+
+
+func _end_drag() -> void:
+	var card := _drag
+	var zone := _drag_to
+	var data := {"card": _grab["card"], "from": _grab["from"]}
+	var src = _grab.get("src")
+	var was = _grab.get("was")
+	_drag = null
+	_drag_to = ""
+	if _zone_glow != null and is_instance_valid(_zone_glow):
+		_zone_glow.queue_free()
+	if _zone_tag != null and is_instance_valid(_zone_tag):
+		_zone_tag.queue_free()
+	if src is Control and is_instance_valid(src) and was is Color:
+		(src as Control).modulate = was
+	var tw := card.create_tween().set_parallel()
+	if zone != "":
+		# It lands: a quick drop into the panel, and the deck redraws with the card in place.
+		tw.tween_property(card, "scale", Vector2(0.42, 0.42), 0.11)
+		tw.tween_property(card, "modulate:a", 0.0, 0.11)
+		_drop(zone, data)
+	else:
+		# Nowhere to go: back where it came from.
+		var home := (src as Control).get_global_rect().get_center() if (src is Control and is_instance_valid(src)) else card.global_position
+		tw.tween_property(card, "global_position", home, 0.16).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(card, "scale", Vector2(0.45, 0.45), 0.16)
+		tw.tween_property(card, "rotation", 0.0, 0.1)
+		tw.tween_property(card, "modulate:a", 0.0, 0.16).set_delay(0.06)
+	tw.chain().tween_callback(card.queue_free)
 
 
 func _can_drop(zone: String, data: Variant) -> bool:
