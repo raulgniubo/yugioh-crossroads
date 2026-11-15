@@ -729,12 +729,42 @@ class BoxBatch:
 		[Vector3(0, 0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0)], [Vector3(0, 0, -1), Vector3(-1, 0, 0), Vector3(0, 1, 0)],
 	]
 
+	## Plain painted materials (a color, nothing glowing or see-through) differ only in their
+	## color, and a color can ride on the corners of the boxes instead. So every such box goes
+	## into ONE shared material per kind of surface (matte, or with a metal sheen), and a
+	## building's trim is two or three draws instead of one for each color in it.
+	static var _paint := {}          # kind of surface -> StandardMaterial3D
+
+	static func _shared(m: Material) -> Array:
+		var out: Array = []
+		var sm := m as StandardMaterial3D
+		if sm != null and not ("--no-vc" in OS.get_cmdline_user_args()) and not sm.emission_enabled and sm.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED \
+				and sm.shading_mode == BaseMaterial3D.SHADING_MODE_PER_PIXEL and sm.cull_mode == BaseMaterial3D.CULL_BACK and not sm.vertex_color_use_as_albedo \
+				and (sm.albedo_texture == null or sm.uv1_triplanar):
+			var kind := "%s/%s/%d" % ["matte" if sm.roughness >= 0.6 else "smooth", "metal" if sm.metallic >= 0.3 else "plain", sm.albedo_texture.get_instance_id() if sm.albedo_texture else 0]
+			if not _paint.has(kind):
+				var one := sm.duplicate() as StandardMaterial3D
+				one.albedo_color = Color.WHITE
+				one.vertex_color_use_as_albedo = true
+				one.vertex_color_is_srgb = true
+				one.roughness = 0.86 if sm.roughness >= 0.6 else 0.45
+				one.metallic = 0.5 if sm.metallic >= 0.3 else 0.0
+				_paint[kind] = one
+			out = [_paint[kind], sm.albedo_color]
+		return out
+
 	func add(size: Vector3, pos: Vector3, m: Material, basis := Basis.IDENTITY) -> void:
+		var col := Color.WHITE
+		var sh := _shared(m)
+		if not sh.is_empty():
+			m = sh[0]
+			col = sh[1]
 		var st: SurfaceTool = tools.get(m)
 		if st == null:
 			st = SurfaceTool.new()
 			st.begin(Mesh.PRIMITIVE_TRIANGLES)
 			tools[m] = st
+		st.set_color(col)
 		var h := size / 2.0
 		for f in FACES:
 			var n: Vector3 = f[0]
@@ -764,6 +794,139 @@ class BoxBatch:
 			mi.visibility_range_end_margin = 6.0
 		parent.add_child(mi)
 		return mi
+
+
+# ------------------------------------------------------------------ tower trim
+
+## What makes a tower look built instead of painted. A tower is one tall box with windows drawn
+## on it; from the street that reads as a sheet of paper. This puts real pieces on it, lined up
+## with the drawn windows: a plinth, a two-storey lobby with piers, a ledge over it and a way in
+## under a canopy (on the side that faces `kit.door_to`), corner piers and thin fins running up
+## the faces, a ledge every few floors, balconies for towers people live in, and on the roof a
+## parapet, a plant room, coolers and now and then a mast with a red light.
+## Everything goes into `batch` (the caller commits it: many towers, one mesh), with the few
+## materials in `kit` shared by all of them, so a whole skyline of trim is a handful of draws.
+## kit: frame, dark, glow, glass, beacon (materials); floor (height of a storey), grid (width of
+## a drawn window bay), base_out (how far a base the tower already has stands out), lobby_h,
+## piers, fins (0 none, 1 corners, 2 and fins), belts (a ledge every so many floors, 0 none),
+## balcony, crown, door_to.
+func tower_trim(batch: BoxBatch, pos: Vector3, size: Vector3, rng: RandomNumberGenerator, kit: Dictionary) -> void:
+	var frame: Material = kit["frame"]
+	var dark: Material = kit["dark"]
+	var glow: Material = kit["glow"]
+	var glass: Material = kit["glass"]
+	var floor_h: float = kit.get("floor", 3.2)
+	var grid: float = kit.get("grid", 1.7)
+	var base_out: float = kit.get("base_out", 0.0)
+	var lobby_h: float = kit.get("lobby_h", floor_h * 2.0)
+	var fins: int = kit.get("fins", 2)
+	var belts: int = kit.get("belts", 4)
+	var hgt := size.y
+	var to: Vector3 = (kit.get("door_to", Vector3.ZERO) as Vector3) - pos
+	var faces := [[Vector3(0, 0, 1), Vector3(1, 0, 0), size.z / 2.0, size.x / 2.0], [Vector3(0, 0, -1), Vector3(1, 0, 0), size.z / 2.0, size.x / 2.0],
+			[Vector3(1, 0, 0), Vector3(0, 0, 1), size.x / 2.0, size.z / 2.0], [Vector3(-1, 0, 0), Vector3(0, 0, 1), size.x / 2.0, size.z / 2.0]]
+	var door_face := 0
+	for fi in 4:
+		if (faces[fi][0] as Vector3).dot(to) > (faces[door_face][0] as Vector3).dot(to):
+			door_face = fi
+	var y0 := lobby_h + 0.3
+	for fi in 4:
+		var n: Vector3 = faces[fi][0]
+		var t: Vector3 = faces[fi][1]
+		var out: float = faces[fi][2]
+		var half: float = faces[fi][3]
+		var basis := Basis(t, Vector3.UP, n) if t.cross(Vector3.UP).dot(n) > 0.0 else Basis(-t, Vector3.UP, n)
+		var wall := pos + n * out
+		var low := wall + n * base_out          # the face of the lowest floors
+		var c_along: float = pos.x if absf(t.x) > 0.5 else pos.z
+		var door_w := clampf(half * 0.9, 3.0, 6.5) if fi == door_face else 0.0
+		# ---- the plinth (open where the way in is)
+		if door_w > 0.0:
+			var side_w := half + 0.45 - door_w * 0.5
+			for sd: float in [-1.0, 1.0]:
+				batch.add(Vector3(side_w, 0.9, 0.9), low + t * sd * (door_w * 0.5 + side_w * 0.5) + Vector3(0, 0.45, 0), dark, basis)
+		else:
+			batch.add(Vector3(half * 2.0 + 0.9, 0.9, 0.9), low + Vector3(0, 0.45, 0), dark, basis)
+		# ---- the lobby: piers, and the ledge that closes it
+		if kit.get("piers", true):
+			var count := maxi(2, int(round(half * 2.0 / 3.6)))
+			for i in count + 1:
+				var u := -half + 0.3 + (half * 2.0 - 0.6) * i / float(count)
+				if door_w > 0.0 and absf(u) < door_w * 0.5 + 0.2:
+					continue
+				batch.add(Vector3(0.5, lobby_h - 0.9, 0.5), low + t * u + Vector3(0, 0.9 + (lobby_h - 0.9) * 0.5, 0), frame, basis)
+		batch.add(Vector3(half * 2.0 + base_out * 2.0 + 0.7, 0.3, 0.7), low + Vector3(0, lobby_h + 0.15, 0), frame, basis)
+		# ---- the way in
+		if door_w > 0.0:
+			var dw := door_w * 0.7
+			batch.add(Vector3(door_w, 0.22, 2.3), low + Vector3(0, 3.35, 0) + n * 1.15, frame, basis)
+			batch.add(Vector3(door_w - 0.1, 0.07, 0.07), low + Vector3(0, 3.2, 0) + n * 2.24, glow, basis)
+			batch.add(Vector3(door_w - 0.5, 0.05, 1.6), low + Vector3(0, 3.215, 0) + n * 1.2, glow, basis)
+			for sd: float in [-1.0, 1.0]:
+				batch.add(Vector3(0.1, 3.24, 0.1), low + t * sd * (door_w * 0.5 - 0.12) + Vector3(0, 1.62, 0) + n * 2.15, dark, basis)
+				batch.add(Vector3(dw * 0.5 - 0.1, 2.5, 0.06), low + t * sd * dw * 0.25 + Vector3(0, 1.41, 0) + n * 0.2, glass, basis)
+				batch.add(Vector3(0.045, 0.7, 0.07), low + t * sd * 0.12 + Vector3(0, 1.3, 0) + n * 0.25, frame, basis)
+			batch.add(Vector3(dw + 0.3, 3.0, 0.3), low + Vector3(0, 1.5, 0) + n * 0.01, dark, basis)
+			batch.add(Vector3(dw + 0.3, 0.12, 0.34), low + Vector3(0, 2.76, 0) + n * 0.06, frame, basis)
+			batch.add(Vector3(door_w + 0.8, 0.16, 2.6), low + Vector3(0, 0.08, 0) + n * 1.3, frame, basis)
+			batch.add(Vector3(door_w + 0.2, 0.08, 2.0), low + Vector3(0, 0.2, 0) + n * 1.0, dark, basis)
+		if hgt <= y0 + 2.0:
+			continue
+		# ---- up the faces: corner piers, fins on the lines between the drawn windows, ledges
+		if fins >= 1:
+			for sd: float in ([-1.0, 1.0] if fi < 2 else []):       # (each corner once)
+				batch.add(Vector3(0.7, hgt - y0, 0.7), wall + t * sd * (half - 0.05) + Vector3(0, y0 + (hgt - y0) * 0.5, 0) - n * 0.05, frame, basis)
+		if fins >= 2:
+			var every := maxi(2, int(round(4.4 / grid)))
+			var line := ceili((c_along - half + 1.2) / grid)
+			while line * grid <= c_along + half - 1.2:
+				if posmod(line, every) == 0:
+					batch.add(Vector3(0.2, hgt - y0 - 0.1, 0.3), wall + t * (line * grid - c_along) + Vector3(0, y0 + (hgt - y0) * 0.5, 0), frame, basis)
+				line += 1
+		if belts > 0:
+			var k := int(ceil((y0 + 2.0) / (floor_h * belts)))
+			while k * floor_h * belts < hgt - 2.0:
+				batch.add(Vector3(half * 2.0 + 0.2, 0.2, 0.44), wall + Vector3(0, k * floor_h * belts, 0), frame, basis)
+				k += 1
+		# ---- balconies along the two long sides: a slab and a glass rail on every floor
+		if kit.get("balcony", false) and half >= minf(size.x, size.z) * 0.5 + 0.01 or kit.get("balcony_all", false):
+			var fl := int(ceil(y0 / floor_h)) + 1
+			while (fl + 1) * floor_h < hgt - 1.0:
+				var by := fl * floor_h
+				batch.add(Vector3(half * 2.0 - 1.6, 0.12, 1.1), wall + Vector3(0, by + 0.06, 0) + n * 0.55, frame, basis)
+				batch.add(Vector3(half * 2.0 - 1.6, 0.85, 0.04), wall + Vector3(0, by + 0.56, 0) + n * 1.07, glass, basis)
+				batch.add(Vector3(half * 2.0 - 1.56, 0.05, 0.07), wall + Vector3(0, by + 1.0, 0) + n * 1.07, dark, basis)
+				fl += 1
+	if kit.get("crown", true):
+		roof_kit(batch, pos + Vector3(0, hgt, 0), size.x, size.z, rng, kit)
+
+
+## What stands on a tower roof: a parapet around the edge, the plant room with its lid and door,
+## coolers, a run of duct, and on some a mast with a red light for the aircraft.
+func roof_kit(batch: BoxBatch, top: Vector3, w: float, d: float, rng: RandomNumberGenerator, kit: Dictionary) -> void:
+	var frame: Material = kit["frame"]
+	var dark: Material = kit["dark"]
+	for sd: float in [-1.0, 1.0]:
+		batch.add(Vector3(w, 0.9, 0.3), top + Vector3(0, 0.45, sd * (d * 0.5 - 0.15)), frame)
+		batch.add(Vector3(0.3, 0.9, d - 0.6), top + Vector3(sd * (w * 0.5 - 0.15), 0.45, 0), frame)
+	var room := top + Vector3(w * rng.randf_range(-0.14, 0.14), 0, d * rng.randf_range(-0.12, 0.12))
+	var rw := w * 0.42
+	var rd := d * 0.4
+	batch.add(Vector3(rw, 3.2, rd), room + Vector3(0, 1.6, 0), frame)
+	batch.add(Vector3(rw + 0.4, 0.2, rd + 0.4), room + Vector3(0, 3.3, 0), dark)
+	batch.add(Vector3(0.9, 2.0, 0.08), room + Vector3(0, 1.0, rd * 0.5 + 0.03), dark)
+	for k in rng.randi_range(2, 3):
+		var at := top + Vector3(-w * 0.32 + k * 1.5, 0, d * 0.34)
+		batch.add(Vector3(1.1, 0.8, 0.9), at + Vector3(0, 0.4, 0), dark)
+		batch.add(Vector3(0.9, 0.06, 0.7), at + Vector3(0, 0.84, 0), frame)
+	batch.add(Vector3(w * 0.4, 0.3, 0.3), top + Vector3(w * 0.12, 0.3, -d * 0.36), dark)
+	if rng.randf() < 0.45 and kit.has("beacon"):
+		var mast := room + Vector3(rw * 0.3, 3.4, 0)
+		var tall := rng.randf_range(6.0, 12.0)
+		batch.add(Vector3(0.18, tall, 0.18), mast + Vector3(0, tall * 0.5, 0), dark)
+		batch.add(Vector3(0.9, 0.06, 0.06), mast + Vector3(0, tall * 0.7, 0), dark)
+		batch.add(Vector3(0.06, 0.06, 0.9), mast + Vector3(0, tall * 0.82, 0), dark)
+		batch.add(Vector3(0.34, 0.34, 0.34), mast + Vector3(0, tall + 0.17, 0), kit["beacon"])
 
 
 # ------------------------------------------------------------------ the plank dorm
@@ -2109,6 +2272,17 @@ func building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator, flats := 
 		sign.pixel_size = 0.008
 	if make_solid and pos.y > -1.0:
 		_dress_building(pos, size, rng, shops[rng.randi() % shops.size()], flats)
+	elif far_batch != null:
+		# Far off, across the water: no balconies to see from here, but a cornice that stands out
+		# against the sky, a ledge part way up and piers on the corners, so it is not a cut-out.
+		if _far_stone == null:
+			_far_stone = mat(Color(0.66, 0.63, 0.6), 0.85)
+		var top := pos + Vector3(0, size.y, 0)
+		far_batch.add(Vector3(size.x + 1.0, 0.6, size.z + 1.0), top + Vector3(0, -0.5, 0), _far_stone)
+		far_batch.add(Vector3(size.x + 0.5, 0.35, size.z + 0.5), pos + Vector3(0, floorf(size.y * 0.55 / 3.2) * 3.2, 0), _far_stone)
+		for sx: float in [-1.0, 1.0]:
+			for sz: float in [-1.0, 1.0]:
+				far_batch.add(Vector3(0.7, size.y - 0.8, 0.7), pos + Vector3(sx * (size.x * 0.5 - 0.1), size.y * 0.5 - 0.4, sz * (size.z * 0.5 - 0.1)), _far_stone)
 	# Roof: parapet, AC units, water tank or antenna
 	var roof := pos + Vector3(0, size.y, 0)
 	var trim := mat(Color(0.25, 0.25, 0.28), 0.8)
@@ -2140,6 +2314,12 @@ func building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator, flats := 
 			add_child(b)
 
 
+## Set by a world whose `building()`s stand far off: their trim is gathered here and the world
+## commits it as one mesh.
+var far_batch: BoxBatch = null
+var _far_stone: Material = null
+var _door_glow: Array = []      # the lit things on shop doors and hanging signs: one set for the whole town
+
 ## What makes a block of flats look built instead of painted: ledges and a cornice you can see
 ## the edge of, pilasters between the shop windows, balconies with railings, window awnings, air
 ## conditioners, drain pipes, a fire escape, and a stair hut and vents on the roof. All of it is
@@ -2155,6 +2335,14 @@ func _dress_building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator, ti
 	var pot := mat(Color(0.6, 0.36, 0.24), 0.9)
 	var leaf := mat(Color(0.18, 0.42, 0.2), 0.95)
 	var wash := [mat(Color(0.95, 0.95, 0.93), 0.95), mat(Color(0.5, 0.66, 0.86), 0.95), mat(Color(0.9, 0.5, 0.46), 0.95), mat(Color(0.94, 0.84, 0.5), 0.95)]
+	var door_mats := [mat(Color(0.32, 0.2, 0.13), 0.7), mat(Color(0.14, 0.3, 0.24), 0.7), mat(Color(0.45, 0.14, 0.12), 0.7), mat(Color(0.16, 0.22, 0.36), 0.7), mat(Color(0.86, 0.84, 0.78), 0.7)]
+	if _door_glow.is_empty():
+		_door_glow = [glow_mat(Color(1.0, 0.86, 0.6), 0.9), glow_mat(Color("ff5a7a"), 1.2), glow_mat(Color("5affc0"), 1.2), glow_mat(Color("ffd060"), 1.2), glow_mat(Color("7aa8ff"), 1.2)]
+	var fan: Material = _door_glow[0]
+	var pane := mat(Color(0.42, 0.56, 0.66), 0.2, 0.4)
+	var door_rng := RandomNumberGenerator.new()       # (its own dice: the town's layout comes from `rng` and must not shift)
+	door_rng.seed = hash(Vector3i(pos * 10.0))
+	var sign_m: Material = _door_glow[1 + door_rng.randi() % 4]       # (one sign color to a building: fewer things to draw)
 	var hgt := size.y
 	# The four faces: [outward normal, along the wall, half depth, half width]
 	var faces := [[Vector3(0, 0, 1), Vector3(1, 0, 0), size.z / 2.0, size.x / 2.0], [Vector3(0, 0, -1), Vector3(1, 0, 0), size.z / 2.0, size.x / 2.0],
@@ -2182,6 +2370,30 @@ func _dress_building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator, ti
 			bay += 1
 		# A drain pipe down one edge.
 		batch.add(Vector3(0.1, hgt - 0.5, 0.1), wall + t * (half - 0.35) + Vector3(0, hgt / 2.0 - 0.1, 0) + n * 0.07, dark, basis)
+		# The shop on this side has a real door, in the bay nearest the middle: a frame, a leaf
+		# with a pane and a handle, a lit fanlight over it, a step, a lamp. And a sign that hangs
+		# out over the pavement where you can read it walking along the street.
+		if (fi < 2) == (size.x >= size.z):
+			var du := (floorf(c_along / 4.0) + 0.5) * 4.0 - c_along
+			if absf(du) > half - 1.2:
+				du = 0.0
+			var door_at := wall + t * du
+			var leaf_m: Material = door_mats[door_rng.randi() % door_mats.size()]
+			batch.add(Vector3(1.56, 2.66, 0.2), door_at + Vector3(0, 1.33, 0) + n * 0.04, dark, basis)
+			batch.add(Vector3(1.2, 2.06, 0.08), door_at + Vector3(0, 1.09, 0) + n * 0.13, leaf_m, basis)
+			batch.add(Vector3(0.78, 1.0, 0.03), door_at + Vector3(0, 1.4, 0) + n * 0.165, pane, basis)
+			batch.add(Vector3(1.2, 0.3, 0.05), door_at + Vector3(0, 2.34, 0) + n * 0.13, fan, basis)
+			batch.add(Vector3(0.05, 0.3, 0.06), door_at + t * 0.46 + Vector3(0, 1.1, 0) + n * 0.2, metal, basis)
+			batch.add(Vector3(0.9, 0.2, 0.06), door_at + Vector3(0, 0.34, 0) + n * 0.165, metal, basis)
+			batch.add(Vector3(1.9, 0.14, 0.6), door_at + Vector3(0, 0.07, 0) + n * 0.3, slab, basis)
+			batch.add(Vector3(0.26, 0.1, 0.22), door_at + Vector3(0, 2.84, 0) + n * 0.16, dark, basis)
+			batch.add(Vector3(0.16, 0.05, 0.14), door_at + Vector3(0, 2.775, 0) + n * 0.18, fan, basis)
+			var su := -(half - 0.55)
+			batch.add(Vector3(0.06, 0.06, 1.2), wall + t * su + Vector3(0, 3.1, 0) + n * 0.6, dark, basis)
+			batch.add(Vector3(0.05, 0.3, 0.05), wall + t * su + Vector3(0, 2.92, 0) + n * 0.5, dark, basis)
+			batch.add(Vector3(0.05, 0.3, 0.05), wall + t * su + Vector3(0, 2.92, 0) + n * 1.1, dark, basis)
+			batch.add(Vector3(0.08, 0.62, 0.78), wall + t * su + Vector3(0, 2.46, 0) + n * 0.8, dark, basis)
+			batch.add(Vector3(0.1, 0.5, 0.66), wall + t * su + Vector3(0, 2.46, 0) + n * 0.8, sign_m, basis)
 		# Window by window (the painted windows sit on a 1.7 m by 3.2 m grid).
 		var col := ceili((c_along - half + 0.5) / 1.7 - 0.5)
 		while (col + 0.5) * 1.7 <= c_along + half - 0.5:

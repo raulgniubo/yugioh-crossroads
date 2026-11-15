@@ -5,6 +5,19 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.7
+
+**Real trim, in every world.** A tower was one tall box with windows drawn on it, which reads as a sheet of paper from the street. Now real pieces stand out from the wall, lined up with the drawn windows, and cast their own shadows.
+
+- **New Domino:** all 46 towers of the skyline have a plinth, a two-storey lobby with piers, a ledge over it, a way in under a lit canopy facing the city, corner piers, fins between the windows, a ledge every few floors, and a roof with a parapet, a plant room, coolers and here and there a mast with a red light. Some have a stepped top. The three white towers at the Tops are homes: a balcony with a glass rail on every floor and a doorway from the garden.
+- **Heartland:** every glass tower gets piers round its white base, a doorway facing the plaza, white ribs up the corners and between the panes, and ledges.
+- **Domino:** every shop in a block of flats has a real door now (frame, leaf with a pane and a handle, kick plate, a lit fanlight, a step, a lamp) and a sign hanging out over the pavement. The blocks already had ledges, balconies, sills and fire escapes.
+- **Satellite:** the bright city across the water has cornices, ledges and corner piers, so it stands against the sky as buildings and not cut-outs.
+- **The Academy** was looked at wall by wall and left alone: the dorms, the castle and the main building are built piece by piece already.
+- **Fewer things to draw, not more.** Trim pieces that differ only in color now share one material (the color rides on the piece), so a building's trim is two or three draws instead of ten. On the light renderer the same Domino street went from 2038 draws to 1905 with all the new doors and signs in it; New Domino and Heartland draw 1 to 3% more for a whole trimmed skyline.
+
+Checked in pictures on both renderers, by day and at night. Not done here: props, clutter and interiors (the rest of point 4), and nothing was measured on a real graphics card.
+
 ## What is in 0.33.6
 
 **The flicker hunt, in every world.** Flicker on a wall or on the ground is two surfaces lying in exactly the same plane: the graphics card cannot decide which one is in front, and its pick changes as you move. The game now looks for every such pair after a world is built and brings the smaller piece a few millimetres in front (a box grows on that one side, a flat panel moves out; bigger overlaps get a bigger step, so it also holds from far away). It runs until nothing is left.

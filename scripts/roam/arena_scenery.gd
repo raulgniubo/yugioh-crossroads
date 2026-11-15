@@ -885,6 +885,11 @@ static func towers(c: ArenaDistrict) -> void:
 	var tints := [Color(0.34, 0.54, 0.86), Color(0.6, 0.44, 0.84), Color(0.28, 0.7, 0.74), Color(0.78, 0.8, 0.92), Color(0.86, 0.48, 0.66), Color(0.42, 0.6, 0.9)]
 	var crowns := [Color("ff7ac8"), Color("5ae0ff"), Color("ffd84a"), Color("ffffff")]
 	var shell := c.mat(Color(0.95, 0.96, 0.98), 0.25, 0.1)
+	var trim_rng := RandomNumberGenerator.new()
+	trim_rng.seed = 19
+	var trims := [CityBuilder.BoxBatch.new(), CityBuilder.BoxBatch.new(), CityBuilder.BoxBatch.new(), CityBuilder.BoxBatch.new()]
+	var kit := {"frame": c.mat(Color(0.95, 0.96, 0.98), 0.3, 0.1), "dark": c.mat(Color(0.52, 0.56, 0.72), 0.5, 0.3), "glow": c.glow_mat(Color("5ae0ff"), 2.0),
+			"glass": c.glow_mat(Color(0.82, 0.94, 1.0), 0.5), "floor": 3.4, "grid": 2.2, "base_out": 0.3, "lobby_h": 4.0, "crown": false, "door_to": Vector3.ZERO}
 	for i in 44:
 		var a := i * TAU / 44.0 + rng.randf_range(-0.04, 0.04)
 		var d := rng.randf_range(R + 18.0, R + 52.0)
@@ -899,6 +904,12 @@ static func towers(c: ArenaDistrict) -> void:
 		var m := _glass(c, tints[rng.randi() % tints.size()], rng.randf() * 60.0)
 		c.box(Vector3(w, hgt, dd), p + Vector3(0, hgt / 2.0, 0), m, false)
 		c.box(Vector3(w + 0.6, 4.0, dd + 0.6), p + Vector3(0, 2.0, 0), shell, false)
+		# Built, not painted: piers round the white base and a way in facing the plaza, white
+		# ribs up the corners and between the panes, a ledge every few floors.
+		var kit2 := kit.duplicate()
+		kit2["fins"] = 1 + trim_rng.randi() % 2
+		kit2["belts"] = [0, 4, 5][trim_rng.randi() % 3]
+		c.tower_trim(trims[(0 if p.x < 0.0 else 1) + (0 if p.z < 0.0 else 2)], p, Vector3(w, hgt, dd), trim_rng, kit2)
 		var crown: Color = crowns[rng.randi() % crowns.size()]
 		c.box(Vector3(w + 0.3, 0.4, dd + 0.3), p + Vector3(0, hgt + 0.2, 0), c.glow_mat(crown, 1.8), false)
 		match rng.randi() % 4:
@@ -918,6 +929,8 @@ static func towers(c: ArenaDistrict) -> void:
 			_:
 				c.cyl(0.08, 0.14, 9.0, p + Vector3(0, hgt + 4.5, 0), shell, null, 6)
 				c.box(Vector3(0.4, 0.4, 0.4), p + Vector3(0, hgt + 9.2, 0), c.glow_mat(Color("ff7ac8"), 4.0), false)
+	for b in trims:
+		(b as CityBuilder.BoxBatch).commit(c, 170.0)
 
 
 ## Pale paving with rings of color set into it, a bed of flowers under every tree.

@@ -144,9 +144,12 @@ func _junk_scene() -> void:
 	box(Vector3(5.0, 0.03, 70), Vector3(0, 0.0, 2), mat(Color(0.1, 0.098, 0.1), 0.9), false)
 	box(Vector3(60, 0.03, 4.0), Vector3(0, 0.0, 20), mat(Color(0.1, 0.098, 0.1), 0.9), false)
 	# The bright city across the water: near enough to see, too far to reach.
+	far_batch = BoxBatch.new()
 	for i in 34:
 		var x := lerpf(-130, 130, i / 33.0) + rng.randf_range(-3, 3)
 		building(Vector3(x, -10, -120 - rng.randf() * 20), Vector3(rng.randf_range(6, 11), rng.randf_range(20, 60), 8), rng)
+	far_batch.commit(self)
+	far_batch = null
 	box(Vector3(320, 0.1, 50), Vector3(0, -0.1, -92), mat(Color(0.05, 0.07, 0.1), 0.02, 0.2), false)
 
 

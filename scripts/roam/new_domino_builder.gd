@@ -10,11 +10,15 @@ const STADIUM := Vector3(0, 0, -36)
 const SECURITY := Vector3(-38, 0, 2)
 const TOPS := Vector3(38, 0, -6)
 const SHOP := Vector3(30, 0, 28)
+var _tower_kit := {}
 
 
 func build(t: Dictionary, time_of_day: String) -> void:
 	theme = t
 	_build_env()
+	# What every tower here is trimmed with (see CityBuilder.tower_trim): a few shared materials.
+	_tower_kit = {"frame": mat(Color(0.8, 0.82, 0.86), 0.5, 0.2), "dark": mat(Color(0.13, 0.15, 0.2), 0.5, 0.4), "glow": glow_mat(Color("7cc4ff"), 2.0),
+			"glass": glow_mat(Color(0.75, 0.9, 1.0), 0.5), "beacon": glow_mat(Color(1.0, 0.2, 0.15), 5.0), "floor": 3.2, "grid": 1.7, "door_to": Vector3.ZERO}
 	_ground()
 	_boulevard()
 	_plaza()
@@ -245,12 +249,19 @@ func _tops() -> void:
 	# White residential towers with gold trim, and a garden between them.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4242
+	var tops_trim := BoxBatch.new()
+	var tops_kit := _tower_kit.duplicate()
+	tops_kit.merge({"frame": mat(Color(0.93, 0.93, 0.9), 0.7), "glow": glow_mat(Color("ffd166"), 1.6), "fins": 1, "belts": 0, "balcony_all": true, "crown": false, "door_to": TOPS}, true)
 	for k in 3:
 		var tw := window_material(Color(0.82, 0.84, 0.88), 20.0 + k, Color("ffd166"))
 		var hgt := 38.0 + k * 9.0
 		var pos := TOPS + Vector3(14.0, 0, -14.0 + k * 13.0)
 		box(Vector3(11, hgt, 10), pos + Vector3(0, hgt / 2.0, 0), tw)
 		box(Vector3(11.6, 0.5, 10.6), pos + Vector3(0, hgt + 0.25, 0), glow_mat(Color("ffd166"), 1.4), false)
+		# Homes: a lobby with a way in from the garden, balconies with glass rails on every floor.
+		tower_trim(tops_trim, pos, Vector3(11, hgt, 10), rng, tops_kit)
+		roof_kit(tops_trim, pos + Vector3(0, hgt + 0.5, 0), 10.4, 9.4, rng, tops_kit)
+	tops_trim.commit(self, 170.0)
 	var grass := mat(Color(0.3, 0.55, 0.32), 0.95)
 	box(Vector3(14, 0.05, 26), TOPS + Vector3(-1.0, 0.09, 0), grass, false)
 	for k in 4:
@@ -539,6 +550,9 @@ func _backdrop() -> void:
 	# Towers beyond the ring so the skyline goes on.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 808
+	var trim_rng := RandomNumberGenerator.new()
+	trim_rng.seed = 909
+	var trims := [BoxBatch.new(), BoxBatch.new(), BoxBatch.new(), BoxBatch.new()]      # one mesh per quarter of the skyline
 	for i in 46:
 		var a := TAU * i / 46.0 + rng.randf() * 0.1
 		var d := rng.randf_range(84.0, 118.0)
@@ -546,6 +560,26 @@ func _backdrop() -> void:
 		var w := rng.randf_range(9.0, 16.0)
 		var tw := window_material(Color(0.6, 0.64, 0.72).lerp(Color(0.2, 0.24, 0.34), rng.randf()), rng.randf() * 90.0, Color("7cc4ff"))
 		box(Vector3(w, hgt, w), Vector3(cos(a) * d, hgt / 2.0, sin(a) * d - 4.0), tw, false)
+		# Built, not painted: a lobby and a way in, piers and fins, ledges, a roof with things on it.
+		var at := Vector3(cos(a) * d, 0, sin(a) * d - 4.0)
+		var kit := _tower_kit.duplicate()
+		kit["fins"] = 1 + trim_rng.randi() % 2
+		kit["belts"] = [0, 3, 4, 6][trim_rng.randi() % 4]
+		var q := (0 if at.x < 0.0 else 1) + (0 if at.z < 0.0 else 2)
+		if trim_rng.randf() < 0.3 and hgt > 40.0:
+			# A stepped top: a narrower block on the roof, with the roof things on that.
+			var up := trim_rng.randf_range(6.0, 12.0)
+			box(Vector3(w * 0.64, up, w * 0.64), at + Vector3(0, hgt + up / 2.0, 0), tw, false)
+			kit["crown"] = false
+			tower_trim(trims[q], at, Vector3(w, hgt, w), trim_rng, kit)
+			roof_kit(trims[q], at + Vector3(0, hgt + up, 0), w * 0.64, w * 0.64, trim_rng, kit)
+			for sd: float in [-1.0, 1.0]:
+				trims[q].add(Vector3(w, 0.9, 0.3), at + Vector3(0, hgt + 0.45, sd * (w * 0.5 - 0.15)), kit["frame"])
+				trims[q].add(Vector3(0.3, 0.9, w - 0.6), at + Vector3(sd * (w * 0.5 - 0.15), hgt + 0.45, 0), kit["frame"])
+		else:
+			tower_trim(trims[q], at, Vector3(w, hgt, w), trim_rng, kit)
+	for b in trims:
+		(b as BoxBatch).commit(self, 170.0)
 
 
 func _edges() -> void:
