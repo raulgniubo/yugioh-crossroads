@@ -5,6 +5,22 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33
+
+**True colors on the full renderer.** On a Mac or a PC with a real graphics card the game runs on the full renderer (Forward+), and until now it looked pale there: grey streets, lime grass, a milky veil over duel fields. The cause was found: the game's own shaders (sky, streets, grass, windows, duel fields, the toon look) name their colors as plain numbers, and the full renderer brightened every one of them on the way to the screen. That is fixed at the root (`ShaderFix`), and the light of each hour was matched again for the full renderer (a stronger sun, fill light that holds up at night, a tone curve that keeps bright colors colorful). Checked in pictures of every world, day, sunset and night, next to the light renderer.
+
+**Performance.**
+- **Cities are drawn in far fewer pieces.** A city is thousands of boxes, poles and balls, and each was its own mesh with its own material. Now every box is the same box (sized by its place), and materials with the same values are one material, so pieces are drawn together: Domino went from about 2,000 draw calls to about 1,100 with the same picture. Duel Academy has 8,400 pieces that now share a few hundred materials instead of 4,500.
+- **People far away cost less.** Somebody down the street is posed every second or fourth frame, somebody behind the camera not at all, and far people cast no shadow. Close up, and whenever somebody talks or acts, nothing changes.
+- **Ultra is now sensible, and there is a Max above it.** Ultra has everything on, drawn at up to 1440 lines and brought up to your screen, bounce light worked out at half size. Max is what Ultra used to be: the screen's full size, 4x edge smoothing, nothing held back. If you were on Ultra you are on the new Ultra; pick Max to get the old one back.
+- **Low** now keeps glow and smooth edges and draws at 720 lines. Medium and High are as sharp as before (1080 and 1440 lines).
+- **First start:** the game picks a preset from your graphics chip and tells you.
+- Small things far away are only left out when they are a pixel or two (on Max, never).
+
+**Characters.** A model that comes with face shapes (most VRM files) blinks and moves its mouth when it talks. Everybody nods a little while talking. (Models with a painted face, like the bundled ones, have nothing to blink with.)
+
+**Performance test** (F4) and **Upscaling** came in 0.32.3 and are what the next round of tuning is built on.
+
 ## What is in 0.32.3
 
 - **Leads instead of a to-do list.** Every list in Story now opens with what it is all for ("Find out what happened to Joey"), and nothing is on it until somebody gives it to you. When a line in a talk gives you a lead, a card pops in at the top right with that person's face, "NEW LEAD", what to do and why. Each open line on the list keeps that reason under it, and the Quests tab of the guide shows who told you and their words.

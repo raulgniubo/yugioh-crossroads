@@ -4194,4 +4194,6 @@ const ES := {
 	"Particles and weather hidden": "Partículas y clima ocultos",
 	"Small 3D views paused (portraits, spirits, screens)": "Vistas 3D pequeñas en pausa (retratos, espíritus, pantallas)",
 	"Menus and on-screen text hidden": "Menús y texto en pantalla ocultos",
+	"Max": "Máximo",
+	"Graphics set to %s for this machine. You can change it in Settings.": "Gráficos ajustados en %s para este equipo. Puedes cambiarlo en Ajustes.",
 }

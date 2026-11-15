@@ -9,15 +9,149 @@ static var _level := 2
 
 
 static func apply(root: Node) -> Dictionary:
-	# "Ground detail" decides how much is traded away. Full (Ultra): nothing is hidden with
-	# distance and nothing loses its shadow or its roundness. More (High): things last much
-	# further than before. Some and Off: speed first.
+	# "Ground detail" decides how much is traded away. Full (Ultra): small things are only left
+	# out from so far away that they are less than a pixel or two. More (High): a little sooner.
+	# Some and Off: speed first. On the Max preset nothing is ever left out.
 	_level = clampi(int(Settings.gfx.get("detail", 2)), 0, 3)
 	var k: float = [0.75, 0.9, 1.7, 3.0][_level]
 	var stats := {"small": 0, "noshadow": 0, "lights": 0, "people": 0}
 	stats["merged"] = merge_static(root)
+	_one_mat.clear()
+	if not ("--no-share" in OS.get_cmdline_user_args()):      # dev: to measure what sharing saves
+		stats.merge(share(root))
 	_walk(root, stats, k, false)
 	return stats
+
+
+## One box, many places. A city built from code is thousands of boxes, poles and balls, and
+## each one was made as its own mesh with its own material, so the renderer had to treat every
+## piece as a separate thing. Here every plain box becomes the SAME box (sized by its node
+## instead), and so on for poles, balls and flat panels, and materials that are identical in
+## every value become one material. Pieces that share a mesh and a material are drawn together
+## in one call (and all of them together in each shadow pass). Nothing looks different.
+static var _shared := {}       # key -> Mesh
+static var _one_mat := {}      # material key -> Material
+
+
+static func share(root: Node) -> Dictionary:
+	var out := {"shared": 0, "one_mat": 0}
+	for n in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.mesh == null or mi.get_script() != null or mi.has_meta("keep"):
+			continue
+		if not (mi.mesh is PrimitiveMesh) or mi.mesh.resource_path != "":
+			_one_material(mi, out)
+			continue
+		var pm := mi.mesh as PrimitiveMesh
+		var mat: Material = mi.material_override
+		if mat == null:
+			mat = mi.get_surface_override_material(0)
+		if mat == null:
+			mat = pm.material
+		var see_through := mat is ShaderMaterial or (mat is BaseMaterial3D and ((mat as BaseMaterial3D).transparency != BaseMaterial3D.TRANSPARENCY_DISABLED or (mat as BaseMaterial3D).shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED))
+		var local := mat is BaseMaterial3D and (mat as BaseMaterial3D).uv1_triplanar and not (mat as BaseMaterial3D).uv1_world_triplanar
+		var key := ""
+		var grow := Vector3.ONE
+		if pm.flip_faces or pm.custom_aabb != AABB() or pm.add_uv2 or see_through or local:
+			pass            # markers, glass, beams: these may be sized by code later, so they keep their own size
+		elif pm is BoxMesh and (pm as BoxMesh).subdivide_width == 0 and (pm as BoxMesh).subdivide_height == 0 and (pm as BoxMesh).subdivide_depth == 0:
+			key = "box"
+			grow = (pm as BoxMesh).size
+		elif pm is CylinderMesh:
+			var c := pm as CylinderMesh
+			if c.bottom_radius > 0.0005 and c.height > 0.0005:
+				var taper := snappedf(c.top_radius / c.bottom_radius, 0.01)
+				key = "cyl/%d/%d/%s/%s/%.2f" % [c.radial_segments, c.rings, str(c.cap_top), str(c.cap_bottom), taper]
+				grow = Vector3(c.bottom_radius * 2.0, c.height, c.bottom_radius * 2.0)
+		elif pm is SphereMesh and not (pm as SphereMesh).is_hemisphere:
+			var sp := pm as SphereMesh
+			key = "ball/%d/%d" % [sp.radial_segments, sp.rings]
+			grow = Vector3(sp.radius * 2.0, sp.height, sp.radius * 2.0)
+		elif pm is QuadMesh and (pm as QuadMesh).orientation == PlaneMesh.FACE_Z and (pm as QuadMesh).center_offset == Vector3.ZERO and (pm as QuadMesh).subdivide_width == 0 and (pm as QuadMesh).subdivide_depth == 0:
+			key = "quad"
+			grow = Vector3((pm as QuadMesh).size.x, (pm as QuadMesh).size.y, 1.0)
+		elif pm is PlaneMesh and not (pm is QuadMesh) and (pm as PlaneMesh).orientation == PlaneMesh.FACE_Y and (pm as PlaneMesh).center_offset == Vector3.ZERO and (pm as PlaneMesh).subdivide_width == 0 and (pm as PlaneMesh).subdivide_depth == 0:
+			key = "plane"
+			grow = Vector3((pm as PlaneMesh).size.x, 1.0, (pm as PlaneMesh).size.y)
+		if key != "" and (grow.x < 0.0005 or grow.y < 0.0005 or grow.z < 0.0005):
+			key = ""
+		if key == "":
+			# Any other shape: the same shape with the same numbers is still shared, as it is.
+			key = _prim_key(pm)
+			grow = Vector3.ONE
+		if not _shared.has(key):
+			_shared[key] = _unit_mesh(pm, grow)
+		if mat != null and mi.material_override == null:
+			mi.material_override = mat
+		mi.mesh = _shared[key]
+		if grow != Vector3.ONE:
+			mi.transform = mi.transform * Transform3D(Basis.from_scale(grow), Vector3.ZERO)
+		out["shared"] += 1
+		_one_material(mi, out)
+	return out
+
+
+## The shared version of a shape: the same shape at size one (or itself, when it is not sized).
+static func _unit_mesh(pm: PrimitiveMesh, grow: Vector3) -> Mesh:
+	if grow == Vector3.ONE:
+		var same := pm.duplicate() as PrimitiveMesh
+		same.material = null
+		return same
+	if pm is BoxMesh:
+		return BoxMesh.new()
+	if pm is CylinderMesh:
+		var c := pm as CylinderMesh
+		var u := CylinderMesh.new()
+		u.bottom_radius = 0.5
+		u.top_radius = 0.5 * snappedf(c.top_radius / c.bottom_radius, 0.01)
+		u.height = 1.0
+		u.radial_segments = c.radial_segments
+		u.rings = c.rings
+		u.cap_top = c.cap_top
+		u.cap_bottom = c.cap_bottom
+		return u
+	if pm is SphereMesh:
+		var b := SphereMesh.new()
+		b.radius = 0.5
+		b.height = 1.0
+		b.radial_segments = (pm as SphereMesh).radial_segments
+		b.rings = (pm as SphereMesh).rings
+		return b
+	if pm is QuadMesh:
+		return QuadMesh.new()
+	var pl := PlaneMesh.new()
+	pl.size = Vector2.ONE
+	return pl
+
+
+static func _prim_key(pm: PrimitiveMesh) -> String:
+	var parts: PackedStringArray = [pm.get_class()]
+	for p in pm.get_property_list():
+		if int(p["usage"]) & PROPERTY_USAGE_STORAGE == 0:
+			continue
+		var name := str(p["name"])
+		if name in ["resource_name", "resource_path", "resource_local_to_scene", "script", "material"]:
+			continue
+		parts.append(str(pm.get(name)))
+	return "/".join(parts)
+
+
+## Plain solid materials with the same values everywhere become one. Anything that glows, is
+## see-through or runs its own shader is left alone: those are the ones code changes later
+## (lamps at night, traffic lights, screens).
+static func _one_material(mi: MeshInstance3D, out: Dictionary) -> void:
+	var m: Material = mi.material_override
+	if not (m is StandardMaterial3D) or m.resource_path != "":
+		return
+	var b := m as StandardMaterial3D
+	if b.emission_enabled or b.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED or b.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED or b.has_meta("keep"):
+		return
+	var key := mat_key(b)
+	if not _one_mat.has(key) or not is_instance_valid(_one_mat[key]):
+		_one_mat[key] = b
+	elif _one_mat[key] != b:
+		mi.material_override = _one_mat[key]
+		out["one_mat"] += 1
 
 
 ## A house built board by board is thousands of little boxes, each one its own draw call.
@@ -127,8 +261,8 @@ static func _walk(n: Node, stats: Dictionary, k: float, in_person: bool) -> void
 			stats["lights"] += 1
 	elif n is GeometryInstance3D and not (n is Label3D) and not (n is SpriteBase3D) and not n.has_meta("far"):
 		var g := n as GeometryInstance3D
-		if _level >= 3:
-			pass                # Full: everything is drawn, however far or small
+		if Settings.gfx_preset == Settings.GFX_PRESETS.size() - 1:
+			pass                # Max: everything is drawn, however far or small
 		elif person:
 			# Somebody a block and a half away is a few pixels tall.
 			if g.visibility_range_end == 0.0:
@@ -205,3 +339,64 @@ static func _count(n: Node, by: Dictionary, cache: Dictionary, group: String) ->
 		by[key2] = [int(e2[0]) + _tris(mm.mesh, cache) * mm.instance_count, int(e2[1]) + 1]
 	for c in n.get_children():
 		_count(c, by, cache, g)
+
+
+## Dev: what are the pieces made of? Mesh kinds, how many could share a mesh or a material.
+static func kinds(root: Node) -> void:
+	var by_class := {}
+	var mats := {}
+	var mat_keys := {}
+	var free_boxes := 0
+	var with_kids := 0
+	var scripted := 0
+	var total := 0
+	var mat_class := {}
+	for n in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.mesh == null or not mi.is_visible_in_tree():
+			continue
+		var p := mi.get_parent()
+		if p is Skeleton3D or (p and p.get_parent() is Skeleton3D):
+			continue
+		total += 1
+		var c := mi.mesh.get_class()
+		if mi.mesh is ArrayMesh:
+			c += " (file)" if mi.mesh.resource_path != "" else " (built)"
+		by_class[c] = int(by_class.get(c, 0)) + 1
+		if mi.get_child_count() > 0:
+			with_kids += 1
+		if mi.get_script() != null:
+			scripted += 1
+		if mi.mesh is PrimitiveMesh and mi.get_child_count() == 0 and mi.get_script() == null:
+			free_boxes += 1
+		for s in mi.mesh.get_surface_count():
+			var m: Material = mi.get_active_material(s)
+			if m == null:
+				continue
+			if mats.has(m.get_instance_id()):
+				continue
+			mats[m.get_instance_id()] = true
+			mat_class[m.get_class()] = int(mat_class.get(m.get_class(), 0)) + 1
+			mat_keys[mat_key(m)] = int(mat_keys.get(mat_key(m), 0)) + 1
+	print("KINDS pieces ", total, "  with children ", with_kids, "  scripted ", scripted, "  plain primitives ", free_boxes)
+	print("KINDS meshes ", by_class)
+	print("KINDS materials ", mats.size(), " objects, ", mat_keys.size(), " really different  ", mat_class)
+
+
+## Two materials with the same key draw the same.
+static func mat_key(m: Material) -> String:
+	if not (m is BaseMaterial3D) or m.resource_path != "":
+		return str(m.get_instance_id())
+	var parts: PackedStringArray = []
+	for p in m.get_property_list():
+		if int(p["usage"]) & PROPERTY_USAGE_STORAGE == 0:
+			continue
+		var name := str(p["name"])
+		if name in ["resource_name", "resource_path", "resource_local_to_scene", "script"]:
+			continue
+		var v = m.get(name)
+		if v is Object:
+			parts.append("%s=#%d" % [name, (v as Object).get_instance_id()])
+		else:
+			parts.append("%s=%s" % [name, str(v)])
+	return m.get_class() + "|" + "|".join(parts)

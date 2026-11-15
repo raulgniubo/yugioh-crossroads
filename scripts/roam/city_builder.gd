@@ -1524,8 +1524,8 @@ func grade(district_key: String) -> void:
 	var g: Array = {"academy": [1.16, 1.04, 1.0], "domino": [1.1, 1.08, 0.98], "satellite": [0.9, 1.1, 0.96],
 			"newdomino": [1.06, 1.05, 1.02], "heartland": [1.2, 1.02, 1.04]}.get(district_key, [1.1, 1.04, 1.0])
 	env.adjustment_enabled = true
-	env.adjustment_saturation = g[0]
-	env.adjustment_contrast = g[1]
+	env.adjustment_saturation = float(g[0]) * float(fplus_look()["sat"])
+	env.adjustment_contrast = float(g[1]) * float(fplus_look()["con"])
 	env.adjustment_brightness = g[2]
 
 
@@ -1600,6 +1600,28 @@ func apply_mix(a: String, b: String, k: float) -> void:
 	_apply_look(L)
 
 
+## The full renderer (Forward+) works out light the true way, where twice the light is not
+## twice as bright on screen; the hours of the day were tuned on the light renderer, which
+## does simpler sums. With the same numbers Forward+ came out with dull sunlit ground and grey
+## shade. These bring it to the same picture: a stronger sun, a touch less fill and haze, and
+## the film curve that keeps bright colors colorful. All 1.0 on the light renderer.
+## (Checked in pictures with software Vulkan, next to the light renderer. See also ShaderFix.)
+const FPLUS_LOOK := {"amb": 0.9, "sun": 2.2, "fog": 0.8, "exp": 1.0, "sky": 1.0, "con": 1.0, "sat": 1.08, "tm": 1, "white": 4.0, "night": 1.6}
+static var _fp := {}
+
+
+static func fplus_look() -> Dictionary:
+	if _fp.is_empty():
+		_fp = {"amb": 1.0, "sun": 1.0, "fog": 1.0, "exp": 1.0, "sky": 1.0, "con": 1.0, "sat": 1.0}
+		if RenderingServer.get_current_rendering_method() == "forward_plus":
+			_fp = FPLUS_LOOK.duplicate()
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--fplook="):          # dev: try values, e.g. --fplook=amb:0.5,sun:1.3
+				for kv in a.substr(9).split(","):
+					_fp[kv.get_slice(":", 0)] = float(kv.get_slice(":", 1))
+	return _fp
+
+
 var _mixed := false
 var _look_now := {}
 ## Called after every change of look (the weather dims the hour from here).
@@ -1631,13 +1653,21 @@ func _apply_look(L: Dictionary) -> void:
 	for wm in _water_mats:
 		(wm as ShaderMaterial).set_shader_parameter("lum", more[0])
 	sun.light_color = L["sun"]
-	sun.light_energy = L["sun_e"]
 	sun.rotation_degrees = L["sun_rot"]
-	env.ambient_light_energy = L["amb"]
+	var fp := fplus_look()
+	sun.light_energy = float(L["sun_e"]) * float(fp["sun"])
+	# At night the sky itself is nearly black, so the fill light it gives is too: walls would go
+	# to pure black between the lit windows on the full renderer. `night` lifts it back.
+	env.ambient_light_energy = float(L["amb"]) * float(fp["amb"]) * (1.0 + float(fp.get("night", 0.0)) * float(L["stars"]))
 	env.fog_light_color = L["fog"]
-	env.fog_density = L["fog_d"]
+	env.fog_density = float(L["fog_d"]) * float(fp["fog"])
 	env.volumetric_fog_albedo = (L["fog"] as Color).lightened(0.4)
-	env.tonemap_exposure = L["exposure"]
+	env.tonemap_exposure = float(L["exposure"]) * float(fp["exp"])
+	env.ambient_light_sky_contribution = float(fp["sky"])
+	env.tonemap_mode = [Environment.TONE_MAPPER_AGX, Environment.TONE_MAPPER_FILMIC, Environment.TONE_MAPPER_ACES, Environment.TONE_MAPPER_LINEAR][clampi(int(fp.get("tm", 0)), 0, 3)]
+	env.tonemap_white = float(fp.get("white", 1.0))
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY if float(fp.get("refl", 1.0)) > 0.5 else Environment.REFLECTION_SOURCE_DISABLED
+	env.ambient_light_color = (L["horizon"] as Color).lerp(L["top"], 0.5)
 	for m in _window_mats:
 		m.set_shader_parameter("glow_strength", L["windows"])
 		m.set_shader_parameter("day", more[1])

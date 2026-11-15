@@ -35,11 +35,15 @@ const FPS_CAPS := [0, 30, 60, 120, 144, 240, -1]
 ## of them by hand turns the preset into "Custom".
 signal gfx_changed
 
-const GFX_PRESET_NAMES := ["Low", "Medium", "High", "Ultra"]
+const GFX_PRESET_NAMES := ["Low", "Medium", "High", "Ultra", "Max"]
+## Low runs on a modest laptop and still has glow and shadows. Ultra is everything on, drawn
+## at a sensible size and brought up to the screen's. Max is Ultra at the screen's full size
+## with nothing held back: for very strong machines, and for pictures.
 const GFX_PRESETS := [
-	{"res": 1, "aa": 0, "shadows": 1, "ao": false, "reflect": false, "glow": false, "fog": false, "gi": false, "detail": 0, "people": 0, "upscale": 1},
+	{"res": 0, "aa": 1, "shadows": 1, "ao": false, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 0, "people": 0, "upscale": 1},
 	{"res": 2, "aa": 1, "shadows": 2, "ao": false, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 1, "people": 1, "upscale": 1},
 	{"res": 3, "aa": 2, "shadows": 2, "ao": true, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 2, "people": 1, "upscale": 1},
+	{"res": 3, "aa": 2, "shadows": 3, "ao": true, "reflect": true, "glow": true, "fog": true, "gi": true, "detail": 3, "people": 2, "upscale": 1},
 	{"res": 4, "aa": 3, "shadows": 3, "ao": true, "reflect": true, "glow": true, "fog": true, "gi": true, "detail": 3, "people": 2, "upscale": 1},
 ]
 ## How many lines the 3D picture is drawn at before it is fitted to the window. On a Retina
@@ -132,8 +136,16 @@ func apply_graphics() -> void:
 		[RenderingServer.SHADOW_QUALITY_HARD, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM][sh])
 	vp.positional_shadow_atlas_size = [1024, 1024, 2048, 4096][sh]
 	# How soon far-away models switch to their lighter versions (bigger = sooner = faster).
-	# On Full nothing ever switches: every model is drawn with all it has.
-	vp.mesh_lod_threshold = [4.0, 2.0, 1.0, 0.0][clampi(int(gfx.get("detail", 2)), 0, 3)]
+	# On Max nothing ever switches: every model is drawn with all it has.
+	var maxed := gfx_preset == GFX_PRESETS.size() - 1
+	vp.mesh_lod_threshold = 0.0 if maxed else [4.0, 2.0, 1.0, 1.0][clampi(int(gfx.get("detail", 2)), 0, 3)]
+	if fplus:
+		# Bounce light is worked out at half size and spread over a few frames, except on Max.
+		# It is soft by nature, so the picture is the same and the cost is a fraction.
+		RenderingServer.gi_set_use_half_resolution(not maxed)
+		RenderingServer.environment_set_sdfgi_frames_to_converge(RenderingServer.ENV_SDFGI_CONVERGE_IN_10_FRAMES if maxed else RenderingServer.ENV_SDFGI_CONVERGE_IN_20_FRAMES)
+		RenderingServer.environment_set_sdfgi_frames_to_update_light(RenderingServer.ENV_SDFGI_UPDATE_LIGHT_IN_2_FRAMES if maxed else RenderingServer.ENV_SDFGI_UPDATE_LIGHT_IN_8_FRAMES)
+		RenderingServer.environment_set_volumetric_fog_volume_size(96 if maxed else 64, 96 if maxed else 64)
 	gfx_changed.emit()
 
 
@@ -255,6 +267,37 @@ func tune_environment(e: Environment) -> void:
 	e.glow_enabled = bool(e.get_meta("glow_wanted")) and bool(gfx["glow"])
 
 
+## A place to nudge one scene's light on the full renderer only (and to try values from the
+## command line). With ShaderFix in place the defaults change nothing.
+static func fplus_env(e: Environment, amb := 1.0, fog := 1.0, exposure := 1.0) -> void:
+	if RenderingServer.get_current_rendering_method() != "forward_plus":
+		return
+	var tm := -1
+	var refl := true
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--fpenv="):          # dev: --fpenv=amb:0.5,fog:0.3,exp:1.0,tm:3,refl:1
+			for kv in a.substr(8).split(","):
+				var v := float(kv.get_slice(":", 1))
+				match kv.get_slice(":", 0):
+					"amb": amb = v
+					"fog": fog = v
+					"exp": exposure = v
+					"tm": tm = int(v)
+					"refl": refl = v > 0.5
+					"bloom": e.glow_bloom *= v
+					"glow": e.glow_intensity *= v
+					"ssao": e.ssao_intensity *= v
+					"gmode": e.glow_blend_mode = int(v) as Environment.GlowBlendMode
+	e.ambient_light_energy *= amb
+	e.fog_density *= fog
+	e.volumetric_fog_density *= fog
+	e.tonemap_exposure *= exposure
+	if not refl:
+		e.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
+	if tm >= 0:
+		e.tonemap_mode = [Environment.TONE_MAPPER_AGX, Environment.TONE_MAPPER_FILMIC, Environment.TONE_MAPPER_ACES, Environment.TONE_MAPPER_LINEAR][clampi(tm, 0, 3)]
+
+
 ## The sun's shadows: how far they reach and how soft they are.
 func tune_sun(l: DirectionalLight3D) -> void:
 	var sh := int(gfx["shadows"])
@@ -300,9 +343,54 @@ func old_default_folder() -> String:
 	return OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS).path_join("Crossroads/assets")
 
 
+## True on the very first start: the graphics were picked for this machine, not by you yet.
+var first_run_pick := false
+
+
+## A starting preset that fits the graphics chip. A guess from its name, on the careful side:
+## a smooth first minute matters more than the last bit of shine, and Settings is one click away.
+func suggest_preset() -> int:
+	if RenderingServer.get_current_rendering_method() != "forward_plus":
+		return 0
+	var n := RenderingServer.get_video_adapter_name().to_lower()
+	var kind := RenderingServer.get_video_adapter_type()
+	if n.contains("apple"):
+		if n.contains("max") or n.contains("ultra"):
+			return 3
+		if n.contains("pro"):
+			return 2
+		return 2 if (n.contains("m3") or n.contains("m4") or n.contains("m5")) else 1
+	var num := 0
+	var rx := RegEx.new()
+	rx.compile("(\\d{3,4})")
+	var hit := rx.search(n)
+	if hit:
+		num = int(hit.get_string(1))
+	if n.contains("rtx"):
+		var tier := num % 100
+		return 3 if (tier >= 70 or (num >= 3000 and tier >= 80)) and num >= 3000 else 2
+	if n.contains("gtx"):
+		return 2 if num >= 1070 and num < 1600 else 1
+	if n.contains("radeon") and n.contains("rx") and num > 0:
+		var t := num % 1000
+		if num >= 6000:
+			return 3 if t >= 800 or (num >= 9000 and t >= 70) else 2
+		return 1
+	if n.contains("arc"):
+		return 2 if num >= 700 or n.contains("b5") else 1
+	if kind == RenderingDevice.DEVICE_TYPE_INTEGRATED_GPU or n.contains("intel") or n.contains("uhd") or n.contains("iris"):
+		return 0
+	if kind == RenderingDevice.DEVICE_TYPE_CPU or n.contains("llvmpipe") or n.contains("swiftshader"):
+		return 0
+	return 2 if kind == RenderingDevice.DEVICE_TYPE_DISCRETE_GPU else 1
+
+
 func load_settings() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(PATH) != OK:
+		if DisplayServer.get_name() != "headless":
+			first_run_pick = true
+			set_gfx_preset(suggest_preset())
 		return
 	fullscreen = cfg.get_value("display", "fullscreen", fullscreen)
 	resolution = cfg.get_value("display", "resolution", resolution)

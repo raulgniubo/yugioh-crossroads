@@ -23,6 +23,11 @@ func _ready() -> void:
 	Pad.walk_mode = false
 	Pad.both_sticks = false
 	Pad.hint("D-pad  move     A  select     B  back     Right stick  pointer")
+	if Settings.first_run_pick:
+		# The very first start: say what was chosen, and keep it.
+		Settings.first_run_pick = false
+		Settings.save_settings()
+		Router.toast.call_deferred(Loc.t("Graphics set to %s for this machine. You can change it in Settings.") % Loc.t(Settings.gfx_preset_name()), 6.0)
 	_build_background()
 	_build_overlay()
 	_build_title()

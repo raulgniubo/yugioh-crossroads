@@ -158,6 +158,7 @@ func _build_environment() -> void:
 		env.fog_density = 0.0035
 		env.glow_intensity = 0.25
 		sky_mat.sun_angle_max = 8.0
+	Settings.fplus_env(env)
 	var key := DirectionalLight3D.new()
 	key.light_color = Color("fff1d6") if theme.get("day", false) else Color("e6f3ff")
 	key.light_energy = 1.25 if theme.get("day", false) else 0.75

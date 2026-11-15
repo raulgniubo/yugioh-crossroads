@@ -146,6 +146,7 @@ func _ready() -> void:
 	if "--perf-probe" in OS.get_cmdline_user_args():
 		print("PERFPASS ", saved)
 		PerfPass.census(self)
+		PerfPass.kinds(self)
 	if _figure:
 		for mi in _figure.find_children("*", "GeometryInstance3D", true, false):
 			(mi as GeometryInstance3D).visibility_range_end = 0.0

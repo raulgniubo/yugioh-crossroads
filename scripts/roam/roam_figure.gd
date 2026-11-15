@@ -51,6 +51,7 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 			Avatars._relax_pose(_model)
 			_collect_bones()
 		_add_head_look()
+		_find_face()
 		Avatars.request_lods(_model)
 	else:
 		_build_standin(color)
@@ -101,6 +102,58 @@ func _add_head_look() -> void:
 	for a in _look.arms:
 		var off: Vector3 = sk.get_bone_global_rest(a[0]).origin - (sk.get_bone_global_rest(hips).origin if hips >= 0 else Vector3.ZERO)
 		a[2] = 1.0 if off.dot(_look.right) >= 0.0 else -1.0
+
+
+# ---- the face. A model that comes with face shapes (most VRM files do: a blink, an open
+# mouth) blinks every few seconds and moves its mouth while it talks. A model with a painted
+# face has nothing to move, and is left as it is.
+var _face_parts: Array = []      # [[MeshInstance3D, [blink shape indexes], [mouth shape indexes]]]
+var _blink_t := randf_range(1.0, 5.0)
+var _blink := 0.0
+var _mouth := 0.0
+
+
+func _find_face() -> void:
+	_face_parts.clear()
+	if _model == null:
+		return
+	for n in _model.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.mesh == null or mi.get_blend_shape_count() == 0:
+			continue
+		var blinks: Array = []
+		var mouths: Array = []
+		for i in mi.get_blend_shape_count():
+			var nm := str(mi.mesh.get_blend_shape_name(i)).to_lower()
+			if nm in ["blink", "fcl_eye_close", "eyeblinkleft", "eyeblinkright", "eye_close", "eyes_closed", "eyesclosed", "blink_l", "blink_r"] or (nm.contains("blink") and not nm.contains("look")):
+				blinks.append(i)
+			elif nm in ["a", "aa", "fcl_mth_a", "jawopen", "mouthopen", "mouth_open", "v_aa", "viseme_aa", "mouth_a"]:
+				mouths.append(i)
+		if not blinks.is_empty() or not mouths.is_empty():
+			_face_parts.append([mi, blinks, mouths])
+
+
+func _face(delta: float) -> void:
+	if _face_parts.is_empty():
+		return
+	_blink_t -= delta
+	if _blink_t <= 0.0:
+		_blink_t = randf_range(2.2, 6.5) if randf() > 0.15 else 0.32      # now and then a double blink
+		_blink = 1.0
+	_blink = maxf(0.0, _blink - delta * 7.5)
+	var lid := sin(clampf(_blink, 0.0, 1.0) * PI)
+	var want := 0.0
+	if _speaking:
+		want = clampf(0.3 + 0.45 * sin(_time * 13.0) * sin(_time * 5.3 + 1.0) + 0.2 * sin(_time * 21.0), 0.0, 0.85)
+	_mouth = lerpf(_mouth, want, 1.0 - exp(-delta * 22.0))
+	for part in _face_parts:
+		var mi: MeshInstance3D = part[0]
+		if not is_instance_valid(mi):
+			continue
+		for i in part[1]:
+			mi.set_blend_shape_value(i, lid)
+		for i in part[2]:
+			mi.set_blend_shape_value(i, _mouth)
 
 
 ## A small nod hello, done with the head alone.
@@ -177,6 +230,11 @@ func _live(delta: float) -> void:
 		_look.yaw = lerpf(_look.yaw, want_yaw if stance == "stand" or absf(want_yaw) < 0.9 else 0.0, k)
 		# The talking clip hunches forward; lift the chin so a speaker looks at who they talk to.
 		_look.pitch = lerpf(_look.pitch, want_pitch - (0.3 if _speaking and stance == "stand" else 0.0), k)
+		if _speaking:
+			# Nobody talks with a still head: small nods on the beat of the words.
+			_look.pitch += (sin(_time * 7.3) * 0.022 + sin(_time * 11.9) * 0.012) * k * 6.0
+			_look.yaw += sin(_time * 3.1) * 0.012 * k * 6.0
+	_face(delta)
 	if _speed >= 0.3 or _hold > 0.0 or _speaking:
 		_was_near = near
 		return
@@ -391,8 +449,78 @@ func _collect_bones() -> void:
 		_swing_bones[b] = [pb, sk.get_bone_pose_rotation(b), pair[1], pair[0]]
 
 
+# ---- pacing: somebody far down the street does not need sixty poses a second, and somebody
+# behind the camera does not need any. Close up (and whenever they talk or act) nothing changes.
+static var _eye := Vector3.ZERO
+static var _eye_frame := -1
+var _seen: VisibleOnScreenNotifier3D = null
+var _pace := 0                # 0 every frame, 1 every 2nd, 2 every 4th, 3 resting (out of view)
+var _acc := 0.0
+var _slot := randi() % 4
+var _shadow_parts: Array = []
+var always_live := false
+
+
+func _set_pace(p: int) -> void:
+	if p == _pace:
+		return
+	var far_now := p >= 2
+	var far_was := _pace >= 2
+	_pace = p
+	_acc = 0.0
+	if _anim:
+		_anim.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_IDLE if p == 0 else AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
+	if far_now != far_was and _model:
+		# From that far a person's shadow is a smudge, and it is the most expensive smudge there is.
+		if _shadow_parts.is_empty():
+			for g in _model.find_children("*", "GeometryInstance3D", true, false):
+				if (g as GeometryInstance3D).cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON:
+					_shadow_parts.append(g)
+		for g in _shadow_parts:
+			if is_instance_valid(g):
+				(g as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if far_now else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+
+## How much time this figure should act out this frame: all of it, a few frames' worth at
+## once, or none.
+func _paced(delta: float) -> float:
+	if _anim == null or key == "player" or always_live or _speaking or _hold > 0.0 or not is_inside_tree():
+		_set_pace(0)
+		return delta
+	var f := Engine.get_process_frames()
+	if f != _eye_frame:
+		_eye_frame = f
+		var cam := get_viewport().get_camera_3d()
+		if cam:
+			_eye = cam.global_position
+	if _seen == null:
+		_seen = VisibleOnScreenNotifier3D.new()
+		_seen.aabb = AABB(Vector3(-0.9, -0.2, -0.9), Vector3(1.8, 2.6, 1.8))
+		add_child(_seen)
+		return delta
+	var d := _eye.distance_squared_to(global_position)
+	var p := 0 if d < 26.0 * 26.0 else (1 if d < 55.0 * 55.0 else 2)
+	if d > 49.0 and not _seen.is_on_screen():
+		p = 3
+	_set_pace(p)
+	if p == 0:
+		return delta
+	if p == 3:
+		return 0.0
+	_acc += delta
+	if (f + _slot) % (2 if p == 1 else 4) != 0:
+		return 0.0
+	var out := _acc
+	_acc = 0.0
+	_anim.advance(out)
+	return out
+
+
 func _process(delta: float) -> void:
 	if _riding:
+		return
+	delta = _paced(delta)
+	if delta <= 0.0:
 		return
 	_time += delta
 	var walk := clampf(_speed / 4.0, 0.0, 1.6)

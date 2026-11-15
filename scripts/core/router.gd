@@ -194,6 +194,13 @@ func _debug_args() -> void:
 				cm.free()
 		elif a.begins_with("--gfx="):
 			Settings.graphics = int(a.substr(6))
+		elif a.begins_with("--gfxset="):
+			# Dev: single graphics values on top of the preset, e.g. --gfxset=gi:1,shadows:2
+			for kv in a.substr(9).split(","):
+				var k := kv.get_slice(":", 0)
+				var v := kv.get_slice(":", 1)
+				if Settings.gfx.has(k):
+					Settings.set_gfx(k, (v == "1" or v == "true") if typeof(Settings.gfx[k]) == TYPE_BOOL else int(v))
 		elif a == "--roam":
 			await get_tree().process_frame
 			go(ROAM)
@@ -315,9 +322,20 @@ func _debug_args() -> void:
 		go(DUEL)
 	if shot != "":
 		await get_tree().create_timer(after).timeout
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--hide="):          # dev: hide every node of these classes before the shot
+				var kinds := a.substr(7).split(",")
+				for n in get_tree().root.find_children("*", "", true, false):
+					if n.get_class() in kinds or (n.get_script() and str((n.get_script() as Script).get_global_name()) in kinds):
+						if n is WorldEnvironment:
+							(n as WorldEnvironment).environment = null
+						elif n is Node3D:
+							(n as Node3D).visible = false
+				await get_tree().create_timer(1.5).timeout
 		if DisplayServer.get_name() != "headless":
 			var img := get_viewport().get_texture().get_image()
 			img.save_png(shot)
+			print("SHOT draws ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), " tris ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME), " objects ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME))
 			print("screenshot saved: ", shot)
 		else:
 			print("headless run finished")
@@ -355,6 +373,11 @@ func toast(message: String, hold := 1.8) -> void:
 
 ## Plain toggle buttons (a word, nothing inside, no look of their own) become choice chips.
 func _on_node_added(n: Node) -> void:
+	if (n is GeometryInstance3D or n is WorldEnvironment) and ShaderFix.active():
+		# The game's own shaders are made to match on both renderers (see ShaderFix). Now for
+		# what is already on the node, and once more a frame later for what is put on it next.
+		ShaderFix.node(n)
+		ShaderFix.node_later.call_deferred(n.get_instance_id())
 	if n is BaseButton and not (n is OptionButton):
 		# Every button answers on the press, not on the release: taps feel instant.
 		(n as BaseButton).action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
