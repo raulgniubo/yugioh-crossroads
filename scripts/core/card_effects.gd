@@ -108,6 +108,14 @@ const FX := {
 	"Elemental HERO Thunder Giant": {"note": "Once per turn, discard 1: destroy a monster with less original ATK.",
 		"ignite": {"cost": "discard", "do": [["destroy", "atk_below_self"]], "label": "Discard 1: destroy a weaker monster"}},
 	"Elemental HERO Rampart Blaster": {"note": "Can attack directly while it is in Defense Position. When it does, its ATK is halved for that damage calculation.", "direct_from_def": true},
+	# ---- Marik's best deck (v0.33.34)
+	"Lava Golem": {"note": "Cannot be Normal Summoned/Set. Special Summon it from your hand to your opponent's field by Tributing 2 monsters they control; you cannot Normal Summon or Set that turn. In its controller's Standby Phase: they take 1000 damage.",
+		"lava_golem": true, "standby": [["self_damage", 1000]]},
+	"Dark Jeroid": {"note": "When it is Summoned: 1 face-up monster your opponent controls loses 800 ATK.", "any_summon": [["opp_lose_atk", 800]]},
+	"Byser Shock": {"note": "When it is Summoned: every Set card on the field returns to the hand.", "any_summon": [["set_to_hand"]]},
+	"The Winged Dragon of Ra": {"note": "Cannot be Special Summoned. 3 Tributes to Normal Summon, never Set; nothing can be activated when it is Normal Summoned. Normal Summoned: you can pay LP down to 100, and it gains that much ATK and DEF. You can pay 1000 LP: destroy 1 monster on the field.",
+		"tributes": 3, "no_set": true, "no_response_summon": true, "no_special": true, "no_revive": true, "summon": [["ra_pay"]],
+		"ignite": {"do": [["ra_destroy"]], "label": "Pay 1000 LP: destroy a monster", "repeat": true, "ai": "ra"}},
 	# ---- Bakura's best deck (v0.33.34)
 	"Dark Necrofear": {"note": "Cannot be Normal Summoned/Set. Special Summon it from your hand by banishing 3 Fiend monsters from your Graveyard. Destroyed in your Monster Zone by an opponent's card: in that turn's End Phase it equips itself to 1 face-up monster your opponent controls and you take control of that monster.",
 		"special_banish_race": ["Fiend", 3], "necrofear": true, "death": [["necro_mark"]], "opp_fx_destroyed": [["necro_mark"]]},

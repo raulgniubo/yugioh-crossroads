@@ -5263,4 +5263,9 @@ const ES := {
 	"%s is complete.": "%s está completo.",
 	"%s: banish %d monsters from your Graveyard": "%s: destierra %d monstruos de tu Cementerio",
 	"%s: the opponent discards %s": "%s: el adversario descarta %s",
+	"%s: Tribute 2 of your opponent's monsters": "%s: Sacrifica 2 monstruos de tu adversario",
+	"%s lands on the opponent's field": "%s cae en el campo del adversario",
+	"%s: pay %d LP (down to 100) to give it that much ATK and DEF?": "%s: ¿pagar %d LP (hasta quedar en 100) para darle ese ATK y DEF?",
+	"%s: destroy which monster?": "%s: ¿qué monstruo destruyes?",
+	"%s: the attack is turned onto %s": "%s: el ataque se desvía hacia %s",
 }

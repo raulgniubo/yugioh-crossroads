@@ -7,7 +7,7 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
 ## What is in 0.33.34
 
-Four more duelists got their best decks: **Kite, Shark, Vector and Bakura**. 45 cards built, each against its card text, each with a test.
+Five more duelists got their best decks: **Kite, Shark, Vector, Bakura and Marik**. 52 cards built, each against its card text, each with a test.
 
 ### Kite
 
@@ -42,8 +42,16 @@ Four more duelists got their best decks: **Kite, Shark, Vector and Bakura**. 45 
 - **Destiny Board:** once it is face-up, a Spirit Message is placed from your hand or Deck in each of your opponent's End Phases, in the order I, N, A, L. With all four out you win the Duel. If the board or a message leaves the field, the rest go with it.
 - **Dark Necrofear** comes out by banishing 3 Fiends from your Graveyard. Destroyed by the opponent, it comes back in the End Phase as an Equip Card on one of their monsters and you take control of it.
 
+### Marik
+
+**Lava Golem, Revival Jam, his Fiends, Nightmare Wheel and The Winged Dragon of Ra.** 7 cards built.
+
+- **Main, 40:** Lava Golem x2, The Winged Dragon of Ra, Gil Garth x3, Revival Jam x3, Newdoria x3, Drillago x2, Bowganian x2, Granadora x2, Melchid the Four-Face Beast x2, Dark Jeroid x2, Legendary Fiend, Lord Poison, Byser Shock; Card of Sanctity x2, Vengeful Bog Spirit, Remove Trap, Monster Reborn, Pot of Greed, Dark Hole, Raigeki; Nightmare Wheel x3, Jam Defender, Malevolent Catastrophe, Mirror Force x2.
+- **Lava Golem** Tributes 2 of the opponent's monsters and lands on their field, where it burns them for 1000 each of their turns. **The Winged Dragon of Ra:** 3 Tributes; pay your LP down to 100 for that much ATK and DEF; pay 1000 LP to destroy a monster.
+
 **Not done or not checked:**
 
+- Still to build for Marik: Ra's other forms and One Turn Kill text beyond the card in the game files, Helpoemer, Viser Des, Makyura the Destructor, Juragedo, Jam Breeding Machine, Coffin Seller, Metal Reflect Slime, Rope of Life, Left Arm Offering, Machine Duplication. Marik on Hard won 18 of 30 test duels. The computer only pays for Ra's ATK when that wins the duel on the spot.
 - Still to build for Bakura: Diabound Kernel, Dark Sanctuary, Dark Spirit of the Silent, Multiple Destruction, Dark Designator, Ectoplasmer. Destiny Board's messages appearing in the Spell & Trap Zone was not watched on screen (the rules test passes). Bakura on Hard won 12 of 30 test duels.
 - Still to build for Vector: Malicevorous Spoon, Number 66: Master Key Beetle, Number 43: Manipulator of Souls, Number C5: Chaos Chimera Dragon, Vain Betrayer, Don Thousand's Throne. Masquerade, C104 and Djinn Buster answering a monster effect is tested in the rules only, not in a real duel on screen. Vector on Hard won 14 of 30 test duels.
 - Still to build for Shark: Number 101: Silent Honor ARK and its Chaos form, Number 73: Abyss Splash, Shark Drake Veiss, Numbers 37 and 71, Depth Shark, Double Fin Shark, Saber Shark, Shocktopus, Friller Rabca, Tripod Fish, Scrap Shark, Xyz Remora, Big Wave Small Wave, Poseidon Wave, Splash Capture, Bubble Bringer, Torrential Reborn, Explosive Urchin, the Armored Xyz cards, Xyz Unit. Shark on Hard won 25 of 40 test duels.

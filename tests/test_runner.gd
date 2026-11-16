@@ -51,6 +51,7 @@ func _ready() -> void:
 		_test_cards_42()
 		_test_cards_43()
 		_test_cards_44()
+		_test_cards_45()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -5682,3 +5683,79 @@ func _test_cards_44() -> void:
 	s._destroy_st(msg_i)
 	s._cleanup()
 	check(s.players[0].gy.has(board), "Destiny Board: when a Spirit Message leaves the field, the board goes too")
+
+
+## The cards built in v0.33.34 for Marik's best deck, each against its printed text.
+func _test_cards_45() -> void:
+	# ---- Lava Golem.
+	var s := _bare(1501)
+	var golem := _in(s, 0, "Lava Golem", "hand")
+	var e1 := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	check(not s.can_special_from_hand(0, golem), "Lava Golem needs 2 monsters on the other side")
+	var e2 := _mon(s, 1, "Dark Magician", 1)
+	check(s.can_special_from_hand(0, golem), "Lava Golem can be Special Summoned")
+	s.special_from_hand(0, golem)
+	check(s.players[1].field.has(golem) and s.players[1].gy.has(e1) and s.players[1].gy.has(e2) and s.normal_summoned, "Lava Golem: their 2 monsters are Tributed, it lands on their field, and no Normal Summon this turn")
+	var lp1: int = s.players[1].lp
+	s.current = 1
+	EffectRunner.standby(s, 1)
+	check(s.players[1].lp == lp1 - 1000, "Lava Golem: its controller takes 1000 damage in their Standby Phase")
+	# ---- Dark Jeroid, Byser Shock.
+	s = _bare(1502)
+	var foe := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var jer := _in(s, 0, "Dark Jeroid", "hand")
+	s.normal_summon(0, jer, [])
+	check(s.atk_of(foe, false) == 2200, "Dark Jeroid: their monster loses 800 ATK (got %d)" % s.atk_of(foe, false))
+	s = _bare(1503)
+	var set_st := _rst(s, 1, "Mirror Force", "set")
+	var set_m := _mon(s, 1, "Kuriboh", 0, false)
+	set_m.face_up = false
+	var up_m := _mon(s, 1, "Celtic Guardian", 1)
+	var by := _in(s, 0, "Byser Shock", "hand")
+	var fod := _mon(s, 0, "Kuriboh", 0)
+	s.normal_summon(0, by, [fod])
+	check(s.players[1].hand.has(set_st) and s.players[1].hand.has(set_m) and s.players[1].field.has(up_m), "Byser Shock: every Set card returns to the hand, face-up cards stay")
+	# ---- The Winged Dragon of Ra.
+	s = _bare(1504)
+	var ra := _in(s, 0, "The Winged Dragon of Ra", "hand")
+	check(s.tributes_needed(ra) == 3, "Ra needs 3 Tributes")
+	var t1 := _mon(s, 0, "Kuriboh", 0)
+	var t2 := _mon(s, 0, "Kuriboh", 1)
+	var t3 := _mon(s, 0, "Kuriboh", 2)
+	s.players[1].lp = 4000
+	s.normal_summon(0, ra, [t1, t2, t3])
+	check(s.players[0].field.has(ra) and s.players[0].lp == 100 and s.atk_of(ra, false) == 7900, "Ra: LP paid down to 100, and it has that much ATK (got %d)" % s.atk_of(ra, false))
+	s = _bare(1505)
+	ra = _mon(s, 0, "The Winged Dragon of Ra", 0)
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var lp0: int = s.players[0].lp
+	s.ignite(0, ra)
+	check(s.players[1].gy.has(foe) and s.players[0].lp == lp0 - 1000, "Ra: 1000 LP paid, a monster destroyed")
+	# ---- Jam Defender, Malevolent Catastrophe, Vengeful Bog Spirit.
+	s = _bare(1506)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	var att := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	var weak := _mon(s, 0, "Kuriboh", 0)
+	var jam := _mon(s, 0, "Revival Jam", 1, false)
+	var jd := _rst(s, 0, "Jam Defender", "set")
+	var cat := _rst(s, 0, "Malevolent Catastrophe", "set")
+	var their_st := _rst(s, 1, "Mirror Force", "set")
+	s.declare_attack(1, att, weak)
+	check(s.responses(0, "attack").has(jd), "Jam Defender is offered when another monster is attacked")
+	s.respond(0, jd)
+	check(s.pending_attack["target"] == jam, "Jam Defender switches the attack onto Revival Jam")
+	s.respond(0, cat)
+	check(s.players[1].gy.has(their_st), "Malevolent Catastrophe destroys every Spell and Trap on the field")
+	s.resolve_attack()
+	check(s.players[0].field.has(weak), "The monster that was attacked first is untouched")
+	s = _bare(1507)
+	var bog := _rst(s, 0, "Vengeful Bog Spirit")
+	s.activate(0, bog)
+	var fresh := _in(s, 0, "Celtic Guardian", "hand")
+	s.normal_summon(0, fresh, [])
+	var old := _mon(s, 0, "Vorse Raider", 1)
+	old.summoned_turn = 1
+	s.phase = DuelState.Phase.BATTLE
+	check(not s.can_attack(0, fresh) and s.can_attack(0, old), "Vengeful Bog Spirit: a monster cannot attack the turn it is Summoned")

@@ -420,7 +420,7 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 ## Does this monster have its own way to be Special Summoned from the hand?
 static func has_special_hand(c) -> bool:
 	var f := fx(c)
-	for k in ["special_banish_race", "special_discard_race", "special_hand_if", "special_tribute2", "special_tribute_attr", "special_banish_ld", "eltanin", "special_toon", "special_discard_attr", "special_tribute_race", "special_discard_monster", "special_tribute_names", "special_tribute_f"]:
+	for k in ["lava_golem", "special_banish_race", "special_discard_race", "special_hand_if", "special_tribute2", "special_tribute_attr", "special_banish_ld", "eltanin", "special_toon", "special_discard_attr", "special_tribute_race", "special_discard_monster", "special_tribute_names", "special_tribute_f"]:
 		if f.has(k):
 			return true
 	return false
@@ -456,6 +456,9 @@ static func can_special_hand(s: DuelState, p: int, c) -> bool:
 		return false
 	if f.get("special_banish_ld", false):
 		return _gy_attr(s, p, "LIGHT") != null and _gy_attr(s, p, "DARK") != null
+	if f.get("lava_golem", false):
+		# "Must first be Special Summoned (from your hand) to your opponent's field by Tributing 2 monsters they control. You cannot Normal Summon/Set the turn you Special Summon this card."
+		return s.players[s.opponent(p)].monsters().filter(func(m): return s.can_tribute_fx(m)).size() >= 2 and not s.normal_summoned
 	if f.has("special_banish_race"):
 		# Dark Necrofear: banish 3 Fiend monsters from your Graveyard.
 		return s.players[p].gy.filter(func(g): return g.is_monster() and str(g.data.get("race", "")) == str(f["special_banish_race"][0])).size() >= int(f["special_banish_race"][1])
@@ -554,6 +557,25 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 			events.append_array(EffectRunner.trigger(s, m, "tributed"))
 			events.append_array(s._monster_left(m))
 	c.set_meta("hand_fx_turn", s.turn)
+	if f.get("lava_golem", false):
+		var opp_l := s.players[s.opponent(p)]
+		var theirs_l: Array = opp_l.monsters().filter(func(m): return s.can_tribute_fx(m))
+		theirs_l.sort_custom(func(x, y): return s.atk_of(x, false) > s.atk_of(y, false))
+		for m in s.choose(p, Loc.t("%s: Tribute 2 of your opponent's monsters") % c.cname(), theirs_l, 2, theirs_l.slice(0, 2), false, c):
+			opp_l.field[opp_l.field.find(m)] = null
+			s._to_gy(s.players[m.owner if m.orig_owner == -1 else m.orig_owner], m)
+			events.append({"type": "tribute", "player": s.opponent(p), "card": m})
+			events.append_array(s._monster_left(m))
+		ps.hand.erase(c)
+		c.proper = true
+		c.orig_owner = p
+		c.owner = s.opponent(p)
+		c.control_until = -1
+		events.append(_ev(p, c, Loc.t("%s lands on the opponent's field") % c.cname()))
+		events.append_array(s._special(s.opponent(p), c, "effect", "atk"))
+		s.normal_summoned = true
+		ps.extra_normals = 0
+		return events
 	if f.has("special_discard_race"):
 		var pay_r: Array = ps.hand.filter(func(h): return h != c and h.is_monster() and str(h.data.get("race", "")) == str(f["special_discard_race"]))
 		var least_r = pay_r[0]
@@ -1113,6 +1135,9 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 					return false
 			"mill_opp_top":
 				if opp.deck.is_empty():
+					return false
+			"ra_destroy":
+				if s.players[p].lp <= 1000 or (opp.monsters().is_empty() and s.players[p].monsters().size() < 2):
 					return false
 			"aero_shark":
 				if s.players[p].banished.filter(func(b): return b.is_monster()).is_empty():
@@ -2023,6 +2048,9 @@ static func ai_ignite_ok(s: DuelState, p: int, c) -> bool:
 			return s.phase == DuelState.Phase.MAIN1 and s.turn > 1 and not opp.monsters().is_empty()
 		"papillo":
 			return not opp.monsters().filter(func(m): return not m.attack_pos).is_empty()
+		"ra":
+			var top_ra = s._strongest_face_up(s.opponent(p))
+			return ps.lp > 3000 and top_ra != null and s.atk_of(top_ra, false) >= 2000
 		"nightmare":
 			# Worth it when the way is blocked and the direct hit is big.
 			var top_w := 0
@@ -2124,6 +2152,47 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"set_to_hand":
+			# Byser Shock: "Return all Set cards on the field to the hand."
+			for q in [opp_i, p]:
+				for m in s.players[q].monsters():
+					if not m.face_up:
+						events.append_array(s._bounce(m))
+				for st in s.players[q].spells.duplicate():
+					if st != null and not st.face_up:
+						events.append_array(s._bounce(st))
+		"ra_pay":
+			# The Winged Dragon of Ra: "You can pay LP so that you only have 100 left; this card gains ATK/DEF equal to the amount of LP paid."
+			var paid_r: int = ps.lp - 100
+			if paid_r <= 0:
+				return events
+			var sure: bool = opp.monsters().is_empty() and paid_r >= opp.lp
+			if s.choose_option(p, Loc.t("%s: pay %d LP (down to 100) to give it that much ATK and DEF?") % [name, paid_r], ["Pay", "No"], 0 if sure else 1, c) != 0:
+				return events
+			ps.lp = 100
+			events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": -paid_r})
+			c.atk_mod += paid_r
+			c.def_mod += paid_r
+			events.append(_ev(p, c, Loc.t("%s: its ATK and DEF become %d / %d") % [name, paid_r, paid_r]))
+		"ra_destroy":
+			# "You can pay 1000 LP, then target 1 monster on the field; destroy that target."
+			if ps.lp <= 1000:
+				return events
+			var every_r: Array = opp.monsters() + ps.monsters().filter(func(m): return m != c)
+			var theirs_r: Array = every_r.filter(func(m): return opp.field.has(m) and can_target(c, m))
+			if theirs_r.is_empty() and not s.manual[p]:
+				return events
+			if every_r.is_empty():
+				return events
+			var best_rd = theirs_r[0] if not theirs_r.is_empty() else every_r[0]
+			for m in theirs_r:
+				if s.atk_of(m, false) > s.atk_of(best_rd, false):
+					best_rd = m
+			best_rd = s.pick1(p, Loc.t("%s: destroy which monster?") % name, every_r, best_rd, c)
+			ps.lp -= 1000
+			events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": -1000})
+			events.append(_ev(p, c, Loc.t("%s destroys %s") % [name, best_rd.cname() if best_rd.face_up else Loc.t("the face-down monster")]))
+			events.append_array(s._destroy(best_rd))
 		"necro_mark":
 			# Dark Necrofear was destroyed in the Monster Zone by the opponent's card: it acts in this turn's End Phase.
 			if s.effect_by != p or ctx.has("killer"):

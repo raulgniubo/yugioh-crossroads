@@ -184,7 +184,12 @@ const TUNE := {
 			"Destiny Board": 2, "Spirit Message \"I\"": 1, "Spirit Message \"N\"": 1, "Spirit Message \"A\"": 1, "Spirit Message \"L\"": 1,
 			"Change of Heart": 1, "Monster Reborn": 1, "Pot of Greed": 1, "Dark Hole": 1, "Just Desserts": 1}},
 	"marik": {"out": ["Dark Blade", "Vampire Lord", "Feral Imp", "Mystic Lamp", "Stone Statue of the Aztecs", "Hinotama", "Mystic Plasma Zone", "Malevolent Nuzzler", "Magic Jammer"],
-		"in": {"Legendary Fiend": 1, "Lord Poison": 1, "Melchid the Four-Face Beast": 1, "Newdoria": 2, "Card of Sanctity": 1, "Mirror Force": 1, "Remove Trap": 1}},
+		"in": {"Legendary Fiend": 1, "Lord Poison": 1, "Melchid the Four-Face Beast": 1, "Newdoria": 2, "Card of Sanctity": 1, "Mirror Force": 1, "Remove Trap": 1},
+		# Marik's best deck: Lava Golem, Revival Jam, his Fiends, Nightmare Wheel and The Winged Dragon of Ra (v0.33.34).
+		"main": {"Lava Golem": 2, "The Winged Dragon of Ra": 1, "Gil Garth": 3, "Revival Jam": 3, "Drillago": 2, "Bowganian": 2, "Granadora": 2, "Legendary Fiend": 1, "Lord Poison": 1,
+			"Melchid the Four-Face Beast": 2, "Newdoria": 3, "Dark Jeroid": 2, "Byser Shock": 1,
+			"Card of Sanctity": 2, "Monster Reborn": 1, "Pot of Greed": 1, "Vengeful Bog Spirit": 1, "Remove Trap": 1, "Dark Hole": 1, "Raigeki": 1,
+			"Nightmare Wheel": 3, "Jam Defender": 1, "Malevolent Catastrophe": 1, "Mirror Force": 2}},
 	"pegasus": {"out": ["Fissure", "Raigeki", "Shadow Spell", "Heavy Storm"], "in": {"Dark Rabbit": 1, "Parrot Dragon": 1, "Illusionist Faceless Mage": 1}},
 	"weevil": {"out": ["Insect Knight", "Neo Bug", "Gokipon", "Dian Keto the Cure Master", "Just Desserts", "Fissure"],
 		"in": {"Big Insect": 2, "Flying Kamakiri #1": 2, "Gokibore": 2, "Man-Eater Bug": 2, "Needle Worm": 1, "Skull-Mark Ladybug": 1}},

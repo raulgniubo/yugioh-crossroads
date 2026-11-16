@@ -119,6 +119,10 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Marik's cards (v0.33.34)
+	"Jam Defender": {"k": "ctrap", "win": ["attack"], "cond": "jam_defender", "do": [["jam_defender"]]},
+	"Malevolent Catastrophe": {"k": "trap", "win": ["attack"], "do": [["destroy", "all_st"]]},
+	"Vengeful Bog Spirit": {"k": "cont", "summon_sick_all": true},
 	# ---------------------------------------------------------------- Bakura's cards (v0.33.34)
 	"Destiny Board": {"k": "ctrap", "win": ["free"], "destiny_board": true, "ai": "always"},
 	"Spirit Message \"I\"": {"k": "cont", "cond": "never"},
@@ -605,6 +609,9 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return not s.players[p].hand.is_empty()
 		"hand_empty":
 			return s.players[p].hand.is_empty()
+		"jam_defender":
+			return not s.pending_attack.is_empty() and s.pending_attack["target"] != null and s.pending_attack["target"].cname() != "Revival Jam" \
+					and not s.players[p].monsters().filter(func(m): return m.face_up and m.cname() == "Revival Jam").is_empty()
 		"never":
 			return false   # "This card can only be placed on the field by the effect of "Destiny Board"."
 		"accellight":
@@ -1598,6 +1605,12 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			if c.linked != null:
 				c.linked.attack_count_turn = s.turn
 				c.linked.attack_count = 99
+		"jam_defender":
+			# "target 1 "Revival Jam" you control; switch the attack target to that target."
+			var jams: Array = ps.monsters().filter(func(m): return m.face_up and m.cname() == "Revival Jam")
+			if not jams.is_empty() and not s.pending_attack.is_empty():
+				s.pending_attack["target"] = jams[0]
+				events.append(_ev(p, c, Loc.t("%s: the attack is turned onto %s") % [name, jams[0].cname()]))
 		"trap_stun":
 			s.trap_stun_turn = s.turn
 			events.append(_ev(p, c, Loc.t("%s: every other Trap effect on the field is negated this turn") % name))
@@ -2329,6 +2342,8 @@ static func equip_flag(s: DuelState, c, flag: String) -> bool:
 
 ## Can this monster declare an attack, as far as Spell/Trap cards are concerned?
 static func can_attack(s: DuelState, p: int, c) -> bool:
+	if c.summoned_turn == s.turn and field_flag(s, "summon_sick_all"):
+		return false   # Vengeful Bog Spirit: "Monsters cannot attack the turn they are Summoned."
 	if s.players[p].no_attack_turn >= s.turn:
 		return false
 	if equip_flag(s, c, "no_attack"):
