@@ -1237,11 +1237,11 @@ func _play_event(ev: Dictionary) -> void:
 			await board.anim_discard(p, ev["card"])
 		"banish":
 			board.hide_stats_for(ev["card"])
-			if ev["from"] == "hand" and int(ev.get("side", p)) == ME:
+			if str(ev.get("from", "")) == "hand" and int(ev.get("side", p)) == ME:
 				hud.remove_hand_card(ev["card"])
 			Sfx.play("destroy", -6.0)
 			hud.effect_text(Loc.t("%s is banished") % ev["card"].cname(), Color("c9a0ff"))
-			await board.anim_banish(ev["card"], ev["from"], int(ev.get("side", p)))
+			await board.anim_banish(ev["card"], str(ev.get("from", "")), int(ev.get("side", p)))
 		"unbanish":
 			board.remove_from_banished(ev["card"])
 			if ev.get("to", "gy") == "gy":

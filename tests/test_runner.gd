@@ -57,6 +57,7 @@ func _ready() -> void:
 		_test_cards_48()
 		_test_cards_49()
 		_test_cards_50()
+		_test_cards_51()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -6383,3 +6384,65 @@ func _test_cards_50() -> void:
 	s.activate(0, mis, foe)
 	s.phase = DuelState.Phase.BATTLE
 	check(s.players[1].lp == l1 - 1500 and not s.can_attack(0, att), "Misfortune: 1500 damage and your monsters cannot attack this turn")
+
+
+## Kite's two biggest monsters (v0.33.35), each against its printed text.
+func _test_cards_51() -> void:
+	# ---- Number 62: Galaxy-Eyes Prime Photon Dragon.
+	var s := _bare(2101)
+	var g1 := _mon(s, 0, "Galaxy-Eyes Photon Dragon", 0)
+	var g2 := _mon(s, 0, "Galaxy Knight", 1)
+	var prime := _in(s, 0, "Number 62: Galaxy-Eyes Prime Photon Dragon", "extra")
+	check(s.can_extra_summon(0, prime), "Number 62 can be made with 2 Level 8 monsters")
+	s.extra_summon(0, prime)
+	check(s.players[0].field.has(prime) and prime.overlays.size() == 2, "Number 62 is Xyz Summoned with 2 materials")
+	prime.summoned_turn = 1
+	var foe := _mon(s, 1, "Blue-Eyes Ultimate Dragon", 0)
+	s.phase = DuelState.Phase.BATTLE
+	var lp1: int = s.players[1].lp
+	s.declare_attack(0, prime, foe)
+	s.resolve_attack()
+	check(s.players[1].gy.has(foe) and prime.overlays.size() == 1 and s.players[1].lp == lp1 - 1100, "Number 62: detach 1, +1600 ATK (Rank 8 x 200) for the battle: 5600 beats 4500 (LP %d)" % s.players[1].lp)
+	check(prime.overlays[0].cname() == "Galaxy-Eyes Photon Dragon" and s.atk_of(prime, false) == 4000, "Number 62 keeps Galaxy-Eyes Photon Dragon as material and is back to 4000")
+	# Without Galaxy-Eyes as material its battle damage is halved.
+	s = _bare(2102)
+	prime = _mon(s, 0, "Number 62: Galaxy-Eyes Prime Photon Dragon", 0)
+	prime.summoned_turn = 1
+	s.phase = DuelState.Phase.BATTLE
+	lp1 = s.players[1].lp
+	s.declare_attack(0, prime, null)
+	s.resolve_attack()
+	check(s.players[1].lp == lp1 - 2000, "Number 62 without Galaxy-Eyes Photon Dragon as material: battle damage is halved (LP %d)" % s.players[1].lp)
+	# Destroyed by an opponent's effect with Galaxy-Eyes as material: back at the 2nd Standby Phase, double ATK.
+	s = _bare(2103)
+	prime = _mon(s, 0, "Number 62: Galaxy-Eyes Prime Photon Dragon", 0)
+	prime.overlays.append(s._make(_cid("Galaxy-Eyes Photon Dragon"), 0))
+	s.effect_by = 1
+	s._destroy(prime)
+	s.effect_by = -1
+	s._cleanup()
+	check(s.players[0].gy.has(prime), "Number 62 is destroyed by the opponent's effect")
+	s.current = 0
+	s.begin_standby()
+	check(s.players[0].gy.has(prime), "Number 62: not yet at the 1st Standby Phase")
+	s.begin_standby()
+	check(s.players[0].field.has(prime) and s.atk_of(prime, false) == 8000, "Number 62 returns at the 2nd Standby Phase with 8000 ATK (got %d)" % s.atk_of(prime, false))
+	# ---- Neo Galaxy-Eyes Photon Dragon.
+	s = _bare(2104)
+	_mon(s, 0, "Galaxy-Eyes Photon Dragon", 0)
+	_mon(s, 0, "Galaxy Knight", 1)
+	_mon(s, 0, "Galaxy Knight", 2)
+	var neo := _in(s, 0, "Neo Galaxy-Eyes Photon Dragon", "extra")
+	var jinzo := _mon(s, 1, "Jinzo", 0)
+	var utopia := _mon(s, 1, "Number 39: Utopia", 1)
+	utopia.overlays.append(s._make(_cid("Gagaga Magician"), 1))
+	utopia.overlays.append(s._make(_cid("Gogogo Golem"), 1))
+	check(s.can_extra_summon(0, neo), "Neo Galaxy-Eyes Photon Dragon can be made with 3 Level 8 monsters")
+	s.extra_summon(0, neo)
+	s._cleanup()
+	check(s.players[0].field.has(neo) and neo.overlays.size() == 3 and jinzo.negated and utopia.negated, "Neo Galaxy-Eyes with Galaxy-Eyes Photon Dragon as material negates the other face-up cards")
+	s.ignite(0, neo)
+	check(utopia.overlays.is_empty() and s.players[1].gy.size() == 2 and s.atk_of(neo, false) == 5500 and neo.overlays.size() == 2, "Neo Galaxy-Eyes takes both of Utopia's materials: 5500 ATK (got %d)" % s.atk_of(neo, false))
+	neo.summoned_turn = 1
+	s.phase = DuelState.Phase.BATTLE
+	check(s.attacks_left(neo) == 2, "and it can attack twice this turn (got %d)" % s.attacks_left(neo))

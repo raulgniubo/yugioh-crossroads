@@ -318,6 +318,11 @@ uniform float indoors = 0.0;
 uniform vec3 flash_col : source_color = vec3(1.0);
 uniform float flash = 0.0;       // the duel just did something big: the whole road takes its color
 """ + GLSL + """
+// (pow() of a negative number is undefined: on some GPUs it gave white-hot pixels that the glow blew up into blobs)
+float sq(float v) {
+	return v * v;
+}
+
 void fragment() {
 	float x = wp.x + offset;
 	float z = wp.z;
@@ -336,10 +341,10 @@ void fragment() {
 	// Five lanes, 4.4 m each. Tyres polish two tracks down every lane; the middle stays darker
 	// with dripped oil.
 	float lane_u = fract(z / 4.4 + 0.5) - 0.5;
-	float track_w = exp(-pow((abs(lane_u) * 4.4 - 0.95) / 0.42, 2.0));
+	float track_w = exp(-sq((abs(lane_u) * 4.4 - 0.95) / 0.42));
 	float in_lanes = 1.0 - smoothstep(10.8, 11.1, az);
 	col *= 1.0 + 0.2 * track_w * in_lanes;
-	col *= 1.0 - 0.16 * exp(-pow(lane_u * 4.4 / 0.3, 2.0)) * in_lanes * (0.5 + 0.5 * big);
+	col *= 1.0 - 0.16 * exp(-sq(lane_u * 4.4 / 0.3)) * in_lanes * (0.5 + 0.5 * big);
 	// Joints across the road every 20 m and the odd tar repair.
 	float jx = fract(x / 20.0);
 	float joint = 1.0 - smoothstep(0.0, 0.004 + px * 0.04, min(jx, 1.0 - jx));
@@ -373,9 +378,9 @@ void fragment() {
 	// Street lamps stand every 16 m on both sides, staggered. Each lays a pool of light on the
 	// road under it, and on the wet surface a long streak toward you.
 	float lamp_x = cos((x + 4.0 * step(0.0, z)) * 6.2832 / 16.0) * 0.5 + 0.5;
-	float pool_l = pow(lamp_x, 2.2) * exp(-pow((az - 8.6) / 5.6, 2.0));
+	float pool_l = pow(max(lamp_x, 0.0), 2.2) * exp(-sq((az - 8.6) / 5.6));
 	col *= 1.0 + 1.25 * pool_l * (1.0 - indoors);
-	float lamp = pow(lamp_x, 5.0) * exp(-pow((az - 9.4) / 3.4, 2.0));
+	float lamp = pow(max(lamp_x, 0.0), 5.0) * exp(-sq((az - 9.4) / 3.4));
 	col += vec3(1.0, 0.87, 0.68) * lamp * 0.22 * wet * (0.6 + 0.4 * grain) * (1.0 - indoors);
 	// Wet asphalt is a mirror at a low angle: far ahead it takes the color of the sky over the
 	// city, most where water stands in the low patches.
@@ -387,9 +392,9 @@ void fragment() {
 	vec3 mirror = mix(glow_b * 0.4 + vec3(0.06, 0.08, 0.3), sky_ref, smoothstep(-0.5, 0.5, look_x));
 	col += mirror * min(fres, 0.72) * wet * (0.3 + 0.34 * puddle) * (0.7 + 0.3 * grain) * (1.0 - indoors * 0.75);
 	// Wet stones catch the lamps: tiny glints right under each one.
-	col += vec3(1.0, 0.9, 0.75) * pow(grain, 5.0) * pool_l * 0.12 * fine * (1.0 - indoors);
+	col += vec3(1.0, 0.9, 0.75) * pow(max(grain, 0.0), 5.0) * pool_l * 0.12 * fine * (1.0 - indoors);
 	// Indoors the strip lights in the ceiling run down the road as two long bars of glare.
-	float bars = exp(-pow((az - 5.2) / 1.5, 2.0)) * (0.7 + 0.3 * smoothstep(0.1, 0.2, fract(x / 6.0)) * smoothstep(0.9, 0.8, fract(x / 6.0)));
+	float bars = exp(-sq((az - 5.2) / 1.5)) * (0.7 + 0.3 * smoothstep(0.1, 0.2, fract(x / 6.0)) * smoothstep(0.9, 0.8, fract(x / 6.0)));
 	col += vec3(1.0, 0.9, 0.7) * bars * 0.16 * wet * indoors;
 	// The barrier's strip of light bleeds across the shoulder.
 	col += mix(glow_b, glow_a, step(0.0, z)) * exp(-(13.95 - az) * 0.6) * 0.3 * wet * step(az, 13.95);
@@ -402,7 +407,9 @@ void fragment() {
 	// A wash of the color over the asphalt, strongest in bands that race back along the road.
 	float band = 0.55 + 0.45 * sin((wp.x + offset * 0.6) * 0.5);
 	col += flash_col * flash * (0.10 + 0.16 * band) + col * flash_col * flash * 1.4;
-	ALBEDO = col * fade;
+	// One bad pixel is enough for the glow to turn it into a white blob on the road: none get out.
+	col = mix(col, vec3(0.03), vec3(isnan(col)));
+	ALBEDO = clamp(col * fade, vec3(0.0), vec3(6.0));
 }
 """
 	_road = ShaderMaterial.new()
@@ -468,7 +475,7 @@ void fragment() {
 	float refl = 1.0 - smoothstep(0.03, 0.04 + px * 0.1, length(vec2((seam - 0.5) * 6.0, y - 0.3)));
 	col += vec3(1.0, 0.62, 0.14) * refl * 1.2;
 	// The lamps overhead brighten it as they pass.
-	col *= 0.85 + 0.45 * pow(cos(x * 6.2832 / 16.0) * 0.5 + 0.5, 3.0);
+	col *= 0.85 + 0.45 * pow(max(cos(x * 6.2832 / 16.0) * 0.5 + 0.5, 0.0), 3.0);
 	// Its own light strip washes down the face.
 	col += tint * 0.42 * smoothstep(0.2, 1.05, y) * (0.8 + 0.2 * vnoise(vec2(x * 0.5, 3.0)));
 	float fade = 1.0 - smoothstep(70.0, 126.0, abs(wp.x));
@@ -502,7 +509,7 @@ void fragment() {
 	float px = max(fwidth(wp.x), fwidth(wp.y));
 	float fine = 1.0 - smoothstep(0.02, 0.12, px);
 	float u = fract(x / 4.0);
-	float lamp = pow(cos((x + 4.0 * step(0.0, side)) * 6.2832 / 16.0) * 0.5 + 0.5, 6.0);
+	float lamp = pow(max(cos((x + 4.0 * step(0.0, side)) * 6.2832 / 16.0) * 0.5 + 0.5, 0.0), 6.0);
 	// Below: a ribbed sound panel in dark painted steel.
 	float panel = 1.0 - smoothstep(2.18, 2.2, y);
 	float rib = 0.5 + 0.5 * sin(y * 52.0);
@@ -598,7 +605,7 @@ void fragment() {
 		col = mix(col, vec3(0.08, 0.082, 0.09), housing * step(0.04, along) * step(along, 0.66));
 		col = mix(col, vec3(1.0, 0.93, 0.76) * 2.2, row * lit);
 		// Glow round each fitting.
-		col += vec3(1.0, 0.85, 0.6) * exp(-pow((z - 5.2) / 1.6, 2.0)) * lit * 0.12;
+		col += vec3(1.0, 0.85, 0.6) * exp(-((z - 5.2) / 1.6) * ((z - 5.2) / 1.6)) * lit * 0.12;
 		// A duct down the middle with a seam every few meters.
 		float duct = 1.0 - smoothstep(0.7, 0.74, z);
 		col = mix(col, vec3(0.07, 0.072, 0.08) * (0.8 + 0.2 * step(0.04, fract(x / 3.0))), duct);
@@ -756,7 +763,7 @@ void fragment() {
 	float half_w = 0.04 + down * 0.46;
 	float across = 1.0 - smoothstep(half_w * 0.2, half_w, abs(UV.x - 0.5));
 	ALBEDO = vec3(1.0, 0.9, 0.72);
-	ALPHA = across * pow(1.0 - down, 1.6) * 0.16;
+	ALPHA = across * pow(max(1.0 - down, 0.0), 1.6) * 0.16;
 }
 """
 	var m := ShaderMaterial.new()
@@ -1075,7 +1082,7 @@ uniform vec3 tint : source_color = vec3(0.6, 0.8, 1.0);
 void fragment() {
 	float w = 1.0 - abs(UV.x - 0.5) * 2.0;
 	ALBEDO = tint;
-	ALPHA = pow(w, 2.0) * (1.0 - UV.y) * UV.y * 0.6;
+	ALPHA = w * w * (1.0 - UV.y) * UV.y * 0.6;
 }
 """
 	for i in 6:
@@ -1266,10 +1273,10 @@ uniform float gain = 1.0;
 void fragment() {
 	float along = UV.x;
 	float across = 1.0 - abs(UV.y - 0.5) * 2.0;
-	float core = pow(across, 5.0);
+	float core = pow(max(across, 0.0), 5.0);
 	float flick = 0.85 + 0.15 * sin(TIME * 40.0 + UV.x * 30.0);
 	ALBEDO = mix(tint, vec3(1.0), core * 0.7);
-	ALPHA = pow(along, 1.6) * (0.25 * across + core) * flick * gain;
+	ALPHA = pow(max(along, 0.0), 1.6) * (0.25 * across + core) * flick * gain;
 }
 """
 	for k in 3:

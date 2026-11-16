@@ -108,6 +108,11 @@ const FX := {
 	"Elemental HERO Thunder Giant": {"note": "Once per turn, discard 1: destroy a monster with less original ATK.",
 		"ignite": {"cost": "discard", "do": [["destroy", "atk_below_self"]], "label": "Discard 1: destroy a weaker monster"}},
 	"Elemental HERO Rampart Blaster": {"note": "Can attack directly while it is in Defense Position. When it does, its ATK is halved for that damage calculation.", "direct_from_def": true},
+	# ---- Kite's two biggest (v0.33.35)
+	"Neo Galaxy-Eyes Photon Dragon": {"note": "3 Level 8 monsters. Xyz Summoned with Galaxy-Eyes Photon Dragon among its materials: every other face-up card on the field has its effects negated. Once per turn: detach 1 material; detach every material from your opponent's monsters, and for the rest of this turn it gains 500 ATK for each and can attack that many times.",
+		"any_summon": [["neo_negate"]], "ignite": {"cost": "detach", "do": [["neo_strip"]], "label": "Detach: take all their materials"}, "ai_prefer": true},
+	"Number 62: Galaxy-Eyes Prime Photon Dragon": {"note": "2 Level 8 monsters. In a battle: detach 1 material to gain 200 ATK for every Rank of the Xyz Monsters on the field, for that battle. Its battle damage is halved unless Galaxy-Eyes Photon Dragon is one of its materials. Destroyed by an opponent's card effect with Galaxy-Eyes Photon Dragon as material: it comes back in your 2nd Standby Phase with double ATK.",
+		"prime": true, "ai_prefer": true},
 	# ---- Syrus's and Aster's best decks (v0.33.35)
 	"UFOroid": {"note": "Destroyed by battle and sent to the Graveyard: Special Summon a Machine monster with 1500 or less ATK from your Deck in Attack Position.", "death": [["special", "deck", {"race": "Machine", "max_atk": 1500}, "atk", 1]]},
 	"Armoroid": {"note": "Tribute Summoned by Tributing at least 1 roid monster: banish every Spell and Trap on the field.", "armoroid": true},
@@ -574,7 +579,6 @@ const FX := {
 	# ---- ZEXAL
 	"Number 17: Leviathan Dragon": {"note": "Cannot attack directly unless it has material. Once per turn: detach 1 material; it gains 500 ATK.", "direct_needs_material": true, "ignite": {"cost": "detach", "do": [["perm_atk", 500]], "label": "Detach: +500 ATK"}},
 	"Number 32: Shark Drake": {"note": "Once per turn, when it attacks and destroys a monster: detach 1 material; that monster returns to their field in Attack Position with 1000 less ATK, and this card attacks once more.", "kill": [["shark_drake"]]},
-	"Number 62: Galaxy-Eyes Prime Photon Dragon": {"note": "Detach 1 in battle: gains 200 ATK per Rank of Xyz monsters on the field.", "atk_attack": 1600},
 	"Black Ray Lancer": {"note": "Once per turn: detach 1 material; negate the effects of 1 face-up monster until the End Phase.", "ignite": {"cost": "detach", "do": [["negate_target"]], "label": "Detach: negate a monster's effects"}},
 	"Starliege Paladynamo": {"note": "Detach 2 materials: 1 face-up monster the opponent controls has 0 ATK and its effects negated. Destroyed by an opponent's card: draw 1 card.",
 		"ignite": {"cost": "detach2", "do": [["zero_negate_opp"]], "label": "Detach 2: an opponent's monster gets 0 ATK and loses its effects"}, "opp_destroyed": [["draw", 1]]},

@@ -145,11 +145,25 @@ func _group(body: VBoxContainer, title: String, cards: Array) -> void:
 		b.custom_minimum_size = Vector2(104, 152)
 		b.flat = true
 		b.focus_mode = Control.FOCUS_ALL
+		# A straight frame around the card that is picked (the theme's slanted button frame sat crooked behind it).
+		var ring := StyleBoxFlat.new()
+		ring.bg_color = Color(0, 0, 0, 0)
+		ring.border_color = UITheme.GOLD
+		ring.set_border_width_all(3)
+		ring.set_corner_radius_all(6)
+		ring.skew = Vector2.ZERO
+		b.add_theme_stylebox_override("focus", ring)
+		for st_name in ["normal", "hover", "pressed"]:
+			b.add_theme_stylebox_override(st_name, StyleBoxEmpty.new())
 		var tr := TextureRect.new()
 		tr.texture = Cards.get_face(id)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		tr.offset_left = 4
+		tr.offset_top = 4
+		tr.offset_right = -4
+		tr.offset_bottom = -4
 		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(tr)
 		if int(e[1]) > 1:

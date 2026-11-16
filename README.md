@@ -7,7 +7,7 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
 ## What is in 0.33.35
 
-Four GX duelists got their best decks: **Chazz, Zane, Syrus and Aster**. 32 cards built, each against its card text, each with a test.
+Four GX duelists got their decks: **Chazz, Zane, Syrus and Aster**, and Kite got his two biggest monsters. 34 cards built, each against its card text, each with a test.
 
 Also: the card index on your computer is rebuilt once on the first start (Power Bond needed it), so the first launch takes a few seconds longer.
 
@@ -46,8 +46,21 @@ Also: the card index on your computer is rebuilt once on the first start (Power 
 - **Plasma** comes out for 3 Tributes, negates the effects of your face-up monsters, and takes one of them into its Spell & Trap Zone for half its ATK. **Dogma** comes out for 3 Tributes (one a Destiny HERO) and halves your Life Points in your next Standby Phase.
 - **Dark City:** a Destiny HERO attacking a stronger monster gains 1000 ATK for that battle.
 
+### Kite and Yusei, after Raul's deck check
+
+- **Kite** has his two biggest monsters now: **Neo Galaxy-Eyes Photon Dragon** (3 Level 8: negates every other face-up card when Galaxy-Eyes Photon Dragon is among its materials, then strips the opponent's Xyz Materials for 500 ATK and an attack each) and **Number 62: Galaxy-Eyes Prime Photon Dragon** (2 Level 8: +200 ATK per Rank on the field in a battle, comes back with double ATK). The computer makes them: in 30 test duels Number 62 came out 23 times and Neo 4 times. Kite on Hard: 22 of 30.
+- **Yusei** was running 13 Tuners with five of them single copies. Now 9 Tuners (Junk Synchron x3, Quickdraw Synchron x2, Debris Dragon x2, Effect Veiler x2), three Doppelwarrior, three Tuning, and 2 Stardust Dragon and 2 Junk Warrior in the Extra Deck. On Hard he went from 23 of 60 to 24 of 40.
+
+### Fixes
+
+- **Turbo ride: the white blobs on the road.** The road's shader could produce a broken pixel under each street lamp on some graphics chips, and the glow turned each one into a big white blob. The math is guarded now and a broken pixel can no longer reach the screen.
+- **See deck: the crooked yellow frame** behind the first card is a straight gold ring around the picked card.
+- A duel could log an error when a card was banished from the Graveyard for its effect (Destiny HERO - Malicious). Fixed.
+
 **Not done or not checked:**
 
+- **The decks are not all "best decks" yet.** A check of every duelist's boss monsters against what is built found these still missing: Jack (Red Nova Dragon, Majestic Red Dragon), Yuma (Utopia Ray Victory, Utopia Beyond, the ZW weapons), Shark (Number 101 and C101, Shark Drake Veiss, Number 73), Zane (the Cyberdarks, Chimeratech Overdragon), Aster (Dreadmaster with Clock Tower Prison, Destiny End Dragoon), Jaden (Yubel, Neos Wiseman, Rainbow Neos, Divine Neos), Akiza (Splendid Rose's full effect, Queen of Thorns), Kaiba (Chaos Emperor Dragon, Blue-Eyes Shining Dragon), Joey (Gilford the Lightning), Kalin (Earthbound Immortal Ccapac Apu), Vector (Number 66, 43, C65, C5), Bakura (Diabound Kernel, Dark Sanctuary), Marik (Makyura, Helpoemer), Rex, Mai, Syrus, Chazz (Ojama Knight, Light and Darkness Dragon), Yusei (Majestic Star Dragon), Kite (Numbers 20, 30, 56). Every deck still needs the same pass Yusei just got: fewer filler and single copies, more of what the duelist really plays.
+- The Turbo road fix could not be checked on a Mac from here: the blobs never showed on the test machine. Please look at the same stretch of road again.
 - Still to build for Aster: Clock Tower Prison with Dreadmaster and Eternal Dread (his signature combo, not in yet), Diamond Dude's real effect, Double Dude, Fear Monger, Departed, Blade Master, Destiny End Dragoon, the Phoenix Enforcers, D - Time, D - Shield, D - Chain, Over Destiny, Guard Penalty, Destruction of Destiny. Aster on Hard won 9 of 30 test duels. Not watched on screen.
 - Still to build for Syrus: Super Vehicroid - Stealth Union, Vehicroid Connection Zone, Truckroid, Pair Cycroid, UFOroid Fighter, Ambulanceroid, Ambulance Rescueroid, Jetroid, Patroid, Wonder Garage, Cyber Summon Blaster. Stealthroid counts a battle with a monster, not a direct attack. Syrus on Hard won 9 of 30 test duels. Not watched on screen.
 - Still to build for Zane: the whole Cyberdark half (Cyberdark Horn, Edge, Keel, Cyberdark Dragon, Cyberdark Impact!), Chimeratech Overdragon, Overload Fusion, Future Fusion, Infernal Dragon. Cyber Phoenix is played as "a Spell or Trap cannot target that Machine" (the card says the effect is negated: here the card cannot be aimed at it in the first place). Zane on Hard won 13 of 30 test duels. Not watched on screen.

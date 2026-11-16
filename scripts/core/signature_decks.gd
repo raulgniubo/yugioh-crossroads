@@ -234,13 +234,9 @@ const TUNE := {
 		"extra": {}},
 	# Yusei's best deck: the Shooting Star Dragon and Shooting Quasar Dragon one (v0.33.28).
 	"yusei": {"out": ["Celtic Guardian", "Beaver Warrior"],
-		"main": {"Junk Synchron": 3, "Quickdraw Synchron": 2, "Debris Dragon": 1, "Drill Synchron": 1, "Road Synchron": 1, "Turbo Synchron": 1, "Nitro Synchron": 1,
-			"Unknown Synchron": 1, "Effect Veiler": 2, "Speed Warrior": 2, "Quillbolt Hedgehog": 3, "Level Eater": 2, "Doppelwarrior": 2, "Tuningware": 1,
-			"Sonic Chick": 1, "Shield Warrior": 1, "Max Warrior": 2, "Synchron Explorer": 1,
-			"Tuning": 2, "One for One": 1, "Double Summon": 1, "Cards of Consonance": 1,
-			"Scrap-Iron Scarecrow": 3, "Starlight Road": 1, "Graceful Revival": 1, "Shooting Star": 1, "Defense Draw": 1},
-		"extra": {"Stardust Dragon": 1, "Shooting Star Dragon": 1, "Shooting Quasar Dragon": 1, "Formula Synchron": 1, "Junk Warrior": 1, "Junk Destroyer": 1,
-			"Junk Archer": 1, "Junk Berserker": 1, "Junk Gardna": 1, "Road Warrior": 1, "Turbo Warrior": 1, "Nitro Warrior": 1, "Drill Warrior": 1, "Armory Arm": 1, "Lightning Warrior": 1}},
+		"main": {"Junk Synchron": 3, "Quickdraw Synchron": 2, "Debris Dragon": 2, "Effect Veiler": 2, "Speed Warrior": 2, "Max Warrior": 2, "Quillbolt Hedgehog": 3, "Doppelwarrior": 3, "Level Eater": 2, "Synchron Explorer": 2, "Tuningware": 2, "Shield Warrior": 1, "Sonic Chick": 1, "Tuning": 3, "One for One": 1, "Double Summon": 1, "Cards of Consonance": 1, "Scrap-Iron Scarecrow": 3, "Starlight Road": 1, "Graceful Revival": 1, "Shooting Star": 1, "Defense Draw": 1},
+		# (v0.33.35: 9 Tuners instead of 13, no single-copy Synchrons, 2 Stardust Dragon and 2 Junk Warrior)
+		"extra": {"Stardust Dragon": 2, "Shooting Star Dragon": 1, "Shooting Quasar Dragon": 1, "Formula Synchron": 1, "Junk Warrior": 2, "Junk Destroyer": 1, "Junk Archer": 1, "Junk Berserker": 1, "Junk Gardna": 1, "Road Warrior": 1, "Turbo Warrior": 1, "Nitro Warrior": 1, "Lightning Warrior": 1}},
 	# Jack's best deck: Red Dragon Archfiend on Resonators, with Exploder Dragonwing and Chaos King Archfiend beside it (v0.33.33).
 	"jack": {"out": ["Molten Destruction", "Salamandra"],
 		"main": {"Dark Resonator": 3, "Flare Resonator": 2, "Clock Resonator": 1, "Creation Resonator": 1, "Attack Gainer": 1, "Sinister Sprocket": 1,
@@ -294,7 +290,7 @@ const TUNE := {
 			"Galaxy Knight": 2, "Galaxy Soldier": 2, "Galaxy Wizard": 2, "Photon Slasher": 2, "Photon Caesar": 2, "Photon Wyvern": 1, "Photon Pirate": 1, "Daybreaker": 2,
 			"Photon Circle": 1, "Photon Chargeman": 1,
 			"Accellight": 2, "Galaxy Expedition": 2, "Photon Lead": 1, "Galaxy Storm": 1, "Galaxy Zero": 1, "Monster Reborn": 1, "Pot of Greed": 1, "Mirror Force": 1},
-		"extra": {"Starliege Lord Galaxion": 2, "Starliege Paladynamo": 1, "Photon Papilloperative": 1, "Number 10: Illumiknight": 1}},
+		"extra": {"Neo Galaxy-Eyes Photon Dragon": 1, "Number 62: Galaxy-Eyes Prime Photon Dragon": 2, "Starliege Lord Galaxion": 2, "Starliege Paladynamo": 1, "Photon Papilloperative": 1, "Number 10: Illumiknight": 1}},
 	"vector": {"out": ["Charcoal Inpachi", "Archfiend Soldier", "Summoned Skull", "Ryu-Kishin Powered", "Vorse Raider", "Hinotama", "Mystic Plasma Zone", "Malevolent Nuzzler"],
 		"in": {"Mirror Force": 1}, "extra_out": ["Gagaga Cowboy"],
 		# Vector's best deck: Umbral Horrors and Malicevorous Fiends into Masquerade, ranked up with Barian's Force (v0.33.34).

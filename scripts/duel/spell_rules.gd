@@ -434,6 +434,8 @@ static func _derive(c) -> Dictionary:
 
 ## True when this card is locked out by Royal Decree / Imperial Order.
 static func blocked(s: DuelState, c) -> bool:
+	if c.tags.get("neo_neg", false):
+		return true   # Neo Galaxy-Eyes Photon Dragon negated it when it arrived
 	# Photon Cerberus: no Trap Cards on the turn it was Normal Summoned, while it is face-up.
 	if c.is_trap() and s.trap_stun_turn == s.turn and str(c.data.get("name", "")) != "Trap Stun":
 		return true   # Trap Stun: "Negate all other Trap effects on the field this turn."
@@ -1504,7 +1506,7 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				s._shuffle(ps.deck)
 				ps.banished.append(chosen)
 				ps.exiles.append({"card": chosen, "to": p, "left": int(a[1]), "atk_pos": true, "to_hand": true})
-				events.append({"type": "banish", "player": p, "card": chosen})
+				events.append({"type": "banish", "player": p, "card": chosen, "from": "deck"})
 				events.append(_ev(p, c, Loc.t("%s seals %s away for %d turns") % [name, chosen.cname(), int(a[1])]))
 
 		"mill_self":

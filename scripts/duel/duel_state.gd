@@ -457,6 +457,19 @@ func begin_standby() -> Array:
 			events.append_array(_speed(behind, 1))
 			events.append({"type": "effect", "player": behind, "card": null, "text": Loc.t("Slipstream: +1 Speed Counter for the rider behind")})
 	events.append_array(EffectRunner.standby(self, current))
+	for g62 in players[current].gy.duplicate():
+		if g62.has_meta("prime_back"):
+			var left62 := int(g62.get_meta("prime_back")) - 1
+			if left62 > 0:
+				g62.set_meta("prime_back", left62)
+			else:
+				g62.remove_meta("prime_back")
+				if players[current].free_zone() != -1 and not is_over():
+					players[current].gy.erase(g62)
+					events.append({"type": "effect", "player": current, "card": g62, "text": Loc.t("%s returns with double ATK") % g62.cname()})
+					events.append_array(_special(current, g62, "reborn"))
+					if players[current].field.has(g62):
+						g62.atk_mod += g62.atk()
 	# Destiny HERO - Dogma: "during your opponent's next Standby Phase after you Special Summoned it this way: Halve your opponent's LP."
 	for m in players[opponent(current)].monsters():
 		if not is_over() and m.face_up and not m.negated and m.tags.get("dogma_due", false):
@@ -1934,6 +1947,35 @@ func _resolve_attack() -> Array:
 	var events := [{"type": "battle", "player": p, "card": attacker, "target": target}]
 	battle_attacker = attacker
 	battle_vs_monster = target != null
+	# Number 62: Galaxy-Eyes Prime Photon Dragon: "If this card battles, during damage calculation: You can detach 1 material
+	# from this card once per battle; this card gains ATK equal to the combined Ranks of all Xyz Monsters currently on
+	# the field x 200, during that damage calculation only."
+	for pair62 in [[attacker, target], [target, attacker]]:
+		var pr: CardInst = pair62[0]
+		var vs62: CardInst = pair62[1]
+		if pr == null or not pr.face_up or pr.negated or pr.overlays.is_empty() or not EffectRunner.fx(pr).get("prime", false):
+			continue
+		var ranks := 0
+		for q in 2:
+			for m in players[q].monsters():
+				if m.face_up and m.frame() == "xyz":
+					ranks += m.level()
+		var boost62 := ranks * 200
+		var mine62 := atk_of(pr, pr == attacker, vs62, true)
+		var need62: bool = vs62 == null and mine62 < players[opponent(pr.owner)].lp and mine62 + boost62 >= players[opponent(pr.owner)].lp
+		if vs62 != null:
+			var theirs62: int = atk_of(vs62, vs62 == attacker, pr, true) if vs62.attack_pos else def_of(vs62)
+			need62 = theirs62 >= mine62 and theirs62 < mine62 + boost62
+		if choose_option(pr.owner, Loc.t("%s: detach 1 material for +%d ATK in this battle?") % [pr.cname(), boost62], ["Detach 1", "No"], 0 if need62 else 1, pr) == 0:
+			var out62: CardInst = pr.overlays[0]
+			for o in pr.overlays:
+				if o.cname() != "Galaxy-Eyes Photon Dragon":
+					out62 = o
+					break
+			pr.overlays.erase(out62)
+			players[out62.owner].gy.append(out62)
+			pr.tags["prime_boost"] = boost62
+			events.append({"type": "effect", "player": pr.owner, "card": pr, "text": Loc.t("%s gains %d ATK for this battle") % [pr.cname(), boost62]})
 	var a := atk_of(attacker, true, target, true)
 	if target == null and EffectRunner.fx(attacker).get("direct_orig", false) and not players[opp].monsters().is_empty():
 		# "...when it does so using this effect, the battle damage is the original ATK of this card."
@@ -2245,8 +2287,10 @@ func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 func _after_attack(attacker: CardInst, target = null) -> Array:
 	var events := []
 	attacker.tags.erase("abs_hit")
+	attacker.tags.erase("prime_boost")
 	if target != null and target is CardInst:
 		(target as CardInst).tags.erase("abs_hit")
+		(target as CardInst).tags.erase("prime_boost")
 		attacker.tags["battled_turn"] = turn   # "if this card battled" (Stealthroid)
 		(target as CardInst).tags["battled_turn"] = turn
 	# Electric Lizard: "A non Zombie-Type monster attacking "Electric Lizard" cannot attack on its following turn."
@@ -2374,6 +2418,10 @@ func _battle_damage(p: int, amount: int, dealer: CardInst = null, taker: CardIns
 		if hm != null and int(hm.tags.get("unbreak_turn", -1)) == turn and int(hm.tags.get("unbreak_for", -1)) == p:
 			amount = int(ceil(amount / 2.0))
 			break
+	# Number 62: "Any battle damage this card inflicts to your opponent is halved unless it has "Galaxy-Eyes Photon Dragon" as Xyz Material."
+	if dealer != null and dealer.owner != p and dealer.face_up and not dealer.negated and EffectRunner.fx(dealer).get("prime", false) \
+			and dealer.overlays.filter(func(o): return o.cname() == "Galaxy-Eyes Photon Dragon").is_empty():
+		amount = int(ceil(amount / 2.0))
 	# Chthonian Soldier: "When this card is destroyed by an opponent's attacking monster and sent to the
 	# Graveyard, the Battle Damage you took from this battle is also inflicted to your opponent."
 	if taker != null and dealer != null and dealer.owner != p and amount > 0 and CardEffects.of(taker.cname()).get("chthonian", false) and players[p].gy.has(taker) \
@@ -2448,6 +2496,11 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 			c.tags["abs_hit"] = true   # (it was still equipped for this battle's damage)
 		saved.append_array(_destroy_st(u))
 		return saved
+	# Number 62: "If this card in its owner's control is destroyed by an opponent's card effect while it has "Galaxy-Eyes
+	# Photon Dragon" as Xyz Material: You can Special Summon this card during your 2nd Standby Phase after activation and double its ATK."
+	if not by_battle and effect_by != -1 and effect_by != c.owner and c.orig_owner == -1 and c.face_up and not c.negated and EffectRunner.fx(c).get("prime", false) \
+			and not c.overlays.filter(func(o): return o.cname() == "Galaxy-Eyes Photon Dragon").is_empty():
+		c.set_meta("prime_back", 2)
 	ps.field[zone] = null
 	var mats: Array = c.overlays.duplicate()
 	_to_gy(ps, c)   # its Xyz Materials go with it
@@ -3600,7 +3653,7 @@ func _contact_summon(p: int, c: CardInst) -> Array:
 			ps.spells[ps.spells.find(m)] = null
 			m.equipped_to = null
 			ps.banished.append(m)
-			events.append({"type": "banish", "player": p, "card": m})
+			events.append({"type": "banish", "player": p, "card": m, "from": "spells"})
 		else:
 			events.append_array(_banish(m))
 	ps.extra.erase(c)

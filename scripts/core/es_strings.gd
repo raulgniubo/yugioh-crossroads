@@ -5334,4 +5334,11 @@ const ES := {
 	"End of your Battle Phase, if it battled and you control another roid monster: destroy 1 Spell or Trap on the field.": "Al final de tu Battle Phase, si batalló y controlas otro monstruo roid: destruye 1 Mágica o Trampa en el Campo.",
 	"Cannot be Normal Summoned or Set. Special Summon it from your hand by Tributing 3 monsters. The effects of your opponent's face-up monsters are negated. Once per turn: equip 1 monster your opponent controls to this card (1 at a time). It gains half that monster's original ATK.": "No puede ser Invocado de Modo Normal ni Colocado. Invócalo de Modo Especial desde tu mano Sacrificando 3 monstruos. Los efectos de los monstruos boca arriba de tu adversario son negados. Una vez por turno: equipa 1 monstruo que controle tu adversario a esta carta (1 a la vez). Gana la mitad del ATK original de ese monstruo.",
 	"Cannot be Normal Summoned or Set. Special Summon it from your hand by Tributing 3 monsters, at least 1 of them a Destiny HERO. If it is still face-up in your opponent's next Standby Phase: their Life Points are halved.": "No puede ser Invocado de Modo Normal ni Colocado. Invócalo de Modo Especial desde tu mano Sacrificando 3 monstruos, al menos 1 de ellos un Destiny HERO. Si sigue boca arriba en la siguiente Standby Phase de tu adversario: sus Life Points se reducen a la mitad.",
+	"%s: detach 1 material for +%d ATK in this battle?": "%s: ¿desacoplar 1 material para +%d ATK en esta batalla?",
+	"Detach 1": "Desacoplar 1",
+	"%s gains %d ATK for this battle": "%s gana %d ATK para esta batalla",
+	"%s returns with double ATK": "%s regresa con el doble de ATK",
+	"%s negates every other face-up card on the field": "%s niega todas las demás cartas boca arriba en el Campo",
+	"%s takes %d materials: +%d ATK and %d attacks this turn": "%s quita %d materiales: +%d ATK y %d ataques este turno",
+	"Detach: take all their materials": "Desacoplar: quita todos sus materiales",
 }

@@ -54,6 +54,8 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 	if int(c.tags.get("cka", -1)) == s.turn and s.phase == DuelState.Phase.BATTLE:
 		b += c.def() - c.atk()   # Chaos King Archfiend switched it
 	b -= int(f.get("lose_per_counter", 0)) * c.counter   # Black-Winged Dragon
+	if battling and c.tags.has("prime_boost"):
+		b += int(c.tags["prime_boost"])   # Number 62: Galaxy-Eyes Prime Photon Dragon
 	if f.get("absorb_half", false) and s.absorbed_by(c) != null:
 		b += s.absorbed_by(c).atk() / 2   # Destiny HERO - Plasma: "gains ATK equal to half the original ATK of the monster equipped to it"
 	if f.get("absorb", false) and s.absorbed_by(c) != null:
@@ -1048,7 +1050,7 @@ static func gy_run(s: DuelState, p: int, c) -> Array:
 	var events := [_ev(p, c, Loc.t("%s is banished from the Graveyard for its effect") % c.cname())]
 	s.players[p].gy.erase(c)
 	s.players[p].banished.append(c)
-	events.append({"type": "banish", "player": p, "card": c})
+	events.append({"type": "banish", "player": p, "card": c, "from": "gy"})
 	events.append_array(run_list(s, p, c, g.get("do", []), {}))
 	return events
 
@@ -1237,6 +1239,13 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 					return false
 			"mill_opp_top":
 				if opp.deck.is_empty():
+					return false
+			"neo_strip":
+				var any_mat := false
+				for m in opp.monsters():
+					if not m.overlays.is_empty():
+						any_mat = true
+				if not any_mat:
 					return false
 			"laser":
 				if opp.monsters().filter(func(m): return m.face_up and (s.atk_of(m, false) >= s.atk_of(c, false) or s.def_of(m) >= s.atk_of(c, false))).is_empty():
@@ -1932,7 +1941,7 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 			if ps.gy.has(c):
 				ps.gy.erase(c)
 				ps.banished.append(c)
-				events.append({"type": "banish", "player": p, "card": c})
+				events.append({"type": "banish", "player": p, "card": c, "from": "gy"})
 				events.append_array(run(s, p, c, ["boost_own_pick", 800], {}))
 	return events
 
@@ -2260,6 +2269,39 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"neo_negate":
+			# Neo Galaxy-Eyes Photon Dragon: "If this card is Xyz Summoned using "Galaxy-Eyes Photon Dragon" as any of its
+			# materials: All other face-up cards currently on the field have their effects negated."
+			if c.overlays.filter(func(o): return o.cname() == "Galaxy-Eyes Photon Dragon").is_empty():
+				return events
+			for q in 2:
+				for m in s.players[q].monsters():
+					if m != c and m.face_up:
+						m.neg_perm = true
+						m.negated = true
+				for st in s.players[q].spells:
+					if st != null and st.face_up:
+						st.tags["neo_neg"] = true
+				if s.players[q].field_spell != null and s.players[q].field_spell.face_up:
+					s.players[q].field_spell.tags["neo_neg"] = true
+			events.append(_ev(p, c, Loc.t("%s negates every other face-up card on the field") % name))
+		"neo_strip":
+			# "detach all materials from monsters your opponent controls, then, for the rest of this turn, this card gains
+			# 500 ATK for each, also it can attack up to that many times during each Battle Phase."
+			var took := 0
+			for m in opp.monsters():
+				for o in m.overlays.duplicate():
+					m.overlays.erase(o)
+					s.players[o.owner].gy.append(o)
+					took += 1
+			if took > 0:
+				if c.atk_mod_turn != s.turn:
+					c.atk_mod_t = 0
+				c.atk_mod_turn = s.turn
+				c.atk_mod_t += 500 * took
+				c.bonus_attacks = maxi(0, took - 1)
+				c.bonus_attacks_turn = s.turn
+				events.append(_ev(p, c, Loc.t("%s takes %d materials: +%d ATK and %d attacks this turn") % [name, took, 500 * took, took]))
 		"laser":
 			# Cyber Laser Dragon: "you can destroy 1 monster with ATK or DEF equal to or higher than the ATK of this card."
 			var mine_l: int = s.atk_of(c, false)
