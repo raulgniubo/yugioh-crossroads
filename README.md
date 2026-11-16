@@ -18,8 +18,16 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 - **Main, 40:** Dark Resonator x3, Flare Resonator x2, Creation Resonator x2, Chain Resonator x2, Synkron Resonator, Dread Dragon, Vice Dragon x3, Mad Archfiend x2, Big Piece Golem x2, Medium Piece Golem, Power Breaker x2, Strong Wind Dragon x2, Twin-Sword Marauder x2, Archfiend Interceptor, Battle Fader; Resonator Call x3, Scarlet Security, Monster Reborn, Pot of Greed, Mystical Space Typhoon; Fiendish Chain x2, Powerful Rebirth x2, Call of the Haunted, Half or Nothing. **Extra, 7:** Red Dragon Archfiend x2, Scarlight Red Dragon Archfiend, Red Nova Dragon x2, Exploder Dragonwing, Chaos King Archfiend.
 - On Hard: 28 of 40 (was 26). Red Nova Dragon came out 11 times in those 40 duels.
 
+### Weevil, Pegasus, Bakura: filler out
+
+- **Weevil:** the vanilla Insects are gone. In: Man-Eater Bug x3, the lock (DNA Surgery x3, Insect Barrier x2), and the old power cards (Raigeki, Dark Hole, Heavy Storm, Swords of Revealing Light, Change of Heart, Graceful Charity, Mirror Force, Magic Cylinder, Torrential Tribute). On Hard: **16 of 30** (was 5).
+- **Pegasus:** Dark Rabbit, Parrot Dragon, Copycat, Toon Alligator and Toon Masked Sorcerer are out. Two Blue-Eyes Toon Dragon, two Thousand-Eyes Restrict, and the same old power cards. On Hard: 10 of 30 (was 9). The Toons get out now (in 30 duels: Toon Summoned Skull 21 times, Toon Dark Magician Girl 20, Blue-Eyes Toon Dragon 8) but they wait a turn to attack, and the Synchro and Xyz decks do not wait.
+- **Bakura:** Dark Necrofear x3 with more Fiends to feed her, Man-Eater Bug x3, the old power cards. On Hard: 10 of 30 (was 12, which is inside the noise of 30 duels).
+- **Jaden:** I tried a tighter list and it did worse (5 of 30), so his deck is unchanged. He needs his missing cards first.
+
 **Not done or not checked:**
 
+- **The deck pass is not finished.** Done: Yusei, Kite, Jack, Weevil, Pegasus, Bakura. Not yet: everyone else. The old-era decks (Pegasus, Bakura) stay weaker than the Synchro and Xyz decks on Hard even after the pass: their cards are slower by design. Boss monsters still missing are listed in the plan doc.
 - Still to build for Jack: Majestic Red Dragon (with Majestic Dragon), Dark Highlander, Crimson Fire, Red Dragon Vase, Changing Destiny, Prideful Roar. Not watched on screen.
 
 ## What is in 0.33.35

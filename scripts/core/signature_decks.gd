@@ -177,12 +177,9 @@ const TUNE := {
 	"bakura": {"out": ["Newdoria", "Curse of Dragon", "Summoned Skull", "Ryu-Kishin", "Lord of the Lamp", "Fissure", "Dark Energy", "Dark Core", "Yami"],
 		"in": {"The Portrait's Secret": 1, "Earthbound Spirit": 2, "Souls of the Forgotten": 1, "The Gross Ghost of Fled Dreams": 1, "Man-Eater Bug": 2, "Lady of Faith": 1,
 			"Change of Heart": 1, "Just Desserts": 1, "The Dark Door": 1},
-		# Bakura's best deck: Dark Necrofear and his Fiends, with Destiny Board spelling the duel out (v0.33.34).
-		"main": {"Dark Necrofear": 2, "Dark Ruler Ha Des": 2, "Headless Knight": 3, "The Earl of Demise": 2, "Gernia": 2, "The Portrait's Secret": 2, "Earthbound Spirit": 2,
-			"Souls of the Forgotten": 2, "The Gross Ghost of Fled Dreams": 2, "Goblin Zombie": 2, "Morphing Jar": 1, "Electric Lizard": 1, "White Magical Hat": 2,
-			"Man-Eater Bug": 2, "Lady of Faith": 1, "Sangan": 1,
-			"Destiny Board": 2, "Spirit Message \"I\"": 1, "Spirit Message \"N\"": 1, "Spirit Message \"A\"": 1, "Spirit Message \"L\"": 1,
-			"Change of Heart": 1, "Monster Reborn": 1, "Pot of Greed": 1, "Dark Hole": 1, "Just Desserts": 1}},
+		# Bakura, deck pass (v0.33.36): Dark Necrofear x3 with enough Fiends to feed her, Destiny Board, and the old power cards.
+		"main": {"Dark Necrofear": 3, "Dark Ruler Ha Des": 2, "Headless Knight": 3, "The Earl of Demise": 2, "Goblin Zombie": 2, "The Portrait's Secret": 2, "Earthbound Spirit": 2, "Morphing Jar": 1, "Man-Eater Bug": 3, "Sangan": 1, "Electric Lizard": 1, "White Magical Hat": 1, "Change of Heart": 1, "Monster Reborn": 1, "Pot of Greed": 1, "Graceful Charity": 1, "Dark Hole": 1, "Raigeki": 1, "Premature Burial": 1, "Swords of Revealing Light": 1, "Destiny Board": 2, "Spirit Message \"I\"": 1, "Spirit Message \"N\"": 1, "Spirit Message \"A\"": 1, "Spirit Message \"L\"": 1, "Mirror Force": 1, "Torrential Tribute": 1, "Call of the Haunted": 1},
+		"extra": {}},
 	"marik": {"out": ["Dark Blade", "Vampire Lord", "Feral Imp", "Mystic Lamp", "Stone Statue of the Aztecs", "Hinotama", "Mystic Plasma Zone", "Malevolent Nuzzler", "Magic Jammer"],
 		"in": {"Legendary Fiend": 1, "Lord Poison": 1, "Melchid the Four-Face Beast": 1, "Newdoria": 2, "Card of Sanctity": 1, "Mirror Force": 1, "Remove Trap": 1},
 		# Marik's best deck: Lava Golem, Revival Jam, his Fiends, Nightmare Wheel and The Winged Dragon of Ra (v0.33.34).
@@ -191,29 +188,21 @@ const TUNE := {
 			"Card of Sanctity": 2, "Monster Reborn": 1, "Pot of Greed": 1, "Vengeful Bog Spirit": 1, "Remove Trap": 1, "Dark Hole": 1, "Raigeki": 1,
 			"Nightmare Wheel": 3, "Jam Defender": 1, "Malevolent Catastrophe": 1, "Mirror Force": 2}},
 	"pegasus": {"out": ["Fissure", "Raigeki", "Shadow Spell", "Heavy Storm"], "in": {"Dark Rabbit": 1, "Parrot Dragon": 1, "Illusionist Faceless Mage": 1},
-		# Pegasus's best deck: Toon World and his Toons, Relinquished and Thousand-Eyes Restrict (v0.33.34).
-		"main": {"Toon World": 3, "Toon Table of Contents": 3, "Toon Summoned Skull": 2, "Blue-Eyes Toon Dragon": 1, "Manga Ryu-Ran": 1, "Toon Dark Magician Girl": 2, "Toon Gemini Elf": 3, "Toon Mermaid": 3, "Toon Goblin Attack Force": 2, "Toon Masked Sorcerer": 1, "Toon Cannon Soldier": 1, "Toon Alligator": 1, "Relinquished": 2, "Black Illusion Ritual": 2, "Thousand-Eyes Idol": 1, "Polymerization": 1, "Dark-Eyes Illusionist": 1, "Dark Rabbit": 1, "Parrot Dragon": 1, "Copycat": 1, "Pot of Greed": 1, "Monster Reborn": 1, "Change of Heart": 1, "Mystical Space Typhoon": 1, "Dark Hole": 1, "Mirror Force": 1, "Negate Attack": 1},
-		"extra": {"Thousand-Eyes Restrict": 1, "Bickuribox": 1}},
+		# Pegasus, deck pass (v0.33.36): the Toons that hit hard, Relinquished, and the old power cards. The vanilla filler is out.
+		"main": {"Toon Summoned Skull": 2, "Blue-Eyes Toon Dragon": 2, "Toon Dark Magician Girl": 2, "Toon Gemini Elf": 3, "Toon Mermaid": 3, "Toon Goblin Attack Force": 2, "Toon Cannon Soldier": 1, "Relinquished": 2, "Thousand-Eyes Idol": 1, "Toon World": 3, "Toon Table of Contents": 3, "Black Illusion Ritual": 2, "Polymerization": 1, "Pot of Greed": 1, "Graceful Charity": 1, "Monster Reborn": 1, "Change of Heart": 1, "Raigeki": 1, "Dark Hole": 1, "Heavy Storm": 1, "Swords of Revealing Light": 1, "Mirror Force": 1, "Magic Cylinder": 1, "Torrential Tribute": 1, "Call of the Haunted": 1, "Ring of Destruction": 1},
+		"extra": {"Thousand-Eyes Restrict": 2}},
 	"weevil": {"out": ["Insect Knight", "Neo Bug", "Gokipon", "Dian Keto the Cure Master", "Just Desserts", "Fissure"],
 		"in": {"Big Insect": 2, "Flying Kamakiri #1": 2, "Gokibore": 2, "Man-Eater Bug": 2, "Needle Worm": 1, "Skull-Mark Ladybug": 1},
-		# Weevil's best deck: Insect Queen, Parasite Paracide, DNA Surgery with Insect Barrier, and the Great Moth line (v0.33.34).
-		"main": {"Insect Queen": 3, "Perfectly Ultimate Great Moth": 1, "Great Moth": 1, "Petit Moth": 2, "Cocoon of Evolution": 2, "Parasite Paracide": 2, "Pinch Hopper": 3, "Flying Kamakiri #1": 3, "Man-Eater Bug": 2, "Hercules Beetle": 1, "Gokibore": 1, "Killer Needle": 2, "Leghul": 1, "Skull-Mark Ladybug": 1, "Cockroach Knight": 1, "Insect Soldiers of the Sky": 1, "Insect Barrier": 3, "DNA Surgery": 3, "Multiplication of Ants": 1, "Insect Armor with Laser Cannon": 3, "Forest": 1, "Pot of Greed": 1, "Monster Reborn": 1},
+		# Weevil, deck pass (v0.33.36): the lock (DNA Surgery + Insect Barrier), Insect Queen, Parasite Paracide, and the old power cards. The vanilla Insects are out.
+		"main": {"Insect Queen": 2, "Perfectly Ultimate Great Moth": 1, "Petit Moth": 1, "Cocoon of Evolution": 2, "Parasite Paracide": 2, "Pinch Hopper": 3, "Flying Kamakiri #1": 3, "Man-Eater Bug": 3, "Skull-Mark Ladybug": 1, "Leghul": 1, "Killer Needle": 1, "Insect Barrier": 2, "Insect Armor with Laser Cannon": 2, "Multiplication of Ants": 1, "Swords of Revealing Light": 1, "Raigeki": 1, "Dark Hole": 1, "Heavy Storm": 1, "Pot of Greed": 1, "Graceful Charity": 1, "Monster Reborn": 1, "Change of Heart": 1, "DNA Surgery": 3, "Mirror Force": 1, "Magic Cylinder": 1, "Torrential Tribute": 1, "Call of the Haunted": 1},
 		"extra": {}},
 	"rex": {"out": ["Hinotama", "Dian Keto the Cure Master", "Hammer Shot", "Fissure", "Rush Recklessly"],
 		"in": {"Dark Driceratops": 1, "Frostosaurus": 1, "Serpent Night Dragon": 1, "Trakodon": 2, "Black Stego": 2, "Babycerasaurus": 2, "Hyper Hammerhead": 2, "Element Saurus": 2, "Fossil Excavation": 2}},
 	# Jaden's best deck: Neos, the Neo-Spacians and Contact Fusion, with the first Elemental HEROes behind them (v0.33.32).
 	"jaden": {"out": ["Celtic Guardian"], "in": {"Elemental HERO Bladedge": 1},
-		"main": {"Elemental HERO Neos": 3, "Neo-Spacian Grand Mole": 2, "Neo-Spacian Aqua Dolphin": 1, "Neo-Spacian Flare Scarab": 1, "Neo-Spacian Air Hummingbird": 1,
-			"Neo-Spacian Glow Moss": 1, "Neo-Spacian Dark Panther": 1, "Elemental HERO Sparkman": 2, "Elemental HERO Avian": 1, "Elemental HERO Burstinatrix": 1,
-			"Elemental HERO Clayman": 1, "Elemental HERO Bubbleman": 1, "Elemental HERO Wildheart": 1, "Elemental HERO Bladedge": 1, "Elemental HERO Necroshade": 1,
-			"Card Trooper": 1, "Winged Kuriboh": 1,
-			"Polymerization": 2, "Miracle Fusion": 1, "Fake Hero": 2, "O - Oversoul": 2, "E - Emergency Call": 2, "Neo Space": 2, "Instant Neo Space": 1,
-			"Pot of Greed": 1, "Monster Reborn": 1,
-			"Hero Signal": 2, "A Hero Emerges": 1, "Negate Attack": 1, "Draining Shield": 1},
-		"extra": {"Elemental HERO Grand Neos": 1, "Elemental HERO Flare Neos": 1, "Elemental HERO Glow Neos": 1, "Elemental HERO Air Neos": 1, "Elemental HERO Aqua Neos": 1,
-			"Elemental HERO Dark Neos": 1, "Elemental HERO Magma Neos": 1, "Elemental HERO Storm Neos": 1, "Elemental HERO Flame Wingman": 1,
-			"Elemental HERO Shining Flare Wingman": 1, "Elemental HERO Thunder Giant": 1, "Elemental HERO Tempest": 1, "Elemental HERO Rampart Blaster": 1,
-			"Elemental HERO Wildedge": 1, "Elemental HERO Necroid Shaman": 1}},
+		# Jaden's best deck: Neos with the Neo-Spacians and Contact Fusions, the Elemental HEROes for Polymerization (v0.33.32).
+		"main": {"Elemental HERO Neos": 3, "Neo-Spacian Grand Mole": 2, "Neo-Spacian Aqua Dolphin": 1, "Neo-Spacian Flare Scarab": 1, "Neo-Spacian Air Hummingbird": 1, "Neo-Spacian Glow Moss": 1, "Neo-Spacian Dark Panther": 1, "Elemental HERO Sparkman": 2, "Elemental HERO Avian": 1, "Elemental HERO Burstinatrix": 1, "Elemental HERO Clayman": 1, "Elemental HERO Bubbleman": 1, "Elemental HERO Wildheart": 1, "Elemental HERO Bladedge": 1, "Elemental HERO Necroshade": 1, "Card Trooper": 1, "Winged Kuriboh": 1, "Polymerization": 2, "Miracle Fusion": 1, "Fake Hero": 2, "O - Oversoul": 2, "E - Emergency Call": 2, "Neo Space": 2, "Instant Neo Space": 1, "Pot of Greed": 1, "Monster Reborn": 1, "Hero Signal": 2, "A Hero Emerges": 1, "Negate Attack": 1, "Draining Shield": 1},
+		"extra": {"Elemental HERO Grand Neos": 1, "Elemental HERO Flare Neos": 1, "Elemental HERO Glow Neos": 1, "Elemental HERO Air Neos": 1, "Elemental HERO Aqua Neos": 1, "Elemental HERO Dark Neos": 1, "Elemental HERO Magma Neos": 1, "Elemental HERO Storm Neos": 1, "Elemental HERO Flame Wingman": 1, "Elemental HERO Shining Flare Wingman": 1, "Elemental HERO Thunder Giant": 1, "Elemental HERO Tempest": 1, "Elemental HERO Rampart Blaster": 1, "Elemental HERO Wildedge": 1, "Elemental HERO Necroid Shaman": 1}},
 	"chazz": {"out": ["Dragon Treasure", "Rush Recklessly"], "in": {"Masked Dragon": 2, "V-Tiger Jet": 1},
 		# Chazz's best deck: the Armed Dragons up to LV10, the Ojamas with Ojama King, and VWXYZ (v0.33.35).
 		"main": {"Armed Dragon LV3": 3, "Armed Dragon LV5": 2, "Armed Dragon LV7": 2, "Armed Dragon LV10": 1, "Masked Dragon": 2, "X-Head Cannon": 2, "Y-Dragon Head": 2, "Z-Metal Tank": 2, "V-Tiger Jet": 1, "W-Wing Catapult": 1, "Ojama Yellow": 2, "Ojama Green": 2, "Ojama Black": 2, "Chthonian Soldier": 1, "Level Up!": 2, "Ojamagic": 2, "Ojama Delta Hurricane!!": 1, "Ojamuscle": 1, "Polymerization": 2, "Pot of Greed": 1, "Monster Reborn": 1, "Mystical Space Typhoon": 2, "Heavy Storm": 1, "Call of the Haunted": 1, "Ring of Destruction": 1},
