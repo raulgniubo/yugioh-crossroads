@@ -270,6 +270,32 @@ func _debug_args() -> void:
 			var menu := get_tree().current_scene
 			if what == "select":
 				menu._on_free_duel()
+			elif what == "daily-play":
+				# Straight into today's duel, the way the Free Duel card starts it.
+				menu_open = "select"
+				duel_config = (Knockout.daily()["cfg"] as Dictionary).duplicate(true)
+				go(DUEL)
+			elif what.begins_with("knockout-play"):
+				# A fresh bracket and straight into its first duel (with --end-test --auto-story it
+				# comes back to the bracket by itself).
+				Knockout.start(int(what.get_slice(":", 1)) if ":" in what else 1)
+				menu_open = "knockout"
+				duel_config = Knockout.duel_config()
+				go(DUEL)
+			elif what.begins_with("knockout"):
+				# --open=knockout            the setup, or the bracket on disk
+				# --open=knockout:2:wwl      a fresh Normal bracket, two wins played, the last one shown coming in
+				var kp := what.split(":")
+				var last := ""
+				if kp.size() >= 2:
+					Knockout.start(int(kp[1]))
+					var marks := kp[2] if kp.size() >= 3 else ""
+					for i in marks.length():
+						if i == marks.length() - 1:
+							last = "won" if marks[i] == "w" else "lost"
+						else:
+							Knockout.report(marks[i] == "w")
+				menu._on_knockout(last)
 			elif what.begins_with("academy"):
 				Academy.load_data()
 				if what != "academy":

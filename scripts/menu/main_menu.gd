@@ -39,7 +39,13 @@ func _ready() -> void:
 	Router.roam["story"] = ""
 	if Router.menu_open == "select":
 		Router.menu_open = ""
+		Router.story_result = ""
 		_on_free_duel.call_deferred()
+	elif Router.menu_open == "knockout":
+		Router.menu_open = ""
+		var res := Router.story_result
+		Router.story_result = ""
+		_on_knockout.call_deferred(res)
 	elif Router.menu_open == "academy":
 		Router.menu_open = ""
 		_on_academy.call_deferred()
@@ -789,14 +795,35 @@ func _on_academy() -> void:
 			_items[0].grab_focus())
 
 
+## The Free Duel Knockout: the bracket. `result` is "won" / "lost" when you are back from one of
+## its duels, so the round can be settled on screen.
+func _on_knockout(result: String) -> void:
+	var ks := KnockoutScreen.new()
+	ks.result = result
+	ks.z_index = 100
+	add_child(ks)
+	_panel_open = true
+	ks.start.connect(func(cfg):
+		Router.menu_open = "knockout"
+		Router.match_state = {}
+		Router.duel_config = cfg
+		Router.go(Router.DUEL))
+	ks.closed.connect(_on_free_duel)
+
+
 func _on_free_duel() -> void:
 	var cs := CharacterSelect.new()
 	cs.z_index = 100
 	add_child(cs)
 	_panel_open = true
 	cs.start.connect(func(cfg):
+		if cfg.has("daily"):
+			Router.menu_open = "select"      # the duel of the day comes back here
 		Router.duel_config = cfg
 		Router.go(Router.DUEL))
+	cs.knockout.connect(func():
+		cs.queue_free()
+		_on_knockout(""))
 	cs.closed.connect(func():
 		_panel_open = false
 		if _items.size() > 1:

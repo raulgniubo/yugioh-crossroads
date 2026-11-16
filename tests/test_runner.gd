@@ -32,6 +32,7 @@ func _ready() -> void:
 	if stress != "":
 		CardData.load_external(stress)
 		var all: Array = Characters.ORDER.filter(func(k): return CardData.has_deck(Characters.DATA[k]["deck"]))
+		_test_knockout()
 		var n := 0
 		for seed in int(OS.get_environment("STRESS_GAMES")) if OS.get_environment("STRESS_GAMES") != "" else 48:
 			var a: String = Characters.DATA[all[seed % all.size()]]["deck"]
@@ -2242,3 +2243,46 @@ func _test_batch_34() -> void:
 	s._special(0, arch2, "effect")
 	EffectRunner.on_summon(s, 0, arch2, "special")
 	check(s.players[0].deck.has(inf2), "Special Summoned while there is a card in hand: no search")
+
+
+## The Free Duel Knockout: the bracket fills round by round and ends with one champion, whether
+## you win it or go out; the duel of the day is the same all day and has a deck for both sides.
+func _test_knockout() -> void:
+	Knockout._loaded = true
+	Knockout.no_save = true
+	check(Knockout.can_enter(), "with a card folder there are enough duelists for a bracket")
+	for d in [1, 2, 3]:
+		Knockout.start(d)
+		var seeds: Array = Knockout.state["seeds"]
+		check(seeds.size() == 8 and seeds.count("player") == 1, "eight seats, one of them yours")
+		var uniq := {}
+		for k in seeds:
+			uniq[k] = true
+		check(uniq.size() == 8, "nobody is drawn twice")
+		check(Knockout.opponent() != "" and Knockout.opponent() != "player", "you have somebody to duel in round one")
+		check(int(Knockout.duel_config()["difficulty"]) == d, "the first rounds are at the level you picked")
+		var a := Knockout.report(true)
+		check(str(a["champion"]) == "" and (Knockout.state["wins"][0] as Array).size() == 4 and Knockout.round_name() == "Semifinal", "a win in the quarterfinal: four go through, you among them")
+		check((Knockout.state["wins"][0] as Array).has("player"), "you are in the semifinal")
+		Knockout.report(true)
+		check(str(Knockout.duel_config()["field"]) == "kaibacorp" and int(Knockout.duel_config()["difficulty"]) == mini(3, d + 1), "the final is in the Duel Dome, one step harder")
+		var c := Knockout.report(true)
+		check(str(c["champion"]) == "player" and int(c["prize"]) == int(Knockout.PRIZES[d]) and int(c["cup"]) == d, "three wins take the cup and its prize")
+		check(not Knockout.running() and Knockout.champion() == "player", "the bracket is over")
+	Knockout.start(2)
+	Knockout.report(true)
+	var out := Knockout.report(false)
+	var beat_me := str((Knockout.state["wins"][1] as Array).filter(func(k): return true)[0])
+	check(str(out["champion"]) != "" and str(out["champion"]) != "player" and int(out["prize"]) == 100, "out in the semifinal: somebody else takes it, and one won round pays 100")
+	check((Knockout.state["wins"][2] as Array).size() == 1 and not (Knockout.state["wins"][1] as Array).has("player") and beat_me != "", "the rest of the bracket is played out")
+	check(Knockout.report(true)["champion"] == "", "a finished bracket takes no more results")
+	Knockout.clear()
+	check(not Knockout.has_bracket(), "a cleared bracket is gone")
+	var day := Knockout.daily()
+	var again := Knockout.daily()
+	check(not day.is_empty() and str(day["opponent"]) == str(again["opponent"]) and str(day["twist"]["id"]) == str(again["twist"]["id"]), "the duel of the day is the same all day")
+	check(CardData.has_deck(str(day["cfg"]["player_deck"])) and Characters.available(str(day["opponent"])), "the duel of the day has a deck on both sides")
+	# Every twist gives a duel that can be set up.
+	for tw in Knockout.TWISTS:
+		check(str(tw["name"]) != "" and str(tw["text"]) != "", "twist %s has a name and a line" % str(tw["id"]))
+	Knockout.no_save = false

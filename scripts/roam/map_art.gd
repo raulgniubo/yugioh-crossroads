@@ -51,7 +51,7 @@ static func face(key: String) -> Texture2D:
 
 
 ## A round portrait marker with a ring.
-static func token(ci: CanvasItem, at: Vector2, r: float, key: String, ring: Color, fallback := Color("ffd166")) -> void:
+static func token(ci: CanvasItem, at: Vector2, r: float, key: String, ring: Color, fallback := Color("ffd166"), zoom := 1.0) -> void:
 	ci.draw_circle(at + Vector2(0, 2), r + 3.5, Color(0, 0, 0, 0.45))
 	ci.draw_circle(at, r + 2.5, ring)
 	ci.draw_circle(at, r, INK)
@@ -60,9 +60,9 @@ static func token(ci: CanvasItem, at: Vector2, r: float, key: String, ring: Colo
 		ci.draw_circle(at, r - 1.0, fallback)
 		return
 	var ts := Vector2(t.get_size())
-	var side := minf(ts.x, ts.y)
-	# The face sits in the upper middle of a portrait.
-	var o := Vector2((ts.x - side) / 2.0, (ts.y - side) * 0.12) / ts
+	var side := minf(ts.x, ts.y) / zoom
+	# The face sits in the upper middle of a portrait (zoom > 1 goes in on the head).
+	var o := Vector2((ts.x - side) / 2.0, (ts.y - side) * (0.12 if zoom <= 1.0 else 0.42)) / ts
 	var sc := Vector2(side, side) / ts
 	var pts := PackedVector2Array()
 	var uvs := PackedVector2Array()

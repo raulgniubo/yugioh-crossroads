@@ -709,6 +709,9 @@ func _finish() -> void:
 		# Free Duel: the medals this win earned against them (each pays once).
 		if won and not _surrendered and not Router.duel_config.has("return_to") and not Router.duel_config.get("story", false):
 			earned += Collection.award_medals(_opp_key, {"low": _my_low, "my_turns": _my_turns, "my_start": int(_start_lp[ME]), "their_start": int(_start_lp[AI])})
+		# The duel of the day pays the first time it is won that day.
+		if won and not _surrendered and Router.duel_config.has("daily"):
+			earned += Knockout.daily_win(str(Router.duel_config["daily"]))
 		var got := Collection.note_result(_opp_key, won and not _surrendered)
 		if got != "":
 			Router.toast(Loc.t("Third win over %s: their deck is now in My Decks.") % str(Characters.get_char(_opp_key).get("short", _opp_key)))

@@ -5,6 +5,17 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.17
+
+**Two more things to do in Free Duel: the Duel of the day and the Knockout.** Both are at the top of the Free Duel screen, next to the title.
+
+- **Duel of the day.** One set duel that is the same all day and changes at midnight: one duelist you have met, one twist. Seven twists: Sudden death (both at 4000 Life Points), Marathon (both at 16000), Full hands (7 cards each), No mercy (Hard, no Destiny Draw), On the back foot (they go first), Borrowed deck (you play another duelist's deck), Mirror match (you both play theirs). The first win of the day pays 300 Duel Points on top of the normal reward; you can replay it, it pays once. The card shows who, the twist, and a tick when it is done.
+- **Knockout.** Eight duelists, three rounds, lose once and you are out. Pick Easy, Normal or Hard (Bronze, Silver, Gold cup: 600, 1000, 1500 Duel Points). Seven duelists are drawn against you, the ones you have met first. A bracket screen shows everybody with their face: after each of your duels the other results come in one by one, your path is in gold, the ones who are out fade. The quarterfinal is on your opponent's own field, the semifinal in the Academy arena, the final in the Duel Dome with the stands, and the final is one step harder. Out early still pays 100 Duel Points per round you won, and the bracket is played to its end so you see who took it. You can leave between rounds: it is saved. Cups you win are counted on the button.
+- It is called Knockout so it is not mixed up with the four world Tournaments on the main menu (those need badges from duels out in the world). This one starts on the spot.
+- 56 more lines in Spanish. New tests for the bracket and the daily duel.
+
+Not done or not checked: the other matches of a bracket are decided by a coin flip, not played. I ran one bracket duel end to end with a forced win (back to the bracket, round settled) and one Duel of the day (the +300 line shows, the save has it); I did not play three real duels through to a cup: the cup moment (confetti, the prize line, the cup counted) was seen with the results forced. The seven twists use settings the duel already had; I only watched one of them start (Full hands). Not played on a Mac.
+
 ## What is in 0.33.16
 
 **A first deck you choose, and medals in Free Duel.**

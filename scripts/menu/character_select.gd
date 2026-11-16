@@ -6,6 +6,7 @@ extends Control
 
 signal start(config: Dictionary)
 signal closed
+signal knockout          # the Knockout button: the menu swaps this screen for the bracket
 
 const W := 1920.0
 const H := 1080.0
@@ -109,6 +110,7 @@ func _ready() -> void:
 	_build_slots()
 	_build_setup()
 	_build_tabs()
+	_build_extras()
 	_grid = GridContainer.new()
 	# Nine across, three rows: the roster owns the bottom left and never reaches the setup
 	# column on the right.
@@ -454,6 +456,64 @@ func _refresh_picker() -> void:
 		rl.text = "▼   " + (Loc.t("PICKING YOUR DUELIST") if side == "me" else Loc.t("PICKING YOUR OPPONENT")) + "   ▼"
 		rl.add_theme_color_override("font_color", Comic.INK if col2.get_luminance() > 0.45 else Color.WHITE)
 		(_slots[side]["tag_bg"] as Control).position.y = 52.0 if on2 else 16.0
+
+
+## Next to the title: today's set duel, and the way into the Knockout.
+func _build_extras() -> void:
+	var day := Knockout.daily()
+	if not day.is_empty():
+		var done := Knockout.daily_done()
+		var opp := str(Characters.get_char(str(day["opponent"])).get("short", ""))
+		var tw: Dictionary = day["twist"]
+		var text := Loc.t(str(day["text"]))
+		if text.contains("%s"):
+			text = text % str(Characters.get_char(str(day["lender"])).get("short", ""))
+		var b := _extra_button(Vector2(590, 22), Vector2(372, 80), UITheme.GOLD,
+				Loc.t("DUEL OF THE DAY") + ("   ✓" if done else "   +%d" % Knockout.DAILY_REWARD),
+				"%s  ·  %s" % [Loc.t("vs %s") % opp, Loc.t(str(tw["name"]))],
+				Loc.t("Won today. A new one tomorrow.") if done else text)
+		b.tooltip_text = "%s\n%s" % [text, (Loc.t("Already won today: you can play it again, it pays once a day.") if done
+				else Loc.t("Win it for %d Duel Points. It pays once a day, and it changes at midnight.") % Knockout.DAILY_REWARD)]
+		b.pressed.connect(func():
+			if _starting:
+				return
+			_starting = true
+			Router.match_state = {}
+			Sfx.play("quest", -6.0)
+			start.emit((Knockout.daily()["cfg"] as Dictionary).duplicate(true)))
+	var held: Dictionary = Collection.record.get("trophies", {})
+	var cups := int(held.get("1", 0)) + int(held.get("2", 0)) + int(held.get("3", 0))
+	var line := Loc.t("Bracket of 8")
+	if Knockout.running():
+		line = Loc.t("%s next") % Loc.t(Knockout.round_name())
+	var k := _extra_button(Vector2(970, 22), Vector2(190, 80), UITheme.ACCENT, Loc.t("KNOCKOUT"), line, (Loc.t("Cups: %d") % cups) if cups > 0 else Loc.t("Win a cup"))
+	k.tooltip_text = Loc.t("Eight duelists, three rounds. Lose once and you are out.")
+	k.pressed.connect(func():
+		if _starting:
+			return
+		Sfx.play("click")
+		knockout.emit())
+
+
+func _extra_button(at: Vector2, sz: Vector2, col: Color, head: String, mid: String, foot: String) -> Button:
+	var b := Button.new()
+	b.position = at
+	b.size = sz
+	b.clip_contents = true
+	for st in ["normal", "hover", "pressed", "focus"]:
+		var sb := UITheme.button_box(Color(0.05, 0.08, 0.15, 0.96) if st != "hover" else Color(col.darkened(0.7), 0.98), col if st in ["hover", "focus"] else Color(col, 0.5), 14)
+		sb.set_border_width_all(2)
+		b.add_theme_stylebox_override(st, sb)
+	var rows := [[head, 15, col, UITheme.semi_font(), 7.0], [mid, 21, Color.WHITE, UITheme.title_font(), 25.0], [foot, 14, UITheme.TEXT_DIM, null, 54.0]]
+	for r in rows:
+		var l := UITheme.label(str(r[0]), int(r[1]), r[2], r[3])
+		l.position = Vector2(14, float(r[4]))
+		l.size = Vector2(sz.x - 24.0, 24)
+		l.clip_text = true
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(l)
+	_root.add_child(b)
+	return b
 
 
 func _build_tabs() -> void:
