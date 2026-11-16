@@ -119,6 +119,42 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Kaiba's, Joey's and Yugi's (v0.33.36)
+	"Release Restraint": {"k": "normal", "ai": "always", "cost": "tribute_f", "cost_f": {"name": "Gearfried the Iron Knight"}, "cond": "swordmaster_ready", "do": [["special_named", "Gearfried the Swordmaster", ["hand", "deck"]]]},
+	"Knight's Title": {"k": "normal", "ai": "always", "cost": "tribute_f", "cost_f": {"name": "Dark Magician"}, "do": [["special_named", "Dark Magician Knight", ["hand", "deck", "gy"]]]},
+	# ---------------------------------------------------------------- Marik's cards (v0.33.36)
+	"Coffin Seller": {"k": "ctrap", "win": ["free"], "ai": "always"},
+	"Metal Reflect Slime": {"k": "trap", "win": ["free", "attack"], "do": [["tokens", 1, "Metal Reflect Slime", 26905246, 0, 3000, 10, "WATER", "Aqua", "free"]]},
+	# ---------------------------------------------------------------- Mai's cards (v0.33.36)
+	"Harpie Lady Phoenix Formation": {"k": "normal", "cond": "three_harpies", "do": [["phoenix_formation"]]},
+	"Triangle Ecstasy Spark": {"k": "normal", "cond": "own_sisters", "do": [["triangle_spark"]]},
+	"Hysteric Party": {"k": "trap", "win": ["free"], "cost": "discard", "cond": "harpie_in_gy", "do": [["hysteric_party"]]},
+	"Amazoness Archers": {"k": "trap", "win": ["attack"], "cond": "own_amazoness", "do": [["archers"]]},
+	# ---------------------------------------------------------------- Rex's cards (v0.33.36)
+	"Ultra Evolution Pill": {"k": "normal", "cost": "tribute_f", "cost_f": {"race": "Reptile"}, "cond": "dino_in_hand", "do": [["special_from_hand", {"race": "Dinosaur"}, "atk"]]},
+	"Tail Swipe": {"k": "normal", "cond": "own_big_dino", "do": [["tail_swipe"]]},
+	# ---------------------------------------------------------------- Aster's cards (v0.33.36)
+	"Clock Tower Prison": {"k": "field", "ai": "always", "ctp": true, "standby_opp": [["ctp_tick", 1]]},
+	"Eternal Dread": {"k": "trap", "win": ["free"], "cond": "own_ctp", "do": [["ctp_tick", 2]]},
+	"D - Chain": {"k": "trap", "win": ["free"], "t": "own_face", "must_has": "Destiny HERO", "equip": true, "atk": 500, "kill_burn": 500},
+	# ---------------------------------------------------------------- Crow's cards (v0.33.36)
+	"Black Sonic": {"k": "trap", "win": ["attack"], "cond": "attack_on_blackwing", "do": [["black_sonic"]]},
+	"Delta Crow - Anti Reverse": {"k": "trap", "win": ["free"], "cond": "own_blackwing", "do": [["destroy_opp_set_st"]]},
+	"Black Thunder": {"k": "trap", "win": [], "battle_death": true, "cond": "blackwing_died", "do": [["black_thunder"]]},
+	"Cards for Black Feathers": {"k": "normal", "cost": "banish_hand_f", "cost_f": {"has": "Blackwing"}, "do": [["draw", 2], ["no_more_summons"]]},
+	# ---------------------------------------------------------------- Akiza's cards (v0.33.36)
+	"Mark of the Rose": {"k": "equip", "t": "opp_face", "control": true, "cost": "banish_gy_f", "cost_f": {"race": "Plant"}},
+	# ---------------------------------------------------------------- Kalin's cards (v0.33.36)
+	"ZERO-MAX": {"k": "normal", "ai": "always", "cond": "zero_max", "do": [["zero_max"]]},
+	"Infernity Reflector": {"k": "trap", "win": [], "battle_death": true, "cond": "reflector", "do": [["reflector"]]},
+	"Full Salvo": {"k": "trap", "win": ["free"], "cond": "own_hand", "do": [["full_salvo"]]},
+	# ---------------------------------------------------------------- Vector's cards (v0.33.36)
+	"Vain Betrayer": {"k": "trap", "win": ["attack"], "cond": "opp_xyz_attacks", "do": [["vain"]]},
+	# ---------------------------------------------------------------- Shark's cards (v0.33.36)
+	"Poseidon Wave": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["poseidon"]]},
+	# ---------------------------------------------------------------- Yuma's cards (v0.33.36)
+	"Gagagatag": {"k": "normal", "ai": "always", "cond": "two_gagaga", "do": [["gagagatag"]]},
+	"Xyz Gift": {"k": "normal", "ai": "always", "cond": "xyz_gift", "do": [["xyz_gift"]]},
 	# ---------------------------------------------------------------- Jack's cards (v0.33.36)
 	"Resonator Call": {"k": "normal", "ai": "always", "do": [["search", {"has": "Resonator", "monster": true}]]},
 	"Scarlet Security": {"k": "normal", "ai": "always", "cond": "own_rda", "do": [["destroy", "opp_st"]]},
@@ -437,6 +473,8 @@ static func _derive(c) -> Dictionary:
 
 ## True when this card is locked out by Royal Decree / Imperial Order.
 static func blocked(s: DuelState, c) -> bool:
+	if c.is_trap() and s.players[c.owner].has_meta("trap_lock") and int(s.players[c.owner].get_meta("trap_lock")) == s.turn:
+		return true   # Triangle Ecstasy Spark
 	if c.tags.get("neo_neg", false):
 		return true   # Neo Galaxy-Eyes Photon Dragon negated it when it arrived
 	# Photon Cerberus: no Trap Cards on the turn it was Normal Summoned, while it is face-up.
@@ -644,6 +682,48 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return s.players[p].hand.is_empty()
 		"level_up":
 			return not _lv_ready(s, p).is_empty()
+		"swordmaster_ready":
+			return not (s.players[p].hand + s.players[p].deck).filter(func(x): return x.cname() == "Gearfried the Swordmaster").is_empty()
+		"three_harpies":
+			return _harpies(s, p).size() >= 3 and not s.players[s.opponent(p)].monsters().is_empty()
+		"own_sisters":
+			return not s.players[p].monsters().filter(func(m): return m.face_up and m.cname() == "Harpie Lady Sisters").is_empty()
+		"harpie_in_gy":
+			return s.players[p].free_zone() != -1 and not s.players[p].gy.filter(func(g): return g.cname() == "Harpie Lady" or str(CardEffects.of(g.cname()).get("name_as_fg", "")) == "Harpie Lady").is_empty()
+		"own_amazoness":
+			return not s.players[p].monsters().filter(func(m): return m.face_up and m.cname().contains("Amazoness")).is_empty()
+		"dino_in_hand":
+			return not s.players[p].hand.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Dinosaur" and not CardEffects.of(h.cname()).get("no_special", false)).is_empty()
+		"own_big_dino":
+			return not s.players[p].monsters().filter(func(m): return m.face_up and m.level() >= 5 and str(m.data.get("race", "")) == "Dinosaur").is_empty() \
+					and not s.players[s.opponent(p)].monsters().is_empty()
+		"own_ctp":
+			return s.players[p].field_spell != null and s.players[p].field_spell.face_up and spec(s.players[p].field_spell).get("ctp", false)
+		"attack_on_blackwing":
+			return not s.pending_attack.is_empty() and s.pending_attack["player"] != p and s.pending_attack["target"] != null \
+					and s.pending_attack["target"].face_up and s.pending_attack["target"].cname().contains("Blackwing") and s.players[p].field.has(s.pending_attack["target"])
+		"own_blackwing":
+			return not s.players[p].monsters().filter(func(m): return m.face_up and m.cname().contains("Blackwing")).is_empty() \
+					and not s.players[s.opponent(p)].set_cards().filter(func(x): return not x.face_up).is_empty()
+		"blackwing_died":
+			var dead_b = s.get_meta("battle_dead") if s.has_meta("battle_dead") else null
+			return dead_b != null and dead_b.owner == p and dead_b.cname().contains("Blackwing")
+		"zero_max":
+			return s.players[p].hand.filter(func(h): return h != null).size() <= 1 and s.players[p].free_zone() != -1 \
+					and not s.players[p].gy.filter(func(g): return g.cname().contains("Infernity") and g.is_monster() and s.can_revive(g)).is_empty()
+		"reflector":
+			var dead = s.get_meta("battle_dead") if s.has_meta("battle_dead") else null
+			return dead != null and dead.cname().contains("Infernity") and s.players[p].gy.has(dead)
+		"opp_xyz_attacks":
+			return not s.pending_attack.is_empty() and s.pending_attack["player"] != p and s.pending_attack["attacker"].frame() == "xyz"
+		"two_gagaga":
+			return s.players[p].monsters().filter(func(m): return m.face_up and m.cname().contains("Gagaga")).size() >= 2 and int(s.players[p].once_names.get("Gagagatag", -1)) != s.turn
+		"xyz_gift":
+			var xyzs: Array = s.players[p].monsters().filter(func(m): return m.face_up and m.frame() == "xyz")
+			var mats := 0
+			for m in xyzs:
+				mats += m.overlays.size()
+			return xyzs.size() >= 2 and mats >= 2
 		"own_rda":
 			return not s.players[p].monsters().filter(func(m): return m.face_up and (m.cname() == "Red Dragon Archfiend" or str(CardEffects.of(m.cname()).get("name_as", "")) == "Red Dragon Archfiend")).is_empty() \
 					and not (s.players[s.opponent(p)].set_cards().is_empty() and s.players[s.opponent(p)].field_spell == null)
@@ -940,6 +1020,10 @@ static func _can_pay(s: DuelState, p: int, c, sp: Dictionary) -> bool:
 		return not ps.hand.filter(func(h): return h != c and CardEffects.matches(h.data, sp.get("cost_f", {}))).is_empty()
 	if cost == "detach_any":
 		return not ps.monsters().filter(func(m): return m.face_up and not m.overlays.is_empty()).is_empty()
+	if cost == "banish_hand_f":
+		return not ps.hand.filter(func(h): return h != c and CardEffects.matches(h.data, sp.get("cost_f", {}))).is_empty()
+	if cost == "banish_gy_f":
+		return not ps.gy.filter(func(g): return CardEffects.matches(g.data, sp.get("cost_f", {}))).is_empty()
 	if cost == "tribute_f":
 		return not ps.monsters().filter(func(m): return m.face_up and s.can_tribute_fx(m) and CardEffects.matches(m.data, sp.get("cost_f", {}))).is_empty()
 	return true
@@ -970,6 +1054,15 @@ static func pay_cost(s: DuelState, p: int, c, sp: Dictionary) -> Array:
 		var n := ps.lp / 2
 		ps.lp -= n
 		events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": -n})
+	elif cost == "banish_hand_f":
+		var fit_h: Array = ps.hand.filter(func(h): return h != c and CardEffects.matches(h.data, sp.get("cost_f", {})))
+		if not fit_h.is_empty():
+			events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish 1 card from your hand as the cost") % c.cname(), fit_h, fit_h[0], c)))
+	elif cost == "banish_gy_f":
+		# Mark of the Rose: "Activate this card by banishing 1 Plant monster from your GY".
+		var fit_b: Array = ps.gy.filter(func(g): return CardEffects.matches(g.data, sp.get("cost_f", {})))
+		if not fit_b.is_empty():
+			events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish 1 card from your Graveyard as the cost") % c.cname(), fit_b, fit_b[0], c)))
 	elif cost == "discard_f":
 		# "Send 1 monster from your hand to the GY" / "Discard 1 Dragon Tuner with 1000 or less ATK".
 		var fit: Array = ps.hand.filter(func(h): return h != c and CardEffects.matches(h.data, sp.get("cost_f", {})))
@@ -1036,11 +1129,15 @@ static func targets(s: DuelState, p: int, c) -> Array:
 				"any_fusion": ok = m.face_up and m.frame() == "fusion"
 			if ok and m.face_up and ((s.dragon_shield() and str(m.data.get("race", "")) == "Dragon") or (not m.negated and CardEffects.of(m.cname()).get("untargetable", false))):
 				ok = false   # Lord of D. shields Dragons; Obelisk cannot be targeted
+			if ok and m.has_meta("zw_untarget_owner") and m.owner != p:
+				ok = false   # ZW - Tornado Bringer
 			if ok and m.face_up and str(m.data.get("race", "")) == "Machine" \
 					and not s.players[m.owner].monsters().filter(func(x): return x.face_up and x.attack_pos and not x.negated and CardEffects.of(x.cname()).get("machine_guard", false)).is_empty():
 				ok = false   # Cyber Phoenix: a Spell/Trap that targets 1 Machine its controller has does nothing
 			if ok and sp.get("must_xyz_empty", false) and not (m.frame() == "xyz" and m.overlays.is_empty()):
 				ok = false   # "1 face-up Xyz Monster on the field that has no Xyz Material" (Galaxy Storm)
+			if ok and sp.has("must_has") and not m.cname().contains(str(sp["must_has"])):
+				ok = false   # "Target 1 "Destiny HERO" monster you control" (D - Chain)
 			if ok and sp.get("must_rose", false) and not (m.cname() == "Black Rose Dragon" or str(m.data.get("race", "")) == "Plant"):
 				ok = false   # "Equip only to "Black Rose Dragon" or a Plant-Type monster" (Thorn of Malice)
 			if ok and sp.get("must_effect", false) and not EffectRunner._is_effect_monster(m):
@@ -2174,6 +2271,153 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			for t in _sel(s, p, c, "target", ctx):
 				events.append_array(s._damage(s.opponent(p), t.atk() / 2))
 			ps.no_attack_turn = s.turn
+		"phoenix_formation":
+			# Harpie Lady Phoenix Formation: destroy up to as many of their monsters as you control Harpie Ladies (and Sisters), then
+			# damage equal to the highest original ATK among them. "You cannot ... conduct your Battle Phase, the turn you activate this card."
+			var n_h := _harpies(s, p).size()
+			var opp_h := s.players[s.opponent(p)]
+			var foes: Array = opp_h.monsters().filter(func(m): return EffectRunner.can_target(c, m))
+			foes.sort_custom(func(x, y): return x.atk() > y.atk())
+			var top_h := 0
+			for m in foes.slice(0, n_h):
+				var o_atk: int = m.atk()
+				events.append_array(s._destroy(m))
+				if not opp_h.field.has(m):
+					top_h = maxi(top_h, o_atk)
+			if top_h > 0:
+				events.append_array(s._damage(s.opponent(p), top_h))
+			ps.no_attack_turn = s.turn
+		"triangle_spark":
+			# Triangle Ecstasy Spark: "the ATK of all "Harpie Lady Sisters" currently on the field becomes 2700, your opponent cannot
+			# activate any Trap Cards, also negate all your opponent's Trap effects on the field" (this turn).
+			for q in 2:
+				for m in s.players[q].monsters():
+					if m.face_up and m.cname() == "Harpie Lady Sisters":
+						if m.atk_mod_turn != s.turn:
+							m.atk_mod_t = 0
+						m.atk_mod_turn = s.turn
+						m.atk_mod_t += 2700 - s.atk_of(m, false)
+			s.players[s.opponent(p)].set_meta("trap_lock", s.turn)
+		"hysteric_party":
+			# Hysteric Party: "Special Summon as many copies of "Harpie Lady" as possible from your Graveyard."
+			for g in ps.gy.duplicate():
+				if ps.free_zone() == -1:
+					break
+				if (g.cname() == "Harpie Lady" or str(CardEffects.of(g.cname()).get("name_as_fg", "")) == "Harpie Lady") and s.can_revive(g):
+					ps.gy.erase(g)
+					events.append_array(s._special(p, g, "reborn"))
+		"archers":
+			# Amazoness Archers: "Change all monsters your opponent currently controls to face-up Attack Position, they lose 500 ATK."
+			var opp_a := s.players[s.opponent(p)]
+			for m in opp_a.monsters():
+				m.face_up = true
+				m.attack_pos = true
+				m.atk_mod -= 500
+				events.append({"type": "position", "player": s.opponent(p), "card": m, "zone": opp_a.field.find(m)})
+		"tail_swipe":
+			# Tail Swipe: return up to 2 monsters your opponent controls with a lower Level than your Dinosaur, or face-down, to the hand.
+			var dinos: Array = ps.monsters().filter(func(m): return m.face_up and m.level() >= 5 and str(m.data.get("race", "")) == "Dinosaur")
+			if dinos.is_empty():
+				return events
+			var lv_t: int = dinos.map(func(m): return m.level()).max()
+			var back_t: Array = s.players[s.opponent(p)].monsters().filter(func(m): return not m.face_up or (m.frame() != "xyz" and m.level() < lv_t))
+			back_t.sort_custom(func(x, y): return (s.atk_of(x, false) if x.face_up else 1500) > (s.atk_of(y, false) if y.face_up else 1500))
+			for m in back_t.slice(0, 2):
+				events.append_array(s._bounce(m))
+		"ctp_tick":
+			# Clock Tower Prison: "Place 1 Clock Counter on this card" / Eternal Dread: "Place 2 Clock Counters on each "Clock Tower Prison"."
+			var ctp = c if spec(c).get("ctp", false) else ps.field_spell
+			if ctp != null and spec(ctp).get("ctp", false):
+				ctp.counter += int(a[1])
+				events.append({"type": "effect", "player": p, "card": ctp, "text": Loc.t("%s: Clock Counter %d") % [ctp.cname(), ctp.counter]})
+		"black_sonic":
+			# Black Sonic: "Banish all face-up Attack Position monsters your opponent controls."
+			var opp_b := s.players[s.opponent(p)]
+			for m in opp_b.monsters():
+				if m.face_up and m.attack_pos:
+					events.append_array(s._banish(m))
+			s.pending_attack["negated"] = true
+		"destroy_opp_set_st":
+			# Delta Crow - Anti Reverse: "Destroy all face-down Spells and Traps your opponent controls."
+			for st in s.players[s.opponent(p)].spells.duplicate():
+				if st != null and not st.face_up and not st.is_monster():
+					events.append_array(s._destroy_st(st))
+		"black_thunder":
+			# Black Thunder: "Inflict 400 damage to your opponent for each card your opponent controls."
+			var opp_t := s.players[s.opponent(p)]
+			var n_t: int = opp_t.monsters().size() + opp_t.set_cards().size() + (1 if opp_t.field_spell != null else 0)
+			events.append_array(s._damage(s.opponent(p), 400 * n_t))
+		"zero_max":
+			# ZERO-MAX: "Select 1 "Infernity" monster in your Graveyard. Special Summon it, and destroy all face-up monsters on the field
+			# with ATK lower than the Special Summoned monster's ATK. You cannot conduct your Battle Phase during the same turn."
+			var inf: Array = ps.gy.filter(func(g): return g.cname().contains("Infernity") and g.is_monster() and s.can_revive(g))
+			if inf.is_empty() or ps.free_zone() == -1:
+				return events
+			var top_z = inf[0]
+			for g in inf:
+				if g.atk() > top_z.atk():
+					top_z = g
+			top_z = s.pick1(p, Loc.t("%s: Special Summon which Infernity monster?") % c.cname(), inf, top_z, c)
+			ps.gy.erase(top_z)
+			events.append_array(s._special(p, top_z, "reborn"))
+			var cap_z: int = s.atk_of(top_z, false)
+			for q in [s.opponent(p), p]:
+				for m in s.players[q].monsters():
+					if m != top_z and m.face_up and s.atk_of(m, false) < cap_z:
+						events.append_array(s._destroy(m))
+			ps.no_attack_turn = s.turn
+		"reflector":
+			# Infernity Reflector: "discarding all the cards in your hand ... Special Summon that monster from your Graveyard, and inflict 1000 damage to your opponent."
+			for h in ps.hand.duplicate():
+				ps.hand.erase(h)
+				s._to_gy(ps, h)
+				events.append({"type": "discard", "player": p, "card": h})
+			var dead_r = s.get_meta("battle_dead") if s.has_meta("battle_dead") else null
+			if dead_r != null and ps.gy.has(dead_r) and ps.free_zone() != -1:
+				ps.gy.erase(dead_r)
+				events.append_array(s._special(p, dead_r, "reborn"))
+			events.append_array(s._damage(s.opponent(p), 1000))
+		"full_salvo":
+			# Full Salvo: "send your entire hand to the Graveyard. Inflict 200 damage to your opponent for each card."
+			var n_f := ps.hand.size()
+			for h in ps.hand.duplicate():
+				ps.hand.erase(h)
+				s._to_gy(ps, h)
+				events.append({"type": "discard", "player": p, "card": h})
+			events.append_array(s._damage(s.opponent(p), 200 * n_f))
+		"vain":
+			# Vain Betrayer: the attacking Xyz Monster "cannot attack, also its effects are negated" (the attack it declared is negated too).
+			if not s.pending_attack.is_empty():
+				var v_t = s.pending_attack["attacker"]
+				s.pending_attack["negated"] = true
+				v_t.tags["vain"] = true
+				v_t.neg_perm = true
+				v_t.negated = true
+				events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s can no longer attack and its effects are negated") % v_t.cname()})
+		"poseidon":
+			# Poseidon Wave: "inflict 800 damage to your opponent for each Fish, Sea Serpent, or Aqua-Type monster you control."
+			var n_p := ps.monsters().filter(func(m): return m.face_up and str(m.data.get("race", "")) in ["Fish", "Sea Serpent", "Aqua"]).size()
+			if n_p > 0:
+				events.append_array(s._damage(s.opponent(p), 800 * n_p))
+		"gagagatag":
+			# Gagagatag: "All "Gagaga" monsters you currently control gain 500 ATK for each "Gagaga" monster you currently control, until your next Standby Phase."
+			ps.once_names["Gagagatag"] = s.turn
+			var gg: Array = ps.monsters().filter(func(m): return m.face_up and m.cname().contains("Gagaga"))
+			for m in gg:
+				m.tmp_atk = (m.tmp_atk if m.tmp_until >= s.turn else 0) + 500 * gg.size()
+				m.tmp_until = s.turn + 1
+			events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s: +%d ATK for each Gagaga monster") % [c.cname(), 500 * gg.size()]})
+		"xyz_gift":
+			# Xyz Gift: "Detach 2 Xyz Materials from a monster you control and draw 2 cards."
+			var left := 2
+			var xyzs2: Array = ps.monsters().filter(func(m): return m.face_up and m.frame() == "xyz" and not m.overlays.is_empty())
+			xyzs2.sort_custom(func(x, y): return x.overlays.size() > y.overlays.size())
+			for m in xyzs2:
+				while left > 0 and not m.overlays.is_empty():
+					var o = m.overlays.pop_back()
+					s.players[o.owner].gy.append(o)
+					left -= 1
+			events.append_array(s._draw(p, 2))
 		"limiter_removal":
 			# Limiter Removal: "Double the ATK of all Machine monsters you currently control, until the end of
 			# this turn. During the End Phase of this turn, destroy those monsters."
@@ -2592,6 +2836,12 @@ static func equip_flag(s: DuelState, c, flag: String) -> bool:
 
 
 ## Can this monster declare an attack, as far as Spell/Trap cards are concerned?
+## Player p's face-up "Harpie Lady" and "Harpie Lady Sisters" (and monsters treated as Harpie Lady).
+static func _harpies(s: DuelState, p: int) -> Array:
+	return s.players[p].monsters().filter(func(m): return m.face_up and (m.cname() == "Harpie Lady" or m.cname() == "Harpie Lady Sisters" \
+			or str(CardEffects.of(m.cname()).get("name_as", "")) == "Harpie Lady" or str(CardEffects.of(m.cname()).get("name_as_fg", "")) == "Harpie Lady"))
+
+
 ## Player p's face-up monsters that are "Cyber Dragon" (Proto-Cyber Dragon counts on the field).
 static func _cyber_dragons(s: DuelState, p: int) -> Array:
 	return s.players[p].monsters().filter(func(m): return m.face_up and s.can_tribute_fx(m) and (m.cname() == "Cyber Dragon" or str(CardEffects.of(m.cname()).get("name_as", "")) == "Cyber Dragon"))
@@ -2795,6 +3045,7 @@ static func after_battle_death(s: DuelState, loser) -> Array:
 			continue
 		if s.choose_option(p, Loc.t("%s was destroyed by battle. Activate %s?") % [loser.cname(), st.cname()], ["Activate it", "No"], 0, st) != 0:
 			continue
+		s.set_meta("battle_dead", loser)
 		events.append_array(s.chain_add(p, st, null, "free"))
 		events.append_array(s.chain_resolve())
 		break

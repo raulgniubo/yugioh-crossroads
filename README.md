@@ -7,31 +7,39 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
 ## What is in 0.33.36
 
-**The deck pass.** Raul's rule: every duelist plays a deck they would really use, with their real boss monsters, no filler, strong enough to be fun to beat. Each deck below was tested on Hard before and after.
+**The deck pass, all 24 duelists.** Raul's rule: every duelist plays the deck they would really use, with their real boss monsters, their Synchros and Xyz, no generic filler, strong enough to be fun to beat. About 120 cards built for it, each against its card text, each with a test. The full lists are in "Crossroads - who plays what.md".
 
-### Jack
+### New things the engine can do
 
-**Resonators into Red Dragon Archfiend, then two more Tuners for Red Nova Dragon.** 6 cards built.
+- **Synchro with 2 Tuners** (Red Nova Dragon) and the **3-part Majestic Synchros** (Majestic Dragon + Stardust or Red Dragon Archfiend + 1 non-Tuner).
+- **Equipping monsters to monsters:** the ZW pieces on Utopia, Cyberdark dragons, Number 101's material steal, Dragoon Hunter style equips.
+- **3-Tribute summons** (Gilford the Lightning wipes their side), zone locks (Ojama King), blocked zones, races changed by DNA Surgery.
+- **New timing hooks:** Standby Phase marks (Viser Des), End Phase returns (Majestic, Red Nova, Number 62), "if this would be destroyed, X goes instead" (Number 61, ZW shields, Dark Highlander style guards), battle damage reflect (Number 96 / C96), attack-time negates (Victory, Unicorn Spear).
 
-- **The game can do a Synchro Summon with 2 Tuners now.** Red Nova Dragon (2 Tuners + Red Dragon Archfiend) gains 500 ATK for each Tuner in the Graveyard, cannot be destroyed by the opponent's card effects, and can banish itself to negate an attack, coming back in the End Phase.
-- **Scarlight Red Dragon Archfiend** counts as Red Dragon Archfiend and clears the Special Summoned Effect Monsters it out-muscles, 500 damage each. **Chain Resonator** and **Synkron Resonator** bring the second Tuner. **Resonator Call** finds one. **Scarlet Security** wipes the opponent's back row.
-- **Main, 40:** Dark Resonator x3, Flare Resonator x2, Creation Resonator x2, Chain Resonator x2, Synkron Resonator, Dread Dragon, Vice Dragon x3, Mad Archfiend x2, Big Piece Golem x2, Medium Piece Golem, Power Breaker x2, Strong Wind Dragon x2, Twin-Sword Marauder x2, Archfiend Interceptor, Battle Fader; Resonator Call x3, Scarlet Security, Monster Reborn, Pot of Greed, Mystical Space Typhoon; Fiendish Chain x2, Powerful Rebirth x2, Call of the Haunted, Half or Nothing. **Extra, 7:** Red Dragon Archfiend x2, Scarlight Red Dragon Archfiend, Red Nova Dragon x2, Exploder Dragonwing, Chaos King Archfiend.
-- On Hard: 28 of 40 (was 26). Red Nova Dragon came out 11 times in those 40 duels.
+### Who got what
 
-### Weevil, Pegasus, Bakura: filler out
+- **Yusei:** fewer Tuners, 2 Stardust Dragon, Majestic Dragon with **Majestic Star Dragon**, Junk Gardna, Formula Synchron line. 15-card Extra.
+- **Jack:** Resonators, Red Dragon Archfiend x2, Scarlight, **Red Nova Dragon** x2, Majestic Dragon with **Majestic Red Dragon**.
+- **Crow, Akiza, Kalin:** Blackwings with their Synchros; Akiza's Plants with Black Rose, **Splendid Rose** and **Rose Tentacles** style pieces; Kalin's Infernities with **Infernity General**.
+- **Yuma:** Utopia, Utopia Ray, Utopia Ray V and Victory, the **ZW** equips, Gagaga line (Magician, Girl, Gardna, Gagaga Mancer), Dododo, Kurivolt, **Number 39: Utopia Beyond**.
+- **Shark:** Shark Drake and **C32 Shark Drake Veiss**, **Number 37**, **Number 73 / C73 Abyss Splash**, Big Jaws, Spear Shark, Depth Shark.
+- **Kite:** Galaxy-Eyes Photon Dragon, Tachyon line, **Number 62**, Photon Thrasher and friends.
+- **Vector:** **Number 104**, **Number 65 / C65**, **Number 96 / C96**, Barian monsters.
+- **Yugi, Kaiba, Joey:** see below. **Mai, Marik, Bakura, Pegasus, Weevil, Rex:** filler out, their real power cards in.
+- **Jaden, Chazz, Zane, Syrus, Alexis, Aster:** Neos with **Neos Wiseman** and Yubel, Armed Dragons and Ojamas, **Cyberdark Dragon** and Cyber End, Vehicroids with **Super Vehicroid**, Cyber Girls, Destiny HEROes with **Dreadmaster** and **Dystopia**.
+- **Yugi:** Dark Magician x3, DMG x3, **Knight's Title** into Dark Magician Knight. **Kaiba:** **Blue-Eyes Shining Dragon**, Shrink. **Joey:** **Gilford the Lightning**, **Release Restraint** into Gearfried the Swordmaster, Gearfried x2.
 
-- **Weevil:** the vanilla Insects are gone. In: Man-Eater Bug x3, the lock (DNA Surgery x3, Insect Barrier x2), and the old power cards (Raigeki, Dark Hole, Heavy Storm, Swords of Revealing Light, Change of Heart, Graceful Charity, Mirror Force, Magic Cylinder, Torrential Tribute). On Hard: **16 of 30** (was 5).
-- **Pegasus:** Dark Rabbit, Parrot Dragon, Copycat, Toon Alligator and Toon Masked Sorcerer are out. Two Blue-Eyes Toon Dragon, two Thousand-Eyes Restrict, and the same old power cards. On Hard: 10 of 30 (was 9). The Toons get out now (in 30 duels: Toon Summoned Skull 21 times, Toon Dark Magician Girl 20, Blue-Eyes Toon Dragon 8) but they wait a turn to attack, and the Synchro and Xyz decks do not wait.
-- **Bakura:** Dark Necrofear x3 with more Fiends to feed her, Man-Eater Bug x3, the old power cards. On Hard: 10 of 30 (was 12, which is inside the noise of 30 duels).
-- **Yugi:** a real Dark Magician deck instead of one copy of everything: Dark Magician x3, Dark Magician Girl x3, Skilled Dark Magician x3, Dark Magic Curtain x2, Dark Magician of Chaos, the Magnet Warriors with Valkyrion, the three Knights, Slifer. On Hard: 14 of 30 (was 16 of 40).
-- **Kaiba:** every way to get Blue-Eyes out (Kaibaman x3, Kaiser Sea Horse x3, Lord of D. with the Flute, Call of the Haunted x2), Vampire Lord x2, Obelisk, Crush Card Virus. The single X, Y and Z pieces and the vanilla filler are out. On Hard: 13 of 30 (was 14 of 40).
-- **Joey:** Jinzo x2, Gearfried x3, Goblin Attack Force x3, Red-Eyes, his dice and Scapegoat. The weak vanilla Warriors are out. On Hard: 17 of 30 (was 17 of 40).
-- **Jaden:** I tried a tighter list and it did worse (5 of 30), so his deck is unchanged. He needs his missing cards first.
+### Test duels (10 per deck on Hard, against the house mix)
+
+Yugi 7, Kaiba 6, Joey 3, Mai 7, Bakura 4, Marik 3, Pegasus 3, Weevil 5, Rex 5, Jaden 1, Chazz 5, Zane 5, Alexis 2, Syrus 3, Aster 3, Yusei 5, Jack 4, Crow 8, Akiza 5, Kalin 2, Yuma 6, Shark 6, Kite 7, Vector 2. 10 duels swing by 2 or 3 either way, so read these as rough.
 
 **Not done or not checked:**
 
-- **The deck pass is not finished.** Done: Yusei, Kite, Jack, Weevil, Pegasus, Bakura, Yugi, Kaiba, Joey. Not yet: the other 15. 30 test duels swing by 3 or 4 wins either way, so only the big jumps (Weevil, Yusei) are sure. The old-era decks (Pegasus, Bakura) stay weaker than the Synchro and Xyz decks on Hard even after the pass: their cards are slower by design. Boss monsters still missing are listed in the plan doc.
-- Still to build for Jack: Majestic Red Dragon (with Majestic Dragon), Dark Highlander, Crimson Fire, Red Dragon Vase, Changing Destiny, Prideful Roar. Not watched on screen.
+- **Weakest on Hard:** Jaden (1 of 10), Kalin, Vector, Alexis (2). They play their real cards but the AI pilots them worse. Worth a second look.
+- **Not seen in the test duels:** the Majestic dragons, Dreadmaster (needs Clock Tower Prison destroyed first), the ZW equips. They pass their own tests; the AI just did not get there in 10 duels.
+- **Skipped (not built yet):** Light and Darkness Dragon, Ojama Knight, Chimeratech Overdragon, Cyberdark Impact!, Number 99 / F0, Chaos Emperor Dragon, Dragon Master Knight, Red-Eyes Black Metal Dragon, Yubel's later forms, Rainbow / Divine Neos, Kite's Numbers 20/30/56, Number C5, Black Garden, Rosaria, Tytannial, Gatling Ogre, Infernity Launcher, Phantom Hand, Double or Nothing, Heartfelt Appeal and a few more small ones.
+- **Partial:** Eagle Claw does not negate traps; Leo Arms has no second attack; Gagaga Head has no summon lock or draw; Infernity General does not negate what it brings back; Vain Betrayer does not mill; Triangle Spark locks all of the opponent's traps; Helpoemer's discard happens at once; Metal Reflect Slime is a Token.
+- Turbo road lights (0.33.35 fix) not checked on a Mac screen yet.
 
 ## What is in 0.33.35
 

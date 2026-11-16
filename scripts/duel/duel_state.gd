@@ -470,6 +470,26 @@ func begin_standby() -> Array:
 					events.append_array(_special(current, g62, "reborn"))
 					if players[current].field.has(g62):
 						g62.atk_mod += g62.atk()
+	# Viser Des: "during your third Standby Phase after this effect's activation, destroy that monster."
+	for m in players[current].monsters():
+		if m.face_up and m.tags.has("viser_t"):
+			m.tags["viser_n"] = int(m.tags.get("viser_n", 0)) + 1
+			var vt := find_uid(int(m.tags["viser_t"]))
+			if vt == null or not players[opponent(current)].field.has(vt):
+				m.tags.erase("viser_t")
+			elif int(m.tags["viser_n"]) >= 3:
+				m.tags.erase("viser_t")
+				events.append({"type": "effect", "player": current, "card": m, "text": Loc.t("%s destroys %s") % [m.cname(), vt.cname()]})
+				events.append_array(_destroy(vt))
+	# Depth Shark: "Once per turn, during your opponent's Standby Phase: This card's ATK becomes double its current ATK until the end of this turn."
+	for m in players[opponent(current)].monsters():
+		if m.face_up and not m.negated and EffectRunner.fx(m).get("depth", false):
+			var now_d := atk_of(m, false)
+			if m.atk_mod_turn != turn:
+				m.atk_mod_t = 0
+			m.atk_mod_turn = turn
+			m.atk_mod_t += now_d
+			events.append({"type": "effect", "player": opponent(current), "card": m, "text": Loc.t("%s doubles its ATK this turn") % m.cname()})
 	# Destiny HERO - Dogma: "during your opponent's next Standby Phase after you Special Summoned it this way: Halve your opponent's LP."
 	for m in players[opponent(current)].monsters():
 		if not is_over() and m.face_up and not m.negated and m.tags.get("dogma_due", false):
@@ -584,6 +604,34 @@ func begin_end() -> Array:
 	phase = Phase.END
 	var events := [{"type": "phase", "phase": phase}]
 	events.append_array(after_battle)
+	# Majestic Star / Red Dragon: "During the End Phase: Target 1 "Stardust Dragon" / "Red Dragon Archfiend" in your Graveyard;
+	# return this card from the field to the Extra Deck, then Special Summon that target."
+	for q in 2:
+		for mj in players[q].monsters():
+			var base_n := str(EffectRunner.fx(mj).get("majestic_back", ""))
+			if base_n == "" or not mj.face_up:
+				continue
+			var bases: Array = players[q].gy.filter(func(g): return g.cname() == base_n)
+			if bases.is_empty():
+				continue
+			events.append({"type": "effect", "player": q, "card": mj, "text": Loc.t("%s returns to the Extra Deck and %s comes back") % [mj.cname(), base_n]})
+			events.append_array(_to_deck(mj))
+			players[q].gy.erase(bases[0])
+			bases[0].proper = true
+			events.append_array(_special(q, bases[0], "reborn"))
+	# Yubel: "Once per turn, during your End Phase: Tribute 1 other monster or destroy this card."
+	for y in players[current].monsters():
+		if y.face_up and not y.negated and EffectRunner.fx(y).get("yubel", false) and not is_over():
+			var feed: Array = players[current].monsters().filter(func(m): return m != y and can_tribute_fx(m))
+			if not feed.is_empty() and choose_option(current, Loc.t("%s: Tribute 1 other monster to keep it?") % y.cname(), ["Tribute 1", "Destroy Yubel"], 0, y) == 0:
+				feed.sort_custom(func(a, b): return atk_of(a, false) < atk_of(b, false))
+				var t_y = pick1(current, Loc.t("%s: Tribute which monster?") % y.cname(), feed, feed[0], y)
+				players[current].field[players[current].field.find(t_y)] = null
+				_to_gy(players[current], t_y)
+				events.append({"type": "tribute", "player": current, "card": t_y})
+				events.append_array(_monster_left(t_y))
+			else:
+				events.append_array(_destroy(y))
 	# Red Nova Dragon: "during the End Phase, if this card was banished by its effect this turn: Special Summon this banished card."
 	for q in 2:
 		for b in players[q].banished.duplicate():
@@ -955,9 +1003,11 @@ func tributable(p: int) -> Array:
 
 
 func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> Array:
-	if not can_normal_summon(p, c) or tributes.size() != tributes_needed(c):
+	var gilford: bool = EffectRunner.fx(c).get("summon", []).has(["gilford"]) and tributes.size() == 3 and not set_card and tributable(p).size() >= 3
+	if not can_normal_summon(p, c) or (tributes.size() != tributes_needed(c) and not gilford):
 		return []
 	tributes = tributes.duplicate()
+	var n_tributes := tributes.size()
 	var need_attr := str(CardEffects.of(c.cname()).get("tribute_attr", ""))
 	if need_attr != "" and not tributes.is_empty():
 		# Jawsman: "If you Tribute Summon this card, all Tributes must be WATER."
@@ -1015,6 +1065,9 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 	c.attacked_turn = -1
 	c.reset_mods()
 	c.tags["ns"] = true   # it is on the field by a Normal Summon or Set ("sent from the field to the GY": Synkron Resonator)
+	c.tags["tributes_n"] = n_tributes
+	if not set_card:
+		pending_events.append_array(_thorn_tax(p, c))
 	if normal_summoned:
 		ps.extra_normals -= 1   # Double Summon: this is the second one
 	normal_summoned = true
@@ -1099,8 +1152,98 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 ## Slifer the Sky Dragon: "If a monster(s) is Normal or Special Summoned to your opponent's field in
 ## Attack Position: That monster(s) loses 2000 ATK, then if its ATK has been reduced to 0 as a
 ## result, destroy it."
+## Queen of Thorns: "Each player must pay 1000 LP for each monster Normal or Special Summoned from their hand, except for Plant-Type monsters."
+func _thorn_tax(p: int, c: CardInst) -> Array:
+	if str(c.data.get("race", "")) == "Plant":
+		return []
+	for q in 2:
+		for m in players[q].monsters():
+			if m.face_up and not m.negated and EffectRunner.fx(m).get("thorn_tax", false):
+				players[p].lp = maxi(0, players[p].lp - 1000)
+				var ev := [{"type": "effect", "player": q, "card": m, "text": Loc.t("%s: %s pays 1000 LP") % [m.cname(), players[p].name]},
+						{"type": "lp", "player": p, "lp": players[p].lp, "delta": -1000}]
+				if players[p].lp <= 0:
+					_set_winner(opponent(p), Loc.t("%s's Life Points hit zero.") % players[p].name)
+				return ev
+	return []
+
+
+## Ultimate Tyranno: "During your Battle Phase, if you control an "Ultimate Tyranno" that can attack, monsters other than "Ultimate Tyranno" cannot attack."
+func _tyranno_blocks(p: int, c: CardInst) -> bool:
+	if c.cname() == "Ultimate Tyranno":
+		return false
+	for m in players[p].monsters():
+		if m.face_up and not m.negated and m.cname() == "Ultimate Tyranno" and m.attack_pos and attacks_left(m) > 0 and int(m.tags.get("sct_turn", -1)) != turn:
+			return true
+	return false
+
+
+## Destiny HERO - Dreadmaster comes out of Clock Tower Prison.
+func _dreadmaster(p: int) -> Array:
+	var ps := players[p]
+	var events := []
+	var dm = null
+	for src in [ps.hand, ps.deck]:
+		for x in src:
+			if x.cname() == "Destiny HERO - Dreadmaster" and dm == null:
+				dm = x
+				src.erase(x)
+	if dm == null:
+		return events
+	# "Destroy all monsters you control, except "Destiny HERO" monsters"
+	for m in ps.monsters():
+		if not m.cname().contains("Destiny HERO"):
+			events.append_array(_destroy(m))
+	if ps.free_zone() == -1:
+		ps.deck.append(dm)
+		_shuffle(ps.deck)
+		return events
+	dm.proper = true
+	events.append({"type": "effect", "player": p, "card": dm, "text": Loc.t("Clock Tower Prison breaks open: %s!") % dm.cname()})
+	events.append_array(_special(p, dm, "effect", "atk"))
+	# "also, after that, you can Special Summon up to 2 "Destiny HERO" monsters from your GY."
+	var back: Array = ps.gy.filter(func(g): return g.is_monster() and g.cname().contains("Destiny HERO") and can_revive(g))
+	back.sort_custom(func(x, y): return x.atk() > y.atk())
+	for g in back.slice(0, 2):
+		if ps.free_zone() == -1:
+			break
+		ps.gy.erase(g)
+		events.append_array(_special(p, g, "reborn"))
+	# "for the rest of this turn, "Destiny HERO" monsters you control cannot be destroyed, also you take no battle damage when they battle."
+	ps.protect_turn = turn
+	return events
+
+
+## Harpies' Hunting Ground: "If any "Harpie Lady" or "Harpie Lady Sisters" is Normal or Special Summoned: The player who conducted
+## the Summon activates this effect by targeting 1 Spell/Trap on the field; they destroy it."
+func _hunting_ground(p: int, c: CardInst) -> Array:
+	var nm := c.cname()
+	if not (nm == "Harpie Lady" or nm == "Harpie Lady Sisters" or str(CardEffects.of(nm).get("name_as", "")) == "Harpie Lady" or str(CardEffects.of(nm).get("name_as_fg", "")) == "Harpie Lady"):
+		return []
+	var hhg = null
+	for q in 2:
+		var fs = players[q].field_spell
+		if fs != null and fs.face_up and fs.cname() == "Harpies' Hunting Ground" and not SpellRules.blocked(self, fs):
+			hhg = fs
+	if hhg == null:
+		return []
+	var theirs: Array = []
+	for st in players[opponent(p)].spells:
+		if st != null and not st.is_monster():
+			theirs.append(st)
+	if players[opponent(p)].field_spell != null:
+		theirs.append(players[opponent(p)].field_spell)
+	if theirs.is_empty():
+		return []
+	var hit = pick1(p, Loc.t("%s: destroy 1 Spell or Trap") % hhg.cname(), theirs, theirs[0], hhg)
+	var ev := [{"type": "effect", "player": p, "card": hhg, "text": Loc.t("%s destroys %s") % [hhg.cname(), hit.cname() if hit.face_up else Loc.t("a set card")]}]
+	ev.append_array(_destroy_st(hit))
+	return ev
+
+
 func _summon_tax(p: int, c: CardInst) -> Array:
 	var events := []
+	pending_events.append_array(_hunting_ground(p, c))
 	if not c.face_up or not c.attack_pos or not players[p].field.has(c):
 		return events
 	for m in players[opponent(p)].monsters():
@@ -1506,6 +1649,9 @@ func can_attack(p: int, c: CardInst) -> bool:
 	return (p == current and phase == Phase.BATTLE and not is_over() and players[p].field.has(c)
 			and c.face_up and (c.attack_pos or EffectRunner.fx(c).get("direct_from_def", false)) and attacks_left(c) > 0 and SpellRules.can_attack(self, p, c)
 			and not (players[p].only_attacker_turn == turn and players[p].only_attacker != c.uid)
+			and not c.tags.get("vain", false)
+			and int(c.tags.get("sct_turn", -1)) != turn
+			and not _tyranno_blocks(p, c)
 			and int(c.tags.get("no_attack_on", -1)) != turn
 			and not restrict_locks(c) and not held_by_illusionist(c)
 			and not (EffectRunner.fx(c).get("summon_sick", false) and c.summoned_turn == turn)
@@ -1547,7 +1693,7 @@ func absorbed_by(c: CardInst) -> CardInst:
 
 func attacks_left(c: CardInst) -> int:
 	var used := c.attack_count if c.attack_count_turn == turn else 0
-	if used > 0 and used < 99 and EffectRunner.fx(c).get("attack_all", false):
+	if used > 0 and used < 99 and EffectRunner.attacks_all(self, c):
 		# Elemental HERO Wildedge: "one attack on each monster per Battle Phase".
 		if int(c.tags.get("went_direct", -1)) == turn:
 			return 0
@@ -1569,9 +1715,11 @@ func _not_hit_yet(c: CardInst) -> Array:
 func can_direct_attack_with(p: int, c: CardInst) -> bool:
 	if int(c.tags.get("no_direct_turn", -1)) == turn:
 		return false   # Feather Shot: "but cannot attack directly"
+	if EffectRunner.fx(c).get("no_direct", false):
+		return false   # "Cannot attack directly" (ZW - Leo Arms)
 	if not c.attack_pos:
 		return EffectRunner.fx(c).get("direct_from_def", false)   # Elemental HERO Rampart Blaster
-	if EffectRunner.fx(c).get("attack_all", false) and c.attack_count_turn == turn and c.attack_count > 0:
+	if EffectRunner.attacks_all(self, c) and c.attack_count_turn == turn and c.attack_count > 0:
 		return false   # Wildedge already attacked a monster: only the other monsters are left
 	if c.tags.has("nitro_next"):
 		return false   # Nitro Warrior's second attack is on one monster only
@@ -1688,7 +1836,7 @@ func attack_targets_for(p: int, attacker: CardInst) -> Array[CardInst]:
 	if attacker != null and not attacker.attack_pos:
 		var none: Array[CardInst] = []
 		return none   # (Rampart Blaster in Defense Position can only attack directly)
-	if attacker != null and EffectRunner.fx(attacker).get("attack_all", false) and attacker.attack_count_turn == turn and attacker.attack_count > 0:
+	if attacker != null and EffectRunner.attacks_all(self, attacker) and attacker.attack_count_turn == turn and attacker.attack_count > 0:
 		var left: Array[CardInst] = []
 		for m in _not_hit_yet(attacker):
 			left.append(m)
@@ -1790,7 +1938,7 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 		paid.append_array(_monster_left(least))
 	attacker.attacked_turn = turn
 	_shield = null
-	if EffectRunner.fx(attacker).get("attack_all", false):
+	if EffectRunner.attacks_all(self, attacker):
 		if int(attacker.tags.get("hit_turn", -1)) != turn:
 			attacker.tags["hit_turn"] = turn
 			attacker.tags["hit"] = []
@@ -1811,6 +1959,58 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	pending_attack = {"player": p, "attacker": attacker, "target": target, "negated": false,
 			"opp_count": players[opponent(p)].monsters().size()}
 	var events := paid + [{"type": "attack", "player": p, "card": attacker, "target": target}]
+	# Yubel: "Before damage calculation, if this face-up Attack Position card is targeted for an attack: Inflict damage to your
+	# opponent equal to that attacking monster's ATK."
+	if target != null and target.face_up and target.attack_pos and not target.negated and EffectRunner.fx(target).get("yubel", false):
+		var burn_y := atk_of(attacker, true, target, true)
+		events.append({"type": "effect", "player": target.owner, "card": target, "text": Loc.t("%s: %d damage back") % [target.cname(), burn_y]})
+		events.append_array(_damage(p, burn_y))
+	# Diabound Kernel: "When this card declares an attack: It gains 600 ATK."
+	if not attacker.negated and int(EffectRunner.fx(attacker).get("attack_gain", 0)) > 0:
+		attacker.atk_mod += int(EffectRunner.fx(attacker)["attack_gain"])
+		events.append({"type": "effect", "player": p, "card": attacker, "text": Loc.t("%s gains %d ATK") % [attacker.cname(), int(EffectRunner.fx(attacker)["attack_gain"])]})
+	# Number 37: Hope Woven Dragon Spider Shark: "When any player's monster declares an attack: You can detach 1 Xyz Material from
+	# this card; all monsters your opponent currently controls lose 1000 ATK until the end of this turn." (once per turn)
+	for q37 in 2:
+		for n37 in players[q37].monsters():
+			if n37.face_up and not n37.negated and EffectRunner.fx(n37).get("spider_shark", false) and not n37.overlays.is_empty() and int(n37.tags.get("n37_turn", -1)) != turn:
+				var their37: Array = players[opponent(q37)].monsters().filter(func(m): return m.face_up)
+				var worth37: bool = (q37 == p and target != null and their37.has(target)) or (q37 != p and their37.has(attacker))
+				if not their37.is_empty() and choose_option(q37, Loc.t("%s: detach 1, their monsters lose 1000 ATK this turn?") % n37.cname(), ["Detach 1", "No"], 0 if worth37 else 1, n37) == 0:
+					n37.tags["n37_turn"] = turn
+					var o37: CardInst = n37.overlays.pop_back()
+					players[o37.owner].gy.append(o37)
+					for m in their37:
+						if m.atk_mod_turn != turn:
+							m.atk_mod_t = 0
+						m.atk_mod_turn = turn
+						m.atk_mod_t -= 1000
+					events.append({"type": "effect", "player": q37, "card": n37, "text": Loc.t("%s: the opponent's monsters lose 1000 ATK") % n37.cname()})
+	# ZW - Unicorn Spear: "If the equipped monster battles an opponent's monster, the opponent's monster's effect is negated during the Battle Phase only."
+	if target != null and target.face_up and not unions_on(attacker).filter(func(u): return EffectRunner.fx(u).get("zw", {}).get("negate_foe", false)).is_empty():
+		target.negated_turn = turn
+		target.negated = true
+	# Number C39: Utopia Ray Victory, with a "Utopia" monster as material: "When this card declares an attack on a face-up
+	# monster your opponent controls: You can detach 1 Xyz Material from this card; negate that opponent's face-up
+	# monster's effects, also this card gains ATK equal to that opponent's monster's ATK."
+	if target != null and target.face_up and not attacker.negated and EffectRunner.fx(attacker).get("victory", false) and not attacker.overlays.is_empty() \
+			and not attacker.overlays.filter(func(o): return o.cname().contains("Utopia")).is_empty():
+		var gain_v := atk_of(target, false)
+		if choose_option(p, Loc.t("%s: detach 1 material to gain %d ATK and negate %s?") % [attacker.cname(), gain_v, target.cname()], ["Detach 1", "No"], 0 if gain_v > 0 else 1, attacker) == 0:
+			var out_v: CardInst = attacker.overlays[0]
+			for o in attacker.overlays:
+				if not o.cname().contains("Utopia"):
+					out_v = o
+					break
+			attacker.overlays.erase(out_v)
+			players[out_v.owner].gy.append(out_v)
+			target.negated_turn = turn
+			target.negated = true
+			if attacker.atk_mod_turn != turn:
+				attacker.atk_mod_t = 0
+			attacker.atk_mod_turn = turn
+			attacker.atk_mod_t += gain_v
+			events.append({"type": "effect", "player": p, "card": attacker, "text": Loc.t("%s gains %d ATK") % [attacker.cname(), gain_v]})
 	# Red Nova Dragon: "When an opponent's monster declares an attack: You can target the attacking monster; banish
 	# this card, and if you do, negate that attack." It comes back in the End Phase.
 	for nv in players[opponent(p)].monsters():
@@ -2233,6 +2433,15 @@ func _resolve_attack() -> Array:
 func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 	if SpellRules.equip_flag(self, loser, "no_battle_death"):
 		return []
+	if winner_c != null and loser != null and loser.owner != winner_c.owner:
+		for eq_k in SpellRules.equips_on(self, winner_c):
+			if int(SpellRules.spec(eq_k).get("kill_burn", 0)) > 0:
+				pending_events.append_array(_damage(opponent(winner_c.owner), int(SpellRules.spec(eq_k)["kill_burn"])))
+		for u in unions_on(winner_c):
+			if int(EffectRunner.fx(u).get("zw", {}).get("kill_burn", 0)) > 0:
+				var burn_z := int(EffectRunner.fx(u)["zw"]["kill_burn"])
+				pending_events.append({"type": "effect", "player": winner_c.owner, "card": u, "text": Loc.t("%s: %d damage") % [u.cname(), burn_z]})
+				pending_events.append_array(_damage(opponent(winner_c.owner), burn_z))
 	if SpellRules.equip_flag(self, winner_c, "spare_foe"):
 		return []   # Thorn of Malice: "An opponent's monster that battles with the equipped monster cannot be destroyed by that battle."
 	if _shield == loser:
@@ -2309,6 +2518,25 @@ func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 
 func _after_attack(attacker: CardInst, target = null) -> Array:
 	var events := []
+	# Majestic Red Dragon: "After damage calculation, if this card attacks: Destroy all Defense Position monsters on the field."
+	if attacker.face_up and not attacker.negated and EffectRunner.fx(attacker).get("majestic_red", false) and players[attacker.owner].field.has(attacker):
+		for q in 2:
+			for m in players[q].monsters():
+				if not m.attack_pos:
+					events.append_array(_destroy(m))
+	# Neos Wiseman: "At the end of the Damage Step, if this card battled an opponent's monster: Inflict damage to your opponent equal
+	# to the ATK of that opponent's monster, and gain Life Points equal to that monster's DEF."
+	if target != null and target is CardInst:
+		for pair_w in [[attacker, target], [target, attacker]]:
+			var wm: CardInst = pair_w[0]
+			var wv: CardInst = pair_w[1]
+			if wm != null and wv != null and wm.owner != wv.owner and wm.face_up and not wm.negated and EffectRunner.fx(wm).get("wiseman", false) and players[wm.owner].field.has(wm) and not is_over():
+				var dmg_w: int = wv.atk()
+				var heal_w: int = wv.def()
+				events.append({"type": "effect", "player": wm.owner, "card": wm, "text": Loc.t("%s: %d damage, +%d LP") % [wm.cname(), dmg_w, heal_w]})
+				events.append_array(_damage(opponent(wm.owner), dmg_w))
+				players[wm.owner].lp += heal_w
+				events.append({"type": "lp", "player": wm.owner, "lp": players[wm.owner].lp, "delta": heal_w})
 	attacker.tags.erase("abs_hit")
 	attacker.tags.erase("prime_boost")
 	if target != null and target is CardInst:
@@ -2441,6 +2669,12 @@ func _battle_damage(p: int, amount: int, dealer: CardInst = null, taker: CardIns
 		if hm != null and int(hm.tags.get("unbreak_turn", -1)) == turn and int(hm.tags.get("unbreak_for", -1)) == p:
 			amount = int(ceil(amount / 2.0))
 			break
+	# Clock Tower Prison: "While there are 4 or more Clock Counters on this card, you do not take any battle damage."
+	if ps.field_spell != null and ps.field_spell.face_up and SpellRules.spec(ps.field_spell).get("ctp", false) and ps.field_spell.counter >= 4:
+		return [{"type": "effect", "player": p, "card": ps.field_spell, "text": "No battle damage!"}]
+	# Number 73: Abyss Splash: "any battle damage it inflicts to your opponent this turn is halved."
+	if dealer != null and dealer.owner != p and int(dealer.tags.get("splash_turn", -99)) == turn:
+		amount = int(ceil(amount / 2.0))
 	# Number 62: "Any battle damage this card inflicts to your opponent is halved unless it has "Galaxy-Eyes Photon Dragon" as Xyz Material."
 	if dealer != null and dealer.owner != p and dealer.face_up and not dealer.negated and EffectRunner.fx(dealer).get("prime", false) \
 			and dealer.overlays.filter(func(o): return o.cname() == "Galaxy-Eyes Photon Dragon").is_empty():
@@ -2455,7 +2689,7 @@ func _battle_damage(p: int, amount: int, dealer: CardInst = null, taker: CardIns
 		return out_c
 	# Relinquished: "While equipped with that monster, any battle damage you take from battles involving this card inflicts equal effect damage to your opponent."
 	for rq in [dealer, taker]:
-		if rq != null and rq.owner == p and rq.face_up and not rq.negated and EffectRunner.fx(rq).get("reflect_absorbed", false) and (absorbed_by(rq) != null or rq.tags.has("abs_hit")) and amount > 0 and ps.no_damage_turn != turn and ps.protect_turn != turn:
+		if rq != null and rq.owner == p and rq.face_up and not rq.negated and EffectRunner.fx(rq).get("reflect_absorbed", false) and (absorbed_by(rq) != null or rq.tags.has("abs_hit") or EffectRunner.fx(rq).get("reflect_battle", false)) and amount > 0 and ps.no_damage_turn != turn and ps.protect_turn != turn:
 			var out_r := _damage(p, amount, true)
 			out_r.append({"type": "effect", "player": p, "card": rq, "text": Loc.t("%s: the opponent takes the same %d damage") % [rq.cname(), amount]})
 			out_r.append_array(_damage(opponent(p), amount))
@@ -2488,6 +2722,38 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	var zone := ps.field.find(c)
 	if zone == -1:
 		return []
+	# Number 66: Master Key Beetle: the card it holds the key to "cannot be destroyed by card effects", and "if this card would
+	# be destroyed by battle or card effect, you can send the targeted card to the GY instead."
+	if not by_battle and c.tags.has("key_by"):
+		var kb := find_uid(int(c.tags["key_by"]))
+		if kb != null and kb.face_up and not kb.negated and players[kb.owner].field.has(kb):
+			return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is not destroyed") % c.cname()}]
+	if c.tags.has("key_to") and c.face_up and not c.negated:
+		var kt := find_uid(int(c.tags["key_to"]))
+		if kt != null and (players[c.owner].field.has(kt) or players[c.owner].spells.has(kt)):
+			c.tags.erase("key_to")
+			kt.tags.erase("key_by")
+			var saved_k := [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s sends %s to the Graveyard instead") % [c.cname(), kt.cname()]}]
+			if players[c.owner].field.has(kt):
+				players[c.owner].field[players[c.owner].field.find(kt)] = null
+				_to_gy(players[c.owner], kt)
+				saved_k.append_array(_monster_left(kt))
+			else:
+				players[c.owner].spells[players[c.owner].spells.find(kt)] = null
+				_to_gy(players[c.owner], kt)
+			return saved_k
+	# Number 43: Manipulator of Souls: "While equipped with a "Number" card, this card cannot be destroyed by battle or card effects."
+	if c.face_up and not c.negated and EffectRunner.fx(c).get("soul_guard", false) and not unions_on(c).filter(func(u): return u.cname().begins_with("Number")).is_empty():
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is not destroyed") % c.cname()}]
+	# Number 101: Silent Honor ARK: "If this face-up card on the field would be destroyed by battle or card effect, you can detach 1 material from this card instead."
+	if c.face_up and not c.negated and not c.overlays.is_empty() and EffectRunner.fx(c).get("detach_shield", false) \
+			and choose_option(c.owner, Loc.t("%s would be destroyed. Detach 1 material instead?") % c.cname(), ["Detach 1 instead", "No"], 0, c) == 0:
+		var o_s: CardInst = c.overlays.pop_back()
+		players[o_s.owner].gy.append(o_s)
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s detaches 1 material and stays") % c.cname()}]
+	# Neos Wiseman: "This card cannot be destroyed by card effects."
+	if not by_battle and c.face_up and not c.negated and EffectRunner.fx(c).get("fx_indestructible", false):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is not destroyed") % c.cname()}]
 	# Red Nova Dragon: "Cannot be destroyed by an opponent's card effects."
 	if not by_battle and effect_by != -1 and effect_by != c.owner and c.face_up and not c.negated and EffectRunner.fx(c).get("no_opp_fx_destroy", false):
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is not destroyed") % c.cname()}]
@@ -2505,7 +2771,8 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	var by_opp_any := not by_battle and effect_by != -1 and effect_by != c.owner
 	var by_opp_fx := by_opp_any and c.face_up
 	# "If the equipped monster would be destroyed by battle or card effect, destroy this card instead."
-	var riders := unions_on(c).filter(func(u): return not EffectRunner.fx(u).get("union", {}).get("no_shield", false) and not EffectRunner.fx(u).get("hand_ignite", {}).has("equip_to"))
+	var riders := unions_on(c).filter(func(u): return not EffectRunner.fx(u).get("union", {}).get("no_shield", false) and not EffectRunner.fx(u).get("hand_ignite", {}).has("equip_to") \
+			and (not EffectRunner.fx(u).has("zw") or str(EffectRunner.fx(u)["zw"].get("shield", "")) == ("battle" if by_battle else "fx")))
 	if c.tags.has("absorbed") and (not by_battle or EffectRunner.fx(c).get("absorb_half", false)):
 		riders = riders.filter(func(u): return u.uid != int(c.tags["absorbed"]))   # (Relinquished's monster only takes its place in battle)
 	if not by_battle:
@@ -2589,6 +2856,12 @@ func _to_gy(ps: PlayerState, c: CardInst) -> void:
 	else:
 		ps.gy.append(c)
 		_sent_to_gy(c)
+		# Coffin Seller: "Each time a monster(s) is sent to your opponent's GY: Inflict 300 damage to your opponent."
+		if c.is_monster() and not is_over():
+			for st in players[opponent(c.owner)].spells:
+				if st != null and st.face_up and st.cname() == "Coffin Seller" and not SpellRules.blocked(self, st):
+					pending_events.append({"type": "effect", "player": st.owner, "card": st, "text": Loc.t("%s: 300 damage") % st.cname()})
+					pending_events.append_array(_damage(c.owner, 300))
 		# Axe of Despair and friends: sent from the field to the Graveyard, they go back on top of the Deck.
 		var back := str(SpellRules.FX.get(c.cname(), {}).get("deck_top", "")) if not c.is_monster() else ""
 		if back != "" and (c.left_turn == turn or back == "always"):
@@ -2734,6 +3007,10 @@ func _destroy_st(c: CardInst) -> Array:
 	var was_up := c.face_up
 	_to_gy(ps, c)
 	var events := [{"type": "destroy_st", "player": c.owner, "card": c, "zone": zone}]
+	# Clock Tower Prison: "If this card with 4 or more Clock Counters is destroyed and sent to the GY: Special Summon 1
+	# "Destiny HERO - Dreadmaster" from your hand or Deck."
+	if was_up and SpellRules.spec(c).get("ctp", false) and c.counter >= 4 and ps.gy.has(c):
+		events.append_array(_dreadmaster(c.owner))
 	events.append_array(SpellRules.left_field(self, c))
 	if was_up and c.cname() == "Toon World":
 		# "If "Toon World" on the field is destroyed, destroy this card": every Toon that says so.
@@ -2820,6 +3097,14 @@ func _cleanup() -> Array:
 	var events := []
 	_apply_races()
 	_apply_zone_locks()
+	# ZW - Tornado Bringer: "your opponent cannot target that monster with card effects."
+	for q in 2:
+		for m in players[q].monsters():
+			var tb := not unions_on(m).filter(func(u): return u.face_up and not u.negated and EffectRunner.fx(u).get("zw", {}).get("untarget", false)).is_empty()
+			if tb:
+				m.set_meta("zw_untarget_owner", q)
+			elif m.has_meta("zw_untarget_owner"):
+				m.remove_meta("zw_untarget_owner")
 	if not pending_events.is_empty():
 		events.append_array(pending_events)
 		pending_events = []
@@ -3438,6 +3723,15 @@ static func material_rule(c: CardInst) -> Dictionary:
 		elif rest.to_lower().contains("non-tuner synchro monster"):
 			of = {"frame": "synchro"}
 		rule = {"tuner": tf, "others": of, "one_other": one, "min_others": 2 if (rest.begins_with("2+") or rest.begins_with("2 or more")) else 1}
+		if parts.size() >= 3:
+			# '"Majestic Dragon" + "Stardust Dragon" + 1 non-Tuner monster': the named monster plus exactly 1 more.
+			re.compile("^\"([^\"]+)\"$")
+			var m3 := re.search(parts[1].strip_edges())
+			if m3:
+				rule["need_name"] = m3.get_string(1)
+				rule["others"] = {}
+				rule["one_other"] = false
+				rule["exact_others"] = 2
 		if tun.begins_with("2 Tuners"):
 			rule["tuners"] = 2   # '2 Tuners + "Red Dragon Archfiend"' (Red Nova Dragon)
 	elif c.frame() == "xyz":
@@ -3532,6 +3826,8 @@ func extra_materials(p: int, c: CardInst) -> Array:
 				if not _may_be_material(m, c, sel, rule):
 					others_ok = false
 			if not others_ok or (rule.get("one_other", false) and sel.size() != want_t + 1) or sel.size() - want_t < int(rule.get("min_others", 1)):
+				continue
+			if rule.has("need_name") and (sel.size() - want_t != int(rule["exact_others"]) or sel.filter(func(m): return not m.is_tuner() and m.cname() == str(rule["need_name"])).is_empty()):
 				continue
 			if _levels_reach(sel, c):
 				out.append(sel)
@@ -4011,6 +4307,8 @@ func responses(p: int, window: String, subject = null) -> Array:
 		var atk_c: CardInst = pending_attack["attacker"]
 		if EffectRunner.fx(atk_c).get("lock_st_if_hand_empty", false) and players[pending_attack["player"]].hand.is_empty():
 			st_locked = true
+		if EffectRunner.fx(atk_c).get("attack_st_lock", false) and atk_c.face_up and not atk_c.negated:
+			st_locked = true   # Utopia Ray Victory: "If this card attacks, your opponent cannot activate any Spell/Trap Cards until the end of the Damage Step."
 	for c in ps.spells:
 		if not st_locked and c != null and not c.face_up and SpellRules.fits(self, p, c, window, subject) and ps.speed >= speed_need(c):
 			out.append(c)
@@ -4243,6 +4541,7 @@ func can_special_from_hand(p: int, c: CardInst) -> bool:
 func special_from_hand(p: int, c: CardInst) -> Array:
 	if not can_special_from_hand(p, c):
 		return []
+	pending_events.append_array(_thorn_tax(p, c))
 	if c.cname() != "Cyber Dragon":
 		return EffectRunner.special_hand(self, p, c)
 	players[p].hand.erase(c)

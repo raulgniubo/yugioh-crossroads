@@ -46,6 +46,18 @@ static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionar
 	if level > EASY:
 		# Relinquished and Thousand-Eyes Restrict take a monster before anything else is played.
 		if p == s.current and s._in_main():
+			# Gilford the Lightning: 3 Tributes to wipe their side, when they have more than we give up.
+			for h in s.players[p].hand:
+				if h.cname() == "Gilford the Lightning" and s.can_normal_summon(p, h) and s.tributable(p).size() >= 3 and s.players[p].no_summon_turn != s.turn:
+					var three: Array = _weakest(s.players[p], 3)
+					var ours := 0
+					for w in three:
+						ours += w.atk()
+					var theirs := 0
+					for m in s.players[s.opponent(p)].monsters():
+						theirs += m.atk() if m.face_up else 1500
+					if theirs > ours and three.size() == 3:
+						return {"do": "summon", "card": h, "tributes": three}
 			# The Great Moth line: the Cocoon goes on a face-up Petit Moth, the Moth turns to Defense,
 			# and the biggest Moth that is ready comes out.
 			var grown = null

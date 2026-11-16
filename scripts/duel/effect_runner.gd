@@ -58,6 +58,15 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 		b += int(c.tags["prime_boost"])   # Number 62: Galaxy-Eyes Prime Photon Dragon
 	if f.get("absorb_half", false) and s.absorbed_by(c) != null:
 		b += s.absorbed_by(c).atk() / 2   # Destiny HERO - Plasma: "gains ATK equal to half the original ATK of the monster equipped to it"
+	if f.get("dreadmaster", false):
+		# Destiny HERO - Dreadmaster: "The ATK/DEF of this card are equal to the combined original ATK of all other "Destiny HERO" monsters you control."
+		for m in s.players[c.owner].monsters():
+			if m != c and m.face_up and m.cname().contains("Destiny HERO"):
+				b += m.atk()
+	if battling and attacking and f.get("stealth_union", false):
+		b -= c.atk() / 2   # "If this card attacks, its original ATK is halved until the end of the Damage Step."
+	if battling and attacking and vs == null and f.get("direct_half", false):
+		b -= (c.atk() + b) / 2   # Cyberdark Edge: "If it does using this effect, its ATK is halved during damage calculation only."
 	if f.get("absorb", false) and s.absorbed_by(c) != null:
 		b += s.absorbed_by(c).atk()   # Relinquished: "This card's ATK/DEF become equal to that equipped monster's."
 	if c.tags.has("cocoon_uid") and s.cocooned(c) != null:
@@ -124,6 +133,10 @@ static func def_bonus(s: DuelState, c) -> int:
 		u += s.absorbed_by(c).def()
 	if c.tags.has("cocoon_uid") and s.cocooned(c) != null:
 		u += s.cocooned(c).def() - c.def()
+	if fx(c).get("dreadmaster", false):
+		for m in s.players[c.owner].monsters():
+			if m != c and m.face_up and m.cname().contains("Destiny HERO"):
+				u += m.atk()
 	if int(c.tags.get("cka", -1)) == s.turn and s.phase == DuelState.Phase.BATTLE:
 		u += c.atk() - c.def()   # Chaos King Archfiend switched it
 	if f.has("def_per"):
@@ -161,6 +174,22 @@ static func _count(s: DuelState, owner: int, spec: String) -> int:
 			n += s.players[q].set_cards().size() + (1 if s.players[q].field_spell != null else 0)
 			if kind == "all_cards":
 				n += s.players[q].monsters().size()
+		return n
+	if kind == "own_family":
+		# Amazoness Paladin: each "Amazoness" monster you control.
+		for m in s.players[owner].monsters():
+			if m.face_up and m.cname().contains(val):
+				n += 1
+		return n
+	if kind == "own_gy_race":
+		for g in s.players[owner].gy:
+			if g.is_monster() and str(g.data.get("race", "")) == val:
+				n += 1
+		return n
+	if kind == "own_gy_monsters":
+		for g in s.players[owner].gy:
+			if g.is_monster():
+				n += 1
 		return n
 	if kind == "own_gy_tuners":
 		# Red Nova Dragon: each Tuner in your Graveyard.
@@ -323,6 +352,10 @@ static func survives_effect(s: DuelState, c) -> bool:
 ## True if c shrugs off being destroyed by battle (and records the once-per-turn use).
 static func survives_battle(s: DuelState, c) -> bool:
 	var f := fx(c)
+	if c.tags.has("viser_t") and not c.negated:
+		var vt = s.find_uid(int(c.tags["viser_t"]))
+		if vt != null and s.players[s.opponent(c.owner)].field.has(vt):
+			return true   # Viser Des: "This card cannot be destroyed by battle while the targeted monster is on the field."
 	if f.get("battle_immune", false):
 		return true
 	if int(c.tags.get("unbreak_turn", -1)) == s.turn:
@@ -391,6 +424,10 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 	if cond == "no_cards":
 		# Gust the Backblast: "If you control no cards".
 		return s.players[p].monsters().is_empty() and s.players[p].set_cards().is_empty() and s.players[p].field_spell == null
+	if cond == "lp_behind_2000":
+		return s.players[s.opponent(p)].lp >= s.players[p].lp + 2000   # ZW - Eagle Claw
+	if cond == "other_gagaga":
+		return not s.players[p].monsters().filter(func(m): return m.face_up and m.cname().contains("Gagaga")).is_empty()
 	if cond == "any_synchro":
 		# Synkron Resonator: "If a Synchro Monster is on the field" (once per turn this way).
 		return int(s.players[p].once_names.get("#synkron", -1)) != s.turn \
@@ -773,7 +810,7 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 static func on_summon(s: DuelState, p: int, c, kind: String) -> Array:
 	var f := fx(c)
 	var events := []
-	var fires: bool = (kind == "normal" and f.has("summon")) or (kind == "flip" and f.has("flip")) or (kind == "synchro" and f.has("synchro")) or (kind == "fusion" and f.has("fusion")) or (kind in ["special", "synchro", "fusion", "xyz"] and f.has("special_only")) or f.has("any_summon")
+	var fires: bool = (kind == "normal" and f.has("summon")) or (kind == "flip" and f.has("flip")) or (kind == "synchro" and f.has("synchro")) or (kind == "fusion" and f.has("fusion")) or (kind in ["special", "synchro", "fusion", "xyz"] and f.has("special_only")) or f.has("any_summon") or (kind == "xyz" and f.has("xyz"))
 	if fires and _spent(s, p, c):
 		return events
 	if kind == "normal" and f.has("summon"):
@@ -784,6 +821,8 @@ static func on_summon(s: DuelState, p: int, c, kind: String) -> Array:
 		events.append_array(run_list(s, p, c, f["synchro"], {}))
 	if kind == "fusion" and f.has("fusion"):
 		events.append_array(run_list(s, p, c, f["fusion"], {}))
+	if kind == "xyz" and f.has("xyz"):
+		events.append_array(run_list(s, p, c, f["xyz"], {}))
 	if kind in ["special", "synchro", "fusion", "xyz"] and f.has("special_only"):
 		events.append_array(run_list(s, p, c, f["special_only"], {}))
 	if f.has("any_summon"):
@@ -946,6 +985,8 @@ static func hand_can(s: DuelState, p: int, c) -> bool:
 		return false
 	if g.has("equip_to"):
 		return s.players[p].spells.find(null) != -1 and not _cocoon_hosts(s, p, str(g["equip_to"])).is_empty()
+	if g.get("zw", false):
+		return not _zw_hosts(s, p, c).is_empty()
 	for a in g.get("do", []):
 		if a[0] == "search" and _take(s.players[p].deck, a[1], 1).is_empty():
 			return false
@@ -979,6 +1020,8 @@ static func _cocoon_moth(s: DuelState, p: int, turns: int):
 static func hand_run(s: DuelState, p: int, c) -> Array:
 	var g: Dictionary = fx(c)["hand_ignite"]
 	var ps := s.players[p]
+	if g.get("zw", false):
+		return _zw_equip(s, p, c)
 	if g.has("equip_to"):
 		# Cocoon of Evolution: "target 1 "Petit Moth" you control; equip this card from your hand to that target."
 		var hosts := _cocoon_hosts(s, p, str(g["equip_to"]))
@@ -1096,12 +1139,66 @@ static func _union(s: DuelState, p: int, c) -> Array:
 
 
 ## ATK and DEF a monster gets from the Union monsters equipped to it.
+## Elemental HERO Wildedge always; Super Vehicroid - Stealth Union while it holds a monster.
+static func attacks_all(s: DuelState, c) -> bool:
+	if c == null:
+		return false
+	if fx(c).get("attack_all", false):
+		return true
+	return fx(c).get("stealth_union", false) and not c.negated and c.tags.has("su_eq") and s.find_uid(int(c.tags["su_eq"])) != null \
+			and not s.unions_on(c).filter(func(u): return u.uid == int(c.tags["su_eq"])).is_empty()
+
+
 static func union_boost(s: DuelState, c) -> int:
 	var b := 0
 	for u in s.unions_on(c):
 		if not u.negated:
-			b += int(fx(u).get("union", {}).get("boost", 0))
+			b += int(fx(u).get("union", {}).get("boost", 0)) + int(fx(u).get("zw", {}).get("boost", 0))
 	return b
+
+
+## The monsters a "ZW -" card can be equipped to right now ("Utopia" monsters, or "Number C39: Utopia Ray" only).
+static func _zw_hosts(s: DuelState, p: int, c) -> Array:
+	var zw: Dictionary = fx(c).get("zw", {})
+	if zw.is_empty() or s.players[p].spells.find(null) == -1:
+		return []
+	# "You can only control 1 (face-up) "ZW - ..."".
+	for q in [p]:
+		for st in s.players[q].spells:
+			if st != null and st != c and st.face_up and st.cname() == c.cname():
+				return []
+	var want := str(zw.get("to", "Utopia"))
+	return s.players[p].monsters().filter(func(m): return m != c and m.face_up and (m.cname().contains(want)))
+
+
+## Equip a "ZW -" monster from the hand or the field to a "Utopia" monster.
+static func _zw_equip(s: DuelState, p: int, c) -> Array:
+	var ps := s.players[p]
+	var hosts := _zw_hosts(s, p, c)
+	if hosts.is_empty():
+		return []
+	var best = hosts[0]
+	for m in hosts:
+		if s.atk_of(m, false) > s.atk_of(best, false):
+			best = m
+	var host = s.pick1(p, Loc.t("%s: equip it to which monster?") % c.cname(), hosts, best, c)
+	var events := []
+	if ps.hand.has(c):
+		ps.hand.erase(c)
+	elif ps.field.has(c):
+		for o in c.overlays:
+			s._to_gy(s.players[o.owner], o)
+		c.overlays.clear()
+		ps.field[ps.field.find(c)] = null
+		events.append_array(s._monster_left(c))
+		c.reset_mods()
+	var zone := ps.spells.find(null)
+	c.face_up = true
+	ps.spells[zone] = c
+	c.equipped_to = host
+	events.append({"type": "activate", "player": p, "card": c, "zone": zone})
+	events.append(_ev(p, c, Loc.t("%s is equipped to %s: +%d ATK") % [c.cname(), host.cname(), int(fx(c)["zw"].get("boost", 0))]))
+	return events
 
 
 static func ignite_spec(c) -> Dictionary:
@@ -1204,6 +1301,7 @@ static func can_ignite(s: DuelState, p: int, c) -> bool:
 
 ## Avoid offering effects that would do nothing.
 static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
+	var ps := s.players[p]
 	var opp := s.players[s.opponent(p)]
 	for a in actions:
 		match a[0]:
@@ -1251,6 +1349,61 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 					return false
 			"mill_opp_top":
 				if opp.deck.is_empty():
+					return false
+			"majestic_red":
+				if opp.monsters().filter(func(m): return m.face_up and can_target(c, m)).is_empty():
+					return false
+			"su_equip":
+				if ps.spells.find(null) == -1 or c.tags.has("su_eq") and s.find_uid(int(c.tags["su_eq"])) != null and not s.unions_on(c).is_empty() \
+						or (ps.monsters() + opp.monsters()).filter(func(m): return m != c and m.face_up and str(m.data.get("race", "")) != "Machine" and can_target(c, m)).is_empty():
+					return false
+			"dragoon":
+				if opp.monsters().filter(func(m): return can_target(c, m)).is_empty():
+					return false
+			"splendid":
+				if ps.gy.filter(func(g): return g.is_monster() and str(g.data.get("race", "")) == "Plant").is_empty() or opp.monsters().filter(func(m): return m.face_up and can_target(c, m)).is_empty():
+					return false
+			"master_key":
+				if ps.monsters().filter(func(m): return m != c).is_empty() and ps.set_cards().is_empty():
+					return false
+			"soul_equip":
+				if ps.spells.find(null) == -1 or ps.gy.filter(func(g): return g.cname().begins_with("Number")).is_empty():
+					return false
+			"overfiend":
+				if opp.monsters().filter(func(m): return m.face_up and can_target(c, m)).is_empty():
+					return false
+			"ark_attach":
+				if opp.monsters().filter(func(m): return m.face_up and m.attack_pos and m.tags.get("ss", false) and can_target(c, m) and not m.is_token()).is_empty():
+					return false
+			"dark_attach":
+				if opp.monsters().filter(func(m): return m.face_up and m.tags.get("ss", false) and can_target(c, m) and not m.is_token()).is_empty():
+					return false
+			"rebarian":
+				if ps.free_zone() == -1 or c.overlays.is_empty() or ps.gy.filter(func(g): return g.frame() == "xyz" and g.cname().begins_with("Number") and g.cname() != c.cname() and s.can_revive(g)).is_empty():
+					return false
+			"veiss":
+				if ps.gy.filter(func(g): return g.is_monster()).is_empty() or (ps.monsters() + opp.monsters()).filter(func(m): return m.face_up and (s.atk_of(m, false) > 0)).is_empty():
+					return false
+			"zw_equip":
+				if _zw_hosts(s, p, c).is_empty():
+					return false
+			"leo_arms":
+				if _zw_hosts(s, p, c).is_empty() and (c.overlays.is_empty() or _take(ps.deck, {"has": "ZW -", "monster": true}, 1).is_empty()):
+					return false
+			"kurivolt":
+				if ps.free_zone() == -1 or ps.deck.filter(func(x): return x.cname() == "Kurivolt").is_empty() \
+						or (ps.monsters() + opp.monsters()).filter(func(m): return m.face_up and m.frame() == "xyz" and not m.overlays.is_empty()).is_empty():
+					return false
+			"terror_byte":
+				if opp.monsters().filter(func(m): return m.face_up and m.attack_pos and m.level() <= 4 and m.frame() != "xyz" and can_target(c, m)).is_empty() or ps.free_zone() == -1:
+					return false
+			"beyond":
+				if ps.free_zone() == -1 and ps.monsters().filter(func(m): return m != c and m.face_up and m.frame() == "xyz").is_empty():
+					return false
+				if ps.gy.filter(func(g): return g.cname().contains("Utopia") and s.can_revive(g)).is_empty() or ps.monsters().filter(func(m): return m.face_up and m.frame() == "xyz").is_empty():
+					return false
+			"gagaga_mancer":
+				if ps.free_zone() == -1 or ps.gy.filter(func(g): return g.cname().contains("Gagaga") and g.cname() != "Gagaga Mancer" and s.can_revive(g)).is_empty():
 					return false
 			"scarlight":
 				if opp.monsters().filter(func(m): return m.face_up and m.tags.get("ss", false) and m.frame() != "normal" and not m.is_token() and s.atk_of(m, false) <= s.atk_of(c, false)).is_empty():
@@ -1378,7 +1531,7 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 				if s._best_monsters(s.players[p].gy, 1).is_empty():
 					return false
 			"special":
-				var ps := s.players[p]
+				ps = s.players[p]
 				if ps.free_zone() == -1:
 					return false
 				var src: Array = ps.deck if a[1] == "deck" else (ps.hand if a[1] == "hand" else ps.gy)
@@ -1662,6 +1815,9 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 	if int(ps.name_lock.get(c.cname(), -1)) == s.turn:
 		return false
 	match kind:
+		"majestic_star":
+			# "when your opponent activates a card or effect: You can Tribute this card; negate the activation, and if you do, destroy all cards your opponent controls."
+			return on_field and window == "chain" and not s.chain.is_empty() and int(s.chain.back()["player"]) != p and not s.chain.back().get("negated", false)
 		"ssd":
 			if not on_field:
 				return false
@@ -1707,6 +1863,8 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 				return false
 			var pa_a = s.pending_attack["attacker"]
 			var pa_t = s.pending_attack["target"]
+			if fx(c).get("storm_full", false) and c.overlays.filter(func(o): return o.cname() == "Number 96: Dark Mist").is_empty():
+				return false   # (Dark Storm has this effect only with Dark Mist as material)
 			return pa_t != null and (pa_a == c or pa_t == c) and int(c.tags.get("mist_n", -1)) != int(pa_a.attack_count) * 1000 + s.turn
 		"paladin":
 			# Dark Paladin: when a Spell Card is activated, discard 1 card: negate it and destroy it.
@@ -1818,6 +1976,22 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 			events.append(_ev(p, c, Loc.t("%s destroys every Attack Position monster: %d damage") % [c.cname(), sum_w]))
 			if sum_w > 0:
 				events.append_array(s._damage(opp_i, sum_w))
+		"majestic_star":
+			if not s.chain.is_empty() and ps.field.has(c):
+				ps.field[ps.field.find(c)] = null
+				s._to_gy(ps, c)
+				events.append({"type": "tribute", "player": p, "card": c})
+				events.append_array(s._monster_left(c))
+				var link_ms: Dictionary = s.chain.back()
+				link_ms["negated"] = true
+				events.append(_ev(p, c, Loc.t("%s negates %s and destroys everything your opponent controls") % [c.cname(), link_ms["card"].cname()]))
+				for m in opp.monsters():
+					events.append_array(s._destroy(m))
+				for st in opp.spells.duplicate():
+					if st != null:
+						events.append_array(s._destroy_st(st))
+				if opp.field_spell != null:
+					events.append_array(s._destroy_st(opp.field_spell))
 		"ssd":
 			if not s.chain.is_empty() and SpellRules.would_destroy(s.chain.back()) and int(c.tags.get("ssd_neg", -1)) != s.turn:
 				c.tags["ssd_neg"] = s.turn
@@ -1914,8 +2088,14 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 			s._to_gy(ps, c.overlays.pop_back())
 			events.append({"type": "detach", "player": p, "card": c})
 			var half_m: int = s.atk_of(foe_m, false) / 2
-			foe_m.atk_mod -= half_m
-			c.atk_mod += half_m
+			if fx(c).get("storm_full", false):
+				# Number C96: Dark Storm: "the ATK of the opponent's monster becomes 0, and if it does, this card gains ATK equal to the original ATK of the opponent's monster."
+				foe_m.atk_mod -= s.atk_of(foe_m, false)
+				c.atk_mod += foe_m.atk()
+				half_m = foe_m.atk()
+			else:
+				foe_m.atk_mod -= half_m
+				c.atk_mod += half_m
 			events.append(_ev(p, c, Loc.t("%s halves %s's ATK and gains %d") % [c.cname(), foe_m.cname(), half_m]))
 		"void_ogre":
 			if not s.chain.is_empty():
@@ -1982,6 +2162,10 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 		else:
 			lose = a > s.def_of(tgt)
 	match kind:
+		"majestic_star":
+			# Worth the Tribute when their side has 3 or more cards, or this would be lost anyway.
+			var theirs_ms: int = s.players[s.opponent(p)].monsters().size() + s.players[s.opponent(p)].set_cards().size()
+			return theirs_ms >= 3 or SpellRules.would_destroy(s.chain.back())
 		"ssd":
 			if window == "chain":
 				return not s.chain.is_empty() and int(s.chain.back()["player"]) != p
@@ -2115,6 +2299,8 @@ static func run_list(s: DuelState, p: int, c, actions: Array, ctx: Dictionary) -
 
 ## Turbo Warrior: "This card cannot be targeted by the effects of Level 6 or lower monsters."
 static func can_target(src, m) -> bool:
+	if src != null and m != null and m.has_meta("zw_untarget_owner") and src.owner != m.owner:
+		return false
 	if m != null and m.face_up and (m.tags.get("no_target", false) or (not m.negated and CardEffects.of(m.cname()).get("untargetable", false))):
 		return false   # Lord of D. is up and this is a Dragon / "Neither player can target this card with card effects" (Obelisk)
 	if src == null or m == null or not src.is_monster() or src.frame() == "xyz" or not m.face_up or m.negated:
@@ -2284,6 +2470,291 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"majestic_red":
+			# Majestic Red Dragon: "target 1 face-up monster your opponent controls; negate its effects, and if you do, this card gains ATK equal to that monster's ATK."
+			var tg_m: Array = opp.monsters().filter(func(m): return m.face_up and can_target(c, m))
+			if tg_m.is_empty():
+				return events
+			var best_m = tg_m[0]
+			for m in tg_m:
+				if s.atk_of(m, false) > s.atk_of(best_m, false):
+					best_m = m
+			best_m = s.pick1(p, Loc.t("%s: negate which monster?") % name, tg_m, best_m, c)
+			best_m.negated_turn = s.turn
+			best_m.negated = true
+			var gain_m: int = s.atk_of(best_m, false)
+			if c.atk_mod_turn != s.turn:
+				c.atk_mod_t = 0
+			c.atk_mod_turn = s.turn
+			c.atk_mod_t += gain_m
+			events.append(_ev(p, c, Loc.t("%s gains %d ATK") % [name, gain_m]))
+		"gilford":
+			# Gilford the Lightning: Tribute Summoned with 3 Tributes: "Destroy all monsters your opponent controls."
+			if int(c.tags.get("tributes_n", 0)) >= 3:
+				for m in opp.monsters():
+					events.append_array(s._destroy(m))
+		"dmk":
+			# Dark Magician Knight: "When this card is Special Summoned: Target 1 card on the field; destroy that target."
+			events.append_array(run_list(s, p, c, [["destroy", "any_pick"]], ctx))
+		"viser_mark":
+			# Viser Des: "Target 1 monster your opponent controls" (destroyed in your 3rd Standby Phase after this).
+			var vs_t: Array = opp.monsters().filter(func(m): return can_target(c, m))
+			if not vs_t.is_empty():
+				var best_v = vs_t[0]
+				for m in vs_t:
+					if (s.atk_of(m, false) if m.face_up else 1500) > (s.atk_of(best_v, false) if best_v.face_up else 1500):
+						best_v = m
+				best_v = s.pick1(p, Loc.t("%s: mark which monster?") % name, vs_t, best_v, c)
+				c.tags["viser_t"] = best_v.uid
+				c.tags["viser_n"] = 0
+				events.append(_ev(p, c, Loc.t("%s marks %s: it is destroyed in your 3rd Standby Phase") % [name, best_v.cname() if best_v.face_up else Loc.t("a face-down monster")]))
+		"no_attack_self":
+			c.tags["sct_turn"] = s.turn   # Super Conductor Tyranno: "This card cannot declare an attack the turn this effect is activated."
+		"su_equip":
+			# Super Vehicroid - Stealth Union: "target 1 face-up non-Machine monster on the field; equip that target to this card."
+			var nm: Array = (opp.monsters() + ps.monsters()).filter(func(m): return m != c and m.face_up and str(m.data.get("race", "")) != "Machine" and can_target(c, m))
+			var zone_u: int = ps.spells.find(null)
+			if nm.is_empty() or zone_u == -1:
+				return events
+			var best_u = nm[0]
+			for m in nm:
+				if (m.owner != p and best_u.owner == p) or (m.owner == best_u.owner and s.atk_of(m, false) > s.atk_of(best_u, false)):
+					best_u = m
+			best_u = s.pick1(p, Loc.t("%s: equip which monster?") % name, nm, best_u, c)
+			var from_q := s.players[best_u.owner]
+			from_q.field[from_q.field.find(best_u)] = null
+			events.append_array(s._monster_left(best_u))
+			best_u.reset_mods()
+			if best_u.orig_owner == -1 and best_u.owner != p:
+				best_u.orig_owner = best_u.owner
+			best_u.owner = p
+			best_u.face_up = true
+			ps.spells[zone_u] = best_u
+			best_u.equipped_to = c
+			c.tags["su_eq"] = best_u.uid
+			events.append({"type": "activate", "player": p, "card": best_u, "zone": zone_u})
+			events.append(_ev(p, c, Loc.t("%s takes %s: it can attack every monster") % [name, best_u.cname()]))
+		"dragoon":
+			# Destiny End Dragoon: "target 1 monster your opponent controls; destroy that target, and if it was face-up, inflict damage
+			# to your opponent equal to the ATK it had on the field. You cannot conduct your Battle Phase the turn you activate this effect."
+			var tg_d: Array = opp.monsters().filter(func(m): return can_target(c, m))
+			if tg_d.is_empty():
+				return events
+			var best_g = tg_d[0]
+			for m in tg_d:
+				if (s.atk_of(m, false) if m.face_up else 0) > (s.atk_of(best_g, false) if best_g.face_up else 0):
+					best_g = m
+			best_g = s.pick1(p, Loc.t("%s: destroy which monster?") % name, tg_d, best_g, c)
+			var dmg_g: int = s.atk_of(best_g, false) if best_g.face_up else 0
+			events.append_array(s._destroy(best_g))
+			if dmg_g > 0 and not opp.field.has(best_g):
+				events.append_array(s._damage(s.opponent(p), dmg_g))
+			ps.no_attack_turn = s.turn
+		"cyberdark":
+			# Cyberdark Horn / Edge / Keel (Level 3 or lower) and Cyberdark Dragon (any): equip a Dragon from your GY; gain its original ATK.
+			var zone_cd: int = ps.spells.find(null)
+			var drs: Array = ps.gy.filter(func(g): return g.is_monster() and str(g.data.get("race", "")) == "Dragon" and g.level() <= int(a[1]))
+			if drs.is_empty() or zone_cd == -1 or s.absorbed_by(c) != null:
+				return events
+			var best_d = drs[0]
+			for g in drs:
+				if g.atk() > best_d.atk():
+					best_d = g
+			best_d = s.pick1(p, Loc.t("%s: equip which Dragon from your Graveyard?") % name, drs, best_d, c)
+			ps.gy.erase(best_d)
+			best_d.face_up = true
+			ps.spells[zone_cd] = best_d
+			best_d.equipped_to = c
+			c.tags["absorbed"] = best_d.uid
+			events.append({"type": "activate", "player": p, "card": best_d, "zone": zone_cd})
+			events.append(_ev(p, c, Loc.t("%s takes %s: +%d ATK") % [name, best_d.cname(), best_d.atk()]))
+		"splendid":
+			# Splendid Rose: "banish 1 Plant-Type monster from your Graveyard, then target 1 face-up monster your opponent controls; halve that target's ATK, until the end of this turn."
+			var pl: Array = ps.gy.filter(func(g): return g.is_monster() and str(g.data.get("race", "")) == "Plant")
+			var tg_s: Array = opp.monsters().filter(func(m): return m.face_up and can_target(c, m))
+			if pl.is_empty() or tg_s.is_empty():
+				return events
+			events.append_array(s._banish(pl[0]))
+			var best_s = tg_s[0]
+			for m in tg_s:
+				if s.atk_of(m, false) > s.atk_of(best_s, false):
+					best_s = m
+			best_s = s.pick1(p, Loc.t("%s: halve whose ATK?") % name, tg_s, best_s, c)
+			var half_s: int = s.atk_of(best_s, false) / 2
+			if best_s.atk_mod_turn != s.turn:
+				best_s.atk_mod_t = 0
+			best_s.atk_mod_turn = s.turn
+			best_s.atk_mod_t -= half_s
+			events.append(_ev(p, c, Loc.t("%s halves %s's ATK") % [name, best_s.cname()]))
+		"master_key":
+			# Number 66: "target 1 other card you control" (it cannot be destroyed by card effects; it can go to the Graveyard in this card's place).
+			var keys: Array = ps.monsters().filter(func(m): return m != c)
+			keys.append_array(ps.set_cards())
+			if keys.is_empty():
+				return events
+			var best_k = keys[0]
+			for k in keys:
+				if k.is_monster() and (not best_k.is_monster() or k.atk() > best_k.atk()):
+					best_k = k
+			best_k = s.pick1(p, Loc.t("%s: which card holds the key?") % name, keys, best_k, c)
+			c.tags["key_to"] = best_k.uid
+			best_k.tags["key_by"] = c.uid
+			events.append(_ev(p, c, Loc.t("%s guards %s") % [name, best_k.cname()]))
+		"soul_equip":
+			# Number 43: "target 1 "Number" monster in your Graveyard; equip that target to this card."
+			var nn: Array = ps.gy.filter(func(g): return g.cname().begins_with("Number"))
+			var zone_n: int = ps.spells.find(null)
+			if nn.is_empty() or zone_n == -1:
+				return events
+			var eq_n = s.pick1(p, Loc.t("%s: equip which Number?") % name, nn, nn[0], c)
+			ps.gy.erase(eq_n)
+			eq_n.face_up = true
+			ps.spells[zone_n] = eq_n
+			eq_n.equipped_to = c
+			events.append({"type": "activate", "player": p, "card": eq_n, "zone": zone_n})
+		"overfiend":
+			# Number C65: "target 1 face-up monster your opponent controls; it loses 1000 ATK and DEF."
+			var of: Array = opp.monsters().filter(func(m): return m.face_up and can_target(c, m))
+			if not of.is_empty():
+				var t_o = of[0]
+				for m in of:
+					if s.atk_of(m, false) > s.atk_of(t_o, false):
+						t_o = m
+				t_o = s.pick1(p, Loc.t("%s: which monster loses 1000 ATK and DEF?") % name, of, t_o, c)
+				t_o.atk_mod -= 1000
+				t_o.def_mod -= 1000
+				events.append(_ev(p, c, Loc.t("%s loses 1000 ATK and DEF") % t_o.cname()))
+		"ark_attach", "dark_attach":
+			# Number 101 / C101: "target 1 Special Summoned monster your opponent controls (in face-up Attack Position); attach it to this card as material."
+			var prey: Array = opp.monsters().filter(func(m): return m.face_up and (m.attack_pos or a[0] == "dark_attach") and m.tags.get("ss", false) and can_target(c, m) and not m.is_token())
+			if prey.is_empty():
+				return events
+			var best_p = prey[0]
+			for m in prey:
+				if s.atk_of(m, false) > s.atk_of(best_p, false):
+					best_p = m
+			best_p = s.pick1(p, Loc.t("%s: attach which monster?") % name, prey, best_p, c)
+			opp.field[opp.field.find(best_p)] = null
+			for o in best_p.overlays:
+				s._to_gy(s.players[o.owner], o)
+			best_p.overlays.clear()
+			events.append_array(s._monster_left(best_p))
+			best_p.reset_mods()
+			c.overlays.append(best_p)
+			events.append(_ev(p, c, Loc.t("%s takes %s as material") % [name, best_p.cname()]))
+		"rebarian":
+			# Number 71: "target 1 "Number" Xyz Monster in your GY, except this; Special Summon it, and if you do, attach 1 material from this card to it."
+			var nums: Array = ps.gy.filter(func(g): return g.frame() == "xyz" and g.cname().begins_with("Number") and g.cname() != c.cname() and s.can_revive(g))
+			if nums.is_empty():
+				return events
+			var best_n = nums[0]
+			for g in nums:
+				if g.atk() > best_n.atk():
+					best_n = g
+			best_n = s.pick1(p, Loc.t("%s: Special Summon which Number?") % name, nums, best_n, c)
+			ps.gy.erase(best_n)
+			events.append_array(s._special(p, best_n, "reborn"))
+			if ps.field.has(best_n) and not c.overlays.is_empty():
+				best_n.overlays.append(c.overlays.pop_back())
+		"splash":
+			# Number 73: "double this card's ATK until the end of your opponent's turn, also, any battle damage it inflicts to your opponent this turn is halved."
+			c.tmp_atk = s.atk_of(c, false)
+			c.tmp_until = s.turn + 1
+			c.tags["splash_turn"] = s.turn
+			events.append(_ev(p, c, Loc.t("%s doubles its ATK") % name))
+		"veiss":
+			# Number C32: "If your LP are 1000 or less: banish 1 monster from your GY and detach 1 material, then target 1 face-up monster on the field; its ATK/DEF become 0 until the end of your turn."
+			var fuel_v: Array = ps.gy.filter(func(g): return g.is_monster())
+			var tg_v: Array = opp.monsters().filter(func(m): return m.face_up and can_target(c, m))
+			if fuel_v.is_empty() or tg_v.is_empty():
+				return events
+			events.append_array(s._banish(fuel_v[0]))
+			var best_v = tg_v[0]
+			for m in tg_v:
+				if s.atk_of(m, false) > s.atk_of(best_v, false):
+					best_v = m
+			best_v = s.pick1(p, Loc.t("%s: which monster goes to 0?") % name, tg_v, best_v, c)
+			if best_v.atk_mod_turn != s.turn:
+				best_v.atk_mod_t = 0
+			best_v.atk_mod_turn = s.turn
+			best_v.atk_mod_t -= s.atk_of(best_v, false)
+			events.append(_ev(p, c, Loc.t("%s: %s has 0 ATK this turn") % [name, best_v.cname()]))
+		"zw_equip":
+			events.append_array(_zw_equip(s, p, c))
+		"leo_arms":
+			# ZW - Leo Arms: equip itself to a "Utopia" monster (+3000), or detach 1 to add a "ZW -" monster from the Deck.
+			if not _zw_hosts(s, p, c).is_empty():
+				events.append_array(_zw_equip(s, p, c))
+			elif not c.overlays.is_empty():
+				var o_l = c.overlays[0]
+				c.overlays.erase(o_l)
+				s.players[o_l.owner].gy.append(o_l)
+				events.append_array(run_list(s, p, c, [["search", {"has": "ZW -", "monster": true}]], ctx))
+		"kurivolt":
+			# Kurivolt: "target 1 Xyz Monster that has material; detach 1 material from it, and if you do, Special Summon 1 "Kurivolt" from your Deck."
+			var xs: Array = (opp.monsters() + ps.monsters()).filter(func(m): return m.face_up and m.frame() == "xyz" and not m.overlays.is_empty())
+			if xs.is_empty():
+				return events
+			var x_k = s.pick1(p, Loc.t("%s: detach 1 material from which Xyz Monster?") % name, xs, xs[0], c)
+			var o_k = x_k.overlays[0]
+			x_k.overlays.erase(o_k)
+			s.players[o_k.owner].gy.append(o_k)
+			var kv: Array = ps.deck.filter(func(x): return x.cname() == "Kurivolt")
+			if not kv.is_empty() and ps.free_zone() != -1:
+				ps.deck.erase(kv[0])
+				events.append_array(s._special(p, kv[0], "effect"))
+		"terror_byte":
+			# Number 34: "target 1 Level 4 or lower Attack Position monster your opponent controls; gain control of it until the End Phase."
+			var tb: Array = opp.monsters().filter(func(m): return m.face_up and m.attack_pos and m.level() <= 4 and m.frame() != "xyz" and can_target(c, m))
+			if not tb.is_empty():
+				var best_t = tb[0]
+				for m in tb:
+					if s.atk_of(m, false) > s.atk_of(best_t, false):
+						best_t = m
+				events.append_array(s._take_control(s.pick1(p, Loc.t("%s: take which monster?") % name, tb, best_t, c), p, s.turn))
+		"zero_opp":
+			# Number 39: Utopia Beyond: "If this card is Xyz Summoned: The ATK of all monsters your opponent currently controls become 0."
+			for m in opp.monsters():
+				if m.face_up:
+					m.zero_perm = true
+			events.append(_ev(p, c, Loc.t("%s: the opponent's monsters have 0 ATK") % name))
+		"beyond":
+			# "banish a face-up Xyz Monster you control, and if you do, Special Summon a "Utopia" monster from your GY, then gain 1250 LP."
+			var xb: Array = ps.monsters().filter(func(m): return m.face_up and m.frame() == "xyz" and m != c)
+			if xb.is_empty():
+				xb = [c]
+			var gone_b = s.pick1(p, Loc.t("%s: banish which Xyz Monster?") % name, xb, xb[0], c)
+			events.append_array(s._banish(gone_b))
+			var back_b: Array = ps.gy.filter(func(g): return g.cname().contains("Utopia") and s.can_revive(g))
+			if not back_b.is_empty() and ps.free_zone() != -1:
+				var best_b = back_b[0]
+				for g in back_b:
+					if g.atk() > best_b.atk():
+						best_b = g
+				ps.gy.erase(best_b)
+				events.append_array(s._special(p, best_b, "reborn"))
+				events.append_array(run_list(s, p, c, [["heal", 1250]], ctx))
+		"gagaga_mancer":
+			var gm: Array = ps.gy.filter(func(g): return g.cname().contains("Gagaga") and g.cname() != "Gagaga Mancer" and s.can_revive(g))
+			if not gm.is_empty() and ps.free_zone() != -1:
+				var pick_g = gm[0]
+				for g in gm:
+					if g.atk() > pick_g.atk():
+						pick_g = g
+				pick_g = s.pick1(p, Loc.t("%s: Special Summon which Gagaga monster?") % name, gm, pick_g, c)
+				ps.gy.erase(pick_g)
+				events.append_array(s._special(p, pick_g, "reborn"))
+		"zubaba_buster":
+			# Zubaba Buster: "Destroy the 1 face-up monster on the field that has the lowest ATK, and if you do, this card loses 800 ATK."
+			var low_z = null
+			for q in [opp, ps]:
+				for m in q.monsters():
+					if m.face_up and (low_z == null or s.atk_of(m, false) < s.atk_of(low_z, false)):
+						low_z = m
+			if low_z != null:
+				events.append_array(s._destroy(low_z))
+				if ps.field.has(c):
+					c.atk_mod -= 800
 		"chain_resonator":
 			# Chain Resonator: "When this card is Normal Summoned while a Synchro Monster is on the field: You can Special
 			# Summon 1 "Resonator" monster from your Deck, except "Chain Resonator"."

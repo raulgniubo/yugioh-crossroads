@@ -108,6 +108,113 @@ const FX := {
 	"Elemental HERO Thunder Giant": {"note": "Once per turn, discard 1: destroy a monster with less original ATK.",
 		"ignite": {"cost": "discard", "do": [["destroy", "atk_below_self"]], "label": "Discard 1: destroy a weaker monster"}},
 	"Elemental HERO Rampart Blaster": {"note": "Can attack directly while it is in Defense Position. When it does, its ATK is halved for that damage calculation.", "direct_from_def": true},
+	# ---- The Majestic Dragons, Kaiba's, Joey's and Yugi's bosses (v0.33.36)
+	"Majestic Dragon": {"note": "A Tuner that can only be used for the Synchro Summon of a Majestic monster.", "synchro_for": {"has": "Majestic"}},
+	"Majestic Star Dragon": {"note": "Majestic Dragon + Stardust Dragon + 1 non-Tuner monster. When your opponent activates a card or effect: Tribute this card to negate it and destroy every card your opponent controls. End Phase: it goes back to the Extra Deck and Stardust Dragon returns from your Graveyard.",
+		"quick": "majestic_star", "majestic_back": "Stardust Dragon", "ai_prefer": true},
+	"Majestic Red Dragon": {"note": "Majestic Dragon + Red Dragon Archfiend + 1 non-Tuner monster. Cannot be destroyed by card effects. After it attacks: destroy every Defense Position monster on the field. Once per turn: negate 1 face-up monster your opponent controls and gain its ATK this turn. End Phase: it goes back and Red Dragon Archfiend returns from your Graveyard.",
+		"fx_indestructible": true, "majestic_red": true, "majestic_back": "Red Dragon Archfiend", "ignite": {"cost": "none", "do": [["majestic_red"]], "label": "Negate a monster and take its ATK"}, "ai_prefer": true},
+	"Blue-Eyes Shining Dragon": {"note": "Special Summon it from your hand by Tributing Blue-Eyes Ultimate Dragon. Gains 300 ATK for each Dragon monster in your Graveyard.",
+		"special_tribute_f": [1, {"name": "Blue-Eyes Ultimate Dragon"}], "atk_per": ["own_gy_race:Dragon", 300]},
+	"Gilford the Lightning": {"note": "You can Tribute 3 monsters to Tribute Summon it: if you do, destroy every monster your opponent controls.", "summon": [["gilford"]]},
+	"Gearfried the Swordmaster": {"note": "Special Summoned with Release Restraint. Each time an Equip Card is equipped to it: destroy 1 monster your opponent controls.", "no_special": true},
+	"Dark Magician Knight": {"note": "Special Summoned with Knight's Title. Special Summoned: destroy 1 card on the field.", "no_special": true, "special_only": [["dmk"]]},
+	# ---- Jaden's Yubel and Neos Wiseman (v0.33.36)
+	"Yubel": {"note": "Cannot be destroyed by battle; you take no battle damage from its battles. When it is attacked in Attack Position: damage to your opponent equal to the attacker's ATK. Your End Phase: Tribute 1 other monster or destroy this card.",
+		"battle_immune": true, "no_damage_involving": true, "yubel": true},
+	"Neos Wiseman": {"note": "Special Summon it from your hand by sending Elemental HERO Neos and Yubel from your field to the Graveyard. Cannot be destroyed by card effects. After it battles an opponent's monster: damage equal to that monster's ATK, and you gain LP equal to its DEF.",
+		"special_tribute_names": ["Elemental HERO Neos", "Yubel"], "fx_indestructible": true, "wiseman": true},
+	# ---- Marik's and Bakura's (v0.33.36)
+	"Viser Des": {"note": "Normal Summoned: mark 1 monster your opponent controls; it is destroyed in your 3rd Standby Phase after this. Not destroyed by battle while that monster is on the field.", "summon": [["viser_mark"]]},
+	"Helpoemer": {"note": "Cannot be Special Summoned from the Graveyard. Destroyed by battle: your opponent discards 1 random card.", "no_revive": true, "death": [["opp_discard_random"]]},
+	"Diabound Kernel": {"note": "When it declares an attack: it gains 600 ATK.", "attack_gain": 600},
+	# ---- Mai's Amazonesses (v0.33.36)
+	"Amazoness Paladin": {"note": "Gains 100 ATK for each Amazoness monster you control.", "atk_per": ["own_family:Amazoness", 100]},
+	# ---- Rex's best deck (v0.33.36)
+	"Super Conductor Tyranno": {"note": "Once per turn: Tribute 1 other monster, 1000 damage to your opponent. It cannot attack that turn.",
+		"ignite": {"cost": "tribute_other", "do": [["damage", 1000], ["no_attack_self"]], "label": "Tribute 1: 1000 damage"}},
+	"Ultimate Tyranno": {"note": "Can attack every monster your opponent controls once each. While it can attack, your other monsters cannot.", "attack_all": true},
+	# ---- Chazz's Ojamas (v0.33.36)
+	"Ojama Blue": {"note": "Destroyed by battle and sent to the Graveyard: add 2 Ojama cards from your Deck to your hand.", "death": [["search", {"has": "Ojama"}], ["search", {"has": "Ojama"}]]},
+	"Ojama Red": {"note": "Normal Summoned: Special Summon up to 4 Ojama monsters from your hand in Attack Position.", "summon": [["special", "hand", {"has": "Ojama"}, "atk", 4]]},
+	# ---- Syrus's best deck (v0.33.36)
+	"Super Vehicroid - Stealth Union": {"note": "Truckroid + Expressroid + Drillroid + Stealthroid. Once per turn: equip 1 face-up non-Machine monster on the field to it; while it holds that monster it can attack every monster your opponent controls once each. When it attacks, its original ATK is halved. Piercing.",
+		"stealth_union": true, "piercing": true, "ignite": {"cost": "none", "do": [["su_equip"]], "label": "Take a non-Machine monster"}, "ai_prefer": true},
+	# ---- Aster's best deck (v0.33.36)
+	"Destiny HERO - Dreadmaster": {"note": "Comes out of Clock Tower Prison: destroy your monsters except Destiny HEROes, then Special Summon up to 2 Destiny HEROes from your Graveyard; this turn they cannot be destroyed by battle. Its ATK and DEF are the combined original ATK of your other Destiny HEROes.",
+		"dreadmaster": true, "no_special": true},
+	"Destiny End Dragoon": {"note": "Destiny HERO - Plasma + Destiny HERO - Dogma. Once per turn: destroy 1 monster your opponent controls; if it was face-up, damage equal to its ATK. You cannot attack that turn.",
+		"ignite": {"cost": "none", "do": [["dragoon"]], "label": "Destroy a monster, burn its ATK (no attacks)"}, "ai_prefer": true},
+	"Destiny HERO - Double Dude": {"note": "Cannot be Special Summoned. Can attack twice each Battle Phase.", "double_attack": true, "no_special": true},
+	# ---- Zane's Cyberdarks (v0.33.36)
+	"Cyberdark Horn": {"note": "Normal Summoned: equip a Level 3 or lower Dragon from your Graveyard to it; it gains that monster's ATK. Piercing. If it would be destroyed by battle, the equipped monster is destroyed instead.",
+		"absorb": true, "summon": [["cyberdark", 3]], "piercing": true},
+	"Cyberdark Edge": {"note": "Normal Summoned: equip a Level 3 or lower Dragon from your Graveyard to it; it gains that monster's ATK. It can attack directly, at half ATK. If it would be destroyed by battle, the equipped monster is destroyed instead.",
+		"absorb": true, "summon": [["cyberdark", 3]], "direct": true, "direct_half": true},
+	"Cyberdark Keel": {"note": "Normal Summoned: equip a Level 3 or lower Dragon from your Graveyard to it; it gains that monster's ATK. Destroys a monster by battle: 300 damage. If it would be destroyed by battle, the equipped monster is destroyed instead.",
+		"absorb": true, "summon": [["cyberdark", 3]], "kill": [["damage", 300]]},
+	"Cyberdark Dragon": {"note": "Cyberdark Horn + Cyberdark Edge + Cyberdark Keel. Special Summoned: equip a Dragon from your Graveyard to it; it gains that monster's ATK, plus 100 ATK for each monster in your Graveyard. If it would be destroyed by battle, the equipped monster is destroyed instead.",
+		"no_revive": true, "absorb": true, "special_only": [["cyberdark", 12]], "atk_per": ["own_gy_monsters", 100], "ai_prefer": true},
+	# ---- Akiza's best deck (v0.33.36)
+	"Splendid Rose": {"note": "1 Tuner + 1 or more non-Tuner monsters. Once per turn: banish 1 Plant monster from your Graveyard, halve the ATK of 1 face-up monster your opponent controls until the end of this turn.",
+		"ignite": {"cost": "none", "do": [["splendid"]], "label": "Banish a Plant: halve a monster's ATK"}},
+	"Queen of Thorns": {"note": "1 Tuner + 1 or more non-Tuner Plant monsters. Each player pays 1000 LP for each non-Plant monster they Normal or Special Summon from the hand.", "thorn_tax": true},
+	# ---- Kalin's best deck (v0.33.36)
+	"Infernity General": {"note": "With an empty hand: banish it from your Graveyard, Special Summon 2 Level 3 or lower Infernity monsters from your Graveyard.",
+		"gy_ignite": {"cond": "hand_empty", "do": [["special", "gy", {"has": "Infernity", "max_lv": 3}, "def", 2]], "label": "Banish it: bring back 2 small Infernity monsters"}},
+	# ---- Vector's best deck (v0.33.36)
+	"Number 66: Master Key Beetle": {"note": "2 Level 4 DARK monsters. Once per turn: detach 1 and pick 1 other card you control. That card cannot be destroyed by card effects, and if this card would be destroyed, that card goes to the Graveyard instead.",
+		"ignite": {"cost": "detach", "do": [["master_key"]], "label": "Detach: guard one of your cards"}, "ai_prefer": true},
+	"Number 43: Manipulator of Souls": {"note": "3 Level 2 DARK monsters. Once per turn: detach 1, equip a Number monster from your Graveyard to it. While it holds a Number card, it cannot be destroyed by battle or card effects.",
+		"soul_guard": true, "ignite": {"cost": "detach", "do": [["soul_equip"]], "label": "Detach: equip a Number from the Graveyard"}},
+	"Number C65: King Overfiend": {"note": "3 Level 3 DARK monsters, or Rank-Up from Number 65. Once per turn: detach 1, a face-up monster your opponent controls loses 1000 ATK and DEF.",
+		"ignite": {"cost": "detach", "do": [["overfiend"]], "label": "Detach: -1000 ATK and DEF"}},
+	"Number C96: Dark Storm": {"note": "4 Level 3 DARK monsters, or Rank-Up from Number 96. Cannot be destroyed by battle; battle damage you take from its battles is also dealt to your opponent. With Number 96: Dark Mist as material: when it battles, detach 1, that monster's ATK becomes 0 and this card gains its original ATK.",
+		"battle_immune": true, "reflect_battle": true, "reflect_absorbed": true, "quick": "dark_mist", "storm_full": true, "ai_prefer": true},
+	# ---- Shark's best deck (v0.33.36)
+	"Number 101: Silent Honor ARK": {"note": "2 Level 4 monsters. Once per turn: detach 2 materials, attach 1 Special Summoned monster your opponent controls in face-up Attack Position to this card. If it would be destroyed by battle or card effect, you can detach 1 material instead.",
+		"detach_shield": true, "ignite": {"cost": "detach2", "do": [["ark_attach"]], "label": "Detach 2: take a Special Summoned monster as material"}, "ai_prefer": true},
+	"Number C101: Silent Honor DARK": {"note": "3 Level 5 monsters, or Rank-Up from Number 101. Once per turn: attach 1 Special Summoned monster your opponent controls to this card as material.",
+		"ignite": {"cost": "none", "do": [["dark_attach"]], "label": "Take a Special Summoned monster as material"}, "ai_prefer": true},
+	"Number C32: Shark Drake Veiss": {"note": "4 Level 4 WATER monsters, or Xyz Summon it on top of Number 32: Shark Drake. With 1000 LP or less: banish 1 monster from your Graveyard and detach 1: 1 face-up monster has 0 ATK this turn.",
+		"xyz_onto": "Number 32: Shark Drake", "ignite": {"cost": "detach", "cond": "lp_le_1000", "repeat": true, "do": [["veiss"]], "label": "Banish 1 + detach: a monster to 0 ATK"}, "ai_prefer": true},
+	"Number 73: Abyss Splash": {"note": "2 Level 5 WATER monsters. Once per turn: detach 1, its ATK doubles until the end of your opponent's turn; its battle damage this turn is halved.",
+		"ignite": {"cost": "detach", "do": [["splash"]], "label": "Detach: double ATK"}, "ai_prefer": true},
+	"Number 37: Hope Woven Dragon Spider Shark": {"note": "2 Level 4 WATER monsters. When any monster declares an attack: detach 1, your opponent's monsters lose 1000 ATK this turn (once per turn). Destroyed and sent to the Graveyard: Special Summon 1 other monster from your Graveyard.",
+		"spider_shark": true, "death": [["special", "gy", {"monster": true, "not": "Number 37: Hope Woven Dragon Spider Shark"}, "atk", 1]], "opp_fx_destroyed": [["special", "gy", {"monster": true, "not": "Number 37: Hope Woven Dragon Spider Shark"}, "atk", 1]], "ai_prefer": true},
+	"Number 71: Rebarian Shark": {"note": "2 Level 3 monsters. Once per turn, if it has material: Special Summon 1 other Number Xyz Monster from your Graveyard and attach 1 material from this card to it.",
+		"ignite": {"cost": "none", "do": [["rebarian"]], "label": "Bring back a Number"}},
+	"Depth Shark": {"note": "If you control no monsters, Normal Summon it without Tributing. In your opponent's Standby Phase its ATK doubles until the end of that turn.", "no_tribute_if": "own_none", "depth": true},
+	"Double Fin Shark": {"note": "Normal Summoned: Special Summon 1 Level 3 or 4 WATER Fish monster from your Graveyard in Defense Position, its effects negated.", "summon": [["special", "gy", {"attr": "WATER", "race": "Fish", "min_lv": 3, "max_lv": 4}, "def", 1]]},
+	# ---- Yuma's best deck (v0.33.36)
+	"ZW - Unicorn Spear": {"note": "From your hand: equip it to Number C39: Utopia Ray you control: +1900 ATK. Monsters that battle the equipped monster have their effects negated during the Battle Phase. You can only control 1.",
+		"hand_ignite": {"zw": true, "label": "Equip it to Utopia Ray"}, "zw": {"to": "Number C39: Utopia Ray", "boost": 1900, "negate_foe": true}},
+	"ZW - Phoenix Bow": {"note": "From your hand: equip it to Number C39: Utopia Ray you control: +1100 ATK. When the equipped monster destroys a monster by battle: 1000 damage to your opponent. You can only control 1.",
+		"hand_ignite": {"zw": true, "label": "Equip it to Utopia Ray"}, "zw": {"to": "Number C39: Utopia Ray", "boost": 1100, "kill_burn": 1000}},
+	"ZW - Lightning Blade": {"note": "From your hand or your field: equip it to a Utopia monster: +1200 ATK. If the equipped monster would be destroyed by a card effect, this card is destroyed instead. You can only control 1.",
+		"hand_ignite": {"zw": true, "label": "Equip it to a Utopia monster"}, "ignite": {"cost": "none", "do": [["zw_equip"]], "label": "Equip it to a Utopia monster"}, "zw": {"to": "Utopia", "boost": 1200, "shield": "fx"}},
+	"ZW - Tornado Bringer": {"note": "From your hand or your field: equip it to a Utopia monster: +1300 ATK, and your opponent cannot target it with card effects. If the equipped monster would be destroyed by battle, this card is destroyed instead. You can only control 1.",
+		"hand_ignite": {"zw": true, "label": "Equip it to a Utopia monster"}, "ignite": {"cost": "none", "do": [["zw_equip"]], "label": "Equip it to a Utopia monster"}, "zw": {"to": "Utopia", "boost": 1300, "shield": "battle", "untarget": true}},
+	"ZW - Eagle Claw": {"note": "If your opponent has at least 2000 more LP than you: Special Summon it from your hand. From the field: equip it to a Utopia monster: +2000 ATK. You can only control 1.",
+		"special_hand_if": "lp_behind_2000", "ignite": {"cost": "none", "do": [["zw_equip"]], "label": "Equip it to a Utopia monster"}, "zw": {"to": "Utopia", "boost": 2000}},
+	"ZW - Leo Arms": {"note": "2 Level 5 monsters. Cannot attack directly. Equip it to a Utopia monster you control: +3000 ATK. Or detach 1 material: add 1 ZW monster from your Deck to your hand.",
+		"no_direct": true, "ignite": {"cost": "none", "do": [["leo_arms"]], "label": "Equip to Utopia / detach: search a ZW"}, "zw": {"to": "Utopia", "boost": 3000}, "ai_prefer": true},
+	"Number C39: Utopia Ray Victory": {"note": "3 Level 5 monsters. When it attacks, your opponent cannot activate Spells or Traps. With a Utopia monster as material: when it attacks a face-up monster, detach 1 to negate that monster's effects and gain its ATK this turn.",
+		"victory": true, "attack_st_lock": true, "ai_prefer": true},
+	"Number 39: Utopia Beyond": {"note": "2 Level 6 monsters. Xyz Summoned: the ATK of every monster your opponent controls becomes 0. Once per turn: detach 1, banish 1 face-up Xyz Monster you control and Special Summon a Utopia monster from your Graveyard, then gain 1250 LP.",
+		"xyz": [["zero_opp"]], "ignite": {"cost": "detach", "do": [["beyond"]], "label": "Detach: swap an Xyz for a Utopia from the Graveyard"}, "ai_prefer": true},
+	"Number 34: Terror-Byte": {"note": "3 Level 3 monsters. Once per turn: detach 1, take control of 1 Level 4 or lower Attack Position monster your opponent controls until the End Phase.",
+		"ignite": {"cost": "detach", "do": [["terror_byte"]], "label": "Detach: take a small monster"}},
+	"Gagaga Head": {"note": "If only your opponent controls a monster, Normal Summon it without Tributing as a Level 4 monster. Normal Summoned: Special Summon up to 2 other Gagaga monsters from your Graveyard.",
+		"no_tribute_if": "opp_only", "free_summon": [["self_level", -2]], "summon": [["special", "gy", {"has": "Gagaga", "not": "Gagaga Head"}, "def", 2]]},
+	"Dododo Buster": {"note": "If only your opponent controls a monster, Special Summon it from your hand; summoned this way it is Level 4. Tribute Summoned: Special Summon 1 Dododo monster from your Graveyard in Defense.",
+		"special_hand_if": "opp_only", "special_only": [["self_level", -2]], "summon": [["special", "gy", {"has": "Dododo"}, "def", 1]]},
+	"Zubaba Buster": {"note": "After it deals battle damage: destroy the face-up monster with the lowest ATK on the field, then it loses 800 ATK.", "damage": [["zubaba_buster"]]},
+	"Kurivolt": {"note": "Detach 1 material from an Xyz Monster: Special Summon 1 Kurivolt from your Deck.", "ignite": {"cost": "none", "do": [["kurivolt"]], "label": "Detach 1: call another Kurivolt"}},
+	"Gagaga Clerk": {"note": "If you control another Gagaga monster: Special Summon it from your hand.", "special_hand_if": "other_gagaga"},
+	"Gagaga Child": {"note": "If you control another Gagaga monster: Special Summon it from your hand, and its Level becomes that monster's.", "special_hand_if": "other_gagaga", "special_only": [["copy_level", {"has": "Gagaga"}]]},
+	"Gagaga Sister": {"note": "Normal Summoned: add 1 Gagaga Spell or Trap from your Deck to your hand.", "summon": [["search", {"has": "Gagaga", "monster": false}]]},
+	"Gagaga Mancer": {"note": "Once per turn: Special Summon 1 Gagaga monster from your Graveyard, except Gagaga Mancer.", "ignite": {"cost": "none", "do": [["gagaga_mancer"]], "label": "Bring back a Gagaga monster"}},
 	# ---- Jack's best deck (v0.33.36)
 	"Red Nova Dragon": {"note": "2 Tuners + Red Dragon Archfiend. Gains 500 ATK for each Tuner in your Graveyard. Cannot be destroyed by an opponent's card effects. When an opponent's monster declares an attack: you can banish this card to negate that attack; it comes back in the End Phase.",
 		"atk_per": ["own_gy_tuners", 500], "no_opp_fx_destroy": true, "nova": true, "ai_prefer": true},
@@ -409,7 +516,6 @@ const FX := {
 	"Toon Summoned Skull": {"note": "Special Summon from your hand by Tributing 1 monster while you control Toon World. Not the turn it arrives; pay 500 LP to attack. Attacks directly unless they have a Toon, then it must attack a Toon. Destroyed if Toon World is destroyed.", "toon": 2, "special_toon": 1, "summon_sick": true, "attack_cost": 500},
 	"Stone Statue of the Aztecs": {"note": "Battle damage the attacker takes from attacking it is doubled.", "double_damage_attacked": true},
 	"Revival Jam": {"note": "Destroyed by battle and sent to the Graveyard: you can pay 1000 LP, and it comes back in Defense at your next Standby Phase.", "death": [["pay_revive_standby", 1000]]},
-	"Viser Des": {"note": "Can't be destroyed by battle.", "battle_immune": true},
 	"Vampire Lord": {"note": "Deals battle damage: declare Monster, Spell or Trap; the opponent sends 1 card of that type from their Deck to the Graveyard. Destroyed by an opponent's card effect: it comes back at your next Standby Phase.", "damage": [["opp_mill_type"]], "opp_fx_destroyed_any": [["back_next_standby", "any"]]},
 	"Y-Dragon Head": {"note": "Once per turn: equip it to your X-Head Cannon, or take it off and Special Summon it. The equipped monster gains 400 ATK and DEF, and if it would be destroyed this card is destroyed instead.", "union": {"to": ["X-Head Cannon"], "boost": 400}},
 	"Z-Metal Tank": {"note": "Once per turn: equip it to your X-Head Cannon or Y-Dragon Head, or take it off and Special Summon it. The equipped monster gains 600 ATK and DEF, and if it would be destroyed this card is destroyed instead.", "union": {"to": ["X-Head Cannon", "Y-Dragon Head"], "boost": 600}},
@@ -486,7 +592,6 @@ const FX := {
 	"Evil Thorn": {"note": "Tribute this card: 300 damage to your opponent, then Special Summon up to 2 Evil Thorns from your Deck in Attack Position; their effects cannot be activated.", "ignite": {"cost": "tribute_self", "do": [["damage", 300], ["special", "deck", {"name": "Evil Thorn"}, "atk", 2, "negated"]], "label": "Tribute: 300 damage, call 2 more"}},
 	"Revival Rose": {"note": "When a Level 5 or higher Plant you control is destroyed: Special Summon this card from your Graveyard.", "revive_on_plant5": true},
 	"Rose Tentacles": {"note": "Cannot be Special Summoned. Start of your Battle Phase: 1 more attack this turn for each Plant the opponent controls. Destroys a Plant by battle: 300 damage.", "no_special": true, "extra_attack_per_opp_race": "Plant", "kill": [["damage_if_victim_race", "Plant", 300]]},
-	"Splendid Rose": {"note": "Once per turn: halve an opponent's monster's ATK.", "ignite": {"cost": "none", "do": [["opp_half"]], "label": "Halve a monster's ATK"}},
 	"Copy Plant": {"note": "Once per turn: its Level becomes the Level of another Plant on the field, until the end of the turn.", "ignite": {"cost": "none", "do": [["copy_level", {"race": "Plant"}]], "label": "Copy a Plant's Level"}},
 	"Dark Verger": {"note": "When a Plant Tuner is Normal Summoned to your side: Special Summon this card from your Graveyard in Attack Position.", "revive_on_plant_tuner": true},
 	"Dark Resonator": {"note": "Once per turn, survives destruction by battle.", "survive_once": true},
@@ -663,6 +768,8 @@ static func matches(d: Dictionary, f: Dictionary) -> bool:
 	if f.has("race") and str(d.get("race", "")) != f["race"]:
 		return false
 	if f.has("attr") and str(d.get("attribute", "")) != f["attr"]:
+		return false
+	if f.has("min_lv") and int(d.get("level", 0)) < int(f["min_lv"]):
 		return false
 	if f.has("max_lv") and int(d.get("level", 0)) > int(f["max_lv"]):
 		return false
