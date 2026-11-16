@@ -362,6 +362,8 @@ func _debug_args() -> void:
 				menu._open_panel(SettingsPanel.open_profile(menu, func(): menu._open_profile(false)))
 			elif what == "profile":
 				menu._open_profile(true)
+			elif what == "intro":
+				menu._first_start()      # dev: the first-start opening, whoever you are
 			elif what == "tournaments":
 				menu._on_tournaments()
 			elif what == "tournaments-demo":

@@ -609,6 +609,19 @@ func _refresh_chip() -> void:
 	_chip.queue_redraw()
 
 
+var _first: FirstStart
+
+
+## The very first start: the opening plays over the menu, and the character creator opens on
+## its stage when it asks who you are.
+func _first_start() -> void:
+	_first = FirstStart.new()
+	_first.z_index = 90
+	add_child(_first)
+	_panel_open = true
+	_first.ask.connect(func(): _open_profile(true))
+
+
 func _open_profile(first: bool) -> void:
 	var ed := ProfileEditor.new(first)
 	ed.z_index = 100
@@ -617,6 +630,9 @@ func _open_profile(first: bool) -> void:
 	ed.closed.connect(func():
 		_panel_open = false
 		_refresh_chip()
+		if _first != null and is_instance_valid(_first):
+			_first.leave()
+			_first = null
 		# A new duelist has a name and a look: now a deck.
 		if first and _starter_due():
 			_open_starter()
@@ -660,7 +676,7 @@ func _intro() -> void:
 	if not is_inside_tree() or Router._busy:
 		return
 	if not Profile.created and not "--shot" in str(OS.get_cmdline_user_args()) and not "--story" in str(OS.get_cmdline_user_args()):
-		_open_profile(true)
+		_first_start()
 	elif _starter_due():
 		_open_starter()
 	elif _items.size() > 0 and not _panel_open:

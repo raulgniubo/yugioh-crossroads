@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.25
+
+**The first start: an opening, and the character creator opens on its stage.**
+
+- **The first time the game starts** (no duelist yet) the screen is dark and one small light comes up, breathing. It speaks, a line at a time: it was hoping someone would come; there are four worlds out there. The four go by one after the other, each a band in its colour sliding across with its name and a line (Domino City, Duel Academy, New Domino City, Heartland), with three of that world's duelists on it if you have their models. Then four roads of light come in from the corners of the screen in the four colours and meet in the middle, the screen flashes and the title lands on the crossing: YU-GI-OH! CROSSROADS, Four eras. One story. The light settles under it, says it has a deck with no cards in it yet that it thinks is yours, and asks: who are you?
+- **"This is me"** opens the character creator right there, on the dark stage with the crossing roads behind it, instead of popping up over the main menu. When you are done the stage fades and the menu is behind it, and you pick your first deck as before.
+- Any key, click or button skips straight to the title and the question. It takes about 22 seconds if you let it run.
+- It is the game's own: the lines, the light and the picture of the crossing roads are not taken from any show opening.
+- Dev: `--open=intro` plays it whoever you are; `--intro-answer` skips to the question and answers it.
+
+Not done or not checked: seen as still pictures at six moments here, never running, so the timing of the lines against the pictures is by the clock and not by eye. No voice and no music of its own: the menu music plays under it, turned down. The light is a glow, not Lumen's model (the story introduces Lumen properly in the prologue). There is no way yet to watch it again from the menu.
+
 ## What is in 0.33.24
 
 **Duel Academy and Tournaments brought up to the rest: school life has things in it, and you can see where you stand.**
