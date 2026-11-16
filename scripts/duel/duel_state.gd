@@ -860,6 +860,21 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 	if free_atk > 0 and tributes.is_empty() and not set_card:
 		c.atk_mod -= c.atk() - free_atk
 		events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s is Normal Summoned without Tributing: its ATK is %d") % [c.cname(), free_atk]})
+	# Black Whirlwind: "When a "Blackwing" monster is Normal Summoned to your field: You can add 1 "Blackwing" monster from your Deck to your hand with less ATK than that monster."
+	if not set_card and c.cname().contains("Blackwing"):
+		for bst in ps.spells:
+			if bst != null and bst.face_up and SpellRules.spec(bst).get("whirlwind", false) and not SpellRules.blocked(self, bst):
+				var lower: Array = ps.deck.filter(func(x): return x.is_monster() and x.cname().contains("Blackwing") and x.atk() < atk_of(c, false) and not CardData.is_extra(x.id))
+				if lower.is_empty():
+					continue
+				lower.sort_custom(func(x, y): return x.atk() > y.atk())
+				var got_w := choose(p, Loc.t("%s: add 1 \"Blackwing\" monster with less ATK from your Deck to your hand?") % bst.cname(), lower, 1, [lower[0]], true, bst)
+				if not got_w.is_empty():
+					ps.deck.erase(got_w[0])
+					ps.hand.append(got_w[0])
+					_shuffle(ps.deck)
+					events.append({"type": "search", "player": p, "card": got_w[0], "deck": ps.deck.size()})
+					events.append_array(EffectRunner.added_by_effect(self, p, got_w[0]))
 	# Kagetokage: "When you Normal Summon a Level 4 monster: You can Special Summon this card from your hand."
 	if not set_card and c.level() == 4 and ps.no_summon_turn != turn:
 		for h in ps.hand.duplicate():
@@ -1654,6 +1669,8 @@ func cancel_attack() -> Array:
 	return [{"type": "attack_stopped", "player": p, "card": a}]
 
 
+var next_bd_zero := [-1, -1]   # the turn on which this player's next battle damage is 0 (Blackwing - Mistral)
+var trap_stun_turn := -1       # Trap Stun: every other Trap effect on the field is negated this turn
 var gy_fx_off := -1   # effects that activate in this player's Graveyard are negated until the end of the Damage Step (Dododo Warrior)
 var bye_bye := -1     # Bye Bye Damage: battle damage this player takes in this battle comes back doubled at the other side
 
@@ -2710,6 +2727,15 @@ func _damage(p: int, amount: int, battle := false) -> Array:
 		return [{"type": "effect", "player": p, "card": null, "text": "No damage!"}]
 	if not battle and ps.no_effect_damage_turn == turn:
 		return [{"type": "effect", "player": p, "card": null, "text": "No effect damage this turn!"}]
+	if battle and next_bd_zero[p] == turn:
+		next_bd_zero[p] = -1   # Blackwing - Mistral the Silver Shield: "Reduce the next battle damage you would take this turn to 0."
+		return [{"type": "effect", "player": p, "card": null, "text": "No battle damage!"}]
+	if not battle:
+		# Black-Winged Dragon: "If you would take damage from a card effect, place 1 Black Feather Counter on this card instead."
+		for bw in ps.monsters():
+			if bw.face_up and not bw.negated and EffectRunner.fx(bw).get("feather_counters", false):
+				bw.counter += 1
+				return [{"type": "effect", "player": p, "card": bw, "text": Loc.t("%s takes a Black Feather Counter instead of the damage") % bw.cname()}]
 	ps.lp = maxi(0, ps.lp - amount)
 	var events := [{"type": "lp", "player": p, "lp": ps.lp, "delta": -amount}]
 	if turbo and amount >= 1000:

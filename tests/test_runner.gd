@@ -44,6 +44,7 @@ func _ready() -> void:
 		_test_cards_35()
 		_test_cards_36()
 		_test_cards_37()
+		_test_cards_38()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -4982,3 +4983,119 @@ func _test_cards_37() -> void:
 	s.chain_add(0, hon, null, "free")
 	s.chain_resolve()
 	check(s.atk_of(att, false) == 1500 or not s.can_attack(1, att), "Half or Nothing: their ATK is halved, or the Battle Phase ends")
+
+
+## The cards built in v0.33.33 for Crow's best deck, each against its printed text.
+func _test_cards_38() -> void:
+	# ---- Sirocco, Gust, Mistral, Ghibli.
+	var s := _bare(801)
+	var sir := _in(s, 0, "Blackwing - Sirocco the Dawn", "hand")
+	check(s.tributes_needed(sir) == 1, "Sirocco needs a Tribute on an empty board")
+	_mon(s, 1, "Celtic Guardian", 0)
+	check(s.tributes_needed(sir) == 0, "Sirocco needs no Tribute when only the opponent controls a monster")
+	s.normal_summon(0, sir, [])
+	var bora := _mon(s, 0, "Blackwing - Bora the Spear", 1)
+	s.ignite(0, sir)
+	check(s.atk_of(sir, false) == 3700 or s.atk_of(bora, false) == 3700, "Sirocco: one Blackwing gains the other's ATK (got %d / %d)" % [s.atk_of(sir, false), s.atk_of(bora, false)])
+	s.phase = DuelState.Phase.BATTLE
+	sir.summoned_turn = 1
+	bora.summoned_turn = 1
+	check(s.can_attack(0, sir) != s.can_attack(0, bora), "Sirocco: only the chosen monster can attack this turn")
+	s = _bare(802)
+	var gust := _in(s, 0, "Blackwing - Gust the Backblast", "hand")
+	check(s.can_special_from_hand(0, gust), "Gust can be Special Summoned while you control no cards")
+	s.players[0].hand.erase(gust)
+	s._special(0, gust, "effect", "atk")
+	var shura := _mon(s, 0, "Blackwing - Shura the Blue Flame", 1)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	var att := _mon(s, 1, "Vorse Raider", 0)
+	att.summoned_turn = 1
+	var lp0: int = s.players[0].lp
+	s.declare_attack(1, att, shura)
+	s.resolve_attack()
+	check(s.players[0].field.has(shura) and s.players[1].gy.has(att), "Gust: Vorse Raider (1900) loses 300 attacking Shura (1800) and is destroyed")
+	s = _bare(803)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	att = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	var att2 := _mon(s, 1, "Vorse Raider", 1)
+	att2.summoned_turn = 1
+	var mis := _mon(s, 0, "Blackwing - Mistral the Silver Shield", 0, false)
+	var ghi := _in(s, 0, "Blackwing - Ghibli the Searing Wind", "hand")
+	s.declare_attack(1, att, mis)
+	s.resolve_attack()
+	lp0 = s.players[0].lp
+	s.declare_attack(1, att2, null)
+	check(s.responses(0, "attack").has(ghi), "Ghibli is offered from the hand on a direct attack")
+	s.resolve_attack()
+	check(s.players[0].lp == lp0, "Mistral: the next battle damage this turn is 0")
+	# ---- Black Whirlwind, Blackback, Against the Wind, Backlash, Trap Stun.
+	s = _bare(804)
+	var bw := _rst(s, 0, "Black Whirlwind")
+	s.activate(0, bw)
+	s.players[0].deck.append(s._make(_cid("Blackwing - Gale the Whirlwind"), 0))
+	var sh := _in(s, 0, "Blackwing - Shura the Blue Flame", "hand")
+	s.normal_summon(0, sh, [])
+	check(s.players[0].hand.size() == 1 and s.players[0].hand[0].cname() == "Blackwing - Gale the Whirlwind", "Black Whirlwind: a weaker Blackwing is added from the Deck when one is Normal Summoned")
+	var back := _rst(s, 0, "Blackback", "set")
+	_in(s, 0, "Blackwing - Bora the Spear", "gy")
+	check(not s.can_activate(0, back), "Blackback cannot be activated after a Normal Summon")
+	s = _bare(805)
+	back = _rst(s, 0, "Blackback", "set")
+	var gy_b := _in(s, 0, "Blackwing - Bora the Spear", "gy")
+	s.activate(0, back)
+	check(s.players[0].field.has(gy_b) and s.normal_summoned, "Blackback: a Blackwing with 2000 or less ATK comes back, and no Normal Summon this turn")
+	var atw := _rst(s, 0, "Against the Wind")
+	var gy_g := _in(s, 0, "Blackwing - Gale the Whirlwind", "gy")
+	lp0 = s.players[0].lp
+	s.activate(0, atw)
+	check(s.players[0].hand.has(gy_g) and s.players[0].lp == lp0 - 1300, "Against the Wind: take its ATK as damage and add it to the hand")
+	s = _bare(806)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	att = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	var bl := _rst(s, 0, "Blackwing - Backlash", "set")
+	for i in 5:
+		_in(s, 0, "Blackwing - Gale the Whirlwind", "gy")
+	s.declare_attack(1, att, null)
+	check(s.responses(0, "attack").has(bl), "Blackwing - Backlash is offered with 5 Blackwings in the Graveyard")
+	s.respond(0, bl)
+	check(s.players[1].monsters().is_empty(), "Blackwing - Backlash destroys every monster the opponent controls")
+	s.resolve_attack()
+	s = _bare(807)
+	s.phase = DuelState.Phase.BATTLE
+	var mine := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	mine.summoned_turn = 1
+	var stun := _rst(s, 0, "Trap Stun", "set")
+	var mf := _rst(s, 1, "Mirror Force", "set")
+	s.chain_add(0, stun, null, "free")
+	s.chain_resolve()
+	s.declare_attack(0, mine, null)
+	check(not s.responses(1, "attack").has(mf), "Trap Stun: their Trap cannot be used this turn")
+	s.resolve_attack()
+	# ---- Silverwind the Ascendant, Black-Winged Dragon.
+	s = _bare(808)
+	var gale := _mon(s, 0, "Blackwing - Gale the Whirlwind", 0)
+	var m1 := _mon(s, 0, "Blackwing - Shura the Blue Flame", 1)
+	var m2 := _mon(s, 0, "Kuriboh", 2)
+	var sw := _in(s, 0, "Blackwing - Silverwind the Ascendant", "extra")
+	var e1 := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var e2 := _mon(s, 1, "Dark Magician", 1)
+	check(s.can_extra_summon(0, sw), "Silverwind can be made with a Blackwing Tuner and 2 non-Tuners (3 + 4 + 1)")
+	s.extra_summon(0, sw)
+	check(s.players[0].field.has(sw) and s.players[1].monsters().is_empty(), "Silverwind: 2 monsters with DEF under 2800 are destroyed")
+	s.phase = DuelState.Phase.BATTLE
+	sw.summoned_turn = 1
+	check(not s.can_attack(0, sw), "Silverwind: no Battle Phase the turn that effect is used")
+	s = _bare(809)
+	var bwd := _mon(s, 0, "Black-Winged Dragon", 0)
+	lp0 = s.players[0].lp
+	s._damage(0, 800)
+	check(s.players[0].lp == lp0 and bwd.counter == 1 and s.atk_of(bwd, false) == 2100, "Black-Winged Dragon: effect damage becomes a counter, and it loses 700 ATK (got %d)" % s.atk_of(bwd, false))
+	var e3 := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var lp1: int = s.players[1].lp
+	s.ignite(0, bwd)
+	check(bwd.counter == 0 and s.atk_of(bwd, false) == 2800 and s.atk_of(e3, false) == 2300 and s.players[1].lp == lp1 - 700, "Black-Winged Dragon: counters removed, their monster loses 700 ATK and they take 700")

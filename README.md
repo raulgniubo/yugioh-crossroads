@@ -25,12 +25,21 @@ Not built yet: this is what is saved for the next build.
 - **Extra:** Red Dragon Archfiend x2, Exploder Dragonwing, Chaos King Archfiend.
 - **Chaos King Archfiend** switches the ATK and DEF of their monsters when it attacks. **Exploder Dragonwing** destroys a weaker monster before the battle and burns for its ATK (it had the wrong effect before). **Strong Wind Dragon** gains half the ATK of the Dragon Tributed for it.
 
+### Crow
+
+**The Blackwing swarm with Black Whirlwind, into Armor Master, Silverwind and Black-Winged Dragon.** 11 cards built.
+
+- **Main, 40:** Gale x3, Bora x3, Shura x3, Blizzard x3, Kalut x3, Sirocco x2, Mistral x2, Elphin, Fane, Gust, Ghibli; Black Whirlwind x3, Against the Wind; Blackback x2, Blackwing - Backlash, Trap Stun, Urgent Tuning; and staples that are not his own: Monster Reborn, Pot of Greed, Mystical Space Typhoon x2, Mirror Force x2, Sakuretsu Armor x2.
+- **Extra:** Blackwing Armor Master x2, Blackwing Armed Wing x2, Blackwing - Silverwind the Ascendant, Black-Winged Dragon.
+- **Black Whirlwind** fetches a weaker Blackwing each time one is Normal Summoned. **Black-Winged Dragon** turns effect damage into Black Feather Counters and throws them back. **Silverwind** destroys up to 2 monsters when it is Synchro Summoned. **Sirocco** puts every Blackwing's ATK on one monster.
+
 ### Credit
 
 The main menu line now reads "Fan project · v0.33.33 · by Atlas Peak Games".
 
 **Not done or not checked:**
 
+- Still to build for Crow: Vayu, Zephyros, Breeze, Kochi, Jetstream, Etesian, Aurora, Calima, Abrolhos, Delta Crow - Anti Reverse, Black Sonic, Black Return, Cards for Black Feathers, Fake Feather, Black Feather Beacon, Raptor Wing Strike, Black Thunder, Level Retuner, Blackboost, Blackwing - Bombardment. Crow on Hard won 28 of 40 test duels.
 - Still to build for Jack: Red Nova Dragon (the game cannot do a Synchro Summon with 2 Tuners yet), Majestic Red Dragon, Barrier Resonator, Force Resonator, Trust Guardian, Extra Veiler, Red Gardna, Synchro Soldier, Power Supplier, Lancer Archfiend, Trap Eater, Crimson Fire, Changing Destiny, Nightmare Archfiends, Prideful Roar, Lineage of Destruction. Chaos King Archfiend switches original ATK and DEF, not boosted values. Jack on Hard won 26 of 40 test duels.
 - Still to build for Joey: Little-Winguard, Blue Flame Swordsman, The Legendary Fisherman, Kunai with Chain, Fairy Box, Magical Arm Shield, Nutrient Z, Gilford the Lightning, Red-Eyes Black Metal Dragon with Metalmorph, Graverobber.
 - Joey on Hard won 17 of 40 test duels. Not watched on screen.

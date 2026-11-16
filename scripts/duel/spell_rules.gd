@@ -119,6 +119,12 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Crow's cards (v0.33.33)
+	"Black Whirlwind": {"k": "cont", "whirlwind": true, "ai": "always"},
+	"Blackwing - Backlash": {"k": "trap", "win": ["attack"], "cond": "backlash", "do": [["destroy", "opp_mons"]]},
+	"Trap Stun": {"k": "trap", "win": ["free"], "do": [["trap_stun"]]},
+	"Against the Wind": {"k": "normal", "do": [["against_wind"]]},
+	"Blackback": {"k": "trap", "win": ["free"], "cond": "no_normal_yet", "do": [["revive", "own_gy", "", "", {"has": "Blackwing", "max_atk": 2000}], ["no_normal"]]},
 	# ---------------------------------------------------------------- Jack's cards (v0.33.33)
 	"Fiendish Chain": {"k": "ctrap", "win": ["free"], "t": "any_face", "must_effect": true, "equip": true, "no_attack": true, "negate_host": true},
 	"Powerful Rebirth": {"k": "ctrap", "win": ["free"], "do": [["revive", "own_gy", "", "link", {"max_lv": 4}], ["linked_boost", 1, 100]]},
@@ -370,6 +376,8 @@ static func _derive(c) -> Dictionary:
 ## True when this card is locked out by Royal Decree / Imperial Order.
 static func blocked(s: DuelState, c) -> bool:
 	# Photon Cerberus: no Trap Cards on the turn it was Normal Summoned, while it is face-up.
+	if c.is_trap() and s.trap_stun_turn == s.turn and str(c.data.get("name", "")) != "Trap Stun":
+		return true   # Trap Stun: "Negate all other Trap effects on the field this turn."
 	if c.is_trap():
 		for q in 2:
 			for m in s.players[q].monsters():
@@ -566,6 +574,11 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return not s.players[p].monsters().is_empty()
 		"own_hand":
 			return not s.players[p].hand.is_empty()
+		"backlash":
+			# "...declares a direct attack while you have 5 or more "Blackwing" monsters in your Graveyard".
+			return not s.pending_attack.is_empty() and s.pending_attack["target"] == null and s.players[p].gy.filter(func(g): return g.is_monster() and g.cname().contains("Blackwing")).size() >= 5
+		"no_normal_yet":
+			return s.current == p and not s.normal_summoned
 		"opp_battle":
 			return s.current != p and s.phase == DuelState.Phase.BATTLE and not s.in_damage_step
 		"lord_of_d":
@@ -709,6 +722,9 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 					return false
 			"slip_summon":
 				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or EffectRunner._take(ps.hand, {"max_lv": 4}, 1).is_empty():
+					return false
+			"against_wind":
+				if ps.gy.filter(func(g): return g.is_monster() and g.cname().contains("Blackwing") and g.atk() < ps.lp).is_empty():
 					return false
 			"flute":
 				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or ps.hand.filter(func(h): return h != c and h.is_monster() and str(h.data.get("race", "")) == "Dragon" and not CardEffects.of(h.cname()).get("no_special", false) and not CardData.is_extra(h.id)).is_empty():
@@ -1460,6 +1476,29 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				taker.lv_set = taker.level() + lv_gain
 				taker.lv_turn = s.turn
 				events.append(_ev(p, c, Loc.t("%s is Level %d until the End Phase") % [taker.cname(), taker.lv_set]))
+		"trap_stun":
+			s.trap_stun_turn = s.turn
+			events.append(_ev(p, c, Loc.t("%s: every other Trap effect on the field is negated this turn") % name))
+		"against_wind":
+			# "Select 1 "Blackwing" monster in your Graveyard. Take damage equal to the ATK of the selected monster, and add it to your hand."
+			var pool_a: Array = ps.gy.filter(func(g): return g.is_monster() and g.cname().contains("Blackwing"))
+			var safe_a: Array = pool_a.filter(func(g): return g.atk() < ps.lp)
+			if pool_a.is_empty():
+				return events
+			var best_a = (safe_a if not safe_a.is_empty() else pool_a)[0]
+			for g in safe_a:
+				if g.atk() < best_a.atk():
+					best_a = g
+			best_a = s.pick1(p, Loc.t("%s: add which \"Blackwing\" monster to your hand?") % name, pool_a, best_a, c)
+			events.append_array(s._damage(p, best_a.atk()))
+			if not s.is_over():
+				ps.gy.erase(best_a)
+				ps.hand.append(best_a)
+				events.append({"type": "gy_to_hand", "player": p, "card": best_a})
+		"no_normal":
+			# Blackback: "You cannot Normal Summon/Set during the turn you activate this card."
+			s.normal_summoned = true
+			ps.extra_normals = 0
 		"linked_boost":
 			# Powerful Rebirth: "Increase its Level by 1 and ATK/DEF by 100."
 			if c.linked != null:

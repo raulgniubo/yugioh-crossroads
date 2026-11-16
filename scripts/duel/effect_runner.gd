@@ -51,6 +51,12 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 		b += _count(s, c.owner, spec) * int(f["atk_per"][1])
 	if int(c.tags.get("cka", -1)) == s.turn and s.phase == DuelState.Phase.BATTLE:
 		b += c.def() - c.atk()   # Chaos King Archfiend switched it
+	b -= int(f.get("lose_per_counter", 0)) * c.counter   # Black-Winged Dragon
+	if battling and attacking and vs != null and vs.cname().contains("Blackwing"):
+		# Blackwing - Gust the Backblast: a monster attacking one of your "Blackwing" monsters loses 300 ATK during the Damage Step only.
+		for g in s.players[vs.owner].monsters():
+			if g.face_up and not g.negated and fx(g).get("gust", false):
+				b -= 300
 	if f.has("atk_if_hand_le") and s.players[c.owner].hand.size() <= int(f["atk_if_hand_le"][0]):
 		b += int(f["atk_if_hand_le"][1])   # Blade Knight
 	if f.get("atk_lp_gap", false) and s.players[c.owner].lp < s.players[s.opponent(c.owner)].lp:
@@ -291,6 +297,12 @@ static func survives_battle(s: DuelState, c) -> bool:
 		return true
 	if int(c.tags.get("unbreak_turn", -1)) == s.turn:
 		return true   # Half Unbreak
+	if s.current != c.owner and c.cname().contains("Blackwing"):
+		# Silverwind the Ascendant: "During each of your opponent's turns, the first "Blackwing" monster you control that would be destroyed by battle, is not destroyed."
+		for sw in s.players[c.owner].monsters():
+			if sw.face_up and not sw.negated and fx(sw).get("silverwind", false) and int(sw.tags.get("sw_guard", -1)) != s.turn:
+				sw.tags["sw_guard"] = s.turn
+				return true
 	if f.get("survive_vs_same_atk", false) and s.battle_foe != null and s.atk_of(s.battle_foe, false) == s.atk_of(c, false):
 		return true   # Strong Wind Dragon
 	if f.get("rocket", false) and s.current == c.owner and s.phase == DuelState.Phase.BATTLE:
@@ -328,6 +340,9 @@ static func no_tribute(s: DuelState, p: int, c) -> bool:
 static func _cond(s: DuelState, p: int, cond: String) -> bool:
 	if cond == "lp_le_1000":
 		return s.players[p].lp <= 1000   # Number C39: Utopia Ray
+	if cond == "no_cards":
+		# Gust the Backblast: "If you control no cards".
+		return s.players[p].monsters().is_empty() and s.players[p].set_cards().is_empty() and s.players[p].field_spell == null
 	if cond == "own_synchro8":
 		# Creation Resonator: "If you control a Level 8 or higher Synchro Monster".
 		return not s.players[p].monsters().filter(func(m): return m.face_up and m.frame() == "synchro" and m.level() >= 8).is_empty()
@@ -1027,6 +1042,12 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 			"time_wizard":
 				if opp.monsters().is_empty() and s.players[p].monsters().size() < 2:
 					return false
+			"sirocco":
+				if s.phase != DuelState.Phase.MAIN1:
+					return false
+			"feather_release":
+				if c.counter < 1 or opp.monsters().filter(func(m): return m.face_up).is_empty():
+					return false
 			"destroy_pick":
 				if _pick_pool(s, p, str(a[1])).is_empty():
 					return false
@@ -1427,6 +1448,8 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 			return ps.field.has(c) and not c.face_up and window == "chain" and not s.chain.is_empty() and str(s.chain.back().get("kind", "")) == "spell" and s.chain.back().get("target") == c and not s.chain.back().get("negated", false)
 		"skill_successor":
 			return ps.gy.has(c) and s.current == p and c.gy_turn != s.turn and window in ["attack", "damage", "battle_start"] and s._strongest_face_up(p) != null
+		"ghibli":
+			return ps.hand.has(c) and window == "attack" and hit and s.pending_attack["target"] == null and ps.free_zone() != -1 and ps.no_summon_turn != s.turn
 		"gagaga_gardna":
 			if ps.hand.has(c):
 				return window == "attack" and hit and s.pending_attack["target"] == null and ps.free_zone() != -1 and ps.no_summon_turn != s.turn
@@ -1470,6 +1493,10 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 	var events := []
 	var hit: bool = not s.pending_attack.is_empty() and int(s.pending_attack["player"]) != p and not s.pending_attack.get("negated", false)
 	match kind:
+		"ghibli":
+			ps.hand.erase(c)
+			events.append(_ev(p, c, Loc.t("%s jumps in front of the direct attack") % c.cname()))
+			events.append_array(s._special(p, c, "effect", "def"))
 		"gagaga_gardna":
 			if ps.hand.has(c):
 				ps.hand.erase(c)
@@ -1673,6 +1700,8 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 			return not s.chain.is_empty() and int(s.chain.back()["player"]) != p and ps.hand.size() >= 1
 		"sorcerer", "joker", "big_shield":
 			return not s.chain.is_empty() and int(s.chain.back()["player"]) != p
+		"ghibli":
+			return dmg >= 1000 or dmg >= ps.lp
 		"gagaga_gardna":
 			if ps.hand.has(c):
 				return dmg >= 1000 or dmg >= ps.lp
@@ -1924,6 +1953,71 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"sirocco":
+			# "target 1 "Blackwing" monster you control; until the end of this turn, it gains ATK equal to the total ATK of all "Blackwing"
+			# monsters currently on the field, except itself. Monsters other than the targeted monster cannot attack during the turn you activate this effect."
+			var bws: Array = ps.monsters().filter(func(m): return m.face_up and m.cname().contains("Blackwing"))
+			if bws.is_empty():
+				return events
+			var best_b = bws[0]
+			for m in bws:
+				if s.atk_of(m, false) > s.atk_of(best_b, false):
+					best_b = m
+			best_b = s.pick1(p, Loc.t("%s: which \"Blackwing\" monster takes the others' ATK?") % name, bws, best_b, c)
+			var sum_b := 0
+			for q in 2:
+				for m in s.players[q].monsters():
+					if m != best_b and m.face_up and m.cname().contains("Blackwing"):
+						sum_b += s.atk_of(m, false)
+			if best_b.atk_mod_turn != s.turn:
+				best_b.atk_mod_turn = s.turn
+				best_b.atk_mod_t = 0
+			best_b.atk_mod_t += sum_b
+			ps.only_attacker = best_b.uid
+			ps.only_attacker_turn = s.turn
+			events.append(_ev(p, c, Loc.t("%s gains %d ATK this turn. Your other monsters cannot attack") % [best_b.cname(), sum_b]))
+		"next_bd_zero":
+			s.next_bd_zero[p] = s.turn
+			events.append(_ev(p, c, Loc.t("%s: the next battle damage you take this turn is 0") % name))
+		"self_swap":
+			# Ghibli: "switch the original ATK and DEF of this card, until the end of this turn."
+			if c.atk_mod_turn != s.turn:
+				c.atk_mod_turn = s.turn
+				c.atk_mod_t = 0
+			c.atk_mod_t += c.def() - c.atk()
+			c.tags["tmp_def"] = (int(c.tags.get("tmp_def", 0)) if int(c.tags.get("tmp_def_until", -1)) >= s.turn else 0) + c.atk() - c.def()
+			c.tags["tmp_def_until"] = s.turn
+			events.append(_ev(p, c, Loc.t("%s switches its ATK and DEF until the end of this turn") % name))
+		"silverwind":
+			# "target up to 2 face-up monsters on the field with DEF lower than this card's ATK; destroy those targets. You cannot conduct your Battle Phase the turn you activate this effect."
+			var my_atk: int = s.atk_of(c, false)
+			var low_d: Array = []
+			for q in [opp_i, p]:
+				for m in s.players[q].monsters():
+					if m != c and m.face_up and s.def_of(m) < my_atk and can_target(c, m):
+						low_d.append(m)
+			var theirs_d: Array = low_d.filter(func(m): return opp.field.has(m))
+			theirs_d.sort_custom(func(x, y): return s.atk_of(x, false) > s.atk_of(y, false))
+			# The computer uses it when it removes more than this card's own attack would.
+			var auto_d: Array = theirs_d.slice(0, 2) if (theirs_d.size() >= 2 or s.phase == DuelState.Phase.MAIN2) else []
+			var got_d := s.choose(p, Loc.t("%s: destroy up to 2 monsters with DEF lower than its ATK? (no Battle Phase this turn)") % name, low_d, 2, auto_d, true, c)
+			if got_d.is_empty():
+				return events
+			for m in got_d:
+				events.append(_ev(p, c, Loc.t("%s destroys %s") % [name, m.cname()]))
+				events.append_array(s._destroy(m))
+			ps.no_attack_turn = s.turn
+		"feather_release":
+			# Black-Winged Dragon: remove all its counters; 1 face-up monster of theirs loses 700 ATK for each, and they take that much damage.
+			var n_f: int = c.counter
+			var t_f = _best_opp(s, p, "", c, "which monster loses the ATK?")
+			if n_f < 1 or t_f == null or not t_f.face_up:
+				return events
+			c.counter = 0
+			var lost_f: int = mini(700 * n_f, s.atk_of(t_f, false))
+			t_f.atk_mod -= lost_f
+			events.append(_ev(p, c, Loc.t("%s: %s loses %d ATK and the opponent takes that much damage") % [name, t_f.cname(), lost_f]))
+			events.append_array(s._damage(opp_i, lost_f))
 		"into_atk":
 			# Flare Resonator: "A Synchro Monster that used this card as a Synchro Material gains 300 ATK."
 			var into_m = ctx.get("into")
