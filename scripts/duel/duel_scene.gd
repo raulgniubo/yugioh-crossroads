@@ -385,6 +385,11 @@ func _start() -> void:
 	if "--end-test" in OS.get_cmdline_user_args():
 		state.winner = AI if "--lose" in OS.get_cmdline_user_args() else ME
 		state.win_reason = "Test finish."
+		if "--blow" in OS.get_cmdline_user_args() and board.track != null:
+			# Dev: the slow motion last hit of a Turbo Duel, a few seconds in so a picture can catch it.
+			await get_tree().create_timer(4.0).timeout
+			board.track.finish(Color(1.0, 0.82, 0.3))
+			board.turbo_blow(AI if state.winner == ME else ME)
 		_finish()
 		return
 	await _play(events)
@@ -685,6 +690,9 @@ func _finish() -> void:
 	hud.set_phase_buttons("", false, false)
 	hud.set_playable([])
 	await get_tree().create_timer(0.6).timeout
+	# A Turbo Duel's last hit plays out in slow motion first.
+	while board.track != null and board.track.blow_busy:
+		await get_tree().process_frame
 	var won := state.winner == ME
 	var tied := state.winner == DuelState.DRAW
 	if "--auto-story" in OS.get_cmdline_user_args():
@@ -1256,6 +1264,8 @@ func _play_event(ev: Dictionary) -> void:
 					board.arena.finish(hit_col)
 				elif int(ev["lp"]) <= 0 and board.track != null:
 					board.track.finish(hit_col)
+					if not _autoplay and not _finished:
+						board.turbo_blow(p)
 				else:
 					board.house(clampf(float(-ev["delta"]) / 3000.0, 0.25, 0.9), hit_col, Vector3(0, 0, -3.0 if p == AI else 3.0), 0.6)
 				board.duelist_body(p, "hurt", float(-ev["delta"]) / 1500.0)

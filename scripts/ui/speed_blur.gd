@@ -13,11 +13,11 @@ void fragment() {
 	vec2 dir = uv - center;
 	float r = length(dir * vec2(1.0, 0.8));
 	// Nothing near the middle (your runner and the road ahead stay sharp).
-	float k = amount * smoothstep(0.16, 0.7, r) * 0.085;
+	float k = amount * smoothstep(0.26, 0.78, r) * 0.085;
 	vec3 col = vec3(0.0);
 	float w = 0.0;
-	for (int i = 0; i < 9; i++) {
-		float t = float(i) / 8.0;
+	for (int i = 0; i < 6; i++) {
+		float t = float(i) / 5.0;
 		float wi = 1.0 - t * 0.6;
 		col += texture(screen, uv - dir * k * t).rgb * wi;
 		w += wi;

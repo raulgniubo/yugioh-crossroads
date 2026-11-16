@@ -5,6 +5,23 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.22
+
+**The Turbo ride looks like a race. And the last hit of a Turbo Duel plays in slow motion.**
+
+- **You sit low and close behind your runner.** The camera used to hang high and far back, so the runner was a small thing in the middle of a wide road. Now it sits low behind the rear wheel: the runner fills about a fifth of the picture, the road rushes under the lens, and the view drops back and widens as you speed up. Steering tips the horizon a little.
+- **Real asphalt.** The surface is made from a stone texture laid at two sizes instead of the squares of noise it had. Street lamps lay pools of light on it. It is wet: far ahead it mirrors the sky over the city, most where water stands in the long ruts, and small stones glint under the lamps. Looking back down the road it mirrors the cold side of the sky.
+- **The wall is a wall.** The blurry dots are gone. Behind the barrier there is now a ribbed steel sound panel with clear tinted glass above it in steel frames, and you see the real city through the glass. The barrier itself is clean cast concrete with one reflective band and an amber stud on every length.
+- **The city.** The towers were dark boxes with pink squares. They now have three kinds of front (ribbons of window floor by floor, single windows in a wall, all glass lit in tall columns), rooms lit warm or cool white with some floors dark and some blinds half down, a wider base at the street, a set-back top with a mast and a warning light, roof plant, and a line of light up a corner or along the roof. Colour comes from the signs, not from the windows.
+- **Traffic is vehicles.** The grey box with a red cab is gone. There are four: a long-haul truck, a city bus, a delivery van and a car, each with tail lights you can read from far back and their glow on the road. They drive at their own speeds (the truck slowest, the car fastest), and what you have to dodge is as wide and as long as the thing you see. The models are original designs made for this game with Meshy (120 credits).
+- **The bridge.** The towers were pale flat slabs. They are painted steel in two lifts on piers, with two cross beams, a line of light, and warning lights on top.
+- **Speed without the smear.** The picture no longer blurs while cruising: the edges only streak once you are properly fast or boosting, and the blur itself costs a third less. The light trail behind your own runner is shorter and fainter so it does not fill the bottom of the picture.
+- **The finishing blow (Turbo Duels).** When the last hit lands, time slows right down. Both runners pull out ahead of the field side by side, the camera drops low in front of them looking back, the beaten runner shakes, throws sparks, starts to smoke and falls away behind while the winner goes clear. Then the usual close-up of the winner.
+- All of this is in every Turbo Duel too (same road), not only the ride.
+- Dev: `--traffic-show` lines the four vehicles up ahead of you; `--end-test --blow --blow-hold` holds the slow motion shot for a picture.
+
+Not done or not checked: seen in pictures here on this machine's simple renderer at 1280x720 (Satellite Flats, the tunnel, the bridge, the Tops, a Turbo Duel, the slow motion shot held still), not on a Mac or a real graphics card, and not in motion: I have not watched it move. The ride ran at 30 FPS in your screenshot; I cut the cost of the blur and of the wall, but I have no measurement from your Mac, so I can't say it is fixed. Press F4 on the ride and send me the report. The slow motion was seen as one held frame; its timing (about 2 seconds slow, then back) is untested by eye. Not built yet from the Turbo list: how you ride sets up the duel, the garage, and time trial / elimination / sprint (that is 0.33.23).
+
 ## What is in 0.33.21
 
 **A Field Spell takes the field. And round corners on the towers of New Domino and Heartland.**

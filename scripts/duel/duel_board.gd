@@ -2215,8 +2215,8 @@ func anim_battle(p: int, inst, target) -> void:
 ## Freeze the whole table for a blink when a hit lands. Skipped when the duel is being
 ## fast-forwarded, so tests and the Very fast setting keep their pace.
 func hit_stop(sec: float) -> void:
-	if Engine.time_scale > 1.01 or Settings.anim_speed > 2.0:
-		return
+	if Engine.time_scale > 1.01 or Engine.time_scale < 0.99 or Settings.anim_speed > 2.0:
+		return      # fast-forwarded, or already slowed for a Turbo Duel's last hit
 	Engine.time_scale = 0.06
 	await get_tree().create_timer(sec, true, false, true).timeout
 	Engine.time_scale = 1.0
@@ -2993,6 +2993,16 @@ func cam_shot(pos: Vector3, target: Vector3, dur := 0.45) -> void:
 	_cam_tween.tween_property(self, "cam_pos", pos, Settings.t(dur))
 	_cam_tween.tween_property(self, "cam_target", target, Settings.t(dur))
 	_cam_tween.tween_property(self, "cam_weight", 1.0, Settings.t(dur))
+
+
+## The last hit of a Turbo Duel: slow motion, both runners side by side out ahead of the
+## field and the camera low in front of them, looking back.
+func turbo_blow(loser: int) -> void:
+	if track == null or track.blow_busy:
+		return
+	track.finish_blow(loser)
+	var side := 1.0 if loser == 1 else -1.0      # lean the shot toward the winner
+	cam_cut(Vector3(18.2, 0.95, side * 1.1), Vector3(10.5, 1.2, 0.0))
 
 
 ## Cut straight to a shot, no travel.

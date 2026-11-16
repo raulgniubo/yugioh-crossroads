@@ -113,6 +113,13 @@ func _ready() -> void:
 			_s = float(a.trim_prefix("--ride-at="))
 			_apply_zone()
 			Input.action_press("ui_up")
+	if "--traffic-show" in OS.get_cmdline_user_args():
+		# Dev: the four kinds of traffic lined up ahead, keeping pace, for a picture.
+		for k in TRAFFIC.size():
+			var tn := Node3D.new()
+			var tsize := _vehicle(tn, TRAFFIC[k])
+			add_child(tn)
+			_things.append({"kind": "hauler", "node": tn, "x": 7.0 + k * 10.0, "z": LANE * (1.0 if k % 2 == 0 else -1.0), "hx": tsize.x / 2.0, "hz": 0.1, "v": 46.0, "pin": true})
 	if "--gp" in OS.get_cmdline_user_args() and not came_back:
 		_test_on = true
 		Engine.time_scale = 8.0
@@ -167,6 +174,7 @@ func _build_world() -> void:
 	track = TurboTrack.new()
 	add_child(track)
 	track.build(Color("ff8a3a"), Color("2de2e6"))
+	track.trail_scale = 0.4        # the camera sits close behind: a long trail would fill the picture
 	track.add_rider(0, "player", Vector3.ZERO, Profile.color())
 	track.place_rider(0, Vector3.ZERO)
 	var i := 1
@@ -267,6 +275,65 @@ func _build_fixed() -> void:
 		_fixed.append({"s": float(rs), "node": ramp, "kind": "ramp"})
 
 
+## What else is on the highway. `len` is how long it stands on the road, `v` how fast it goes.
+const TRAFFIC := [
+	{"file": "truck", "len": 11.0, "v": 14.0},
+	{"file": "bus", "len": 10.5, "v": 16.0},
+	{"file": "van", "len": 4.7, "v": 19.0},
+	{"file": "car", "len": 4.4, "v": 22.0},
+]
+static var _traffic_ps := {}
+
+
+## One vehicle, standing on the road with its nose down the way you ride. Returns its size.
+func _vehicle(node: Node3D, pick: Dictionary) -> Vector3:
+	var file := str(pick["file"])
+	if not _traffic_ps.has(file):
+		_traffic_ps[file] = load("res://assets/models/vehicles/traffic_%s.glb" % file)
+	var want := float(pick["len"])
+	var size := Vector3(want, 2.6, 2.2)
+	var ps = _traffic_ps[file]
+	if ps is PackedScene:
+		var model: Node3D = ps.instantiate()
+		node.add_child(model)
+		var box := track._aabb(model, Transform3D())
+		var k := want / maxf(0.01, box.size.x)
+		model.scale = Vector3.ONE * k
+		model.rotation.y = TRAFFIC_TURN
+		model.position = Vector3(-box.get_center().x * k * cos(TRAFFIC_TURN), -box.position.y * k, box.get_center().z * k)
+		size = box.size * k
+	else:
+		track._box(node, size, Vector3(0, size.y / 2.0, 0), track._solid(Color(0.3, 0.32, 0.36)))
+	# Tail lights you can read from far back, their glow on the road, and headlights ahead.
+	for sz: float in [-1.0, 1.0]:
+		track._box(node, Vector3(0.06, 0.16, size.z * 0.2), Vector3(-size.x / 2.0 - 0.02, size.y * 0.3, sz * size.z * 0.33), track._glow(Color("ff2a2a"), 4.5))
+		track._box(node, Vector3(0.06, 0.14, size.z * 0.16), Vector3(size.x / 2.0 + 0.02, size.y * 0.26, sz * size.z * 0.33), track._glow(Color(1.0, 0.96, 0.85), 4.0))
+	var pool := MeshInstance3D.new()
+	var qm := QuadMesh.new()
+	qm.size = Vector2(5.0, size.z + 1.2)
+	pool.mesh = qm
+	var pm := StandardMaterial3D.new()
+	pm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	pm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	pm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	pm.albedo_color = Color(1.0, 0.12, 0.1, 0.28)
+	pm.albedo_texture = track._puff()
+	pool.material_override = pm
+	pool.rotation.x = -PI / 2.0
+	pool.position = Vector3(-size.x / 2.0 - 1.8, 0.04, 0)
+	node.add_child(pool)
+	var tail := OmniLight3D.new()
+	tail.light_color = Color(1.0, 0.25, 0.2)
+	tail.light_energy = 1.6
+	tail.omni_range = 5.0
+	tail.position = Vector3(-size.x / 2.0 - 0.8, 0.9, 0)
+	node.add_child(tail)
+	return size
+
+
+const TRAFFIC_TURN := PI      # the models are built nose toward -X
+
+
 ## Things on the road: boost strips, Star Chips and slow cargo haulers.
 func _spawn_thing(x: float) -> void:
 	var roll := _rng.randf()
@@ -297,60 +364,15 @@ func _spawn_thing(x: float) -> void:
 			mi2.material_override = track._glow(Color("ffd23a"), 3.5)
 			node.add_child(mi2)
 		"hauler":
-			# A freight truck seen from behind: a ribbed box trailer on a chassis, mud flaps, a
-			# bar of tail lights, hazard chevrons on the doors, and the cab out in front.
-			var body := track._solid([Color(0.62, 0.64, 0.68), Color(0.2, 0.3, 0.46), Color(0.5, 0.2, 0.16), Color(0.24, 0.36, 0.3)][_rng.randi() % 4])
-			var dark := track._solid(Color(0.07, 0.075, 0.09))
-			var steel := track._solid(Color(0.4, 0.42, 0.46))
-			track._box(node, Vector3(6.6, 2.5, 2.5), Vector3(0, 2.15, 0), body)
-			for k in 12:
-				track._box(node, Vector3(0.06, 2.4, 2.56), Vector3(-3.1 + k * 0.56, 2.15, 0), body)
-			track._box(node, Vector3(6.7, 0.12, 2.56), Vector3(0, 3.42, 0), steel)
-			track._box(node, Vector3(6.7, 0.14, 2.56), Vector3(0, 0.9, 0), steel)
-			track._box(node, Vector3(6.2, 0.3, 1.1), Vector3(0, 0.7, 0), dark)
-			# Rear doors: two leaves with lock bars and red and white chevrons along the bottom.
-			for sz: float in [-1.0, 1.0]:
-				track._box(node, Vector3(0.05, 2.3, 1.18), Vector3(-3.32, 2.15, sz * 0.62), body)
-				for bar: float in [0.25, 0.8]:
-					track._box(node, Vector3(0.05, 2.3, 0.05), Vector3(-3.36, 2.15, sz * bar), steel)
-			for k in 8:
-				var ch := track._box(node, Vector3(0.03, 0.3, 0.2), Vector3(-3.38, 1.12, -1.05 + k * 0.3), track._glow(Color("ff3030") if k % 2 == 0 else Color("f2f2f2"), 1.2))
-				ch.rotation.x = 0.6
-			track._box(node, Vector3(0.1, 0.16, 2.4), Vector3(-3.36, 0.72, 0), dark)
-			for sz: float in [-1.0, 1.0]:
-				track._box(node, Vector3(0.08, 0.2, 0.5), Vector3(-3.4, 0.72, sz * 0.9), track._glow(Color("ff2a2a"), 4.0))
-				track._box(node, Vector3(0.08, 0.14, 0.16), Vector3(-3.4, 0.72, sz * 0.5), track._glow(Color("ff9a30"), 3.0))
-				track._box(node, Vector3(0.04, 0.6, 0.7), Vector3(-2.9, 0.4, sz * 0.9), dark)
-				track._box(node, Vector3(0.08, 0.08, 0.08), Vector3(-3.3, 3.4, sz * 1.2), track._glow(Color("ff2a2a"), 3.0))
-				# Three axles of twin wheels.
-				for ax: float in [-2.3, -1.2, 2.2]:
-					var wheel := MeshInstance3D.new()
-					var cm := CylinderMesh.new()
-					cm.top_radius = 0.5
-					cm.bottom_radius = 0.5
-					cm.height = 0.62
-					cm.radial_segments = 14
-					wheel.mesh = cm
-					wheel.material_override = dark
-					wheel.rotation.x = PI / 2.0
-					wheel.position = Vector3(ax, 0.5, sz * 0.98)
-					node.add_child(wheel)
-				# Marker lights down each side.
-				for k in 5:
-					track._box(node, Vector3(0.14, 0.07, 0.04), Vector3(-2.8 + k * 1.4, 0.92, sz * 1.29), track._glow(Color("ff9a30"), 2.6))
-			# The cab.
-			track._box(node, Vector3(2.0, 2.4, 2.4), Vector3(4.6, 1.75, 0), track._solid(Color(0.75, 0.2, 0.14)))
-			track._box(node, Vector3(0.6, 1.4, 2.3), Vector3(3.4, 2.6, 0), dark)
-			track._box(node, Vector3(0.05, 0.8, 2.0), Vector3(5.62, 2.3, 0), track._solid(Color(0.1, 0.14, 0.2)))
-			for sz: float in [-1.0, 1.0]:
-				track._box(node, Vector3(0.1, 0.5, 0.06), Vector3(5.2, 2.5, sz * 1.36), steel)
-				track._box(node, Vector3(0.06, 0.16, 0.4), Vector3(5.62, 1.0, sz * 0.85), track._glow(Color(1.0, 0.96, 0.85), 4.0))
-			var beams := OmniLight3D.new()
-			beams.light_color = Color(1.0, 0.25, 0.2)
-			beams.light_energy = 1.6
-			beams.omni_range = 5.0
-			beams.position = Vector3(-4.0, 0.9, 0)
-			node.add_child(beams)
+			var pick: Dictionary = TRAFFIC[_rng.randi() % TRAFFIC.size()]
+			if "--traffic=" in " ".join(OS.get_cmdline_user_args()):
+				for a in OS.get_cmdline_user_args():
+					if a.begins_with("--traffic="):
+						pick = TRAFFIC[int(a.trim_prefix("--traffic=")) % TRAFFIC.size()]
+			var size := _vehicle(node, pick)
+			add_child(node)
+			_things.append({"kind": kind, "node": node, "x": x, "z": z, "hx": size.x / 2.0 + 0.9, "hz": size.z / 2.0 + 0.55, "v": float(pick["v"])})
+			return
 	add_child(node)
 	_things.append({"kind": kind, "node": node, "x": x, "z": z})
 
@@ -512,11 +534,13 @@ func _curve_at(s: float) -> float:
 
 func _place_camera(w: float) -> void:
 	var c := _curve_at(_s)
-	var want := Vector3(-7.4 - _speed * 0.03, 3.1 + _y * 0.6, _z * 0.82 + c * 1.6)
+	# Low and close behind the runner, the way a racing game sits: the runner fills a fifth of
+	# the picture and the road rushes under the lens. The view drops back and widens with speed.
+	var want := Vector3(-5.3 - _speed * 0.022, 2.05 + _y * 0.6, _z * 0.9 + c * 1.1)
 	_cam.position = _cam.position.lerp(want, w)
-	_cam.look_at(Vector3(9.0, 1.1 + _y * 0.5, _z * 0.9 - c * 5.0), Vector3.UP)
-	_cam.rotation.z = lerpf(_cam.rotation.z, -c * 0.11, clampf(w, 0.0, 1.0))
-	_cam.fov = lerpf(_cam.fov, 66.0 + (_speed - 28.0) * 0.5 + (8.0 if _boost > 0.0 else 0.0), clampf(w * 0.5, 0.0, 1.0))
+	_cam.look_at(Vector3(11.0, 1.3 + _y * 0.5, _z * 0.95 - c * 5.0), Vector3.UP)
+	_cam.rotation.z = lerpf(_cam.rotation.z, -c * 0.11 - _vz * 0.006, clampf(w, 0.0, 1.0))
+	_cam.fov = lerpf(_cam.fov, minf(80.0, 62.0 + (_speed - 28.0) * 0.5 + (6.0 if _boost > 0.0 else 0.0)), clampf(w * 0.5, 0.0, 1.0))
 	if _boost > 0.0 or _stun > 0.0:
 		_cam.h_offset = randf_range(-0.03, 0.03)
 		_cam.v_offset = randf_range(-0.03, 0.03)
@@ -627,7 +651,8 @@ func _process(delta: float) -> void:
 			_exit = EXITS.find(EXITS.filter(func(e): return is_equal_approx(float(e["s"]), float(fx["s"])))[0])
 	# Things on the road.
 	for th in _things:
-		th["x"] = float(th["x"]) - (_speed - (14.0 if th["kind"] == "hauler" else 0.0)) * delta
+		if not th.get("pin", false):
+			th["x"] = float(th["x"]) - (_speed - float(th.get("v", 0.0))) * delta
 		var tnode: Node3D = th["node"]
 		tnode.position = Vector3(float(th["x"]), 0, float(th["z"]))
 		if th["kind"] == "chip":
@@ -635,8 +660,8 @@ func _process(delta: float) -> void:
 		if float(th["x"]) < -40.0:
 			_recycle(th)
 			continue
-		var hit_x := 3.6 if th["kind"] != "chip" else 1.6
-		if _y < 1.2 and absf(float(th["x"])) < hit_x and absf(float(th["z"]) - _z) < (1.9 if th["kind"] == "hauler" else 1.7):
+		var hit_x: float = float(th.get("hx", 3.6 if th["kind"] != "chip" else 1.6))
+		if _y < 1.2 and absf(float(th["x"])) < hit_x and absf(float(th["z"]) - _z) < float(th.get("hz", 1.7)):
 			match str(th["kind"]):
 				"boost":
 					if _boost <= 0.0:
@@ -747,7 +772,8 @@ func _tricks(delta: float) -> void:
 	if _flame:
 		_flame.visible = _boost > 0.0
 		_flame.scale = Vector3(1.0 + sin(_t * 50.0) * 0.2, 0.8 + sin(_t * 37.0) * 0.25 + minf(_boost, 1.0) * 0.4, 1.0)
-	_blur.amount = clampf((_speed - 34.0) / 26.0, 0.0, 0.75) + (0.25 if _boost > 0.0 else 0.0)
+	# The picture only smears at the edges once you are properly fast; cruising stays sharp.
+	_blur.amount = clampf((_speed - 40.0) / 30.0, 0.0, 0.4) + (0.3 if _boost > 0.0 else 0.0)
 	_combo_t = maxf(0.0, _combo_t - delta)
 	if _combo_t <= 0.0:
 		_combo = 0
@@ -763,7 +789,7 @@ func _tricks(delta: float) -> void:
 			r["was_x"] = float(r["x"])
 	# The engine note climbs with the speedometer and screams on a boost.
 	Sfx.ambience_pitch(0.72 + _speed / 52.0 + (0.18 if _boost > 0.0 else 0.0) + sin(_t * 31.0) * 0.01)
-	_lines.amount = clampf((_speed - 32.0) / 30.0, 0.0, 0.8) + (0.25 if _boost > 0.0 else 0.0) + (0.15 if drafting else 0.0)
+	_lines.amount = clampf((_speed - 42.0) / 30.0, 0.0, 0.45) + (0.3 if _boost > 0.0 else 0.0) + (0.15 if drafting else 0.0)
 
 
 func _clock(t: float) -> String:
