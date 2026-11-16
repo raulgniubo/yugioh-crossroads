@@ -224,8 +224,14 @@ const TUNE := {
 		"extra": {"Cyber Twin Dragon": 2, "Cyber End Dragon": 2}},
 	"alexis": {"out": ["Dian Keto the Cure Master", "Luminous Spark", "Horn of the Unicorn", "Fissure", "Cyber Petit Angel"],
 		"in": {"Hallowed Life Barrier": 1, "Machine Angel Ritual": 3, "Fusion Weapon": 1, "Ritual Weapon": 2}, "extra_in": {"Cyber Blader": 2}},
-	"syrus": {"out": ["Elemental HERO Clayman", "Dian Keto the Cure Master"], "in": {"Shield Crush": 1}},
-	"aster": {"out": ["Celtic Guardian", "Mystic Plasma Zone"]},
+	"syrus": {"out": ["Elemental HERO Clayman", "Dian Keto the Cure Master"], "in": {"Shield Crush": 1},
+		# Syrus's best deck: the Vehicroids with Power Bond into Super Vehicroid Jumbo Drill (v0.33.35).
+		"main": {"Steamroid": 3, "Drillroid": 3, "Gyroid": 2, "Submarineroid": 3, "Expressroid": 2, "UFOroid": 2, "Cycroid": 2, "Stealthroid": 2, "Decoyroid": 1, "Rescueroid": 1, "Armoroid": 1, "Polymerization": 3, "Power Bond": 3, "Pot of Greed": 1, "Monster Reborn": 1, "Mystical Space Typhoon": 1, "Limiter Removal": 1, "Heavy Storm": 1, "No Entry!!": 2, "Supercharge": 2, "Negate Attack": 1, "Draining Shield": 1, "Shield Crush": 1},
+		"extra": {"Steam Gyroid": 2, "Super Vehicroid Jumbo Drill": 2}},
+	"aster": {"out": ["Celtic Guardian", "Mystic Plasma Zone"],
+		# Aster's best deck: the Destiny HEROes with Plasma and Dogma (v0.33.35).
+		"main": {"Destiny HERO - Plasma": 1, "Destiny HERO - Dogma": 1, "Destiny HERO - Doom Lord": 2, "Destiny HERO - Dasher": 2, "Destiny HERO - Defender": 3, "Destiny HERO - Captain Tenacious": 2, "Destiny HERO - Malicious": 3, "Destiny HERO - Dunker": 2, "Destiny HERO - Disk Commander": 2, "Destiny Draw": 3, "D - Spirit": 2, "Dark City": 2, "Misfortune": 1, "Pot of Greed": 1, "Monster Reborn": 2, "Dark Hole": 1, "Mystical Space Typhoon": 1, "Destiny Signal": 3, "Ring of Destruction": 1, "Mirror Force": 1, "Call of the Haunted": 2, "Negate Attack": 2},
+		"extra": {}},
 	# Yusei's best deck: the Shooting Star Dragon and Shooting Quasar Dragon one (v0.33.28).
 	"yusei": {"out": ["Celtic Guardian", "Beaver Warrior"],
 		"main": {"Junk Synchron": 3, "Quickdraw Synchron": 2, "Debris Dragon": 1, "Drill Synchron": 1, "Road Synchron": 1, "Turbo Synchron": 1, "Nitro Synchron": 1,

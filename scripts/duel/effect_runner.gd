@@ -54,6 +54,8 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 	if int(c.tags.get("cka", -1)) == s.turn and s.phase == DuelState.Phase.BATTLE:
 		b += c.def() - c.atk()   # Chaos King Archfiend switched it
 	b -= int(f.get("lose_per_counter", 0)) * c.counter   # Black-Winged Dragon
+	if f.get("absorb_half", false) and s.absorbed_by(c) != null:
+		b += s.absorbed_by(c).atk() / 2   # Destiny HERO - Plasma: "gains ATK equal to half the original ATK of the monster equipped to it"
 	if f.get("absorb", false) and s.absorbed_by(c) != null:
 		b += s.absorbed_by(c).atk()   # Relinquished: "This card's ATK/DEF become equal to that equipped monster's."
 	if c.tags.has("cocoon_uid") and s.cocooned(c) != null:
@@ -430,7 +432,7 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 ## Does this monster have its own way to be Special Summoned from the hand?
 static func has_special_hand(c) -> bool:
 	var f := fx(c)
-	for k in ["lava_golem", "special_banish_race", "special_discard_race", "special_hand_if", "special_tribute2", "special_tribute_attr", "special_banish_ld", "eltanin", "special_toon", "special_discard_attr", "special_tribute_race", "special_discard_monster", "special_tribute_names", "special_tribute_f"]:
+	for k in ["special_tribute3", "special_cocoon", "lava_golem", "special_banish_race", "special_discard_race", "special_hand_if", "special_tribute2", "special_tribute_attr", "special_banish_ld", "eltanin", "special_toon", "special_discard_attr", "special_tribute_race", "special_discard_monster", "special_tribute_names", "special_tribute_f"]:
 		if f.has(k):
 			return true
 	return false
@@ -450,6 +452,10 @@ static func can_special_hand(s: DuelState, p: int, c) -> bool:
 		return s.players[p].monsters().filter(func(m): return m.face_up and s.can_tribute_fx(m) and CardEffects.matches(m.data, f["special_tribute_f"][1])).size() >= int(f["special_tribute_f"][0])
 	if f.has("special_cocoon"):
 		return _cocoon_moth(s, p, int(f["special_cocoon"])) != null   # Larvae Moth, Great Moth, Perfectly Ultimate Great Moth
+	if f.has("special_tribute3"):
+		# Destiny HERO - Plasma (3 monsters), Destiny HERO - Dogma (3, at least 1 "Destiny HERO").
+		var can3: Array = s.players[p].monsters().filter(func(m): return s.can_tribute_fx(m))
+		return can3.size() >= 3 and (str(f["special_tribute3"]) == "" or not can3.filter(func(m): return m.face_up and m.cname().contains(str(f["special_tribute3"]))).is_empty())
 	if s.players[p].free_zone() == -1 and int(f.get("special_toon", 0)) == 0 and not f.has("special_tribute_race"):
 		return false
 	if f.get("special_once_duel", false) and s.players[p].once_duel.has(c.cname()):
@@ -616,6 +622,35 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 		events.append_array(trigger(s, least, "gy"))
 		ps.hand.erase(c)
 		events.append_array(s._special(p, c, "effect", "def"))
+		events.append_array(on_summon(s, p, c, "special"))
+		return events
+	if f.has("special_tribute3"):
+		var pool3: Array = ps.monsters().filter(func(m): return s.can_tribute_fx(m))
+		pool3.sort_custom(func(x, y): return s.atk_of(x, false) < s.atk_of(y, false))
+		var fam3 := str(f["special_tribute3"])
+		var auto3: Array = []
+		if fam3 != "":
+			var named3: Array = pool3.filter(func(m): return m.face_up and m.cname().contains(fam3))
+			if named3.is_empty():
+				return events
+			auto3.append(named3[0])
+		for m in pool3:
+			if auto3.size() < 3 and not auto3.has(m):
+				auto3.append(m)
+		var picks3: Array = s.choose(p, Loc.t("%s: Tribute %d monster%s") % [c.cname(), 3, "s"], pool3, 3, auto3, false, c)
+		if fam3 != "" and picks3.filter(func(m): return m.face_up and m.cname().contains(fam3)).is_empty():
+			picks3 = auto3
+		for m in picks3:
+			ps.field[ps.field.find(m)] = null
+			s._to_gy(ps, m)
+			events.append({"type": "tribute", "player": p, "card": m})
+			events.append_array(trigger(s, m, "tributed"))
+			events.append_array(s._monster_left(m))
+		ps.hand.erase(c)
+		c.proper = true
+		events.append_array(s._special(p, c, "effect"))
+		if ps.field.has(c) and f.get("dogma", false):
+			c.tags["dogma_due"] = true
 		events.append_array(on_summon(s, p, c, "special"))
 		return events
 	if f.has("special_cocoon"):

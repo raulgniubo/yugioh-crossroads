@@ -457,6 +457,14 @@ func begin_standby() -> Array:
 			events.append_array(_speed(behind, 1))
 			events.append({"type": "effect", "player": behind, "card": null, "text": Loc.t("Slipstream: +1 Speed Counter for the rider behind")})
 	events.append_array(EffectRunner.standby(self, current))
+	# Destiny HERO - Dogma: "during your opponent's next Standby Phase after you Special Summoned it this way: Halve your opponent's LP."
+	for m in players[opponent(current)].monsters():
+		if not is_over() and m.face_up and not m.negated and m.tags.get("dogma_due", false):
+			m.tags.erase("dogma_due")
+			var cut := players[current].lp / 2
+			players[current].lp -= cut
+			events.append({"type": "effect", "player": opponent(current), "card": m, "text": Loc.t("%s halves %s's Life Points") % [m.cname(), players[current].name]})
+			events.append({"type": "lp", "player": current, "lp": players[current].lp, "delta": -cut})
 	# Destiny HERO - Defender: in face-up Defense Position, the turn player draws 1 card.
 	for m in players[opponent(current)].monsters():
 		if not is_over() and m.face_up and not m.attack_pos and EffectRunner.fx(m).has("opp_standby_draw"):
@@ -509,6 +517,23 @@ func enter_main2() -> Array:
 ## The end of the Battle Phase: monsters that are banished after they attack (Big Jaws).
 func _end_battle() -> Array:
 	var events := []
+	# Stealthroid: "At the end of your Battle Phase, if this card battled: Target 1 Spell/Trap on the field;
+	# destroy that target. You must control another "roid" monster to activate and to resolve this effect."
+	for m in players[current].monsters():
+		if m.face_up and not m.negated and EffectRunner.fx(m).get("stealthroid", false) and int(m.tags.get("battled_turn", -1)) == turn \
+				and not players[current].monsters().filter(func(x): return x != m and x.face_up and x.cname().to_lower().contains("roid")).is_empty():
+			var st_all: Array = []
+			for q in [opponent(current), current]:
+				for st in players[q].spells:
+					if st != null and not st.is_monster():
+						st_all.append(st)
+				if players[q].field_spell != null:
+					st_all.append(players[q].field_spell)
+			var theirs_s: Array = st_all.filter(func(x): return x.owner != current)
+			if not theirs_s.is_empty():
+				var hit_s = pick1(current, Loc.t("%s: destroy 1 Spell or Trap") % m.cname(), st_all, theirs_s[0], m)
+				events.append({"type": "effect", "player": current, "card": m, "text": Loc.t("%s destroys %s") % [m.cname(), hit_s.cname() if hit_s.face_up else Loc.t("a set card")]})
+				events.append_array(_destroy_st(hit_s))
 	for m in players[current].monsters():
 		if m.attacked_turn == turn and m.face_up and EffectRunner.fx(m).get("banish_after_attack", false):
 			events.append({"type": "effect", "player": current, "card": m, "text": Loc.t("%s is banished at the end of the Battle Phase") % m.cname()})
@@ -977,6 +1002,15 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 			c.lv_set = as_lv
 			c.lv_turn = -1
 	events.append({"type": "set" if set_card else "summon", "player": p, "card": c, "zone": zone})
+	if not set_card and CardEffects.of(c.cname()).get("armoroid", false) and not tributes.filter(func(tm): return tm.cname().to_lower().contains("roid")).is_empty():
+		# Armoroid: "If this card is Tribute Summoned by Tributing at least 1 "roid" monster: Banish all Spells and Traps on the field."
+		events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s banishes every Spell and Trap on the field") % c.cname()})
+		for q in 2:
+			for st in players[q].spells.duplicate():
+				if st != null and not st.is_monster():
+					events.append_array(_banish(st))
+			if players[q].field_spell != null:
+				events.append_array(_banish(players[q].field_spell))
 	if not set_card and CardEffects.of(c.cname()).get("tribute_dragon_boost", false):
 		# Strong Wind Dragon: "Tribute Summoned by Tributing a Dragon-Type monster: It gains ATK equal to half the original ATK of the Tributed monster."
 		for tm in tributes:
@@ -1621,6 +1655,13 @@ func toon_world(q: int) -> bool:
 ## Magician Girl) must go for a Toon monster when the other side has one.
 func attack_targets_for(p: int, attacker: CardInst) -> Array[CardInst]:
 	var out := attack_targets(p)
+	# Decoyroid: "your opponent cannot select a face-up monster as an attack target except "Decoyroid"."
+	if not players[opponent(p)].monsters().filter(func(m): return m.face_up and not m.negated and EffectRunner.fx(m).get("decoy", false)).is_empty():
+		var only_d: Array[CardInst] = []
+		for m in out:
+			if not m.face_up or EffectRunner.fx(m).get("decoy", false):
+				only_d.append(m)
+		out = only_d
 	if attacker != null and not attacker.attack_pos:
 		var none: Array[CardInst] = []
 		return none   # (Rampart Blaster in Defense Position can only attack directly)
@@ -2206,6 +2247,8 @@ func _after_attack(attacker: CardInst, target = null) -> Array:
 	attacker.tags.erase("abs_hit")
 	if target != null and target is CardInst:
 		(target as CardInst).tags.erase("abs_hit")
+		attacker.tags["battled_turn"] = turn   # "if this card battled" (Stealthroid)
+		(target as CardInst).tags["battled_turn"] = turn
 	# Electric Lizard: "A non Zombie-Type monster attacking "Electric Lizard" cannot attack on its following turn."
 	if target != null and target is CardInst and (target as CardInst).face_up and EffectRunner.fx(target).get("lizard", false) and str(attacker.data.get("race", "")) != "Zombie" and players[attacker.owner].field.has(attacker):
 		attacker.tags["no_attack_on"] = turn + 2
@@ -2270,6 +2313,9 @@ func _after_attack(attacker: CardInst, target = null) -> Array:
 func atk_of(c: CardInst, attacking: bool, vs: CardInst = null, battling := false) -> int:
 	var v := c.atk()
 	var total := maxi(0, v + EffectRunner.atk_bonus(self, c, attacking, vs, battling) + SpellRules.atk_bonus(self, c, attacking and battling, vs))
+	# Dark City: "If a "Destiny HERO" monster attacks a monster with a higher ATK, the attacking monster gains 1000 ATK during damage calculation only."
+	if battling and attacking and vs != null and vs.face_up and c.cname().contains("Destiny HERO") and SpellRules.field_flag(self, "dark_city") and atk_of(vs, false) > total:
+		total += 1000
 	# Mirror Wall: a monster that attacked into it stays at half its ATK for as long as the wall stands.
 	if c.has_meta("mirror_wall"):
 		var wall = c.get_meta("mirror_wall")
@@ -2386,7 +2432,7 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	var by_opp_fx := by_opp_any and c.face_up
 	# "If the equipped monster would be destroyed by battle or card effect, destroy this card instead."
 	var riders := unions_on(c).filter(func(u): return not EffectRunner.fx(u).get("union", {}).get("no_shield", false) and not EffectRunner.fx(u).get("hand_ignite", {}).has("equip_to"))
-	if not by_battle and c.tags.has("absorbed"):
+	if c.tags.has("absorbed") and (not by_battle or EffectRunner.fx(c).get("absorb_half", false)):
 		riders = riders.filter(func(u): return u.uid != int(c.tags["absorbed"]))   # (Relinquished's monster only takes its place in battle)
 	if not by_battle:
 		# Silver Wing: "If it would be destroyed by a card effect, you can destroy this card instead."
@@ -2777,6 +2823,12 @@ func _cleanup() -> Array:
 				m.negated = true
 			else:
 				m.tags.erase("neg_by")
+	# Destiny HERO - Plasma: "Negate the effects of face-up monsters while your opponent controls them."
+	for q in 2:
+		if not players[opponent(q)].monsters().filter(func(x): return x.face_up and not x.negated and EffectRunner.fx(x).get("plasma", false)).is_empty():
+			for m in players[q].monsters():
+				if m.face_up:
+					m.negated = true
 	for q in 2:
 		for st in players[q].spells.duplicate():
 			if st == null or not st.face_up:

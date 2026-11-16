@@ -94,8 +94,18 @@ static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionar
 						if o["card"].cname() == "Ojama King":
 							return {"do": "activate", "card": h, "choice": o["card"]}   # (three 0 ATK Ojamas for a 3000 DEF wall that shuts three zones)
 			for m in s.players[p].monsters():
-				if m.face_up and CardEffects.of(m.cname()).get("absorb", false) and s.can_ignite(p, m):
+				if m.face_up and (CardEffects.of(m.cname()).get("absorb", false) or CardEffects.of(m.cname()).get("absorb_half", false)) and s.can_ignite(p, m):
 					return {"do": "ignite", "card": m}
+			# Destiny HERO - Dogma and Plasma for three small monsters.
+			for h in s.players[p].hand:
+				if h.is_monster() and CardEffects.of(h.cname()).has("special_tribute3") and s.can_special_from_hand(p, h):
+					var weak3: Array = s.players[p].monsters()
+					weak3.sort_custom(func(x, y): return x.atk() < y.atk())
+					var cost3 := 0
+					for w in weak3.slice(0, 3):
+						cost3 += w.atk()
+					if cost3 <= h.atk() + 1500:
+						return {"do": "special_hand", "card": h}
 		var prep := _setup_spell(s, p)
 		if not prep.is_empty():
 			return prep

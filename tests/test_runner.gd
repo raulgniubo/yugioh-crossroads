@@ -56,6 +56,7 @@ func _ready() -> void:
 		_test_cards_47()
 		_test_cards_48()
 		_test_cards_49()
+		_test_cards_50()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -6233,3 +6234,152 @@ func _test_cards_49() -> void:
 	SpellRules.standby(s, 0)
 	s._cleanup()
 	check(not s.players[0].spells.has(cap) and s.players[0].hand.has(sealed), "Different Dimension Capsule: at the 2nd Standby Phase it is destroyed and the card comes to the hand")
+
+
+## The cards built in v0.33.35 for Syrus's and Aster's best decks, each against its printed text.
+func _test_cards_50() -> void:
+	# ---- UFOroid, Armoroid, Decoyroid, Stealthroid.
+	var s := _bare(2001)
+	var ufo := _mon(s, 0, "UFOroid", 0)
+	var gy := s._make(_cid("Gyroid"), 0)
+	s.players[0].deck.append(gy)
+	var foe := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	foe.summoned_turn = 1
+	s.current = 1
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(1, foe, ufo)
+	s.resolve_attack()
+	s._cleanup()
+	check(s.players[0].gy.has(ufo) and s.players[0].monsters().filter(func(m): return str(m.data.get("race", "")) == "Machine" and m.atk() <= 1500).size() == 1, "UFOroid destroyed by battle: a small Machine comes from the Deck")
+	s = _bare(2002)
+	var fod := _mon(s, 0, "Gyroid", 0)
+	var fod2 := _mon(s, 0, "Steamroid", 1)
+	var armor := _in(s, 0, "Armoroid", "hand")
+	var trap := _rst(s, 1, "Mirror Force", "set")
+	var mine := _rst(s, 0, "Negate Attack", "set")
+	s.normal_summon(0, armor, [fod, fod2])
+	s._cleanup()
+	check(s.players[0].field.has(armor) and s.players[1].banished.has(trap) and s.players[0].banished.has(mine), "Armoroid Tribute Summoned with a roid: every Spell and Trap is banished")
+	s = _bare(2003)
+	var decoy := _mon(s, 0, "Decoyroid", 0)
+	var other := _mon(s, 0, "Steamroid", 1)
+	var hid := _mon(s, 0, "Gyroid", 2, false)
+	hid.face_up = false
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	foe.summoned_turn = 1
+	s.current = 1
+	s.phase = DuelState.Phase.BATTLE
+	var tg: Array = s.attack_targets_for(1, foe)
+	check(tg.has(decoy) and tg.has(hid) and not tg.has(other), "Decoyroid: the only face-up monster that can be attacked")
+	s = _bare(2004)
+	var st := _mon(s, 0, "Stealthroid", 0)
+	st.summoned_turn = 1
+	_mon(s, 0, "Gyroid", 1)
+	var weak := _mon(s, 1, "Kuriboh", 0)
+	trap = _rst(s, 1, "Mirror Wall", "set")
+	trap.set_turn = s.turn   # (it cannot be flipped in this battle)
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(0, st, weak)
+	s.resolve_attack()
+	s.begin_end()
+	s._cleanup()
+	check(s.players[1].gy.has(trap), "Stealthroid battled with another roid out: 1 Spell or Trap is destroyed at the end of the Battle Phase")
+	# ---- No Entry!!, Supercharge.
+	s = _bare(2005)
+	var a1 := _mon(s, 0, "Steamroid", 0)
+	var b1 := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var noe := _rst(s, 0, "No Entry!!", "set")
+	s.activate(0, noe)
+	check(not a1.attack_pos and not b1.attack_pos, "No Entry!!: every Attack Position monster turns to Defense Position")
+	s = _bare(2006)
+	a1 = _mon(s, 0, "Steamroid", 0)
+	b1 = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	b1.summoned_turn = 1
+	var sup := _rst(s, 0, "Supercharge", "set")
+	s.current = 1
+	s.phase = DuelState.Phase.BATTLE
+	var h0: int = s.players[0].hand.size()
+	s.declare_attack(1, b1, a1)
+	check(s.responses(0, "attack").has(sup), "Supercharge can answer an attack when every monster you control is a roid")
+	s.respond(0, sup)
+	check(s.players[0].hand.size() == h0 + 2, "Supercharge: draw 2")
+	# ---- Destiny HERO - Plasma.
+	s = _bare(2007)
+	_mon(s, 0, "Kuriboh", 0)
+	_mon(s, 0, "Kuriboh", 1)
+	var plasma := _in(s, 0, "Destiny HERO - Plasma", "hand")
+	check(not s.can_special_from_hand(0, plasma), "Destiny HERO - Plasma needs 3 Tributes")
+	_mon(s, 0, "Kuriboh", 2)
+	check(s.can_special_from_hand(0, plasma), "Destiny HERO - Plasma with 3 monsters")
+	s.special_from_hand(0, plasma)
+	var jinzo := _mon(s, 1, "Jinzo", 0)
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 1)
+	s._cleanup()
+	check(s.players[0].field.has(plasma) and s.players[0].monsters().size() == 1 and jinzo.negated, "Plasma is out for 3 Tributes and the opponent's face-up monsters are negated")
+	s.ignite(0, plasma)
+	s._cleanup()
+	check(s.players[0].spells.has(foe) and s.atk_of(plasma, false) == 1900 + 1500, "Plasma takes Blue-Eyes and gains half its ATK (got %d)" % s.atk_of(plasma, false))
+	s.current = 1
+	s.phase = DuelState.Phase.BATTLE
+	var big := _mon(s, 1, "Blue-Eyes Ultimate Dragon", 2)
+	big.summoned_turn = 1
+	plasma.attack_pos = true
+	s.declare_attack(1, big, plasma)
+	s.resolve_attack()
+	s._cleanup()
+	check(s.players[0].gy.has(plasma) and s.players[1].gy.has(foe), "Plasma is destroyed by battle itself (the monster it holds does not take its place)")
+	# ---- Destiny HERO - Dogma.
+	s = _bare(2008)
+	_mon(s, 0, "Kuriboh", 0)
+	_mon(s, 0, "Kuriboh", 1)
+	_mon(s, 0, "Celtic Guardian", 2)
+	var dogma := _in(s, 0, "Destiny HERO - Dogma", "hand")
+	check(not s.can_special_from_hand(0, dogma), "Destiny HERO - Dogma needs a Destiny HERO among the 3")
+	s.players[0].field[2] = null
+	var dh := _mon(s, 0, "Destiny HERO - Doom Lord", 2)
+	check(s.can_special_from_hand(0, dogma), "Destiny HERO - Dogma with a Destiny HERO among the 3")
+	s.special_from_hand(0, dogma)
+	check(s.players[0].field.has(dogma) and s.players[0].gy.has(dh), "Dogma is Special Summoned")
+	s.current = 1
+	s.players[1].lp = 8000
+	s.begin_standby()
+	check(s.players[1].lp == 4000, "Dogma: the opponent's Life Points are halved in their next Standby Phase (LP %d)" % s.players[1].lp)
+	s.players[1].lp = 4000
+	s.begin_standby()
+	check(s.players[1].lp == 4000, "and only that once")
+	# ---- Destiny Draw, D - Spirit, Destiny Signal, Dark City, Misfortune.
+	s = _bare(2009)
+	var dd := _rst(s, 0, "Destiny Draw")
+	check(not s.can_activate(0, dd), "Destiny Draw needs a Destiny HERO card to discard")
+	var pay := _in(s, 0, "Destiny HERO - Malicious", "hand")
+	h0 = s.players[0].hand.size()
+	s.activate(0, dd)
+	check(s.players[0].gy.has(pay) and s.players[0].hand.size() == h0, "Destiny Draw: discard a Destiny HERO, draw 2")
+	s = _bare(2010)
+	var sp := _rst(s, 0, "D - Spirit")
+	var lil := _in(s, 0, "Destiny HERO - Doom Lord", "hand")
+	s.activate(0, sp)
+	check(s.players[0].field.has(lil), "D - Spirit: a Level 4 or lower Destiny HERO from the hand")
+	var sp2 := _rst(s, 0, "D - Spirit")
+	_in(s, 0, "Destiny HERO - Defender", "hand")
+	check(not s.can_activate(0, sp2), "D - Spirit: not while you control a Destiny HERO")
+	s = _bare(2011)
+	var city := _rst(s, 0, "Dark City")
+	s.activate(0, city)
+	var hero := _mon(s, 0, "Destiny HERO - Doom Lord", 0)
+	hero.summoned_turn = 1
+	foe = _mon(s, 1, "Celtic Guardian", 0)
+	s.phase = DuelState.Phase.BATTLE
+	var l1: int = s.players[1].lp
+	s.declare_attack(0, hero, foe)
+	s.resolve_attack()
+	check(s.players[1].gy.has(foe) and s.players[1].lp == l1 - 200, "Dark City: a Destiny HERO attacking a stronger monster gains 1000 ATK for that battle (LP %d)" % s.players[1].lp)
+	s = _bare(2012)
+	var mis := _rst(s, 0, "Misfortune")
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var att := _mon(s, 0, "Celtic Guardian", 0)
+	att.summoned_turn = 1
+	l1 = s.players[1].lp
+	s.activate(0, mis, foe)
+	s.phase = DuelState.Phase.BATTLE
+	check(s.players[1].lp == l1 - 1500 and not s.can_attack(0, att), "Misfortune: 1500 damage and your monsters cannot attack this turn")

@@ -7,7 +7,9 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
 ## What is in 0.33.35
 
-The GX duelists' best decks. Each card built against its card text, each with a test.
+Four GX duelists got their best decks: **Chazz, Zane, Syrus and Aster**. 32 cards built, each against its card text, each with a test.
+
+Also: the card index on your computer is rebuilt once on the first start (Power Bond needed it), so the first launch takes a few seconds longer.
 
 ### Chazz
 
@@ -29,8 +31,25 @@ The GX duelists' best decks. Each card built against its card text, each with a 
 - **De-Fusion** now gives the Fusion Materials back, the way the card says (it only returned the Fusion before).
 - **Cyber Laser Dragon** and **Cyber Barrier Dragon** come out through Photon Generator Unit and Attack Reflector Unit only.
 
+### Syrus
+
+**The Vehicroids with Power Bond into Super Vehicroid Jumbo Drill.** 6 cards built (Power Bond is shared with Zane).
+
+- **Main, 40:** Steamroid x3, Drillroid x3, Submarineroid x3, Gyroid x2, Expressroid x2, UFOroid x2, Cycroid x2, Stealthroid x2, Decoyroid, Rescueroid, Armoroid; Polymerization x3, Power Bond x3, Pot of Greed, Monster Reborn, Mystical Space Typhoon, Limiter Removal, Heavy Storm; No Entry!! x2, Supercharge x2, Negate Attack, Draining Shield, Shield Crush. **Extra:** Steam Gyroid x2, Super Vehicroid Jumbo Drill x2.
+- **Armoroid** Tribute Summoned with a roid banishes every Spell and Trap on the field. **Decoyroid** is the only face-up monster of yours that can be attacked. **Stealthroid** destroys a Spell or Trap at the end of the Battle Phase if it battled a monster. **Supercharge** draws 2 when they attack into nothing but roids.
+
+### Aster
+
+**The Destiny HEROes with Plasma and Dogma.** 7 cards built.
+
+- **Main, 40:** Destiny HERO - Plasma, Dogma, Defender x3, Malicious x3, Doom Lord x2, Dasher x2, Captain Tenacious x2, Dunker x2, Disk Commander x2; Destiny Draw x3, D - Spirit x2, Dark City x2, Monster Reborn x2, Misfortune, Pot of Greed, Dark Hole, Mystical Space Typhoon; Destiny Signal x3, Call of the Haunted x2, Negate Attack x2, Ring of Destruction, Mirror Force.
+- **Plasma** comes out for 3 Tributes, negates the effects of your face-up monsters, and takes one of them into its Spell & Trap Zone for half its ATK. **Dogma** comes out for 3 Tributes (one a Destiny HERO) and halves your Life Points in your next Standby Phase.
+- **Dark City:** a Destiny HERO attacking a stronger monster gains 1000 ATK for that battle.
+
 **Not done or not checked:**
 
+- Still to build for Aster: Clock Tower Prison with Dreadmaster and Eternal Dread (his signature combo, not in yet), Diamond Dude's real effect, Double Dude, Fear Monger, Departed, Blade Master, Destiny End Dragoon, the Phoenix Enforcers, D - Time, D - Shield, D - Chain, Over Destiny, Guard Penalty, Destruction of Destiny. Aster on Hard won 9 of 30 test duels. Not watched on screen.
+- Still to build for Syrus: Super Vehicroid - Stealth Union, Vehicroid Connection Zone, Truckroid, Pair Cycroid, UFOroid Fighter, Ambulanceroid, Ambulance Rescueroid, Jetroid, Patroid, Wonder Garage, Cyber Summon Blaster. Stealthroid counts a battle with a monster, not a direct attack. Syrus on Hard won 9 of 30 test duels. Not watched on screen.
 - Still to build for Zane: the whole Cyberdark half (Cyberdark Horn, Edge, Keel, Cyberdark Dragon, Cyberdark Impact!), Chimeratech Overdragon, Overload Fusion, Future Fusion, Infernal Dragon. Cyber Phoenix is played as "a Spell or Trap cannot target that Machine" (the card says the effect is negated: here the card cannot be aimed at it in the first place). Zane on Hard won 13 of 30 test duels. Not watched on screen.
 - Still to build for Chazz: Ojama Knight (needs "2 Ojama monsters" as Fusion Materials), Ojama Country, Chthonian Alliance, Chthonian Blast, Chthonian Polymer, Infernal Incinerator. Ojama King picks the zones itself (they are all the same in this game). Chazz on Hard won 13 of 30 test duels. Not watched on screen.
 

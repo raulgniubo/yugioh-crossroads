@@ -108,6 +108,15 @@ const FX := {
 	"Elemental HERO Thunder Giant": {"note": "Once per turn, discard 1: destroy a monster with less original ATK.",
 		"ignite": {"cost": "discard", "do": [["destroy", "atk_below_self"]], "label": "Discard 1: destroy a weaker monster"}},
 	"Elemental HERO Rampart Blaster": {"note": "Can attack directly while it is in Defense Position. When it does, its ATK is halved for that damage calculation.", "direct_from_def": true},
+	# ---- Syrus's and Aster's best decks (v0.33.35)
+	"UFOroid": {"note": "Destroyed by battle and sent to the Graveyard: Special Summon a Machine monster with 1500 or less ATK from your Deck in Attack Position.", "death": [["special", "deck", {"race": "Machine", "max_atk": 1500}, "atk", 1]]},
+	"Armoroid": {"note": "Tribute Summoned by Tributing at least 1 roid monster: banish every Spell and Trap on the field.", "armoroid": true},
+	"Decoyroid": {"note": "While it is face-up, your opponent cannot attack a face-up monster of yours except Decoyroid.", "decoy": true},
+	"Stealthroid": {"note": "End of your Battle Phase, if it battled and you control another roid monster: destroy 1 Spell or Trap on the field.", "stealthroid": true},
+	"Destiny HERO - Plasma": {"note": "Cannot be Normal Summoned or Set. Special Summon it from your hand by Tributing 3 monsters. The effects of your opponent's face-up monsters are negated. Once per turn: equip 1 monster your opponent controls to this card (1 at a time). It gains half that monster's original ATK.",
+		"special_tribute3": "", "plasma": true, "absorb_half": true, "ignite": {"do": [["absorb"]], "label": "Take an opponent's monster"}},
+	"Destiny HERO - Dogma": {"note": "Cannot be Normal Summoned or Set. Special Summon it from your hand by Tributing 3 monsters, at least 1 of them a Destiny HERO. If it is still face-up in your opponent's next Standby Phase: their Life Points are halved.",
+		"special_tribute3": "Destiny HERO", "dogma": true},
 	# ---- Zane's best deck (v0.33.35)
 	"Cyber Laser Dragon": {"note": "Cannot be Normal Summoned or Set, and only Photon Generator Unit can Special Summon it. Once per turn: destroy 1 monster whose ATK or DEF is equal to or higher than this card's ATK.",
 		"no_special": true, "ignite": {"cost": "none", "do": [["laser"]], "label": "Destroy a monster with ATK or DEF this high"}},

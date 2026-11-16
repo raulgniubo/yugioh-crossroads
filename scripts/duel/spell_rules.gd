@@ -119,6 +119,14 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Syrus's and Aster's cards (v0.33.35)
+	"No Entry!!": {"k": "trap", "win": ["free", "attack"], "do": [["all_to_def"]]},
+	"Supercharge": {"k": "trap", "win": ["attack"], "cond": "all_roids", "do": [["draw", 2]]},
+	"Destiny Draw": {"k": "normal", "cost": "discard_f", "cost_f": {"has": "Destiny HERO"}, "do": [["draw", 2]]},
+	"D - Spirit": {"k": "normal", "ai": "always", "cond": "no_dhero", "do": [["special_from_hand", {"has": "Destiny HERO", "max_lv": 4}]]},
+	"Destiny Signal": {"k": "trap", "win": [], "battle_death": true, "do": [["special_hand_deck", {"has": "Destiny HERO", "max_lv": 4}]]},
+	"Dark City": {"k": "field", "ai": "always", "dark_city": true},
+	"Misfortune": {"k": "normal", "t": "opp_face", "do": [["misfortune"]]},
 	# ---------------------------------------------------------------- Zane's cards (v0.33.35)
 	"Limiter Removal": {"k": "quick", "ai": "wins", "cond": "own_machine", "do": [["limiter_removal"]]},
 	"Photon Generator Unit": {"k": "normal", "ai": "always", "cond": "two_cyber_dragons", "do": [["cyber_unit", 2, "Cyber Laser Dragon", true]]},
@@ -631,6 +639,13 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return s.players[p].hand.is_empty()
 		"level_up":
 			return not _lv_ready(s, p).is_empty()
+		"all_roids":
+			var mine_r: Array = s.players[p].monsters()
+			return not mine_r.is_empty() and mine_r.filter(func(m): return not (m.face_up and str(m.data.get("race", "")) == "Machine" and m.cname().to_lower().contains("roid"))).is_empty() \
+					and not s.pending_attack.is_empty() and s.pending_attack["player"] != p
+		"no_dhero":
+			return s.players[p].monsters().filter(func(m): return m.face_up and m.cname().contains("Destiny HERO")).is_empty() \
+					and s.players[p].free_zone() != -1 and not EffectRunner._take(s.players[p].hand, {"has": "Destiny HERO", "max_lv": 4}, 1).is_empty()
 		"own_machine":
 			return not s.players[p].monsters().filter(func(m): return m.face_up and str(m.data.get("race", "")) == "Machine").is_empty()
 		"two_cyber_dragons":
@@ -2139,6 +2154,18 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 					if o["card"] == want:
 						events.append_array(s._do_fusion(p, o, true))
 						break
+		"all_to_def":
+			# No Entry!!: "Change all Attack Position monsters to Defense Position."
+			for q in [p, s.opponent(p)]:
+				for m in s.players[q].monsters():
+					if m.face_up and m.attack_pos:
+						m.attack_pos = false
+						events.append({"type": "position", "player": q, "card": m, "zone": s.players[q].field.find(m)})
+		"misfortune":
+			# Misfortune: "Inflict damage to your opponent equal to half that monster's original ATK. Your monsters cannot attack this turn."
+			for t in _sel(s, p, c, "target", ctx):
+				events.append_array(s._damage(s.opponent(p), t.atk() / 2))
+			ps.no_attack_turn = s.turn
 		"limiter_removal":
 			# Limiter Removal: "Double the ATK of all Machine monsters you currently control, until the end of
 			# this turn. During the End Phase of this turn, destroy those monsters."
