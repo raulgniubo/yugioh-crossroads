@@ -14,19 +14,19 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 - **Synchro with 2 Tuners** (Red Nova Dragon) and the **3-part Majestic Synchros** (Majestic Dragon + Stardust or Red Dragon Archfiend + 1 non-Tuner).
 - **Equipping monsters to monsters:** the ZW pieces on Utopia, Cyberdark dragons, Number 101's material steal, Dragoon Hunter style equips.
 - **3-Tribute summons** (Gilford the Lightning wipes their side), zone locks (Ojama King), blocked zones, races changed by DNA Surgery.
-- **New timing hooks:** Standby Phase marks (Viser Des), End Phase returns (Majestic, Red Nova, Number 62), "if this would be destroyed, X goes instead" (Number 61, ZW shields, Dark Highlander style guards), battle damage reflect (Number 96 / C96), attack-time negates (Victory, Unicorn Spear).
+- **New timing hooks:** Standby Phase marks (Viser Des), End Phase returns (Majestic, Red Nova, Number 62), "if this would be destroyed, X goes instead" (Number 61, ZW shields), battle damage reflect (Number 96 / C96), attack-time negates (Victory, Unicorn Spear).
 
 ### Who got what
 
 - **Yusei:** fewer Tuners, 2 Stardust Dragon, Majestic Dragon with **Majestic Star Dragon**, Junk Gardna, Formula Synchron line. 15-card Extra.
 - **Jack:** Resonators, Red Dragon Archfiend x2, Scarlight, **Red Nova Dragon** x2, Majestic Dragon with **Majestic Red Dragon**.
-- **Crow, Akiza, Kalin:** Blackwings with their Synchros; Akiza's Plants with Black Rose, **Splendid Rose** and **Rose Tentacles** style pieces; Kalin's Infernities with **Infernity General**.
+- **Crow, Akiza, Kalin:** Blackwings with their Synchros; Akiza's Plants with Black Rose Dragon, **Splendid Rose** and **Rose Tentacles**; Kalin's Infernities with **Infernity General**.
 - **Yuma:** Utopia, Utopia Ray, Utopia Ray V and Victory, the **ZW** equips, Gagaga line (Magician, Girl, Gardna, Gagaga Mancer), Dododo, Kurivolt, **Number 39: Utopia Beyond**.
 - **Shark:** Shark Drake and **C32 Shark Drake Veiss**, **Number 37**, **Number 73 / C73 Abyss Splash**, Big Jaws, Spear Shark, Depth Shark.
-- **Kite:** Galaxy-Eyes Photon Dragon, Tachyon line, **Number 62**, Photon Thrasher and friends.
+- **Kite:** Galaxy-Eyes Photon Dragon, **Number 62**, Photon Thrasher and the Photon support.
 - **Vector:** **Number 104**, **Number 65 / C65**, **Number 96 / C96**, Barian monsters.
 - **Yugi, Kaiba, Joey:** see below. **Mai, Marik, Bakura, Pegasus, Weevil, Rex:** filler out, their real power cards in.
-- **Jaden, Chazz, Zane, Syrus, Alexis, Aster:** Neos with **Neos Wiseman** and Yubel, Armed Dragons and Ojamas, **Cyberdark Dragon** and Cyber End, Vehicroids with **Super Vehicroid**, Cyber Girls, Destiny HEROes with **Dreadmaster** and **Dystopia**.
+- **Jaden, Chazz, Zane, Syrus, Alexis, Aster:** Neos with **Neos Wiseman** and Yubel, Armed Dragons and Ojamas, **Cyberdark Dragon** and Cyber End, Vehicroids with **Super Vehicroid**, Cyber Girls, Destiny HEROes with **Dreadmaster** and **Destiny End Dragoon**.
 - **Yugi:** Dark Magician x3, DMG x3, **Knight's Title** into Dark Magician Knight. **Kaiba:** **Blue-Eyes Shining Dragon**, Shrink. **Joey:** **Gilford the Lightning**, **Release Restraint** into Gearfried the Swordmaster, Gearfried x2.
 
 ### Test duels (10 per deck on Hard, against the house mix)
