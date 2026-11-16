@@ -23,11 +23,14 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 - **Weevil:** the vanilla Insects are gone. In: Man-Eater Bug x3, the lock (DNA Surgery x3, Insect Barrier x2), and the old power cards (Raigeki, Dark Hole, Heavy Storm, Swords of Revealing Light, Change of Heart, Graceful Charity, Mirror Force, Magic Cylinder, Torrential Tribute). On Hard: **16 of 30** (was 5).
 - **Pegasus:** Dark Rabbit, Parrot Dragon, Copycat, Toon Alligator and Toon Masked Sorcerer are out. Two Blue-Eyes Toon Dragon, two Thousand-Eyes Restrict, and the same old power cards. On Hard: 10 of 30 (was 9). The Toons get out now (in 30 duels: Toon Summoned Skull 21 times, Toon Dark Magician Girl 20, Blue-Eyes Toon Dragon 8) but they wait a turn to attack, and the Synchro and Xyz decks do not wait.
 - **Bakura:** Dark Necrofear x3 with more Fiends to feed her, Man-Eater Bug x3, the old power cards. On Hard: 10 of 30 (was 12, which is inside the noise of 30 duels).
+- **Yugi:** a real Dark Magician deck instead of one copy of everything: Dark Magician x3, Dark Magician Girl x3, Skilled Dark Magician x3, Dark Magic Curtain x2, Dark Magician of Chaos, the Magnet Warriors with Valkyrion, the three Knights, Slifer. On Hard: 14 of 30 (was 16 of 40).
+- **Kaiba:** every way to get Blue-Eyes out (Kaibaman x3, Kaiser Sea Horse x3, Lord of D. with the Flute, Call of the Haunted x2), Vampire Lord x2, Obelisk, Crush Card Virus. The single X, Y and Z pieces and the vanilla filler are out. On Hard: 13 of 30 (was 14 of 40).
+- **Joey:** Jinzo x2, Gearfried x3, Goblin Attack Force x3, Red-Eyes, his dice and Scapegoat. The weak vanilla Warriors are out. On Hard: 17 of 30 (was 17 of 40).
 - **Jaden:** I tried a tighter list and it did worse (5 of 30), so his deck is unchanged. He needs his missing cards first.
 
 **Not done or not checked:**
 
-- **The deck pass is not finished.** Done: Yusei, Kite, Jack, Weevil, Pegasus, Bakura. Not yet: everyone else. The old-era decks (Pegasus, Bakura) stay weaker than the Synchro and Xyz decks on Hard even after the pass: their cards are slower by design. Boss monsters still missing are listed in the plan doc.
+- **The deck pass is not finished.** Done: Yusei, Kite, Jack, Weevil, Pegasus, Bakura, Yugi, Kaiba, Joey. Not yet: the other 15. 30 test duels swing by 3 or 4 wins either way, so only the big jumps (Weevil, Yusei) are sure. The old-era decks (Pegasus, Bakura) stay weaker than the Synchro and Xyz decks on Hard even after the pass: their cards are slower by design. Boss monsters still missing are listed in the plan doc.
 - Still to build for Jack: Majestic Red Dragon (with Majestic Dragon), Dark Highlander, Crimson Fire, Red Dragon Vase, Changing Destiny, Prideful Roar. Not watched on screen.
 
 ## What is in 0.33.35

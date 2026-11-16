@@ -1465,10 +1465,11 @@ func _test_heroes_angels() -> void:
 	# Benten Tributed: a LIGHT Fairy from the Deck.
 	var ben := _fake(s, 0, "Cyber Angel Benten", 1800, 1500, -1, {"frame": "ritual", "level": 6})
 	var fairy := _fake(s, 0, "Shining Friend", 1300, 1100, -1, {"attribute": "LIGHT", "race": "Fairy"})
+	s.players[0].deck = s.players[0].deck.filter(func(x): return not (x.is_monster() and str(x.data.get("attribute", "")) == "LIGHT" and str(x.data.get("race", "")) == "Fairy"))
 	s.players[0].deck.append(fairy)
 	s._to_gy(s.players[0], ben)
 	EffectRunner.trigger(s, ben, "tributed")
-	check(s.players[0].hand.has(fairy), "Benten Tributed: a LIGHT Fairy monster comes from the Deck")
+	check(s.players[0].hand.has(fairy), "Benten Tributed: a LIGHT Fairy monster comes from the Deck (hand: %s)" % str(s.players[0].hand.map(func(h): return h.cname())))
 
 
 ## Quillbolt Hedgehog, Stygian Street Patrol, the two Synchro helpers, Galaxy Soldier and Knight,
@@ -2721,7 +2722,7 @@ func _test_signature_decks() -> void:
 	var yugi := CardData.deck_list("yugi").map(func(id): return str(CardData.get_card(id).get("name", "")))
 	check(yugi.has("Dark Magician Girl") and yugi.has("Alpha The Magnet Warrior") and not yugi.has("Gemini Elf"), "Yugi plays Dark Magician Girl and the Magnet Warriors, not Gemini Elf")
 	var au := SignatureDecks.audit("kaiba")
-	check((au["in"] as Array).has("X-Head Cannon") and (au["plays"] as Array).size() > 10, "the audit says what Kaiba plays and what is his")
+	check((au["in"] as Array).has("Kaibaman") and (au["plays"] as Array).size() > 10, "the audit says what Kaiba plays and what is his")
 
 
 
