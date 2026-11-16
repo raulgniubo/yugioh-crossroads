@@ -170,6 +170,7 @@ class PlayerState:
 	var summons_turn := -1        # the last turn this player Normal or Special Summoned a monster (Dark Magic Curtain)
 	var only_attacker := -1       # uid of the one monster that may attack on `only_attacker_turn` (Feather Shot)
 	var only_attacker_turn := -1
+	var blocked: Array = []       # Monster Zones this player cannot use (Ojama King across the table)
 
 	func set_cards() -> Array[CardInst]:
 		var out: Array[CardInst] = []
@@ -187,7 +188,10 @@ class PlayerState:
 		return out
 
 	func free_zone() -> int:
-		return field.find(null)
+		for i in field.size():
+			if field[i] == null and not blocked.has(i):
+				return i
+		return -1
 
 
 var players: Array[PlayerState] = []
@@ -876,7 +880,7 @@ func can_normal_summon(p: int, c: CardInst) -> bool:
 	var need := tributes_needed(c)
 	var mons := players[p].monsters().size()
 	if need == 0:
-		return mons < ZONES
+		return players[p].free_zone() != -1   # (a zone Ojama King has shut is not a free zone)
 	var only_attr := str(CardEffects.of(c.cname()).get("tribute_attr", ""))
 	if only_attr != "":
 		return tributable(p).filter(func(m): return str(m.data.get("attribute", "")) == only_attr).size() >= need
@@ -1741,6 +1745,18 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 				if om.face_up:
 					om.tags["cka"] = turn
 			events.append({"type": "effect", "player": p, "card": attacker, "text": Loc.t("%s switches the ATK and DEF of the opponent's monsters until the end of the Battle Phase") % attacker.cname()})
+	# VWXYZ-Dragon Catapult Cannon: "When this card declares an attack on an opponent's monster: You can
+	# target the attack target; change that attack target's battle position. (Flip effects are not activated.)"
+	if target != null and not attacker.negated and EffectRunner.fx(attacker).get("turn_target", false) and EffectRunner.can_target(attacker, target):
+		var gain: bool = not target.attack_pos and target.atk() < atk_of(attacker, false)
+		if choose_option(p, Loc.t("%s: change the attack target's battle position?") % attacker.cname(), ["Change its battle position", "No"], 0 if gain else 1, attacker) == 0:
+			if target.attack_pos:
+				target.attack_pos = false
+			else:
+				target.attack_pos = true
+				target.face_up = true
+			events.append({"type": "effect", "player": p, "card": attacker, "text": Loc.t("%s turns %s around") % [attacker.cname(), target.cname()]})
+			events.append({"type": "position", "player": opponent(p), "card": target, "zone": players[opponent(p)].field.find(target)})
 	if target != null and target.face_up and target.attack_pos and not target.negated and EffectRunner.fx(target).get("def_when_targeted", false):
 		if choose_option(target.owner, Loc.t("%s: change it to Defense Position?") % target.cname(), ["Change to Defense Position", "No"], 0, target) == 0:
 			target.attack_pos = false
@@ -2287,6 +2303,14 @@ func _battle_damage(p: int, amount: int, dealer: CardInst = null, taker: CardIns
 		if hm != null and int(hm.tags.get("unbreak_turn", -1)) == turn and int(hm.tags.get("unbreak_for", -1)) == p:
 			amount = int(ceil(amount / 2.0))
 			break
+	# Chthonian Soldier: "When this card is destroyed by an opponent's attacking monster and sent to the
+	# Graveyard, the Battle Damage you took from this battle is also inflicted to your opponent."
+	if taker != null and dealer != null and dealer.owner != p and amount > 0 and CardEffects.of(taker.cname()).get("chthonian", false) and players[p].gy.has(taker) \
+			and current == dealer.owner and ps.no_damage_turn != turn and ps.protect_turn != turn:
+		var out_c := _damage(p, amount, true)
+		out_c.append({"type": "effect", "player": p, "card": taker, "text": Loc.t("%s: the opponent takes the same %d damage") % [taker.cname(), amount]})
+		out_c.append_array(_damage(opponent(p), amount))
+		return out_c
 	# Relinquished: "While equipped with that monster, any battle damage you take from battles involving this card inflicts equal effect damage to your opponent."
 	for rq in [dealer, taker]:
 		if rq != null and rq.owner == p and rq.face_up and not rq.negated and EffectRunner.fx(rq).get("reflect_absorbed", false) and (absorbed_by(rq) != null or rq.tags.has("abs_hit")) and amount > 0 and ps.no_damage_turn != turn and ps.protect_turn != turn:
@@ -2630,9 +2654,22 @@ func cocooned(m: CardInst) -> CardInst:
 	return null
 
 
+## Ojama King: "Choose up to 3 of your opponent's unused Monster Zones. Those zones cannot be used."
+func _apply_zone_locks() -> void:
+	for q in 2:
+		var shut: Array = []
+		for m in players[opponent(q)].monsters():
+			if m.face_up and not m.negated and m.tags.has("zones"):
+				for z in m.tags["zones"]:
+					if players[q].field[int(z)] == null and not shut.has(int(z)):
+						shut.append(int(z))
+		players[q].blocked = shut
+
+
 func _cleanup() -> Array:
 	var events := []
 	_apply_races()
+	_apply_zone_locks()
 	if not pending_events.is_empty():
 		events.append_array(pending_events)
 		pending_events = []
@@ -3024,6 +3061,8 @@ func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 	c.attack_pos = pos != "def"
 	if pos == "" and manual[p]:
 		c.attack_pos = choose_option(p, Loc.t("Special Summon %s in:") % c.cname(), ["Attack Position", "Defense Position"], 0, c) == 0
+	elif pos == "" and c.atk() < 1500 and c.def() >= c.atk() + 800:
+		c.attack_pos = false   # (the computer puts a wall like Ojama King, 0 / 3000, in Defense Position)
 	c.summoned_turn = turn
 	c.pos_changed_turn = -1
 	c.attacked_turn = -1
@@ -3614,6 +3653,7 @@ func clone() -> DuelState:
 		np.no_damage_until = ps.no_damage_until
 		np.once_duel = ps.once_duel.duplicate()
 		np.summons_turn = ps.summons_turn
+		np.blocked = ps.blocked.duplicate()
 		np.only_attacker = ps.only_attacker
 		np.only_attacker_turn = ps.only_attacker_turn
 		s.players.append(np)

@@ -214,7 +214,10 @@ const TUNE := {
 			"Elemental HERO Dark Neos": 1, "Elemental HERO Magma Neos": 1, "Elemental HERO Storm Neos": 1, "Elemental HERO Flame Wingman": 1,
 			"Elemental HERO Shining Flare Wingman": 1, "Elemental HERO Thunder Giant": 1, "Elemental HERO Tempest": 1, "Elemental HERO Rampart Blaster": 1,
 			"Elemental HERO Wildedge": 1, "Elemental HERO Necroid Shaman": 1}},
-	"chazz": {"out": ["Dragon Treasure", "Rush Recklessly"], "in": {"Masked Dragon": 2, "V-Tiger Jet": 1}},
+	"chazz": {"out": ["Dragon Treasure", "Rush Recklessly"], "in": {"Masked Dragon": 2, "V-Tiger Jet": 1},
+		# Chazz's best deck: the Armed Dragons up to LV10, the Ojamas with Ojama King, and VWXYZ (v0.33.35).
+		"main": {"Armed Dragon LV3": 3, "Armed Dragon LV5": 2, "Armed Dragon LV7": 2, "Armed Dragon LV10": 1, "Masked Dragon": 2, "X-Head Cannon": 2, "Y-Dragon Head": 2, "Z-Metal Tank": 2, "V-Tiger Jet": 1, "W-Wing Catapult": 1, "Ojama Yellow": 2, "Ojama Green": 2, "Ojama Black": 2, "Chthonian Soldier": 1, "Level Up!": 2, "Ojamagic": 2, "Ojama Delta Hurricane!!": 1, "Ojamuscle": 1, "Polymerization": 2, "Pot of Greed": 1, "Monster Reborn": 1, "Mystical Space Typhoon": 2, "Heavy Storm": 1, "Call of the Haunted": 1, "Ring of Destruction": 1},
+		"extra": {"XYZ-Dragon Cannon": 1, "VW-Tiger Catapult": 1, "VWXYZ-Dragon Catapult Cannon": 1, "Ojama King": 1}},
 	"zane": {"out": ["X-Head Cannon", "Elemental HERO Burstinatrix", "Charcoal Inpachi", "Millennium Shield"], "in": {"Call of the Haunted": 1}},
 	"alexis": {"out": ["Dian Keto the Cure Master", "Luminous Spark", "Horn of the Unicorn", "Fissure", "Cyber Petit Angel"],
 		"in": {"Hallowed Life Barrier": 1, "Machine Angel Ritual": 3, "Fusion Weapon": 1, "Ritual Weapon": 2}, "extra_in": {"Cyber Blader": 2}},

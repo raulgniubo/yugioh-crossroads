@@ -5,6 +5,24 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.35
+
+The GX duelists' best decks. Each card built against its card text, each with a test.
+
+### Chazz
+
+**The Armed Dragons up to LV10, the Ojamas with Ojama King, and VWXYZ.** 10 cards built.
+
+- **Main, 40:** Armed Dragon LV3 x3, LV5 x2, LV7 x2, LV10, Masked Dragon x2, X-Head Cannon x2, Y-Dragon Head x2, Z-Metal Tank x2, V-Tiger Jet, W-Wing Catapult, Ojama Yellow x2, Ojama Green x2, Ojama Black x2, Chthonian Soldier; Level Up! x2, Ojamagic x2, Polymerization x2, Mystical Space Typhoon x2, Ojama Delta Hurricane!!, Ojamuscle, Pot of Greed, Monster Reborn, Heavy Storm; Call of the Haunted, Ring of Destruction. **Extra:** XYZ-Dragon Cannon, VW-Tiger Catapult, VWXYZ-Dragon Catapult Cannon, Ojama King.
+- **Ojama King** shuts up to 3 of the opponent's empty Monster Zones while it is face-up. **Ojama Delta Hurricane!!** destroys every card they control when Green, Yellow and Black are all out. **Ojamagic** fetches the three of them.
+- **Armed Dragon LV10** comes out by Tributing LV7 and clears every face-up monster for 1 card from the hand. **Level Up!** skips the wait (it cannot make LV10: LV7's text does not name it).
+- **VWXYZ-Dragon Catapult Cannon** banishes 1 card a turn and can turn the monster it attacks around.
+- The computer now puts a wall (low ATK, high DEF) in Defense Position when it Special Summons it.
+
+**Not done or not checked:**
+
+- Still to build for Chazz: Ojama Knight (needs "2 Ojama monsters" as Fusion Materials), Ojama Country, Chthonian Alliance, Chthonian Blast, Chthonian Polymer, Infernal Incinerator. Ojama King picks the zones itself (they are all the same in this game). Chazz on Hard won 13 of 30 test duels. Not watched on screen.
+
 ## What is in 0.33.34
 
 Seven more duelists got their best decks: **Kite, Shark, Vector, Bakura, Marik, Pegasus and Weevil**. 71 cards built, each against its card text, each with a test.

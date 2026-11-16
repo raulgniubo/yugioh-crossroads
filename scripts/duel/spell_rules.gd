@@ -119,6 +119,11 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Chazz's cards (v0.33.35)
+	"Level Up!": {"k": "normal", "ai": "always", "cond": "level_up", "do": [["level_up_spell"]]},
+	"Ojama Delta Hurricane!!": {"k": "normal", "ai": "always", "cond": "ojama_three", "do": [["destroy_opp_all"]]},
+	"Ojamagic": {"k": "normal", "ai": "always", "do": [], "sent_gy": [["ojamagic"]]},
+	"Ojamuscle": {"k": "normal", "cond": "ojama_king", "do": [["ojamuscle"]]},
 	# ---------------------------------------------------------------- Weevil's cards (v0.33.34)
 	"Insect Barrier": {"k": "cont", "ai": "always", "opp_race_no_attack": "Insect"},
 	"DNA Surgery": {"k": "ctrap", "win": ["free"], "ai": "always", "dna": true, "do": [["dna"]]},
@@ -619,6 +624,15 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return not s.players[p].hand.is_empty()
 		"hand_empty":
 			return s.players[p].hand.is_empty()
+		"level_up":
+			return not _lv_ready(s, p).is_empty()
+		"ojama_three":
+			for nm in ["Ojama Green", "Ojama Yellow", "Ojama Black"]:
+				if s.players[p].monsters().filter(func(m): return m.face_up and m.cname() == nm).is_empty():
+					return false
+			return true
+		"ojama_king":
+			return not (s.players[p].monsters() + s.players[s.opponent(p)].monsters()).filter(func(m): return m.face_up and m.cname() == "Ojama King").is_empty()
 		"jam_defender":
 			return not s.pending_attack.is_empty() and s.pending_attack["target"] != null and s.pending_attack["target"].cname() != "Revival Jam" \
 					and not s.players[p].monsters().filter(func(m): return m.face_up and m.cname() == "Revival Jam").is_empty()
@@ -2111,6 +2125,67 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 					if o["card"] == want:
 						events.append_array(s._do_fusion(p, o, true))
 						break
+		"level_up_spell":
+			# Level Up!: "Send 1 face-up "LV" monster you control to the GY; Special Summon 1 "LV" monster that
+			# is mentioned in the sent monster's text from your hand or Deck, ignoring its Summoning conditions."
+			var ready: Array = _lv_ready(s, p)
+			if ready.is_empty():
+				return events
+			var best_lv = ready[0]
+			for m in ready:
+				if m.level() > best_lv.level():
+					best_lv = m
+			var from_lv = s.pick1(p, Loc.t("%s: send which monster to the Graveyard?") % c.cname(), ready, best_lv, c)
+			var next_nm := _lv_next(from_lv.cname())
+			ps.field[ps.field.find(from_lv)] = null
+			s._to_gy(ps, from_lv)
+			events.append({"type": "tribute", "player": p, "card": from_lv})
+			events.append_array(s._monster_left(from_lv))
+			for src in [ps.hand, ps.deck]:
+				var got_lv: Array = src.filter(func(x): return x.cname() == next_nm)
+				if not got_lv.is_empty():
+					src.erase(got_lv[0])
+					got_lv[0].proper = true
+					events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s levels up!") % from_lv.cname()})
+					events.append_array(s._special(p, got_lv[0], "effect"))
+					break
+			s._shuffle(ps.deck)
+		"destroy_opp_all":
+			# Ojama Delta Hurricane!!: "Destroy all cards your opponent controls."
+			var them := s.players[s.opponent(p)]
+			for m in them.monsters():
+				events.append_array(s._destroy(m))
+			for st in them.spells.duplicate():
+				if st != null:
+					events.append_array(s._destroy_st(st))
+			if them.field_spell != null:
+				events.append_array(s._destroy_st(them.field_spell))
+		"ojamagic":
+			# Ojamagic: "Add 1 each of "Ojama Green", "Ojama Yellow", and "Ojama Black" from your Deck to your hand."
+			for nm in ["Ojama Green", "Ojama Yellow", "Ojama Black"]:
+				var got_o: Array = ps.deck.filter(func(x): return x.cname() == nm)
+				if not got_o.is_empty():
+					ps.deck.erase(got_o[0])
+					ps.hand.append(got_o[0])
+					events.append({"type": "search", "player": p, "card": got_o[0], "deck": ps.deck.size()})
+			s._shuffle(ps.deck)
+		"ojamuscle":
+			# Ojamuscle: "Select 1 face-up "Ojama King". Destroy all "Ojama" monsters on the field, except the
+			# selected "Ojama King". It gains 1000 ATK for each monster destroyed this way."
+			var kings: Array = (ps.monsters() + s.players[s.opponent(p)].monsters()).filter(func(m): return m.face_up and m.cname() == "Ojama King")
+			if kings.is_empty():
+				return events
+			var king = s.pick1(p, Loc.t("%s: which Ojama King?") % c.cname(), kings, kings[0], c)
+			var gone_o := 0
+			for q in [p, s.opponent(p)]:
+				for m in s.players[q].monsters():
+					if m != king and m.face_up and m.cname().contains("Ojama"):
+						var before_o: bool = s.players[q].field.has(m)
+						events.append_array(s._destroy(m))
+						if before_o and not s.players[q].field.has(m):
+							gone_o += 1
+			king.atk_mod += 1000 * gone_o
+			events.append({"type": "effect", "player": p, "card": king, "text": Loc.t("%s gains %d ATK") % [king.cname(), 1000 * gone_o]})
 		"dna":
 			# DNA Surgery: "Activate this card by declaring 1 Monster Type."
 			var kinds: Array = TYPES.duplicate()
@@ -2391,6 +2466,24 @@ static func equip_flag(s: DuelState, c, flag: String) -> bool:
 
 
 ## Can this monster declare an attack, as far as Spell/Trap cards are concerned?
+## The "LV" monster named in this one's own text as its next step (Armed Dragon LV3 -> LV5), or "".
+static func _lv_next(card_name: String) -> String:
+	var f: Dictionary = CardEffects.of(card_name)
+	for k in f:
+		if f[k] is Array:
+			for a in f[k]:
+				if a is Array and not a.is_empty() and str(a[0]).begins_with("level_up") and a.size() > 1:
+					return str(a[1])
+	return ""
+
+
+## Player p's face-up "LV" monsters whose next step is waiting in the hand or Deck.
+static func _lv_ready(s: DuelState, p: int) -> Array:
+	var ps := s.players[p]
+	return ps.monsters().filter(func(m): return m.face_up and m.cname().contains(" LV") and _lv_next(m.cname()) != "" \
+			and not (ps.hand + ps.deck).filter(func(x): return x.cname() == _lv_next(m.cname())).is_empty())
+
+
 const TYPES := ["Aqua", "Beast", "Beast-Warrior", "Cyberse", "Dinosaur", "Divine-Beast", "Dragon", "Fairy", "Fiend", "Fish", "Illusion", "Insect", "Machine",
 		"Plant", "Psychic", "Pyro", "Reptile", "Rock", "Sea Serpent", "Spellcaster", "Thunder", "Warrior", "Winged Beast", "Wyrm", "Zombie"]
 

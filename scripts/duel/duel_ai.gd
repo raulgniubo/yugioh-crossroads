@@ -86,12 +86,13 @@ static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionar
 					if small.size() >= 2:
 						return {"do": "summon", "card": h, "tributes": small.slice(0, 2)}
 			# (Thousand-Eyes Restrict first, when there is a monster across the table for it to take.)
-			if not s.players[s.opponent(p)].monsters().is_empty():
-				for h in s.players[p].hand:
-					if not h.is_monster() and h.data.get("effect", "") == "fusion" and s.can_activate(p, h):
-						for o in s.fusion_targets(p, h):
-							if o["card"].cname() == "Thousand-Eyes Restrict":
-								return {"do": "activate", "card": h, "choice": o["card"]}
+			for h in s.players[p].hand:
+				if not h.is_monster() and h.data.get("effect", "") == "fusion" and s.can_activate(p, h):
+					for o in s.fusion_targets(p, h):
+						if o["card"].cname() == "Thousand-Eyes Restrict" and not s.players[s.opponent(p)].monsters().is_empty():
+							return {"do": "activate", "card": h, "choice": o["card"]}
+						if o["card"].cname() == "Ojama King":
+							return {"do": "activate", "card": h, "choice": o["card"]}   # (three 0 ATK Ojamas for a 3000 DEF wall that shuts three zones)
 			for m in s.players[p].monsters():
 				if m.face_up and CardEffects.of(m.cname()).get("absorb", false) and s.can_ignite(p, m):
 					return {"do": "ignite", "card": m}
@@ -102,6 +103,11 @@ static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionar
 		if p == s.current and s._in_main():
 			for h in s.players[p].hand:
 				var tf: Dictionary = CardEffects.of(h.cname()) if h.is_monster() else {}
+				if tf.has("special_tribute_f") and int(tf["special_tribute_f"][0]) == 1 and s.can_special_from_hand(p, h):
+					# (Armed Dragon LV10 for the LV7 that is already out)
+					var fits: Array = s.players[p].monsters().filter(func(m): return m.face_up and CardEffects.matches(m.data, tf["special_tribute_f"][1]))
+					if not fits.is_empty() and fits[0].atk() < h.atk():
+						return {"do": "special_hand", "card": h}
 				if not tf.has("special_toon") or not s.can_special_from_hand(p, h):
 					continue
 				var paid := 0

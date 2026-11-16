@@ -108,6 +108,16 @@ const FX := {
 	"Elemental HERO Thunder Giant": {"note": "Once per turn, discard 1: destroy a monster with less original ATK.",
 		"ignite": {"cost": "discard", "do": [["destroy", "atk_below_self"]], "label": "Discard 1: destroy a weaker monster"}},
 	"Elemental HERO Rampart Blaster": {"note": "Can attack directly while it is in Defense Position. When it does, its ATK is halved for that damage calculation.", "direct_from_def": true},
+	# ---- Chazz's best deck (v0.33.35)
+	"Armed Dragon LV10": {"note": "Cannot be Normal Summoned or Set. Special Summon it from your hand by Tributing 1 Armed Dragon LV7. Send 1 card from your hand to the Graveyard: destroy all face-up monsters your opponent controls.",
+		"special_tribute_f": [1, {"name": "Armed Dragon LV7"}], "ignite": {"cost": "discard", "do": [["destroy_opp_faceup"]], "label": "Send 1 card from your hand: destroy all their face-up monsters", "repeat": true}},
+	"W-Wing Catapult": {"note": "Once per turn: equip it to your V-Tiger Jet, or take it off and Special Summon it. The equipped monster gains 400 ATK and DEF, and if it would be destroyed this card is destroyed instead.", "union": {"to": ["V-Tiger Jet"], "boost": 400}},
+	"VW-Tiger Catapult": {"note": "Special Summon it from your Extra Deck by banishing V-Tiger Jet and W-Wing Catapult you control (no Polymerization). Discard 1 card: change the battle position of 1 monster your opponent controls (Flip effects are not activated).",
+		"contact": ["V-Tiger Jet", "W-Wing Catapult"], "ignite": {"cost": "discard", "do": [["opp_change_pos"]], "label": "Discard 1: change a monster's battle position", "repeat": true}},
+	"VWXYZ-Dragon Catapult Cannon": {"note": "Special Summon it from your Extra Deck by banishing VW-Tiger Catapult and XYZ-Dragon Cannon you control (no Polymerization). Once per turn: banish 1 card your opponent controls. When it declares an attack on a monster: you can change that monster's battle position (Flip effects are not activated).",
+		"contact": ["VW-Tiger Catapult", "XYZ-Dragon Cannon"], "turn_target": true, "ignite": {"cost": "none", "do": [["banish_opp_card"]], "label": "Banish 1 card your opponent controls"}},
+	"Ojama King": {"note": "Ojama Green + Ojama Yellow + Ojama Black. Up to 3 of your opponent's unused Monster Zones cannot be used while it is face-up.", "any_summon": [["zone_lock", 3]]},
+	"Chthonian Soldier": {"note": "Destroyed by an opponent's attacking monster and sent to the Graveyard: the battle damage you took from that battle is also dealt to your opponent.", "chthonian": true},
 	# ---- Weevil's best deck (v0.33.34)
 	"Cocoon of Evolution": {"note": "From your hand: equip it to a Petit Moth you control. While it is equipped, that Petit Moth's original ATK and DEF are 0 / 2000.",
 		"hand_ignite": {"equip_to": "Petit Moth", "label": "Equip it to Petit Moth"}},

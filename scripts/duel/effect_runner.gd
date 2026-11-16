@@ -2222,6 +2222,35 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"destroy_opp_faceup":
+			# Armed Dragon LV10: "destroy all face-up monsters your opponent controls."
+			for m in opp.monsters():
+				if m.face_up:
+					events.append_array(s._destroy(m))
+		"banish_opp_card":
+			# VWXYZ-Dragon Catapult Cannon: "target 1 card your opponent controls; banish that target."
+			var every_b: Array = opp.monsters().filter(func(m): return can_target(c, m))
+			for st in opp.spells:
+				if st != null:
+					every_b.append(st)
+			if opp.field_spell != null:
+				every_b.append(opp.field_spell)
+			if every_b.is_empty():
+				return events
+			var want_b = _best_opp(s, p, "", c)
+			var got_b = s.pick1(p, Loc.t("%s: banish 1 card") % name, every_b, want_b if want_b != null and every_b.has(want_b) else every_b[0], c)
+			events.append(_ev(p, c, Loc.t("%s banishes %s") % [name, got_b.cname() if got_b.face_up else Loc.t("a set card")]))
+			events.append_array(s._banish(got_b))
+		"zone_lock":
+			# Ojama King: "Choose up to 3 of your opponent's unused Monster Zones. Those zones cannot be used."
+			var shut_z: Array = []
+			for i in range(opp.field.size() - 1, -1, -1):
+				if opp.field[i] == null and shut_z.size() < int(a[1]):
+					shut_z.append(i)
+			c.tags["zones"] = shut_z
+			s._apply_zone_locks()
+			if not shut_z.is_empty():
+				events.append(_ev(p, c, Loc.t("%s shuts %d of %s's Monster Zones") % [name, shut_z.size(), opp.name]))
 		"parasite":
 			# Parasite Paracide: "FLIP: Shuffle this card face-up into your opponent's Deck."
 			if ps.field.has(c):
