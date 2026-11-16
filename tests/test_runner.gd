@@ -42,6 +42,24 @@ func _ready() -> void:
 		_test_knockout()
 		_test_lumen()
 		_test_ai_targets()
+		if OS.get_environment("WORKS_FILE") != "":
+			# Dev: which of these cards (one name per line) work in the game right now?
+			var yes: Array = []
+			var no: Array = []
+			var gone: Array = []
+			for nm in FileAccess.get_file_as_string(OS.get_environment("WORKS_FILE")).split("\n", false):
+				var wid := _cid(nm.strip_edges())
+				if wid == 0:
+					gone.append(nm)
+				elif SignatureDecks._works(wid):
+					yes.append(nm)
+				else:
+					no.append(nm)
+			print("WORKS: %s" % "|".join(yes))
+			print("NEEDS: %s" % "|".join(no))
+			print("NOT IN DB: %s" % "|".join(gone))
+			get_tree().quit(0)
+			return
 		if OS.get_environment("YUSEI_SIM") != "":
 			# How does the computer play Yusei's deck? (A look, not a pass/fail test.)
 			made.clear()

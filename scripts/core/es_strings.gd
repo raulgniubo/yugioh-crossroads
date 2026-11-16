@@ -5057,4 +5057,7 @@ const ES := {
 	"My deck: %s": "Mi deck: %s",
 	"your deck": "tu deck",
 	"starter": "inicial",
+	"%s's own deck": "El deck de %s",
+	"See my deck": "Ver mi deck",
+	"and %d more": "y %d más",
 }

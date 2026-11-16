@@ -5,6 +5,21 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.30
+
+**Free Duel deck lists cut down, a "See my deck" button, and long messages that fit the screen.**
+
+- **YOUR DECK** lists only: the deck of the duelist you play as (when that is not you), and your own saved decks.
+- **THEIR DECK** lists only: their own deck, and your own saved decks. The long list of every deck in the game is gone from both.
+- **See my deck**, next to YOUR DECK: every card on your side before the duel, the same view as See their deck.
+- **Messages at the bottom of the screen** wrap inside the screen now and stay up long enough to read. "Lumen has new cards for you" used to put every card name on one line that ran off both sides; it now names three and says how many more.
+- The two hover hints on the deck lists (added in 0.33.29) are gone: they showed as a plain box over the screen.
+
+**Not done or not checked:**
+
+- Seen as stills: the Free Duel screen with a new save, and a very long test message wrapped on three lines. Not seen with your save.
+- Some of the rules for Yugi's cards are already in this build (they do nothing until his cards arrive in the next version). All tests and 30 computer duels pass with them in.
+
 ## What is in 0.33.29
 
 **Free Duel: any character on either side, with their own deck or one of yours.**

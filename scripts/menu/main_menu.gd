@@ -693,7 +693,9 @@ func _lumen_news() -> void:
 		names.append(str(CardData.get_card(int(id)).get("name", "")))
 	Collection.lumen_news.clear()
 	Sfx.play("quest", -6.0)
-	Router.toast(Loc.t("Lumen has new cards for you: %s. They are in your collection.") % ", ".join(names), 8.0)
+	# (A long list is cut short: three names and how many more.)
+	var shown := ", ".join(names.slice(0, 3)) + ((" " + Loc.t("and %d more") % (names.size() - 3)) if names.size() > 3 else "")
+	Router.toast(Loc.t("Lumen has new cards for you: %s. They are in your collection.") % shown, 6.0)
 
 
 ## Your first deck is still to be chosen (and nothing else is open).

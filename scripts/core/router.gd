@@ -213,6 +213,9 @@ func _debug_args() -> void:
 				var v := kv.get_slice(":", 1)
 				if Settings.gfx.has(k):
 					Settings.set_gfx(k, (v == "1" or v == "true") if typeof(Settings.gfx[k]) == TYPE_BOOL else int(v))
+		elif a == "--toast-test":
+			# Dev: a very long message, to see that it wraps inside the screen.
+			get_tree().create_timer(1.5).timeout.connect(func(): toast("Lumen has new cards for you: Lumen, Echo Spirit, Lumen, Echo Radiant, Lumen, Echo Comet, Lumen, Echo Zenith, Echo Resonance, Echo Barrier, Echo Step, Echo Chorus and the rest of a very long list of names that used to run off both sides of the screen. They are in your collection.", 20.0))
 		elif a == "--roam":
 			await get_tree().process_frame
 			go(ROAM)
@@ -557,14 +560,31 @@ func _settle() -> void:
 	loading = false
 
 
+var _toast_tw: Tween
+
+
+## A line at the bottom of the screen. A long one wraps inside the screen (it used to run off
+## both sides) and stays up long enough to be read.
 func toast(message: String, hold := 1.8) -> void:
+	var view: Vector2 = _toast.get_viewport_rect().size
+	var max_w: float = maxf(600.0, view.x * 0.78)
+	_toast.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_toast.custom_minimum_size = Vector2.ZERO
 	_toast.text = message
 	_toast.reset_size()
-	_toast.position.x = (_toast.get_viewport_rect().size.x - _toast.size.x) / 2.0
-	var tw := create_tween()
-	tw.tween_property(_toast, "modulate:a", 1.0, 0.2)
-	tw.tween_interval(hold)
-	tw.tween_property(_toast, "modulate:a", 0.0, 0.4)
+	if _toast.size.x > max_w:
+		_toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_toast.custom_minimum_size = Vector2(max_w, 0)
+		_toast.size = Vector2(max_w, 0)
+		_toast.reset_size()
+	_toast.position = Vector2((view.x - _toast.size.x) / 2.0, view.y - 90.0 - _toast.size.y)
+	hold = maxf(hold, 1.4 + float(message.length()) / 22.0)
+	if _toast_tw != null and _toast_tw.is_valid():
+		_toast_tw.kill()
+	_toast_tw = create_tween()
+	_toast_tw.tween_property(_toast, "modulate:a", 1.0, 0.2)
+	_toast_tw.tween_interval(hold)
+	_toast_tw.tween_property(_toast, "modulate:a", 0.0, 0.4)
 
 
 ## Plain toggle buttons (a word, nothing inside, no look of their own) become choice chips.

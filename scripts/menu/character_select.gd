@@ -316,6 +316,17 @@ func _peek_deck() -> void:
 	add_child(dp)
 
 
+func _peek_mine() -> void:
+	if not CardData.has_deck(_my_deck):
+		return
+	Sfx.play("select", -4.0)
+	# (One of your own decks carries your name, a duelist's deck theirs.)
+	var mine: bool = _my_deck == "custom" or _my_deck.begins_with("slot:")
+	var dp := DeckPeek.new("player" if mine else _me, _my_deck)
+	dp.z_index = 200
+	add_child(dp)
+
+
 func _deck_of(side: String) -> String:
 	if side == "opp" and _their_deck != "":
 		return _their_deck
@@ -776,10 +787,37 @@ func _refresh_pick() -> void:
 	_refresh_slots()
 	_refresh_picker()
 	_refresh_grid()
-	if _deck_keys.find(_my_deck) != -1:
-		_deck_pick.select(_deck_keys.find(_my_deck))
+	_fill_my_decks()
 	_refresh_deck_row()
 	_refresh_setup()
+
+
+## YOUR DECK: the deck of the duelist you play as (when that is not you), and your own saved
+## decks. Nothing else: no list of every deck in the game.
+func _fill_my_decks() -> void:
+	if _deck_pick == null:
+		return
+	_deck_pick.clear()
+	_deck_keys.clear()
+	if _me != "player":
+		var own := str(Characters.get_char(_me).get("deck", ""))
+		if CardData.has_deck(own):
+			_deck_keys.append(own)
+			_deck_pick.add_item(Loc.t("%s's own deck") % str(Characters.get_char(_me).get("short", _me)))
+	# The deck you have open first (side-decking in a Match works with that one), then the others.
+	if CardData.has_deck("custom"):
+		_deck_keys.append("custom")
+		_deck_pick.add_item(Loc.t("My deck: %s") % CardData.deck_name("custom"))
+	for md in Collection.my_decks():
+		if not md["open"]:
+			_deck_keys.append(str(md["key"]))
+			_deck_pick.add_item(Loc.t("My deck: %s") % str(md["name"]))
+	if _deck_keys.is_empty() and CardData.has_deck("echo"):
+		_deck_keys.append("echo")
+		_deck_pick.add_item(CardData.deck_name("echo"))
+	if not _deck_keys.has(_my_deck) and not _deck_keys.is_empty():
+		_my_deck = _deck_keys[0]
+	_deck_pick.select(maxi(0, _deck_keys.find(_my_deck)))
 
 
 func _random_opponent() -> void:
@@ -820,14 +858,24 @@ func _build_setup() -> void:
 	_root.add_child(_quote)
 	_section(v, "YOUR DECK")
 	_deck_pick = OptionButton.new()
-	_deck_pick.tooltip_text = Loc.t("Play as any duelist with their own deck, or with one of yours. Picking a duelist picks their deck; change it here.")
+	_deck_pick.fit_to_longest_item = false
 	_deck_pick.item_selected.connect(func(i):
 		if str(_deck_keys[i]) == "":
 			return   # (a heading in the list)
 		_my_deck = _deck_keys[i]
 		_refresh_slots()
 		_refresh_deck_row())
-	v.add_child(_deck_pick)
+	var mrow := HBoxContainer.new()
+	mrow.add_theme_constant_override("separation", 10)
+	v.add_child(mrow)
+	_deck_pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mrow.add_child(_deck_pick)
+	# Every card on your side too, before the duel.
+	var mine_b := Button.new()
+	mine_b.text = Loc.t("See my deck")
+	mine_b.add_theme_font_size_override("font_size", 16)
+	mine_b.pressed.connect(_peek_mine)
+	mrow.add_child(mine_b)
 	_deck_row = HBoxContainer.new()
 	_deck_row.add_theme_constant_override("separation", 8)
 	_deck_row.custom_minimum_size = Vector2(0, 70)
@@ -841,17 +889,12 @@ func _build_setup() -> void:
 	_their_pick = OptionButton.new()
 	_their_pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_their_pick.add_theme_font_size_override("font_size", 16)
-	_their_pick.tooltip_text = Loc.t("Your opponent plays their own deck unless you hand them another one: one of yours, or another duelist's.")
 	_their_pick.add_item(Loc.t("Their own deck"))
 	_their_keys = [""]
 	# One of your own decks (a good way to see how a deck you built plays from the other side).
 	for md in Collection.my_decks():
 		_their_keys.append(str(md["key"]))
 		_their_pick.add_item(Loc.t("My deck: %s") % str(md["name"]))
-	for k in CardData.DECKS.keys() + CardData.NAMED_DECKS.keys():
-		if CardData.has_deck(k) and str(k) != "custom":
-			_their_keys.append(str(k))
-			_their_pick.add_item(CardData.deck_name(k))
 	_their_pick.item_selected.connect(func(i):
 		_their_deck = _their_keys[i]
 		_refresh_slots())
@@ -1160,26 +1203,7 @@ func _refresh_all() -> void:
 	for i in _tabs.size():
 		var era: String = "" if i == 0 else Characters.ERAS[i - 1]
 		_tabs[i].set_pressed_no_signal(era == _era)
-	_deck_pick.clear()
-	_deck_keys.clear()
-	# Your own decks first: the one that is open (side-decking in a Match works with that one),
-	# then every other saved deck that is ready to duel.
-	if CardData.has_deck("custom"):
-		_deck_keys.append("custom")
-		_deck_pick.add_item("%s  (%s)" % [CardData.deck_name("custom"), Loc.t("your deck")])
-	for md in Collection.my_decks():
-		if not md["open"]:
-			_deck_keys.append(str(md["key"]))
-			_deck_pick.add_item("%s  (%s)" % [str(md["name"]), Loc.t("your deck")])
-	if CardData.has_deck("echo") and not _deck_keys.has("echo"):
-		_deck_keys.append("echo")
-		_deck_pick.add_item("%s  (%s)" % [CardData.deck_name("echo"), Loc.t("starter")])
-	for k in Characters.ORDER:
-		var deck: String = Characters.DATA[k]["deck"]
-		if CardData.has_deck(deck) and not _deck_keys.has(deck):
-			_deck_keys.append(deck)
-			_deck_pick.add_item("%s  (%s)" % [CardData.deck_name(deck), Characters.DATA[k]["short"]])
-	_deck_pick.select(maxi(0, _deck_keys.find(_my_deck)))
+	_fill_my_decks()
 	_refresh_deck_row()
 	_refresh_setup()
 

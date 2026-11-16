@@ -118,10 +118,10 @@ class CardInst:
 		return data.get("kind", "monster") == "monster"
 
 	func atk() -> int:
-		return int(data.get("atk", 0))
+		return maxi(0, int(data.get("atk", 0)))   # ("?" is stored as a negative number)
 
 	func def() -> int:
-		return int(data.get("def", 0))
+		return maxi(0, int(data.get("def", 0)))
 
 	func level() -> int:
 		return lv_set if lv_set > 0 else int(data.get("level", 0))
@@ -162,6 +162,7 @@ class PlayerState:
 	var extra_normals := 0        # extra Normal Summons / Sets left this turn (Double Summon)
 	var no_damage_until := -1     # takes no damage of any kind through this turn (Synchro Barrier)
 	var once_duel := {}           # card name -> true: its once-per-Duel effect is spent (Unknown Synchron)
+	var summons_turn := -1        # the last turn this player Normal or Special Summoned a monster (Dark Magic Curtain)
 
 	func set_cards() -> Array[CardInst]:
 		var out: Array[CardInst] = []
@@ -551,6 +552,15 @@ func begin_end() -> Array:
 				players[back.owner].banished.erase(back)
 				events.append({"type": "effect", "player": int(ex["to"]), "card": back, "text": Loc.t("%s returns to the field") % back.cname()})
 				events.append_array(_special(int(ex["to"]), back, "return", "atk" if ex["atk_pos"] else "def"))
+	# Slifer the Sky Dragon, Special Summoned: to the Graveyard in the End Phase.
+	for q in 2:
+		for m in players[q].monsters():
+			if m.face_up and m.tags.get("gy_end", false):
+				events.append({"type": "effect", "player": q, "card": m, "text": Loc.t("%s was Special Summoned: it goes to the Graveyard") % m.cname()})
+				players[q].field[players[q].field.find(m)] = null
+				_to_gy(players[q], m)
+				events.append({"type": "destroy", "player": q, "card": m, "zone": -1, "overlays": []})
+				events.append_array(_monster_left(m))
 	# Slip Summon: the monster it brought out goes back to the hand.
 	for q in 2:
 		for m in players[q].monsters():
@@ -613,6 +623,15 @@ func _draw(p: int, count := 1) -> Array:
 		ps.hand.append(c)
 		drawn.append(c)
 		events.append({"type": "draw", "player": p, "card": c, "deck": ps.deck.size()})
+	if not drawn.is_empty() and turn > 0:
+		# Silent Magician LV4: "Each time your opponent draws a card(s), place 1 Spell Counter on this card (max. 5)."
+		for sm in players[opponent(p)].monsters():
+			var cap := int(EffectRunner.fx(sm).get("counter_on_opp_draw", 0)) if sm.face_up else 0
+			if cap > 0 and sm.counter < cap:
+				sm.counter += 1
+				if sm.counter == cap:
+					sm.tags["full_turn"] = turn
+				events.append({"type": "effect", "player": opponent(p), "card": sm, "text": Loc.t("%s: Spell Counter %d") % [sm.cname(), sm.counter]})
 	events.append_array(_check_exodia())
 	# "When you draw a card(s) while you have no cards in your hand, and you draw this card: You can
 	# reveal this card; Special Summon it from your hand" (Infernity Archfiend).
@@ -660,6 +679,8 @@ func _in_main() -> bool:
 # ------------------------------------------------------------------ summoning
 
 func tributes_needed(c: CardInst) -> int:
+	if CardEffects.of(c.cname()).has("tributes"):
+		return int(CardEffects.of(c.cname())["tributes"])   # "Requires 3 Tributes to Normal Summon" (Slifer the Sky Dragon)
 	if c.level() >= 5 and EffectRunner.no_tribute(self, c.owner, c):
 		return 0
 	if c.level() >= 7:
@@ -698,6 +719,8 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 		return []
 	if not set_card and players[p].no_summon_turn == turn:
 		return []
+	if set_card and CardEffects.of(c.cname()).get("no_set", false):
+		return []   # "cannot be Normal Set"
 	for t in tributes:
 		if t.data.get("no_tribute_summon", false):
 			return []
@@ -737,6 +760,12 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 	if not set_card:
 		c.normal_turn = turn
 		last_summoned = c
+		ps.summons_turn = turn
+		if CardEffects.of(c.cname()).get("no_response_summon", false):
+			last_summoned = null   # "When Normal Summoned, cards and effects cannot be activated."
+		events.append_array(_summon_tax(p, c))
+		if not ps.field.has(c):
+			return events
 		events.append_array(summon_triggers(p, c))
 		if tributes.is_empty() and int(c.data.get("level", 0)) >= 5:
 			# Normal Summoned without Tributing by its own rule (Galaxy Knight).
@@ -749,6 +778,28 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 					ps.gy.erase(g)
 					events.append({"type": "effect", "player": p, "card": g, "text": Loc.t("%s returns from the Graveyard") % g.cname()})
 					events.append_array(_special(p, g, "reborn", "atk"))
+	return events
+
+
+## Slifer the Sky Dragon: "If a monster(s) is Normal or Special Summoned to your opponent's field in
+## Attack Position: That monster(s) loses 2000 ATK, then if its ATK has been reduced to 0 as a
+## result, destroy it."
+func _summon_tax(p: int, c: CardInst) -> Array:
+	var events := []
+	if not c.face_up or not c.attack_pos or not players[p].field.has(c):
+		return events
+	for m in players[opponent(p)].monsters():
+		var tax := int(EffectRunner.fx(m).get("summon_tax", 0)) if m.face_up else 0
+		if tax <= 0 or not players[p].field.has(c):
+			continue
+		c.atk_mod -= tax
+		events.append({"type": "effect", "player": opponent(p), "card": m, "text": Loc.t("%s: %s loses %d ATK") % [m.cname(), c.cname(), tax]})
+		if atk_of(c, false) <= 0:
+			var was_by := effect_by
+			effect_by = opponent(p)
+			events.append({"type": "effect", "player": opponent(p), "card": m, "text": Loc.t("%s is left with 0 ATK and is destroyed") % c.cname()})
+			events.append_array(_destroy(c))
+			effect_by = was_by
 	return events
 
 
@@ -943,6 +994,14 @@ func chain_resolve() -> Array:
 			events.append_array(SpellRules.resolve(self, link))
 			effect_by = was_by2
 			stays = stays and link.get("stays", true) and not link["negated"]
+		if c.is_spell() and not link["negated"]:
+			# Skilled Dark Magician: "Each time a Spell Card is activated, place 1 Spell Counter on this card when that Spell resolves (max. 3)."
+			for q in 2:
+				for sk in players[q].monsters():
+					var cap2 := int(EffectRunner.fx(sk).get("counter_on_spell", 0)) if sk.face_up else 0
+					if cap2 > 0 and sk.counter < cap2:
+						sk.counter += 1
+						events.append({"type": "effect", "player": q, "card": sk, "text": Loc.t("%s: Spell Counter %d") % [sk.cname(), sk.counter]})
 		here = ps.spells.has(c) or ps.field_spell == c
 		if here:
 			if link.get("reset", false):
@@ -1272,7 +1331,14 @@ func attack_targets(p: int) -> Array[CardInst]:
 	var out: Array[CardInst] = []
 	var shield := protected_race(opponent(p))
 	for m in players[opponent(p)].monsters():
-		if shield == "" or not (m.face_up and str(m.data.get("race", "")) == shield):
+		if shield != "" and m.face_up and str(m.data.get("race", "")) == shield:
+			continue
+		# Magician's Valkyria: the other face-up Spellcasters on her side cannot be attacked.
+		var guarded := false
+		for v in players[opponent(p)].monsters():
+			if v != m and v.face_up and m.face_up and str(EffectRunner.fx(v).get("protect_race_others", "")) == str(m.data.get("race", "")):
+				guarded = true
+		if not guarded:
 			out.append(m)
 	return out
 
@@ -1452,6 +1518,7 @@ func _resolve_attack() -> Array:
 		var before := players[opp].lp
 		events.append_array(_battle_damage(opp, a, attacker, null))
 		if players[opp].lp < before:
+			attacker.tags["hit_direct"] = turn
 			events.append_array(EffectRunner.trigger(self, attacker, "damage"))
 		events.append_array(_after_attack(attacker, target))
 		return events
@@ -1466,10 +1533,12 @@ func _resolve_attack() -> Array:
 		if not players[opp].field.has(target):
 			events.append_array(_after_attack(attacker, null))
 			return events
+	var was_down: bool = not target.face_up
 	if not target.face_up:
 		target.face_up = true
 		events.append({"type": "reveal", "player": opp, "card": target, "zone": players[opp].field.find(target)})
 		events.append_array(EffectRunner.trigger(self, target, "flip"))
+	target.tags["was_down"] = was_down
 	var kill_def: bool = attacker.cname() == "Zubaba Knight" or EffectRunner.fx(attacker).get("kill_def", false)
 	if kill_def and not target.attack_pos:
 		events.append({"type": "effect", "player": p, "card": attacker, "text": Loc.t("%s destroys it outright!") % attacker.cname()})
@@ -1678,6 +1747,19 @@ func _after_attack(attacker: CardInst, target = null) -> Array:
 		events.append({"type": "position", "player": attacker.owner, "card": attacker, "zone": players[attacker.owner].field.find(attacker)})
 	# "At the end of the Damage Step, if this card battled: You can change this card to Defense
 	# Position" (Submarineroid): whether it attacked or was attacked.
+	if target != null and target is CardInst and not is_over():
+		var tc: CardInst = target
+		var tf := EffectRunner.fx(tc)
+		# Marshmallon: "After damage calculation, if this card was attacked, and was face-down at the
+		# start of the Damage Step: The attacking player takes 1000 damage."
+		if int(tf.get("burn_attacker_if_flipped", 0)) > 0 and tc.tags.get("was_down", false):
+			events.append({"type": "effect", "player": tc.owner, "card": tc, "text": Loc.t("%s: %d damage to the attacking player") % [tc.cname(), int(tf["burn_attacker_if_flipped"])]})
+			events.append_array(_damage(attacker.owner, int(tf["burn_attacker_if_flipped"])))
+		# Big Shield Gardna: "If this card is attacked, change it to Attack Position at the end of the Damage Step."
+		if tf.get("atk_pos_after_attacked", false) and players[tc.owner].field.has(tc) and not tc.attack_pos:
+			tc.attack_pos = true
+			events.append({"type": "position", "player": tc.owner, "card": tc, "zone": players[tc.owner].field.find(tc)})
+		tc.tags.erase("was_down")
 	for m in [attacker, target]:
 		if m == null or not (m is CardInst):
 			continue
@@ -2304,6 +2386,13 @@ func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 	var events := [{"type": "special", "player": p, "card": c, "zone": zone, "method": method}]
 	if not c.attack_pos:
 		events.append({"type": "position", "player": p, "card": c, "zone": zone})
+	ps.summons_turn = turn
+	if CardEffects.of(c.cname()).get("gy_end_if_special", false):
+		c.tags["gy_end"] = true   # Slifer: "Once per turn, during the End Phase, if this card was Special Summoned: Send it to the GY."
+	if method != "return":
+		events.append_array(_summon_tax(p, c))
+		if not ps.field.has(c):
+			return events
 	if method == "reborn":
 		# "If this card is Special Summoned from the GY" (Destiny HERO - Disk Commander).
 		events.append_array(EffectRunner.trigger(self, c, "revived"))
@@ -2797,6 +2886,7 @@ func clone() -> DuelState:
 		np.extra_normals = ps.extra_normals
 		np.no_damage_until = ps.no_damage_until
 		np.once_duel = ps.once_duel.duplicate()
+		np.summons_turn = ps.summons_turn
 		s.players.append(np)
 	for np2 in s.players:
 		for ex in np2.exiles:
