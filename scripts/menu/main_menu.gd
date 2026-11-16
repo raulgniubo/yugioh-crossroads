@@ -643,8 +643,12 @@ func _open_profile(first: bool) -> void:
 
 func _build_footer() -> void:
 	var version: String = ProjectSettings.get_setting("application/config/version", "0.1")
-	var left := UITheme.label(Loc.t("Private fan project  ·  Prototype %s") % version, 16, Color(1, 1, 1, 0.35))
+	var left := UITheme.label(Loc.t("Fan project  ·  v%s") % version, 16, Color(1, 1, 1, 0.35))
 	_anchor_bottom(left, 250, 900)
+	# On the same line as the two round buttons beside it (they span 112 to 48 from the bottom).
+	left.offset_top = -112
+	left.offset_bottom = -48
+	left.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	add_child(left)
 
 

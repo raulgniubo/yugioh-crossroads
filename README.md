@@ -5,6 +5,10 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.31
+
+The line at the bottom of the main menu reads "Fan project · v0.33.31" and sits level with the two round buttons next to it. Otherwise the same as 0.33.30.
+
 ## What is in 0.33.30
 
 **Free Duel deck lists cut down, a "See my deck" button, and long messages that fit the screen.**

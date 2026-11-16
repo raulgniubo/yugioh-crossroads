@@ -5061,4 +5061,5 @@ const ES := {
 	"See my deck": "Ver mi deck",
 	"and %d more": "y %d más",
 	"See deck": "Ver deck",
+	"Fan project  ·  v%s": "Proyecto de fan  ·  v%s",
 }
