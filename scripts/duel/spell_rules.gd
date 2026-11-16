@@ -63,7 +63,7 @@ const FX := {
 	"Foolish Burial": {"k": "normal", "do": [["bury"]]},
 	"Reinforcement of the Army": {"k": "normal", "do": [["search", {"race": "Warrior", "max_lv": 4}]]},
 	"Sangan's Call": {"k": "normal", "do": [["search", {"max_atk": 1500}]]},
-	"E - Emergency Call": {"k": "normal", "do": [["search", {"has": "Elemental HERO"}]]},
+	"E - Emergency Call": {"k": "normal", "ai": "always", "do": [["search", {"has": "Elemental HERO"}]]},
 	"The Warrior Returning Alive": {"k": "normal", "do": [["gy_to_hand", {"race": "Warrior"}, 1]]},
 	"Monster Reincarnation": {"k": "normal", "cost": "discard", "do": [["gy_to_hand", {"monster": true}, 1]]},
 	"Dark Factory of Mass Production": {"k": "normal", "do": [["gy_to_hand", {"frame": "normal"}, 2]]},
@@ -119,6 +119,20 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Jaden's cards (v0.33.32)
+	"Neo Space": {"k": "field", "neo_space": true, "ai": "always"},
+	"Instant Neo Space": {"k": "equip", "must_neos_fusion": true, "neos_keep": true, "host_gone": [["special_named_anywhere", "Elemental HERO Neos"]], "ai": "always"},
+	"Fake Hero": {"k": "normal", "ai": "combo", "do": [["fake_hero"]]},
+	"O - Oversoul": {"k": "normal", "ai_contact": true, "do": [["revive", "own_gy", "", "", {"has": "Elemental HERO", "frame": "normal"}]]},
+	"Hero Signal": {"k": "trap", "win": [], "battle_death": true, "do": [["special_hand_deck", {"has": "Elemental HERO", "max_lv": 4}]]},
+	"A Hero Emerges": {"k": "trap", "win": ["attack"], "cond": "own_hand", "do": [["hero_emerges"]]},
+	"Hero Barrier": {"k": "trap", "win": ["attack"], "cond": "own_ehero", "do": [["negate_attack"]]},
+	"R - Righteous Justice": {"k": "normal", "cond": "own_ehero", "do": [["righteous_justice"]]},
+	"H - Heated Heart": {"k": "normal", "t": "own_face", "do": [["atk", "target", 500, "eot"], ["pierce_turn", "target"]]},
+	"Edge Hammer": {"k": "trap", "win": ["free"], "cost": "tribute_f", "cost_f": {"name": "Elemental HERO Bladedge"}, "t": "opp_mon", "do": [["destroy_burn_atk", "target"]]},
+	"Burst Return": {"k": "normal", "cond": "own_burstinatrix", "do": [["burst_return"]]},
+	"Feather Shot": {"k": "normal", "t": "own_face", "must": {"name": "Elemental HERO Avian"}, "do": [["feather_shot", "target"]]},
+	"Transcendent Wings": {"k": "quick", "do": [["transcendent_wings"]]},
 	"Necrovalley": {"k": "field", "boost": [[{"has": "Gravekeeper"}, 500, 500]]},
 	"Chorus of Sanctuary": {"k": "field", "def_pos_boost": 500},
 	# ---------------------------------------------------------------- Equip Spells
@@ -524,6 +538,13 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return s.players[p].summons_turn != s.turn and s.players[p].no_summon_turn != s.turn
 		"own_monster":
 			return not s.players[p].monsters().is_empty()
+		"own_hand":
+			return not s.players[p].hand.is_empty()
+		"own_ehero", "own_burstinatrix":
+			for m in s.players[p].monsters():
+				if m.face_up and str(m.data.get("name", "")).contains("Elemental HERO Burstinatrix" if cond == "own_burstinatrix" else "Elemental HERO"):
+					return true
+			return false
 		"opp_has_hand":
 			return not s.players[s.opponent(p)].hand.is_empty()
 		"being_attacked":
@@ -638,6 +659,32 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 					return false
 			"slip_summon":
 				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or EffectRunner._take(ps.hand, {"max_lv": 4}, 1).is_empty():
+					return false
+			"fake_hero":
+				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or EffectRunner._take(ps.hand.filter(func(h): return h != c and not CardEffects.of(h.cname()).get("no_special", false)), {"has": "Elemental HERO"}, 1).is_empty():
+					return false
+			"righteous_justice":
+				if _justice_pool(s, c).size() < _ehero_count(s, p) or _ehero_count(s, p) == 0:
+					return false
+			"burst_return":
+				var any_b := false
+				for q in 2:
+					for m in s.players[q].monsters():
+						if m.face_up and str(m.data.get("name", "")).contains("Elemental HERO") and m.cname() != "Elemental HERO Burstinatrix":
+							any_b = true
+				if not any_b:
+					return false
+			"feather_shot":
+				if s.current != p or s.phase == DuelState.Phase.MAIN2:
+					return false
+			"transcendent_wings":
+				var kuri: Array = ps.monsters().filter(func(m): return str(m.data.get("name", "")) == "Winged Kuriboh")
+				var lv10: Array = (ps.hand + ps.deck).filter(func(x): return x.cname() == "Winged Kuriboh LV10")
+				var spare := ps.hand.filter(func(h): return h != c).size()
+				# (A LV10 in the hand cannot also be one of the 2 cards sent, unless another copy waits in the Deck.)
+				if ps.deck.filter(func(x): return x.cname() == "Winged Kuriboh LV10").is_empty():
+					spare -= 1
+				if kuri.is_empty() or lv10.is_empty() or spare < 2 or ps.no_summon_turn == s.turn:
 					return false
 			"gy_to_hand":
 				if EffectRunner._take(ps.gy, a[1], 1).is_empty():
@@ -775,6 +822,8 @@ static func targets(s: DuelState, p: int, c) -> Array:
 				"any_mon", "any_card": ok = true
 				"any_fdown": ok = not m.face_up
 				"any_fusion": ok = m.face_up and m.frame() == "fusion"
+			if ok and sp.get("must_neos_fusion", false) and not (m.frame() == "fusion" and neos_family(m)):
+				ok = false   # "Equip only to a Fusion Monster that lists "Elemental HERO Neos" as material"
 			if ok and (must.is_empty() or CardEffects.matches(m.data, must)) and (m.proper or not sp.get("must_proper", false)):
 				out.append(m)
 		var sts: Array = s.players[q].spells.duplicate()
@@ -1325,6 +1374,105 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				taker.lv_set = taker.level() + lv_gain
 				taker.lv_turn = s.turn
 				events.append(_ev(p, c, Loc.t("%s is Level %d until the End Phase") % [taker.cname(), taker.lv_set]))
+		"fake_hero":
+			# "Special Summon 1 "Elemental HERO" monster from your hand, but it cannot attack, also return it to the hand during the End Phase."
+			for d in EffectRunner._pick(s, p, c, Loc.t("Special Summon 1 \"Elemental HERO\" monster from your hand"), ps.hand.filter(func(h): return h != c and not CardEffects.of(h.cname()).get("no_special", false)), {"has": "Elemental HERO"}, 1):
+				if ps.free_zone() == -1:
+					break
+				ps.hand.erase(d)
+				events.append(_ev(p, c, Loc.t("%s calls %s") % [name, d.cname()]))
+				events.append_array(s._special(p, d, "effect"))
+				d.tags["bounce_end"] = true
+				d.attack_count_turn = s.turn
+				d.attack_count = 99
+				events.append_array(EffectRunner.on_summon(s, p, d, "special"))
+		"hero_emerges":
+			# "Your opponent chooses 1 random card from your hand, then if it is a monster that can be Special
+			# Summoned, Special Summon it. Otherwise, send it to the GY."
+			if ps.hand.is_empty():
+				return events
+			var got_h = ps.hand[randi() % ps.hand.size()]
+			ps.hand.erase(got_h)
+			events.append(_ev(p, c, Loc.t("%s: the card picked is %s") % [name, got_h.cname()]))
+			var can_h: bool = got_h.is_monster() and not CardData.is_extra(got_h.id) and got_h.frame() != "ritual" and ps.free_zone() != -1 and ps.no_summon_turn != s.turn \
+					and not CardEffects.of(got_h.cname()).get("no_special", false) and not "must be special summoned" in str(got_h.data.get("desc", "")).to_lower() \
+					and not "must first be special summoned" in str(got_h.data.get("desc", "")).to_lower()
+			if can_h:
+				events.append_array(s._special(p, got_h, "effect"))
+				events.append_array(EffectRunner.on_summon(s, p, got_h, "special"))
+			else:
+				s._to_gy(ps, got_h)
+				events.append({"type": "discard", "player": p, "card": got_h})
+		"righteous_justice":
+			# "Destroy Spells/Traps on the field equal to the number of "Elemental HERO" cards you control."
+			var n_j := _ehero_count(s, p)
+			var pool_j: Array = _justice_pool(s, c)
+			if n_j == 0 or pool_j.size() < n_j:
+				return events
+			var auto_j: Array = pool_j.filter(func(x): return x.owner != p)
+			for x in pool_j:
+				if auto_j.size() < n_j and not auto_j.has(x):
+					auto_j.append(x)
+			for x in s.choose(p, Loc.t("%s: destroy %d Spells/Traps") % [name, n_j], pool_j, n_j, auto_j.slice(0, n_j), false, c):
+				events.append_array(s._destroy_st(x))
+		"pierce_turn":
+			for t in _sel(s, p, c, str(a[1]), ctx):
+				t.tags["pierce_turn"] = s.turn
+				events.append(_ev(p, c, Loc.t("%s inflicts piercing battle damage this turn") % t.cname()))
+		"destroy_burn_atk":
+			for t in _sel(s, p, c, str(a[1]), ctx):
+				var burn_e: int = t.atk()
+				events.append_array(s._destroy(t))
+				events.append(_ev(p, c, Loc.t("%s: %d damage") % [name, burn_e]))
+				events.append_array(s._damage(opp_i, burn_e))
+		"burst_return":
+			for q in [p, opp_i]:
+				for m in s.players[q].monsters():
+					if m.face_up and str(m.data.get("name", "")).contains("Elemental HERO") and m.cname() != "Elemental HERO Burstinatrix":
+						events.append_array(s._bounce(m))
+		"feather_shot":
+			# "...that target can attack a number of times equal to the number of monsters you control when this
+			# card resolves, but cannot attack directly, and other monsters you control cannot attack this turn."
+			for t in _sel(s, p, c, str(a[1]), ctx):
+				var n_f: int = ps.monsters().size()
+				t.bonus_attacks = maxi(0, n_f - EffectRunner.max_attacks(t))
+				t.bonus_attacks_turn = s.turn
+				t.tags["no_direct_turn"] = s.turn
+				ps.only_attacker = t.uid
+				ps.only_attacker_turn = s.turn
+				events.append(_ev(p, c, Loc.t("%s can attack %d times this turn, but not directly. Your other monsters cannot attack") % [t.cname(), n_f]))
+		"transcendent_wings":
+			# Cost: 1 "Winged Kuriboh" you control (face-up or face-down) and 2 cards from your hand go to the Graveyard.
+			var kuri_t: Array = ps.monsters().filter(func(m): return str(m.data.get("name", "")) == "Winged Kuriboh")
+			if kuri_t.is_empty():
+				return events
+			var k0 = kuri_t[0]
+			ps.field[ps.field.find(k0)] = null
+			s._to_gy(ps, k0)
+			events.append({"type": "tribute", "player": p, "card": k0})
+			events.append_array(s._monster_left(k0))
+			var keep_t = null
+			if ps.deck.filter(func(x): return x.cname() == "Winged Kuriboh LV10").is_empty():
+				for h in ps.hand:
+					if h.cname() == "Winged Kuriboh LV10":
+						keep_t = h
+			var hand_t: Array = ps.hand.filter(func(h): return h != c and h != keep_t)
+			var by_v: Array = hand_t.duplicate()
+			by_v.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			for h in s.choose(p, Loc.t("%s: send 2 cards from your hand to the Graveyard") % name, hand_t, 2, by_v.slice(0, 2), false, c):
+				ps.hand.erase(h)
+				s._to_gy(ps, h)
+				events.append({"type": "discard", "player": p, "card": h})
+			for src in [ps.hand, ps.deck]:
+				var got_t: Array = src.filter(func(x): return x.cname() == "Winged Kuriboh LV10")
+				if not got_t.is_empty() and ps.free_zone() != -1:
+					src.erase(got_t[0])
+					if src == ps.deck:
+						s._shuffle(ps.deck)
+					got_t[0].proper = true
+					events.append(_ev(p, c, Loc.t("%s calls %s") % [name, got_t[0].cname()]))
+					events.append_array(s._special(p, got_t[0], "effect"))
+					break
 		"slip_summon":
 			for d in EffectRunner._pick(s, p, c, Loc.t("Special Summon 1 Level 4 or lower monster from your hand"), ps.hand.filter(func(h): return not CardEffects.of(h.cname()).get("no_special", false)), {"max_lv": 4}, 1):
 				if ps.free_zone() == -1:
@@ -1443,7 +1591,20 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				t.face_up = true
 				events.append({"type": "position", "player": t.owner, "card": t, "zone": s.players[t.owner].field.find(t)})
 		"search":
-			var got: Array = EffectRunner._pick(s, p, c, "add 1 card from your Deck to your hand", ps.deck, a[1], 1)
+			# (Offered best first: a monster you can Summon right away, the strongest one, before one you cannot.)
+			var by_use: Array = ps.deck.duplicate()
+			var fake_in_hand: bool = not ps.hand.filter(func(h): return h.cname() == "Fake Hero").is_empty()
+			var use_of := func(x) -> int:
+				if not x.is_monster():
+					return 500
+				if x.level() <= 4 or s.tributes_needed(x) == 0 or (fake_in_hand and str(x.data.get("name", "")).contains("Elemental HERO")):
+					return 1000 + x.atk()
+				return x.atk() / 10
+			var val_of := {}
+			for x in by_use:
+				val_of[x.uid] = use_of.call(x)
+			by_use.sort_custom(func(x, y): return int(val_of[x.uid]) > int(val_of[y.uid]) or (int(val_of[x.uid]) == int(val_of[y.uid]) and x.uid < y.uid))
+			var got: Array = EffectRunner._pick(s, p, c, "add 1 card from your Deck to your hand", by_use, a[1], 1)
 			for g in got:
 				ps.deck.erase(g)
 				ps.hand.append(g)
@@ -1637,6 +1798,8 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs) -> int:
 			for boost in sp.get("all_boost", []):
 				if c.face_up and CardEffects.matches(c.data, boost[0]):
 					b += int(boost[1])
+			if sp.get("neo_space", false) and c.face_up and neos_family(c):
+				b += 500   # Neo Space: "Elemental HERO Neos" and every Fusion Monster that lists it gain 500 ATK
 			if st.equipped_to == c:
 				b += int(sp.get("atk", 0))
 				if sp.has("atk_per"):
@@ -1817,6 +1980,66 @@ static func left_field(s: DuelState, c) -> Array:
 	c.equipped_to = null
 	c.linked = null
 	c.counter = 0
+	return events
+
+
+## "Elemental HERO Neos" itself, or a Fusion Monster that lists it as a material.
+static func neos_family(m) -> bool:
+	var n := str(m.data.get("name", ""))
+	if n == "Elemental HERO Neos":
+		return true
+	return m.frame() == "fusion" and str(m.data.get("desc", "")).contains("\"Elemental HERO Neos\"")
+
+
+static func _ehero_count(s: DuelState, p: int) -> int:
+	var n := 0
+	for m in s.players[p].monsters():
+		if m.face_up and str(m.data.get("name", "")).contains("Elemental HERO"):
+			n += 1
+	return n
+
+
+## R - Righteous Justice: every Spell/Trap on the field but itself.
+static func _justice_pool(s: DuelState, c) -> Array:
+	var out := []
+	for q in 2:
+		for st in s.players[q].spells:
+			if st != null and st != c:
+				out.append(st)
+		if s.players[q].field_spell != null and s.players[q].field_spell != c:
+			out.append(s.players[q].field_spell)
+	return out
+
+
+## Hero Signal: a Set Trap that answers "a monster you control is destroyed by battle and sent to the GY".
+static func after_battle_death(s: DuelState, loser) -> Array:
+	var p: int = loser.owner
+	var events := []
+	if s.is_over() or not s.chain.is_empty():
+		return events
+	for st in s.players[p].spells.duplicate():
+		if st == null or st.face_up or st.set_turn >= s.turn or not spec(st).get("battle_death", false) or blocked(s, st):
+			continue
+		if not feasible(s, p, st, "free", null):
+			continue
+		if s.choose_option(p, Loc.t("%s was destroyed by battle. Activate %s?") % [loser.cname(), st.cname()], ["Activate it", "No"], 0, st) != 0:
+			continue
+		events.append_array(s.chain_add(p, st, null, "free"))
+		events.append_array(s.chain_resolve())
+		break
+	return events
+
+
+## Instant Neo Space: "If the equipped monster leaves the field: You can Special Summon 1 "Elemental HERO Neos"".
+static func host_gone(s: DuelState, st) -> Array:
+	var events := []
+	var sp := spec(st)
+	if st == null or not st.face_up or not sp.has("host_gone") or blocked(s, st):
+		return events
+	if s.choose_option(st.owner, Loc.t("%s: use its effect?") % st.cname(), ["Yes", "No"], 0, st) != 0:
+		return events
+	for a in sp["host_gone"]:
+		events.append_array(_run(s, st.owner, st, a, {}))
 	return events
 
 

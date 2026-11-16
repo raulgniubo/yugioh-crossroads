@@ -106,6 +106,8 @@ class CardInst:
 		counter = 0
 
 	func cname() -> String:
+		if tags.has("as"):
+			return str(tags["as"])   # "this card's name becomes that monster's original name" (Neo-Spacian Dark Panther)
 		return str(data.get("name", ""))
 
 	func is_trap() -> bool:
@@ -163,6 +165,8 @@ class PlayerState:
 	var no_damage_until := -1     # takes no damage of any kind through this turn (Synchro Barrier)
 	var once_duel := {}           # card name -> true: its once-per-Duel effect is spent (Unknown Synchron)
 	var summons_turn := -1        # the last turn this player Normal or Special Summoned a monster (Dark Magic Curtain)
+	var only_attacker := -1       # uid of the one monster that may attack on `only_attacker_turn` (Feather Shot)
+	var only_attacker_turn := -1
 
 	func set_cards() -> Array[CardInst]:
 		var out: Array[CardInst] = []
@@ -573,8 +577,42 @@ func begin_end() -> Array:
 			if m.face_up and m.tags.get("banish_end", false):
 				events.append({"type": "effect", "player": q, "card": m, "text": Loc.t("%s is banished in the End Phase") % m.cname()})
 				events.append_array(_banish(m))
+	# Fake Hero: the monster it brought out goes back to the hand (same as Slip Summon above).
+	# Neos Contact Fusions: "During the End Phase: Shuffle this card into the Extra Deck."
+	for q in 2:
+		for m in players[q].monsters():
+			if not players[q].field.has(m) or not m.face_up or m.negated:
+				continue
+			var nr := str(EffectRunner.fx(m).get("neos_return", ""))
+			if nr == "":
+				continue
+			if neos_stays(m):
+				# Neo Space / Instant Neo Space: it "does not have to" go back. Your call.
+				var keep_auto := 0
+				if choose_option(q, Loc.t("%s: shuffle it into the Extra Deck?") % m.cname(), ["Keep it on the field", "Shuffle it into the Extra Deck"], keep_auto, m) == 0:
+					continue
+			events.append({"type": "effect", "player": q, "card": m, "text": Loc.t("%s returns to the Extra Deck") % m.cname()})
+			var who := m.cname()
+			events.append_array(_bounce(m))
+			if nr == "storm" or nr == "magma":
+				# Storm Neos: "Shuffle all cards on the field into the Deck." Magma Neos: "Return all cards on the field to the hand."
+				events.append({"type": "effect", "player": q, "card": m, "text": (Loc.t("%s: every card on the field is shuffled into the Deck") if nr == "storm" else Loc.t("%s: every card on the field returns to the hand")) % who})
+				var was_by2 := effect_by
+				effect_by = q
+				for q2 in 2:
+					var all: Array = players[q2].monsters()
+					all.append_array(players[q2].set_cards())
+					if players[q2].field_spell != null:
+						all.append(players[q2].field_spell)
+					for x in all:
+						events.append_array(_to_deck(x) if nr == "storm" else _bounce(x))
+				effect_by = was_by2
 	events.append_array(EffectRunner.end_phase(self, current))
 	events.append_array(EffectRunner.end_phase_any(self))
+	# "...until the End Phase, this card's name becomes..." (Neo-Spacian Dark Panther).
+	for q in 2:
+		for m in players[q].monsters():
+			m.tags.erase("as")
 	return events
 
 
@@ -687,11 +725,24 @@ func tributes_needed(c: CardInst) -> int:
 		return int(CardEffects.of(c.cname())["tributes"])   # "Requires 3 Tributes to Normal Summon" (Slifer the Sky Dragon)
 	if c.level() >= 5 and EffectRunner.no_tribute(self, c.owner, c):
 		return 0
+	if c.level() >= 5 and necroshade_for(c) != null:
+		return 0
 	if c.level() >= 7:
 		return 2
 	if c.level() >= 5:
 		return 1
 	return 0
+
+
+## Elemental HERO Necroshade: "Once, while this card is in the GY, you can Normal Summon 1 Level 5
+## or higher "Elemental HERO" monster without Tributing." The Necroshade that can still do it.
+func necroshade_for(c: CardInst) -> CardInst:
+	if c == null or c.level() < 5 or not str(c.data.get("name", "")).contains("Elemental HERO"):
+		return null
+	for g in players[c.owner].gy:
+		if not g.once and CardEffects.of(g.cname()).get("necroshade", false):
+			return g
+	return null
 
 
 func can_normal_summon(p: int, c: CardInst) -> bool:
@@ -725,6 +776,12 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 		return []
 	if set_card and CardEffects.of(c.cname()).get("no_set", false):
 		return []   # "cannot be Normal Set"
+	# Elemental HERO Necroshade lets you Normal Summon without Tributing (a Set is not a Normal Summon).
+	var necro: CardInst = null
+	if tributes.is_empty() and c.level() >= 5 and not CardEffects.of(c.cname()).has("tributes") and not EffectRunner.no_tribute(self, c.owner, c):
+		necro = necroshade_for(c)
+		if necro != null and set_card:
+			return []
 	for t in tributes:
 		if t.data.get("no_tribute_summon", false):
 			return []
@@ -761,6 +818,9 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 			c.lv_set = as_lv
 			c.lv_turn = -1
 	events.append({"type": "set" if set_card else "summon", "player": p, "card": c, "zone": zone})
+	if necro != null:
+		necro.once = true
+		events.append({"type": "effect", "player": p, "card": necro, "text": Loc.t("%s in the Graveyard: %s is Normal Summoned without Tributing") % [necro.cname(), c.cname()]})
 	if not set_card:
 		c.normal_turn = turn
 		last_summoned = c
@@ -1189,7 +1249,8 @@ func _lowest_face_up(p: int) -> CardInst:
 
 func can_attack(p: int, c: CardInst) -> bool:
 	return (p == current and phase == Phase.BATTLE and not is_over() and players[p].field.has(c)
-			and c.face_up and c.attack_pos and attacks_left(c) > 0 and SpellRules.can_attack(self, p, c)
+			and c.face_up and (c.attack_pos or EffectRunner.fx(c).get("direct_from_def", false)) and attacks_left(c) > 0 and SpellRules.can_attack(self, p, c)
+			and not (players[p].only_attacker_turn == turn and players[p].only_attacker != c.uid)
 			and not (EffectRunner.fx(c).get("summon_sick", false) and c.summoned_turn == turn)
 			and players[p].lp >= int(EffectRunner.fx(c).get("attack_cost", 0))
 			and not (EffectRunner.fx(c).get("attack_tribute", false) and players[p].monsters().size() < 2)
@@ -1199,11 +1260,32 @@ func can_attack(p: int, c: CardInst) -> bool:
 
 func attacks_left(c: CardInst) -> int:
 	var used := c.attack_count if c.attack_count_turn == turn else 0
+	if used > 0 and used < 99 and EffectRunner.fx(c).get("attack_all", false):
+		# Elemental HERO Wildedge: "one attack on each monster per Battle Phase".
+		if int(c.tags.get("went_direct", -1)) == turn:
+			return 0
+		return 1 if not _not_hit_yet(c).is_empty() else 0
 	return EffectRunner.max_attacks(c) + (c.bonus_attacks if c.bonus_attacks_turn == turn else 0) - used
+
+
+## Wildedge: the opponent's monsters it has not attacked yet this Battle Phase.
+func _not_hit_yet(c: CardInst) -> Array:
+	var hit: Array = c.tags.get("hit", []) if int(c.tags.get("hit_turn", -1)) == turn else []
+	var out := []
+	for m in attack_targets(c.owner):
+		if not hit.has(m.uid):
+			out.append(m)
+	return out
 
 
 ## Can this monster attack the opponent directly right now?
 func can_direct_attack_with(p: int, c: CardInst) -> bool:
+	if int(c.tags.get("no_direct_turn", -1)) == turn:
+		return false   # Feather Shot: "but cannot attack directly"
+	if not c.attack_pos:
+		return EffectRunner.fx(c).get("direct_from_def", false)   # Elemental HERO Rampart Blaster
+	if EffectRunner.fx(c).get("attack_all", false) and c.attack_count_turn == turn and c.attack_count > 0:
+		return false   # Wildedge already attacked a monster: only the other monsters are left
 	if c.tags.has("nitro_next"):
 		return false   # Nitro Warrior's second attack is on one monster only
 	if EffectRunner.fx(c).get("direct_needs_material", false) and c.overlays.is_empty():
@@ -1309,6 +1391,14 @@ func toon_world(q: int) -> bool:
 ## Magician Girl) must go for a Toon monster when the other side has one.
 func attack_targets_for(p: int, attacker: CardInst) -> Array[CardInst]:
 	var out := attack_targets(p)
+	if attacker != null and not attacker.attack_pos:
+		var none: Array[CardInst] = []
+		return none   # (Rampart Blaster in Defense Position can only attack directly)
+	if attacker != null and EffectRunner.fx(attacker).get("attack_all", false) and attacker.attack_count_turn == turn and attacker.attack_count > 0:
+		var left: Array[CardInst] = []
+		for m in _not_hit_yet(attacker):
+			left.append(m)
+		return left
 	if attacker != null and attacker.tags.has("nitro_next"):
 		# Nitro Warrior's second attack in a row: only on the monster it turned to Attack Position.
 		var one: Array[CardInst] = []
@@ -1406,6 +1496,14 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 		paid.append_array(_monster_left(least))
 	attacker.attacked_turn = turn
 	_shield = null
+	if EffectRunner.fx(attacker).get("attack_all", false):
+		if int(attacker.tags.get("hit_turn", -1)) != turn:
+			attacker.tags["hit_turn"] = turn
+			attacker.tags["hit"] = []
+		if target != null:
+			attacker.tags["hit"].append(target.uid)
+		else:
+			attacker.tags["went_direct"] = turn
 	if target != null and not target.attack_pos:
 		attacker.hit_def_turn = turn
 	if attacker.attack_count_turn != turn:
@@ -1518,6 +1616,42 @@ func _resolve_attack() -> Array:
 	if target == null and EffectRunner.fx(attacker).get("direct_orig", false) and not players[opp].monsters().is_empty():
 		# "...when it does so using this effect, the battle damage is the original ATK of this card."
 		a = attacker.atk()
+	# Neo-Spacian Glow Moss: "If this card attacks or is attacked: Your opponent draws 1 card and shows it".
+	for pair1 in [[attacker, true], [target, false]]:
+		if pair1[0] == null:
+			continue
+		var moss: CardInst = pair1[0]
+		if moss.face_up and not moss.negated and EffectRunner.fx(moss).get("glow_moss", false) and not players[opponent(moss.owner)].deck.is_empty():
+			var mo := moss.owner
+			var drawn: CardInst = players[opponent(mo)].deck[0]
+			events.append({"type": "effect", "player": mo, "card": moss, "text": Loc.t("%s: the opponent draws 1 card and shows it") % moss.cname()})
+			events.append_array(_draw(opponent(mo), 1))
+			events.append({"type": "effect", "player": opponent(mo), "card": drawn, "text": Loc.t("The card drawn is %s") % drawn.cname()})
+			if drawn.is_monster():
+				events.append({"type": "effect", "player": mo, "card": moss, "text": Loc.t("A monster: the Battle Phase ends")})
+				players[current].no_attack_turn = turn
+				events.append({"type": "attack_stopped", "player": p, "card": attacker})
+				return events
+			elif drawn.is_spell():
+				if pair1[1] and target != null and choose_option(mo, Loc.t("%s: make it a direct attack?") % moss.cname(), ["Attack directly", "Keep the attack on the monster"], 0, moss) == 0:
+					events.append({"type": "effect", "player": mo, "card": moss, "text": Loc.t("A Spell: %s attacks directly instead") % moss.cname()})
+					var before_m := players[opp].lp
+					events.append_array(_battle_damage(opp, a, attacker, null))
+					if players[opp].lp < before_m:
+						attacker.tags["hit_direct"] = turn
+						events.append_array(EffectRunner.trigger(self, attacker, "damage"))
+					events.append_array(_after_attack(attacker, null))
+					return events
+			elif moss.attack_pos:
+				moss.attack_pos = false
+				events.append({"type": "effect", "player": mo, "card": moss, "text": Loc.t("A Trap: %s changes to Defense Position") % moss.cname()})
+				events.append({"type": "position", "player": mo, "card": moss, "zone": players[mo].field.find(moss)})
+				if moss == attacker:
+					events.append({"type": "attack_stopped", "player": p, "card": attacker})
+					return events
+	if target == null and not attacker.attack_pos:
+		# Rampart Blaster: "apply its ATK for damage calculation, and its ATK is halved during damage calculation only."
+		a = int(ceil(a / 2.0))
 	if target == null:
 		var before := players[opp].lp
 		events.append_array(_battle_damage(opp, a, attacker, null))
@@ -1537,6 +1671,22 @@ func _resolve_attack() -> Array:
 		if not players[opp].field.has(target):
 			events.append_array(_after_attack(attacker, null))
 			return events
+	# Neo-Spacian Grand Mole: "At the start of the Damage Step, if this card battles an opponent's
+	# monster: You can return both the opponent's monster and this card to the hand."
+	for pair0 in [[attacker, target], [target, attacker]]:
+		var mole: CardInst = pair0[0]
+		var foe0: CardInst = pair0[1]
+		if mole.face_up and not mole.negated and EffectRunner.fx(mole).get("grand_mole", false):
+			var auto_m := 0 if (foe0.frame() in ["fusion", "synchro", "xyz"] or not foe0.face_up or atk_of(foe0, false) >= atk_of(mole, false) or foe0.level() >= 5) else 1
+			if choose_option(mole.owner, Loc.t("%s: return it and %s to the hand?") % [mole.cname(), foe0.cname() if foe0.face_up else Loc.t("the face-down monster")], ["Return both to the hand", "No, battle"], auto_m, mole) == 0:
+				events.append({"type": "effect", "player": mole.owner, "card": mole, "text": Loc.t("%s sends both monsters back to the hand") % mole.cname()})
+				var was_by1 := effect_by
+				effect_by = mole.owner
+				events.append_array(_bounce(foe0))
+				events.append_array(_bounce(mole))
+				effect_by = was_by1
+				events.append_array(_after_attack(attacker, null) if players[p].field.has(attacker) else [])
+				return events
 	var was_down: bool = not target.face_up
 	if not target.face_up:
 		target.face_up = true
@@ -1723,6 +1873,7 @@ func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 				g.lv_turn = -1
 				break
 	winner_c.killed_turn = turn
+	events.append_array(SpellRules.after_battle_death(self, loser))
 	# Junk Barrage: half the destroyed monster's ATK as damage.
 	if SpellRules.equip_flag(self, winner_c, "burn_half_on_kill") and not is_over():
 		events.append({"type": "effect", "player": wp, "card": winner_c, "text": Loc.t("Junk Barrage: %d damage") % (loser.atk() / 2)})
@@ -2099,9 +2250,11 @@ func _monster_left(m: CardInst) -> Array:
 			if st == null or not st.face_up:
 				continue
 			if st.equipped_to == m or st.linked == m:
+				var gone_fx: Array = SpellRules.host_gone(self, st) if st.equipped_to == m else []
 				st.linked = null
 				st.equipped_to = null
 				events.append_array(_destroy_st(st))
+				events.append_array(gone_fx)
 	return events
 
 
@@ -2143,6 +2296,16 @@ func _cleanup() -> Array:
 	for q in 2:
 		for m in players[q].monsters():
 			m.negated = m.face_up and (drain or m.negated_turn == turn or m.neg_perm)
+	# Elemental HERO Dark Neos: "while you control this face-up card, that target's effect on the field is negated."
+	for q in 2:
+		for m in players[q].monsters():
+			if not m.tags.has("neg_by"):
+				continue
+			var src := find_uid(int(m.tags["neg_by"]))
+			if src != null and src.face_up and not src.negated and (players[0].field.has(src) or players[1].field.has(src)) and m.face_up:
+				m.negated = true
+			else:
+				m.tags.erase("neg_by")
 	for q in 2:
 		for st in players[q].spells.duplicate():
 			if st == null or not st.face_up:
@@ -2151,9 +2314,11 @@ func _cleanup() -> Array:
 			if m == null:
 				continue
 			if not (players[0].field.has(m) or players[1].field.has(m)) or not m.face_up:
+				var gone_fx2: Array = SpellRules.host_gone(self, st) if st.equipped_to == m and not (players[0].field.has(m) or players[1].field.has(m)) else []
 				st.linked = null
 				st.equipped_to = null
 				events.append_array(_destroy_st(st))
+				events.append_array(gone_fx2)
 	return events
 
 
@@ -2212,6 +2377,65 @@ func _bounce(c: CardInst) -> Array:
 			events.append_array(EffectRunner.trigger(self, c, "leave"))
 		return events
 	return []
+
+
+## Shuffle a card on the field into its owner's Deck (Extra Deck monsters go back to the Extra Deck).
+func _to_deck(c: CardInst) -> Array:
+	if c != null and c.is_token():
+		return _vanish(c)
+	for q in 2:
+		var ps := players[q]
+		var from := ""
+		var zone := -1
+		if ps.field.has(c):
+			from = "field"
+			zone = ps.field.find(c)
+			ps.field[zone] = null
+			for o in c.overlays:
+				_to_gy(ps, o)
+			c.overlays.clear()
+			c.reset_mods()
+		elif ps.spells.has(c):
+			from = "spells"
+			zone = ps.spells.find(c)
+			ps.spells[zone] = null
+		elif ps.field_spell == c:
+			from = "spells"
+			zone = 5
+			ps.field_spell = null
+		if from == "":
+			continue
+		if c.orig_owner != -1:
+			c.owner = c.orig_owner
+			c.orig_owner = -1
+			c.control_until = -1
+		c.face_up = true
+		var home := players[c.owner]
+		var to_extra: bool = c.is_monster() and c.frame() in ["fusion", "synchro", "xyz"]
+		if to_extra:
+			home.extra.append(c)
+		else:
+			home.deck.append(c)
+			_shuffle(home.deck)
+		var events := [{"type": "bounce", "player": c.owner, "card": c, "from": from, "zone": zone, "side": q, "extra": true, "deck": not to_extra}]
+		if from == "field" or c.is_monster():
+			events.append_array(_monster_left(c))
+		else:
+			events.append_array(SpellRules.left_field(self, c))
+		if from == "field" and c.is_monster():
+			events.append_array(EffectRunner.trigger(self, c, "leave"))
+		return events
+	return []
+
+
+## A Neos Contact Fusion stays on the field through the End Phase while Neo Space is face-up
+## or Instant Neo Space is equipped to it.
+func neos_stays(m: CardInst) -> bool:
+	for q in 2:
+		var f := players[q].field_spell
+		if f != null and f.face_up and SpellRules.spec(f).get("neo_space", false) and not SpellRules.blocked(self, f):
+			return true
+	return SpellRules.equip_flag(self, m, "neos_keep")
 
 
 ## Move a monster to player p's side. `until`: the turn it goes back at the End Phase, or -1 to keep it.
@@ -2438,6 +2662,8 @@ func fusion_targets(p: int, poly: CardInst = null, from_gy := false, ask := fals
 	for f in ps.extra:
 		if f.frame() != "fusion" or (only != null and f != only):
 			continue
+		if CardEffects.of(f.cname()).has("contact"):
+			continue   # "(You do not use "Polymerization".)"
 		var pool_hand: Array = ps.hand.duplicate() if not from_gy else ps.gy.duplicate()
 		if poly:
 			pool_hand.erase(poly)
@@ -2747,10 +2973,12 @@ func can_extra_summon(p: int, c: CardInst, any_time := false) -> bool:
 ## as Union monsters riding as Equip Cards. Returns one card per name, or [] when one is missing.
 func contact_materials(p: int, c: CardInst) -> Array:
 	var out := []
-	for nm in EffectRunner.fx(c).get("contact", []):
+	# (The Neos Contact Fusions take "the above cards you control", face-down ones too.)
+	var any_face: bool = str(CardEffects.of(c.cname()).get("contact_to", "")) == "deck"
+	for nm in CardEffects.of(c.cname()).get("contact", []):
 		var got: CardInst = null
 		for m in players[p].monsters():
-			if m.face_up and m.cname() == str(nm) and not out.has(m):
+			if (m.face_up or any_face) and m.cname() == str(nm) and not out.has(m):
 				got = m
 				break
 		if got == null:
@@ -2774,8 +3002,12 @@ func _contact_frees_zone(p: int, c: CardInst) -> bool:
 func _contact_summon(p: int, c: CardInst) -> Array:
 	var ps := players[p]
 	var events := []
+	var to_deck := str(CardEffects.of(c.cname()).get("contact_to", "")) == "deck"
 	for m in contact_materials(p, c):
-		if ps.spells.has(m):
+		if to_deck:
+			# "...by shuffling the above cards you control into the Deck" (the Neos Contact Fusions).
+			events.append_array(_to_deck(m))
+		elif ps.spells.has(m):
 			ps.spells[ps.spells.find(m)] = null
 			m.equipped_to = null
 			ps.banished.append(m)
@@ -2891,6 +3123,8 @@ func clone() -> DuelState:
 		np.no_damage_until = ps.no_damage_until
 		np.once_duel = ps.once_duel.duplicate()
 		np.summons_turn = ps.summons_turn
+		np.only_attacker = ps.only_attacker
+		np.only_attacker_turn = ps.only_attacker_turn
 		s.players.append(np)
 	for np2 in s.players:
 		for ex in np2.exiles:

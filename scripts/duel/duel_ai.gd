@@ -47,6 +47,9 @@ static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionar
 		var prep := _setup_spell(s, p)
 		if not prep.is_empty():
 			return prep
+		var contact := _contact_step(s, p)
+		if not contact.is_empty():
+			return contact
 		var combo := _combo_step(s, p)
 		if not combo.is_empty():
 			return combo
@@ -139,8 +142,8 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 		var extra_sorted := me.extra.duplicate()
 		extra_sorted.sort_custom(func(a, b): return a.atk() > b.atk())
 		for x in extra_sorted:
-			if not s.can_extra_summon(p, x):
-				continue
+			if not s.can_extra_summon(p, x) or CardEffects.of(x.cname()).has("contact"):
+				continue      # (Contact Fusions are _contact_step's call)
 			var mats: Array = s.extra_materials(p, x)[0]
 			var mat_best := 0
 			for m in mats:
@@ -412,10 +415,152 @@ static func _setup_spell(s: DuelState, p: int) -> Dictionary:
 		if tag == "" or not s.can_activate(p, c):
 			continue
 		if tag == "always":
+			if me.field_spell != null and me.field_spell.face_up and me.field_spell.cname() == c.cname() and SpellRules.kind(c) == "field":
+				continue   # the same Field Spell is already up
+			if SpellRules._needs_target(SpellRules.spec(c)) and SpellRules.auto_target(s, p, c) == null:
+				continue
 			return {"do": "activate", "card": c}
 		if tag == "second_summon" and s.normal_summoned and me.extra_normals == 0 \
 				and not me.hand.filter(func(h): return h.is_monster() and h.level() <= 4 and not CardData.is_extra(h.id)).is_empty():
 			return {"do": "activate", "card": c}
+	return {}
+
+
+## What a Contact Fusion is worth to the computer right now, or 0 when it should wait. A Neos
+## fusion goes back to the Extra Deck in the End Phase (and its materials are already in the
+## Deck), so it is made when it will stay: Neo Space is up, or Instant Neo Space is in hand.
+## The one exception is the win: when its attack this turn ends the duel.
+static func _contact_worth(s: DuelState, p: int, x: DuelState.CardInst) -> int:
+	var f: Dictionary = CardEffects.of(x.cname())
+	if not f.has("contact") or not s.can_extra_summon(p, x):
+		return 0
+	if str(f.get("contact_to", "")) != "deck":
+		return x.atk()   # (XYZ-Dragon Cannon and its kind stay on the field)
+	var me := s.players[p]
+	var opp := s.players[s.opponent(p)]
+	var stays := false
+	for q in 2:
+		var fs := s.players[q].field_spell
+		if fs != null and fs.face_up and SpellRules.spec(fs).get("neo_space", false):
+			stays = true
+	if not stays and me.spells.find(null) != -1:
+		for h in me.hand:
+			if SpellRules.spec(h).get("neos_keep", false):
+				stays = true
+	var v: int = x.atk() + 100 * s.contact_materials(p, x).size()
+	match str(f.get("neos_return", "")):
+		"storm", "magma":
+			v += 600
+	if f.has("atk_per"):
+		v += 400
+	if f.get("atk_lp_gap", false):
+		v += maxi(0, opp.lp - me.lp) - (300 if me.lp >= opp.lp else 0)
+	if f.has("ignite"):
+		v += 300
+	if stays:
+		return v
+	# Not staying: only for the win. Grand Neos clears the one monster in the way; the others need an open field.
+	if s.phase != DuelState.Phase.MAIN1 or s.turn <= 1:
+		return 0
+	var open: bool = opp.monsters().is_empty() or (opp.monsters().size() == 1 and x.cname() == "Elemental HERO Grand Neos")
+	var hit: int = x.atk()
+	if f.get("atk_lp_gap", false):
+		hit += maxi(0, opp.lp - me.lp)
+	for m in me.monsters():
+		if m.face_up and m.attack_pos and not s.contact_materials(p, x).has(m):
+			hit += s.atk_of(m, false)
+	return v if open and hit >= opp.lp else 0
+
+
+## Jaden's way: get Elemental HERO Neos and a Neo-Spacian side by side, then Contact Fusion.
+## Returns the fusion when one is worth making, or the one play that sets it up (a Normal
+## Summon, Fake Hero, O - Oversoul), looking two plays ahead. {} for every other deck.
+static func _contact_step(s: DuelState, p: int) -> Dictionary:
+	var me := s.players[p]
+	if p != s.current or not s._in_main() or s.is_over() or me.no_summon_turn == s.turn:
+		return {}
+	var contacts: Array = me.extra.filter(func(x): return str(CardEffects.of(x.cname()).get("contact_to", "")) == "deck")
+	if contacts.is_empty():
+		return {}
+	# A quick look before any copies of the duel are made: is there a Neos and a Neo-Spacian within
+	# reach, and would the fusion stay (or could it win right now)?
+	var opp := s.players[s.opponent(p)]
+	var stays := me.spells.find(null) != -1 and not me.hand.filter(func(h): return SpellRules.spec(h).get("neos_keep", false)).is_empty()
+	for q in 2:
+		var fs := s.players[q].field_spell
+		if fs != null and fs.face_up and SpellRules.spec(fs).get("neo_space", false):
+			stays = true
+	if not stays and (opp.monsters().size() > 1 or s.phase != DuelState.Phase.MAIN1):
+		return {}
+	var can_normal: bool = not s.normal_summoned or me.extra_normals > 0
+	var spells_in: Array = me.hand.filter(func(h): return not h.is_monster()).map(func(h): return h.cname())
+	var neos_near := false
+	var spacian_near := false
+	for m in me.monsters():
+		if m.face_up and m.cname() == "Elemental HERO Neos":
+			neos_near = true
+		if m.cname().begins_with("Neo-Spacian"):
+			spacian_near = true
+	for h in me.hand:
+		if h.cname() == "Elemental HERO Neos" and (spells_in.has("Fake Hero") or (can_normal and s.tributes_needed(h) == 0)):
+			neos_near = true
+		if h.cname().begins_with("Neo-Spacian") and can_normal:
+			spacian_near = true
+	if spells_in.has("O - Oversoul") and not me.gy.filter(func(g): return g.cname() == "Elemental HERO Neos").is_empty():
+		neos_near = true
+	if not (neos_near and spacian_near):
+		return {}
+	var best = null
+	var best_v := 0
+	for x in contacts:
+		var v := _contact_worth(s, p, x)
+		if v > best_v:
+			best_v = v
+			best = x
+	# A bigger one a play away (the third material for Storm Neos or Magma Neos) is worth the wait.
+	var tries: Array = _setup_tries(s, p)
+	var held: Array = me.hand.duplicate()
+	for st in me.spells:
+		if st != null and not st.face_up:
+			held.append(st)
+	var seen := {}
+	for c in held:
+		if not c.is_monster() and SpellRules.spec(c).get("ai_contact", false) and not seen.has(c.cname()) and s.can_activate(p, c):
+			seen[c.cname()] = true
+			tries.append({"do": "activate", "card": c})
+	var best_act := {}
+	var act_v := best_v
+	var after: Array = []
+	for act in tries:
+		var sim := s.clone()
+		sim.defer_fx = false
+		if apply(sim, p, _map_action(sim, act)).is_empty():
+			continue
+		var v2 := 0
+		for x in sim.players[p].extra:
+			v2 = maxi(v2, _contact_worth(sim, p, x))
+		if v2 > act_v:
+			act_v = v2
+			best_act = act
+		after.append([act, sim])
+	if not best_act.is_empty():
+		return best_act
+	if best != null:
+		return {"do": "extra", "card": best}
+	for pair in after:
+		var sim1: DuelState = pair[1]
+		var tries2: Array = _setup_tries(sim1, p)
+		for c in sim1.players[p].hand:
+			if not c.is_monster() and SpellRules.spec(c).get("ai_contact", false) and sim1.can_activate(p, c):
+				tries2.append({"do": "activate", "card": c})
+		for act2 in tries2:
+			var sim2 := sim1.clone()
+			sim2.defer_fx = false
+			if apply(sim2, p, _map_action(sim2, act2)).is_empty():
+				continue
+			for x in sim2.players[p].extra:
+				if _contact_worth(sim2, p, x) > 0:
+					return pair[0]
 	return {}
 
 
@@ -494,6 +639,8 @@ static func _combo_step(s: DuelState, p: int) -> Dictionary:
 	var me := s.players[p]
 	if me.extra.is_empty() or not s._in_main() or s.is_over() or me.no_summon_turn == s.turn or p != s.current:
 		return {}
+	if me.extra.filter(func(x): return x.frame() in ["synchro", "xyz"]).is_empty():
+		return {}   # (a Fusion deck: nothing here to build toward)
 	var now_best = null
 	var now_v := 0
 	for x in me.extra:
@@ -622,7 +769,7 @@ static func _deep_main(s: DuelState, p: int) -> Dictionary:
 					if apply(sim2, p, _map_action(sim2, second)).is_empty() or sim2.is_over():
 						continue
 					for x in sim2.players[p].extra:
-						if sim2.can_extra_summon(p, x):
+						if sim2.can_extra_summon(p, x) and (not CardEffects.of(x.cname()).has("contact") or _contact_worth(sim2, p, x) > 0):
 							var sc3 := _score_after(sim2, p, {"do": "extra", "card": x}, true)
 							if sc3 > line:
 								line = sc3
@@ -728,7 +875,7 @@ static func _candidates(s: DuelState, p: int) -> Array:
 		if c != null and not c.face_up and s.can_activate(p, c) and has_use(s, p, c):
 			out.append({"do": "activate", "card": c})
 	for x in me.extra:
-		if s.can_extra_summon(p, x):
+		if s.can_extra_summon(p, x) and (not CardEffects.of(x.cname()).has("contact") or _contact_worth(s, p, x) > 0):
 			out.append({"do": "extra", "card": x})
 	for c in me.hand:
 		if (c.is_trap() or SpellRules.kind(c) == "quick") and s.can_set_st(p, c):

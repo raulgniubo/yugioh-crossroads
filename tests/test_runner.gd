@@ -39,6 +39,7 @@ func _ready() -> void:
 		_test_cards_27()
 		_test_cards_28()
 		_test_cards_32()
+		_test_cards_33()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -3989,3 +3990,467 @@ func _test_cards_32() -> void:
 	check(not s.players[0].hand.has(sealed), "Gold Sarcophagus: not yet after 1 Standby Phase")
 	s.begin_standby()
 	check(s.players[0].hand.has(sealed), "Gold Sarcophagus: the card is in the hand in your 2nd Standby Phase")
+
+
+## A real Spell/Trap by name: in the hand, or Set last turn.
+func _rst(s: DuelState, p: int, name: String, where := "hand") -> DuelState.CardInst:
+	var c := s._make(_cid(name), p)
+	if where == "hand":
+		s.players[p].hand.append(c)
+	else:
+		c.face_up = false
+		c.set_turn = s.turn - 1
+		s.players[p].spells[s.players[p].spells.find(null)] = c
+	return c
+
+
+## A Main Phase with nothing in either hand or Graveyard (the decks stay).
+func _bare(seed: int) -> DuelState:
+	var s := _main_ready(seed)
+	for p in 2:
+		s.players[p].hand.clear()
+		s.players[p].gy.clear()
+		s.players[p].extra.clear()
+	return s
+
+
+## The cards built in v0.33.32 for Jaden's best deck, each against its printed text.
+func _test_cards_33() -> void:
+	# ---- Contact Fusion: the materials are shuffled into the Deck, no Polymerization.
+	var s := _bare(301)
+	var neos := _mon(s, 0, "Elemental HERO Neos", 0)
+	var mole := _mon(s, 0, "Neo-Spacian Grand Mole", 1)
+	var gn := _in(s, 0, "Elemental HERO Grand Neos", "extra")
+	var an := _in(s, 0, "Elemental HERO Aqua Neos", "extra")
+	var poly := _rst(s, 0, "Polymerization")
+	_in(s, 0, "Neo-Spacian Aqua Dolphin", "hand")
+	check(s.fusion_targets(0, poly).filter(func(o): return o["card"] == an).is_empty(), "Polymerization cannot make Aqua Neos")
+	check(s.can_extra_summon(0, gn) and not s.can_extra_summon(0, an), "Grand Neos can be made by Contact Fusion, Aqua Neos cannot (no Dolphin on the field)")
+	var deck0: int = s.players[0].deck.size()
+	s.extra_summon(0, gn)
+	check(s.players[0].field.has(gn) and s.players[0].deck.has(neos) and s.players[0].deck.has(mole) and s.players[0].deck.size() == deck0 + 2, "Grand Neos: Neos and Grand Mole are shuffled into the Deck")
+	var foe := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	check(s.can_ignite(0, gn), "Grand Neos can use its effect")
+	s.ignite(0, gn)
+	check(s.players[1].hand.has(foe), "Grand Neos returns an opponent's monster to the hand")
+	check(not s.can_ignite(0, gn), "Grand Neos: once per turn")
+	s.begin_end()
+	check(s.players[0].extra.has(gn) and not s.players[0].field.has(gn), "Grand Neos returns to the Extra Deck in the End Phase")
+	# ---- Neo Space: +500 for Neos and its fusions, and they may stay.
+	s = _bare(302)
+	neos = _mon(s, 0, "Elemental HERO Neos", 0)
+	var scarab := _mon(s, 0, "Neo-Spacian Flare Scarab", 1)
+	var fn := _in(s, 0, "Elemental HERO Flare Neos", "extra")
+	var ns := _rst(s, 0, "Neo Space")
+	_rst(s, 1, "Mirror Force", "set")
+	check(s.atk_of(scarab, false) == 900, "Flare Scarab: 500 + 400 for their 1 Spell/Trap (got %d)" % s.atk_of(scarab, false))
+	check(s.can_activate(0, ns), "Neo Space can be activated")
+	s.activate(0, ns)
+	check(s.players[0].field_spell == ns and s.atk_of(neos, false) == 3000, "Neo Space: Neos has 3000 ATK (got %d)" % s.atk_of(neos, false))
+	s.extra_summon(0, fn)
+	check(s.atk_of(fn, false) == 2500 + 500 + 800, "Flare Neos: 2500 + 500 (Neo Space) + 400 for each of the 2 Spells/Traps on the field (got %d)" % s.atk_of(fn, false))
+	s.begin_end()
+	check(s.players[0].field.has(fn), "Flare Neos stays on the field while Neo Space is up")
+	# ---- Air Neos: the Life Point gap.
+	s = _bare(303)
+	_mon(s, 0, "Elemental HERO Neos", 0)
+	_mon(s, 0, "Neo-Spacian Air Hummingbird", 1)
+	var air := _in(s, 0, "Elemental HERO Air Neos", "extra")
+	s.players[0].lp = 3000
+	s.players[1].lp = 8000
+	s.extra_summon(0, air)
+	check(s.atk_of(air, false) == 7500, "Air Neos: 2500 + the 5000 Life Point gap (got %d)" % s.atk_of(air, false))
+	s.players[0].lp = 8000
+	check(s.atk_of(air, false) == 2500, "Air Neos: no gain when you are not behind")
+	# ---- Air Hummingbird.
+	s = _bare(304)
+	var hum := _mon(s, 0, "Neo-Spacian Air Hummingbird", 0)
+	_in(s, 1, "Kuriboh", "hand")
+	_in(s, 1, "Kuriboh", "hand")
+	var lp0: int = s.players[0].lp
+	s.ignite(0, hum)
+	check(s.players[0].lp == lp0 + 1000, "Air Hummingbird: 500 LP for each of the 2 cards in their hand")
+	# ---- Magma Neos: 400 for each card on the field; End Phase, every card returns to the hand.
+	s = _bare(305)
+	_mon(s, 0, "Elemental HERO Neos", 0)
+	_mon(s, 0, "Neo-Spacian Flare Scarab", 1)
+	_mon(s, 0, "Neo-Spacian Grand Mole", 2)
+	var mg := _in(s, 0, "Elemental HERO Magma Neos", "extra")
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var their_set := _rst(s, 1, "Mirror Force", "set")
+	check(s.can_extra_summon(0, mg), "Magma Neos can be made from its three materials")
+	s.extra_summon(0, mg)
+	check(s.atk_of(mg, false) == 3000 + 1200, "Magma Neos: 3000 + 400 for each of the 3 cards on the field (got %d)" % s.atk_of(mg, false))
+	s.begin_end()
+	check(s.players[0].extra.has(mg) and s.players[1].hand.has(foe) and s.players[1].hand.has(their_set), "Magma Neos: it returns to the Extra Deck and every card on the field returns to the hand")
+	# ---- Storm Neos: destroy every Spell/Trap; End Phase, every card is shuffled into the Deck.
+	s = _bare(306)
+	_mon(s, 0, "Elemental HERO Neos", 0)
+	_mon(s, 0, "Neo-Spacian Air Hummingbird", 1)
+	_mon(s, 0, "Neo-Spacian Aqua Dolphin", 2)
+	var st := _in(s, 0, "Elemental HERO Storm Neos", "extra")
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	their_set = _rst(s, 1, "Mirror Force", "set")
+	s.extra_summon(0, st)
+	s.ignite(0, st)
+	check(s.players[1].gy.has(their_set), "Storm Neos destroys every Spell and Trap on the field")
+	s.begin_end()
+	check(s.players[0].extra.has(st) and s.players[1].deck.has(foe) and s.players[1].monsters().is_empty(), "Storm Neos: it returns to the Extra Deck and every card on the field is shuffled into the Deck")
+	# ---- Dark Neos: its target's effects are negated while Dark Neos is face-up.
+	s = _bare(307)
+	_mon(s, 0, "Elemental HERO Neos", 0)
+	_mon(s, 0, "Neo-Spacian Dark Panther", 1)
+	var dn := _in(s, 0, "Elemental HERO Dark Neos", "extra")
+	var bb := _mon(s, 1, "Buster Blader", 0)
+	_mon(s, 0, "Blue-Eyes White Dragon", 3)
+	s.extra_summon(0, dn)
+	check(s.atk_of(bb, false) == 3100, "Buster Blader has 3100 ATK against a Dragon (got %d)" % s.atk_of(bb, false))
+	s.ignite(0, dn)
+	s._cleanup()
+	check(bb.negated and s.atk_of(bb, false) == 2600, "Dark Neos negates Buster Blader's effect (got %d)" % s.atk_of(bb, false))
+	check(not s.can_ignite(0, dn), "Dark Neos: one target at a time")
+	s._destroy(dn)
+	s._cleanup()
+	check(not bb.negated and s.atk_of(bb, false) == 3100, "Buster Blader's effect is back once Dark Neos is gone")
+	# ---- Glow Neos: destroy a face-up Spell, then it can attack directly.
+	s = _bare(308)
+	_mon(s, 0, "Elemental HERO Neos", 0)
+	_mon(s, 0, "Neo-Spacian Glow Moss", 1)
+	var gl := _in(s, 0, "Elemental HERO Glow Neos", "extra")
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	foe.face_up = false
+	var up_spell := _rst(s, 1, "Swords of Revealing Light", "set")
+	up_spell.face_up = true
+	s.extra_summon(0, gl)
+	s.ignite(0, gl)
+	check(s.players[1].gy.has(up_spell), "Glow Neos destroys a face-up Spell")
+	s.phase = DuelState.Phase.BATTLE
+	gl.summoned_turn = 1
+	check(s.can_direct_attack_with(0, gl), "Glow Neos can attack directly this turn after destroying a Spell")
+	# ---- Aqua Neos and Aqua Dolphin.
+	s = _bare(309)
+	_mon(s, 0, "Elemental HERO Neos", 0)
+	var dol := _mon(s, 0, "Neo-Spacian Aqua Dolphin", 1)
+	_in(s, 0, "Kuriboh", "hand")
+	_in(s, 0, "Kuriboh", "hand")
+	var weak := _in(s, 1, "Kuriboh", "hand")
+	var lp1: int = s.players[1].lp
+	s.ignite(0, dol)
+	check(s.players[1].gy.has(weak) and s.players[1].lp == lp1 - 500 and s.players[0].hand.size() == 1, "Aqua Dolphin: 1 discard, the weaker monster in their hand is destroyed and they take 500")
+	var aq := _in(s, 0, "Elemental HERO Aqua Neos", "extra")
+	s.extra_summon(0, aq)
+	var in_hand := _in(s, 1, "Pot of Greed", "hand")
+	s.ignite(0, aq)
+	check(s.players[1].gy.has(in_hand) and s.players[0].hand.is_empty(), "Aqua Neos: 1 discard, 1 random card in their hand is destroyed")
+	s = _bare(310)
+	dol = _mon(s, 0, "Neo-Spacian Aqua Dolphin", 0)
+	_in(s, 0, "Kuriboh", "hand")
+	var big := _in(s, 1, "Blue-Eyes White Dragon", "hand")
+	lp0 = s.players[0].lp
+	s.ignite(0, dol)
+	check(s.players[1].hand.has(big) and s.players[0].lp == lp0 - 500, "Aqua Dolphin: a monster stronger than all of yours stays, and you take 500")
+	# ---- Grand Mole: both monsters back to the hand at the start of the Damage Step.
+	s = _bare(311)
+	s.phase = DuelState.Phase.BATTLE
+	mole = _mon(s, 0, "Neo-Spacian Grand Mole", 0)
+	mole.summoned_turn = 1
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	lp0 = s.players[0].lp
+	s.declare_attack(0, mole, foe)
+	s.resolve_attack()
+	check(s.players[0].hand.has(mole) and s.players[1].hand.has(foe) and s.players[0].lp == lp0, "Grand Mole: both monsters return to the hand and there is no battle")
+	# ---- Glow Moss: the opponent draws and shows; a monster ends the Battle Phase.
+	s = _bare(312)
+	s.phase = DuelState.Phase.BATTLE
+	var moss := _mon(s, 0, "Neo-Spacian Glow Moss", 0)
+	moss.summoned_turn = 1
+	var other := _mon(s, 0, "Elemental HERO Neos", 1)
+	other.summoned_turn = 1
+	foe = _mon(s, 1, "Kuriboh", 0)
+	s.players[1].deck.insert(0, s._make(_cid("Blue-Eyes White Dragon"), 1))
+	s.declare_attack(0, moss, foe)
+	s.resolve_attack()
+	check(s.players[1].hand.size() == 1 and s.players[1].field.has(foe) and not s.can_attack(0, other), "Glow Moss: they drew a monster, so the Battle Phase ends")
+	# ---- Dark Panther: takes a monster's name (and effects) until the End Phase.
+	s = _bare(313)
+	var pan := _mon(s, 0, "Neo-Spacian Dark Panther", 0)
+	bb = _mon(s, 1, "Buster Blader", 0)
+	_mon(s, 1, "Blue-Eyes White Dragon", 1)
+	s.ignite(0, pan)
+	check(pan.cname() == "Buster Blader" and s.atk_of(pan, false) == 1500, "Dark Panther is Buster Blader now: 1000 + 500 for their Dragon (got %d)" % s.atk_of(pan, false))
+	s.begin_end()
+	check(pan.cname() == "Neo-Spacian Dark Panther", "Dark Panther is itself again after the End Phase")
+	# ---- Instant Neo Space: only on a Neos fusion; it stays; when it leaves, Neos comes out.
+	s = _bare(314)
+	_mon(s, 0, "Elemental HERO Neos", 0)
+	_mon(s, 0, "Neo-Spacian Grand Mole", 1)
+	gn = _in(s, 0, "Elemental HERO Grand Neos", "extra")
+	var ins := _rst(s, 0, "Instant Neo Space")
+	check(not s.can_activate(0, ins), "Instant Neo Space cannot be equipped to Neos himself")
+	s.extra_summon(0, gn)
+	check(s.can_activate(0, ins), "Instant Neo Space can be equipped to Grand Neos")
+	s.activate(0, ins, gn)
+	s.begin_end()
+	check(s.players[0].field.has(gn), "Grand Neos stays with Instant Neo Space on it")
+	s._destroy(gn)
+	s._cleanup()
+	var out_neos: Array = s.players[0].monsters().filter(func(m): return m.cname() == "Elemental HERO Neos")
+	check(out_neos.size() == 1 and s.players[0].gy.has(ins), "Instant Neo Space: Grand Neos left the field, so Neos is Special Summoned from the Deck")
+	# ---- Fake Hero.
+	s = _bare(315)
+	neos = _in(s, 0, "Elemental HERO Neos", "hand")
+	var fake := _rst(s, 0, "Fake Hero")
+	s.activate(0, fake)
+	check(s.players[0].field.has(neos), "Fake Hero Special Summons Neos from the hand")
+	s.phase = DuelState.Phase.BATTLE
+	check(not s.can_attack(0, neos), "The monster Fake Hero brought out cannot attack")
+	s.begin_end()
+	check(s.players[0].hand.has(neos), "It returns to the hand in the End Phase")
+	# ---- O - Oversoul: an "Elemental HERO" Normal Monster only.
+	s = _bare(316)
+	_in(s, 0, "Elemental HERO Bubbleman", "gy")
+	var over := _rst(s, 0, "O - Oversoul")
+	check(not s.can_activate(0, over), "O - Oversoul cannot bring back Bubbleman (an Effect Monster)")
+	neos = _in(s, 0, "Elemental HERO Neos", "gy")
+	check(s.can_activate(0, over), "O - Oversoul can bring back Neos")
+	s.activate(0, over)
+	check(s.players[0].field.has(neos), "O - Oversoul Special Summons Neos from the Graveyard")
+	# ---- Hero Signal.
+	s = _bare(317)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	var att := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	var avian := _mon(s, 0, "Elemental HERO Avian", 0)
+	var sig := _rst(s, 0, "Hero Signal", "set")
+	s.players[0].deck.append(s._make(_cid("Elemental HERO Sparkman"), 0))
+	s.declare_attack(1, att, avian)
+	check(not s.responses(0, "attack").has(sig), "Hero Signal is not offered when the attack is declared")
+	s.resolve_attack()
+	check(s.players[0].gy.has(avian) and s.players[0].gy.has(sig) and s.players[0].monsters().size() == 1 and s.players[0].monsters()[0].level() <= 4, "Hero Signal: a Level 4 or lower Elemental HERO comes out when yours is destroyed by battle")
+	# ---- A Hero Emerges, Hero Barrier.
+	s = _bare(318)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	att = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	neos = _in(s, 0, "Elemental HERO Neos", "hand")
+	var emerges := _rst(s, 0, "A Hero Emerges", "set")
+	var barrier := _rst(s, 0, "Hero Barrier", "set")
+	s.declare_attack(1, att, null)
+	check(s.responses(0, "attack").has(emerges) and not s.responses(0, "attack").has(barrier), "A Hero Emerges is offered; Hero Barrier is not without an Elemental HERO")
+	s.respond(0, emerges)
+	check(s.players[0].field.has(neos), "A Hero Emerges: the card picked was a monster, so it is Special Summoned")
+	check(s.responses(0, "attack").has(barrier), "Hero Barrier is offered now that an Elemental HERO is on the field")
+	s.respond(0, barrier)
+	lp0 = s.players[0].lp
+	s.resolve_attack()
+	check(s.players[0].lp == lp0, "Hero Barrier negates the attack")
+	# ---- R - Righteous Justice, H - Heated Heart.
+	s = _bare(319)
+	avian = _mon(s, 0, "Elemental HERO Avian", 0)
+	_mon(s, 0, "Elemental HERO Sparkman", 1)
+	var t1 := _rst(s, 1, "Mirror Force", "set")
+	var t2 := _rst(s, 1, "Negate Attack", "set")
+	var rj := _rst(s, 0, "R - Righteous Justice")
+	s.activate(0, rj)
+	check(s.players[1].gy.has(t1) and s.players[1].gy.has(t2), "R - Righteous Justice destroys 2 Spells/Traps for 2 Elemental HEROes")
+	var hh := _rst(s, 0, "H - Heated Heart")
+	s.activate(0, hh, avian)
+	check(s.atk_of(avian, false) == 1500 and EffectRunner.piercing(s, 0, avian), "H - Heated Heart: +500 ATK and piercing this turn")
+	# ---- Edge Hammer, Burst Return.
+	s = _bare(320)
+	var edge := _mon(s, 0, "Elemental HERO Bladedge", 0)
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var hammer := _rst(s, 0, "Edge Hammer", "set")
+	lp1 = s.players[1].lp
+	s.activate(0, hammer, foe)
+	check(s.players[0].gy.has(edge) and s.players[1].gy.has(foe) and s.players[1].lp == lp1 - 3000, "Edge Hammer: Bladedge Tributed, the monster destroyed, 3000 damage")
+	s = _bare(321)
+	var burst := _mon(s, 0, "Elemental HERO Burstinatrix", 0)
+	avian = _mon(s, 0, "Elemental HERO Avian", 1)
+	var br := _rst(s, 0, "Burst Return")
+	s.activate(0, br)
+	check(s.players[0].hand.has(avian) and s.players[0].field.has(burst), "Burst Return: the other Elemental HEROes return to the hand")
+	# ---- Feather Shot.
+	s = _bare(322)
+	avian = _mon(s, 0, "Elemental HERO Avian", 0)
+	avian.summoned_turn = 1
+	var spark := _mon(s, 0, "Elemental HERO Sparkman", 1)
+	spark.summoned_turn = 1
+	var k1 := _mon(s, 1, "Kuriboh", 0)
+	var k2 := _mon(s, 1, "Kuriboh", 1)
+	var fs := _rst(s, 0, "Feather Shot")
+	s.activate(0, fs, avian)
+	s.phase = DuelState.Phase.BATTLE
+	check(not s.can_attack(0, spark), "Feather Shot: the other monsters cannot attack")
+	s.declare_attack(0, avian, k1)
+	s.resolve_attack()
+	check(s.can_attack(0, avian), "Feather Shot: Avian can attack a second time (2 monsters)")
+	s.declare_attack(0, avian, k2)
+	s.resolve_attack()
+	check(not s.can_attack(0, avian) and s.players[1].monsters().is_empty(), "Feather Shot: two attacks, no third")
+	# ---- Transcendent Wings and Winged Kuriboh LV10.
+	s = _bare(323)
+	var wk := _mon(s, 0, "Winged Kuriboh", 0)
+	var lv10 := _in(s, 0, "Winged Kuriboh LV10", "hand")
+	_in(s, 0, "Kuriboh", "hand")
+	var wings := _rst(s, 0, "Transcendent Wings")
+	check(not s.can_activate(0, wings), "Transcendent Wings needs 2 other cards in the hand besides the LV10")
+	_in(s, 0, "Kuriboh", "hand")
+	check(s.can_activate(0, wings), "Transcendent Wings can be activated")
+	s.activate(0, wings)
+	check(s.players[0].field.has(lv10) and s.players[0].gy.has(wk) and s.players[0].hand.is_empty(), "Transcendent Wings: Winged Kuriboh and 2 cards to the Graveyard, LV10 Special Summoned")
+	s.current = 1
+	s.phase = DuelState.Phase.BATTLE
+	att = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	var att2 := _mon(s, 1, "Dark Magician", 1)
+	lp1 = s.players[1].lp
+	s.declare_attack(1, att, lv10)
+	check(s.responses(0, "attack").has(lv10), "Winged Kuriboh LV10 is offered in the opponent's Battle Phase")
+	s.respond(0, lv10)
+	check(s.players[1].monsters().is_empty() and s.players[1].lp == lp1 - 5500 and s.players[0].gy.has(lv10), "Winged Kuriboh LV10: their Attack Position monsters are destroyed, 5500 damage")
+	s.resolve_attack()
+	# ---- The Elemental HERO fusions.
+	s = _bare(324)
+	var sfw := _mon(s, 0, "Elemental HERO Shining Flare Wingman", 0)
+	_in(s, 0, "Elemental HERO Avian", "gy")
+	_in(s, 0, "Elemental HERO Sparkman", "gy")
+	_in(s, 0, "Kuriboh", "gy")
+	check(s.atk_of(sfw, false) == 3100, "Shining Flare Wingman: 2500 + 300 for each of the 2 Elemental HEROes in the Graveyard (got %d)" % s.atk_of(sfw, false))
+	s.phase = DuelState.Phase.BATTLE
+	sfw.summoned_turn = 1
+	foe = _mon(s, 1, "Dark Magician", 0)
+	lp1 = s.players[1].lp
+	s.declare_attack(0, sfw, foe)
+	s.resolve_attack()
+	check(s.players[1].lp == lp1 - 600 - 2500, "Shining Flare Wingman: 600 battle damage and 2500 more for the destroyed monster (LP %d)" % s.players[1].lp)
+	s = _bare(325)
+	s.phase = DuelState.Phase.BATTLE
+	var healer := _mon(s, 0, "Elemental HERO Steam Healer", 0)
+	healer.summoned_turn = 1
+	foe = _mon(s, 1, "Celtic Guardian", 0)
+	lp0 = s.players[0].lp
+	s.declare_attack(0, healer, foe)
+	s.resolve_attack()
+	check(s.players[0].lp == lp0 + 1400, "Steam Healer: gain the destroyed monster's 1400 ATK as LP")
+	s = _bare(326)
+	s.phase = DuelState.Phase.BATTLE
+	var we := _mon(s, 0, "Elemental HERO Wildedge", 0)
+	we.summoned_turn = 1
+	k1 = _mon(s, 1, "Kuriboh", 0)
+	k2 = _mon(s, 1, "Kuriboh", 1)
+	s.declare_attack(0, we, k1)
+	s.resolve_attack()
+	check(s.can_attack(0, we) and not s.attack_targets_for(0, we).has(k1) or not s.players[1].field.has(k1), "Wildedge can attack again, on the other monster")
+	s.declare_attack(0, we, k2)
+	s.resolve_attack()
+	check(s.players[1].monsters().is_empty() and not s.can_attack(0, we), "Wildedge attacked each monster once and cannot attack directly after")
+	s = _bare(327)
+	s.phase = DuelState.Phase.BATTLE
+	var rb := _mon(s, 0, "Elemental HERO Rampart Blaster", 0, false)
+	rb.summoned_turn = 1
+	_mon(s, 1, "Blue-Eyes White Dragon", 0)
+	lp1 = s.players[1].lp
+	check(s.can_attack(0, rb) and s.can_direct_attack_with(0, rb) and s.attack_targets_for(0, rb).is_empty(), "Rampart Blaster in Defense Position can attack, and only directly")
+	s.declare_attack(0, rb, null)
+	s.resolve_attack()
+	check(s.players[1].lp == lp1 - 1000, "Rampart Blaster: half its 2000 ATK as damage")
+	s = _bare(328)
+	s.phase = DuelState.Phase.BATTLE
+	var mar := _mon(s, 0, "Elemental HERO Mariner", 0)
+	mar.summoned_turn = 1
+	_mon(s, 1, "Blue-Eyes White Dragon", 0)
+	check(not s.can_direct_attack_with(0, mar), "Mariner cannot attack directly with no Set card")
+	_rst(s, 0, "Mirror Force", "set")
+	check(s.can_direct_attack_with(0, mar), "Mariner can attack directly while you have a Set Spell/Trap")
+	s = _bare(329)
+	_mon(s, 0, "Elemental HERO Wildheart", 0)
+	_in(s, 0, "Elemental HERO Necroshade", "hand")
+	var shaman := _in(s, 0, "Elemental HERO Necroid Shaman", "extra")
+	poly = _rst(s, 0, "Polymerization")
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var their_gy := _in(s, 1, "Kuriboh", "gy")
+	s.activate(0, poly, shaman)
+	check(s.players[0].field.has(shaman) and s.players[1].gy.has(foe) and s.players[1].field.has(their_gy), "Necroid Shaman: their monster is destroyed and 1 monster from their Graveyard comes back to their field")
+	s = _bare(330)
+	var el := _mon(s, 0, "Elemental HERO Electrum", 0)
+	_mon(s, 1, "Blue-Eyes White Dragon", 0)
+	_mon(s, 1, "Dark Magician", 1)
+	check(s.atk_of(el, false) == 3200, "Electrum: 2900 + 300 for their LIGHT monster, nothing for the DARK one (got %d)" % s.atk_of(el, false))
+	var ban := s._make(_cid("Kuriboh"), 1)
+	s.players[1].banished.append(ban)
+	EffectRunner.run_list(s, 0, el, [["electrum"]], {"_now": true})
+	check(s.players[1].deck.has(ban) and s.players[1].banished.is_empty(), "Electrum: banished cards are shuffled into the Deck")
+	s = _bare(331)
+	s.phase = DuelState.Phase.MAIN1
+	var tem := _mon(s, 0, "Elemental HERO Tempest", 0)
+	var guarded := _mon(s, 0, "Kuriboh", 1)
+	var spare := _rst(s, 0, "Mirror Force", "set")
+	s.manual = [false, false]
+	s.ignite(0, tem)
+	check(s.players[0].gy.has(spare) or s.players[0].gy.has(guarded), "Tempest: 1 other card you control goes to the Graveyard")
+	var kept: Array = s.players[0].monsters().filter(func(m): return m.tags.has("guard_by"))
+	check(kept.size() == 1 and EffectRunner.survives_battle(s, kept[0]), "Tempest: the chosen monster cannot be destroyed by battle")
+	s._destroy(tem)
+	check(kept.is_empty() or not EffectRunner.survives_battle(s, kept[0]) or kept[0] == tem, "Tempest gone: the guard ends")
+	s = _bare(332)
+	var ww := _mon(s, 0, "Elemental HERO Wild Wingman", 0)
+	_in(s, 0, "Kuriboh", "hand")
+	their_set = _rst(s, 1, "Mirror Force", "set")
+	s.ignite(0, ww)
+	check(s.players[1].gy.has(their_set) and s.players[0].hand.is_empty(), "Wild Wingman: discard 1, destroy a Spell/Trap")
+	# ---- Necroshade: one Level 5+ Elemental HERO without Tributing, once.
+	s = _bare(333)
+	var shade := _in(s, 0, "Elemental HERO Necroshade", "gy")
+	neos = _in(s, 0, "Elemental HERO Neos", "hand")
+	var neos2 := _in(s, 0, "Elemental HERO Neos", "hand")
+	check(s.tributes_needed(neos) == 0 and s.can_normal_summon(0, neos), "Necroshade in the Graveyard: Neos needs no Tribute")
+	s.normal_summon(0, neos, [])
+	check(s.players[0].field.has(neos) and shade.once, "Neos is Normal Summoned without Tributing, and Necroshade's effect is spent")
+	check(s.tributes_needed(neos2) == 2, "The second Neos needs its 2 Tributes")
+	# ---- Card Trooper, Wroughtweiler, Hero Kid.
+	s = _bare(334)
+	var tr := _mon(s, 0, "Card Trooper", 0)
+	var d0: int = s.players[0].deck.size()
+	s.ignite(0, tr)
+	check(s.players[0].deck.size() == d0 - 3 and s.atk_of(tr, false) == 1900, "Card Trooper: 3 cards sent, 400 + 1500 ATK this turn (got %d)" % s.atk_of(tr, false))
+	var h0: int = s.players[0].hand.size()
+	s._destroy(tr)
+	check(s.players[0].hand.size() == h0 + 1, "Card Trooper destroyed: draw 1 card")
+	s = _bare(335)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	att = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	var dog := _mon(s, 0, "Wroughtweiler", 0, false)
+	var gy_hero := _in(s, 0, "Elemental HERO Neos", "gy")
+	var gy_poly := _in(s, 0, "Polymerization", "gy")
+	s.declare_attack(1, att, dog)
+	s.resolve_attack()
+	check(s.players[0].hand.has(gy_hero) and s.players[0].hand.has(gy_poly), "Wroughtweiler: an Elemental HERO and Polymerization return to the hand")
+	s = _bare(336)
+	var kid := _in(s, 0, "Hero Kid", "hand")
+	s.players[0].deck.append(s._make(_cid("Hero Kid"), 0))
+	s.players[0].deck.append(s._make(_cid("Hero Kid"), 0))
+	s._special(0, kid, "effect")
+	s.players[0].hand.erase(kid)
+	EffectRunner.on_summon(s, 0, kid, "special")
+	check(s.players[0].monsters().filter(func(m): return m.cname() == "Hero Kid").size() == 3, "Hero Kid: Special Summoned, the other 2 come out of the Deck")
+	# ---- The computer makes a Contact Fusion when it will stay (Neo Space), and holds it otherwise.
+	s = _bare(337)
+	s.players[0].extra.clear()
+	_mon(s, 0, "Elemental HERO Neos", 0)
+	_mon(s, 0, "Neo-Spacian Grand Mole", 1)
+	gn = _in(s, 0, "Elemental HERO Grand Neos", "extra")
+	_mon(s, 1, "Blue-Eyes White Dragon", 0)
+	_mon(s, 1, "Blue-Eyes White Dragon", 1)
+	s.normal_summoned = true
+	check(DuelAI._contact_worth(s, 0, gn) == 0, "The computer does not make Grand Neos when it would only go back")
+	ns = _rst(s, 0, "Neo Space")
+	var act := DuelAI.next_main_action(s, 0, DuelAI.HARD)
+	check(act.get("do", "") == "activate" and act.get("card") == ns, "The computer plays Neo Space first")
+	s.activate(0, ns)
+	act = DuelAI.next_main_action(s, 0, DuelAI.HARD)
+	check(act.get("do", "") == "extra" and act.get("card") == gn, "With Neo Space up, the computer makes Grand Neos (got %s)" % str(act.get("do", "")))

@@ -1793,7 +1793,7 @@ func _on_board_card_clicked(card: Card3D) -> void:
 		return
 	var mine: bool = state.players[ME].field.has(inst)
 	var theirs: bool = state.players[AI].field.has(inst)
-	if mine and mode in ["", "attack"] and inst.face_up and inst.attack_pos and (state.can_attack(ME, inst)
+	if mine and mode in ["", "attack"] and inst.face_up and (inst.attack_pos or EffectRunner.fx(inst).get("direct_from_def", false)) and (state.can_attack(ME, inst)
 			or (state.phase == DuelState.Phase.MAIN1 and state.can_enter_battle() and inst.attacked_turn != state.turn)):
 		_drag_atk = {"inst": inst, "from": get_viewport().get_mouse_position(), "on": false}
 	if mode == "materials":
@@ -1897,7 +1897,12 @@ func _on_extra_pressed() -> void:
 		var ok := false
 		match x.frame():
 			"fusion":
-				status = "Use Polymerization" if has_poly else "Needs Polymerization"
+				if CardEffects.of(x.cname()).has("contact"):
+					# Contact Fusion: no Polymerization, the materials go from your field.
+					ok = state.can_extra_summon(ME, x)
+					status = "Contact Fusion" if ok else "Needs its materials on your field"
+				else:
+					status = "Use Polymerization" if has_poly else "Needs Polymerization"
 			"synchro":
 				ok = state.can_extra_summon(ME, x)
 				status = "Synchro Summon" if ok else Loc.t("Tuner + %d levels") % x.level()
@@ -1915,6 +1920,12 @@ var _extra_sel: Array = []
 ## Pick materials yourself: tap monsters on your field, or press Auto.
 func _on_extra_chosen(inst) -> void:
 	if not _my_turn():
+		return
+	if CardEffects.of(inst.cname()).has("contact"):
+		if state.can_extra_summon(ME, inst):
+			_cancel_mode()
+			await _act("extra_summon", [ME, inst, []], false)
+			await _after_summon(ME)
 		return
 	var options := state.extra_materials(ME, inst)
 	if options.is_empty():

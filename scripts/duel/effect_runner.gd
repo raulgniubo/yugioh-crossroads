@@ -49,6 +49,9 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 	if f.has("atk_per"):
 		var spec: String = f["atk_per"][0]
 		b += _count(s, c.owner, spec) * int(f["atk_per"][1])
+	if f.get("atk_lp_gap", false) and s.players[c.owner].lp < s.players[s.opponent(c.owner)].lp:
+		# Air Neos: "While your Life Points are lower than your opponent's, this card gains ATK equal to the difference."
+		b += s.players[s.opponent(c.owner)].lp - s.players[c.owner].lp
 	if f.has("lose_if_alone"):
 		var n := 0
 		for m in s.players[c.owner].monsters():
@@ -114,6 +117,27 @@ static func _count(s: DuelState, owner: int, spec: String) -> int:
 		return n
 	if kind == "own_hand":
 		return s.players[owner].hand.size()   # Slifer the Sky Dragon
+	if kind in ["all_st", "all_cards", "opp_st"]:
+		# Flare Neos: every Spell/Trap on the field. Magma Neos: every card on the field. Flare Scarab: the opponent's Spells/Traps.
+		for q in 2:
+			if kind == "opp_st" and q == owner:
+				continue
+			n += s.players[q].set_cards().size() + (1 if s.players[q].field_spell != null else 0)
+			if kind == "all_cards":
+				n += s.players[q].monsters().size()
+		return n
+	if kind == "own_gy_has":
+		# Shining Flare Wingman: each "Elemental HERO" card in your Graveyard.
+		for g in s.players[owner].gy:
+			if str(g.data.get("name", "")).contains(val):
+				n += 1
+		return n
+	if kind == "opp_attrs":
+		# Electrum: each monster the opponent controls with one of its Attributes.
+		for m in s.players[s.opponent(owner)].monsters():
+			if m.face_up and str(m.data.get("attribute", "")) in val.split("|"):
+				n += 1
+		return n
 	if kind == "opp_dragons" or kind == "all_dragons":
 		# Buster Blader: Dragons the opponent controls or has in the Graveyard. Dark Paladin: every Dragon on the field and in the Graveyards.
 		for q in 2:
@@ -169,6 +193,12 @@ static func can_direct(s: DuelState, p: int, c) -> bool:
 	if toon == 2 and not c.negated:
 		return not s.has_toon(s.opponent(p))
 	match str(f.get("direct_if", "")):
+		"own_set":
+			# Mariner: "While you have any Set card(s) in your Spell & Trap Zone".
+			for st in s.players[p].spells:
+				if st != null and not st.face_up:
+					return true
+			return false
 		"opp_all_def":
 			# "If the only cards your opponent controls are Defense Position monsters"
 			for m in opp.monsters():
@@ -217,7 +247,7 @@ static func max_attacks(c) -> int:
 
 
 static func piercing(s: DuelState, p: int, c) -> bool:
-	if fx(c).get("piercing", false):
+	if fx(c).get("piercing", false) or int(c.tags.get("pierce_turn", -1)) == s.turn:
 		return true
 	for dr in s.players[p].monsters():
 		# Drill Synchron: your Warriors pierce.
@@ -248,6 +278,12 @@ static func survives_battle(s: DuelState, c) -> bool:
 	var f := fx(c)
 	if f.get("battle_immune", false):
 		return true
+	if c.tags.has("guard_by"):
+		# Elemental HERO Tempest: "while this card is face-up on the field, that monster cannot be destroyed by battle."
+		var g = s.find_uid(int(c.tags["guard_by"]))
+		if g != null and g.face_up and not g.negated and (s.players[0].field.has(g) or s.players[1].field.has(g)):
+			return true
+		c.tags.erase("guard_by")
 	if f.has("survive_vs_atk_min") and s.battle_foe != null and s.atk_of(s.battle_foe, false) >= int(f["survive_vs_atk_min"]):
 		return true   # Sonic Chick: not by battle with a monster that has 1900 or more ATK
 	if f.get("hand_empty_guard", false) and s.players[c.owner].hand.is_empty():
@@ -854,6 +890,8 @@ static func can_ignite(s: DuelState, p: int, c) -> bool:
 		return false   # "You can only use this effect of ... once per turn"
 	if ig.get("need_atk_pos", false) and not c.attack_pos:
 		return false
+	if ig.get("main1", false) and s.phase != DuelState.Phase.MAIN1:
+		return false   # "during your Main Phase 1" (Glow Neos)
 	if ig.get("no_attack_yet", false) and ps.attacks_turn == s.turn and ps.attacks_this_turn > 0:
 		return false   # "You cannot declare an attack the turn you activate this effect"
 	if ig.get("not_after_double", false) and c.attack_count_turn == s.turn and c.attack_count >= 2:
@@ -890,6 +928,10 @@ static func can_ignite(s: DuelState, p: int, c) -> bool:
 				return false
 		"tribute_other":
 			if ps.monsters().filter(func(m): return m != c and s.can_tribute_fx(m)).is_empty():
+				return false
+		"send_other":
+			# Tempest: "send 1 other card you control to the GY".
+			if ps.monsters().size() + ps.set_cards().size() + (1 if ps.field_spell != null else 0) < 2:
 				return false
 		"tribute_plant":
 			var any := false
@@ -945,8 +987,34 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 			"opp_half", "opp_zero", "destroy_half_damage":
 				if opp.monsters().is_empty():
 					return false
-			"exile_opp", "exile_opp_end", "opp_change_pos":
+			"exile_opp", "exile_opp_end", "opp_change_pos", "grand_neos":
 				if opp.monsters().is_empty():
+					return false
+			"dark_panther":
+				if opp.monsters().filter(func(m): return m.face_up).is_empty():
+					return false
+			"aqua_dolphin", "aqua_neos", "heal_per_opp_hand":
+				if opp.hand.is_empty():
+					return false
+			"dark_neos":
+				# "If this card is not already targeting a monster with its effect".
+				for q in 2:
+					for m in s.players[q].monsters():
+						if int(m.tags.get("neg_by", -1)) == c.uid:
+							return false
+				if _dark_neos_targets(s, c).is_empty():
+					return false
+			"glow_neos":
+				if _face_up_cards(opp).is_empty():
+					return false
+			"storm_neos":
+				if _all_st(s).is_empty():
+					return false
+			"card_trooper":
+				if s.players[p].deck.is_empty():
+					return false
+			"tempest":
+				if s.players[p].monsters().is_empty():
 					return false
 			"special_named_any":
 				var any_n := false
@@ -1018,6 +1086,27 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 				if not any_wedge:
 					return false
 	return true
+
+
+## The face-up cards a player controls (monsters, Spells, Traps, the Field Spell).
+static func _face_up_cards(ps) -> Array:
+	var out: Array = ps.monsters().filter(func(m): return m.face_up)
+	for st in ps.spells:
+		if st != null and st.face_up:
+			out.append(st)
+	if ps.field_spell != null and ps.field_spell.face_up:
+		out.append(ps.field_spell)
+	return out
+
+
+## Dark Neos: the face-up Effect Monsters it could aim at.
+static func _dark_neos_targets(s: DuelState, c) -> Array:
+	var out := []
+	for q in 2:
+		for m in s.players[q].monsters():
+			if m != c and m.face_up and _is_effect_monster(m):
+				out.append(m)
+	return out
 
 
 ## Every Spell and Trap on the field, either side, Set ones included.
@@ -1104,6 +1193,23 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 			events.append({"type": "tribute", "player": p, "card": anyp})
 			events.append_array(EffectRunner.trigger(s, anyp, "tributed"))
 			events.append_array(s._monster_left(anyp))
+		"send_other":
+			var mine_o: Array = ps.monsters().filter(func(m): return m != c)
+			mine_o.append_array(ps.set_cards())
+			if ps.field_spell != null:
+				mine_o.append(ps.field_spell)
+			var worst_o = mine_o[0]
+			for x in mine_o:
+				if s._card_value(x) < s._card_value(worst_o):
+					worst_o = x
+			worst_o = s.pick1(p, Loc.t("%s: send 1 other card you control to the Graveyard") % c.cname(), mine_o, worst_o, c)
+			if ps.field.has(worst_o):
+				ps.field[ps.field.find(worst_o)] = null
+				s._to_gy(ps, worst_o)
+				events.append({"type": "destroy", "player": p, "card": worst_o, "zone": -1, "overlays": []})
+				events.append_array(s._monster_left(worst_o))
+			else:
+				events.append_array(s._destroy_st(worst_o))
 		"half_lp":
 			var half: int = ps.lp / 2
 			ps.lp -= half
@@ -1252,6 +1358,9 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 			return ps.field.has(c) and not c.face_up and window == "chain" and not s.chain.is_empty() and str(s.chain.back().get("kind", "")) == "spell" and s.chain.back().get("target") == c and not s.chain.back().get("negated", false)
 		"skill_successor":
 			return ps.gy.has(c) and s.current == p and c.gy_turn != s.turn and window in ["attack", "damage", "battle_start"] and s._strongest_face_up(p) != null
+		"wk_lv10":
+			# "During your opponent's Battle Phase (Quick Effect): You can Tribute this face-up card".
+			return on_field and opp_turn and s.phase == DuelState.Phase.BATTLE and window in ["attack", "battle_start"] and s.can_tribute_fx(c)
 	return false
 
 
@@ -1284,6 +1393,23 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 	var events := []
 	var hit: bool = not s.pending_attack.is_empty() and int(s.pending_attack["player"]) != p and not s.pending_attack.get("negated", false)
 	match kind:
+		"wk_lv10":
+			ps.field[ps.field.find(c)] = null
+			s._to_gy(ps, c)
+			events.append({"type": "tribute", "player": p, "card": c})
+			events.append_array(s._monster_left(c))
+			var sum_w := 0
+			var was_by_w := s.effect_by
+			s.effect_by = p
+			for m in opp.monsters():
+				if m.attack_pos:
+					events.append_array(s._destroy(m))
+					if not opp.field.has(m):
+						sum_w += m.atk()
+			s.effect_by = was_by_w
+			events.append(_ev(p, c, Loc.t("%s destroys every Attack Position monster: %d damage") % [c.cname(), sum_w]))
+			if sum_w > 0:
+				events.append_array(s._damage(opp_i, sum_w))
 		"ssd":
 			if not s.chain.is_empty() and SpellRules.would_destroy(s.chain.back()) and int(c.tags.get("ssd_neg", -1)) != s.turn:
 				c.tags["ssd_neg"] = s.turn
@@ -1442,6 +1568,14 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 			return not s.chain.is_empty() and int(s.chain.back()["player"]) != p and ps.hand.size() >= 1
 		"sorcerer", "joker", "big_shield":
 			return not s.chain.is_empty() and int(s.chain.back()["player"]) != p
+		"wk_lv10":
+			var sum_k := 0
+			var n_k := 0
+			for m in s.players[s.opponent(p)].monsters():
+				if m.attack_pos:
+					sum_k += m.atk()
+					n_k += 1
+			return n_k >= 1 and (sum_k >= s.players[s.opponent(p)].lp or n_k >= 2 or sum_k >= 2000)
 		"skill_successor":
 			if s.pending_attack.is_empty() or window == "battle_start":
 				return false
@@ -1539,6 +1673,33 @@ static func ai_ignite_ok(s: DuelState, p: int, c) -> bool:
 	match str(ignite_spec(c).get("ai", "")):
 		"never":
 			return false
+		"spare_card":
+			# An effect that costs a discard (Aqua Dolphin, Aqua Neos): only with a card to spare.
+			return ps.hand.size() >= 2 and not opp.hand.is_empty()
+		"opp_st":
+			# Wild Wingman: when the opponent has a Spell or Trap to hit.
+			return ps.hand.size() >= 2 and (not opp.set_cards().is_empty() or opp.field_spell != null)
+		"storm":
+			var theirs_st: int = opp.set_cards().size() + (1 if opp.field_spell != null else 0)
+			var mine_st: int = ps.set_cards().size() + (1 if ps.field_spell != null else 0)
+			return theirs_st > mine_st
+		"dark_neos":
+			for m in opp.monsters():
+				if m.face_up and _is_effect_monster(m) and not m.negated:
+					return true
+			return false
+		"glow_neos":
+			# Take a monster only when it is the one in the way; a face-up Spell or Trap is always worth it.
+			for x in _face_up_cards(opp):
+				if not x.is_monster():
+					return true
+			var top := 0
+			for m in opp.monsters():
+				if m.face_up:
+					top = maxi(top, s.atk_of(m, false) if m.attack_pos else s.def_of(m))
+			return top >= s.atk_of(c, false)
+		"trooper":
+			return ps.deck.size() >= 12
 		"catapult":
 			# Only for the win: the biggest monster's half ATK finishes the duel.
 			var top_atk := 0
@@ -1631,6 +1792,212 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"aqua_dolphin":
+			# Look at the opponent's hand and choose 1 monster. Control a monster with at least its ATK: it is
+			# destroyed and they take 500. Otherwise you take 500.
+			var seen: Array = opp.hand.filter(func(h): return h.is_monster())
+			events.append(_ev(p, c, Loc.t("%s looks at the opponent's hand") % name))
+			if seen.is_empty():
+				events.append(_ev(p, c, Loc.t("There is no monster in the opponent's hand")))
+				return events
+			var my_top := -1
+			for m in ps.monsters():
+				my_top = maxi(my_top, s.atk_of(m, false))
+			var pick_d = null
+			for h in seen:
+				if h.atk() <= my_top and (pick_d == null or h.atk() > pick_d.atk()):
+					pick_d = h
+			if pick_d == null:
+				pick_d = seen[0]
+			pick_d = s.pick1(p, Loc.t("%s: choose 1 monster in the opponent's hand") % name, seen, pick_d, c)
+			if pick_d.atk() <= my_top:
+				opp.hand.erase(pick_d)
+				s._to_gy(opp, pick_d)
+				events.append(_ev(p, c, Loc.t("%s is destroyed in the hand") % pick_d.cname()))
+				events.append({"type": "discard", "player": opp_i, "card": pick_d})
+				events.append_array(s._damage(opp_i, 500))
+			else:
+				events.append(_ev(p, c, Loc.t("%s is too strong: you take 500 damage") % pick_d.cname()))
+				events.append_array(s._damage(p, 500))
+		"heal_per_opp_hand":
+			var gain_h: int = int(a[1]) * opp.hand.size()
+			ps.lp += gain_h
+			events.append(_ev(p, c, Loc.t("%s: gain %d LP") % [name, gain_h]))
+			events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": gain_h})
+		"dark_panther":
+			# "...until the End Phase, this card's name becomes that monster's original name, also replace this
+			# effect with that monster's original effects (if any)."
+			var ups_p: Array = opp.monsters().filter(func(m): return m.face_up and can_target(c, m))
+			if ups_p.is_empty():
+				return events
+			var best_p = ups_p[0]
+			for m in ups_p:
+				if not CardEffects.of(str(m.data.get("name", ""))).is_empty() and CardEffects.of(str(best_p.data.get("name", ""))).is_empty():
+					best_p = m
+			best_p = s.pick1(p, Loc.t("%s: copy which monster's name and effects?") % name, ups_p, best_p, c)
+			c.tags["as"] = str(best_p.data.get("name", ""))
+			c.ignite_turn = -1
+			events.append(_ev(p, c, Loc.t("%s becomes %s until the End Phase") % [name, str(c.tags["as"])]))
+		"aqua_neos":
+			if not opp.hand.is_empty():
+				var rnd = opp.hand[randi() % opp.hand.size()]
+				opp.hand.erase(rnd)
+				s._to_gy(opp, rnd)
+				events.append(_ev(p, c, Loc.t("%s destroys %s in the opponent's hand") % [name, rnd.cname()]))
+				events.append({"type": "discard", "player": opp_i, "card": rnd})
+		"dark_neos":
+			var cand_n: Array = _dark_neos_targets(s, c).filter(func(m): return can_target(c, m))
+			if cand_n.is_empty():
+				return events
+			var best_n = null
+			for m in cand_n:
+				if opp.field.has(m) and not m.negated and (best_n == null or s.atk_of(m, false) > s.atk_of(best_n, false)):
+					best_n = m
+			if best_n == null:
+				if not s.manual[p]:
+					return events      # the computer does not shut off its own monsters
+				best_n = cand_n[0]
+			best_n = s.pick1(p, Loc.t("%s: negate which monster's effects?") % name, cand_n, best_n, c)
+			best_n.tags["neg_by"] = c.uid
+			best_n.negated = true
+			events.append(_ev(p, c, Loc.t("%s negates the effects of %s while it is on the field") % [name, best_n.cname()]))
+		"grand_neos":
+			var t_g = _best_opp(s, p, "", c, "return 1 monster to the hand")
+			if t_g != null:
+				events.append(_ev(p, c, Loc.t("%s returns %s to the hand") % [name, t_g.cname() if t_g.face_up else Loc.t("the face-down monster")]))
+				events.append_array(s._bounce(t_g))
+		"glow_neos":
+			# Destroy 1 face-up card the opponent controls, then by its type: Monster, this card cannot attack
+			# this turn. Spell, it can attack directly this turn. Trap, it changes to Defense Position.
+			var ups_g: Array = _face_up_cards(opp).filter(func(x): return not x.is_monster() or can_target(c, x))
+			if ups_g.is_empty():
+				return events
+			var best_g = null
+			for x in ups_g:
+				if not x.is_monster() and (best_g == null or x.is_spell()):
+					best_g = x
+			if best_g == null:
+				for x in ups_g:
+					if best_g == null or s.atk_of(x, false) > s.atk_of(best_g, false):
+						best_g = x
+			best_g = s.pick1(p, Loc.t("%s: destroy 1 face-up card") % name, ups_g, best_g, c)
+			var kind_g := "monster" if best_g.is_monster() else ("spell" if best_g.is_spell() else "trap")
+			events.append(_ev(p, c, Loc.t("%s destroys %s") % [name, best_g.cname()]))
+			events.append_array(s._destroy(best_g) if best_g.is_monster() else s._destroy_st(best_g))
+			if not ps.field.has(c):
+				return events
+			match kind_g:
+				"monster":
+					c.attack_count_turn = s.turn
+					c.attack_count = 99
+					events.append(_ev(p, c, Loc.t("A monster: %s cannot attack this turn") % name))
+				"spell":
+					c.tags["direct_turn"] = s.turn
+					events.append(_ev(p, c, Loc.t("A Spell: %s can attack directly this turn") % name))
+				"trap":
+					if c.attack_pos:
+						c.attack_pos = false
+						events.append(_ev(p, c, Loc.t("A Trap: %s changes to Defense Position") % name))
+						events.append({"type": "position", "player": p, "card": c, "zone": ps.field.find(c)})
+		"storm_neos":
+			events.append(_ev(p, c, Loc.t("%s destroys every Spell and Trap on the field") % name))
+			for st in _all_st(s):
+				events.append_array(s._destroy_st(st))
+		"tempest":
+			var mine_t: Array = ps.monsters()
+			if mine_t.is_empty():
+				return events
+			var best_t = mine_t[0]
+			for m in mine_t:
+				if s.atk_of(m, false) > s.atk_of(best_t, false):
+					best_t = m
+			best_t = s.pick1(p, Loc.t("%s: which monster cannot be destroyed by battle?") % name, mine_t, best_t, c)
+			for m in ps.monsters():
+				if int(m.tags.get("guard_by", -1)) == c.uid:
+					m.tags.erase("guard_by")
+			best_t.tags["guard_by"] = c.uid
+			events.append(_ev(p, c, Loc.t("%s cannot be destroyed by battle while %s is face-up") % [best_t.cname(), name]))
+		"card_trooper":
+			var most: int = mini(3, ps.deck.size())
+			var labels_t: Array = []
+			for i in most:
+				labels_t.append(Loc.t("Send %d") % (i + 1))
+			var n_t: int = s.choose_option(p, Loc.t("%s: send how many cards from the top of your Deck to the Graveyard?") % name, labels_t, most - 1, c) + 1
+			for i in n_t:
+				var top_t = ps.deck[0]
+				ps.deck.erase(top_t)
+				s._to_gy(ps, top_t)
+				events.append({"type": "mill", "player": p, "card": top_t, "deck": ps.deck.size()})
+				events.append_array(trigger(s, top_t, "sent_gy"))
+			if c.atk_mod_turn != s.turn:
+				c.atk_mod_turn = s.turn
+				c.atk_mod_t = 0
+			c.atk_mod_t += 500 * n_t
+			events.append(_ev(p, c, Loc.t("%s: %d ATK until the end of this turn") % [name, 500 * n_t]))
+		"necroid":
+			# "Target 1 monster your opponent controls; destroy that target, then Special Summon 1 monster from
+			# your opponent's GY to their field."
+			var t_s = _best_opp(s, p, "", c, "destroy 1 monster")
+			if t_s == null:
+				return events
+			events.append(_ev(p, c, Loc.t("%s destroys %s") % [name, t_s.cname() if t_s.face_up else Loc.t("the face-down monster")]))
+			events.append_array(s._destroy(t_s))
+			if opp.field.has(t_s):
+				return events
+			var back_s: Array = opp.gy.filter(func(g): return g.is_monster() and s.can_revive(g))
+			if back_s.is_empty() or opp.free_zone() == -1:
+				return events
+			var weak_s = back_s[0]
+			for g in back_s:
+				if g.atk() < weak_s.atk():
+					weak_s = g
+			weak_s = s.pick1(p, Loc.t("%s: Special Summon which monster to the opponent's field?") % name, back_s, weak_s, c)
+			opp.gy.erase(weak_s)
+			events.append(_ev(p, c, Loc.t("%s comes back to the opponent's field") % weak_s.cname()))
+			events.append_array(s._special(opp_i, weak_s, "reborn", "atk"))
+		"electrum":
+			# "When this card is Fusion Summoned: Shuffle all banished cards into the Deck(s)."
+			var n_e := 0
+			for q in 2:
+				for b in s.players[q].banished.duplicate():
+					var hold := false
+					for q3 in 2:
+						for ex in s.players[q3].exiles:
+							if ex["card"] == b:
+								hold = true      # only away for a while (Shooting Star Dragon): it is on its way back
+					if hold:
+						continue
+					s.players[q].banished.erase(b)
+					if b.is_monster() and b.frame() in ["fusion", "synchro", "xyz"]:
+						s.players[q].extra.append(b)
+					else:
+						s.players[q].deck.append(b)
+					n_e += 1
+				s._shuffle(s.players[q].deck)
+			events.append(_ev(p, c, Loc.t("%s: %d banished cards are shuffled into the Decks") % [name, n_e]))
+		"heal_victim_atk":
+			var v_h = ctx.get("victim")
+			if v_h != null and (s.players[0].gy.has(v_h) or s.players[1].gy.has(v_h)) and v_h.atk() > 0:
+				ps.lp += v_h.atk()
+				events.append(_ev(p, c, Loc.t("%s: gain %d LP") % [name, v_h.atk()]))
+				events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": v_h.atk()})
+		"wroughtweiler":
+			# "Target 1 "Elemental HERO" card and 1 "Polymerization" in your GY; add them to your hand."
+			var heroes_w: Array = ps.gy.filter(func(g): return g != c and str(g.data.get("name", "")).contains("Elemental HERO"))
+			var polys_w: Array = ps.gy.filter(func(g): return g.cname() == "Polymerization")
+			if heroes_w.is_empty() or polys_w.is_empty():
+				return events
+			var best_w = heroes_w[0]
+			for g in heroes_w:
+				if s._card_value(g) > s._card_value(best_w):
+					best_w = g
+			best_w = s.pick1(p, Loc.t("%s: add which \"Elemental HERO\" card to your hand?") % name, heroes_w, best_w, c)
+			for g in [best_w, polys_w[0]]:
+				ps.gy.erase(g)
+				ps.hand.append(g)
+				events.append(_ev(p, c, Loc.t("%s returns %s to the hand") % [name, g.cname()]))
+				events.append({"type": "gy_to_hand", "player": p, "card": g})
+				events.append_array(added_by_effect(s, p, g))
 		"rda_end":
 			# Red Dragon Archfiend, your End Phase: your other monsters that did not attack are destroyed.
 			var idle := []
@@ -2127,6 +2494,8 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			for d in _pick(s, p, c, Loc.t("Special Summon from your %s") % ("Deck" if a[1] == "deck" else ("hand" if a[1] == "hand" else ("hand or Graveyard" if a[1] == "hand_gy" else "Graveyard"))), pool, flt, n):
 				if ps.free_zone() == -1:
 					break
+				if a[1] != "hand_gy" and not src.has(d):
+					continue   # it already came out (Hero Kid: the first one out called the next)
 				var from_gy: bool = a[1] == "gy" or (a[1] == "hand_gy" and ps.gy.has(d))
 				if a[1] == "hand_gy":
 					ps.hand.erase(d)
