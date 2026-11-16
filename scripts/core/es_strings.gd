@@ -5192,4 +5192,5 @@ const ES := {
 	"Called it wrong: your monsters are destroyed": "Fallaste: tus monstruos son destruidos",
 	"%s: copy which monster's ATK and DEF?": "%s: ¿de qué monstruo copias el ATK y la DEF?",
 	"%s: its ATK and DEF become %d / %d": "%s: su ATK y DEF se vuelven %d / %d",
+	"Fan project  ·  v%s  ·  by %s  ·  Not affiliated with Konami": "Proyecto de fans  ·  v%s  ·  por %s  ·  Sin relación con Konami",
 }
