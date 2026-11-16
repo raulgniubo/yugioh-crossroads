@@ -5224,4 +5224,9 @@ const ES := {
 	"%s: Special Summon Black Rose Dragon or a Plant monster from your Graveyard?": "%s: ¿Invocar de Modo Especial a Black Rose Dragon o un monstruo Planta de tu Cementerio?",
 	"%s: destroy which monster? (tied for the lowest ATK)": "%s: ¿qué monstruo destruyes? (empatados con el ATK más bajo)",
 	"Special Summon 1 monster from your hand": "Invoca de Modo Especial 1 monstruo de tu mano",
+	"%s: banish which monster to take its name and effects?": "%s: ¿qué monstruo destierras para tomar su nombre y efectos?",
+	"%s: discard up to 2 cards": "%s: descarta hasta 2 cartas",
+	"%s: send %d \"Infernity\" cards from your Deck to the Graveyard": "%s: manda %d cartas \"Infernity\" de tu Deck al Cementerio",
+	"%s: banish which \"Infernity\" card from your Graveyard?": "%s: ¿qué carta \"Infernity\" destierras de tu Cementerio?",
+	"%s: destroy which card?": "%s: ¿qué carta destruyes?",
 }

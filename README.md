@@ -7,7 +7,7 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
 ## What is in 0.33.33
 
-Not built yet: this is what is saved for the next build.
+Five more duelists got their best decks: **Joey, Jack, Crow, Akiza and Kalin**. 58 cards built, each against its card text, each with a test. Plus the credit line on the main menu.
 
 ### Joey
 
@@ -42,17 +42,28 @@ Not built yet: this is what is saved for the next build.
 - **Phoenixian Cluster Amaryllis** comes out through Phoenixian Seed, is destroyed after it attacks, burns for 800, and blooms again in your End Phase. **Thorn of Malice**, **Queen Angel of Roses**, **Witch of the Black Rose**, **Violet Witch** into **Rose Fairy**, **Blue Rose Dragon**, **Wicked Rebirth**, **Blossom Bombardment**, **Seed of Deception**.
 - Fixed on the way: in 0.33.32 Card Trooper sent cards from the bottom of the Deck instead of the top, and Glow Moss announced the bottom card instead of the one drawn. Both read the Deck from the wrong end. Fixed here (and Witch of the Black Rose, new in this version, was caught by its test).
 
+### Kalin
+
+**Infernity with an empty hand, into Infernity Doom Dragon, Void Ogre Dragon and Hundred Eyes Dragon.** 11 cards built.
+
+- **Main, 40:** Infernity Archfiend x3, Necromancer x3, Beetle x3, Beast x2, Guardian x2, Knight x2, Mirage x2, Avenger x2, Destroyer x2, Archer x2, Dwarf, Randomizer; Infernity Inferno x2, Infernity Break x2, Infernity Barrier x2, Infernity Force x2, Void Trap Hole; and staples that are not his own: Monster Reborn, Pot of Greed, Mystical Space Typhoon x2, Card Destruction, Mirror Force.
+- **Extra:** Infernity Doom Dragon x2, Void Ogre Dragon, Hundred Eyes Dragon.
+- **Void Ogre Dragon** negates a Spell or Trap once per turn while your hand is empty. **Hundred Eyes Dragon** banishes a DARK monster from your Graveyard and becomes it for the turn. **Infernity Barrier** is a Counter Trap that stops a card or effect.
+
 ### Credit
 
 The main menu line now reads "Fan project · v0.33.33 · by Atlas Peak Games".
 
 **Not done or not checked:**
 
+- Still to build for Kalin: Infernity Launcher, Infernity General, ZERO-MAX, Infernity Reflector, Dark Tuner Nightmare Hand, Earthbound Immortal Ccapac Apu, Phantom Hand, Depth Amulet, Full Salvo, Gatling Ogre. The computer made Infernity Doom Dragon 22 times in 40 test duels and never Void Ogre Dragon or Hundred Eyes Dragon. Kalin on Hard won 19 of 40.
 - Still to build for Akiza: Splendid Rose's second effect (so it is not in her Extra Deck yet), Hedge Guard, Wall of Ivy, Black Garden, Mark of the Rose, Ivy Shackles, Doppelganger, Plant Food Chain, Magic Planter, Vengeful Servant, Nature's Reflection, Overdoom Line. Akiza on Hard won 13 of 40 test duels.
 - Still to build for Crow: Vayu, Zephyros, Breeze, Kochi, Jetstream, Etesian, Aurora, Calima, Abrolhos, Delta Crow - Anti Reverse, Black Sonic, Black Return, Cards for Black Feathers, Fake Feather, Black Feather Beacon, Raptor Wing Strike, Black Thunder, Level Retuner, Blackboost, Blackwing - Bombardment. Crow on Hard won 28 of 40 test duels.
 - Still to build for Jack: Red Nova Dragon (the game cannot do a Synchro Summon with 2 Tuners yet), Majestic Red Dragon, Barrier Resonator, Force Resonator, Trust Guardian, Extra Veiler, Red Gardna, Synchro Soldier, Power Supplier, Lancer Archfiend, Trap Eater, Crimson Fire, Changing Destiny, Nightmare Archfiends, Prideful Roar, Lineage of Destruction. Chaos King Archfiend switches original ATK and DEF, not boosted values. Jack on Hard won 26 of 40 test duels.
 - Still to build for Joey: Little-Winguard, Blue Flame Swordsman, The Legendary Fisherman, Kunai with Chain, Fairy Box, Magical Arm Shield, Nutrient Z, Gilford the Lightning, Red-Eyes Black Metal Dragon with Metalmorph, Graverobber.
-- Joey on Hard won 17 of 40 test duels. Not watched on screen.
+- Joey on Hard won 17 of 40 test duels.
+- Nothing here was watched on screen: rules tests for every card, 30 computer duels clean, and a full duel in the real duel screen with each of the five decks.
+- 14 duelists to go: Kite, Shark, Vector, Bakura, Marik, Pegasus, Weevil, Chazz, Zane, Syrus, Aster, and the leftovers for Mai, Rex and Alexis.
 
 ## What is in 0.33.32
 

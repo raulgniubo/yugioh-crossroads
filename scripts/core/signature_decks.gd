@@ -235,7 +235,13 @@ const TUNE := {
 			"Seed of Deception": 1, "Thorn of Malice": 2, "Monster Reborn": 1, "Pot of Greed": 1, "Mystical Space Typhoon": 1,
 			"Wicked Rebirth": 2, "Blossom Bombardment": 1, "Urgent Tuning": 1, "Mirror Force": 1, "Sakuretsu Armor": 2},
 		"extra": {"Black Rose Dragon": 2, "Splendid Rose": 1}},
-	"kalin": {"out": ["Hinotama", "Mystic Plasma Zone", "Dark Energy"]},
+	# Kalin's best deck: Infernity with an empty hand, into Infernity Doom Dragon, Void Ogre Dragon and Hundred Eyes Dragon (v0.33.33).
+	"kalin": {"out": ["Hinotama", "Mystic Plasma Zone", "Dark Energy"],
+		"main": {"Infernity Archfiend": 3, "Infernity Necromancer": 3, "Infernity Beast": 2, "Infernity Dwarf": 1, "Infernity Guardian": 2, "Infernity Knight": 2, "Infernity Mirage": 2,
+			"Infernity Avenger": 2, "Infernity Beetle": 3, "Infernity Destroyer": 2, "Infernity Randomizer": 1, "Infernity Archer": 2,
+			"Monster Reborn": 1, "Pot of Greed": 1, "Mystical Space Typhoon": 2, "Card Destruction": 1,
+			"Infernity Inferno": 2, "Infernity Break": 2, "Infernity Barrier": 2, "Infernity Force": 2, "Void Trap Hole": 1, "Mirror Force": 1},
+		"extra": {"Infernity Doom Dragon": 2, "Void Ogre Dragon": 1, "Hundred Eyes Dragon": 1}},
 	"yuma": {"out": ["Celtic Guardian", "Beaver Warrior", "Battle Ox", "Masaki the Legendary Swordsman", "Silver Fang", "Dian Keto the Cure Master", "Lightning Blade", "Trap Hole"],
 		"in": {"Achacha Archer": 2}, "extra_in": {"Number 17: Leviathan Dragon": 1},
 		# Yuma's best deck: Utopia and its ranked-up forms on a Gagaga / Gogogo / Dododo / Zubaba base (v0.33.32).

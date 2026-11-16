@@ -119,6 +119,12 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Kalin's cards (v0.33.33)
+	"Infernity Inferno": {"k": "trap", "win": ["free"], "do": [["infernity_inferno"]]},
+	"Infernity Break": {"k": "trap", "win": ["free"], "cond": "hand_empty", "do": [["infernity_break"]]},
+	"Infernity Barrier": {"k": "counter", "neg": ["spell", "trap", "fx"], "cond": "infernity_barrier"},
+	"Infernity Force": {"k": "trap", "win": ["attack"], "cond": "infernity_targeted", "do": [["destroy", "attacker"], ["revive", "own_gy", "", "", {"has": "Infernity"}]]},
+	"Void Trap Hole": {"k": "trap", "win": ["summon"], "subj_atk_min": 2000, "subj_special": true, "do": [["destroy", "summoned"]]},
 	# ---------------------------------------------------------------- Akiza's cards (v0.33.33)
 	"Seed of Deception": {"k": "normal", "do": [["special_from_hand", {"race": "Plant", "max_lv": 2}]]},
 	"Thorn of Malice": {"k": "equip", "must_rose": true, "atk": 600, "pierce": true, "weaken_target": true, "spare_foe": true},
@@ -515,6 +521,8 @@ static func fits(s: DuelState, p: int, c, window: String, subject) -> bool:
 	if wins.has("summon") and not wins.has("free"):
 		if subject == null or subject is Dictionary or subject.owner == p or window != "summon":
 			return false
+		if sp.get("subj_special", false) and not subject.tags.get("ss", false):
+			return false   # "When your opponent Special Summons a monster" (Void Trap Hole)
 		if subject.atk() < int(sp.get("subj_atk_min", 0)) or subject.atk() > int(sp.get("subj_atk_max", 99999)):
 			return false
 	if sp.has("modes"):
@@ -579,6 +587,13 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return not s.players[p].monsters().is_empty()
 		"own_hand":
 			return not s.players[p].hand.is_empty()
+		"hand_empty":
+			return s.players[p].hand.is_empty()
+		"infernity_barrier":
+			# "...while you control a face-up Attack Position "Infernity" monster and have no cards in your hand".
+			return s.players[p].hand.is_empty() and not s.players[p].monsters().filter(func(m): return m.face_up and m.attack_pos and m.cname().contains("Infernity")).is_empty()
+		"infernity_targeted":
+			return s.players[p].hand.is_empty() and not s.pending_attack.is_empty() and s.pending_attack["target"] != null and s.pending_attack["target"].face_up and s.pending_attack["target"].cname().contains("Infernity")
 		"backlash":
 			# "...declares a direct attack while you have 5 or more "Blackwing" monsters in your Graveyard".
 			return not s.pending_attack.is_empty() and s.pending_attack["target"] == null and s.players[p].gy.filter(func(g): return g.is_monster() and g.cname().contains("Blackwing")).size() >= 5
@@ -727,6 +742,12 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 					return false
 			"slip_summon":
 				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or EffectRunner._take(ps.hand, {"max_lv": 4}, 1).is_empty():
+					return false
+			"infernity_inferno":
+				if ps.hand.filter(func(h): return h != c).is_empty() or ps.deck.filter(func(x): return x.cname().contains("Infernity")).is_empty():
+					return false
+			"infernity_break":
+				if ps.gy.filter(func(g): return g.cname().contains("Infernity")).is_empty() or (opp.monsters().is_empty() and opp.set_cards().is_empty() and opp.field_spell == null):
 					return false
 			"special_from_hand":
 				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or EffectRunner._take(ps.hand.filter(func(h): return h != c and not CardEffects.of(h.cname()).get("no_special", false)), a[1], 1).is_empty():
@@ -1486,6 +1507,44 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				taker.lv_set = taker.level() + lv_gain
 				taker.lv_turn = s.turn
 				events.append(_ev(p, c, Loc.t("%s is Level %d until the End Phase") % [taker.cname(), taker.lv_set]))
+		"infernity_inferno":
+			# "Discard up to 2 cards, and send the same number of "Infernity" cards from your Deck to the Graveyard."
+			var hand_i: Array = ps.hand.filter(func(h): return h != c)
+			var in_deck: Array = ps.deck.filter(func(x): return x.cname().contains("Infernity"))
+			var most_i: int = mini(2, mini(hand_i.size(), in_deck.size()))
+			if most_i < 1:
+				return events
+			var by_i: Array = hand_i.duplicate()
+			by_i.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			var tossed: Array = s.choose(p, Loc.t("%s: discard up to 2 cards") % name, hand_i, most_i, by_i.slice(0, most_i), true, c)
+			for h in tossed:
+				ps.hand.erase(h)
+				s._to_gy(ps, h)
+				events.append({"type": "discard", "player": p, "card": h})
+			in_deck.sort_custom(func(x, y): return (1 if x.is_monster() else 0) > (1 if y.is_monster() else 0))
+			for x in s.choose(p, Loc.t("%s: send %d \"Infernity\" cards from your Deck to the Graveyard") % [name, tossed.size()], in_deck, tossed.size(), in_deck.slice(0, tossed.size()), false, c) if not tossed.is_empty() else []:
+				ps.deck.erase(x)
+				s._to_gy(ps, x)
+				events.append({"type": "mill", "player": p, "card": x, "deck": ps.deck.size()})
+			s._shuffle(ps.deck)
+		"infernity_break":
+			# "Target 1 "Infernity" card in your Graveyard and 1 card your opponent controls; banish the first target, and if you do, destroy the second target."
+			var mine_b: Array = ps.gy.filter(func(g): return g.cname().contains("Infernity"))
+			var theirs_b: Array = opp.monsters() + opp.set_cards()
+			if opp.field_spell != null:
+				theirs_b.append(opp.field_spell)
+			if mine_b.is_empty() or theirs_b.is_empty() or not ps.hand.is_empty():
+				return events
+			var worst_b = mine_b[0]
+			for g in mine_b:
+				if s._card_value(g) < s._card_value(worst_b):
+					worst_b = g
+			var best_b = EffectRunner._best_opp(s, p)
+			if best_b == null:
+				best_b = theirs_b[0]
+			events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which \"Infernity\" card from your Graveyard?") % name, mine_b, worst_b, c)))
+			var hit_b = s.pick1(p, Loc.t("%s: destroy which card?") % name, theirs_b, best_b, c)
+			events.append_array(s._destroy(hit_b) if hit_b.is_monster() and opp.field.has(hit_b) else s._destroy_st(hit_b))
 		"special_from_hand":
 			for d in EffectRunner._pick(s, p, c, Loc.t("Special Summon 1 monster from your hand"), ps.hand.filter(func(h): return h != c and not CardEffects.of(h.cname()).get("no_special", false)), a[1], 1):
 				if ps.free_zone() == -1:

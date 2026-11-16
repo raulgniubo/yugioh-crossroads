@@ -207,6 +207,8 @@ static func can_direct(s: DuelState, p: int, c) -> bool:
 	if toon == 2 and not c.negated:
 		return not s.has_toon(s.opponent(p))
 	match str(f.get("direct_if", "")):
+		"hand_empty":
+			return s.players[p].hand.is_empty()   # Infernity Archer
 		"own_set":
 			# Mariner: "While you have any Set card(s) in your Spell & Trap Zone".
 			for st in s.players[p].spells:
@@ -1047,6 +1049,12 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 			"sirocco":
 				if s.phase != DuelState.Phase.MAIN1:
 					return false
+			"randomizer":
+				if s.players[p].deck.is_empty():
+					return false
+			"hundred_eyes":
+				if s.players[p].gy.filter(func(g): return g.is_monster() and g.level() <= 6 and g.frame() != "xyz" and str(g.data.get("attribute", "")) == "DARK" and _is_effect_monster(g)).is_empty():
+					return false
 			"feather_release":
 				if c.counter < 1 or opp.monsters().filter(func(m): return m.face_up).is_empty():
 					return false
@@ -1434,6 +1442,10 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 			return false
 		"formula":
 			return on_field and opp_turn and s._in_main() and window in ["summon", "chain", "phase"] and not _synchro_with(s, p, c).is_empty()
+		"void_ogre":
+			# Void Ogre Dragon: "Once per turn, when your opponent activates a Spell/Trap Card while you have no cards in your hand".
+			return on_field and window == "chain" and not s.chain.is_empty() and str(s.chain.back().get("kind", "")) in ["spell", "trap"] and int(s.chain.back()["player"]) != p \
+					and not s.chain.back().get("negated", false) and ps.hand.is_empty() and int(c.tags.get("void_neg", -1)) != s.turn
 		"paladin":
 			# Dark Paladin: when a Spell Card is activated, discard 1 card: negate it and destroy it.
 			return on_field and window == "chain" and not s.chain.is_empty() and str(s.chain.back().get("kind", "")) == "spell" and not s.chain.back().get("negated", false) and not ps.hand.is_empty()
@@ -1613,6 +1625,10 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 						events.append(_ev(p, c, Loc.t("%s: a Synchro Summon in the opponent's turn!") % c.cname()))
 						events.append_array(s.extra_summon(p, want, o["mats"], true))
 						break
+		"void_ogre":
+			if not s.chain.is_empty():
+				c.tags["void_neg"] = s.turn
+				events.append_array(_negate_link(s, p, c, s.chain.back()))
 		"paladin":
 			if not s.chain.is_empty() and not ps.hand.is_empty():
 				var toss_c: Array = ps.hand.duplicate()
@@ -1700,7 +1716,7 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 			return false
 		"paladin":
 			return not s.chain.is_empty() and int(s.chain.back()["player"]) != p and ps.hand.size() >= 1
-		"sorcerer", "joker", "big_shield":
+		"sorcerer", "joker", "big_shield", "void_ogre":
 			return not s.chain.is_empty() and int(s.chain.back()["player"]) != p
 		"ghibli":
 			return dmg >= 1000 or dmg >= ps.lp
@@ -1955,6 +1971,31 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"randomizer":
+			# "draw 1 card and reveal it. For a Monster Card, inflict damage equal to its Level x 200. For a Spell or Trap Card, you take 500 damage."
+			if not ps.hand.is_empty() or ps.deck.is_empty():
+				return events
+			var top_r = ps.deck.back()
+			events.append_array(s._draw(p, 1))
+			events.append(_ev(p, c, Loc.t("%s: the card drawn is %s") % [name, top_r.cname()]))
+			if top_r.is_monster():
+				events.append_array(s._damage(opp_i, top_r.level() * 200))
+			else:
+				events.append_array(s._damage(p, 500))
+		"hundred_eyes":
+			# "banish 1 Level 6 or lower DARK Effect Monster from your GY; until the End Phase, this card's name becomes that monster's original name, and replace this effect with that monster's original effects."
+			var pool_h: Array = ps.gy.filter(func(g): return g.is_monster() and g.level() <= 6 and g.frame() != "xyz" and str(g.data.get("attribute", "")) == "DARK" and _is_effect_monster(g))
+			if pool_h.is_empty():
+				return events
+			var best_h = pool_h[0]
+			for g in pool_h:
+				if CardEffects.of(g.cname()).has("ignite") and not CardEffects.of(best_h.cname()).has("ignite"):
+					best_h = g
+			best_h = s.pick1(p, Loc.t("%s: banish which monster to take its name and effects?") % name, pool_h, best_h, c)
+			events.append_array(s._banish(best_h))
+			c.tags["as"] = str(best_h.data.get("name", ""))
+			c.ignite_turn = -1
+			events.append(_ev(p, c, Loc.t("%s becomes %s until the End Phase") % [name, str(c.tags["as"])]))
 		"amaryllis_hand":
 			for h in ps.hand.duplicate():
 				if h.cname() == "Phoenixian Cluster Amaryllis" and ps.free_zone() != -1:

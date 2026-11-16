@@ -108,6 +108,16 @@ const FX := {
 	"Elemental HERO Thunder Giant": {"note": "Once per turn, discard 1: destroy a monster with less original ATK.",
 		"ignite": {"cost": "discard", "do": [["destroy", "atk_below_self"]], "label": "Discard 1: destroy a weaker monster"}},
 	"Elemental HERO Rampart Blaster": {"note": "Can attack directly while it is in Defense Position. When it does, its ATK is halved for that damage calculation.", "direct_from_def": true},
+	# ---- Kalin's best deck (v0.33.33)
+	"Infernity Beetle": {"note": "While you have no cards in your hand, you can Tribute this card: Special Summon up to 2 Infernity Beetle from your Deck.",
+		"ignite": {"cost": "tribute_self", "cond": "hand_empty", "do": [["special", "deck", {"name": "Infernity Beetle"}, "", 2]], "label": "Tribute: Special Summon up to 2 Infernity Beetle from your Deck", "ai": "never"}},
+	"Infernity Destroyer": {"note": "Destroys an opponent's monster by battle and sends it to the Graveyard while you have no cards in your hand: 1600 damage to your opponent.", "kill": [["need", "hand_empty"], ["damage", 1600]]},
+	"Infernity Randomizer": {"note": "Once per turn, while you have no cards in your hand: draw 1 card and reveal it. A monster: damage to your opponent equal to its Level x 200. A Spell or Trap: you take 500 damage.",
+		"ignite": {"cond": "hand_empty", "do": [["randomizer"]], "label": "Draw and reveal 1 card"}},
+	"Infernity Archer": {"note": "If you have no cards in your hand, this card can attack directly.", "direct_if": "hand_empty"},
+	"Hundred Eyes Dragon": {"note": "Once per turn: banish 1 Level 6 or lower DARK Effect Monster from your Graveyard; until the End Phase this card's name becomes that monster's and this effect is replaced with that monster's effects. Destroyed and sent to the Graveyard: add 1 \"Earthbound Immortal\" monster from your Deck to your hand.",
+		"ignite": {"do": [["hundred_eyes"]], "label": "Banish a DARK monster from your GY: take its name and effects"}, "destroyed": [["search", {"has": "Earthbound Immortal"}]]},
+	"Void Ogre Dragon": {"note": "Once per turn, when your opponent activates a Spell/Trap Card while you have no cards in your hand: you can negate the activation and destroy it.", "quick": "void_ogre"},
 	# ---- Akiza's best deck (v0.33.33)
 	"Violet Witch": {"note": "Destroyed by battle and sent to the Graveyard: add 1 Plant monster with 1500 or less DEF from your Deck to your hand.", "death": [["search", {"race": "Plant", "max_def": 1500}]]},
 	"Phoenixian Seed": {"note": "You can send this face-up card to the Graveyard: Special Summon 1 Phoenixian Cluster Amaryllis from your hand.",
