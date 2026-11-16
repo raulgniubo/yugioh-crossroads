@@ -457,7 +457,14 @@ static func is_extra(id: int) -> bool:
 	return get_card(id).get("frame", "") in ["fusion", "synchro", "xyz"]
 
 
+## "slot:N": one of the player's saved decks, by its place in their list (Free Duel).
+static func _slot(deck_key: String) -> Dictionary:
+	return Engine.get_main_loop().root.get_node("Collection").slot_cards(int(deck_key.substr(5)))
+
+
 static func has_deck(deck_key: String) -> bool:
+	if deck_key.begins_with("slot:"):
+		return Engine.get_main_loop().root.get_node("Collection").slot_ready(int(deck_key.substr(5)))
 	if deck_key == "custom":
 		return Engine.get_main_loop().root.get_node("Collection").deck_ok()
 	if DECKS.has(deck_key):
@@ -466,6 +473,8 @@ static func has_deck(deck_key: String) -> bool:
 
 
 static func deck_name(deck_key: String) -> String:
+	if deck_key.begins_with("slot:"):
+		return str(_slot(deck_key).get("name", "?"))
 	if deck_key == "custom":
 		return str(Engine.get_main_loop().root.get_node("Collection").deck_name)
 	if DECKS.has(deck_key):
@@ -571,6 +580,11 @@ static func _swap_all(list: Array[int]) -> Array[int]:
 
 ## plain: the deck in somebody else's hands (see SignatureDecks.borrowed).
 static func deck_list(deck_key: String, plain := false) -> Array[int]:
+	if deck_key.begins_with("slot:"):
+		var saved: Array[int] = []
+		for id in _slot(deck_key).get("main", []):
+			saved.append(int(id))
+		return saved
 	if deck_key == "custom":
 		var mine: Array[int] = []
 		for id in Engine.get_main_loop().root.get_node("Collection").main:
@@ -621,6 +635,11 @@ static func to_forty(list: Array[int]) -> Array[int]:
 
 
 static func extra_list(deck_key: String, plain := false) -> Array[int]:
+	if deck_key.begins_with("slot:"):
+		var saved: Array[int] = []
+		for id in _slot(deck_key).get("extra", []):
+			saved.append(int(id))
+		return saved
 	if deck_key == "custom":
 		var mine: Array[int] = []
 		for id in Engine.get_main_loop().root.get_node("Collection").extra:

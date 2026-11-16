@@ -245,7 +245,8 @@ func _start() -> void:
 	state.manual = [not _autoplay, false]
 	hud.auto_answer = _human_test
 	# (A street duelist with "Yusei's deck" plays the plain version; only Yusei plays his own.)
-	var opp_plain := SignatureDecks.borrowed(opp_deck, _opp_key)
+	# (In Free Duel, a deck you hand the opponent yourself is the real one.)
+	var opp_plain := SignatureDecks.borrowed(opp_deck, _opp_key) and not bool(cfg.get("opponent_deck_full", false))
 	var opp_list := CardData.legend_deck(opp_deck, opp_plain) if _ai_level >= 2 else CardData.deck_list(opp_deck, opp_plain)
 	var extra_hand := int(cfg.get("hand", 5)) - 5
 	state.bonus_cards = [extra_hand, extra_hand + (1 if _ai_level >= 2 else 0)]

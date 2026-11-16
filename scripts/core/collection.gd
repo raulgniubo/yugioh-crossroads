@@ -916,6 +916,48 @@ func in_deck(id: int) -> int:
 	return main.count(id) + extra.count(id) + side.count(id)
 
 
+## One of your saved decks, by its place in the list (the one that is open reads the live lists).
+func slot_cards(i: int) -> Dictionary:
+	if i < 0 or i >= slots.size():
+		return {}
+	if i == slot:
+		return {"name": deck_name, "main": main.duplicate(), "extra": extra.duplicate()}
+	var s: Dictionary = slots[i]
+	return {"name": str(s.get("name", "Deck %d" % (i + 1))), "main": (s.get("main", []) as Array).duplicate(), "extra": (s.get("extra", []) as Array).duplicate()}
+
+
+## Can that saved deck be dueled with as it stands? (Free Duel lets either side play any of them.)
+func slot_ready(i: int) -> bool:
+	if i == slot and i < slots.size():
+		return deck_ok()
+	var s := slot_cards(i)
+	if s.is_empty():
+		return false
+	var m: Array = s["main"]
+	var e: Array = s["extra"]
+	if m.size() < MAIN_MIN or m.size() > MAIN_MAX or e.size() > EXTRA_MAX:
+		return false
+	var count := {}
+	for id in m + e:
+		if CardData.get_card(int(id)).is_empty():
+			return false
+		count[id] = int(count.get(id, 0)) + 1
+	if banlist:
+		for id in count:
+			if int(count[id]) > limit(int(id)):
+				return false
+	return true
+
+
+## Your saved decks that are ready to duel: [{"key": "slot:2", "name": "...", "open": bool}].
+func my_decks() -> Array:
+	var out := []
+	for i in slots.size():
+		if slot_ready(i):
+			out.append({"key": "slot:%d" % i, "name": str(slot_cards(i)["name"]), "open": i == slot})
+	return out
+
+
 func deck_ok() -> bool:
 	return main.size() >= MAIN_MIN and main.size() <= MAIN_MAX and extra.size() <= EXTRA_MAX and side.size() <= SIDE_MAX and illegal().is_empty()
 

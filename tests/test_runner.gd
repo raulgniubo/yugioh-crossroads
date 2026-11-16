@@ -3548,6 +3548,28 @@ func _test_cards_28() -> void:
 				check(named == own_deck, "In the open world %s duels with their own deck (found \"%s\")" % [k, named])
 			at = roam_src.find("\"char\": \"%s\"" % k, at + 8)
 	check(met >= 20, "The roster duelists can be challenged in the open world (%d found)" % met)
+	# Free Duel: any of your saved decks can be played by either side ("slot:N").
+	var keep_slots: Array = Collection.slots.duplicate(true)
+	var keep_slot: int = Collection.slot
+	var keep_main: Array = Collection.main.duplicate()
+	var keep_extra: Array = Collection.extra.duplicate()
+	var keep_ban: bool = Collection.banlist
+	Collection.banlist = false
+	Collection.slots = [{"name": "First", "main": Array(CardData.deck_list("kaiba")), "extra": [], "side": []},
+		{"name": "Second", "main": Array(CardData.deck_list("yusei")), "extra": Array(CardData.extra_list("yusei")), "side": []},
+		{"name": "Short", "main": [_cid("Kuriboh")], "extra": [], "side": []}]
+	Collection.slot = 0
+	Collection.main = Array(CardData.deck_list("kaiba"))
+	Collection.extra = []
+	check(CardData.has_deck("slot:1") and not CardData.has_deck("slot:2") and not CardData.has_deck("slot:9"), "A saved deck that is ready can be dueled with; a 1-card deck cannot")
+	check(CardData.deck_name("slot:1") == "Second" and CardData.deck_list("slot:1").size() == 40 and CardData.extra_list("slot:1").size() == 15, "A saved deck is read by its place in the list: name, 40 cards, 15 in the Extra Deck")
+	check(Collection.my_decks().size() == 2 and bool(Collection.my_decks()[0]["open"]), "Free Duel lists the saved decks that are ready (2 of 3), the open one marked")
+	check(CardData.legend_deck("slot:1").size() == 40, "A saved deck in the opponent's hands is the same 40 cards on Hard")
+	Collection.slots = keep_slots
+	Collection.slot = keep_slot
+	Collection.main = keep_main
+	Collection.extra = keep_extra
+	Collection.banlist = keep_ban
 	# The 5D's packs carry the new cards.
 	var pool5: Array = Collection.pool(str(Characters.DATA["yusei"]["era"]))
 	for nm in ["Shooting Star Dragon", "Shooting Quasar Dragon", "Formula Synchron", "Quickdraw Synchron", "Level Eater", "Starlight Road", "Zero Gardna", "Colossal Fighter", "Urgent Tuning"]:

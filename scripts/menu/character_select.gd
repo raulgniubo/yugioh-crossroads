@@ -753,8 +753,9 @@ func _roster_card(key: String) -> Control:
 
 func _choose(key: String) -> void:
 	if key == "player":
-		# Tapping your own duelist always puts you back in the YOU seat.
+		# Tapping your own duelist always puts you back in the YOU seat, with your own deck.
 		_me = "player"
+		_my_deck = Collection.active_deck()
 		if not CardData.has_deck(_my_deck):
 			_my_deck = "echo"
 		_picking = "opp"
@@ -819,7 +820,10 @@ func _build_setup() -> void:
 	_root.add_child(_quote)
 	_section(v, "YOUR DECK")
 	_deck_pick = OptionButton.new()
+	_deck_pick.tooltip_text = Loc.t("Play as any duelist with their own deck, or with one of yours. Picking a duelist picks their deck; change it here.")
 	_deck_pick.item_selected.connect(func(i):
+		if str(_deck_keys[i]) == "":
+			return   # (a heading in the list)
 		_my_deck = _deck_keys[i]
 		_refresh_slots()
 		_refresh_deck_row())
@@ -837,8 +841,13 @@ func _build_setup() -> void:
 	_their_pick = OptionButton.new()
 	_their_pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_their_pick.add_theme_font_size_override("font_size", 16)
-	_their_pick.add_item("Their own deck")
+	_their_pick.tooltip_text = Loc.t("Your opponent plays their own deck unless you hand them another one: one of yours, or another duelist's.")
+	_their_pick.add_item(Loc.t("Their own deck"))
 	_their_keys = [""]
+	# One of your own decks (a good way to see how a deck you built plays from the other side).
+	for md in Collection.my_decks():
+		_their_keys.append(str(md["key"]))
+		_their_pick.add_item(Loc.t("My deck: %s") % str(md["name"]))
 	for k in CardData.DECKS.keys() + CardData.NAMED_DECKS.keys():
 		if CardData.has_deck(k) and str(k) != "custom":
 			_their_keys.append(str(k))
@@ -1153,10 +1162,18 @@ func _refresh_all() -> void:
 		_tabs[i].set_pressed_no_signal(era == _era)
 	_deck_pick.clear()
 	_deck_keys.clear()
-	for special in ["custom", "echo"]:
-		if CardData.has_deck(special):
-			_deck_keys.append(special)
-			_deck_pick.add_item("%s  (%s)" % [CardData.deck_name(special), "built by you" if special == "custom" else "starter"])
+	# Your own decks first: the one that is open (side-decking in a Match works with that one),
+	# then every other saved deck that is ready to duel.
+	if CardData.has_deck("custom"):
+		_deck_keys.append("custom")
+		_deck_pick.add_item("%s  (%s)" % [CardData.deck_name("custom"), Loc.t("your deck")])
+	for md in Collection.my_decks():
+		if not md["open"]:
+			_deck_keys.append(str(md["key"]))
+			_deck_pick.add_item("%s  (%s)" % [str(md["name"]), Loc.t("your deck")])
+	if CardData.has_deck("echo") and not _deck_keys.has("echo"):
+		_deck_keys.append("echo")
+		_deck_pick.add_item("%s  (%s)" % [CardData.deck_name("echo"), Loc.t("starter")])
 	for k in Characters.ORDER:
 		var deck: String = Characters.DATA[k]["deck"]
 		if CardData.has_deck(deck) and not _deck_keys.has(deck):
@@ -1198,6 +1215,7 @@ func _start_duel() -> void:
 		"destiny": not (_fate_off_btn != null and _fate_off_btn.button_pressed)}
 	if _their_deck != "":
 		cfg["opponent_deck"] = _their_deck
+		cfg["opponent_deck_full"] = true   # a deck you picked for them is the real one, aces included
 	if _first >= 0:
 		cfg["first"] = _first
 	if _gauntlet:

@@ -5052,4 +5052,9 @@ const ES := {
 	"%s: which of your monsters gains its Level?": "%s: ¿cuál de tus monstruos gana su Nivel?",
 	"%s is Level %d until the End Phase": "%s es Nivel %d hasta la End Phase",
 	"Special Summon 1 Level 4 or lower monster from your hand": "Invoca de Modo Especial 1 monstruo de Nivel 4 o menor de tu mano",
+	"Play as any duelist with their own deck, or with one of yours. Picking a duelist picks their deck; change it here.": "Juega como cualquier duelista con su propio deck o con uno de los tuyos. Al elegir un duelista se elige su deck; cámbialo aquí.",
+	"Your opponent plays their own deck unless you hand them another one: one of yours, or another duelist's.": "Tu oponente juega con su propio deck salvo que le des otro: uno de los tuyos o el de otro duelista.",
+	"My deck: %s": "Mi deck: %s",
+	"your deck": "tu deck",
+	"starter": "inicial",
 }

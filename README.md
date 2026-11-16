@@ -5,6 +5,21 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.29
+
+**Free Duel: any character on either side, with their own deck or one of yours.**
+
+- **Your side:** pick any duelist to play as and their own deck is selected for you. YOUR DECK lets you change it: every deck you have saved that is ready to duel is in the list (before, only the one you had open was), then the starter, then every duelist's deck. Go back to yourself and your own deck is selected again.
+- **Their side:** the opponent plays their own deck by default. THEIR DECK now also offers each of your saved decks ("My deck: ..."), next to every duelist's deck. A good way to see how a deck you built plays from the other side.
+- A deck you hand the opponent yourself is the real one, aces included (in the open world a street duelist who borrows a duelist's deck still gets the plain version).
+- Hard and Expert opponents play your saved deck card for card, nothing added.
+
+**Not done or not checked:**
+
+- Seen as one still of the Free Duel screen with a new save (one deck). The lists with several saved decks were checked by test, not on screen.
+- Side-decking between the games of a Match still works only with the deck you have open in the Deck Builder (the first entry of YOUR DECK).
+- Locked duelists stay locked: you play as the ones you have unlocked.
+
 ## What is in 0.33.28
 
 **Yusei's best deck: the one with Shooting Star Dragon and Shooting Quasar Dragon, all 40 + 15 cards his own.**
