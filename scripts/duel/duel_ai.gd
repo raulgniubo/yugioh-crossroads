@@ -297,8 +297,11 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 	for g in s.gy_effects(p):
 		if EffectRunner.ai_gy_ok(s, p, g):
 			return {"do": "gy_ignite", "card": g}
-	# 4d. Monster effects on the field
-	for m in me.monsters():
+	# 4d. Monster effects on the field (and face-up Spells you use, like Infernity Launcher)
+	var users: Array = []
+	users.append_array(me.monsters())
+	users.append_array(me.spells.filter(func(x): return x != null and x.face_up and EffectRunner.ignite_spec(x).get("st", false)))
+	for m in users:
 		if s.can_ignite(p, m):
 			if not EffectRunner.ai_ignite_ok(s, p, m):
 				continue
@@ -1029,6 +1032,9 @@ static func _candidates(s: DuelState, p: int) -> Array:
 			out.append({"do": "set_st", "card": c})
 		if s.can_special_from_hand(p, c) and not EffectRunner.fx(c).get("ai_combo_only", false):
 			out.append({"do": "special_hand", "card": c})
+	for m in me.spells:
+		if m != null and m.face_up and EffectRunner.ignite_spec(m).get("st", false) and s.can_ignite(p, m) and EffectRunner.ai_ignite_ok(s, p, m):
+			out.append({"do": "ignite", "card": m})
 	for m in me.monsters():
 		if s.can_ignite(p, m) and EffectRunner.ai_ignite_ok(s, p, m):
 			out.append({"do": "ignite", "card": m})

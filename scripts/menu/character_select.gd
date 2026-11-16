@@ -1152,7 +1152,15 @@ func _step_field(dir: int) -> void:
 
 
 ## The five cards that best show what a deck is about: its biggest monsters.
+var _row_for := ""   # the deck the row of thumbnails was last drawn for
+
+
 func _refresh_deck_row() -> void:
+	# Picking an opponent redraws the screen: your deck's row only moves when your deck changed.
+	var row_key := str(_my_deck) + "|" + str(str(CardData.deck_list(_my_deck)).hash()) + "|" + str(str(CardData.extra_list(_my_deck)).hash())
+	if row_key == _row_for and _deck_row.get_child_count() > 0:
+		return
+	_row_for = row_key
 	for c in _deck_row.get_children():
 		_deck_row.remove_child(c)
 		c.queue_free()

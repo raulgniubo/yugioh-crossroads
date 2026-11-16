@@ -426,6 +426,16 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 	if cond == "no_cards":
 		# Gust the Backblast: "If you control no cards".
 		return s.players[p].monsters().is_empty() and s.players[p].set_cards().is_empty() and s.players[p].field_spell == null
+	if cond == "any_face_mon":
+		return not (s.players[0].monsters() + s.players[1].monsters()).filter(func(m): return m.face_up).is_empty()
+	if cond == "opp_effect_face":
+		return not s.players[s.opponent(p)].monsters().filter(func(m): return m.face_up and not m.negated and _is_effect_monster(m)).is_empty()
+	if cond == "launcher":
+		# Infernity Launcher: an Infernity monster in hand to send (once per turn), or an empty hand and Infernities in the Graveyard.
+		var ps_l := s.players[p]
+		if ps_l.hand.is_empty():
+			return ps_l.free_zone() != -1 and not ps_l.gy.filter(func(g): return g.is_monster() and g.cname().contains("Infernity") and s.can_revive(g)).is_empty()
+		return int(ps_l.once_names.get("#launcher", -1)) != s.turn and not ps_l.hand.filter(func(h): return h.is_monster() and h.cname().contains("Infernity")).is_empty()
 	if cond == "lp_over_1000":
 		return s.players[p].lp > 1000   # Chaos Emperor Dragon: pay 1000 LP
 	if cond == "metalmorph_red_eyes":
@@ -1034,6 +1044,9 @@ static func _cocoon_moth(s: DuelState, p: int, turns: int):
 static func hand_run(s: DuelState, p: int, c) -> Array:
 	var g: Dictionary = fx(c)["hand_ignite"]
 	var ps := s.players[p]
+	var ld_h = s._ladd_for(c)
+	if ld_h != null:
+		return s._ladd_negate(ld_h, c)   # Light and Darkness Dragon: effects from the hand are monster effects too
 	if g.get("zw", false):
 		return _zw_equip(s, p, c)
 	if g.has("equip_to"):
@@ -1095,6 +1108,10 @@ static func _lv5_up(s: DuelState, p: int) -> Array:
 
 static func gy_run(s: DuelState, p: int, c) -> Array:
 	var g: Dictionary = fx(c)["gy_ignite"]
+	# Light and Darkness Dragon: a Graveyard effect is a monster effect too.
+	var ld_g = s._ladd_for(c)
+	if ld_g != null and (g.get("level_eater", false) or g.get("revive_self", false)):
+		return s._ladd_negate(ld_g, c)
 	if g.get("level_eater", false):
 		# "Target 1 Level 5 or higher monster you control; reduce its Level by 1, and if you do, Special Summon this card."
 		var big: Array = _lv5_up(s, p)
@@ -1120,6 +1137,9 @@ static func gy_run(s: DuelState, p: int, c) -> Array:
 	s.players[p].gy.erase(c)
 	s.players[p].banished.append(c)
 	events.append({"type": "banish", "player": p, "card": c, "from": "gy"})
+	if ld_g != null:
+		events.append_array(s._ladd_negate(ld_g, c))   # (the banish was the cost: it stays paid)
+		return events
 	events.append_array(run_list(s, p, c, g.get("do", []), {}))
 	return events
 
@@ -1236,7 +1256,9 @@ static func can_ignite(s: DuelState, p: int, c) -> bool:
 		return false
 	if int(s.players[p].name_lock.get(c.cname(), -1)) == s.turn:
 		return false
-	if not s.players[p].field.has(c) or not c.face_up or (c.ignite_turn == s.turn and not ig.get("repeat", false)):
+	# (A face-up Spell with an effect you use from the field, like Infernity Launcher, says "st".)
+	var here_i: bool = s.players[p].field.has(c) or (ig.get("st", false) and s.players[p].spells.has(c) and not SpellRules.blocked(s, c))
+	if not here_i or not c.face_up or (c.ignite_turn == s.turn and not ig.get("repeat", false)):
 		return false
 	if ig.has("cond") and not _cond(s, p, str(ig["cond"])):
 		return false
@@ -2365,6 +2387,9 @@ static func ai_ignite_ok(s: DuelState, p: int, c) -> bool:
 		"opp_st":
 			# Wild Wingman: when the opponent has a Spell or Trap to hit.
 			return ps.hand.size() >= 2 and (not opp.set_cards().is_empty() or opp.field_spell != null)
+		"spark":
+			# Spark Blaster: knock one of theirs into Defense Position when that opens an attack.
+			return not opp.monsters().filter(func(m): return m.face_up and m.attack_pos).is_empty() and s.phase == DuelState.Phase.MAIN1
 		"ced":
 			# Chaos Emperor Dragon: when they have more on the table and in hand than you do, and it does not cost the duel.
 			var mine_c: int = ps.hand.size() + ps.monsters().size() + ps.set_cards().size()
@@ -2514,6 +2539,76 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"spark_blaster":
+			# Spark Blaster: "target 1 face-up monster; change the battle position of that target. After you use this effect 3 times, destroy this card."
+			var all_f: Array = []
+			for q in 2:
+				all_f.append_array(s.players[q].monsters().filter(func(m): return m.face_up))
+			if all_f.is_empty():
+				return events
+			var best_s = all_f[0]
+			for m in all_f:
+				if m.owner != p and m.attack_pos and s.atk_of(m, false) > s.atk_of(best_s, false):
+					best_s = m
+			var ch = s.pick1(p, Loc.t("%s: change whose battle position?") % name, all_f, best_s, c)
+			ch.attack_pos = not ch.attack_pos
+			events.append({"type": "position", "player": ch.owner, "card": ch, "zone": s.players[ch.owner].field.find(ch)})
+			events.append(_ev(p, c, Loc.t("%s changes %s's battle position") % [name, ch.cname()]))
+			c.counter += 1
+			if c.counter >= 3:
+				events.append_array(s._destroy_st(c))
+		"assault_armor":
+			# Assault Armor: "send this equipped card to the Graveyard to allow the equipped monster to attack twice during each Battle Phase this turn."
+			var host_a = c.equipped_to
+			var za := ps.spells.find(c)
+			if za != -1:
+				ps.spells[za] = null
+				c.equipped_to = null
+				s._to_gy(ps, c)
+				events.append({"type": "destroy_st", "player": p, "card": c, "zone": za})
+			if host_a != null and ps.field.has(host_a):
+				host_a.bonus_attacks = (host_a.bonus_attacks if host_a.bonus_attacks_turn == s.turn else 0) + 1
+				host_a.bonus_attacks_turn = s.turn
+				events.append(_ev(p, host_a, Loc.t("%s can attack twice this turn") % host_a.cname()))
+		"breakthrough":
+			# Breakthrough Skill (from the GY): "target 1 face-up Effect Monster your opponent controls; that target has its effects negated until the end of this turn."
+			var bt: Array = opp.monsters().filter(func(m): return m.face_up and not m.negated and _is_effect_monster(m))
+			if bt.is_empty():
+				return events
+			bt.sort_custom(func(x, y): return s.atk_of(x, false) > s.atk_of(y, false))
+			var nb = s.pick1(p, Loc.t("%s: negate which monster?") % name, bt, bt[0], c)
+			nb.negated_turn = s.turn
+			nb.negated = true
+			events.append(_ev(p, c, Loc.t("%s's effects are negated this turn") % nb.cname()))
+		"launcher":
+			# Infernity Launcher: "Once per turn: You can send 1 "Infernity" monster from your hand to the Graveyard. You can send this card to the
+			# Graveyard, then target up to 2 "Infernity" monsters in your Graveyard; Special Summon them. You must have no cards in your hand"
+			if ps.hand.is_empty():
+				var zl := ps.spells.find(c)
+				if zl != -1:
+					ps.spells[zl] = null
+					s._to_gy(ps, c)
+					events.append({"type": "destroy_st", "player": p, "card": c, "zone": zl})
+				var pool_l: Array = ps.gy.filter(func(g): return g.is_monster() and g.cname().contains("Infernity") and s.can_revive(g))
+				pool_l.sort_custom(func(x, y): return x.atk() > y.atk())
+				for g in s.choose(p, Loc.t("%s: Special Summon up to 2 Infernity monsters") % name, pool_l, mini(2, pool_l.size()), pool_l.slice(0, 2), false, c):
+					if ps.free_zone() == -1 or not ps.gy.has(g):
+						break
+					ps.gy.erase(g)
+					events.append(_ev(p, c, Loc.t("%s calls %s") % [name, g.cname()]))
+					events.append_array(s._special(p, g, "reborn"))
+					events.append_array(on_summon(s, p, g, "special"))
+			else:
+				var inf: Array = ps.hand.filter(func(h): return h.is_monster() and h.cname().contains("Infernity"))
+				if inf.is_empty():
+					return events
+				ps.once_names["#launcher"] = s.turn
+				inf.sort_custom(func(x, y): return x.atk() > y.atk())
+				var sent = s.pick1(p, Loc.t("%s: send which Infernity monster to the Graveyard?") % name, inf, inf[0], c)
+				ps.hand.erase(sent)
+				s._to_gy(ps, sent)
+				events.append({"type": "discard", "player": p, "card": sent})
+				events.append_array(trigger(s, sent, "sent_gy"))
 		"ced":
 			# Chaos Emperor Dragon - Envoy of the End: "pay 1000 LP; send as many cards in both players' hands and on the field as possible
 			# to the GY, then inflict 300 damage to your opponent for each card sent to the opponent's GY by this effect."

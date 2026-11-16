@@ -619,6 +619,13 @@ func begin_end() -> Array:
 	phase = Phase.END
 	var events := [{"type": "phase", "phase": phase}]
 	events.append_array(after_battle)
+	# Nightmare's Steelcage: "This card remains on the field for 2 of your opponent's turns."
+	for sc in players[opponent(current)].spells.duplicate():
+		if sc != null and sc.face_up and SpellRules.spec(sc).get("steelcage", false):
+			sc.counter += 1
+			if sc.counter >= 2:
+				events.append({"type": "effect", "player": sc.owner, "card": sc, "text": Loc.t("%s is gone") % sc.cname()})
+				events.append_array(_destroy_st(sc))
 	# Vain Betrayer: "While that monster is on the field, during each of your opponent's End Phases: Send the top 3 cards of the opponent's Deck to the Graveyard."
 	for vb in players[opponent(current)].spells:
 		if vb != null and vb.face_up and vb.cname() == "Vain Betrayer" and vb.linked != null and players[current].field.has(vb.linked) and not SpellRules.blocked(self, vb):
@@ -1360,6 +1367,8 @@ func can_activate(p: int, c: CardInst) -> bool:
 		return false
 	if SpellRules.blocked(self, c) or int(ps.once_names.get("#ced", -1)) == turn:
 		return false
+	if c.is_spell() and (ps.get_meta("sealed", []) as Array).has(c.cname()):
+		return false   # Cursed Seal of the Forbidden Spell
 	if sp.has("legacy"):
 		if ss_locked(p) and str(c.data.get("effect", "")) in ["fusion", "reborn"]:
 			return false   # Gagaga Head's lock
@@ -1891,6 +1900,12 @@ func toon_world(q: int) -> bool:
 ## Magician Girl) must go for a Toon monster when the other side has one.
 func attack_targets_for(p: int, attacker: CardInst) -> Array[CardInst]:
 	var out := attack_targets(p)
+	# Ring of Magnetism: "all the monsters on your opponent's side of the field can only attack the monster equipped with this card".
+	for st in players[opponent(p)].spells:
+		if st != null and st.face_up and st.equipped_to != null and SpellRules.spec(st).get("magnet", false) and not SpellRules.blocked(self, st) and out.has(st.equipped_to):
+			var only_m: Array[CardInst] = [st.equipped_to]
+			out = only_m
+			break
 	# Decoyroid: "your opponent cannot select a face-up monster as an attack target except "Decoyroid"."
 	if not players[opponent(p)].monsters().filter(func(m): return m.face_up and not m.negated and EffectRunner.fx(m).get("decoy", false)).is_empty():
 		var only_d: Array[CardInst] = []
@@ -3090,6 +3105,8 @@ func _untrap(c: CardInst) -> void:
 func _banish(c: CardInst) -> Array:
 	if c == null:
 		return []
+	if necro_holds(c):
+		return [{"type": "effect", "player": c.owner, "card": null, "text": Loc.t("Necrovalley: %s stays in the Graveyard") % c.cname()}]
 	if c.is_token():
 		return _vanish(c)
 	var was_up_mon := false
@@ -3266,6 +3283,11 @@ func _cleanup() -> Array:
 	if not pending_events.is_empty():
 		events.append_array(pending_events)
 		pending_events = []
+	# Heart of Clear Water: "If the equipped monster's ATK is 1300 or higher, this card is destroyed."
+	for q1 in 2:
+		for st in players[q1].spells.duplicate():
+			if st != null and st.face_up and st.equipped_to != null and SpellRules.spec(st).get("clear_heart", false) and atk_of(st.equipped_to, false) >= 1300:
+				events.append_array(_destroy_st(st))
 	# Level Limit - Area B: face-up monsters of that Level or higher are held in Defense Position.
 	for q0 in 2:
 		for st0 in players[q0].spells:
@@ -3697,7 +3719,14 @@ func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 
 
 ## Ritual and Extra Deck monsters can only come back if they were first summoned the proper way.
+## Necrovalley: "Negate any card effect that would move a card in the GY to a different place", and nothing there is banished.
+func necro_holds(c: CardInst) -> bool:
+	return c != null and (players[0].gy.has(c) or players[1].gy.has(c)) and SpellRules.field_flag(self, "necrovalley")
+
+
 func can_revive(c: CardInst) -> bool:
+	if necro_holds(c):
+		return false
 	if CardEffects.of(c.cname()).get("no_revive", false) or CardEffects.of(c.cname()).get("no_special", false):
 		return false   # "Cannot be Special Summoned (from the GY)": Dark Ruler Ha Des, Blackwing - Blizzard
 	if CardEffects.of(c.cname()).get("no_revive_same_turn", false) and c.gy_turn == turn:

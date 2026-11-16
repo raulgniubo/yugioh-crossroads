@@ -5,6 +5,22 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.38
+
+- **Free Duel:** the row of your deck's cards no longer redraws when you pick an opponent. It only changes when your deck does.
+- **Every Spell and Trap in the game now matches its text.** The last 11: Ring of Magnetism, Forbidden Lance, Spell Shield Type-8, Necrovalley, Nightmare's Steelcage, Cursed Seal of the Forbidden Spell, Heart of Clear Water, Soul Exchange, Breakthrough Skill (its Graveyard effect too), Assault Armor, Spark Blaster.
+- **Spells you use from the field:** a face-up Spell can have a button now. First ones: Infernity Launcher (in Kalin's deck x2), Assault Armor, Spark Blaster.
+- **Light and Darkness Dragon** now also stops effects used from the hand and the Graveyard.
+- **Decks:** Aster (Diamond Dude and Malicious x3, one Clock Tower Prison, Graceful Charity; the computer now uses Destiny Draw), Kalin (Infernity Launcher), Pegasus (a second Thousand-Eyes Idol and Polymerization for Thousand-Eyes Restrict).
+
+**Not done or not checked:**
+
+- **Still weak on Hard:** Pegasus 1 of 10, Aster 2, Kalin 3, Vector 3. The computer plays these decks badly (Pegasus loses his Toons when Toon World goes; Aster holds his Destiny HEROes too long). That is AI work, next.
+- Heart of Clear Water does not yet stop effects that target the monster (it does stop battle).
+- Forbidden Lance stops other Spells and Traps from targeting the monster; ones that do not target (Mirror Force) still hit it.
+- Necrovalley stops cards leaving the Graveyard by being Summoned or banished; adding them to the hand is not stopped yet.
+- Tyrant Dragon still cannot come back from the Graveyard at all.
+
 ## What is in 0.33.37
 
 **Finishing what 0.33.36 left half done.** The 8 cards that were only partly working now do everything their text says, and the duelists' missing aces are in their decks.

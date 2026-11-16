@@ -68,12 +68,12 @@ const FX := {
 	"Monster Reincarnation": {"k": "normal", "cost": "discard", "do": [["gy_to_hand", {"monster": true}, 1]]},
 	"Dark Factory of Mass Production": {"k": "normal", "do": [["gy_to_hand", {"frame": "normal"}, 2]]},
 	"Share the Pain": {"k": "normal", "cost": "tribute", "do": [["opp_tribute"]]},
-	"Soul Exchange": {"k": "normal", "t": "opp_mon", "do": [["tribute_fodder", "target"]]},
+	"Soul Exchange": {"k": "normal", "t": "opp_mon", "do": [["tribute_fodder", "target"], ["no_bp"]]},
 	"Premature Burial": {"k": "equip", "cost": "lp800", "do": [["revive", "own_gy", "atk", "link"]]},
 	"Miracle Fusion": {"k": "normal", "do": [["miracle_fusion", {"has": "Elemental HERO"}]]},
 	"Card of Sanctity": {"k": "normal", "do": [["sanctity"]]},
 	"Dian Keto the Cure Master": {"k": "normal", "do": [["heal", 1000]]},
-	"Nightmare's Steelcage": {"k": "normal", "do": [["no_attacks_both", 2]]},
+	"Nightmare's Steelcage": {"k": "cont", "steelcage": true, "ai": "steelcage"},
 	"Book of Taiyou": {"k": "normal", "t": "any_fdown", "do": [["flip_up", "target"]]},
 	"Dark Core": {"k": "normal", "t": "any_face", "cost": "discard", "do": [["banish", "target"]]},
 	# ---------------------------------------------------------------- Quick-Play Spells
@@ -87,7 +87,7 @@ const FX := {
 		{"label": "Change the battle position of 1 of their face-up monsters", "t": "opp_face", "do": [["change_pos", "target"]]},
 		{"label": "Tribute 1 monster: take control of 1 of their face-up monsters until the End Phase", "t": "opp_face", "cost": "tribute", "do": [["control", "target", "eot"]]}]},
 	"Ego Boost": {"k": "quick", "win": ["attack"], "any_attack": true, "t": "any_face", "do": [["atk", "target", 1000, "eot"]]},
-	"Forbidden Lance": {"k": "quick", "t": "any_face", "do": [["atk", "target", -800, "eot"]]},
+	"Forbidden Lance": {"k": "quick", "t": "any_face", "do": [["atk", "target", -800, "eot"], ["st_immune", "target"]]},
 	"Offerings to the Doomed": {"k": "quick", "t": "any_face", "do": [["destroy", "target"], ["skip_draw", 1]]},
 	"The Reliable Guardian": {"k": "quick", "t": "any_face", "do": [["def", "target", 700]]},
 	"De-Fusion": {"k": "quick", "t": "any_fusion", "do": [["defusion"]]},
@@ -127,6 +127,7 @@ const FX := {
 	# ---- v0.33.37
 	"Metalmorph": {"k": "ctrap", "win": ["free"], "t": "own_face", "equip": true, "atk": 300, "def": 300, "metalmorph": true, "ai": "metalmorph"},
 	"Dark Sanctuary": {"k": "field", "sanctuary": true, "ai": "always"},
+	"Infernity Launcher": {"k": "cont", "ai": "always"},
 	"Doble Passe": {"k": "trap", "win": ["attack"], "cond": "doble_passe", "do": [["doble_passe"]]},
 	"Cyberdark Impact!": {"k": "normal", "cond": "cyberdark_parts", "ai": "always", "do": [["cyberdark_impact"]]},
 	"Assault Mode Activate": {"k": "trap", "win": ["free"], "cond": "assault_ready", "ai": "always", "do": [["assault_mode"]]},
@@ -167,7 +168,7 @@ const FX := {
 	# ---------------------------------------------------------------- Syrus's and Aster's cards (v0.33.35)
 	"No Entry!!": {"k": "trap", "win": ["free", "attack"], "do": [["all_to_def"]]},
 	"Supercharge": {"k": "trap", "win": ["attack"], "cond": "all_roids", "do": [["draw", 2]]},
-	"Destiny Draw": {"k": "normal", "cost": "discard_f", "cost_f": {"has": "Destiny HERO"}, "do": [["draw", 2]]},
+	"Destiny Draw": {"k": "normal", "cost": "discard_f", "cost_f": {"has": "Destiny HERO"}, "ai": "always", "do": [["draw", 2]]},
 	"D - Spirit": {"k": "normal", "ai": "always", "cond": "no_dhero", "do": [["special_from_hand", {"has": "Destiny HERO", "max_lv": 4}]]},
 	"Destiny Signal": {"k": "trap", "win": [], "battle_death": true, "do": [["special_hand_deck", {"has": "Destiny HERO", "max_lv": 4}]]},
 	"Dark City": {"k": "field", "ai": "always", "dark_city": true},
@@ -267,7 +268,7 @@ const FX := {
 	"Burst Return": {"k": "normal", "cond": "own_burstinatrix", "do": [["burst_return"]]},
 	"Feather Shot": {"k": "normal", "t": "own_face", "must": {"name": "Elemental HERO Avian"}, "do": [["feather_shot", "target"]]},
 	"Transcendent Wings": {"k": "quick", "do": [["transcendent_wings"]]},
-	"Necrovalley": {"k": "field", "boost": [[{"has": "Gravekeeper"}, 500, 500]]},
+	"Necrovalley": {"k": "field", "boost": [[{"has": "Gravekeeper"}, 500, 500]], "necrovalley": true},
 	"Chorus of Sanctuary": {"k": "field", "def_pos_boost": 500},
 	# ---------------------------------------------------------------- Equip Spells
 	"Axe of Despair": {"k": "equip", "atk": 1000, "deck_top": "tribute"},
@@ -346,12 +347,12 @@ const FX := {
 	"Sword of Dark Destruction": {"k": "equip", "must": {"attr": "DARK"}, "atk": 400, "def": -200},
 	"Snatch Steal": {"k": "equip", "t": "opp_face", "control": true, "standby": [["opp_heal", 1000]]},
 	"Cyclon Laser": {"k": "equip", "must": {"name": "Gradius"}, "atk": 300, "pierce": true},
-	"Spark Blaster": {"k": "equip", "atk": 300},
-	"Assault Armor": {"k": "equip", "must": {"race": "Warrior"}, "atk": 300},
+	"Spark Blaster": {"k": "equip", "t": "own_face", "must_has": "Elemental HERO Sparkman"},
+	"Assault Armor": {"k": "equip", "t": "own_face", "must": {"race": "Warrior"}, "only_monster": true, "atk": 300},
 	"Junk Barrage": {"k": "equip", "burn_half_on_kill": true},
 	"Mist Body": {"k": "equip", "no_battle_death": true},
-	"Heart of Clear Water": {"k": "equip", "no_battle_death": true},
-	"Ring of Magnetism": {"k": "equip", "atk": -500, "def": -500},
+	"Heart of Clear Water": {"k": "equip", "no_battle_death": true, "clear_heart": true},
+	"Ring of Magnetism": {"k": "equip", "t": "own_face", "atk": -500, "def": -500, "magnet": true},
 	# ---------------------------------------------------------------- Normal Traps
 	"Ring of Destruction": {"k": "trap", "win": ["free"], "cond": "opp_turn", "t": "opp_face_atk_le_lp", "do": [["ring"]]},
 	"Dust Tornado": {"k": "trap", "win": ["free"], "t": "opp_st", "do": [["destroy", "target"], ["may_set"]]},
@@ -395,9 +396,9 @@ const FX := {
 	"Seven Tools of the Bandit": {"k": "counter", "neg": ["trap"], "cost": "lp1000"},
 	"Dark Bribe": {"k": "counter", "neg": ["spell", "trap"], "do": [["opp_draw", 1]]},
 	"Horn of Heaven": {"k": "counter", "neg": ["summon"], "cost": "tribute"},
-	"Spell Shield Type-8": {"k": "counter", "neg": ["spell"], "cost": "discard"},
+	"Spell Shield Type-8": {"k": "counter", "neg": ["spell"], "cost": "shield8"},
 	"Trap Jammer": {"k": "counter", "neg": ["trap"], "cond": "battle_phase"},
-	"Cursed Seal of the Forbidden Spell": {"k": "counter", "neg": ["spell"], "cost": "discard"},
+	"Cursed Seal of the Forbidden Spell": {"k": "counter", "neg": ["spell"], "cost": "discard_f", "cost_f": {"monster": false, "frame": "spell"}, "do": [["seal_name"]]},
 }
 
 const LEGACY_WIN := {"mirror_force": "attack", "magic_cylinder": "attack", "sakuretsu": "attack", "negate_attack": "attack",
@@ -1058,6 +1059,13 @@ static func _needs_target(sp: Dictionary) -> bool:
 	return sp.has("t") or (sp.get("k", "") == "equip" and not sp.has("do"))
 
 
+static func _shield8_free(s: DuelState) -> bool:
+	if s.chain.is_empty():
+		return false
+	var t = s.chain.back().get("target")
+	return t != null and t is DuelState.CardInst and t.is_monster() and (s.players[0].field.has(t) or s.players[1].field.has(t))
+
+
 static func _can_pay(s: DuelState, p: int, c, sp: Dictionary) -> bool:
 	var ps := s.players[p]
 	var cost: String = str(sp.get("cost", ""))
@@ -1071,6 +1079,9 @@ static func _can_pay(s: DuelState, p: int, c, sp: Dictionary) -> bool:
 		return not ps.monsters().filter(func(m): return s.can_tribute_fx(m)).is_empty()
 	if cost == "discard_f":
 		return not ps.hand.filter(func(h): return h != c and CardEffects.matches(h.data, sp.get("cost_f", {}))).is_empty()
+	if cost == "shield8":
+		# Spell Shield Type-8: free against a Spell that targets 1 monster; otherwise a Spell from the hand goes.
+		return _shield8_free(s) or not ps.hand.filter(func(h): return h != c and h.is_spell()).is_empty()
 	if cost == "detach_any":
 		return not ps.monsters().filter(func(m): return m.face_up and not m.overlays.is_empty()).is_empty()
 	if cost == "banish_hand_f":
@@ -1086,6 +1097,10 @@ static func pay_cost(s: DuelState, p: int, c, sp: Dictionary) -> Array:
 	var ps := s.players[p]
 	var events := []
 	var cost: String = str(sp.get("cost", ""))
+	if cost == "shield8":
+		if _shield8_free(s):
+			return events
+		return pay_cost(s, p, c, {"cost": "discard_f", "cost_f": {"monster": false, "frame": "spell"}})
 	if cost.begins_with("speed"):
 		events.append_array(s._speed(p, -int(cost.substr(5))))
 		return events
@@ -1189,6 +1204,10 @@ static func targets(s: DuelState, p: int, c) -> Array:
 				ok = false   # Cyber Phoenix: a Spell/Trap that targets 1 Machine its controller has does nothing
 			if ok and sp.get("must_xyz_empty", false) and not (m.frame() == "xyz" and m.overlays.is_empty()):
 				ok = false   # "1 face-up Xyz Monster on the field that has no Xyz Material" (Galaxy Storm)
+			if ok and int(m.tags.get("st_immune", -1)) == s.turn:
+				ok = false   # Forbidden Lance: "unaffected by the effects of other Spells/Traps" this turn
+			if ok and sp.get("only_monster", false) and s.players[m.owner].monsters().size() != 1:
+				ok = false   # Assault Armor: "Equip only to a Warrior-Type monster that is the only monster you control"
 			if ok and sp.has("must_has") and not m.cname().contains(str(sp["must_has"])):
 				ok = false   # "Target 1 "Destiny HERO" monster you control" (D - Chain)
 			if ok and sp.get("must_rose", false) and not (m.cname() == "Black Rose Dragon" or str(m.data.get("race", "")) == "Plant"):
@@ -2458,6 +2477,20 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			var n_p := ps.monsters().filter(func(m): return m.face_up and str(m.data.get("race", "")) in ["Fish", "Sea Serpent", "Aqua"]).size()
 			if n_p > 0:
 				events.append_array(s._damage(s.opponent(p), 800 * n_p))
+		"st_immune":
+			var ti = ctx["target"]
+			if ti != null:
+				ti.tags["st_immune"] = s.turn
+		"seal_name":
+			# Cursed Seal of the Forbidden Spell: "your opponent cannot activate Spell Cards with that name for the rest of this Duel."
+			var sub = ctx.get("subject")
+			if sub is Dictionary and sub.has("card"):
+				var banned: Array = s.players[s.opponent(p)].get_meta("sealed", [])
+				banned.append(sub["card"].cname())
+				s.players[s.opponent(p)].set_meta("sealed", banned)
+				events.append(_ev(p, c, Loc.t("%s: %s is sealed for the rest of the Duel") % [c.cname(), sub["card"].cname()]))
+		"no_bp":
+			ps.no_attack_turn = s.turn   # Soul Exchange: "You cannot conduct your Battle Phase the turn you activate this card."
 		"doble_passe":
 			# Doble Passe: "Make your opponent's attack a direct attack instead and inflict damage to your opponent equal to the ATK of the attack
 			# target you control. Also, that monster you control can attack your opponent directly during your next turn."
@@ -3037,6 +3070,8 @@ static func can_attack(s: DuelState, p: int, c) -> bool:
 		return false
 	if c.has_meta("trap_data"):
 		return false   # a Trap Card that became a monster (Metal Reflect Slime) cannot attack
+	if field_flag(s, "steelcage"):
+		return false   # Nightmare's Steelcage: "While this card is face-up on the field, no monsters can attack."
 	if equip_flag(s, c, "no_attack"):
 		return false
 	for q in 2:

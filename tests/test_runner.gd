@@ -75,6 +75,7 @@ func _ready() -> void:
 		_test_cards_66()
 		_test_cards_67()
 		_test_cards_68()
+		_test_cards_69()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -7379,3 +7380,101 @@ func _test_cards_68() -> void:
 	var dsn := _rst(s, 0, "Dark Sanctuary")
 	s.activate(0, dsn)
 	check(s.players[0].field_spell == dsn, "Dark Sanctuary is up")
+
+
+## The last Spells and Traps, and Infernity Launcher (v0.33.38).
+func _test_cards_69() -> void:
+	# Infernity Launcher: send one from the hand, then with an empty hand bring two back.
+	var s := _bare(3901)
+	var la := _rst(s, 0, "Infernity Launcher")
+	s.activate(0, la)
+	var ib := _in(s, 0, "Infernity Beetle", "hand")
+	check(s.can_ignite(0, la), "Infernity Launcher: its effect can be used from the field")
+	s.ignite(0, la)
+	check(s.players[0].gy.has(ib) and s.players[0].hand.is_empty(), "Infernity Launcher sends an Infernity from the hand")
+	_in(s, 0, "Infernity Beast", "gy")
+	s.ignite(0, la)
+	s._cleanup()
+	check(s.players[0].gy.has(la) and s.players[0].monsters().size() == 2, "Infernity Launcher: with an empty hand, 2 Infernities back")
+	# Ring of Magnetism
+	s = _bare(3902)
+	var rm_m := _mon(s, 1, "Celtic Guardian", 0)
+	var other := _mon(s, 1, "Mystical Elf", 1)
+	var ring := _rst(s, 1, "Ring of Magnetism")
+	s.current = 1
+	s.activate(1, ring, rm_m)
+	s.current = 0
+	var att := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	check(s.attack_targets_for(0, att).size() == 1 and s.attack_targets_for(0, att)[0] == rm_m, "Ring of Magnetism: only the equipped monster can be attacked")
+	# Nightmare's Steelcage
+	s = _bare(3903)
+	var sc := _rst(s, 0, "Nightmare's Steelcage")
+	s.activate(0, sc)
+	var a2 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	a2.summoned_turn = 0
+	s.phase = DuelState.Phase.BATTLE
+	check(not s.can_attack(0, a2), "Nightmare's Steelcage: no attacks")
+	# Cursed Seal of the Forbidden Spell
+	s = _bare(3904)
+	var seal := _rst(s, 1, "Cursed Seal of the Forbidden Spell", "set")
+	_in(s, 1, "Pot of Greed", "hand")
+	var rai := _rst(s, 0, "Raigeki")
+	_mon(s, 1, "Celtic Guardian", 0)
+	s.chain_add(0, rai)
+	s.chain_add(1, seal, null, "chain", s.chain.back())
+	s.chain_resolve()
+	s._cleanup()
+	var rai2 := _rst(s, 0, "Raigeki")
+	check(s.players[1].monsters().size() == 1 and not s.can_activate(0, rai2), "Cursed Seal: Raigeki is negated and sealed for the rest of the Duel")
+	# Heart of Clear Water
+	s = _bare(3905)
+	var small := _mon(s, 0, "Kuriboh", 0)
+	var hc := _rst(s, 0, "Heart of Clear Water")
+	s.activate(0, hc, small)
+	s._cleanup()
+	check(hc.equipped_to == small, "Heart of Clear Water equips a small monster")
+	small.atk_mod += 1500
+	s._cleanup()
+	check(s.players[0].gy.has(hc), "Heart of Clear Water: destroyed once the ATK is 1300 or more")
+	# Assault Armor
+	s = _bare(3906)
+	var w := _mon(s, 0, "Celtic Guardian", 0)
+	var aa := _rst(s, 0, "Assault Armor")
+	s.activate(0, aa, w)
+	check(aa.equipped_to == w and s.can_ignite(0, aa), "Assault Armor is on the only Warrior and can be sent")
+	s.ignite(0, aa)
+	check(s.players[0].gy.has(aa) and s.attacks_left(w) == 2, "Assault Armor: the Warrior attacks twice")
+	# Spark Blaster
+	s = _bare(3907)
+	var sp := _mon(s, 0, "Elemental HERO Sparkman", 0)
+	var sb := _rst(s, 0, "Spark Blaster")
+	s.activate(0, sb, sp)
+	var foe := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	s.ignite(0, sb)
+	check(not foe.attack_pos, "Spark Blaster changes their monster to Defense")
+	s.ignite(0, sb)
+	s.ignite(0, sb)
+	s._cleanup()
+	check(s.players[0].gy.has(sb), "Spark Blaster is destroyed after 3 uses")
+	# Breakthrough Skill from the Graveyard
+	s = _bare(3908)
+	var bs := _in(s, 0, "Breakthrough Skill", "gy")
+	bs.gy_turn = s.turn - 2
+	var eff := _mon(s, 1, "Cyber Dragon", 0)
+	check(s.gy_effects(0).has(bs), "Breakthrough Skill can be used from the Graveyard")
+	s.gy_ignite(0, bs)
+	s._cleanup()
+	check(eff.negated and s.players[0].banished.has(bs), "Breakthrough Skill: banished, their monster negated")
+	# Necrovalley
+	s = _bare(3909)
+	var nv := _rst(s, 0, "Necrovalley")
+	s.activate(0, nv)
+	var gyc := _in(s, 1, "Dark Magician", "gy")
+	check(not s.can_revive(gyc), "Necrovalley: nothing leaves the Graveyard")
+	# Forbidden Lance
+	s = _bare(3910)
+	var fl := _rst(s, 0, "Forbidden Lance")
+	var lt := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	s.activate(0, fl, lt)
+	var moon := _rst(s, 0, "Book of Moon")
+	check(s.atk_of(lt, false) == 2200 and not SpellRules.targets(s, 0, moon).has(lt), "Forbidden Lance: -800 and no other Spell can target it this turn")

@@ -540,17 +540,6 @@ const MONSTERS := {
 }
 
 const NOT_YET := {
-	"Assault Armor": true,
-	"Breakthrough Skill": true,
-	"Cursed Seal of the Forbidden Spell": true,
-	"Forbidden Lance": true,
-	"Heart of Clear Water": true,
-	"Necrovalley": true,
-	"Nightmare's Steelcage": true,
-	"Ring of Magnetism": true,
-	"Soul Exchange": true,
-	"Spark Blaster": true,
-	"Spell Shield Type-8": true,
 }
 
 
