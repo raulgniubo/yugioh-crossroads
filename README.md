@@ -17,8 +17,21 @@ Not built yet: this is what is saved for the next build.
 - **Extra:** Thousand Dragon, Alligator's Sword Dragon, Black Skull Dragon.
 - **Time Wizard:** call the coin. Right, their monsters are destroyed. Wrong, yours are and you take half their ATK. **Jinzo:** no Trap can be activated. **Rocket Warrior**, **Panther Warrior**, **Gearfried the Iron Knight**, **Copycat**, **Graceful Dice**, **Skull Dice**, **Shield & Sword**, and the fusions **Flame Swordsman** and **Black Skull Dragon**.
 
+### Jack
+
+**Red Dragon Archfiend on Resonators, with Exploder Dragonwing and Chaos King Archfiend beside it.** 14 cards built.
+
+- **Main, 40:** Dark Resonator x3, Flare Resonator x2, Clock Resonator, Creation Resonator, Attack Gainer, Sinister Sprocket, Vice Dragon x2, Mad Archfiend x2, Twin-Sword Marauder x3, Big Piece Golem x2, Medium Piece Golem, Small Piece Golem, Power Breaker x2, Strong Wind Dragon x2, Archfiend Interceptor, Dread Dragon, Battle Fader; Fiendish Chain x2, Powerful Rebirth x2, Half or Nothing; and staples that are not his own: Monster Reborn, Pot of Greed, Mystical Space Typhoon x2, Lightning Vortex, Smashing Ground, Sakuretsu Armor, Call of the Haunted.
+- **Extra:** Red Dragon Archfiend x2, Exploder Dragonwing, Chaos King Archfiend.
+- **Chaos King Archfiend** switches the ATK and DEF of their monsters when it attacks. **Exploder Dragonwing** destroys a weaker monster before the battle and burns for its ATK (it had the wrong effect before). **Strong Wind Dragon** gains half the ATK of the Dragon Tributed for it.
+
+### Credit
+
+The main menu line now reads "Fan project · v0.33.33 · by Atlas Peak Games".
+
 **Not done or not checked:**
 
+- Still to build for Jack: Red Nova Dragon (the game cannot do a Synchro Summon with 2 Tuners yet), Majestic Red Dragon, Barrier Resonator, Force Resonator, Trust Guardian, Extra Veiler, Red Gardna, Synchro Soldier, Power Supplier, Lancer Archfiend, Trap Eater, Crimson Fire, Changing Destiny, Nightmare Archfiends, Prideful Roar, Lineage of Destruction. Chaos King Archfiend switches original ATK and DEF, not boosted values. Jack on Hard won 26 of 40 test duels.
 - Still to build for Joey: Little-Winguard, Blue Flame Swordsman, The Legendary Fisherman, Kunai with Chain, Fairy Box, Magical Arm Shield, Nutrient Z, Gilford the Lightning, Red-Eyes Black Metal Dragon with Metalmorph, Graverobber.
 - Joey on Hard won 17 of 40 test duels. Not watched on screen.
 

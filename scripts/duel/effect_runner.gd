@@ -49,6 +49,8 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 	if f.has("atk_per"):
 		var spec: String = f["atk_per"][0]
 		b += _count(s, c.owner, spec) * int(f["atk_per"][1])
+	if int(c.tags.get("cka", -1)) == s.turn and s.phase == DuelState.Phase.BATTLE:
+		b += c.def() - c.atk()   # Chaos King Archfiend switched it
 	if f.has("atk_if_hand_le") and s.players[c.owner].hand.size() <= int(f["atk_if_hand_le"][0]):
 		b += int(f["atk_if_hand_le"][1])   # Blade Knight
 	if f.get("atk_lp_gap", false) and s.players[c.owner].lp < s.players[s.opponent(c.owner)].lp:
@@ -100,6 +102,8 @@ static func def_bonus(s: DuelState, c) -> int:
 	var u := union_boost(s, c)
 	if int(c.tags.get("tmp_def_until", -1)) >= s.turn:
 		u += int(c.tags.get("tmp_def", 0))   # Blustering Winds
+	if int(c.tags.get("cka", -1)) == s.turn and s.phase == DuelState.Phase.BATTLE:
+		u += c.atk() - c.def()   # Chaos King Archfiend switched it
 	if f.has("def_per"):
 		return u + _count(s, c.owner, str(f["def_per"][0])) * int(f["def_per"][1])
 	return u
@@ -272,6 +276,9 @@ static func piercing(s: DuelState, p: int, c) -> bool:
 ## True if c cannot be destroyed by a card effect right now.
 static func survives_effect(s: DuelState, c) -> bool:
 	var f := fx(c)
+	if f.get("survive_once_def_fx", false) and c.face_up and not c.attack_pos and c.survive_turn != s.turn:
+		c.survive_turn = s.turn
+		return true   # Clock Resonator: once per turn, in Defense Position, not by battle or by card effects
 	if f.get("hand_empty_guard", false) and c.face_up and s.players[c.owner].hand.is_empty():
 		return true
 	return false
@@ -284,6 +291,8 @@ static func survives_battle(s: DuelState, c) -> bool:
 		return true
 	if int(c.tags.get("unbreak_turn", -1)) == s.turn:
 		return true   # Half Unbreak
+	if f.get("survive_vs_same_atk", false) and s.battle_foe != null and s.atk_of(s.battle_foe, false) == s.atk_of(c, false):
+		return true   # Strong Wind Dragon
 	if f.get("rocket", false) and s.current == c.owner and s.phase == DuelState.Phase.BATTLE:
 		return true   # Rocket Warrior: "During your Battle Phase, this card cannot be destroyed by battle"
 	if c.tags.has("guard_by"):
@@ -319,6 +328,11 @@ static func no_tribute(s: DuelState, p: int, c) -> bool:
 static func _cond(s: DuelState, p: int, cond: String) -> bool:
 	if cond == "lp_le_1000":
 		return s.players[p].lp <= 1000   # Number C39: Utopia Ray
+	if cond == "own_synchro8":
+		# Creation Resonator: "If you control a Level 8 or higher Synchro Monster".
+		return not s.players[p].monsters().filter(func(m): return m.face_up and m.frame() == "synchro" and m.level() >= 8).is_empty()
+	if cond == "own_big_piece":
+		return not s.players[p].monsters().filter(func(m): return m.face_up and m.cname() == "Big Piece Golem").is_empty()
 	var mine := s.players[p].monsters()
 	var theirs := s.players[s.opponent(p)].monsters()
 	if cond.begins_with("own_summoned_race:"):
@@ -1910,6 +1924,12 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"into_atk":
+			# Flare Resonator: "A Synchro Monster that used this card as a Synchro Material gains 300 ATK."
+			var into_m = ctx.get("into")
+			if into_m != null:
+				into_m.atk_mod += int(a[1])
+				events.append(_ev(p, c, Loc.t("%s: %s gains %d ATK") % [name, into_m.cname(), int(a[1])]))
 		"time_wizard":
 			# "toss a coin and call it. If you call it right, destroy all monsters your opponent controls. If you call it wrong, destroy as
 			# many monsters you control as possible, and if you do, take damage equal to half the total ATK those destroyed monsters had."

@@ -119,6 +119,10 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Jack's cards (v0.33.33)
+	"Fiendish Chain": {"k": "ctrap", "win": ["free"], "t": "any_face", "must_effect": true, "equip": true, "no_attack": true, "negate_host": true},
+	"Powerful Rebirth": {"k": "ctrap", "win": ["free"], "do": [["revive", "own_gy", "", "link", {"max_lv": 4}], ["linked_boost", 1, 100]]},
+	"Half or Nothing": {"k": "trap", "win": ["free"], "cond": "opp_battle", "do": [["half_or_nothing"]]},
 	# ---------------------------------------------------------------- Joey's cards (v0.33.33)
 	"Graceful Dice": {"k": "quick", "dmg": true, "cond": "own_monster", "do": [["dice_all", "own", 1]]},
 	"Skull Dice": {"k": "trap", "win": ["free"], "dmg": true, "do": [["dice_all", "opp", -1]]},
@@ -562,6 +566,8 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return not s.players[p].monsters().is_empty()
 		"own_hand":
 			return not s.players[p].hand.is_empty()
+		"opp_battle":
+			return s.current != p and s.phase == DuelState.Phase.BATTLE and not s.in_damage_step
 		"lord_of_d":
 			for q in 2:
 				for m in s.players[q].monsters():
@@ -894,6 +900,8 @@ static func targets(s: DuelState, p: int, c) -> Array:
 				"any_fusion": ok = m.face_up and m.frame() == "fusion"
 			if ok and m.face_up and ((s.dragon_shield() and str(m.data.get("race", "")) == "Dragon") or (not m.negated and CardEffects.of(m.cname()).get("untargetable", false))):
 				ok = false   # Lord of D. shields Dragons; Obelisk cannot be targeted
+			if ok and sp.get("must_effect", false) and not EffectRunner._is_effect_monster(m):
+				ok = false   # "targeting 1 Effect Monster" (Fiendish Chain)
 			if ok and sp.get("must_neos_fusion", false) and not (m.frame() == "fusion" and neos_family(m)):
 				ok = false   # "Equip only to a Fusion Monster that lists "Elemental HERO Neos" as material"
 			if ok and (must.is_empty() or CardEffects.matches(m.data, must)) and (m.proper or not sp.get("must_proper", false)):
@@ -1452,6 +1460,28 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				taker.lv_set = taker.level() + lv_gain
 				taker.lv_turn = s.turn
 				events.append(_ev(p, c, Loc.t("%s is Level %d until the End Phase") % [taker.cname(), taker.lv_set]))
+		"linked_boost":
+			# Powerful Rebirth: "Increase its Level by 1 and ATK/DEF by 100."
+			if c.linked != null:
+				c.linked.lv_set = c.linked.level() + int(a[1])
+				c.linked.lv_turn = -1
+				c.linked.atk_mod += int(a[2])
+				c.linked.def_mod += int(a[2])
+		"half_or_nothing":
+			# "Your opponent chooses: halve the ATK of all monsters they currently control until the end of the Battle Phase, or end the Battle Phase."
+			var strong := 0
+			for m in opp.monsters():
+				if m.face_up and m.attack_pos and s.attacks_left(m) > 0:
+					strong += s.atk_of(m, false) / 2
+			if s.choose_option(opp_i, Loc.t("%s: choose one") % name, ["Halve the ATK of all your monsters this Battle Phase", "End the Battle Phase"], 0 if strong >= 1500 else 1, c) == 0:
+				for m in opp.monsters():
+					m.half_turn = s.turn
+				events.append(_ev(opp_i, c, Loc.t("%s: the ATK of their monsters is halved for this Battle Phase") % name))
+			else:
+				if not s.pending_attack.is_empty():
+					s.pending_attack["negated"] = true
+				opp.no_attack_turn = s.turn
+				events.append(_ev(opp_i, c, Loc.t("%s: the Battle Phase ends") % name))
 		"dice_all":
 			# "Roll a six-sided die. All monsters you currently control gain / your opponent currently controls lose ATK/DEF equal to the result x 100, until the end of this turn."
 			var roll: int = randi() % 6 + 1

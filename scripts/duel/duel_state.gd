@@ -850,6 +850,13 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 			c.lv_set = as_lv
 			c.lv_turn = -1
 	events.append({"type": "set" if set_card else "summon", "player": p, "card": c, "zone": zone})
+	if not set_card and CardEffects.of(c.cname()).get("tribute_dragon_boost", false):
+		# Strong Wind Dragon: "Tribute Summoned by Tributing a Dragon-Type monster: It gains ATK equal to half the original ATK of the Tributed monster."
+		for tm in tributes:
+			if str(tm.data.get("race", "")) == "Dragon":
+				c.atk_mod += tm.atk() / 2
+				events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s gains %d ATK from the Dragon it was Tributed for") % [c.cname(), tm.atk() / 2]})
+				break
 	if free_atk > 0 and tributes.is_empty() and not set_card:
 		c.atk_mod -= c.atk() - free_atk
 		events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s is Normal Summoned without Tributing: its ATK is %d") % [c.cname(), free_atk]})
@@ -1562,6 +1569,22 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	pending_attack = {"player": p, "attacker": attacker, "target": target, "negated": false,
 			"opp_count": players[opponent(p)].monsters().size()}
 	var events := paid + [{"type": "attack", "player": p, "card": attacker, "target": target}]
+	# Archfiend Interceptor: "While you control this face-up Attack Position card, when an opponent's monster declares an attack, inflict 500 damage to your opponent."
+	for im in players[opponent(p)].monsters():
+		if im.face_up and im.attack_pos and not im.negated and int(EffectRunner.fx(im).get("burn_on_opp_attack", 0)) > 0 and not is_over():
+			events.append({"type": "effect", "player": opponent(p), "card": im, "text": Loc.t("%s: %d damage") % [im.cname(), int(EffectRunner.fx(im)["burn_on_opp_attack"])]})
+			events.append_array(_damage(p, int(EffectRunner.fx(im)["burn_on_opp_attack"])))
+	# Chaos King Archfiend: "When this card declares an attack: You can switch the current ATK and DEF of all face-up monsters your opponent controls, until the end of the Battle Phase."
+	if attacker.face_up and not attacker.negated and EffectRunner.fx(attacker).get("swap_opp_bp", false) and int(attacker.tags.get("cka_used", -1)) != turn:
+		var helps := 0
+		for om in players[opponent(p)].monsters():
+			if om.face_up:
+				helps += (om.atk() - om.def()) if om.attack_pos else (om.def() - om.atk())
+		if choose_option(p, Loc.t("%s: switch the ATK and DEF of the opponent's monsters?") % attacker.cname(), ["Switch them", "No"], 0 if helps > 0 else 1, attacker) == 0:
+			for om in players[opponent(p)].monsters():
+				if om.face_up:
+					om.tags["cka"] = turn
+			events.append({"type": "effect", "player": p, "card": attacker, "text": Loc.t("%s switches the ATK and DEF of the opponent's monsters until the end of the Battle Phase") % attacker.cname()})
 	if target != null and target.face_up and target.attack_pos and not target.negated and EffectRunner.fx(target).get("def_when_targeted", false):
 		if choose_option(target.owner, Loc.t("%s: change it to Defense Position?") % target.cname(), ["Change to Defense Position", "No"], 0, target) == 0:
 			target.attack_pos = false
@@ -1730,6 +1753,23 @@ func _resolve_attack() -> Array:
 		if not players[opp].field.has(target):
 			events.append_array(_after_attack(attacker, null))
 			return events
+	# Exploder Dragonwing: "At the start of the Damage Step, if this card battles a monster: You can destroy that monster, and
+	# if you do, inflict damage to your opponent equal to the ATK the destroyed monster had on the field" (its own ATK must be at least as high).
+	for pair9 in [[attacker, target], [target, attacker]]:
+		var ex9: CardInst = pair9[0]
+		var foe9: CardInst = pair9[1]
+		if ex9.face_up and not ex9.negated and EffectRunner.fx(ex9).get("exploder", false) and foe9.face_up and atk_of(ex9, false) >= atk_of(foe9, false):
+			if choose_option(ex9.owner, Loc.t("%s: destroy %s and inflict its ATK as damage?") % [ex9.cname(), foe9.cname()], ["Destroy it", "No, battle"], 0, ex9) == 0:
+				var had9 := atk_of(foe9, false)
+				var was_by9 := effect_by
+				effect_by = ex9.owner
+				events.append({"type": "effect", "player": ex9.owner, "card": ex9, "text": Loc.t("%s destroys %s before the battle") % [ex9.cname(), foe9.cname()]})
+				events.append_array(_destroy(foe9))
+				effect_by = was_by9
+				if not (players[0].field.has(foe9) or players[1].field.has(foe9)):
+					events.append_array(_damage(opponent(ex9.owner), had9))
+					events.append_array(_after_attack(attacker, null) if players[p].field.has(attacker) else [])
+					return events
 	# Neo-Spacian Grand Mole: "At the start of the Damage Step, if this card battles an opponent's
 	# monster: You can return both the opponent's monster and this card to the hand."
 	for pair0 in [[attacker, target], [target, attacker]]:
@@ -2383,6 +2423,13 @@ func _cleanup() -> Array:
 	for q in 2:
 		for m in players[q].monsters():
 			m.negated = m.face_up and (drain or m.negated_turn == turn or m.neg_perm)
+	# Fiendish Chain: "negate the effects of that face-up monster while it is on the field".
+	for q in 2:
+		for st in players[q].spells:
+			if st != null and st.face_up and st.equipped_to != null and SpellRules.spec(st).get("negate_host", false) and not SpellRules.blocked(self, st):
+				var hm: CardInst = st.equipped_to
+				if hm.face_up and (players[0].field.has(hm) or players[1].field.has(hm)):
+					hm.negated = true
 	# Lord of D.: Dragons cannot be targeted while he is face-up (EffectRunner.can_target reads the mark).
 	var lord_up := dragon_shield()
 	for q in 2:
@@ -2886,6 +2933,11 @@ static func material_rule(c: CardInst) -> Dictionary:
 				m = re.search(tun)
 				if m:
 					tf = {"attr": m.get_string(1)}
+				else:
+					re.compile("^1 ([A-Z][A-Za-z\\- ]+?)-Type Tuner")
+					m = re.search(tun)
+					if m:
+						tf = {"race": m.get_string(1)}   # "1 Fiend-Type Tuner" (Chaos King Archfiend)
 		var of := {}
 		re.compile("non-Tuner ([A-Z][A-Za-z\\- ]+?)(?:-Type)? monsters?")
 		m = re.search(rest)

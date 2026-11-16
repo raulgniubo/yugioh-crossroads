@@ -43,6 +43,7 @@ func _ready() -> void:
 		_test_cards_34()
 		_test_cards_35()
 		_test_cards_36()
+		_test_cards_37()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -4859,3 +4860,125 @@ func _test_cards_36() -> void:
 	check(s.atk_of(bg, false) == 2600 and s.def_of(bg) == 100, "Shield & Sword: Big Shield Gardna is 2600 / 100 this turn (got %d / %d)" % [s.atk_of(bg, false), s.def_of(bg)])
 	s.turn += 1
 	check(s.atk_of(bg, false) == 100 and s.def_of(bg) == 2600, "Shield & Sword ends with the turn")
+
+
+## The cards built in v0.33.33 for Jack's best deck, each against its printed text.
+func _test_cards_37() -> void:
+	# ---- Exploder Dragonwing, Chaos King Archfiend.
+	var s := _bare(701)
+	s.phase = DuelState.Phase.BATTLE
+	var ex := _mon(s, 0, "Exploder Dragonwing", 0)
+	ex.summoned_turn = 1
+	var foe := _mon(s, 1, "Celtic Guardian", 0)
+	var lp1: int = s.players[1].lp
+	s.declare_attack(0, ex, foe)
+	s.resolve_attack()
+	check(s.players[1].gy.has(foe) and s.players[1].lp == lp1 - 1400, "Exploder Dragonwing: the weaker monster is destroyed before the battle and its 1400 ATK is dealt as damage (LP %d)" % s.players[1].lp)
+	s = _bare(702)
+	s.phase = DuelState.Phase.BATTLE
+	var ck := _mon(s, 0, "Chaos King Archfiend", 0)
+	ck.summoned_turn = 1
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	lp1 = s.players[1].lp
+	s.declare_attack(0, ck, foe)
+	check(s.atk_of(foe, false) == 2500 and s.def_of(foe) == 3000, "Chaos King Archfiend: Blue-Eyes is 2500 / 3000 for this Battle Phase (got %d / %d)" % [s.atk_of(foe, false), s.def_of(foe)])
+	s.resolve_attack()
+	check(s.players[1].gy.has(foe) and s.players[1].lp == lp1 - 100, "Chaos King Archfiend beats the switched Blue-Eyes by 100")
+	# ---- The Resonators.
+	s = _bare(703)
+	var flare := _mon(s, 0, "Flare Resonator", 0)
+	var mat := _mon(s, 0, "Mad Archfiend", 1)
+	mat.lv_set = 5
+	var rda := _in(s, 0, "Red Dragon Archfiend", "extra")
+	check(s.can_extra_summon(0, rda), "Red Dragon Archfiend can be made with Flare Resonator")
+	s.extra_summon(0, rda)
+	check(s.atk_of(rda, false) == 3300, "Flare Resonator: the Synchro Monster gains 300 ATK (got %d)" % s.atk_of(rda, false))
+	var crea := _in(s, 0, "Creation Resonator", "hand")
+	check(s.can_special_from_hand(0, crea), "Creation Resonator can be Special Summoned while you control a Level 8 Synchro Monster")
+	s = _bare(704)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	var att := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	var clock := _mon(s, 0, "Clock Resonator", 0, false)
+	s.declare_attack(1, att, clock)
+	s.resolve_attack()
+	check(s.players[0].field.has(clock), "Clock Resonator in Defense Position survives one battle a turn")
+	s.effect_by = 1
+	s._destroy(clock)
+	s.effect_by = -1
+	check(not s.players[0].field.has(clock), "Clock Resonator: only once per turn")
+	# ---- Power Breaker, Strong Wind Dragon, Small Piece Golem, Archfiend Interceptor, Attack Gainer, Dread Dragon.
+	s = _bare(705)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	att = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	var up := _rst(s, 1, "Swords of Revealing Light", "set")
+	up.face_up = true
+	var pb := _mon(s, 0, "Power Breaker", 0)
+	var inter := _mon(s, 0, "Archfiend Interceptor", 1)
+	lp1 = s.players[1].lp
+	s.declare_attack(1, att, pb)
+	check(s.players[1].lp == lp1 - 500, "Archfiend Interceptor: 500 damage when their monster declares an attack")
+	s.resolve_attack()
+	check(s.players[0].gy.has(pb) and s.players[1].gy.has(up), "Power Breaker destroyed by their attack: a face-up Spell/Trap of theirs is destroyed")
+	s = _bare(706)
+	var vice := _mon(s, 0, "Vice Dragon", 0)
+	var swd := _in(s, 0, "Strong Wind Dragon", "hand")
+	s.normal_summon(0, swd, [vice])
+	check(s.players[0].field.has(swd) and s.atk_of(swd, false) == 3400 and EffectRunner.piercing(s, 0, swd), "Strong Wind Dragon: 2400 + half of Vice Dragon's 2000, and it pierces (got %d)" % s.atk_of(swd, false))
+	s = _bare(707)
+	_mon(s, 0, "Big Piece Golem", 0)
+	var small := _in(s, 0, "Small Piece Golem", "hand")
+	s.players[0].deck.append(s._make(_cid("Medium Piece Golem"), 0))
+	s.normal_summon(0, small, [])
+	var med: Array = s.players[0].monsters().filter(func(m): return m.cname() == "Medium Piece Golem")
+	check(med.size() == 1 and med[0].negated, "Small Piece Golem: Medium Piece Golem comes out of the Deck with its effect negated")
+	s = _bare(708)
+	var gain := _mon(s, 0, "Attack Gainer", 1)
+	var m5 := _mon(s, 0, "Mad Archfiend", 2)
+	m5.lv_set = 7
+	rda = _in(s, 0, "Red Dragon Archfiend", "extra")
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	if s.can_extra_summon(0, rda):
+		s.extra_summon(0, rda)
+	check(s.players[0].field.has(rda) and s.atk_of(foe, false) == 2000, "Attack Gainer used as Synchro Material: their monster loses 1000 ATK (got %d)" % s.atk_of(foe, false))
+	s = _bare(709)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	att = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	var dread := _mon(s, 0, "Dread Dragon", 0, false)
+	s.players[0].deck.append(s._make(_cid("Baby Dragon"), 0))
+	s.declare_attack(1, att, dread)
+	s.resolve_attack()
+	check(s.players[0].hand.size() == 1 and s.players[0].hand[0].level() <= 3, "Dread Dragon destroyed by battle: a Level 3 or lower Dragon is added to the hand")
+	# ---- Fiendish Chain, Powerful Rebirth, Half or Nothing.
+	s = _bare(710)
+	s.current = 1
+	var bb := _mon(s, 1, "Buster Blader", 0)
+	bb.summoned_turn = 1
+	_mon(s, 0, "Blue-Eyes White Dragon", 0)
+	var fc := _rst(s, 0, "Fiendish Chain", "set")
+	s.chain_add(0, fc, bb, "free")
+	s.chain_resolve()
+	s._cleanup()
+	s.phase = DuelState.Phase.BATTLE
+	check(bb.negated and s.atk_of(bb, false) == 2600 and not s.can_attack(1, bb), "Fiendish Chain: the monster's effects are negated and it cannot attack")
+	s = _bare(711)
+	s.current = 1
+	var gy_m := _in(s, 0, "Mad Archfiend", "gy")
+	var pr := _rst(s, 0, "Powerful Rebirth", "set")
+	s.chain_add(0, pr, null, "free")
+	s.chain_resolve()
+	check(s.players[0].field.has(gy_m) and gy_m.level() == 5 and s.atk_of(gy_m, false) == 1900, "Powerful Rebirth: back from the Graveyard, 1 Level higher and +100 ATK (Level %d, ATK %d)" % [gy_m.level(), s.atk_of(gy_m, false)])
+	s = _bare(712)
+	s.current = 1
+	s.phase = DuelState.Phase.BATTLE
+	att = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	var hon := _rst(s, 0, "Half or Nothing", "set")
+	s.chain_add(0, hon, null, "free")
+	s.chain_resolve()
+	check(s.atk_of(att, false) == 1500 or not s.can_attack(1, att), "Half or Nothing: their ATK is halved, or the Battle Phase ends")
