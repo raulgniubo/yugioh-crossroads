@@ -5533,4 +5533,5 @@ const ES := {
 	"%s: Special Summon up to 2 Infernity monsters": "%s: Invoca de Modo Especial hasta 2 monstruos Infernity",
 	"%s: send which Infernity monster to the Graveyard?": "%s: ¿qué monstruo Infernity enviar al Cementerio?",
 	"%s: %s is sealed for the rest of the Duel": "%s: %s queda sellada el resto del Duelo",
+	"Put a picture named back.jpg in this folder and it becomes the back of every card. A picture named icon.png becomes the game's icon while it runs.": "Pon una imagen llamada back.jpg en esta carpeta y será el reverso de todas las cartas. Una imagen llamada icon.png será el icono del juego mientras está abierto.",
 }

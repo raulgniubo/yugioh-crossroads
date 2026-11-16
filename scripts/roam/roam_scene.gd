@@ -910,7 +910,7 @@ func _add_npc(d: Dictionary, offset: Vector3) -> void:
 		marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		marker.shaded = false
 		marker.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-		marker.position = Vector3(0, 2.45, 0)
+		marker.position = Vector3(0, 2.6, 0)   # (clear of the name under it)
 		f.add_child(marker)
 		var entry := [d, f, marker]
 		_npcs.append(entry)

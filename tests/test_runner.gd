@@ -32,6 +32,22 @@ func _ready() -> void:
 	if stress != "":
 		CardData.load_external(stress)
 		var all: Array = Characters.ORDER.filter(func(k): return CardData.has_deck(Characters.DATA[k]["deck"]))
+		if OS.get_environment("SIM_ONLY") != "":
+			# Dev: only the duels of one deck against the house mix (no unit tests): SIM_ONLY=<deck> YUSEI_SIM=n SIM_FROM=k
+			var wins_o := 0
+			var sim_d := OS.get_environment("SIM_ONLY")
+			DuelAI.aces = [int(Characters.get_char(sim_d).get("ace", 0)), 0]
+			var from_o := int(OS.get_environment("SIM_FROM")) if OS.get_environment("SIM_FROM") != "" else 0
+			for gi in int(OS.get_environment("YUSEI_SIM")):
+				var g: int = gi + from_o
+				trace = OS.get_environment("YUSEI_TRACE") != ""
+				if trace:
+					print("--- game %d vs %s" % [g, Characters.DATA[all[(g * 5 + 1) % all.size()]]["deck"]])
+				if _ai_vs_ai(4000 + g, sim_d, Characters.DATA[all[(g * 5 + 1) % all.size()]]["deck"], 2, 2) == 0:
+					wins_o += 1
+			print("SIM_ONLY %s: %d wins" % [sim_d, wins_o])
+			get_tree().quit(0)
+			return
 		_test_card_numbers()
 		_test_field_looks()
 		_test_academy_week()

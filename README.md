@@ -5,6 +5,25 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.39
+
+- **A real icon:** the app and the exe now have Crossroads' own icon (two roads crossing, a glowing card, a star) instead of the Godot logo. Your own picture: put **icon.png** in your card folder and the game uses it as its icon while it runs (Dock / taskbar), like back.jpg for card backs.
+- **Weak decks, tested over 60 duels each against the house mix** (a new quick test runs 60 duels in about 25 seconds):
+  - Syrus 17 → 28-30 wins: No Entry!! was turning his own attackers to Defense.
+  - Vector 15 → 23-24: Torrential Tribute kept wiping his own Xyz.
+  - Jaden 14 → 21: Yubel and her forms sat dead in the hand (3 Tributes); more fusion pieces instead.
+  - Aster 14 → 20-21: two Clock Tower Prisons, and no Heavy Storm breaking his own Prison.
+  - Pegasus and Alexis: no more Heavy Storm, Dark Hole or Torrential destroying their own cards (Pegasus' win count did not move).
+- **Names over people's heads** in the world are drawn on top, so a shop counter or a card display no longer hides them, and the "talk" bubble sits higher.
+
+All 24 decks, wins of 60 on Hard: Yugi 31, Kaiba 29, Joey 25, Mai 22, Bakura 34, Marik 29, Pegasus 22, Weevil 25, Rex 36, Jaden 21, Chazz 23, Zane 23, Alexis 26, Syrus 28, Aster 21, Yusei 30, Jack 32, Crow 34, Akiza 20, Kalin 19, Yuma 30, Shark 37, Kite 31, Vector 24.
+
+**Not done or not checked:**
+
+- Lowest now: Kalin (19 of 60), Akiza (20), Jaden and Aster (21), Mai and Pegasus (22). Kalin's Infernities need the computer to empty its hand on purpose; that is AI work, not cards.
+- Jaden no longer plays Yubel: she made the deck worse in every test. Say if you want her back anyway.
+- The icon: the builds carry the original Crossroads icon only.
+
 ## What is in 0.33.38
 
 - **Free Duel:** the row of your deck's cards no longer redraws when you pick an opponent. It only changes when your deck does.

@@ -101,6 +101,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _ready() -> void:
+	apply_own_icon.call_deferred()
 	# One look everywhere: the game's theme becomes the default for every control, also the
 	# ones on screens that never set a theme of their own.
 	ThemeDB.get_default_theme().merge_with(UITheme.build())
@@ -535,6 +536,23 @@ func go(path: String) -> void:
 	_busy = false
 	var tw2 := create_tween()
 	tw2.tween_property(_fade, "color:a", 0.0, 0.22)
+
+
+## Your own picture as the game's icon while it runs (the Dock on a Mac, the taskbar on Windows):
+## put icon.png (or .jpg) in your card folder, like back.jpg for the card backs. Nothing is bundled:
+## without the file the build's own icon stays.
+func apply_own_icon() -> void:
+	if DisplayServer.get_name() == "headless" or Settings.card_folder == "":
+		return
+	for ext in ["png", "jpg", "jpeg", "webp"]:
+		var path := Settings.card_folder.path_join("icon." + ext)
+		if FileAccess.file_exists(path):
+			var img := Image.load_from_file(path)
+			if img != null and not img.is_empty():
+				if img.get_width() > 512:
+					img.resize(512, 512 * img.get_height() / img.get_width(), Image.INTERPOLATE_LANCZOS)
+				DisplayServer.set_icon(img)
+			return
 
 
 ## True while a place is still getting ready behind the dark screen (see _settle).

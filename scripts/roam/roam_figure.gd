@@ -58,11 +58,17 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 	if show_name and display_name != "":
 		var l := Label3D.new()
 		l.text = display_name
-		l.font_size = 40
+		l.font_size = 46
 		l.pixel_size = 0.0035
 		l.outline_size = 10
 		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		l.no_depth_test = false
+		# Drawn over what stands in front (a shop counter, a card display) so the name is never hidden,
+		# and only near you, so names do not show through walls across the map.
+		l.no_depth_test = true
+		l.render_priority = 30
+		l.visibility_range_end = 14.0
+		l.visibility_range_end_margin = 2.0
+		l.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 		l.position = Vector3(0, 2.05, 0)
 		l.modulate = Color(1, 1, 1, 0.95)
 		l.outline_modulate = Color(0, 0, 0, 0.8)

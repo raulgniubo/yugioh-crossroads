@@ -223,7 +223,7 @@ static func open(parent: Node) -> SidePanel:
 	status.text = ("Real card images found." if Cards.has_real_images()
 			else "No card images found, using placeholders. Run tools/fetch_cards.py with --out pointing at this folder.")
 	art.add_child(status)
-	var back_hint := UITheme.label("Put a picture named back.jpg in this folder and it becomes the back of every card.", 16, UITheme.TEXT_DIM)
+	var back_hint := UITheme.label("Put a picture named back.jpg in this folder and it becomes the back of every card. A picture named icon.png becomes the game's icon while it runs.", 16, UITheme.TEXT_DIM)
 	back_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	art.add_child(back_hint)
 
