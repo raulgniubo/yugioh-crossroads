@@ -809,6 +809,9 @@ func can_normal_summon(p: int, c: CardInst) -> bool:
 	var mons := players[p].monsters().size()
 	if need == 0:
 		return mons < ZONES
+	var only_attr := str(CardEffects.of(c.cname()).get("tribute_attr", ""))
+	if only_attr != "":
+		return tributable(p).filter(func(m): return str(m.data.get("attribute", "")) == only_attr).size() >= need
 	return tributable(p).size() >= need
 
 
@@ -821,6 +824,14 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 	if not can_normal_summon(p, c) or tributes.size() != tributes_needed(c):
 		return []
 	tributes = tributes.duplicate()
+	var need_attr := str(CardEffects.of(c.cname()).get("tribute_attr", ""))
+	if need_attr != "" and not tributes.is_empty():
+		# Jawsman: "If you Tribute Summon this card, all Tributes must be WATER."
+		var right: Array = tributable(p).filter(func(m): return str(m.data.get("attribute", "")) == need_attr)
+		if right.size() < tributes.size():
+			return []
+		if not tributes.all(func(m): return str(m.data.get("attribute", "")) == need_attr):
+			tributes = right.slice(0, tributes.size())
 	if tributes.size() == 1 and c.level() >= 7 and plant_for(c) != null and str(tributes[0].data.get("race", "")) != str(CardEffects.of(c.cname()).get("one_tribute_race", "")):
 		tributes = [plant_for(c)]   # (one Tribute is only enough when it is a Plant)
 	if tributes.size() == 1 and c.level() >= 7 and plant_for(c) == null and kaiser_for(c) != null and str(EffectRunner.fx(tributes[0]).get("double_tribute_attr", "-")) != str(c.data.get("attribute", "")):

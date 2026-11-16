@@ -57,6 +57,8 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 		for g in s.players[vs.owner].monsters():
 			if g.face_up and not g.negated and fx(g).get("gust", false):
 				b -= 300
+	if f.has("atk_per") and str(f["atk_per"][0]).begins_with("own_attr_others:") and c.face_up and str(c.data.get("attribute", "")) == str(f["atk_per"][0]).split(":")[1]:
+		b -= int(f["atk_per"][1])   # ("except this card")
 	if f.has("atk_if_hand_le") and s.players[c.owner].hand.size() <= int(f["atk_if_hand_le"][0]):
 		b += int(f["atk_if_hand_le"][1])   # Blade Knight
 	if f.get("atk_lp_gap", false) and s.players[c.owner].lp < s.players[s.opponent(c.owner)].lp:
@@ -131,6 +133,12 @@ static func _count(s: DuelState, owner: int, spec: String) -> int:
 		return n
 	if kind == "own_hand":
 		return s.players[owner].hand.size()   # Slifer the Sky Dragon
+	if kind == "own_attr_others":
+		# Jawsman: each other face-up WATER monster you control (the caller is not counted: it is passed by name in `val` after a comma).
+		for m in s.players[owner].monsters():
+			if m.face_up and str(m.data.get("attribute", "")) == val:
+				n += 1
+		return n
 	if kind in ["all_st", "all_cards", "opp_st"]:
 		# Flare Neos: every Spell/Trap on the field. Magma Neos: every card on the field. Flare Scarab: the opponent's Spells/Traps.
 		for q in 2:
@@ -342,6 +350,8 @@ static func no_tribute(s: DuelState, p: int, c) -> bool:
 static func _cond(s: DuelState, p: int, cond: String) -> bool:
 	if cond == "lp_le_1000":
 		return s.players[p].lp <= 1000   # Number C39: Utopia Ray
+	if cond == "own_water":
+		return not s.players[p].monsters().filter(func(m): return m.face_up and str(m.data.get("attribute", "")) == "WATER").is_empty()
 	if cond == "xyz_on_field":
 		for q in 2:
 			for m in s.players[q].monsters():
@@ -411,6 +421,10 @@ static func has_special_hand(c) -> bool:
 ## Special Summon from the hand by its own rule (Bora, Gale, Vice Dragon, Photon Thrasher...).
 static func can_special_hand(s: DuelState, p: int, c) -> bool:
 	var f := fx(c)
+	if int(s.players[p].once_names.get("#no_hand_ss", -1)) == s.turn:
+		return false   # Silent Angler: "you cannot Special Summon monsters from your hand for the rest of this turn"
+	if f.get("one_only", false) and not s.players[p].monsters().filter(func(m): return m.face_up and m.cname() == c.cname()).is_empty():
+		return false   # "You can only control 1" (Panther Shark)
 	if f.has("special_tribute_names"):
 		return not _named_set(s, p, c, f["special_tribute_names"]).is_empty()   # Valkyrion: Alpha, Beta and Gamma from the hand and/or field
 	if f.has("special_tribute_f"):
@@ -487,6 +501,8 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 	var f := fx(c)
 	var ps := s.players[p]
 	var events := []
+	if f.get("lock_hand_ss", false):
+		ps.once_names["#no_hand_ss"] = s.turn
 	if f.get("eltanin", false):
 		var fuel := _light_machines(s, p)
 		for m in fuel:
@@ -1057,6 +1073,15 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 					return false
 			"randomizer":
 				if s.players[p].deck.is_empty():
+					return false
+			"aero_shark":
+				if s.players[p].banished.filter(func(b): return b.is_monster()).is_empty():
+					return false
+			"nightmare_direct":
+				if s.players[p].monsters().filter(func(m): return m.face_up and str(m.data.get("attribute", "")) == "WATER").is_empty():
+					return false
+			"bahamut":
+				if s.players[p].free_zone() == -1 or s.players[p].extra.filter(func(x): return x.frame() == "xyz" and x.level() <= 3 and str(x.data.get("attribute", "")) == "WATER").is_empty():
 					return false
 			"photon_pirate":
 				if s.players[p].gy.filter(func(g): return g.is_monster() and g.cname().contains("Photon")).is_empty() or (int(c.tags.get("pirate_turn", -1)) == s.turn and int(c.tags.get("pirate_n", 0)) >= 2):
@@ -1805,6 +1830,11 @@ static func run_list(s: DuelState, p: int, c, actions: Array, ctx: Dictionary) -
 			if s.battle_attacker != c or not s.battle_vs_monster:
 				break
 			continue
+		if str(a[0]) == "need_hit_direct":
+			# "...inflicts Battle Damage to your opponent by a direct attack" (Drill Barnacle).
+			if int(c.tags.get("hit_direct", -1)) != s.turn or s.battle_vs_monster:
+				break
+			continue
 		if str(a[0]) == "need_older":
 			# "You cannot activate this effect the turn this card is Summoned or flipped face-up."
 			if c.summoned_turn == s.turn:
@@ -1905,6 +1935,13 @@ static func ai_ignite_ok(s: DuelState, p: int, c) -> bool:
 			return s.phase == DuelState.Phase.MAIN1 and s.turn > 1 and not opp.monsters().is_empty()
 		"papillo":
 			return not opp.monsters().filter(func(m): return not m.attack_pos).is_empty()
+		"nightmare":
+			# Worth it when the way is blocked and the direct hit is big.
+			var top_w := 0
+			for m in ps.monsters():
+				if m.face_up and str(m.data.get("attribute", "")) == "WATER":
+					top_w = maxi(top_w, s.atk_of(m, false))
+			return s.phase == DuelState.Phase.MAIN1 and s.turn > 1 and not opp.monsters().is_empty() and (top_w >= opp.lp or (top_w >= 2000 and s._strongest_face_up(s.opponent(p)) != null and s.atk_of(s._strongest_face_up(s.opponent(p)), false) >= top_w))
 		"spare_hand":
 			return ps.hand.size() >= 2
 		"catapult":
@@ -1999,6 +2036,70 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"opp_lose_atk":
+			# Needle Sunfish: "Target 1 face-up monster your opponent controls; that target loses 500 ATK."
+			var t_n = s._strongest_face_up(opp_i)
+			var ups_n: Array = opp.monsters().filter(func(m): return m.face_up and can_target(c, m))
+			if t_n != null and not ups_n.is_empty():
+				if not ups_n.has(t_n):
+					t_n = ups_n[0]
+				t_n = s.pick1(p, Loc.t("%s: which monster loses %d ATK?") % [name, int(a[1])], ups_n, t_n, c)
+				t_n.atk_mod -= int(a[1])
+				events.append(_ev(p, c, Loc.t("%s loses %d ATK") % [t_n.cname(), int(a[1])]))
+		"aero_shark":
+			var n_a: int = ps.banished.filter(func(b): return b.is_monster()).size()
+			events.append(_ev(p, c, Loc.t("%s: %d damage") % [name, n_a * 100]))
+			events.append_array(s._damage(opp_i, n_a * 100))
+		"nightmare_attach":
+			# Number 47: "When this card is Special Summoned: You can attach 1 Level 3 WATER monster from your hand or your side of the field to this card as an Xyz Material."
+			var pool_na: Array = ps.hand.filter(func(h): return h.is_monster() and h.level() == 3 and str(h.data.get("attribute", "")) == "WATER")
+			pool_na.append_array(ps.monsters().filter(func(m): return m != c and m.face_up and m.frame() != "xyz" and m.level() == 3 and str(m.data.get("attribute", "")) == "WATER"))
+			if pool_na.is_empty():
+				return events
+			var in_hand_na: Array = pool_na.filter(func(x): return ps.hand.has(x))
+			var got_na := s.choose(p, Loc.t("%s: attach 1 Level 3 WATER monster as material?") % name, pool_na, 1, [in_hand_na[0]] if not in_hand_na.is_empty() else [], true, c)
+			if got_na.is_empty():
+				return events
+			var mat_na = got_na[0]
+			if ps.hand.has(mat_na):
+				ps.hand.erase(mat_na)
+			else:
+				ps.field[ps.field.find(mat_na)] = null
+				events.append_array(s._monster_left(mat_na))
+			c.overlays.append(mat_na)
+			events.append(_ev(p, c, Loc.t("%s is attached to %s as material") % [mat_na.cname(), name]))
+			events.append({"type": "detach", "player": p, "card": c})
+		"nightmare_direct":
+			# "target 1 WATER monster you control; this turn, that monster can attack your opponent directly, also other monsters cannot attack."
+			var waters: Array = ps.monsters().filter(func(m): return m.face_up and str(m.data.get("attribute", "")) == "WATER")
+			if waters.is_empty():
+				return events
+			var best_nd = waters[0]
+			for m in waters:
+				if s.atk_of(m, false) > s.atk_of(best_nd, false):
+					best_nd = m
+			best_nd = s.pick1(p, Loc.t("%s: which WATER monster attacks directly this turn?") % name, waters, best_nd, c)
+			best_nd.tags["direct_turn"] = s.turn
+			ps.only_attacker = best_nd.uid
+			ps.only_attacker_turn = s.turn
+			events.append(_ev(p, c, Loc.t("%s can attack directly this turn. Your other monsters cannot attack") % best_nd.cname()))
+		"bahamut":
+			# "Special Summon 1 Rank 3 or lower WATER Xyz Monster from your Extra Deck. This card cannot attack for the rest of this turn."
+			var xs_b: Array = ps.extra.filter(func(x): return x.frame() == "xyz" and x.level() <= 3 and str(x.data.get("attribute", "")) == "WATER")
+			if xs_b.is_empty() or ps.free_zone() == -1:
+				return events
+			var best_bh = xs_b[0]
+			for x in xs_b:
+				if x.atk() > best_bh.atk():
+					best_bh = x
+			best_bh = s.pick1(p, Loc.t("%s: Special Summon which Xyz Monster?") % name, xs_b, best_bh, c)
+			ps.extra.erase(best_bh)
+			best_bh.proper = true
+			events.append(_ev(p, c, Loc.t("%s calls %s") % [name, best_bh.cname()]))
+			events.append_array(s._special(p, best_bh, "effect"))
+			events.append_array(on_summon(s, p, best_bh, "special"))
+			c.attack_count_turn = s.turn
+			c.attack_count = 99
 		"destroy_opp_set":
 			# Photon Wyvern: "Destroy all Set cards your opponent controls."
 			for m in opp.monsters():

@@ -119,6 +119,9 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Shark's cards (v0.33.34)
+	"Aqua Jet": {"k": "normal", "t": "own_face", "must": {"races": ["Fish", "Sea Serpent", "Aqua"]}, "do": [["atk", "target", 1000]]},
+	"Surface": {"k": "normal", "do": [["revive", "own_gy", "def", "", {"races": ["Fish", "Sea Serpent", "Aqua"], "max_lv": 3}]]},
 	# ---------------------------------------------------------------- Kite's cards (v0.33.34)
 	"Photon Lead": {"k": "quick", "do": [["special_from_hand", {"attr": "LIGHT", "max_lv": 4}, "atk"]]},
 	"Accellight": {"k": "normal", "cond": "accellight", "ai": "always", "do": [["special_deck_f", "Accellight", ["Photon", "Galaxy"], 0, 4, ""], ["no_normal"]]},
@@ -1939,7 +1942,7 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				var m = s.pick1(p, Loc.t("%s: Special Summon 1 monster from the Graveyard") % c.cname(), pool, pick[0], c)
 				s.players[m.owner].gy.erase(m)
 				m.owner = p
-				events.append_array(s._special(p, m, "reborn"))
+				events.append_array(s._special(p, m, "reborn", "def" if str(a[2]) == "def" else ("atk" if str(a[2]) == "atk" else "")))
 				if a.size() > 3 and a[3] == "link":
 					c.linked = m
 					c.equipped_to = m if spec(c)["k"] == "equip" else null

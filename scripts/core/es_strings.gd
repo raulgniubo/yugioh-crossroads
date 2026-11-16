@@ -5243,4 +5243,10 @@ const ES := {
 	"%s: send 1 card from your hand to the Graveyard": "%s: manda 1 carta de tu mano al Cementerio",
 	"%s: Special Summon which monster from your Deck?": "%s: ¿qué monstruo Invocas de Modo Especial de tu Deck?",
 	"Special Summon another Daybreaker from your hand?": "¿Invocar de Modo Especial otro Daybreaker de tu mano?",
+	"%s: attach 1 Level 3 WATER monster as material?": "%s: ¿acoplar 1 monstruo de AGUA de Nivel 3 como material?",
+	"%s is attached to %s as material": "%s se acopla a %s como material",
+	"%s: which WATER monster attacks directly this turn?": "%s: ¿qué monstruo de AGUA ataca directamente este turno?",
+	"%s can attack directly this turn. Your other monsters cannot attack": "%s puede atacar directamente este turno. Tus otros monstruos no pueden atacar",
+	"%s: Special Summon which Xyz Monster?": "%s: ¿qué Monstruo Xyz Invocas de Modo Especial?",
+	"Add a Level 3, 4 or 5 Fish monster from your Deck to your hand?": "¿Añadir a tu mano un monstruo Pez de Nivel 3, 4 o 5 de tu Deck?",
 }

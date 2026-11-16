@@ -48,6 +48,7 @@ func _ready() -> void:
 		_test_cards_39()
 		_test_cards_40()
 		_test_cards_41()
+		_test_cards_42()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -77,9 +78,13 @@ func _ready() -> void:
 			DuelAI.aces = [int(Characters.get_char(sim_deck).get("ace", _cid("Stardust Dragon"))), 0]
 			var wins := 0
 			var games := int(OS.get_environment("YUSEI_SIM"))
-			for g in games:
+			var g_from := int(OS.get_environment("SIM_FROM")) if OS.get_environment("SIM_FROM") != "" else 0
+			for gi in games:
+				var g: int = gi + g_from
 				var foe: String = Characters.DATA[all[(g * 5 + 1) % all.size()]]["deck"]
-				trace = OS.get_environment("YUSEI_TRACE") != "" and g < 3
+				trace = OS.get_environment("YUSEI_TRACE") != "" and gi < 3
+				if OS.get_environment("SIM_PROGRESS") != "":
+					print("SIM game %d vs %s" % [g, foe])
 				if trace:
 					print("--- game %d vs %s" % [g, foe])
 				if _ai_vs_ai(4000 + g, sim_deck, foe, 2, 2) == 0:
@@ -5420,3 +5425,94 @@ func _test_cards_41() -> void:
 	x_full.overlays.clear()
 	s.activate(0, storm, x_full)
 	check(s.players[1].gy.has(x_full), "Galaxy Storm destroys an Xyz Monster with no material")
+
+
+## The cards built in v0.33.34 for Shark's best deck, each against its printed text.
+func _test_cards_42() -> void:
+	# ---- Drill Barnacle, Needle Sunfish, Jawsman.
+	var s := _bare(1201)
+	s.phase = DuelState.Phase.BATTLE
+	var db := _mon(s, 0, "Drill Barnacle", 0)
+	db.summoned_turn = 1
+	var wall := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var lp1: int = s.players[1].lp
+	check(s.can_direct_attack_with(0, db), "Drill Barnacle can attack directly past a monster")
+	s.declare_attack(0, db, null)
+	s.resolve_attack()
+	check(s.players[1].lp == lp1 - 300 and s.atk_of(db, false) == 1300, "Drill Barnacle: 300 direct damage, then it gains 1000 ATK (got %d)" % s.atk_of(db, false))
+	s = _bare(1202)
+	var ns := _mon(s, 0, "Needle Sunfish", 0)
+	wall = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	s._destroy(ns)
+	check(s.atk_of(wall, false) == 2500, "Needle Sunfish sent to the Graveyard: their monster loses 500 ATK (got %d)" % s.atk_of(wall, false))
+	s = _bare(1203)
+	var jaw := _in(s, 0, "Jawsman", "hand")
+	var earth := _mon(s, 0, "Celtic Guardian", 0)
+	check(not s.can_normal_summon(0, jaw), "Jawsman cannot be Tribute Summoned with a non-WATER Tribute")
+	var w1 := _mon(s, 0, "Big Jaws", 1)
+	var w2 := _mon(s, 0, "Hammer Shark", 2)
+	s.normal_summon(0, jaw, [earth])
+	check(s.players[0].field.has(jaw) and s.players[0].field.has(earth) and s.atk_of(jaw, false) == 2900, "Jawsman: a WATER monster is Tributed instead, and it has 2600 + 300 for the other WATER monster (got %d)" % s.atk_of(jaw, false))
+	# ---- Panther Shark, Cyber Shark, Silent Angler, Mermaid Shark.
+	s = _bare(1204)
+	var ps0 := _in(s, 0, "Panther Shark", "hand")
+	var cy := _in(s, 0, "Cyber Shark", "hand")
+	var ang := _in(s, 0, "Silent Angler", "hand")
+	check(s.tributes_needed(ps0) == 1 and s.tributes_needed(cy) == 1 and not s.can_special_from_hand(0, ang), "With nothing on the field: Panther Shark and Cyber Shark need a Tribute, Silent Angler stays in the hand")
+	_mon(s, 1, "Kuriboh", 0)
+	_mon(s, 1, "Kuriboh", 1)
+	check(s.tributes_needed(ps0) == 0, "Panther Shark needs no Tribute when the opponent controls 2 monsters")
+	_mon(s, 0, "Eagle Shark", 0)
+	check(s.tributes_needed(cy) == 0 and s.can_special_from_hand(0, ps0) and s.can_special_from_hand(0, ang), "With Eagle Shark out: Cyber Shark is free, Panther Shark and Silent Angler can be Special Summoned")
+	s.special_from_hand(0, ang)
+	check(s.players[0].field.has(ang) and not s.can_special_from_hand(0, ps0), "Silent Angler: no more Special Summons from the hand this turn")
+	s = _bare(1205)
+	var mer := _in(s, 0, "Mermaid Shark", "hand")
+	var fish := s._make(_cid("Hammer Shark"), 0)
+	s.players[0].deck.append(fish)
+	s.normal_summon(0, mer, [])
+	check(s.players[0].hand.has(fish), "Mermaid Shark adds a Level 3 to 5 Fish from the Deck")
+	# ---- Aqua Jet, Surface.
+	s = _bare(1206)
+	var bj := _mon(s, 0, "Big Jaws", 0)
+	var aj := _rst(s, 0, "Aqua Jet")
+	s.activate(0, aj, bj)
+	check(s.atk_of(bj, false) == 2800, "Aqua Jet: +1000 ATK (got %d)" % s.atk_of(bj, false))
+	var sf := _rst(s, 0, "Surface")
+	var gy_f := _in(s, 0, "Skull Kraken", "gy")
+	_in(s, 0, "Jawsman", "gy")
+	s.activate(0, sf)
+	check(s.players[0].field.has(gy_f) and not gy_f.attack_pos, "Surface: a Level 3 or lower Fish comes back in Defense Position")
+	# ---- Aero Shark, Nightmare Shark, Bahamut Shark.
+	s = _bare(1207)
+	var aero := _mon(s, 0, "Submersible Carrier Aero Shark", 0)
+	aero.overlays = [s._make(_cid("Kuriboh"), 0)]
+	for i in 3:
+		s.players[0].banished.append(s._make(_cid("Kuriboh"), 0))
+	lp1 = s.players[1].lp
+	s.ignite(0, aero)
+	check(s.players[1].lp == lp1 - 300, "Aero Shark: 100 damage for each of your 3 banished monsters")
+	s = _bare(1208)
+	var x1 := _mon(s, 0, "Big Jaws", 0)
+	var x2 := _mon(s, 0, "Skull Kraken", 1)
+	var extra_mat := _in(s, 0, "Needle Sunfish", "hand")
+	var n47 := _in(s, 0, "Number 47: Nightmare Shark", "extra")
+	s.extra_summon(0, n47)
+	check(s.players[0].field.has(n47) and n47.overlays.size() == 3 and n47.overlays.has(extra_mat), "Nightmare Shark: a Level 3 WATER monster from the hand is attached as a third material")
+	wall = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	s.ignite(0, n47)
+	s.phase = DuelState.Phase.BATTLE
+	n47.summoned_turn = 1
+	check(s.can_direct_attack_with(0, n47), "Nightmare Shark: a WATER monster can attack directly this turn")
+	s = _bare(1209)
+	var b1 := _mon(s, 0, "Hammer Shark", 0)
+	var b2 := _mon(s, 0, "Double Shark", 1)
+	var bah := _in(s, 0, "Bahamut Shark", "extra")
+	var brl := _in(s, 0, "Submersible Carrier Aero Shark", "extra")
+	check(s.can_extra_summon(0, bah), "Bahamut Shark can be made with 2 Level 4 WATER monsters")
+	s.extra_summon(0, bah)
+	s.ignite(0, bah)
+	check(s.players[0].field.has(brl), "Bahamut Shark: a Rank 3 WATER Xyz Monster comes out of the Extra Deck")
+	s.phase = DuelState.Phase.BATTLE
+	bah.summoned_turn = 1
+	check(not s.can_attack(0, bah), "Bahamut Shark cannot attack the turn it used that effect")

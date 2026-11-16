@@ -17,8 +17,18 @@ Not built yet: this is what is saved for the next build.
 - **Extra:** Starliege Lord Galaxion x2, Starliege Paladynamo, Photon Papilloperative, Number 10: Illumiknight.
 - **Starliege Lord Galaxion** (2 Level 4 Photon monsters) detaches to bring Galaxy-Eyes Photon Dragon out of your hand or Deck. **Galaxy Expedition** and **Accellight** pull Photon and Galaxy monsters from the Deck. **Photon Wyvern** destroys every Set card on the other side.
 
+### Shark
+
+**The WATER swarm into Bahamut Shark, Nightmare Shark, Shark Drake and Black Ray Lancer.** 12 cards built.
+
+- **Main, 40:** Hammer Shark x3, Big Jaws x2, Skull Kraken x2, Shark Stickers x2, Spear Shark x2, Double Shark x2, Eagle Shark x2, Panther Shark x2, Cyber Shark x2, Silent Angler x2, Needle Sunfish x2, Mermaid Shark, Drill Barnacle, Jawsman, Hyper-Ancient Shark Megalodon; Aqua Jet x2, Surface x2; and staples that are not his own: Monster Reborn, Pot of Greed, Mystical Space Typhoon x2, Mirror Force, Sakuretsu Armor x2, Call of the Haunted, Torrential Tribute.
+- **Extra:** Bahamut Shark x2, Black Ray Lancer x2, Number 32: Shark Drake, Number 17: Leviathan Dragon, Number 47: Nightmare Shark, Submersible Carrier Aero Shark.
+- **Bahamut Shark** (2 Level 4 WATER monsters) detaches to bring a Rank 3 WATER Xyz Monster straight out of the Extra Deck. **Nightmare Shark** lets a WATER monster attack directly. **Panther Shark**, **Cyber Shark** and **Silent Angler** come out for free when the board is right.
+- Fixed on the way: a card that brings a monster back "in Defense Position" or "in Attack Position" now does exactly that (Call of the Haunted used to let you pick).
+
 **Not done or not checked:**
 
+- Still to build for Shark: Number 101: Silent Honor ARK and its Chaos form, Number 73: Abyss Splash, Shark Drake Veiss, Numbers 37 and 71, Depth Shark, Double Fin Shark, Saber Shark, Shocktopus, Friller Rabca, Tripod Fish, Scrap Shark, Xyz Remora, Big Wave Small Wave, Poseidon Wave, Splash Capture, Bubble Bringer, Torrential Reborn, Explosive Urchin, the Armored Xyz cards, Xyz Unit. Shark on Hard won 25 of 40 test duels.
 - Still to build for Kite: Neo Galaxy-Eyes Photon Dragon, Number 62: Galaxy-Eyes Prime Photon Dragon, Photon Satellite, Kuriphoton, Galaxy Dragon, Dimension Wanderer, Photon Sanctuary, Photon Stream of Destruction, Photon Booster, Photon Veil, Photon Trident, Photon Current, Galaxy Queen's Light, Message in a Bottle, Triple Star Trion, Lumenize, Eternal Galaxy, Numbers 20, 30 and 56. Kite on Hard won 29 of 40 test duels. Not watched on screen.
 
 ## What is in 0.33.33

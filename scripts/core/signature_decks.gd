@@ -252,7 +252,13 @@ const TUNE := {
 			"Half Unbreak": 2, "Battle Break": 1, "Bye Bye Damage": 1},
 		"extra": {"Number 39: Utopia": 2, "Number C39: Utopia Ray": 1, "Number C39: Utopia Ray V": 1, "Gagaga Samurai": 1, "Gagaga Cowboy": 1,
 			"Number 61: Volcasaurus": 1, "Number 17: Leviathan Dragon": 1}},
-	"shark": {"out": ["Dian Keto the Cure Master", "Steel Shell"], "in": {"Hyper-Ancient Shark Megalodon": 1}},
+	# Shark's best deck: the WATER swarm into Bahamut Shark, Nightmare Shark, Shark Drake and Black Ray Lancer (v0.33.34).
+	"shark": {"out": ["Dian Keto the Cure Master", "Steel Shell"], "in": {"Hyper-Ancient Shark Megalodon": 1},
+		"main": {"Big Jaws": 2, "Skull Kraken": 2, "Shark Stickers": 2, "Spear Shark": 2, "Double Shark": 2, "Hammer Shark": 3, "Eagle Shark": 2, "Panther Shark": 2,
+			"Hyper-Ancient Shark Megalodon": 1, "Cyber Shark": 2, "Silent Angler": 2, "Mermaid Shark": 1, "Needle Sunfish": 2, "Drill Barnacle": 1, "Jawsman": 1,
+			"Aqua Jet": 2, "Surface": 2, "Monster Reborn": 1, "Pot of Greed": 1, "Mystical Space Typhoon": 2,
+			"Mirror Force": 1, "Sakuretsu Armor": 2, "Call of the Haunted": 1, "Torrential Tribute": 1},
+		"extra": {"Bahamut Shark": 2, "Number 32: Shark Drake": 1, "Black Ray Lancer": 2, "Number 17: Leviathan Dragon": 1, "Number 47: Nightmare Shark": 1, "Submersible Carrier Aero Shark": 1}},
 	# Kite's best deck: Galaxy-Eyes Photon Dragon with every Photon and Galaxy way to bring it out, and Starliege Lord Galaxion to fetch it (v0.33.34).
 	"kite": {"out": ["Luminous Spark"], "in": {"Galaxy Zero": 1},
 		"main": {"Galaxy-Eyes Photon Dragon": 3, "Photon Thrasher": 3, "Photon Crusher": 2, "Photon Lizard": 2, "Photon Cerberus": 1, "Photon Leo": 1, "Photon Sabre Tiger": 2,
