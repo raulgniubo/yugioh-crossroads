@@ -1,0 +1,278 @@
+class_name SignatureDecks
+## What each duelist in the roster is known for playing: card names only, Main Deck and Extra
+## Deck. This is the target their deck in this game is being built toward. A card only goes
+## into a deck once its full printed effect works here (see CardExact); `audit()` says, for
+## every duelist, which of these are ready, which still need their effect built, and which
+## the card database does not have under that name.
+
+const WISH := {
+	"yugi": {"main": ["Dark Magician", "Dark Magician Girl", "Buster Blader", "Black Luster Soldier", "Magician of Black Chaos", "Summoned Skull", "Gaia The Fierce Knight", "Curse of Dragon",
+			"Celtic Guardian", "Obnoxious Celtic Guard", "Kuriboh", "Big Shield Gardna", "Alpha The Magnet Warrior", "Beta The Magnet Warrior", "Gamma The Magnet Warrior", "Valkyrion the Magna Warrior",
+			"King's Knight", "Queen's Knight", "Jack's Knight", "Skilled Dark Magician", "Breaker the Magical Warrior", "Watapon", "Marshmallon", "Silent Magician LV4", "Silent Swordsman LV3",
+			"Dark Magician of Chaos", "Sangan", "Catapult Turtle", "Giant Soldier of Stone", "Feral Imp", "Mystical Elf", "Beaver Warrior", "Gazelle the King of Mythical Beasts", "Berfomet", "Slifer the Sky Dragon",
+			"Swords of Revealing Light", "Monster Reborn", "Polymerization", "Dark Magic Curtain", "Thousand Knives", "Magical Hats", "Multiply", "Mystic Box", "De-Spell", "Brain Control",
+			"Card Destruction", "Pot of Greed", "Black Luster Ritual", "Dark Magic Attack", "Mirror Force", "Spellbinding Circle", "Magic Cylinder", "Lightforce Sword", "Chain Destruction"],
+		"extra": ["Gaia the Dragon Champion", "Dark Paladin", "Chimera the Flying Mythical Beast"]},
+	"kaiba": {"main": ["Blue-Eyes White Dragon", "Lord of D.", "Kaibaman", "X-Head Cannon", "Y-Dragon Head", "Z-Metal Tank", "Vorse Raider", "Battle Ox", "La Jinn the Mystical Genie of the Lamp",
+			"Saggi the Dark Clown", "Blade Knight", "Kaiser Sea Horse", "Different Dimension Dragon", "Spirit Ryu", "Vampire Lord", "Chaos Emperor Dragon - Envoy of the End", "Luster Dragon",
+			"Ryu-Kishin Powered", "Judge Man", "Hitotsu-Me Giant", "Obelisk the Tormentor", "The Flute of Summoning Dragon", "Crush Card Virus", "Shrink", "Enemy Controller", "Negate Attack",
+			"Ring of Destruction", "Polymerization", "Monster Reborn", "Soul Exchange", "Cost Down", "Burst Stream of Destruction", "Interdimensional Matter Transporter", "Pot of Greed"],
+		"extra": ["Blue-Eyes Ultimate Dragon", "XYZ-Dragon Cannon", "XY-Dragon Cannon", "XZ-Tank Cannon", "YZ-Tank Dragon"]},
+	"joey": {"main": ["Red-Eyes Black Dragon", "Time Wizard", "Baby Dragon", "Alligator's Sword", "Panther Warrior", "Gearfried the Iron Knight", "Jinzo", "Rocket Warrior", "Axe Raider", "Battle Warrior",
+			"Swordsman of Landstar", "Little-Winguard", "Copycat", "Blue Flame Swordsman", "Insect Queen", "The Legendary Fisherman", "Goblin Attack Force", "Scapegoat", "Graceful Dice",
+			"Skull Dice", "Kunai with Chain", "Giant Trunade", "Polymerization", "Salamandra", "Shield & Sword", "Fairy Box", "Magical Arm Shield", "Nutrient Z", "Foolish Burial"],
+		"extra": ["Flame Swordsman", "Thousand Dragon", "Black Skull Dragon", "Alligator's Sword Dragon"]},
+	"mai": {"main": ["Harpie Lady", "Harpie Lady Sisters", "Harpie's Pet Dragon", "Amazoness Swords Woman", "Amazoness Fighter",
+			"Amazoness Chain Master", "Dunames Dark Witch", "Birdface", "Harpie's Feather Duster", "Elegant Egotist", "Cyber Shield", "Electro-Whip", "Shadow of Eyes", "Mirror Wall", "Amazoness Archers",
+			"Harpies' Hunting Ground", "Gravity Bind", "Monster Reborn"],
+		"extra": []},
+	"bakura": {"main": ["Dark Necrofear", "Dark Ruler Ha Des", "The Portrait's Secret", "Headless Knight", "The Earl of Demise", "Gernia", "Earthbound Spirit", "Souls of the Forgotten",
+			"The Gross Ghost of Fled Dreams", "Man-Eater Bug", "Morphing Jar", "Electric Lizard", "White Magical Hat", "Lady of Faith", "Goblin Zombie", "Diabound Kernel", "Destiny Board",
+			"Spirit Message \"I\"", "Spirit Message \"N\"", "Spirit Message \"A\"", "Spirit Message \"L\"", "Dark Sanctuary", "Dark Spirit of the Silent", "Change of Heart", "Just Desserts",
+			"Ectoplasmer", "Multiple Destruction", "The Dark Door", "Dark Designator"],
+		"extra": []},
+	"marik": {"main": ["Lava Golem", "Gil Garth", "Dark Jeroid", "Newdoria", "Helpoemer", "Drillago", "Legendary Fiend", "Viser Des", "Bowganian", "Lord Poison", "Makyura the Destructor", "Revival Jam",
+			"Byser Shock", "Melchid the Four-Face Beast", "Juragedo", "Granadora", "The Winged Dragon of Ra", "Jam Breeding Machine", "Jam Defender", "Nightmare Wheel",
+			"Coffin Seller", "Malevolent Catastrophe", "Metal Reflect Slime", "Card of Sanctity", "Remove Trap", "Rope of Life", "Left Arm Offering", "Machine Duplication",
+			"Vengeful Bog Spirit", "Mirror Force", "Monster Reborn"],
+		"extra": []},
+	"pegasus": {"main": ["Toon World", "Toon Summoned Skull", "Toon Mermaid", "Blue-Eyes Toon Dragon", "Manga Ryu-Ran", "Toon Alligator", "Toon Dark Magician Girl", "Toon Gemini Elf",
+			"Toon Goblin Attack Force", "Toon Cannon Soldier", "Toon Masked Sorcerer", "Dark Rabbit", "Parrot Dragon", "Bickuribox", "Relinquished", "Dragon Piper", "Illusionist Faceless Mage",
+			"Dark-Eyes Illusionist", "Jigen Bakudan", "Black Illusion Ritual", "Dragon Capture Jar", "Doppelganger", "Copycat", "Toon Table of Contents", "Gorgon's Eye"],
+		"extra": ["Thousand-Eyes Restrict"]},
+	"weevil": {"main": ["Insect Queen", "Great Moth", "Perfectly Ultimate Great Moth", "Petit Moth", "Larvae Moth", "Cocoon of Evolution", "Basic Insect", "Hercules Beetle", "Killer Needle", "Big Insect",
+			"Gokibore", "Pinch Hopper", "Leghul", "Flying Kamakiri #1", "Kiseitai", "Parasite Paracide", "Insect Soldiers of the Sky", "Man-Eater Bug", "Skull-Mark Ladybug", "Cockroach Knight",
+			"Needle Worm", "Insect Barrier", "Multiplication of Ants", "DNA Surgery", "Insect Armor with Laser Cannon", "Eradicating Aerosol"],
+		"extra": []},
+	"rex": {"main": ["Two-Headed King Rex", "Crawling Dragon #2", "Sword Arm of Dragon", "Megazowler", "Uraby", "Trakodon", "Serpent Night Dragon", "Black Tyranno", "Gilasaurus", "Dark Driceratops",
+			"Mad Sword Beast", "Black Stego", "Giant Rex", "Babycerasaurus", "Hyper Hammerhead", "Frostosaurus", "Element Saurus", "Tail Swipe", "Hunting Instinct", "Fossil Excavation",
+			"Jurassic World", "Ultra Evolution Pill", "Survival Instinct"],
+		"extra": []},
+	"jaden": {"main": ["Elemental HERO Avian", "Elemental HERO Burstinatrix", "Elemental HERO Clayman", "Elemental HERO Sparkman", "Elemental HERO Bubbleman", "Elemental HERO Wildheart",
+			"Elemental HERO Bladedge", "Elemental HERO Necroshade", "Elemental HERO Neos", "Winged Kuriboh", "Winged Kuriboh LV10", "Wroughtweiler", "Dark Catapulter", "Hero Kid", "Card Trooper",
+			"Neo-Spacian Aqua Dolphin", "Neo-Spacian Flare Scarab", "Neo-Spacian Dark Panther", "Neo-Spacian Air Hummingbird", "Neo-Spacian Grand Mole", "Neo-Spacian Glow Moss", "Yubel",
+			"Polymerization", "Fusion Gate", "Miracle Fusion", "Skyscraper", "Hero Signal", "A Hero Emerges", "Draining Shield", "Negate Attack", "Mirror Gate", "Feather Shot", "Bubble Shuffle",
+			"Burst Return", "Spark Blaster", "R - Righteous Justice", "O - Oversoul", "E - Emergency Call", "H - Heated Heart", "Transcendent Wings", "The Warrior Returning Alive", "Hero Barrier",
+			"Edge Hammer", "Common Soul", "Neo Space", "Instant Neo Space", "Pot of Greed", "Monster Reborn"],
+		"extra": ["Elemental HERO Flame Wingman", "Elemental HERO Shining Flare Wingman", "Elemental HERO Thunder Giant", "Elemental HERO Tempest", "Elemental HERO Rampart Blaster",
+			"Elemental HERO Steam Healer", "Elemental HERO Mudballman", "Elemental HERO Wildedge", "Elemental HERO Wild Wingman", "Elemental HERO Necroid Shaman", "Elemental HERO Mariner",
+			"Elemental HERO Electrum", "Elemental HERO Aqua Neos", "Elemental HERO Flare Neos", "Elemental HERO Dark Neos", "Elemental HERO Air Neos", "Elemental HERO Grand Neos",
+			"Elemental HERO Glow Neos", "Elemental HERO Storm Neos", "Elemental HERO Magma Neos", "Elemental HERO Divine Neos", "Neos Wiseman"]},
+	"chazz": {"main": ["Ojama Yellow", "Ojama Green", "Ojama Black", "Armed Dragon LV3", "Armed Dragon LV5", "Armed Dragon LV7", "Armed Dragon LV10", "X-Head Cannon", "Y-Dragon Head", "Z-Metal Tank",
+			"V-Tiger Jet", "W-Wing Catapult", "Chthonian Soldier", "Infernal Incinerator", "Masked Dragon", "Ojama Delta Hurricane!!", "Ojamagic", "Ojama Country", "Ojamuscle", "Level Up!",
+			"Chthonian Polymer", "Chthonian Blast", "Chthonian Alliance", "Call of the Haunted", "Ring of Destruction", "Pot of Greed", "Polymerization"],
+		"extra": ["Ojama King", "Ojama Knight", "XYZ-Dragon Cannon", "VW-Tiger Catapult", "VWXYZ-Dragon Catapult Cannon"]},
+	"zane": {"main": ["Cyber Dragon", "Proto-Cyber Dragon", "Cyber Barrier Dragon", "Cyber Laser Dragon", "Cyber Phoenix", "Cyber Kirin", "Cyberdark Horn", "Cyberdark Edge", "Cyberdark Keel",
+			"Infernal Dragon", "Power Bond", "Polymerization", "Future Fusion", "Overload Fusion", "De-Fusion", "Different Dimension Capsule", "Photon Generator Unit", "Attack Reflector Unit",
+			"Cyberdark Impact!", "Trap Jammer", "Call of the Haunted", "Limiter Removal", "Heavy Storm", "Pot of Greed"],
+		"extra": ["Cyber Twin Dragon", "Cyber End Dragon", "Cyberdark Dragon", "Chimeratech Overdragon"]},
+	"alexis": {"main": ["Etoile Cyber", "Blade Skater", "Cyber Tutu", "Cyber Gymnast", "Cyber Prima", "Cyber Angel Benten", "Cyber Angel Idaten", "Cyber Angel Dakini", "Machine Angel Ritual",
+			"Doble Passe", "Hallowed Life Barrier", "Polymerization", "Fusion Weapon", "Prima Light", "Ritual Weapon", "Pot of Greed", "Monster Reborn"],
+		"extra": ["Cyber Blader"]},
+	"syrus": {"main": ["Gyroid", "Steamroid", "Jetroid", "Drillroid", "Patroid", "Submarineroid", "UFOroid", "Truckroid", "Stealthroid", "Expressroid", "Cycroid", "Ambulanceroid", "Rescueroid",
+			"Decoyroid", "Armoroid", "Power Bond", "Polymerization", "Vehicroid Connection Zone", "Supercharge", "No Entry!!", "Shield Crush", "Wonder Garage", "Cyber Summon Blaster"],
+		"extra": ["Super Vehicroid Jumbo Drill", "Steam Gyroid", "UFOroid Fighter", "Pair Cycroid", "Super Vehicroid - Stealth Union", "Ambulance Rescueroid"]},
+	"aster": {"main": ["Destiny HERO - Doom Lord", "Destiny HERO - Captain Tenacious", "Destiny HERO - Diamond Dude", "Destiny HERO - Dreadmaster", "Destiny HERO - Double Dude", "Destiny HERO - Dasher",
+			"Destiny HERO - Defender", "Destiny HERO - Dogma", "Destiny HERO - Plasma", "Destiny HERO - Fear Monger", "Destiny HERO - Blade Master", "Destiny HERO - Disk Commander",
+			"Destiny HERO - Malicious", "Destiny HERO - Dunker", "Destiny HERO - Departed", "Clock Tower Prison", "D - Time", "D - Spirit", "D - Chain", "D - Shield", "Dark City", "Destiny Signal",
+			"Eternal Dread", "Over Destiny", "Destruction of Destiny", "Destiny Draw", "Misfortune", "Ring of Magnetism", "Guard Penalty", "Pot of Greed"],
+		"extra": ["Elemental HERO Phoenix Enforcer", "Elemental HERO Shining Phoenix Enforcer", "Destiny End Dragoon"]},
+	"yusei": {"main": ["Junk Synchron", "Speed Warrior", "Quillbolt Hedgehog", "Sonic Chick", "Shield Warrior", "Max Warrior", "Turbo Synchron", "Nitro Synchron", "Road Synchron", "Debris Dragon",
+			"Tuningware", "Turret Warrior", "Fortress Warrior", "Level Eater", "Hyper Synchron", "Drill Synchron", "Quickdraw Synchron", "Stardust Xiaolong", "Level Warrior",
+			"Healing Wave Generator", "Ghost Gardna", "Rockstone Warrior", "Zero Gardna", "Effect Veiler", "Salvage Warrior", "Unknown Synchron", "Boost Warrior", "Synchron Explorer", "Doppelwarrior",
+			"Tuning", "One for One", "Double Summon", "Fighting Spirit", "Junk Barrage", "Silver Wing", "Card Rotator", "Graceful Revival", "Scrap-Iron Scarecrow", "Defense Draw", "Limiter Overload",
+			"Give and Take", "Equip Shot", "Starlight Road", "Cards of Consonance", "Urgent Tuning", "Synchro Strike", "Shooting Star", "Skill Successor", "Descending Lost Star",
+			"Slip Summon", "Confusion Chaff", "Synchro Barrier"],
+		"extra": ["Junk Warrior", "Stardust Dragon", "Nitro Warrior", "Turbo Warrior", "Armory Arm", "Road Warrior", "Junk Archer", "Junk Destroyer", "Junk Gardna", "Junk Berserker", "Drill Warrior",
+			"Lightning Warrior", "Colossal Fighter", "Majestic Star Dragon", "Formula Synchron", "Shooting Star Dragon", "Shooting Quasar Dragon"]},
+	"jack": {"main": ["Dark Resonator", "Vice Dragon", "Mad Archfiend", "Twin-Sword Marauder", "Big Piece Golem", "Medium Piece Golem", "Small Piece Golem", "Sinister Sprocket", "Battle Fader",
+			"Power Supplier", "Dread Dragon", "Archfiend Interceptor", "Trust Guardian", "Flare Resonator", "Barrier Resonator", "Clock Resonator", "Force Resonator", "Creation Resonator",
+			"Attack Gainer", "Power Breaker", "Trap Eater", "Lancer Archfiend", "Extra Veiler", "Strong Wind Dragon", "Synchro Soldier", "Red Gardna", "Crimson Fire",
+			"Fiendish Chain", "Powerful Rebirth", "Changing Destiny", "Nightmare Archfiends", "Prideful Roar", "Half or Nothing", "Lineage of Destruction"],
+		"extra": ["Red Dragon Archfiend", "Exploder Dragonwing", "Chaos King Archfiend", "Majestic Red Dragon", "Red Nova Dragon"]},
+	"crow": {"main": ["Blackwing - Gale the Whirlwind", "Blackwing - Bora the Spear", "Blackwing - Sirocco the Dawn", "Blackwing - Blizzard the Far North", "Blackwing - Shura the Blue Flame",
+			"Blackwing - Kalut the Moon Shadow", "Blackwing - Elphin the Raven", "Blackwing - Mistral the Silver Shield", "Blackwing - Vayu the Emblem of Honor", "Blackwing - Fane the Steel Chain",
+			"Blackwing - Ghibli the Searing Wind", "Blackwing - Gust the Backblast", "Blackwing - Breeze the Zephyr", "Blackwing - Zephyros the Elite", "Blackwing - Aurora the Northern Lights",
+			"Blackwing - Jetstream the Blue Sky", "Blackwing - Calima the Haze", "Blackwing - Kochi the Daybreak", "Blackwing - Etesian of Two Swords", "Blackwing - Abrolhos the Megaquake",
+			"Black Whirlwind", "Delta Crow - Anti Reverse", "Blackwing - Backlash", "Blackwing - Bombardment", "Black Return", "Fake Feather", "Trap Stun", "Black Feather Beacon", "Urgent Tuning",
+			"Mirror Force", "Raptor Wing Strike", "Cards for Black Feathers", "Against the Wind", "Black Sonic", "Black Thunder", "Blackback", "Level Retuner", "Blackboost"],
+		"extra": ["Blackwing Armor Master", "Blackwing Armed Wing", "Blackwing - Silverwind the Ascendant", "Black-Winged Dragon"]},
+	"akiza": {"main": ["Rose Tentacles", "Violet Witch", "Wall of Ivy", "Copy Plant", "Twilight Rose Knight", "Lord Poison", "Evil Thorn", "Phoenixian Seed", "Phoenixian Cluster Amaryllis", "Rose Fairy",
+			"Witch of the Black Rose", "Dark Verger", "Hedge Guard", "Blue Rose Dragon", "Lonefire Blossom", "Black Garden", "Seed of Deception", "Mark of the Rose", "Thorn of Malice",
+			"Wicked Rebirth", "Ivy Shackles", "Doppelganger", "Plant Food Chain", "Urgent Tuning", "Magic Planter", "Vengeful Servant", "Blossom Bombardment",
+			"Nature's Reflection", "Overdoom Line"],
+		"extra": ["Black Rose Dragon", "Splendid Rose", "Queen Angel of Roses"]},
+	"kalin": {"main": ["Infernity Archfiend", "Infernity Necromancer", "Infernity Beast", "Infernity Beetle", "Infernity Destroyer", "Infernity Dwarf", "Infernity Guardian", "Infernity Knight",
+			"Infernity Mirage", "Infernity Avenger", "Infernity Randomizer", "Infernity General", "Infernity Archer", "Dark Tuner Nightmare Hand", "Earthbound Immortal Ccapac Apu",
+			"Infernity Launcher", "Infernity Force", "Infernity Inferno", "Infernity Reflector", "Infernity Break", "Infernity Barrier", "ZERO-MAX", "Phantom Hand",
+			"Depth Amulet", "Full Salvo", "Void Trap Hole"],
+		"extra": ["Infernity Doom Dragon", "Hundred Eyes Dragon", "Void Ogre Dragon", "Gatling Ogre"]},
+	"yuma": {"main": ["Gagaga Magician", "Gogogo Golem", "Ganbara Knight", "Zubaba Knight", "Gagaga Girl", "Dododo Warrior", "Goblindbergh", "Kagetokage", "Kurivolt", "Achacha Archer", "Tasuke Knight",
+			"Gogogo Giant", "Gagaga Gardna", "Dododo Bot", "Flelf", "Rai Rider", "Bite Bug", "Gagaga Caesar", "Gagaga Child", "Gagaga Clerk", "Gogogo Ghost", "Gogogo Goram", "Dododo Buster",
+			"Gagaga Head", "Zubaba Buster", "Gagaga Sister", "Gagaga Mancer", "ZW - Unicorn Spear", "ZW - Phoenix Bow", "ZW - Lightning Blade", "ZW - Tornado Bringer", "ZW - Ultimate Shield",
+			"ZW - Eagle Claw", "Double or Nothing!", "Battle Break", "Half Unbreak", "Bye Bye Damage", "Gagagabolt", "Gagagarevenge", "Gagagashield", "Gagagaback", "Xyz Gift", "Blustering Winds",
+			"Wonder Wand", "Ego Boost", "Xyz Energy", "Onomatopaira", "Dodododraw", "Gagagatag", "Heartfelt Appeal", "Guard Go!", "Fiery Fervor",
+			"Rank-Up-Magic Limited Barian's Force", "Impenetrable Attack"],
+		"extra": ["Number 39: Utopia", "Number C39: Utopia Ray", "Number 17: Leviathan Dragon", "Number 34: Terror-Byte", "Number 61: Volcasaurus", "Number 19: Freezadon",
+			"Number 12: Crimson Shadow Armor Ninja", "Number 25: Force Focus", "Number 6: Chronomaly Atlandis", "Number 83: Galaxy Queen", "Gagaga Cowboy", "Gagaga Samurai",
+			"Number 39: Utopia Roots", "Number C39: Utopia Ray V", "Number 99: Utopic Dragon", "ZW - Leo Arms"]},
+	"shark": {"main": ["Big Jaws", "Skull Kraken", "Drill Barnacle", "Needle Sunfish", "Jawsman", "Shocktopus", "Friller Rabca", "Shark Stickers", "Spear Shark", "Double Shark",
+			"Hammer Shark", "Tripod Fish", "Hyper-Ancient Shark Megalodon", "Panther Shark", "Eagle Shark", "Saber Shark", "Double Fin Shark", "Depth Shark", "Scrap Shark", "Xyz Remora",
+			"Silent Angler", "Cyber Shark", "Mermaid Shark", "Aqua Jet", "Surface", "Big Wave Small Wave", "Poseidon Wave", "Splash Capture", "Bubble Bringer", "Torrential Reborn",
+			"Explosive Urchin", "Full-Armored Xyz", "Armored Xyz", "Xyz Unit"],
+		"extra": ["Submersible Carrier Aero Shark", "Black Ray Lancer", "Number 17: Leviathan Dragon", "Number 32: Shark Drake", "Number C32: Shark Drake Veiss", "Number 47: Nightmare Shark",
+			"Number 71: Rebarian Shark", "Number 73: Abyss Splash", "Number 101: Silent Honor ARK", "Number C101: Silent Honor DARK", "Number 37: Hope Woven Dragon Spider Shark", "Bahamut Shark"]},
+	"kite": {"main": ["Galaxy-Eyes Photon Dragon", "Photon Thrasher", "Photon Crusher", "Photon Leo", "Photon Cerberus", "Photon Lizard", "Photon Circle", "Photon Pirate", "Daybreaker", "Photon Wyvern",
+			"Photon Sabre Tiger", "Photon Slasher", "Photon Satellite", "Photon Chargeman", "Photon Caesar", "Galaxy Knight", "Galaxy Wizard", "Galaxy Soldier", "Galaxy Dragon",
+			"Kuriphoton", "Dimension Wanderer", "Photon Veil", "Photon Sanctuary", "Photon Stream of Destruction", "Photon Lead", "Photon Booster", "Photon Trident", "Photon Current",
+			"Galaxy Expedition", "Galaxy Zero", "Galaxy Storm", "Galaxy Queen's Light", "Message in a Bottle", "Triple Star Trion", "Lumenize", "Eternal Galaxy", "Accellight"],
+		"extra": ["Neo Galaxy-Eyes Photon Dragon", "Number 62: Galaxy-Eyes Prime Photon Dragon", "Photon Papilloperative", "Starliege Paladynamo", "Starliege Lord Galaxion",
+			"Number 10: Illumiknight", "Number 20: Giga-Brilliant", "Number 30: Acid Golem of Destruction", "Number 56: Gold Rat"]},
+	"vector": {"main": ["Umbral Horror Ghoul", "Umbral Horror Unform", "Umbral Horror Will o' the Wisp", "Umbral Horror Ghost", "Malicevorous Fork", "Malicevorous Knife", "Malicevorous Spoon",
+			"Rank-Up-Magic Barian's Force", "Rank-Up-Magic Limited Barian's Force", "Vain Betrayer", "Don Thousand's Throne", "Mirror Force", "Monster Reborn"],
+		"extra": ["Number 66: Master Key Beetle", "Number 104: Masquerade", "Number C104: Umbral Horror Masquerade", "Number 65: Djinn Buster", "Number 43: Manipulator of Souls",
+			"Number 96: Dark Mist", "Number C5: Chaos Chimera Dragon"]},
+}
+
+
+## What is changed in each deck today, with the cards that already work here: `out` are cards
+## in the deck that are not theirs (stand-ins from before their own cards were built), `in`
+## are signature cards that are ready, `extra_in` / `extra_out` the same for the Extra Deck.
+## Everyday Spells and Traps (Pot of Greed, Monster Reborn and the like) stay for now where a
+## deck would be too thin without them: they go as the duelist's own Spells and Traps get built.
+const TUNE := {
+	"yugi": {"out": ["Gemini Elf", "Book of Secret Arts", "Yami", "Magic Jammer", "Waboku", "Fissure"],
+		"in": {"Dark Magician Girl": 1, "Alpha The Magnet Warrior": 1, "Beta The Magnet Warrior": 1, "Gamma The Magnet Warrior": 1, "Queen's Knight": 1, "Jack's Knight": 1,
+			"Breaker the Magical Warrior": 1, "Gazelle the King of Mythical Beasts": 1, "Brain Control": 1, "Card Destruction": 1, "Monster Reborn": 1, "Spellbinding Circle": 1}},
+	"kaiba": {"out": ["Rude Kaiser", "Koumori Dragon", "Cyber Dragon", "Mystic Tomato", "Mountain", "Dragon Treasure", "Torrential Tribute", "Trap Hole"],
+		"in": {"X-Head Cannon": 1, "Y-Dragon Head": 1, "Z-Metal Tank": 1, "Saggi the Dark Clown": 1, "Hitotsu-Me Giant": 1, "Luster Dragon": 2, "Vampire Lord": 1},
+		"extra_in": {"XYZ-Dragon Cannon": 1}},
+	"joey": {"out": ["Garoozis", "Battle Steer", "Tiger Axe", "Dian Keto the Cure Master", "Sogen", "Waboku", "Trap Hole"],
+		"in": {"Battle Warrior": 1, "Swordsman of Landstar": 2, "Goblin Attack Force": 1, "Salamandra": 1, "Giant Trunade": 1, "Foolish Burial": 1}},
+	"mai": {"out": ["Hinotama", "Dian Keto the Cure Master"], "in": {"Dunames Dark Witch": 2}},
+	"bakura": {"out": ["Newdoria", "Curse of Dragon", "Summoned Skull", "Ryu-Kishin", "Lord of the Lamp", "Fissure", "Dark Energy", "Dark Core", "Yami"],
+		"in": {"The Portrait's Secret": 1, "Earthbound Spirit": 2, "Souls of the Forgotten": 1, "The Gross Ghost of Fled Dreams": 1, "Man-Eater Bug": 2, "Lady of Faith": 1,
+			"Change of Heart": 1, "Just Desserts": 1, "The Dark Door": 1}},
+	"marik": {"out": ["Dark Blade", "Vampire Lord", "Feral Imp", "Mystic Lamp", "Stone Statue of the Aztecs", "Hinotama", "Mystic Plasma Zone", "Malevolent Nuzzler", "Magic Jammer"],
+		"in": {"Legendary Fiend": 1, "Lord Poison": 1, "Melchid the Four-Face Beast": 1, "Newdoria": 2, "Card of Sanctity": 1, "Mirror Force": 1, "Remove Trap": 1}},
+	"pegasus": {"out": ["Fissure", "Raigeki", "Shadow Spell", "Heavy Storm"], "in": {"Dark Rabbit": 1, "Parrot Dragon": 1, "Illusionist Faceless Mage": 1}},
+	"weevil": {"out": ["Insect Knight", "Neo Bug", "Gokipon", "Dian Keto the Cure Master", "Just Desserts", "Fissure"],
+		"in": {"Big Insect": 2, "Flying Kamakiri #1": 2, "Gokibore": 2, "Man-Eater Bug": 2, "Needle Worm": 1, "Skull-Mark Ladybug": 1}},
+	"rex": {"out": ["Hinotama", "Dian Keto the Cure Master", "Hammer Shot"], "in": {"Dark Driceratops": 1, "Frostosaurus": 1, "Serpent Night Dragon": 1, "Trakodon": 2}},
+	"jaden": {"out": ["Celtic Guardian"], "in": {"Elemental HERO Bladedge": 1}},
+	"chazz": {"out": ["Dragon Treasure", "Rush Recklessly"], "in": {"Masked Dragon": 2, "V-Tiger Jet": 1}},
+	"zane": {"out": ["X-Head Cannon", "Elemental HERO Burstinatrix", "Charcoal Inpachi", "Millennium Shield"], "in": {"Call of the Haunted": 1}},
+	"alexis": {"out": ["Dian Keto the Cure Master", "Luminous Spark", "Horn of the Unicorn"], "in": {"Hallowed Life Barrier": 1}},
+	"syrus": {"out": ["Elemental HERO Clayman", "Dian Keto the Cure Master"], "in": {"Shield Crush": 1}},
+	"aster": {"out": ["Celtic Guardian", "Mystic Plasma Zone"]},
+	"yusei": {"out": ["Celtic Guardian", "Beaver Warrior"]},
+	"jack": {"out": ["Molten Destruction", "Salamandra"]},
+	"crow": {"out": ["Curse of Dragon", "Dian Keto the Cure Master", "Follow Wind"]},
+	"akiza": {"out": ["Vile Germs", "Forest"]},
+	"kalin": {"out": ["Hinotama", "Mystic Plasma Zone", "Dark Energy"]},
+	"yuma": {"out": ["Celtic Guardian", "Beaver Warrior", "Battle Ox", "Masaki the Legendary Swordsman", "Silver Fang", "Dian Keto the Cure Master", "Lightning Blade", "Trap Hole"],
+		"in": {"Achacha Archer": 2}, "extra_in": {"Number 17: Leviathan Dragon": 1}},
+	"shark": {"out": ["Dian Keto the Cure Master", "Steel Shell"], "in": {"Hyper-Ancient Shark Megalodon": 1}},
+	"kite": {"out": ["Luminous Spark"]},
+	"vector": {"out": ["Charcoal Inpachi", "Archfiend Soldier", "Summoned Skull", "Ryu-Kishin Powered", "Vorse Raider", "Hinotama", "Mystic Plasma Zone", "Malevolent Nuzzler"],
+		"in": {"Mirror Force": 1}, "extra_out": ["Gagaga Cowboy"]},
+}
+
+
+static func _ids(names: Array) -> Dictionary:
+	var out := {}
+	for n in names:
+		var id: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
+		if id != 0:
+			out[id] = true
+	return out
+
+
+## A deck's Main Deck after today's changes. A stand-in only leaves if the deck still makes
+## forty without it (the rest is topped up with further copies of the duelist's own cards).
+static func tune(deck_key: String, list: Array[int]) -> Array[int]:
+	if not TUNE.has(deck_key) or list.is_empty():
+		return list
+	var t: Dictionary = TUNE[deck_key]
+	var gone := _ids(t.get("out", []))
+	var kept: Array[int] = []
+	var removed: Array[int] = []
+	for id in list:
+		if gone.has(id):
+			removed.append(id)
+		else:
+			kept.append(id)
+	var add: Dictionary = t.get("in", {})
+	for n in add:
+		var id2: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
+		if id2 == 0 or not CardExact.ok(CardData.get_card(id2)):
+			continue
+		var have := kept.count(id2)
+		for k in maxi(0, mini(3, int(add[n])) - have):
+			kept.append(id2)
+	kept = CardData.to_forty(kept)
+	while kept.size() < CardData.MIN_DECK and not removed.is_empty():
+		kept.append(removed.pop_front())
+	return kept
+
+
+static func tune_extra(deck_key: String, list: Array[int]) -> Array[int]:
+	if not TUNE.has(deck_key):
+		return list
+	var t: Dictionary = TUNE[deck_key]
+	var gone := _ids(t.get("extra_out", []))
+	var out: Array[int] = []
+	for id in list:
+		if not gone.has(id):
+			out.append(id)
+	var add: Dictionary = t.get("extra_in", {})
+	for n in add:
+		var id2: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
+		if id2 == 0 or not CardExact.ok(CardData.get_card(id2)) or out.has(id2):
+			continue
+		for k in int(add[n]):
+			out.append(id2)
+	return out
+
+
+## Where one duelist's deck stands. Returns:
+##   {"plays": [names in the deck now], "stand_ins": [names in the deck now that are not theirs],
+##    "ready": [signature cards that work here but are not in the deck yet],
+##    "need_effect": [in the card database, effect not built yet],
+##    "unknown": [not in the card database under that name], "in": [signature cards in the deck now]}
+static func audit(key: String) -> Dictionary:
+	var out := {"plays": [], "stand_ins": [], "ready": [], "need_effect": [], "unknown": [], "in": []}
+	var info := Characters.get_char(key)
+	var deck := str(info.get("deck", ""))
+	if not WISH.has(key) or not CardData.has_deck(deck):
+		return out
+	var wish: Dictionary = WISH[key]
+	var theirs := {}
+	for n in (wish["main"] as Array) + (wish["extra"] as Array):
+		theirs[str(n).to_lower()] = true
+	var now := {}
+	for id in Array(CardData.deck_list(deck)) + CardData.extra_list(deck):
+		var nm := str(CardData.get_card(int(id)).get("name", "?"))
+		if not now.has(nm.to_lower()):
+			now[nm.to_lower()] = true
+			(out["plays"] as Array).append(nm)
+			if not theirs.has(nm.to_lower()):
+				(out["stand_ins"] as Array).append(nm)
+	for n in theirs:
+		var id2: int = CardData.NAME_TO_ID.get(str(n), 0)
+		var shown := str(CardData.get_card(id2).get("name", n)) if id2 != 0 else ""
+		if id2 == 0:
+			# Find the name as it was written in the list (the key is lower case).
+			for w in (wish["main"] as Array) + (wish["extra"] as Array):
+				if str(w).to_lower() == str(n):
+					shown = str(w)
+			(out["unknown"] as Array).append(shown)
+		elif now.has(str(n)):
+			(out["in"] as Array).append(shown)
+		elif CardExact.ok(CardData.get_card(id2)) and Engine.get_main_loop().root.get_node("Collection").playable(id2):
+			(out["ready"] as Array).append(shown)
+		else:
+			(out["need_effect"] as Array).append(shown)
+	for k in ["in", "ready", "need_effect", "unknown"]:
+		(out[k] as Array).sort()
+	return out

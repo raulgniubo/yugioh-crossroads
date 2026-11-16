@@ -4960,4 +4960,10 @@ const ES := {
 	"So, tell me. Who are you?": "Dime. ¿Quién eres?",
 	"This is me": "Este soy yo",
 	"Press any key to skip": "Pulsa cualquier tecla para saltar",
+	"%s'S DECK": "DECK DE %s",
+	"%s Deck   ·   %d cards: %d monsters, %d Spells, %d Traps   ·   %d in the Extra Deck": "Deck %s   ·   %d cartas: %d monstruos, %d Mágicas, %d Trampas   ·   %d en el Deck Extra",
+	"Spell Card": "Carta Mágica",
+	"Trap Card": "Carta de Trampa",
+	"See their deck": "Ver su deck",
+	"Their deck needs the card database.": "Su deck necesita la base de datos de cartas.",
 }

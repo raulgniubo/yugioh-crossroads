@@ -5,6 +5,25 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.26
+
+**The duelists and their own decks, first step: see any deck before you pick, the list of what each one is missing, and every card of theirs that already works goes in.**
+
+- **"See their deck" in Free Duel.** Next to THEIR DECK there is a button. It lays out everything the duelist you picked plays: the Main Deck (monsters from the highest Level down, then Spells, then Traps, with x2 / x3 on copies) and the Extra Deck, with a line of counts on top. Point at a card, or move to it with the controller, and it is shown large on the right with its type, ATK and DEF and its text. It follows the THEIR DECK choice, so it also shows a deck you gave them.
+- **What every duelist is known for is written down in the game** (`SignatureDecks`): for all 24, the names of the cards of their Main Deck and Extra Deck. That list is the target each deck is built toward. The game can now say for anyone which of their cards are in, which work but were not in yet, which still need their effect built, and what is in the deck that is not theirs.
+- **Every card of theirs that already works is in their deck now**, and stand-ins that were not theirs are out:
+  - Yusei no longer plays Celtic Guardian or Beaver Warrior. (None of his missing monsters work yet, so the room is filled with more copies of what he does play.)
+  - Yugi: Dark Magician Girl, Alpha, Beta and Gamma The Magnet Warrior, Queen's Knight, Jack's Knight, Breaker the Magical Warrior, Gazelle the King of Mythical Beasts, Brain Control, Card Destruction, Monster Reborn, Spellbinding Circle. Out: Gemini Elf, Book of Secret Arts, Yami, Magic Jammer, Waboku, Fissure.
+  - Kaiba: X-Head Cannon, Y-Dragon Head, Z-Metal Tank and XYZ-Dragon Cannon, Saggi the Dark Clown, Hitotsu-Me Giant, Luster Dragon, Vampire Lord. Out: Rude Kaiser, Koumori Dragon, Cyber Dragon, Mystic Tomato, Mountain, Dragon Treasure, Torrential Tribute, Trap Hole.
+  - Bakura: The Portrait's Secret, Earthbound Spirit, Souls of the Forgotten, The Gross Ghost of Fled Dreams, Man-Eater Bug, Lady of Faith, Change of Heart, Just Desserts, The Dark Door. Out: nine that were not his (Newdoria, Curse of Dragon, Summoned Skull and others).
+  - Marik, Joey, Weevil, Rex, Pegasus, Chazz, Mai, Jaden, Zane, Alexis, Syrus, Yuma, Shark and Vector: the same, with what they have ready.
+  - Aster, Jack, Crow, Akiza, Kalin and Kite only lost stand-ins: none of their missing cards work yet.
+- A stand-in only leaves a deck if the deck still makes forty without it.
+- New test: every duelist's deck is forty or more, three copies at most, every card with its effect.
+- Dev: `--decks-report=/path.txt` writes every duelist's deck and its audit; `--open=peek:jack` opens the deck view.
+
+Not done or not checked: **this is the first step, not the job.** 586 cards across the 24 duelists still need their effects built before each one plays only their own deck: the list is in "Crossroads - who plays what" (sent with this version), duelist by duelist. Yusei alone is missing 59, Yuma 61, Jaden 51. Until then decks are topped up with more copies of their own cards and keep everyday Spells and Traps (Pot of Greed, Monster Reborn, Fissure) that are not theirs. No duelist plays "the way the character plays" yet: the computer still plays every deck by the same rules. The lists of their cards are from memory of the shows and may have mistakes: a few show-only cards that were never printed are left out. The deck view was seen in one picture here with placeholder card faces, not with your card pictures. The changed decks were played by the test duels (30 games, no failures), not watched.
+
 ## What is in 0.33.25
 
 **The first start: an opening, and the character creator opens on its stage.**

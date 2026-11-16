@@ -305,6 +305,17 @@ func _build_slots() -> void:
 	_root.add_child(_vs)
 
 
+func _peek_deck() -> void:
+	var deck := _deck_of("opp")
+	if not CardData.has_deck(deck):
+		Router.toast(Loc.t("Their deck needs the card database."))
+		return
+	Sfx.play("select", -4.0)
+	var dp := DeckPeek.new(_opp, deck)
+	dp.z_index = 200
+	add_child(dp)
+
+
 func _deck_of(side: String) -> String:
 	if side == "opp" and _their_deck != "":
 		return _their_deck
@@ -836,6 +847,12 @@ func _build_setup() -> void:
 		_their_deck = _their_keys[i]
 		_refresh_slots())
 	trow.add_child(_their_pick)
+	# Every card they play, before you pick them.
+	var peek := Button.new()
+	peek.text = Loc.t("See their deck")
+	peek.add_theme_font_size_override("font_size", 16)
+	peek.pressed.connect(_peek_deck)
+	trow.add_child(peek)
 	var dhead := HBoxContainer.new()
 	v.add_child(dhead)
 	dhead.add_child(UITheme.label("DIFFICULTY", 16, UITheme.ACCENT, UITheme.semi_font()))

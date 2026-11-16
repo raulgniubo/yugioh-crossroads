@@ -35,6 +35,7 @@ func _ready() -> void:
 		_test_card_numbers()
 		_test_field_looks()
 		_test_academy_week()
+		_test_signature_decks()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -2613,3 +2614,35 @@ func _test_turbo_setup() -> void:
 	check(is_equal_approx(ride._mom, 100.0), "Momentum stops at 100")
 	ride.free()
 	check(TurboGarage.gives("engine", 0) == "Standard" and TurboGarage.gives("engine", 2) == "+14 km/h", "garage parts say what they give")
+
+
+
+## Every duelist's deck after today's changes: forty or more, nothing over three copies, the
+## stand-ins that were named are gone, and every card that was added works here.
+func _test_signature_decks() -> void:
+	var bad: Array = []
+	for key in Characters.ORDER:
+		var deck := str(Characters.get_char(str(key)).get("deck", ""))
+		if not CardData.has_deck(deck):
+			continue
+		var list := CardData.deck_list(deck)
+		if list.size() < CardData.MIN_DECK or list.size() > 60:
+			bad.append("%s has %d cards" % [key, list.size()])
+		var counts := {}
+		for id in list:
+			counts[id] = int(counts.get(id, 0)) + 1
+			# (The Fusion decks were built with a fourth Polymerization long before this: left alone.)
+			if counts[id] == 4 and str(CardData.get_card(id).get("name", "")) != "Polymerization":
+				bad.append("%s has four of %s" % [key, CardData.get_card(id).get("name", "?")])
+			if not CardExact.ok(CardData.get_card(id)):
+				bad.append("%s plays %s without its effect" % [key, CardData.get_card(id).get("name", "?")])
+		for id in CardData.extra_list(deck):
+			if not CardExact.ok(CardData.get_card(int(id))):
+				bad.append("%s has %s in the Extra Deck without its effect" % [key, CardData.get_card(int(id)).get("name", "?")])
+	check(bad.is_empty(), "every duelist's deck is forty or more, three copies at most, every card working" + ("" if bad.is_empty() else ": " + "; ".join(bad.slice(0, 6))))
+	var yusei := CardData.deck_list("yusei").map(func(id): return str(CardData.get_card(id).get("name", "")))
+	check(not yusei.has("Beaver Warrior") and not yusei.has("Celtic Guardian"), "Yusei no longer plays Beaver Warrior or Celtic Guardian")
+	var yugi := CardData.deck_list("yugi").map(func(id): return str(CardData.get_card(id).get("name", "")))
+	check(yugi.has("Dark Magician Girl") and yugi.has("Alpha The Magnet Warrior") and not yugi.has("Gemini Elf"), "Yugi plays Dark Magician Girl and the Magnet Warriors, not Gemini Elf")
+	var au := SignatureDecks.audit("kaiba")
+	check((au["in"] as Array).has("X-Head Cannon") and (au["plays"] as Array).size() > 10, "the audit says what Kaiba plays and what is his")

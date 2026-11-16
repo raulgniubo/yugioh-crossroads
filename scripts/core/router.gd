@@ -263,6 +263,41 @@ func _debug_args() -> void:
 				StoryDirector.begin(parts[0], true)
 			else:
 				StoryDirector.begin(parts[0])
+		elif a.begins_with("--decks-report="):
+			# (testing) every duelist in the roster with the deck they play, to a text file.
+			var out := FileAccess.open(a.trim_prefix("--decks-report="), FileAccess.WRITE)
+			for ck in Characters.ORDER:
+				var info := Characters.get_char(str(ck))
+				var dk2 := str(info.get("deck", ""))
+				if dk2 == "" or not CardData.has_deck(dk2):
+					out.store_line("## %s (%s): no deck '%s'" % [info.get("name", ck), info.get("era", "?"), dk2])
+					continue
+				var counts := {}
+				var order: Array = []
+				for id3 in CardData.deck_list(dk2):
+					if not counts.has(id3):
+						order.append(id3)
+					counts[id3] = int(counts.get(id3, 0)) + 1
+				var names: Array = []
+				for id3 in order:
+					var cd := CardData.get_card(int(id3))
+					names.append("%s%s" % [cd.get("name", "?"), " x%d" % counts[id3] if counts[id3] > 1 else ""])
+				var ex: Array = []
+				for id4 in CardData.extra_list(dk2):
+					ex.append(str(CardData.get_card(int(id4)).get("name", "?")))
+				out.store_line("## %s (%s) deck=%s style=%s main=%d extra=%d" % [info.get("name", ck), info.get("era", "?"), dk2, info.get("style", "-"), CardData.deck_list(dk2).size(), ex.size()])
+				out.store_line("MAIN: " + ", ".join(names))
+				out.store_line("EXTRA: " + ", ".join(ex))
+				var au := SignatureDecks.audit(str(ck))
+				out.store_line("COUNTS: in=%d ready=%d need_effect=%d unknown=%d stand_ins=%d" % [(au["in"] as Array).size(), (au["ready"] as Array).size(),
+					(au["need_effect"] as Array).size(), (au["unknown"] as Array).size(), (au["stand_ins"] as Array).size()])
+				out.store_line("IN: " + ", ".join(au["in"]))
+				out.store_line("READY: " + ", ".join(au["ready"]))
+				out.store_line("NEED_EFFECT: " + ", ".join(au["need_effect"]))
+				out.store_line("UNKNOWN: " + ", ".join(au["unknown"]))
+				out.store_line("STAND_INS: " + ", ".join(au["stand_ins"]))
+			out.close()
+			print("decks report written")
 		elif a.begins_with("--deck-dump="):
 			# (testing) what a named deck really comes out as: every card it lists, whether it
 			# resolved, whether its rules are exact, and the final forty.
@@ -362,6 +397,12 @@ func _debug_args() -> void:
 				menu._open_panel(SettingsPanel.open_profile(menu, func(): menu._open_profile(false)))
 			elif what == "profile":
 				menu._open_profile(true)
+			elif what.begins_with("peek:"):
+				# Dev: a duelist's deck laid out (the Free Duel "See their deck" view).
+				var pk := what.trim_prefix("peek:")
+				var dpk := DeckPeek.new(pk, str(Characters.get_char(pk).get("deck", "")))
+				dpk.z_index = 200
+				menu.add_child(dpk)
 			elif what == "intro":
 				menu._first_start()      # dev: the first-start opening, whoever you are
 			elif what == "tournaments":

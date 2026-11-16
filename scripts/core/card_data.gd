@@ -575,7 +575,7 @@ static func deck_list(deck_key: String) -> Array[int]:
 		for id in Engine.get_main_loop().root.get_node("Collection").main:
 			mine.append(int(id))
 		return mine
-	return _swap_all(_deck_list_raw(deck_key))
+	return SignatureDecks.tune(deck_key, _swap_all(_deck_list_raw(deck_key)))
 
 
 static func _deck_list_raw(deck_key: String) -> Array[int]:
@@ -626,8 +626,8 @@ static func extra_list(deck_key: String) -> Array[int]:
 			mine.append(int(id))
 		return mine
 	if DECKS.has(deck_key):
-		return _swap_all(_expand(DECKS[deck_key].get("extra", {})))
-	return _swap_all(_expand(_resolve(NAMED_DECKS.get(deck_key, {}).get("extra", {}), true)))
+		return SignatureDecks.tune_extra(deck_key, _swap_all(_expand(DECKS[deck_key].get("extra", {}))))
+	return SignatureDecks.tune_extra(deck_key, _swap_all(_expand(_resolve(NAMED_DECKS.get(deck_key, {}).get("extra", {}), true))))
 
 
 ## Card names -> ids via the database. Unknown or unsupported cards are dropped.
