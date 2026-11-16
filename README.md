@@ -7,7 +7,7 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
 ## What is in 0.33.32
 
-Three duelists got their best decks in this version: **Yugi, Jaden and Yuma**. 102 cards were built, each against its card text, each with a test. One build for all three.
+Four duelists got their best decks in this version: **Yugi, Jaden, Yuma and Kaiba**. 115 cards were built, each against its card text, each with a test. One build for all four.
 
 ### Yugi
 
@@ -55,8 +55,20 @@ Card shops: all of these are in the Duel Monsters packs, and Yugi's deck in the 
 - **Ranking up:** Utopia Ray goes on top of a Utopia you control (pick it in the Extra Deck list), and Rank-Up-Magic Limited Barian's Force turns Utopia into Utopia Ray V. The materials move across.
 - Gagaga Girl copies Gagaga Magician's Level, and an Xyz Monster made of Gagaga monsters only gets her gift (a Special Summoned monster's ATK becomes 0). Kagetokage follows a Level 4 Normal Summon. Dododo Warrior comes out without Tribute at 1800. Gagaga Gardna and Tasuke Knight answer attacks from the hand and the Graveyard.
 
+### Kaiba
+
+**Three Blue-Eyes and every way to bring them out, the XYZ machines, Obelisk and Crush Card Virus.** 13 cards built.
+
+- **Main, 40:** Blue-Eyes White Dragon x3, Kaibaman x2, Lord of D. x2, Kaiser Sea Horse x2, Vorse Raider x3, Blade Knight x2, Luster Dragon x2, X-Head Cannon, Y-Dragon Head, Z-Metal Tank, La Jinn, Saggi the Dark Clown, Battle Ox, Vampire Lord, Obelisk the Tormentor; The Flute of Summoning Dragon x2, Polymerization x2, Enemy Controller x2, Burst Stream of Destruction, Cost Down, Shrink, Monster Reborn, Pot of Greed; Negate Attack x2, Crush Card Virus, Ring of Destruction, Interdimensional Matter Transporter.
+- **Extra:** Blue-Eyes Ultimate Dragon x2, XYZ-Dragon Cannon, XY-Dragon Cannon, XZ-Tank Cannon, YZ-Tank Dragon.
+- Blue-Eyes comes out by Kaibaman (Tribute him), Kaiser Sea Horse (counts as 2 Tributes for a LIGHT monster), Lord of D. with The Flute of Summoning Dragon (up to 2 Dragons from the hand), or Cost Down. Lord of D. keeps every Dragon from being targeted.
+- **Obelisk the Tormentor:** 3 Tributes, never Set, cannot be targeted, and nothing answers its Normal Summon. Tribute 2 monsters to destroy every monster on the other side.
+- **Crush Card Virus:** Tribute a DARK monster with 1000 or less ATK; their monsters with 1500 or more ATK on the field and in the hand are destroyed, and they take no damage until the end of the next turn.
+
 **Not done or not checked:**
 
+- Still to build for Kaiba: Chaos Emperor Dragon, Different Dimension Dragon, Spirit Ryu, Soul Exchange. With Kaiser Sea Horse on your field, a 1-Tribute Summon of a big LIGHT monster always uses the Sea Horse, whichever monster you picked. Crush Card Virus does not keep checking their draws for the next 3 turns (the current card text does not either).
+- Kaiba on Hard won 14 of 40 test duels.
 - Still to build for Jaden: Yubel, Neos Wiseman, Divine Neos, Mirror Gate, Common Soul, Fusion Gate, Dark Catapulter, Spark Blaster, Bubble Shuffle.
 - Still to build for Yuma: the six ZW monsters and ZW - Leo Arms, Number 99: Utopic Dragon, Utopia Roots, Terror-Byte, Freezadon, Crimson Shadow Armor Ninja, Force Focus, Atlandis, Galaxy Queen, the other Gagaga, Gogogo and Dododo monsters (Sister, Mancer, Caesar, Head, Child, Clerk, Ghost, Goram, Buster, Bot), Kurivolt, Rai Rider, Flelf, Bite Bug, and Dodododraw, Xyz Gift, Wonder Wand, Double or Nothing!, Gagagatag, Gagagashield, Gagagaback, Guard Go!, Heartfelt Appeal, Impenetrable Attack, Fiery Fervor.
 - How the computer plays them on Hard, in 40 test duels each: Yuma won 30 (Utopia nearly every duel). Jaden won 11: it plays Neo Space first and fuses when the fusion will stay, which was 11 Contact Fusions in those 40 duels. Without Neo Space it plays his HEROes plainly.
@@ -65,8 +77,8 @@ Card shops: all of these are in the Duel Monsters packs, and Yugi's deck in the 
 - Silent Swordsman LV5 and Silent Magician LV8 ignore the opponent's Spells that pick or sweep monsters. A Field Spell's ATK change still reaches them.
 - The computer plays the deck plainly: in 40 test duels on Hard it won 16. It summons Dark Magician, uses Skilled Dark Magician and Breaker, and rarely gets to Valkyrion or Slifer.
 - Not watched on screen. Every card has a rules test, 30 computer duels ran clean, and two full duels ran in the real duel screen (as Yugi and against him).
-- Jaden's and Yuma's cards were not watched on screen either: rules tests for every card, 30 computer duels clean, three full duels in the real duel screen.
-- About 400 cards to go for the other 21 duelists. Next: Kaiba and Joey.
+- Jaden's, Yuma's and Kaiba's cards were not watched on screen either: rules tests for every card, 30 computer duels clean, full duels in the real duel screen with each deck.
+- About 390 cards to go for the other 20 duelists. Next: Joey, then Jack and Crow.
 
 ## What is in 0.33.31
 

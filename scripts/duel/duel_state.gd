@@ -729,11 +729,30 @@ func tributes_needed(c: CardInst) -> int:
 		return 0
 	if CardEffects.of(c.cname()).has("free_summon_atk"):
 		return 0   # "You can Normal Summon this card without Tributing, but its original ATK becomes 1800" (Dododo Warrior)
+	if c.level() >= 7 and kaiser_for(c) != null:
+		return 1   # Kaiser Sea Horse: "can be treated as 2 Tributes for the Tribute Summon of a LIGHT monster"
 	if c.level() >= 7:
 		return 2
 	if c.level() >= 5:
 		return 1
 	return 0
+
+
+## The monster this player controls that counts as 2 Tributes for `c` (Kaiser Sea Horse for a LIGHT monster), or null.
+func kaiser_for(c: CardInst) -> CardInst:
+	for m in tributable(c.owner):
+		if m.face_up and not m.negated and str(EffectRunner.fx(m).get("double_tribute_attr", "-")) == str(c.data.get("attribute", "")):
+			return m
+	return null
+
+
+## Lord of D.: "Neither player can target Dragon monsters on the field with card effects."
+func dragon_shield() -> bool:
+	for q in 2:
+		for m in players[q].monsters():
+			if m.face_up and not m.negated and EffectRunner.fx(m).get("dragon_shield", false):
+				return true
+	return false
 
 
 ## Elemental HERO Necroshade: "Once, while this card is in the GY, you can Normal Summon 1 Level 5
@@ -775,6 +794,8 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 	if not can_normal_summon(p, c) or tributes.size() != tributes_needed(c):
 		return []
 	tributes = tributes.duplicate()
+	if tributes.size() == 1 and c.level() >= 7 and kaiser_for(c) != null and str(EffectRunner.fx(tributes[0]).get("double_tribute_attr", "-")) != str(c.data.get("attribute", "")):
+		tributes = [kaiser_for(c)]   # (one Tribute is only enough when it is the Kaiser Sea Horse)
 	if not set_card and players[p].no_summon_turn == turn:
 		return []
 	if set_card and CardEffects.of(c.cname()).get("no_set", false):
@@ -1882,6 +1903,10 @@ func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 	if winner_c.face_up and not winner_c.negated and EffectRunner.fx(winner_c).get("element_saurus", false) and EffectRunner.attr_on_field(self, "EARTH"):
 		loser.negated = true
 		loser.negated_turn = turn
+	# Blade Knight: "If you control no other monsters, the effects of Flip monsters destroyed by battle with this card are negated."
+	if winner_c.face_up and not winner_c.negated and EffectRunner.fx(winner_c).get("blade_knight", false) and players[wp].monsters().size() == 1 and CardEffects.of(loser.cname()).has("flip"):
+		loser.negated = true
+		loser.negated_turn = turn
 	var loser_lv := loser.level()
 	battle_foe = winner_c
 	var events := _battle_destroy(loser)
@@ -2345,6 +2370,14 @@ func _cleanup() -> Array:
 	for q in 2:
 		for m in players[q].monsters():
 			m.negated = m.face_up and (drain or m.negated_turn == turn or m.neg_perm)
+	# Lord of D.: Dragons cannot be targeted while he is face-up (EffectRunner.can_target reads the mark).
+	var lord_up := dragon_shield()
+	for q in 2:
+		for m in players[q].monsters():
+			if lord_up and m.face_up and str(m.data.get("race", "")) == "Dragon":
+				m.tags["no_target"] = true
+			else:
+				m.tags.erase("no_target")
 	# Elemental HERO Dark Neos: "while you control this face-up card, that target's effect on the field is negated."
 	for q in 2:
 		for m in players[q].monsters():

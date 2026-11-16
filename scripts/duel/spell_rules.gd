@@ -119,6 +119,12 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Kaiba's cards (v0.33.32)
+	"The Flute of Summoning Dragon": {"k": "normal", "cond": "lord_of_d", "do": [["flute"]]},
+	"Crush Card Virus": {"k": "trap", "win": ["free"], "cost": "tribute_f", "cost_f": {"attr": "DARK", "max_atk": 1000}, "do": [["crush_card"]]},
+	"Cost Down": {"k": "normal", "cost": "discard", "do": [["cost_down"]]},
+	"Burst Stream of Destruction": {"k": "normal", "cond": "own_bewd_fresh", "do": [["destroy", "opp_mons"], ["burst_lock"]]},
+	"Interdimensional Matter Transporter": {"k": "trap", "win": ["free"], "t": "own_face", "do": [["exile_end", "target"]]},
 	# ---------------------------------------------------------------- Yuma's cards (v0.33.32)
 	"Gagagabolt": {"k": "normal", "cond": "own_gagaga", "t": "any_card", "do": [["destroy", "target"]]},
 	"Onomatopaira": {"k": "normal", "cost": "discard", "do": [["onomatopaira"]]},
@@ -550,6 +556,21 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return not s.players[p].monsters().is_empty()
 		"own_hand":
 			return not s.players[p].hand.is_empty()
+		"lord_of_d":
+			for q in 2:
+				for m in s.players[q].monsters():
+					if m.face_up and m.cname() == "Lord of D.":
+						return true
+			return false
+		"own_bewd_fresh":
+			# "If you control "Blue-Eyes White Dragon"... [it] cannot attack the turn you activate this card."
+			var any_b := false
+			for m in s.players[p].monsters():
+				if m.face_up and m.cname() == "Blue-Eyes White Dragon":
+					any_b = true
+					if m.attacked_turn == s.turn:
+						return false
+			return any_b
 		"own_gagaga":
 			for m in s.players[p].monsters():
 				if m.face_up and m.cname().contains("Gagaga"):
@@ -676,6 +697,12 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 					return false
 			"slip_summon":
 				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or EffectRunner._take(ps.hand, {"max_lv": 4}, 1).is_empty():
+					return false
+			"flute":
+				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or ps.hand.filter(func(h): return h != c and h.is_monster() and str(h.data.get("race", "")) == "Dragon" and not CardEffects.of(h.cname()).get("no_special", false) and not CardData.is_extra(h.id)).is_empty():
+					return false
+			"cost_down":
+				if ps.hand.filter(func(h): return h != c and h.is_monster()).size() < 2:
 					return false
 			"onomatopaira":
 				if int(ps.once_names.get("Onomatopaira", -1)) == s.turn or _onoma_pool(s, p).is_empty():
@@ -859,6 +886,8 @@ static func targets(s: DuelState, p: int, c) -> Array:
 				"any_mon", "any_card": ok = true
 				"any_fdown": ok = not m.face_up
 				"any_fusion": ok = m.face_up and m.frame() == "fusion"
+			if ok and m.face_up and ((s.dragon_shield() and str(m.data.get("race", "")) == "Dragon") or (not m.negated and CardEffects.of(m.cname()).get("untargetable", false))):
+				ok = false   # Lord of D. shields Dragons; Obelisk cannot be targeted
 			if ok and sp.get("must_neos_fusion", false) and not (m.frame() == "fusion" and neos_family(m)):
 				ok = false   # "Equip only to a Fusion Monster that lists "Elemental HERO Neos" as material"
 			if ok and (must.is_empty() or CardEffects.matches(m.data, must)) and (m.proper or not sp.get("must_proper", false)):
@@ -1411,6 +1440,58 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				taker.lv_set = taker.level() + lv_gain
 				taker.lv_turn = s.turn
 				events.append(_ev(p, c, Loc.t("%s is Level %d until the End Phase") % [taker.cname(), taker.lv_set]))
+		"flute":
+			# "Special Summon up to 2 Dragon monsters from your hand."
+			var drs: Array = ps.hand.filter(func(h): return h != c and h.is_monster() and str(h.data.get("race", "")) == "Dragon" and not CardEffects.of(h.cname()).get("no_special", false) and not CardData.is_extra(h.id))
+			drs.sort_custom(func(x, y): return x.atk() > y.atk())
+			if not cond_ok(s, p, "lord_of_d"):
+				return events
+			for d in s.choose(p, Loc.t("%s: Special Summon up to 2 Dragons from your hand") % name, drs, 2, drs.slice(0, 2), true, c):
+				if ps.free_zone() == -1:
+					break
+				ps.hand.erase(d)
+				events.append(_ev(p, c, Loc.t("%s calls %s") % [name, d.cname()]))
+				events.append_array(s._special(p, d, "effect"))
+				events.append_array(EffectRunner.on_summon(s, p, d, "special"))
+		"crush_card":
+			# The opponent takes no damage until the end of the next turn; their monsters with 1500 or more ATK, on the field and in the hand, are destroyed.
+			opp.no_damage_until = s.turn + 1
+			events.append(_ev(p, c, Loc.t("%s: the opponent takes no damage until the end of the next turn") % name))
+			for m in opp.monsters():
+				if s.atk_of(m, false) >= 1500 or (not m.face_up and m.atk() >= 1500):
+					events.append_array(s._destroy(m))
+			for h in opp.hand.duplicate():
+				if h.is_monster() and h.atk() >= 1500:
+					opp.hand.erase(h)
+					s._to_gy(opp, h)
+					events.append(_ev(p, c, Loc.t("%s is destroyed in the hand") % h.cname()))
+					events.append({"type": "discard", "player": opp_i, "card": h})
+			# "...then your opponent can destroy up to 3 monsters with 1500 or more ATK in their Deck."
+			var deck_big: Array = opp.deck.filter(func(x): return x.is_monster() and x.atk() >= 1500)
+			if not deck_big.is_empty():
+				for x in s.choose(opp_i, Loc.t("%s: destroy up to 3 monsters with 1500 or more ATK in your Deck?") % name, deck_big, 3, [], true, c):
+					opp.deck.erase(x)
+					s._to_gy(opp, x)
+					events.append({"type": "mill", "player": opp_i, "card": x, "deck": opp.deck.size()})
+		"cost_down":
+			for h in ps.hand:
+				if h.is_monster() and h.level() > 0:
+					h.lv_set = maxi(1, h.level() - 2)
+					h.lv_turn = s.turn
+			events.append(_ev(p, c, Loc.t("%s: the monsters in your hand are 2 Levels lower this turn") % name))
+		"burst_lock":
+			for m in ps.monsters():
+				if m.cname() == "Blue-Eyes White Dragon":
+					m.attack_count_turn = s.turn
+					m.attack_count = 99
+		"exile_end":
+			for t in _sel(s, p, c, str(a[1]), ctx):
+				var pos_x: bool = t.attack_pos
+				var side_x: int = 0 if s.players[0].field.has(t) else 1
+				events.append(_ev(p, c, Loc.t("%s is banished until the End Phase") % t.cname()))
+				events.append_array(s._banish(t))
+				if s.players[t.owner].banished.has(t):
+					s.players[side_x].exiles.append({"card": t, "to": side_x, "left": 0, "atk_pos": pos_x, "end": true})
 		"onomatopaira":
 			# "choose up to 2 of these categories. For each chosen category, add one monster in that category from your Deck to your hand."
 			ps.once_names["Onomatopaira"] = s.turn

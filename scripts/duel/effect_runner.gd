@@ -49,6 +49,8 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 	if f.has("atk_per"):
 		var spec: String = f["atk_per"][0]
 		b += _count(s, c.owner, spec) * int(f["atk_per"][1])
+	if f.has("atk_if_hand_le") and s.players[c.owner].hand.size() <= int(f["atk_if_hand_le"][0]):
+		b += int(f["atk_if_hand_le"][1])   # Blade Knight
 	if f.get("atk_lp_gap", false) and s.players[c.owner].lp < s.players[s.opponent(c.owner)].lp:
 		# Air Neos: "While your Life Points are lower than your opponent's, this card gains ATK equal to the difference."
 		b += s.players[s.opponent(c.owner)].lp - s.players[c.owner].lp
@@ -939,6 +941,9 @@ static func can_ignite(s: DuelState, p: int, c) -> bool:
 		"tribute_other":
 			if ps.monsters().filter(func(m): return m != c and s.can_tribute_fx(m)).is_empty():
 				return false
+		"tribute_two":
+			if ps.monsters().filter(func(m): return m != c and s.can_tribute_fx(m)).size() < 2:
+				return false
 		"send_other":
 			# Tempest: "send 1 other card you control to the GY".
 			if ps.monsters().size() + ps.set_cards().size() + (1 if ps.field_spell != null else 0) < 2:
@@ -999,6 +1004,12 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 					return false
 			"exile_opp", "exile_opp_end", "opp_change_pos", "grand_neos":
 				if opp.monsters().is_empty():
+					return false
+			"obelisk":
+				if opp.monsters().is_empty():
+					return false
+			"destroy_pick":
+				if _pick_pool(s, p, str(a[1])).is_empty():
 					return false
 			"dark_panther", "volcasaurus":
 				if opp.monsters().filter(func(m): return m.face_up).is_empty():
@@ -1115,6 +1126,20 @@ static func _face_up_cards(ps) -> Array:
 	return out
 
 
+## XY-Dragon Cannon and its kind: what each may aim at on the opponent's side.
+static func _pick_pool(s: DuelState, p: int, what: String) -> Array:
+	var opp := s.players[s.opponent(p)]
+	var out := []
+	if what == "opp_fdown_mon":
+		return opp.monsters().filter(func(m): return not m.face_up)
+	for st in opp.spells:
+		if st != null and st.face_up == (what == "opp_faceup_st"):
+			out.append(st)
+	if what == "opp_faceup_st" and opp.field_spell != null and opp.field_spell.face_up:
+		out.append(opp.field_spell)
+	return out
+
+
 ## Dark Neos: the face-up Effect Monsters it could aim at.
 static func _dark_neos_targets(s: DuelState, c) -> Array:
 	var out := []
@@ -1209,6 +1234,15 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 			events.append({"type": "tribute", "player": p, "card": anyp})
 			events.append_array(EffectRunner.trigger(s, anyp, "tributed"))
 			events.append_array(s._monster_left(anyp))
+		"tribute_two":
+			var fod: Array = ps.monsters().filter(func(m): return m != c and s.can_tribute_fx(m))
+			fod.sort_custom(func(x, y): return s.atk_of(x, false) < s.atk_of(y, false))
+			for m in s.choose(p, Loc.t("%s: Tribute 2 monsters") % c.cname(), fod, 2, fod.slice(0, 2), false, c):
+				ps.field[ps.field.find(m)] = null
+				s._to_gy(ps, m)
+				events.append({"type": "tribute", "player": p, "card": m})
+				events.append_array(EffectRunner.trigger(s, m, "tributed"))
+				events.append_array(s._monster_left(m))
 		"send_other":
 			var mine_o: Array = ps.monsters().filter(func(m): return m != c)
 			mine_o.append_array(ps.set_cards())
@@ -1716,6 +1750,8 @@ static func run_list(s: DuelState, p: int, c, actions: Array, ctx: Dictionary) -
 
 ## Turbo Warrior: "This card cannot be targeted by the effects of Level 6 or lower monsters."
 static func can_target(src, m) -> bool:
+	if m != null and m.face_up and (m.tags.get("no_target", false) or (not m.negated and CardEffects.of(m.cname()).get("untargetable", false))):
+		return false   # Lord of D. is up and this is a Dragon / "Neither player can target this card with card effects" (Obelisk)
 	if src == null or m == null or not src.is_monster() or src.frame() == "xyz" or not m.face_up or m.negated:
 		return true
 	var cap := int(CardEffects.of(m.cname()).get("untargetable_lv_max", 0))
@@ -1739,6 +1775,11 @@ static func ai_ignite_ok(s: DuelState, p: int, c) -> bool:
 		"opp_st":
 			# Wild Wingman: when the opponent has a Spell or Trap to hit.
 			return ps.hand.size() >= 2 and (not opp.set_cards().is_empty() or opp.field_spell != null)
+		"obelisk":
+			var gain_o := 0
+			for m in opp.monsters():
+				gain_o += maxi(1000, s.atk_of(m, false))
+			return opp.monsters().size() >= 2 and gain_o >= 3500
 		"storm":
 			var theirs_st: int = opp.set_cards().size() + (1 if opp.field_spell != null else 0)
 			var mine_st: int = ps.set_cards().size() + (1 if ps.field_spell != null else 0)
@@ -1854,6 +1895,19 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"obelisk":
+			# "destroy all monsters your opponent controls. This card cannot declare an attack the turn this effect is activated."
+			events.append(_ev(p, c, Loc.t("%s destroys every monster the opponent controls") % name))
+			for m in opp.monsters():
+				events.append_array(s._destroy(m))
+			c.attack_count_turn = s.turn
+			c.attack_count = 99
+		"destroy_pick":
+			var pool_p: Array = _pick_pool(s, p, str(a[1]))
+			if not pool_p.is_empty():
+				var got_p = s.pick1(p, Loc.t("%s: destroy 1 card") % name, pool_p, pool_p[0], c)
+				events.append(_ev(p, c, Loc.t("%s destroys %s") % [name, got_p.cname() if got_p.face_up else Loc.t("a Set card")]))
+				events.append_array(s._destroy(got_p) if got_p.is_monster() and opp.field.has(got_p) else s._destroy_st(got_p))
 		"utopia_ray":
 			# "it gains 500 ATK until the end of this turn, and if it does, 1 monster your opponent controls loses 1000 ATK until the end of this turn."
 			if ps.lp > 1000:
