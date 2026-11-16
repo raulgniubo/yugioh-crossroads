@@ -32,15 +32,26 @@ func _init(title_text: String, width := 640.0) -> void:
 	_panel.offset_left = -_width - 40
 	_panel.offset_right = -40
 	add_child(_panel)
+	# The list scrolls inside its own margins (below): slanted buttons need a little room on the
+	# left or their corners are clipped, and room on the right or they run under the scrollbar.
 	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
+	for side in ["top", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 26)
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 10)
 	_panel.add_child(margin)
 	var outer := VBoxContainer.new()
 	outer.add_theme_constant_override("separation", 22)
 	margin.add_child(outer)
+	var head_m := MarginContainer.new()
+	head_m.add_theme_constant_override("margin_left", 10)
+	head_m.add_theme_constant_override("margin_right", 16)
+	outer.add_child(head_m)
+	var head_v := VBoxContainer.new()
+	head_v.add_theme_constant_override("separation", 22)
+	head_m.add_child(head_v)
 	var header := HBoxContainer.new()
-	outer.add_child(header)
+	head_v.add_child(header)
 	var title := UITheme.label(title_text, 46, UITheme.TEXT, UITheme.title_font())
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
@@ -51,15 +62,22 @@ func _init(title_text: String, width := 640.0) -> void:
 	var line := ColorRect.new()
 	line.color = Color(UITheme.ACCENT, 0.35)
 	line.custom_minimum_size = Vector2(0, 1)
-	outer.add_child(line)
+	head_v.add_child(line)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	outer.add_child(scroll)
+	var body_m := MarginContainer.new()
+	body_m.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body_m.add_theme_constant_override("margin_left", 10)
+	body_m.add_theme_constant_override("margin_right", 22)
+	body_m.add_theme_constant_override("margin_top", 4)
+	body_m.add_theme_constant_override("margin_bottom", 10)
+	scroll.add_child(body_m)
 	body = VBoxContainer.new()
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", 18)
-	scroll.add_child(body)
+	body_m.add_child(body)
 
 
 func _ready() -> void:

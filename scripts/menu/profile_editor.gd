@@ -54,13 +54,18 @@ func _ready() -> void:
 	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.052, 0.088, 0.165, 0.97), 26, Color(UITheme.ACCENT, 0.3)))
 	center.add_child(panel)
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 36)
+	h.add_theme_constant_override("separation", 28)
 	panel.add_child(h)
 	h.add_child(_build_preview())
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 10)
 	right.custom_minimum_size = Vector2(760, 0)
-	h.add_child(right)
+	# A little air to the left of the column: the first slanted button of a row leans a few
+	# pixels past its own box, and against the edge its corner was cut off.
+	var right_m := MarginContainer.new()
+	right_m.add_theme_constant_override("margin_left", 8)
+	h.add_child(right_m)
+	right_m.add_child(right)
 	right.add_child(UITheme.label("NEW DUELIST" if _first_time else "YOUR DUELIST", 54, Color.WHITE, UITheme.title_font()))
 	right.add_child(UITheme.label("This is you in the story, the cities and every duel.", 19, UITheme.TEXT_DIM))
 	var tabs := HBoxContainer.new()
@@ -75,9 +80,15 @@ func _ready() -> void:
 		_tab_btns.append(tb)
 	# What you pick from scrolls; the tabs above and the buttons under it stay put.
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(760, 600)
+	scroll.custom_minimum_size = Vector2(768, 600)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	right.add_child(scroll)
+	# The list starts 8 px left of the column and gives those 8 px back inside, so what scrolls
+	# lines up with the tabs while its slanted corners stay whole.
+	UITheme.pad_scroll(scroll, 8, 0)
+	var scroll_m := MarginContainer.new()
+	scroll_m.add_theme_constant_override("margin_left", -8)
+	right.add_child(scroll_m)
+	scroll_m.add_child(scroll)
 	var holder := VBoxContainer.new()
 	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(holder)

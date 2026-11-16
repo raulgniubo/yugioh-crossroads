@@ -255,5 +255,10 @@ static func daily_win(day: String) -> int:
 	col.record["daily_duel"] = dd
 	col.last_reward.append([Loc.t("Duel of the day"), DAILY_REWARD])
 	col.dp += DAILY_REWARD
+	# Every third one won comes with a card of Lumen's you do not have three of yet.
+	if int(dd["count"]) % 3 == 0:
+		var gift: int = col.lumen_copy()
+		if gift != 0:
+			col.last_reward.append(["New card: " + str(CardData.get_card(gift).get("name", "")), 0])
 	col.save()
 	return DAILY_REWARD

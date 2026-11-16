@@ -8,6 +8,10 @@ extends CanvasLayer
 ## name -> [color A, color B, figure, line under the name, the name of its attack]
 const SIGNATURE := {
 	"Lumen, Echo Spirit": ["7fe8ff", "ffd76a", "cards", "Your partner", "Echo Flash"],
+	"Lumen, Echo Chorus": ["ff8fd6", "6fd0ff", "circle", "Two voices, one song", "Chorus Wave"],
+	"Lumen, Echo Comet": ["3fd8ff", "ffffff", "lightning", "Faster than the echo", "Comet Dive"],
+	"Lumen, Echo Zenith": ["8a6bff", "ffd76a", "circle", "The sky, listening", "Zenith Orbit"],
+	"Lumen, Echo Radiant": ["ffc23d", "fff6d6", "flames", "Every echo at once", "Radiant Answer"],
 	"Dark Magician": ["8a4dff", "ff7ad9", "circle", "The ultimate wizard", "Dark Magic Attack"],
 	"Dark Magician Girl": ["ff7ad9", "7cc4ff", "circle", "Apprentice of the dark arts", "Dark Burning Attack"],
 	"Blue-Eyes White Dragon": ["bfe6ff", "3a7bff", "lightning", "Engine of destruction", "White Lightning"],

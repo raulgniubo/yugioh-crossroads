@@ -204,6 +204,10 @@ func _debug_args() -> void:
 		elif a == "--roam":
 			await get_tree().process_frame
 			go(ROAM)
+		elif a.begins_with("--coat="):
+			duel_config["opponent_coat"] = a.trim_prefix("--coat=")      # dev: the rival in a dorm jacket
+		elif a.begins_with("--my-coat="):
+			duel_config["player_coat"] = a.trim_prefix("--my-coat=")
 		elif a.begins_with("--opp="):
 			duel_config["opponent"] = a.substr(6)
 		elif a == "--turbo":
@@ -260,6 +264,31 @@ func _debug_args() -> void:
 				print("DECK ", dk, " ", note, "  ", n, " x", want[n], "  id ", id, "  in deck ", have.get(id, 0), "  exact ", CardExact.ok(d) if id != 0 else false,
 						"  ", d.get("kind", "?"), " L", d.get("level", "-"), " ", d.get("atk", "-"))
 			print("DECK ", dk, " asked ", asked, " final ", got.size())
+			for id2 in have:
+				var d2 := CardData.get_card(int(id2))
+				print("FINAL ", dk, "|", d2.get("name", "?"), "|", have[id2], "|", d2.get("kind", "?"), "|", int(d2.get("level", 0)), "|", int(d2.get("atk", 0)))
+		elif a.begins_with("--card-sheet="):
+			# (testing) card faces side by side, as the game draws them: --card-sheet=id,id,...
+			await get_tree().create_timer(1.0).timeout
+			var layer := CanvasLayer.new()
+			layer.layer = 90
+			add_child(layer)
+			var bg := ColorRect.new()
+			bg.color = Color(0.06, 0.08, 0.13)
+			bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+			layer.add_child(bg)
+			var ids := a.substr(13).split(",")
+			var per_row := ids.size() if ids.size() <= 4 else (4 if ids.size() <= 8 else 6)
+			var view: Vector2 = get_viewport().get_visible_rect().size
+			var cw := minf((view.x - 20.0) / per_row - 10.0, ((view.y - 16.0) / ceilf(ids.size() / float(per_row)) - 8.0) * 420.0 / 612.0)
+			for i in ids.size():
+				var face := TextureRect.new()
+				face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				face.texture = Cards.get_face(int(ids[i]))
+				face.size = Vector2(cw, cw * 612.0 / 420.0)
+				face.position = Vector2(12 + (i % per_row) * (cw + 10.0), 8 + (i / per_row) * (cw * 612.0 / 420.0 + 8.0))
+				layer.add_child(face)
 		elif a.begins_with("--field="):
 			duel_config["field"] = a.substr(8)
 		elif a.begins_with("--deck="):

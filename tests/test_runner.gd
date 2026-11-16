@@ -33,6 +33,8 @@ func _ready() -> void:
 		CardData.load_external(stress)
 		var all: Array = Characters.ORDER.filter(func(k): return CardData.has_deck(Characters.DATA[k]["deck"]))
 		_test_knockout()
+		_test_lumen()
+		_test_ai_targets()
 		var n := 0
 		for seed in int(OS.get_environment("STRESS_GAMES")) if OS.get_environment("STRESS_GAMES") != "" else 48:
 			var a: String = Characters.DATA[all[seed % all.size()]]["deck"]
@@ -2286,3 +2288,209 @@ func _test_knockout() -> void:
 	for tw in Knockout.TWISTS:
 		check(str(tw["name"]) != "" and str(tw["text"]) != "", "twist %s has a name and a line" % str(tw["id"]))
 	Knockout.no_save = false
+
+
+## Lumen's forms and the cards around her (cards of this game): each one does what it prints.
+func _test_lumen() -> void:
+	var M1 := DuelState.Phase.MAIN1
+	for id in CardData.ORIGINALS:
+		var d := CardData.get_card(id)
+		check(CardExact.ok(d) and bool(d.get("original", false)) and CardData.set_code(id).begins_with("CR-"), "%s is a card of this game and plays" % str(d.get("name", "")))
+	# --- Fusion: "Lumen, Echo Spirit" + 1 monster, with Polymerization.
+	var f := _new_state(11, "yugi", "kaiba")
+	f.begin_turn()
+	f.current = 0
+	f.phase = M1
+	var fp: DuelState.PlayerState = f.players[0]
+	fp.hand.clear()
+	fp.extra.clear()
+	var chorus := f._make(99200002, 0)
+	fp.extra.append(chorus)
+	var poly := f._make(24094653, 0)
+	fp.hand.append(poly)
+	check(not f.can_activate(0, poly), "no Echo Chorus without Lumen")
+	var lum := _put(f, 0, 99200001, 0)
+	check(not f.can_activate(0, poly), "Lumen alone is not enough: it asks for 1 more monster")
+	var other := f._make(91152256, 0)
+	fp.hand.append(other)
+	check(f.can_activate(0, poly), "Lumen on the field + a monster in hand: Polymerization can be played")
+	f.activate(0, poly)
+	check(fp.field.has(chorus) and fp.gy.has(lum) and fp.gy.has(other), "Echo Chorus is Fusion Summoned, both materials go to the Graveyard")
+	check(fp.hand.size() == 1, "Fusion Summoned: it draws 1 card")
+	f._destroy(chorus)
+	check(fp.field.has(lum) and not lum.attack_pos, "sent to the Graveyard: Lumen comes back in Defense Position")
+	# --- Synchro: Lumen is a Tuner once the story says so. Level 2 + Level 4 = 6.
+	var y := _new_state(12, "yusei", "kaiba")
+	y.begin_turn()
+	y.current = 0
+	y.phase = M1
+	var yp: DuelState.PlayerState = y.players[0]
+	yp.extra.clear()
+	var comet := y._make(99200003, 0)
+	yp.extra.append(comet)
+	CardData.lumen_tuner_test = false
+	var plain := _put(y, 0, 99200001, 0)
+	_put(y, 0, 91152256, 1)
+	if Unlocks.stage() < CardData.LUMEN_TUNER_STAGE:
+		check(not y.can_extra_summon(0, comet), "before the riders' worlds Lumen is no Tuner: no Echo Comet")
+	yp.field[0] = null
+	CardData.lumen_tuner_test = true
+	var tuner := _put(y, 0, 99200001, 0)
+	check(tuner.is_tuner() and plain != tuner, "after them she is a Tuner")
+	var foe := _put(y, 1, 89631139, 0)
+	check(y.can_extra_summon(0, comet), "Lumen (Tuner, Level 2) + a Level 4: Echo Comet")
+	y.extra_summon(0, comet)
+	check(yp.field.has(comet) and not y.players[1].field.has(foe), "Synchro Summoned: it destroys 1 card the opponent controls")
+	check(EffectRunner.fx(comet).get("piercing", false), "and it pierces")
+	# A Synchro Monster that names another Tuner does not take her.
+	var z2 := _new_state(13, "yusei", "kaiba")
+	z2.begin_turn()
+	z2.current = 0
+	z2.phase = M1
+	_put(z2, 0, 99200001, 0)
+	_put(z2, 0, 9365703, 1)      # Speed Warrior, Level 2... with Lumen that is 4, not Junk Warrior's 5
+	var jw: DuelState.CardInst = null
+	for x in z2.players[0].extra:
+		if x.id == 60800381:
+			jw = x
+	check(jw == null or not z2.can_extra_summon(0, jw), "Junk Warrior still asks for Junk Synchron")
+	CardData.lumen_tuner_test = false
+	# --- Xyz: 2 Level 4 monsters, and 1 Lumen can stand in for one of them.
+	var x4 := _new_state(14, "yuma", "kaiba")
+	x4.begin_turn()
+	x4.current = 0
+	x4.phase = M1
+	var xp: DuelState.PlayerState = x4.players[0]
+	xp.extra.clear()
+	var zenith := x4._make(99200004, 0)
+	xp.extra.append(zenith)
+	var l1 := _put(x4, 0, 99200001, 0)
+	check(not x4.can_extra_summon(0, zenith), "Lumen alone: no Echo Zenith")
+	var l2 := _put(x4, 0, 99200001, 1)
+	check(not x4.can_extra_summon(0, zenith), "two Lumens: only one of them can stand in")
+	xp.field[1] = null
+	_put(x4, 0, 91152256, 1)
+	check(l2 != l1 and x4.can_extra_summon(0, zenith), "Lumen + a Level 4: Echo Zenith")
+	x4.extra_summon(0, zenith)
+	check(xp.field.has(zenith) and zenith.overlays.size() == 2, "Echo Zenith has 2 materials")
+	check(not x4.can_ignite(0, zenith), "nothing of Lumen's in the Graveyard: no use detaching")
+	var dead := x4._make(99200001, 0)
+	xp.gy.append(dead)
+	check(x4.can_ignite(0, zenith), "a Lumen in the Graveyard: it can detach")
+	x4.ignite(0, zenith)
+	check(zenith.overlays.size() == 1 and xp.field.has(dead), "detach 1: a Lumen monster comes back from the Graveyard")
+	check(not x4.can_ignite(0, zenith), "once per turn")
+	# --- Echo Resonance: Tribute a Lumen that was not Summoned this turn, Echo Radiant comes out of the Deck.
+	var r := _new_state(15, "yugi", "kaiba")
+	r.begin_turn()
+	r.current = 0
+	r.phase = M1
+	var rp: DuelState.PlayerState = r.players[0]
+	rp.hand.clear()
+	var res := r._make(99200011, 0)
+	rp.hand.append(res)
+	var radiant := r._make(99200005, 0)
+	rp.deck.append(radiant)
+	check(not r.can_activate(0, res), "Echo Resonance needs a Lumen, Echo Spirit")
+	var rl := _put(r, 0, 99200001, 0)
+	rl.summoned_turn = r.turn
+	check(not r.can_activate(0, res), "not the turn she was Summoned")
+	rp.lp = 2000
+	check(r.can_activate(0, res), "...unless your Life Points are 2000 or less")
+	rp.lp = 8000
+	rl.summoned_turn = r.turn - 1
+	check(r.can_activate(0, res), "a Lumen from an earlier turn: Echo Resonance can be played")
+	var their := _put(r, 1, 89631139, 0)
+	r.activate(0, res)
+	check(rp.field.has(radiant) and rp.gy.has(rl) and not rp.deck.has(radiant), "Lumen is Tributed and Echo Radiant comes out of the Deck")
+	check(not r.players[1].field.has(their), "Summoned by Echo Resonance: it destroys 1 card the opponent controls")
+	var in_hand := r._make(99200005, 0)
+	rp.hand.append(in_hand)
+	r.normal_summoned = false
+	check(not r.can_normal_summon(0, in_hand), "Echo Radiant cannot be Normal Summoned or Set")
+	rp.gy.append(in_hand)
+	rp.hand.erase(in_hand)
+	check(not r.can_revive(in_hand), "and nothing else brings it out")
+	# --- Echo Call: any "Lumen" monster from the Deck (not a Spell, not the Extra Deck).
+	var c := _new_state(16, "yugi", "kaiba")
+	c.begin_turn()
+	c.current = 0
+	c.phase = M1
+	var cp: DuelState.PlayerState = c.players[0]
+	cp.hand.clear()
+	var call := c._make(99200012, 0)
+	cp.hand.append(call)
+	check(not c.can_activate(0, call), "Echo Call with no Lumen in the Deck does nothing")
+	cp.deck.append(c._make(99200011, 0))
+	check(not c.can_activate(0, call), "Echo Resonance is not a Lumen monster")
+	var in_deck := c._make(99200001, 0)
+	cp.deck.append(in_deck)
+	check(c.can_activate(0, call), "a Lumen in the Deck: Echo Call can be played")
+	c.activate(0, call)
+	check(cp.hand.has(in_deck), "and she is in your hand")
+	# --- Echo Veil: the attack is negated; with a Lumen on your field you also draw 1.
+	for with_lumen in [false, true]:
+		var v := _new_state(17)
+		v.begin_turn()
+		v.end_turn()
+		v.begin_turn()      # player 1, turn 2
+		var veil := v._make(99200013, 0)
+		v.players[0].spells[0] = veil
+		veil.face_up = false
+		veil.set_turn = 1
+		if with_lumen:
+			_put(v, 0, 99200001, 0).attack_pos = false
+		var atk := _put(v, 1, 89631139, 0)
+		atk.summoned_turn = 1
+		var held: int = v.players[0].hand.size()
+		v.enter_battle()
+		v.declare_attack(1, atk, v.players[0].field[0] if with_lumen else null)
+		check(v.responses(0, "attack").has(veil), "Echo Veil is offered on an attack")
+		v.respond(0, veil)
+		var ev := v.resolve_attack()
+		check(ev.size() == 1 and ev[0]["type"] == "attack_stopped" and v.players[0].lp == DuelState.START_LP, "Echo Veil negates the attack")
+		check(v.players[0].hand.size() == held + (1 if with_lumen else 0), "Echo Veil draws 1 only with a Lumen on your field" if with_lumen else "Echo Veil alone draws nothing")
+		if with_lumen:
+			check(v.players[0].field[0] != null, "and Lumen is still there")
+
+
+## The computer never helps you: a boost goes on its own monster or stays in its hand.
+func _test_ai_targets() -> void:
+	for lvl in [DuelAI.EASY, DuelAI.NORMAL, DuelAI.HARD]:
+		var s := _new_state(31, "yugi", "kaiba")
+		s.begin_turn()
+		s.end_turn()
+		s.begin_turn()       # player 1 (the computer's side in this test), turn 2
+		s.phase = DuelState.Phase.MAIN1
+		var ai: DuelState.PlayerState = s.players[1]
+		ai.hand.clear()
+		var treasure := s._make(CardData.NAME_TO_ID.get("dragon treasure", 0), 1)
+		ai.hand.append(treasure)
+		var yours := _put(s, 0, 39191307, 0)       # your Masked Dragon: the only Dragon on the field
+		check(s.can_activate(1, treasure), "Dragon Treasure could legally go on your Dragon")
+		check(not DuelAI.has_use(s, 1, treasure), "...but it is no use to them there")
+		for i in 12:
+			var act := DuelAI.next_main_action(s, 1, lvl)
+			check(not (str(act.get("do", "")) == "activate" and act.get("card") == treasure), "level %d: they do not equip your monster" % lvl)
+		check(s.atk_of(yours, false) == 1400, "your Masked Dragon is still 1400")
+		var theirs := _put(s, 1, 11091375, 0)        # their own Luster Dragon
+		check(DuelAI.has_use(s, 1, treasure) and SpellRules.auto_target(s, 1, treasure) == theirs, "with a Dragon of their own it goes on that one")
+		s.activate(1, treasure)
+		check(s.atk_of(theirs, false) == 2200 and s.atk_of(yours, false) == 1400, "and it does")
+	# An Equip Card goes to the Graveyard the moment its monster is Tributed, whoever played it.
+	var q := _new_state(32, "yugi", "kaiba")
+	q.begin_turn()
+	q.current = 0
+	q.phase = DuelState.Phase.MAIN1
+	var worn := _put(q, 0, 39191307, 0)
+	var eq := q._make(CardData.NAME_TO_ID.get("dragon treasure", 0), 1)
+	q.players[1].spells[0] = eq
+	eq.face_up = true
+	eq.equipped_to = worn
+	check(q.atk_of(worn, false) == 1700, "an Equip Card of theirs on your monster counts (1400 + 300)")
+	var big := q._make(CardData.NAME_TO_ID.get("luster dragon #2", 0), 0)
+	q.players[0].hand.append(big)
+	q.normal_summoned = false
+	q.normal_summon(0, big, [worn])
+	check(q.players[0].field.has(big) and not q.players[1].spells.has(eq) and q.players[1].gy.has(eq), "Tribute the monster: the Equip Card is in its owner's Graveyard at once")
+	check(q.atk_of(big, false) == 2400, "and the new monster has nothing on it")

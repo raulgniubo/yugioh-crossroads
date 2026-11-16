@@ -124,12 +124,17 @@ static func today() -> Dictionary:
 
 
 static func duel_config(t: Dictionary) -> Dictionary:
-	return {
+	var cfg := {
 		"opponent": t["char"], "opponent_deck": t["deck"], "opponent_name": t["name"],
 		"player_deck": Engine.get_main_loop().root.get_node("Collection").active_deck(), "player_char": "player",
 		"difficulty": t["difficulty"], "field": "academy",
 		"story": true, "lose_ok": true, "return_to": "res://scenes/main_menu.tscn", "continue_label": "Back to the Academy",
 	}
+	# A class duel is fought in your dorm jacket, when you wear it.
+	var c = uniform_color()
+	if c is Color:
+		cfg["player_coat"] = (c as Color).to_html(false)
+	return cfg
 
 
 static func start(t: Dictionary) -> void:

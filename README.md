@@ -5,6 +5,22 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.19
+
+**Lumen gets a deck of her own, the folder beside the game carries everything, and a long list of fixes from one evening of play.**
+
+- **Lumen's cards.** Seven new cards that only exist in this game, next to Lumen, Echo Spirit: four forms (Echo Chorus by Fusion, Echo Comet by Synchro, Echo Zenith by Xyz, Echo Radiant through the Spell Echo Resonance), the Spell Echo Call and the Trap Echo Veil. Every one does exactly what its text says. They come to you as the story goes; more copies come from the Echo Pack, the first win of each Knockout cup and every third Duel of the day. From Chapter 3 on Lumen is a Tuner.
+- **Crossroads Original.** Our own cards have their own frame, their own picture, a "CROSSROADS ORIGINAL" band with a set number, a line in the card details and a "Crossroads" filter in the deck builder. The four forms use painted pictures of their own.
+- **The game folder.** With "Crossroads Data" beside the game, everything lives in it: cards, models, save slots, and now also the game you are playing (your own and the admin one), whether admin is on, your settings and the performance reports. Zip the folder, unzip it on another computer and it carries on. On a different computer the graphics are picked again for that machine; everything else about you stays.
+- **Duels.** Dragging a card lights the right row with what will happen (Summon or Set, Activate or Set, Set). "Look at the field" folds a question away so you can look over the table before answering. Far fewer questions: by default you are asked only when the opponent does something you can answer, and on your own attack only if you hold something that helps it ("Ask me at every chance" brings the old way back). The result screen fits with a long reward list. The opponent no longer plays a boost on your monster. An Equip Spell goes to the Graveyard with a monster that is Tributed or used as material. The picture on the back of your face-down cards and your deck is the right way up from your seat.
+- **Starter decks** toned down to the level of the first opponents.
+- **Dressed as you saw them.** A student challenged in a dorm jacket wears it in the duel, in their picture too. So do you.
+- **Story and world.** The task box can be clicked, shows what to do next and where, says in plain words when a task is in another world, and the beacon points at the nearest duelist you can challenge for "win N street duels". Two leads arriving together no longer land on each other. The "you are here" note in the chapter list is two clean lines. Slanted buttons are no longer cut at the edge of the Story list and of Your Duelist. Two duelists in a street duel face each other. The card of the hour fits its billboard. A proper cat in the card shop. The Turbo trail stays behind the runner.
+- **Free Duel.** The Knockout button reads as a button that opens a screen, and the Knockout setup is a full screen with the three cups. The VS mark sits over both sides. The three cards of the starter choice no longer cover the text.
+- 55 more lines in Spanish. New tests for Lumen's cards, the AI's targets and Equip cleanup.
+
+Not done or not checked: nothing here was played on a Mac by me. The counter in the Academy card shop was changed on a best guess (I could not see the flicker in a still picture): please look again. Not seen in a picture after the last edits: the task box with its "Next" line and the leads stacking (the chapter ran to its end in the test with no errors), the cat, the billboard, the two duelists facing each other, the Turbo trail, the Echo Pack being opened in the shop, a form's entrance on the field, your own jacket in a duel on your own model. Whether the tabs of Your Duelist were cut on your screen for the same reason as the list, I could not reproduce: the column has room on its left now, please look. The folder was tried with two pretend computers here, not with two real ones.
+
 ## What is in 0.33.18
 
 **Less boxy: furniture with soft edges in every room, and round corner columns on the city blocks.**

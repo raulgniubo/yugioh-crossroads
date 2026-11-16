@@ -141,6 +141,11 @@ func _start() -> void:
 		_debug_cine()
 	var cfg: Dictionary = Router.duel_config
 	_opp_key = cfg.get("opponent", "kaiba")
+	Avatars.dress = {}
+	if str(cfg.get("opponent_coat", "")) != "":
+		Avatars.dress[_opp_key] = str(cfg["opponent_coat"])
+	if str(cfg.get("player_coat", "")) != "":
+		Avatars.dress[str(cfg.get("player_char", "player"))] = str(cfg["player_coat"])
 	_ai_level = int(cfg.get("difficulty", 1))
 	# Who you face decides how they play and what you hear.
 	var mood := str(Characters.get_char(_opp_key).get("personality", ""))
@@ -1440,28 +1445,33 @@ func _on_phase_button(action: String) -> void:
 		_turn_finished.emit()
 
 
-## What dropping a hand card on each of your rows would do: [monster row, back row].
-## An entry is [action id, the word shown over the row]; missing rows do nothing.
+## What dropping a hand card on your rows would do. A card only goes where its kind goes: a
+## monster on the monster row (0), a Spell or Trap on the back row (1). The other row stays dark.
+## plan[row] is one entry (the whole row does it) or two (left half, right half), each
+## [action id, the word shown over it]: face-up on the left, Set on the right.
 func _drop_plan(inst) -> Dictionary:
 	var plan := {}
 	if inst.is_monster():
+		var cells: Array = []
 		if state.can_special_from_hand(ME, inst):
-			plan[0] = ["special_hand", "SPECIAL SUMMON"]
+			cells.append(["special_hand", "SPECIAL SUMMON"])
 		elif state.can_normal_summon(ME, inst):
-			plan[0] = ["summon", "SUMMON"]
+			cells.append(["summon", "SUMMON"])
 		if state.can_normal_summon(ME, inst):
-			plan[1] = ["set", "SET"]
+			cells.append(["set", "SET"])
+		if not cells.is_empty():
+			plan[0] = cells
 	elif inst.is_trap():
 		if state.can_set_st(ME, inst):
-			plan[0] = ["set_st", "SET"]
-			plan[1] = ["set_st", "SET"]
+			plan[1] = [["set_st", "SET"]]
 	else:
+		var cells2: Array = []
 		if state.can_activate(ME, inst):
-			plan[0] = ["activate", "ACTIVATE"]
+			cells2.append(["activate", "ACTIVATE"])
 		if state.can_set_st(ME, inst):
-			plan[1] = ["set_st", "SET"]
-			if not plan.has(0):
-				plan[0] = ["set_st", "SET"]
+			cells2.append(["set_st", "SET"])
+		if not cells2.is_empty():
+			plan[1] = cells2
 	return plan
 
 
@@ -1471,20 +1481,27 @@ func _on_hand_drag(inst, on: bool) -> void:
 		return
 	var plan := _drop_plan(inst)
 	_menu_card = null
-	board.show_drop([Loc.t(str(plan[0][1])) if plan.has(0) else "", Loc.t(str(plan[1][1])) if plan.has(1) else ""], true)
+	var rows: Array = [[], []]
+	for r in plan:
+		for cell in plan[r]:
+			(rows[int(r)] as Array).append(Loc.t(str(cell[1])))
+	board.show_drop(rows, true)
 
 
-## A hand card let go over the table. True when it lands on a row that takes it.
+## A hand card let go over the table. True when it lands on a part of a row that takes it.
 func _on_hand_drop(inst, at: Vector2) -> bool:
 	if not _my_turn() or mode != "":
 		return false
 	var plan := _drop_plan(inst)
-	var row := board.drop_row(at)
+	var cell := board.drop_cell(at)
+	var row := int(cell[0])
 	if not plan.has(row):
 		return false
+	var cells: Array = plan[row]
+	var pick: Array = cells[0] if cells.size() == 1 else cells[clampi(int(cell[1]), 0, cells.size() - 1)]
 	_menu_card = inst
 	Sfx.play("card", -4.0)
-	_on_action.call_deferred(str(plan[row][0]))
+	_on_action.call_deferred(str(pick[0]))
 	return true
 
 
@@ -1994,13 +2011,20 @@ func _window(first: int, window: String, subject, prompt: String) -> void:
 					await _ai_wait(0.3)
 			elif window in ["phase", "battle_start"] and win == window and not hud.phase_prompts:
 				choice = null
+			elif not hud.phase_prompts and _nothing_to_answer(who, win, opts):
+				choice = null
 			else:
 				var text := prompt
+				var my_attack: bool = win == "attack" and not state.pending_attack.is_empty() and int(state.pending_attack["player"]) == who
 				if win == "chain":
 					text = Loc.t("Chain to %s%s?") % [state.chain.back()["card"].cname(), "'s effect" if state.chain.back()["kind"] == "fx" else ""]
 				elif window == "battle_start":
 					text = "The Battle Phase begins. Respond?"
-				hud.ask_why = Loc.t({
+				elif my_attack:
+					text = Loc.t("%s attacks. Use a card?") % str(state.pending_attack["attacker"].cname())
+					if not hud.phase_prompts:
+						opts = opts.filter(_helps_my_attack)
+				hud.ask_why = Loc.t("Your monster declared an attack. A card of yours can be used before it lands. Pick one, or let the attack go on.") if my_attack else Loc.t({
 					"attack": "Your opponent declared an attack. A Trap or Quick-Play Spell can answer it before it lands. Pick a card to use it, or let the attack go through.",
 					"summon": "A monster was just summoned. This is your chance to answer the summon with a Trap. Pick a card to use it, or let it stand.",
 					"chain": "A card or effect was just activated. You can chain one of yours on top of it: the last card played resolves first.",
@@ -2032,6 +2056,33 @@ func _window(first: int, window: String, subject, prompt: String) -> void:
 	# Effects that triggered while that chain resolved start a chain of their own.
 	if not state.pending_fx.is_empty() and not state.is_over() and not _finished:
 		await _window(state.opponent(state.current), "chain", null, "")
+
+
+## With "Ask me at every chance" off: is this a stop with nothing in it to answer? Your own
+## card going on the chain (there is nothing of theirs to answer), or your own attack when all
+## you hold are cards for when you are the one being attacked.
+func _nothing_to_answer(who: int, win: String, opts: Array) -> bool:
+	if win == "chain" and not state.chain.is_empty() and int(state.chain.back()["player"]) == who:
+		return true
+	if win == "attack" and not state.pending_attack.is_empty() and int(state.pending_attack["player"]) == who:
+		return opts.filter(_helps_my_attack).is_empty()
+	return false
+
+
+## A card worth being asked about while your own monster attacks: one that makes a monster
+## stronger (Rush Recklessly), or a monster's own effect from the hand.
+func _helps_my_attack(c) -> bool:
+	if c.is_monster():
+		return true
+	var sp := SpellRules.spec(c)
+	var lists: Array = [sp.get("do", [])]
+	for m in sp.get("modes", []):
+		lists.append((m as Dictionary).get("do", []))
+	for acts in lists:
+		for a in acts:
+			if str(a[0]) in ["atk", "def"] and a.size() > 2 and int(a[2]) > 0:
+				return true
+	return false
 
 
 func _start_attack(inst) -> void:
@@ -2154,6 +2205,7 @@ func _on_pause_action(action: String) -> void:
 				var rg: Dictionary = Router.duel_config["gauntlet"]
 				var order: Array = rg.get("all", []).duplicate()
 				Router.duel_config["opponent"] = order.pop_front()
+				Router.duel_config.erase("opponent_coat")
 				rg["left"] = order
 				rg["stage"] = 1
 				Router.duel_config.erase("my_lp")
@@ -2400,9 +2452,16 @@ func _demo_actions() -> void:
 			_tributes = [put[0]] if da.ends_with("=1") and not put.is_empty() else []
 			_refresh_tribute()
 			return
-	if "--demo-drop" in OS.get_cmdline_user_args():
+	for da2 in OS.get_cmdline_user_args():
+		# --demo-drop (a monster), --demo-drop=spell, --demo-drop=trap: light the rows as if that
+		# kind of card from your hand were being dragged.
+		if not da2.begins_with("--demo-drop"):
+			continue
+		var want := da2.get_slice("=", 1) if "=" in da2 else "monster"
 		for c in state.players[ME].hand:
-			if c.is_monster() and not _drop_plan(c).is_empty():
+			var is_kind: bool = (want == "monster" and c.is_monster()) or (want == "trap" and c.is_trap()) or (want == "spell" and c.is_spell())
+			if is_kind and not _drop_plan(c).is_empty():
+				hud.inspect(c)
 				_on_hand_drag(c, true)
 				return
 	for c in state.players[ME].hand:

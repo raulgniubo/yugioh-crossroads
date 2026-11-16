@@ -379,6 +379,7 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 			s._to_gy(ps, m)
 			events.append({"type": "tribute", "player": p, "card": m})
 			events.append_array(EffectRunner.trigger(s, m, "tributed"))
+			events.append_array(s._monster_left(m))
 	if f.has("special_discard_attr"):
 		var pay: Array = ps.hand.filter(func(h): return h != c and h.is_monster() and str(h.data.get("attribute", "")) == str(f["special_discard_attr"]))
 		var least = pay[0]
@@ -427,7 +428,7 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 static func on_summon(s: DuelState, p: int, c, kind: String) -> Array:
 	var f := fx(c)
 	var events := []
-	var fires: bool = (kind == "normal" and f.has("summon")) or (kind == "flip" and f.has("flip")) or (kind == "synchro" and f.has("synchro")) or (kind in ["special", "synchro", "fusion", "xyz"] and f.has("special_only")) or f.has("any_summon")
+	var fires: bool = (kind == "normal" and f.has("summon")) or (kind == "flip" and f.has("flip")) or (kind == "synchro" and f.has("synchro")) or (kind == "fusion" and f.has("fusion")) or (kind in ["special", "synchro", "fusion", "xyz"] and f.has("special_only")) or f.has("any_summon")
 	if fires and _spent(s, p, c):
 		return events
 	if kind == "normal" and f.has("summon"):
@@ -436,6 +437,8 @@ static func on_summon(s: DuelState, p: int, c, kind: String) -> Array:
 		events.append_array(run_list(s, p, c, f["flip"], {}))
 	if kind == "synchro" and f.has("synchro"):
 		events.append_array(run_list(s, p, c, f["synchro"], {}))
+	if kind == "fusion" and f.has("fusion"):
+		events.append_array(run_list(s, p, c, f["fusion"], {}))
 	if kind in ["special", "synchro", "fusion", "xyz"] and f.has("special_only"):
 		events.append_array(run_list(s, p, c, f["special_only"], {}))
 	if f.has("any_summon"):
@@ -864,6 +867,7 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 			s._to_gy(ps, c)
 			events.append({"type": "tribute", "player": p, "card": c})
 			events.append_array(EffectRunner.trigger(s, c, "tributed"))
+			events.append_array(s._monster_left(c))
 		"tribute_other", "tribute_plant":
 			var pick = null
 			var can: Array = []
@@ -885,6 +889,7 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 			s._to_gy(ps, pick)
 			events.append({"type": "tribute", "player": p, "card": pick})
 			events.append_array(EffectRunner.trigger(s, pick, "tributed"))
+			events.append_array(s._monster_left(pick))
 		"banish_gy_dark":
 			events.append_array(s._banish(_gy_attr(s, p, "DARK", c)))
 		"banish_gy_monster":
@@ -1670,6 +1675,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 						s._to_gy(ps, c)
 						events.append({"type": "tribute", "player": p, "card": c})
 						events.append_array(EffectRunner.trigger(s, c, "tributed"))
+						events.append_array(s._monster_left(c))
 						src.erase(d)
 						events.append(_ev(p, c, Loc.t("%s levels up!") % name))
 						events.append_array(s._special(p, d, "effect"))

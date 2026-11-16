@@ -36,6 +36,7 @@ func _ready() -> void:
 	_build_profile_chip()
 	_build_footer()
 	_intro()
+	_lumen_news.call_deferred()
 	Router.roam["story"] = ""
 	if Router.menu_open == "select":
 		Router.menu_open = ""
@@ -642,6 +643,19 @@ func _intro() -> void:
 		_items[0].grab_focus()
 
 
+## New cards of Lumen's came with the story since the last time the menu was up: say so.
+func _lumen_news() -> void:
+	Collection.lumen_gifts()
+	if Collection.lumen_news.is_empty():
+		return
+	var names: Array = []
+	for id in Collection.lumen_news:
+		names.append(str(CardData.get_card(int(id)).get("name", "")))
+	Collection.lumen_news.clear()
+	Sfx.play("quest", -6.0)
+	Router.toast(Loc.t("Lumen has new cards for you: %s. They are in your collection.") % ", ".join(names), 8.0)
+
+
 ## Your first deck is still to be chosen (and nothing else is open).
 func _starter_due() -> bool:
 	var args := str(OS.get_cmdline_user_args())
@@ -719,10 +733,10 @@ func _on_story() -> void:
 		var mid: bool = ok and str(pos["chapter"]) == id and int(pos.get("step", 0)) > 0
 		if ok:
 			# On the right of the tile, where there is room for it at a readable size.
-			var how := UITheme.label(Loc.t("You are here. Tapping starts this chapter over. Use Continue to pick up where you were.") if mid else Loc.t("Starts from the beginning"),
+			var how := UITheme.label(Loc.t("You are here. Tapping starts it over.\nContinue picks up where you were.") if mid else Loc.t("Starts from the beginning"),
 					18, UITheme.GOLD if mid else UITheme.TEXT_DIM, UITheme.semi_font())
 			how.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
-			how.offset_left = -330.0 if mid else -250.0
+			how.offset_left = -340.0 if mid else -250.0
 			how.offset_right = -22.0
 			how.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			how.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

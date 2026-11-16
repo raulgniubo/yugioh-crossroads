@@ -1844,6 +1844,12 @@ func _start_duel() -> void:
 		"difficulty": Unlocks.level_for(Unlocks.stars_of(d)), "destiny_opp": Unlocks.stars_of(d) >= 4, "field": _field_here(),
 		"story": true, "lose_ok": true, "return_to": Router.ROAM, "continue_label": Loc.t("Back to %s") % Loc.t(str(district.get("name", "town"))),
 	}
+	# Both of you walk into the duel dressed as you were when the challenge was made.
+	for n in _npcs:
+		if n[0] == d and n[1] and is_instance_valid(n[1]) and str(n[1].coat) != "":
+			Router.duel_config["opponent_coat"] = str(n[1].coat)
+	if _figure and _figure.coat != "":
+		Router.duel_config["player_coat"] = _figure.coat
 	if duel.get("rare", false):
 		Router.duel_config["rare"] = true
 	if _stake_id != 0:

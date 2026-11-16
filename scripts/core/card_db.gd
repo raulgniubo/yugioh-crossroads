@@ -297,12 +297,15 @@ func _rect(parent: Control, pos: Vector2, size: Vector2, color: Color, radius :=
 func _label(parent: Control, text: String, pos: Vector2, size: Vector2, font: Font, font_size: int,
 		color: Color, align := HORIZONTAL_ALIGNMENT_LEFT) -> Label:
 	var l := Label.new()
+	# (Cut to its box before it is given its size: a label that may not cut its text cannot be
+	# made narrower than the text, so a long line came out as wide as the line and ran off the
+	# card instead of wrapping.)
+	l.clip_text = true
 	l.text = text
 	l.position = pos
 	l.size = size
 	l.horizontal_alignment = align
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	l.clip_text = true
 	l.add_theme_font_override("font", font)
 	l.add_theme_font_size_override("font_size", font_size)
 	l.add_theme_color_override("font_color", color)
@@ -311,6 +314,8 @@ func _label(parent: Control, text: String, pos: Vector2, size: Vector2, font: Fo
 
 
 func _make_placeholder_face(id: int) -> Texture2D:
+	if CardData.is_original(id):
+		return _make_original_face(id)
 	var d := get_card(id)
 	var vp := _new_viewport()
 	var root := Control.new()
@@ -359,15 +364,12 @@ func _make_placeholder_face(id: int) -> Texture2D:
 	tr.size = Vector2(320, 292)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art_box.add_child(tr)
-	if d.get("partner", false):
-		# Lumen's own card: she is on it, alive, instead of a monogram.
-		var live := TextureRect.new()
-		live.texture = LumenSpirit.portrait(self)
-		live.position = Vector2(4, 4)
-		live.size = Vector2(320, 292)
-		live.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		live.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		art_box.add_child(live)
+	var form: int = LUMEN_FORMS.get(id, -1)
+	if form >= 0:
+		# Lumen's own cards: she is on them, alive, instead of a monogram. Each form has its own
+		# sky and its own signs round her (see _lumen_art).
+		art_box.clip_contents = true
+		_lumen_art(art_box, form, id)
 		# Draw for a moment (her picture needs a few frames to exist), then hold still.
 		vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 		LumenSpirit.wake(2.5)
@@ -378,7 +380,7 @@ func _make_placeholder_face(id: int) -> Texture2D:
 	for word in str(d.get("name", "?")).split(" ", false):
 		if initials.length() < 2 and word.length() > 0 and word[0] == word[0].to_upper():
 			initials += word[0]
-	if d.get("partner", false):
+	if form >= 0:
 		initials = ""
 	var mono := _label(art_box, initials, Vector2(4, 4), Vector2(320, 292), _font_title, 150,
 			Color(1, 1, 1, 0.82), HORIZONTAL_ALIGNMENT_CENTER)
@@ -396,7 +398,7 @@ func _make_placeholder_face(id: int) -> Texture2D:
 	else:
 		_label(root, "[ %s ]" % d.get("race", ""), Vector2(38, 438), Vector2(344, 36), _font_title, 26, Color("1b1b1b"))
 		if str(d.get("text", "")) != "":
-			var fx_text := _label(root, str(d["text"]), Vector2(38, 470), Vector2(344, 70), _font_body, 12, Color("2b2b2b"))
+			var fx_text := _label(root, str(d["text"]), Vector2(38, 470), Vector2(344, 70), _font_body, 12 if str(d["text"]).length() <= 170 else 10, Color("2b2b2b"))
 			fx_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			fx_text.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 			fx_text.clip_text = false
@@ -407,6 +409,318 @@ func _make_placeholder_face(id: int) -> Texture2D:
 		_label(root, "ATK/%d   DEF/%d" % [d.get("atk", 0), d.get("def", 0)], Vector2(38, 544), Vector2(344, 40),
 				_font_title, 30, Color("1b1b1b"), HORIZONTAL_ALIGNMENT_RIGHT)
 	return vp.get_texture()
+
+
+func _fill(parent: Control, pos: Vector2, size: Vector2, top: Color, bottom: Color) -> TextureRect:
+	var grad := Gradient.new()
+	grad.set_color(0, top)
+	grad.set_color(1, bottom)
+	var gt := GradientTexture2D.new()
+	gt.gradient = grad
+	gt.fill_from = Vector2(0.5, 0.0)
+	gt.fill_to = Vector2(0.5, 1.0)
+	gt.width = 8
+	gt.height = 128
+	var tr := TextureRect.new()
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_SCALE
+	tr.texture = gt
+	tr.position = pos
+	tr.size = size
+	parent.add_child(tr)
+	return tr
+
+
+func _edge(parent: Control, pos: Vector2, size: Vector2, color: Color, width: int, radius: int, bg := Color(0, 0, 0, 0)) -> Panel:
+	var p := _rect(parent, pos, size, bg, radius)
+	var sb: StyleBoxFlat = p.get_theme_stylebox("panel")
+	sb.border_color = color
+	sb.set_border_width_all(width)
+	sb.anti_aliasing = true
+	return p
+
+
+## The face of a card made for this game. It is its own set, so it has its own frame: the
+## deep blue and gold of the rest of the game, with the color of the kind of card (Effect,
+## Fusion, Synchro, Xyz, Spell, Trap) as the frame round it and behind its name.
+func _make_original_face(id: int) -> Texture2D:
+	var d := get_card(id)
+	var vp := _new_viewport()
+	var root := Control.new()
+	root.size = Vector2(CARD_SIZE)
+	vp.add_child(root)
+	var kind: String = d.get("kind", "monster")
+	var is_trap := kind == "trap"
+	var is_spell: bool = kind == "spell" or is_trap
+	var ftype: String = d.get("frame", "normal")
+	var tone: Color = {"spell": Color("1a8f80"), "trap": Color("a8327a"), "effect": Color("c9783e"), "fusion": Color("8a55b8"),
+			"synchro": Color("c9ced8"), "xyz": Color("3b3f52"), "ritual": Color("4d7fd0")}.get(ftype, Color("c79a55"))
+	var gold := Color("ffd766")
+	var ink := Color("0b1322")
+	var paper := Color("eef2f8")
+	# The frame: the kind's color, lit from above, inside a gold line.
+	_rect(root, Vector2.ZERO, Vector2(CARD_SIZE), Color("05080f"))
+	_fill(root, Vector2(7, 7), Vector2(406, 598), tone.lightened(0.18), tone.darkened(0.5))
+	_edge(root, Vector2(5, 5), Vector2(410, 602), gold, 3, 12)
+	# The plate everything sits on.
+	_edge(root, Vector2(16, 16), Vector2(388, 580), Color(1, 1, 1, 0.14), 1, 9, Color(ink, 0.93))
+	# Name, on the kind's color.
+	_fill(root, Vector2(24, 24), Vector2(372, 50), tone.lightened(0.05), tone.darkened(0.3))
+	_rect(root, Vector2(24, 74), Vector2(372, 2), gold)
+	var nm := str(d.get("name", ""))
+	var name_l := _label(root, nm, Vector2(34, 24), Vector2(306, 50), _font_title, 30 if nm.length() <= 20 else (24 if nm.length() <= 25 else 20), Color.WHITE)
+	name_l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
+	name_l.add_theme_constant_override("shadow_offset_y", 2)
+	var attr: String = ("TRAP" if is_trap else "SPELL") if is_spell else str(d.get("attribute", "LIGHT"))
+	var colors: Array = ATTRIBUTE_COLORS.get(attr, [Color("3d0f2c"), Color("e24da0")] if is_trap else [Color("0f3d3a"), Color("2de2c6")])
+	_edge(root, Vector2(346, 27), Vector2(44, 44), gold, 2, 22, colors[1])
+	_label(root, attr.substr(0, 1), Vector2(346, 27), Vector2(44, 44), _font_title, 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	# Level (Rank, for an Xyz Monster: on the left) or the kind of Spell.
+	if is_spell:
+		_label(root, "TRAP CARD" if is_trap else ("SPEED SPELL" if d.get("speed_spell", false) else "SPELL CARD"), Vector2(30, 80), Vector2(360, 30), _font_title, 22, tone.lightened(0.55), HORIZONTAL_ALIGNMENT_RIGHT)
+	else:
+		_label(root, "★".repeat(int(d.get("level", 1))), Vector2(30, 80), Vector2(360, 30), _font_title, 24, gold if ftype != "xyz" else Color("b9a6ff"),
+				HORIZONTAL_ALIGNMENT_LEFT if ftype == "xyz" else HORIZONTAL_ALIGNMENT_RIGHT)
+	# The picture, in a gold frame.
+	_edge(root, Vector2(41, 113), Vector2(338, 310), gold, 3, 4, Color.BLACK)
+	var art_box := Control.new()
+	art_box.position = Vector2(46, 118)
+	art_box.size = Vector2(328, 300)
+	art_box.clip_contents = true
+	root.add_child(art_box)
+	_fill(art_box, Vector2.ZERO, Vector2(328, 300), (colors[1] as Color).lerp(Color.WHITE, 0.25), (colors[0] as Color).darkened(0.2))
+	var form: int = LUMEN_FORMS.get(id, -1)
+	if form >= 0:
+		_lumen_art(art_box, form, id)
+		# Draw for a moment (her picture needs a few frames to exist), then hold still.
+		vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		LumenSpirit.wake(2.5)
+		get_tree().create_timer(2.0).timeout.connect(func():
+			if is_instance_valid(vp):
+				vp.render_target_update_mode = SubViewport.UPDATE_DISABLED)
+	else:
+		_speed_art(art_box, id)
+	_crossroads_mark(root, id)
+	# What it does.
+	_edge(root, Vector2(26, 430), Vector2(368, 160), Color(gold, 0.55), 1, 6, Color(0.05, 0.08, 0.14, 0.96))
+	var body: String = str(d.get("text", ""))
+	if is_spell:
+		var desc := _label(root, body, Vector2(38, 438), Vector2(344, 146), _font_body, 15 if body.length() > 150 else 19, paper)
+		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		desc.clip_text = false
+	else:
+		var kinds := [str(d.get("race", ""))]
+		if ftype in ["fusion", "synchro", "xyz"]:
+			kinds.append(ftype.capitalize())
+		if d.get("tuner", false):
+			kinds.append("Tuner")
+		kinds.append("Effect")
+		_label(root, "[ %s ]" % " / ".join(kinds), Vector2(38, 434), Vector2(344, 30), _font_title, 21, gold)
+		var fx_text := _label(root, body, Vector2(38, 464), Vector2(344, 78), _font_body, 12 if body.length() <= 170 else 10, paper)
+		fx_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		fx_text.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		fx_text.clip_text = false
+		_rect(root, Vector2(38, 546), Vector2(344, 2), Color(gold, 0.7))
+		_label(root, "ATK/%d   DEF/%d" % [d.get("atk", 0), d.get("def", 0)], Vector2(38, 548), Vector2(344, 38),
+				_font_title, 28, gold, HORIZONTAL_ALIGNMENT_RIGHT)
+	return vp.get_texture()
+
+
+## The picture on a Speed Spell: the road rushing at you, and how many Speed Counters it asks for.
+func _speed_art(art_box: Control, id: int) -> void:
+	var need := 0
+	var sp: Dictionary = SpellRules.FX.get(str(CardData.get_card(id).get("name", "")), {})
+	need = int(sp.get("speed", 0))
+	var c := Control.new()
+	c.size = Vector2(328, 300)
+	art_box.add_child(c)
+	c.draw.connect(func():
+		var vanish := Vector2(164, 96)
+		c.draw_rect(Rect2(0, 0, 328, 300), Color(0.03, 0.05, 0.1, 0.55))
+		# The road, and the lines of speed running out from where it ends.
+		c.draw_colored_polygon(PackedVector2Array([vanish + Vector2(-10, 0), vanish + Vector2(10, 0), Vector2(300, 300), Vector2(28, 300)]), Color(0.1, 0.12, 0.18))
+		for k in 6:
+			var t0 := 0.12 + k * 0.15
+			var t1 := t0 + 0.07
+			var a := vanish.lerp(Vector2(164, 300), t0 * t0 * 1.2)
+			var b := vanish.lerp(Vector2(164, 300), minf(1.0, t1 * t1 * 1.2))
+			c.draw_line(a, b, Color("ffd766"), 2.0 + k * 1.6, true)
+		for k in 18:
+			var ang := -PI + k * (TAU / 18.0) + 0.17
+			var dir := Vector2(cos(ang), sin(ang) * 0.8)
+			c.draw_line(vanish + dir * 46.0, vanish + dir * 260.0, Color(0.5, 0.92, 1.0, 0.22), 3.0, true)
+		c.draw_circle(vanish, 16.0, Color(1, 1, 1, 0.9))
+		c.draw_circle(vanish, 30.0, Color(0.5, 0.92, 1.0, 0.3))
+		pass)
+	var n := _label(art_box, str(need) if need > 0 else "", Vector2(214, 150), Vector2(100, 110), _font_title, 96, Color(1, 1, 1, 0.92), HORIZONTAL_ALIGNMENT_RIGHT)
+	n.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
+	n.add_theme_constant_override("shadow_offset_y", 4)
+
+
+## Which of Lumen's cards shows which form of her: 0 the spirit, 1 Chorus, 2 Comet, 3 Zenith, 4 Radiant.
+## 5 Echo Resonance, 6 Echo Call, 7 Echo Veil: she is on those too.
+const LUMEN_FORMS := {99200001: 0, 99200002: 1, 99200003: 2, 99200004: 3, 99200005: 4, 99200011: 5, 99200012: 6, 99200013: 7}
+
+
+## The mark of a card made for this game: a band across the foot of its picture with the
+## crossroads sign, the words, and its number in the set.
+func _crossroads_mark(root: Control, id: int) -> void:
+	var band := _rect(root, Vector2(46, 392), Vector2(328, 26), Color(0.04, 0.07, 0.13, 0.88))
+	var sign := Control.new()
+	sign.position = Vector2(6, 3)
+	sign.size = Vector2(20, 20)
+	sign.draw.connect(func():
+		# Two roads crossing, in a ring.
+		var c := Vector2(10, 10)
+		sign.draw_arc(c, 9.0, 0, TAU, 28, Color("ffd766"), 2.0, true)
+		sign.draw_line(c + Vector2(-5.5, -5.5), c + Vector2(5.5, 5.5), Color("7fe8ff"), 2.6, true)
+		sign.draw_line(c + Vector2(5.5, -5.5), c + Vector2(-5.5, 5.5), Color("7fe8ff"), 2.6, true)
+		sign.draw_circle(c, 2.2, Color("ffd766")))
+	band.add_child(sign)
+	_label(band, "CROSSROADS ORIGINAL", Vector2(32, 0), Vector2(200, 26), _font_title, 17, Color("ffd766"))
+	_label(band, CardData.set_code(id), Vector2(228, 0), Vector2(92, 26), _font_title, 17, Color(1, 1, 1, 0.9), HORIZONTAL_ALIGNMENT_RIGHT)
+
+
+## Lumen on her card. The same living picture of her every time; what changes with the form
+## is the sky behind her and the signs of what she has become:
+## 1 Chorus: two echoes of her, one at each shoulder.   2 Comet: a tail of light and stars.
+## 3 Zenith: a ring with two lights going round it.      4 Radiant: rays, and she fills the card.
+func _lumen_art(art_box: Control, form: int, id := 0) -> void:
+	# Her four great forms have painted pictures of their own (assets/originals/<card id>.png,
+	# cut out, on a clear background). The sky and its signs are drawn here behind them.
+	var painted: Texture2D = null
+	var art_path := "res://assets/originals/%d.png" % id
+	if form >= 1 and form <= 4 and ResourceLoader.exists(art_path):
+		painted = load(art_path)
+	var skies := [[Color("12305a"), Color("7fe8ff")], [Color("3a1f6e"), Color("ff9ad5")], [Color("06223f"), Color("5fe0ff")], [Color("0b0b22"), Color("8a6bff")], [Color("c9601a"), Color("ffe9a8")],
+			[Color("3a2a05"), Color("ffe08a")], [Color("0d3b3a"), Color("8dffe0")], [Color("2a0f33"), Color("ff8ad0")]]
+	if painted != null:
+		# Figures made of light want a dark sky behind them.
+		skies[1] = [Color("12041c"), Color("6a2478")]
+		skies[2] = [Color("02101c"), Color("0f6a96")]
+		skies[3] = [Color("05041a"), Color("3d2c94")]
+		skies[4] = [Color("160802"), Color("8a4410")]
+	if true:
+		var grad := Gradient.new()
+		grad.set_color(0, skies[form][1])
+		grad.set_color(1, skies[form][0])
+		var gt := GradientTexture2D.new()
+		gt.gradient = grad
+		gt.fill = GradientTexture2D.FILL_RADIAL
+		gt.fill_from = Vector2(0.5, 0.55)
+		gt.fill_to = Vector2(1.15, 1.15)
+		gt.width = 128
+		gt.height = 128
+		var sky := TextureRect.new()
+		sky.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		sky.texture = gt
+		sky.position = Vector2(0, 0)
+		sky.size = Vector2(328, 300)
+		art_box.add_child(sky)
+	var back := Control.new()
+	back.position = Vector2(4, 4)
+	back.size = Vector2(320, 292)
+	art_box.add_child(back)
+	var mid := Vector2(160, 150)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77 + form
+	var stars: Array = []
+	for i in 46:
+		stars.append([Vector2(rng.randf_range(0, 320), rng.randf_range(0, 292)), rng.randf_range(0.8, 2.4)])
+	back.draw.connect(func():
+		match form:
+			0:
+				# The spirit: a soft light behind her and a few motes.
+				back.draw_circle(mid + Vector2(0, 10), 104.0, Color(1, 1, 1, 0.22))
+				back.draw_circle(mid + Vector2(0, 10), 72.0, Color(1, 1, 1, 0.22))
+				for st in stars.slice(0, 16):
+					back.draw_circle(st[0], st[1] * 1.3, Color(1, 1, 1, 0.75))
+			5:
+				# Resonance: rings going out from her, and rays.
+				for k in 16:
+					var a5 := TAU * k / 16.0
+					back.draw_line(mid + Vector2(cos(a5), sin(a5)) * 70.0, mid + Vector2(cos(a5), sin(a5)) * 240.0, Color(1, 0.95, 0.7, 0.3), 6.0, true)
+				for k in 4:
+					back.draw_arc(mid, 56.0 + k * 30.0, 0, TAU, 64, Color(1, 1, 1, 0.5 - k * 0.1), 4.0, true)
+			6:
+				# The call: waves of sound from her, off to the left.
+				for k in 6:
+					back.draw_arc(Vector2(214, 150), 50.0 + k * 34.0, PI * 0.72, PI * 1.28, 32, Color(1, 1, 1, 0.6 - k * 0.08), 5.0, true)
+			7:
+				for st in stars.slice(0, 20):
+					back.draw_circle(st[0], st[1], Color(1, 0.85, 0.95, 0.6))
+			1:
+				for k in 5:
+					back.draw_arc(mid, 60.0 + k * 26.0, 0, TAU, 64, Color(1, 1, 1, 0.26 - k * 0.04), 3.0, true)
+			2:
+				for st in stars:
+					back.draw_circle(st[0], st[1], Color(1, 1, 1, 0.7))
+				# Lines of speed across the sky.
+				for k in 7:
+					back.draw_line(Vector2(340, 20 + k * 38.0), Vector2(40 + k * 22.0, 60 + k * 38.0), Color(0.8, 0.97, 1.0, 0.16), 3.0, true)
+			3:
+				for st in stars:
+					back.draw_circle(st[0], st[1] * 0.8, Color(0.85, 0.8, 1.0, 0.75))
+			4:
+				for k in 24:
+					var a := TAU * k / 24.0
+					var long := 230.0 if k % 2 == 0 else 170.0
+					var d1 := Vector2(cos(a - 0.05), sin(a - 0.05))
+					var d2 := Vector2(cos(a + 0.05), sin(a + 0.05))
+					back.draw_colored_polygon(PackedVector2Array([mid, mid + d1 * long, mid + d2 * long]), Color(1, 0.95, 0.75, 0.32))
+				back.draw_circle(mid, 100.0, Color(1, 0.96, 0.8, 0.3))
+		pass)
+	# Her: the body of the form she is in (the three cards around her show the spirit).
+	var shots := [[Vector2(4, 4), Vector2(320, 292), Color.WHITE]]
+	match form:
+		1, 2, 3:
+			shots = [[Vector2(-2, -6), Vector2(332, 312), Color.WHITE]]
+		4:
+			shots = [[Vector2(-6, -10), Vector2(340, 320), Color.WHITE]]
+		5:
+			shots = [[Vector2(44, 30), Vector2(240, 220), Color(1.0, 0.97, 0.85)]]
+		6:
+			shots = [[Vector2(110, 40), Vector2(230, 212), Color.WHITE]]
+		7:
+			shots = [[Vector2(54, 62), Vector2(220, 202), Color.WHITE]]
+	if painted != null:
+		# The top two thirds of the painting fill the picture: the head, the wings, what she holds.
+		var crop: Array = [[], [Vector2(-6, -6), 340.0], [Vector2(-20, -4), 372.0], [Vector2(-4, -2), 336.0], [Vector2(-14, -2), 356.0]][form]
+		var pic := TextureRect.new()
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_SCALE
+		pic.texture = painted
+		pic.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		pic.position = crop[0]
+		pic.size = Vector2(float(crop[1]), float(crop[1]) * painted.get_height() / painted.get_width())
+		art_box.add_child(pic)
+		return
+	for sh in shots:
+		# (Its size is set after the "any size" switch: before it, a picture cannot be made
+		# smaller than its texture, and she came out twice the size and off the card.)
+		var live := TextureRect.new()
+		live.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		live.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		live.texture = LumenSpirit.portrait_form(self, form if form <= 4 else 0)
+		live.position = sh[0]
+		live.size = sh[1]
+		live.modulate = sh[2]
+		art_box.add_child(live)
+	var front := Control.new()
+	front.position = Vector2(4, 4)
+	front.size = Vector2(320, 292)
+	art_box.add_child(front)
+	front.draw.connect(func():
+		match form:
+			7:
+				# The veil: a dome of light over her.
+				front.draw_arc(Vector2(164, 236), 150.0, PI, TAU, 64, Color(1, 0.75, 0.92, 0.95), 5.0, true)
+				front.draw_arc(Vector2(164, 236), 140.0, PI, TAU, 64, Color(1, 1, 1, 0.35), 14.0, true)
+				for k in 5:
+					var a7 := PI + (k + 0.5) * PI / 5.0
+					front.draw_line(Vector2(164, 236) + Vector2(cos(a7), sin(a7)) * 150.0, Vector2(164, 236) + Vector2(cos(a7), sin(a7)) * 96.0, Color(1, 1, 1, 0.3), 2.0, true)
+		pass)
 
 
 func _make_back() -> Texture2D:

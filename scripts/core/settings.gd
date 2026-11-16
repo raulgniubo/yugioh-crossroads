@@ -18,6 +18,7 @@ var music_volume := 0.7
 var sfx_volume := 0.8
 var anim_speed := 1.0
 var crowd_cam := true         # after a big hit the camera glances at the people watching
+var ask_always := false       # duels: stop at every chance to use a card (off: only when there is something to answer)
 var destiny_draw := true        # Destiny Draw is part of duels (once per duel, when you are in trouble)
 var pace := 1.0          # extra speed on top, set by the duel (the opponent's turn runs quicker)
 var card_folder := ""
@@ -352,7 +353,9 @@ func tune_sun(l: DirectionalLight3D) -> void:
 func _ready() -> void:
 	# Before anything reads a save: a load, a new game or leaving admin mode asked for last run.
 	Saves.apply_pending()
+	Saves.pull_shared()
 	Saves.read_admin()
+	Saves.pull_live()
 	card_folder = default_card_folder()
 	_ensure_buses()
 	load_settings()
@@ -366,6 +369,19 @@ func _ready() -> void:
 			language = a.substr(7)
 	apply()
 	apply_graphics()
+	# With the game folder beside the game, the game you are playing is copied into it as you
+	# go (and once more on the way out), so that folder is all another computer needs.
+	if Saves.portable():
+		var keep := Timer.new()
+		keep.wait_time = 15.0
+		keep.autostart = true
+		keep.timeout.connect(Saves.push_live)
+		add_child(keep)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_PREDELETE:
+		Saves.push_live()
 
 
 ## Where the game's own folder is looked for first: "Crossroads Data" beside the game. It
@@ -430,6 +446,7 @@ func load_settings() -> void:
 			first_run_pick = true
 			set_gfx_preset(suggest_preset())
 		return
+	var fresh := [fullscreen, resolution, fs_resolution]
 	fullscreen = cfg.get_value("display", "fullscreen", fullscreen)
 	resolution = cfg.get_value("display", "resolution", resolution)
 	fs_resolution = cfg.get_value("display", "fs_resolution", fs_resolution)
@@ -438,6 +455,7 @@ func load_settings() -> void:
 	sfx_volume = cfg.get_value("audio", "sfx", sfx_volume)
 	anim_speed = cfg.get_value("game", "anim_speed", anim_speed)
 	crowd_cam = bool(cfg.get_value("game", "crowd_cam", crowd_cam))
+	ask_always = bool(cfg.get_value("game", "ask_always", ask_always))
 	destiny_draw = bool(cfg.get_value("game", "destiny_draw", destiny_draw))
 	card_folder = cfg.get_value("game", "card_folder", card_folder)
 	field_theme = cfg.get_value("game", "field_theme", field_theme)
@@ -469,6 +487,24 @@ func load_settings() -> void:
 		# Once more with 0.33.8: until then it could shrink the picture to 30% (a 720p look on a
 		# big screen). It goes off; whoever wants it turns it on knowing what it does.
 		hold_fps = false
+	# The settings travel inside the game folder. On a different computer everything about you
+	# stays (sound, language, speed, sleeve...), but the picture is picked again for the machine
+	# in front of it: Ultra from a fast Mac is the wrong start on a small laptop.
+	var was := str(cfg.get_value("display", "machine", ""))
+	if was != "" and was != machine() and DisplayServer.get_name() != "headless":
+		first_run_pick = true
+		set_gfx_preset(suggest_preset())
+		fullscreen = fresh[0]
+		resolution = fresh[1]
+		fs_resolution = fresh[2]
+		hold_fps = false
+		save_settings.call_deferred()
+		print("SETTINGS came from another computer (", was, "): graphics picked again for ", machine())
+
+
+## This computer, as far as the picture is concerned.
+func machine() -> String:
+	return "%s | %s" % [OS.get_name(), RenderingServer.get_video_adapter_name()]
 
 
 var _looks_first := false
@@ -484,6 +520,7 @@ func save_settings() -> void:
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.set_value("game", "anim_speed", anim_speed)
 	cfg.set_value("game", "crowd_cam", crowd_cam)
+	cfg.set_value("game", "ask_always", ask_always)
 	cfg.set_value("game", "destiny_draw", destiny_draw)
 	cfg.set_value("game", "card_folder", card_folder)
 	cfg.set_value("game", "field_theme", field_theme)
@@ -498,6 +535,8 @@ func save_settings() -> void:
 		cfg.set_value("graphics", k, gfx[k])
 	cfg.set_value("display", "fps_cap", fps_cap)
 	cfg.set_value("display", "vsync", vsync)
+	if DisplayServer.get_name() != "headless":
+		cfg.set_value("display", "machine", machine())
 	cfg.save(PATH)
 
 

@@ -83,7 +83,7 @@ func _deck_card(st: Dictionary) -> Control:
 	v.add_child(UITheme.label(Loc.t(CardData.deck_name(key)).to_upper(), 44, Color.WHITE, UITheme.title_font()))
 	# Three cards that say what the deck is about, fanned, from your own card folder.
 	var fan := Control.new()
-	fan.custom_minimum_size = Vector2(460, 250)
+	fan.custom_minimum_size = Vector2(460, 264)
 	fan.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(fan)
 	var shown: Array = st["show"]
@@ -95,9 +95,11 @@ func _deck_card(st: Dictionary) -> Control:
 		tr.texture = Cards.get_face(id)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tr.size = Vector2(160, 234)
-		tr.pivot_offset = Vector2(80, 234)
-		tr.position = Vector2(150 + (i - 1) * 118, 12 + absi(i - 1) * 10)
+		# (The side cards turn about their bottom edge, so their outer corner dips about 10 px
+		# below it: the fan is tall enough that nothing reaches the text under it.)
+		tr.size = Vector2(152, 222)
+		tr.pivot_offset = Vector2(76, 222)
+		tr.position = Vector2(154 + (i - 1) * 114, 6 + absi(i - 1) * 10)
 		tr.rotation = (i - 1) * 0.12
 		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tr.z_index = 1 if i == 1 else 0

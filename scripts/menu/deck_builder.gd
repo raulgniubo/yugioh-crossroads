@@ -290,7 +290,7 @@ func _ready() -> void:
 	var bsp := Control.new()
 	bsp.custom_minimum_size = Vector2(6, 0)
 	bar.add_child(bsp)
-	for f in [["all", "All"], ["monster", "Monsters"], ["spell", "Spells"], ["trap", "Traps"], ["extra", "Extra"]]:
+	for f in [["all", "All"], ["monster", "Monsters"], ["spell", "Spells"], ["trap", "Traps"], ["extra", "Extra"], ["ours", "Crossroads"]]:
 		var b := Button.new()
 		b.text = f[1]
 		b.toggle_mode = true
@@ -501,6 +501,8 @@ func _rebuild_grid() -> void:
 		var d := CardData.get_card(id)
 		var is_extra: bool = str(d.get("frame", "")) in ["fusion", "synchro", "xyz"]
 		if _filter == "extra" and not is_extra:
+			continue
+		if _filter == "ours" and not CardData.is_original(id):   # the cards that only exist in this game
 			continue
 		if _filter in ["monster", "spell", "trap"] and (d["kind"] != _filter or is_extra):
 			continue
@@ -1194,6 +1196,8 @@ func _show(id: int) -> void:
 	Foil.apply(_detail_tex, CardData.rarity(id))
 	_detail_name.text = str(d.get("name", ""))
 	var lines := []
+	if CardData.is_original(id):
+		lines.append(Loc.t("CROSSROADS ORIGINAL  ·  %s  ·  This card only exists in this game.") % CardData.set_code(id))
 	if d["kind"] == "monster":
 		lines.append(Loc.t("Level %d  ·  %s  ·  %s") % [int(d.get("level", 0)), d.get("attribute", ""), d.get("race", "")])
 		lines.append(Loc.t("ATK %d   DEF %d") % [int(d.get("atk", 0)), int(d.get("def", 0))])

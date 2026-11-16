@@ -184,6 +184,12 @@ static func open(parent: Node) -> SidePanel:
 		Settings.crowd_cam = on
 		Settings.save_settings())
 	_row(game, "Crowd camera", "After a hit of 2000 or more, the camera looks at the people watching for a second before it goes back to the field. At most once every 30 seconds. Off: the camera stays on the duel.", crowd)
+	var asks := CheckButton.new()
+	asks.button_pressed = Settings.ask_always
+	asks.toggled.connect(func(on):
+		Settings.ask_always = on
+		Settings.save_settings())
+	_row(game, "Ask me at every chance", "Off: a duel only stops to ask you when your opponent does something one of your cards can answer. On: it also stops in every phase and after your own plays. The same switch is on the duel screen.", asks)
 	var fate := CheckButton.new()
 	fate.button_pressed = Settings.destiny_draw
 	fate.toggled.connect(func(on):

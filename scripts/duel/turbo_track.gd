@@ -1109,6 +1109,7 @@ void fragment() {
 			trail.position = Vector3(-8.6, 0.03, 0.0)
 		else:
 			trail.position = Vector3(-8.9, 0.42 + k * 0.2, 0.0)
+		trail.set_meta("front", trail.position.x + 8.0)
 		holder.add_child(trail)
 		_trails.append(trail)
 	_bikes.append([holder, at, randf() * TAU])
@@ -1304,7 +1305,11 @@ func _process(delta: float) -> void:
 		h.rotation.x = cos(_t * 0.7 + ph) * 0.07 + sin(_t * 31.0) * 0.16 * wob
 		h.rotation.z = surge * 0.2
 	for tr in _trails:
-		tr.scale.x = 0.5 + speed / 40.0 + sin(_t * 30.0) * 0.04
+		# The trail grows backwards only: its front end stays pinned just behind the rear wheel.
+		# (It used to stretch from its middle, so at speed the front half came out ahead of the runner.)
+		var k: float = 0.5 + speed / 40.0 + sin(_t * 30.0) * 0.04
+		tr.scale.x = k
+		tr.position.x = float(tr.get_meta("front", -0.6)) - 8.0 * k
 	for bc in _beacons:
 		(bc[0] as Node3D).visible = fmod(_t + float(bc[1]), 1.6) < 0.8
 	for bm in _beams:

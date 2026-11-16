@@ -17,6 +17,11 @@ var look_at_point = null          # or a place (Vector3)
 var mood := "calm"                # calm, happy, scared, sad, curious
 var bonds := 0                    # more bonds: more ring pieces, a brighter gem
 var size := 0.72                # in the world she is about as big as a football
+## Which of her forms this is (her cards): 0 the spirit you travel with, 1 Echo Chorus,
+## 2 Echo Comet, 3 Echo Zenith, 4 Echo Radiant. Set before she enters the tree.
+var form := 0
+var _tip: ShaderMaterial
+var _extras: Array = []           # [node, home position, sway]: the parts a form adds, drifting a little
 var head_height := 0.2           # for the story camera
 var _t := randf() * 10.0
 var _core: Node3D                 # everything that bobs and turns
@@ -68,6 +73,8 @@ void fragment() {
 
 func _ready() -> void:
 	_build()
+	if form > 0:
+		_evolve()
 	_core.scale = Vector3.ONE * size
 	_last_pos = global_position
 
@@ -123,6 +130,7 @@ func _build() -> void:
 	# Body: a round wisp. The top curls back into a little flame, the bottom thins to a tail.
 	_body = _ball(0.2, Vector3(0, 0.22, 0), _mat, Vector3(1.0, 0.94, 0.96))
 	var tip_mat := _m(GLOW, Color.WHITE, 1.3)
+	_tip = tip_mat
 	for w in [[0.4, -0.03, 0.088], [0.485, -0.085, 0.062], [0.545, -0.155, 0.042], [0.57, -0.225, 0.026]]:
 		var curl := _ball(float(w[2]), Vector3(0, float(w[0]), float(w[1])), tip_mat if float(w[2]) < 0.03 else _mat, Vector3.ONE, null, 14)
 		_ears.append([curl, curl.position])
@@ -196,6 +204,159 @@ func _build() -> void:
 	p.position.y = 0.2
 	p.local_coords = false
 	add_child(p)
+
+
+# ------------------------------------------------------------------ her forms
+
+func _part(mesh: Mesh, mat: Material, pos: Vector3, rot := Vector3.ZERO, scl := Vector3.ONE, sway := 0.0, parent: Node3D = null) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = mat
+	mi.position = pos
+	mi.rotation = rot
+	mi.scale = scl
+	mi.set_meta("see_through", true)
+	(parent if parent else _core).add_child(mi)
+	if sway > 0.0:
+		_extras.append([mi, pos, sway])
+	return mi
+
+
+func _torus(r: float, thick: float) -> TorusMesh:
+	var t := TorusMesh.new()
+	t.inner_radius = r - thick
+	t.outer_radius = r + thick
+	t.rings = 40
+	t.ring_segments = 10
+	return t
+
+
+func _blade(len: float) -> SphereMesh:
+	var sm := SphereMesh.new()
+	sm.radius = len * 0.5
+	sm.height = len
+	sm.radial_segments = 14
+	sm.rings = 8
+	return sm
+
+
+func _recolor(base: Color, rim: Color, shade: Color, glow: float, tip: Color) -> void:
+	_mat.set_shader_parameter("base", base)
+	_mat.set_shader_parameter("rim", rim)
+	_mat.set_shader_parameter("shade", shade)
+	_mat.set_shader_parameter("glow", glow)
+	_tip.set_shader_parameter("base", tip)
+	_tip.set_shader_parameter("rim", Color.WHITE)
+	_light.light_color = rim
+
+
+## What she becomes. The spirit is still in there (the face, the gem, the hands), and each
+## form adds what that world taught her.
+func _evolve() -> void:
+	_glitch_in = 1.0e9          # a form is whole: no tear runs through her
+	match form:
+		1:
+			# Echo Chorus (Fusion): two voices in one. A second curl beside the first, rose on
+			# one side and sky on the other, and wings that are rings of sound.
+			_recolor(Color("fff4fb"), Color("ff8fd6"), Color("c9b8ff"), 0.6, Color("ff9ad5"))
+			var rose := _m(Color("ffd0ec"), Color("ff6fc8"), 1.2)
+			var sky := _m(Color("d0f0ff"), Color("5fc8ff"), 1.2)
+			for e in _ears:
+				(e[0] as Node3D).position.x += 0.085
+				e[1] = (e[0] as Node3D).position
+				(e[0] as MeshInstance3D).material_override = sky
+			for w in [[0.4, -0.03, 0.088], [0.485, -0.085, 0.062], [0.545, -0.155, 0.042], [0.57, -0.225, 0.026]]:
+				var twin := _ball(float(w[2]), Vector3(-0.085, float(w[0]), float(w[1])), rose, Vector3.ONE, null, 14)
+				_ears.append([twin, twin.position])
+			(_hands[0][0] as MeshInstance3D).material_override = rose
+			(_hands[1][0] as MeshInstance3D).material_override = sky
+			for sx: float in [-1.0, 1.0]:
+				var ring_m := _flat(Color("ff8fd6") if sx < 0.0 else Color("6fd0ff"), 2.4)
+				for k in 3:
+					_part(_torus(0.085 + k * 0.058, 0.009 - k * 0.0015), ring_m, Vector3(sx * (0.3 + k * 0.035), 0.3 + k * 0.012, -0.1 - k * 0.03), Vector3(PI * 0.5, 0, sx * 0.25), Vector3.ONE, 0.012 + k * 0.006)
+			# A second gem: two memories now.
+			_gem.position.x = 0.03
+			var gem2 := _part(_gem.mesh, _flat(Color("ff9ad5"), 2.2), Vector3(-0.03, 0.33, 0.165), Vector3(-0.35, 0, 0), Vector3(0.8, 0.8, 0.8))
+			gem2.set_meta("see_through", true)
+			size *= 1.1
+		2:
+			# Echo Comet (Synchro): everything swept back. The curl has become a tail of light
+			# streaming behind her, and she has fins to steer by.
+			_recolor(Color("f2fdff"), Color("3fd8ff"), Color("8fd0ff"), 0.75, Color("9ff0ff"))
+			for e in _ears:
+				(e[0] as Node3D).visible = false
+			var trail := _m(Color("c8f6ff"), Color.WHITE, 1.6)
+			for k in 9:
+				var f := k / 8.0
+				var bead := _ball(lerpf(0.1, 0.012, f), Vector3(0, 0.36 + f * 0.2, -0.04 - f * 0.78), trail, Vector3(1.0, 1.0, 1.5), null, 12)
+				_ears.append([bead, bead.position])
+				bead.visible = true
+			var fin := _m(Color("d8fbff"), Color("3fd8ff"), 1.3)
+			for sx: float in [-1.0, 1.0]:
+				_part(_blade(0.44), fin, Vector3(sx * 0.27, 0.27, -0.14), Vector3(0.0, sx * -0.5, sx * -1.0), Vector3(0.34, 1.0, 0.1), 0.01)
+				_part(_blade(0.26), fin, Vector3(sx * 0.22, 0.12, -0.12), Vector3(0.0, sx * -0.5, sx * -1.5), Vector3(0.34, 1.0, 0.1), 0.01)
+			# The gem is a four-pointed star now.
+			_gem.visible = false
+			var star_m := _flat(GOLD, 2.6)
+			for k in 2:
+				_part(_blade(0.12), star_m, Vector3(0, 0.335, 0.168), Vector3(-0.35, 0, k * PI * 0.5), Vector3(0.22, 1.0, 0.12))
+			size *= 1.08
+		3:
+			# Echo Zenith (Xyz): the night sky in the shape of her. Stars in her body, a crescent
+			# over her head, and a gold ring going round her with two lights on it.
+			_recolor(Color("2d2678"), Color("b9a6ff"), Color("120d3d"), 1.0, Color("d9ccff"))
+			var star_w := _flat(Color("f4f0ff"), 2.4)
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 404
+			for k in 16:
+				var dir := Vector3(rng.randf_range(-1, 1), rng.randf_range(-0.9, 0.9), rng.randf_range(0.15, 1.0)).normalized()
+				if absf(dir.x) < 0.5 and dir.y > -0.1 and dir.y < 0.45 and dir.z > 0.6:
+					continue      # (not across her face)
+				_ball(rng.randf_range(0.005, 0.011), Vector3(0, 0.22, 0) + dir * Vector3(0.2, 0.188, 0.192) * 1.01, star_w, Vector3.ONE, null, 6)
+			var moon := _flat(GOLD, 2.4)
+			for k in 19:
+				var a := deg_to_rad(15.0 + k * 8.4)
+				var fat := sin(PI * k / 18.0)
+				_part(_blade(0.062), moon, Vector3(cos(a) * 0.15, 0.5 + sin(a) * 0.15, -0.06), Vector3.ZERO, Vector3(1.0, 1.0, 0.5) * (0.2 + fat * 0.8))
+			var orbit := Node3D.new()
+			orbit.position.y = 0.22
+			orbit.rotation = Vector3(0.38, 0, 0.3)
+			_core.add_child(orbit)
+			_part(_torus(0.37, 0.006), moon, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, 0.0, orbit)
+			for a2: float in [0.6, 0.6 + PI]:
+				_ball(0.034, Vector3(cos(a2) * 0.37, 0, sin(a2) * 0.37), _flat(Color("fff6c8"), 3.0), Vector3.ONE, orbit, 12)
+			_extras.append([orbit, orbit.position, -1.0])       # (it turns: see _process)
+			for h in _hands:
+				(h[0] as MeshInstance3D).material_override = _m(Color("4a40a8"), Color("d9ccff"), 1.1)
+			size *= 1.12
+		4:
+			# Echo Radiant: all of it at once. Gold and white, four wings of light, a halo, and
+			# ribbons where the little tail was. The gem is a crest of three.
+			_recolor(Color("fff8dc"), Color("ffab1f"), Color("ffcf70"), 0.9, Color("ffd45a"))
+			var feather := _m(Color("ffeeb0"), Color("ff9d00"), 1.5)
+			for sx: float in [-1.0, 1.0]:
+				for k in 4:
+					# Upper wing: four feathers fanned up and out.
+					_part(_blade(0.5 - k * 0.05), feather, Vector3(sx * (0.2 + k * 0.045), 0.42 + k * 0.01, -0.13 - k * 0.012), Vector3(0.1, 0, sx * -(0.35 + k * 0.33)), Vector3(0.2, 1.0, 0.07), 0.008 + k * 0.004)
+				for k in 3:
+					# Lower wing: three, down and out.
+					_part(_blade(0.34 - k * 0.04), feather, Vector3(sx * (0.2 + k * 0.04), 0.12 - k * 0.02, -0.13), Vector3(0.1, 0, sx * -(2.0 + k * 0.32)), Vector3(0.2, 1.0, 0.07), 0.008 + k * 0.004)
+			var gold := _flat(Color("ffcf4a"), 2.8)
+			_part(_torus(0.15, 0.011), gold, Vector3(0, 0.72, -0.1), Vector3(0.22, 0, 0), Vector3.ONE, 0.012)
+			_gem.scale = Vector3.ONE * 1.5
+			for sx: float in [-1.0, 1.0]:
+				_part(_gem.mesh, gold, Vector3(sx * 0.055, 0.325, 0.172), Vector3(-0.35, 0, sx * -0.3), Vector3(0.8, 0.8, 0.8))
+			var ribbon := _m(Color("fff0b8"), Color("ffb300"), 1.5)
+			for sx: float in [-1.0, 1.0]:
+				for k in 7:
+					var f2 := k / 6.0
+					var bead2 := _ball(lerpf(0.045, 0.012, f2), Vector3(sx * (0.1 + f2 * 0.3), 0.04 - f2 * 0.3, -0.1 - f2 * 0.12), ribbon, Vector3.ONE, null, 10)
+					_tail.append([bead2, bead2.position])
+			bonds = 5
+			_build_ring()
+			size *= 1.3
+	if form > 0:
+		_light.light_energy = 0.8
 
 
 func _build_ring() -> void:
@@ -287,12 +448,12 @@ func _process(delta: float) -> void:
 	for i in _ears.size():
 		var curl: MeshInstance3D = _ears[i][0]
 		var home: Vector3 = _ears[i][1]
-		var k := float(i + 1) / 4.0
+		var k := minf(float(i + 1) / 4.0, 1.0)
 		curl.position = home + Vector3(sin(_t * 2.0 - k * 1.6) * 0.03 * k, -fold * 0.12 * k - fly * 0.06 * k, -fly * 0.12 * k - fold * 0.06 * k)
 	for i in _tail.size():
 		var bead: MeshInstance3D = _tail[i][0]
 		var home_t: Vector3 = _tail[i][1]
-		var kt := float(i + 1) / 4.0
+		var kt := minf(float(i + 1) / 4.0, 1.0) if i < 4 else float((i - 4) % 7 + 1) / 7.0
 		bead.position = home_t + Vector3(sin(_t * 3.0 - kt * 2.2) * 0.035 * kt, fly * 0.07 * kt, -fly * 0.16 * kt)
 	for h in _hands:
 		var hand: MeshInstance3D = h[0]
@@ -301,6 +462,12 @@ func _process(delta: float) -> void:
 		var hide := 0.07 if mood == "scared" else 0.0
 		hand.position = Vector3((0.21 - hide) * sx, 0.15 + up + sin(_t * 2.6 + sx * 1.3) * 0.02 + (absf(sin(_t * 9.0)) * 0.04 if _talk > 0.0 else 0.0), 0.09 + hide)
 	_ring.rotation.y += delta * (0.9 + fly * 2.0)
+	for i in _extras.size():
+		var ex: Array = _extras[i]
+		if float(ex[2]) < 0.0:
+			(ex[0] as Node3D).rotation.y += delta * 0.7        # (the Zenith ring turns)
+		else:
+			(ex[0] as Node3D).position = (ex[1] as Vector3) + Vector3(0, sin(_t * 2.1 + i * 0.7) * float(ex[2]), 0)
 	_gem.rotation.y += delta * 2.0
 	# Blink.
 	_blink -= delta
@@ -342,6 +509,54 @@ func _process(delta: float) -> void:
 
 static var _vp: SubViewport
 static var _awake_until := 0.0
+
+
+static var _form_vps := {}        # form -> SubViewport
+
+
+## A picture of one of her forms (1..4; 0 is her everyday portrait). It is drawn for a few
+## seconds each time it is asked for and then holds still.
+static func portrait_form(host: Node, f: int) -> Texture2D:
+	if f <= 0:
+		return portrait(host)
+	var vp: SubViewport = _form_vps.get(f)
+	if vp == null or not is_instance_valid(vp):
+		vp = SubViewport.new()
+		vp.size = Vector2i(640, 640)
+		vp.own_world_3d = true
+		vp.msaa_3d = Viewport.MSAA_4X
+		vp.transparent_bg = true
+		host.add_child(vp)
+		var env := WorldEnvironment.new()
+		var e := Environment.new()
+		e.background_mode = Environment.BG_CLEAR_COLOR
+		e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		e.ambient_light_color = Color(0.8, 0.86, 1.0)
+		e.ambient_light_energy = 1.0
+		env.environment = e
+		vp.add_child(env)
+		var sun := DirectionalLight3D.new()
+		sun.rotation = Vector3(-0.7, 0.6, 0)
+		sun.light_energy = 0.8
+		vp.add_child(sun)
+		var l := LumenSpirit.new()
+		l.form = f
+		l.size = 1.0
+		l.rotation.y = [0.0, 0.25, 0.55, 0.3, 0.18][f]
+		vp.add_child(l)
+		var cam := Camera3D.new()
+		cam.fov = 30.0
+		# Far enough back for wings, rings and tails.
+		cam.position = [Vector3.ZERO, Vector3(0.0, 0.38, 1.75), Vector3(-0.1, 0.42, 1.8), Vector3(0.0, 0.38, 1.9), Vector3(0.0, 0.46, 2.45)][f]
+		vp.add_child(cam)
+		cam.look_at([Vector3.ZERO, Vector3(0, 0.36, 0), Vector3(-0.02, 0.4, -0.1), Vector3(0, 0.38, 0), Vector3(0, 0.46, 0)][f], Vector3.UP)
+		_form_vps[f] = vp
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	var held := vp
+	host.get_tree().create_timer(3.0).timeout.connect(func():
+		if is_instance_valid(held):
+			held.render_target_update_mode = SubViewport.UPDATE_DISABLED)
+	return vp.get_texture()
 
 
 ## Her portrait only redraws while somebody is looking at it: call this when it goes on screen.

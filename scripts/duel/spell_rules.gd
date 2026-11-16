@@ -25,6 +25,10 @@ const FX := {
 	"Speed Spell - Overtake": {"k": "normal", "speed": 6, "cost": "speed3", "do": [["destroy", "opp_best_def"]]},
 	"Speed Spell - Redline": {"k": "normal", "speed": 8, "cost": "speed6", "do": [["damage", 2000]]},
 	"Speed Spell - Shockwave": {"k": "normal", "speed": 7, "cost": "speed4", "do": [["destroy", "opp_st"]]},
+	# ---------------------------------------------------------------- Lumen's cards (cards of this game)
+	"Echo Resonance": {"k": "normal", "cond": "echo_ready", "do": [["echo_resonance"]]},
+	"Echo Call": {"k": "normal", "do": [["search", {"has": "Lumen"}]]},
+	"Echo Veil": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["draw_if_own", "Lumen", 1]]},
 	# ---------------------------------------------------------------- Normal Spells
 	"Heavy Storm": {"k": "normal", "do": [["destroy", "all_st"]]},
 	"Harpie's Feather Duster": {"k": "normal", "do": [["destroy", "opp_st"]]},
@@ -409,11 +413,36 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 	if cond.begins_with("opp_lp_over:"):
 		return s.players[s.opponent(p)].lp > int(cond.substr(12))
 	match cond:
+		"echo_ready":
+			# Echo Resonance: a Lumen, Echo Spirit to Tribute, and a Lumen, Echo Radiant to bring out.
+			return echo_tribute(s, p) != null and echo_radiant(s, p) != null
 		"battle_phase":
 			return s.phase == DuelState.Phase.BATTLE
 		"opp_turn":
 			return s.current != p
 	return true
+
+
+## Echo Resonance: the "Lumen, Echo Spirit" you control that can be Tributed for it. She must not
+## have been Summoned this turn, unless your Life Points are 2000 or less.
+static func echo_tribute(s: DuelState, p: int):
+	var ps := s.players[p]
+	for m in ps.monsters():
+		if m.face_up and m.cname() == "Lumen, Echo Spirit" and (m.summoned_turn != s.turn or ps.lp <= 2000) and m.no_tribute_turn != s.turn:
+			return m
+	return null
+
+
+## ...and the "Lumen, Echo Radiant" it brings out: from the hand first, then the Deck.
+static func echo_radiant(s: DuelState, p: int):
+	var ps := s.players[p]
+	for h in ps.hand:
+		if h.cname() == "Lumen, Echo Radiant":
+			return h
+	for d in ps.deck:
+		if d.cname() == "Lumen, Echo Radiant":
+			return d
+	return null
 
 
 static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
@@ -588,7 +617,8 @@ static func auto_target(s: DuelState, p: int, c) -> Variant:
 	var best = null
 	var best_v := -1e9
 	for x in list:
-		var mine: bool = x.owner == p
+		# Whose side of the table it is on (a monster taken with Change of Heart is yours for now).
+		var mine: bool = s.players[p].field.has(x) or s.players[p].spells.has(x) or s.players[p].field_spell == x
 		var v := 0.0
 		if x.is_monster():
 			v = float(s.atk_of(x, false)) if x.face_up else 1200.0
@@ -895,6 +925,32 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 		"negate_attack":
 			if not s.pending_attack.is_empty():
 				s.pending_attack["negated"] = true
+		"draw_if_own":
+			# "Then, if you control a "Lumen" monster, draw 1 card."
+			for m in ps.monsters():
+				if m.face_up and m.cname().contains(str(a[1])):
+					events.append_array(s._draw(p, int(a[2])))
+					break
+		"echo_resonance":
+			var lumen = echo_tribute(s, p)
+			var big = echo_radiant(s, p)
+			if lumen == null or big == null:
+				return events
+			var z := ps.field.find(lumen)
+			ps.field[z] = null
+			s._to_gy(ps, lumen)
+			events.append({"type": "tribute", "player": p, "card": lumen, "zone": z})
+			events.append_array(s._monster_left(lumen))
+			var from_deck: bool = ps.deck.has(big)
+			if from_deck:
+				ps.deck.erase(big)
+				s._shuffle(ps.deck)
+			else:
+				ps.hand.erase(big)
+			events.append(_ev(p, c, Loc.t("%s answers the call") % big.cname()))
+			big.proper = true
+			events.append_array(s._special(p, big, "effect"))
+			events.append_array(EffectRunner.on_summon(s, p, big, "special"))
 		"end_battle":
 			if not s.pending_attack.is_empty():
 				s.pending_attack["negated"] = true

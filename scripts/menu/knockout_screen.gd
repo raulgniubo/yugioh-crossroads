@@ -21,14 +21,16 @@ var _shown := [4, 2, 1]          # how many winners of each round are on show (t
 var _pulse := 0.0
 var _confetti: Array = []
 var _just := {}                  # what the last report said (prize, champion)
+var _cup_card := 0               # the card that came with a cup won for the first time
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	theme = UITheme.build()
-	var dim := ColorRect.new()
-	dim.color = Color(0.022, 0.035, 0.07, 1.0)
+	# The same deep blue glass as the other big menus (it was a plain black screen with a box
+	# in the middle, which read as an error message).
+	var dim := MenuBackdrop.new(1.0, UITheme.GOLD.lerp(UITheme.ACCENT, 0.35))
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
 	# Laid out for 1920 x 1080 and scaled to the window like the rest of the menus.
@@ -50,8 +52,13 @@ func _ready() -> void:
 	_head = UITheme.label("KNOCKOUT", 64, Color.WHITE, Comic.shout_font())
 	_head.position = Vector2(226, 22)
 	root.add_child(_head)
+	var bar := ColorRect.new()
+	bar.color = UITheme.GOLD
+	bar.position = Vector2(228, 98)
+	bar.size = Vector2(118, 4)
+	root.add_child(bar)
 	_sub = UITheme.label("", 22, UITheme.GOLD, UITheme.semi_font())
-	_sub.position = Vector2(232, 100)
+	_sub.position = Vector2(232, 108)
 	_sub.size = Vector2(1500, 30)
 	root.add_child(_sub)
 	_draw_box = Control.new()
@@ -78,69 +85,158 @@ func _ready() -> void:
 		_after_duel(result == "won")
 	else:
 		_refresh()
+	# It comes in from the right: you have gone somewhere else, this is not a box over Free Duel.
 	modulate.a = 0.0
-	create_tween().tween_property(self, "modulate:a", 1.0, 0.2)
+	root.position.x += 120.0
+	var tin := create_tween().set_parallel()
+	tin.tween_property(self, "modulate:a", 1.0, 0.22)
+	tin.tween_property(root, "position:x", root.position.x - 120.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 
-## No bracket yet: how hard, what it pays, and the way in.
+## No bracket yet: what it is, the three cups to play for, and who can be drawn against you.
 func _build_setup() -> Control:
-	var pc := PanelContainer.new()
-	pc.position = Vector2(460, 250)
-	pc.custom_minimum_size = Vector2(1000, 420)
-	pc.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.05, 0.08, 0.15, 0.98), 24, Color(UITheme.GOLD, 0.5)))
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 14)
-	pc.add_child(v)
-	v.add_child(UITheme.label("EIGHT DUELISTS. THREE ROUNDS. ONE LOSS AND YOU ARE OUT.", 34, Color.WHITE, UITheme.title_font()))
-	var rules := UITheme.label("Seven duelists are drawn against you, the ones you have met first. Lose once and you are out. Your Life Points start fresh every round. The semifinal is in the Academy arena and the final in the Duel Dome, in front of a full house. You can leave between rounds: the bracket waits.", 20, UITheme.TEXT)
+	var box := Control.new()
+	box.size = Vector2(1920, 1080)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Left: what a Knockout is.
+	var big := UITheme.label("EIGHT DUELISTS.\nTHREE ROUNDS.\nONE LOSS AND YOU ARE OUT.", 54, Color.WHITE, UITheme.title_font())
+	big.position = Vector2(70, 190)
+	big.size = Vector2(760, 220)
+	big.add_theme_constant_override("line_spacing", -6)
+	box.add_child(big)
+	var rules := UITheme.label("Seven duelists are drawn against you, the ones you have met first. Your Life Points start fresh every round. You can leave between rounds: the bracket waits.", 22, UITheme.TEXT)
 	rules.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	rules.custom_minimum_size = Vector2(940, 0)
-	v.add_child(rules)
-	var cups := UITheme.label("", 18, UITheme.TEXT_DIM)
+	rules.position = Vector2(74, 420)
+	rules.size = Vector2(700, 110)
+	box.add_child(rules)
+	# The road to the cup: where each round is played.
+	var steps := [["QUARTERFINAL", "On your opponent's own field"], ["SEMIFINAL", "The Academy arena"], ["FINAL", "The Duel Dome, in front of a full house. One step harder."]]
+	for i in steps.size():
+		var y := 560.0 + i * 78.0
+		var num := UITheme.label(str(i + 1), 34, Color(0.03, 0.05, 0.1), UITheme.title_font())
+		num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		num.position = Vector2(74, y)
+		num.size = Vector2(56, 56)
+		num.add_theme_stylebox_override("normal", UITheme.button_box(UITheme.GOLD, UITheme.GOLD, 28))
+		box.add_child(num)
+		var st := UITheme.label(str(steps[i][0]), 26, UITheme.GOLD, UITheme.title_font())
+		st.position = Vector2(148, y - 2)
+		box.add_child(st)
+		var sd := UITheme.label(str(steps[i][1]), 19, UITheme.TEXT_DIM)
+		sd.position = Vector2(148, y + 28)
+		box.add_child(sd)
+	# Right: the three cups.
 	var held: Dictionary = Collection.record.get("trophies", {})
-	cups.text = Loc.t("Your cups:   Bronze %d     Silver %d     Gold %d") % [int(held.get("1", 0)), int(held.get("2", 0)), int(held.get("3", 0))]
-	v.add_child(cups)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
-	v.add_child(row)
 	if not Knockout.can_enter():
-		var no := UITheme.label("A bracket needs seven duelists with a deck. Set your card folder in Settings first.", 20, UITheme.DANGER)
+		var no := UITheme.label("A bracket needs seven duelists with a deck. Set your card folder in Settings first.", 24, UITheme.DANGER)
 		no.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		no.custom_minimum_size = Vector2(940, 0)
-		v.add_child(no)
-		return pc
-	for d in [1, 2, 3]:
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(300, 150)
-		var col: Color = Knockout.CUP_COLORS[d]
-		for st in ["normal", "hover", "pressed", "focus"]:
-			var sb := UITheme.button_box(Color(col.darkened(0.72), 0.95) if st != "hover" else Color(col.darkened(0.55), 0.98), col if st in ["hover", "focus"] else Color(col, 0.45), 18)
-			sb.set_border_width_all(2)
-			b.add_theme_stylebox_override(st, sb)
-		var inner := VBoxContainer.new()
-		inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		inner.offset_left = 18
-		inner.offset_top = 14
-		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		b.add_child(inner)
-		var t1 := UITheme.label(["", "EASY", "NORMAL", "HARD"][d], 34, Color.WHITE, UITheme.title_font())
-		t1.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		inner.add_child(t1)
-		var t2 := UITheme.label(Loc.t(str(Knockout.CUPS[d])), 20, col.lightened(0.2), UITheme.semi_font())
-		t2.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		inner.add_child(t2)
-		var t3 := UITheme.label(Loc.t("Winner: %d Duel Points") % int(Knockout.PRIZES[d]), 17, UITheme.TEXT_DIM)
-		t3.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		inner.add_child(t3)
-		b.pressed.connect(func():
-			Knockout.start(d)
-			Sfx.play("quest", -4.0)
-			_shown = [0, 0, 0]
-			_refresh())
-		row.add_child(b)
-	var note := UITheme.label("The final is one step harder than the rest.", 16, UITheme.TEXT_DIM)
-	v.add_child(note)
-	return pc
+		no.position = Vector2(900, 320)
+		no.size = Vector2(900, 120)
+		box.add_child(no)
+	else:
+		for d in [1, 2, 3]:
+			var col: Color = Knockout.CUP_COLORS[d]
+			var b := Button.new()
+			b.position = Vector2(872 + (d - 1) * 338, 190)
+			b.size = Vector2(318, 590)
+			b.pivot_offset = b.size / 2.0
+			b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			for st2 in ["normal", "hover", "pressed", "focus"]:
+				var sb := UITheme.button_box(Color(0.05, 0.08, 0.15, 0.96) if st2 != "hover" else Color(col.darkened(0.72), 0.98), col if st2 in ["hover", "focus"] else Color(col, 0.5), 22)
+				sb.set_border_width_all(3 if st2 in ["hover", "focus"] else 2)
+				b.add_theme_stylebox_override(st2, sb)
+			b.mouse_entered.connect(func(): b.create_tween().tween_property(b, "scale", Vector2(1.03, 1.03), 0.1))
+			b.mouse_exited.connect(func(): b.create_tween().tween_property(b, "scale", Vector2.ONE, 0.12))
+			var cup := Control.new()
+			cup.position = Vector2(59, 26)
+			cup.size = Vector2(200, 230)
+			cup.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			cup.draw.connect(func(): _draw_cup(cup, col))
+			b.add_child(cup)
+			var lines := [[["", "EASY", "NORMAL", "HARD"][d], 46, Color.WHITE, UITheme.title_font(), 270.0],
+				[Loc.t(str(Knockout.CUPS[d])).to_upper(), 22, col.lightened(0.25), UITheme.semi_font(), 326.0],
+				[Loc.t("%d Duel Points") % int(Knockout.PRIZES[d]), 26, UITheme.GOLD, UITheme.title_font(), 372.0],
+				[Loc.t("to the winner"), 17, UITheme.TEXT_DIM, null, 406.0],
+				[Loc.t("You hold %d") % int(held.get(str(d), 0)), 18, UITheme.TEXT_DIM if int(held.get(str(d), 0)) == 0 else col.lightened(0.3), null, 446.0]]
+			for ln in lines:
+				var l := UITheme.label(str(ln[0]), int(ln[1]), ln[2], ln[3])
+				l.position = Vector2(0, float(ln[4]))
+				l.size = Vector2(318, 50)
+				l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				b.add_child(l)
+			var enter := UITheme.label(Loc.t("ENTER") + "   ▶", 26, Color(0.03, 0.05, 0.1), UITheme.title_font())
+			enter.position = Vector2(34, 506)
+			enter.size = Vector2(250, 56)
+			enter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			enter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			enter.add_theme_stylebox_override("normal", UITheme.button_box(col, col.lightened(0.3), 14))
+			enter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			b.add_child(enter)
+			b.pressed.connect(func():
+				Knockout.start(d)
+				Sfx.play("quest", -4.0)
+				_shown = [0, 0, 0]
+				_refresh())
+			box.add_child(b)
+	# Along the bottom: the faces that can be drawn.
+	var who: Array = Knockout.pool()
+	var rest: Array = Knockout.everyone().filter(func(k): return not who.has(k))
+	var faces := Control.new()
+	faces.position = Vector2(70, 836)
+	faces.size = Vector2(1780, 150)
+	faces.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	faces.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	var shown: Array = (who + (rest if who.size() < 7 else [])).slice(0, 22)
+	faces.draw.connect(func():
+		faces.draw_string(UITheme.semi_font(), Vector2(4, 16), Loc.t("WHO CAN BE DRAWN AGAINST YOU").to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, UITheme.GOLD)
+		for i in shown.size():
+			var k := str(shown[i])
+			var met: bool = who.has(k)
+			var at := Vector2(40 + i * 78.0, 78)
+			MapArt.token(faces, at, 30.0, k, Color(Color(Characters.get_char(k).get("color", Color(0.5, 0.6, 0.8))), 1.0 if met else 0.35), Color(0.18, 0.75, 0.8), 1.9)
+			if not met:
+				faces.draw_circle(at, 31.0, Color(0.03, 0.05, 0.09, 0.55))
+			faces.draw_string(UITheme.semi_font(), at + Vector2(-38, 54), str(Characters.get_char(k).get("short", k)), HORIZONTAL_ALIGNMENT_CENTER, 76, 14, Color(1, 1, 1, 0.85 if met else 0.4)))
+	box.add_child(faces)
+	return box
+
+
+## A cup: bowl, two handles, stem and foot, with a shine and a star.
+func _draw_cup(c: Control, col: Color) -> void:
+	var lit := col.lightened(0.45)
+	var dark := col.darkened(0.35)
+	var mid := Vector2(100, 0)
+	# Handles.
+	for sx: float in [-1.0, 1.0]:
+		c.draw_arc(mid + Vector2(sx * 62, 62), 30.0, -PI * 0.5 if sx > 0.0 else PI * 0.5, PI * 0.5 if sx > 0.0 else PI * 1.5, 24, dark, 11.0, true)
+		c.draw_arc(mid + Vector2(sx * 62, 62), 30.0, -PI * 0.5 if sx > 0.0 else PI * 0.5, PI * 0.5 if sx > 0.0 else PI * 1.5, 24, col, 6.0, true)
+	# Bowl.
+	var bowl := PackedVector2Array()
+	for i in 21:
+		var t := i / 20.0
+		var a := PI * t
+		bowl.append(mid + Vector2(cos(a) * 70.0, 20.0 + sin(a) * 104.0))
+	bowl.append(mid + Vector2(-70, 14))
+	bowl.append(mid + Vector2(70, 14))
+	c.draw_colored_polygon(bowl, col)
+	c.draw_rect(Rect2(mid + Vector2(-76, 8), Vector2(152, 16)), lit)
+	# Shine down the left of the bowl.
+	var shine := PackedVector2Array([mid + Vector2(-48, 30), mid + Vector2(-30, 30), mid + Vector2(-22, 96), mid + Vector2(-34, 88)])
+	c.draw_colored_polygon(shine, Color(1, 1, 1, 0.35))
+	# Stem and foot.
+	c.draw_rect(Rect2(mid + Vector2(-12, 120), Vector2(24, 48)), dark)
+	c.draw_rect(Rect2(mid + Vector2(-8, 120), Vector2(8, 48)), col)
+	c.draw_rect(Rect2(mid + Vector2(-48, 166), Vector2(96, 16)), col)
+	c.draw_rect(Rect2(mid + Vector2(-62, 182), Vector2(124, 22)), dark)
+	c.draw_rect(Rect2(mid + Vector2(-62, 182), Vector2(124, 6)), lit)
+	# A star on the bowl.
+	var star := PackedVector2Array()
+	for i in 10:
+		var a2 := -PI * 0.5 + i * PI / 5.0
+		star.append(mid + Vector2(0, 66) + Vector2(cos(a2), sin(a2)) * (22.0 if i % 2 == 0 else 9.5))
+	c.draw_colored_polygon(star, Color(1, 1, 1, 0.9))
 
 
 func _refresh() -> void:
@@ -207,6 +303,9 @@ func _after_duel(won: bool) -> void:
 	if str(_just.get("champion", "")) == "player":
 		var held: Dictionary = Collection.record.get("trophies", {})
 		var cup := str(int(_just.get("cup", 1)))
+		# The first time a cup is yours it comes with one of Lumen's forms.
+		if int(held.get(cup, 0)) == 0:
+			_cup_card = Collection.lumen_copy(true)
 		held[cup] = int(held.get(cup, 0)) + 1
 		Collection.record["trophies"] = held
 	Collection.save()
@@ -226,6 +325,9 @@ func _after_duel(won: bool) -> void:
 			Sfx.play("cheer", -4.0)
 			_burst()
 			Router.toast(Loc.t("%s!  +%d Duel Points") % [Loc.t(str(Knockout.CUPS[int(_just.get("cup", 1))])), prize], 6.0)
+			if _cup_card != 0:
+				Router.toast(Loc.t("First time you hold this cup: %s is in your collection.") % str(CardData.get_card(_cup_card).get("name", "")), 7.0)
+				_cup_card = 0
 		elif not won:
 			if prize > 0:
 				Router.toast(Loc.t("Out in the %s.  +%d Duel Points for the rounds you won.") % [Loc.t(str(Knockout.ROUNDS[r])).to_lower(), prize], 5.0)

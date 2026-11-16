@@ -31,6 +31,7 @@ const PACKS := [
 	{"key": "5D's", "tab": 0, "name": "Signer's Road", "color": Color("2de2e6"), "blurb": "Cards from the 5D's era."},
 	{"key": "ZEXAL", "tab": 0, "name": "Overlay Network", "color": Color("ffd23a"), "blurb": "Cards from the ZEXAL era."},
 	{"key": "Vault", "tab": 0, "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
+	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen, her forms and the cards around her. Only the ones the story has already handed you, up to three of each."},
 	{"key": "beyond", "tab": 0, "name": "Beyond the Limit", "color": Color("b06bff"), "blurb": "Fusion, Synchro, Xyz and Ritual monsters, and the Spells that call them."},
 	{"key": "dragons", "tab": 1, "name": "Dragon's Roar", "color": Color("ff5a3c"), "blurb": "Dragons, Dinosaurs, Reptiles and Sea Serpents."},
 	{"key": "warriors", "tab": 1, "name": "Blades of Valor", "color": Color("f0b040"), "blurb": "Warriors, from street fighters to legendary knights."},
@@ -130,6 +131,7 @@ func _ready() -> void:
 		if not main.has(CardData.LUMEN) and main.size() < 60:
 			main.append(CardData.LUMEN)
 		save.call_deferred()
+	lumen_gifts()
 	_fill_slots()
 	if not decks_owned.has("echo"):
 		decks_owned.append("echo")
@@ -201,6 +203,35 @@ func starter_info(key: String) -> Dictionary:
 
 
 ## Has the choice of a first deck still to be made?
+## Lumen's cards come with the story: the cards around her after the prologue, her big form
+## and the spell that calls it after Domino, then one Extra Deck form from each world (see
+## CardData.LUMEN_GIFTS). Hands over whatever the story has reached and has not been given yet,
+## and returns those card ids. An Extra Deck form also goes into the Extra Deck of the deck you
+## built, if there is room, and the Fusion form comes with a Polymerization if you have none.
+var lumen_news: Array = []      # ids handed over and not yet announced (the main menu says it)
+
+func lumen_gifts() -> Array:
+	var stage := Unlocks.stage()
+	var had: Array = record.get("lumen_gifts", [])
+	var got: Array = []
+	for g in CardData.LUMEN_GIFTS:
+		var id := int(g[1])
+		if stage < int(g[0]) or had.has(id):
+			continue
+		owned[id] = maxi(int(owned.get(id, 0)), int(g[2]))
+		had.append(id)
+		got.append(id)
+		if CardData.is_extra(id) and not extra.has(id) and extra.size() < EXTRA_MAX:
+			extra.append(id)
+		if id == 99200002 and int(owned.get(24094653, 0)) < 1:
+			owned[24094653] = 1
+	if not got.is_empty():
+		record["lumen_gifts"] = had
+		lumen_news.append_array(got)
+		save.call_deferred()
+	return got
+
+
 func needs_starter() -> bool:
 	return starter_pick == "" and CardData.has_deck("starter_warrior")
 
@@ -471,6 +502,7 @@ func pack_cover(key: String) -> int:
 				pick = ids[0]
 			used[pick] = true
 			_covers[str(p["key"])] = pick
+		_covers["echo"] = CardData.LUMEN       # (her own pack has her on it, whatever it holds by now)
 	return int(_covers.get(key, 0))
 
 
@@ -1164,9 +1196,36 @@ func all_cards() -> Array:
 	return _pools["*"]
 
 
+## Lumen's cards the story has handed over so far (her own card always). With `open_only`,
+## only those you hold fewer than three of.
+func lumen_pool(open_only := false) -> Array:
+	var had: Array = record.get("lumen_gifts", [])
+	var out: Array = []
+	for id in [CardData.LUMEN] + had:
+		if not out.has(int(id)) and (not open_only or int(owned.get(int(id), 0)) < 3):
+			out.append(int(id))
+	return out
+
+
+## One more copy of a card of Lumen's that you hold fewer than three of (her Extra Deck forms
+## first, if asked). Returns the card id, or 0 when you already have three of everything.
+func lumen_copy(forms_first := false) -> int:
+	var open := lumen_pool(true)
+	if open.is_empty():
+		return 0
+	var forms: Array = open.filter(func(id): return CardData.is_extra(int(id)) or int(id) == 99200005)
+	var from: Array = forms if forms_first and not forms.is_empty() else open
+	var id: int = int(from[randi() % from.size()])
+	owned[id] = int(owned.get(id, 0)) + 1
+	save()
+	return id
+
+
 ## Every card that can come out of an era's pack: the cards its duelists play.
 func pool(era: String) -> Array:
 	_fresh()
+	if era == "echo":
+		return lumen_pool()           # (grows with the story: never kept from one look to the next)
 	if _pools.has(era):
 		return _pools[era]
 	var ids := {}
@@ -1206,9 +1265,28 @@ func open_pack(era: String) -> Array:
 		return []
 	var cards := pool(era)
 	var price := PACK_PRICE
+	var count := PACK_SIZE
 	for p in PACKS:
 		if p["key"] == era:
 			price = pack_price(p)
+			count = int(p.get("size", PACK_SIZE))
+	if era == "echo":
+		# Never more than three of a card of Lumen's: a pack only holds the ones you still lack.
+		if dp < price:
+			return []
+		if lumen_pool(true).is_empty():
+			Router.toast(Loc.t("You hold three of every card of Lumen's that the story has given you so far."))
+			return []
+		dp -= price
+		var got: Array = []
+		for i in count:
+			var id2 := lumen_copy()
+			if id2 == 0:
+				break
+			got.append(id2)
+		daily_bump("pack")
+		save()
+		return got
 	if dp < price or cards.is_empty():
 		return []
 	dp -= price

@@ -2887,9 +2887,9 @@ func _tournament_dressing() -> void:
 	holder.add_child(q2)
 	box(Vector3(3.2, 4.8, 0.02), Vector3(2.5, 0, 0.26), glow_mat(Color(0.05, 0.08, 0.16), 0.6), false, holder)
 	var live := neon_sign("CARD OF\nTHE HOUR", sp + holder.transform.basis * Vector3(2.5, 0.9, 0.3), Color("ffd766"), 90, holder.rotation.y, false)
-	live.pixel_size = 0.012
+	live.pixel_size = 0.0078      # ("THE HOUR" has to fit the 3.2 m panel it is on)
 	var tag := neon_sign("BATTLE CITY  ·  LIVE", sp + holder.transform.basis * Vector3(2.5, -1.4, 0.3), Color("ff5a7a"), 60, holder.rotation.y, false)
-	tag.pixel_size = 0.009
+	tag.pixel_size = 0.006
 	var glow := OmniLight3D.new()
 	glow.light_color = Color(0.7, 0.8, 1.0)
 	glow.light_energy = 2.0

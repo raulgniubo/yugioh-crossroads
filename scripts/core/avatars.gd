@@ -908,8 +908,40 @@ func _register() -> void:
 		GLTFDocument.register_gltf_document_extension(ext.new())
 
 
-## Load a VRM as a fresh Node3D, posed and tinted (tints only for the player).
+## What somebody has on for now, on top of their own model: key -> jacket color as html. A duel
+## started in the world sets this, so the person across the field (and you) wear in the duel what
+## you both wore when the challenge was made. Empty everywhere else.
+var dress := {}
+
+
+## Put a dorm jacket on a loaded model. Your own duelist keeps every color you picked: only the
+## top is repainted.
+func wear(model: Node, key: String, color: Color) -> void:
+	if key == "player":
+		for n in [model] + model.find_children("*", "Node3D", true, false):
+			if n.has_meta("hero_mats"):
+				for m in n.get_meta("hero_mats"):
+					(m as ShaderMaterial).set_shader_parameter("top_to", Color(color.r, color.g, color.b, 1.0))
+				return
+	apply_uniform(model, color)
+
+
+## The name a picture of `key` is kept under: with the jacket on, when they are wearing one.
+func dressed(key: String) -> String:
+	if not ("@" in key) and dress.has(key):
+		return "%s@%s" % [key, str(dress[key])]
+	return key
+
+
+## Load a model as a fresh Node3D, posed, tinted (tints only for the player) and dressed.
 func load_model(key: String) -> Node3D:
+	var m := _load_plain(key)
+	if m and dress.has(key):
+		wear(m, key, Color.html(str(dress[key])))
+	return m
+
+
+func _load_plain(key: String) -> Node3D:
 	if not has_avatar(key):
 		return null
 	var path := path_for(key)
@@ -1454,17 +1486,22 @@ var _hi: Array[String] = []      # the few portraits being shown big right now
 
 ## `hi` asks for the portrait at double size, for when it fills a large part of the screen.
 ## Only the last few asked for stay that sharp; the rest go back to the normal size.
+var _asked := 0          # (dev) how many times a portrait was asked for since the last count
+var _count_asks := "--portrait-count" in OS.get_cmdline_user_args()
+
 func portrait(key: String, hi := false) -> Texture2D:
+	_asked += 1
+	key = dressed(key)
 	if _stages.has(key):
 		_touch(key)
 		if hi:
 			_sharpen(key)
 		return (_stages[key] as SubViewport).get_texture()
-	var model := load_model(key.get_slice("@", 0))
+	var model := _load_plain(key.get_slice("@", 0))
 	if model == null:
 		return null
 	if "@" in key:
-		apply_uniform(model, Color.html(key.get_slice("@", 1)))
+		wear(model, key.get_slice("@", 0), Color.html(key.get_slice("@", 1)))
 	var vp := SubViewport.new()
 	vp.size = stage_size()
 	vp.transparent_bg = true
@@ -1492,6 +1529,7 @@ func stage_size() -> Vector2i:
 
 ## How many meters, top to bottom, the portrait of `key` shows (1.22 for most, more for tall hair).
 func portrait_view(key: String) -> float:
+	key = dressed(key)
 	if _stages.has(key):
 		var stage: Node = (_stages[key] as SubViewport).get_child(0)
 		if stage and stage.get("view_h") != null:
@@ -1534,6 +1572,13 @@ var _tick := 0
 
 func _process(_delta: float) -> void:
 	_tick += 1
+	if _count_asks and _tick % 120 == 0:
+		var drawing := 0
+		for k in _stages:
+			if (_stages[k] as SubViewport).render_target_update_mode != SubViewport.UPDATE_DISABLED:
+				drawing += 1
+		print("PORTRAITS asked %d times in 120 frames, %d views, %d not asleep, %d live" % [_asked, _stages.size(), drawing, _live.size()])
+		_asked = 0
 	for i in _live.size():
 		var vp: SubViewport = _stages.get(_live[i])
 		if vp == null:

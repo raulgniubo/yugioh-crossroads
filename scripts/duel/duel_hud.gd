@@ -448,13 +448,16 @@ func _build_phase() -> void:
 	ask_bg.add_child(ask_row)
 	box.add_child(ask_bg)
 	var ask := CheckButton.new()
-	ask.text = "Pause in every phase"
+	ask.text = "Ask me at every chance"
 	ask.button_pressed = phase_prompts
 	ask.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ask.add_theme_font_size_override("font_size", 17)
 	for col in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color", "font_focus_color"]:
 		ask.add_theme_color_override(col, UITheme.TEXT)
-	ask.toggled.connect(func(on): phase_prompts = on)
+	ask.toggled.connect(func(on):
+		phase_prompts = on
+		Settings.ask_always = on
+		Settings.save_settings())
 	ask_row.add_child(ask)
 	# A small "i": press it to read what the switch does.
 	var info := Button.new()
@@ -475,7 +478,7 @@ func _build_phase() -> void:
 	tip.visible = false
 	tip.z_index = 20
 	tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var tl := UITheme.label("ON: the duel stops in each phase when one of your face-down cards or Quick-Play Spells could be used, so you never miss a chance.\n\nOFF: faster duels. You are only asked during summons, attacks and chains.", 16, UITheme.TEXT)
+	var tl := UITheme.label("OFF: you are asked when your opponent does something one of your cards can answer: an attack, a summon, a card or effect of theirs. On your own attacks, only when you hold a card that makes your monster stronger.\n\nON: the duel also stops in every phase and after your own plays, whenever a card of yours could legally be used. Nothing is ever missed, and it asks a lot.", 16, UITheme.TEXT)
 	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tl.custom_minimum_size = Vector2(300, 0)
 	tip.add_child(tl)
@@ -1488,10 +1491,43 @@ func ask_destiny() -> bool:
 signal _choice_picked(index: int)
 ## Dev: answer every prompt at random (the --human-test run that exercises the manual path).
 var auto_answer := false
-var phase_prompts := true
+## "Ask me at every chance". Off (the way it starts): you are asked when the other side does
+## something one of your cards can answer. On: also in every phase and after your own plays.
+var phase_prompts := Settings.ask_always
 
 
 ## A question with a few labelled answers (a position, yes / no, go first or second). Returns the index.
+## A box that asks you something can be folded away so you can look over the table first.
+## Returns [the "Look at the field" button for the box, the bar that stands in for it meanwhile].
+## The caller puts the button in its layout and frees the bar when the answer is in.
+func _foldable(root: Control, text: String, tint: Color) -> Array:
+	var look := Button.new()
+	look.text = Loc.t("Look at the field")
+	look.tooltip_text = Loc.t("Fold this away and look over the table, both Graveyards and your hand. Nothing happens until you answer.")
+	look.add_theme_font_size_override("font_size", 18)
+	look.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var bar := Button.new()
+	bar.text = "%s     ·     %s" % [text, Loc.t("Back to the choice")]
+	bar.add_theme_font_size_override("font_size", 22)
+	bar.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.06, 0.05, 0.13, 0.96), tint, 16))
+	bar.add_theme_stylebox_override("hover", UITheme.button_box(Color(tint.darkened(0.6), 0.98), tint.lightened(0.2), 16))
+	bar.z_index = 60
+	bar.visible = false
+	add_child(bar)
+	var fold := func(on: bool):
+		root.visible = not on
+		bar.visible = on
+		if on:
+			bar.reset_size()
+			bar.position = Vector2((get_viewport_rect().size.x - bar.size.x) / 2.0, 96.0 * get_viewport_rect().size.y / 1080.0)
+			Sfx.play("click", -8.0)
+	look.pressed.connect(func(): fold.call(true))
+	bar.pressed.connect(func(): fold.call(false))
+	if "--ask-look" in OS.get_cmdline_user_args():      # dev: fold it away by itself, for a picture
+		get_tree().create_timer(2.0).timeout.connect(func(): fold.call(true))
+	return [look, bar]
+
+
 func ask_choice(text: String, answers: Array, card = null) -> int:
 	if auto_answer:
 		await get_tree().process_frame
@@ -1530,6 +1566,9 @@ func ask_choice(text: String, answers: Array, card = null) -> int:
 			first = b
 		b.pressed.connect(func(): _choice_picked.emit(i))
 		v.add_child(b)
+	var fold := _foldable(root, text, UITheme.ACCENT)
+	(fold[0] as Button).flat = true
+	v.add_child(fold[0])
 	root.reset_size()
 	await get_tree().process_frame
 	var vs := get_viewport_rect().size
@@ -1540,6 +1579,7 @@ func ask_choice(text: String, answers: Array, card = null) -> int:
 		first.grab_focus()
 	var idx: int = await _choice_picked
 	root.queue_free()
+	(fold[1] as Button).queue_free()
 	return idx
 
 
@@ -1555,8 +1595,17 @@ func ask_response(text: String, options: Array, button := "Activate", cancel := 
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
 	root.add_child(v)
+	# The question, and a way to get the box out of the way: it sits in the middle of the table,
+	# and what you answer depends on what is on that table.
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 18)
+	v.add_child(head)
 	var t := UITheme.label(text, 30, Color.WHITE, UITheme.title_font())
-	v.add_child(t)
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(t)
+	var fold := _foldable(root, text, tint)
+	head.add_child(fold[0])
+	var bar: Button = fold[1]
 	if ask_why != "":
 		# One plain line on why the duel stopped and what your choice does.
 		var why := UITheme.label(ask_why, 19, UITheme.TEXT_DIM)
@@ -1617,6 +1666,7 @@ func ask_response(text: String, options: Array, button := "Activate", cancel := 
 	Sfx.play("spell", -2.0, 0.7)
 	var choice = await _response_picked
 	root.queue_free()
+	bar.queue_free()
 	return choice
 
 
@@ -2091,11 +2141,16 @@ func _overlay_panel(title: String, subtitle: String, title_color: Color, side :=
 	return v
 
 
-func _overlay_button(v: VBoxContainer, text: String, action: String) -> Button:
+func _overlay_button(v: BoxContainer, text: String, action: String) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.custom_minimum_size = Vector2(360, 60)
 	b.pressed.connect(func(): pause_action.emit(action))
+	if v is HBoxContainer:
+		# Side by side (the result screen): the first one is the wide one.
+		b.custom_minimum_size = Vector2(300 if v.get_child_count() == 0 else 210, 60)
+		v.add_child(b)
+		return b
+	b.custom_minimum_size = Vector2(360, 60)
 	var c := CenterContainer.new()
 	c.add_child(b)
 	v.add_child(c)
@@ -2179,7 +2234,8 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 				else:
 					label = Loc.t(label)
 				var row2 := HBoxContainer.new()
-				var ll := UITheme.label(label, 22, UITheme.TEXT)
+				var fs := 22 if pay.size() <= 5 else (20 if pay.size() <= 7 else 18)
+				var ll := UITheme.label(label, fs, UITheme.TEXT)
 				ll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				row2.add_child(ll)
 				# A card prize has no points on it: it shows as a card.
@@ -2187,7 +2243,7 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 					label = Loc.t("New card: %s") % Loc.t(label.trim_prefix("New card: "))
 					ll.text = label
 					ll.add_theme_color_override("font_color", Color("9ff0ff"))
-				row2.add_child(UITheme.label(("+%d" % int(line[1])) if int(line[1]) > 0 else "★", 22, UITheme.GOLD, UITheme.semi_font()))
+				row2.add_child(UITheme.label(("+%d" % int(line[1])) if int(line[1]) > 0 else "★", fs, UITheme.GOLD, UITheme.semi_font()))
 				pv.add_child(row2)
 			var rule := ColorRect.new()
 			rule.color = Color(UITheme.GOLD, 0.5)
@@ -2206,32 +2262,46 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 		var gap := Control.new()
 		gap.custom_minimum_size = Vector2(0, 14)
 		v.add_child(gap)
+	# The buttons stand side by side under everything else, so a long list of what the duel paid
+	# (medals, streaks, a card) can never push one of them off the bottom of the screen.
+	var bar := HBoxContainer.new()
+	bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	bar.add_theme_constant_override("separation", 14)
+	v.add_child(bar)
 	var first: Button
 	if story:
 		if won or lose_ok:
-			first = _overlay_button(v, cont, "story_continue")
+			first = _overlay_button(bar, cont, "story_continue")
 		else:
 			# A duel the story needs you to win: go again, or step away and come back stronger.
-			first = _overlay_button(v, "Try Again", "rematch")
+			first = _overlay_button(bar, "Try Again", "rematch")
 			if stats.get("task", false):
-				_overlay_button(v, "Back to the world", "story_continue")
+				_overlay_button(bar, "Back to the world", "story_continue")
 			else:
-				_overlay_button(v, "Change deck", "decks")
-			_overlay_button(v, "Quit to Menu", "menu")
+				_overlay_button(bar, "Change deck", "decks")
+			_overlay_button(bar, "Quit to Menu", "menu")
 	elif not mt.is_empty() and not mt["over"]:
-		first = _overlay_button(v, "Next duel", "next_game")
+		first = _overlay_button(bar, "Next duel", "next_game")
 		if mt.get("side", false):
-			_overlay_button(v, "Side Deck", "side_deck")
-		_overlay_button(v, "Main Menu", "menu")
+			_overlay_button(bar, "Side Deck", "side_deck")
+		_overlay_button(bar, "Main Menu", "menu")
 	elif gauntlet_next:
-		first = _overlay_button(v, "Next opponent", "gauntlet_next")
-		_overlay_button(v, "Main Menu", "menu")
+		first = _overlay_button(bar, "Next opponent", "gauntlet_next")
+		_overlay_button(bar, "Main Menu", "menu")
 	else:
-		first = _overlay_button(v, "New match" if not mt.is_empty() else ("Run it again" if gauntlet_label != "" else "Rematch"), "rematch")
+		first = _overlay_button(bar, "New match" if not mt.is_empty() else ("Run it again" if gauntlet_label != "" else "Rematch"), "rematch")
 		if stats.get("free", false):
-			_overlay_button(v, "Change duelists", "select")
-		_overlay_button(v, "Main Menu", "menu")
+			_overlay_button(bar, "Change duelists", "select")
+		_overlay_button(bar, "Main Menu", "menu")
 	first.grab_focus()
+	# And if it is still taller than the window (a small window, a very long list), the whole
+	# column is made a little smaller instead of running off it.
+	await get_tree().process_frame
+	if is_instance_valid(v):
+		var room := get_viewport_rect().size.y - 36.0
+		if v.size.y > room:
+			v.pivot_offset = v.size / 2.0
+			v.scale = Vector2.ONE * (room / v.size.y)
 
 
 func show_pause() -> void:

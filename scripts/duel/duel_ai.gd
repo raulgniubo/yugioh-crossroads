@@ -54,6 +54,17 @@ static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionar
 	return _heuristic_main(s, p, level)
 
 
+## Is there a target this card is any use on? A boost belongs on your own monster and a blow on
+## theirs: with only the wrong side to aim at (your Dragon is the only Dragon on the field and
+## the card in hand is Dragon Treasure), the card stays in the hand. True for cards that take
+## no target.
+static func has_use(s: DuelState, p: int, c) -> bool:
+	var sp := SpellRules.spec(c)
+	if sp.is_empty() or sp.has("legacy") or not SpellRules._needs_target(sp):
+		return true
+	return SpellRules.auto_target(s, p, c) != null
+
+
 static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 	var me := s.players[p]
 	var opp := s.players[s.opponent(p)]
@@ -68,7 +79,7 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 			pool.append(st)
 	var idle := -1e9
 	for c in pool:
-		if c.is_monster() or not s.can_activate(p, c):
+		if c.is_monster() or not s.can_activate(p, c) or not has_use(s, p, c):
 			continue
 		if c.cname() == "Toon World":
 			# It does nothing by itself, so no look ahead would ever play it: a Toon deck opens
@@ -524,7 +535,7 @@ static func _candidates(s: DuelState, p: int) -> Array:
 	var me := s.players[p]
 	for c in me.hand:
 		if not c.is_monster():
-			if s.can_activate(p, c):
+			if s.can_activate(p, c) and has_use(s, p, c):
 				if c.data.get("effect", "") == "fusion":
 					for o in s.fusion_targets(p, c):
 						out.append({"do": "activate", "card": c, "choice": o["card"]})
@@ -538,7 +549,7 @@ static func _candidates(s: DuelState, p: int) -> Array:
 				out.append({"do": "summon", "card": c, "tributes": tributes})
 			out.append({"do": "set", "card": c, "tributes": tributes})
 	for c in me.spells:
-		if c != null and not c.face_up and s.can_activate(p, c):
+		if c != null and not c.face_up and s.can_activate(p, c) and has_use(s, p, c):
 			out.append({"do": "activate", "card": c})
 	for x in me.extra:
 		if s.can_extra_summon(p, x):
@@ -737,6 +748,7 @@ static func _sim_score(s: DuelState, p: int, window: String, c) -> float:
 
 ## Should player p use a response card? Returns the card or null.
 static func choose_response(s: DuelState, p: int, window: String, options: Array, level := NORMAL) -> DuelState.CardInst:
+	options = options.filter(func(c): return c.is_monster() or has_use(s, p, c))
 	if options.is_empty() or (level == EASY and randf() < 0.4):
 		return null
 	for c in options:

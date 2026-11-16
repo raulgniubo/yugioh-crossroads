@@ -482,6 +482,19 @@ func _process(delta: float) -> void:
 		d["near"] = dist < 16.0
 		if d.has("bout"):
 			d["age"] = float(d["age"]) + delta
+			# Two duelists face each other for as long as their duel lasts. (Whatever else turns
+			# them: noticing you walk by, the stop they were standing at. One of them used to duel
+			# with their back to the table.)
+			if float(d["over"]) <= 0.0:
+				var fa: RoamFigure = d["figs"][0]
+				var fb: RoamFigure = d["figs"][1]
+				if is_instance_valid(fa) and is_instance_valid(fb):
+					fa.watch = null
+					fb.watch = null
+					var to := fb.global_position - fa.global_position
+					if Vector2(to.x, to.z).length() > 0.3:
+						fa.rotation.y = lerp_angle(fa.rotation.y, atan2(to.x, to.z), clampf(delta * 8.0, 0.0, 1.0))
+						fb.rotation.y = lerp_angle(fb.rotation.y, atan2(-to.x, -to.z), clampf(delta * 8.0, 0.0, 1.0))
 			if d["near"]:
 				d["seen"] = float(d["seen"]) + delta
 			if float(d["over"]) <= 0.0:

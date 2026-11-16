@@ -92,7 +92,12 @@ static func counter(city: CityBuilder, at: Vector3, yaw: float, w := 4.8) -> Nod
 	var wood := city.surf("wood", Color(0.42, 0.27, 0.16), 0.9)
 	var dark := city.mat(Color(0.2, 0.13, 0.08), 0.6)
 	var steel := city.mat(Color(0.74, 0.76, 0.8), 0.3, 0.7)
+	# The felt the cards lie on takes no shadows: the thin steel bars of the case and the cards a
+	# few millimetres above it threw fine shadows on it that crawled as you moved (a flicker under
+	# the cards). It is lit evenly instead, like a real lit display case.
 	var felt := city.mat(Color(0.1, 0.16, 0.3), 0.95)
+	felt.disable_receive_shadows = true
+	felt.normal_enabled = false
 	var d := 0.95
 	var top := 1.05
 	# The carcass: plinth, back, two ends, a floor of felt, the frame the glass sits in.
@@ -102,13 +107,13 @@ static func counter(city: CityBuilder, at: Vector3, yaw: float, w := 4.8) -> Nod
 		city.round_box(Vector3(0.08, top - 0.12, d), Vector3(sx * (w * 0.5 - 0.04), 0.12 + (top - 0.12) * 0.5, 0), wood, 0.03, h)
 	city.box(Vector3(w - 0.16, 0.03, d - 0.08), Vector3(0, 0.135, 0), felt, false, h)
 	for y: float in [0.14, top]:
-		city.box(Vector3(w, 0.035, 0.035), Vector3(0, y, d * 0.5 - 0.018), steel, false, h)
-	city.box(Vector3(w, 0.035, 0.035), Vector3(0, top, -d * 0.5 + 0.08), steel, false, h)
+		city.box(Vector3(w, 0.035, 0.035), Vector3(0, y, d * 0.5 - 0.018), steel, false, h).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	city.box(Vector3(w, 0.035, 0.035), Vector3(0, top, -d * 0.5 + 0.08), steel, false, h).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var posts := maxi(2, int(round(w / 1.6)))
 	for i in posts + 1:
 		var x := -w * 0.5 + 0.018 + (w - 0.036) * i / float(posts)
-		city.box(Vector3(0.035, top - 0.14, 0.035), Vector3(x, (top + 0.14) * 0.5, d * 0.5 - 0.018), steel, false, h)
-		city.box(Vector3(0.035, 0.035, d - 0.1), Vector3(x, top, 0.015), steel, false, h)
+		city.box(Vector3(0.035, top - 0.14, 0.035), Vector3(x, (top + 0.14) * 0.5, d * 0.5 - 0.018), steel, false, h).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		city.box(Vector3(0.035, 0.035, d - 0.1), Vector3(x, top, 0.015), steel, false, h).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# Two shelves sloping toward the customer, each a row of cards leaning back on it.
 	var k := 0
 	var lean := Basis(Vector3.RIGHT, -0.95)
@@ -120,7 +125,7 @@ static func counter(city: CityBuilder, at: Vector3, yaw: float, w := 4.8) -> Nod
 		var n := int((w - 0.3) / 0.26)
 		for i in n:
 			var cx := -(n - 1) * 0.13 + i * 0.26
-			card(h, Vector3(cx, sy + 0.115, sz + 0.012), lean, k * 7 + row * 3)
+			card(h, Vector3(cx, sy + 0.122, sz + 0.017), lean, k * 7 + row * 3)      # (a centimetre clear of the felt)
 			k += 1
 	# Glass over the front and the top.
 	var glass := StandardMaterial3D.new()

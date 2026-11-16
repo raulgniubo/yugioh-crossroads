@@ -676,6 +676,9 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 		_to_gy(ps, t)
 		events.append({"type": "tribute", "player": p, "card": t})
 		events.append_array(EffectRunner.trigger(self, t, "tributed"))
+		# An Equip Card on a Tributed monster goes with it, right now (it used to sit there,
+		# looking active, until the next sweep).
+		events.append_array(_monster_left(t))
 	var zone := ps.free_zone()
 	ps.hand.erase(c)
 	ps.field[zone] = c
@@ -844,6 +847,8 @@ func chain_add(p: int, c: CardInst, target = null, window := "open", subject = n
 		var auto_t = SpellRules.auto_target(self, p, c)
 		var picked := choose(p, Loc.t("Choose a target for %s") % c.cname(), SpellRules.targets(self, p, c), 1, [auto_t] if auto_t != null else [], false, c)
 		target = picked[0] if not picked.is_empty() else auto_t
+		if not manual[p] and auto_t != null:
+			target = auto_t        # (the computer takes the target that is of use to it, never just the first on the list)
 	var link := {"player": p, "card": c, "kind": "trap" if c.is_trap() else "spell", "spec": sp, "target": target,
 			"subject": subject, "window": window, "negated": false, "zone": zone}
 	events.append_array(SpellRules.pay_cost(self, p, c, sp))
@@ -1634,6 +1639,7 @@ func _to_gy(ps: PlayerState, c: CardInst) -> void:
 					_to_gy(players[who], weak)
 					pending_events.append({"type": "tribute", "player": who, "card": weak})
 					pending_events.append_array(EffectRunner.trigger(self, weak, "tributed"))
+					pending_events.append_array(_monster_left(weak))
 			elif back == "lp500":
 				okay = players[who].lp > 500 and choose_option(who, Loc.t("%s: pay 500 LP to put it on top of your Deck?") % c.cname(), ["Pay 500 LP", "Leave it in the Graveyard"], 0, c) == 0
 				if okay:
@@ -2095,6 +2101,8 @@ func fusion_targets(p: int, poly: CardInst = null, from_gy := false, ask := fals
 			continue
 		for mid in mats:
 			var found = null
+			if int(mid) == 0:
+				continue      # "+ 1 monster": taken last, from whatever is left (below)
 			for h in pool_hand:
 				if h.id == mid:
 					found = h
@@ -2119,6 +2127,27 @@ func fusion_targets(p: int, poly: CardInst = null, from_gy := false, ask := fals
 				continue
 			ok = false
 			break
+		# "+ 1 monster": any monster left in the hand or on the field (not a token). The game
+		# takes the weakest; when it is your call you say which.
+		for mid in mats:
+			if int(mid) != 0 or not ok:
+				continue
+			var any: Array = pool_hand.filter(func(h): return h.is_monster()) + pool_field.filter(func(m): return not m.is_token())
+			if any.is_empty():
+				ok = false
+				break
+			var pick = any[0]
+			for x in any:
+				if x.atk() < pick.atk():
+					pick = x
+			if ask:
+				pick = pick1(p, Loc.t("%s: which monster is the other material?") % f.cname(), any, pick, f)
+			if pool_hand.has(pick):
+				pool_hand.erase(pick)
+				used_hand.append(pick)
+			else:
+				pool_field.erase(pick)
+				used_field.append(pick)
 		if not ok:
 			continue
 		if used_field.is_empty() and ps.free_zone() == -1:
@@ -2144,6 +2173,7 @@ func _do_fusion(p: int, plan: Dictionary, banish := false) -> Array:
 			ps.field[z] = null
 			_to_gy(ps, m)
 			events.append({"type": "material", "player": p, "card": m, "from": "field", "zone": z})
+			events.append_array(_monster_left(m))
 	var f: CardInst = plan["card"]
 	ps.extra.erase(f)
 	f.proper = true
@@ -2226,7 +2256,18 @@ func extra_materials(p: int, c: CardInst) -> Array:
 	var rule := material_rule(c)
 	if c.frame() == "xyz":
 		var xf: Dictionary = rule.get("filter", {})
-		var same := mons.filter(func(m): return m.level() == c.level() and m.frame() not in ["xyz", "token"] and _fits(m, xf))
+		# (Lumen, Echo Zenith: "1 Lumen, Echo Spirit you control can be used as a Level 4 material".)
+		var also := str(EffectRunner.fx(c).get("xyz_also", ""))
+		var same := mons.filter(func(m): return m.frame() not in ["xyz", "token"] and ((m.level() == c.level() and _fits(m, xf)) or (also != "" and m.cname() == also)))
+		if also != "":
+			# Only one of them may stand in.
+			var first_also = null
+			for m in same.duplicate():
+				if m.cname() == also and m.level() != c.level():
+					if first_also == null:
+						first_also = m
+					else:
+						same.erase(m)
 		same.sort_custom(func(a, b): return a.atk() < b.atk())
 		# "3 Level 4 monsters" asks for three; most ask for two. "2 Level 3 WATER monsters" asks for WATER.
 		var want := clampi(int(rule.get("count", 2)), 2, 5)
@@ -2357,6 +2398,7 @@ func extra_summon(p: int, c: CardInst, materials: Array = []) -> Array:
 		else:
 			_to_gy(ps, m)
 		events.append({"type": "material", "player": p, "card": m, "from": "field", "zone": z, "overlay": xyz})
+		events.append_array(_monster_left(m))
 	ps.extra.erase(c)
 	c.proper = true
 	events.append_array(_special(p, c, c.frame()))

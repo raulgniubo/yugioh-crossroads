@@ -197,34 +197,66 @@ static func _dress(city: CityBuilder, o: Vector3) -> void:
 	for k in 6:
 		var slot := city.box(Vector3(0.18, 0.006, 0.14), o + Vector3(4.33 + (k % 3) * 0.22, 1.012 + (0.02 if k < 3 else -0.02), -1.53 + (k / 3) * 0.17), city.glow_mat([Color("ffd166"), Color("7cc4ff"), Color("ff7ad9")][k % 3], 0.5), false)
 		slot.rotation.x = -0.25
-	# The shop cat, asleep on the end of the counter.
-	var fur := city.mat(Color(0.9, 0.62, 0.3), 0.95)
-	var cat := o + Vector3(-1.75, 1.08, -2.85)
-	var body := MeshInstance3D.new()
-	var bm := SphereMesh.new()
-	bm.radius = 0.2
-	bm.height = 0.26
-	body.mesh = bm
-	body.material_override = fur
-	body.scale = Vector3(1.5, 1.0, 1.0)
-	body.position = cat
-	city.add_child(body)
+	# The shop cat, asleep on a cushion on the end of the counter. (It used to be one big ball
+	# of fur half sunk into the counter top: nobody could tell what it was.)
+	_cat(city, o + Vector3(1.85, 1.075, -2.9))
+
+
+## A ginger cat curled up asleep on a red cushion: a body, haunches, a head tucked in with two
+## ears and closed eyes, stripes, and a tail wrapped round the front. `at` is where the cushion
+## rests (the top of whatever it is on). About 40 cm from end to end.
+static func _cat(city: CityBuilder, at: Vector3) -> void:
+	var fur := city.mat(Color(0.93, 0.6, 0.26), 0.95)
+	var pale := city.mat(Color(0.98, 0.9, 0.78), 0.95)
+	var stripe := city.mat(Color(0.72, 0.4, 0.14), 0.95)
+	var ink := city.mat(Color(0.14, 0.1, 0.08), 0.6)
+	var soft := city.soft_edges
+	city.soft_edges = true
+	city.box(Vector3(0.52, 0.06, 0.4), at + Vector3(0, 0.03, 0), city.mat(Color(0.72, 0.16, 0.2), 0.95), false)
+	city.soft_edges = soft
+	var root := Node3D.new()
+	root.position = at + Vector3(0, 0.06, 0)
+	root.rotation.y = 0.5
+	city.add_child(root)
+	var ball := func(r: float, pos: Vector3, m: Material, squash: Vector3) -> MeshInstance3D:
+		var mi := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = r
+		sm.height = r * 2.0
+		sm.radial_segments = 16
+		sm.rings = 8
+		mi.mesh = sm
+		mi.material_override = m
+		mi.position = pos
+		mi.scale = squash
+		root.add_child(mi)
+		return mi
+	# Body and haunches: a low loaf.
+	var body: MeshInstance3D = ball.call(0.1, Vector3(0, 0.075, 0), fur, Vector3(1.7, 0.78, 1.25))
+	ball.call(0.085, Vector3(-0.1, 0.075, 0.02), fur, Vector3(1.1, 0.9, 1.3))
 	var breathe := body.create_tween().set_loops()
-	breathe.tween_property(body, "scale:y", 1.12, 1.4).set_trans(Tween.TRANS_SINE)
-	breathe.tween_property(body, "scale:y", 1.0, 1.4).set_trans(Tween.TRANS_SINE)
-	var head := MeshInstance3D.new()
-	var hm := SphereMesh.new()
-	hm.radius = 0.11
-	hm.height = 0.2
-	head.mesh = hm
-	head.material_override = fur
-	head.position = cat + Vector3(0.27, 0.0, 0.08)
-	city.add_child(head)
+	breathe.tween_property(body, "scale:y", 0.84, 1.5).set_trans(Tween.TRANS_SINE)
+	breathe.tween_property(body, "scale:y", 0.78, 1.5).set_trans(Tween.TRANS_SINE)
+	for k in 3:
+		ball.call(0.1, Vector3(-0.07 + k * 0.065, 0.082, 0), stripe, Vector3(0.16, 0.76, 1.2))
+	# Head, resting on the front paws, turned a little to one side.
+	var head := Vector3(0.17, 0.07, 0.05)
+	ball.call(0.062, head, fur, Vector3(1.05, 0.9, 1.0))
+	ball.call(0.03, head + Vector3(0.045, -0.018, 0.0), pale, Vector3(1.0, 0.8, 1.2))      # muzzle
+	ball.call(0.008, head + Vector3(0.072, -0.01, 0.0), city.mat(Color(0.95, 0.55, 0.6), 0.8), Vector3.ONE)   # nose
 	for e: float in [-1.0, 1.0]:
-		var ear := city.cyl(0.0, 0.04, 0.08, cat + Vector3(0.27 + e * 0.06, 0.12, 0.08), fur, null, 4)
+		var ear := city.cyl(0.0, 0.024, 0.05, Vector3.ZERO, fur, root, 4)
+		ear.position = head + Vector3(-0.005, 0.058, e * 0.036)
+		ear.rotation.x = e * 0.25
 		ear.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var tail := city.cyl(0.03, 0.035, 0.36, cat + Vector3(-0.3, -0.06, 0.12), fur)
-	tail.rotation = Vector3(PI / 2, 0, 0.9)
+		# Closed eyes: two short dark lines.
+		var eye: MeshInstance3D = ball.call(0.012, head + Vector3(0.05, 0.012, e * 0.026), ink, Vector3(0.35, 0.22, 1.2))
+		eye.rotation.x = e * 0.3
+		ball.call(0.022, Vector3(0.15, 0.022, e * 0.04 + 0.05), pale, Vector3(1.5, 0.7, 0.9))      # front paws
+	# The tail, wrapped round to the front.
+	for k in 8:
+		var a := -2.4 + k * 0.33
+		ball.call(0.02 - k * 0.001, Vector3(-0.02 + cos(a) * 0.17, 0.022, 0.03 + sin(a) * 0.14), stripe if k % 2 == 0 else fur, Vector3(1.3, 0.9, 1.3))
 
 
 static func _sign(city: CityBuilder, text: String, pos: Vector3, rot: float, color: Color, size: int, one_face := false) -> void:

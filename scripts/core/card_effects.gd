@@ -25,6 +25,15 @@ const FX := {
 	# ---- Your partner
 	"Lumen, Echo Spirit": {"note": "Normal Summoned: add 1 monster with 1500 or less ATK from your Deck to your hand. Destroyed by battle: you take no battle damage this turn.",
 		"summon": [["search", {"max_atk": 1500}]], "death": [["no_battle_damage"]]},
+	# ---- Her forms (cards of this game)
+	"Lumen, Echo Chorus": {"note": "Fusion Summoned: draw 1 card. Once per turn, it is not destroyed by battle. Sent from the field to the Graveyard: Special Summon 1 \"Lumen, Echo Spirit\" from your Graveyard in Defense Position.",
+		"fusion": [["draw", 1]], "survive_once": true, "gy": [["special", "gy", {"name": "Lumen, Echo Spirit"}, "def", 1]]},
+	"Lumen, Echo Comet": {"note": "Synchro Summoned: destroy 1 card your opponent controls. Piercing battle damage.", "synchro": [["destroy", "any_pick"]], "piercing": true},
+	"Lumen, Echo Zenith": {"note": "1 \"Lumen, Echo Spirit\" you control can be used as a Level 4 material for this card. Once per turn: detach 1 material; Special Summon 1 \"Lumen\" monster from your Graveyard.",
+		"xyz_also": "Lumen, Echo Spirit",
+		"ignite": {"cost": "detach", "do": [["special", "gy", {"has": "Lumen"}, "any", 1]], "label": "Detach 1: Special Summon a \"Lumen\" monster from your Graveyard"}},
+	"Lumen, Echo Radiant": {"note": "Cannot be Normal Summoned or Set. Must be Special Summoned by \"Echo Resonance\". When it is: destroy 1 card your opponent controls. Once per turn, it is not destroyed by battle. Destroys a monster by battle: gain 1000 Life Points.",
+		"no_special": true, "special_only": [["destroy", "any_pick"]], "survive_once": true, "kill": [["heal", 1000]]},
 	# ---- The Duelist's Vault: classic monsters from outside the story decks
 	"Giant Rat": {"note": "Destroyed by battle and sent to the Graveyard: Special Summon a EARTH monster with 1500 or less ATK from your Deck in Attack Position.", "death": [["special", "deck", {"attr": "EARTH", "max_atk": 1500}, "atk", 1]]},
 	"Shining Angel": {"note": "Destroyed by battle and sent to the Graveyard: Special Summon a LIGHT monster with 1500 or less ATK from your Deck in Attack Position.", "death": [["special", "deck", {"attr": "LIGHT", "max_atk": 1500}, "atk", 1]]},

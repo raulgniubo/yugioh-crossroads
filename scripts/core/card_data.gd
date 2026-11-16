@@ -19,6 +19,20 @@ const CARDS := {
 	# Your partner. She is in the Echo Deck from the first day and grows with every bond.
 	99200001: {"name": "Lumen, Echo Spirit", "frame": "effect", "atk": 500, "def": 500, "level": 2, "attribute": "LIGHT", "race": "Fairy", "partner": true,
 		"text": "Normal Summoned: add 1 monster with 1500 or less ATK from your Deck to your hand. Destroyed by battle: you take no battle damage this turn. Gains 300 ATK and DEF for every bond you have made."},
+	# Her forms, one from each world, and the cards around her. All of them are cards of this
+	# game (see ORIGINALS): nothing here exists outside it, so their text is whatever we print.
+	99200002: {"name": "Lumen, Echo Chorus", "frame": "fusion", "atk": 2300, "def": 2000, "level": 6, "attribute": "LIGHT", "race": "Fairy", "materials": [99200001, 0],
+		"text": "\"Lumen, Echo Spirit\" + 1 monster\nFusion Summoned: draw 1 card. Once per turn, it is not destroyed by battle. Sent from the field to the Graveyard: Special Summon 1 \"Lumen, Echo Spirit\" from your Graveyard in Defense Position."},
+	99200003: {"name": "Lumen, Echo Comet", "frame": "synchro", "atk": 2400, "def": 1800, "level": 6, "attribute": "LIGHT", "race": "Fairy",
+		"text": "\"Lumen, Echo Spirit\" + 1 or more non-Tuner monsters\nSynchro Summoned: destroy 1 card your opponent controls. Piercing battle damage."},
+	99200004: {"name": "Lumen, Echo Zenith", "frame": "xyz", "atk": 2500, "def": 2000, "level": 4, "attribute": "LIGHT", "race": "Fairy",
+		"text": "2 Level 4 monsters\n1 \"Lumen, Echo Spirit\" you control can be used as a Level 4 material for this card. Once per turn: detach 1 material; Special Summon 1 \"Lumen\" monster from your Graveyard."},
+	99200005: {"name": "Lumen, Echo Radiant", "frame": "effect", "atk": 3000, "def": 2500, "level": 8, "attribute": "LIGHT", "race": "Fairy",
+		"text": "Cannot be Normal Summoned or Set. Must be Special Summoned by \"Echo Resonance\". When it is: destroy 1 card your opponent controls. Once per turn, it is not destroyed by battle. Destroys a monster by battle: gain 1000 Life Points."},
+	99200011: {"name": "Echo Resonance", "frame": "spell",
+		"text": "Tribute 1 \"Lumen, Echo Spirit\" you control that was not Summoned this turn (any, if your Life Points are 2000 or less): Special Summon 1 \"Lumen, Echo Radiant\" from your hand or Deck."},
+	99200012: {"name": "Echo Call", "frame": "spell", "text": "Add 1 \"Lumen\" monster from your Deck to your hand."},
+	99200013: {"name": "Echo Veil", "frame": "trap", "text": "When an opponent's monster declares an attack: negate the attack. Then, if you control a \"Lumen\" monster, draw 1 card."},
 	# ---------------------------------------------------------------- Yugi
 	46986414: {"name": "Dark Magician", "frame": "normal", "atk": 2500, "def": 2100, "level": 7, "attribute": "DARK", "race": "Spellcaster"},
 	70781052: {"name": "Summoned Skull", "frame": "normal", "atk": 2500, "def": 1200, "level": 6, "attribute": "DARK", "race": "Fiend"},
@@ -145,6 +159,27 @@ const MONSTER_EFFECTS := {
 
 ## Filled from the downloaded card database (tools/fetch_cards.py), if present.
 const MIN_DECK := 40
+## The cards made for this game, with their place in the Crossroads set (CR-001 ...). They
+## carry the Crossroads mark on their face and in every card list.
+const ORIGINALS := [99200001, 99200002, 99200003, 99200004, 99200005, 99200011, 99200012, 99200013,
+	99100001, 99100002, 99100003, 99100004, 99100005, 99100006, 99100007, 99100008, 99100009, 99100010]
+## Lumen's cards, and the story stage (see StoryProgress.stage) that hands each one over:
+## [stage, id, copies]. Stage 1 is the prologue done, 2 Domino, 3 the Academy, 4 the 5D's
+## worlds, 5 Heartland.
+const LUMEN_GIFTS := [[1, 99200012, 2], [1, 99200013, 2], [2, 99200011, 2], [2, 99200005, 1], [3, 99200002, 1], [4, 99200003, 1], [5, 99200004, 1]]
+const LUMEN_TUNER_STAGE := 4
+
+
+static func is_original(id: int) -> bool:
+	return ORIGINALS.has(id)
+
+
+## "CR-007": a card's number in the Crossroads set ("" for any other card).
+static func set_code(id: int) -> String:
+	var i := ORIGINALS.find(id)
+	return "" if i == -1 else "CR-%03d" % (i + 1)
+
+
 ## Lumen, your partner spirit, as a card.
 const LUMEN := 99200001
 ## The Speed Spells every rider carries in a Turbo Duel.
@@ -227,23 +262,22 @@ const NAMED_DECKS := {
 	# The three decks a new duelist picks from (see Collection.STARTERS): the same strength, three
 	# ways to play. Forty cards each, your partner Lumen in every one, nothing rare, no card
 	# without its full printed effect.
-	"starter_warrior": {"name": "First Blade", "ids": {99200001: 1}, "cards": {"Celtic Guardian": 2, "Axe Raider": 2, "Dark Blade": 3, "Gene-Warped Warwolf": 1,
-		"Hayabusa Knight": 2, "Goblin Attack Force": 2, "Twin-Sword Marauder": 1, "Freed the Brave Wanderer": 1, "Exiled Force": 1, "D.D. Warrior Lady": 1,
+	"starter_warrior": {"name": "First Blade", "ids": {99200001: 1}, "cards": {"Celtic Guardian": 2, "Axe Raider": 2, "Warrior Dai Grepher": 2, "Dark Blade": 2, "Gene-Warped Warwolf": 1,
+		"Hayabusa Knight": 2, "Goblin Attack Force": 1, "Twin-Sword Marauder": 1, "Freed the Brave Wanderer": 1, "Exiled Force": 1, "D.D. Warrior Lady": 1,
 		"Goblindbergh": 1, "Max Warrior": 1, "Shield Warrior": 1, "Airknight Parshath": 1,
-		"Reinforcement of the Army": 1, "The Warrior Returning Alive": 1, "Lightning Blade": 1, "Axe of Despair": 1, "Rush Recklessly": 2, "Smashing Ground": 1, "Fissure": 1,
-		"Swords of Revealing Light": 1, "Mystical Space Typhoon": 1, "Pot of Greed": 1, "Sogen": 1,
-		"Sakuretsu Armor": 2, "Trap Hole": 2, "Waboku": 1, "Draining Shield": 1, "Magic Cylinder": 1}},
+		"Reinforcement of the Army": 1, "The Warrior Returning Alive": 1, "Lightning Blade": 1, "Axe of Despair": 1, "Legendary Sword": 1, "Rush Recklessly": 2, "Smashing Ground": 1, "Fissure": 1,
+		"Swords of Revealing Light": 1, "Sogen": 1,
+		"Sakuretsu Armor": 1, "Trap Hole": 2, "Waboku": 2, "Enchanted Javelin": 1, "Threatening Roar": 1, "Magic Cylinder": 1}},
 	"starter_arcane": {"name": "First Spell", "ids": {99200001: 1}, "cards": {"Gemini Elf": 3, "Neo the Magic Swordsman": 2, "Mystical Elf": 2, "Gagaga Magician": 2,
 		"Old Vindictive Magician": 2, "Magician of Faith": 2, "Breaker the Magical Warrior": 1, "Man-Eater Bug": 1, "Sangan": 1, "Kuriboh": 1,
 		"La Jinn the Mystical Genie of the Lamp": 1, "Dark Magician Girl": 1, "Dark Magician": 1,
-		"Book of Moon": 1, "Swords of Revealing Light": 1, "Mystical Space Typhoon": 1, "Pot of Greed": 1, "Mage Power": 1, "Book of Secret Arts": 2, "Yami": 1, "Fissure": 1,
+		"Book of Moon": 1, "Swords of Revealing Light": 1, "Remove Trap": 1, "Dian Keto the Cure Master": 1, "Mage Power": 1, "Book of Secret Arts": 2, "Yami": 1, "Fissure": 1,
 		"Lightning Vortex": 1, "Hinotama": 1,
 		"Spellbinding Circle": 2, "Magic Cylinder": 1, "Shadow Spell": 1, "Magic Jammer": 1, "Waboku": 2, "Trap Hole": 1}},
-	"starter_dragon": {"name": "First Flame", "ids": {99200001: 1}, "cards": {"Luster Dragon": 3, "Alexandrite Dragon": 2, "Baby Dragon": 2, "Masked Dragon": 2, "Spear Dragon": 2,
-		"Axe Dragonute": 2, "Troop Dragon": 2, "Lancer Lindwurm": 1, "Luster Dragon #2": 2, "Curse of Dragon": 1, "Tri-Horned Dragon": 1,
-		"Mountain": 2, "Dragon Treasure": 1, "Hammer Shot": 1, "Big Bang Shot": 1, "Pot of Greed": 1, "Swords of Revealing Light": 1, "Mystical Space Typhoon": 1, "Fissure": 1,
-		"Smashing Ground": 1, "Rush Recklessly": 1,
-		"Sakuretsu Armor": 2, "Trap Hole": 2, "Waboku": 1, "Negate Attack": 1, "Call of the Haunted": 1, "Draining Shield": 1}},
+	"starter_dragon": {"name": "First Flame", "ids": {99200001: 1}, "cards": {"Luster Dragon": 2, "Alexandrite Dragon": 1, "Spear Dragon": 2, "Axe Dragonute": 1,
+		"Koumori Dragon": 2, "Blackland Fire Dragon": 2, "Baby Dragon": 2, "Masked Dragon": 2, "Troop Dragon": 2, "Luster Dragon #2": 2, "Curse of Dragon": 1, "Tri-Horned Dragon": 1,
+		"Mountain": 2, "Dragon Treasure": 1, "Rush Recklessly": 2, "Stop Defense": 1, "Dian Keto the Cure Master": 1, "Hammer Shot": 1, "Big Bang Shot": 1, "Swords of Revealing Light": 1, "Fissure": 1,
+		"Sakuretsu Armor": 1, "Trap Hole": 2, "Waboku": 2, "Negate Attack": 1, "Enchanted Javelin": 1, "Threatening Roar": 1}},
 	# Story bosses.
 	"curator": {"name": "The Collection", "cards": {"Blue-Eyes White Dragon": 2, "Dark Magician": 2, "Red-Eyes Black Dragon": 1, "Summoned Skull": 2,
 		"Elemental HERO Neos": 2, "Cyber Dragon": 2, "Zaborg the Thunder Monarch": 1, "Vorse Raider": 2, "Gemini Elf": 2, "La Jinn the Mystical Genie of the Lamp": 2,
@@ -355,6 +389,9 @@ const NAMED_DECKS := {
 }
 
 
+static var lumen_tuner_test := false      # tests: Lumen as a Tuner without a story save
+
+
 static func get_card(id: int) -> Dictionary:
 	var d: Dictionary
 	if TOKENS.has(id):
@@ -368,6 +405,13 @@ static func get_card(id: int) -> Dictionary:
 		var grow := 300 * mini(5, StoryProgress.bonds())
 		d["atk"] = 500 + grow
 		d["def"] = 500 + grow
+		# What she learned in the worlds of the riders: she is a Tuner from then on.
+		if lumen_tuner_test or Unlocks.stage() >= LUMEN_TUNER_STAGE:
+			d["tuner"] = true
+			d["text"] = str(d["text"]) + " She is a Tuner."
+	if ORIGINALS.has(id):
+		d["original"] = true
+		d["desc"] = str(d.get("text", ""))      # (the rules read a card's own text for how it is summoned)
 	var frame: String = d.get("frame", "")
 	d["kind"] = "trap" if frame == "trap" else ("spell" if frame == "spell" else "monster")
 	return d

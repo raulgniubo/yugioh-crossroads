@@ -288,6 +288,18 @@ static func uncover_3d(screen: Control) -> void:
 		screen.get_tree().root.disable_3d = false
 
 
+## Room inside a scrolling area, between its edge and what scrolls in it. A slanted button
+## reaches a few pixels past its own box; flush against the edge of a scrolling area, that
+## corner is cut off. With this the corner has somewhere to be.
+static func pad_scroll(sc: ScrollContainer, left := 8, right := 0, top := 2, bottom := 6) -> void:
+	var sb := StyleBoxEmpty.new()
+	sb.content_margin_left = left
+	sb.content_margin_right = right
+	sb.content_margin_top = top
+	sb.content_margin_bottom = bottom
+	sc.add_theme_stylebox_override("panel", sb)
+
+
 static func label(text: String, size := 20, color := TEXT, font: Font = null) -> Label:
 	var l := Label.new()
 	l.text = text

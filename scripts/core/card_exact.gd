@@ -262,7 +262,7 @@ static func ok(d: Dictionary) -> bool:
 	var name := str(d.get("name", ""))
 	if str(d.get("kind", "monster")) != "monster":
 		return not NOT_YET.has(name)
-	if str(d.get("frame", "")) == "normal" or name == "Lumen, Echo Spirit":
+	if str(d.get("frame", "")) == "normal" or bool(d.get("original", false)) or CardData.ORIGINALS.has(int(d.get("id", 0))):   # (a card of this game says what we print on it)
 		return true
 	if not CardEffects.has(name) and not CardData.MONSTER_EFFECTS.has(name):
 		return true   # a Fusion or Ritual monster whose text is only how to summon it

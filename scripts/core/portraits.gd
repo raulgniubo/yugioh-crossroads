@@ -41,6 +41,8 @@ func has_real(key: String) -> bool:
 func get_portrait(key: String, hi := false) -> Texture2D:
 	if key == "lumen":
 		return LumenSpirit.portrait(self)
+	if Avatars.has_avatar(key):
+		key = Avatars.dressed(key)      # in a dorm jacket for this duel: that picture, not the usual one
 	if hi and Avatars.has_avatar(key):
 		Avatars.portrait(key, true)
 	if _cache.has(key):

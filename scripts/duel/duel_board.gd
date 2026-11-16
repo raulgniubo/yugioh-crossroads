@@ -114,8 +114,10 @@ func table_basis(p: int, face_up: bool, attack_pos: bool) -> Basis:
 	var yaw := 0.0 if p == 0 else PI
 	if not attack_pos:
 		yaw += PI / 2.0
-	var pitch := -PI / 2.0 if face_up else PI / 2.0
-	return Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch)
+	# Face-down is the same card turned over along its long side, like turning a page: the picture on
+	# the back then reads the right way up from its owner's seat (it used to be upside down).
+	var b := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, -PI / 2.0)
+	return b if face_up else b * Basis(Vector3.UP, PI)
 
 
 # ------------------------------------------------------------------ build
@@ -2193,7 +2195,7 @@ func screen_pos(inst) -> Vector2:
 
 # ------------------------------------------------------------------ dropping a card from the hand
 
-var _drop_bands: Array = []      # [front row, back row]: {node, mat, label, on}
+var _drop_bands: Array = []      # per row: the whole row, its left half, its right half: {node, mat, label, on, row, half}
 
 
 ## Where on the table a point of the screen lands.
@@ -2221,6 +2223,12 @@ func drop_row(screen: Vector2) -> int:
 	return 0 if w.z < (MONSTER_ROW + SPELL_ROW) / 2.0 else 1
 
 
+## Where on your rows a dropped card lands: [row, half]. row as drop_row; half 0 = left, 1 = right.
+func drop_cell(screen: Vector2) -> Array:
+	var w := table_point(screen)
+	return [drop_row(screen), 0 if w.x < 0.0 else 1]
+
+
 ## The opponent's monster nearest to a point of the screen, if one is close enough.
 func enemy_card_at(screen: Vector2, monsters: Array) -> Card3D:
 	var best: Card3D = null
@@ -2238,38 +2246,49 @@ func enemy_card_at(screen: Vector2, monsters: Array) -> Card3D:
 
 ## Light up your rows while a card is being dragged. labels = [front row text, back row text];
 ## an empty text leaves that row dark.
-func show_drop(labels: Array, on: bool) -> void:
+func show_drop(rows: Array, on: bool) -> void:
+	# rows = [front row, back row]; each a list of the words to show: none (the row stays dark),
+	# one (the whole row), or two (its left half and its right half).
 	if _drop_bands.is_empty():
 		if not on:
 			return
+		var wide := ZONE_SPACING * 5.0 + 0.3
 		for r in 2:
 			var z := MONSTER_ROW if r == 0 else SPELL_ROW
-			var mi := MeshInstance3D.new()
-			var pm := PlaneMesh.new()
-			pm.size = Vector2(ZONE_SPACING * 5.0 + 0.3, 1.2)
-			mi.mesh = pm
-			var m := StandardMaterial3D.new()
-			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-			m.albedo_color = Color(theme["accent"], 0.12)
-			mi.material_override = m
-			mi.position = Vector3(0, 0.03, z)
-			add_child(mi)
-			var l := Label3D.new()
-			l.font = UITheme.title_font()
-			l.font_size = 110
-			l.pixel_size = 0.0042
-			l.outline_size = 20
-			l.outline_modulate = Color(0, 0, 0, 0.75)
-			l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-			l.no_depth_test = true
-			l.position = Vector3(0, 0.5, z)
-			add_child(l)
-			_drop_bands.append({"node": mi, "mat": m, "label": l, "on": false})
-	for r in 2:
-		var b: Dictionary = _drop_bands[r]
-		var text := str(labels[r]) if on and r < labels.size() else ""
+			# [x of its middle, width, half it answers to (-1: the whole row)]
+			for part in [[0.0, wide, -1], [-wide * 0.25 - 0.03, wide * 0.5 - 0.06, 0], [wide * 0.25 + 0.03, wide * 0.5 - 0.06, 1]]:
+				var mi := MeshInstance3D.new()
+				var pm := PlaneMesh.new()
+				pm.size = Vector2(float(part[1]), 1.2)
+				mi.mesh = pm
+				var m := StandardMaterial3D.new()
+				m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+				m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+				m.albedo_color = Color(theme["accent"], 0.12)
+				mi.material_override = m
+				mi.position = Vector3(float(part[0]), 0.03, z)
+				mi.visible = false
+				add_child(mi)
+				var l := Label3D.new()
+				l.font = UITheme.title_font()
+				l.font_size = 110 if int(part[2]) == -1 else 92
+				l.pixel_size = 0.0042
+				l.outline_size = 20
+				l.outline_modulate = Color(0, 0, 0, 0.75)
+				l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+				l.no_depth_test = true
+				l.position = Vector3(float(part[0]), 0.5, z)
+				l.visible = false
+				add_child(l)
+				_drop_bands.append({"node": mi, "mat": m, "label": l, "on": false, "row": r, "half": int(part[2])})
+	for b in _drop_bands:
+		var words: Array = rows[int(b["row"])] if on and int(b["row"]) < rows.size() else []
+		var text := ""
+		if words.size() == 1 and int(b["half"]) == -1:
+			text = str(words[0])
+		elif words.size() >= 2 and int(b["half"]) >= 0:
+			text = str(words[int(b["half"])])
 		b["on"] = text != ""
 		(b["node"] as Node3D).visible = text != ""
 		(b["label"] as Label3D).visible = text != ""
@@ -2279,15 +2298,17 @@ func show_drop(labels: Array, on: bool) -> void:
 func _update_drop() -> void:
 	if _drop_bands.is_empty():
 		return
-	var row := drop_row(get_viewport().get_mouse_position())
-	for r in 2:
-		var b: Dictionary = _drop_bands[r]
+	var cell := drop_cell(get_viewport().get_mouse_position())
+	for b in _drop_bands:
 		if not b["on"]:
 			continue
-		var hot := r == row
+		var hot: bool = int(b["row"]) == int(cell[0]) and (int(b["half"]) == -1 or int(b["half"]) == int(cell[1]))
 		var pulse := 0.5 + 0.5 * sin(_time * 6.0)
-		(b["mat"] as StandardMaterial3D).albedo_color = Color(Color("ffd98a") if hot else Color(theme["accent"]), (0.3 + 0.12 * pulse) if hot else (0.08 + 0.05 * pulse))
-		(b["label"] as Label3D).modulate = Color("fff2c8") if hot else Color(Color(theme["accent"]).lightened(0.5), 0.75)
+		# Face-up plays in the field's own color, Set (the right half) in a cooler one, so the two
+		# halves of a row read as two different places to drop.
+		var base: Color = Color("9fb4ff") if int(b["half"]) == 1 else Color(theme["accent"])
+		(b["mat"] as StandardMaterial3D).albedo_color = Color(Color("ffd98a") if hot else base, (0.3 + 0.12 * pulse) if hot else (0.09 + 0.05 * pulse))
+		(b["label"] as Label3D).modulate = Color("fff2c8") if hot else Color(base.lightened(0.5), 0.8)
 		(b["label"] as Label3D).position.y = 0.5 + (0.12 if hot else 0.0)
 
 
