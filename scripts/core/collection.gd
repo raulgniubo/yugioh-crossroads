@@ -1284,6 +1284,12 @@ func pool(era: String) -> Array:
 			continue
 		for id in CardData.deck_list(str(d["deck"])) + CardData.extra_list(str(d["deck"])):
 			ids[id] = true
+		# ...and every card they are known for that works here, whether their deck plays it yet or not.
+		var wish: Dictionary = SignatureDecks.WISH.get(str(k), {})
+		for n in (wish.get("main", []) as Array) + (wish.get("extra", []) as Array):
+			var wid: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
+			if wid != 0 and SignatureDecks._works(wid):
+				ids[wid] = true
 	_pools[era] = ids.keys()
 	return _pools[era]
 

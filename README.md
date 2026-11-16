@@ -5,6 +5,41 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.27
+
+**The first batch of missing cards: Mai, Rex and Alexis get theirs, each with its full printed effect.**
+
+Built in this version, sentence by sentence against the card text, each with a test:
+
+- **Amazoness Swords Woman:** the battle damage you would take from a battle involving her goes to your opponent instead.
+- **Amazoness Fighter:** you take no battle damage from battles involving her.
+- **Harpie Lady Sisters** and **Elegant Egotist:** the Sisters cannot be Normal Summoned or Set and cannot come back from the Graveyard before Elegant Egotist has summoned them once. Elegant Egotist needs a Harpie Lady on the field (a card that counts as her on the field does) and brings 1 Harpie Lady or Harpie Lady Sisters from your hand or Deck: you pick.
+- **Cyber Shield:** only on Harpie Lady or Harpie Lady Sisters, +500 ATK.
+- **Mirror Wall:** an opponent's monster that attacks into it is halved, and stays halved for as long as the wall stands. In your Standby Phase you are asked: pay 2000 Life Points or let it go.
+- **Black Stego:** attacked in Attack Position, it turns to Defense.
+- **Babycerasaurus:** destroyed by a card effect and sent to the Graveyard, it brings a Level 4 or lower Dinosaur from the Deck.
+- **Hyper Hammerhead:** at the end of the Damage Step, an opponent's monster that battled it and was not destroyed goes back to the hand (also when Hammerhead itself was destroyed).
+- **Element Saurus:** +500 ATK while a FIRE monster is on the field; while an EARTH monster is on the field, the effects of Effect Monsters it destroys by battle are negated.
+- **Fossil Excavation:** discard 1, bring a Dinosaur back from your Graveyard with its effects negated; the two are tied together like Call of the Haunted.
+- **Cyber Blader**, now whole: by how many monsters your opponent controls, 1 not destroyed by battle, 2 ATK doubled, and the part that was missing, 3: your opponent's activated card effects are negated.
+- **Machine Angel Ritual:** summons the Cyber Angels (Alexis had them in her deck with no way to summon them), and from the Graveyard you can banish it to keep a LIGHT monster of yours from being destroyed.
+- **Fusion Weapon** and **Ritual Weapon:** +1500 ATK and DEF, only on a Level 6 or lower Fusion (or Ritual) Monster.
+
+Their decks:
+
+- **Alexis** plays only her own cards now, and has Cyber Blader in her Extra Deck. Two of hers are still to build (Doble Passe, Prima Light).
+- **Mai:** Amazoness Fighter and Swords Woman, Harpie Lady Sisters, Elegant Egotist x3, Cyber Shield, Mirror Wall, Electro-Whip. Out: Pot of Greed, Fissure, Follow Wind, Hinotama, Dian Keto. Four to build (Amazoness Archers, Amazoness Chain Master, Harpies' Hunting Ground, Shadow of Eyes).
+- **Rex:** Black Stego, Babycerasaurus, Hyper Hammerhead, Element Saurus, Fossil Excavation. Out: Fissure, Rush Recklessly, Hammer Shot, Hinotama, Dian Keto. Five to build (Giant Rex, Hunting Instinct, Survival Instinct, Tail Swipe, Ultra Evolution Pill).
+- Yugi also got Berfomet, Kite got Galaxy Zero.
+
+Card shops: an era's packs now hold every card its duelists are known for that works here, whether a deck plays it yet or not. So a card built for a duelist shows up in that era's pack the same day (before, a pack only held what was in the decks).
+
+A hole closed: a monster with an effect that nobody had written rules for could have counted as "has no effect" and gone into a deck as a plain monster. The check that lets a card into a duelist's deck now asks for a Normal Monster, a monster on the exact list, or a Fusion or Ritual Monster whose text really is only how to summon it. Nothing had slipped through (I checked every deck), but the list of what is "ready" was too generous and is right now.
+
+From here on the target for every duelist is their best deck, the late one with everything they ended up with (Yusei with Shooting Star Dragon and Shooting Quasar Dragon, and so on), not their first.
+
+Not done or not checked: 567 cards still to build across the 24 duelists. The new cards are tested one by one and the changed decks were played by the test duels, but nobody watched a duel with them, and the computer does not yet play any of them cleverly (it will summon and attack with them, it does not plan around Mirror Wall or Elegant Egotist). Cyber Blader's negation covers effects that go on the chain and monster effects that trigger; a few older monster effects written before the chain existed may slip past it. Mirror Wall's halving is applied to a monster from the moment it declares an attack into the wall.
+
 ## What is in 0.33.26
 
 **The duelists and their own decks, first step: see any deck before you pick, the list of what each one is missing, and every card of theirs that already works goes in.**

@@ -869,6 +869,11 @@ func chain_resolve() -> Array:
 		var p: int = link["player"]
 		var sp: Dictionary = link["spec"]
 		var ps := players[p]
+		# Cyber Blader, while its opponent controls exactly 3 monsters: "Your opponent's activated card
+		# effects are negated."
+		if not link["negated"] and EffectRunner.blader_negates(self, p):
+			link["negated"] = true
+			events.append({"type": "effect", "player": opponent(p), "card": null, "text": Loc.t("Cyber Blader negates %s") % c.cname()})
 		if link["kind"] == "fx":
 			# A monster effect. It still resolves if the monster has left the field.
 			if link["negated"] or c.negated:
@@ -1282,6 +1287,11 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	pending_attack = {"player": p, "attacker": attacker, "target": target, "negated": false,
 			"opp_count": players[opponent(p)].monsters().size()}
 	var events := paid + [{"type": "attack", "player": p, "card": attacker, "target": target}]
+	# A Mirror Wall already standing on the other side halves whatever attacks into it.
+	for st in players[opponent(p)].spells:
+		if st != null and st.face_up and SpellRules.spec(st).get("halve_attackers", false) and not attacker.has_meta("mirror_wall"):
+			attacker.set_meta("mirror_wall", st)
+			events.append({"type": "effect", "player": opponent(p), "card": st, "text": Loc.t("%s: %s loses half its ATK") % [st.cname(), attacker.cname()]})
 	if target != null and target.face_up:
 		var tf := EffectRunner.fx(target)
 		# Number 39: Utopia: targeted for an attack with no material left, it is destroyed.
@@ -1405,6 +1415,16 @@ func resolve_attack() -> Array:
 			if EffectRunner.fx(target).get("double_damage_attacked", false):
 				dmg *= 2
 			events.append_array(_battle_damage(p, dmg, target, attacker))
+	# Hyper Hammerhead: "At the end of the Damage Step, if an opponent's monster that battled this card
+	# is not destroyed: return that opponent's monster to the hand."
+	if not is_over() and target != null:
+		for pair in [[attacker, target], [target, attacker]]:
+			var mine: CardInst = pair[0]
+			var theirs: CardInst = pair[1]
+			var on_field: bool = players[0].field.has(theirs) or players[1].field.has(theirs)
+			if mine.face_up and not mine.negated and EffectRunner.fx(mine).get("bounce_survivor", false) and on_field and (players[0].field.has(mine) or players[1].field.has(mine) or players[mine.owner].gy.has(mine)):
+				events.append({"type": "effect", "player": mine.owner, "card": mine, "text": Loc.t("%s sends %s back to the hand") % [mine.cname(), theirs.cname()]})
+				events.append_array(_bounce(theirs))
 	if not is_over():
 		if players[opp].lp < lp_opp and players[p].field.has(attacker):
 			events.append_array(EffectRunner.trigger(self, attacker, "damage"))
@@ -1459,6 +1479,11 @@ func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 			if h.face_up and EffectRunner.fx(h).get("fiend_negate", false):
 				loser.negated = true
 				loser.negated_turn = turn
+	# Element Saurus, while an EARTH monster is on the field: "Negate the effects of Effect Monsters
+	# destroyed by battle with this card."
+	if winner_c.face_up and not winner_c.negated and EffectRunner.fx(winner_c).get("element_saurus", false) and EffectRunner.attr_on_field(self, "EARTH"):
+		loser.negated = true
+		loser.negated_turn = turn
 	var loser_lv := loser.level()
 	var events := _battle_destroy(loser)
 	var died := not players[loser.owner].field.has(loser) and players[loser.owner].gy.has(loser)
@@ -1518,7 +1543,15 @@ func _after_attack(attacker: CardInst, target = null) -> Array:
 ## ATK including effects. `attacking` = it's the attacker in this battle; vs = the other monster.
 func atk_of(c: CardInst, attacking: bool, vs: CardInst = null, battling := false) -> int:
 	var v := c.atk()
-	return maxi(0, v + EffectRunner.atk_bonus(self, c, attacking, vs, battling) + SpellRules.atk_bonus(self, c, attacking and battling, vs))
+	var total := maxi(0, v + EffectRunner.atk_bonus(self, c, attacking, vs, battling) + SpellRules.atk_bonus(self, c, attacking and battling, vs))
+	# Mirror Wall: a monster that attacked into it stays at half its ATK for as long as the wall stands.
+	if c.has_meta("mirror_wall"):
+		var wall = c.get_meta("mirror_wall")
+		if wall != null and wall.face_up and players[opponent(c.owner)].spells.has(wall) and (players[0].field.has(c) or players[1].field.has(c)):
+			total = int(ceil(total / 2.0))
+		else:
+			c.remove_meta("mirror_wall")
+	return total
 
 
 func def_of(c: CardInst) -> int:
@@ -1541,6 +1574,16 @@ func _battle_damage(p: int, amount: int, dealer: CardInst = null, taker: CardIns
 	var ps := players[p]
 	if EffectRunner.no_damage_involving(taker) and taker.owner == p:
 		return [{"type": "effect", "player": p, "card": taker, "text": "No battle damage!"}]
+	# Amazoness Swords Woman: "Your opponent takes any battle damage you would have taken from
+	# battles involving this card instead."
+	if taker != null and taker.owner == p and taker.face_up and not taker.negated and EffectRunner.fx(taker).get("reflect_damage", false):
+		var back := [{"type": "effect", "player": p, "card": taker, "text": Loc.t("%s turns the battle damage on the opponent") % taker.cname()}]
+		var other := opponent(p)
+		if players[other].no_damage_turn == turn or players[other].protect_turn == turn:
+			back.append({"type": "effect", "player": other, "card": null, "text": "No battle damage!"})
+			return back
+		back.append_array(_damage(other, amount, true))
+		return back
 	if ps.no_damage_turn == turn or ps.protect_turn == turn:
 		return [{"type": "effect", "player": p, "card": null, "text": "No battle damage!"}]
 	return _damage(p, amount, true)
@@ -1554,6 +1597,14 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	# "Cannot be destroyed by card effects" (Infernity Guardian with an empty hand).
 	if not by_battle and EffectRunner.survives_effect(self, c):
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is not destroyed") % c.cname()}]
+	# Machine Angel Ritual in your Graveyard: "If a LIGHT monster(s) you control would be destroyed by
+	# battle or card effect, you can banish this card instead."
+	if str(c.data.get("attribute", "")) == "LIGHT":
+		for g in ps.gy.duplicate():
+			if g.cname() == "Machine Angel Ritual" and choose_option(c.owner, Loc.t("%s would be destroyed. Banish Machine Angel Ritual from your Graveyard instead?") % c.cname(), ["Banish it", "No"], 0, g) == 0:
+				ps.gy.erase(g)
+				ps.banished.append(g)
+				return [{"type": "effect", "player": c.owner, "card": g, "text": Loc.t("Machine Angel Ritual is banished: %s is not destroyed") % c.cname()}]
 	var by_opp_any := not by_battle and effect_by != -1 and effect_by != c.owner
 	var by_opp_fx := by_opp_any and c.face_up
 	# "If the equipped monster would be destroyed by battle or card effect, destroy this card instead."
@@ -1572,6 +1623,9 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	# "When this card on the field is destroyed and sent to the Graveyard" (by battle or by an effect).
 	if players[c.owner].gy.has(c):
 		events.append_array(EffectRunner.trigger(self, c, "destroyed"))
+		# "Destroyed by a card effect and sent to the Graveyard" (Babycerasaurus).
+		if not by_battle:
+			events.append_array(EffectRunner.trigger(self, c, "fx_destroyed"))
 		# "...was destroyed by an opponent's card effect and sent to your GY" (Gernia).
 		if by_opp_fx:
 			events.append_array(EffectRunner.trigger(self, c, "opp_fx_destroyed"))

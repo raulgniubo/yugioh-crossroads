@@ -36,6 +36,7 @@ func _ready() -> void:
 		_test_field_looks()
 		_test_academy_week()
 		_test_signature_decks()
+		_test_cards_27()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -2646,3 +2647,137 @@ func _test_signature_decks() -> void:
 	check(yugi.has("Dark Magician Girl") and yugi.has("Alpha The Magnet Warrior") and not yugi.has("Gemini Elf"), "Yugi plays Dark Magician Girl and the Magnet Warriors, not Gemini Elf")
 	var au := SignatureDecks.audit("kaiba")
 	check((au["in"] as Array).has("X-Head Cannon") and (au["plays"] as Array).size() > 10, "the audit says what Kaiba plays and what is his")
+
+
+
+func _cid(name: String) -> int:
+	return int(CardData.NAME_TO_ID.get(name.to_lower(), 0))
+
+
+## The cards built in v0.33.27 (Mai, Rex, Alexis), each against its printed text.
+func _test_cards_27() -> void:
+	# Amazoness Swords Woman: the battle damage you would take goes to the opponent.
+	var s := _new_state(71)
+	_battle_ready(s)
+	var blue := _put(s, 0, _cid("Blue-Eyes White Dragon"), 0)
+	var sw := _put(s, 1, _cid("Amazoness Swords Woman"), 0)
+	for m in [blue, sw]:
+		m.face_up = true
+		m.attack_pos = true
+	var lp0: int = s.players[0].lp
+	var lp1: int = s.players[1].lp
+	s.declare_attack(0, blue, sw)
+	s.resolve_attack()
+	check(s.players[1].lp == lp1 and s.players[0].lp == lp0 - 1500, "Amazoness Swords Woman: the attacker's side takes the 1500 (LP %d / %d)" % [s.players[0].lp, s.players[1].lp])
+	# Amazoness Fighter: no battle damage to her controller.
+	s = _new_state(72)
+	_battle_ready(s)
+	blue = _put(s, 0, _cid("Blue-Eyes White Dragon"), 0)
+	var fi := _put(s, 1, _cid("Amazoness Fighter"), 0)
+	for m in [blue, fi]:
+		m.face_up = true
+		m.attack_pos = true
+	lp1 = s.players[1].lp
+	s.declare_attack(0, blue, fi)
+	s.resolve_attack()
+	check(s.players[1].lp == lp1 and not s.players[1].field.has(fi), "Amazoness Fighter: destroyed, but no battle damage")
+	# Black Stego: attacked in Attack Position, it turns to Defense (2000 DEF holds a 1800 attacker).
+	s = _new_state(73)
+	_battle_ready(s)
+	var att := _put(s, 0, _cid("Luster Dragon"), 0)
+	var stego := _put(s, 1, _cid("Black Stego"), 0)
+	for m in [att, stego]:
+		m.face_up = true
+		m.attack_pos = true
+	s.declare_attack(0, att, stego)
+	check(not stego.attack_pos, "Black Stego changes to Defense Position when it is attacked")
+	s.resolve_attack()
+	check(s.players[1].field.has(stego), "Black Stego survives the 1900 attacker behind 2000 DEF")
+	# Hyper Hammerhead: the monster that beat it goes back to the hand.
+	s = _new_state(74)
+	_battle_ready(s)
+	blue = _put(s, 0, _cid("Blue-Eyes White Dragon"), 0)
+	var ham := _put(s, 1, _cid("Hyper Hammerhead"), 0)
+	for m in [blue, ham]:
+		m.face_up = true
+		m.attack_pos = true
+	s.declare_attack(0, blue, ham)
+	s.resolve_attack()
+	check(not s.players[0].field.has(blue) and s.players[0].hand.has(blue), "Hyper Hammerhead: the monster that battled it and lived returns to the hand")
+	# Element Saurus: +500 with a FIRE monster on the field.
+	s = _new_state(75)
+	_battle_ready(s)
+	var saur := _put(s, 0, _cid("Element Saurus"), 0)
+	saur.face_up = true
+	check(s.atk_of(saur, false) == 1500, "Element Saurus is 1500 with no FIRE monster on the field")
+	var fire := _fake(s, 1, "Fire Thing", 500, 500, 0, {"attribute": "FIRE"})
+	fire.face_up = true
+	check(s.atk_of(saur, false) == 2000, "Element Saurus is 2000 with a FIRE monster on the field (got %d)" % s.atk_of(saur, false))
+	# Babycerasaurus: destroyed by a card effect, it brings a Level 4 or lower Dinosaur from the Deck.
+	s = _new_state(76, "rex", "kaiba")
+	_battle_ready(s)
+	var baby := _put(s, 0, _cid("Babycerasaurus"), 0)
+	baby.face_up = true
+	s.effect_by = 1
+	s._destroy(baby)
+	var dino := false
+	for m in s.players[0].monsters():
+		if str(m.data.get("race", "")) == "Dinosaur" and int(m.data.get("level", 9)) <= 4:
+			dino = true
+	check(dino, "Babycerasaurus destroyed by an effect: a Level 4 or lower Dinosaur comes from the Deck")
+	# Cyber Blader: 1 monster = not destroyed by battle, 2 = ATK doubled, 3 = their effects are negated.
+	s = _new_state(77)
+	_battle_ready(s)
+	var blader := _put(s, 0, _cid("Cyber Blader"), 0)
+	blader.face_up = true
+	var a1 := _fake(s, 1, "One", 3000, 0, 0)
+	check(EffectRunner.survives_battle(s, blader), "Cyber Blader, opponent has 1 monster: not destroyed by battle")
+	var a2 := _fake(s, 1, "Two", 100, 0, 1)
+	check(s.atk_of(blader, false) == 4200, "Cyber Blader, opponent has 2 monsters: ATK doubled (got %d)" % s.atk_of(blader, false))
+	check(not EffectRunner.blader_negates(s, 1), "Cyber Blader, 2 monsters: nothing negated yet")
+	var a3 := _fake(s, 1, "Three", 100, 0, 2)
+	check(EffectRunner.blader_negates(s, 1) and not EffectRunner.blader_negates(s, 0), "Cyber Blader, opponent has 3 monsters: their activated effects are negated")
+	check(s.atk_of(blader, false) == 2100, "Cyber Blader with 3 opposing monsters is back to 2100")
+	# Elegant Egotist: needs a Harpie Lady on the field, brings Harpie Lady Sisters from the Deck.
+	s = _main_ready(78)
+	var ego := _st(s, 0, "Elegant Egotist")
+	check(not SpellRules.feasible(s, 0, ego, "open", null), "Elegant Egotist cannot be played without Harpie Lady on the field")
+	var lady := _put(s, 0, _cid("Harpie Lady"), 0)
+	lady.face_up = true
+	var sis := s._make(_cid("Harpie Lady Sisters"), 0)
+	s.players[0].deck.append(sis)
+	check(not s.can_normal_summon(0, sis), "Harpie Lady Sisters cannot be Normal Summoned")
+	check(SpellRules.feasible(s, 0, ego, "open", null), "Elegant Egotist can be played with Harpie Lady on the field")
+	s.activate(0, ego)
+	s.chain_resolve()
+	var out := false
+	for m in s.players[0].monsters():
+		if m.cname() in ["Harpie Lady Sisters", "Harpie Lady"] and m != lady:
+			out = true
+	check(out, "Elegant Egotist Special Summons a Harpie Lady or Harpie Lady Sisters")
+	# Equips: who they fit.
+	s = _main_ready(79)
+	var fw := _st(s, 0, "Fusion Weapon")
+	var cs := _st(s, 0, "Cyber Shield")
+	var fus := _put(s, 0, _cid("Flame Swordsman"), 0)
+	fus.face_up = true
+	var big := _put(s, 0, _cid("Blue-Eyes Ultimate Dragon"), 1)
+	big.face_up = true
+	var hl := _put(s, 0, _cid("Harpie Lady"), 2)
+	hl.face_up = true
+	var tf := SpellRules.targets(s, 0, fw)
+	check(tf.has(fus) and not tf.has(big) and not tf.has(hl), "Fusion Weapon fits a Level 6 or lower Fusion Monster only")
+	var tc := SpellRules.targets(s, 0, cs)
+	check(tc.has(hl) and not tc.has(fus), "Cyber Shield fits Harpie Lady only")
+	# Mirror Wall: an attacker is halved, and stays halved while the wall stands.
+	s = _new_state(80)
+	_battle_ready(s)
+	blue = _put(s, 0, _cid("Blue-Eyes White Dragon"), 0)
+	blue.face_up = true
+	blue.attack_pos = true
+	var wall := _st(s, 1, "Mirror Wall", "set", "trap")
+	wall.face_up = true
+	s.declare_attack(0, blue, null)
+	check(s.atk_of(blue, true, null, true) == 1500, "Mirror Wall halves the attacking monster (got %d)" % s.atk_of(blue, true, null, true))
+	s.players[1].spells[s.players[1].spells.find(wall)] = null
+	check(s.atk_of(blue, false) == 3000, "...and it is whole again once the wall is gone")

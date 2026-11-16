@@ -58,6 +58,8 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 			b -= int(f["lose_if_alone"])
 	if f.get("blader", false) and s.players[s.opponent(c.owner)].monsters().size() == 2:
 		b += c.atk()
+	if f.get("element_saurus", false) and attr_on_field(s, "FIRE"):
+		b += 500
 	if f.get("half_if_special", false) and c.get_meta("special_from_hand", false):
 		b -= c.atk() / 2
 	# Auras from other monsters on the field
@@ -458,10 +460,32 @@ static func _spent(s: DuelState, p: int, c) -> bool:
 	return false
 
 
+## Is there a face-up monster of this Attribute anywhere on the field?
+static func attr_on_field(s: DuelState, attr: String) -> bool:
+	for q in 2:
+		for m in s.players[q].monsters():
+			if m.face_up and str(m.data.get("attribute", "")) == attr:
+				return true
+	return false
+
+
+## Cyber Blader's third effect: player `p` controls exactly 3 monsters and the other side has a
+## face-up Cyber Blader whose effects are not negated.
+static func blader_negates(s: DuelState, p: int) -> bool:
+	if s.players[p].monsters().size() != 3:
+		return false
+	for m in s.players[s.opponent(p)].monsters():
+		if m.face_up and not m.negated and fx(m).get("blader", false):
+			return true
+	return false
+
+
 static func trigger(s: DuelState, c, key: String, ctx := {}) -> Array:
 	var f := fx(c)
 	if not f.has(key) or s.is_over() or _spent(s, c.owner, c):
 		return []
+	if blader_negates(s, c.owner):
+		return [_ev(c.owner, c, Loc.t("Cyber Blader negates %s") % c.cname())]
 	return run_list(s, c.owner, c, f[key], ctx)
 
 

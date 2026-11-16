@@ -148,6 +148,14 @@ const FX := {
 	"Mystical Moon": {"k": "equip", "must": {"race": "Beast-Warrior"}, "atk": 300, "def": 300},
 	"Raise Body Heat": {"k": "equip", "must": {"race": "Dinosaur"}, "atk": 300, "def": 300},
 	"Follow Wind": {"k": "equip", "must": {"race": "Winged Beast"}, "atk": 300, "def": 300},
+	# ---- Mai, Rex, Alexis (v0.33.27)
+	"Fusion Weapon": {"k": "equip", "must": {"frame": "fusion", "max_lv": 6}, "atk": 1500, "def": 1500},
+	"Ritual Weapon": {"k": "equip", "must": {"frame": "ritual", "max_lv": 6}, "atk": 1500, "def": 1500},
+	"Cyber Shield": {"k": "equip", "must": {"names": ["Harpie Lady", "Harpie Lady Sisters"], "zone": "field"}, "atk": 500},
+	"Elegant Egotist": {"k": "normal", "cond": "harpie_lady_up", "do": [["egotist"]]},
+	"Machine Angel Ritual": {"k": "ritual", "do": [["ritual"]]},
+	"Fossil Excavation": {"k": "ctrap", "win": ["free"], "cost": "discard", "do": [["revive", "own_gy", "any", "link", {"race": "Dinosaur"}, "negate"]]},
+	"Mirror Wall": {"k": "ctrap", "win": ["free"], "halve_attackers": true, "upkeep": 2000, "upkeep_ask": true, "do": [["mirror_wall"]]},
 	"Power of Kaishin": {"k": "equip", "must": {"race": "Aqua"}, "atk": 300, "def": 300},
 	"Steel Shell": {"k": "equip", "must": {"attr": "WATER"}, "atk": 400, "def": -200},
 	"Gust Fan": {"k": "equip", "must": {"attr": "WIND"}, "atk": 400, "def": -200},
@@ -420,7 +428,24 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return s.phase == DuelState.Phase.BATTLE
 		"opp_turn":
 			return s.current != p
+		"harpie_lady_up":
+			# Elegant Egotist: "If Harpie Lady is on the field" (either side; a card that counts as her does).
+			for q in 2:
+				for m in s.players[q].monsters():
+					if m.face_up and CardEffects.matches(m.data, {"name": "Harpie Lady", "zone": "field"}):
+						return true
+			return false
 	return true
+
+
+## Elegant Egotist: every "Harpie Lady" and "Harpie Lady Sisters" in your hand and Deck.
+static func _egotist_pool(s: DuelState, p: int) -> Array:
+	var out: Array = []
+	for src in [s.players[p].hand, s.players[p].deck]:
+		for h in src:
+			if h.is_monster() and h.cname() in ["Harpie Lady", "Harpie Lady Sisters"]:
+				out.append(h)
+	return out
 
 
 ## Echo Resonance: the "Lumen, Echo Spirit" you control that can be Tributed for it. She must not
@@ -465,7 +490,13 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 				if a[1] != "target" and a[1] != "attacker" and a[1] != "summoned" and _sel(s, p, c, str(a[1]), {}).is_empty() and not (str(sp.get("k", "")) in ["cont", "ctrap"]):
 					return false
 			"revive":
-				if ps.free_zone() == -1 or s._best_monsters(ps.gy if a[1] == "own_gy" else ps.gy + opp.gy, 1).is_empty():
+				var from: Array = ps.gy if a[1] == "own_gy" else ps.gy + opp.gy
+				if a.size() > 4:
+					from = from.filter(func(x): return CardEffects.matches(x.data, a[4]))
+				if ps.free_zone() == -1 or s._best_monsters(from.filter(func(x): return s.can_revive(x)), 1).is_empty():
+					return false
+			"egotist":
+				if ps.free_zone() == -1 or _egotist_pool(s, p).is_empty():
 					return false
 			"gy_to_hand":
 				if EffectRunner._take(ps.gy, a[1], 1).is_empty():
@@ -975,8 +1006,34 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				var n: int = s.atk_of(s.pending_attack["attacker"], true)
 				ps.lp += n
 				events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": n})
+		"egotist":
+			# Elegant Egotist: Special Summon 1 "Harpie Lady" or "Harpie Lady Sisters" from your hand or Deck.
+			var ladies := _egotist_pool(s, p)
+			if not ladies.is_empty() and ps.free_zone() != -1:
+				var best = ladies[0]
+				for l in ladies:
+					if l.atk() > best.atk():
+						best = l
+				var lady = s.pick1(p, Loc.t("%s: Special Summon 1 Harpie Lady or Harpie Lady Sisters from your hand or Deck") % c.cname(), ladies, best, c)
+				var from_deck: bool = ps.deck.has(lady)
+				ps.hand.erase(lady)
+				ps.deck.erase(lady)
+				lady.proper = true        # (this is the summon Harpie Lady Sisters must have first)
+				events.append_array(s._special(p, lady, "effect"))
+				events.append_array(EffectRunner.on_summon(s, p, lady, "special"))
+				if from_deck:
+					s._shuffle(ps.deck)
+		"mirror_wall":
+			# Activated while an opponent's monster is attacking: that monster is halved too.
+			if not s.pending_attack.is_empty() and s.pending_attack["player"] != p and not s.pending_attack.get("negated", false):
+				var att = s.pending_attack["attacker"]
+				if att != null and not att.has_meta("mirror_wall"):
+					att.set_meta("mirror_wall", c)
+					events.append(_ev(p, c, Loc.t("%s: %s loses half its ATK") % [c.cname(), att.cname()]))
 		"revive":
 			var pool: Array = (ps.gy if a[1] == "own_gy" else ps.gy + opp.gy).filter(func(x): return s.can_revive(x))
+			if a.size() > 4:
+				pool = pool.filter(func(x): return CardEffects.matches(x.data, a[4]))
 			var pick: Array = s._best_monsters(pool, 1)
 			if not pick.is_empty() and ps.free_zone() != -1:
 				var m = s.pick1(p, Loc.t("%s: Special Summon 1 monster from the Graveyard") % c.cname(), pool, pick[0], c)
@@ -986,6 +1043,9 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				if a.size() > 3 and a[3] == "link":
 					c.linked = m
 					c.equipped_to = m if spec(c)["k"] == "equip" else null
+				if a.size() > 5 and a[5] == "negate":
+					m.neg_perm = true         # "Negate the effects of that monster on the field."
+					m.negated = true
 				events.append_array(EffectRunner.on_summon(s, p, m, "special"))
 		"control":
 			for t in _sel(s, p, c, str(a[1]), ctx):
@@ -1345,6 +1405,10 @@ static func standby(s: DuelState, p: int) -> Array:
 			if q == p:
 				if sp.has("upkeep"):
 					var n := int(sp["upkeep"])
+					# "Pay 2000 LP or destroy this card": yours to decide (Mirror Wall).
+					if sp.get("upkeep_ask", false) and s.players[p].lp > n and s.choose_option(p, Loc.t("%s: pay %d Life Points to keep it?") % [st.cname(), n], ["Pay", "Destroy it"], 0 if s.players[p].lp > n + 3000 else 1, st) == 1:
+						events.append_array(s._destroy_st(st))
+						continue
 					if s.players[p].lp > n:
 						s.players[p].lp -= n
 						events.append({"type": "lp", "player": p, "lp": s.players[p].lp, "delta": -n})

@@ -143,13 +143,14 @@ const WISH := {
 const TUNE := {
 	"yugi": {"out": ["Gemini Elf", "Book of Secret Arts", "Yami", "Magic Jammer", "Waboku", "Fissure"],
 		"in": {"Dark Magician Girl": 1, "Alpha The Magnet Warrior": 1, "Beta The Magnet Warrior": 1, "Gamma The Magnet Warrior": 1, "Queen's Knight": 1, "Jack's Knight": 1,
-			"Breaker the Magical Warrior": 1, "Gazelle the King of Mythical Beasts": 1, "Brain Control": 1, "Card Destruction": 1, "Monster Reborn": 1, "Spellbinding Circle": 1}},
+			"Breaker the Magical Warrior": 1, "Gazelle the King of Mythical Beasts": 1, "Berfomet": 1, "Brain Control": 1, "Card Destruction": 1, "Monster Reborn": 1, "Spellbinding Circle": 1}},
 	"kaiba": {"out": ["Rude Kaiser", "Koumori Dragon", "Cyber Dragon", "Mystic Tomato", "Mountain", "Dragon Treasure", "Torrential Tribute", "Trap Hole"],
 		"in": {"X-Head Cannon": 1, "Y-Dragon Head": 1, "Z-Metal Tank": 1, "Saggi the Dark Clown": 1, "Hitotsu-Me Giant": 1, "Luster Dragon": 2, "Vampire Lord": 1},
 		"extra_in": {"XYZ-Dragon Cannon": 1}},
 	"joey": {"out": ["Garoozis", "Battle Steer", "Tiger Axe", "Dian Keto the Cure Master", "Sogen", "Waboku", "Trap Hole"],
 		"in": {"Battle Warrior": 1, "Swordsman of Landstar": 2, "Goblin Attack Force": 1, "Salamandra": 1, "Giant Trunade": 1, "Foolish Burial": 1}},
-	"mai": {"out": ["Hinotama", "Dian Keto the Cure Master"], "in": {"Dunames Dark Witch": 2}},
+	"mai": {"out": ["Hinotama", "Dian Keto the Cure Master", "Fissure", "Follow Wind", "Pot of Greed"],
+		"in": {"Dunames Dark Witch": 2, "Amazoness Fighter": 2, "Amazoness Swords Woman": 2, "Harpie Lady Sisters": 2, "Elegant Egotist": 3, "Cyber Shield": 2, "Mirror Wall": 1, "Electro-Whip": 1}},
 	"bakura": {"out": ["Newdoria", "Curse of Dragon", "Summoned Skull", "Ryu-Kishin", "Lord of the Lamp", "Fissure", "Dark Energy", "Dark Core", "Yami"],
 		"in": {"The Portrait's Secret": 1, "Earthbound Spirit": 2, "Souls of the Forgotten": 1, "The Gross Ghost of Fled Dreams": 1, "Man-Eater Bug": 2, "Lady of Faith": 1,
 			"Change of Heart": 1, "Just Desserts": 1, "The Dark Door": 1}},
@@ -158,11 +159,13 @@ const TUNE := {
 	"pegasus": {"out": ["Fissure", "Raigeki", "Shadow Spell", "Heavy Storm"], "in": {"Dark Rabbit": 1, "Parrot Dragon": 1, "Illusionist Faceless Mage": 1}},
 	"weevil": {"out": ["Insect Knight", "Neo Bug", "Gokipon", "Dian Keto the Cure Master", "Just Desserts", "Fissure"],
 		"in": {"Big Insect": 2, "Flying Kamakiri #1": 2, "Gokibore": 2, "Man-Eater Bug": 2, "Needle Worm": 1, "Skull-Mark Ladybug": 1}},
-	"rex": {"out": ["Hinotama", "Dian Keto the Cure Master", "Hammer Shot"], "in": {"Dark Driceratops": 1, "Frostosaurus": 1, "Serpent Night Dragon": 1, "Trakodon": 2}},
+	"rex": {"out": ["Hinotama", "Dian Keto the Cure Master", "Hammer Shot", "Fissure", "Rush Recklessly"],
+		"in": {"Dark Driceratops": 1, "Frostosaurus": 1, "Serpent Night Dragon": 1, "Trakodon": 2, "Black Stego": 2, "Babycerasaurus": 2, "Hyper Hammerhead": 2, "Element Saurus": 2, "Fossil Excavation": 2}},
 	"jaden": {"out": ["Celtic Guardian"], "in": {"Elemental HERO Bladedge": 1}},
 	"chazz": {"out": ["Dragon Treasure", "Rush Recklessly"], "in": {"Masked Dragon": 2, "V-Tiger Jet": 1}},
 	"zane": {"out": ["X-Head Cannon", "Elemental HERO Burstinatrix", "Charcoal Inpachi", "Millennium Shield"], "in": {"Call of the Haunted": 1}},
-	"alexis": {"out": ["Dian Keto the Cure Master", "Luminous Spark", "Horn of the Unicorn"], "in": {"Hallowed Life Barrier": 1}},
+	"alexis": {"out": ["Dian Keto the Cure Master", "Luminous Spark", "Horn of the Unicorn", "Fissure", "Cyber Petit Angel"],
+		"in": {"Hallowed Life Barrier": 1, "Machine Angel Ritual": 3, "Fusion Weapon": 1, "Ritual Weapon": 2}, "extra_in": {"Cyber Blader": 2}},
 	"syrus": {"out": ["Elemental HERO Clayman", "Dian Keto the Cure Master"], "in": {"Shield Crush": 1}},
 	"aster": {"out": ["Celtic Guardian", "Mystic Plasma Zone"]},
 	"yusei": {"out": ["Celtic Guardian", "Beaver Warrior"]},
@@ -173,10 +176,41 @@ const TUNE := {
 	"yuma": {"out": ["Celtic Guardian", "Beaver Warrior", "Battle Ox", "Masaki the Legendary Swordsman", "Silver Fang", "Dian Keto the Cure Master", "Lightning Blade", "Trap Hole"],
 		"in": {"Achacha Archer": 2}, "extra_in": {"Number 17: Leviathan Dragon": 1}},
 	"shark": {"out": ["Dian Keto the Cure Master", "Steel Shell"], "in": {"Hyper-Ancient Shark Megalodon": 1}},
-	"kite": {"out": ["Luminous Spark"]},
+	"kite": {"out": ["Luminous Spark"], "in": {"Galaxy Zero": 1}},
 	"vector": {"out": ["Charcoal Inpachi", "Archfiend Soldier", "Summoned Skull", "Ryu-Kishin Powered", "Vorse Raider", "Hinotama", "Mystic Plasma Zone", "Malevolent Nuzzler"],
 		"in": {"Mirror Force": 1}, "extra_out": ["Gagaga Cowboy"]},
 }
+
+
+## Does this card really work here? A monster with an effect has to be on the exact list (a
+## monster nobody has written rules for would otherwise pass as "has no effect"); a Spell or
+## Trap has to have rules of its own.
+static func _works(id: int) -> bool:
+	var d := CardData.get_card(id)
+	if d.is_empty() or not CardExact.ok(d):
+		return false
+	var name := str(d.get("name", ""))
+	if str(d.get("kind", "monster")) != "monster":
+		return SpellRules.FX.has(name) or str(d.get("effect", "")) != ""
+	if str(d.get("frame", "")) == "normal" or CardExact.MONSTERS.has(name):
+		return true
+	# A Fusion or Ritual Monster whose text is only how to summon it.
+	return str(d.get("frame", "")) in ["fusion", "ritual"] and not CardEffects.has(name) and _only_summon_text(d)
+
+
+## Is this Fusion or Ritual Monster's text nothing but its materials, or which Ritual Spell
+## summons it? ("Gaia The Fierce Knight" + "Curse of Dragon"; You can Ritual Summon this card
+## with "Black Luster Ritual".) Anything more is an effect, and an effect needs rules.
+static func _only_summon_text(d: Dictionary) -> bool:
+	var text := str(d.get("desc", d.get("text", "")))
+	var paren := RegEx.new()
+	paren.compile("\\([^)]*\\)")
+	text = paren.sub(text, "", true).strip_edges()
+	if str(d.get("frame", "")) == "ritual":
+		var rit := RegEx.new()
+		rit.compile("^You can Ritual Summon this card with \"[^\"]+\"\\.?$")
+		return rit.search(text) != null
+	return not text.contains(".") and text.contains("+")
 
 
 static func _ids(names: Array) -> Dictionary:
@@ -205,7 +239,7 @@ static func tune(deck_key: String, list: Array[int]) -> Array[int]:
 	var add: Dictionary = t.get("in", {})
 	for n in add:
 		var id2: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
-		if id2 == 0 or not CardExact.ok(CardData.get_card(id2)):
+		if id2 == 0 or not _works(id2):
 			continue
 		var have := kept.count(id2)
 		for k in maxi(0, mini(3, int(add[n])) - have):
@@ -228,7 +262,7 @@ static func tune_extra(deck_key: String, list: Array[int]) -> Array[int]:
 	var add: Dictionary = t.get("extra_in", {})
 	for n in add:
 		var id2: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
-		if id2 == 0 or not CardExact.ok(CardData.get_card(id2)) or out.has(id2):
+		if id2 == 0 or not _works(id2) or out.has(id2):
 			continue
 		for k in int(add[n]):
 			out.append(id2)
@@ -269,7 +303,7 @@ static func audit(key: String) -> Dictionary:
 			(out["unknown"] as Array).append(shown)
 		elif now.has(str(n)):
 			(out["in"] as Array).append(shown)
-		elif CardExact.ok(CardData.get_card(id2)) and Engine.get_main_loop().root.get_node("Collection").playable(id2):
+		elif _works(id2):
 			(out["ready"] as Array).append(shown)
 		else:
 			(out["need_effect"] as Array).append(shown)

@@ -175,7 +175,15 @@ const FX := {
 	"Cyber Phoenix": {"note": "Destroyed by battle: draw 1.", "death": [["draw", 1]]},
 	"Cyber Larva": {"note": "Targeted for an attack: you take no battle damage for the rest of this turn. Destroyed by battle: you can Special Summon 1 Cyber Larva from your Deck.", "no_damage_when_targeted": true, "death": [["special", "deck", {"name": "Cyber Larva"}, "any", 1]]},
 	"Cyber Valley": {"note": "Tribute it: draw 1.", "ignite": {"cost": "tribute_self", "do": [["draw", 1]], "label": "Tribute: draw 1"}},
-	"Cyber Blader": {"note": "Can't be destroyed by battle while the opponent has 1 monster; ATK doubles with 2.", "blader": true},
+	"Cyber Blader": {"note": "By how many monsters your opponent controls. 1: cannot be destroyed by battle. 2: its ATK is doubled. 3: your opponent's activated card effects are negated.", "blader": true},
+	# ---- Mai, Rex (v0.33.27)
+	"Amazoness Fighter": {"note": "You take no battle damage from attacks involving this card.", "no_damage_involving": true},
+	"Amazoness Swords Woman": {"note": "Your opponent takes any battle damage you would have taken from battles involving this card instead.", "reflect_damage": true},
+	"Harpie Lady Sisters": {"note": "Cannot be Normal Summoned or Set. Must first be Special Summoned with Elegant Egotist."},
+	"Black Stego": {"note": "Targeted for an attack while in Attack Position: it changes to Defense Position.", "def_when_targeted": true},
+	"Babycerasaurus": {"note": "Destroyed by a card effect and sent to the Graveyard: Special Summon 1 Level 4 or lower Dinosaur from your Deck.", "fx_destroyed": [["special", "deck", {"race": "Dinosaur", "max_lv": 4}, "any", 1]]},
+	"Hyper Hammerhead": {"note": "At the end of the Damage Step, an opponent's monster that battled this card and was not destroyed returns to the hand.", "bounce_survivor": true},
+	"Element Saurus": {"note": "While a FIRE monster is on the field: gains 500 ATK. While an EARTH monster is on the field: the effects of Effect Monsters it destroys by battle are negated.", "element_saurus": true},
 	"Cyber Gymnast": {"note": "Once per turn, discard 1: destroy an Attack Position monster.",
 		"ignite": {"cost": "discard", "do": [["destroy", "best_atk_pos"]], "label": "Discard 1: destroy an Attack Position monster"}},
 	"Cyber Prima": {"note": "Tribute Summoned: destroy all face-up Spells.", "summon": [["destroy", "all_faceup_spells"]]},
@@ -328,6 +336,8 @@ static func matches(d: Dictionary, f: Dictionary) -> bool:
 				ok = true
 		if not ok:
 			return false
+	if f.has("names") and not (n in (f["names"] as Array)) and not (alias != "" and alias in (f["names"] as Array)):
+		return false
 	if f.has("race") and str(d.get("race", "")) != f["race"]:
 		return false
 	if f.has("attr") and str(d.get("attribute", "")) != f["attr"]:
