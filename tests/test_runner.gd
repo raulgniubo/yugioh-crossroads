@@ -37,10 +37,27 @@ func _ready() -> void:
 		_test_academy_week()
 		_test_signature_decks()
 		_test_cards_27()
+		_test_cards_28()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
 		_test_ai_targets()
+		if OS.get_environment("YUSEI_SIM") != "":
+			# How does the computer play Yusei's deck? (A look, not a pass/fail test.)
+			made.clear()
+			DuelAI.aces = [_cid("Stardust Dragon"), 0]
+			var wins := 0
+			var games := int(OS.get_environment("YUSEI_SIM"))
+			for g in games:
+				var foe: String = Characters.DATA[all[(g * 5 + 1) % all.size()]]["deck"]
+				trace = OS.get_environment("YUSEI_TRACE") != "" and g < 3
+				if trace:
+					print("--- game %d vs %s" % [g, foe])
+				if _ai_vs_ai(4000 + g, "yusei", foe, 2, 2) == 0:
+					wins += 1
+			print("YUSEI SIM: %d wins of %d" % [wins, games])
+			print("YUSEI MADE: %s" % str(made))
+			DuelAI.aces = [0, 0]
 		var n := 0
 		for seed in int(OS.get_environment("STRESS_GAMES")) if OS.get_environment("STRESS_GAMES") != "" else 48:
 			var a: String = Characters.DATA[all[seed % all.size()]]["deck"]
@@ -225,6 +242,11 @@ func _test_battle_math() -> void:
 	check(ev.any(func(e): return e["type"] == "reveal"), "face-down target gets revealed")
 
 
+## What the computer chose to do in the AI-against-AI games (Extra Deck summons, effects used).
+var made := {}
+var trace := false
+
+
 func _ai_vs_ai(seed: int, a := "yugi", b := "kaiba", lv_a := 1, lv_b := 1) -> int:
 	var s := _new_state(seed, a, b, lv_a >= 2, lv_b >= 2)
 	var start_total := _total(s)
@@ -236,13 +258,20 @@ func _ai_vs_ai(seed: int, a := "yugi", b := "kaiba", lv_a := 1, lv_b := 1) -> in
 			break
 		var p := s.current
 		var lv := lv_a if p == 0 else lv_b
+		if trace:
+			print(" == T%d P%d LP %d/%d | A field: %s | B field: %s" % [s.turn, p, s.players[0].lp, s.players[1].lp, ", ".join(s.players[0].monsters().map(func(m): return "%s(%d%s)" % [m.cname(), s.atk_of(m, false), "" if m.attack_pos else "D"])), ", ".join(s.players[1].monsters().map(func(m): return "%s(%d%s)" % [m.cname(), s.atk_of(m, false), "" if m.attack_pos else "D"]))])
 		var steps := 0
 		while steps < 20:
 			steps += 1
 			var act := DuelAI.next_main_action(s, p, lv)
 			if act.is_empty():
 				break
+			if trace:
+				print("  P%d %s %s%s" % [p, act["do"], act["card"].cname() if act.has("card") else "", (" | hand: " + ", ".join(s.players[0].hand.map(func(h): return h.cname()))) if p == 0 else ""])
 			var ev := _run(s, p, act)
+			if act["do"] in ["extra", "ignite", "special_hand", "gy_ignite"]:
+				var key := "%s %s" % [act["do"], act["card"].cname()]
+				made[key] = int(made.get(key, 0)) + 1
 			check(not ev.is_empty(), "AI action did something (%s)" % act["do"])
 			if ev.is_empty():
 				break
@@ -254,6 +283,8 @@ func _ai_vs_ai(seed: int, a := "yugi", b := "kaiba", lv_a := 1, lv_b := 1) -> in
 				var atk := DuelAI.next_attack(s, p, lv)
 				if atk.is_empty():
 					break
+				if trace:
+					print("    P%d attack %s -> %s" % [p, atk["card"].cname(), atk["target"].cname() if atk["target"] != null else "direct"])
 				if s.declare_attack(p, atk["card"], atk["target"]).is_empty():
 					break
 				var d := s.opponent(p)
@@ -2781,3 +2812,743 @@ func _test_cards_27() -> void:
 	check(s.atk_of(blue, true, null, true) == 1500, "Mirror Wall halves the attacking monster (got %d)" % s.atk_of(blue, true, null, true))
 	s.players[1].spells[s.players[1].spells.find(wall)] = null
 	check(s.atk_of(blue, false) == 3000, "...and it is whole again once the wall is gone")
+
+
+func _in(s: DuelState, p: int, name: String, where: String) -> DuelState.CardInst:
+	var c := s._make(_cid(name), p)
+	match where:
+		"hand": s.players[p].hand.append(c)
+		"gy": s.players[p].gy.append(c)
+		"deck": s.players[p].deck.append(c)
+		"extra": s.players[p].extra.append(c)
+	return c
+
+
+func _mon(s: DuelState, p: int, name: String, zone: int, atk_pos := true) -> DuelState.CardInst:
+	var c := _put(s, p, _cid(name), zone)
+	c.face_up = true
+	c.attack_pos = atk_pos
+	return c
+
+
+## The cards built in v0.33.28 (Yusei's best deck), each against its printed text.
+func _test_cards_28() -> void:
+	# ---------------------------------------------------------------- main deck monsters
+	# Sonic Chick: not destroyed by battle with a 1900+ ATK monster, destroyed by a weaker one.
+	var s := _new_state(81)
+	_battle_ready(s)
+	var blue := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	var weak := _fake(s, 0, "Soldier", 1800, 0, 1)
+	var chick := _mon(s, 1, "Sonic Chick", 0, false)
+	s.declare_attack(0, blue, chick)
+	s.resolve_attack()
+	check(s.players[1].field.has(chick), "Sonic Chick survives a battle with a 3000 ATK monster")
+	s.declare_attack(0, weak, chick)
+	s.resolve_attack()
+	check(not s.players[1].field.has(chick), "Sonic Chick is destroyed by a monster with less than 1900 ATK")
+	# Synchron Explorer: Normal Summoned, it brings a "Synchron" back with its effects negated.
+	s = _main_ready(82)
+	var junk_gy := _in(s, 0, "Junk Synchron", "gy")
+	var explorer := _in(s, 0, "Synchron Explorer", "hand")
+	s.normal_summoned = false
+	s.normal_summon(0, explorer, [])
+	check(s.players[0].field.has(junk_gy) and junk_gy.neg_perm, "Synchron Explorer brings Junk Synchron back with its effects negated")
+	# Unknown Synchron: only when the opponent alone has a monster, once per Duel.
+	s = _main_ready(83)
+	_mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var unk := _in(s, 0, "Unknown Synchron", "hand")
+	var unk2 := _in(s, 0, "Unknown Synchron", "hand")
+	check(s.can_special_from_hand(0, unk), "Unknown Synchron can be Special Summoned while only the opponent has a monster")
+	s.special_from_hand(0, unk)
+	check(s.players[0].field.has(unk), "Unknown Synchron is on the field")
+	s.players[0].field = [null, null, null, null, null]
+	check(not s.can_special_from_hand(0, unk2), "Unknown Synchron: only once per Duel this way")
+	# Boost Warrior: with a Tuner, from the hand in Defense Position; Warriors gain 300.
+	s = _main_ready(84)
+	var js := _mon(s, 0, "Junk Synchron", 0)
+	var boost := _in(s, 0, "Boost Warrior", "hand")
+	check(s.can_special_from_hand(0, boost), "Boost Warrior can come out while you control a Tuner")
+	s.special_from_hand(0, boost)
+	check(s.players[0].field.has(boost) and not boost.attack_pos, "Boost Warrior arrives in Defense Position")
+	check(s.atk_of(js, false) == 1600 and s.atk_of(boost, false) == 600, "Boost Warrior: every Warrior you control gains 300 (Junk Synchron %d, itself %d)" % [s.atk_of(js, false), s.atk_of(boost, false)])
+	# Fortress Warrior: no battle damage, and once per turn it is not destroyed by battle.
+	s = _new_state(85)
+	_battle_ready(s)
+	blue = _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	var blue2 := _mon(s, 0, "Blue-Eyes White Dragon", 1)
+	var fort := _mon(s, 1, "Fortress Warrior", 0)
+	var lp1: int = s.players[1].lp
+	s.declare_attack(0, blue, fort)
+	s.resolve_attack()
+	check(s.players[1].field.has(fort) and s.players[1].lp == lp1, "Fortress Warrior: the first battle each turn does not destroy it, and no battle damage")
+	s.declare_attack(0, blue2, fort)
+	s.resolve_attack()
+	check(not s.players[1].field.has(fort) and s.players[1].lp == lp1, "Fortress Warrior: the second battle destroys it, still no battle damage")
+	# Rockstone Warrior: it attacks, is destroyed, no damage, 2 Rockstone Tokens.
+	s = _new_state(86)
+	_battle_ready(s)
+	var rock := _mon(s, 0, "Rockstone Warrior", 0)
+	blue = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var lp0: int = s.players[0].lp
+	s.declare_attack(0, rock, blue)
+	s.resolve_attack()
+	var toks: Array = s.players[0].monsters().filter(func(m): return m.is_token())
+	check(s.players[0].lp == lp0 and toks.size() == 2, "Rockstone Warrior: no battle damage and 2 Rockstone Tokens (LP %d, tokens %d)" % [s.players[0].lp, toks.size()])
+	# Stardust Xiaolong: rises from the Graveyard when Stardust Dragon is Synchro Summoned.
+	s = _main_ready(87)
+	_mon(s, 0, "Junk Synchron", 0)
+	var sp5 := _fake(s, 0, "Five", 1000, 1000, 1, {"level": 5})
+	var xiao := _in(s, 0, "Stardust Xiaolong", "gy")
+	var star := _in(s, 0, "Stardust Dragon", "extra")
+	check(s.can_extra_summon(0, star), "Stardust Dragon can be made from Junk Synchron and a Level 5")
+	s.extra_summon(0, star)
+	check(s.players[0].field.has(xiao) and xiao.attack_pos, "Stardust Xiaolong returns in Attack Position when Stardust Dragon is Synchro Summoned")
+	check(int(star.tags.get("non_tuners", 0)) == 1 and int(star.tags.get("mats", 0)) == 2, "A Synchro Monster remembers what it was made with")
+	# Healing Wave Generator: LP equal to another monster's Level x 100.
+	s = _main_ready(88)
+	var heal := _mon(s, 0, "Healing Wave Generator", 0)
+	_mon(s, 0, "Blue-Eyes White Dragon", 1)
+	lp0 = s.players[0].lp
+	check(s.can_ignite(0, heal), "Healing Wave Generator can use its effect with another monster out")
+	s.ignite(0, heal)
+	check(s.players[0].lp == lp0 + 800, "Healing Wave Generator: +800 LP from a Level 8 monster (got %d)" % (s.players[0].lp - lp0))
+	# Level Warrior: Level 4 from the hand; Level 2 by Normal Summon on an empty field.
+	s = _main_ready(89)
+	_mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var lw := _in(s, 0, "Level Warrior", "hand")
+	s.special_from_hand(0, lw)
+	check(s.players[0].field.has(lw) and lw.level() == 4, "Level Warrior is Level 4 when Special Summoned from the hand (Level %d)" % lw.level())
+	s = _main_ready(90)
+	lw = _in(s, 0, "Level Warrior", "hand")
+	s.normal_summoned = false
+	s.normal_summon(0, lw, [])
+	check(lw.level() == 2, "Level Warrior is Level 2 when Normal Summoned with no monsters on the field (Level %d)" % lw.level())
+	# Turret Warrior: Tribute a Warrior, gain its original ATK.
+	s = _main_ready(91)
+	var fod := _fake(s, 0, "Big Warrior", 1800, 0, 0)
+	var turret := _in(s, 0, "Turret Warrior", "hand")
+	check(s.can_special_from_hand(0, turret), "Turret Warrior can come out by Tributing a Warrior")
+	s.special_from_hand(0, turret)
+	check(s.players[0].field.has(turret) and not s.players[0].field.has(fod) and s.atk_of(turret, false) == 3000, "Turret Warrior: 1200 + the Tributed Warrior's 1800 (got %d)" % s.atk_of(turret, false))
+	# Zero Gardna: Tributed in the opponent's turn, no battle destruction and no battle damage.
+	s = _new_state(92)
+	_battle_ready(s)
+	blue = _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	var zero := _mon(s, 1, "Zero Gardna", 0)
+	var friend := _fake(s, 1, "Friend", 1000, 0, 1)
+	lp1 = s.players[1].lp
+	s.declare_attack(0, blue, friend)
+	check(s.responses(1, "attack").has(zero), "Zero Gardna can answer an attack")
+	s.respond(1, zero)
+	s.resolve_attack()
+	check(s.players[1].field.has(friend) and s.players[1].lp == lp1 and not s.players[1].field.has(zero), "Zero Gardna: Tributed; the monster lives and no battle damage")
+	# Ghost Gardna: takes the attack; destroyed, the attacker loses 1000 ATK until the End Phase.
+	s = _new_state(93)
+	_battle_ready(s)
+	blue = _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	var ghost := _mon(s, 1, "Ghost Gardna", 0, false)
+	friend = _fake(s, 1, "Friend", 1000, 0, 1)
+	s.declare_attack(0, blue, friend)
+	check(s.responses(1, "attack").has(ghost), "Ghost Gardna can take an attack aimed at another monster")
+	s.respond(1, ghost)
+	s.resolve_attack()
+	check(s.players[1].field.has(friend) and not s.players[1].field.has(ghost), "Ghost Gardna took the attack and was destroyed")
+	check(s.atk_of(blue, false) == 2000, "Ghost Gardna: the opponent's monster loses 1000 ATK until the End Phase (got %d)" % s.atk_of(blue, false))
+	# Debris Dragon: brings back a 500 ATK or less monster, negated; only for a Dragon Synchro, no Level 4 partners.
+	s = _main_ready(94)
+	var sw := _in(s, 0, "Speed Warrior", "gy")
+	sw.data = sw.data.duplicate()
+	var chick_gy := _in(s, 0, "Sonic Chick", "gy")
+	var debris := _in(s, 0, "Debris Dragon", "hand")
+	s.normal_summoned = false
+	s.normal_summon(0, debris, [])
+	check(s.players[0].field.has(chick_gy) and chick_gy.attack_pos and chick_gy.neg_perm, "Debris Dragon brings back a 500 ATK or less monster in Attack Position, negated")
+	var lv3 := _fake(s, 0, "Three", 500, 500, 2, {"level": 3})
+	star = _in(s, 0, "Stardust Dragon", "extra")
+	var jw := _in(s, 0, "Junk Warrior", "extra")
+	var colossal := _in(s, 0, "Colossal Fighter", "extra")
+	check(s.can_extra_summon(0, star), "Debris Dragon (4) + Level 3 + Level 1 makes Stardust Dragon")
+	check(not s.can_extra_summon(0, colossal), "Debris Dragon cannot be a material for a non-Dragon Synchro Monster")
+	lv3.data["level"] = 4
+	chick_gy.lv_set = 0
+	s.players[0].field[s.players[0].field.find(chick_gy)] = null
+	check(not s.can_extra_summon(0, star), "Debris Dragon cannot be used with a Level 4 material")
+	# Salvage Warrior: Tribute Summoned, a Tuner from the hand or Graveyard.
+	s = _main_ready(95)
+	var trib := _fake(s, 0, "Fodder", 500, 500, 0)
+	var salv := _in(s, 0, "Salvage Warrior", "hand")
+	var tun_h := _in(s, 0, "Junk Synchron", "gy")
+	s.normal_summoned = false
+	s.normal_summon(0, salv, [trib])
+	check(s.players[0].field.has(salv) and s.players[0].field.has(tun_h), "Salvage Warrior: Tribute Summoned, it brings a Tuner out of the Graveyard")
+	# Tuningware: counts as Level 2 for a Synchro Summon, and draws 1.
+	s = _main_ready(96)
+	_mon(s, 0, "Junk Synchron", 0)
+	var ware := _mon(s, 0, "Tuningware", 1)
+	jw = _in(s, 0, "Junk Warrior", "extra")
+	check(s.can_extra_summon(0, jw), "Junk Synchron (3) + Tuningware as Level 2 makes the Level 5 Junk Warrior")
+	var hand_n: int = s.players[0].hand.size()
+	s.extra_summon(0, jw)
+	check(s.players[0].field.has(jw) and s.players[0].hand.size() == hand_n + 1, "Tuningware: draw 1 card when it is sent to the Graveyard as a Synchro Material")
+	# Road Synchron: Level 2 for anything but Road Warrior; Road Warrior needs 2 non-Tuners.
+	s = _main_ready(97)
+	var road := _mon(s, 0, "Road Synchron", 0)
+	var two_a := _fake(s, 0, "Two A", 500, 500, 1, {"level": 2})
+	var arm := _in(s, 0, "Armory Arm", "extra")
+	var rw := _in(s, 0, "Road Warrior", "extra")
+	check(s.can_extra_summon(0, arm), "Road Synchron counts as Level 2: with a Level 2 it makes the Level 4 Armory Arm")
+	check(not s.can_extra_summon(0, rw), "Road Warrior needs 2 or more non-Tuners")
+	var two_b := _fake(s, 0, "Two B", 500, 500, 2, {"level": 2})
+	check(s.can_extra_summon(0, rw), "Road Synchron (4) + 2 + 2 makes the Level 8 Road Warrior")
+	s.phase = DuelState.Phase.BATTLE
+	var dummy := _fake(s, 1, "Wall", 0, 3000, 0)
+	dummy.attack_pos = false
+	s.declare_attack(0, road, dummy)
+	s.resolve_attack()
+	check(road.level() == 5, "Road Synchron: Level +1 after it attacks (Level %d)" % road.level())
+	# Turbo Synchron: the target turns to Defense; the damage taken brings a monster out of the hand.
+	s = _new_state(98)
+	_battle_ready(s)
+	var turbo := _mon(s, 0, "Turbo Synchron", 0)
+	var wall2 := _fake(s, 1, "Wall", 2000, 1600, 0)
+	s.players[0].hand.clear()
+	var small := _in(s, 0, "Speed Warrior", "hand")
+	s.declare_attack(0, turbo, wall2)
+	check(not wall2.attack_pos, "Turbo Synchron turns its attack target to Defense Position")
+	s.resolve_attack()
+	check(s.players[0].field.has(small), "Turbo Synchron: 1500 battle damage taken brings a 900 ATK monster out of the hand")
+	# Drill Synchron: your Warriors pierce, and you draw 1 once per turn.
+	s = _new_state(99)
+	_battle_ready(s)
+	_mon(s, 0, "Drill Synchron", 0)
+	var war := _fake(s, 0, "Warrior", 2000, 0, 1)
+	var soft := _fake(s, 1, "Soft", 0, 500, 0)
+	soft.attack_pos = false
+	lp1 = s.players[1].lp
+	hand_n = s.players[0].hand.size()
+	s.declare_attack(0, war, soft)
+	s.resolve_attack()
+	check(s.players[1].lp == lp1 - 1500 and s.players[0].hand.size() == hand_n + 1, "Drill Synchron: a Warrior deals 1500 piercing damage and you draw 1")
+	# Hyper Synchron: the Dragon it made gains 800 ATK and is banished in the End Phase.
+	s = _main_ready(100)
+	_mon(s, 0, "Hyper Synchron", 0)
+	_fake(s, 0, "Four", 500, 500, 1, {"level": 4})
+	star = _in(s, 0, "Stardust Dragon", "extra")
+	s.extra_summon(0, star)
+	check(s.players[0].field.has(star) and s.atk_of(star, false) == 3300, "Hyper Synchron: the Dragon Synchro Monster gains 800 ATK (got %d)" % s.atk_of(star, false))
+	s.begin_end()
+	check(s.players[0].banished.has(star), "Hyper Synchron: that monster is banished in the End Phase")
+	# Quickdraw Synchron: by sending a monster from the hand; stands in for Junk Synchron; not for a generic Tuner.
+	s = _main_ready(101)
+	var quick := _in(s, 0, "Quickdraw Synchron", "hand")
+	var cost_m := _in(s, 0, "Speed Warrior", "hand")
+	check(s.can_special_from_hand(0, quick), "Quickdraw Synchron can come out by sending a monster from the hand to the Graveyard")
+	s.special_from_hand(0, quick)
+	check(s.players[0].field.has(quick) and s.players[0].gy.has(cost_m), "Quickdraw Synchron is out and the monster is in the Graveyard")
+	_fake(s, 0, "Three", 500, 500, 1, {"level": 3})
+	var destroyer := _in(s, 0, "Junk Destroyer", "extra")
+	star = _in(s, 0, "Stardust Dragon", "extra")
+	check(s.can_extra_summon(0, destroyer), "Quickdraw Synchron stands in for Junk Synchron (5 + 3 = Junk Destroyer)")
+	check(not s.can_extra_summon(0, star), "Quickdraw Synchron cannot be used for a monster that does not name a \"Synchron\" Tuner")
+	# Level Eater: from the Graveyard, eating a Level of a Level 5 or higher monster.
+	s = _main_ready(102)
+	star = _mon(s, 0, "Stardust Dragon", 0)
+	var eater := _in(s, 0, "Level Eater", "gy")
+	check(s.gy_effects(0).has(eater), "Level Eater can use its effect with a Level 8 monster out")
+	s.gy_ignite(0, eater)
+	check(s.players[0].field.has(eater) and star.level() == 7, "Level Eater is Special Summoned and Stardust Dragon is Level 7 (Level %d)" % star.level())
+	check(not s.can_tribute_fx(eater), "Level Eater cannot be Tributed for an effect")
+	# Doppelwarrior: follows a monster out of the Graveyard; 2 Doppel Tokens as a Synchro Material.
+	s = _main_ready(103)
+	var dop := _in(s, 0, "Doppelwarrior", "hand")
+	var dead := _in(s, 0, "Speed Warrior", "gy")
+	s.players[0].gy.erase(dead)
+	s._special(0, dead, "reborn")
+	check(s.players[0].field.has(dop), "Doppelwarrior comes out of the hand when a monster is Special Summoned from your Graveyard")
+	_mon(s, 0, "Junk Synchron", 2)
+	s.players[0].field[s.players[0].field.find(dead)] = null
+	jw = _in(s, 0, "Junk Warrior", "extra")
+	s.extra_summon(0, jw)
+	toks = s.players[0].monsters().filter(func(m): return m.is_token())
+	check(s.players[0].field.has(jw) and toks.size() == 2 and toks[0].attack_pos and toks[0].atk() == 400, "Doppelwarrior: 2 Doppel Tokens (400 ATK) in Attack Position (tokens %d)" % toks.size())
+	# Effect Veiler: from the hand in the opponent's Main Phase, a monster's effects are negated this turn.
+	s = _main_ready(104)
+	var veil := _in(s, 1, "Effect Veiler", "hand")
+	var bw := _mon(s, 0, "Boost Warrior", 0)
+	check(s.responses(1, "phase").has(veil), "Effect Veiler can be used from the hand in the opponent's Main Phase")
+	s.respond(1, veil)
+	check(bw.negated and s.players[1].gy.has(veil) and s.atk_of(bw, false) == 300, "Effect Veiler: the monster's effects are negated (Boost Warrior back to 300, got %d)" % s.atk_of(bw, false))
+	# ---------------------------------------------------------------- the Extra Deck
+	# Formula Synchron: draw 1; a Synchro Summon in the opponent's Main Phase. Shooting Star Dragon's materials.
+	s = _main_ready(105)
+	_mon(s, 0, "Unknown Synchron", 0)
+	_fake(s, 0, "One", 100, 100, 1, {"level": 1})
+	var formula := _in(s, 0, "Formula Synchron", "extra")
+	hand_n = s.players[0].hand.size()
+	check(s.can_extra_summon(0, formula), "Formula Synchron: 1 Tuner + 1 non-Tuner (1 + 1)")
+	s.extra_summon(0, formula)
+	check(s.players[0].field.has(formula) and s.players[0].hand.size() == hand_n + 1 and formula.is_tuner(), "Formula Synchron is a Tuner and draws 1 when Synchro Summoned")
+	star = _mon(s, 0, "Stardust Dragon", 2)
+	var ssd := _in(s, 0, "Shooting Star Dragon", "extra")
+	check(s.can_extra_summon(0, ssd), "Shooting Star Dragon: 1 Tuner Synchro Monster + Stardust Dragon")
+	s.current = 1
+	check(s.responses(0, "phase").has(formula), "Formula Synchron can Synchro Summon in the opponent's Main Phase")
+	s.respond(0, formula)
+	check(s.players[0].field.has(ssd) and ssd.proper, "Formula Synchron + Stardust Dragon: Shooting Star Dragon in the opponent's turn")
+	# Shooting Star Dragon: a generic Tuner is not enough.
+	s = _main_ready(106)
+	_mon(s, 0, "Junk Synchron", 0)
+	_mon(s, 0, "Stardust Dragon", 1)
+	ssd = _in(s, 0, "Shooting Star Dragon", "extra")
+	check(not s.can_extra_summon(0, ssd), "Shooting Star Dragon needs a Tuner that is a Synchro Monster")
+	# Shooting Star Dragon: one attack for each Tuner among the top 5.
+	s = _main_ready(107)
+	ssd = _mon(s, 0, "Shooting Star Dragon", 0)
+	s.players[0].deck.clear()
+	for nm in ["Junk Synchron", "Speed Warrior", "Nitro Synchron", "Sonic Chick", "Turbo Synchron", "Max Warrior"]:
+		_in(s, 0, nm, "deck")
+	s.players[0].deck.reverse()   # the top of the Deck is the end of the list: Junk Synchron first
+	check(s.can_ignite(0, ssd), "Shooting Star Dragon can reveal the top 5 cards in Main Phase 1")
+	s.ignite(0, ssd)
+	s.phase = DuelState.Phase.BATTLE
+	check(s.attacks_left(ssd) == 3, "Shooting Star Dragon: 3 Tuners among the top 5 cards = 3 attacks (got %d)" % s.attacks_left(ssd))
+	# ...negates an effect that would destroy a card, and destroys that card.
+	s = _main_ready(108)
+	ssd = _mon(s, 0, "Shooting Star Dragon", 0)
+	s.current = 1
+	var boom := _st(s, 1, "Dark Hole")
+	boom.data = CardData.get_card(_cid("Dark Hole")).duplicate()
+	check(not s.chain_add(1, boom).is_empty(), "The opponent activates Dark Hole")
+	check(s.responses(0, "chain", s.chain.back()).has(ssd), "Shooting Star Dragon can answer an effect that would destroy a card")
+	s.respond(0, ssd)
+	s.chain_resolve()
+	check(s.players[0].field.has(ssd) and s.players[1].gy.has(boom), "Shooting Star Dragon negated Dark Hole, destroyed it, and is still on the field")
+	# ...and steps out of an attack: banished, the attack is negated, back in the End Phase.
+	s = _new_state(109)
+	_battle_ready(s)
+	blue = _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	ssd = _mon(s, 1, "Shooting Star Dragon", 0)
+	var weak1 := _fake(s, 1, "Weak", 500, 0, 1)
+	lp1 = s.players[1].lp
+	s.declare_attack(0, blue, weak1)
+	check(s.responses(1, "attack").has(ssd), "Shooting Star Dragon can answer an opponent's attack")
+	s.respond(1, ssd)
+	s.resolve_attack()
+	check(s.players[1].banished.has(ssd) and s.players[1].field.has(weak1) and s.players[1].lp == lp1, "Shooting Star Dragon is banished and the attack is negated")
+	s.begin_end()
+	check(s.players[1].field.has(ssd), "Shooting Star Dragon returns in the End Phase")
+	# Shooting Quasar Dragon: Tuner Synchro + 2 non-Tuner Synchros; 2 attacks; negates; leaves Shooting Star Dragon behind.
+	s = _main_ready(110)
+	_mon(s, 0, "Formula Synchron", 0)
+	_mon(s, 0, "Junk Warrior", 1)
+	var quasar := _in(s, 0, "Shooting Quasar Dragon", "extra")
+	check(not s.can_extra_summon(0, quasar), "Shooting Quasar Dragon needs 2 or more non-Tuner Synchro Monsters")
+	_mon(s, 0, "Junk Warrior", 2)
+	check(s.can_extra_summon(0, quasar), "Formula Synchron (2) + Junk Warrior (5) + Junk Warrior (5) = Shooting Quasar Dragon (12)")
+	s.extra_summon(0, quasar)
+	check(s.players[0].field.has(quasar) and EffectRunner.max_attacks(quasar) == 2, "Shooting Quasar Dragon: 2 non-Tuners, 2 attacks (got %d)" % EffectRunner.max_attacks(quasar))
+	ssd = _in(s, 0, "Shooting Star Dragon", "extra")
+	s.current = 1
+	var pot := _st(s, 1, "Pot of Greed")
+	pot.data = CardData.get_card(_cid("Pot of Greed")).duplicate()
+	var opp_hand: int = s.players[1].hand.size()
+	s.phase = DuelState.Phase.MAIN1
+	check(not s.chain_add(1, pot).is_empty(), "The opponent activates Pot of Greed")
+	check(s.responses(0, "chain", s.chain.back()).has(quasar), "Shooting Quasar Dragon can answer any activation")
+	s.respond(0, quasar)
+	s.chain_resolve()
+	check(s.players[1].hand.size() == opp_hand - 1 and s.players[1].gy.has(pot), "Shooting Quasar Dragon negated Pot of Greed (no draw) and destroyed it")
+	s._banish(quasar)
+	check(s.players[0].field.has(ssd), "Shooting Quasar Dragon leaves the field: Shooting Star Dragon comes out of the Extra Deck")
+	check(not s.can_revive(quasar), "Shooting Quasar Dragon must be Synchro Summoned")
+	# Junk Destroyer: destroys up to as many cards as non-Tuners used.
+	s = _main_ready(111)
+	_mon(s, 0, "Junk Synchron", 0)
+	_fake(s, 0, "Two", 100, 100, 1, {"level": 2})
+	_fake(s, 0, "Three", 100, 100, 2, {"level": 3})
+	_mon(s, 1, "Blue-Eyes White Dragon", 0)
+	_mon(s, 1, "Blue-Eyes White Dragon", 1)
+	_mon(s, 1, "Blue-Eyes White Dragon", 2)
+	destroyer = _in(s, 0, "Junk Destroyer", "extra")
+	s.extra_summon(0, destroyer)
+	check(s.players[0].field.has(destroyer) and s.players[1].monsters().size() == 1, "Junk Destroyer: 2 non-Tuners, 2 cards destroyed (their monsters left: %d)" % s.players[1].monsters().size())
+	# Junk Archer: banished until the End Phase.
+	s = _main_ready(112)
+	var archer := _mon(s, 0, "Junk Archer", 0)
+	blue = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	s.ignite(0, archer)
+	check(s.players[1].banished.has(blue), "Junk Archer banishes a monster")
+	s.begin_end()
+	check(s.players[1].field.has(blue), "Junk Archer: the monster returns in the End Phase")
+	# Junk Berserker: a "Junk" monster banished from the Graveyard takes its ATK off a monster; Defense monsters die at once.
+	s = _main_ready(113)
+	var bers := _mon(s, 0, "Junk Berserker", 0)
+	_in(s, 0, "Junk Warrior", "gy")
+	blue = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var def_m := _fake(s, 1, "Big Wall", 0, 4000, 1)
+	def_m.attack_pos = false
+	check(s.can_ignite(0, bers), "Junk Berserker can use a \"Junk\" monster in the Graveyard")
+	s.ignite(0, bers)
+	check(s.atk_of(blue, false) == 700, "Junk Berserker: Blue-Eyes loses Junk Warrior's 2300 ATK (got %d)" % s.atk_of(blue, false))
+	s.phase = DuelState.Phase.BATTLE
+	lp0 = s.players[0].lp
+	s.declare_attack(0, bers, def_m)
+	s.resolve_attack()
+	check(not s.players[1].field.has(def_m) and s.players[0].lp == lp0, "Junk Berserker destroys a Defense Position monster at the start of the Damage Step")
+	# Junk Gardna: in the opponent's turn it turns the attacker to Defense Position, and the attack stops.
+	s = _new_state(114)
+	_battle_ready(s)
+	blue = _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	var gardna := _mon(s, 1, "Junk Gardna", 0)
+	gardna.attack_pos = true
+	s.declare_attack(0, blue, gardna)
+	check(s.responses(1, "attack").has(gardna), "Junk Gardna can answer an attack")
+	s.respond(1, gardna)
+	s.resolve_attack()
+	check(not blue.attack_pos and s.players[1].field.has(gardna), "Junk Gardna: the attacker is turned to Defense Position and the attack stops")
+	# Road Warrior: a Level 2 or lower Warrior or Machine from the Deck.
+	s = _main_ready(115)
+	rw = _mon(s, 0, "Road Warrior", 0)
+	s.players[0].deck.clear()
+	var from_deck := _in(s, 0, "Speed Warrior", "deck")
+	_in(s, 0, "Blue-Eyes White Dragon", "deck")
+	check(s.can_ignite(0, rw), "Road Warrior can call a Level 2 or lower Warrior or Machine")
+	s.ignite(0, rw)
+	check(s.players[0].field.has(from_deck), "Road Warrior Special Summons Speed Warrior from the Deck")
+	# Turbo Warrior: halves a Level 6+ Synchro Monster it attacks; Level 6 or lower monsters cannot target it.
+	s = _new_state(116)
+	_battle_ready(s)
+	var tw := _mon(s, 0, "Turbo Warrior", 0)
+	var big := _mon(s, 1, "Stardust Dragon", 0)
+	lp1 = s.players[1].lp
+	s.declare_attack(0, tw, big)
+	s.resolve_attack()
+	check(not s.players[1].field.has(big) and s.players[1].lp == lp1 - 1250, "Turbo Warrior: Stardust Dragon fights at 1250 and loses (LP -%d)" % (lp1 - s.players[1].lp))
+	check(not EffectRunner.can_target(_fake(s, 1, "Four", 0, 0, -1), tw) and EffectRunner.can_target(_fake(s, 1, "Seven", 0, 0, -1, {"level": 7}), tw), "Turbo Warrior cannot be targeted by a Level 6 or lower monster's effect")
+	# Nitro Warrior: after a kill, a Defense Position monster is turned up and it attacks that one next.
+	s = _new_state(117)
+	_battle_ready(s)
+	var nitro := _mon(s, 0, "Nitro Warrior", 0)
+	var first := _fake(s, 1, "First", 1000, 0, 0)
+	var second := _fake(s, 1, "Second", 500, 2000, 1)
+	second.attack_pos = false
+	var third := _fake(s, 1, "Third", 100, 0, 2)
+	s.declare_attack(0, nitro, first)
+	s.resolve_attack()
+	check(second.attack_pos and s.attacks_left(nitro) == 1, "Nitro Warrior: the Defense Position monster is turned to Attack Position and it can attack again")
+	check(s.attack_targets_for(0, nitro).size() == 1 and s.attack_targets_for(0, nitro)[0] == second and not s.can_direct_attack_with(0, nitro), "Nitro Warrior's second attack is on that monster only")
+	s.declare_attack(0, nitro, second)
+	s.resolve_attack()
+	check(not s.players[1].field.has(second) and s.players[1].field.has(third) and s.attacks_left(nitro) == 0, "Nitro Warrior: the second attack lands and there is no third")
+	# Armory Arm: equipped, +1000 ATK; a kill burns for the destroyed monster's ATK.
+	s = _main_ready(118)
+	arm = _mon(s, 0, "Armory Arm", 0)
+	var host := _fake(s, 0, "Host", 2000, 0, 1)
+	var prey := _fake(s, 1, "Prey", 1500, 0, 0)
+	check(s.can_ignite(0, arm), "Armory Arm can equip itself to a monster")
+	s.ignite(0, arm)
+	check(arm.equipped_to == host and s.atk_of(host, false) == 3000 and s.def_of(host) == 0, "Armory Arm: the equipped monster gains 1000 ATK only (ATK %d)" % s.atk_of(host, false))
+	s.phase = DuelState.Phase.BATTLE
+	lp1 = s.players[1].lp
+	s.declare_attack(0, host, prey)
+	s.resolve_attack()
+	check(s.players[1].lp == lp1 - 1500 - 1500, "Armory Arm: 1500 battle damage and 1500 more for the destroyed monster's ATK (LP -%d)" % (lp1 - s.players[1].lp))
+	# Drill Warrior: half ATK for a direct attack; dig in and come back with a monster.
+	s = _main_ready(119)
+	var drill := _mon(s, 0, "Drill Warrior", 0)
+	_mon(s, 1, "Blue-Eyes White Dragon", 0)
+	check(s.can_ignite(0, drill), "Drill Warrior can use an effect")
+	s.ignite(0, drill)
+	check(s.atk_of(drill, false) == 1200 and s.can_direct_attack_with(0, drill), "Drill Warrior: ATK halved to 1200 and it can attack directly")
+	_in(s, 0, "Speed Warrior", "hand")
+	var back_m := _in(s, 0, "Junk Synchron", "gy")
+	check(s.can_ignite(0, drill), "Drill Warrior can still use its other effect this turn")
+	s.ignite(0, drill)
+	check(s.players[0].banished.has(drill), "Drill Warrior: discard 1 card, it is banished")
+	s.current = 0
+	s.begin_standby()
+	check(s.players[0].field.has(drill) and (s.players[0].hand.has(back_m) or s.players[0].hand.any(func(h): return h.is_monster())), "Drill Warrior returns in your next Standby Phase and a monster comes back to the hand")
+	# Lightning Warrior: 300 for each card in the opponent's hand.
+	s = _new_state(120)
+	_battle_ready(s)
+	var lightning := _mon(s, 0, "Lightning Warrior", 0)
+	prey = _fake(s, 1, "Prey", 2400 - 100, 0, 0)
+	lp1 = s.players[1].lp
+	var cards_h: int = s.players[1].hand.size()
+	s.declare_attack(0, lightning, prey)
+	s.resolve_attack()
+	check(cards_h > 0 and s.players[1].lp == lp1 - 100 - 300 * cards_h, "Lightning Warrior: 300 damage for each of the %d cards in their hand" % cards_h)
+	# Colossal Fighter: +100 for each Warrior in the Graveyards; destroyed by battle, a Warrior returns.
+	s = _new_state(121)
+	_battle_ready(s)
+	var col := _mon(s, 1, "Colossal Fighter", 0)
+	col.proper = true
+	s.players[0].gy.clear()
+	s.players[1].gy.clear()
+	_in(s, 0, "Speed Warrior", "gy")
+	_in(s, 1, "Junk Synchron", "gy")
+	check(s.atk_of(col, false) == 3000, "Colossal Fighter: 2800 + 100 for each of the 2 Warriors in the Graveyards (got %d)" % s.atk_of(col, false))
+	var giant := _fake(s, 0, "Giant", 5000, 0, 0)
+	s.declare_attack(0, giant, col)
+	s.resolve_attack()
+	check(s.players[1].field.has(col), "Colossal Fighter: destroyed by battle, it brings a Warrior back (itself, the strongest)")
+	# ---------------------------------------------------------------- Spells and Traps
+	# Tuning: a "Synchron" Tuner to the hand, then the top card of the Deck to the Graveyard.
+	s = _main_ready(122)
+	s.players[0].deck.clear()
+	var syn := _in(s, 0, "Junk Synchron", "deck")
+	var top_c := _in(s, 0, "Speed Warrior", "deck")
+	var tuning := _st(s, 0, "Tuning")
+	check(s.can_activate(0, tuning), "Tuning can be activated with a \"Synchron\" Tuner in the Deck")
+	s.activate(0, tuning)
+	check(s.players[0].hand.has(syn) and s.players[0].gy.has(top_c), "Tuning: Junk Synchron to the hand, the top card to the Graveyard")
+	# One for One: send a monster, a Level 1 from the hand or Deck.
+	s = _main_ready(123)
+	s.players[0].deck.clear()
+	s.players[0].hand.clear()
+	var lv1 := _in(s, 0, "Tuningware", "deck")
+	var sent := _in(s, 0, "Speed Warrior", "hand")
+	var ofo := _st(s, 0, "One for One")
+	check(s.can_activate(0, ofo), "One for One can be activated")
+	s.activate(0, ofo)
+	check(s.players[0].gy.has(sent) and s.players[0].field.has(lv1), "One for One: a monster goes to the Graveyard, a Level 1 comes out of the Deck")
+	# Double Summon: a second Normal Summon this turn.
+	s = _main_ready(124)
+	s.players[0].hand.clear()
+	var a1 := _in(s, 0, "Speed Warrior", "hand")
+	var a2 := _in(s, 0, "Sonic Chick", "hand")
+	s.normal_summoned = false
+	s.normal_summon(0, a1, [])
+	check(not s.can_normal_summon(0, a2), "One Normal Summon each turn")
+	var dbl := _st(s, 0, "Double Summon")
+	s.activate(0, dbl)
+	check(s.can_normal_summon(0, a2), "Double Summon: a second Normal Summon")
+	s.normal_summon(0, a2, [])
+	var a3 := _in(s, 0, "Sonic Chick", "hand")
+	check(s.players[0].field.has(a2) and not s.can_normal_summon(0, a3), "Double Summon: two, not three")
+	# Cards of Consonance: discard a Dragon Tuner with 1000 or less ATK, draw 2.
+	s = _main_ready(125)
+	s.players[0].hand.clear()
+	var coc := _st(s, 0, "Cards of Consonance")
+	check(not s.can_activate(0, coc), "Cards of Consonance needs a Dragon Tuner with 1000 or less ATK in the hand")
+	var deb := _in(s, 0, "Debris Dragon", "hand")
+	check(s.can_activate(0, coc), "Cards of Consonance can be activated with Debris Dragon in the hand")
+	s.activate(0, coc)
+	check(s.players[0].gy.has(deb) and s.players[0].hand.size() == 2, "Cards of Consonance: Debris Dragon discarded, 2 cards drawn")
+	# Card Rotator: every monster they control changes position.
+	s = _main_ready(126)
+	blue = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var hidden := _fake(s, 1, "Hidden", 500, 500, 1)
+	hidden.face_up = false
+	hidden.attack_pos = false
+	_in(s, 0, "Speed Warrior", "hand")
+	var rot := _st(s, 0, "Card Rotator")
+	s.activate(0, rot)
+	check(not blue.attack_pos and hidden.face_up and hidden.attack_pos, "Card Rotator: Attack to Defense, face-down Defense to face-up Attack")
+	# Fighting Spirit: 300 for each monster they control; it is destroyed in the monster's place.
+	s = _main_ready(127)
+	var fighter := _fake(s, 0, "Fighter", 1000, 0, 0)
+	blue = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	_mon(s, 1, "Blue-Eyes White Dragon", 1)
+	var spirit := _st(s, 0, "Fighting Spirit")
+	s.activate(0, spirit, fighter)
+	check(s.atk_of(fighter, false) == 1600, "Fighting Spirit: +300 for each of their 2 monsters (got %d)" % s.atk_of(fighter, false))
+	s.current = 1
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(1, blue, fighter)
+	s.resolve_attack()
+	check(s.players[0].field.has(fighter) and s.players[0].gy.has(spirit), "Fighting Spirit is destroyed instead of the monster")
+	# Silver Wing: only a Level 8+ Dragon Synchro; twice per turn no battle destruction; takes an effect's hit.
+	s = _main_ready(128)
+	star = _mon(s, 0, "Stardust Dragon", 0)
+	var plain := _fake(s, 0, "Plain", 1000, 0, 1)
+	var wing := _st(s, 0, "Silver Wing")
+	check(SpellRules.targets(s, 0, wing) == [star], "Silver Wing can only be equipped to a Level 8 or higher Dragon Synchro Monster")
+	s.activate(0, wing, star)
+	var g1 := _fake(s, 1, "G1", 4000, 0, 0)
+	var g2 := _fake(s, 1, "G2", 4000, 0, 1)
+	var g3 := _fake(s, 1, "G3", 4000, 0, 2)
+	s.current = 1
+	s.phase = DuelState.Phase.BATTLE
+	for g in [g1, g2]:
+		s.declare_attack(1, g, star)
+		s.resolve_attack()
+	check(s.players[0].field.has(star), "Silver Wing: twice per turn the monster is not destroyed by battle")
+	s.declare_attack(1, g3, star)
+	s.resolve_attack()
+	check(not s.players[0].field.has(star), "Silver Wing: the third battle destroys it")
+	s = _main_ready(129)
+	star = _mon(s, 0, "Stardust Dragon", 0)
+	wing = _st(s, 0, "Silver Wing")
+	s.activate(0, wing, star)
+	s.effect_by = 1
+	s._destroy(star)
+	s.effect_by = -1
+	check(s.players[0].field.has(star) and s.players[0].gy.has(wing), "Silver Wing is destroyed instead when a card effect would destroy the monster")
+	# Graceful Revival: a Level 2 or lower monster in Attack Position; they go together.
+	s = _main_ready(130)
+	s.players[0].gy.clear()
+	var small_gy := _in(s, 0, "Speed Warrior", "gy")
+	_in(s, 0, "Blue-Eyes White Dragon", "gy")
+	var grace := _st(s, 0, "Graceful Revival", "set", "trap")
+	check(s.can_activate(0, grace), "Graceful Revival can be activated")
+	s.activate(0, grace)
+	check(s.players[0].field.has(small_gy) and small_gy.attack_pos, "Graceful Revival: the Level 2 monster returns in Attack Position")
+	s._destroy_st(grace)
+	check(not s.players[0].field.has(small_gy), "Graceful Revival leaves the field: the monster is destroyed")
+	# Shooting Star: only with a "Stardust" monster on the field.
+	s = _main_ready(131)
+	blue = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var shoot := _st(s, 0, "Shooting Star", "set", "trap")
+	check(not s.can_activate(0, shoot), "Shooting Star needs a \"Stardust\" monster on the field")
+	_mon(s, 0, "Stardust Dragon", 0)
+	check(s.can_activate(0, shoot), "Shooting Star can be activated with Stardust Dragon out")
+	s.activate(0, shoot, blue)
+	check(not s.players[1].field.has(blue), "Shooting Star destroys the target")
+	# Synchro Strike: 500 for each material.
+	s = _main_ready(132)
+	_mon(s, 0, "Junk Synchron", 0)
+	_fake(s, 0, "Two", 100, 100, 1, {"level": 2})
+	jw = _in(s, 0, "Junk Warrior", "extra")
+	s.extra_summon(0, jw)
+	var base_atk: int = s.atk_of(jw, false)
+	var strike := _st(s, 0, "Synchro Strike", "set", "trap")
+	s.activate(0, strike, jw)
+	check(s.atk_of(jw, false) == base_atk + 1000, "Synchro Strike: +500 for each of the 2 materials (got +%d)" % (s.atk_of(jw, false) - base_atk))
+	# Skill Successor: +400 as a Trap; +800 from the Graveyard, not the turn it got there.
+	s = _main_ready(133)
+	var hero := _fake(s, 0, "Hero", 1000, 0, 0)
+	var skill := _st(s, 0, "Skill Successor", "set", "trap")
+	s.activate(0, skill, hero)
+	check(s.atk_of(hero, false) == 1400 and s.players[0].gy.has(skill), "Skill Successor: +400 ATK until the end of the turn")
+	check(not s.gy_effects(0).has(skill), "Skill Successor cannot be used from the Graveyard the turn it was sent there")
+	s.turn += 2
+	check(s.gy_effects(0).has(skill), "Skill Successor can be banished from the Graveyard in a later turn of yours")
+	s.gy_ignite(0, skill)
+	check(s.atk_of(hero, false) == 1800 and s.players[0].banished.has(skill), "Skill Successor from the Graveyard: +800 ATK (got %d)" % s.atk_of(hero, false))
+	# Descending Lost Star: a Synchro Monster back in Defense, negated, a Level lower, 0 DEF, locked.
+	s = _main_ready(134)
+	star = _in(s, 0, "Stardust Dragon", "gy")
+	star.proper = true
+	var lost := _st(s, 0, "Descending Lost Star", "set", "trap")
+	check(s.can_activate(0, lost), "Descending Lost Star can be activated with a Synchro Monster in the Graveyard")
+	s.activate(0, lost)
+	check(s.players[0].field.has(star) and not star.attack_pos and star.negated and star.level() == 7 and s.def_of(star) == 0 and not s.can_change_position(0, star), "Descending Lost Star: Defense Position, negated, Level 7, 0 DEF, position locked")
+	# Synchro Barrier: Tribute a Synchro Monster; no damage until the End Phase of the next turn.
+	s = _main_ready(135)
+	jw = _mon(s, 0, "Junk Warrior", 0)
+	var barrier := _st(s, 0, "Synchro Barrier", "set", "trap")
+	check(s.can_activate(0, barrier), "Synchro Barrier can be activated with a Synchro Monster to Tribute")
+	s.activate(0, barrier)
+	lp0 = s.players[0].lp
+	s._damage(0, 1000)
+	s.turn += 1
+	s._damage(0, 1000, true)
+	check(not s.players[0].field.has(jw) and s.players[0].lp == lp0, "Synchro Barrier: no damage this turn or the next")
+	s.turn += 1
+	s._damage(0, 1000)
+	check(s.players[0].lp == lp0 - 1000, "Synchro Barrier is over after the next turn")
+	# Starlight Road: an effect that would destroy 2 or more of your cards is negated, and Stardust Dragon arrives.
+	s = _main_ready(136)
+	_fake(s, 0, "Mine A", 1000, 0, 0)
+	_fake(s, 0, "Mine B", 1000, 0, 1)
+	star = _in(s, 0, "Stardust Dragon", "extra")
+	var roadt := _st(s, 0, "Starlight Road", "set", "trap")
+	s.current = 1
+	boom = _st(s, 1, "Dark Hole")
+	boom.data = CardData.get_card(_cid("Dark Hole")).duplicate()
+	s.chain_add(1, boom)
+	check(s.responses(0, "chain", s.chain.back()).has(roadt), "Starlight Road can answer an effect that would destroy 2 of your cards")
+	s.chain_add(0, roadt, null, "chain", s.chain.back())
+	s.chain_resolve()
+	check(s.players[0].monsters().size() == 3 and s.players[0].field.has(star), "Starlight Road: Dark Hole is negated and Stardust Dragon comes out of the Extra Deck")
+	s = _main_ready(137)
+	_fake(s, 0, "Mine A", 1000, 0, 0)
+	roadt = _st(s, 0, "Starlight Road", "set", "trap")
+	s.current = 1
+	boom = _st(s, 1, "Dark Hole")
+	boom.data = CardData.get_card(_cid("Dark Hole")).duplicate()
+	s.chain_add(1, boom)
+	check(not s.responses(0, "chain", s.chain.back()).has(roadt), "Starlight Road does not answer an effect that would destroy only 1 of your cards")
+	# Defense Draw: at damage calculation in the opponent's turn, no battle damage and draw 1.
+	s = _new_state(138)
+	_battle_ready(s)
+	blue = _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	var dd := _st(s, 1, "Defense Draw", "set", "trap")
+	lp1 = s.players[1].lp
+	hand_n = s.players[1].hand.size()
+	s.declare_attack(0, blue, null)
+	check(not s.responses(1, "attack").has(dd) and s.responses(1, "damage").has(dd), "Defense Draw is for damage calculation only")
+	s.chain_add(1, dd, null, "damage", null)
+	s.chain_resolve()
+	s.resolve_attack()
+	check(s.players[1].lp == lp1 and s.players[1].hand.size() == hand_n + 1, "Defense Draw: no battle damage from this battle, draw 1")
+	# Urgent Tuning: a Synchro Summon in the Battle Phase.
+	s = _new_state(139)
+	_battle_ready(s)
+	_mon(s, 0, "Junk Synchron", 0)
+	_fake(s, 0, "Two", 100, 100, 1, {"level": 2})
+	jw = _in(s, 0, "Junk Warrior", "extra")
+	var urgent := _st(s, 0, "Urgent Tuning", "set", "trap")
+	check(s.responses(0, "battle_start").has(urgent), "Urgent Tuning can be activated in the Battle Phase")
+	s.chain_add(0, urgent, null, "battle_start", null)
+	s.chain_resolve()
+	check(s.players[0].field.has(jw) and jw.proper, "Urgent Tuning: Junk Warrior is Synchro Summoned in the Battle Phase")
+	# Give and Take: a monster to their field in Defense; one of yours gains its Level.
+	s = _main_ready(140)
+	s.players[0].gy.clear()
+	var gift := _in(s, 0, "Speed Warrior", "gy")
+	var taker := _mon(s, 0, "Junk Synchron", 0)
+	var gat := _st(s, 0, "Give and Take", "set", "trap")
+	s.activate(0, gat)
+	check(s.players[1].field.has(gift) and not gift.attack_pos and taker.level() == 5, "Give and Take: Speed Warrior on their field in Defense, Junk Synchron is Level 5 (Level %d)" % taker.level())
+	# Slip Summon: when they Summon; back to the hand in the End Phase.
+	s = _main_ready(141)
+	s.current = 1
+	var theirs := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var slip := _st(s, 0, "Slip Summon", "set", "trap")
+	s.players[0].hand.clear()
+	var slipped := _in(s, 0, "Speed Warrior", "hand")
+	check(s.responses(0, "summon", theirs).has(slip), "Slip Summon can answer a Summon")
+	s.chain_add(0, slip, null, "summon", theirs)
+	s.chain_resolve()
+	check(s.players[0].field.has(slipped) and not slipped.attack_pos, "Slip Summon: a Level 4 or lower monster from the hand in Defense Position")
+	s.begin_end()
+	check(s.players[0].hand.has(slipped), "Slip Summon: it returns to the hand in the End Phase")
+	# Limiter Overload: sent to the Graveyard, Speed Warrior comes out.
+	s = _main_ready(142)
+	s.players[0].deck.clear()
+	var spd := _in(s, 0, "Speed Warrior", "deck")
+	var lim := _st(s, 0, "Limiter Overload", "set", "trap")
+	s._destroy_st(lim)
+	s._cleanup()
+	check(s.players[0].field.has(spd), "Limiter Overload: sent to the Graveyard, it Special Summons Speed Warrior from the Deck")
+	# Yusei's deck is his own: 40 cards, 15 in the Extra Deck, nothing borrowed.
+	var au := SignatureDecks.audit("yusei")
+	check((au["stand_ins"] as Array).is_empty() and CardData.deck_list("yusei").size() == 40 and CardData.extra_list("yusei").size() == 15, "Yusei's deck: 40 + 15, no stand-ins (stand-ins %s)" % str(au["stand_ins"]))
+	check(CardData.legend_deck("yusei").size() == 40 and not CardData.legend_deck("yusei").has(_cid("Pot of Greed")), "Yusei's deck is the same 40 cards on Hard and Expert")
+	# The written-out deck is Yusei's alone: a street duelist with "his deck" plays the plain one.
+	check(SignatureDecks.owner("yusei") == "yusei" and SignatureDecks.borrowed("yusei", "hunter") and not SignatureDecks.borrowed("yusei", "yusei"), "The deck \"yusei\" belongs to Yusei; a Rare Hunter only borrows it")
+	check(not CardData.extra_list("yusei", true).has(_cid("Shooting Star Dragon")) and CardData.extra_list("yusei").has(_cid("Shooting Star Dragon")) and CardData.deck_list("yusei", true).size() >= 40, "The borrowed version has no Shooting Star Dragon")
+	# Every roster duelist owns their deck, and in the open world they duel with that deck
+	# (so the deck Free Duel shows is the deck they play when you walk up to them).
+	var roam_src := FileAccess.get_file_as_string("res://scripts/roam/roam_data.gd")
+	var met := 0
+	for k in SignatureDecks.WISH:
+		var own_deck := str(Characters.get_char(str(k)).get("deck", ""))
+		check(SignatureDecks.owner(own_deck) == str(k) and not SignatureDecks.borrowed(own_deck, str(k)), "%s owns the deck \"%s\"" % [k, own_deck])
+		var at := roam_src.find("\"char\": \"%s\"" % k)
+		while at != -1:
+			var stop := roam_src.find("{\"id\":", at)
+			var seg := roam_src.substr(at, (stop - at) if stop != -1 else 900)
+			var dk := seg.find("\"duel\": {\"deck\": \"")
+			if dk != -1:
+				met += 1
+				var named := seg.substr(dk + 18).get_slice("\"", 0)
+				check(named == own_deck, "In the open world %s duels with their own deck (found \"%s\")" % [k, named])
+			at = roam_src.find("\"char\": \"%s\"" % k, at + 8)
+	check(met >= 20, "The roster duelists can be challenged in the open world (%d found)" % met)
+	# The 5D's packs carry the new cards.
+	var pool5: Array = Collection.pool(str(Characters.DATA["yusei"]["era"]))
+	for nm in ["Shooting Star Dragon", "Shooting Quasar Dragon", "Formula Synchron", "Quickdraw Synchron", "Level Eater", "Starlight Road", "Zero Gardna", "Colossal Fighter", "Urgent Tuning"]:
+		check(pool5.has(_cid(nm)), "%s is in the 5D's card pool (packs and shops)" % nm)

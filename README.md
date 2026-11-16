@@ -5,6 +5,52 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.28
+
+**Yusei's best deck: the one with Shooting Star Dragon and Shooting Quasar Dragon, all 40 + 15 cards his own.**
+
+56 of his cards were built in this version (Nitro Warrior was finished, the other 55 are new), each sentence by sentence against the card text, each with a test.
+
+His deck now (Free Duel > See their deck shows it):
+
+- **Main, 40:** Junk Synchron x3, Quickdraw Synchron x2, Debris Dragon, Drill Synchron, Road Synchron, Turbo Synchron, Nitro Synchron, Unknown Synchron, Effect Veiler x2, Speed Warrior x2, Quillbolt Hedgehog x3, Level Eater x2, Doppelwarrior x2, Tuningware, Sonic Chick, Shield Warrior, Max Warrior x2, Synchron Explorer, Tuning x2, One for One, Double Summon, Cards of Consonance, Scrap-Iron Scarecrow x3, Starlight Road, Graceful Revival, Shooting Star, Defense Draw.
+- **Extra, 15:** Stardust Dragon, Shooting Star Dragon, Shooting Quasar Dragon, Formula Synchron, Junk Warrior, Junk Destroyer, Junk Archer, Junk Berserker, Junk Gardna, Road Warrior, Turbo Warrior, Nitro Warrior, Drill Warrior, Armory Arm, Lightning Warrior.
+- Out: Pot of Greed, Fissure, Monster Reborn, Sakuretsu Armor, Mystical Space Typhoon, Rush Recklessly, Draining Shield, Call of the Haunted, Celtic Guardian, Beaver Warrior. Nothing in it is borrowed any more.
+
+The big ones:
+
+- **Shooting Star Dragon:** 1 Tuner Synchro Monster + Stardust Dragon. Reveal the top 5 cards of your Deck: one attack this turn for each Tuner among them (none means no attack). Once per turn it negates an effect that would destroy a card on the field and destroys that card. Once per turn, when an opponent's monster attacks, it leaves the field, the attack is negated, and it returns in the End Phase.
+- **Shooting Quasar Dragon:** 1 Tuner Synchro Monster + 2 or more non-Tuner Synchro Monsters, Synchro Summon only. One attack for each non-Tuner used. Once per turn it negates any card or effect and destroys it. When it leaves the field, Shooting Star Dragon comes out of the Extra Deck.
+- **Formula Synchron:** a Synchro Monster that is a Tuner. Draw 1 when it is made, and in your opponent's Main Phase it can Synchro Summon with itself as material.
+- **Junk Destroyer** (destroys up to as many cards as non-Tuners used), **Junk Archer** (banishes a monster until the End Phase), **Junk Berserker** (banish a "Junk" monster from your Graveyard to cut a monster's ATK by that much; destroys a Defense Position monster at the start of the Damage Step), **Junk Gardna** (changes a monster's battle position in either turn, and once more when it leaves for the Graveyard).
+- **Road Warrior** (a Level 2 or lower Warrior or Machine from the Deck each turn; needs Road Synchron and 2 non-Tuners), **Turbo Warrior** (halves a Level 6+ Synchro Monster it attacks; Level 6 or lower monsters cannot target it), **Nitro Warrior**, now whole (after a kill it turns a Defense Position monster up and attacks that one next), **Drill Warrior** (half ATK for a direct attack; or discard 1, dig in, and come back next Standby Phase with a monster from the Graveyard), **Armory Arm** (equips itself for +1000 ATK and burns for the ATK of what its monster destroys), **Lightning Warrior**, **Colossal Fighter**.
+
+The pieces:
+
+- Tuners: **Quickdraw Synchron** (from the hand by sending a monster to the Graveyard; stands in for any "Synchron" Tuner), **Debris Dragon**, **Road Synchron** (counts as Level 2 for anything but Road Warrior), **Turbo Synchron**, **Drill Synchron**, **Hyper Synchron**, **Unknown Synchron**, **Effect Veiler** (from the hand in your opponent's Main Phase).
+- Monsters: **Level Eater**, **Doppelwarrior** (2 Doppel Tokens), **Tuningware** (Level 1 or 2, draws 1), **Synchron Explorer**, **Sonic Chick**, **Boost Warrior**, **Stardust Xiaolong**, **Salvage Warrior**, **Zero Gardna**, **Ghost Gardna**, **Fortress Warrior**, **Rockstone Warrior** (2 Rockstone Tokens), **Turret Warrior**, **Level Warrior**, **Healing Wave Generator**.
+- Spells and Traps: **Tuning**, **One for One**, **Double Summon**, **Cards of Consonance**, **Card Rotator**, **Fighting Spirit**, **Silver Wing**, **Graceful Revival**, **Shooting Star**, **Starlight Road**, **Defense Draw**, **Urgent Tuning**, **Synchro Strike**, **Skill Successor** (also from the Graveyard), **Descending Lost Star**, **Synchro Barrier**, **Give and Take**, **Slip Summon**, **Limiter Overload**.
+
+How the computer plays it: before anything else it now looks for a Synchro (or Xyz) Summon one or two pieces away, the piece's own effect counted (Junk Synchron bringing a partner back, Quickdraw Synchron from the hand and then the Normal Summon), and builds toward the best one. A Synchro Tuner is made when it opens something bigger (Formula Synchron into Shooting Star Dragon). Stardust Dragon is preferred when there is a choice. This helps every Synchro and Xyz deck, not only his. It also answers with the new Quick Effects (Shooting Star Dragon, Shooting Quasar Dragon, Junk Gardna, Zero Gardna, Ghost Gardna, Effect Veiler, Skill Successor).
+
+Fixed on the way:
+
+- **Hard and Expert played a different list.** On those two levels an opponent's deck was built by a separate step that skipped "their own cards in, stand-ins out" (and added Pot of Greed and Monster Reborn). So what See their deck showed and what a Hard opponent played were not the same. They are now, for every duelist.
+- **The open world plays the same decks.** Walk up to Yusei, Jaden, Jack or any of the 24 and the duel uses the deck Free Duel shows, on every difficulty (a test now checks all 24: each one owns their deck, and their open-world duel names that deck). The same holds in the story, the tournaments and the Academy when the opponent is the duelist in person.
+- A deck that is written out in full (Yusei's is the first) belongs to its duelist alone. A Rare Hunter or a street duelist who plays "Yusei's deck" keeps the plain version, with no Shooting Star Dragon.
+
+Card shops: all of these are in the 5D's packs, and Yusei's deck in the Deck Shop is this list, card for card.
+
+**Not done or not checked:**
+
+- 3 of Yusei's cards are still to build: Majestic Star Dragon (it borrows another monster's effect, which needs its own piece of rules), Equip Shot and Confusion Chaff.
+- Effect Veiler, Formula Synchron and Junk Gardna can be used in the opponent's turn when the game opens a window: a summon, an attack, a chain, and the phase changes if "Ask me at every chance" is on. Not at any free moment of the Main Phase.
+- Turbo Warrior's "cannot be targeted" is checked where a monster effect picks one of the opponent's monsters through the usual picker. A few older effects that pick their target another way do not ask it yet.
+- Skill Successor from the Graveyard works in your Main Phase and in your own attacks, not at every moment of your turn.
+- The computer plays the deck at a plain level. In 60 test duels on Hard it made Junk Warrior 25 times, Nitro Warrior 21, Junk Berserker 17, Armory Arm 16, Stardust Dragon 11, Road Warrior 9, Lightning Warrior 9, and Shooting Star Dragon once. Shooting Quasar Dragon never. It won 23 of the 60, against decks that still carry Pot of Greed, Raigeki and Monster Reborn. That gap closes as the other decks are rebuilt the same way.
+- Nothing here was watched in a real duel on screen. Every card has a rules test, 30 computer-against-computer duels ran clean, and two full duels ran in the real duel screen without an error (as Yusei, and against him).
+- The other 23 duelists still have about 500 cards to build. Next: Yugi, Jaden, Yuma, then the rest.
+
 ## What is in 0.33.27
 
 **The first batch of missing cards: Mai, Rex and Alexis get theirs, each with its full printed effect.**

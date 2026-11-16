@@ -569,13 +569,14 @@ static func _swap_all(list: Array[int]) -> Array[int]:
 	return out
 
 
-static func deck_list(deck_key: String) -> Array[int]:
+## plain: the deck in somebody else's hands (see SignatureDecks.borrowed).
+static func deck_list(deck_key: String, plain := false) -> Array[int]:
 	if deck_key == "custom":
 		var mine: Array[int] = []
 		for id in Engine.get_main_loop().root.get_node("Collection").main:
 			mine.append(int(id))
 		return mine
-	return SignatureDecks.tune(deck_key, _swap_all(_deck_list_raw(deck_key)))
+	return SignatureDecks.tune(deck_key, _swap_all(_deck_list_raw(deck_key)), plain)
 
 
 static func _deck_list_raw(deck_key: String) -> Array[int]:
@@ -619,15 +620,15 @@ static func to_forty(list: Array[int]) -> Array[int]:
 	return out
 
 
-static func extra_list(deck_key: String) -> Array[int]:
+static func extra_list(deck_key: String, plain := false) -> Array[int]:
 	if deck_key == "custom":
 		var mine: Array[int] = []
 		for id in Engine.get_main_loop().root.get_node("Collection").extra:
 			mine.append(int(id))
 		return mine
 	if DECKS.has(deck_key):
-		return SignatureDecks.tune_extra(deck_key, _swap_all(_expand(DECKS[deck_key].get("extra", {}))))
-	return SignatureDecks.tune_extra(deck_key, _swap_all(_expand(_resolve(NAMED_DECKS.get(deck_key, {}).get("extra", {}), true))))
+		return SignatureDecks.tune_extra(deck_key, _swap_all(_expand(DECKS[deck_key].get("extra", {}))), plain)
+	return SignatureDecks.tune_extra(deck_key, _swap_all(_expand(_resolve(NAMED_DECKS.get(deck_key, {}).get("extra", {}), true))), plain)
 
 
 ## Card names -> ids via the database. Unknown or unsupported cards are dropped.
@@ -758,9 +759,9 @@ static func _expand(cards: Dictionary) -> Array[int]:
 ## Hard mode: the opponent brings a tuned "Legend" version of their deck.
 ## The 6 weakest monsters are swapped for extra copies of their best ones
 ## (max 3 per card), plus Pot of Greed and Monster Reborn if missing.
-static func legend_deck(deck_key: String) -> Array[int]:
+static func legend_deck(deck_key: String, plain := false) -> Array[int]:
 	if not DECKS.has(deck_key):
-		return deck_list(deck_key)
+		return deck_list(deck_key, plain)
 	var counts: Dictionary = DECKS[deck_key]["cards"].duplicate()
 	var monsters := []
 	for id in counts:
@@ -783,4 +784,6 @@ static func legend_deck(deck_key: String) -> Array[int]:
 		while added < removed and counts[id] < 3:
 			counts[id] += 1
 			added += 1
-	return _swap_all(to_forty(_expand(counts)))
+	# (The duelist's own cards go in and the stand-ins come out here too: Hard and Expert play
+	# this list, and it used to skip that step.)
+	return SignatureDecks.tune(deck_key, _swap_all(to_forty(_expand(counts))), plain)

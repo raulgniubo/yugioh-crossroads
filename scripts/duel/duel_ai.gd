@@ -43,6 +43,13 @@ static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionar
 		var sw := _speed_world(s, p)
 		if not sw.is_empty():
 			return sw
+	if level > EASY:
+		var prep := _setup_spell(s, p)
+		if not prep.is_empty():
+			return prep
+		var combo := _combo_step(s, p)
+		if not combo.is_empty():
+			return combo
 	if level >= EXPERT:
 		return _deep_main(s, p)
 	if level >= HARD:
@@ -91,6 +98,8 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 			if wants and not s.toon_world(p) and me.lp > 2000:
 				return {"do": "activate", "card": c}
 			continue
+		if SpellRules.spec(c).has("ai"):
+			continue   # (_setup_spell plays these)
 		if not SpellRules.spec(c).has("legacy"):
 			# Cards from the Spell/Trap table: play it if a quick look ahead says the board gets better.
 			if idle < -1e8:
@@ -138,18 +147,31 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 				mat_best = maxi(mat_best, m.atk())
 			if x.atk() > mat_best:
 				return {"do": "extra", "card": x}
+		# A Synchro Tuner (Formula Synchron) is worth making when it opens a bigger Synchro Summon.
+		for x in extra_sorted:
+			if x.frame() != "synchro" or not x.is_tuner() or not s.can_extra_summon(p, x):
+				continue
+			var sim_t := s.clone()
+			var xt = sim_t.find_uid(x.uid)
+			if xt == null or sim_t.extra_summon(p, xt).is_empty():
+				continue
+			for y in sim_t.players[p].extra:
+				if y.frame() == "synchro" and y.atk() >= 3000 and sim_t.can_extra_summon(p, y):
+					return {"do": "extra", "card": x}
 	# 3. Flip set monsters that can now do something
 	for m in me.monsters():
 		if s.can_flip_summon(p, m) and (m.atk() > opp_best or opp.monsters().is_empty()):
 			return {"do": "flip", "card": m}
 	# 4. Normal summon or set
-	if not s.normal_summoned:
+	if not s.normal_summoned or me.extra_normals > 0:
 		var plan := _best_summon(s, p, opp_best, level)
 		if not plan.is_empty():
 			return plan
 	# 4b. Special Summons from hand (Cyber Dragon, Bora, Gale...)
 	for c in me.hand:
 		if s.can_special_from_hand(p, c):
+			if EffectRunner.fx(c).get("ai_combo_only", false):
+				continue   # (a piece for a Synchro Summon: _combo_step brings it out when it leads to one)
 			var cost_n := int(EffectRunner.fx(c).get("special_toon", 0))
 			if cost_n > 0:
 				# Only trade up: the monster given up must be weaker than the Toon that arrives.
@@ -165,10 +187,13 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 			return {"do": "hand_ignite", "card": c}
 	# 4e. Effects used from the Graveyard (Destiny HERO - Malicious)
 	for g in s.gy_effects(p):
-		return {"do": "gy_ignite", "card": g}
+		if EffectRunner.ai_gy_ok(s, p, g):
+			return {"do": "gy_ignite", "card": g}
 	# 4d. Monster effects on the field
 	for m in me.monsters():
 		if s.can_ignite(p, m):
+			if not EffectRunner.ai_ignite_ok(s, p, m):
+				continue
 			var ig := EffectRunner.ignite_spec(m)
 			if ig.get("repeat", false) and str(ig.get("cost", "")).begins_with("tribute"):
 				# Feeding the whole board to a cannon is only worth it when it ends the duel.
@@ -340,12 +365,16 @@ static func _best_summon(s: DuelState, p: int, opp_best: int, level: int) -> Dic
 	for o in options:
 		if o["tributes"].is_empty() and _enables_extra(s, p, o["card"]):
 			return {"do": "summon", "card": o["card"], "tributes": []}
+	# A card that is worth more in the hand stays there (Effect Veiler).
+	var keep: Array = options.filter(func(o): return not CardEffects.of(o["card"].cname()).has("quick") or not s.players[p].hand.has(o["card"]))
+	if not keep.is_empty():
+		options = keep
 	options.sort_custom(func(a, b): return a["card"].atk() > b["card"].atk())
 	var top: Dictionary = options[0]
 	var card: DuelState.CardInst = top["card"]
 	var st := _style(p)
 	var edge := 0 if st == "" else (-500 if st == "aggro" else 300)
-	if card.atk() >= opp_best + edge or s.players[s.opponent(p)].monsters().is_empty():
+	if (card.atk() >= opp_best + edge or s.players[s.opponent(p)].monsters().is_empty()) and (card.atk() >= 1000 or s.turn <= 1):
 		return {"do": "summon", "card": card, "tributes": top["tributes"]}
 	# Too weak to attack: set the best defender instead.
 	options.sort_custom(func(a, b): return a["card"].def() > b["card"].def())
@@ -357,6 +386,147 @@ static func _weakest(ps: DuelState.PlayerState, count: int) -> Array:
 	var mons := ps.monsters().filter(func(m): return not m.data.get("no_tribute_summon", false))
 	mons.sort_custom(func(a, b): return a.atk() < b.atk())
 	return mons.slice(0, count)
+
+
+## Spells that only set things up, played as soon as they can be: a search (Tuning), a draw
+## (Cards of Consonance), and Double Summon once the Normal Summon is spent and there is
+## another monster to bring out.
+static func _setup_spell(s: DuelState, p: int) -> Dictionary:
+	var me := s.players[p]
+	if p != s.current or not s._in_main():
+		return {}
+	var pool: Array = me.hand.duplicate()
+	for st in me.spells:
+		if st != null and not st.face_up:
+			pool.append(st)
+	for c in pool:
+		if c.is_monster():
+			continue
+		var tag := str(SpellRules.spec(c).get("ai", ""))
+		if tag == "" or not s.can_activate(p, c):
+			continue
+		if tag == "always":
+			return {"do": "activate", "card": c}
+		if tag == "second_summon" and s.normal_summoned and me.extra_normals == 0 \
+				and not me.hand.filter(func(h): return h.is_monster() and h.level() <= 4 and not CardData.is_extra(h.id)).is_empty():
+			return {"do": "activate", "card": c}
+	return {}
+
+
+## The pieces a combo can be built from right now: a Normal Summon without Tribute, a Special
+## Summon from the hand, an effect in the Graveyard.
+static func _setup_tries(s: DuelState, p: int) -> Array:
+	var me := s.players[p]
+	var tries: Array = []
+	var seen := {}
+	if not s.normal_summoned or me.extra_normals > 0:
+		for c in me.hand:
+			if c.is_monster() and not seen.has("n" + c.cname()) and s.can_normal_summon(p, c) and s.tributes_needed(c) == 0:
+				seen["n" + c.cname()] = true
+				tries.append({"do": "summon", "card": c, "tributes": []})
+	for c in me.hand:
+		if not seen.has("s" + c.cname()) and s.can_special_from_hand(p, c):
+			seen["s" + c.cname()] = true
+			tries.append({"do": "special_hand", "card": c})
+	for g in s.gy_effects(p):
+		if not seen.has("g" + g.cname()) and EffectRunner.ai_gy_ok(s, p, g):
+			seen["g" + g.cname()] = true
+			tries.append({"do": "gy_ignite", "card": g})
+	# A Spell that brings a piece out (One for One).
+	var held: Array = me.hand.duplicate()
+	for st in me.spells:
+		if st != null and not st.face_up:
+			held.append(st)
+	for c in held:
+		if not c.is_monster() and str(SpellRules.spec(c).get("ai", "")) == "combo" and not seen.has("a" + c.cname()) and s.can_activate(p, c):
+			seen["a" + c.cname()] = true
+			tries.append({"do": "activate", "card": c})
+	return tries.slice(0, 9)
+
+
+## What making this Synchro or Xyz Monster is worth right now: its ATK, or 0 when it cannot be
+## made or would be a step down from its own materials. A Synchro Tuner is worth what it leads
+## to (Formula Synchron into Shooting Star Dragon), tried on a copy of the duel.
+static func _extra_worth(s: DuelState, p: int, x: DuelState.CardInst, depth: int) -> int:
+	if not x.frame() in ["synchro", "xyz"] or not s.can_extra_summon(p, x):
+		return 0
+	var sets: Array = s.extra_materials(p, x)
+	if sets.is_empty():
+		return 0
+	var mat_best := 0
+	for m in sets[0]:
+		mat_best = maxi(mat_best, m.atk())
+	var v: int = x.atk()
+	if x.frame() == "synchro" and x.is_tuner():
+		v = 0
+		if depth > 0:
+			var sim2 := s.clone()
+			sim2.defer_fx = false
+			var x2 = sim2.find_uid(x.uid)
+			if x2 != null and not sim2.extra_summon(p, x2).is_empty():
+				v = _extra_value(sim2, p, depth - 1)
+				if v < 3000:
+					v = 0
+	if v < mat_best + 300:
+		return 0   # two monsters for one that is barely bigger is a bad trade
+	# The duelist's ace is the one to make when there is a choice (Stardust Dragon over Junk Destroyer).
+	return v + (700 if x.id == _ace(p) and _ace(p) != 0 else 0)
+
+
+static func _extra_value(s: DuelState, p: int, depth: int) -> int:
+	var best := 0
+	for x in s.players[p].extra:
+		best = maxi(best, _extra_worth(s, p, x, depth))
+	return best
+
+
+## One step toward a Synchro or Xyz Summon, when there is one worth taking: bring out the piece
+## that opens a better one (a Normal Summon, a Special Summon from the hand, an effect in the
+## Graveyard), or make the monster. {} when there is nothing to build. This is how the computer
+## plays a deck like Yusei's: the small monsters are there to become the big ones.
+static func _combo_step(s: DuelState, p: int) -> Dictionary:
+	var me := s.players[p]
+	if me.extra.is_empty() or not s._in_main() or s.is_over() or me.no_summon_turn == s.turn or p != s.current:
+		return {}
+	var now_best = null
+	var now_v := 0
+	for x in me.extra:
+		var v := _extra_worth(s, p, x, 1)
+		if v > now_v:
+			now_v = v
+			now_best = x
+	var best_act := {}
+	var best_v := now_v
+	var after: Array = []   # the copies one step in, for the second look
+	for act in _setup_tries(s, p):
+		var sim := s.clone()
+		sim.defer_fx = false
+		if apply(sim, p, _map_action(sim, act)).is_empty():
+			continue
+		var v2 := _extra_value(sim, p, 1)
+		if v2 > best_v:
+			best_v = v2
+			best_act = act
+		after.append([act, sim])
+	if not best_act.is_empty():
+		return best_act
+	# Two pieces away (Quickdraw Synchron from the hand, then the Normal Summon): take the first.
+	for pair in after:
+		var sim1: DuelState = pair[1]
+		for act2 in _setup_tries(sim1, p):
+			var sim2 := sim1.clone()
+			sim2.defer_fx = false
+			if apply(sim2, p, _map_action(sim2, act2)).is_empty():
+				continue
+			var v3 := _extra_value(sim2, p, 1)
+			if v3 > best_v:
+				best_v = v3
+				best_act = pair[0]
+	if not best_act.is_empty():
+		return best_act
+	if now_best != null:
+		return {"do": "extra", "card": now_best}
+	return {}
 
 
 static func _enables_extra(s: DuelState, p: int, c: DuelState.CardInst) -> bool:
@@ -557,10 +727,10 @@ static func _candidates(s: DuelState, p: int) -> Array:
 	for c in me.hand:
 		if (c.is_trap() or SpellRules.kind(c) == "quick") and s.can_set_st(p, c):
 			out.append({"do": "set_st", "card": c})
-		if s.can_special_from_hand(p, c):
+		if s.can_special_from_hand(p, c) and not EffectRunner.fx(c).get("ai_combo_only", false):
 			out.append({"do": "special_hand", "card": c})
 	for m in me.monsters():
-		if s.can_ignite(p, m):
+		if s.can_ignite(p, m) and EffectRunner.ai_ignite_ok(s, p, m):
 			out.append({"do": "ignite", "card": m})
 		if s.can_flip_summon(p, m):
 			out.append({"do": "flip", "card": m})
@@ -752,6 +922,11 @@ static func choose_response(s: DuelState, p: int, window: String, options: Array
 	if options.is_empty() or (level == EASY and randf() < 0.4):
 		return null
 	for c in options:
+		# Quick Effects (Shooting Star Dragon, Junk Gardna, Effect Veiler from the hand, Skill Successor in the Graveyard...).
+		if CardEffects.of(c.cname()).has("quick") and EffectRunner.quick_can(s, p, c, window):
+			if EffectRunner.quick_ai(s, p, c, window):
+				return c
+			continue
 		if not c.is_monster():
 			continue
 		var f: Dictionary = CardEffects.of(c.cname())
@@ -922,4 +1097,8 @@ static func _board(ps: DuelState.PlayerState) -> float:
 	for m in ps.monsters():
 		v += float(maxi(m.atk(), m.def())) * 0.9 + 300.0
 		v += 200.0 * m.overlays.size()
+		# A small monster standing in Attack Position is an open door (a Tuner waiting for its
+		# partner is better off Set).
+		if m.face_up and m.attack_pos and m.atk() < 1000 and not m.is_token():
+			v -= float(1000 - m.atk()) * 0.6
 	return v

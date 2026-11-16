@@ -168,7 +168,15 @@ const TUNE := {
 		"in": {"Hallowed Life Barrier": 1, "Machine Angel Ritual": 3, "Fusion Weapon": 1, "Ritual Weapon": 2}, "extra_in": {"Cyber Blader": 2}},
 	"syrus": {"out": ["Elemental HERO Clayman", "Dian Keto the Cure Master"], "in": {"Shield Crush": 1}},
 	"aster": {"out": ["Celtic Guardian", "Mystic Plasma Zone"]},
-	"yusei": {"out": ["Celtic Guardian", "Beaver Warrior"]},
+	# Yusei's best deck: the Shooting Star Dragon and Shooting Quasar Dragon one (v0.33.28).
+	"yusei": {"out": ["Celtic Guardian", "Beaver Warrior"],
+		"main": {"Junk Synchron": 3, "Quickdraw Synchron": 2, "Debris Dragon": 1, "Drill Synchron": 1, "Road Synchron": 1, "Turbo Synchron": 1, "Nitro Synchron": 1,
+			"Unknown Synchron": 1, "Effect Veiler": 2, "Speed Warrior": 2, "Quillbolt Hedgehog": 3, "Level Eater": 2, "Doppelwarrior": 2, "Tuningware": 1,
+			"Sonic Chick": 1, "Shield Warrior": 1, "Max Warrior": 2, "Synchron Explorer": 1,
+			"Tuning": 2, "One for One": 1, "Double Summon": 1, "Cards of Consonance": 1,
+			"Scrap-Iron Scarecrow": 3, "Starlight Road": 1, "Graceful Revival": 1, "Shooting Star": 1, "Defense Draw": 1},
+		"extra": {"Stardust Dragon": 1, "Shooting Star Dragon": 1, "Shooting Quasar Dragon": 1, "Formula Synchron": 1, "Junk Warrior": 1, "Junk Destroyer": 1,
+			"Junk Archer": 1, "Junk Berserker": 1, "Junk Gardna": 1, "Road Warrior": 1, "Turbo Warrior": 1, "Nitro Warrior": 1, "Drill Warrior": 1, "Armory Arm": 1, "Lightning Warrior": 1}},
 	"jack": {"out": ["Molten Destruction", "Salamandra"]},
 	"crow": {"out": ["Curse of Dragon", "Dian Keto the Cure Master", "Follow Wind"]},
 	"akiza": {"out": ["Vile Germs", "Forest"]},
@@ -224,11 +232,44 @@ static func _ids(names: Array) -> Dictionary:
 
 ## A deck's Main Deck after today's changes. A stand-in only leaves if the deck still makes
 ## forty without it (the rest is topped up with further copies of the duelist's own cards).
-static func tune(deck_key: String, list: Array[int]) -> Array[int]:
+## The duelist a deck belongs to ("yusei" for the deck "yusei"), or "" when it is nobody's.
+static func owner(deck_key: String) -> String:
+	for k in WISH:
+		if str(Characters.get_char(str(k)).get("deck", "")) == deck_key:
+			return str(k)
+	return ""
+
+
+## Is this deck in somebody else's hands? A street duelist or a Rare Hunter who plays "Yusei's
+## deck" plays the plain version: the written-out deck with the aces in it is Yusei's alone.
+static func borrowed(deck_key: String, who_key: String) -> bool:
+	var own := owner(deck_key)
+	return own != "" and own != who_key and TUNE.get(deck_key, {}).has("main")
+
+
+static func tune(deck_key: String, list: Array[int], plain := false) -> Array[int]:
 	if not TUNE.has(deck_key) or list.is_empty():
 		return list
 	var t: Dictionary = TUNE[deck_key]
 	var gone := _ids(t.get("out", []))
+	if t.has("main") and not plain:
+		# The whole deck is written out: exactly these cards, as many of each as it says. A card
+		# that is not in this copy of the card folder (or does not work yet) leaves a gap, and the
+		# gap is filled from the old list.
+		var built: Array[int] = []
+		for n in t["main"]:
+			var id3: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
+			if id3 == 0 or not _works(id3):
+				continue
+			for k in mini(3, int(t["main"][n])):
+				built.append(id3)
+		for id in list:
+			if built.size() >= CardData.MIN_DECK:
+				break
+			if not gone.has(id) and built.count(id) < 3:
+				built.append(id)
+		if built.size() >= CardData.MIN_DECK:
+			return built
 	var kept: Array[int] = []
 	var removed: Array[int] = []
 	for id in list:
@@ -250,11 +291,22 @@ static func tune(deck_key: String, list: Array[int]) -> Array[int]:
 	return kept
 
 
-static func tune_extra(deck_key: String, list: Array[int]) -> Array[int]:
+static func tune_extra(deck_key: String, list: Array[int], plain := false) -> Array[int]:
 	if not TUNE.has(deck_key):
 		return list
 	var t: Dictionary = TUNE[deck_key]
 	var gone := _ids(t.get("extra_out", []))
+	if t.has("extra") and not plain:
+		var whole: Array[int] = []
+		for n in t["extra"]:
+			var id3: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
+			if id3 == 0 or not _works(id3):
+				continue
+			for k in int(t["extra"][n]):
+				if whole.size() < 15:
+					whole.append(id3)
+		if whole.size() >= 5:
+			return whole
 	var out: Array[int] = []
 	for id in list:
 		if not gone.has(id):

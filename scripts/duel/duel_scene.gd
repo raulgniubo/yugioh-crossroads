@@ -244,7 +244,9 @@ func _start() -> void:
 		hud.speed_need = func(inst): return state.speed_need(inst)
 	state.manual = [not _autoplay, false]
 	hud.auto_answer = _human_test
-	var opp_list := CardData.legend_deck(opp_deck) if _ai_level >= 2 else CardData.deck_list(opp_deck)
+	# (A street duelist with "Yusei's deck" plays the plain version; only Yusei plays his own.)
+	var opp_plain := SignatureDecks.borrowed(opp_deck, _opp_key)
+	var opp_list := CardData.legend_deck(opp_deck, opp_plain) if _ai_level >= 2 else CardData.deck_list(opp_deck, opp_plain)
 	var extra_hand := int(cfg.get("hand", 5)) - 5
 	state.bonus_cards = [extra_hand, extra_hand + (1 if _ai_level >= 2 else 0)]
 	# Destiny Draw: as the Free Duel screen says, else as Settings says. Never in a puzzle.
@@ -273,7 +275,7 @@ func _start() -> void:
 		cfg["opp_lp"] = int(_puzzle.get("opp_lp", 4000))
 	else:
 		events = state.setup(my_list, opp_list, me_name, opp_name, first, -1,
-				CardData.extra_list(my_deck), CardData.extra_list(opp_deck))
+				CardData.extra_list(my_deck), CardData.extra_list(opp_deck, opp_plain))
 	# Grand Prix: your lap decides how many Speed Counters each rider starts with.
 	if state.turbo and cfg.has("speed_start"):
 		for p in 2:
@@ -2093,7 +2095,7 @@ func _window(first: int, window: String, subject, prompt: String) -> void:
 				}.get(win, "You have a card that can respond right now. Use it or keep it."))
 				choice = await hud.ask_response(text, opts)
 		if choice != null:
-			if choice.is_monster() or (choice.cname() == "Kuriboh" and state.players[who].hand.has(choice)):
+			if choice.is_monster() or (choice.cname() == "Kuriboh" and state.players[who].hand.has(choice)) or state.players[who].gy.has(choice):
 				await _act("respond", [who, choice, subject], false)
 			else:
 				var target = null

@@ -156,6 +156,26 @@ const FX := {
 	"Machine Angel Ritual": {"k": "ritual", "do": [["ritual"]]},
 	"Fossil Excavation": {"k": "ctrap", "win": ["free"], "cost": "discard", "do": [["revive", "own_gy", "any", "link", {"race": "Dinosaur"}, "negate"]]},
 	"Mirror Wall": {"k": "ctrap", "win": ["free"], "halve_attackers": true, "upkeep": 2000, "upkeep_ask": true, "do": [["mirror_wall"]]},
+	# ---- Yusei (v0.33.28)
+	"Tuning": {"k": "normal", "ai": "always", "do": [["search", {"has": "Synchron", "tuner": true}], ["mill_self", 1]]},
+	"One for One": {"k": "normal", "ai": "combo", "cost": "discard_f", "cost_f": {}, "do": [["special_hand_deck", {"lv": 1}]]},
+	"Double Summon": {"k": "normal", "ai": "second_summon", "do": [["extra_normal"]]},
+	"Cards of Consonance": {"k": "normal", "ai": "always", "cost": "discard_f", "cost_f": {"race": "Dragon", "tuner": true, "max_atk": 1000}, "do": [["draw", 2]]},
+	"Card Rotator": {"k": "normal", "cost": "discard", "do": [["change_pos", "opp_mons"]]},
+	"Fighting Spirit": {"k": "equip", "atk_per": ["opp_mons", 300], "battle_sub": true},
+	"Silver Wing": {"k": "equip", "must": {"frame": "synchro", "race": "Dragon", "min_lv": 8}, "battle_guard": 2, "fx_sub": true},
+	"Graceful Revival": {"k": "ctrap", "win": ["free"], "do": [["revive", "own_gy", "atk", "link", {"max_lv": 2}]]},
+	"Shooting Star": {"k": "trap", "win": ["free"], "cond": "stardust_up", "t": "any_card", "do": [["destroy", "target"]]},
+	"Synchro Strike": {"k": "trap", "win": ["free"], "t": "any_face", "must": {"frame": "synchro"}, "must_proper": true, "dmg": true, "do": [["atk_per_mat", 500]]},
+	"Skill Successor": {"k": "trap", "win": ["free"], "t": "own_face", "dmg": true, "do": [["atk", "target", 400, "eot"]]},
+	"Descending Lost Star": {"k": "trap", "win": ["free"], "do": [["lost_star"]]},
+	"Synchro Barrier": {"k": "trap", "win": ["free"], "cost": "tribute_f", "cost_f": {"frame": "synchro"}, "do": [["no_damage_until", 1]]},
+	"Starlight Road": {"k": "trap", "win": ["chain"], "chain_if": "destroys_two_of_mine", "do": [["starlight"]]},
+	"Defense Draw": {"k": "trap", "win": ["free"], "only_win": "damage", "dmg": true, "cond": "being_attacked", "do": [["battle_shield"], ["draw", 1]]},
+	"Urgent Tuning": {"k": "trap", "win": ["free"], "cond": "battle_phase", "do": [["synchro_now"]]},
+	"Give and Take": {"k": "trap", "win": ["free"], "do": [["give_and_take"]]},
+	"Slip Summon": {"k": "trap", "win": ["summon"], "do": [["slip_summon"]]},
+	"Limiter Overload": {"k": "trap", "win": [], "sent_gy": [["special_named_anywhere", "Speed Warrior"]]},
 	"Power of Kaishin": {"k": "equip", "must": {"race": "Aqua"}, "atk": 300, "def": 300},
 	"Steel Shell": {"k": "equip", "must": {"attr": "WATER"}, "atk": 400, "def": -200},
 	"Gust Fan": {"k": "equip", "must": {"attr": "WIND"}, "atk": 400, "def": -200},
@@ -325,6 +345,46 @@ static func would_destroy(link: Dictionary) -> bool:
 	return tag in ["raigeki", "darkhole", "fissure", "mst", "mirror_force", "sakuretsu", "trap_hole", "bottomless", "torrential"]
 
 
+## How many cards that player `p` controls would this chain link destroy? (Starlight Road asks.)
+static func destroy_count(s: DuelState, link: Dictionary, p: int) -> int:
+	if link.get("negated", false):
+		return 0
+	var mine := s.players[p]
+	var lp: int = link["player"]
+	var mons: int = mine.monsters().size()
+	var sts: int = mine.set_cards().size() + (1 if mine.field_spell != null else 0)
+	var n := 0
+	if str(link.get("kind", "")) == "fx":
+		for a in link.get("actions", []):
+			match str(a[0]):
+				"black_rose":
+					n = maxi(n, mons + sts)
+				"destroy":
+					var what := str(a[1]) if a.size() > 1 else ""
+					if what == "all_field_other":
+						n = maxi(n, mons + mine.set_cards().size())
+					elif what.begins_with("all") and lp != p:
+						n = maxi(n, mons)
+		return n
+	var sp: Dictionary = link.get("spec", {})
+	match str(sp.get("legacy", "")):
+		"raigeki":
+			return mons if lp != p else 0
+		"darkhole", "torrential":
+			return mons
+		"mirror_force":
+			return mine.monsters().filter(func(m): return m.attack_pos).size() if lp != p else 0
+	for a in sp.get("do", []):
+		if str(a[0]) != "destroy" or a.size() < 2:
+			continue
+		var hit := 0
+		for x in _sel(s, lp, link["card"], str(a[1]), {"target": link.get("target"), "subject": link.get("subject")}):
+			if mine.field.has(x) or mine.spells.has(x) or mine.field_spell == x:
+				hit += 1
+		n = maxi(n, hit)
+	return n
+
+
 ## Does this card fit the response window? window: attack | summon | chain | battle_start | open
 static func fits(s: DuelState, p: int, c, window: String, subject) -> bool:
 	var sp := spec(c)
@@ -349,6 +409,12 @@ static func fits(s: DuelState, p: int, c, window: String, subject) -> bool:
 	# Spell Speed: only a Counter Trap can answer a Counter Trap.
 	if window == "chain" and subject is Dictionary and str(subject.get("spec", {}).get("k", "")) == "counter" and k != "counter":
 		return false
+	if sp.has("only_win") and window != str(sp["only_win"]):
+		return false   # a card for one moment only (Defense Draw: damage calculation)
+	if sp.has("chain_if"):
+		# Starlight Road: "When a card or effect is activated that would destroy 2 or more cards you control".
+		if window != "chain" or not (subject is Dictionary) or destroy_count(s, subject, p) < 2:
+			return false
 	# Damage Step: only cards that change ATK / DEF (and Counter Traps) may be activated.
 	if window == "damage":
 		if sp.has("legacy") or (k != "counter" and not dmg_ok(sp)):
@@ -428,6 +494,15 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return s.phase == DuelState.Phase.BATTLE
 		"opp_turn":
 			return s.current != p
+		"being_attacked":
+			return s.current != p and not s.pending_attack.is_empty() and int(s.pending_attack["player"]) != p and not s.pending_attack.get("negated", false)
+		"stardust_up":
+			# Shooting Star: "If a "Stardust" monster is on the field" (either side).
+			for q in 2:
+				for m in s.players[q].monsters():
+					if m.face_up and m.cname().contains("Stardust"):
+						return true
+			return false
 		"harpie_lady_up":
 			# Elegant Egotist: "If Harpie Lady is on the field" (either side; a card that counts as her does).
 			for q in 2:
@@ -498,6 +573,26 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 			"egotist":
 				if ps.free_zone() == -1 or _egotist_pool(s, p).is_empty():
 					return false
+			"special_hand_deck":
+				var held: Array = ps.hand.filter(func(h): return h != c)
+				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or (EffectRunner._take(held, a[1], 1).is_empty() and EffectRunner._take(ps.deck, a[1], 1).is_empty()):
+					return false
+			"extra_normal":
+				if s.current != p or ps.extra_normals > 0:
+					return false
+			"lost_star":
+				if ps.free_zone() == -1 or ps.gy.filter(func(x): return x.frame() == "synchro" and s.can_revive(x)).is_empty():
+					return false
+			"synchro_now":
+				if _synchro_options(s, p).is_empty():
+					return false
+			"give_and_take":
+				if s.players[s.opponent(p)].free_zone() == -1 or ps.gy.filter(func(x): return s.can_revive(x)).is_empty() \
+						or ps.monsters().filter(func(m): return m.face_up and m.frame() != "xyz").is_empty():
+					return false
+			"slip_summon":
+				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or EffectRunner._take(ps.hand, {"max_lv": 4}, 1).is_empty():
+					return false
 			"gy_to_hand":
 				if EffectRunner._take(ps.gy, a[1], 1).is_empty():
 					return false
@@ -549,7 +644,11 @@ static func _can_pay(s: DuelState, p: int, c, sp: Dictionary) -> bool:
 	if cost.begins_with("speed"):
 		return ps.speed >= int(cost.substr(5))
 	if cost == "tribute":
-		return not ps.monsters().is_empty()
+		return not ps.monsters().filter(func(m): return s.can_tribute_fx(m)).is_empty()
+	if cost == "discard_f":
+		return not ps.hand.filter(func(h): return h != c and CardEffects.matches(h.data, sp.get("cost_f", {}))).is_empty()
+	if cost == "tribute_f":
+		return not ps.monsters().filter(func(m): return m.face_up and s.can_tribute_fx(m) and CardEffects.matches(m.data, sp.get("cost_f", {}))).is_empty()
 	return true
 
 
@@ -578,17 +677,31 @@ static func pay_cost(s: DuelState, p: int, c, sp: Dictionary) -> Array:
 		var n := ps.lp / 2
 		ps.lp -= n
 		events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": -n})
-	elif cost == "tribute":
+	elif cost == "discard_f":
+		# "Send 1 monster from your hand to the GY" / "Discard 1 Dragon Tuner with 1000 or less ATK".
+		var fit: Array = ps.hand.filter(func(h): return h != c and CardEffects.matches(h.data, sp.get("cost_f", {})))
+		if not fit.is_empty():
+			var least = fit[0]
+			for h in fit:
+				if s._card_value(h) < s._card_value(least):
+					least = h
+			least = s.pick1(p, Loc.t("%s: send 1 card from your hand to the Graveyard as the cost") % c.cname(), fit, least, c)
+			ps.hand.erase(least)
+			s._to_gy(ps, least)
+			events.append({"type": "discard", "player": p, "card": least})
+	elif cost == "tribute" or cost == "tribute_f":
 		var weak = null
-		for m in ps.monsters():
+		var can_t: Array = ps.monsters().filter(func(m): return s.can_tribute_fx(m) and (cost == "tribute" or (m.face_up and CardEffects.matches(m.data, sp.get("cost_f", {})))))
+		for m in can_t:
 			if weak == null or s.atk_of(m, false) < s.atk_of(weak, false):
 				weak = m
-		weak = s.pick1(p, Loc.t("%s: Tribute 1 monster as the cost") % c.cname(), ps.monsters(), weak, c)
+		weak = s.pick1(p, Loc.t("%s: Tribute 1 monster as the cost") % c.cname(), can_t, weak, c)
 		if weak != null:
 			ps.field[ps.field.find(weak)] = null
 			s._to_gy(ps, weak)
 			events.append({"type": "tribute", "player": p, "card": weak})
 			events.append_array(EffectRunner.trigger(s, weak, "tributed"))
+			events.append_array(s._monster_left(weak))
 	return events
 
 
@@ -616,7 +729,7 @@ static func targets(s: DuelState, p: int, c) -> Array:
 				"any_mon", "any_card": ok = true
 				"any_fdown": ok = not m.face_up
 				"any_fusion": ok = m.face_up and m.frame() == "fusion"
-			if ok and (must.is_empty() or CardEffects.matches(m.data, must)):
+			if ok and (must.is_empty() or CardEffects.matches(m.data, must)) and (m.proper or not sp.get("must_proper", false)):
 				out.append(m)
 		var sts: Array = s.players[q].spells.duplicate()
 		sts.append(s.players[q].field_spell)
@@ -1006,6 +1119,116 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				var n: int = s.atk_of(s.pending_attack["attacker"], true)
 				ps.lp += n
 				events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": n})
+		"mill_self":
+			for i in int(a[1]):
+				if not ps.deck.is_empty():
+					var top = ps.deck.pop_back()
+					s._to_gy(ps, top)
+					events.append({"type": "mill", "player": p, "card": top, "deck": ps.deck.size()})
+		"special_hand_deck":
+			# One for One: 1 monster that fits, from your hand or Deck.
+			var both: Array = ps.hand.filter(func(h): return h != c)
+			both.append_array(ps.deck)
+			both = both.filter(func(x): return not CardEffects.of(x.cname()).get("no_special", false))
+			for d in EffectRunner._pick(s, p, c, Loc.t("Special Summon 1 monster from your hand or Deck"), both, a[1], 1):
+				if ps.free_zone() == -1:
+					break
+				var from_deck: bool = ps.deck.has(d)
+				ps.hand.erase(d)
+				ps.deck.erase(d)
+				if from_deck:
+					s._shuffle(ps.deck)
+				events.append(_ev(p, c, Loc.t("%s calls %s") % [name, d.cname()]))
+				events.append_array(s._special(p, d, "effect"))
+				events.append_array(EffectRunner.on_summon(s, p, d, "special"))
+		"extra_normal":
+			ps.extra_normals += 1
+			events.append(_ev(p, c, Loc.t("%s: you can Normal Summon or Set one more time this turn") % name))
+		"atk_per_mat":
+			# Synchro Strike: 500 ATK for each Synchro Material used to Summon it, until the End Phase.
+			for t in _sel(s, p, c, "target", ctx):
+				var gain: int = int(a[1]) * int(t.tags.get("mats", 2))
+				t.atk_mod_t = (t.atk_mod_t if t.atk_mod_turn == s.turn else 0) + gain
+				t.atk_mod_turn = s.turn
+				events.append(_ev(p, t, Loc.t("%s: %+d ATK") % [t.cname(), gain]))
+		"lost_star":
+			# Descending Lost Star: a Synchro Monster from your Graveyard, in Defense Position, effects
+			# negated, Level 1 lower, DEF 0, and it cannot change its battle position.
+			var syn: Array = ps.gy.filter(func(x): return x.frame() == "synchro" and s.can_revive(x))
+			if not syn.is_empty() and ps.free_zone() != -1:
+				syn.sort_custom(func(x, y): return x.level() > y.level())
+				var star = s.pick1(p, Loc.t("%s: Special Summon 1 Synchro Monster from your Graveyard") % name, syn, syn[0], c)
+				ps.gy.erase(star)
+				events.append_array(s._special(p, star, "reborn", "def"))
+				star.neg_perm = true
+				star.negated = true
+				star.lv_set = maxi(1, int(star.data.get("level", 1)) - 1)
+				star.lv_turn = -1
+				star.def_mod = -star.def()
+				star.pos_lock_until = 99999
+				events.append(_ev(p, c, Loc.t("%s returns at Level %d with 0 DEF and no effects") % [star.cname(), star.lv_set]))
+		"no_damage_until":
+			ps.no_damage_until = s.turn + int(a[1])
+			events.append(_ev(p, c, Loc.t("%s: you take no damage until the End Phase of the next turn") % name))
+		"battle_shield":
+			if not s.pending_attack.is_empty():
+				s.pending_attack["no_damage_to"] = p
+				events.append(_ev(p, c, Loc.t("%s: no battle damage from this battle") % name))
+		"starlight":
+			# Negate that effect and destroy the card; then you can call Stardust Dragon from the Extra Deck.
+			var bad_link = ctx.get("subject")
+			if bad_link is Dictionary:
+				events.append_array(EffectRunner._negate_link(s, p, c, bad_link))
+				for x in ps.extra.duplicate():
+					if x.cname() == "Stardust Dragon" and ps.free_zone() != -1 and ps.no_summon_turn != s.turn:
+						if s.choose_option(p, Loc.t("%s: Special Summon Stardust Dragon from your Extra Deck?") % name, ["Special Summon it", "No"], 0, c) == 0:
+							ps.extra.erase(x)
+							events.append_array(s._special(p, x, "effect"))
+						break
+		"synchro_now":
+			# Urgent Tuning: a Synchro Summon right now, with monsters you control.
+			var ready: Array = _synchro_options(s, p)
+			if not ready.is_empty():
+				ready.sort_custom(func(x, y): return x.atk() > y.atk())
+				var made = s.pick1(p, Loc.t("%s: Synchro Summon which monster?") % name, ready, ready[0], c)
+				events.append_array(s.extra_summon(p, made, [], true))
+		"give_and_take":
+			var gifts: Array = ps.gy.filter(func(x): return s.can_revive(x))
+			var takers: Array = ps.monsters().filter(func(m): return m.face_up and m.frame() != "xyz")
+			if not gifts.is_empty() and not takers.is_empty() and opp.free_zone() != -1:
+				gifts.sort_custom(func(x, y): return x.atk() < y.atk())
+				var gift = s.pick1(p, Loc.t("%s: Special Summon 1 monster from your Graveyard to your opponent's field") % name, gifts, gifts[0], c)
+				var taker = s.pick1(p, Loc.t("%s: which of your monsters gains its Level?") % name, takers, takers[0], c)
+				ps.gy.erase(gift)
+				gift.orig_owner = p
+				gift.owner = opp_i
+				events.append_array(s._special(opp_i, gift, "reborn", "def"))
+				var lv_gain: int = int(gift.data.get("level", 0))
+				taker.lv_set = taker.level() + lv_gain
+				taker.lv_turn = s.turn
+				events.append(_ev(p, c, Loc.t("%s is Level %d until the End Phase") % [taker.cname(), taker.lv_set]))
+		"slip_summon":
+			for d in EffectRunner._pick(s, p, c, Loc.t("Special Summon 1 Level 4 or lower monster from your hand"), ps.hand.filter(func(h): return not CardEffects.of(h.cname()).get("no_special", false)), {"max_lv": 4}, 1):
+				if ps.free_zone() == -1:
+					break
+				ps.hand.erase(d)
+				events.append_array(s._special(p, d, "effect", "def"))
+				d.tags["bounce_end"] = true
+				events.append_array(EffectRunner.on_summon(s, p, d, "special"))
+		"special_named_anywhere":
+			# Limiter Overload: 1 "Speed Warrior" from your hand, Deck, or Graveyard.
+			for src in [ps.hand, ps.deck, ps.gy]:
+				var got_n: Array = EffectRunner._take(src, {"name": str(a[1])}, 1)
+				if not got_n.is_empty() and ps.free_zone() != -1 and ps.no_summon_turn != s.turn:
+					var sw = got_n[0]
+					var was_gy: bool = src == ps.gy
+					src.erase(sw)
+					if src == ps.deck:
+						s._shuffle(ps.deck)
+					events.append(_ev(p, c, Loc.t("%s calls %s") % [name, sw.cname()]))
+					events.append_array(s._special(p, sw, "reborn" if was_gy else "effect"))
+					events.append_array(EffectRunner.on_summon(s, p, sw, "special"))
+					break
 		"egotist":
 			# Elegant Egotist: Special Summon 1 "Harpie Lady" or "Harpie Lady Sisters" from your hand or Deck.
 			var ladies := _egotist_pool(s, p)
@@ -1342,6 +1565,8 @@ static func _per(s: DuelState, q: int, what: String) -> int:
 		for st in s.players[q].spells:
 			if st != null:
 				n += 1
+	elif what == "opp_mons":
+		n = s.players[s.opponent(q)].monsters().size()
 	return n
 
 
@@ -1353,6 +1578,27 @@ static func _one_race_gy(s: DuelState, q: int, race: String) -> bool:
 				return false
 			any = true
 	return any
+
+
+## The face-up Equip Spells on a monster (not Union monsters: DuelState.unions_on has those).
+static func equips_on(s: DuelState, m) -> Array:
+	var out := []
+	for q in 2:
+		for st in s.players[q].spells:
+			if st != null and st.face_up and st.equipped_to == m and not st.is_monster():
+				out.append(st)
+	return out
+
+
+## The Synchro Monsters in player p's Extra Deck that could be Synchro Summoned right now.
+static func _synchro_options(s: DuelState, p: int) -> Array:
+	var out := []
+	if s.players[p].no_summon_turn == s.turn:
+		return out
+	for x in s.players[p].extra:
+		if x.frame() == "synchro" and not s.extra_materials(p, x).is_empty():
+			out.append(x)
+	return out
 
 
 ## Equip-style flags on a monster ("pierce", "no_attack", "no_battle_death").
