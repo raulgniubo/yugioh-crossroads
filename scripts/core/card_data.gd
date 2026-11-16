@@ -88,14 +88,14 @@ const CARDS := {
 	96182448: {"name": "Nitro Synchron", "frame": "effect", "tuner": true, "atk": 300, "def": 100, "level": 2, "attribute": "FIRE", "race": "Machine"},
 	9365703: {"name": "Speed Warrior", "frame": "effect", "atk": 900, "def": 400, "level": 2, "attribute": "WIND", "race": "Warrior"},
 	23571046: {"name": "Quillbolt Hedgehog", "frame": "effect", "atk": 800, "def": 800, "level": 2, "attribute": "EARTH", "race": "Machine"},
-	59546797: {"name": "Shield Warrior", "frame": "effect", "atk": 800, "def": 1600, "level": 3, "attribute": "EARTH", "race": "Warrior"},
-	63142001: {"name": "Max Warrior", "frame": "effect", "atk": 1800, "def": 800, "level": 4, "attribute": "EARTH", "race": "Warrior"},
+	95360850: {"name": "Shield Warrior", "frame": "effect", "atk": 800, "def": 1600, "level": 3, "attribute": "EARTH", "race": "Warrior"},
+	94538053: {"name": "Max Warrior", "frame": "effect", "atk": 1800, "def": 800, "level": 4, "attribute": "EARTH", "race": "Warrior"},
 	60800381: {"name": "Junk Warrior", "frame": "synchro", "atk": 2300, "def": 1300, "level": 5, "attribute": "DARK", "race": "Warrior"},
 	44508094: {"name": "Stardust Dragon", "frame": "synchro", "atk": 2500, "def": 2000, "level": 8, "attribute": "WIND", "race": "Dragon"},
-	51447164: {"name": "Nitro Warrior", "frame": "synchro", "atk": 2800, "def": 1800, "level": 7, "attribute": "FIRE", "race": "Warrior"},
+	18013090: {"name": "Nitro Warrior", "frame": "synchro", "atk": 2800, "def": 1800, "level": 7, "attribute": "FIRE", "race": "Warrior"},
 	# ---------------------------------------------------------------- Yuma
 	26082117: {"name": "Gagaga Magician", "frame": "effect", "atk": 1500, "def": 1000, "level": 4, "attribute": "DARK", "race": "Spellcaster"},
-	97617181: {"name": "Zubaba Knight", "frame": "effect", "atk": 1600, "def": 900, "level": 3, "attribute": "EARTH", "race": "Warrior"},
+	97896503: {"name": "Zubaba Knight", "frame": "effect", "atk": 1600, "def": 900, "level": 3, "attribute": "EARTH", "race": "Warrior"},
 	62476815: {"name": "Gogogo Golem", "frame": "effect", "atk": 1800, "def": 1500, "level": 4, "attribute": "EARTH", "race": "Rock"},
 	25259669: {"name": "Goblindbergh", "frame": "effect", "atk": 1400, "def": 0, "level": 4, "attribute": "EARTH", "race": "Warrior"},
 	84013237: {"name": "Number 39: Utopia", "frame": "xyz", "atk": 2500, "def": 2000, "level": 4, "attribute": "LIGHT", "race": "Warrior"},
@@ -180,6 +180,12 @@ static func set_code(id: int) -> String:
 	return "" if i == -1 else "CR-%03d" % (i + 1)
 
 
+## Four cards carried the wrong number until 0.33.19, so the game showed another card's picture
+## and text under their name (Max Warrior with Batteryman AA's face). Old number -> right one;
+## saves are moved over when they are read.
+const RENUMBERED := {59546797: 95360850, 63142001: 94538053, 51447164: 18013090, 97617181: 97896503}
+
+
 ## Lumen, your partner spirit, as a card.
 const LUMEN := 99200001
 ## The Speed Spells every rider carries in a Turbo Duel.
@@ -239,15 +245,15 @@ const DECKS := {
 	},
 	"yusei": {
 		"name": "Synchron",
-		"cards": {63977008: 3, 96182448: 3, 9365703: 3, 23571046: 3, 59546797: 3, 63142001: 3,
+		"cards": {63977008: 3, 96182448: 3, 9365703: 3, 23571046: 3, 95360850: 3, 94538053: 3,
 			91152256: 2, 32452818: 1,
 			55144522: 1, 66788016: 1, 83764718: 1,
 			98427577: 3, 56120475: 2, 5318639: 1},
-		"extra": {60800381: 2, 44508094: 1, 51447164: 1},
+		"extra": {60800381: 2, 44508094: 1, 18013090: 1},
 	},
 	"yuma": {
 		"name": "Gagaga",
-		"cards": {26082117: 3, 97617181: 3, 62476815: 3, 25259669: 3, 91152256: 2, 32452818: 2,
+		"cards": {26082117: 3, 97896503: 3, 62476815: 3, 25259669: 3, 91152256: 2, 32452818: 2,
 			5053103: 2, 44287299: 2, 90357090: 1,
 			55144522: 1, 84257639: 1, 66788016: 1, 83764718: 1,
 			14315573: 2, 12607053: 2, 4206964: 1},

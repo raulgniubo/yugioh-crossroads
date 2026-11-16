@@ -32,6 +32,7 @@ func _ready() -> void:
 	if stress != "":
 		CardData.load_external(stress)
 		var all: Array = Characters.ORDER.filter(func(k): return CardData.has_deck(Characters.DATA[k]["deck"]))
+		_test_card_numbers()
 		_test_knockout()
 		_test_lumen()
 		_test_ai_targets()
@@ -148,7 +149,7 @@ func _test_synchro_xyz_fusion() -> void:
 	s.current = 0
 	s.phase = DuelState.Phase.MAIN1
 	_put(s, 0, 63977008, 0)  # Junk Synchron L3 tuner
-	_put(s, 0, 59546797, 1)  # Shield Warrior L3
+	_put(s, 0, 95360850, 1)  # Shield Warrior L3
 	_put(s, 0, 9365703, 2)   # Speed Warrior L2
 	var stardust: DuelState.CardInst = null
 	for x in s.players[0].extra:
@@ -2291,6 +2292,23 @@ func _test_knockout() -> void:
 
 
 ## Lumen's forms and the cards around her (cards of this game): each one does what it prints.
+## Every card the game carries itself has the number the card database has for that name
+## (Max Warrior once carried Batteryman AA's number and showed its picture and text).
+func _test_card_numbers() -> void:
+	var wrong: Array = []
+	for id in CardData.CARDS:
+		if int(id) >= 99000000 or not CardData.EXT.has(id):
+			continue
+		var mine := str(CardData.CARDS[id].get("name", "")).to_lower()
+		var theirs := str(CardData.EXT[id].get("name", "")).to_lower()
+		if mine != theirs:
+			wrong.append("%d %s is %s in the database" % [id, mine, theirs])
+	check(wrong.is_empty(), "every built-in card has the database's number for its name" + ("" if wrong.is_empty() else ": " + ", ".join(wrong)))
+	var c := CardData.get_card(94538053)
+	check(str(c.get("name", "")) == "Max Warrior" and int(c.get("atk", 0)) == 1800, "Max Warrior is card 94538053")
+	check(int(CardData.RENUMBERED.get(63142001, 0)) == 94538053, "the old Max Warrior number moves to the right one in saves")
+
+
 func _test_lumen() -> void:
 	var M1 := DuelState.Phase.MAIN1
 	for id in CardData.ORIGINALS:

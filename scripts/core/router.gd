@@ -111,6 +111,17 @@ func _ready() -> void:
 	_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_fade)
+	_load_l = Label.new()
+	_load_l.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_load_l.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_load_l.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_load_l.offset_right = -56
+	_load_l.offset_bottom = -44
+	_load_l.add_theme_font_override("font", load("res://assets/fonts/Rajdhani-SemiBold.ttf"))
+	_load_l.add_theme_font_size_override("font_size", 30)
+	_load_l.add_theme_color_override("font_color", Color(1, 1, 1, 0.75))
+	_load_l.visible = false
+	_fade.add_child(_load_l)
 	_toast = Label.new()
 	_toast.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_toast.position.y -= 140
@@ -427,14 +438,61 @@ func go(path: String) -> void:
 	tw.tween_property(_fade, "color:a", 1.0, 0.09)
 	await tw.finished
 	get_tree().paused = false
+	# (Said before the place is even built, so whatever starts in it can wait for it.)
+	loading = path in [ROAM, RIDE] and DisplayServer.get_name() != "headless"
 	get_tree().change_scene_to_file(path)
 	await get_tree().process_frame
 	await get_tree().process_frame
+	if loading:
+		await _settle()
 	# The new screen takes clicks straight away; the fade-in is only for the eye.
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_busy = false
 	var tw2 := create_tween()
 	tw2.tween_property(_fade, "color:a", 0.0, 0.22)
+
+
+## True while a place is still getting ready behind the dark screen (see _settle).
+var loading := false
+var _load_l: Label
+
+
+## A big place does a lot in its first seconds: the graphics chip builds the shaders it has
+## never used, the people's motions are fitted to their bodies. Shown as it happened, that was
+## a slideshow (2 FPS for five seconds on a machine that then runs at 200). So the dark screen
+## stays until the frames come evenly, with a word on it, and for 7 seconds at the most.
+func _settle() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	loading = true
+	var t0 := Time.get_ticks_msec()
+	var last := t0
+	var recent: Array[float] = []
+	while true:
+		await get_tree().process_frame
+		var now := Time.get_ticks_msec()
+		recent.append(float(now - last))
+		last = now
+		if recent.size() > 12:
+			recent.pop_front()
+		var el := now - t0
+		if el > 900 and _load_l != null and not _load_l.visible:
+			_load_l.text = Loc.t("Loading")
+			_load_l.visible = true
+		if el > 7000:
+			break
+		if el > 300 and recent.size() >= 12:
+			var lo := 1e9
+			var hi := 0.0
+			for f in recent:
+				lo = minf(lo, f)
+				hi = maxf(hi, f)
+			# Even: the slowest of the last twelve frames is not far off the fastest.
+			if hi < maxf(34.0, lo * 2.2):
+				break
+	if _load_l:
+		_load_l.visible = false
+	loading = false
 
 
 func toast(message: String, hold := 1.8) -> void:

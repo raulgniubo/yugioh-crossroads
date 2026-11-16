@@ -93,18 +93,20 @@ func _measure(settle: float, secs: float) -> Dictionary:
 	var worst := 0.0
 	for i in worst_n:
 		worst += frames[frames.size() - 1 - i] if not frames.is_empty() else 0.0
+	# The middle frame, not the average: one hitch (a shader being built, the system doing
+	# something) should not decide what a switch "saved".
+	var mid: float = frames[frames.size() / 2] if not frames.is_empty() else 0.0
 	return {
-		"ms": sum / n, "fps": 1000.0 * n / maxf(sum, 0.001), "worst": worst / worst_n,
+		"ms": mid, "avg": sum / n, "fps": 1000.0 / maxf(mid, 0.001), "worst": worst / worst_n,
 		"max": frames[frames.size() - 1] if not frames.is_empty() else 0.0,
 		"cpu": cpu / n, "gpu": gpu / n, "draws": draws, "tris": tris, "objs": objs, "frames": n,
-		"process": Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
 		"physics": Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
 	}
 
 
 static func _fmt(m: Dictionary) -> String:
-	return "%6.1f FPS  %5.2f ms  (worst 5%%: %5.1f ms, max %5.1f)  render cpu %5.2f  gpu %5.2f  draws %5d  tris %7d" % [
-		m["fps"], m["ms"], m["worst"], m["max"], m["cpu"], m["gpu"], m["draws"], m["tris"]]
+	return "%6.1f FPS  %5.2f ms typical  (average %5.2f, worst 5%%: %5.1f, max %5.1f)  render cpu %5.2f  draws %5d  tris %7d" % [
+		m["fps"], m["ms"], m["avg"], m["worst"], m["max"], m["cpu"], m["draws"], m["tris"]]
 
 
 func _all_nodes() -> Array:
@@ -149,6 +151,37 @@ func _environments() -> Array:
 	return out
 
 
+## How many skeletons are really re-posed per frame. Each one makes the graphics chip skin
+## that body again, seen or not, so this is the number that says what the people cost.
+func _skeleton_rate() -> String:
+	var sks: Array = []
+	for n in _all_nodes():
+		if n is Skeleton3D:
+			sks.append(n)
+	if sks.is_empty():
+		return "skeletons re-posed per frame: none here"
+	var hits := [0]
+	var count := func(): hits[0] += 1
+	for sk in sks:
+		(sk as Skeleton3D).skeleton_updated.connect(count)
+	var f0 := Engine.get_process_frames()
+	for i in 40:
+		await get_tree().process_frame
+	var frames := maxi(1, Engine.get_process_frames() - f0)
+	for sk in sks:
+		if is_instance_valid(sk) and (sk as Skeleton3D).skeleton_updated.is_connected(count):
+			(sk as Skeleton3D).skeleton_updated.disconnect(count)
+	return "skeletons re-posed per frame: %.1f of %d   (0.33.18 re-posed nearly all of them on every frame)" % [float(hits[0]) / frames, sks.size()]
+
+
+## An animation player that drives a skeleton (a person), not a door or a sign.
+func _near_skeleton(n: Node) -> bool:
+	var top := n.get_parent()
+	if top == null:
+		return false
+	return not top.find_children("*", "Skeleton3D", true, false).is_empty()
+
+
 func _under_skeleton(n: Node) -> bool:
 	var p := n.get_parent()
 	for i in 4:
@@ -191,7 +224,48 @@ func _tests() -> Array:
 		["Glow off", func() -> bool: return _env_off(["glow_enabled"])],
 		["Reflections off", func() -> bool: return _env_off(["ssr_enabled"])],
 		["Light haze off", func() -> bool: return _env_off(["volumetric_fog_enabled"])],
-		["Bounce light off", func() -> bool: return _env_off(["sdfgi_enabled", "ssil_enabled"])],
+		["Bounce light off (both kinds)", func() -> bool: return _env_off(["sdfgi_enabled", "ssil_enabled"])],
+		["Bounce light: only the far kind off (SDFGI)", func() -> bool: return _env_off(["sdfgi_enabled"])],
+		["Bounce light: only the near kind off (SSIL)", func() -> bool: return _env_off(["ssil_enabled"])],
+		["People frozen (no animation: says what moving them costs)", func() -> bool:
+			var any := false
+			for n in _all_nodes():
+				if n is AnimationPlayer and (n as AnimationPlayer).active and _near_skeleton(n):
+					_swap(n, "active", false)
+					any = true
+				elif n is SkeletonModifier3D and (n as SkeletonModifier3D).active:
+					_swap(n, "active", false)
+					any = true
+				elif n is RoamFigure and (n as Node).is_processing():
+					(n as Node).set_process(false)
+					_undo.append(func():
+						if is_instance_valid(n):
+							(n as Node).set_process(true))
+					any = true
+			return any],
+		["People more than 26 m away hidden", func() -> bool:
+			var cam := get_tree().root.get_camera_3d()
+			if cam == null:
+				return false
+			var any := false
+			for n in _all_nodes():
+				if n is RoamFigure and (n as Node3D).visible and (n as Node3D).is_inside_tree() and (n as Node3D).global_position.distance_to(cam.global_position) > 26.0:
+					_swap(n, "visible", false)
+					any = true
+			return any],
+		["Shadows of people off (the place keeps its shadows)", func() -> bool:
+			var any := false
+			for n in _all_nodes():
+				if n is MeshInstance3D and _under_skeleton(n) and (n as MeshInstance3D).cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+					_swap(n, "cast_shadow", GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+					any = true
+			return any],
+		["Game paused (no scripts, no animation, no physics: the picture alone)", func() -> bool:
+			if get_tree().paused:
+				return false
+			get_tree().paused = true
+			_undo.append(func(): get_tree().paused = false)
+			return true],
 		["Characters hidden", func() -> bool:
 			var any := false
 			for n in _all_nodes():
@@ -215,6 +289,11 @@ func _tests() -> Array:
 			return any],
 		["Small 3D views paused (portraits, spirits, screens)", func() -> bool:
 			var any := false
+			# Live portraits are redrawn through "once" every other frame: hold them too.
+			if not Avatars.quiet:
+				Avatars.quiet = true
+				_undo.append(func(): Avatars.quiet = false)
+				any = true
 			for n in _all_nodes():
 				if n is SubViewport and (n as SubViewport).render_target_update_mode in [SubViewport.UPDATE_ALWAYS, SubViewport.UPDATE_WHEN_VISIBLE, SubViewport.UPDATE_WHEN_PARENT_VISIBLE]:
 					_swap(n, "render_target_update_mode", SubViewport.UPDATE_DISABLED)
@@ -255,11 +334,15 @@ func _run() -> void:
 	_say(1, total, Loc.t("As it is now"))
 	lines.append_array(_header())
 	lines.append_array(_census())
-	var base: Dictionary = await _measure(0.8, 3.0)
+	# The counting above is heavy, and this box has only just been drawn for the first time:
+	# let all of that pass before the first number is taken. (The first report measured its
+	# own start-up: 16 FPS where the screen really ran at 33.)
+	lines.append(await _skeleton_rate())
+	var first: Dictionary = await _measure(2.5, 3.0)
 	lines.append("")
 	lines.append("== THE SCREEN AS IT IS ==")
-	lines.append(_fmt(base))
-	lines.append("script and game logic per frame: %.2f ms   physics: %.2f ms" % [base["process"], base["physics"]])
+	lines.append(_fmt(first))
+	lines.append("physics per frame: %.2f ms" % first["physics"])
 	lines.append("")
 	lines.append("== ONE THING OFF AT A TIME ==")
 	var gains: Array = []
@@ -270,25 +353,41 @@ func _run() -> void:
 		if not did:
 			lines.append("%-66s  (already off, or none here)" % name)
 			continue
-		var m: Dictionary = await _measure(0.6, 1.3)
+		var m: Dictionary = await _measure(0.7, 2.0)
 		_put_back()
 		Settings._apply_scale()
 		lines.append("%-66s  %s" % [name, _fmt(m)])
-		gains.append([float(base["ms"]) - float(m["ms"]), name, m])
+		gains.append([0.0, name, m])
 	_say(total, total, Loc.t("As it is now, once more"))
-	var again: Dictionary = await _measure(0.8, 1.5)
+	var again: Dictionary = await _measure(1.0, 2.5)
 	lines.append("%-66s  %s" % ["As it is, measured again at the end", _fmt(again)])
 	lines.append("")
 	lines.append("== WHAT COSTS THE MOST HERE ==")
+	# What a switch saved is counted against the plain screen: the average of the first and the
+	# last plain measurement (or the last one alone if the two are far apart).
+	var drift := absf(float(again["ms"]) - float(first["ms"]))
+	var base_ms := (float(first["ms"]) + float(again["ms"])) * 0.5
+	if drift > 0.15 * float(again["ms"]):
+		base_ms = float(again["ms"])
+	var base_fps := 1000.0 / maxf(base_ms, 0.001)
+	var hz := DisplayServer.screen_get_refresh_rate()
+	for g in gains:
+		g[0] = base_ms - float((g[2] as Dictionary)["ms"])
 	gains.sort_custom(func(a, b): return a[0] > b[0])
-	var drift := absf(float(again["ms"]) - float(base["ms"]))
+	var capped := 0
 	for g in gains:
 		var m2: Dictionary = g[2]
-		lines.append("%+6.2f ms saved  (%5.1f -> %5.1f FPS)   %s" % [g[0], base["fps"], m2["fps"], g[1]])
-	lines.append("The two plain measurements differ by %.2f ms: savings smaller than that are noise." % drift)
-	var hz := DisplayServer.screen_get_refresh_rate()
-	if hz > 0.0 and absf(float(base["fps"]) - hz) < 1.5:
-		lines.append("NOTE: the frame rate sat exactly on the screen's %d Hz, so the screen is still capping it. Read the cpu and gpu columns instead of FPS." % int(hz))
+		var at_cap: bool = hz > 0.0 and float(m2["fps"]) > hz - 2.5 and float(m2["fps"]) < hz + 2.5
+		if at_cap:
+			capped += 1
+		lines.append("%+6.2f ms saved  (%5.1f -> %5.1f FPS)   %s%s" % [g[0], base_fps, m2["fps"], g[1], "   [hit the screen's %d Hz: it saves AT LEAST this much]" % int(hz) if at_cap else ""])
+	lines.append("Plain screen: %.2f ms (%.1f FPS). The two plain measurements differ by %.2f ms: savings smaller than that are noise." % [base_ms, base_fps, drift])
+	if Settings.vsync and hz > 0.0:
+		lines.append("NOTE: you play with V-Sync on a %d Hz screen. There a frame that takes even a little longer than %.1f ms is shown at %d FPS, not at %d: the screen only takes whole steps. That is why 33 can look like 30." % [int(hz), 1000.0 / hz, int(hz / 2.0), int(hz) - 5])
+	if capped > 0:
+		lines.append("NOTE: %d of the switches landed on the screen's %d Hz. The screen was still holding the frame rate there, so their real saving is bigger than shown." % [capped, int(hz)])
+	if hz > 0.0 and absf(base_fps - hz) < 1.5:
+		lines.append("NOTE: the plain screen itself sat on the screen's %d Hz, so the screen is capping it. Read the cpu column instead of FPS." % int(hz))
 	# Everything back the way it was.
 	_put_back()
 	Settings.hold_fps = was_hold
@@ -333,10 +432,23 @@ func _header() -> PackedStringArray:
 	out.append("== WHERE ==")
 	var cs := get_tree().current_scene
 	out.append("scene: %s   %s" % [cs.scene_file_path if cs else "none", str(Router.roam) if "roam" in Router else ""])
-	out.append("memory: game %d MB   video %d MB   textures %d MB   buffers %d MB" % [
-		int(Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0), int(Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0),
-		int(Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1048576.0), int(Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / 1048576.0)])
+	out.append("memory: game %s   video %s   textures %s   buffers %s" % [
+		_mb(Performance.get_monitor(Performance.MEMORY_STATIC)), _mb(Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED)),
+		_mb(Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED)), _mb(Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED))])
+	var mem := OS.get_memory_info()
+	if int(mem.get("physical", 0)) > 0:
+		out.append("this computer: %s of memory, %s free right now" % [_mb(float(mem.get("physical", 0))), _mb(float(mem.get("available", mem.get("free", 0))))])
 	return out
+
+
+## A number of bytes as "123 MB". A shipped game does not count its own memory (0), and some
+## graphics drivers hand back a nonsense number for textures: both say so instead of lying.
+static func _mb(bytes: float) -> String:
+	if bytes <= 0.0:
+		return "not counted in this build"
+	if bytes > 1.0e12:
+		return "not reported by the graphics driver"
+	return "%d MB" % int(bytes / 1048576.0)
 
 
 static func _mesh_tris(mesh: Mesh, cache: Dictionary) -> int:

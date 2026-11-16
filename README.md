@@ -5,6 +5,25 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.20
+
+**Performance: the people stop costing what they cost, and the F4 report tells the truth.**
+
+Your report from 0.33.18 (M4 Max, Ultra, Domino at night, 4480x2520 screen with the 3D picture at 1440p) said: 30 ms a frame, and hiding the characters alone brought it to the screen's 60. This version goes after exactly that.
+
+- **The real cause.** Every person in the world carries small touches on top of their animation (the head turning to you, arms tucked in, sitting up straight). Those were switched on for everybody all the time, and a skeleton with touches on is re-posed on every frame, which makes the graphics chip skin that whole body again: also for somebody 80 m away, also for somebody behind you. The pacing already in the game (far people animate every 2nd or 4th frame, unseen people not at all) was being undone by it. Counted here in Domino at night: 93 of 117 skeletons re-posed per frame before, 33 now. The touches are on for people within 26 m (eased out over the last 8 m so nothing pops) and off beyond.
+- **Portraits.** Every portrait ever shown kept its own little stage alive behind the scenes: a full body, animated and skinned on every frame, drawn or not. Now a portrait that holds its picture is asleep. And while you walk around with nobody talking, the few live portraits hold their frame too.
+- **Bounce light** (the second biggest cost, 9 ms): spread over 30 frames instead of 20, lamps feed it every 16th frame instead of every 8th, and the near kind uses fewer samples before it is blurred. Max keeps everything as it was.
+- **Medium** now has soft corner shading (at its cheap setting): the single effect that adds the most depth for the least cost.
+- **The F4 report.** It waits for its own start-up to pass before the first measurement (the last one opened with 16 FPS where the screen really ran at 33). It uses the typical frame, not the average, so one hitch does not decide what a switch "saved". It says when a result landed on the screen's 60 Hz and is really bigger. Memory lines no longer print nonsense. New lines: skeletons re-posed per frame, and new switches that split the people (frozen, far ones hidden, their shadows off), split bounce light into its two kinds, and pause the whole game to show what the picture alone costs.
+- **No more slideshow when a world opens.** A big place does a lot in its first seconds (the graphics chip builds shaders it has never used, motions are fitted to bodies); on a machine that then runs at 200 FPS that showed as 2 FPS for five seconds. The dark screen now stays, with "Loading" on it, until the frames come evenly (7 seconds at the most), and the story waits for it.
+- **Four cards carried the wrong number**: Max Warrior, Shield Warrior, Nitro Warrior and Zubaba Knight showed another card's picture and text under their name (Max Warrior had Batteryman AA's face). Fixed, saves and decks are moved to the right numbers when they are read, and a test now checks every built-in card against the card database.
+- **Free Duel tiles** said "Needs the card database" on everybody you had not unlocked. They now say what is true: "LOCKED, beat them in the story" or "in their world".
+- **A blank portrait** (Bakura's tile on a fast machine): a portrait could be frozen before its first picture was drawn. It now waits for that picture.
+- **Why 33 looks like 30.** With V-Sync on a 60 Hz screen, a frame that takes 17 ms is shown at 30, not 59. The report now says so. It is why getting under 16.7 ms matters so much.
+
+Not done or not checked: I cannot measure on your Mac from here. What I can count, I counted (skeleton re-poses: 93 to 33 per frame in the same place). How many milliseconds that buys on your machine only your next F4 report can say; It should be a large part of the 14 ms the people cost; I cannot promise a locked 60 on Ultra. The Turbo ride at 30 FPS was not measured and not changed: an F4 report taken on the ride would tell me where its time goes (it uses neither bounce light nor haze, so it is something else). The new bounce light settings were not seen on a Mac: if light on a wall seems to trail behind when you turn quickly, that is them, tell me. People beyond 26 m no longer have their arms tucked in or their backs straightened on benches; at that distance I could not see the difference in pictures. The "Loading" wait was not seen on a real graphics card: here every frame is equally slow, so it passes at once. Character decks are still the old ones (Yusei still has filler): that is 0.33.26.
+
 ## What is in 0.33.19
 
 **Lumen gets a deck of her own, the folder beside the game carries everything, and a long list of fixes from one evening of play.**

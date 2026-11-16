@@ -46,7 +46,7 @@ const GFX_PRESET_NAMES := ["Low", "Medium", "High", "Ultra", "Max"]
 ## with nothing held back: for very strong machines, and for pictures.
 const GFX_PRESETS := [
 	{"res": 0, "aa": 1, "shadows": 1, "ao": false, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 0, "people": 0, "upscale": 1},
-	{"res": 2, "aa": 1, "shadows": 2, "ao": false, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 1, "people": 1, "upscale": 1},
+	{"res": 2, "aa": 1, "shadows": 2, "ao": true, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 1, "people": 1, "upscale": 1},
 	{"res": 3, "aa": 2, "shadows": 2, "ao": true, "reflect": false, "glow": true, "fog": false, "gi": false, "detail": 2, "people": 1, "upscale": 2},
 	{"res": 3, "aa": 2, "shadows": 3, "ao": true, "reflect": true, "glow": true, "fog": true, "gi": true, "detail": 3, "people": 2, "upscale": 2},
 	{"res": 4, "aa": 3, "shadows": 3, "ao": true, "reflect": true, "glow": true, "fog": true, "gi": true, "detail": 3, "people": 2, "upscale": 2},
@@ -148,8 +148,15 @@ func apply_graphics() -> void:
 		# Bounce light is worked out at half size and spread over a few frames, except on Max.
 		# It is soft by nature, so the picture is the same and the cost is a fraction.
 		RenderingServer.gi_set_use_half_resolution(not maxed)
-		RenderingServer.environment_set_sdfgi_frames_to_converge(RenderingServer.ENV_SDFGI_CONVERGE_IN_10_FRAMES if maxed else RenderingServer.ENV_SDFGI_CONVERGE_IN_20_FRAMES)
-		RenderingServer.environment_set_sdfgi_frames_to_update_light(RenderingServer.ENV_SDFGI_UPDATE_LIGHT_IN_2_FRAMES if maxed else RenderingServer.ENV_SDFGI_UPDATE_LIGHT_IN_8_FRAMES)
+		# 0.33.20: bounce light was still the second biggest cost on Ultra (9 ms of 30 on an M4
+		# Max). It changes slowly by nature: it is spread over more frames (30 instead of 20),
+		# the lamps feed it every 16th frame instead of every 8th, and the near kind (the one
+		# worked out from the picture itself) uses fewer samples before it is blurred. Max keeps all.
+		RenderingServer.environment_set_sdfgi_frames_to_converge(RenderingServer.ENV_SDFGI_CONVERGE_IN_10_FRAMES if maxed else RenderingServer.ENV_SDFGI_CONVERGE_IN_30_FRAMES)
+		RenderingServer.environment_set_sdfgi_frames_to_update_light(RenderingServer.ENV_SDFGI_UPDATE_LIGHT_IN_2_FRAMES if maxed else RenderingServer.ENV_SDFGI_UPDATE_LIGHT_IN_16_FRAMES)
+		RenderingServer.environment_set_ssil_quality(RenderingServer.ENV_SSIL_QUALITY_MEDIUM if maxed else RenderingServer.ENV_SSIL_QUALITY_LOW, true, 0.5, 4, 50.0, 300.0)
+		# Soft corner shading: fewer samples on Medium (where it is new), the usual on High and up.
+		RenderingServer.environment_set_ssao_quality(RenderingServer.ENV_SSAO_QUALITY_LOW if int(gfx.get("detail", 2)) <= 1 else RenderingServer.ENV_SSAO_QUALITY_MEDIUM, true, 0.5, 2, 50.0, 300.0)
 		RenderingServer.environment_set_volumetric_fog_volume_size(96 if maxed else 64, 96 if maxed else 48)
 		# (From a real report, an M4 Max on a 4480x2520 screen: haze and bounce light were each
 		# the difference between 30 and a locked 60. Fewer rays per probe, a shallower haze grid.)

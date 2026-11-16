@@ -100,6 +100,35 @@ var last_prize := 0           # the card the last duel's opponent handed over (0
 var _pools := {}
 
 
+## Cards that carried a wrong number in older versions (CardData.RENUMBERED): what you own and
+## every deck you built is moved to the right number, once, when the save is read.
+func _renumber() -> void:
+	var fix := func(list: Array) -> bool:
+		var changed := false
+		for i in list.size():
+			if (typeof(list[i]) == TYPE_INT or typeof(list[i]) == TYPE_FLOAT) and CardData.RENUMBERED.has(int(list[i])):
+				list[i] = int(CardData.RENUMBERED[int(list[i])])
+				changed = true
+		return changed
+	var any := false
+	for old_id in CardData.RENUMBERED:
+		if owned.has(old_id):
+			var to := int(CardData.RENUMBERED[old_id])
+			owned[to] = mini(3, int(owned.get(to, 0)) + int(owned[old_id]))
+			owned.erase(old_id)
+			any = true
+	for list in [main, extra, side]:
+		if fix.call(list):
+			any = true
+	for sl in slots:
+		if sl is Dictionary:
+			for k in (sl as Dictionary).keys():
+				if (sl as Dictionary)[k] is Array and fix.call((sl as Dictionary)[k]):
+					any = true
+	if any:
+		save.call_deferred()
+
+
 func _ready() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(PATH) == OK:
@@ -122,6 +151,7 @@ func _ready() -> void:
 			_adopt_old_deck()
 	else:
 		_adopt_old_deck()
+	_renumber()
 	if owned.is_empty():
 		_new_save = true
 		_starter()

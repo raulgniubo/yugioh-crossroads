@@ -7,6 +7,10 @@ var _cam: Camera3D
 var _head := Vector3(0, 1.45, 0)
 var _blink: Array = []  # [MeshInstance3D, blend shape index]
 var _next_blink := 2.0
+## True once the model is in, the camera is on the face and a picture of that has been drawn.
+## Until then the portrait must not be frozen: it would hold an empty picture (a tile that
+## stays blank until something wakes it, which is what happened on a fast machine).
+var framed := false
 
 
 func setup(model: Node3D) -> void:
@@ -49,6 +53,9 @@ func setup(model: Node3D) -> void:
 						break
 	_head = Avatars.head_position(model)
 	_frame()
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	framed = true
 
 
 ## Everybody is framed the same way. The picture shows the same stretch of the world for every

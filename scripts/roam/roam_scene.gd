@@ -647,11 +647,16 @@ func _cull_lights() -> void:
 
 func _exit_tree() -> void:
 	WorldClock.save_data()
+	Avatars.quiet = false
 
 
 func _physics_process(delta: float) -> void:
 	_door_marks_step(delta)
 	_follow_clock(delta)
+	# Walking around with nobody talking: no portrait on screen needs to move, so the live
+	# ones hold their frame (each was a small 3D view redrawn every other frame for nothing).
+	Avatars.quiet = not _talking and not _overlay_open and _pause == null and not (_dlg and _dlg.visible) \
+			and (story == null or not (story._cut or (story._box != null and story._box.visible)))
 	var input := Vector2.ZERO
 	if not _talking and _pause == null and not _overlay_open and not (_map_full and _map_full.visible):
 		if Input.is_key_pressed(KEY_W) or Input.is_action_pressed("ui_up"):
@@ -2323,6 +2328,48 @@ func _debug() -> void:
 					get_viewport().get_texture().get_image().save_png("/tmp/seat_%s_%d%s.png" % [str(Router.roam.get("district", "domino")), sn, "ab"[view]])
 				print("seat ", sn, " ", sf.stance, " ", sf.key, " at ", sat.snapped(Vector3(0.1, 0.1, 0.1)))
 				sn += 1
+			get_tree().quit()
+		elif a == "--skel-count":
+			# Dev: how many skeletons are really re-posed each frame (each one is a skinning pass
+			# on the graphics chip), and how the people are paced. Prints and quits.
+			await get_tree().create_timer(8.0).timeout
+			var sks := get_tree().root.find_children("*", "Skeleton3D", true, false)
+			var hits := [0]
+			var per := {}
+			for sk in sks:
+				per[sk] = 0
+				(sk as Skeleton3D).skeleton_updated.connect(func():
+					hits[0] += 1
+					per[sk] += 1)
+			var f0 := Engine.get_process_frames()
+			for i in 120:
+				await get_tree().process_frame
+			var frames := maxi(1, Engine.get_process_frames() - f0)
+			var paces := [0, 0, 0, 0]
+			var figs := 0
+			for fg in find_children("*", "Node3D", true, false):
+				if fg is RoamFigure:
+					figs += 1
+					paces[clampi((fg as RoamFigure)._pace, 0, 3)] += 1
+			var playing := 0
+			for ap in find_children("*", "AnimationPlayer", true, false):
+				if (ap as AnimationPlayer).is_playing() and (ap as AnimationPlayer).callback_mode_process == AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_IDLE:
+					playing += 1
+			# Who is re-posed (nearly) every frame without being paced "every frame"?
+			for sk in sks:
+				if float(per[sk]) / frames > 0.7:
+					var own: Node = sk
+					while own != null and not (own is RoamFigure):
+						own = own.get_parent()
+					if own == null or (own as RoamFigure)._pace != 0:
+						var kids := []
+						for c in (sk as Node).get_children():
+							if c is SkeletonModifier3D:
+								kids.append(c.get_class() + ("*" if (c as SkeletonModifier3D).active else ""))
+						print("SKEL BUSY ", (own as RoamFigure).key if own else "?", " pace=", (own as RoamFigure)._pace if own else -1, " anim=", (own as RoamFigure)._anim != null if own else false,
+								" speed=", snappedf((own as RoamFigure)._speed, 0.1) if own else 0.0, " mods=", kids, " path=", str(get_path_to(sk)).left(70))
+			print("SKELCOUNT skeletons=", sks.size(), " re-posed per frame=", snappedf(float(hits[0]) / frames, 0.1), " figures=", figs,
+					" pace[every frame, 2nd, 4th, resting]=", paces, " players running every frame=", playing)
 			get_tree().quit()
 		elif a.begins_with("--tour="):
 			# Several free-camera shots in one run: --tour=name:x,y,z,lx,ly,lz;name2:...

@@ -150,10 +150,13 @@ func _face(delta: float) -> void:
 		var mi: MeshInstance3D = part[0]
 		if not is_instance_valid(mi):
 			continue
+		# (Setting a face shape, even to the value it has, makes the chip skin the face again.)
 		for i in part[1]:
-			mi.set_blend_shape_value(i, lid)
+			if absf(mi.get_blend_shape_value(i) - lid) > 0.004:
+				mi.set_blend_shape_value(i, lid)
 		for i in part[2]:
-			mi.set_blend_shape_value(i, _mouth)
+			if absf(mi.get_blend_shape_value(i) - _mouth) > 0.004:
+				mi.set_blend_shape_value(i, _mouth)
 
 
 ## A small nod hello, done with the head alone.
@@ -490,6 +493,7 @@ func _set_pace(p: int) -> void:
 func _paced(delta: float) -> float:
 	if _anim == null or key == "player" or always_live or _speaking or _hold > 0.0 or not is_inside_tree():
 		_set_pace(0)
+		_touch_up(true)
 		return delta
 	var f := Engine.get_process_frames()
 	if f != _eye_frame:
@@ -507,7 +511,11 @@ func _paced(delta: float) -> float:
 	if d > 49.0 and not _seen.is_on_screen():
 		p = 3
 	_set_pace(p)
+	_touch_up(p == 0)
 	if p == 0:
+		if _look:
+			# Eased out over the last 8 m, so nothing pops when the touches go off at 26 m.
+			_look.fade = clampf((26.0 - sqrt(d)) / 8.0, 0.0, 1.0)
 		return delta
 	if p == 3:
 		return 0.0
@@ -518,6 +526,21 @@ func _paced(delta: float) -> float:
 	_acc = 0.0
 	_anim.advance(out)
 	return out
+
+
+## The small touches on top of the animation (head turn, arms tucked in) are a skeleton
+## modifier, and a modifier that is on re-poses its skeleton EVERY frame, which makes the
+## graphics chip skin the whole body again every frame: also for somebody 80 m away who is
+## only animated every 4th frame, and for somebody behind the camera who is not animated at
+## all. Measured in Domino at night: 93 of 117 skeletons were re-posed every single frame.
+## So the touches are on for the people near you (the ones animated every frame anyway) and
+## off for everybody else. (Switching a modifier on and off also re-poses the skeleton, and
+## shows a frame without the touches: it is switched only when somebody crosses the 26 m line.)
+func _touch_up(on: bool) -> void:
+	if _look and _look.active != on:
+		_look.active = on
+		if on:
+			_look.fade = 1.0
 
 
 func _process(delta: float) -> void:

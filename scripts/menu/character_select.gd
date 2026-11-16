@@ -615,9 +615,9 @@ func _fit_slot(pt: TextureRect, key: String) -> void:
 
 func _roster_card(key: String) -> Control:
 	var info := Portraits.info(key)
-	var ok := key == "player" or Characters.available(key)
+	var has_deck := key == "player" or Characters.available(key)
 	var met := Unlocks.opponent(key)
-	ok = ok and met
+	var ok := has_deck and met
 	var b := Button.new()
 	b.custom_minimum_size = CELL
 	b.clip_contents = true
@@ -711,12 +711,23 @@ func _roster_card(key: String) -> Control:
 		bx += 48.0
 	if not ok:
 		pt.modulate = Color(0.3, 0.3, 0.36)
-		var lock := UITheme.label("Needs the\ncard database", 13, UITheme.TEXT_DIM)
+		# Two different reasons, said as what they are. (Everybody you had not beaten yet used
+		# to say "Needs the card database", with the database sitting right there.)
+		var why := "Needs the\ncard database"
+		if has_deck:
+			why = "LOCKED\nBeat them in\nthe story" if Unlocks.STORY_MET.has(key) else "LOCKED\nBeat them in\ntheir world"
+		var lock := UITheme.label(why, 13, Color(0.92, 0.94, 1.0, 0.92), UITheme.semi_font())
 		lock.position = Vector2(8, 8)
+		lock.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		lock.add_theme_constant_override("outline_size", 4)
+		lock.add_theme_constant_override("line_spacing", -3)
 		b.add_child(lock)
 	b.pressed.connect(func():
 		if not ok:
-			Router.toast(Loc.t("Download the full card database to unlock %s") % info.get("short", ""))
+			if has_deck:
+				Router.toast("%s  ·  %s" % [str(info.get("short", "")), Unlocks.opponent_why(key)], 3.2)
+			else:
+				Router.toast(Loc.t("Download the full card database to unlock %s") % info.get("short", ""))
 			return
 		_choose(key))
 	b.mouse_entered.connect(func():

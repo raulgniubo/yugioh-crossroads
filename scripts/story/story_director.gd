@@ -528,6 +528,9 @@ func _freeze(on: bool) -> void:
 # ------------------------------------------------------------------ running the script
 
 func _run() -> void:
+	# Not under the dark screen: the story waits until the place has got going (Router._settle).
+	while Router.loading:
+		await get_tree().process_frame
 	if _steps.is_empty():
 		_leave()
 		return

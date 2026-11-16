@@ -1559,6 +1559,7 @@ func _touch(key: String) -> void:
 	_live.erase(key)
 	_live.push_front(key)
 	(_stages[key] as SubViewport).render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_awake(key, true)
 	while _live.size() > LIVE_MAX:
 		var old: String = _live.pop_back()
 		if _stages.has(old):
@@ -1568,6 +1569,9 @@ func _touch(key: String) -> void:
 ## Live portraits are small moving busts: drawing each on every other frame halves what they
 ## cost and nobody can tell. They take turns, so the load is even from frame to frame.
 var _tick := 0
+## Set while nothing on screen shows a portrait that should move (walking around the world with
+## no conversation open): the live portraits stop being redrawn until it is cleared.
+var quiet := false
 
 
 func _process(_delta: float) -> void:
@@ -1583,6 +1587,17 @@ func _process(_delta: float) -> void:
 		var vp: SubViewport = _stages.get(_live[i])
 		if vp == null:
 			continue
+		if quiet:
+			# Nobody is looking at a moving portrait right now: each holds the frame it has.
+			# (One that was only just asked for is drawn once first.)
+			if not _framed(_live[i]):
+				continue          # still getting its first picture: leave it drawing
+			if vp.render_target_update_mode == SubViewport.UPDATE_ALWAYS:
+				vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+			else:
+				_awake(_live[i], false)
+			continue
+		_awake(_live[i], true)
 		if (_tick + i) % 2 == 0:
 			vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 		elif vp.render_target_update_mode == SubViewport.UPDATE_ALWAYS:
@@ -1591,11 +1606,37 @@ func _process(_delta: float) -> void:
 
 func _freeze_later(key: String) -> void:
 	await get_tree().create_timer(0.6).timeout
-	# Never freeze a picture that has not been drawn yet (a slow frame, or one just resized).
+	# Never freeze a picture that has not been drawn yet (a slow frame, a model that took its
+	# time, or one just resized): wait for its stage to say the first picture is there.
+	var tries := 0
+	while _stages.has(key) and not _framed(key) and tries < 600:
+		tries += 1
+		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
 	if _stages.has(key) and not _live.has(key):
 		(_stages[key] as SubViewport).render_target_update_mode = SubViewport.UPDATE_DISABLED
+		_awake(key, false)
+
+
+## A portrait that holds its last frame has nobody to move for: its little stage (the model's
+## animation, its blinking) is put to sleep with it. Before, every portrait ever shown kept
+## animating its skeleton behind the scenes on every frame, drawn or not: two dozen bodies
+## skinned for nothing while you walked around.
+func _framed(key: String) -> bool:
+	var vp: SubViewport = _stages.get(key)
+	if vp == null or vp.get_child_count() == 0:
+		return true
+	return bool(vp.get_child(0).get("framed"))
+
+
+func _awake(key: String, on: bool) -> void:
+	var vp: SubViewport = _stages.get(key)
+	if vp == null:
+		return
+	var want := Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+	if vp.process_mode != want:
+		vp.process_mode = want
 
 
 ## Re-apply the profile's colors to the live player model.

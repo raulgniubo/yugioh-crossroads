@@ -17,6 +17,7 @@ var arms: Array = []          # [[upper arm, forearm, side sign], ...]
 var spine := -1
 var sit_up := 0.0             # radians to straighten a slumped back; the arms keep their line
 var tuck := 0.55              # how much of an arm's outward lean to keep (1 = untouched)
+var fade := 1.0               # 1 = all of the touches, 0 = none (eased out with distance)
 var up := Vector3.UP          # the figure's up and right, as the skeleton sees them
 var right := Vector3.RIGHT
 
@@ -25,17 +26,19 @@ func _process_modification() -> void:
 	var sk := get_skeleton()
 	if sk == null:
 		return
-	if spine >= 0 and sit_up > 0.003:
+	var sit := sit_up * fade
+	var tk := lerpf(1.0, tuck, fade)
+	if spine >= 0 and sit > 0.003:
 		# The bench motion slumps right over the knees. Lean the back up from the hips and turn
 		# the arms the other way by as much, so the hands stay down on the legs.
 		var gs := sk.get_bone_global_pose(spine)
-		gs.basis = Basis(right, -sit_up) * gs.basis
+		gs.basis = Basis(right, -sit) * gs.basis
 		sk.set_bone_global_pose(spine, gs)
 		for a in arms:
 			var ga := sk.get_bone_global_pose(a[0])
-			ga.basis = Basis(right, sit_up * 0.8) * ga.basis
+			ga.basis = Basis(right, sit * 0.8) * ga.basis
 			sk.set_bone_global_pose(a[0], ga)
-	if tuck < 0.999:
+	if tk < 0.999:
 		var down := -up
 		for a in arms:
 			var g := sk.get_bone_global_pose(a[0])
@@ -45,7 +48,7 @@ func _process_modification() -> void:
 			var side := dir.dot(right) * float(a[2])     # > 0: leaning out, away from the body
 			if side <= 0.12:
 				continue
-			var want := (dir - right * float(a[2]) * (side - maxf(0.12, side * tuck))).normalized()
+			var want := (dir - right * float(a[2]) * (side - maxf(0.12, side * tk))).normalized()
 			g.basis = Basis(Quaternion(dir, want)) * g.basis
 			sk.set_bone_global_pose(a[0], g)
 	if head < 0 or (absf(yaw) < 0.003 and absf(pitch) < 0.003 and nod < 0.003):
