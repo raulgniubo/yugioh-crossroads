@@ -5,6 +5,19 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.21
+
+**A Field Spell takes the field. And round corners on the towers of New Domino and Heartland.**
+
+- **The field becomes the place.** Play Mountain and the ground of the field turns to snow and rock, spreading out from the Field Zone the card lies in, with a lit front running across the table. Umi floods it, Yami swallows it in purple mist, Forest covers it in moss and leaves, Sogen is open grass, Wasteland cracked dry earth, Molten Destruction lava, Rising Air Current open sky over the clouds, Luminous Spark a floor of light, Mystic Plasma Zone black glass with violet current, Skyscraper a rooftop at night, Chorus of Sanctuary marble. (Necrovalley and Harpies' Hunting Ground have their places ready, sand over old paving and a dry canyon, but the cards themselves stay out of play until their full effects are built.) Five of those grounds are new paintings. Every other Field Spell the game plays (the ones read from their own text) gets its place from what it makes stronger.
+- **Light, air and scenery follow.** The light and the sky lean toward the place, something drifts over the field (snow, leaves, embers, spray, dust, motes of light), and what belongs there rises at the edges: trees, snow-capped rocks, coral, lava vents, dark spires, white columns, clouds, lit towers, broken columns. The zones are repainted dark on a pale ground and light on a dark one so they always read.
+- **You are told what it does.** The name sweeps across the field once ("MOUNTAIN, Field Spell, yours"). A strip on the right stays as long as the card does: whose it is, who gets what ("Dragon, Winged Beast, Thunder: +200 ATK +200 DEF", losses in red). Click it to read the card. Every monster the Field Spell changes carries a mark on its card: ▲ +200 in the place's color, ▼ in red.
+- **It goes back.** When the card leaves, its place pulls back into the Field Zone and the field is itself again. A new Field Spell over an old one: the old ground pulls back first, then the new one spreads. If each duelist has one, the one played last shows.
+- **Towers.** The towers of New Domino and Heartland (and the far skyline round the arena) end in round corner columns from the lobby to the roof, each on a collar and under a cap, and their lobbies stand on round piers. The Game Center has round corner columns with a ring of its own light. Satellite I looked at and left: what stands there is containers, shacks and scrap, and those are right as boxes.
+- Dev: `--demo-actions --demo-field=Mountain` (and `Mountain,Umi` or `Mountain,-`) plays a Field Spell by its real rules for a picture.
+
+Not done or not checked: seen in pictures here for thirteen of the Field Spells (Necrovalley, Mountain, Yami, Umi, Forest, Molten Destruction, Skyscraper, Sogen, Wasteland, Rising Air Current, Luminous Spark, Mystic Plasma Zone, one replaced by another, one leaving); Chorus of Sanctuary only by test. All of it seen on this machine's simple renderer, not on a Mac or with the full one, where glow and haze are stronger: if a place is too bright to read the cards on, tell me which. Not in a Turbo Duel (there the field is a hologram over the road). The opponent playing a Field Spell on their own turn was not seen in a picture; it runs the same code. The round columns were seen from the street in two worlds, not from every angle.
+
 ## What is in 0.33.20
 
 **Performance: the people stop costing what they cost, and the F4 report tells the truth.**

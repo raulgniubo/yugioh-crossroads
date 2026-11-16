@@ -242,6 +242,52 @@ vec3 ground_color(vec2 p, int kind, float t) {
 		float nail = 1.0 - smoothstep(0.03, 0.05, length(vec2((f.x - 0.5) * 0.38, f.y - 0.06)));
 		return mix(w, vec3(0.12, 0.11, 0.1), nail * 0.8) * vec3(1.1, 0.97, 0.85);
 	}
+	if (kind == 17) {
+		// Forest floor: moss and fallen leaves, roots running under it, light through the canopy.
+		float n = g_fbm(p * 1.1);
+		vec3 moss = mix(vec3(0.05, 0.16, 0.05), vec3(0.16, 0.34, 0.1), n) * (0.82 + 0.3 * g_noise(p * 16.0));
+		vec2 v = g_voro(p * 2.6 + g_fbm(p * 1.5));
+		float leaf = (1.0 - smoothstep(0.05, 0.16, v.x)) * step(0.55, v.y);
+		moss = mix(moss, mix(vec3(0.42, 0.3, 0.08), vec3(0.4, 0.2, 0.07), g_hash(vec2(v.y, 3.0))), leaf * 0.55);
+		float root = 1.0 - smoothstep(0.0, 0.035, abs(g_fbm(p * 0.4 + 13.0) - 0.5));
+		moss = mix(moss, vec3(0.1, 0.075, 0.045) * (0.8 + 0.4 * g_noise(p * 22.0)), root * 0.55);
+		float sun = smoothstep(0.55, 0.8, g_fbm(p * 0.4 + vec2(t * 0.03, t * 0.02)));
+		return moss * (0.8 + 0.55 * sun) + vec3(0.3, 0.32, 0.1) * sun * 0.12;
+	} else if (kind == 19) {
+		// Wasteland: dry earth split into plates, dust lying in the cracks, a bone-white stone here and there.
+		vec2 v = g_voro(p * 0.75 + g_fbm(p * 0.5) * 0.6);
+		float crack = 1.0 - smoothstep(0.0, 0.06, v.x);
+		vec3 e = mix(vec3(0.44, 0.31, 0.19), vec3(0.62, 0.47, 0.3), v.y) * (0.8 + 0.34 * g_fbm(p * 5.0));
+		e = mix(e, vec3(0.16, 0.1, 0.06), crack * 0.85);
+		float st = step(0.975, g_hash(floor(p * 2.4))) * (1.0 - smoothstep(0.14, 0.3, length(fract(p * 2.4) - 0.5)));
+		return mix(e, vec3(0.83, 0.8, 0.72), st);
+	} else if (kind == 20) {
+		// Open sky: you are standing on the clouds, the land a long way down between them.
+		vec2 w = p * 0.45 + vec2(t * 0.045, t * 0.02);
+		float c1 = g_fbm(w);
+		float c2 = g_fbm(w * 2.1 + 7.0);
+		float cloud = smoothstep(0.38, 0.7, c1 * 0.7 + c2 * 0.4);
+		vec3 land = mix(vec3(0.16, 0.42, 0.72), vec3(0.3, 0.6, 0.86), g_fbm(p * 0.25 + 4.0));
+		vec3 cl = mix(vec3(0.74, 0.84, 0.96), vec3(1.0), smoothstep(0.5, 0.9, c1 + c2 * 0.3));
+		return mix(land, cl, cloud);
+	} else if (kind == 21) {
+		// Light: a floor of pale glass with rays opening out from the middle.
+		float r = length(p);
+		float a = atan(p.y, p.x);
+		float ray = 0.5 + 0.5 * sin(a * 14.0 + sin(r * 0.9 - t * 0.6) * 1.5);
+		vec3 g = mix(vec3(0.82, 0.78, 0.62), vec3(1.0, 0.97, 0.84), ray * 0.6 + 0.4 * g_fbm(p * 2.0));
+		vec2 f = abs(fract(p * 0.7) - 0.5);
+		g = mix(g, vec3(1.0, 0.86, 0.4), smoothstep(0.47, 0.5, max(f.x, f.y)) * 0.6);
+		float pulse = 0.5 + 0.5 * sin(r * 2.2 - t * 1.6);
+		return g * (0.86 + 0.16 * pulse);
+	} else if (kind == 22) {
+		// Plasma: black glass with violet current crawling through it.
+		vec2 w = p * 0.9;
+		float n = g_fbm(w + vec2(g_fbm(w * 1.7 + t * 0.12), g_fbm(w * 1.3 - t * 0.1)) * 1.6);
+		float arc = 1.0 - smoothstep(0.0, 0.045, abs(n - 0.5));
+		vec3 g = vec3(0.03, 0.015, 0.06) * (0.8 + 0.8 * g_fbm(p * 3.0));
+		return g + vec3(0.62, 0.2, 1.0) * arc * (0.7 + 0.3 * sin(t * 5.0 + n * 30.0)) + vec3(0.16, 0.03, 0.26) * smoothstep(0.4, 0.75, n);
+	}
 	float n = g_fbm(p * 0.9 + vec2(t * 0.05, -t * 0.03));
 	float n2 = g_fbm(p * 2.2 - vec2(t * 0.04));
 	vec3 c = mix(vec3(0.03, 0.01, 0.06), vec3(0.22, 0.05, 0.32), smoothstep(0.35, 0.75, n));

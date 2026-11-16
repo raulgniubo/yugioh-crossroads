@@ -4808,4 +4808,10 @@ const ES := {
 	"Loading": "Cargando",
 	"LOCKED\nBeat them in\nthe story": "BLOQUEADO\nGánale en\nla historia",
 	"LOCKED\nBeat them in\ntheir world": "BLOQUEADO\nGánale en\nsu mundo",
+	"The Field Spell in force. Click to read the card.": "La Mágica de Campo en vigor. Haz clic para leer la carta.",
+	"FIELD": "CAMPO",
+	"Click to read what it does.": "Haz clic para leer lo que hace.",
+	"+%d ATK when it attacks a stronger monster": "+%d ATK cuando ataca a un monstruo más fuerte",
+	"Defense Position monsters": "Monstruos en Posición de Defensa",
+	"yours": "tuya",
 }

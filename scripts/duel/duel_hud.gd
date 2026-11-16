@@ -2078,6 +2078,109 @@ func banner(text: String, color := Color.WHITE, high := false) -> void:
 	await tw.finished
 
 
+# ------------------------------------------------------------------ the Field Spell in force
+
+var _field_strip: PanelContainer
+var _field_card = null
+
+
+## The name of the place sweeps across the field once, when a Field Spell takes it.
+func field_banner(title: String, whose: String, color: Color) -> void:
+	var box := VBoxContainer.new()
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_theme_constant_override("separation", -8)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.z_index = 38
+	var small := UITheme.label(Loc.t("FIELD SPELL") + "   ·   " + whose, 24, Color(1, 1, 1, 0.92), UITheme.semi_font())
+	small.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	small.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	small.add_theme_constant_override("outline_size", 8)
+	box.add_child(small)
+	var big := UITheme.label(title.to_upper(), 104, color.lerp(Color.WHITE, 0.25), UITheme.title_font())
+	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	big.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.08, 0.92))
+	big.add_theme_constant_override("outline_size", 22)
+	box.add_child(big)
+	add_child(box)
+	box.reset_size()
+	var vs := get_viewport_rect().size
+	# Long names are brought down to the width of the field.
+	var k := minf(1.0, vs.x * 0.72 / maxf(box.size.x, 1.0))
+	box.pivot_offset = box.size / 2.0
+	box.scale = Vector2(k, k) * 0.86
+	box.position = Vector2((vs.x - box.size.x) / 2.0, vs.y * 0.36 - box.size.y / 2.0)
+	box.modulate.a = 0.0
+	var tw := create_tween()
+	tw.set_parallel()
+	tw.tween_property(box, "modulate:a", 1.0, Settings.t(0.22))
+	tw.tween_property(box, "scale", Vector2(k, k), Settings.t(0.45)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_interval(Settings.t(1.15))
+	tw.chain().tween_property(box, "modulate:a", 0.0, Settings.t(0.4))
+	tw.chain().tween_callback(box.queue_free)
+
+
+## The Field Spell in force, kept in sight on the right: its name, whose it is and what it does
+## to whom. `lines` are [who, what] pairs. A null card takes the strip away.
+func set_field_strip(card, lines: Array, color: Color, whose: String) -> void:
+	if _field_strip != null and is_instance_valid(_field_strip):
+		_field_strip.queue_free()
+	_field_strip = null
+	_field_card = card
+	if card == null:
+		return
+	var pc := PanelContainer.new()
+	var sb := UITheme.panel_box(Color(0.035, 0.05, 0.11, 0.9), 12, Color(color, 0.85))
+	sb.content_margin_left = 16
+	sb.content_margin_right = 16
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 12
+	pc.add_theme_stylebox_override("panel", sb)
+	pc.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	pc.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	pc.offset_right = -32
+	pc.offset_top = 708          # (under the turn buttons, in the free strip on the right)
+	pc.custom_minimum_size = Vector2(332, 0)
+	pc.mouse_filter = Control.MOUSE_FILTER_STOP
+	pc.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	pc.tooltip_text = Loc.t("The Field Spell in force. Click to read the card.")
+	pc.gui_input.connect(func(e: InputEvent):
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and _field_card != null:
+			pc.accept_event()
+			inspect(_field_card))
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pc.add_child(v)
+	var head := UITheme.label(Loc.t("FIELD") + "   ·   " + whose, 17, Color(color.lerp(Color.WHITE, 0.3), 0.95), UITheme.semi_font())
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(head)
+	var nm := UITheme.label(str(card.data.get("name", "")), 30, Color.WHITE, UITheme.title_font())
+	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nm.custom_minimum_size = Vector2(298, 0)
+	v.add_child(nm)
+	for ln in lines:
+		var who := UITheme.label(str(ln[0]), 20, Color(0.86, 0.9, 1.0, 0.95), UITheme.semi_font())
+		who.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		who.custom_minimum_size = Vector2(298, 0)
+		who.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(who)
+		var what := str(ln[1])
+		var wl := UITheme.label("    " + what, 21, Color("ff8a8a") if what.begins_with("-") else Color("8dffb0"), UITheme.semi_font())
+		wl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		wl.custom_minimum_size = Vector2(298, 0)
+		wl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(wl)
+	if lines.is_empty():
+		var rd := UITheme.label(Loc.t("Click to read what it does."), 18, Color(0.8, 0.85, 0.95, 0.85))
+		rd.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(rd)
+	add_child(pc)
+	_field_strip = pc
+	pc.modulate.a = 0.0
+	create_tween().tween_property(pc, "modulate:a", 1.0, 0.3)
+
+
 # ------------------------------------------------------------------ overlays
 
 func _clear_overlay() -> void:

@@ -1038,7 +1038,8 @@ func tower_trim(batch: BoxBatch, pos: Vector3, size: Vector3, rng: RandomNumberG
 				var u := -half + 0.3 + (half * 2.0 - 0.6) * i / float(count)
 				if door_w > 0.0 and absf(u) < door_w * 0.5 + 0.2:
 					continue
-				batch.add(Vector3(0.5, lobby_h - 0.9, 0.5), low + t * u + Vector3(0, 0.9 + (lobby_h - 0.9) * 0.5, 0), frame, basis)
+				# (Round piers: a lobby held up by columns, not by posts cut from a plank.)
+				batch.add_round(0.29, lobby_h - 0.9, low + t * u + Vector3(0, 0.9 + (lobby_h - 0.9) * 0.5, 0), frame, 10)
 		batch.add(Vector3(half * 2.0 + base_out * 2.0 + 0.7, 0.3, 0.7), low + Vector3(0, lobby_h + 0.15, 0), frame, basis)
 		# ---- the way in
 		if door_w > 0.0:
@@ -1059,7 +1060,12 @@ func tower_trim(batch: BoxBatch, pos: Vector3, size: Vector3, rng: RandomNumberG
 		# ---- up the faces: corner piers, fins on the lines between the drawn windows, ledges
 		if fins >= 1:
 			for sd: float in ([-1.0, 1.0] if fi < 2 else []):       # (each corner once)
-				batch.add(Vector3(0.7, hgt - y0, 0.7), wall + t * sd * (half - 0.05) + Vector3(0, y0 + (hgt - y0) * 0.5, 0) - n * 0.05, frame, basis)
+				# The corners of a tower are round columns from the lobby ledge to the roof, each
+				# on a collar and under a cap: the tower no longer ends in four knife edges.
+				var cpos: Vector3 = wall + t * sd * (half - 0.05) - n * 0.05
+				batch.add_round(0.5, hgt - y0, cpos + Vector3(0, y0 + (hgt - y0) * 0.5, 0), frame, 12)
+				batch.add_round(0.64, 0.36, cpos + Vector3(0, y0 + 0.18, 0), frame, 12)
+				batch.add_round(0.62, 0.3, cpos + Vector3(0, hgt - 0.15, 0), frame, 12)
 		if fins >= 2:
 			var every := maxi(2, int(round(4.4 / grid)))
 			var line := ceili((c_along - half + 1.2) / grid)
@@ -2734,6 +2740,14 @@ func arcade_building(at: Vector3, w := 9.0, d := 9.0, yaw := 0.0) -> Node3D:
 	_dorm_solid(h, make_solid, Vector3(w, hgt, d), Vector3(0, hgt / 2.0, 0))
 	var batch := BoxBatch.new()
 	var front := pos + Vector3(0, 0, d / 2.0)
+	# Round columns on the four corners, each with a ring of the arcade's light near the top:
+	# the hall is a box, and a box wants its corners taken off.
+	for cx: float in [-1.0, 1.0]:
+		for cz: float in [-1.0, 1.0]:
+			var cp := pos + Vector3(cx * w * 0.5, 0, cz * d * 0.5)
+			batch.add_round(0.34, hgt + 0.3, cp + Vector3(0, (hgt + 0.3) * 0.5, 0), trim, 12)
+			batch.add_round(0.44, 0.3, cp + Vector3(0, 0.15, 0), trim, 12)
+			batch.add_round(0.38, 0.12, cp + Vector3(0, hgt - 0.5, 0), mint if cx * cz > 0.0 else pink, 12)
 	# The glass front: three tall panes either side of the door, cabinets glowing inside.
 	var glass := mat(Color(0.05, 0.07, 0.12), 0.1, 0.3)
 	var glows := [Color("5affc0"), Color("ff5ab4"), Color("ffd23a"), Color("7cc4ff"), Color("b06bff"), Color("ff8a3a")]

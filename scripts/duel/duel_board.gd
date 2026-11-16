@@ -131,7 +131,9 @@ func _build_environment() -> void:
 	sky_mat.sun_angle_max = 0.0
 	var sky := Sky.new()
 	sky.sky_material = sky_mat
+	_sky_mat = sky_mat
 	var env := Environment.new()
+	_env = env
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -167,6 +169,7 @@ func _build_environment() -> void:
 	key.rotation_degrees = Vector3(-62, -18, 0)
 	key.shadow_enabled = true
 	add_child(key)
+	_key = key
 	for side in [-1, 1]:
 		var l := OmniLight3D.new()
 		l.light_color = theme["accent"] if side == 1 else theme["accent2"]
@@ -214,6 +217,13 @@ uniform vec3 accent2 : source_color = vec3(0.48, 0.36, 1.0);
 uniform int pattern = 0;
 uniform int surface = 0;
 uniform float dark_paint = 0.0;
+// A Field Spell: its ground, spreading out from the Field Zone it was played in.
+uniform int field_surface = 0;
+uniform float field_r = 0.0;
+uniform vec2 field_o = vec2(0.0);
+uniform vec3 field_glow : source_color = vec3(1.0);
+uniform float field_dark = 0.0;
+uniform float field_shade = 1.0;
 //GROUND//
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -270,6 +280,19 @@ void fragment() {
 		// Open-air fields: the ground is the mat, the markings are painted on it.
 		col = ground_color(p, surface, TIME) * (0.78 + 0.3 * vig);
 	}
+	float dark_p = dark_paint;
+	if (field_surface > 0 && field_r > 0.01) {
+		// The Field Spell's place takes the ground over from where the card lies: a ragged
+		// front running outward, lit along its edge.
+		float fd = length((p - field_o) * vec2(1.0, 1.2)) + (g_fbm(p * 1.4 + 5.0) - 0.5) * 1.5;
+		float fm = 1.0 - smoothstep(field_r - 0.45, field_r, fd);
+		vec3 fc = ground_color(p, field_surface, TIME) * (0.8 + 0.28 * vig) * field_shade;
+		col = mix(col, fc, fm);
+		float front = (1.0 - smoothstep(0.0, 0.3, abs(fd - field_r + 0.2))) * (1.0 - smoothstep(16.0, 19.0, field_r));
+		col += field_glow * front * 1.5;
+		wild = max(wild, fm);
+		dark_p = mix(dark_p, field_dark, fm);
+	}
 	// Rotating emblem rings in the middle
 	float r = length(p);
 	float a = atan(p.y, p.x);
@@ -278,7 +301,7 @@ void fragment() {
 	float dash = step(0.5, fract((a + TIME * 0.15) * 12.0 / 6.28318));
 	float ring3 = line_aa(abs(r - 1.85), 0.012) * dash;
 	// Outdoors the middle is one painted circle, like the center of a pitch.
-	vec3 paint = mix(mix(side, vec3(1.0), 0.7), vec3(0.08, 0.14, 0.36), dark_paint);
+	vec3 paint = mix(mix(side, vec3(1.0), 0.7), vec3(0.08, 0.14, 0.36), dark_p);
 	// (No emblem in the middle any more: the center of the field stays clear.)
 	col += side * (ring1 + ring2 + ring3) * 0.0;
 	// Center divider and a sweeping scan line
@@ -309,10 +332,477 @@ void fragment() {
 	m.set_shader_parameter("accent2", theme["accent2"])
 	m.set_shader_parameter("pattern", theme["pattern"])
 	mi.material_override = m
+	_mat_m = m
 	add_child(mi)
 
 
 ## Floor beyond the mat, corner pylons and drifting particles.
+
+# ------------------------------------------------------------------ a Field Spell takes the field
+
+var _mat_m: ShaderMaterial
+var _env: Environment
+var _sky_mat: ProceduralSkyMaterial
+var _key: DirectionalLight3D
+var _field_key := ""              # which place the field is right now ("" = its own)
+var _field_glow_c := Color.WHITE
+var _zone_mats: Array[ShaderMaterial] = []
+var _zone_dark := -1.0            # how dark the zones are painted right now (-1 = not read yet)
+var _zone_tw: Tween
+
+
+## The zones are painted light on a dark ground and dark on a pale one. A Field Spell can turn
+## one into the other, so their paint follows the ground they are on.
+func _zone_paint(dark: float, secs: float) -> void:
+	if _zone_dark < 0.0:
+		_zone_dark = 1.0 if theme.get("dark_paint", false) else 0.0
+	if _zone_tw:
+		_zone_tw.kill()
+	_zone_tw = create_tween()
+	_zone_tw.tween_method(func(v: float):
+		_zone_dark = v
+		for zm in _zone_mats:
+			zm.set_shader_parameter("dark_paint", v), _zone_dark, dark, Settings.t(secs))
+var _field_tw: Tween
+var _field_env_tw: Tween
+var _field_nodes: Node3D          # what stands at the edges, and what drifts over it
+var _field_light: OmniLight3D
+var _field_home := {}             # the field's own light, to go back to
+
+
+## The field becomes the place of a Field Spell: its ground spreads out from `at` (where the
+## card lies), the light and the air follow, and what belongs there rises at the edges.
+func set_field_look(look: Dictionary, at: Vector3) -> void:
+	if turbo or _mat_m == null:
+		return       # a Turbo Duel's field is a hologram over the road
+	var key := str(look.get("key", ""))
+	if key == _field_key:
+		return
+	var had := _field_key != ""
+	_field_key = key
+	_field_glow_c = look.get("glow", Color.WHITE)
+	if _field_home.is_empty() and _env != null:
+		_field_home = {"amb": _env.ambient_light_color, "amb_e": _env.ambient_light_energy, "fog": _env.fog_light_color,
+			"top": _sky_mat.sky_top_color, "hor": _sky_mat.sky_horizon_color, "key": _key.light_color, "key_e": _key.light_energy}
+	if _field_tw:
+		_field_tw.kill()
+	_field_tw = create_tween()
+	if had:
+		# One place gives way to the next: the old ground pulls back first.
+		_field_tw.tween_method(_field_radius, float(_mat_m.get_shader_parameter("field_r")), 0.0, Settings.t(0.35)).set_trans(Tween.TRANS_SINE)
+		_drop_field_nodes()
+	_field_tw.tween_callback(func():
+		_mat_m.set_shader_parameter("field_surface", int(look.get("surface", 6)))
+		_mat_m.set_shader_parameter("field_o", Vector2(at.x, at.z))
+		_mat_m.set_shader_parameter("field_glow", look.get("glow", Color.WHITE))
+		_mat_m.set_shader_parameter("field_dark", 1.0 if look.get("dark", false) else 0.0)
+		_mat_m.set_shader_parameter("field_shade", float(look.get("shade", 1.0)))
+		_raise_field_nodes(look, at)
+		Sfx.play("summon", -8.0, 0.7))
+	_field_tw.tween_method(_field_radius, 0.0, 20.0, Settings.t(1.5)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_field_env(look, 1.2)
+	_zone_paint(1.0 if look.get("dark", false) else 0.0, 1.0)
+
+
+## The card left the field: its place pulls back into the Field Zone and the field is itself again.
+func clear_field_look() -> void:
+	if _field_key == "" or _mat_m == null:
+		return
+	_field_key = ""
+	if _field_tw:
+		_field_tw.kill()
+	_field_tw = create_tween()
+	_field_tw.tween_method(_field_radius, float(_mat_m.get_shader_parameter("field_r")), 0.0, Settings.t(0.9)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	_field_tw.tween_callback(func(): _mat_m.set_shader_parameter("field_surface", 0))
+	_drop_field_nodes()
+	_field_env({}, 0.9)
+	_zone_paint(1.0 if theme.get("dark_paint", false) else 0.0, 0.9)
+
+
+## The color of the place the field is right now (white when it is its own).
+func field_glow() -> Color:
+	return _field_glow_c if _field_key != "" else Color("8dffb0")
+
+
+func _field_radius(r: float) -> void:
+	_mat_m.set_shader_parameter("field_r", r)
+
+
+## The light and the sky lean toward the Field Spell's place (and back, with an empty look).
+func _field_env(look: Dictionary, secs: float) -> void:
+	if _env == null or _field_home.is_empty():
+		return
+	var amb: Color = _field_home["amb"]
+	var amb_e: float = _field_home["amb_e"]
+	var fog: Color = _field_home["fog"]
+	var top: Color = _field_home["top"]
+	var hor: Color = _field_home["hor"]
+	var kc: Color = _field_home["key"]
+	var ke: float = _field_home["key_e"]
+	if not look.is_empty():
+		var glow: Color = look.get("glow", Color.WHITE)
+		var day: bool = look.get("day", false)
+		amb = amb.lerp(glow.lerp(Color.WHITE, 0.55), 0.6)
+		amb_e = lerpf(amb_e, 0.95 if day else 0.6, 0.6)
+		fog = fog.lerp(look.get("fog", fog), 0.75)
+		top = top.lerp((look["sky"] as Array)[0], 0.8)
+		hor = hor.lerp((look["sky"] as Array)[1], 0.8)
+		kc = kc.lerp(glow.lerp(Color.WHITE, 0.7), 0.5)
+		ke = lerpf(ke, 1.2 if day else 0.7, 0.5)
+	if _field_env_tw:
+		_field_env_tw.kill()
+	_field_env_tw = create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
+	var t := Settings.t(secs)
+	_field_env_tw.tween_property(_env, "ambient_light_color", amb, t)
+	_field_env_tw.tween_property(_env, "ambient_light_energy", amb_e, t)
+	_field_env_tw.tween_property(_env, "fog_light_color", fog, t)
+	_field_env_tw.tween_property(_sky_mat, "sky_top_color", top, t)
+	_field_env_tw.tween_property(_sky_mat, "sky_horizon_color", hor, t)
+	_field_env_tw.tween_property(_sky_mat, "ground_horizon_color", hor, t)
+	_field_env_tw.tween_property(_key, "light_color", kc, t)
+	_field_env_tw.tween_property(_key, "light_energy", ke, t)
+
+
+func _drop_field_nodes() -> void:
+	if _field_nodes == null or not is_instance_valid(_field_nodes):
+		return
+	var old := _field_nodes
+	_field_nodes = null
+	for c in old.get_children():
+		if c is CPUParticles3D:
+			(c as CPUParticles3D).emitting = false
+	var tw := create_tween().set_parallel()
+	for c in old.get_children():
+		if c is Node3D and not (c is CPUParticles3D):
+			tw.tween_property(c, "scale", Vector3(1.0, 0.001, 1.0), Settings.t(0.6)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		if c is OmniLight3D:
+			tw.tween_property(c, "light_energy", 0.0, Settings.t(0.6))
+	tw.chain().tween_interval(2.4)       # (the last of what drifts gets to land)
+	tw.chain().tween_callback(old.queue_free)
+
+
+func _fmat(c: Color, glow := 0.0, rough := 0.85) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = c
+	m.roughness = rough
+	if glow > 0.0:
+		m.emission_enabled = true
+		m.emission = c
+		m.emission_energy_multiplier = glow
+	return m
+
+
+func _fpart(parent: Node3D, mesh: Mesh, mat: Material, pos: Vector3, rot := Vector3.ZERO, sc := Vector3.ONE) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = mat
+	mi.position = pos
+	mi.rotation = rot
+	mi.scale = sc
+	parent.add_child(mi)
+	return mi
+
+
+func _cone(r: float, h: float, sides := 7) -> CylinderMesh:
+	var m := CylinderMesh.new()
+	m.top_radius = 0.0
+	m.bottom_radius = r
+	m.height = h
+	m.radial_segments = sides
+	m.rings = 1
+	return m
+
+
+func _cyl(r0: float, r1: float, h: float, sides := 8) -> CylinderMesh:
+	var m := CylinderMesh.new()
+	m.top_radius = r0
+	m.bottom_radius = r1
+	m.height = h
+	m.radial_segments = sides
+	m.rings = 1
+	return m
+
+
+func _ball(r: float, squash := 1.0) -> SphereMesh:
+	var m := SphereMesh.new()
+	m.radius = r
+	m.height = r * 2.0 * squash
+	m.radial_segments = 12
+	m.rings = 6
+	return m
+
+
+func _brick(size: Vector3) -> BoxMesh:
+	var m := BoxMesh.new()
+	m.size = size
+	return m
+
+
+## Where things can stand: along both long sides of the field and behind the far end, clear of
+## the two duelists and low enough near you that nothing gets between the camera and the cards.
+## Each spot: [position, how big something may be there].
+func _field_spots(rng: RandomNumberGenerator) -> Array:
+	var out: Array = []
+	for side in [-1.0, 1.0]:
+		for i in 5:
+			var z := -4.6 + i * 1.75 + rng.randf_range(-0.3, 0.3)
+			out.append([Vector3(side * (7.3 + rng.randf_range(0.0, 1.5)), 0.0, z), 1.0 - 0.14 * i])
+		for i in 3:
+			out.append([Vector3(side * (2.6 + i * 1.7 + rng.randf_range(-0.3, 0.3)), 0.0, -5.4 - rng.randf_range(0.0, 1.6)), 1.05])
+	return out
+
+
+## What belongs in the Field Spell's place rises at the edges of the field, and its air starts.
+func _raise_field_nodes(look: Dictionary, at: Vector3) -> void:
+	_drop_field_nodes()
+	_field_nodes = Node3D.new()
+	add_child(_field_nodes)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(str(look.get("key", "")))
+	var glow: Color = look.get("glow", Color.WHITE)
+	var kind := str(look.get("props", ""))
+	var i := 0
+	for spot in _field_spots(rng):
+		var holder := Node3D.new()
+		holder.position = spot[0]
+		holder.rotation.y = rng.randf() * TAU
+		_field_nodes.add_child(holder)
+		_field_prop(holder, kind, float(spot[1]), glow, rng)
+		holder.scale = Vector3(1.0, 0.001, 1.0)
+		var tw := create_tween()
+		tw.tween_interval(Settings.t(0.25 + ((spot[0] as Vector3) - at).length() * 0.07))
+		tw.tween_property(holder, "scale", Vector3.ONE, Settings.t(0.7)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		i += 1
+	# A wash of the place's own light over the cards.
+	_field_light = OmniLight3D.new()
+	_field_light.light_color = glow
+	_field_light.light_energy = 0.0
+	_field_light.omni_range = 11.0
+	_field_light.position = Vector3(0, 3.2, 0)
+	_field_nodes.add_child(_field_light)
+	create_tween().tween_property(_field_light, "light_energy", 1.1, Settings.t(1.2))
+	_field_air(str(look.get("air", "none")), glow)
+
+
+func _field_prop(h: Node3D, kind: String, k: float, glow: Color, rng: RandomNumberGenerator) -> void:
+	match kind:
+		"trees":
+			var hgt := rng.randf_range(2.2, 3.4) * k
+			_fpart(h, _cyl(0.1, 0.17, hgt * 0.5), _fmat(Color(0.3, 0.2, 0.12)), Vector3(0, hgt * 0.25, 0))
+			var leaf := _fmat(Color(0.1, 0.36, 0.14).lerp(Color(0.2, 0.5, 0.16), rng.randf()))
+			for j in 3:
+				_fpart(h, _cone(0.95 - j * 0.22, hgt * 0.42, 8), leaf, Vector3(0, hgt * (0.45 + j * 0.2), 0))
+			_fpart(h, _ball(0.3, 0.6), _fmat(Color(0.14, 0.36, 0.12)), Vector3(rng.randf_range(-0.9, 0.9), 0.14, rng.randf_range(-0.9, 0.9)))
+		"grass":
+			var blade := _fmat(Color(0.3, 0.6, 0.16))
+			for j in 9:
+				var a := rng.randf() * TAU
+				var d := rng.randf_range(0.0, 0.9)
+				_fpart(h, _cone(0.05, rng.randf_range(0.45, 0.95) * k, 4), blade, Vector3(cos(a) * d, 0.3, sin(a) * d), Vector3(rng.randf_range(-0.25, 0.25), 0, rng.randf_range(-0.25, 0.25)))
+			if rng.randf() < 0.5:
+				_fpart(h, _ball(0.4, 0.7), _fmat(Color(0.5, 0.5, 0.48)), Vector3(0.5, 0.18, -0.3))
+			else:
+				for j in 3:
+					_fpart(h, _ball(0.07), _fmat(Color(1.0, 0.9, 0.4), 0.4), Vector3(rng.randf_range(-0.7, 0.7), 0.5, rng.randf_range(-0.7, 0.7)))
+		"rocks":
+			var rock := _fmat(Color(0.36, 0.38, 0.44))
+			var hgt := rng.randf_range(1.6, 3.2) * k
+			_fpart(h, _cone(0.9, hgt, 5), rock, Vector3(0, hgt * 0.5, 0), Vector3(0, 0, rng.randf_range(-0.12, 0.12)))
+			_fpart(h, _cone(0.42, hgt * 0.34, 5), _fmat(Color(0.92, 0.96, 1.0)), Vector3(0, hgt * 0.84, 0))
+			_fpart(h, _cone(0.55, hgt * 0.55, 5), rock, Vector3(0.75, hgt * 0.27, 0.3))
+		"dead":
+			var wood := _fmat(Color(0.3, 0.24, 0.18))
+			if rng.randf() < 0.55:
+				var hgt := rng.randf_range(1.4, 2.4) * k
+				_fpart(h, _cyl(0.05, 0.13, hgt, 6), wood, Vector3(0, hgt * 0.5, 0), Vector3(0, 0, 0.08))
+				_fpart(h, _cyl(0.02, 0.06, hgt * 0.5, 5), wood, Vector3(0.28, hgt * 0.72, 0), Vector3(0, 0, -0.9))
+				_fpart(h, _cyl(0.02, 0.05, hgt * 0.4, 5), wood, Vector3(-0.22, hgt * 0.6, 0.05), Vector3(0, 0, 0.8))
+			else:
+				_fpart(h, _ball(0.55, 0.6), _fmat(Color(0.56, 0.44, 0.3)), Vector3(0, 0.22, 0))
+				_fpart(h, _cyl(0.035, 0.035, 0.9, 5), _fmat(Color(0.88, 0.85, 0.76)), Vector3(0.6, 0.05, 0.2), Vector3(0, 0.6, PI / 2.0))
+		"coral":
+			var cols := [Color(1.0, 0.5, 0.45), Color(1.0, 0.72, 0.4), Color(0.95, 0.45, 0.75)]
+			var cm := _fmat(cols[rng.randi() % 3], 0.15)
+			for j in 4:
+				var a := rng.randf() * TAU
+				_fpart(h, _cyl(0.05, 0.1, rng.randf_range(0.5, 1.2) * k, 6), cm, Vector3(cos(a) * 0.3, 0.4, sin(a) * 0.3), Vector3(rng.randf_range(-0.4, 0.4), 0, rng.randf_range(-0.4, 0.4)))
+			_fpart(h, _ball(0.5, 0.5), _fmat(Color(0.86, 0.82, 0.66)), Vector3(0, 0.1, 0))
+			_fpart(h, _ball(0.16), _fmat(Color(0.8, 0.97, 1.0, 1.0), 0.3), Vector3(0.5, 0.2, 0.3))
+		"lava":
+			var hgt := rng.randf_range(1.0, 2.2) * k
+			_fpart(h, _cone(0.8, hgt, 6), _fmat(Color(0.11, 0.08, 0.07)), Vector3(0, hgt * 0.5, 0))
+			_fpart(h, _cone(0.26, hgt * 0.3, 6), _fmat(Color(1.0, 0.45, 0.08), 2.6), Vector3(0, hgt * 0.9, 0))
+			_fpart(h, _ball(0.3, 0.3), _fmat(Color(1.0, 0.35, 0.05), 2.2), Vector3(0.7, 0.03, 0.4))
+		"spires":
+			var hgt := rng.randf_range(2.0, 3.6) * k
+			_fpart(h, _cone(0.42, hgt, 5), _fmat(Color(0.08, 0.05, 0.13)), Vector3(0, hgt * 0.5, 0), Vector3(0, 0, rng.randf_range(-0.1, 0.1)))
+			_fpart(h, _cone(0.1, hgt * 0.5, 4), _fmat(glow, 2.4), Vector3(0, hgt * 0.78, 0))
+			_fpart(h, _ball(0.12), _fmat(glow, 3.0), Vector3(rng.randf_range(-0.5, 0.5), hgt * rng.randf_range(0.4, 0.9), rng.randf_range(-0.5, 0.5)))
+		"pillars":
+			var hgt := rng.randf_range(1.8, 3.0) * k
+			var stone := _fmat(Color(0.93, 0.91, 0.84), 0.0, 0.5)
+			_fpart(h, _cyl(0.2, 0.22, hgt, 12), stone, Vector3(0, hgt * 0.5, 0))
+			_fpart(h, _brick(Vector3(0.62, 0.14, 0.62)), stone, Vector3(0, 0.07, 0))
+			_fpart(h, _brick(Vector3(0.6, 0.14, 0.6)), _fmat(Color(1.0, 0.86, 0.42), 0.5, 0.35), Vector3(0, hgt + 0.07, 0))
+			_fpart(h, _ball(0.16), _fmat(glow, 2.6), Vector3(0, hgt + 0.42, 0))
+		"clouds":
+			var cm := _fmat(Color(1, 1, 1), 0.25)
+			var y := rng.randf_range(0.5, 1.7)
+			for j in 4:
+				_fpart(h, _ball(rng.randf_range(0.45, 0.8), 0.6), cm, Vector3(j * 0.55 - 0.8, y + rng.randf_range(-0.12, 0.12), rng.randf_range(-0.2, 0.2)))
+		"towers":
+			var hgt := rng.randf_range(2.6, 4.4) * k
+			var w := rng.randf_range(0.7, 1.1)
+			_fpart(h, _brick(Vector3(w, hgt, w)), _fmat(Color(0.07, 0.08, 0.13), 0.0, 0.4), Vector3(0, hgt * 0.5, 0))
+			var win := _fmat(Color(1.0, 0.8, 0.42).lerp(glow, rng.randf() * 0.5), 1.1)
+			for j in int(hgt / 0.42):
+				for f in 4:
+					# A floor with its lights on, on this side: about half of them are.
+					if rng.randf() < 0.5:
+						var n := Vector3(sin(f * PI / 2.0), 0, cos(f * PI / 2.0))
+						_fpart(h, _brick(Vector3(w * rng.randf_range(0.25, 0.6), 0.055, 0.02)), win, n * (w * 0.5 + 0.008) + Vector3(0, 0.36 + j * 0.42, 0), Vector3(0, f * PI / 2.0, 0))
+			_fpart(h, _brick(Vector3(0.05, 0.6, 0.05)), _fmat(Color(1.0, 0.2, 0.2), 3.0), Vector3(0, hgt + 0.3, 0))
+		"ruins":
+			var stone := _fmat(Color(0.74, 0.63, 0.44))
+			var hgt := rng.randf_range(0.9, 2.3) * k
+			_fpart(h, _cyl(0.24, 0.27, hgt, 10), stone, Vector3(0, hgt * 0.5, 0))
+			_fpart(h, _brick(Vector3(0.7, 0.16, 0.7)), stone, Vector3(0, 0.08, 0))
+			if rng.randf() < 0.5:
+				_fpart(h, _cyl(0.24, 0.24, 0.8, 10), stone, Vector3(0.75, 0.24, 0.2), Vector3(PI / 2.0, 0.4, 0))
+			else:
+				_fpart(h, _brick(Vector3(0.6, 0.4, 0.5)), stone, Vector3(-0.7, 0.2, 0.3), Vector3(0, 0.5, 0.1))
+		_:
+			_fpart(h, _ball(0.2), _fmat(glow, 2.0), Vector3(0, 0.8, 0))
+
+
+## What drifts over the field: leaves, snow, embers, dust...
+func _field_air(kind: String, glow: Color) -> void:
+	if kind == "none" or _field_nodes == null:
+		return
+	var p := CPUParticles3D.new()
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(7.0, 0.3, 4.6)
+	p.position = Vector3(0, 3.4, 0)
+	p.amount = 70
+	p.lifetime = 4.5
+	p.preprocess = 0.0
+	p.direction = Vector3(0.2, -1, 0.1)
+	p.spread = 14.0
+	p.gravity = Vector3(0, -0.5, 0)
+	p.initial_velocity_min = 0.5
+	p.initial_velocity_max = 1.0
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.3
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.09, 0.09)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.vertex_color_use_as_albedo = true
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var col := Color.WHITE
+	match kind:
+		"leaves":
+			col = Color(0.7, 0.62, 0.16, 0.95)
+			quad.size = Vector2(0.13, 0.08)
+			p.angular_velocity_min = -160.0
+			p.angular_velocity_max = 160.0
+			p.amount = 46
+		"petals":
+			col = Color(1.0, 0.82, 0.9, 0.9)
+			quad.size = Vector2(0.08, 0.06)
+			p.amount = 40
+			p.angular_velocity_min = -120.0
+			p.angular_velocity_max = 120.0
+		"snow":
+			col = Color(1, 1, 1, 0.9)
+			quad.size = Vector2(0.06, 0.06)
+			p.amount = 110
+			p.initial_velocity_min = 0.8
+			p.initial_velocity_max = 1.4
+		"dust":
+			col = Color(0.86, 0.72, 0.5, 0.4)
+			quad.size = Vector2(0.3, 0.3)
+			p.amount = 34
+			p.direction = Vector3(1, -0.1, 0.2)
+			p.gravity = Vector3(0.4, -0.05, 0)
+			p.position = Vector3(-3.0, 1.0, 0)
+			p.emission_box_extents = Vector3(5.0, 0.9, 4.6)
+			p.initial_velocity_min = 0.9
+			p.initial_velocity_max = 1.7
+		"spray":
+			col = Color(0.85, 0.97, 1.0, 0.7)
+			quad.size = Vector2(0.07, 0.07)
+			p.amount = 60
+			p.direction = Vector3(0, 1, 0)
+			p.gravity = Vector3(0, 0.25, 0)
+			p.position = Vector3(0, 0.1, 0)
+			p.emission_box_extents = Vector3(7.0, 0.05, 4.6)
+			p.initial_velocity_min = 0.2
+			p.initial_velocity_max = 0.55
+			p.lifetime = 3.2
+		"embers":
+			col = Color(1.0, 0.55, 0.12, 0.95)
+			m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+			quad.size = Vector2(0.055, 0.055)
+			p.amount = 80
+			p.direction = Vector3(0, 1, 0)
+			p.gravity = Vector3(0.1, 0.5, 0)
+			p.position = Vector3(0, 0.1, 0)
+			p.emission_box_extents = Vector3(7.0, 0.05, 4.6)
+			p.initial_velocity_min = 0.4
+			p.initial_velocity_max = 1.0
+			p.lifetime = 3.5
+		"motes_dark", "motes_light", "sparks":
+			col = Color(glow, 0.85)
+			m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+			quad.size = Vector2(0.06, 0.06) if kind != "sparks" else Vector2(0.04, 0.04)
+			p.amount = 60 if kind != "sparks" else 90
+			p.direction = Vector3(0, 1, 0)
+			p.gravity = Vector3(0, 0.12, 0)
+			p.position = Vector3(0, 0.15, 0)
+			p.emission_box_extents = Vector3(7.0, 0.1, 4.6)
+			p.initial_velocity_min = 0.15
+			p.initial_velocity_max = 0.5 if kind != "sparks" else 1.4
+			p.lifetime = 4.0 if kind != "sparks" else 1.6
+		"wind":
+			col = Color(1, 1, 1, 0.35)
+			quad.size = Vector2(0.7, 0.025)
+			m.billboard_mode = BaseMaterial3D.BILLBOARD_DISABLED
+			p.amount = 26
+			p.direction = Vector3(1, 0, 0)
+			p.spread = 2.0
+			p.gravity = Vector3.ZERO
+			p.position = Vector3(-7.0, 1.3, 0)
+			p.emission_box_extents = Vector3(0.5, 1.0, 4.6)
+			p.initial_velocity_min = 5.0
+			p.initial_velocity_max = 8.0
+			p.lifetime = 2.4
+	if not (kind in ["leaves", "petals", "wind"]):
+		# Soft round specks, not squares.
+		var rg := Gradient.new()
+		rg.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+		rg.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0.55), Color(1, 1, 1, 0)])
+		var rt := GradientTexture2D.new()
+		rt.gradient = rg
+		rt.fill = GradientTexture2D.FILL_RADIAL
+		rt.fill_from = Vector2(0.5, 0.5)
+		rt.fill_to = Vector2(1.0, 0.5)
+		rt.width = 32
+		rt.height = 32
+		m.albedo_texture = rt
+		quad.size *= 1.5
+	# Each one fades in and out instead of popping.
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.15, 0.8, 1.0])
+	g.colors = PackedColorArray([Color(col, 0.0), col, col, Color(col, 0.0)])
+	p.color_ramp = g
+	quad.material = m
+	p.mesh = quad
+	_field_nodes.add_child(p)
+
+
 var arena: DuelArena = null
 
 
@@ -497,6 +987,7 @@ void fragment() {
 	m.set_shader_parameter("extent", size)
 	m.set_shader_parameter("flip", -1.0 if flip else 1.0)
 	m.set_shader_parameter("dark_paint", 1.0 if theme.get("dark_paint", false) else 0.0)
+	_zone_mats.append(m)
 	mi.material_override = m
 	mi.position = pos + Vector3(0, 0.002, 0)
 	add_child(mi)
@@ -2113,6 +2604,28 @@ func refresh_stats(state: DuelState) -> void:
 			for l in pair:
 				l.visible = true
 			pair[3].visible = not hidden
+			# What the Field Spell in force does to this one: a mark on the card's far corner,
+			# up in the place's color or down in red, with the numbers.
+			var fd: Array = FieldLooks.delta(state, m) if m.face_up else [0, 0]
+			if pair.size() < 5:
+				var fl := _stat_label()
+				fl.font_size = 50
+				fl.outline_size = 14
+				pair.append(fl)
+			var mark: Label3D = pair[4]
+			if int(fd[0]) == 0 and int(fd[1]) == 0:
+				mark.visible = false
+			else:
+				var lead := int(fd[0]) if int(fd[0]) != 0 else int(fd[1])
+				var bits: Array = []
+				if int(fd[0]) != 0:
+					bits.append("%+d" % int(fd[0]))
+				if int(fd[1]) != 0 and int(fd[1]) != int(fd[0]):
+					bits.append("%+d DEF" % int(fd[1]))
+				mark.text = ("▲ " if lead > 0 else "▼ ") + "  ".join(bits)
+				mark.modulate = field_glow().lerp(Color.WHITE, 0.25) if lead > 0 else Color("ff8a8a")
+				mark.position = base + Vector3(0.0, 0.12, -0.72 if m.attack_pos else -0.56)
+				mark.visible = true
 	for uid in _stats.keys():
 		if not seen.has(uid):
 			for l in _stats[uid]:

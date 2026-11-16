@@ -816,10 +816,52 @@ func _play(events: Array) -> void:
 		board.refresh_stats(state)
 	busy = false
 	_update_counts()
+	_sync_field()
 	_refresh()
 	# A win can happen mid-turn (an attack or a burn spell). Release the turn wait.
 	if state.is_over() and not _finished:
 		_turn_finished.emit()
+
+
+var _field_seq := {}       # Field Spell uid -> the order it came into force in
+var _field_n := 0
+var _field_uid := -1       # the one whose place the field is showing
+
+
+## The field shows the place of the Field Spell in force: the one played last, if each duelist
+## has one. When it leaves, the other one's place takes over, or the field is itself again.
+func _sync_field() -> void:
+	if board == null or board.turbo or state.players.size() < 2:
+		return
+	var best = null
+	var best_seq := -1
+	var owner := 0
+	for p in 2:
+		var f = state.players[p].field_spell
+		if f == null or not f.face_up:
+			continue
+		if not _field_seq.has(f.uid):
+			_field_n += 1
+			_field_seq[f.uid] = _field_n
+		if int(_field_seq[f.uid]) > best_seq:
+			best_seq = int(_field_seq[f.uid])
+			best = f
+			owner = p
+	var uid: int = best.uid if best != null else -1
+	if uid == _field_uid:
+		return
+	_field_uid = uid
+	if best == null:
+		board.clear_field_look()
+		hud.set_field_strip(null, [], Color.WHITE, "")
+		board.refresh_stats(state)
+		return
+	var look := FieldLooks.look_for(best)
+	var whose := Loc.t("yours") if owner == ME else state.players[owner].name
+	board.set_field_look(look, board.field_pos(owner))
+	hud.field_banner(best.cname(), whose, look["glow"])
+	hud.set_field_strip(best, FieldLooks.says(best), look["glow"], whose)
+	board.refresh_stats(state)
 
 
 ## A duelist says a line and acts it out at the table. `chance` keeps chatter from piling up.
@@ -2417,6 +2459,46 @@ func _demo_actions() -> void:
 			await get_tree().create_timer(0.3).timeout
 		return
 	for da in OS.get_cmdline_user_args():
+		if da.begins_with("--demo-field="):
+			# Dev: two of your monsters and one of theirs on the table, then you play this Field
+			# Spell by its real rules (--demo-field=Mountain). A second name after a comma is
+			# played by you three seconds later, in its place; "-" after a comma takes yours away again.
+			var names := da.trim_prefix("--demo-field=").split(",")
+			var z := 1
+			for pl in [ME, AI]:
+				var side = state.players[pl]
+				z = 1
+				for c in side.deck.duplicate():
+					if z > (2 if pl == ME else 1):
+						break
+					if c.is_monster() and c.level() <= 4:
+						side.deck.erase(c)
+						side.field[z] = c
+						c.face_up = true
+						c.attack_pos = true
+						await board.anim_summon(pl, c, z, false)
+						z += 1
+			board.sync_holos(state)
+			board.refresh_stats(state)
+			var fid := int(CardData.NAME_TO_ID.get(names[0].to_lower(), 0))
+			if fid == 0:
+				print("DEMO FIELD: no card called ", names[0])
+				return
+			var fc := state._make(fid, ME)
+			state.players[ME].hand.append(fc)
+			hud.add_hand_card(fc)
+			await get_tree().create_timer(0.6).timeout
+			await _play(state.activate(ME, fc))
+			if names.size() > 1:
+				await get_tree().create_timer(3.0).timeout
+				if names[1] == "-":
+					await _play(state._destroy_st(fc))
+				else:
+					var fc2 := state._make(int(CardData.NAME_TO_ID.get(names[1].to_lower(), 0)), ME)
+					state.players[ME].hand.append(fc2)
+					hud.add_hand_card(fc2)
+					await _play(state.activate(ME, fc2))
+			return
 		if da.begins_with("--demo-tribute"):
 			# Dev: two monsters on your field and a big one in hand, stopped at "what do I give up".
 			var me = state.players[ME]

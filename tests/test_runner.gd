@@ -33,6 +33,7 @@ func _ready() -> void:
 		CardData.load_external(stress)
 		var all: Array = Characters.ORDER.filter(func(k): return CardData.has_deck(Characters.DATA[k]["deck"]))
 		_test_card_numbers()
+		_test_field_looks()
 		_test_knockout()
 		_test_lumen()
 		_test_ai_targets()
@@ -2307,6 +2308,46 @@ func _test_card_numbers() -> void:
 	var c := CardData.get_card(94538053)
 	check(str(c.get("name", "")) == "Max Warrior" and int(c.get("atk", 0)) == 1800, "Max Warrior is card 94538053")
 	check(int(CardData.RENUMBERED.get(63142001, 0)) == 94538053, "the old Max Warrior number moves to the right one in saves")
+
+
+## Every Field Spell the game plays has a place to turn the field into and says what it does;
+## what it adds to a monster is what the rules add.
+func _test_field_looks() -> void:
+	var missing: Array = []
+	for nm in FieldLooks.BY_NAME:
+		var id := int(CardData.NAME_TO_ID.get(str(nm).to_lower(), 0))
+		if id == 0:
+			continue
+		var s0 := _new_state(3)
+		var c := s0._make(id, 0)
+		var look := FieldLooks.look_for(c)
+		if not FieldLooks.LOOKS.has(str(look.get("key", ""))) or int(look.get("surface", 0)) <= 0 or FieldLooks.says(c).is_empty():
+			missing.append(nm)
+	check(missing.is_empty(), "every Field Spell has a place and says what it does" + ("" if missing.is_empty() else ": " + ", ".join(missing)))
+	var s := _new_state(4, "kaiba", "yugi")
+	s.begin_turn()
+	s.current = 0
+	s.phase = DuelState.Phase.MAIN1
+	var drag := _put(s, 0, int(CardData.NAME_TO_ID.get("luster dragon", 0)), 0)
+	var mage := _put(s, 1, int(CardData.NAME_TO_ID.get("dark magician", 0)), 0)
+	check(FieldLooks.delta(s, drag) == [0, 0], "no Field Spell, no mark on a monster")
+	var mt := s._make(int(CardData.NAME_TO_ID.get("mountain", 0)), 0)
+	s.players[0].hand.append(mt)
+	s.activate(0, mt)
+	check(s.players[0].field_spell == mt, "Mountain is in the Field Zone")
+	check(FieldLooks.delta(s, drag) == [200, 200] and s.atk_of(drag, false) == drag.atk() + 200, "Mountain marks a Dragon with +200 / +200, as the rules count it")
+	check(FieldLooks.delta(s, mage) == [0, 0], "and leaves a Spellcaster alone")
+	check(str(FieldLooks.look_for(mt)["key"]) == "peak", "Mountain turns the field into a snowy peak")
+	# A Field Spell the game reads from its text (no entry of its own) still gets a place.
+	var auto_look := ""
+	for id2 in CardData.EXT:
+		var d: Dictionary = CardData.EXT[id2]
+		if str(d.get("st", "")) == "field" and not FieldLooks.BY_NAME.has(str(d.get("name", ""))) and not SpellRules.FX.has(str(d.get("name", ""))):
+			var c2 := s._make(int(id2), 0)
+			if not SpellRules.spec(c2).is_empty():
+				auto_look = str(FieldLooks.look_for(c2)["key"])
+				break
+	check(auto_look == "" or FieldLooks.LOOKS.has(auto_look), "a Field Spell read from its text gets a place by what it boosts")
 
 
 func _test_lumen() -> void:
