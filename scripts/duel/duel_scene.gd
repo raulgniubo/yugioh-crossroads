@@ -187,7 +187,7 @@ func _start() -> void:
 	elif not _autoplay and not cfg.has("first"):
 		# A coin toss or rock-paper-scissors, played out: the winner decides who starts.
 		if _human_test or "--end-test" in OS.get_cmdline_user_args() or "--skip-opening" in OS.get_cmdline_user_args():
-			first = randi() % 2
+			first = int(cfg.get("first_turn", randi() % 2))
 		else:
 			# The opening plays on the field itself: a look at each duelist with their name
 			# across the bottom, the two of them squared up, VS, and the game for the first turn
@@ -215,19 +215,26 @@ func _start() -> void:
 			board.cam_cut(Vector3(3.0, 2.5, dz + 3.9), Vector3(-2.4, 1.2, -dz))
 			board.cam_drift(Vector3(2.6, 2.7, dz + 3.5), 8.0)
 			await hud.vs_slam(me_col, opp_col)
-			var og := OpeningGame.new()
-			og.board = board
-			og.me_key = _me_key
-			og.opp_key = _opp_key
-			og.me_name = me_name
-			og.opp_name = str(opp.get("short", opp_name)) if str(opp.get("short", "")) != "" else opp_name
-			og.me_color = me_info.get("color", Profile.color())
-			og.opp_color = Color(opp.get("color", Color("ff5a6e")))
-			hud.add_child(og)
-			first = ME if await og.finished else AI
+			if cfg.has("first_turn"):
+				# Already settled on the road (the ride into a Turbo Duel): no game for it.
+				first = int(cfg["first_turn"])
+				await get_tree().create_timer(0.5).timeout
+			else:
+				var og := OpeningGame.new()
+				og.board = board
+				og.me_key = _me_key
+				og.opp_key = _opp_key
+				og.me_name = me_name
+				og.opp_name = str(opp.get("short", opp_name)) if str(opp.get("short", "")) != "" else opp_name
+				og.me_color = me_info.get("color", Profile.color())
+				og.opp_color = Color(opp.get("color", Color("ff5a6e")))
+				hud.add_child(og)
+				first = ME if await og.finished else AI
 			_opened = true
 			board.cam_release(1.1)
 			hud.set_chrome(true)
+	if _autoplay and cfg.has("first_turn"):
+		first = int(cfg["first_turn"])
 	if "--first=me" in OS.get_cmdline_user_args():
 		first = ME
 	state.defer_fx = true

@@ -3042,7 +3042,12 @@ func add_duelists(me_key: String, opp_key: String) -> void:
 		for p in 2:
 			var col: Color = theme["accent"] if p == 0 else theme["accent2"]
 			var side := 1.0 if p == 0 else -1.0
-			_duelists[p] = track.add_rider(p, me_key if p == 0 else opp_key, Vector3(0, 0, side * DUELIST_Z), col)
+			var look := {}
+			if p == 0 and me_key == "player":
+				# Your own runner, the way you left it in the garage.
+				look = {"frame": TurboGarage.frame(), "trail": TurboGarage.trail(TurboGarage.paint(col)), "mark": TurboGarage.mark()}
+				col = TurboGarage.paint(col)
+			_duelists[p] = track.add_rider(p, me_key if p == 0 else opp_key, Vector3(0, 0, side * DUELIST_Z), col, look)
 		return
 	for p in 2:
 		var key := me_key if p == 0 else opp_key

@@ -1146,12 +1146,69 @@ func _build_speed_lines() -> void:
 
 
 ## A runner with its rider. `at` is where it rides; it faces +X (the way the road goes).
-func add_rider(index: int, key: String, at: Vector3, color: Color) -> RoamFigure:
+## `look` is what the garage did to it: {"frame": 0 or 1, "trail": colour, "mark": what is
+## painted on its side}. Left out, the runner is the stock one for that place on the road.
+func add_rider(index: int, key: String, at: Vector3, color: Color, look := {}) -> RoamFigure:
+	var made := _make_rider(index, key, at, color, look)
+	_bikes.append([made[0], at, randf() * TAU])
+	return made[1]
+
+
+## Swap the runner at `index` for one with a new look (the garage), where it stands.
+func replace_rider(index: int, key: String, color: Color, look := {}) -> RoamFigure:
+	if index >= _bikes.size():
+		return null
+	var old: Node3D = _bikes[index][0]
+	var at: Vector3 = _bikes[index][1]
+	for tr in old.find_children("*", "MeshInstance3D", true, false):
+		_trails.erase(tr)
+	_fx.erase(index)
+	old.queue_free()
+	var made := _make_rider(index, key, at, color, look)
+	_bikes[index][0] = made[0]
+	return made[1]
+
+
+## A runner with nobody on it, see-through and glowing: the ghost of your best lap.
+func ghost_runner(frame: int, color: Color) -> Node3D:
+	var holder := Node3D.new()
+	add_child(holder)
+	var ps = load(RUNNERS[frame % RUNNERS.size()])
+	if ps is PackedScene:
+		var bike: Node3D = ps.instantiate()
+		holder.add_child(bike)
+		var box := _aabb(bike, Transform3D())
+		var s := 2.55 / maxf(0.01, maxf(box.size.x, box.size.z))
+		bike.scale = Vector3.ONE * s
+		bike.rotation.y = PI if box.size.x >= box.size.z else PI / 2.0
+		bike.position = Vector3(box.get_center().x * s, -box.position.y * s, box.get_center().z * s)
+		var gm := StandardMaterial3D.new()
+		gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		gm.albedo_color = Color(color, 0.32)
+		for mi in bike.find_children("*", "MeshInstance3D", true, false):
+			(mi as MeshInstance3D).material_override = gm
+	var tag := Label3D.new()
+	tag.text = "BEST"
+	tag.font_size = 40
+	tag.pixel_size = 0.006
+	tag.outline_size = 10
+	tag.modulate = color
+	tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	tag.position = Vector3(0, 2.0, 0)
+	holder.add_child(tag)
+	return holder
+
+
+func _make_rider(index: int, key: String, at: Vector3, color: Color, look: Dictionary) -> Array:
 	var holder := Node3D.new()
 	holder.position = at
 	add_child(holder)
-	var ps = load(RUNNERS[index % RUNNERS.size()])
-	var own_bike := CityBuilder.own_instance(["runner_a", "runner_b"][index % 2])
+	var fi: int = int(look.get("frame", index % RUNNERS.size())) % RUNNERS.size()
+	var trail_col: Color = look.get("trail", color)
+	var ps = load(RUNNERS[fi])
+	var own_bike := CityBuilder.own_instance(["runner_a", "runner_b"][fi])
 	if own_bike != null or ps is PackedScene:
 		var bike: Node3D = own_bike if own_bike != null else ps.instantiate()
 		holder.add_child(bike)
@@ -1169,6 +1226,22 @@ func add_rider(index: int, key: String, at: Vector3, color: Color) -> RoamFigure
 		coat.roughness = 0.35
 		for mi in bike.find_children("*", "MeshInstance3D", true, false):
 			(mi as MeshInstance3D).material_overlay = coat
+		# What is painted on it: a number or a sign on both flanks.
+		var mark := str(look.get("mark", ""))
+		if mark != "":
+			for sz: float in [-1.0, 1.0]:
+				var ml := Label3D.new()
+				ml.text = mark
+				ml.font = load("res://assets/fonts/Rajdhani-SemiBold.ttf") if mark.is_valid_int() else null
+				ml.font_size = 96
+				ml.pixel_size = 0.0042
+				ml.outline_size = 14
+				ml.modulate = Color.WHITE
+				ml.outline_modulate = Color(0.04, 0.05, 0.08)
+				ml.shaded = false
+				ml.position = Vector3(0.62 if fi == 0 else 0.22, 0.72 if fi == 0 else 0.8, sz * (box.size.z * s * 0.5 + 0.02) if box.size.x >= box.size.z else sz * (box.size.x * s * 0.5 + 0.02))
+				ml.rotation.y = 0.0 if sz > 0.0 else PI
+				holder.add_child(ml)
 	var fig := RoamFigure.new()
 	fig.rotation.y = PI / 2.0
 	fig.position = Vector3(-0.2, 0.0, 0.0)
@@ -1206,7 +1279,7 @@ void fragment() {
 		trail.mesh = qm
 		var m := ShaderMaterial.new()
 		m.shader = _trail_sh
-		m.set_shader_parameter("tint", color)
+		m.set_shader_parameter("tint", trail_col)
 		m.set_shader_parameter("gain", trail_scale if trail_scale < 1.0 and index == 0 else 1.0)
 		trail.material_override = m
 		if k == 1:
@@ -1218,8 +1291,7 @@ void fragment() {
 		trail.set_meta("front", trail.position.x + 8.0)
 		holder.add_child(trail)
 		_trails.append(trail)
-	_bikes.append([holder, at, randf() * TAU])
-	return fig
+	return [holder, fig]
 
 
 var _sweep: ShaderMaterial

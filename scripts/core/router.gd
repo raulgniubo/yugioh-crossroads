@@ -223,6 +223,11 @@ func _debug_args() -> void:
 			duel_config["opponent"] = a.substr(6)
 		elif a == "--turbo":
 			duel_config["turbo"] = true
+		elif a.begins_with("--speed-start="):
+			# Dev: Speed Counters each side starts a Turbo Duel with, e.g. --speed-start=3,1
+			duel_config["speed_start"] = [int(a.trim_prefix("--speed-start=").get_slice(",", 0)), int(a.trim_prefix("--speed-start=").get_slice(",", 1))]
+		elif a.begins_with("--first-turn="):
+			duel_config["first_turn"] = int(a.trim_prefix("--first-turn="))
 		elif a.begins_with("--puzzle="):
 			duel_config["puzzle"] = a.substr(9)   # dev: start a duel puzzle
 			duel_config["opponent"] = "professor"

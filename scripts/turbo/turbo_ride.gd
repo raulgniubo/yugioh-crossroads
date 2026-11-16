@@ -61,6 +61,17 @@ var _flame: MeshInstance3D
 var _test_on := false         # --ride-test: an autopilot rides a race lap, then takes an exit
 var _test_z := 0.0
 var _race := ""               # "", "count", "on", "done"
+var _mode := "circuit"        # which event is being raced: circuit, sprint, elim, trial
+var _race_len := LAP
+var _elim_t := 0.0            # elimination: seconds until the last rider is put out
+var _medals := {}             # time trial medals already paid: {"bronze": true, ...}
+var _trial_best := 0.0
+var _ghost := PackedFloat32Array()        # your best time-trial lap: distance and lane, ten times a second
+var _ghost_rec := PackedFloat32Array()
+var _ghost_node: Node3D
+var _mom := 0.0               # Momentum, 0 to 100: how well you have been riding
+var _mom_ui: Control
+var _events_best := {}        # best place per event
 var _race_d := 0.0
 var _race_t := 0.0
 var _count := 0.0
@@ -74,6 +85,17 @@ func _ready() -> void:
 		_chips = int(cfg.get_value("turbo", "chips", 0))
 		_best = float(cfg.get_value("turbo", "best", 0.0))
 		_wins = int(cfg.get_value("turbo", "wins", 0))
+		_medals = cfg.get_value("turbo", "medals", {})
+		_trial_best = float(cfg.get_value("turbo", "trial_best", 0.0))
+		_ghost = cfg.get_value("turbo", "ghost", PackedFloat32Array())
+		_events_best = cfg.get_value("turbo", "events_best", {})
+	_mom = float(Router.roam.get("ride_mom", 0.0))
+	TurboGarage.load_data()
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--garage-set="):
+			# Dev, e.g. --garage-set=paint:3,trail:5,mark:1,frame:1
+			for kv in a.trim_prefix("--garage-set=").split(","):
+				TurboGarage.data[kv.get_slice(":", 0)] = int(kv.get_slice(":", 1))
 	# Where you come onto the ring.
 	var from := str(Router.roam.get("ride_from", ""))
 	_s = float(Router.roam.get("ride_s", {"satellite": 262.0, "newdomino": 1912.0}.get(from, 40.0)))
@@ -104,7 +126,7 @@ func _ready() -> void:
 	Music.play("turbo")
 	Sfx.ambience("engine", -14.0)
 	Pad.walk_mode = true
-	Pad.hint("Left stick  steer     RT  throttle     LT  brake     A  duel / exit     X  race     B  back")
+	Pad.hint("Left stick  steer     RT  throttle     LT  brake     A  duel / exit     X  race events     View  garage     B  back")
 	if "--ride-test" in OS.get_cmdline_user_args():
 		_self_test.call_deferred()
 	for a in OS.get_cmdline_user_args():
@@ -113,6 +135,19 @@ func _ready() -> void:
 			_s = float(a.trim_prefix("--ride-at="))
 			_apply_zone()
 			Input.action_press("ui_up")
+	for a in OS.get_cmdline_user_args():
+		# Dev: straight into the garage, the events board or an event, for a picture.
+		if a == "--garage":
+			get_tree().create_timer(2.0).timeout.connect(_garage_panel)
+		elif a == "--events":
+			get_tree().create_timer(2.0).timeout.connect(_events_panel)
+		elif a == "--race-test":
+			_test_on = true
+			Engine.time_scale = 8.0
+		elif a.begins_with("--race="):
+			get_tree().create_timer(1.0).timeout.connect(_start_race.bind(a.trim_prefix("--race=")))
+		elif a.begins_with("--momentum="):
+			_mom = float(a.trim_prefix("--momentum="))
 	if "--traffic-show" in OS.get_cmdline_user_args():
 		# Dev: the four kinds of traffic lined up ahead, keeping pace, for a picture.
 		for k in TRAFFIC.size():
@@ -135,6 +170,11 @@ func _ready() -> void:
 
 func _save() -> void:
 	var cfg := ConfigFile.new()
+	cfg.load(SAVE)             # the garage keeps its things in the same file
+	cfg.set_value("turbo", "medals", _medals)
+	cfg.set_value("turbo", "trial_best", _trial_best)
+	cfg.set_value("turbo", "ghost", _ghost)
+	cfg.set_value("turbo", "events_best", _events_best)
 	cfg.set_value("turbo", "beaten", _beaten)
 	cfg.set_value("turbo", "chips", _chips)
 	cfg.set_value("turbo", "best", _best)
@@ -175,7 +215,7 @@ func _build_world() -> void:
 	add_child(track)
 	track.build(Color("ff8a3a"), Color("2de2e6"))
 	track.trail_scale = 0.4        # the camera sits close behind: a long trail would fill the picture
-	track.add_rider(0, "player", Vector3.ZERO, Profile.color())
+	track.add_rider(0, "player", Vector3.ZERO, TurboGarage.paint(Profile.color()), _my_look())
 	track.place_rider(0, Vector3.ZERO)
 	var i := 1
 	for r in RIVALS:
@@ -234,6 +274,25 @@ func _build_fixed() -> void:
 	start.add_child(sl)
 	add_child(start)
 	_fixed.append({"s": 0.0, "node": start, "kind": "start"})
+	# Where a Sprint ends: a light gate that only stands while one is being ridden.
+	var gate := Node3D.new()
+	for sz: float in [-1.0, 1.0]:
+		track._box(gate, Vector3(0.6, 8.0, 0.6), Vector3(0, 4.0, sz * 14.0), track._solid(Color(0.1, 0.11, 0.15)))
+		track._box(gate, Vector3(0.14, 7.6, 0.14), Vector3(-0.4, 4.0, sz * 13.6), track._glow(Color("5aff90"), 4.0))
+	track._box(gate, Vector3(0.6, 1.6, 28.6), Vector3(0, 8.2, 0), track._solid(Color(0.06, 0.07, 0.1)))
+	track._box(gate, Vector3(0.12, 0.14, 27.6), Vector3(-0.4, 7.3, 0), track._glow(Color("5aff90"), 4.5))
+	for k in 24:
+		track._box(gate, Vector3(1.2, 0.02, 1.2), Vector3((0.6 if k % 2 == 0 else -0.6), 0.02, -13.8 + k * 1.2), track._glow(Color.WHITE, 0.9))
+	var gl := Label3D.new()
+	gl.text = "SPRINT  ·  FINISH"
+	gl.font_size = 130
+	gl.pixel_size = 0.011
+	gl.modulate = Color("5aff90")
+	gl.position = Vector3(-0.4, 8.2, 0)
+	gl.rotation.y = -PI / 2
+	gate.add_child(gl)
+	add_child(gate)
+	_fixed.append({"s": SPRINT_LEN, "node": gate, "kind": "sprint"})
 	for e in EXITS:
 		var ex := Node3D.new()
 		track._box(ex, Vector3(0.8, 8.4, 0.8), Vector3(0, 4.2, 14.0), track._solid(Color(0.1, 0.11, 0.15)))
@@ -434,6 +493,15 @@ func _build_ui() -> void:
 	_gauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_gauge.draw.connect(_draw_gauge)
 	root.add_child(_gauge)
+	_mom_ui = Control.new()
+	_mom_ui.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_mom_ui.offset_left = -470
+	_mom_ui.offset_top = -378
+	_mom_ui.offset_right = -40
+	_mom_ui.offset_bottom = -292
+	_mom_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mom_ui.draw.connect(_draw_momentum)
+	root.add_child(_mom_ui)
 	_radar = Control.new()
 	_radar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	_radar.offset_left = -330
@@ -443,7 +511,7 @@ func _build_ui() -> void:
 	_radar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_radar.draw.connect(_draw_radar)
 	root.add_child(_radar)
-	var help := UITheme.label("W / S  throttle and brake     A / D  steer     E  duel a rider / take an exit     R  race at the start line     Esc  menu", 17, UITheme.TEXT_DIM)
+	var help := UITheme.label("W / S  throttle and brake     A / D  steer     E  duel a rider / take an exit     R  race events at the start line     T  garage     Esc  menu", 17, UITheme.TEXT_DIM)
 	help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	help.offset_left = 48
 	help.offset_top = -52
@@ -475,6 +543,43 @@ func _draw_gauge() -> void:
 	var ts := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 46)
 	_gauge.draw_string(font, c + Vector2(-ts.x / 2.0, 62), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 46, Color.WHITE)
 	_gauge.draw_string(UITheme.semi_font(), c + Vector2(-20, 86), "KM/H", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, 0.6))
+
+
+## Momentum: how well you have been riding. It is what you carry into a Turbo Duel.
+func _gain(amount: float) -> void:
+	_mom = clampf(_mom + amount, 0.0, 100.0)
+
+
+## What your Momentum is worth right now: [Speed Counters, do you take the first turn].
+func _mom_worth() -> Array:
+	return [mini(4, int(_mom / 25.0)), _mom >= 50.0]
+
+
+func _draw_momentum() -> void:
+	if _race != "":
+		return
+	var w := _mom_ui.size.x
+	var font := UITheme.semi_font()
+	var worth := _mom_worth()
+	var col := Color("5affd0") if _mom >= 50.0 else Color("ffd166")
+	_mom_ui.draw_string(UITheme.title_font(), Vector2(0, 20), Loc.t("MOMENTUM"), HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color.WHITE)
+	var num := str(int(_mom))
+	var ns := UITheme.title_font().get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, 22)
+	_mom_ui.draw_string(UITheme.title_font(), Vector2(w - ns.x, 20), num, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, col)
+	_mom_ui.draw_rect(Rect2(0, 30, w, 18), Color(0.02, 0.03, 0.06, 0.85))
+	_mom_ui.draw_rect(Rect2(2, 32, (w - 4.0) * _mom / 100.0, 14), col)
+	# A mark at every Speed Counter; the tall one in the middle is where the first turn becomes yours.
+	for k in [1, 2, 3]:
+		var x: float = w * float(k) / 4.0
+		_mom_ui.draw_rect(Rect2(x - 1.0, 28 if k != 2 else 24, 2, 22 if k != 2 else 30), Color(1, 1, 1, 0.8))
+	var txt := Loc.t("Duel now: %d Speed Counters, %s") % [int(worth[0]), Loc.t("you go first") if worth[1] else Loc.t("they go first")]
+	_mom_ui.draw_string(font, Vector2(0, 74), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 19, col)
+
+
+## How the garage left your runner.
+func _my_look() -> Dictionary:
+	var paint := TurboGarage.paint(Profile.color())
+	return {"frame": TurboGarage.frame(), "trail": TurboGarage.trail(paint), "mark": TurboGarage.mark()}
 
 
 ## The whole ring as a strip: its stretches, the start line, exits, ramps, you and the riders.
@@ -574,7 +679,7 @@ func _process(delta: float) -> void:
 	throttle = clampf(throttle, -1.0, 1.0)
 	_boost = maxf(0.0, _boost - delta)
 	_stun = maxf(0.0, _stun - delta)
-	var top := 56.0 if _boost > 0.0 else 46.0
+	var top := (56.0 if _boost > 0.0 else 46.0) + TurboGarage.top_bonus()
 	var cruise := 30.0
 	var goal := cruise + throttle * (top - cruise if throttle > 0.0 else 16.0)
 	if _boost > 0.0:
@@ -588,10 +693,15 @@ func _process(delta: float) -> void:
 	# The ring bends: the faster you go, the harder it carries you to the outside.
 	var c := _curve_at(_s)
 	var airborne := _y > 0.02
-	_vz = lerpf(_vz, steer * (11.0 if not airborne else 4.0) - c * _speed * 0.05, clampf(delta * 6.0, 0.0, 1.0))
+	var grip := TurboGarage.grip()
+	_vz = lerpf(_vz, steer * (11.0 * grip if not airborne else 4.0) - c * _speed * 0.05 / grip, clampf(delta * 6.0 * grip, 0.0, 1.0))
 	_z = clampf(_z + _vz * delta, -LANE * 2.5, LANE * 2.5)
 	if absf(_z) >= LANE * 2.48 and _speed > 30.0:
 		_speed -= delta * 14.0      # scraping the barrier
+		_gain(-delta * 9.0)
+	# Momentum drains slowly by itself, faster if you crawl: it has to be kept up.
+	if _race == "":
+		_gain(-delta * (0.7 if _speed >= 30.0 else 3.0))
 	# Ramps and gravity.
 	if airborne or _vy > 0.0:
 		_vy -= 22.0 * delta
@@ -619,7 +729,12 @@ func _process(delta: float) -> void:
 		elif _race == "on":
 			# Racing: their own top speed, easing off a little when far ahead, pushing when behind.
 			pace = float(info["race"]) + clampf(-float(r["x"]) * 0.02, -3.0, 3.5)
-			r["race_d"] = float(r["race_d"]) + pace * delta
+			if r.get("out", false):
+				pace = 18.0        # put out: they sit up and roll
+			else:
+				r["race_d"] = float(r["race_d"]) + pace * delta
+		if _mode == "trial" and _race in ["count", "on", "done"]:
+			r["x"] = -3000.0       # a time trial is ridden alone
 		r["x"] = float(r["x"]) + (pace - _speed) * delta
 		if _race == "":
 			if float(r["x"]) > LAP / 2.0:
@@ -640,12 +755,13 @@ func _process(delta: float) -> void:
 	for fx in _fixed:
 		var rel := fposmod(float(fx["s"]) - _s + LAP / 2.0, LAP) - LAP / 2.0
 		var node: Node3D = fx["node"]
-		node.visible = absf(rel) < 220.0
+		node.visible = absf(rel) < 220.0 and (fx["kind"] != "sprint" or (_mode == "sprint" and _race != ""))
 		node.position.x = rel
 		if fx["kind"] == "ramp" and absf(rel) < 3.6 and absf(_z) < 3.6 and _y < 0.3 and _speed > 24.0:
 			_vy = 6.5 + _speed * 0.09
 			_y = 0.31
 			Sfx.play("whoosh", -2.0, 1.5)
+			_gain(5.0)
 			Collection.dp += 5
 		elif fx["kind"] == "exit" and rel > -70.0 and rel < 60.0 and _z > LANE * 1.55 and _race == "":
 			_exit = EXITS.find(EXITS.filter(func(e): return is_equal_approx(float(e["s"]), float(fx["s"])))[0])
@@ -676,19 +792,22 @@ func _process(delta: float) -> void:
 							Collection.dp += 5 * _combo
 							Sfx.play("coin", -8.0, 1.0 + 0.1 * _combo)
 							_pop(Loc.t("BOOST CHAIN x%d  +%d") % [_combo, 5 * _combo], Color("5affd0"))
-					_boost = 2.6 + minf(1.2, 0.3 * _combo)
+					_boost = 2.6 + minf(1.2, 0.3 * _combo) + TurboGarage.boost_bonus()
+					_gain(6.0 + 3.0 * minf(_combo, 4.0))
 				"chip":
 					_chips += 1
 					Collection.dp += 15
 					Collection.save()
 					_save()
 					Sfx.play("coin", -3.0)
+					_gain(4.0)
 					Router.toast(Loc.t("Star Chip!  +15 Duel Points  (%d on this road)") % _chips)
 					_recycle(th)
 				"hauler":
 					if _stun <= 0.0:
 						Sfx.play("impact", -2.0, 0.7)
-						_stun = 1.2
+						_stun = 1.2 * TurboGarage.crash()
+						_gain(-28.0 * TurboGarage.crash())
 						_boost = 0.0
 						_speed = minf(_speed, 18.0)
 						_z += signf(_z - float(th["z"]) + 0.01) * 2.4
@@ -704,15 +823,25 @@ func _process(delta: float) -> void:
 		var key := str(_riders[_near]["info"]["key"])
 		_prompt.text = Loc.t("E   Turbo Duel with %s") % str(Characters.get_char(key).get("name", key))
 	elif at_start and _race == "":
-		_prompt.text = Loc.t("R   Start a race: one lap against every rider        G   Highway Grand Prix")
+		_prompt.text = Loc.t("R   Race events        G   Highway Grand Prix        T   Garage")
 	else:
 		_prompt.text = ""
-	if _race == "on":
-		_info.text = Loc.t("RACE     Position %d / %d     %d m to go     %s") % [_position(), _riders.size() + 1, int(maxf(0.0, LAP - _race_d)), _clock(_race_t)]
+	if _race == "on" and _mode == "trial":
+		var gap := ""
+		if _ghost.size() >= 4:
+			var gi := clampi(int(_race_t * 10.0), 0, _ghost.size() / 2 - 1)
+			var behind := (_ghost[gi * 2] - _race_d) / maxf(20.0, _speed)
+			gap = "     " + (Loc.t("%.1f s behind your best") % behind if behind > 0.0 else Loc.t("%.1f s ahead of your best") % -behind)
+		_info.text = Loc.t("TIME TRIAL     %s     %d m to go") % [_clock(_race_t), int(maxf(0.0, LAP - _race_d))] + gap
+	elif _race == "on" and _mode == "elim":
+		_info.text = Loc.t("ELIMINATION     Position %d / %d     Last place is out in %d s") % [_position(), _riding(), int(ceilf(_elim_t))]
+	elif _race == "on":
+		_info.text = Loc.t("%s     Position %d / %d     %d m to go     %s") % [Loc.t(str(EVENTS[_mode]["name"])).to_upper(), _position(), _riders.size() + 1, int(maxf(0.0, _race_len - _race_d)), _clock(_race_t)]
 	else:
 		_info.text = Loc.t("Riders beaten %d / %d     Star Chips %d     Races won %d     Best lap %s") % [_beaten.size(), RIVALS.size(), _chips, _wins, _clock(_best) if _best > 0.0 else "--"]
 	_gauge.queue_redraw()
 	_radar.queue_redraw()
+	_mom_ui.queue_redraw()
 
 
 ## A short shout in the middle of the screen: SLIPSTREAM, NEAR MISS.
@@ -739,7 +868,8 @@ func _tricks(delta: float) -> void:
 	_draft = _draft + delta if drafting else maxf(0.0, _draft - delta * 2.0)
 	if _draft > 1.3:
 		_draft = 0.0
-		_boost = maxf(_boost, 1.8)
+		_boost = maxf(_boost, 1.8 + TurboGarage.boost_bonus())
+		_gain(12.0)
 		_lines.kick(0.7)
 		Sfx.play("whoosh", -3.0, 1.4)
 		_pop("SLIPSTREAM!", Color("5affd0"))
@@ -750,6 +880,7 @@ func _tricks(delta: float) -> void:
 		if absf(float(th["x"])) < 3.0 and gap >= 1.9 and gap < 3.3 and _speed > 38.0 and _stun <= 0.0:
 			th["missed"] = true
 			_boost = maxf(_boost, 1.0)
+			_gain(10.0)
 			Collection.dp += 5
 			_lines.kick(0.5)
 			Sfx.play("coin", -8.0, 1.4)
@@ -783,6 +914,7 @@ func _tricks(delta: float) -> void:
 			var was: float = r.get("was_x", float(r["x"]))
 			if was > 0.5 and float(r["x"]) <= 0.5 and absf(float(r["x"])) < 6.0 and _speed > 30.0:
 				Collection.dp += 10
+				_gain(8.0)
 				_lines.kick(0.4)
 				Sfx.play("whoosh", -5.0, 1.6)
 				_pop("OVERTAKE  +10", Color("ff8a3a"))
@@ -799,16 +931,93 @@ func _clock(t: float) -> String:
 func _position() -> int:
 	var ahead := 1
 	for r in _riders:
-		if float(r["race_d"]) > _race_d:
+		if not r.get("out", false) and float(r["race_d"]) > _race_d:
 			ahead += 1
 	return ahead
 
 
+func _riding() -> int:
+	var n := 1
+	for r in _riders:
+		if not r.get("out", false):
+			n += 1
+	return n
+
+
 # ------------------------------------------------------------------ racing
 
-func _start_race() -> void:
+const EVENTS := {
+	"circuit": {"name": "Circuit", "what": "One full lap of the ring against every rider.", "prize": [600, 300, 150, 60, 40, 20]},
+	"sprint": {"name": "Sprint", "what": "800 metres flat out from the line. Over in twenty seconds: the start decides it.", "prize": [250, 120, 60, 30, 20, 10]},
+	"elim": {"name": "Elimination", "what": "Every 16 seconds the rider in last place is out. Be the last one riding.", "prize": [800, 350, 150, 60, 40, 20]},
+	"trial": {"name": "Time Trial", "what": "The road to yourself and the clock. Your best lap rides with you as a ghost.", "prize": []},
+}
+const EVENT_ORDER := ["circuit", "sprint", "elim", "trial"]
+const MEDALS := [["gold", 50.0, 600], ["silver", 55.0, 300], ["bronze", 62.0, 150]]
+const SPRINT_LEN := 800.0
+
+
+## The board at the start line: pick what to race.
+func _events_panel() -> void:
+	if _paused or _race != "":
+		return
+	_paused = true
+	Input.action_release("ui_up")
+	var p := SidePanel.new(Loc.t("RACE EVENTS"), 720.0)
+	_ui.add_child(p)
+	p.closed.connect(func(): _paused = false)
+	var first_btn: Button = null
+	for id in EVENT_ORDER:
+		var ev: Dictionary = EVENTS[id]
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 4)
+		var b := Button.new()
+		b.text = Loc.t(str(ev["name"]))
+		b.custom_minimum_size = Vector2(0, 58)
+		b.add_theme_font_size_override("font_size", 28)
+		b.pressed.connect(func():
+			p.queue_free()
+			_paused = false
+			_start_race(id))
+		box.add_child(b)
+		if first_btn == null:
+			first_btn = b
+		var what := UITheme.label(Loc.t(str(ev["what"])), 18, UITheme.TEXT_DIM)
+		what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(what)
+		var best := ""
+		if id == "trial":
+			var have: Array = []
+			for m in MEDALS:
+				have.append("%s %s%s" % [Loc.t(str(m[0]).capitalize()), _clock(float(m[1])), "  ✓" if _medals.has(m[0]) else ""])
+			best = "   ·   ".join(have) + ("\n" + Loc.t("Your best: %s") % _clock(_trial_best) if _trial_best > 0.0 else "")
+		else:
+			var prize: Array = ev["prize"]
+			best = Loc.t("First place pays %d Duel Points.") % int(prize[0])
+			if _events_best.has(id):
+				best += "   " + Loc.t("Your best finish: place %d.") % int(_events_best[id])
+			if id == "circuit" and _best > 0.0:
+				best += "   " + Loc.t("Best lap %s.") % _clock(_best)
+		box.add_child(UITheme.label(best, 17, UITheme.GOLD))
+		p.body.add_child(box)
+	if first_btn:
+		first_btn.grab_focus.call_deferred()
+
+
+func _start_race(mode := "circuit") -> void:
 	if _race != "":
 		return
+	_mode = mode
+	_race_len = SPRINT_LEN if mode == "sprint" else LAP
+	_elim_t = 16.0
+	_ghost_rec = PackedFloat32Array()
+	for r in _riders:
+		r["out"] = false
+	if _ghost_node:
+		_ghost_node.queue_free()
+		_ghost_node = null
+	if mode == "trial" and _ghost.size() >= 4:
+		_ghost_node = track.ghost_runner(TurboGarage.frame(), Color("7cc4ff"))
 	_race = "count"
 	_count = 3.99
 	_race_d = 0.0
@@ -840,22 +1049,69 @@ func _tick_race(delta: float) -> void:
 			_boost = 1.2
 			get_tree().create_timer(0.9).timeout.connect(func(): _big.text = "")
 	elif _race == "on":
+		var before_t := _race_t
 		_race_t += delta
 		_race_d += _speed * delta
-		if _race_d >= LAP:
+		if _mode == "trial":
+			# Write this lap down ten times a second, and move the ghost of the best one.
+			if int(_race_t * 10.0) != int(before_t * 10.0):
+				_ghost_rec.append(_race_d)
+				_ghost_rec.append(_z)
+			if _ghost_node:
+				var gi := clampi(int(_race_t * 10.0), 0, _ghost.size() / 2 - 1)
+				var gd: float = _ghost[gi * 2]
+				if gi + 1 < _ghost.size() / 2:
+					gd = lerpf(gd, _ghost[gi * 2 + 2], fposmod(_race_t * 10.0, 1.0))
+				_ghost_node.position = Vector3(clampf(gd - _race_d, -200.0, 200.0), 0, _ghost[gi * 2 + 1])
+				_ghost_node.visible = absf(gd - _race_d) < 190.0
+		elif _mode == "elim":
+			_elim_t -= delta
+			if _elim_t <= 0.0:
+				_eliminate()
+		if _mode != "elim" and _race_d >= _race_len:
 			_finish_race()
 
 
-func _finish_race() -> void:
-	var pos := _position()
+## Elimination: whoever is last when the clock runs out is done.
+func _eliminate() -> void:
+	_elim_t = 16.0
+	var last: Dictionary = {}
+	var last_d := _race_d
+	var left := 0
+	for r in _riders:
+		if r.get("out", false):
+			continue
+		left += 1
+		if float(r["race_d"]) < last_d:
+			last_d = float(r["race_d"])
+			last = r
+	if last.is_empty():
+		# It is you at the back.
+		_finish_race(left + 1)
+		return
+	last["out"] = true
+	Sfx.play("impact", -4.0, 0.8)
+	_pop(Loc.t("%s IS OUT") % str(Characters.get_char(str(last["info"]["key"])).get("short", "")).to_upper(), Color("ff5a5a"))
+	if left <= 1:
+		_finish_race(1)
+
+
+func _finish_race(place := 0) -> void:
+	var pos := place if place > 0 else _position()
 	_race = "done"
-	var prize: int = [600, 300, 150, 60, 40, 20][clampi(pos - 1, 0, 5)]
+	if _mode == "trial":
+		_finish_trial()
+		return
+	var prize: int = (EVENTS[_mode]["prize"] as Array)[clampi(pos - 1, 0, 5)]
 	Collection.dp += prize
 	Collection.save()
 	if pos == 1:
 		_wins += 1
-	if _best <= 0.0 or _race_t < _best:
+	if _mode == "circuit" and (_best <= 0.0 or _race_t < _best):
 		_best = _race_t
+	if pos < int(_events_best.get(_mode, 99)):
+		_events_best[_mode] = pos
+	_gain(40.0 if pos == 1 else (20.0 if pos <= 3 else 0.0))     # a good result is Momentum for the next duel
 	_save()
 	_big.text = [Loc.t("1ST!"), Loc.t("2ND"), Loc.t("3RD")][pos - 1] if pos <= 3 else Loc.t("%dTH") % pos
 	_big.add_theme_color_override("font_color", Color("ffd166") if pos == 1 else Color.WHITE)
@@ -863,17 +1119,72 @@ func _finish_race() -> void:
 	if pos == 1:
 		Sfx.play("cheer", -4.0)
 	Music.play("victory" if pos == 1 else "turbo")
-	Router.toast(Loc.t("Lap %s.   +%d Duel Points") % [_clock(_race_t), prize])
+	if _mode == "circuit":
+		Router.toast(Loc.t("Lap %s.   +%d Duel Points") % [_clock(_race_t), prize])
+	else:
+		Router.toast(Loc.t("%s: place %d.   +%d Duel Points") % [Loc.t(str(EVENTS[_mode]["name"])), pos, prize])
 	if _gp:
 		_gp = false
 		_gp_duel(pos)
 		return
+	await _after_race()
+
+
+## Back to free riding after an event.
+func _after_race() -> void:
+	if "--race-test" in OS.get_cmdline_user_args():
+		print("RACE TEST %s: place=%d time=%s riding=%d medals=%s trial_best=%s ghost=%d momentum=%d" % [_mode, _position(), _clock(_race_t), _riding(), str(_medals.keys()), _clock(_trial_best), _ghost.size() / 2, int(_mom)])
+		get_tree().quit()
 	await get_tree().create_timer(3.5).timeout
 	_big.text = ""
 	_race = ""
+	_mode = "circuit"
+	if _ghost_node:
+		_ghost_node.queue_free()
+		_ghost_node = null
 	Music.play("turbo")
+	var i := 0
 	for r in _riders:
+		r["out"] = false
+		if absf(float(r["x"])) > 900.0:
+			r["x"] = 120.0 + 190.0 * i      # back from wherever a time trial or an elimination left them
 		r["x"] = fposmod(float(r["x"]) + LAP / 2.0, LAP) - LAP / 2.0
+		i += 1
+
+
+## A time trial lap is done: medals pay once each, a new best becomes the ghost.
+func _finish_trial() -> void:
+	var t := _race_t
+	var better := _trial_best <= 0.0 or t < _trial_best
+	var paid := 0
+	var got := ""
+	for m in MEDALS:
+		if t <= float(m[1]):
+			if got == "":
+				got = str(m[0])
+			if not _medals.has(m[0]):
+				_medals[m[0]] = true
+				paid += int(m[2])
+	if better:
+		_trial_best = t
+		_ghost = _ghost_rec.duplicate()
+		paid += 40
+	Collection.dp += paid
+	Collection.save()
+	_gain(25.0 if got != "" else 10.0)
+	_save()
+	_big.text = _clock(t)
+	_big.add_theme_color_override("font_color", {"gold": Color("ffd166"), "silver": Color("d8dde6"), "bronze": Color("d99a5a")}.get(got, Color.WHITE))
+	Sfx.play("win" if got != "" or better else "lose")
+	var line := Loc.t("Lap %s.") % _clock(t)
+	if got != "":
+		line += "  " + Loc.t("%s medal.") % Loc.t(got.capitalize())
+	if better:
+		line += "  " + Loc.t("New best: it rides with you next time.")
+	if paid > 0:
+		line += "  " + Loc.t("+%d Duel Points") % paid
+	Router.toast(line)
+	await _after_race()
 
 
 func _recycle(th: Dictionary) -> void:
@@ -951,6 +1262,15 @@ func _challenge() -> void:
 	Router.toast(str(info["line"]))
 	Router.roam["turbo_rival"] = key
 	Router.roam["ride_s"] = _s
+	Router.roam["ride_mom"] = 0.0      # spent on this duel
+	# How you rode up to them is how the duel opens: Speed Counters on your dial and who moves
+	# first. A tougher rider starts with counters of their own, so ride well before you ask.
+	var worth := _mom_worth()
+	var mine := mini(DuelState.SPEED_MAX, int(worth[0]) + int(Collection.record.get("runner_tune", 0)))
+	var theirs := maxi(0, int(info["difficulty"]) - 1)
+	Router.toast.call_deferred(Loc.t("Momentum %d: you start with %d Speed Counters (%s has %d) and %s.") % [int(_mom), mine,
+		str(Characters.get_char(key).get("short", key)), theirs, Loc.t("you take the first turn") if worth[1] else Loc.t("they take the first turn")])
+	print("RIDE duel setup: momentum=%d speed=[%d,%d] first=%s" % [int(_mom), mine, theirs, "me" if worth[1] else "them"])
 	var deck := str(info["deck"])
 	if not CardData.has_deck(deck):
 		deck = ["yusei", "jaden", "kaiba", "yugi", "joey"][absi(key.hash()) % 5]
@@ -959,8 +1279,9 @@ func _challenge() -> void:
 		"opponent": key, "opponent_deck": deck, "player_deck": Collection.active_deck(), "player_char": "player",
 		"difficulty": int(info["difficulty"]), "turbo": true, "story": true, "lose_ok": true, "return_to": Router.RIDE,
 		"continue_label": Loc.t("Back to the highway"),
+		"speed_start": [mine, theirs], "first_turn": 0 if worth[1] else 1,
 	}
-	await get_tree().create_timer(1.1).timeout
+	await get_tree().create_timer(2.4).timeout
 	Router.go(Router.DUEL)
 
 
@@ -1031,7 +1352,156 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R) or (pad and event.button_index == JOY_BUTTON_X):
 		var m := fposmod(_s, LAP)
 		if _race == "" and (m > LAP - 90.0 or m < 12.0):
-			_start_race()
+			_events_panel()
+	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_T) or (pad and event.button_index == JOY_BUTTON_BACK):
+		if _race == "":
+			_garage_panel()
 	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E) or event.is_action_pressed("ui_accept"):
 		if _race == "":
 			_challenge()
+
+
+# ------------------------------------------------------------------ the garage
+
+## Your runner, up close, and everything you can do to it. Changes show at once.
+func _garage_panel() -> void:
+	if _paused:
+		return
+	_paused = true
+	Input.action_release("ui_up")
+	Sfx.play("select", -4.0)
+	# Come round to the side of the runner so you can see what you are choosing.
+	_cam.position = Vector3(0.7, 1.2, _z + 4.5)
+	_cam.look_at(Vector3(1.75, 0.8, _z), Vector3.UP)
+	_cam.rotation.z = 0.0
+	_cam.fov = 50.0
+	_blur.amount = 0.0
+	_lines.amount = 0.0
+	var p := SidePanel.new(Loc.t("GARAGE"), 700.0)
+	p._dim.color = Color(0.02, 0.03, 0.08, 0.12)       # keep the runner in the light
+	_ui.add_child(p)
+	p.closed.connect(func():
+		_paused = false
+		_place_camera(1.0))
+	_garage_fill(p)
+
+
+func _garage_fill(p: SidePanel) -> void:
+	for c in p.body.get_children():
+		c.queue_free()
+	var dp := UITheme.label(Loc.t("Duel Points: %d") % Collection.dp, 20, UITheme.GOLD, UITheme.semi_font())
+	p.body.add_child(dp)
+	var first: Button = null
+	# Frame.
+	p.body.add_child(UITheme.label(Loc.t("FRAME"), 22, Color.WHITE, UITheme.title_font()))
+	var fr := HBoxContainer.new()
+	fr.add_theme_constant_override("separation", 10)
+	for i in TurboGarage.FRAMES.size():
+		var b := Button.new()
+		b.text = Loc.t(str(TurboGarage.FRAMES[i]))
+		b.toggle_mode = true
+		b.button_pressed = TurboGarage.frame() == i
+		UITheme.chip(b)
+		b.pressed.connect(func(): _garage_set(p, "frame", i))
+		fr.add_child(b)
+		if first == null:
+			first = b
+	p.body.add_child(fr)
+	# Paint and trail: swatches.
+	for row in [["PAINT", "paint", TurboGarage.PAINTS], ["TRAIL", "trail", TurboGarage.TRAILS]]:
+		var list: Array = row[2]
+		var cur := clampi(int(TurboGarage.val(str(row[1]), 0)), 0, list.size() - 1)
+		p.body.add_child(UITheme.label("%s   ·   %s" % [Loc.t(str(row[0])), Loc.t(str(list[cur][0]))], 22, Color.WHITE, UITheme.title_font()))
+		var grid := HFlowContainer.new()
+		grid.add_theme_constant_override("h_separation", 8)
+		grid.add_theme_constant_override("v_separation", 8)
+		for i in list.size():
+			var hex := str(list[i][1])
+			var sw := Button.new()
+			sw.custom_minimum_size = Vector2(54, 44)
+			sw.tooltip_text = Loc.t(str(list[i][0]))
+			var col := Color(hex) if hex != "" else (Profile.color() if str(row[1]) == "paint" else TurboGarage.paint(Profile.color()))
+			var sb := UITheme.button_box(col, Color.WHITE if i == cur else Color(1, 1, 1, 0.15), 10)
+			sb.set_border_width_all(3 if i == cur else 1)
+			for st in ["normal", "hover", "pressed", "focus"]:
+				sw.add_theme_stylebox_override(st, sb)
+			if hex == "":
+				sw.text = "●"
+				sw.add_theme_color_override("font_color", Color(0, 0, 0, 0.55))
+			sw.pressed.connect(func(): _garage_set(p, str(row[1]), i))
+			grid.add_child(sw)
+		p.body.add_child(grid)
+	# What is painted on the side.
+	p.body.add_child(UITheme.label(Loc.t("ON THE SIDE"), 22, Color.WHITE, UITheme.title_font()))
+	var mk := HFlowContainer.new()
+	mk.add_theme_constant_override("h_separation", 8)
+	mk.add_theme_constant_override("v_separation", 8)
+	for i in TurboGarage.MARKS.size():
+		var b2 := Button.new()
+		var sign := str(TurboGarage.MARKS[i][1])
+		b2.text = Loc.t(str(TurboGarage.MARKS[i][0])) if sign in ["", "#"] else sign + "  " + Loc.t(str(TurboGarage.MARKS[i][0]))
+		b2.toggle_mode = true
+		b2.button_pressed = int(TurboGarage.val("mark", 0)) == i
+		UITheme.chip(b2)
+		b2.pressed.connect(func(): _garage_set(p, "mark", i))
+		mk.add_child(b2)
+	p.body.add_child(mk)
+	if str(TurboGarage.MARKS[clampi(int(TurboGarage.val("mark", 0)), 0, TurboGarage.MARKS.size() - 1)][1]) == "#":
+		var nr := HBoxContainer.new()
+		nr.add_theme_constant_override("separation", 10)
+		nr.add_child(UITheme.label(Loc.t("Your number"), 19, UITheme.TEXT_DIM))
+		for step in [-10, -1, 1, 10]:
+			var nb := Button.new()
+			nb.text = ("+%d" % step) if step > 0 else str(step)
+			nb.pressed.connect(func(): _garage_set(p, "number", posmod(int(TurboGarage.val("number", 7)) + step, 100)))
+			nr.add_child(nb)
+		nr.add_child(UITheme.label(str(int(TurboGarage.val("number", 7))), 30, UITheme.GOLD, UITheme.title_font()))
+		p.body.add_child(nr)
+	# Parts.
+	p.body.add_child(UITheme.label(Loc.t("PARTS"), 22, Color.WHITE, UITheme.title_font()))
+	for part in TurboGarage.PART_ORDER:
+		var info: Dictionary = TurboGarage.PARTS[part]
+		var lvl := TurboGarage.level(part)
+		var row2 := HBoxContainer.new()
+		row2.add_theme_constant_override("separation", 12)
+		var txt := VBoxContainer.new()
+		txt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		txt.add_theme_constant_override("separation", 0)
+		txt.add_child(UITheme.label("%s   %s" % [Loc.t(str(info["name"])), "■".repeat(lvl) + "□".repeat(TurboGarage.COST.size() - lvl)], 21, Color.WHITE, UITheme.semi_font()))
+		var what := UITheme.label("%s.  %s: %s" % [Loc.t(str(info["what"])), Loc.t("Now"), Loc.t(TurboGarage.gives(part, lvl))], 16, UITheme.TEXT_DIM)
+		what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		txt.add_child(what)
+		row2.add_child(txt)
+		var buy := Button.new()
+		if lvl >= TurboGarage.COST.size():
+			buy.text = Loc.t("Maxed")
+			buy.disabled = true
+		else:
+			buy.text = Loc.t("%s  ·  %d DP") % [Loc.t(TurboGarage.gives(part, lvl + 1)), int(TurboGarage.COST[lvl])]
+			buy.disabled = Collection.dp < int(TurboGarage.COST[lvl])
+			buy.pressed.connect(func():
+				var why := TurboGarage.buy(part)
+				if why != "":
+					Router.toast(Loc.t(why))
+					Sfx.play("error", -8.0)
+				else:
+					Sfx.play("rare", -4.0)
+				_garage_fill(p))
+		buy.custom_minimum_size = Vector2(220, 46)
+		row2.add_child(buy)
+		p.body.add_child(row2)
+	var note := UITheme.label(Loc.t("Your runner looks like this in every Turbo Duel too. Speed Counters at the start of a duel come from your Momentum on the road, and from the tuning bench in the Satellite garage."), 16, UITheme.TEXT_DIM)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	p.body.add_child(note)
+	if first:
+		first.grab_focus.call_deferred()
+
+
+## One thing changed in the garage: keep it, and put the new look on the runner right away.
+func _garage_set(p: SidePanel, key: String, value: int) -> void:
+	TurboGarage.put(key, value)
+	Sfx.play("select", -6.0)
+	track.replace_rider(0, "player", TurboGarage.paint(Profile.color()), _my_look())
+	track.place_rider(0, Vector3(0, _y, _z), 0.0)
+	_flame = null
+	_garage_fill(p)

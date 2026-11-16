@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.23
+
+**Turbo plays better: how you ride sets up the duel, a garage for your runner, and four race events.**
+
+- **Momentum.** A bar over the speedometer fills when you ride well: boost strips (more when you chain them), slipstreaming a rider, a near miss on traffic, overtaking, ramps, Star Chips, a good finish in an event. It drops when you hit traffic or scrape the barrier, and drains slowly on its own, faster if you crawl. When you pull alongside a rider and duel, your Momentum is what the duel opens with: every quarter of the bar is one Speed Counter on your dial (0 to 4), and from half a bar up you take the first turn; under half, they do. The bar tells you at every moment what a duel started now would give you. The tougher riders start with Speed Counters of their own (Kalin and Yusei 1, Jack 2), so ride well before you ask. Momentum is spent when the duel starts. The tuning bench in the Satellite garage still adds its counters on top.
+- **The garage (T on the road, View on a controller).** The camera comes round to the side of your runner and every change shows on it at once. Frame: two to choose from. Paint: ten, the first being your duelist's own colour. Trail: ten colours of light, or matched to the paint. On the side: nothing, your racing number (0 to 99), or a sign (star, bolt, crown, spade, wing), painted on both flanks. Parts, three levels each, 300 / 700 / 1500 Duel Points: Engine (top speed, about 7 km/h a level), Tyres (grip: quicker steering and the bends push you wide less), Booster (every boost burns 0.4 s longer a level), Frame brace (a crash costs less time and less Momentum). Your runner looks the same in every Turbo Duel.
+- **Race events (R at the start line, X on a controller).** A board with four: Circuit (the lap against everyone that was there before), Sprint (800 m from the line to a green light gate), Elimination (every 16 seconds whoever is last is out, be the last one riding), and Time Trial (the road to yourself; your best lap is kept and rides with you as a see-through ghost, the top line says how far ahead or behind it you are, and gold / silver / bronze at 0:50 / 0:55 / 1:02 each pay once). The board shows what first place pays and your best so far.
+- A duel that already knows who goes first (the ride decided it) still plays its opening, just without the game for the first turn.
+- Dev: `--garage`, `--events`, `--race=sprint|elim|trial|circuit [--race-test]`, `--momentum=68`, `--garage-set=paint:1,trail:3,mark:1,frame:0`, and for a duel `--speed-start=3,1 --first-turn=1`.
+
+Not done or not checked: the four events were each ridden to the end by the autopilot (which rides badly), not by a person, so I can't say the times and prizes are well judged: the medal times are worked out from the top speed, not from laps anyone rode. If gold is too easy or impossible, tell me your lap time. The garage, the events board, the Momentum bar, a Sprint under way and a Turbo Duel opening with 3 against 1 Speed Counters were seen in pictures here; the ghost, an elimination, and a number or sign on the Long frame were not. Momentum only exists on the highway: a Turbo Duel started from Free Duel or the story opens as before. The rivals do not have garages of their own. Parts make the races easier and nothing makes the rivals faster to match.
+
 ## What is in 0.33.22
 
 **The Turbo ride looks like a race. And the last hit of a Turbo Duel plays in slow motion.**
