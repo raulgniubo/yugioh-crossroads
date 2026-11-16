@@ -624,6 +624,8 @@ static func _extra_worth(s: DuelState, p: int, x: DuelState.CardInst, depth: int
 				v = _extra_value(sim2, p, depth - 1)
 				if v < 3000:
 					v = 0
+	if CardEffects.of(x.cname()).get("ai_prefer", false):
+		v = maxi(v, mat_best + 700)   # worth it for what its effect brings out (Starliege Lord Galaxion fetches Galaxy-Eyes)
 	if v < mat_best + 300:
 		return 0   # two monsters for one that is barely bigger is a bad trade
 	# The duelist's ace is the one to make when there is a choice (Stardust Dragon over Junk Destroyer).

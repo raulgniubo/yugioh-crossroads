@@ -253,7 +253,13 @@ const TUNE := {
 		"extra": {"Number 39: Utopia": 2, "Number C39: Utopia Ray": 1, "Number C39: Utopia Ray V": 1, "Gagaga Samurai": 1, "Gagaga Cowboy": 1,
 			"Number 61: Volcasaurus": 1, "Number 17: Leviathan Dragon": 1}},
 	"shark": {"out": ["Dian Keto the Cure Master", "Steel Shell"], "in": {"Hyper-Ancient Shark Megalodon": 1}},
-	"kite": {"out": ["Luminous Spark"], "in": {"Galaxy Zero": 1}},
+	# Kite's best deck: Galaxy-Eyes Photon Dragon with every Photon and Galaxy way to bring it out, and Starliege Lord Galaxion to fetch it (v0.33.34).
+	"kite": {"out": ["Luminous Spark"], "in": {"Galaxy Zero": 1},
+		"main": {"Galaxy-Eyes Photon Dragon": 3, "Photon Thrasher": 3, "Photon Crusher": 2, "Photon Lizard": 2, "Photon Cerberus": 1, "Photon Leo": 1, "Photon Sabre Tiger": 2,
+			"Galaxy Knight": 2, "Galaxy Soldier": 2, "Galaxy Wizard": 2, "Photon Slasher": 2, "Photon Caesar": 2, "Photon Wyvern": 1, "Photon Pirate": 1, "Daybreaker": 2,
+			"Photon Circle": 1, "Photon Chargeman": 1,
+			"Accellight": 2, "Galaxy Expedition": 2, "Photon Lead": 1, "Galaxy Storm": 1, "Galaxy Zero": 1, "Monster Reborn": 1, "Pot of Greed": 1, "Mirror Force": 1},
+		"extra": {"Starliege Lord Galaxion": 2, "Starliege Paladynamo": 1, "Photon Papilloperative": 1, "Number 10: Illumiknight": 1}},
 	"vector": {"out": ["Charcoal Inpachi", "Archfiend Soldier", "Summoned Skull", "Ryu-Kishin Powered", "Vorse Raider", "Hinotama", "Mystic Plasma Zone", "Malevolent Nuzzler"],
 		"in": {"Mirror Force": 1}, "extra_out": ["Gagaga Cowboy"]},
 }

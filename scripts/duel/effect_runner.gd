@@ -342,6 +342,12 @@ static func no_tribute(s: DuelState, p: int, c) -> bool:
 static func _cond(s: DuelState, p: int, cond: String) -> bool:
 	if cond == "lp_le_1000":
 		return s.players[p].lp <= 1000   # Number C39: Utopia Ray
+	if cond == "xyz_on_field":
+		for q in 2:
+			for m in s.players[q].monsters():
+				if m.face_up and m.frame() == "xyz":
+					return true
+		return false
 	if cond == "amaryllis_in_hand":
 		return not s.players[p].hand.filter(func(h): return h.cname() == "Phoenixian Cluster Amaryllis").is_empty()
 	if cond == "no_cards":
@@ -1051,6 +1057,24 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 					return false
 			"randomizer":
 				if s.players[p].deck.is_empty():
+					return false
+			"photon_pirate":
+				if s.players[p].gy.filter(func(g): return g.is_monster() and g.cname().contains("Photon")).is_empty() or (int(c.tags.get("pirate_turn", -1)) == s.turn and int(c.tags.get("pirate_n", 0)) >= 2):
+					return false
+			"galaxion":
+				if s.players[p].free_zone() == -1 or ((s.players[p].hand.filter(func(h): return h.cname() == "Galaxy-Eyes Photon Dragon").is_empty() or c.overlays.size() < 1) \
+						and (s.players[p].deck.filter(func(h): return h.cname() == "Galaxy-Eyes Photon Dragon").is_empty() or c.overlays.size() < 2)):
+					return false
+			"papillo":
+				var any_def := false
+				for q in 2:
+					for m in s.players[q].monsters():
+						if not m.attack_pos:
+							any_def = true
+				if not any_def:
+					return false
+			"illumiknight":
+				if s.players[p].hand.is_empty() or s.players[p].deck.is_empty():
 					return false
 			"hundred_eyes":
 				if s.players[p].gy.filter(func(g): return g.is_monster() and g.level() <= 6 and g.frame() != "xyz" and str(g.data.get("attribute", "")) == "DARK" and _is_effect_monster(g)).is_empty():
@@ -1879,6 +1903,10 @@ static func ai_ignite_ok(s: DuelState, p: int, c) -> bool:
 			return ps.deck.size() >= 12
 		"before_battle":
 			return s.phase == DuelState.Phase.MAIN1 and s.turn > 1 and not opp.monsters().is_empty()
+		"papillo":
+			return not opp.monsters().filter(func(m): return not m.attack_pos).is_empty()
+		"spare_hand":
+			return ps.hand.size() >= 2
 		"catapult":
 			# Only for the win: the biggest monster's half ATK finishes the duel.
 			var top_atk := 0
@@ -1971,6 +1999,125 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"destroy_opp_set":
+			# Photon Wyvern: "Destroy all Set cards your opponent controls."
+			for m in opp.monsters():
+				if not m.face_up:
+					events.append_array(s._destroy(m))
+			for st in opp.spells.duplicate():
+				if st != null and not st.face_up:
+					events.append_array(s._destroy_st(st))
+		"chargeman":
+			# "make this card's ATK become double its original ATK, until your next Standby Phase. This card cannot attack the turn you activate this effect."
+			c.tmp_atk = c.atk()
+			c.tmp_until = s.turn + 1
+			c.attack_count_turn = s.turn
+			c.attack_count = 99
+			events.append(_ev(p, c, Loc.t("%s: its ATK is %d until your next Standby Phase") % [name, c.atk() * 2]))
+		"photon_pirate":
+			# "banish 1 "Photon" monster from your Graveyard; this card gains 1000 ATK until the End Phase" (up to twice per turn).
+			var pool_pp: Array = ps.gy.filter(func(g): return g.is_monster() and g.cname().contains("Photon"))
+			if pool_pp.is_empty():
+				return events
+			pool_pp.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which \"Photon\" monster from your Graveyard?") % name, pool_pp, pool_pp[0], c)))
+			c.tags["pirate_n"] = (int(c.tags.get("pirate_n", 0)) if int(c.tags.get("pirate_turn", -1)) == s.turn else 0) + 1
+			c.tags["pirate_turn"] = s.turn
+			if c.atk_mod_turn != s.turn:
+				c.atk_mod_turn = s.turn
+				c.atk_mod_t = 0
+			c.atk_mod_t += 1000
+			events.append(_ev(p, c, Loc.t("%s: %d ATK until the end of this turn") % [name, 1000]))
+		"caesar":
+			# "You can Special Summon 1 "Photon Caesar" from your hand or Deck."
+			for src in [ps.hand, ps.deck]:
+				var got_c: Array = src.filter(func(x): return x != c and x.cname() == "Photon Caesar")
+				if not got_c.is_empty() and ps.free_zone() != -1:
+					if s.choose_option(p, Loc.t("%s: Special Summon another Photon Caesar?") % name, ["Yes", "No"], 0, c) != 0:
+						return events
+					src.erase(got_c[0])
+					if src == ps.deck:
+						s._shuffle(ps.deck)
+					events.append(_ev(p, c, Loc.t("%s calls %s") % [name, got_c[0].cname()]))
+					events.append_array(s._special(p, got_c[0], "effect"))
+					break
+		"galaxy_wizard":
+			# Two effects: its Level +4 until the end of this turn, or Tribute it to add 1 "Galaxy" card from the Deck (not Galaxy Wizard).
+			var can_search: bool = not ps.deck.filter(func(x): return x.cname().contains("Galaxy") and x.cname() != "Galaxy Wizard" and not CardData.is_extra(x.id)).is_empty()
+			var want_lv := 0
+			for m in ps.monsters():
+				if m != c and m.face_up and m.level() == c.level() + 4 and m.frame() != "xyz":
+					want_lv = 1
+			var pick_w: int = 0
+			if can_search:
+				pick_w = s.choose_option(p, Loc.t("%s: which effect?") % name, ["Level +4 until the end of this turn", "Tribute it: add 1 \"Galaxy\" card from your Deck"], 0 if want_lv == 1 else 1, c)
+			if pick_w == 0:
+				c.lv_set = c.level() + 4
+				c.lv_turn = s.turn
+				events.append(_ev(p, c, Loc.t("%s is Level %d until the end of this turn") % [name, c.lv_set]))
+			else:
+				ps.field[ps.field.find(c)] = null
+				s._to_gy(ps, c)
+				events.append({"type": "tribute", "player": p, "card": c})
+				events.append_array(s._monster_left(c))
+				var gal: Array = ps.deck.filter(func(x): return x.cname().contains("Galaxy") and x.cname() != "Galaxy Wizard" and not CardData.is_extra(x.id))
+				gal.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+				var got_w = s.pick1(p, Loc.t("%s: add which \"Galaxy\" card to your hand?") % name, gal, gal[0], c)
+				ps.deck.erase(got_w)
+				ps.hand.append(got_w)
+				s._shuffle(ps.deck)
+				events.append({"type": "search", "player": p, "card": got_w, "deck": ps.deck.size()})
+		"galaxion":
+			# Detach 1: Special Summon Galaxy-Eyes Photon Dragon from your hand. Detach 2: from your Deck.
+			var in_hand: Array = ps.hand.filter(func(h): return h.cname() == "Galaxy-Eyes Photon Dragon")
+			var in_deck_g: Array = ps.deck.filter(func(h): return h.cname() == "Galaxy-Eyes Photon Dragon")
+			var use_deck: bool = in_hand.is_empty() or c.overlays.size() < 1
+			if not in_hand.is_empty() and not in_deck_g.is_empty() and c.overlays.size() >= 2:
+				use_deck = s.choose_option(p, Loc.t("%s: detach how many?") % name, ["1: from your hand", "2: from your Deck"], 0, c) == 1
+			if use_deck and (in_deck_g.is_empty() or c.overlays.size() < 2):
+				return events
+			for i in (2 if use_deck else 1):
+				var o = c.overlays.pop_back()
+				s._to_gy(ps, o)
+			events.append({"type": "detach", "player": p, "card": c})
+			var ge = in_deck_g[0] if use_deck else in_hand[0]
+			if use_deck:
+				ps.deck.erase(ge)
+				s._shuffle(ps.deck)
+			else:
+				ps.hand.erase(ge)
+			ge.proper = true
+			events.append(_ev(p, c, Loc.t("%s calls %s") % [name, ge.cname()]))
+			events.append_array(s._special(p, ge, "effect"))
+		"papillo":
+			# "target 1 Defense Position monster on the field; change it to face-up Attack Position, and if you do, it loses 600 ATK."
+			var defs: Array = []
+			for q in [opp_i, p]:
+				for m in s.players[q].monsters():
+					if not m.attack_pos and can_target(c, m):
+						defs.append(m)
+			var theirs_p: Array = defs.filter(func(m): return opp.field.has(m))
+			if defs.is_empty() or (theirs_p.is_empty() and not s.manual[p]):
+				return events
+			var t_p = s.pick1(p, Loc.t("%s: change which monster to Attack Position?") % name, defs, theirs_p[0] if not theirs_p.is_empty() else defs[0], c)
+			t_p.face_up = true
+			t_p.attack_pos = true
+			t_p.atk_mod -= 600
+			events.append(_ev(p, c, Loc.t("%s is turned to Attack Position and loses 600 ATK") % t_p.cname()))
+			events.append({"type": "position", "player": 0 if s.players[0].field.has(t_p) else 1, "card": t_p, "zone": s.players[0 if s.players[0].field.has(t_p) else 1].field.find(t_p)})
+		"illumiknight":
+			# "send 1 card from your hand to the Graveyard, and if you do, draw 1 card."
+			if ps.hand.is_empty():
+				return events
+			var low_i = ps.hand[0]
+			for h in ps.hand:
+				if s._card_value(h) < s._card_value(low_i):
+					low_i = h
+			low_i = s.pick1(p, Loc.t("%s: send 1 card from your hand to the Graveyard") % name, ps.hand, low_i, c)
+			ps.hand.erase(low_i)
+			s._to_gy(ps, low_i)
+			events.append({"type": "discard", "player": p, "card": low_i})
+			events.append_array(s._draw(p, 1))
 		"randomizer":
 			# "draw 1 card and reveal it. For a Monster Card, inflict damage equal to its Level x 200. For a Spell or Trap Card, you take 500 damage."
 			if not ps.hand.is_empty() or ps.deck.is_empty():

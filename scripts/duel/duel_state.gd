@@ -2154,6 +2154,11 @@ func _battle_damage(p: int, amount: int, dealer: CardInst = null, taker: CardIns
 	var ps := players[p]
 	if battle_shield == p:
 		return [{"type": "effect", "player": p, "card": null, "text": "No battle damage!"}]
+	# Photon Circle: "Any Battle Damage you take from battles involving this card is halved."
+	for pc0 in [dealer, taker]:
+		if pc0 != null and pc0.owner == p and pc0.face_up and not pc0.negated and EffectRunner.fx(pc0).get("half_battle_damage", false):
+			amount = int(ceil(amount / 2.0))
+			break
 	# Rocket Warrior: "During your Battle Phase... you take no damage from battles involving this card."
 	for rm0 in [dealer, taker]:
 		if rm0 != null and rm0.owner == p and current == p and rm0.face_up and not rm0.negated and EffectRunner.fx(rm0).get("rocket", false):
@@ -3040,6 +3045,11 @@ static func material_rule(c: CardInst) -> Dictionary:
 			if w2 != "":
 				f = {"attr": w2} if w2 in ["DARK", "LIGHT", "EARTH", "WATER", "FIRE", "WIND"] else {"race": w2}
 			rule = {"count": int(m2.get_string(1)), "filter": f}
+		else:
+			re.compile("^(\\d) Level \\d+ \"([^\"]+)\" monsters")
+			m2 = re.search(line)
+			if m2:
+				rule = {"count": int(m2.get_string(1)), "filter": {"has": m2.get_string(2)}}   # '2 Level 4 "Photon" monsters' (Starliege Lord Galaxion)
 	_mat_rules[key] = rule
 	return rule
 

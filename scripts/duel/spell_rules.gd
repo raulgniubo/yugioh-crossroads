@@ -119,6 +119,11 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Kite's cards (v0.33.34)
+	"Photon Lead": {"k": "quick", "do": [["special_from_hand", {"attr": "LIGHT", "max_lv": 4}, "atk"]]},
+	"Accellight": {"k": "normal", "cond": "accellight", "ai": "always", "do": [["special_deck_f", "Accellight", ["Photon", "Galaxy"], 0, 4, ""], ["no_normal"]]},
+	"Galaxy Expedition": {"k": "normal", "cond": "galaxy_expedition", "ai": "always", "do": [["special_deck_f", "Galaxy Expedition", ["Photon", "Galaxy"], 5, 12, "def"]]},
+	"Galaxy Storm": {"k": "normal", "t": "any_face", "must_xyz_empty": true, "do": [["destroy", "target"]]},
 	# ---------------------------------------------------------------- Kalin's cards (v0.33.33)
 	"Infernity Inferno": {"k": "trap", "win": ["free"], "do": [["infernity_inferno"]]},
 	"Infernity Break": {"k": "trap", "win": ["free"], "cond": "hand_empty", "do": [["infernity_break"]]},
@@ -589,6 +594,11 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return not s.players[p].hand.is_empty()
 		"hand_empty":
 			return s.players[p].hand.is_empty()
+		"accellight":
+			# "If you control no monsters... You cannot Normal Summon/Set during the turn you activate this card." Once per turn.
+			return s.players[p].monsters().is_empty() and s.current == p and not s.normal_summoned and int(s.players[p].once_names.get("Accellight", -1)) != s.turn
+		"galaxy_expedition":
+			return int(s.players[p].once_names.get("Galaxy Expedition", -1)) != s.turn and not s.players[p].monsters().filter(func(m): return m.face_up and m.frame() != "xyz" and m.level() >= 5 and (m.cname().contains("Photon") or m.cname().contains("Galaxy"))).is_empty()
 		"infernity_barrier":
 			# "...while you control a face-up Attack Position "Infernity" monster and have no cards in your hand".
 			return s.players[p].hand.is_empty() and not s.players[p].monsters().filter(func(m): return m.face_up and m.attack_pos and m.cname().contains("Infernity")).is_empty()
@@ -742,6 +752,9 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 					return false
 			"slip_summon":
 				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or EffectRunner._take(ps.hand, {"max_lv": 4}, 1).is_empty():
+					return false
+			"special_deck_f":
+				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or _deck_family(s, p, a[2], int(a[3]), int(a[4])).is_empty():
 					return false
 			"infernity_inferno":
 				if ps.hand.filter(func(h): return h != c).is_empty() or ps.deck.filter(func(x): return x.cname().contains("Infernity")).is_empty():
@@ -945,6 +958,8 @@ static func targets(s: DuelState, p: int, c) -> Array:
 				"any_fusion": ok = m.face_up and m.frame() == "fusion"
 			if ok and m.face_up and ((s.dragon_shield() and str(m.data.get("race", "")) == "Dragon") or (not m.negated and CardEffects.of(m.cname()).get("untargetable", false))):
 				ok = false   # Lord of D. shields Dragons; Obelisk cannot be targeted
+			if ok and sp.get("must_xyz_empty", false) and not (m.frame() == "xyz" and m.overlays.is_empty()):
+				ok = false   # "1 face-up Xyz Monster on the field that has no Xyz Material" (Galaxy Storm)
 			if ok and sp.get("must_rose", false) and not (m.cname() == "Black Rose Dragon" or str(m.data.get("race", "")) == "Plant"):
 				ok = false   # "Equip only to "Black Rose Dragon" or a Plant-Type monster" (Thorn of Malice)
 			if ok and sp.get("must_effect", false) and not EffectRunner._is_effect_monster(m):
@@ -1545,13 +1560,26 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which \"Infernity\" card from your Graveyard?") % name, mine_b, worst_b, c)))
 			var hit_b = s.pick1(p, Loc.t("%s: destroy which card?") % name, theirs_b, best_b, c)
 			events.append_array(s._destroy(hit_b) if hit_b.is_monster() and opp.field.has(hit_b) else s._destroy_st(hit_b))
+		"special_deck_f":
+			# 1 monster of these families and Levels from your Deck (Accellight, Galaxy Expedition). Once per turn by name.
+			ps.once_names[str(a[1])] = s.turn
+			var fam: Array = _deck_family(s, p, a[2], int(a[3]), int(a[4]))
+			if fam.is_empty() or ps.free_zone() == -1:
+				return events
+			fam.sort_custom(func(x, y): return x.atk() > y.atk())
+			var got_f = s.pick1(p, Loc.t("%s: Special Summon which monster from your Deck?") % name, fam, fam[0], c)
+			ps.deck.erase(got_f)
+			s._shuffle(ps.deck)
+			events.append(_ev(p, c, Loc.t("%s calls %s") % [name, got_f.cname()]))
+			events.append_array(s._special(p, got_f, "effect", str(a[5])))
+			events.append_array(EffectRunner.on_summon(s, p, got_f, "special"))
 		"special_from_hand":
 			for d in EffectRunner._pick(s, p, c, Loc.t("Special Summon 1 monster from your hand"), ps.hand.filter(func(h): return h != c and not CardEffects.of(h.cname()).get("no_special", false)), a[1], 1):
 				if ps.free_zone() == -1:
 					break
 				ps.hand.erase(d)
 				events.append(_ev(p, c, Loc.t("%s calls %s") % [name, d.cname()]))
-				events.append_array(s._special(p, d, "effect"))
+				events.append_array(s._special(p, d, "effect", str(a[2]) if a.size() > 2 else ""))
 				events.append_array(EffectRunner.on_summon(s, p, d, "special"))
 		"linked_no_attack":
 			if c.linked != null:
@@ -2364,6 +2392,19 @@ static func left_field(s: DuelState, c) -> Array:
 	c.linked = null
 	c.counter = 0
 	return events
+
+
+## The monsters in a Deck whose name has one of these words, within a Level range, that can be Special Summoned.
+static func _deck_family(s: DuelState, p: int, words: Array, lo: int, hi: int) -> Array:
+	return s.players[p].deck.filter(func(x):
+		if not x.is_monster() or CardData.is_extra(x.id) or x.level() < lo or x.level() > hi or CardEffects.of(x.cname()).get("no_special", false):
+			return false
+		if "cannot be normal summoned" in str(x.data.get("desc", "")).to_lower() and "must" in str(x.data.get("desc", "")).to_lower():
+			return false
+		for w in words:
+			if x.cname().contains(str(w)):
+				return true
+		return false)
 
 
 ## Onomatopaira: the Zubaba, Gagaga, Gogogo and Dododo monsters in your Deck.

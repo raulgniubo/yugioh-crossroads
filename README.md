@@ -5,6 +5,22 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.34
+
+Not built yet: this is what is saved for the next build.
+
+### Kite
+
+**Galaxy-Eyes Photon Dragon with every Photon and Galaxy way to bring it out.** 15 cards built.
+
+- **Main, 40:** Galaxy-Eyes Photon Dragon x3, Photon Thrasher x3, Photon Crusher x2, Photon Lizard x2, Photon Sabre Tiger x2, Galaxy Knight x2, Galaxy Soldier x2, Galaxy Wizard x2, Photon Slasher x2, Photon Caesar x2, Daybreaker x2, Photon Cerberus, Photon Leo, Photon Wyvern, Photon Pirate, Photon Circle, Photon Chargeman; Accellight x2, Galaxy Expedition x2, Photon Lead, Galaxy Storm, Galaxy Zero; and staples that are not his own: Monster Reborn, Pot of Greed, Mirror Force.
+- **Extra:** Starliege Lord Galaxion x2, Starliege Paladynamo, Photon Papilloperative, Number 10: Illumiknight.
+- **Starliege Lord Galaxion** (2 Level 4 Photon monsters) detaches to bring Galaxy-Eyes Photon Dragon out of your hand or Deck. **Galaxy Expedition** and **Accellight** pull Photon and Galaxy monsters from the Deck. **Photon Wyvern** destroys every Set card on the other side.
+
+**Not done or not checked:**
+
+- Still to build for Kite: Neo Galaxy-Eyes Photon Dragon, Number 62: Galaxy-Eyes Prime Photon Dragon, Photon Satellite, Kuriphoton, Galaxy Dragon, Dimension Wanderer, Photon Sanctuary, Photon Stream of Destruction, Photon Booster, Photon Veil, Photon Trident, Photon Current, Galaxy Queen's Light, Message in a Bottle, Triple Star Trion, Lumenize, Eternal Galaxy, Numbers 20, 30 and 56. Kite on Hard won 29 of 40 test duels. Not watched on screen.
+
 ## What is in 0.33.33
 
 Five more duelists got their best decks: **Joey, Jack, Crow, Akiza and Kalin**. 58 cards built, each against its card text, each with a test. Plus the credit line on the main menu.
