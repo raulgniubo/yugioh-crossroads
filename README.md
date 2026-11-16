@@ -11,7 +11,7 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
 - **YOUR DECK** lists only: the deck of the duelist you play as (when that is not you), and your own saved decks.
 - **THEIR DECK** lists only: their own deck, and your own saved decks. The long list of every deck in the game is gone from both.
-- **See my deck**, next to YOUR DECK: every card on your side before the duel, the same view as See their deck.
+- **See deck** next to each list: one for YOUR DECK (new), one for THEIR DECK (it used to say "See their deck"). Every card on that side before the duel.
 - **Messages at the bottom of the screen** wrap inside the screen now and stay up long enough to read. "Lumen has new cards for you" used to put every card name on one line that ran off both sides; it now names three and says how many more.
 - The two hover hints on the deck lists (added in 0.33.29) are gone: they showed as a plain box over the screen.
 

@@ -5060,4 +5060,5 @@ const ES := {
 	"%s's own deck": "El deck de %s",
 	"See my deck": "Ver mi deck",
 	"and %d more": "y %d más",
+	"See deck": "Ver deck",
 }

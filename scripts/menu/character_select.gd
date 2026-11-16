@@ -872,7 +872,7 @@ func _build_setup() -> void:
 	mrow.add_child(_deck_pick)
 	# Every card on your side too, before the duel.
 	var mine_b := Button.new()
-	mine_b.text = Loc.t("See my deck")
+	mine_b.text = Loc.t("See deck")
 	mine_b.add_theme_font_size_override("font_size", 16)
 	mine_b.pressed.connect(_peek_mine)
 	mrow.add_child(mine_b)
@@ -901,7 +901,7 @@ func _build_setup() -> void:
 	trow.add_child(_their_pick)
 	# Every card they play, before you pick them.
 	var peek := Button.new()
-	peek.text = Loc.t("See their deck")
+	peek.text = Loc.t("See deck")
 	peek.add_theme_font_size_override("font_size", 16)
 	peek.pressed.connect(_peek_deck)
 	trow.add_child(peek)
