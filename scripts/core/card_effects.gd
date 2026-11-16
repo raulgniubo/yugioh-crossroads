@@ -108,6 +108,18 @@ const FX := {
 	"Elemental HERO Thunder Giant": {"note": "Once per turn, discard 1: destroy a monster with less original ATK.",
 		"ignite": {"cost": "discard", "do": [["destroy", "atk_below_self"]], "label": "Discard 1: destroy a weaker monster"}},
 	"Elemental HERO Rampart Blaster": {"note": "Can attack directly while it is in Defense Position. When it does, its ATK is halved for that damage calculation.", "direct_from_def": true},
+	# ---- Akiza's best deck (v0.33.33)
+	"Violet Witch": {"note": "Destroyed by battle and sent to the Graveyard: add 1 Plant monster with 1500 or less DEF from your Deck to your hand.", "death": [["search", {"race": "Plant", "max_def": 1500}]]},
+	"Phoenixian Seed": {"note": "You can send this face-up card to the Graveyard: Special Summon 1 Phoenixian Cluster Amaryllis from your hand.",
+		"ignite": {"cost": "tribute_self", "do": [["amaryllis_hand"]], "label": "Send it to the GY: Special Summon Phoenixian Cluster Amaryllis", "cond": "amaryllis_in_hand"}},
+	"Phoenixian Cluster Amaryllis": {"note": "Special Summoned only by its own effect or Phoenixian Seed. If it attacks, it is destroyed after damage calculation. Destroyed and sent to the Graveyard: 800 damage to your opponent. In your End Phase you can banish 1 Plant monster from your Graveyard to Special Summon it from the Graveyard in Defense Position.",
+		"no_special": true, "no_revive": true, "die_after_attack": true, "destroyed": [["damage", 800]], "amaryllis": true},
+	"Rose Fairy": {"note": "Added from your Deck to your hand by a card effect: you can Special Summon it.", "ss_when_added": true},
+	"Witch of the Black Rose": {"note": "Cannot be Special Summoned. Normal Summoned while you control no other cards: draw 1 card and show it; if it is not a monster, it goes to the Graveyard and this card is destroyed.",
+		"no_special": true, "no_revive": true, "summon": [["witch_rose"]]},
+	"Blue Rose Dragon": {"note": "Destroyed on the field and sent to the Graveyard: you can Special Summon 1 Black Rose Dragon or 1 Plant monster from your Graveyard.", "destroyed": [["blue_rose"]]},
+	"Queen Angel of Roses": {"note": "You can Tribute Summon it by Tributing 1 Plant monster. In your Standby Phase: destroy the face-up monster on the field with the lowest ATK (your choice if tied).",
+		"one_tribute_race": "Plant", "standby": [["destroy_lowest_atk"]]},
 	# ---- Crow's best deck (v0.33.33)
 	"Blackwing - Sirocco the Dawn": {"note": "If your opponent controls a monster and you control none, you can Normal Summon it without Tributing. Once per turn, in your Main Phase 1: 1 \"Blackwing\" monster you control gains the total ATK of every other \"Blackwing\" monster on the field until the end of this turn; your other monsters cannot attack that turn.",
 		"no_tribute_if": "opp_only", "ignite": {"do": [["sirocco"]], "label": "One Blackwing takes the others' ATK", "ai": "before_battle"}},
@@ -537,6 +549,8 @@ static func matches(d: Dictionary, f: Dictionary) -> bool:
 	if f.has("lv") and int(d.get("level", 0)) != int(f["lv"]):
 		return false
 	if f.has("max_atk") and int(d.get("atk", 0)) > int(f["max_atk"]):
+		return false
+	if f.has("max_def") and int(d.get("def", 0)) > int(f["max_def"]):
 		return false
 	if f.has("min_atk") and int(d.get("atk", 0)) < int(f["min_atk"]):
 		return false

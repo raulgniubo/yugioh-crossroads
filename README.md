@@ -33,12 +33,22 @@ Not built yet: this is what is saved for the next build.
 - **Extra:** Blackwing Armor Master x2, Blackwing Armed Wing x2, Blackwing - Silverwind the Ascendant, Black-Winged Dragon.
 - **Black Whirlwind** fetches a weaker Blackwing each time one is Normal Summoned. **Black-Winged Dragon** turns effect damage into Black Feather Counters and throws them back. **Silverwind** destroys up to 2 monsters when it is Synchro Summoned. **Sirocco** puts every Blackwing's ATK on one monster.
 
+### Akiza
+
+**Black Rose Dragon on a Plant base, with Amaryllis, Queen Angel of Roses and Thorn of Malice.** 11 cards built.
+
+- **Main, 40:** Twilight Rose Knight x3, Witch of the Black Rose x2, Copy Plant x2, Lonefire Blossom x2, Rose Tentacles x2, Lord Poison x2, Evil Thorn x2, Dark Verger x2, Violet Witch x2, Rose Fairy x2, Phoenixian Seed x2, Phoenixian Cluster Amaryllis x2, Blue Rose Dragon, Queen Angel of Roses; Seed of Deception, Thorn of Malice x2; Wicked Rebirth x2, Blossom Bombardment, Urgent Tuning; and staples that are not her own: Monster Reborn, Pot of Greed, Mystical Space Typhoon, Mirror Force, Sakuretsu Armor x2.
+- **Extra:** Black Rose Dragon x2.
+- **Phoenixian Cluster Amaryllis** comes out through Phoenixian Seed, is destroyed after it attacks, burns for 800, and blooms again in your End Phase. **Thorn of Malice**, **Queen Angel of Roses**, **Witch of the Black Rose**, **Violet Witch** into **Rose Fairy**, **Blue Rose Dragon**, **Wicked Rebirth**, **Blossom Bombardment**, **Seed of Deception**.
+- Fixed on the way: "the top of the Deck" was read from the wrong end in three new cards (Card Trooper, Glow Moss, Witch of the Black Rose). Caught by a test before any build.
+
 ### Credit
 
 The main menu line now reads "Fan project · v0.33.33 · by Atlas Peak Games".
 
 **Not done or not checked:**
 
+- Still to build for Akiza: Splendid Rose's second effect (so it is not in her Extra Deck yet), Hedge Guard, Wall of Ivy, Black Garden, Mark of the Rose, Ivy Shackles, Doppelganger, Plant Food Chain, Magic Planter, Vengeful Servant, Nature's Reflection, Overdoom Line. Akiza on Hard won 13 of 40 test duels.
 - Still to build for Crow: Vayu, Zephyros, Breeze, Kochi, Jetstream, Etesian, Aurora, Calima, Abrolhos, Delta Crow - Anti Reverse, Black Sonic, Black Return, Cards for Black Feathers, Fake Feather, Black Feather Beacon, Raptor Wing Strike, Black Thunder, Level Retuner, Blackboost, Blackwing - Bombardment. Crow on Hard won 28 of 40 test duels.
 - Still to build for Jack: Red Nova Dragon (the game cannot do a Synchro Summon with 2 Tuners yet), Majestic Red Dragon, Barrier Resonator, Force Resonator, Trust Guardian, Extra Veiler, Red Gardna, Synchro Soldier, Power Supplier, Lancer Archfiend, Trap Eater, Crimson Fire, Changing Destiny, Nightmare Archfiends, Prideful Roar, Lineage of Destruction. Chaos King Archfiend switches original ATK and DEF, not boosted values. Jack on Hard won 26 of 40 test duels.
 - Still to build for Joey: Little-Winguard, Blue Flame Swordsman, The Legendary Fisherman, Kunai with Chain, Fairy Box, Magical Arm Shield, Nutrient Z, Gilford the Lightning, Red-Eyes Black Metal Dragon with Metalmorph, Graverobber.

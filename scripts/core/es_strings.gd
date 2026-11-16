@@ -5216,4 +5216,12 @@ const ES := {
 	"%s: add 1 \"Blackwing\" monster with less ATK from your Deck to your hand?": "%s: ¿añadir a tu mano 1 monstruo \"Blackwing\" con menos ATK de tu Deck?",
 	"%s: which \"Blackwing\" monster takes the others' ATK?": "%s: ¿qué monstruo \"Blackwing\" recibe el ATK de los demás?",
 	"%s: add which \"Blackwing\" monster to your hand?": "%s: ¿qué monstruo \"Blackwing\" añades a tu mano?",
+	"%s loses 600 ATK and DEF": "%s pierde 600 ATK y DEF",
+	"%s is destroyed after its attack": "%s es destruido después de su ataque",
+	"%s: banish 1 Plant monster from your Graveyard to Special Summon it?": "%s: ¿desterrar 1 monstruo Planta de tu Cementerio para Invocarlo de Modo Especial?",
+	"%s: banish which Plant monster?": "%s: ¿qué monstruo Planta destierras?",
+	"%s: the card drawn is %s": "%s: la carta robada es %s",
+	"%s: Special Summon Black Rose Dragon or a Plant monster from your Graveyard?": "%s: ¿Invocar de Modo Especial a Black Rose Dragon o un monstruo Planta de tu Cementerio?",
+	"%s: destroy which monster? (tied for the lowest ATK)": "%s: ¿qué monstruo destruyes? (empatados con el ATK más bajo)",
+	"Special Summon 1 monster from your hand": "Invoca de Modo Especial 1 monstruo de tu mano",
 }

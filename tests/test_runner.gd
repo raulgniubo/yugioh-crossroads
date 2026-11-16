@@ -45,6 +45,7 @@ func _ready() -> void:
 		_test_cards_36()
 		_test_cards_37()
 		_test_cards_38()
+		_test_cards_39()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -4172,7 +4173,7 @@ func _test_cards_33() -> void:
 	var other := _mon(s, 0, "Elemental HERO Neos", 1)
 	other.summoned_turn = 1
 	foe = _mon(s, 1, "Kuriboh", 0)
-	s.players[1].deck.insert(0, s._make(_cid("Blue-Eyes White Dragon"), 1))
+	s.players[1].deck.append(s._make(_cid("Blue-Eyes White Dragon"), 1))
 	s.declare_attack(0, moss, foe)
 	s.resolve_attack()
 	check(s.players[1].hand.size() == 1 and s.players[1].field.has(foe) and not s.can_attack(0, other), "Glow Moss: they drew a monster, so the Battle Phase ends")
@@ -5099,3 +5100,100 @@ func _test_cards_38() -> void:
 	var lp1: int = s.players[1].lp
 	s.ignite(0, bwd)
 	check(bwd.counter == 0 and s.atk_of(bwd, false) == 2800 and s.atk_of(e3, false) == 2300 and s.players[1].lp == lp1 - 700, "Black-Winged Dragon: counters removed, their monster loses 700 ATK and they take 700")
+
+
+## The cards built in v0.33.33 for Akiza's best deck, each against its printed text.
+func _test_cards_39() -> void:
+	# ---- Violet Witch and Rose Fairy; Witch of the Black Rose.
+	var s := _bare(901)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	var att := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	var vw := _mon(s, 0, "Violet Witch", 0, false)
+	s.players[0].deck.append(s._make(_cid("Rose Fairy"), 0))
+	s.declare_attack(1, att, vw)
+	s.resolve_attack()
+	check(s.players[0].monsters().filter(func(m): return m.cname() == "Rose Fairy").size() == 1, "Violet Witch fetches Rose Fairy, and Rose Fairy Special Summons itself when it is added from the Deck")
+	s = _bare(902)
+	var wbr := _in(s, 0, "Witch of the Black Rose", "hand")
+	s.players[0].deck.append(s._make(_cid("Pot of Greed"), 0))
+	s.normal_summon(0, wbr, [])
+	check(s.players[0].gy.has(wbr) and s.players[0].hand.is_empty(), "Witch of the Black Rose: the card drawn was not a monster, so it goes to the Graveyard and she is destroyed")
+	s = _bare(903)
+	wbr = _in(s, 0, "Witch of the Black Rose", "hand")
+	s.players[0].deck.append(s._make(_cid("Kuriboh"), 0))
+	s.normal_summon(0, wbr, [])
+	check(s.players[0].field.has(wbr) and s.players[0].hand.size() == 1, "Witch of the Black Rose: a monster drawn stays in the hand and she stays")
+	# ---- Phoenixian Seed and Phoenixian Cluster Amaryllis.
+	s = _bare(904)
+	var seed := _mon(s, 0, "Phoenixian Seed", 0)
+	var ama := _in(s, 0, "Phoenixian Cluster Amaryllis", "hand")
+	_in(s, 0, "Lonefire Blossom", "gy")
+	s.ignite(0, seed)
+	check(s.players[0].field.has(ama) and s.players[0].gy.has(seed), "Phoenixian Seed goes to the Graveyard and Amaryllis comes out of the hand")
+	s.phase = DuelState.Phase.BATTLE
+	ama.summoned_turn = 1
+	var lp1: int = s.players[1].lp
+	s.declare_attack(0, ama, null)
+	s.resolve_attack()
+	check(s.players[0].gy.has(ama) and s.players[1].lp == lp1 - 2200 - 800, "Amaryllis: 2200 direct, then it is destroyed and deals 800 more (LP %d)" % s.players[1].lp)
+	s.begin_end()
+	check(s.players[0].field.has(ama) and not ama.attack_pos and s.players[0].banished.size() == 1, "Amaryllis: in your End Phase it comes back in Defense Position by banishing a Plant from the Graveyard")
+	# ---- Blue Rose Dragon, Queen Angel of Roses.
+	s = _bare(905)
+	var brd := _mon(s, 0, "Blue Rose Dragon", 0)
+	var gy_p := _in(s, 0, "Lonefire Blossom", "gy")
+	s.effect_by = 1
+	s._destroy(brd)
+	s.effect_by = -1
+	check(s.players[0].field.has(gy_p), "Blue Rose Dragon destroyed: a Plant monster comes back from the Graveyard")
+	s = _bare(906)
+	var plant := _mon(s, 0, "Lonefire Blossom", 0)
+	var other := _mon(s, 0, "Twilight Rose Knight", 1)
+	var queen := _in(s, 0, "Queen Angel of Roses", "hand")
+	check(s.tributes_needed(queen) == 1, "Queen Angel of Roses needs 1 Tribute when you control a Plant")
+	s.normal_summon(0, queen, [other])
+	check(s.players[0].field.has(queen) and s.players[0].gy.has(plant) and s.players[0].field.has(other), "Queen Angel of Roses is Tribute Summoned with the Plant")
+	var weak := _mon(s, 1, "Kuriboh", 0)
+	EffectRunner.standby(s, 0)
+	check(s.players[1].gy.has(weak), "Queen Angel of Roses: in your Standby Phase the monster with the lowest ATK is destroyed")
+	# ---- Seed of Deception, Thorn of Malice, Wicked Rebirth, Blossom Bombardment.
+	s = _bare(907)
+	var sod := _rst(s, 0, "Seed of Deception")
+	seed = _in(s, 0, "Phoenixian Seed", "hand")
+	s.activate(0, sod)
+	check(s.players[0].field.has(seed), "Seed of Deception Special Summons a Level 2 or lower Plant from the hand")
+	s = _bare(908)
+	var rose := _mon(s, 0, "Black Rose Dragon", 0)
+	rose.summoned_turn = 1
+	var thorn := _rst(s, 0, "Thorn of Malice")
+	var warrior := _mon(s, 0, "Celtic Guardian", 1)
+	check(not SpellRules.targets(s, 0, thorn).has(warrior) and SpellRules.targets(s, 0, thorn).has(rose), "Thorn of Malice goes on Black Rose Dragon or a Plant only")
+	s.activate(0, thorn, rose)
+	var foe := _mon(s, 1, "Dark Magician", 0)
+	lp1 = s.players[1].lp
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(0, rose, foe)
+	s.resolve_attack()
+	check(s.players[1].field.has(foe) and s.players[1].lp == lp1 - 500 and s.atk_of(foe, false) == 1900 and s.def_of(foe) == 1500, "Thorn of Malice: 3000 against 2500, the monster is not destroyed and loses 600 ATK and DEF (LP %d, %d / %d)" % [s.players[1].lp, s.atk_of(foe, false), s.def_of(foe)])
+	s = _bare(909)
+	s.current = 1
+	var gy_s := _in(s, 0, "Black Rose Dragon", "gy")
+	gy_s.proper = true
+	var wr := _rst(s, 0, "Wicked Rebirth", "set")
+	var lp0: int = s.players[0].lp
+	s.chain_add(0, wr, null, "free")
+	s.chain_resolve()
+	check(s.players[0].field.has(gy_s) and gy_s.negated and s.players[0].lp == lp0 - 800, "Wicked Rebirth: 800 LP, the Synchro Monster comes back with its effects negated")
+	s = _bare(910)
+	s.phase = DuelState.Phase.BATTLE
+	var bb := _rst(s, 0, "Blossom Bombardment", "set")
+	bb.face_up = true
+	var lone := _mon(s, 0, "Rose Tentacles", 0)
+	lone.summoned_turn = 1
+	foe = _mon(s, 1, "Celtic Guardian", 0)
+	lp1 = s.players[1].lp
+	s.declare_attack(0, lone, foe)
+	s.resolve_attack()
+	check(s.players[1].lp == lp1 - 800 - 1400, "Blossom Bombardment: 800 battle damage and the destroyed monster's 1400 ATK (LP %d)" % s.players[1].lp)

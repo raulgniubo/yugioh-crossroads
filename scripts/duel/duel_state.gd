@@ -577,6 +577,20 @@ func begin_end() -> Array:
 			if m.face_up and m.tags.get("banish_end", false):
 				events.append({"type": "effect", "player": q, "card": m, "text": Loc.t("%s is banished in the End Phase") % m.cname()})
 				events.append_array(_banish(m))
+	# Phoenixian Cluster Amaryllis: "During your End Phase, you can remove from play 1 Plant-Type monster from your Graveyard to Special Summon this card from your Graveyard in Defense Position."
+	for g in players[current].gy.duplicate():
+		if not CardEffects.of(g.cname()).get("amaryllis", false) or players[current].free_zone() == -1 or not g.proper:
+			continue
+		var plants: Array = players[current].gy.filter(func(x): return x != g and x.is_monster() and str(x.data.get("race", "")) == "Plant")
+		if plants.is_empty():
+			continue
+		plants.sort_custom(func(x, y): return _card_value(x) < _card_value(y))
+		if choose_option(current, Loc.t("%s: banish 1 Plant monster from your Graveyard to Special Summon it?") % g.cname(), ["Special Summon it", "No"], 0, g) != 0:
+			continue
+		events.append_array(_banish(pick1(current, Loc.t("%s: banish which Plant monster?") % g.cname(), plants, plants[0], g)))
+		players[current].gy.erase(g)
+		events.append({"type": "effect", "player": current, "card": g, "text": Loc.t("%s blooms again") % g.cname()})
+		events.append_array(_special(current, g, "reborn", "def"))
 	# Fake Hero: the monster it brought out goes back to the hand (same as Slip Summon above).
 	# Neos Contact Fusions: "During the End Phase: Shuffle this card into the Extra Deck."
 	for q in 2:
@@ -729,6 +743,8 @@ func tributes_needed(c: CardInst) -> int:
 		return 0
 	if CardEffects.of(c.cname()).has("free_summon_atk"):
 		return 0   # "You can Normal Summon this card without Tributing, but its original ATK becomes 1800" (Dododo Warrior)
+	if c.level() >= 7 and plant_for(c) != null:
+		return 1   # Queen Angel of Roses: "You can Tribute Summon this card... by Tributing 1 Plant-Type monster."
 	if c.level() >= 7 and kaiser_for(c) != null:
 		return 1   # Kaiser Sea Horse: "can be treated as 2 Tributes for the Tribute Summon of a LIGHT monster"
 	if c.level() >= 7:
@@ -742,6 +758,17 @@ func tributes_needed(c: CardInst) -> int:
 func kaiser_for(c: CardInst) -> CardInst:
 	for m in tributable(c.owner):
 		if m.face_up and not m.negated and str(EffectRunner.fx(m).get("double_tribute_attr", "-")) == str(c.data.get("attribute", "")):
+			return m
+	return null
+
+
+## Queen Angel of Roses: the monster of the right Type that is enough by itself for its Tribute Summon, or null.
+func plant_for(c: CardInst) -> CardInst:
+	var race := str(CardEffects.of(c.cname()).get("one_tribute_race", ""))
+	if race == "":
+		return null
+	for m in tributable(c.owner):
+		if str(m.data.get("race", "")) == race:
 			return m
 	return null
 
@@ -794,7 +821,9 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 	if not can_normal_summon(p, c) or tributes.size() != tributes_needed(c):
 		return []
 	tributes = tributes.duplicate()
-	if tributes.size() == 1 and c.level() >= 7 and kaiser_for(c) != null and str(EffectRunner.fx(tributes[0]).get("double_tribute_attr", "-")) != str(c.data.get("attribute", "")):
+	if tributes.size() == 1 and c.level() >= 7 and plant_for(c) != null and str(tributes[0].data.get("race", "")) != str(CardEffects.of(c.cname()).get("one_tribute_race", "")):
+		tributes = [plant_for(c)]   # (one Tribute is only enough when it is a Plant)
+	if tributes.size() == 1 and c.level() >= 7 and plant_for(c) == null and kaiser_for(c) != null and str(EffectRunner.fx(tributes[0]).get("double_tribute_attr", "-")) != str(c.data.get("attribute", "")):
 		tributes = [kaiser_for(c)]   # (one Tribute is only enough when it is the Kaiser Sea Horse)
 	if not set_card and players[p].no_summon_turn == turn:
 		return []
@@ -1722,7 +1751,7 @@ func _resolve_attack() -> Array:
 		var moss: CardInst = pair1[0]
 		if moss.face_up and not moss.negated and EffectRunner.fx(moss).get("glow_moss", false) and not players[opponent(moss.owner)].deck.is_empty():
 			var mo := moss.owner
-			var drawn: CardInst = players[opponent(mo)].deck[0]
+			var drawn: CardInst = players[opponent(mo)].deck.back()   # (the top of the Deck is the end of the list)
 			events.append({"type": "effect", "player": mo, "card": moss, "text": Loc.t("%s: the opponent draws 1 card and shows it") % moss.cname()})
 			events.append_array(_draw(opponent(mo), 1))
 			events.append({"type": "effect", "player": opponent(mo), "card": drawn, "text": Loc.t("The card drawn is %s") % drawn.cname()})
@@ -1945,6 +1974,8 @@ func _resolve_attack() -> Array:
 func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 	if SpellRules.equip_flag(self, loser, "no_battle_death"):
 		return []
+	if SpellRules.equip_flag(self, winner_c, "spare_foe"):
+		return []   # Thorn of Malice: "An opponent's monster that battles with the equipped monster cannot be destroyed by that battle."
 	if _shield == loser:
 		_shield = null
 		return [{"type": "effect", "player": loser.owner, "card": loser, "text": Loc.t("%s is not destroyed") % loser.cname()}]
@@ -1994,6 +2025,13 @@ func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 				break
 	winner_c.killed_turn = turn
 	events.append_array(SpellRules.after_battle_death(self, loser))
+	# Blossom Bombardment: "When a Plant-Type monster you control destroys an opponent's monster by battle and sends it to the Graveyard: Inflict damage equal to the destroyed monster's ATK."
+	if str(winner_c.data.get("race", "")) == "Plant" and wp != loser.owner and not is_over():
+		for bst in players[wp].spells:
+			if bst != null and bst.face_up and SpellRules.spec(bst).get("plant_burn", false) and not SpellRules.blocked(self, bst):
+				events.append({"type": "effect", "player": wp, "card": bst, "text": Loc.t("%s: %d damage") % [bst.cname(), loser.atk()]})
+				events.append_array(_damage(opponent(wp), loser.atk()))
+				break
 	# Junk Barrage: half the destroyed monster's ATK as damage.
 	if SpellRules.equip_flag(self, winner_c, "burn_half_on_kill") and not is_over():
 		events.append({"type": "effect", "player": wp, "card": winner_c, "text": Loc.t("Junk Barrage: %d damage") % (loser.atk() / 2)})
@@ -2012,6 +2050,18 @@ func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 
 func _after_attack(attacker: CardInst, target = null) -> Array:
 	var events := []
+	# Thorn of Malice: "If the equipped monster attacks a monster, after damage calculation: The attacked monster loses 600 ATK and DEF."
+	if target != null and target is CardInst and SpellRules.equip_flag(self, attacker, "weaken_target"):
+		var wt: CardInst = target
+		if players[0].field.has(wt) or players[1].field.has(wt):
+			wt.atk_mod -= 600
+			wt.def_mod -= 600
+			events.append({"type": "effect", "player": attacker.owner, "card": attacker, "text": Loc.t("%s loses 600 ATK and DEF") % wt.cname()})
+	# Phoenixian Cluster Amaryllis: "If this card attacks, it is destroyed after damage calculation."
+	if players[attacker.owner].field.has(attacker) and attacker.face_up and not attacker.negated and EffectRunner.fx(attacker).get("die_after_attack", false):
+		events.append({"type": "effect", "player": attacker.owner, "card": attacker, "text": Loc.t("%s is destroyed after its attack") % attacker.cname()})
+		events.append_array(_destroy(attacker))
+		return events
 	# Rocket Warrior: "If this card attacks a monster, after damage calculation: That attack target loses 500 ATK until the end of this turn."
 	if target != null and target is CardInst and players[attacker.owner].field.has(attacker) and attacker.face_up and not attacker.negated and EffectRunner.fx(attacker).get("rocket", false):
 		var rt: CardInst = target

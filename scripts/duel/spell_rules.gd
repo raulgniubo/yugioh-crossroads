@@ -119,6 +119,11 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Akiza's cards (v0.33.33)
+	"Seed of Deception": {"k": "normal", "do": [["special_from_hand", {"race": "Plant", "max_lv": 2}]]},
+	"Thorn of Malice": {"k": "equip", "must_rose": true, "atk": 600, "pierce": true, "weaken_target": true, "spare_foe": true},
+	"Wicked Rebirth": {"k": "ctrap", "win": ["free"], "cost": "lp800", "do": [["revive", "own_gy", "atk", "link", {"frame": "synchro"}, "negate"], ["linked_no_attack"]]},
+	"Blossom Bombardment": {"k": "ctrap", "win": ["free"], "plant_burn": true},
 	# ---------------------------------------------------------------- Crow's cards (v0.33.33)
 	"Black Whirlwind": {"k": "cont", "whirlwind": true, "ai": "always"},
 	"Blackwing - Backlash": {"k": "trap", "win": ["attack"], "cond": "backlash", "do": [["destroy", "opp_mons"]]},
@@ -723,6 +728,9 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 			"slip_summon":
 				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or EffectRunner._take(ps.hand, {"max_lv": 4}, 1).is_empty():
 					return false
+			"special_from_hand":
+				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or EffectRunner._take(ps.hand.filter(func(h): return h != c and not CardEffects.of(h.cname()).get("no_special", false)), a[1], 1).is_empty():
+					return false
 			"against_wind":
 				if ps.gy.filter(func(g): return g.is_monster() and g.cname().contains("Blackwing") and g.atk() < ps.lp).is_empty():
 					return false
@@ -916,6 +924,8 @@ static func targets(s: DuelState, p: int, c) -> Array:
 				"any_fusion": ok = m.face_up and m.frame() == "fusion"
 			if ok and m.face_up and ((s.dragon_shield() and str(m.data.get("race", "")) == "Dragon") or (not m.negated and CardEffects.of(m.cname()).get("untargetable", false))):
 				ok = false   # Lord of D. shields Dragons; Obelisk cannot be targeted
+			if ok and sp.get("must_rose", false) and not (m.cname() == "Black Rose Dragon" or str(m.data.get("race", "")) == "Plant"):
+				ok = false   # "Equip only to "Black Rose Dragon" or a Plant-Type monster" (Thorn of Malice)
 			if ok and sp.get("must_effect", false) and not EffectRunner._is_effect_monster(m):
 				ok = false   # "targeting 1 Effect Monster" (Fiendish Chain)
 			if ok and sp.get("must_neos_fusion", false) and not (m.frame() == "fusion" and neos_family(m)):
@@ -1476,6 +1486,18 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				taker.lv_set = taker.level() + lv_gain
 				taker.lv_turn = s.turn
 				events.append(_ev(p, c, Loc.t("%s is Level %d until the End Phase") % [taker.cname(), taker.lv_set]))
+		"special_from_hand":
+			for d in EffectRunner._pick(s, p, c, Loc.t("Special Summon 1 monster from your hand"), ps.hand.filter(func(h): return h != c and not CardEffects.of(h.cname()).get("no_special", false)), a[1], 1):
+				if ps.free_zone() == -1:
+					break
+				ps.hand.erase(d)
+				events.append(_ev(p, c, Loc.t("%s calls %s") % [name, d.cname()]))
+				events.append_array(s._special(p, d, "effect"))
+				events.append_array(EffectRunner.on_summon(s, p, d, "special"))
+		"linked_no_attack":
+			if c.linked != null:
+				c.linked.attack_count_turn = s.turn
+				c.linked.attack_count = 99
 		"trap_stun":
 			s.trap_stun_turn = s.turn
 			events.append(_ev(p, c, Loc.t("%s: every other Trap effect on the field is negated this turn") % name))

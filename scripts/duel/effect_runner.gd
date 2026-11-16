@@ -340,6 +340,8 @@ static func no_tribute(s: DuelState, p: int, c) -> bool:
 static func _cond(s: DuelState, p: int, cond: String) -> bool:
 	if cond == "lp_le_1000":
 		return s.players[p].lp <= 1000   # Number C39: Utopia Ray
+	if cond == "amaryllis_in_hand":
+		return not s.players[p].hand.filter(func(h): return h.cname() == "Phoenixian Cluster Amaryllis").is_empty()
 	if cond == "no_cards":
 		# Gust the Backblast: "If you control no cards".
 		return s.players[p].monsters().is_empty() and s.players[p].set_cards().is_empty() and s.players[p].field_spell == null
@@ -1953,6 +1955,58 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"amaryllis_hand":
+			for h in ps.hand.duplicate():
+				if h.cname() == "Phoenixian Cluster Amaryllis" and ps.free_zone() != -1:
+					ps.hand.erase(h)
+					h.proper = true
+					events.append(_ev(p, c, Loc.t("%s calls %s") % [name, h.cname()]))
+					events.append_array(s._special(p, h, "effect"))
+					break
+		"witch_rose":
+			# "...and you control no other cards: Draw 1 card and show it, then, if it is not a monster, send it to the GY, also destroy this card."
+			if ps.monsters().size() != 1 or not ps.set_cards().is_empty() or ps.field_spell != null or ps.deck.is_empty():
+				return events
+			var top_w = ps.deck.back()
+			events.append_array(s._draw(p, 1))
+			events.append(_ev(p, c, Loc.t("%s: the card drawn is %s") % [name, top_w.cname()]))
+			if not top_w.is_monster() and ps.hand.has(top_w):
+				ps.hand.erase(top_w)
+				s._to_gy(ps, top_w)
+				events.append({"type": "discard", "player": p, "card": top_w})
+				events.append_array(s._destroy(c))
+		"blue_rose":
+			var pool_r: Array = ps.gy.filter(func(g): return g != c and g.is_monster() and s.can_revive(g) and (g.cname() == "Black Rose Dragon" or str(g.data.get("race", "")) == "Plant"))
+			if pool_r.is_empty() or ps.free_zone() == -1:
+				return events
+			var best_r = pool_r[0]
+			for g in pool_r:
+				if g.atk() > best_r.atk():
+					best_r = g
+			var got_r := s.choose(p, Loc.t("%s: Special Summon Black Rose Dragon or a Plant monster from your Graveyard?") % name, pool_r, 1, [best_r], true, c)
+			if not got_r.is_empty():
+				ps.gy.erase(got_r[0])
+				events.append_array(s._special(p, got_r[0], "reborn"))
+		"destroy_lowest_atk":
+			# Queen Angel of Roses: "Destroy the 1 face-up monster on the field that has the lowest ATK (your choice, if tied)."
+			var ups_q: Array = []
+			for q in 2:
+				for m in s.players[q].monsters():
+					if m.face_up:
+						ups_q.append(m)
+			if ups_q.is_empty():
+				return events
+			var low_q: int = s.atk_of(ups_q[0], false)
+			for m in ups_q:
+				low_q = mini(low_q, s.atk_of(m, false))
+			var ties_q: Array = ups_q.filter(func(m): return s.atk_of(m, false) == low_q)
+			var pick_q = ties_q[0]
+			for m in ties_q:
+				if opp.field.has(m):
+					pick_q = m
+			pick_q = s.pick1(p, Loc.t("%s: destroy which monster? (tied for the lowest ATK)") % name, ties_q, pick_q, c) if ties_q.size() > 1 else pick_q
+			events.append(_ev(p, c, Loc.t("%s destroys %s") % [name, pick_q.cname()]))
+			events.append_array(s._destroy(pick_q))
 		"sirocco":
 			# "target 1 "Blackwing" monster you control; until the end of this turn, it gains ATK equal to the total ATK of all "Blackwing"
 			# monsters currently on the field, except itself. Monsters other than the targeted monster cannot attack during the turn you activate this effect."
@@ -2286,8 +2340,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				labels_t.append(Loc.t("Send %d") % (i + 1))
 			var n_t: int = s.choose_option(p, Loc.t("%s: send how many cards from the top of your Deck to the Graveyard?") % name, labels_t, most - 1, c) + 1
 			for i in n_t:
-				var top_t = ps.deck[0]
-				ps.deck.erase(top_t)
+				var top_t = ps.deck.pop_back()
 				s._to_gy(ps, top_t)
 				events.append({"type": "mill", "player": p, "card": top_t, "deck": ps.deck.size()})
 				events.append_array(trigger(s, top_t, "sent_gy"))
