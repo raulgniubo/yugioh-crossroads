@@ -7,7 +7,7 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
 ## What is in 0.33.34
 
-Not built yet: this is what is saved for the next build.
+The three ZEXAL duelists that were left got their best decks: **Kite, Shark and Vector**. 35 cards built, each against its card text, each with a test.
 
 ### Kite
 
@@ -26,8 +26,17 @@ Not built yet: this is what is saved for the next build.
 - **Bahamut Shark** (2 Level 4 WATER monsters) detaches to bring a Rank 3 WATER Xyz Monster straight out of the Extra Deck. **Nightmare Shark** lets a WATER monster attack directly. **Panther Shark**, **Cyber Shark** and **Silent Angler** come out for free when the board is right.
 - Fixed on the way: a card that brings a monster back "in Defense Position" or "in Attack Position" now does exactly that (Call of the Haunted used to let you pick).
 
+### Vector
+
+**Umbral Horrors and Malicevorous Fiends into Masquerade, ranked up with Barian's Force.** 8 cards built.
+
+- **Main, 40:** Umbral Horror Ghoul x3, Unform x3, Will o' the Wisp x3, Ghost x3, Malicevorous Fork x3, Malicevorous Knife x3; Rank-Up-Magic Barian's Force x2, Rank-Up-Magic Limited Barian's Force; and cards that are not his own: Archfiend Soldier x3, Summoned Skull, Monster Reborn, Pot of Greed, Dark Hole, Fissure x2, Mystical Space Typhoon x2, Mirror Force x2, Shadow Spell x2, Dark Bribe x2, Sakuretsu Armor x2.
+- **Extra:** Number 104: Masquerade x2, Number C104: Umbral Horror Masquerade, Number 65: Djinn Buster, Number 96: Dark Mist.
+- **Rank-Up-Magic Barian's Force** ranks any Xyz Monster up into its Chaos form and takes a material from the opponent. **Masquerade**, **C104** and **Djinn Buster** negate monster effects. **Dark Mist** halves the monster it battles and takes that ATK.
+
 **Not done or not checked:**
 
+- Still to build for Vector: Malicevorous Spoon, Number 66: Master Key Beetle, Number 43: Manipulator of Souls, Number C5: Chaos Chimera Dragon, Vain Betrayer, Don Thousand's Throne. Masquerade, C104 and Djinn Buster answering a monster effect is tested in the rules only, not in a real duel on screen. Vector on Hard won 14 of 30 test duels.
 - Still to build for Shark: Number 101: Silent Honor ARK and its Chaos form, Number 73: Abyss Splash, Shark Drake Veiss, Numbers 37 and 71, Depth Shark, Double Fin Shark, Saber Shark, Shocktopus, Friller Rabca, Tripod Fish, Scrap Shark, Xyz Remora, Big Wave Small Wave, Poseidon Wave, Splash Capture, Bubble Bringer, Torrential Reborn, Explosive Urchin, the Armored Xyz cards, Xyz Unit. Shark on Hard won 25 of 40 test duels.
 - Still to build for Kite: Neo Galaxy-Eyes Photon Dragon, Number 62: Galaxy-Eyes Prime Photon Dragon, Photon Satellite, Kuriphoton, Galaxy Dragon, Dimension Wanderer, Photon Sanctuary, Photon Stream of Destruction, Photon Booster, Photon Veil, Photon Trident, Photon Current, Galaxy Queen's Light, Message in a Bottle, Triple Star Trion, Lumenize, Eternal Galaxy, Numbers 20, 30 and 56. Kite on Hard won 29 of 40 test duels. Not watched on screen.
 

@@ -350,6 +350,14 @@ static func no_tribute(s: DuelState, p: int, c) -> bool:
 static func _cond(s: DuelState, p: int, cond: String) -> bool:
 	if cond == "lp_le_1000":
 		return s.players[p].lp <= 1000   # Number C39: Utopia Ray
+	if cond == "umbral_ghost":
+		# "Special Summon this card and 1 Level 4 or lower Fiend-Type monster from your hand. You cannot Normal Summon/Set during the turn you activate this effect." Once per turn.
+		var free_g := 0
+		for z in s.players[p].field:
+			if z == null:
+				free_g += 1
+		return free_g >= 2 and not s.normal_summoned and int(s.players[p].once_names.get("Umbral Horror Ghost", -1)) != s.turn \
+				and s.players[p].hand.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Fiend" and h.level() <= 4 and not CardData.is_extra(h.id)).size() >= 2
 	if cond == "own_water":
 		return not s.players[p].monsters().filter(func(m): return m.face_up and str(m.data.get("attribute", "")) == "WATER").is_empty()
 	if cond == "xyz_on_field":
@@ -412,7 +420,7 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 ## Does this monster have its own way to be Special Summoned from the hand?
 static func has_special_hand(c) -> bool:
 	var f := fx(c)
-	for k in ["special_hand_if", "special_tribute2", "special_tribute_attr", "special_banish_ld", "eltanin", "special_toon", "special_discard_attr", "special_tribute_race", "special_discard_monster", "special_tribute_names", "special_tribute_f"]:
+	for k in ["special_discard_race", "special_hand_if", "special_tribute2", "special_tribute_attr", "special_banish_ld", "eltanin", "special_toon", "special_discard_attr", "special_tribute_race", "special_discard_monster", "special_tribute_names", "special_tribute_f"]:
 		if f.has(k):
 			return true
 	return false
@@ -452,6 +460,9 @@ static func can_special_hand(s: DuelState, p: int, c) -> bool:
 		return not _light_machines(s, p).is_empty()
 	if f.has("special_hand_if"):
 		return _cond(s, p, str(f["special_hand_if"]))
+	if f.has("special_discard_race"):
+		# Malicevorous Fork: send 1 other monster of that Type from your hand to the Graveyard.
+		return not s.players[p].hand.filter(func(h): return h != c and h.is_monster() and str(h.data.get("race", "")) == str(f["special_discard_race"])).is_empty()
 	if f.has("special_discard_attr"):
 		# Galaxy Soldier: send 1 other monster of that Attribute from your hand to the Graveyard.
 		for h in s.players[p].hand:
@@ -539,6 +550,22 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 			events.append({"type": "tribute", "player": p, "card": m})
 			events.append_array(EffectRunner.trigger(s, m, "tributed"))
 			events.append_array(s._monster_left(m))
+	c.set_meta("hand_fx_turn", s.turn)
+	if f.has("special_discard_race"):
+		var pay_r: Array = ps.hand.filter(func(h): return h != c and h.is_monster() and str(h.data.get("race", "")) == str(f["special_discard_race"]))
+		var least_r = pay_r[0]
+		for h in pay_r:
+			if s._card_value(h) < s._card_value(least_r):
+				least_r = h
+		least_r = s.pick1(p, Loc.t("%s: send 1 other %s monster from your hand to the Graveyard") % [c.cname(), str(f["special_discard_race"])], pay_r, least_r, c)
+		ps.hand.erase(least_r)
+		s._to_gy(ps, least_r)
+		events.append({"type": "discard", "player": p, "card": least_r})
+		events.append_array(trigger(s, least_r, "gy"))
+		ps.hand.erase(c)
+		events.append_array(s._special(p, c, "effect"))
+		events.append_array(on_summon(s, p, c, "special"))
+		return events
 	if f.has("special_discard_attr"):
 		var pay: Array = ps.hand.filter(func(h): return h != c and h.is_monster() and str(h.data.get("attribute", "")) == str(f["special_discard_attr"]))
 		var least = pay[0]
@@ -1074,6 +1101,9 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 			"randomizer":
 				if s.players[p].deck.is_empty():
 					return false
+			"mill_opp_top":
+				if opp.deck.is_empty():
+					return false
 			"aero_shark":
 				if s.players[p].banished.filter(func(b): return b.is_monster()).is_empty():
 					return false
@@ -1495,6 +1525,22 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 			# Void Ogre Dragon: "Once per turn, when your opponent activates a Spell/Trap Card while you have no cards in your hand".
 			return on_field and window == "chain" and not s.chain.is_empty() and str(s.chain.back().get("kind", "")) in ["spell", "trap"] and int(s.chain.back()["player"]) != p \
 					and not s.chain.back().get("negated", false) and ps.hand.is_empty() and int(c.tags.get("void_neg", -1)) != s.turn
+		"masquerade", "c104", "djinn_buster":
+			# They answer a monster effect the opponent activates (Masquerade: in a Battle Phase; C104: with Number 104 under it; Djinn Buster: for 2 materials).
+			if not on_field or window != "chain" or s.chain.is_empty() or str(s.chain.back().get("kind", "")) != "fx" or int(s.chain.back()["player"]) == p or s.chain.back().get("negated", false):
+				return false
+			if kind == "masquerade":
+				return s.phase == DuelState.Phase.BATTLE and c.overlays.size() >= 1
+			if kind == "c104":
+				return c.overlays.size() >= 1 and int(c.tags.get("c104_turn", -1)) != s.turn and not c.overlays.filter(func(o): return o.cname() == "Number 104: Masquerade").is_empty()
+			return c.overlays.size() >= 2
+		"dark_mist":
+			# "Once per battle, when an attack is declared involving this card and an opponent's monster".
+			if not on_field or window != "attack" or s.pending_attack.is_empty() or s.pending_attack.get("negated", false) or c.overlays.is_empty():
+				return false
+			var pa_a = s.pending_attack["attacker"]
+			var pa_t = s.pending_attack["target"]
+			return pa_t != null and (pa_a == c or pa_t == c) and int(c.tags.get("mist_n", -1)) != int(pa_a.attack_count) * 1000 + s.turn
 		"paladin":
 			# Dark Paladin: when a Spell Card is activated, discard 1 card: negate it and destroy it.
 			return on_field and window == "chain" and not s.chain.is_empty() and str(s.chain.back().get("kind", "")) == "spell" and not s.chain.back().get("negated", false) and not ps.hand.is_empty()
@@ -1674,6 +1720,36 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 						events.append(_ev(p, c, Loc.t("%s: a Synchro Summon in the opponent's turn!") % c.cname()))
 						events.append_array(s.extra_summon(p, want, o["mats"], true))
 						break
+		"masquerade", "c104", "djinn_buster":
+			if s.chain.is_empty():
+				return events
+			for i in (2 if kind == "djinn_buster" else 1):
+				s._to_gy(ps, c.overlays.pop_back())
+			events.append({"type": "detach", "player": p, "card": c})
+			events.append_array(_negate_link(s, p, c, s.chain.back()))
+			if kind == "masquerade":
+				events.append_array(s._damage(opp_i, 800))
+			elif kind == "djinn_buster":
+				events.append_array(s._damage(opp_i, 500))
+			else:
+				c.tags["c104_turn"] = s.turn
+				if not opp.hand.is_empty() and s.choose_option(p, Loc.t("%s: send 1 random card from their hand to the Graveyard and halve their LP?") % c.cname(), ["Yes", "No"], 0, c) == 0:
+					var rnd_c = opp.hand[randi() % opp.hand.size()]
+					opp.hand.erase(rnd_c)
+					s._to_gy(opp, rnd_c)
+					events.append({"type": "discard", "player": opp_i, "card": rnd_c})
+					var half_c: int = opp.lp / 2
+					opp.lp -= half_c
+					events.append({"type": "lp", "player": opp_i, "lp": opp.lp, "delta": -half_c})
+		"dark_mist":
+			var foe_m = s.pending_attack["target"] if s.pending_attack["attacker"] == c else s.pending_attack["attacker"]
+			c.tags["mist_n"] = int(s.pending_attack["attacker"].attack_count) * 1000 + s.turn
+			s._to_gy(ps, c.overlays.pop_back())
+			events.append({"type": "detach", "player": p, "card": c})
+			var half_m: int = s.atk_of(foe_m, false) / 2
+			foe_m.atk_mod -= half_m
+			c.atk_mod += half_m
+			events.append(_ev(p, c, Loc.t("%s halves %s's ATK and gains %d") % [c.cname(), foe_m.cname(), half_m]))
 		"void_ogre":
 			if not s.chain.is_empty():
 				c.tags["void_neg"] = s.turn
@@ -1765,7 +1841,9 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 			return false
 		"paladin":
 			return not s.chain.is_empty() and int(s.chain.back()["player"]) != p and ps.hand.size() >= 1
-		"sorcerer", "joker", "big_shield", "void_ogre":
+		"dark_mist":
+			return true
+		"sorcerer", "joker", "big_shield", "void_ogre", "masquerade", "c104", "djinn_buster":
 			return not s.chain.is_empty() and int(s.chain.back()["player"]) != p
 		"ghibli":
 			return dmg >= 1000 or dmg >= ps.lp
@@ -2036,6 +2114,39 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"umbral_ghost":
+			# (Only when it came out by its own effect, not when something else Special Summoned it.)
+			if int(c.get_meta("hand_fx_turn", -1)) != s.turn or int(ps.once_names.get("Umbral Horror Ghost", -1)) == s.turn:
+				return events
+			ps.once_names["Umbral Horror Ghost"] = s.turn
+			s.normal_summoned = true
+			ps.extra_normals = 0
+			var fiends: Array = ps.hand.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Fiend" and h.level() <= 4 and not CardData.is_extra(h.id) and not CardEffects.of(h.cname()).get("no_special", false))
+			if fiends.is_empty() or ps.free_zone() == -1:
+				return events
+			fiends.sort_custom(func(x, y): return x.atk() > y.atk())
+			var got_u = s.pick1(p, Loc.t("%s: Special Summon which Fiend from your hand?") % name, fiends, fiends[0], c)
+			ps.hand.erase(got_u)
+			events.append(_ev(p, c, Loc.t("%s calls %s") % [name, got_u.cname()]))
+			events.append_array(s._special(p, got_u, "effect"))
+			events.append_array(on_summon(s, p, got_u, "special"))
+		"mill_opp_top":
+			# Number 104: Masquerade: "send the top card of your opponent's Deck to the Graveyard."
+			if not opp.deck.is_empty():
+				var top_m = opp.deck.pop_back()
+				s._to_gy(opp, top_m)
+				events.append({"type": "mill", "player": opp_i, "card": top_m, "deck": opp.deck.size()})
+				events.append_array(trigger(s, top_m, "sent_gy"))
+		"destroy_st_may":
+			# C104: "When this card is Special Summoned: You can target 1 Spell/Trap on the field; destroy that target."
+			var every_s: Array = _all_st(s)
+			var theirs_s: Array = every_s.filter(func(x): return x.owner == opp_i)
+			if every_s.is_empty():
+				return events
+			var got_s := s.choose(p, Loc.t("%s: destroy 1 Spell or Trap?") % name, every_s, 1, [theirs_s[0]] if not theirs_s.is_empty() else [], true, c)
+			if not got_s.is_empty():
+				events.append(_ev(p, c, Loc.t("%s destroys %s") % [name, got_s[0].cname() if got_s[0].face_up else Loc.t("a Set card")]))
+				events.append_array(s._destroy_st(got_s[0]))
 		"opp_lose_atk":
 			# Needle Sunfish: "Target 1 face-up monster your opponent controls; that target loses 500 ATK."
 			var t_n = s._strongest_face_up(opp_i)

@@ -119,6 +119,8 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Vector's cards (v0.33.34)
+	"Rank-Up-Magic Barian's Force": {"k": "normal", "ai": "always", "do": [["rank_up", 0, "Number C|CXyz", "same_race", "steal"]]},
 	# ---------------------------------------------------------------- Shark's cards (v0.33.34)
 	"Aqua Jet": {"k": "normal", "t": "own_face", "must": {"races": ["Fish", "Sea Serpent", "Aqua"]}, "do": [["atk", "target", 1000]]},
 	"Surface": {"k": "normal", "do": [["revive", "own_gy", "def", "", {"races": ["Fish", "Sea Serpent", "Aqua"], "max_lv": 3}]]},
@@ -781,7 +783,7 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 				if int(ps.once_names.get("Onomatopaira", -1)) == s.turn or _onoma_pool(s, p).is_empty():
 					return false
 			"rank_up":
-				if _rank_up_options(s, p, int(a[1]), str(a[2])).is_empty():
+				if _rank_up_options(s, p, int(a[1]), str(a[2]), a.size() > 3).is_empty():
 					return false
 			"fake_hero":
 				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or EffectRunner._take(ps.hand.filter(func(h): return h != c and not CardEffects.of(h.cname()).get("no_special", false)), {"has": "Elemental HERO"}, 1).is_empty():
@@ -1739,7 +1741,7 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			s._shuffle(ps.deck)
 		"rank_up":
 			# Rank-Up-Magic Limited Barian's Force: a "Number C" monster 1 Rank higher, using your Rank 4 Xyz Monster as the material.
-			var opts_r: Array = _rank_up_options(s, p, int(a[1]), str(a[2]))
+			var opts_r: Array = _rank_up_options(s, p, int(a[1]), str(a[2]), a.size() > 3)
 			if opts_r.is_empty():
 				return events
 			var tops: Array = []
@@ -1758,6 +1760,15 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			var base_r = s.pick1(p, Loc.t("%s: use which monster as the material?") % name, bases, bases[0], c)
 			events.append(_ev(p, c, Loc.t("%s: %s ranks up into %s") % [name, base_r.cname(), best_top.cname()]))
 			events.append_array(s.xyz_onto(p, best_top, base_r))
+			if a.size() > 4 and ps.field.has(best_top):
+				# Barian's Force: "Then, if possible, detach 1 Xyz Material from a monster your opponent controls and attach it to the Summoned monster."
+				for m in opp.monsters():
+					if not m.overlays.is_empty():
+						var took = m.overlays.pop_back()
+						best_top.overlays.append(took)
+						events.append(_ev(p, c, Loc.t("%s takes 1 material from %s") % [best_top.cname(), m.cname()]))
+						events.append({"type": "detach", "player": opp_i, "card": m})
+						break
 		"winds":
 			for t in _sel(s, p, c, str(a[1]), ctx):
 				t.tmp_atk = (t.tmp_atk if t.tmp_until >= s.turn else 0) + 1000
@@ -2416,13 +2427,17 @@ static func _onoma_pool(s: DuelState, p: int) -> Array:
 
 
 ## Rank-Up: [base on your field, monster in your Extra Deck] pairs, one Rank apart.
-static func _rank_up_options(s: DuelState, p: int, rank: int, family: String) -> Array:
+static func _rank_up_options(s: DuelState, p: int, rank: int, family: String, same_race := false) -> Array:
 	var out := []
 	for m in s.players[p].monsters():
-		if not m.face_up or m.frame() != "xyz" or m.level() != rank:
+		if not m.face_up or m.frame() != "xyz" or (rank > 0 and m.level() != rank):
 			continue
 		for x in s.players[p].extra:
-			if x.frame() == "xyz" and x.level() == rank + 1 and x.cname().contains(family):
+			var fam_ok := false
+			for w in family.split("|"):
+				if x.cname().contains(w):
+					fam_ok = true
+			if x.frame() == "xyz" and x.level() == m.level() + 1 and fam_ok and (not same_race or str(x.data.get("race", "")) == str(m.data.get("race", ""))):
 				out.append([m, x])
 	return out
 

@@ -49,6 +49,7 @@ func _ready() -> void:
 		_test_cards_40()
 		_test_cards_41()
 		_test_cards_42()
+		_test_cards_43()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -5516,3 +5517,69 @@ func _test_cards_42() -> void:
 	s.phase = DuelState.Phase.BATTLE
 	bah.summoned_turn = 1
 	check(not s.can_attack(0, bah), "Bahamut Shark cannot attack the turn it used that effect")
+
+
+## The cards built in v0.33.34 for Vector's best deck, each against its printed text.
+func _test_cards_43() -> void:
+	# ---- Umbral Horror Ghost, Malicevorous Fork and Knife.
+	var s := _bare(1301)
+	var ghost := _in(s, 0, "Umbral Horror Ghost", "hand")
+	check(not s.can_special_from_hand(0, ghost), "Umbral Horror Ghost needs another Level 4 or lower Fiend in the hand")
+	var ghoul := _in(s, 0, "Umbral Horror Ghoul", "hand")
+	check(s.can_special_from_hand(0, ghost), "Umbral Horror Ghost can use its effect")
+	s.special_from_hand(0, ghost)
+	check(s.players[0].field.has(ghost) and s.players[0].field.has(ghoul) and s.normal_summoned, "Umbral Horror Ghost: it and a Fiend come out of the hand, and no Normal Summon this turn")
+	s = _bare(1302)
+	var fork := _in(s, 0, "Malicevorous Fork", "hand")
+	var fod := _in(s, 0, "Malicevorous Spoon", "hand")
+	check(s.can_special_from_hand(0, fork), "Malicevorous Fork can be Special Summoned by sending a Fiend from the hand")
+	s.special_from_hand(0, fork)
+	check(s.players[0].field.has(fork) and s.players[0].gy.has(fod), "Malicevorous Fork: a Fiend from the hand goes to the Graveyard and Fork comes out")
+	var knife := _in(s, 0, "Malicevorous Knife", "hand")
+	s.normal_summon(0, knife, [])
+	check(s.players[0].field.has(fod), "Malicevorous Knife Normal Summoned: a Malicevorous monster comes back from the Graveyard")
+	# ---- Masquerade, Rank-Up into C104, Barian's Force taking a material.
+	s = _bare(1303)
+	var mq := _mon(s, 0, "Number 104: Masquerade", 0)
+	mq.overlays = [s._make(_cid("Kuriboh"), 0), s._make(_cid("Kuriboh"), 0)]
+	var top := s._make(_cid("Pot of Greed"), 1)
+	s.players[1].deck.append(top)
+	s.ignite(0, mq)
+	check(s.players[1].gy.has(top), "Masquerade sends the top card of their Deck to the Graveyard")
+	var c104 := _in(s, 0, "Number C104: Umbral Horror Masquerade", "extra")
+	var rum := _rst(s, 0, "Rank-Up-Magic Barian's Force")
+	var their_x := _mon(s, 1, "Number 39: Utopia", 0)
+	their_x.overlays = [s._make(_cid("Kuriboh"), 1)]
+	var their_st := _rst(s, 1, "Mirror Force", "set")
+	check(s.can_activate(0, rum), "Rank-Up-Magic Barian's Force can be activated on Masquerade")
+	s.activate(0, rum)
+	check(s.players[0].field.has(c104) and c104.overlays.has(mq) and c104.overlays.size() == 4 and their_x.overlays.is_empty(), "Barian's Force: Masquerade ranks up into C104 with its materials, and 1 material is taken from their Xyz Monster (%d)" % c104.overlays.size())
+	check(s.players[1].gy.has(their_st), "C104 Special Summoned: a Spell/Trap is destroyed")
+	# ---- Number 96: Dark Mist.
+	s = _bare(1304)
+	s.phase = DuelState.Phase.BATTLE
+	var mist := _mon(s, 0, "Number 96: Dark Mist", 0)
+	mist.summoned_turn = 1
+	mist.overlays = [s._make(_cid("Kuriboh"), 0)]
+	var foe := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, mist, foe)
+	check(s.responses(0, "attack").has(mist), "Dark Mist is offered when it attacks a monster")
+	s.respond(0, mist)
+	check(s.atk_of(foe, false) == 1500 and s.atk_of(mist, false) == 1600, "Dark Mist: their ATK is halved and Dark Mist gains it (got %d / %d)" % [s.atk_of(foe, false), s.atk_of(mist, false)])
+	s.resolve_attack()
+	check(s.players[1].gy.has(foe), "Dark Mist wins the battle")
+	# ---- Number 65: Djinn Buster and Masquerade answer monster effects only.
+	s = _bare(1305)
+	s.current = 1
+	var dj := _mon(s, 0, "Number 65: Djinn Buster", 0)
+	dj.overlays = [s._make(_cid("Kuriboh"), 0), s._make(_cid("Kuriboh"), 0)]
+	var pot := _rst(s, 1, "Pot of Greed")
+	s.chain_add(1, pot)
+	check(not s.responses(0, "chain", s.chain.back()).has(dj), "Djinn Buster does not answer a Spell Card")
+	s.chain_resolve()
+	var lp1: int = s.players[1].lp
+	s.chain = [{"player": 1, "card": s._make(_cid("Kuriboh"), 1), "kind": "fx", "spec": {}, "negated": false}]
+	check(s.responses(0, "chain", s.chain.back()).has(dj), "Djinn Buster answers a monster effect")
+	s.respond(0, dj)
+	check(s.chain.back().get("negated", false) and dj.overlays.is_empty() and s.players[1].lp == lp1 - 500, "Djinn Buster: 2 materials detached, the effect negated, 500 damage")
+	s.chain = []

@@ -267,7 +267,13 @@ const TUNE := {
 			"Accellight": 2, "Galaxy Expedition": 2, "Photon Lead": 1, "Galaxy Storm": 1, "Galaxy Zero": 1, "Monster Reborn": 1, "Pot of Greed": 1, "Mirror Force": 1},
 		"extra": {"Starliege Lord Galaxion": 2, "Starliege Paladynamo": 1, "Photon Papilloperative": 1, "Number 10: Illumiknight": 1}},
 	"vector": {"out": ["Charcoal Inpachi", "Archfiend Soldier", "Summoned Skull", "Ryu-Kishin Powered", "Vorse Raider", "Hinotama", "Mystic Plasma Zone", "Malevolent Nuzzler"],
-		"in": {"Mirror Force": 1}, "extra_out": ["Gagaga Cowboy"]},
+		"in": {"Mirror Force": 1}, "extra_out": ["Gagaga Cowboy"],
+		# Vector's best deck: Umbral Horrors and Malicevorous Fiends into Masquerade, ranked up with Barian's Force (v0.33.34).
+		"main": {"Umbral Horror Ghoul": 3, "Umbral Horror Unform": 3, "Umbral Horror Will o' the Wisp": 3, "Umbral Horror Ghost": 3, "Malicevorous Fork": 3, "Malicevorous Knife": 3,
+			"Archfiend Soldier": 3, "Summoned Skull": 1,
+			"Rank-Up-Magic Barian's Force": 2, "Rank-Up-Magic Limited Barian's Force": 1, "Monster Reborn": 1, "Pot of Greed": 1, "Dark Hole": 1, "Fissure": 2, "Mystical Space Typhoon": 2,
+			"Mirror Force": 2, "Shadow Spell": 2, "Dark Bribe": 2, "Sakuretsu Armor": 2},
+		"extra": {"Number 104: Masquerade": 2, "Number C104: Umbral Horror Masquerade": 1, "Number 65: Djinn Buster": 1, "Number 96: Dark Mist": 1}},
 }
 
 

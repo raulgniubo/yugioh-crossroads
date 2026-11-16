@@ -5249,4 +5249,10 @@ const ES := {
 	"%s can attack directly this turn. Your other monsters cannot attack": "%s puede atacar directamente este turno. Tus otros monstruos no pueden atacar",
 	"%s: Special Summon which Xyz Monster?": "%s: ¿qué Monstruo Xyz Invocas de Modo Especial?",
 	"Add a Level 3, 4 or 5 Fish monster from your Deck to your hand?": "¿Añadir a tu mano un monstruo Pez de Nivel 3, 4 o 5 de tu Deck?",
+	"%s: send 1 random card from their hand to the Graveyard and halve their LP?": "%s: ¿mandar 1 carta al azar de su mano al Cementerio y reducir sus LP a la mitad?",
+	"%s halves %s's ATK and gains %d": "%s reduce a la mitad el ATK de %s y gana %d",
+	"%s: Special Summon which Fiend from your hand?": "%s: ¿qué Demonio Invocas de Modo Especial de tu mano?",
+	"%s: destroy 1 Spell or Trap?": "%s: ¿destruir 1 Mágica o Trampa?",
+	"%s takes 1 material from %s": "%s toma 1 material de %s",
+	"Special Summon a Malicevorous monster from your Graveyard?": "¿Invocar de Modo Especial un monstruo Malicevorous de tu Cementerio?",
 }
