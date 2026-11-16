@@ -5,6 +5,30 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.24
+
+**Duel Academy and Tournaments brought up to the rest: school life has things in it, and you can see where you stand.**
+
+Duel Academy:
+
+- **Your duelist faces you.** The figure on the left used to turn all the way round and showed its back half the time. It faces the front now and turns a little each way.
+- **Every class duel has a class and an assignment.** The class is named (Summoning Theory, Spell and Trap Practice, Battle Tactics, Deck Building Workshop, Field Study) and comes with one of five assignments: win with 4000 or 6000 Life Points left, win in 10 or 8 turns, win without ever dropping below 3000. Do it while you win and it pays 1 Merit and 40 Duel Points on top. The result screen says if you did it or which one you missed.
+- **Merits and the prize case.** A class win is 2 Merits, an assignment 1, a passed exam 3, a tournament round 1, the tournament title 5. At 5, 10, 16, 24, 34, 46, 60 and 76 Merits the Academy's prize case opens and you get a card (from the decks of the Academy's own duelists, better ones the higher your dorm). A bar on the left shows how far the next one is. Rewards are no longer only Duel Points.
+- **The report card.** Friday's result now grades the week A to D (class wins count 2, assignments 1, the exam 3; 10 points is an A). An A week is one more card from the case. A promotion is two cards, graduating three.
+- **Your dorm keeps a table.** Seven named classmates score a little every school day; you score your Merits since you joined the dorm. The table shows the places around yours. Finish a week on top for 150 Duel Points. A new dorm starts you at the bottom of its table.
+- **The tournament bracket reads.** Names were cut off ("Yellow Dorm Stude"). The boxes are wider, a name is shown whole in a size that fits, the rounds have titles with the current one lit, and the prizes are written above it. While it is locked you see the empty bracket that is waiting.
+- **Before you enroll** the middle panel says how the school year goes in five steps instead of leaving half the screen empty, and your figure is shown large.
+- The three panels no longer overlap or run under the buttons.
+
+Tournaments:
+
+- **Titles and the next step on top.** "TITLES 1 / 4" with a star per title, and one sentence that says what to do next ("2 more Finals Badges in Domino City for the Domino Street Championship", "your match against Rin Akagi in the Academy Dorm Cup").
+- **Every tournament shows its four steps:** ENTER, BADGES (with the count), FINALS, TITLE, the done ones ticked and the one you are on lit. Under them one line in words: badges still to earn, who you face next and in which round, who knocked you out, or that the title is yours to defend.
+
+Under the hood: a duel now leaves its numbers behind (won, Life Points left, turns, lowest Life Points) for whoever started it. Two new tests: a week at the Academy from first class to promotion, and what Momentum is worth.
+
+Not done or not checked: the Academy screen was seen in pictures here in three states (not enrolled, Ra Yellow mid-week with a bracket, tournament locked), not the exam day, the result popup with the new lines, or Obelisk Blue. The week's rules are covered by a test, not by playing a week. The Academy on the island (walking around the school) is unchanged: this version is the menu mode. The classmates in the table are names and numbers, you cannot meet or duel them. No school events beyond classes, exam and tournament (no festival, no dorm rivalry duels): tell me if you want those.
+
 ## What is in 0.33.23
 
 **Turbo plays better: how you ride sets up the duel, a garage for your runner, and four race events.**

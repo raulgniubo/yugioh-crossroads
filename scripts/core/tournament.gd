@@ -221,3 +221,81 @@ static func resolve(id: String, won: bool) -> Dictionary:
 		s["stage"] = "out"
 	save()
 	return out
+
+
+const ORDER := ["domino", "academy", "turbo", "cup"]
+const PLACES := {"domino": "Domino City", "academy": "Duel Academy", "ride": "the Highway"}
+
+
+## How far along you are in one tournament, 0 to 4: not entered, earning badges, in the finals,
+## knocked out of them, champion.
+static func step(id: String) -> int:
+	var s := st(id)
+	var stage := str(s.get("stage", ""))
+	if stage == "won" or (titles(id) > 0 and stage == ""):
+		return 4
+	if stage == "finals":
+		return 2
+	if stage == "out":
+		return 3
+	if stage == "qualify":
+		return 1
+	return 0
+
+
+## One line on where this tournament stands for you right now.
+static func status(id: String) -> String:
+	var s := st(id)
+	var d: Dictionary = DEFS[id]
+	var miss := missing(id)
+	if not miss.is_empty():
+		return Loc.t("Locked: needs %s") % ", ".join(miss)
+	var stage := str(s.get("stage", ""))
+	var need := int(d.get("need", 0))
+	if stage == "qualify" and need > 0:
+		var left := maxi(0, need - int(s.get("badges", 0)))
+		if left == 0:
+			return Loc.t("All %d Finals Badges earned. The finals open at the desk.") % need
+		return Loc.t("Finals Badges %d / %d: beat %d more duelists there.") % [mini(need, int(s.get("badges", 0))), need, left]
+	if stage == "qualify":
+		return Loc.t("Entered. The finals open at the start line.")
+	if stage == "finals":
+		var m := my_match(id)
+		var rounds := ["Quarterfinal", "Semifinal", "Final"]
+		return Loc.t("%s next: you against %s.") % [Loc.t(rounds[clampi(int(s.get("round", 0)), 0, 2)]), Loc.t(str(m.get("name", "?")))]
+	if stage == "out":
+		return Loc.t("Knocked out by %s. Enter again at the desk.") % Loc.t(str(s.get("out_to", "?")))
+	if titles(id) > 0:
+		return Loc.t("You hold this title. Enter again to defend it.")
+	return Loc.t("Not entered yet. Sign up at the desk.") if str(d.get("district", "")) != "ride" else Loc.t("Not entered yet. Press G at the start line.")
+
+
+static func total_titles() -> int:
+	var n := 0
+	for id in ORDER:
+		if titles(id) > 0:
+			n += 1
+	return n
+
+
+## What to do next across all four, in one sentence.
+static func next_step() -> String:
+	for id in ORDER:
+		if titles(id) > 0 or not missing(id).is_empty():
+			continue
+		var d: Dictionary = DEFS[id]
+		var place := Loc.t(str(PLACES.get(str(d.get("district", "")), "")))
+		var name := Loc.t(str(d["name"]))
+		match step(id):
+			0, 3:
+				return Loc.t("Next: enter the %s in %s.") % [name, place]
+			1:
+				var left := maxi(0, int(d.get("need", 0)) - int(st(id).get("badges", 0)))
+				if left > 0:
+					return Loc.t("Next: %d more Finals Badges in %s for the %s.") % [left, place, name]
+				return Loc.t("Next: the finals of the %s are open in %s.") % [name, place]
+			2:
+				return Loc.t("Next: your match against %s in the %s.") % [Loc.t(str(my_match(id).get("name", "?"))), name]
+	if total_titles() >= ORDER.size():
+		return Loc.t("All four titles are yours. Enter any of them again to defend it.")
+	return Loc.t("Win the three titles to open the Crossroads Cup.")

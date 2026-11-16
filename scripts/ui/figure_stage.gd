@@ -6,6 +6,8 @@ extends SubViewportContainer
 var figure: RoamFigure
 var spin := 0.5
 var auto := true
+var sway := false      # face the front and turn a little each way, instead of going round
+var _sway_t := 0.0
 var _vp: SubViewport
 var _stage: Node3D
 
@@ -75,6 +77,10 @@ func show_person(key: String, uniform = null) -> void:
 
 
 func _process(delta: float) -> void:
+	if sway and figure:
+		_sway_t += delta
+		figure.rotation.y = 0.25 + sin(_sway_t * 0.55) * 0.5
+		return
 	if auto:
 		spin += delta * 0.45
 	if figure and is_instance_valid(figure):

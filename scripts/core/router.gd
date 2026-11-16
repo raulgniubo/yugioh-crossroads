@@ -13,6 +13,7 @@ var roam := {"district": "domino", "pos": null, "last_duel": "", "result": ""}
 ## Story position handed between the story player and story duels.
 var story := {}
 var story_result := ""
+var last_stats := {}      # the last duel, for whoever started it: {won, lp, turns, low}
 
 ## Set by the menu before starting a duel.
 var duel_config := {"player_deck": "yugi", "opponent_deck": "kaiba"}
@@ -349,6 +350,11 @@ func _debug_args() -> void:
 					Academy.d["day"] = 2
 					Academy.d["wins"] = 1
 					Academy.d["log"] = [true, false]
+					Academy.d["merits"] = 7
+					Academy.d["merit_prizes"] = 1
+					Academy.d["dorm_pts"] = 5
+					Academy.d["dorm_days"] = 4
+					Academy.d["week_assign"] = 1
 					if "tourney" in what:
 						Academy.tourney_new()
 				menu._on_academy()
@@ -357,6 +363,14 @@ func _debug_args() -> void:
 			elif what == "profile":
 				menu._open_profile(true)
 			elif what == "tournaments":
+				menu._on_tournaments()
+			elif what == "tournaments-demo":
+				# Dev: one tournament at each step, for a picture (not saved).
+				Tournament.load_data()
+				Tournament.st("domino").merge({"stage": "qualify", "badges": 4}, true)
+				Tournament.start_finals("academy")
+				Tournament.st("turbo").merge({"stage": "won", "titles": 1}, true)
+				Tournament._loaded = true
 				menu._on_tournaments()
 			elif what == "builder":
 				menu._on_deck()

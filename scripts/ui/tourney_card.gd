@@ -12,7 +12,7 @@ var _target := 0.0
 func _init(tid: String) -> void:
 	id = tid
 	def = Tournament.DEFS[tid]
-	custom_minimum_size = Vector2(0, 148)
+	custom_minimum_size = Vector2(0, 178)
 	focus_mode = Control.FOCUS_ALL
 	flat = true
 	var empty := StyleBoxEmpty.new()
@@ -77,32 +77,41 @@ func _draw() -> void:
 	para.max_lines_visible = 2
 	para.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	para.draw(get_canvas_item(), Vector2(x, 66.0), Color(0.8, 0.85, 0.94, 0.8 if not locked else 0.4))
-	# Where you stand.
+	# Where you stand: four steps from signing up to the title, the one you are on lit, then
+	# one line that says it in words.
 	var s := Tournament.st(id)
 	var titles := Tournament.titles(id)
-	var missing: Array = Tournament.missing(id)
 	var y := h - 18.0
 	var need := int(def.get("need", 0))
-	var stage := str(s.get("stage", ""))
-	var state := ""
-	var state_col := col.lightened(0.35)
-	if locked:
-		state = Loc.t("Locked: needs %s") % ", ".join(missing)
-		state_col = Color(0.72, 0.5, 0.52)
-	elif stage == "qualify" and need > 0:
-		var have := mini(int(s.get("badges", 0)), need)
-		for k in need:
-			var c := Vector2(x + 8.0 + k * 20.0, y - 5.0)
-			draw_circle(c, 7.0, Color(0, 0, 0, 0.4))
-			draw_circle(c, 5.5, col if k < have else Color(1, 1, 1, 0.14))
-			if k < have:
-				draw_circle(c - Vector2(1.5, 1.5), 1.6, Color(1, 1, 1, 0.7))
-		x += need * 20.0 + 10.0
-		state = Loc.t("Finals Badges %d / %d") % [have, need]
-	elif stage != "" and stage != "qualify":
-		state = Loc.t("Finals under way. Go to the desk.")
-	else:
-		state = Loc.t("Open. Go to the desk to enter.")
+	var at := Tournament.step(id)
+	var names := ["ENTER", "BADGES" if need > 0 else "HEAT", "FINALS", "TITLE"]
+	var done := [at >= 1, at >= 2 or (at == 1 and need > 0 and int(s.get("badges", 0)) >= need), at >= 4, at >= 4 or titles > 0]
+	var here: int = [0, 1, 2, 2, 3][at]
+	var sx := x
+	var sy := h - 50.0
+	for k in 4:
+		var lab := Loc.t(names[k])
+		if k == 1 and need > 0 and at == 1:
+			lab = "%s %d/%d" % [lab, mini(need, int(s.get("badges", 0))), need]
+		var lw := sf.get_string_size(lab, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 30.0
+		var chip := StyleBoxFlat.new()
+		chip.set_corner_radius_all(10)
+		var on: bool = done[k] and not locked
+		var now: bool = k == here and not locked and not (at == 4)
+		chip.bg_color = Color(col, 0.85) if on else (Color(col, 0.22) if now else Color(1, 1, 1, 0.06))
+		chip.set_border_width_all(1)
+		chip.border_color = Color(col.lightened(0.4), 0.95) if now else Color(1, 1, 1, 0.1)
+		draw_style_box(chip, Rect2(sx, sy - 14.0, lw, 20.0))
+		draw_string(sf, Vector2(sx + 22.0, sy + 0.5), lab, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.05, 0.06, 0.1) if on else Color(1, 1, 1, 0.85 if now else 0.4))
+		if on:
+			draw_string(sf, Vector2(sx + 8.0, sy + 0.5), "✓", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.05, 0.06, 0.1))
+		else:
+			draw_circle(Vector2(sx + 12.0, sy - 4.0), 3.0, Color(1, 1, 1, 0.8 if now else 0.25))
+		sx += lw + 6.0
+		if k < 3:
+			draw_line(Vector2(sx - 5.0, sy - 4.0), Vector2(sx - 1.0, sy - 4.0), Color(1, 1, 1, 0.25), 1.5)
+	var state := Tournament.status(id)
+	var state_col := Color(0.72, 0.5, 0.52) if locked else (UITheme.GOLD if at == 4 else col.lightened(0.35))
 	draw_string(sf, Vector2(x, y), state, HORIZONTAL_ALIGNMENT_LEFT, w - x - 190.0, 15, state_col)
 	# Top right: titles held. Bottom right: the purse.
 	if titles > 0:

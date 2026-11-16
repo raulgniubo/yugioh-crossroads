@@ -34,6 +34,8 @@ func _ready() -> void:
 		var all: Array = Characters.ORDER.filter(func(k): return CardData.has_deck(Characters.DATA[k]["deck"]))
 		_test_card_numbers()
 		_test_field_looks()
+		_test_academy_week()
+		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
 		_test_ai_targets()
@@ -2553,3 +2555,61 @@ func _test_ai_targets() -> void:
 	q.normal_summon(0, big, [worn])
 	check(q.players[0].field.has(big) and not q.players[1].spells.has(eq) and q.players[1].gy.has(eq), "Tribute the monster: the Equip Card is in its owner's Graveyard at once")
 	check(q.atk_of(big, false) == 2400, "and the new monster has nothing on it")
+
+
+
+## A week at the Academy: merits, the assignment, the prize case, the report card, the table.
+func _test_academy_week() -> void:
+	var keep: Dictionary = Academy.d.duplicate(true) if Academy._loaded else {}
+	var keep_dp: int = Collection.dp
+	var keep_owned: Dictionary = Collection.owned.duplicate()
+	Academy._loaded = true
+	Academy.d = Academy._defaults()
+	Academy.d["enrolled"] = true
+	var t := Academy.today()
+	check(str(t["kind"]) == "class" and str(t.get("subject", "")) != "" and not (t.get("assignment", {}) as Dictionary).is_empty(), "a class duel has a subject and an assignment")
+	# Win with the assignment done: 2 merits for the win, 1 for the assignment.
+	var a: Dictionary = t["assignment"]
+	Router.last_stats = {"won": true, "lp": 8000, "turns": 5, "low": 8000}
+	Academy.start(t)
+	var lines := Academy.resolve(true)
+	check(int(Academy.d["merits"]) == 3 and int(Academy.d["week_assign"]) == 1, "a class win with the assignment done is 3 merits (got %d)" % int(Academy.d["merits"]))
+	check(str(lines).contains("Assignment done"), "the result says the assignment was done")
+	# Win without it: 2 merits, and that reaches 5: the prize case opens once.
+	Router.last_stats = {"won": true, "lp": 100, "turns": 40, "low": 100}
+	Academy.start(Academy.today())
+	lines = Academy.resolve(true)
+	check(int(Academy.d["merits"]) == 5 and int(Academy.d["merit_prizes"]) == 1, "5 merits opens the prize case once (merits %d, prizes %d)" % [int(Academy.d["merits"]), int(Academy.d["merit_prizes"])])
+	check(str(lines).contains("Assignment missed") and str(lines).contains("prize case"), "the result names the missed assignment and the prize")
+	check(Academy.merit_goal() == [5, 10], "the next prize is at 10 merits")
+	# Lose the third class, then pass the exam: promoted, report card, new dorm table.
+	Academy.start(Academy.today())
+	Academy.resolve(false)
+	check(str(Academy.today()["kind"]) == "exam", "after three class days comes the exam")
+	Academy.start(Academy.today())
+	lines = Academy.resolve(true)
+	check(int(Academy.d["dorm"]) == 1 and int(Academy.d["week"]) == 2 and int(Academy.d["day"]) == 0, "passing the exam with two class wins moves you up a dorm")
+	check(str(lines).contains("Report card") and int(Academy.d["merits"]) == 8, "the exam gives a report card and 3 merits (merits %d)" % int(Academy.d["merits"]))
+	check(int(Academy.d["dorm_pts"]) == 0 and int(Academy.d["week_assign"]) == 0, "a new dorm starts its table from nothing")
+	var table := Academy.standings()
+	check(table.size() == 8 and Academy.my_rank() >= 1 and Academy.my_rank() <= 8, "the dorm table has eight names and you are on it")
+	check(Tournament.next_step() != "" and Tournament.status("domino") != "", "the tournaments say where you stand and what is next")
+	Academy.d = keep if not keep.is_empty() else Academy._defaults()
+	Collection.dp = keep_dp
+	Collection.owned = keep_owned
+	Router.last_stats = {}
+
+
+## What your Momentum on the highway is worth when a Turbo Duel starts.
+func _test_turbo_setup() -> void:
+	var ride = load("res://scripts/turbo/turbo_ride.gd").new()
+	var worth := {}
+	for m in [0.0, 24.0, 25.0, 49.0, 50.0, 74.0, 75.0, 99.0, 100.0]:
+		ride._mom = m
+		worth[m] = ride._mom_worth()
+	check(worth[0.0] == [0, false] and worth[25.0] == [1, false] and worth[49.0] == [1, false] and worth[50.0] == [2, true]
+		and worth[75.0] == [3, true] and worth[100.0] == [4, true], "Momentum: a Speed Counter every quarter, the first turn from half (%s)" % str(worth))
+	ride._gain(500.0)
+	check(is_equal_approx(ride._mom, 100.0), "Momentum stops at 100")
+	ride.free()
+	check(TurboGarage.gives("engine", 0) == "Standard" and TurboGarage.gives("engine", 2) == "+14 km/h", "garage parts say what they give")

@@ -279,6 +279,30 @@ func _on_tournaments() -> void:
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	p.body.add_child(hint)
 	Tournament.load_data()
+	# Where you stand over all four: a cup for each title, and what to do next.
+	var head := PanelContainer.new()
+	head.add_theme_stylebox_override("panel", UITheme.button_box(Color(0.12, 0.1, 0.04, 0.9), Color(UITheme.GOLD, 0.5), 14))
+	var hm := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		hm.add_theme_constant_override("margin_" + side, 16)
+	head.add_child(hm)
+	var hv := VBoxContainer.new()
+	hv.add_theme_constant_override("separation", 6)
+	hm.add_child(hv)
+	var trow := HBoxContainer.new()
+	trow.add_theme_constant_override("separation", 14)
+	trow.add_child(UITheme.label(Loc.t("TITLES  %d / %d") % [Tournament.total_titles(), Tournament.ORDER.size()], 30, UITheme.GOLD, UITheme.title_font()))
+	for tid in Tournament.ORDER:
+		var won: bool = Tournament.titles(str(tid)) > 0
+		var cup := UITheme.label("★" if won else "☆", 30, Color(Tournament.DEFS[tid]["color"]) if won else Color(1, 1, 1, 0.25))
+		cup.tooltip_text = Loc.t(str(Tournament.DEFS[tid]["name"]))
+		trow.add_child(cup)
+	hv.add_child(trow)
+	var nx := UITheme.label(Tournament.next_step(), 20, Color.WHITE, UITheme.semi_font())
+	nx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hv.add_child(nx)
+	hv.add_child(UITheme.label(Loc.t("Pick one to go there."), 15, UITheme.TEXT_DIM))
+	p.body.add_child(head)
 	for id in Tournament.DEFS:
 		var d: Dictionary = Tournament.DEFS[id]
 		var b := TourneyCard.new(str(id))

@@ -28,6 +28,22 @@ const EXAMS := [
 	{"char": "chazz", "name": "", "deck": "chazz", "difficulty": 2, "title": "Ra Yellow Promotion Exam"},
 	{"char": "zane", "name": "", "deck": "zane", "difficulty": 3, "title": "Graduation Duel"},
 ]
+## What a class is about, and the assignment that goes with a class duel: do it while winning
+## and it counts extra. `k` is what is checked, `n` the mark to reach.
+const SUBJECTS := ["Summoning Theory", "Spell and Trap Practice", "Battle Tactics", "Deck Building Workshop", "Field Study"]
+const ASSIGNMENTS := [
+	{"text": "Win with 4000 Life Points or more left.", "k": "lp", "n": 4000},
+	{"text": "Win in 10 turns or fewer.", "k": "turns", "n": 10},
+	{"text": "Win without ever dropping below 3000 Life Points.", "k": "low", "n": 3000},
+	{"text": "Win with 6000 Life Points or more left.", "k": "lp", "n": 6000},
+	{"text": "Win in 8 turns or fewer.", "k": "turns", "n": 8},
+]
+## Merits are your standing at the school. Each of these totals opens the prize case once.
+const MERIT_STEPS := [5, 10, 16, 24, 34, 46, 60, 76]
+const PRIZE_DECKS := ["jaden", "syrus", "alexis", "chazz", "zane", "aster"]
+const CLASSMATES := [["Mika Tanabe", "Rollo Finch", "Sen Okada", "Petra Lind", "Joss Varga", "Nell Abara", "Tomas Reyes"],
+	["Aya Morita", "Corin Hale", "Dev Rao", "Lise Brandt", "Hugo Sato", "Imani Cole", "Ren Fujii"],
+	["Victor Lang", "Seren Aoki", "Marcus Vale", "Iris Kwan", "Leon Dufort", "Hana Ito", "Elias Stroud"]]
 const TOURNEY_POOL := [["jaden", "jaden", 2], ["chazz", "chazz", 2], ["alexis", "alexis", 2], ["syrus", "syrus", 1],
 	["aster", "aster", 3], ["zane", "zane", 3], ["blue_student", "kaiba", 2], ["yellow_student", "rex", 1], ["red_student", "joey", 1]]
 const FALLBACK_DECKS := ["jaden", "joey", "kaiba", "yugi", "yusei", "yuma"]
@@ -39,7 +55,8 @@ static var last_good := true      # was the last resolved result good news?
 
 static func _defaults() -> Dictionary:
 	return {"enrolled": false, "dorm": 0, "week": 1, "day": 0, "wins": 0, "graduated": false, "log": [],
-		"pending": {}, "tourney": {}, "trophies": 0, "uniform": true, "class_wins": 0, "exams_passed": 0}
+		"pending": {}, "tourney": {}, "trophies": 0, "uniform": true, "class_wins": 0, "exams_passed": 0,
+		"merits": 0, "merit_prizes": 0, "week_assign": 0, "dorm_pts": 0, "dorm_days": 0, "prize_cards": 0}
 
 
 static func load_data() -> void:
@@ -120,7 +137,100 @@ static func today() -> Dictionary:
 	var pool: Array = CLASSES[dm]
 	var c: Array = pool[(int(d["week"]) * 3 + int(d["day"])) % pool.size()]
 	return {"kind": "class", "char": c[0], "name": _name(c[0], c[1]), "deck": _deck(c[2], int(d["week"]) + int(d["day"])),
-		"difficulty": c[3], "title": "Class Duel"}
+		"difficulty": c[3], "title": "Class Duel", "subject": subject(), "assignment": assignment()}
+
+
+## What today's class is about.
+static func subject() -> String:
+	load_data()
+	return SUBJECTS[(int(d["week"]) * 2 + int(d["day"]) + int(d["dorm"])) % SUBJECTS.size()]
+
+
+## Today's assignment: {text, k, n}.
+static func assignment() -> Dictionary:
+	load_data()
+	return ASSIGNMENTS[(int(d["week"]) * 3 + int(d["day"]) * 2 + int(d["dorm"])) % ASSIGNMENTS.size()]
+
+
+static func _assignment_met(a: Dictionary, stats: Dictionary) -> bool:
+	if stats.is_empty() or not stats.get("won", false):
+		return false
+	match str(a.get("k", "")):
+		"lp":
+			return int(stats.get("lp", 0)) >= int(a["n"])
+		"turns":
+			return int(stats.get("turns", 99)) <= int(a["n"])
+		"low":
+			return int(stats.get("low", 0)) >= int(a["n"])
+	return false
+
+
+## Merits earned so far and what the next prize from the case takes: [have, next step or 0].
+static func merit_goal() -> Array:
+	load_data()
+	var have := int(d.get("merits", 0))
+	for step in MERIT_STEPS:
+		if have < int(step):
+			return [have, int(step)]
+	return [have, 0]
+
+
+## Hand over `n` cards from the Academy's prize case. Returns lines to show.
+static func _prizes(n: int) -> Array:
+	var col = Engine.get_main_loop().root.get_node("Collection")
+	var out := []
+	for i in n:
+		var got := 0
+		for k in PRIZE_DECKS.size():
+			var deck: String = PRIZE_DECKS[(int(d.get("prize_cards", 0)) + k) % PRIZE_DECKS.size()]
+			got = col._prize_card("", deck, 3 + mini(2, int(d["dorm"])))
+			if got != 0:
+				break
+		d["prize_cards"] = int(d.get("prize_cards", 0)) + 1
+		if got == 0:
+			col.dp += 150
+			out.append("Prize case: +150 Duel Points")
+			continue
+		col.owned[got] = mini(3, int(col.owned.get(got, 0)) + 1)
+		out.append(Loc.t("Prize card: %s") % Loc.t(str(CardData.get_card(got).get("name", ""))))
+	return out
+
+
+## Add merits; every step passed opens the prize case. Returns lines to show.
+static func _merit(n: int) -> Array:
+	d["merits"] = int(d.get("merits", 0)) + n
+	d["dorm_pts"] = int(d.get("dorm_pts", 0)) + n
+	var out := []
+	while int(d.get("merit_prizes", 0)) < MERIT_STEPS.size() and int(d["merits"]) >= int(MERIT_STEPS[int(d["merit_prizes"])]):
+		d["merit_prizes"] = int(d["merit_prizes"]) + 1
+		out.append(Loc.t("%d Merits reached: the prize case opens.") % int(MERIT_STEPS[int(d["merit_prizes"]) - 1]))
+		out.append_array(_prizes(1))
+	return out
+
+
+## The standings of your dorm: [{name, pts, me}], best first. The others score a little every
+## school day; you score what you earn.
+static func standings() -> Array:
+	load_data()
+	var out := [{"name": "", "pts": int(d.get("dorm_pts", 0)), "me": true}]
+	var names: Array = CLASSMATES[clampi(int(d["dorm"]), 0, 2)]
+	for i in names.size():
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 7919 * (int(d["dorm"]) + 1) + i * 131
+		var pts := 0
+		for day in int(d.get("dorm_days", 0)):
+			pts += [0, 1, 1, 2, 2, 3][rng.randi() % 6]
+		out.append({"name": names[i], "pts": pts, "me": false})
+	out.sort_custom(func(a, b): return int(a["pts"]) > int(b["pts"]) or (int(a["pts"]) == int(b["pts"]) and a["me"]))
+	return out
+
+
+static func my_rank() -> int:
+	var st := standings()
+	for i in st.size():
+		if st[i]["me"]:
+			return i + 1
+	return st.size()
 
 
 static func duel_config(t: Dictionary) -> Dictionary:
@@ -138,7 +248,7 @@ static func duel_config(t: Dictionary) -> Dictionary:
 
 
 static func start(t: Dictionary) -> void:
-	d["pending"] = {"kind": t["kind"], "name": t["name"]}
+	d["pending"] = {"kind": t["kind"], "name": t["name"], "assignment": t.get("assignment", {})}
 	save()
 
 
@@ -168,15 +278,31 @@ static func resolve(won: bool) -> Array:
 			var lg: Array = d.get("log", [])
 			lg.append(won)
 			d["log"] = lg
+			d["dorm_days"] = int(d.get("dorm_days", 0)) + 1
 			if won:
 				d["wins"] = int(d["wins"]) + 1
 				d["class_wins"] = int(d.get("class_wins", 0)) + 1
 				col.dp += 60
-				out = ["CLASS DUEL WON", "That counts toward this week's grade.", "+60 Duel Points"]
+				out = ["CLASS DUEL WON", "That counts toward this week's grade.", "+60 Duel Points   ·   +2 Merits"]
+				var extra := _merit(2)
+				if _assignment_met(p.get("assignment", {}), Engine.get_main_loop().root.get_node("Router").last_stats):
+					d["week_assign"] = int(d.get("week_assign", 0)) + 1
+					col.dp += 40
+					out.append("Assignment done: +1 Merit, +40 Duel Points")
+					extra.append_array(_merit(1))
+				elif not (p.get("assignment", {}) as Dictionary).is_empty():
+					out.append(Loc.t("Assignment missed: %s") % Loc.t(str(p["assignment"].get("text", ""))))
+				out.append_array(extra)
 			else:
 				out = ["CLASS DUEL LOST", "No credit today. The week goes on."]
 		"exam":
 			var enough := int(d["wins"]) >= NEED_WINS
+			d["dorm_days"] = int(d.get("dorm_days", 0)) + 1
+			# The week's report card: class wins count double, assignments once, the exam three.
+			var score := int(d["wins"]) * 2 + int(d.get("week_assign", 0)) + (3 if won else 0)
+			var grade := "A" if score >= 10 else ("B" if score >= 7 else ("C" if score >= 4 else "D"))
+			var top := my_rank() == 1
+			var was_dorm := int(d["dorm"])
 			if won and enough:
 				d["exams_passed"] = int(d.get("exams_passed", 0)) + 1
 				if int(d["dorm"]) >= 2:
@@ -192,9 +318,27 @@ static func resolve(won: bool) -> Array:
 				out = ["EXAM PASSED", Loc.t("A pass, but you needed %d class wins this week to move up. Next week.") % NEED_WINS, "+150 Duel Points"]
 			else:
 				out = ["EXAM FAILED", "A new week starts Monday. Win your class duels and try again."]
+			out.append(Loc.t("Report card for the week: %s") % grade)
+			if won:
+				out.append("+3 Merits")
+				out.append_array(_merit(3))
+			if grade == "A":
+				out.append("An A week: one from the prize case.")
+				out.append_array(_prizes(1))
+			if top:
+				col.dp += 150
+				out.append("Top of your dorm this week: +150 Duel Points")
+			if int(d["dorm"]) != was_dorm:
+				# A new dorm: two cards from the case, and you start at the bottom of its table.
+				out.append_array(_prizes(2))
+				d["dorm_pts"] = 0
+				d["dorm_days"] = 0
+			elif d["graduated"] and won and enough:
+				out.append_array(_prizes(3))
 			d["week"] = int(d["week"]) + 1
 			d["day"] = 0
 			d["wins"] = 0
+			d["week_assign"] = 0
 			d["log"] = []
 		"tourney":
 			out = _tourney_result(won)
@@ -293,7 +437,12 @@ static func _tourney_result(won: bool) -> Array:
 		t["round"] = r + 1
 		d["trophies"] = int(d.get("trophies", 0)) + 1
 		col.dp += 1500
-		return ["TOURNAMENT CHAMPION", "You won the Academy Tournament. The trophy goes on your shelf.", "+1500 Duel Points"]
+		var champ := ["TOURNAMENT CHAMPION", "You won the Academy Tournament. The trophy goes on your shelf.", "+1500 Duel Points   ·   +5 Merits"]
+		champ.append_array(_prizes(1))
+		champ.append_array(_merit(5))
+		return champ
 	t["round"] = r + 1
 	col.dp += 200
-	return [Loc.t("%s WON") % Loc.t(tourney_round_name(r)).to_upper(), Loc.t("You are through to the %s.") % Loc.t(tourney_round_name(r + 1)).to_lower(), "+200 Duel Points"]
+	var through := [Loc.t("%s WON") % Loc.t(tourney_round_name(r)).to_upper(), Loc.t("You are through to the %s.") % Loc.t(tourney_round_name(r + 1)).to_lower(), "+200 Duel Points   ·   +1 Merit"]
+	through.append_array(_merit(1))
+	return through
