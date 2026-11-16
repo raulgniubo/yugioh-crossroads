@@ -195,7 +195,10 @@ const TUNE := {
 		"main": {"Toon World": 3, "Toon Table of Contents": 3, "Toon Summoned Skull": 2, "Blue-Eyes Toon Dragon": 1, "Manga Ryu-Ran": 1, "Toon Dark Magician Girl": 2, "Toon Gemini Elf": 3, "Toon Mermaid": 3, "Toon Goblin Attack Force": 2, "Toon Masked Sorcerer": 1, "Toon Cannon Soldier": 1, "Toon Alligator": 1, "Relinquished": 2, "Black Illusion Ritual": 2, "Thousand-Eyes Idol": 1, "Polymerization": 1, "Dark-Eyes Illusionist": 1, "Dark Rabbit": 1, "Parrot Dragon": 1, "Copycat": 1, "Pot of Greed": 1, "Monster Reborn": 1, "Change of Heart": 1, "Mystical Space Typhoon": 1, "Dark Hole": 1, "Mirror Force": 1, "Negate Attack": 1},
 		"extra": {"Thousand-Eyes Restrict": 1, "Bickuribox": 1}},
 	"weevil": {"out": ["Insect Knight", "Neo Bug", "Gokipon", "Dian Keto the Cure Master", "Just Desserts", "Fissure"],
-		"in": {"Big Insect": 2, "Flying Kamakiri #1": 2, "Gokibore": 2, "Man-Eater Bug": 2, "Needle Worm": 1, "Skull-Mark Ladybug": 1}},
+		"in": {"Big Insect": 2, "Flying Kamakiri #1": 2, "Gokibore": 2, "Man-Eater Bug": 2, "Needle Worm": 1, "Skull-Mark Ladybug": 1},
+		# Weevil's best deck: Insect Queen, Parasite Paracide, DNA Surgery with Insect Barrier, and the Great Moth line (v0.33.34).
+		"main": {"Insect Queen": 3, "Perfectly Ultimate Great Moth": 1, "Great Moth": 1, "Petit Moth": 2, "Cocoon of Evolution": 2, "Parasite Paracide": 2, "Pinch Hopper": 3, "Flying Kamakiri #1": 3, "Man-Eater Bug": 2, "Hercules Beetle": 1, "Gokibore": 1, "Killer Needle": 2, "Leghul": 1, "Skull-Mark Ladybug": 1, "Cockroach Knight": 1, "Insect Soldiers of the Sky": 1, "Insect Barrier": 3, "DNA Surgery": 3, "Multiplication of Ants": 1, "Insect Armor with Laser Cannon": 3, "Forest": 1, "Pot of Greed": 1, "Monster Reborn": 1},
+		"extra": {}},
 	"rex": {"out": ["Hinotama", "Dian Keto the Cure Master", "Hammer Shot", "Fissure", "Rush Recklessly"],
 		"in": {"Dark Driceratops": 1, "Frostosaurus": 1, "Serpent Night Dragon": 1, "Trakodon": 2, "Black Stego": 2, "Babycerasaurus": 2, "Hyper Hammerhead": 2, "Element Saurus": 2, "Fossil Excavation": 2}},
 	# Jaden's best deck: Neos, the Neo-Spacians and Contact Fusion, with the first Elemental HEROes behind them (v0.33.32).

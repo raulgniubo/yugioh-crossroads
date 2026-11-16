@@ -53,6 +53,7 @@ func _ready() -> void:
 		_test_cards_44()
 		_test_cards_45()
 		_test_cards_46()
+		_test_cards_47()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -5845,3 +5846,132 @@ func _test_cards_46() -> void:
 	check(act.get("do", "") == "ignite" and act.get("card") == ter, "and it takes the monster right away")
 	DuelAI.apply(s, 0, DuelAI._map_action(s, act))
 	check(s.players[0].spells.has(foe) and s.atk_of(ter, false) == 3000, "Thousand-Eyes Restrict holds Blue-Eyes (ATK %d)" % s.atk_of(ter, false))
+
+	# ---- Relinquished leaves: the monster it held goes to its owner's Graveyard.
+	s = _bare(1607)
+	rel = _mon(s, 0, "Relinquished", 0)
+	foe = _mon(s, 1, "Dark Magician", 0)
+	s.ignite(0, rel)
+	s._destroy(rel)
+	s._cleanup()
+	check(s.players[0].gy.has(rel) and s.players[1].gy.has(foe) and not s.players[0].spells.has(foe), "Relinquished destroyed by an effect: the monster it held goes to its owner's Graveyard")
+
+
+## The cards built in v0.33.34 for Weevil's best deck, each against its printed text.
+func _test_cards_47() -> void:
+	# ---- Cocoon of Evolution and the Moths.
+	var s := _bare(1701)
+	var moth := _mon(s, 0, "Petit Moth", 0)
+	var coc := _in(s, 0, "Cocoon of Evolution", "hand")
+	var great := _in(s, 0, "Great Moth", "hand")
+	var pugm := _in(s, 0, "Perfectly Ultimate Great Moth", "hand")
+	check(not s.can_normal_summon(0, great) and not s.can_special_from_hand(0, great), "Great Moth cannot be Normal Summoned, and not without the Cocoon")
+	check(s.can_hand_ignite(0, coc), "Cocoon of Evolution can be equipped to Petit Moth from the hand")
+	s.hand_ignite(0, coc)
+	check(s.players[0].spells.has(coc) and s.atk_of(moth, false) == 0 and s.def_of(moth) == 2000, "Petit Moth in the Cocoon is 0 / 2000 (got %d / %d)" % [s.atk_of(moth, false), s.def_of(moth)])
+	s.turn += 6
+	check(not s.can_special_from_hand(0, great), "Great Moth: not on your 3rd turn")
+	s.turn += 2
+	check(s.can_special_from_hand(0, great) and not s.can_special_from_hand(0, pugm), "Great Moth on your 4th turn, Perfectly Ultimate Great Moth not yet")
+	s.turn += 4
+	check(s.can_special_from_hand(0, pugm), "Perfectly Ultimate Great Moth on your 6th turn")
+	s.special_from_hand(0, pugm)
+	s._cleanup()
+	check(s.players[0].field.has(pugm) and s.players[0].gy.has(moth) and s.players[0].gy.has(coc), "Perfectly Ultimate Great Moth: Petit Moth is Tributed and the Cocoon goes with it")
+	# The Cocoon is destroyed: Petit Moth is itself again.
+	s = _bare(1702)
+	moth = _mon(s, 0, "Petit Moth", 0)
+	coc = _in(s, 0, "Cocoon of Evolution", "hand")
+	s.hand_ignite(0, coc)
+	s._destroy_st(coc)
+	check(s.atk_of(moth, false) == 300 and s.def_of(moth) == 200, "Cocoon destroyed: Petit Moth is 300 / 200 again")
+	# ---- DNA Surgery + Insect Barrier.
+	s = _bare(1703)
+	var dna := _rst(s, 0, "DNA Surgery", "set")
+	var wall := _rst(s, 0, "Insect Barrier")
+	var foe := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	foe.summoned_turn = 1
+	var mine := _mon(s, 0, "Celtic Guardian", 0)
+	s.activate(0, wall)
+	s.activate(0, dna)
+	s._cleanup()
+	check(str(foe.data.get("race", "")) == "Insect" and str(mine.data.get("race", "")) == "Insect", "DNA Surgery: every face-up monster is an Insect (the computer declares Insect with Insect Barrier)")
+	check(str(s._make(_cid("Blue-Eyes White Dragon"), 1).data.get("race", "")) == "Dragon", "DNA Surgery does not touch the card itself, only the monster on the field")
+	s.current = 1
+	s.phase = DuelState.Phase.BATTLE
+	check(not s.can_attack(1, foe), "Insect Barrier: the opponent's Insects cannot attack")
+	s._destroy_st(dna)
+	s._cleanup()
+	check(str(foe.data.get("race", "")) == "Dragon" and s.can_attack(1, foe), "DNA Surgery gone: Blue-Eyes is a Dragon again and can attack")
+	var copy := s.clone()
+	check(str(copy.players[1].monsters()[0].data.get("race", "")) == "Dragon", "a copy of the duel keeps the real Type")
+	# ---- Parasite Paracide.
+	s = _bare(1704)
+	var para := _mon(s, 0, "Parasite Paracide", 0, false)
+	foe = _mon(s, 1, "Dark Magician", 0)
+	para.face_up = true
+	EffectRunner.on_summon(s, 0, para, "flip")
+	check(s.players[1].deck.has(para) and not s.players[0].field.has(para), "Parasite Paracide: FLIP, it goes into the opponent's Deck")
+	s.players[1].deck.erase(para)
+	s.players[1].deck.append(para)
+	var lp1: int = s.players[1].lp
+	s._draw(1, 1)
+	s._cleanup()
+	check(s.players[1].field.has(para) and not para.attack_pos and s.players[1].lp == lp1 - 1000, "Parasite Paracide drawn: Special Summoned in Defense, 1000 damage")
+	check(str(foe.data.get("race", "")) == "Insect", "Parasite Paracide: their monsters are Insects")
+	s._destroy(para)
+	s._cleanup()
+	check(s.players[0].gy.has(para) and str(foe.data.get("race", "")) == "Spellcaster", "Parasite Paracide destroyed: it goes to its owner's Graveyard and Dark Magician is a Spellcaster again")
+	# ---- Insect Soldiers of the Sky, Cockroach Knight, Multiplication of Ants, Insect Armor, Eradicating Aerosol.
+	s = _bare(1705)
+	var sky := _mon(s, 0, "Insect Soldiers of the Sky", 0)
+	sky.summoned_turn = 1
+	var bird := _mon(s, 1, "Harpie Lady", 0)
+	s.phase = DuelState.Phase.BATTLE
+	var lpb: int = s.players[1].lp
+	s.declare_attack(0, sky, bird)
+	s.resolve_attack()
+	check(s.players[1].gy.has(bird) and s.players[1].lp == lpb - 700, "Insect Soldiers of the Sky: 2000 ATK attacking a WIND monster (LP %d)" % s.players[1].lp)
+	s = _bare(1706)
+	var roach := _mon(s, 0, "Cockroach Knight", 0)
+	s._destroy(roach)
+	s._cleanup()
+	check(s.players[0].deck.back() == roach and not s.players[0].gy.has(roach), "Cockroach Knight: back on top of the Deck")
+	s = _bare(1707)
+	var bug := _mon(s, 0, "Basic Insect", 0)
+	var ants := _rst(s, 0, "Multiplication of Ants")
+	s.activate(0, ants)
+	var toks: Array = s.players[0].monsters().filter(func(m): return m.is_token())
+	check(s.players[0].gy.has(bug) and toks.size() == 2 and toks[0].atk() == 500 and toks[0].def() == 1200, "Multiplication of Ants: Tribute an Insect for 2 Army Ant Tokens (500 / 1200)")
+	check(not s.normal_summoned and s.players[0].no_summon_turn != s.turn, "Multiplication of Ants does not stop your other Summons")
+	s = _bare(1708)
+	bug = _mon(s, 0, "Basic Insect", 0)
+	var not_bug := _mon(s, 0, "Celtic Guardian", 1)
+	var armor := _rst(s, 0, "Insect Armor with Laser Cannon")
+	check(s.can_activate(0, armor), "Insect Armor with Laser Cannon can go on an Insect")
+	s.activate(0, armor, bug)
+	check(armor.equipped_to == bug and s.atk_of(bug, false) == 1200, "Insect Armor with Laser Cannon: +700 ATK (got %d)" % s.atk_of(bug, false))
+	var spray := _rst(s, 0, "Eradicating Aerosol")
+	foe = _mon(s, 1, "Dark Magician", 0)
+	s.activate(0, spray)
+	s._cleanup()
+	check(s.players[0].gy.has(bug) and s.players[0].field.has(not_bug) and s.players[1].field.has(foe), "Eradicating Aerosol destroys the Insects and nothing else")
+
+	# ---- Pinch Hopper cannot bring out a Moth that must be Summoned its own way; a fresh monster is an Insect at once.
+	s = _bare(1709)
+	var hop := _mon(s, 0, "Pinch Hopper", 0)
+	pugm = _in(s, 0, "Perfectly Ultimate Great Moth", "hand")
+	great = _in(s, 0, "Great Moth", "hand")
+	s._destroy(hop)
+	s._cleanup()
+	check(s.players[0].hand.has(pugm) and s.players[0].hand.has(great), "Pinch Hopper cannot Special Summon Great Moth or Perfectly Ultimate Great Moth")
+	s = _bare(1710)
+	dna = _rst(s, 0, "DNA Surgery", "set")
+	wall = _rst(s, 0, "Insect Barrier")
+	s.activate(0, wall)
+	s.activate(0, dna)
+	s.current = 1
+	s.phase = DuelState.Phase.BATTLE
+	foe = _mon(s, 1, "Dark Magician", 0)
+	foe.summoned_turn = 1
+	check(not s.can_attack(1, foe), "A monster that just arrived is an Insect before it can attack")

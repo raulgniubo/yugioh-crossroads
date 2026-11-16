@@ -108,6 +108,16 @@ const FX := {
 	"Elemental HERO Thunder Giant": {"note": "Once per turn, discard 1: destroy a monster with less original ATK.",
 		"ignite": {"cost": "discard", "do": [["destroy", "atk_below_self"]], "label": "Discard 1: destroy a weaker monster"}},
 	"Elemental HERO Rampart Blaster": {"note": "Can attack directly while it is in Defense Position. When it does, its ATK is halved for that damage calculation.", "direct_from_def": true},
+	# ---- Weevil's best deck (v0.33.34)
+	"Cocoon of Evolution": {"note": "From your hand: equip it to a Petit Moth you control. While it is equipped, that Petit Moth's original ATK and DEF are 0 / 2000.",
+		"hand_ignite": {"equip_to": "Petit Moth", "label": "Equip it to Petit Moth"}},
+	"Larvae Moth": {"note": "Cannot be Normal Summoned or Set. Special Summon it by Tributing a Petit Moth on your 2nd turn or later after Cocoon of Evolution was equipped to it.", "special_cocoon": 2, "no_special": true},
+	"Great Moth": {"note": "Cannot be Normal Summoned or Set. Special Summon it by Tributing a Petit Moth on your 4th turn or later after Cocoon of Evolution was equipped to it.", "special_cocoon": 4, "no_special": true},
+	"Perfectly Ultimate Great Moth": {"note": "Cannot be Normal Summoned or Set. Special Summon it from your hand by Tributing a Petit Moth on your 6th turn or later after Cocoon of Evolution was equipped to it.", "special_cocoon": 6},
+	"Parasite Paracide": {"note": "FLIP: it is shuffled into your opponent's Deck. When they draw it: it is Special Summoned to their field in Defense Position, they take 1000 damage, and all their monsters are Insects while it is there.",
+		"flip": [["parasite"]]},
+	"Insect Soldiers of the Sky": {"note": "Gains 1000 ATK when it attacks a WIND monster.", "atk_attack_attr": ["WIND", 1000]},
+	"Cockroach Knight": {"note": "Sent to the Graveyard: it goes back to the top of your Deck.", "sent_gy": [["self_deck_top"]]},
 	# ---- Pegasus's best deck (v0.33.34)
 	"Blue-Eyes Toon Dragon": {"note": "Special Summon from your hand by Tributing 2 monsters while you control Toon World. Not the turn it arrives; pay 500 LP to attack. Attacks directly unless they have a Toon, then it must attack a Toon. Destroyed if Toon World is destroyed.",
 		"toon": 2, "special_toon": 2, "summon_sick": true, "attack_cost": 500},

@@ -46,6 +46,45 @@ static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionar
 	if level > EASY:
 		# Relinquished and Thousand-Eyes Restrict take a monster before anything else is played.
 		if p == s.current and s._in_main():
+			# The Great Moth line: the Cocoon goes on a face-up Petit Moth, the Moth turns to Defense,
+			# and the biggest Moth that is ready comes out.
+			var grown = null
+			for h in s.players[p].hand:
+				if h.is_monster() and int(CardEffects.of(h.cname()).get("special_cocoon", 0)) >= 4 and s.can_special_from_hand(p, h) and (grown == null or h.atk() > grown.atk()):
+					grown = h
+			if grown != null:
+				return {"do": "special_hand", "card": grown}
+			for h in s.players[p].hand:
+				if h.is_monster() and CardEffects.of(h.cname()).get("hand_ignite", {}).has("equip_to") and s.can_hand_ignite(p, h):
+					return {"do": "hand_ignite", "card": h}
+			for m in s.players[p].monsters():
+				if m.face_up and m.attack_pos and s.cocooned(m) != null and s.can_change_position(p, m):
+					return {"do": "position", "card": m}
+			# Petit Moth comes out face-up for its Cocoon once Insect Barrier holds the other side still.
+			var me_w := s.players[p]
+			var held_still: bool = not me_w.spells.filter(func(x): return x != null and x.face_up and x.cname() == "Insect Barrier").is_empty() \
+					and s.players[s.opponent(p)].monsters().filter(func(m): return m.face_up and str(m.data.get("race", "")) != "Insect").is_empty() \
+					and not (me_w.spells + s.players[s.opponent(p)].spells).filter(func(x): return x != null and x.face_up and x.cname() == "DNA Surgery").is_empty()
+			if held_still and not me_w.hand.filter(func(h): return h.cname() == "Cocoon of Evolution").is_empty():
+				for m in me_w.monsters():
+					if not m.face_up and m.cname() == "Petit Moth" and s.can_flip_summon(p, m):
+						return {"do": "flip", "card": m}
+				if me_w.monsters().filter(func(m): return m.cname() == "Petit Moth").is_empty():
+					for h in me_w.hand:
+						if h.cname() == "Petit Moth" and s.can_normal_summon(p, h) and me_w.no_summon_turn != s.turn:
+							return {"do": "summon", "card": h, "tributes": []}
+			# Leghul attacks directly: behind the Barrier it is a free 300 a turn.
+			if held_still:
+				for h in me_w.hand:
+					if h.cname() == "Leghul" and s.can_normal_summon(p, h) and me_w.no_summon_turn != s.turn:
+						return {"do": "summon", "card": h, "tributes": []}
+			# Insect Queen for two small monsters, once nothing across the table can attack her.
+			for h in me_w.hand:
+				if held_still and h.cname() == "Insect Queen" and s.can_normal_summon(p, h) and me_w.no_summon_turn != s.turn:
+					var small: Array = me_w.monsters().filter(func(m): return not m.is_token() and m.atk() <= 1500 and s.cocooned(m) == null)
+					small.sort_custom(func(x, y): return x.atk() < y.atk())
+					if small.size() >= 2:
+						return {"do": "summon", "card": h, "tributes": small.slice(0, 2)}
 			# (Thousand-Eyes Restrict first, when there is a monster across the table for it to take.)
 			if not s.players[s.opponent(p)].monsters().is_empty():
 				for h in s.players[p].hand:
@@ -93,6 +132,8 @@ static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionar
 ## no target.
 static func has_use(s: DuelState, p: int, c) -> bool:
 	var sp := SpellRules.spec(c)
+	if str(sp.get("ai_if", "")) == "insect_queen" and s.players[p].monsters().filter(func(m): return m.face_up and m.cname() == "Insect Queen").is_empty():
+		return false   # Multiplication of Ants: the Tokens are for Insect Queen's attacks, nothing else
 	if sp.is_empty() or sp.has("legacy") or not SpellRules._needs_target(sp):
 		return true
 	return SpellRules.auto_target(s, p, c) != null

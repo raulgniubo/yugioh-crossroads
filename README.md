@@ -7,7 +7,7 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
 ## What is in 0.33.34
 
-Six more duelists got their best decks: **Kite, Shark, Vector, Bakura, Marik and Pegasus**. 59 cards built, each against its card text, each with a test.
+Seven more duelists got their best decks: **Kite, Shark, Vector, Bakura, Marik, Pegasus and Weevil**. 71 cards built, each against its card text, each with a test.
 
 ### Kite
 
@@ -57,8 +57,19 @@ Six more duelists got their best decks: **Kite, Shark, Vector, Bakura, Marik and
 - **Relinquished** takes one of the opponent's monsters into your Spell & Trap Zone, has its ATK and DEF, loses it instead of dying in battle, and sends the battle damage you take back at the opponent. **Thousand-Eyes Restrict** does the same and stops every other monster from attacking or changing position.
 - The computer plays Toon World as soon as it has a Toon for it, searches it with Toon Table of Contents when it has none, brings the big Toons out when the Tributes are worth less, and takes a monster with Relinquished before it does anything else.
 
+### Weevil
+
+**Insect Queen, Parasite Paracide, DNA Surgery with Insect Barrier, and the Great Moth line.** 12 cards built.
+
+- **Main, 40:** Insect Queen x3, Perfectly Ultimate Great Moth, Great Moth, Petit Moth x2, Cocoon of Evolution x2, Parasite Paracide x2, Pinch Hopper x3, Flying Kamakiri #1 x3, Man-Eater Bug x2, Killer Needle x2, Hercules Beetle, Gokibore, Leghul, Skull-Mark Ladybug, Cockroach Knight, Insect Soldiers of the Sky; Insect Barrier x3, DNA Surgery x3, Insect Armor with Laser Cannon x3, Multiplication of Ants, Forest, Pot of Greed, Monster Reborn.
+- **Monsters can change Type now.** DNA Surgery makes every face-up monster the Type you declare (all 25 Types, in pages), and Parasite Paracide turns the other side into Insects after it crawls out of their Deck. Every card in the game that reads a monster's Type sees the changed one, and the monster gets its own Type back when it leaves the field.
+- **The lock:** DNA Surgery on Insect plus Insect Barrier, and nothing across the table can attack. Behind it the computer brings out Insect Queen, sends Leghul in directly and starts the Cocoon.
+- **The Great Moth line:** Cocoon of Evolution goes from the hand onto a face-up Petit Moth (0 / 2000). Larvae Moth on your 2nd turn after that, Great Moth on your 4th, Perfectly Ultimate Great Moth on your 6th.
+- **Fixed on the way:** Pinch Hopper could Special Summon a monster that must be Summoned its own way (it pulled Perfectly Ultimate Great Moth straight out of the hand). Effects that Special Summon from the hand or Deck now skip those monsters.
+
 **Not done or not checked:**
 
+- Still to build for Weevil: Kiseitai. Weevil on Hard won 5 of 30 test duels, the weakest deck in the game: small Insects, and the lock needs two cards. Great Moth and Larvae Moth are played as "on that turn or later" (the old card text says "on the 4th turn"). The DNA Surgery Type list on screen and a Cocoon sitting in the Spell & Trap Zone were not watched on screen (the rules tests pass). Two computers both hiding behind Insect Barrier can sit there until one runs out of cards.
 - Still to build for Pegasus: Jigen Bakudan, Dragon Capture Jar, Gorgon's Eye, Doppelganger, Toon Defense, Toon Rollback, the newer Toons (Toon Dark Magician, Red-Eyes Toon Dragon, Toon Kingdom and so on). Pegasus on Hard won 9 of 30 test duels, the lowest of the decks so far: Toons pay Life Points and wait a turn before they attack. A monster sitting in the Spell & Trap Zone under Relinquished was not watched on screen (the rules tests pass).
 - Still to build for Marik: Ra's other forms and One Turn Kill text beyond the card in the game files, Helpoemer, Viser Des, Makyura the Destructor, Juragedo, Jam Breeding Machine, Coffin Seller, Metal Reflect Slime, Rope of Life, Left Arm Offering, Machine Duplication. Marik on Hard won 18 of 30 test duels. The computer only pays for Ra's ATK when that wins the duel on the spot.
 - Still to build for Bakura: Diabound Kernel, Dark Sanctuary, Dark Spirit of the Silent, Multiple Destruction, Dark Designator, Ectoplasmer. Destiny Board's messages appearing in the Spell & Trap Zone was not watched on screen (the rules test passes). Bakura on Hard won 12 of 30 test duels.

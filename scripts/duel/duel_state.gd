@@ -81,6 +81,9 @@ class CardInst:
 		return data.get("frame", "") == "token"
 
 	func reset_mods() -> void:
+		if tags.has("race_was"):
+			data = data.duplicate()   # (DNA Surgery / Parasite Paracide: its own Type comes back)
+			data["race"] = tags["race_was"]
 		tags = {}
 		lv_set = 0
 		lv_turn = -1
@@ -688,7 +691,9 @@ func finish_turn() -> Array:
 	if over > 0:
 		# Hand limit: the turn player discards down to six, their pick.
 		var by_value: Array = ps.hand.duplicate()
-		by_value.sort_custom(func(a, b): return _card_value(a) < _card_value(b))
+		# (Cockroach Knight would come straight back to the top of the Deck, turn after turn: it is the last card picked.)
+		var loops := func(x) -> int: return 1 if x.is_monster() and str(CardEffects.of(x.cname()).get("sent_gy", [])).contains("self_deck_top") else 0
+		by_value.sort_custom(func(a, b): return (loops.call(a) < loops.call(b)) or (loops.call(a) == loops.call(b) and _card_value(a) < _card_value(b)))
 		for worst in choose(current, Loc.t("Hand limit: discard %d card%s") % [over, "" if over == 1 else "s"], ps.hand, over, by_value.slice(0, over)):
 			ps.hand.erase(worst)
 			_to_gy(ps, worst)
@@ -740,6 +745,18 @@ func _draw(p: int, count := 1) -> Array:
 		# A draw a card effect gave you counts as "added from your Deck to your hand by a card effect" (Watapon).
 		for d in drawn:
 			events.append_array(EffectRunner.added_by_effect(self, p, d))
+	# Parasite Paracide: "If you draw this card after it was added to your Deck by its effect:
+	# Special Summon it in Defense Position, and if you do, take 1000 damage."
+	for d in drawn:
+		if d.tags.get("parasite", false) and players[p].hand.has(d) and not is_over() and players[p].free_zone() != -1:
+			players[p].hand.erase(d)
+			events.append({"type": "effect", "player": p, "card": d, "text": Loc.t("%s crawls out of the Deck!") % d.cname()})
+			events.append_array(_special(p, d, "effect", "def"))
+			if players[p].field.has(d):
+				d.tags["parasite_live"] = true
+				events.append_array(_damage(p, 1000))
+				_apply_races()
+				events.append({"type": "effect", "player": p, "card": d, "text": Loc.t("All of %s's monsters are Insects now") % players[p].name})
 	# "When you draw a card(s) while you have no cards in your hand, and you draw this card: You can
 	# reveal this card; Special Summon it from your hand" (Infernity Archfiend).
 	if was_empty and not is_over():
@@ -1406,6 +1423,7 @@ func _lowest_face_up(p: int) -> CardInst:
 # ------------------------------------------------------------------ battle
 
 func can_attack(p: int, c: CardInst) -> bool:
+	_apply_races()   # (a monster Summoned a moment ago is already the Type DNA Surgery declared)
 	return (p == current and phase == Phase.BATTLE and not is_over() and players[p].field.has(c)
 			and c.face_up and (c.attack_pos or EffectRunner.fx(c).get("direct_from_def", false)) and attacks_left(c) > 0 and SpellRules.can_attack(self, p, c)
 			and not (players[p].only_attacker_turn == turn and players[p].only_attacker != c.uid)
@@ -2318,7 +2336,7 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	var by_opp_any := not by_battle and effect_by != -1 and effect_by != c.owner
 	var by_opp_fx := by_opp_any and c.face_up
 	# "If the equipped monster would be destroyed by battle or card effect, destroy this card instead."
-	var riders := unions_on(c).filter(func(u): return not EffectRunner.fx(u).get("union", {}).get("no_shield", false))
+	var riders := unions_on(c).filter(func(u): return not EffectRunner.fx(u).get("union", {}).get("no_shield", false) and not EffectRunner.fx(u).get("hand_ignite", {}).has("equip_to"))
 	if not by_battle and c.tags.has("absorbed"):
 		riders = riders.filter(func(u): return u.uid != int(c.tags["absorbed"]))   # (Relinquished's monster only takes its place in battle)
 	if not by_battle:
@@ -2570,8 +2588,51 @@ func _monster_left(m: CardInst) -> Array:
 
 
 ## Sweep up Equip cards whose monster is gone (tributed, used as material...).
+## DNA Surgery ("All face-up monsters on the field become that Type") and Parasite Paracide
+## ("All monsters controlled by the player that Summoned this card by its effect become Insect").
+## A changed monster gets its own copy of its card data, so every Type check in the game sees it.
+func _apply_races() -> void:
+	var dna := ""
+	for q in 2:
+		for st in players[q].spells:
+			if st != null and st.face_up and not st.is_monster() and SpellRules.spec(st).get("dna", false) and st.tags.has("declared") and not SpellRules.blocked(self, st):
+				dna = str(st.tags["declared"])
+	for q in 2:
+		var para := false
+		for m in players[q].monsters():
+			if m.face_up and not m.negated and m.tags.get("parasite_live", false):
+				para = true
+		for m in players[q].monsters():
+			var want := ""
+			if m.face_up and dna != "":
+				want = dna
+			elif para:
+				want = "Insect"
+			var now := str(m.data.get("race", ""))
+			if want != "" and now != want:
+				if not m.tags.has("race_was"):
+					m.tags["race_was"] = now
+				m.data = m.data.duplicate()
+				m.data["race"] = want
+			elif want == "" and m.tags.has("race_was"):
+				m.data = m.data.duplicate()
+				m.data["race"] = m.tags["race_was"]
+				m.tags.erase("race_was")
+
+
+## Is this Petit Moth wrapped in a Cocoon of Evolution right now?
+func cocooned(m: CardInst) -> CardInst:
+	if not m.tags.has("cocoon_uid"):
+		return null
+	for st in players[m.owner].spells:
+		if st != null and st.face_up and st.uid == int(m.tags["cocoon_uid"]) and st.equipped_to == m:
+			return st
+	return null
+
+
 func _cleanup() -> Array:
 	var events := []
+	_apply_races()
 	if not pending_events.is_empty():
 		events.append_array(pending_events)
 		pending_events = []

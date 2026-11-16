@@ -119,6 +119,13 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Weevil's cards (v0.33.34)
+	"Insect Barrier": {"k": "cont", "ai": "always", "opp_race_no_attack": "Insect"},
+	"DNA Surgery": {"k": "ctrap", "win": ["free"], "ai": "always", "dna": true, "do": [["dna"]]},
+	"Multiplication of Ants": {"k": "normal", "ai_if": "insect_queen", "cost": "tribute_f", "cost_f": {"race": "Insect"},
+		"do": [["tokens", 2, "Army Ant Token", 22493812, 500, 1200, 4, "EARTH", "Insect", "free"]]},
+	"Insect Armor with Laser Cannon": {"k": "equip", "must": {"race": "Insect"}, "atk": 700},
+	"Eradicating Aerosol": {"k": "normal", "do": [["destroy_race", "Insect"]]},
 	# ---------------------------------------------------------------- Pegasus's cards (v0.33.34)
 	"Black Illusion Ritual": {"k": "ritual", "ai": "relinquished", "do": [["ritual"]]},
 	"Toon Table of Contents": {"k": "normal", "ai": "always", "do": [["search", {"has": "Toon", "monster": false}]]},
@@ -2104,6 +2111,41 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 					if o["card"] == want:
 						events.append_array(s._do_fusion(p, o, true))
 						break
+		"dna":
+			# DNA Surgery: "Activate this card by declaring 1 Monster Type."
+			var kinds: Array = TYPES.duplicate()
+			var first_k := "Insect"
+			var has_barrier: bool = not (ps.deck + ps.hand + ps.spells).filter(func(x): return x != null and x.cname() == "Insect Barrier").is_empty()
+			if not has_barrier:
+				var top_m = null
+				for m in ps.monsters():
+					if m.face_up and (top_m == null or m.atk() > top_m.atk()):
+						top_m = m
+				if top_m != null and kinds.has(str(top_m.data.get("race", ""))):
+					first_k = str(top_m.data.get("race", ""))
+			kinds.erase(first_k)
+			kinds.push_front(first_k)
+			var said := ""
+			var from_k := 0
+			while said == "":
+				var page: Array = kinds.slice(from_k, from_k + 7)
+				var labels_k: Array = page.map(func(x): return Loc.t(str(x)))
+				if from_k + 7 < kinds.size():
+					labels_k.append(Loc.t("More Types"))
+				var got_k: int = s.choose_option(p, Loc.t("%s: declare 1 Monster Type") % c.cname(), labels_k, 0, c)
+				if got_k < page.size():
+					said = str(page[got_k])
+				else:
+					from_k += 7
+			c.tags["declared"] = said
+			events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s: every face-up monster is now %s") % [c.cname(), Loc.t(said)]})
+			s._apply_races()
+		"destroy_race":
+			# Eradicating Aerosol: "Destroy all Insect monsters on the field."
+			for q in [p, s.opponent(p)]:
+				for m in s.players[q].monsters():
+					if m.face_up and str(m.data.get("race", "")) == str(a[1]):
+						events.append_array(s._destroy(m))
 		"tokens":
 			# ["tokens", n, name, id, atk, def, level, attribute, race]: n Tokens in Defense Position.
 			CardData.TOKENS[int(a[3])] = {"name": str(a[2]), "frame": "token", "atk": int(a[4]), "def": int(a[5]), "level": int(a[6]),
@@ -2349,6 +2391,10 @@ static func equip_flag(s: DuelState, c, flag: String) -> bool:
 
 
 ## Can this monster declare an attack, as far as Spell/Trap cards are concerned?
+const TYPES := ["Aqua", "Beast", "Beast-Warrior", "Cyberse", "Dinosaur", "Divine-Beast", "Dragon", "Fairy", "Fiend", "Fish", "Illusion", "Insect", "Machine",
+		"Plant", "Psychic", "Pyro", "Reptile", "Rock", "Sea Serpent", "Spellcaster", "Thunder", "Warrior", "Winged Beast", "Wyrm", "Zombie"]
+
+
 static func can_attack(s: DuelState, p: int, c) -> bool:
 	if c.summoned_turn == s.turn and field_flag(s, "summon_sick_all"):
 		return false   # Vengeful Bog Spirit: "Monsters cannot attack the turn they are Summoned."
@@ -2361,6 +2407,8 @@ static func can_attack(s: DuelState, p: int, c) -> bool:
 			var sp := spec(st)
 			if sp.has("lock_atk_min") and s.atk_of(c, false) >= int(sp["lock_atk_min"]):
 				return false
+			if sp.has("opp_race_no_attack") and q != p and c.face_up and str(c.data.get("race", "")) == str(sp["opp_race_no_attack"]):
+				return false   # Insect Barrier: "Insect-Type monsters your opponent controls cannot declare an attack."
 			if sp.has("lock_lv_min") and c.frame() != "xyz" and c.level() >= int(sp["lock_lv_min"]):
 				return false
 			if sp.get("one_attack", false) and s.players[p].attacks_this_turn >= 1 and s.players[p].attacks_turn == s.turn:

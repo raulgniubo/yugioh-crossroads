@@ -37,6 +37,8 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 			b += int(f.get("atk_attack", 0))
 			if not vs.attack_pos:
 				b += int(f.get("atk_vs_def", 0))
+			if f.has("atk_attack_attr") and vs.face_up and str(vs.data.get("attribute", "")) == str(f["atk_attack_attr"][0]):
+				b += int(f["atk_attack_attr"][1])   # Insect Soldiers of the Sky
 		else:
 			b += int(f.get("atk_direct", 0))
 	if battling and attacking and f.get("nitro", false) and s.players[c.owner].spell_turn == s.turn and c.attack_count <= 1:
@@ -54,6 +56,8 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 	b -= int(f.get("lose_per_counter", 0)) * c.counter   # Black-Winged Dragon
 	if f.get("absorb", false) and s.absorbed_by(c) != null:
 		b += s.absorbed_by(c).atk()   # Relinquished: "This card's ATK/DEF become equal to that equipped monster's."
+	if c.tags.has("cocoon_uid") and s.cocooned(c) != null:
+		b += s.cocooned(c).atk() - c.atk()   # Cocoon of Evolution: its original ATK/DEF become the Cocoon's
 	if battling and attacking and vs != null and vs.cname().contains("Blackwing"):
 		# Blackwing - Gust the Backblast: a monster attacking one of your "Blackwing" monsters loses 300 ATK during the Damage Step only.
 		for g in s.players[vs.owner].monsters():
@@ -114,6 +118,8 @@ static func def_bonus(s: DuelState, c) -> int:
 		u += int(c.tags.get("tmp_def", 0))   # Blustering Winds
 	if f.get("absorb", false) and s.absorbed_by(c) != null:
 		u += s.absorbed_by(c).def()
+	if c.tags.has("cocoon_uid") and s.cocooned(c) != null:
+		u += s.cocooned(c).def() - c.def()
 	if int(c.tags.get("cka", -1)) == s.turn and s.phase == DuelState.Phase.BATTLE:
 		u += c.atk() - c.def()   # Chaos King Archfiend switched it
 	if f.has("def_per"):
@@ -442,6 +448,8 @@ static func can_special_hand(s: DuelState, p: int, c) -> bool:
 	if f.has("special_tribute_f"):
 		# Sorcerer of Dark Magic: Tribute 2 Level 6 or higher Spellcasters.
 		return s.players[p].monsters().filter(func(m): return m.face_up and s.can_tribute_fx(m) and CardEffects.matches(m.data, f["special_tribute_f"][1])).size() >= int(f["special_tribute_f"][0])
+	if f.has("special_cocoon"):
+		return _cocoon_moth(s, p, int(f["special_cocoon"])) != null   # Larvae Moth, Great Moth, Perfectly Ultimate Great Moth
 	if s.players[p].free_zone() == -1 and int(f.get("special_toon", 0)) == 0 and not f.has("special_tribute_race"):
 		return false
 	if f.get("special_once_duel", false) and s.players[p].once_duel.has(c.cname()):
@@ -608,6 +616,20 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 		events.append_array(trigger(s, least, "gy"))
 		ps.hand.erase(c)
 		events.append_array(s._special(p, c, "effect", "def"))
+		events.append_array(on_summon(s, p, c, "special"))
+		return events
+	if f.has("special_cocoon"):
+		var moth = _cocoon_moth(s, p, int(f["special_cocoon"]))
+		if moth == null:
+			return events
+		ps.field[ps.field.find(moth)] = null
+		s._to_gy(ps, moth)
+		events.append({"type": "tribute", "player": p, "card": moth})
+		events.append_array(trigger(s, moth, "tributed"))
+		events.append_array(s._monster_left(moth))
+		ps.hand.erase(c)
+		c.proper = true
+		events.append_array(s._special(p, c, "effect"))
 		events.append_array(on_summon(s, p, c, "special"))
 		return events
 	if int(f.get("special_toon", 0)) > 0:
@@ -873,15 +895,56 @@ static func hand_can(s: DuelState, p: int, c) -> bool:
 	var g: Dictionary = fx(c).get("hand_ignite", {})
 	if g.is_empty() or int(s.players[p].name_lock.get(c.cname(), -1)) == s.turn:
 		return false
+	if g.has("equip_to"):
+		return s.players[p].spells.find(null) != -1 and not _cocoon_hosts(s, p, str(g["equip_to"])).is_empty()
 	for a in g.get("do", []):
 		if a[0] == "search" and _take(s.players[p].deck, a[1], 1).is_empty():
 			return false
 	return true
 
 
+## May another card's effect Special Summon this monster from the hand or Deck? Not one that
+## "Must (first) be Special Summoned" its own way (Perfectly Ultimate Great Moth out of Pinch Hopper).
+static func _ss_ok(x) -> bool:
+	if not x.is_monster():
+		return true
+	if CardEffects.of(x.cname()).get("no_special", false):
+		return false
+	var words := str(x.data.get("desc", "")).to_lower()
+	return not (words.contains("must first be special summoned") or words.contains("must be special summoned") or words.contains("can only be special summoned"))
+
+
+## The face-up monsters of that name a Cocoon of Evolution can go on (one Cocoon each).
+static func _cocoon_hosts(s: DuelState, p: int, host_name: String) -> Array:
+	return s.players[p].monsters().filter(func(m): return m.face_up and m.cname() == host_name and s.cocooned(m) == null)
+
+
+## The Petit Moth that has been in its Cocoon for at least `turns` of its owner's turns, or null.
+static func _cocoon_moth(s: DuelState, p: int, turns: int):
+	for m in s.players[p].monsters():
+		if m.face_up and m.cname() == "Petit Moth" and s.cocooned(m) != null and (s.turn - int(m.tags.get("cocoon_turn", s.turn))) / 2 >= turns:
+			return m
+	return null
+
+
 static func hand_run(s: DuelState, p: int, c) -> Array:
 	var g: Dictionary = fx(c)["hand_ignite"]
 	var ps := s.players[p]
+	if g.has("equip_to"):
+		# Cocoon of Evolution: "target 1 "Petit Moth" you control; equip this card from your hand to that target."
+		var hosts := _cocoon_hosts(s, p, str(g["equip_to"]))
+		var zone_c: int = ps.spells.find(null)
+		if hosts.is_empty() or zone_c == -1:
+			return []
+		var host = s.pick1(p, Loc.t("%s: equip it to which monster?") % c.cname(), hosts, hosts[0], c)
+		ps.hand.erase(c)
+		c.face_up = true
+		ps.spells[zone_c] = c
+		c.equipped_to = host
+		host.tags["cocoon_uid"] = c.uid
+		host.tags["cocoon_turn"] = s.turn
+		return [{"type": "activate", "player": p, "card": c, "zone": zone_c},
+				_ev(p, c, Loc.t("%s wraps %s: it is now %d / %d") % [c.cname(), host.cname(), c.atk(), c.def()])]
 	var events := [_ev(p, c, Loc.t("%s is discarded for its effect") % c.cname())]
 	ps.hand.erase(c)
 	s._to_gy(ps, c)
@@ -2159,6 +2222,27 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"parasite":
+			# Parasite Paracide: "FLIP: Shuffle this card face-up into your opponent's Deck."
+			if ps.field.has(c):
+				ps.field[ps.field.find(c)] = null
+				events.append_array(s._monster_left(c))
+				c.reset_mods()
+				c.face_up = true
+				c.orig_owner = c.owner if c.orig_owner == -1 else c.orig_owner
+				c.owner = s.opponent(p)
+				c.tags["parasite"] = true
+				opp.deck.append(c)
+				s._shuffle(opp.deck)
+				events.append({"type": "bounce", "player": p, "card": c, "extra": true})
+				events.append(_ev(p, c, Loc.t("%s burrows into %s's Deck") % [name, opp.name]))
+		"self_deck_top":
+			# Cockroach Knight: "When this card has been sent to the Graveyard, it is returned to the top of the Deck."
+			var own_k := s.players[c.owner]
+			if own_k.gy.has(c):
+				own_k.gy.erase(c)
+				own_k.deck.append(c)
+				events.append(_ev(c.owner, c, Loc.t("%s returns to the top of the Deck") % name))
 		"absorb":
 			# Relinquished: "target 1 monster your opponent controls; equip that target to this card (max. 1)."
 			var prey_a: Array = opp.monsters().filter(func(m): return can_target(c, m) and not m.is_token())
@@ -3435,14 +3519,14 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 		"special":
 			var src: Array = ps.deck if a[1] == "deck" else (ps.hand if a[1] == "hand" else ps.gy)
 			var n: int = int(a[4]) if a.size() > 4 else 1
-			var pool: Array = src.filter(func(x): return s.can_revive(x)) if a[1] == "gy" else src.filter(func(x): return not CardEffects.of(x.cname()).get("no_special", false))
+			var pool: Array = src.filter(func(x): return s.can_revive(x)) if a[1] == "gy" else src.filter(func(x): return _ss_ok(x))
 			var flt: Dictionary = a[2]
 			if a[1] == "gy":
 				flt = flt.duplicate()
 				flt["zone"] = "gy"
 			if a[1] == "hand_gy":
 				# "...from your hand or Graveyard" (Salvage Warrior).
-				pool = ps.hand.filter(func(x): return not CardEffects.of(x.cname()).get("no_special", false))
+				pool = ps.hand.filter(func(x): return _ss_ok(x))
 				pool.append_array(ps.gy.filter(func(x): return s.can_revive(x)))
 			for d in _pick(s, p, c, Loc.t("Special Summon from your %s") % ("Deck" if a[1] == "deck" else ("hand" if a[1] == "hand" else ("hand or Graveyard" if a[1] == "hand_gy" else "Graveyard"))), pool, flt, n):
 				if ps.free_zone() == -1:
