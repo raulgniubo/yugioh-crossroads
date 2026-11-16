@@ -119,6 +119,9 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Jack's cards (v0.33.36)
+	"Resonator Call": {"k": "normal", "ai": "always", "do": [["search", {"has": "Resonator", "monster": true}]]},
+	"Scarlet Security": {"k": "normal", "ai": "always", "cond": "own_rda", "do": [["destroy", "opp_st"]]},
 	# ---------------------------------------------------------------- Syrus's and Aster's cards (v0.33.35)
 	"No Entry!!": {"k": "trap", "win": ["free", "attack"], "do": [["all_to_def"]]},
 	"Supercharge": {"k": "trap", "win": ["attack"], "cond": "all_roids", "do": [["draw", 2]]},
@@ -641,6 +644,9 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return s.players[p].hand.is_empty()
 		"level_up":
 			return not _lv_ready(s, p).is_empty()
+		"own_rda":
+			return not s.players[p].monsters().filter(func(m): return m.face_up and (m.cname() == "Red Dragon Archfiend" or str(CardEffects.of(m.cname()).get("name_as", "")) == "Red Dragon Archfiend")).is_empty() \
+					and not (s.players[s.opponent(p)].set_cards().is_empty() and s.players[s.opponent(p)].field_spell == null)
 		"all_roids":
 			var mine_r: Array = s.players[p].monsters()
 			return not mine_r.is_empty() and mine_r.filter(func(m): return not (m.face_up and str(m.data.get("race", "")) == "Machine" and m.cname().to_lower().contains("roid"))).is_empty() \

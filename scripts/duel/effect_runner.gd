@@ -162,6 +162,12 @@ static func _count(s: DuelState, owner: int, spec: String) -> int:
 			if kind == "all_cards":
 				n += s.players[q].monsters().size()
 		return n
+	if kind == "own_gy_tuners":
+		# Red Nova Dragon: each Tuner in your Graveyard.
+		for g in s.players[owner].gy:
+			if g.is_monster() and g.is_tuner():
+				n += 1
+		return n
 	if kind == "own_gy_has":
 		# Shining Flare Wingman: each "Elemental HERO" card in your Graveyard.
 		for g in s.players[owner].gy:
@@ -385,6 +391,10 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 	if cond == "no_cards":
 		# Gust the Backblast: "If you control no cards".
 		return s.players[p].monsters().is_empty() and s.players[p].set_cards().is_empty() and s.players[p].field_spell == null
+	if cond == "any_synchro":
+		# Synkron Resonator: "If a Synchro Monster is on the field" (once per turn this way).
+		return int(s.players[p].once_names.get("#synkron", -1)) != s.turn \
+				and not (s.players[p].monsters() + s.players[s.opponent(p)].monsters()).filter(func(m): return m.face_up and m.frame() == "synchro").is_empty()
 	if cond == "own_synchro8":
 		# Creation Resonator: "If you control a Level 8 or higher Synchro Monster".
 		return not s.players[p].monsters().filter(func(m): return m.face_up and m.frame() == "synchro" and m.level() >= 8).is_empty()
@@ -577,6 +587,8 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 			events.append_array(EffectRunner.trigger(s, m, "tributed"))
 			events.append_array(s._monster_left(m))
 	c.set_meta("hand_fx_turn", s.turn)
+	if str(f.get("special_hand_if", "")) == "any_synchro":
+		ps.once_names["#synkron"] = s.turn
 	if f.get("lava_golem", false):
 		var opp_l := s.players[s.opponent(p)]
 		var theirs_l: Array = opp_l.monsters().filter(func(m): return s.can_tribute_fx(m))
@@ -1239,6 +1251,9 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 					return false
 			"mill_opp_top":
 				if opp.deck.is_empty():
+					return false
+			"scarlight":
+				if opp.monsters().filter(func(m): return m.face_up and m.tags.get("ss", false) and m.frame() != "normal" and not m.is_token() and s.atk_of(m, false) <= s.atk_of(c, false)).is_empty():
 					return false
 			"neo_strip":
 				var any_mat := false
@@ -2269,6 +2284,49 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"chain_resonator":
+			# Chain Resonator: "When this card is Normal Summoned while a Synchro Monster is on the field: You can Special
+			# Summon 1 "Resonator" monster from your Deck, except "Chain Resonator"."
+			if (ps.monsters() + opp.monsters()).filter(func(m): return m.face_up and m.frame() == "synchro").is_empty() or ps.free_zone() == -1:
+				return events
+			var res_pool: Array = ps.deck.filter(func(x): return x.is_monster() and x.cname().contains("Resonator") and x.cname() != "Chain Resonator" and _ss_ok(x))
+			if res_pool.is_empty():
+				return events
+			# (The one that makes Red Nova Dragon's Level right, when Red Dragon Archfiend is out: a Level 3.)
+			var want_r = res_pool[0]
+			for x in res_pool:
+				if x.level() == 3:
+					want_r = x
+					break
+			var got_r = s.pick1(p, Loc.t("%s: Special Summon 1 Resonator from your Deck") % name, res_pool, want_r, c)
+			ps.deck.erase(got_r)
+			s._shuffle(ps.deck)
+			events.append_array(s._special(p, got_r, "effect"))
+		"synkron_back":
+			# Synkron Resonator: "If this card is sent from the field to the GY: You can target 1 "Resonator" monster in
+			# your GY, except "Synkron Resonator"; add it to your hand."
+			if not (c.tags.get("ss", false) or c.tags.get("ns", false)):
+				return events   # (discarded or sent from the Deck: it was never on the field)
+			var back_r: Array = s.players[c.owner].gy.filter(func(x): return x.is_monster() and x.cname().contains("Resonator") and x.cname() != "Synkron Resonator")
+			if not back_r.is_empty():
+				var take_r = s.pick1(c.owner, Loc.t("%s: add 1 Resonator from your Graveyard to your hand") % name, back_r, back_r[0], c)
+				s.players[c.owner].gy.erase(take_r)
+				s.players[c.owner].hand.append(take_r)
+				events.append({"type": "gy_to_hand", "player": c.owner, "card": take_r})
+		"scarlight":
+			# Scarlight Red Dragon Archfiend: "destroy as many other Special Summoned Effect Monsters on the field as
+			# possible with ATK less than or equal to this card's, then inflict 500 damage to your opponent for each."
+			var cap_s: int = s.atk_of(c, false)
+			var burnt := 0
+			for q in [s.opponent(p), p]:
+				for m in s.players[q].monsters():
+					if m != c and m.face_up and m.tags.get("ss", false) and m.frame() != "normal" and not m.is_token() and s.atk_of(m, false) <= cap_s:
+						events.append_array(s._destroy(m))
+						if not s.players[q].field.has(m):
+							burnt += 1
+			if burnt > 0:
+				events.append(_ev(p, c, Loc.t("%s: %d damage") % [name, 500 * burnt]))
+				events.append_array(s._damage(s.opponent(p), 500 * burnt))
 		"neo_negate":
 			# Neo Galaxy-Eyes Photon Dragon: "If this card is Xyz Summoned using "Galaxy-Eyes Photon Dragon" as any of its
 			# materials: All other face-up cards currently on the field have their effects negated."

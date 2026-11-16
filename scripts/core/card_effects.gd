@@ -108,6 +108,14 @@ const FX := {
 	"Elemental HERO Thunder Giant": {"note": "Once per turn, discard 1: destroy a monster with less original ATK.",
 		"ignite": {"cost": "discard", "do": [["destroy", "atk_below_self"]], "label": "Discard 1: destroy a weaker monster"}},
 	"Elemental HERO Rampart Blaster": {"note": "Can attack directly while it is in Defense Position. When it does, its ATK is halved for that damage calculation.", "direct_from_def": true},
+	# ---- Jack's best deck (v0.33.36)
+	"Red Nova Dragon": {"note": "2 Tuners + Red Dragon Archfiend. Gains 500 ATK for each Tuner in your Graveyard. Cannot be destroyed by an opponent's card effects. When an opponent's monster declares an attack: you can banish this card to negate that attack; it comes back in the End Phase.",
+		"atk_per": ["own_gy_tuners", 500], "no_opp_fx_destroy": true, "nova": true, "ai_prefer": true},
+	"Scarlight Red Dragon Archfiend": {"note": "Its name is Red Dragon Archfiend on the field. Once per turn: destroy every other Special Summoned Effect Monster on the field with ATK equal to or lower than this card's, then 500 damage to your opponent for each.",
+		"name_as": "Red Dragon Archfiend", "ignite": {"cost": "none", "do": [["scarlight"]], "label": "Destroy the Special Summoned Effect Monsters it out-muscles"}},
+	"Chain Resonator": {"note": "Normal Summoned while a Synchro Monster is on the field: Special Summon 1 Resonator from your Deck, except Chain Resonator.", "summon": [["chain_resonator"]]},
+	"Synkron Resonator": {"note": "If a Synchro Monster is on the field: Special Summon it from your hand (once per turn). Sent from the field to the Graveyard: add 1 other Resonator from your Graveyard to your hand.",
+		"special_hand_if": "any_synchro", "sent_gy": [["synkron_back"]]},
 	# ---- Kite's two biggest (v0.33.35)
 	"Neo Galaxy-Eyes Photon Dragon": {"note": "3 Level 8 monsters. Xyz Summoned with Galaxy-Eyes Photon Dragon among its materials: every other face-up card on the field has its effects negated. Once per turn: detach 1 material; detach every material from your opponent's monsters, and for the rest of this turn it gains 500 ATK for each and can attack that many times.",
 		"any_summon": [["neo_negate"]], "ignite": {"cost": "detach", "do": [["neo_strip"]], "label": "Detach: take all their materials"}, "ai_prefer": true},

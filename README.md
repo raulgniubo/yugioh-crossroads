@@ -5,6 +5,23 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.36
+
+**The deck pass.** Raul's rule: every duelist plays a deck they would really use, with their real boss monsters, no filler, strong enough to be fun to beat. Each deck below was tested on Hard before and after.
+
+### Jack
+
+**Resonators into Red Dragon Archfiend, then two more Tuners for Red Nova Dragon.** 6 cards built.
+
+- **The game can do a Synchro Summon with 2 Tuners now.** Red Nova Dragon (2 Tuners + Red Dragon Archfiend) gains 500 ATK for each Tuner in the Graveyard, cannot be destroyed by the opponent's card effects, and can banish itself to negate an attack, coming back in the End Phase.
+- **Scarlight Red Dragon Archfiend** counts as Red Dragon Archfiend and clears the Special Summoned Effect Monsters it out-muscles, 500 damage each. **Chain Resonator** and **Synkron Resonator** bring the second Tuner. **Resonator Call** finds one. **Scarlet Security** wipes the opponent's back row.
+- **Main, 40:** Dark Resonator x3, Flare Resonator x2, Creation Resonator x2, Chain Resonator x2, Synkron Resonator, Dread Dragon, Vice Dragon x3, Mad Archfiend x2, Big Piece Golem x2, Medium Piece Golem, Power Breaker x2, Strong Wind Dragon x2, Twin-Sword Marauder x2, Archfiend Interceptor, Battle Fader; Resonator Call x3, Scarlet Security, Monster Reborn, Pot of Greed, Mystical Space Typhoon; Fiendish Chain x2, Powerful Rebirth x2, Call of the Haunted, Half or Nothing. **Extra, 7:** Red Dragon Archfiend x2, Scarlight Red Dragon Archfiend, Red Nova Dragon x2, Exploder Dragonwing, Chaos King Archfiend.
+- On Hard: 28 of 40 (was 26). Red Nova Dragon came out 11 times in those 40 duels.
+
+**Not done or not checked:**
+
+- Still to build for Jack: Majestic Red Dragon (with Majestic Dragon), Dark Highlander, Crimson Fire, Red Dragon Vase, Changing Destiny, Prideful Roar. Not watched on screen.
+
 ## What is in 0.33.35
 
 Four GX duelists got their decks: **Chazz, Zane, Syrus and Aster**, and Kite got his two biggest monsters. 34 cards built, each against its card text, each with a test.

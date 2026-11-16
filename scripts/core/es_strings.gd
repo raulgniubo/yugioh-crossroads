@@ -5341,4 +5341,10 @@ const ES := {
 	"%s negates every other face-up card on the field": "%s niega todas las demás cartas boca arriba en el Campo",
 	"%s takes %d materials: +%d ATK and %d attacks this turn": "%s quita %d materiales: +%d ATK y %d ataques este turno",
 	"Detach: take all their materials": "Desacoplar: quita todos sus materiales",
+	"%s: banish it to negate this attack?": "%s: ¿desterrarlo para negar este ataque?",
+	"Banish it and negate the attack": "Desterrarlo y negar el ataque",
+	"%s leaves the field and the attack is negated": "%s deja el Campo y el ataque es negado",
+	"%s: Special Summon 1 Resonator from your Deck": "%s: Invoca de Modo Especial 1 Resonator desde tu Deck",
+	"%s: add 1 Resonator from your Graveyard to your hand": "%s: añade 1 Resonator de tu Cementerio a tu mano",
+	"Destroy the Special Summoned Effect Monsters it out-muscles": "Destruir los Monstruos de Efecto Invocados de Modo Especial a los que supera",
 }

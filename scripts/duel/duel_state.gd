@@ -584,6 +584,15 @@ func begin_end() -> Array:
 	phase = Phase.END
 	var events := [{"type": "phase", "phase": phase}]
 	events.append_array(after_battle)
+	# Red Nova Dragon: "during the End Phase, if this card was banished by its effect this turn: Special Summon this banished card."
+	for q in 2:
+		for b in players[q].banished.duplicate():
+			if b.has_meta("nova_back") and int(b.get_meta("nova_back")) == turn:
+				b.remove_meta("nova_back")
+				if players[q].free_zone() != -1:
+					players[q].banished.erase(b)
+					b.proper = true
+					events.append_array(_special(q, b, "effect"))
 	# Limiter Removal: "During the End Phase of this turn, destroy those monsters."
 	for q in 2:
 		for m in players[q].monsters():
@@ -1005,6 +1014,7 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 	c.pos_changed_turn = -1
 	c.attacked_turn = -1
 	c.reset_mods()
+	c.tags["ns"] = true   # it is on the field by a Normal Summon or Set ("sent from the field to the GY": Synkron Resonator)
 	if normal_summoned:
 		ps.extra_normals -= 1   # Double Summon: this is the second one
 	normal_summoned = true
@@ -1801,6 +1811,19 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	pending_attack = {"player": p, "attacker": attacker, "target": target, "negated": false,
 			"opp_count": players[opponent(p)].monsters().size()}
 	var events := paid + [{"type": "attack", "player": p, "card": attacker, "target": target}]
+	# Red Nova Dragon: "When an opponent's monster declares an attack: You can target the attacking monster; banish
+	# this card, and if you do, negate that attack." It comes back in the End Phase.
+	for nv in players[opponent(p)].monsters():
+		if nv.face_up and not nv.negated and EffectRunner.fx(nv).get("nova", false) and EffectRunner.can_target(nv, attacker) and not pending_attack.get("negated", false):
+			var hurts: bool = target == null or (target != null and atk_of(attacker, true, target, true) >= (atk_of(target, false, attacker, true) if target.attack_pos else def_of(target)))
+			if choose_option(opponent(p), Loc.t("%s: banish it to negate this attack?") % nv.cname(), ["Banish it and negate the attack", "No"], 0 if hurts else 1, nv) == 0:
+				events.append({"type": "effect", "player": opponent(p), "card": nv, "text": Loc.t("%s leaves the field and the attack is negated") % nv.cname()})
+				events.append_array(_banish(nv))
+				nv.set_meta("nova_back", turn)
+				pending_attack["negated"] = true
+				if target == nv:
+					pending_attack["target"] = null
+			break
 	# Cyber Barrier Dragon: "Once per turn, while this card is in Attack Position, your opponent's next attack is negated."
 	for bm in players[opponent(p)].monsters():
 		if bm.face_up and bm.attack_pos and not bm.negated and EffectRunner.fx(bm).get("barrier", false) and int(bm.tags.get("barrier_turn", -1)) != turn:
@@ -2465,6 +2488,9 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	var zone := ps.field.find(c)
 	if zone == -1:
 		return []
+	# Red Nova Dragon: "Cannot be destroyed by an opponent's card effects."
+	if not by_battle and effect_by != -1 and effect_by != c.owner and c.face_up and not c.negated and EffectRunner.fx(c).get("no_opp_fx_destroy", false):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is not destroyed") % c.cname()}]
 	# "Cannot be destroyed by card effects" (Infernity Guardian with an empty hand).
 	if not by_battle and EffectRunner.survives_effect(self, c):
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is not destroyed") % c.cname()}]
@@ -3412,6 +3438,8 @@ static func material_rule(c: CardInst) -> Dictionary:
 		elif rest.to_lower().contains("non-tuner synchro monster"):
 			of = {"frame": "synchro"}
 		rule = {"tuner": tf, "others": of, "one_other": one, "min_others": 2 if (rest.begins_with("2+") or rest.begins_with("2 or more")) else 1}
+		if tun.begins_with("2 Tuners"):
+			rule["tuners"] = 2   # '2 Tuners + "Red Dragon Archfiend"' (Red Nova Dragon)
 	elif c.frame() == "xyz":
 		re.compile("^(\\d) Level \\d+ ?([A-Za-z\\- ]*?)(?:-Type)? monsters")
 		var m2 := re.search(line)
@@ -3491,10 +3519,11 @@ func extra_materials(p: int, c: CardInst) -> Array:
 				if mask & (1 << i):
 					sel.append(mons[i])
 			var tuners := sel.filter(func(m): return m.is_tuner())
-			if tuners.size() != 1 or sel.size() < 2:
+			var want_t := int(rule.get("tuners", 1))
+			if tuners.size() != want_t or sel.size() < want_t + 1:
 				continue
 			# The Tuner it names ("Junk Synchron", a "Blackwing" Tuner, a DARK Tuner) and what the rest must be.
-			if not _fits(tuners[0], rule.get("tuner", {})):
+			if not tuners.filter(func(tm): return not _fits(tm, rule.get("tuner", {}))).is_empty():
 				continue
 			var others_ok := true
 			for m in sel:
@@ -3502,7 +3531,7 @@ func extra_materials(p: int, c: CardInst) -> Array:
 					others_ok = false
 				if not _may_be_material(m, c, sel, rule):
 					others_ok = false
-			if not others_ok or (rule.get("one_other", false) and sel.size() != 2) or sel.size() - 1 < int(rule.get("min_others", 1)):
+			if not others_ok or (rule.get("one_other", false) and sel.size() != want_t + 1) or sel.size() - want_t < int(rule.get("min_others", 1)):
 				continue
 			if _levels_reach(sel, c):
 				out.append(sel)

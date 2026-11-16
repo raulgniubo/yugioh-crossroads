@@ -239,12 +239,9 @@ const TUNE := {
 		"extra": {"Stardust Dragon": 2, "Shooting Star Dragon": 1, "Shooting Quasar Dragon": 1, "Formula Synchron": 1, "Junk Warrior": 2, "Junk Destroyer": 1, "Junk Archer": 1, "Junk Berserker": 1, "Junk Gardna": 1, "Road Warrior": 1, "Turbo Warrior": 1, "Nitro Warrior": 1, "Lightning Warrior": 1}},
 	# Jack's best deck: Red Dragon Archfiend on Resonators, with Exploder Dragonwing and Chaos King Archfiend beside it (v0.33.33).
 	"jack": {"out": ["Molten Destruction", "Salamandra"],
-		"main": {"Dark Resonator": 3, "Flare Resonator": 2, "Clock Resonator": 1, "Creation Resonator": 1, "Attack Gainer": 1, "Sinister Sprocket": 1,
-			"Vice Dragon": 2, "Mad Archfiend": 2, "Twin-Sword Marauder": 3, "Big Piece Golem": 2, "Medium Piece Golem": 1, "Small Piece Golem": 1, "Power Breaker": 2,
-			"Archfiend Interceptor": 1, "Strong Wind Dragon": 2, "Dread Dragon": 1, "Battle Fader": 1,
-			"Monster Reborn": 1, "Pot of Greed": 1, "Mystical Space Typhoon": 2, "Lightning Vortex": 1, "Smashing Ground": 1,
-			"Fiendish Chain": 2, "Powerful Rebirth": 2, "Half or Nothing": 1, "Sakuretsu Armor": 1, "Call of the Haunted": 1},
-		"extra": {"Red Dragon Archfiend": 2, "Exploder Dragonwing": 1, "Chaos King Archfiend": 1}},
+		# Jack's best deck (v0.33.36): Resonators into Red Dragon Archfiend, then two more Tuners for Red Nova Dragon.
+		"main": {"Dark Resonator": 3, "Flare Resonator": 2, "Creation Resonator": 2, "Chain Resonator": 2, "Synkron Resonator": 1, "Dread Dragon": 1, "Vice Dragon": 3, "Mad Archfiend": 2, "Big Piece Golem": 2, "Medium Piece Golem": 1, "Power Breaker": 2, "Strong Wind Dragon": 2, "Twin-Sword Marauder": 2, "Archfiend Interceptor": 1, "Battle Fader": 1, "Resonator Call": 3, "Scarlet Security": 1, "Monster Reborn": 1, "Pot of Greed": 1, "Mystical Space Typhoon": 1, "Fiendish Chain": 2, "Powerful Rebirth": 2, "Call of the Haunted": 1, "Half or Nothing": 1},
+		"extra": {"Red Dragon Archfiend": 2, "Scarlight Red Dragon Archfiend": 1, "Red Nova Dragon": 2, "Exploder Dragonwing": 1, "Chaos King Archfiend": 1}},
 	# Crow's best deck: the Blackwing swarm with Black Whirlwind, into Armor Master, Silverwind and Black-Winged Dragon (v0.33.33).
 	"crow": {"out": ["Curse of Dragon", "Dian Keto the Cure Master", "Follow Wind"],
 		"main": {"Blackwing - Gale the Whirlwind": 3, "Blackwing - Bora the Spear": 3, "Blackwing - Shura the Blue Flame": 3, "Blackwing - Blizzard the Far North": 3,

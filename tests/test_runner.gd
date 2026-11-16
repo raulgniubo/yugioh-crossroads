@@ -58,6 +58,7 @@ func _ready() -> void:
 		_test_cards_49()
 		_test_cards_50()
 		_test_cards_51()
+		_test_cards_52()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -6446,3 +6447,90 @@ func _test_cards_51() -> void:
 	neo.summoned_turn = 1
 	s.phase = DuelState.Phase.BATTLE
 	check(s.attacks_left(neo) == 2, "and it can attack twice this turn (got %d)" % s.attacks_left(neo))
+
+
+## Jack's best deck (v0.33.36): Red Nova Dragon and what gets him there, each against its printed text.
+func _test_cards_52() -> void:
+	# ---- Red Nova Dragon: 2 Tuners + Red Dragon Archfiend.
+	var s := _bare(2201)
+	var rda := _mon(s, 0, "Red Dragon Archfiend", 0)
+	var t1 := _mon(s, 0, "Dark Resonator", 1)
+	var nova := _in(s, 0, "Red Nova Dragon", "extra")
+	check(not s.can_extra_summon(0, nova), "Red Nova Dragon needs 2 Tuners")
+	var t2 := _mon(s, 0, "Chain Resonator", 2)
+	check(s.can_extra_summon(0, nova), "Red Nova Dragon: Red Dragon Archfiend (8) + Dark Resonator (3) + Chain Resonator (1)")
+	s.extra_summon(0, nova)
+	s._cleanup()
+	check(s.players[0].field.has(nova) and s.players[0].gy.has(rda) and s.atk_of(nova, false) == 4500, "Red Nova Dragon: 3500 + 500 for each of the 2 Tuners in the Graveyard (got %d)" % s.atk_of(nova, false))
+	s.effect_by = 1
+	s._destroy(nova)
+	s.effect_by = -1
+	check(s.players[0].field.has(nova), "Red Nova Dragon is not destroyed by the opponent's card effect")
+	var foe := _mon(s, 1, "Blue-Eyes Ultimate Dragon", 0)
+	foe.summoned_turn = 1
+	foe.atk_mod = 2000
+	s.current = 1
+	s.phase = DuelState.Phase.BATTLE
+	var lp0: int = s.players[0].lp
+	s.declare_attack(1, foe, nova)
+	s.resolve_attack()
+	check(s.players[0].banished.has(nova) and s.players[0].lp == lp0, "Red Nova Dragon banishes itself and the attack is negated")
+	s.begin_end()
+	check(s.players[0].field.has(nova), "Red Nova Dragon comes back in the End Phase")
+	# A normal Synchro still takes exactly 1 Tuner.
+	s = _bare(2202)
+	_mon(s, 0, "Dark Resonator", 0)
+	_mon(s, 0, "Flare Resonator", 1)
+	_mon(s, 0, "Vice Dragon", 2)
+	var r2 := _in(s, 0, "Red Dragon Archfiend", "extra")
+	check(s.extra_materials(0, r2).filter(func(set_m): return set_m.filter(func(m): return m.is_tuner()).size() != 1).is_empty(), "Red Dragon Archfiend never takes 2 Tuners")
+	# ---- Chain Resonator, Synkron Resonator, Resonator Call, Scarlet Security, Scarlight.
+	s = _bare(2203)
+	rda = _mon(s, 0, "Red Dragon Archfiend", 0)
+	var chain := _in(s, 0, "Chain Resonator", "hand")
+	var dark := s._make(_cid("Dark Resonator"), 0)
+	s.players[0].deck.append(dark)
+	s.normal_summon(0, chain, [])
+	s._cleanup()
+	check(s.players[0].field.has(dark), "Chain Resonator Normal Summoned with a Synchro Monster out: a Resonator comes from the Deck")
+	nova = _in(s, 0, "Red Nova Dragon", "extra")
+	check(s.can_extra_summon(0, nova), "and Red Nova Dragon is ready: 8 + 1 + 3")
+	s = _bare(2204)
+	var syn := _in(s, 0, "Synkron Resonator", "hand")
+	check(not s.can_special_from_hand(0, syn), "Synkron Resonator needs a Synchro Monster on the field")
+	_mon(s, 1, "Stardust Dragon", 0)
+	check(s.can_special_from_hand(0, syn), "Synkron Resonator with a Synchro Monster on the field")
+	s.special_from_hand(0, syn)
+	var syn2 := _in(s, 0, "Synkron Resonator", "hand")
+	check(not s.can_special_from_hand(0, syn2), "Synkron Resonator: once per turn this way")
+	var old_r := _in(s, 0, "Dark Resonator", "gy")
+	s.players[0].hand.erase(syn2)
+	s._to_gy(s.players[0], syn2)
+	s._cleanup()
+	check(not s.players[0].hand.has(old_r), "Synkron Resonator discarded from the hand: nothing comes back")
+	s._destroy(syn)
+	s._cleanup()
+	check(s.players[0].hand.has(old_r), "Synkron Resonator sent from the field to the Graveyard: a Resonator comes back to the hand")
+	s = _bare(2205)
+	var call := _rst(s, 0, "Resonator Call")
+	dark = s._make(_cid("Dark Resonator"), 0)
+	s.players[0].deck.append(dark)
+	s.activate(0, call)
+	check(s.players[0].hand.filter(func(h): return h.cname().contains("Resonator")).size() == 1, "Resonator Call adds a Resonator from the Deck")
+	s = _bare(2206)
+	var sec := _rst(s, 0, "Scarlet Security")
+	var trap := _rst(s, 1, "Mirror Force", "set")
+	check(not s.can_activate(0, sec), "Scarlet Security needs Red Dragon Archfiend")
+	var scar := _mon(s, 0, "Scarlight Red Dragon Archfiend", 0)
+	check(s.can_activate(0, sec), "Scarlight counts as Red Dragon Archfiend on the field")
+	s.activate(0, sec)
+	check(s.players[1].gy.has(trap), "Scarlet Security destroys the opponent's Spells and Traps")
+	var ss1 := _mon(s, 1, "Jinzo", 0)
+	ss1.tags["ss"] = true
+	var ns1 := _mon(s, 1, "Marauding Captain", 1)
+	var big1 := _mon(s, 1, "Blue-Eyes Ultimate Dragon", 2)
+	big1.tags["ss"] = true
+	var lp1: int = s.players[1].lp
+	s.ignite(0, scar)
+	s._cleanup()
+	check(s.players[1].gy.has(ss1) and s.players[1].field.has(ns1) and s.players[1].field.has(big1) and s.players[1].lp == lp1 - 500, "Scarlight destroys the Special Summoned Effect Monsters at or under 3000 ATK and burns 500 each")
