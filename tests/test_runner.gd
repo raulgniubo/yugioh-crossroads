@@ -40,6 +40,7 @@ func _ready() -> void:
 		_test_cards_28()
 		_test_cards_32()
 		_test_cards_33()
+		_test_cards_34()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -4454,3 +4455,222 @@ func _test_cards_33() -> void:
 	s.activate(0, ns)
 	act = DuelAI.next_main_action(s, 0, DuelAI.HARD)
 	check(act.get("do", "") == "extra" and act.get("card") == gn, "With Neo Space up, the computer makes Grand Neos (got %s)" % str(act.get("do", "")))
+
+
+## The cards built in v0.33.32 for Yuma's best deck, each against its printed text.
+func _test_cards_34() -> void:
+	# ---- Kagetokage follows a Level 4 Normal Summon; Gagaga Girl copies Gagaga Magician's Level.
+	var s := _bare(401)
+	var mag := _in(s, 0, "Gagaga Magician", "hand")
+	var kage := _in(s, 0, "Kagetokage", "hand")
+	check(not s.can_normal_summon(0, kage), "Kagetokage cannot be Normal Summoned")
+	s.normal_summon(0, mag, [])
+	check(s.players[0].field.has(kage), "Kagetokage is Special Summoned when a Level 4 monster is Normal Summoned")
+	var girl := _mon(s, 0, "Gagaga Girl", 3)
+	mag.lv_set = 6
+	mag.lv_turn = s.turn
+	s.ignite(0, girl)
+	check(girl.level() == 6, "Gagaga Girl becomes Gagaga Magician's current Level (got %d)" % girl.level())
+	# ---- Gagaga Girl's gift: an Xyz Monster made of Gagaga monsters only zeroes a Special Summoned monster.
+	s = _bare(402)
+	mag = _mon(s, 0, "Gagaga Magician", 0)
+	girl = _mon(s, 0, "Gagaga Girl", 1)
+	girl.lv_set = 4
+	var cow := _in(s, 0, "Gagaga Cowboy", "extra")
+	var foe := s._make(_cid("Blue-Eyes White Dragon"), 1)
+	s._special(1, foe, "effect", "atk")
+	check(s.can_extra_summon(0, cow), "Gagaga Cowboy can be made from Gagaga Magician and a Level 4 Gagaga Girl")
+	s.extra_summon(0, cow)
+	check(s.atk_of(foe, false) == 0, "Gagaga Girl's gift: the Special Summoned monster's ATK becomes 0 (got %d)" % s.atk_of(foe, false))
+	# ---- Ganbara Knight, Dododo Warrior.
+	s = _bare(403)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	var att := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	var gan := _mon(s, 0, "Ganbara Knight", 0)
+	var lp0: int = s.players[0].lp
+	s.declare_attack(1, att, gan)
+	s.resolve_attack()
+	check(not gan.attack_pos and s.players[0].lp == lp0, "Ganbara Knight changes to Defense Position when it is targeted, so no battle damage")
+	s = _bare(404)
+	var dw := _in(s, 0, "Dododo Warrior", "hand")
+	check(s.tributes_needed(dw) == 0, "Dododo Warrior can be Normal Summoned without Tributing")
+	s.normal_summon(0, dw, [])
+	check(s.players[0].field.has(dw) and s.atk_of(dw, false) == 1800, "Dododo Warrior: 1800 ATK when Summoned without a Tribute (got %d)" % s.atk_of(dw, false))
+	s.phase = DuelState.Phase.BATTLE
+	dw.summoned_turn = 1
+	var sangan := _mon(s, 1, "Sangan", 0)
+	var h1: int = s.players[1].hand.size()
+	s.declare_attack(0, dw, sangan)
+	s.resolve_attack()
+	check(s.players[1].gy.has(sangan) and s.players[1].hand.size() == h1, "Dododo Warrior attacking: Sangan's effect in the Graveyard is negated")
+	# ---- Gogogo Giant.
+	s = _bare(405)
+	var giant := _in(s, 0, "Gogogo Giant", "hand")
+	var golem := _in(s, 0, "Gogogo Golem", "gy")
+	s.normal_summon(0, giant, [])
+	check(s.players[0].field.has(golem) and not golem.attack_pos and not giant.attack_pos, "Gogogo Giant: Gogogo Golem comes back in Defense Position and the Giant changes to Defense Position")
+	# ---- Gagaga Gardna, Tasuke Knight, Gagaga Samurai's guard.
+	s = _bare(406)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	att = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	var gar := _in(s, 0, "Gagaga Gardna", "hand")
+	s.declare_attack(1, att, null)
+	check(s.responses(0, "attack").has(gar), "Gagaga Gardna is offered from the hand on a direct attack")
+	s.respond(0, gar)
+	check(s.players[0].field.has(gar), "Gagaga Gardna is Special Summoned from the hand")
+	s.resolve_attack()
+	s = _bare(407)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	att = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	var att2 := _mon(s, 1, "Dark Magician", 1)
+	att2.summoned_turn = 1
+	var tas := _in(s, 0, "Tasuke Knight", "gy")
+	s.declare_attack(1, att, null)
+	check(s.responses(0, "attack").has(tas), "Tasuke Knight is offered from the Graveyard with an empty hand")
+	s.respond(0, tas)
+	lp0 = s.players[0].lp
+	s.resolve_attack()
+	check(s.players[0].field.has(tas) and s.players[0].lp == lp0 and not s.can_attack(1, att2), "Tasuke Knight: it comes back and the Battle Phase ends")
+	s.declare_attack(1, att2, null)
+	check(not s.responses(0, "attack").has(tas), "Tasuke Knight: once per Duel")
+	s = _bare(408)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	att = _mon(s, 1, "Celtic Guardian", 0)
+	att.summoned_turn = 1
+	var sam := _mon(s, 0, "Gagaga Samurai", 0)
+	var weak := _mon(s, 0, "Kuriboh", 1)
+	s.declare_attack(1, att, weak)
+	check(s.responses(0, "attack").has(sam), "Gagaga Samurai can take an attack aimed at another monster")
+	s.respond(0, sam)
+	s.resolve_attack()
+	check(s.players[0].field.has(weak) and not sam.attack_pos and s.players[0].field.has(sam), "Gagaga Samurai changed to Defense Position and took the attack")
+	# ---- Gagaga Samurai's second attack, Volcasaurus.
+	s = _bare(409)
+	sam = _mon(s, 0, "Gagaga Samurai", 0)
+	sam.overlays = [s._make(_cid("Kuriboh"), 0)]
+	mag = _mon(s, 0, "Gagaga Magician", 1)
+	mag.summoned_turn = 1
+	s.ignite(0, sam)
+	s.phase = DuelState.Phase.BATTLE
+	check(s.attacks_left(mag) == 2 or s.attacks_left(sam) == 2, "Gagaga Samurai: a Gagaga monster can attack twice this turn")
+	s = _bare(410)
+	var vol := _mon(s, 0, "Number 61: Volcasaurus", 0)
+	vol.overlays = [s._make(_cid("Kuriboh"), 0)]
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var lp1: int = s.players[1].lp
+	s.ignite(0, vol)
+	check(s.players[1].gy.has(foe) and s.players[1].lp == lp1 - 3000, "Volcasaurus: the monster is destroyed and its 3000 ATK is dealt as damage")
+	s.phase = DuelState.Phase.BATTLE
+	vol.summoned_turn = 1
+	check(not s.can_direct_attack_with(0, vol), "Volcasaurus cannot attack directly the turn it used its effect")
+	# ---- Utopia Ray on top of Utopia; Rank-Up-Magic into Utopia Ray V.
+	s = _bare(411)
+	var uto := _mon(s, 0, "Number 39: Utopia", 0)
+	uto.overlays = [s._make(_cid("Kuriboh"), 0), s._make(_cid("Kuriboh"), 0)]
+	var ray := _in(s, 0, "Number C39: Utopia Ray", "extra")
+	check(s.can_extra_summon(0, ray), "Utopia Ray can be Xyz Summoned on top of Utopia")
+	s.extra_summon(0, ray)
+	check(s.players[0].field.has(ray) and ray.overlays.size() == 3 and ray.overlays.has(uto), "Utopia Ray: Utopia and its 2 materials are under it")
+	check(not s.can_ignite(0, ray), "Utopia Ray's effect needs 1000 LP or less")
+	s.players[0].lp = 1000
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	s.ignite(0, ray)
+	check(s.atk_of(ray, false) == 3000 and s.atk_of(foe, false) == 2000, "Utopia Ray: +500 ATK, and their monster loses 1000 (got %d and %d)" % [s.atk_of(ray, false), s.atk_of(foe, false)])
+	s = _bare(412)
+	uto = _mon(s, 0, "Number 39: Utopia", 0)
+	uto.overlays = [s._make(_cid("Kuriboh"), 0)]
+	var rayv := _in(s, 0, "Number C39: Utopia Ray V", "extra")
+	var rum := _rst(s, 0, "Rank-Up-Magic Limited Barian's Force")
+	check(s.can_activate(0, rum), "Rank-Up-Magic Limited Barian's Force can be activated on Utopia")
+	s.activate(0, rum)
+	check(s.players[0].field.has(rayv) and rayv.overlays.has(uto) and rayv.overlays.size() == 2, "Utopia ranks up into Utopia Ray V with its materials")
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	lp1 = s.players[1].lp
+	s.ignite(0, rayv)
+	check(s.players[1].gy.has(foe) and s.players[1].lp == lp1 - 3000, "Utopia Ray V: the monster is destroyed and its ATK is dealt as damage")
+	# ---- The Spells and Traps.
+	s = _bare(413)
+	var bolt := _rst(s, 0, "Gagagabolt")
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	check(not s.can_activate(0, bolt), "Gagagabolt needs a Gagaga monster")
+	_mon(s, 0, "Gagaga Magician", 0)
+	s.activate(0, bolt, foe)
+	check(s.players[1].gy.has(foe), "Gagagabolt destroys the target")
+	s = _bare(414)
+	var ono := _rst(s, 0, "Onomatopaira")
+	_in(s, 0, "Kuriboh", "hand")
+	s.players[0].deck.append(s._make(_cid("Gagaga Magician"), 0))
+	s.players[0].deck.append(s._make(_cid("Gogogo Golem"), 0))
+	s.players[0].deck.append(s._make(_cid("Gagaga Girl"), 0))
+	s.activate(0, ono)
+	var names_o: Array = s.players[0].hand.map(func(h): return h.cname())
+	check(s.players[0].hand.size() == 2 and names_o.has("Gogogo Golem") and (names_o.has("Gagaga Magician") or names_o.has("Gagaga Girl")), "Onomatopaira: 1 discard, then 1 Gagaga and 1 Gogogo monster from the Deck (got %s)" % str(names_o))
+	var ono2 := _rst(s, 0, "Onomatopaira")
+	check(not s.can_activate(0, ono2), "Onomatopaira: once per turn")
+	s = _bare(415)
+	mag = _in(s, 0, "Gagaga Magician", "gy")
+	var rev := _rst(s, 0, "Gagagarevenge")
+	s.activate(0, rev)
+	check(s.players[0].field.has(mag) and rev.equipped_to == mag, "Gagagarevenge brings Gagaga Magician back and is equipped to it")
+	var gol := _mon(s, 0, "Gogogo Golem", 2)
+	uto = _in(s, 0, "Number 39: Utopia", "extra")
+	s.extra_summon(0, uto)
+	check(s.players[0].field.has(uto) and s.atk_of(uto, false) == 2800, "Gagagarevenge: its monster became Xyz Material, so your Xyz Monsters gain 300 ATK (got %d)" % s.atk_of(uto, false))
+	s = _bare(416)
+	uto = _mon(s, 0, "Number 39: Utopia", 0)
+	uto.overlays = [s._make(_cid("Kuriboh"), 0)]
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var en := _rst(s, 0, "Xyz Energy")
+	s.activate(0, en, foe)
+	check(s.players[1].gy.has(foe) and uto.overlays.is_empty(), "Xyz Energy: 1 material detached, the monster destroyed")
+	var winds := _rst(s, 0, "Blustering Winds")
+	s.activate(0, winds, uto)
+	check(s.atk_of(uto, false) == 3500 and s.def_of(uto) == 3000, "Blustering Winds: +1000 ATK and DEF (got %d / %d)" % [s.atk_of(uto, false), s.def_of(uto)])
+	s.turn += 2
+	check(s.atk_of(uto, false) == 2500 and s.def_of(uto) == 2000, "Blustering Winds ends at your next Standby Phase")
+	s = _bare(417)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	att = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	weak = _mon(s, 0, "Celtic Guardian", 0)
+	var hu := _rst(s, 0, "Half Unbreak", "set")
+	s.chain_add(0, hu, weak, "free")
+	s.chain_resolve()
+	lp0 = s.players[0].lp
+	s.declare_attack(1, att, weak)
+	s.resolve_attack()
+	check(s.players[0].field.has(weak) and s.players[0].lp == lp0 - 800, "Half Unbreak: not destroyed, and the 1600 battle damage is halved (LP %d)" % s.players[0].lp)
+	s = _bare(418)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	att = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	att2 = _mon(s, 1, "Dark Magician", 1)
+	att2.summoned_turn = 1
+	var bbk := _rst(s, 0, "Battle Break", "set")
+	s.declare_attack(1, att, null)
+	s.respond(0, bbk)
+	s.resolve_attack()
+	check(s.players[1].gy.has(att) and not s.can_attack(1, att2), "Battle Break: the attacker is destroyed and the Battle Phase ends (no monster in their hand to reveal)")
+	s = _bare(419)
+	s.phase = DuelState.Phase.BATTLE
+	s.current = 1
+	att = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	weak = _mon(s, 0, "Celtic Guardian", 0)
+	var bye := _rst(s, 0, "Bye Bye Damage", "set")
+	s.declare_attack(1, att, weak)
+	check(s.responses(0, "damage").has(bye), "Bye Bye Damage is offered at damage calculation")
+	s.respond(0, bye)
+	lp0 = s.players[0].lp
+	lp1 = s.players[1].lp
+	s.resolve_attack()
+	check(s.players[0].field.has(weak) and s.players[0].lp == lp0 - 1600 and s.players[1].lp == lp1 - 3200, "Bye Bye Damage: not destroyed, you take 1600 and they take 3200")

@@ -1921,7 +1921,7 @@ var _extra_sel: Array = []
 func _on_extra_chosen(inst) -> void:
 	if not _my_turn():
 		return
-	if CardEffects.of(inst.cname()).has("contact"):
+	if CardEffects.of(inst.cname()).has("contact") or (state.extra_materials(ME, inst).is_empty() and state.xyz_base(ME, inst) != null):
 		if state.can_extra_summon(ME, inst):
 			_cancel_mode()
 			await _act("extra_summon", [ME, inst, []], false)

@@ -96,6 +96,8 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 static func def_bonus(s: DuelState, c) -> int:
 	var f := fx(c)
 	var u := union_boost(s, c)
+	if int(c.tags.get("tmp_def_until", -1)) >= s.turn:
+		u += int(c.tags.get("tmp_def", 0))   # Blustering Winds
 	if f.has("def_per"):
 		return u + _count(s, c.owner, str(f["def_per"][0])) * int(f["def_per"][1])
 	return u
@@ -278,6 +280,8 @@ static func survives_battle(s: DuelState, c) -> bool:
 	var f := fx(c)
 	if f.get("battle_immune", false):
 		return true
+	if int(c.tags.get("unbreak_turn", -1)) == s.turn:
+		return true   # Half Unbreak
 	if c.tags.has("guard_by"):
 		# Elemental HERO Tempest: "while this card is face-up on the field, that monster cannot be destroyed by battle."
 		var g = s.find_uid(int(c.tags["guard_by"]))
@@ -309,6 +313,8 @@ static func no_tribute(s: DuelState, p: int, c) -> bool:
 
 
 static func _cond(s: DuelState, p: int, cond: String) -> bool:
+	if cond == "lp_le_1000":
+		return s.players[p].lp <= 1000   # Number C39: Utopia Ray
 	var mine := s.players[p].monsters()
 	var theirs := s.players[s.opponent(p)].monsters()
 	if cond.begins_with("own_summoned_race:"):
@@ -628,6 +634,8 @@ static func trigger(s: DuelState, c, key: String, ctx := {}) -> Array:
 	var f := fx(c)
 	if not f.has(key) or s.is_over() or _spent(s, c.owner, c):
 		return []
+	if s.gy_fx_off == c.owner and s.players[c.owner].gy.has(c):
+		return [_ev(c.owner, c, Loc.t("%s's effect in the Graveyard is negated") % c.cname())]   # Dododo Warrior is attacking
 	if blader_negates(s, c.owner):
 		return [_ev(c.owner, c, Loc.t("Cyber Blader negates %s") % c.cname())]
 	return run_list(s, c.owner, c, f[key], ctx)
@@ -892,6 +900,8 @@ static func can_ignite(s: DuelState, p: int, c) -> bool:
 		return false
 	if ig.get("main1", false) and s.phase != DuelState.Phase.MAIN1:
 		return false   # "during your Main Phase 1" (Glow Neos)
+	if ig.has("need_overlay_has") and c.overlays.filter(func(o): return o.cname().contains(str(ig["need_overlay_has"]))).is_empty():
+		return false   # "If this card has a "Utopia" monster as material" (Utopia Ray V)
 	if ig.get("no_attack_yet", false) and ps.attacks_turn == s.turn and ps.attacks_this_turn > 0:
 		return false   # "You cannot declare an attack the turn you activate this effect"
 	if ig.get("not_after_double", false) and c.attack_count_turn == s.turn and c.attack_count >= 2:
@@ -990,8 +1000,14 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 			"exile_opp", "exile_opp_end", "opp_change_pos", "grand_neos":
 				if opp.monsters().is_empty():
 					return false
-			"dark_panther":
+			"dark_panther", "volcasaurus":
 				if opp.monsters().filter(func(m): return m.face_up).is_empty():
+					return false
+			"ray_v":
+				if opp.monsters().is_empty():
+					return false
+			"second_attack":
+				if s.players[p].monsters().filter(func(m): return m.face_up and CardEffects.matches(m.data, a[1])).is_empty():
 					return false
 			"aqua_dolphin", "aqua_neos", "heal_per_opp_hand":
 				if opp.hand.is_empty():
@@ -1358,6 +1374,14 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 			return ps.field.has(c) and not c.face_up and window == "chain" and not s.chain.is_empty() and str(s.chain.back().get("kind", "")) == "spell" and s.chain.back().get("target") == c and not s.chain.back().get("negated", false)
 		"skill_successor":
 			return ps.gy.has(c) and s.current == p and c.gy_turn != s.turn and window in ["attack", "damage", "battle_start"] and s._strongest_face_up(p) != null
+		"gagaga_gardna":
+			if ps.hand.has(c):
+				return window == "attack" and hit and s.pending_attack["target"] == null and ps.free_zone() != -1 and ps.no_summon_turn != s.turn
+			return on_field and window == "attack" and hit and s.pending_attack["target"] == c and not ps.hand.is_empty() and s._shield != c
+		"tasuke":
+			return ps.gy.has(c) and window == "attack" and hit and ps.hand.is_empty() and ps.free_zone() != -1 and not ps.once_duel.has(c.cname())
+		"samurai":
+			return on_field and c.attack_pos and window == "attack" and hit and s.pending_attack["target"] != null and s.pending_attack["target"] != c
 		"wk_lv10":
 			# "During your opponent's Battle Phase (Quick Effect): You can Tribute this face-up card".
 			return on_field and opp_turn and s.phase == DuelState.Phase.BATTLE and window in ["attack", "battle_start"] and s.can_tribute_fx(c)
@@ -1393,6 +1417,34 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 	var events := []
 	var hit: bool = not s.pending_attack.is_empty() and int(s.pending_attack["player"]) != p and not s.pending_attack.get("negated", false)
 	match kind:
+		"gagaga_gardna":
+			if ps.hand.has(c):
+				ps.hand.erase(c)
+				events.append(_ev(p, c, Loc.t("%s jumps in front of the direct attack") % c.cname()))
+				events.append_array(s._special(p, c, "effect"))
+			elif not ps.hand.is_empty():
+				var low = ps.hand[0]
+				for h in ps.hand:
+					if s._card_value(h) < s._card_value(low):
+						low = h
+				low = s.pick1(p, Loc.t("%s: discard 1 card") % c.cname(), ps.hand, low, c)
+				ps.hand.erase(low)
+				s._to_gy(ps, low)
+				events.append({"type": "discard", "player": p, "card": low})
+				s._shield = c
+				events.append(_ev(p, c, Loc.t("%s cannot be destroyed by this battle") % c.cname()))
+		"tasuke":
+			ps.once_duel[c.cname()] = true
+			ps.gy.erase(c)
+			events.append(_ev(p, c, Loc.t("%s rises from the Graveyard and the Battle Phase ends") % c.cname()))
+			events.append_array(s._special(p, c, "reborn"))
+			s.pending_attack["negated"] = true
+			s.players[s.current].no_attack_turn = s.turn
+		"samurai":
+			c.attack_pos = false
+			events.append(_ev(p, c, Loc.t("%s takes the attack") % c.cname()))
+			events.append({"type": "position", "player": p, "card": c, "zone": ps.field.find(c)})
+			s.pending_attack["target"] = c
 		"wk_lv10":
 			ps.field[ps.field.find(c)] = null
 			s._to_gy(ps, c)
@@ -1568,6 +1620,14 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 			return not s.chain.is_empty() and int(s.chain.back()["player"]) != p and ps.hand.size() >= 1
 		"sorcerer", "joker", "big_shield":
 			return not s.chain.is_empty() and int(s.chain.back()["player"]) != p
+		"gagaga_gardna":
+			if ps.hand.has(c):
+				return dmg >= 1000 or dmg >= ps.lp
+			return lose and ps.hand.size() >= 2
+		"tasuke":
+			return dmg >= 1000 or dmg >= ps.lp or lose
+		"samurai":
+			return lose and tgt != null and s.def_of(c) > s.atk_of(att, true, c, true)
 		"wk_lv10":
 			var sum_k := 0
 			var n_k := 0
@@ -1700,6 +1760,8 @@ static func ai_ignite_ok(s: DuelState, p: int, c) -> bool:
 			return top >= s.atk_of(c, false)
 		"trooper":
 			return ps.deck.size() >= 12
+		"before_battle":
+			return s.phase == DuelState.Phase.MAIN1 and s.turn > 1 and not opp.monsters().is_empty()
 		"catapult":
 			# Only for the win: the biggest monster's half ATK finishes the duel.
 			var top_atk := 0
@@ -1792,6 +1854,91 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"utopia_ray":
+			# "it gains 500 ATK until the end of this turn, and if it does, 1 monster your opponent controls loses 1000 ATK until the end of this turn."
+			if ps.lp > 1000:
+				return events
+			if c.atk_mod_turn != s.turn:
+				c.atk_mod_turn = s.turn
+				c.atk_mod_t = 0
+			c.atk_mod_t += 500
+			events.append(_ev(p, c, Loc.t("%s: 500 ATK until the end of this turn") % name))
+			var t_r = _best_opp(s, p, "", null, "")
+			var ups_r: Array = opp.monsters().filter(func(m): return m.face_up)
+			if not ups_r.is_empty():
+				if t_r == null or not t_r.face_up:
+					t_r = ups_r[0]
+				t_r = s.pick1(p, Loc.t("%s: which monster loses 1000 ATK?") % name, ups_r, t_r, c)
+				if t_r.atk_mod_turn != s.turn:
+					t_r.atk_mod_turn = s.turn
+					t_r.atk_mod_t = 0
+				t_r.atk_mod_t -= 1000
+				events.append(_ev(p, c, Loc.t("%s loses 1000 ATK until the end of this turn") % t_r.cname()))
+		"ray_v":
+			# "destroy that monster, and if it was face-up, inflict damage to your opponent equal to the ATK the destroyed monster had on the field."
+			var t_v = _best_opp(s, p, "", c, "destroy 1 monster")
+			if t_v != null:
+				var was_up: bool = t_v.face_up
+				var had: int = s.atk_of(t_v, false)
+				events.append(_ev(p, c, Loc.t("%s destroys %s") % [name, t_v.cname() if was_up else Loc.t("the face-down monster")]))
+				events.append_array(s._destroy(t_v))
+				if not opp.field.has(t_v) and was_up and had > 0:
+					events.append_array(s._damage(opp_i, had))
+		"xyz_gy_to_extra":
+			var xs: Array = ps.gy.filter(func(g): return g.is_monster() and g.frame() == "xyz")
+			if not xs.is_empty():
+				var best_x = xs[0]
+				for g in xs:
+					if g.atk() > best_x.atk():
+						best_x = g
+				var got_x := s.choose(p, Loc.t("%s: return 1 Xyz Monster from your Graveyard to the Extra Deck?") % name, xs, 1, [best_x], true, c)
+				if not got_x.is_empty():
+					ps.gy.erase(got_x[0])
+					ps.extra.append(got_x[0])
+					events.append(_ev(p, c, Loc.t("%s returns to the Extra Deck") % got_x[0].cname()))
+		"second_attack":
+			# Gagaga Samurai: 1 "Gagaga" monster you control can make a second attack during each Battle Phase this turn.
+			var mine_s: Array = ps.monsters().filter(func(m): return m.face_up and CardEffects.matches(m.data, a[1]))
+			if not mine_s.is_empty():
+				var best_s = mine_s[0]
+				for m in mine_s:
+					if s.atk_of(m, false) > s.atk_of(best_s, false):
+						best_s = m
+				best_s = s.pick1(p, Loc.t("%s: which monster can attack twice this turn?") % name, mine_s, best_s, c)
+				best_s.bonus_attacks = (best_s.bonus_attacks if best_s.bonus_attacks_turn == s.turn else 0) + 1
+				best_s.bonus_attacks_turn = s.turn
+				events.append(_ev(p, c, Loc.t("%s can make a second attack this turn") % best_s.cname()))
+		"volcasaurus":
+			var ups_v: Array = opp.monsters().filter(func(m): return m.face_up and can_target(c, m))
+			if not ups_v.is_empty():
+				var best_v = ups_v[0]
+				for m in ups_v:
+					if m.atk() > best_v.atk():
+						best_v = m
+				best_v = s.pick1(p, Loc.t("%s: destroy 1 face-up monster") % name, ups_v, best_v, c)
+				events.append(_ev(p, c, Loc.t("%s destroys %s") % [name, best_v.cname()]))
+				events.append_array(s._destroy(best_v))
+				if not opp.field.has(best_v):
+					events.append_array(s._damage(opp_i, best_v.atk()))
+			c.tags["no_direct_turn"] = s.turn
+		"gogogo_giant":
+			# "target 1 "Gogogo" monster in your GY; Special Summon that target in Defense Position, then change this card to Defense Position."
+			var pool_g: Array = ps.gy.filter(func(g): return g.is_monster() and g.cname().contains("Gogogo") and s.can_revive(g))
+			if pool_g.is_empty() or ps.free_zone() == -1:
+				return events
+			var best_gg = pool_g[0]
+			for g in pool_g:
+				if g.def() > best_gg.def():
+					best_gg = g
+			var got_gg := s.choose(p, Loc.t("%s: Special Summon 1 \"Gogogo\" monster from your Graveyard?") % name, pool_g, 1, [best_gg], true, c)
+			if got_gg.is_empty():
+				return events
+			ps.gy.erase(got_gg[0])
+			events.append_array(s._special(p, got_gg[0], "reborn", "def"))
+			events.append_array(on_summon(s, p, got_gg[0], "special"))
+			if ps.field.has(c) and c.attack_pos:
+				c.attack_pos = false
+				events.append({"type": "position", "player": p, "card": c, "zone": ps.field.find(c)})
 		"aqua_dolphin":
 			# Look at the opponent's hand and choose 1 monster. Control a monster with at least its ATK: it is
 			# destroyed and they take 500. Otherwise you take 500.

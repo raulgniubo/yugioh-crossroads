@@ -727,6 +727,8 @@ func tributes_needed(c: CardInst) -> int:
 		return 0
 	if c.level() >= 5 and necroshade_for(c) != null:
 		return 0
+	if CardEffects.of(c.cname()).has("free_summon_atk"):
+		return 0   # "You can Normal Summon this card without Tributing, but its original ATK becomes 1800" (Dododo Warrior)
 	if c.level() >= 7:
 		return 2
 	if c.level() >= 5:
@@ -772,10 +774,19 @@ func tributable(p: int) -> Array:
 func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> Array:
 	if not can_normal_summon(p, c) or tributes.size() != tributes_needed(c):
 		return []
+	tributes = tributes.duplicate()
 	if not set_card and players[p].no_summon_turn == turn:
 		return []
 	if set_card and CardEffects.of(c.cname()).get("no_set", false):
 		return []   # "cannot be Normal Set"
+	var free_atk := int(CardEffects.of(c.cname()).get("free_summon_atk", 0))
+	if free_atk > 0 and set_card and tributes.is_empty():
+		return []   # (only the Normal Summon is free; a Set still needs its Tribute)
+	if free_atk > 0 and tributes.is_empty() and manual[p] and not tributable(p).is_empty():
+		# Your call: Tribute 1 monster and keep its full ATK, or bring it out for free at the lower ATK.
+		if choose_option(p, Loc.t("%s: Tribute 1 monster to keep its full ATK?") % c.cname(), [Loc.t("No Tribute: ATK %d") % free_atk, Loc.t("Tribute 1 monster: ATK %d") % c.atk()], 0, c) == 1:
+			tributes = [pick1(p, Loc.t("%s: Tribute which monster?") % c.cname(), tributable(p), tributable(p)[0], c)]
+			free_atk = 0
 	# Elemental HERO Necroshade lets you Normal Summon without Tributing (a Set is not a Normal Summon).
 	var necro: CardInst = null
 	if tributes.is_empty() and c.level() >= 5 and not CardEffects.of(c.cname()).has("tributes") and not EffectRunner.no_tribute(self, c.owner, c):
@@ -818,6 +829,19 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 			c.lv_set = as_lv
 			c.lv_turn = -1
 	events.append({"type": "set" if set_card else "summon", "player": p, "card": c, "zone": zone})
+	if free_atk > 0 and tributes.is_empty() and not set_card:
+		c.atk_mod -= c.atk() - free_atk
+		events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s is Normal Summoned without Tributing: its ATK is %d") % [c.cname(), free_atk]})
+	# Kagetokage: "When you Normal Summon a Level 4 monster: You can Special Summon this card from your hand."
+	if not set_card and c.level() == 4 and ps.no_summon_turn != turn:
+		for h in ps.hand.duplicate():
+			if ps.free_zone() != -1 and CardEffects.of(h.cname()).get("kagetokage", false):
+				if choose_option(p, Loc.t("%s: Special Summon it from your hand?") % h.cname(), ["Special Summon it", "Keep it in hand"], 0, h) == 0:
+					ps.hand.erase(h)
+					h.proper = true
+					events.append({"type": "effect", "player": p, "card": h, "text": Loc.t("%s follows %s onto the field") % [h.cname(), c.cname()]})
+					events.append_array(_special(p, h, "effect"))
+				break
 	if necro != null:
 		necro.once = true
 		events.append({"type": "effect", "player": p, "card": necro, "text": Loc.t("%s in the Graveyard: %s is Normal Summoned without Tributing") % [necro.cname(), c.cname()]})
@@ -1517,6 +1541,11 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	pending_attack = {"player": p, "attacker": attacker, "target": target, "negated": false,
 			"opp_count": players[opponent(p)].monsters().size()}
 	var events := paid + [{"type": "attack", "player": p, "card": attacker, "target": target}]
+	if target != null and target.face_up and target.attack_pos and not target.negated and EffectRunner.fx(target).get("def_when_targeted", false):
+		if choose_option(target.owner, Loc.t("%s: change it to Defense Position?") % target.cname(), ["Change to Defense Position", "No"], 0, target) == 0:
+			target.attack_pos = false
+			events.append({"type": "effect", "player": target.owner, "card": target, "text": Loc.t("%s changes to Defense Position") % target.cname()})
+			events.append({"type": "position", "player": target.owner, "card": target, "zone": players[target.owner].field.find(target)})
 	# A Mirror Wall already standing on the other side halves whatever attacks into it.
 	for st in players[opponent(p)].spells:
 		if st != null and st.face_up and SpellRules.spec(st).get("halve_attackers", false) and not attacker.has_meta("mirror_wall"):
@@ -1581,14 +1610,23 @@ func cancel_attack() -> Array:
 	return [{"type": "attack_stopped", "player": p, "card": a}]
 
 
+var gy_fx_off := -1   # effects that activate in this player's Graveyard are negated until the end of the Damage Step (Dododo Warrior)
+var bye_bye := -1     # Bye Bye Damage: battle damage this player takes in this battle comes back doubled at the other side
+
+
 func resolve_attack() -> Array:
 	if pending_attack.is_empty():
 		return []
 	in_damage_step = true
 	battle_shield = int(pending_attack.get("no_damage_to", -1))
+	var att0: CardInst = pending_attack["attacker"]
+	if att0 != null and att0.face_up and not att0.negated and EffectRunner.fx(att0).get("negate_opp_gy_fx", false):
+		gy_fx_off = opponent(int(pending_attack["player"]))   # Dododo Warrior
 	var ev := _resolve_attack()
 	in_damage_step = false
 	battle_shield = -1
+	gy_fx_off = -1
+	bye_bye = -1
 	return ev
 
 
@@ -1975,6 +2013,17 @@ func _battle_damage(p: int, amount: int, dealer: CardInst = null, taker: CardIns
 	var ps := players[p]
 	if battle_shield == p:
 		return [{"type": "effect", "player": p, "card": null, "text": "No battle damage!"}]
+	# Half Unbreak: "any battle damage you take from attacks involving that monster is halved."
+	for hm in [dealer, taker]:
+		if hm != null and int(hm.tags.get("unbreak_turn", -1)) == turn and int(hm.tags.get("unbreak_for", -1)) == p:
+			amount = int(ceil(amount / 2.0))
+			break
+	if bye_bye == p and amount > 0 and ps.no_damage_turn != turn and ps.protect_turn != turn:
+		# Bye Bye Damage: "if you take battle damage from that battle, your opponent takes effect damage equal to double that amount."
+		var out_b := _damage(p, amount, true)
+		out_b.append({"type": "effect", "player": p, "card": null, "text": Loc.t("Bye Bye Damage: %d damage to the opponent") % (amount * 2)})
+		out_b.append_array(_damage(opponent(p), amount * 2))
+		return out_b
 	if EffectRunner.no_damage_involving(taker) and taker.owner == p:
 		return [{"type": "effect", "player": p, "card": taker, "text": "No battle damage!"}]
 	# Amazoness Swords Woman: "Your opponent takes any battle damage you would have taken from
@@ -2610,6 +2659,7 @@ func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 	c.pos_changed_turn = -1
 	c.attacked_turn = -1
 	c.reset_mods()
+	c.tags["ss"] = true   # "a Special Summoned monster" (Gagaga Girl)
 	last_summoned = c
 	var events := [{"type": "special", "player": p, "card": c, "zone": zone, "method": method}]
 	if not c.attack_pos:
@@ -2965,7 +3015,39 @@ func can_extra_summon(p: int, c: CardInst, any_time := false) -> bool:
 		return not contact_materials(p, c).is_empty() and (players[p].free_zone() != -1 or _contact_frees_zone(p, c))
 	if c.frame() != "synchro" and c.frame() != "xyz":
 		return false
-	return not extra_materials(p, c).is_empty()
+	return not extra_materials(p, c).is_empty() or xyz_base(p, c) != null
+
+
+## "You can also Xyz Summon this card by using a "Number 39: Utopia" you control as material."
+## The monster it would go on top of, or null.
+func xyz_base(p: int, c: CardInst) -> CardInst:
+	var want := str(CardEffects.of(c.cname()).get("xyz_onto", ""))
+	if want == "" or c.frame() != "xyz":
+		return null
+	for m in players[p].monsters():
+		if m.face_up and m.cname() == want:
+			return m
+	return null
+
+
+## Xyz Summon `x` using `base` as the material: its own materials move across with it.
+func xyz_onto(p: int, x: CardInst, base: CardInst) -> Array:
+	var ps := players[p]
+	if not ps.extra.has(x) or not ps.field.has(base):
+		return []
+	var z := ps.field.find(base)
+	ps.field[z] = null
+	x.overlays.append(base)
+	for o in base.overlays:
+		x.overlays.append(o)
+	base.overlays.clear()
+	var events := [{"type": "material", "player": p, "card": base, "from": "field", "zone": z, "overlay": true}]
+	events.append_array(_monster_left(base))
+	ps.extra.erase(x)
+	x.proper = true
+	events.append_array(_special(p, x, "xyz"))
+	events.append_array(EffectRunner.on_summon(self, p, x, "xyz"))
+	return events
 
 
 ## XYZ-Dragon Cannon and its kind: "Special Summoned (from your Extra Deck) by banishing the above
@@ -3027,6 +3109,8 @@ func extra_summon(p: int, c: CardInst, materials: Array = [], any_time := false)
 		return []
 	if EffectRunner.fx(c).has("contact"):
 		return _contact_summon(p, c)
+	if materials.is_empty() and extra_materials(p, c).is_empty() and xyz_base(p, c) != null:
+		return xyz_onto(p, c, xyz_base(p, c))
 	if materials.is_empty():
 		materials = extra_materials(p, c)[0]
 	var ps := players[p]
@@ -3036,6 +3120,16 @@ func extra_summon(p: int, c: CardInst, materials: Array = [], any_time := false)
 		var z := ps.field.find(m)
 		if z == -1:
 			return []
+	var revenge_bonus := 0
+	var girl_gift: bool = xyz and not materials.is_empty()
+	for m in materials:
+		if not m.cname().contains("Gagaga"):
+			girl_gift = false
+		for st in ps.spells:
+			if xyz and st != null and st.face_up and (st.linked == m or st.equipped_to == m):
+				revenge_bonus += int(SpellRules.spec(st).get("xyz_mat_bonus", 0))
+	if girl_gift and materials.filter(func(m): return m.face_up and not m.negated and CardEffects.of(m.cname()).get("gagaga_girl", false)).is_empty():
+		girl_gift = false
 	for m in materials:
 		var z := ps.field.find(m)
 		ps.field[z] = null
@@ -3064,6 +3158,24 @@ func extra_summon(p: int, c: CardInst, materials: Array = [], any_time := false)
 			events.append_array(EffectRunner.trigger(self, m, "material", {"into": c}))
 	var ctx_kind := c.frame()
 	events.append_array(EffectRunner.on_summon(self, p, c, ctx_kind))
+	if revenge_bonus > 0:
+		# Gagagarevenge: "...because the equipped monster was used as an Xyz Material: All Xyz Monsters you currently control gain 300 ATK."
+		for xm in ps.monsters():
+			if xm.face_up and xm.frame() == "xyz":
+				xm.atk_mod += revenge_bonus
+		events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("Gagagarevenge: your Xyz Monsters gain %d ATK") % revenge_bonus})
+	if girl_gift and ps.field.has(c):
+		# Gagaga Girl: "When it is Xyz Summoned: You can target 1 Special Summoned monster your opponent controls; its ATK becomes 0."
+		var ss_m: Array = players[opponent(p)].monsters().filter(func(m): return m.face_up and m.tags.get("ss", false) and not m.zero_perm)
+		if not ss_m.is_empty():
+			var top_g: CardInst = ss_m[0]
+			for m in ss_m:
+				if atk_of(m, false) > atk_of(top_g, false):
+					top_g = m
+			var got_g := choose(p, Loc.t("Gagaga Girl: make the ATK of 1 Special Summoned monster 0?"), ss_m, 1, [top_g], true, c)
+			if not got_g.is_empty():
+				got_g[0].zero_perm = true
+				events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("Gagaga Girl's gift: the ATK of %s becomes 0") % got_g[0].cname()})
 	if not xyz and not is_over():
 		# Stardust Xiaolong: "When you Synchro Summon "Stardust Dragon": You can Special Summon this card from your GY in Attack Position."
 		for g in ps.gy.duplicate():

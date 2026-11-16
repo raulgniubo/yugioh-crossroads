@@ -119,6 +119,16 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Yuma's cards (v0.33.32)
+	"Gagagabolt": {"k": "normal", "cond": "own_gagaga", "t": "any_card", "do": [["destroy", "target"]]},
+	"Onomatopaira": {"k": "normal", "cost": "discard", "do": [["onomatopaira"]]},
+	"Gagagarevenge": {"k": "equip", "do": [["revive", "own_gy", "", "link", {"has": "Gagaga"}]], "xyz_mat_bonus": 300},
+	"Xyz Energy": {"k": "normal", "cost": "detach_any", "t": "opp_face", "do": [["destroy", "target"]]},
+	"Blustering Winds": {"k": "normal", "t": "own_face", "do": [["winds", "target"]]},
+	"Rank-Up-Magic Limited Barian's Force": {"k": "normal", "ai": "always", "do": [["rank_up", 4, "Number C"]]},
+	"Half Unbreak": {"k": "trap", "win": ["free"], "t": "any_mon", "do": [["half_unbreak", "target"]]},
+	"Battle Break": {"k": "trap", "win": ["attack"], "do": [["battle_break"]]},
+	"Bye Bye Damage": {"k": "trap", "win": ["free"], "only_win": "damage", "dmg": true, "cond": "being_attacked_monster", "do": [["bye_bye"]]},
 	# ---------------------------------------------------------------- Jaden's cards (v0.33.32)
 	"Neo Space": {"k": "field", "neo_space": true, "ai": "always"},
 	"Instant Neo Space": {"k": "equip", "must_neos_fusion": true, "neos_keep": true, "host_gone": [["special_named_anywhere", "Elemental HERO Neos"]], "ai": "always"},
@@ -540,6 +550,13 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return not s.players[p].monsters().is_empty()
 		"own_hand":
 			return not s.players[p].hand.is_empty()
+		"own_gagaga":
+			for m in s.players[p].monsters():
+				if m.face_up and m.cname().contains("Gagaga"):
+					return true
+			return false
+		"being_attacked_monster":
+			return s.current != p and not s.pending_attack.is_empty() and int(s.pending_attack["player"]) != p and s.pending_attack["target"] != null
 		"own_ehero", "own_burstinatrix":
 			for m in s.players[p].monsters():
 				if m.face_up and str(m.data.get("name", "")).contains("Elemental HERO Burstinatrix" if cond == "own_burstinatrix" else "Elemental HERO"):
@@ -660,6 +677,12 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 			"slip_summon":
 				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or EffectRunner._take(ps.hand, {"max_lv": 4}, 1).is_empty():
 					return false
+			"onomatopaira":
+				if int(ps.once_names.get("Onomatopaira", -1)) == s.turn or _onoma_pool(s, p).is_empty():
+					return false
+			"rank_up":
+				if _rank_up_options(s, p, int(a[1]), str(a[2])).is_empty():
+					return false
 			"fake_hero":
 				if ps.free_zone() == -1 or ps.no_summon_turn == s.turn or EffectRunner._take(ps.hand.filter(func(h): return h != c and not CardEffects.of(h.cname()).get("no_special", false)), {"has": "Elemental HERO"}, 1).is_empty():
 					return false
@@ -740,6 +763,8 @@ static func _can_pay(s: DuelState, p: int, c, sp: Dictionary) -> bool:
 		return not ps.monsters().filter(func(m): return s.can_tribute_fx(m)).is_empty()
 	if cost == "discard_f":
 		return not ps.hand.filter(func(h): return h != c and CardEffects.matches(h.data, sp.get("cost_f", {}))).is_empty()
+	if cost == "detach_any":
+		return not ps.monsters().filter(func(m): return m.face_up and not m.overlays.is_empty()).is_empty()
 	if cost == "tribute_f":
 		return not ps.monsters().filter(func(m): return m.face_up and s.can_tribute_fx(m) and CardEffects.matches(m.data, sp.get("cost_f", {}))).is_empty()
 	return true
@@ -782,6 +807,18 @@ static func pay_cost(s: DuelState, p: int, c, sp: Dictionary) -> Array:
 			ps.hand.erase(least)
 			s._to_gy(ps, least)
 			events.append({"type": "discard", "player": p, "card": least})
+	elif cost == "detach_any":
+		# "Detach 1 Xyz Material you control" (Xyz Energy).
+		var holders: Array = ps.monsters().filter(func(m): return m.face_up and not m.overlays.is_empty())
+		var most = holders[0]
+		for m in holders:
+			if m.overlays.size() > most.overlays.size():
+				most = m
+		most = s.pick1(p, Loc.t("%s: detach 1 material from which monster?") % c.cname(), holders, most, c)
+		var mat = s.pick1(p, Loc.t("%s: detach which material?") % c.cname(), most.overlays, most.overlays.back(), c)
+		most.overlays.erase(mat)
+		s._to_gy(ps, mat)
+		events.append({"type": "detach", "player": p, "card": most})
 	elif cost == "tribute" or cost == "tribute_f":
 		var weak = null
 		var can_t: Array = ps.monsters().filter(func(m): return s.can_tribute_fx(m) and (cost == "tribute" or (m.face_up and CardEffects.matches(m.data, sp.get("cost_f", {})))))
@@ -1374,6 +1411,82 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				taker.lv_set = taker.level() + lv_gain
 				taker.lv_turn = s.turn
 				events.append(_ev(p, c, Loc.t("%s is Level %d until the End Phase") % [taker.cname(), taker.lv_set]))
+		"onomatopaira":
+			# "choose up to 2 of these categories. For each chosen category, add one monster in that category from your Deck to your hand."
+			ps.once_names["Onomatopaira"] = s.turn
+			var pool_o: Array = _onoma_pool(s, p)
+			var auto_o: Array = []
+			var used_o := {}
+			for cat in ["Gagaga", "Gogogo", "Dododo", "Zubaba"]:
+				for x in pool_o:
+					if auto_o.size() < 2 and not used_o.has(cat) and x.cname().contains(cat):
+						auto_o.append(x)
+						used_o[cat] = true
+			var seen_o := {}
+			for x in s.choose(p, Loc.t("%s: add up to 2 monsters, each from a different group (Zubaba, Gagaga, Gogogo, Dododo)") % name, pool_o, 2, auto_o, true, c):
+				var cat_x := ""
+				for cat in ["Gagaga", "Gogogo", "Dododo", "Zubaba"]:
+					if cat_x == "" and x.cname().contains(cat) and not seen_o.has(cat):
+						cat_x = cat
+				if cat_x == "":
+					continue
+				seen_o[cat_x] = true
+				ps.deck.erase(x)
+				ps.hand.append(x)
+				events.append({"type": "search", "player": p, "card": x, "deck": ps.deck.size()})
+				events.append_array(EffectRunner.added_by_effect(s, p, x))
+			s._shuffle(ps.deck)
+		"rank_up":
+			# Rank-Up-Magic Limited Barian's Force: a "Number C" monster 1 Rank higher, using your Rank 4 Xyz Monster as the material.
+			var opts_r: Array = _rank_up_options(s, p, int(a[1]), str(a[2]))
+			if opts_r.is_empty():
+				return events
+			var tops: Array = []
+			for o in opts_r:
+				if not tops.has(o[1]):
+					tops.append(o[1])
+			var best_top = tops[0]
+			for x in tops:
+				if x.atk() > best_top.atk():
+					best_top = x
+			best_top = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, tops, best_top, c)
+			var bases: Array = []
+			for o in opts_r:
+				if o[1] == best_top:
+					bases.append(o[0])
+			var base_r = s.pick1(p, Loc.t("%s: use which monster as the material?") % name, bases, bases[0], c)
+			events.append(_ev(p, c, Loc.t("%s: %s ranks up into %s") % [name, base_r.cname(), best_top.cname()]))
+			events.append_array(s.xyz_onto(p, best_top, base_r))
+		"winds":
+			for t in _sel(s, p, c, str(a[1]), ctx):
+				t.tmp_atk = (t.tmp_atk if t.tmp_until >= s.turn else 0) + 1000
+				t.tmp_until = s.turn + 1
+				t.tags["tmp_def"] = 1000
+				t.tags["tmp_def_until"] = s.turn + 1
+				events.append(_ev(p, c, Loc.t("%s gains 1000 ATK and DEF until your next Standby Phase") % t.cname()))
+		"half_unbreak":
+			for t in _sel(s, p, c, str(a[1]), ctx):
+				t.tags["unbreak_turn"] = s.turn
+				t.tags["unbreak_for"] = p
+				events.append(_ev(p, c, Loc.t("%s cannot be destroyed by battle this turn, and the battle damage you take from its battles is halved") % (t.cname() if t.face_up else Loc.t("The face-down monster"))))
+		"battle_break":
+			# "Your opponent can reveal 1 monster in their hand to negate this card's effect, otherwise destroy the attacking monster, then end the Battle Phase."
+			if s.pending_attack.is_empty():
+				return events
+			var shown: Array = opp.hand.filter(func(h): return h.is_monster())
+			if not shown.is_empty() and s.choose_option(opp_i, Loc.t("%s: reveal 1 monster in your hand to negate it?") % name, ["Reveal a monster", "No"], 0, c) == 0:
+				events.append(_ev(opp_i, shown[0], Loc.t("%s is revealed: %s is negated") % [shown[0].cname(), name]))
+				return events
+			var att_b = s.pending_attack["attacker"]
+			events.append_array(s._destroy(att_b))
+			s.pending_attack["negated"] = true
+			s.players[s.current].no_attack_turn = s.turn
+			events.append(_ev(p, c, Loc.t("%s: the Battle Phase ends") % name))
+		"bye_bye":
+			if not s.pending_attack.is_empty() and s.pending_attack["target"] != null:
+				s._shield = s.pending_attack["target"]
+				s.bye_bye = p
+				events.append(_ev(p, c, Loc.t("%s: your monster is not destroyed by this battle, and the battle damage you take is dealt to the opponent doubled") % name))
 		"fake_hero":
 			# "Special Summon 1 "Elemental HERO" monster from your hand, but it cannot attack, also return it to the hand during the End Phase."
 			for d in EffectRunner._pick(s, p, c, Loc.t("Special Summon 1 \"Elemental HERO\" monster from your hand"), ps.hand.filter(func(h): return h != c and not CardEffects.of(h.cname()).get("no_special", false)), {"has": "Elemental HERO"}, 1):
@@ -1981,6 +2094,23 @@ static func left_field(s: DuelState, c) -> Array:
 	c.linked = null
 	c.counter = 0
 	return events
+
+
+## Onomatopaira: the Zubaba, Gagaga, Gogogo and Dododo monsters in your Deck.
+static func _onoma_pool(s: DuelState, p: int) -> Array:
+	return s.players[p].deck.filter(func(x): return x.is_monster() and not CardData.is_extra(x.id) and (x.cname().contains("Gagaga") or x.cname().contains("Gogogo") or x.cname().contains("Dododo") or x.cname().contains("Zubaba")))
+
+
+## Rank-Up: [base on your field, monster in your Extra Deck] pairs, one Rank apart.
+static func _rank_up_options(s: DuelState, p: int, rank: int, family: String) -> Array:
+	var out := []
+	for m in s.players[p].monsters():
+		if not m.face_up or m.frame() != "xyz" or m.level() != rank:
+			continue
+		for x in s.players[p].extra:
+			if x.frame() == "xyz" and x.level() == rank + 1 and x.cname().contains(family):
+				out.append([m, x])
+	return out
 
 
 ## "Elemental HERO Neos" itself, or a Fusion Monster that lists it as a material.

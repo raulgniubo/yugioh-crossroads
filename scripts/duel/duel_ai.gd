@@ -144,6 +144,12 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 		for x in extra_sorted:
 			if not s.can_extra_summon(p, x) or CardEffects.of(x.cname()).has("contact"):
 				continue      # (Contact Fusions are _contact_step's call)
+			if s.extra_materials(p, x).is_empty():
+				# On top of another Xyz Monster (Utopia Ray on Utopia): worth it when its effect is live.
+				var base = s.xyz_base(p, x)
+				if base != null and (x.atk() > base.atk() or (EffectRunner.ignite_spec(x).has("cond") and EffectRunner._cond(s, p, str(EffectRunner.ignite_spec(x)["cond"])))):
+					return {"do": "extra", "card": x}
+				continue
 			var mats: Array = s.extra_materials(p, x)[0]
 			var mat_best := 0
 			for m in mats:
