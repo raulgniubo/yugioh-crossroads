@@ -847,6 +847,15 @@ static func _enables_extra(s: DuelState, p: int, c: DuelState.CardInst) -> bool:
 			break
 	ps.field[zone] = null
 	c.face_up = was_up
+	if not ok and (CardEffects.of(c.cname()).has("summon") or CardEffects.of(c.cname()).has("any_summon")):
+		# Its summon effect brings a partner (Twilight Rose Knight, Junk Synchron): play it out on a copy.
+		var sim := s.clone()
+		var sc = sim.find_uid(c.uid)
+		if sc != null and sim.can_normal_summon(p, sc) and not sim.normal_summon(p, sc, []).is_empty():
+			sim._cleanup()
+			for x in sim.players[p].extra:
+				if x.frame() in ["synchro", "xyz"] and sim.can_extra_summon(p, x):
+					return true
 	return ok
 
 
@@ -1334,9 +1343,28 @@ static func _evaluate(s: DuelState, p: int, expert := false) -> float:
 	var score := float(s.players[p].lp) * 0.8 - float(s.players[o].lp) * 1.3
 	score += _board(s.players[p]) - _board(s.players[o])
 	score += _ace_value(s, p) - _ace_value(s, o)
-	score += 150.0 * (s.players[p].hand.size() - s.players[o].hand.size())
+	score += _hand_value(s, p) - _hand_value(s, o)
 	score += 400.0 * (s.players[p].set_cards().size() - s.players[o].set_cards().size())
 	return score
+
+
+## Cards in hand are worth keeping, except to an Infernity deck: its cards work with an empty hand,
+## so emptying it is the plan (Kalin).
+static func _hand_value(s: DuelState, p: int) -> float:
+	var ps := s.players[p]
+	var inf := 0
+	for m in ps.monsters():
+		if m.cname().contains("Infernity"):
+			inf += 1
+	for g in ps.gy:
+		if g.cname().contains("Infernity"):
+			inf += 1
+	for st in ps.spells:
+		if st != null and st.cname().contains("Infernity"):
+			inf += 1
+	if inf >= 2:
+		return 900.0 if ps.hand.is_empty() else -60.0 * ps.hand.size()
+	return 150.0 * ps.hand.size()
 
 
 ## Expert's view of a position: cards matter more than Life Points until Life Points get

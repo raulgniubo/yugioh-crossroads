@@ -4405,6 +4405,8 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			events.append({"type": "search", "player": p, "card": d, "deck": ps.deck.size()})
 			events.append_array(added_by_effect(s, p, d))
 		"gy_to_hand":
+			if SpellRules.field_flag(s, "necrovalley"):
+				return events   # Necrovalley: nothing leaves the Graveyard
 			for d in _pick(s, p, c, "add from your Graveyard to your hand", ps.gy, a[1], int(a[2])):
 				ps.gy.erase(d)
 				ps.hand.append(d)

@@ -92,6 +92,8 @@ func _ready() -> void:
 		_test_cards_67()
 		_test_cards_68()
 		_test_cards_69()
+		_test_cards_70()
+		_test_save_guard()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -7494,3 +7496,69 @@ func _test_cards_69() -> void:
 	s.activate(0, fl, lt)
 	var moon := _rst(s, 0, "Book of Moon")
 	check(s.atk_of(lt, false) == 2200 and not SpellRules.targets(s, 0, moon).has(lt), "Forbidden Lance: -800 and no other Spell can target it this turn")
+
+
+## The last partial cards finished (v0.33.40).
+func _test_cards_70() -> void:
+	# Heart of Clear Water: a targeted destroy does nothing.
+	var s := _bare(4001)
+	var k := _mon(s, 1, "Kuriboh", 0)
+	var hc := _rst(s, 1, "Heart of Clear Water")
+	s.current = 1
+	s.activate(1, hc, k)
+	s.current = 0
+	_in(s, 0, "Kuriboh", "hand")
+	var tri := _rst(s, 0, "Tribute to The Doomed")
+	s.activate(0, tri, k)
+	s._cleanup()
+	check(s.players[1].field.has(k), "Heart of Clear Water: Tribute to The Doomed cannot destroy it")
+	# Forbidden Lance: Raigeki does not touch it this turn.
+	s = _bare(4002)
+	var lt := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var fl := _rst(s, 0, "Forbidden Lance")
+	s.activate(0, fl, lt)
+	var rai := _rst(s, 0, "Raigeki")
+	s.activate(0, rai)
+	s._cleanup()
+	check(s.players[1].field.has(lt), "Forbidden Lance: Raigeki does not destroy it this turn")
+	# Necrovalley: The Warrior Returning Alive does nothing.
+	s = _bare(4003)
+	var nv := _rst(s, 0, "Necrovalley")
+	s.activate(0, nv)
+	_in(s, 0, "Celtic Guardian", "gy")
+	var twr := _rst(s, 0, "The Warrior Returning Alive")
+	check(not s.can_activate(0, twr), "Necrovalley: nothing comes back to the hand")
+	# Tyrant Dragon comes back by Tributing a Dragon.
+	s = _bare(4004)
+	var ty := _in(s, 0, "Tyrant Dragon", "gy")
+	var mr := _rst(s, 0, "Monster Reborn")
+	check(not s.can_revive(ty), "Tyrant Dragon: no Dragon, no comeback")
+	var bd := _mon(s, 0, "Baby Dragon", 0)
+	check(s.can_revive(ty), "Tyrant Dragon: with a Dragon to Tribute it can come back")
+	s.activate(0, mr, ty)
+	s._cleanup()
+	check(s.players[0].field.has(ty) and s.players[0].gy.has(bd), "Tyrant Dragon: Baby Dragon Tributed, Tyrant Dragon back")
+
+
+## Save safety: a save file that no longer reads comes back from the last good copy.
+func _test_save_guard() -> void:
+	var path := "user://opening.cfg"
+	var had := FileAccess.file_exists(path)
+	var keep := FileAccess.get_file_as_string(path) if had else ""
+	var cfg := ConfigFile.new()
+	cfg.set_value("t", "v", 42)
+	cfg.save(path)
+	Saves.guard_files()
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	f.store_string("[[[ broken file = = =")
+	f.close()
+	var fixed: Array = Saves.guard_files()
+	var back := ConfigFile.new()
+	check(fixed.has("opening.cfg") and back.load(path) == OK and int(back.get_value("t", "v", 0)) == 42, "Save safety: a broken save file comes back from the last good copy")
+	if had:
+		var w := FileAccess.open(path, FileAccess.WRITE)
+		w.store_string(keep)
+		w.close()
+	else:
+		DirAccess.remove_absolute(path)
+	DirAccess.remove_absolute(path + ".bak")

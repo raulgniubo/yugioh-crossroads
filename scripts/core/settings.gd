@@ -363,6 +363,7 @@ func _ready() -> void:
 	Saves.pull_shared()
 	Saves.read_admin()
 	Saves.pull_live()
+	Saves.guard_files()
 	card_folder = default_card_folder()
 	_ensure_buses()
 	load_settings()

@@ -5534,4 +5534,9 @@ const ES := {
 	"%s: send which Infernity monster to the Graveyard?": "%s: ¿qué monstruo Infernity enviar al Cementerio?",
 	"%s: %s is sealed for the rest of the Duel": "%s: %s queda sellada el resto del Duelo",
 	"Put a picture named back.jpg in this folder and it becomes the back of every card. A picture named icon.png becomes the game's icon while it runs.": "Pon una imagen llamada back.jpg en esta carpeta y será el reverso de todas las cartas. Una imagen llamada icon.png será el icono del juego mientras está abierto.",
+	"empty": "vacía",
+	"▼  FERRY": "▼  FERRI",
+	"%s is unaffected": "%s no se ve afectado",
+	"%s: Tribute which Dragon?": "%s: ¿qué Dragón Sacrificar?",
+	"If your opponent still controls a monster after its first attack, it can attack a second time. A Trap that targets it is negated and destroyed. It comes back from the Graveyard only by Tributing a Dragon.": "Si tu adversario aún controla un monstruo después de su primer ataque, puede atacar una segunda vez. Una Trampa que lo seleccione se niega y se destruye. Solo regresa del Cementerio Sacrificando un Dragón.",
 }

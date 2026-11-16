@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.40
+
+- **Save safety:** every save file is checked when the game starts. One that no longer reads (the computer lost power while it was being written) comes back from the copy kept at the last good start. A crash can cost one session, never the save.
+- **The last partial cards are finished:** Heart of Clear Water now also stops destruction by cards that target the monster; Forbidden Lance's monster is untouched by other Spells and Traps that turn (Raigeki, Mirror Force, bounce, banish); Necrovalley also stops cards going from the Graveyard to the hand; Tyrant Dragon can come back from the Graveyard by Tributing a Dragon.
+- **Computer:** Kalin's deck now plays to empty its hand (the Infernities need it), and the computer sees when a monster's summon effect leads straight into a Synchro (Twilight Rose Knight).
+- Spanish: the last few untranslated lines.
+
+**Not done or not checked:**
+
+- Kalin and Akiza moved only a little (Kalin 19 → 21 of 60, inside the noise).
+- Not seen on a real screen: none of this changes the look of the game.
+
 ## What is in 0.33.39
 
 - **A real icon:** the app and the exe now have Crossroads' own icon (two roads crossing, a glowing card, a star) instead of the Godot logo. Your own picture: put **icon.png** in your card folder and the game uses it as its icon while it runs (Dock / taskbar), like back.jpg for card backs.

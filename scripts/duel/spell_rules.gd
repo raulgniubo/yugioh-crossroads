@@ -1019,7 +1019,7 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 				if kuri.is_empty() or lv10.is_empty() or spare < 2 or ps.no_summon_turn == s.turn:
 					return false
 			"gy_to_hand":
-				if EffectRunner._take(ps.gy, a[1], 1).is_empty():
+				if EffectRunner._take(ps.gy, a[1], 1).is_empty() or field_flag(s, "necrovalley"):
 					return false
 			"search":
 				if EffectRunner._take(ps.deck, a[1], 1).is_empty():
@@ -2299,6 +2299,8 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			for g in got:
 				events.append_array(EffectRunner.added_by_effect(s, p, g))
 		"gy_to_hand":
+			if field_flag(s, "necrovalley"):
+				return events   # Necrovalley: nothing leaves the Graveyard
 			for g in EffectRunner._pick(s, p, c, "add from your Graveyard to your hand", ps.gy, a[1], int(a[2])):
 				ps.gy.erase(g)
 				ps.hand.append(g)

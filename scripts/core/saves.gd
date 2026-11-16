@@ -229,6 +229,27 @@ static func restart_with(order: String) -> void:
 
 
 ## Called once, first thing, by the first part of the game that starts.
+## Save safety: every save file is checked when the game starts. A file that no longer reads
+## (the computer lost power while it was being written) is put back from the copy kept at the last
+## good start; a good one becomes the new copy. So a crash can cost one session, never the save.
+static func guard_files() -> Array:
+	var fixed: Array = []
+	for f in FILES:
+		var path: String = "user://" + f
+		var bak: String = path + ".bak"
+		if not FileAccess.file_exists(path):
+			continue
+		var cfg := ConfigFile.new()
+		if cfg.load(path) == OK:
+			DirAccess.copy_absolute(path, bak)
+		elif FileAccess.file_exists(bak) and ConfigFile.new().load(bak) == OK:
+			DirAccess.copy_absolute(bak, path)
+			fixed.append(f)
+	if not fixed.is_empty():
+		push_warning("Save files restored from the last good copy: %s" % ", ".join(fixed))
+	return fixed
+
+
 static func apply_pending() -> void:
 	if not FileAccess.file_exists(PENDING):
 		return

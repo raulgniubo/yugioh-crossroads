@@ -1516,13 +1516,19 @@ func chain_resolve() -> Array:
 		elif sp.has("legacy"):
 			var was_by := effect_by
 			effect_by = p
+			st_resolving = c
 			events.append_array(_legacy_trap(p, c, link["subject"]) if c.is_trap() else _legacy_spell(p, c, link["target"]))
+			st_resolving = null
 			effect_by = was_by
 			stays = false
 		else:
 			var was_by2 := effect_by
 			effect_by = p
+			st_resolving = c
+			st_target = link.get("target")
 			events.append_array(SpellRules.resolve(self, link))
+			st_resolving = null
+			st_target = null
 			effect_by = was_by2
 			stays = stays and link.get("stays", true) and not link["negated"]
 		if c.is_spell() and not link["negated"]:
@@ -2881,11 +2887,28 @@ func _battle_damage(p: int, amount: int, dealer: CardInst = null, taker: CardIns
 	return _damage(p, amount, true)
 
 
+## The Spell/Trap resolving right now and the card it targeted (Heart of Clear Water, Forbidden Lance).
+var st_resolving = null
+var st_target = null
+
+
+## Forbidden Lance: "unaffected by the effects of other Spells/Traps" this turn.
+func st_unaffected(c: CardInst) -> bool:
+	return st_resolving != null and int(c.tags.get("st_immune", -1)) == turn and st_resolving.cname() != "Forbidden Lance"
+
+
 func _destroy(c: CardInst, by_battle := false) -> Array:
 	var ps := players[c.owner]
 	var zone := ps.field.find(c)
 	if zone == -1:
 		return []
+	if not by_battle and st_unaffected(c):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is unaffected") % c.cname()}]
+	if not by_battle and st_target == c:
+		# Heart of Clear Water: "not destroyed ... by the effect of a card that targets the monster."
+		for hc in SpellRules.equips_on(self, c):
+			if SpellRules.spec(hc).get("clear_heart", false):
+				return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is not destroyed") % c.cname()}]
 	# Number 66: Master Key Beetle: the card it holds the key to "cannot be destroyed by card effects", and "if this card would
 	# be destroyed by battle or card effect, you can send the targeted card to the GY instead."
 	if not by_battle and c.tags.has("key_by"):
@@ -3107,6 +3130,8 @@ func _banish(c: CardInst) -> Array:
 		return []
 	if necro_holds(c):
 		return [{"type": "effect", "player": c.owner, "card": null, "text": Loc.t("Necrovalley: %s stays in the Graveyard") % c.cname()}]
+	if (players[0].field.has(c) or players[1].field.has(c)) and st_unaffected(c):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is unaffected") % c.cname()}]
 	if c.is_token():
 		return _vanish(c)
 	var was_up_mon := false
@@ -3401,6 +3426,8 @@ func _vanish(c: CardInst) -> Array:
 
 ## Return a card on the field to its owner's hand (Extra Deck monsters go back to the Extra Deck).
 func _bounce(c: CardInst) -> Array:
+	if c != null and (players[0].field.has(c) or players[1].field.has(c)) and st_unaffected(c):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is unaffected") % c.cname()}]
 	if c != null and c.is_token():
 		return _vanish(c)
 	if c != null and c.leave_banish and (players[0].field.has(c) or players[1].field.has(c)):
@@ -3674,6 +3701,21 @@ func _best_in_gy() -> CardInst:
 ## pos: "" = the summoner chooses Attack or face-up Defense, "atk" / "def" = the effect says which.
 func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 	var ps := players[p]
+	var pre := []
+	if method == "reborn" and EffectRunner.fx(c).get("tyrant", false):
+		# Tyrant Dragon: "cannot be Special Summoned from the GY, unless you Tribute 1 Dragon monster."
+		var drg: Array = ps.monsters().filter(func(m): return m.face_up and str(m.data.get("race", "")) == "Dragon" and can_tribute_fx(m))
+		if not drg.is_empty():
+			drg.sort_custom(func(a, b): return atk_of(a, false) < atk_of(b, false))
+			var td = pick1(p, Loc.t("%s: Tribute which Dragon?") % c.cname(), drg, drg[0], c)
+			ps.field[ps.field.find(td)] = null
+			_to_gy(ps, td)
+			pre.append({"type": "tribute", "player": p, "card": td})
+			pre.append_array(_monster_left(td))
+	if not pre.is_empty():
+		return pre + _special(p, c, "reborn_paid", pos)
+	if method == "reborn_paid":
+		method = "reborn"
 	var zone := ps.free_zone()
 	if zone == -1:
 		_to_gy(ps, c)
@@ -3727,6 +3769,9 @@ func necro_holds(c: CardInst) -> bool:
 func can_revive(c: CardInst) -> bool:
 	if necro_holds(c):
 		return false
+	if EffectRunner.fx(c).get("tyrant", false):
+		# Tyrant Dragon comes back only by Tributing a Dragon.
+		return not players[c.owner].monsters().filter(func(m): return m.face_up and str(m.data.get("race", "")) == "Dragon" and can_tribute_fx(m)).is_empty()
 	if CardEffects.of(c.cname()).get("no_revive", false) or CardEffects.of(c.cname()).get("no_special", false):
 		return false   # "Cannot be Special Summoned (from the GY)": Dark Ruler Ha Des, Blackwing - Blizzard
 	if CardEffects.of(c.cname()).get("no_revive_same_turn", false) and c.gy_turn == turn:
