@@ -56,6 +56,9 @@ func build(a: Color, b: Color) -> void:
 	_build_speed_lines()
 	PerfPass.settle(self)      # no two surfaces left lying on top of each other (flicker)
 	set_zone("")
+	if "--turbo-party" in OS.get_cmdline_user_args():
+		# (testing) the road as it is after a win, held, so a still picture shows it.
+		celebrate.call_deferred([Color("ff8a3a"), Color("ff5a7a"), Color("ffd84a"), Color("2de2e6"), Color("5affc0")])
 
 
 ## Which stretch of the highway is showing: "satellite", "tops", "tunnel", "bridge", or ""
@@ -85,6 +88,94 @@ func set_zone(z: String) -> void:
 		_road.set_shader_parameter("glow_a", ga)
 		_road.set_shader_parameter("glow_b", gb)
 		_road.set_shader_parameter("indoors", 1.0 if z == "tunnel" else 0.0)
+		_glow_base = [ga, gb]
+
+
+# ------------------------------------------------------------------ the road answers the duel
+
+## A Turbo Duel has no stands: the highway itself reacts. The light strips and the wet shine on
+## the road jump to the color of what happened, the lamps flare, the streaks of speed burn
+## brighter, and both runners pick up speed for a moment.
+var _glow_base: Array = [Color("ff8a3a"), Color("2de2e6")]
+var _pulse := 0.0
+var _pulse_col := Color.WHITE
+var _strobe := 0.0
+var _party: Array = []          # colors the road cycles through after a win
+var _dim := 1.0
+var _lamps: Array = []          # [light, its usual energy, its usual color]
+var _line_mats: Array = []      # [material, its usual color]
+
+
+func react(strength: float, color := Color.WHITE) -> void:
+	_pulse = maxf(_pulse, clampf(strength, 0.0, 1.0))
+	_pulse_col = color
+	if strength >= 0.5:
+		target_speed += 4.0
+		get_tree().create_timer(1.0).timeout.connect(func(): target_speed -= 4.0)
+
+
+## The last hit: everything strobes.
+func finish(color: Color) -> void:
+	react(1.0, color)
+	_strobe = 1.8
+
+
+## You won: the road runs through the colors like a finish line.
+func celebrate(colors: Array) -> void:
+	_party = colors
+	_pulse = 1.0
+	target_speed += 6.0
+
+
+## You lost: the lights go low and the road slows.
+func hush() -> void:
+	_dim = 0.45
+	_pulse = 0.0
+	_strobe = 0.0
+	target_speed = maxf(14.0, target_speed - 8.0)
+
+
+func _react_step(delta: float) -> void:
+	if _lamps.is_empty() and _line_mats.is_empty():
+		# Found once: the lamps over the road and the streaks of speed.
+		for p in _props:
+			for l in (p[0] as Node).find_children("*", "OmniLight3D", true, false):
+				_lamps.append([l, (l as OmniLight3D).light_energy, (l as OmniLight3D).light_color])
+		for l in _lines:
+			var m := (l[0] as MeshInstance3D).material_override as StandardMaterial3D
+			if m:
+				_line_mats.append([m, m.albedo_color])
+	if _pulse <= 0.0 and _strobe <= 0.0 and _party.is_empty() and is_equal_approx(_dim_now, _dim):
+		return
+	_pulse = maxf(0.0, _pulse - delta * (0.25 if not _party.is_empty() else 1.3))
+	_strobe = maxf(0.0, _strobe - delta)
+	_dim_now = move_toward(_dim_now, _dim, delta * 0.6)
+	var col := _pulse_col
+	if not _party.is_empty():
+		var k := _t * 2.2
+		col = (_party[int(k) % _party.size()] as Color).lerp(_party[(int(k) + 1) % _party.size()], fmod(k, 1.0))
+		_pulse = maxf(_pulse, 0.75)
+	var flash := 1.0 if (_strobe > 0.0 and fmod(_strobe, 0.14) > 0.07) else 0.0
+	var k2 := clampf(_pulse * 0.85 + flash * 0.5, 0.0, 1.0)
+	if _road:
+		_road.set_shader_parameter("flash_col", col)
+		_road.set_shader_parameter("flash", clampf(_pulse * 0.8 + flash * 0.4, 0.0, 1.0) * (0.55 if not _party.is_empty() else 1.0) * _dim_now)
+		_road.set_shader_parameter("glow_a", ((_glow_base[0] as Color).lerp(col * 1.5, k2)) * _dim_now)
+		_road.set_shader_parameter("glow_b", ((_glow_base[1] as Color).lerp(col * 1.5, k2)) * _dim_now)
+	for e in _lamps:
+		var l: OmniLight3D = e[0]
+		if is_instance_valid(l):
+			l.light_energy = float(e[1]) * (1.0 + 1.6 * _pulse + 2.0 * flash) * _dim_now
+			l.light_color = (e[2] as Color).lerp(col, minf(1.0, _pulse * 0.8))
+	for e in _line_mats:
+		# The streaks of speed take the color of what happened and burn brighter.
+		var base: Color = e[1]
+		var lit := base.lerp(col, minf(1.0, _pulse * 0.9))
+		lit.a = minf(1.0, base.a * (1.0 + 3.5 * _pulse + 2.0 * flash)) * _dim_now
+		(e[0] as StandardMaterial3D).albedo_color = lit
+
+
+var _dim_now := 1.0
 
 
 func _build_tunnel() -> void:
@@ -208,6 +299,8 @@ uniform vec3 glow_a : source_color = vec3(1.0, 0.54, 0.23);
 uniform vec3 glow_b : source_color = vec3(0.18, 0.89, 0.9);
 uniform float wet = 0.7;
 uniform float indoors = 0.0;
+uniform vec3 flash_col : source_color = vec3(1.0);
+uniform float flash = 0.0;       // the duel just did something big: the whole road takes its color
 """ + GLSL + """
 void fragment() {
 	float x = wp.x + offset;
@@ -275,6 +368,9 @@ void fragment() {
 	col += mix(glow_a, glow_b, step(0.5, hash(vec2(floor(gx + 0.5), 9.0)))) * pool * smoothstep(13.0, 2.0, az) * 0.06 * wet * (1.0 - indoors);
 	// Fade into the dark far away.
 	float fade = 1.0 - smoothstep(70.0, 126.0, abs(wp.x));
+	// A wash of the color over the asphalt, strongest in bands that race back along the road.
+	float band = 0.55 + 0.45 * sin((wp.x + offset * 0.6) * 0.5);
+	col += flash_col * flash * (0.10 + 0.16 * band) + col * flash_col * flash * 1.4;
 	ALBEDO = col * fade;
 }
 """
@@ -1146,6 +1242,7 @@ func _aabb(n: Node, xf: Transform3D) -> AABB:
 
 func _process(delta: float) -> void:
 	_t += delta
+	_react_step(delta)
 	speed = lerpf(speed, target_speed, clampf(delta * 1.5, 0.0, 1.0))
 	# Every repeat on the road (6, 12, 16, 20, 36, 48 ... meters) divides this, so nothing
 	# jumps when the count starts over.

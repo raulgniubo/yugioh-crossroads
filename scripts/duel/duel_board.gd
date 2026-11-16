@@ -179,6 +179,18 @@ func _build_environment() -> void:
 		cam_home = Vector3(0, 7.0, 9.3)
 		cam_home_target = Vector3(0, 0.0, 0.55)
 		camera.fov = 46
+	for a in OS.get_cmdline_user_args():
+		# --duel-cam=px,py,pz,tx,ty,tz (testing): where the table camera sits, for wide pictures.
+		if a.begins_with("--duel-cam="):
+			var cv := a.substr(11).split(",")
+			if cv.size() == 6:
+				cam_home = Vector3(float(cv[0]), float(cv[1]), float(cv[2]))
+				cam_home_target = Vector3(float(cv[3]), float(cv[4]), float(cv[5]))
+	if "--crowd-shot" in OS.get_cmdline_user_args():
+		# (testing) a big cheer and the camera's glance at the people watching, held.
+		get_tree().create_timer(4.0).timeout.connect(func():
+			house(0.95, Color(1.0, 0.8, 0.3), Vector3.ZERO, 6.0)
+			crowd_shot(8.0))
 	camera.position = cam_home
 	add_child(camera)
 	camera.look_at(cam_home_target)
@@ -305,8 +317,38 @@ var arena: DuelArena = null
 ## The place answers what happens on the field: the stands get up, cameras flash, the lights
 ## jump in the color of the moment and swing to where it happened. (No arena on the highway.)
 func house(strength: float, color := Color.WHITE, at := Vector3.ZERO, hold := 0.0) -> void:
-	if arena != null and Settings.anim_speed <= 4.0:
+	if Settings.anim_speed > 4.0:
+		return
+	if arena != null:
 		arena.react(strength, color, at, hold)
+	elif track != null:
+		track.react(strength, color)
+
+
+var _crowd_shot_at := -100.0
+
+
+## A glance at the people watching, up on their feet after a big hit, then back to the table.
+## False when nobody is watching here, or when they were shown a moment ago (then the caller
+## simply goes back to the table).
+func crowd_shot(hold := 1.2) -> bool:
+	var testing := "--crowd-shot" in OS.get_cmdline_user_args()
+	if arena == null or ((not Settings.crowd_cam or Settings.anim_speed > 2.0 or _time - _crowd_shot_at < 30.0) and not testing):
+		return false
+	var v: Array = arena.crowd_view()
+	if v.is_empty():
+		return false
+	_crowd_shot_at = _time
+	var from: Vector3 = v[0]
+	var at: Vector3 = v[1]
+	cam_cut(from, at)
+	cam_drift(from + (from - at).normalized() * 0.9, Settings.t(hold) + 0.4)
+	var mine := _cam_tween
+	get_tree().create_timer(Settings.t(hold)).timeout.connect(func():
+		# Only if the camera is still on them: another shot may have taken over since.
+		if _cam_tween == mine:
+			cam_release(0.5))
+	return true
 
 
 func _build_arena() -> void:

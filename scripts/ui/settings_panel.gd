@@ -178,6 +178,12 @@ static func open(parent: Node) -> SidePanel:
 		Settings.anim_speed = Settings.ANIM_SPEEDS[keys[i]]
 		Settings.save_settings())
 	_row(game, "Animation speed", "How fast cards and attacks play out.", speed)
+	var crowd := CheckButton.new()
+	crowd.button_pressed = Settings.crowd_cam
+	crowd.toggled.connect(func(on):
+		Settings.crowd_cam = on
+		Settings.save_settings())
+	_row(game, "Crowd camera", "After a hit of 2000 or more, the camera looks at the people watching for a second before it goes back to the field. At most once every 30 seconds. Off: the camera stays on the duel.", crowd)
 	var fate := CheckButton.new()
 	fate.button_pressed = Settings.destiny_draw
 	fate.toggled.connect(func(on):

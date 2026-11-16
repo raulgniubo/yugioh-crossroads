@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.15
+
+**People watching on every duel field.**
+
+- **They have legs now.** The handful of onlookers that most fields already had were a seated figure put on the ground: knee high and round, like toys. Anybody standing is now a standing figure, a head taller, with trousers and shoes. People on benches and picnic rugs still sit.
+- **Every field has people.** Groups behind the far duelist and on the flanks on the rooftop, the junkyard, Heartland (it had nobody), the red dorm, the pier, Academy Grounds (nobody before) and the default field; a few walkers on the meadow, the tide flats, the ruins, the peak and the volcano. On the two fields that hang in the dark each group has a rock of its own to stand on, and on the shadow field they are shapes with no faces. The Duel Dome and the Academy arena keep their stands.
+- **They all react** the same way the stands do: up on their feet, arms and glow sticks in the air, for a summon from the Extra Deck, a monster destroyed, a direct hit, Life Points lost, and the last hit.
+- **You get to see it.** After a hit of 2000 or more the game already cut to the duelist who took it; now it then looks across the field at the people watching for about a second and goes back to the table. At most once every 30 seconds, never above 2x animation speed, and there is a switch: Settings, Game, Crowd camera. Your normal view of the field is exactly what it was.
+- **Turbo Duels react.** There are no stands on a highway, so the road does it: a wash of the color of what happened races back along the asphalt, the streaks of speed and the lamps take it too, and both runners pick up speed for a moment. The last hit strobes, a win runs the road through the colors, a loss dims it and slows down.
+
+Not done or not checked: the people are simple shapes, fine at the distance the camera keeps but not models. I saw every field in a wide test picture and the crowd shot on three of them; I did not play a full duel through a 2000 hit to watch the cut happen in order. Turbo reactions: seen once in a still picture, not in motion. Not played on a Mac.
+
 ## What is in 0.33.14
 
 **Friendship and rivalry.** Each of the 14 main characters now keeps track of how well they know you. Free Roam, every world.

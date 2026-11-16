@@ -17,6 +17,7 @@ var master_volume := 0.8
 var music_volume := 0.7
 var sfx_volume := 0.8
 var anim_speed := 1.0
+var crowd_cam := true         # after a big hit the camera glances at the people watching
 var destiny_draw := true        # Destiny Draw is part of duels (once per duel, when you are in trouble)
 var pace := 1.0          # extra speed on top, set by the duel (the opponent's turn runs quicker)
 var card_folder := ""
@@ -436,6 +437,7 @@ func load_settings() -> void:
 	music_volume = cfg.get_value("audio", "music", music_volume)
 	sfx_volume = cfg.get_value("audio", "sfx", sfx_volume)
 	anim_speed = cfg.get_value("game", "anim_speed", anim_speed)
+	crowd_cam = bool(cfg.get_value("game", "crowd_cam", crowd_cam))
 	destiny_draw = bool(cfg.get_value("game", "destiny_draw", destiny_draw))
 	card_folder = cfg.get_value("game", "card_folder", card_folder)
 	field_theme = cfg.get_value("game", "field_theme", field_theme)
@@ -481,6 +483,7 @@ func save_settings() -> void:
 	cfg.set_value("audio", "music", music_volume)
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.set_value("game", "anim_speed", anim_speed)
+	cfg.set_value("game", "crowd_cam", crowd_cam)
 	cfg.set_value("game", "destiny_draw", destiny_draw)
 	cfg.set_value("game", "card_folder", card_folder)
 	cfg.set_value("game", "field_theme", field_theme)

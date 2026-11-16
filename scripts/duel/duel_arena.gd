@@ -111,6 +111,89 @@ func _weld_in(holder: Node3D, moving: Dictionary) -> void:
 
 
 func _build(t: Dictionary) -> void:
+	_build_field(t)
+	_onlookers(str(t.get("key", "crossroads")))
+
+
+## People who stopped to watch, on every field: patches of ground beside and behind the field
+## where a group stands, [x from, x to, z from, z to, how many]. The far side (z below zero) is
+## the side the camera sees. The Duel Dome and the Academy arena have their stands instead.
+const WATCHERS := {
+	"battlecity": [[-7.0, -2.6, -12.4, -10.6, 9], [2.6, 7.0, -12.4, -10.6, 9], [-12.4, -9.8, -9.2, -6.6, 6], [9.8, 12.2, -8.2, -5.8, 5]],
+	"satellite": [[-7.4, -2.6, -12.6, -10.6, 9], [2.6, 7.4, -12.6, -10.6, 8], [-11.6, -9.4, -7.6, -3.0, 6], [9.6, 11.8, -8.6, -4.6, 5]],
+	"heartland": [[-8.0, -2.6, -13.0, -10.6, 12], [2.6, 8.0, -13.0, -10.6, 12], [-11.8, -9.4, -8.0, -2.8, 8], [9.4, 11.8, -8.0, -2.8, 8], [-11.8, -9.6, 2.8, 6.4, 5], [9.6, 11.8, 2.8, 6.4, 5]],
+	"reddorm": [[-7.0, -2.8, -12.0, -10.4, 7], [2.8, 7.0, -12.0, -10.4, 7]],
+	"pier": [[-11.6, -9.6, -7.2, -5.2, 4], [9.6, 11.6, -7.6, -4.6, 5]],
+	"campus": [[-8.0, -3.2, -12.6, -10.6, 11], [3.2, 8.0, -12.6, -10.6, 11], [-12.0, -9.6, -7.6, -2.6, 8], [9.6, 12.0, -7.6, -2.6, 8], [-11.8, -9.8, 2.6, 6.0, 4], [9.8, 11.8, 2.6, 6.0, 4]],
+	"meadow": [[-7.0, -3.0, -12.2, -10.8, 5], [3.0, 7.0, -12.2, -10.8, 5], [-11.6, -9.8, -6.0, -3.0, 3]],
+	"tide": [[-7.0, -3.0, -12.2, -10.8, 5], [3.0, 7.0, -12.2, -10.8, 4], [9.8, 11.6, -6.0, -3.0, 3]],
+	"ruins": [[-6.6, -3.0, -12.0, -10.8, 4], [3.0, 6.6, -12.0, -10.8, 4]],
+	"peak": [[-6.0, -3.0, -11.8, -10.8, 3], [3.0, 6.0, -11.8, -10.8, 3]],
+	"volcano": [[-6.0, -3.0, -11.8, -10.8, 3], [3.0, 6.0, -11.8, -10.8, 3]],
+	"shadow": [[-8.0, -2.6, -13.0, -10.8, 10], [2.6, 8.0, -13.0, -10.8, 10], [-12.0, -9.8, -7.0, -2.6, 6], [9.8, 12.0, -7.0, -2.6, 6]],
+	"crossroads": [[-7.6, -2.6, -12.6, -10.6, 9], [2.6, 7.6, -12.6, -10.6, 9], [-11.6, -9.6, -7.2, -2.8, 5], [9.6, 11.6, -7.2, -2.8, 5]],
+}
+
+
+func _onlookers(key: String) -> void:
+	if not WATCHERS.has(key):
+		return
+	# In the shadows nobody shows their colors: the same shapes, all in the dark.
+	var dark: Array = [Color(0.1, 0.05, 0.16, 0.0), Color(0.14, 0.06, 0.2, 0.0), Color(0.07, 0.04, 0.1, 0.0)] if key == "shadow" else []
+	var patches: Array = WATCHERS[key]
+	for pi in patches.size():
+		var pt: Array = patches[pi]
+		if key in ["shadow", "crossroads"]:
+			# Out here there is no ground past the field: each group has a rock of its own to
+			# stand on, hanging in the dark like the others.
+			var isle := Node3D.new()
+			isle.position = Vector3((float(pt[0]) + float(pt[1])) / 2.0, 0, (float(pt[2]) + float(pt[3])) / 2.0)
+			isle.scale = Vector3((float(pt[1]) - float(pt[0])) / 2.0 + 0.9, 1.0, (float(pt[3]) - float(pt[2])) / 2.0 + 0.9)
+			add_child(isle)
+			var dim: bool = key == "shadow"
+			cyl(0.98, 0.2, 2.6, Vector3(0, -1.5, 0), mat(Color(0.1, 0.07, 0.14) if dim else Color(0.18, 0.2, 0.26), 0.9), isle, 9)
+			cyl(1.0, 0.98, 0.2, Vector3(0, -0.11, 0), mat(Color(0.16, 0.1, 0.22) if dim else Color(0.12, 0.3, 0.32), 0.8), isle, 9)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 900 + pi * 17 + key.length()
+		var spots: Array = []
+		var tries := 0
+		while spots.size() < int(pt[4]) and tries < 400:
+			tries += 1
+			var p := Vector3(rng.randf_range(float(pt[0]), float(pt[1])), 0.0, rng.randf_range(float(pt[2]), float(pt[3])))
+			# Nobody stands in anybody else.
+			var free := true
+			for o in spots:
+				if (o[0] as Vector3).distance_to(p) < 0.62:
+					free = false
+			if free:
+				spots.append([p, atan2(-p.x, -p.z)])
+		_fans(spots, 300 + pi * 7, dark)
+
+
+## A spot for the camera to look at the people watching: [from, at], or [] if nobody is.
+## `far_only` keeps to the groups on the far side and the flanks (the ones not behind you).
+func crowd_view() -> Array:
+	var best := []
+	var most := 0
+	for g in _crowd_at:
+		var c: Vector3 = g[0]
+		if c.z > 2.0:
+			continue
+		if int(g[1]) > most:
+			most = int(g[1])
+			best = [c]
+	if best.is_empty():
+		return []
+	var at: Vector3 = best[0]
+	var flat := Vector3(at.x, 0, at.z)
+	var dir := flat.normalized()
+	# From the other side of the middle, across the field: the monsters in front, the people
+	# behind them. A little off the straight line, so it reads as a glance and not a portrait.
+	var from := -dir * 3.4 + Vector3(0, 3.0 + at.y * 0.5, 0) + Vector3(-dir.z, 0, dir.x) * 2.2
+	return [from, at + Vector3(0, 0.9, 0)]
+
+
+func _build_field(t: Dictionary) -> void:
 	theme = t
 	make_solid = false
 	var key := str(t.get("key", "crossroads"))
@@ -198,16 +281,24 @@ void fragment() {
 
 
 ## People watching from given spots: [position, which way they face].
-func _fans(spots: Array, seed := 9) -> void:
+func _fans(spots: Array, seed := 9, colors: Array = []) -> void:
 	if spots.is_empty():
 		return
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true
-	mm.mesh = _fan_mesh()
+	# On the ground they stand (with legs); on a bench, a crate or a step they sit.
+	var low := true
+	var mid := Vector3.ZERO
+	for sp in spots:
+		mid += sp[0] as Vector3
+		if absf((sp[0] as Vector3).y) > 0.2:
+			low = false                 # on a bench (higher) or down on a picnic rug (sunk to the waist)
+	_crowd_at.append([mid / float(spots.size()), spots.size()])
+	mm.mesh = _stand_mesh() if low else _fan_mesh()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
-	var palette: Array = theme.get("crowd", [Color("e0533f"), Color("3f7be0"), Color("e8e8ee"), Color("2b2b33"), Color("f0c040"), Color("3fbf8a"), Color("8a4fd9"), Color("d9d2c4"), Color("26364f")])
+	var palette: Array = colors if not colors.is_empty() else theme.get("crowd", [Color("e0533f"), Color("3f7be0"), Color("e8e8ee"), Color("2b2b33"), Color("f0c040"), Color("3fbf8a"), Color("8a4fd9"), Color("d9d2c4"), Color("26364f")])
 	mm.instance_count = spots.size()
 	for i in spots.size():
 		var sc := rng.randf_range(0.9, 1.12)
@@ -927,9 +1018,8 @@ func _react_step(delta: float) -> void:
 	_pulse = maxf(0.0, _pulse - delta * 1.5)
 	_strobe = maxf(0.0, _strobe - delta)
 	_dim_now = move_toward(_dim_now, _dim, delta * 0.5)
-	if _crowd_mesh:
-		for i in _crowd_mesh.get_surface_count():
-			(_crowd_mesh.surface_get_material(i) as ShaderMaterial).set_shader_parameter("cheer", _cheer)
+	for cm in _cheer_mats:
+		(cm as ShaderMaterial).set_shader_parameter("cheer", _cheer)
 	for fm in _flash_mats:
 		fm.set_shader_parameter("cheer", _cheer)
 	var strobe_on := _strobe > 0.0 and fmod(_strobe, 0.14) > 0.07
@@ -1016,8 +1106,9 @@ func _stage_ring() -> void:
 const CROWD_SH := """
 shader_type spatial;
 render_mode cull_back;
-uniform int part = 0;            // 0 body, 1 head, 2 arms, 3 glow stick
+uniform int part = 0;            // 0 body, 1 head, 2 arms, 3 glow stick, 4 legs (somebody standing)
 uniform float cheer = 0.0;       // 0 a quiet moment .. 1 the whole house on its feet (set by the duel)
+uniform float lift = 0.0;        // how far up the body starts: 0 sitting in a seat, leg length standing
 varying vec3 lp;
 varying float h;
 float hash(float p) { return fract(sin(p * 78.233) * 43758.5453); }
@@ -1033,16 +1124,18 @@ void vertex() {
 	// cheer half of them are up, at a full one everybody is.
 	float mine = smoothstep(hash(id + 9.0) * 0.85, hash(id + 9.0) * 0.85 + 0.15, cheer);
 	float jump = abs(sin(TIME * (3.0 + hash(id + 1.0) * 2.5 + mine * 2.0) + ph)) * (0.03 + 0.16 * max(excite * excite * 0.6, wave) + 0.2 * mine);
-	lp = VERTEX;
-	if (part >= 2) {
+	lp = VERTEX - vec3(0.0, lift, 0.0);
+	if (part == 2 || part == 3) {
 		float up = max(max(wave, smoothstep(0.7, 0.95, excite)), mine);
 		if (part == 3 && h < 0.72) { VERTEX *= 0.0; }
-		vec3 pv = VERTEX - vec3(0.0, 0.62, 0.0);
+		vec3 pv = VERTEX - vec3(0.0, 0.62 + lift, 0.0);
 		float a = up * (2.5 + 0.3 * sin(TIME * 7.0 + ph));
 		float c = cos(a); float s = sin(a);
 		pv = vec3(pv.x, pv.y * c - pv.z * s, pv.y * s + pv.z * c);
-		VERTEX = pv + vec3(0.0, 0.62, 0.0);
+		VERTEX = pv + vec3(0.0, 0.62 + lift, 0.0);
 	}
+	// Somebody on their feet bounces from the knees: the feet stay on the ground.
+	if (part == 4) { jump *= clamp(VERTEX.y / max(lift, 0.01), 0.0, 1.0); }
 	VERTEX.y += jump;
 	VERTEX.x += sin(TIME * 1.3 + ph) * 0.03;
 }
@@ -1055,6 +1148,15 @@ void fragment() {
 		col = mix(skin, hair, cap);
 	} else if (part == 2) {
 		col = mix(col, mix(vec3(0.96, 0.8, 0.66), vec3(0.42, 0.28, 0.2), h * h), step(lp.y, 0.34) * step(0.5, fract(h * 11.0)));
+	}
+	// Somebody dressed in the dark is a shape in the dark, head to foot (the shadow field).
+	float shade = 1.0 - step(0.5, COLOR.a);      // marked by a color with no alpha
+	col = mix(col, COLOR.rgb, shade);
+	if (part == 4 && shade < 0.5) {
+		// Trousers: dark blue, grey, khaki or black, and a shoe at the bottom.
+		float t = fract(h * 13.0);
+		col = t < 0.3 ? vec3(0.12, 0.16, 0.28) : (t < 0.55 ? vec3(0.2, 0.2, 0.22) : (t < 0.8 ? vec3(0.42, 0.36, 0.26) : vec3(0.06, 0.06, 0.07)));
+		col = mix(vec3(0.05), col, step(0.07, lp.y + lift));
 	}
 	ALBEDO = col;
 	ROUGHNESS = 0.85;
@@ -1086,6 +1188,8 @@ void fragment() {
 """
 
 var _crowd_mesh: ArrayMesh
+var _cheer_mats: Array = []       # every material of everybody watching (they all hear the same cheer)
+var _crowd_at: Array = []         # [where a group stands, how many]: for the camera to find them
 
 
 ## One fan: body, head, two arms and a glow stick, each its own surface so the shader can tell
@@ -1129,6 +1233,51 @@ func _fan_mesh() -> ArrayMesh:
 		m.set_shader_parameter("part", k)
 		am.surface_set_material(k, m)
 	_crowd_mesh = am
+	for k in am.get_surface_count():
+		_cheer_mats.append(am.surface_get_material(k))
+	return am
+
+
+## Somebody standing: the same fan with legs under them, a good head taller than one in a seat.
+const LEGS := 0.66
+var _stand_mesh_cache: ArrayMesh
+
+
+func _stand_mesh() -> ArrayMesh:
+	if _stand_mesh_cache:
+		return _stand_mesh_cache
+	var seated := _fan_mesh()
+	var sh: Shader = (seated.surface_get_material(0) as ShaderMaterial).shader
+	var am := ArrayMesh.new()
+	var up := Transform3D(Basis.IDENTITY, Vector3(0, LEGS, 0))
+	for k in seated.get_surface_count():
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		st.append_from(seated, k, up)
+		st.commit(am)
+		var m := ShaderMaterial.new()
+		m.shader = sh
+		m.set_shader_parameter("part", k)
+		m.set_shader_parameter("lift", LEGS)
+		am.surface_set_material(k, m)
+		_cheer_mats.append(m)
+	var leg := CapsuleMesh.new()
+	leg.radius = 0.095
+	leg.height = LEGS + 0.12
+	leg.radial_segments = 6
+	leg.rings = 1
+	var lt := SurfaceTool.new()
+	lt.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for lx: float in [-0.105, 0.105]:
+		lt.append_from(leg, 0, Transform3D(Basis.IDENTITY, Vector3(lx, (LEGS + 0.12) / 2.0, 0)))
+	lt.commit(am)
+	var lm := ShaderMaterial.new()
+	lm.shader = sh
+	lm.set_shader_parameter("part", 4)
+	lm.set_shader_parameter("lift", LEGS)
+	am.surface_set_material(am.get_surface_count() - 1, lm)
+	_cheer_mats.append(lm)
+	_stand_mesh_cache = am
 	return am
 
 
@@ -1151,6 +1300,9 @@ func _crowd(center: Vector3, radius_from: float, radius_to: float, rows: int, ar
 			var a := lerpf(arc_from, arc_to, (k + 0.2 + rng.randf() * 0.6) / per_row)
 			spots.append([a, rad, base_y + r * step_h + 0.02])
 	mm.instance_count = spots.size()
+	for k in 5:
+		var ca := lerpf(arc_from, arc_to, (k + 0.5) / 5.0)
+		_crowd_at.append([center + Vector3(sin(ca) * radius_from, base_y + 1.5, cos(ca) * radius_from), spots.size() / 5])
 	for i in spots.size():
 		var a: float = spots[i][0]
 		var p := center + Vector3(sin(a) * float(spots[i][1]), float(spots[i][2]), cos(a) * float(spots[i][1]))

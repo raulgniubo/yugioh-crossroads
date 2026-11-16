@@ -4657,4 +4657,6 @@ const ES := {
 	"I do not have many people. You are one of them. Do not make it weird.": "No tengo mucha gente. Tú eres parte de ella. No lo vuelvas raro.",
 	"I have reclassified you. From target to rival. Take it as intended.": "Te reclasifiqué. De objetivo a rival. Tómalo como va.",
 	"There are two people whose strength I respect. You are the other one.": "Hay dos personas cuya fuerza respeto. Tú eres la otra.",
+	"Crowd camera": "Cámara del público",
+	"After a hit of 2000 or more, the camera looks at the people watching for a second before it goes back to the field. At most once every 30 seconds. Off: the camera stays on the duel.": "Después de un golpe de 2000 o más, la cámara mira un segundo a la gente que observa antes de volver al campo. Como mucho una vez cada 30 segundos. Desactivado: la cámara se queda en el duelo.",
 }

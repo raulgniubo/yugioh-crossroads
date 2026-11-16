@@ -714,6 +714,10 @@ func _finish() -> void:
 		board.arena.celebrate([Color(board.theme["accent"]), Color("ff5a7a"), Color("ffd84a"), Color(board.theme["accent2"]), Color("5affc0")])
 	elif not won and not tied and board.arena != null:
 		board.arena.hush()
+	elif won and board.track != null:
+		board.track.celebrate([Color(board.theme["accent"]), Color("ff5a7a"), Color("ffd84a"), Color(board.theme["accent2"]), Color("5affc0")])
+	elif not won and not tied and board.track != null:
+		board.track.hush()
 	Sfx.play("cheer", -4.0 if won else -12.0)
 	hud.say(AI, Characters.line(_opp_key, "lose" if won else "win"))
 	# The winner gets the camera.
@@ -1191,6 +1195,8 @@ func _play_event(ev: Dictionary) -> void:
 				var hit_col := Color(1.0, 0.82, 0.3) if p == AI else Color(1.0, 0.3, 0.26)
 				if int(ev["lp"]) <= 0 and board.arena != null:
 					board.arena.finish(hit_col)
+				elif int(ev["lp"]) <= 0 and board.track != null:
+					board.track.finish(hit_col)
 				else:
 					board.house(clampf(float(-ev["delta"]) / 3000.0, 0.25, 0.9), hit_col, Vector3(0, 0, -3.0 if p == AI else 3.0), 0.6)
 				board.duelist_body(p, "hurt", float(-ev["delta"]) / 1500.0)
@@ -1201,7 +1207,10 @@ func _play_event(ev: Dictionary) -> void:
 				if ev["delta"] <= -2000 and int(ev["lp"]) > 0 and not _autoplay and not board.track:
 					board.duelist_gesture(p, "hurt")
 					board.duelist_shot(p, 0.35, false, 0.6)
-					get_tree().create_timer(Settings.t(1.1)).timeout.connect(func(): board.cam_release(0.5))
+					# ...and then to the people watching, on their feet, before the table again.
+					get_tree().create_timer(Settings.t(1.1)).timeout.connect(func():
+						if not board.crowd_shot(1.2):
+							board.cam_release(0.5))
 				Sfx.play("damage")
 				hud.react(p, "hurt")
 				if p == AI and ev["lp"] <= 2000 and not _said_low:
