@@ -44,9 +44,32 @@ static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionar
 		if not sw.is_empty():
 			return sw
 	if level > EASY:
+		# Relinquished and Thousand-Eyes Restrict take a monster before anything else is played.
+		if p == s.current and s._in_main():
+			# (Thousand-Eyes Restrict first, when there is a monster across the table for it to take.)
+			if not s.players[s.opponent(p)].monsters().is_empty():
+				for h in s.players[p].hand:
+					if not h.is_monster() and h.data.get("effect", "") == "fusion" and s.can_activate(p, h):
+						for o in s.fusion_targets(p, h):
+							if o["card"].cname() == "Thousand-Eyes Restrict":
+								return {"do": "activate", "card": h, "choice": o["card"]}
+			for m in s.players[p].monsters():
+				if m.face_up and CardEffects.of(m.cname()).get("absorb", false) and s.can_ignite(p, m):
+					return {"do": "ignite", "card": m}
 		var prep := _setup_spell(s, p)
 		if not prep.is_empty():
 			return prep
+		# A big Toon comes out of the hand as soon as the Tributes are worth less than it is.
+		if p == s.current and s._in_main():
+			for h in s.players[p].hand:
+				var tf: Dictionary = CardEffects.of(h.cname()) if h.is_monster() else {}
+				if not tf.has("special_toon") or not s.can_special_from_hand(p, h):
+					continue
+				var paid := 0
+				for w in _weakest(s.players[p], int(tf["special_toon"])):
+					paid += (w.atk() if w.face_up else 0)
+				if paid < h.atk():
+					return {"do": "special_hand", "card": h}
 		var contact := _contact_step(s, p)
 		if not contact.is_empty():
 			return contact
@@ -425,6 +448,13 @@ static func _setup_spell(s: DuelState, p: int) -> Dictionary:
 				continue   # the same Field Spell is already up
 			if SpellRules._needs_target(SpellRules.spec(c)) and SpellRules.auto_target(s, p, c) == null:
 				continue
+			return {"do": "activate", "card": c}
+		# Toon World: once, when there is a Toon to use it and the 1000 LP can be spared.
+		if tag == "toon_world" and me.lp > 2000 and me.spells.filter(func(x): return x != null and x.face_up and x.cname() == "Toon World").is_empty() \
+				and not (me.hand + me.monsters()).filter(func(h): return h.is_monster() and CardEffects.of(h.cname()).has("toon")).is_empty():
+			return {"do": "activate", "card": c}
+		# Black Illusion Ritual: Relinquished has 0 ATK of its own, so it comes out when there is a monster to take.
+		if tag == "relinquished" and not s.players[s.opponent(p)].monsters().is_empty():
 			return {"do": "activate", "card": c}
 		if tag == "second_summon" and s.normal_summoned and me.extra_normals == 0 \
 				and not me.hand.filter(func(h): return h.is_monster() and h.level() <= 4 and not CardData.is_extra(h.id)).is_empty():
@@ -1200,14 +1230,14 @@ static func _evaluate_expert(s: DuelState, p: int, o: int) -> float:
 	for m in opp.monsters():
 		opp_best = maxi(opp_best, m.atk() if (m.face_up and m.attack_pos) else 0)
 	for m in me.monsters():
-		var v := float(maxi(m.atk(), m.def())) * 0.9 + 420.0 + 220.0 * m.overlays.size()
+		var v := float(maxi(m.atk(), m.def()) + _held(me, m)) * 0.9 + 420.0 + 220.0 * m.overlays.size()
 		# A monster that would just be run over next turn is worth less.
-		if m.attack_pos and m.atk() < opp_best:
+		if m.attack_pos and m.atk() + _held(me, m) < opp_best:
 			v *= 0.55
 		score += v
 	for m in opp.monsters():
-		var v2 := float(maxi(m.atk(), m.def())) * 0.9 + 420.0 + 220.0 * m.overlays.size()
-		if m.face_up and m.attack_pos and m.atk() < my_best:
+		var v2 := float(maxi(m.atk(), m.def()) + _held(opp, m)) * 0.9 + 420.0 + 220.0 * m.overlays.size()
+		if m.face_up and m.attack_pos and m.atk() + _held(opp, m) < my_best:
 			v2 *= 0.55
 		score -= v2 * 1.05
 	score += _ace_value(s, p) - _ace_value(s, o)
@@ -1253,13 +1283,24 @@ static func _lp_value(lp: int) -> float:
 	return v
 
 
+## The ATK Relinquished (or Thousand-Eyes Restrict) has from the monster it holds.
+static func _held(ps: DuelState.PlayerState, m: DuelState.CardInst) -> int:
+	if not m.tags.has("absorbed"):
+		return 0
+	for u in ps.spells:
+		if u != null and u.uid == int(m.tags["absorbed"]):
+			return maxi(u.atk(), u.def()) + 600   # (and it is a shield in battle)
+	return 0
+
+
 static func _board(ps: DuelState.PlayerState) -> float:
 	var v := 0.0
 	for m in ps.monsters():
-		v += float(maxi(m.atk(), m.def())) * 0.9 + 300.0
+		var held := _held(ps, m)
+		v += float(maxi(m.atk(), m.def()) + held) * 0.9 + 300.0
 		v += 200.0 * m.overlays.size()
 		# A small monster standing in Attack Position is an open door (a Tuner waiting for its
 		# partner is better off Set).
-		if m.face_up and m.attack_pos and m.atk() < 1000 and not m.is_token():
-			v -= float(1000 - m.atk()) * 0.6
+		if m.face_up and m.attack_pos and m.atk() + held < 1000 and not m.is_token():
+			v -= float(1000 - m.atk() - held) * 0.6
 	return v

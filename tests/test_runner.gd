@@ -52,6 +52,7 @@ func _ready() -> void:
 		_test_cards_43()
 		_test_cards_44()
 		_test_cards_45()
+		_test_cards_46()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -5759,3 +5760,88 @@ func _test_cards_45() -> void:
 	old.summoned_turn = 1
 	s.phase = DuelState.Phase.BATTLE
 	check(not s.can_attack(0, fresh) and s.can_attack(0, old), "Vengeful Bog Spirit: a monster cannot attack the turn it is Summoned")
+
+
+## The cards built in v0.33.34 for Pegasus's best deck, each against its printed text.
+func _test_cards_46() -> void:
+	# ---- Relinquished: Ritual Summon, take a monster, its stats, the battle swap, the damage back.
+	var s := _bare(1601)
+	var rel := _in(s, 0, "Relinquished", "hand")
+	var rit := _rst(s, 0, "Black Illusion Ritual")
+	var fod := _in(s, 0, "Kuriboh", "hand")
+	check(s.can_activate(0, rit), "Black Illusion Ritual can be activated with a monster to Tribute")
+	s.activate(0, rit)
+	check(s.players[0].field.has(rel) and s.players[0].gy.has(fod), "Relinquished is Ritual Summoned")
+	var foe := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	s.ignite(0, rel)
+	check(not s.players[1].field.has(foe) and s.players[0].spells.has(foe) and s.atk_of(rel, false) == 3000 and s.def_of(rel) == 2500, "Relinquished takes Blue-Eyes and has its ATK and DEF (got %d / %d)" % [s.atk_of(rel, false), s.def_of(rel)])
+	check(not s.can_ignite(0, rel), "Relinquished holds 1 monster at a time")
+	s.turn += 2
+	s.current = 1
+	s.phase = DuelState.Phase.BATTLE
+	var att := _mon(s, 1, "Blue-Eyes Ultimate Dragon", 0)
+	att.summoned_turn = 1
+	rel.attack_pos = true
+	var lp0: int = s.players[0].lp
+	var lp1: int = s.players[1].lp
+	s.declare_attack(1, att, rel)
+	s.resolve_attack()
+	check(s.players[0].field.has(rel) and s.players[1].gy.has(foe), "Relinquished: the monster it holds is destroyed in its place, and goes to its owner's Graveyard")
+	check(s.players[0].lp == lp0 - 1500 and s.players[1].lp == lp1 - 1500, "Relinquished: the 1500 battle damage is dealt to the opponent too (LP %d / %d)" % [s.players[0].lp, s.players[1].lp])
+	check(s.atk_of(rel, false) == 0, "Relinquished is back to 0 ATK")
+	# ---- Thousand-Eyes Restrict locks the other monsters.
+	s = _bare(1602)
+	var ter := _mon(s, 0, "Thousand-Eyes Restrict", 0)
+	ter.summoned_turn = 1
+	var other := _mon(s, 0, "Celtic Guardian", 1)
+	other.summoned_turn = 1
+	foe = _mon(s, 1, "Dark Magician", 0)
+	foe.summoned_turn = 1
+	check(not s.can_change_position(0, other), "Thousand-Eyes Restrict: other monsters cannot change position")
+	s.phase = DuelState.Phase.BATTLE
+	check(not s.can_attack(0, other) and s.can_attack(0, ter), "Thousand-Eyes Restrict: other monsters cannot attack, it can")
+	# ---- Blue-Eyes Toon Dragon, Manga Ryu-Ran, Toon Table of Contents, Dark-Eyes Illusionist.
+	s = _bare(1603)
+	var betd := _in(s, 0, "Blue-Eyes Toon Dragon", "hand")
+	var manga := _in(s, 0, "Manga Ryu-Ran", "hand")
+	_mon(s, 0, "Kuriboh", 0)
+	_mon(s, 0, "Kuriboh", 1)
+	check(not s.can_special_from_hand(0, betd), "Blue-Eyes Toon Dragon needs Toon World")
+	var tw := _rst(s, 0, "Toon World")
+	s.activate(0, tw)
+	check(s.can_special_from_hand(0, betd) and s.can_special_from_hand(0, manga), "With Toon World and 2 monsters, Blue-Eyes Toon Dragon and Manga Ryu-Ran can come out")
+	s.special_from_hand(0, betd)
+	s.phase = DuelState.Phase.BATTLE
+	check(s.players[0].field.has(betd) and s.players[0].monsters().size() == 1 and not s.can_attack(0, betd), "Blue-Eyes Toon Dragon: 2 Tributes, and it cannot attack the turn it arrives")
+	s = _bare(1604)
+	var toc := _rst(s, 0, "Toon Table of Contents")
+	var tw2 := s._make(_cid("Toon World"), 0)
+	s.players[0].deck.append(tw2)
+	s.activate(0, toc)
+	check(s.players[0].hand.has(tw2), "Toon Table of Contents adds a Toon card from the Deck")
+	s = _bare(1605)
+	var ill := _mon(s, 0, "Dark-Eyes Illusionist", 0, false)
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	foe.summoned_turn = 1
+	EffectRunner.on_summon(s, 0, ill, "flip")
+	s.current = 1
+	s.phase = DuelState.Phase.BATTLE
+	check(not s.can_attack(1, foe), "Dark-Eyes Illusionist: its target cannot attack")
+	s._destroy(ill)
+	check(s.can_attack(1, foe), "and can again once the Illusionist is gone")
+
+	# ---- Polymerization: Relinquished + Thousand-Eyes Idol, and the computer makes it.
+	s = _bare(1606)
+	_mon(s, 0, "Relinquished", 0)
+	_in(s, 0, "Thousand-Eyes Idol", "hand")
+	var poly := _rst(s, 0, "Polymerization")
+	ter = _in(s, 0, "Thousand-Eyes Restrict", "extra")
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var act: Dictionary = DuelAI.next_main_action(s, 0, DuelAI.HARD)
+	check(act.get("do", "") == "activate" and act.get("card") == poly, "The computer fuses Relinquished and Thousand-Eyes Idol when there is a monster to take")
+	DuelAI.apply(s, 0, DuelAI._map_action(s, act))
+	check(s.players[0].field.has(ter), "Thousand-Eyes Restrict is Fusion Summoned")
+	act = DuelAI.next_main_action(s, 0, DuelAI.HARD)
+	check(act.get("do", "") == "ignite" and act.get("card") == ter, "and it takes the monster right away")
+	DuelAI.apply(s, 0, DuelAI._map_action(s, act))
+	check(s.players[0].spells.has(foe) and s.atk_of(ter, false) == 3000, "Thousand-Eyes Restrict holds Blue-Eyes (ATK %d)" % s.atk_of(ter, false))

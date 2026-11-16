@@ -1047,7 +1047,7 @@ func can_change_position(p: int, c: CardInst) -> bool:
 	return (p == current and _in_main() and not is_over() and players[p].field.has(c)
 			and c.face_up and c.summoned_turn != turn and c.pos_changed_turn != turn
 			and c.attacked_turn != turn and c.pos_lock_until < turn
-			and not SpellRules.equip_flag(self, c, "no_move"))
+			and not SpellRules.equip_flag(self, c, "no_move") and not restrict_locks(c))
 
 
 func change_position(p: int, c: CardInst) -> Array:
@@ -1410,11 +1410,42 @@ func can_attack(p: int, c: CardInst) -> bool:
 			and c.face_up and (c.attack_pos or EffectRunner.fx(c).get("direct_from_def", false)) and attacks_left(c) > 0 and SpellRules.can_attack(self, p, c)
 			and not (players[p].only_attacker_turn == turn and players[p].only_attacker != c.uid)
 			and int(c.tags.get("no_attack_on", -1)) != turn
+			and not restrict_locks(c) and not held_by_illusionist(c)
 			and not (EffectRunner.fx(c).get("summon_sick", false) and c.summoned_turn == turn)
 			and players[p].lp >= int(EffectRunner.fx(c).get("attack_cost", 0))
 			and not (EffectRunner.fx(c).get("attack_tribute", false) and players[p].monsters().size() < 2)
 			and not (EffectRunner.fx(c).get("no_attack_with_others", false) and players[p].monsters().size() > 1)
 			and players[opponent(p)].swords_left == 0)
+
+
+## Thousand-Eyes Restrict: "Other monsters on the field cannot change their battle positions or attack."
+func restrict_locks(c: CardInst) -> bool:
+	for q in 2:
+		for m in players[q].monsters():
+			if m != c and m.face_up and not m.negated and EffectRunner.fx(m).get("lock_others", false):
+				return true
+	return false
+
+
+## Dark-Eyes Illusionist: its target "cannot attack while this card is face-up on the field".
+func held_by_illusionist(c: CardInst) -> bool:
+	if not c.tags.has("no_atk_by"):
+		return false
+	var h := find_uid(int(c.tags["no_atk_by"]))
+	if h != null and h.face_up and not h.negated and (players[0].field.has(h) or players[1].field.has(h)):
+		return true
+	c.tags.erase("no_atk_by")
+	return false
+
+
+## The monster Relinquished (or Thousand-Eyes Restrict) has taken, or null.
+func absorbed_by(c: CardInst) -> CardInst:
+	if not c.tags.has("absorbed"):
+		return null
+	for u in unions_on(c):
+		if u.uid == int(c.tags["absorbed"]):
+			return u
+	return null
 
 
 func attacks_left(c: CardInst) -> int:
@@ -2113,6 +2144,9 @@ func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 
 func _after_attack(attacker: CardInst, target = null) -> Array:
 	var events := []
+	attacker.tags.erase("abs_hit")
+	if target != null and target is CardInst:
+		(target as CardInst).tags.erase("abs_hit")
 	# Electric Lizard: "A non Zombie-Type monster attacking "Electric Lizard" cannot attack on its following turn."
 	if target != null and target is CardInst and (target as CardInst).face_up and EffectRunner.fx(target).get("lizard", false) and str(attacker.data.get("race", "")) != "Zombie" and players[attacker.owner].field.has(attacker):
 		attacker.tags["no_attack_on"] = turn + 2
@@ -2235,6 +2269,13 @@ func _battle_damage(p: int, amount: int, dealer: CardInst = null, taker: CardIns
 		if hm != null and int(hm.tags.get("unbreak_turn", -1)) == turn and int(hm.tags.get("unbreak_for", -1)) == p:
 			amount = int(ceil(amount / 2.0))
 			break
+	# Relinquished: "While equipped with that monster, any battle damage you take from battles involving this card inflicts equal effect damage to your opponent."
+	for rq in [dealer, taker]:
+		if rq != null and rq.owner == p and rq.face_up and not rq.negated and EffectRunner.fx(rq).get("reflect_absorbed", false) and (absorbed_by(rq) != null or rq.tags.has("abs_hit")) and amount > 0 and ps.no_damage_turn != turn and ps.protect_turn != turn:
+			var out_r := _damage(p, amount, true)
+			out_r.append({"type": "effect", "player": p, "card": rq, "text": Loc.t("%s: the opponent takes the same %d damage") % [rq.cname(), amount]})
+			out_r.append_array(_damage(opponent(p), amount))
+			return out_r
 	if bye_bye == p and amount > 0 and ps.no_damage_turn != turn and ps.protect_turn != turn:
 		# Bye Bye Damage: "if you take battle damage from that battle, your opponent takes effect damage equal to double that amount."
 		var out_b := _damage(p, amount, true)
@@ -2278,6 +2319,8 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	var by_opp_fx := by_opp_any and c.face_up
 	# "If the equipped monster would be destroyed by battle or card effect, destroy this card instead."
 	var riders := unions_on(c).filter(func(u): return not EffectRunner.fx(u).get("union", {}).get("no_shield", false))
+	if not by_battle and c.tags.has("absorbed"):
+		riders = riders.filter(func(u): return u.uid != int(c.tags["absorbed"]))   # (Relinquished's monster only takes its place in battle)
 	if not by_battle:
 		# Silver Wing: "If it would be destroyed by a card effect, you can destroy this card instead."
 		for eq in SpellRules.equips_on(self, c):
@@ -2288,6 +2331,8 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	if not riders.is_empty():
 		var u: CardInst = riders[0]
 		var saved := [{"type": "effect", "player": u.owner, "card": u, "text": Loc.t("%s is destroyed in place of %s") % [u.cname(), c.cname()]}]
+		if c.tags.has("absorbed") and int(c.tags["absorbed"]) == u.uid:
+			c.tags["abs_hit"] = true   # (it was still equipped for this battle's damage)
 		saved.append_array(_destroy_st(u))
 		return saved
 	ps.field[zone] = null

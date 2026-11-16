@@ -108,6 +108,16 @@ const FX := {
 	"Elemental HERO Thunder Giant": {"note": "Once per turn, discard 1: destroy a monster with less original ATK.",
 		"ignite": {"cost": "discard", "do": [["destroy", "atk_below_self"]], "label": "Discard 1: destroy a weaker monster"}},
 	"Elemental HERO Rampart Blaster": {"note": "Can attack directly while it is in Defense Position. When it does, its ATK is halved for that damage calculation.", "direct_from_def": true},
+	# ---- Pegasus's best deck (v0.33.34)
+	"Blue-Eyes Toon Dragon": {"note": "Special Summon from your hand by Tributing 2 monsters while you control Toon World. Not the turn it arrives; pay 500 LP to attack. Attacks directly unless they have a Toon, then it must attack a Toon. Destroyed if Toon World is destroyed.",
+		"toon": 2, "special_toon": 2, "summon_sick": true, "attack_cost": 500},
+	"Manga Ryu-Ran": {"note": "Always a Toon. Special Summon from your hand by Tributing 2 monsters while you control Toon World. Not the turn it arrives; pay 500 LP to attack. Attacks directly unless they have a Toon, then it must attack a Toon. Destroyed if Toon World is destroyed.",
+		"toon": 2, "special_toon": 2, "summon_sick": true, "attack_cost": 500},
+	"Relinquished": {"note": "Ritual Summon it with Black Illusion Ritual. Once per turn: equip 1 monster your opponent controls to this card (1 at a time). Its ATK and DEF become that monster's. If it would be destroyed by battle, that monster is destroyed instead. While it holds a monster, battle damage you take from its battles is also dealt to your opponent.",
+		"absorb": true, "reflect_absorbed": true, "ignite": {"do": [["absorb"]], "label": "Take an opponent's monster"}},
+	"Thousand-Eyes Restrict": {"note": "Relinquished + Thousand-Eyes Idol. Other monsters on the field cannot attack or change their battle positions. Once per turn: equip 1 monster your opponent controls to this card (1 at a time). Its ATK and DEF become that monster's. If it would be destroyed by battle, that monster is destroyed instead.",
+		"absorb": true, "lock_others": true, "ignite": {"do": [["absorb"]], "label": "Take an opponent's monster"}},
+	"Dark-Eyes Illusionist": {"note": "FLIP: 1 monster on the field cannot attack while this card is face-up.", "flip": [["illusionist"]]},
 	# ---- Marik's best deck (v0.33.34)
 	"Lava Golem": {"note": "Cannot be Normal Summoned/Set. Special Summon it from your hand to your opponent's field by Tributing 2 monsters they control; you cannot Normal Summon or Set that turn. In its controller's Standby Phase: they take 1000 damage.",
 		"lava_golem": true, "standby": [["self_damage", 1000]]},

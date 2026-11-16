@@ -190,7 +190,10 @@ const TUNE := {
 			"Melchid the Four-Face Beast": 2, "Newdoria": 3, "Dark Jeroid": 2, "Byser Shock": 1,
 			"Card of Sanctity": 2, "Monster Reborn": 1, "Pot of Greed": 1, "Vengeful Bog Spirit": 1, "Remove Trap": 1, "Dark Hole": 1, "Raigeki": 1,
 			"Nightmare Wheel": 3, "Jam Defender": 1, "Malevolent Catastrophe": 1, "Mirror Force": 2}},
-	"pegasus": {"out": ["Fissure", "Raigeki", "Shadow Spell", "Heavy Storm"], "in": {"Dark Rabbit": 1, "Parrot Dragon": 1, "Illusionist Faceless Mage": 1}},
+	"pegasus": {"out": ["Fissure", "Raigeki", "Shadow Spell", "Heavy Storm"], "in": {"Dark Rabbit": 1, "Parrot Dragon": 1, "Illusionist Faceless Mage": 1},
+		# Pegasus's best deck: Toon World and his Toons, Relinquished and Thousand-Eyes Restrict (v0.33.34).
+		"main": {"Toon World": 3, "Toon Table of Contents": 3, "Toon Summoned Skull": 2, "Blue-Eyes Toon Dragon": 1, "Manga Ryu-Ran": 1, "Toon Dark Magician Girl": 2, "Toon Gemini Elf": 3, "Toon Mermaid": 3, "Toon Goblin Attack Force": 2, "Toon Masked Sorcerer": 1, "Toon Cannon Soldier": 1, "Toon Alligator": 1, "Relinquished": 2, "Black Illusion Ritual": 2, "Thousand-Eyes Idol": 1, "Polymerization": 1, "Dark-Eyes Illusionist": 1, "Dark Rabbit": 1, "Parrot Dragon": 1, "Copycat": 1, "Pot of Greed": 1, "Monster Reborn": 1, "Change of Heart": 1, "Mystical Space Typhoon": 1, "Dark Hole": 1, "Mirror Force": 1, "Negate Attack": 1},
+		"extra": {"Thousand-Eyes Restrict": 1, "Bickuribox": 1}},
 	"weevil": {"out": ["Insect Knight", "Neo Bug", "Gokipon", "Dian Keto the Cure Master", "Just Desserts", "Fissure"],
 		"in": {"Big Insect": 2, "Flying Kamakiri #1": 2, "Gokibore": 2, "Man-Eater Bug": 2, "Needle Worm": 1, "Skull-Mark Ladybug": 1}},
 	"rex": {"out": ["Hinotama", "Dian Keto the Cure Master", "Hammer Shot", "Fissure", "Rush Recklessly"],

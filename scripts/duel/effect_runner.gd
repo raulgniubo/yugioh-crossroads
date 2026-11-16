@@ -52,6 +52,8 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 	if int(c.tags.get("cka", -1)) == s.turn and s.phase == DuelState.Phase.BATTLE:
 		b += c.def() - c.atk()   # Chaos King Archfiend switched it
 	b -= int(f.get("lose_per_counter", 0)) * c.counter   # Black-Winged Dragon
+	if f.get("absorb", false) and s.absorbed_by(c) != null:
+		b += s.absorbed_by(c).atk()   # Relinquished: "This card's ATK/DEF become equal to that equipped monster's."
 	if battling and attacking and vs != null and vs.cname().contains("Blackwing"):
 		# Blackwing - Gust the Backblast: a monster attacking one of your "Blackwing" monsters loses 300 ATK during the Damage Step only.
 		for g in s.players[vs.owner].monsters():
@@ -110,6 +112,8 @@ static func def_bonus(s: DuelState, c) -> int:
 	var u := union_boost(s, c)
 	if int(c.tags.get("tmp_def_until", -1)) >= s.turn:
 		u += int(c.tags.get("tmp_def", 0))   # Blustering Winds
+	if f.get("absorb", false) and s.absorbed_by(c) != null:
+		u += s.absorbed_by(c).def()
 	if int(c.tags.get("cka", -1)) == s.turn and s.phase == DuelState.Phase.BATTLE:
 		u += c.atk() - c.def()   # Chaos King Archfiend switched it
 	if f.has("def_per"):
@@ -1136,6 +1140,9 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 			"mill_opp_top":
 				if opp.deck.is_empty():
 					return false
+			"absorb":
+				if opp.monsters().filter(func(m): return can_target(c, m) and not m.is_token()).is_empty() or s.absorbed_by(c) != null or s.players[p].spells.find(null) == -1:
+					return false
 			"ra_destroy":
 				if s.players[p].lp <= 1000 or (opp.monsters().is_empty() and s.players[p].monsters().size() < 2):
 					return false
@@ -2152,6 +2159,38 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"absorb":
+			# Relinquished: "target 1 monster your opponent controls; equip that target to this card (max. 1)."
+			var prey_a: Array = opp.monsters().filter(func(m): return can_target(c, m) and not m.is_token())
+			var zone_a: int = ps.spells.find(null)
+			if prey_a.is_empty() or zone_a == -1 or s.absorbed_by(c) != null:
+				return events
+			var best_a = prey_a[0]
+			for m in prey_a:
+				if (s.atk_of(m, false) if m.face_up else 1500) > (s.atk_of(best_a, false) if best_a.face_up else 1500):
+					best_a = m
+			best_a = s.pick1(p, Loc.t("%s: take which monster?") % name, prey_a, best_a, c)
+			opp.field[opp.field.find(best_a)] = null
+			for o in best_a.overlays:
+				s._to_gy(s.players[o.owner], o)
+			best_a.overlays.clear()
+			events.append_array(s._monster_left(best_a))
+			best_a.reset_mods()
+			best_a.face_up = true
+			if best_a.orig_owner == -1:
+				best_a.orig_owner = best_a.owner
+			best_a.owner = p
+			ps.spells[zone_a] = best_a
+			best_a.equipped_to = c
+			c.tags["absorbed"] = best_a.uid
+			events.append(_ev(p, c, Loc.t("%s takes %s: its ATK and DEF are now %d / %d") % [name, best_a.cname(), best_a.atk(), best_a.def()]))
+			events.append({"type": "activate", "player": p, "card": best_a, "zone": zone_a})
+		"illusionist":
+			# Dark-Eyes Illusionist: "Target 1 monster on the field; it cannot attack while this card is face-up on the field."
+			var t_i = _best_opp(s, p, "", c, "which monster cannot attack?")
+			if t_i != null:
+				t_i.tags["no_atk_by"] = c.uid
+				events.append(_ev(p, c, Loc.t("%s cannot attack while %s is face-up") % [t_i.cname() if t_i.face_up else Loc.t("The face-down monster"), name]))
 		"set_to_hand":
 			# Byser Shock: "Return all Set cards on the field to the hand."
 			for q in [opp_i, p]:

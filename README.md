@@ -7,7 +7,7 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
 ## What is in 0.33.34
 
-Five more duelists got their best decks: **Kite, Shark, Vector, Bakura and Marik**. 52 cards built, each against its card text, each with a test.
+Six more duelists got their best decks: **Kite, Shark, Vector, Bakura, Marik and Pegasus**. 59 cards built, each against its card text, each with a test.
 
 ### Kite
 
@@ -49,8 +49,17 @@ Five more duelists got their best decks: **Kite, Shark, Vector, Bakura and Marik
 - **Main, 40:** Lava Golem x2, The Winged Dragon of Ra, Gil Garth x3, Revival Jam x3, Newdoria x3, Drillago x2, Bowganian x2, Granadora x2, Melchid the Four-Face Beast x2, Dark Jeroid x2, Legendary Fiend, Lord Poison, Byser Shock; Card of Sanctity x2, Vengeful Bog Spirit, Remove Trap, Monster Reborn, Pot of Greed, Dark Hole, Raigeki; Nightmare Wheel x3, Jam Defender, Malevolent Catastrophe, Mirror Force x2.
 - **Lava Golem** Tributes 2 of the opponent's monsters and lands on their field, where it burns them for 1000 each of their turns. **The Winged Dragon of Ra:** 3 Tributes; pay your LP down to 100 for that much ATK and DEF; pay 1000 LP to destroy a monster.
 
+### Pegasus
+
+**Toon World and his Toons, Relinquished and Thousand-Eyes Restrict.** 7 cards built.
+
+- **Main, 40:** Toon World x3, Toon Table of Contents x3, Toon Gemini Elf x3, Toon Mermaid x3, Toon Summoned Skull x2, Toon Dark Magician Girl x2, Toon Goblin Attack Force x2, Blue-Eyes Toon Dragon, Manga Ryu-Ran, Toon Masked Sorcerer, Toon Cannon Soldier, Toon Alligator, Relinquished x2, Black Illusion Ritual x2, Thousand-Eyes Idol, Polymerization, Dark-Eyes Illusionist, Dark Rabbit, Parrot Dragon, Copycat; Pot of Greed, Monster Reborn, Change of Heart, Mystical Space Typhoon, Dark Hole; Mirror Force, Negate Attack. **Extra:** Thousand-Eyes Restrict, Bickuribox.
+- **Relinquished** takes one of the opponent's monsters into your Spell & Trap Zone, has its ATK and DEF, loses it instead of dying in battle, and sends the battle damage you take back at the opponent. **Thousand-Eyes Restrict** does the same and stops every other monster from attacking or changing position.
+- The computer plays Toon World as soon as it has a Toon for it, searches it with Toon Table of Contents when it has none, brings the big Toons out when the Tributes are worth less, and takes a monster with Relinquished before it does anything else.
+
 **Not done or not checked:**
 
+- Still to build for Pegasus: Jigen Bakudan, Dragon Capture Jar, Gorgon's Eye, Doppelganger, Toon Defense, Toon Rollback, the newer Toons (Toon Dark Magician, Red-Eyes Toon Dragon, Toon Kingdom and so on). Pegasus on Hard won 9 of 30 test duels, the lowest of the decks so far: Toons pay Life Points and wait a turn before they attack. A monster sitting in the Spell & Trap Zone under Relinquished was not watched on screen (the rules tests pass).
 - Still to build for Marik: Ra's other forms and One Turn Kill text beyond the card in the game files, Helpoemer, Viser Des, Makyura the Destructor, Juragedo, Jam Breeding Machine, Coffin Seller, Metal Reflect Slime, Rope of Life, Left Arm Offering, Machine Duplication. Marik on Hard won 18 of 30 test duels. The computer only pays for Ra's ATK when that wins the duel on the spot.
 - Still to build for Bakura: Diabound Kernel, Dark Sanctuary, Dark Spirit of the Silent, Multiple Destruction, Dark Designator, Ectoplasmer. Destiny Board's messages appearing in the Spell & Trap Zone was not watched on screen (the rules test passes). Bakura on Hard won 12 of 30 test duels.
 - Still to build for Vector: Malicevorous Spoon, Number 66: Master Key Beetle, Number 43: Manipulator of Souls, Number C5: Chaos Chimera Dragon, Vain Betrayer, Don Thousand's Throne. Masquerade, C104 and Djinn Buster answering a monster effect is tested in the rules only, not in a real duel on screen. Vector on Hard won 14 of 30 test duels.

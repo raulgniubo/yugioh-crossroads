@@ -92,7 +92,7 @@ const FX := {
 	"The Reliable Guardian": {"k": "quick", "t": "any_face", "do": [["def", "target", 700]]},
 	"De-Fusion": {"k": "quick", "t": "any_fusion", "do": [["bounce", "target"]]},
 	# ---------------------------------------------------------------- Continuous Spells
-	"Toon World": {"k": "cont", "cost": "lp1000"},
+	"Toon World": {"k": "cont", "cost": "lp1000", "ai": "toon_world"},
 	"Banner of Courage": {"k": "cont", "bp_boost": 200},
 	"Burning Land": {"k": "cont", "do": [["destroy", "fields"]], "each_standby": [["self_damage", 500]]},
 	"Messenger of Peace": {"k": "cont", "lock_atk_min": 1500, "upkeep": 100},
@@ -119,6 +119,9 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Pegasus's cards (v0.33.34)
+	"Black Illusion Ritual": {"k": "ritual", "ai": "relinquished", "do": [["ritual"]]},
+	"Toon Table of Contents": {"k": "normal", "ai": "always", "do": [["search", {"has": "Toon", "monster": false}]]},
 	# ---------------------------------------------------------------- Marik's cards (v0.33.34)
 	"Jam Defender": {"k": "ctrap", "win": ["attack"], "cond": "jam_defender", "do": [["jam_defender"]]},
 	"Malevolent Catastrophe": {"k": "trap", "win": ["attack"], "do": [["destroy", "all_st"]]},
@@ -2040,9 +2043,14 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			# (Offered best first: a monster you can Summon right away, the strongest one, before one you cannot.)
 			var by_use: Array = ps.deck.duplicate()
 			var fake_in_hand: bool = not ps.hand.filter(func(h): return h.cname() == "Fake Hero").is_empty()
+			var has_toon_world: bool = not (ps.hand + ps.spells).filter(func(h): return h != null and h.cname() == "Toon World").is_empty()
 			var use_of := func(x) -> int:
+				if x.cname() == "Toon World" and not has_toon_world:
+					return 9000   # (the Toons need it first)
 				if not x.is_monster():
 					return 500
+				if has_toon_world and CardEffects.of(x.cname()).has("special_toon") and ps.monsters().size() >= int(CardEffects.of(x.cname())["special_toon"]):
+					return 1000 + x.atk()
 				if x.level() <= 4 or s.tributes_needed(x) == 0 or (fake_in_hand and str(x.data.get("name", "")).contains("Elemental HERO")):
 					return 1000 + x.atk()
 				return x.atk() / 10
