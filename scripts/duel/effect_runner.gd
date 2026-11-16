@@ -1539,6 +1539,17 @@ static func ai_ignite_ok(s: DuelState, p: int, c) -> bool:
 	match str(ignite_spec(c).get("ai", "")):
 		"never":
 			return false
+		"catapult":
+			# Only for the win: the biggest monster's half ATK finishes the duel.
+			var top_atk := 0
+			for m in ps.monsters():
+				top_atk = maxi(top_atk, s.atk_of(m, false))
+			return top_atk / 2 >= opp.lp
+		"gandora":
+			# When the other side has clearly more on the field, and the Life Points can take it.
+			var theirs_n: int = opp.monsters().size() + opp.set_cards().size()
+			var mine_n: int = ps.monsters().size() - 1 + ps.set_cards().size()
+			return ps.lp >= 3000 and theirs_n >= mine_n + 2
 		"ssd":
 			# Worth it when the Deck is thick with Tuners: no Tuner among the five means no attack.
 			var tuners := ps.deck.filter(func(d): return d.is_monster() and d.is_tuner()).size()
@@ -1810,6 +1821,8 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			for src in [ps.hand, ps.deck]:
 				var next_f: Array = src.filter(func(d): return d.cname() == str(a[1]))
 				if not next_f.is_empty() and ps.field.has(c):
+					if a.size() > 2 and str(a[2]) == "ask" and s.choose_option(p, Loc.t("%s: send it to the Graveyard and Special Summon %s?") % [name, str(a[1])], ["Yes", "No"], 0, c) != 0:
+						break
 					ps.field[ps.field.find(c)] = null
 					s._to_gy(ps, c)
 					events.append({"type": "tribute", "player": p, "card": c})

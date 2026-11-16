@@ -47,7 +47,6 @@ const FX := {
 	"Hammer Shot": {"k": "normal", "do": [["destroy", "best_atk_any"]]},
 	"Nobleman of Crossout": {"k": "normal", "t": "any_fdown", "do": [["banish", "target"], ["purge_copies", "flip"]]},
 	"Nobleman of Extermination": {"k": "normal", "t": "any_set_st", "do": [["banish", "target"], ["purge_copies", "trap"]]},
-	"De-Spell": {"k": "normal", "t": "any_spell", "do": [["destroy", "target"]]},
 	"Remove Trap": {"k": "normal", "t": "any_face_trap", "do": [["destroy", "target"]]},
 	"Stop Defense": {"k": "normal", "t": "opp_def", "do": [["to_atk", "target"]]},
 	"Shield Crush": {"k": "normal", "t": "opp_def", "do": [["destroy", "target"]]},
@@ -176,6 +175,21 @@ const FX := {
 	"Give and Take": {"k": "trap", "win": ["free"], "do": [["give_and_take"]]},
 	"Slip Summon": {"k": "trap", "win": ["summon"], "do": [["slip_summon"]]},
 	"Limiter Overload": {"k": "trap", "win": [], "sent_gy": [["special_named_anywhere", "Speed Warrior"]]},
+	# ---- Yugi (v0.33.32)
+	"Black Luster Ritual": {"k": "ritual", "do": [["ritual"]]},
+	"Black Magic Ritual": {"k": "ritual", "do": [["ritual"]]},
+	"Dark Magic Attack": {"k": "normal", "cond": "own_dark_magician", "do": [["destroy", "opp_st"]]},
+	"Thousand Knives": {"k": "normal", "cond": "own_dark_magician", "t": "opp_mon", "do": [["destroy", "target"]]},
+	"Dark Magic Curtain": {"k": "normal", "cost": "half_lp", "cond": "no_summon_yet", "do": [["special_named", "Dark Magician", ["deck"]], ["no_more_summons"]]},
+	"Sage's Stone": {"k": "normal", "cond": "own_dark_magician_girl", "do": [["special_named", "Dark Magician", ["hand", "deck"]]]},
+	"Magic Formula": {"k": "equip", "must": {"names": ["Dark Magician", "Dark Magician Girl"]}, "atk": 700, "on_leave": [["heal", 1000]]},
+	"Dedication through Light and Darkness": {"k": "quick", "cost": "tribute_f", "cost_f": {"name": "Dark Magician"}, "do": [["special_named", "Dark Magician of Chaos", ["hand", "deck", "gy"]]]},
+	"Multiply": {"k": "quick", "cost": "tribute_f", "cost_f": {"name": "Kuriboh"}, "do": [["tokens", 5, "Kuriboh Token", 40703223, 300, 200, 1, "DARK", "Fiend", "free"]]},
+	"Mystic Box": {"k": "normal", "t": "opp_mon", "cond": "own_monster", "do": [["destroy", "target"], ["give_pick"]]},
+	"De-Spell": {"k": "normal", "t": "any_spell", "do": [["despell"]]},
+	"Lightforce Sword": {"k": "trap", "win": ["free"], "cond": "opp_has_hand", "do": [["lightforce", 4]]},
+	"Chain Destruction": {"k": "trap", "win": ["summon"], "subj_atk_max": 2000, "do": [["chain_destruction"]]},
+	"Gold Sarcophagus": {"k": "normal", "do": [["gold_sarcophagus", 2]]},
 	"Power of Kaishin": {"k": "equip", "must": {"race": "Aqua"}, "atk": 300, "def": 300},
 	"Steel Shell": {"k": "equip", "must": {"attr": "WATER"}, "atk": 400, "def": -200},
 	"Gust Fan": {"k": "equip", "must": {"attr": "WIND"}, "atk": 400, "def": -200},
@@ -322,6 +336,12 @@ static func blocked(s: DuelState, c) -> bool:
 		for q in 2:
 			for m in s.players[q].monsters():
 				if m.face_up and m.normal_turn == s.turn and EffectRunner.fx(m).get("no_traps_normal_turn", false):
+					return true
+	if c.is_spell():
+		# Silent Swordsman LV7: "Negate all Spell effects on the field."
+		for q in 2:
+			for m in s.players[q].monsters():
+				if m.face_up and EffectRunner.fx(m).get("block_spells", false):
 					return true
 	for q in 2:
 		for st in s.players[q].spells:
@@ -494,6 +514,18 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return s.phase == DuelState.Phase.BATTLE
 		"opp_turn":
 			return s.current != p
+		"own_dark_magician", "own_dark_magician_girl":
+			var want_n := "Dark Magician" if cond == "own_dark_magician" else "Dark Magician Girl"
+			for m in s.players[p].monsters():
+				if m.face_up and CardEffects.matches(m.data, {"name": want_n, "zone": "field"}):
+					return true
+			return false
+		"no_summon_yet":
+			return s.players[p].summons_turn != s.turn and s.players[p].no_summon_turn != s.turn
+		"own_monster":
+			return not s.players[p].monsters().is_empty()
+		"opp_has_hand":
+			return not s.players[s.opponent(p)].hand.is_empty()
 		"being_attacked":
 			return s.current != p and not s.pending_attack.is_empty() and int(s.pending_attack["player"]) != p and not s.pending_attack.get("negated", false)
 		"stardust_up":
@@ -579,6 +611,20 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 					return false
 			"extra_normal":
 				if s.current != p or ps.extra_normals > 0:
+					return false
+			"special_named":
+				var found_n := false
+				for where in a[2]:
+					var from_n: Array = ps.deck if where == "deck" else (ps.hand if where == "hand" else ps.gy.filter(func(x): return s.can_revive(x)))
+					if not EffectRunner._take(from_n.filter(func(h): return h != c), {"name": str(a[1])}, 1).is_empty():
+						found_n = true
+				if not found_n or ps.free_zone() == -1 or ps.no_summon_turn == s.turn:
+					return false
+			"tokens":
+				if ps.free_zone() == -1:
+					return false
+			"gold_sarcophagus":
+				if ps.deck.is_empty():
 					return false
 			"lost_star":
 				if ps.free_zone() == -1 or ps.gy.filter(func(x): return x.frame() == "synchro" and s.can_revive(x)).is_empty():
@@ -791,6 +837,12 @@ static func _sel(s: DuelState, p: int, c, sel: String, ctx: Dictionary) -> Array
 	for x in _sel_raw(s, p, c, sel, ctx):
 		if c != null and c.is_trap() and x.is_monster() and (EffectRunner.fx(x).get("trap_immune", false) or x.cname() == "Elemental HERO Wildheart"):
 			continue
+		# Silent Swordsman LV5 and Silent Magician LV8: unaffected by the opponent's Spell effects.
+		# Silent Swordsman LV3: the opponent's Spell effects that target it are negated.
+		if c != null and c.is_spell() and x.is_monster() and x.face_up and x.owner != p and (s.players[0].field.has(x) or s.players[1].field.has(x)):
+			var xf := EffectRunner.fx(x)
+			if xf.get("spell_immune_opp", false) or (sel == "target" and xf.get("spell_immune_opp_target", false)):
+				continue
 		out.append(x)
 	return out
 
@@ -1119,6 +1171,72 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				var n: int = s.atk_of(s.pending_attack["attacker"], true)
 				ps.lp += n
 				events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": n})
+		"special_named":
+			# 1 card with that name from the places listed (Dark Magic Curtain: the Deck; Sage's Stone: hand or Deck).
+			for where in a[2]:
+				var src_n: Array = ps.deck if where == "deck" else (ps.hand if where == "hand" else ps.gy)
+				var got_c: Array = EffectRunner._take(src_n.filter(func(h): return h != c and (where != "gy" or s.can_revive(h))), {"name": str(a[1])}, 1)
+				if not got_c.is_empty() and ps.free_zone() != -1:
+					var named = got_c[0]
+					src_n.erase(named)
+					if where == "deck":
+						s._shuffle(ps.deck)
+					events.append(_ev(p, c, Loc.t("%s calls %s") % [name, named.cname()]))
+					events.append_array(s._special(p, named, "reborn" if where == "gy" else "effect"))
+					events.append_array(EffectRunner.on_summon(s, p, named, "special"))
+					break
+		"no_more_summons":
+			ps.no_summon_turn = s.turn   # "You cannot Summon other monsters the turn you activate this card (but you can Normal Set)."
+		"give_pick":
+			# Mystic Box: after the first target is destroyed, 1 monster of yours goes to the opponent.
+			var gifts_m: Array = ps.monsters()
+			if not gifts_m.is_empty() and opp.free_zone() != -1:
+				gifts_m.sort_custom(func(x, y): return s.atk_of(x, false) < s.atk_of(y, false))
+				var given = s.pick1(p, Loc.t("%s: give control of 1 of your monsters to your opponent") % name, gifts_m, gifts_m[0], c)
+				events.append_array(s._take_control(given, opp_i, -1))
+		"despell":
+			# "Destroy that target if it is a Spell. (If the target is Set, reveal it.)"
+			for t in _sel(s, p, c, "target", ctx):
+				if t.is_spell():
+					events.append_array(s._destroy_st(t))
+				else:
+					events.append(_ev(p, c, Loc.t("%s is revealed: it is not a Spell") % t.cname()))
+		"lightforce":
+			# 1 random card from their hand is set aside until their 4th Standby Phase from now.
+			if not opp.hand.is_empty():
+				var taken = opp.hand[s._rng.randi() % opp.hand.size()]
+				opp.hand.erase(taken)
+				opp.banished.append(taken)
+				opp.exiles.append({"card": taken, "to": opp_i, "left": int(a[1]), "atk_pos": true, "to_hand": true})
+				events.append({"type": "discard", "player": opp_i, "card": taken})
+				events.append(_ev(p, c, Loc.t("%s sets a card from the opponent's hand aside for %d of their turns") % [name, int(a[1])]))
+		"chain_destruction":
+			# Every card with that monster's name in its controller's hand and Deck is destroyed.
+			var subj_c = ctx.get("subject")
+			if subj_c != null and not (subj_c is Dictionary):
+				var side_i: int = 0 if s.players[0].field.has(subj_c) else 1
+				var side_ps: DuelState.PlayerState = s.players[side_i]
+				var gone_n := 0
+				for pile in [side_ps.hand, side_ps.deck]:
+					for same in pile.filter(func(x): return x.cname() == subj_c.cname()):
+						pile.erase(same)
+						s._to_gy(side_ps, same)
+						gone_n += 1
+						events.append({"type": "mill", "player": side_i, "card": same, "deck": side_ps.deck.size()})
+				events.append(_ev(p, c, Loc.t("%s: %d more \"%s\" destroyed in the hand and Deck") % [name, gone_n, subj_c.cname()]))
+		"gold_sarcophagus":
+			# 1 card from your Deck is banished face-up; it comes to your hand in your 2nd Standby Phase from now.
+			if not ps.deck.is_empty():
+				var by_worth: Array = ps.deck.duplicate()
+				by_worth.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+				var chosen = s.pick1(p, Loc.t("%s: banish 1 card from your Deck; it comes to your hand in 2 turns") % name, by_worth, by_worth[0], c)
+				ps.deck.erase(chosen)
+				s._shuffle(ps.deck)
+				ps.banished.append(chosen)
+				ps.exiles.append({"card": chosen, "to": p, "left": int(a[1]), "atk_pos": true, "to_hand": true})
+				events.append({"type": "banish", "player": p, "card": chosen})
+				events.append(_ev(p, c, Loc.t("%s seals %s away for %d turns") % [name, chosen.cname(), int(a[1])]))
+
 		"mill_self":
 			for i in int(a[1]):
 				if not ps.deck.is_empty():
@@ -1331,6 +1449,8 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				ps.hand.append(g)
 				events.append({"type": "search", "player": p, "card": g, "deck": ps.deck.size()})
 			s._shuffle(ps.deck)
+			for g in got:
+				events.append_array(EffectRunner.added_by_effect(s, p, g))
 		"gy_to_hand":
 			for g in EffectRunner._pick(s, p, c, "add from your Graveyard to your hand", ps.gy, a[1], int(a[2])):
 				ps.gy.erase(g)
@@ -1374,7 +1494,8 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			CardData.TOKENS[int(a[3])] = {"name": str(a[2]), "frame": "token", "atk": int(a[4]), "def": int(a[5]), "level": int(a[6]),
 					"attribute": str(a[7]), "race": str(a[8]), "no_tribute_summon": true,
 					"desc": Loc.t("This card can be used as a \"%s\". It cannot be Tributed for a Tribute Summon.") % str(a[2])}
-			ps.no_summon_turn = s.turn
+			if not (a.size() > 9 and str(a[9]) == "free"):
+				ps.no_summon_turn = s.turn   # (Scapegoat: no other Summons that turn. Multiply has no such rule.)
 			for i in int(a[1]):
 				if ps.free_zone() == -1:
 					break

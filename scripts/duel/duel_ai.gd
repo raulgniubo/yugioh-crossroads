@@ -350,7 +350,10 @@ static func _best_summon(s: DuelState, p: int, opp_best: int, level: int) -> Dic
 		for t in tributes:
 			lost += t.atk()
 		var margin := 600 if level < HARD else 300
-		var worth := c.atk() >= lost + margin or (level == HARD and c.atk() > opp_best and lost < opp_best)
+		var c_atk: int = c.atk()
+		if str(CardEffects.of(c.cname()).get("atk_per", ["", 0])[0]) == "own_hand":
+			c_atk = 1000 * (me.hand.size() - 1)   # Slifer the Sky Dragon: what it will be once it is out of the hand
+		var worth := c_atk >= lost + margin or (level == HARD and c_atk > opp_best and lost < opp_best)
 		if level > EASY and c.id == _ace(p) and _ace(p) != 0:
 			return {"do": "summon", "card": c, "tributes": tributes}   # the ace comes out whenever it can
 		if need > 0 and not worth:
@@ -377,6 +380,9 @@ static func _best_summon(s: DuelState, p: int, opp_best: int, level: int) -> Dic
 	if (card.atk() >= opp_best + edge or s.players[s.opponent(p)].monsters().is_empty()) and (card.atk() >= 1000 or s.turn <= 1):
 		return {"do": "summon", "card": card, "tributes": top["tributes"]}
 	# Too weak to attack: set the best defender instead.
+	options = options.filter(func(o): return not CardEffects.of(o["card"].cname()).get("no_set", false))
+	if options.is_empty():
+		return {}
 	options.sort_custom(func(a, b): return a["card"].def() > b["card"].def())
 	return {"do": "set", "card": options[0]["card"], "tributes": options[0]["tributes"]}
 

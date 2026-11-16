@@ -633,6 +633,10 @@ func _draw(p: int, count := 1) -> Array:
 					sm.tags["full_turn"] = turn
 				events.append({"type": "effect", "player": opponent(p), "card": sm, "text": Loc.t("%s: Spell Counter %d") % [sm.cname(), sm.counter]})
 	events.append_array(_check_exodia())
+	if effect_by != -1 and not is_over():
+		# A draw a card effect gave you counts as "added from your Deck to your hand by a card effect" (Watapon).
+		for d in drawn:
+			events.append_array(EffectRunner.added_by_effect(self, p, d))
 	# "When you draw a card(s) while you have no cards in your hand, and you draw this card: You can
 	# reveal this card; Special Summon it from your hand" (Infernity Archfiend).
 	if was_empty and not is_over():

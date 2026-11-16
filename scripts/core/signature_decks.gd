@@ -11,8 +11,8 @@ const WISH := {
 			"King's Knight", "Queen's Knight", "Jack's Knight", "Skilled Dark Magician", "Breaker the Magical Warrior", "Watapon", "Marshmallon", "Silent Magician LV4", "Silent Swordsman LV3",
 			"Dark Magician of Chaos", "Sangan", "Catapult Turtle", "Giant Soldier of Stone", "Feral Imp", "Mystical Elf", "Beaver Warrior", "Gazelle the King of Mythical Beasts", "Berfomet", "Slifer the Sky Dragon",
 			"Swords of Revealing Light", "Monster Reborn", "Polymerization", "Dark Magic Curtain", "Thousand Knives", "Magical Hats", "Multiply", "Mystic Box", "De-Spell", "Brain Control",
-			"Card Destruction", "Pot of Greed", "Black Luster Ritual", "Dark Magic Attack", "Mirror Force", "Spellbinding Circle", "Magic Cylinder", "Lightforce Sword", "Chain Destruction"],
-		"extra": ["Gaia the Dragon Champion", "Dark Paladin", "Chimera the Flying Mythical Beast"]},
+			"Card Destruction", "Pot of Greed", "Black Luster Ritual", "Dark Magic Attack", "Mirror Force", "Spellbinding Circle", "Magic Cylinder", "Lightforce Sword", "Chain Destruction", "Silent Swordsman LV5", "Silent Swordsman LV7", "Silent Magician LV8", "Sage's Stone", "Gandora the Dragon of Destruction", "Green Gadget", "Red Gadget", "Yellow Gadget", "Magic Formula", "Dedication through Light and Darkness", "Gold Sarcophagus", "Magician's Valkyria", "Sorcerer of Dark Magic", "Black Magic Ritual"],
+		"extra": ["Gaia the Dragon Champion", "Dark Paladin", "Chimera the Flying Mythical Beast", "Arcana Knight Joker"]},
 	"kaiba": {"main": ["Blue-Eyes White Dragon", "Lord of D.", "Kaibaman", "X-Head Cannon", "Y-Dragon Head", "Z-Metal Tank", "Vorse Raider", "Battle Ox", "La Jinn the Mystical Genie of the Lamp",
 			"Saggi the Dark Clown", "Blade Knight", "Kaiser Sea Horse", "Different Dimension Dragon", "Spirit Ryu", "Vampire Lord", "Chaos Emperor Dragon - Envoy of the End", "Luster Dragon",
 			"Ryu-Kishin Powered", "Judge Man", "Hitotsu-Me Giant", "Obelisk the Tormentor", "The Flute of Summoning Dragon", "Crush Card Virus", "Shrink", "Enemy Controller", "Negate Attack",
@@ -143,7 +143,16 @@ const WISH := {
 const TUNE := {
 	"yugi": {"out": ["Gemini Elf", "Book of Secret Arts", "Yami", "Magic Jammer", "Waboku", "Fissure"],
 		"in": {"Dark Magician Girl": 1, "Alpha The Magnet Warrior": 1, "Beta The Magnet Warrior": 1, "Gamma The Magnet Warrior": 1, "Queen's Knight": 1, "Jack's Knight": 1,
-			"Breaker the Magical Warrior": 1, "Gazelle the King of Mythical Beasts": 1, "Berfomet": 1, "Brain Control": 1, "Card Destruction": 1, "Monster Reborn": 1, "Spellbinding Circle": 1}},
+			"Breaker the Magical Warrior": 1, "Gazelle the King of Mythical Beasts": 1, "Berfomet": 1, "Brain Control": 1, "Card Destruction": 1, "Monster Reborn": 1, "Spellbinding Circle": 1},
+		# Yugi's best deck: Dark Magician and his family, the Knights, the Magnet Warriors, the Silent pair and Slifer (v0.33.32).
+		"main": {"Dark Magician": 3, "Dark Magician Girl": 2, "Buster Blader": 1, "Slifer the Sky Dragon": 1, "Black Luster Soldier": 1, "Valkyrion the Magna Warrior": 1,
+			"Alpha The Magnet Warrior": 1, "Beta The Magnet Warrior": 1, "Gamma The Magnet Warrior": 1, "Queen's Knight": 1, "King's Knight": 1, "Jack's Knight": 1,
+			"Silent Swordsman LV3": 1, "Silent Swordsman LV5": 1, "Silent Swordsman LV7": 1, "Silent Magician LV4": 1, "Silent Magician LV8": 1,
+			"Skilled Dark Magician": 1, "Breaker the Magical Warrior": 1, "Big Shield Gardna": 1, "Marshmallon": 1, "Kuriboh": 1,
+			"Polymerization": 1, "Black Luster Ritual": 1, "Dark Magic Curtain": 1, "Thousand Knives": 1, "Dark Magic Attack": 1, "Sage's Stone": 1,
+			"Swords of Revealing Light": 1, "Monster Reborn": 1, "Pot of Greed": 1, "Card Destruction": 1, "Multiply": 1,
+			"Mirror Force": 1, "Magic Cylinder": 1, "Spellbinding Circle": 1, "Lightforce Sword": 1},
+		"extra": {"Dark Paladin": 1, "Arcana Knight Joker": 1}},
 	"kaiba": {"out": ["Rude Kaiser", "Koumori Dragon", "Cyber Dragon", "Mystic Tomato", "Mountain", "Dragon Treasure", "Torrential Tribute", "Trap Hole"],
 		"in": {"X-Head Cannon": 1, "Y-Dragon Head": 1, "Z-Metal Tank": 1, "Saggi the Dark Clown": 1, "Hitotsu-Me Giant": 1, "Luster Dragon": 2, "Vampire Lord": 1},
 		"extra_in": {"XYZ-Dragon Cannon": 1}},
@@ -305,7 +314,7 @@ static func tune_extra(deck_key: String, list: Array[int], plain := false) -> Ar
 			for k in int(t["extra"][n]):
 				if whole.size() < 15:
 					whole.append(id3)
-		if whole.size() >= 5:
+		if whole.size() >= 1:
 			return whole
 	var out: Array[int] = []
 	for id in list:

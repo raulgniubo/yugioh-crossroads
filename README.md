@@ -5,6 +5,40 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.32
+
+**Yugi's best deck: Dark Magician and his family, the Knights, the Magnet Warriors, the Silent pair and Slifer the Sky Dragon.**
+
+39 of his cards were built in this version, each against its card text, each with a test.
+
+His deck now (the same in Free Duel, the open world and the story when he duels in person):
+
+- **Main, 40:** Dark Magician x3, Dark Magician Girl x2, Buster Blader, Slifer the Sky Dragon, Black Luster Soldier, Valkyrion the Magna Warrior, Alpha, Beta and Gamma The Magnet Warrior, Queen's Knight, King's Knight, Jack's Knight, Silent Swordsman LV3, LV5 and LV7, Silent Magician LV4 and LV8, Skilled Dark Magician, Breaker the Magical Warrior, Big Shield Gardna, Marshmallon, Kuriboh, Polymerization, Black Luster Ritual, Dark Magic Curtain, Thousand Knives, Dark Magic Attack, Sage's Stone, Swords of Revealing Light, Monster Reborn, Pot of Greed, Card Destruction, Multiply, Mirror Force, Magic Cylinder, Spellbinding Circle, Lightforce Sword.
+- **Extra:** Dark Paladin, Arcana Knight Joker.
+- Out: Celtic Guardian, Beaver Warrior, Feral Imp, Summoned Skull, Gaia and Curse of Dragon (his early deck), Mystical Space Typhoon, Brain Control.
+
+The big ones:
+
+- **Slifer the Sky Dragon:** 3 Tributes, never Set, and nothing can answer its Normal Summon. ATK and DEF are 1000 for each card in your hand. A monster Summoned to the other side in Attack Position loses 2000 ATK and is destroyed if that leaves it at 0. If it was Special Summoned it goes to the Graveyard in the End Phase.
+- **Dark Paladin:** Dark Magician + Buster Blader, Fusion Summon only. +500 ATK for each Dragon on the field and in the Graveyards. When a Spell is activated you can discard a card to negate it and destroy it.
+- **Arcana Knight Joker:** the three Knights. Once per turn it negates an effect that targets it, by discarding a card of the same kind.
+- **Valkyrion the Magna Warrior:** from the hand by Tributing Alpha, Beta and Gamma; Tribute it to bring the three back.
+- **Silent Swordsman LV3 > LV5 > LV7** and **Silent Magician LV4 > LV8:** they level up in your Standby Phase the way their cards say (LV5 after a direct hit, LV4 after its 5th counter from the opponent's draws). LV5 and LV8 ignore the opponent's Spells, LV7 shuts every Spell on the field off.
+- **Black Luster Soldier** can be Ritual Summoned now: Black Luster Ritual had no rules, so the Soldier used to sit in his deck with no way out. **Black Magic Ritual** too.
+- **Dark Magician of Chaos**, **Sorcerer of Dark Magic**, **Gandora the Dragon of Destruction**, **Buster Blader**, **Skilled Dark Magician**, **Chimera the Flying Mythical Beast**.
+
+The rest: Big Shield Gardna, Marshmallon, Obnoxious Celtic Guard, Catapult Turtle, King's Knight, Watapon, Green, Red and Yellow Gadget, Magician's Valkyria; Dark Magic Attack, Thousand Knives, Dark Magic Curtain, Sage's Stone, Magic Formula, Dedication through Light and Darkness, Multiply (Kuriboh Tokens), Mystic Box, De-Spell (rebuilt: a Set Trap is only revealed), Lightforce Sword, Chain Destruction, Gold Sarcophagus.
+
+Card shops: all of these are in the Duel Monsters packs, and Yugi's deck in the Deck Shop is this list.
+
+**Not done or not checked:**
+
+- Still to build for Yugi: Magical Hats, Diffusion Wave-Motion, Exchange, Monster Recovery, Double Spell, Soul Rope, Shift, Royal Straight, and the newer Dark Magician support. Gandora, the Gadgets, Catapult Turtle, Watapon, Sorcerer of Dark Magic, Dark Magician of Chaos and Magician's Valkyria work and are in the packs, but are not in his 40.
+- Silent Swordsman LV5 and Silent Magician LV8 ignore the opponent's Spells that pick or sweep monsters. A Field Spell's ATK change still reaches them.
+- The computer plays the deck plainly: in 40 test duels on Hard it won 16. It summons Dark Magician, uses Skilled Dark Magician and Breaker, and rarely gets to Valkyrion or Slifer.
+- Not watched on screen. Every card has a rules test, 30 computer duels ran clean, and two full duels ran in the real duel screen (as Yugi and against him).
+- About 465 cards to go for the other 22 duelists. Next: Jaden, then Yuma.
+
 ## What is in 0.33.31
 
 The line at the bottom of the main menu reads "Fan project · v0.33.31" and sits level with the two round buttons next to it. Otherwise the same as 0.33.30.
