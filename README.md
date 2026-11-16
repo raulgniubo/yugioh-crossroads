@@ -5,6 +5,17 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.18
+
+**Less boxy: furniture with soft edges in every room, and round corner columns on the city blocks.**
+
+- **Furniture.** Everything furniture-sized inside the rooms (beds, mattresses, pillows, desks, counters, shelves, benches, crates, sofas, cabinets) is now built with its edges and corners eased off and smooth round the bend, instead of cut out of a block. Every room in the five worlds plus the card shop gets it, because it is done where a room's boxes are made, not room by room. Walls, floors, ceilings, rugs, panes and posters stay sharp, as they should.
+- **Buildings in Domino.** The blocks of flats and shops ended in four knife edges. Each corner now has a round stone column from the pavement to the cornice, on a foot and with a band over the shops. It is part of the same single mesh as the rest of a building's trim, so it adds no draw calls.
+- **No flicker.** The pass that stops two surfaces fighting for the same spot treats the soft pieces as the boxes they were: all five worlds checked, the second pass finds 0.
+- **Low preset** keeps plain boxes (twelve triangles each); Medium and up get the soft ones.
+
+Not done or not checked: seen in pictures of seven rooms (your room, the mart, the Kaiba Corp lobby, the Red dorm, the New Domino cafe, the Heartland lounge) and one street corner; the card shop interior I could not get a picture of this time, it uses the same code. The goods on shop shelves are still plain little boxes (they are products). Buildings outside Domino are models or castles and were not changed. The back of the vending machine by the card shop is a blank white slab, still open. No frame-rate numbers: the extra triangles are indoors only, a few hundred per piece. Not played on a Mac.
+
 ## What is in 0.33.17
 
 **Two more things to do in Free Duel: the Duel of the day and the Knockout.** Both are at the top of the Free Duel screen, next to the title.

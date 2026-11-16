@@ -344,11 +344,40 @@ func _settle_flat(size: Vector3, pos: Vector3) -> Vector3:
 	return pos + Vector3(0, lift, 0)
 
 
+## While this is on (rooms being furnished), every furniture-sized box is built with its edges
+## and corners eased off, so a bed, a counter or a shelf no longer looks cut out of a block.
+var soft_edges := false
+## Low detail keeps plain boxes: twelve triangles each instead of a hundred or three.
+var _soft_ok := int(Settings.gfx.get("detail", 2)) >= 1 and not ("--no-soft" in OS.get_cmdline_user_args())
+
+
+## Does this box get soft edges? Furniture and fittings do. Walls, floors and ceilings (long),
+## rugs, mats, panes and posters (thin) and anything showing a picture mapped by its own
+## corners stay sharp.
+func _softens(size: Vector3, m: Material) -> bool:
+	var least := minf(size.x, minf(size.y, size.z))
+	var most := maxf(size.x, maxf(size.y, size.z))
+	if least < 0.045 or most > 6.5:
+		return false
+	if m is BaseMaterial3D:
+		var bm := m as BaseMaterial3D
+		if bm.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
+			return false
+		if bm.albedo_texture != null and not bm.uv1_triplanar:
+			return false
+	return true
+
+
 func box(size: Vector3, pos: Vector3, m: Material, solid := true, parent: Node3D = null) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = size
-	mi.mesh = bm
+	if soft_edges and _soft_ok and _softens(size, m):
+		var least := minf(size.x, minf(size.y, size.z))
+		mi.mesh = soft_box_mesh(size, clampf(least * 0.3, 0.012, 0.06))
+		mi.set_meta("boxy", true)      # still a box to the no-flicker pass
+	else:
+		var bm := BoxMesh.new()
+		bm.size = size
+		mi.mesh = bm
 	mi.material_override = m
 	var at := pos
 	if parent == null and size.y <= 0.35 and size.x * size.z >= 0.25:
@@ -410,6 +439,61 @@ static func round_box_mesh(size: Vector3, r: float, segs := 5) -> ArrayMesh:
 				st.add_vertex(tri[idx2])
 	var mesh := st.commit()
 	_round_boxes[key] = mesh
+	return mesh
+
+
+static var _soft_boxes := {}
+
+
+## A box with all twelve edges and eight corners eased off by `r`, smooth round the bend. Each
+## face is a grid whose outer rows are pulled in onto the rounding. One mesh per size, shared.
+static func soft_box_mesh(size: Vector3, r: float, segs := -1) -> ArrayMesh:
+	r = clampf(r, 0.004, minf(size.x, minf(size.y, size.z)) * 0.5 - 0.001)
+	if segs < 0:
+		segs = 2 if r >= 0.03 else 1
+	var key := "%.3f/%.3f/%.3f/%.3f/%d" % [size.x, size.y, size.z, r, segs]
+	if _soft_boxes.has(key):
+		return _soft_boxes[key]
+	var h := size * 0.5
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	# Along one side of a face: the straight part between the two bends, and `segs` steps over
+	# each bend (a face covers the first 45 degrees of a bend; its neighbour covers the rest).
+	var steps := func(half: float) -> Array:
+		var out: Array = []
+		for k in range(segs, -1, -1):
+			out.append(-(half - r) - r * tan(PI * 0.25 * k / float(segs)))
+		for k in range(0, segs + 1):
+			out.append((half - r) + r * tan(PI * 0.25 * k / float(segs)))
+		return out
+	var inner := h - Vector3(r, r, r)
+	for ax in 3:
+		var a := (ax + 1) % 3
+		var b := (ax + 2) % 3
+		var ua: Array = steps.call(h[a])
+		var ub: Array = steps.call(h[b])
+		for sgn: float in [1.0, -1.0]:
+			var pts: Array = []          # [row][col] -> [vertex, normal]
+			for i in ua.size():
+				var row: Array = []
+				for j in ub.size():
+					var p := Vector3.ZERO
+					p[ax] = h[ax] * sgn
+					p[a] = float(ua[i])
+					p[b] = float(ub[j])
+					var core := Vector3(clampf(p.x, -inner.x, inner.x), clampf(p.y, -inner.y, inner.y), clampf(p.z, -inner.z, inner.z))
+					var n := (p - core).normalized()
+					row.append([core + n * r, n])
+				pts.append(row)
+			for i in ua.size() - 1:
+				for j in ub.size() - 1:
+					var quad := [pts[i][j], pts[i + 1][j], pts[i + 1][j + 1], pts[i][j + 1]]
+					for idx in ([0, 1, 2, 0, 2, 3] if sgn < 0.0 else [0, 2, 1, 0, 3, 2]):
+						st.set_normal(quad[idx][1])
+						st.add_vertex(quad[idx][0])
+	st.index()
+	var mesh := st.commit()
+	_soft_boxes[key] = mesh
 	return mesh
 
 
@@ -849,6 +933,35 @@ class BoxBatch:
 			for i in [0, 2, 1, 0, 3, 2]:
 				st.set_normal(wn)
 				st.add_vertex(pos + basis * (quad[i] as Vector3))
+
+	## A round upright post (a corner column, a bollard): `segs` sides, smooth round the bend,
+	## with a lid. `pos` is the middle of it.
+	func add_round(r: float, h: float, pos: Vector3, m: Material, segs := 10) -> void:
+		var col := Color.WHITE
+		var sh := _shared(m)
+		if not sh.is_empty():
+			m = sh[0]
+			col = sh[1]
+		var st: SurfaceTool = tools.get(m)
+		if st == null:
+			st = SurfaceTool.new()
+			st.begin(Mesh.PRIMITIVE_TRIANGLES)
+			tools[m] = st
+		st.set_color(col)
+		var hy := h * 0.5
+		for i in segs:
+			var a0 := TAU * i / float(segs)
+			var a1 := TAU * (i + 1) / float(segs)
+			var n0 := Vector3(cos(a0), 0, sin(a0))
+			var n1 := Vector3(cos(a1), 0, sin(a1))
+			var quad := [[pos + n0 * r + Vector3(0, -hy, 0), n0], [pos + n1 * r + Vector3(0, -hy, 0), n1], [pos + n1 * r + Vector3(0, hy, 0), n1], [pos + n0 * r + Vector3(0, hy, 0), n0]]
+			for idx in [0, 2, 1, 0, 3, 2]:
+				st.set_normal(quad[idx][1])
+				st.add_vertex(quad[idx][0])
+			st.set_normal(Vector3.UP)
+			st.add_vertex(pos + Vector3(0, hy, 0))
+			st.add_vertex(pos + n1 * r + Vector3(0, hy, 0))
+			st.add_vertex(pos + n0 * r + Vector3(0, hy, 0))
 
 	func commit(parent: Node3D, see := 0.0) -> MeshInstance3D:
 		if tools.is_empty():
@@ -2483,6 +2596,14 @@ func _dress_building(pos: Vector3, size: Vector3, rng: RandomNumberGenerator, ti
 	# The four faces: [outward normal, along the wall, half depth, half width]
 	var faces := [[Vector3(0, 0, 1), Vector3(1, 0, 0), size.z / 2.0, size.x / 2.0], [Vector3(0, 0, -1), Vector3(1, 0, 0), size.z / 2.0, size.x / 2.0],
 			[Vector3(1, 0, 0), Vector3(0, 0, 1), size.x / 2.0, size.z / 2.0], [Vector3(-1, 0, 0), Vector3(0, 0, 1), size.x / 2.0, size.z / 2.0]]
+	# The four corners: a round stone column from the pavement to the cornice, on a foot and
+	# under a cap, so the building does not end in four knife edges.
+	for cx: float in [-1.0, 1.0]:
+		for cz: float in [-1.0, 1.0]:
+			var corner := pos + Vector3(cx * size.x * 0.5, 0, cz * size.z * 0.5)
+			batch.add_round(0.3, hgt - 0.5, corner + Vector3(0, (hgt - 0.5) * 0.5, 0), stone, 10)
+			batch.add_round(0.4, 0.34, corner + Vector3(0, 0.17, 0), slab, 10)
+			batch.add_round(0.38, 0.2, corner + Vector3(0, 3.28, 0), slab, 10)
 	var escape_face := rng.randi() % 4 if hgt > 13.0 else -1
 	for fi in faces.size():
 		var n: Vector3 = faces[fi][0]

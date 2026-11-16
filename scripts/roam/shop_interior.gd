@@ -63,7 +63,9 @@ static func build(city: CityBuilder) -> void:
 	_sign(city, "NEW BOOSTERS IN STOCK", o + Vector3(4.3, 3.3, -HALF.y + 0.12), 0.0, Color("ff8ac0"), 54)
 	_sign(city, "DUEL TABLES  ·  FREE PLAY", o + Vector3(HALF.x - 0.12, 3.2, 2.6), -PI / 2, Color("7cc4ff"), 54)
 	_sign(city, "FITTING MIRROR", o + Vector3(-HALF.x + 0.12, 2.9, 3.4), PI / 2, Color("b8f0ff"), 46)
+	city.soft_edges = true
 	_dress(city, o)
+	city.soft_edges = false
 
 
 ## Everything that makes it feel like a shop people actually hang out in.

@@ -67,6 +67,11 @@ static func rooms_in(district_key: String) -> Dictionary:
 
 
 static func build(city: CityBuilder, key: String) -> void:
+	_build(city, key)
+	city.soft_edges = false
+
+
+static func _build(city: CityBuilder, key: String) -> void:
 	var r: Dictionary = all_rooms()[key]
 	var o: Vector3 = r["at"]
 	var half: Vector2 = r["half"]
@@ -115,6 +120,8 @@ static func build(city: CityBuilder, key: String) -> void:
 			city.exit_door(o + Vector3(0, 0, half.y), Color(0.46, 0.3, 0.18), Color(0.3, 0.42, 0.62), 2.4)
 		_:
 			city.exit_door(o + Vector3(0, 0, half.y), Color(0.72, 0.24, 0.18), Color(0.95, 0.88, 0.72))
+	# The shell is done; from here on it is furniture, and furniture has soft edges.
+	city.soft_edges = true
 	if AcademyRooms.ROOMS.has(key):
 		AcademyRooms.dress(city, key, o, half, hgt)
 	if MoreRooms.ROOMS.has(key):

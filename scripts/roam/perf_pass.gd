@@ -44,7 +44,7 @@ static func unfight(root: Node, report := false, dry := false) -> int:
 			flat_n = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][(mi.mesh as PlaneMesh).orientation]
 		elif mi.mesh is QuadMesh:
 			flat_n = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][(mi.mesh as QuadMesh).orientation]
-		elif not (mi.mesh is BoxMesh or mi.mesh is CylinderMesh):
+		elif not (mi.mesh is BoxMesh or mi.mesh is CylinderMesh or mi.has_meta("boxy")):
 			continue
 		var round_one := mi.mesh is CylinderMesh       # (a lid, a disc, a plinth: only its top can lie level with something)
 		var gt := mi.global_transform
