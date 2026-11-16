@@ -138,6 +138,13 @@ static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionar
 ## no target.
 static func has_use(s: DuelState, p: int, c) -> bool:
 	var sp := SpellRules.spec(c)
+	if str(sp.get("ai", "")) == "wins":
+		return false   # (played by _setup_spell, and only when it ends the duel)
+	if c.cname() == "Power Bond":
+		# Its damage in the End Phase must not be the computer's own end.
+		for o in s.fusion_targets(p, c):
+			if o["card"].atk() >= s.players[p].lp:
+				return false
 	if str(sp.get("ai_if", "")) == "insect_queen" and s.players[p].monsters().filter(func(m): return m.face_up and m.cname() == "Insect Queen").is_empty():
 		return false   # Multiplication of Ants: the Tokens are for Insect Queen's attacks, nothing else
 	if sp.is_empty() or sp.has("legacy") or not SpellRules._needs_target(sp):
@@ -503,10 +510,30 @@ static func _setup_spell(s: DuelState, p: int) -> Dictionary:
 		# Black Illusion Ritual: Relinquished has 0 ATK of its own, so it comes out when there is a monster to take.
 		if tag == "relinquished" and not s.players[s.opponent(p)].monsters().is_empty():
 			return {"do": "activate", "card": c}
+		# Limiter Removal burns the Machines out in the End Phase: only for the turn that wins the duel.
+		if tag == "wins" and s.phase == DuelState.Phase.MAIN1 and _wins_with(s, p, {"do": "activate", "card": c}):
+			return {"do": "activate", "card": c}
 		if tag == "second_summon" and s.normal_summoned and me.extra_normals == 0 \
 				and not me.hand.filter(func(h): return h.is_monster() and h.level() <= 4 and not CardData.is_extra(h.id)).is_empty():
 			return {"do": "activate", "card": c}
 	return {}
+
+
+## Does this play, followed by this turn's attacks, win the duel?
+static func _wins_with(s: DuelState, p: int, act: Dictionary) -> bool:
+	var sim := s.clone()
+	sim.manual = [false, false]
+	if apply(sim, p, _map_action(sim, act)).is_empty() or sim.is_over() or not sim.can_enter_battle():
+		return sim.is_over() and sim.winner == p
+	sim.enter_battle()
+	var guard := 0
+	while guard < 10 and not sim.is_over():
+		guard += 1
+		var a := next_attack(sim, p, HARD)
+		if a.is_empty():
+			break
+		sim.attack(p, a["card"], a["target"])
+	return sim.is_over() and sim.winner == p
 
 
 ## What a Contact Fusion is worth to the computer right now, or 0 when it should wait. A Neos

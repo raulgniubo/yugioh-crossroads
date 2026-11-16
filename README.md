@@ -19,8 +19,19 @@ The GX duelists' best decks. Each card built against its card text, each with a 
 - **VWXYZ-Dragon Catapult Cannon** banishes 1 card a turn and can turn the monster it attacks around.
 - The computer now puts a wall (low ATK, high DEF) in Defense Position when it Special Summons it.
 
+### Zane
+
+**Cyber Dragon into Cyber Twin and Cyber End with Power Bond, Limiter Removal and De-Fusion.** 9 cards built.
+
+- **Main, 40:** Cyber Dragon x3, Proto-Cyber Dragon x3, Cyber Phoenix x3, Cyber Larva x3, Cyber Kirin x2, Cyber Laser Dragon, Cyber Barrier Dragon; Polymerization x3, Power Bond x3, De-Fusion x2, Mystical Space Typhoon x2, Limiter Removal, Photon Generator Unit, Different Dimension Capsule, Pot of Greed, Monster Reborn, Heavy Storm, Raigeki; Trap Jammer x2, Call of the Haunted x2, Attack Reflector Unit, Mirror Force, Negate Attack. **Extra:** Cyber Twin Dragon x2, Cyber End Dragon x2.
+- **Power Bond** makes a Machine Fusion with double ATK (Cyber End Dragon at 8000) and bills you that gain in the End Phase. The computer will not play it when the bill would end it. Cyber Kirin can cancel the bill.
+- **Limiter Removal** doubles your Machines for the turn and destroys them in the End Phase. The computer keeps it for the turn that wins.
+- **De-Fusion** now gives the Fusion Materials back, the way the card says (it only returned the Fusion before).
+- **Cyber Laser Dragon** and **Cyber Barrier Dragon** come out through Photon Generator Unit and Attack Reflector Unit only.
+
 **Not done or not checked:**
 
+- Still to build for Zane: the whole Cyberdark half (Cyberdark Horn, Edge, Keel, Cyberdark Dragon, Cyberdark Impact!), Chimeratech Overdragon, Overload Fusion, Future Fusion, Infernal Dragon. Cyber Phoenix is played as "a Spell or Trap cannot target that Machine" (the card says the effect is negated: here the card cannot be aimed at it in the first place). Zane on Hard won 13 of 30 test duels. Not watched on screen.
 - Still to build for Chazz: Ojama Knight (needs "2 Ojama monsters" as Fusion Materials), Ojama Country, Chthonian Alliance, Chthonian Blast, Chthonian Polymer, Infernal Incinerator. Ojama King picks the zones itself (they are all the same in this game). Chazz on Hard won 13 of 30 test duels. Not watched on screen.
 
 ## What is in 0.33.34

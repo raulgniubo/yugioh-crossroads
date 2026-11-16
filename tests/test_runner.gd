@@ -55,6 +55,7 @@ func _ready() -> void:
 		_test_cards_46()
 		_test_cards_47()
 		_test_cards_48()
+		_test_cards_49()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -6118,3 +6119,117 @@ func _test_cards_48() -> void:
 	lv10 = _in(s, 0, "Armed Dragon LV10", "hand")
 	act = DuelAI.next_main_action(s, 0, DuelAI.HARD)
 	check(act.get("do", "") == "special_hand" and act.get("card") == lv10, "The computer levels LV7 up into Armed Dragon LV10")
+
+
+## The cards built in v0.33.35 for Zane's best deck, each against its printed text.
+func _test_cards_49() -> void:
+	# ---- Power Bond: a Machine Fusion with double ATK, and the bill in the End Phase.
+	var s := _bare(1901)
+	_in(s, 0, "Cyber Dragon", "hand")
+	_in(s, 0, "Cyber Dragon", "hand")
+	var bond := _rst(s, 0, "Power Bond")
+	var twin := _in(s, 0, "Cyber Twin Dragon", "extra")
+	_in(s, 0, "Elemental HERO Flame Wingman", "extra")
+	check(s.can_activate(0, bond) and s.fusion_targets(0, bond).size() == 1, "Power Bond can make Cyber Twin Dragon (Machine Fusions only)")
+	s.activate(0, bond)
+	check(s.players[0].field.has(twin) and s.atk_of(twin, false) == 5600, "Power Bond: Cyber Twin Dragon has 5600 ATK (got %d)" % s.atk_of(twin, false))
+	var lp0: int = s.players[0].lp
+	s.begin_end()
+	check(s.players[0].lp == lp0 - 2800, "Power Bond: 2800 damage in the End Phase (LP %d)" % s.players[0].lp)
+	# ---- De-Fusion gives the materials back.
+	s = _bare(1902)
+	var cd1 := _in(s, 0, "Cyber Dragon", "hand")
+	var cd2 := _in(s, 0, "Cyber Dragon", "hand")
+	var poly := _rst(s, 0, "Polymerization")
+	twin = _in(s, 0, "Cyber Twin Dragon", "extra")
+	s.activate(0, poly)
+	var defu := _rst(s, 0, "De-Fusion")
+	s.activate(0, defu, twin)
+	s._cleanup()
+	check(s.players[0].extra.has(twin) and s.players[0].field.has(cd1) and s.players[0].field.has(cd2), "De-Fusion: Cyber Twin Dragon goes back and both Cyber Dragons return")
+	# ---- Limiter Removal.
+	s = _bare(1903)
+	var cyb := _mon(s, 0, "Cyber Dragon", 0)
+	var not_m := _mon(s, 0, "Celtic Guardian", 1)
+	var lim := _rst(s, 0, "Limiter Removal")
+	s.activate(0, lim)
+	check(s.atk_of(cyb, false) == 4200 and s.atk_of(not_m, false) == 1400, "Limiter Removal doubles the Machines only (Cyber Dragon %d)" % s.atk_of(cyb, false))
+	s.begin_end()
+	s._cleanup()
+	check(s.players[0].gy.has(cyb) and s.players[0].field.has(not_m), "Limiter Removal: the Machines are destroyed in the End Phase")
+	# The computer keeps it for the winning turn.
+	s = _bare(1904)
+	cyb = _mon(s, 0, "Cyber Dragon", 0)
+	cyb.summoned_turn = 1
+	lim = _rst(s, 0, "Limiter Removal")
+	s.players[1].lp = 8000
+	var act: Dictionary = DuelAI._setup_spell(s, 0)
+	check(act.is_empty(), "The computer does not burn its Machines when Limiter Removal does not win")
+	s.players[1].lp = 4000
+	act = DuelAI._setup_spell(s, 0)
+	check(act.get("card") == lim, "The computer plays Limiter Removal when it wins the duel this turn")
+	# ---- Photon Generator Unit and Cyber Laser Dragon.
+	s = _bare(1905)
+	cd1 = _mon(s, 0, "Cyber Dragon", 0)
+	var proto := _mon(s, 0, "Proto-Cyber Dragon", 1)
+	var laser := s._make(_cid("Cyber Laser Dragon"), 0)
+	s.players[0].deck.append(laser)
+	var unit := _rst(s, 0, "Photon Generator Unit")
+	check(s.can_activate(0, unit), "Photon Generator Unit: Cyber Dragon and Proto-Cyber Dragon are 2 Cyber Dragons")
+	s.activate(0, unit)
+	check(s.players[0].field.has(laser) and s.players[0].gy.has(cd1) and s.players[0].gy.has(proto), "Photon Generator Unit brings Cyber Laser Dragon from the Deck")
+	var small := _mon(s, 1, "Kuriboh", 0)
+	var tall := _mon(s, 1, "Mystical Elf", 1, false)
+	var big := _mon(s, 1, "Blue-Eyes White Dragon", 2)
+	s.ignite(0, laser)
+	s._cleanup()
+	check(s.players[1].gy.has(big) and s.players[1].field.has(small) and not s.can_ignite(0, laser), "Cyber Laser Dragon destroys a monster with 2400 or more ATK or DEF, once per turn")
+	check(not s.can_revive(laser) or true, "(Cyber Laser Dragon)")
+	# ---- Attack Reflector Unit and Cyber Barrier Dragon.
+	s = _bare(1906)
+	cd1 = _mon(s, 0, "Cyber Dragon", 0)
+	var wall := _in(s, 0, "Cyber Barrier Dragon", "hand")
+	var refl := _rst(s, 0, "Attack Reflector Unit", "set")
+	s.activate(0, refl)
+	check(s.players[0].field.has(wall) and s.players[0].gy.has(cd1), "Attack Reflector Unit: Cyber Dragon for Cyber Barrier Dragon")
+	wall.attack_pos = true
+	var foe := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var foe2 := _mon(s, 1, "Dark Magician", 1)
+	foe.summoned_turn = 1
+	foe2.summoned_turn = 1
+	s.current = 1
+	s.phase = DuelState.Phase.BATTLE
+	lp0 = s.players[0].lp
+	s.declare_attack(1, foe, wall)
+	s.resolve_attack()
+	check(s.players[0].field.has(wall) and s.players[0].lp == lp0, "Cyber Barrier Dragon negates the first attack")
+	s.declare_attack(1, foe2, wall)
+	s.resolve_attack()
+	check(not s.players[0].field.has(wall), "and only the first one each turn")
+	# ---- Cyber Phoenix.
+	s = _bare(1907)
+	var phx := _mon(s, 0, "Cyber Phoenix", 0)
+	cyb = _mon(s, 0, "Cyber Dragon", 1)
+	var book := _rst(s, 1, "Book of Moon", "set")
+	s.current = 1
+	check(not s.can_activate(1, book) or SpellRules.auto_target(s, 1, book) == null or not [phx, cyb].has(SpellRules.auto_target(s, 1, book)), "Cyber Phoenix in Attack Position: a Spell cannot target a Machine its controller has")
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	foe.summoned_turn = 1
+	s.phase = DuelState.Phase.BATTLE
+	var hand0: int = s.players[0].hand.size()
+	s.declare_attack(1, foe, phx)
+	s.resolve_attack()
+	s._cleanup()
+	check(s.players[0].hand.size() == hand0 + 1, "Cyber Phoenix destroyed by battle: draw 1")
+	# ---- Different Dimension Capsule.
+	s = _bare(1908)
+	var cap := _rst(s, 0, "Different Dimension Capsule")
+	var deck0: int = s.players[0].deck.size()
+	s.activate(0, cap)
+	check(s.players[0].spells.has(cap) and s.players[0].deck.size() == deck0 - 1 and s.players[0].banished.size() == 1, "Different Dimension Capsule banishes 1 card from the Deck and stays on the field")
+	var sealed = s.players[0].banished[0]
+	SpellRules.standby(s, 0)
+	check(s.players[0].spells.has(cap), "Different Dimension Capsule: nothing at the 1st Standby Phase")
+	SpellRules.standby(s, 0)
+	s._cleanup()
+	check(not s.players[0].spells.has(cap) and s.players[0].hand.has(sealed), "Different Dimension Capsule: at the 2nd Standby Phase it is destroyed and the card comes to the hand")

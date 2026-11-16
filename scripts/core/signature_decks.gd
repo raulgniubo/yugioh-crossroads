@@ -218,7 +218,10 @@ const TUNE := {
 		# Chazz's best deck: the Armed Dragons up to LV10, the Ojamas with Ojama King, and VWXYZ (v0.33.35).
 		"main": {"Armed Dragon LV3": 3, "Armed Dragon LV5": 2, "Armed Dragon LV7": 2, "Armed Dragon LV10": 1, "Masked Dragon": 2, "X-Head Cannon": 2, "Y-Dragon Head": 2, "Z-Metal Tank": 2, "V-Tiger Jet": 1, "W-Wing Catapult": 1, "Ojama Yellow": 2, "Ojama Green": 2, "Ojama Black": 2, "Chthonian Soldier": 1, "Level Up!": 2, "Ojamagic": 2, "Ojama Delta Hurricane!!": 1, "Ojamuscle": 1, "Polymerization": 2, "Pot of Greed": 1, "Monster Reborn": 1, "Mystical Space Typhoon": 2, "Heavy Storm": 1, "Call of the Haunted": 1, "Ring of Destruction": 1},
 		"extra": {"XYZ-Dragon Cannon": 1, "VW-Tiger Catapult": 1, "VWXYZ-Dragon Catapult Cannon": 1, "Ojama King": 1}},
-	"zane": {"out": ["X-Head Cannon", "Elemental HERO Burstinatrix", "Charcoal Inpachi", "Millennium Shield"], "in": {"Call of the Haunted": 1}},
+	"zane": {"out": ["X-Head Cannon", "Elemental HERO Burstinatrix", "Charcoal Inpachi", "Millennium Shield"], "in": {"Call of the Haunted": 1},
+		# Zane's best deck: Cyber Dragon into Cyber Twin and Cyber End with Power Bond, Limiter Removal and De-Fusion (v0.33.35).
+		"main": {"Cyber Dragon": 3, "Proto-Cyber Dragon": 3, "Cyber Phoenix": 3, "Cyber Kirin": 2, "Cyber Larva": 3, "Cyber Laser Dragon": 1, "Cyber Barrier Dragon": 1, "Polymerization": 3, "Power Bond": 3, "Limiter Removal": 1, "De-Fusion": 2, "Photon Generator Unit": 1, "Different Dimension Capsule": 1, "Pot of Greed": 1, "Monster Reborn": 1, "Mystical Space Typhoon": 2, "Heavy Storm": 1, "Raigeki": 1, "Attack Reflector Unit": 1, "Trap Jammer": 2, "Call of the Haunted": 2, "Mirror Force": 1, "Negate Attack": 1},
+		"extra": {"Cyber Twin Dragon": 2, "Cyber End Dragon": 2}},
 	"alexis": {"out": ["Dian Keto the Cure Master", "Luminous Spark", "Horn of the Unicorn", "Fissure", "Cyber Petit Angel"],
 		"in": {"Hallowed Life Barrier": 1, "Machine Angel Ritual": 3, "Fusion Weapon": 1, "Ritual Weapon": 2}, "extra_in": {"Cyber Blader": 2}},
 	"syrus": {"out": ["Elemental HERO Clayman", "Dian Keto the Cure Master"], "in": {"Shield Crush": 1}},

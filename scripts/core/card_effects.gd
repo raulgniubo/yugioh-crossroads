@@ -108,6 +108,13 @@ const FX := {
 	"Elemental HERO Thunder Giant": {"note": "Once per turn, discard 1: destroy a monster with less original ATK.",
 		"ignite": {"cost": "discard", "do": [["destroy", "atk_below_self"]], "label": "Discard 1: destroy a weaker monster"}},
 	"Elemental HERO Rampart Blaster": {"note": "Can attack directly while it is in Defense Position. When it does, its ATK is halved for that damage calculation.", "direct_from_def": true},
+	# ---- Zane's best deck (v0.33.35)
+	"Cyber Laser Dragon": {"note": "Cannot be Normal Summoned or Set, and only Photon Generator Unit can Special Summon it. Once per turn: destroy 1 monster whose ATK or DEF is equal to or higher than this card's ATK.",
+		"no_special": true, "ignite": {"cost": "none", "do": [["laser"]], "label": "Destroy a monster with ATK or DEF this high"}},
+	"Cyber Barrier Dragon": {"note": "Cannot be Normal Summoned or Set, and only Attack Reflector Unit can Special Summon it. Once per turn, while it is in Attack Position: your opponent's next attack is negated.",
+		"no_special": true, "barrier": true},
+	"Cyber Phoenix": {"note": "While it is in Attack Position, a Spell or Trap cannot target 1 Machine monster you control. Destroyed by battle and sent to the Graveyard: draw 1 card.",
+		"machine_guard": true, "death": [["draw", 1]]},
 	# ---- Chazz's best deck (v0.33.35)
 	"Armed Dragon LV10": {"note": "Cannot be Normal Summoned or Set. Special Summon it from your hand by Tributing 1 Armed Dragon LV7. Send 1 card from your hand to the Graveyard: destroy all face-up monsters your opponent controls.",
 		"special_tribute_f": [1, {"name": "Armed Dragon LV7"}], "ignite": {"cost": "discard", "do": [["destroy_opp_faceup"]], "label": "Send 1 card from your hand: destroy all their face-up monsters", "repeat": true}},
@@ -405,8 +412,6 @@ const FX := {
 	"Cyber End Dragon": {"note": "Piercing damage.", "piercing": true},
 	"Proto-Cyber Dragon": {"note": "Counts as Cyber Dragon on the field.", "name_as": "Cyber Dragon"},
 	"Cyber Dragon Zwei": {"note": "Gains 300 ATK when it attacks a monster. Counts as Cyber Dragon in the GY.", "atk_attack": 300, "name_as": "Cyber Dragon"},
-	"Cyber Barrier Dragon": {"note": "Once per turn in Attack Position, negates the opponent's attack.", "negate_attack_once": true},
-	"Cyber Phoenix": {"note": "Destroyed by battle: draw 1.", "death": [["draw", 1]]},
 	"Cyber Larva": {"note": "Targeted for an attack: you take no battle damage for the rest of this turn. Destroyed by battle: you can Special Summon 1 Cyber Larva from your Deck.", "no_damage_when_targeted": true, "death": [["special", "deck", {"name": "Cyber Larva"}, "any", 1]]},
 	"Cyber Valley": {"note": "Tribute it: draw 1.", "ignite": {"cost": "tribute_self", "do": [["draw", 1]], "label": "Tribute: draw 1"}},
 	"Cyber Blader": {"note": "By how many monsters your opponent controls. 1: cannot be destroyed by battle. 2: its ATK is doubled. 3: your opponent's activated card effects are negated.", "blader": true},

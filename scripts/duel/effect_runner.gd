@@ -1203,6 +1203,9 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 			"mill_opp_top":
 				if opp.deck.is_empty():
 					return false
+			"laser":
+				if opp.monsters().filter(func(m): return m.face_up and (s.atk_of(m, false) >= s.atk_of(c, false) or s.def_of(m) >= s.atk_of(c, false))).is_empty():
+					return false
 			"absorb":
 				if opp.monsters().filter(func(m): return can_target(c, m) and not m.is_token()).is_empty() or s.absorbed_by(c) != null or s.players[p].spells.find(null) == -1:
 					return false
@@ -2222,6 +2225,19 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"laser":
+			# Cyber Laser Dragon: "you can destroy 1 monster with ATK or DEF equal to or higher than the ATK of this card."
+			var mine_l: int = s.atk_of(c, false)
+			var big_l: Array = opp.monsters().filter(func(m): return m.face_up and (s.atk_of(m, false) >= mine_l or s.def_of(m) >= mine_l))
+			if big_l.is_empty():
+				return events
+			var top_l = big_l[0]
+			for m in big_l:
+				if s.atk_of(m, false) > s.atk_of(top_l, false):
+					top_l = m
+			top_l = s.pick1(p, Loc.t("%s: destroy which monster?") % name, big_l, top_l, c)
+			events.append(_ev(p, c, Loc.t("%s destroys %s") % [name, top_l.cname()]))
+			events.append_array(s._destroy(top_l))
 		"destroy_opp_faceup":
 			# Armed Dragon LV10: "destroy all face-up monsters your opponent controls."
 			for m in opp.monsters():

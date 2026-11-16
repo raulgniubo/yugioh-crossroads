@@ -90,7 +90,7 @@ const FX := {
 	"Forbidden Lance": {"k": "quick", "t": "any_face", "do": [["atk", "target", -800, "eot"]]},
 	"Offerings to the Doomed": {"k": "quick", "t": "any_face", "do": [["destroy", "target"], ["skip_draw", 1]]},
 	"The Reliable Guardian": {"k": "quick", "t": "any_face", "do": [["def", "target", 700]]},
-	"De-Fusion": {"k": "quick", "t": "any_fusion", "do": [["bounce", "target"]]},
+	"De-Fusion": {"k": "quick", "t": "any_fusion", "do": [["defusion"]]},
 	# ---------------------------------------------------------------- Continuous Spells
 	"Toon World": {"k": "cont", "cost": "lp1000", "ai": "toon_world"},
 	"Banner of Courage": {"k": "cont", "bp_boost": 200},
@@ -119,6 +119,11 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Zane's cards (v0.33.35)
+	"Limiter Removal": {"k": "quick", "ai": "wins", "cond": "own_machine", "do": [["limiter_removal"]]},
+	"Photon Generator Unit": {"k": "normal", "ai": "always", "cond": "two_cyber_dragons", "do": [["cyber_unit", 2, "Cyber Laser Dragon", true]]},
+	"Attack Reflector Unit": {"k": "trap", "win": ["free"], "cond": "one_cyber_dragon", "do": [["cyber_unit", 1, "Cyber Barrier Dragon", false]]},
+	"Different Dimension Capsule": {"k": "cont", "ai": "always", "do": [["dd_capsule"]], "standby": [["dd_capsule_tick"]]},
 	# ---------------------------------------------------------------- Chazz's cards (v0.33.35)
 	"Level Up!": {"k": "normal", "ai": "always", "cond": "level_up", "do": [["level_up_spell"]]},
 	"Ojama Delta Hurricane!!": {"k": "normal", "ai": "always", "cond": "ojama_three", "do": [["destroy_opp_all"]]},
@@ -626,6 +631,12 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return s.players[p].hand.is_empty()
 		"level_up":
 			return not _lv_ready(s, p).is_empty()
+		"own_machine":
+			return not s.players[p].monsters().filter(func(m): return m.face_up and str(m.data.get("race", "")) == "Machine").is_empty()
+		"two_cyber_dragons":
+			return _cyber_dragons(s, p).size() >= 2 and not _unit_pool(s, p, "Cyber Laser Dragon", true).is_empty()
+		"one_cyber_dragon":
+			return _cyber_dragons(s, p).size() >= 1 and not _unit_pool(s, p, "Cyber Barrier Dragon", false).is_empty()
 		"ojama_three":
 			for nm in ["Ojama Green", "Ojama Yellow", "Ojama Black"]:
 				if s.players[p].monsters().filter(func(m): return m.face_up and m.cname() == nm).is_empty():
@@ -1002,6 +1013,9 @@ static func targets(s: DuelState, p: int, c) -> Array:
 				"any_fusion": ok = m.face_up and m.frame() == "fusion"
 			if ok and m.face_up and ((s.dragon_shield() and str(m.data.get("race", "")) == "Dragon") or (not m.negated and CardEffects.of(m.cname()).get("untargetable", false))):
 				ok = false   # Lord of D. shields Dragons; Obelisk cannot be targeted
+			if ok and m.face_up and str(m.data.get("race", "")) == "Machine" \
+					and not s.players[m.owner].monsters().filter(func(x): return x.face_up and x.attack_pos and not x.negated and CardEffects.of(x.cname()).get("machine_guard", false)).is_empty():
+				ok = false   # Cyber Phoenix: a Spell/Trap that targets 1 Machine its controller has does nothing
 			if ok and sp.get("must_xyz_empty", false) and not (m.frame() == "xyz" and m.overlays.is_empty()):
 				ok = false   # "1 face-up Xyz Monster on the field that has no Xyz Material" (Galaxy Storm)
 			if ok and sp.get("must_rose", false) and not (m.cname() == "Black Rose Dragon" or str(m.data.get("race", "")) == "Plant"):
@@ -2125,6 +2139,83 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 					if o["card"] == want:
 						events.append_array(s._do_fusion(p, o, true))
 						break
+		"limiter_removal":
+			# Limiter Removal: "Double the ATK of all Machine monsters you currently control, until the end of
+			# this turn. During the End Phase of this turn, destroy those monsters."
+			for m in ps.monsters():
+				if m.face_up and str(m.data.get("race", "")) == "Machine":
+					var now_l: int = s.atk_of(m, false)
+					if m.atk_mod_turn != s.turn:
+						m.atk_mod_t = 0
+					m.atk_mod_turn = s.turn
+					m.atk_mod_t += now_l
+					m.tags["limiter"] = s.turn
+					events.append({"type": "effect", "player": p, "card": m, "text": Loc.t("%s: ATK %d") % [m.cname(), now_l * 2]})
+		"cyber_unit":
+			# Photon Generator Unit / Attack Reflector Unit: Tribute that many "Cyber Dragon", then Special
+			# Summon the named monster from the hand or Deck (or Graveyard).
+			var fuel: Array = _cyber_dragons(s, p)
+			var from_u: Array = _unit_pool(s, p, str(a[2]), bool(a[3]))
+			if fuel.size() < int(a[1]) or from_u.is_empty():
+				return events
+			fuel.sort_custom(func(x, y): return x.atk() < y.atk())
+			var paid_u: Array = s.choose(p, Loc.t("%s: Tribute %d Cyber Dragon") % [c.cname(), int(a[1])], fuel, int(a[1]), fuel.slice(0, int(a[1])), false, c)
+			for m in paid_u:
+				ps.field[ps.field.find(m)] = null
+				s._to_gy(ps, m)
+				events.append({"type": "tribute", "player": p, "card": m})
+				events.append_array(EffectRunner.trigger(s, m, "tributed"))
+				events.append_array(s._monster_left(m))
+			var got_u = from_u[0]
+			for src in [ps.hand, ps.deck, ps.gy]:
+				src.erase(got_u)
+			got_u.proper = true
+			events.append_array(s._special(p, got_u, "effect"))
+			s._shuffle(ps.deck)
+		"dd_capsule":
+			# Different Dimension Capsule: "Banish 1 card from your Deck face-down. After this card's activation, it remains on the field."
+			if ps.deck.is_empty():
+				return events
+			var by_val: Array = ps.deck.duplicate()
+			by_val.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+			var kept = s.pick1(p, Loc.t("%s: banish 1 card from your Deck face-down") % c.cname(), by_val, by_val[0], c)
+			ps.deck.erase(kept)
+			ps.banished.append(kept)
+			c.tags["capsule"] = kept.uid
+			c.tags["ticks"] = 0
+			s._shuffle(ps.deck)
+			events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s: 1 card is sealed away for 2 turns") % c.cname()})
+		"dd_capsule_tick":
+			# "Destroy this card during your 2nd Standby Phase after activating this card, and if you do, add the banished card to the hand."
+			if not c.tags.has("capsule"):
+				return events
+			c.tags["ticks"] = int(c.tags.get("ticks", 0)) + 1
+			if int(c.tags["ticks"]) >= 2:
+				var uid_c := int(c.tags["capsule"])
+				events.append_array(s._destroy_st(c))
+				if not ps.spells.has(c):
+					for b in ps.banished:
+						if b.uid == uid_c:
+							ps.banished.erase(b)
+							ps.hand.append(b)
+							events.append({"type": "gy_to_hand", "player": p, "card": b})
+							break
+		"defusion":
+			# De-Fusion: "return that target to the Extra Deck, then, if all its listed materials that were used
+			# for its Fusion Summon are in your GY, you can Special Summon all of them."
+			for t in _sel(s, p, c, "target", ctx):
+				var used: Array = t.tags.get("mats", []).duplicate()
+				events.append_array(s._bounce(t))
+				var back: Array = ps.gy.filter(func(g): return used.has(g.uid) and s.can_revive(g))
+				var room := 0
+				for i in ps.field.size():
+					if ps.field[i] == null and not ps.blocked.has(i):
+						room += 1
+				if not used.is_empty() and back.size() == used.size() and room >= back.size() and ps.no_summon_turn != s.turn \
+						and s.choose_option(p, Loc.t("%s: Special Summon its Fusion Materials?") % c.cname(), ["Special Summon them", "No"], 0, c) == 0:
+					for g in back:
+						ps.gy.erase(g)
+						events.append_array(s._special(p, g, "reborn"))
 		"level_up_spell":
 			# Level Up!: "Send 1 face-up "LV" monster you control to the GY; Special Summon 1 "LV" monster that
 			# is mentioned in the sent monster's text from your hand or Deck, ignoring its Summoning conditions."
@@ -2466,6 +2557,20 @@ static func equip_flag(s: DuelState, c, flag: String) -> bool:
 
 
 ## Can this monster declare an attack, as far as Spell/Trap cards are concerned?
+## Player p's face-up monsters that are "Cyber Dragon" (Proto-Cyber Dragon counts on the field).
+static func _cyber_dragons(s: DuelState, p: int) -> Array:
+	return s.players[p].monsters().filter(func(m): return m.face_up and s.can_tribute_fx(m) and (m.cname() == "Cyber Dragon" or str(CardEffects.of(m.cname()).get("name_as", "")) == "Cyber Dragon"))
+
+
+## Where Photon Generator Unit / Attack Reflector Unit can take their monster from.
+static func _unit_pool(s: DuelState, p: int, card_name: String, with_gy: bool) -> Array:
+	var ps := s.players[p]
+	var out: Array = (ps.hand + ps.deck).filter(func(x): return x.cname() == card_name)
+	if with_gy:
+		out.append_array(ps.gy.filter(func(x): return x.cname() == card_name))
+	return out
+
+
 ## The "LV" monster named in this one's own text as its next step (Armed Dragon LV3 -> LV5), or "".
 static func _lv_next(card_name: String) -> String:
 	var f: Dictionary = CardEffects.of(card_name)

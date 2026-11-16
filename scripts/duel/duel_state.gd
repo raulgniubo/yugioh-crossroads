@@ -171,6 +171,8 @@ class PlayerState:
 	var only_attacker := -1       # uid of the one monster that may attack on `only_attacker_turn` (Feather Shot)
 	var only_attacker_turn := -1
 	var blocked: Array = []       # Monster Zones this player cannot use (Ojama King across the table)
+	var bond_damage := 0          # Power Bond: the damage its player takes in the End Phase of `bond_turn`
+	var bond_turn := -1
 
 	func set_cards() -> Array[CardInst]:
 		var out: Array[CardInst] = []
@@ -544,6 +546,19 @@ func begin_end() -> Array:
 	phase = Phase.END
 	var events := [{"type": "phase", "phase": phase}]
 	events.append_array(after_battle)
+	# Limiter Removal: "During the End Phase of this turn, destroy those monsters."
+	for q in 2:
+		for m in players[q].monsters():
+			if int(m.tags.get("limiter", -1)) == turn:
+				events.append({"type": "effect", "player": q, "card": m, "text": Loc.t("Limiter Removal: %s burns out") % m.cname()})
+				events.append_array(_destroy(m))
+	# Power Bond: the damage comes due.
+	for q in 2:
+		if players[q].bond_turn == turn and players[q].bond_damage > 0 and not is_over():
+			var due := players[q].bond_damage
+			players[q].bond_damage = 0
+			events.append({"type": "effect", "player": q, "card": null, "text": Loc.t("Power Bond: %d damage") % due})
+			events.append_array(_damage(q, due))
 	# Stardust Dragon: if it was Tributed for its effect this turn, it comes back from the Graveyard.
 	for q in 2:
 		for g in players[q].gy.duplicate():
@@ -1303,6 +1318,9 @@ func _legacy_spell(p: int, c: CardInst, choice = null) -> Array:
 				break
 		if fusion_plan.is_empty():
 			return []
+		if c.cname() == "Power Bond":
+			fusion_plan = fusion_plan.duplicate()
+			fusion_plan["bond"] = true
 	var events := []
 	match c.data.get("effect", ""):
 		"draw2":
@@ -1729,6 +1747,13 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	pending_attack = {"player": p, "attacker": attacker, "target": target, "negated": false,
 			"opp_count": players[opponent(p)].monsters().size()}
 	var events := paid + [{"type": "attack", "player": p, "card": attacker, "target": target}]
+	# Cyber Barrier Dragon: "Once per turn, while this card is in Attack Position, your opponent's next attack is negated."
+	for bm in players[opponent(p)].monsters():
+		if bm.face_up and bm.attack_pos and not bm.negated and EffectRunner.fx(bm).get("barrier", false) and int(bm.tags.get("barrier_turn", -1)) != turn:
+			bm.tags["barrier_turn"] = turn
+			pending_attack["negated"] = true
+			events.append({"type": "effect", "player": opponent(p), "card": bm, "text": Loc.t("%s negates the attack") % bm.cname()})
+			break
 	# Archfiend Interceptor: "While you control this face-up Attack Position card, when an opponent's monster declares an attack, inflict 500 damage to your opponent."
 	for im in players[opponent(p)].monsters():
 		if im.face_up and im.attack_pos and not im.negated and int(EffectRunner.fx(im).get("burn_on_opp_attack", 0)) > 0 and not is_over():
@@ -3122,6 +3147,8 @@ func fusion_targets(p: int, poly: CardInst = null, from_gy := false, ask := fals
 			continue
 		if CardEffects.of(f.cname()).has("contact"):
 			continue   # "(You do not use "Polymerization".)"
+		if poly != null and poly.cname() == "Power Bond" and str(f.data.get("race", "")) != "Machine":
+			continue   # Power Bond: "Fusion Summon 1 Machine Fusion Monster"
 		var pool_hand: Array = ps.hand.duplicate() if not from_gy else ps.gy.duplicate()
 		if poly:
 			pool_hand.erase(poly)
@@ -3211,6 +3238,16 @@ func _do_fusion(p: int, plan: Dictionary, banish := false) -> Array:
 	ps.extra.erase(f)
 	f.proper = true
 	events.append_array(_special(p, f, "fusion"))
+	if ps.field.has(f):
+		f.tags["mats"] = (plan["hand"] + plan["field"]).map(func(m): return m.uid)   # (De-Fusion brings them back)
+		if plan.get("bond", false):
+			# Power Bond: "it gains ATK equal to its original ATK. During the End Phase of the turn this card is
+			# activated, you take damage equal to the amount of ATK gained from this effect at the time of the Summon."
+			var gain_b := f.atk()
+			f.atk_mod += gain_b
+			ps.bond_damage = (ps.bond_damage if ps.bond_turn == turn else 0) + gain_b
+			ps.bond_turn = turn
+			events.append({"type": "effect", "player": p, "card": f, "text": Loc.t("Power Bond: %s gains %d ATK") % [f.cname(), gain_b]})
 	events.append_array(EffectRunner.on_summon(self, p, f, "fusion"))
 	return events
 
@@ -3654,6 +3691,8 @@ func clone() -> DuelState:
 		np.once_duel = ps.once_duel.duplicate()
 		np.summons_turn = ps.summons_turn
 		np.blocked = ps.blocked.duplicate()
+		np.bond_damage = ps.bond_damage
+		np.bond_turn = ps.bond_turn
 		np.only_attacker = ps.only_attacker
 		np.only_attacker_turn = ps.only_attacker_turn
 		s.players.append(np)

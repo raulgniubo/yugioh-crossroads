@@ -131,7 +131,7 @@ const CARDS := {
 ## Spells the rules engine can play, by name (used for decks built from the card database).
 const SPELL_EFFECTS := {
 	"Pot of Greed": "draw2", "Dian Keto the Cure Master": "heal1000", "Fissure": "fissure",
-	"Polymerization": "fusion", "Monster Reborn": "reborn", "Raigeki": "raigeki",
+	"Polymerization": "fusion", "Power Bond": "fusion", "Monster Reborn": "reborn", "Raigeki": "raigeki",
 	"Dark Hole": "darkhole", "Hinotama": "burn500", "Mystical Space Typhoon": "mst",
 	"Swords of Revealing Light": "swords", "Mirror Force": "mirror_force", "Magic Cylinder": "magic_cylinder",
 	"Sakuretsu Armor": "sakuretsu", "Negate Attack": "negate_attack", "Scrap-Iron Scarecrow": "negate_attack",
@@ -694,7 +694,7 @@ static func load_external(folder: String) -> void:
 	if not FileAccess.file_exists(src):
 		return
 	var cache := "user://card_index.json"
-	var stamp := str(FileAccess.get_modified_time(src)) + "-v9"
+	var stamp := str(FileAccess.get_modified_time(src)) + "-v10"
 	if FileAccess.file_exists(cache):
 		var c = JSON.parse_string(FileAccess.get_file_as_string(cache))
 		if typeof(c) == TYPE_DICTIONARY and c.get("stamp", "") == stamp:
