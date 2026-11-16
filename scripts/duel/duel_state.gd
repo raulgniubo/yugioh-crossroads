@@ -1955,6 +1955,15 @@ func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 
 func _after_attack(attacker: CardInst, target = null) -> Array:
 	var events := []
+	# Rocket Warrior: "If this card attacks a monster, after damage calculation: That attack target loses 500 ATK until the end of this turn."
+	if target != null and target is CardInst and players[attacker.owner].field.has(attacker) and attacker.face_up and not attacker.negated and EffectRunner.fx(attacker).get("rocket", false):
+		var rt: CardInst = target
+		if players[0].field.has(rt) or players[1].field.has(rt):
+			if rt.atk_mod_turn != turn:
+				rt.atk_mod_turn = turn
+				rt.atk_mod_t = 0
+			rt.atk_mod_t -= 500
+			events.append({"type": "effect", "player": attacker.owner, "card": attacker, "text": Loc.t("%s loses 500 ATK until the end of this turn") % rt.cname()})
 	# Road Synchron: "If this card attacks, at the end of the Damage Step: Increase its Level by 1 until the end of this turn."
 	if players[attacker.owner].field.has(attacker) and attacker.face_up and EffectRunner.fx(attacker).get("level_up_after_attack", false):
 		attacker.lv_set = attacker.level() + 1
@@ -2038,6 +2047,10 @@ func _battle_damage(p: int, amount: int, dealer: CardInst = null, taker: CardIns
 	var ps := players[p]
 	if battle_shield == p:
 		return [{"type": "effect", "player": p, "card": null, "text": "No battle damage!"}]
+	# Rocket Warrior: "During your Battle Phase... you take no damage from battles involving this card."
+	for rm0 in [dealer, taker]:
+		if rm0 != null and rm0.owner == p and current == p and rm0.face_up and not rm0.negated and EffectRunner.fx(rm0).get("rocket", false):
+			return [{"type": "effect", "player": p, "card": rm0, "text": "No battle damage!"}]
 	# Half Unbreak: "any battle damage you take from attacks involving that monster is halved."
 	for hm in [dealer, taker]:
 		if hm != null and int(hm.tags.get("unbreak_turn", -1)) == turn and int(hm.tags.get("unbreak_for", -1)) == p:

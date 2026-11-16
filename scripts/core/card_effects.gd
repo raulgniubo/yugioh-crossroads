@@ -108,6 +108,14 @@ const FX := {
 	"Elemental HERO Thunder Giant": {"note": "Once per turn, discard 1: destroy a monster with less original ATK.",
 		"ignite": {"cost": "discard", "do": [["destroy", "atk_below_self"]], "label": "Discard 1: destroy a weaker monster"}},
 	"Elemental HERO Rampart Blaster": {"note": "Can attack directly while it is in Defense Position. When it does, its ATK is halved for that damage calculation.", "direct_from_def": true},
+	# ---- Joey's best deck (v0.33.33)
+	"Time Wizard": {"note": "Once per turn: toss a coin and call it. Right: every monster your opponent controls is destroyed. Wrong: your monsters are destroyed and you take damage equal to half their total ATK.",
+		"ignite": {"do": [["time_wizard"]], "label": "Toss a coin: destroy their monsters, or yours", "ai": "time_wizard"}},
+	"Panther Warrior": {"note": "Cannot declare an attack unless you Tribute 1 monster.", "attack_tribute": true},
+	"Gearfried the Iron Knight": {"note": "An Equip Card equipped to this card is destroyed.", "destroy_equips": true},
+	"Jinzo": {"note": "Trap Cards and their effects on the field cannot be activated. Trap effects on the field are negated.", "block_traps": true},
+	"Rocket Warrior": {"note": "During your Battle Phase it cannot be destroyed by battle and you take no damage from its battles. After it attacks a monster, that monster loses 500 ATK until the end of this turn.", "rocket": true},
+	"Copycat": {"note": "When it is Summoned: target 1 face-up monster your opponent controls; this card's ATK and DEF become that monster's original ATK and DEF.", "any_summon": [["copycat"]]},
 	# ---- Kaiba's best deck (v0.33.32)
 	"Lord of D.": {"note": "Neither player can target Dragon monsters on the field with card effects.", "dragon_shield": true},
 	"Kaibaman": {"note": "You can Tribute this card: Special Summon 1 Blue-Eyes White Dragon from your hand.",

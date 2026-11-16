@@ -5183,4 +5183,13 @@ const ES := {
 	"%s: destroy up to 3 monsters with 1500 or more ATK in your Deck?": "%s: ¿destruir hasta 3 monstruos con 1500 o más ATK en tu Deck?",
 	"%s: the monsters in your hand are 2 Levels lower this turn": "%s: los monstruos en tu mano tienen 2 Niveles menos este turno",
 	"%s is banished until the End Phase": "%s es desterrado hasta la End Phase",
+	"%s: the die shows %d": "%s: el dado muestra %d",
+	"%s: every face-up monster's ATK and DEF are switched until the end of this turn": "%s: el ATK y la DEF de cada monstruo boca arriba se intercambian hasta el final de este turno",
+	"%s loses 500 ATK until the end of this turn": "%s pierde 500 ATK hasta el final de este turno",
+	"%s: call the coin": "%s: elige cara o cruz",
+	"%s: the coin shows %s": "%s: la moneda muestra %s",
+	"Called it right: every monster the opponent controls is destroyed": "Acertaste: todos los monstruos que controla el adversario son destruidos",
+	"Called it wrong: your monsters are destroyed": "Fallaste: tus monstruos son destruidos",
+	"%s: copy which monster's ATK and DEF?": "%s: ¿de qué monstruo copias el ATK y la DEF?",
+	"%s: its ATK and DEF become %d / %d": "%s: su ATK y DEF se vuelven %d / %d",
 }

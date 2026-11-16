@@ -119,6 +119,10 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Joey's cards (v0.33.33)
+	"Graceful Dice": {"k": "quick", "dmg": true, "cond": "own_monster", "do": [["dice_all", "own", 1]]},
+	"Skull Dice": {"k": "trap", "win": ["free"], "dmg": true, "do": [["dice_all", "opp", -1]]},
+	"Shield & Sword": {"k": "normal", "do": [["shield_sword"]]},
 	# ---------------------------------------------------------------- Kaiba's cards (v0.33.32)
 	"The Flute of Summoning Dragon": {"k": "normal", "cond": "lord_of_d", "do": [["flute"]]},
 	"Crush Card Virus": {"k": "trap", "win": ["free"], "cost": "tribute_f", "cost_f": {"attr": "DARK", "max_atk": 1000}, "do": [["crush_card"]]},
@@ -367,6 +371,8 @@ static func blocked(s: DuelState, c) -> bool:
 			for m in s.players[q].monsters():
 				if m.face_up and m.normal_turn == s.turn and EffectRunner.fx(m).get("no_traps_normal_turn", false):
 					return true
+				if m.face_up and EffectRunner.fx(m).get("block_traps", false):
+					return true   # Jinzo: "Trap Cards, and their effects on the field, cannot be activated. Negate all Trap effects on the field."
 	if c.is_spell():
 		# Silent Swordsman LV7: "Negate all Spell effects on the field."
 		for q in 2:
@@ -1067,6 +1073,12 @@ static func resolve(s: DuelState, link: Dictionary) -> Array:
 		var t = ctx["target"]
 		c.equipped_to = t
 		events.append(_ev(p, c, Loc.t("%s is equipped to %s") % [c.cname(), t.cname()]))
+		if t.face_up and not t.negated and EffectRunner.fx(t).get("destroy_equips", false):
+			# Gearfried the Iron Knight: "If either player equips an Equip Card(s) to this card: Destroy that Equip Card(s)."
+			events.append(_ev(t.owner, t, Loc.t("%s destroys %s") % [t.cname(), c.cname()]))
+			c.equipped_to = null
+			link["stays"] = false
+			return events
 		if sp.get("control", false):
 			events.append_array(s._take_control(t, p, -1))
 			if not s.players[p].field.has(t):
@@ -1440,6 +1452,33 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				taker.lv_set = taker.level() + lv_gain
 				taker.lv_turn = s.turn
 				events.append(_ev(p, c, Loc.t("%s is Level %d until the End Phase") % [taker.cname(), taker.lv_set]))
+		"dice_all":
+			# "Roll a six-sided die. All monsters you currently control gain / your opponent currently controls lose ATK/DEF equal to the result x 100, until the end of this turn."
+			var roll: int = randi() % 6 + 1
+			var amt: int = roll * 100 * int(a[2])
+			events.append(_ev(p, c, Loc.t("%s: the die shows %d") % [name, roll]))
+			for m in (ps.monsters() if a[1] == "own" else opp.monsters()):
+				if not m.face_up:
+					continue
+				if m.atk_mod_turn != s.turn:
+					m.atk_mod_turn = s.turn
+					m.atk_mod_t = 0
+				m.atk_mod_t += amt
+				m.tags["tmp_def"] = (int(m.tags.get("tmp_def", 0)) if int(m.tags.get("tmp_def_until", -1)) >= s.turn else 0) + amt
+				m.tags["tmp_def_until"] = s.turn
+		"shield_sword":
+			# "Switch the original ATK and DEF of all face-up monsters currently on the field, until the end of this turn."
+			for q in 2:
+				for m in s.players[q].monsters():
+					if not m.face_up:
+						continue
+					if m.atk_mod_turn != s.turn:
+						m.atk_mod_turn = s.turn
+						m.atk_mod_t = 0
+					m.atk_mod_t += m.def() - m.atk()
+					m.tags["tmp_def"] = (int(m.tags.get("tmp_def", 0)) if int(m.tags.get("tmp_def_until", -1)) >= s.turn else 0) + m.atk() - m.def()
+					m.tags["tmp_def_until"] = s.turn
+			events.append(_ev(p, c, Loc.t("%s: every face-up monster's ATK and DEF are switched until the end of this turn") % name))
 		"flute":
 			# "Special Summon up to 2 Dragon monsters from your hand."
 			var drs: Array = ps.hand.filter(func(h): return h != c and h.is_monster() and str(h.data.get("race", "")) == "Dragon" and not CardEffects.of(h.cname()).get("no_special", false) and not CardData.is_extra(h.id))

@@ -42,6 +42,7 @@ func _ready() -> void:
 		_test_cards_33()
 		_test_cards_34()
 		_test_cards_35()
+		_test_cards_36()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -4787,3 +4788,74 @@ func _test_cards_35() -> void:
 	check(s.players[0].banished.has(be) and not s.players[0].field.has(be), "Interdimensional Matter Transporter banishes the monster")
 	s.begin_end()
 	check(s.players[0].field.has(be), "It returns in the End Phase")
+
+
+## The cards built in v0.33.33 for Joey's best deck, each against its printed text.
+func _test_cards_36() -> void:
+	# ---- Time Wizard: one side's monsters go, either way.
+	var s := _bare(601)
+	var tw := _mon(s, 0, "Time Wizard", 0)
+	var mine := _mon(s, 0, "Red-Eyes Black Dragon", 1)
+	var foe := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var lp0: int = s.players[0].lp
+	s.ignite(0, tw)
+	var won: bool = s.players[1].monsters().is_empty() and s.players[0].field.has(mine) and s.players[0].lp == lp0
+	var lost: bool = s.players[0].monsters().is_empty() and s.players[1].field.has(foe) and s.players[0].lp == lp0 - (500 + 2400) / 2
+	check(won or lost, "Time Wizard: their monsters are destroyed, or yours are and you take half their ATK (LP %d)" % s.players[0].lp)
+	# ---- Panther Warrior, Gearfried, Jinzo.
+	s = _bare(602)
+	s.phase = DuelState.Phase.BATTLE
+	var pw := _mon(s, 0, "Panther Warrior", 0)
+	pw.summoned_turn = 1
+	check(not s.can_attack(0, pw), "Panther Warrior cannot attack with no monster to Tribute")
+	var fod := _mon(s, 0, "Kuriboh", 1)
+	check(s.can_attack(0, pw), "Panther Warrior can attack with a monster to Tribute")
+	s.declare_attack(0, pw, null)
+	check(s.players[0].gy.has(fod), "Panther Warrior: 1 monster is Tributed to attack")
+	s.resolve_attack()
+	s = _bare(603)
+	var gf := _mon(s, 0, "Gearfried the Iron Knight", 0)
+	var eq := _rst(s, 0, "Lightning Blade")
+	if s.can_activate(0, eq):
+		s.activate(0, eq, gf)
+	check(s.players[0].gy.has(eq) and s.atk_of(gf, false) == 1800, "Gearfried the Iron Knight destroys an Equip Card put on it (ATK %d)" % s.atk_of(gf, false))
+	s = _bare(604)
+	s.phase = DuelState.Phase.BATTLE
+	_mon(s, 0, "Jinzo", 0)
+	var att := _mon(s, 0, "Red-Eyes Black Dragon", 1)
+	att.summoned_turn = 1
+	var mf := _rst(s, 1, "Mirror Force", "set")
+	s.declare_attack(0, att, null)
+	check(not s.responses(1, "attack").has(mf), "Jinzo: Trap Cards cannot be activated")
+	s.resolve_attack()
+	# ---- Rocket Warrior.
+	s = _bare(605)
+	s.phase = DuelState.Phase.BATTLE
+	var rw := _mon(s, 0, "Rocket Warrior", 0)
+	rw.summoned_turn = 1
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	lp0 = s.players[0].lp
+	s.declare_attack(0, rw, foe)
+	s.resolve_attack()
+	check(s.players[0].field.has(rw) and s.players[0].lp == lp0 and s.atk_of(foe, false) == 2500, "Rocket Warrior: not destroyed, no damage, and the target loses 500 ATK (got %d)" % s.atk_of(foe, false))
+	# ---- Copycat, Graceful Dice, Skull Dice, Shield & Sword.
+	s = _bare(606)
+	foe = _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var cc := _in(s, 0, "Copycat", "hand")
+	s.normal_summon(0, cc, [])
+	check(s.atk_of(cc, false) == 3000 and s.def_of(cc) == 2500, "Copycat takes the monster's original ATK and DEF (got %d / %d)" % [s.atk_of(cc, false), s.def_of(cc)])
+	var gd := _rst(s, 0, "Graceful Dice")
+	s.activate(0, gd)
+	var up_by: int = s.atk_of(cc, false) - 3000
+	check(up_by >= 100 and up_by <= 600 and up_by % 100 == 0 and s.def_of(cc) == 2500 + up_by, "Graceful Dice: +100 to +600 ATK and DEF for your monsters (got +%d)" % up_by)
+	var sd := _rst(s, 0, "Skull Dice", "set")
+	s.activate(0, sd)
+	var down_by: int = 3000 - s.atk_of(foe, false)
+	check(down_by >= 100 and down_by <= 600 and s.def_of(foe) == 2500 - down_by, "Skull Dice: -100 to -600 ATK and DEF for their monsters (got -%d)" % down_by)
+	s = _bare(607)
+	var bg := _mon(s, 0, "Big Shield Gardna", 0)
+	var ss := _rst(s, 0, "Shield & Sword")
+	s.activate(0, ss)
+	check(s.atk_of(bg, false) == 2600 and s.def_of(bg) == 100, "Shield & Sword: Big Shield Gardna is 2600 / 100 this turn (got %d / %d)" % [s.atk_of(bg, false), s.def_of(bg)])
+	s.turn += 1
+	check(s.atk_of(bg, false) == 100 and s.def_of(bg) == 2600, "Shield & Sword ends with the turn")

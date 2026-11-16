@@ -284,6 +284,8 @@ static func survives_battle(s: DuelState, c) -> bool:
 		return true
 	if int(c.tags.get("unbreak_turn", -1)) == s.turn:
 		return true   # Half Unbreak
+	if f.get("rocket", false) and s.current == c.owner and s.phase == DuelState.Phase.BATTLE:
+		return true   # Rocket Warrior: "During your Battle Phase, this card cannot be destroyed by battle"
 	if c.tags.has("guard_by"):
 		# Elemental HERO Tempest: "while this card is face-up on the field, that monster cannot be destroyed by battle."
 		var g = s.find_uid(int(c.tags["guard_by"]))
@@ -1007,6 +1009,9 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 					return false
 			"obelisk":
 				if opp.monsters().is_empty():
+					return false
+			"time_wizard":
+				if opp.monsters().is_empty() and s.players[p].monsters().size() < 2:
 					return false
 			"destroy_pick":
 				if _pick_pool(s, p, str(a[1])).is_empty():
@@ -1775,6 +1780,16 @@ static func ai_ignite_ok(s: DuelState, p: int, c) -> bool:
 		"opp_st":
 			# Wild Wingman: when the opponent has a Spell or Trap to hit.
 			return ps.hand.size() >= 2 and (not opp.set_cards().is_empty() or opp.field_spell != null)
+		"time_wizard":
+			# Worth the coin when there is more to win than to lose.
+			var mine_tw := 0
+			for m in ps.monsters():
+				if m.face_up:
+					mine_tw += s.atk_of(m, false)
+			var theirs_tw := 0
+			for m in opp.monsters():
+				theirs_tw += maxi(1200, s.atk_of(m, false))
+			return not opp.monsters().is_empty() and theirs_tw >= mine_tw + 1000 and ps.lp > mine_tw / 2 + 1000
 		"obelisk":
 			var gain_o := 0
 			for m in opp.monsters():
@@ -1895,6 +1910,38 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"time_wizard":
+			# "toss a coin and call it. If you call it right, destroy all monsters your opponent controls. If you call it wrong, destroy as
+			# many monsters you control as possible, and if you do, take damage equal to half the total ATK those destroyed monsters had."
+			var call_it: int = s.choose_option(p, Loc.t("%s: call the coin") % name, ["Heads", "Tails"], 0, c)
+			var coin: int = randi() % 2
+			events.append(_ev(p, c, Loc.t("%s: the coin shows %s") % [name, Loc.t("Heads") if coin == 0 else Loc.t("Tails")]))
+			if coin == call_it:
+				events.append(_ev(p, c, Loc.t("Called it right: every monster the opponent controls is destroyed")))
+				for m in opp.monsters():
+					events.append_array(s._destroy(m))
+			else:
+				events.append(_ev(p, c, Loc.t("Called it wrong: your monsters are destroyed")))
+				var lost_tw := 0
+				for m in ps.monsters():
+					var had_tw: int = s.atk_of(m, false) if m.face_up else 0
+					events.append_array(s._destroy(m))
+					if not ps.field.has(m):
+						lost_tw += had_tw
+				if lost_tw > 0:
+					events.append_array(s._damage(p, lost_tw / 2))
+		"copycat":
+			# "Target 1 face-up monster your opponent controls; this card's ATK/DEF become equal to that monster's original ATK/DEF."
+			var ups_c: Array = opp.monsters().filter(func(m): return m.face_up and can_target(c, m))
+			if not ups_c.is_empty():
+				var best_c = ups_c[0]
+				for m in ups_c:
+					if m.atk() > best_c.atk():
+						best_c = m
+				best_c = s.pick1(p, Loc.t("%s: copy which monster's ATK and DEF?") % name, ups_c, best_c, c)
+				c.atk_mod = best_c.atk() - c.atk()
+				c.def_mod = best_c.def() - c.def()
+				events.append(_ev(p, c, Loc.t("%s: its ATK and DEF become %d / %d") % [name, best_c.atk(), best_c.def()]))
 		"obelisk":
 			# "destroy all monsters your opponent controls. This card cannot declare an attack the turn this effect is activated."
 			events.append(_ev(p, c, Loc.t("%s destroys every monster the opponent controls") % name))

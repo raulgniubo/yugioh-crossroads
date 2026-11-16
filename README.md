@@ -5,6 +5,23 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.33
+
+Not built yet: this is what is saved for the next build.
+
+### Joey
+
+**Red-Eyes, Jinzo, his Warriors and his luck.** 11 cards built.
+
+- **Main, 40:** Red-Eyes Black Dragon x2, Jinzo, Summoned Skull, Panther Warrior x2, Gearfried the Iron Knight x2, Rocket Warrior x2, Goblin Attack Force x2, Axe Raider x2, Alligator's Sword x2, Baby Dragon x2, Time Wizard, Swordsman of Landstar, Copycat, Insect Queen, Hayabusa Knight; Scapegoat x2, Polymerization x2, Graceful Dice x2, Shield & Sword, Giant Trunade, Foolish Burial, Monster Reborn, Pot of Greed, Reinforcement of the Army, The Warrior Returning Alive; Skull Dice x2, Sakuretsu Armor x2.
+- **Extra:** Thousand Dragon, Alligator's Sword Dragon, Black Skull Dragon.
+- **Time Wizard:** call the coin. Right, their monsters are destroyed. Wrong, yours are and you take half their ATK. **Jinzo:** no Trap can be activated. **Rocket Warrior**, **Panther Warrior**, **Gearfried the Iron Knight**, **Copycat**, **Graceful Dice**, **Skull Dice**, **Shield & Sword**, and the fusions **Flame Swordsman** and **Black Skull Dragon**.
+
+**Not done or not checked:**
+
+- Still to build for Joey: Little-Winguard, Blue Flame Swordsman, The Legendary Fisherman, Kunai with Chain, Fairy Box, Magical Arm Shield, Nutrient Z, Gilford the Lightning, Red-Eyes Black Metal Dragon with Metalmorph, Graverobber.
+- Joey on Hard won 17 of 40 test duels. Not watched on screen.
+
 ## What is in 0.33.32
 
 Four duelists got their best decks in this version: **Yugi, Jaden, Yuma and Kaiba**. 115 cards were built, each against its card text, each with a test. One build for all four.
