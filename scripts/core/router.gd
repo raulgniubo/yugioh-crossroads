@@ -123,6 +123,24 @@ func _ready() -> void:
 	_load_l.add_theme_color_override("font_color", Color(1, 1, 1, 0.75))
 	_load_l.visible = false
 	_fade.add_child(_load_l)
+	# Hover hints in the look of the game (they used to be the engine's plain grey box).
+	var tips := Theme.new()
+	var tip_box := StyleBoxFlat.new()
+	tip_box.bg_color = Color(0.045, 0.085, 0.165, 0.97)
+	tip_box.border_color = Color(0.17, 0.89, 0.9, 0.55)
+	tip_box.set_border_width_all(1)
+	tip_box.set_corner_radius_all(10)
+	tip_box.content_margin_left = 16
+	tip_box.content_margin_right = 16
+	tip_box.content_margin_top = 9
+	tip_box.content_margin_bottom = 9
+	tip_box.shadow_color = Color(0, 0, 0, 0.45)
+	tip_box.shadow_size = 8
+	tips.set_stylebox("panel", "TooltipPanel", tip_box)
+	tips.set_font("font", "TooltipLabel", load("res://assets/fonts/Rajdhani-SemiBold.ttf"))
+	tips.set_font_size("font_size", "TooltipLabel", 20)
+	tips.set_color("font_color", "TooltipLabel", Color(0.9, 0.95, 1.0))
+	get_tree().root.theme = tips
 	_toast = Label.new()
 	_toast.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_toast.position.y -= 140
@@ -599,6 +617,26 @@ func _on_node_added(n: Node) -> void:
 		(n as BaseButton).action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 	if n.get_class() == "Button":
 		_chip_later.call_deferred(n)
+	if n is Control:
+		_tip_later.call_deferred(n)
+
+
+## A long hover hint is broken into lines (the engine would draw it as one line across the screen).
+func _tip_later(n: Node) -> void:
+	if not is_instance_valid(n):
+		return
+	var c := n as Control
+	if c.tooltip_text.length() <= 58 or c.tooltip_text.contains("\n"):
+		return
+	var out := ""
+	var line := ""
+	for word in c.tooltip_text.split(" "):
+		if line.length() + word.length() + 1 > 54 and line != "":
+			out += line + "\n"
+			line = word
+		else:
+			line = word if line == "" else line + " " + word
+	c.tooltip_text = out + line
 
 
 func _chip_later(n: Node) -> void:

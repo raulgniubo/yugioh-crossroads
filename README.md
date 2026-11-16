@@ -13,11 +13,11 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 - **THEIR DECK** lists only: their own deck, and your own saved decks. The long list of every deck in the game is gone from both.
 - **See deck** next to each list: one for YOUR DECK (new), one for THEIR DECK (it used to say "See their deck"). Every card on that side before the duel.
 - **Messages at the bottom of the screen** wrap inside the screen now and stay up long enough to read. "Lumen has new cards for you" used to put every card name on one line that ran off both sides; it now names three and says how many more.
-- The two hover hints on the deck lists (added in 0.33.29) are gone: they showed as a plain box over the screen.
+- **Hover hints** everywhere (the little text that shows when the pointer rests on a button, like "Look at the field" in a duel) now have the game's look: dark panel, thin cyan edge, the game's font. They wait a little longer before showing (0.9 s), and a long one is broken into lines. The two I added on the deck lists in 0.33.29 are gone.
 
 **Not done or not checked:**
 
-- Seen as stills: the Free Duel screen with a new save, and a very long test message wrapped on three lines. Not seen with your save.
+- Seen as stills: the Free Duel screen with a new save, and a very long test message wrapped on three lines. Not seen with your save. The new look of the hover hints was not seen at all (they need a real pointer): tell me if one still shows as a plain box.
 - Some of the rules for Yugi's cards are already in this build (they do nothing until his cards arrive in the next version). All tests and 30 computer duels pass with them in.
 
 ## What is in 0.33.29
