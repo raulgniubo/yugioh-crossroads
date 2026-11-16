@@ -28,6 +28,8 @@ var _said_low := false
 var _won := false
 var _ai_level := 1
 var _start_lp: Array = [8000, 8000]
+var _my_low := 99999          # the least Life Points you had in this duel (for the medals)
+var _my_turns := 0            # turns of your own so far
 var _theme := "duel"          # the music for this opponent
 var _materials: Array = []
 var _opened := false             # the opening already played on the field
@@ -704,6 +706,9 @@ func _finish() -> void:
 			"deck": str(Router.duel_config.get("opponent_deck", Characters.get_char(_opp_key).get("deck", ""))), "rare": bool(Router.duel_config.get("rare", false))}))
 		if won:
 			Router.duel_config.erase("stake")   # it changed hands: a rematch is not for the same card
+		# Free Duel: the medals this win earned against them (each pays once).
+		if won and not _surrendered and not Router.duel_config.has("return_to") and not Router.duel_config.get("story", false):
+			earned += Collection.award_medals(_opp_key, {"low": _my_low, "my_turns": _my_turns, "my_start": int(_start_lp[ME]), "their_start": int(_start_lp[AI])})
 		var got := Collection.note_result(_opp_key, won and not _surrendered)
 		if got != "":
 			Router.toast(Loc.t("Third win over %s: their deck is now in My Decks.") % str(Characters.get_char(_opp_key).get("short", _opp_key)))
@@ -894,6 +899,8 @@ func _play_event(ev: Dictionary) -> void:
 	match ev["type"]:
 		"turn":
 			var mine := p == ME
+			if mine:
+				_my_turns += 1
 			Sfx.play("turn")
 			if mine and state.players[ME].hand.is_empty() and state.turn > 2:
 				_lumen("topdeck")
@@ -1187,6 +1194,8 @@ func _play_event(ev: Dictionary) -> void:
 			board.set_deck_count(p, ev["deck"])
 		"lp":
 			hud.set_lp(p, ev["lp"], ev["delta"])
+			if p == ME:
+				_my_low = mini(_my_low, int(ev["lp"]))
 			if ev["delta"] < 0 and int(ev["lp"]) <= 0 and not _autoplay:
 				# The last hit of the duel: the winner gets the screen.
 				hud.cut_in(1 - p, Loc.t("FINISHING BLOW!"), Characters.line(_speaker(ME) if p == AI else _opp_key, "win"), UITheme.GOLD, 0.8, true)

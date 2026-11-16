@@ -45,6 +45,7 @@ var _field_name: Label
 var _field_swatch: ColorRect
 var _quote: Label
 var _reward: Label
+var _medal_line: Label
 var _vs: Label
 var _go: Button
 var _starting := false
@@ -481,7 +482,7 @@ var _grid_keys: Array = []
 
 
 func _cell_sig(key: String) -> String:
-	return "%s|%s|%s" % [key == _me, key == _opp, _picking]
+	return "%s|%s|%s|%s" % [key == _me, key == _opp, _picking, Collection.medals(key)]
 
 
 func _refresh_grid() -> void:
@@ -556,6 +557,10 @@ func _roster_card(key: String) -> Control:
 	b.clip_contents = true
 	b.flat = true
 	b.tooltip_text = "%s\n%s" % [info.get("name", ""), Loc.t(str(info.get("title", "")))] if met else Unlocks.opponent_why(key)
+	if met and key != "player":
+		var held: Array = Collection.medals(key)
+		for i in 3:
+			b.tooltip_text += "\n%s  %s: %s" % ["★" if held[i] else "☆", Loc.t(str(Collection.MEDALS[i]["name"])), Loc.t(str(Collection.MEDALS[i]["how"]))]
 	var is_me := key == _me
 	var is_opp := key == _opp
 	var chosen := (is_me and _picking == "me") or (is_opp and _picking == "opp")
@@ -602,6 +607,23 @@ func _roster_card(key: String) -> Control:
 	stripe.size = Vector2(CELL.x, 3)
 	stripe.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	band.add_child(stripe)
+	# The medals you hold against them: three pips over the name band.
+	if key != "player" and met:
+		var got: Array = Collection.medals(key)
+		for i in 3:
+			var pip := Panel.new()
+			var on: bool = got[i]
+			var mc: Color = Collection.MEDALS[i]["color"]
+			var ps := StyleBoxFlat.new()
+			ps.bg_color = mc if on else Color(0, 0, 0, 0.55)
+			ps.border_color = Color(0, 0, 0, 0.85) if on else Color(1, 1, 1, 0.28)
+			ps.set_border_width_all(1)
+			ps.set_corner_radius_all(6)
+			pip.add_theme_stylebox_override("panel", ps)
+			pip.size = Vector2(11, 11)
+			pip.position = Vector2(CELL.x - 16 - (2 - i) * 14, CELL.y - 28 - 15)
+			pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			b.add_child(pip)
 	var badges := []
 	if is_me:
 		badges.append(["YOU", UITheme.ACCENT])
@@ -760,6 +782,11 @@ func _build_setup() -> void:
 		_diff_btns.append(db)
 	_diff_note = UITheme.label("", 15, UITheme.TEXT_DIM)
 	v.add_child(_diff_note)
+	# The three medals to earn against whoever you picked, and which you hold.
+	_medal_line = UITheme.label("", 15, UITheme.GOLD, UITheme.semi_font())
+	_medal_line.mouse_filter = Control.MOUSE_FILTER_STOP
+	_medal_line.clip_text = true
+	v.add_child(_medal_line)
 	# How the duel is played: on foot or on runners, one duel or a match.
 	_match_btn = CheckButton.new()
 	_turbo_btn = CheckButton.new()
@@ -1014,6 +1041,13 @@ func _refresh_setup() -> void:
 	var said := Characters.line(_opp, "intro")
 	_quote.text = "%s:  \"%s\"" % [str(o.get("short", "")).to_upper(), said] if said != "" else ""
 	_reward.text = Loc.t("Win +%d Duel Points  ·  Lose +40") % (120 + 60 * _difficulty)
+	if _medal_line:
+		var held: Array = Collection.medals(_opp)
+		var parts: Array = []
+		for i in 3:
+			parts.append(("★ " if held[i] else "☆ ") + Loc.t(str(Collection.MEDALS[i]["name"])))
+		_medal_line.text = Loc.t("Medals against %s:   %s") % [str(o.get("short", _opp)), "     ".join(parts)]
+		_medal_line.tooltip_text = "\n".join(Collection.MEDALS.map(func(m): return "%s: %s  (+%d)" % [Loc.t(str(m["name"])), Loc.t(str(m["how"])), int(m["dp"])]))
 
 
 func _refresh_all() -> void:

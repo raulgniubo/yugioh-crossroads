@@ -5,6 +5,17 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.16
+
+**A first deck you choose, and medals in Free Duel.**
+
+- **Pick 1 of 3 starter decks.** The first time you reach the main menu (after you make your duelist) you choose: **First Blade** (Warriors: attack), **First Spell** (Spellcasters: tricks) or **First Flame** (Dragons: big monsters). Forty cards each, about the same strength, Lumen in every one, three cards on show and a count of what is inside. The one you pick is the deck in your hands and goes into My Decks; its cards join your collection.
+- **Already playing?** You get the choice once too: the deck is added to My Decks for free and the deck you play now stays as it is.
+- **Only cards that work.** Every card in the three decks was checked against the list of cards whose printed effect is exact in the game. One I wanted (Stamping Destruction) is not built yet, so it is not in.
+- **Medals per opponent (Free Duel).** Three to earn against every duelist: **Victory** (beat them, +60 Duel Points), **Standing tall** (beat them without ever dropping under 4000 Life Points, +120), **Swift** (beat them within 8 turns of your own, +120). Each pays once and shows on the result screen. The roster shows three pips on every face, and the panel on the right names the three and which you hold.
+
+Not done or not checked: the three decks have not been played against each other to prove they are the same strength: they are built to the same recipe (21 monsters, same staples), that is all I can say. "Swift" counts your own turns, so 8 means up to turn 16 on the turn counter. Standing tall needs a duel at 8000 Life Points and Swift needs them to start at 8000 or more, so lowering Life Points does not hand them out. Not played on a Mac.
+
 ## What is in 0.33.15
 
 **People watching on every duel field.**

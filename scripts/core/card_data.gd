@@ -224,6 +224,26 @@ const DECKS := {
 ## Decks for the wider cast, by card name. They need the card database to resolve.
 ## Effect monsters play as their stats for now.
 const NAMED_DECKS := {
+	# The three decks a new duelist picks from (see Collection.STARTERS): the same strength, three
+	# ways to play. Forty cards each, your partner Lumen in every one, nothing rare, no card
+	# without its full printed effect.
+	"starter_warrior": {"name": "First Blade", "ids": {99200001: 1}, "cards": {"Celtic Guardian": 2, "Axe Raider": 2, "Dark Blade": 3, "Gene-Warped Warwolf": 1,
+		"Hayabusa Knight": 2, "Goblin Attack Force": 2, "Twin-Sword Marauder": 1, "Freed the Brave Wanderer": 1, "Exiled Force": 1, "D.D. Warrior Lady": 1,
+		"Goblindbergh": 1, "Max Warrior": 1, "Shield Warrior": 1, "Airknight Parshath": 1,
+		"Reinforcement of the Army": 1, "The Warrior Returning Alive": 1, "Lightning Blade": 1, "Axe of Despair": 1, "Rush Recklessly": 2, "Smashing Ground": 1, "Fissure": 1,
+		"Swords of Revealing Light": 1, "Mystical Space Typhoon": 1, "Pot of Greed": 1, "Sogen": 1,
+		"Sakuretsu Armor": 2, "Trap Hole": 2, "Waboku": 1, "Draining Shield": 1, "Magic Cylinder": 1}},
+	"starter_arcane": {"name": "First Spell", "ids": {99200001: 1}, "cards": {"Gemini Elf": 3, "Neo the Magic Swordsman": 2, "Mystical Elf": 2, "Gagaga Magician": 2,
+		"Old Vindictive Magician": 2, "Magician of Faith": 2, "Breaker the Magical Warrior": 1, "Man-Eater Bug": 1, "Sangan": 1, "Kuriboh": 1,
+		"La Jinn the Mystical Genie of the Lamp": 1, "Dark Magician Girl": 1, "Dark Magician": 1,
+		"Book of Moon": 1, "Swords of Revealing Light": 1, "Mystical Space Typhoon": 1, "Pot of Greed": 1, "Mage Power": 1, "Book of Secret Arts": 2, "Yami": 1, "Fissure": 1,
+		"Lightning Vortex": 1, "Hinotama": 1,
+		"Spellbinding Circle": 2, "Magic Cylinder": 1, "Shadow Spell": 1, "Magic Jammer": 1, "Waboku": 2, "Trap Hole": 1}},
+	"starter_dragon": {"name": "First Flame", "ids": {99200001: 1}, "cards": {"Luster Dragon": 3, "Alexandrite Dragon": 2, "Baby Dragon": 2, "Masked Dragon": 2, "Spear Dragon": 2,
+		"Axe Dragonute": 2, "Troop Dragon": 2, "Lancer Lindwurm": 1, "Luster Dragon #2": 2, "Curse of Dragon": 1, "Tri-Horned Dragon": 1,
+		"Mountain": 2, "Dragon Treasure": 1, "Hammer Shot": 1, "Big Bang Shot": 1, "Pot of Greed": 1, "Swords of Revealing Light": 1, "Mystical Space Typhoon": 1, "Fissure": 1,
+		"Smashing Ground": 1, "Rush Recklessly": 1,
+		"Sakuretsu Armor": 2, "Trap Hole": 2, "Waboku": 1, "Negate Attack": 1, "Call of the Haunted": 1, "Draining Shield": 1}},
 	# Story bosses.
 	"curator": {"name": "The Collection", "cards": {"Blue-Eyes White Dragon": 2, "Dark Magician": 2, "Red-Eyes Black Dragon": 1, "Summoned Skull": 2,
 		"Elemental HERO Neos": 2, "Cyber Dragon": 2, "Zaborg the Thunder Monarch": 1, "Vorse Raider": 2, "Gemini Elf": 2, "La Jinn the Mystical Genie of the Lamp": 2,
@@ -512,7 +532,9 @@ static func _deck_list_raw(deck_key: String) -> Array[int]:
 	var extra_cards: Array[int] = _expand(_resolve(ADDONS.get(deck_key, {}), false))
 	if DECKS.has(deck_key):
 		return to_forty(_expand(DECKS[deck_key]["cards"]) + extra_cards)
-	return to_forty(_fill_to_30(_resolve(NAMED_DECKS.get(deck_key, {}).get("cards", {}), false)) + extra_cards)
+	# A deck may also name cards by number (your partner, who is in no card database).
+	var by_id: Array[int] = _expand(NAMED_DECKS.get(deck_key, {}).get("ids", {}))
+	return to_forty(_fill_to_30(_resolve(NAMED_DECKS.get(deck_key, {}).get("cards", {}), false)) + by_id + extra_cards)
 
 
 ## A Main Deck is 40 to 60 cards. Smaller lists are topped up with further copies (3 at most)

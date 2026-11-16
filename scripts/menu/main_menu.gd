@@ -586,6 +586,10 @@ func _open_profile(first: bool) -> void:
 	ed.closed.connect(func():
 		_panel_open = false
 		_refresh_chip()
+		# A new duelist has a name and a look: now a deck.
+		if first and _starter_due():
+			_open_starter()
+			return
 		if _items.size() > 1:
 			_items[0].grab_focus())
 
@@ -626,8 +630,29 @@ func _intro() -> void:
 		return
 	if not Profile.created and not "--shot" in str(OS.get_cmdline_user_args()) and not "--story" in str(OS.get_cmdline_user_args()):
 		_open_profile(true)
+	elif _starter_due():
+		_open_starter()
 	elif _items.size() > 0 and not _panel_open:
 		_items[0].grab_focus()
+
+
+## Your first deck is still to be chosen (and nothing else is open).
+func _starter_due() -> bool:
+	var args := str(OS.get_cmdline_user_args())
+	if "--starter-pick" in args:
+		return true
+	return Collection.needs_starter() and not _panel_open and not "--shot" in args and not "--story" in args
+
+
+func _open_starter() -> void:
+	var sp := StarterPick.new()
+	sp.z_index = 100
+	add_child(sp)
+	_panel_open = true
+	sp.closed.connect(func():
+		_panel_open = false
+		if _items.size() > 1:
+			_items[0].grab_focus())
 
 
 func _open_panel(p: SidePanel) -> void:

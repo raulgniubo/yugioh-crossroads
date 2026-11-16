@@ -242,6 +242,24 @@ func _debug_args() -> void:
 				StoryDirector.begin(parts[0], true)
 			else:
 				StoryDirector.begin(parts[0])
+		elif a.begins_with("--deck-dump="):
+			# (testing) what a named deck really comes out as: every card it lists, whether it
+			# resolved, whether its rules are exact, and the final forty.
+			var dk := a.substr(12)
+			var want: Dictionary = CardData.NAMED_DECKS.get(dk, {}).get("cards", {})
+			var got: Array[int] = CardData.deck_list(dk)
+			var have := {}
+			for id in got:
+				have[id] = int(have.get(id, 0)) + 1
+			var asked := 0
+			for n in want:
+				asked += int(want[n])
+				var id: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
+				var d := CardData.get_card(id) if id != 0 else {}
+				var note := "OK" if id != 0 and int(have.get(id, 0)) == int(want[n]) and CardExact.ok(d) else "PROBLEM"
+				print("DECK ", dk, " ", note, "  ", n, " x", want[n], "  id ", id, "  in deck ", have.get(id, 0), "  exact ", CardExact.ok(d) if id != 0 else false,
+						"  ", d.get("kind", "?"), " L", d.get("level", "-"), " ", d.get("atk", "-"))
+			print("DECK ", dk, " asked ", asked, " final ", got.size())
 		elif a.begins_with("--field="):
 			duel_config["field"] = a.substr(8)
 		elif a.begins_with("--deck="):

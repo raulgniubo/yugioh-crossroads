@@ -60,6 +60,20 @@ const THEME_DECKS := [
 	{"key": "deck_wild", "art": "wild", "color": Color("ff9a3c"), "blurb": "Beasts with high ATK at Level 4. No tricks, just teeth."},
 	{"key": "deck_forest", "art": "forest", "color": Color("5fd070"), "blurb": "Insects and Plants in their Forest, with Traps that slow everything down."},
 ]
+## The three decks a new duelist picks one of: the same strength, three ways to play, your
+## partner in each. `show` are three cards that say what the deck is about.
+const STARTERS := [
+	{"key": "starter_warrior", "style": "WARRIORS", "color": Color("f0b040"), "show": ["Goblin Attack Force", "Exiled Force", "Airknight Parshath"],
+		"blurb": "Attack. Strong Level 4 fighters that hit from the first turn, and Spells that make them hit harder.",
+		"points": ["Easiest to pick up", "Wins by swinging first", "Reinforcement of the Army finds the fighter you need"]},
+	{"key": "starter_arcane", "style": "SPELLCASTERS", "color": Color("b48cff"), "show": ["Dark Magician", "Dark Magician Girl", "Breaker the Magical Warrior"],
+		"blurb": "Tricks. Flip monsters, Traps that stop an attack cold, and two famous magicians to finish with.",
+		"points": ["Rewards patience", "Wins by turning their turn against them", "Magician of Faith gets a Spell back"]},
+	{"key": "starter_dragon", "style": "DRAGONS", "color": Color("ff5a3c"), "show": ["Tri-Horned Dragon", "Luster Dragon #2", "Spear Dragon"],
+		"blurb": "Big monsters. Solid small Dragons hold the field while you Tribute them for the heavy ones.",
+		"points": ["Highest ATK of the three", "Wins by size", "Mountain makes every Dragon stronger"]},
+]
+
 ## Solid Normal Monsters that round out the Vault.
 const VAULT_EXTRAS := ["Gemini Elf", "Vorse Raider", "Luster Dragon", "Mad Dog of Darkness", "Insect Knight", "Gene-Warped Warwolf",
 	"Archfiend Soldier", "Sabersaurus", "Alexandrite Dragon", "Summoned Skull", "Luster Dragon #2", "Mystical Elf", "Giant Soldier of Stone",
@@ -77,6 +91,8 @@ var slot := 0            # which recipe is loaded
 var banlist := false     # play by the Forbidden/Limited list
 var decks_owned: Array = ["echo"]   # ready-made decks you have (the Echo starter, and any you bought)
 var active := "echo"     # the deck you duel with: "custom" (the one you built) or a ready-made deck
+var starter_pick := ""   # which of the three starter decks you chose ("" not yet)
+var _new_save := false   # nothing was saved before this start: a new duelist
 var record := {}         # reward bookkeeping: {"day": "2026-11-12", "streak": 2, "beaten": {key: true}}
 var last_reward: Array = []   # what the last duel paid, line by line: [[label, amount], ...]
 var last_prize := 0           # the card the last duel's opponent handed over (0: none)
@@ -97,6 +113,7 @@ func _ready() -> void:
 		slot = int(cfg.get_value("deck", "slot", 0))
 		banlist = bool(cfg.get_value("deck", "banlist", false))
 		record = cfg.get_value("wallet", "record", {})
+		starter_pick = str(cfg.get_value("deck", "starter", ""))
 		if cfg.has_section_key("deck", "owned_decks"):
 			decks_owned = cfg.get_value("deck", "owned_decks", ["echo"])
 			active = str(cfg.get_value("deck", "active", "echo"))
@@ -105,6 +122,7 @@ func _ready() -> void:
 	else:
 		_adopt_old_deck()
 	if owned.is_empty():
+		_new_save = true
 		_starter()
 	# Lumen, your partner: every duelist has her card, old saves included.
 	if int(owned.get(CardData.LUMEN, 0)) < 1:
@@ -173,6 +191,54 @@ func deck_price(key: String) -> int:
 		if t["key"] == key:
 			return THEME_PRICE
 	return DECK_PRICE
+
+
+func starter_info(key: String) -> Dictionary:
+	for st in STARTERS:
+		if str(st["key"]) == key:
+			return st
+	return {}
+
+
+## Has the choice of a first deck still to be made?
+func needs_starter() -> bool:
+	return starter_pick == "" and CardData.has_deck("starter_warrior")
+
+
+## Somebody who has never dueled yet (the deck they pick becomes the deck they play).
+func is_new() -> bool:
+	if _new_save:
+		return true
+	var played := 0
+	var vs: Dictionary = record.get("vs", {})
+	for k in vs:
+		played += int((vs[k] as Array)[0]) + int((vs[k] as Array)[1])
+	return played == 0 and decks_owned.size() <= 1 and active == "echo"
+
+
+## The first deck: free, on your shelf, its cards in your collection. For a new duelist it is
+## also the deck in their hands; anybody who already plays keeps the deck they have.
+func take_starter(key: String) -> bool:
+	if starter_info(key).is_empty() or not CardData.has_deck(key):
+		return false
+	var fresh := is_new()
+	starter_pick = key
+	if not decks_owned.has(key):
+		decks_owned.append(key)
+	var need := {}
+	for id in CardData.deck_list(key) + CardData.extra_list(key):
+		need[id] = int(need.get(id, 0)) + 1
+	for id in need:
+		owned[id] = maxi(int(owned.get(id, 0)), mini(3, int(need[id])))
+	_store_slot()
+	if origin_slot(key) < 0:
+		slots.append(_recipe_slot(key))
+	if fresh:
+		active = key
+		_apply_active()
+	_new_save = false
+	save()
+	return fresh
 
 
 ## Buy a ready-made deck: it goes on your shelf, and every card in it joins your collection
@@ -248,6 +314,10 @@ func deck_info(key: String) -> Dictionary:
 	if key == "echo":
 		return {"key": "echo", "name": CardData.deck_name("echo"), "owner": "", "who": "player", "color": Color("2de2e6"),
 			"blurb": "Your starter deck.", "art": "", "price": 0, "kind": "starter", "era": ""}
+	var st := starter_info(key)
+	if not st.is_empty():
+		return {"key": key, "name": CardData.deck_name(key), "owner": "", "who": "player", "color": st["color"],
+			"blurb": st["blurb"], "art": "", "price": 0, "kind": "starter", "era": ""}
 	for e in deck_catalog():
 		if e["key"] == key:
 			return e
@@ -278,6 +348,59 @@ func note_result(key: String, won: bool) -> String:
 			unlocked = deck
 	save()
 	return unlocked
+
+
+## Medals against each duelist in Free Duel: three to earn from every one of them.
+##   0 Victory       beat them
+##   1 Standing tall beat them without ever dropping under 4000 Life Points (a duel at 8000)
+##   2 Swift         beat them within 8 turns of your own (they started at 8000 or more)
+const MEDALS := [
+	{"name": "Victory", "how": "Beat them.", "dp": 60, "color": Color("d98a4a")},
+	{"name": "Standing tall", "how": "Beat them without ever dropping under 4000 Life Points.", "dp": 120, "color": Color("cfd6e2")},
+	{"name": "Swift", "how": "Beat them within 8 turns of your own.", "dp": 120, "color": Color("ffd166")},
+]
+
+
+## Which medals you hold against somebody: [bool, bool, bool].
+func medals(key: String) -> Array:
+	var have: Dictionary = record.get("medals", {})
+	var bits := int(have.get(key, 0))
+	return [bits & 1 != 0, bits & 2 != 0, bits & 4 != 0]
+
+
+func medal_count() -> int:
+	var n := 0
+	for k in (record.get("medals", {}) as Dictionary):
+		for on in medals(str(k)):
+			if on:
+				n += 1
+	return n
+
+
+## A Free Duel was won: hand out the medals it earned that you did not have yet. Each pays
+## once and goes on the result screen. Returns the Duel Points paid.
+##   info: low (the least Life Points you had), my_turns, my_start, their_start
+func award_medals(key: String, info: Dictionary) -> int:
+	var earned := [true,
+		int(info.get("my_start", 8000)) >= 8000 and int(info.get("low", 0)) >= 4000,
+		int(info.get("their_start", 8000)) >= 8000 and int(info.get("my_turns", 99)) <= 8]
+	var have := medals(key)
+	var bits := 0
+	var paid := 0
+	for i in 3:
+		if have[i] or earned[i]:
+			bits |= 1 << i
+		if earned[i] and not have[i]:
+			var m: Dictionary = MEDALS[i]
+			last_reward.append([Loc.t("Medal: %s") % Loc.t(str(m["name"])), int(m["dp"])])
+			paid += int(m["dp"])
+	if paid > 0:
+		var all: Dictionary = record.get("medals", {})
+		all[key] = bits
+		record["medals"] = all
+		dp += paid
+		save()
+	return paid
 
 
 func deck_ace(key: String) -> int:
@@ -717,6 +840,7 @@ func save() -> void:
 	cfg.set_value("wallet", "dp", dp)
 	cfg.set_value("wallet", "record", record)
 	cfg.set_value("deck", "owned_decks", decks_owned)
+	cfg.set_value("deck", "starter", starter_pick)
 	cfg.set_value("deck", "active", active)
 	cfg.save(PATH)
 	changed.emit()
