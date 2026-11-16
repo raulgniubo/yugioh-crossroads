@@ -5255,4 +5255,12 @@ const ES := {
 	"%s: destroy 1 Spell or Trap?": "%s: ¿destruir 1 Mágica o Trampa?",
 	"%s takes 1 material from %s": "%s toma 1 material de %s",
 	"Special Summon a Malicevorous monster from your Graveyard?": "¿Invocar de Modo Especial un monstruo Malicevorous de tu Cementerio?",
+	"%s cannot attack in its next turn": "%s no puede atacar en su próximo turno",
+	"%s: take control of which monster?": "%s: ¿de qué monstruo tomas el control?",
+	"%s possesses %s": "%s posee a %s",
+	"%s: %s appears": "%s: aparece %s",
+	"The Destiny Board spells out its message": "El Tablero del Destino completa su mensaje",
+	"%s is complete.": "%s está completo.",
+	"%s: banish %d monsters from your Graveyard": "%s: destierra %d monstruos de tu Cementerio",
+	"%s: the opponent discards %s": "%s: el adversario descarta %s",
 }

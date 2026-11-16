@@ -577,6 +577,57 @@ func begin_end() -> Array:
 			if m.face_up and m.tags.get("banish_end", false):
 				events.append({"type": "effect", "player": q, "card": m, "text": Loc.t("%s is banished in the End Phase") % m.cname()})
 				events.append_array(_banish(m))
+	# Dark Necrofear: "During the End Phase, if this card is in your GY because it was destroyed in your Monster Zone by an opponent's card and sent
+	# there this turn: Target 1 face-up monster your opponent controls; equip this card to that target... take control of that monster."
+	for q in 2:
+		for g in players[q].gy.duplicate():
+			if int(g.get_meta("necro_turn", -1)) != turn or not CardEffects.of(g.cname()).get("necrofear", false):
+				continue
+			g.remove_meta("necro_turn")
+			var prey: Array = players[opponent(q)].monsters().filter(func(m): return m.face_up and EffectRunner.can_target(g, m))
+			var zone_n: int = players[q].spells.find(null)
+			if prey.is_empty() or zone_n == -1 or players[q].free_zone() == -1:
+				continue
+			var best_n: CardInst = prey[0]
+			for m in prey:
+				if atk_of(m, false) > atk_of(best_n, false):
+					best_n = m
+			best_n = pick1(q, Loc.t("%s: take control of which monster?") % g.cname(), prey, best_n, g)
+			players[q].gy.erase(g)
+			players[q].spells[zone_n] = g
+			g.face_up = true
+			g.equipped_to = best_n
+			best_n.tags["necro_by"] = g.uid
+			events.append({"type": "effect", "player": q, "card": g, "text": Loc.t("%s possesses %s") % [g.cname(), best_n.cname()]})
+			events.append({"type": "activate", "player": q, "card": g, "zone": zone_n})
+			events.append_array(_take_control(best_n, q, -1))
+	# Destiny Board: "Once per turn, during your opponent's End Phase: Place 1 "Spirit Message" card from your hand or Deck in your Spell & Trap Zone
+	# face-up, in the proper order of "I", "N", "A", and "L"." With all four placed, its owner wins the Duel.
+	for q in 2:
+		if q == current:
+			continue
+		for st in players[q].spells:
+			if st == null or not st.face_up or not SpellRules.spec(st).get("destiny_board", false) or SpellRules.blocked(self, st) or st.counter >= 4:
+				continue
+			var want_n := "Spirit Message \"%s\"" % ["I", "N", "A", "L"][st.counter]
+			var zone_d: int = players[q].spells.find(null)
+			var msg: CardInst = null
+			for src in [players[q].hand, players[q].deck]:
+				for x in src:
+					if msg == null and x.cname() == want_n:
+						msg = x
+			if msg == null or zone_d == -1:
+				continue
+			players[q].hand.erase(msg)
+			players[q].deck.erase(msg)
+			players[q].spells[zone_d] = msg
+			msg.face_up = true
+			st.counter += 1
+			events.append({"type": "effect", "player": q, "card": st, "text": Loc.t("%s: %s appears") % [st.cname(), msg.cname()]})
+			events.append({"type": "activate", "player": q, "card": msg, "zone": zone_d})
+			if st.counter >= 4:
+				events.append({"type": "effect", "player": q, "card": st, "text": Loc.t("The Destiny Board spells out its message")})
+				_set_winner(q, Loc.t("%s is complete.") % st.cname())
 	# Phoenixian Cluster Amaryllis: "During your End Phase, you can remove from play 1 Plant-Type monster from your Graveyard to Special Summon this card from your Graveyard in Defense Position."
 	for g in players[current].gy.duplicate():
 		if not CardEffects.of(g.cname()).get("amaryllis", false) or players[current].free_zone() == -1 or not g.proper:
@@ -1358,6 +1409,7 @@ func can_attack(p: int, c: CardInst) -> bool:
 	return (p == current and phase == Phase.BATTLE and not is_over() and players[p].field.has(c)
 			and c.face_up and (c.attack_pos or EffectRunner.fx(c).get("direct_from_def", false)) and attacks_left(c) > 0 and SpellRules.can_attack(self, p, c)
 			and not (players[p].only_attacker_turn == turn and players[p].only_attacker != c.uid)
+			and int(c.tags.get("no_attack_on", -1)) != turn
 			and not (EffectRunner.fx(c).get("summon_sick", false) and c.summoned_turn == turn)
 			and players[p].lp >= int(EffectRunner.fx(c).get("attack_cost", 0))
 			and not (EffectRunner.fx(c).get("attack_tribute", false) and players[p].monsters().size() < 2)
@@ -2061,6 +2113,10 @@ func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 
 func _after_attack(attacker: CardInst, target = null) -> Array:
 	var events := []
+	# Electric Lizard: "A non Zombie-Type monster attacking "Electric Lizard" cannot attack on its following turn."
+	if target != null and target is CardInst and (target as CardInst).face_up and EffectRunner.fx(target).get("lizard", false) and str(attacker.data.get("race", "")) != "Zombie" and players[attacker.owner].field.has(attacker):
+		attacker.tags["no_attack_on"] = turn + 2
+		events.append({"type": "effect", "player": (target as CardInst).owner, "card": target, "text": Loc.t("%s cannot attack in its next turn") % attacker.cname()})
 	# Thorn of Malice: "If the equipped monster attacks a monster, after damage calculation: The attacked monster loses 600 ATK and DEF."
 	if target != null and target is CardInst and SpellRules.equip_flag(self, attacker, "weaken_target"):
 		var wt: CardInst = target
@@ -2506,6 +2562,28 @@ func _cleanup() -> Array:
 	for q in 2:
 		for m in players[q].monsters():
 			m.negated = m.face_up and (drain or m.negated_turn == turn or m.neg_perm)
+	# Dark Necrofear's hold ends when it leaves the Spell & Trap Zone.
+	for q in 2:
+		for m in players[q].monsters():
+			if m.tags.has("necro_by"):
+				var holder := find_uid(int(m.tags["necro_by"]))
+				if holder == null or not (players[0].spells.has(holder) or players[1].spells.has(holder)) or holder.equipped_to != m:
+					m.tags.erase("necro_by")
+					events.append_array(_return_control(m))
+	# Destiny Board: when it or one of its Spirit Messages leaves the field, the rest go to the Graveyard.
+	for q in 2:
+		var board: CardInst = null
+		var msgs: Array = []
+		for st in players[q].spells:
+			if st != null and st.face_up and SpellRules.spec(st).get("destiny_board", false):
+				board = st
+			elif st != null and st.face_up and st.cname().begins_with("Spirit Message"):
+				msgs.append(st)
+		if (board == null and not msgs.is_empty()) or (board != null and msgs.size() < board.counter):
+			for st in msgs:
+				events.append_array(_destroy_st(st))
+			if board != null:
+				events.append_array(_destroy_st(board))
 	# Fiendish Chain: "negate the effects of that face-up monster while it is on the field".
 	for q in 2:
 		for st in players[q].spells:

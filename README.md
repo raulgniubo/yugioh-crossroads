@@ -7,7 +7,7 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
 ## What is in 0.33.34
 
-The three ZEXAL duelists that were left got their best decks: **Kite, Shark and Vector**. 35 cards built, each against its card text, each with a test.
+Four more duelists got their best decks: **Kite, Shark, Vector and Bakura**. 45 cards built, each against its card text, each with a test.
 
 ### Kite
 
@@ -34,8 +34,17 @@ The three ZEXAL duelists that were left got their best decks: **Kite, Shark and 
 - **Extra:** Number 104: Masquerade x2, Number C104: Umbral Horror Masquerade, Number 65: Djinn Buster, Number 96: Dark Mist.
 - **Rank-Up-Magic Barian's Force** ranks any Xyz Monster up into its Chaos form and takes a material from the opponent. **Masquerade**, **C104** and **Djinn Buster** negate monster effects. **Dark Mist** halves the monster it battles and takes that ATK.
 
+### Bakura
+
+**Dark Necrofear and his Fiends, with Destiny Board spelling the duel out.** 10 cards built.
+
+- **Main, 40:** Dark Necrofear x2, Dark Ruler Ha Des x2, Headless Knight x3, The Earl of Demise x2, Gernia x2, The Portrait's Secret x2, Earthbound Spirit x2, Souls of the Forgotten x2, The Gross Ghost of Fled Dreams x2, Goblin Zombie x2, White Magical Hat x2, Man-Eater Bug x2, Morphing Jar, Electric Lizard, Lady of Faith, Sangan; Destiny Board x2 and the four Spirit Messages; Change of Heart, Monster Reborn, Pot of Greed, Dark Hole, Just Desserts.
+- **Destiny Board:** once it is face-up, a Spirit Message is placed from your hand or Deck in each of your opponent's End Phases, in the order I, N, A, L. With all four out you win the Duel. If the board or a message leaves the field, the rest go with it.
+- **Dark Necrofear** comes out by banishing 3 Fiends from your Graveyard. Destroyed by the opponent, it comes back in the End Phase as an Equip Card on one of their monsters and you take control of it.
+
 **Not done or not checked:**
 
+- Still to build for Bakura: Diabound Kernel, Dark Sanctuary, Dark Spirit of the Silent, Multiple Destruction, Dark Designator, Ectoplasmer. Destiny Board's messages appearing in the Spell & Trap Zone was not watched on screen (the rules test passes). Bakura on Hard won 12 of 30 test duels.
 - Still to build for Vector: Malicevorous Spoon, Number 66: Master Key Beetle, Number 43: Manipulator of Souls, Number C5: Chaos Chimera Dragon, Vain Betrayer, Don Thousand's Throne. Masquerade, C104 and Djinn Buster answering a monster effect is tested in the rules only, not in a real duel on screen. Vector on Hard won 14 of 30 test duels.
 - Still to build for Shark: Number 101: Silent Honor ARK and its Chaos form, Number 73: Abyss Splash, Shark Drake Veiss, Numbers 37 and 71, Depth Shark, Double Fin Shark, Saber Shark, Shocktopus, Friller Rabca, Tripod Fish, Scrap Shark, Xyz Remora, Big Wave Small Wave, Poseidon Wave, Splash Capture, Bubble Bringer, Torrential Reborn, Explosive Urchin, the Armored Xyz cards, Xyz Unit. Shark on Hard won 25 of 40 test duels.
 - Still to build for Kite: Neo Galaxy-Eyes Photon Dragon, Number 62: Galaxy-Eyes Prime Photon Dragon, Photon Satellite, Kuriphoton, Galaxy Dragon, Dimension Wanderer, Photon Sanctuary, Photon Stream of Destruction, Photon Booster, Photon Veil, Photon Trident, Photon Current, Galaxy Queen's Light, Message in a Bottle, Triple Star Trion, Lumenize, Eternal Galaxy, Numbers 20, 30 and 56. Kite on Hard won 29 of 40 test duels. Not watched on screen.

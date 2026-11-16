@@ -119,6 +119,12 @@ const FX := {
 	"Harpies' Hunting Ground": {"k": "field", "boost": [[{"race": "Winged Beast"}, 200, 200]]},
 	"Dragon's Mirror": {"k": "normal", "do": [["miracle_fusion", {"race": "Dragon"}]]},
 	"Skyscraper": {"k": "field", "skyscraper": 1000},
+	# ---------------------------------------------------------------- Bakura's cards (v0.33.34)
+	"Destiny Board": {"k": "ctrap", "win": ["free"], "destiny_board": true, "ai": "always"},
+	"Spirit Message \"I\"": {"k": "cont", "cond": "never"},
+	"Spirit Message \"N\"": {"k": "cont", "cond": "never"},
+	"Spirit Message \"A\"": {"k": "cont", "cond": "never"},
+	"Spirit Message \"L\"": {"k": "cont", "cond": "never"},
 	# ---------------------------------------------------------------- Vector's cards (v0.33.34)
 	"Rank-Up-Magic Barian's Force": {"k": "normal", "ai": "always", "do": [["rank_up", 0, "Number C|CXyz", "same_race", "steal"]]},
 	# ---------------------------------------------------------------- Shark's cards (v0.33.34)
@@ -599,6 +605,8 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return not s.players[p].hand.is_empty()
 		"hand_empty":
 			return s.players[p].hand.is_empty()
+		"never":
+			return false   # "This card can only be placed on the field by the effect of "Destiny Board"."
 		"accellight":
 			# "If you control no monsters... You cannot Normal Summon/Set during the turn you activate this card." Once per turn.
 			return s.players[p].monsters().is_empty() and s.current == p and not s.normal_summoned and int(s.players[p].once_names.get("Accellight", -1)) != s.turn

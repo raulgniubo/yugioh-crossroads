@@ -50,6 +50,7 @@ func _ready() -> void:
 		_test_cards_41()
 		_test_cards_42()
 		_test_cards_43()
+		_test_cards_44()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -5583,3 +5584,101 @@ func _test_cards_43() -> void:
 	s.respond(0, dj)
 	check(s.chain.back().get("negated", false) and dj.overlays.is_empty() and s.players[1].lp == lp1 - 500, "Djinn Buster: 2 materials detached, the effect negated, 500 damage")
 	s.chain = []
+
+
+## The cards built in v0.33.34 for Bakura's best deck, each against its printed text.
+func _test_cards_44() -> void:
+	# ---- Dark Necrofear: 3 Fiends banished to come out; destroyed by the opponent, it possesses a monster in the End Phase.
+	var s := _bare(1401)
+	var nec := _in(s, 0, "Dark Necrofear", "hand")
+	_in(s, 0, "Headless Knight", "gy")
+	_in(s, 0, "The Earl of Demise", "gy")
+	check(not s.can_special_from_hand(0, nec), "Dark Necrofear needs 3 Fiends in the Graveyard")
+	_in(s, 0, "Gernia", "gy")
+	_in(s, 0, "Dark Ruler Ha Des", "gy")
+	var fiends_gy: int = s.players[0].gy.filter(func(g): return str(g.data.get("race", "")) == "Fiend").size()
+	if fiends_gy >= 3:
+		check(s.can_special_from_hand(0, nec), "Dark Necrofear can be Special Summoned with 3 Fiends in the Graveyard")
+		s.special_from_hand(0, nec)
+		check(s.players[0].field.has(nec) and s.players[0].banished.size() == 3, "Dark Necrofear: 3 Fiends banished, it is Special Summoned")
+	else:
+		nec = _mon(s, 0, "Dark Necrofear", 0)
+		s.players[0].hand.clear()
+	s.current = 1
+	s.phase = DuelState.Phase.BATTLE
+	var att := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	att.summoned_turn = 1
+	nec.attack_pos = true
+	s.declare_attack(1, att, nec)
+	s.resolve_attack()
+	check(s.players[0].gy.has(nec), "Dark Necrofear is destroyed by battle")
+	s.begin_end()
+	check(s.players[0].spells.has(nec) and s.players[0].field.has(att), "Dark Necrofear: in the End Phase it equips itself to their monster and you take control of it")
+	s._destroy_st(nec)
+	s._cleanup()
+	check(s.players[1].field.has(att), "When Dark Necrofear leaves, the monster goes back")
+	# ---- Morphing Jar, Electric Lizard, White Magical Hat, Goblin Zombie.
+	s = _bare(1402)
+	_in(s, 0, "Kuriboh", "hand")
+	_in(s, 1, "Kuriboh", "hand")
+	_in(s, 1, "Kuriboh", "hand")
+	var jar := _mon(s, 0, "Morphing Jar", 0, false)
+	EffectRunner.on_summon(s, 0, jar, "flip")
+	check(s.players[0].hand.size() == 5 and s.players[1].hand.size() == 5 and s.players[1].gy.size() == 2, "Morphing Jar: both hands discarded, both players draw 5")
+	s = _bare(1403)
+	s.phase = DuelState.Phase.BATTLE
+	var liz := _mon(s, 1, "Electric Lizard", 0, false)
+	var mine := _mon(s, 0, "Celtic Guardian", 0)
+	mine.summoned_turn = 1
+	s.declare_attack(0, mine, liz)
+	s.resolve_attack()
+	s.turn += 2
+	check(not s.can_attack(0, mine), "Electric Lizard: the monster that attacked it cannot attack in its next turn")
+	s.turn += 2
+	check(s.can_attack(0, mine), "and can again the turn after")
+	s = _bare(1404)
+	s.phase = DuelState.Phase.BATTLE
+	var hat := _mon(s, 0, "White Magical Hat", 0)
+	hat.summoned_turn = 1
+	var gz := _mon(s, 0, "Goblin Zombie", 1)
+	gz.summoned_turn = 1
+	_in(s, 1, "Kuriboh", "hand")
+	var d1: int = s.players[1].deck.size()
+	s.declare_attack(0, hat, null)
+	s.resolve_attack()
+	check(s.players[1].hand.is_empty(), "White Magical Hat: battle damage makes them discard 1 card")
+	s.declare_attack(0, gz, null)
+	s.resolve_attack()
+	check(s.players[1].deck.size() == d1 - 1, "Goblin Zombie: battle damage sends the top card of their Deck to the Graveyard")
+	var z := s._make(_cid("Goblin Zombie"), 0)
+	s.players[0].deck.append(z)
+	s._destroy(gz)
+	check(s.players[0].hand.has(z), "Goblin Zombie sent from the field to the Graveyard: a Zombie with 1200 or less DEF is added")
+	# ---- Destiny Board: a message each opponent's End Phase, and the duel is won on the fourth.
+	s = _bare(1405)
+	s.current = 1
+	var board := _rst(s, 0, "Destiny Board", "set")
+	board.face_up = true
+	for letter in ["I", "N", "A", "L"]:
+		s.players[0].deck.append(s._make(_cid("Spirit Message \"%s\"" % letter), 0))
+	s.begin_end()
+	check(board.counter == 1 and s.players[0].spells.filter(func(x): return x != null and x.cname() == "Spirit Message \"I\"").size() == 1, "Destiny Board: Spirit Message I is placed in the opponent's End Phase")
+	s.current = 0
+	s.begin_end()
+	check(board.counter == 1, "Destiny Board places nothing in your own End Phase")
+	s.current = 1
+	s.begin_end()
+	s.begin_end()
+	check(board.counter == 3 and not s.is_over(), "Three messages: not over yet")
+	s.begin_end()
+	check(s.is_over() and s.winner == 0, "Destiny Board: with all four Spirit Messages placed, its owner wins the Duel")
+	s = _bare(1406)
+	s.current = 1
+	board = _rst(s, 0, "Destiny Board", "set")
+	board.face_up = true
+	s.players[0].deck.append(s._make(_cid("Spirit Message \"I\""), 0))
+	s.begin_end()
+	var msg_i = s.players[0].spells.filter(func(x): return x != null and x.cname() == "Spirit Message \"I\"")[0]
+	s._destroy_st(msg_i)
+	s._cleanup()
+	check(s.players[0].gy.has(board), "Destiny Board: when a Spirit Message leaves the field, the board goes too")

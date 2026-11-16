@@ -108,6 +108,14 @@ const FX := {
 	"Elemental HERO Thunder Giant": {"note": "Once per turn, discard 1: destroy a monster with less original ATK.",
 		"ignite": {"cost": "discard", "do": [["destroy", "atk_below_self"]], "label": "Discard 1: destroy a weaker monster"}},
 	"Elemental HERO Rampart Blaster": {"note": "Can attack directly while it is in Defense Position. When it does, its ATK is halved for that damage calculation.", "direct_from_def": true},
+	# ---- Bakura's best deck (v0.33.34)
+	"Dark Necrofear": {"note": "Cannot be Normal Summoned/Set. Special Summon it from your hand by banishing 3 Fiend monsters from your Graveyard. Destroyed in your Monster Zone by an opponent's card: in that turn's End Phase it equips itself to 1 face-up monster your opponent controls and you take control of that monster.",
+		"special_banish_race": ["Fiend", 3], "necrofear": true, "death": [["necro_mark"]], "opp_fx_destroyed": [["necro_mark"]]},
+	"Morphing Jar": {"note": "FLIP: both players discard their whole hands, then each draws 5 cards.", "flip": [["morphing_jar"]]},
+	"Electric Lizard": {"note": "A non-Zombie monster that attacks this card cannot attack in its next turn.", "lizard": true},
+	"White Magical Hat": {"note": "When it inflicts battle damage to your opponent: they discard 1 random card.", "damage": [["opp_discard_random"]]},
+	"Goblin Zombie": {"note": "Inflicts battle damage to your opponent: the top card of their Deck goes to the Graveyard. Sent from the field to the Graveyard: add 1 Zombie monster with 1200 or less DEF from your Deck to your hand.",
+		"damage": [["mill_opp_top"]], "gy": [["search", {"race": "Zombie", "max_def": 1200}]]},
 	# ---- Vector's best deck (v0.33.34)
 	"Malicevorous Fork": {"note": "You can send 1 other Fiend monster from your hand to the Graveyard: Special Summon this card from your hand.", "special_discard_race": "Fiend"},
 	"Malicevorous Knife": {"note": "Normal Summoned: you can Special Summon 1 \"Malicevorous\" monster from your Graveyard, except Malicevorous Knife.",

@@ -420,7 +420,7 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 ## Does this monster have its own way to be Special Summoned from the hand?
 static func has_special_hand(c) -> bool:
 	var f := fx(c)
-	for k in ["special_discard_race", "special_hand_if", "special_tribute2", "special_tribute_attr", "special_banish_ld", "eltanin", "special_toon", "special_discard_attr", "special_tribute_race", "special_discard_monster", "special_tribute_names", "special_tribute_f"]:
+	for k in ["special_banish_race", "special_discard_race", "special_hand_if", "special_tribute2", "special_tribute_attr", "special_banish_ld", "eltanin", "special_toon", "special_discard_attr", "special_tribute_race", "special_discard_monster", "special_tribute_names", "special_tribute_f"]:
 		if f.has(k):
 			return true
 	return false
@@ -456,6 +456,9 @@ static func can_special_hand(s: DuelState, p: int, c) -> bool:
 		return false
 	if f.get("special_banish_ld", false):
 		return _gy_attr(s, p, "LIGHT") != null and _gy_attr(s, p, "DARK") != null
+	if f.has("special_banish_race"):
+		# Dark Necrofear: banish 3 Fiend monsters from your Graveyard.
+		return s.players[p].gy.filter(func(g): return g.is_monster() and str(g.data.get("race", "")) == str(f["special_banish_race"][0])).size() >= int(f["special_banish_race"][1])
 	if f.get("eltanin", false):
 		return not _light_machines(s, p).is_empty()
 	if f.has("special_hand_if"):
@@ -596,6 +599,13 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 	if f.get("special_banish_ld", false):
 		for attr in ["LIGHT", "DARK"]:
 			events.append_array(s._banish(_gy_attr(s, p, attr, c)))
+	if f.has("special_banish_race"):
+		var pool_sb: Array = ps.gy.filter(func(g): return g.is_monster() and str(g.data.get("race", "")) == str(f["special_banish_race"][0]))
+		pool_sb.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+		var n_sb := int(f["special_banish_race"][1])
+		for g in s.choose(p, Loc.t("%s: banish %d monsters from your Graveyard") % [c.cname(), n_sb], pool_sb, n_sb, pool_sb.slice(0, n_sb), false, c):
+			events.append_array(s._banish(g))
+		c.proper = true
 	var gain_atk := 0
 	if f.has("special_tribute_names"):
 		for m in _named_set(s, p, c, f["special_tribute_names"]):
@@ -2114,6 +2124,26 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"necro_mark":
+			# Dark Necrofear was destroyed in the Monster Zone by the opponent's card: it acts in this turn's End Phase.
+			if s.effect_by != p or ctx.has("killer"):
+				c.set_meta("necro_turn", s.turn)
+		"morphing_jar":
+			# "Both players discard as many cards as possible from their hands, also, after that, each player draws 5 cards."
+			for q in [p, opp_i]:
+				for h in s.players[q].hand.duplicate():
+					s.players[q].hand.erase(h)
+					s._to_gy(s.players[q], h)
+					events.append({"type": "discard", "player": q, "card": h})
+			for q in [p, opp_i]:
+				events.append_array(s._draw(q, 5))
+		"opp_discard_random":
+			if not opp.hand.is_empty():
+				var rnd_h = opp.hand[randi() % opp.hand.size()]
+				opp.hand.erase(rnd_h)
+				s._to_gy(opp, rnd_h)
+				events.append(_ev(p, c, Loc.t("%s: the opponent discards %s") % [name, rnd_h.cname()]))
+				events.append({"type": "discard", "player": opp_i, "card": rnd_h})
 		"umbral_ghost":
 			# (Only when it came out by its own effect, not when something else Special Summoned it.)
 			if int(c.get_meta("hand_fx_turn", -1)) != s.turn or int(ps.once_names.get("Umbral Horror Ghost", -1)) == s.turn:
