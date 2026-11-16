@@ -259,14 +259,14 @@ func _build_slots() -> void:
 		ace.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ace.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		ace.size = Vector2(104, 152)
-		ace.position = Vector2(PANEL_SIZE.x - 124, PANEL_SIZE.y - 176)
+		ace.position = Vector2(PANEL_SIZE.x - 128, PANEL_SIZE.y - 300)   # (above the name and the lines under it, never on them)
 		ace.pivot_offset = ace.size / 2.0
 		ace.rotation = deg_to_rad(6.0)
 		ace.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(ace)
 		var name_l := Comic.label("", 46, Color.WHITE)
 		name_l.position = Vector2(20, PANEL_SIZE.y - 132)
-		name_l.size = Vector2(PANEL_SIZE.x - 150, 52)
+		name_l.size = Vector2(PANEL_SIZE.x - 44, 52)
 		name_l.clip_text = true
 		b.add_child(name_l)
 		var title_l := UITheme.label("", 19, UITheme.GOLD, UITheme.semi_font())
@@ -274,7 +274,7 @@ func _build_slots() -> void:
 		b.add_child(title_l)
 		var sub := UITheme.label("", 18, UITheme.TEXT_DIM)
 		sub.position = Vector2(22, PANEL_SIZE.y - 52)
-		sub.size = Vector2(PANEL_SIZE.x - 150, 24)
+		sub.size = Vector2(PANEL_SIZE.x - 44, 24)
 		sub.clip_text = true
 		b.add_child(sub)
 		# The side the roster is choosing for says so, in a ribbon across the top of its panel.
@@ -357,6 +357,15 @@ func _unique(ids: Array) -> Array:
 	return out
 
 
+## A long name ("Maximillion Pegasus") gets a smaller font instead of being cut off.
+func _fit_font(l: Label, base: int) -> void:
+	var f: Font = l.get_theme_font("font")
+	var sz := base
+	while sz > 24 and f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x > l.size.x:
+		sz -= 2
+	l.add_theme_font_size_override("font_size", sz)
+
+
 func _refresh_slots() -> void:
 	for side in _slots:
 		var key: String = _me if side == "me" else _opp
@@ -368,6 +377,7 @@ func _refresh_slots() -> void:
 		sl["portrait"].texture = Portraits.get_portrait(key, true)
 		_fit_slot(sl["portrait"], key)
 		sl["name"].text = str(info.get("name", "")).to_upper()
+		_fit_font(sl["name"], 46)
 		sl["title"].text = str(info.get("title", ""))
 		var deck_key := _deck_of(side)
 		sl["sub"].text = Loc.t("%s  ·  %s Deck") % [info.get("era", ""), CardData.deck_name(deck_key)]

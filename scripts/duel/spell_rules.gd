@@ -124,7 +124,13 @@ const FX := {
 	"Knight's Title": {"k": "normal", "ai": "always", "cost": "tribute_f", "cost_f": {"name": "Dark Magician"}, "do": [["special_named", "Dark Magician Knight", ["hand", "deck", "gy"]]]},
 	# ---------------------------------------------------------------- Marik's cards (v0.33.36)
 	"Coffin Seller": {"k": "ctrap", "win": ["free"], "ai": "always"},
-	"Metal Reflect Slime": {"k": "trap", "win": ["free", "attack"], "do": [["tokens", 1, "Metal Reflect Slime", 26905246, 0, 3000, 10, "WATER", "Aqua", "free"]]},
+	# ---- v0.33.37
+	"Metalmorph": {"k": "ctrap", "win": ["free"], "t": "own_face", "equip": true, "atk": 300, "def": 300, "metalmorph": true, "ai": "metalmorph"},
+	"Dark Sanctuary": {"k": "field", "sanctuary": true, "ai": "always"},
+	"Doble Passe": {"k": "trap", "win": ["attack"], "cond": "doble_passe", "do": [["doble_passe"]]},
+	"Cyberdark Impact!": {"k": "normal", "cond": "cyberdark_parts", "ai": "always", "do": [["cyberdark_impact"]]},
+	"Assault Mode Activate": {"k": "trap", "win": ["free"], "cond": "assault_ready", "ai": "always", "do": [["assault_mode"]]},
+	"Metal Reflect Slime": {"k": "trap", "win": ["free", "attack"], "do": [["trap_monster", 0, 3000, 10, "WATER", "Aqua"]]},
 	# ---------------------------------------------------------------- Mai's cards (v0.33.36)
 	"Harpie Lady Phoenix Formation": {"k": "normal", "cond": "three_harpies", "do": [["phoenix_formation"]]},
 	"Triangle Ecstasy Spark": {"k": "normal", "cond": "own_sisters", "do": [["triangle_spark"]]},
@@ -149,7 +155,7 @@ const FX := {
 	"Infernity Reflector": {"k": "trap", "win": [], "battle_death": true, "cond": "reflector", "do": [["reflector"]]},
 	"Full Salvo": {"k": "trap", "win": ["free"], "cond": "own_hand", "do": [["full_salvo"]]},
 	# ---------------------------------------------------------------- Vector's cards (v0.33.36)
-	"Vain Betrayer": {"k": "trap", "win": ["attack"], "cond": "opp_xyz_attacks", "do": [["vain"]]},
+	"Vain Betrayer": {"k": "ctrap", "win": ["attack"], "cond": "opp_xyz_attacks", "do": [["vain"]]},
 	# ---------------------------------------------------------------- Shark's cards (v0.33.36)
 	"Poseidon Wave": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["poseidon"]]},
 	# ---------------------------------------------------------------- Yuma's cards (v0.33.36)
@@ -655,10 +661,46 @@ static func field_flag(s: DuelState, flag: String) -> bool:
 
 ## Would activating this card do anything right now?
 ## A card's own "only if / only during" condition.
+static func _cyberdark_part(s: DuelState, p: int, part: String):
+	var ps := s.players[p]
+	for m in ps.monsters():
+		if m.face_up and m.cname() == part:
+			return m
+	for x in ps.hand + ps.gy:
+		if x.cname() == part:
+			return x
+	return null
+
+
+## [Synchro Monster you control, its "/Assault Mode" in your Deck] pairs.
+static func _assault_pairs(s: DuelState, p: int) -> Array:
+	var ps := s.players[p]
+	var out := []
+	for m in ps.monsters():
+		if not m.face_up or m.frame() != "synchro" or not s.can_tribute_fx(m):
+			continue
+		for d in ps.deck:
+			if d.cname().ends_with("/Assault Mode") and d.cname().contains(m.cname()):
+				out.append([m, d])
+				break
+	return out
+
+
 static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 	if cond.begins_with("opp_lp_over:"):
 		return s.players[s.opponent(p)].lp > int(cond.substr(12))
 	match cond:
+		"cyberdark_parts":
+			# Cyberdark Impact!: Horn, Edge and Keel, from the hand, field and/or GY, and Cyberdark Dragon in the Extra Deck.
+			if s.players[p].extra.filter(func(x): return x.cname() == "Cyberdark Dragon").is_empty():
+				return false
+			for part in ["Cyberdark Horn", "Cyberdark Edge", "Cyberdark Keel"]:
+				if _cyberdark_part(s, p, part) == null:
+					return false
+			return true
+		"assault_ready":
+			# Assault Mode Activate: a Synchro Monster to Tribute whose "/Assault Mode" is in the Deck.
+			return not _assault_pairs(s, p).is_empty()
 		"echo_ready":
 			# Echo Resonance: a Lumen, Echo Spirit to Tribute, and a Lumen, Echo Radiant to bring out.
 			return echo_tribute(s, p) != null and echo_radiant(s, p) != null
@@ -714,6 +756,12 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 		"reflector":
 			var dead = s.get_meta("battle_dead") if s.has_meta("battle_dead") else null
 			return dead != null and dead.cname().contains("Infernity") and s.players[p].gy.has(dead)
+		"doble_passe":
+			# "When an opponent's monster declares an attack on a face-up Attack Position monster you control".
+			if s.pending_attack.is_empty() or s.pending_attack["player"] == p or s.pending_attack.get("negated", false):
+				return false
+			var dp_t = s.pending_attack["target"]
+			return dp_t != null and dp_t.face_up and dp_t.attack_pos and s.players[p].field.has(dp_t)
 		"opp_xyz_attacks":
 			return not s.pending_attack.is_empty() and s.pending_attack["player"] != p and s.pending_attack["attacker"].frame() == "xyz"
 		"two_gagaga":
@@ -857,6 +905,11 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 		return false
 	if _needs_target(sp) and targets(s, p, c).is_empty():
 		return false
+	if s.ss_locked(p):
+		# Gagaga Head: no Special Summons this turn except Gagaga Xyz.
+		for a in sp.get("do", []):
+			if str(a[0]) in ["revive", "special", "tokens"] or str(a[0]).begins_with("special_") or str(a[0]).begins_with("revive"):
+				return false
 	var ps := s.players[p]
 	var opp := s.players[s.opponent(p)]
 	for a in sp.get("do", []):
@@ -892,7 +945,7 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 						found_n = true
 				if not found_n or ps.free_zone() == -1 or ps.no_summon_turn == s.turn:
 					return false
-			"tokens":
+			"tokens", "trap_monster":
 				if ps.free_zone() == -1:
 					return false
 			"gold_sarcophagus":
@@ -1173,6 +1226,11 @@ static func auto_target(s: DuelState, p: int, c) -> Variant:
 	for a in sp.get("do", []):
 		if a[0] in ["atk", "def"] and int(a[2]) > 0:
 			helpful = true
+	if sp.get("metalmorph", false):
+		# Metalmorph goes on Red-Eyes Black Dragon when it can (Red-Eyes Black Metal Dragon), else on the strongest of yours.
+		for x in list:
+			if x.cname() == "Red-Eyes Black Dragon" and s.players[p].field.has(x):
+				return x
 	var best = null
 	var best_v := -1e9
 	for x in list:
@@ -2393,12 +2451,86 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				v_t.tags["vain"] = true
 				v_t.neg_perm = true
 				v_t.negated = true
+				c.linked = v_t   # "When that monster leaves the field, destroy this card."
 				events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s can no longer attack and its effects are negated") % v_t.cname()})
 		"poseidon":
 			# Poseidon Wave: "inflict 800 damage to your opponent for each Fish, Sea Serpent, or Aqua-Type monster you control."
 			var n_p := ps.monsters().filter(func(m): return m.face_up and str(m.data.get("race", "")) in ["Fish", "Sea Serpent", "Aqua"]).size()
 			if n_p > 0:
 				events.append_array(s._damage(s.opponent(p), 800 * n_p))
+		"doble_passe":
+			# Doble Passe: "Make your opponent's attack a direct attack instead and inflict damage to your opponent equal to the ATK of the attack
+			# target you control. Also, that monster you control can attack your opponent directly during your next turn."
+			if s.pending_attack.is_empty() or s.pending_attack["target"] == null:
+				return events
+			var dp = s.pending_attack["target"]
+			s.pending_attack["target"] = null
+			var dp_dmg := s.atk_of(dp, false)
+			events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s: the attack goes direct, %d damage back") % [c.cname(), dp_dmg]})
+			events.append_array(s._damage(s.opponent(p), dp_dmg))
+			dp.tags["direct_turn"] = s.turn + 1   # (the turn counter counts each player's turn: +1 is the next turn, which is yours)
+		"cyberdark_impact":
+			# Cyberdark Impact!: "Fusion Summon 1 "Cyberdark Dragon" from your Extra Deck, by shuffling 1 each of "Cyberdark Horn", "Cyberdark Edge",
+			# and "Cyberdark Keel" from your hand, field, and/or GY, into the Deck, as Fusion Material."
+			var cd: Array = ps.extra.filter(func(x): return x.cname() == "Cyberdark Dragon")
+			if cd.is_empty():
+				return events
+			var parts := []
+			for part in ["Cyberdark Horn", "Cyberdark Edge", "Cyberdark Keel"]:
+				var pc = _cyberdark_part(s, p, part)
+				if pc == null:
+					return events
+				parts.append(pc)
+			var on_f: bool = false
+			for pc in parts:
+				if ps.field.has(pc):
+					on_f = true
+			if not on_f and ps.free_zone() == -1:
+				return events
+			for pc in parts:
+				if ps.field.has(pc):
+					var zc := ps.field.find(pc)
+					ps.field[zc] = null
+					pc.reset_mods()
+					events.append({"type": "material", "player": p, "card": pc, "from": "field", "zone": zc})
+					events.append_array(s._monster_left(pc))
+				elif ps.hand.has(pc):
+					ps.hand.erase(pc)
+					events.append({"type": "material", "player": p, "card": pc, "from": "hand"})
+				else:
+					ps.gy.erase(pc)
+				ps.deck.append(pc)
+			s._shuffle(ps.deck)
+			var f_cd = cd[0]
+			ps.extra.erase(f_cd)
+			f_cd.proper = true
+			events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s: the three Cyberdarks go back into the Deck") % c.cname()})
+			events.append_array(s._special(p, f_cd, "fusion"))
+			events.append_array(EffectRunner.on_summon(s, p, f_cd, "fusion"))
+		"assault_mode":
+			# Assault Mode Activate: "Tribute 1 Synchro Monster; Special Summon 1 "/Assault Mode" monster, whose name includes the Tributed
+			# monster's name, from your Deck in Attack Position."
+			var pairs := _assault_pairs(s, p)
+			if pairs.is_empty():
+				return events
+			var pair = pairs[0]
+			if pairs.size() > 1:
+				var who = s.pick1(p, Loc.t("%s: Tribute which Synchro Monster?") % c.cname(), pairs.map(func(x): return x[0]), pairs[0][0], c)
+				for x in pairs:
+					if x[0] == who:
+						pair = x
+			var sy: DuelState.CardInst = pair[0]
+			var am: DuelState.CardInst = pair[1]
+			ps.field[ps.field.find(sy)] = null
+			s._to_gy(ps, sy)
+			events.append({"type": "tribute", "player": p, "card": sy})
+			events.append_array(s._monster_left(sy))
+			ps.deck.erase(am)
+			s._shuffle(ps.deck)
+			am.proper = true
+			events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s calls %s") % [c.cname(), am.cname()]})
+			events.append_array(s._special(p, am, "effect", "atk"))
+			events.append_array(EffectRunner.on_summon(s, p, am, "special"))
 		"gagagatag":
 			# Gagagatag: "All "Gagaga" monsters you currently control gain 500 ATK for each "Gagaga" monster you currently control, until your next Standby Phase."
 			ps.once_names["Gagagatag"] = s.turn
@@ -2591,6 +2723,24 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				for m in s.players[q].monsters():
 					if m.face_up and str(m.data.get("race", "")) == str(a[1]):
 						events.append_array(s._destroy(m))
+		"trap_monster":
+			# "Special Summon this card in Defense Position as an Effect Monster (Aqua/WATER/Level 10/ATK 0/DEF 3000).
+			# (This card is also still a Trap.) If Summoned this way, this card cannot attack."
+			var tz := ps.spells.find(c)
+			if tz == -1 or ps.free_zone() == -1:
+				return events
+			ps.spells[tz] = null
+			c.set_meta("trap_data", c.data)
+			var md: Dictionary = (c.data as Dictionary).duplicate()
+			md["kind"] = "monster"
+			md["frame"] = "effect"
+			md["atk"] = int(a[1])
+			md["def"] = int(a[2])
+			md["level"] = int(a[3])
+			md["attribute"] = str(a[4])
+			md["race"] = str(a[5])
+			c.data = md
+			events.append_array(s._special(p, c, "effect", "def"))
 		"tokens":
 			# ["tokens", n, name, id, atk, def, level, attribute, race]: n Tokens in Defense Position.
 			CardData.TOKENS[int(a[3])] = {"name": str(a[2]), "frame": "token", "atk": int(a[4]), "def": int(a[5]), "level": int(a[6]),
@@ -2637,8 +2787,8 @@ static func ritual_plan(s: DuelState, p: int, c) -> Dictionary:
 			continue
 		var pool: Array = []
 		for x in ps.hand:
-			if x != h and x.is_monster() and x.frame() != "ritual":
-				pool.append(x)
+			if x != h and x.is_monster() and not CardData.is_extra(x.id):
+				pool.append(x)   # (another Ritual Monster in the hand can be a Tribute too)
 		pool.append_array(ps.monsters())
 		pool.sort_custom(func(a, b): return s._card_value(a) < s._card_value(b))
 		var picks := []
@@ -2658,7 +2808,7 @@ static func _ritual_pool(s: DuelState, p: int, h) -> Array:
 	var ps := s.players[p]
 	var pool: Array = []
 	for x in ps.hand:
-		if x != h and x.is_monster() and x.frame() != "ritual":
+		if x != h and x.is_monster() and not CardData.is_extra(x.id):
 			pool.append(x)
 	pool.append_array(ps.monsters())
 	pool.sort_custom(func(a, b): return s._card_value(a) < s._card_value(b))
@@ -2745,6 +2895,8 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs) -> int:
 				b += int(sp.get("atk", 0))
 				if sp.has("atk_per"):
 					b += _per(s, q, str(sp["atk_per"][0])) * int(sp["atk_per"][1])
+				if sp.get("metalmorph", false) and attacking and vs != null:
+					b += s.atk_of(vs, false) / 2   # Metalmorph: "If it attacks, it gains ATK equal to half the ATK of the attack target, during damage calculation only."
 				if sp.get("megamorph", false):
 					var mine := s.players[q].lp
 					var theirs := s.players[s.opponent(q)].lp
@@ -2883,6 +3035,8 @@ static func can_attack(s: DuelState, p: int, c) -> bool:
 		return false   # Vengeful Bog Spirit: "Monsters cannot attack the turn they are Summoned."
 	if s.players[p].no_attack_turn >= s.turn:
 		return false
+	if c.has_meta("trap_data"):
+		return false   # a Trap Card that became a monster (Metal Reflect Slime) cannot attack
 	if equip_flag(s, c, "no_attack"):
 		return false
 	for q in 2:

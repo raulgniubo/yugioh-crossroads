@@ -1546,8 +1546,11 @@ func _sharpen(key: String) -> void:
 		if _stages.has(old):
 			(_stages[old] as SubViewport).size = stage_size()
 			# A portrait that is holding its last frame has to draw once more at the new size.
+			# (Drawn live again until a picture is really there, then frozen: a single UPDATE_ONCE could
+			# lose the race with a freeze already waiting and leave the tile empty.)
 			if not _live.has(old):
-				(_stages[old] as SubViewport).render_target_update_mode = SubViewport.UPDATE_ONCE
+				(_stages[old] as SubViewport).render_target_update_mode = SubViewport.UPDATE_ALWAYS
+				_freeze_later(old)
 
 
 const LIVE_MAX := 5
@@ -1614,9 +1617,29 @@ func _freeze_later(key: String) -> void:
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
+	# Still nothing in the picture (a model whose textures or meshes arrived late): keep drawing
+	# and look again, so a tile never freezes empty (Pegasus's tile on the Mac, Bakura's on Windows).
+	var checks := 0
+	while _stages.has(key) and not _live.has(key) and checks < 20 and _blank(_stages[key]):
+		checks += 1
+		await get_tree().create_timer(0.5).timeout
 	if _stages.has(key) and not _live.has(key):
 		(_stages[key] as SubViewport).render_target_update_mode = SubViewport.UPDATE_DISABLED
 		_awake(key, false)
+
+
+## True when a portrait's picture is still empty: a few points down the middle are all see-through.
+func _blank(vp: SubViewport) -> bool:
+	var img := vp.get_texture().get_image()
+	if img == null or img.is_empty():
+		return true
+	var w := img.get_width()
+	var h := img.get_height()
+	for fy in [0.3, 0.45, 0.6, 0.75, 0.9]:
+		for fx in [0.35, 0.5, 0.65]:
+			if img.get_pixel(int(w * fx), int(h * fy)).a > 0.05:
+				return false
+	return true
 
 
 ## A portrait that holds its last frame has nobody to move for: its little stage (the model's

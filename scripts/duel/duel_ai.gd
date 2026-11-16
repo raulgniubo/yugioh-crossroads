@@ -165,7 +165,7 @@ static func has_use(s: DuelState, p: int, c) -> bool:
 	if c.cname() == "Power Bond":
 		# Its damage in the End Phase must not be the computer's own end.
 		for o in s.fusion_targets(p, c):
-			if o["card"].atk() >= s.players[p].lp:
+			if s.fusion_orig_atk(o) >= s.players[p].lp:
 				return false
 	if str(sp.get("ai_if", "")) == "insect_queen" and s.players[p].monsters().filter(func(m): return m.face_up and m.cname() == "Insect Queen").is_empty():
 		return false   # Multiplication of Ants: the Tokens are for Insect Queen's attacks, nothing else
@@ -234,7 +234,7 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 				var lost := 0
 				for m in plan["field"]:
 					lost += m.atk()
-				if plan["card"].atk() > lost or level == EASY:
+				if s.fusion_orig_atk(plan) > lost or level == EASY:
 					return {"do": "activate", "card": c, "choice": plan["card"]}
 	# 2. Synchro / Xyz when it's an upgrade
 	if level > EASY:
@@ -317,9 +317,9 @@ static func _heuristic_main(s: DuelState, p: int, level: int) -> Dictionary:
 		for m in me.monsters():
 			if not s.can_change_position(p, m):
 				continue
-			if not m.attack_pos and m.atk() > opp_best:
+			if not m.attack_pos and s.atk_of(m, false) > opp_best:
 				return {"do": "position", "card": m}
-			if m.attack_pos and m.atk() < opp_best and m.def() > m.atk():
+			if m.attack_pos and s.atk_of(m, false) < opp_best and s.def_of(m) > s.atk_of(m, false):
 				return {"do": "position", "card": m}
 	return {}
 
@@ -333,7 +333,7 @@ static func next_attack(s: DuelState, p: int, level := NORMAL) -> Dictionary:
 		if a.is_empty() or s.attack_allowed(p, a["card"], a.get("target")):
 			return a
 		var m: DuelState.CardInst = a["card"]
-		var t := _best_target(m, s.attack_targets_for(p, m), 1500)
+		var t := _best_target(m, s.attack_targets_for(p, m), 1500, s)
 		if t != null and (not t.face_up or s.atk_of(m, true) > (s.atk_of(t, true) if t.attack_pos else t.def())):
 			return {"do": "attack", "card": m, "target": t}
 		skip.append(m)
@@ -365,7 +365,7 @@ static func _next_attack(s: DuelState, p: int, level: int, skip: Array) -> Dicti
 				if st == "aggro" and not t.face_up and m.atk() >= 1500:
 					return {"do": "attack", "card": m, "target": t}
 		return {}
-	var pick := _hard_attack(attackers, opp)
+	var pick := _hard_attack(attackers, opp, s)
 	if st == "aggro" and pick.is_empty():
 		# Reckless: trade evenly, and swing at anything face-down.
 		for m in attackers:
@@ -380,16 +380,16 @@ static func _next_attack(s: DuelState, p: int, level: int, skip: Array) -> Dicti
 	return pick
 
 
-static func _best_target(m: DuelState.CardInst, targets: Array, facedown_min: int) -> DuelState.CardInst:
+static func _best_target(m: DuelState.CardInst, targets: Array, facedown_min: int, s: DuelState = null) -> DuelState.CardInst:
 	var best: DuelState.CardInst = null
 	var best_score := -1
 	for t in targets:
 		var score := -1
-		if t.face_up and t.attack_pos and m.atk() > t.atk():
-			score = 1000 + t.atk()
-		elif t.face_up and not t.attack_pos and m.atk() > t.def():
-			score = 500 + t.def()
-		elif not t.face_up and m.atk() >= facedown_min:
+		if t.face_up and t.attack_pos and _va(s, m) > _va(s, t):
+			score = 1000 + _va(s, t)
+		elif t.face_up and not t.attack_pos and _va(s, m) > _vd(s, t):
+			score = 500 + _vd(s, t)
+		elif not t.face_up and _va(s, m) >= facedown_min:
 			score = 100
 		if score > best_score:
 			best_score = score
@@ -399,26 +399,26 @@ static func _best_target(m: DuelState.CardInst, targets: Array, facedown_min: in
 
 ## Kill the biggest threat with the smallest monster that still wins, so the
 ## stronger monsters stay free for the next target or a direct hit.
-static func _hard_attack(attackers: Array, opp: DuelState.PlayerState) -> Dictionary:
+static func _hard_attack(attackers: Array, opp: DuelState.PlayerState, s: DuelState = null) -> Dictionary:
 	var targets: Array = opp.monsters()
 	if not opp.set_cards().is_empty() and attackers.size() > 1:
 		# Possible traps: lead with the weakest attacker that still does something.
 		var weakest: Array = attackers.duplicate()
-		weakest.sort_custom(func(a, b): return a.atk() < b.atk())
+		weakest.sort_custom(func(a, b): return _va(s, a) < _va(s, b))
 		for m in weakest:
 			if targets.is_empty():
 				return {"do": "attack", "card": m, "target": null}
 			for t in targets:
-				if t.face_up and m.atk() > (t.atk() if t.attack_pos else t.def()):
+				if t.face_up and _va(s, m) > (_va(s, t) if t.attack_pos else _vd(s, t)):
 					return {"do": "attack", "card": m, "target": t}
-	targets.sort_custom(func(a, b): return _threat(a) > _threat(b))
+	targets.sort_custom(func(a, b): return _threat(a, s) > _threat(b, s))
 	for t in targets:
 		if not t.face_up:
 			continue
-		var need: int = t.atk() if t.attack_pos else t.def()
+		var need: int = _va(s, t) if t.attack_pos else _vd(s, t)
 		var pick: DuelState.CardInst = null
 		for m in attackers:
-			if m.atk() > need and (pick == null or m.atk() < pick.atk()):
+			if _va(s, m) > need and (pick == null or _va(s, m) < _va(s, pick)):
 				pick = m
 		if pick != null:
 			return {"do": "attack", "card": pick, "target": t}
@@ -427,15 +427,24 @@ static func _hard_attack(attackers: Array, opp: DuelState.PlayerState) -> Dictio
 		if not t.face_up:
 			var probe: DuelState.CardInst = null
 			for m in attackers:
-				if m.atk() >= 1500 and (probe == null or m.atk() < probe.atk()):
+				if _va(s, m) >= 1500 and (probe == null or _va(s, m) < _va(s, probe)):
 					probe = m
 			if probe != null:
 				return {"do": "attack", "card": probe, "target": t}
 	return {}
 
 
-static func _threat(t: DuelState.CardInst) -> int:
-	return t.atk() if t.face_up else 1200
+static func _threat(t: DuelState.CardInst, s: DuelState = null) -> int:
+	return _va(s, t) if t.face_up else 1200
+
+
+## ATK / DEF as they are right now (equips, Chimeratech Overdragon's own ATK); without a duel at hand, the lasting changes only.
+static func _va(s: DuelState, m) -> int:
+	return s.atk_of(m, false) if s != null else _a(m)
+
+
+static func _vd(s: DuelState, m) -> int:
+	return s.def_of(m) if s != null else _d(m)
 
 
 static func _strongest_atk(ps: DuelState.PlayerState) -> int:
@@ -524,6 +533,10 @@ static func _setup_spell(s: DuelState, p: int) -> Dictionary:
 				continue   # the same Field Spell is already up
 			if SpellRules._needs_target(SpellRules.spec(c)) and SpellRules.auto_target(s, p, c) == null:
 				continue
+			return {"do": "activate", "card": c}
+		# Metalmorph: onto Red-Eyes Black Dragon, for Red-Eyes Black Metal Dragon.
+		if tag == "metalmorph" and not me.deck.filter(func(x): return x.cname() == "Red-Eyes Black Metal Dragon").is_empty() \
+				and not me.monsters().filter(func(m): return m.face_up and m.cname() == "Red-Eyes Black Dragon").is_empty():
 			return {"do": "activate", "card": c}
 		# Toon World: once, when there is a Toon to use it and the 1000 LP can be spared.
 		if tag == "toon_world" and me.lp > 2000 and me.spells.filter(func(x): return x != null and x.face_up and x.cname() == "Toon World").is_empty() \
@@ -979,7 +992,7 @@ static func _after_battle(sim: DuelState, p: int, stop: bool) -> float:
 		if attackers.is_empty():
 			break
 		attackers.sort_custom(func(a, b): return sim.atk_of(a, true) > sim.atk_of(b, true))
-		var a: Dictionary = {"do": "attack", "card": attackers[0], "target": null} if sim.can_direct_attack(p) else _hard_attack(attackers, sim.players[sim.opponent(p)])
+		var a: Dictionary = {"do": "attack", "card": attackers[0], "target": null} if sim.can_direct_attack(p) else _hard_attack(attackers, sim.players[sim.opponent(p)], sim)
 		if a.is_empty():
 			break
 		if sim.attack(p, a["card"], a["target"]).is_empty():
@@ -1297,6 +1310,15 @@ static func choose_response(s: DuelState, p: int, window: String, options: Array
 
 
 ## Board + life point evaluation from player p's point of view.
+## A monster's ATK / DEF with its lasting changes (Chimeratech Overdragon, an equipped Gearfried): what the board is really worth.
+static func _a(m) -> int:
+	return maxi(0, m.atk() + m.atk_mod)
+
+
+static func _d(m) -> int:
+	return maxi(0, m.def() + m.def_mod)
+
+
 static func _evaluate(s: DuelState, p: int, expert := false) -> float:
 	if s.is_over():
 		return 1e8 if s.winner == p else -1e8
@@ -1322,18 +1344,18 @@ static func _evaluate_expert(s: DuelState, p: int, o: int) -> float:
 	var my_best := 0
 	var opp_best := 0
 	for m in me.monsters():
-		my_best = maxi(my_best, m.atk() if m.attack_pos else 0)
+		my_best = maxi(my_best, _a(m) if m.attack_pos else 0)
 	for m in opp.monsters():
-		opp_best = maxi(opp_best, m.atk() if (m.face_up and m.attack_pos) else 0)
+		opp_best = maxi(opp_best, _a(m) if (m.face_up and m.attack_pos) else 0)
 	for m in me.monsters():
-		var v := float(maxi(m.atk(), m.def()) + _held(me, m)) * 0.9 + 420.0 + 220.0 * m.overlays.size()
+		var v := float(maxi(_a(m), _d(m)) + _held(me, m)) * 0.9 + 420.0 + 220.0 * m.overlays.size()
 		# A monster that would just be run over next turn is worth less.
-		if m.attack_pos and m.atk() + _held(me, m) < opp_best:
+		if m.attack_pos and _a(m) + _held(me, m) < opp_best:
 			v *= 0.55
 		score += v
 	for m in opp.monsters():
-		var v2 := float(maxi(m.atk(), m.def()) + _held(opp, m)) * 0.9 + 420.0 + 220.0 * m.overlays.size()
-		if m.face_up and m.attack_pos and m.atk() + _held(opp, m) < my_best:
+		var v2 := float(maxi(_a(m), _d(m)) + _held(opp, m)) * 0.9 + 420.0 + 220.0 * m.overlays.size()
+		if m.face_up and m.attack_pos and _a(m) + _held(opp, m) < my_best:
 			v2 *= 0.55
 		score -= v2 * 1.05
 	score += _ace_value(s, p) - _ace_value(s, o)
@@ -1348,7 +1370,7 @@ static func _evaluate_expert(s: DuelState, p: int, o: int) -> float:
 			if m.attack_pos:
 				out += 1
 				if out > 2:
-					score -= (float(m.atk()) * 0.9 + 420.0) * 0.22 * minf(2.0, float(hidden))
+					score -= (float(_a(m)) * 0.9 + 420.0) * 0.22 * minf(2.0, float(hidden))
 	# An empty field against attackers is an emergency.
 	if me.monsters().is_empty() and not opp.monsters().is_empty():
 		score -= 900.0
@@ -1393,10 +1415,10 @@ static func _board(ps: DuelState.PlayerState) -> float:
 	var v := 0.0
 	for m in ps.monsters():
 		var held := _held(ps, m)
-		v += float(maxi(m.atk(), m.def()) + held) * 0.9 + 300.0
+		v += float(maxi(_a(m), _d(m)) + held) * 0.9 + 300.0
 		v += 200.0 * m.overlays.size()
 		# A small monster standing in Attack Position is an open door (a Tuner waiting for its
 		# partner is better off Set).
-		if m.face_up and m.attack_pos and m.atk() + held < 1000 and not m.is_token():
-			v -= float(1000 - m.atk() - held) * 0.6
+		if m.face_up and m.attack_pos and _a(m) + held < 1000 and not m.is_token():
+			v -= float(1000 - _a(m) - held) * 0.6
 	return v

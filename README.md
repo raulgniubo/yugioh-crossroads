@@ -5,6 +5,61 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.37
+
+**Finishing what 0.33.36 left half done.** The 8 cards that were only partly working now do everything their text says, and the duelists' missing aces are in their decks.
+
+### Fixes from your notes
+
+- **Empty Pegasus tile:** a portrait could be put to sleep while it was being redrawn at a new size, and it stayed empty. Now a tile that is still empty keeps drawing until its picture is really there.
+- **The card covered the name** (Maximillion Pegasus) **and the line under it** (Chazz's "unlocks..."): the card now sits above the name, the name and that line use the whole width, and a long name gets a slightly smaller font instead of being cut.
+
+### The 8 partial cards, now complete
+
+- **ZW - Eagle Claw:** while equipped, negates the first Trap the opponent activates each turn.
+- **ZW - Leo Arms:** after the equipped Utopia attacks, send Leo Arms to the Graveyard and Utopia attacks a monster again.
+- **Gagaga Head:** the Summon lock (only Gagaga Xyz Summons for the rest of the turn) and the draw when it is used for an Xyz Summon.
+- **Infernity General:** the two Infernities come back with their effects negated, like the card says.
+- **Vain Betrayer:** stays on the field and sends the top 3 cards of the opponent's Deck to the Graveyard every End Phase of theirs; goes when that Xyz leaves.
+- **Helpoemer:** the discard happens at the end of every one of the opponent's Battle Phases while it sits in the Graveyard, not once.
+- **Metal Reflect Slime:** the Trap card itself becomes the monster (not a Token), cannot attack, and is a Trap again in the Graveyard.
+- **Triangle Ecstasy Spark:** checked again, it already matched its text (all their Traps off for the turn). I listed it as partial by mistake.
+
+### New aces (built against their text, each with a test, and in the decks)
+
+- **Kaiba:** Chaos Emperor Dragon - Envoy of the End.
+- **Joey:** Metalmorph into Red-Eyes Black Metal Dragon.
+- **Bakura:** Dark Sanctuary (the coin toss that negates attacks).
+- **Rex:** Tyrant Dragon.
+- **Jaden:** Yubel's three forms: Yubel, Yubel - Terror Incarnate, Yubel - The Ultimate Nightmare.
+- **Chazz:** Light and Darkness Dragon, Ojama Knight.
+- **Zane:** Cyberdark Impact!, Chimeratech Overdragon, Cyber Dragon Zwei.
+- **Syrus:** Pair Cycroid.
+- **Jack:** Assault Mode Activate with Red Dragon Archfiend/Assault Mode, Crimson Blader.
+- **Akiza:** Tytannial, Princess of Camellias.
+- **Yuma:** Number S39: Utopia the Lightning, Number F0: Utopic Future.
+- **Alexis:** Doble Passe, and a rebuilt list: Cyber Petit Angel x3 finds Machine Angel Ritual, fewer Cyber Angels so they stop clogging the hand, and Machine Angel Ritual can now Tribute another Ritual Monster from the hand (it should always have been able to).
+- **Jaden:** rebuilt list, two of each fusion half so Polymerization and Miracle Fusion land, Necroshade for a free Neos.
+- New engine pieces: Fusion Monsters with described materials ("2 Ojama monsters", "Cyber Dragon + 1 or more Machines", "2 Machines with the same name"), a Trap that turns into a monster, "negate when activated" effects that work for every card, a Summon lock for Level 5+ monsters.
+
+### Test duels (10 per deck on Hard, against the house mix)
+
+Yugi 5, Kaiba 4, Joey 4, Mai 3, Bakura 5, Marik 5, Pegasus 1, Weevil 4, Rex 6, Jaden 4, Chazz 5, Zane 5, Alexis 3, Syrus 3, Aster 2, Yusei 4, Jack 5, Crow 7, Akiza 3, Kalin 3, Yuma 6, Shark 6, Kite 6, Vector 2. Jaden went from 1 to 4 or 5, Alexis from 1 to 3 or 4. 10 duels swing by 2 or 3 either way.
+
+The computer also got smarter in two places, which shows up on both sides of these duels: it now counts ATK changes that last (equips, Chimeratech Overdragon) when it picks attacks and judges the board (it used to look at the printed ATK only, so Overdragon never attacked), and its look-ahead copies of the duel keep every card note.
+
+**Not done or not checked:**
+
+- **Left out on purpose:** Dragon Master Knight (needs Black Luster Soldier, which Kaiba's deck does not run), Rainbow Neos (needs Jesse's Crystal Beasts), Dark Highlander (it stops Synchro Summons, including Jack's own), Black Garden (halves Akiza's own Synchros), Rosaria (needs two Level 7+ Plants Akiza does not run), Earthbound Immortal Ccapac Apu (needs a Field Spell; Kalin's deck has none outside Turbo Duels), Number 99 (Yuma runs no Level 10s), Number 93, Kite's Numbers 20, 30 and 56 (weak, they would be filler), White Night Dragon, UFOroid Fighter, Ambulance Rescueroid.
+- **Not in the card database, so they cannot be built:** Divine Neos, Blackwing - Obsidian Hawk Joe, Number 5: Des Chimera Dragon.
+- **Infernity Launcher** needs a button to use a face-up Spell's effect, which the game does not have yet.
+- Light and Darkness Dragon negates the effects that go through a chain and monster effects you use from the field; Graveyard and hand effects are not checked yet. It also stops your own cards, like the real card.
+- Tyrant Dragon cannot come back from the Graveyard at all (the real card can, by Tributing a Dragon).
+- Light and Darkness Dragon is not also DARK on the field.
+- **Still weak on Hard:** Pegasus (1 of 10), Aster and Vector (2), Kalin, Alexis, Syrus, Mai and Akiza (3). Kalin and Vector play their real cards but the computer is not good at emptying its hand for the Infernities or at the Rank-Up plays.
+- Turbo road lights (0.33.35 fix) still not checked on a Mac screen.
+- The empty-tile fix is checked here with stand-in models only; your Pegasus model is on your Mac.
+
 ## What is in 0.33.36
 
 **The deck pass, all 24 duelists.** Raul's rule: every duelist plays the deck they would really use, with their real boss monsters, their Synchros and Xyz, no generic filler, strong enough to be fun to beat. About 120 cards built for it, each against its card text, each with a test. The full lists are in "Crossroads - who plays what.md".

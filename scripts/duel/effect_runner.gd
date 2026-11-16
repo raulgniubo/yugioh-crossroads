@@ -307,6 +307,8 @@ static func _st_count(ps) -> int:
 
 static func max_attacks(c) -> int:
 	var f := fx(c)
+	if f.get("attacks_per_mat", false):
+		return maxi(1, int(c.tags.get("mat_n", 1)))   # Chimeratech Overdragon
 	if f.get("attacks_per_non_tuner", false):
 		# Shooting Quasar Dragon: up to the number of non-Tuners used for its Synchro Summon.
 		return maxi(1, int(c.tags.get("non_tuners", 1)))
@@ -424,6 +426,16 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 	if cond == "no_cards":
 		# Gust the Backblast: "If you control no cards".
 		return s.players[p].monsters().is_empty() and s.players[p].set_cards().is_empty() and s.players[p].field_spell == null
+	if cond == "lp_over_1000":
+		return s.players[p].lp > 1000   # Chaos Emperor Dragon: pay 1000 LP
+	if cond == "metalmorph_red_eyes":
+		# Red-Eyes Black Dragon equipped with Metalmorph, and Red-Eyes Black Metal Dragon in the Deck.
+		if s.players[p].deck.filter(func(x): return x.cname() == "Red-Eyes Black Metal Dragon").is_empty():
+			return false
+		for st in s.players[p].spells:
+			if st != null and st.face_up and st.cname() == "Metalmorph" and st.equipped_to != null and st.equipped_to.cname() == "Red-Eyes Black Dragon" and s.players[p].field.has(st.equipped_to):
+				return true
+		return false
 	if cond == "lp_behind_2000":
 		return s.players[s.opponent(p)].lp >= s.players[p].lp + 2000   # ZW - Eagle Claw
 	if cond == "other_gagaga":
@@ -490,6 +502,8 @@ static func has_special_hand(c) -> bool:
 ## Special Summon from the hand by its own rule (Bora, Gale, Vice Dragon, Photon Thrasher...).
 static func can_special_hand(s: DuelState, p: int, c) -> bool:
 	var f := fx(c)
+	if s.ss_locked(p) or s.big_locked(p, c):
+		return false   # Gagaga Head / Crimson Blader
 	if int(s.players[p].once_names.get("#no_hand_ss", -1)) == s.turn:
 		return false   # Silent Angler: "you cannot Special Summon monsters from your hand for the rest of this turn"
 	if f.get("one_only", false) and not s.players[p].monsters().filter(func(m): return m.face_up and m.cname() == c.cname()).is_empty():
@@ -1208,6 +1222,8 @@ static func ignite_spec(c) -> Dictionary:
 
 
 static func can_ignite(s: DuelState, p: int, c) -> bool:
+	if int(s.players[p].once_names.get("#ced", -1)) == s.turn:
+		return false   # Chaos Emperor Dragon: "You cannot activate other cards or effects during the turn you activate this card's effect."
 	if fx(c).has("union"):
 		# Once per turn, either: equip it to one of its partners, or take it off and Special Summon it.
 		if p != s.current or s.is_over() or not s._in_main() or c.ignite_turn == s.turn or c.negated:
@@ -1753,6 +1769,10 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 				c.overlays.erase(o)
 				s._to_gy(ps, o)
 			events.append({"type": "detach", "player": p, "card": c})
+	var ld = s._ladd_for(c)
+	if ld != null:
+		events.append_array(s._ladd_negate(ld, c))
+		return events
 	events.append_array(run_list(s, p, c, ig["do"], ctx))
 	return events
 
@@ -1826,6 +1846,12 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 			return window == "attack" and hit and int(c.tags.get("ssd_dodge", -1)) != s.turn
 		"quasar":
 			return on_field and window == "chain" and not s.chain.is_empty() and not s.chain.back().get("negated", false) and s.chain.back()["card"] != c and int(c.tags.get("q_neg", -1)) != s.turn
+		"tytannial":
+			# "When a card or effect is activated that targets a card(s) on the field: You can Tribute 1 face-up Plant monster; negate the activation, and if you do, destroy it."
+			if not on_field or window != "chain" or s.chain.is_empty() or s.chain.back().get("negated", false) or s.chain.back()["card"] == c:
+				return false
+			var tl = s.chain.back().get("target")
+			return tl != null and tl is DuelState.CardInst and s.on_field(tl) and not ps.monsters().filter(func(m): return m.face_up and str(m.data.get("race", "")) == "Plant" and s.can_tribute_fx(m)).is_empty()
 		"junk_gardna":
 			return on_field and opp_turn and c.ignite_turn != s.turn and window in ["attack", "battle_start", "phase", "summon"] and not opp.monsters().is_empty()
 		"zero_gardna":
@@ -2007,6 +2033,17 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 			if not s.chain.is_empty():
 				c.tags["q_neg"] = s.turn
 				events.append_array(_negate_link(s, p, c, s.chain.back()))
+		"tytannial":
+			var plants: Array = ps.monsters().filter(func(m): return m.face_up and str(m.data.get("race", "")) == "Plant" and s.can_tribute_fx(m))
+			if s.chain.is_empty() or plants.is_empty():
+				return events
+			plants.sort_custom(func(x, y): return s.atk_of(x, false) < s.atk_of(y, false))
+			var feed_t = s.pick1(p, Loc.t("%s: Tribute which Plant monster?") % c.cname(), plants, plants[0], c)
+			ps.field[ps.field.find(feed_t)] = null
+			s._to_gy(ps, feed_t)
+			events.append({"type": "tribute", "player": p, "card": feed_t})
+			events.append_array(s._monster_left(feed_t))
+			events.append_array(_negate_link(s, p, c, s.chain.back()))
 		"junk_gardna":
 			var all_m: Array = opp.monsters()
 			if not all_m.is_empty():
@@ -2172,6 +2209,8 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 			return hit and (lose or dmg >= 1000 or dmg >= ps.lp)
 		"quasar":
 			return not s.chain.is_empty() and int(s.chain.back()["player"]) != p
+		"tytannial":
+			return not s.chain.is_empty() and int(s.chain.back()["player"]) != p
 		"junk_gardna":
 			return window == "attack" and hit and att.attack_pos and (lose or dmg >= 1000 or dmg >= ps.lp) and s.def_of(att) < 2500
 		"zero_gardna":
@@ -2326,6 +2365,11 @@ static func ai_ignite_ok(s: DuelState, p: int, c) -> bool:
 		"opp_st":
 			# Wild Wingman: when the opponent has a Spell or Trap to hit.
 			return ps.hand.size() >= 2 and (not opp.set_cards().is_empty() or opp.field_spell != null)
+		"ced":
+			# Chaos Emperor Dragon: when they have more on the table and in hand than you do, and it does not cost the duel.
+			var mine_c: int = ps.hand.size() + ps.monsters().size() + ps.set_cards().size()
+			var theirs_c: int = opp.hand.size() + opp.monsters().size() + opp.set_cards().size()
+			return ps.lp > 2000 and theirs_c >= mine_c + 2
 		"time_wizard":
 			# Worth the coin when there is more to win than to lose.
 			var mine_tw := 0
@@ -2443,7 +2487,7 @@ static func _pick(s: DuelState, p: int, c, prompt: String, arr: Array, f: Dictio
 		return auto
 	var all: Array = []
 	for x in arr:
-		if CardEffects.matches(x.data, f) and not CardData.is_extra(x.id):
+		if CardEffects.matches(x.data, f) and (not CardData.is_extra(x.id) or f.get("extra_ok", false)):
 			all.append(x)
 	return s.choose(p, "%s: %s" % [c.cname(), prompt], all, auto.size(), auto, false, c)
 
@@ -2453,7 +2497,7 @@ static func _take(arr: Array, f: Dictionary, n: int) -> Array:
 	for x in arr:
 		if out.size() >= n:
 			break
-		if CardEffects.matches(x.data, f) and not CardData.is_extra(x.id):
+		if CardEffects.matches(x.data, f) and (not CardData.is_extra(x.id) or f.get("extra_ok", false)):
 			out.append(x)
 	return out
 
@@ -2470,6 +2514,107 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"ced":
+			# Chaos Emperor Dragon - Envoy of the End: "pay 1000 LP; send as many cards in both players' hands and on the field as possible
+			# to the GY, then inflict 300 damage to your opponent for each card sent to the opponent's GY by this effect."
+			if ps.lp <= 1000:
+				return events
+			ps.lp -= 1000
+			events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": -1000})
+			ps.once_names["#ced"] = s.turn
+			var to_opp := 0
+			for q in 2:
+				var pq := s.players[q]
+				for h in pq.hand.duplicate():
+					pq.hand.erase(h)
+					s._to_gy(pq, h)
+					events.append({"type": "discard", "player": q, "card": h})
+					if q == opp_i:
+						to_opp += 1
+				for z in 5:
+					var fm = pq.field[z]
+					if fm == null:
+						continue
+					var home_c: int = fm.orig_owner if fm.orig_owner != -1 else fm.owner
+					if home_c == opp_i and not fm.is_token():
+						to_opp += 1
+					pq.field[z] = null
+					s._to_gy(pq, fm)
+					events.append({"type": "destroy", "player": q, "card": fm, "zone": z})
+					events.append_array(s._monster_left(fm))
+				for st in pq.spells.duplicate():
+					if st != null:
+						if st.owner == opp_i:
+							to_opp += 1
+						events.append_array(s._destroy_st(st))
+				if pq.field_spell != null:
+					if pq.field_spell.owner == opp_i:
+						to_opp += 1
+					events.append_array(s._destroy_st(pq.field_spell))
+			events.append(_ev(p, c, Loc.t("%s: %d cards to the opponent's Graveyard") % [name, to_opp]))
+			if to_opp > 0:
+				events.append_array(s._damage(opp_i, 300 * to_opp))
+		"metal_up":
+			# Red-Eyes Black Metal Dragon: "Special Summoned (from your Deck) by Tributing "Red-Eyes Black Dragon" equipped with "Metalmorph"."
+			var metal: Array = ps.deck.filter(func(x): return x.cname() == "Red-Eyes Black Metal Dragon")
+			if metal.is_empty() or not ps.field.has(c):
+				return events
+			var z_m := ps.field.find(c)
+			ps.field[z_m] = null
+			s._to_gy(ps, c)
+			events.append({"type": "tribute", "player": p, "card": c})
+			events.append_array(s._monster_left(c))
+			var rb = metal[0]
+			ps.deck.erase(rb)
+			s._shuffle(ps.deck)
+			rb.proper = true
+			events.append(_ev(p, c, Loc.t("%s calls %s") % [name, rb.cname()]))
+			events.append_array(s._special(p, rb, "effect", "atk"))
+			events.append_array(on_summon(s, p, rb, "special"))
+		"yubel_next":
+			# Yubel: "When this card is destroyed, except by its own effect: Its owner can Special Summon 1 "Yubel - Terror Incarnate" from
+			# their hand, Deck, or GY." / Terror Incarnate: "When this face-up card leaves the field: You can Special Summon 1 "Yubel - The Ultimate Nightmare"".
+			if c.cname() == "Yubel" and int(c.get_meta("yubel_self", -1)) == s.turn:
+				return events
+			var want_y := str(a[1])
+			var pool_y: Array = (ps.hand + ps.deck + ps.gy).filter(func(x): return x.cname() == want_y)
+			if pool_y.is_empty() or ps.free_zone() == -1 or s.is_over():
+				return events
+			if s.choose_option(p, Loc.t("%s: Special Summon %s?") % [name, want_y], ["Special Summon it", "No"], 0, c) != 0:
+				return events
+			var ny = pool_y[0]
+			if ps.deck.has(ny):
+				ps.deck.erase(ny)
+				s._shuffle(ps.deck)
+			ps.hand.erase(ny)
+			ps.gy.erase(ny)
+			ny.proper = true
+			events.append(_ev(p, c, Loc.t("%s calls %s") % [name, ny.cname()]))
+			events.append_array(s._special(p, ny, "effect", "atk"))
+			events.append_array(on_summon(s, p, ny, "special"))
+		"ladd_burst":
+			# Light and Darkness Dragon: "Target 1 monster in your GY (if possible); destroy all cards you control, also, after that, Special Summon that monster (if any)."
+			var back_l: Array = ps.gy.filter(func(g): return g != c and g.is_monster() and s.can_revive(g))
+			var pick_l = null
+			if not back_l.is_empty():
+				back_l.sort_custom(func(x, y): return x.atk() > y.atk())
+				pick_l = s.pick1(p, Loc.t("%s: which monster comes back?") % name, back_l, back_l[0], c)
+			for m in ps.monsters():
+				events.append_array(s._destroy(m))
+			for st in ps.spells.duplicate():
+				if st != null:
+					events.append_array(s._destroy_st(st))
+			if ps.field_spell != null:
+				events.append_array(s._destroy_st(ps.field_spell))
+			if pick_l != null and ps.gy.has(pick_l) and ps.free_zone() != -1 and not s.is_over():
+				ps.gy.erase(pick_l)
+				events.append(_ev(p, c, Loc.t("%s calls %s") % [name, pick_l.cname()]))
+				events.append_array(s._special(p, pick_l, "reborn"))
+				events.append_array(on_summon(s, p, pick_l, "special"))
+		"big_lock":
+			# Crimson Blader: "Your opponent cannot Normal or Special Summon Level 5 or higher monsters during their next turn."
+			opp.once_names["#no_big"] = s.turn + 1
+			events.append(_ev(p, c, Loc.t("%s: no Level 5 or higher Summons in the opponent's next turn") % name))
 		"majestic_red":
 			# Majestic Red Dragon: "target 1 face-up monster your opponent controls; negate its effects, and if you do, this card gains ATK equal to that monster's ATK."
 			var tg_m: Array = opp.monsters().filter(func(m): return m.face_up and can_target(c, m))
@@ -2508,6 +2653,9 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				c.tags["viser_t"] = best_v.uid
 				c.tags["viser_n"] = 0
 				events.append(_ev(p, c, Loc.t("%s marks %s: it is destroyed in your 3rd Standby Phase") % [name, best_v.cname() if best_v.face_up else Loc.t("a face-down monster")]))
+		"gagaga_lock":
+			# Gagaga Head: "also you cannot Special Summon monsters for the rest of this turn, except by an Xyz Summon that uses only "Gagaga" monsters as materials."
+			ps.once_names["#gagaga_lock"] = s.turn
 		"no_attack_self":
 			c.tags["sct_turn"] = s.turn   # Super Conductor Tyranno: "This card cannot declare an attack the turn this effect is activated."
 		"su_equip":
@@ -4179,6 +4327,9 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				# "...from your hand or Graveyard" (Salvage Warrior).
 				pool = ps.hand.filter(func(x): return _ss_ok(x))
 				pool.append_array(ps.gy.filter(func(x): return s.can_revive(x)))
+			if s.ss_locked(p):
+				pool = []   # Gagaga Head's lock
+			pool = pool.filter(func(x): return not s.big_locked(p, x))   # Crimson Blader
 			for d in _pick(s, p, c, Loc.t("Special Summon from your %s") % ("Deck" if a[1] == "deck" else ("hand" if a[1] == "hand" else ("hand or Graveyard" if a[1] == "hand_gy" else "Graveyard"))), pool, flt, n):
 				if ps.free_zone() == -1:
 					break

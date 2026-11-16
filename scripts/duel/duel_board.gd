@@ -1174,6 +1174,9 @@ func set_deck_count(p: int, count: int) -> void:
 # ------------------------------------------------------------------ cards
 
 func _new_card(inst) -> Card3D:
+	var old = _cards.get(inst.uid)
+	if old != null and is_instance_valid(old):
+		old.queue_free()   # (a card moving between zones, like a Trap that becomes a monster, leaves no copy behind)
 	var c := Card3D.new()
 	c.setup(inst.id, int(inst.owner))
 	c.inst = inst

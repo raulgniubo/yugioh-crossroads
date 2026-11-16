@@ -202,6 +202,8 @@ func _debug_args() -> void:
 			shot = a.substr(7)
 		elif a.begins_with("--after="):
 			after = float(a.substr(8))
+		elif a.begins_with("--menu-open="):
+			menu_open = a.substr(12)   # dev: open the main menu on one of its panels (select, decks...)
 		elif a == "--duel":
 			duel = true
 		elif a.begins_with("--assets="):

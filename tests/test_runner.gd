@@ -73,6 +73,8 @@ func _ready() -> void:
 		_test_cards_64()
 		_test_cards_65()
 		_test_cards_66()
+		_test_cards_67()
+		_test_cards_68()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -7073,3 +7075,307 @@ func _test_cards_66() -> void:
 	check(s.can_special_from_hand(0, bs), "Blue-Eyes Shining Dragon: Tribute Blue-Eyes Ultimate Dragon")
 	s.special_from_hand(0, bs)
 	check(s.players[0].field.has(bs) and s.atk_of(bs, false) == 3000 + 600, "Blue-Eyes Shining Dragon: +300 per Dragon in the Graveyard (got %d)" % s.atk_of(bs, false))
+
+
+## The partial cards finished in v0.33.37.
+func _test_cards_67() -> void:
+	# ZW - Eagle Claw: negate the first Trap the opponent activates.
+	var s := _bare(3701)
+	_mon(s, 1, "Number 39: Utopia", 0)
+	var claw := _mon(s, 1, "ZW - Eagle Claw", 1)
+	EffectRunner._zw_equip(s, 1, claw)
+	var back := _in(s, 0, "Dark Magician", "gy")
+	var coth := _rst(s, 0, "Call of the Haunted", "set")
+	s.activate(0, coth)
+	s._cleanup()
+	check(s.players[1].spells.has(claw) and not s.players[0].field.has(back), "ZW - Eagle Claw negates the opponent's Trap")
+	# ZW - Leo Arms: a second attack on a monster.
+	s = _bare(3702)
+	var u := _mon(s, 0, "Number 39: Utopia", 0)
+	var leo := _mon(s, 0, "ZW - Leo Arms", 1)
+	EffectRunner._zw_equip(s, 0, leo)
+	var f1 := _mon(s, 1, "Celtic Guardian", 0)
+	_mon(s, 1, "Mystical Elf", 1)
+	u.summoned_turn = 1
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(0, u, f1)
+	s.resolve_attack()
+	s._cleanup()
+	check(s.players[0].gy.has(leo) and s.attacks_left(u) == 1 and not s.can_direct_attack_with(0, u), "ZW - Leo Arms: sent to the Graveyard, Utopia attacks a monster again")
+	# Gagaga Head: the lock and the draw.
+	s = _bare(3703)
+	_mon(s, 1, "Celtic Guardian", 0)
+	var gh := _in(s, 0, "Gagaga Head", "hand")
+	_in(s, 0, "Gagaga Magician", "gy")
+	_in(s, 0, "Kuriboh", "gy")
+	var mr := _rst(s, 0, "Monster Reborn")
+	s.normal_summon(0, gh, [])
+	s._cleanup()
+	check(s.players[0].monsters().size() == 2 and s.ss_locked(0), "Gagaga Head: a Gagaga monster back, Special Summons locked")
+	check(not s.can_activate(0, mr), "Gagaga Head: no Monster Reborn this turn")
+	var u2 := _in(s, 0, "Number 39: Utopia", "extra")
+	check(s.can_extra_summon(0, u2), "Gagaga Head: a Gagaga Xyz Summon is still allowed")
+	var hand_n := s.players[0].hand.size()
+	s.extra_summon(0, u2)
+	check(s.players[0].field.has(u2) and s.players[0].hand.size() == hand_n + 1, "Gagaga Head as Xyz material: draw 1")
+	# Infernity General: the monsters come back negated.
+	s = _bare(3704)
+	var gen := _in(s, 0, "Infernity General", "gy")
+	var b1 := _in(s, 0, "Infernity Beetle", "gy")
+	_in(s, 0, "Infernity Beast", "gy")
+	s.gy_ignite(0, gen)
+	check(s.players[0].field.has(b1) and b1.negated, "Infernity General: they come back with their effects negated")
+	# Vain Betrayer: 3 cards from the opponent's Deck every End Phase of theirs.
+	s = _bare(3705)
+	var vb := _rst(s, 0, "Vain Betrayer", "set")
+	var x := _mon(s, 1, "Number 39: Utopia", 0)
+	x.summoned_turn = 1
+	s.current = 1
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(1, x, null)
+	s.respond(0, vb)
+	s.resolve_attack()
+	s._cleanup()
+	var deck_n := s.players[1].deck.size()
+	s.begin_end()
+	check(s.players[0].spells.has(vb) and s.players[1].deck.size() == deck_n - 3, "Vain Betrayer stays and sends 3 cards from their Deck in their End Phase")
+	s._destroy(x)
+	s._cleanup()
+	check(not s.players[0].spells.has(vb), "Vain Betrayer goes when that monster leaves")
+	# Helpoemer: every Battle Phase of the opponent while it sits in the Graveyard.
+	s = _bare(3706)
+	var hp := _mon(s, 1, "Helpoemer", 0)
+	var bk := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	bk.summoned_turn = 1
+	_in(s, 0, "Kuriboh", "hand")
+	_in(s, 0, "Kuriboh", "hand")
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(0, bk, hp)
+	s.resolve_attack()
+	s._cleanup()
+	check(s.players[1].gy.has(hp) and s.players[0].hand.size() == 2, "Helpoemer: nothing yet when it is destroyed")
+	s.enter_main2()
+	check(s.players[0].hand.size() == 1, "Helpoemer: at the end of the Battle Phase, 1 random discard")
+	# Metal Reflect Slime: the Trap itself becomes the monster, cannot attack, and is a Trap again in the Graveyard.
+	s = _bare(3707)
+	var mrs := _rst(s, 0, "Metal Reflect Slime", "set")
+	s.activate(0, mrs)
+	check(s.players[0].field.has(mrs) and s.def_of(mrs) == 3000 and not s.players[0].spells.has(mrs), "Metal Reflect Slime: the card itself is the monster")
+	mrs.attack_pos = true
+	s.phase = DuelState.Phase.BATTLE
+	check(not s.can_attack(0, mrs), "Metal Reflect Slime cannot attack")
+	s._destroy(mrs)
+	check(s.players[0].gy.has(mrs) and mrs.is_trap(), "Metal Reflect Slime is a Trap again in the Graveyard")
+
+
+## The aces built in v0.33.37.
+func _test_cards_68() -> void:
+	# Chaos Emperor Dragon - Envoy of the End
+	var s := _bare(3801)
+	var ced := _mon(s, 0, "Chaos Emperor Dragon - Envoy of the End", 0)
+	_mon(s, 1, "Celtic Guardian", 0)
+	_mon(s, 1, "Mystical Elf", 1)
+	_in(s, 1, "Kuriboh", "hand")
+	_rst(s, 1, "Mirror Force", "set")
+	s.ignite(0, ced)
+	s._cleanup()
+	check(s.players[0].lp == 7000 and s.players[1].lp == 8000 - 1200 and s.players[1].monsters().is_empty() and s.players[1].hand.is_empty() and s.players[0].gy.has(ced), "Chaos Emperor Dragon: everything to the Graveyard, 300 for each of theirs (LP %d)" % s.players[1].lp)
+	# Metalmorph + Red-Eyes Black Metal Dragon
+	s = _bare(3802)
+	var re := _mon(s, 0, "Red-Eyes Black Dragon", 0)
+	var mm := _rst(s, 0, "Metalmorph", "set")
+	var metal := _in(s, 0, "Red-Eyes Black Metal Dragon", "deck")
+	s.activate(0, mm, re)
+	check(mm.equipped_to == re and s.atk_of(re, false) == 2700, "Metalmorph: +300 ATK")
+	check(s.can_ignite(0, re), "Red-Eyes with Metalmorph can be Tributed")
+	s.ignite(0, re)
+	s._cleanup()
+	check(s.players[0].field.has(metal) and s.players[0].gy.has(re), "Red-Eyes Black Metal Dragon from the Deck")
+	# Tyrant Dragon: a second attack while they still have a monster.
+	s = _bare(3803)
+	var ty := _mon(s, 0, "Tyrant Dragon", 0)
+	var f1 := _mon(s, 1, "Celtic Guardian", 0)
+	_mon(s, 1, "Mystical Elf", 1)
+	ty.summoned_turn = 1
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(0, ty, f1)
+	s.resolve_attack()
+	s._cleanup()
+	check(s.attacks_left(ty) == 1, "Tyrant Dragon attacks again while they have a monster")
+	# Yubel -> Terror Incarnate -> The Ultimate Nightmare
+	s = _bare(3804)
+	var yu := _mon(s, 0, "Yubel", 0)
+	var ti := _in(s, 0, "Yubel - Terror Incarnate", "deck")
+	var un := _in(s, 0, "Yubel - The Ultimate Nightmare", "deck")
+	s._destroy(yu)
+	s._cleanup()
+	check(s.players[0].field.has(ti), "Yubel destroyed: Yubel - Terror Incarnate from the Deck")
+	var foe := _mon(s, 1, "Celtic Guardian", 0)
+	s.begin_end()
+	s._cleanup()
+	check(s.players[1].gy.has(foe), "Terror Incarnate: End Phase, every other monster is destroyed")
+	s._destroy(ti)
+	s._cleanup()
+	check(s.players[0].field.has(un), "Terror Incarnate leaves: The Ultimate Nightmare")
+	s = _bare(3805)
+	var yu2 := _mon(s, 0, "Yubel", 0)
+	_in(s, 0, "Yubel - Terror Incarnate", "deck")
+	s.begin_end()
+	s._cleanup()
+	check(s.players[0].gy.has(yu2) and s.players[0].monsters().is_empty(), "Yubel destroyed by its own effect: no Terror Incarnate")
+	# Ultimate Nightmare: damage and destroy after battle.
+	s = _bare(3806)
+	var nm := _mon(s, 0, "Yubel - The Ultimate Nightmare", 0)
+	var big := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	nm.summoned_turn = 1
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(0, nm, big)
+	s.resolve_attack()
+	s._cleanup()
+	check(s.players[0].lp == 8000 and s.players[1].lp == 5000 and s.players[1].gy.has(big) and s.players[0].field.has(nm), "The Ultimate Nightmare: 3000 damage and Blue-Eyes destroyed, no damage to you")
+	# Ojama Knight: Fusion with 2 Ojamas, locks 2 zones.
+	s = _bare(3807)
+	_in(s, 0, "Ojama Yellow", "hand")
+	_in(s, 0, "Ojama Black", "hand")
+	var ok := _in(s, 0, "Ojama Knight", "extra")
+	var poly := _in(s, 0, "Polymerization", "hand")
+	check(not s.fusion_targets(0, poly).filter(func(o): return o["card"] == ok).is_empty(), "Ojama Knight: 2 Ojama monsters")
+	s.activate(0, poly, ok)
+	s._cleanup()
+	check(s.players[0].field.has(ok) and s.players[1].blocked.size() >= 2, "Ojama Knight is Fusion Summoned and shuts 2 zones")
+	# Light and Darkness Dragon: negates and shrinks; destroyed: wipe your side, bring one back.
+	s = _bare(3808)
+	var ladd := _mon(s, 0, "Light and Darkness Dragon", 0)
+	_in(s, 1, "Dark Magician", "gy")
+	var coth := _rst(s, 1, "Call of the Haunted", "set")
+	s.current = 1
+	s.activate(1, coth)
+	s._cleanup()
+	check(s.players[1].monsters().is_empty() and s.atk_of(ladd, false) == 2300 and s.def_of(ladd) == 1900, "Light and Darkness Dragon negates and loses 500 ATK and DEF")
+	s.current = 0
+	var lb := _in(s, 0, "Blue-Eyes White Dragon", "gy")
+	var mine := _mon(s, 0, "Celtic Guardian", 1)
+	s._destroy(ladd)
+	s._cleanup()
+	check(s.players[0].gy.has(mine) and s.players[0].field.has(lb), "Light and Darkness Dragon destroyed: your side is destroyed, Blue-Eyes comes back")
+	# Chimeratech Overdragon
+	s = _bare(3809)
+	_mon(s, 0, "Cyber Dragon", 0)
+	_mon(s, 0, "Proto-Cyber Dragon", 1)
+	_in(s, 0, "Cyber Phoenix", "hand")
+	var other := _rst(s, 0, "Mirror Force", "set")
+	var cod := _in(s, 0, "Chimeratech Overdragon", "extra")
+	var pol2 := _in(s, 0, "Polymerization", "hand")
+	s.activate(0, pol2, cod)
+	s._cleanup()
+	check(s.players[0].field.has(cod) and s.atk_of(cod, false) == 2400 and EffectRunner.max_attacks(cod) == 3 and s.players[0].gy.has(other), "Chimeratech Overdragon: 3 materials, 2400 ATK, 3 attacks, the rest to the Graveyard (ATK %d)" % s.atk_of(cod, false))
+	var od1 := _mon(s, 1, "Celtic Guardian", 0)
+	cod.summoned_turn = 1
+	s.phase = DuelState.Phase.BATTLE
+	check(s.can_attack(0, cod), "Chimeratech Overdragon can attack (pos %s, left %d)" % [str(cod.attack_pos), s.attacks_left(cod)])
+	# Pair Cycroid
+	s = _bare(3810)
+	_mon(s, 0, "Drillroid", 0)
+	_mon(s, 0, "Drillroid", 1)
+	_mon(s, 0, "Steamroid", 2)
+	var pc := _in(s, 0, "Pair Cycroid", "extra")
+	var pol3 := _in(s, 0, "Polymerization", "hand")
+	var plan: Array = s.fusion_targets(0, pol3).filter(func(o): return o["card"] == pc)
+	check(not plan.is_empty() and plan[0]["field"].filter(func(m): return m.cname() == "Drillroid").size() == 2, "Pair Cycroid: 2 Machines with the same name")
+	# Cyberdark Impact!
+	s = _bare(3811)
+	_in(s, 0, "Cyberdark Horn", "hand")
+	_in(s, 0, "Cyberdark Edge", "gy")
+	_mon(s, 0, "Cyberdark Keel", 0)
+	var cdd := _in(s, 0, "Cyberdark Dragon", "extra")
+	var imp := _rst(s, 0, "Cyberdark Impact!")
+	check(s.can_activate(0, imp), "Cyberdark Impact! with the three parts")
+	var deck_c := s.players[0].deck.size()
+	s.activate(0, imp)
+	s._cleanup()
+	check(s.players[0].field.has(cdd) and s.players[0].deck.size() == deck_c + 3, "Cyberdark Impact!: Cyberdark Dragon, the parts go back into the Deck")
+	# Crimson Blader
+	s = _bare(3812)
+	var cb := _mon(s, 0, "Crimson Blader", 0)
+	var cf := _mon(s, 1, "Celtic Guardian", 0)
+	cb.summoned_turn = 1
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(0, cb, cf)
+	s.resolve_attack()
+	s._cleanup()
+	var bed := _in(s, 1, "Blue-Eyes White Dragon", "hand")
+	s.turn += 1
+	s.current = 1
+	s.phase = DuelState.Phase.MAIN1
+	check(s.big_locked(1, bed) and not s.can_normal_summon(1, bed), "Crimson Blader: no Level 5+ Summons in their next turn")
+	# Assault Mode Activate + Red Dragon Archfiend/Assault Mode
+	s = _bare(3813)
+	var rda := _mon(s, 0, "Red Dragon Archfiend", 0)
+	rda.proper = true
+	var am := _in(s, 0, "Red Dragon Archfiend/Assault Mode", "deck")
+	var ama := _rst(s, 0, "Assault Mode Activate", "set")
+	s.activate(0, ama)
+	s._cleanup()
+	check(s.players[0].field.has(am) and s.players[0].gy.has(rda), "Assault Mode Activate: Red Dragon Archfiend/Assault Mode from the Deck")
+	var a1 := _mon(s, 1, "Celtic Guardian", 0)
+	var a2 := _mon(s, 1, "Mystical Elf", 1, false)
+	am.summoned_turn = 1
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(0, am, a1)
+	s.resolve_attack()
+	s._cleanup()
+	check(s.players[1].gy.has(a2), "Assault Mode: after it attacks, every other monster is destroyed")
+	s._destroy(am)
+	s._cleanup()
+	check(s.players[0].field.has(rda), "Assault Mode destroyed: Red Dragon Archfiend comes back")
+	# Tytannial
+	s = _bare(3814)
+	var tyt := _mon(s, 0, "Tytannial, Princess of Camellias", 0)
+	var plant := _mon(s, 0, "Lord Poison", 1)
+	var mf := _rst(s, 1, "Book of Moon")
+	s.current = 1
+	s.chain_add(1, mf, tyt)
+	check(EffectRunner.quick_can(s, 0, tyt, "chain"), "Tytannial can answer a card that targets")
+	s.respond(0, tyt)
+	s.chain_resolve()
+	s._cleanup()
+	check(s.players[0].field.has(tyt) and s.players[0].gy.has(plant), "Tytannial: Tribute a Plant, the card is negated")
+	# Number S39: Utopia the Lightning
+	s = _bare(3815)
+	var ut := _mon(s, 0, "Number 39: Utopia", 0)
+	ut.overlays.append(s._make(_cid("Gagaga Magician"), 0))
+	ut.overlays.append(s._make(_cid("Gogogo Golem"), 0))
+	var s39 := _in(s, 0, "Number S39: Utopia the Lightning", "extra")
+	check(s.can_extra_summon(0, s39), "Number S39 on top of Number 39: Utopia")
+	s.extra_summon(0, s39)
+	s._cleanup()
+	check(s.players[0].field.has(s39) and s39.overlays.size() == 3, "Number S39: Utopia and its materials move across")
+	var bb := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	s39.summoned_turn = 1
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(0, s39, bb)
+	s.resolve_attack()
+	s._cleanup()
+	check(s.players[1].gy.has(bb) and s.players[1].lp == 6000 and s.atk_of(s39, false) == 2500, "Number S39: 5000 ATK for that battle (LP %d)" % s.players[1].lp)
+	# Number F0: Utopic Future
+	s = _bare(3816)
+	_mon(s, 0, "Gagaga Samurai", 0)
+	_mon(s, 0, "Gagaga Cowboy", 1)
+	var f0 := _in(s, 0, "Number F0: Utopic Future", "extra")
+	check(s.can_extra_summon(0, f0), "Number F0: 2 Xyz Monsters of the same Rank")
+	s.extra_summon(0, f0)
+	s._cleanup()
+	var fz := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	f0.summoned_turn = 1
+	s.phase = DuelState.Phase.BATTLE
+	s.declare_attack(0, f0, fz)
+	s.resolve_attack()
+	s._cleanup()
+	check(s.players[0].field.has(f0) and s.players[0].lp == 8000 and s.players[0].field.has(fz), "Number F0: not destroyed, no damage, takes Blue-Eyes")
+	s.enter_main2()
+	check(s.players[1].field.has(fz), "Number F0: Blue-Eyes goes back after the Battle Phase")
+	# Dark Sanctuary
+	s = _bare(3817)
+	var dsn := _rst(s, 0, "Dark Sanctuary")
+	s.activate(0, dsn)
+	check(s.players[0].field_spell == dsn, "Dark Sanctuary is up")
