@@ -7,7 +7,11 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
 ## What is in 0.33.32
 
-**Yugi's best deck: Dark Magician and his family, the Knights, the Magnet Warriors, the Silent pair and Slifer the Sky Dragon.**
+Three duelists got their best decks in this version: **Yugi, Jaden and Yuma**. 102 cards were built, each against its card text, each with a test. One build for all three.
+
+### Yugi
+
+**Dark Magician and his family, the Knights, the Magnet Warriors, the Silent pair and Slifer the Sky Dragon.**
 
 39 of his cards were built in this version, each against its card text, each with a test.
 
@@ -31,13 +35,38 @@ The rest: Big Shield Gardna, Marshmallon, Obnoxious Celtic Guard, Catapult Turtl
 
 Card shops: all of these are in the Duel Monsters packs, and Yugi's deck in the Deck Shop is this list.
 
+### Jaden
+
+**Neos, the Neo-Spacians and Contact Fusion, with his first Elemental HEROes behind them.** 43 cards built.
+
+- **Main, 40:** Elemental HERO Neos x3, Neo-Spacian Grand Mole x2, Aqua Dolphin, Flare Scarab, Air Hummingbird, Glow Moss, Dark Panther, Elemental HERO Sparkman x2, Avian, Burstinatrix, Clayman, Bubbleman, Wildheart, Bladedge, Necroshade, Card Trooper, Winged Kuriboh; Polymerization x2, Miracle Fusion, Fake Hero x2, O - Oversoul x2, E - Emergency Call x2, Neo Space x2, Instant Neo Space, Pot of Greed, Monster Reborn; Hero Signal x2, A Hero Emerges, Negate Attack, Draining Shield.
+- **Extra, 15:** Grand Neos, Flare Neos, Glow Neos, Air Neos, Aqua Neos, Dark Neos, Magma Neos, Storm Neos, Flame Wingman, Shining Flare Wingman, Thunder Giant, Tempest, Rampart Blaster, Wildedge, Necroid Shaman.
+- **Contact Fusion:** with Neos and the right Neo-Spacian on your field, open the Extra Deck and pick the fusion. No Polymerization. The materials are shuffled into your Deck. The fusion goes back to the Extra Deck in the End Phase, unless **Neo Space** is up or **Instant Neo Space** is on it (then you choose). Storm Neos shuffles the whole field into the Decks when it goes; Magma Neos sends the whole field back to the hands.
+- Each Neos fusion and each Neo-Spacian does what its card says: Grand Neos bounces a monster, Glow Neos destroys a face-up card and changes with its type, Dark Neos shuts off an Effect Monster while it stays, Flare Neos and Magma Neos count cards, Air Neos gains the Life Point gap, Grand Mole sends both monsters to the hand, Glow Moss makes them draw and show, Dark Panther takes a monster's name and effects for the turn.
+- Also built: Necroshade (one big HERO without Tribute from the Graveyard), Card Trooper, Winged Kuriboh LV10 with Transcendent Wings, Wroughtweiler, Hero Kid, Wildheart, and the fusions Steam Healer, Mudballman, Wild Wingman, Mariner, Electrum; Fake Hero, O - Oversoul, R - Righteous Justice, H - Heated Heart, Hero Signal, A Hero Emerges, Hero Barrier, Edge Hammer, Burst Return, Feather Shot.
+- Fixed on the way: you could not make **XYZ-Dragon Cannon** from the Extra Deck list (it is a Contact Fusion too). Rampart Blaster attacked directly from Attack Position at full ATK; now it is from Defense Position at half, like the card. The computer never played E - Emergency Call.
+
+### Yuma
+
+**Utopia and its ranked-up forms on a Gagaga, Gogogo, Dododo and Zubaba base.** 20 cards built.
+
+- **Main, 40:** Gagaga Magician x3, Gagaga Girl x2, Gogogo Golem x3, Gogogo Giant x2, Zubaba Knight x2, Goblindbergh x3, Kagetokage x2, Dododo Warrior x2, Ganbara Knight, Gagaga Gardna, Tasuke Knight, Achacha Archer; Gagagabolt x2, Onomatopaira x2, Gagagarevenge x2, Rank-Up-Magic Limited Barian's Force x2, Xyz Energy, Blustering Winds, Monster Reborn, Ego Boost, Pot of Greed; Half Unbreak x2, Battle Break, Bye Bye Damage.
+- **Extra:** Number 39: Utopia x2, Number C39: Utopia Ray, Number C39: Utopia Ray V, Gagaga Samurai, Gagaga Cowboy, Number 61: Volcasaurus, Number 17: Leviathan Dragon.
+- **Ranking up:** Utopia Ray goes on top of a Utopia you control (pick it in the Extra Deck list), and Rank-Up-Magic Limited Barian's Force turns Utopia into Utopia Ray V. The materials move across.
+- Gagaga Girl copies Gagaga Magician's Level, and an Xyz Monster made of Gagaga monsters only gets her gift (a Special Summoned monster's ATK becomes 0). Kagetokage follows a Level 4 Normal Summon. Dododo Warrior comes out without Tribute at 1800. Gagaga Gardna and Tasuke Knight answer attacks from the hand and the Graveyard.
+
 **Not done or not checked:**
 
+- Still to build for Jaden: Yubel, Neos Wiseman, Divine Neos, Mirror Gate, Common Soul, Fusion Gate, Dark Catapulter, Spark Blaster, Bubble Shuffle.
+- Still to build for Yuma: the six ZW monsters and ZW - Leo Arms, Number 99: Utopic Dragon, Utopia Roots, Terror-Byte, Freezadon, Crimson Shadow Armor Ninja, Force Focus, Atlandis, Galaxy Queen, the other Gagaga, Gogogo and Dododo monsters (Sister, Mancer, Caesar, Head, Child, Clerk, Ghost, Goram, Buster, Bot), Kurivolt, Rai Rider, Flelf, Bite Bug, and Dodododraw, Xyz Gift, Wonder Wand, Double or Nothing!, Gagagatag, Gagagashield, Gagagaback, Guard Go!, Heartfelt Appeal, Impenetrable Attack, Fiery Fervor.
+- How the computer plays them on Hard, in 40 test duels each: Yuma won 30 (Utopia nearly every duel). Jaden won 11: it plays Neo Space first and fuses when the fusion will stay, which was 11 Contact Fusions in those 40 duels. Without Neo Space it plays his HEROes plainly.
+- Electrum counts as LIGHT only for other cards' effects (its own ATK count uses all five Attributes). Glow Moss's draw happens at the start of the Damage Step, not when the attack is declared. With Necroshade's effect unused you cannot Set a big Elemental HERO by Tributing. Dododo Warrior's "negate effects that activate in the opponent's Graveyard" covers monster effects there.
 - Still to build for Yugi: Magical Hats, Diffusion Wave-Motion, Exchange, Monster Recovery, Double Spell, Soul Rope, Shift, Royal Straight, and the newer Dark Magician support. Gandora, the Gadgets, Catapult Turtle, Watapon, Sorcerer of Dark Magic, Dark Magician of Chaos and Magician's Valkyria work and are in the packs, but are not in his 40.
 - Silent Swordsman LV5 and Silent Magician LV8 ignore the opponent's Spells that pick or sweep monsters. A Field Spell's ATK change still reaches them.
 - The computer plays the deck plainly: in 40 test duels on Hard it won 16. It summons Dark Magician, uses Skilled Dark Magician and Breaker, and rarely gets to Valkyrion or Slifer.
 - Not watched on screen. Every card has a rules test, 30 computer duels ran clean, and two full duels ran in the real duel screen (as Yugi and against him).
-- About 465 cards to go for the other 22 duelists. Next: Jaden, then Yuma.
+- Jaden's and Yuma's cards were not watched on screen either: rules tests for every card, 30 computer duels clean, three full duels in the real duel screen.
+- About 400 cards to go for the other 21 duelists. Next: Kaiba and Joey.
 
 ## What is in 0.33.31
 
