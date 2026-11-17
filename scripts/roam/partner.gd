@@ -201,7 +201,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _busy():
 		return
 	var asked: bool = event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_L
-	asked = asked or (event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_DPAD_UP)
+	asked = asked or (event is InputEventJoypadButton and event.pressed and Pad.b(event) == JOY_BUTTON_DPAD_UP)
 	if asked:
 		get_viewport().set_input_as_handled()
 		ask()
@@ -264,7 +264,7 @@ func _what_next() -> String:
 		return Loc.t("There are %d duelists here you haven't beaten. The nearest is %s. I put a beacon on them. Follow me!") % [left, nm]
 	if next != "" and not StoryProgress.recalls("finished"):
 		return Loc.t("The story is waiting: %s. Open Story from the main menu when you're ready.") % next
-	return Loc.t("You've beaten everyone here! Press G and pick another world. Or open a few packs. I like watching you open packs.")
+	return Pad.keys(Loc.t("You've beaten everyone here! Press G and pick another world. Or open a few packs. I like watching you open packs."))
 
 
 func _process(delta: float) -> void:

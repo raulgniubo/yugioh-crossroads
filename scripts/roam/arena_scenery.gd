@@ -140,6 +140,7 @@ static func satellite(c: ArenaDistrict) -> void:
 	_sat_overpass(c, rng)
 	_sat_poles(c)
 	_sat_yard(c, rng)
+	_sat_clutter(c, rng)
 	_sat_far(c)
 
 
@@ -583,6 +584,135 @@ static func _sat_poles(c: ArenaDistrict) -> void:
 
 ## What stands about the yard: the fire in its barrel, the water tank, a painted wall, a car
 ## on blocks, and a fence patched from tin and wire round most of the edge.
+## The open concrete between the roads lived in: a tarp shelter with crates and an old sofa,
+## oil drums and pallets, barriers along the road, a second car stripped for parts, a work
+## table by the garage, string lights over the bus stop corner, and weeds in every crack.
+static func _sat_clutter(c: ArenaDistrict, rng: RandomNumberGenerator) -> void:
+	var batch := CityBuilder.BoxBatch.new()
+	var dark := c.mat(Color(0.1, 0.1, 0.11), 0.6, 0.4)
+	var rust := c.mat(Color(0.46, 0.25, 0.15), 0.9, 0.2)
+	var wood := c.surf("wood", Color(0.42, 0.31, 0.2))
+	var pale_wood := c.surf("wood", Color(0.58, 0.47, 0.32))
+	var concrete := c.surf("concrete", Color(0.55, 0.54, 0.51))
+	var drums := [c.mat(Color(0.5, 0.18, 0.12), 0.75, 0.4), c.mat(Color(0.16, 0.3, 0.42), 0.75, 0.4), c.mat(Color(0.32, 0.34, 0.2), 0.8, 0.3), rust]
+	var tarp := StandardMaterial3D.new()
+	tarp.albedo_color = Color(0.16, 0.34, 0.6)
+	tarp.roughness = 0.9
+	tarp.cull_mode = BaseMaterial3D.CULL_DISABLED
+	# A tarp shelter west of the bus stop: four poles, a sagging blue sheet, crates, a sofa.
+	var ts := _holder(c, Vector3(-12.5, 0, 30.5), 0.25)
+	for px: float in [-1.6, 1.6]:
+		for pz: float in [-1.2, 1.2]:
+			c.box(Vector3(0.09, 2.3 if pz < 0.0 else 1.8, 0.09), Vector3(px, 1.15 if pz < 0.0 else 0.9, pz), dark, false, ts)
+	var sheet := c.box(Vector3(3.6, 0.03, 2.9), Vector3(0, 2.05, 0), tarp, false, ts)
+	sheet.rotation.x = -0.2
+	sheet.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	var sofa_m := c.mat(Color(0.38, 0.22, 0.2), 0.95)
+	c.box(Vector3(2.0, 0.45, 0.85), Vector3(0, 0.3, -0.75), sofa_m, false, ts)
+	c.box(Vector3(2.0, 0.7, 0.25), Vector3(0, 0.6, -1.12), sofa_m, false, ts)
+	for sx: float in [-1.0, 1.0]:
+		c.box(Vector3(0.22, 0.55, 0.85), Vector3(sx, 0.45, -0.75), sofa_m, false, ts)
+	c.box(Vector3(0.7, 0.5, 0.6), Vector3(0.9, 0.25, 0.7), wood, false, ts)
+	c.box(Vector3(0.55, 0.4, 0.5), Vector3(0.95, 0.7, 0.72), pale_wood, false, ts)
+	c.box(Vector3(0.6, 0.45, 0.55), Vector3(-1.0, 0.22, 0.75), pale_wood, false, ts)
+	c._dorm_solid(ts, c.make_solid, Vector3(3.4, 1.0, 1.0), Vector3(0, 0.5, -0.8))
+	# Oil drums in a huddle, one on its side, pallets stacked against them (east of the start).
+	var dc := Vector3(15.5, 0, 33.0)
+	var dpos := [Vector3(0, 0, 0), Vector3(0.65, 0, 0.15), Vector3(0.3, 0, 0.7), Vector3(-0.5, 0, 0.55), Vector3(1.2, 0, 0.8)]
+	for k in dpos.size():
+		c.cyl(0.3, 0.3, 0.9, dc + dpos[k] + Vector3(0, 0.45, 0), drums[k % drums.size()], null, 12)
+	var lying := c.cyl(0.3, 0.3, 0.9, dc + Vector3(-1.2, 0.3, -0.4), drums[1], null, 12)
+	lying.rotation = Vector3(PI / 2.0, 0.7, 0)
+	if c.make_solid:
+		c.solid_cyl(1.2, 1.0, dc + Vector3(0.3, 0.5, 0.3))
+	for k in 4:
+		batch.add(Vector3(1.2, 0.14, 1.0), dc + Vector3(2.4, 0.07 + k * 0.15, -0.6), pale_wood if k % 2 == 0 else wood, _rot(0.15 * k))
+	# Concrete barriers lining the road where it narrows by the ring.
+	for spot in [[Vector3(-4.3, 0, -6.0), 0.0], [Vector3(-4.3, 0, -8.2), 0.06], [Vector3(4.3, 0, 7.5), -0.05], [Vector3(4.3, 0, 9.7), 0.0], [Vector3(-9.0, 0, 21.9), PI / 2.0]]:
+		var bp: Vector3 = spot[0]
+		batch.add(Vector3(0.6, 0.35, 2.0), bp + Vector3(0, 0.175, 0), concrete, _rot(spot[1]))
+		batch.add(Vector3(0.3, 0.5, 2.0), bp + Vector3(0, 0.6, 0), concrete, _rot(spot[1]))
+		if c.make_solid:
+			c._dorm_solid(c, true, Vector3(0.6, 0.85, 2.0), bp + Vector3(0, 0.42, 0), Vector3(0, spot[1], 0))
+	# A second car being stripped: doors off, on blocks, its parts on a tarp beside it.
+	var car2 := c.prop("kei_car", Vector3(-26.0, 0.3, 27.0), 0.4, 3.6)
+	if car2:
+		car2.rotation.z = -0.05
+		c.collide(car2, 0.85)
+		for bx: float in [-1.0, 1.0]:
+			for bz: float in [-1.0, 1.0]:
+				batch.add(Vector3(0.36, 0.32, 0.44), Vector3(-26.0, 0.16, 27.0) + _rot(0.4) * Vector3(bx * 0.55, 0, bz * 1.05), concrete, _rot(0.4))
+	var parts := c.box(Vector3(2.2, 0.02, 1.6), Vector3(-23.4, 0.02, 28.5), tarp, false)
+	parts.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for k in 6:
+		batch.add(Vector3(rng.randf_range(0.2, 0.6), rng.randf_range(0.08, 0.25), rng.randf_range(0.2, 0.5)), Vector3(-23.4 + rng.randf_range(-0.8, 0.8), 0.1, 28.5 + rng.randf_range(-0.5, 0.5)), dark if k % 2 == 0 else rust, _rot(rng.randf() * TAU))
+	for k in 3:
+		c.cyl(0.32, 0.32, 0.2, Vector3(-21.8, 0.1 + k * 0.2, 26.4), dark, null, 12)
+	# The work table outside the garage: a vice, a lamp, a toolbox, a runner wheel waiting.
+	var wb := _holder(c, Vector3(-8.5, 0, 16.4), 0.0)
+	c.box(Vector3(2.0, 0.08, 0.8), Vector3(0, 0.9, 0), wood, false, wb)
+	for lx: float in [-0.9, 0.9]:
+		for lz: float in [-0.32, 0.32]:
+			c.box(Vector3(0.07, 0.9, 0.07), Vector3(lx, 0.45, lz), dark, false, wb)
+	c.box(Vector3(0.5, 0.25, 0.25), Vector3(0.55, 1.06, 0.1), c.mat(Color(0.75, 0.18, 0.14), 0.5, 0.3), false, wb)
+	c.box(Vector3(0.18, 0.16, 0.14), Vector3(-0.7, 1.02, -0.1), dark, false, wb)
+	c.cyl(0.42, 0.42, 0.18, Vector3(-0.1, 1.04, 0.05), c.mat(Color(0.08, 0.08, 0.09), 0.7), wb, 16).rotation.x = PI / 2.0
+	c.box(Vector3(0.04, 0.5, 0.04), Vector3(-0.85, 1.19, 0.25), dark, false, wb)
+	c.box(Vector3(0.22, 0.08, 0.14), Vector3(-0.78, 1.44, 0.25), c.glow_mat(Color(1.0, 0.85, 0.55), 1.6), false, wb)
+	c._dorm_solid(wb, c.make_solid, Vector3(2.0, 1.0, 0.8), Vector3(0, 0.5, 0))
+	# String lights from the bus stop corner over to the food stall side.
+	var bulbs := [c.glow_mat(Color(1.0, 0.82, 0.45), 2.4), c.glow_mat(Color(1.0, 0.55, 0.3), 2.4), c.glow_mat(Color(0.6, 0.9, 1.0), 2.4)]
+	for pole in [Vector3(4.0, 0, 25.0), Vector3(13.5, 0, 25.0), Vector3(13.5, 0, 17.2)]:
+		batch.add(Vector3(0.1, 3.4, 0.1), pole + Vector3(0, 1.7, 0), dark)
+		if c.make_solid:
+			c.solid_cyl(0.12, 3.4, pole + Vector3(0, 1.7, 0))
+	for run in [[Vector3(4.0, 3.3, 25.0), Vector3(13.5, 3.3, 25.0)], [Vector3(13.5, 3.3, 25.0), Vector3(13.5, 3.3, 17.2)]]:
+		var a: Vector3 = run[0]
+		var b2: Vector3 = run[1]
+		var n := int(a.distance_to(b2) / 0.6)
+		for k in n + 1:
+			var t := float(k) / float(n)
+			var pt := a.lerp(b2, t) - Vector3(0, sin(t * PI) * 0.6, 0)
+			var bulb := c.box(Vector3(0.09, 0.12, 0.09), pt, bulbs[k % 3], false)
+			bulb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Cardboard and crates by the mart, a shopping trolley on its side.
+	for k in 5:
+		batch.add(Vector3(rng.randf_range(0.45, 0.8), rng.randf_range(0.3, 0.55), rng.randf_range(0.4, 0.7)), Vector3(-30.5 + rng.randf_range(-1.2, 1.2), 0.2 + (0.35 if k == 4 else 0.0), -10.5 + rng.randf_range(-1.0, 1.0)), c.mat(Color(0.6, 0.47, 0.3), 0.95), _rot(rng.randf() * TAU))
+	# Right by where you come in: a crate stack with a drum on the west side, pallets and a
+	# couple of drums behind the bus stop on the east.
+	for k in 4:
+		batch.add(Vector3(0.75, 0.6, 0.75), Vector3(-6.8 + (k % 2) * 0.8, 0.3 + (k / 2) * 0.6, 27.2 + (k % 2) * 0.1), wood if k % 3 == 0 else pale_wood, _rot(0.1 * k))
+	c.cyl(0.3, 0.3, 0.9, Vector3(-5.6, 0.45, 28.4), drums[0], null, 12)
+	if c.make_solid:
+		c.solid_cyl(1.0, 1.2, Vector3(-6.4, 0.6, 27.6))
+	for k in 3:
+		batch.add(Vector3(1.2, 0.14, 1.0), Vector3(6.2, 0.07 + k * 0.15, 31.2), pale_wood if k % 2 == 0 else wood, _rot(0.2 * k))
+	for k in 2:
+		c.cyl(0.3, 0.3, 0.9, Vector3(4.6 + k * 0.7, 0.45, 30.6), drums[2 + k], null, 12)
+	# Weeds pushing up through the cracks and along every edge.
+	var weed := c.mat(Color(0.3, 0.38, 0.16), 0.95)
+	var dry := c.mat(Color(0.5, 0.45, 0.24), 0.95)
+	var placed := 0
+	var tries := 0
+	while placed < 150 and tries < 900:
+		tries += 1
+		var a2 := rng.randf() * TAU
+		var d := rng.randf_range(8.0, 37.0)
+		var wp := Vector3(cos(a2) * d, 0, sin(a2) * d)
+		# Half of them along the road edges, where the tar meets the concrete.
+		if placed % 2 == 0:
+			wp = Vector3((2.7 + rng.randf() * 1.2) * (1.0 if rng.randf() < 0.5 else -1.0), 0, rng.randf_range(-30.0, 36.0)) if rng.randf() < 0.5 \
+					else Vector3(rng.randf_range(-28.0, 28.0), 0, 20.0 + (2.2 + rng.randf() * 1.0) * (1.0 if rng.randf() < 0.5 else -1.0))
+		if (absf(wp.x) < 2.6 and wp.z > -33.0) or absf(wp.z - 20.0) < 2.1:
+			continue
+		placed += 1
+		for blade in rng.randi_range(3, 6):
+			var h := rng.randf_range(0.15, 0.45)
+			batch.add(Vector3(0.03, h, 0.06), wp + Vector3(rng.randf_range(-0.15, 0.15), h / 2.0, rng.randf_range(-0.15, 0.15)), weed if rng.randf() < 0.6 else dry,
+					_rot(rng.randf() * TAU, rng.randf_range(-0.4, 0.4), rng.randf_range(-0.4, 0.4)))
+	batch.commit(c)
+
+
 static func _sat_yard(c: ArenaDistrict, rng: RandomNumberGenerator) -> void:
 	var batch := CityBuilder.BoxBatch.new()
 	var dark := c.mat(Color(0.1, 0.1, 0.11), 0.6, 0.4)

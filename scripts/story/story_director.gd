@@ -3268,7 +3268,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _cut:
 		# The list of things to do: Tab (or a click of the right stick) opens it out and folds it away.
 		if _task_box != null and _task_box.visible and ((event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB) \
-				or (event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_RIGHT_STICK)):
+				or (event is InputEventJoypadButton and event.pressed and Pad.b(event) == JOY_BUTTON_RIGHT_STICK)):
 			_toggle_tasks()
 			get_viewport().set_input_as_handled()
 		return
@@ -3279,7 +3279,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB:
 		_skip = true
 		get_viewport().set_input_as_handled()
-	elif event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_Y:
+	elif event is InputEventJoypadButton and event.pressed and Pad.b(event) == JOY_BUTTON_Y:
 		_skip = true
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_pause"):

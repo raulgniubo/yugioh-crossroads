@@ -36,6 +36,13 @@ const FPS_CAPS := [0, 30, 60, 120, 144, 240]
 ## V-Sync is its own switch: it stops tearing by waiting for the screen, and it works together
 ## with any cap (60 FPS with V-Sync on is a steady, tear-free 60).
 var vsync := false
+## Controller (see Pad): button pictures, stick speeds, rumble, and which physical button does what.
+var pad_layout := "auto"      # auto | xbox | ps | nintendo
+var pad_cam := 1.0            # camera turn speed with the right stick
+var pad_pointer := 1.0        # pointer speed with the stick
+var pad_invert := false       # push up to look down
+var pad_rumble := true
+var pad_map := {}             # physical button index -> the button it acts as (only changed ones)
 ## Graphics. Every effect has its own switch; a preset fills them all in, and changing any one
 ## of them by hand turns the preset into "Custom".
 signal gfx_changed
@@ -469,6 +476,12 @@ func load_settings() -> void:
 	field_theme = cfg.get_value("game", "field_theme", field_theme)
 	language = cfg.get_value("game", "language", language)
 	sleeve = str(cfg.get_value("game", "sleeve", sleeve))
+	pad_layout = str(cfg.get_value("pad", "layout", pad_layout))
+	pad_cam = float(cfg.get_value("pad", "cam", pad_cam))
+	pad_pointer = float(cfg.get_value("pad", "pointer", pad_pointer))
+	pad_invert = bool(cfg.get_value("pad", "invert", pad_invert))
+	pad_rumble = bool(cfg.get_value("pad", "rumble", pad_rumble))
+	pad_map = cfg.get_value("pad", "map", pad_map)
 	show_fps = cfg.get_value("display", "show_fps", show_fps)
 	hold_fps = bool(cfg.get_value("display", "hold_fps", hold_fps))
 	_looks_first = bool(cfg.get_value("display", "looks_first", false))
@@ -534,6 +547,12 @@ func save_settings() -> void:
 	cfg.set_value("game", "field_theme", field_theme)
 	cfg.set_value("game", "language", language)
 	cfg.set_value("game", "sleeve", sleeve)
+	cfg.set_value("pad", "layout", pad_layout)
+	cfg.set_value("pad", "cam", pad_cam)
+	cfg.set_value("pad", "pointer", pad_pointer)
+	cfg.set_value("pad", "invert", pad_invert)
+	cfg.set_value("pad", "rumble", pad_rumble)
+	cfg.set_value("pad", "map", pad_map)
 	cfg.set_value("display", "show_fps", show_fps)
 	cfg.set_value("display", "hold_fps", hold_fps)
 	cfg.set_value("display", "looks_first", true)

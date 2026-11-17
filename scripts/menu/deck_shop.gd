@@ -318,7 +318,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		_close()
 	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_Q, KEY_E]) \
-			or (event is InputEventJoypadButton and event.pressed and event.button_index in [JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER]):
+			or (event is InputEventJoypadButton and event.pressed and Pad.b(event) in [JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER]):
 		get_viewport().set_input_as_handled()
 		Sfx.play("click")
 		_show_tab(1 - _tab)

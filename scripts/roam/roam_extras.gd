@@ -93,7 +93,11 @@ func _build_hud() -> void:
 	for b in [["M   Map", func(): open_guide("places")], ["G   Worlds", func(): open_guide("travel")],
 			["C   Card shop", guide_to_shop], ["J   Quests", func(): open_guide("quests")], ["B   Decks", func(): scene.open_decks()]]:
 		var btn := Button.new()
-		btn.text = b[0]
+		var raw := str(b[0])
+		btn.text = Pad.keys(raw)
+		Pad.changed.connect(func():
+			if is_instance_valid(btn):
+				btn.text = Pad.keys(raw))
 		btn.focus_mode = Control.FOCUS_NONE
 		btn.add_theme_font_size_override("font_size", 19)
 		btn.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.042, 0.0676, 0.136, 0.78), Color(1, 1, 1, 0.14), 12))
@@ -246,23 +250,23 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _busy() or story_mode:
 		return
 	if _list_box != null and _list_box.visible and ((event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB) \
-			or (event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_RIGHT_STICK)):
+			or (event is InputEventJoypadButton and event.pressed and Pad.b(event) == JOY_BUTTON_RIGHT_STICK)):
 		list_small = not list_small
 		_list_tick = 0.0
 		Sfx.play("click", -10.0)
 		get_viewport().set_input_as_handled()
 		return
 	var pad: bool = event is InputEventJoypadButton and event.pressed
-	if (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_G) or (pad and event.button_index == JOY_BUTTON_BACK):
+	if (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_G) or (pad and Pad.b(event) == JOY_BUTTON_BACK):
 		open_guide("travel")
-	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C) or (pad and event.button_index == JOY_BUTTON_X):
+	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C) or (pad and Pad.b(event) == JOY_BUTTON_X):
 		guide_to_shop()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_B:
 		scene.open_decks()
 		scene.get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_J:
 		open_guide("quests")
-	elif pad and event.button_index == JOY_BUTTON_Y:
+	elif pad and Pad.b(event) == JOY_BUTTON_Y:
 		open_guide("places")
 	else:
 		return
@@ -896,7 +900,7 @@ func _process(delta: float) -> void:
 	_edge_shown = maxf(0.0, _edge_shown - delta)
 	if scene._inside == "" and _edge_distance(p) < 2.6:
 		if _edge_shown <= 0.0:
-			_edge_label.text = Loc.t("This is the edge of %s.   Press G to travel to another world.") % Loc.t(str(scene.district.get("name", "the area")))
+			_edge_label.text = Pad.keys(Loc.t("This is the edge of %s.   Press G to travel to another world.") % Loc.t(str(scene.district.get("name", "the area"))))
 			scene.create_tween().tween_property(_edge_label, "modulate:a", 1.0, 0.2)
 		_edge_shown = 1.2
 	elif _edge_shown <= 0.0 and _edge_label.modulate.a > 0.9:

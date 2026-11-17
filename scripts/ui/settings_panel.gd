@@ -229,6 +229,8 @@ static func open(parent: Node) -> SidePanel:
 	back_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	art.add_child(back_hint)
 
+	_controller_card(p)
+
 	_tabs(p)
 	parent.add_child(p)
 	return p
@@ -440,6 +442,143 @@ static func _graphics_card(p: SidePanel) -> void:
 	test.pressed.connect(func(): PerfReport.start(p.get_tree()))
 	_row(g, "Performance test", "Measures this screen for half a minute and saves a report in your Crossroads folder (reports). F4 runs it anywhere: do it where the game feels slow.", test)
 	refresh.call()
+
+
+## Controller: which button pictures, stick speeds, rumble, and moving any button to another.
+static func _controller_card(p: SidePanel) -> void:
+	var c := _card(p, "Controller", "◎", Color("7cc4ff"))
+	var pads := Input.get_connected_joypads()
+	var who := UITheme.label(Loc.t("Connected: %s") % Input.get_joy_name(pads[0]) if not pads.is_empty() else Loc.t("No controller connected. Plug one in or pair it, and it works right away."), 16, UITheme.ACCENT if not pads.is_empty() else UITheme.TEXT_DIM)
+	who.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	c.add_child(who)
+	var lay := OptionButton.new()
+	var lays := [["auto", "Match my controller"], ["xbox", "Xbox"], ["ps", "PlayStation"], ["nintendo", "Nintendo"]]
+	for i in lays.size():
+		lay.add_item(Loc.t(lays[i][1]), i)
+		if lays[i][0] == Settings.pad_layout:
+			lay.select(i)
+	var remap_rows: Array = []
+	var redraw := func():
+		for r in remap_rows:
+			(r[0] as Button).text = "  %s  " % Pad.g(str(r[1]))
+		Pad.hint(Pad._hint_raw)
+		Pad.changed.emit()
+	lay.item_selected.connect(func(i):
+		Settings.pad_layout = lays[i][0]
+		Settings.save_settings()
+		redraw.call())
+	_row(c, "Button pictures", "Which names the game shows for the buttons: ✕ ○ □ △ for PlayStation, A B X Y for Xbox.", lay)
+	_row(c, "Camera speed", "How fast the right stick turns the camera in the worlds.", _pad_slider(Settings.pad_cam, func(v): Settings.pad_cam = v))
+	_row(c, "Pointer speed", "How fast the stick moves the pointer on the duel field and in menus.", _pad_slider(Settings.pad_pointer, func(v): Settings.pad_pointer = v))
+	var inv := CheckButton.new()
+	inv.button_pressed = Settings.pad_invert
+	inv.toggled.connect(func(on):
+		Settings.pad_invert = on
+		Settings.save_settings())
+	_row(c, "Invert camera", "Push the stick up to look down, like a flight game.", inv)
+	var rum := CheckButton.new()
+	rum.button_pressed = Settings.pad_rumble
+	rum.toggled.connect(func(on):
+		Settings.pad_rumble = on
+		Settings.save_settings()
+		if on:
+			Pad.rumble(0.3, 0.6, 0.3))
+	_row(c, "Vibration", "The controller buzzes when you take a hit, a little when you land one.", rum)
+	c.add_child(UITheme.label(Loc.t("Buttons"), 22, UITheme.TEXT))
+	var bh := UITheme.label(Loc.t("Press a box, then press the button you want for that job. Two jobs swap buttons, so nothing is ever left without one."), 15, UITheme.TEXT_DIM)
+	bh.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	c.add_child(bh)
+	var jobs := [["A", "Confirm, talk, enter, select"], ["B", "Back, cancel"], ["X", "Card shop (worlds), next phase (duels), race events"],
+		["Y", "Map (worlds), end turn (duels), Grand Prix"], ["LB", "Run (worlds), page left"], ["RB", "Page right"],
+		["Back", "Travel to another world, garage"], ["R3", "Show or hide the list of things to do"]]
+	for j in jobs:
+		var bt := Button.new()
+		bt.custom_minimum_size = Vector2(150, 44)
+		var job := str(j[0])
+		remap_rows.append([bt, job])
+		bt.text = "  %s  " % Pad.g(job)
+		bt.pressed.connect(func():
+			bt.text = Loc.t("Press a button...")
+			var catcher := _PadCatch.new()
+			bt.add_child(catcher)
+			var got: int = await catcher.caught
+			catcher.queue_free()
+			if got >= 0:
+				_assign(job, got)
+				Settings.save_settings()
+				Pad.apply_map()
+				Sfx.play("equip", -6.0)
+			redraw.call())
+		_row(c, Loc.t(str(j[1])), "", bt)
+	var reset := Button.new()
+	reset.text = "  %s  " % Loc.t("Reset buttons")
+	reset.custom_minimum_size = Vector2(0, 44)
+	reset.size_flags_horizontal = Control.SIZE_SHRINK_END
+	reset.pressed.connect(func():
+		Settings.pad_map = {}
+		Settings.save_settings()
+		Pad.apply_map()
+		redraw.call())
+	c.add_child(reset)
+
+
+## Gives the job `job` (a button by its Xbox name) to the physical button `phys`; the button
+## that had the job takes over whatever `phys` did before, so the two swap.
+static func _assign(job: String, phys: int) -> void:
+	var want := -1
+	for b in Pad.BUTTONS:
+		if b[1] == job:
+			want = int(b[0])
+	if want < 0:
+		return
+	var m: Dictionary = Settings.pad_map.duplicate()
+	var old_phys := want
+	for k in m:
+		if int(m[k]) == want:
+			old_phys = int(k)
+	var phys_did := int(m.get(phys, phys))
+	m[phys] = want
+	m[old_phys] = phys_did
+	for k in m.keys():
+		if int(k) == int(m[k]):
+			m.erase(k)
+	Settings.pad_map = m
+
+
+## Catches the next controller button (or Escape / B-less cancel after 6 seconds).
+class _PadCatch extends Node:
+	signal caught(button: int)
+	var _t := 6.0
+
+	func _ready() -> void:
+		process_mode = Node.PROCESS_MODE_ALWAYS
+
+	func _input(event: InputEvent) -> void:
+		if event is InputEventJoypadButton and event.pressed:
+			get_viewport().set_input_as_handled()
+			caught.emit(event.button_index)
+		elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+			get_viewport().set_input_as_handled()
+			caught.emit(-1)
+
+	func _process(delta: float) -> void:
+		_t -= delta
+		if _t <= 0.0:
+			_t = 999.0
+			caught.emit(-1)
+
+
+static func _pad_slider(value: float, setter: Callable) -> HSlider:
+	var s := HSlider.new()
+	s.min_value = 0.4
+	s.max_value = 2.0
+	s.step = 0.05
+	s.value = value
+	s.custom_minimum_size = Vector2(300, 32)
+	s.value_changed.connect(func(v):
+		setter.call(v)
+		Settings.save_settings())
+	return s
 
 
 static func _slider(value: float, setter: Callable) -> HSlider:

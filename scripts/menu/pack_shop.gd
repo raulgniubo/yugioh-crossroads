@@ -379,8 +379,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _busy:
 		return
 	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_Q, KEY_E]) \
-			or (event is InputEventJoypadButton and event.pressed and event.button_index in [JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER]):
-		var back: bool = (event is InputEventKey and event.keycode == KEY_Q) or (event is InputEventJoypadButton and event.button_index == JOY_BUTTON_LEFT_SHOULDER)
+			or (event is InputEventJoypadButton and event.pressed and Pad.b(event) in [JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER]):
+		var back: bool = (event is InputEventKey and event.keycode == KEY_Q) or (event is InputEventJoypadButton and Pad.b(event) == JOY_BUTTON_LEFT_SHOULDER)
 		get_viewport().set_input_as_handled()
 		Sfx.play("click")
 		_show_tab(posmod(_tab + (-1 if back else 1), Collection.PACK_TABS.size()))

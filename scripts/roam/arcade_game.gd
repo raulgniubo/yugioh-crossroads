@@ -190,6 +190,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.keycode == KEY_ESCAPE:
 			_call(0)
 		get_viewport().set_input_as_handled()
-	elif event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_B:
+	elif event is InputEventJoypadButton and event.pressed and Pad.b(event) == JOY_BUTTON_B:
 		_call(0)
 		get_viewport().set_input_as_handled()

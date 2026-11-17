@@ -1286,6 +1286,12 @@ func _play_event(ev: Dictionary) -> void:
 					board.house(clampf(float(-ev["delta"]) / 3000.0, 0.25, 0.9), hit_col, Vector3(0, 0, -3.0 if p == AI else 3.0), 0.6)
 				board.duelist_body(p, "hurt", float(-ev["delta"]) / 1500.0)
 				board.shake(0.5 if ev["delta"] > -2000 else 0.8)
+				# You feel it in your hands when you take the hit, a little when you land one.
+				if not _autoplay:
+					if p == ME:
+						Pad.rumble(0.4, 0.8 if ev["delta"] <= -2000 else 0.45, 0.35)
+					else:
+						Pad.rumble(0.25, 0.0, 0.15)
 				if board.track:
 					board.track.wobble(p, ev["delta"] <= -2000)
 				# A heavy hit cuts to the one who took it for a moment.
@@ -2249,18 +2255,18 @@ var _end_armed := 0.0
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventJoypadButton and event.pressed and _my_turn():
-		if event.button_index == JOY_BUTTON_X:
+		if Pad.b(event) == JOY_BUTTON_X:
 			_on_phase_button("battle")
 			get_viewport().set_input_as_handled()
 			return
-		if event.button_index == JOY_BUTTON_Y:
+		if Pad.b(event) == JOY_BUTTON_Y:
 			# Twice, so a slip of the thumb does not end your turn.
 			var now := Time.get_ticks_msec() / 1000.0
 			if now - _end_armed < 1.4:
 				_on_phase_button("end")
 			else:
 				_end_armed = now
-				Router.toast("Press Y again to end your turn")
+				Router.toast(Loc.t("Press %s again to end your turn") % Pad.g("Y"))
 			get_viewport().set_input_as_handled()
 			return
 	if event.is_action_pressed("ui_pause"):

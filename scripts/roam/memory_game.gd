@@ -157,6 +157,6 @@ func _finish(cleared: bool) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE) or (event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_B):
+	if (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE) or (event is InputEventJoypadButton and event.pressed and Pad.b(event) == JOY_BUTTON_B):
 		_finish(false)
 		get_viewport().set_input_as_handled()

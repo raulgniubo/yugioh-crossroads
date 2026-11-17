@@ -106,7 +106,7 @@ func _ready() -> void:
 	Sfx.world_air(str(Router.roam.get("district", "domino")), str(district.get("builder", "")), str(district.get("theme", "")), str(city.tod) if city else "day")
 	Pad.walk_mode = true
 	Pad.both_sticks = false
-	Pad.hint("Left stick  walk     Right stick  look     A  talk / enter     LB  run     Y  map     X  card shop     Back  worlds     Start  menu")
+	Pad.hint("")   # (the strip at the bottom shows the controller buttons)
 	extras = RoamExtras.new()
 	extras.scene = self
 	extras.story_mode = in_story
@@ -672,10 +672,10 @@ func _physics_process(delta: float) -> void:
 			input = stick
 		var look := Input.get_joy_axis(0, JOY_AXIS_RIGHT_X)
 		if absf(look) > 0.2:
-			_yaw -= look * delta * 2.5
+			_yaw -= look * delta * 2.5 * Settings.pad_cam
 		var look_y := Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y)
 		if absf(look_y) > 0.25:
-			_pitch = clampf(_pitch - look_y * delta * 1.4, -1.1, 0.15)
+			_pitch = clampf(_pitch - look_y * (-1.0 if Settings.pad_invert else 1.0) * delta * 1.4 * Settings.pad_cam, -1.1, 0.15)
 		if Input.is_key_pressed(KEY_Q):
 			_yaw += delta * 2.0
 	input = input.limit_length(1.0)
@@ -683,7 +683,7 @@ func _physics_process(delta: float) -> void:
 		if input.length() > 0.3:
 			life.stand_up()
 		input = Vector2.ZERO
-	var run := Input.is_key_pressed(KEY_SHIFT) or Input.is_joy_button_pressed(0, JOY_BUTTON_LEFT_SHOULDER) or Input.get_joy_axis(0, JOY_AXIS_TRIGGER_RIGHT) > 0.4
+	var run := Input.is_key_pressed(KEY_SHIFT) or Pad.held(JOY_BUTTON_LEFT_SHOULDER) or Input.get_joy_axis(0, JOY_AXIS_TRIGGER_RIGHT) > 0.4
 	Pad.overlay = _talking or _overlay_open or _pause != null
 	var basis := Basis(Vector3.UP, _yaw)
 	var dir := basis * Vector3(input.x, 0, input.y)
@@ -783,7 +783,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_SPACE and _near.is_empty() and _near_spot.is_empty():
 		_jump = true
 		get_viewport().set_input_as_handled()
-	elif event.is_action_pressed("ui_accept") or (event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_A):
+	elif event.is_action_pressed("ui_accept") or (event is InputEventJoypadButton and event.pressed and Pad.b(event) == JOY_BUTTON_A):
 		if _near.is_empty() and _near_spot.is_empty():
 			_jump = true
 		_talk()
@@ -1472,7 +1472,7 @@ func _update_near() -> void:
 	elif _prompt:
 		_prompt.visible = (not _near.is_empty() or not _near_spot.is_empty()) and not _talking and _pause == null and not _overlay_open
 		if _prompt.visible:
-			_prompt.text = (Loc.t("E   Talk to %s") % Loc.t(_npc_name(_near))) if not _near.is_empty() else ("E   %s" % Loc.t(str(_near_spot["label"])))
+			_prompt.text = Pad.keys((Loc.t("E   Talk to %s") % Loc.t(_npc_name(_near))) if not _near.is_empty() else ("E   %s" % Loc.t(str(_near_spot["label"]))))
 			# How strong a duelist is, before you walk into the duel.
 			if not _near.is_empty() and _near.has("duel"):
 				_prompt.text += "     " + Loc.t("Strength") + " " + Unlocks.stars_text(Unlocks.stars_of(_near))
@@ -1932,6 +1932,18 @@ func _build_ui() -> void:
 	help_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_ui.add_child(help_bar)
 	_help = help
+	# With a controller connected the strip shows its buttons instead of the keyboard's.
+	var kb_text := help.text
+	var relabel := func():
+		if not is_instance_valid(help):
+			return
+		if Pad.connected:
+			help.text = Loc.t("Left stick  move     %s  run     Right stick  look     %s  talk / enter     %s  map     %s  card shop     %s  worlds     %s  menu") % [
+				Pad.g("LB"), Pad.g("A"), Pad.g("Y"), Pad.g("X"), Pad.g("Back"), Pad.g("Start")]
+		else:
+			help.text = kb_text
+	relabel.call()
+	Pad.changed.connect(relabel)
 	# Maps: a small one in the corner, the full one on M.
 	_map = RoamMap.new()
 	_map.accent = _theme["accent"]

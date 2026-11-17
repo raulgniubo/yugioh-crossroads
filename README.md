@@ -5,6 +5,23 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.44
+
+- **Controller, the full version:**
+  - Every prompt shows your controller's own buttons: ✕ ○ □ △ on PlayStation, A B X Y on Xbox, and the Nintendo layout. It picks them from the controller you plug in, or you choose.
+  - New **Controller** tab in Settings: button pictures, camera speed, pointer speed, invert camera, vibration on/off, and **remap any button** (press a box, press the button you want; two jobs swap so nothing is left without a button). Reset puts it all back.
+  - The open world's bottom strip and the prompts ("Ⓐ  Talk to Yugi", "Press View to travel") switch to controller buttons while one is connected.
+  - Vibration: the controller buzzes when you take a hit in a duel, a little when you land one.
+- **Faces:** the two built-in looks with smeared eyes (Academy outfit second body, and "Swept Back" with the street outfit) have cleanly painted eyes now.
+- **Satellite:** the open ground is lived in: a tarp shelter with crates and an old sofa, oil drums and pallets, concrete barriers along the road, a second car up on blocks being stripped for parts, a work table outside the garage, string lights over the bus stop corner, and weeds in the cracks and along the road edges.
+- Spanish for all of the above.
+
+**Not done or not checked:**
+
+- Tested with no real controller here: the button pictures, remapping and vibration were checked in code and on screen, not with a pad in hand.
+- Moving through every screen by highlight (instead of the stick pointer) is still the old way in places like the duel field and the deck builder.
+- The faces still have a few small hair shards near the eyes from the model itself; the eyes themselves are clean.
+
 ## What is in 0.33.43
 
 - **Opponents play like themselves:** the cocky and the wild (Kaiba, Joey, Jaden, Jack, Zane...) go for your Life Points, the cool ones (Yusei, Akiza, Kite, Shark...) guard theirs and build a wall, and the dark ones (Bakura, Marik, Kalin, Vector) hide cards face-down and wait for you to walk into them. Free Duel shows how each one plays under their title. Checked in 60-game runs per deck: no deck got weaker.

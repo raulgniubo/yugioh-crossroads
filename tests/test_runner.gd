@@ -101,6 +101,7 @@ func _ready() -> void:
 		_test_why_not()
 		_test_deck_code()
 		_test_improve_deck()
+		_test_pad()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -7572,6 +7573,33 @@ func _test_save_guard() -> void:
 
 
 ## Your own sound and music files from the card folder play instead of the built-in ones.
+func _test_pad() -> void:
+	var keep_map: Dictionary = Settings.pad_map.duplicate()
+	var keep_lay := Settings.pad_layout
+	var keep_con := Pad.connected
+	Settings.pad_map = {}
+	Settings.pad_layout = "ps"
+	check(Pad.g("A") == "✕" and Pad.g("Y") == "△" and Pad.g("LT") == "L2", "Pad: PlayStation pictures")
+	Settings.pad_layout = "nintendo"
+	check(Pad.g("A") == "Ⓑ", "Pad: the bottom button is B on a Nintendo pad")
+	Settings.pad_layout = "xbox"
+	var SP = load("res://scripts/ui/settings_panel.gd")
+	SP._assign("A", JOY_BUTTON_B)
+	var e := InputEventJoypadButton.new()
+	e.button_index = JOY_BUTTON_B
+	var e2 := InputEventJoypadButton.new()
+	e2.button_index = JOY_BUTTON_A
+	check(Pad.b(e) == JOY_BUTTON_A and Pad.b(e2) == JOY_BUTTON_B and Pad.g("A") == "Ⓑ", "Pad: giving Confirm to B swaps A and B (%s)" % str(Settings.pad_map))
+	SP._assign("A", JOY_BUTTON_A)
+	check(Settings.pad_map.is_empty(), "Pad: moving it back clears the swap")
+	Pad.connected = true
+	check(Pad.keys("E   Talk to Yugi") == "Ⓐ   Talk to Yugi" and "Ⓨ" in Pad.keys("R   Race events        G   Highway Grand Prix", {"R": "X", "G": "Y"}), "Pad: keyboard prompts show the controller's buttons (%s)" % Pad.keys("E   Talk to Yugi"))
+	check(Pad.keys("Press G to travel.") == "Press View to travel.", "Pad: Press G becomes the controller button (%s)" % Pad.keys("Press G to travel."))
+	Pad.connected = keep_con
+	Settings.pad_map = keep_map
+	Settings.pad_layout = keep_lay
+
+
 func _test_improve_deck() -> void:
 	var keep: Dictionary = Collection.owned.duplicate()
 	var keep_side: Array = Collection.side.duplicate()

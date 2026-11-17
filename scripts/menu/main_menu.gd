@@ -56,6 +56,10 @@ func _ready() -> void:
 			var b := DeckBuilder.new()
 			b.z_index = 100
 			add_child(b)).call_deferred()
+	elif Router.menu_open == "pad":
+		Router.menu_open = ""
+		SettingsPanel._tab_at["settings"] = 99
+		_on_settings.call_deferred()
 	elif Router.menu_open == "goals":
 		Router.menu_open = ""
 		_on_goals.call_deferred()

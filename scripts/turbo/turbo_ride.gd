@@ -818,12 +818,12 @@ func _process(delta: float) -> void:
 	if _race == "on":
 		_prompt.text = ""
 	elif _exit >= 0:
-		_prompt.text = Loc.t("E   Take the exit to %s") % Loc.t(str(EXITS[_exit]["name"]))
+		_prompt.text = Pad.keys(Loc.t("E   Take the exit to %s") % Loc.t(str(EXITS[_exit]["name"])))
 	elif _near >= 0:
 		var key := str(_riders[_near]["info"]["key"])
-		_prompt.text = Loc.t("E   Turbo Duel with %s") % str(Characters.get_char(key).get("name", key))
+		_prompt.text = Pad.keys(Loc.t("E   Turbo Duel with %s") % str(Characters.get_char(key).get("name", key)))
 	elif at_start and _race == "":
-		_prompt.text = Loc.t("R   Race events        G   Highway Grand Prix        T   Garage")
+		_prompt.text = Pad.keys(Loc.t("R   Race events        G   Highway Grand Prix        T   Garage"), {"R": "X", "G": "Y", "T": "Back"})
 	else:
 		_prompt.text = ""
 	if _race == "on" and _mode == "trial":
@@ -1345,15 +1345,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		Pad.walk_mode = false
 		Router.roam.erase("ride_s")
 		Router.go(Router.MAIN_MENU)
-	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_G) or (pad and event.button_index == JOY_BUTTON_Y):
+	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_G) or (pad and Pad.b(event) == JOY_BUTTON_Y):
 		var gm := fposmod(_s, LAP)
 		if _race == "" and (gm > LAP - 90.0 or gm < 12.0):
 			_gp_key()
-	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R) or (pad and event.button_index == JOY_BUTTON_X):
+	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R) or (pad and Pad.b(event) == JOY_BUTTON_X):
 		var m := fposmod(_s, LAP)
 		if _race == "" and (m > LAP - 90.0 or m < 12.0):
 			_events_panel()
-	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_T) or (pad and event.button_index == JOY_BUTTON_BACK):
+	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_T) or (pad and Pad.b(event) == JOY_BUTTON_BACK):
 		if _race == "":
 			_garage_panel()
 	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E) or event.is_action_pressed("ui_accept"):
