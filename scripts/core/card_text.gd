@@ -20,6 +20,28 @@ static func shown(name: String, english: String) -> String:
 	return str(_es.get(name, english))
 
 
+## What the card does, in one short line (for the caption when it is activated): the part of
+## its text after the condition ("When ... : Destroy all ..." -> "Destroy all ...").
+static func gist(name: String, english: String, most := 110) -> String:
+	var t := shown(name, english).replace("\n", " ").strip_edges()
+	if t == "":
+		return ""
+	# The first sentence that does something.
+	var first := t
+	var cut := t.find(". ")
+	if cut > 0:
+		first = t.substr(0, cut + 1)
+	var colon := maxi(first.rfind(": "), first.rfind("; "))
+	if colon > 0 and colon < first.length() - 8:
+		first = first.substr(colon + 2)
+	first = first.strip_edges()
+	if first.length() > 0:
+		first = first.substr(0, 1).to_upper() + first.substr(1)
+	if first.length() > most:
+		first = first.substr(0, most - 1).strip_edges() + "…"
+	return first
+
+
 static func count() -> int:
 	shown("", "x")
 	return _es.size()

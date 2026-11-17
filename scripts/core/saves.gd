@@ -8,8 +8,9 @@ extends RefCounted
 ## all of those belong together. Loading, starting over and admin mode swap the save files and
 ## restart the game, so every part of it wakes up on the same save.
 
-const FILES := ["story.cfg", "shop.cfg", "roam.cfg", "turbo.cfg", "tourney.cfg", "roam_extras.cfg", "profile.cfg", "opening.cfg", "collection.cfg", "academy.cfg", "knockout.cfg", "stars.cfg"]
-const SLOTS := 3
+const FILES := ["story.cfg", "shop.cfg", "roam.cfg", "turbo.cfg", "tourney.cfg", "roam_extras.cfg", "profile.cfg", "opening.cfg", "collection.cfg", "academy.cfg", "knockout.cfg", "stars.cfg", "place.cfg"]
+const SLOTS := 5
+const RUNNING := "user://running.txt"      # there while the game runs; still there at the next start = it did not close properly
 const PENDING := "user://pending_save.txt"
 const PIN := "1010"
 const DATA_NAME := "Crossroads Data"
@@ -237,8 +238,119 @@ static func save_to(slot: String) -> bool:
 	var meta := ConfigFile.new()
 	meta.set_value("save", "when", Time.get_datetime_string_from_system(false, true))
 	meta.set_value("save", "summary", summary())
+	meta.set_value("save", "place", place_text())
+	# The same, as plain facts, so a save reads in whatever language the game is in when you look.
+	var u: Array = StoryProgress.unlocked()
+	var where := "Prologue"
+	for ch in StoryData.CHAPTERS:
+		if u.has(ch["id"]):
+			where = str(ch["title"])
+	if StoryProgress.recalls("finished"):
+		where = "Story finished"
+	var col = Engine.get_main_loop().root.get_node_or_null("Collection")
+	var cards := 0
+	if col:
+		for id in col.owned:
+			cards += int(col.owned[id])
+	meta.set_value("save", "where", where)
+	meta.set_value("save", "cards", cards)
+	meta.set_value("save", "dp", int(col.dp) if col else 0)
+	var pl := place()
+	meta.set_value("save", "place_mode", str(pl.get("mode", "")))
+	meta.set_value("save", "place_chapter", str(pl.get("chapter", "")))
+	meta.set_value("save", "place_district", str(pl.get("district", "")))
 	meta.save(slot_dir(slot).path_join("slot.cfg"))
 	return n > 0
+
+
+## The autosave, at most every 20 seconds (it is a copy of a dozen small files).
+static var _auto_at := -100000
+
+
+static func autosave(force := false) -> void:
+	if admin:
+		return
+	var now := Time.get_ticks_msec()
+	if not force and now - _auto_at < 20000:
+		return
+	_auto_at = now
+	save_to("autosave")
+
+
+## Wipe a save slot (not the autosave).
+static func delete_slot(slot: String) -> void:
+	var d := slot_dir(slot)
+	for f in FILES + ["slot.cfg"]:
+		if FileAccess.file_exists(d.path_join(str(f))):
+			DirAccess.remove_absolute(d.path_join(str(f)))
+
+
+# ------------------------------------------------------------------ where you are, and coming back to it
+
+## Where you are right now (written as you play, and kept with every save): the story chapter,
+## or the world and the spot in it. "Go back to where you were" reads it.
+static func note_place(mode: String, data: Dictionary) -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("place", "mode", mode)
+	for k in data:
+		cfg.set_value("place", str(k), data[k])
+	cfg.set_value("place", "when", Time.get_datetime_string_from_system(false, true))
+	cfg.save("user://place.cfg")
+
+
+static func place() -> Dictionary:
+	var cfg := ConfigFile.new()
+	if cfg.load("user://place.cfg") != OK:
+		return {}
+	var out := {}
+	for k in cfg.get_section_keys("place"):
+		out[k] = cfg.get_value("place", k)
+	return out
+
+
+## Did the game close properly last time? Called once at the start, before anything else.
+static var crashed_last := false
+static var crash_report := ""
+static var just_loaded := ""
+
+
+static func session_start() -> void:
+	crashed_last = FileAccess.file_exists(RUNNING) and DisplayServer.get_name() != "headless"
+	if crashed_last:
+		_keep_crash_log()
+	var f := FileAccess.open(RUNNING, FileAccess.WRITE)
+	if f:
+		f.store_string(Time.get_datetime_string_from_system())
+		f.close()
+
+
+static func session_end() -> void:
+	if FileAccess.file_exists(RUNNING):
+		DirAccess.remove_absolute(RUNNING)
+
+
+## The log of the run that went wrong, copied beside the game where it is easy to find and send.
+static func _keep_crash_log() -> void:
+	var logs := "user://logs"
+	if not DirAccess.dir_exists_absolute(logs):
+		return
+	var newest := ""
+	var t := 0
+	for fn in DirAccess.get_files_at(logs):
+		if not fn.ends_with(".log") or fn == "godot.log":
+			continue
+		var mt := int(FileAccess.get_modified_time(logs.path_join(fn)))
+		if mt > t:
+			t = mt
+			newest = fn
+	if newest == "":
+		return
+	var base := data_dir() if data_dir() != "" else "user://"
+	var out := base.path_join("Crash reports")
+	DirAccess.make_dir_recursive_absolute(out)
+	var name := "crash %s.log" % Time.get_datetime_string_from_system().replace(":", "-")
+	if DirAccess.copy_absolute(logs.path_join(newest), out.path_join(name)) == OK:
+		crash_report = out.path_join(name)
 
 
 static func exists(slot: String) -> bool:
@@ -249,7 +361,28 @@ static func info(slot: String) -> Dictionary:
 	var meta := ConfigFile.new()
 	if meta.load(slot_dir(slot).path_join("slot.cfg")) != OK:
 		return {}
-	return {"when": str(meta.get_value("save", "when", "")), "summary": str(meta.get_value("save", "summary", ""))}
+	var out := {"when": str(meta.get_value("save", "when", "")), "summary": str(meta.get_value("save", "summary", "")),
+		"place": str(meta.get_value("save", "place", ""))}
+	if meta.has_section_key("save", "cards"):
+		out["summary"] = "%s  ·  %s  ·  %d DP" % [Loc.t(str(meta.get_value("save", "where", ""))), Loc.t("%d cards") % int(meta.get_value("save", "cards", 0)), int(meta.get_value("save", "dp", 0))]
+		out["place"] = _place_words(str(meta.get_value("save", "place_mode", "")), str(meta.get_value("save", "place_chapter", "")), str(meta.get_value("save", "place_district", "")))
+	return out
+
+
+static func _place_words(mode: String, chapter: String, district: String) -> String:
+	if mode == "story":
+		for ch in StoryData.CHAPTERS:
+			if str(ch["id"]) == chapter:
+				return "%s: %s" % [Loc.t(str(ch["title"])), Loc.t(str(ch["name"]))]
+	if mode == "roam":
+		return Loc.t(str(RoamData.district(district).get("name", "")))
+	return ""
+
+
+## Where you were, in words: "Chapter 2: Slifer Red, Last of Its Kind" or "Domino City".
+static func place_text() -> String:
+	var p := place()
+	return _place_words(str(p.get("mode", "")), str(p.get("chapter", "")), str(p.get("district", "domino")))
 
 
 ## One line about the game in memory: where the story is and what you own.
@@ -286,6 +419,7 @@ static func restart_with(order: String) -> void:
 		f.store_string(order)
 		f.close()
 	var tree: SceneTree = Engine.get_main_loop()
+	session_end()
 	OS.set_restart_on_exit(true, OS.get_cmdline_args())
 	tree.quit()
 
@@ -328,6 +462,7 @@ static func apply_pending() -> void:
 		var slot := order.trim_prefix("load:")
 		if FileAccess.file_exists(slot_dir(slot).path_join("slot.cfg")):
 			_copy_all(slot_dir(slot), "user://")
+			just_loaded = slot
 	print("SAVES applied: ", order)
 
 

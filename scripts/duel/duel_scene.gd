@@ -42,7 +42,17 @@ signal _turn_finished
 
 
 func _ready() -> void:
+	# Before every duel, the autosave: if anything goes wrong in it, you lose a minute at most.
+	if not _autoplay:
+		Saves.autosave(true)
 	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--caption="):
+			# Dev: the activation line at the top, for a screenshot (by card id).
+			var capid := int(a.get_slice("=", 1))
+			get_tree().create_timer(5.0).timeout.connect(func():
+				var fake := {"data": CardData.get_card(capid), "id": capid}
+				var nm := str(fake["data"].get("name", ""))
+				hud.action_caption("⚠  " + Loc.t("%s activates %s") % [str(Characters.get_char(_opp_key).get("name", "")), nm], CardText.gist(nm, str(fake["data"].get("desc", ""))), Color("ff4dd2"), false))
 		if a.begins_with("--show=") or a.begins_with("--strike="):
 			# Dev: hold a card's arrival or attack show on screen for a screenshot (by card id).
 			var cid := int(a.get_slice("=", 1))
@@ -953,6 +963,18 @@ func _lumen(kind: String) -> void:
 		hud.spirit_pop()
 
 
+## "Kaiba activates Mirror Force" and what it does, at the top of the screen, while the card goes
+## straight into its animation.
+func _announce(p: int, card, trap: bool) -> void:
+	var nm := str(card.data.get("name", ""))
+	var txt := str(card.data.get("desc", card.data.get("text", "")))
+	if txt == "":
+		txt = str(CardData.EXT.get(int(card.id), {}).get("desc", ""))
+	var who := Loc.t("You") if p == ME else str(state.players[AI].name)
+	var title := (Loc.t("%s activate %s") if p == ME else Loc.t("%s activates %s")) % [who, nm]
+	hud.action_caption(("✦  " if not trap else "⚠  ") + title, CardText.gist(nm, txt), Color("ff4dd2") if trap else Color("3fd9a8"), p == ME)
+
+
 func _talk(p: int, kind: String, chance := 1.0, min_gap := 2.5) -> void:
 	if _autoplay or randf() > chance:
 		return
@@ -1073,7 +1095,9 @@ func _play_event(ev: Dictionary) -> void:
 				var titles := {"field": "FIELD SPELL", "equip": "EQUIP SPELL", "cont": "CONTINUOUS SPELL", "ritual": "RITUAL SPELL", "quick": "QUICK-PLAY SPELL"}
 				hud.effect_text("%s  ·  %s" % [titles[SpellRules.kind(ev["card"])], ev["card"].cname()], Color("7dffc8"))
 			var sig_name := str(ev["card"].data.get("name", ""))
-			if p == AI and not _autoplay:
+			if not _autoplay:
+				_announce(p, ev["card"], false)
+			if p == AI and not _autoplay and Settings.card_showcase:
 				# Their Spell lands on the field, then it is held up to be read before it does anything.
 				await board.anim_activate(p, ev["card"], int(ev.get("zone", 2)))
 				await hud.showcase(ev["card"], Loc.t("SPELL CARD"), Color("3fd9a8"), state.players[AI].name)
@@ -1154,11 +1178,13 @@ func _play_event(ev: Dictionary) -> void:
 			hud.inspect(ev["card"])
 			if not _autoplay:
 				board.duelist_gesture(p, "trap")
-			# The card turns face-up on the field first, then it is held up to be read.
+			# The card turns face-up on the field first (and, with the setting on, is held up to be read).
+			if not _autoplay:
+				_announce(p, ev["card"], true)
 			await board.anim_trap(p, ev["card"], ev["zone"])
-			if not _autoplay and p == AI:
+			if not _autoplay and p == AI and Settings.card_showcase:
 				await hud.showcase(ev["card"], Loc.t("TRAP CARD"), Color("ff4dd2"), state.players[AI].name)
-			elif not _autoplay:
+			elif not _autoplay and Settings.card_showcase:
 				hud.banner(str(ev["card"].data["name"]).to_upper(), Color("ff4dd2"), true)
 				await get_tree().create_timer(Settings.t(0.45)).timeout
 			StrikeFx.card(board, str(ev["card"].data.get("name", "")), p)

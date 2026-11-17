@@ -105,6 +105,7 @@ func _ready() -> void:
 		_test_swords_stays()
 		_test_card_text_es()
 		await _test_album()
+		_test_save_slots()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -7576,6 +7577,22 @@ func _test_save_guard() -> void:
 
 
 ## Your own sound and music files from the card folder play instead of the built-in ones.
+func _test_save_slots() -> void:
+	check(Saves.SLOTS == 5, "Saves: five save slots besides the autosave")
+	check(Saves.FILES.has("place.cfg"), "Saves: where you were is kept with every save")
+	Saves.note_place("roam", {"district": "domino", "x": 3.0, "z": 4.0, "yaw": 1.0})
+	check(str(Saves.place().get("mode", "")) == "roam" and is_equal_approx(float(Saves.place()["x"]), 3.0), "Saves: the spot in the world is written down")
+	check(Saves.place_text() != "", "Saves: the place reads as words (%s)" % Saves.place_text())
+	var had := Saves.exists("slot5")
+	if not had:
+		check(Saves.save_to("slot5") and Saves.exists("slot5"), "Saves: a slot saves")
+		check(str(Saves.info("slot5").get("place", "")) != "", "Saves: a slot remembers where you were")
+		Saves.delete_slot("slot5")
+		check(not Saves.exists("slot5"), "Saves: a slot can be deleted")
+	check(CardText.gist("Mirror Force", "When an opponent's monster declares an attack: Destroy all your opponent's Attack Position monsters.") == "Destroy all your opponent's Attack Position monsters.", "Caption: the part of the text that does something")
+	check(CardText.gist("Pot of Greed", "Draw 2 cards.") == "Draw 2 cards.", "Caption: a short card is said whole")
+
+
 func _test_album() -> void:
 	var met_was = Collection.record.get("met", {}).duplicate()
 	var a := CardAlbum.open(self)

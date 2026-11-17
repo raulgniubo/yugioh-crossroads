@@ -221,11 +221,13 @@ func hint(text: String) -> void:
 			out.append(" ".join(keys_) + "  " + Loc.t(parts[1]))
 		else:
 			out.append(Loc.t(w))
-	_hint.text = "     ".join(out)
+	if _hint:
+		_hint.text = "     ".join(out)
 
 
 func _process(delta: float) -> void:
-	_hint.visible = connected and _hint.text != ""
+	if _hint:
+		_hint.visible = connected and _hint.text != ""
 	_armed = maxf(0.0, _armed - delta)
 	if not plugged or not _pointer_live():
 		return

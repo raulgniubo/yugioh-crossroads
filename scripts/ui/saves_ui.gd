@@ -50,13 +50,11 @@ static func story_block(body: VBoxContainer, host: Node) -> void:
 		body.add_child(_line("ADMIN MODE IS ON: every chapter is open. Saving is switched off. Turn it off in Settings to get your own game back.", 18, UITheme.GOLD))
 		return
 	var slots := VBoxContainer.new()
-	slots.add_theme_constant_override("separation", 8)
 	slots.visible = false
 	var sl := Button.new()
 	sl.text = Loc.t("Save / Load")
 	sl.custom_minimum_size = Vector2(170, 52)
-	sl.toggle_mode = true
-	sl.toggled.connect(func(on): slots.visible = on)
+	sl.pressed.connect(func(): SaveMenu.open(host))
 	diff_row.add_child(sl)
 	var ng0 := Button.new()
 	ng0.text = Loc.t("New Game")
@@ -64,7 +62,7 @@ static func story_block(body: VBoxContainer, host: Node) -> void:
 	diff_row.add_child(ng0)
 	body.add_child(slots)
 	body = slots
-	for i in Saves.SLOTS + 1:
+	for i in 0:
 		var slot := "autosave" if i == 0 else "slot%d" % i
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)

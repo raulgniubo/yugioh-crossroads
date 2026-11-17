@@ -5,6 +5,38 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.50
+
+**Story saves and coming back after a crash**
+
+- **Story saves:** Save / Load in the Story panel and in the pause menu while you are in a chapter. The autosave plus five save slots, each showing where you were (the chapter), how far the story is, your cards and Duel Points, and when (Today, 8:12). Save over a slot (asks first), load one (the game restarts on it), delete one. Everything else in the game just saves itself.
+- **Autosave:** before every duel, at every story step, when you arrive in a world and every few minutes there. Continue always picks up from it. A save made right before a duel puts you back before that duel to play it again (not halfway through it).
+- **Where you were:** after loading a save, or if the game closed without warning, the main menu offers **Go back to where you were** (the story scene, or your spot in the world).
+- **If the game ever closes without warning**, the next start says so, and keeps a report of that run in **Crossroads Data / Crash reports** to send over.
+- Saves, slots and crash reports all live in Crossroads Data beside the game, on Mac and Windows: move or sync that folder and everything goes with it.
+
+**Duels: no more stopping to read a card**
+
+- A Spell or Trap goes straight into what it does. A line at the top says who activated what and what it does ("Kaiba activates Mirror Force · Destroy all your opponent's Attack Position monsters"), in Spanish too. Tap the card any time to read all of it.
+- The old way (the card held up in the middle first) is a switch: Settings > Gameplay > **Show activated cards big** (off by default).
+
+**Quality pass** (every menu, every world, every chapter, in English and Spanish)
+
+- The ground arrows no longer show as a giant triangle right under the camera.
+- New Domino City: you no longer start under the HIGHWAY gate sign (its letters filled the top of the screen).
+- Duel Academy: the ferry sits in the water, not on the beach.
+- Turbo Duel: the place name and the race bar no longer overlap; both sit on dark glass so they read over the moon and the light trails.
+- Card Album: ATK and DEF no longer show as 2000.0.
+- The card shop's signs (TODAY'S BEST, WEEKLY TOURNAMENT) are in Spanish too.
+- Starting Turbo Duel straight away no longer throws an error.
+
+**Music:** there is no connector I can use to make music, so the doc "Crossroads music: tracks and prompts" has the one path (Suno, about $10 for a month) with a ready prompt for every track. Drop the files in Model Inbox and I put them in.
+
+**Not done or not checked:**
+
+- A save cannot bring you back into the middle of a duel; it brings you back to its start.
+- The crash on the big summon is still not reproduced here.
+
 ## What is in 0.33.49
 
 **The Card Album.** A binder with a pocket for every card you can collect (968 of them), set by set.

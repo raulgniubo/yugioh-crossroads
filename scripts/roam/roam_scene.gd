@@ -82,6 +82,21 @@ func _ready() -> void:
 	_build_world()
 	_build_player()
 	_probe.call_deferred()
+	# Where you are, written down as you go (for "Go back to where you were"), and the autosave
+	# every few minutes and as you arrive.
+	var spot := Timer.new()
+	spot.wait_time = 5.0
+	spot.autostart = true
+	spot.timeout.connect(_note_place)
+	add_child(spot)
+	var auto := Timer.new()
+	auto.wait_time = 180.0
+	auto.autostart = true
+	auto.timeout.connect(func(): Saves.autosave())
+	add_child(auto)
+	(func():
+		_note_place()
+		Saves.autosave(true)).call_deferred()
 	var in_story := str(Router.roam.get("story", "")) != ""
 	if not in_story:
 		_build_npcs()
@@ -2119,6 +2134,17 @@ func _open_pause() -> void:
 		_close_pause()
 		open_decks())
 	v.add_child(decks)
+	if str(Router.roam.get("story", "")) != "":
+		# Save slots are for the story: save the chapter right where you are, or load another.
+		var sv := Button.new()
+		sv.text = "Save / Load"
+		sv.custom_minimum_size = Vector2(320, 60)
+		sv.disabled = story != null and story._cut
+		sv.pressed.connect(func():
+			_note_place()
+			_close_pause()
+			_open_overlay(SaveMenu.new()))
+		v.add_child(sv)
 	var sett := Button.new()
 	sett.text = "Settings"
 	sett.custom_minimum_size = Vector2(320, 60)
@@ -2147,6 +2173,17 @@ func _open_pause() -> void:
 	v.add_child(menu)
 	_ui.add_child(_pause)
 	resume.grab_focus()
+
+
+func _note_place() -> void:
+	if _player == null or "--autoplay" in OS.get_cmdline_user_args():
+		return
+	var ch := str(Router.roam.get("story", ""))
+	if ch != "":
+		Saves.note_place("story", {"chapter": ch, "district": str(Router.roam.get("district", "domino"))})
+	else:
+		var pp: Vector3 = _outside_pos if _inside != "" else _player.position
+		Saves.note_place("roam", {"district": str(Router.roam.get("district", "domino")), "x": pp.x, "z": pp.z, "yaw": _yaw})
 
 
 func _close_pause() -> void:

@@ -38,6 +38,8 @@ func _ready() -> void:
 	_intro()
 	_lumen_news.call_deferred()
 	Router.roam["story"] = ""
+	if Router.menu_open == "":
+		_welcome_back.call_deferred()
 	if Router.menu_open == "select":
 		Router.menu_open = ""
 		Router.story_result = ""
@@ -61,7 +63,11 @@ func _ready() -> void:
 		SettingsPanel._tab_at["settings"] = 99
 		_on_settings.call_deferred()
 	elif Router.menu_open == "album":
+		Router.menu_open = ""
 		_on_album.call_deferred()
+	elif Router.menu_open == "saves":
+		Router.menu_open = ""
+		_on_saves.call_deferred()
 	elif Router.menu_open == "goals":
 		Router.menu_open = ""
 		_on_goals.call_deferred()
@@ -1022,6 +1028,60 @@ func _on_story() -> void:
 		p.body.add_child(bb)
 	add_child(p)
 	_open_panel(p)
+
+
+func _on_saves() -> void:
+	var m := SaveMenu.open(self)
+	_panel_open = true
+	m.closed.connect(func():
+		_panel_open = false
+		if _items.size() > 1:
+			_items[0].grab_focus())
+
+
+## After a load, or after the game closed without warning: say so, and offer to take you back
+## to where you were (the story scene, or the spot in the world).
+func _welcome_back() -> void:
+	var crashed := Saves.crashed_last
+	var loaded := Saves.just_loaded
+	Saves.crashed_last = false
+	Saves.just_loaded = ""
+	if not crashed and loaded == "":
+		return
+	var where := Saves.place()
+	var text := ""
+	if crashed:
+		text = Loc.t("The game closed without warning last time. Your progress is safe: it was saved as you played.")
+		if Saves.crash_report != "":
+			text += "\n\n" + Loc.t("A report of what happened was kept in Crossroads Data, in the Crash reports folder. Send it over and we can fix it.")
+	else:
+		text = Loc.t("%s is loaded.") % (Loc.t("AUTOSAVE") if loaded == "autosave" else (Loc.t("SAVE %d") % int(loaded.trim_prefix("slot"))).capitalize())
+	var p := SidePanel.new("Welcome back" if crashed else "Save loaded", 700)
+	p.z_index = 100
+	var l := UITheme.label(text, 22, Color.WHITE)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	p.body.add_child(l)
+	var pt := Saves.place_text()
+	if not where.is_empty() and pt != "":
+		var go := Button.new()
+		go.text = "▶  " + Loc.t("Go back to where you were") + "   ·   " + pt
+		go.custom_minimum_size = Vector2(0, 72)
+		go.add_theme_font_size_override("font_size", 24)
+		go.pressed.connect(func():
+			Sfx.play("click", -6.0)
+			if str(where.get("mode", "")) == "story":
+				StoryDirector.begin(str(where.get("chapter", "")), true)
+			else:
+				Router.roam = {"district": str(where.get("district", "domino")), "pos": Vector3(float(where.get("x", 0.0)), 0, float(where.get("z", 8.0))), "yaw": float(where.get("yaw", PI))}
+				Router.go(Router.ROAM))
+		p.body.add_child(go)
+		go.grab_focus.call_deferred()
+	var stay := Button.new()
+	stay.text = Loc.t("Stay on the main menu")
+	stay.custom_minimum_size = Vector2(0, 60)
+	stay.pressed.connect(p.close)
+	p.body.add_child(stay)
+	add_child(p)
 
 
 func _on_album() -> void:

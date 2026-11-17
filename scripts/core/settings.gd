@@ -42,6 +42,7 @@ var mouse_look := true        # open world: moving the mouse turns the camera (p
 var mouse_sens := 1.0
 var mouse_invert := false
 var big_shows := true
+var card_showcase := false     # hold an activated Spell or Trap up in the middle to be read before it acts
 var _lang_kept := ""            # the saved language while --lang= is trying another one          # the full-screen summon and attack scenes (SummonShow)
 var pad_show := "auto"        # which buttons the game shows: auto | keys | pad
 var pad_cam := 1.0            # camera turn speed with the right stick
@@ -372,6 +373,7 @@ func tune_sun(l: DirectionalLight3D) -> void:
 
 func _ready() -> void:
 	# Before anything reads a save: a load, a new game or leaving admin mode asked for last run.
+	Saves.session_start()
 	Saves.apply_pending()
 	Saves.pull_shared()
 	Saves.read_admin()
@@ -404,6 +406,7 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_PREDELETE:
 		Saves.push_live()
+		Saves.session_end()
 
 
 ## Where the game's own folder is looked for first: "Crossroads Data" beside the game. It
@@ -492,6 +495,7 @@ func load_settings() -> void:
 	mouse_sens = float(cfg.get_value("game", "mouse_sens", mouse_sens))
 	mouse_invert = bool(cfg.get_value("game", "mouse_invert", mouse_invert))
 	big_shows = bool(cfg.get_value("game", "big_shows", big_shows))
+	card_showcase = bool(cfg.get_value("game", "card_showcase", card_showcase))
 	pad_cam = float(cfg.get_value("pad", "cam", pad_cam))
 	pad_pointer = float(cfg.get_value("pad", "pointer", pad_pointer))
 	pad_invert = bool(cfg.get_value("pad", "invert", pad_invert))
@@ -568,6 +572,7 @@ func save_settings() -> void:
 	cfg.set_value("game", "mouse_sens", mouse_sens)
 	cfg.set_value("game", "mouse_invert", mouse_invert)
 	cfg.set_value("game", "big_shows", big_shows)
+	cfg.set_value("game", "card_showcase", card_showcase)
 	cfg.set_value("pad", "cam", pad_cam)
 	cfg.set_value("pad", "pointer", pad_pointer)
 	cfg.set_value("pad", "invert", pad_invert)

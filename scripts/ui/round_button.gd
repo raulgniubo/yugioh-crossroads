@@ -73,6 +73,12 @@ func _draw() -> void:
 		"power":
 			draw_arc(o, 11.0 * k, -PI * 0.28, PI * 1.28, 20, w, 3.6 * k, true)
 			draw_line(o + Vector2(0, -15) * k, o + Vector2(0, -2) * k, w, 3.6 * k, true)
+		"save":
+			# A disk: the body, the label, the shutter.
+			var body := Rect2(o + Vector2(-13, -13) * k, Vector2(26, 26) * k)
+			draw_rect(body, w, false, 2.6 * k)
+			draw_rect(Rect2(o + Vector2(-7, -13) * k, Vector2(13, 8) * k), w)
+			draw_rect(Rect2(o + Vector2(-8, 2) * k, Vector2(16, 9) * k), w, false, 2.2 * k)
 		"album":
 			# An open binder: two pages and the rings between them.
 			var lp := Rect2(o + Vector2(-15, -10) * k, Vector2(13, 20) * k)

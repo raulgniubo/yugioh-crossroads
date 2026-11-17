@@ -196,6 +196,12 @@ static func open(parent: Node) -> SidePanel:
 	bs.toggled.connect(func(on):
 		Settings.big_shows = on
 		Settings.save_settings())
+	var cs := CheckButton.new()
+	cs.button_pressed = Settings.card_showcase
+	cs.toggled.connect(func(on):
+		Settings.card_showcase = on
+		Settings.save_settings())
+	_row(game, "Show activated cards big", "Off: a Spell or Trap goes straight into what it does, with a line at the top saying what it is. On: the duel stops to show the card in the middle first.", cs)
 	_row(game, "Big summon and attack scenes", "The full-screen scene when a strong monster arrives or attacks. Turn it off if a duel freezes or closes there.", bs)
 	var crowd := CheckButton.new()
 	crowd.button_pressed = Settings.crowd_cam

@@ -459,15 +459,26 @@ func _build_ui() -> void:
 	root.theme = UITheme.build()
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui.add_child(root)
-	var title := UITheme.label("NEW DOMINO HIGHWAY", 40, Color.WHITE, UITheme.title_font())
-	title.position = Vector2(48, 36)
-	root.add_child(title)
+	# The place plate: on a dark glass card, so it reads over a bright sky or the moon.
+	var plate := PanelContainer.new()
+	plate.position = Vector2(30, 24)
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var psb := UITheme.panel_box(Color(0.03, 0.045, 0.1, 0.78), 14, Color(1, 1, 1, 0.1))
+	psb.content_margin_left = 20
+	psb.content_margin_right = 22
+	psb.content_margin_top = 10
+	psb.content_margin_bottom = 12
+	plate.add_theme_stylebox_override("panel", psb)
+	root.add_child(plate)
+	var pv := VBoxContainer.new()
+	pv.add_theme_constant_override("separation", 0)
+	plate.add_child(pv)
+	var title := UITheme.label("NEW DOMINO HIGHWAY", 38, Color.WHITE, UITheme.title_font())
+	pv.add_child(title)
 	_zone_l = UITheme.label("", 22, Color("ff8a3a"), UITheme.semi_font())
-	_zone_l.position = Vector2(50, 84)
-	root.add_child(_zone_l)
-	_info = UITheme.label("", 19, UITheme.TEXT_DIM)
-	_info.position = Vector2(50, 114)
-	root.add_child(_info)
+	pv.add_child(_zone_l)
+	_info = UITheme.label("", 18, UITheme.TEXT_DIM)
+	pv.add_child(_info)
 	_prompt = UITheme.label("", 30, UITheme.GOLD, UITheme.title_font())
 	_prompt.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
 	_prompt.offset_top = -210
@@ -504,20 +515,33 @@ func _build_ui() -> void:
 	root.add_child(_mom_ui)
 	_radar = Control.new()
 	_radar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_radar.offset_left = -330
-	_radar.offset_right = 620
+	_radar.offset_left = -140      # (right of the place plate, in any language)
+	_radar.offset_right = 810
 	_radar.offset_top = 30
 	_radar.offset_bottom = 120
 	_radar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_radar.draw.connect(_draw_radar)
 	root.add_child(_radar)
-	var help := UITheme.label("W / S  throttle and brake     A / D  steer     E  duel a rider / take an exit     R  race events at the start line     T  garage     Esc  menu", 17, UITheme.TEXT_DIM)
-	help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	help.offset_left = 48
-	help.offset_top = -52
-	help.offset_bottom = -22
-	help.offset_right = 1400
-	root.add_child(help)
+	var help := UITheme.label("W / S  throttle and brake     A / D  steer     E  duel a rider / take an exit     R  race events at the start line     T  garage     Esc  menu", 17, Color(0.93, 0.95, 1.0, 0.95))
+	# On a dark strip of its own, so the light trails on the road never run through it.
+	var hb := PanelContainer.new()
+	var hsb := StyleBoxFlat.new()
+	hsb.bg_color = Color(0.03, 0.05, 0.11, 0.72)
+	hsb.set_corner_radius_all(8)
+	hsb.content_margin_left = 16
+	hsb.content_margin_right = 16
+	hsb.content_margin_top = 6
+	hsb.content_margin_bottom = 6
+	hb.add_theme_stylebox_override("panel", hsb)
+	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hb.add_child(help)
+	hb.anchor_top = 1.0
+	hb.anchor_bottom = 1.0
+	hb.offset_left = 40
+	hb.offset_top = -62
+	hb.offset_bottom = -22
+	hb.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	root.add_child(hb)
 
 
 func _draw_gauge() -> void:

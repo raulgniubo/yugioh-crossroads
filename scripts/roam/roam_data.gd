@@ -244,7 +244,7 @@ const DISTRICTS := {
 		"area": "The Tops",
 		"theme": "kaibacorp",
 		"builder": "newdomino",
-		"start": Vector3(0, 0, 43),
+		"start": Vector3(0, 0, 35),
 		"yaw": 0.0,
 		"tod": "day",
 		"routes": [[Vector3(-3, 0, 40), Vector3(-3, 0, 12)], [Vector3(3, 0, -8), Vector3(3, 0, -30)], [Vector3(-12, 0, 6.5), Vector3(-34, 0, 6.5)],

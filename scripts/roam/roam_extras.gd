@@ -928,8 +928,18 @@ func _lay_trail_on_path(p: Vector3, t: float) -> void:
 			var hit := space.intersect_ray(q)
 			ch.set_meta("fy", (hit["position"] as Vector3).y if not hit.is_empty() else p.y)
 		ch.position = Vector3(at.x, _paving(at.x, at.z, float(ch.get_meta("fy"))) + 0.06, at.z)
+		ch.visible = ch.visible and not _near_camera(ch.position)
 		ch.rotation.y = atan2(u.x, u.z) + PI
 		ch.modulate.a = clampf(1.0 - i / float(_trail.size()), 0.15, 0.9)
+
+
+## An arrow right under the camera fills half the screen: those are left out.
+func _near_camera(at: Vector3) -> bool:
+	var cam: Camera3D = scene.get_viewport().get_camera_3d()
+	if cam == null:
+		return false
+	var c: Vector3 = cam.global_position
+	return Vector2(at.x - c.x, at.z - c.z).length() < 4.0
 
 
 ## The top of what you see underfoot: the paving is drawn a few cm above the floor you walk on.
@@ -949,6 +959,7 @@ func _lay_trail_straight(p: Vector3, dir: Vector3, dist: float, t: float) -> voi
 		ch.visible = d < dist - 1.0 and scene._inside == "" and fy > -50.0
 		ch.position = p + dir * d
 		ch.position.y = _paving(ch.position.x, ch.position.z, fy) + 0.06
+		ch.visible = ch.visible and not _near_camera(ch.position)
 		ch.rotation.y = atan2(dir.x, dir.z) + PI
 		ch.modulate.a = clampf(1.0 - i / float(_trail.size()), 0.15, 0.9)
 

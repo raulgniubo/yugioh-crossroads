@@ -1680,6 +1680,50 @@ func ask_response(text: String, options: Array, button := "Activate", cancel := 
 
 
 ## Small floating callout for card effects.
+## Who activated what, and what it does, at the top of the screen for a moment. The duel does
+## not wait for it: the card goes straight into its animation underneath.
+var _caption: Control
+
+
+func action_caption(title: String, detail: String, color: Color, mine: bool) -> void:
+	if _caption and is_instance_valid(_caption):
+		_caption.queue_free()
+	var pc := PanelContainer.new()
+	var sb := UITheme.button_box(Color(0.03, 0.045, 0.1, 0.93), Color(color, 0.85), 16)
+	sb.content_margin_left = 22
+	sb.content_margin_right = 26
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 12
+	sb.border_width_left = 6
+	pc.add_theme_stylebox_override("panel", sb)
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pc.z_index = 41
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	pc.add_child(v)
+	var t := UITheme.label(title, 26, color.lightened(0.35), UITheme.title_font())
+	v.add_child(t)
+	if detail != "":
+		var d := UITheme.label(detail, 19, Color(0.9, 0.93, 1.0))
+		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		d.custom_minimum_size = Vector2(minf(760.0, 18.0 + detail.length() * 9.5), 0)
+		v.add_child(d)
+	add_child(pc)
+	_caption = pc
+	pc.reset_size()
+	var vs := get_viewport_rect().size
+	pc.position = Vector2((vs.x - pc.size.x) / 2.0, vs.y * 0.085)
+	pc.modulate.a = 0.0
+	pc.position.y -= 14.0
+	var tw := pc.create_tween()
+	tw.set_parallel()
+	tw.tween_property(pc, "modulate:a", 1.0, 0.16)
+	tw.tween_property(pc, "position:y", pc.position.y + 14.0, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_interval(maxf(2.2, 1.2 + detail.length() * 0.035))
+	tw.chain().tween_property(pc, "modulate:a", 0.0, 0.35)
+	tw.chain().tween_callback(pc.queue_free)
+
+
 func effect_text(text: String, color := Color("ffd23a")) -> void:
 	var l := UITheme.label(text, 30, Color.WHITE, UITheme.semi_font())
 	var sb := UITheme.button_box(Color(0.042, 0.058, 0.125, 0.92), color, 16)

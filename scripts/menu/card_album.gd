@@ -640,7 +640,9 @@ func _show_card(id: int, st: String, num: int) -> void:
 		var lv := int(d.get("level", 0))
 		if lv > 0:
 			bits.append((Loc.t("Rank %d") if frame == "xyz" else Loc.t("Level %d")) % lv)
-		_d_stats.text = "ATK %s   DEF %s" % [str(d.get("atk", "?")), str(d.get("def", "?"))]
+		var atk = d.get("atk", null)
+		var df = d.get("def", null)
+		_d_stats.text = "ATK %s   DEF %s" % ["?" if atk == null or int(atk) < 0 else str(int(atk)), "?" if df == null or int(df) < 0 else str(int(df))]
 	else:
 		bits.append(Loc.t("Spell") if kind == "spell" else Loc.t("Trap"))
 		if d.has("race") and str(d["race"]) != "Normal":

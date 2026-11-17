@@ -308,7 +308,7 @@ func _build_landmarks() -> void:
 		# It is a stone platform, not a picture of one: you walked straight through it.
 		solid_disc(Vector3(19.0, 0.1, 30.0), 5.9, 1.3)
 	# Ferry at the pier
-	var boat := prop("ferry", Vector3(7.5, -0.7, 62.0 + PIER), 0.2, 15.0)
+	var boat := prop("ferry", Vector3(8.5, -0.7, 68.0 + PIER), 0.2, 15.0)     # (out in the water, not on the beach)
 	if boat:
 		_bobbers.append([boat, -0.7])
 	# The volcano behind the school
