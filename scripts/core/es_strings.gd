@@ -5800,4 +5800,7 @@ const ES := {
 	"Booster packs only hold cards from the eras the story has opened.": "Los sobres solo traen cartas de las eras que la historia ya abrió.",
 	"Your deck needs 40 to 60 cards. Lumen is in every starter.": "Tu deck necesita de 40 a 60 cartas. Lumen está en cada deck inicial.",
 	"Hold Shift to run (or the right trigger on a controller).": "Mantén Shift para correr (o el gatillo derecho en un control).",
+	"presents": "presenta",
+	"Opening when the game starts": "Intro al iniciar el juego",
+	"The short flight over the four worlds before the menu. Any key skips it.": "El vuelo corto sobre los cuatro mundos antes del menú. Cualquier tecla lo salta.",
 }

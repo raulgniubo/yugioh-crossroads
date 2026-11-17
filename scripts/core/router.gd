@@ -67,6 +67,7 @@ func _process(delta: float) -> void:
 				" objects ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME), " nodes ", int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)))
 
 
+var opening_shown := false     # the menu has been up once since the game started
 var _probe := false
 var _frame_log := "--frame-log" in OS.get_cmdline_user_args()   # dev: say every slow frame
 

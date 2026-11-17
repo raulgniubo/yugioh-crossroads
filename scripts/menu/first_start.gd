@@ -5,6 +5,13 @@ extends Control
 ## character creator opens on this stage instead of over the menu. Any key skips to the question.
 
 signal ask          # the question has been asked and answered with "this is me": open the creator
+signal done         # the short opening is over (or was skipped): the menu is yours
+
+## The short opening, for every start after the first: the worlds and the title, no words from
+## Lumen and no question, then it fades away over the menu.
+var short := false
+var _logo: Control
+var _done := false
 
 const WORLDS := [
 	{"name": "DOMINO CITY", "line": "Where it all began.", "color": Color("ffd166"), "faces": ["yugi", "kaiba", "joey"]},
@@ -39,6 +46,9 @@ var _home := Vector2.ZERO
 var _cine: IntroCinema
 var _bars: Control           # the letterbox while the worlds fly by
 var _bar_k := 0.0
+var _left := false
+var _dive := 0.0             # Lumen's light rushing at the screen (0 to 1)
+var _ring := 0.0             # the wave that goes out when the title lands (1 to 0)
 
 
 func _ready() -> void:
@@ -131,6 +141,27 @@ func _ready() -> void:
 	add_child(_skip_l)
 	_light.modulate.a = 0.0
 	_halo.modulate.a = 0.0
+	# Who made it, while the worlds are being built behind the dark.
+	_logo = Control.new()
+	_logo.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_logo.modulate.a = 0.0
+	add_child(_logo)
+	var studio := UITheme.label("ATLAS PEAK GAMES", 58, Color.WHITE, UITheme.title_font())
+	studio.position = Vector2(-640, -60)
+	studio.size = Vector2(1280, 70)
+	studio.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_logo.add_child(studio)
+	var rule := ColorRect.new()
+	rule.color = UITheme.GOLD
+	rule.position = Vector2(-60, 22)
+	rule.size = Vector2(120, 3)
+	_logo.add_child(rule)
+	var pres := UITheme.label(Loc.t("presents"), 26, Color(0.8, 0.88, 1.0, 0.85), UITheme.semi_font())
+	pres.position = Vector2(-640, 40)
+	pres.size = Vector2(1280, 36)
+	pres.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_logo.add_child(pres)
 	Music.set_boost(-9.0)
 	_start.call_deferred()
 	if "--intro-answer" in OS.get_cmdline_user_args():
@@ -160,7 +191,7 @@ func _process(delta: float) -> void:
 	var c := size / 2.0 + _home + Vector2(sin(_t * 0.7) * 14.0, cos(_t * 0.9) * 9.0 - 60.0)
 	var pulse := 1.0 + sin(_t * 2.4) * 0.06 + _flash * 0.8
 	_light.position = c - _light.size / 2.0
-	_light.scale = Vector2.ONE * pulse
+	_light.scale = Vector2.ONE * (pulse + _dive * 7.0)
 	_halo.position = c - _halo.size / 2.0
 	_halo.scale = Vector2.ONE * (1.0 + sin(_t * 1.3) * 0.08 + _flash * 1.6)
 	_flash = maxf(0.0, _flash - delta * 1.6)
@@ -170,7 +201,7 @@ func _process(delta: float) -> void:
 
 ## Four roads of light come in from the corners of the screen and meet in the middle.
 func _draw_beams() -> void:
-	if _beam <= 0.0 and _flash <= 0.0:
+	if _beam <= 0.0 and _flash <= 0.0 and _ring <= 0.0:
 		return
 	var c := size / 2.0 + Vector2(0, -60.0)
 	var corners := [Vector2(0, 0), Vector2(size.x, 0), Vector2(size.x, size.y), Vector2(0, size.y)]
@@ -181,6 +212,11 @@ func _draw_beams() -> void:
 		for w in [[26.0, 0.07], [12.0, 0.16], [4.0, 0.7]]:
 			_beams.draw_line(from, to, Color(col, float(w[1])), float(w[0]), true)
 		_beams.draw_circle(to, 9.0, Color(col, 0.9))
+	if _ring > 0.0:
+		# The title landed: a ring of light runs out from where the roads meet.
+		var rr := (1.0 - _ring) * size.x * 0.62
+		_beams.draw_arc(c, rr, 0.0, TAU, 96, Color(0.8, 0.95, 1.0, _ring * 0.55), 10.0 * _ring + 2.0, true)
+		_beams.draw_arc(c, rr * 0.82, 0.0, TAU, 96, Color(0.5, 0.85, 1.0, _ring * 0.25), 26.0 * _ring, true)
 	if _flash > 0.0:
 		_beams.draw_rect(Rect2(Vector2.ZERO, size), Color(1, 1, 1, clampf(_flash, 0.0, 1.0) * 0.55))
 
@@ -204,12 +240,67 @@ func _wait(sec: float, run: int) -> bool:
 
 ## The worlds are built first, while the screen is still dark; then the show starts.
 func _start() -> void:
+	var t0 := Time.get_ticks_msec()
+	create_tween().tween_property(_logo, "modulate:a", 1.0, 0.45)
+	await get_tree().create_timer(0.5).timeout
+	if not is_inside_tree():
+		return
 	await _cine.build_all()
 	if not is_inside_tree():
 		return
 	if _skipped:
+		# Skipped while the worlds were still being built: the city comes in behind the title.
+		if not _left:
+			_cine.finale(1.0)
 		return
-	_play()
+	var el := (Time.get_ticks_msec() - t0) / 1000.0
+	if el < 1.9:
+		await get_tree().create_timer(1.9 - el).timeout
+	if not is_inside_tree() or _skipped:
+		return
+	create_tween().tween_property(_logo, "modulate:a", 0.0, 0.4)
+	await get_tree().create_timer(0.45).timeout
+	if not is_inside_tree() or _skipped:
+		return
+	if short:
+		_play_short()
+	else:
+		_play()
+
+
+## Every start after the first: over the four worlds, the roads meet, the title lands, and the
+## menu is there.
+func _play_short() -> void:
+	_run += 1
+	var run := _run
+	create_tween().tween_property(self, "_bar_k", 1.0, 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	Sfx.play("whoosh", -4.0, 0.7)
+	_flash = 0.4
+	var shot_len := 1.7
+	for i in WORLDS.size():
+		_cine.show_shot(i, shot_len + 0.9, 0.2 if i == 0 else 0.4)
+		_world(i, shot_len)
+		if not await _wait(shot_len, run): return
+	_cine.finale(1.0)
+	var dim := create_tween().set_parallel()
+	dim.tween_property(self, "_bar_k", 0.0, 0.9)
+	dim.tween_property(_light, "modulate:a", 1.0, 0.6).set_delay(0.3)
+	dim.tween_property(_halo, "modulate:a", 0.35, 0.8).set_delay(0.3)
+	create_tween().tween_property(self, "_beam", 1.0, 1.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	Sfx.play("charge", -8.0, 0.9)
+	if not await _wait(1.2, run): return
+	_land_title()
+	if not await _wait(2.0, run): return
+	_finish()
+
+
+func _finish() -> void:
+	if _done:
+		return
+	_done = true
+	_skip_l.visible = false
+	done.emit()
+	leave()
 
 
 func _draw_bars() -> void:
@@ -236,25 +327,26 @@ func _play() -> void:
 	create_tween().tween_property(_text, "modulate:a", 0.0, 0.2)
 	# Lumen's light dives toward the screen and the flight over the four worlds begins.
 	var dive := create_tween().set_parallel()
-	dive.tween_property(_light, "scale", Vector2.ONE * 6.0, 0.35).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
-	dive.tween_property(_light, "modulate:a", 0.0, 0.35)
+	dive.tween_property(self, "_dive", 1.0, 0.35).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+	dive.tween_property(_light, "modulate:a", 0.0, 0.2).set_delay(0.3)
 	dive.tween_property(_halo, "modulate:a", 0.0, 0.35)
 	dive.tween_property(self, "_bar_k", 1.0, 0.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	Sfx.play("whoosh", -4.0, 0.7)
-	if not await _wait(0.3, run): return
-	var shot_len := 2.7
+	if not await _wait(0.35, run): return
+	_flash = 0.5
+	var shot_len := 2.9
 	for i in WORLDS.size():
-		_flash = 0.45
-		_cine.show_shot(i, shot_len + 0.4)
+		_cine.show_shot(i, shot_len + 0.6, 0.25 if i == 0 else 0.45)
 		_world(i, shot_len)
 		if not await _wait(shot_len, run): return
-	# The last world dims; the four roads come in over it and meet.
+	# Back over Domino, high up and dimmed; the four roads come in over it and meet.
+	_dive = 0.0
+	_cine.finale(1.3)
 	var dim := create_tween().set_parallel()
-	dim.tween_property(_cine, "modulate", Color(0.55, 0.6, 0.75, 0.3), 1.2)
 	dim.tween_property(self, "_bar_k", 0.0, 1.2)
-	dim.tween_property(_light, "modulate:a", 1.0, 0.8)
-	dim.tween_property(_halo, "modulate:a", 0.35, 1.0)
-	_light.scale = Vector2.ONE
+	dim.tween_property(_light, "modulate:a", 1.0, 0.8).set_delay(0.5)
+	dim.tween_property(_halo, "modulate:a", 0.35, 1.0).set_delay(0.5)
+	if not await _wait(0.6, run): return
 	_say(3)
 	create_tween().tween_property(self, "_beam", 1.0, 1.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	Sfx.play("charge", -8.0, 0.8)
@@ -341,6 +433,8 @@ func _world(i: int, hold := 1.0) -> void:
 func _land_title() -> void:
 	_flash = 1.0
 	_beam = 1.0
+	_ring = 1.0
+	create_tween().tween_property(self, "_ring", 0.0, 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	Sfx.play("gong", -2.0)
 	Sfx.play("special", -6.0)
 	create_tween().tween_property(_text, "modulate:a", 0.0, 0.15)
@@ -371,6 +465,11 @@ func _answer() -> void:
 	_btn.visible = false
 	create_tween().tween_property(_text, "modulate:a", 0.0, 0.2)
 	create_tween().tween_property(_title, "modulate:a", 0.0, 0.3)
+	# The creator opens on this stage: the city stays behind it, darker and held still.
+	_cine.dim(0.88, 0.4)
+	get_tree().create_timer(0.5).timeout.connect(func():
+		if is_instance_valid(_cine):
+			_cine.freeze())
 	ask.emit()
 
 
@@ -379,11 +478,16 @@ func _skip() -> void:
 	if _skipped or _asked:
 		return
 	_skipped = true
+	if short:
+		_finish()
+		return
 	for c in get_children():
-		if c is Control and c != _back and c != _beams and c != _light and c != _halo and c != _text and c != _title and c != _btn and c != _skip_l and c != _bars:
+		if c is Control and c != _back and c != _beams and c != _light and c != _halo and c != _text and c != _title and c != _btn and c != _skip_l and c != _bars and c != _cine:
 			c.queue_free()
 	_bar_k = 0.0
-	_light.scale = Vector2.ONE
+	_dive = 0.0
+	if _cine.built:
+		_cine.finale(0.6)
 	_light.modulate.a = 1.0
 	_halo.modulate.a = 0.35
 	_land_title()
@@ -391,7 +495,7 @@ func _skip() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if _asked or _t < 0.8:
+	if _asked or _done or _t < 0.8:
 		return
 	if (event is InputEventKey and event.pressed and not event.echo) or (event is InputEventMouseButton and event.pressed) or (event is InputEventJoypadButton and event.pressed):
 		get_viewport().set_input_as_handled()
@@ -400,6 +504,7 @@ func _input(event: InputEvent) -> void:
 
 ## The creator is done: fade away and leave the menu behind it.
 func leave() -> void:
+	_left = true
 	Music.set_boost(0.0)
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 0.0, 0.6)

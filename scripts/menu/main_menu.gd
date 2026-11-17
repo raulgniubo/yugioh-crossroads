@@ -35,8 +35,24 @@ func _ready() -> void:
 	_build_featured()
 	_build_profile_chip()
 	_build_footer()
+	# A new duelist: the opening is up before the menu is ever seen (it used to flash by first).
+	var first_menu := not Router.opening_shown    # the first time the menu is up since the game started
+	Router.opening_shown = true
+	var replay := false
+	if "--intro-short" in OS.get_cmdline_user_args():
+		replay = true            # dev: the short opening, whoever you are
+		_first_start(true)
+	elif _language_due():
+		_pick_language()
+	elif _opening_due():
+		_first_start()
+	elif first_menu and _replay_due():
+		# Every start after the first: the short opening (the worlds and the title), then the menu.
+		replay = true
+		_first_start(true)
 	_intro()
-	_lumen_news.call_deferred()
+	if not replay:
+		_lumen_news.call_deferred()
 	Router.roam["story"] = ""
 	if Router.menu_open == "":
 		_welcome_back.call_deferred()
@@ -774,8 +790,47 @@ var _first: FirstStart
 
 ## The very first start: the opening plays over the menu, and the character creator opens on
 ## its stage when it asks who you are.
-func _first_start() -> void:
+func _language_due() -> bool:
+	return (Settings.first_language and not "--shot" in str(OS.get_cmdline_user_args())) or "--lang-pick" in OS.get_cmdline_user_args()
+
+
+func _opening_due() -> bool:
+	var args := str(OS.get_cmdline_user_args())
+	if _language_due():
+		return false     # the language comes first; the menu is loaded again after it
+	return not Profile.created and not "--shot" in args and not "--story" in args
+
+
+## The short opening plays when the game starts for somebody who already has a duelist. Not
+## after a load or a crash (the welcome-back panel is up then), and never on a dev run.
+func _replay_due() -> bool:
+	if not Settings.opening or not Profile.created or DisplayServer.get_name() == "headless":
+		return false
+	if Router.menu_open != "" or Saves.crashed_last or Saves.just_loaded != "":
+		return false
+	for a in OS.get_cmdline_user_args():
+		if not (a.begins_with("--assets=") or a.begins_with("--lang=") or a.begins_with("--intro")):
+			return false
+	return true
+
+
+func _opening_done() -> void:
+	_first = null
+	_panel_open = false
+	_lumen_news()
+	if _starter_due():
+		_open_starter()
+	elif _items.size() > 0:
+		_items[0].grab_focus()
+
+
+func _first_start(short := false) -> void:
+	if _first != null and is_instance_valid(_first):
+		return
 	_first = FirstStart.new()
+	_first.short = short
+	if short:
+		_first.done.connect(_opening_done)
 	_first.z_index = 90
 	add_child(_first)
 	_panel_open = true
@@ -839,9 +894,9 @@ func _intro() -> void:
 	await get_tree().create_timer(0.22).timeout
 	if not is_inside_tree() or Router._busy:
 		return
-	if (Settings.first_language and not "--shot" in str(OS.get_cmdline_user_args())) or "--lang-pick" in OS.get_cmdline_user_args():
-		_pick_language()
-	elif not Profile.created and not "--shot" in str(OS.get_cmdline_user_args()) and not "--story" in str(OS.get_cmdline_user_args()):
+	if _language_due():
+		pass     # (already up, see _ready)
+	elif _opening_due() and _first == null:
 		_first_start()
 	elif _starter_due():
 		_open_starter()
@@ -852,50 +907,9 @@ func _intro() -> void:
 ## The very first start, before anything else: which language. The menu is built again in it.
 func _pick_language() -> void:
 	_panel_open = true
-	var shade := ColorRect.new()
-	shade.color = Color(0.02, 0.03, 0.08, 0.97)
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_STOP
-	shade.z_index = 200
-	add_child(shade)
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.add_child(center)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 26)
-	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	center.add_child(v)
-	var t := Label.new()
-	t.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	t.text = "Language  ·  Idioma"
-	t.add_theme_font_override("font", UITheme.title_font())
-	t.add_theme_font_size_override("font_size", 56)
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(t)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 24)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	v.add_child(row)
-	var first: Button = null
-	for lang in Loc.LANGS:
-		var b := Button.new()
-		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-		b.text = str(lang[1])
-		b.custom_minimum_size = Vector2(320, 96)
-		b.add_theme_font_size_override("font_size", 34)
-		var code := str(lang[0])
-		b.pressed.connect(func():
-			Sfx.play("click", -4.0)
-			Settings.language = code
-			Settings.first_language = false
-			Settings.apply()
-			Settings.save_settings()
-			Router.go(Router.MAIN_MENU))
-		row.add_child(b)
-		if first == null:
-			first = b
-	if first:
-		first.grab_focus.call_deferred()
+	var lp := LanguagePick.new()
+	lp.z_index = 200
+	add_child(lp)
 
 
 ## New cards of Lumen's came with the story since the last time the menu was up: say so.
@@ -1055,6 +1069,8 @@ func _welcome_back() -> void:
 	Saves.just_loaded = ""
 	if not crashed and loaded == "":
 		return
+	if _first != null and is_instance_valid(_first):
+		return     # the opening is playing: nothing goes on top of it
 	var where := Saves.place()
 	var text := ""
 	if crashed:

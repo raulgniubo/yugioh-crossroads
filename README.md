@@ -5,6 +5,19 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.54
+
+**The opening, fixed and on every start**
+
+- **Fix: noise and four cities on top of each other.** On a real graphics card (Vulkan) the intro showed pink noise during the flight and all four worlds blended at the title. Each world now has its own picture, only the one on screen is shown, none is shown before it has been drawn, and one world fades into the next.
+- **Fix: the menu no longer shows for a moment before the intro** (or before the language screen).
+- **Title:** it lands over Domino City at night from high up, dimmed, drifting slowly, with a ring of light going out. The city stays (darker, held still) behind the character creator.
+- **"ATLAS PEAK GAMES presents"** opens it, while the worlds are built behind the dark.
+- **First start, in this order:** a new language screen (two big cards, both languages on screen until you pick), then the full intro with Lumen, then your duelist.
+- **Every start after that:** the short opening (the four worlds and the title, about 11 seconds), then the menu. Any key skips it. Not after a load or a crash. Settings > Game > "Opening when the game starts" turns it off.
+
+Not done or not checked: checked here as recorded video frames, and two pictures on software Vulkan (no noise there), not on your PC's card. Your screen is bigger than what I can test: the worlds are drawn at up to 1440 lines and stretched.
+
 ## What is in 0.33.53
 
 **A new opening**
