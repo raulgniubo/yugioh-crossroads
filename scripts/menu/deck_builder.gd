@@ -1742,7 +1742,7 @@ func _close() -> void:
 	_note_seen()
 	Collection._apply_active()
 	if not Collection.deck_ok() and Collection.active == "custom":
-		Router.toast(Loc.t("Your deck needs %d to %d cards, so the Echo Deck is back in use") % [Collection.MAIN_MIN, Collection.MAIN_MAX])
+		Router.toast(Loc.t("Your deck needs %d to %d cards, so %s is back in use") % [Collection.MAIN_MIN, Collection.MAIN_MAX, CardData.deck_name(Collection.fallback_deck())])
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 0.0, 0.2)
 	await tw.finished

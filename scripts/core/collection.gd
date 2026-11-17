@@ -90,7 +90,7 @@ var slots: Array = []    # your decks: {name, main, extra, side, origin?}
 var dropped: Array = []  # ready-made decks you own whose deck you threw away
 var slot := 0            # which recipe is loaded
 var banlist := false     # play by the Forbidden/Limited list
-var decks_owned: Array = ["echo"]   # ready-made decks you have (the Echo starter, and any you bought)
+var decks_owned: Array = []   # ready-made decks you have (your starter, Lumen's deck once the story gives it, any you bought)
 var active := "echo"     # the deck you duel with: "custom" (the one you built) or a ready-made deck
 var starter_pick := ""   # which of the three starter decks you chose ("" not yet)
 var _new_save := false   # nothing was saved before this start: a new duelist
@@ -148,6 +148,7 @@ func _ready() -> void:
 			decks_owned = cfg.get_value("deck", "owned_decks", ["echo"])
 			active = str(cfg.get_value("deck", "active", "echo"))
 		else:
+			decks_owned = ["echo"]   # (a save from before decks had a shelf: it played Echo)
 			_adopt_old_deck()
 	else:
 		_adopt_old_deck()
@@ -163,8 +164,7 @@ func _ready() -> void:
 		save.call_deferred()
 	lumen_gifts()
 	_fill_slots()
-	if not decks_owned.has("echo"):
-		decks_owned.append("echo")
+	lumen_deck()
 	_grant_decks()
 	_adopt_decks()
 	save.call_deferred()
@@ -198,14 +198,42 @@ func _apply_active() -> void:
 		r.duel_config["player_deck"] = active_deck()
 
 
-## The deck to duel with right now. Falls back to the Echo Deck when the built deck is not
-## legal, or the chosen ready-made deck is not on your shelf.
+## The deck to duel with right now. Falls back to your starter (or Lumen's deck) when the built
+## deck is not legal, or the chosen ready-made deck is not on your shelf.
 func active_deck() -> String:
-	if active == "custom":
-		return "custom" if deck_ok() else "echo"
-	if decks_owned.has(active) and CardData.has_deck(active):
+	if active == "custom" and deck_ok():
+		return "custom"
+	if active != "custom" and decks_owned.has(active) and CardData.has_deck(active):
 		return active
+	return fallback_deck()
+
+
+## A ready-made deck that is always there to duel with: the starter you picked, else Lumen's
+## deck, else any deck on your shelf (and the Echo list itself before anything is picked).
+func fallback_deck() -> String:
+	for k in [starter_pick, "echo"] + decks_owned:
+		if str(k) != "" and decks_owned.has(k) and CardData.has_deck(str(k)):
+			return str(k)
 	return "echo"
+
+
+## Lumen's deck: hers to hand over once you have dueled Domino with her (story stage 2). Saves
+## that had it from the start keep it. Returns true the moment it arrives.
+func lumen_deck() -> bool:
+	if decks_owned.has("echo") or Unlocks.stage() < 2 or not CardData.has_deck("echo"):
+		return false
+	decks_owned.append("echo")
+	var need := {}
+	for id in CardData.deck_list("echo") + CardData.extra_list("echo"):
+		need[id] = int(need.get(id, 0)) + 1
+	for id in need:
+		owned[id] = maxi(int(owned.get(id, 0)), mini(3, int(need[id])))
+	if origin_slot("echo") < 0 and not dropped.has("echo"):
+		_store_slot()
+		slots.append(_recipe_slot("echo"))
+	deck_news = true
+	save.call_deferred()
+	return true
 
 
 func use_deck(key: String) -> void:
@@ -238,6 +266,7 @@ func starter_info(key: String) -> Dictionary:
 ## CardData.LUMEN_GIFTS). Hands over whatever the story has reached and has not been given yet,
 ## and returns those card ids. An Extra Deck form also goes into the Extra Deck of the deck you
 ## built, if there is room, and the Fusion form comes with a Polymerization if you have none.
+var deck_news := false        # Lumen's deck just arrived (the main menu says it)
 var lumen_news: Array = []      # ids handed over and not yet announced (the main menu says it)
 
 func lumen_gifts() -> Array:
@@ -274,7 +303,7 @@ func is_new() -> bool:
 	var vs: Dictionary = record.get("vs", {})
 	for k in vs:
 		played += int((vs[k] as Array)[0]) + int((vs[k] as Array)[1])
-	return played == 0 and decks_owned.size() <= 1 and active == "echo"
+	return played == 0 and decks_owned.size() <= 1 and active == "echo" and starter_pick == ""
 
 
 ## The first deck: free, on your shelf, its cards in your collection. For a new duelist it is
@@ -292,11 +321,20 @@ func take_starter(key: String) -> bool:
 	for id in need:
 		owned[id] = maxi(int(owned.get(id, 0)), mini(3, int(need[id])))
 	_store_slot()
-	if origin_slot(key) < 0:
-		slots.append(_recipe_slot(key))
 	if fresh:
-		active = key
+		# A new duelist: the deck in your hands IS the starter (no leftover deck next to it).
+		var at := origin_slot(key)
+		if at < 0:
+			at = clampi(slot, 0, maxi(0, slots.size() - 1))
+			if slots.is_empty():
+				slots.append({})
+			slots[at] = _recipe_slot(key)
+		slot = at
+		_take_slot()
+		active = "custom"
 		_apply_active()
+	elif origin_slot(key) < 0:
+		slots.append(_recipe_slot(key))
 	_new_save = false
 	save()
 	return fresh
@@ -373,8 +411,8 @@ func deck_catalog() -> Array:
 
 func deck_info(key: String) -> Dictionary:
 	if key == "echo":
-		return {"key": "echo", "name": CardData.deck_name("echo"), "owner": "", "who": "player", "color": Color("2de2e6"),
-			"blurb": "Your starter deck.", "art": "", "price": 0, "kind": "starter", "era": ""}
+		return {"key": "echo", "name": CardData.deck_name("echo"), "owner": "Lumen", "who": "player", "color": Color("2de2e6"),
+			"blurb": "Lumen's own deck: hers, and the Echo cards she has given you.", "art": "", "price": 0, "kind": "gift", "era": ""}
 	var st := starter_info(key)
 	if not st.is_empty():
 		return {"key": key, "name": CardData.deck_name(key), "owner": "", "who": "player", "color": st["color"],
@@ -875,15 +913,19 @@ func _trade_in() -> void:
 		Router.toast(Loc.t("%d cards that had no working effect were swapped for cards that do") % count))
 
 
-## A new duelist starts with the Echo starter deck (and a little more).
+## A new duelist starts with a few classic cards; the deck itself is the starter they pick
+## (Lumen is in every one). Lumen's own deck comes later, from the story.
 func _starter() -> void:
-	for key in ["echo", "yugi"]:
-		for id in CardData.deck_list(key):
-			owned[id] = mini(3, int(owned.get(id, 0)) + 1)
-		for id in CardData.extra_list(key):
-			owned[id] = mini(3, int(owned.get(id, 0)) + 1)
-	main = Array(CardData.deck_list("echo"))
-	extra = Array(CardData.extra_list("echo"))
+	for id in CardData.deck_list("yugi") + CardData.extra_list("yugi"):
+		owned[id] = mini(3, int(owned.get(id, 0)) + 1)
+	if not CardData.has_deck("starter_warrior"):
+		# (No starters in this build: the old way, the Echo list in your hands.)
+		decks_owned.append("echo")
+		main = Array(CardData.deck_list("echo"))
+		extra = Array(CardData.extra_list("echo"))
+	else:
+		main = []
+		extra = []
 	save()
 
 
@@ -1251,6 +1293,11 @@ func playable(id: int) -> bool:
 		var st := {}
 		for i in every_playable():
 			st[i] = true
+		# The game's own cards (the ones ready-made decks are written with, Fissure and the
+		# like) are in the game even when no booster pack carries them.
+		for i in CardData.CARDS:
+			if CardExact.ok(CardData.get_card(int(i))):
+				st[int(i)] = true
 		_pools["set"] = st
 	return (_pools["set"] as Dictionary).has(id) or id == CardData.LUMEN
 

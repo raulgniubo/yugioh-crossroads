@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.51
+
+**One deck at the start, and Lumen's deck as a story reward**
+
+- **A new game starts with one deck:** the starter you pick (First Blade, First Spell or First Flame). Lumen is in all three. The Echo deck is no longer handed out at the start, and there is no leftover "My Deck" next to the starter.
+- **Lumen's Deck:** the old Echo deck is now hers. It arrives after you duel Domino with her (story stage 2), with a message on the main menu, and goes in Decks as its own deck marked "A gift from Lumen". Its list is Lumen plus the Echo cards she has by then (Echo Call, Echo Veil, Echo Resonance, Echo Radiant) around the classic cards. Her later forms still come through the story, not through this deck.
+- **Saves you already have keep everything:** if you had the Echo deck, it stays, with your changes. If you never touched it, its original list is the new one when you press "Restore the original list".
+- **Fallback deck:** when the deck in use is not legal, the game goes back to your starter (or Lumen's deck) instead of the Echo deck. Story duels do the same.
+- **Fix:** a brand new save could show "1 cards that had no working effect were swapped" on its second start and mark the starter as "changed" (Fissure was wrongly treated as a card the game has no rules for). It stays now.
+
+Not done or not checked: played here on a fresh save with test card pictures (pick a starter, check Decks, then unlock chapter 2 and see Lumen's deck arrive), not on your Mac. Old saves were checked by the tests, not by loading your own save.
+
 ## What is in 0.33.50
 
 **Story saves and coming back after a crash**

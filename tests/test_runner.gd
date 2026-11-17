@@ -104,6 +104,7 @@ func _ready() -> void:
 		_test_pad()
 		_test_swords_stays()
 		_test_card_text_es()
+		_test_fresh_starter()
 		await _test_album()
 		_test_save_slots()
 		_test_turbo_setup()
@@ -7591,6 +7592,61 @@ func _test_save_slots() -> void:
 		check(not Saves.exists("slot5"), "Saves: a slot can be deleted")
 	check(CardText.gist("Mirror Force", "When an opponent's monster declares an attack: Destroy all your opponent's Attack Position monsters.") == "Destroy all your opponent's Attack Position monsters.", "Caption: the part of the text that does something")
 	check(CardText.gist("Pot of Greed", "Draw 2 cards.") == "Draw 2 cards.", "Caption: a short card is said whole")
+
+
+func _test_fresh_starter() -> void:
+	var C = Collection
+	var keep := {}
+	for k in ["owned", "main", "extra", "side", "slots", "slot", "decks_owned", "active", "starter_pick", "record", "dropped", "deck_name"]:
+		var v = C.get(k)
+		keep[k] = v.duplicate(true) if (v is Array or v is Dictionary) else v
+	var admin_was: bool = Saves.admin
+	check(CardData.deck_name("echo") == "Lumen's Deck", "Starter: the Echo list is Lumen's own deck now")
+	var lumen_list: Array = Array(CardData.deck_list("echo"))
+	check(lumen_list.has(99200012) and lumen_list.has(99200013) and lumen_list.has(99200011) and lumen_list.has(CardData.LUMEN), "Starter: Lumen's deck has her and her Echo cards")
+	check(not lumen_list.has(99200002) and not lumen_list.has(99200003) and not lumen_list.has(99200004), "Starter: no form in Lumen's deck before the story gives it")
+	check(lumen_list.size() >= Collection.MAIN_MIN, "Starter: Lumen's deck is a legal size (%d)" % lumen_list.size())
+	# A brand new duelist, before the story has reached Domino.
+	Saves.admin = false
+	C.owned = {}
+	C.main = []
+	C.extra = []
+	C.side = []
+	C.slots = []
+	C.slot = 0
+	C.decks_owned = []
+	C.dropped = []
+	C.active = "echo"
+	C.starter_pick = ""
+	C.record = {}
+	C._new_save = true
+	C._starter()
+	C.owned[CardData.LUMEN] = 1
+	C.main.append(CardData.LUMEN)
+	C._fill_slots()
+	var early := Unlocks.stage() < 2
+	if early:
+		check(not C.lumen_deck() and not C.decks_owned.has("echo"), "Starter: no Echo deck at the start")
+	check(C.is_new(), "Starter: a fresh save is a new duelist")
+	C.take_starter("starter_warrior")
+	if early:
+		check(C.slots.size() == 1, "Starter: one deck at the start, the one you picked (%d)" % C.slots.size())
+		check(C.decks_owned == ["starter_warrior"], "Starter: only the starter is on the shelf (%s)" % str(C.decks_owned))
+	check(str((C.slots[C.slot] as Dictionary).get("origin", "")) == "starter_warrior", "Starter: the deck in your hands is the starter")
+	check(C.active_deck() == "custom" and C.main.has(CardData.LUMEN), "Starter: you duel with it, Lumen inside")
+	check(C.fallback_deck() == "starter_warrior", "Starter: the fallback deck is your starter")
+	# After Domino, Lumen hands over her deck.
+	Saves.admin = true
+	var n: int = C.slots.size()
+	check(C.lumen_deck() and C.decks_owned.has("echo") and C.origin_slot("echo") >= 0 and C.slots.size() == n + 1, "Starter: Lumen's deck arrives after Domino, as its own deck")
+	check(not C.lumen_deck(), "Starter: Lumen's deck arrives once")
+	check(C.active_deck() == "custom" and str((C.slots[C.slot] as Dictionary).get("origin", "")) == "starter_warrior", "Starter: getting it does not take your deck away")
+	C.deck_news = false
+	Saves.admin = admin_was
+	for k in keep:
+		C.set(k, keep[k])
+	C._new_save = false
+	C.save()
 
 
 func _test_album() -> void:

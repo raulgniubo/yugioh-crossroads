@@ -900,6 +900,12 @@ func _pick_language() -> void:
 ## New cards of Lumen's came with the story since the last time the menu was up: say so.
 func _lumen_news() -> void:
 	Collection.lumen_gifts()
+	if Collection.lumen_deck() or Collection.deck_news:
+		Collection.deck_news = false
+		Sfx.play("quest", -6.0)
+		Router.toast(Loc.t("Lumen gave you her own deck: %s. It is in Decks, ready to play or change.") % Loc.t(CardData.deck_name("echo")), 7.0)
+		Collection.lumen_news.clear()
+		return
 	if Collection.lumen_news.is_empty():
 		return
 	var names: Array = []

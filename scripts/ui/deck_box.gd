@@ -67,6 +67,8 @@ func _draw() -> void:
 	var sub := Loc.t("%s's deck") % Loc.t(str(info["owner"])) if str(info.get("owner", "")) != "" else Loc.t("Theme deck")
 	if str(info.get("kind", "")) == "starter":
 		sub = Loc.t("Starter deck")
+	elif str(info.get("kind", "")) == "gift":
+		sub = Loc.t("A gift from Lumen")
 	draw_string(_semi, Vector2(10, h - band + 58), sub, HORIZONTAL_ALIGNMENT_CENTER, w - 20, 16, col.lightened(0.55))
 	draw_rect(Rect2(0, 0, w, h), col.lightened(0.1 + 0.4 * glow), false, 3.0)
 	# Tag, top left.

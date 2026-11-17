@@ -16,7 +16,7 @@ const CARDS := {
 	99100008: {"name": "Speed Spell - Overtake", "frame": "spell", "text": "Needs 6 Speed Counters. Spend 3 Speed Counters: destroy the monster your opponent controls with the highest DEF.", "speed_spell": true},
 	99100009: {"name": "Speed Spell - Redline", "frame": "spell", "text": "Needs 8 Speed Counters. Spend 6 Speed Counters: inflict 2000 damage to your opponent.", "speed_spell": true},
 	99100010: {"name": "Speed Spell - Shockwave", "frame": "spell", "text": "Needs 7 Speed Counters. Spend 4 Speed Counters: destroy every Spell and Trap your opponent controls.", "speed_spell": true},
-	# Your partner. She is in the Echo Deck from the first day and grows with every bond.
+	# Your partner. She is in your deck from the first day (every starter has her) and grows with every bond.
 	99200001: {"name": "Lumen, Echo Spirit", "frame": "effect", "atk": 500, "def": 500, "level": 2, "attribute": "LIGHT", "race": "Fairy", "partner": true,
 		"text": "Normal Summoned: add 1 monster with 1500 or less ATK from your Deck to your hand. Destroyed by battle: you take no battle damage this turn. Gains 300 ATK and DEF for every bond you have made."},
 	# Her forms, one from each world, and the cards around her. All of them are cards of this
@@ -199,10 +199,13 @@ static var NAME_TO_ID := {}
 const DECKS := {
 	# Story: the player's Echo Deck (early game) and Kairo's deck.
 	"echo": {
-		"name": "Echo",
-		"cards": {99200001: 1, 91152256: 3, 48305365: 2, 69140098: 2, 14898066: 2, 41392891: 2, 32452818: 2, 15025844: 2,
-			28279543: 2, 40640057: 2, 26202165: 1, 70781052: 1,
-			55144522: 1, 66788016: 1, 72302403: 1, 62279055: 1, 12607053: 2, 4206964: 1, 84257639: 2},
+		"name": "Lumen's Deck",
+		# Lumen and the Echo cards she has by the time she hands it over (after Domino), around
+		# the classics she grew up beside. Her later forms join through the story, not here.
+		"cards": {99200001: 1, 99200012: 2, 99200013: 2, 99200011: 2, 99200005: 1,
+			91152256: 2, 48305365: 2, 69140098: 2, 14898066: 2, 41392891: 2, 32452818: 2, 15025844: 2,
+			28279543: 2, 40640057: 2, 70781052: 1,
+			55144522: 1, 66788016: 1, 12607053: 1, 84257639: 1},
 	},
 	"kairo": {
 		"name": "Stolen Echo",

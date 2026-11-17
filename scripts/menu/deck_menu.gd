@@ -196,7 +196,7 @@ func _rebuild() -> void:
 			# Where it came from, and whether you have changed it since.
 			var e := Collection.deck_info(from)
 			col = e["color"]
-			var whose := Loc.t("Starter deck") if e["kind"] == "starter" else (Loc.t("%s's deck") % Loc.t(str(e["owner"])) if str(e["owner"]) != "" else Loc.t("Theme deck"))
+			var whose := Loc.t("Starter deck") if e["kind"] == "starter" else Loc.t("A gift from Lumen") if e["kind"] == "gift" else (Loc.t("%s's deck") % Loc.t(str(e["owner"])) if str(e["owner"]) != "" else Loc.t("Theme deck"))
 			sub += "  ·  " + whose + ("  ·  " + Loc.t("changed") if Collection.slot_changed(i) else "")
 		_add_row({"type": "slot", "i": i, "key": ""}, str(s.get("name", "Deck %d" % (i + 1))), sub, col, Collection.slot_empty(i), 1 if ok else 2)
 	if shown == 0:

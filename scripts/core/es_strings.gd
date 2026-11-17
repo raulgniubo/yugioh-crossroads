@@ -5782,4 +5782,9 @@ const ES := {
 	"Save the story right where you are, or go back to a moment you saved. The autosave is written before every duel and at every step: Continue always picks up from it.": "Guarda la historia justo donde estás, o vuelve a un momento que guardaste. El autoguardado se escribe antes de cada duelo y en cada paso: Continuar siempre sigue desde ahí.",
 	"TODAY'S BEST": "LO MEJOR DE HOY",
 	"WEEKLY TOURNAMENT  ·  FRIDAYS": "TORNEO SEMANAL  ·  VIERNES",
+	"Lumen's Deck": "Deck de Lumen",
+	"Lumen gave you her own deck: %s. It is in Decks, ready to play or change.": "Lumen te dio su propio deck: %s. Está en Decks, listo para jugar o cambiar.",
+	"Your deck needs %d to %d cards, so %s is back in use": "Tu deck necesita de %d a %d cartas, así que vuelve a usarse %s",
+	"Lumen's own deck: hers, and the Echo cards she has given you.": "El deck propio de Lumen: el suyo y las cartas Eco que te ha dado.",
+	"A gift from Lumen": "Un regalo de Lumen",
 }

@@ -2418,7 +2418,7 @@ func _start_duel(d: Dictionary) -> void:
 	Router.roam["yaw"] = scene._yaw
 	var deck: String = Collection.active_deck()
 	if not CardData.has_deck(deck):
-		deck = "echo"
+		deck = Collection.fallback_deck()
 	var opp_deck := str(d.get("opp_deck", d["opponent"]))
 	if not CardData.has_deck(opp_deck):
 		opp_deck = str(d.get("fallback", "kairo"))
