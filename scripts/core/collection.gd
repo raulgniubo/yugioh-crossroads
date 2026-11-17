@@ -33,6 +33,7 @@ const PACKS := [
 	{"key": "Vault", "tab": 0, "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
 	{"key": "legends", "tab": 0, "name": "Monster Legends", "color": Color("e8b04a"), "blurb": "Normal Monsters from every era: hundreds of them, from the classics to the rare big ones."},
 	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen, her forms and the cards around her. Only the ones the story has already handed you, up to three of each."},
+	{"key": "lightsworn", "tab": 1, "name": "Light of Judgment", "color": Color("ffe7a0"), "family": true, "blurb": "Lightsworn: monsters that send their own Deck to the Graveyard and grow stronger for it, until Judgment Dragon clears the field."},
 	{"key": "ancient_gear", "tab": 1, "name": "Clockwork Titans", "color": Color("b07a3c"), "family": true, "blurb": "Ancient Gear: Golems no Spell or Trap can answer, the fusions built from them, and the towns and castles that bring them out."},
 	{"key": "gravekeeper", "tab": 1, "name": "Valley of the Kings", "color": Color("c8a050"), "family": true, "blurb": "The Gravekeeper's and Necrovalley: the tomb guardians, the valley that locks every Graveyard, and the cards around them."},
 	{"key": "beyond", "tab": 0, "name": "Beyond the Limit", "color": Color("b06bff"), "blurb": "Fusion, Synchro, Xyz and Ritual monsters, and the Spells that call them."},
@@ -76,6 +77,7 @@ const THEME_DECKS := [
 	{"key": "deck_shadow", "worlds": ["academy", "satellite"], "art": "shadow", "color": Color("9a6bff"), "blurb": "Fiends with heavy hits at Level 4, Dark Resonator to tune them into Chaos King Archfiend, and Number 66 for the rest."},
 	{"key": "deck_machine", "worlds": ["newdomino", "satellite", "heartland"], "art": "machines", "color": Color("6fc3ff"), "blurb": "The V, W, X, Y and Z Unions: equip them to each other, then fuse up to VWXYZ-Dragon Catapult Cannon."},
 	{"key": "deck_wild", "worlds": ["heartland", "domino"], "art": "wild", "color": Color("ff9a3c"), "blurb": "Big Beasts at Level 4 with Fusions on top: Chimera the Flying Mythical Beast and Rabid Horseman."},
+	{"key": "deck_lightsworn", "art": "arcane", "cover": "Judgment Dragon", "color": Color("ffe7a0"), "era": "5D's", "blurb": "Lightsworn send cards from the top of the Deck every End Phase. Wulf jumps out, Garoth draws, and four names in the Graveyard bring Judgment Dragon."},
 	{"key": "deck_ancient_gear", "art": "machines", "cover": "Ancient Gear Golem", "color": Color("b07a3c"), "era": "GX", "blurb": "Ancient Gear Golems hit hard, pierce, and nothing your opponent sets can stop the attack. Geartown and the Castle bring them out fast."},
 	{"key": "deck_gravekeeper", "art": "arcane", "cover": "Gravekeeper's Chief", "color": Color("c8a050"), "era": "Duel Monsters", "blurb": "The Gravekeeper's guard Necrovalley: while it stands, nothing leaves either Graveyard. Flip Spies, call more guards, lock the other side down."},
 	{"key": "deck_forest", "worlds": ["academy", "satellite"], "art": "forest", "color": Color("5fd070"), "blurb": "Lonefire Blossom and Dandylion fill the field with Plants, Gigaplant brings them back, and Splendid Rose closes it out."},
@@ -117,6 +119,13 @@ const FAMILIES := {
 		"Ultimate Ancient Gear Golem", "Ancient Gear Advance", "Ancient Gear Castle", "Ancient Gear Catapult", "Ancient Gear Drill",
 		"Ancient Gear Explosive", "Ancient Gear Factory", "Ancient Gear Fist", "Ancient Gear Fusion", "Ancient Gear Reborn", "Ancient Gear Tank",
 		"Ancient Gear Workshop", "Cross-Dimensional Duel", "Geartown", "Spell Gear"]},
+	"lightsworn": {"era": "5D's", "deck": "deck_lightsworn", "cards": [
+		"Judgment Dragon", "Celestia, Lightsworn Angel", "Wulf, Lightsworn Beast", "Felis, Lightsworn Archer", "Gragonith, Lightsworn Dragon",
+		"Aurkus, Lightsworn Druid", "Ryko, Lightsworn Hunter", "Minerva, Lightsworn Maiden", "Jenis, Lightsworn Mender", "Ehren, Lightsworn Monk",
+		"Jain, Lightsworn Paladin", "Rinyan, Lightsworn Rogue", "Lyla, Lightsworn Sorceress", "Shire, Lightsworn Spirit", "Lumina, Lightsworn Summoner",
+		"Garoth, Lightsworn Warrior", "Raiden, Hand of the Lightsworn", "Lightsworn Dragonling", "Michael, the Arch-Lightsworn",
+		"Minerva, the Exalted Lightsworn", "Charge of the Light Brigade", "Solar Recharge", "Lightsworn Sabre", "Light Spiral", "Realm of Light",
+		"Glorious Illusion", "Vanquishing Light", "Twilight Cloth", "March of the Dark Brigade"]},
 }
 
 

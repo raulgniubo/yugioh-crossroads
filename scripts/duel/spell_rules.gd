@@ -29,6 +29,16 @@ const FX := {
 	"Echo Resonance": {"k": "normal", "cond": "echo_ready", "do": [["echo_resonance"]]},
 	"Echo Call": {"k": "normal", "do": [["search", {"has": "Lumen"}]]},
 	"Echo Veil": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["draw_if_own", "Lumen", 1]]},
+	# ---------------------------------------------------------------- Lightsworn (0.34.2)
+	"Charge of the Light Brigade": {"k": "normal", "cond": "deck3", "do": [["mill_self", 3], ["search", {"has": "Lightsworn", "max_lv": 4}]]},
+	"Solar Recharge": {"k": "normal", "cost": "discard_f", "cost_f": {"has": "Lightsworn"}, "do": [["draw", 2], ["mill_self", 2]]},
+	"Lightsworn Sabre": {"k": "equip", "must": {"has": "Lightsworn"}, "atk": 700, "sabre": true},
+	"Light Spiral": {"k": "ctrap", "win": ["free"], "light_spiral": true, "ai": "always"},
+	"Realm of Light": {"k": "field", "realm": true},
+	"Glorious Illusion": {"k": "ctrap", "win": ["free"], "do": [["revive", "own_gy", "atk", "link", {"has": "Lightsworn"}]], "end_own": [["mill_self", 2]]},
+	"Vanquishing Light": {"k": "counter", "neg": ["summon"], "cost": "tribute_f", "cost_f": {"has": "Lightsworn"}},
+	"Twilight Cloth": {"k": "normal", "t": "own_face", "cond": "lsw_in_gy", "cloth": true, "do": [["twilight_cloth"]]},
+	"March of the Dark Brigade": {"k": "normal", "cond": "march", "do": [["march"]]},
 	# ---------------------------------------------------------------- Theme deck rework (0.34.1.5)
 	"Salvage": {"k": "normal", "do": [["gy_to_hand", {"attr": "WATER", "max_atk": 1500, "monster": true}, 2]]},
 	"Backfire": {"k": "ctrap", "win": ["free"], "backfire": true, "ai": "always"},
@@ -887,6 +897,13 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return pc.monsters().is_empty() and int(pc.once_names.get("Ancient Gear Catapult", -1)) != s.turn \
 					and (pc.spells.filter(func(x): return x != null and x.face_up).size() + (1 if pc.field_spell != null and pc.field_spell.face_up else 0)) > 0 \
 					and not pc.deck.filter(func(x): return x.is_monster() and x.cname().begins_with("Ancient Gear") and not CardData.is_extra(x.id)).is_empty()
+		"deck3":
+			return s.players[p].deck.size() >= 3
+		"lsw_in_gy":
+			return not s.players[p].gy.filter(func(g): return g.is_monster() and DuelState.is_lsw(g)).is_empty()
+		"march":
+			return int(s.players[p].once_names.get("March of the Dark Brigade", -1)) != s.turn \
+					and not s.players[p].gy.filter(func(g): return g.is_monster() and DuelState.is_lsw(g) and g.level() > 0 and not s.necro_holds(g)).is_empty()
 		"own_dragon":
 			return not s.players[p].monsters().filter(func(m): return m.face_up and str(m.data.get("race", "")) == "Dragon").is_empty()
 		"icarus":
@@ -1430,6 +1447,8 @@ static func pay_cost(s: DuelState, p: int, c, sp: Dictionary) -> Array:
 			ps.hand.erase(least)
 			s._to_gy(ps, least)
 			events.append({"type": "discard", "player": p, "card": least})
+			if EffectRunner.fx(least).get("minerva_mill", false):
+				events.append_array(s.mill(p, 1, least))   # Minerva, Lightsworn Maiden: sent from the hand to the GY
 	elif cost == "detach_any":
 		# "Detach 1 Xyz Material you control" (Xyz Energy).
 		var holders: Array = ps.monsters().filter(func(m): return m.face_up and not m.overlays.is_empty())
@@ -1986,11 +2005,39 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				events.append(_ev(p, c, Loc.t("%s seals %s away for %d turns") % [name, chosen.cname(), int(a[1])]))
 
 		"mill_self":
-			for i in int(a[1]):
-				if not ps.deck.is_empty():
-					var top = ps.deck.pop_back()
-					s._to_gy(ps, top)
-					events.append({"type": "mill", "player": p, "card": top, "deck": ps.deck.size()})
+			events.append_array(s.mill(p, int(a[1]), c))
+		"twilight_cloth":
+			# Twilight Cloth: banish any number of "Lightsworn" monsters from your GY; the target gains 200 ATK/DEF for each this turn.
+			var t_c = ctx.get("target")
+			var pool_c: Array = ps.gy.filter(func(g): return g.is_monster() and DuelState.is_lsw(g) and not s.necro_holds(g))
+			if t_c != null and ps.field.has(t_c) and not pool_c.is_empty():
+				var take_c: Array = s.choose(p, Loc.t("%s: banish which \"Lightsworn\" monsters?") % name, pool_c, pool_c.size(), pool_c, true, c)
+				for g in take_c:
+					events.append_array(s._banish(g))
+				if t_c.atk_mod_turn != s.turn:
+					t_c.atk_mod_turn = s.turn
+					t_c.atk_mod_t = 0
+				t_c.atk_mod_t += 200 * take_c.size()
+				if t_c.def_mod_turn != s.turn:
+					t_c.def_mod_turn = s.turn
+					t_c.def_mod_t = 0
+				t_c.def_mod_t += 200 * take_c.size()
+				events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s: %s gains %d ATK and DEF") % [name, t_c.cname(), 200 * take_c.size()]})
+		"march":
+			# March of the Dark Brigade: a "Lightsworn" monster back to the hand, then banish its Level in cards from the top of your Deck.
+			ps.once_names["March of the Dark Brigade"] = s.turn
+			var pool_m: Array = ps.gy.filter(func(g): return g.is_monster() and DuelState.is_lsw(g) and g.level() > 0 and not s.necro_holds(g))
+			if not pool_m.is_empty():
+				var got_m = s.pick1(p, Loc.t("%s: add which monster to your hand?") % name, pool_m, s._best_monsters(pool_m, 1)[0], c)
+				ps.gy.erase(got_m)
+				ps.hand.append(got_m)
+				events.append({"type": "gy_to_hand", "player": p, "card": got_m})
+				for i in int(got_m.data.get("level", 0)):
+					if ps.deck.is_empty():
+						break
+					var top_m = ps.deck.pop_back()
+					ps.banished.append(top_m)
+					events.append({"type": "banish", "player": p, "card": top_m, "from": "deck"})
 		"special_hand_deck":
 			# One for One: 1 monster that fits, from your hand or Deck.
 			var both: Array = ps.hand.filter(func(h): return h != c)
@@ -2857,6 +2904,7 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				ps.deck.erase(pick[0])
 				s._to_gy(ps, pick[0])
 				events.append({"type": "mill", "player": p, "card": pick[0], "deck": ps.deck.size()})
+				events.append_array(s.deck_sent(p, [pick[0]], c))
 		"skip_draw":
 			ps.skip_draw += int(a[1])
 		"ring":
@@ -3954,6 +4002,16 @@ static func redirect(s: DuelState, c) -> bool:
 
 
 ## Standby Phase upkeep and effects of the turn player's (and sometimes both players') cards.
+## "During each of your End Phases" on a face-up Spell or Trap (Glorious Illusion).
+static func end_own(s: DuelState, p: int) -> Array:
+	var events := []
+	for st in s.players[p].spells.duplicate():
+		if st != null and st.face_up and s.players[p].spells.has(st) and not blocked(s, st):
+			for a in spec(st).get("end_own", []):
+				events.append_array(_run(s, p, st, a, {}))
+	return events
+
+
 static func standby(s: DuelState, p: int) -> Array:
 	var events := []
 	for q in 2:

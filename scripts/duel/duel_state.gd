@@ -902,6 +902,7 @@ func begin_end() -> Array:
 						events.append_array(_to_deck(x) if nr == "storm" else _bounce(x))
 				effect_by = was_by2
 	events.append_array(EffectRunner.end_phase(self, current))
+	events.append_array(SpellRules.end_own(self, current))
 	events.append_array(EffectRunner.end_phase_any(self))
 	# "...until the End Phase, this card's name becomes..." (Neo-Spacian Dark Panther).
 	for q in 2:
@@ -1120,6 +1121,117 @@ func plant_for(c: CardInst) -> CardInst:
 		if str(m.data.get("race", "")) == race:
 			return m
 	return null
+
+
+## Send the top n cards of a player's Deck to the GY ("mill"), then everything that cares
+## (Lightsworn: Wulf, Felis, Garoth, Light Spiral, Realm of Light, Lightsworn Sabre, Jenis).
+func mill(p: int, n: int, src = null) -> Array:
+	var ps := players[p]
+	var ev := []
+	var sent: Array = []
+	for i in n:
+		if ps.deck.is_empty():
+			break
+		var top: CardInst = ps.deck.pop_back()
+		_to_gy(ps, top)
+		ev.append({"type": "mill", "player": p, "card": top, "deck": ps.deck.size()})
+		sent.append(top)
+	if not sent.is_empty():
+		ev.append_array(deck_sent(p, sent, src))
+	return ev
+
+
+## Is this a "Lightsworn" card?
+static func is_lsw(c) -> bool:
+	return c != null and c.cname().contains("Lightsworn")
+
+
+## Cards just sent from player p's Deck to the GY by `src` (a card, or null for a rule).
+func deck_sent(p: int, sent: Array, src) -> Array:
+	var ps := players[p]
+	var ev := []
+	if is_over():
+		return ev
+	var by_lsw: bool = is_lsw(src)
+	var by_lsw_mon: bool = by_lsw and src.is_monster()
+	var by_mon: bool = src != null and src.is_monster()
+	if by_lsw:
+		ps.once_names["#lsw_mill"] = turn   # Jenis, Lightsworn Mender
+	# Realm of Light: a Shine Counter each time cards go from a Deck to the GY.
+	for q in 2:
+		var fs: CardInst = players[q].field_spell
+		if fs != null and fs.face_up and SpellRules.spec(fs).get("realm", false) and not SpellRules.blocked(self, fs):
+			fs.counter += 1
+	# Light Spiral: "Each time a card(s) is sent from your Deck to the Graveyard by the effect of a "Lightsworn" monster, banish the top card of your opponent's Deck."
+	if by_lsw_mon:
+		for st in ps.spells:
+			if st != null and st.face_up and SpellRules.spec(st).get("light_spiral", false) and not SpellRules.blocked(self, st):
+				var od := players[opponent(p)].deck
+				if not od.is_empty():
+					var top_o: CardInst = od.pop_back()
+					players[opponent(p)].banished.append(top_o)
+					ev.append({"type": "banish", "player": opponent(p), "card": top_o, "from": "deck"})
+					ev.append({"type": "effect", "player": p, "card": st, "text": Loc.t("%s banishes the top card of the opponent's Deck") % st.cname()})
+	for g in sent:
+		if not ps.gy.has(g):
+			continue
+		var gf := EffectRunner.fx(g)
+		# Wulf: "If this card is sent from your Deck to the GY: Special Summon it." Felis: "...by a monster effect".
+		if (gf.get("deck_gy_ss", false) or (gf.get("deck_gy_ss_mon", false) and by_mon)) and ps.free_zone() != -1 and not ss_locked(p) and ps.no_summon_turn != turn:
+			ps.gy.erase(g)
+			ev.append({"type": "effect", "player": p, "card": g, "text": Loc.t("%s comes out of the Graveyard") % g.cname()})
+			ev.append_array(_special(p, g, "reborn"))
+			ev.append_array(EffectRunner.on_summon(self, p, g, "special"))
+			continue
+		# Minerva, Lightsworn Maiden: "If this card is sent from the hand or Deck to the GY: Send the top card of your Deck to the GY."
+		if gf.get("minerva_mill", false):
+			ev.append_array(mill(p, 1, g))
+			continue
+		var gs := SpellRules.spec(g) if not g.is_monster() else {}
+		# Lightsworn Sabre: "When this card is sent from your Deck to the Graveyard: equip this card to a "Lightsworn" monster you control."
+		if gs.get("sabre", false) and ps.spells.has(null):
+			var hosts: Array = ps.monsters().filter(func(m): return m.face_up and is_lsw(m))
+			if not hosts.is_empty():
+				var host = pick1(p, Loc.t("%s: equip it to which monster?") % g.cname(), hosts, _best_monsters(hosts, 1)[0], g)
+				ps.gy.erase(g)
+				ps.spells[ps.spells.find(null)] = g
+				g.face_up = true
+				g.equipped_to = host
+				ev.append({"type": "effect", "player": p, "card": g, "text": Loc.t("%s equips itself to %s") % [g.cname(), host.cname()]})
+		# Twilight Cloth: "If this card is sent from the Deck to the GY by a "Lightsworn" monster's effect: this turn, "Lightsworn" monsters you control cannot be destroyed by battle or card effects."
+		if gs.get("cloth", false) and by_lsw_mon:
+			ps.once_names["#cloth"] = turn
+			ev.append({"type": "effect", "player": p, "card": g, "text": Loc.t("%s: your Lightsworn monsters can't be destroyed this turn") % g.cname()})
+	# Garoth: "Each time a card(s) is sent from your Deck to the GY by the effect of a "Lightsworn" monster you control, except "Garoth, Lightsworn Warrior":
+	# Send the top 2 cards of your Deck to the GY, then draw 1 card for each "Lightsworn" monster sent to the GY by this effect."
+	if by_lsw_mon and src.cname() != "Garoth, Lightsworn Warrior" and src.owner == p:
+		for gr in ps.monsters():
+			if gr.face_up and not gr.negated and EffectRunner.fx(gr).get("garoth", false) and not ps.deck.is_empty():
+				var before := ps.gy.duplicate()
+				ev.append({"type": "effect", "player": p, "card": gr, "text": Loc.t("%s sends 2 more") % gr.cname()})
+				var top2: Array = []
+				for i in 2:
+					if ps.deck.size() > i:
+						top2.append(ps.deck[ps.deck.size() - 1 - i])
+				ev.append_array(mill(p, 2, gr))
+				var n_l := top2.filter(func(x): return x.is_monster() and is_lsw(x)).size()
+				if n_l > 0:
+					ev.append_array(_draw(p, n_l))
+	return ev
+
+
+## Twilight Cloth: this player's Lightsworn monsters can't be destroyed this turn.
+func cloth_guard(c: CardInst) -> bool:
+	return c != null and c.face_up and is_lsw(c) and c.is_monster() and int(players[c.owner].once_names.get("#cloth", -1)) == turn
+
+
+## Aurkus, Lightsworn Druid: "Neither player can target "Lightsworn" monsters with card effects."
+func lsw_shield() -> bool:
+	for q in 2:
+		for m in players[q].monsters():
+			if m.face_up and not m.negated and EffectRunner.fx(m).get("lsw_shield", false):
+				return true
+	return false
 
 
 ## Lord of D.: "Neither player can target Dragon monsters on the field with card effects."
@@ -2755,6 +2867,15 @@ func resolve_attack() -> Array:
 		bye_bye = -1
 		rai_t.face_up = true
 		return equip_monster(rai_t.owner, rai_t, rai_a, "kiseitai")
+	# Ehren, Lightsworn Monk: "If this card attacks a Defense Position monster, before damage calculation: Shuffle that monster into the Deck."
+	if rai_a != null and rai_t != null and t_was_def and rai_a.face_up and not rai_a.negated and EffectRunner.fx(rai_a).get("ehren", false) and players[rai_t.owner].field.has(rai_t):
+		pending_attack = {}
+		in_damage_step = false
+		battle_shield = -1
+		gy_fx_off = -1
+		var eh := [{"type": "effect", "player": rai_a.owner, "card": rai_a, "text": Loc.t("%s shuffles %s into the Deck") % [rai_a.cname(), rai_t.cname() if rai_t.face_up else Loc.t("a Set monster")]}]
+		eh.append_array(_to_deck(rai_t))
+		return eh
 	var lp_before: Array = [players[0].lp, players[1].lp]
 	# Galaxy Dragon: "+1000 ATK during the Damage Step only" vs a Dragon, and that monster's effects are negated.
 	if rai_a != null and rai_t != null and rai_a.face_up and not rai_a.negated and EffectRunner.fx(rai_a).get("galaxy_dragon", false) and rai_t.face_up and str(rai_t.data.get("race", "")) == "Dragon":
@@ -3529,6 +3650,8 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 				break
 	if not by_battle and c.face_up and not c.negated and EffectRunner.fx(c).get("supernat", false) and necro_on():
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed by card effects") % c.cname()}]
+	if not by_battle and cloth_guard(c):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed by card effects") % c.cname()}]
 	if c.face_up and not c.negated and EffectRunner.fx(c).get("visionary", false):
 		# Gravekeeper's Visionary: "If this face-up card would be destroyed, you can discard 1 "Gravekeeper's" monster instead."
 		var gkh: Array = ps.hand.filter(func(h): return h.is_monster() and h.cname().begins_with("Gravekeeper's"))
@@ -3862,6 +3985,10 @@ func _best_monsters(list: Array, n: int) -> Array:
 
 func _destroy_st(c: CardInst) -> Array:
 	var ps := players[c.owner]
+	if c.face_up and SpellRules.spec(c).get("realm", false) and c.counter >= 2 and (ps.field_spell == c):
+		# Realm of Light: "If this card would be destroyed by a card effect, remove 2 Shine Counters from this card instead."
+		c.counter -= 2
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s loses 2 Shine Counters instead") % c.cname()}]
 	if not ps.spells.has(c) and ps.field_spell != c and players[opponent(c.owner)].spells.has(c):
 		ps = players[opponent(c.owner)]   # (a monster equipped on the other side)
 	if ps.field_spell == c and c.face_up and necro_on():
@@ -4117,9 +4244,10 @@ func _cleanup() -> Array:
 					hm.negated = true
 	# Lord of D.: Dragons cannot be targeted while he is face-up (EffectRunner.can_target reads the mark).
 	var lord_up := dragon_shield()
+	var aurkus_up := lsw_shield()
 	for q in 2:
 		for m in players[q].monsters():
-			if lord_up and m.face_up and str(m.data.get("race", "")) == "Dragon":
+			if (lord_up and m.face_up and str(m.data.get("race", "")) == "Dragon") or (aurkus_up and m.face_up and is_lsw(m)):
 				m.tags["no_target"] = true
 			else:
 				m.tags.erase("no_target")

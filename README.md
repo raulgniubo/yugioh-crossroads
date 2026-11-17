@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.34.2
+
+**Card family 3 of 16: Lightsworn (5D's).** 29 new cards, so the game now has **1,834 cards**, every one working and obtainable.
+
+- **The family (29 cards):** Judgment Dragon, Celestia, Wulf, Felis, Gragonith, Aurkus, Ryko, Minerva, Jenis, Ehren, Jain, Rinyan, Lyla, Shire, Lumina, Garoth, Raiden, Lightsworn Dragonling, the Synchro Michael, the Arch-Lightsworn and the Xyz Minerva, the Exalted Lightsworn, plus Charge of the Light Brigade, Solar Recharge, Lightsworn Sabre, Light Spiral, Realm of Light, Glorious Illusion, Vanquishing Light, Twilight Cloth and March of the Dark Brigade.
+- **New rules this needed:** sending cards from the top of the Deck to the Graveyard as a real game action, with everything that reacts to it: Wulf and Felis jump out, Garoth sends 2 more and draws, Lightsworn Sabre equips itself, Realm of Light counts it, Light Spiral banishes the opponent's top card, Jenis burns at the End Phase, Twilight Cloth protects your Lightsworn. Also "Lightsworn monsters with different names in your GY" (Judgment Dragon, Gragonith, Shire, Minerva) and Ehren shuffling a Defense Position monster into the Deck.
+- **Light of Judgment, the theme deck:** 40 cards plus Michael, Minerva, Lightning Warrior and Colossal Fighter in the Extra Deck, 900 DP in the card shop. In test duels it won 5 of 8 against the story decks (8 of 8 in a second set).
+- **Light of Judgment, the booster pack:** in the Card families tab and on the New Domino City and Satellite shelves (opens with the 5D's era); the cards are also in the 5D's era pack and the type packs.
+- **Someone plays it:** the Tops Resident in New Domino City duels with Lightsworn now.
+
+Not done or not checked: Lightsworn Barrier, Lightsworn Sanctuary, Lightsworn Judgment, Twilight Eraser, Punishment Dragon, Weiss and the Twilightsworn cards are left out. Aurkus protects Lightsworn monsters on the field but not in the Graveyard. Minerva's "sent from the hand" part only works when you discard her as a cost (Solar Recharge, Lumina). Played by the test duels, not watched.
+
 ## What is in 0.34.1.5
 
 **The 10 shop theme decks, rebuilt.** Each one now has a real plan and an Extra Deck, and 27 new cards came in to make them work, so the game now has **1,805 cards**, every one working and obtainable.

@@ -113,6 +113,12 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 		b += 500
 	if f.get("half_if_special", false) and c.get_meta("special_from_hand", false):
 		b -= c.atk() / 2
+	# Realm of Light: "All "Lightsworn" monsters gain 100 ATK for each Shine Counter on this card."
+	if DuelState.is_lsw(c):
+		for q in 2:
+			var fs = s.players[q].field_spell
+			if fs != null and fs.face_up and SpellRules.spec(fs).get("realm", false):
+				b += 100 * fs.counter
 	# Auras from other monsters on the field
 	for p in 2:
 		for m in s.players[p].monsters():
@@ -183,6 +189,15 @@ static func def_bonus(s: DuelState, c) -> int:
 	return u
 
 
+## How many "Lightsworn" monsters with different names are in a player's Graveyard.
+static func lsw_names(s: DuelState, p: int) -> int:
+	var seen := {}
+	for g in s.players[p].gy:
+		if g.is_monster() and DuelState.is_lsw(g):
+			seen[g.cname()] = true
+	return seen.size()
+
+
 static func _count(s: DuelState, owner: int, spec: String) -> int:
 	var parts := spec.split(":")
 	var kind := parts[0]
@@ -190,6 +205,8 @@ static func _count(s: DuelState, owner: int, spec: String) -> int:
 	var n := 0
 	if kind == "own_banished":
 		return s.players[owner].banished.size()
+	if kind == "lsw_names":
+		return lsw_names(s, owner)   # "each "Lightsworn" monster with a different name in your Graveyard"
 	if kind == "gy_named":
 		# Copies of one card in both Graveyards (Dark Magician Girl counts Dark Magicians).
 		for q in 2:
@@ -410,6 +427,8 @@ static func survives_battle(s: DuelState, c) -> bool:
 			return true   # Viser Des: "This card cannot be destroyed by battle while the targeted monster is on the field."
 	if f.get("battle_immune", false):
 		return true
+	if s.cloth_guard(c):
+		return true   # Twilight Cloth
 	if f.has("battle_immune_vs_attrs") and c.face_up and s.battle_foe != null and str(s.battle_foe.data.get("attribute", "")) in (f["battle_immune_vs_attrs"] as Array):
 		return true   # Five-Headed Dragon
 	if int(c.tags.get("gq_until", -1)) >= s.turn:
@@ -595,6 +614,16 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 		return not s.players[p].deck.filter(func(x): return x.cname() == "Ancient Gear Golem" or (not x.is_monster() and str(x.data.get("desc", "")).contains("Ancient Gear Golem"))).is_empty()
 	if cond == "ag_fusion_hand":
 		return not ag_plans(s, p, false).is_empty()
+	if cond == "lsw4":
+		return lsw_names(s, p) >= 4   # Judgment Dragon
+	if cond == "lp_over_1000":
+		return s.players[p].lp > 1000
+	if cond == "lsw_gy4":
+		var pl := s.players[p]
+		return pl.free_zone() != -1 and not pl.gy.filter(func(g): return g.is_monster() and DuelState.is_lsw(g) and g.level() <= 4 and s.can_revive(g)).is_empty()
+	if cond == "dragonling":
+		var pd := s.players[p]
+		return int(pd.once_names.get("Dragonling#ss", -1)) != s.turn and not pd.gy.filter(func(g): return g.is_monster() and DuelState.is_lsw(g)).is_empty()
 	if cond == "own_other_mon":
 		return s.players[p].monsters().size() >= 2
 	if cond == "own_other_card":
@@ -1351,6 +1380,11 @@ static func end_phase(s: DuelState, p: int) -> Array:
 ## "During the End Phase" effects that do not care whose turn it is.
 static func end_phase_any(s: DuelState) -> Array:
 	var events := []
+	for q in 2:
+		for m in s.players[q].monsters():
+			if int(m.tags.get("raiden_until", -1)) == s.turn:
+				m.atk_mod -= 200   # Raiden: "until the end of your opponent's turn"
+				m.tags.erase("raiden_until")
 	for q in [s.current, s.opponent(s.current)]:
 		for m in s.players[q].monsters():
 			if m.face_up and fx(m).has("end_any"):
@@ -1853,6 +1887,12 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 			"opp_half", "opp_zero", "destroy_half_damage":
 				if opp.monsters().is_empty():
 					return false
+			"lyla":
+				if _all_st(s).filter(func(x): return x.owner == s.opponent(p)).is_empty():
+					return false
+			"michael":
+				if opp.monsters().is_empty() and _all_st(s).filter(func(x): return x.owner == s.opponent(p)).is_empty():
+					return false
 			"exile_opp", "exile_opp_end", "opp_change_pos", "grand_neos":
 				if opp.monsters().is_empty():
 					return false
@@ -2206,6 +2246,8 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 			s._to_gy(ps, pick)
 			ctx["discarded"] = pick
 			events.append({"type": "discard", "player": p, "card": pick})
+			if fx(pick).get("minerva_mill", false):
+				events.append_array(s.mill(p, 1, pick))   # Minerva, Lightsworn Maiden: sent from the hand to the GY
 		"tribute_any":
 			# "Tribute 1 monster": any of yours, this one included. The weakest other one by default.
 			var anyp = null
@@ -3228,6 +3270,11 @@ static func ai_ignite_ok(s: DuelState, p: int, c) -> bool:
 			return ps.deck.size() >= 12
 		"before_battle":
 			return s.phase == DuelState.Phase.MAIN1 and s.turn > 1 and not opp.monsters().is_empty()
+		"judgment":
+			# Judgment Dragon: wipe the board when the other side has more on it.
+			var mine_j: int = ps.monsters().size() - 1 + ps.set_cards().size()
+			var theirs_j: int = opp.monsters().size() + opp.set_cards().size() + (1 if opp.field_spell != null else 0)
+			return ps.lp > 2500 and theirs_j >= 2 and theirs_j > mine_j
 		"mist":
 			# Mist Valley Shaman: worth it with a Thunderbird to bounce (it comes right back), or an Executor to summon again.
 			for m in ps.monsters():
@@ -6066,6 +6113,170 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				events.append(_ev(p, c, Loc.t("%s banishes from the Graveyard") % name))
 			for g in picks:
 				events.append_array(s._banish(g))
+		"mill":
+			events.append_array(s.mill(p, int(a[1]), c))
+		"jenis":
+			# Jenis: "During the End Phase, if a card(s) was sent from your Deck to the GY by the effect of a "Lightsworn" card this turn: 500 damage, gain 500."
+			var any_lsw := false
+			for q in 2:
+				if int(s.players[q].once_names.get("#lsw_mill", -1)) == s.turn:
+					any_lsw = true
+			if any_lsw and ps.field.has(c) and c.face_up:
+				events.append_array(s._damage(opp_i, 500))
+				ps.lp += 500
+				events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": 500})
+		"celestia":
+			# Celestia: Tribute Summoned with a "Lightsworn": send the top 4, then destroy up to 2 cards your opponent controls.
+			var tn_c: Array = c.tags.get("trib_names", [])
+			if not tn_c.filter(func(n): return str(n).contains("Lightsworn")).is_empty() \
+					and s.choose_option(p, Loc.t("%s: send the top 4 cards of your Deck to the GY and destroy up to 2 of their cards?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				events.append_array(s.mill(p, 4, c))
+				for i in 2:
+					var foe_c: Array = opp.monsters() + _all_st(s).filter(func(x): return x.owner == opp_i)
+					if foe_c.is_empty():
+						break
+					foe_c.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+					var hit_c = s.pick1(p, Loc.t("%s: destroy which card?") % name, foe_c, foe_c[0], c)
+					if hit_c.is_monster():
+						events.append_array(s._destroy(hit_c))
+					else:
+						events.append_array(s._destroy_st(hit_c))
+		"judgment":
+			# Judgment Dragon: "You can pay 1000 LP; destroy all other cards on the field."
+			if ps.lp > 1000:
+				ps.lp -= 1000
+				events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": -1000})
+				events.append(_ev(p, c, Loc.t("%s destroys every other card on the field") % name))
+				for q in [opp_i, p]:
+					for m in s.players[q].monsters():
+						if m != c:
+							events.append_array(s._destroy(m))
+					for st in _all_st(s).filter(func(x): return x.owner == q):
+						events.append_array(s._destroy_st(st))
+		"ryko":
+			# Ryko: "You can destroy 1 card on the field" and "send the top 3 cards of your Deck to the GY".
+			var all_r: Array = opp.monsters() + _all_st(s).filter(func(x): return x.owner == opp_i)
+			if not all_r.is_empty():
+				all_r.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+				var hit_r = s.pick1(p, Loc.t("%s: destroy which card?") % name, all_r, all_r[0], c)
+				if hit_r.is_monster():
+					events.append_array(s._destroy(hit_r))
+				else:
+					events.append_array(s._destroy_st(hit_r))
+			events.append_array(s.mill(p, 3, c))
+		"minerva_search":
+			# Minerva: add a LIGHT Dragon whose Level is up to the number of Lightsworn names in your GY.
+			var cap_m := lsw_names(s, p)
+			var drag: Array = ps.deck.filter(func(x): return x.is_monster() and str(x.data.get("attribute", "")) == "LIGHT" and str(x.data.get("race", "")) == "Dragon" and x.level() <= cap_m and not CardData.is_extra(x.id))
+			if not drag.is_empty():
+				var got_m = s.pick1(p, Loc.t("%s: add which Dragon?") % name, drag, s._best_monsters(drag, 1)[0], c)
+				ps.deck.erase(got_m)
+				ps.hand.append(got_m)
+				s._shuffle(ps.deck)
+				events.append({"type": "search", "player": p, "card": got_m, "deck": ps.deck.size()})
+		"rinyan":
+			# Rinyan: shuffle 1 "Lightsworn" monster from your GY into the Deck, then draw 1.
+			var back_r: Array = ps.gy.filter(func(g): return g.is_monster() and DuelState.is_lsw(g) and not s.necro_holds(g))
+			if not back_r.is_empty():
+				var g_r = s.pick1(p, Loc.t("%s: shuffle which monster into your Deck?") % name, back_r, back_r[0], c)
+				ps.gy.erase(g_r)
+				ps.deck.append(g_r)
+				s._shuffle(ps.deck)
+				events.append({"type": "gy_to_deck", "player": p, "card": g_r, "deck": ps.deck.size()})
+				events.append_array(s._draw(p, 1))
+		"lyla":
+			# Lyla: to Defense Position (and stays there through your next turn), destroy 1 Spell/Trap your opponent controls.
+			var theirs_l: Array = _all_st(s).filter(func(x): return x.owner == opp_i)
+			if not theirs_l.is_empty() and c.attack_pos:
+				var hit_l = s.pick1(p, Loc.t("%s: destroy which Spell or Trap?") % name, theirs_l, theirs_l[0], c)
+				c.attack_pos = false
+				c.pos_lock_until = s.turn + 2
+				events.append({"type": "position", "player": p, "card": c, "zone": ps.field.find(c)})
+				events.append_array(s._destroy_st(hit_l))
+		"raiden":
+			# Raiden: send the top 2; if a "Lightsworn" monster went, +200 ATK until the end of your opponent's turn.
+			var top_r: Array = []
+			for i in 2:
+				if ps.deck.size() > i:
+					top_r.append(ps.deck[ps.deck.size() - 1 - i])
+			events.append_array(s.mill(p, 2, c))
+			if not top_r.filter(func(x): return x.is_monster() and DuelState.is_lsw(x)).is_empty() and ps.field.has(c):
+				c.atk_mod += 200
+				c.tags["raiden_until"] = s.turn + 1
+				events.append(_ev(p, c, Loc.t("%s gains 200 ATK") % name))
+		"dragonling_send":
+			# Lightsworn Dragonling, Special Summoned: send 1 "Lightsworn" card from your Deck to the GY.
+			ps.once_names["Dragonling#ss"] = s.turn
+			if int(ps.once_names.get("Dragonling#send", -1)) != s.turn:
+				var lsw_d: Array = ps.deck.filter(func(x): return DuelState.is_lsw(x) and x.cname() != "Lightsworn Dragonling")
+				if not lsw_d.is_empty():
+					ps.once_names["Dragonling#send"] = s.turn
+					var pick_d = s.pick1(p, Loc.t("%s: send which card to the GY?") % name, lsw_d, lsw_d[0], c)
+					ps.deck.erase(pick_d)
+					s._to_gy(ps, pick_d)
+					s._shuffle(ps.deck)
+					events.append({"type": "mill", "player": p, "card": pick_d, "deck": ps.deck.size()})
+					events.append_array(s.deck_sent(p, [pick_d], c))
+		"dragonling_search":
+			# "If this card is sent to the GY: add 1 Dragon monster with 3000 ATK/2600 DEF from your Deck."
+			if int(ps.once_names.get("Dragonling#gy", -1)) != s.turn:
+				var jd: Array = ps.deck.filter(func(x): return x.is_monster() and str(x.data.get("race", "")) == "Dragon" and int(x.data.get("atk", 0)) == 3000 and int(x.data.get("def", 0)) == 2600)
+				if not jd.is_empty():
+					ps.once_names["Dragonling#gy"] = s.turn
+					ps.deck.erase(jd[0])
+					ps.hand.append(jd[0])
+					s._shuffle(ps.deck)
+					events.append({"type": "search", "player": p, "card": jd[0], "deck": ps.deck.size()})
+		"michael":
+			# Michael: pay 1000 LP, banish 1 card on the field.
+			if ps.lp > 1000:
+				var all_m: Array = opp.monsters() + _all_st(s).filter(func(x): return x.owner == opp_i)
+				if not all_m.is_empty():
+					ps.lp -= 1000
+					events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": -1000})
+					all_m.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+					var gone_m = s.pick1(p, Loc.t("%s: banish which card?") % name, all_m, all_m[0], c)
+					events.append_array(s._banish(gone_m))
+		"michael_back":
+			# Michael, destroyed: shuffle other "Lightsworn" monsters from your GY into the Deck, 300 LP each.
+			var back_m: Array = ps.gy.filter(func(g): return g != c and g.is_monster() and DuelState.is_lsw(g) and not s.necro_holds(g))
+			if not back_m.is_empty():
+				for g in back_m:
+					ps.gy.erase(g)
+					ps.deck.append(g)
+				s._shuffle(ps.deck)
+				ps.lp += 300 * back_m.size()
+				events.append(_ev(p, c, Loc.t("%s returns %d monsters to the Deck") % [name, back_m.size()]))
+				events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": 300 * back_m.size()})
+		"minerva_x":
+			# Minerva, the Exalted: send the top 3, draw 1 for each "Lightsworn" card among them.
+			var top_x: Array = []
+			for i in 3:
+				if ps.deck.size() > i:
+					top_x.append(ps.deck[ps.deck.size() - 1 - i])
+			events.append_array(s.mill(p, 3, c))
+			var n_x := top_x.filter(func(x): return DuelState.is_lsw(x)).size()
+			if n_x > 0:
+				events.append_array(s._draw(p, n_x))
+		"minerva_x_dead":
+			# Destroyed by battle or by an opponent's effect: send the top 3, destroy up to that many "Lightsworn" cards' worth of cards.
+			if int(ps.once_names.get("Minerva#dead", -1)) != s.turn and not ps.deck.is_empty():
+				ps.once_names["Minerva#dead"] = s.turn
+				var top_y: Array = []
+				for i in 3:
+					if ps.deck.size() > i:
+						top_y.append(ps.deck[ps.deck.size() - 1 - i])
+				events.append_array(s.mill(p, 3, c))
+				var n_y := top_y.filter(func(x): return DuelState.is_lsw(x)).size()
+				for i in n_y:
+					var foe_y: Array = opp.monsters() + _all_st(s).filter(func(x): return x.owner == opp_i)
+					if foe_y.is_empty():
+						break
+					foe_y.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+					if foe_y[0].is_monster():
+						events.append_array(s._destroy(foe_y[0]))
+					else:
+						events.append_array(s._destroy_st(foe_y[0]))
 		"banish_opp_gy_any":
 			# Night's End Sorcerer: "target up to 2 cards in your opponent's GY; banish them."
 			var pool_b: Array = opp.gy.filter(func(g): return not s.necro_holds(g))
