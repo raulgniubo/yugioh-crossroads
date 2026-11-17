@@ -36,7 +36,7 @@ void fragment() {
 static var _sh: Shader
 
 
-func _init(a := 0.98, tint := UITheme.ACCENT) -> void:
+func _init(a := 1.0, tint := UITheme.ACCENT) -> void:   # (0.98 let the menu behind show through as a ghost)
 	if _sh == null:
 		_sh = Shader.new()
 		_sh.code = CODE

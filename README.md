@@ -5,6 +5,19 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.41
+
+- **Deck tips:** a new button in the deck builder looks over your deck and tells you, in plain words, what could trip it up: too few monsters, too many that need tributes, Synchro monsters with no Tuners, Fusions with no Polymerization or missing materials, Xyz with too few monsters of the right Level, Ritual monsters with no Ritual Spell, no Traps at all.
+- **Your own sounds and music:** put sound files in a **sounds** folder and music in a **music** folder inside your card folder (.ogg, .wav or .mp3, named like the sound or the track) and they play instead of the built-in ones. The full list of names is in "Crossroads - your own sounds and music.md".
+- **Menus:** the main menu no longer shows faintly through screens opened on top of it.
+- **Academy:** the vending machine by the pier stands on a paved bay with a bin instead of in the grass.
+- Spanish for all of the above.
+
+**Not done or not checked:**
+
+- Deck tips are simple rules, not a full read of how a deck plays. A combo deck that is fine on purpose can still get a tip.
+- Own sounds and music were tested with short test files, not with real songs on your Mac.
+
 ## What is in 0.33.40
 
 - **Save safety:** every save file is checked when the game starts. One that no longer reads (the computer lost power while it was being written) comes back from the copy kept at the last good start. A crash can cost one session, never the save.

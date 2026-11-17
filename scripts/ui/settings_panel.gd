@@ -216,6 +216,8 @@ static func open(parent: Node) -> SidePanel:
 		Settings.save_settings()
 		Cards.clear_cache()
 		Portraits.clear_cache()
+		Sfx.reload_own()
+		Music.reload_own()
 		Router.toast("Card folder saved"))
 	_row(art, "Folder", "Where your card pictures live. Press Enter to save.", folder)
 	var status := UITheme.label("", 16, UITheme.TEXT_DIM)
@@ -223,7 +225,7 @@ static func open(parent: Node) -> SidePanel:
 	status.text = ("Real card images found." if Cards.has_real_images()
 			else "No card images found, using placeholders. Run tools/fetch_cards.py with --out pointing at this folder.")
 	art.add_child(status)
-	var back_hint := UITheme.label("Put a picture named back.jpg in this folder and it becomes the back of every card. A picture named icon.png becomes the game's icon while it runs.", 16, UITheme.TEXT_DIM)
+	var back_hint := UITheme.label("Put a picture named back.jpg in this folder and it becomes the back of every card. A picture named icon.png becomes the game's icon while it runs. Sound files in a \"sounds\" folder and music in a \"music\" folder (named like the sound or track, .ogg, .wav or .mp3) play instead of the built-in ones.", 16, UITheme.TEXT_DIM)
 	back_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	art.add_child(back_hint)
 

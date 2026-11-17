@@ -94,6 +94,8 @@ func _ready() -> void:
 		_test_cards_69()
 		_test_cards_70()
 		_test_save_guard()
+		_test_own_sounds()
+		_test_deck_tips()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -7562,3 +7564,53 @@ func _test_save_guard() -> void:
 	else:
 		DirAccess.remove_absolute(path)
 	DirAccess.remove_absolute(path + ".bak")
+
+
+## Your own sound and music files from the card folder play instead of the built-in ones.
+func _test_deck_tips() -> void:
+	var DB = load("res://scripts/menu/deck_builder.gd")
+	var good := []
+	for i in 3:
+		good.append(91152256)
+		good.append(41392891)
+		good.append(15025844)
+		good.append(69140098)
+		good.append(32452818)
+	for i in 2:
+		good.append(46986414)
+	for nm in ["Pot of Greed", "Monster Reborn", "Mirror Force", "Raigeki"]:
+		good.append(int(CardData.NAME_TO_ID.get(nm.to_lower(), 0)))
+	var t1: Array = DB.deck_tips(good, [])
+	check(t1.size() == 0, "Deck tips: a balanced deck gets no warnings (%s)" % str(t1))
+	var heavy := []
+	for i in 10:
+		heavy.append(46986414)
+	heavy.append(91152256)
+	var t2: Array = DB.deck_tips(heavy, [99200003])
+	var joined := " ".join(t2)
+	check("tributes" in joined and "Tuners" in joined and "Only 11 monsters" in joined, "Deck tips: tribute-heavy, few monsters, Synchro without Tuners are all flagged (%s)" % joined)
+
+
+func _test_own_sounds() -> void:
+	var keep := Settings.card_folder
+	var dir := "user://own_sound_test"
+	DirAccess.make_dir_recursive_absolute(dir + "/sounds")
+	DirAccess.make_dir_recursive_absolute(dir + "/music")
+	var w := AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.mix_rate = 22050
+	var data := PackedByteArray()
+	data.resize(4410)
+	w.data = data
+	w.save_to_wav(ProjectSettings.globalize_path(dir + "/sounds/click.wav"))
+	w.save_to_wav(ProjectSettings.globalize_path(dir + "/music/menu.wav"))
+	Settings.card_folder = ProjectSettings.globalize_path(dir)
+	Sfx.reload_own()
+	Music.reload_own()
+	check(Sfx._own_sound("click") != null and Sfx._own_sound("summon") == null, "Own sounds: click.wav from the sounds folder is used, the rest stay built-in")
+	check(Music._own_track("menu") != null, "Own music: menu.wav from the music folder is used")
+	Settings.card_folder = keep
+	Sfx.reload_own()
+	Music.reload_own()
+	DirAccess.remove_absolute(dir + "/sounds/click.wav")
+	DirAccess.remove_absolute(dir + "/music/menu.wav")

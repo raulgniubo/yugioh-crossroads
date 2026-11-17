@@ -109,6 +109,14 @@ func _ready() -> void:
 	hand.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hand.pressed.connect(_test_hand)
 	head.add_child(hand)
+	var tips := Button.new()
+	tips.text = Loc.t("Deck tips")
+	tips.tooltip_text = Loc.t("Looks over this deck and points out anything that could trip it up.")
+	tips.add_theme_font_size_override("font_size", 18)
+	tips.custom_minimum_size = Vector2(0, 44)
+	tips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	tips.pressed.connect(_show_tips)
+	head.add_child(tips)
 	_undo_btn = Button.new()
 	_undo_btn.text = "Undo"
 	_undo_btn.tooltip_text = Loc.t("Takes back your last change (Ctrl+Z).")
@@ -911,6 +919,134 @@ func _test_hand() -> void:
 
 
 ## The buttons under the big picture, for the card you tapped.
+## Plain advice about a deck: what might stop it from working. Each entry is one sentence,
+## already in the player's language. Empty means nothing stood out.
+static func deck_tips(main: Array, extra: Array) -> Array:
+	var out := []
+	var mons := 0
+	var low := 0
+	var high := 0
+	var tuners := 0
+	var spells := 0
+	var traps := 0
+	var by_level := {}
+	var names := {}
+	var has_fusion_spell := false
+	var has_ritual_spell := false
+	var rituals := 0
+	for x in main:
+		var d := CardData.get_card(int(x))
+		var nm := str(d.get("name", ""))
+		names[nm.to_lower()] = true
+		match str(d.get("kind", "")):
+			"monster":
+				mons += 1
+				var l := int(d.get("level", 0))
+				by_level[l] = int(by_level.get(l, 0)) + 1
+				if l <= 4:
+					low += 1
+				else:
+					high += 1
+				if bool(d.get("tuner", false)):
+					tuners += 1
+				if str(d.get("frame", "")) == "ritual":
+					rituals += 1
+			"spell":
+				spells += 1
+				if "Polymerization" in nm or "Fusion" in nm or nm == "Power Bond" or nm == "Miracle Fusion":
+					has_fusion_spell = true
+				if "Ritual" in nm or str(d.get("st", "")) == "ritual":
+					has_ritual_spell = true
+			_:
+				traps += 1
+	var n := main.size()
+	if n > 45:
+		out.append(Loc.t("%d cards is a lot. With 40 you draw your best cards more often.") % n)
+	if mons < 12:
+		out.append(Loc.t("Only %d monsters. Most decks want about 14 to 20 so there is always something to summon.") % mons)
+	elif n > 0 and mons > 28:
+		out.append(Loc.t("%d monsters leaves little room for Spells and Traps to protect them.") % mons)
+	if mons > 0 and high > 0 and high * 2 > low:
+		out.append(Loc.t("%d monsters need tributes and only %d do not. Add more Level 4 or lower so you can open.") % [high, low])
+	if traps == 0 and n >= 30:
+		out.append(Loc.t("No Trap cards. One or two can stop an attack you did not see coming."))
+	if rituals > 0 and not has_ritual_spell:
+		out.append(Loc.t("You have Ritual monsters but no Ritual Spell to summon them."))
+	var synchros := 0
+	var fusions := 0
+	var fus_missing := []
+	var xyz_short := {}
+	for x in extra:
+		var d := CardData.get_card(int(x))
+		match str(d.get("frame", "")):
+			"synchro":
+				synchros += 1
+			"fusion":
+				fusions += 1
+				var mats := CardData.fusion_materials(d)
+				for m in mats:
+					var md := CardData.get_card(int(m))
+					if int(m) != 0 and not names.has(str(md.get("name", "")).to_lower()):
+						if not fus_missing.has(str(d.get("name", ""))):
+							fus_missing.append(str(d.get("name", "")))
+						break
+			"xyz":
+				var r := int(d.get("level", 0))
+				if int(by_level.get(r, 0)) < 4:
+					xyz_short[r] = true
+	if synchros > 0 and tuners == 0:
+		out.append(Loc.t("Your Extra Deck has Synchro monsters but your deck has no Tuners, so you cannot summon them."))
+	elif synchros >= 3 and tuners < 3:
+		out.append(Loc.t("Only %d Tuner(s) for %d Synchro monsters. A few more Tuners help.") % [tuners, synchros])
+	if fusions > 0 and not has_fusion_spell:
+		out.append(Loc.t("Your Extra Deck has Fusion monsters but no Polymerization or other Fusion Spell."))
+	if not fus_missing.is_empty():
+		var shown := fus_missing.slice(0, 3)
+		out.append(Loc.t("Missing materials for: %s.") % ", ".join(shown))
+	for r in xyz_short.keys():
+		out.append(Loc.t("Few Level %d monsters for your Rank %d Xyz. Aim for at least 4.") % [r, r])
+	return out
+
+
+func _show_tips() -> void:
+	var tips := deck_tips(Collection.main, Collection.extra)
+	var text := ""
+	if tips.is_empty():
+		text = Loc.t("Looks solid. Nothing stands out that would stop this deck from working.")
+	else:
+		var lines := []
+		for t in tips:
+			lines.append("•  " + str(t))
+		text = "\n\n".join(lines)
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.72)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(shade)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.add_child(center)
+	var panel := _panel(28)
+	panel.custom_minimum_size = Vector2(760, 0)
+	center.add_child(panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 16)
+	panel.add_child(v)
+	v.add_child(UITheme.label(Loc.t("DECK TIPS"), 30, Color.WHITE, UITheme.title_font()))
+	var body := UITheme.label(text, 19, UITheme.TEXT)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.custom_minimum_size = Vector2(700, 0)
+	v.add_child(body)
+	var close := Button.new()
+	close.text = "  %s  " % Loc.t("Close")
+	close.custom_minimum_size = Vector2(0, 48)
+	close.add_theme_font_size_override("font_size", 19)
+	close.size_flags_horizontal = Control.SIZE_SHRINK_END
+	close.pressed.connect(shade.queue_free)
+	v.add_child(close)
+	Sfx.play("card", -6.0)
+
+
 func _refresh_actions() -> void:
 	if _act_box == null:
 		return

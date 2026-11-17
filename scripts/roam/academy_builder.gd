@@ -384,6 +384,13 @@ func _build_street_furniture() -> void:
 	for b in [[Vector3(-7.5, 0.1, 4.6), 0.0], [Vector3(7.5, 0.1, -5.4), PI], [Vector3(15.5, 0.1, 22.0), PI / 2], [Vector3(-3.6, 0.1, 32.0), PI / 2]]:
 		collide(prop("bench", b[0], b[1], 1.9), 0.9)
 	collide(prop("vending", Vector3(4.2, 0.1, 44.0 + PIER), -PI / 2, 1.95, true))
+	# (It stood on the bare lawn: a paved bay off the path, and a bin beside it.)
+	var bay := box(Vector3(2.6, 0.12, 2.0), Vector3(3.9, 0.1, 44.0 + PIER), surf("paving", Color(0.7, 0.67, 0.6), 1.15), false)
+	bay.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	no_grass.append(Rect2(2.5, 42.9 + PIER, 2.8, 2.2))
+	clear_detail(Vector3(3.9, 0, 44.0 + PIER), Vector2(3.0, 2.4), 0.0)
+	cyl(0.24, 0.22, 0.8, Vector3(4.3, 0.56, 45.25 + PIER), mat(Color(0.22, 0.4, 0.3), 0.6, 0.3))
+	cyl(0.26, 0.26, 0.05, Vector3(4.3, 0.98, 45.25 + PIER), mat(Color(0.15, 0.17, 0.18), 0.5, 0.5))
 	collide(prop("fountain", Vector3(0, 0.12, -18.5), 0.0, 5.0), 0.8)
 	# A statue by the school steps and banners at the dock
 	collide(prop("dragon_statue", clear_spot(Vector3(-9.0, 0.1, -26.0)), 0.5, 4.5, true), 0.6)

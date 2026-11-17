@@ -75,10 +75,37 @@ func _ready() -> void:
 	_thread.start(_render_all)
 
 
+## Your own music: a file named like the track (menu.ogg, duel.mp3, duel_rival.ogg, victory.wav...)
+## in a folder called "music" inside your card folder plays instead of the built-in one, on a loop.
+var _own := {}
+
+
+func _own_track(track: String) -> AudioStream:
+	if not _own.has(track):
+		var s: AudioStream = Sfx.own_file("music", track)
+		if s is AudioStreamOggVorbis:
+			(s as AudioStreamOggVorbis).loop = not track in ["victory", "defeat"]
+		elif s is AudioStreamMP3:
+			(s as AudioStreamMP3).loop = not track in ["victory", "defeat"]
+		elif s is AudioStreamWAV and not track in ["victory", "defeat"]:
+			(s as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_FORWARD
+			(s as AudioStreamWAV).loop_end = int((s as AudioStreamWAV).get_length() * (s as AudioStreamWAV).mix_rate)
+		_own[track] = s
+	return _own[track]
+
+
+func reload_own() -> void:
+	_own.clear()
+
+
 func play(track: String) -> void:
 	if not TRACKS.has(track):
 		track = "menu"
 	_wanted = track
+	if _own_track(track) != null:
+		_streams[track] = _own_track(track)
+		_switch(track)
+		return
 	if _streams.has(track):
 		_switch(track)
 
@@ -94,6 +121,8 @@ func _render_all() -> void:
 
 
 func _on_rendered(name: String, stream: AudioStreamWAV) -> void:
+	if _own_track(name) != null:
+		return   # (your own file plays for this one)
 	_streams[name] = stream
 	if _wanted == name and _current != name:
 		_switch(name)

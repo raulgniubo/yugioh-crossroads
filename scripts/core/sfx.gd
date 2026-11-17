@@ -72,8 +72,50 @@ var boost_db := 0.0
 const TRIM := {"direct": -4.0, "destroy": -3.5, "attack": -3.5, "pack_rip": -3.0, "impact": -3.0, "vs": -1.5}
 
 
+## Your own sounds: a file named like the sound (click.ogg, summon.wav, attack.mp3...) in a folder
+## called "sounds" inside your card folder plays instead of the built-in one. Nothing is bundled.
+var _own := {}
+
+
+static func load_audio(path: String) -> AudioStream:
+	var ext := path.get_extension().to_lower()
+	if not FileAccess.file_exists(path):
+		return null
+	match ext:
+		"ogg":
+			return AudioStreamOggVorbis.load_from_file(path)
+		"mp3":
+			return AudioStreamMP3.load_from_file(path)
+		"wav":
+			return AudioStreamWAV.load_from_file(path)
+	return null
+
+
+static func own_file(folder: String, name: String) -> AudioStream:
+	var card_folder := str(Engine.get_main_loop().root.get_node("Settings").card_folder) if Engine.get_main_loop() and Engine.get_main_loop().root.has_node("Settings") else ""
+	if card_folder == "":
+		return null
+	for ext in ["ogg", "wav", "mp3"]:
+		var s := load_audio(card_folder.path_join(folder).path_join(name + "." + ext))
+		if s != null:
+			return s
+	return null
+
+
+func _own_sound(name: String) -> AudioStream:
+	if not _own.has(name):
+		_own[name] = own_file("sounds", name)
+	return _own[name]
+
+
+## Forget your own sounds (the card folder changed): they are looked for again.
+func reload_own() -> void:
+	_own.clear()
+
+
 func play(name: String, volume_db := 0.0, pitch := 1.0) -> void:
-	if not _sounds.has(name):
+	var mine := _own_sound(name)
+	if not _sounds.has(name) and mine == null:
 		return
 	# The loudest hits were sitting 10 dB over everything else: bring them back into the mix.
 	volume_db = minf(volume_db + boost_db + float(TRIM.get(name, 0.0)), 6.0)
@@ -83,7 +125,7 @@ func play(name: String, volume_db := 0.0, pitch := 1.0) -> void:
 	_last[name] = now
 	var p := _players[_next]
 	_next = (_next + 1) % _players.size()
-	p.stream = _sounds[name]
+	p.stream = mine if mine != null else _sounds[name]
 	p.volume_db = volume_db
 	p.pitch_scale = pitch * randf_range(0.97, 1.03)
 	p.play()
