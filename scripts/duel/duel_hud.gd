@@ -646,6 +646,10 @@ func _draw_gauge(g: Control, p: int) -> void:
 	g.draw_string(f2, Vector2(c.x - ws.x / 2.0, 14.0), who, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
 
 
+func end_button_off() -> bool:
+	return _btn_end.disabled
+
+
 func set_phase_buttons(battle_text: String, battle_enabled: bool, end_enabled: bool) -> void:
 	_btn_battle.text = battle_text
 	_btn_battle.visible = battle_text != ""

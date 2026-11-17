@@ -2255,6 +2255,20 @@ func _on_board_card_hovered(card: Card3D, inside: bool) -> void:
 
 
 var _end_armed := 0.0
+var _btn_watch := 0.0
+
+
+## A safety net: when something finished while the screen was busy (an attack and its replies)
+## and nothing redrew the phase buttons, End turn stayed grey until a right-click. If it is your
+## turn, nothing is in progress and the buttons are off, they are put right.
+func _process(delta: float) -> void:
+	_btn_watch -= delta
+	if _btn_watch > 0.0:
+		return
+	_btn_watch = 0.3
+	if _my_turn() and mode == "" and not _finished and hud.end_button_off() \
+			and state.phase in [DuelState.Phase.MAIN1, DuelState.Phase.BATTLE, DuelState.Phase.MAIN2]:
+		_refresh()
 
 
 func _unhandled_input(event: InputEvent) -> void:
