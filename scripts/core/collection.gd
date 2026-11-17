@@ -67,18 +67,18 @@ static func theme_sold_in(key: String, world: String) -> bool:
 const DECK_PRICE := 1200
 const THEME_PRICE := 900
 const THEME_DECKS := [
-	{"key": "deck_water", "worlds": ["academy", "heartland"], "art": "deck_water", "color": Color("4aa8ff"), "blurb": "WATER monsters at home in the open sea. Umi makes every one of them stronger."},
-	{"key": "deck_fire", "worlds": ["domino", "newdomino"], "art": "deck_fire", "color": Color("ff6a3c"), "blurb": "FIRE monsters and a hand full of burn Spells. Win without ever attacking."},
-	{"key": "deck_wind", "worlds": ["newdomino", "academy"], "art": "gale", "color": Color("7de0b0"), "blurb": "WIND monsters that hit fast, backed by Rising Air Current."},
-	{"key": "deck_dragon", "worlds": ["domino", "heartland"], "art": "dragons", "color": Color("ff5a3c"), "blurb": "Big Dragons, and the smaller ones you Tribute to bring them out."},
-	{"key": "deck_warrior", "worlds": ["domino", "satellite"], "art": "warriors", "color": Color("f0b040"), "blurb": "Warriors with swords for everyone. Reinforcement of the Army finds the one you need."},
-	{"key": "deck_arcane", "worlds": ["domino", "academy"], "art": "arcane", "color": Color("ffd97a"), "blurb": "Spellcasters and Fairies, with Spells that lock the other side down."},
-	{"key": "deck_shadow", "worlds": ["academy", "satellite"], "art": "shadow", "color": Color("9a6bff"), "blurb": "Fiends that hit hard for their Level, and ways to bring them back."},
-	{"key": "deck_machine", "worlds": ["newdomino", "satellite", "heartland"], "art": "machines", "color": Color("6fc3ff"), "blurb": "Machines with heavy firepower and the tools to make them bigger."},
-	{"key": "deck_wild", "worlds": ["heartland", "domino"], "art": "wild", "color": Color("ff9a3c"), "blurb": "Beasts with high ATK at Level 4. No tricks, just teeth."},
+	{"key": "deck_water", "worlds": ["academy", "heartland"], "art": "deck_water", "color": Color("4aa8ff"), "blurb": "Sharks that call each other out of the hand, Salvage to get them back, and seven WATER Xyz Monsters led by Bahamut Shark."},
+	{"key": "deck_fire", "worlds": ["domino", "newdomino"], "art": "deck_fire", "color": Color("ff6a3c"), "blurb": "Volcanic Slicer and Solar Flare Dragon burn every turn while Backfire punishes every removal. Resonators bring out Synchro finishers."},
+	{"key": "deck_wind", "worlds": ["newdomino", "academy"], "art": "gale", "color": Color("7de0b0"), "blurb": "Mist Valley monsters bounce themselves and your opponent back to the hand, then Synchro into Mist Valley Thunder Lord."},
+	{"key": "deck_dragon", "worlds": ["domino", "heartland"], "art": "dragons", "color": Color("ff5a3c"), "blurb": "Lord of D. and the Flute call the big Dragons, Thunder Dragon feeds Fusions, and Dragon's Mirror makes Five-Headed Dragon."},
+	{"key": "deck_warrior", "worlds": ["domino", "satellite"], "art": "warriors", "color": Color("f0b040"), "blurb": "Marauding Captain and Command Knight hold the line, Torapart tunes into Warrior Synchros, and Gaia rides into Gaia the Dragon Champion."},
+	{"key": "deck_arcane", "worlds": ["domino", "academy"], "art": "arcane", "color": Color("ffd97a"), "blurb": "Spell Counters: every Spell you play charges the Magical Library and the Skilled Magicians, then Arcanite Magician cashes them in."},
+	{"key": "deck_shadow", "worlds": ["academy", "satellite"], "art": "shadow", "color": Color("9a6bff"), "blurb": "Fiends with heavy hits at Level 4, Dark Resonator to tune them into Chaos King Archfiend, and Number 66 for the rest."},
+	{"key": "deck_machine", "worlds": ["newdomino", "satellite", "heartland"], "art": "machines", "color": Color("6fc3ff"), "blurb": "The V, W, X, Y and Z Unions: equip them to each other, then fuse up to VWXYZ-Dragon Catapult Cannon."},
+	{"key": "deck_wild", "worlds": ["heartland", "domino"], "art": "wild", "color": Color("ff9a3c"), "blurb": "Big Beasts at Level 4 with Fusions on top: Chimera the Flying Mythical Beast and Rabid Horseman."},
 	{"key": "deck_ancient_gear", "art": "machines", "cover": "Ancient Gear Golem", "color": Color("b07a3c"), "era": "GX", "blurb": "Ancient Gear Golems hit hard, pierce, and nothing your opponent sets can stop the attack. Geartown and the Castle bring them out fast."},
 	{"key": "deck_gravekeeper", "art": "arcane", "cover": "Gravekeeper's Chief", "color": Color("c8a050"), "era": "Duel Monsters", "blurb": "The Gravekeeper's guard Necrovalley: while it stands, nothing leaves either Graveyard. Flip Spies, call more guards, lock the other side down."},
-	{"key": "deck_forest", "worlds": ["academy", "satellite"], "art": "forest", "color": Color("5fd070"), "blurb": "Insects and Plants in their Forest, with Traps that slow everything down."},
+	{"key": "deck_forest", "worlds": ["academy", "satellite"], "art": "forest", "color": Color("5fd070"), "blurb": "Lonefire Blossom and Dandylion fill the field with Plants, Gigaplant brings them back, and Splendid Rose closes it out."},
 ]
 ## The three decks a new duelist picks one of: the same strength, three ways to play, your
 ## partner in each. `show` are three cards that say what the deck is about.

@@ -5,6 +5,24 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.34.1.5
+
+**The 10 shop theme decks, rebuilt.** Each one now has a real plan and an Extra Deck, and 27 new cards came in to make them work, so the game now has **1,805 cards**, every one working and obtainable.
+
+- **Rising Tide (WATER):** Sharks that call each other out of the hand, Salvage, and 7 WATER Xyz Monsters (Bahamut Shark, Number 37, 32, 101, 17, 47).
+- **Wildfire (FIRE):** burn with Volcanic Slicer and Solar Flare Dragon, Backfire, and Resonators for Lightning Warrior, Crimson Blader and Colossal Fighter.
+- **Storm Wings (WIND):** the Mist Valley monsters (Soldier, Shaman, Falcon, Thunderbird, Executor) bounce cards back to the hand, Icarus Attack, and Mist Valley Thunder Lord as the Synchro.
+- **Dragon's Den:** Lord of D. and the Flute, Thunder Dragon into Twin-Headed Thunder Dragon, King Dragun, and Dragon's Mirror for Five-Headed Dragon.
+- **Iron Vanguard (Warriors):** Marauding Captain, Command Knight, Torapart for Warrior Synchros, Gaia the Dragon Champion, and Rank 4 Xyz.
+- **Mystic Arts (Spellcasters):** Spell Counters for real: Royal Magical Library, Skilled White Magician, Apprentice Magician, Night's End Sorcerer, and the Synchros Arcanite Magician and Explosive Magician.
+- **Midnight Court (Fiends):** Dark Resonator into Chaos King Archfiend and Hundred Eyes Dragon, plus Number 66.
+- **Gear Works (Machines):** the V, W, X, Y and Z Unions and all six of their Fusions up to VWXYZ-Dragon Catapult Cannon.
+- **Fang and Claw (Beasts):** Chimera the Flying Mythical Beast and Rabid Horseman Fusions.
+- **Overgrowth (Plants and Insects):** Lonefire Blossom, Dandylion, Glow-Up Bulb, Gigaplant, Splendid Rose, Queen of Thorns and Kwagar Hercules.
+- In test duels against the story decks the 10 decks won between 2 and 6 of 6 each (Wildfire 6, Iron Vanguard 5, Fiends and Beasts 2).
+
+Not done or not checked: Mist Valley Baby Roc, Windmaster and Apex Avian are left out. Mist Valley Thunder Lord's quick effect works in your opponent's turn and in your own Battle Phase, not in your own Main Phase as a quick effect (there it is a normal effect). Fire Princess is left out (the game has no "each time you gain Life Points" hook yet). Played by the test duels, not watched.
+
 ## What is in 0.34.1
 
 **Card family 2 of 16: Ancient Gear (GX).** 40 new cards, so the game now has **1,778 cards**, every one working and obtainable.

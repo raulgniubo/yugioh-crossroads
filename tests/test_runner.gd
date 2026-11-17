@@ -32,6 +32,22 @@ func _ready() -> void:
 	if stress != "":
 		CardData.load_external(stress)
 		var all: Array = Characters.ORDER.filter(func(k): return CardData.has_deck(Characters.DATA[k]["deck"]))
+		if OS.get_environment("THEME_SIM") != "":
+			# Dev: how do the shop's theme decks do against the story decks?
+			var tg := int(OS.get_environment("THEME_SIM"))
+			for td in Collection.THEME_DECKS:
+				if OS.get_environment("THEME_ONLY") != "" and str(td["key"]) != OS.get_environment("THEME_ONLY"):
+					continue
+				var tw := 0
+				for g in tg:
+					var foe_t: String = Characters.DATA[all[(g * 5 + 2) % all.size()]]["deck"]
+					if _ai_vs_ai(2500 + g, str(td["key"]), foe_t, 2, 2) == 0:
+						tw += 1
+				print("theme %s: won %d of %d" % [td["key"], tw, tg])
+			print("effects fired for %d different cards: %s" % [EffectRunner.fired.size(), str(EffectRunner.fired)])
+			print("TESTS DONE, failures: %d" % failures)
+			get_tree().quit(1 if failures > 0 else 0)
+			return
 		if OS.get_environment("SIM_ONLY") != "":
 			# Dev: only the duels of one deck against the house mix (no unit tests): SIM_ONLY=<deck> YUSEI_SIM=n SIM_FROM=k
 			var wins_o := 0
@@ -115,6 +131,7 @@ func _ready() -> void:
 		_test_cards_b0c5()
 		_test_gravekeepers()
 		_test_ancient_gears()
+		_test_theme_rework()
 		await _test_album()
 		_test_save_slots()
 		_test_turbo_setup()
@@ -126,6 +143,16 @@ func _ready() -> void:
 			for fn in OS.get_environment("ONLY_TEST").split(","):
 				call(fn)
 			print("ONLY_TEST DONE, failures: %d" % failures)
+			get_tree().quit(0)
+			return
+		if OS.get_environment("DUMP_WORKS") != "":
+			# Dev: every card that works, with its kind, Type, Attribute, Level and frame.
+			var out := FileAccess.open(OS.get_environment("DUMP_WORKS"), FileAccess.WRITE)
+			for cid in CardData.NAME_TO_ID.values():
+				if SignatureDecks._works(int(cid)):
+					var d := CardData.get_card(int(cid))
+					out.store_line("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s" % [d.get("name", ""), d.get("kind", ""), d.get("frame", ""), d.get("race", ""), d.get("attribute", ""), d.get("level", ""), d.get("atk", ""), d.get("def", "")])
+			out.close()
 			get_tree().quit(0)
 			return
 		if OS.get_environment("WORKS_FILE") != "":
@@ -184,6 +211,19 @@ func _ready() -> void:
 					fw += 1
 				n += 1
 			print("family %s: won %d of 8 against story decks" % [fk, fw])
+		# The other theme decks in the shop: a few games each.
+		for td in Collection.THEME_DECKS:
+			var tkey: String = str(td["key"])
+			if Collection.FAMILIES.values().filter(func(fv): return fv["deck"] == tkey).size() > 0:
+				continue
+			check(CardData.deck_list(tkey).size() == 40, "%s: a 40-card deck (%d)" % [tkey, CardData.deck_list(tkey).size()])
+			var tw2 := 0
+			for g in 4:
+				var foe_t2: String = Characters.DATA[all[(g * 5 + 2) % all.size()]]["deck"]
+				if _ai_vs_ai(2500 + g, tkey, foe_t2, 2, 2) == 0:
+					tw2 += 1
+				n += 1
+			print("theme %s: won %d of 4 against story decks" % [tkey, tw2])
 		print("stress: %d games across %d decks" % [n, all.size()])
 		print("effects fired for %d different cards: %s" % [EffectRunner.fired.size(), str(EffectRunner.fired)])
 		print("TESTS DONE, failures: %d" % failures)
@@ -9430,4 +9470,252 @@ func _dev_need() -> void:
 		print("READY\t", k, "\t", ", ".join(a2["ready"]), "\t|STAND\t", ", ".join(a2["stand_ins"]), "\t|N ", a2["plays"].size())
 
 
+
+
+
+## 0.34.1.5: the cards the reworked theme decks needed, each against its printed text.
+func _test_theme_rework() -> void:
+	# Solar Flare Dragon: can't be attacked beside another Pyro; 500 in your End Phase.
+	var s := _new_state(7301)
+	_battle_ready(s)
+	var sfd := _mon(s, 1, "Solar Flare Dragon", 0)
+	_mon(s, 1, "Volcanic Slicer", 1)
+	var atk := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	check(not s.attack_targets_for(0, atk).has(sfd), "Solar Flare Dragon: not with another Pyro")
+	# Volcanic Slicer: 500, then it can't attack.
+	s = _main_ready(7302)
+	var vs := _mon(s, 0, "Volcanic Slicer", 0)
+	var lp: int = s.players[1].lp
+	s.ignite(0, vs)
+	check(s.players[1].lp == lp - 500, "Volcanic Slicer: 500 damage")
+	s.phase = DuelState.Phase.BATTLE
+	check(not s.can_attack(0, vs), "Volcanic Slicer: no attack after its effect")
+	# Command Knight: Warriors +400, can't be attacked with a friend.
+	s = _new_state(7303)
+	_battle_ready(s)
+	var ck := _mon(s, 1, "Command Knight", 0)
+	var gaf := _mon(s, 1, "Goblin Attack Force", 1)
+	check(s.atk_of(gaf, false) == 2700 and s.atk_of(ck, false) == 1600, "Command Knight: +400 to Warriors (%d, %d)" % [s.atk_of(gaf, false), s.atk_of(ck, false)])
+	var bw := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	check(not s.attack_targets_for(0, bw).has(ck), "Command Knight: not a target with another monster")
+	# Marauding Captain: the other Warriors can't be attacked; calls a Level 4 from the hand.
+	s = _main_ready(7304)
+	s.players[0].hand.clear()
+	var mc := _in(s, 0, "Marauding Captain", "hand")
+	var gf := _in(s, 0, "Goblin Attack Force", "hand")
+	s.normal_summon(0, mc, [])
+	check(s.players[0].field.has(gf), "Marauding Captain: Special Summons from the hand")
+	check(not s.attack_targets(1).has(gf) and s.attack_targets(1).has(mc), "Marauding Captain: only it can be attacked")
+	# Thunder Dragon: discard, add 2.
+	s = _main_ready(7305)
+	var td := _in(s, 0, "Thunder Dragon", "hand")
+	_in(s, 0, "Thunder Dragon", "deck")
+	_in(s, 0, "Thunder Dragon", "deck")
+	s.hand_ignite(0, td)
+	check(s.players[0].hand.filter(func(h): return h.cname() == "Thunder Dragon").size() == 2 and s.players[0].gy.has(td), "Thunder Dragon: 2 more to the hand")
+	# Five-Headed Dragon: Dragon's Mirror with 5 Dragons; not destroyed by a DARK monster.
+	s = _main_ready(7306)
+	for i in 3:
+		_in(s, 0, "Luster Dragon", "gy")
+	_mon(s, 0, "Spear Dragon", 0)
+	_mon(s, 0, "Alexandrite Dragon", 1)
+	var fh := _in(s, 0, "Five-Headed Dragon", "extra")
+	var dm := _rst(s, 0, "Dragon's Mirror")
+	s.activate(0, dm)
+	check(s.players[0].field.has(fh), "Five-Headed Dragon: Dragon's Mirror with 5 Dragons")
+	s.battle_foe = _mon(s, 1, "Summoned Skull", 0)
+	check(EffectRunner.survives_battle(s, fh), "Five-Headed Dragon: not by battle with a DARK monster")
+	s.battle_foe = null
+	# King Dragun: a Dragon from the hand.
+	s = _main_ready(7307)
+	var kd := _mon(s, 0, "King Dragun", 0)
+	var rex := _in(s, 0, "Tyrant Dragon", "hand")
+	s.ignite(0, kd)
+	check(s.players[0].field.has(rex), "King Dragun: Tyrant Dragon from the hand")
+	# Stamping Destruction: destroy, 500 to the controller.
+	s = _main_ready(7308)
+	_mon(s, 0, "Spear Dragon", 0)
+	var tgt := _set_trap(s, 1, "Mirror Force")
+	var sd := _rst(s, 0, "Stamping Destruction")
+	lp = s.players[1].lp
+	s.activate(0, sd, tgt)
+	check(s.players[1].gy.has(tgt) and s.players[1].lp == lp - 500, "Stamping Destruction: destroyed and 500")
+	# Salvage: 2 WATER monsters with 1500 or less ATK back.
+	s = _main_ready(7309)
+	var w1 := _in(s, 0, "Mermaid Shark", "gy")
+	var w2 := _in(s, 0, "Shark Stickers", "gy")
+	var sv := _rst(s, 0, "Salvage")
+	s.activate(0, sv)
+	check(s.players[0].hand.has(w1) and s.players[0].hand.has(w2), "Salvage: 2 back to the hand")
+	# Royal Magical Library: counters from Spells, 3 for a draw.
+	s = _main_ready(7310)
+	var lib := _mon(s, 0, "Royal Magical Library", 0)
+	for i in 3:
+		var up := _rst(s, 0, "Upstart Goblin")
+		s.activate(0, up)
+	check(lib.counter == 3, "Library: 3 Spell Counters (%d)" % lib.counter)
+	var hn: int = s.players[0].hand.size()
+	s.ignite(0, lib)
+	check(lib.counter == 0 and s.players[0].hand.size() == hn + 1, "Library: remove 3, draw 1")
+	# Skilled White Magician: 3 counters, Buster Blader.
+	s = _main_ready(7311)
+	s.players[0].hand.clear()
+	var swm := _mon(s, 0, "Skilled White Magician", 0)
+	swm.counter = 3
+	var bb := _in(s, 0, "Buster Blader", "deck")
+	s.ignite(0, swm)
+	check(bb != null and not s.players[0].monsters().filter(func(m): return m.cname() == "Buster Blader").is_empty(), "Skilled White Magician: Buster Blader")
+	# Apprentice Magician: a counter on Breaker; destroyed by battle, a Level 2 Spellcaster face-down.
+	s = _main_ready(7312)
+	var br := _mon(s, 0, "Skilled Dark Magician", 0)
+	var ap := _in(s, 0, "Apprentice Magician", "hand")
+	s.normal_summon(0, ap, [])
+	check(br.counter == 1, "Apprentice Magician: a Spell Counter on Skilled Dark Magician")
+	s = _new_state(7313)
+	_battle_ready(s)
+	var ap2 := _mon(s, 1, "Apprentice Magician", 0)
+	var nes := _in(s, 1, "Night's End Sorcerer", "deck")
+	var bw2 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw2, ap2)
+	s.resolve_attack()
+	check(s.players[1].field.has(nes) and not nes.face_up, "Apprentice Magician: Night's End Sorcerer face-down")
+	# Night's End Sorcerer: Special Summoned, banish 2 from their GY.
+	s = _main_ready(7314)
+	_in(s, 1, "Dark Hole", "gy")
+	_in(s, 1, "Summoned Skull", "gy")
+	var nes2 := _in(s, 0, "Night's End Sorcerer", "hand")
+	s.players[0].hand.erase(nes2)
+	var evn := s._special(0, nes2, "effect", "atk")
+	evn.append_array(EffectRunner.on_summon(s, 0, nes2, "special"))
+	check(s.players[1].banished.size() == 2, "Night's End Sorcerer: 2 banished")
+	# Arcanite Magician: Synchro with a Spellcaster, 2 counters, 2400 ATK, a counter destroys a card.
+	s = _main_ready(7315)
+	_mon(s, 0, "Effect Veiler", 0)
+	_mon(s, 0, "Skilled Dark Magician", 1)
+	_mon(s, 0, "Old Vindictive Magician", 2)
+	var arc := _in(s, 0, "Arcanite Magician", "extra")
+	check(s.can_extra_summon(0, arc), "Arcanite Magician: 1 + 4 + 2 Spellcasters")
+	s.extra_summon(0, arc)
+	check(arc.counter == 2 and s.atk_of(arc, false) == 2400, "Arcanite Magician: 2 counters, 2400 ATK (%d, %d)" % [arc.counter, s.atk_of(arc, false)])
+	var foe := _mon(s, 1, "Summoned Skull", 0)
+	s.ignite(0, arc)
+	check(s.players[1].gy.has(foe) and arc.counter == 1, "Arcanite Magician: remove 1, destroy 1")
+	# Explosive Magician: needs 2 counters on your field, hits their Spell/Trap.
+	s = _main_ready(7316)
+	var exm := _mon(s, 0, "Explosive Magician", 0)
+	var lib2 := _mon(s, 0, "Royal Magical Library", 1)
+	lib2.counter = 2
+	var st2 := _set_trap(s, 1, "Mirror Force")
+	s.ignite(0, exm)
+	check(s.players[1].gy.has(st2) and lib2.counter == 0, "Explosive Magician: 2 counters, 1 Spell/Trap")
+	# Torapart: only for a Warrior Synchro; then no Traps against its attacks.
+	s = _main_ready(7317)
+	_mon(s, 0, "Torapart", 0)
+	_mon(s, 0, "Marauding Captain", 1)
+	_mon(s, 0, "Marauding Captain", 2)
+	var col := _in(s, 0, "Colossal Fighter", "extra")
+	var arc2 := _in(s, 0, "Arcanite Magician", "extra")
+	check(not s.can_extra_summon(0, arc2), "Torapart: not for a Spellcaster Synchro")
+	s.extra_summon(0, col)
+	check(s.players[0].field.has(col) and col.tags.get("torapart", false), "Torapart: Colossal Fighter remembers it")
+	s.phase = DuelState.Phase.BATTLE
+	var mf := _set_trap(s, 1, "Mirror Force")
+	_mon(s, 1, "Summoned Skull", 0)
+	s.declare_attack(0, col, s.players[1].field[0])
+	check(not s.responses(1, "attack").has(mf), "Torapart: no Mirror Force against Colossal Fighter")
+	# Dandylion: 2 Fluff Tokens that can't be Tributed for a Tribute Summon this turn.
+	s = _main_ready(7318)
+	var dl := _in(s, 0, "Dandylion", "hand")
+	s.players[0].hand.erase(dl)
+	s._to_gy(s.players[0], dl)
+	s._cleanup()
+	var fluff := s.players[0].monsters().filter(func(m): return m.cname() == "Fluff Token")
+	check(fluff.size() == 2 and not fluff[0].attack_pos, "Dandylion: 2 Fluff Tokens in Defense Position")
+	check(s.tributable(0).is_empty(), "Dandylion: no Tribute Summon with them this turn")
+	# Glow-Up Bulb: once per Duel from the GY.
+	s = _main_ready(7319)
+	var gb := _in(s, 0, "Glow-Up Bulb", "gy")
+	check(s.gy_effects(0).has(gb), "Glow-Up Bulb: usable from the GY")
+	s.gy_ignite(0, gb)
+	check(s.players[0].field.has(gb), "Glow-Up Bulb: back on the field")
+	gb = s.players[0].field[s.players[0].field.find(gb)]
+	s.players[0].field[s.players[0].field.find(gb)] = null
+	s._to_gy(s.players[0], gb)
+	check(not s.gy_effects(0).has(gb), "Glow-Up Bulb: only once per Duel")
+	# Gigaplant: Gemini, then a Plant from the GY.
+	s = _main_ready(7320)
+	var gp := _mon(s, 0, "Gigaplant", 0)
+	var lb := _in(s, 0, "Lonefire Blossom", "gy")
+	s.ignite(0, gp)
+	check(gp.tags.has("gemini_on"), "Gigaplant: an Effect Monster now")
+	s.turn += 2
+	s.current = 0
+	s.normal_summoned = false
+	s.ignite(0, gp)
+	check(s.players[0].field.has(lb), "Gigaplant: Lonefire Blossom from the GY")
+	# Mist Valley Shaman and Thunderbird: the bird comes right back.
+	s = _main_ready(7321)
+	var sh := _mon(s, 0, "Mist Valley Shaman", 0)
+	var tb := _mon(s, 0, "Mist Valley Thunderbird", 1)
+	s.ignite(0, sh)
+	check(s.players[0].field.has(tb) and s.atk_of(sh, false) == 1700, "Shaman + Thunderbird: back on the field, Shaman 1700")
+	s.phase = DuelState.Phase.BATTLE
+	check(not s.can_attack(0, tb), "Thunderbird: can't attack the turn it comes back")
+	# Mist Valley Falcon: attacking costs a card back to the hand.
+	s = _new_state(7322)
+	_battle_ready(s)
+	var fa := _mon(s, 0, "Mist Valley Falcon", 0)
+	check(not s.can_attack(0, fa), "Falcon: nothing to return, no attack")
+	var tb2 := _mon(s, 0, "Mist Valley Thunderbird", 1)
+	check(s.can_attack(0, fa), "Falcon: can attack with a card to return")
+	s.declare_attack(0, fa, null)
+	check(s.players[0].field.has(tb2), "Falcon: Thunderbird returned and came back")
+	# Mist Valley Soldier: the monster it battled and didn't destroy goes back to the hand.
+	s = _new_state(7323)
+	_battle_ready(s)
+	var ms := _mon(s, 0, "Mist Valley Soldier", 0)
+	var wallm := _mon(s, 1, "Mother Grizzly", 0, false)
+	wallm.face_up = true
+	_mon(s, 1, "Big Shield Gardna", 1, false)
+	var gard: DuelState.CardInst = s.players[1].field[1]
+	s.declare_attack(0, ms, gard)
+	s.resolve_attack()
+	check(s.players[1].hand.has(gard), "Mist Valley Soldier: Big Shield Gardna back to the hand")
+	# Mist Valley Executor: every face-up Spell and Trap back to the hand.
+	s = _main_ready(7324)
+	var um := s._make(_cid("Umi"), 1)
+	s.players[1].field_spell = um
+	um.face_up = true
+	var ex := _in(s, 0, "Mist Valley Executor", "hand")
+	_mon(s, 0, "Mist Valley Watcher", 0)
+	s.normal_summon(0, ex, [s.players[0].field[0]])
+	check(s.players[1].hand.has(um), "Executor: Umi back to the hand")
+	# Mist Valley Thunder Lord: Synchro with "Mist Valley" non-Tuners only.
+	s = _main_ready(7325)
+	_mon(s, 0, "Mist Valley Shaman", 0)
+	_mon(s, 0, "Mist Valley Watcher", 1)
+	var tl := _in(s, 0, "Mist Valley Thunder Lord", "extra")
+	check(s.can_extra_summon(0, tl), "Thunder Lord: Shaman + Watcher")
+	s = _main_ready(7326)
+	_mon(s, 0, "Mist Valley Shaman", 0)
+	_mon(s, 0, "Goblin Attack Force", 1)
+	tl = _in(s, 0, "Mist Valley Thunder Lord", "extra")
+	check(not s.can_extra_summon(0, tl), "Thunder Lord: not with a non-Mist Valley")
+	# Icarus Attack: Tribute a Winged Beast, destroy 2.
+	s = _main_ready(7327)
+	_mon(s, 0, "Mist Valley Falcon", 0)
+	var o1 := _mon(s, 1, "Summoned Skull", 0)
+	var o2 := _mon(s, 1, "Giant Orc", 1)
+	var ic := _set_trap(s, 0, "Icarus Attack")
+	s.turn += 1
+	s.activate(0, ic)
+	check(s.players[1].gy.has(o1) and s.players[1].gy.has(o2), "Icarus Attack: 2 destroyed")
+	# Backfire: a face-up FIRE monster destroyed, 500 to the opponent.
+	s = _main_ready(7328)
+	var bfc := _set_trap(s, 0, "Backfire")
+	bfc.face_up = true
+	var fm := _mon(s, 0, "UFO Turtle", 0)
+	lp = s.players[1].lp
+	s._destroy(fm)
+	check(s.players[1].lp == lp - 500, "Backfire: 500 damage")
 

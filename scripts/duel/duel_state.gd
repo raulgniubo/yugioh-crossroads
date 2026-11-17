@@ -1972,6 +1972,7 @@ func can_attack(p: int, c: CardInst) -> bool:
 			and not (EffectRunner.fx(c).get("summon_sick", false) and c.summoned_turn == turn)
 			and players[p].lp >= int(EffectRunner.fx(c).get("attack_cost", 0))
 			and not (EffectRunner.fx(c).get("attack_tribute", false) and players[p].monsters().size() < 2)
+			and not (EffectRunner.fx(c).get("attack_bounce", false) and not c.negated and _bounce_fodder(p, c).is_empty())
 			and not (EffectRunner.fx(c).get("no_attack_with_others", false) and players[p].monsters().size() > 1)
 			and (players[opponent(p)].swords_left == 0 or _swords_card(opponent(p)) == null))
 
@@ -2296,7 +2297,7 @@ func attack_targets_for(p: int, attacker: CardInst) -> Array[CardInst]:
 	# The Legendary Fisherman: "cannot be targeted for attacks" while Umi is on the field. Earthbound Immortals can't be either.
 	var fished: Array[CardInst] = []
 	for m in out:
-		if m == null or not (umi_guard(m) or (m.face_up and not m.negated and EffectRunner.fx(m).get("no_attack_target", false))):
+		if m == null or not (umi_guard(m) or (m.face_up and not m.negated and EffectRunner.fx(m).get("no_attack_target", false)) or _guarded_by_other(m)):
 			fished.append(m)
 	out = fished
 	# Galaxy Dragon: "can only attack Dragon monsters."
@@ -2341,6 +2342,26 @@ func attack_targets_for(p: int, attacker: CardInst) -> Array[CardInst]:
 				only.append(m)
 		return only
 	return out
+
+
+## The other cards you could return to the hand (Mist Valley Falcon's attack cost).
+func _bounce_fodder(p: int, c: CardInst) -> Array:
+	var out: Array = players[p].monsters().filter(func(m): return m != c)
+	out.append_array(players[p].spells.filter(func(x): return x != null))
+	if players[p].field_spell != null:
+		out.append(players[p].field_spell)
+	return out
+
+
+## Command Knight / Solar Flare Dragon: "while you control another (Pyro) monster, it cannot be attacked."
+func _guarded_by_other(m: CardInst) -> bool:
+	if m == null or not m.face_up or m.negated or not EffectRunner.fx(m).has("guard_if_other"):
+		return false
+	var need := str(EffectRunner.fx(m)["guard_if_other"])
+	for o in players[m.owner].monsters():
+		if o != m and (need == "" or (o.face_up and str(o.data.get("race", "")) == need)):
+			return true
+	return false
 
 
 func attack_allowed(p: int, attacker: CardInst, target) -> bool:
@@ -2417,6 +2438,13 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	if toll > 0:
 		players[p].lp -= toll
 		paid.append({"type": "lp", "player": p, "lp": players[p].lp, "delta": -toll})
+	if EffectRunner.fx(attacker).get("attack_bounce", false) and not attacker.negated:
+		# Mist Valley Falcon: "Cannot declare an attack unless you return 1 card you control to the hand."
+		var fod_b := _bounce_fodder(p, attacker)
+		if fod_b.is_empty():
+			return []
+		var back_f = pick1(p, Loc.t("%s: return 1 card you control to the hand to attack") % attacker.cname(), fod_b, EffectRunner.mist_pick(self, p, fod_b), attacker)
+		paid.append_array(_bounce(back_f))
 	if EffectRunner.fx(attacker).get("attack_tribute", false):
 		# "Cannot declare an attack unless you Tribute 1 monster" (Insect Queen).
 		var fodder: Array = players[p].monsters().filter(func(m): return m != attacker and can_tribute_fx(m))
@@ -2767,6 +2795,15 @@ func resolve_attack() -> Array:
 			took.negated = true
 	if rai_a != null and not is_over():
 		ev.append_array(_ag_end_damage(rai_a, rai_t))
+	# Mist Valley Soldier: "At the end of the Damage Step, if this card battled an opponent's monster that was not destroyed: Return that monster to the hand."
+	if rai_a != null and rai_t != null and not is_over():
+		for pair in [[rai_a, rai_t], [rai_t, rai_a]]:
+			var sol: CardInst = pair[0]
+			var foe: CardInst = pair[1]
+			if players[sol.owner].field.has(sol) and sol.face_up and not sol.negated and EffectRunner.fx(sol).get("mv_soldier", false) \
+					and players[foe.owner].field.has(foe) and foe.owner != sol.owner:
+				ev.append({"type": "effect", "player": sol.owner, "card": sol, "text": Loc.t("%s blows %s back to the hand") % [sol.cname(), foe.cname()]})
+				ev.append_array(_bounce(foe))
 	# Armored Xyz: "At the end of the Damage Step, if the equipped monster attacked: You can send this card to the GY; that attacking
 	# monster can make a second attack in a row."
 	if rai_a != null and players[rai_a.owner].field.has(rai_a) and not is_over():
@@ -3596,8 +3633,16 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 		c.set_meta("prime_back", 2)
 	ps.field[zone] = null
 	var mats: Array = c.overlays.duplicate()
+	var ctl_bf := c.owner
+	var fire_up := c.face_up and str(c.data.get("attribute", "")) == "FIRE"
 	_to_gy(ps, c)   # its Xyz Materials go with it
 	var events := [{"type": "destroy", "player": c.owner, "card": c, "zone": zone, "overlays": mats}]
+	if fire_up and players[c.owner].gy.has(c) and not is_over():
+		# Backfire: "If a face-up FIRE monster you control is destroyed and sent to the GY: Inflict 500 damage to your opponent."
+		for bf in players[ctl_bf].spells:
+			if bf != null and bf.face_up and SpellRules.spec(bf).get("backfire", false) and not SpellRules.blocked(self, bf):
+				events.append({"type": "effect", "player": ctl_bf, "card": bf, "text": Loc.t("%s: 500 damage") % bf.cname()})
+				events.append_array(_damage(opponent(ctl_bf), 500))
 	if c.is_token() and int(c.data.get("burn_on_destroy", 0)) > 0 and not is_over():
 		# Ivy Token / Nightmare Archfiend Token: "When this Token is destroyed, its controller takes ... damage."
 		events.append_array(_damage(c.owner, int(c.data["burn_on_destroy"])))
@@ -4150,6 +4195,7 @@ func _bounce(c: CardInst) -> Array:
 			ps.field_spell = null
 		if from == "":
 			continue
+		var was_up_b := c.face_up
 		if c.orig_owner != -1:
 			c.owner = c.orig_owner
 			c.orig_owner = -1
@@ -4166,6 +4212,14 @@ func _bounce(c: CardInst) -> Array:
 		events.append_array(_monster_left(c) if from == "field" else SpellRules.left_field(self, c))
 		if from == "field" and c.is_monster():
 			events.append_array(EffectRunner.trigger(self, c, "leave"))
+		if from == "field" and was_up_b and home.hand.has(c) and EffectRunner.fx(c).get("bounce_back", false) and home.free_zone() != -1 \
+				and home.no_summon_turn != turn and not ss_locked(c.owner) and not is_over():
+			# Mist Valley Thunderbird: "If this face-up card on the field returns to the hand: Special Summon it, but it cannot attack this turn."
+			home.hand.erase(c)
+			events.append({"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s comes right back") % c.cname()})
+			events.append_array(_special(c.owner, c, "effect"))
+			c.attack_count_turn = turn
+			c.attack_count = 99
 		return events
 	return []
 
@@ -4196,6 +4250,7 @@ func _to_deck(c: CardInst) -> Array:
 			ps.field_spell = null
 		if from == "":
 			continue
+		var was_up_b := c.face_up
 		if c.orig_owner != -1:
 			c.owner = c.orig_owner
 			c.orig_owner = -1
@@ -4882,9 +4937,13 @@ static func material_rule(c: CardInst) -> Dictionary:
 					if m:
 						tf = {"race": m.get_string(1)}   # "1 Fiend-Type Tuner" (Chaos King Archfiend)
 		var of := {}
+		re.compile("non-Tuner \"([^\"]+)\" monsters?")
+		var mq := re.search(rest)
 		re.compile("non-Tuner ([A-Z][A-Za-z\\- ]+?)(?:-Type)? monsters?")
 		m = re.search(rest)
-		if m:
+		if mq:
+			of = {"has": mq.get_string(1)}   # '1+ non-Tuner "Mist Valley" monsters'
+		elif m:
 			var w := m.get_string(1).strip_edges()
 			of = {"attr": w} if w in ["DARK", "LIGHT", "EARTH", "WATER", "FIRE", "WIND"] else {"race": w}
 		if tun.to_lower().contains("tuner synchro monster"):
@@ -4980,7 +5039,8 @@ func extra_materials(p: int, c: CardInst) -> Array:
 				if pick.size() == want:
 					out.append(pick)
 	elif c.frame() == "synchro":
-		mons = mons.filter(func(m): return m.frame() != "xyz" and not EffectRunner.fx(m).get("no_synchro", false) and not (EffectRunner.fx(m).get("no_synchro_if_ss", false) and m.tags.get("ss", false)))   # Xyz Monsters have a Rank, not a Level
+		mons = mons.filter(func(m): return m.frame() != "xyz" and not EffectRunner.fx(m).get("no_synchro", false) \
+				and (str(EffectRunner.fx(m).get("synchro_only_race", "")) == "" or str(EffectRunner.fx(m)["synchro_only_race"]) == str(c.data.get("race", ""))) and not (EffectRunner.fx(m).get("no_synchro_if_ss", false) and m.tags.get("ss", false)))   # Xyz Monsters have a Rank, not a Level
 		var n := mons.size()
 		for mask in range(1, 1 << n):
 			var sel := []
@@ -5609,6 +5669,8 @@ func responses(p: int, window: String, subject = null) -> Array:
 			st_locked = true
 		if EffectRunner.fx(atk_c).get("attack_st_lock", false) and atk_c.face_up and not atk_c.negated and (not EffectRunner.fx(atk_c).get("gemini", false) or atk_c.tags.has("gemini_on")):
 			st_locked = true   # Utopia Ray Victory: "If this card attacks, your opponent cannot activate any Spell/Trap Cards until the end of the Damage Step."
+		if atk_c.tags.get("torapart", false) and atk_c.face_up:
+			traps_off = true   # Torapart: "your opponent cannot activate Trap Cards until the end of the Damage Step"
 		var lk := ag_attack_locks(atk_c)
 		if lk.has("st"):
 			st_locked = true

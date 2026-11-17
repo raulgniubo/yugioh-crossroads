@@ -29,6 +29,11 @@ const FX := {
 	"Echo Resonance": {"k": "normal", "cond": "echo_ready", "do": [["echo_resonance"]]},
 	"Echo Call": {"k": "normal", "do": [["search", {"has": "Lumen"}]]},
 	"Echo Veil": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["draw_if_own", "Lumen", 1]]},
+	# ---------------------------------------------------------------- Theme deck rework (0.34.1.5)
+	"Salvage": {"k": "normal", "do": [["gy_to_hand", {"attr": "WATER", "max_atk": 1500, "monster": true}, 2]]},
+	"Backfire": {"k": "ctrap", "win": ["free"], "backfire": true, "ai": "always"},
+	"Stamping Destruction": {"k": "normal", "cond": "own_dragon", "t": "any_st", "do": [["stamping"]]},
+	"Icarus Attack": {"k": "trap", "win": ["free"], "cost": "tribute_f", "cost_f": {"race": "Winged Beast"}, "cond": "icarus", "do": [["icarus"]]},
 	# ---------------------------------------------------------------- Ancient Gear (0.34.1)
 	"Ancient Gear Advance": {"k": "cont", "cond": "advance_ok", "do": [["mark_once", "Ancient Gear Advance"], ["advance_act"]]},
 	"Ancient Gear Castle": {"k": "field", "boost": [[{"has": "Ancient Gear"}, 300, 0]], "ag_castle": true},
@@ -882,6 +887,13 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return pc.monsters().is_empty() and int(pc.once_names.get("Ancient Gear Catapult", -1)) != s.turn \
 					and (pc.spells.filter(func(x): return x != null and x.face_up).size() + (1 if pc.field_spell != null and pc.field_spell.face_up else 0)) > 0 \
 					and not pc.deck.filter(func(x): return x.is_monster() and x.cname().begins_with("Ancient Gear") and not CardData.is_extra(x.id)).is_empty()
+		"own_dragon":
+			return not s.players[p].monsters().filter(func(m): return m.face_up and str(m.data.get("race", "")) == "Dragon").is_empty()
+		"icarus":
+			# Icarus Attack: 2 cards on the field to destroy, after the Winged Beast goes (one of theirs at least).
+			var foe_n: int = s.players[s.opponent(p)].monsters().size() + _all_st_of(s, s.opponent(p)).size()
+			var mine_n: int = s.players[p].monsters().size() - 1 + _all_st_of(s, p).size()
+			return foe_n >= 1 and foe_n + mine_n >= 2
 		"own_ag_mon":
 			return not s.players[p].monsters().filter(func(m): return m.face_up and m.cname().begins_with("Ancient Gear")).is_empty() \
 					and not s.players[p].deck.filter(func(x): return x.is_spell()).is_empty()
@@ -2859,6 +2871,28 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 					events.append_array(s._damage(s.opponent(p), before - ps.lp))
 		"ritual":
 			events.append_array(_do_ritual(s, p, c))
+		"stamping":
+			# Stamping Destruction: destroy the target, and if you do, 500 damage to its controller.
+			for t in _sel(s, p, c, "target", ctx):
+				var who: int = t.owner
+				events.append_array(s._destroy_st(t))
+				if not s.players[who].spells.has(t) and s.players[who].field_spell != t:
+					events.append_array(s._damage(who, 500))
+		"icarus":
+			# Icarus Attack: "target 2 cards on the field; destroy them." Theirs first.
+			var theirs_i: Array = s.players[opp_i].monsters() + _all_st_of(s, opp_i)
+			var mine_i: Array = ps.monsters() + _all_st_of(s, p).filter(func(x): return x != c)
+			theirs_i.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+			var all_i: Array = theirs_i + mine_i
+			var picks_i: Array = all_i.slice(0, mini(2, all_i.size()))
+			if not picks_i.is_empty():
+				picks_i = s.choose(p, Loc.t("%s: destroy 2 cards on the field") % name, all_i, picks_i.size(), picks_i, false, c)
+			for t in picks_i:
+				if t.is_monster():
+					if s.players[t.owner].field.has(t):
+						events.append_array(s._destroy(t))
+				else:
+					events.append_array(s._destroy_st(t))
 		"miracle_fusion":
 			var opts := _gy_fusions(s, p, a[1])
 			if not opts.is_empty():
@@ -3590,6 +3624,14 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 
 
 ## Fusions that can be made by banishing materials from the field and Graveyard.
+## A player's Spell and Trap Cards on the field (the Field Spell too).
+static func _all_st_of(s: DuelState, q: int) -> Array:
+	var out: Array = s.players[q].spells.filter(func(x): return x != null and not x.is_monster())
+	if s.players[q].field_spell != null:
+		out.append(s.players[q].field_spell)
+	return out
+
+
 static func _gy_fusions(s: DuelState, p: int, filter: Dictionary) -> Array:
 	var out := []
 	for o in s.fusion_targets(p, null, true):

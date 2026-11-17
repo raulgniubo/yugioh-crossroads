@@ -410,6 +410,8 @@ static func survives_battle(s: DuelState, c) -> bool:
 			return true   # Viser Des: "This card cannot be destroyed by battle while the targeted monster is on the field."
 	if f.get("battle_immune", false):
 		return true
+	if f.has("battle_immune_vs_attrs") and c.face_up and s.battle_foe != null and str(s.battle_foe.data.get("attribute", "")) in (f["battle_immune_vs_attrs"] as Array):
+		return true   # Five-Headed Dragon
 	if int(c.tags.get("gq_until", -1)) >= s.turn:
 		return true   # Number 83: Galaxy Queen
 	if int(c.tags.get("save_battle", -1)) == s.turn:
@@ -593,6 +595,14 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 		return not s.players[p].deck.filter(func(x): return x.cname() == "Ancient Gear Golem" or (not x.is_monster() and str(x.data.get("desc", "")).contains("Ancient Gear Golem"))).is_empty()
 	if cond == "ag_fusion_hand":
 		return not ag_plans(s, p, false).is_empty()
+	if cond == "own_other_mon":
+		return s.players[p].monsters().size() >= 2
+	if cond == "own_other_card":
+		var po := s.players[p]
+		return po.monsters().size() + po.spells.filter(func(x): return x != null).size() + (1 if po.field_spell != null else 0) >= 2
+	if cond == "glow_up":
+		var pg := s.players[p]
+		return not pg.once_duel.get("Glow-Up Bulb", false) and not pg.deck.is_empty() and pg.free_zone() != -1 and pg.no_summon_turn != s.turn and not s.ss_locked(p)
 	if cond == "gemini_ready":
 		return s.players[p].field.size() > 0 and (not s.normal_summoned or s.players[p].extra_normals > 0)
 	if cond == "statue_call":
@@ -1659,14 +1669,55 @@ static func _tf_ok(ig: Dictionary, m) -> bool:
 	return true
 
 
+## Which of your cards a Mist Valley effect sends back to the hand: one that comes right back
+## (Mist Valley Thunderbird), one worth summoning again (Mist Valley Executor), else the least useful.
+static func mist_pick(s: DuelState, p: int, cards: Array):
+	for x in cards:
+		if x.is_monster() and x.face_up and fx(x).get("bounce_back", false):
+			return x
+	for x in cards:
+		if x.is_monster() and x.face_up and x.cname() == "Mist Valley Executor":
+			return x
+	var cheap = cards[0]
+	for x in cards:
+		var vx: int = s.atk_of(x, false) if x.is_monster() else 900
+		var vc: int = s.atk_of(cheap, false) if cheap.is_monster() else 900
+		if vx < vc:
+			cheap = x
+	return cheap
+
+
+## How many Spell Counters sit on the face-up monsters this player controls.
+static func field_counters(s: DuelState, p: int) -> int:
+	var n := 0
+	for m in s.players[p].monsters():
+		if m.face_up:
+			n += m.counter
+	return n
+
+
+## How many Spell Counters this monster can hold (0: none).
+static func counter_cap(c) -> int:
+	var f := fx(c)
+	if f.has("counter_cap"):
+		return int(f["counter_cap"])
+	if f.has("counter_on_spell"):
+		return int(f["counter_on_spell"])
+	if str(f.get("summon", [])).contains("counter_self"):
+		return 1   # Breaker the Magical Warrior (max. 1)
+	return 0
+
+
 static func ignite_spec(c) -> Dictionary:
 	if fx(c).has("union"):
 		return {"label": "Equip to a partner / unequip"}
+	if fx(c).has("gemini_ignite") and c.tags.has("gemini_on"):
+		return fx(c)["gemini_ignite"]   # Gigaplant: once it is an Effect Monster, its own effect
 	return fx(c).get("ignite", {})
 
 
 static func can_ignite(s: DuelState, p: int, c) -> bool:
-	if fx(c).get("gemini", false) and c.tags.has("gemini_on"):
+	if fx(c).get("gemini", false) and c.tags.has("gemini_on") and not fx(c).has("gemini_ignite"):
 		return false   # (already Normal Summoned a second time)
 	if int(s.players[p].once_names.get("#ced", -1)) == s.turn:
 		return false   # Chaos Emperor Dragon: "You cannot activate other cards or effects during the turn you activate this card's effect."
@@ -1705,8 +1756,11 @@ static func can_ignite(s: DuelState, p: int, c) -> bool:
 		"counter":
 			if c.counter < 1:
 				return false
-		"tribute_self_counters":
+		"tribute_self_counters", "self_counters":
 			if c.counter < int(ig.get("counters", 3)):
+				return false
+		"field_counters":
+			if field_counters(s, p) < int(ig.get("counters", 1)):
 				return false
 		"half_lp":
 			if ps.lp < 2:
@@ -1779,6 +1833,9 @@ static func _has_target(s: DuelState, p: int, c, actions: Array) -> bool:
 						return false
 				elif str(a[1]) == "st_pick":
 					if _all_st(s).is_empty():
+						return false
+				elif str(a[1]) == "opp_st_pick":
+					if _all_st(s).filter(func(x): return x.owner == s.opponent(p)).is_empty():
 						return false
 				elif str(a[1]) == "opp_faceup_spell":
 					var any_up := opp.field_spell != null and opp.field_spell.face_up
@@ -2111,6 +2168,23 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 		"counter":
 			c.counter -= 1
 			events.append(_ev(p, c, Loc.t("%s removes its Spell Counter") % c.cname()))
+		"self_counters":
+			c.counter -= int(ig.get("counters", 3))
+			events.append(_ev(p, c, Loc.t("%s removes %d Spell Counters") % [c.cname(), int(ig.get("counters", 3))]))
+		"field_counters":
+			# "Remove N Spell Counters from your field": from the other cards first, this one last.
+			var need_c := int(ig.get("counters", 1))
+			var holders: Array = ps.monsters().filter(func(m): return m.face_up and m.counter > 0)
+			holders.sort_custom(func(x, y): return (1 if x == c else 0) < (1 if y == c else 0))
+			while need_c > 0 and not holders.is_empty():
+				var h_c = holders[0]
+				if s.manual[p] and holders.size() > 1:
+					h_c = s.pick1(p, Loc.t("%s: remove a Spell Counter from which card?") % c.cname(), holders, holders[0], c)
+				h_c.counter -= 1
+				need_c -= 1
+				if h_c.counter <= 0:
+					holders.erase(h_c)
+			events.append(_ev(p, c, Loc.t("%s removes %d Spell Counters") % [c.cname(), int(ig.get("counters", 1))]))
 		"banish_gy_light2":
 			var lights: Array = ps.gy.filter(func(g): return g.is_monster() and str(g.data.get("attribute", "")) == "LIGHT")
 			lights.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
@@ -2285,6 +2359,10 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 	var pa: Dictionary = s.pending_attack
 	var battling: bool = not pa.is_empty() and not pa.get("negated", false)
 	match kind:
+		"thunder_lord":
+			# Mist Valley Thunder Lord: once per turn, either player's turn (Quick Effect).
+			return on_field and c.ignite_turn != s.turn and (opp_turn or s.phase == DuelState.Phase.BATTLE) and window in ["attack", "battle_start", "phase", "summon"] \
+					and _cond(s, p, "own_other_card")
 		"ag_dragon":
 			if not on_field or window != "chain" or s.chain.is_empty() or int(ps.once_names.get("Ancient Gear Dragon", -1)) == s.turn:
 				return false
@@ -2463,6 +2541,9 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 	var events := []
 	var hit: bool = not s.pending_attack.is_empty() and int(s.pending_attack["player"]) != p and not s.pending_attack.get("negated", false)
 	match kind:
+		"thunder_lord":
+			c.ignite_turn = s.turn
+			events.append_array(run_list(s, p, c, [["bounce_own_other_card"], ["self_atk_turn", 500]], {}))
 		"ag_dragon":
 			ps.once_names["Ancient Gear Dragon"] = s.turn
 			var pay: Array = ps.hand.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Machine") \
@@ -2871,6 +2952,17 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 		else:
 			lose = a > s.def_of(tgt)
 	match kind:
+		"thunder_lord":
+			# When the 500 ATK wins a battle it is in (or keeps it alive).
+			var pa_t: Dictionary = s.pending_attack
+			if pa_t.is_empty() or pa_t.get("negated", false) or pa_t.get("target") == null or not (pa_t["attacker"] == c or pa_t["target"] == c):
+				return false
+			var foe_t = pa_t["target"] if pa_t["attacker"] == c else pa_t["attacker"]
+			if not foe_t.face_up or not c.attack_pos:
+				return false
+			var mine_t: int = s.atk_of(c, false)
+			var theirs_t: int = s.atk_of(foe_t, false) if foe_t.attack_pos else s.def_of(foe_t)
+			return mine_t <= theirs_t and mine_t + 500 > theirs_t
 		"ag_dragon":
 			return true
 		"shabti":
@@ -3136,6 +3228,18 @@ static func ai_ignite_ok(s: DuelState, p: int, c) -> bool:
 			return ps.deck.size() >= 12
 		"before_battle":
 			return s.phase == DuelState.Phase.MAIN1 and s.turn > 1 and not opp.monsters().is_empty()
+		"mist":
+			# Mist Valley Shaman: worth it with a Thunderbird to bounce (it comes right back), or an Executor to summon again.
+			for m in ps.monsters():
+				if m != c and m.face_up and (fx(m).get("bounce_back", false) or (m.cname() == "Mist Valley Executor" and not s.normal_summoned)):
+					return true
+			return false
+		"after_battle":
+			# Volcanic Slicer: burn after the Battle Phase, or before it when attacking would not pay.
+			if s.phase != DuelState.Phase.MAIN1 or s.turn == 1:
+				return true
+			var wall = s._strongest_face_up(s.opponent(p))
+			return wall != null and s.atk_of(wall, false) >= s.atk_of(c, false)
 		"papillo":
 			return not opp.monsters().filter(func(m): return not m.attack_pos).is_empty()
 		"ra":
@@ -5592,13 +5696,16 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 		"tokens":
 			# ["tokens", n, name, id, atk, def, level, attribute, race, pos, no tribute summon]
 			CardData.TOKENS[int(a[3])] = {"name": str(a[2]), "frame": "token", "atk": int(a[4]), "def": int(a[5]), "level": int(a[6]),
-					"attribute": str(a[7]), "race": str(a[8]), "no_tribute_summon": a.size() > 10 and bool(a[10]),
+					"attribute": str(a[7]), "race": str(a[8]), "no_tribute_summon": a.size() > 10 and str(a[10]) != "turn" and bool(a[10]),
 					"desc": Loc.t("This card can be used as a \"%s\".") % str(a[2])}
 			var made := 0
 			for i in int(a[1]):
 				if ps.free_zone() == -1:
 					break
-				events.append_array(s._special(p, s._make(int(a[3]), p), "effect", str(a[9]) if a.size() > 9 else ""))
+				var tk = s._make(int(a[3]), p)
+				events.append_array(s._special(p, tk, "effect", str(a[9]) if a.size() > 9 else ""))
+				if a.size() > 10 and str(a[10]) == "turn":
+					tk.no_tribute_turn = s.turn   # Dandylion: not for a Tribute Summon the turn they arrive
 				made += 1
 			if made > 0:
 				events.push_front(_ev(p, c, Loc.t("%s: %d %s") % [name, made, str(a[2])]))
@@ -5899,6 +6006,9 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				if a.size() > 5 and str(a[5]) == "negated":
 					d.neg_perm = true   # "...but its effects are negated"
 					d.negated = true
+				elif a.size() > 5 and str(a[5]) == "fd":
+					if ps.field.has(d):
+						_set_face_down(s, d, events)   # "...in face-down Defense Position" (Apprentice Magician)
 				else:
 					events.append_array(on_summon(s, p, d, "special"))
 		"revive_self", "revive_self_discard2", "pay_revive":
@@ -5956,6 +6066,62 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				events.append(_ev(p, c, Loc.t("%s banishes from the Graveyard") % name))
 			for g in picks:
 				events.append_array(s._banish(g))
+		"banish_opp_gy_any":
+			# Night's End Sorcerer: "target up to 2 cards in your opponent's GY; banish them."
+			var pool_b: Array = opp.gy.filter(func(g): return not s.necro_holds(g))
+			pool_b.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+			var want_b: Array = pool_b.slice(0, mini(int(a[1]), pool_b.size()))
+			if not want_b.is_empty():
+				want_b = s.choose(p, Loc.t("%s: banish up to %d cards from their Graveyard") % [name, int(a[1])], pool_b, want_b.size(), want_b, false, c)
+				events.append(_ev(p, c, Loc.t("%s banishes from the Graveyard") % name))
+			for g in want_b:
+				events.append_array(s._banish(g))
+		"counter_place":
+			# Apprentice Magician: 1 Spell Counter on a face-up card that can hold one.
+			var room: Array = ps.monsters().filter(func(m): return m.face_up and counter_cap(m) > m.counter)
+			if not room.is_empty():
+				room.sort_custom(func(x, y): return (1 if fx(x).has("atk_per_counter") else 0) > (1 if fx(y).has("atk_per_counter") else 0))
+				var to_c = s.pick1(p, Loc.t("%s: place a Spell Counter on which card?") % name, room, room[0], c)
+				to_c.counter += 1
+				events.append(_ev(p, c, Loc.t("%s: Spell Counter on %s") % [name, to_c.cname()]))
+		"tag_into":
+			# Torapart: the Synchro Monster it became part of remembers it.
+			var into_t = ctx.get("into")
+			if into_t != null and str(into_t.data.get("race", "")) == "Warrior":
+				into_t.tags[str(a[1])] = true
+		"glow_up":
+			if ps.gy.has(c) and not ps.deck.is_empty() and ps.free_zone() != -1:
+				ps.once_duel["Glow-Up Bulb"] = true
+				var top_g = ps.deck.pop_back()
+				s._to_gy(ps, top_g)
+				events.append({"type": "mill", "player": p, "card": top_g, "deck": ps.deck.size()})
+				events.append(_ev(p, c, Loc.t("%s sends %s to the Graveyard") % [name, top_g.cname()]))
+				if ps.gy.has(c):
+					ps.gy.erase(c)
+					events.append_array(s._special(p, c, "reborn"))
+		"bounce_own_other", "bounce_own_other_card":
+			# Mist Valley: return 1 other monster (or card) you control to the hand.
+			var mine_b: Array = ps.monsters().filter(func(m): return m != c)
+			if a[0] == "bounce_own_other_card":
+				mine_b.append_array(ps.spells.filter(func(x): return x != null))
+				if ps.field_spell != null:
+					mine_b.append(ps.field_spell)
+			if not mine_b.is_empty():
+				var back_b = s.pick1(p, Loc.t("%s: return 1 card you control to the hand") % name, mine_b, mist_pick(s, p, mine_b), c)
+				events.append_array(s._bounce(back_b))
+		"bounce_face_st_all":
+			# Mist Valley Executor: every face-up Spell and Trap goes back to the hand.
+			var ups_e: Array = []
+			for q in 2:
+				for st in s.players[q].spells:
+					if st != null and st.face_up and not st.is_monster():
+						ups_e.append(st)
+				if s.players[q].field_spell != null and s.players[q].field_spell.face_up:
+					ups_e.append(s.players[q].field_spell)
+			if not ups_e.is_empty():
+				events.append(_ev(p, c, Loc.t("%s returns every face-up Spell and Trap to the hand") % name))
+			for st in ups_e:
+				events.append_array(s._bounce(st))
 		"banish_own_gy_boost":
 			# Bazoo: banish up to n monsters from your GY, gain ATK for each until the end of the turn.
 			var picks: Array = s._best_monsters(ps.gy, 99)
@@ -6461,6 +6627,14 @@ static func _destroy_action(s: DuelState, p: int, c, what: String, ctx: Dictiona
 				return events
 			events.append(_ev(p, c, Loc.t("%s destroys %s") % [c.cname(), got6[0].cname()]))
 			events.append_array(s._destroy_st(got6[0]))
+			return events
+		"opp_st_pick":
+			# "Target 1 Spell/Trap your opponent controls; destroy that target" (Explosive Magician).
+			var theirs_o: Array = _all_st(s).filter(func(x): return x.owner == opp_i)
+			if not theirs_o.is_empty():
+				var got_o = s.pick1(p, Loc.t("%s: destroy 1 Spell or Trap") % c.cname(), theirs_o, theirs_o[0], c)
+				events.append(_ev(p, c, Loc.t("%s destroys %s") % [c.cname(), got_o.cname() if got_o.face_up else Loc.t("a Set card")]))
+				events.append_array(s._destroy_st(got_o))
 			return events
 		"st_pick":
 			# "Target 1 Spell/Trap on the field; destroy that target" (Breaker the Magical Warrior).
