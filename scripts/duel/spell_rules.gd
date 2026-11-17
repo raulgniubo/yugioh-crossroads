@@ -29,6 +29,15 @@ const FX := {
 	"Echo Resonance": {"k": "normal", "cond": "echo_ready", "do": [["echo_resonance"]]},
 	"Echo Call": {"k": "normal", "do": [["search", {"has": "Lumen"}]]},
 	"Echo Veil": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["draw_if_own", "Lumen", 1]]},
+	# ---------------------------------------------------------------- The story duelists' remaining cards (5D's era)
+	"Raptor Wing Strike": {"k": "normal", "cond": "raptor_wing", "do": [["raptor_wing"]]},
+	"Blackboost": {"k": "trap", "win": ["free"], "cond": "two_bw_tuners", "do": [["blackboost"]]},
+	"Blackwing - Bombardment": {"k": "trap", "win": ["free"], "cond": "bw_and_synchro", "do": [["bombardment"]]},
+	"Level Retuner": {"k": "trap", "win": ["free"], "t": "own_face", "do": [["level_down_upto", "target", 2]]},
+	"Magic Planter": {"k": "normal", "cond": "own_face_ctrap", "do": [["magic_planter"]]},
+	"Prideful Roar": {"k": "trap", "win": ["free"], "only_win": "damage", "dmg": true, "cond": "prideful", "do": [["prideful_roar"]]},
+	"Depth Amulet": {"k": "ctrap", "win": ["free"], "depth_amulet": true},
+	"Nightmare Archfiends": {"k": "trap", "win": ["free"], "cond": "nightmare_room", "do": [["nightmare_archfiends"]]},
 	# ---------------------------------------------------------------- The story duelists' remaining cards (GX era)
 	"Destruction of Destiny": {"k": "trap", "win": ["free"], "do": [["destruction_of_destiny"]]},
 	"Over Destiny": {"k": "normal", "cond": "over_destiny", "do": [["over_destiny"]]},
@@ -754,6 +763,32 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return s.players[p].free_zone() != -1 and not s.players[p].gy.filter(func(g): return g.cname() == "Harpie Lady" or str(CardEffects.of(g.cname()).get("name_as_fg", "")) == "Harpie Lady").is_empty()
 		"own_amazoness":
 			return not s.players[p].monsters().filter(func(m): return m.face_up and m.cname().contains("Amazoness")).is_empty()
+		"raptor_wing":
+			var pr := s.players[p]
+			return not pr.monsters().filter(func(m): return m.face_up and m.cname().begins_with("Blackwing")).is_empty() \
+					and not pr.deck.filter(func(d): return d.is_monster() and d.cname().begins_with("Blackwing")).is_empty()
+		"two_bw_tuners":
+			return s.players[p].monsters().filter(func(m): return m.face_up and m.cname().begins_with("Blackwing") and m.is_tuner()).size() >= 2
+		"bw_and_synchro":
+			var pb := s.players[p]
+			return not pb.monsters().filter(func(m): return m.cname().begins_with("Blackwing") and s.can_tribute_fx(m)).is_empty() \
+					and not pb.monsters().filter(func(m): return m.face_up and m.frame() == "synchro").is_empty()
+		"own_face_ctrap":
+			return not s.players[p].spells.filter(func(x): return x != null and x.face_up and x.is_trap() and spec(x).get("k", "") == "ctrap").is_empty()
+		"prideful":
+			# "During damage calculation, if your monster battles an opponent's monster with a higher ATK" (and the LP to pay for it).
+			var pa: Dictionary = s.pending_attack
+			if pa.is_empty() or pa.get("negated", false) or pa["target"] == null:
+				return false
+			var mine = pa["attacker"] if int(pa["player"]) == p else pa["target"]
+			var theirs = pa["target"] if int(pa["player"]) == p else pa["attacker"]
+			if mine == null or theirs == null or not mine.face_up or not theirs.face_up:
+				return false
+			var gap: int = s.atk_of(theirs, false) - s.atk_of(mine, false)
+			return gap > 0 and s.players[p].lp > gap
+		"nightmare_room":
+			var opn := s.players[s.opponent(p)]
+			return opn.free_zone() != -1 and not s.players[p].monsters().filter(func(m): return s.can_tribute_fx(m)).is_empty()
 		"over_destiny":
 			var ps_o := s.players[p]
 			for g in ps_o.gy:
@@ -2830,6 +2865,94 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			md["race"] = str(a[5])
 			c.data = md
 			events.append_array(s._special(p, c, "effect", "def"))
+		"raptor_wing":
+			var bws: Array = ps.monsters().filter(func(m): return m.face_up and m.cname().begins_with("Blackwing"))
+			if not bws.is_empty():
+				var low: Array = bws.duplicate()
+				low.sort_custom(func(x, y): return s.atk_of(x, false) < s.atk_of(y, false))
+				var back = s.pick1(p, Loc.t("%s: shuffle 1 \"Blackwing\" into the Deck") % name, bws, low[0], c)
+				events.append_array(s._to_deck(back))
+				var found: Array = ps.deck.filter(func(d): return d.is_monster() and d.cname().begins_with("Blackwing"))
+				if not found.is_empty():
+					var best: Array = s._best_monsters(found, 1)
+					var got = s.pick1(p, Loc.t("%s: add 1 \"Blackwing\" to your hand") % name, found, best[0] if not best.is_empty() else found[0], c)
+					ps.deck.erase(got)
+					ps.hand.append(got)
+					events.append({"type": "search", "player": p, "card": got})
+					events.append_array(EffectRunner.added_by_effect(s, p, got))
+				ps.deck.shuffle()
+		"blackboost":
+			var tun: Array = ps.monsters().filter(func(m): return m.face_up and m.cname().begins_with("Blackwing") and m.is_tuner())
+			if tun.size() >= 2:
+				for i in 2:
+					var left: Array = ps.monsters().filter(func(m): return m.face_up and m.cname().begins_with("Blackwing") and m.is_tuner())
+					var b = s.pick1(p, Loc.t("%s: banish a \"Blackwing\" Tuner") % name, left, left[0], c)
+					events.append_array(s._banish(b))
+				events.append_array(s._draw(p, 2))
+		"bombardment":
+			var bw_t: Array = ps.monsters().filter(func(m): return m.cname().begins_with("Blackwing") and s.can_tribute_fx(m))
+			var sy_t: Array = ps.monsters().filter(func(m): return m.face_up and m.frame() == "synchro")
+			if not bw_t.is_empty() and not sy_t.is_empty():
+				var big_b: Array = bw_t.duplicate()
+				big_b.sort_custom(func(x, y): return s.atk_of(x, false) > s.atk_of(y, false))
+				var gone_b = s.pick1(p, Loc.t("%s: Tribute 1 \"Blackwing\"") % name, bw_t, big_b[0], c)
+				var add_b: int = s.atk_of(gone_b, false) if gone_b.face_up else 0
+				var keep_s: Array = sy_t.filter(func(m): return m != gone_b)
+				if not keep_s.is_empty():
+					var best_s: Array = s._best_monsters(keep_s, 1)
+					var to_b = s.pick1(p, Loc.t("%s: which Synchro Monster?") % name, keep_s, best_s[0], c)
+					events.append_array(s._tribute_one(p, gone_b))
+					if to_b.atk_mod_turn != s.turn:
+						to_b.atk_mod_t = 0
+						to_b.atk_mod_turn = s.turn
+					to_b.atk_mod_t += add_b
+					events.append(_ev(p, to_b, Loc.t("%s: %+d ATK until the End Phase") % [to_b.cname(), add_b]))
+		"level_down_upto":
+			for t in _sel(s, p, c, str(a[1]), ctx):
+				var room: int = mini(int(a[2]), t.level() - 1)
+				if room > 0:
+					var labels: Array = []
+					for i in room:
+						labels.append(Loc.t("%d lower") % (i + 1))
+					var by: int = s.choose_option(p, Loc.t("%s: lower %s's Level by how much?") % [name, t.cname()], labels, room - 1, c) + 1
+					t.lv_set = t.level() - by
+					t.lv_turn = -1
+					events.append(_ev(p, t, Loc.t("%s is Level %d now") % [t.cname(), t.level()]))
+		"magic_planter":
+			var cts: Array = ps.spells.filter(func(x): return x != null and x != c and x.face_up and x.is_trap() and spec(x).get("k", "") == "ctrap")
+			if not cts.is_empty():
+				var ct = s.pick1(p, Loc.t("%s: send 1 face-up Continuous Trap to the GY") % name, cts, cts[0], c)
+				ps.spells[ps.spells.find(ct)] = null
+				s._to_gy(ps, ct)
+				events.append({"type": "destroy_st", "player": p, "card": ct, "zone": -1})
+				events.append_array(left_field(s, ct))
+				events.append_array(s._draw(p, 2))
+		"prideful_roar":
+			var pa_r: Dictionary = s.pending_attack
+			var mine_r = pa_r["attacker"] if int(pa_r["player"]) == p else pa_r["target"]
+			var theirs_r = pa_r["target"] if int(pa_r["player"]) == p else pa_r["attacker"]
+			var gap_r: int = s.atk_of(theirs_r, false) - s.atk_of(mine_r, false)
+			if gap_r > 0 and ps.lp > gap_r:
+				events.append_array(s._lose_lp(p, gap_r))
+				if mine_r.atk_mod_turn != s.turn:
+					mine_r.atk_mod_t = 0
+					mine_r.atk_mod_turn = s.turn
+				mine_r.atk_mod_t += gap_r + 300
+				mine_r.tags["roar_undo"] = [s.turn, gap_r + 300]
+				events.append(_ev(p, mine_r, Loc.t("%s: %+d ATK for this damage calculation") % [mine_r.cname(), gap_r + 300]))
+		"nightmare_archfiends":
+			# "Tribute 1 monster; Special Summon 3 "Nightmare Archfiend Tokens" (Fiend/DARK/Level 6/ATK 2000/DEF 2000) to your opponent's
+			# field in Attack Position. Each time 1 is destroyed, its controller takes 800 damage."
+			var fod_n: Array = ps.monsters().filter(func(m): return s.can_tribute_fx(m))
+			if not fod_n.is_empty():
+				var low_n: Array = fod_n.duplicate()
+				low_n.sort_custom(func(x, y): return s.atk_of(x, false) < s.atk_of(y, false))
+				events.append_array(s._tribute_one(p, s.pick1(p, Loc.t("%s: Tribute 1 monster") % name, fod_n, low_n[0], c)))
+				CardData.TOKENS[31600514] = {"name": "Nightmare Archfiend Token", "frame": "token", "atk": 2000, "def": 2000, "level": 6, "attribute": "DARK", "race": "Fiend", "burn_on_destroy": 800, "no_tribute_summon": false}
+				for i in 3:
+					if opp.free_zone() == -1:
+						break
+					events.append_array(s._special(opp_i, s._make(31600514, opp_i), "effect", "atk"))
 		"destruction_of_destiny":
 			# "Send 3 cards from the top of your Deck to the Graveyard, and take 1000 damage for each Spell or Trap Card sent this way."
 			var st_n := 0

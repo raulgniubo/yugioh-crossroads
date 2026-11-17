@@ -108,6 +108,7 @@ func _ready() -> void:
 		_test_every_card_obtainable()
 		_test_cards_b0dm()
 		_test_cards_b0gx()
+		_test_cards_b05d()
 		await _test_album()
 		_test_save_slots()
 		_test_turbo_setup()
@@ -7892,6 +7893,134 @@ func _test_cards_b0gx() -> void:
 	s.declare_attack(0, bw3, gy)
 	s.resolve_attack()
 	check(s.players[1].field.has(gy) and not gy.attack_pos, "Ambulance Rescueroid: Celtic Guardian back in Defense Position")
+
+
+## The story duelists' remaining cards, 5D's era (v0.33.56).
+func _test_cards_b05d() -> void:
+	# Kochi: Special Summoned, not Synchro Material.
+	var s := _main_ready(5701)
+	var ko := _mon(s, 0, "Blackwing - Kochi the Daybreak", 0)
+	ko.tags["ss"] = true
+	var tun := _mon(s, 0, "Blackwing - Bora the Spear", 1)
+	check(EffectRunner.fx(ko).get("no_synchro_if_ss", false), "Kochi: marked as no Synchro Material once Special Summoned")
+	# Zephyros: from the GY, a card back to the hand, 400 damage, once per Duel.
+	s = _main_ready(5702)
+	var ze := _in(s, 0, "Blackwing - Zephyros the Elite", "gy")
+	var back := _mon(s, 0, "Celtic Guardian", 0)
+	check(EffectRunner.gy_can(s, 0, ze), "Zephyros: can come back from the GY")
+	var lp0: int = s.players[0].lp
+	EffectRunner.gy_run(s, 0, ze)
+	check(s.players[0].field.has(ze) and s.players[0].hand.has(back) and s.players[0].lp == lp0 - 400, "Zephyros: Celtic Guardian to the hand, Zephyros on the field, 400 damage")
+	s.players[0].field[s.players[0].field.find(ze)] = null
+	s.players[0].gy.append(ze)
+	_mon(s, 0, "Celtic Guardian", 2)
+	check(not EffectRunner.gy_can(s, 0, ze), "Zephyros: only once per Duel")
+	# Power Supplier: +400 while it is face-up.
+	s = _main_ready(5703)
+	var psup := _mon(s, 0, "Power Supplier", 0)
+	var cg := _mon(s, 0, "Celtic Guardian", 1)
+	EffectRunner.run_list(s, 0, psup, [["power_supply"]], {})
+	var got := s.atk_of(cg, false)
+	check(got == 1800 or s.atk_of(psup, false) == 800, "Power Supplier: one monster gains 400 (Celtic Guardian %d)" % got)
+	# Lancer Archfiend: the attacker pierces in that battle.
+	s = _new_state(5704)
+	_battle_ready(s)
+	_mon(s, 0, "Lancer Archfiend", 0)
+	var att := _mon(s, 0, "Blue-Eyes White Dragon", 1)
+	var wall := _mon(s, 1, "Celtic Guardian", 0, false)
+	var lp1: int = s.players[1].lp
+	s.declare_attack(0, att, wall)
+	s.resolve_attack()
+	check(s.players[1].lp == lp1 - (3000 - 1200), "Lancer Archfiend: piercing damage (LP %d)" % s.players[1].lp)
+	# Earthbound Immortal Ccapac Apu: needs a Field Spell, can't be attacked, attacks directly.
+	s = _main_ready(5705)
+	var ei := _mon(s, 0, "Earthbound Immortal Ccapac Apu", 0)
+	s._cleanup()
+	check(not s.players[0].field.has(ei), "Ccapac Apu: destroyed with no Field Spell")
+	s = _new_state(5706)
+	_battle_ready(s)
+	var fs := s._make(_cid("Umi"), 1)
+	fs.face_up = true
+	s.players[1].field_spell = fs
+	var ei2 := _mon(s, 1, "Earthbound Immortal Ccapac Apu", 0)
+	var bw := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	check(not s.attack_targets_for(0, bw).has(ei2), "Ccapac Apu: cannot be targeted for attacks")
+	# Wall of Ivy: Ivy Token to the opponent; destroyed, its controller takes 300.
+	s = _main_ready(5707)
+	var ivy := _mon(s, 0, "Wall of Ivy", 0, false)
+	EffectRunner.run_list(s, 0, ivy, EffectRunner.fx(ivy)["flip"], {})
+	var tok: Array = s.players[1].monsters().filter(func(m): return m.cname() == "Ivy Token")
+	check(tok.size() == 1, "Wall of Ivy: an Ivy Token on the opponent's side")
+	if tok.size() == 1:
+		var lpt: int = s.players[1].lp
+		s._destroy(tok[0])
+		check(s.players[1].lp == lpt - 300, "Wall of Ivy: its controller takes 300 when the token is destroyed")
+	# Raptor Wing Strike: a Blackwing back into the Deck, another one to the hand.
+	s = _main_ready(5708)
+	var bwm := _mon(s, 0, "Blackwing - Kochi the Daybreak", 0)
+	s.players[0].deck.clear()
+	var want := _in(s, 0, "Blackwing - Bora the Spear", "deck")
+	var rws := _in(s, 0, "Raptor Wing Strike", "hand")
+	s.activate(0, rws)
+	check(not s.players[0].field.has(bwm) and s.players[0].hand.has(want), "Raptor Wing Strike: Kochi back, Bora to the hand")
+	# Blackboost: banish 2 Blackwing Tuners, draw 2.
+	s = _main_ready(5709)
+	_mon(s, 0, "Blackwing - Vayu the Emblem of Honor", 0)
+	_mon(s, 0, "Blackwing - Vayu the Emblem of Honor", 1)
+	for i in 5:
+		_in(s, 0, "Celtic Guardian", "deck")
+	var h0: int = s.players[0].hand.size()
+	var bb := _set_trap(s, 0, "Blackboost")
+	s.respond(0, bb)
+	s.chain_resolve()
+	check(s.players[0].hand.size() == h0 + 2 and s.players[0].banished.size() == 2, "Blackboost: 2 Tuners banished, 2 cards drawn")
+	# Level Retuner: Level down by up to 2.
+	s = _main_ready(5710)
+	var lv := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	var lr := _set_trap(s, 0, "Level Retuner")
+	s.respond(0, lr)
+	s.chain_resolve()
+	check(lv.level() == 6, "Level Retuner: Blue-Eyes is Level 6 (got %d)" % lv.level())
+	# Magic Planter: a face-up Continuous Trap to the GY, draw 2.
+	s = _main_ready(5711)
+	var ct := _set_trap(s, 0, "Call of the Haunted")
+	ct.face_up = true
+	for i in 3:
+		_in(s, 0, "Celtic Guardian", "deck")
+	var mp := _in(s, 0, "Magic Planter", "hand")
+	var h1: int = s.players[0].hand.size()
+	s.activate(0, mp)
+	check(s.players[0].gy.has(ct) and s.players[0].hand.size() == h1 - 1 + 2, "Magic Planter: Call of the Haunted to the GY, 2 cards drawn")
+	# Nightmare Archfiends: 3 tokens on the opponent's side; 800 to the controller for each one destroyed.
+	s = _main_ready(5712)
+	_mon(s, 0, "Celtic Guardian", 0)
+	var na := _set_trap(s, 0, "Nightmare Archfiends")
+	s.respond(0, na)
+	s.chain_resolve()
+	var nt: Array = s.players[1].monsters().filter(func(m): return m.cname() == "Nightmare Archfiend Token")
+	check(nt.size() == 3, "Nightmare Archfiends: 3 tokens on the opponent's side")
+	# Depth Amulet: discard to negate an attack.
+	s = _new_state(5713)
+	_battle_ready(s)
+	var da := _set_trap(s, 1, "Depth Amulet")
+	da.face_up = true
+	_in(s, 1, "Kuriboh", "hand")
+	var bw4 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw4, null)
+	check(s.pending_attack.get("negated", false), "Depth Amulet: the attack is negated for a discard")
+	# Prideful Roar: pay the difference, win by 300.
+	s = _new_state(5714)
+	_battle_ready(s)
+	var small := _mon(s, 1, "Celtic Guardian", 0)
+	var big := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	var pr := _set_trap(s, 1, "Prideful Roar")
+	s.declare_attack(0, big, small)
+	check(SpellRules.cond_ok(s, 1, "prideful"), "Prideful Roar: fits when theirs is stronger")
+	var lpr: int = s.players[1].lp
+	s.respond(1, pr)
+	s.chain_resolve()
+	s.resolve_attack()
+	check(s.players[1].lp == lpr - 1600 and not s.players[0].field.has(big), "Prideful Roar: 1600 paid, Blue-Eyes destroyed (LP %d)" % s.players[1].lp)
 
 
 ## Every card the game can play can be had somewhere: a booster set, Lumen (her own cards) or

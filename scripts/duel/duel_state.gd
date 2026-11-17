@@ -551,6 +551,7 @@ func enter_main2() -> Array:
 ## The end of the Battle Phase: monsters that are banished after they attack (Big Jaws).
 func _end_battle() -> Array:
 	var events := []
+	_roar_undo()
 	for u in bp_undo:
 		var bc: CardInst = u["card"]
 		if int(u["turn"]) == turn and bc.atk_mod_turn == turn:
@@ -627,6 +628,13 @@ func begin_end() -> Array:
 	phase = Phase.END
 	var events := [{"type": "phase", "phase": phase}]
 	events.append_array(after_battle)
+	# Depth Amulet: "Destroy this card during your opponent's 3rd End Phase after activation."
+	for dm in players[opponent(current)].spells.duplicate():
+		if dm != null and dm.face_up and SpellRules.spec(dm).get("depth_amulet", false):
+			dm.counter += 1
+			if dm.counter >= 3:
+				events.append({"type": "effect", "player": dm.owner, "card": dm, "text": Loc.t("%s is used up") % dm.cname()})
+				events.append_array(_destroy_st(dm))
 	# Nightmare's Steelcage: "This card remains on the field for 2 of your opponent's turns."
 	for sc in players[opponent(current)].spells.duplicate():
 		if sc != null and sc.face_up and SpellRules.spec(sc).get("steelcage", false):
@@ -1067,6 +1075,12 @@ func can_normal_summon(p: int, c: CardInst) -> bool:
 		for m in players[p].monsters():
 			if m.face_up and m.cname() == c.cname():
 				return false   # "You can only control 1"
+	var fam := str(CardEffects.of(c.cname()).get("one_family", ""))
+	if fam != "":
+		for q in 2:
+			for m in players[q].monsters():
+				if m.face_up and m.cname().begins_with(fam):
+					return false   # "There can only be 1 "Earthbound Immortal" monster on the field."
 	if p != current or not _in_main() or (normal_summoned and players[p].extra_normals <= 0) or is_over():
 		return false
 	if not c.is_monster() or not players[p].hand.has(c):
@@ -1989,10 +2003,10 @@ func toon_world(q: int) -> bool:
 ## Magician Girl) must go for a Toon monster when the other side has one.
 func attack_targets_for(p: int, attacker: CardInst) -> Array[CardInst]:
 	var out := attack_targets(p)
-	# The Legendary Fisherman: "cannot be targeted for attacks" while Umi is on the field.
+	# The Legendary Fisherman: "cannot be targeted for attacks" while Umi is on the field. Earthbound Immortals can't be either.
 	var fished: Array[CardInst] = []
 	for m in out:
-		if m == null or not umi_guard(m):
+		if m == null or not (umi_guard(m) or (m.face_up and not m.negated and EffectRunner.fx(m).get("no_attack_target", false))):
 			fished.append(m)
 	out = fished
 	# Ring of Magnetism: "all the monsters on your opponent's side of the field can only attack the monster equipped with this card".
@@ -2084,6 +2098,7 @@ var last_summoned: CardInst = null
 func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	if not can_attack(p, attacker):
 		return []
+	_roar_undo()   # (Prideful Roar's boost was for the last damage calculation only)
 	if target == null and not can_direct_attack_with(p, attacker):
 		return []
 	if target != null and not players[opponent(p)].field.has(target):
@@ -2138,6 +2153,29 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	# opponent equal to that attacking monster's ATK."
 	# Dark Sanctuary: "When an opponent's monster declares an attack: Toss a coin and if the result is heads, negate the attack, and if you do,
 	# inflict damage to your opponent equal to half the current ATK of that opponent's monster."
+	# Lancer Archfiend: "Once per turn, when your monster declares an attack on your opponent's Defense Position monster: ...
+	# during that battle, if that monster attacks a Defense Position monster, inflict piercing battle damage."
+	if target != null and not target.attack_pos:
+		for la in players[p].monsters():
+			if la.face_up and not la.negated and EffectRunner.fx(la).get("lancer", false) and int(la.tags.get("lancer_used", -1)) != turn:
+				la.tags["lancer_used"] = turn
+				attacker.tags["lancer"] = [turn, players[p].attacks_this_turn]
+				events.append({"type": "effect", "player": p, "card": la, "text": Loc.t("%s: %s inflicts piercing damage in this battle") % [la.cname(), attacker.cname()]})
+				break
+	# Depth Amulet: "When your opponent's monster declares an attack, you can discard 1 card to negate the attack."
+	var dq := opponent(p)
+	for da in players[dq].spells:
+		if da != null and da.face_up and SpellRules.spec(da).get("depth_amulet", false) and not SpellRules.blocked(self, da) and not players[dq].hand.is_empty() and not pending_attack.get("negated", false):
+			var worth := target == null or (target.attack_pos and atk_of(attacker, false) > atk_of(target, false)) or (not target.attack_pos and atk_of(attacker, false) > def_of(target))
+			if choose_option(dq, Loc.t("%s: discard 1 card to negate the attack?") % da.cname(), ["Discard 1", "No"], 0 if worth else 1, da) == 0:
+				var cheap: Array = players[dq].hand.duplicate()
+				var thrown = pick1(dq, Loc.t("%s: discard which card?") % da.cname(), cheap, cheap[0], da)
+				players[dq].hand.erase(thrown)
+				_to_gy(players[dq], thrown)
+				events.append({"type": "discard", "player": dq, "card": thrown})
+				pending_attack["negated"] = true
+				events.append({"type": "effect", "player": dq, "card": da, "text": Loc.t("%s negates the attack") % da.cname()})
+				return events
 	# Fairy Box: "When your opponent's monster declares an attack: Toss a coin and call it. If you call it right, the attacking
 	# monster's ATK becomes 0 until the end of the Battle Phase."
 	for fb in players[opponent(p)].spells:
@@ -3102,6 +3140,9 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	var mats: Array = c.overlays.duplicate()
 	_to_gy(ps, c)   # its Xyz Materials go with it
 	var events := [{"type": "destroy", "player": c.owner, "card": c, "zone": zone, "overlays": mats}]
+	if c.is_token() and int(c.data.get("burn_on_destroy", 0)) > 0 and not is_over():
+		# Ivy Token / Nightmare Archfiend Token: "When this Token is destroyed, its controller takes ... damage."
+		events.append_array(_damage(c.owner, int(c.data["burn_on_destroy"])))
 	events.append_array(_on_leave_field(c, by_battle))
 	events.append_array(_monster_left(c))
 	# "When this card on the field is destroyed and sent to the Graveyard" (by battle or by an effect).
@@ -3473,6 +3514,13 @@ func _cleanup() -> Array:
 	for q in 2:
 		for m in players[q].monsters():
 			m.negated = m.face_up and (drain or m.negated_turn == turn or m.neg_perm or (gorgon_turn == turn and not m.attack_pos))
+	# Earthbound Immortal: "If there is no face-up Field Spell on the field, destroy this card."
+	var any_field := (players[0].field_spell != null and players[0].field_spell.face_up) or (players[1].field_spell != null and players[1].field_spell.face_up)
+	if not any_field:
+		for q in 2:
+			for m in players[q].monsters():
+				if m.face_up and not m.negated and EffectRunner.fx(m).get("needs_field", false):
+					_destroy(m)
 	# Jam Breeding Machine: "You cannot Summon any monsters, except "Slime Tokens" (but you can Set)."
 	for q in 2:
 		for st in players[q].spells:
@@ -4286,7 +4334,7 @@ func extra_materials(p: int, c: CardInst) -> Array:
 				if pick.size() == want:
 					out.append(pick)
 	elif c.frame() == "synchro":
-		mons = mons.filter(func(m): return m.frame() != "xyz" and not EffectRunner.fx(m).get("no_synchro", false))   # Xyz Monsters have a Rank, not a Level
+		mons = mons.filter(func(m): return m.frame() != "xyz" and not EffectRunner.fx(m).get("no_synchro", false) and not (EffectRunner.fx(m).get("no_synchro_if_ss", false) and m.tags.get("ss", false)))   # Xyz Monsters have a Rank, not a Level
 		var n := mons.size()
 		for mask in range(1, 1 << n):
 			var sel := []
@@ -4416,6 +4464,17 @@ func _tribute_one(p: int, m: CardInst) -> Array:
 	events.append_array(EffectRunner.trigger(self, m, "tributed"))
 	events.append_array(_monster_left(m))
 	return events
+
+
+## Prideful Roar: "during damage calculation only".
+func _roar_undo() -> void:
+	for q in 2:
+		for m in players[q].monsters():
+			if m.tags.has("roar_undo"):
+				var r: Array = m.tags["roar_undo"]
+				if int(r[0]) == turn and m.atk_mod_turn == turn:
+					m.atk_mod_t -= int(r[1])
+				m.tags.erase("roar_undo")
 
 
 ## A change that lasts until the end of this Battle Phase (Spirit Ryu, Fairy Box).

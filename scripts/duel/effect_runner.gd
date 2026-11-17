@@ -24,6 +24,11 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 	b += c.atk_mod
 	if c.tmp_until >= s.turn:
 		b += c.tmp_atk
+	if c.tags.has("supplied_by"):
+		# Power Supplier: 400 while its controller has it face-up.
+		var sup = s.find_uid(int(c.tags["supplied_by"]))
+		if sup != null and sup.face_up and not sup.negated and s.players[c.owner].field.has(sup) and sup.owner == c.owner:
+			b += 400
 	b += int(f.get("atk_per_counter", 0)) * c.counter
 	# Gagaga Cowboy, Attack Position effect: attacking an opponent's monster it gains 1000 ATK and
 	# that monster loses 500 ATK, during the Damage Step only.
@@ -322,7 +327,8 @@ static func max_attacks(c) -> int:
 
 
 static func piercing(s: DuelState, p: int, c) -> bool:
-	if fx(c).get("piercing", false) or int(c.tags.get("pierce_turn", -1)) == s.turn:
+	if fx(c).get("piercing", false) or int(c.tags.get("pierce_turn", -1)) == s.turn \
+			or (c.tags.has("lancer") and int(c.tags["lancer"][0]) == s.turn and int(c.tags["lancer"][1]) == s.players[c.owner].attacks_this_turn):
 		return true
 	for dr in s.players[p].monsters():
 		# Drill Synchron: your Warriors pierce.
@@ -405,6 +411,14 @@ static func no_tribute(s: DuelState, p: int, c) -> bool:
 
 
 static func _cond(s: DuelState, p: int, cond: String) -> bool:
+	if cond == "zephyros":
+		var pz := s.players[p]
+		var ups := pz.monsters().filter(func(m): return m.face_up).size() + pz.spells.filter(func(x): return x != null and x.face_up).size()
+		return not pz.once_duel.get("Blackwing - Zephyros the Elite", false) and ups > 0 and pz.no_summon_turn != s.turn
+	if cond == "vayu":
+		return not _vayu_plans(s, p).is_empty()
+	if cond == "own_face_other":
+		return not s.players[p].monsters().filter(func(m): return m.face_up).is_empty()
 	if cond == "opp_face_down":
 		# Patroid: a face-down card on the opponent's side to look at.
 		var op := s.players[s.opponent(p)]
@@ -983,6 +997,20 @@ static func end_phase_any(s: DuelState) -> Array:
 	return events
 
 
+## Blackwing - Vayu: the non-Tuner "Blackwing" monsters in the GY that make a Level a "Blackwing" Synchro in the Extra Deck has.
+static func _vayu_plans(s: DuelState, p: int, own_lv := 1) -> Array:
+	var ps := s.players[p]
+	if ps.free_zone() == -1 or ps.no_summon_turn == s.turn:
+		return []
+	var out: Array = []
+	for g in ps.gy:
+		if g.is_monster() and g.cname().begins_with("Blackwing") and g.cname() != "Blackwing - Vayu the Emblem of Honor" and not g.is_tuner():
+			var lv: int = own_lv + g.level()
+			if not ps.extra.filter(func(x): return x.frame() == "synchro" and x.cname().begins_with("Blackwing") and x.level() == lv).is_empty():
+				out.append([g, lv])
+	return out
+
+
 # ------------------------------------------------------------------ ignition effects
 
 ## "You can banish this card from your GY; ..." Can this card in the Graveyard do that now?
@@ -1135,6 +1163,8 @@ static func gy_run(s: DuelState, p: int, c) -> Array:
 		var up := [_ev(p, c, Loc.t("%s: %s is now Level %d") % [c.cname(), eat.cname(), eat.lv_set])]
 		up.append_array(s._special(p, c, "reborn", "" if s.manual[p] else "def"))
 		return up
+	if g.get("custom", false):
+		return run_list(s, p, c, g.get("do", []), {})   # (the effect says itself what happens to the card: Zephyros)
 	if g.get("revive_self", false):
 		# "If this card is in your GY: You can Special Summon this card" (Quillbolt Hedgehog).
 		s.players[p].gy.erase(c)
@@ -2622,6 +2652,49 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"zephyros":
+			# "You can return 1 face-up card you control to the hand; Special Summon this card, and if you do, take 400 damage."
+			var ups: Array = ps.monsters().filter(func(m): return m.face_up) + ps.spells.filter(func(x): return x != null and x.face_up)
+			if ps.gy.has(c) and not ups.is_empty():
+				ps.once_duel["Blackwing - Zephyros the Elite"] = true
+				var cheap: Array = ups.duplicate()
+				cheap.sort_custom(func(x, y): return (s.atk_of(x, false) if x.is_monster() else 0) < (s.atk_of(y, false) if y.is_monster() else 0))
+				var back = s.pick1(p, Loc.t("%s: return 1 face-up card you control to the hand") % name, ups, cheap[0], c)
+				events.append_array(s._bounce(back))
+				if ps.gy.has(c) and ps.free_zone() != -1:
+					ps.gy.erase(c)
+					events.append_array(s._special(p, c, "reborn"))
+					events.append_array(s._damage(p, 400))
+		"vayu":
+			# Banish a non-Tuner "Blackwing" from the GY too; Special Summon a "Blackwing" Synchro Monster of their total Level, effects negated.
+			var plans := _vayu_plans(s, p, c.level())
+			if not plans.is_empty():
+				var mates: Array = []
+				for pl in plans:
+					mates.append(pl[0])
+				var mate = s.pick1(p, Loc.t("%s: banish which \"Blackwing\"?") % name, mates, mates[0], c)
+				var lv: int = c.level() + mate.level()
+				events.append_array(s._banish(mate))
+				var sy: Array = ps.extra.filter(func(x): return x.frame() == "synchro" and x.cname().begins_with("Blackwing") and x.level() == lv)
+				if not sy.is_empty() and ps.free_zone() != -1:
+					var best: Array = s._best_monsters(sy, 1)
+					var it = s.pick1(p, Loc.t("%s: Special Summon which Synchro Monster?") % name, sy, best[0] if not best.is_empty() else sy[0], c)
+					ps.extra.erase(it)
+					events.append_array(s._special(p, it, "effect"))
+					it.neg_perm = true
+		"power_supply":
+			# Power Supplier: 1 face-up monster gains 400 ATK while you control this face-up card (no more than 400 from this card).
+			var mine: Array = ps.monsters().filter(func(m): return m.face_up and int(m.tags.get("supplied_by", -1)) != c.uid)
+			if not mine.is_empty():
+				var best: Array = s._best_monsters(mine, 1)
+				var to = s.pick1(p, Loc.t("%s: which monster gains 400 ATK?") % name, mine, best[0] if not best.is_empty() else mine[0], c)
+				to.tags["supplied_by"] = c.uid
+				events.append(_ev(p, to, Loc.t("%s: +400 ATK while %s is face-up") % [to.cname(), name]))
+		"ivy_token":
+			# Wall of Ivy: an Ivy Token on the opponent's side; when it is destroyed, its controller takes 300 damage.
+			CardData.TOKENS[30069399] = {"name": "Ivy Token", "frame": "token", "atk": 0, "def": 0, "level": 1, "attribute": "EARTH", "race": "Plant", "burn_on_destroy": 300}
+			if opp.free_zone() != -1:
+				events.append_array(s._special(opp_i, s._make(30069399, opp_i), "effect", "def"))
 		"fear_monger":
 			# Fear Monger: destroyed by battle since your last Standby Phase -> 1 other "Destiny HERO" from the GY.
 			if ps.gy.has(c) and c.tags.has("battle_gy") and int(c.tags["battle_gy"]) == c.gy_turn and c.gy_turn >= s.turn - 2 and ps.free_zone() != -1 and ps.no_summon_turn != s.turn:
