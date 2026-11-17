@@ -149,7 +149,7 @@ func _start() -> void:
 	_ai_level = int(cfg.get("difficulty", 1))
 	# Who you face decides how they play and what you hear.
 	var mood := str(Characters.get_char(_opp_key).get("personality", ""))
-	DuelAI.styles = ["", {"cocky": "aggro", "wild": "aggro", "cool": "wall"}.get(mood, "")]
+	DuelAI.styles = ["", DuelAI.style_for(_opp_key)]
 	var opp_ace := int(Characters.get_char(_opp_key).get("ace", 0))
 	if opp_ace == 0:
 		opp_ace = int(CardData.NAME_TO_ID.get(str(Characters.get_char(_opp_key).get("ace_name", "")).to_lower(), 0))

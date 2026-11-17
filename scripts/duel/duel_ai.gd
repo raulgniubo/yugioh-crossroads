@@ -38,6 +38,28 @@ static func _style(p: int) -> String:
 	return str(styles[p]) if p >= 0 and p < styles.size() else ""
 
 
+## How a duelist's personality turns into a way of playing: the cocky and the wild go for
+## the throat, the cool keep their Life Points and build a wall, the dark hide cards face-down
+## and wait for you to walk into them. The kind play it by the book.
+static func style_for(key: String) -> String:
+	# Zane is cool, but his deck is Power Bond and one big swing: he plays to end it.
+	if key == "zane":
+		return "aggro"
+	return {"cocky": "aggro", "wild": "aggro", "cool": "wall", "dark": "trap"}.get(str(Characters.get_char(key).get("personality", "")), "")
+
+
+## [own LP weight, their LP weight, worth of each Set card] for the look-ahead's judgement.
+static func _style_w(p: int) -> Array:
+	match _style(p):
+		"aggro":
+			return [0.65, 1.6, 330.0]
+		"wall":
+			return [1.05, 1.15, 480.0]
+		"trap":
+			return [0.85, 1.3, 620.0]
+	return [0.8, 1.3, 400.0]
+
+
 static func next_main_action(s: DuelState, p: int, level := NORMAL) -> Dictionary:
 	if s.turbo and level > EASY:
 		var sw := _speed_world(s, p)
@@ -1340,11 +1362,12 @@ static func _evaluate(s: DuelState, p: int, expert := false) -> float:
 	var o := s.opponent(p)
 	if expert:
 		return _evaluate_expert(s, p, o)
-	var score := float(s.players[p].lp) * 0.8 - float(s.players[o].lp) * 1.3
+	var w := _style_w(p)
+	var score := float(s.players[p].lp) * float(w[0]) - float(s.players[o].lp) * float(w[1])
 	score += _board(s.players[p]) - _board(s.players[o])
 	score += _ace_value(s, p) - _ace_value(s, o)
 	score += _hand_value(s, p) - _hand_value(s, o)
-	score += 400.0 * (s.players[p].set_cards().size() - s.players[o].set_cards().size())
+	score += float(w[2]) * s.players[p].set_cards().size() - 400.0 * s.players[o].set_cards().size()
 	return score
 
 

@@ -122,6 +122,9 @@ var _sleeve_cache := {}
 ## Every back you can put on your own cards: [{id, name}]. "default" is the plain back.
 func sleeves() -> Array:
 	var out: Array = [{"id": "default", "name": "Classic"}, {"id": "crossroads", "name": "Crossroads"}]
+	# Sleeves you earn by climbing the Duelist Rank.
+	for t in [2, 3, 5, 6, 7]:
+		out.append({"id": "rank:%d" % t, "name": Loc.t("%s Rank") % Loc.t(str(Goals.RANKS[t][0])), "need": t})
 	for id in SLEEVE_ART:
 		var d := CardData.get_card(int(id))
 		if not d.is_empty() and str(d.get("name", "")) != "":
@@ -137,6 +140,10 @@ func sleeve_texture(sid: String) -> Texture2D:
 	var tex: Texture2D = null
 	if sid == "crossroads":
 		tex = _make_back()
+	elif sid.begins_with("rank:"):
+		var t := clampi(int(sid.trim_prefix("rank:")), 0, Goals.RANKS.size() - 1)
+		var c: Color = Goals.RANKS[t][2]
+		tex = _make_back(c, Color(c, 0.75), str(Goals.RANKS[t][0]).to_upper(), c.darkened(0.55))
 	elif sid.begins_with("art:"):
 		tex = _make_sleeve(int(sid.trim_prefix("art:")))
 	if tex == null:
@@ -723,15 +730,15 @@ func _lumen_art(art_box: Control, form: int, id := 0) -> void:
 		pass)
 
 
-func _make_back() -> Texture2D:
+func _make_back(accent := Color("1fd1c1"), ring_col := Color(0.55, 0.95, 1.0, 0.55), text := "CROSSROADS", edge := Color("0a0f1a")) -> Texture2D:
 	var vp := _new_viewport()
 	var root := Control.new()
 	root.size = Vector2(CARD_SIZE)
 	vp.add_child(root)
-	_rect(root, Vector2.ZERO, Vector2(CARD_SIZE), Color("0a0f1a"))
+	_rect(root, Vector2.ZERO, Vector2(CARD_SIZE), edge)
 	_rect(root, Vector2(10, 10), Vector2(400, 592), Color("101a2e"), 12)
 	var grad := Gradient.new()
-	grad.set_color(0, Color("1fd1c1"))
+	grad.set_color(0, accent)
 	grad.set_color(1, Color(0.04, 0.08, 0.16, 0))
 	var gt := GradientTexture2D.new()
 	gt.gradient = grad
@@ -748,13 +755,13 @@ func _make_back() -> Texture2D:
 		var ring := Panel.new()
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0, 0, 0, 0)
-		sb.border_color = Color(0.55, 0.95, 1.0, 0.55)
+		sb.border_color = ring_col
 		sb.set_border_width_all(3)
 		sb.set_corner_radius_all(r)
 		ring.add_theme_stylebox_override("panel", sb)
 		ring.position = Vector2(210 - r, 306 - r)
 		ring.size = Vector2(r * 2, r * 2)
 		root.add_child(ring)
-	_label(root, "CROSSROADS", Vector2(10, 520), Vector2(400, 50), _font_title, 40,
-			Color(0.75, 0.97, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
+	_label(root, text, Vector2(10, 520), Vector2(400, 50), _font_title, 40 if text.length() <= 12 else 32,
+			ring_col.lightened(0.4) if text != "CROSSROADS" else Color(0.75, 0.97, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
 	return vp.get_texture()

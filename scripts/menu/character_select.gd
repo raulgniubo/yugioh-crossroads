@@ -379,6 +379,11 @@ func _refresh_slots() -> void:
 		sl["name"].text = str(info.get("name", "")).to_upper()
 		_fit_font(sl["name"], 46)
 		sl["title"].text = str(info.get("title", ""))
+		if side == "opp":
+			# How they play, so you know what you walk into.
+			var how: String = {"aggro": "Plays aggressive", "wall": "Plays defensive", "trap": "Sets traps"}.get(DuelAI.style_for(key), "")
+			if how != "":
+				sl["title"].text = (Loc.t(sl["title"].text) + "   ·   " if sl["title"].text != "" else "") + Loc.t(how)
 		var deck_key := _deck_of(side)
 		sl["sub"].text = Loc.t("%s  ·  %s Deck") % [info.get("era", ""), CardData.deck_name(deck_key)]
 		if side == "opp":

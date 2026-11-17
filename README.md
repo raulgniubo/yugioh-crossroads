@@ -5,6 +5,19 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.43
+
+- **Opponents play like themselves:** the cocky and the wild (Kaiba, Joey, Jaden, Jack, Zane...) go for your Life Points, the cool ones (Yusei, Akiza, Kite, Shark...) guard theirs and build a wall, and the dark ones (Bakura, Marik, Kalin, Vector) hide cards face-down and wait for you to walk into them. Free Duel shows how each one plays under their title. Checked in 60-game runs per deck: no deck got weaker.
+- **Rivals who remember you:** in the worlds, after you beat a named duelist twice they come back a level harder (and the win pays more). The game tells you before the duel.
+- **Deck help:** "Improve it for me" in Deck tips makes the fixes with cards you own (more monsters, fewer Tributes, Tuners for Synchros, Polymerization for Fusions, a Trap or two, the classics you left out) and lists every change; Undo takes it back. "★ Best of my cards" in the starter list builds a full 40-card deck from your strongest cards.
+- **Rank sleeves:** five new card sleeves (Silver, Gold, Diamond, Legend, King of Games) that open as your Duelist Rank climbs.
+- Spanish for all of the above.
+
+**Not done or not checked:**
+
+- Shops that keep opening hours: not done. Shops are walk-in rooms, and closing their doors at night needs more care than this build had room for.
+- Not seen on a real screen: the rank sleeves, the Improve window after it runs, the "harder rematch" message.
+
 ## What is in 0.33.42
 
 - **Duelist Rank:** every duel you win earns rank points (more against harder opponents, for a win streak, or for a duel without damage). Eight ranks from Rookie to King of Games, each paying Duel Points when you reach it, and four new titles for the high ranks. A loss costs a few points but never drops you out of a rank. Your rank shows under your name on the main menu.

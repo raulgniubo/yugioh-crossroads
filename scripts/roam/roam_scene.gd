@@ -1859,6 +1859,11 @@ func _start_duel() -> void:
 		Router.duel_config["rare"] = true
 	if _stake_id != 0:
 		Router.duel_config["stake"] = _stake_id   # the card they put on the line
+	# Rivals who remember you: after you have beaten one of them twice, they come back a level harder.
+	var lvl := int(Router.duel_config["difficulty"])
+	if Characters.DATA.has(opp_key) and Collection.versus(opp_key)[0] >= 2 and lvl < 3:
+		Router.duel_config["difficulty"] = lvl + 1
+		Router.toast(Loc.t("%s has studied your deck since last time. This duel is harder, and pays more.") % str(Characters.get_char(opp_key).get("short", opp_key)), 3.0)
 	_end_talk()
 	Router.go(Router.DUEL)
 

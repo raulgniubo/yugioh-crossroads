@@ -355,6 +355,11 @@ static func _sleeves_card(p: SidePanel) -> void:
 		b.add_child(nm)
 		nm.position = Vector2(6, 138)
 		nm.size = Vector2(108, 34)
+		var need := int(e.get("need", -1))
+		if need > 0 and Goals.tier() < need and not Saves.admin:
+			b.disabled = true
+			b.tooltip_text = Loc.t("Reach %s rank to use this sleeve.") % Goals.rank_name(need)
+			b.modulate = Color(1, 1, 1, 0.45)
 		b.pressed.connect(func():
 			Settings.sleeve = sid
 			Settings.save_settings()

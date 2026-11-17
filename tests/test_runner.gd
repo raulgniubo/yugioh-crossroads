@@ -37,6 +37,7 @@ func _ready() -> void:
 			var wins_o := 0
 			var sim_d := OS.get_environment("SIM_ONLY")
 			DuelAI.aces = [int(Characters.get_char(sim_d).get("ace", 0)), 0]
+			DuelAI.styles = [OS.get_environment("SIM_STYLE"), ""]
 			var from_o := int(OS.get_environment("SIM_FROM")) if OS.get_environment("SIM_FROM") != "" else 0
 			for gi in int(OS.get_environment("YUSEI_SIM")):
 				var g: int = gi + from_o
@@ -99,6 +100,7 @@ func _ready() -> void:
 		_test_goals()
 		_test_why_not()
 		_test_deck_code()
+		_test_improve_deck()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -7570,6 +7572,49 @@ func _test_save_guard() -> void:
 
 
 ## Your own sound and music files from the card folder play instead of the built-in ones.
+func _test_improve_deck() -> void:
+	var keep: Dictionary = Collection.owned.duplicate()
+	var keep_side: Array = Collection.side.duplicate()
+	Collection.side = []
+	var hi := [46986414, 70781052, 6368038, 28279543]          # Level 5 to 7
+	var lo := [91152256, 41392891, 15025844, 69140098, 32452818, 13039848]
+	var main := []
+	for id in hi:
+		Collection.owned[id] = 3
+		for k in 3:
+			main.append(id)
+	for id in lo:
+		Collection.owned[id] = 3
+	main.append(91152256)
+	var mf := int(CardData.NAME_TO_ID.get("mirror force", 0))
+	Collection.owned[mf] = 1
+	for nm in ["Dian Keto the Cure Master", "Fissure", "Hinotama", "Sparks", "Ookazi", "Red Medicine", "Tribute to The Doomed", "Monster Reborn", "Pot of Greed", "Raigeki", "Dark Hole", "Heavy Storm"]:
+		var sid := int(CardData.NAME_TO_ID.get(nm.to_lower(), 0))
+		if sid == 0 or not Collection.playable(sid):
+			continue
+		Collection.owned[sid] = 3
+		for k in 3:
+			if main.size() < 40:
+				main.append(sid)
+	var DB = load("res://scripts/menu/deck_builder.gd")
+	var r: Dictionary = DB.improve_deck(main, [])
+	var out: Array = r["main"]
+	var high := out.filter(func(x): return int(CardData.get_card(int(x)).get("level", 0)) >= 5).size()
+	var low := out.filter(func(x): return CardData.get_card(int(x)).get("kind", "") == "monster" and int(CardData.get_card(int(x)).get("level", 0)) <= 4).size()
+	check(not (r["changes"] as Array).is_empty() and high * 2 <= low and out.size() == 40, "Improve deck: tribute-heavy deck gets low-Level monsters you own (%d high, %d low, %d cards)" % [high, low, out.size()])
+	var over := false
+	for id in out:
+		if out.count(id) > mini(3, Collection.count(int(id))):
+			over = true
+	check(not over, "Improve deck: never uses more copies than you own")
+	var ab: Dictionary = DB.auto_build()
+	var am: Array = ab["main"]
+	var mons := am.filter(func(x): return CardData.get_card(int(x)).get("kind", "") == "monster").size()
+	check(am.size() == 40 and mons >= 14, "Best of my cards: a 40-card deck with enough monsters (%d cards, %d monsters)" % [am.size(), mons])
+	Collection.owned = keep
+	Collection.side = keep_side
+
+
 func _test_deck_code() -> void:
 	var main := [46986414, 46986414, 15025844, 91152256, 91152256, 91152256]
 	var extra := [99200003]

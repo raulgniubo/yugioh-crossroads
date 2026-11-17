@@ -215,7 +215,8 @@ func _ready() -> void:
 	starter.custom_minimum_size = Vector2(210, 38)
 	starter.add_theme_font_size_override("font_size", 16)
 	starter.add_item("Fill from a starter...")
-	var keys := []
+	starter.add_item(Loc.t("★ Best of my cards"))
+	var keys := ["*mine"]
 	for k in CardData.DECKS.keys() + CardData.NAMED_DECKS.keys():
 		if CardData.has_deck(k):
 			keys.append(k)
@@ -225,6 +226,21 @@ func _ready() -> void:
 			return
 		var key := str(keys[i - 1])
 		starter.select(0)
+		if key == "*mine":
+			var mine := func():
+				_snap()
+				var r := auto_build()
+				Collection.main = r["main"]
+				Collection.extra = r["extra"]
+				Collection.side.clear()
+				Collection.save()
+				Router.toast(Loc.t("Built a %d-card deck from your strongest cards. Deck tips can fine-tune it.") % Collection.main.size(), 3.0)
+				_refresh_all()
+			if Collection.main.is_empty() and Collection.extra.is_empty():
+				mine.call()
+			else:
+				_ask(Loc.t("Replace this deck with one built from your strongest cards?"), Loc.t("Replace"), mine)
+			return
 		var fill := func():
 			_snap()
 			var missing := Collection.load_recipe(key)
@@ -1134,6 +1150,188 @@ func apply_code(d: Dictionary) -> Dictionary:
 	return {"missing": missing}
 
 
+const STAPLES := ["Pot of Greed", "Monster Reborn", "Raigeki", "Dark Hole", "Mirror Force", "Heavy Storm", "Harpie's Feather Duster",
+	"Swords of Revealing Light", "Change of Heart", "Mystical Space Typhoon", "Torrential Tribute", "Call of the Haunted", "Polymerization",
+	"Premature Burial", "Graceful Charity", "Sakuretsu Armor", "Bottomless Trap Hole", "Magic Cylinder", "Dimensional Prison", "Book of Moon",
+	"Solemn Judgment", "Trap Hole", "Mirror Wall", "Magic Jammer", "Brain Control"]
+const GOOD_TRAPS := ["Mirror Force", "Torrential Tribute", "Sakuretsu Armor", "Bottomless Trap Hole", "Dimensional Prison", "Magic Cylinder",
+	"Call of the Haunted", "Trap Hole", "Solemn Judgment", "Negate Attack", "Draining Shield", "Waboku", "Mirror Wall"]
+
+
+## How much a card is worth keeping, roughly: big, easy-to-summon monsters and the classic Spells and Traps score high.
+static func _worth(id: int) -> int:
+	var d := CardData.get_card(id)
+	var nm := str(d.get("name", ""))
+	if str(d.get("kind", "")) != "monster":
+		return 1800 + (500 if nm in STAPLES else 0)
+	var s := int(d.get("atk", 0))
+	if str(d.get("frame", "")) == "effect" or CardEffects.of(nm).size() > 0:
+		s += 350
+	var l := int(d.get("level", 0))
+	if l >= 7:
+		s -= 700
+	elif l >= 5:
+		s -= 350
+	if bool(d.get("tuner", false)):
+		s += 300
+	return s
+
+
+## Copies of a card you could still put in: what you own, minus what the deck holds, within the limit.
+static func _spare(id: int, main: Array, extra: Array) -> int:
+	var used := main.count(id) + extra.count(id) + Collection.side.count(id)
+	return maxi(0, mini(Collection.count(id), mini(3, Collection.limit(id))) - used)
+
+
+## Fixes what Deck tips points out, using only cards you own. Returns {"main", "extra", "changes": [text]}.
+static func improve_deck(main_in: Array, extra_in: Array) -> Dictionary:
+	var main: Array = main_in.duplicate()
+	var extra: Array = extra_in.duplicate()
+	var changes := []
+	var owned_ids: Array = []
+	for id in Collection.owned:
+		if int(Collection.owned[id]) > 0 and Collection.playable(int(id)) and not CardData.is_extra(int(id)):
+			owned_ids.append(int(id))
+	var kind_of := func(id: int) -> String: return str(CardData.get_card(id).get("kind", ""))
+	var lvl_of := func(id: int) -> int: return int(CardData.get_card(id).get("level", 0))
+	var name_of := func(id: int) -> String: return str(CardData.get_card(id).get("name", ""))
+	# Swap the weakest card that fits `out_f` for the best one you own that fits `in_f`.
+	var swap := func(out_f: Callable, in_f: Callable, why: String) -> bool:
+		var best_in := 0
+		var best_s := -99999
+		for id in owned_ids:
+			if in_f.call(id) and _spare(id, main, extra) > 0 and _worth(id) > best_s:
+				best_s = _worth(id)
+				best_in = id
+		if best_in == 0:
+			return false
+		var worst := -1
+		var worst_s := 99999
+		for i in main.size():
+			if out_f.call(int(main[i])) and _worth(int(main[i])) < worst_s:
+				worst_s = _worth(int(main[i]))
+				worst = i
+		if worst < 0:
+			if main.size() >= 40:
+				return false
+			main.append(best_in)
+			changes.append(Loc.t("Added %s (%s)") % [name_of.call(best_in), Loc.t(why)])
+			return true
+		var gone: int = main[worst]
+		main[worst] = best_in
+		changes.append(Loc.t("%s out, %s in (%s)") % [name_of.call(gone), name_of.call(best_in), Loc.t(why)])
+		return true
+	# 1. Down to 40: the weakest cards go.
+	while main.size() > 40:
+		var wi := 0
+		for i in main.size():
+			if _worth(int(main[i])) < _worth(int(main[wi])):
+				wi = i
+		changes.append(Loc.t("Took out %s (down to 40 cards)") % name_of.call(int(main[wi])))
+		main.remove_at(wi)
+	var count_mons := func() -> int: return main.filter(func(x): return kind_of.call(int(x)) == "monster").size()
+	# 2. Enough monsters to always have something to summon.
+	var guard := 0
+	while count_mons.call() < 14 and guard < 8:
+		guard += 1
+		if not swap.call(func(x): return kind_of.call(x) != "monster" and not (name_of.call(x) in STAPLES),
+				func(x): return kind_of.call(x) == "monster" and lvl_of.call(x) <= 4, "more monsters"):
+			break
+	# 3. Too many that need Tributes.
+	guard = 0
+	while guard < 12:
+		guard += 1
+		var low := main.filter(func(x): return kind_of.call(int(x)) == "monster" and lvl_of.call(int(x)) <= 4).size()
+		var high := main.filter(func(x): return kind_of.call(int(x)) == "monster" and lvl_of.call(int(x)) >= 5).size()
+		if high * 2 <= low:
+			break
+		if not swap.call(func(x): return kind_of.call(x) == "monster" and lvl_of.call(x) >= 5,
+				func(x): return kind_of.call(x) == "monster" and lvl_of.call(x) <= 4, "fewer Tributes"):
+			break
+	# 4. Synchros need Tuners.
+	var synchros := extra.filter(func(x): return str(CardData.get_card(int(x)).get("frame", "")) == "synchro").size()
+	var tuners := main.filter(func(x): return bool(CardData.get_card(int(x)).get("tuner", false))).size()
+	while synchros > 0 and tuners < mini(3, synchros + 1):
+		if not swap.call(func(x): return kind_of.call(x) == "monster" and not bool(CardData.get_card(x).get("tuner", false)) and lvl_of.call(x) <= 4,
+				func(x): return bool(CardData.get_card(x).get("tuner", false)), "Tuners for your Synchros"):
+			break
+		tuners += 1
+	# 5. Fusions need Polymerization.
+	var fusions := extra.filter(func(x): return str(CardData.get_card(int(x)).get("frame", "")) == "fusion").size()
+	var has_poly := not main.filter(func(x): return name_of.call(int(x)) in ["Polymerization", "Power Bond", "Fusion Gate", "Miracle Fusion"]).is_empty()
+	if fusions > 0 and not has_poly:
+		swap.call(func(x): return kind_of.call(x) == "monster", func(x): return name_of.call(x) == "Polymerization", "for your Fusions")
+	# 6. A Trap or two.
+	var traps := main.filter(func(x): return kind_of.call(int(x)) == "trap").size()
+	guard = 0
+	while traps < 2 and count_mons.call() > 15 and guard < 2:
+		guard += 1
+		if not swap.call(func(x): return kind_of.call(x) == "monster", func(x): return name_of.call(x) in GOOD_TRAPS, "a Trap to stop attacks"):
+			break
+		traps += 1
+	# 7. The classic Spells and Traps you own and left out, for the weakest monsters.
+	guard = 0
+	while guard < 4:
+		guard += 1
+		var cand := 0
+		for id in owned_ids:
+			if name_of.call(id) in ["Pot of Greed", "Monster Reborn", "Raigeki", "Dark Hole", "Mirror Force", "Heavy Storm", "Harpie's Feather Duster", "Swords of Revealing Light", "Change of Heart", "Graceful Charity"] \
+					and _spare(id, main, extra) > 0 and not main.has(id):
+				cand = id
+				break
+		if cand == 0 or count_mons.call() <= 15:
+			break
+		var wi2 := -1
+		for i in main.size():
+			if kind_of.call(int(main[i])) == "monster" and (wi2 < 0 or _worth(int(main[i])) < _worth(int(main[wi2]))):
+				wi2 = i
+		if wi2 < 0 or _worth(int(main[wi2])) > 1700:
+			break
+		changes.append(Loc.t("%s out, %s in (%s)") % [name_of.call(int(main[wi2])), name_of.call(cand), Loc.t("a classic you own")])
+		main[wi2] = cand
+	return {"main": main, "extra": extra, "changes": changes}
+
+
+## A 40-card deck from the best of what you own: mostly monsters you can summon right away, a
+## few big ones, the classic Spells and Traps, then the rest. The Extra Deck gets your strongest.
+static func auto_build() -> Dictionary:
+	var main := []
+	var extra := []
+	var ids: Array = []
+	for id in Collection.owned:
+		if int(Collection.owned[id]) > 0 and Collection.playable(int(id)):
+			ids.append(int(id))
+	ids.sort_custom(func(a, b): return _worth(a) > _worth(b))
+	var take := func(filter: Callable, n: int, into: Array) -> void:
+		for id in ids:
+			if into.size() >= 60 or n <= 0:
+				return
+			if not filter.call(id):
+				continue
+			var k := _spare(id, main, extra)
+			for c in mini(k, n):
+				into.append(id)
+				n -= 1
+	var d := func(id: int) -> Dictionary: return CardData.get_card(id)
+	var plain := func(id: int) -> bool: return not CardData.is_extra(id) and str(d.call(id).get("frame", "")) != "ritual"
+	take.call(func(id): return plain.call(id) and d.call(id).get("kind", "") == "monster" and int(d.call(id).get("level", 0)) <= 4, 16, main)
+	take.call(func(id): return plain.call(id) and d.call(id).get("kind", "") == "monster" and int(d.call(id).get("level", 0)) in [5, 6], 3, main)
+	take.call(func(id): return plain.call(id) and d.call(id).get("kind", "") == "monster" and int(d.call(id).get("level", 0)) >= 7, 2, main)
+	take.call(func(id): return str(d.call(id).get("name", "")) in STAPLES or str(d.call(id).get("name", "")) in GOOD_TRAPS, 40 - main.size(), main)
+	take.call(func(id): return d.call(id).get("kind", "") != "monster" and SpellRules.FX.has(str(d.call(id).get("name", ""))), 40 - main.size(), main)
+	take.call(func(id): return plain.call(id) and d.call(id).get("kind", "") == "monster" and int(d.call(id).get("level", 0)) <= 4, 40 - main.size(), main)
+	var by_atk: Array = ids.filter(func(id): return CardData.is_extra(id))
+	by_atk.sort_custom(func(a, b): return int(CardData.get_card(a).get("atk", 0)) > int(CardData.get_card(b).get("atk", 0)))
+	for id in by_atk:
+		var k := _spare(id, main, extra)
+		for c in k:
+			if extra.size() < 15:
+				extra.append(id)
+	# Then let the tips fix what is left (Tuners for the Synchros, Polymerization...).
+	var r := improve_deck(main, extra)
+	return {"main": r["main"], "extra": r["extra"]}
+
+
 func _show_tips() -> void:
 	var tips := deck_tips(Collection.main, Collection.extra)
 	var text := ""
@@ -1169,7 +1367,36 @@ func _show_tips() -> void:
 	close.add_theme_font_size_override("font_size", 19)
 	close.size_flags_horizontal = Control.SIZE_SHRINK_END
 	close.pressed.connect(shade.queue_free)
-	v.add_child(close)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.alignment = BoxContainer.ALIGNMENT_END
+	v.remove_child(close)
+	if not tips.is_empty():
+		var fix := Button.new()
+		fix.text = "  %s  " % Loc.t("Improve it for me")
+		fix.tooltip_text = Loc.t("Makes these fixes with cards you own. Undo takes it all back.")
+		fix.custom_minimum_size = Vector2(0, 48)
+		fix.add_theme_font_size_override("font_size", 19)
+		fix.pressed.connect(func():
+			var r := improve_deck(Collection.main, Collection.extra)
+			if (r["changes"] as Array).is_empty():
+				body.text = Loc.t("Nothing to change with the cards you own. More packs or duels would give it more to work with.")
+				fix.disabled = true
+				return
+			_snap()
+			Collection.main = r["main"]
+			Collection.extra = r["extra"]
+			Collection.save()
+			_changed()
+			var lines := []
+			for t in r["changes"]:
+				lines.append("•  " + str(t))
+			body.text = Loc.t("Done. What changed (Undo takes it back):") + "\n\n" + "\n".join(lines)
+			fix.disabled = true
+			Sfx.play("card", -4.0))
+		row.add_child(fix)
+	row.add_child(close)
+	v.add_child(row)
 	Sfx.play("card", -6.0)
 
 
