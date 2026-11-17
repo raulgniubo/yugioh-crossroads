@@ -1272,6 +1272,16 @@ func all_cards() -> Array:
 
 ## Lumen's cards the story has handed over so far (her own card always). With `open_only`,
 ## only those you hold fewer than three of.
+## A card you met face-up in a duel (the Card Album shows it as seen). Saved with the rest.
+func meet(id: int) -> void:
+	if id == 0:
+		return
+	var met: Dictionary = record.get("met", {})
+	if not met.has(str(id)):
+		met[str(id)] = true
+		record["met"] = met
+
+
 func lumen_pool(open_only := false) -> Array:
 	var had: Array = record.get("lumen_gifts", [])
 	var out: Array = []

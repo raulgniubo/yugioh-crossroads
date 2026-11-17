@@ -60,6 +60,8 @@ func _ready() -> void:
 		Router.menu_open = ""
 		SettingsPanel._tab_at["settings"] = 99
 		_on_settings.call_deferred()
+	elif Router.menu_open == "album":
+		_on_album.call_deferred()
 	elif Router.menu_open == "goals":
 		Router.menu_open = ""
 		_on_goals.call_deferred()
@@ -286,6 +288,12 @@ func _build_menu() -> void:
 	goals.pressed.connect(_on_goals)
 	rounds.add_child(goals)
 	_items.append(goals)
+	var album := RoundButton.new("album", Comic.BLUE, 64.0)
+	album.tooltip_text = Loc.t("Card Album")
+	album.focus_mode = Control.FOCUS_ALL
+	album.pressed.connect(_on_album)
+	rounds.add_child(album)
+	_items.append(album)
 	if OS.has_feature("pc"):
 		var quit := RoundButton.new("power", Comic.RED, 64.0)
 		quit.tooltip_text = "Quit"
@@ -789,7 +797,7 @@ func _open_profile(first: bool) -> void:
 func _build_footer() -> void:
 	var version: String = ProjectSettings.get_setting("application/config/version", "0.1")
 	var left := UITheme.label(Loc.t("Fan project  ·  v%s  ·  by %s") % [version, "Atlas Peak Games"], 16, Color(1, 1, 1, 0.35))
-	_anchor_bottom(left, 330, 980)
+	_anchor_bottom(left, 410, 1060)
 	# On the same line as the three round buttons beside it (they span 112 to 48 from the bottom).
 	left.offset_top = -112
 	left.offset_bottom = -48
@@ -1014,6 +1022,16 @@ func _on_story() -> void:
 		p.body.add_child(bb)
 	add_child(p)
 	_open_panel(p)
+
+
+func _on_album() -> void:
+	Sfx.play("click", -6.0)
+	var a := CardAlbum.open(self)
+	_panel_open = true
+	a.closed.connect(func():
+		_panel_open = false
+		if _items.size() > 1:
+			_items[0].grab_focus())
 
 
 func _on_deck() -> void:

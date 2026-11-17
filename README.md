@@ -5,6 +5,23 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.49
+
+**The Card Album.** A binder with a pocket for every card you can collect (968 of them), set by set.
+
+- **Open it** from the new round button on the main menu (next to Rank & Goals), or from My Decks with the **Card Album** button (that works in the open world too).
+- **Sets on the left:** Every card, the booster sets, Lumen's cards, the Speed Spells, and the themed packs by kind. Each shows how much of it you own.
+- **The binder:** two pages of nine pockets. Cards you own sit in their pocket with their foil and how many copies you have. A card you have met face-up in a duel but do not own shows dimmed and marked SEEN. Everything else is an empty pocket with its number and a question mark. Cards you got since your last look are tagged NEW.
+- **The big view on the right:** the card large, its type, ATK/DEF and its text (in Spanish when the game is), how many you own, which packs it comes from and who plays it. An empty pocket only tells you its number and where to find it.
+- **Rewards:** every booster set shows its 25 / 50 / 75 / 100% steps and the Duel Points for each; anything reached pays when you open the album.
+- **Filters and search:** All / Owned / Missing, and a search box (it only finds cards you have owned or met, so it never gives one away).
+- **Controls:** mouse (click, wheel to turn pages), keyboard (arrows, Q/E pages, Tab next set, F filter, / search, Esc close) and controller (D-pad or stick, LB/RB pages, LT/RT sets, X filter, B close).
+
+**Not done or not checked:**
+
+- Cards you met in duels before this version are not known yet; the SEEN marks start from your next duels.
+- Looked at with the test pictures here; with your real card pictures it should look the same, but I could not see it.
+
 ## What is in 0.33.48
 
 - **Ground arrows find the way:** each world now builds a walking map in the background a second or two after you arrive (where you can stand, where water and walls are). The yellow arrows follow a real walk around buildings and along the pier to the beacon, and sit on top of the paving instead of under it. Until the map is ready they go straight and stop at water and walls, like before.

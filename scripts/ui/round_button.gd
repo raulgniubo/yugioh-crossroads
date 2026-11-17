@@ -63,6 +63,8 @@ func _draw() -> void:
 		"pause":
 			draw_rect(Rect2(o + Vector2(-9, -11) * k, Vector2(6, 22) * k), w)
 			draw_rect(Rect2(o + Vector2(3, -11) * k, Vector2(6, 22) * k), w)
+		"next":
+			draw_polyline(PackedVector2Array([o + Vector2(-3, -11) * k, o + Vector2(8, 0) * k, o + Vector2(-3, 11) * k]), w, 4.0 * k, true)
 		"back":
 			draw_polyline(PackedVector2Array([o + Vector2(3, -11) * k, o + Vector2(-8, 0) * k, o + Vector2(3, 11) * k]), w, 4.0 * k, true)
 		"close":
@@ -71,6 +73,17 @@ func _draw() -> void:
 		"power":
 			draw_arc(o, 11.0 * k, -PI * 0.28, PI * 1.28, 20, w, 3.6 * k, true)
 			draw_line(o + Vector2(0, -15) * k, o + Vector2(0, -2) * k, w, 3.6 * k, true)
+		"album":
+			# An open binder: two pages and the rings between them.
+			var lp := Rect2(o + Vector2(-15, -10) * k, Vector2(13, 20) * k)
+			var rp := Rect2(o + Vector2(2, -10) * k, Vector2(13, 20) * k)
+			draw_rect(lp, w, false, 2.6 * k)
+			draw_rect(rp, w, false, 2.6 * k)
+			for i in 3:
+				var y := (-6.0 + i * 6.0) * k
+				draw_line(o + Vector2(-3.5, y) * Vector2(k, 1), o + Vector2(3.5 * k, y), w, 2.4 * k, true)
+			draw_rect(Rect2(o + Vector2(-12, -7) * k, Vector2(7, 9) * k), Color(w, 0.6))
+			draw_rect(Rect2(o + Vector2(5, 0) * k, Vector2(7, 7) * k), Color(w, 0.6))
 		"goals":
 			draw_arc(o, 14.0 * k, 0.0, TAU, 32, w, 3.2 * k, true)
 			draw_arc(o, 8.0 * k, 0.0, TAU, 24, w, 3.2 * k, true)

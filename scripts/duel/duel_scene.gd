@@ -974,6 +974,9 @@ func _play_event(ev: Dictionary) -> void:
 	if not _autoplay:
 		var evc = ev.get("card")
 		print("EV ", ev["type"], " p", p, " ", str(evc.cname()) if evc != null and evc.has_method("cname") else "")
+		# Every card you see face-up in a duel goes in the Card Album as "seen".
+		if evc != null and "face_up" in evc and evc.face_up and "id" in evc:
+			Collection.meet(int(evc.id))
 	DuelAudio.on_event(ev, state)
 	_feed_event(ev, p)
 	match ev["type"]:

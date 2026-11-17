@@ -53,6 +53,15 @@ func _ready() -> void:
 	head.add_child(purse)
 	_dp = UITheme.label(Loc.t("%d DP") % Collection.dp, 30, UITheme.GOLD, UITheme.title_font())
 	purse.add_child(_dp)
+	var album := Button.new()
+	album.text = "  " + Loc.t("Card Album") + "  "
+	album.add_theme_font_size_override("font_size", 24)
+	album.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	album.custom_minimum_size = Vector2(0, 58)
+	album.pressed.connect(func():
+		Sfx.play("click", -6.0)
+		CardAlbum.open(self))
+	head.add_child(album)
 	var done := Button.new()
 	done.text = "  Done  "
 	done.add_theme_font_size_override("font_size", 24)

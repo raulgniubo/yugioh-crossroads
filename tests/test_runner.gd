@@ -104,6 +104,7 @@ func _ready() -> void:
 		_test_pad()
 		_test_swords_stays()
 		_test_card_text_es()
+		await _test_album()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -7575,6 +7576,48 @@ func _test_save_guard() -> void:
 
 
 ## Your own sound and music files from the card folder play instead of the built-in ones.
+func _test_album() -> void:
+	var met_was = Collection.record.get("met", {}).duplicate()
+	var a := CardAlbum.open(self)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	check(a._sets.size() >= 10 and str(a._sets[0]["key"]) == "all", "Album: Every card first, then the sets (%d)" % a._sets.size())
+	var every: Array = a._sets[0]["ids"]
+	check(every.size() > 900, "Album: every collectable card has a pocket (%d)" % every.size())
+	a._set_filter("owned")
+	var ok := true
+	for id in a._list:
+		if int(Collection.owned.get(int(id), 0)) <= 0:
+			ok = false
+	check(ok and a._list.size() == a._have(every), "Album: Owned shows exactly the cards you own (%d)" % a._list.size())
+	a._set_filter("missing")
+	check(a._list.size() == every.size() - a._have(every), "Album: Missing shows the rest")
+	a._set_filter("all")
+	# A card you never met cannot be found by searching its name.
+	var hidden := 0
+	for id in every:
+		if a._state(int(id)) == "unknown":
+			hidden = int(id)
+			break
+	if hidden != 0:
+		a._search = str(CardData.get_card(hidden).get("name", "")).to_lower()
+		a._refilter(false)
+		check(not a._list.has(hidden), "Album: searching does not give away a card you never met")
+		Collection.meet(hidden)
+		a._refilter(false)
+		check(a._list.has(hidden) and a._state(hidden) == "seen", "Album: a card met in a duel shows as seen and can be found")
+		a._search = ""
+		a._refilter(false)
+	var before: int = a._spread
+	a._flip(1)
+	check(a._spread == before + 1, "Album: the next page turns")
+	a._move(-1, 0)
+	a._pick_set(1, false)
+	check(a._spread == 0 and a._list.size() == (a._sets[1]["ids"] as Array).size(), "Album: a new set starts on its first pages")
+	a.queue_free()
+	Collection.record["met"] = met_was
+
+
 func _test_card_text_es() -> void:
 	var was := TranslationServer.get_locale()
 	TranslationServer.set_locale("es")
