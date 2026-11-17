@@ -5,6 +5,17 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.53
+
+**A new opening**
+
+- The first-start intro now flies over the four real worlds: Domino City at night, the Duel Academy island by day, New Domino at night and Heartland at sunset. Each is built with the same builder the game uses when you walk there, in its own small world, before the show starts (about 2 seconds of dark screen first).
+- The picture goes widescreen, Lumen's light dives into the screen and she races ahead of the camera in each world, with each world's name band across the lower part. After the last world the city dims, the four roads of light meet over it and the title lands, then "Who are you?".
+- Any key still skips straight to the question.
+- Dev: `--frame-log` prints every slow frame (for the Academy stall).
+
+Not done or not checked: seen in still pictures here, not as a moving video, and not on your PC. The Academy 2 FPS stall is not fixed: it needs an F3/F4 reading from your machine.
+
 ## What is in 0.33.52
 
 **Your notes from the PC**

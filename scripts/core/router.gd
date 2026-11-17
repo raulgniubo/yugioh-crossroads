@@ -56,6 +56,9 @@ func _process(delta: float) -> void:
 		else:
 			line += "   (F3)"
 		_fps.text = line
+	if _frame_log and delta > 0.06:
+		print("SLOWFRAME %.0f ms  t=%.1f  busy=%s loading=%s  process %.1f ms physics %.1f ms" % [delta * 1000.0, Time.get_ticks_msec() / 1000.0, _busy, loading,
+				Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0])
 	if _probe:
 		_probe_t += delta
 		if _probe_t > 3.0:
@@ -65,6 +68,7 @@ func _process(delta: float) -> void:
 
 
 var _probe := false
+var _frame_log := "--frame-log" in OS.get_cmdline_user_args()   # dev: say every slow frame
 
 # How long the game takes to answer a click: from the press arriving to the end of the frame
 # that draws the answer. Shown in the F3 readout. (What the screen adds after that is not ours.)

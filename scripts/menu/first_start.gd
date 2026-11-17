@@ -36,6 +36,9 @@ var _asked := false
 var _skipped := false
 var _run := 0            # which run of the sequence this is (a skip starts none)
 var _home := Vector2.ZERO
+var _cine: IntroCinema
+var _bars: Control           # the letterbox while the worlds fly by
+var _bar_k := 0.0
 
 
 func _ready() -> void:
@@ -47,6 +50,13 @@ func _ready() -> void:
 	_back.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_back.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_back)
+	_cine = IntroCinema.new()
+	add_child(_cine)
+	_bars = Control.new()
+	_bars.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bars.draw.connect(_draw_bars)
+	add_child(_bars)
 	_beams = Control.new()
 	_beams.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_beams.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -122,7 +132,7 @@ func _ready() -> void:
 	_light.modulate.a = 0.0
 	_halo.modulate.a = 0.0
 	Music.set_boost(-9.0)
-	_play.call_deferred()
+	_start.call_deferred()
 	if "--intro-answer" in OS.get_cmdline_user_args():
 		# Dev: skip to the question and answer it, to see the creator open on this stage.
 		get_tree().create_timer(1.0).timeout.connect(_skip)
@@ -155,6 +165,7 @@ func _process(delta: float) -> void:
 	_halo.scale = Vector2.ONE * (1.0 + sin(_t * 1.3) * 0.08 + _flash * 1.6)
 	_flash = maxf(0.0, _flash - delta * 1.6)
 	_beams.queue_redraw()
+	_bars.queue_redraw()
 
 
 ## Four roads of light come in from the corners of the screen and meet in the middle.
@@ -191,6 +202,24 @@ func _wait(sec: float, run: int) -> bool:
 	return is_inside_tree() and run == _run and not _skipped
 
 
+## The worlds are built first, while the screen is still dark; then the show starts.
+func _start() -> void:
+	await _cine.build_all()
+	if not is_inside_tree():
+		return
+	if _skipped:
+		return
+	_play()
+
+
+func _draw_bars() -> void:
+	if _bar_k <= 0.0:
+		return
+	var h := size.y * 0.11 * _bar_k
+	_bars.draw_rect(Rect2(0, 0, size.x, h), Color.BLACK)
+	_bars.draw_rect(Rect2(0, size.y - h, size.x, h), Color.BLACK)
+
+
 func _play() -> void:
 	_run += 1
 	var run := _run
@@ -205,9 +234,27 @@ func _play() -> void:
 	_say(2)
 	if not await _wait(2.5, run): return
 	create_tween().tween_property(_text, "modulate:a", 0.0, 0.2)
+	# Lumen's light dives toward the screen and the flight over the four worlds begins.
+	var dive := create_tween().set_parallel()
+	dive.tween_property(_light, "scale", Vector2.ONE * 6.0, 0.35).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+	dive.tween_property(_light, "modulate:a", 0.0, 0.35)
+	dive.tween_property(_halo, "modulate:a", 0.0, 0.35)
+	dive.tween_property(self, "_bar_k", 1.0, 0.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	Sfx.play("whoosh", -4.0, 0.7)
+	if not await _wait(0.3, run): return
+	var shot_len := 2.7
 	for i in WORLDS.size():
-		_world(i)
-		if not await _wait(1.05, run): return
+		_flash = 0.45
+		_cine.show_shot(i, shot_len + 0.4)
+		_world(i, shot_len)
+		if not await _wait(shot_len, run): return
+	# The last world dims; the four roads come in over it and meet.
+	var dim := create_tween().set_parallel()
+	dim.tween_property(_cine, "modulate", Color(0.55, 0.6, 0.75, 0.3), 1.2)
+	dim.tween_property(self, "_bar_k", 0.0, 1.2)
+	dim.tween_property(_light, "modulate:a", 1.0, 0.8)
+	dim.tween_property(_halo, "modulate:a", 0.35, 1.0)
+	_light.scale = Vector2.ONE
 	_say(3)
 	create_tween().tween_property(self, "_beam", 1.0, 1.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	Sfx.play("charge", -8.0, 0.8)
@@ -219,14 +266,15 @@ func _play() -> void:
 	_question()
 
 
-## One world goes by: a band in its colour with its name, and three of its duelists if you have them.
-func _world(i: int) -> void:
+## One world goes by: a band in its colour across the lower part of the picture, with its name
+## and three of its duelists if you have them. It stays up for `hold` seconds.
+func _world(i: int, hold := 1.0) -> void:
 	var w: Dictionary = WORLDS[i]
 	var col: Color = w["color"]
 	var from_left := i % 2 == 0
 	var band := Control.new()
 	band.size = Vector2(size.x, 320.0)
-	band.position = Vector2(-size.x if from_left else size.x, size.y / 2.0 - 220.0 + (i % 2) * 40.0)
+	band.position = Vector2(-size.x if from_left else size.x, size.y - 320.0 - size.y * 0.11 - 30.0)
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(band)
 	move_child(band, _text.get_index())
@@ -234,8 +282,8 @@ func _world(i: int) -> void:
 	var g := Gradient.new()
 	g.set_color(0, Color(col.darkened(0.55), 0.0))
 	g.set_color(1, Color(col.darkened(0.55), 0.0))
-	g.add_point(0.18, Color(col.darkened(0.35), 0.95))
-	g.add_point(0.82, Color(col.darkened(0.6), 0.95))
+	g.add_point(0.18, Color(col.darkened(0.45), 0.82))
+	g.add_point(0.82, Color(col.darkened(0.7), 0.6))
 	grad.gradient = g
 	grad.width = 64
 	grad.height = 8
@@ -285,7 +333,7 @@ func _world(i: int) -> void:
 	Sfx.play("whoosh", -6.0, 0.9 + i * 0.08)
 	var tw := create_tween()
 	tw.tween_property(band, "position:x", 0.0, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(band, "position:x", 30.0 if from_left else -30.0, 0.6)
+	tw.tween_property(band, "position:x", 30.0 if from_left else -30.0, maxf(0.6, hold - 0.45))
 	tw.tween_property(band, "position:x", size.x if from_left else -size.x, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tw.tween_callback(band.queue_free)
 
@@ -332,8 +380,12 @@ func _skip() -> void:
 		return
 	_skipped = true
 	for c in get_children():
-		if c is Control and c != _back and c != _beams and c != _light and c != _halo and c != _text and c != _title and c != _btn and c != _skip_l:
+		if c is Control and c != _back and c != _beams and c != _light and c != _halo and c != _text and c != _title and c != _btn and c != _skip_l and c != _bars:
 			c.queue_free()
+	_bar_k = 0.0
+	_light.scale = Vector2.ONE
+	_light.modulate.a = 1.0
+	_halo.modulate.a = 0.35
 	_land_title()
 	_question()
 
