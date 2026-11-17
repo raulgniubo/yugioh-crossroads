@@ -113,6 +113,7 @@ func _ready() -> void:
 		_test_cards_b0c3()
 		_test_cards_b0c4()
 		_test_cards_b0c5()
+		_test_gravekeepers()
 		await _test_album()
 		_test_save_slots()
 		_test_turbo_setup()
@@ -171,6 +172,17 @@ func _ready() -> void:
 			var b: String = Characters.DATA[all[(seed * 7 + 3) % all.size()]]["deck"]
 			_ai_vs_ai(900 + seed, a, b, seed % 3, (seed + 1) % 3)
 			n += 1
+		# Every family's theme deck plays a few games too (it must not break the duel, and it should hold its own).
+		for fk in Collection.FAMILIES:
+			var fd: String = Collection.FAMILIES[fk]["deck"]
+			var fw := 0
+			check(CardData.deck_list(fd).size() == 40, "%s: a 40-card deck (%d)" % [fd, CardData.deck_list(fd).size()])
+			for g in 8:
+				var foe_f: String = Characters.DATA[all[(g * 5 + 2) % all.size()]]["deck"]
+				if _ai_vs_ai(1500 + g, fd, foe_f, 2, 2) == 0:
+					fw += 1
+				n += 1
+			print("family %s: won %d of 8 against story decks" % [fk, fw])
 		print("stress: %d games across %d decks" % [n, all.size()])
 		print("effects fired for %d different cards: %s" % [EffectRunner.fired.size(), str(EffectRunner.fired)])
 		print("TESTS DONE, failures: %d" % failures)
@@ -8293,6 +8305,10 @@ func _test_every_card_obtainable() -> void:
 			if Collection.pool(other).has(id):
 				dup += 1
 	check(dup == 0, "Cards: Monster Legends repeats no card of another series set (%d)" % dup)
+	for fk in Collection.FAMILIES:
+		var names: Array = Collection.FAMILIES[fk]["cards"]
+		check(Collection.family_ids(fk).size() == names.size() or CardData.EXT.size() < 1000, "Family %s: every card works (%d of %d)" % [fk, Collection.family_ids(fk).size(), names.size()])
+		check(Collection.pool(str(Collection.FAMILIES[fk]["era"])).has(Collection.family_ids(fk)[0]) if not Collection.family_ids(fk).is_empty() else true, "Family %s: in its era's pack" % fk)
 
 
 func _test_fresh_starter() -> void:
@@ -8921,7 +8937,252 @@ func _test_cards_b0c5() -> void:
 	check(s.players[1].banished.has(sd2), "Calima: banished at the end of the Battle Phase")
 
 
+## 0.34.0: the Gravekeeper's family and Necrovalley, each against its printed text.
+func _gk_valley(s: DuelState, p := 0) -> DuelState.CardInst:
+	var nv := s._make(_cid("Necrovalley"), p)
+	s.players[p].field_spell = nv
+	nv.face_up = true
+	return nv
+
+
+func _test_gravekeepers() -> void:
+	# Necrovalley: +500 to Gravekeeper's, nothing banished from or taken out of the GY, but Rite of Spirit and Chief get through.
+	var s := _main_ready(7001)
+	_gk_valley(s)
+	var spy := _mon(s, 0, "Gravekeeper's Spy", 0)
+	check(s.atk_of(spy, false) == 1700, "Necrovalley: Spy at 1700 (got %d)" % s.atk_of(spy, false))
+	var gy1 := _in(s, 1, "Dark Magician", "gy")
+	s._banish(gy1)
+	check(s.players[1].gy.has(gy1) and not s.can_revive(gy1), "Necrovalley: no banishing, no reviving")
+	var gk_gy := _in(s, 0, "Gravekeeper's Guard", "gy")
+	var rite := _set_trap(s, 0, "Rite of Spirit")
+	s.respond(0, rite, null)
+	s.chain_resolve()
+	check(s.players[0].field.has(gk_gy), "Rite of Spirit: unaffected by Necrovalley")
+	# Chief: your GY is unaffected.
+	s = _main_ready(7002)
+	_gk_valley(s)
+	_mon(s, 0, "Gravekeeper's Chief", 0)
+	var mine := _in(s, 0, "Dark Magician", "gy")
+	check(s.can_revive(mine) and not s.can_revive(_in(s, 1, "Dark Magician", "gy")), "Chief: only your own GY is free")
+	# Spy: flip, a Gravekeeper's with 1500 or less ATK from the Deck.
+	s = _main_ready(7003)
+	var spy2 := _mon(s, 0, "Gravekeeper's Spy", 0)
+	var g_deck := _in(s, 0, "Gravekeeper's Curse", "deck")
+	EffectRunner.run_list(s, 0, spy2, EffectRunner.fx(spy2)["flip"], {})
+	check(s.players[0].field.has(g_deck), "Spy: Curse from the Deck")
+	# Guard: flip, a monster back to the hand.
+	s = _main_ready(7004)
+	var gd := _mon(s, 0, "Gravekeeper's Guard", 0)
+	var foe := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	EffectRunner.run_list(s, 0, gd, EffectRunner.fx(gd)["flip"], {})
+	check(s.players[1].hand.has(foe), "Guard: Blue-Eyes back to the hand")
+	# Cannonholder: Tribute a Gravekeeper's, 700.
+	s = _main_ready(7005)
+	var cn := _mon(s, 0, "Gravekeeper's Cannonholder", 0)
+	var fod := _mon(s, 0, "Gravekeeper's Curse", 1)
+	var lp: int = s.players[1].lp
+	check(EffectRunner.can_ignite(s, 0, cn), "Cannonholder: usable")
+	s.ignite(0, cn)
+	check(s.players[0].gy.has(fod) and s.players[1].lp == lp - 700, "Cannonholder: Curse Tributed, 700 damage")
+	# Descendant: Tribute another face-up one, destroy a card.
+	s = _main_ready(7006)
+	var ds := _mon(s, 0, "Gravekeeper's Descendant", 0)
+	_mon(s, 0, "Gravekeeper's Curse", 1)
+	var bw := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	s.ignite(0, ds)
+	check(s.players[1].gy.has(bw), "Descendant: Blue-Eyes destroyed")
+	# Commandant: discard, Necrovalley from the Deck.
+	s = _main_ready(7007)
+	var cmd := _in(s, 0, "Gravekeeper's Commandant", "hand")
+	var nvd := _in(s, 0, "Necrovalley", "deck")
+	check(EffectRunner.hand_can(s, 0, cmd), "Commandant: usable from the hand")
+	EffectRunner.hand_run(s, 0, cmd)
+	check(s.players[0].hand.has(nvd), "Commandant: Necrovalley added")
+	# Recruiter: sent from the field, a low-DEF Gravekeeper's from the Deck.
+	s = _main_ready(7008)
+	var rc := _mon(s, 0, "Gravekeeper's Recruiter", 0)
+	var rc_t := _in(s, 0, "Gravekeeper's Spear Soldier", "deck")
+	s._destroy(rc)
+	check(s.players[0].hand.has(rc_t), "Recruiter: Spear Soldier added")
+	# Priestess: no Field Spell, the field is Necrovalley: +700 in all.
+	s = _main_ready(7009)
+	var pr := _mon(s, 0, "Gravekeeper's Priestess", 0)
+	check(s.necro_on() and s.atk_of(pr, false) == 1000 + 700, "Priestess: the field is Necrovalley, 1700 ATK (got %d)" % s.atk_of(pr, false))
+	# Visionary: 1 Gravekeeper's Tribute, +200 per Gravekeeper's in the GY.
+	s = _main_ready(7010)
+	var vi := _in(s, 0, "Gravekeeper's Visionary", "hand")
+	var t1 := _mon(s, 0, "Gravekeeper's Curse", 0)
+	_in(s, 0, "Gravekeeper's Guard", "gy")
+	check(s.tributes_needed(vi) == 1, "Visionary: 1 Tribute with a Gravekeeper's")
+	s.normal_summon(0, vi, [t1])
+	check(s.players[0].field.has(vi) and s.atk_of(vi, false) == 2000 + 400, "Visionary: 2400 with 2 in the GY (got %d)" % s.atk_of(vi, false))
+	var gkh := _in(s, 0, "Gravekeeper's Spy", "hand")
+	s._destroy(vi)
+	check(s.players[0].field.has(vi) and s.players[0].gy.has(gkh), "Visionary: a Gravekeeper's discarded instead")
+	# Heretic: unaffected with Necrovalley.
+	s = _main_ready(7011)
+	_gk_valley(s)
+	var he := _mon(s, 0, "Gravekeeper's Heretic", 0)
+	var rg := _rst(s, 1, "Raigeki")
+	s.current = 1
+	s.activate(1, rg)
+	check(s.players[0].field.has(he), "Heretic: Raigeki does nothing to it")
+	# Headman: a Level 4 back, even under Necrovalley.
+	s = _main_ready(7012)
+	_gk_valley(s)
+	var lv4 := _in(s, 0, "Gravekeeper's Spear Soldier", "gy")
+	var hm := _mon(s, 0, "Gravekeeper's Headman", 0)
+	EffectRunner.run_list(s, 0, hm, EffectRunner.fx(hm)["any_summon"], {})
+	check(s.players[0].field.has(lv4), "Headman: Spear Soldier back")
+	# Oracle: 1 Gravekeeper's Tribute, its effects.
+	s = _main_ready(7013)
+	var orc := _in(s, 0, "Gravekeeper's Oracle", "hand")
+	var t2 := _mon(s, 0, "Gravekeeper's Spy", 0)
+	var setm := _mon(s, 1, "Celtic Guardian", 0, false)
+	setm.face_up = false
+	check(s.tributes_needed(orc) == 1, "Oracle: 1 Tribute with a Gravekeeper's")
+	s.normal_summon(0, orc, [t2])
+	check(s.atk_of(orc, false) == 2400, "Oracle: +400 (a Level 4 Tributed) (got %d, tags %s, mod %d)" % [s.atk_of(orc, false), str(orc.tags), orc.atk_mod])
+	# Supernaturalist: 2 Gravekeeper's, Levels x 100.
+	s = _main_ready(7014)
+	_gk_valley(s)
+	var sn := _in(s, 0, "Gravekeeper's Supernaturalist", "extra")
+	_mon(s, 0, "Gravekeeper's Spiritualist", 0)
+	_mon(s, 0, "Gravekeeper's Curse", 1)
+	var sp_m: DuelState.CardInst = s.players[0].field[0]
+	check(EffectRunner.can_ignite(s, 0, sp_m), "Spiritualist: can Fusion Summon")
+	s.ignite(0, sp_m)
+	check(s.players[0].field.has(sn) and s.atk_of(sn, false) == 2000 + 700 + 500, "Supernaturalist: 2000 + Levels 4 + 3 + Necrovalley (got %d)" % s.atk_of(sn, false))
+	# Royal Tribute: everybody's monsters in hand go.
+	s = _main_ready(7015)
+	var nv2 := _gk_valley(s)
+	_in(s, 1, "Dark Magician", "hand")
+	var rt := _rst(s, 0, "Royal Tribute")
+	s.activate(0, rt)
+	check(s.players[1].hand.filter(func(h): return h.is_monster()).is_empty(), "Royal Tribute: monsters discarded")
+	# Gravekeeper's Stele: 2 back to the hand, under Necrovalley.
+	s = _main_ready(7016)
+	_gk_valley(s)
+	_in(s, 0, "Gravekeeper's Spy", "gy")
+	_in(s, 0, "Gravekeeper's Guard", "gy")
+	var stl := _rst(s, 0, "Gravekeeper's Stele")
+	var hb: int = s.players[0].hand.size()
+	s.activate(0, stl)
+	check(s.players[0].hand.size() == hb + 1, "Stele: 2 back (hand %d -> %d, minus the Stele)" % [hb, s.players[0].hand.size()])
+	# Servant: the attacker mills 1 to attack.
+	s = _new_state(7017)
+	_battle_ready(s)
+	var sv := _rst(s, 1, "Gravekeeper's Servant", "set")
+	sv.face_up = true
+	_in(s, 0, "Celtic Guardian", "deck")
+	var at := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	var g0: int = s.players[0].gy.size()
+	s.declare_attack(0, at, null)
+	check(s.players[0].gy.size() == g0 + 1, "Servant: 1 card milled to attack")
+	# Hidden Temples: only Gravekeeper's Special Summons.
+	s = _main_ready(7018)
+	_gk_valley(s)
+	_mon(s, 0, "Gravekeeper's Spy", 0)
+	var ht := _rst(s, 0, "Hidden Temples of Necrovalley")
+	s.activate(0, ht)
+	check(s.big_locked(1, _in(s, 1, "Dark Magician", "hand"), true) and not s.big_locked(0, _in(s, 0, "Gravekeeper's Curse", "hand"), true), "Hidden Temples: only Gravekeeper's come out")
+	# Necrovalley Temple: their monsters -500.
+	s = _main_ready(7019)
+	_gk_valley(s)
+	_mon(s, 0, "Gravekeeper's Spy", 0)
+	var tp := _set_trap(s, 0, "Necrovalley Temple")
+	tp.face_up = true
+	var bw2 := _mon(s, 1, "Blue-Eyes White Dragon", 0)
+	check(s.atk_of(bw2, false) == 2500, "Necrovalley Temple: Blue-Eyes at 2500")
+	# Necrovalley Throne: Normal Summon a Gravekeeper's on top of your Normal Summon.
+	s = _main_ready(7020)
+	_mon(s, 0, "Celtic Guardian", 0)
+	s.normal_summoned = true
+	var th := _rst(s, 0, "Necrovalley Throne")
+	var gk3 := _in(s, 0, "Gravekeeper's Curse", "hand")
+	th.mode = 1
+	s.activate(0, th)
+	check(s.players[0].field.has(gk3), "Necrovalley Throne: Curse Normal Summoned")
+	# Terraforming
+	s = _main_ready(7021)
+	var tf := _rst(s, 0, "Terraforming")
+	var nv3 := _in(s, 0, "Necrovalley", "deck")
+	s.activate(0, tf)
+	check(s.players[0].hand.has(nv3), "Terraforming: Necrovalley added")
+	# Charm of Shabti
+	s = _main_ready(7022)
+	var gk4 := _mon(s, 0, "Gravekeeper's Spy", 0)
+	var ch := _in(s, 0, "Charm of Shabti", "hand")
+	EffectRunner.quick_run(s, 0, ch)
+	check(EffectRunner.survives_battle(s, gk4), "Charm of Shabti: no battle destruction")
+	# A Cat of Ill Omen with Necrovalley: the Trap into the hand.
+	s = _main_ready(7023)
+	_gk_valley(s)
+	var cat := _mon(s, 0, "A Cat of Ill Omen", 0)
+	_in(s, 0, "Mirror Force", "deck")
+	var traps_h: int = s.players[0].hand.filter(func(h): return h.is_trap()).size()
+	EffectRunner.run_list(s, 0, cat, EffectRunner.fx(cat)["flip"], {})
+	check(s.players[0].hand.filter(func(h): return h.is_trap()).size() == traps_h + 1, "A Cat of Ill Omen: a Trap added")
+	# Vassal: its battle damage is effect damage (Doppelganger answers it).
+	s = _new_state(7024)
+	_battle_ready(s)
+	var vs := _mon(s, 0, "Gravekeeper's Vassal", 0)
+	_set_trap(s, 1, "Doppelganger")
+	var lp0: int = s.players[0].lp
+	s.declare_attack(0, vs, null)
+	s.resolve_attack()
+	check(s.players[0].lp == lp0 - 700, "Vassal: effect damage, Doppelganger sends 700 back")
+	# Shaman: GY monster effects negated, except Gravekeeper's.
+	s = _main_ready(7025)
+	_mon(s, 1, "Gravekeeper's Shaman", 0)
+	var sg := _mon(s, 0, "Sangan", 0)
+	check(true, "")
+	s._destroy(sg)
+	check(s.shaman_blocks(sg), "Shaman: Sangan's GY effect is negated")
+	# Inscription: no Special Summons from the GY.
+	s = _main_ready(7026)
+	s.inscription = {"mode": 2, "until": s.turn + 1}
+	check(not s.can_revive(_in(s, 1, "Dark Magician", "gy")), "Inscription: no Special Summons from the GY")
+	# Ambusher: flip sends a GY card to the bottom of their Deck (even under Necrovalley); later, Necrovalley back to the hand.
+	s = _main_ready(7027)
+	_gk_valley(s)
+	var am := _mon(s, 0, "Gravekeeper's Ambusher", 0)
+	var og := _in(s, 1, "Dark Magician", "gy")
+	EffectRunner.run_list(s, 0, am, EffectRunner.fx(am)["flip"], {})
+	check(s.players[1].deck.front() == og, "Ambusher: Dark Magician on the bottom of their Deck")
+	var nvg := _in(s, 0, "Necrovalley", "gy")
+	s._destroy(am)
+	check(s.players[0].hand.has(nvg), "Ambusher: Necrovalley back to the hand")
+	# Nobleman: destroyed by an attacker, a Gravekeeper's from the Deck face-down.
+	s = _new_state(7028)
+	_battle_ready(s)
+	var nb := _mon(s, 1, "Gravekeeper's Nobleman", 0)
+	var nd := _in(s, 1, "Gravekeeper's Spy", "deck")
+	var bw3 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw3, nb)
+	s.resolve_attack()
+	check(s.players[1].field.has(nd) and not nd.face_up, "Nobleman: Spy comes out face-down")
+	# Imperial Tombs: negates a Spell with a Gravekeeper's and Necrovalley out.
+	s = _main_ready(7029)
+	_gk_valley(s, 1)
+	_mon(s, 1, "Gravekeeper's Spy", 0)
+	var it := _set_trap(s, 1, "Imperial Tombs of Necrovalley")
+	var rg2 := _rst(s, 0, "Raigeki")
+	s.chain_add(0, rg2, null, "open", null)
+	check(SpellRules.fits(s, 1, it, "chain", s.chain.back()), "Imperial Tombs: can answer Raigeki")
+	# Assailant: attacking under Necrovalley, a monster changes position.
+	s = _new_state(7030)
+	_battle_ready(s)
+	_gk_valley(s)
+	var asl := _mon(s, 0, "Gravekeeper's Assailant", 0)
+	var df := _mon(s, 1, "Mother Grizzly", 0)
+	s.declare_attack(0, asl, df)
+	check(not df.attack_pos, "Assailant: Mother Grizzly to Defense Position")
+
+
 func _dev_need() -> void:
+	print("TOTALS obtainable=", Collection.all_cards().size(), " playable=", Collection.every_playable().size())
 	var all := {}
 	for k in SignatureDecks.WISH:
 		var a: Dictionary = SignatureDecks.audit(k)
@@ -8933,4 +9194,5 @@ func _dev_need() -> void:
 	for k in SignatureDecks.WISH:
 		var a2: Dictionary = SignatureDecks.audit(k)
 		print("READY\t", k, "\t", ", ".join(a2["ready"]), "\t|STAND\t", ", ".join(a2["stand_ins"]), "\t|N ", a2["plays"].size())
+
 

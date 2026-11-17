@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.34.0
+
+**Card family 1 of 16: the Gravekeeper's (Duel Monsters).** First build of the family plan: one whole family per build, rotating through the four eras. 33 new cards, so the game now has **1,738 cards**, every one working and obtainable.
+
+- **The family (37 cards, 33 new):** every Gravekeeper's monster (Spy, Guard, Spear Soldier, Curse, Assailant, Commandant, Recruiter, Descendant, Chief, Cannonholder, Priestess, Visionary, Headman, Watcher, Vassal, Heretic, Shaman, Nobleman, Ambusher, Oracle, Spiritualist), its Fusion (Gravekeeper's Supernaturalist), A Cat of Ill Omen, An Owl of Luck, Charm of Shabti, and the Spells and Traps: Necrovalley, Royal Tribute, Rite of Spirit, Gravekeeper's Stele, Gravekeeper's Servant, Hidden Temples of Necrovalley, Imperial Tombs of Necrovalley, Necrovalley Temple, Necrovalley Throne, Gravekeeper's Inscription, Terraforming, Royal Decree.
+- **Necrovalley works for real:** Gravekeeper's get +500, nothing in either Graveyard can be banished or leave by a card effect, except the cards whose text says they get through (Rite of Spirit, Stele, Headman, Ambusher) and your own Graveyard while Gravekeeper's Chief is out. Gravekeeper's Priestess turns an empty field into Necrovalley.
+- **Valley of the Kings, the theme deck:** 40 cards plus 2 Supernaturalist in the Extra Deck, 900 DP in the card shop. In test duels it won 5 of 8 against the story duelists.
+- **Valley of the Kings, the booster pack:** in a new **Card families** tab of the pack shop, and on the Domino City shelf. The family's cards are also in the Duel Monsters era pack and the type packs.
+- **Someone plays it:** the Morning Runner in Domino City duels with the Gravekeeper's deck now.
+
+Not done or not checked: Gravekeeper's Trap, Mudora the Sword Oracle and Pharaoh's Treasure are left out (they need "Exchange of the Spirit" and drawing a specific face-up card). Necrovalley's "effects that change Types or Attributes in the GY" part isn't built (nothing in the game does that yet). Necrovalley Temple can Set the family's Spells and Traps from the Deck but not a Field Spell. Played by the test duels, not watched.
+
 ## What is in 0.33.58
 
 **Bucket 0, part 4: the new duel rules, plus 23 more duelist cards**

@@ -19,6 +19,9 @@ static func _ev(p: int, c, text: String) -> Dictionary:
 static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> int:
 	var f := fx(c)
 	var b := union_boost(s, c)
+	b += _gk_bonus(s, c)
+	if c.face_up and not c.negated and f.get("visionary", false):
+		b += 200 * s.players[c.owner].gy.filter(func(g): return g.cname().begins_with("Gravekeeper's") and g.is_monster()).size()
 	if not c.negated:
 		for e in s.mon_equips(c, "truckroid"):
 			b += e.atk()   # Truckroid: "Gains ATK equal to the combined ATK of the monsters equipped to it by this effect."
@@ -134,9 +137,28 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 
 
 ## DEF from a monster's own effect ("ATK/DEF become...", "gains ATK/DEF for each...").
+## Gravekeeper's Priestess: "All "Gravekeeper's" monsters on the field gain 200 ATK/DEF", and the field she makes "Necrovalley" gives its 500.
+static func _gk_bonus(s: DuelState, c) -> int:
+	if not c.face_up or not c.cname().begins_with("Gravekeeper's"):
+		return 0
+	var b := 0
+	var any_p := false
+	for q in 2:
+		for m in s.players[q].monsters():
+			if m.face_up and not m.negated and fx(m).get("priestess", false):
+				b += 200
+				any_p = true
+	if any_p and s.priestess_valley():
+		b += 500
+	return b
+
+
 static func def_bonus(s: DuelState, c) -> int:
 	var f := fx(c)
 	var u := union_boost(s, c)
+	u += _gk_bonus(s, c)
+	if c.face_up and not c.negated and f.get("shaman", false):
+		u += 200 * s.players[c.owner].gy.filter(func(g): return g.cname().begins_with("Gravekeeper's") and g.is_monster()).size()   # Gravekeeper's Shaman
 	for zu in s.unions_on(c):
 		if not zu.negated:
 			u += int(fx(zu).get("zw", {}).get("def", 0))   # ZW - Ultimate Shield: "It gains 2000 DEF."
@@ -370,6 +392,8 @@ static func survives_effect(s: DuelState, c) -> bool:
 ## True if c shrugs off being destroyed by battle (and records the once-per-turn use).
 static func survives_battle(s: DuelState, c) -> bool:
 	var f := fx(c)
+	if c.face_up and c.cname().begins_with("Gravekeeper's") and int(s.players[c.owner].once_names.get("#shabti", -1)) == s.turn:
+		return true   # Charm of Shabti: "until the End Phase, "Gravekeeper's" monsters you control cannot be destroyed by battle"
 	if c.tags.has("viser_t") and not c.negated:
 		var vt = s.find_uid(int(c.tags["viser_t"]))
 		if vt != null and s.players[s.opponent(c.owner)].field.has(vt):
@@ -416,6 +440,56 @@ static func survives_battle(s: DuelState, c) -> bool:
 	return false
 
 
+## Put a monster that just came out face-up into face-down Defense Position (Headman, Nobleman).
+static func _set_face_down(s: DuelState, m, events: Array) -> void:
+	m.face_up = false
+	m.attack_pos = false
+	m.reset_mods()
+	events.append({"type": "position", "player": m.owner, "card": m, "zone": s.players[m.owner].field.find(m)})
+
+
+## Gravekeeper's Spiritualist: the Spellcaster Fusions it can make with itself as one of the materials.
+static func _spirit_plans(s: DuelState, p: int) -> Array:
+	var me = null
+	for m in s.players[p].monsters():
+		if m.face_up and m.cname() == "Gravekeeper's Spiritualist":
+			me = m
+	if me == null:
+		return []
+	var out: Array = []
+	for pl in s.fusion_targets(p):
+		if str(pl["card"].data.get("race", "")) != "Spellcaster":
+			continue
+		if not (pl["field"] as Array).has(me):
+			# Use the Spiritualist in place of a material it can stand in for.
+			var fm: Array = fx(pl["card"]).get("fmats", [])
+			var swapped := false
+			for i in (pl["field"] as Array).size():
+				var m0 = pl["field"][i]
+				for flt in fm:
+					if CardEffects.matches(m0.data, flt) and CardEffects.matches(me.data, flt):
+						pl["field"][i] = me
+						swapped = true
+						break
+				if swapped:
+					break
+			if not swapped:
+				for i in (pl["hand"] as Array).size():
+					var h0 = pl["hand"][i]
+					for flt in fm:
+						if CardEffects.matches(h0.data, flt) and CardEffects.matches(me.data, flt):
+							pl["hand"].remove_at(i)
+							pl["field"].append(me)
+							swapped = true
+							break
+					if swapped:
+						break
+			if not swapped:
+				continue
+		out.append(pl)
+	return out
+
+
 ## Bubble Bringer: pairs of Level 3 or lower WATER monsters with the same name in p's GY.
 static func _bubble_pairs(s: DuelState, p: int) -> Array:
 	var by := {}
@@ -446,6 +520,11 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 	if cond == "kuriphoton":
 		var pk := s.players[p]
 		return int(pk.once_names.get("Kuriphoton#gy", -1)) != s.turn and not pk.hand.filter(func(h): return h.is_monster() and h.cname().contains("Photon") and h.cname() != "Kuriphoton").is_empty()
+	if cond == "temple_valley":
+		var pt := s.players[p]
+		return pt.field_spell == null and not (pt.hand + pt.gy).filter(func(x): return x.cname() == "Necrovalley" and not s.necro_holds(x)).is_empty()
+	if cond == "spiritualist":
+		return s.necro_on() and int(s.players[p].once_names.get("Gravekeeper's Spiritualist", -1)) != s.turn and not _spirit_plans(s, p).is_empty()
 	if cond == "atlandis":
 		var me = null
 		for m in s.players[p].monsters():
@@ -972,7 +1051,20 @@ static func blader_negates(s: DuelState, p: int) -> bool:
 	return false
 
 
+## (can_target has no duel state at hand: the duel in progress, if any.)
+static var current_state: DuelState = null
+
+
+static func _state_necro() -> bool:
+	return current_state != null and current_state.necro_on()
+
+
 static func trigger(s: DuelState, c, key: String, ctx := {}) -> Array:
+	current_state = s
+	if s.shaman_blocks(c):
+		return [_ev(c.owner, c, Loc.t("Gravekeeper's Shaman negates %s") % c.cname())]
+	if (s.players[0].gy.has(c) or s.players[1].gy.has(c)) and int(s.inscription.get("mode", -1)) == 0 and int(s.inscription.get("until", -1)) >= s.turn:
+		return [_ev(c.owner, c, Loc.t("Gravekeeper's Inscription: no effects in the Graveyard"))]
 	if key == "damage" and int(c.tags.get("trident", -1)) == s.turn:
 		# Photon Trident: "If that monster inflicts battle damage to your opponent: You can destroy 1 Spell/Trap on the field."
 		c.tags.erase("trident")
@@ -1077,6 +1169,17 @@ static func standby(s: DuelState, p: int) -> Array:
 
 static func end_phase(s: DuelState, p: int) -> Array:
 	var events := []
+	var ps_e := s.players[p]
+	if int(ps_e.once_names.get("#supernat_end", -1)) == s.turn:
+		# Gravekeeper's Supernaturalist: "during the End Phase of this turn, add 1 "Gravekeeper's" monster or 1 "Necrovalley" card from your Deck to your hand."
+		ps_e.once_names.erase("#supernat_end")
+		var pool_e: Array = ps_e.deck.filter(func(x): return (x.is_monster() and x.cname().begins_with("Gravekeeper's")) or x.cname().contains("Necrovalley"))
+		if not pool_e.is_empty():
+			var got_e = s.pick1(p, Loc.t("Gravekeeper's Supernaturalist: add which card?"), pool_e, pool_e[0], null)
+			ps_e.deck.erase(got_e)
+			ps_e.hand.append(got_e)
+			s._shuffle(ps_e.deck)
+			events.append({"type": "search", "player": p, "card": got_e, "deck": ps_e.deck.size()})
 	for m in s.players[p].monsters():
 		if m.face_up and fx(m).has("end"):
 			events.append_array(run_list(s, p, m, fx(m)["end"], {}))
@@ -1122,6 +1225,8 @@ static func gy_can(s: DuelState, p: int, c) -> bool:
 	var g: Dictionary = fx(c).get("gy_ignite", {})
 	if g.is_empty() or not s.players[p].gy.has(c):
 		return false
+	if s.shaman_blocks(c) or (int(s.inscription.get("mode", -1)) == 0 and int(s.inscription.get("until", -1)) >= s.turn):
+		return false   # Gravekeeper's Shaman / Inscription
 	if int(s.players[p].name_lock.get(c.cname(), -1)) == s.turn:
 		return false
 	if g.has("cond") and not _cond(s, p, str(g["cond"])):
@@ -1379,6 +1484,17 @@ static func _zw_equip(s: DuelState, p: int, c) -> Array:
 	return events
 
 
+## A "Tribute 1 ... monster" cost with conditions: "tf_has" (its name has), "tf_not" (not that name), "tf_face_up".
+static func _tf_ok(ig: Dictionary, m) -> bool:
+	if ig.has("tf_has") and not m.cname().begins_with(str(ig["tf_has"])):
+		return false
+	if ig.has("tf_not") and m.cname() == str(ig["tf_not"]):
+		return false
+	if ig.get("tf_face_up", false) and not m.face_up:
+		return false
+	return true
+
+
 static func ignite_spec(c) -> Dictionary:
 	if fx(c).has("union"):
 		return {"label": "Equip to a partner / unequip"}
@@ -1450,7 +1566,7 @@ static func can_ignite(s: DuelState, p: int, c) -> bool:
 			if not any:
 				return false
 		"tribute_other":
-			if ps.monsters().filter(func(m): return m != c and s.can_tribute_fx(m)).is_empty():
+			if ps.monsters().filter(func(m): return m != c and s.can_tribute_fx(m) and _tf_ok(ig, m)).is_empty():
 				return false
 		"tribute_two":
 			if ps.monsters().filter(func(m): return m != c and s.can_tribute_fx(m)).size() < 2:
@@ -1905,7 +2021,7 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 			var pick = null
 			var can: Array = []
 			for m in ps.monsters():
-				if m == c or not s.can_tribute_fx(m):
+				if m == c or not s.can_tribute_fx(m) or not _tf_ok(ig, m):
 					continue
 				if ig["cost"] == "tribute_plant" and str(m.data.get("race", "")) != "Plant":
 					continue
@@ -2003,6 +2119,14 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 	var pa: Dictionary = s.pending_attack
 	var battling: bool = not pa.is_empty() and not pa.get("negated", false)
 	match kind:
+		"shabti":
+			return ps.hand.has(c) and int(ps.once_names.get("#shabti", -1)) != s.turn and window in ["attack", "damage", "chain", "battle_start", "phase", "summon"] \
+					and not ps.monsters().filter(func(m): return m.face_up and m.cname().begins_with("Gravekeeper's")).is_empty()
+		"gk_watcher":
+			if not ps.hand.has(c) or window != "chain" or s.chain.is_empty():
+				return false
+			var lk_w: Dictionary = s.chain.back()
+			return int(lk_w["player"]) != p and not lk_w.get("negated", false) and str(lk_w["card"].data.get("desc", "")).to_lower().contains("discard")
 		"calima":
 			return ps.gy.has(c) and s.current != p and s.phase == DuelState.Phase.BATTLE and ps.monsters().is_empty() and window in ["attack", "battle_start", "chain"] \
 					and ps.no_summon_turn != s.turn and not s.ss_locked(p) and not ps.gy.filter(func(g): return g.frame() == "synchro" and s.can_revive(g)).is_empty()
@@ -2164,6 +2288,18 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 	var events := []
 	var hit: bool = not s.pending_attack.is_empty() and int(s.pending_attack["player"]) != p and not s.pending_attack.get("negated", false)
 	match kind:
+		"shabti":
+			ps.hand.erase(c)
+			s._to_gy(ps, c)
+			events.append({"type": "discard", "player": p, "card": c})
+			ps.once_names["#shabti"] = s.turn
+			events.append(_ev(p, c, Loc.t("%s: your \"Gravekeeper's\" monsters can't be destroyed by battle this turn") % c.cname()))
+		"gk_watcher":
+			ps.hand.erase(c)
+			s._to_gy(ps, c)
+			events.append({"type": "discard", "player": p, "card": c})
+			if not s.chain.is_empty():
+				events.append_array(_negate_link(s, p, c, s.chain.back()))
 		"calima":
 			events.append_array(s._banish(c))
 			var syn_c: Array = ps.gy.filter(func(g): return g.frame() == "synchro" and s.can_revive(g))
@@ -2541,6 +2677,10 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 		else:
 			lose = a > s.def_of(tgt)
 	match kind:
+		"shabti":
+			return hit and tgt != null and tgt.owner == p and tgt.cname().begins_with("Gravekeeper's") and lose
+		"gk_watcher":
+			return true
 		"calima":
 			return hit
 		"extra_veiler":
@@ -2725,6 +2865,8 @@ static func run_list(s: DuelState, p: int, c, actions: Array, ctx: Dictionary) -
 
 ## Turbo Warrior: "This card cannot be targeted by the effects of Level 6 or lower monsters."
 static func can_target(src, m) -> bool:
+	if m != null and src != m and m is DuelState.CardInst and m.face_up and not m.negated and fx(m).get("heretic", false) and _state_necro():
+		return false   # Gravekeeper's Heretic: "unaffected by all other card effects" while Necrovalley is on the field
 	if src != null and m != null and m.has_meta("zw_untarget_owner") and src.owner != m.owner:
 		return false
 	if m != null and m.face_up and (m.tags.get("no_target", false) or (not m.negated and CardEffects.of(m.cname()).get("untargetable", false))):
@@ -2904,6 +3046,147 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"temple_valley":
+			var nvt: Array = (ps.hand + ps.gy).filter(func(x): return x.cname() == "Necrovalley" and not s.necro_holds(x))
+			if ps.field_spell == null and not nvt.is_empty():
+				var nv0 = nvt[0]
+				ps.hand.erase(nv0)
+				ps.gy.erase(nv0)
+				ps.field_spell = nv0
+				nv0.face_up = true
+				events.append({"type": "activate", "player": p, "card": nv0, "zone": 5})
+				events.append(_ev(p, c, Loc.t("%s activates Necrovalley") % name))
+		"gk_bounce":
+			# Gravekeeper's Guard: "FLIP: Target 1 monster your opponent controls; return that target to the hand."
+			var foes_g: Array = opp.monsters().filter(func(m): return can_target(c, m))
+			if not foes_g.is_empty():
+				var best_g: Array = s._best_monsters(foes_g, 1)
+				var t_g = s.pick1(p, Loc.t("%s: return which monster to the hand?") % name, foes_g, best_g[0] if not best_g.is_empty() else foes_g[0], c)
+				events.append_array(s._bounce(t_g))
+		"chief_revive":
+			# Gravekeeper's Chief: "When this card is Tribute Summoned: You can target 1 "Gravekeeper's" monster in your GY; Special Summon that target."
+			if int(c.tags.get("tributes_n", 0)) > 0 and ps.free_zone() != -1 and ps.no_summon_turn != s.turn:
+				var gks: Array = ps.gy.filter(func(g): return g.is_monster() and g.cname().begins_with("Gravekeeper's") and s.can_revive(g) and not s.big_locked(p, g, true))
+				if not gks.is_empty():
+					var best_c: Array = s._best_monsters(gks, 1)
+					var t_c = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, gks, best_c[0], c)
+					ps.gy.erase(t_c)
+					events.append_array(s._special(p, t_c, "reborn"))
+		"destroy_opp_card":
+			# Gravekeeper's Descendant: "target 1 card your opponent controls; destroy that target."
+			var cards_d: Array = opp.monsters().filter(func(m): return can_target(c, m))
+			for st in opp.spells:
+				if st != null:
+					cards_d.append(st)
+			if opp.field_spell != null:
+				cards_d.append(opp.field_spell)
+			if not cards_d.is_empty():
+				var mons_d: Array = s._best_monsters(cards_d.filter(func(x): return x.is_monster() and opp.field.has(x)), 1)
+				var t_d = s.pick1(p, Loc.t("%s: destroy which card?") % name, cards_d, mons_d[0] if not mons_d.is_empty() else cards_d[0], c)
+				events.append_array(s._destroy(t_d) if opp.field.has(t_d) else s._destroy_st(t_d))
+		"headman":
+			# Gravekeeper's Headman: "target 1 Level 4 "Gravekeeper's" monster in your GY; Special Summon it in Attack Position or
+			# face-down Defense Position. Once per turn. This effect is unaffected by "Necrovalley"."
+			if int(ps.once_names.get("Gravekeeper's Headman", -1)) != s.turn and ps.free_zone() != -1 and ps.no_summon_turn != s.turn:
+				var hs: Array = ps.gy.filter(func(g): return g.is_monster() and g.cname().begins_with("Gravekeeper's") and g.level() == 4 and s.can_revive(g) and not s.big_locked(p, g, true))
+				if not hs.is_empty():
+					ps.once_names["Gravekeeper's Headman"] = s.turn
+					var best_h: Array = s._best_monsters(hs, 1)
+					var t_h = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, hs, best_h[0], c)
+					var down_h := s.choose_option(p, Loc.t("%s: Special Summon %s in:") % [name, t_h.cname()], [Loc.t("Attack Position"), Loc.t("Face-down Defense Position")],
+							1 if fx(t_h).has("flip") else 0, c) == 1
+					ps.gy.erase(t_h)
+					events.append_array(s._special(p, t_h, "reborn", "atk"))
+					if down_h and ps.field.has(t_h):
+						_set_face_down(s, t_h, events)
+		"nobleman":
+			# Gravekeeper's Nobleman: "When this card you control is destroyed by battle with an opponent's attacking monster and sent
+			# to your Graveyard: You can Special Summon 1 "Gravekeeper's" monster from your Deck in face-down Defense Position, except "Gravekeeper's Nobleman"."
+			var killer_n = ctx.get("killer")
+			if ps.gy.has(c) and killer_n != null and killer_n.owner != p and s.current != p and ps.free_zone() != -1 and ps.no_summon_turn != s.turn and not s.ss_locked(p):
+				var dk_n: Array = ps.deck.filter(func(x): return x.is_monster() and x.cname().begins_with("Gravekeeper's") and x.cname() != "Gravekeeper's Nobleman" and _ss_ok(x) and not s.big_locked(p, x, true))
+				if not dk_n.is_empty():
+					var best_n: Array = s._best_monsters(dk_n, 1)
+					var t_n = s.pick1(p, Loc.t("%s: Special Summon which monster face-down?") % name, dk_n, best_n[0], c)
+					ps.deck.erase(t_n)
+					events.append_array(s._special(p, t_n, "effect", "def"))
+					if ps.field.has(t_n):
+						_set_face_down(s, t_n, events)
+					s._shuffle(ps.deck)
+		"ambusher_flip":
+			# Gravekeeper's Ambusher: "When this card is flipped face-up: You can target 1 card in your opponent's GY; place that target on the bottom of their Deck."
+			c.set_meta("ambush_up", true)
+			if not opp.gy.is_empty():
+				var t_a = s.pick1(p, Loc.t("%s: put which card on the bottom of their Deck?") % name, opp.gy, opp.gy.back(), c)
+				opp.gy.erase(t_a)
+				opp.deck.push_front(t_a)
+				events.append(_ev(p, c, Loc.t("%s puts %s on the bottom of the Deck") % [name, t_a.cname()]))
+		"ambusher_gy":
+			# "If this card is sent from the field to the GY after being flipped face-up: You can target 1 "Necrovalley" card in your GY; add that target to your hand."
+			if c.has_meta("ambush_up"):
+				c.remove_meta("ambush_up")
+				var nv_a: Array = ps.gy.filter(func(g): return g.cname().contains("Necrovalley"))
+				if not nv_a.is_empty():
+					ps.gy.erase(nv_a[0])
+					ps.hand.append(nv_a[0])
+					events.append({"type": "gy_to_hand", "player": p, "card": nv_a[0], "deck": ps.deck.size()})
+		"oracle":
+			# Gravekeeper's Oracle: "When this card is Tribute Summoned: You can activate any of these effects, and resolve in sequence,
+			# up to the number of "Gravekeeper's" monsters Tributed for its Summon."
+			var n_o: int = mini(3, int(c.tags.get("trib_gk", 0)))
+			var left_o: Array = [0, 1, 2]
+			for i in n_o:
+				var labels: Array = []
+				for k in left_o:
+					labels.append([Loc.t("+%d ATK (their Levels x 100)") % (int(c.tags.get("trib_lv", 0)) * 100), Loc.t("Destroy all their Set monsters"), Loc.t("All their monsters lose 2000 ATK/DEF")][k])
+				labels.append(Loc.t("Stop"))
+				var pick_o := s.choose_option(p, Loc.t("%s: which effect?") % name, labels, 0 if left_o[0] != 1 or not opp.monsters().filter(func(m): return not m.face_up).is_empty() else mini(1, labels.size() - 1), c)
+				if pick_o >= left_o.size():
+					break
+				var k_o: int = left_o[pick_o]
+				left_o.remove_at(pick_o)
+				match k_o:
+					0:
+						c.atk_mod += int(c.tags.get("trib_lv", 0)) * 100
+						events.append(_ev(p, c, Loc.t("%s: %+d ATK") % [name, int(c.tags.get("trib_lv", 0)) * 100]))
+					1:
+						for m in opp.monsters().filter(func(m): return not m.face_up):
+							events.append_array(s._destroy(m))
+					2:
+						for m in opp.monsters():
+							m.atk_mod -= 2000
+							m.def_mod -= 2000
+						events.append(_ev(p, c, Loc.t("%s: their monsters lose 2000 ATK/DEF") % name))
+		"spiritualist":
+			# Gravekeeper's Spiritualist: "Fusion Summon 1 Spellcaster Fusion Monster from your Extra Deck, using this card you control and
+			# other monsters from your hand or field as Fusion Material."
+			ps.once_names["Gravekeeper's Spiritualist"] = s.turn
+			var plans_s: Array = _spirit_plans(s, p)
+			if not plans_s.is_empty():
+				var fc: Array = plans_s.map(func(x): return x["card"])
+				var want_s = s.pick1(p, Loc.t("%s: Fusion Summon which monster?") % name, fc, fc[0], c)
+				for pl in plans_s:
+					if pl["card"] == want_s:
+						events.append_array(s._do_fusion(p, pl))
+						break
+		"supernat_mark":
+			ps.once_names["#supernat_end"] = s.turn
+			events.append(_ev(p, c, Loc.t("%s: you add a card in the End Phase") % name))
+		"omen_top":
+			# A Cat of Ill Omen / An Owl of Luck: put a Trap (a Field Spell) from your Deck on top of it, or into your hand with Necrovalley.
+			var want_k := str(a[1])
+			var pool_o: Array = ps.deck.filter(func(x): return (want_k == "trap" and x.is_trap()) or (want_k == "field" and str(SpellRules.spec(x).get("k", "")) == "field"))
+			if not pool_o.is_empty():
+				var t_o = s.pick1(p, Loc.t("%s: choose a card from your Deck") % name, pool_o, pool_o[0], c)
+				ps.deck.erase(t_o)
+				if s.necro_on() and s.choose_option(p, Loc.t("%s: add %s to your hand?") % [name, t_o.cname()], [Loc.t("Add it to the hand"), Loc.t("Put it on top of the Deck")], 0, c) == 0:
+					ps.hand.append(t_o)
+					s._shuffle(ps.deck)
+					events.append({"type": "search", "player": p, "card": t_o, "deck": ps.deck.size()})
+				else:
+					s._shuffle(ps.deck)
+					ps.deck.append(t_o)
+					events.append(_ev(p, c, Loc.t("%s puts a card on top of the Deck") % name))
 		"makyura":
 			if int(ps.once_names.get("Makyura the Destructor", -1)) != s.turn:
 				ps.once_names["Makyura the Destructor"] = s.turn
@@ -5125,9 +5408,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			events.append({"type": "search", "player": p, "card": d, "deck": ps.deck.size()})
 			events.append_array(added_by_effect(s, p, d))
 		"gy_to_hand":
-			if SpellRules.field_flag(s, "necrovalley"):
-				return events   # Necrovalley: nothing leaves the Graveyard
-			for d in _pick(s, p, c, "add from your Graveyard to your hand", ps.gy, a[1], int(a[2])):
+			for d in _pick(s, p, c, "add from your Graveyard to your hand", ps.gy.filter(func(x): return not s.necro_holds(x)), a[1], int(a[2])):
 				ps.gy.erase(d)
 				ps.hand.append(d)
 				events.append(_ev(p, c, Loc.t("%s returns %s to the hand") % [name, d.cname()]))
@@ -5146,7 +5427,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				pool.append_array(ps.gy.filter(func(x): return s.can_revive(x)))
 			if s.ss_locked(p):
 				pool = []   # Gagaga Head's lock
-			pool = pool.filter(func(x): return not s.big_locked(p, x))   # Crimson Blader
+			pool = pool.filter(func(x): return not s.big_locked(p, x, true))   # Crimson Blader
 			for d in _pick(s, p, c, Loc.t("Special Summon from your %s") % ("Deck" if a[1] == "deck" else ("hand" if a[1] == "hand" else ("hand or Graveyard" if a[1] == "hand_gy" else "Graveyard"))), pool, flt, n):
 				if ps.free_zone() == -1:
 					break

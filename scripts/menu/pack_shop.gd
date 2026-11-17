@@ -26,7 +26,7 @@ var _t := 0.0
 
 
 ## What each world's card shop keeps on its shelf.
-const WORLD_PACKS := {"domino": ["Duel Monsters", "Vault", "legends"], "academy": ["GX", "Vault", "legends"], "satellite": ["5D's", "beyond"], "newdomino": ["5D's", "beyond", "Vault"],
+const WORLD_PACKS := {"domino": ["Duel Monsters", "gravekeeper", "Vault", "legends"], "academy": ["GX", "Vault", "legends"], "satellite": ["5D's", "beyond"], "newdomino": ["5D's", "beyond", "Vault"],
 	"heartland": ["ZEXAL", "beyond", "legends"]}
 
 
@@ -165,7 +165,7 @@ func _ready() -> void:
 	_featured.add_theme_constant_override("separation", 12)
 	right.add_child(_featured)
 	_last = _featured
-	_show_tab(0)
+	_show_tab(int(OS.get_environment("PACK_TAB")) if OS.get_environment("PACK_TAB") != "" else 0)
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.25)
 
@@ -184,7 +184,7 @@ func _show_tab(t: int) -> void:
 	# A shop inside a world sells that world's own cards (and the Vault). The full shelf is
 	# in the main menu.
 	var here := str(Router.roam.get("district", "")) if get_tree().current_scene and "district" in get_tree().current_scene and "_npcs" in get_tree().current_scene else ""
-	if here != "" and WORLD_PACKS.has(here) and t == 0:
+	if here != "" and WORLD_PACKS.has(here) and t <= 1:
 		var mine: Array = WORLD_PACKS[here]
 		var kept: Array = _packs.filter(func(p): return str(p["key"]) in mine)
 		if not kept.is_empty():

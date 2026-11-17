@@ -10,7 +10,7 @@ const DISTRICTS := {
 		"npcs": [
 			{"id": "dawn_domino", "char": "", "model": "duelist_f2", "name": "The Morning Runner", "color": Color("ffb86b"), "pos": Vector3(-8.2, 0, -5.8), "face": 2.4, "hours": [5, 10], "aloof": true,
 				"lines": ["Six laps of downtown before the shops open. Then one duel. Always in that order.", "By ten I am at a desk and I am nobody. Catch me before ten."],
-				"duel": {"deck": "joey", "difficulty": 2, "intro": "A quick one. I am on a schedule."}},
+				"duel": {"deck": "deck_gravekeeper", "difficulty": 2, "intro": "A quick one. I am on a schedule. And nothing comes back from my valley."}},
 			{"id": "night_domino", "char": "", "model": "duelist_m7", "name": "The Midnight Collector", "color": Color("b78cff"), "pos": Vector3(8.0, 0, -40.2), "face": 0.2, "night": true, "aloof": true,
 				"lines": ["I only come out when the plaza is empty. Fewer witnesses.", "Every card I own was won after midnight. Yours will be too."],
 				"duel": {"deck": "kaiba", "difficulty": 3, "intro": "The night shift starts now.", "rare": true}},

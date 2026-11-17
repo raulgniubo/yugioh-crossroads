@@ -131,7 +131,7 @@ func _build_data() -> void:
 				_comes_from[int(id)] = []
 			(_comes_from[int(id)] as Array).append(str(p["name"]))
 		_sets.append({"key": key, "name": str(p["name"]), "color": p["color"], "ids": _sorted(ids),
-				"group": "BOOSTER SETS" if int(p["tab"]) == 0 else "BY KIND"})
+				"group": "BOOSTER SETS" if int(p["tab"]) <= 1 else "BY KIND"})
 		if key == "Vault":
 			# The special ones sit after the era sets.
 			pass

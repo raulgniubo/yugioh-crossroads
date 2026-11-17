@@ -23,7 +23,7 @@ const SEMI_LIMITED := ["Scapegoat", "Book of Moon", "Nobleman of Crossout", "Rei
 ## Booster packs. "tab" is the shelf they stand on in the shop. The five series sets together hold
 ## every card in the game; the themed sets hold the same cards sorted by what they are, so you can
 ## chase the kind of card your deck needs.
-const PACK_TABS := ["Series sets", "Monster types", "Elements, Spells and Traps"]
+const PACK_TABS := ["Series sets", "Card families", "Monster types", "Elements, Spells and Traps"]
 const THEMED_PRICE := 200
 const PACKS := [
 	{"key": "Duel Monsters", "tab": 0, "name": "Legend of the King", "color": Color("8a4dff"), "blurb": "Cards from the Duel Monsters era."},
@@ -33,19 +33,20 @@ const PACKS := [
 	{"key": "Vault", "tab": 0, "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
 	{"key": "legends", "tab": 0, "name": "Monster Legends", "color": Color("e8b04a"), "blurb": "Normal Monsters from every era: hundreds of them, from the classics to the rare big ones."},
 	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen, her forms and the cards around her. Only the ones the story has already handed you, up to three of each."},
+	{"key": "gravekeeper", "tab": 1, "name": "Valley of the Kings", "color": Color("c8a050"), "family": true, "blurb": "The Gravekeeper's and Necrovalley: the tomb guardians, the valley that locks every Graveyard, and the cards around them."},
 	{"key": "beyond", "tab": 0, "name": "Beyond the Limit", "color": Color("b06bff"), "blurb": "Fusion, Synchro, Xyz and Ritual monsters, and the Spells that call them."},
-	{"key": "dragons", "tab": 1, "name": "Dragon's Roar", "color": Color("ff5a3c"), "blurb": "Dragons, Dinosaurs, Reptiles and Sea Serpents."},
-	{"key": "warriors", "tab": 1, "name": "Blades of Valor", "color": Color("f0b040"), "blurb": "Warriors, from street fighters to legendary knights."},
-	{"key": "arcane", "tab": 1, "name": "Arcane Circle", "color": Color("ffd97a"), "blurb": "Spellcasters, Fairies and Thunder."},
-	{"key": "shadow", "tab": 1, "name": "Midnight Crypt", "color": Color("9a6bff"), "blurb": "Fiends and Zombies."},
-	{"key": "machines", "tab": 1, "name": "Steel Factory", "color": Color("6fc3ff"), "blurb": "Machines of every size."},
-	{"key": "wild", "tab": 1, "name": "Call of the Wild", "color": Color("ff9a3c"), "blurb": "Beasts and Beast-Warriors."},
-	{"key": "tide", "tab": 2, "name": "Flame and Tide", "color": Color("4aa8ff"), "blurb": "Every WATER and FIRE monster."},
-	{"key": "gale", "tab": 2, "name": "Sky Riders", "color": Color("7de0b0"), "blurb": "WIND monsters and Winged Beasts."},
-	{"key": "forest", "tab": 2, "name": "Deep Woods", "color": Color("5fd070"), "blurb": "Insects, Plants, Rocks, Aqua, Fish and Pyro."},
-	{"key": "spellbook", "tab": 2, "name": "Sorcerer's Library", "color": Color("3fe0c0"), "blurb": "Normal and Quick-Play Spells: removal, draw power, revival."},
-	{"key": "arsenal", "tab": 2, "name": "Relic Arsenal", "color": Color("8fb8c8"), "blurb": "Equip, Field and Continuous Spells."},
-	{"key": "traps", "tab": 2, "name": "Face-Down Secrets", "color": Color("ff5a8a"), "blurb": "Every Trap card in the game."},
+	{"key": "dragons", "tab": 2, "name": "Dragon's Roar", "color": Color("ff5a3c"), "blurb": "Dragons, Dinosaurs, Reptiles and Sea Serpents."},
+	{"key": "warriors", "tab": 2, "name": "Blades of Valor", "color": Color("f0b040"), "blurb": "Warriors, from street fighters to legendary knights."},
+	{"key": "arcane", "tab": 2, "name": "Arcane Circle", "color": Color("ffd97a"), "blurb": "Spellcasters, Fairies and Thunder."},
+	{"key": "shadow", "tab": 2, "name": "Midnight Crypt", "color": Color("9a6bff"), "blurb": "Fiends and Zombies."},
+	{"key": "machines", "tab": 2, "name": "Steel Factory", "color": Color("6fc3ff"), "blurb": "Machines of every size."},
+	{"key": "wild", "tab": 2, "name": "Call of the Wild", "color": Color("ff9a3c"), "blurb": "Beasts and Beast-Warriors."},
+	{"key": "tide", "tab": 3, "name": "Flame and Tide", "color": Color("4aa8ff"), "blurb": "Every WATER and FIRE monster."},
+	{"key": "gale", "tab": 3, "name": "Sky Riders", "color": Color("7de0b0"), "blurb": "WIND monsters and Winged Beasts."},
+	{"key": "forest", "tab": 3, "name": "Deep Woods", "color": Color("5fd070"), "blurb": "Insects, Plants, Rocks, Aqua, Fish and Pyro."},
+	{"key": "spellbook", "tab": 3, "name": "Sorcerer's Library", "color": Color("3fe0c0"), "blurb": "Normal and Quick-Play Spells: removal, draw power, revival."},
+	{"key": "arsenal", "tab": 3, "name": "Relic Arsenal", "color": Color("8fb8c8"), "blurb": "Equip, Field and Continuous Spells."},
+	{"key": "traps", "tab": 3, "name": "Face-Down Secrets", "color": Color("ff5a8a"), "blurb": "Every Trap card in the game."},
 ]
 ## Ready-made theme decks sold at the card shop (duelists' decks are sold there too).
 const DECK_PRICE := 1200
@@ -60,6 +61,7 @@ const THEME_DECKS := [
 	{"key": "deck_shadow", "art": "shadow", "color": Color("9a6bff"), "blurb": "Fiends that hit hard for their Level, and ways to bring them back."},
 	{"key": "deck_machine", "art": "machines", "color": Color("6fc3ff"), "blurb": "Machines with heavy firepower and the tools to make them bigger."},
 	{"key": "deck_wild", "art": "wild", "color": Color("ff9a3c"), "blurb": "Beasts with high ATK at Level 4. No tricks, just teeth."},
+	{"key": "deck_gravekeeper", "art": "arcane", "color": Color("c8a050"), "era": "Duel Monsters", "blurb": "The Gravekeeper's guard Necrovalley: while it stands, nothing leaves either Graveyard. Flip Spies, call more guards, lock the other side down."},
 	{"key": "deck_forest", "art": "forest", "color": Color("5fd070"), "blurb": "Insects and Plants in their Forest, with Traps that slow everything down."},
 ]
 ## The three decks a new duelist picks one of: the same strength, three ways to play, your
@@ -79,6 +81,28 @@ const STARTERS := [
 ## Solid Normal Monsters that round out the Vault.
 ## The series sets: together they hold every card you can collect (the themed sets sort the same cards).
 const SERIES := ["Duel Monsters", "GX", "5D's", "ZEXAL", "Vault", "legends"]
+## Card families (the 1,000-card plan): each one has its own booster pack, a theme deck in the shop, and its
+## cards also join its era's pack. One entry per family, in the order they were added.
+const FAMILIES := {
+	"gravekeeper": {"era": "Duel Monsters", "deck": "deck_gravekeeper", "cards": [
+		"Gravekeeper's Spy", "Gravekeeper's Guard", "Gravekeeper's Spear Soldier", "Gravekeeper's Curse", "Gravekeeper's Assailant",
+		"Gravekeeper's Commandant", "Gravekeeper's Recruiter", "Gravekeeper's Descendant", "Gravekeeper's Chief", "Gravekeeper's Cannonholder",
+		"Gravekeeper's Priestess", "Gravekeeper's Visionary", "Gravekeeper's Headman", "Gravekeeper's Watcher", "Gravekeeper's Vassal",
+		"Gravekeeper's Heretic", "Gravekeeper's Shaman", "Gravekeeper's Nobleman", "Gravekeeper's Ambusher", "Gravekeeper's Oracle",
+		"Gravekeeper's Spiritualist", "Gravekeeper's Supernaturalist", "A Cat of Ill Omen", "An Owl of Luck", "Charm of Shabti",
+		"Necrovalley", "Royal Tribute", "Rite of Spirit", "Gravekeeper's Stele", "Gravekeeper's Servant", "Hidden Temples of Necrovalley",
+		"Imperial Tombs of Necrovalley", "Necrovalley Temple", "Necrovalley Throne", "Gravekeeper's Inscription", "Terraforming", "Royal Decree"]},
+}
+
+
+## The ids of a family's cards that work in the game.
+static func family_ids(key: String) -> Array:
+	var out: Array = []
+	for n in FAMILIES.get(key, {}).get("cards", []):
+		var id: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
+		if id != 0 and not CardData.get_card(id).is_empty() and CardExact.ok(CardData.get_card(id)):
+			out.append(id)
+	return out
 const VAULT_EXTRAS := ["Gemini Elf", "Vorse Raider", "Luster Dragon", "Mad Dog of Darkness", "Insect Knight", "Gene-Warped Warwolf",
 	"Archfiend Soldier", "Sabersaurus", "Alexandrite Dragon", "Summoned Skull", "Luster Dragon #2", "Mystical Elf", "Giant Soldier of Stone",
 	"La Jinn the Mystical Genie of the Lamp", "Dark Blade", "Blazing Inpachi", "Neo the Magic Swordsman", "Sky Scout"]
@@ -408,7 +432,7 @@ func deck_catalog() -> Array:
 	for t in THEME_DECKS:
 		if CardData.has_deck(str(t["key"])):
 			out.append({"key": t["key"], "name": CardData.deck_name(str(t["key"])), "owner": "", "who": "", "color": t["color"],
-				"blurb": t["blurb"], "art": t["art"], "price": THEME_PRICE, "kind": "theme", "era": ""})
+				"blurb": t["blurb"], "art": t["art"], "price": THEME_PRICE, "kind": "theme", "era": str(t.get("era", ""))})
 	return out
 
 
@@ -1363,6 +1387,9 @@ func pool(era: String) -> Array:
 	if _pools.has(era):
 		return _pools[era]
 	var ids := {}
+	if FAMILIES.has(era):
+		_pools[era] = family_ids(era)
+		return _pools[era]
 	if era == "legends":
 		# Every Normal Monster in the card folder that no other set hands out (they used to work
 		# in the game with no way to get one).
@@ -1401,6 +1428,10 @@ func pool(era: String) -> Array:
 				ids[id] = true
 		_pools[era] = ids.keys()
 		return _pools[era]
+	for fk in FAMILIES:
+		if str(FAMILIES[fk]["era"]) == era:
+			for id in family_ids(fk):
+				ids[id] = true
 	for k in Characters.ORDER:
 		var d: Dictionary = Characters.DATA[k]
 		if str(d.get("era", "")) != era or not CardData.has_deck(str(d["deck"])):

@@ -29,6 +29,19 @@ const FX := {
 	"Echo Resonance": {"k": "normal", "cond": "echo_ready", "do": [["echo_resonance"]]},
 	"Echo Call": {"k": "normal", "do": [["search", {"has": "Lumen"}]]},
 	"Echo Veil": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["draw_if_own", "Lumen", 1]]},
+	# ---------------------------------------------------------------- Gravekeeper's (0.34.0)
+	"Royal Tribute": {"k": "normal", "cond": "own_necrovalley", "do": [["royal_tribute"]]},
+	"Rite of Spirit": {"k": "trap", "win": ["free"], "do": [["revive", "own_gy", "", "", {"has": "Gravekeeper's"}]]},
+	"Gravekeeper's Stele": {"k": "normal", "do": [["gy_to_hand", {"has": "Gravekeeper's", "monster": true}, 2]]},
+	"Gravekeeper's Servant": {"k": "cont", "servant": true},
+	"Hidden Temples of Necrovalley": {"k": "cont", "cond": "gk_and_valley", "hidden_temples": true},
+	"Imperial Tombs of Necrovalley": {"k": "counter", "neg": ["spell", "trap", "fx"], "cond": "imperial_tombs", "do": [["mark_once", "Imperial Tombs of Necrovalley"]]},
+	"Necrovalley Temple": {"k": "ctrap", "win": ["free"], "temple": true},
+	"Necrovalley Throne": {"k": "normal", "cond": "throne", "modes": [
+		{"label": "Add 1 \"Gravekeeper's\" monster from your Deck to your hand", "do": [["mark_once", "Necrovalley Throne"], ["search", {"has": "Gravekeeper's", "monster": true}]]},
+		{"label": "Normal Summon 1 \"Gravekeeper's\" monster now", "do": [["mark_once", "Necrovalley Throne"], ["throne_summon"]]}]},
+	"Gravekeeper's Inscription": {"k": "cont", "inscription": true},
+	"Terraforming": {"k": "normal", "ai": "always", "do": [["search_field"]]},
 	# ---------------------------------------------------------------- The story duelists' remaining cards (batch 3)
 	"Photon Trident": {"k": "quick", "t": "own_face", "must_has": "Photon", "do": [["atk", "target", 700, "eot"], ["pierce_turn", "target"], ["trident", "target"]]},
 	"Changing Destiny": {"k": "trap", "win": ["attack"], "do": [["changing_destiny"]]},
@@ -830,6 +843,15 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			if int(s.players[p].once_names.get("killed_def", -1)) != s.turn:
 				return false
 			return not s.players[p].monsters().filter(func(m): return m.face_up and m.level() == 8 and m.frame() != "xyz").is_empty()
+		"own_necrovalley":
+			var fs = s.players[p].field_spell
+			return fs != null and fs.face_up and spec(fs).get("necrovalley", false)
+		"gk_and_valley":
+			return s.gk_and_valley()
+		"imperial_tombs":
+			return s.gk_and_valley() and int(s.players[p].once_names.get("Imperial Tombs of Necrovalley", -1)) != s.turn
+		"throne":
+			return int(s.players[p].once_names.get("Necrovalley Throne", -1)) != s.turn
 		"gagagaback":
 			var ps_g := s.players[p]
 			if int(ps_g.once_names.get("Gagagaback", -1)) == s.turn or ps_g.free_zone() == -1 or ps_g.no_summon_turn == s.turn or s.ss_locked(p):
@@ -1084,6 +1106,14 @@ static func echo_radiant(s: DuelState, p: int):
 
 
 static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
+	var was_probe = s.probe_src
+	s.probe_src = c
+	var ok := _feasible(s, p, c, window, subject)
+	s.probe_src = was_probe
+	return ok
+
+
+static func _feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 	var sp := spec(c)
 	if not _can_pay(s, p, c, sp):
 		return false
@@ -1204,7 +1234,7 @@ static func feasible(s: DuelState, p: int, c, window: String, subject) -> bool:
 				if kuri.is_empty() or lv10.is_empty() or spare < 2 or ps.no_summon_turn == s.turn:
 					return false
 			"gy_to_hand":
-				if EffectRunner._take(ps.gy, a[1], 1).is_empty() or field_flag(s, "necrovalley"):
+				if EffectRunner._take(ps.gy.filter(func(g): return not s.necro_holds(g)), a[1], int(a[2]) if a.size() > 2 else 1).size() < (int(a[2]) if a.size() > 2 else 1):
 					return false
 			"search":
 				if EffectRunner._take(ps.deck, a[1], 1).is_empty():
@@ -1397,6 +1427,8 @@ static func targets(s: DuelState, p: int, c) -> Array:
 				ok = false   # Assault Armor: "Equip only to a Warrior-Type monster that is the only monster you control"
 			if ok and sp.get("must_attacked", false) and (s.pending_attack.is_empty() or s.pending_attack["target"] != m or not m.attack_pos):
 				ok = false   # D - Shield: "When an Attack Position "Destiny HERO" monster you control is targeted for an attack: Target it"
+			if ok and s.heretic_shield(m, c):
+				ok = false   # Gravekeeper's Heretic
 			if ok and sp.has("must_has") and not m.cname().contains(str(sp["must_has"])):
 				ok = false   # "Target 1 "Destiny HERO" monster you control" (D - Chain)
 			if ok and sp.get("must_rose", false) and not (m.cname() == "Black Rose Dragon" or str(m.data.get("race", "")) == "Plant"):
@@ -2301,6 +2333,49 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 						low_h = m
 				var h_a = s.pick1(p, Loc.t("%s: equip it to which monster?") % name, hosts_a, low_h, c)
 				events.append_array(s.equip_monster(p, x_a, h_a, "armored"))
+		"royal_tribute":
+			# "Both players discard any monsters in their hands."
+			for q in [p, s.opponent(p)]:
+				var pq := s.players[q]
+				for h in pq.hand.duplicate():
+					if h.is_monster():
+						pq.hand.erase(h)
+						s._to_gy(pq, h)
+						events.append({"type": "discard", "player": q, "card": h})
+		"mark_once":
+			ps.once_names[str(a[1])] = s.turn
+		"search_field":
+			var fields: Array = ps.deck.filter(func(x): return str(spec(x).get("k", "")) == "field")
+			if not fields.is_empty():
+				var t_f = s.pick1(p, Loc.t("%s: add which Field Spell?") % name, fields, fields[0], c)
+				ps.deck.erase(t_f)
+				ps.hand.append(t_f)
+				s._shuffle(ps.deck)
+				events.append({"type": "search", "player": p, "card": t_f, "deck": ps.deck.size()})
+				events.append_array(EffectRunner.added_by_effect(s, p, t_f))
+		"throne_summon":
+			# "Immediately after this effect resolves, Normal Summon 1 "Gravekeeper's" monster."
+			var gks_t: Array = ps.hand.filter(func(h): return h.is_monster() and h.cname().begins_with("Gravekeeper's"))
+			ps.extra_normals += 1
+			var can_t: Array = gks_t.filter(func(h): return s.can_normal_summon(p, h))
+			if not can_t.is_empty():
+				var best_t: Array = s._best_monsters(can_t, 1)
+				var t_t = s.pick1(p, Loc.t("%s: Normal Summon which monster?") % name, can_t, best_t[0], c)
+				var need_t := s.tributes_needed(t_t)
+				var fod_t: Array = s.tributable(p)
+				fod_t.sort_custom(func(x, y): return s.atk_of(x, false) < s.atk_of(y, false))
+				var tribs_t: Array = s.choose(p, Loc.t("%s: Tribute %d monster(s)") % [name, need_t], fod_t, need_t, fod_t.slice(0, need_t), false, c) if need_t > 0 else []
+				var was_ns := s.normal_summoned
+				var ev_t := s.normal_summon(p, t_t, tribs_t)
+				if ev_t.is_empty():
+					ps.extra_normals -= 1
+				else:
+					if not was_ns:
+						ps.extra_normals -= 1   # (this summon was the extra one, not the turn's own)
+						s.normal_summoned = false
+					events.append_array(ev_t)
+			else:
+				ps.extra_normals -= 1
 		"rope_of_life":
 			# "Discard your entire hand (min.1), then target 1 of those monsters; Special Summon it, and if you do, it gains 800 ATK."
 			var dead_r = s.get_meta("battle_dead") if s.has_meta("battle_dead") else null
@@ -2604,9 +2679,7 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			for g in got:
 				events.append_array(EffectRunner.added_by_effect(s, p, g))
 		"gy_to_hand":
-			if field_flag(s, "necrovalley"):
-				return events   # Necrovalley: nothing leaves the Graveyard
-			for g in EffectRunner._pick(s, p, c, "add from your Graveyard to your hand", ps.gy, a[1], int(a[2])):
+			for g in EffectRunner._pick(s, p, c, "add from your Graveyard to your hand", ps.gy.filter(func(x): return not s.necro_holds(x)), a[1], int(a[2])):
 				ps.gy.erase(g)
 				ps.hand.append(g)
 				events.append({"type": "gy_to_hand", "player": p, "card": g})
@@ -3490,6 +3563,8 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs) -> int:
 			for boost in sp.get("all_boost", []):
 				if c.face_up and CardEffects.matches(c.data, boost[0]):
 					b += int(boost[1])
+			if sp.get("temple", false) and st.face_up and q != c.owner and c.face_up and s.gk_and_valley():
+				b -= 500   # Necrovalley Temple: "monsters your opponent controls lose 500 ATK/DEF"
 			if sp.get("neo_space", false) and c.face_up and neos_family(c):
 				b += 500   # Neo Space: "Elemental HERO Neos" and every Fusion Monster that lists it gain 500 ATK
 			if st.equipped_to == c:
@@ -3542,6 +3617,8 @@ static func def_bonus(s: DuelState, c) -> int:
 					b += _per(s, q, str(sp["def_per"][0])) * int(sp["def_per"][1])
 			if sp.has("def_pos_boost") and not c.attack_pos:
 				b += int(sp["def_pos_boost"])
+			if sp.get("temple", false) and q != c.owner and c.face_up and s.gk_and_valley():
+				b -= 500   # Necrovalley Temple
 	return b
 
 

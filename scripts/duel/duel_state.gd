@@ -248,7 +248,10 @@ var battle_shield := -1
 var in_damage_step := false
 var last_tribute_summon_turn := -1
 var fx_src = null                    # the card whose effect is resolving right now (set by EffectRunner.run_list)
-var redirecting := false             # (a damage redirect is running: don't bounce it back again)   # Triple Star Trion: "sent there this turn as a Tribute for a successful Tribute Summon"
+var redirecting := false
+var probe_src = null                 # (SpellRules.feasible: the card being checked, for Necrovalley's exceptions)
+var inscription := {}                # Gravekeeper's Inscription: {"mode": 0..2, "until": turn}
+const NECRO_FREE := ["Gravekeeper's Ambusher", "Gravekeeper's Headman", "Rite of Spirit", "Gravekeeper's Stele"]             # (a damage redirect is running: don't bounce it back again)   # Triple Star Trion: "sent there this turn as a Tribute for a successful Tribute Summon"
 
 
 ## Pick n of cands. `auto` is what the rules would take on their own (AI, tests, a forced pick).
@@ -324,6 +327,7 @@ func fx_to_chain() -> Array:
 
 func setup(deck_a: Array[int], deck_b: Array[int], name_a: String, name_b: String, first := 0, seed := -1,
 		extra_a: Array[int] = [], extra_b: Array[int] = []) -> Array:
+	EffectRunner.current_state = self
 	if seed >= 0:
 		_rng.seed = seed
 	else:
@@ -514,7 +518,18 @@ func begin_standby() -> Array:
 
 func begin_main1() -> Array:
 	phase = Phase.MAIN1
-	return [{"type": "phase", "phase": phase}]
+	var ev := [{"type": "phase", "phase": phase}]
+	# Gravekeeper's Inscription: "At the start of your Main Phase 1: Apply 1 of the following effects until the end of your opponent's turn."
+	for st in players[current].spells:
+		if st != null and st.face_up and SpellRules.spec(st).get("inscription", false) and not SpellRules.blocked(self, st) and not is_over():
+			var opp_gy := players[opponent(current)].gy
+			var auto_i := 2 if not opp_gy.filter(func(g): return g.is_monster()).is_empty() else 0
+			var m_i := choose_option(current, Loc.t("Gravekeeper's Inscription: until the end of your opponent's turn..."),
+					[Loc.t("No one can activate effects in the GY"), Loc.t("No one can banish cards from the GY"), Loc.t("No one can Special Summon from the GY")], auto_i, st)
+			inscription = {"mode": m_i, "until": turn + 1}
+			ev.append({"type": "effect", "player": current, "card": st, "text": [Loc.t("Gravekeeper's Inscription: no effects in the Graveyard"), Loc.t("Gravekeeper's Inscription: nothing leaves the Graveyard by banishing"), Loc.t("Gravekeeper's Inscription: no Special Summons from the Graveyard")][m_i]})
+			break
+	return ev
 
 
 func can_enter_battle() -> bool:
@@ -1028,6 +1043,8 @@ func _in_main() -> bool:
 # ------------------------------------------------------------------ summoning
 
 func tributes_needed(c: CardInst) -> int:
+	if CardEffects.of(c.cname()).has("one_tribute_has") and plant_for(c) != null:
+		return 1
 	if CardEffects.of(c.cname()).has("tributes"):
 		return int(CardEffects.of(c.cname())["tributes"])   # "Requires 3 Tributes to Normal Summon" (Slifer the Sky Dragon)
 	if c.level() >= 5 and EffectRunner.no_tribute(self, c.owner, c):
@@ -1058,6 +1075,13 @@ func kaiser_for(c: CardInst) -> CardInst:
 ## Queen Angel of Roses: the monster of the right Type that is enough by itself for its Tribute Summon, or null.
 func plant_for(c: CardInst) -> CardInst:
 	var race := str(CardEffects.of(c.cname()).get("one_tribute_race", ""))
+	var fam := str(CardEffects.of(c.cname()).get("one_tribute_has", ""))
+	if fam != "":
+		# Gravekeeper's Visionary / Oracle: "You can Tribute Summon this card by Tributing 1 "Gravekeeper's" monster."
+		for m in tributable(c.owner):
+			if m.cname().begins_with(fam):
+				return m
+		return null
 	if race == "":
 		return null
 	for m in tributable(c.owner):
@@ -1165,6 +1189,12 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 	var n_tributes := tributes.size()
 	if n_tributes > 0:
 		last_tribute_summon_turn = turn
+	var trib_gk := 0
+	var trib_lv := 0
+	for t0 in tributes:
+		if t0.cname().begins_with("Gravekeeper's"):
+			trib_gk += 1
+		trib_lv += t0.level()
 	var need_attr := str(CardEffects.of(c.cname()).get("tribute_attr", ""))
 	if need_attr != "" and not tributes.is_empty():
 		# Jawsman: "If you Tribute Summon this card, all Tributes must be WATER."
@@ -1173,7 +1203,10 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 			return []
 		if not tributes.all(func(m): return str(m.data.get("attribute", "")) == need_attr):
 			tributes = right.slice(0, tributes.size())
-	if tributes.size() == 1 and c.level() >= 7 and plant_for(c) != null and str(tributes[0].data.get("race", "")) != str(CardEffects.of(c.cname()).get("one_tribute_race", "")):
+	if tributes.size() == 1 and CardEffects.of(c.cname()).has("one_tribute_has"):
+		if not tributes[0].cname().begins_with(str(CardEffects.of(c.cname())["one_tribute_has"])):
+			tributes = [plant_for(c)]   # (one Tribute is only enough when it is a "Gravekeeper's" monster)
+	elif tributes.size() == 1 and c.level() >= 7 and plant_for(c) != null and str(tributes[0].data.get("race", "")) != str(CardEffects.of(c.cname()).get("one_tribute_race", "")):
 		tributes = [plant_for(c)]   # (one Tribute is only enough when it is a Plant)
 	if tributes.size() == 1 and c.level() >= 7 and plant_for(c) == null and kaiser_for(c) != null and str(EffectRunner.fx(tributes[0]).get("double_tribute_attr", "-")) != str(c.data.get("attribute", "")):
 		tributes = [kaiser_for(c)]   # (one Tribute is only enough when it is the Kaiser Sea Horse)
@@ -1223,6 +1256,8 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 	c.reset_mods()
 	c.tags["ns"] = true   # it is on the field by a Normal Summon or Set ("sent from the field to the GY": Synkron Resonator)
 	c.tags["tributes_n"] = n_tributes
+	c.tags["trib_gk"] = trib_gk   # (Gravekeeper's Oracle)
+	c.tags["trib_lv"] = trib_lv
 	if not set_card:
 		pending_events.append_array(_thorn_tax(p, c))
 	if normal_summoned:
@@ -1487,6 +1522,11 @@ func can_activate(p: int, c: CardInst) -> bool:
 		return false
 	if SpellRules.blocked(self, c) or int(ps.once_names.get("#ced", -1)) == turn:
 		return false
+	if str(sp.get("k", "")) == "field" and necro_on():
+		# Gravekeeper's Shaman: "While "Necrovalley" is on the field, your opponent cannot activate Field Spell Cards."
+		for m in players[opponent(p)].monsters():
+			if m.face_up and not m.negated and EffectRunner.fx(m).get("shaman", false):
+				return false
 	if c.is_spell() and (ps.get_meta("sealed", []) as Array).has(c.cname()):
 		return false   # Cursed Seal of the Forbidden Spell
 	if sp.has("legacy"):
@@ -2219,6 +2259,15 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	# "You must pay 500 LP to declare an attack with this monster" (Toon Mermaid, Toon Summoned Skull).
 	var toll := int(EffectRunner.fx(attacker).get("attack_cost", 0))
 	var paid := []
+	# Gravekeeper's Servant: "Unless your opponent sends 1 card from the top of their Deck to the GY, they cannot declare an attack."
+	for sv in players[opponent(p)].spells:
+		if sv != null and sv.face_up and SpellRules.spec(sv).get("servant", false) and not SpellRules.blocked(self, sv):
+			if players[p].deck.is_empty():
+				return []
+			var top_s: CardInst = players[p].deck.pop_back()
+			_to_gy(players[p], top_s)
+			paid.append({"type": "mill", "player": p, "card": top_s, "deck": players[p].deck.size()})
+			paid.append({"type": "effect", "player": opponent(p), "card": sv, "text": Loc.t("%s: %s goes to the GY so the attack can happen") % [sv.cname(), top_s.cname()]})
 	if toll > 0:
 		players[p].lp -= toll
 		paid.append({"type": "lp", "player": p, "lp": players[p].lp, "delta": -toll})
@@ -2260,6 +2309,18 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	pending_attack = {"player": p, "attacker": attacker, "target": target, "negated": false,
 			"opp_count": players[opponent(p)].monsters().size()}
 	var events := paid + [{"type": "attack", "player": p, "card": attacker, "target": target}]
+	# Gravekeeper's Assailant: "When this card declares an attack while "Necrovalley" is on the field: You can target 1 face-up monster
+	# your opponent controls; change that target's battle position."
+	if attacker.face_up and not attacker.negated and EffectRunner.fx(attacker).get("assailant", false) and necro_on():
+		var asl: Array = players[opponent(p)].monsters().filter(func(m): return m.face_up and EffectRunner.can_target(attacker, m) and not m.tags.get("pos_locked", false) and mon_equips(m, "shocktopus").is_empty() and not heretic_shield(m, attacker))
+		if not asl.is_empty() and choose_option(p, Loc.t("%s: change the battle position of a monster?") % attacker.cname(), [Loc.t("Change one"), Loc.t("No")], 0, attacker) == 0:
+			var best_a: CardInst = asl[0]
+			for m in asl:
+				if m.attack_pos and (not best_a.attack_pos or def_of(m) < def_of(best_a)):
+					best_a = m
+			var ta = pick1(p, Loc.t("%s: which monster?") % attacker.cname(), asl, best_a, attacker)
+			ta.attack_pos = not ta.attack_pos
+			events.append({"type": "position", "player": ta.owner, "card": ta, "zone": players[ta.owner].field.find(ta)})
 	# Yubel: "Before damage calculation, if this face-up Attack Position card is targeted for an attack: Inflict damage to your
 	# opponent equal to that attacking monster's ATK."
 	# Dark Sanctuary: "When an opponent's monster declares an attack: Toss a coin and if the result is heads, negate the attack, and if you do,
@@ -3171,6 +3232,17 @@ func _battle_destroy(c: CardInst) -> Array:
 
 func _battle_damage(p: int, amount: int, dealer: CardInst = null, taker: CardInst = null) -> Array:
 	var ps := players[p]
+	if dealer != null and dealer.owner != p and dealer.face_up and not dealer.negated and EffectRunner.fx(dealer).get("vassal", false) and battle_shield != p:
+		# Gravekeeper's Vassal: "Any battle damage this card inflicts to your opponent is treated as effect damage instead."
+		var was_v := effect_by
+		var was_s = fx_src
+		effect_by = dealer.owner
+		fx_src = dealer
+		var ev_v := [{"type": "effect", "player": dealer.owner, "card": dealer, "text": Loc.t("%s: the damage counts as effect damage") % dealer.cname()}]
+		ev_v.append_array(_damage(p, amount))
+		effect_by = was_v
+		fx_src = was_s
+		return ev_v
 	if battle_shield == p:
 		return [{"type": "effect", "player": p, "card": null, "text": "No battle damage!"}]
 	# Photon Circle: "Any Battle Damage you take from battles involving this card is halved."
@@ -3246,6 +3318,8 @@ var st_target = null
 
 ## Forbidden Lance: "unaffected by the effects of other Spells/Traps" this turn.
 func st_unaffected(c: CardInst) -> bool:
+	if heretic_shield(c, st_resolving if st_resolving != null else fx_src):
+		return true
 	if st_resolving != null and st_resolving.is_spell() and umi_guard(c):
 		return true   # The Legendary Fisherman: "unaffected by Spell effects" while Umi is on the field
 	return st_resolving != null and int(c.tags.get("st_immune", -1)) == turn and st_resolving.cname() != "Forbidden Lance"
@@ -3256,6 +3330,16 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	var zone := ps.field.find(c)
 	if zone == -1:
 		return []
+	if not by_battle and c.face_up and not c.negated and EffectRunner.fx(c).get("supernat", false) and necro_on():
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed by card effects") % c.cname()}]
+	if c.face_up and not c.negated and EffectRunner.fx(c).get("visionary", false):
+		# Gravekeeper's Visionary: "If this face-up card would be destroyed, you can discard 1 "Gravekeeper's" monster instead."
+		var gkh: Array = ps.hand.filter(func(h): return h.is_monster() and h.cname().begins_with("Gravekeeper's"))
+		if not gkh.is_empty() and choose_option(c.owner, Loc.t("%s would be destroyed. Discard a \"Gravekeeper's\" monster instead?") % c.cname(), [Loc.t("Discard one"), Loc.t("No")], 0, c) == 0:
+			var thrown_v = pick1(c.owner, Loc.t("%s: discard which monster?") % c.cname(), gkh, gkh[0], c)
+			ps.hand.erase(thrown_v)
+			_to_gy(ps, thrown_v)
+			return [{"type": "discard", "player": c.owner, "card": thrown_v}, {"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s stays: %s was discarded instead") % [c.cname(), thrown_v.cname()]}]
 	if not by_battle and effect_by == opponent(c.owner) and int(ps.once_names.get("#gardna", -1)) == turn:
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("Red Gardna: %s is not destroyed") % c.cname()}]
 	if not by_battle and st_unaffected(c):
@@ -3500,6 +3584,8 @@ func _untrap(c: CardInst) -> void:
 func _banish(c: CardInst) -> Array:
 	if c == null:
 		return []
+	if (players[0].gy.has(c) or players[1].gy.has(c)) and int(inscription.get("mode", -1)) == 1 and int(inscription.get("until", -1)) >= turn:
+		return [{"type": "effect", "player": c.owner, "card": null, "text": Loc.t("Gravekeeper's Inscription: %s stays in the Graveyard") % c.cname()}]
 	if necro_holds(c):
 		return [{"type": "effect", "player": c.owner, "card": null, "text": Loc.t("Necrovalley: %s stays in the Graveyard") % c.cname()}]
 	if (players[0].field.has(c) or players[1].field.has(c)) and st_unaffected(c):
@@ -3573,6 +3659,17 @@ func _destroy_st(c: CardInst) -> Array:
 	var ps := players[c.owner]
 	if not ps.spells.has(c) and ps.field_spell != c and players[opponent(c.owner)].spells.has(c):
 		ps = players[opponent(c.owner)]   # (a monster equipped on the other side)
+	if ps.field_spell == c and c.face_up and necro_on():
+		for q in 2:
+			for m in players[q].monsters():
+				if not (m.face_up and not m.negated):
+					continue
+				# Gravekeeper's Supernaturalist: "this card, and any card in your Field Zone, cannot be destroyed by card effects."
+				if EffectRunner.fx(m).get("supernat", false) and q == c.owner:
+					return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed") % c.cname()}]
+				# Gravekeeper's Shaman: "Field Spell Cards cannot be destroyed by your opponent's card effects."
+				if EffectRunner.fx(m).get("shaman", false) and effect_by == opponent(q):
+					return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed") % c.cname()}]
 	var zone := ps.spells.find(c)
 	if ps.field_spell == c:
 		ps.field_spell = null
@@ -3597,6 +3694,20 @@ func _destroy_st(c: CardInst) -> Array:
 	if was_up and SpellRules.spec(c).get("ctp", false) and c.counter >= 4 and ps.gy.has(c):
 		events.append_array(_dreadmaster(c.owner))
 	events.append_array(SpellRules.left_field(self, c))
+	if was_up and SpellRules.spec(c).get("temple", false) and effect_by == opponent(c.owner) and ps.gy.has(c):
+		# Necrovalley Temple: "If this card in your possession is destroyed by an opponent's effect and sent to your GY: You can Set
+		# 1 "Necrovalley" Spell/Trap directly from your Deck, except "Necrovalley Temple"."
+		var setp := players[c.owner]
+		var nvs: Array = setp.deck.filter(func(x): return not x.is_monster() and x.cname().contains("Necrovalley") and x.cname() != "Necrovalley Temple" and SpellRules.spec(x).get("k", "") != "field")
+		if not nvs.is_empty() and setp.spells.has(null) and choose_option(c.owner, Loc.t("Necrovalley Temple: Set a \"Necrovalley\" card from your Deck?"), [Loc.t("Set one"), Loc.t("No")], 0, c) == 0:
+			var nv = pick1(c.owner, Loc.t("Necrovalley Temple: Set which card?"), nvs, nvs[0], c)
+			setp.deck.erase(nv)
+			var zn := setp.spells.find(null)
+			setp.spells[zn] = nv
+			nv.face_up = false
+			nv.set_turn = turn
+			events.append({"type": "set_st", "player": c.owner, "card": nv, "zone": zn})
+			_shuffle(setp.deck)
 	if was_up and c.cname() == "Toon World":
 		# "If "Toon World" on the field is destroyed, destroy this card": every Toon that says so.
 		for q in 2:
@@ -3730,6 +3841,12 @@ func _cleanup() -> Array:
 	for q in 2:
 		for m in players[q].monsters():
 			m.negated = m.face_up and (drain or m.negated_turn == turn or m.neg_perm or int(m.tags.get("neg_until", -1)) >= turn or (gorgon_turn == turn and not m.attack_pos))
+	# Hidden Temples of Necrovalley: "If either a "Gravekeeper's" monster or "Necrovalley" is not on the field, destroy this card."
+	if not gk_and_valley():
+		for q in 2:
+			for ht in players[q].spells.duplicate():
+				if ht != null and ht.face_up and SpellRules.spec(ht).get("hidden_temples", false):
+					events.append_array(_destroy_st(ht))
 	# Earthbound Immortal: "If there is no face-up Field Spell on the field, destroy this card."
 	var any_field := (players[0].field_spell != null and players[0].field_spell.face_up) or (players[1].field_spell != null and players[1].field_spell.face_up)
 	if not any_field:
@@ -3935,6 +4052,8 @@ func _take_control(c: CardInst, p: int, until: int) -> Array:
 	var from_p := c.owner
 	if from_p == p or not players[from_p].field.has(c):
 		return []
+	if heretic_shield(c, st_resolving if st_resolving != null else fx_src):
+		return [{"type": "effect", "player": from_p, "card": c, "text": Loc.t("%s is unaffected") % c.cname()}]
 	if c.face_up and EffectRunner.fx(c).get("no_control", false):
 		return [{"type": "effect", "player": from_p, "card": c, "text": Loc.t("Control of %s cannot switch") % c.cname()}]
 	var zone := players[p].free_zone()
@@ -4232,12 +4351,73 @@ func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 ## Ritual and Extra Deck monsters can only come back if they were first summoned the proper way.
 ## Necrovalley: "Negate any card effect that would move a card in the GY to a different place", and nothing there is banished.
 func necro_holds(c: CardInst) -> bool:
-	return c != null and (players[0].gy.has(c) or players[1].gy.has(c)) and SpellRules.field_flag(self, "necrovalley")
+	if c == null or not (players[0].gy.has(c) or players[1].gy.has(c)):
+		return false
+	if not necro_on():
+		return false
+	# Gravekeeper's Chief: "Your GY is unaffected by "Necrovalley"."
+	for m in players[c.owner].monsters():
+		if m.face_up and not m.negated and EffectRunner.fx(m).get("chief", false):
+			return false
+	return not necro_free()
+
+
+## Is "Necrovalley" on the field? (Gravekeeper's Priestess: "While there is no face-up Field Spell, the field is treated as "Necrovalley".")
+func necro_on() -> bool:
+	if SpellRules.field_flag(self, "necrovalley"):
+		return true
+	return priestess_valley()
+
+
+func priestess_valley() -> bool:
+	for q in 2:
+		if players[q].field_spell != null and players[q].field_spell.face_up:
+			return false
+	for q in 2:
+		for m in players[q].monsters():
+			if m.face_up and not m.negated and EffectRunner.fx(m).get("priestess", false):
+				return true
+	return false
+
+
+## The effect working right now is one "unaffected by Necrovalley" (Ambusher, Headman, Rite of Spirit, Gravekeeper's Stele).
+func necro_free() -> bool:
+	var src = st_resolving if st_resolving != null else (probe_src if probe_src != null else fx_src)
+	return src != null and src is CardInst and NECRO_FREE.has(src.cname())
+
+
+## A "Gravekeeper's" monster and "Necrovalley" both on the field (Hidden Temples, Imperial Tombs, Necrovalley Temple).
+func gk_and_valley() -> bool:
+	if not necro_on():
+		return false
+	for q in 2:
+		for m in players[q].monsters():
+			if m.face_up and m.cname().begins_with("Gravekeeper's"):
+				return true
+	return false
+
+
+## Gravekeeper's Heretic: "unaffected by all other card effects, as long as "Necrovalley" is also on the field."
+func heretic_shield(c, src = null) -> bool:
+	return c != null and c is CardInst and c.face_up and not c.negated and EffectRunner.fx(c).get("heretic", false) and src != c and necro_on()
+
+
+## Gravekeeper's Shaman: "Negate all monster effects that activate in the GY, except "Gravekeeper's" monsters."
+func shaman_blocks(c) -> bool:
+	if c == null or not c.is_monster() or c.cname().begins_with("Gravekeeper's") or not (players[0].gy.has(c) or players[1].gy.has(c)):
+		return false
+	for q in 2:
+		for m in players[q].monsters():
+			if m.face_up and not m.negated and EffectRunner.fx(m).get("shaman", false):
+				return true
+	return false
 
 
 func can_revive(c: CardInst) -> bool:
 	if necro_holds(c):
 		return false
+	if int(inscription.get("mode", -1)) == 2 and int(inscription.get("until", -1)) >= turn and (players[0].gy.has(c) or players[1].gy.has(c)):
+		return false   # Gravekeeper's Inscription: "Neither player can Special Summon monsters from the GYs."
 	if EffectRunner.fx(c).get("tyrant", false):
 		# Tyrant Dragon comes back only by Tributing a Dragon.
 		return not players[c.owner].monsters().filter(func(m): return m.face_up and str(m.data.get("race", "")) == "Dragon" and can_tribute_fx(m)).is_empty()
@@ -4423,6 +4603,13 @@ func _do_fusion(p: int, plan: Dictionary, banish := false) -> Array:
 	if ps.field.has(f):
 		f.tags["mats"] = (plan["hand"] + plan["field"]).map(func(m): return m.uid)   # (De-Fusion brings them back)
 		var all_m: Array = plan["hand"] + plan["field"]
+		if EffectRunner.fx(f).get("mat_lv_x100", false):
+			# Gravekeeper's Supernaturalist: "Gains ATK/DEF equal to the combined original Levels of the materials used for its Fusion Summon x 100."
+			var lv_sum := 0
+			for m in all_m:
+				lv_sum += int(m.data.get("level", 0))
+			f.atk_mod += lv_sum * 100
+			f.def_mod += lv_sum * 100
 		if EffectRunner.fx(f).get("mat_atk_sum", false):
 			# UFOroid Fighter: "The original ATK/DEF of this card become the combined original ATK of the 2 materials".
 			var sum_m := 0
@@ -4654,6 +4841,8 @@ func big_locked(p: int, c: CardInst, special := false) -> bool:
 	var ps := players[p]
 	if c != null and int(ps.once_names.get("#attr_lock", -1)) == turn and str(c.data.get("attribute", "")) != str(ps.once_names.get("#attr_lock_a", "")):
 		return true   # Photon Sanctuary: "You cannot Summon other monsters the turn you activate this card, except LIGHT monsters."
+	if c != null and special and SpellRules.field_flag(self, "hidden_temples") and not c.cname().begins_with("Gravekeeper's"):
+		return true   # Hidden Temples of Necrovalley: "Neither player can Special Summon monsters, except "Gravekeeper's" monsters."
 	if c != null and special and int(ps.once_names.get("#ss_water_only", -1)) == turn and str(c.data.get("attribute", "")) != "WATER":
 		return true   # Saber Shark: "You cannot Special Summon any monsters during the turn you activate this effect, except WATER monsters."
 	return int(ps.once_names.get("#no_big", -1)) == turn and c != null and c.is_monster() and c.frame() != "xyz" and c.level() >= 5
