@@ -107,6 +107,7 @@ func _ready() -> void:
 		_test_fresh_starter()
 		_test_every_card_obtainable()
 		_test_cards_b0dm()
+		_test_cards_b0gx()
 		await _test_album()
 		_test_save_slots()
 		_test_turbo_setup()
@@ -7788,6 +7789,109 @@ func _test_cards_b0dm() -> void:
 	check(s.players[0].no_summon_turn == s.turn, "Jam Breeding Machine: no Summons while it is up")
 	SpellRules.standby(s, 0)
 	check(not s.players[0].monsters().filter(func(m): return m.cname() == "Slime Token" and m.attack_pos).is_empty(), "Jam Breeding Machine: a Slime Token in Attack Position in the Standby Phase")
+
+
+## The story duelists' remaining cards, GX era (v0.33.55).
+func _test_cards_b0gx() -> void:
+	# Phoenix Enforcer: not destroyed by battle.
+	var s := _new_state(5601)
+	_battle_ready(s)
+	var pe := _mon(s, 1, "Elemental HERO Phoenix Enforcer", 0)
+	var bw := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw, pe)
+	s.resolve_attack()
+	check(s.players[1].field.has(pe), "Phoenix Enforcer: not destroyed by battle")
+	# Shining Phoenix Enforcer: +300 per Elemental HERO in the GY.
+	s = _main_ready(5602)
+	var spe := _mon(s, 0, "Elemental HERO Shining Phoenix Enforcer", 0)
+	s.players[0].gy.clear()
+	_in(s, 0, "Elemental HERO Avian", "gy")
+	_in(s, 0, "Elemental HERO Sparkman", "gy")
+	check(s.atk_of(spe, false) == 3100, "Shining Phoenix Enforcer: 2500 + 2 x 300 (got %d)" % s.atk_of(spe, false))
+	# Blade Master: from the hand in their Battle Phase, +800 to your Destiny HEROes.
+	s = _new_state(5603)
+	_battle_ready(s)
+	var dh := _mon(s, 1, "Destiny HERO - Diamond Dude", 0)
+	var bm := _in(s, 1, "Destiny HERO - Blade Master", "hand")
+	var at := _mon(s, 0, "Luster Dragon", 0)
+	s.declare_attack(0, at, dh)
+	check(s.responses(1, "attack").has(bm), "Blade Master: offered in the opponent's Battle Phase")
+	s.respond(1, bm)
+	check(s.atk_of(dh, false) == 2200 and s.players[1].gy.has(bm), "Blade Master: discarded, Diamond Dude at 2200 (got %d)" % s.atk_of(dh, false))
+	# Fear Monger: destroyed by battle, then your Standby Phase: another Destiny HERO comes back.
+	s = _new_state(5604)
+	_battle_ready(s)
+	var fm := _mon(s, 1, "Destiny HERO - Fear Monger", 0)
+	var plasma := _in(s, 1, "Destiny HERO - Diamond Dude", "gy")
+	var bw2 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw2, fm)
+	s.resolve_attack()
+	s.turn += 1
+	s.current = 1
+	EffectRunner.standby(s, 1)
+	check(s.players[1].field.has(plasma), "Fear Monger: Diamond Dude comes back in the Standby Phase")
+	# Infernal Dragon: attacked this turn -> destroyed in the End Phase; it can come back by Tributing a monster.
+	s = _new_state(5605)
+	_battle_ready(s)
+	var inf := _mon(s, 0, "Infernal Dragon", 0)
+	var fod := _mon(s, 0, "Kuriboh", 1)
+	inf.attacked_turn = s.turn
+	EffectRunner.run_list(s, 0, inf, EffectRunner.fx(inf)["end"], {})
+	check(s.players[0].field.has(inf) and not s.players[0].field.has(fod), "Infernal Dragon: destroyed in the End Phase, back by Tributing Kuriboh")
+	# Destruction of Destiny: 3 milled, 1000 per Spell/Trap.
+	s = _main_ready(5606)
+	s.players[0].deck.clear()
+	_in(s, 0, "Pot of Greed", "deck")
+	_in(s, 0, "Celtic Guardian", "deck")
+	_in(s, 0, "Mirror Force", "deck")
+	var dd := _set_trap(s, 0, "Destruction of Destiny")
+	var lp0: int = s.players[0].lp
+	s.respond(0, dd)
+	s.chain_resolve()
+	check(s.players[0].lp == lp0 - 2000 and s.players[0].deck.is_empty(), "Destruction of Destiny: 2 Spells/Traps milled, 2000 damage (LP %d)" % s.players[0].lp)
+	# Over Destiny: a Destiny HERO of half the Level from the Deck, destroyed in the End Phase.
+	s = _main_ready(5607)
+	_in(s, 0, "Destiny HERO - Dogma", "gy")
+	s.players[0].deck.clear()
+	var dd2 := _in(s, 0, "Destiny HERO - Diamond Dude", "deck")
+	var od := _in(s, 0, "Over Destiny", "hand")
+	s.activate(0, od)
+	check(s.players[0].field.has(dd2), "Over Destiny: Diamond Dude (Level 4, half of Dogma's 8) Special Summoned")
+	s.begin_end()
+	check(not s.players[0].field.has(dd2), "Over Destiny: destroyed in the End Phase")
+	# Cyber Summon Blaster: 300 for each Machine Special Summoned.
+	s = _main_ready(5608)
+	var csb := _set_trap(s, 0, "Cyber Summon Blaster")
+	s.respond(0, csb)
+	s.chain_resolve()
+	var lp1: int = s.players[1].lp
+	var cd := _in(s, 0, "Cyber Dragon", "hand")
+	s.players[0].hand.erase(cd)
+	s._special(0, cd, "effect")
+	check(s.players[1].lp == lp1 - 300, "Cyber Summon Blaster: 300 damage for the Machine (LP %d)" % s.players[1].lp)
+	# Wonder Garage: destroyed while Set -> a "roid" from the hand.
+	s = _main_ready(5609)
+	var wg := _set_trap(s, 0, "Wonder Garage")
+	var roid := _in(s, 0, "Gyroid", "hand")
+	s._destroy_st(wg)
+	check(s.players[0].field.has(roid), "Wonder Garage: Gyroid Special Summoned when the Set card is destroyed")
+	# Chthonian Alliance: +800 for each other monster with the same name.
+	s = _main_ready(5610)
+	var k1 := _mon(s, 0, "Celtic Guardian", 0)
+	_mon(s, 1, "Celtic Guardian", 0)
+	_mon(s, 0, "Celtic Guardian", 1)
+	var ca := _in(s, 0, "Chthonian Alliance", "hand")
+	s.activate(0, ca, k1)
+	check(s.atk_of(k1, false) == 1400 + 1600, "Chthonian Alliance: +800 for each of the 2 other Celtic Guardians (got %d)" % s.atk_of(k1, false))
+	# Ambulance Rescueroid: your monster destroyed by battle comes back in Defense Position.
+	s = _new_state(5611)
+	_battle_ready(s)
+	_mon(s, 1, "Ambulance Rescueroid", 0)
+	var gy := _mon(s, 1, "Celtic Guardian", 1)
+	var bw3 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw3, gy)
+	s.resolve_attack()
+	check(s.players[1].field.has(gy) and not gy.attack_pos, "Ambulance Rescueroid: Celtic Guardian back in Defense Position")
 
 
 ## Every card the game can play can be had somewhere: a booster set, Lumen (her own cards) or

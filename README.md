@@ -5,6 +5,19 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.55
+
+**Step 0 and the first part of bucket 0 of the 1,000-card plan**
+
+- **Monster Legends:** a new booster set with every Normal Monster that worked in the game but could not be obtained: about 630 cards. They also show up in the Monster types and Elements packs. It's on the shelf in Domino City, the Academy and Heartland, and open from the start. Cards you can collect: from 968 to about 1,600.
+- **Every card can be obtained:** a new test fails the build if any card the game can play has no way to get it (pack, Lumen or the highway). Fissure, Hinotama and Gaia the Dragon Champion were the last three: they are in the Duelist's Vault now.
+- **34 more cards with their full effects**, from the story duelists' families, each tested against its printed text:
+  - Duel Monsters: Different Dimension Dragon, Spirit Ryu, Little-Winguard, The Legendary Fisherman, Amazoness Chain Master, Juragedo (rebuilt to match its text), Giant Rex, Jigen Bakudan, Survival Instinct, Hunting Instinct, Nutrient Z, Fairy Box, Jam Breeding Machine, Left Arm Offering, Machine Duplication, Multiple Destruction, Dragon Capture Jar, Gorgon's Eye, Ectoplasmer, Gaia the Dragon Champion (it worked; the list said it didn't).
+  - GX: Elemental HERO Phoenix Enforcer, Shining Phoenix Enforcer, Destiny HERO - Blade Master, Destiny HERO - Fear Monger, Infernal Dragon, Patroid, Ambulance Rescueroid, UFOroid Fighter, Destruction of Destiny, Over Destiny, Cyber Summon Blaster, Wonder Garage, Overload Fusion, Chthonian Alliance.
+  - They are in their era's booster set right away (and in Spanish).
+
+Not done or not checked: the Normal Monsters in Monster Legends still show their English flavor text in Spanish (their names and stats are fine). Of the 172 duelist cards left, 138 are still to build: the hard Duel Monsters and GX ones (Magical Hats, Kiseitai, Makyura, Magical Arm Shield, Dark Spirit of the Silent, Rope of Life, Doppelganger, Shadow of Eyes, Dark Designator, Kunai with Chain, Blue Flame Swordsman, Cyber Dragon Zwei, Diamond Dude, Departed, Fusion Gate, Future Fusion and others) and all of 5D's and ZEXAL. Duelists don't put the new cards in their decks yet. Played by the test duels (30 games), not watched.
+
 ## What is in 0.33.54
 
 **The opening, fixed and on every start**

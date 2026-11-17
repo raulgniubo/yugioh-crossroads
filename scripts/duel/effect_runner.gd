@@ -405,6 +405,10 @@ static func no_tribute(s: DuelState, p: int, c) -> bool:
 
 
 static func _cond(s: DuelState, p: int, cond: String) -> bool:
+	if cond == "opp_face_down":
+		# Patroid: a face-down card on the opponent's side to look at.
+		var op := s.players[s.opponent(p)]
+		return not op.monsters().filter(func(m): return not m.face_up).is_empty() or not op.spells.filter(func(x): return x != null and not x.face_up).is_empty()
 	if cond == "lp_le_1000":
 		return s.players[p].lp <= 1000   # Number C39: Utopia Ray
 	if cond == "umbral_ghost":
@@ -954,6 +958,10 @@ static func standby(s: DuelState, p: int) -> Array:
 			events.append(_ev(p, m, Loc.t("%s is back to full strength") % m.cname()))
 		if m.face_up and fx(m).has("standby"):
 			events.append_array(run_list(s, p, m, fx(m)["standby"], {}))
+	# "During your Standby Phase, if this card is in your GY" (Destiny HERO - Fear Monger).
+	for g in s.players[p].gy.duplicate():
+		if g.is_monster() and CardEffects.of(g.cname()).has("gy_standby") and s.players[p].gy.has(g):
+			events.append_array(run_list(s, p, g, CardEffects.of(g.cname())["gy_standby"], {}))
 	return events
 
 
@@ -1861,6 +1869,10 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 	var pa: Dictionary = s.pending_attack
 	var battling: bool = not pa.is_empty() and not pa.get("negated", false)
 	match kind:
+		"blade_master":
+			# "During your opponent's Battle Phase (Quick Effect): You can discard this card"
+			return ps.hand.has(c) and s.current != p and s.phase == DuelState.Phase.BATTLE and window in ["attack", "battle_start", "chain"] \
+					and not ps.monsters().filter(func(m): return m.face_up and m.cname().begins_with("Destiny HERO")).is_empty()
 		"spirit_ryu":
 			# "During your Battle Step, if this card battles (Quick Effect): You can discard 1 Dragon monster to the GY"
 			return on_field and window == "attack" and battling and s.current == p and pa["target"] != null and (pa["attacker"] == c or pa["target"] == c) \
@@ -1989,6 +2001,17 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 	var events := []
 	var hit: bool = not s.pending_attack.is_empty() and int(s.pending_attack["player"]) != p and not s.pending_attack.get("negated", false)
 	match kind:
+		"blade_master":
+			ps.hand.erase(c)
+			s._to_gy(ps, c)
+			events.append({"type": "discard", "player": p, "card": c})
+			for m in ps.monsters():
+				if m.face_up and m.cname().begins_with("Destiny HERO"):
+					if m.atk_mod_turn != s.turn:
+						m.atk_mod_t = 0
+						m.atk_mod_turn = s.turn
+					m.atk_mod_t += 800
+			events.append(_ev(p, c, Loc.t("%s: every \"Destiny HERO\" you control gains 800 ATK this turn") % c.cname()))
 		"spirit_ryu":
 			var dr: Array = ps.hand.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Dragon")
 			if not dr.is_empty():
@@ -2261,6 +2284,10 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 		else:
 			lose = a > s.def_of(tgt)
 	match kind:
+		"blade_master":
+			if not hit or tgt == null or tgt.owner != p or not tgt.cname().begins_with("Destiny HERO"):
+				return false
+			return s.atk_of(att, true, tgt, true) >= s.atk_of(tgt, false) and s.atk_of(att, true, tgt, true) < s.atk_of(tgt, false) + 800 and tgt.attack_pos
 		"spirit_ryu":
 			# When the extra 1000 turns the battle.
 			var pa_r: Dictionary = s.pending_attack
@@ -2595,6 +2622,47 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"fear_monger":
+			# Fear Monger: destroyed by battle since your last Standby Phase -> 1 other "Destiny HERO" from the GY.
+			if ps.gy.has(c) and c.tags.has("battle_gy") and int(c.tags["battle_gy"]) == c.gy_turn and c.gy_turn >= s.turn - 2 and ps.free_zone() != -1 and ps.no_summon_turn != s.turn:
+				var dh: Array = ps.gy.filter(func(g): return g != c and g.is_monster() and g.cname().begins_with("Destiny HERO") and g.cname() != "Destiny HERO - Fear Monger" and s.can_revive(g))
+				if not dh.is_empty():
+					c.tags.erase("battle_gy")
+					var best: Array = s._best_monsters(dh, 1)
+					var back = s.pick1(p, Loc.t("%s: Special Summon 1 \"Destiny HERO\" from your GY") % name, dh, best[0] if not best.is_empty() else dh[0], c)
+					ps.gy.erase(back)
+					events.append(_ev(p, c, Loc.t("%s calls %s back") % [name, back.cname()]))
+					events.append_array(s._special(p, back, "reborn"))
+		"infernal_end":
+			if ps.field.has(c) and c.attacked_turn == s.turn:
+				events.append(_ev(p, c, Loc.t("%s burns out") % name))
+				events.append_array(s._destroy(c))
+		"infernal_back":
+			# "When this card on the field is destroyed and sent to the GY: You can Tribute 1 monster; Special Summon this card from the GY."
+			if ps.gy.has(c) and ps.no_summon_turn != s.turn and s.can_revive(c):
+				var fod: Array = ps.monsters().filter(func(m): return s.can_tribute_fx(m))
+				if not fod.is_empty():
+					var low: Array = fod.duplicate()
+					low.sort_custom(func(x, y): return s.atk_of(x, false) < s.atk_of(y, false))
+					if s.choose_option(p, Loc.t("%s: Tribute 1 monster to bring it back?") % name, ["Tribute 1", "No"], 0 if s.atk_of(low[0], false) < 2000 else 1, c) == 0:
+						var tm = s.pick1(p, Loc.t("%s: Tribute which monster?") % name, fod, low[0], c)
+						events.append_array(s._tribute_one(p, tm))
+						if ps.gy.has(c) and ps.free_zone() != -1:
+							ps.gy.erase(c)
+							events.append_array(s._special(p, c, "reborn"))
+		"peek_set":
+			# Patroid: "look at 1 face-down card your opponent controls, then return it to its original position."
+			var downs: Array = []
+			for m in opp.monsters():
+				if not m.face_up:
+					downs.append(m)
+			for st in opp.spells:
+				if st != null and not st.face_up:
+					downs.append(st)
+			if not downs.is_empty():
+				var seen = s.pick1(p, Loc.t("%s: look at which card?") % name, downs, downs[0], c)
+				seen.tags["seen_by_%d" % p] = true
+				events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s looks: it is %s") % [name, seen.cname()], "private": p})
 		"may_change_pos_self":
 			# Little-Winguard: "Once per turn, during your End Phase: You can change the battle position of this card."
 			if ps.field.has(c) and c.face_up and s.choose_option(p, Loc.t("%s: change its battle position?") % name, ["Change it", "Leave it"], 0 if c.attack_pos else 1, c) == 0:

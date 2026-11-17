@@ -693,6 +693,11 @@ func begin_end() -> Array:
 	# Limiter Removal: "During the End Phase of this turn, destroy those monsters."
 	for q in 2:
 		for m in players[q].monsters():
+			if int(m.tags.get("doom_end", -1)) == turn:
+				events.append({"type": "effect", "player": q, "card": m, "text": Loc.t("%s is destroyed in the End Phase") % m.cname()})
+				events.append_array(_destroy(m))
+	for q in 2:
+		for m in players[q].monsters():
 			if int(m.tags.get("limiter", -1)) == turn:
 				events.append({"type": "effect", "player": q, "card": m, "text": Loc.t("Limiter Removal: %s burns out") % m.cname()})
 				events.append_array(_destroy(m))
@@ -2739,6 +2744,19 @@ func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 		events.append_array(EffectRunner.trigger(self, winner_c, "kill", {"victim": loser}))
 	if loser.cname() == "Helpoemer" and players[loser.owner].gy.has(loser):
 		loser.tags["helpo_gy"] = loser.gy_turn
+	if players[loser.owner].gy.has(loser):
+		loser.tags["battle_gy"] = loser.gy_turn   # (Destiny HERO - Fear Monger: "destroyed by battle and sent there")
+		# Ambulance Rescueroid: "Once per turn, when a monster you control is destroyed by battle and sent to the GY: You can Special Summon that monster in Defense Position."
+		var amb_side := players[loser.owner]
+		for amb in amb_side.monsters():
+			if amb != loser and amb.face_up and not amb.negated and EffectRunner.fx(amb).get("ambulance", false) and int(amb.tags.get("amb_turn", -1)) != turn \
+					and amb_side.free_zone() != -1 and amb_side.no_summon_turn != turn and can_revive(loser) \
+					and choose_option(loser.owner, Loc.t("%s: Special Summon %s in Defense Position?") % [amb.cname(), loser.cname()], ["Summon it", "No"], 0, amb) == 0:
+				amb.tags["amb_turn"] = turn
+				amb_side.gy.erase(loser)
+				events.append({"type": "effect", "player": loser.owner, "card": amb, "text": Loc.t("%s brings %s back") % [amb.cname(), loser.cname()]})
+				events.append_array(_special(loser.owner, loser, "reborn", "def"))
+				break
 	events.append_array(EffectRunner.trigger(self, loser, "death", {"killer": winner_c}))
 	return events
 
@@ -3309,6 +3327,14 @@ func _destroy_st(c: CardInst) -> Array:
 	var was_up := c.face_up
 	_to_gy(ps, c)
 	var events := [{"type": "destroy_st", "player": c.owner, "card": c, "zone": zone}]
+	if not was_up and SpellRules.spec(c).get("wonder_garage", false) and ps.gy.has(c) and ps.free_zone() != -1 and ps.no_summon_turn != turn:
+		# Wonder Garage: "When this Set card is destroyed and sent to the GY: You can Special Summon 1 Level 4 or lower Machine "roid" monster from your hand."
+		var roids: Array = ps.hand.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Machine" and h.level() <= 4 and h.cname().to_lower().contains("roid"))
+		if not roids.is_empty() and choose_option(c.owner, Loc.t("%s: Special Summon a \"roid\" from your hand?") % c.cname(), ["Summon one", "No"], 0, c) == 0:
+			var best_r: Array = _best_monsters(roids, 1)
+			var r = pick1(c.owner, Loc.t("%s: which one?") % c.cname(), roids, best_r[0] if not best_r.is_empty() else roids[0], c)
+			ps.hand.erase(r)
+			events.append_array(_special(c.owner, r, "effect"))
 	# Clock Tower Prison: "If this card with 4 or more Clock Counters is destroyed and sent to the GY: Special Summon 1
 	# "Destiny HERO - Dreadmaster" from your hand or Deck."
 	if was_up and SpellRules.spec(c).get("ctp", false) and c.counter >= 4 and ps.gy.has(c):
@@ -3865,6 +3891,13 @@ func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 		events.append_array(_summon_tax(p, c))
 		if not ps.field.has(c):
 			return events
+	if str(c.data.get("race", "")) == "Machine":
+		# Cyber Summon Blaster: "Each time a Machine monster(s) is Special Summoned, while this card is already face-up: 300 damage to your opponent."
+		for q in 2:
+			for bl in players[q].spells:
+				if bl != null and bl.face_up and SpellRules.spec(bl).get("summon_blaster", false) and not SpellRules.blocked(self, bl) and not is_over():
+					events.append({"type": "effect", "player": q, "card": bl, "text": Loc.t("%s: 300 damage") % bl.cname()})
+					events.append_array(_damage(opponent(q), 300))
 	if method == "reborn":
 		# "If this card is Special Summoned from the GY" (Destiny HERO - Disk Commander).
 		events.append_array(EffectRunner.trigger(self, c, "revived"))

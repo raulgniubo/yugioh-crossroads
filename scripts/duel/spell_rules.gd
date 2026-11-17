@@ -29,6 +29,13 @@ const FX := {
 	"Echo Resonance": {"k": "normal", "cond": "echo_ready", "do": [["echo_resonance"]]},
 	"Echo Call": {"k": "normal", "do": [["search", {"has": "Lumen"}]]},
 	"Echo Veil": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["draw_if_own", "Lumen", 1]]},
+	# ---------------------------------------------------------------- The story duelists' remaining cards (GX era)
+	"Destruction of Destiny": {"k": "trap", "win": ["free"], "do": [["destruction_of_destiny"]]},
+	"Over Destiny": {"k": "normal", "cond": "over_destiny", "do": [["over_destiny"]]},
+	"Cyber Summon Blaster": {"k": "ctrap", "win": ["free"], "summon_blaster": true},
+	"Wonder Garage": {"k": "trap", "win": ["never"], "wonder_garage": true},
+	"Overload Fusion": {"k": "normal", "do": [["miracle_fusion", {"race": "Machine", "attr": "DARK"}]]},
+	"Chthonian Alliance": {"k": "equip", "atk_same_name": 800},
 	# ---------------------------------------------------------------- The story duelists' remaining cards (Duel Monsters era)
 	"Survival Instinct": {"k": "trap", "win": ["free"], "cond": "dino_in_gy", "do": [["survival_instinct"]]},
 	"Hunting Instinct": {"k": "trap", "win": ["summon"], "subj_special": true, "cond": "dino_in_hand", "do": [["special_from_hand", {"race": "Dinosaur"}]]},
@@ -747,6 +754,14 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return s.players[p].free_zone() != -1 and not s.players[p].gy.filter(func(g): return g.cname() == "Harpie Lady" or str(CardEffects.of(g.cname()).get("name_as_fg", "")) == "Harpie Lady").is_empty()
 		"own_amazoness":
 			return not s.players[p].monsters().filter(func(m): return m.face_up and m.cname().contains("Amazoness")).is_empty()
+		"over_destiny":
+			var ps_o := s.players[p]
+			for g in ps_o.gy:
+				if g.is_monster() and g.cname().begins_with("Destiny HERO"):
+					var lim: int = g.level() / 2
+					if not ps_o.deck.filter(func(d): return d.is_monster() and d.cname().begins_with("Destiny HERO") and d.level() <= lim).is_empty():
+						return ps_o.free_zone() != -1 and ps_o.no_summon_turn != s.turn
+			return false
 		"dino_in_gy":
 			return not s.players[p].gy.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Dinosaur").is_empty()
 		"big_hit":
@@ -2815,6 +2830,35 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			md["race"] = str(a[5])
 			c.data = md
 			events.append_array(s._special(p, c, "effect", "def"))
+		"destruction_of_destiny":
+			# "Send 3 cards from the top of your Deck to the Graveyard, and take 1000 damage for each Spell or Trap Card sent this way."
+			var st_n := 0
+			for i in 3:
+				if ps.deck.is_empty():
+					break
+				var top: DuelState.CardInst = ps.deck.pop_back()
+				s._to_gy(ps, top)
+				events.append({"type": "mill", "player": p, "card": top})
+				if not top.is_monster():
+					st_n += 1
+			if st_n > 0:
+				events.append_array(s._damage(p, 1000 * st_n))
+		"over_destiny":
+			# "Target 1 "Destiny HERO" monster in your GY; Special Summon 1 "Destiny HERO" monster from your Deck whose Level is less than or
+			# equal to half of that target's Level, but destroy it during the End Phase of this turn."
+			var src: Array = ps.gy.filter(func(g): return g.is_monster() and g.cname().begins_with("Destiny HERO") \
+					and not ps.deck.filter(func(d): return d.is_monster() and d.cname().begins_with("Destiny HERO") and d.level() <= g.level() / 2).is_empty())
+			if not src.is_empty():
+				src.sort_custom(func(x, y): return x.level() > y.level())
+				var tg = s.pick1(p, Loc.t("%s: target 1 \"Destiny HERO\" in your GY") % name, src, src[0], c)
+				var pool: Array = ps.deck.filter(func(d): return d.is_monster() and d.cname().begins_with("Destiny HERO") and d.level() <= tg.level() / 2)
+				var best: Array = s._best_monsters(pool, 1)
+				var got = s.pick1(p, Loc.t("%s: Special Summon which one?") % name, pool, best[0] if not best.is_empty() else pool[0], c)
+				if ps.free_zone() != -1:
+					ps.deck.erase(got)
+					events.append_array(s._special(p, got, "effect"))
+					events.append_array(EffectRunner.on_summon(s, p, got, "special"))
+					got.tags["doom_end"] = s.turn
 		"survival_instinct":
 			# "Banish any number of Dinosaur-Type monsters from your Graveyard; gain 400 Life Points for each"
 			var dinos: Array = ps.gy.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Dinosaur")
@@ -3036,6 +3080,12 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs) -> int:
 				b += 500   # Neo Space: "Elemental HERO Neos" and every Fusion Monster that lists it gain 500 ATK
 			if st.equipped_to == c:
 				b += int(sp.get("atk", 0))
+				if sp.has("atk_same_name"):
+					# Chthonian Alliance: "800 ATK for each other face-up monster on the field that has the same name it does."
+					for qq in 2:
+						for om in s.players[qq].monsters():
+							if om != c and om.face_up and om.cname() == c.cname():
+								b += int(sp["atk_same_name"])
 				if sp.has("atk_per"):
 					b += _per(s, q, str(sp["atk_per"][0])) * int(sp["atk_per"][1])
 				if sp.get("metalmorph", false) and attacking and vs != null:

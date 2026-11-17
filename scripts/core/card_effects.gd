@@ -759,6 +759,17 @@ const FX := {
 	"Umbral Horror Unform": {"note": "Destroyed by battle while attacking a monster: you can Special Summon 2 Umbral Horror monsters from your Deck. Once per turn.", "once_turn": true, "death": [["need_attacking"], ["need_deck", {"has": "Umbral Horror"}, 2], ["special", "deck", {"has": "Umbral Horror"}, "", 2]]},
 	"Umbral Horror Will o' the Wisp": {"note": "Normal or Special Summoned: you can make its Level the Level of another Umbral Horror monster you control or in your Graveyard. Destroyed by battle in Attack Position: destroy the monster that destroyed it.",
 		"summon": [["wisp_level"]], "special_only": [["wisp_level"]], "death": [["need_was_atk"], ["destroy_killer"]]},
+	# ---- The story duelists' remaining cards (GX era)
+	"Elemental HERO Phoenix Enforcer": {"note": "\"Elemental HERO Avian\" + \"Elemental HERO Burstinatrix\". Must be Fusion Summoned. Cannot be destroyed by battle.", "battle_immune": true},
+	"Elemental HERO Shining Phoenix Enforcer": {"note": "\"Elemental HERO Phoenix Enforcer\" + \"Elemental HERO Sparkman\". Must be Fusion Summoned. Gains 300 ATK for each \"Elemental HERO\" card in your GY. Cannot be destroyed by battle.",
+		"atk_per": ["own_gy_has:Elemental HERO", 300], "battle_immune": true},
+	"Destiny HERO - Blade Master": {"note": "During your opponent's Battle Phase: you can discard this card; all \"Destiny HERO\" monsters you control gain 800 ATK until the end of this turn.", "quick": "blade_master"},
+	"Destiny HERO - Fear Monger": {"note": "During your Standby Phase, if it is in your GY because it was destroyed by battle since your last Standby Phase: Special Summon 1 other \"Destiny HERO\" from your GY.", "gy_standby": [["fear_monger"]]},
+	"Infernal Dragon": {"note": "During the End Phase, if it attacked this turn: destroy it. Destroyed on the field and sent to the GY: you can Tribute 1 monster; Special Summon it from the GY.",
+		"end": [["infernal_end"]], "death": [["infernal_back"]], "fx_destroyed": [["infernal_back"]]},
+	"Patroid": {"note": "Once per turn, in your Main Phase: look at 1 face-down card your opponent controls.", "ignite": {"cost": "none", "cond": "opp_face_down", "do": [["peek_set"]], "label": "Look at 1 of their face-down cards"}},
+	"Ambulance Rescueroid": {"note": "\"Rescueroid\" + \"Ambulanceroid\". Must be Fusion Summoned. Once per turn, when a monster you control is destroyed by battle and sent to the GY: you can Special Summon it in Defense Position.", "ambulance": true},
+	"UFOroid Fighter": {"note": "\"UFOroid\" + 1 Warrior. Its original ATK/DEF become the combined original ATK of the 2 materials.", "mat_atk_sum": true},
 	# ---- The story duelists' remaining cards (Duel Monsters era)
 	"Different Dimension Dragon": {"note": "Cannot be destroyed by Spell/Trap effects that do not target it. Cannot be destroyed by battle with a monster that has 1900 or less ATK.",
 		"dd_immune": true, "battle_immune_vs_max": 1900},
