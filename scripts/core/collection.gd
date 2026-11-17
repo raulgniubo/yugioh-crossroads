@@ -1134,6 +1134,7 @@ func daily_bump(kind: String) -> void:
 	n[kind] = int(n.get(kind, 0)) + 1
 	d["n"] = n
 	record["daily"] = d
+	Goals.week_bump(kind)
 
 
 ## The three challenges picked for today, with progress: [{id, name, text, have, goal, reward}]
@@ -1142,11 +1143,12 @@ func daily_rows() -> Array:
 	var day := str(d["day"])
 	var n: Dictionary = d.get("n", {})
 	var out: Array = []
-	var start := absi(hash(day)) % DAILY.size()
+	var pool: Array = DAILY + Goals.DAILY_DUEL
+	var start := absi(hash(day)) % pool.size()
 	var used := {}
 	var i := 0
-	while out.size() < 3 and i < DAILY.size():
-		var t: Dictionary = DAILY[(start + i * 3) % DAILY.size()]
+	while out.size() < 3 and i < pool.size():
+		var t: Dictionary = pool[(start + i * 3) % pool.size()]
 		i += 1
 		if used.has(t["k"]):
 			continue

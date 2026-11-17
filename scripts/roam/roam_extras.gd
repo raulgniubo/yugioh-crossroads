@@ -712,16 +712,27 @@ func quest_rows() -> Array:
 		{"id": "world_tour", "name": "World tour", "text": "Set foot in all five worlds. (Press G to travel.)", "have": worlds, "goal": RoamData.WORLDS.size(), "reward": 400},
 		{"id": "chip_master", "name": "Chip master", "text": "Collect 30 Star Chips across every world.", "have": mini(30, all_chips), "goal": 30, "reward": 600},
 	]
-	rows = Collection.daily_rows() + rows
 	for r in rows:
 		r["done"] = _done.has(r["id"])
-	return rows
+	return Goals.daily_rows() + Goals.weekly_rows() + rows
 
 
 func _check_quests(announce: bool) -> void:
 	if story_mode:
 		return
+	# Daily and weekly goals pay through Goals (a day's goal paid out here before 0.33.42 stays paid).
+	var d: Dictionary = Collection.record.get("daily", {})
+	for r in Goals.daily_rows():
+		if _done.has(r["id"]) and not r["done"]:
+			var paid: Dictionary = d.get("paid", {})
+			paid[r["id"]] = true
+			d["paid"] = paid
+	for line in Goals.pay_due():
+		Router.toast(Loc.t("Goal complete: %s   +%d Duel Points") % [str(line[0]).trim_prefix(Loc.t("Goal: ")), line[1]])
+		Sfx.play("quest", -3.0)
 	for r in quest_rows():
+		if str(r["id"]).begins_with("daily_") or str(r["id"]).begins_with("weekly_"):
+			continue
 		if not r["done"] and int(r["have"]) >= int(r["goal"]):
 			_done[r["id"]] = true
 			Collection.dp += int(r["reward"])

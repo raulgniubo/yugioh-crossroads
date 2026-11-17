@@ -49,6 +49,8 @@ func _panel(pad := 16) -> PanelContainer:
 
 
 func _ready() -> void:
+	_note_seen(true)
+	_seen_at_open = (Collection.record.get("seen", {}) as Dictionary).duplicate()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	theme = UITheme.build()
@@ -117,6 +119,14 @@ func _ready() -> void:
 	tips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	tips.pressed.connect(_show_tips)
 	head.add_child(tips)
+	var share := Button.new()
+	share.text = Loc.t("Share")
+	share.tooltip_text = Loc.t("Copy this deck as a code to send a friend, or build a deck from a friend's code.")
+	share.add_theme_font_size_override("font_size", 18)
+	share.custom_minimum_size = Vector2(0, 44)
+	share.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	share.pressed.connect(_show_share)
+	head.add_child(share)
 	_undo_btn = Button.new()
 	_undo_btn.text = "Undo"
 	_undo_btn.tooltip_text = Loc.t("Takes back your last change (Ctrl+Z).")
@@ -581,6 +591,19 @@ func _tile(id: int) -> Control:
 	strip.offset_bottom = -6
 	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(strip)
+	if is_new_card(id):
+		var nw := Label.new()
+		nw.text = Loc.t("NEW")
+		nw.add_theme_font_override("font", UITheme.semi_font())
+		nw.add_theme_font_size_override("font_size", 13)
+		nw.add_theme_color_override("font_color", Color.WHITE)
+		var nsb := UITheme.panel_box(Color(Comic.RED, 0.95), 7, Color.WHITE)
+		nsb.content_margin_left = 6
+		nsb.content_margin_right = 6
+		nw.add_theme_stylebox_override("normal", nsb)
+		nw.position = Vector2(66, 4)
+		nw.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(nw)
 	var refresh := func():
 		var used := Collection.in_deck(id)
 		var lim := Collection.limit(id)
@@ -1008,6 +1031,109 @@ static func deck_tips(main: Array, extra: Array) -> Array:
 	return out
 
 
+func _show_share() -> void:
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.72)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(shade)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.add_child(center)
+	var panel := _panel(28)
+	panel.custom_minimum_size = Vector2(760, 0)
+	center.add_child(panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 14)
+	panel.add_child(v)
+	v.add_child(UITheme.label(Loc.t("SHARE A DECK"), 30, Color.WHITE, UITheme.title_font()))
+	var code := DeckCode.encode(Collection.main, Collection.extra, Collection.side)
+	var hint := UITheme.label(Loc.t("This deck as a code. Copy it and send it to a friend: they paste it here to build the same deck from the cards they own."), 17, UITheme.TEXT_DIM)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(hint)
+	var out := TextEdit.new()
+	out.text = code
+	out.editable = false
+	out.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	out.custom_minimum_size = Vector2(700, 90)
+	v.add_child(out)
+	var copy := Button.new()
+	copy.text = "  %s  " % Loc.t("Copy code")
+	copy.custom_minimum_size = Vector2(0, 46)
+	copy.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	copy.pressed.connect(func():
+		DisplayServer.clipboard_set(code)
+		Router.toast(Loc.t("Deck code copied.")))
+	v.add_child(copy)
+	v.add_child(UITheme.label(Loc.t("Build from a code"), 20, Color.WHITE, UITheme.semi_font()))
+	var inp := TextEdit.new()
+	inp.placeholder_text = Loc.t("Paste a deck code here")
+	inp.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	inp.custom_minimum_size = Vector2(700, 90)
+	v.add_child(inp)
+	var res := UITheme.label("", 17, UITheme.TEXT)
+	res.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(res)
+	var btns := HBoxContainer.new()
+	btns.add_theme_constant_override("separation", 10)
+	btns.alignment = BoxContainer.ALIGNMENT_END
+	v.add_child(btns)
+	var paste := Button.new()
+	paste.text = "  %s  " % Loc.t("Paste")
+	paste.custom_minimum_size = Vector2(0, 48)
+	paste.pressed.connect(func(): inp.text = DisplayServer.clipboard_get())
+	btns.add_child(paste)
+	var build := Button.new()
+	build.text = "  %s  " % Loc.t("Build this deck")
+	build.custom_minimum_size = Vector2(0, 48)
+	build.pressed.connect(func():
+		var d := DeckCode.decode(inp.text)
+		if d.is_empty():
+			res.text = Loc.t("That is not a deck code. It starts with CR1-.")
+			res.add_theme_color_override("font_color", UITheme.DANGER)
+			return
+		var r := apply_code(d)
+		_changed()
+		res.add_theme_color_override("font_color", UITheme.TEXT)
+		if (r["missing"] as Array).is_empty():
+			res.text = Loc.t("Done: every card is in. (Undo takes it back.)")
+		else:
+			res.text = Loc.t("Built with the cards you own. Missing: %s") % ", ".join(PackedStringArray(r["missing"])))
+	btns.add_child(build)
+	var close := Button.new()
+	close.text = "  %s  " % Loc.t("Close")
+	close.custom_minimum_size = Vector2(0, 48)
+	close.pressed.connect(shade.queue_free)
+	btns.add_child(close)
+
+
+## Puts a decoded deck in the builder, using only copies you own. Returns {"missing": [names]}.
+func apply_code(d: Dictionary) -> Dictionary:
+	_snap()
+	Collection.main = []
+	Collection.extra = []
+	Collection.side = []
+	var short := {}
+	for part in ["main", "extra", "side"]:
+		for id in d[part]:
+			var used := Collection.in_deck(int(id))
+			if Collection.count(int(id)) > used and mini(3, Collection.limit(int(id))) > used:
+				if part == "side":
+					Collection.side.append(int(id))
+				elif part == "extra":
+					Collection.extra.append(int(id))
+				else:
+					Collection.main.append(int(id))
+			else:
+				var nm := str(CardData.get_card(int(id)).get("name", ""))
+				short[nm] = int(short.get(nm, 0)) + 1
+	Collection.save()
+	var missing := []
+	for nm in short:
+		missing.append(nm + ("" if int(short[nm]) == 1 else " x%d" % int(short[nm])))
+	return {"missing": missing}
+
+
 func _show_tips() -> void:
 	var tips := deck_tips(Collection.main, Collection.extra)
 	var text := ""
@@ -1361,7 +1487,27 @@ func _unhandled_input(event: InputEvent) -> void:
 		_close()
 
 
+## Cards you got since you last opened the deck builder wear a NEW tag for one visit.
+## (The first time, everything you already own counts as seen.)
+static var _seen_at_open := {}
+
+
+static func is_new_card(id: int) -> bool:
+	return not _seen_at_open.is_empty() and not _seen_at_open.has(id) and Collection.count(id) > 0
+
+
+static func _note_seen(init_only := false) -> void:
+	var seen: Dictionary = Collection.record.get("seen", {})
+	if seen.is_empty() or not init_only:
+		for id in Collection.owned:
+			if int(Collection.owned[id]) > 0:
+				seen[int(id)] = true
+		Collection.record["seen"] = seen
+		Collection.save()
+
+
 func _close() -> void:
+	_note_seen()
 	Collection._apply_active()
 	if not Collection.deck_ok() and Collection.active == "custom":
 		Router.toast(Loc.t("Your deck needs %d to %d cards, so the Echo Deck is back in use") % [Collection.MAIN_MIN, Collection.MAIN_MAX])

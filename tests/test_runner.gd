@@ -96,6 +96,9 @@ func _ready() -> void:
 		_test_save_guard()
 		_test_own_sounds()
 		_test_deck_tips()
+		_test_goals()
+		_test_why_not()
+		_test_deck_code()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -7567,6 +7570,86 @@ func _test_save_guard() -> void:
 
 
 ## Your own sound and music files from the card folder play instead of the built-in ones.
+func _test_deck_code() -> void:
+	var main := [46986414, 46986414, 15025844, 91152256, 91152256, 91152256]
+	var extra := [99200003]
+	var side := [44095762]
+	var code := DeckCode.encode(main, extra, side)
+	var d := DeckCode.decode(code)
+	check(code.begins_with("CR1-") and not ("=" in code) and (d["main"] as Array).size() == 6 and d["extra"] == extra and d["side"] == side, "Deck code: a deck goes out and comes back the same (%s)" % code)
+	check(DeckCode.decode("hello").is_empty() and DeckCode.decode("CR1-@@@").is_empty(), "Deck code: text that is not a code is refused")
+	var DB = load("res://scripts/menu/deck_builder.gd")
+	DB._seen_at_open = {46986414: true}
+	var keep: Dictionary = Collection.owned.duplicate()
+	Collection.owned[15025844] = 1
+	Collection.owned[46986414] = 1
+	check(DB.is_new_card(15025844) and not DB.is_new_card(46986414), "NEW tag: a card not seen at the last visit wears it")
+	Collection.owned = keep
+	DB._seen_at_open = {}
+
+
+func _test_why_not() -> void:
+	var s := _new_state(31)
+	s.begin_turn()
+	s.current = 0
+	s.phase = DuelState.Phase.MAIN1
+	for m in s.players[0].monsters():
+		s.players[0].field[s.players[0].field.find(m)] = null
+	var dm := s._make(46986414, 0)
+	s.players[0].hand.append(dm)
+	check("Tribute" in s.why_not(0, dm), "Why not: Dark Magician with no monsters says it needs Tributes (%s)" % s.why_not(0, dm))
+	var elf := s._make(15025844, 0)
+	s.players[0].hand.append(elf)
+	check(s.why_not(0, elf) == "", "Why not: a playable Level 4 says nothing")
+	s.normal_summoned = true
+	check("Normal Summon" in s.why_not(0, elf), "Why not: second summon says the Normal Summon is used")
+	s.phase = DuelState.Phase.BATTLE
+	check("Main Phase" in s.why_not(0, elf), "Why not: Battle Phase says Main Phase")
+
+
+func _test_goals() -> void:
+	var keep_rec: Dictionary = Collection.record.duplicate(true)
+	var keep_dp := Collection.dp
+	Collection.record.erase("rp")
+	Collection.record.erase("weekly")
+	Collection.record.erase("daily")
+	Collection.record["streak"] = 1
+	check(Goals.tier() == 0 and Goals.rank_name() != "", "Goals: a new player starts as a Rookie")
+	var lines := Goals.after_duel(true, 3, {"flawless": true, "turbo": true, "opponent": "kaiba"}, {"extra": 2, "trap": 1, "direct": 3})
+	check(Goals.points() == 60, "Goals: a flawless Hard win gives 60 rank points (got %d)" % Goals.points())
+	var wk: Dictionary = Collection.record["weekly"]["n"]
+	check(int(wk.get("extra", 0)) == 2 and int(wk.get("beat", 0)) == 1 and int(wk.get("turbo_win", 0)) == 1 and int(wk.get("flawless", 0)) == 1, "Goals: a duel counts for the week (%s)" % str(wk))
+	Goals.after_duel(true, 3, {"opponent": "kaiba"}, {})
+	check(int(Collection.record["weekly"]["n"].get("beat", 0)) == 1, "Goals: beating the same duelist twice is one new rival")
+	Collection.record["rp"] = 140
+	var dp0 := Collection.dp
+	var up := Goals.apply_points(20)
+	check(Goals.tier() == 1 and up.size() == 2 and int(up[1][1]) == 300, "Goals: crossing 150 points ranks you up to Bronze with a reward (%s)" % str(up))
+	Goals.apply_points(-50)
+	check(Goals.points() == 150, "Goals: a loss never drops you out of a rank you reached (%d)" % Goals.points())
+	# Finish today's first goal by hand and see it paid once.
+	var rows := Goals.daily_rows()
+	var k := ""
+	for t in Collection.DAILY + Goals.DAILY_DUEL:
+		if str(t["name"]) == str(rows[0]["name"]):
+			k = str(t["k"])
+	for i in int(rows[0]["goal"]):
+		Collection.daily_bump(k)
+	dp0 = Collection.dp
+	var paid := Goals.pay_due()
+	var again := Goals.pay_due()
+	var found := false
+	for line in paid:
+		if str(rows[0]["name"]) in str(line[0]):
+			found = true
+	check(found and again.is_empty() and Collection.dp > dp0, "Goals: a finished daily goal pays once (%s / %s)" % [str(paid), str(again)])
+	check(Goals.weekly_rows().size() == 3 and Goals.week_left() > 0 and Goals.week_left() <= 604800, "Goals: three weekly goals and a week clock")
+	Profile.title = 0
+	check(Profile.title_open(Profile.TITLES.size() - 1) == Saves.admin, "Goals: the King of Games title waits for the top rank")
+	Collection.record = keep_rec
+	Collection.dp = keep_dp
+
+
 func _test_deck_tips() -> void:
 	var DB = load("res://scripts/menu/deck_builder.gd")
 	var good := []

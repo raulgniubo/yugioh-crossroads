@@ -5,6 +5,21 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.42
+
+- **Duelist Rank:** every duel you win earns rank points (more against harder opponents, for a win streak, or for a duel without damage). Eight ranks from Rookie to King of Games, each paying Duel Points when you reach it, and four new titles for the high ranks. A loss costs a few points but never drops you out of a rank. Your rank shows under your name on the main menu.
+- **Goals for today and this week:** the new target button next to Settings opens Rank & Goals. Three goals a day (now including duel goals: a big summon, springing Traps, a win without damage, a Riding Duel win...) and three bigger goals a week. They pay by themselves the moment they are done, and show in the duel's reward list.
+- **Collection goals:** every booster pack pays when you own a quarter, half, three quarters and all of its cards. Cards you already owned count, so your first look pays out what you have earned.
+- **Why can't I play this?** Tap a card in your hand that can't be played and the game says why: not your Main Phase, Normal Summon already used, how many Tributes it needs, zones full, or "you can still Set it".
+- **Deck builder:** a NEW tag on cards you got since your last visit, and **Share**: copy your deck as a code for a friend, or paste a friend's code to build the same deck from the cards you own (it lists what you are missing; Undo takes it back).
+- Spanish for all of the above.
+
+**Not done or not checked:**
+
+- Opponents with stronger personalities (v0.38) and rematches that get harder: not in this build.
+- Shop opening hours, suggested decks from your cards and one-tap "improve this deck": not in this build.
+- Not seen on a real screen: the Collection list at the bottom of Rank & Goals, the Share window, the "why" messages in a real duel.
+
 ## What is in 0.33.41
 
 - **Deck tips:** a new button in the deck builder looks over your deck and tells you, in plain words, what could trip it up: too few monsters, too many that need tributes, Synchro monsters with no Tuners, Fusions with no Polymerization or missing materials, Xyz with too few monsters of the right Level, Ritual monsters with no Ritual Spell, no Traps at all.

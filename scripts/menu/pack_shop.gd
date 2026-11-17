@@ -337,6 +337,13 @@ func _open(pack: Dictionary) -> void:
 		Sfx.play("blip", -6.0, 0.6)
 		return
 	_busy = true
+	# Collection goals reached by this pack (and daily or weekly pack goals), told once the cards are out.
+	var pays: Array = Goals.pay_album() + Goals.pay_due()
+	for k in pays.size():
+		var line: Array = pays[k]
+		get_tree().create_timer(4.0 + 2.2 * k).timeout.connect(func():
+			Router.toast(Loc.t("%s   +%d Duel Points") % [str(line[0]), int(line[1])])
+			Sfx.play("quest", -4.0))
 	_refresh()
 	# The pack lifts off the shelf, then the opening scene takes over.
 	var w: PackWrapper = _slots[_sel]["wrap"]

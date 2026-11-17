@@ -13,7 +13,8 @@ const HEIGHTS := HeroLook.HEIGHTS
 ## Titles under your name. Each is [text, what unlocks it]; "" is open from the start.
 const TITLES := [["", ""], ["Rookie Duelist", ""], ["Card Collector", ""], ["Street Duelist", ""], ["Echo Bearer", "story:ch1"],
 	["Friend of Slifer Red", "story:ch2"], ["Highway Rider", "story:ch3"], ["Street Champion", "title:domino"],
-	["Dorm Cup Winner", "title:academy"], ["Grand Prix Winner", "title:turbo"], ["Crossroads Champion", "title:cup"]]
+	["Dorm Cup Winner", "title:academy"], ["Grand Prix Winner", "title:turbo"], ["Crossroads Champion", "title:cup"],
+	["Gold Rank Duelist", "rank:3"], ["Diamond Duelist", "rank:5"], ["Legendary Duelist", "rank:6"], ["King of Games", "rank:7"]]
 ## What you say when a duel starts and when you win it.
 const INTROS := ["", "Let's do this.", "I won't hold back.", "It's time to duel!", "Show me what you've got.", "I've been waiting for this.",
 	"Don't blink.", "My deck has no pathetic cards.", "Let's make this one to remember."]
@@ -142,6 +143,8 @@ func title_open(i: int) -> bool:
 	var need := str(TITLES[clampi(i, 0, TITLES.size() - 1)][1])
 	if need == "" or Saves.admin:
 		return true
+	if need.begins_with("rank:"):
+		return Goals.tier() >= int(need.trim_prefix("rank:"))
 	if need.begins_with("story:"):
 		var order := ["prologue", "ch1", "ch2", "ch3", "ch4", "ch5"]
 		var at := order.find(need.trim_prefix("story:"))

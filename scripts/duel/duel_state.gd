@@ -1040,6 +1040,42 @@ func can_normal_summon(p: int, c: CardInst) -> bool:
 	return tributable(p).size() >= need
 
 
+## In plain words, why a card in the hand cannot be played right now ("" if it can, or if
+## there is nothing better to say than the card's own text).
+func why_not(p: int, c: CardInst) -> String:
+	if is_over() or p != current:
+		return ""
+	if not _in_main():
+		return Loc.t("Cards from your hand are played in your Main Phase.")
+	if c.is_monster():
+		if can_normal_summon(p, c) or can_special_from_hand(p, c):
+			return ""
+		if c.frame() in ["fusion", "synchro", "xyz"]:
+			return Loc.t("This monster is summoned from the Extra Deck.")
+		if c.frame() == "ritual":
+			return Loc.t("A Ritual monster needs its Ritual Spell to be summoned.")
+		if "cannot be normal summoned" in str(c.data.get("desc", "")).to_lower():
+			return Loc.t("This monster cannot be Normal Summoned. Its text says how it comes out.")
+		if big_locked(p, c):
+			return Loc.t("A card on the field stops you from summoning this monster.")
+		if normal_summoned and players[p].extra_normals <= 0:
+			return Loc.t("You already used your Normal Summon this turn.")
+		var need := tributes_needed(c)
+		if need == 0 and players[p].free_zone() == -1:
+			return Loc.t("Your Monster Zones are full.")
+		var have := tributable(p).size()
+		if need > have:
+			return Loc.t("Needs %d Tribute(s), and you have %d monster(s) you can Tribute.") % [need, have]
+		return ""
+	if can_activate(p, c) or (c.is_trap() and can_set_st(p, c)):
+		return ""
+	if can_set_st(p, c):
+		return Loc.t("It cannot be activated right now: what it needs is not on the field. You can still Set it.")
+	if players[p].spells.find(null) == -1 and SpellRules.kind(c) != "field":
+		return Loc.t("Your Spell & Trap Zones are full.")
+	return Loc.t("What this card needs is not on the field right now.")
+
+
 ## Monsters this player may Tribute for a Tribute Summon (Sheep Tokens and the like may not be).
 func tributable(p: int) -> Array:
 	return players[p].monsters().filter(func(m): return not m.data.get("no_tribute_summon", false) and m.no_tribute_turn != turn)

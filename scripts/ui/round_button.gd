@@ -4,6 +4,7 @@ extends Button
 ## Icons: gear, log, piles, pause, back, close, power.
 
 var kind := "gear"
+var badge := 0          # a small count in the corner (goals waiting), 0 for none
 var tint := Comic.BLUE
 var _hover := 0.0
 
@@ -70,3 +71,16 @@ func _draw() -> void:
 		"power":
 			draw_arc(o, 11.0 * k, -PI * 0.28, PI * 1.28, 20, w, 3.6 * k, true)
 			draw_line(o + Vector2(0, -15) * k, o + Vector2(0, -2) * k, w, 3.6 * k, true)
+		"goals":
+			draw_arc(o, 14.0 * k, 0.0, TAU, 32, w, 3.2 * k, true)
+			draw_arc(o, 8.0 * k, 0.0, TAU, 24, w, 3.2 * k, true)
+			draw_circle(o, 3.2 * k, w)
+	if badge > 0:
+		var bc := c + Vector2(r * 0.72, -r * 0.72)
+		draw_circle(bc, 11.0 * k + 3.0, Comic.RED)
+		draw_arc(bc, 11.0 * k + 3.0, 0.0, TAU, 24, Color.WHITE, 1.5, true)
+		var f := get_theme_default_font()
+		var s := str(badge)
+		var fs := int(14.0 * k + 4.0)
+		var tw := f.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		draw_string(f, bc + Vector2(-tw / 2.0, fs * 0.36), s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)

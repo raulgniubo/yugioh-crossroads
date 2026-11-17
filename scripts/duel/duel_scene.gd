@@ -736,6 +736,11 @@ func _finish() -> void:
 		# The duel of the day pays the first time it is won that day.
 		if won and not _surrendered and Router.duel_config.has("daily"):
 			earned += Knockout.daily_win(str(Router.duel_config["daily"]))
+		var g_lines := Goals.after_duel(won and not _surrendered and not tied, _ai_level, {"flawless": my_lp >= int(_start_lp[ME]),
+				"turbo": board.track != null, "opponent": _opp_key, "draw": tied}, _tally)
+		for line in g_lines:
+			earned += int(line[1])
+		Collection.last_reward.append_array(g_lines)
 		var got := Collection.note_result(_opp_key, won and not _surrendered)
 		if got != "":
 			Router.toast(Loc.t("Third win over %s: their deck is now in My Decks.") % str(Characters.get_char(_opp_key).get("short", _opp_key)))
@@ -1312,12 +1317,31 @@ func _play_event(ev: Dictionary) -> void:
 
 
 ## One line in the play-by-play for what the other side does (and for what happens to you).
+var _tally := {}
+
+
 func _feed_event(ev: Dictionary, p: int) -> void:
 	if _autoplay:
 		return
 	var c = ev.get("card")
 	var cn := str(c.cname()) if c != null and c.has_method("cname") else ""
 	var theirs := p == AI
+	if p == ME and _puzzle.is_empty() and c != null and c.has_method("frame"):
+		# What you did this duel, for your goals (Goals.after_duel).
+		match str(ev["type"]):
+			"special":
+				if c.frame() in ["fusion", "synchro", "xyz", "ritual"]:
+					_tally["extra"] = int(_tally.get("extra", 0)) + 1
+				elif c.level() >= 5:
+					_tally["tribute"] = int(_tally.get("tribute", 0)) + 1
+			"summon":
+				if c.level() >= 5:
+					_tally["tribute"] = int(_tally.get("tribute", 0)) + 1
+			"trap":
+				_tally["trap"] = int(_tally.get("trap", 0)) + 1
+			"attack":
+				if ev.get("target") == null:
+					_tally["direct"] = int(_tally.get("direct", 0)) + 1
 	match str(ev["type"]):
 		"destiny":
 			if theirs:
@@ -1678,6 +1702,10 @@ func _on_hand_card_pressed(inst, at: Vector2) -> void:
 		hud.show_actions(at, [["set_st", "Set", state.can_set_st(ME, inst)]], true)
 	else:
 		hud.show_actions(at, [["activate", "Activate", state.can_activate(ME, inst)], ["set_st", "Set", state.can_set_st(ME, inst)]], true)
+	# Nothing to press: say why, so a greyed-out card is never a mystery.
+	var why := state.why_not(ME, inst)
+	if why != "":
+		Router.toast(why, 2.6)
 
 
 func _on_action(action: String) -> void:

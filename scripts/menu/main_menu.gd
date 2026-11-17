@@ -50,6 +50,15 @@ func _ready() -> void:
 	elif Router.menu_open == "academy":
 		Router.menu_open = ""
 		_on_academy.call_deferred()
+	elif Router.menu_open == "builder":
+		Router.menu_open = ""
+		(func():
+			var b := DeckBuilder.new()
+			b.z_index = 100
+			add_child(b)).call_deferred()
+	elif Router.menu_open == "goals":
+		Router.menu_open = ""
+		_on_goals.call_deferred()
 	elif Router.menu_open == "decks":
 		Router.menu_open = ""
 		_on_deck.call_deferred()
@@ -262,6 +271,17 @@ func _build_menu() -> void:
 	gear.pressed.connect(_on_settings)
 	rounds.add_child(gear)
 	_items.append(gear)
+	var goals := RoundButton.new("goals", Comic.BLUE, 64.0)
+	goals.tooltip_text = Loc.t("Rank and goals")
+	goals.focus_mode = Control.FOCUS_ALL
+	var left := 0
+	for r in Goals.daily_rows():
+		if not r["done"]:
+			left += 1
+	goals.badge = left
+	goals.pressed.connect(_on_goals)
+	rounds.add_child(goals)
+	_items.append(goals)
 	if OS.has_feature("pc"):
 		var quit := RoundButton.new("power", Comic.RED, 64.0)
 		quit.tooltip_text = "Quit"
@@ -321,6 +341,126 @@ func _on_tournaments() -> void:
 		p.body.add_child(b)
 	add_child(p)
 	_open_panel(p)
+
+
+## Your Duelist Rank, and what today and this week ask of you.
+func _on_goals() -> void:
+	Sfx.play("click", -6.0)
+	# Anything finished since the last look pays now (a collection you built before goals existed too).
+	var pays: Array = Goals.pay_due() + Goals.pay_album()
+	var total := 0
+	for line in pays:
+		total += int(line[1])
+	if total > 0:
+		Router.toast(Loc.t("%d goals reached   +%d Duel Points") % [pays.size(), total], 3.0)
+		Sfx.play("quest", -3.0)
+	var p := SidePanel.new("Rank & Goals", 760)
+	p.z_index = 100
+	var head := PanelContainer.new()
+	var rc := Goals.rank_color()
+	head.add_theme_stylebox_override("panel", UITheme.button_box(Color(0.06, 0.08, 0.16, 0.92), Color(rc, 0.6), 14))
+	var hm := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		hm.add_theme_constant_override("margin_" + side, 18)
+	head.add_child(hm)
+	var hv := VBoxContainer.new()
+	hv.add_theme_constant_override("separation", 8)
+	hm.add_child(hv)
+	hv.add_child(UITheme.label(Loc.t("DUELIST RANK"), 16, UITheme.TEXT_DIM, UITheme.semi_font()))
+	hv.add_child(UITheme.label(Goals.rank_name().to_upper(), 40, rc, UITheme.title_font()))
+	hv.add_child(_goal_bar(Goals.progress(), rc))
+	var nxt := Goals.to_next()
+	var t := Goals.tier()
+	var under := Loc.t("%d rank points") % Goals.points()
+	if nxt > 0:
+		under += "   ·   " + Loc.t("%d more to %s (+%d Duel Points)") % [nxt, Goals.rank_name(t + 1), int(Goals.RANKS[t + 1][3])]
+	else:
+		under += "   ·   " + Loc.t("The top rank. Nobody stands above you.")
+	hv.add_child(UITheme.label(under, 17, UITheme.TEXT))
+	var how := UITheme.label(Loc.t("Every duel you win earns rank points: more against harder opponents, more for a win streak or a duel without damage. A loss costs a few, but you never drop out of a rank you reached."), 15, UITheme.TEXT_DIM)
+	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hv.add_child(how)
+	p.body.add_child(head)
+	var sections := [[Loc.t("TODAY"), Goals.daily_rows(), Goals.day_left()], [Loc.t("THIS WEEK"), Goals.weekly_rows(), Goals.week_left()]]
+	for sec in sections:
+		var sh := HBoxContainer.new()
+		var st := UITheme.label(str(sec[0]), 26, Color.WHITE, UITheme.title_font())
+		st.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		sh.add_child(st)
+		var secs := int(sec[2])
+		var left_text := (Loc.t("New goals in %d h") % maxi(1, secs / 3600)) if secs < 86400 * 2 else (Loc.t("New goals in %d days") % (secs / 86400))
+		sh.add_child(UITheme.label(left_text, 15, UITheme.TEXT_DIM))
+		p.body.add_child(sh)
+		for r in sec[1]:
+			p.body.add_child(_goal_row(r))
+	# Collection goals: every pack pays as you own a quarter, half, three quarters and all of it.
+	p.body.add_child(UITheme.label(Loc.t("COLLECTION"), 26, Color.WHITE, UITheme.title_font()))
+	var ch := UITheme.label(Loc.t("Own a quarter, half, three quarters and every card of a pack to earn its rewards."), 15, UITheme.TEXT_DIM)
+	ch.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	p.body.add_child(ch)
+	for a in Goals.album_rows():
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		var nm := UITheme.label(Loc.t(str(a["name"])), 17, Color(a["color"]).lightened(0.3), UITheme.semi_font())
+		nm.custom_minimum_size = Vector2(220, 0)
+		nm.clip_text = true
+		row.add_child(nm)
+		var full: bool = int(a["step"]) >= Goals.ALBUM_STEPS.size()
+		var bar := _goal_bar(float(a["have"]) / maxf(1.0, float(a["total"])), UITheme.ACCENT if full else Color(a["color"]))
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(bar)
+		var cnt := UITheme.label("%d / %d" % [int(a["have"]), int(a["total"])], 15, UITheme.TEXT_DIM)
+		cnt.custom_minimum_size = Vector2(84, 0)
+		cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		row.add_child(cnt)
+		var nx := UITheme.label(Loc.t("Complete") if full else (Loc.t("at %d: +%d") % [int(a["next_at"]), int(a["next_dp"])]), 15, UITheme.ACCENT if full else Comic.YELLOW)
+		nx.custom_minimum_size = Vector2(120, 0)
+		nx.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		row.add_child(nx)
+		p.body.add_child(row)
+	add_child(p)
+	_open_panel(p)
+
+
+func _goal_bar(f: float, col: Color) -> Control:
+	var bar := Control.new()
+	bar.custom_minimum_size = Vector2(0, 10)
+	bar.draw.connect(func():
+		bar.draw_rect(Rect2(Vector2.ZERO, bar.size), Color(1, 1, 1, 0.12))
+		bar.draw_rect(Rect2(Vector2.ZERO, Vector2(bar.size.x * clampf(f, 0.0, 1.0), bar.size.y)), col))
+	return bar
+
+
+func _goal_row(r: Dictionary) -> Control:
+	var done: bool = r["done"]
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel", UITheme.button_box(Color(0.05, 0.09, 0.08, 0.9) if done else Color(0.05, 0.075, 0.15, 0.9), Color(UITheme.ACCENT, 0.5) if done else Color(1, 1, 1, 0.12), 12))
+	var m := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		m.add_theme_constant_override("margin_" + side, 14)
+	box.add_child(m)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	m.add_child(v)
+	var top := HBoxContainer.new()
+	var name := UITheme.label(("✓  " if done else "") + Loc.t(str(r["name"])), 20, UITheme.ACCENT if done else Color.WHITE, UITheme.semi_font())
+	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(name)
+	top.add_child(UITheme.label(Loc.t("Done") if done else ("+%d DP" % int(r["reward"])), 18, UITheme.ACCENT if done else Comic.YELLOW, UITheme.semi_font()))
+	v.add_child(top)
+	var txt := UITheme.label(Loc.t(str(r["text"])), 16, UITheme.TEXT_DIM)
+	txt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(txt)
+	var low := HBoxContainer.new()
+	low.add_theme_constant_override("separation", 12)
+	var bar := _goal_bar(float(r["have"]) / maxf(1.0, float(r["goal"])), UITheme.ACCENT)
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	low.add_child(bar)
+	low.add_child(UITheme.label("%d / %d" % [int(r["have"]), int(r["goal"])], 15, UITheme.TEXT_DIM))
+	v.add_child(low)
+	return box
 
 
 var _chip_avatar: TextureRect
@@ -604,7 +744,8 @@ func _on_flushed() -> void:
 func _refresh_chip() -> void:
 	_chip_avatar.texture = Portraits.get_portrait("player")
 	_chip_name.text = Profile.duelist_name
-	_chip_sub.text = "%s   ·   %s" % [Profile.title_text(), Loc.t("%d W  %d L") % [Profile.wins, Profile.losses]]
+	_chip_sub.text = "%s   ·   %s" % [Profile.title_text(), Loc.t("%s rank") % Goals.rank_name()]
+	_chip_sub.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	_chip_dp.text = DpPurse._fmt(Collection.dp)
 	_chip.queue_redraw()
 
@@ -644,8 +785,8 @@ func _open_profile(first: bool) -> void:
 func _build_footer() -> void:
 	var version: String = ProjectSettings.get_setting("application/config/version", "0.1")
 	var left := UITheme.label(Loc.t("Fan project  ·  v%s  ·  by %s") % [version, "Atlas Peak Games"], 16, Color(1, 1, 1, 0.35))
-	_anchor_bottom(left, 250, 900)
-	# On the same line as the two round buttons beside it (they span 112 to 48 from the bottom).
+	_anchor_bottom(left, 330, 980)
+	# On the same line as the three round buttons beside it (they span 112 to 48 from the bottom).
 	left.offset_top = -112
 	left.offset_bottom = -48
 	left.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
