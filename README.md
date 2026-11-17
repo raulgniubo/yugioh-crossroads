@@ -14,6 +14,7 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 - **Clockwork Titans, the theme deck:** 40 cards plus 6 Fusions in the Extra Deck, 900 DP in the card shop. In test duels it won 4 of 8 against the story duelists.
 - **Clockwork Titans, the booster pack:** in the Card families tab and on the Duel Academy shelf (opens with the GX era); the cards are also in the GX era pack and the type packs.
 - **Someone plays it:** the Blue Dorm Prefect at Duel Academy duels with Ancient Gears now.
+- **Shop fixes:** in the deck shop and the pack shop a click only selects; you open or buy with the button, so no DP is spent on a stray click. A world's shop only sells the duelist decks of that era (no Yusei deck in Domino City), and the theme decks are spread across the worlds. No two decks share a cover picture. Buying a deck plays a reveal like opening a pack: the box bursts open, every card shows, and the 4 rarest flip up front. Duelist deck boxes show the duelist's portrait in a round medallion.
 
 Not done or not checked: Ancient Gear Ballista (a Link Monster, and the game has no Links), Ancient Gear Duel and Ancient Gear Fortress are left out. Ancient Gear Dark Golem counts as "Ancient Gear Golem" for the Golem cards but not as Fusion material for Ultimate Ancient Gear Golem. When Ancient Gear Castle has enough counters the game always uses it for the Tribute. Played by the test duels, not watched.
 

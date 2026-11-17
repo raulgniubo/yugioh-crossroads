@@ -7,6 +7,7 @@ var info := {}
 var owned := false
 var glow := 0.0
 var _art: Texture2D
+var _face: Texture2D          # a duelist's deck: their portrait, in a medallion on the art
 var _card_art := false       # the art is a card face: show its picture window, not the frame
 var _title_font: Font
 var _semi: Font
@@ -24,6 +25,9 @@ func setup(entry: Dictionary) -> DeckBox:
 		_art = got[0]
 		_region = got[1]
 		_card_art = true
+	var who := str(entry.get("who", ""))
+	if str(entry.get("kind", "")) == "duelist" and who != "" and Avatars.has_avatar(who):
+		_face = Portraits.get_portrait(who)
 	return self
 
 
@@ -35,6 +39,19 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	queue_redraw()
+
+
+## A texture drawn inside a circle (as a fan of triangles with UVs).
+func _draw_round(tex: Texture2D, cen: Vector2, rad: float, src: Rect2) -> void:
+	var pts := PackedVector2Array()
+	var uvs := PackedVector2Array()
+	var ts := tex.get_size()
+	for i in 40:
+		var a := TAU * i / 40.0
+		var d := Vector2(cos(a), sin(a))
+		pts.append(cen + d * rad)
+		uvs.append((src.position + src.size * (Vector2(0.5, 0.5) + d * 0.5)) / ts)
+	draw_colored_polygon(pts, Color.WHITE, uvs, tex)
 
 
 func _draw() -> void:
@@ -54,6 +71,17 @@ func _draw() -> void:
 		draw_rect(art_r, Color(col.lightened(0.4), 0.4), false, 1.5)
 	else:
 		draw_rect(art_r, col.darkened(0.5))
+	if _face:
+		# The duelist whose deck this is, in a round frame at the bottom right of the art.
+		var rad := minf(w, h) * 0.2
+		var cen := Vector2(art_r.end.x - rad - 8, art_r.end.y - rad - 10)
+		draw_circle(cen + Vector2(2, 4), rad + 4, Color(0, 0, 0, 0.45))
+		draw_circle(cen, rad + 4, col.lightened(0.35))
+		draw_circle(cen, rad, col.darkened(0.55))
+		var fs_sz := _face.get_size()
+		var side := minf(fs_sz.x, fs_sz.y)
+		var src := Rect2((fs_sz.x - side) / 2.0, 0, side, side)
+		_draw_round(_face, cen, rad - 2, src)
 	# Shade into the band.
 	for i in 8:
 		draw_rect(Rect2(6, art_r.end.y - 48 + i * 6, w - 12, 6), Color(0, 0, 0, 0.08 * i))

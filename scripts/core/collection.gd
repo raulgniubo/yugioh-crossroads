@@ -49,22 +49,36 @@ const PACKS := [
 	{"key": "arsenal", "tab": 3, "name": "Relic Arsenal", "color": Color("8fb8c8"), "blurb": "Equip, Field and Continuous Spells."},
 	{"key": "traps", "tab": 3, "name": "Face-Down Secrets", "color": Color("ff5a8a"), "blurb": "Every Trap card in the game."},
 ]
+## Which era each world's shops sell.
+const WORLD_ERA := {"domino": "Duel Monsters", "academy": "GX", "satellite": "5D's", "newdomino": "5D's", "highway": "5D's", "heartland": "ZEXAL"}
+
+
+## Is this theme deck on the shelf in that world's shop? ("worlds" in THEME_DECKS; a family's deck in its era's worlds.)
+static func theme_sold_in(key: String, world: String) -> bool:
+	for t in THEME_DECKS:
+		if str(t["key"]) == key:
+			if t.has("worlds"):
+				return (t["worlds"] as Array).has(world)
+			return str(t.get("era", "")) == "" or str(WORLD_ERA.get(world, "")) == str(t.get("era", ""))
+	return true
+
+
 ## Ready-made theme decks sold at the card shop (duelists' decks are sold there too).
 const DECK_PRICE := 1200
 const THEME_PRICE := 900
 const THEME_DECKS := [
-	{"key": "deck_water", "art": "deck_water", "color": Color("4aa8ff"), "blurb": "WATER monsters at home in the open sea. Umi makes every one of them stronger."},
-	{"key": "deck_fire", "art": "deck_fire", "color": Color("ff6a3c"), "blurb": "FIRE monsters and a hand full of burn Spells. Win without ever attacking."},
-	{"key": "deck_wind", "art": "gale", "color": Color("7de0b0"), "blurb": "WIND monsters that hit fast, backed by Rising Air Current."},
-	{"key": "deck_dragon", "art": "dragons", "color": Color("ff5a3c"), "blurb": "Big Dragons, and the smaller ones you Tribute to bring them out."},
-	{"key": "deck_warrior", "art": "warriors", "color": Color("f0b040"), "blurb": "Warriors with swords for everyone. Reinforcement of the Army finds the one you need."},
-	{"key": "deck_arcane", "art": "arcane", "color": Color("ffd97a"), "blurb": "Spellcasters and Fairies, with Spells that lock the other side down."},
-	{"key": "deck_shadow", "art": "shadow", "color": Color("9a6bff"), "blurb": "Fiends that hit hard for their Level, and ways to bring them back."},
-	{"key": "deck_machine", "art": "machines", "color": Color("6fc3ff"), "blurb": "Machines with heavy firepower and the tools to make them bigger."},
-	{"key": "deck_wild", "art": "wild", "color": Color("ff9a3c"), "blurb": "Beasts with high ATK at Level 4. No tricks, just teeth."},
-	{"key": "deck_ancient_gear", "art": "machines", "color": Color("b07a3c"), "era": "GX", "blurb": "Ancient Gear Golems hit hard, pierce, and nothing your opponent sets can stop the attack. Geartown and the Castle bring them out fast."},
-	{"key": "deck_gravekeeper", "art": "arcane", "color": Color("c8a050"), "era": "Duel Monsters", "blurb": "The Gravekeeper's guard Necrovalley: while it stands, nothing leaves either Graveyard. Flip Spies, call more guards, lock the other side down."},
-	{"key": "deck_forest", "art": "forest", "color": Color("5fd070"), "blurb": "Insects and Plants in their Forest, with Traps that slow everything down."},
+	{"key": "deck_water", "worlds": ["academy", "heartland"], "art": "deck_water", "color": Color("4aa8ff"), "blurb": "WATER monsters at home in the open sea. Umi makes every one of them stronger."},
+	{"key": "deck_fire", "worlds": ["domino", "newdomino"], "art": "deck_fire", "color": Color("ff6a3c"), "blurb": "FIRE monsters and a hand full of burn Spells. Win without ever attacking."},
+	{"key": "deck_wind", "worlds": ["newdomino", "academy"], "art": "gale", "color": Color("7de0b0"), "blurb": "WIND monsters that hit fast, backed by Rising Air Current."},
+	{"key": "deck_dragon", "worlds": ["domino", "heartland"], "art": "dragons", "color": Color("ff5a3c"), "blurb": "Big Dragons, and the smaller ones you Tribute to bring them out."},
+	{"key": "deck_warrior", "worlds": ["domino", "satellite"], "art": "warriors", "color": Color("f0b040"), "blurb": "Warriors with swords for everyone. Reinforcement of the Army finds the one you need."},
+	{"key": "deck_arcane", "worlds": ["domino", "academy"], "art": "arcane", "color": Color("ffd97a"), "blurb": "Spellcasters and Fairies, with Spells that lock the other side down."},
+	{"key": "deck_shadow", "worlds": ["academy", "satellite"], "art": "shadow", "color": Color("9a6bff"), "blurb": "Fiends that hit hard for their Level, and ways to bring them back."},
+	{"key": "deck_machine", "worlds": ["newdomino", "satellite", "heartland"], "art": "machines", "color": Color("6fc3ff"), "blurb": "Machines with heavy firepower and the tools to make them bigger."},
+	{"key": "deck_wild", "worlds": ["heartland", "domino"], "art": "wild", "color": Color("ff9a3c"), "blurb": "Beasts with high ATK at Level 4. No tricks, just teeth."},
+	{"key": "deck_ancient_gear", "art": "machines", "cover": "Ancient Gear Golem", "color": Color("b07a3c"), "era": "GX", "blurb": "Ancient Gear Golems hit hard, pierce, and nothing your opponent sets can stop the attack. Geartown and the Castle bring them out fast."},
+	{"key": "deck_gravekeeper", "art": "arcane", "cover": "Gravekeeper's Chief", "color": Color("c8a050"), "era": "Duel Monsters", "blurb": "The Gravekeeper's guard Necrovalley: while it stands, nothing leaves either Graveyard. Flip Spies, call more guards, lock the other side down."},
+	{"key": "deck_forest", "worlds": ["academy", "satellite"], "art": "forest", "color": Color("5fd070"), "blurb": "Insects and Plants in their Forest, with Traps that slow everything down."},
 ]
 ## The three decks a new duelist picks one of: the same strength, three ways to play, your
 ## partner in each. `show` are three cards that say what the deck is about.
@@ -540,7 +554,29 @@ func award_medals(key: String, info: Dictionary) -> int:
 	return paid
 
 
+## Each deck's cover card, never the same one on two decks. {deck key: card id}
+var _deck_covers := {}
+
+
 func deck_ace(key: String) -> int:
+	if _deck_covers.is_empty():
+		var used := {}
+		for e in deck_catalog():
+			var k := str(e["key"])
+			var id := _deck_ace(k, used)
+			_deck_covers[k] = id
+			used[id] = true
+	if _deck_covers.has(key):
+		return int(_deck_covers[key])
+	return _deck_ace(key, {})
+
+
+func _deck_ace(key: String, used: Dictionary) -> int:
+	for t in THEME_DECKS:
+		if str(t["key"]) == key and t.has("cover"):
+			var cid: int = CardData.NAME_TO_ID.get(str(t["cover"]).to_lower(), 0)
+			if cid != 0 and not used.has(cid):
+				return cid
 	var ids: Array = CardData.extra_list(key) + CardData.deck_list(key)
 	# A duelist's deck shows that duelist's own card (Yugi's shows Dark Magician, not whatever
 	# in it happens to hit hardest), and a deck named after a card shows that card.
@@ -557,9 +593,9 @@ func deck_ace(key: String) -> int:
 			var nm := str(nd.get("name", "")).to_lower()
 			if nd.get("kind", "") != "monster":
 				continue
-			if nm == title:
+			if nm == title and not used.has(id):
 				return id
-			if nm.contains(title) and not CardData.extra_list(key).has(id) and int(nd.get("atk", 0)) > named_atk:
+			if nm.contains(title) and not used.has(id) and not CardData.extra_list(key).has(id) and int(nd.get("atk", 0)) > named_atk:
 				named_atk = int(nd.get("atk", 0))
 				named = id
 		if named != 0:
@@ -571,6 +607,8 @@ func deck_ace(key: String) -> int:
 		if d.get("kind", "") != "monster":
 			continue
 		var sc := CardData.rarity(id) * 10000 + int(d.get("atk", 0))
+		if used.has(id):
+			sc -= 1000000   # (another deck already shows it)
 		if sc > score:
 			score = sc
 			best = id

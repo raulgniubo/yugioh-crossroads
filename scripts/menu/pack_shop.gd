@@ -210,13 +210,9 @@ func _slot(i: int) -> Control:
 	wrap.position = Vector2(0, 40)
 	wrap.pivot_offset = Vector2(125, 384)
 	b.add_child(wrap)
-	b.pressed.connect(func():
-		if _sel == i:
-			_open(pack)
-		else:
-			_select(i))
+	# Click a pack to pick it; only the Open button spends Duel Points.
+	b.pressed.connect(func(): _select(i))
 	b.focus_entered.connect(func(): _select(i))
-	b.mouse_entered.connect(func(): _select(i))
 	_slots.append({"button": b, "wrap": wrap, "pack": pack})
 	# Drop onto the shelf one after another.
 	wrap.modulate.a = 0.0

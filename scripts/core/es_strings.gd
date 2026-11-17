@@ -68,7 +68,7 @@ const ES := {
 	"You own %d.": "Tienes %d.",
 	"Your deck needs %d to %d cards, so the Echo Deck is back in use": "Tu deck necesita de %d a %d cartas, así que vuelve a usarse el Deck Eco",
 	"DECK BUILDER": "CONSTRUCTOR DE DECKS",
-	"You'll duel with %s": "Harás duelos con %s",
+	"You'll duel with %s": "Duelarás con %s",
 	"  Done  ": "  Listo  ",
 	"Hover a card": "Pasa el cursor sobre una carta",
 	"Click a card in your collection to add it to the deck. Click a card in the deck to take it out.": "Haz clic en una carta de tu colección para añadirla al deck. Haz clic en una carta del deck para quitarla.",
@@ -356,7 +356,7 @@ const ES := {
 	"Leave the counter": "Salir del mostrador",
 	"%s\nYou have %d of %d cards.": "%s\nTienes %d de %d cartas.",
 	"Open  ·  %d DP": "Abrir  ·  %d DP",
-	"Needs the card database": "Necesita la base de cartas",
+	"Needs the card database": "Necesita la base de datos de cartas",
 	"Controller connected: %s": "Mando conectado: %s",
 	"Controller disconnected": "Mando desconectado",
 	"Duelist Lv %d": "Duelista Nv %d",
@@ -6060,4 +6060,5 @@ const ES := {
 	"Ancient Gear: Golems no Spell or Trap can answer, the fusions built from them, and the towns and castles that bring them out.": "Ancient Gear: Golems a los que ninguna Mágica ni Trampa puede responder, las fusiones que se forman con ellos y las ciudades y castillos que los sacan.",
 	"Ancient Gear Golems hit hard, pierce, and nothing your opponent sets can stop the attack. Geartown and the Castle bring them out fast.": "Los Ancient Gear Golem pegan fuerte, penetran y nada de lo que Coloque tu rival detiene el ataque. Geartown y el Castillo los sacan rápido.",
 	"Know your place. My Golems do not rust.": "Sabe cuál es tu lugar. Mis Golems no se oxidan.",
+	"%d cards are yours, %d of them new to your collection.": "%d cartas son tuyas, %d de ellas nuevas en tu colección.",
 }

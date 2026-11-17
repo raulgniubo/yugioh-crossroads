@@ -151,7 +151,12 @@ func _ready() -> void:
 	done.add_theme_font_size_override("font_size", 24)
 	done.pressed.connect(_close)
 	right.add_child(done)
-	_show_tab(0)
+	_show_tab(int(OS.get_environment("DEV_DECK_TAB")) if OS.get_environment("DEV_DECK_TAB") != "" else 0)
+	if OS.get_environment("DEV_BUY_DECK") != "":
+		# Dev: buy the selected deck a moment after the shop opens (to look at the reveal).
+		get_tree().create_timer(1.0).timeout.connect(func():
+			_select(int(OS.get_environment("DEV_BUY_DECK")))
+			_do_buy())
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.25)
 
@@ -166,6 +171,12 @@ func _show_tab(t: int) -> void:
 	_slots.clear()
 	var want := "duelist" if t == 0 else "theme"
 	_entries = Collection.deck_catalog().filter(func(e): return e["kind"] == want)
+	# A shop inside a world sells that world's own decks: its era's duelists, and the theme decks
+	# stocked there. The main menu's shop has them all.
+	var here := str(Router.roam.get("district", "")) if get_tree().current_scene and "district" in get_tree().current_scene and "_npcs" in get_tree().current_scene else ""
+	if here != "":
+		var era_here := str(Collection.WORLD_ERA.get(here, ""))
+		_entries = _entries.filter(func(e): return (e["kind"] == "duelist" and str(e["era"]) == era_here) or (e["kind"] == "theme" and Collection.theme_sold_in(str(e["key"]), here)))
 	_sel = -1
 	for i in _entries.size():
 		_grid.add_child(_slot(i))
@@ -192,7 +203,7 @@ func _slot(i: int) -> Control:
 	b.add_child(box)
 	b.pressed.connect(func(): _select(i))
 	b.focus_entered.connect(func(): _select(i))
-	b.mouse_entered.connect(func(): _select(i))
+	# (Hovering no longer picks a deck: click it, and it stays picked while you move to the buttons.)
 	_slots.append({"button": b, "box": box, "entry": e})
 	box.modulate.a = 0.0
 	box.create_tween().tween_property(box, "modulate:a", 1.0, 0.2).set_delay(0.03 * i)
@@ -292,11 +303,16 @@ func _refresh() -> void:
 
 func _do_buy() -> void:
 	var e: Dictionary = _entries[_sel]
+	var before := Collection.owned.duplicate()
 	if not Collection.buy_deck(str(e["key"])):
 		Router.toast("Not enough Duel Points")
 		Sfx.play("blip", -6.0, 0.6)
 		return
 	Sfx.play("coin", -2.0)
+	# The deck opens like a booster pack.
+	var scene := DeckOpening.new(e, before)
+	add_child(scene)
+	await scene.closed
 	Sfx.play("win", -8.0)
 	Router.toast(Loc.t("%s is yours! Find it in My Decks.") % Loc.t(str(e["name"])))
 	var box: DeckBox = _slots[_sel]["box"]
