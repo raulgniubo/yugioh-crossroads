@@ -95,9 +95,9 @@ func _build_hud() -> void:
 	for b in [["M   Map", func(): open_guide("places")], ["G   Worlds", func(): open_guide("travel")],
 			["C   Card shop", guide_to_shop], ["J   Quests", func(): open_guide("quests")], ["B   Decks", func(): scene.open_decks()]]:
 		var btn := Button.new()
-		var raw := Loc.t(str(b[0]))
-		btn.text = Pad.keys(raw)
-		_bar_btns.append([btn, raw])
+		btn.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED     # (translated here, before the button names go in)
+		btn.text = Pad.keys(Loc.t(str(b[0])))
+		_bar_btns.append([btn, str(b[0])])
 		btn.focus_mode = Control.FOCUS_NONE
 		btn.add_theme_font_size_override("font_size", 19)
 		btn.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.042, 0.0676, 0.136, 0.78), Color(1, 1, 1, 0.14), 12))
@@ -252,7 +252,12 @@ var _bar_btns: Array = []
 func _relabel_bar() -> void:
 	for e in _bar_btns:
 		if is_instance_valid(e[0]):
-			(e[0] as Button).text = Pad.keys(str(e[1]))
+			(e[0] as Button).text = Pad.keys(Loc.t(str(e[1])))
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED:
+		_relabel_bar()      # (the language was changed with the world open)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -296,12 +301,29 @@ var _wp_true := Vector3.ZERO
 
 
 func _room_of(pos: Vector3) -> String:
+	# The card shop (Kame Game) is built out of the way and you walk in by its street door.
+	if str(scene.district.get("builder", "")) == "" and Vector2(pos.x - ShopInterior.AT.x, pos.z - ShopInterior.AT.z).length() < 14.0:
+		return "kame"
 	for rk in scene._rooms:
 		var at: Vector3 = scene._rooms[rk]["at"]
 		var half: Vector2 = scene._rooms[rk]["half"]
 		if absf(pos.x - at.x) < half.x + 3.0 and absf(pos.z - at.z) < half.y + 3.0:
 			return str(rk)
 	return ""
+
+
+const KAME_DOOR := Vector3(-10, 0, -15.4)
+
+
+## Can you walk to it from here at all? (Not a point out past the edge of this world.)
+func reachable(target: Vector3) -> bool:
+	var r := reach_point(target)
+	if _room_of(r) != "" or str(scene._inside) != "":
+		return true
+	var b := _bounds()
+	if b.has("r"):
+		return Vector2(r.x, r.z).length() < float(b["r"]) + 2.0
+	return maxf(absf(r.x), absf(r.z)) < (90.0 if b.get("open", false) else float(b["half"]) + 2.0)
 
 
 func _wp_resolve() -> Vector3:
@@ -314,6 +336,10 @@ func reach_point(target: Vector3) -> Vector3:
 	var here: String = str(scene._inside)
 	if target_room == here or (target_room == "" and here == ""):
 		return target
+	if here == "kame":
+		return ShopInterior.AT + Vector3(0, 0, 4.3)      # the way out of the shop
+	if target_room == "kame":
+		return KAME_DOOR
 	if here != "" and scene._rooms.has(here):
 		var at: Vector3 = scene._rooms[here]["at"]
 		var half: Vector2 = scene._rooms[here]["half"]
@@ -855,6 +881,42 @@ func _say_over(who: Node3D, text: String, hold: float) -> void:
 	Sfx.play("blip", -18.0, randf_range(0.9, 1.4))
 
 
+var _trail_check := 0.0
+var _trail_floor: Array = []     # [distance, floor height] along the line, up to the first spot you cannot walk
+
+
+## How high the floor is `d` metres along the trail, or -99 past where you can walk.
+func _floor_at(d: float) -> float:
+	for s in _trail_floor:
+		if absf(float(s[0]) - d) <= 0.5:
+			return float(s[1])
+	return -99.0
+
+
+## Samples the straight line ahead every half metre; it stops at the first gap (water, a drop)
+## or wall.
+func _walkable_steps(p: Vector3, dir: Vector3, upto: float) -> Array:
+	var out: Array = []
+	var space: PhysicsDirectSpaceState3D = scene.get_world_3d().direct_space_state
+	var skip: Array = [scene._player.get_rid()]
+	var last_y := p.y
+	var d := 0.5
+	while d <= upto:
+		var at := p + dir * d
+		var q := PhysicsRayQueryParameters3D.create(Vector3(at.x, last_y + 1.6, at.z), Vector3(at.x, last_y - 1.2, at.z))
+		q.exclude = skip
+		var hit: Dictionary = space.intersect_ray(q)
+		if hit.is_empty():
+			break
+		var y := (hit["position"] as Vector3).y
+		if y > last_y + 0.5 or (hit["normal"] as Vector3).y < 0.6:
+			break      # a wall or a step too high
+		out.append([d, y])
+		last_y = y
+		d += 0.5
+	return out
+
+
 func _process(delta: float) -> void:
 	# The button row sits in the middle of the top edge, but never under the place plate.
 	if _bar and scene._plate:
@@ -897,12 +959,18 @@ func _process(delta: float) -> void:
 			_wp_label.text = "%s   %s   %d m" % [ARROWS[idx], _wp_name, int(dist)]
 			_wp_label.visible = not _busy()
 			var dir := to / dist
+			_trail_check -= delta
+			if _trail_check <= 0.0:
+				_trail_check = 0.2
+				_trail_floor = _walkable_steps(p, dir, minf(dist, 2.0 + _trail.size() * 1.8 + 1.8))
 			for i in _trail.size():
 				var ch: Label3D = _trail[i]
 				var d := 2.0 + i * 1.8 + fmod(t * 2.0, 1.8)
-				ch.visible = d < dist - 1.0 and scene._inside == ""
-				ch.position = p + dir * d + Vector3(0, 0.2 - p.y * 0.0, 0)
-				ch.position.y = 0.22
+				var fy := _floor_at(d)
+				# Only over ground you can walk on: never out over the water or through a wall.
+				ch.visible = d < dist - 1.0 and scene._inside == "" and fy > -50.0
+				ch.position = p + dir * d
+				ch.position.y = fy + 0.06
 				ch.rotation.y = atan2(dir.x, dir.z) + PI
 				ch.modulate.a = clampf(1.0 - i / float(_trail.size()), 0.15, 0.9)
 	# The edge of the area.

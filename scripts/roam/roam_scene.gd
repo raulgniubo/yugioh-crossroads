@@ -648,6 +648,11 @@ func _cull_lights() -> void:
 var _help_kb := ""
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED:
+		_relabel_help.call_deferred()
+
+
 func _relabel_help() -> void:
 	if not is_instance_valid(_help):
 		return

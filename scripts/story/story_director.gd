@@ -2260,8 +2260,8 @@ func _refresh_task_ui(here: String, home: String) -> void:
 			if nd != null:
 				at = (nd as Node3D).global_position
 				at = Vector3(snappedf(at.x, 2.0), at.y, snappedf(at.z, 2.0))      # (they walk: do not move the beacon every step)
-		if at == null:
-			continue
+		if at == null or not scene.extras.reachable(at):
+			continue      # (never a beacon on a place that is not in this world)
 		var d: float = scene.extras.reach_point(at).distance_to(scene._player.global_position)
 		if t.get("optional", false):
 			d += 500.0

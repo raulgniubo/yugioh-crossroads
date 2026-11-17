@@ -112,8 +112,15 @@ func g(name: String) -> String:
 			phys = int(k)
 	for b in BUTTONS:
 		if b[0] == phys:
-			return str(b[col])
+			return _word(str(b[col]))
 	return name
+
+
+## Button names that are words, in the game's language ("View" is "Vista" on a Spanish pad).
+static func _word(s: String) -> String:
+	if Loc.lang() == "es":
+		return {"View": "Vista", "Options": "Options", "Create": "Create", "D-pad ↑": "Cruceta ↑", "L-stick": "Stick izq.", "R-stick": "Stick der."}.get(s, s)
+	return s
 
 
 ## The button a pressed physical button acts as (the player's remapping applied).

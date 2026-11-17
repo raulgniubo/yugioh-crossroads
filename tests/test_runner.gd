@@ -103,6 +103,7 @@ func _ready() -> void:
 		_test_improve_deck()
 		_test_pad()
 		_test_swords_stays()
+		_test_card_text_es()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -7574,6 +7575,17 @@ func _test_save_guard() -> void:
 
 
 ## Your own sound and music files from the card folder play instead of the built-in ones.
+func _test_card_text_es() -> void:
+	var was := TranslationServer.get_locale()
+	TranslationServer.set_locale("es")
+	check(CardText.count() > 500, "Spanish card texts loaded (%d)" % CardText.count())
+	check(CardText.shown("Pot of Greed", "Draw 2 cards.") == "Roba 2 cartas.", "a card's text shows in Spanish")
+	check(CardText.shown("Some Card Nobody Translated", "Text.") == "Text.", "an untranslated card keeps its English text")
+	TranslationServer.set_locale("en")
+	check(CardText.shown("Pot of Greed", "Draw 2 cards.") == "Draw 2 cards.", "in English the card's own text")
+	TranslationServer.set_locale(was)
+
+
 func _test_swords_stays() -> void:
 	var s := _main_ready(77)
 	var foe := _fake(s, 1, "Foe", 1800, 0, 0)

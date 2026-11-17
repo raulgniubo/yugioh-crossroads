@@ -41,6 +41,8 @@ var pad_layout := "auto"      # auto | xbox | ps | nintendo
 var mouse_look := true        # open world: moving the mouse turns the camera (pointer hidden while walking)
 var mouse_sens := 1.0
 var mouse_invert := false
+var big_shows := true
+var _lang_kept := ""            # the saved language while --lang= is trying another one          # the full-screen summon and attack scenes (SummonShow)
 var pad_show := "auto"        # which buttons the game shows: auto | keys | pad
 var pad_cam := 1.0            # camera turn speed with the right stick
 var pad_pointer := 1.0        # pointer speed with the stick
@@ -385,6 +387,7 @@ func _ready() -> void:
 		card_folder = beside
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--lang="):
+			_lang_kept = language       # (dev: for this run only, the saved choice stays)
 			language = a.substr(7)
 	apply()
 	apply_graphics()
@@ -488,6 +491,7 @@ func load_settings() -> void:
 	mouse_look = bool(cfg.get_value("game", "mouse_look", mouse_look))
 	mouse_sens = float(cfg.get_value("game", "mouse_sens", mouse_sens))
 	mouse_invert = bool(cfg.get_value("game", "mouse_invert", mouse_invert))
+	big_shows = bool(cfg.get_value("game", "big_shows", big_shows))
 	pad_cam = float(cfg.get_value("pad", "cam", pad_cam))
 	pad_pointer = float(cfg.get_value("pad", "pointer", pad_pointer))
 	pad_invert = bool(cfg.get_value("pad", "invert", pad_invert))
@@ -556,13 +560,14 @@ func save_settings() -> void:
 	cfg.set_value("game", "destiny_draw", destiny_draw)
 	cfg.set_value("game", "card_folder", card_folder)
 	cfg.set_value("game", "field_theme", field_theme)
-	cfg.set_value("game", "language", language)
+	cfg.set_value("game", "language", _lang_kept if _lang_kept != "" else language)
 	cfg.set_value("game", "sleeve", sleeve)
 	cfg.set_value("pad", "layout", pad_layout)
 	cfg.set_value("pad", "show", pad_show)
 	cfg.set_value("game", "mouse_look", mouse_look)
 	cfg.set_value("game", "mouse_sens", mouse_sens)
 	cfg.set_value("game", "mouse_invert", mouse_invert)
+	cfg.set_value("game", "big_shows", big_shows)
 	cfg.set_value("pad", "cam", pad_cam)
 	cfg.set_value("pad", "pointer", pad_pointer)
 	cfg.set_value("pad", "invert", pad_invert)

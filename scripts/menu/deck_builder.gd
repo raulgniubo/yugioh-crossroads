@@ -1698,7 +1698,7 @@ func _show(id: int) -> void:
 		var note := str(CardEffects.of(str(d.get("name", ""))).get("note", ""))
 		if note != "":
 			lines.append(Loc.t("IN THIS GAME: ") + note)
-	lines.append(str(d.get("desc", d.get("text", ""))))
+	lines.append(CardText.shown(str(d.get("name", "")), str(d.get("desc", d.get("text", "")))))
 	lines.append(Loc.t("You own %d.") % Collection.count(id) + "   " + Loc.t(Foil.NAMES[CardData.rarity(id)]))
 	if Collection.banlist and Collection.limit(id) < 3:
 		lines.append(Loc.t(["Forbidden: cannot be used.", "Limited: 1 copy per deck.", "Semi-Limited: 2 copies per deck."][Collection.limit(id)]))

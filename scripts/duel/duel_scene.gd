@@ -21,6 +21,7 @@ var _turn_done := false
 var _finished := false
 var _surrendered := false
 var _autoplay := "--autoplay" in OS.get_cmdline_user_args() or "--auto-story" in OS.get_cmdline_user_args()
+var _shows := not _autoplay or "--shows" in OS.get_cmdline_user_args()   # (dev: the big summon shows in autoplay too)
 var _opp_key := "kaiba"
 var _me_key := "player"
 var _pending_tributes := 0
@@ -968,6 +969,11 @@ func _talk(p: int, kind: String, chance := 1.0, min_gap := 2.5) -> void:
 
 func _play_event(ev: Dictionary) -> void:
 	var p: int = ev.get("player", 0)
+	# One line per step in the log (it is written out at once, see project.godot), so if the game
+	# ever closes in a duel the log shows the last thing it was doing.
+	if not _autoplay:
+		var evc = ev.get("card")
+		print("EV ", ev["type"], " p", p, " ", str(evc.cname()) if evc != null and evc.has_method("cname") else "")
 	DuelAudio.on_event(ev, state)
 	_feed_event(ev, p)
 	match ev["type"]:
@@ -1021,7 +1027,7 @@ func _play_event(ev: Dictionary) -> void:
 			if ev["type"] == "summon":
 				get_tree().create_timer(Settings.t(0.5)).timeout.connect(func(): Sfx.play("summon", -4.0))
 			# A big monster arrives: its own show, in its own colors (see SummonShow).
-			if ev["type"] == "summon" and not _autoplay and SummonShow.wants(ev["card"].data):
+			if ev["type"] == "summon" and _shows and Settings.big_shows and SummonShow.wants(ev["card"].data):
 				var sd: Dictionary = (ev["card"].data as Dictionary).duplicate()
 				sd["id"] = ev["card"].id
 				_shown = ev["card"]
@@ -1107,7 +1113,7 @@ func _play_event(ev: Dictionary) -> void:
 				_lumen("direct")
 			# Big swings get a cut-in instead of a bubble: the attacker's name, shouted.
 			# A signature monster calls its attack by name, with its own picture across the screen.
-			if not _autoplay and SummonShow.attack_name(atk_card.data) != "":
+			if _shows and Settings.big_shows and SummonShow.attack_name(atk_card.data) != "":
 				var ad: Dictionary = (atk_card.data as Dictionary).duplicate()
 				ad["id"] = atk_card.id
 				SummonShow.strike(self, ad, p == ME)
@@ -1227,7 +1233,7 @@ func _play_event(ev: Dictionary) -> void:
 			_talk(p, "ace", 1.0, 0.0)
 			hud.react(p, "ace")
 			hud.banner(titles.get(method, "SPECIAL SUMMON"), board.METHOD_COLORS.get(method, UITheme.ACCENT), true)
-			if not _autoplay and SummonShow.wants(ev["card"].data):
+			if _shows and Settings.big_shows and SummonShow.wants(ev["card"].data):
 				var sd2: Dictionary = (ev["card"].data as Dictionary).duplicate()
 				sd2["id"] = ev["card"].id
 				_shown = ev["card"]

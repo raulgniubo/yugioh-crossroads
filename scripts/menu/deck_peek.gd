@@ -195,7 +195,7 @@ func _show(id: int) -> void:
 		lines.append(Loc.t("ATK %d   DEF %d") % [int(d.get("atk", 0)), int(d.get("def", 0))])
 	else:
 		lines.append(Loc.t("Spell Card") if str(d.get("kind", "")) == "spell" else Loc.t("Trap Card"))
-	lines.append(str(d.get("desc", d.get("text", ""))))
+	lines.append(CardText.shown(str(d.get("name", "")), str(d.get("desc", d.get("text", "")))))
 	_text.text = "\n\n".join(lines)
 
 

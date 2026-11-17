@@ -195,7 +195,10 @@ func _build(card: Dictionary, nm: String, line: String, mine: bool) -> void:
 	tw.tween_property(_art, "scale", Vector2.ONE, 0.45).set_delay(0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(name_l, "modulate:a", 1.0, 0.2).set_delay(0.6)
 	tw.tween_property(sub, "modulate:a", 1.0, 0.2).set_delay(0.75)
-	get_tree().create_timer(0.62).timeout.connect(func(): Sfx.play("impact", -5.0))
+	var hit := create_tween()
+	hit.tween_interval(0.62)
+	hit.tween_callback(Sfx.play.bind("impact", -5.0))       # (goes with this node, no loose timer)
+	print("SHOW ", nm)
 	var out := create_tween()
 	out.tween_interval(_dur - 0.3 + dev_hold)
 	out.tween_property(self, "_fade", 0.0, 0.3)
@@ -212,11 +215,14 @@ var _fade := 1.0:
 
 func _process(delta: float) -> void:
 	_t += delta
-	_pad.queue_redraw()
+	if is_instance_valid(_pad):
+		_pad.queue_redraw()
 
 
 func _paint() -> void:
 	var sz := _pad.size
+	if sz.x < 8.0 or sz.y < 8.0:
+		return      # (not laid out yet)
 	var c := sz / 2.0 + Vector2(0, -25)
 	var k := clampf(_t / 0.5, 0.0, 1.0)
 	var f := _fade
@@ -224,6 +230,8 @@ func _paint() -> void:
 		# A slanted band in the card's colors, with speed lines running the way it attacks.
 		var kb := clampf(_t / 0.15, 0.0, 1.0)
 		var half := 205.0 * kb
+		if half < 2.0:
+			return      # (a band with no height yet is not a shape that can be drawn)
 		var band := PackedVector2Array([Vector2(0, c.y - half + 60.0), Vector2(sz.x, c.y - half - 60.0), Vector2(sz.x, c.y + half - 60.0), Vector2(0, c.y + half + 60.0)])
 		_pad.draw_colored_polygon(band, Color(_b.darkened(0.7), 0.88 * f))
 		_pad.draw_line(band[0], band[1], Color(_a, f), 5.0)
@@ -280,7 +288,7 @@ func _paint() -> void:
 				var pts2 := PackedVector2Array([Vector2(x, 0)])
 				var y := 0.0
 				var j := 0
-				while y < sz.y * 0.85:
+				while y < sz.y * 0.85 and j < 24:
 					y += 60.0 + 80.0 * float(_seeds[(i * 5 + j) % 40][2])
 					x += (float(_seeds[(i * 3 + j) % 40][3]) - 0.5) * 190.0
 					pts2.append(Vector2(x, y))

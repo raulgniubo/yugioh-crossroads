@@ -191,6 +191,12 @@ static func open(parent: Node) -> SidePanel:
 		Settings.anim_speed = Settings.ANIM_SPEEDS[keys[i]]
 		Settings.save_settings())
 	_row(game, "Animation speed", "How fast cards and attacks play out.", speed)
+	var bs := CheckButton.new()
+	bs.button_pressed = Settings.big_shows
+	bs.toggled.connect(func(on):
+		Settings.big_shows = on
+		Settings.save_settings())
+	_row(game, "Big summon and attack scenes", "The full-screen scene when a strong monster arrives or attacks. Turn it off if a duel freezes or closes there.", bs)
 	var crowd := CheckButton.new()
 	crowd.button_pressed = Settings.crowd_cam
 	crowd.toggled.connect(func(on):

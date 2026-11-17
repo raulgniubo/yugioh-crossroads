@@ -322,7 +322,7 @@ func bunting(a: Vector3, b: Vector3, n := 12) -> void:
 
 
 func puddle(p: Vector3, r: float) -> void:
-	var m := _m(Color(0.1, 0.13, 0.18, 0.8), 0.02, 0.9)
+	var m := _m(Color(0.16, 0.19, 0.24, 0.55), 0.25, 0.0)
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	var d := _cyl(r, r, 0.004, p + Vector3(0, 0.014, 0), m, null, 18)
 	d.scale = Vector3(1.0, 1.0, 0.62)

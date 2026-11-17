@@ -77,10 +77,17 @@ func _process(delta: float) -> void:
 
 
 ## Is she with you at all right now? (Between chapter 4 and the ending the Curator has her.)
+static func in_story() -> bool:
+	if str(Router.roam.get("story", "")) != "":
+		return true
+	return not Router.story.is_empty() and Router.duel_config.get("story", false) and not Router.duel_config.has("return_to")
+
+
 static func with_you() -> bool:
 	if Saves.admin or "--with-lumen" in OS.get_cmdline_user_args():
 		return true
-	# Not before the story has introduced her (the Prologue scene where she wakes up in the shop).
-	if not StoryProgress.recalls("met_lumen") and not StoryProgress.unlocked().has("ch1"):
+	# In the story, not before it has introduced her (the Prologue scene where she wakes up in the
+	# shop). In Free Duel and the free worlds she is with you from the start.
+	if in_story() and not StoryProgress.recalls("met_lumen") and not StoryProgress.unlocked().has("ch1"):
 		return false
 	return not (StoryProgress.unlocked().has("ch5") and not StoryProgress.recalls("finished"))

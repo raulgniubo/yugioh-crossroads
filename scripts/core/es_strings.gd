@@ -5706,4 +5706,6 @@ const ES := {
 	"race events": "eventos de carrera",
 	"garage": "garaje",
 	"500 printed  +%d from your %d bond(s) with her (300 each).": "500 impresos  +%d por tus %d vínculo(s) con ella (300 cada uno).",
+	"Big summon and attack scenes": "Escenas grandes de invocación y ataque",
+	"The full-screen scene when a strong monster arrives or attacks. Turn it off if a duel freezes or closes there.": "La escena a pantalla completa cuando llega o ataca un monstruo fuerte. Desactívala si un duelo se congela o se cierra ahí.",
 }

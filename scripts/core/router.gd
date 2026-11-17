@@ -207,6 +207,57 @@ func _debug_args() -> void:
 			menu_open = a.substr(12)   # dev: open the main menu on one of its panels (select, decks...)
 		elif a == "--duel":
 			duel = true
+		elif a.begins_with("--dump-deck-cards="):
+			# Dev: every card any deck in the game plays, with its text (for translating).
+			var seen := {}
+			var out := FileAccess.open(a.trim_prefix("--dump-deck-cards="), FileAccess.WRITE)
+			var keys: Array = CardData.DECKS.keys()
+			for k in CardData.ADDONS.keys():
+				if not keys.has(k):
+					keys.append(k)
+			for dk in keys:
+				var lst := CardData.deck_list(str(dk))
+				if lst.size() > 80:
+					print("BIGDECK ", dk, " ", lst.size())
+					continue
+				for id in lst:
+					if seen.has(id):
+						continue
+					seen[id] = true
+					var d := CardData.get_card(id)
+					var tx := str(d.get("desc", d.get("text", "")))
+					if tx == "":
+						tx = str(CardData.EXT.get(id, {}).get("desc", ""))
+					out.store_line(JSON.stringify({"id": id, "name": d.get("name", ""), "desc": tx, "decks": 1}))
+			for id in CardData.EXT.keys():
+				if not seen.has(id):
+					seen[id] = true
+					out.store_line(JSON.stringify({"id": id, "name": CardData.EXT[id].get("name", ""), "desc": CardData.EXT[id].get("desc", ""), "decks": 0}))
+			out.close()
+			print("DUMPED ", seen.size())
+			get_tree().quit()
+		elif a == "--show-test":
+			# Dev: every summon show and attack strike, one after another, then quit.
+			await get_tree().create_timer(1.0).timeout
+			var host := Node.new()
+			get_tree().root.add_child(host)
+			var only := OS.get_environment("SHOW_ONLY")
+			for nm in SummonShow.SIGNATURE.keys():
+				if only != "" and not str(nm).contains(only):
+					continue
+				print("SHOWGO ", nm, " ", Time.get_ticks_msec())
+				var cd := {"name": nm, "id": 0, "atk": 2500, "level": 6, "attribute": "DARK"}
+				SummonShow.play(host, cd, false)
+				for i in 40:
+					await get_tree().process_frame
+					if i % 5 == 0:
+						print("SHOWFRAME ", i, " ", Time.get_ticks_msec())
+				SummonShow.strike(host, cd, true)
+				for i in 70:
+					await get_tree().process_frame
+				print("SHOWOK ", nm)
+			print("SHOW DONE")
+			get_tree().quit()
 		elif a.begins_with("--assets="):
 			Settings.card_folder = a.substr(9)
 			Cards.clear_cache()

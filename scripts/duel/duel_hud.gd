@@ -1063,8 +1063,8 @@ func inspect(inst, hidden := false) -> void:
 		if txt == "":
 			txt = str(CardData.EXT.get(int(inst.id), {}).get("desc", ""))
 		if txt == "":
-			txt = note
-		_inspect_text.text = txt if txt != "" else ("Normal Monster" if frame == "normal" else "")
+			txt = Loc.t(note)
+		_inspect_text.text = CardText.shown(nm, txt) if txt != "" else (Loc.t("Normal Monster") if frame == "normal" else "")
 		# Lumen grows with your bonds: the card prints her 500, so say where the rest comes from.
 		if int(inst.id) == CardData.LUMEN and StoryProgress.bonds() > 0:
 			var b := mini(5, StoryProgress.bonds())
@@ -1090,7 +1090,7 @@ func inspect(inst, hidden := false) -> void:
 		var body := str(d.get("text", d.get("desc", "")))
 		if body == "":
 			body = str(CardData.EXT.get(int(inst.id), {}).get("desc", ""))
-		_inspect_text.text = body
+		_inspect_text.text = CardText.shown(str(d.get("name", "")), body)
 		if SpellRules.spec(inst).is_empty():
 			_inspect_note.text = Loc.t("Not in this game yet: you can still Set it as a bluff.")
 			_inspect_note.visible = true

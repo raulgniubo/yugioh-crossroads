@@ -5,6 +5,25 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.47
+
+Your notes from the story test, plus the card texts in Spanish:
+
+- **The crash on a big summon (Summoned Skull):** the summon scene is hardened (no loose timers, nothing drawn before the screen is laid out, no shape without a size). New switch in Settings > Gameplay: **Big summon and attack scenes** (on by default). If a duel ever closes again, turn it off to see if that scene is the cause. The game log is now written out line by line, with one line per duel step (EV ...) and per summon scene (SHOW ...), so the last line of godot.log says exactly where it stopped.
+- **Story arrows to a place that is not there:** the "ask Grandpa" task pointed at the inside of the shop (529 m out over the water). The beacon now leads to the shop's door, and a task in a place that is not in this world gets no beacon. The yellow arrows on the ground only show over ground you can walk on: they stop at water and walls.
+- **Spanish:** the top buttons (Map, Worlds, Card shop, Quests, Decks) stay in Spanish with a controller too, and update if you switch the language with a world open. Controller button names are in Spanish (View is "Vista").
+- **Card texts in Spanish:** 528 cards, every card any duelist in the game plays plus Lumen's cards and the Speed Spells, in our own translation. Shown in the duel card view, the deck builder and the deck peek. Cards outside those keep their English text for now.
+- **Lumen** goes with you in Free Duel and the free worlds from the start. Only the story keeps you alone until you meet her.
+- **Night streets:** puddles are only a little glossier than the road now (a mirror-flat puddle showed the dark sky as a black hole).
+- **Feet** stand on raised paving everywhere (pier planks, sidewalks), people in the world too. The error lines in godot.log about freed signal hookups are gone.
+
+**Not done or not checked:**
+
+- The crash itself could not be made to happen here (no RTX card, no real card pictures). The switch and the log lines are there so the next try tells us for sure.
+- The ground arrows still go in a straight line: they stop where a wall or water is instead of finding a way around it.
+- About 13,800 cards that no duelist plays still show English text.
+- The black patches by the pier could not be seen here at night with your graphics settings; please look again.
+
 ## What is in 0.33.46
 
 Your notes from testing on Windows, fixed together:

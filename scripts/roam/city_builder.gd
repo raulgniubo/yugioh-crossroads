@@ -2189,9 +2189,11 @@ void fragment() {
 	float crack = (1.0 - smoothstep(0.0, 0.012 + fw * 0.5, min(cf.x, cf.y))) * step(0.5, h(floor(cp) + 2.0)) * mid;
 	base *= 1.0 - 0.5 * crack;
 	base += vec3(0.045) * step(0.93, n(wp.xz * 47.0)) * near;
-	ALBEDO = mix(base, base * 0.7, puddle);
-	ROUGHNESS = mix(mix(0.82, 0.55, wet * 0.4), 0.04, puddle);
-	SPECULAR = mix(0.4, 0.8, puddle);
+	// (A puddle is only a little glossier: a mirror-flat one shows the night sky as a black hole
+	// in the street where there is no reflection to give it.)
+	ALBEDO = mix(base, base * 0.88, puddle);
+	ROUGHNESS = mix(mix(0.82, 0.55, wet * 0.4), 0.3, puddle);
+	SPECULAR = mix(0.4, 0.55, puddle);
 	NORMAL_MAP = vec3(0.5 + (grain - 0.5) * 0.12 * (1.0 - puddle), 0.5, 1.0);
 }
 """
