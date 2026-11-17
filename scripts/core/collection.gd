@@ -33,6 +33,7 @@ const PACKS := [
 	{"key": "Vault", "tab": 0, "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
 	{"key": "legends", "tab": 0, "name": "Monster Legends", "color": Color("e8b04a"), "blurb": "Normal Monsters from every era: hundreds of them, from the classics to the rare big ones."},
 	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen, her forms and the cards around her. Only the ones the story has already handed you, up to three of each."},
+	{"key": "ancient_gear", "tab": 1, "name": "Clockwork Titans", "color": Color("b07a3c"), "family": true, "blurb": "Ancient Gear: Golems no Spell or Trap can answer, the fusions built from them, and the towns and castles that bring them out."},
 	{"key": "gravekeeper", "tab": 1, "name": "Valley of the Kings", "color": Color("c8a050"), "family": true, "blurb": "The Gravekeeper's and Necrovalley: the tomb guardians, the valley that locks every Graveyard, and the cards around them."},
 	{"key": "beyond", "tab": 0, "name": "Beyond the Limit", "color": Color("b06bff"), "blurb": "Fusion, Synchro, Xyz and Ritual monsters, and the Spells that call them."},
 	{"key": "dragons", "tab": 2, "name": "Dragon's Roar", "color": Color("ff5a3c"), "blurb": "Dragons, Dinosaurs, Reptiles and Sea Serpents."},
@@ -61,6 +62,7 @@ const THEME_DECKS := [
 	{"key": "deck_shadow", "art": "shadow", "color": Color("9a6bff"), "blurb": "Fiends that hit hard for their Level, and ways to bring them back."},
 	{"key": "deck_machine", "art": "machines", "color": Color("6fc3ff"), "blurb": "Machines with heavy firepower and the tools to make them bigger."},
 	{"key": "deck_wild", "art": "wild", "color": Color("ff9a3c"), "blurb": "Beasts with high ATK at Level 4. No tricks, just teeth."},
+	{"key": "deck_ancient_gear", "art": "machines", "color": Color("b07a3c"), "era": "GX", "blurb": "Ancient Gear Golems hit hard, pierce, and nothing your opponent sets can stop the attack. Geartown and the Castle bring them out fast."},
 	{"key": "deck_gravekeeper", "art": "arcane", "color": Color("c8a050"), "era": "Duel Monsters", "blurb": "The Gravekeeper's guard Necrovalley: while it stands, nothing leaves either Graveyard. Flip Spies, call more guards, lock the other side down."},
 	{"key": "deck_forest", "art": "forest", "color": Color("5fd070"), "blurb": "Insects and Plants in their Forest, with Traps that slow everything down."},
 ]
@@ -92,6 +94,15 @@ const FAMILIES := {
 		"Gravekeeper's Spiritualist", "Gravekeeper's Supernaturalist", "A Cat of Ill Omen", "An Owl of Luck", "Charm of Shabti",
 		"Necrovalley", "Royal Tribute", "Rite of Spirit", "Gravekeeper's Stele", "Gravekeeper's Servant", "Hidden Temples of Necrovalley",
 		"Imperial Tombs of Necrovalley", "Necrovalley Temple", "Necrovalley Throne", "Gravekeeper's Inscription", "Terraforming", "Royal Decree"]},
+	"ancient_gear": {"era": "GX", "deck": "deck_ancient_gear", "cards": [
+		"Ancient Gear", "Ancient Gear Beast", "Ancient Gear Box", "Ancient Gear Cannon", "Ancient Gear Commander", "Ancient Gear Dark Golem",
+		"Ancient Gear Dragon", "Ancient Gear Engineer", "Ancient Gear Frame", "Ancient Gear Gadget", "Ancient Gear Gadjiltron Chimera",
+		"Ancient Gear Gadjiltron Dragon", "Ancient Gear Golem", "Ancient Gear Golem - Ultimate Pound", "Ancient Gear Howitzer",
+		"Ancient Gear Hunting Hound", "Ancient Gear Hydra", "Ancient Gear Knight", "Ancient Gear Megaton Golem", "Ancient Gear Reactor Dragon",
+		"Ancient Gear Soldier", "Ancient Gear Statue", "Ancient Gear Tanker", "Ancient Gear Wyvern", "Chaos Ancient Gear Giant",
+		"Ultimate Ancient Gear Golem", "Ancient Gear Advance", "Ancient Gear Castle", "Ancient Gear Catapult", "Ancient Gear Drill",
+		"Ancient Gear Explosive", "Ancient Gear Factory", "Ancient Gear Fist", "Ancient Gear Fusion", "Ancient Gear Reborn", "Ancient Gear Tank",
+		"Ancient Gear Workshop", "Cross-Dimensional Duel", "Geartown", "Spell Gear"]},
 }
 
 

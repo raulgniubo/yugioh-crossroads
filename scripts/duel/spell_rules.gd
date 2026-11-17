@@ -29,6 +29,21 @@ const FX := {
 	"Echo Resonance": {"k": "normal", "cond": "echo_ready", "do": [["echo_resonance"]]},
 	"Echo Call": {"k": "normal", "do": [["search", {"has": "Lumen"}]]},
 	"Echo Veil": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["draw_if_own", "Lumen", 1]]},
+	# ---------------------------------------------------------------- Ancient Gear (0.34.1)
+	"Ancient Gear Advance": {"k": "cont", "cond": "advance_ok", "do": [["mark_once", "Ancient Gear Advance"], ["advance_act"]]},
+	"Ancient Gear Castle": {"k": "field", "boost": [[{"has": "Ancient Gear"}, 300, 0]], "ag_castle": true},
+	"Ancient Gear Catapult": {"k": "normal", "cond": "catapult", "do": [["catapult"]]},
+	"Ancient Gear Drill": {"k": "normal", "cond": "own_ag_mon", "cost": "discard", "do": [["drill_set"]]},
+	"Ancient Gear Explosive": {"k": "normal", "t": "own_face", "must_has": "Ancient Gear", "do": [["explosive", "target"]]},
+	"Ancient Gear Factory": {"k": "normal", "cond": "factory", "do": [["factory"]]},
+	"Ancient Gear Fist": {"k": "equip", "must": {"has": "Ancient Gear"}, "ag_fist": true},
+	"Ancient Gear Fusion": {"k": "normal", "cond": "ag_fusion_deck", "do": [["ag_fusion", "deck"]]},
+	"Ancient Gear Reborn": {"k": "ctrap", "win": ["free"], "cond": "one_reborn"},
+	"Ancient Gear Tank": {"k": "equip", "must": {"has": "Ancient Gear"}, "atk": 600, "ag_tank": true},
+	"Ancient Gear Workshop": {"k": "normal", "do": [["gy_to_hand", {"has": "Ancient Gear", "monster": true}, 1]]},
+	"Cross-Dimensional Duel": {"k": "trap", "win": ["free"], "t": "own_face", "must_has": "Ancient Gear", "do": [["cdd", "target"]]},
+	"Geartown": {"k": "field", "geartown": true},
+	"Spell Gear": {"k": "normal", "cond": "spell_gear", "do": [["spell_gear"]]},
 	# ---------------------------------------------------------------- Gravekeeper's (0.34.0)
 	"Royal Tribute": {"k": "normal", "cond": "own_necrovalley", "do": [["royal_tribute"]]},
 	"Rite of Spirit": {"k": "trap", "win": ["free"], "do": [["revive", "own_gy", "", "", {"has": "Gravekeeper's"}]]},
@@ -708,6 +723,23 @@ static func fits(s: DuelState, p: int, c, window: String, subject) -> bool:
 	return feasible(s, p, c, window, subject)
 
 
+## Ancient Gear Factory: "Ancient Gear" monsters in p's GY whose Levels add up to exactly double `h`'s (empty: none).
+static func _factory_pick(s: DuelState, p: int, h) -> Array:
+	var want: int = h.level() * 2
+	var pool: Array = s.players[p].gy.filter(func(g): return g.is_monster() and g.cname().begins_with("Ancient Gear") and g.level() > 0 and not s.necro_holds(g))
+	# Smallest set that hits the sum exactly (a small knapsack over the pile).
+	var best := {0: []}
+	for g in pool:
+		var keys: Array = best.keys()
+		for k in keys:
+			var nk: int = int(k) + g.level()
+			if nk <= want and not best.has(nk):
+				var lst: Array = (best[k] as Array).duplicate()
+				lst.append(g)
+				best[nk] = lst
+	return best.get(want, [])
+
+
 ## Makyura the Destructor / Jetroid: may p activate a Trap Card from the hand right now?
 static func hand_trap_ok(s: DuelState, p: int, window: String) -> bool:
 	var ps := s.players[p]
@@ -843,6 +875,34 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			if int(s.players[p].once_names.get("killed_def", -1)) != s.turn:
 				return false
 			return not s.players[p].monsters().filter(func(m): return m.face_up and m.level() == 8 and m.frame() != "xyz").is_empty()
+		"advance_ok":
+			return int(s.players[p].once_names.get("Ancient Gear Advance", -1)) != s.turn
+		"catapult":
+			var pc := s.players[p]
+			return pc.monsters().is_empty() and int(pc.once_names.get("Ancient Gear Catapult", -1)) != s.turn \
+					and (pc.spells.filter(func(x): return x != null and x.face_up).size() + (1 if pc.field_spell != null and pc.field_spell.face_up else 0)) > 0 \
+					and not pc.deck.filter(func(x): return x.is_monster() and x.cname().begins_with("Ancient Gear") and not CardData.is_extra(x.id)).is_empty()
+		"own_ag_mon":
+			return not s.players[p].monsters().filter(func(m): return m.face_up and m.cname().begins_with("Ancient Gear")).is_empty() \
+					and not s.players[p].deck.filter(func(x): return x.is_spell()).is_empty()
+		"factory":
+			for h in s.players[p].hand:
+				if h.is_monster() and h.cname().begins_with("Ancient Gear") and h.level() >= 5 and not _factory_pick(s, p, h).is_empty():
+					return true
+			return false
+		"ag_fusion_deck":
+			return not EffectRunner.ag_plans(s, p, true).is_empty()
+		"one_reborn":
+			for st in s.players[p].spells:
+				if st != null and st.face_up and st.cname() == "Ancient Gear Reborn":
+					return false
+			return true
+		"spell_gear":
+			var pg := s.players[p]
+			var ag_cards: int = pg.monsters().filter(func(m): return m.face_up and m.cname().begins_with("Ancient Gear")).size() \
+					+ pg.spells.filter(func(x): return x != null and x.face_up and x.cname().begins_with("Ancient Gear")).size() \
+					+ (1 if pg.field_spell != null and pg.field_spell.face_up and pg.field_spell.cname().begins_with("Ancient Gear") else 0)
+			return ag_cards >= 3 and not (pg.hand + pg.deck).filter(func(x): return x.cname() == "Ancient Gear Golem").is_empty()
 		"own_necrovalley":
 			var fs = s.players[p].field_spell
 			return fs != null and fs.face_up and spec(fs).get("necrovalley", false)
@@ -2333,6 +2393,100 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 						low_h = m
 				var h_a = s.pick1(p, Loc.t("%s: equip it to which monster?") % name, hosts_a, low_h, c)
 				events.append_array(s.equip_monster(p, x_a, h_a, "armored"))
+		"advance_act":
+			# "When this card is activated: Add 1 "Ancient Gear" Spell/Trap from your Deck to your hand, except "Ancient Gear Advance"."
+			var adv: Array = ps.deck.filter(func(x): return not x.is_monster() and x.cname().begins_with("Ancient Gear") and x.cname() != "Ancient Gear Advance")
+			if not adv.is_empty():
+				var t_ad = s.pick1(p, Loc.t("%s: add which card?") % name, adv, adv[0], c)
+				ps.deck.erase(t_ad)
+				ps.hand.append(t_ad)
+				s._shuffle(ps.deck)
+				events.append({"type": "search", "player": p, "card": t_ad, "deck": ps.deck.size()})
+			ps.once_names["#no_set"] = s.turn
+			ps.no_set_st_turn = s.turn
+		"catapult":
+			# "While you control no monsters: Target 1 face-up card you control; destroy it, and if you do, Special Summon 1 "Ancient Gear"
+			# monster from your Deck, ignoring its Summoning conditions."
+			ps.once_names["Ancient Gear Catapult"] = s.turn
+			var mine_ca: Array = ps.spells.filter(func(x): return x != null and x.face_up and x != c)
+			if ps.field_spell != null and ps.field_spell.face_up:
+				mine_ca.append(ps.field_spell)
+			if not mine_ca.is_empty():
+				var t_ca = s.pick1(p, Loc.t("%s: destroy which card you control?") % name, mine_ca, mine_ca[0], c)
+				events.append_array(s._destroy_st(t_ca))
+				if not ps.spells.has(t_ca) and ps.field_spell != t_ca:
+					var dk_ca: Array = ps.deck.filter(func(x): return x.is_monster() and x.cname().begins_with("Ancient Gear") and not CardData.is_extra(x.id) and not s.big_locked(p, x, true))
+					if not dk_ca.is_empty() and not s.ss_locked(p):
+						var best_ca: Array = s._best_monsters(dk_ca, 1)
+						events.append_array(EffectRunner._ignoring(s, p, s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, dk_ca, best_ca[0], c), ps.deck))
+						s._shuffle(ps.deck)
+		"drill_set":
+			# "Set 1 Spell Card directly from your Deck. This turn, that Spell Card cannot be activated."
+			var spl: Array = ps.deck.filter(func(x): return x.is_spell() and str(spec(x).get("k", "")) != "field")
+			if not spl.is_empty() and ps.spells.has(null):
+				var t_dr = s.pick1(p, Loc.t("%s: Set which Spell?") % name, spl, spl[0], c)
+				ps.deck.erase(t_dr)
+				var z_dr := ps.spells.find(null)
+				ps.spells[z_dr] = t_dr
+				t_dr.face_up = false
+				t_dr.set_turn = s.turn
+				t_dr.tags["no_act_turn"] = s.turn
+				s._shuffle(ps.deck)
+				events.append({"type": "set_st", "player": p, "card": t_dr, "zone": z_dr})
+		"explosive":
+			for t in _sel(s, p, c, str(a[1]), ctx):
+				var half_e: int = int(t.data.get("atk", 0)) / 2
+				events.append_array(s._destroy(t))
+				if not s.players[t.owner].field.has(t):
+					events.append(_ev(p, c, Loc.t("%s: %d damage") % [name, half_e]))
+					events.append_array(s._damage(s.opponent(p), half_e))
+		"factory":
+			# "Reveal 1 Level 5 or higher "Ancient Gear" monster from your hand, then banish a number of "Ancient Gear" monsters from
+			# your Graveyard, whose combined Levels are double the revealed monster's; if you Normal Summon the revealed monster this
+			# turn, you must Normal Summon it without Tributing."
+			var rev: Array = ps.hand.filter(func(h): return h.is_monster() and h.cname().begins_with("Ancient Gear") and h.level() >= 5 and not _factory_pick(s, p, h).is_empty())
+			if not rev.is_empty():
+				var t_fa = s.pick1(p, Loc.t("%s: reveal which monster?") % name, rev, rev[0], c)
+				for g in _factory_pick(s, p, t_fa):
+					events.append_array(s._banish(g))
+				t_fa.set_meta("factory_turn", s.turn)
+				events.append(_ev(p, c, Loc.t("%s can be Normal Summoned without Tributing this turn") % t_fa.cname()))
+		"ag_fusion":
+			events.append_array(EffectRunner.run(s, p, c, ["ag_fusion", a[1]], ctx))
+		"cdd":
+			# Cross-Dimensional Duel: "banish it. During the next Standby Phase, return that banished monster to the field."
+			for t in _sel(s, p, c, str(a[1]), ctx):
+				events.append_array(s._banish(t))
+				if s.players[t.owner].banished.has(t):
+					t.tags["cdd_back"] = s.turn
+		"spell_gear":
+			# "Send 3 "Ancient Gear" cards you control to the Graveyard. You can Special Summon up to 1 "Ancient Gear Golem" from your hand
+			# and 1 from your Deck, ignoring the Summoning conditions. Then, destroy all monsters you control except "Ancient Gear Golems".
+			# You cannot Normal Summon or Set until the end of your next turn."
+			var agc: Array = ps.monsters().filter(func(m): return m.face_up and m.cname().begins_with("Ancient Gear")) + ps.spells.filter(func(x): return x != null and x.face_up and x.cname().begins_with("Ancient Gear"))
+			if ps.field_spell != null and ps.field_spell.face_up and ps.field_spell.cname().begins_with("Ancient Gear"):
+				agc.append(ps.field_spell)
+			agc.sort_custom(func(x, y): return (0 if x.is_monster() else 1) > (0 if y.is_monster() else 1))
+			for x in s.choose(p, Loc.t("%s: send 3 \"Ancient Gear\" cards to the GY") % name, agc, 3, agc.slice(0, 3), false, c):
+				if ps.field.has(x):
+					ps.field[ps.field.find(x)] = null
+					s._to_gy(ps, x)
+					events.append_array(s._monster_left(x))
+				elif ps.field_spell == x:
+					ps.field_spell = null
+					s._to_gy(ps, x)
+				else:
+					events.append_array(s.send_st(x))
+				events.append({"type": "discard", "player": p, "card": x})
+			for src in [ps.hand, ps.deck]:
+				var gg: Array = src.filter(func(x): return x.cname() == "Ancient Gear Golem")
+				if not gg.is_empty() and ps.free_zone() != -1:
+					events.append_array(EffectRunner._ignoring(s, p, gg[0], src))
+			s._shuffle(ps.deck)
+			for m in ps.monsters():
+				if not DuelState.is_golem(m):
+					events.append_array(s._destroy(m))
+			ps.once_names["#no_ns_until"] = s.turn + 2
 		"royal_tribute":
 			# "Both players discard any monsters in their hands."
 			for q in [p, s.opponent(p)]:

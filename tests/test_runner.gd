@@ -114,6 +114,7 @@ func _ready() -> void:
 		_test_cards_b0c4()
 		_test_cards_b0c5()
 		_test_gravekeepers()
+		_test_ancient_gears()
 		await _test_album()
 		_test_save_slots()
 		_test_turbo_setup()
@@ -9181,6 +9182,239 @@ func _test_gravekeepers() -> void:
 	check(not df.attack_pos, "Assailant: Mother Grizzly to Defense Position")
 
 
+## 0.34.1: the Ancient Gear family, each against its printed text.
+func _test_ancient_gears() -> void:
+	# Golem: no Spells/Traps against its attack, piercing, can't be Special Summoned.
+	var s := _new_state(7101)
+	_battle_ready(s)
+	var gol := _mon(s, 0, "Ancient Gear Golem", 0)
+	var mf := _set_trap(s, 1, "Mirror Force")
+	var wall := _mon(s, 1, "Mother Grizzly", 0, false)
+	s.declare_attack(0, gol, wall)
+	check(not s.responses(1, "attack").has(mf), "Golem: no Mirror Force against its attack")
+	var lp: int = s.players[1].lp
+	s.resolve_attack()
+	check(s.players[1].lp == lp - (3000 - 1000), "Golem: piercing (lp %d -> %d)" % [lp, s.players[1].lp])
+	check(not s.can_revive(_in(s, 0, "Ancient Gear Golem", "gy")), "Golem: cannot be Special Summoned")
+	# Geartown: 1 less Tribute; Castle: counters pay for the Tribute.
+	s = _main_ready(7102)
+	var gt := s._make(_cid("Geartown"), 0)
+	s.players[0].field_spell = gt
+	gt.face_up = true
+	check(s.tributes_needed(_in(s, 0, "Ancient Gear Golem", "hand")) == 1, "Geartown: Golem needs 1 Tribute")
+	s = _main_ready(7103)
+	var cs := s._make(_cid("Ancient Gear Castle"), 0)
+	s.players[0].field_spell = cs
+	cs.face_up = true
+	cs.counter = 2
+	var g2 := _in(s, 0, "Ancient Gear Golem", "hand")
+	check(s.tributes_needed(g2) == 0, "Castle: 2 counters pay for 2 Tributes")
+	s.normal_summon(0, g2, [])
+	check(s.players[0].field.has(g2) and s.players[0].gy.has(cs), "Castle: Tributed instead")
+	var sold := _mon(s, 0, "Ancient Gear Soldier", 1)
+	cs = s._make(_cid("Ancient Gear Castle"), 0)
+	s.players[0].field_spell = cs
+	cs.face_up = true
+	check(s.atk_of(sold, false) == 1600, "Castle: Ancient Gear +300 (got %d)" % s.atk_of(sold, false))
+	# Ancient Gear: from the hand while you control one.
+	s = _main_ready(7104)
+	_mon(s, 0, "Ancient Gear Soldier", 0)
+	var ag := _in(s, 0, "Ancient Gear", "hand")
+	check(EffectRunner.can_special_hand(s, 0, ag), "Ancient Gear: Special Summon from the hand")
+	# Cannon: 500 damage, no Traps this Battle Phase.
+	s = _main_ready(7105)
+	var cn := _mon(s, 0, "Ancient Gear Cannon", 0)
+	lp = s.players[1].lp
+	s.ignite(0, cn)
+	check(s.players[1].lp == lp - 500 and s.trap_bp_lock == s.turn, "Cannon: 500 and no Traps in battle")
+	# Gadjiltron Dragon with a Green and a Yellow Gadget.
+	s = _main_ready(7106)
+	var gd := _in(s, 0, "Ancient Gear Gadjiltron Dragon", "hand")
+	var gg := _mon(s, 0, "Green Gadget", 0)
+	var yg := _mon(s, 0, "Yellow Gadget", 1)
+	s.normal_summon(0, gd, [gg, yg])
+	check(EffectRunner.piercing(s, 0, gd) and gd.tags.get("yellow_g", false) and not gd.tags.get("red_g", false), "Gadjiltron Dragon: Green and Yellow effects")
+	# Reactor Dragon with an Ancient Gear and a Gadget: piercing, 2 attacks.
+	s = _main_ready(7107)
+	var rd := _in(s, 0, "Ancient Gear Reactor Dragon", "hand")
+	var t1 := _mon(s, 0, "Ancient Gear Soldier", 0)
+	var t2 := _mon(s, 0, "Red Gadget", 1)
+	s.normal_summon(0, rd, [t1, t2])
+	check(EffectRunner.piercing(s, 0, rd) and EffectRunner.max_attacks(rd) == 2, "Reactor Dragon: piercing and a second attack")
+	# Hunting Hound: 600 on Normal Summon; Fusion Summons Howitzer.
+	s = _main_ready(7108)
+	var hh := _in(s, 0, "Ancient Gear Hunting Hound", "hand")
+	lp = s.players[1].lp
+	s.normal_summon(0, hh, [])
+	check(s.players[1].lp == lp - 600, "Hunting Hound: 600 damage")
+	var how := _in(s, 0, "Ancient Gear Howitzer", "extra")
+	_in(s, 0, "Ancient Gear Soldier", "hand")
+	s.ignite(0, hh)
+	check(s.players[0].field.has(how), "Hunting Hound: Howitzer Fusion Summoned")
+	# Howitzer: unaffected by other cards' effects.
+	var rg := _rst(s, 1, "Raigeki")
+	s.current = 1
+	s.activate(1, rg)
+	check(s.players[0].field.has(how), "Howitzer: Raigeki does nothing")
+	# Ancient Gear Fusion: Ultimate Ancient Gear Golem with a Golem on the field and material from the Deck.
+	s = _main_ready(7109)
+	_mon(s, 0, "Ancient Gear Golem", 0)
+	var ug := _in(s, 0, "Ultimate Ancient Gear Golem", "extra")
+	_in(s, 0, "Ancient Gear Soldier", "deck")
+	_in(s, 0, "Ancient Gear Knight", "deck")
+	var agf := _rst(s, 0, "Ancient Gear Fusion")
+	s.activate(0, agf)
+	check(s.players[0].field.has(ug), "Ancient Gear Fusion: Ultimate Golem with materials from the Deck")
+	# Ultimate: destroyed, Golem back from the GY ignoring its conditions.
+	var g_gy: DuelState.CardInst = s.players[0].gy.filter(func(g): return g.cname() == "Ancient Gear Golem")[0]
+	s._destroy(ug)
+	check(s.players[0].field.has(g_gy), "Ultimate Ancient Gear Golem: Golem comes back")
+	# Engineer: at the end of the Damage Step, a Spell/Trap is destroyed.
+	s = _new_state(7110)
+	_battle_ready(s)
+	var en := _mon(s, 0, "Ancient Gear Engineer", 0)
+	var st := _set_trap(s, 1, "Mirror Force")
+	s.declare_attack(0, en, null)
+	s.resolve_attack()
+	check(not s.players[1].spells.has(st), "Engineer: Mirror Force destroyed after the battle")
+	# Explosive: destroy your Ancient Gear, half its original ATK.
+	s = _main_ready(7111)
+	var gol2 := _mon(s, 0, "Ancient Gear Golem", 0)
+	var ex := _rst(s, 0, "Ancient Gear Explosive")
+	lp = s.players[1].lp
+	s.activate(0, ex, gol2)
+	check(s.players[1].lp == lp - 1500, "Explosive: 1500 damage")
+	# Tank: +600; destroyed, 600 damage.
+	s = _main_ready(7112)
+	var so2 := _mon(s, 0, "Ancient Gear Soldier", 0)
+	var tk := _rst(s, 0, "Ancient Gear Tank")
+	s.activate(0, tk, so2)
+	check(s.atk_of(so2, false) == 1900, "Tank: +600")
+	lp = s.players[1].lp
+	s._destroy_st(tk)
+	check(s.players[1].lp == lp - 600, "Tank: 600 when destroyed")
+	# Cross-Dimensional Duel: banished, back next Standby with double ATK.
+	s = _main_ready(7113)
+	var so3 := _mon(s, 0, "Ancient Gear Soldier", 0)
+	var cdd := _set_trap(s, 0, "Cross-Dimensional Duel")
+	s.respond(0, cdd, so3)
+	s.chain_resolve()
+	check(s.players[0].banished.has(so3), "Cross-Dimensional Duel: banished")
+	s.turn += 1
+	EffectRunner.standby(s, 1)
+	check(s.players[0].field.has(so3) and s.atk_of(so3, false) == 2600, "Cross-Dimensional Duel: back at 2600 (got %d)" % s.atk_of(so3, false))
+	# Statue: Tribute it, Golem from the Deck ignoring its conditions.
+	s = _main_ready(7114)
+	var stt := _mon(s, 0, "Ancient Gear Statue", 0)
+	var gd2 := _in(s, 0, "Ancient Gear Golem", "deck")
+	s.ignite(0, stt)
+	check(s.players[0].field.has(gd2), "Statue: Golem from the Deck")
+	# Wyvern: search, no Set this turn.
+	s = _main_ready(7115)
+	var wy := _mon(s, 0, "Ancient Gear Wyvern", 0)
+	var tg := _in(s, 0, "Ancient Gear Castle", "deck")
+	EffectRunner.run_list(s, 0, wy, EffectRunner.fx(wy)["summon"], {})
+	check(s.players[0].hand.has(tg) and int(s.players[0].once_names.get("#no_set", -1)) == s.turn, "Wyvern: Ancient Gear Castle added, no Set this turn")
+	# Spell Gear: 3 cards, Golem from hand and Deck.
+	s = _main_ready(7116)
+	_mon(s, 0, "Ancient Gear Soldier", 0)
+	_mon(s, 0, "Ancient Gear Knight", 1)
+	_mon(s, 0, "Ancient Gear Cannon", 2)
+	var gh := _in(s, 0, "Ancient Gear Golem", "hand")
+	var gdk := _in(s, 0, "Ancient Gear Golem", "deck")
+	var sg := _rst(s, 0, "Spell Gear")
+	s.activate(0, sg)
+	check(s.players[0].field.has(gh) and s.players[0].field.has(gdk), "Spell Gear: two Golems")
+	# Knight: a Gemini; only after its second Normal Summon does it lock Spells/Traps.
+	s = _new_state(7117)
+	_battle_ready(s)
+	var kn := _mon(s, 0, "Ancient Gear Knight", 0)
+	var mf2 := _set_trap(s, 1, "Mirror Force")
+	s.declare_attack(0, kn, null)
+	check(s.responses(1, "attack").has(mf2), "Knight: a Normal Monster at first")
+	# Megaton Golem: as many attacks as Golems used.
+	s = _main_ready(7118)
+	var mg := _in(s, 0, "Ancient Gear Megaton Golem", "extra")
+	_mon(s, 0, "Ancient Gear Golem", 0)
+	_mon(s, 0, "Ancient Gear Golem", 1)
+	_mon(s, 0, "Ancient Gear Soldier", 2)
+	var poly := _rst(s, 0, "Polymerization")
+	s.activate(0, poly, mg)
+	check(s.players[0].field.has(mg) and EffectRunner.max_attacks(mg) == 2, "Megaton Golem: 2 attacks (got %d)" % EffectRunner.max_attacks(mg))
+	# Factory: banish Levels that add up to double; Normal Summon without Tributing.
+	s = _main_ready(7119)
+	var gol3 := _in(s, 0, "Ancient Gear Golem", "hand")
+	_in(s, 0, "Ancient Gear Golem", "gy")
+	_in(s, 0, "Ancient Gear Golem", "gy")
+	var fa := _rst(s, 0, "Ancient Gear Factory")
+	s.activate(0, fa)
+	check(s.tributes_needed(gol3) == 0, "Factory: the Golem needs no Tribute this turn")
+	# Box: added by an effect, it brings a 500 ATK/DEF EARTH Machine.
+	s = _main_ready(7120)
+	var bx := _in(s, 0, "Ancient Gear Box", "deck")
+	var cn2 := _in(s, 0, "Ancient Gear Cannon", "deck")
+	s.players[0].deck.erase(bx)
+	s.players[0].hand.append(bx)
+	EffectRunner.added_by_effect(s, 0, bx)
+	check(s.players[0].hand.has(cn2), "Box: Ancient Gear Cannon added")
+	# Reborn: no monsters, an Ancient Gear back with +200.
+	s = _main_ready(7121)
+	var rb := _set_trap(s, 0, "Ancient Gear Reborn")
+	rb.face_up = true
+	var sg2 := _in(s, 0, "Ancient Gear Soldier", "gy")
+	check(EffectRunner.can_ignite(s, 0, rb), "Reborn: usable")
+	s.ignite(0, rb)
+	check(s.players[0].field.has(sg2) and s.atk_of(sg2, false) == 1500, "Reborn: Soldier back at 1500")
+	# Catapult: no monsters, destroy a face-up card, an Ancient Gear from the Deck.
+	s = _main_ready(7122)
+	var gtn := s._make(_cid("Geartown"), 0)
+	s.players[0].field_spell = gtn
+	gtn.face_up = true
+	var gdk2 := _in(s, 0, "Ancient Gear Golem", "deck")
+	var cp := _rst(s, 0, "Ancient Gear Catapult")
+	s.activate(0, cp)
+	check(s.players[0].field_spell == null and s.players[0].monsters().size() >= 1, "Catapult: Geartown destroyed, an Ancient Gear out")
+	# Drill: a Spell Set from the Deck that can't be used this turn.
+	s = _main_ready(7123)
+	_mon(s, 0, "Ancient Gear Soldier", 0)
+	_in(s, 0, "Pot of Greed", "deck")
+	var dr := _rst(s, 0, "Ancient Gear Drill")
+	s.activate(0, dr)
+	var setc: Array = s.players[0].spells.filter(func(x): return x != null and not x.face_up)
+	check(not setc.is_empty() and not s.can_activate(0, setc[0]), "Drill: a Spell Set, locked this turn")
+	# Dragon: negates an opponent's Spell by sending a Machine.
+	s = _main_ready(7124)
+	var dg := _mon(s, 1, "Ancient Gear Dragon", 0)
+	_in(s, 1, "Ancient Gear Soldier", "hand")
+	var hs := _rst(s, 0, "Heavy Storm")
+	s.chain_add(0, hs, null, "open", null)
+	check(EffectRunner.quick_can(s, 1, dg, "chain"), "Dragon: can answer Heavy Storm")
+	EffectRunner.quick_run(s, 1, dg)
+	check(s.chain.back()["negated"], "Dragon: Heavy Storm negated")
+	# Tanker: summoned, another Ancient Gear from the hand ignoring its conditions.
+	s = _main_ready(7125)
+	var tkr := _mon(s, 0, "Ancient Gear Tanker", 0)
+	var gh2 := _in(s, 0, "Ancient Gear Golem", "hand")
+	EffectRunner.run_list(s, 0, tkr, EffectRunner.fx(tkr)["summon"], {})
+	check(s.players[0].field.has(gh2), "Tanker: Golem from the hand")
+	# Beast: the monster it destroys stays negated in the GY.
+	s = _new_state(7126)
+	_battle_ready(s)
+	var bst := _mon(s, 0, "Ancient Gear Beast", 0)
+	var sgn := _mon(s, 1, "Sangan", 0)
+	s.declare_attack(0, bst, sgn)
+	s.resolve_attack()
+	check(s.players[1].gy.has(sgn) and s.shaman_blocks(sgn), "Beast: Sangan negated in the GY")
+	# Commander: send a Golem, Normal Summon an Ancient Gear right away.
+	s = _main_ready(7127)
+	var cmd := _mon(s, 0, "Ancient Gear Commander", 0)
+	s.normal_summoned = true
+	_in(s, 0, "Ancient Gear Golem", "deck")
+	var sold2 := _in(s, 0, "Ancient Gear Soldier", "hand")
+	s.ignite(0, cmd)
+	check(s.players[0].field.has(sold2), "Commander: Soldier Normal Summoned")
+
+
 func _dev_need() -> void:
 	print("TOTALS obtainable=", Collection.all_cards().size(), " playable=", Collection.every_playable().size())
 	var all := {}
@@ -9194,5 +9428,6 @@ func _dev_need() -> void:
 	for k in SignatureDecks.WISH:
 		var a2: Dictionary = SignatureDecks.audit(k)
 		print("READY\t", k, "\t", ", ".join(a2["ready"]), "\t|STAND\t", ", ".join(a2["stand_ins"]), "\t|N ", a2["plays"].size())
+
 
 

@@ -171,7 +171,7 @@ const DISTRICTS := {
 				"duel": {"deck": "rex", "difficulty": 1, "intro": "According to my notes, I win."}},
 			{"id": "ac_blue_1", "char": "blue_student", "name": "Blue Dorm Prefect", "color": Color("2f6fe0"), "pos": Vector3(-24, 0, -19), "face": 0.9,
 				"lines": ["Obelisk Blue has the best view, the best food and the best duelists.", "You want to see for yourself? Fine."],
-				"duel": {"deck": "kaiba", "difficulty": 2, "intro": "Know your place."}},
+				"duel": {"deck": "deck_ancient_gear", "difficulty": 2, "intro": "Know your place. My Golems do not rust."}},
 			{"id": "ac_blue_2", "char": "", "model": "stylish_woman", "dorm": "blue", "name": "Blue Dorm Senior", "color": Color("2f6fe0"), "pos": Vector3(-34, 0, -17), "face": 1.8,
 				"lines": ["Red, Yellow, Blue. You climb by winning the Friday exam.", "The exam office is in the main building. The proctor never smiles."]},
 			{"id": "ac_red_2", "char": "", "model": "street_duelist", "dorm": "red", "name": "Red Dorm Rookie", "color": Color("d9342b"), "pos": Vector3(-38, 0, 14), "face": 0.6,

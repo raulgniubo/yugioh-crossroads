@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.34.1
+
+**Card family 2 of 16: Ancient Gear (GX).** 40 new cards, so the game now has **1,778 cards**, every one working and obtainable.
+
+- **The family (40 cards):** every Ancient Gear monster of the Golem line (Ancient Gear Golem, Ultimate Pound, Dark Golem, Soldier, Knight, Beast, Engineer, Cannon, Box, Statue, Wyvern, Tanker, Frame, Commander, Gadget, Hunting Hound, Dragon, Hydra, Reactor Dragon, the two Gadjiltrons and Ancient Gear itself), its four Fusions (Ultimate Ancient Gear Golem, Megaton Golem, Howitzer, Chaos Ancient Gear Giant), and the Spells and Traps: Geartown, Ancient Gear Castle, Ancient Gear Fusion, Workshop, Tank, Fist, Explosive, Drill, Factory, Catapult, Advance, Reborn, Cross-Dimensional Duel and Spell Gear.
+- **New rules this needed:** "if this card attacks, your opponent can't activate Spells/Traps (or monster effects) until the end of the Damage Step", Tribute Summons that change with what you Tributed (the Gadgets), Geartown's 1-less Tribute and the Castle paying for Tributes with its counters, "ignoring its Summoning conditions", Gemini monsters (Ancient Gear Knight), and monsters unaffected by other cards' effects.
+- **Clockwork Titans, the theme deck:** 40 cards plus 6 Fusions in the Extra Deck, 900 DP in the card shop. In test duels it won 4 of 8 against the story duelists.
+- **Clockwork Titans, the booster pack:** in the Card families tab and on the Duel Academy shelf (opens with the GX era); the cards are also in the GX era pack and the type packs.
+- **Someone plays it:** the Blue Dorm Prefect at Duel Academy duels with Ancient Gears now.
+
+Not done or not checked: Ancient Gear Ballista (a Link Monster, and the game has no Links), Ancient Gear Duel and Ancient Gear Fortress are left out. Ancient Gear Dark Golem counts as "Ancient Gear Golem" for the Golem cards but not as Fusion material for Ultimate Ancient Gear Golem. When Ancient Gear Castle has enough counters the game always uses it for the Tribute. Played by the test duels, not watched.
+
 ## What is in 0.34.0
 
 **Card family 1 of 16: the Gravekeeper's (Duel Monsters).** First build of the family plan: one whole family per build, rotating through the four eras. 33 new cards, so the game now has **1,738 cards**, every one working and obtainable.

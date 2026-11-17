@@ -250,7 +250,8 @@ var last_tribute_summon_turn := -1
 var fx_src = null                    # the card whose effect is resolving right now (set by EffectRunner.run_list)
 var redirecting := false
 var probe_src = null                 # (SpellRules.feasible: the card being checked, for Necrovalley's exceptions)
-var inscription := {}                # Gravekeeper's Inscription: {"mode": 0..2, "until": turn}
+var inscription := {}
+var trap_bp_lock := -1               # Ancient Gear Cannon: "neither player can activate Trap Cards during the Battle Phase of this turn"                # Gravekeeper's Inscription: {"mode": 0..2, "until": turn}
 const NECRO_FREE := ["Gravekeeper's Ambusher", "Gravekeeper's Headman", "Rite of Spirit", "Gravekeeper's Stele"]             # (a damage redirect is running: don't bounce it back again)   # Triple Star Trion: "sent there this turn as a Tribute for a successful Tribute Summon"
 
 
@@ -1043,6 +1044,37 @@ func _in_main() -> bool:
 # ------------------------------------------------------------------ summoning
 
 func tributes_needed(c: CardInst) -> int:
+	var raw := _tributes_needed(c)
+	if raw <= 0:
+		return raw
+	var ps := players[c.owner]
+	# Ancient Gear Factory: "if you Normal Summon the revealed monster this turn, you must Normal Summon it without Tributing."
+	if int(c.tags.get("factory_turn", -1)) == turn or int(c.get_meta("factory_turn", -1)) == turn:
+		return 0
+	# Ancient Gear Advance: "You can Normal Summon "Ancient Gear Golem", or Level 5 or higher monsters that mention it, without Tributing."
+	if int(ps.once_names.get("#ag_advance", -1)) == turn and (is_golem(c) or (c.level() >= 5 and mentions_golem(c))):
+		return 0
+	# Ancient Gear Dragon: "If you control no monsters, or all monsters you control are EARTH Machine monsters, you can Normal Summon this card without Tributing."
+	if EffectRunner.fx(c).get("ag_dragon", false) and ps.monsters().filter(func(m): return not (m.face_up and str(m.data.get("race", "")) == "Machine" and str(m.data.get("attribute", "")) == "EARTH")).is_empty():
+		return 0
+	# Geartown: "Both players can Normal Summon "Ancient Gear" monsters for 1 less Tribute."
+	if c.cname().begins_with("Ancient Gear") and SpellRules.field_flag(self, "geartown"):
+		raw -= 1
+	# Ancient Gear Castle: "If you Tribute Summon an "Ancient Gear" monster face-up, you can Tribute this card instead, if the number
+	# of its counters is equal to or greater than the number of required Tribute(s)."
+	if raw > 0 and c.cname().begins_with("Ancient Gear") and _castle_for(c.owner, raw) != null:
+		return 0
+	return raw
+
+
+func _castle_for(p: int, need: int) -> CardInst:
+	var fs := players[p].field_spell
+	if fs != null and fs.face_up and SpellRules.spec(fs).get("ag_castle", false) and fs.counter >= need and not SpellRules.blocked(self, fs):
+		return fs
+	return null
+
+
+func _tributes_needed(c: CardInst) -> int:
 	if CardEffects.of(c.cname()).has("one_tribute_has") and plant_for(c) != null:
 		return 1
 	if CardEffects.of(c.cname()).has("tributes"):
@@ -1191,7 +1223,20 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 		last_tribute_summon_turn = turn
 	var trib_gk := 0
 	var trib_lv := 0
+	var trib_names: Array = []
+	var castle_used: CardInst = null
+	if tributes.is_empty() and not set_card and c.cname().begins_with("Ancient Gear"):
+		var raw_c := _tributes_needed(c)
+		if c.cname().begins_with("Ancient Gear") and SpellRules.field_flag(self, "geartown"):
+			raw_c -= 1
+		if raw_c > 0 and int(c.get_meta("factory_turn", -1)) != turn and int(players[p].once_names.get("#ag_advance", -1)) != turn:
+			castle_used = _castle_for(p, raw_c)
+	if set_card and (int(players[p].once_names.get("#no_set", -1)) == turn):
+		return []   # "you cannot Set cards for the rest of this turn" (Ancient Gear Wyvern / Dark Golem)
+	if int(players[p].once_names.get("#no_ns_until", -1)) >= turn:
+		return []   # Spell Gear: "You cannot Normal Summon or Set until the end of your next turn."
 	for t0 in tributes:
+		trib_names.append(t0.cname())
 		if t0.cname().begins_with("Gravekeeper's"):
 			trib_gk += 1
 		trib_lv += t0.level()
@@ -1258,6 +1303,18 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 	c.tags["tributes_n"] = n_tributes
 	c.tags["trib_gk"] = trib_gk   # (Gravekeeper's Oracle)
 	c.tags["trib_lv"] = trib_lv
+	c.tags["trib_names"] = trib_names   # (Ancient Gear Gadjiltron, Hydra, Reactor Dragon)
+	if castle_used != null:
+		c.tags["tributes_n"] = 1
+		events.append({"type": "effect", "player": p, "card": castle_used, "text": Loc.t("%s is Tributed instead") % castle_used.cname()})
+		players[p].field_spell = null
+		_to_gy(players[p], castle_used)
+		events.append({"type": "destroy_st", "player": p, "card": castle_used, "zone": 5})
+	# Ancient Gear Castle: "Each time a monster is Normal Summoned/Set, place 1 counter on this card."
+	for q in 2:
+		var fs_c := players[q].field_spell
+		if fs_c != null and fs_c.face_up and SpellRules.spec(fs_c).get("ag_castle", false):
+			fs_c.counter += 1
 	if not set_card:
 		pending_events.append_array(_thorn_tax(p, c))
 	if normal_summoned:
@@ -1522,6 +1579,8 @@ func can_activate(p: int, c: CardInst) -> bool:
 		return false
 	if SpellRules.blocked(self, c) or int(ps.once_names.get("#ced", -1)) == turn:
 		return false
+	if int(c.tags.get("no_act_turn", -1)) == turn:
+		return false   # Ancient Gear Drill: "This turn, that Spell Card cannot be activated."
 	if str(sp.get("k", "")) == "field" and necro_on():
 		# Gravekeeper's Shaman: "While "Necrovalley" is on the field, your opponent cannot activate Field Spell Cards."
 		for m in players[opponent(p)].monsters():
@@ -1653,6 +1712,15 @@ func chain_resolve() -> Array:
 			events.append({"type": "effect", "player": tyr.owner, "card": tyr, "text": Loc.t("%s negates %s and destroys it") % [tyr.cname(), c.cname()]})
 			if ps.spells.has(c):
 				events.append_array(_destroy_st(c))
+				continue
+		# Ancient Gear Engineer: "Negate any Trap effects that target this card, and if you do, destroy that Trap Card."
+		if not link["negated"] and c.is_trap() and link.get("target") is CardInst:
+			var en: CardInst = link["target"]
+			if en.face_up and not en.negated and EffectRunner.fx(en).get("engineer", false) and (players[0].field.has(en) or players[1].field.has(en)):
+				link["negated"] = true
+				events.append({"type": "effect", "player": en.owner, "card": en, "text": Loc.t("%s negates %s and destroys it") % [en.cname(), c.cname()]})
+				if players[c.owner].spells.has(c):
+					events.append_array(_destroy_st(c))
 				continue
 		# Light and Darkness Dragon: "Once per Chain, when a Spell/Trap Card, or monster effect, is activated: If this card has 500 or
 		# more ATK and DEF, negate that activation, and if you do, this card loses exactly 500 ATK/DEF."
@@ -2023,6 +2091,84 @@ func gy_ignite(p: int, c: CardInst) -> Array:
 
 
 ## Union monsters riding on `m` as Equip Cards (Y-Dragon Head, Z-Metal Tank).
+## Ancient Gear effects "at the end of the Damage Step".
+func _ag_end_damage(a: CardInst, t) -> Array:
+	var ev := []
+	var p := a.owner
+	var o := opponent(p)
+	var a_here: bool = players[p].field.has(a) and a.face_up and not a.negated
+	if a_here:
+		var f := EffectRunner.fx(a)
+		# Ancient Gear Engineer: "At the end of the Damage Step, if this card attacked: Target 1 Spell/Trap your opponent controls; destroy that target."
+		if f.get("engineer", false):
+			var sts: Array = players[o].spells.filter(func(x): return x != null)
+			if not sts.is_empty():
+				var hit = pick1(p, Loc.t("%s: destroy which Spell/Trap?") % a.cname(), sts, sts[0], a)
+				ev.append_array(_destroy_st(hit))
+		# Ancient Gear Reactor Dragon: "At the end of the Damage Step, if this card attacked: You can destroy 1 Spell/Trap on the field."
+		if f.get("reactor", false):
+			var all_st: Array = players[o].spells.filter(func(x): return x != null) + players[p].spells.filter(func(x): return x != null)
+			if not all_st.is_empty() and choose_option(p, Loc.t("%s: destroy a Spell/Trap?") % a.cname(), [Loc.t("Destroy one"), Loc.t("No")], 0 if players[o].spells.filter(func(x): return x != null).size() > 0 else 1, a) == 0:
+				var theirs: Array = players[o].spells.filter(func(x): return x != null)
+				var hit2 = pick1(p, Loc.t("%s: destroy which card?") % a.cname(), all_st, theirs[0] if not theirs.is_empty() else all_st[0], a)
+				ev.append_array(_destroy_st(hit2))
+		# Ancient Gear Hydra: "when this card that was Tribute Summoned by Tributing an "Ancient Gear" monster battles an opponent's
+		# monster, but the opponent's monster was not destroyed by the battle: You can banish that opponent's monster."
+		if f.get("hydra", false) and t != null and players[o].field.has(t) and not (a.tags.get("trib_names", []) as Array).filter(func(n): return str(n).begins_with("Ancient Gear")).is_empty():
+			if choose_option(p, Loc.t("%s: banish %s?") % [a.cname(), t.cname()], [Loc.t("Banish it"), Loc.t("No")], 0, a) == 0:
+				ev.append_array(_banish(t))
+	# Ancient Gear Fist: "At the end of the Damage Step, if the equipped monster battled a monster and is still on the field: Destroy the monster it battled."
+	for pair in [[a, t], [t, a]]:
+		var me = pair[0]
+		var foe = pair[1]
+		if me == null or foe == null or not (players[0].field.has(me) or players[1].field.has(me)) or not (players[0].field.has(foe) or players[1].field.has(foe)):
+			continue
+		for eq in SpellRules.equips_on(self, me):
+			if SpellRules.spec(eq).get("ag_fist", false) and not SpellRules.blocked(self, eq):
+				ev.append({"type": "effect", "player": eq.owner, "card": eq, "text": Loc.t("%s destroys %s") % [eq.cname(), foe.cname()]})
+				ev.append_array(_destroy(foe))
+				break
+	return ev
+
+
+## Ancient Gear: what the other side may not activate while this monster attacks. {"st": true, "fx": true}
+func ag_attack_locks(a: CardInst) -> Dictionary:
+	var out := {}
+	if a == null or not a.face_up or a.negated:
+		return out
+	var f := EffectRunner.fx(a)
+	if f.get("attack_fx_lock", false):
+		out["fx"] = true   # Ancient Gear Wyvern
+	if f.get("attack_both_lock", false):
+		out["st"] = true   # Ancient Gear Reactor Dragon
+		out["fx"] = true
+	# Ancient Gear Hydra: "If an "Ancient Gear" monster you control attacks, your opponent cannot activate Spell/Trap Cards and monster effects."
+	if a.cname().begins_with("Ancient Gear"):
+		for m in players[a.owner].monsters():
+			if m.face_up and not m.negated and EffectRunner.fx(m).get("hydra", false):
+				out["st"] = true
+				out["fx"] = true
+	# Ancient Gear Gadget: "this turn, if your monster attacks, your opponent cannot activate (the declared type)".
+	var ps := players[a.owner]
+	if int(ps.once_names.get("#gadget_lock", -1)) == turn:
+		var ty := str(ps.once_names.get("#gadget_type", ""))
+		if ty == "monster":
+			out["fx"] = true
+		else:
+			out["st"] = true   # (Spell or Trap: the Spell/Trap lock covers both)
+	return out
+
+
+## "Ancient Gear Golem" by name, or a card whose name becomes it (Ancient Gear Dark Golem).
+static func is_golem(c) -> bool:
+	return c != null and (c.cname() == "Ancient Gear Golem" or EffectRunner.fx(c).get("golem_name", false))
+
+
+## A card that "mentions" Ancient Gear Golem (Statue, Tanker, Advance, Commander...).
+static func mentions_golem(c) -> bool:
+	return c != null and (is_golem(c) or str(c.data.get("desc", "")).contains("Ancient Gear Golem"))
+
+
 ## Put a monster card in `holder`'s Spell & Trap Zone as an Equip Card on `host` (Truckroid, Shocktopus, Kiseitai,
 ## Armored Xyz, Number 6). `kind` says what it does there; mon_equips() finds them.
 func equip_monster(holder: int, card: CardInst, host: CardInst, kind: String) -> Array:
@@ -2296,6 +2442,8 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 			attacker.tags["hit"].append(target.uid)
 		else:
 			attacker.tags["went_direct"] = turn
+	if target == null:
+		attacker.tags["went_direct_dmg"] = turn   # (Gadjiltron Chimera: "by a direct attack")
 	if target != null and not target.attack_pos:
 		attacker.hit_def_turn = turn
 	if attacker.attack_count_turn != turn:
@@ -2617,6 +2765,8 @@ func resolve_attack() -> Array:
 			took.tags["neg_until"] = turn + 1
 			took.tags["no_attack_until"] = turn + 1
 			took.negated = true
+	if rai_a != null and not is_over():
+		ev.append_array(_ag_end_damage(rai_a, rai_t))
 	# Armored Xyz: "At the end of the Damage Step, if the equipped monster attacked: You can send this card to the GY; that attacking
 	# monster can make a second attack in a row."
 	if rai_a != null and players[rai_a.owner].field.has(rai_a) and not is_over():
@@ -3330,6 +3480,16 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	var zone := ps.field.find(c)
 	if zone == -1:
 		return []
+	if c.face_up and (c.cname() == "Ancient Gear Golem" or c.cname() == "Ancient Gear Golem - Ultimate Pound" or is_golem(c)):
+		# Cross-Dimensional Duel: "If 1 or more "Ancient Gear Golem" or "Ancient Gear Golem - Ultimate Pound" you control would be
+		# destroyed by battle or card effect, you can banish this card from your GY instead."
+		for cd in ps.gy:
+			if cd.cname() == "Cross-Dimensional Duel" and not necro_holds(cd):
+				if choose_option(c.owner, Loc.t("%s would be destroyed. Banish Cross-Dimensional Duel from your GY instead?") % c.cname(), [Loc.t("Banish it"), Loc.t("No")], 0, cd) == 0:
+					var ev_cd := [{"type": "effect", "player": c.owner, "card": cd, "text": Loc.t("Cross-Dimensional Duel is banished in place of %s") % c.cname()}]
+					ev_cd.append_array(_banish(cd))
+					return ev_cd
+				break
 	if not by_battle and c.face_up and not c.negated and EffectRunner.fx(c).get("supernat", false) and necro_on():
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed by card effects") % c.cname()}]
 	if c.face_up and not c.negated and EffectRunner.fx(c).get("visionary", false):
@@ -3694,6 +3854,26 @@ func _destroy_st(c: CardInst) -> Array:
 	if was_up and SpellRules.spec(c).get("ctp", false) and c.counter >= 4 and ps.gy.has(c):
 		events.append_array(_dreadmaster(c.owner))
 	events.append_array(SpellRules.left_field(self, c))
+	if was_up and players[c.owner].gy.has(c) and not is_over():
+		var dsp := SpellRules.spec(c)
+		# Ancient Gear Tank: "When this card is destroyed and sent to the Graveyard: Inflict 600 damage to your opponent."
+		if dsp.get("ag_tank", false):
+			events.append({"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s: 600 damage") % c.cname()})
+			events.append_array(_damage(opponent(c.owner), 600))
+		# Geartown: "When this card is destroyed and sent to the GY: You can Special Summon 1 "Ancient Gear" monster from your hand, Deck, or GY."
+		if dsp.get("geartown", false):
+			var gp := players[c.owner]
+			var pool_g: Array = (gp.hand + gp.deck).filter(func(x): return x.is_monster() and x.cname().begins_with("Ancient Gear") and EffectRunner._ss_ok(x))
+			pool_g.append_array(gp.gy.filter(func(x): return x.is_monster() and x.cname().begins_with("Ancient Gear") and can_revive(x)))
+			pool_g = pool_g.filter(func(x): return not big_locked(c.owner, x, true))
+			if not pool_g.is_empty() and gp.free_zone() != -1 and gp.no_summon_turn != turn and not ss_locked(c.owner) \
+					and choose_option(c.owner, Loc.t("Geartown: Special Summon an \"Ancient Gear\" monster?"), [Loc.t("Summon one"), Loc.t("No")], 0, c) == 0:
+				var best_g: Array = _best_monsters(pool_g, 1)
+				var g = pick1(c.owner, Loc.t("Geartown: which monster?"), pool_g, best_g[0], c)
+				gp.hand.erase(g)
+				gp.deck.erase(g)
+				gp.gy.erase(g)
+				events.append_array(_special(c.owner, g, "effect"))
 	if was_up and SpellRules.spec(c).get("temple", false) and effect_by == opponent(c.owner) and ps.gy.has(c):
 		# Necrovalley Temple: "If this card in your possession is destroyed by an opponent's effect and sent to your GY: You can Set
 		# 1 "Necrovalley" Spell/Trap directly from your Deck, except "Necrovalley Temple"."
@@ -3721,6 +3901,8 @@ func _destroy_st(c: CardInst) -> Array:
 ## Equip cards (and Call of the Haunted) go when their monster goes.
 func _monster_left(m: CardInst) -> Array:
 	var events := []
+	if m.face_up and not m.negated and effect_by == opponent(m.owner) and not in_damage_step and not is_over():
+		events.append_array(EffectRunner.left_by_opp(self, m))
 	for q in 2:
 		for st in players[q].spells.duplicate():
 			if st == null or not st.face_up:
@@ -4280,6 +4462,8 @@ func _best_in_gy() -> CardInst:
 ## pos: "" = the summoner chooses Attack or face-up Defense, "atk" / "def" = the effect says which.
 func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 	var ps := players[p]
+	if c.has_meta("beast_neg"):
+		c.remove_meta("beast_neg")
 	var pre := []
 	if method != "return" and not c.is_token() and ss_locked(p) and EffectRunner.fx_lock_ss(self, p):
 		return [{"type": "effect", "player": p, "card": c, "text": Loc.t("%s cannot be Special Summoned right now") % c.cname()}]
@@ -4399,11 +4583,20 @@ func gk_and_valley() -> bool:
 
 ## Gravekeeper's Heretic: "unaffected by all other card effects, as long as "Necrovalley" is also on the field."
 func heretic_shield(c, src = null) -> bool:
-	return c != null and c is CardInst and c.face_up and not c.negated and EffectRunner.fx(c).get("heretic", false) and src != c and necro_on()
+	if c == null or not (c is CardInst) or not c.face_up or c.negated or src == c:
+		return false
+	var f := EffectRunner.fx(c)
+	if f.get("unaffected_all", false) and src != null:
+		return true   # Ancient Gear Howitzer: "Unaffected by other cards' effects."
+	if f.get("unaffected_st", false) and src != null and src is CardInst and not src.is_monster():
+		return true   # Chaos Ancient Gear Giant: "Unaffected by Spell/Trap effects."
+	return f.get("heretic", false) and necro_on()
 
 
 ## Gravekeeper's Shaman: "Negate all monster effects that activate in the GY, except "Gravekeeper's" monsters."
 func shaman_blocks(c) -> bool:
+	if c != null and c.has_meta("beast_neg") and (players[0].gy.has(c) or players[1].gy.has(c) or players[0].field.has(c) or players[1].field.has(c)):
+		return true   # Ancient Gear Beast: "Negate the effects of an opponent's monster destroyed by battle with this card (including in the GY)."
 	if c == null or not c.is_monster() or c.cname().begins_with("Gravekeeper's") or not (players[0].gy.has(c) or players[1].gy.has(c)):
 		return false
 	for q in 2:
@@ -5403,17 +5596,29 @@ func responses(p: int, window: String, subject = null) -> Array:
 		return out
 	# Infernity Beast: while it attacks with its owner's hand empty, the other side cannot use Spells or Traps.
 	var st_locked := false
+	var fx_locked := false
+	# Chaos Ancient Gear Giant: "Your opponent's monsters cannot activate their effects during the Battle Phase."
+	if phase == Phase.BATTLE:
+		for m in players[opponent(p)].monsters():
+			if m.face_up and not m.negated and EffectRunner.fx(m).get("chaos_giant", false):
+				fx_locked = true
+	var traps_off: bool = trap_bp_lock == turn and phase == Phase.BATTLE
 	if not pending_attack.is_empty() and pending_attack["player"] != p and not pending_attack.get("negated", false):
 		var atk_c: CardInst = pending_attack["attacker"]
 		if EffectRunner.fx(atk_c).get("lock_st_if_hand_empty", false) and players[pending_attack["player"]].hand.is_empty():
 			st_locked = true
-		if EffectRunner.fx(atk_c).get("attack_st_lock", false) and atk_c.face_up and not atk_c.negated:
+		if EffectRunner.fx(atk_c).get("attack_st_lock", false) and atk_c.face_up and not atk_c.negated and (not EffectRunner.fx(atk_c).get("gemini", false) or atk_c.tags.has("gemini_on")):
 			st_locked = true   # Utopia Ray Victory: "If this card attacks, your opponent cannot activate any Spell/Trap Cards until the end of the Damage Step."
+		var lk := ag_attack_locks(atk_c)
+		if lk.has("st"):
+			st_locked = true
+		if lk.has("fx"):
+			fx_locked = true
 	for c in ps.spells:
-		if not st_locked and c != null and not c.face_up and SpellRules.fits(self, p, c, window, subject) and ps.speed >= speed_need(c):
+		if not st_locked and c != null and not c.face_up and not (traps_off and c.is_trap()) and SpellRules.fits(self, p, c, window, subject) and ps.speed >= speed_need(c):
 			out.append(c)
 	for c in ps.hand:
-		if not st_locked and not c.is_monster() and SpellRules.fits(self, p, c, window, subject) and ps.speed >= speed_need(c):
+		if not st_locked and not c.is_monster() and not (traps_off and c.is_trap()) and SpellRules.fits(self, p, c, window, subject) and ps.speed >= speed_need(c):
 			out.append(c)
 	# Stardust Dragon: when a card or effect that would destroy a card on the field is activated.
 	if not chain.is_empty() and window == "chain" and SpellRules.would_destroy(chain.back()):
@@ -5428,6 +5633,8 @@ func responses(p: int, window: String, subject = null) -> Array:
 	quicks.append_array(ps.hand)
 	quicks.append_array(ps.gy)
 	for qc in quicks:
+		if fx_locked:
+			break
 		if not out.has(qc) and EffectRunner.quick_can(self, p, qc, window, subject):
 			out.append(qc)
 	# Galaxy-Eyes Photon Dragon: in the Battle Step, while it battles an opponent's monster.

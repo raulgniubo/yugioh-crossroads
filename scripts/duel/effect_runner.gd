@@ -20,6 +20,10 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 	var f := fx(c)
 	var b := union_boost(s, c)
 	b += _gk_bonus(s, c)
+	if c.tags.get("green_300", false) and c.face_up and not c.negated:
+		b += 300   # Ancient Gear Gadjiltron Chimera with Green Gadget
+	if int(c.tags.get("cdd_turn", -1)) == s.turn and c.face_up:
+		b += int(c.data.get("atk", 0)) * 2 - c.atk()   # Cross-Dimensional Duel: "its ATK becomes double its original ATK until the end of that turn"
 	if c.face_up and not c.negated and f.get("visionary", false):
 		b += 200 * s.players[c.owner].gy.filter(func(g): return g.cname().begins_with("Gravekeeper's") and g.is_monster()).size()
 	if not c.negated:
@@ -353,10 +357,16 @@ static func max_attacks(c) -> int:
 	if f.get("double_after_kill", false):
 		# Black Luster Soldier - Envoy of the Beginning: one of its two effects each turn.
 		return 2 if c.killed_turn != -1 and c.killed_turn == c.attack_count_turn and c.ignite_turn != c.killed_turn else 1
+	if int(c.tags.get("megaton_n", 0)) >= 2 and not c.negated:
+		return int(c.tags["megaton_n"])   # Ancient Gear Megaton Golem: up to as many attacks as Golems used
+	if c.tags.get("second_attack", false) and not c.negated:
+		return 2   # Ancient Gear Reactor Dragon with a "Gadget" Tributed
 	return 2 if f.get("double_attack", false) else 1
 
 
 static func piercing(s: DuelState, p: int, c) -> bool:
+	if c.tags.get("pierce_perm", false) and not c.negated:
+		return true   # Gadjiltron Dragon (Green Gadget), Reactor Dragon (an "Ancient Gear" Tributed)
 	if fx(c).get("piercing", false) or int(c.tags.get("pierce_turn", -1)) == s.turn or int(c.tags.get("gq_until", -1)) >= s.turn \
 			or (c.tags.has("lancer") and int(c.tags["lancer"][0]) == s.turn and int(c.tags["lancer"][1]) == s.players[c.owner].attacks_this_turn):
 		return true
@@ -440,6 +450,52 @@ static func survives_battle(s: DuelState, c) -> bool:
 	return false
 
 
+## "Immediately after this effect resolves, Normal Summon 1 ... monster" (Ancient Gear Commander, Necrovalley Throne).
+static func extra_ns(s: DuelState, p: int, c, pred: Callable) -> Array:
+	var ps := s.players[p]
+	var events := []
+	ps.extra_normals += 1
+	var can_t: Array = ps.hand.filter(func(h): return h.is_monster() and pred.call(h) and s.can_normal_summon(p, h))
+	if can_t.is_empty():
+		ps.extra_normals -= 1
+		return events
+	var best_t: Array = s._best_monsters(can_t, 1)
+	var t_t = s.pick1(p, Loc.t("%s: Normal Summon which monster?") % c.cname(), can_t, best_t[0], c)
+	var need_t := s.tributes_needed(t_t)
+	var fod_t: Array = s.tributable(p)
+	fod_t.sort_custom(func(x, y): return s.atk_of(x, false) < s.atk_of(y, false))
+	var tribs_t: Array = s.choose(p, Loc.t("%s: Tribute %d monster(s)") % [c.cname(), need_t], fod_t, need_t, fod_t.slice(0, need_t), false, c) if need_t > 0 else []
+	var was_ns := s.normal_summoned
+	var ev_t := s.normal_summon(p, t_t, tribs_t)
+	if ev_t.is_empty():
+		ps.extra_normals -= 1
+	else:
+		if not was_ns:
+			ps.extra_normals -= 1
+			s.normal_summoned = false
+		events.append_array(ev_t)
+	return events
+
+
+## The "Ancient Gear" Fusion Monsters p can make now: from hand and field, and with `deck`, also from the Deck when a
+## "Ancient Gear Golem" (or Ultimate Pound) you control is one of the materials (Ancient Gear Fusion).
+static func ag_plans(s: DuelState, p: int, deck: bool) -> Array:
+	var ps := s.players[p]
+	var out: Array = []
+	var field_up: Array = ps.monsters().filter(func(m): return m.face_up)
+	for f in ps.extra:
+		if f.frame() != "fusion" or not f.cname().contains("Ancient Gear") or not fx(f).has("fmats"):
+			continue
+		var pl: Dictionary = s._fmat_plan(p, f, ps.hand.duplicate(), field_up, false)
+		if deck and not field_up.filter(func(m): return m.cname() == "Ancient Gear Golem" or m.cname() == "Ancient Gear Golem - Ultimate Pound").is_empty():
+			var pl2: Dictionary = s._fmat_plan(p, f, ps.hand + ps.deck, field_up, false)
+			if not pl2.is_empty() and not (pl2["field"] as Array).filter(func(m): return m.cname() == "Ancient Gear Golem" or m.cname() == "Ancient Gear Golem - Ultimate Pound").is_empty():
+				pl = pl2
+		if not pl.is_empty() and not (pl["field"].is_empty() and ps.free_zone() == -1):
+			out.append(pl)
+	return out
+
+
 ## Put a monster that just came out face-up into face-down Defense Position (Headman, Nobleman).
 static func _set_face_down(s: DuelState, m, events: Array) -> void:
 	m.face_up = false
@@ -520,6 +576,39 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 	if cond == "kuriphoton":
 		var pk := s.players[p]
 		return int(pk.once_names.get("Kuriphoton#gy", -1)) != s.turn and not pk.hand.filter(func(h): return h.is_monster() and h.cname().contains("Photon") and h.cname() != "Kuriphoton").is_empty()
+	if cond == "own_ag":
+		return not s.players[p].monsters().filter(func(m): return m.face_up and m.cname().begins_with("Ancient Gear")).is_empty()
+	if cond == "statue":
+		return s.players[s.opponent(p)].monsters().size() > s.players[p].monsters().size() and int(s.players[p].once_names.get("Statue#ss", -1)) != s.turn
+	if cond == "commander_ns":
+		var pc := s.players[p]
+		if int(pc.once_names.get("Commander#ns", -1)) == s.turn:
+			return false
+		var gl: Array = (pc.hand + pc.deck).filter(func(x): return x.cname() == "Ancient Gear Golem") + pc.monsters().filter(func(m): return m.face_up and m.cname() == "Ancient Gear Golem")
+		return not gl.is_empty() and not pc.hand.filter(func(h): return h.is_monster() and h.cname().begins_with("Ancient Gear")).is_empty()
+	if cond == "commander_trap":
+		var pt2 := s.players[p]
+		return int(pt2.once_names.get("Commander#trap", -1)) != s.turn and pt2.spells.has(null) and not pt2.hand.filter(func(h): return h.cname().begins_with("Ancient Gear") and str(SpellRules.spec(h).get("k", "")) == "ctrap").is_empty()
+	if cond == "frame_search":
+		return not s.players[p].deck.filter(func(x): return x.cname() == "Ancient Gear Golem" or (not x.is_monster() and str(x.data.get("desc", "")).contains("Ancient Gear Golem"))).is_empty()
+	if cond == "ag_fusion_hand":
+		return not ag_plans(s, p, false).is_empty()
+	if cond == "gemini_ready":
+		return s.players[p].field.size() > 0 and (not s.normal_summoned or s.players[p].extra_normals > 0)
+	if cond == "statue_call":
+		return not (s.players[p].hand + s.players[p].deck).filter(func(x): return x.is_monster() and x.cname() != "Ancient Gear Statue" and DuelState.mentions_golem(x) and not CardData.is_extra(x.id)).is_empty()
+	if cond == "tanker_boost":
+		var pk := s.players[p]
+		return int(pk.once_names.get("Tanker#boost", -1)) != s.turn and (pk.monsters().filter(func(m): return m.face_up).size() + pk.spells.filter(func(x): return x != null and x.face_up).size() + (1 if pk.field_spell != null and pk.field_spell.face_up else 0)) > 0
+	if cond == "advance_draw":
+		return int(s.players[p].once_names.get("Advance#draw", -1)) != s.turn and not s.players[p].monsters().filter(func(m): return s.can_tribute_fx(m)).is_empty()
+	if cond == "ag_reborn":
+		var pr := s.players[p]
+		return pr.monsters().is_empty() and int(pr.once_names.get("Ancient Gear Reborn#use", -1)) != s.turn and pr.free_zone() != -1 \
+				and not pr.gy.filter(func(g): return g.is_monster() and g.cname().begins_with("Ancient Gear") and s.can_revive(g)).is_empty()
+	if cond == "catapult_gy":
+		var pg := s.players[p]
+		return int(pg.once_names.get("Ancient Gear Catapult", -1)) != s.turn and pg.free_zone() != -1 and (pg.monsters().filter(func(m): return m.face_up).size() + pg.spells.filter(func(x): return x != null and x.face_up).size() + (1 if pg.field_spell != null and pg.field_spell.face_up else 0)) > 0
 	if cond == "temple_valley":
 		var pt := s.players[p]
 		return pt.field_spell == null and not (pt.hand + pt.gy).filter(func(x): return x.cname() == "Necrovalley" and not s.necro_holds(x)).is_empty()
@@ -1016,7 +1105,55 @@ static func on_summon(s: DuelState, p: int, c, kind: String) -> Array:
 		events.append_array(run_list(s, p, c, f["special_only"], {}))
 	if f.has("any_summon"):
 		events.append_array(run_list(s, p, c, f["any_summon"], {}))
+	if kind in ["normal", "special", "fusion", "synchro", "xyz"] and DuelState.is_golem(c) and s.players[p].field.has(c):
+		# Ancient Gear Commander: "If you Normal or Special Summon "Ancient Gear Golem": You can Special Summon 1 "Ancient Gear Golem"
+		# from your hand or GY, ignoring its Summoning conditions."
+		var ps := s.players[p]
+		for cm in ps.monsters():
+			if cm.face_up and not cm.negated and fx(cm).get("commander", false) and int(ps.once_names.get("Commander#golem", -1)) != s.turn and ps.free_zone() != -1:
+				var gol: Array = ps.hand.filter(func(x): return x.cname() == "Ancient Gear Golem") + ps.gy.filter(func(x): return x.cname() == "Ancient Gear Golem" and not s.necro_holds(x))
+				gol = gol.filter(func(x): return not s.big_locked(p, x, true))
+				if not gol.is_empty() and not s.ss_locked(p) and ps.no_summon_turn != s.turn and s.choose_option(p, Loc.t("%s: Special Summon another \"Ancient Gear Golem\"?") % cm.cname(), [Loc.t("Summon it"), Loc.t("No")], 0, cm) == 0:
+					ps.once_names["Commander#golem"] = s.turn
+					var g0 = gol[0]
+					ps.hand.erase(g0)
+					ps.gy.erase(g0)
+					events.append_array(s._special(p, g0, "effect"))
+				break
 	return events
+
+
+## A monster left the field because of an opponent's card effect (Ancient Gear Frame, Megaton Golem).
+static func left_by_opp(s: DuelState, m) -> Array:
+	var f := fx(m)
+	var p: int = m.owner
+	var ps := s.players[p]
+	var events := []
+	if f.get("ag_frame", false):
+		# Ancient Gear Frame: "Special Summon up to 3 "Ancient Gear Golem" and/or "Ancient Gear Golem - Ultimate Pound" from your hand, ignoring their Summoning conditions."
+		var gs: Array = ps.hand.filter(func(x): return x.cname() == "Ancient Gear Golem" or x.cname() == "Ancient Gear Golem - Ultimate Pound")
+		if not gs.is_empty() and not s.ss_locked(p) and s.choose_option(p, Loc.t("%s: Special Summon Golems from your hand?") % m.cname(), [Loc.t("Summon them"), Loc.t("No")], 0, m) == 0:
+			for g in gs.slice(0, 3):
+				if ps.free_zone() == -1:
+					break
+				ps.hand.erase(g)
+				events.append_array(s._special(p, g, "effect"))
+	if f.get("megaton", false) and m.proper:
+		# Megaton Golem: "Special Summon 1 "Ultimate Ancient Gear Golem" from your Extra Deck, ignoring its Summoning conditions."
+		var ug: Array = ps.extra.filter(func(x): return x.cname() == "Ultimate Ancient Gear Golem")
+		if not ug.is_empty() and not s.ss_locked(p) and s.choose_option(p, Loc.t("%s: Special Summon Ultimate Ancient Gear Golem?") % m.cname(), [Loc.t("Summon it"), Loc.t("No")], 0, m) == 0:
+			s.pending_events.append_array(_ignoring(s, p, ug[0], ps.extra))
+	return events
+
+
+## Special Summon, ignoring its Summoning conditions, from the given pile.
+static func _ignoring(s: DuelState, p: int, x, from: Array, pos := "") -> Array:
+	var ps := s.players[p]
+	if ps.free_zone() == -1:
+		return []
+	from.erase(x)
+	x.proper = true
+	return s._special(p, x, "effect", pos)
 
 
 ## Is this card's effect shut off for its owner right now (a name lock, or its once-per-turn use is spent)?
@@ -1100,6 +1237,16 @@ static func standby(s: DuelState, p: int) -> Array:
 				s.players[kq].lp += gain_k
 				events.append({"type": "lp", "player": kq, "lp": s.players[kq].lp, "delta": gain_k})
 				events.append(_ev(kq, st, Loc.t("%s: +%d LP") % [st.cname(), gain_k]))
+	# Cross-Dimensional Duel: "During the next Standby Phase, return that banished monster to the field, and if you do, its ATK
+	# becomes double its original ATK until the end of that turn."
+	for q in 2:
+		for b in s.players[q].banished.duplicate():
+			if b.tags.has("cdd_back") and int(b.tags["cdd_back"]) < s.turn and s.players[q].free_zone() != -1:
+				b.tags.erase("cdd_back")
+				s.players[q].banished.erase(b)
+				events.append(_ev(q, b, Loc.t("%s returns with double ATK") % b.cname()))
+				events.append_array(s._special(q, b, "return"))
+				b.tags["cdd_turn"] = s.turn
 	# Synchro Soldier: "during your next Standby Phase the removed from play monster returns to the field."
 	for b in s.players[p].banished.duplicate():
 		if b.tags.has("back_standby") and int(b.tags["back_standby"]) < s.turn and s.players[p].free_zone() != -1:
@@ -1169,6 +1316,11 @@ static func standby(s: DuelState, p: int) -> Array:
 
 static func end_phase(s: DuelState, p: int) -> Array:
 	var events := []
+	for q in 2:
+		for m in s.players[q].monsters():
+			if int(m.tags.get("as_turn", -99)) == s.turn:
+				m.tags.erase("as")   # Ancient Gear Gadget: "until the End Phase, this card's name becomes that name"
+				m.tags.erase("as_turn")
 	var ps_e := s.players[p]
 	if int(ps_e.once_names.get("#supernat_end", -1)) == s.turn:
 		# Gravekeeper's Supernaturalist: "during the End Phase of this turn, add 1 "Gravekeeper's" monster or 1 "Necrovalley" card from your Deck to your hand."
@@ -1338,6 +1490,18 @@ static func _named_set(s: DuelState, p: int, c, names: Array) -> Array:
 ## Watapon: "You can Special Summon this card."
 static func added_by_effect(s: DuelState, p: int, d) -> Array:
 	var ps := s.players[p]
+	if d != null and ps.hand.has(d) and fx(d).get("ag_box", false) and int(ps.once_names.get("Ancient Gear Box", -1)) != s.turn:
+		# Ancient Gear Box: "If this card is added from the Deck or Graveyard to your hand, except by drawing it: You can add 1 EARTH
+		# Machine-Type monster with 500 ATK and/or DEF from your Deck to your hand, except "Ancient Gear Box"."
+		var pool_b: Array = ps.deck.filter(func(x): return x.is_monster() and str(x.data.get("race", "")) == "Machine" and str(x.data.get("attribute", "")) == "EARTH" \
+				and (int(x.data.get("atk", -1)) == 500 or int(x.data.get("def", -1)) == 500) and x.cname() != "Ancient Gear Box")
+		if not pool_b.is_empty():
+			ps.once_names["Ancient Gear Box"] = s.turn
+			var got_b = s.pick1(p, Loc.t("Ancient Gear Box: add which monster?"), pool_b, pool_b[0], d)
+			ps.deck.erase(got_b)
+			ps.hand.append(got_b)
+			s._shuffle(ps.deck)
+			return [{"type": "search", "player": p, "card": got_b, "deck": ps.deck.size()}]
 	if d == null or not ps.hand.has(d) or not d.is_monster() or not CardEffects.of(d.cname()).get("ss_when_added", false) or ps.free_zone() == -1 or ps.no_summon_turn == s.turn:
 		return []
 	if s.choose_option(p, Loc.t("%s: Special Summon it?") % d.cname(), ["Special Summon it", "Keep it in hand"], 0, d) != 0:
@@ -1426,7 +1590,7 @@ static func _union(s: DuelState, p: int, c) -> Array:
 static func attacks_all(s: DuelState, c) -> bool:
 	if c == null:
 		return false
-	if fx(c).get("attack_all", false):
+	if fx(c).get("attack_all", false) or (c.tags.get("attack_all", false) and not c.negated):
 		return true
 	return fx(c).get("stealth_union", false) and not c.negated and c.tags.has("su_eq") and s.find_uid(int(c.tags["su_eq"])) != null \
 			and not s.unions_on(c).filter(func(u): return u.uid == int(c.tags["su_eq"])).is_empty()
@@ -1502,6 +1666,8 @@ static func ignite_spec(c) -> Dictionary:
 
 
 static func can_ignite(s: DuelState, p: int, c) -> bool:
+	if fx(c).get("gemini", false) and c.tags.has("gemini_on"):
+		return false   # (already Normal Summoned a second time)
 	if int(s.players[p].once_names.get("#ced", -1)) == s.turn:
 		return false   # Chaos Emperor Dragon: "You cannot activate other cards or effects during the turn you activate this card's effect."
 	if fx(c).has("union"):
@@ -2119,6 +2285,15 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 	var pa: Dictionary = s.pending_attack
 	var battling: bool = not pa.is_empty() and not pa.get("negated", false)
 	match kind:
+		"ag_dragon":
+			if not on_field or window != "chain" or s.chain.is_empty() or int(ps.once_names.get("Ancient Gear Dragon", -1)) == s.turn:
+				return false
+			var lk_d: Dictionary = s.chain.back()
+			if int(lk_d["player"]) == p or lk_d.get("negated", false) or lk_d["card"].is_monster():
+				return false
+			return not ps.hand.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Machine").is_empty() \
+					or not ps.monsters().filter(func(m): return m != c and m.face_up and str(m.data.get("race", "")) == "Machine").is_empty() \
+					or not ps.deck.filter(func(x): return x.cname() == "Ancient Gear Golem").is_empty()
 		"shabti":
 			return ps.hand.has(c) and int(ps.once_names.get("#shabti", -1)) != s.turn and window in ["attack", "damage", "chain", "battle_start", "phase", "summon"] \
 					and not ps.monsters().filter(func(m): return m.face_up and m.cname().begins_with("Gravekeeper's")).is_empty()
@@ -2288,6 +2463,25 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 	var events := []
 	var hit: bool = not s.pending_attack.is_empty() and int(s.pending_attack["player"]) != p and not s.pending_attack.get("negated", false)
 	match kind:
+		"ag_dragon":
+			ps.once_names["Ancient Gear Dragon"] = s.turn
+			var pay: Array = ps.hand.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Machine") \
+					+ ps.monsters().filter(func(m): return m != c and m.face_up and str(m.data.get("race", "")) == "Machine") \
+					+ ps.deck.filter(func(x): return x.cname() == "Ancient Gear Golem").slice(0, 1)
+			var dk_g: Array = ps.deck.filter(func(x): return x.cname() == "Ancient Gear Golem")
+			var pay_c = s.pick1(p, Loc.t("%s: send which Machine to the GY?") % c.cname(), pay, dk_g[0] if not dk_g.is_empty() else pay[0], c)
+			if ps.field.has(pay_c):
+				ps.field[ps.field.find(pay_c)] = null
+				s._to_gy(ps, pay_c)
+				events.append_array(s._monster_left(pay_c))
+			else:
+				ps.hand.erase(pay_c)
+				ps.deck.erase(pay_c)
+				s._to_gy(ps, pay_c)
+			events.append({"type": "discard", "player": p, "card": pay_c})
+			if not s.chain.is_empty():
+				s.chain.back()["negated"] = true
+				events.append(_ev(p, c, Loc.t("%s negates %s") % [c.cname(), s.chain.back()["card"].cname()]))
 		"shabti":
 			ps.hand.erase(c)
 			s._to_gy(ps, c)
@@ -2677,6 +2871,8 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 		else:
 			lose = a > s.def_of(tgt)
 	match kind:
+		"ag_dragon":
+			return true
 		"shabti":
 			return hit and tgt != null and tgt.owner == p and tgt.cname().begins_with("Gravekeeper's") and lose
 		"gk_watcher":
@@ -3046,6 +3242,263 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"beast_neg":
+			var v_b = ctx.get("victim")
+			if v_b != null:
+				v_b.set_meta("beast_neg", true)
+				events.append(_ev(p, c, Loc.t("%s negates %s, even in the Graveyard") % [name, v_b.cname()]))
+		"trap_bp_lock":
+			s.trap_bp_lock = s.turn
+			events.append(_ev(p, c, Loc.t("No Traps during this Battle Phase")))
+		"mark_once":
+			ps.once_names[str(a[1])] = s.turn
+		"commander_ns":
+			# "send 1 "Ancient Gear Golem" from your hand, Deck, or face-up Monster Zone to the GY; immediately after this effect resolves, Normal Summon 1 "Ancient Gear" monster."
+			ps.once_names["Commander#ns"] = s.turn
+			var gl: Array = (ps.hand + ps.deck).filter(func(x): return x.cname() == "Ancient Gear Golem") + ps.monsters().filter(func(m): return m.face_up and m.cname() == "Ancient Gear Golem")
+			if not gl.is_empty():
+				var sent = s.pick1(p, Loc.t("%s: send which \"Ancient Gear Golem\" to the GY?") % name, gl, gl.back(), c)
+				if ps.field.has(sent):
+					ps.field[ps.field.find(sent)] = null
+					s._to_gy(ps, sent)
+					events.append_array(s._monster_left(sent))
+				else:
+					ps.hand.erase(sent)
+					ps.deck.erase(sent)
+					s._to_gy(ps, sent)
+				events.append({"type": "discard", "player": p, "card": sent})
+				events.append_array(extra_ns(s, p, c, func(h): return h.cname().begins_with("Ancient Gear")))
+		"commander_trap":
+			ps.once_names["Commander#trap"] = s.turn
+			if ps.gy.has(c):
+				events.append_array(s._banish(c))
+			var ct: Array = ps.hand.filter(func(h): return h.cname().begins_with("Ancient Gear") and str(SpellRules.spec(h).get("k", "")) == "ctrap")
+			if not ct.is_empty() and ps.spells.has(null):
+				var t_ct = s.pick1(p, Loc.t("%s: place which Continuous Trap?") % name, ct, ct[0], c)
+				ps.hand.erase(t_ct)
+				var z_ct := ps.spells.find(null)
+				ps.spells[z_ct] = t_ct
+				t_ct.face_up = true
+				events.append({"type": "activate", "player": p, "card": t_ct, "zone": z_ct})
+		"dark_golem":
+			# "add up to 2 cards ("Ancient Gear" cards and/or "Geartown") from your Deck to your hand, except "Ancient Gear Dark Golem", then
+			# discard 1 card, also you cannot Set cards for the rest of this turn."
+			if int(ps.once_names.get("Ancient Gear Dark Golem", -1)) != s.turn:
+				ps.once_names["Ancient Gear Dark Golem"] = s.turn
+				var pool_d: Array = ps.deck.filter(func(x): return (x.cname().begins_with("Ancient Gear") or x.cname() == "Geartown") and x.cname() != "Ancient Gear Dark Golem")
+				if not pool_d.is_empty():
+					for x in s.choose(p, Loc.t("%s: add up to 2 cards") % name, pool_d, mini(2, pool_d.size()), pool_d.slice(0, 2), false, c):
+						ps.deck.erase(x)
+						ps.hand.append(x)
+						events.append({"type": "search", "player": p, "card": x, "deck": ps.deck.size()})
+					s._shuffle(ps.deck)
+					if not ps.hand.is_empty():
+						var cheap: Array = ps.hand.duplicate()
+						cheap.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+						var thrown = s.pick1(p, Loc.t("%s: discard 1 card") % name, ps.hand.duplicate(), cheap[0], c)
+						ps.hand.erase(thrown)
+						s._to_gy(ps, thrown)
+						events.append({"type": "discard", "player": p, "card": thrown})
+				ps.once_names["#no_set"] = s.turn
+				ps.no_set_st_turn = s.turn
+		"frame_search":
+			var pool_f: Array = ps.deck.filter(func(x): return x.cname() == "Ancient Gear Golem" or (not x.is_monster() and str(x.data.get("desc", "")).contains("Ancient Gear Golem")))
+			if not pool_f.is_empty():
+				var t_f = s.pick1(p, Loc.t("%s: add which card?") % name, pool_f, pool_f[0], c)
+				ps.deck.erase(t_f)
+				ps.hand.append(t_f)
+				s._shuffle(ps.deck)
+				events.append({"type": "search", "player": p, "card": t_f, "deck": ps.deck.size()})
+		"gadget_declare":
+			var k_g := s.choose_option(p, Loc.t("%s: declare a card type") % name, [Loc.t("Monster"), Loc.t("Spell"), Loc.t("Trap")], 1, c)
+			ps.once_names["#gadget_lock"] = s.turn
+			ps.once_names["#gadget_type"] = ["monster", "spell", "trap"][k_g]
+			events.append(_ev(p, c, Loc.t("%s: this turn your attacks can't be answered with that kind of card") % name))
+		"gadget_name":
+			var gn: Array = ["Green Gadget", "Red Gadget", "Yellow Gadget"]
+			var k_n := s.choose_option(p, Loc.t("%s: take which name?") % name, gn, 0, c)
+			c.tags["as"] = gn[k_n]
+			c.tags["as_turn"] = s.turn
+			events.append(_ev(p, c, Loc.t("%s is \"%s\" until the End Phase") % [c.data.get("name", ""), gn[k_n]]))
+		"gadj":
+			# Gadjiltron: effects by the Gadgets Tributed for its Normal Summon.
+			var tn: Array = c.tags.get("trib_names", [])
+			if tn.has("Green Gadget"):
+				if c.cname() == "Ancient Gear Gadjiltron Chimera":
+					c.tags["green_300"] = true
+				else:
+					c.tags["pierce_perm"] = true
+			if tn.has("Red Gadget"):
+				c.tags["red_g"] = true
+			if tn.has("Yellow Gadget"):
+				c.tags["yellow_g"] = true
+		"gadj_kill":
+			if c.tags.get("yellow_g", false):
+				events.append(_ev(p, c, Loc.t("%s: %d damage") % [name, int(a[1])]))
+				events.append_array(s._damage(s.opponent(p), int(a[1])))
+		"gadj_red":
+			if c.tags.get("red_g", false) and (str(a[2]) != "direct" or int(c.tags.get("went_direct_dmg", -1)) == s.turn):
+				events.append(_ev(p, c, Loc.t("%s: %d damage") % [name, int(a[1])]))
+				events.append_array(s._damage(s.opponent(p), int(a[1])))
+		"pound_again":
+			# Ultimate Pound: "Up to twice per turn, when this attacking card destroys a monster by battle: You can discard 1 Machine monster; this card can attack again in a row."
+			var used_p: int = int(c.tags.get("pound_n", 0)) if int(c.tags.get("pound_turn", -1)) == s.turn else 0
+			var mh: Array = ps.hand.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Machine")
+			if s.current == p and used_p < 2 and not mh.is_empty() and s.choose_option(p, Loc.t("%s: discard a Machine to attack again?") % name, [Loc.t("Discard one"), Loc.t("No")], 0, c) == 0:
+				c.tags["pound_turn"] = s.turn
+				c.tags["pound_n"] = used_p + 1
+				var th_p = s.pick1(p, Loc.t("%s: discard which Machine?") % name, mh, mh[0], c)
+				ps.hand.erase(th_p)
+				s._to_gy(ps, th_p)
+				events.append({"type": "discard", "player": p, "card": th_p})
+				if c.bonus_attacks_turn != s.turn:
+					c.bonus_attacks = 0
+					c.bonus_attacks_turn = s.turn
+				c.bonus_attacks += 1
+		"pound_dead":
+			var poly: Array = ps.deck.filter(func(x): return x.cname() == "Polymerization")
+			var ag_g: Array = ps.gy.filter(func(g): return g != c and g.is_monster() and g.cname().begins_with("Ancient Gear") and not s.necro_holds(g))
+			if not poly.is_empty() and not ag_g.is_empty():
+				ps.deck.erase(poly[0])
+				ps.hand.append(poly[0])
+				s._shuffle(ps.deck)
+				events.append({"type": "search", "player": p, "card": poly[0], "deck": ps.deck.size()})
+				var best_ag: Array = s._best_monsters(ag_g, 1)
+				var t_ag = s.pick1(p, Loc.t("%s: add which monster from your GY?") % name, ag_g, best_ag[0], c)
+				ps.gy.erase(t_ag)
+				ps.hand.append(t_ag)
+				events.append({"type": "gy_to_hand", "player": p, "card": t_ag, "deck": ps.deck.size()})
+		"howitzer_dead":
+			if ps.gy.has(c) and ps.free_zone() != -1 and not s.ss_locked(p):
+				var dk_h: Array = ps.deck.filter(func(x): return x.is_monster() and x.cname().begins_with("Ancient Gear") and not s.big_locked(p, x, true))
+				if not dk_h.is_empty():
+					var best_h: Array = s._best_monsters(dk_h, 1)
+					events.append_array(_ignoring(s, p, s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, dk_h, best_h[0], c), ps.deck))
+					s._shuffle(ps.deck)
+		"ag_fusion":
+			var plans_a: Array = ag_plans(s, p, str(a[1]) == "deck")
+			if not plans_a.is_empty():
+				var fc: Array = plans_a.map(func(x): return x["card"])
+				var want = s.pick1(p, Loc.t("%s: Fusion Summon which monster?") % name, fc, fc[0], c)
+				for pl in plans_a:
+					if pl["card"] == want:
+						for m in pl["hand"]:
+							if ps.deck.has(m):
+								ps.deck.erase(m)
+								ps.hand.append(m)
+						events.append_array(s._do_fusion(p, pl))
+						s._shuffle(ps.deck)
+						break
+		"hydra_setup":
+			if not (c.tags.get("trib_names", []) as Array).filter(func(n): return str(n).contains("Gadget")).is_empty():
+				c.tags["attack_all"] = true
+		"reactor_setup":
+			var tr: Array = c.tags.get("trib_names", [])
+			if not tr.filter(func(n): return str(n).begins_with("Ancient Gear")).is_empty():
+				c.tags["pierce_perm"] = true
+			if not tr.filter(func(n): return str(n).contains("Gadget")).is_empty():
+				c.tags["second_attack"] = true
+		"megaton_setup":
+			var n_m := 0
+			for uid in c.tags.get("mats", []):
+				var mm = s.find_uid(int(uid))
+				if mm != null and (mm.cname() == "Ancient Gear Golem" or mm.cname() == "Ancient Gear Golem - Ultimate Pound"):
+					n_m += 1
+			c.tags["megaton_n"] = n_m
+		"gemini_on":
+			c.tags["gemini_on"] = true
+			if s.normal_summoned:
+				ps.extra_normals -= 1
+			s.normal_summoned = true
+			events.append(_ev(p, c, Loc.t("%s is an Effect Monster now") % name))
+		"statue_call":
+			var sc: Array = (ps.hand + ps.deck).filter(func(x): return x.is_monster() and x.cname() != "Ancient Gear Statue" and DuelState.mentions_golem(x) and not CardData.is_extra(x.id) and not s.big_locked(p, x, true))
+			if not sc.is_empty() and not s.ss_locked(p):
+				var best_s: Array = s._best_monsters(sc, 1)
+				var t_s = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, sc, best_s[0], c)
+				events.append_array(_ignoring(s, p, t_s, ps.hand if ps.hand.has(t_s) else ps.deck))
+				s._shuffle(ps.deck)
+		"tanker_call":
+			if int(ps.once_names.get("Tanker#call", -1)) != s.turn and ps.free_zone() != -1 and not s.ss_locked(p) and ps.no_summon_turn != s.turn:
+				var fromh: Array = ps.hand.filter(func(x): return x.is_monster() and x.cname().begins_with("Ancient Gear") and x.cname() != "Ancient Gear Tanker" and not CardData.is_extra(x.id))
+				var fromg: Array = ps.gy.filter(func(x): return x.is_monster() and x.cname().begins_with("Ancient Gear") and x.cname() != "Ancient Gear Tanker" and not CardData.is_extra(x.id) and not s.necro_holds(x)) if not opp.monsters().is_empty() else []
+				var all_t: Array = (fromh + fromg).filter(func(x): return not s.big_locked(p, x, true))
+				if not all_t.is_empty() and s.choose_option(p, Loc.t("%s: Special Summon an \"Ancient Gear\" monster?") % name, [Loc.t("Summon one"), Loc.t("No")], 0, c) == 0:
+					ps.once_names["Tanker#call"] = s.turn
+					var best_t: Array = s._best_monsters(all_t, 1)
+					var t_t = s.pick1(p, Loc.t("%s: which monster?") % name, all_t, best_t[0], c)
+					events.append_array(_ignoring(s, p, t_t, ps.hand if ps.hand.has(t_t) else ps.gy))
+		"tanker_boost":
+			ps.once_names["Tanker#boost"] = s.turn
+			var mine_t: Array = ps.monsters().filter(func(m): return m.face_up) + ps.spells.filter(func(x): return x != null and x.face_up)
+			if ps.field_spell != null and ps.field_spell.face_up:
+				mine_t.append(ps.field_spell)
+			if not mine_t.is_empty():
+				var cheap_t: Array = mine_t.filter(func(x): return not x.is_monster() or not DuelState.mentions_golem(x))
+				var t_b = s.pick1(p, Loc.t("%s: destroy which card you control?") % name, mine_t, cheap_t[0] if not cheap_t.is_empty() else mine_t[0], c)
+				events.append_array(s._destroy(t_b) if ps.field.has(t_b) else s._destroy_st(t_b))
+				for m in ps.monsters():
+					if m.face_up and DuelState.mentions_golem(m):
+						if m.atk_mod_turn != s.turn:
+							m.atk_mod_t = 0
+							m.atk_mod_turn = s.turn
+						m.atk_mod_t += 600
+				events.append(_ev(p, c, Loc.t("%s: your Golems gain 600 ATK this turn") % name))
+		"wyvern_search":
+			if int(ps.once_names.get("Ancient Gear Wyvern", -1)) != s.turn:
+				var pool_w: Array = ps.deck.filter(func(x): return x.cname().begins_with("Ancient Gear") and x.cname() != "Ancient Gear Wyvern")
+				if not pool_w.is_empty():
+					ps.once_names["Ancient Gear Wyvern"] = s.turn
+					var t_w = s.pick1(p, Loc.t("%s: add which card?") % name, pool_w, pool_w[0], c)
+					ps.deck.erase(t_w)
+					ps.hand.append(t_w)
+					s._shuffle(ps.deck)
+					events.append({"type": "search", "player": p, "card": t_w, "deck": ps.deck.size()})
+					events.append_array(added_by_effect(s, p, t_w))
+					ps.once_names["#no_set"] = s.turn
+					ps.no_set_st_turn = s.turn
+		"ultimate_back":
+			var gg: Array = ps.gy.filter(func(g): return g.cname() == "Ancient Gear Golem" and not s.necro_holds(g))
+			if not gg.is_empty() and ps.free_zone() != -1 and not s.ss_locked(p):
+				events.append_array(_ignoring(s, p, gg[0], ps.gy))
+		"advance_draw":
+			# "Tribute 1 monster; draw 1 card and apply this effect for the rest of this turn: You can Normal Summon "Ancient Gear Golem",
+			# or Level 5 or higher monsters that mention it, without Tributing."
+			ps.once_names["Advance#draw"] = s.turn
+			var fod_a: Array = ps.monsters().filter(func(m): return s.can_tribute_fx(m))
+			if not fod_a.is_empty():
+				fod_a.sort_custom(func(x, y): return s.atk_of(x, false) < s.atk_of(y, false))
+				var t_a = s.pick1(p, Loc.t("%s: Tribute which monster?") % name, fod_a, fod_a[0], c)
+				ps.field[ps.field.find(t_a)] = null
+				s._to_gy(ps, t_a)
+				events.append({"type": "tribute", "player": p, "card": t_a})
+				events.append_array(trigger(s, t_a, "tributed"))
+				events.append_array(s._monster_left(t_a))
+				events.append_array(s._draw(p, 1))
+				ps.once_names["#ag_advance"] = s.turn
+		"ag_reborn":
+			ps.once_names["Ancient Gear Reborn#use"] = s.turn
+			var rg: Array = ps.gy.filter(func(g): return g.is_monster() and g.cname().begins_with("Ancient Gear") and s.can_revive(g))
+			if not rg.is_empty():
+				var best_r: Array = s._best_monsters(rg, 1)
+				var t_r = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, rg, best_r[0], c)
+				ps.gy.erase(t_r)
+				events.append_array(s._special(p, t_r, "reborn"))
+				if ps.field.has(t_r):
+					t_r.atk_mod += 200
+		"catapult_gy":
+			ps.once_names["Ancient Gear Catapult"] = s.turn
+			if ps.gy.has(c):
+				events.append_array(s._banish(c))
+			var mine_c: Array = ps.monsters().filter(func(m): return m.face_up) + ps.spells.filter(func(x): return x != null and x.face_up)
+			if ps.field_spell != null and ps.field_spell.face_up:
+				mine_c.append(ps.field_spell)
+			if not mine_c.is_empty():
+				var t_c = s.pick1(p, Loc.t("%s: destroy which card you control?") % name, mine_c, mine_c[0], c)
+				var ev_c: Array = s._destroy(t_c) if ps.field.has(t_c) else s._destroy_st(t_c)
+				events.append_array(ev_c)
+				if not ps.field.has(t_c) and not ps.spells.has(t_c) and ps.field_spell != t_c:
+					events.append_array(SpellRules._run(s, p, c, ["tokens", 1, "Ancient Gear Token", 44052075, 0, 0, 1, "EARTH", "Machine", "free"], {}))
 		"temple_valley":
 			var nvt: Array = (ps.hand + ps.gy).filter(func(x): return x.cname() == "Necrovalley" and not s.necro_holds(x))
 			if ps.field_spell == null and not nvt.is_empty():
