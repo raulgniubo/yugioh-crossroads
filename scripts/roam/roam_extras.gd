@@ -42,6 +42,11 @@ func _ready() -> void:
 	_load()
 	_build_hud()
 	_build_fence()
+	# The walking map the ground arrows follow (built bit by bit after you arrive).
+	nav = NavGrid.new()
+	add_child(nav)
+	var b := _bounds()
+	nav.setup(scene, int(minf(95.0, float(b.get("r", b.get("half", 60.0))) + (40.0 if b.get("open", false) else 2.0))))
 	if story_mode:
 		if _bar:
 			_bar.visible = false
@@ -409,6 +414,8 @@ func set_waypoint(pos: Vector3, title: String) -> void:
 
 func clear_waypoint() -> void:
 	_wp_on = false
+	_path = PackedVector3Array()
+	_path_to = Vector3(1e9, 0, 1e9)
 	if _beacon:
 		_beacon.visible = false
 	for ch in _trail:
@@ -881,8 +888,69 @@ func _say_over(who: Node3D, text: String, hold: float) -> void:
 	Sfx.play("blip", -18.0, randf_range(0.9, 1.4))
 
 
+var nav: NavGrid
+var _path := PackedVector3Array()   # the walk to the waypoint, when the walking map has one
+var _path_from := Vector3(1e9, 0, 1e9)
+var _path_to := Vector3(1e9, 0, 1e9)
 var _trail_check := 0.0
 var _trail_floor: Array = []     # [distance, floor height] along the line, up to the first spot you cannot walk
+
+
+## The arrows along the walk the walking map found, flowing toward the waypoint.
+func _lay_trail_on_path(p: Vector3, t: float) -> void:
+	var total := 0.0
+	var lens: Array = []
+	for k in range(1, _path.size()):
+		var l := Vector2(_path[k].x - _path[k - 1].x, _path[k].z - _path[k - 1].z).length()
+		lens.append(l)
+		total += l
+	var space: PhysicsDirectSpaceState3D = scene.get_world_3d().direct_space_state
+	for i in _trail.size():
+		var ch: Label3D = _trail[i]
+		var d := 2.0 + i * 1.8 + fmod(t * 2.0, 1.8)
+		ch.visible = d < total - 1.0
+		if not ch.visible:
+			continue
+		var left := d
+		var seg := 0
+		while seg < lens.size() - 1 and left > float(lens[seg]):
+			left -= float(lens[seg])
+			seg += 1
+		var a: Vector3 = _path[seg]
+		var b: Vector3 = _path[seg + 1]
+		var sd := Vector3(b.x - a.x, 0, b.z - a.z)
+		var u := sd.normalized() if sd.length() > 0.01 else Vector3.FORWARD
+		var at := a + u * minf(left, float(lens[seg]))
+		# On the floor there (a pier deck, a step), found once in a while.
+		if i % 2 == 0 or not ch.has_meta("fy"):
+			var q := PhysicsRayQueryParameters3D.create(Vector3(at.x, p.y + 1.6, at.z), Vector3(at.x, p.y - 2.0, at.z))
+			q.exclude = [scene._player.get_rid()]
+			var hit := space.intersect_ray(q)
+			ch.set_meta("fy", (hit["position"] as Vector3).y if not hit.is_empty() else p.y)
+		ch.position = Vector3(at.x, _paving(at.x, at.z, float(ch.get_meta("fy"))) + 0.06, at.z)
+		ch.rotation.y = atan2(u.x, u.z) + PI
+		ch.modulate.a = clampf(1.0 - i / float(_trail.size()), 0.15, 0.9)
+
+
+## The top of what you see underfoot: the paving is drawn a few cm above the floor you walk on.
+func _paving(x: float, z: float, floor_y: float) -> float:
+	var top := floor_y + 0.16
+	if scene.city and scene.city.has_method("walk_top"):
+		top = maxf(top, float(scene.city.walk_top(x, z, floor_y)))
+	return top
+
+
+## Before the walking map is ready: a straight line that stops at water and walls.
+func _lay_trail_straight(p: Vector3, dir: Vector3, dist: float, t: float) -> void:
+	for i in _trail.size():
+		var ch: Label3D = _trail[i]
+		var d := 2.0 + i * 1.8 + fmod(t * 2.0, 1.8)
+		var fy := _floor_at(d)
+		ch.visible = d < dist - 1.0 and scene._inside == "" and fy > -50.0
+		ch.position = p + dir * d
+		ch.position.y = _paving(ch.position.x, ch.position.z, fy) + 0.06
+		ch.rotation.y = atan2(dir.x, dir.z) + PI
+		ch.modulate.a = clampf(1.0 - i / float(_trail.size()), 0.15, 0.9)
 
 
 ## How high the floor is `d` metres along the trail, or -99 past where you can walk.
@@ -963,16 +1031,17 @@ func _process(delta: float) -> void:
 			if _trail_check <= 0.0:
 				_trail_check = 0.2
 				_trail_floor = _walkable_steps(p, dir, minf(dist, 2.0 + _trail.size() * 1.8 + 1.8))
-			for i in _trail.size():
-				var ch: Label3D = _trail[i]
-				var d := 2.0 + i * 1.8 + fmod(t * 2.0, 1.8)
-				var fy := _floor_at(d)
-				# Only over ground you can walk on: never out over the water or through a wall.
-				ch.visible = d < dist - 1.0 and scene._inside == "" and fy > -50.0
-				ch.position = p + dir * d
-				ch.position.y = fy + 0.06
-				ch.rotation.y = atan2(dir.x, dir.z) + PI
-				ch.modulate.a = clampf(1.0 - i / float(_trail.size()), 0.15, 0.9)
+				# A real walk around walls and water, once the walking map is there.
+				if nav and nav.ready_ and scene._inside == "" and (p.distance_to(_path_from) > 1.5 or waypoint.distance_to(_path_to) > 0.5):
+					_path = nav.route(p, waypoint)
+					_path_from = p
+					_path_to = waypoint
+					if "--nav-debug" in OS.get_cmdline_user_args():
+						print("NAVPATH from ", p.snappedf(0.1), " to ", waypoint, " -> ", _path)
+			if _path.size() >= 2 and scene._inside == "":
+				_lay_trail_on_path(p, t)
+			else:
+				_lay_trail_straight(p, dir, dist, t)
 	# The edge of the area.
 	_edge_shown = maxf(0.0, _edge_shown - delta)
 	if scene._inside == "" and _edge_distance(p) < 2.6:

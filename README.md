@@ -5,6 +5,17 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.48
+
+- **Ground arrows find the way:** each world now builds a walking map in the background a second or two after you arrive (where you can stand, where water and walls are). The yellow arrows follow a real walk around buildings and along the pier to the beacon, and sit on top of the paving instead of under it. Until the map is ready they go straight and stop at water and walls, like before.
+- **Card texts in Spanish: every card you can get.** 979 cards now, all cards in every duelist's deck and in every pack and the shop, plus Lumen's cards and the Speed Spells (our own translation).
+- **Fewer error lines in godot.log:** the street duels, the tournament world and the duel arena no longer try to move a person or a piece from the wrong parent ("remove_child ... parent != this").
+
+**Not done or not checked:**
+
+- The summon crash is still not reproduced here; the switch and log lines from 0.33.47 are still there for the next try.
+- The walking map was checked on Domino's harbor in the story; the other worlds build it the same way but were not looked at one by one.
+
 ## What is in 0.33.47
 
 Your notes from the story test, plus the card texts in Spanish:

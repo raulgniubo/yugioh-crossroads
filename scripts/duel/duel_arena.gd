@@ -106,7 +106,8 @@ func _weld_in(holder: Node3D, moving: Dictionary) -> void:
 		one.cast_shadow = groups[key]["shadow"]
 		holder.add_child(one)
 		for node in nodes:
-			holder.remove_child(node)
+			if (node as Node).get_parent():
+				(node as Node).get_parent().remove_child(node)
 			(node as Node).queue_free()
 
 

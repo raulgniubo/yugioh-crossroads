@@ -7578,7 +7578,7 @@ func _test_save_guard() -> void:
 func _test_card_text_es() -> void:
 	var was := TranslationServer.get_locale()
 	TranslationServer.set_locale("es")
-	check(CardText.count() > 500, "Spanish card texts loaded (%d)" % CardText.count())
+	check(CardText.count() > 950, "Spanish card texts loaded (%d)" % CardText.count())
 	check(CardText.shown("Pot of Greed", "Draw 2 cards.") == "Roba 2 cartas.", "a card's text shows in Spanish")
 	check(CardText.shown("Some Card Nobody Translated", "Text.") == "Text.", "an untranslated card keeps its English text")
 	TranslationServer.set_locale("en")

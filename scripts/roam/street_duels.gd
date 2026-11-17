@@ -82,7 +82,8 @@ func _build(s: Dictionary) -> void:
 		for k in 3:
 			life._box(Vector3(0.62, 0.02, 0.86), Vector3(side * 1.25, 0.035, -1.0 + k * 1.0), zone, root)
 		var f: RoamFigure = life._person(str(s["a"] if i == 0 else s["b"]), Vector3.ZERO, 0.0, "stand", str(dorms[i]))
-		life.remove_child(f)
+		if f.get_parent():
+			f.get_parent().remove_child(f)
 		root.add_child(f)
 		f.position = Vector3(side * HALF, 0, 0)
 		f.rotation.y = -side * PI / 2.0
@@ -111,7 +112,8 @@ func _build(s: Dictionary) -> void:
 		var zs := -1.0 if k % 2 == 0 else 1.0
 		var p := Vector3(rng.randf_range(-2.4, 2.4), 0, zs * rng.randf_range(2.7, 3.5))
 		var fan: RoamFigure = life._person(FANS[rng.randi() % FANS.size()], Vector3.ZERO, 0.0, "stand", str(dorms[k % 2]) if dorms[0] != "" else "")
-		life.remove_child(fan)
+		if fan.get_parent():
+			fan.get_parent().remove_child(fan)
 		root.add_child(fan)
 		fan.position = p
 		fan.rotation.y = atan2(-p.x, -p.z)
@@ -200,7 +202,8 @@ func _gather(d: Dictionary, fans: int, fan_z: float, free_at: Callable, floor_y:
 			if free_at.is_valid() and not free_at.call(Vector3(wp.x, floor_y, wp.z)):
 				continue
 			var fan: RoamFigure = life._person(FANS[randi() % FANS.size()], Vector3.ZERO, 0.0, "stand", "")
-			life.remove_child(fan)
+			if fan.get_parent():
+				fan.get_parent().remove_child(fan)
 			life._day_people.erase(fan)        # they are here for the duel, not for the day
 			root.add_child(fan)
 			fan.position = p

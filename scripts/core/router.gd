@@ -229,6 +229,11 @@ func _debug_args() -> void:
 					if tx == "":
 						tx = str(CardData.EXT.get(id, {}).get("desc", ""))
 					out.store_line(JSON.stringify({"id": id, "name": d.get("name", ""), "desc": tx, "decks": 1}))
+			for id in Collection.all_cards():
+				if not seen.has(id):
+					seen[id] = true
+					var d2 := CardData.get_card(id)
+					out.store_line(JSON.stringify({"id": id, "name": d2.get("name", ""), "desc": str(d2.get("desc", d2.get("text", ""))), "decks": 2}))
 			for id in CardData.EXT.keys():
 				if not seen.has(id):
 					seen[id] = true

@@ -124,7 +124,8 @@ func _build_desk(id: String) -> void:
 			["red", "yellow", "blue"][k % 3] if district == "academy" else "")
 		f.watch = scene._player
 		life._day_people.erase(f)
-		life.remove_child(f)
+		if f.get_parent():
+			f.get_parent().remove_child(f)
 		crowd.add_child(f)
 		f.position = p
 	for sx: float in [-1.0, 1.0]:
