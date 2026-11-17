@@ -5685,4 +5685,5 @@ const ES := {
 	"Reset buttons": "Restablecer botones",
 	"Press %s again to end your turn": "Pulsa %s otra vez para terminar tu turno",
 	"Left stick  move     %s  run     Right stick  look     %s  talk / enter     %s  map     %s  card shop     %s  worlds     %s  menu": "Stick izq.  moverse     %s  correr     Stick der.  mirar     %s  hablar / entrar     %s  mapa     %s  tienda     %s  mundos     %s  menú",
+	"Found on this computer from an earlier version": "Encontrada en este equipo, de una versión anterior",
 }

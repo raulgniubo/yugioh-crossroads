@@ -60,8 +60,35 @@ static func slot_dir(slot: String) -> String:
 const LIVE := "current"
 
 
+## The game's own folder is its home: the save lives right beside the game, so a copy of the
+## folder is a copy of the game, and a fresh folder is a fresh game. "Crossroads Data" is made
+## next to the game when it is not there yet. Only when that folder cannot be written to (a
+## locked drive, a Mac app run from inside a disk image) does the game fall back to the
+## system's own hidden place.
+static var _portable := -1
+
+
 static func portable() -> bool:
-	return DirAccess.dir_exists_absolute(game_dir().path_join(DATA_NAME))
+	if _portable < 0:
+		var d := game_dir().path_join(DATA_NAME)
+		var built: bool = OS.has_feature("template") or Array(OS.get_cmdline_user_args()).any(func(a): return str(a).begins_with("--game-dir="))
+		if DirAccess.dir_exists_absolute(d):
+			_portable = 1 if _writable(d) else 0
+		elif built and DirAccess.make_dir_recursive_absolute(d.path_join("saves")) == OK:
+			_portable = 1
+		else:
+			_portable = 0
+	return _portable == 1
+
+
+static func _writable(dir: String) -> bool:
+	var probe := dir.path_join(".write_test")
+	var f := FileAccess.open(probe, FileAccess.WRITE)
+	if f == null:
+		return false
+	f.close()
+	DirAccess.remove_absolute(probe)
+	return true
 
 
 ## Your own game and the admin game are two different games: each has its own place in the
@@ -118,18 +145,44 @@ static func _newest(dir: String) -> int:
 ## At the very start: when the folder's copy of the game you are playing is newer than this
 ## computer's (or this computer has none yet), that is the game you play.
 static func pull_live() -> void:
-	if not portable() or not DirAccess.dir_exists_absolute(live_dir()):
+	if not portable():
 		return
-	# How new the folder's copy is: the time its files had on the computer that wrote them
-	# (noted beside them), or the files' own time when there is no note.
-	var there := _newest(live_dir())
-	var note := live_dir().path_join("stamp.txt")
-	if FileAccess.file_exists(note):
-		there = int(FileAccess.get_file_as_string(note).strip_edges())
-	var here := _newest("user://")
-	if there > here:
-		_copy_all(live_dir(), "user://")
-		print("SAVES took the game from the folder beside the game (", live_dir(), ")")
+	var live := live_dir()
+	var in_folder := false
+	var on_computer := false
+	for f in FILES:
+		in_folder = in_folder or FileAccess.file_exists(live.path_join(str(f)))
+		on_computer = on_computer or FileAccess.file_exists("user://" + str(f))
+	if in_folder:
+		# The folder is the game: what is in it is what you play, whatever this computer had.
+		for f in FILES:
+			var src := live.path_join(str(f))
+			if FileAccess.file_exists(src):
+				DirAccess.copy_absolute(src, "user://" + str(f))
+			elif FileAccess.file_exists("user://" + str(f)):
+				DirAccess.remove_absolute("user://" + str(f))
+		print("SAVES the game in the folder beside the game (", live, ")")
+	elif on_computer and not admin:
+		# A fresh folder is a fresh game. A game this computer kept from before is not thrown
+		# away: it goes into an empty save slot in the folder, ready to Load from Story.
+		var slot := ""
+		for i in range(1, SLOTS + 1):
+			if not exists("slot%d" % i):
+				slot = "slot%d" % i
+				break
+		if slot == "":
+			slot = "from_this_computer"
+		_copy_all("user://", slot_dir(slot))
+		var meta := ConfigFile.new()
+		meta.set_value("save", "when", Time.get_datetime_string_from_system(false, true))
+		meta.set_value("save", "summary", "Found on this computer from an earlier version")
+		meta.save(slot_dir(slot).path_join("slot.cfg"))
+		for f in FILES:
+			if FileAccess.file_exists("user://" + str(f)):
+				DirAccess.remove_absolute("user://" + str(f))
+			if FileAccess.file_exists("user://" + str(f) + ".bak"):
+				DirAccess.remove_absolute("user://" + str(f) + ".bak")
+		print("SAVES fresh folder: the old game from this computer is kept in ", slot_dir(slot))
 
 
 ## Keep the folder's copy up to date: every save file that changed since it was last copied.

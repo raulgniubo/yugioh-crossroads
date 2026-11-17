@@ -5,6 +5,14 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.45
+
+- **The save lives in the game's folder, always.** "Crossroads Data" is made right beside the game the first time it runs, and the game you play is kept there (Crossroads Data/saves/current). Whatever is in the folder is what you play, on any computer: copy the folder and you copy the game, a fresh folder is a fresh game.
+- **A game this computer kept from an earlier version is not lost:** the first time a fresh folder runs, that old game goes into an empty save slot in the folder ("Found on this computer from an earlier version"), so you can Load it from Story if you want it.
+- Only if the folder can't be written to (a locked drive, or a Mac app run straight from a download without moving it) does the game fall back to the system's hidden place, like before.
+
+**Not done or not checked:** tested with two pretend game folders here, not on your Windows PC.
+
 ## What is in 0.33.44
 
 - **Controller, the full version:**
