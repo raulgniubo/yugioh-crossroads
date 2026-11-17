@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.57
+
+**Bucket 0, part 3: 33 more duelist cards with their full effects** (each tested against its printed text, Spanish included, in their era's booster set right away)
+
+- Blackwings and Resonators: Blackwing - Jetstream the Blue Sky, Blackwing - Etesian of Two Swords, Hedge Guard, Barrier Resonator, Synchro Soldier, Triple Star Trion.
+- Photons and Galaxy (Kite): Kuriphoton, Galaxy Dragon, Photon Trident, Photon Sanctuary (with its Photon Tokens), Photon Veil, Dimension Wanderer.
+- Yuma and Shark: Number 39: Utopia Roots, Number 25: Force Focus, Number 12: Crimson Shadow Armor Ninja, Gagaga Caesar, Gogogo Ghost, Bite Bug, Tripod Fish, Friller Rabca, Saber Shark, Fiery Fervor, Gagagashield, Splash Capture, Bubble Bringer, Changing Destiny, Impenetrable Attack, Lineage of Destruction.
+- GX: Dark Catapulter, Wonder Wand, D - Shield, Chthonian Polymer.
+- New rules under the hood: "can't be destroyed by card effects this turn" now really works (it was quietly ignored before), monsters that can only attack one Type, cards that lock your Summons to one Attribute, and a monster coming back from banishment in your next Standby Phase.
+
+Not done or not checked: 75 duelist cards are still to build, and they are the hard ones: monsters used as Equip Cards (Kiseitai, Shocktopus, Truckroid, Armored Xyz, Number 6), damage-redirect windows (Doppelganger, Crimson Fire, Red Gardna, Extra Veiler, Nature's Reflection, Black Feather Beacon), declaring a card name (Dark Designator), activating Traps from the hand (Makyura, Jetroid) and long chains (Magical Hats, Number 99, Chaos Chimera Dragon, Divine Neos, Future Fusion, Fusion Gate). Duelists still don't put the new cards from 0.33.55 to now in their decks; that's a deck pass of its own. Monster Legends flavor text is still English in Spanish. Played by the test duels (30 games), not watched.
+
 ## What is in 0.33.56
 
 **Bucket 0, part 2: 30 more duelist cards with their full effects** (each tested against its printed text, Spanish included, in their era's booster set right away)

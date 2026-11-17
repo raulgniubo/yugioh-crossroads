@@ -349,6 +349,8 @@ static func piercing(s: DuelState, p: int, c) -> bool:
 ## True if c cannot be destroyed by a card effect right now.
 static func survives_effect(s: DuelState, c) -> bool:
 	var f := fx(c)
+	if int(c.tags.get("fx_guard_turn", -1)) == s.turn:
+		return true   # Crimson Shadow Armor Ninja / Impenetrable Attack: "cannot be destroyed by card effects" this turn
 	if f.get("survive_once_def_fx", false) and c.face_up and not c.attack_pos and c.survive_turn != s.turn:
 		c.survive_turn = s.turn
 		return true   # Clock Resonator: once per turn, in Defense Position, not by battle or by card effects
@@ -368,6 +370,9 @@ static func survives_battle(s: DuelState, c) -> bool:
 		return true
 	if int(c.tags.get("gq_until", -1)) >= s.turn:
 		return true   # Number 83: Galaxy Queen
+	if int(c.tags.get("save_battle", -1)) == s.turn:
+		c.tags.erase("save_battle")
+		return true   # Blackwing - Jetstream the Blue Sky / Hedge Guard: "not destroyed by this battle"
 	if f.has("battle_immune_vs_max") and s.battle_foe != null and s.atk_of(s.battle_foe, false) <= int(f["battle_immune_vs_max"]):
 		return true   # Different Dimension Dragon: "cannot be destroyed by battle with a monster that has 1900 or less ATK"
 	if int(c.tags.get("unbreak_turn", -1)) == s.turn:
@@ -403,6 +408,23 @@ static func survives_battle(s: DuelState, c) -> bool:
 	return false
 
 
+## Bubble Bringer: pairs of Level 3 or lower WATER monsters with the same name in p's GY.
+static func _bubble_pairs(s: DuelState, p: int) -> Array:
+	var by := {}
+	for g in s.players[p].gy:
+		if g.is_monster() and str(g.data.get("attribute", "")) == "WATER" and g.level() <= 3 and g.frame() != "xyz" and s.can_revive(g):
+			if not by.has(g.cname()):
+				by[g.cname()] = []
+			by[g.cname()].append(g)
+	var out: Array = []
+	for k in by:
+		if by[k].size() >= 2:
+			out.append([by[k][0], by[k][1]])
+	if s.players[p].field.filter(func(z): return z == null).size() < 2:
+		return []
+	return out
+
+
 static func no_damage_involving(c) -> bool:
 	return c != null and fx(c).get("no_damage_involving", false)
 
@@ -413,6 +435,25 @@ static func no_tribute(s: DuelState, p: int, c) -> bool:
 
 
 static func _cond(s: DuelState, p: int, cond: String) -> bool:
+	if cond == "kuriphoton":
+		var pk := s.players[p]
+		return int(pk.once_names.get("Kuriphoton#gy", -1)) != s.turn and not pk.hand.filter(func(h): return h.is_monster() and h.cname().contains("Photon") and h.cname() != "Kuriphoton").is_empty()
+	if cond == "saber_shark":
+		if int(s.players[p].once_names.get("#saber_n_turn", -1)) == s.turn and int(s.players[p].once_names.get("#saber_n", 0)) >= 2:
+			return false
+		for q in 2:
+			for m in s.players[q].monsters():
+				if m.face_up and str(m.data.get("race", "")) == "Fish" and m.frame() != "xyz":
+					return true
+		return false
+	if cond == "own_synchro_face":
+		return not s.players[p].monsters().filter(func(m): return m.face_up and m.frame() == "synchro").is_empty()
+	if cond == "wand_ready":
+		return true
+	if cond == "bubble_bringer":
+		return s.current == p and s.players[p].free_zone() != -1 and not s.ss_locked(p) and not _bubble_pairs(s, p).is_empty()
+	if cond == "gy_leveled":
+		return not s.players[p].gy.filter(func(g): return g.is_monster() and g.level() > 0 and g.frame() != "xyz").is_empty()
 	if cond == "monster_in_hand":
 		return not s.players[p].hand.filter(func(h): return h.is_monster() and h.level() > 0).is_empty()
 	if cond == "other_photon":
@@ -517,6 +558,11 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 			return false
 		"only_card_in_hand":
 			return s.players[p].hand.size() == 1
+		"opp_face_xyz":
+			for m in theirs:
+				if m.face_up and m.frame() == "xyz":
+					return true
+			return false
 		"gy_dark3":
 			var n := 0
 			for g in s.players[p].gy:
@@ -538,7 +584,7 @@ static func has_special_hand(c) -> bool:
 ## Special Summon from the hand by its own rule (Bora, Gale, Vice Dragon, Photon Thrasher...).
 static func can_special_hand(s: DuelState, p: int, c) -> bool:
 	var f := fx(c)
-	if s.ss_locked(p) or s.big_locked(p, c):
+	if s.ss_locked(p) or s.big_locked(p, c, true):
 		return false   # Gagaga Head / Crimson Blader
 	if int(s.players[p].once_names.get("#no_hand_ss", -1)) == s.turn:
 		return false   # Silent Angler: "you cannot Special Summon monsters from your hand for the rest of this turn"
@@ -913,6 +959,20 @@ static func blader_negates(s: DuelState, p: int) -> bool:
 
 
 static func trigger(s: DuelState, c, key: String, ctx := {}) -> Array:
+	if key == "damage" and int(c.tags.get("trident", -1)) == s.turn:
+		# Photon Trident: "If that monster inflicts battle damage to your opponent: You can destroy 1 Spell/Trap on the field."
+		c.tags.erase("trident")
+		var st_t: Array = []
+		for q in 2:
+			for st in s.players[q].spells:
+				if st != null:
+					st_t.append(st)
+		var opp_t: Array = st_t.filter(func(x): return x.owner != c.owner)
+		if not opp_t.is_empty():
+			var hit_t = s.pick1(c.owner, Loc.t("Photon Trident: destroy 1 Spell or Trap"), st_t, opp_t[0], c)
+			var out_t: Array = s._destroy_st(hit_t)
+			out_t.append_array(trigger(s, c, key, ctx))
+			return out_t
 	var f := fx(c)
 	if not f.has(key) or s.is_over() or _spent(s, c.owner, c):
 		return []
@@ -925,6 +985,13 @@ static func trigger(s: DuelState, c, key: String, ctx := {}) -> Array:
 
 static func standby(s: DuelState, p: int) -> Array:
 	var events := []
+	# Synchro Soldier: "during your next Standby Phase the removed from play monster returns to the field."
+	for b in s.players[p].banished.duplicate():
+		if b.tags.has("back_standby") and int(b.tags["back_standby"]) < s.turn and s.players[p].free_zone() != -1:
+			b.tags.erase("back_standby")
+			s.players[p].banished.erase(b)
+			events.append(_ev(p, b, Loc.t("%s returns to the field") % b.cname()))
+			events.append_array(s._special(p, b, "effect"))
 	# "Special Summon it during your next Standby Phase" (Revival Jam).
 	for g in s.players[p].gy.duplicate():
 		if g.back_pos == "":
@@ -1913,6 +1980,26 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 	var pa: Dictionary = s.pending_attack
 	var battling: bool = not pa.is_empty() and not pa.get("negated", false)
 	match kind:
+		"jetstream":
+			return ps.hand.has(c) and window == "damage" and battling and pa["target"] != null \
+					and not [pa["attacker"], pa["target"]].filter(func(m): return m != null and m.owner == p and m.cname().begins_with("Blackwing")).is_empty()
+		"hedge_guard":
+			return ps.hand.has(c) and window == "damage" and battling and pa["target"] != null \
+					and not [pa["attacker"], pa["target"]].filter(func(m): return m != null and m.owner == p and ps.field.has(m)).is_empty()
+		"barrier_resonator":
+			return ps.hand.has(c) and window in ["attack", "damage", "chain", "battle_start"] and not ps.monsters().filter(func(m): return m.face_up and m.is_tuner()).is_empty()
+		"kuriphoton":
+			return ps.hand.has(c) and ps.lp > 2000 and ps.no_damage_turn != s.turn and window in ["attack", "damage", "chain", "battle_start", "phase", "summon"]
+		"utopia_roots":
+			return on_field and window == "attack" and battling and not c.overlays.is_empty()
+		"force_focus":
+			return on_field and not c.overlays.is_empty() and int(c.tags.get("ff_turn", -1)) != s.turn and window in ["chain", "attack", "summon", "battle_start", "phase"] \
+					and not opp.monsters().filter(func(m): return m.face_up and not m.negated and m.level() >= 5 and m.frame() != "xyz" and _is_effect_monster(m)).is_empty()
+		"armor_ninja":
+			return on_field and not c.overlays.is_empty() and int(c.tags.get("an_turn", -1)) != s.turn and window in ["chain", "attack", "summon", "battle_start", "phase"]
+		"friller":
+			return ps.gy.has(c) and window == "attack" and hit and pa["target"] != null and pa["target"].owner == p \
+					and str(pa["target"].data.get("race", "")) in ["Fish", "Sea Serpent", "Aqua"] and int(ps.once_names.get("Friller Rabca", -1)) != s.turn
 		"blade_master":
 			# "During your opponent's Battle Phase (Quick Effect): You can discard this card"
 			return ps.hand.has(c) and s.current != p and s.phase == DuelState.Phase.BATTLE and window in ["attack", "battle_start", "chain"] \
@@ -2045,6 +2132,80 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 	var events := []
 	var hit: bool = not s.pending_attack.is_empty() and int(s.pending_attack["player"]) != p and not s.pending_attack.get("negated", false)
 	match kind:
+		"jetstream", "hedge_guard":
+			var pa_j: Dictionary = s.pending_attack
+			var mine_j: Array = [pa_j["attacker"], pa_j["target"]].filter(func(m): return m != null and m.owner == p and ps.field.has(m))
+			ps.hand.erase(c)
+			s._to_gy(ps, c)
+			events.append({"type": "discard", "player": p, "card": c})
+			if not mine_j.is_empty():
+				var mj = mine_j[0]
+				mj.tags["save_battle"] = s.turn
+				if kind == "hedge_guard":
+					if mj.atk_mod_turn != s.turn:
+						mj.atk_mod_t = 0
+						mj.atk_mod_turn = s.turn
+					mj.atk_mod_t -= s.atk_of(mj, false) / 2
+				events.append(_ev(p, mj, Loc.t("%s: %s is not destroyed by this battle") % [c.cname(), mj.cname()]))
+		"barrier_resonator":
+			ps.hand.erase(c)
+			s._to_gy(ps, c)
+			events.append({"type": "discard", "player": p, "card": c})
+			var tuners: Array = ps.monsters().filter(func(m): return m.face_up and m.is_tuner())
+			if not tuners.is_empty():
+				var tb = s.pick1(p, Loc.t("%s: which Tuner?") % c.cname(), tuners, tuners[0], c)
+				tb.tags["unbreak_turn"] = s.turn
+				tb.tags["no_bd_turn"] = s.turn
+				events.append(_ev(p, tb, Loc.t("%s is protected this turn") % tb.cname()))
+		"kuriphoton":
+			ps.hand.erase(c)
+			s._to_gy(ps, c)
+			events.append({"type": "discard", "player": p, "card": c})
+			events.append_array(s._lose_lp(p, 2000))
+			ps.no_damage_turn = s.turn
+			ps.no_effect_damage_turn = s.turn
+			events.append(_ev(p, c, Loc.t("%s: you take no damage this turn") % c.cname()))
+		"utopia_roots":
+			var o_r = c.overlays.pop_back()
+			s._to_gy(s.players[o_r.owner], o_r)
+			events.append({"type": "detach", "player": p, "card": c})
+			var att_r = s.pending_attack["attacker"]
+			s.pending_attack["negated"] = true
+			events.append(_ev(p, c, Loc.t("%s negates the attack") % c.cname()))
+			if att_r != null and att_r.frame() == "xyz":
+				var rk: int = int(att_r.data.get("level", 0))
+				c.atk_mod += rk * 500
+				events.append(_ev(p, c, Loc.t("%s: %+d ATK") % [c.cname(), rk * 500]))
+		"force_focus":
+			c.tags["ff_turn"] = s.turn
+			var o_f = c.overlays.pop_back()
+			s._to_gy(s.players[o_f.owner], o_f)
+			events.append({"type": "detach", "player": p, "card": c})
+			var cand: Array = opp.monsters().filter(func(m): return m.face_up and not m.negated and m.level() >= 5 and m.frame() != "xyz" and _is_effect_monster(m))
+			if not cand.is_empty():
+				var best_f: Array = s._best_monsters(cand, 1)
+				var tf = s.pick1(p, Loc.t("%s: negate which monster?") % c.cname(), cand, best_f[0], c)
+				tf.negated_turn = s.turn
+				tf.negated = true
+				events.append(_ev(p, tf, Loc.t("%s's effects are negated this turn") % tf.cname()))
+		"armor_ninja":
+			c.tags["an_turn"] = s.turn
+			var o_n = c.overlays.pop_back()
+			s._to_gy(s.players[o_n.owner], o_n)
+			events.append({"type": "detach", "player": p, "card": c})
+			for m in ps.monsters():
+				if m.face_up and m.cname().contains("Ninja"):
+					m.tags["unbreak_turn"] = s.turn
+					m.tags["fx_guard_turn"] = s.turn
+			events.append(_ev(p, c, Loc.t("%s: your \"Ninja\" monsters can't be destroyed this turn") % c.cname()))
+		"friller":
+			ps.once_names["Friller Rabca"] = s.turn
+			events.append_array(s._banish(c))
+			var att_f = s.pending_attack["attacker"]
+			s.pending_attack["negated"] = true
+			att_f.tmp_atk = (att_f.tmp_atk if att_f.tmp_until >= s.turn else 0) - 500
+			att_f.tmp_until = s.turn + 1
+			events.append(_ev(p, c, Loc.t("%s negates the attack; %s loses 500 ATK") % [c.cname(), att_f.cname()]))
 		"blade_master":
 			ps.hand.erase(c)
 			s._to_gy(ps, c)
@@ -2328,6 +2489,21 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 		else:
 			lose = a > s.def_of(tgt)
 	match kind:
+		"jetstream", "hedge_guard":
+			var mine_a = tgt if (tgt != null and tgt.owner == p) else (att if att != null and att.owner == p else null)
+			return mine_a != null and lose
+		"barrier_resonator":
+			return hit and tgt != null and tgt.owner == p and tgt.is_tuner() and lose
+		"kuriphoton":
+			return hit and (dmg >= ps.lp or dmg >= 2500) and ps.lp > 2000
+		"utopia_roots":
+			return hit and (lose or dmg >= 1000)
+		"force_focus":
+			return true
+		"armor_ninja":
+			return hit and tgt != null and tgt.owner == p and tgt.cname().contains("Ninja") and lose
+		"friller":
+			return hit and (lose or dmg >= 1000)
 		"blade_master":
 			if not hit or tgt == null or tgt.owner != p or not tgt.cname().begins_with("Destiny HERO"):
 				return false
@@ -2666,6 +2842,136 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"saber_shark":
+			var ps_n: int = int(ps.once_names.get("#saber_n", 0)) if int(ps.once_names.get("#saber_n_turn", -1)) == s.turn else 0
+			ps.once_names["#saber_n"] = ps_n + 1
+			ps.once_names["#saber_n_turn"] = s.turn
+			ps.once_names["#ss_water_only"] = s.turn
+			var fish_s: Array = []
+			for q in 2:
+				for m in s.players[q].monsters():
+					if m.face_up and str(m.data.get("race", "")) == "Fish" and m.frame() != "xyz":
+						fish_s.append(m)
+			if not fish_s.is_empty():
+				var t_s = s.pick1(p, Loc.t("%s: which Fish?") % name, fish_s, fish_s[0], c)
+				var up_s: int = s.choose_option(p, Loc.t("%s: Level up or down?") % name, [Loc.t("+1 Level"), Loc.t("-1 Level")], 0 if t_s.level() < 4 else (1 if t_s.level() > 4 else 0), c)
+				t_s.lv_set = maxi(1, t_s.level() + (1 if up_s == 0 else -1))
+				t_s.lv_turn = -1
+				events.append(_ev(p, t_s, Loc.t("%s is Level %d now") % [t_s.cname(), t_s.level()]))
+		"synchro_soldier":
+			var syn_s: Array = ps.monsters().filter(func(m): return m.face_up and m.frame() == "synchro")
+			if not syn_s.is_empty():
+				var t_y = s.pick1(p, Loc.t("%s: banish which Synchro Monster?") % name, syn_s, syn_s[0], c)
+				events.append_array(s._banish(t_y))
+				t_y.tags["back_standby"] = s.turn
+				events.append_array(s._damage(s.opponent(p), 600))
+		"trion_mark":
+			if s.last_tribute_summon_turn == s.turn:
+				c.tags["trion_turn"] = s.turn
+		"wonder_wand":
+			var host_w = c.equipped_to
+			if host_w != null and ps.field.has(host_w):
+				var idx_w: int = ps.spells.find(c)
+				if idx_w != -1:
+					ps.spells[idx_w] = null
+					events.append_array(SpellRules.left_field(s, c))
+					s._to_gy(ps, c)
+				ps.field[ps.field.find(host_w)] = null
+				s._to_gy(ps, host_w)
+				events.append({"type": "to_gy", "player": p, "card": host_w})
+				events.append_array(s._draw(p, 2))
+		"bubble_bringer":
+			var pairs_b: Array = _bubble_pairs(s, p)
+			if not pairs_b.is_empty():
+				var idx_b: int = ps.spells.find(c)
+				if idx_b != -1:
+					ps.spells[idx_b] = null
+					events.append_array(SpellRules.left_field(s, c))
+					s._to_gy(ps, c)
+				var one_b = s.pick1(p, Loc.t("%s: bring back which pair?") % name, pairs_b.map(func(x): return x[0]), pairs_b[0][0], c)
+				for pr in pairs_b:
+					if pr[0] == one_b:
+						for m in pr:
+							if ps.free_zone() == -1:
+								break
+							ps.gy.erase(m)
+							events.append_array(s._special(p, m, "effect"))
+							m.negated = true
+						break
+		"kuriphoton_back":
+			var phs: Array = ps.hand.filter(func(h): return h.is_monster() and h.cname().contains("Photon") and h.cname() != "Kuriphoton")
+			if ps.gy.has(c) and not phs.is_empty():
+				ps.once_names["Kuriphoton#gy"] = s.turn
+				var sent = s.pick1(p, Loc.t("%s: send 1 \"Photon\" monster from your hand to the GY") % name, phs, phs[0], c)
+				ps.hand.erase(sent)
+				s._to_gy(ps, sent)
+				events.append({"type": "discard", "player": p, "card": sent})
+				ps.gy.erase(c)
+				ps.hand.append(c)
+				events.append({"type": "gy_to_hand", "player": p, "card": c})
+		"tripod":
+			var fishy: Array = []
+			for q in 2:
+				for m in s.players[q].monsters():
+					if m.face_up and m.frame() != "xyz" and str(m.data.get("race", "")) in ["Fish", "Sea Serpent", "Aqua"]:
+						fishy.append(m)
+			if not fishy.is_empty():
+				var t_f = s.pick1(p, Loc.t("%s: which monster gains 1 Level?") % name, fishy, fishy[0], c)
+				t_f.lv_set = t_f.level() + 1
+				t_f.lv_turn = -1
+				events.append(_ev(p, t_f, Loc.t("%s is Level %d now") % [t_f.cname(), t_f.level()]))
+		"gogogo_ghost":
+			if int(ps.once_names.get("Gogogo Ghost", -1)) != s.turn and ps.free_zone() != -1 and ps.no_summon_turn != s.turn:
+				var gol: Array = ps.gy.filter(func(g): return g.cname() == "Gogogo Golem" and s.can_revive(g))
+				if not gol.is_empty():
+					ps.once_names["Gogogo Ghost"] = s.turn
+					ps.gy.erase(gol[0])
+					events.append_array(s._special(p, gol[0], "reborn", "def"))
+					if ps.field.has(c) and c.attack_pos:
+						c.attack_pos = false
+						events.append({"type": "position", "player": p, "card": c, "zone": ps.field.find(c)})
+		"opp_pick_lose":
+			var foes: Array = opp.monsters().filter(func(m): return m.face_up)
+			if not foes.is_empty():
+				var best_o: Array = s._best_monsters(foes, 1)
+				var t_o = s.pick1(p, Loc.t("%s: which monster loses %d ATK?") % [name, int(a[1])], foes, best_o[0], c)
+				t_o.atk_mod -= int(a[1])
+				events.append(_ev(p, t_o, Loc.t("%s: %+d ATK") % [t_o.cname(), -int(a[1])]))
+		"gagaga_caesar":
+			var lv_g: Array = ps.gy.filter(func(g): return g.is_monster() and g.level() > 0 and g.frame() != "xyz")
+			if not lv_g.is_empty():
+				var b_c = s.pick1(p, Loc.t("%s: banish 1 monster from your GY") % name, lv_g, lv_g[0], c)
+				var lv_c: int = b_c.level()
+				events.append_array(s._banish(b_c))
+				for m in ps.monsters():
+					if m.face_up and m.cname().begins_with("Gagaga") and m.frame() != "xyz":
+						m.lv_set = lv_c
+						m.lv_turn = -1
+				events.append(_ev(p, c, Loc.t("%s: your \"Gagaga\" monsters are Level %d") % [name, lv_c]))
+		"catapult_charge":
+			if ps.field.has(c) and c.face_up and not c.attack_pos:
+				c.counter += 1
+				events.append(_ev(p, c, Loc.t("%s charges (%d)") % [name, c.counter]))
+		"catapult_fire":
+			var n_c: int = c.counter
+			var st_all: Array = []
+			for q in 2:
+				for st in s.players[q].spells:
+					if st != null:
+						st_all.append(st)
+				if s.players[q].field_spell != null:
+					st_all.append(s.players[q].field_spell)
+			if n_c > 0 and ps.gy.size() >= n_c and not st_all.is_empty():
+				for i in n_c:
+					events.append_array(s._banish(ps.gy.back()))
+				for i in mini(n_c, st_all.size()):
+					var left_s: Array = st_all.filter(func(x): return x != null and (s.players[x.owner].spells.has(x) or s.players[x.owner].field_spell == x))
+					if left_s.is_empty():
+						break
+					var theirs_s: Array = left_s.filter(func(x): return x.owner != p)
+					var hit_s = s.pick1(p, Loc.t("%s: destroy 1 Spell or Trap") % name, left_s, theirs_s[0] if not theirs_s.is_empty() else left_s[0], c)
+					events.append_array(s._destroy_st(hit_s))
+				c.counter = 0
 		"boost_all_own":
 			for m in ps.monsters():
 				if m.face_up:

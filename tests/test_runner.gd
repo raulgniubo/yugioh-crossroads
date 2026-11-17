@@ -110,6 +110,8 @@ func _ready() -> void:
 		_test_cards_b0gx()
 		_test_cards_b05d()
 		_test_cards_b0zx()
+		_test_cards_b0c3()
+		_test_cards_b0c4()
 		await _test_album()
 		_test_save_slots()
 		_test_turbo_setup()
@@ -8126,6 +8128,148 @@ func _test_cards_b0zx() -> void:
 	check(s.players[0].field.has(fish), "Big Wave Small Wave: Mother Grizzly comes in for the destroyed fish")
 
 
+func _test_cards_b0c3() -> void:
+	# Jetstream: the Blackwing survives the battle.
+	var s := _new_state(5901)
+	_battle_ready(s)
+	var gale := _mon(s, 1, "Blackwing - Gale the Whirlwind", 0)
+	var js := _in(s, 1, "Blackwing - Jetstream the Blue Sky", "hand")
+	var bw := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw, gale)
+	check(EffectRunner.quick_can(s, 1, js, "damage"), "Jetstream: usable at damage calculation")
+	EffectRunner.quick_run(s, 1, js)
+	s.resolve_attack()
+	check(s.players[1].field.has(gale) and s.players[1].gy.has(js), "Jetstream: Gale is not destroyed")
+	# Hedge Guard: halved and not destroyed.
+	s = _new_state(5902)
+	_battle_ready(s)
+	var cg := _mon(s, 1, "Celtic Guardian", 0)
+	var hg := _in(s, 1, "Hedge Guard", "hand")
+	var bw2 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw2, cg)
+	EffectRunner.quick_run(s, 1, hg)
+	check(s.atk_of(cg, false) == 700, "Hedge Guard: ATK halved (got %d)" % s.atk_of(cg, false))
+	s.resolve_attack()
+	check(s.players[1].field.has(cg), "Hedge Guard: not destroyed by this battle")
+	# Barrier Resonator: the Tuner survives, no battle damage.
+	s = _new_state(5903)
+	_battle_ready(s)
+	var rr := _mon(s, 1, "Red Resonator", 0)
+	var br := _in(s, 1, "Barrier Resonator", "hand")
+	var bw3 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw3, rr)
+	EffectRunner.quick_run(s, 1, br)
+	var lp: int = s.players[1].lp
+	s.resolve_attack()
+	check(s.players[1].field.has(rr) and s.players[1].lp == lp, "Barrier Resonator: Tuner safe, no damage (lp %d -> %d)" % [lp, s.players[1].lp])
+	# Kuriphoton: pay 2000, no damage this turn.
+	s = _new_state(5904)
+	_battle_ready(s)
+	var kp := _in(s, 1, "Kuriphoton", "hand")
+	var bw4 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw4, null)
+	EffectRunner.quick_run(s, 1, kp)
+	s.resolve_attack()
+	check(s.players[1].lp == 6000, "Kuriphoton: paid 2000, took no battle damage (got %d)" % s.players[1].lp)
+	# Kuriphoton back from the GY for a Photon.
+	s = _main_ready(5905)
+	var kp2 := _in(s, 0, "Kuriphoton", "gy")
+	var pcr := _in(s, 0, "Photon Crusher", "hand")
+	check(EffectRunner.gy_can(s, 0, kp2), "Kuriphoton: GY effect open")
+	EffectRunner.run_list(s, 0, kp2, EffectRunner.fx(kp2)["gy_ignite"]["do"], {})
+	check(s.players[0].hand.has(kp2) and s.players[0].gy.has(pcr), "Kuriphoton: back to the hand for Photon Crusher")
+	# Galaxy Dragon: only Dragons, +1000 against one.
+	s = _new_state(5906)
+	_battle_ready(s)
+	var gd := _mon(s, 0, "Galaxy Dragon", 0)
+	_mon(s, 1, "Celtic Guardian", 0)
+	var sd := _mon(s, 1, "Spear Dragon", 1)
+	var tg: Array = s.attack_targets_for(0, gd)
+	check(tg.size() == 1 and tg[0] == sd and not s.can_direct_attack_with(0, gd), "Galaxy Dragon: only the Dragon can be attacked")
+	s.declare_attack(0, gd, sd)
+	s.resolve_attack()
+	check(not s.players[1].field.has(sd) and sd.negated, "Galaxy Dragon: beat Spear Dragon with +1000, negated it")
+	# Etesian: 1000 when the Blackwing's foe is still there.
+	s = _new_state(5907)
+	_battle_ready(s)
+	var gale2 := _mon(s, 0, "Blackwing - Gale the Whirlwind", 0)
+	_in(s, 0, "Blackwing - Etesian of Two Swords", "hand")
+	var wall := _mon(s, 1, "Mother Grizzly", 1, true)
+	var lp2: int = s.players[1].lp
+	s.declare_attack(0, gale2, wall)
+	s.resolve_attack()
+	check(s.players[1].field.has(wall) and s.players[1].lp == lp2 - 1000, "Etesian: 1000 damage (lp %d -> %d)" % [lp2, s.players[1].lp])
+	# Tripod Fish: revived, +1 Level to a Fish.
+	s = _main_ready(5908)
+	var tf := _mon(s, 0, "Tripod Fish", 0)
+	EffectRunner.run_list(s, 0, tf, EffectRunner.fx(tf)["revived"], {})
+	check(tf.level() == 4, "Tripod Fish: Level 3 -> 4 (got %d)" % tf.level())
+	# Gogogo Ghost: brings back Gogogo Golem, then Defense.
+	s = _main_ready(5909)
+	var gh := _mon(s, 0, "Gogogo Ghost", 0)
+	var golem := _in(s, 0, "Gogogo Golem", "gy")
+	EffectRunner.run_list(s, 0, gh, EffectRunner.fx(gh)["special_only"], {})
+	check(s.players[0].field.has(golem) and not golem.attack_pos and not gh.attack_pos, "Gogogo Ghost: Golem back in Defense, Ghost to Defense")
+	# Gagaga Caesar: no attack alone; banish to set Levels.
+	s = _new_state(5910)
+	_battle_ready(s)
+	var cz := _mon(s, 0, "Gagaga Caesar", 0)
+	check(not s.can_attack(0, cz), "Gagaga Caesar: can't attack without another Gagaga")
+	var gm := _mon(s, 0, "Gagaga Magician", 1)
+	check(s.can_attack(0, cz), "Gagaga Caesar: attacks with Gagaga Magician")
+	_in(s, 0, "Blue-Eyes White Dragon", "gy")
+	EffectRunner.run_list(s, 0, cz, EffectRunner.fx(cz)["ignite"]["do"], {})
+	check(cz.level() == 8 and gm.level() == 8, "Gagaga Caesar: both Level 8")
+	# Dark Catapulter: 1 counter, fire at a Spell/Trap.
+	s = _main_ready(5911)
+	var dc := _mon(s, 0, "Dark Catapulter", 0, true)
+	dc.attack_pos = false
+	EffectRunner.run_list(s, 0, dc, EffectRunner.fx(dc)["standby"], {})
+	_in(s, 0, "Celtic Guardian", "gy")
+	var st := _set_trap(s, 1, "Mirror Force")
+	EffectRunner.run_list(s, 0, dc, EffectRunner.fx(dc)["ignite"]["do"], {})
+	check(not s.players[1].spells.has(st) and dc.counter == 0, "Dark Catapulter: Mirror Force destroyed")
+	# Utopia Roots: negates an Xyz attack, +Rank x 500.
+	s = _new_state(5912)
+	_battle_ready(s)
+	var ur := _xyz_with(s, 1, "Number 39: Utopia Roots", 0, 2)
+	var gq := _xyz_with(s, 0, "Number 83: Galaxy Queen", 0, 1)
+	s.declare_attack(0, gq, ur)
+	EffectRunner.quick_run(s, 1, ur)
+	check(s.pending_attack.get("negated", false) and s.atk_of(ur, false) == 500 + 500, "Utopia Roots: negated, +Rank 1 x 500 (got %d)" % s.atk_of(ur, false))
+	# Photon Trident: +700, piercing.
+	s = _new_state(5913)
+	_battle_ready(s)
+	var pc := _mon(s, 0, "Photon Crusher", 0)
+	var tri := _in(s, 0, "Photon Trident", "hand")
+	s.respond(0, tri, null)
+	s.chain_resolve()
+	check(s.atk_of(pc, false) == 2700 and int(pc.tags.get("pierce_turn", -1)) == s.turn, "Photon Trident: +700 and piercing")
+	# Changing Destiny: attack negated, attacker to Defense and locked.
+	s = _new_state(5914)
+	_battle_ready(s)
+	var cd := _set_trap(s, 1, "Changing Destiny")
+	var bw5 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw5, null)
+	s.respond(1, cd)
+	s.chain_resolve()
+	check(s.pending_attack.get("negated", false) and not bw5.attack_pos and not s.can_change_position(0, bw5), "Changing Destiny: negated, Defense, locked")
+	# Lineage of Destruction: a Level 8 attacks twice after beating a Defense monster.
+	s = _new_state(5915)
+	_battle_ready(s)
+	var bw6 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	var def_m := _mon(s, 1, "Celtic Guardian", 1, true)
+	def_m.attack_pos = false
+	s.declare_attack(0, bw6, def_m)
+	s.resolve_attack()
+	var lin := _set_trap(s, 0, "Lineage of Destruction")
+	lin.set_turn = s.turn - 1
+	check(SpellRules.cond_ok(s, 0, "lineage"), "Lineage: open after destroying a Defense monster")
+	s.respond(0, lin, null)
+	s.chain_resolve()
+	check(s.attacks_left(bw6) == 1, "Lineage: Blue-Eyes can attack again (left %d)" % s.attacks_left(bw6))
+
+
 ## Every card the game can play can be had somewhere: a booster set, Lumen (her own cards) or
 ## the highway (Speed Spells). A card that plays but can't be obtained fails the build.
 func _test_every_card_obtainable() -> void:
@@ -8489,3 +8633,123 @@ func _test_own_sounds() -> void:
 	Music.reload_own()
 	DirAccess.remove_absolute(dir + "/sounds/click.wav")
 	DirAccess.remove_absolute(dir + "/music/menu.wav")
+
+
+func _test_cards_b0c4() -> void:
+	# Photon Sanctuary: 2 Photon Tokens that can't attack, then only LIGHT Summons.
+	var s := _main_ready(6001)
+	var ps := _in(s, 0, "Photon Sanctuary", "hand")
+	s.activate(0, ps)
+	var toks: Array = s.players[0].monsters().filter(func(m): return m.cname() == "Photon Token")
+	check(toks.size() == 2 and not toks[0].attack_pos, "Photon Sanctuary: 2 tokens in Defense")
+	var dm := _in(s, 0, "Dark Magician", "hand")
+	check(s.big_locked(0, dm), "Photon Sanctuary: a DARK monster can't be Summoned this turn")
+	s.phase = DuelState.Phase.BATTLE
+	toks[0].attack_pos = true
+	check(not s.can_attack(0, toks[0]), "Photon Token: cannot attack")
+	# Photon Veil: 3 LIGHT back, copies of one LIGHT out.
+	s = _main_ready(6002)
+	for i in 3:
+		_in(s, 0, "Photon Crusher", "hand")
+	for i in 3:
+		_in(s, 0, "Photon Thrasher", "deck")
+	var pv := _in(s, 0, "Photon Veil", "hand")
+	s.activate(0, pv)
+	var got_v: int = maxi(s.players[0].hand.filter(func(h): return h.cname() == "Photon Thrasher").size(), s.players[0].hand.filter(func(h): return h.cname() == "Photon Crusher").size())
+	check(got_v == 3 and s.players[0].gy.has(pv), "Photon Veil: 3 copies of one LIGHT monster added (got %d)" % got_v)
+	# Fiery Fervor: double original ATK in the Damage Step vs a stronger-than-original foe.
+	s = _main_ready(6003)
+	var cg := _mon(s, 0, "Celtic Guardian", 0)
+	_mon(s, 1, "Blue-Eyes White Dragon", 0)
+	var ff := _set_trap(s, 0, "Fiery Fervor")
+	s.activate(0, ff, cg)
+	check(ff.equipped_to == cg and s.atk_of(cg, false) == 1400, "Fiery Fervor: nothing outside the Damage Step")
+	s.in_damage_step = true
+	check(s.atk_of(cg, false) == 2800, "Fiery Fervor: 2800 in the Damage Step (got %d)" % s.atk_of(cg, false))
+	s.in_damage_step = false
+	# Wonder Wand: +500, then send both to draw 2.
+	s = _main_ready(6004)
+	var dm2 := _mon(s, 0, "Dark Magician", 0)
+	var ww := _in(s, 0, "Wonder Wand", "hand")
+	s.activate(0, ww, dm2)
+	check(s.atk_of(dm2, false) == 3000, "Wonder Wand: +500")
+	for i in 3:
+		_in(s, 0, "Celtic Guardian", "deck")
+	var h: int = s.players[0].hand.size()
+	EffectRunner.run_list(s, 0, ww, EffectRunner.fx(ww)["ignite"]["do"], {})
+	check(s.players[0].hand.size() == h + 2 and s.players[0].gy.has(dm2) and s.players[0].gy.has(ww), "Wonder Wand: both to the GY, drew 2")
+	# Gagagashield: twice per turn, battle or effects.
+	s = _main_ready(6005)
+	var gm := _mon(s, 0, "Gagaga Magician", 0)
+	var gs := _set_trap(s, 0, "Gagagashield")
+	s.activate(0, gs, gm)
+	s._destroy(gm)
+	s._destroy(gm)
+	check(s.players[0].field.has(gm), "Gagagashield: survives 2 destructions")
+	s._destroy(gm)
+	check(not s.players[0].field.has(gm), "Gagagashield: the third one lands")
+	# Splash Capture: take the Xyz Summoned monster.
+	s = _main_ready(6006)
+	var lev := _mon(s, 0, "Number 17: Leviathan Dragon", 0)
+	lev.tags["ss"] = true
+	_in(s, 1, "Hammer Shark", "gy")
+	_in(s, 1, "Hammer Shark", "gy")
+	var sc := _set_trap(s, 1, "Splash Capture")
+	check(SpellRules.fits(s, 1, sc, "summon", lev), "Splash Capture: fits the Xyz Summon")
+	s.respond(1, sc, lev)
+	s.chain_resolve()
+	check(s.players[1].field.has(lev) and s.players[1].banished.size() == 2, "Splash Capture: Leviathan Dragon is theirs now")
+	# Saber Shark: a Fish +1 Level, then only WATER Special Summons.
+	s = _main_ready(6007)
+	var sab := _mon(s, 0, "Saber Shark", 0)
+	EffectRunner.run_list(s, 0, sab, EffectRunner.fx(sab)["ignite"]["do"], {})
+	check(sab.level() == 5, "Saber Shark: Level 4 -> 5 (got %d)" % sab.level())
+	check(s.big_locked(0, _in(s, 0, "Dark Magician", "hand"), true), "Saber Shark: non-WATER Special Summons are locked")
+	# Synchro Soldier: banish a Synchro, 600, it returns next Standby.
+	s = _main_ready(6008)
+	var so := _mon(s, 0, "Synchro Soldier", 0)
+	var sd := _mon(s, 0, "Stardust Dragon", 1)
+	var lp: int = s.players[1].lp
+	EffectRunner.run_list(s, 0, so, EffectRunner.fx(so)["ignite"]["do"], {})
+	check(s.players[0].banished.has(sd) and s.players[1].lp == lp - 600, "Synchro Soldier: Stardust banished, 600 damage")
+	s.turn += 2
+	EffectRunner.standby(s, 0)
+	check(s.players[0].field.has(sd), "Synchro Soldier: Stardust back in the next Standby Phase")
+	# Triple Star Trion: Tributed for a Tribute Summon, back in the End Phase.
+	s = _main_ready(6009)
+	var tr := _mon(s, 0, "Triple Star Trion", 0)
+	var db := _in(s, 0, "Summoned Skull", "hand")
+	s.normal_summon(0, db, [tr])
+	check(s.players[0].gy.has(tr), "Triple Star Trion: Tributed")
+	s.begin_end()
+	check(s.players[0].field.has(tr), "Triple Star Trion: back in the End Phase")
+	# Bubble Bringer: Level 4+ can't attack directly.
+	s = _new_state(6010)
+	_battle_ready(s)
+	var bb := _set_trap(s, 1, "Bubble Bringer")
+	bb.face_up = true
+	var bw := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	check(not s.can_direct_attack_with(0, bw), "Bubble Bringer: Blue-Eyes can't attack directly")
+	# D - Shield: the attacked Destiny HERO goes to Defense and can't be destroyed by battle.
+	s = _new_state(6011)
+	_battle_ready(s)
+	var dh := _mon(s, 1, "Destiny HERO - Diamond Dude", 0)
+	var dsh := _set_trap(s, 1, "D - Shield")
+	var bw7 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw7, dh)
+	s.respond(1, dsh, null)
+	s.chain_resolve()
+	s.resolve_attack()
+	check(not dh.attack_pos and s.players[1].field.has(dh), "D - Shield: Diamond Dude in Defense, still there")
+
+
+func _dev_need() -> void:
+	var all := {}
+	for k in SignatureDecks.WISH:
+		var a: Dictionary = SignatureDecks.audit(k)
+		for n in a["need_effect"]:
+			all[n] = str(all.get(n, "")) + k + " "
+	for n in all:
+		print("NEED\t", n, "\t", all[n])
+	print("NEED_TOTAL ", all.size())
+

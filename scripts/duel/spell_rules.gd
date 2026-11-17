@@ -29,6 +29,22 @@ const FX := {
 	"Echo Resonance": {"k": "normal", "cond": "echo_ready", "do": [["echo_resonance"]]},
 	"Echo Call": {"k": "normal", "do": [["search", {"has": "Lumen"}]]},
 	"Echo Veil": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["draw_if_own", "Lumen", 1]]},
+	# ---------------------------------------------------------------- The story duelists' remaining cards (batch 3)
+	"Photon Trident": {"k": "quick", "t": "own_face", "must_has": "Photon", "do": [["atk", "target", 700, "eot"], ["pierce_turn", "target"], ["trident", "target"]]},
+	"Changing Destiny": {"k": "trap", "win": ["attack"], "do": [["changing_destiny"]]},
+	"Impenetrable Attack": {"k": "trap", "win": ["free"], "cond": "battle_phase", "modes": [
+		{"label": "1 monster can't be destroyed by battle or card effects", "t": "any_mon", "do": [["unbreak", "target"]]},
+		{"label": "You take no battle damage this Battle Phase", "do": [["no_battle_damage"]]}]},
+	"Lineage of Destruction": {"k": "trap", "win": ["free"], "cond": "lineage", "do": [["lineage"]]},
+	"Photon Sanctuary": {"k": "normal", "cond": "two_zones", "do": [["tokens", 2, "Photon Token", 17418745, 2000, 0, 4, "LIGHT", "Thunder", "free"], ["attr_lock", "LIGHT"]]},
+	"Photon Veil": {"k": "normal", "cond": "photon_veil", "do": [["photon_veil"]]},
+	"Fiery Fervor": {"k": "ctrap", "win": ["free"], "t": "own_face", "equip": true, "fervor": true},
+	"D - Shield": {"k": "ctrap", "win": ["attack"], "t": "own_face", "must_has": "Destiny HERO", "must_attacked": true, "equip": true, "to_def_on_equip": true, "battle_guard": 99},
+	"Wonder Wand": {"k": "equip", "must": {"race": "Spellcaster"}, "atk": 500},
+	"Gagagashield": {"k": "ctrap", "win": ["free"], "equip": true, "t": "own_face", "must": {"race": "Spellcaster"}, "battle_guard": 2, "fx_guard_shared": true},
+	"Splash Capture": {"k": "trap", "win": ["summon"], "subj_xyz": true, "cond": "fish2_gy", "do": [["banish_gy_f", 2, {"races": ["Fish"]}], ["control", "summoned", "perm"]]},
+	"Chthonian Polymer": {"k": "trap", "win": ["summon"], "subj_fusion": true, "cost": "tribute", "do": [["control", "summoned", "perm"]]},
+	"Bubble Bringer": {"k": "ctrap", "win": ["free"], "no_direct_lv4": true},
 	# ---------------------------------------------------------------- The story duelists' remaining cards (ZEXAL era)
 	"Photon Booster": {"k": "normal", "t": "any_face", "must": {"attr": "LIGHT", "max_lv": 4}, "do": [["photon_boost", "target"]]},
 	"Galaxy Queen's Light": {"k": "normal", "cond": "own_lv7", "do": [["queens_light"]]},
@@ -657,6 +673,10 @@ static func fits(s: DuelState, p: int, c, window: String, subject) -> bool:
 			return false
 		if sp.get("subj_special", false) and not subject.tags.get("ss", false):
 			return false   # "When your opponent Special Summons a monster" (Void Trap Hole)
+		if sp.get("subj_xyz", false) and not (subject.frame() == "xyz" and subject.tags.get("ss", false)):
+			return false   # Splash Capture: "When your opponent Xyz Summons"
+		if sp.get("subj_fusion", false) and not (subject.frame() == "fusion" and subject.tags.get("ss", false)):
+			return false   # Chthonian Polymer: "when your opponent Fusion Summons a Fusion Monster"
 		if subject.atk() < int(sp.get("subj_atk_min", 0)) or subject.atk() > int(sp.get("subj_atk_max", 99999)):
 			return false
 	if sp.has("modes"):
@@ -781,6 +801,23 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 				return false
 			var tg = pc["target"]
 			return tg.owner == p and tg.face_up and str(tg.data.get("attribute", "")) == "LIGHT" and str(tg.data.get("race", "")) == "Dragon"
+		"lineage":
+			if s.phase != DuelState.Phase.BATTLE or p != s.current:
+				return false
+			if int(s.players[p].once_names.get("killed_def", -1)) != s.turn:
+				return false
+			return not s.players[p].monsters().filter(func(m): return m.face_up and m.level() == 8 and m.frame() != "xyz").is_empty()
+		"two_zones":
+			var fz := 0
+			for z in s.players[p].field:
+				if z == null:
+					fz += 1
+			return fz >= 2 and s.players[p].no_summon_turn != s.turn and not s.ss_locked(p)
+		"photon_veil":
+			var lh: Array = s.players[p].hand.filter(func(h): return h.is_monster() and str(h.data.get("attribute", "")) == "LIGHT")
+			return lh.size() >= 3 and not s.players[p].deck.filter(func(d): return d.is_monster() and str(d.data.get("attribute", "")) == "LIGHT" and d.level() <= 4 and d.frame() in ["normal", "effect"]).is_empty()
+		"fish2_gy":
+			return s.players[p].gy.filter(func(g): return g.is_monster() and str(g.data.get("race", "")) == "Fish").size() >= 2
 		"own_water":
 			return not s.players[p].monsters().filter(func(m): return m.face_up and str(m.data.get("attribute", "")) == "WATER").is_empty()
 		"dododo":
@@ -1326,6 +1363,8 @@ static func targets(s: DuelState, p: int, c) -> Array:
 				ok = false   # Forbidden Lance: "unaffected by the effects of other Spells/Traps" this turn
 			if ok and sp.get("only_monster", false) and s.players[m.owner].monsters().size() != 1:
 				ok = false   # Assault Armor: "Equip only to a Warrior-Type monster that is the only monster you control"
+			if ok and sp.get("must_attacked", false) and (s.pending_attack.is_empty() or s.pending_attack["target"] != m or not m.attack_pos):
+				ok = false   # D - Shield: "When an Attack Position "Destiny HERO" monster you control is targeted for an attack: Target it"
 			if ok and sp.has("must_has") and not m.cname().contains(str(sp["must_has"])):
 				ok = false   # "Target 1 "Destiny HERO" monster you control" (D - Chain)
 			if ok and sp.get("must_rose", false) and not (m.cname() == "Black Rose Dragon" or str(m.data.get("race", "")) == "Plant"):
@@ -1515,6 +1554,9 @@ static func resolve(s: DuelState, link: Dictionary) -> Array:
 	if (k == "equip" or sp.get("equip", false)) and not sp.has("do"):
 		var t = ctx["target"]
 		c.equipped_to = t
+		if sp.get("to_def_on_equip", false) and t.attack_pos:
+			t.attack_pos = false   # D - Shield: "change it to Defense Position and equip it with this card"
+			events.append({"type": "position", "player": t.owner, "card": t, "zone": s.players[t.owner].field.find(t)})
 		events.append(_ev(p, c, Loc.t("%s is equipped to %s") % [c.cname(), t.cname()]))
 		if t.face_up and not t.negated and EffectRunner.fx(t).get("destroy_equips", false):
 			# Gearfried the Iron Knight: "If either player equips an Equip Card(s) to this card: Destroy that Equip Card(s)."
@@ -2214,6 +2256,78 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 					auto_j.append(x)
 			for x in s.choose(p, Loc.t("%s: destroy %d Spells/Traps") % [name, n_j], pool_j, n_j, auto_j.slice(0, n_j), false, c):
 				events.append_array(s._destroy_st(x))
+		"attr_lock":
+			ps.once_names["#attr_lock"] = s.turn
+			ps.once_names["#attr_lock_a"] = str(a[1])
+		"photon_veil":
+			# "Shuffle 3 LIGHT monsters from your hand into the Deck, then add 1 to 3 Level 4 or lower LIGHT monsters from your Deck
+			# to your hand. If you add 2 or more monsters, they must have the same name."
+			var lh_v: Array = ps.hand.filter(func(h): return h.is_monster() and str(h.data.get("attribute", "")) == "LIGHT")
+			var back_v: Array = s.choose(p, Loc.t("%s: shuffle 3 LIGHT monsters into the Deck") % name, lh_v, 3, lh_v.slice(0, 3), false, c)
+			for b in back_v:
+				ps.hand.erase(b)
+				ps.deck.append(b)
+			ps.deck.shuffle()
+			events.append(_ev(p, c, Loc.t("%s: 3 cards shuffled into the Deck") % name))
+			var pool_v: Array = ps.deck.filter(func(d): return d.is_monster() and str(d.data.get("attribute", "")) == "LIGHT" and d.level() <= 4 and d.frame() in ["normal", "effect"])
+			if not pool_v.is_empty():
+				var names_v := {}
+				for d in pool_v:
+					names_v[d.cname()] = int(names_v.get(d.cname(), 0)) + 1
+				var best_v = pool_v[0]
+				for d in pool_v:
+					if int(names_v[d.cname()]) > int(names_v[best_v.cname()]):
+						best_v = d
+				var first_v = s.pick1(p, Loc.t("%s: add a LIGHT monster (copies with its name come too)") % name, pool_v, best_v, c)
+				for d in ps.deck.filter(func(x): return x.cname() == first_v.cname()).slice(0, 3):
+					ps.deck.erase(d)
+					ps.hand.append(d)
+					events.append({"type": "search", "player": p, "card": d})
+		"banish_gy_f":
+			var pool_b: Array = ps.gy.filter(func(g): return g.is_monster() and CardEffects.matches(g.data, a[2]))
+			for i in mini(int(a[1]), pool_b.size()):
+				events.append_array(s._banish(pool_b[i]))
+		"trident":
+			for t in _sel(s, p, c, str(a[1]), ctx):
+				t.tags["trident"] = s.turn
+		"unbreak":
+			for t in _sel(s, p, c, str(a[1]), ctx):
+				t.tags["unbreak_turn"] = s.turn
+				t.tags["fx_guard_turn"] = s.turn
+				events.append(_ev(p, c, Loc.t("%s cannot be destroyed by battle or card effects this Battle Phase") % (t.cname() if t.face_up else Loc.t("The face-down monster"))))
+		"no_bd":
+			for t in _sel(s, p, c, str(a[1]), ctx):
+				t.tags["no_bd_turn"] = s.turn
+				events.append(_ev(p, c, Loc.t("No battle damage from %s's battles this turn") % t.cname()))
+		"lineage":
+			# Lineage of Destruction: the monster that destroyed a Defense Position monster by battle can attack again.
+			# "Select 1 Level 8 monster you control. During this turn, the selected monster can attack twice."
+			var lin: Array = ps.monsters().filter(func(m): return m.face_up and m.level() == 8 and m.frame() != "xyz")
+			if not lin.is_empty():
+				var t_l = s.pick1(p, Loc.t("%s: which Level 8 monster attacks twice?") % name, lin, lin[0], c)
+				if t_l.bonus_attacks_turn != s.turn:
+					t_l.bonus_attacks = 0
+					t_l.bonus_attacks_turn = s.turn
+				t_l.bonus_attacks = maxi(t_l.bonus_attacks, 2 - EffectRunner.max_attacks(t_l))
+				events.append(_ev(p, c, Loc.t("%s can attack twice this turn") % t_l.cname()))
+		"changing_destiny":
+			if not s.pending_attack.is_empty():
+				var att_cd = s.pending_attack["attacker"]
+				s.pending_attack["negated"] = true
+				if att_cd != null and s.players[att_cd.owner].field.has(att_cd):
+					var half_cd: int = s.atk_of(att_cd, false) / 2
+					if att_cd.attack_pos:
+						att_cd.attack_pos = false
+						events.append({"type": "position", "player": att_cd.owner, "card": att_cd, "zone": s.players[att_cd.owner].field.find(att_cd)})
+					att_cd.tags["pos_locked"] = true
+					# "Your opponent chooses 1: they gain LP equal to half its ATK, or the activator takes that much damage."
+					var foe_cd: int = att_cd.owner
+					var pick_cd: int = s.choose_option(foe_cd, Loc.t("Changing Destiny: choose 1"), [Loc.t("You gain %d LP") % half_cd, Loc.t("Your opponent takes %d damage") % half_cd], 0 if s.players[foe_cd].lp <= 2000 else 1, c)
+					if pick_cd == 0:
+						s.players[foe_cd].lp += half_cd
+						events.append({"type": "lp", "player": foe_cd, "lp": s.players[foe_cd].lp, "delta": half_cd})
+					else:
+						events.append_array(s._damage(p, half_cd))
 		"pierce_turn":
 			for t in _sel(s, p, c, str(a[1]), ctx):
 				t.tags["pierce_turn"] = s.turn
@@ -3315,6 +3429,12 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs) -> int:
 								b += int(sp["atk_same_name"])
 				if sp.has("atk_per"):
 					b += _per(s, q, str(sp["atk_per"][0])) * int(sp["atk_per"][1])
+				if sp.get("fervor", false) and s.in_damage_step:
+					# Fiery Fervor: "If your opponent controls a monster with ATK higher than that same monster's original ATK, the ATK
+					# of the equipped monster becomes double the equipped monster's original ATK, during the Damage Step only."
+					var orig_f: int = int(c.data.get("atk", 0))
+					if not s.players[s.opponent(c.owner)].monsters().filter(func(m): return m.face_up and m.atk() > orig_f).is_empty():
+						b += orig_f
 				if sp.get("metalmorph", false) and attacking and vs != null:
 					b += s.atk_of(vs, false) / 2   # Metalmorph: "If it attacks, it gains ATK equal to half the ATK of the attack target, during damage calculation only."
 				if sp.get("megamorph", false):

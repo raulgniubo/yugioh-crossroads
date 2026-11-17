@@ -246,6 +246,7 @@ var battle_foe: CardInst = null
 var battle_shield := -1
 ## True while an attack is being worked out (the Damage Step).
 var in_damage_step := false
+var last_tribute_summon_turn := -1   # Triple Star Trion: "sent there this turn as a Tribute for a successful Tribute Summon"
 
 
 ## Pick n of cands. `auto` is what the rules would take on their own (AI, tests, a forced pick).
@@ -628,6 +629,15 @@ func begin_end() -> Array:
 	phase = Phase.END
 	var events := [{"type": "phase", "phase": phase}]
 	events.append_array(after_battle)
+	# Triple Star Trion: "During the End Phase, if this card is in the GY because it was sent there this turn as a Tribute for a
+	# successful Tribute Summon: You can Special Summon this card from your GY."
+	for q in 2:
+		for g in players[q].gy.duplicate():
+			if int(g.tags.get("trion_turn", -1)) == turn and players[q].free_zone() != -1 and can_revive(g):
+				g.tags.erase("trion_turn")
+				players[q].gy.erase(g)
+				events.append({"type": "effect", "player": q, "card": g, "text": Loc.t("%s comes back") % g.cname()})
+				events.append_array(_special(q, g, "effect"))
 	# Depth Amulet: "Destroy this card during your opponent's 3rd End Phase after activation."
 	for dm in players[opponent(current)].spells.duplicate():
 		if dm != null and dm.face_up and SpellRules.spec(dm).get("depth_amulet", false):
@@ -1145,6 +1155,8 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 		return []
 	tributes = tributes.duplicate()
 	var n_tributes := tributes.size()
+	if n_tributes > 0:
+		last_tribute_summon_turn = turn
 	var need_attr := str(CardEffects.of(c.cname()).get("tribute_attr", ""))
 	if need_attr != "" and not tributes.is_empty():
 		# Jawsman: "If you Tribute Summon this card, all Tributes must be WATER."
@@ -1417,6 +1429,8 @@ func flip_summon(p: int, c: CardInst) -> Array:
 
 
 func can_change_position(p: int, c: CardInst) -> bool:
+	if c.tags.get("pos_locked", false):
+		return false   # Changing Destiny: "it cannot change its battle position while it is face-up on the field"
 	if str(c.data.get("race", "")) == "Dragon" and SpellRules.field_flag(self, "dragon_jar"):
 		return false   # Dragon Capture Jar
 	return (p == current and _in_main() and not is_over() and players[p].field.has(c)
@@ -1830,6 +1844,8 @@ func can_attack(p: int, c: CardInst) -> bool:
 			and not _tyranno_blocks(p, c)
 			and int(c.tags.get("no_attack_on", -1)) != turn
 			and not c.tags.get("rai_locked", false)
+			and not EffectRunner.fx(c).get("never_attack", false)
+			and not (EffectRunner.fx(c).get("attack_needs_family", "") != "" and not c.negated and players[p].monsters().filter(func(m): return m != c and m.face_up and m.cname().begins_with(str(EffectRunner.fx(c)["attack_needs_family"]))).is_empty())
 			and not (EffectRunner.fx(c).get("no_attack_no_material", false) and c.overlays.is_empty())
 			and not restrict_locks(c) and not held_by_illusionist(c)
 			and not (EffectRunner.fx(c).get("summon_sick", false) and c.summoned_turn == turn)
@@ -1894,6 +1910,8 @@ func _not_hit_yet(c: CardInst) -> Array:
 func can_direct_attack_with(p: int, c: CardInst) -> bool:
 	if int(c.tags.get("no_direct_turn", -1)) == turn:
 		return false   # Feather Shot: "but cannot attack directly"
+	if SpellRules.field_flag(self, "no_direct_lv4") and c.frame() != "xyz" and c.level() >= 4:
+		return false   # Bubble Bringer: "Level 4 or higher monsters cannot attack directly."
 	if EffectRunner.fx(c).get("no_direct", false):
 		return false   # "Cannot attack directly" (ZW - Leo Arms)
 	if not c.attack_pos:
@@ -2011,6 +2029,13 @@ func attack_targets_for(p: int, attacker: CardInst) -> Array[CardInst]:
 		if m == null or not (umi_guard(m) or (m.face_up and not m.negated and EffectRunner.fx(m).get("no_attack_target", false))):
 			fished.append(m)
 	out = fished
+	# Galaxy Dragon: "can only attack Dragon monsters."
+	if attacker != null and not attacker.negated and EffectRunner.fx(attacker).get("attack_race_only", "") != "":
+		var race_only: Array[CardInst] = []
+		for m in out:
+			if m != null and m.face_up and str(m.data.get("race", "")) == str(EffectRunner.fx(attacker)["attack_race_only"]):
+				race_only.append(m)
+		out = race_only
 	# Ring of Magnetism: "all the monsters on your opponent's side of the field can only attack the monster equipped with this card".
 	for st in players[opponent(p)].spells:
 		if st != null and st.face_up and st.equipped_to != null and SpellRules.spec(st).get("magnet", false) and not SpellRules.blocked(self, st) and out.has(st.equipped_to):
@@ -2397,7 +2422,15 @@ func resolve_attack() -> Array:
 		gy_fx_off = opponent(int(pending_attack["player"]))   # Dododo Warrior
 	var rai_a: CardInst = pending_attack["attacker"]
 	var rai_t: CardInst = pending_attack["target"]
-	var ev := _resolve_attack()
+	var pre: Array = []
+	var t_was_def: bool = rai_t != null and not rai_t.attack_pos
+	# Galaxy Dragon: "+1000 ATK during the Damage Step only" vs a Dragon, and that monster's effects are negated.
+	if rai_a != null and rai_t != null and rai_a.face_up and not rai_a.negated and EffectRunner.fx(rai_a).get("galaxy_dragon", false) and rai_t.face_up and str(rai_t.data.get("race", "")) == "Dragon":
+		bp_boost(rai_a, 1000)
+		rai_t.negated = true
+		rai_t.negated_turn = turn
+		pre.append({"type": "effect", "player": rai_a.owner, "card": rai_a, "text": Loc.t("%s: +1000 ATK, %s is negated") % [rai_a.cname(), rai_t.cname()]})
+	var ev := pre + _resolve_attack()
 	in_damage_step = false
 	battle_shield = -1
 	# Rai Rider: "If this card battles an opponent's monster: That monster cannot attack while it is face-up on the field."
@@ -2407,6 +2440,24 @@ func resolve_attack() -> Array:
 			var foe_r: CardInst = pair[1]
 			if rr.face_up and not rr.negated and EffectRunner.fx(rr).get("rai_rider", false) and foe_r.owner != rr.owner and players[foe_r.owner].field.has(foe_r) and foe_r.face_up:
 				foe_r.tags["rai_locked"] = true
+	# Lineage of Destruction looks for this: the attacker destroyed a Defense Position monster by battle.
+	if rai_a != null and rai_t != null and t_was_def and players[rai_a.owner].field.has(rai_a) and not players[rai_t.owner].field.has(rai_t):
+		players[rai_a.owner].once_names["killed_def"] = turn
+	# Blackwing - Etesian of Two Swords: the Blackwing battled and the opponent's monster is still there.
+	if rai_a != null and rai_t != null and not is_over():
+		for pair in [[rai_a, rai_t], [rai_t, rai_a]]:
+			var bw: CardInst = pair[0]
+			var foe_e: CardInst = pair[1]
+			var ow: int = bw.owner
+			if bw.cname().begins_with("Blackwing") and foe_e.owner != ow and players[foe_e.owner].field.has(foe_e):
+				var et: Array = players[ow].hand.filter(func(h): return h.cname() == "Blackwing - Etesian of Two Swords")
+				if not et.is_empty() and choose_option(ow, Loc.t("Send Blackwing - Etesian of Two Swords to the GY for 1000 damage?"), [Loc.t("Send it"), Loc.t("Keep it")], 0, et[0]) == 0:
+					players[ow].hand.erase(et[0])
+					_to_gy(players[ow], et[0])
+					ev.append({"type": "discard", "player": ow, "card": et[0]})
+					ev.append({"type": "effect", "player": ow, "card": et[0], "text": Loc.t("%s: 1000 damage") % et[0].cname()})
+					ev.append_array(_damage(opponent(ow), 1000))
+				break
 	gy_fx_off = -1
 	bye_bye = -1
 	return ev
@@ -3030,7 +3081,7 @@ func _battle_damage(p: int, amount: int, dealer: CardInst = null, taker: CardIns
 		out_b.append({"type": "effect", "player": p, "card": null, "text": Loc.t("Bye Bye Damage: %d damage to the opponent") % (amount * 2)})
 		out_b.append_array(_damage(opponent(p), amount * 2))
 		return out_b
-	if EffectRunner.no_damage_involving(taker) and taker.owner == p:
+	if taker != null and taker.owner == p and (EffectRunner.no_damage_involving(taker) or int(taker.tags.get("no_bd_turn", -1)) == turn):
 		return [{"type": "effect", "player": p, "card": taker, "text": "No battle damage!"}]
 	# Amazoness Swords Woman: "Your opponent takes any battle damage you would have taken from
 	# battles involving this card instead."
@@ -3129,6 +3180,15 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	if c.tags.has("absorbed") and (not by_battle or EffectRunner.fx(c).get("absorb_half", false)):
 		riders = riders.filter(func(u): return u.uid != int(c.tags["absorbed"]))   # (Relinquished's monster only takes its place in battle)
 	if not by_battle:
+		# Gagagashield: "Twice per turn, it cannot be destroyed by battle or card effects."
+		for eq in SpellRules.equips_on(self, c):
+			var gsp := SpellRules.spec(eq)
+			if gsp.get("fx_guard_shared", false):
+				var used_s := int(eq.tags.get("guard_n", 0)) if int(eq.tags.get("guard_turn", -1)) == turn else 0
+				if used_s < int(gsp.get("battle_guard", 0)):
+					eq.tags["guard_turn"] = turn
+					eq.tags["guard_n"] = used_s + 1
+					return [{"type": "effect", "player": eq.owner, "card": eq, "text": Loc.t("%s: %s isn't destroyed!") % [eq.cname(), c.cname()]}]
 		# Silver Wing: "If it would be destroyed by a card effect, you can destroy this card instead."
 		for eq in SpellRules.equips_on(self, c):
 			if SpellRules.spec(eq).get("fx_sub", false) and choose_option(eq.owner, Loc.t("%s would be destroyed. Destroy %s instead?") % [c.cname(), eq.cname()], ["Destroy the Equip Card instead", "No"], 0, eq) == 0:
@@ -4397,8 +4457,13 @@ func ss_locked(p: int) -> bool:
 
 
 ## Crimson Blader: no Level 5 or higher Summons for `p` this turn.
-func big_locked(p: int, c: CardInst) -> bool:
-	return int(players[p].once_names.get("#no_big", -1)) == turn and c != null and c.is_monster() and c.frame() != "xyz" and c.level() >= 5
+func big_locked(p: int, c: CardInst, special := false) -> bool:
+	var ps := players[p]
+	if c != null and int(ps.once_names.get("#attr_lock", -1)) == turn and str(c.data.get("attribute", "")) != str(ps.once_names.get("#attr_lock_a", "")):
+		return true   # Photon Sanctuary: "You cannot Summon other monsters the turn you activate this card, except LIGHT monsters."
+	if c != null and special and int(ps.once_names.get("#ss_water_only", -1)) == turn and str(c.data.get("attribute", "")) != "WATER":
+		return true   # Saber Shark: "You cannot Special Summon any monsters during the turn you activate this effect, except WATER monsters."
+	return int(ps.once_names.get("#no_big", -1)) == turn and c != null and c.is_monster() and c.frame() != "xyz" and c.level() >= 5
 
 
 func on_field(c) -> bool:
@@ -4538,7 +4603,7 @@ func can_extra_summon(p: int, c: CardInst, any_time := false) -> bool:
 		return false
 	if ss_locked(p) and (c.frame() != "xyz" or EffectRunner.fx(c).has("contact")):
 		return false
-	if big_locked(p, c):
+	if big_locked(p, c, true):
 		return false   # Crimson Blader
 	if EffectRunner.fx(c).has("contact"):
 		return not contact_materials(p, c).is_empty() and (players[p].free_zone() != -1 or _contact_frees_zone(p, c))
@@ -5093,6 +5158,15 @@ func respond(p: int, c: CardInst, subject = null) -> Array:
 		events.append_array(_banish(other))
 		gepd_hold.append(hold)
 		pending_attack["negated"] = true
+		# Dimension Wanderer: "When a monster is banished by the effect of "Galaxy-Eyes Photon Dragon": You can send this card from your hand to the GY; inflict 3000 damage."
+		for dw in ps.hand.filter(func(h): return EffectRunner.fx(h).get("wanderer", false)):
+			if int(ps.once_names.get("Dimension Wanderer", -1)) != turn and choose_option(p, Loc.t("Send Dimension Wanderer to the GY for 3000 damage?"), [Loc.t("Send it"), Loc.t("Keep it")], 0, dw) == 0:
+				ps.once_names["Dimension Wanderer"] = turn
+				ps.hand.erase(dw)
+				_to_gy(ps, dw)
+				events.append({"type": "discard", "player": p, "card": dw})
+				events.append_array(_damage(o, 3000))
+			break
 		return events
 	var boost: Array = CardEffects.of(c.cname()).get("hand_boost_family", [])
 	if not boost.is_empty() and ps.hand.has(c):
@@ -5184,7 +5258,7 @@ func _legacy_trap(p: int, c: CardInst, subject = null) -> Array:
 # ------------------------------------------------------------------ monster effects from hand / on summon
 
 func can_special_from_hand(p: int, c: CardInst) -> bool:
-	if p != current or not _in_main() or is_over() or not players[p].hand.has(c) or players[p].no_summon_turn == turn or ss_locked(p) or big_locked(p, c):
+	if p != current or not _in_main() or is_over() or not players[p].hand.has(c) or players[p].no_summon_turn == turn or ss_locked(p) or big_locked(p, c, true):
 		return false
 	if c.cname() == "Cyber Dragon":
 		return players[p].monsters().is_empty() and not players[opponent(p)].monsters().is_empty() and players[p].free_zone() != -1
