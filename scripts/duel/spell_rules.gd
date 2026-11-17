@@ -36,6 +36,14 @@ const FX := {
 		{"label": "1 monster can't be destroyed by battle or card effects", "t": "any_mon", "do": [["unbreak", "target"]]},
 		{"label": "You take no battle damage this Battle Phase", "do": [["no_battle_damage"]]}]},
 	"Lineage of Destruction": {"k": "trap", "win": ["free"], "cond": "lineage", "do": [["lineage"]]},
+	"Armored Xyz": {"k": "trap", "win": ["free"], "cond": "armored_xyz", "do": [["armored_xyz"]]},
+	"Crimson Fire": {"k": "trap", "win": ["never"], "crimson_fire": true},
+	"Doppelganger": {"k": "trap", "win": ["never"], "doppelganger": true},
+	"Black Feather Beacon": {"k": "trap", "win": ["never"], "feather_beacon": true},
+	"Heartfelt Appeal": {"k": "trap", "win": ["never"], "heartfelt": true},
+	"Nature's Reflection": {"k": "trap", "win": ["free"], "do": [["reflect_turn"]]},
+	"Rope of Life": {"k": "trap", "win": [], "battle_death": true, "cond": "own_hand", "do": [["rope_of_life"]]},
+	"Gagagaback": {"k": "trap", "win": ["free"], "cond": "gagagaback", "do": [["gagagaback"]]},
 	"Photon Sanctuary": {"k": "normal", "cond": "two_zones", "do": [["tokens", 2, "Photon Token", 17418745, 2000, 0, 4, "LIGHT", "Thunder", "free"], ["attr_lock", "LIGHT"]]},
 	"Photon Veil": {"k": "normal", "cond": "photon_veil", "do": [["photon_veil"]]},
 	"Fiery Fervor": {"k": "ctrap", "win": ["free"], "t": "own_face", "equip": true, "fervor": true},
@@ -621,7 +629,10 @@ static func fits(s: DuelState, p: int, c, window: String, subject) -> bool:
 		return false
 	var k: String = sp["k"]
 	var ps := s.players[p]
-	if ps.hand.has(c):
+	if ps.hand.has(c) and c.is_trap() and hand_trap_ok(s, p, window):
+		if ps.spells.find(null) == -1:
+			return false
+	elif ps.hand.has(c):
 		if k != "quick" or p != s.current or ps.spells.find(null) == -1:
 			return false
 	elif ps.spells.has(c) and not c.face_up:
@@ -682,6 +693,18 @@ static func fits(s: DuelState, p: int, c, window: String, subject) -> bool:
 	if sp.has("modes"):
 		return not open_modes(s, p, c, window, subject).is_empty()
 	return feasible(s, p, c, window, subject)
+
+
+## Makyura the Destructor / Jetroid: may p activate a Trap Card from the hand right now?
+static func hand_trap_ok(s: DuelState, p: int, window: String) -> bool:
+	var ps := s.players[p]
+	if int(ps.once_names.get("#makyura", -1)) == s.turn and int(ps.once_names.get("#hand_trap_used", -1)) != s.turn:
+		return true   # Makyura: "you can activate 1 Trap Card from your hand this turn"
+	if window == "attack" and not s.pending_attack.is_empty() and not s.pending_attack.get("negated", false):
+		var t = s.pending_attack["target"]
+		if t != null and t.owner == p and t.face_up and not t.negated and EffectRunner.fx(t).get("jetroid", false):
+			return true   # Jetroid: "At the time this card is selected as an attack target ..., you can activate Trap Card(s) from your hand."
+	return false
 
 
 ## Which of a multi-effect card's effects could be used right now (indices into "modes").
@@ -807,6 +830,15 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			if int(s.players[p].once_names.get("killed_def", -1)) != s.turn:
 				return false
 			return not s.players[p].monsters().filter(func(m): return m.face_up and m.level() == 8 and m.frame() != "xyz").is_empty()
+		"gagagaback":
+			var ps_g := s.players[p]
+			if int(ps_g.once_names.get("Gagagaback", -1)) == s.turn or ps_g.free_zone() == -1 or ps_g.no_summon_turn == s.turn or s.ss_locked(p):
+				return false
+			var died: Array = ps_g.gy.filter(func(g): return int(g.tags.get("battle_gy", -1)) == s.turn and g.gy_turn == s.turn)
+			return not died.filter(func(g): return g.cname().begins_with("Gagaga")).is_empty()
+		"armored_xyz":
+			return s.players[p].spells.filter(func(x): return x == null).size() >= 1 and not s.players[p].monsters().filter(func(m): return m.face_up).is_empty() \
+					and not s.players[p].gy.filter(func(g): return g.is_monster() and g.frame() == "xyz").is_empty()
 		"two_zones":
 			var fz := 0
 			for z in s.players[p].field:
@@ -2256,6 +2288,47 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 					auto_j.append(x)
 			for x in s.choose(p, Loc.t("%s: destroy %d Spells/Traps") % [name, n_j], pool_j, n_j, auto_j.slice(0, n_j), false, c):
 				events.append_array(s._destroy_st(x))
+		"armored_xyz":
+			# "Target 1 face-up monster you control and 1 Xyz Monster in your GY; equip that monster from your GY to that monster on the field."
+			var hosts_a: Array = ps.monsters().filter(func(m): return m.face_up)
+			var xs_a: Array = ps.gy.filter(func(g): return g.is_monster() and g.frame() == "xyz")
+			if not hosts_a.is_empty() and not xs_a.is_empty():
+				var best_x: Array = s._best_monsters(xs_a, 1)
+				var x_a = s.pick1(p, Loc.t("%s: equip which Xyz Monster from your GY?") % name, xs_a, best_x[0], c)
+				var low_h = hosts_a[0]
+				for m in hosts_a:
+					if s.atk_of(m, false) < s.atk_of(low_h, false):
+						low_h = m
+				var h_a = s.pick1(p, Loc.t("%s: equip it to which monster?") % name, hosts_a, low_h, c)
+				events.append_array(s.equip_monster(p, x_a, h_a, "armored"))
+		"rope_of_life":
+			# "Discard your entire hand (min.1), then target 1 of those monsters; Special Summon it, and if you do, it gains 800 ATK."
+			var dead_r = s.get_meta("battle_dead") if s.has_meta("battle_dead") else null
+			for h in ps.hand.duplicate():
+				ps.hand.erase(h)
+				s._to_gy(ps, h)
+				events.append({"type": "discard", "player": p, "card": h})
+			if dead_r != null and ps.gy.has(dead_r) and s.can_revive(dead_r) and ps.free_zone() != -1:
+				ps.gy.erase(dead_r)
+				events.append_array(s._special(p, dead_r, "effect"))
+				if ps.field.has(dead_r):
+					dead_r.atk_mod += 800
+					events.append(_ev(p, dead_r, Loc.t("%s: +800 ATK") % dead_r.cname()))
+		"gagagaback":
+			ps.once_names["Gagagaback"] = s.turn
+			var died_g: Array = ps.gy.filter(func(g): return int(g.tags.get("battle_gy", -1)) == s.turn and g.gy_turn == s.turn and s.can_revive(g))
+			var n_g := 0
+			for g in died_g:
+				if ps.free_zone() == -1:
+					break
+				ps.gy.erase(g)
+				events.append_array(s._special(p, g, "effect", "def"))
+				n_g += 1
+			if n_g > 0:
+				events.append_array(s._damage(p, 600 * n_g))
+		"reflect_turn":
+			ps.once_names["#reflect"] = s.turn
+			events.append(_ev(p, c, Loc.t("%s: this turn your opponent's damage effects hit them instead") % name))
 		"attr_lock":
 			ps.once_names["#attr_lock"] = s.turn
 			ps.once_names["#attr_lock_a"] = str(a[1])

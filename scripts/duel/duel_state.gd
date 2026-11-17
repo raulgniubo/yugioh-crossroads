@@ -246,7 +246,9 @@ var battle_foe: CardInst = null
 var battle_shield := -1
 ## True while an attack is being worked out (the Damage Step).
 var in_damage_step := false
-var last_tribute_summon_turn := -1   # Triple Star Trion: "sent there this turn as a Tribute for a successful Tribute Summon"
+var last_tribute_summon_turn := -1
+var fx_src = null                    # the card whose effect is resolving right now (set by EffectRunner.run_list)
+var redirecting := false             # (a damage redirect is running: don't bounce it back again)   # Triple Star Trion: "sent there this turn as a Tribute for a successful Tribute Summon"
 
 
 ## Pick n of cands. `auto` is what the rules would take on their own (AI, tests, a forced pick).
@@ -560,6 +562,12 @@ func _end_battle() -> Array:
 		if int(u["turn"]) == turn and int(u["def"]) != 0 and bc.def_mod_turn == turn:
 			bc.def_mod_t -= int(u["def"])
 	bp_undo.clear()
+	# Blackwing - Calima the Haze: "Special Summon that target, but banish it at the end of the Battle Phase."
+	for q in 2:
+		for m in players[q].monsters():
+			if int(m.tags.get("banish_end_bp", -1)) == turn:
+				events.append({"type": "effect", "player": q, "card": m, "text": Loc.t("%s is banished") % m.cname()})
+				events.append_array(_banish(m))
 	for q in 2:
 		for m in players[q].monsters():
 			if int(m.tags.get("f0_back", -1)) == turn and m.orig_owner != -1:
@@ -1429,6 +1437,8 @@ func flip_summon(p: int, c: CardInst) -> Array:
 
 
 func can_change_position(p: int, c: CardInst) -> bool:
+	if not mon_equips(c, "shocktopus").is_empty():
+		return false   # Shocktopus: "it cannot change its battle position"
 	if c.tags.get("pos_locked", false):
 		return false   # Changing Destiny: "it cannot change its battle position while it is face-up on the field"
 	if str(c.data.get("race", "")) == "Dragon" and SpellRules.field_flag(self, "dragon_jar"):
@@ -1463,7 +1473,7 @@ func can_activate(p: int, c: CardInst) -> bool:
 		if sp["k"] == "field" or ps.speed < speed_need(c):
 			return false
 	if ps.hand.has(c):
-		if c.is_trap():
+		if c.is_trap() and not SpellRules.hand_trap_ok(self, p, "open"):
 			return false
 		if sp["k"] != "field" and ps.spells.find(null) == -1:
 			return false
@@ -1524,6 +1534,8 @@ func chain_add(p: int, c: CardInst, target = null, window := "open", subject = n
 			return []
 	if ps.hand.has(c):
 		ps.hand.erase(c)
+		if c.is_trap() and int(ps.once_names.get("#makyura", -1)) == turn:
+			ps.once_names["#hand_trap_used"] = turn
 		if sp["k"] == "field":
 			if ps.field_spell != null:
 				events.append_array(_destroy_st(ps.field_spell))
@@ -1845,6 +1857,7 @@ func can_attack(p: int, c: CardInst) -> bool:
 			and int(c.tags.get("no_attack_on", -1)) != turn
 			and not c.tags.get("rai_locked", false)
 			and not EffectRunner.fx(c).get("never_attack", false)
+			and int(c.tags.get("no_attack_until", -1)) < turn
 			and not (EffectRunner.fx(c).get("attack_needs_family", "") != "" and not c.negated and players[p].monsters().filter(func(m): return m != c and m.face_up and m.cname().begins_with(str(EffectRunner.fx(c)["attack_needs_family"]))).is_empty())
 			and not (EffectRunner.fx(c).get("no_attack_no_material", false) and c.overlays.is_empty())
 			and not restrict_locks(c) and not held_by_illusionist(c)
@@ -1970,6 +1983,77 @@ func gy_ignite(p: int, c: CardInst) -> Array:
 
 
 ## Union monsters riding on `m` as Equip Cards (Y-Dragon Head, Z-Metal Tank).
+## Put a monster card in `holder`'s Spell & Trap Zone as an Equip Card on `host` (Truckroid, Shocktopus, Kiseitai,
+## Armored Xyz, Number 6). `kind` says what it does there; mon_equips() finds them.
+func equip_monster(holder: int, card: CardInst, host: CardInst, kind: String) -> Array:
+	var hp := players[holder]
+	var zone := hp.spells.find(null)
+	if zone == -1 or host == null or not (players[0].field.has(host) or players[1].field.has(host)):
+		return []
+	var events := []
+	for q in 2:
+		var pq := players[q]
+		if pq.field.has(card):
+			for o in card.overlays:
+				_to_gy(players[o.owner], o)
+			card.overlays.clear()
+			pq.field[pq.field.find(card)] = null
+			events.append_array(_monster_left(card))
+		pq.gy.erase(card)
+		pq.banished.erase(card)
+	card.reset_mods()
+	if card.orig_owner != -1 and card.orig_owner == holder:
+		card.orig_owner = -1
+	elif card.owner != holder:
+		card.orig_owner = card.owner
+	card.owner = holder
+	card.face_up = true
+	card.attack_pos = true
+	hp.spells[zone] = card
+	card.equipped_to = host
+	card.tags["eq_kind"] = kind
+	events.append({"type": "activate", "player": holder, "card": card, "zone": zone})
+	events.append({"type": "effect", "player": holder, "card": card, "text": Loc.t("%s is equipped to %s") % [card.cname(), host.cname()]})
+	return events
+
+
+## The monster cards equipped to m by equip_monster (of one kind, or any).
+func mon_equips(m: CardInst, kind := "") -> Array:
+	return unions_on(m).filter(func(u): return u.tags.has("eq_kind") and (kind == "" or str(u.tags["eq_kind"]) == kind))
+
+
+## Send a face-up card from a Spell & Trap Zone to the GY as a cost (not destroyed).
+func send_st(c: CardInst) -> Array:
+	for q in 2:
+		var z := players[q].spells.find(c)
+		if z != -1:
+			players[q].spells[z] = null
+			var ev := SpellRules.left_field(self, c)
+			_to_gy(players[c.owner], c)
+			ev.append({"type": "destroy_st", "player": q, "card": c, "zone": z})
+			return ev
+	return []
+
+
+## A Set Trap of p's that has `flag` in its rules and can be flipped now (Crimson Fire, Doppelganger and friends).
+func set_trap_with(p: int, flag: String) -> CardInst:
+	for st in players[p].spells:
+		if st != null and not st.face_up and st.is_trap() and st.set_turn < turn and SpellRules.spec(st).get(flag, false) and not SpellRules.blocked(self, st):
+			return st
+	return null
+
+
+func _flip_trap(st: CardInst) -> Array:
+	var p := st.owner
+	var z := players[p].spells.find(st)
+	st.face_up = true
+	var ev := [{"type": "activate", "player": p, "card": st, "zone": z}]
+	players[p].spells[z] = null
+	_to_gy(players[p], st)
+	ev.append({"type": "destroy_st", "player": p, "card": st, "zone": z})
+	return ev
+
+
 func unions_on(m: CardInst) -> Array:
 	var out := []
 	for q in 2:
@@ -2424,6 +2508,17 @@ func resolve_attack() -> Array:
 	var rai_t: CardInst = pending_attack["target"]
 	var pre: Array = []
 	var t_was_def: bool = rai_t != null and not rai_t.attack_pos
+	# Kiseitai: "When your opponent's monster attacks this card in face-down Defense Position, this card becomes an Equip Spell Card
+	# equipped to the attacking monster (No damage calculation is conducted)."
+	if rai_a != null and rai_t != null and not rai_t.face_up and not rai_t.attack_pos and EffectRunner.fx(rai_t).get("kiseitai", false) and players[rai_t.owner].spells.has(null):
+		pending_attack = {}
+		in_damage_step = false
+		battle_shield = -1
+		gy_fx_off = -1
+		bye_bye = -1
+		rai_t.face_up = true
+		return equip_monster(rai_t.owner, rai_t, rai_a, "kiseitai")
+	var lp_before: Array = [players[0].lp, players[1].lp]
 	# Galaxy Dragon: "+1000 ATK during the Damage Step only" vs a Dragon, and that monster's effects are negated.
 	if rai_a != null and rai_t != null and rai_a.face_up and not rai_a.negated and EffectRunner.fx(rai_a).get("galaxy_dragon", false) and rai_t.face_up and str(rai_t.data.get("race", "")) == "Dragon":
 		bp_boost(rai_a, 1000)
@@ -2440,6 +2535,39 @@ func resolve_attack() -> Array:
 			var foe_r: CardInst = pair[1]
 			if rr.face_up and not rr.negated and EffectRunner.fx(rr).get("rai_rider", false) and foe_r.owner != rr.owner and players[foe_r.owner].field.has(foe_r) and foe_r.face_up:
 				foe_r.tags["rai_locked"] = true
+	# Heartfelt Appeal: "When you take battle damage from your opponent's direct attack: Take control of the 1 face-up monster your
+	# opponent controls with the highest DEF, until your next End Phase. Its effects are negated, also it cannot declare an attack."
+	if rai_a != null and rai_t == null and not is_over():
+		var dp := opponent(rai_a.owner)
+		var ha := set_trap_with(dp, "heartfelt")
+		var foes_h: Array = players[rai_a.owner].monsters().filter(func(m): return m.face_up)
+		if ha != null and players[dp].lp < int(lp_before[dp]) and not foes_h.is_empty() and players[dp].free_zone() != -1 \
+				and choose_option(dp, Loc.t("Activate Heartfelt Appeal?"), [Loc.t("Activate"), Loc.t("No")], 0, ha) == 0:
+			ev.append_array(_flip_trap(ha))
+			var top: Array = []
+			var best_def := -1
+			for m in foes_h:
+				best_def = maxi(best_def, def_of(m))
+			for m in foes_h:
+				if def_of(m) == best_def:
+					top.append(m)
+			var took = pick1(dp, Loc.t("Heartfelt Appeal: take which monster?"), top, top[0], ha)
+			ev.append_array(_take_control(took, dp, turn + 1))
+			took.tags["neg_until"] = turn + 1
+			took.tags["no_attack_until"] = turn + 1
+			took.negated = true
+	# Armored Xyz: "At the end of the Damage Step, if the equipped monster attacked: You can send this card to the GY; that attacking
+	# monster can make a second attack in a row."
+	if rai_a != null and players[rai_a.owner].field.has(rai_a) and not is_over():
+		var arm_a := mon_equips(rai_a, "armored")
+		if not arm_a.is_empty() and int(rai_a.tags.get("armored_again", -1)) != turn \
+				and choose_option(rai_a.owner, Loc.t("Send %s to the GY so %s can attack again?") % [arm_a[0].cname(), rai_a.cname()], [Loc.t("Send it"), Loc.t("No")], 0, arm_a[0]) == 0:
+			rai_a.tags["armored_again"] = turn
+			ev.append_array(send_st(arm_a[0]))
+			if rai_a.bonus_attacks_turn != turn:
+				rai_a.bonus_attacks = 0
+				rai_a.bonus_attacks_turn = turn
+			rai_a.bonus_attacks += 1
 	# Lineage of Destruction looks for this: the attacker destroyed a Defense Position monster by battle.
 	if rai_a != null and rai_t != null and t_was_def and players[rai_a.owner].field.has(rai_a) and not players[rai_t.owner].field.has(rai_t):
 		players[rai_a.owner].once_names["killed_def"] = turn
@@ -2844,6 +2972,14 @@ func _battle_kill(winner_c: CardInst, loser: CardInst) -> Array:
 		events.append_array(EffectRunner.trigger(self, winner_c, "kill", {"victim": loser}))
 	if loser.cname() == "Helpoemer" and players[loser.owner].gy.has(loser):
 		loser.tags["helpo_gy"] = loser.gy_turn
+	if players[loser.owner].gy.has(loser) and not is_over():
+		# Truckroid: "If this card destroys an opponent's monster by battle and sends it to the GY: Equip the destroyed monster to this card."
+		if players[winner_c.owner].field.has(winner_c) and winner_c.face_up and not winner_c.negated and EffectRunner.fx(winner_c).get("truckroid", false) and loser.owner != winner_c.owner:
+			events.append_array(equip_monster(winner_c.owner, loser, winner_c, "truckroid"))
+		# Shocktopus: "When this card is destroyed by battle with an opponent's monster and sent to the Graveyard: You can equip this card to that opponent's monster."
+		elif EffectRunner.fx(loser).get("shocktopus", false) and players[winner_c.owner].field.has(winner_c) and winner_c.owner != loser.owner \
+				and players[loser.owner].spells.has(null) and choose_option(loser.owner, Loc.t("Equip Shocktopus to %s?") % winner_c.cname(), [Loc.t("Equip it"), Loc.t("No")], 0, loser) == 0:
+			events.append_array(equip_monster(loser.owner, loser, winner_c, "shocktopus"))
 	if players[loser.owner].gy.has(loser):
 		loser.tags["battle_gy"] = loser.gy_turn   # (Destiny HERO - Fear Monger: "destroyed by battle and sent there")
 		# Ambulance Rescueroid: "Once per turn, when a monster you control is destroyed by battle and sent to the GY: You can Special Summon that monster in Defense Position."
@@ -2983,7 +3119,12 @@ func _after_attack(attacker: CardInst, target = null) -> Array:
 
 ## ATK including effects. `attacking` = it's the attacker in this battle; vs = the other monster.
 func atk_of(c: CardInst, attacking: bool, vs: CardInst = null, battling := false) -> int:
+	if not mon_equips(c, "shocktopus").is_empty():
+		return 0   # Shocktopus: "That monster's ATK becomes 0"
 	var v := c.atk()
+	var arm := mon_equips(c, "armored")
+	if not arm.is_empty():
+		v = int(arm[0].data.get("atk", 0))   # Armored Xyz: "Change the equipped monster's ATK to this card's ATK."
 	var total := maxi(0, v + EffectRunner.atk_bonus(self, c, attacking, vs, battling) + SpellRules.atk_bonus(self, c, attacking and battling, vs))
 	# Dark City: "If a "Destiny HERO" monster attacks a monster with a higher ATK, the attacking monster gains 1000 ATK during damage calculation only."
 	if battling and attacking and vs != null and vs.face_up and c.cname().contains("Destiny HERO") and SpellRules.field_flag(self, "dark_city") and atk_of(vs, false) > total:
@@ -3115,6 +3256,8 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	var zone := ps.field.find(c)
 	if zone == -1:
 		return []
+	if not by_battle and effect_by == opponent(c.owner) and int(ps.once_names.get("#gardna", -1)) == turn:
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("Red Gardna: %s is not destroyed") % c.cname()}]
 	if not by_battle and st_unaffected(c):
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is unaffected") % c.cname()}]
 	if not by_battle and st_resolving != null and st_target != c and c.face_up and not c.negated and EffectRunner.fx(c).get("dd_immune", false):
@@ -3175,7 +3318,7 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 	var by_opp_any := not by_battle and effect_by != -1 and effect_by != c.owner
 	var by_opp_fx := by_opp_any and c.face_up
 	# "If the equipped monster would be destroyed by battle or card effect, destroy this card instead."
-	var riders := unions_on(c).filter(func(u): return not EffectRunner.fx(u).get("union", {}).get("no_shield", false) and not EffectRunner.fx(u).get("hand_ignite", {}).has("equip_to") \
+	var riders := unions_on(c).filter(func(u): return not u.tags.has("eq_kind") and not EffectRunner.fx(u).get("union", {}).get("no_shield", false) and not EffectRunner.fx(u).get("hand_ignite", {}).has("equip_to") \
 			and (not EffectRunner.fx(u).has("zw") or str(EffectRunner.fx(u)["zw"].get("shield", "")) == ("battle" if by_battle else "fx")))
 	if c.tags.has("absorbed") and (not by_battle or EffectRunner.fx(c).get("absorb_half", false)):
 		riders = riders.filter(func(u): return u.uid != int(c.tags["absorbed"]))   # (Relinquished's monster only takes its place in battle)
@@ -3428,6 +3571,8 @@ func _best_monsters(list: Array, n: int) -> Array:
 
 func _destroy_st(c: CardInst) -> Array:
 	var ps := players[c.owner]
+	if not ps.spells.has(c) and ps.field_spell != c and players[opponent(c.owner)].spells.has(c):
+		ps = players[opponent(c.owner)]   # (a monster equipped on the other side)
 	var zone := ps.spells.find(c)
 	if ps.field_spell == c:
 		ps.field_spell = null
@@ -3584,7 +3729,7 @@ func _cleanup() -> Array:
 	var drain := SpellRules.field_flag(self, "drain")
 	for q in 2:
 		for m in players[q].monsters():
-			m.negated = m.face_up and (drain or m.negated_turn == turn or m.neg_perm or (gorgon_turn == turn and not m.attack_pos))
+			m.negated = m.face_up and (drain or m.negated_turn == turn or m.neg_perm or int(m.tags.get("neg_until", -1)) >= turn or (gorgon_turn == turn and not m.attack_pos))
 	# Earthbound Immortal: "If there is no face-up Field Spell on the field, destroy this card."
 	var any_field := (players[0].field_spell != null and players[0].field_spell.face_up) or (players[1].field_spell != null and players[1].field_spell.face_up)
 	if not any_field:
@@ -3933,6 +4078,26 @@ func _damage(p: int, amount: int, battle := false) -> Array:
 	if battle and next_bd_zero[p] == turn:
 		next_bd_zero[p] = -1   # Blackwing - Mistral the Silver Shield: "Reduce the next battle damage you would take this turn to 0."
 		return [{"type": "effect", "player": p, "card": null, "text": "No battle damage!"}]
+	if not battle and not redirecting and effect_by == opponent(p):
+		var foe := opponent(p)
+		# Nature's Reflection / Extra Veiler: "your opponent takes any effect damage you would have taken from their card effects this turn, instead."
+		if int(ps.once_names.get("#reflect", -1)) == turn:
+			redirecting = true
+			var back := [{"type": "effect", "player": p, "card": null, "text": Loc.t("The damage is turned back!")}]
+			back.append_array(_damage(foe, amount))
+			redirecting = false
+			return back
+		# Crimson Fire: "When your opponent activates a Spell/Trap Card that would inflict damage to you, while you control a
+		# "Red Dragon Archfiend": Your opponent takes twice the effect damage you would have taken, instead."
+		var cf := set_trap_with(p, "crimson_fire")
+		if cf != null and st_resolving != null and st_resolving.owner == foe and not st_resolving.is_monster() \
+				and not ps.monsters().filter(func(m): return m.face_up and m.cname().contains("Red Dragon Archfiend")).is_empty() \
+				and choose_option(p, Loc.t("Activate Crimson Fire? Your opponent takes %d instead") % (amount * 2), [Loc.t("Activate"), Loc.t("No")], 0, cf) == 0:
+			redirecting = true
+			var cfe := _flip_trap(cf)
+			cfe.append_array(_damage(foe, amount * 2))
+			redirecting = false
+			return cfe
 	if not battle:
 		# Black-Winged Dragon: "If you would take damage from a card effect, place 1 Black Feather Counter on this card instead."
 		for bw in ps.monsters():
@@ -3941,6 +4106,8 @@ func _damage(p: int, amount: int, battle := false) -> Array:
 				return [{"type": "effect", "player": p, "card": bw, "text": Loc.t("%s takes a Black Feather Counter instead of the damage") % bw.cname()}]
 	ps.lp = maxi(0, ps.lp - amount)
 	var events := [{"type": "lp", "player": p, "lp": ps.lp, "delta": -amount}]
+	if not battle and ps.lp > 0 and not redirecting:
+		events.append_array(_after_effect_damage(p, amount))
 	if turbo and amount >= 1000:
 		events.append_array(_speed(p, -(amount / 1000)))
 	if ps.lp == 0:
@@ -3951,6 +4118,32 @@ func _damage(p: int, amount: int, battle := false) -> Array:
 		else:
 			_set_winner(opponent(p), Loc.t("%s's Life Points hit zero.") % ps.name)
 		events.append({"type": "win", "player": winner, "reason": win_reason})
+	return events
+
+
+## Traps that answer effect damage once it is taken (Doppelganger, Black Feather Beacon).
+func _after_effect_damage(p: int, amount: int) -> Array:
+	var ps := players[p]
+	var foe := opponent(p)
+	var events := []
+	# Doppelganger: "When you take damage from the effect of a monster your opponent controls, inflict the same amount of damage to your opponent."
+	var dg := set_trap_with(p, "doppelganger")
+	if dg != null and effect_by == foe and fx_src != null and fx_src is CardInst and fx_src.is_monster() and fx_src.owner == foe \
+			and choose_option(p, Loc.t("Activate Doppelganger? %d damage back") % amount, [Loc.t("Activate"), Loc.t("No")], 0, dg) == 0:
+		redirecting = true
+		events.append_array(_flip_trap(dg))
+		events.append_array(_damage(foe, amount))
+		redirecting = false
+	# Black Feather Beacon: "Activate only when you take damage from a card effect. Special Summon 1 Level 4 or lower "Blackwing" monster from your hand."
+	var bf := set_trap_with(p, "feather_beacon")
+	var bws: Array = ps.hand.filter(func(h): return h.is_monster() and h.cname().begins_with("Blackwing") and h.level() <= 4 and h.frame() in ["normal", "effect"])
+	if bf != null and not is_over() and not bws.is_empty() and ps.free_zone() != -1 and ps.no_summon_turn != turn and not ss_locked(p) \
+			and choose_option(p, Loc.t("Activate Black Feather Beacon?"), [Loc.t("Activate"), Loc.t("No")], 0, bf) == 0:
+		events.append_array(_flip_trap(bf))
+		var best_b: Array = _best_monsters(bws, 1)
+		var bw = pick1(p, Loc.t("Black Feather Beacon: which Blackwing?"), bws, best_b[0], bf)
+		ps.hand.erase(bw)
+		events.append_array(_special(p, bw, "effect"))
 	return events
 
 

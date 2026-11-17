@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.58
+
+**Bucket 0, part 4: the new duel rules, plus 23 more duelist cards**
+
+- **Monsters that become Equip Cards:** a monster can now sit in the Spell & Trap Zone equipped to another monster, on either side of the field, and leaves with its host. That unlocked Kiseitai (attack it face-down and it latches onto the attacker, then feeds you LP), Shocktopus (the monster that beat it drops to 0 ATK and can't change position), Truckroid (keeps what it destroys and gains its ATK), Armored Xyz, Number 6: Chronomaly Atlandis and ZW - Ultimate Shield.
+- **Damage that turns around:** Nature's Reflection, Extra Veiler, Crimson Fire (with Red Dragon Archfiend, double back), Doppelganger, Black Feather Beacon, Heartfelt Appeal, and Red Gardna's shield. Traps like Crimson Fire and Doppelganger ask you at the moment the damage hits.
+- **Traps from the hand:** Makyura the Destructor (1 Trap from the hand that turn) and Jetroid (when it's attacked).
+- Also: Blackwing - Calima the Haze, Rope of Life, Gagagaback.
+- Truckroid and Makyura had older, simpler effects that didn't match their text; they're rebuilt.
+
+Not done or not checked: 57 duelist cards are still to build (Magical Hats, Dark Designator, Number 99, Chaos Chimera Dragon, Divine Neos, Future Fusion, Fusion Gate, Kunai with Chain, Blue Flame Swordsman, Cyber Dragon Zwei and others). Armored Xyz doesn't pass on its Attribute yet. Duelists still don't put the cards from 0.33.55 on in their decks; that's the deck pass. Monster Legends flavor text is still English in Spanish. Played by the test duels (30 games), not watched.
+
 ## What is in 0.33.57
 
 **Bucket 0, part 3: 33 more duelist cards with their full effects** (each tested against its printed text, Spanish included, in their era's booster set right away)

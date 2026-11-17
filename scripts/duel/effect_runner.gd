@@ -19,6 +19,11 @@ static func _ev(p: int, c, text: String) -> Dictionary:
 static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> int:
 	var f := fx(c)
 	var b := union_boost(s, c)
+	if not c.negated:
+		for e in s.mon_equips(c, "truckroid"):
+			b += e.atk()   # Truckroid: "Gains ATK equal to the combined ATK of the monsters equipped to it by this effect."
+		for e in s.mon_equips(c, "atlandis"):
+			b += e.atk() / 2   # Number 6: Chronomaly Atlandis: "gains ATK equal to half the ATK of that equipped monster"
 	if c.atk_mod_turn == s.turn:
 		b += c.atk_mod_t
 	b += c.atk_mod
@@ -132,6 +137,9 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 static func def_bonus(s: DuelState, c) -> int:
 	var f := fx(c)
 	var u := union_boost(s, c)
+	for zu in s.unions_on(c):
+		if not zu.negated:
+			u += int(fx(zu).get("zw", {}).get("def", 0))   # ZW - Ultimate Shield: "It gains 2000 DEF."
 	if int(c.tags.get("tmp_def_until", -1)) >= s.turn:
 		u += int(c.tags.get("tmp_def", 0))   # Blustering Winds
 	if f.get("absorb", false) and s.absorbed_by(c) != null:
@@ -438,6 +446,12 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 	if cond == "kuriphoton":
 		var pk := s.players[p]
 		return int(pk.once_names.get("Kuriphoton#gy", -1)) != s.turn and not pk.hand.filter(func(h): return h.is_monster() and h.cname().contains("Photon") and h.cname() != "Kuriphoton").is_empty()
+	if cond == "atlandis":
+		var me = null
+		for m in s.players[p].monsters():
+			if m.face_up and m.cname() == "Number 6: Chronomaly Atlandis" and not m.overlays.is_empty() and not s.mon_equips(m, "atlandis").is_empty():
+				return true
+		return false
 	if cond == "saber_shark":
 		if int(s.players[p].once_names.get("#saber_n_turn", -1)) == s.turn and int(s.players[p].once_names.get("#saber_n", 0)) >= 2:
 			return false
@@ -985,6 +999,15 @@ static func trigger(s: DuelState, c, key: String, ctx := {}) -> Array:
 
 static func standby(s: DuelState, p: int) -> Array:
 	var events := []
+	# Kiseitai: "During each of your opponent's Standby Phases, increase your Life Points by half of the ATK of the monster equipped with this card."
+	var kq := s.opponent(p)
+	for st in s.players[kq].spells + s.players[p].spells:
+		if st != null and st.owner == kq and str(st.tags.get("eq_kind", "")) == "kiseitai" and st.equipped_to != null:
+			var gain_k: int = s.atk_of(st.equipped_to, false) / 2
+			if gain_k > 0:
+				s.players[kq].lp += gain_k
+				events.append({"type": "lp", "player": kq, "lp": s.players[kq].lp, "delta": gain_k})
+				events.append(_ev(kq, st, Loc.t("%s: +%d LP") % [st.cname(), gain_k]))
 	# Synchro Soldier: "during your next Standby Phase the removed from play monster returns to the field."
 	for b in s.players[p].banished.duplicate():
 		if b.tags.has("back_standby") and int(b.tags["back_standby"]) < s.turn and s.players[p].free_zone() != -1:
@@ -1980,6 +2003,15 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 	var pa: Dictionary = s.pending_attack
 	var battling: bool = not pa.is_empty() and not pa.get("negated", false)
 	match kind:
+		"calima":
+			return ps.gy.has(c) and s.current != p and s.phase == DuelState.Phase.BATTLE and ps.monsters().is_empty() and window in ["attack", "battle_start", "chain"] \
+					and ps.no_summon_turn != s.turn and not s.ss_locked(p) and not ps.gy.filter(func(g): return g.frame() == "synchro" and s.can_revive(g)).is_empty()
+		"extra_veiler":
+			return ps.hand.has(c) and window == "summon" and _subject != null and not (_subject is Dictionary) and _subject.owner != p and _subject.tags.get("ss", false) \
+					and ps.free_zone() != -1 and ps.no_summon_turn != s.turn and not s.ss_locked(p) and not s.big_locked(p, c, true)
+		"red_gardna":
+			return ps.hand.has(c) and window == "chain" and not s.chain.is_empty() and int(s.chain.back()["player"]) != p \
+					and int(ps.once_names.get("#gardna", -1)) != s.turn and not ps.monsters().filter(func(m): return m.face_up and m.cname().contains("Red Dragon Archfiend")).is_empty()
 		"jetstream":
 			return ps.hand.has(c) and window == "damage" and battling and pa["target"] != null \
 					and not [pa["attacker"], pa["target"]].filter(func(m): return m != null and m.owner == p and m.cname().begins_with("Blackwing")).is_empty()
@@ -2132,6 +2164,26 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 	var events := []
 	var hit: bool = not s.pending_attack.is_empty() and int(s.pending_attack["player"]) != p and not s.pending_attack.get("negated", false)
 	match kind:
+		"calima":
+			events.append_array(s._banish(c))
+			var syn_c: Array = ps.gy.filter(func(g): return g.frame() == "synchro" and s.can_revive(g))
+			if not syn_c.is_empty():
+				var best_c: Array = s._best_monsters(syn_c, 1)
+				var t_c = s.pick1(p, Loc.t("%s: Special Summon which Synchro Monster?") % c.cname(), syn_c, best_c[0], c)
+				ps.gy.erase(t_c)
+				events.append_array(s._special(p, t_c, "effect"))
+				t_c.tags["banish_end_bp"] = s.turn
+		"extra_veiler":
+			ps.hand.erase(c)
+			events.append_array(s._special(p, c, "effect"))
+			ps.once_names["#reflect"] = s.turn
+			events.append(_ev(p, c, Loc.t("%s: this turn your opponent takes the effect damage you would take") % c.cname()))
+		"red_gardna":
+			ps.hand.erase(c)
+			s._to_gy(ps, c)
+			events.append({"type": "discard", "player": p, "card": c})
+			ps.once_names["#gardna"] = s.turn
+			events.append(_ev(p, c, Loc.t("%s: your monsters can't be destroyed by your opponent's card effects this turn") % c.cname()))
 		"jetstream", "hedge_guard":
 			var pa_j: Dictionary = s.pending_attack
 			var mine_j: Array = [pa_j["attacker"], pa_j["target"]].filter(func(m): return m != null and m.owner == p and ps.field.has(m))
@@ -2489,6 +2541,13 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 		else:
 			lose = a > s.def_of(tgt)
 	match kind:
+		"calima":
+			return hit
+		"extra_veiler":
+			return true
+		"red_gardna":
+			var lk: Dictionary = s.chain.back() if not s.chain.is_empty() else {}
+			return not lk.is_empty() and SpellRules.would_destroy(lk)
 		"jetstream", "hedge_guard":
 			var mine_a = tgt if (tgt != null and tgt.owner == p) else (att if att != null and att.owner == p else null)
 			return mine_a != null and lose
@@ -2604,7 +2663,9 @@ static func run_list(s: DuelState, p: int, c, actions: Array, ctx: Dictionary) -
 		return []
 	var events := []
 	var was_by := s.effect_by
+	var was_src = s.fx_src
 	s.effect_by = p
+	s.fx_src = c
 	for a in actions:
 		if s.is_over():
 			break
@@ -2658,6 +2719,7 @@ static func run_list(s: DuelState, p: int, c, actions: Array, ctx: Dictionary) -
 			continue
 		events.append_array(run(s, p, c, a, ctx))
 	s.effect_by = was_by
+	s.fx_src = was_src
 	return events
 
 
@@ -2842,6 +2904,35 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"makyura":
+			if int(ps.once_names.get("Makyura the Destructor", -1)) != s.turn:
+				ps.once_names["Makyura the Destructor"] = s.turn
+				ps.once_names["#makyura"] = s.turn
+				events.append(_ev(p, c, Loc.t("%s: you can activate 1 Trap Card from your hand this turn") % name))
+		"atlandis_equip":
+			var nums: Array = ps.gy.filter(func(g): return g.is_monster() and g.cname().begins_with("Number"))
+			if not nums.is_empty() and ps.field.has(c):
+				var best_n: Array = s._best_monsters(nums, 1)
+				var t_n = s.pick1(p, Loc.t("%s: equip which \"Number\" monster?") % name, nums, best_n[0], c)
+				events.append_array(s.equip_monster(p, t_n, c, "atlandis"))
+		"atlandis_fire":
+			var eq_a: Array = s.mon_equips(c, "atlandis")
+			if not eq_a.is_empty() and not c.overlays.is_empty():
+				var o_a = c.overlays.pop_back()
+				s._to_gy(s.players[o_a.owner], o_a)
+				events.append({"type": "detach", "player": p, "card": c})
+				events.append_array(s.send_st(eq_a[0]))
+				var lose_a: int = opp.lp - opp.lp / 2
+				events.append_array(s._lose_lp(s.opponent(p), lose_a))
+				events.append(_ev(p, c, Loc.t("%s halves your opponent's Life Points") % name))
+				ps.no_attack_turn = s.turn
+		"ultimate_shield":
+			var bx: Array = ps.banished.filter(func(b): return b.is_monster() and b.frame() == "xyz")
+			if not bx.is_empty() and ps.free_zone() != -1 and ps.no_summon_turn != s.turn:
+				var best_x: Array = s._best_monsters(bx, 1)
+				var t_x = s.pick1(p, Loc.t("%s: Special Summon which banished Xyz Monster?") % name, bx, best_x[0], c)
+				ps.banished.erase(t_x)
+				events.append_array(s._special(p, t_x, "effect", "def"))
 		"saber_shark":
 			var ps_n: int = int(ps.once_names.get("#saber_n", 0)) if int(ps.once_names.get("#saber_n_turn", -1)) == s.turn else 0
 			ps.once_names["#saber_n"] = ps_n + 1

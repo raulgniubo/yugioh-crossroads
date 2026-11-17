@@ -112,6 +112,7 @@ func _ready() -> void:
 		_test_cards_b0zx()
 		_test_cards_b0c3()
 		_test_cards_b0c4()
+		_test_cards_b0c5()
 		await _test_album()
 		_test_save_slots()
 		_test_turbo_setup()
@@ -8743,6 +8744,183 @@ func _test_cards_b0c4() -> void:
 	check(not dh.attack_pos and s.players[1].field.has(dh), "D - Shield: Diamond Dude in Defense, still there")
 
 
+func _test_cards_b0c5() -> void:
+	# Kiseitai: attacked face-down, it becomes an Equip on the attacker; LP in the opponent's Standby Phase.
+	var s := _new_state(6101)
+	_battle_ready(s)
+	var ki := _mon(s, 1, "Kiseitai", 0, false)
+	ki.face_up = false
+	var bw := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw, ki)
+	s.resolve_attack()
+	check(s.players[1].spells.has(ki) and ki.equipped_to == bw and not s.players[1].field.has(ki), "Kiseitai: equipped to Blue-Eyes, no battle")
+	var lp: int = s.players[1].lp
+	EffectRunner.standby(s, 0)
+	check(s.players[1].lp == lp + 1500, "Kiseitai: +1500 LP in the opponent's Standby Phase (got %d)" % (s.players[1].lp - lp))
+	s._destroy(bw)
+	check(s.players[1].gy.has(ki), "Kiseitai: goes to the GY with its host")
+	# Shocktopus: destroyed by battle, equips to the attacker: ATK 0, position locked.
+	s = _new_state(6102)
+	_battle_ready(s)
+	var sh := _mon(s, 1, "Shocktopus", 0)
+	var bw2 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw2, sh)
+	s.resolve_attack()
+	check(sh.equipped_to == bw2 and s.atk_of(bw2, false) == 0 and not s.can_change_position(0, bw2), "Shocktopus: Blue-Eyes at 0 ATK and locked")
+	# Truckroid: takes what it destroys and gains its ATK.
+	s = _new_state(6103)
+	_battle_ready(s)
+	var tr := _mon(s, 0, "Truckroid", 0)
+	var weak := _mon(s, 1, "Kuriboh", 0)
+	s.declare_attack(0, tr, weak)
+	s.resolve_attack()
+	check(weak.equipped_to == tr and s.players[0].spells.has(weak) and s.atk_of(tr, false) == 1300, "Truckroid: Kuriboh equipped, 1000 + 300 (got %d)" % s.atk_of(tr, false))
+	s._destroy(tr)
+	check(s.players[1].gy.has(weak), "Truckroid: the equipped Kuriboh goes to its owner's GY")
+	# Armored Xyz: the host's ATK becomes the Xyz's, and it can attack again.
+	s = _new_state(6104)
+	_battle_ready(s)
+	var cg := _mon(s, 0, "Celtic Guardian", 0)
+	var lev := _in(s, 0, "Number 17: Leviathan Dragon", "gy")
+	var ax := _set_trap(s, 0, "Armored Xyz")
+	s.respond(0, ax, null)
+	s.chain_resolve()
+	check(lev.equipped_to == cg and s.atk_of(cg, false) == 2000, "Armored Xyz: Celtic Guardian at 2000 (got %d)" % s.atk_of(cg, false))
+	s.declare_attack(0, cg, null)
+	s.resolve_attack()
+	check(s.players[0].gy.has(lev) and s.attacks_left(cg) == 1, "Armored Xyz: sent, Celtic Guardian attacks again")
+	# Number 6: equips a Number from the GY, halves the opponent's LP.
+	s = _main_ready(6105)
+	var at := _xyz_with(s, 0, "Number 6: Chronomaly Atlandis", 0, 2)
+	var n17 := _in(s, 0, "Number 17: Leviathan Dragon", "gy")
+	EffectRunner.run_list(s, 0, at, EffectRunner.fx(at)["xyz"], {})
+	check(n17.equipped_to == at and s.atk_of(at, false) == 2600 + 1000, "Atlandis: +1000 from Leviathan Dragon (got %d)" % s.atk_of(at, false))
+	EffectRunner.run_list(s, 0, at, EffectRunner.fx(at)["ignite"]["do"], {})
+	check(s.players[1].lp == 4000 and s.players[0].gy.has(n17), "Atlandis: opponent at 4000")
+	# ZW - Ultimate Shield: back comes a banished Xyz; +2000 DEF on Utopia.
+	s = _main_ready(6106)
+	var ut := _mon(s, 0, "Number 39: Utopia", 0)
+	var bx := _in(s, 0, "Number 17: Leviathan Dragon", "gy")
+	s.players[0].gy.erase(bx)
+	s.players[0].banished.append(bx)
+	var us := _mon(s, 0, "ZW - Ultimate Shield", 1)
+	EffectRunner.run_list(s, 0, us, EffectRunner.fx(us)["summon"], {})
+	check(s.players[0].field.has(bx) and not bx.attack_pos, "Ultimate Shield: Leviathan Dragon back in Defense")
+	var d0: int = s.def_of(ut)
+	EffectRunner.run_list(s, 0, us, EffectRunner.fx(us)["ignite"]["do"], {})
+	check(s.def_of(ut) == d0 + 2000, "Ultimate Shield: Utopia +2000 DEF")
+	# Nature's Reflection: Ookazi hits its caster.
+	s = _main_ready(6107)
+	s.current = 1
+	var nr := _set_trap(s, 0, "Nature's Reflection")
+	nr.set_turn = 0
+	s.respond(0, nr, null)
+	s.chain_resolve()
+	var oz := _in(s, 1, "Ookazi", "hand")
+	var lp0: int = s.players[0].lp
+	var lp1: int = s.players[1].lp
+	s.activate(1, oz)
+	check(s.players[0].lp == lp0 and s.players[1].lp == lp1 - 800, "Nature's Reflection: Ookazi's 800 goes back")
+	# Crimson Fire: with Red Dragon Archfiend, the caster takes double.
+	s = _main_ready(6108)
+	s.current = 1
+	_mon(s, 0, "Red Dragon Archfiend", 0)
+	_set_trap(s, 0, "Crimson Fire")
+	var oz2 := _in(s, 1, "Ookazi", "hand")
+	lp0 = s.players[0].lp
+	lp1 = s.players[1].lp
+	s.activate(1, oz2)
+	check(s.players[0].lp == lp0 and s.players[1].lp == lp1 - 1600, "Crimson Fire: 1600 to the caster")
+	# Doppelganger: monster effect damage, same back.
+	s = _main_ready(6109)
+	_set_trap(s, 0, "Doppelganger")
+	var src := _mon(s, 1, "Celtic Guardian", 0)
+	lp1 = s.players[1].lp
+	EffectRunner.run_list(s, 1, src, [["damage", 500]], {})
+	check(s.players[1].lp == lp1 - 500, "Doppelganger: 500 back (got %d)" % (lp1 - s.players[1].lp))
+	# Black Feather Beacon: effect damage, a Blackwing from the hand.
+	s = _main_ready(6110)
+	_set_trap(s, 0, "Black Feather Beacon")
+	var bora := _in(s, 0, "Blackwing - Bora the Spear", "hand")
+	var oz3 := _in(s, 1, "Ookazi", "hand")
+	s.current = 1
+	s.activate(1, oz3)
+	check(s.players[0].field.has(bora), "Black Feather Beacon: Bora comes out")
+	# Heartfelt Appeal: hit directly, take their highest-DEF monster.
+	s = _new_state(6111)
+	_battle_ready(s)
+	_set_trap(s, 1, "Heartfelt Appeal")
+	var att := _mon(s, 0, "Celtic Guardian", 0)
+	var wall := _mon(s, 0, "Mother Grizzly", 1)
+	s.declare_attack(0, att, null)
+	s.resolve_attack()
+	s.turn += 1
+	s.current = 1
+	s._cleanup()
+	check(s.players[1].field.has(att) and att.negated and not s.can_attack(1, att) and s.players[0].field.has(wall), "Heartfelt Appeal: took Celtic Guardian (highest DEF), negated, no attacks")
+	# Red Gardna: monsters can't be destroyed by the opponent's card effects this turn.
+	s = _main_ready(6112)
+	var rda := _mon(s, 0, "Red Dragon Archfiend", 0)
+	var rg := _in(s, 0, "Red Gardna", "hand")
+	s.players[0].once_names["#gardna"] = s.turn
+	s.effect_by = 1
+	s._destroy(rda)
+	s.effect_by = -1
+	check(s.players[0].field.has(rda), "Red Gardna: Red Dragon Archfiend survives the effect")
+	# Makyura: destroyed, a Trap from the hand this turn (once).
+	s = _main_ready(6113)
+	var mk := _mon(s, 0, "Makyura the Destructor", 0)
+	s._destroy(mk)
+	var hw := _in(s, 0, "Nature's Reflection", "hand")
+	check(s.can_activate(0, hw), "Makyura: a Trap can be activated from the hand")
+	s.activate(0, hw)
+	var hw2 := _in(s, 0, "Nature's Reflection", "hand")
+	check(not s.can_activate(0, hw2), "Makyura: only 1")
+	# Jetroid: attacked, Traps from the hand.
+	s = _new_state(6114)
+	_battle_ready(s)
+	var jr := _mon(s, 1, "Jetroid", 0)
+	var mf := _in(s, 1, "Mirror Force", "hand")
+	var bw8 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw8, jr)
+	check(s.responses(1, "attack").has(mf), "Jetroid: Mirror Force from the hand")
+	# Rope of Life: the destroyed monster comes back with +800.
+	s = _new_state(6115)
+	_battle_ready(s)
+	_set_trap(s, 1, "Rope of Life")
+	var cg2 := _mon(s, 1, "Celtic Guardian", 0)
+	_in(s, 1, "Kuriboh", "hand")
+	var bw9 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw9, cg2)
+	s.resolve_attack()
+	check(s.players[1].field.has(cg2) and s.atk_of(cg2, false) == 2200 and s.players[1].hand.is_empty(), "Rope of Life: Celtic Guardian back at 2200, hand gone")
+	# Gagagaback: the Gagaga destroyed by battle comes back, 600 each.
+	s = _new_state(6116)
+	_battle_ready(s)
+	var gg := _mon(s, 1, "Gagaga Magician", 0)
+	var gb := _set_trap(s, 1, "Gagagaback")
+	var bw10 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw10, gg)
+	s.resolve_attack()
+	var lpg: int = s.players[1].lp
+	s.respond(1, gb, null)
+	s.chain_resolve()
+	check(s.players[1].field.has(gg) and not gg.attack_pos and s.players[1].lp == lpg - 600, "Gagagaback: Gagaga Magician back in Defense, 600 damage")
+	# Calima: no monsters in the opponent's Battle Phase, a Synchro comes back until the end of it.
+	s = _new_state(6117)
+	_battle_ready(s)
+	var ca := _in(s, 1, "Blackwing - Calima the Haze", "gy")
+	var sd2 := _in(s, 1, "Stardust Dragon", "gy")
+	sd2.proper = true
+	var bw11 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw11, null)
+	check(EffectRunner.quick_can(s, 1, ca, "attack"), "Calima: usable")
+	EffectRunner.quick_run(s, 1, ca)
+	check(s.players[1].field.has(sd2), "Calima: Stardust Dragon is back")
+	s._end_battle()
+	check(s.players[1].banished.has(sd2), "Calima: banished at the end of the Battle Phase")
+
+
 func _dev_need() -> void:
 	var all := {}
 	for k in SignatureDecks.WISH:
@@ -8752,4 +8930,7 @@ func _dev_need() -> void:
 	for n in all:
 		print("NEED\t", n, "\t", all[n])
 	print("NEED_TOTAL ", all.size())
+	for k in SignatureDecks.WISH:
+		var a2: Dictionary = SignatureDecks.audit(k)
+		print("READY\t", k, "\t", ", ".join(a2["ready"]), "\t|STAND\t", ", ".join(a2["stand_ins"]), "\t|N ", a2["plays"].size())
 
