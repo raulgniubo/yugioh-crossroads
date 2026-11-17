@@ -347,13 +347,15 @@ func _settle_flat(size: Vector3, pos: Vector3) -> Vector3:
 ## How high the low paving is at a spot (sidewalks, plazas, steps of a few cm): the tallest
 ## flat slab under it up to knee height, 0 on the road. People stand on it rather than in it
 ## (the paving has no collider, the walking floor is the road level).
-func walk_top(x: float, z: float) -> float:
+func walk_top(x: float, z: float, from_y := 0.0) -> float:
 	var p := Vector2(x, z)
-	var best := 0.0
+	var best := from_y
 	for cell in [Vector2i(floori(x / 24.0), floori(z / 24.0)), Vector2i(99999, 99999)]:
 		for e in _flats.get(cell, []):
 			var t: float = e[1]
-			if t > best and t <= 0.45 and t >= 0.03 and (e[0] as Rect2).has_point(p):
+			# Only slabs a little above where you stand (a sidewalk, a pier's planks over its
+			# frame): anything higher is a thing you are beside, not on.
+			if t > best and t <= from_y + 0.45 and t >= from_y + 0.03 and (e[0] as Rect2).has_point(p):
 				best = t
 	return best
 

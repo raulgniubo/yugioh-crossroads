@@ -655,8 +655,8 @@ func _physics_process(delta: float) -> void:
 	_door_marks_step(delta)
 	# Standing on the low paving (sidewalks are drawn a few cm up, the floor you walk on is the
 	# road): lift your figure onto it, so your feet are never inside the slab.
-	if _figure and city and _inside == "" and city.has_method("walk_top") and _player.position.y < 0.3:
-		var lift := maxf(0.0, float(city.walk_top(_player.position.x, _player.position.z)) - _player.position.y)
+	if _figure and city and _inside == "" and city.has_method("walk_top"):
+		var lift := maxf(0.0, float(city.walk_top(_player.position.x, _player.position.z, _player.position.y)) - _player.position.y)
 		_figure.position.y = lerpf(_figure.position.y, lift, clampf(delta * 14.0, 0.0, 1.0))
 	elif _figure and _figure.position.y != 0.0:
 		_figure.position.y = 0.0
@@ -882,6 +882,8 @@ func _add_npc(d: Dictionary, offset: Vector3) -> void:
 		f.position = d["pos"] + offset
 		if city and city.has_method("clear_spot"):
 			f.position = city.call("clear_spot", f.position)
+		if city and city.has_method("walk_top") and offset == Vector3.ZERO:
+			f.position.y = float(city.walk_top(f.position.x, f.position.z, f.position.y))   # (on the sidewalk or the pier, not in it)
 		f.rotation.y = d.get("face", 0.0)
 		var model_key: String = d.get("char", "")
 		if model_key == "":
