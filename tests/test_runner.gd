@@ -109,6 +109,7 @@ func _ready() -> void:
 		_test_cards_b0dm()
 		_test_cards_b0gx()
 		_test_cards_b05d()
+		_test_cards_b0zx()
 		await _test_album()
 		_test_save_slots()
 		_test_turbo_setup()
@@ -8021,6 +8022,108 @@ func _test_cards_b05d() -> void:
 	s.chain_resolve()
 	s.resolve_attack()
 	check(s.players[1].lp == lpr - 1600 and not s.players[0].field.has(big), "Prideful Roar: 1600 paid, Blue-Eyes destroyed (LP %d)" % s.players[1].lp)
+
+
+func _xyz_with(s: DuelState, p: int, name: String, zone: int, mats: int) -> DuelState.CardInst:
+	var x := _mon(s, p, name, zone)
+	for i in mats:
+		x.overlays.append(s._make(_cid("Kuriboh"), p))
+	return x
+
+
+## The story duelists' remaining cards, ZEXAL era (v0.33.56).
+func _test_cards_b0zx() -> void:
+	# Giga-Brilliant: detach 1, your monsters +300.
+	var s := _main_ready(5801)
+	var gb := _xyz_with(s, 0, "Number 20: Giga-Brilliant", 0, 2)
+	var cg := _mon(s, 0, "Celtic Guardian", 1)
+	EffectRunner.run_list(s, 0, gb, EffectRunner.fx(gb)["ignite"]["do"], {})
+	check(s.atk_of(cg, false) == 1700 and s.atk_of(gb, false) == 2100, "Giga-Brilliant: everyone +300")
+	# Gold Rat: draw 1, then 1 back.
+	s = _main_ready(5802)
+	var gr := _xyz_with(s, 0, "Number 56: Gold Rat", 0, 3)
+	for i in 3:
+		_in(s, 0, "Celtic Guardian", "deck")
+	var h: int = s.players[0].hand.size()
+	var d: int = s.players[0].deck.size()
+	EffectRunner.run_list(s, 0, gr, EffectRunner.fx(gr)["ignite"]["do"], {})
+	check(s.players[0].hand.size() == h and s.players[0].deck.size() == d, "Gold Rat: drew 1 and put 1 back")
+	# Galaxy Queen: not destroyed by battle, pierces.
+	s = _new_state(5803)
+	_battle_ready(s)
+	var gq := _xyz_with(s, 1, "Number 83: Galaxy Queen", 0, 3)
+	EffectRunner.run_list(s, 1, gq, EffectRunner.fx(gq)["ignite"]["do"], {})
+	var bw := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw, gq)
+	s.resolve_attack()
+	check(s.players[1].field.has(gq), "Galaxy Queen: not destroyed by battle")
+	# Acid Golem: no Special Summons; no materials, no attack.
+	s = _new_state(5804)
+	_battle_ready(s)
+	var ag := _mon(s, 0, "Number 30: Acid Golem of Destruction", 0)
+	check(not s.can_attack(0, ag), "Acid Golem: no materials, no attack")
+	check(EffectRunner.fx_lock_ss(s, 0), "Acid Golem: its controller cannot Special Summon")
+	# Rai Rider: what it battled can't attack.
+	s = _new_state(5805)
+	_battle_ready(s)
+	var rr := _mon(s, 1, "Rai Rider", 0, false)
+	var at := _mon(s, 0, "Celtic Guardian", 0)
+	s.declare_attack(0, at, rr)
+	s.resolve_attack()
+	at.attacked_turn = -1
+	at.attack_count = 0
+	s.turn += 2
+	check(not s.can_attack(0, at), "Rai Rider: the monster it battled cannot attack anymore")
+	# Flelf: +Level of a revealed monster.
+	s = _main_ready(5806)
+	var fl := _mon(s, 0, "Flelf", 0)
+	_in(s, 0, "Blue-Eyes White Dragon", "hand")
+	EffectRunner.run_list(s, 0, fl, EffectRunner.fx(fl)["ignite"]["do"], {})
+	check(fl.level() == 10, "Flelf: Level 2 + 8 (got %d)" % fl.level())
+	# Photon Satellite: both become the combined Level.
+	s = _main_ready(5807)
+	var sat := _mon(s, 0, "Photon Satellite", 0)
+	var ph := _mon(s, 0, "Photon Crusher", 1)
+	EffectRunner.run_list(s, 0, sat, EffectRunner.fx(sat)["ignite"]["do"], {})
+	check(sat.level() == 5 and ph.level() == 5, "Photon Satellite: both Level 5 (%d, %d)" % [sat.level(), ph.level()])
+	# Gogogo Goram: Summoned, it changes position.
+	s = _main_ready(5808)
+	var go := _mon(s, 0, "Gogogo Goram", 0)
+	EffectRunner.run_list(s, 0, go, EffectRunner.fx(go)["any_summon"], {})
+	check(not go.attack_pos, "Gogogo Goram: changes to Defense Position when Summoned")
+	# Photon Booster: every monster with that name is 2000 this turn.
+	s = _main_ready(5809)
+	var pc1 := _mon(s, 0, "Photon Crusher", 0)
+	var pc2 := _mon(s, 1, "Photon Crusher", 0)
+	var pbo := _in(s, 0, "Photon Booster", "hand")
+	s.activate(0, pbo, pc1)
+	check(s.atk_of(pc1, false) == 2000 and s.atk_of(pc2, false) == 2000, "Photon Booster: both Photon Crushers at 2000")
+	# Galaxy Queen's Light: your others take the Level 7+ monster's Level.
+	s = _main_ready(5810)
+	_mon(s, 0, "Blue-Eyes White Dragon", 0)
+	var small := _mon(s, 0, "Celtic Guardian", 1)
+	var gql := _in(s, 0, "Galaxy Queen's Light", "hand")
+	s.activate(0, gql)
+	check(small.level() == 8, "Galaxy Queen's Light: Celtic Guardian is Level 8")
+	# Lumenize: negate the attack, a LIGHT monster gains its ATK.
+	s = _new_state(5811)
+	_battle_ready(s)
+	var lt := _mon(s, 1, "Celtic Guardian", 0)
+	lt.data = lt.data.duplicate()
+	lt.data["attribute"] = "LIGHT"
+	var lu := _set_trap(s, 1, "Lumenize")
+	var bw2 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw2, lt)
+	s.respond(1, lu)
+	s.chain_resolve()
+	check(s.pending_attack.get("negated", false) and s.atk_of(lt, false) == 4400, "Lumenize: negated, +3000 ATK (got %d)" % s.atk_of(lt, false))
+	# Big Wave Small Wave: WATER destroyed, WATER from the hand.
+	s = _main_ready(5812)
+	_mon(s, 0, "7 Colored Fish", 0)
+	var fish := _in(s, 0, "Mother Grizzly", "hand")
+	var bws := _in(s, 0, "Big Wave Small Wave", "hand")
+	s.activate(0, bws)
+	check(s.players[0].field.has(fish), "Big Wave Small Wave: Mother Grizzly comes in for the destroyed fish")
 
 
 ## Every card the game can play can be had somewhere: a booster set, Lumen (her own cards) or

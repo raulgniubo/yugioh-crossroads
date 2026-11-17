@@ -327,7 +327,7 @@ static func max_attacks(c) -> int:
 
 
 static func piercing(s: DuelState, p: int, c) -> bool:
-	if fx(c).get("piercing", false) or int(c.tags.get("pierce_turn", -1)) == s.turn \
+	if fx(c).get("piercing", false) or int(c.tags.get("pierce_turn", -1)) == s.turn or int(c.tags.get("gq_until", -1)) >= s.turn \
 			or (c.tags.has("lancer") and int(c.tags["lancer"][0]) == s.turn and int(c.tags["lancer"][1]) == s.players[c.owner].attacks_this_turn):
 		return true
 	for dr in s.players[p].monsters():
@@ -366,6 +366,8 @@ static func survives_battle(s: DuelState, c) -> bool:
 			return true   # Viser Des: "This card cannot be destroyed by battle while the targeted monster is on the field."
 	if f.get("battle_immune", false):
 		return true
+	if int(c.tags.get("gq_until", -1)) >= s.turn:
+		return true   # Number 83: Galaxy Queen
 	if f.has("battle_immune_vs_max") and s.battle_foe != null and s.atk_of(s.battle_foe, false) <= int(f["battle_immune_vs_max"]):
 		return true   # Different Dimension Dragon: "cannot be destroyed by battle with a monster that has 1900 or less ATK"
 	if int(c.tags.get("unbreak_turn", -1)) == s.turn:
@@ -411,6 +413,10 @@ static func no_tribute(s: DuelState, p: int, c) -> bool:
 
 
 static func _cond(s: DuelState, p: int, cond: String) -> bool:
+	if cond == "monster_in_hand":
+		return not s.players[p].hand.filter(func(h): return h.is_monster() and h.level() > 0).is_empty()
+	if cond == "other_photon":
+		return s.players[p].monsters().filter(func(m): return m.face_up and m.cname().contains("Photon") and m.frame() != "xyz").size() >= 2
 	if cond == "zephyros":
 		var pz := s.players[p]
 		var ups := pz.monsters().filter(func(m): return m.face_up).size() + pz.spells.filter(func(x): return x != null and x.face_up).size()
@@ -1009,6 +1015,14 @@ static func _vayu_plans(s: DuelState, p: int, own_lv := 1) -> Array:
 			if not ps.extra.filter(func(x): return x.frame() == "synchro" and x.cname().begins_with("Blackwing") and x.level() == lv).is_empty():
 				out.append([g, lv])
 	return out
+
+
+## Is player p under a "You cannot Special Summon any monsters" lock from a monster (Acid Golem)?
+static func fx_lock_ss(s: DuelState, p: int) -> bool:
+	for m in s.players[p].monsters():
+		if m.face_up and not m.negated and fx(m).get("lock_ss_owner", false):
+			return true
+	return false
 
 
 # ------------------------------------------------------------------ ignition effects
@@ -2652,6 +2666,64 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"boost_all_own":
+			for m in ps.monsters():
+				if m.face_up:
+					m.atk_mod += int(a[1])
+			events.append(_ev(p, c, Loc.t("%s: your monsters gain %d ATK") % [name, int(a[1])]))
+		"hand_to_deck":
+			for i in int(a[1]):
+				if ps.hand.is_empty():
+					break
+				var worst: Array = ps.hand.duplicate()
+				worst.sort_custom(func(x, y): return (x.atk() if x.is_monster() else 1500) < (y.atk() if y.is_monster() else 1500))
+				var back = s.pick1(p, Loc.t("%s: shuffle 1 card from your hand into the Deck") % name, ps.hand, worst[0], c)
+				ps.hand.erase(back)
+				ps.deck.append(back)
+				ps.deck.shuffle()
+				events.append({"type": "to_deck", "player": p, "card": back})
+		"galaxy_queen":
+			for m in ps.monsters():
+				m.tags["gq_until"] = s.turn + 1
+			events.append(_ev(p, c, Loc.t("%s: your monsters can't be destroyed by battle and inflict piercing damage until the opponent's next End Phase") % name))
+		"acid_golem":
+			# "During your Standby Phase: Detach 1 Xyz Material from this card or take 2000 damage."
+			if ps.field.has(c):
+				if not c.overlays.is_empty() and s.choose_option(p, Loc.t("%s: detach 1 material, or take 2000 damage?") % name, ["Detach 1", "Take 2000"], 0 if ps.lp > 2000 or c.overlays.size() > 0 else 1, c) == 0:
+					var o_a = c.overlays.pop_back()
+					s._to_gy(s.players[o_a.owner], o_a)
+					events.append({"type": "detach", "player": p, "card": c})
+				else:
+					events.append_array(s._damage(p, 2000))
+		"flelf":
+			var mons_f: Array = ps.hand.filter(func(h): return h.is_monster() and h.level() > 0)
+			if not mons_f.is_empty():
+				var big_f: Array = mons_f.duplicate()
+				big_f.sort_custom(func(x, y): return x.level() > y.level())
+				var shown = s.pick1(p, Loc.t("%s: reveal 1 monster") % name, mons_f, big_f[0], c)
+				c.lv_set = c.level() + shown.level()
+				c.lv_turn = s.turn
+				events.append(_ev(p, c, Loc.t("%s reveals %s: Level %d until the End Phase") % [name, shown.cname(), c.level()]))
+		"photon_satellite":
+			var ph: Array = ps.monsters().filter(func(m): return m != c and m.face_up and m.cname().contains("Photon") and m.frame() != "xyz")
+			if not ph.is_empty():
+				var with_p = s.pick1(p, Loc.t("%s: which Photon monster?") % name, ph, ph[0], c)
+				var sum_p: int = c.level() + with_p.level()
+				for m in [c, with_p]:
+					m.lv_set = sum_p
+					m.lv_turn = -1
+				events.append(_ev(p, c, Loc.t("%s and %s are Level %d") % [name, with_p.cname(), sum_p]))
+		"flip_pos_self":
+			if ps.field.has(c) and c.face_up:
+				c.attack_pos = not c.attack_pos
+				events.append({"type": "position", "player": p, "card": c, "zone": ps.field.find(c)})
+		"mill_family":
+			var fam: Array = ps.deck.filter(func(d): return d.is_monster() and d.cname().begins_with(str(a[1])))
+			if not fam.is_empty():
+				var m_f = s.pick1(p, Loc.t("%s: send 1 \"%s\" monster from your Deck to the GY") % [name, str(a[1])], fam, fam[0], c)
+				ps.deck.erase(m_f)
+				s._to_gy(ps, m_f)
+				events.append({"type": "mill", "player": p, "card": m_f})
 		"zephyros":
 			# "You can return 1 face-up card you control to the hand; Special Summon this card, and if you do, take 400 damage."
 			var ups: Array = ps.monsters().filter(func(m): return m.face_up) + ps.spells.filter(func(x): return x != null and x.face_up)

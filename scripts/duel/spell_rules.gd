@@ -29,6 +29,14 @@ const FX := {
 	"Echo Resonance": {"k": "normal", "cond": "echo_ready", "do": [["echo_resonance"]]},
 	"Echo Call": {"k": "normal", "do": [["search", {"has": "Lumen"}]]},
 	"Echo Veil": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["draw_if_own", "Lumen", 1]]},
+	# ---------------------------------------------------------------- The story duelists' remaining cards (ZEXAL era)
+	"Photon Booster": {"k": "normal", "t": "any_face", "must": {"attr": "LIGHT", "max_lv": 4}, "do": [["photon_boost", "target"]]},
+	"Galaxy Queen's Light": {"k": "normal", "cond": "own_lv7", "do": [["queens_light"]]},
+	"Lumenize": {"k": "trap", "win": ["attack"], "cond": "own_light", "do": [["lumenize"], ["negate_attack"]]},
+	"Photon Current": {"k": "trap", "win": ["attack"], "cond": "photon_current", "do": [["photon_current"]]},
+	"Big Wave Small Wave": {"k": "normal", "cond": "own_water", "do": [["big_wave"]]},
+	"Dodododraw": {"k": "normal", "cond": "dododo", "do": [["dodododraw"]]},
+	"Photon Stream of Destruction": {"k": "quick", "cond": "photon_stream", "t": "any_card", "do": [["banish", "target"]]},
 	# ---------------------------------------------------------------- The story duelists' remaining cards (5D's era)
 	"Raptor Wing Strike": {"k": "normal", "cond": "raptor_wing", "do": [["raptor_wing"]]},
 	"Blackboost": {"k": "trap", "win": ["free"], "cond": "two_bw_tuners", "do": [["blackboost"]]},
@@ -763,6 +771,27 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return s.players[p].free_zone() != -1 and not s.players[p].gy.filter(func(g): return g.cname() == "Harpie Lady" or str(CardEffects.of(g.cname()).get("name_as_fg", "")) == "Harpie Lady").is_empty()
 		"own_amazoness":
 			return not s.players[p].monsters().filter(func(m): return m.face_up and m.cname().contains("Amazoness")).is_empty()
+		"own_lv7":
+			return not s.players[p].monsters().filter(func(m): return m.face_up and m.frame() != "xyz" and m.level() >= 7).is_empty()
+		"own_light":
+			return not s.players[p].monsters().filter(func(m): return m.face_up and str(m.data.get("attribute", "")) == "LIGHT").is_empty()
+		"photon_current":
+			var pc: Dictionary = s.pending_attack
+			if pc.is_empty() or int(pc["player"]) == p or pc.get("negated", false) or pc["target"] == null:
+				return false
+			var tg = pc["target"]
+			return tg.owner == p and tg.face_up and str(tg.data.get("attribute", "")) == "LIGHT" and str(tg.data.get("race", "")) == "Dragon"
+		"own_water":
+			return not s.players[p].monsters().filter(func(m): return m.face_up and str(m.data.get("attribute", "")) == "WATER").is_empty()
+		"dododo":
+			var pd := s.players[p]
+			return int(pd.once_names.get("Dodododraw", -1)) != s.turn and not (pd.hand.filter(func(h): return h.is_monster() and h.cname().begins_with("Dododo")) \
+					+ pd.monsters().filter(func(m): return m.face_up and m.cname().begins_with("Dododo"))).is_empty()
+		"photon_stream":
+			var pg := s.players[p]
+			var ge: bool = not pg.monsters().filter(func(m): return m.face_up and m.cname().contains("Galaxy-Eyes")).is_empty()
+			var gepd: bool = not pg.monsters().filter(func(m): return m.face_up and m.cname() == "Galaxy-Eyes Photon Dragon").is_empty()
+			return ge and (s.current == p or gepd)
 		"raptor_wing":
 			var pr := s.players[p]
 			return not pr.monsters().filter(func(m): return m.face_up and m.cname().begins_with("Blackwing")).is_empty() \
@@ -2865,6 +2894,81 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			md["race"] = str(a[5])
 			c.data = md
 			events.append_array(s._special(p, c, "effect", "def"))
+		"photon_boost":
+			for t in _sel(s, p, c, str(a[1]), ctx):
+				if t.is_token():
+					continue
+				for q in 2:
+					for m in s.players[q].monsters():
+						if m.face_up and m.cname() == t.cname():
+							var gap: int = 2000 - s.atk_of(m, false)
+							if m.atk_mod_turn != s.turn:
+								m.atk_mod_t = 0
+								m.atk_mod_turn = s.turn
+							m.atk_mod_t += gap
+							events.append(_ev(p, m, Loc.t("%s has 2000 ATK this turn") % m.cname()))
+		"queens_light":
+			var hi: Array = ps.monsters().filter(func(m): return m.face_up and m.frame() != "xyz" and m.level() >= 7)
+			if not hi.is_empty():
+				var src = s.pick1(p, Loc.t("%s: target 1 Level 7 or higher monster") % name, hi, hi[0], c)
+				var lv_q: int = src.level()
+				for m in ps.monsters():
+					if m != src and m.face_up and m.frame() != "xyz":
+						m.lv_set = lv_q
+						m.lv_turn = s.turn
+				events.append(_ev(p, c, Loc.t("%s: your other monsters are Level %d until the End Phase") % [name, lv_q]))
+		"lumenize":
+			var att_l = s.pending_attack.get("attacker")
+			var lights: Array = ps.monsters().filter(func(m): return m.face_up and str(m.data.get("attribute", "")) == "LIGHT")
+			if att_l != null and not lights.is_empty():
+				var gain: int = s.atk_of(att_l, false)
+				var best_l: Array = s._best_monsters(lights, 1)
+				var to_l = s.pick1(p, Loc.t("%s: which LIGHT monster gains the ATK?") % name, lights, best_l[0] if not best_l.is_empty() else lights[0], c)
+				to_l.tmp_atk = (to_l.tmp_atk if to_l.tmp_until >= s.turn else 0) + gain
+				to_l.tmp_until = s.turn if s.current == p else s.turn + 1
+				events.append(_ev(p, to_l, Loc.t("%s: %+d ATK until your next End Phase") % [to_l.cname(), gain]))
+		"photon_current":
+			var pa_c: Dictionary = s.pending_attack
+			var t_c = pa_c["target"]
+			var gain_c: int = s.atk_of(pa_c["attacker"], false)
+			if t_c.atk_mod_turn != s.turn:
+				t_c.atk_mod_t = 0
+				t_c.atk_mod_turn = s.turn
+			t_c.atk_mod_t += gain_c
+			t_c.tags["roar_undo"] = [s.turn, gain_c]
+			events.append(_ev(p, t_c, Loc.t("%s: %+d ATK until the end of the Damage Step") % [t_c.cname(), gain_c]))
+		"big_wave":
+			var waters: Array = ps.monsters().filter(func(m): return m.face_up and str(m.data.get("attribute", "")) == "WATER")
+			var gone_w := 0
+			for m in waters:
+				var r_w := s._destroy(m)
+				events.append_array(r_w)
+				if not ps.field.has(m):
+					gone_w += 1
+			for i in gone_w:
+				var hw: Array = ps.hand.filter(func(h): return h.is_monster() and str(h.data.get("attribute", "")) == "WATER" and not CardEffects.of(h.cname()).get("no_special", false) and not CardData.is_extra(h.id))
+				if hw.is_empty() or ps.free_zone() == -1:
+					break
+				var best_w: Array = s._best_monsters(hw, 1)
+				if s.choose_option(p, Loc.t("%s: Special Summon a WATER monster from your hand?") % name, ["Yes", "No"], 0, c) == 1:
+					break
+				var w = s.pick1(p, Loc.t("%s: which one?") % name, hw, best_w[0] if not best_w.is_empty() else hw[0], c)
+				ps.hand.erase(w)
+				events.append_array(s._special(p, w, "effect"))
+		"dodododraw":
+			ps.once_names["Dodododraw"] = s.turn
+			var dd_c: Array = ps.hand.filter(func(h): return h != c and h.is_monster() and h.cname().begins_with("Dododo")) + ps.monsters().filter(func(m): return m.face_up and m.cname().begins_with("Dododo"))
+			if not dd_c.is_empty():
+				var sent = s.pick1(p, Loc.t("%s: send 1 \"Dododo\" monster to the GY") % name, dd_c, dd_c[0], c)
+				if ps.hand.has(sent):
+					ps.hand.erase(sent)
+					s._to_gy(ps, sent)
+				else:
+					ps.field[ps.field.find(sent)] = null
+					s._to_gy(ps, sent)
+					events.append_array(s._monster_left(sent))
+				events.append({"type": "discard", "player": p, "card": sent})
+				events.append_array(s._draw(p, 2))
 		"raptor_wing":
 			var bws: Array = ps.monsters().filter(func(m): return m.face_up and m.cname().begins_with("Blackwing"))
 			if not bws.is_empty():

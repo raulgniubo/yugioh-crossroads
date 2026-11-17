@@ -1829,6 +1829,8 @@ func can_attack(p: int, c: CardInst) -> bool:
 			and int(c.tags.get("sct_turn", -1)) != turn
 			and not _tyranno_blocks(p, c)
 			and int(c.tags.get("no_attack_on", -1)) != turn
+			and not c.tags.get("rai_locked", false)
+			and not (EffectRunner.fx(c).get("no_attack_no_material", false) and c.overlays.is_empty())
 			and not restrict_locks(c) and not held_by_illusionist(c)
 			and not (EffectRunner.fx(c).get("summon_sick", false) and c.summoned_turn == turn)
 			and players[p].lp >= int(EffectRunner.fx(c).get("attack_cost", 0))
@@ -2393,9 +2395,18 @@ func resolve_attack() -> Array:
 	var att0: CardInst = pending_attack["attacker"]
 	if att0 != null and att0.face_up and not att0.negated and EffectRunner.fx(att0).get("negate_opp_gy_fx", false):
 		gy_fx_off = opponent(int(pending_attack["player"]))   # Dododo Warrior
+	var rai_a: CardInst = pending_attack["attacker"]
+	var rai_t: CardInst = pending_attack["target"]
 	var ev := _resolve_attack()
 	in_damage_step = false
 	battle_shield = -1
+	# Rai Rider: "If this card battles an opponent's monster: That monster cannot attack while it is face-up on the field."
+	if rai_a != null and rai_t != null:
+		for pair in [[rai_a, rai_t], [rai_t, rai_a]]:
+			var rr: CardInst = pair[0]
+			var foe_r: CardInst = pair[1]
+			if rr.face_up and not rr.negated and EffectRunner.fx(rr).get("rai_rider", false) and foe_r.owner != rr.owner and players[foe_r.owner].field.has(foe_r) and foe_r.face_up:
+				foe_r.tags["rai_locked"] = true
 	gy_fx_off = -1
 	bye_bye = -1
 	return ev
@@ -3898,6 +3909,8 @@ func _best_in_gy() -> CardInst:
 func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 	var ps := players[p]
 	var pre := []
+	if method != "return" and not c.is_token() and ss_locked(p) and EffectRunner.fx_lock_ss(self, p):
+		return [{"type": "effect", "player": p, "card": c, "text": Loc.t("%s cannot be Special Summoned right now") % c.cname()}]
 	if method == "reborn" and EffectRunner.fx(c).get("tyrant", false):
 		# Tyrant Dragon: "cannot be Special Summoned from the GY, unless you Tribute 1 Dragon monster."
 		var drg: Array = ps.monsters().filter(func(m): return m.face_up and str(m.data.get("race", "")) == "Dragon" and can_tribute_fx(m))
@@ -4377,6 +4390,9 @@ func extra_materials(p: int, c: CardInst) -> Array:
 
 ## Gagaga Head's lock: only Xyz Summons made of Gagaga monsters for the rest of the turn.
 func ss_locked(p: int) -> bool:
+	for m in players[p].monsters():
+		if m.face_up and not m.negated and EffectRunner.fx(m).get("lock_ss_owner", false):
+			return true   # Number 30: Acid Golem of Destruction: "You cannot Special Summon any monsters."
 	return int(players[p].once_names.get("#gagaga_lock", -1)) == turn
 
 
@@ -4518,7 +4534,7 @@ func _sum_atk(arr: Array) -> int:
 
 
 func can_extra_summon(p: int, c: CardInst, any_time := false) -> bool:
-	if (not any_time and (p != current or not _in_main())) or is_over() or not players[p].extra.has(c) or players[p].no_summon_turn == turn:
+	if (not any_time and (p != current or not _in_main())) or is_over() or not players[p].extra.has(c) or players[p].no_summon_turn == turn or EffectRunner.fx_lock_ss(self, p):
 		return false
 	if ss_locked(p) and (c.frame() != "xyz" or EffectRunner.fx(c).has("contact")):
 		return false

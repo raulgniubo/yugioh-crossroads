@@ -5,6 +5,15 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.56
+
+**Bucket 0, part 2: 30 more duelist cards with their full effects** (each tested against its printed text, Spanish included, in their era's booster set right away)
+
+- 5D's: Blackwing - Kochi the Daybreak, Breeze the Zephyr, Zephyros the Elite, Vayu the Emblem of Honor, Raptor Wing Strike, Blackboost, Blackwing - Bombardment, Level Retuner, Power Supplier, Lancer Archfiend, Prideful Roar, Earthbound Immortal Ccapac Apu, Wall of Ivy, Magic Planter, Depth Amulet, Nightmare Archfiends.
+- ZEXAL: Number 20: Giga-Brilliant, Number 30: Acid Golem of Destruction, Number 56: Gold Rat, Number 83: Galaxy Queen, Rai Rider, Flelf, Photon Satellite, Gogogo Goram, Photon Booster, Galaxy Queen's Light, Lumenize, Photon Current, Big Wave Small Wave, Dodododraw, Photon Stream of Destruction.
+
+Not done or not checked: about 108 duelist cards are still to build. Most need new duel rules: monsters used as Equip Cards (Kiseitai, Shocktopus, Truckroid, Armored Xyz), damage-redirect windows (Doppelganger, Crimson Fire, Red Gardna, Extra Veiler, Nature's Reflection), declaring a card name (Dark Designator), and a few with long chains of effects (Magical Hats, Number 99, Chaos Chimera Dragon, Divine Neos). Duelists don't put the new cards in their decks yet. Monster Legends flavor text is still English in Spanish. Played by the test duels (30 games), not watched.
+
 ## What is in 0.33.55
 
 **Step 0 and the first part of bucket 0 of the 1,000-card plan**
