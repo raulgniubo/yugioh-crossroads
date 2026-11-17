@@ -93,7 +93,7 @@ func _build_hud() -> void:
 	for b in [["M   Map", func(): open_guide("places")], ["G   Worlds", func(): open_guide("travel")],
 			["C   Card shop", guide_to_shop], ["J   Quests", func(): open_guide("quests")], ["B   Decks", func(): scene.open_decks()]]:
 		var btn := Button.new()
-		var raw := str(b[0])
+		var raw := Loc.t(str(b[0]))
 		btn.text = Pad.keys(raw)
 		Pad.changed.connect(func():
 			if is_instance_valid(btn):

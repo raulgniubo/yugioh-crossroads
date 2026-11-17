@@ -394,7 +394,11 @@ func _place(st: Dictionary, instant := false) -> void:
 	var at: Vector3 = st["at"]
 	if scene.city and scene.city.has_method("ground_at") and scene._inside == "":
 		at.y = maxf(at.y, float(scene.city.ground_at(at.x, at.z)))
+	if scene.city and scene.city.has_method("walk_top") and scene._inside == "":
+		at.y = maxf(at.y, float(scene.city.walk_top(at.x, at.z)))
 	if st.get("spirit", false):
+		if key == "lumen" and not StoryProgress.recalls("met_lumen"):
+			StoryProgress.remember("met_lumen")      # from here on she goes with you
 		# Lumen: a duel spirit, small and made of light, floating at shoulder height.
 		var sp := LumenSpirit.new()
 		scene.add_child(sp)
@@ -1895,8 +1899,14 @@ func _build_task_ui(title: String, goal := "") -> void:
 	_task_count.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	foot.add_child(_task_count)
 	var pill := PanelContainer.new()
-	pill.add_theme_stylebox_override("panel", UITheme.panel_box(Color(UITheme.GOLD, 0.13), 9, Color(UITheme.GOLD, 0.55)))
+	var pill_sb := UITheme.panel_box(Color(UITheme.GOLD, 0.13), 9, Color(UITheme.GOLD, 0.55))
+	pill_sb.set_content_margin_all(0)
+	pill_sb.shadow_size = 0
+	pill.add_theme_stylebox_override("panel", pill_sb)
 	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# A small chip on the line, never stretched to the height or width of the box.
+	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pill.size_flags_horizontal = Control.SIZE_SHRINK_END
 	foot.add_child(pill)
 	var pm := MarginContainer.new()
 	pm.add_theme_constant_override("margin_left", 8)
@@ -1910,8 +1920,12 @@ func _build_task_ui(title: String, goal := "") -> void:
 	ph.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pm.add_child(ph)
 	var cap := PanelContainer.new()
-	cap.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.9, 0.92, 1.0, 0.95), 5, Color(0.55, 0.6, 0.75)))
+	var cap_sb := UITheme.panel_box(Color(0.9, 0.92, 1.0, 0.95), 5, Color(0.55, 0.6, 0.75))
+	cap_sb.set_content_margin_all(0)
+	cap_sb.shadow_size = 0
+	cap.add_theme_stylebox_override("panel", cap_sb)
 	cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	ph.add_child(cap)
 	var cm := MarginContainer.new()
 	cm.add_theme_constant_override("margin_left", 6)

@@ -650,8 +650,16 @@ func _exit_tree() -> void:
 	Avatars.quiet = false
 
 
+
 func _physics_process(delta: float) -> void:
 	_door_marks_step(delta)
+	# Standing on the low paving (sidewalks are drawn a few cm up, the floor you walk on is the
+	# road): lift your figure onto it, so your feet are never inside the slab.
+	if _figure and city and _inside == "" and city.has_method("walk_top") and _player.position.y < 0.3:
+		var lift := maxf(0.0, float(city.walk_top(_player.position.x, _player.position.z)) - _player.position.y)
+		_figure.position.y = lerpf(_figure.position.y, lift, clampf(delta * 14.0, 0.0, 1.0))
+	elif _figure and _figure.position.y != 0.0:
+		_figure.position.y = 0.0
 	_follow_clock(delta)
 	# Walking around with nobody talking: no portrait on screen needs to move, so the live
 	# ones hold their frame (each was a small 3D view redrawn every other frame for nothing).
@@ -745,15 +753,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseButton:
-		if event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
-			_dragging = event.pressed
+		if event.button_index == MOUSE_BUTTON_RIGHT:
+			_dragging = event.pressed      # right-click drag turns the camera (left click is for everything else)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
 			_arm.spring_length = maxf(2.5, _arm.spring_length - 0.4)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
 			_arm.spring_length = minf(9.0, _arm.spring_length + 0.4)
 	elif event is InputEventMouseMotion and _dragging and not _talking:
-		_yaw -= event.relative.x * 0.006
-		_pitch = clampf(_pitch - event.relative.y * 0.004, -1.1, 0.15)
+		_yaw -= event.relative.x * 0.006 * Settings.mouse_sens
+		_pitch = clampf(_pitch - event.relative.y * 0.004 * Settings.mouse_sens * (-1.0 if Settings.mouse_invert else 1.0), -1.1, 0.15)
 	if _talking:
 		if event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_pause"):
 			# Esc (or B on a pad) always walks away from a conversation, whatever it is asking.
@@ -1911,7 +1919,7 @@ func _build_ui() -> void:
 	_purse = purse
 	_update_counter()
 	# Controls, bottom left.
-	var help := UITheme.label("WASD / stick  move     Shift  run     Drag  look     Scroll  zoom     E  talk / enter     L  ask Lumen     M  map     B  decks     Esc  menu", 17, Color(0.93, 0.95, 1.0, 0.95))
+	var help := UITheme.label("WASD / stick  move     Shift  run     Right-drag  look     Scroll  zoom     E  talk / enter     L  ask Lumen     M  map     B  decks     Esc  menu", 17, Color(0.93, 0.95, 1.0, 0.95))
 	# On a dark strip of its own, so it reads over grass, sand and bright paving alike.
 	var help_bar := PanelContainer.new()
 	var hb := StyleBoxFlat.new()

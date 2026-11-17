@@ -1061,6 +1061,11 @@ func inspect(inst, hidden := false) -> void:
 		if txt == "":
 			txt = note
 		_inspect_text.text = txt if txt != "" else ("Normal Monster" if frame == "normal" else "")
+		# Lumen grows with your bonds: the card prints her 500, so say where the rest comes from.
+		if int(inst.id) == CardData.LUMEN and StoryProgress.bonds() > 0:
+			var b := mini(5, StoryProgress.bonds())
+			_inspect_note.text = Loc.t("500 printed  +%d from your %d bond(s) with her (300 each).") % [300 * b, b]
+			_inspect_note.visible = true
 		# Xyz Materials are public: say what is under the card.
 		if frame == "xyz" and "overlays" in inst:
 			var names: Array = []

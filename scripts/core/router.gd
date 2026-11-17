@@ -518,6 +518,7 @@ func go(path: String) -> void:
 	if _busy:
 		return
 	_busy = true
+	Pad.hint("")                       # each screen sets its own controller hint, if it has one
 	Settings.hold_gave_up = false      # a new place: "hold the frame rate" may try again there
 	_fade.mouse_filter = Control.MOUSE_FILTER_STOP
 	var tw := create_tween()
@@ -582,7 +583,7 @@ func _settle() -> void:
 		if el > 900 and _load_l != null and not _load_l.visible:
 			_load_l.text = Loc.t("Loading")
 			_load_l.visible = true
-		if el > 7000:
+		if el > 9000:
 			break
 		if el > 300 and recent.size() >= 12:
 			var lo := 1e9
@@ -590,8 +591,11 @@ func _settle() -> void:
 			for f in recent:
 				lo = minf(lo, f)
 				hi = maxf(hi, f)
-			# Even: the slowest of the last twelve frames is not far off the fastest.
-			if hi < maxf(34.0, lo * 2.2):
+			# Even, and quick: the slowest of the last twelve frames is not far off the fastest,
+			# and none of them is slow in itself. (Frames that are all equally slow, while the
+			# graphics are still being prepared in the first seconds, used to count as settled:
+			# the Academy then showed at 2 or 3 frames a second for a few seconds.)
+			if hi < maxf(34.0, lo * 2.2) and hi < 70.0:
 				break
 	if _load_l:
 		_load_l.visible = false

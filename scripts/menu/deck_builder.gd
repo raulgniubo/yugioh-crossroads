@@ -69,6 +69,11 @@ func _ready() -> void:
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 12)
 	root.add_child(head)
+	# The tools on a row of their own under it (test hand, tips, share, undo), so the top row
+	# fits in every language and the Done button never runs off the screen.
+	var tools := HBoxContainer.new()
+	tools.add_theme_constant_override("separation", 10)
+	root.add_child(tools)
 	var back := Button.new()
 	back.text = "◀  Back"
 	back.add_theme_font_size_override("font_size", 18)
@@ -110,7 +115,7 @@ func _ready() -> void:
 	hand.custom_minimum_size = Vector2(0, 44)
 	hand.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hand.pressed.connect(_test_hand)
-	head.add_child(hand)
+	tools.add_child(hand)
 	var tips := Button.new()
 	tips.text = Loc.t("Deck tips")
 	tips.tooltip_text = Loc.t("Looks over this deck and points out anything that could trip it up.")
@@ -118,7 +123,7 @@ func _ready() -> void:
 	tips.custom_minimum_size = Vector2(0, 44)
 	tips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	tips.pressed.connect(_show_tips)
-	head.add_child(tips)
+	tools.add_child(tips)
 	var share := Button.new()
 	share.text = Loc.t("Share")
 	share.tooltip_text = Loc.t("Copy this deck as a code to send a friend, or build a deck from a friend's code.")
@@ -126,7 +131,7 @@ func _ready() -> void:
 	share.custom_minimum_size = Vector2(0, 44)
 	share.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	share.pressed.connect(_show_share)
-	head.add_child(share)
+	tools.add_child(share)
 	_undo_btn = Button.new()
 	_undo_btn.text = "Undo"
 	_undo_btn.tooltip_text = Loc.t("Takes back your last change (Ctrl+Z).")
@@ -135,7 +140,7 @@ func _ready() -> void:
 	_undo_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_undo_btn.disabled = true
 	_undo_btn.pressed.connect(_undo_last)
-	head.add_child(_undo_btn)
+	tools.add_child(_undo_btn)
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(sp)

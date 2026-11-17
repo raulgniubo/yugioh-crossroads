@@ -14,7 +14,21 @@ const SPEED := 1250.0
 var walk_mode := false        # roam: the sticks belong to the character and the camera
 var overlay := false          # roam: a menu is open, the pointer is live again
 var both_sticks := false      # duel: the left stick moves the pointer too
-var connected := false
+## Whether the game shows controller buttons. Settings "Show buttons for": Automatic (only once
+## a real controller is actually used, back to the keyboard the moment a key or the mouse is
+## pressed), Keyboard & mouse, or Controller. A device the system lists as a controller that is
+## never touched (some headsets, wheels, drawing tablets) changes nothing.
+var connected: bool:
+	get:
+		match Settings.pad_show:
+			"keys":
+				return false
+			"pad":
+				return true
+		return plugged and _used
+var plugged := false          # a controller is connected (the pointer follows its stick)
+var _used := false            # ...and it was the last thing used
+var _pushing := false         # (the click A sends is not the mouse being used)
 var _armed := 0.0             # the pad moved the pointer recently: A clicks where it points
 var _down := false
 var _hint: Label
@@ -24,7 +38,7 @@ var _layer: CanvasLayer
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	Input.joy_connection_changed.connect(_on_joy)
-	connected = not Input.get_connected_joypads().is_empty()
+	plugged = not Input.get_connected_joypads().is_empty()
 	for pair in [["ui_pause", JOY_BUTTON_START]]:
 		if InputMap.has_action(pair[0]):
 			var ev := InputEventJoypadButton.new()
@@ -55,7 +69,7 @@ func _ready() -> void:
 const BUTTONS := [
 	[JOY_BUTTON_A, "A", "Ⓐ", "✕", "Ⓑ"], [JOY_BUTTON_B, "B", "Ⓑ", "○", "Ⓐ"], [JOY_BUTTON_X, "X", "Ⓧ", "□", "Ⓨ"],
 	[JOY_BUTTON_Y, "Y", "Ⓨ", "△", "Ⓧ"], [JOY_BUTTON_LEFT_SHOULDER, "LB", "LB", "L1", "L"], [JOY_BUTTON_RIGHT_SHOULDER, "RB", "RB", "R1", "R"],
-	[JOY_BUTTON_BACK, "Back", "View", "Create", "−"], [JOY_BUTTON_START, "Start", "Menu", "Options", "+"],
+	[JOY_BUTTON_BACK, "Back", "View", "Create", "−"], [JOY_BUTTON_START, "Start", "☰", "Options", "+"],
 	[JOY_BUTTON_LEFT_STICK, "L3", "L3", "L3", "L-stick"], [JOY_BUTTON_RIGHT_STICK, "R3", "R3", "R3", "R-stick"],
 	[JOY_BUTTON_DPAD_UP, "Up", "D-pad ↑", "D-pad ↑", "D-pad ↑"],
 ]
@@ -169,13 +183,15 @@ var _hint_raw := ""
 
 
 func _on_joy(device: int, on: bool) -> void:
-	connected = not Input.get_connected_joypads().is_empty()
+	plugged = not Input.get_connected_joypads().is_empty()
+	if not plugged:
+		_used = false
 	hint(_hint_raw)
 	changed.emit()
 	if on:
 		Router.toast(Loc.t("Controller connected: %s") % Input.get_joy_name(device))
 		Sfx.play("equip", -6.0)
-	elif not connected:
+	elif not plugged:
 		Router.toast("Controller disconnected")
 
 
@@ -204,7 +220,7 @@ func hint(text: String) -> void:
 func _process(delta: float) -> void:
 	_hint.visible = connected and _hint.text != ""
 	_armed = maxf(0.0, _armed - delta)
-	if not connected or not _pointer_live():
+	if not plugged or not _pointer_live():
 		return
 	var v := Vector2.ZERO
 	for dev in Input.get_connected_joypads():
@@ -225,7 +241,21 @@ func _process(delta: float) -> void:
 		_armed = 4.0
 
 
+func _set_used(on: bool) -> void:
+	if _used == on:
+		return
+	_used = on
+	hint(_hint_raw)
+	changed.emit()
+
+
 func _input(event: InputEvent) -> void:
+	# Which one you are using right now decides the button names on screen (Automatic).
+	if (event is InputEventJoypadButton and event.pressed) or (event is InputEventJoypadMotion and absf(event.axis_value) > 0.6):
+		plugged = true
+		_set_used(true)
+	elif not _pushing and ((event is InputEventKey and event.pressed) or (event is InputEventMouseButton and event.pressed)):
+		_set_used(false)
 	if not (event is InputEventJoypadButton):
 		return
 	if b(event) == JOY_BUTTON_A and _pointer_live() and (_armed > 0.0 or _down):
@@ -236,5 +266,7 @@ func _input(event: InputEvent) -> void:
 		e.pressed = event.pressed
 		e.position = get_viewport().get_mouse_position()
 		e.global_position = e.position
+		_pushing = true
 		get_viewport().push_input(e, true)
+		_pushing = false
 		get_viewport().set_input_as_handled()

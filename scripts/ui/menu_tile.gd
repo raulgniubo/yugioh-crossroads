@@ -85,7 +85,11 @@ func _draw() -> void:
 		ty += 20.0
 	draw_string(f, Vector2(x - 2, ty + ts * 0.78), _title, HORIZONTAL_ALIGNMENT_LEFT, -1, ts, ink)
 	if has_sub:
-		draw_string(UITheme.body_font(), Vector2(x, ty + ts * 0.82 + 19), _sub, HORIZONTAL_ALIGNMENT_LEFT, room + 30, 17 if not _big else 19,
+		# The line under the title shrinks to fit (Spanish runs longer) rather than being cut.
+		var ss := 17 if not _big else 19
+		while ss > 13 and UITheme.body_font().get_string_size(_sub, HORIZONTAL_ALIGNMENT_LEFT, -1, ss).x > room + 30:
+			ss -= 1
+		draw_string(UITheme.body_font(), Vector2(x, ty + ts * 0.82 + 19), _sub, HORIZONTAL_ALIGNMENT_LEFT, room + 30, ss,
 				Color(0.78, 0.84, 0.95, 0.8).lerp(Color(Comic.INK, 0.8), e))
 	# Chevrons on the right run while it is picked.
 	for i in 2:

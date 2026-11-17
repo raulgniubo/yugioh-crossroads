@@ -41,7 +41,10 @@ static func _row(v: VBoxContainer, title: String, hint: String, control: Control
 	var words := VBoxContainer.new()
 	words.add_theme_constant_override("separation", 0)
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	words.add_child(UITheme.label(title, 22, UITheme.TEXT))
+	var tl := UITheme.label(title, 22, UITheme.TEXT)
+	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART      # (a long title wraps instead of pushing the control off the panel)
+	tl.custom_minimum_size = Vector2(120, 0)
+	words.add_child(tl)
 	if hint != "":
 		var h := UITheme.label(hint, 15, UITheme.TEXT_DIM)
 		h.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -59,6 +62,23 @@ static func open(parent: Node) -> SidePanel:
 	p.z_index = 100   # over whatever screen opened it (a duel's hand cards sit high)
 	p.body.add_theme_constant_override("separation", 16)
 	var desktop := OS.has_feature("pc")
+
+	# General: the language, starting over, admin mode.
+	var gen := _card(p, "General", "◈", Color("9cf0c8"))
+	var lang := OptionButton.new()
+	lang.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	for i in Loc.LANGS.size():
+		lang.add_item(Loc.LANGS[i][1], i)
+		if Loc.LANGS[i][0] == Settings.language:
+			lang.select(i)
+	lang.item_selected.connect(func(i):
+		Settings.language = Loc.LANGS[i][0]
+		Settings.apply()
+		Settings.save_settings()
+		# Everything on screen was built in the old language: reload the scene.
+		Router.go(parent.get_tree().current_scene.scene_file_path))
+	_row(gen, "Language / Idioma", "", lang)
+	SavesUI.settings_block(func(title, help, control): _row(gen, title, help, control), parent)
 
 	var disp := _card(p, "Display", "▣", Color("7cc4ff"))
 	if desktop:
@@ -145,7 +165,6 @@ static func open(parent: Node) -> SidePanel:
 		Settings.apply_graphics()
 		Settings.save_settings())
 	_row(disp, "Hold 60 FPS (can blur the picture)", "Off by default. Warning: when it is on and the game cannot reach 60, the 3D picture is drawn smaller and looks soft or blurry. It never goes under 1080 lines, and it puts the picture back when being smaller does not make the game faster. If the game looks blurry, turn this off first.", hold)
-	SavesUI.settings_block(func(title, help, control): _row(disp, title, help, control), parent)
 
 	_graphics_card(p)
 
@@ -155,19 +174,13 @@ static func open(parent: Node) -> SidePanel:
 	_row(aud, "Effects", "Cards, attacks, the crowd.", _slider(Settings.sfx_volume, func(v): Settings.sfx_volume = v))
 
 	var game := _card(p, "Gameplay", "⚔", Color("ffd166"))
-	var lang := OptionButton.new()
-	lang.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	for i in Loc.LANGS.size():
-		lang.add_item(Loc.LANGS[i][1], i)
-		if Loc.LANGS[i][0] == Settings.language:
-			lang.select(i)
-	lang.item_selected.connect(func(i):
-		Settings.language = Loc.LANGS[i][0]
-		Settings.apply()
-		Settings.save_settings()
-		# Everything on screen was built in the old language: reload the scene.
-		Router.go(parent.get_tree().current_scene.scene_file_path))
-	_row(game, "Language / Idioma", "", lang)
+	_row(game, "Mouse camera speed", "In the worlds, hold the right mouse button and drag to turn the camera.", _pad_slider(Settings.mouse_sens, func(v): Settings.mouse_sens = v))
+	var mi := CheckButton.new()
+	mi.button_pressed = Settings.mouse_invert
+	mi.toggled.connect(func(on):
+		Settings.mouse_invert = on
+		Settings.save_settings())
+	_row(game, "Invert mouse up and down", "", mi)
 	var speed := OptionButton.new()
 	var keys: Array = Settings.ANIM_SPEEDS.keys()
 	for i in keys.size():
@@ -245,8 +258,10 @@ static func _tabs(p: SidePanel, store := "settings") -> void:
 	var cards: Array = p.body.get_children()
 	if cards.size() < 2:
 		return
-	var bar := HBoxContainer.new()
-	bar.add_theme_constant_override("separation", 8)
+	# The tabs wrap onto a second row when they do not fit (seven of them, longer in Spanish).
+	var bar := HFlowContainer.new()
+	bar.add_theme_constant_override("h_separation", 8)
+	bar.add_theme_constant_override("v_separation", 8)
 	p.body.add_child(bar)
 	p.body.move_child(bar, 0)
 	var btns: Array = []
@@ -261,6 +276,7 @@ static func _tabs(p: SidePanel, store := "settings") -> void:
 		b.text = str((cards[i] as Control).get_meta("tab", "Section"))
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.custom_minimum_size = Vector2(0, 46)
+		b.add_theme_font_size_override("font_size", 20)
 		b.pressed.connect(show.bind(i))
 		bar.add_child(b)
 		btns.append(b)
@@ -467,6 +483,17 @@ static func _controller_card(p: SidePanel) -> void:
 		Settings.pad_layout = lays[i][0]
 		Settings.save_settings()
 		redraw.call())
+	var shw := OptionButton.new()
+	var shows := [["auto", "Automatic"], ["keys", "Keyboard & mouse"], ["pad", "Controller"]]
+	for i in shows.size():
+		shw.add_item(Loc.t(shows[i][1]), i)
+		if shows[i][0] == Settings.pad_show:
+			shw.select(i)
+	shw.item_selected.connect(func(i):
+		Settings.pad_show = shows[i][0]
+		Settings.save_settings()
+		redraw.call())
+	_row(c, "Show buttons for", "Automatic: the keyboard's keys, and the controller's buttons as soon as you pick up a controller and press something.", shw)
 	_row(c, "Button pictures", "Which names the game shows for the buttons: ✕ ○ □ △ for PlayStation, A B X Y for Xbox.", lay)
 	_row(c, "Camera speed", "How fast the right stick turns the camera in the worlds.", _pad_slider(Settings.pad_cam, func(v): Settings.pad_cam = v))
 	_row(c, "Pointer speed", "How fast the stick moves the pointer on the duel field and in menus.", _pad_slider(Settings.pad_pointer, func(v): Settings.pad_pointer = v))

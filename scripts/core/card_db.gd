@@ -188,11 +188,17 @@ func _make_sleeve(id: int) -> Texture2D:
 		root.add_child(clip)
 		var tr := TextureRect.new()
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		tr.stretch_mode = TextureRect.STRETCH_SCALE
 		tr.texture = art
 		clip.add_child(tr)
-		tr.position = Vector2.ZERO
-		tr.size = clip.size
+		# The art is wider than the sleeve: cut it around the monster, not just the middle of
+		# the picture (Ra, for one, stands to the side of its art).
+		var asz := Vector2(art.get_size())
+		var k := maxf(clip.size.x / asz.x, clip.size.y / asz.y)
+		var drawn := asz * k
+		var fx := art_focus(art.get_image())
+		tr.size = drawn
+		tr.position = Vector2(clampf(clip.size.x / 2.0 - fx * drawn.x, clip.size.x - drawn.x, 0.0), (clip.size.y - drawn.y) / 2.0)
 	else:
 		# No artwork on disk: a crest in the monster's color with its initials.
 		var grad := Gradient.new()
@@ -261,6 +267,42 @@ func clear_cache() -> void:
 		c.queue_free()
 	_back_texture = null
 	_load_external_data()
+
+
+## Where across a picture its subject stands (0 left .. 1 right): the middle of the busy part,
+## weighed by how much each column differs from the picture's edges (the background).
+static func art_focus(img: Image) -> float:
+	if img == null or img.is_empty():
+		return 0.5
+	var s := img.duplicate() as Image
+	if s.is_compressed():
+		s.decompress()
+	s.resize(48, 48, Image.INTERPOLATE_BILINEAR)
+	var bg := Color(0, 0, 0)
+	var n := 0
+	for i in 48:
+		for e in [s.get_pixel(0, i), s.get_pixel(47, i), s.get_pixel(i, 0), s.get_pixel(i, 47)]:
+			bg += e
+			n += 1
+	bg = bg / float(n)
+	var total := 0.0
+	var sum := 0.0
+	for x in 48:
+		var col := 0.0
+		for y in 48:
+			var c := s.get_pixel(x, y)
+			var dd := absf(c.r - bg.r) + absf(c.g - bg.g) + absf(c.b - bg.b)
+			if x > 0:
+				var l := s.get_pixel(x - 1, y)
+				dd += (absf(c.r - l.r) + absf(c.g - l.g) + absf(c.b - l.b)) * 2.0
+			col += dd
+		col = col * col
+		total += col
+		sum += col * (x + 0.5) / 48.0
+	if total <= 0.0:
+		return 0.5
+	# Only part of the way: a picture that really is centred stays centred.
+	return lerpf(0.5, sum / total, 0.8)
 
 
 func _load_image(path: String) -> Texture2D:

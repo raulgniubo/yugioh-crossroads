@@ -38,6 +38,10 @@ const FPS_CAPS := [0, 30, 60, 120, 144, 240]
 var vsync := false
 ## Controller (see Pad): button pictures, stick speeds, rumble, and which physical button does what.
 var pad_layout := "auto"      # auto | xbox | ps | nintendo
+var mouse_look := true        # open world: moving the mouse turns the camera (pointer hidden while walking)
+var mouse_sens := 1.0
+var mouse_invert := false
+var pad_show := "auto"        # which buttons the game shows: auto | keys | pad
 var pad_cam := 1.0            # camera turn speed with the right stick
 var pad_pointer := 1.0        # pointer speed with the stick
 var pad_invert := false       # push up to look down
@@ -414,6 +418,7 @@ func old_default_folder() -> String:
 
 ## True on the very first start: the graphics were picked for this machine, not by you yet.
 var first_run_pick := false
+var first_language := false    # the very first start: ask which language before anything else
 
 
 ## A starting preset that fits the graphics chip. A guess from its name, on the careful side:
@@ -459,6 +464,8 @@ func load_settings() -> void:
 	if cfg.load(PATH) != OK:
 		if DisplayServer.get_name() != "headless":
 			first_run_pick = true
+			first_language = true
+			fullscreen = true          # a game starts on the whole screen the first time, not in a small window
 			set_gfx_preset(suggest_preset())
 		return
 	var fresh := [fullscreen, resolution, fs_resolution]
@@ -477,6 +484,10 @@ func load_settings() -> void:
 	language = cfg.get_value("game", "language", language)
 	sleeve = str(cfg.get_value("game", "sleeve", sleeve))
 	pad_layout = str(cfg.get_value("pad", "layout", pad_layout))
+	pad_show = str(cfg.get_value("pad", "show", pad_show))
+	mouse_look = bool(cfg.get_value("game", "mouse_look", mouse_look))
+	mouse_sens = float(cfg.get_value("game", "mouse_sens", mouse_sens))
+	mouse_invert = bool(cfg.get_value("game", "mouse_invert", mouse_invert))
 	pad_cam = float(cfg.get_value("pad", "cam", pad_cam))
 	pad_pointer = float(cfg.get_value("pad", "pointer", pad_pointer))
 	pad_invert = bool(cfg.get_value("pad", "invert", pad_invert))
@@ -548,6 +559,10 @@ func save_settings() -> void:
 	cfg.set_value("game", "language", language)
 	cfg.set_value("game", "sleeve", sleeve)
 	cfg.set_value("pad", "layout", pad_layout)
+	cfg.set_value("pad", "show", pad_show)
+	cfg.set_value("game", "mouse_look", mouse_look)
+	cfg.set_value("game", "mouse_sens", mouse_sens)
+	cfg.set_value("game", "mouse_invert", mouse_invert)
 	cfg.set_value("pad", "cam", pad_cam)
 	cfg.set_value("pad", "pointer", pad_pointer)
 	cfg.set_value("pad", "invert", pad_invert)

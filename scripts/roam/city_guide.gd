@@ -626,6 +626,26 @@ static func world_cards(on_pick: Callable, current := "") -> Control:
 		var blurb := UITheme.label(str(w[2]), 16, UITheme.TEXT_DIM)
 		blurb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		inner.add_child(blurb)
+		if not open_now:
+			# Locked: greyed out, with a lock tag and how to open it in place of the description.
+			b.self_modulate = Color(0.55, 0.55, 0.6, 1.0)
+			top.modulate = Color(1, 1, 1, 0.5)
+			era.modulate = Color(1, 1, 1, 0.5)
+			blurb.text = Unlocks.world_why(key)
+			blurb.add_theme_color_override("font_color", UITheme.GOLD)
+			var lock := UITheme.label(Loc.t("LOCKED"), 16, Color.WHITE, UITheme.semi_font())
+			var lsb := UITheme.panel_box(Color(0.1, 0.1, 0.14, 0.95), 8, Color(1, 1, 1, 0.35))
+			lsb.content_margin_left = 10
+			lsb.content_margin_right = 10
+			lock.add_theme_stylebox_override("normal", lsb)
+			lock.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+			lock.offset_left = -120
+			lock.offset_right = -16
+			lock.offset_top = 12
+			lock.offset_bottom = 40
+			lock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			b.add_child(lock)
 		v.add_child(b)
 	return v
 

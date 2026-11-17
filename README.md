@@ -5,6 +5,33 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.46
+
+Your notes from testing on Windows, fixed together:
+
+- **Free Duel** starts on the first opponent you have unlocked (it started on a locked Kaiba). Random rival only picks unlocked ones.
+- **Controller buttons only when you use a controller.** Automatic now waits until you actually press something on a real controller (a device Windows lists as a controller but nobody touches no longer counts), and goes back to keyboard keys the moment you use the keyboard or mouse. New switch in Settings > Controller: "Show buttons for: Automatic / Keyboard & mouse / Controller". The basic hints (move, select, back, pointer) are gone from the menus.
+- **Settings:** a new first tab, **General**, with Language, Restart the game and Admin mode (out of Display and Gameplay). Long titles wrap and the tabs fit, so nothing runs off the panel in Spanish.
+- **First start:** the game opens in fullscreen and asks for the language (English / Español) before anything else. A fresh game folder starts fresh in every way (settings too).
+- **Free Roam worlds:** locked worlds look locked (greyed, a LOCKED tag) and say which chapter opens them.
+- **Card sleeves:** the art is cut around the monster instead of the middle of the picture (The Winged Dragon of Ra stood off to the side).
+- **Main menu in Spanish:** the lines under the titles shrink to fit instead of being cut. Free Duel's small line says "Quick play" instead of repeating the title.
+- **Open world camera:** right-click drag only (left click stays free for everything else). Mouse camera speed and invert in Settings > Gameplay. The top buttons are translated in Spanish, and the controller strip shows ☰ for the Menu button instead of "Menu menú".
+- **Arriving in a world:** the game waits behind the dark screen until the frame rate is actually smooth (the Academy used to show at 2-3 FPS for a few seconds).
+- **Pack shop:** left/right (D-pad, stick or arrows) moves between packs, Y opens the one you are on.
+- **Swords of Revealing Light** stays on the field and keeps their monsters from attacking until the end of their 3rd turn (it went straight to the Graveyard). Destroying it ends the lock.
+- **Duels:** right-click on the table opens the phase moves (Battle Phase / Main Phase 2 / End turn) right at the pointer.
+- **Deck builder:** Test hand, Deck tips, Share and Undo sit on their own row, so the top row and the whole screen fit in Spanish.
+- **Story:** Lumen only floats along after the scene where you meet her. The "see the tasks" chip is small again. Your feet stand on the sidewalks instead of inside them.
+- **Lumen's card in a duel** says where her extra ATK/DEF comes from (500 printed + 300 per bond).
+
+**Not done or not checked:**
+
+- Card effect text in Spanish (your note 14) is not in this build: it is the biggest item (hundreds of card texts) and gets its own build next.
+- The sleeve centering could not be seen here (your card pictures live on your computer only); please look at Ra.
+- The Academy loading fix waits for smooth frames; on a slow moment it can now stay on the dark "Loading" screen a few seconds longer instead.
+- Not tried with a real controller here.
+
 ## What is in 0.33.45
 
 - **The save lives in the game's folder, always.** "Crossroads Data" is made right beside the game the first time it runs, and the game you play is kept there (Crossroads Data/saves/current). Whatever is in the folder is what you play, on any computer: copy the folder and you copy the game, a fresh folder is a fresh game.

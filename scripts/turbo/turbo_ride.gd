@@ -126,7 +126,7 @@ func _ready() -> void:
 	Music.play("turbo")
 	Sfx.ambience("engine", -14.0)
 	Pad.walk_mode = true
-	Pad.hint("Left stick  steer     RT  throttle     LT  brake     A  duel / exit     X  race events     View  garage     B  back")
+	Pad.hint("RT  throttle     LT  brake     X  race events     Back  garage")
 	if "--ride-test" in OS.get_cmdline_user_args():
 		_self_test.call_deferred()
 	for a in OS.get_cmdline_user_args():

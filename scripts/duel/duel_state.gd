@@ -861,11 +861,26 @@ func finish_turn() -> Array:
 	# Swords of Revealing Light counts down at the end of the opponent's turns.
 	var owner := opponent(current)
 	if players[owner].swords_left > 0:
-		players[owner].swords_left -= 1
-		if players[owner].swords_left == 0:
-			events.append({"type": "swords_end", "player": owner})
+		var sw = _swords_card(owner)
+		if sw == null:
+			players[owner].swords_left = 0      # (it was destroyed: the lock went with it)
+		else:
+			players[owner].swords_left -= 1
+			if players[owner].swords_left == 0:
+				events.append({"type": "swords_end", "player": owner})
+				players[owner].spells[players[owner].spells.find(sw)] = null
+				_to_gy(players[owner], sw)
+				events.append({"type": "spell_done", "player": owner, "card": sw})
 	current = opponent(current)
 	return events
+
+
+## Swords of Revealing Light standing face-up on this player's field (it holds the lock), or null.
+func _swords_card(p: int):
+	for s in players[p].spells:
+		if s != null and s.face_up and str(s.data.get("effect", "")) == "swords":
+			return s
+	return null
 
 
 func _card_value(c: CardInst) -> int:
@@ -1556,7 +1571,8 @@ func chain_resolve() -> Array:
 			events.append_array(_legacy_trap(p, c, link["subject"]) if c.is_trap() else _legacy_spell(p, c, link["target"]))
 			st_resolving = null
 			effect_by = was_by
-			stays = false
+			# Swords of Revealing Light stays on the field for its three turns.
+			stays = str(c.data.get("effect", "")) == "swords" and not c.is_trap()
 		else:
 			var was_by2 := effect_by
 			effect_by = p
@@ -1773,7 +1789,7 @@ func can_attack(p: int, c: CardInst) -> bool:
 			and players[p].lp >= int(EffectRunner.fx(c).get("attack_cost", 0))
 			and not (EffectRunner.fx(c).get("attack_tribute", false) and players[p].monsters().size() < 2)
 			and not (EffectRunner.fx(c).get("no_attack_with_others", false) and players[p].monsters().size() > 1)
-			and players[opponent(p)].swords_left == 0)
+			and (players[opponent(p)].swords_left == 0 or _swords_card(opponent(p)) == null))
 
 
 ## Thousand-Eyes Restrict: "Other monsters on the field cannot change their battle positions or attack."

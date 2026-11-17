@@ -102,6 +102,7 @@ func _ready() -> void:
 		_test_deck_code()
 		_test_improve_deck()
 		_test_pad()
+		_test_swords_stays()
 		_test_turbo_setup()
 		_test_knockout()
 		_test_lumen()
@@ -7573,10 +7574,40 @@ func _test_save_guard() -> void:
 
 
 ## Your own sound and music files from the card folder play instead of the built-in ones.
+func _test_swords_stays() -> void:
+	var s := _main_ready(77)
+	var foe := _fake(s, 1, "Foe", 1800, 0, 0)
+	var sw := _st(s, 0, "Swords of Revealing Light", "hand", "spell", {"effect": "swords"})
+	s.activate(0, sw)
+	check(s.players[0].spells.has(sw) and sw.face_up, "Swords of Revealing Light stays face-up on the field")
+	var left := 0
+	for k in 3:
+		s.end_turn()
+		s.begin_turn()      # their turn
+		s.phase = DuelState.Phase.BATTLE
+		if not s.can_attack(1, foe):
+			left += 1
+		s.end_turn()
+		s.begin_turn()      # ours again
+	check(left == 3, "Swords stops their attacks for 3 of their turns (%d)" % left)
+	check(not s.players[0].spells.has(sw) and s.players[0].gy.has(sw), "Swords goes to the Graveyard after their 3rd turn")
+	# Destroyed early: the lock ends with it.
+	var t := _main_ready(78)
+	var foe2 := _fake(t, 1, "Foe", 1800, 0, 0)
+	var sw2 := _st(t, 0, "Swords of Revealing Light", "hand", "spell", {"effect": "swords"})
+	t.activate(0, sw2)
+	t._destroy_st(sw2)
+	t.end_turn()
+	t.begin_turn()
+	t.phase = DuelState.Phase.BATTLE
+	foe2.summoned_turn = 0
+	check(t.can_attack(1, foe2), "Swords destroyed early: they can attack again")
+
+
 func _test_pad() -> void:
 	var keep_map: Dictionary = Settings.pad_map.duplicate()
 	var keep_lay := Settings.pad_layout
-	var keep_con := Pad.connected
+	var keep_show := Settings.pad_show
 	Settings.pad_map = {}
 	Settings.pad_layout = "ps"
 	check(Pad.g("A") == "✕" and Pad.g("Y") == "△" and Pad.g("LT") == "L2", "Pad: PlayStation pictures")
@@ -7592,10 +7623,14 @@ func _test_pad() -> void:
 	check(Pad.b(e) == JOY_BUTTON_A and Pad.b(e2) == JOY_BUTTON_B and Pad.g("A") == "Ⓑ", "Pad: giving Confirm to B swaps A and B (%s)" % str(Settings.pad_map))
 	SP._assign("A", JOY_BUTTON_A)
 	check(Settings.pad_map.is_empty(), "Pad: moving it back clears the swap")
-	Pad.connected = true
+	Settings.pad_show = "keys"
+	check(Pad.keys("E   Talk to Yugi") == "E   Talk to Yugi", "Pad: keyboard chosen in Settings keeps the keys")
+	Settings.pad_show = "auto"
+	check(not Pad.connected or Pad.plugged, "Pad: Automatic never shows controller buttons with no controller")
+	Settings.pad_show = "pad"
 	check(Pad.keys("E   Talk to Yugi") == "Ⓐ   Talk to Yugi" and "Ⓨ" in Pad.keys("R   Race events        G   Highway Grand Prix", {"R": "X", "G": "Y"}), "Pad: keyboard prompts show the controller's buttons (%s)" % Pad.keys("E   Talk to Yugi"))
 	check(Pad.keys("Press G to travel.") == "Press View to travel.", "Pad: Press G becomes the controller button (%s)" % Pad.keys("Press G to travel."))
-	Pad.connected = keep_con
+	Settings.pad_show = keep_show
 	Settings.pad_map = keep_map
 	Settings.pad_layout = keep_lay
 

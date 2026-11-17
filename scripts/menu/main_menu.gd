@@ -22,7 +22,7 @@ func _ready() -> void:
 	Sfx.ambience("")
 	Pad.walk_mode = false
 	Pad.both_sticks = false
-	Pad.hint("D-pad  move     A  select     B  back     Right stick  pointer")
+	Pad.hint("")
 	if Settings.first_run_pick:
 		# The very first start: say what was chosen, and keep it.
 		Settings.first_run_pick = false
@@ -241,7 +241,7 @@ func _build_menu() -> void:
 	_menu_box.add_child(story)
 	_items.append(story)
 	var rows := [
-		[["Free Duel", "FREE DUEL", "Any duelist, deck and field.", "⚔", _on_free_duel, ""],
+		[["Quick play", "FREE DUEL", "Any duelist, deck and field.", "⚔", _on_free_duel, ""],
 			["Riding Duels", "TURBO DUEL", "Race the highway at speed.", "➤", _on_turbo, ""]],
 		[["Open world", "FREE ROAM", "Five places to walk and duel.", "◎", _on_roam, ""],
 			["Four titles", "TOURNAMENTS", "Badges, brackets, trophies.", "♛", _on_tournaments, "%d / %d" % [won, Tournament.DEFS.size()]]],
@@ -824,12 +824,63 @@ func _intro() -> void:
 	await get_tree().create_timer(0.22).timeout
 	if not is_inside_tree() or Router._busy:
 		return
-	if not Profile.created and not "--shot" in str(OS.get_cmdline_user_args()) and not "--story" in str(OS.get_cmdline_user_args()):
+	if (Settings.first_language and not "--shot" in str(OS.get_cmdline_user_args())) or "--lang-pick" in OS.get_cmdline_user_args():
+		_pick_language()
+	elif not Profile.created and not "--shot" in str(OS.get_cmdline_user_args()) and not "--story" in str(OS.get_cmdline_user_args()):
 		_first_start()
 	elif _starter_due():
 		_open_starter()
 	elif _items.size() > 0 and not _panel_open:
 		_items[0].grab_focus()
+
+
+## The very first start, before anything else: which language. The menu is built again in it.
+func _pick_language() -> void:
+	_panel_open = true
+	var shade := ColorRect.new()
+	shade.color = Color(0.02, 0.03, 0.08, 0.97)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	shade.z_index = 200
+	add_child(shade)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.add_child(center)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 26)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	center.add_child(v)
+	var t := Label.new()
+	t.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	t.text = "Language  ·  Idioma"
+	t.add_theme_font_override("font", UITheme.title_font())
+	t.add_theme_font_size_override("font_size", 56)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(t)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 24)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_child(row)
+	var first: Button = null
+	for lang in Loc.LANGS:
+		var b := Button.new()
+		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		b.text = str(lang[1])
+		b.custom_minimum_size = Vector2(320, 96)
+		b.add_theme_font_size_override("font_size", 34)
+		var code := str(lang[0])
+		b.pressed.connect(func():
+			Sfx.play("click", -4.0)
+			Settings.language = code
+			Settings.first_language = false
+			Settings.apply()
+			Settings.save_settings()
+			Router.go(Router.MAIN_MENU))
+		row.add_child(b)
+		if first == null:
+			first = b
+	if first:
+		first.grab_focus.call_deferred()
 
 
 ## New cards of Lumen's came with the story since the last time the menu was up: say so.

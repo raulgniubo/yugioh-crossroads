@@ -372,12 +372,30 @@ func _open(pack: Dictionary) -> void:
 	_open_btn.grab_focus.call_deferred()
 
 
+## Left and right (D-pad, stick or arrow keys) walk along the shelf, whatever has focus, before
+## the buttons get a chance to move focus somewhere else.
+func _input(event: InputEvent) -> void:
+	if _busy or _slots.is_empty() or not is_visible_in_tree():
+		return
+	if event.is_action_pressed("ui_left") or event.is_action_pressed("ui_right"):
+		var step := -1 if event.is_action_pressed("ui_left") else 1
+		var to := clampi(_sel + step, 0, _slots.size() - 1)
+		get_viewport().set_input_as_handled()
+		if to != _sel:
+			_select(to)
+			(_slots[to]["button"] as Button).grab_focus()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
 		_close()
 	elif _busy:
 		return
+	elif event is InputEventJoypadButton and event.pressed and Pad.b(event) == JOY_BUTTON_Y and _sel >= 0:
+		# Y opens the pack you are on straight away.
+		get_viewport().set_input_as_handled()
+		_open(_packs[_sel])
 	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_Q, KEY_E]) \
 			or (event is InputEventJoypadButton and event.pressed and Pad.b(event) in [JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER]):
 		var back: bool = (event is InputEventKey and event.keycode == KEY_Q) or (event is InputEventJoypadButton and Pad.b(event) == JOY_BUTTON_LEFT_SHOULDER)

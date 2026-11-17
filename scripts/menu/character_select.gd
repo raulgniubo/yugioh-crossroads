@@ -61,9 +61,10 @@ func _ready() -> void:
 	var cfg: Dictionary = Router.duel_config
 	_me = cfg.get("player_char", "player")
 	_opp = cfg.get("opponent", "kaiba")
-	if not Characters.available(_opp):
+	# Never start on someone you have not unlocked yet: the first one you have.
+	if not Characters.available(_opp) or not Unlocks.opponent(_opp):
 		for k in Characters.ORDER:
-			if Characters.available(k):
+			if Characters.available(k) and Unlocks.opponent(k) and k != _me:
 				_opp = k
 				break
 	_difficulty = clampi(int(cfg.get("difficulty", 1)), 1, 3)
@@ -838,7 +839,7 @@ func _fill_my_decks() -> void:
 func _random_opponent() -> void:
 	var pool := []
 	for k in Characters.ORDER:
-		if Characters.available(k) and k != _opp:
+		if Characters.available(k) and Unlocks.opponent(k) and k != _opp:
 			pool.append(k)
 	if pool.is_empty():
 		return

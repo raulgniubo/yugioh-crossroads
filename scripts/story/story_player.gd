@@ -29,7 +29,7 @@ func _ready() -> void:
 	Music.play("menu")
 	Pad.walk_mode = false
 	Pad.both_sticks = false
-	Pad.hint("A  next     B  menu     Right stick  pointer")
+	Pad.hint("")
 	_build()
 	var s: Dictionary = Router.story
 	chapter = s.get("chapter", "prologue")

@@ -62,7 +62,7 @@ func _ready() -> void:
 	get_viewport().physics_object_picking = true
 	Pad.walk_mode = false
 	Pad.both_sticks = true
-	Pad.hint("Stick  pointer     A  select     B  back     X  next phase     Y Y  end turn     Start  menu")
+	Pad.hint("X  next phase     Y Y  end turn")
 	Music.play("duel")
 	DuelAudio.reset()
 	# A duel is the loud part of the game: music and effects come up, the crowd is in the room.
@@ -1715,6 +1715,10 @@ func _on_hand_card_pressed(inst, at: Vector2) -> void:
 
 
 func _on_action(action: String) -> void:
+	if action.begins_with("phase:"):
+		hud.hide_actions()
+		_on_phase_button(action.trim_prefix("phase:"))
+		return
 	if action in ["surrender", "piles", "pause", "gyfx"]:
 		_deck_menu = false
 		match action:
@@ -2278,7 +2282,23 @@ func _unhandled_input(event: InputEvent) -> void:
 			hud.hide_overlay()
 		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
-		_cancel_mode()
+		if mode != "" or hud.actions_visible() or busy or not _my_turn() or hud.overlay_visible() or _finished:
+			_cancel_mode()
+			if hud.actions_visible():
+				hud.hide_actions()
+				_menu_card = null
+		else:
+			# Right-click on the table: the phase moves open right where the pointer is.
+			var opts := []
+			match state.phase:
+				DuelState.Phase.MAIN1:
+					opts.append(["phase:battle", Loc.t("Battle Phase"), state.can_enter_battle()])
+				DuelState.Phase.BATTLE:
+					opts.append(["phase:battle", Loc.t("Main Phase 2"), true])
+			opts.append(["phase:end", Loc.t("End turn"), true])
+			_menu_card = null
+			hud.show_actions(event.position, opts)
+		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT and hud.actions_visible():
 		# A tap anywhere else puts the card's menu away. Cards on the table still get the tap.
 		_closed_card = _menu_card

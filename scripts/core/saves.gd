@@ -162,7 +162,16 @@ static func pull_live() -> void:
 			elif FileAccess.file_exists("user://" + str(f)):
 				DirAccess.remove_absolute("user://" + str(f))
 		print("SAVES the game in the folder beside the game (", live, ")")
-	elif on_computer and not admin:
+	elif not FileAccess.file_exists(game_dir().path_join(DATA_NAME).path_join("saves").path_join("settings.cfg")) or on_computer:
+		# A fresh folder starts fresh in every way: settings too (it asks the language and picks
+		# the picture again), and not in admin mode.
+		if not FileAccess.file_exists(game_dir().path_join(DATA_NAME).path_join("saves").path_join("settings.cfg")):
+			for sh in SHARED:
+				if FileAccess.file_exists("user://" + str(sh)):
+					DirAccess.remove_absolute("user://" + str(sh))
+			admin = false
+		if not on_computer:
+			return
 		# A fresh folder is a fresh game. A game this computer kept from before is not thrown
 		# away: it goes into an empty save slot in the folder, ready to Load from Story.
 		var slot := ""

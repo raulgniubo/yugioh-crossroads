@@ -80,4 +80,7 @@ func _process(delta: float) -> void:
 static func with_you() -> bool:
 	if Saves.admin or "--with-lumen" in OS.get_cmdline_user_args():
 		return true
+	# Not before the story has introduced her (the Prologue scene where she wakes up in the shop).
+	if not StoryProgress.recalls("met_lumen") and not StoryProgress.unlocked().has("ch1"):
+		return false
 	return not (StoryProgress.unlocked().has("ch5") and not StoryProgress.recalls("finished"))
