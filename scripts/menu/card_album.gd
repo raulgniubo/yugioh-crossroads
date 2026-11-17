@@ -948,8 +948,19 @@ class _Binder extends Control:
 		for k in 4:
 			var y := size.y * (0.16 + 0.68 * k / 3.0)
 			var c := Vector2(size.x / 2.0, y)
-			draw_arc(c, 15.0, PI * 0.15, PI * 1.85, 24, Color(0.75, 0.8, 0.9, 0.85), 5.0, true)
-			draw_arc(c + Vector2(-1, -1), 15.0, PI * 0.9, PI * 1.3, 12, Color(1, 1, 1, 0.9), 2.0, true)
+			# A binder ring seen from above: a metal bar across the spine, through a punched
+			# hole in each page.
+			var half := SPINE / 2.0 + 16.0
+			for sx in [-1.0, 1.0]:
+				draw_circle(c + Vector2(sx * (half - 2.0), 0), 9.0, Color(0.0, 0.0, 0.0, 0.55))
+			draw_rect(Rect2(c + Vector2(-half, -1.0), Vector2(half * 2.0, 9.0)), Color(0, 0, 0, 0.35))   # its shadow
+			var metal := Color(0.62, 0.67, 0.76)
+			draw_rect(Rect2(c + Vector2(-half, -6.0), Vector2(half * 2.0, 12.0)), metal)
+			draw_circle(c + Vector2(-half, 0), 6.0, metal)
+			draw_circle(c + Vector2(half, 0), 6.0, metal)
+			draw_rect(Rect2(c + Vector2(-half, -6.0), Vector2(half * 2.0, 4.0)), Color(0.88, 0.91, 0.97))
+			draw_rect(Rect2(c + Vector2(-half, 3.0), Vector2(half * 2.0, 3.0)), Color(0.38, 0.42, 0.5))
+			draw_line(c + Vector2(-half * 0.6, -4.5), c + Vector2(half * 0.2, -4.5), Color(1, 1, 1, 0.9), 1.5)
 		if empty_text != "":
 			var f := UITheme.semi_font()
 			var w := f.get_string_size(empty_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x

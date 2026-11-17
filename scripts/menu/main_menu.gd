@@ -703,8 +703,9 @@ func _build_profile_chip() -> void:
 	_chip_avatar = TextureRect.new()
 	_chip_avatar.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_chip_avatar.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_chip_avatar.position = Vector2(-10, -4)
-	_chip_avatar.size = Vector2(112, 140)
+	# The portrait is a whole bust with room around it: zoomed in so the face fills the circle.
+	_chip_avatar.position = Vector2(-60, -70)
+	_chip_avatar.size = Vector2(213, 266)
 	frame.add_child(_chip_avatar)
 	_chip_name = Comic.label("", 34, Color.WHITE)
 	_chip_name.position = Vector2(126, 14)

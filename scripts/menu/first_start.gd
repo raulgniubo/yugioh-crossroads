@@ -250,16 +250,29 @@ func _world(i: int) -> void:
 		line.position = Vector2(size.x * 0.14, edge)
 		line.size = Vector2(size.x * 0.72, 4.0)
 		band.add_child(line)
-	var name_l := UITheme.label(Loc.t(str(w["name"])), 110, Color.WHITE, UITheme.title_font())
-	name_l.position = Vector2(size.x * 0.18, 60.0)
+	# The faces sit on the right; the name gets the room left of them (a long name in another
+	# language gets smaller instead of running under the duelists).
+	var faces: Array = []
+	for key in w["faces"]:
+		if Avatars.has_avatar(str(key)):
+			faces.append(key)
+	var fx := size.x * 0.82
+	var faces_left := fx - 200.0 - 190.0 * maxf(0.0, faces.size() - 1.0) if not faces.is_empty() else size.x * 0.86
+	var room := faces_left - size.x * 0.18 - 40.0
+	var title := Loc.t(str(w["name"]))
+	var fs := 110
+	var tf := UITheme.title_font()
+	while fs > 48 and tf.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > room:
+		fs -= 2
+	var name_l := UITheme.label(title, fs, Color.WHITE, tf)
+	name_l.position = Vector2(size.x * 0.18, 60.0 + (110 - fs) * 0.6)
 	band.add_child(name_l)
 	var cap := UITheme.label(Loc.t(str(w["line"])), 34, col.lightened(0.45), UITheme.semi_font())
 	cap.position = Vector2(size.x * 0.185, 200.0)
+	cap.size.x = room
+	cap.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	band.add_child(cap)
-	var fx := size.x * 0.82
-	for key in w["faces"]:
-		if not Avatars.has_avatar(str(key)):
-			continue
+	for key in faces:
 		var face := TextureRect.new()
 		face.texture = Portraits.get_portrait(str(key))
 		face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

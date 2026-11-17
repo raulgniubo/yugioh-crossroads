@@ -5,6 +5,20 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.33.52
+
+**Your notes from the PC**
+
+- **Intro in Spanish:** "ACADEMIA DE DUELOS" (and any long world name) gets smaller instead of running under the duelists' pictures.
+- **Your face:** the painted scribbles on the hero's face (creases between the brows, on the nose, the cheek and the chin) are cleaned off the Spikes + Academy look's texture. The eyes, brows, mouth and nose are kept. Other hairstyle and outfit mixes were not touched yet.
+- **Profile circle:** your picture is zoomed in, so your face fills the circle instead of a small figure at the bottom.
+- **Card Album rings:** the "C" rings in the middle are now metal binder rings across the spine.
+- **Saves:** from the main menu (Story panel) the button is "Load" and only loads. Saving is in the pause menu while you play the story, where both work. The "CHAPTERS" heading is translated now.
+- **Loading screen:** going into a world or onto the highway shows the place's name in its era's color, its area, a skyline, the roads of light from the intro, a tip and Lumen's light, instead of a black screen.
+- **Free Duel:** starts on Normal. It remembers what you pick there, and no longer takes whatever level the last duel elsewhere had.
+
+Not done or not checked: the face cleanup is on one look only (yours). The loading screen was seen in a picture here, not on your PC. The intro itself is unchanged apart from the overlap fix: an idea for making it bigger is waiting for your yes.
+
 ## What is in 0.33.51
 
 **One deck at the start, and Lumen's deck as a story reward**

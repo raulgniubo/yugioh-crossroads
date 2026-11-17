@@ -10,10 +10,12 @@ signal closed
 var _rows: VBoxContainer
 var _confirm: Control
 var _first: Control
+var can_save := true     # false from the main menu: only loading makes sense there
 
 
-static func open(host: Node) -> SaveMenu:
+static func open(host: Node, saving := true) -> SaveMenu:
 	var m := SaveMenu.new()
+	m.can_save = saving
 	m.z_index = 120
 	host.add_child(m)
 	return m
@@ -39,8 +41,9 @@ func _ready() -> void:
 	tb.add_theme_constant_override("separation", -4)
 	tb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(tb)
-	tb.add_child(UITheme.label(Loc.t("STORY SAVES"), 54, Color.WHITE, UITheme.title_font()))
-	var sub := UITheme.label(Loc.t("Save the story right where you are, or go back to a moment you saved. The autosave is written before every duel and at every step: Continue always picks up from it."), 19, UITheme.TEXT_DIM)
+	tb.add_child(UITheme.label(Loc.t("STORY SAVES") if can_save else Loc.t("LOAD A STORY SAVE"), 54, Color.WHITE, UITheme.title_font()))
+	var sub := UITheme.label(Loc.t("Save the story right where you are, or go back to a moment you saved. The autosave is written before every duel and at every step: Continue always picks up from it.") if can_save
+			else Loc.t("Go back to a moment you saved. To save, open the pause menu while you are in the story."), 19, UITheme.TEXT_DIM)
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sub.custom_minimum_size = Vector2(900, 0)
 	tb.add_child(sub)
@@ -118,7 +121,7 @@ func _row(slot: String, i: int) -> Control:
 	btns.add_theme_constant_override("separation", 10)
 	btns.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(btns)
-	if not auto:
+	if not auto and can_save:
 		var sv := _btn(Loc.t("Save here"), true)
 		sv.disabled = Saves.admin
 		sv.pressed.connect(func():

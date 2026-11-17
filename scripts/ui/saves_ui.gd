@@ -52,9 +52,9 @@ static func story_block(body: VBoxContainer, host: Node) -> void:
 	var slots := VBoxContainer.new()
 	slots.visible = false
 	var sl := Button.new()
-	sl.text = Loc.t("Save / Load")
+	sl.text = Loc.t("Load")
 	sl.custom_minimum_size = Vector2(170, 52)
-	sl.pressed.connect(func(): SaveMenu.open(host))
+	sl.pressed.connect(func(): SaveMenu.open(host, false))
 	diff_row.add_child(sl)
 	var ng0 := Button.new()
 	ng0.text = Loc.t("New Game")

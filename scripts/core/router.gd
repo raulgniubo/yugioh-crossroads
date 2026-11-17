@@ -124,6 +124,9 @@ func _ready() -> void:
 	_load_l.add_theme_color_override("font_color", Color(1, 1, 1, 0.75))
 	_load_l.visible = false
 	_fade.add_child(_load_l)
+	_card = LoadCard.new()
+	_card.visible = false
+	_fade.add_child(_card)
 	# Hover hints in the look of the game (they used to be the engine's plain grey box).
 	var tips := Theme.new()
 	var tip_box := StyleBoxFlat.new()
@@ -583,6 +586,11 @@ func go(path: String) -> void:
 	get_tree().paused = false
 	# (Said before the place is even built, so whatever starts in it can wait for it.)
 	loading = path in [ROAM, RIDE] and DisplayServer.get_name() != "headless"
+	if loading:
+		_show_card(path)
+		# One frame so the card is on screen before the world starts building (that blocks).
+		await get_tree().process_frame
+		await get_tree().process_frame
 	get_tree().change_scene_to_file(path)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -592,7 +600,8 @@ func go(path: String) -> void:
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_busy = false
 	var tw2 := create_tween()
-	tw2.tween_property(_fade, "color:a", 0.0, 0.22)
+	tw2.tween_property(_fade, "color:a", 0.0, 0.45 if _card.visible else 0.22)
+	tw2.tween_callback(func(): _card.visible = false)
 
 
 ## Your own picture as the game's icon while it runs (the Dock on a Mac, the taskbar on Windows):
@@ -615,6 +624,20 @@ func apply_own_icon() -> void:
 ## True while a place is still getting ready behind the dark screen (see _settle).
 var loading := false
 var _load_l: Label
+var _card: LoadCard
+
+
+## The loading card for where you are going: the world's name, its area, its era.
+func _show_card(path: String) -> void:
+	var key := "ride" if path == RIDE else str(roam.get("district", "domino"))
+	var title := Loc.t("The Highway") if path == RIDE else ""
+	var sub := ""
+	if path != RIDE:
+		var d: Dictionary = RoamData.district(key)
+		title = Loc.t(str(d.get("name", key)))
+		sub = Loc.t(str(d.get("area", "")))
+	_card.setup(key, title, sub)
+	_card.visible = true
 
 
 ## A big place does a lot in its first seconds: the graphics chip builds the shaders it has
@@ -636,7 +659,7 @@ func _settle() -> void:
 		if recent.size() > 12:
 			recent.pop_front()
 		var el := now - t0
-		if el > 900 and _load_l != null and not _load_l.visible:
+		if el > 900 and _load_l != null and not _load_l.visible and not _card.visible:
 			_load_l.text = Loc.t("Loading")
 			_load_l.visible = true
 		if el > 9000:

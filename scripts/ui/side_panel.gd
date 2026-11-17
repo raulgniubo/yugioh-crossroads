@@ -118,5 +118,5 @@ func add_row(label_text: String, control: Control) -> void:
 
 
 func add_section(text: String) -> void:
-	var l := UITheme.label(text.to_upper(), 18, UITheme.ACCENT, UITheme.semi_font())
+	var l := UITheme.label(Loc.t(text).to_upper(), 18, UITheme.ACCENT, UITheme.semi_font())
 	body.add_child(l)

@@ -67,7 +67,7 @@ func _ready() -> void:
 			if Characters.available(k) and Unlocks.opponent(k) and k != _me:
 				_opp = k
 				break
-	_difficulty = clampi(int(cfg.get("difficulty", 1)), 1, 3)
+	_difficulty = Settings.free_difficulty   # Normal unless you picked another one here before
 	_my_deck = cfg.get("player_deck", "yugi")
 	if not CardData.has_deck(_my_deck):
 		_my_deck = "echo" if CardData.has_deck("echo") else "yugi"
@@ -939,6 +939,8 @@ func _build_setup() -> void:
 		_pick_style(db)
 		db.pressed.connect(func():
 			_difficulty = i + 1
+			Settings.free_difficulty = _difficulty
+			Settings.save_settings()
 			_refresh_setup())
 		drow.add_child(db)
 		_diff_btns.append(db)
