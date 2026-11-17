@@ -24,10 +24,13 @@ func _ready() -> void:
 	key.position = Vector3(10.2, 2.6, 11.0)
 	add_child(key)
 	_spawn_hero()
-	Profile.changed.connect(func():
-		if Profile.look_sig() != _look:
-			_spawn_hero())
+	Profile.changed.connect(_on_profile_changed)     # (a method: it lets go when this is freed)
 	_process(0.0)
+
+
+func _on_profile_changed() -> void:
+	if Profile.look_sig() != _look:
+		_spawn_hero()
 
 
 func _spawn_hero() -> void:

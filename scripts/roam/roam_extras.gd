@@ -85,6 +85,8 @@ func _build_hud() -> void:
 	_hud.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	scene._ui.add_child(_hud)
+	if not Pad.changed.is_connected(_relabel_bar):
+		Pad.changed.connect(_relabel_bar)      # (a method: it goes with this node)
 	var bar := HBoxContainer.new()
 	_bar = bar
 	bar.position = Vector2(600, 26)
@@ -95,9 +97,7 @@ func _build_hud() -> void:
 		var btn := Button.new()
 		var raw := Loc.t(str(b[0]))
 		btn.text = Pad.keys(raw)
-		Pad.changed.connect(func():
-			if is_instance_valid(btn):
-				btn.text = Pad.keys(raw))
+		_bar_btns.append([btn, raw])
 		btn.focus_mode = Control.FOCUS_NONE
 		btn.add_theme_font_size_override("font_size", 19)
 		btn.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.042, 0.0676, 0.136, 0.78), Color(1, 1, 1, 0.14), 12))
@@ -244,6 +244,15 @@ func _free_list_step(delta: float) -> void:
 	_list_more.visible = rows.size() > 1
 	_list_more.text = (Loc.t("%d on your list   ·   %s  show the list") % [rows.size(), key_name]) if list_small else (Loc.t("%s  hide the list") % key_name)
 	_list_box.size = Vector2.ZERO
+
+
+var _bar_btns: Array = []
+
+
+func _relabel_bar() -> void:
+	for e in _bar_btns:
+		if is_instance_valid(e[0]):
+			(e[0] as Button).text = Pad.keys(str(e[1]))
 
 
 func _unhandled_input(event: InputEvent) -> void:

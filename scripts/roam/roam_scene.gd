@@ -645,6 +645,19 @@ func _cull_lights() -> void:
 		_lights = _lights.filter(func(x): return is_instance_valid(x))
 
 
+var _help_kb := ""
+
+
+func _relabel_help() -> void:
+	if not is_instance_valid(_help):
+		return
+	if Pad.connected:
+		_help.text = Loc.t("Left stick  move     %s  run     Right stick  look     %s  talk / enter     %s  map     %s  card shop     %s  worlds     %s  menu") % [
+			Pad.g("LB"), Pad.g("A"), Pad.g("Y"), Pad.g("X"), Pad.g("Back"), Pad.g("Start")]
+	else:
+		_help.text = _help_kb
+
+
 func _exit_tree() -> void:
 	WorldClock.save_data()
 	Avatars.quiet = false
@@ -1943,17 +1956,9 @@ func _build_ui() -> void:
 	_ui.add_child(help_bar)
 	_help = help
 	# With a controller connected the strip shows its buttons instead of the keyboard's.
-	var kb_text := help.text
-	var relabel := func():
-		if not is_instance_valid(help):
-			return
-		if Pad.connected:
-			help.text = Loc.t("Left stick  move     %s  run     Right stick  look     %s  talk / enter     %s  map     %s  card shop     %s  worlds     %s  menu") % [
-				Pad.g("LB"), Pad.g("A"), Pad.g("Y"), Pad.g("X"), Pad.g("Back"), Pad.g("Start")]
-		else:
-			help.text = kb_text
-	relabel.call()
-	Pad.changed.connect(relabel)
+	_help_kb = help.text
+	_relabel_help()
+	Pad.changed.connect(_relabel_help)      # (a method: the connection goes when this place is left)
 	# Maps: a small one in the corner, the full one on M.
 	_map = RoamMap.new()
 	_map.accent = _theme["accent"]

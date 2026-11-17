@@ -2154,7 +2154,8 @@ func _announce(i: int) -> void:
 	_lead_cards = _lead_cards.filter(func(c): return is_instance_valid(c))
 	_lead_cards.append(pc)
 	# Wrapped text only knows its real height once it has been laid out: settle them again then.
-	get_tree().process_frame.connect(_flow_leads, CONNECT_ONE_SHOT)
+	if not get_tree().process_frame.is_connected(_flow_leads):
+		get_tree().process_frame.connect(_flow_leads, CONNECT_ONE_SHOT)
 	Sfx.play("quest", -9.0, 1.15)
 	pc.modulate.a = 0.0
 	pc.offset_left += 40
