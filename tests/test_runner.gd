@@ -133,6 +133,7 @@ func _ready() -> void:
 		_test_ancient_gears()
 		_test_theme_rework()
 		_test_lightsworn()
+		_test_catch_up()
 		await _test_album()
 		_test_save_slots()
 		_test_turbo_setup()
@@ -9949,3 +9950,251 @@ func _test_lightsworn() -> void:
 	var dk3: int = s.players[0].deck.size()
 	s.activate(0, ma)
 	check(s.players[0].hand.has(mb) and s.players[0].deck.size() == dk3 - 4, "March: Ehren back, 4 banished")
+
+
+## 0.34.2.5: the cards the families were missing, and the fixes to Aurkus, Minerva, Thunder Lord, Dark Golem and the Castle.
+func _test_catch_up() -> void:
+	# Aurkus: a Lightsworn monster in the GY can't be targeted either (Monster Reborn).
+	var s := _main_ready(7501)
+	_mon(s, 0, "Aurkus, Lightsworn Druid", 0)
+	s.players[0].gy.clear()
+	s.players[1].gy.clear()
+	_in(s, 0, "Jain, Lightsworn Paladin", "gy")
+	var mr := _rst(s, 0, "Monster Reborn")
+	check(not s.can_activate(0, mr), "Aurkus: Monster Reborn can't take a Lightsworn from the GY")
+	# Minerva: discarded by any effect, she sends 1.
+	s = _main_ready(7502)
+	s.players[0].hand.clear()
+	var mi := _in(s, 0, "Minerva, Lightsworn Maiden", "hand")
+	_in(s, 0, "Pot of Greed", "hand")
+	var dk: int = s.players[0].deck.size()
+	var gc := _rst(s, 0, "Card Destruction")
+	s.activate(0, gc)
+	check(s.players[0].gy.has(mi) and s.players[0].deck.size() < dk - 1, "Minerva: sent from the hand by Card Destruction, she sends 1 more")
+	# Dark Golem counts as Ancient Gear Golem for Ultimate Ancient Gear Golem.
+	s = _main_ready(7503)
+	_mon(s, 0, "Ancient Gear Dark Golem", 0)
+	_mon(s, 0, "Ancient Gear Soldier", 1)
+	_mon(s, 0, "Ancient Gear Soldier", 2)
+	var uag := _in(s, 0, "Ultimate Ancient Gear Golem", "extra")
+	check(not s.fusion_targets(0).filter(func(o): return o["card"] == uag).is_empty(), "Dark Golem: Fusion Material for Ultimate Ancient Gear Golem")
+	# Fire Princess: each LP gain, 500.
+	s = _main_ready(7504)
+	_mon(s, 0, "Fire Princess", 0)
+	var lp: int = s.players[1].lp
+	var dk2 := _rst(s, 0, "Dian Keto the Cure Master")
+	s.activate(0, dk2)
+	s._cleanup()
+	check(s.players[1].lp == lp - 500, "Fire Princess: 500 after Dian Keto (%d -> %d)" % [lp, s.players[1].lp])
+	# Mist Valley Baby Roc: discarded, it comes out.
+	s = _main_ready(7505)
+	s.players[0].hand.clear()
+	var br := _in(s, 0, "Mist Valley Baby Roc", "hand")
+	_in(s, 0, "Pot of Greed", "hand")
+	s.activate(0, _rst(s, 0, "Card Destruction"))
+	s._cleanup()
+	check(s.players[0].field.has(br), "Baby Roc: sent from the hand, Special Summoned")
+	# Windmaster: both hands down to 4.
+	s = _main_ready(7506)
+	var wm := _mon(s, 0, "Mist Valley Windmaster", 0)
+	while s.players[0].hand.size() < 6:
+		_in(s, 0, "Pot of Greed", "hand")
+	while s.players[1].hand.size() < 6:
+		_in(s, 1, "Pot of Greed", "hand")
+	s.ignite(0, wm)
+	check(s.players[0].hand.size() == 4 and s.players[1].hand.size() == 4, "Windmaster: both hands at 4")
+	# Apex Avian: negates a Spell, the bird goes back to the hand.
+	s = _main_ready(7507)
+	var aa := _mon(s, 1, "Mist Valley Apex Avian", 0)
+	var rg := _rst(s, 0, "Raigeki")
+	s.chain_add(0, rg, null, "open", null)
+	check(EffectRunner.quick_can(s, 1, aa, "chain"), "Apex Avian: can answer Raigeki")
+	EffectRunner.quick_run(s, 1, aa)
+	check(s.chain.back()["negated"] and s.players[1].hand.has(aa), "Apex Avian: Raigeki negated, it went back to the hand")
+	# Thunder Lord: a Quick Effect in your own turn too, answering an activation.
+	s = _main_ready(7508)
+	var tl := _mon(s, 0, "Mist Valley Thunder Lord", 0)
+	_mon(s, 0, "Mist Valley Thunderbird", 1)
+	var rg2 := _rst(s, 1, "Raigeki")
+	s.chain_add(1, rg2, null, "open", null)
+	check(EffectRunner.quick_can(s, 0, tl, "chain"), "Thunder Lord: Quick Effect in your own turn")
+	# Punishment Dragon: 4 banished names; shuffles the GYs except Lightsworn monsters.
+	s = _main_ready(7509)
+	var pd := _in(s, 0, "Punishment Dragon", "hand")
+	for n in ["Jain, Lightsworn Paladin", "Ehren, Lightsworn Monk", "Lyla, Lightsworn Sorceress", "Aurkus, Lightsworn Druid"]:
+		var b := s._make(_cid(n), 0)
+		s.players[0].banished.append(b)
+	check(EffectRunner.can_special_hand(s, 0, pd), "Punishment Dragon: 4 banished names")
+	s.special_from_hand(0, pd)
+	s.players[1].gy.clear()
+	_in(s, 1, "Dark Hole", "gy")
+	var keep := _in(s, 0, "Wulf, Lightsworn Beast", "gy")
+	EffectRunner.quick_run(s, 0, pd)
+	check(s.players[1].gy.is_empty() and s.players[0].gy.has(keep), "Punishment Dragon: GYs shuffled, Lightsworn monsters stay")
+	# Twilightsworn: when your other Lightsworn monster's effect activates, Jain TS sends 2.
+	s = _main_ready(7510)
+	_mon(s, 0, "Jain, Twilightsworn General", 0)
+	var ly := _mon(s, 0, "Lyla, Lightsworn Sorceress", 1)
+	_set_trap(s, 1, "Mirror Force")
+	var d0: int = s.players[0].deck.size()
+	s.ignite(0, ly)
+	check(s.players[0].deck.size() == d0 - 2, "Jain, Twilightsworn: 2 sent when Lyla's effect activates")
+	# Jain TS: a Level 4 banished, -1200.
+	s = _main_ready(7511)
+	var jt := _mon(s, 0, "Jain, Twilightsworn General", 0)
+	_in(s, 0, "Ehren, Lightsworn Monk", "gy")
+	var foe := _mon(s, 1, "Summoned Skull", 0)
+	s.ignite(0, jt)
+	check(s.atk_of(foe, false) == 1300, "Jain, Twilightsworn: Summoned Skull -1200 (%d)" % s.atk_of(foe, false))
+	# Lumina TS: banish one, bring back a banished one.
+	s = _main_ready(7512)
+	var lt := _mon(s, 0, "Lumina, Twilightsworn Shaman", 0)
+	_in(s, 0, "Ehren, Lightsworn Monk", "gy")
+	var bk := s._make(_cid("Jain, Lightsworn Paladin"), 0)
+	s.players[0].banished.append(bk)
+	s.ignite(0, lt)
+	check(s.players[0].field.has(bk), "Lumina, Twilightsworn: Jain back from banishment")
+	# Weiss: from the hand by putting a Lightsworn on top; from the Deck to the GY, brings one back.
+	s = _main_ready(7513)
+	var we := _in(s, 0, "Weiss, Lightsworn Archfiend", "hand")
+	_in(s, 0, "Jain, Lightsworn Paladin", "hand")
+	check(EffectRunner.can_special_hand(s, 0, we), "Weiss: from the hand")
+	s.special_from_hand(0, we)
+	check(s.players[0].field.has(we), "Weiss: Special Summoned")
+	s = _main_ready(7514)
+	var bb := _in(s, 0, "Ehren, Lightsworn Monk", "gy")
+	_in(s, 0, "Weiss, Lightsworn Archfiend", "deck")
+	s.mill(0, 1, null)
+	check(s.players[0].field.has(bb), "Weiss: milled, Ehren comes back")
+	# Minerva, the Athenian: Lightsworn on the field can't be banished.
+	s = _main_ready(7515)
+	_mon(s, 0, "Minerva, the Athenian Lightsworn", 0)
+	var jj := _mon(s, 0, "Jain, Lightsworn Paladin", 1)
+	s._banish(jj)
+	check(s.players[0].field.has(jj), "Minerva, the Athenian: Jain can't be banished")
+	# Enlightenment Dragon: Judgment on the field, Punishment in the GY.
+	s = _main_ready(7516)
+	_mon(s, 0, "Judgment Dragon", 0)
+	_in(s, 0, "Punishment Dragon", "gy")
+	var ed := _in(s, 0, "Enlightenment Dragon", "extra")
+	check(s.can_extra_summon(0, ed), "Enlightenment Dragon: 1 from the field, 1 from the GY")
+	s.extra_summon(0, ed)
+	check(s.players[0].field.has(ed) and s.players[0].banished.size() >= 2, "Enlightenment Dragon: Summoned, both banished")
+	# Lightsworn Judgment: back on top of the Deck; milled by a Lightsworn, Judgment Dragon to the hand.
+	s = _main_ready(7517)
+	var lj := _set_trap(s, 0, "Lightsworn Judgment")
+	s.turn += 1
+	s.activate(0, lj)
+	check(s.players[0].deck.back() == lj, "Lightsworn Judgment: on top of the Deck")
+	var jdd := _in(s, 0, "Judgment Dragon", "deck")
+	s.players[0].deck.erase(jdd)
+	s.players[0].deck.push_front(jdd)
+	s.mill(0, 1, _mon(s, 0, "Jain, Lightsworn Paladin", 0))
+	check(s.players[0].hand.has(jdd), "Lightsworn Judgment: Judgment Dragon to the hand")
+	# Lightsworn Barrier: every attack on a Lightsworn, send 2 and negate.
+	s = _new_state(7518)
+	_battle_ready(s)
+	var lbc := _set_trap(s, 1, "Lightsworn Barrier")
+	lbc.face_up = true
+	var jt2 := _mon(s, 1, "Jain, Lightsworn Paladin", 0)
+	var bw := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bw, jt2)
+	check(s.pending_attack.get("negated", false), "Lightsworn Barrier: the attack is negated")
+	# Twilight Eraser and Twilight Twin Dragons.
+	s = _main_ready(7519)
+	_mon(s, 0, "Jain, Lightsworn Paladin", 0)
+	_mon(s, 0, "Ehren, Lightsworn Monk", 1)
+	_in(s, 0, "Lyla, Lightsworn Sorceress", "gy")
+	_in(s, 0, "Aurkus, Lightsworn Druid", "gy")
+	var o1 := _mon(s, 1, "Summoned Skull", 0)
+	var o2 := _set_trap(s, 1, "Mirror Force")
+	var te := _set_trap(s, 0, "Twilight Eraser")
+	s.turn += 1
+	s.activate(0, te)
+	check(s.players[1].banished.has(o1) and s.players[1].banished.has(o2), "Twilight Eraser: 2 banished")
+	# Lightsworn Aegis: Set from the GY after a mill; negates their face-up cards.
+	s = _main_ready(7520)
+	var ag := _in(s, 0, "Lightsworn Aegis", "deck")
+	s.mill(0, 1, null)
+	check(s.players[0].spells.has(ag) and not ag.face_up, "Lightsworn Aegis: Set after being sent")
+	# Lightsworn Sanctuary: counters, and 2 of them instead of a Lightsworn being destroyed.
+	s = _main_ready(7521)
+	var sn := _set_trap(s, 0, "Lightsworn Sanctuary")
+	sn.face_up = true
+	var jn := _mon(s, 0, "Jain, Lightsworn Paladin", 0)
+	s.mill(0, 1, null)
+	s.mill(0, 1, null)
+	check(sn.counter == 2, "Sanctuary: 2 Shine Counters")
+	s.effect_by = 1
+	s._destroy(jn)
+	s.effect_by = -1
+	check(s.players[0].field.has(jn) and sn.counter == 0, "Sanctuary: counters instead of Jain")
+	# Gravekeeper's Trap: search; with Exchange of the Spirit in the GY, no Special Summons from the GY for them.
+	s = _main_ready(7522)
+	var gt := _set_trap(s, 0, "Gravekeeper's Trap")
+	gt.face_up = true
+	_in(s, 0, "Gravekeeper's Spy", "deck")
+	var hs: int = s.players[0].hand.size()
+	s.ignite(0, gt)
+	check(s.players[0].hand.filter(func(h): return h.cname() == "Gravekeeper's Spy").size() >= 1 and s.players[0].hand.size() == hs, "Gravekeeper's Trap: discard 1, add Spy")
+	_in(s, 0, "Exchange of the Spirit", "gy")
+	check(s.gk_trap_lock(1), "Gravekeeper's Trap: the lock is on")
+	# Exchange of the Spirit: the GYs and Decks trade places.
+	s = _main_ready(7523)
+	for q in 2:
+		while s.players[q].gy.size() < 15:
+			_in(s, q, "Pot of Greed", "gy")
+	var deck_before: int = s.players[1].deck.size()
+	var ex := _set_trap(s, 0, "Exchange of the Spirit")
+	s.turn += 1
+	s.activate(0, ex)
+	check(s.players[1].gy.size() == deck_before and s.players[1].deck.size() == 15, "Exchange of the Spirit: GY and Deck swapped")
+	# Pharaoh's Treasure: shuffled face-up into the Deck; drawn, a card from the GY.
+	s = _main_ready(7524)
+	var pt := _set_trap(s, 0, "Pharaoh's Treasure")
+	s.turn += 1
+	s.activate(0, pt)
+	check(s.players[0].deck.has(pt), "Pharaoh's Treasure: in the Deck")
+	var back := _in(s, 0, "Monster Reborn", "gy")
+	s.players[0].deck.erase(pt)
+	s.players[0].deck.append(pt)
+	s._draw(0, 1)
+	check(s.players[0].hand.has(back) and s.players[0].gy.has(pt), "Pharaoh's Treasure: drawn, Monster Reborn back")
+	# Mudora: Special Summoned by discarding an EARTH Fairy, places Gravekeeper's Trap.
+	s = _main_ready(7525)
+	s.players[0].hand.clear()
+	var md := _in(s, 0, "Mudora the Sword Oracle", "hand")
+	_in(s, 0, "Mudora the Sword Oracle", "hand")
+	var gtd := _in(s, 0, "Gravekeeper's Trap", "deck")
+	check(EffectRunner.can_special_hand(s, 0, md), "Mudora: discard an EARTH Fairy")
+	s.special_from_hand(0, md)
+	check(s.players[0].field.has(md) and s.players[0].spells.has(gtd) and gtd.face_up, "Mudora: Gravekeeper's Trap placed face-up")
+	# Ancient Gear Fortress: their effects can't target or destroy an Ancient Gear Summoned this turn; can't respond to Ancient Gear cards.
+	s = _main_ready(7526)
+	var fo := _set_trap(s, 0, "Ancient Gear Fortress")
+	fo.face_up = true
+	var sol := _in(s, 0, "Ancient Gear Soldier", "hand")
+	s.normal_summon(0, sol, [])
+	check(s.fortress_shields(sol), "Fortress: shielded the turn it is Summoned")
+	s.effect_by = 1
+	s._destroy(sol)
+	s.effect_by = -1
+	check(s.players[0].field.has(sol), "Fortress: not destroyed by their effect")
+	# Ancient Gear Duel: Fusion by banishing, 3 attacks.
+	s = _main_ready(7527)
+	var agd := _set_trap(s, 0, "Ancient Gear Duel")
+	agd.face_up = true
+	_mon(s, 0, "Ancient Gear Golem", 0)
+	_in(s, 0, "Ancient Gear Soldier", "gy")
+	_in(s, 0, "Ancient Gear Soldier", "gy")
+	_mon(s, 1, "Summoned Skull", 0)
+	var ua := _in(s, 0, "Ultimate Ancient Gear Golem", "extra")
+	s.ignite(0, agd)
+	check(s.players[0].field.has(ua) and EffectRunner.max_attacks(ua) == 3, "Ancient Gear Duel: Ultimate Ancient Gear Golem, 3 attacks")
+	# Toon Ancient Gear Golem: stays when Toon World goes.
+	s = _main_ready(7528)
+	var tw := _set_trap(s, 0, "Toon World")
+	tw.face_up = true
+	var tag := _mon(s, 0, "Toon Ancient Gear Golem", 0)
+	s._destroy_st(tw)
+	check(s.players[0].field.has(tag), "Toon Ancient Gear Golem: stays without Toon World")

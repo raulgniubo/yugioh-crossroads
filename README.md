@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.34.2.5
+
+**Catch-up: the cards the first families were missing, and every card working exactly as written.** 25 new cards, so the game now has **1,859 cards**, every one working and obtainable. New rule from here on: a card that needs a new engine piece gets the piece, it is never skipped or changed (only Link and Pendulum cards stay out).
+
+- **Gravekeeper's:** Gravekeeper's Trap (search, the Graveyard lock with Exchange of the Spirit, and declaring the card your opponent is about to draw), Mudora the Sword Oracle, Pharaoh's Treasure (shuffled face-up into your Deck, it pays off when you draw it), Exchange of the Spirit (every Graveyard and Deck trade places). Necrovalley Temple can now Set Necrovalley itself.
+- **Ancient Gear:** Toon Ancient Gear Golem, Ancient Gear Duel (Fusion by banishing, 3 attacks, unaffected by their monster effects), Ancient Gear Fortress (summon-turn protection, no responses to your Ancient Gear cards). Ancient Gear Dark Golem now works as Fusion Material for Ultimate Ancient Gear Golem, and Ancient Gear Castle asks whether you Tribute it or your monsters.
+- **Lightsworn:** Weiss, Punishment Dragon, Enlightenment Dragon, the four Twilightsworn monsters, Minerva the Athenian, Lightsworn Barrier, Aegis, Sanctuary, Lightsworn Judgment, Twilight Eraser, Twilight Twin Dragons. "When your Lightsworn monster's effect is activated" now works. Aurkus also protects Lightsworn in the Graveyard, and Minerva sends a card whenever she goes from the hand to the Graveyard, however that happens.
+- **Theme decks:** Mist Valley Baby Roc, Windmaster and Apex Avian join Storm Wings; Fire Princess (the game now notices every time you gain Life Points) joins Wildfire. Mist Valley Thunder Lord's Quick Effect now also works in your own turn.
+- The family decks use some of the new cards: Gravekeeper's Trap, Ancient Gear Fortress and Duel, Lightsworn Barrier and Judgment, and Minerva the Athenian in the Extra Deck.
+
+Not checked: played by the test duels, not watched.
+
 ## What is in 0.34.2
 
 **Card family 3 of 16: Lightsworn (5D's).** 29 new cards, so the game now has **1,834 cards**, every one working and obtainable.

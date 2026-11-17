@@ -406,8 +406,16 @@ func begin_turn(step := false) -> Array:
 				players[current].deck.append(fated)
 				destiny_used[current] = true
 				events.append({"type": "destiny", "player": current, "card": fated})
+			var declared := gk_trap_declare(current, events)
 			var drew := _draw(current)
 			events.append_array(drew)
+			if declared != "" and not drew.is_empty() and drew[0].get("type", "") == "draw":
+				var got_d: CardInst = drew[0]["card"]
+				events.append({"type": "effect", "player": opponent(current), "card": null, "text": Loc.t("Gravekeeper's Trap: they drew %s") % got_d.cname()})
+				if got_d.cname() == declared and players[current].hand.has(got_d):
+					players[current].hand.erase(got_d)
+					_to_gy(players[current], got_d)
+					events.append({"type": "discard", "player": current, "card": got_d})
 			# Destiny HERO - Dasher, once while it is in the Graveyard: a monster you draw in your
 			# Draw Phase can be shown and Special Summoned.
 			if not is_over() and not drew.is_empty() and drew[0].get("type", "") == "draw":
@@ -596,6 +604,7 @@ func _end_battle() -> Array:
 		if hp.cname() == "Helpoemer" and hp.tags.has("helpo_gy") and int(hp.tags["helpo_gy"]) == hp.gy_turn and not players[current].hand.is_empty() and not is_over():
 			var rnd_h = players[current].hand[randi() % players[current].hand.size()]
 			players[current].hand.erase(rnd_h)
+			rnd_h.set_meta("from_hand", true)
 			_to_gy(players[current], rnd_h)
 			events.append({"type": "effect", "player": h_own, "card": hp, "text": Loc.t("%s: the opponent discards %s") % [hp.cname(), rnd_h.cname()]})
 			events.append({"type": "discard", "player": current, "card": rnd_h})
@@ -683,6 +692,7 @@ func begin_end() -> Array:
 				if players[current].deck.is_empty():
 					break
 				var top_v = players[current].deck.pop_back()
+				top_v.set_meta("from_deck", true)
 				_to_gy(players[current], top_v)
 				events.append({"type": "mill", "player": current, "card": top_v, "deck": players[current].deck.size()})
 			events.append({"type": "effect", "player": opponent(current), "card": vb, "text": Loc.t("%s sends the top 3 cards of the Deck to the Graveyard") % vb.cname()})
@@ -923,6 +933,7 @@ func finish_turn() -> Array:
 		by_value.sort_custom(func(a, b): return (loops.call(a) < loops.call(b)) or (loops.call(a) == loops.call(b) and _card_value(a) < _card_value(b)))
 		for worst in choose(current, Loc.t("Hand limit: discard %d card%s") % [over, "" if over == 1 else "s"], ps.hand, over, by_value.slice(0, over)):
 			ps.hand.erase(worst)
+			worst.set_meta("from_hand", true)
 			_to_gy(ps, worst)
 			events.append({"type": "discard", "player": current, "card": worst})
 	# Monsters borrowed until the End Phase go home.
@@ -973,6 +984,20 @@ func _draw(p: int, count := 1) -> Array:
 		ps.hand.append(c)
 		drawn.append(c)
 		events.append({"type": "draw", "player": p, "card": c, "deck": ps.deck.size()})
+		if c.has_meta("treasure_up"):
+			# Pharaoh's Treasure: "If you draw this face-up card that was added to the Deck by this effect: Target 1 card in your GY;
+			# send this card to the GY, and if you do, add that target to your hand."
+			c.remove_meta("treasure_up")
+			var pool_t: Array = ps.gy.filter(func(g): return not necro_holds(g) and gy_targetable(g))
+			if not pool_t.is_empty() and choose_option(p, Loc.t("Pharaoh's Treasure: send it to the GY and add a card from your GY?"), [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				pool_t.sort_custom(func(x, y): return _card_value(x) > _card_value(y))
+				var back_t = pick1(p, Loc.t("Pharaoh's Treasure: add which card?"), pool_t, pool_t[0], c)
+				ps.hand.erase(c)
+				_to_gy(ps, c)
+				ps.gy.erase(back_t)
+				ps.hand.append(back_t)
+				events.append({"type": "discard", "player": p, "card": c})
+				events.append({"type": "gy_to_hand", "player": p, "card": back_t})
 	if not drawn.is_empty() and turn > 0:
 		# Silent Magician LV4: "Each time your opponent draws a card(s), place 1 Spell Counter on this card (max. 5)."
 		for sm in players[opponent(p)].monsters():
@@ -1141,9 +1166,54 @@ func mill(p: int, n: int, src = null) -> Array:
 	return ev
 
 
+## A player just gained Life Points: Fire Princess burns ("Each time you gain Life Points, inflict 500 damage to your opponent").
+func lp_gained(p: int) -> void:
+	if is_over():
+		return
+	for m in players[p].monsters():
+		if m.face_up and not m.negated and EffectRunner.fx(m).get("fire_princess", false):
+			pending_events.append({"type": "effect", "player": p, "card": m, "text": Loc.t("%s: 500 damage") % m.cname()})
+			pending_events.append_array(_damage(opponent(p), 500))
+
+
+## Gravekeeper's Trap: "During your opponent's Draw Phase, before their normal draw, if this card is already face-up on the field:
+## Declare 1 card name; look at the card(s) drawn for their normal draw, and if it was the declared card, send it to the GY."
+func gk_trap_declare(drawer: int, events: Array) -> String:
+	var q := opponent(drawer)
+	for st in players[q].spells:
+		if st != null and st.face_up and st.cname() == "Gravekeeper's Trap" and not SpellRules.blocked(self, st) and int(st.tags.get("declared_turn", -1)) != turn and int(st.set_turn) != turn:
+			st.tags["declared_turn"] = turn
+			var dp := players[drawer]
+			var names := {}
+			for x in dp.deck + dp.hand + dp.gy + dp.banished + dp.monsters() + dp.set_cards():
+				if not CardData.is_extra(x.id):
+					names[x.cname()] = names.get(x.cname(), 0) + 1
+			if names.is_empty():
+				return ""
+			var keys: Array = names.keys()
+			keys.sort_custom(func(a, b): return names[a] > names[b] or (names[a] == names[b] and a < b))
+			var idx := choose_option(q, Loc.t("Gravekeeper's Trap: declare a card name"), keys, 0, st)
+			var nm: String = str(keys[clampi(idx, 0, keys.size() - 1)])
+			events.append({"type": "effect", "player": q, "card": st, "text": Loc.t("Gravekeeper's Trap: declares %s") % nm})
+			return nm
+	return ""
+
+
+## Gravekeeper's Trap: "While "Exchange of the Spirit" is in your GY, your opponent cannot activate the effects of cards in the GY, or
+## Special Summon monsters from the GY." Is player p under that lock?
+func gk_trap_lock(p: int) -> bool:
+	var q := opponent(p)
+	if players[q].gy.filter(func(g): return g.cname() == "Exchange of the Spirit").is_empty():
+		return false
+	for st in players[q].spells:
+		if st != null and st.face_up and st.cname() == "Gravekeeper's Trap" and not SpellRules.blocked(self, st):
+			return true
+	return false
+
+
 ## Is this a "Lightsworn" card?
 static func is_lsw(c) -> bool:
-	return c != null and c.cname().contains("Lightsworn")
+	return c != null and (c.cname().contains("Lightsworn") or c.cname().contains("Twilightsworn"))
 
 
 ## Cards just sent from player p's Deck to the GY by `src` (a card, or null for a rule).
@@ -1162,6 +1232,10 @@ func deck_sent(p: int, sent: Array, src) -> Array:
 		var fs: CardInst = players[q].field_spell
 		if fs != null and fs.face_up and SpellRules.spec(fs).get("realm", false) and not SpellRules.blocked(self, fs):
 			fs.counter += 1
+	# Lightsworn Sanctuary: "Each time a card(s) is sent from your Deck to the Graveyard, place 1 Shine Counter on this card."
+	for sn in ps.spells:
+		if sn != null and sn.face_up and SpellRules.spec(sn).get("shine", false) and not SpellRules.blocked(self, sn):
+			sn.counter += 1
 	# Light Spiral: "Each time a card(s) is sent from your Deck to the Graveyard by the effect of a "Lightsworn" monster, banish the top card of your opponent's Deck."
 	if by_lsw_mon:
 		for st in ps.spells:
@@ -1177,9 +1251,10 @@ func deck_sent(p: int, sent: Array, src) -> Array:
 			continue
 		var gf := EffectRunner.fx(g)
 		# Wulf: "If this card is sent from your Deck to the GY: Special Summon it." Felis: "...by a monster effect".
-		if (gf.get("deck_gy_ss", false) or (gf.get("deck_gy_ss_mon", false) and by_mon)) and ps.free_zone() != -1 and not ss_locked(p) and ps.no_summon_turn != turn:
+		if (gf.get("deck_gy_ss", false) or (gf.get("deck_gy_ss_mon", false) and by_mon)) and ps.free_zone() != -1 and not ss_locked(p) and ps.no_summon_turn != turn and not gk_trap_lock(p):
 			ps.gy.erase(g)
 			ev.append({"type": "effect", "player": p, "card": g, "text": Loc.t("%s comes out of the Graveyard") % g.cname()})
+			ev.append_array(EffectRunner.lsw_fired(self, g))
 			ev.append_array(_special(p, g, "reborn"))
 			ev.append_array(EffectRunner.on_summon(self, p, g, "special"))
 			continue
@@ -1198,6 +1273,55 @@ func deck_sent(p: int, sent: Array, src) -> Array:
 				g.face_up = true
 				g.equipped_to = host
 				ev.append({"type": "effect", "player": p, "card": g, "text": Loc.t("%s equips itself to %s") % [g.cname(), host.cname()]})
+		# Weiss: "If this card is sent from the Deck to the GY: You can target 1 "Lightsworn" monster in your GY, except "Weiss, Lightsworn Archfiend"; Special Summon it."
+		if gf.get("weiss", false) and int(ps.once_names.get("Weiss#gy", -1)) != turn and ps.free_zone() != -1 and not ss_locked(p) and not gk_trap_lock(p):
+			var back_w: Array = ps.gy.filter(func(x): return x.is_monster() and is_lsw(x) and x.cname() != "Weiss, Lightsworn Archfiend" and can_revive(x) and gy_targetable(x))
+			if not back_w.is_empty() and choose_option(p, Loc.t("%s: Special Summon a Lightsworn monster from your GY?") % g.cname(), [Loc.t("Yes"), Loc.t("No")], 0, g) == 0:
+				ps.once_names["Weiss#gy"] = turn
+				ev.append_array(EffectRunner.lsw_fired(self, g))
+				var t_w = pick1(p, Loc.t("%s: Special Summon which monster?") % g.cname(), back_w, _best_monsters(back_w, 1)[0], g)
+				ps.gy.erase(t_w)
+				ev.append_array(_special(p, t_w, "reborn"))
+				ev.append_array(EffectRunner.on_summon(self, p, t_w, "special"))
+		# Lightsworn Aegis: "If this card is sent from the Deck to the GY: You can Set this card."
+		if g.cname() == "Lightsworn Aegis" and int(ps.once_names.get("Aegis#set", -1)) != turn and ps.spells.has(null) and not gk_trap_lock(p) \
+				and choose_option(p, Loc.t("%s: Set it?") % g.cname(), [Loc.t("Yes"), Loc.t("No")], 0, g) == 0:
+			ps.once_names["Aegis#set"] = turn
+			ps.gy.erase(g)
+			var za := ps.spells.find(null)
+			ps.spells[za] = g
+			g.face_up = false
+			g.set_turn = turn
+			ev.append({"type": "set_st", "player": p, "card": g, "zone": za})
+		# Twilight Eraser: "...by a "Lightsworn" monster's effect: You can Special Summon 1 "Lightsworn" monster from your hand."
+		if g.cname() == "Twilight Eraser" and by_lsw_mon and ps.free_zone() != -1 and not ss_locked(p) and not gk_trap_lock(p):
+			var hand_e: Array = ps.hand.filter(func(h): return h.is_monster() and is_lsw(h) and EffectRunner._ss_ok(h) and not big_locked(p, h, true))
+			if not hand_e.is_empty() and choose_option(p, Loc.t("%s: Special Summon a Lightsworn monster from your hand?") % g.cname(), [Loc.t("Yes"), Loc.t("No")], 0, g) == 0:
+				var t_e = pick1(p, Loc.t("%s: Special Summon which monster?") % g.cname(), hand_e, _best_monsters(hand_e, 1)[0], g)
+				ps.hand.erase(t_e)
+				ev.append_array(_special(p, t_e, "effect"))
+				ev.append_array(EffectRunner.on_summon(self, p, t_e, "special"))
+		# Twilight Twin Dragons: "...by a "Lightsworn" monster's effect: You can target 1 "Punishment Dragon" in your GY; add it to your hand, then banish the top 4 cards of your Deck."
+		if g.cname() == "Twilight Twin Dragons" and by_lsw_mon and not gk_trap_lock(p):
+			var pd_t: Array = ps.gy.filter(func(x): return x.cname() == "Punishment Dragon" and gy_targetable(x) and not necro_holds(x))
+			if not pd_t.is_empty() and choose_option(p, Loc.t("%s: add Punishment Dragon from your GY?") % g.cname(), [Loc.t("Yes"), Loc.t("No")], 0, g) == 0:
+				ps.gy.erase(pd_t[0])
+				ps.hand.append(pd_t[0])
+				ev.append({"type": "gy_to_hand", "player": p, "card": pd_t[0]})
+				for i in 4:
+					if ps.deck.is_empty():
+						break
+					var top_b: CardInst = ps.deck.pop_back()
+					ps.banished.append(top_b)
+					ev.append({"type": "banish", "player": p, "card": top_b, "from": "deck"})
+		# Lightsworn Judgment: "...by a "Lightsworn" monster's effect: You can add 1 "Judgment Dragon" from your Deck to your hand."
+		if g.cname() == "Lightsworn Judgment" and by_lsw_mon and not gk_trap_lock(p):
+			var jd_j: Array = ps.deck.filter(func(x): return x.cname() == "Judgment Dragon")
+			if not jd_j.is_empty() and choose_option(p, Loc.t("%s: add Judgment Dragon from your Deck?") % g.cname(), [Loc.t("Yes"), Loc.t("No")], 0, g) == 0:
+				ps.deck.erase(jd_j[0])
+				ps.hand.append(jd_j[0])
+				_shuffle(ps.deck)
+				ev.append({"type": "search", "player": p, "card": jd_j[0], "deck": ps.deck.size()})
 		# Twilight Cloth: "If this card is sent from the Deck to the GY by a "Lightsworn" monster's effect: this turn, "Lightsworn" monsters you control cannot be destroyed by battle or card effects."
 		if gs.get("cloth", false) and by_lsw_mon:
 			ps.once_names["#cloth"] = turn
@@ -1220,6 +1344,60 @@ func deck_sent(p: int, sent: Array, src) -> Array:
 	return ev
 
 
+## Lightsworn Sanctuary: "If a "Lightsworn" card(s) you control would be destroyed by a card effect, you can remove 2 Shine Counters
+## from your side of the field for each of those "Lightsworn" card(s) instead." True when it was used.
+func sanctuary_saves(c: CardInst) -> bool:
+	if c == null or not c.face_up or not is_lsw(c):
+		return false
+	var q := c.owner
+	var has_s := false
+	for sn in players[q].spells:
+		if sn != null and sn.face_up and SpellRules.spec(sn).get("shine", false) and not SpellRules.blocked(self, sn):
+			has_s = true
+	if not has_s:
+		return false
+	var holders: Array = players[q].spells.filter(func(x): return x != null and x.face_up and x.counter > 0 and (SpellRules.spec(x).get("shine", false) or SpellRules.spec(x).get("realm", false)))
+	if players[q].field_spell != null and players[q].field_spell.face_up and SpellRules.spec(players[q].field_spell).get("realm", false) and players[q].field_spell.counter > 0:
+		holders.append(players[q].field_spell)
+	var total := 0
+	for h in holders:
+		total += h.counter
+	if total < 2 or choose_option(q, Loc.t("%s would be destroyed. Remove 2 Shine Counters instead?") % c.cname(), [Loc.t("Remove 2"), Loc.t("No")], 0, c) != 0:
+		return false
+	var left := 2
+	for h in holders:
+		var take := mini(left, h.counter)
+		h.counter -= take
+		left -= take
+		if left == 0:
+			break
+	return true
+
+
+## Ancient Gear Fortress: "During the turn they were Normal or Special Summoned, your opponent cannot target "Ancient Gear" monsters you control
+## with card effects, and they cannot be destroyed by your opponent's card effects."
+func fortress_guard(c: CardInst) -> bool:
+	if c == null or not c.face_up or not c.cname().begins_with("Ancient Gear") or c.summoned_turn != turn:
+		return false
+	var by: int = effect_by if effect_by != -1 else (fx_src.owner if fx_src != null else -1)
+	if by != opponent(c.owner):
+		return false
+	for st in players[c.owner].spells:
+		if st != null and st.face_up and SpellRules.spec(st).get("ag_fortress", false) and not SpellRules.blocked(self, st):
+			return true
+	return false
+
+
+## Ancient Gear Fortress: an "Ancient Gear" monster Summoned this turn, while its controller has the Fortress up (no opponent's targeting).
+func fortress_shields(m: CardInst) -> bool:
+	if m == null or not m.face_up or not m.cname().begins_with("Ancient Gear") or m.summoned_turn != turn or not players[m.owner].field.has(m):
+		return false
+	for st in players[m.owner].spells:
+		if st != null and st.face_up and SpellRules.spec(st).get("ag_fortress", false) and not SpellRules.blocked(self, st):
+			return true
+	return false
+
+
 ## Twilight Cloth: this player's Lightsworn monsters can't be destroyed this turn.
 func cloth_guard(c: CardInst) -> bool:
 	return c != null and c.face_up and is_lsw(c) and c.is_monster() and int(players[c.owner].once_names.get("#cloth", -1)) == turn
@@ -1232,6 +1410,11 @@ func lsw_shield() -> bool:
 			if m.face_up and not m.negated and EffectRunner.fx(m).get("lsw_shield", false):
 				return true
 	return false
+
+
+## Aurkus, Lightsworn Druid: "Neither player can target "Lightsworn" monsters (anywhere)": a card in a GY an effect would target.
+func gy_targetable(c: CardInst) -> bool:
+	return not (c != null and c.is_monster() and is_lsw(c) and lsw_shield())
 
 
 ## Lord of D.: "Neither player can target Dragon monsters on the field with card effects."
@@ -1343,6 +1526,13 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 			raw_c -= 1
 		if raw_c > 0 and int(c.get_meta("factory_turn", -1)) != turn and int(players[p].once_names.get("#ag_advance", -1)) != turn:
 			castle_used = _castle_for(p, raw_c)
+			# "...you CAN Tribute this card instead": your call, when you also have the monsters to Tribute.
+			if castle_used != null and manual[p] and tributable(p).size() >= raw_c \
+					and choose_option(p, Loc.t("%s: what do you Tribute?") % c.cname(), [Loc.t("Ancient Gear Castle"), Loc.t("%d monster(s)") % raw_c], 0, c) == 1:
+				castle_used = null
+				var pool_t: Array = tributable(p)
+				pool_t.sort_custom(func(x, y): return atk_of(x, false) < atk_of(y, false))
+				tributes = choose(p, Loc.t("%s: Tribute which monsters?") % c.cname(), pool_t, raw_c, pool_t.slice(0, raw_c), false, c)
 	if set_card and (int(players[p].once_names.get("#no_set", -1)) == turn):
 		return []   # "you cannot Set cards for the rest of this turn" (Ancient Gear Wyvern / Dark Golem)
 	if int(players[p].once_names.get("#no_ns_until", -1)) >= turn:
@@ -1894,8 +2084,19 @@ func chain_resolve() -> Array:
 				else:
 					ps.spells[ps.spells.find(c)] = null
 				events.append_array(SpellRules.left_field(self, c))
-				_to_gy(ps, c)
-				events.append({"type": "st_done" if c.is_trap() else "spell_done", "player": p, "card": c})
+				if c.has_meta("to_deck") and not link["negated"]:
+					# Lightsworn Judgment: "Place this card on top of the Deck." Pharaoh's Treasure: "Shuffle this card face-up into your Deck."
+					var how := str(c.get_meta("to_deck"))
+					c.remove_meta("to_deck")
+					players[c.owner].deck.append(c)
+					if how == "shuffle":
+						c.set_meta("treasure_up", true)
+						_shuffle(players[c.owner].deck)
+					events.append({"type": "gy_to_deck", "player": c.owner, "card": c, "deck": players[c.owner].deck.size()})
+					events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s goes back into the Deck") % c.cname()})
+				else:
+					_to_gy(ps, c)
+					events.append({"type": "st_done" if c.is_trap() else "spell_done", "player": p, "card": c})
 	chain.clear()
 	events.append_array(_cleanup())
 	events.append_array(_check_exodia())
@@ -1949,6 +2150,7 @@ func _legacy_spell(p: int, c: CardInst, choice = null) -> Array:
 			events.append_array(_draw(p, 2))
 		"heal1000":
 			ps.lp += 1000
+			lp_gained(p)
 			events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": 1000})
 		"fissure":
 			var target := _lowest_face_up(opponent(p))
@@ -1984,6 +2186,7 @@ func _legacy_spell(p: int, c: CardInst, choice = null) -> Array:
 			worst = pick1(p, "Dark Core: discard 1 card", ps.hand, worst, c)
 			if worst:
 				ps.hand.erase(worst)
+				worst.set_meta("from_hand", true)
 				_to_gy(ps, worst)
 				events.append({"type": "discard", "player": p, "card": worst})
 			var ups: Array = []
@@ -2031,7 +2234,7 @@ func _legacy_spell(p: int, c: CardInst, choice = null) -> Array:
 			var dead: Array = []
 			for q in [p, opponent(p)]:
 				for g in players[q].gy:
-					if can_revive(g):
+					if can_revive(g) and gy_targetable(g):
 						dead.append(g)
 			revive = pick1(p, "Special Summon 1 monster from either Graveyard", dead, revive, c)
 			if revive:
@@ -2631,11 +2834,24 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 				var cheap: Array = players[dq].hand.duplicate()
 				var thrown = pick1(dq, Loc.t("%s: discard which card?") % da.cname(), cheap, cheap[0], da)
 				players[dq].hand.erase(thrown)
+				thrown.set_meta("from_hand", true)
 				_to_gy(players[dq], thrown)
 				events.append({"type": "discard", "player": dq, "card": thrown})
 				pending_attack["negated"] = true
 				events.append({"type": "effect", "player": dq, "card": da, "text": Loc.t("%s negates the attack") % da.cname()})
 				return events
+	# Lightsworn Barrier: "When a "Lightsworn" monster you control is targeted for an attack: You can send the top 2 cards of your Deck to the
+	# Graveyard, then target the attacking monster; negate the attack." (While it is face-up, every time.)
+	if target != null and target.face_up and is_lsw(target) and not pending_attack.get("negated", false):
+		for lb in players[dq].spells:
+			if lb != null and lb.face_up and SpellRules.spec(lb).get("barrier", false) and not SpellRules.blocked(self, lb) and players[dq].deck.size() >= 2:
+				var bad_b := (target.attack_pos and atk_of(attacker, false) >= atk_of(target, false)) or (not target.attack_pos and atk_of(attacker, false) > def_of(target))
+				if choose_option(dq, Loc.t("%s: send the top 2 cards of your Deck to the GY and negate the attack?") % lb.cname(), [Loc.t("Yes"), Loc.t("No")], 0 if bad_b else 1, lb) == 0:
+					events.append_array(mill(dq, 2, lb))
+					pending_attack["negated"] = true
+					events.append({"type": "effect", "player": dq, "card": lb, "text": Loc.t("%s negates the attack") % lb.cname()})
+					return events
+				break
 	# Fairy Box: "When your opponent's monster declares an attack: Toss a coin and call it. If you call it right, the attacking
 	# monster's ATK becomes 0 until the end of the Battle Phase."
 	for fb in players[opponent(p)].spells:
@@ -3418,6 +3634,7 @@ func _after_attack(attacker: CardInst, target = null) -> Array:
 				events.append({"type": "effect", "player": wm.owner, "card": wm, "text": Loc.t("%s: %d damage, +%d LP") % [wm.cname(), dmg_w, heal_w]})
 				events.append_array(_damage(opponent(wm.owner), dmg_w))
 				players[wm.owner].lp += heal_w
+				lp_gained(wm.owner)
 				events.append({"type": "lp", "player": wm.owner, "lp": players[wm.owner].lp, "delta": heal_w})
 	attacker.tags.erase("abs_hit")
 	attacker.tags.erase("prime_boost")
@@ -3652,12 +3869,17 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed by card effects") % c.cname()}]
 	if not by_battle and cloth_guard(c):
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed by card effects") % c.cname()}]
+	if not by_battle and fortress_guard(c):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed by card effects") % c.cname()}]
+	if not by_battle and sanctuary_saves(c):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("Lightsworn Sanctuary: 2 Shine Counters go instead of %s") % c.cname()}]
 	if c.face_up and not c.negated and EffectRunner.fx(c).get("visionary", false):
 		# Gravekeeper's Visionary: "If this face-up card would be destroyed, you can discard 1 "Gravekeeper's" monster instead."
 		var gkh: Array = ps.hand.filter(func(h): return h.is_monster() and h.cname().begins_with("Gravekeeper's"))
 		if not gkh.is_empty() and choose_option(c.owner, Loc.t("%s would be destroyed. Discard a \"Gravekeeper's\" monster instead?") % c.cname(), [Loc.t("Discard one"), Loc.t("No")], 0, c) == 0:
 			var thrown_v = pick1(c.owner, Loc.t("%s: discard which monster?") % c.cname(), gkh, gkh[0], c)
 			ps.hand.erase(thrown_v)
+			thrown_v.set_meta("from_hand", true)
 			_to_gy(ps, thrown_v)
 			return [{"type": "discard", "player": c.owner, "card": thrown_v}, {"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s stays: %s was discarded instead") % [c.cname(), thrown_v.cname()]}]
 	if not by_battle and effect_by == opponent(c.owner) and int(ps.once_names.get("#gardna", -1)) == turn:
@@ -3867,6 +4089,18 @@ func _to_gy(ps: PlayerState, c: CardInst) -> void:
 ## "When this card is sent to the Graveyard" from anywhere: the field, the hand, the Deck, as
 ## an Xyz Material (Skull-Mark Ladybug). What it does is picked up by _cleanup.
 func _sent_to_gy(c: CardInst) -> void:
+	if c.has_meta("from_hand"):
+		c.remove_meta("from_hand")
+		# Mist Valley Baby Roc: "When this card is sent from the hand to the GY: You can Special Summon it."
+		if c.is_monster() and EffectRunner.fx(c).get("hand_gy_ss", false) and not is_over() and not gk_trap_lock(c.owner):
+			baby_roc.append(c)
+		# Minerva, Lightsworn Maiden: "If this card is sent from the hand or Deck to the GY: Send the top card of your Deck to the GY."
+		if c.is_monster() and EffectRunner.fx(c).get("minerva_mill", false) and not is_over():
+			pending_events.append_array(mill(c.owner, 1, c))
+	if c.has_meta("from_deck"):
+		c.remove_meta("from_deck")
+		# (Sent from the Deck one by one by an older card's code: gathered, and handled together by _cleanup.)
+		deck_batch.append([c, fx_src if fx_src != null else st_resolving])
 	if not c.is_monster():
 		# "If this card is sent to the Graveyard" on a Spell or Trap (Limiter Overload).
 		var st_sent: Array = SpellRules.FX.get(c.cname(), {}).get("sent_gy", [])
@@ -3878,7 +4112,7 @@ func _sent_to_gy(c: CardInst) -> void:
 			effect_by = was_by
 		return
 	var sent: Array = CardEffects.of(c.cname()).get("sent_gy", [])
-	if not sent.is_empty() and not is_over():
+	if not sent.is_empty() and not is_over() and not gk_trap_lock(c.owner):
 		pending_events.append_array(EffectRunner.run_list(self, c.owner, c, sent, {}))
 
 
@@ -3886,6 +4120,10 @@ func _sent_to_gy(c: CardInst) -> void:
 var redirected: Array = []
 ## Things that happened inside _to_gy (it returns nothing): picked up by _cleanup.
 var pending_events: Array = []
+## Cards sent from a Deck to the GY one at a time by older code ([card, source]): picked up by _cleanup.
+var deck_batch: Array = []
+## Mist Valley Baby Roc just went from the hand to the GY: offered a Special Summon by _cleanup.
+var baby_roc: Array = []
 
 
 func _gy_redirect(c: CardInst = null) -> bool:
@@ -3918,6 +4156,9 @@ func _banish(c: CardInst) -> Array:
 		return [{"type": "effect", "player": c.owner, "card": null, "text": Loc.t("Necrovalley: %s stays in the Graveyard") % c.cname()}]
 	if (players[0].field.has(c) or players[1].field.has(c)) and st_unaffected(c):
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is unaffected") % c.cname()}]
+	if players[c.owner].field.has(c) and c.face_up and c.is_monster() and is_lsw(c) \
+			and not players[c.owner].monsters().filter(func(m): return m.face_up and not m.negated and EffectRunner.fx(m).get("lsw_no_banish", false)).is_empty():
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be banished") % c.cname()}]   # Minerva, the Athenian Lightsworn
 	if c.is_token():
 		return _vanish(c)
 	var was_up_mon := false
@@ -3985,6 +4226,8 @@ func _best_monsters(list: Array, n: int) -> Array:
 
 func _destroy_st(c: CardInst) -> Array:
 	var ps := players[c.owner]
+	if sanctuary_saves(c):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("Lightsworn Sanctuary: 2 Shine Counters go instead of %s") % c.cname()}]
 	if c.face_up and SpellRules.spec(c).get("realm", false) and c.counter >= 2 and (ps.field_spell == c):
 		# Realm of Light: "If this card would be destroyed by a card effect, remove 2 Shine Counters from this card instead."
 		c.counter -= 2
@@ -4046,25 +4289,45 @@ func _destroy_st(c: CardInst) -> Array:
 				gp.deck.erase(g)
 				gp.gy.erase(g)
 				events.append_array(_special(c.owner, g, "effect"))
+	if SpellRules.spec(c).get("ag_fortress", false) and ps.gy.has(c) and not is_over():
+		# Ancient Gear Fortress: "If this card is destroyed in the Spell & Trap Zone: You can Special Summon 1 "Ancient Gear" monster from your hand
+		# or Graveyard, also you cannot Special Summon monsters for the rest of this turn, except "Ancient Gear" monsters."
+		var fp := players[c.owner]
+		var pool_f: Array = fp.hand.filter(func(x): return x.is_monster() and x.cname().begins_with("Ancient Gear") and EffectRunner._ss_ok(x)) \
+				+ fp.gy.filter(func(x): return x.is_monster() and x.cname().begins_with("Ancient Gear") and can_revive(x))
+		if not pool_f.is_empty() and fp.free_zone() != -1 and not ss_locked(c.owner) and not gk_trap_lock(c.owner) \
+				and choose_option(c.owner, Loc.t("Ancient Gear Fortress: Special Summon an \"Ancient Gear\" monster?"), [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+			var t_f = pick1(c.owner, Loc.t("Ancient Gear Fortress: which monster?"), pool_f, _best_monsters(pool_f, 1)[0], c)
+			var from_gy_f: bool = fp.gy.has(t_f)
+			fp.hand.erase(t_f)
+			fp.gy.erase(t_f)
+			fp.once_names["#ss_ag_only"] = turn
+			events.append_array(_special(c.owner, t_f, "reborn" if from_gy_f else "effect"))
+			events.append_array(EffectRunner.on_summon(self, c.owner, t_f, "special"))
 	if was_up and SpellRules.spec(c).get("temple", false) and effect_by == opponent(c.owner) and ps.gy.has(c):
 		# Necrovalley Temple: "If this card in your possession is destroyed by an opponent's effect and sent to your GY: You can Set
 		# 1 "Necrovalley" Spell/Trap directly from your Deck, except "Necrovalley Temple"."
 		var setp := players[c.owner]
-		var nvs: Array = setp.deck.filter(func(x): return not x.is_monster() and x.cname().contains("Necrovalley") and x.cname() != "Necrovalley Temple" and SpellRules.spec(x).get("k", "") != "field")
-		if not nvs.is_empty() and setp.spells.has(null) and choose_option(c.owner, Loc.t("Necrovalley Temple: Set a \"Necrovalley\" card from your Deck?"), [Loc.t("Set one"), Loc.t("No")], 0, c) == 0:
+		var nvs: Array = setp.deck.filter(func(x): return not x.is_monster() and x.cname().contains("Necrovalley") and x.cname() != "Necrovalley Temple" \
+				and ((SpellRules.spec(x).get("k", "") == "field" and setp.field_spell == null) or (SpellRules.spec(x).get("k", "") != "field" and setp.spells.has(null))))
+		if not nvs.is_empty() and choose_option(c.owner, Loc.t("Necrovalley Temple: Set a \"Necrovalley\" card from your Deck?"), [Loc.t("Set one"), Loc.t("No")], 0, c) == 0:
 			var nv = pick1(c.owner, Loc.t("Necrovalley Temple: Set which card?"), nvs, nvs[0], c)
 			setp.deck.erase(nv)
-			var zn := setp.spells.find(null)
-			setp.spells[zn] = nv
 			nv.face_up = false
 			nv.set_turn = turn
-			events.append({"type": "set_st", "player": c.owner, "card": nv, "zone": zn})
+			if SpellRules.spec(nv).get("k", "") == "field":
+				setp.field_spell = nv   # (a Field Spell is Set in the Field Zone)
+				events.append({"type": "set_st", "player": c.owner, "card": nv, "zone": 5})
+			else:
+				var zn := setp.spells.find(null)
+				setp.spells[zn] = nv
+				events.append({"type": "set_st", "player": c.owner, "card": nv, "zone": zn})
 			_shuffle(setp.deck)
 	if was_up and c.cname() == "Toon World":
 		# "If "Toon World" on the field is destroyed, destroy this card": every Toon that says so.
 		for q in 2:
 			for m in players[q].monsters():
-				if m.face_up and EffectRunner.fx(m).has("toon") and not m.negated:
+				if m.face_up and EffectRunner.fx(m).has("toon") and not EffectRunner.fx(m).get("toon_stays", false) and not m.negated:
 					events.append({"type": "effect", "player": q, "card": m, "text": Loc.t("Toon World is gone: %s is destroyed") % m.cname()})
 					events.append_array(_destroy(m))
 	return events
@@ -4155,6 +4418,23 @@ func _cleanup() -> Array:
 				m.set_meta("zw_untarget_owner", q)
 			elif m.has_meta("zw_untarget_owner"):
 				m.remove_meta("zw_untarget_owner")
+	for br in baby_roc.duplicate():
+		baby_roc.erase(br)
+		var pb := players[br.owner]
+		if pb.gy.has(br) and pb.free_zone() != -1 and not ss_locked(br.owner) and pb.no_summon_turn != turn and can_revive(br) \
+				and choose_option(br.owner, Loc.t("%s: Special Summon it?") % br.cname(), [Loc.t("Yes"), Loc.t("No")], 0, br) == 0:
+			pb.gy.erase(br)
+			events.append_array(_special(br.owner, br, "reborn"))
+	if not deck_batch.is_empty() and not is_over():
+		var batch := deck_batch.duplicate()
+		deck_batch.clear()
+		for q in 2:
+			var mine: Array = batch.filter(func(b): return b[0].owner == q)
+			if not mine.is_empty():
+				var cards_q: Array = []
+				for b in mine:
+					cards_q.append(b[0])
+				events.append_array(deck_sent(q, cards_q, mine[0][1]))
 	if not pending_events.is_empty():
 		events.append_array(pending_events)
 		pending_events = []
@@ -4637,7 +4917,7 @@ func _best_in_gy() -> CardInst:
 	var best: CardInst = null
 	for ps in players:
 		for c in ps.gy:
-			if can_revive(c) and (best == null or c.atk() > best.atk()):
+			if can_revive(c) and gy_targetable(c) and (best == null or c.atk() > best.atk()):
 				best = c
 	return best
 
@@ -4773,6 +5053,11 @@ func heretic_shield(c, src = null) -> bool:
 		return true   # Ancient Gear Howitzer: "Unaffected by other cards' effects."
 	if f.get("unaffected_st", false) and src != null and src is CardInst and not src.is_monster():
 		return true   # Chaos Ancient Gear Giant: "Unaffected by Spell/Trap effects."
+	# Ancient Gear Duel: ""Ancient Gear Golem", and monsters that mention it, in your Monster Zone are unaffected by your opponent's activated monster effects."
+	if src != null and src is CardInst and src.is_monster() and src.owner != c.owner and players[c.owner].field.has(c) and (is_golem(c) or mentions_golem(c)):
+		for st in players[c.owner].spells:
+			if st != null and st.face_up and SpellRules.spec(st).get("ag_duel", false) and not SpellRules.blocked(self, st):
+				return true
 	return f.get("heretic", false) and necro_on()
 
 
@@ -4792,6 +5077,8 @@ func shaman_blocks(c) -> bool:
 func can_revive(c: CardInst) -> bool:
 	if necro_holds(c):
 		return false
+	if (players[0].gy.has(c) or players[1].gy.has(c)) and gk_trap_lock(effect_by if effect_by != -1 else (fx_src.owner if fx_src != null else current)):
+		return false   # Gravekeeper's Trap: "your opponent cannot ... Special Summon monsters from the GY"
 	if int(inscription.get("mode", -1)) == 2 and int(inscription.get("until", -1)) >= turn and (players[0].gy.has(c) or players[1].gy.has(c)):
 		return false   # Gravekeeper's Inscription: "Neither player can Special Summon monsters from the GYs."
 	if EffectRunner.fx(c).get("tyrant", false):
@@ -4921,7 +5208,10 @@ func _fmat_plan(p: int, f: CardInst, pool_hand: Array, pool_field: Array, ask: b
 	cands.sort_custom(func(a, b): return a.atk() < b.atk())
 	var same := ""
 	for flt in fx_f["fmats"]:
-		var fits: Array = cands.filter(func(x): return CardEffects.matches(x.data, flt) and (same == "" or x.cname() == same))
+		# (On the field and in the GY a card can go by another name: Ancient Gear Dark Golem is "Ancient Gear Golem" there.)
+		var flt_f: Dictionary = flt.duplicate()
+		flt_f["zone"] = "field"
+		var fits: Array = cands.filter(func(x): return (CardEffects.matches(x.data, flt) or ((pool_field.has(x) or players[p].gy.has(x)) and CardEffects.matches(x.data, flt_f))) and (same == "" or x.cname() == same))
 		if fx_f.get("fmats_same", false) and same == "" and not fits.is_empty():
 			# "2 Machine monsters with the same name": a name that has two.
 			var named := ""
@@ -4964,6 +5254,7 @@ func _do_fusion(p: int, plan: Dictionary, banish := false) -> Array:
 	else:
 		for m in plan["hand"]:
 			ps.hand.erase(m)
+			m.set_meta("from_hand", true)
 			_to_gy(ps, m)
 			events.append({"type": "material", "player": p, "card": m, "from": "hand"})
 		for m in plan["field"]:
@@ -5224,6 +5515,8 @@ func big_locked(p: int, c: CardInst, special := false) -> bool:
 		return true   # Photon Sanctuary: "You cannot Summon other monsters the turn you activate this card, except LIGHT monsters."
 	if c != null and special and SpellRules.field_flag(self, "hidden_temples") and not c.cname().begins_with("Gravekeeper's"):
 		return true   # Hidden Temples of Necrovalley: "Neither player can Special Summon monsters, except "Gravekeeper's" monsters."
+	if c != null and special and int(ps.once_names.get("#ss_ag_only", -1)) == turn and not c.cname().begins_with("Ancient Gear"):
+		return true   # Ancient Gear Fortress: "you cannot Special Summon monsters for the rest of this turn, except "Ancient Gear" monsters"
 	if c != null and special and int(ps.once_names.get("#ss_water_only", -1)) == turn and str(c.data.get("attribute", "")) != "WATER":
 		return true   # Saber Shark: "You cannot Special Summon any monsters during the turn you activate this effect, except WATER monsters."
 	return int(ps.once_names.get("#no_big", -1)) == turn and c != null and c.is_monster() and c.frame() != "xyz" and c.level() >= 5
@@ -5412,6 +5705,15 @@ func xyz_onto(p: int, x: CardInst, base: CardInst) -> Array:
 ## as Union monsters riding as Equip Cards. Returns one card per name, or [] when one is missing.
 func contact_materials(p: int, c: CardInst) -> Array:
 	var out := []
+	if str(CardEffects.of(c.cname()).get("contact_to", "")) == "split":
+		# Enlightenment Dragon: the two named monsters, 1 from your field and 1 from your GY (either way round).
+		var nms: Array = CardEffects.of(c.cname()).get("contact", [])
+		for order in [[0, 1], [1, 0]]:
+			var on_f: Array = players[p].monsters().filter(func(m): return m.face_up and m.cname() == str(nms[order[0]]))
+			var in_g: Array = players[p].gy.filter(func(g): return g.cname() == str(nms[order[1]]) and not necro_holds(g))
+			if not on_f.is_empty() and not in_g.is_empty():
+				return [on_f[0], in_g[0]]
+		return []
 	# (The Neos Contact Fusions take "the above cards you control", face-down ones too.)
 	var any_face: bool = str(CardEffects.of(c.cname()).get("contact_to", "")) == "deck"
 	for nm in CardEffects.of(c.cname()).get("contact", []):
@@ -5502,6 +5804,7 @@ func extra_summon(p: int, c: CardInst, materials: Array = [], any_time := false)
 	if not xyz:
 		# What it was made with (Junk Destroyer, Shooting Quasar Dragon, Synchro Strike).
 		c.tags["mats"] = materials.size()
+		c.tags["mat_names"] = materials.map(func(m): return m.cname())
 		c.tags["non_tuners"] = materials.filter(func(m): return not m.is_tuner()).size()
 		for m in materials:
 			# "...for the Synchro Summon of a "Nitro" Synchro Monster" / "of a DARK Synchro Monster".
@@ -5785,6 +6088,14 @@ func responses(p: int, window: String, subject = null) -> Array:
 	# Infernity Beast: while it attacks with its owner's hand empty, the other side cannot use Spells or Traps.
 	var st_locked := false
 	var fx_locked := false
+	# Ancient Gear Fortress: "Your opponent cannot activate cards or effects in response to the activation of "Ancient Gear" cards and effects."
+	if window == "chain" and not chain.is_empty():
+		var lk_f: Dictionary = chain.back()
+		var src_f: CardInst = lk_f["card"]
+		if src_f != null and int(lk_f["player"]) != p and src_f.cname().begins_with("Ancient Gear"):
+			for st in players[int(lk_f["player"])].spells:
+				if st != null and st.face_up and SpellRules.spec(st).get("ag_fortress", false) and not SpellRules.blocked(self, st):
+					return out
 	# Chaos Ancient Gear Giant: "Your opponent's monsters cannot activate their effects during the Battle Phase."
 	if phase == Phase.BATTLE:
 		for m in players[opponent(p)].monsters():
@@ -5942,6 +6253,7 @@ func respond(p: int, c: CardInst, subject = null) -> Array:
 			if int(ps.once_names.get("Dimension Wanderer", -1)) != turn and choose_option(p, Loc.t("Send Dimension Wanderer to the GY for 3000 damage?"), [Loc.t("Send it"), Loc.t("Keep it")], 0, dw) == 0:
 				ps.once_names["Dimension Wanderer"] = turn
 				ps.hand.erase(dw)
+				dw.set_meta("from_hand", true)
 				_to_gy(ps, dw)
 				events.append({"type": "discard", "player": p, "card": dw})
 				events.append_array(_damage(o, 3000))
@@ -5953,6 +6265,7 @@ func respond(p: int, c: CardInst, subject = null) -> Array:
 		if who == null:
 			return events
 		ps.hand.erase(c)
+		c.set_meta("from_hand", true)
 		_to_gy(ps, c)
 		if who.atk_mod_turn != turn:
 			who.atk_mod_turn = turn
@@ -5962,6 +6275,7 @@ func respond(p: int, c: CardInst, subject = null) -> Array:
 		return events
 	if c.cname() == "Kuriboh" and ps.hand.has(c):
 		ps.hand.erase(c)
+		c.set_meta("from_hand", true)
 		_to_gy(ps, c)
 		ps.no_damage_turn = turn
 		events.append({"type": "hand_effect", "player": p, "card": c, "text": "Kuriboh! No battle damage."})

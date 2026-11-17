@@ -374,6 +374,8 @@ static func max_attacks(c) -> int:
 	if f.get("double_after_kill", false):
 		# Black Luster Soldier - Envoy of the Beginning: one of its two effects each turn.
 		return 2 if c.killed_turn != -1 and c.killed_turn == c.attack_count_turn and c.ignite_turn != c.killed_turn else 1
+	if int(c.tags.get("agd_attacks", -1)) != -1 and not c.negated:
+		return 3   # Ancient Gear Duel: "it can make up to 3 attacks during each Battle Phase"
 	if int(c.tags.get("megaton_n", 0)) >= 2 and not c.negated:
 		return int(c.tags["megaton_n"])   # Ancient Gear Megaton Golem: up to as many attacks as Golems used
 	if c.tags.get("second_attack", false) and not c.negated:
@@ -614,13 +616,44 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 		return not s.players[p].deck.filter(func(x): return x.cname() == "Ancient Gear Golem" or (not x.is_monster() and str(x.data.get("desc", "")).contains("Ancient Gear Golem"))).is_empty()
 	if cond == "ag_fusion_hand":
 		return not ag_plans(s, p, false).is_empty()
+	if cond == "lsw4_banished":
+		var seen_b := {}
+		for g in s.players[p].banished:
+			if g.is_monster() and DuelState.is_lsw(g) and g.face_up:
+				seen_b[g.cname()] = true
+		return seen_b.size() >= 4   # Punishment Dragon
+	if cond == "mudora":
+		var pm := s.players[p]
+		return int(pm.once_names.get("Mudora#ss", -1)) != s.turn and pm.hand.filter(func(h): return h.is_monster() and str(h.data.get("attribute", "")) == "EARTH" and str(h.data.get("race", "")) == "Fairy").size() >= 2   # (Mudora itself, and 1 other)
+	if cond == "weiss":
+		var pw := s.players[p]
+		return int(pw.once_names.get("Weiss#ss", -1)) != s.turn and pw.hand.filter(func(h): return DuelState.is_lsw(h) and h.cname() != "Weiss, Lightsworn Archfiend").size() >= 1
+	if cond == "windmaster":
+		return s.players[0].hand.size() >= 5 and s.players[1].hand.size() >= 5
+	if cond == "lsw_banishable":
+		return not lsw_fodder(s, p).is_empty()
+	if cond == "lumina_ts":
+		return not lsw_fodder(s, p).is_empty() and s.players[p].free_zone() != -1 \
+				and not s.players[p].banished.filter(func(b): return b.face_up and b.is_monster() and DuelState.is_lsw(b) and b.cname() != "Lumina, Twilightsworn Shaman").is_empty()
+	if cond == "lsw_in_gy":
+		return not s.players[p].gy.filter(func(g): return g.is_monster() and DuelState.is_lsw(g) and not s.necro_holds(g)).is_empty()
+	if cond == "gk_trap":
+		var pt := s.players[p]
+		return int(pt.once_names.get("GKTrap#search", -1)) != s.turn and pt.hand.size() >= 1 \
+				and not pt.deck.filter(func(x): return x.is_monster() and (x.cname().begins_with("Gravekeeper's") or (str(x.data.get("attribute", "")) == "EARTH" and str(x.data.get("race", "")) == "Fairy"))).is_empty()
+	if cond == "sanctuary":
+		var psn := s.players[p]
+		return int(psn.once_names.get("Sanctuary#use", -1)) != s.turn and not psn.hand.filter(func(h): return h.is_monster() and DuelState.is_lsw(h)).is_empty() \
+				and not psn.gy.filter(func(g): return g.is_monster() and DuelState.is_lsw(g) and s.gy_targetable(g) and not s.necro_holds(g)).is_empty()
+	if cond == "ag_duel":
+		return int(s.players[p].once_names.get("AGDuel#fusion", -1)) != s.turn and not s.players[s.opponent(p)].monsters().is_empty() and not ag_duel_plans(s, p).is_empty()
 	if cond == "lsw4":
 		return lsw_names(s, p) >= 4   # Judgment Dragon
 	if cond == "lp_over_1000":
 		return s.players[p].lp > 1000
 	if cond == "lsw_gy4":
 		var pl := s.players[p]
-		return pl.free_zone() != -1 and not pl.gy.filter(func(g): return g.is_monster() and DuelState.is_lsw(g) and g.level() <= 4 and s.can_revive(g)).is_empty()
+		return pl.free_zone() != -1 and not pl.gy.filter(func(g): return g.is_monster() and DuelState.is_lsw(g) and g.level() <= 4 and s.can_revive(g) and s.gy_targetable(g)).is_empty()
 	if cond == "dragonling":
 		var pd := s.players[p]
 		return int(pd.once_names.get("Dragonling#ss", -1)) != s.turn and not pd.gy.filter(func(g): return g.is_monster() and DuelState.is_lsw(g)).is_empty()
@@ -902,6 +935,42 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 	var f := fx(c)
 	var ps := s.players[p]
 	var events := []
+	if f.get("mudora", false):
+		# Mudora: discard 1 other EARTH Fairy; Special Summon it, then you can place 1 "Gravekeeper's Trap" from your Deck face-up.
+		ps.once_names["Mudora#ss"] = s.turn
+		var fair: Array = ps.hand.filter(func(h): return h != c and h.is_monster() and str(h.data.get("attribute", "")) == "EARTH" and str(h.data.get("race", "")) == "Fairy")
+		var paid = s.pick1(p, Loc.t("%s: discard which EARTH Fairy?") % c.cname(), fair, fair[0], c)
+		ps.hand.erase(paid)
+		paid.set_meta("from_hand", true)
+		s._to_gy(ps, paid)
+		events.append({"type": "discard", "player": p, "card": paid})
+		ps.hand.erase(c)
+		events.append_array(s._special(p, c, "effect"))
+		var gkt: Array = ps.deck.filter(func(x): return x.cname() == "Gravekeeper's Trap")
+		if not gkt.is_empty() and ps.spells.has(null) and s.choose_option(p, Loc.t("%s: place \"Gravekeeper's Trap\" face-up from your Deck?") % c.cname(), [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+			var zt := ps.spells.find(null)
+			ps.deck.erase(gkt[0])
+			ps.spells[zt] = gkt[0]
+			gkt[0].face_up = true
+			gkt[0].set_turn = s.turn
+			s._shuffle(ps.deck)
+			events.append({"type": "set_st", "player": p, "card": gkt[0], "zone": zt})
+			events.append({"type": "reveal", "player": p, "card": gkt[0], "zone": zt})
+		return events
+	if f.get("weiss", false):
+		# Weiss: place 1 other "Lightsworn" card from your hand on top of the Deck; Special Summon it, then send the top 2 to the GY.
+		ps.once_names["Weiss#ss"] = s.turn
+		var top_w: Array = ps.hand.filter(func(h): return DuelState.is_lsw(h) and h != c)
+		top_w.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+		var put_w = s.pick1(p, Loc.t("%s: put which card on top of your Deck?") % c.cname(), top_w, top_w[0], c)
+		ps.hand.erase(put_w)
+		ps.deck.append(put_w)
+		events.append({"type": "gy_to_deck", "player": p, "card": put_w, "deck": ps.deck.size()})
+		events.append_array(lsw_fired(s, c))
+		ps.hand.erase(c)
+		events.append_array(s._special(p, c, "effect"))
+		events.append_array(s.mill(p, 2, c))
+		return events
 	if f.get("lock_hand_ss", false):
 		ps.once_names["#no_hand_ss"] = s.turn
 	if f.get("eltanin", false):
@@ -970,6 +1039,7 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 				least_r = h
 		least_r = s.pick1(p, Loc.t("%s: send 1 other %s monster from your hand to the Graveyard") % [c.cname(), str(f["special_discard_race"])], pay_r, least_r, c)
 		ps.hand.erase(least_r)
+		least_r.set_meta("from_hand", true)
 		s._to_gy(ps, least_r)
 		events.append({"type": "discard", "player": p, "card": least_r})
 		events.append_array(trigger(s, least_r, "gy"))
@@ -985,6 +1055,7 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 				least = h
 		least = s.pick1(p, Loc.t("%s: send 1 other %s monster from your hand to the Graveyard") % [c.cname(), str(f["special_discard_attr"])], pay, least, c)
 		ps.hand.erase(least)
+		least.set_meta("from_hand", true)
 		s._to_gy(ps, least)
 		events.append({"type": "discard", "player": p, "card": least})
 		events.append_array(trigger(s, least, "gy"))
@@ -1064,6 +1135,7 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 				ps.hand.erase(m)
 			else:
 				ps.field[ps.field.find(m)] = null
+			m.set_meta("from_hand", true)
 			s._to_gy(ps, m)
 			events.append({"type": "tribute", "player": p, "card": m})
 			events.append_array(s._monster_left(m))
@@ -1098,6 +1170,7 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 				low = h
 		low = s.pick1(p, Loc.t("%s: send 1 monster from your hand to the Graveyard") % c.cname(), mons_h, low, c)
 		ps.hand.erase(low)
+		low.set_meta("from_hand", true)
 		s._to_gy(ps, low)
 		events.append({"type": "discard", "player": p, "card": low})
 	if f.get("special_once_duel", false):
@@ -1130,6 +1203,8 @@ static func on_summon(s: DuelState, p: int, c, kind: String) -> Array:
 	var fires: bool = (kind == "normal" and f.has("summon")) or (kind == "flip" and f.has("flip")) or (kind == "synchro" and f.has("synchro")) or (kind == "fusion" and f.has("fusion")) or (kind in ["special", "synchro", "fusion", "xyz"] and f.has("special_only")) or f.has("any_summon") or (kind == "xyz" and f.has("xyz"))
 	if fires and _spent(s, p, c):
 		return events
+	if fires and kind == "flip":
+		events.append_array(lsw_fired(s, c))   # (a FLIP effect is activated; the optional ones say so themselves)
 	if kind == "normal" and f.has("summon"):
 		events.append_array(run_list(s, p, c, f["summon"], {}))
 	if kind == "flip" and f.has("flip"):
@@ -1241,6 +1316,8 @@ static func trigger(s: DuelState, c, key: String, ctx := {}) -> Array:
 		return [_ev(c.owner, c, Loc.t("Gravekeeper's Shaman negates %s") % c.cname())]
 	if (s.players[0].gy.has(c) or s.players[1].gy.has(c)) and int(s.inscription.get("mode", -1)) == 0 and int(s.inscription.get("until", -1)) >= s.turn:
 		return [_ev(c.owner, c, Loc.t("Gravekeeper's Inscription: no effects in the Graveyard"))]
+	if s.players[c.owner].gy.has(c) and s.gk_trap_lock(c.owner) and CardEffects.of(c.cname()).has(key):
+		return [_ev(c.owner, c, Loc.t("Gravekeeper's Trap: no effects in the Graveyard"))]
 	if key == "damage" and int(c.tags.get("trident", -1)) == s.turn:
 		# Photon Trident: "If that monster inflicts battle damage to your opponent: You can destroy 1 Spell/Trap on the field."
 		c.tags.erase("trident")
@@ -1274,6 +1351,7 @@ static func standby(s: DuelState, p: int) -> Array:
 			var gain_k: int = s.atk_of(st.equipped_to, false) / 2
 			if gain_k > 0:
 				s.players[kq].lp += gain_k
+				s.lp_gained(kq)
 				events.append({"type": "lp", "player": kq, "lp": s.players[kq].lp, "delta": gain_k})
 				events.append(_ev(kq, st, Loc.t("%s: +%d LP") % [st.cname(), gain_k]))
 	# Cross-Dimensional Duel: "During the next Standby Phase, return that banished monster to the field, and if you do, its ATK
@@ -1372,7 +1450,8 @@ static func end_phase(s: DuelState, p: int) -> Array:
 			s._shuffle(ps_e.deck)
 			events.append({"type": "search", "player": p, "card": got_e, "deck": ps_e.deck.size()})
 	for m in s.players[p].monsters():
-		if m.face_up and fx(m).has("end"):
+		if m.face_up and fx(m).has("end") and s.players[p].field.has(m):
+			events.append_array(lsw_fired(s, m))
 			events.append_array(run_list(s, p, m, fx(m)["end"], {}))
 	return events
 
@@ -1421,7 +1500,7 @@ static func gy_can(s: DuelState, p: int, c) -> bool:
 	var g: Dictionary = fx(c).get("gy_ignite", {})
 	if g.is_empty() or not s.players[p].gy.has(c):
 		return false
-	if s.shaman_blocks(c) or (int(s.inscription.get("mode", -1)) == 0 and int(s.inscription.get("until", -1)) >= s.turn):
+	if s.shaman_blocks(c) or (int(s.inscription.get("mode", -1)) == 0 and int(s.inscription.get("until", -1)) >= s.turn) or s.gk_trap_lock(p):
 		return false   # Gravekeeper's Shaman / Inscription
 	if int(s.players[p].name_lock.get(c.cname(), -1)) == s.turn:
 		return false
@@ -1509,6 +1588,7 @@ static func hand_run(s: DuelState, p: int, c) -> Array:
 				_ev(p, c, Loc.t("%s wraps %s: it is now %d / %d") % [c.cname(), host.cname(), c.atk(), c.def()])]
 	var events := [_ev(p, c, Loc.t("%s is discarded for its effect") % c.cname())]
 	ps.hand.erase(c)
+	c.set_meta("from_hand", true)
 	s._to_gy(ps, c)
 	events.append({"type": "discard", "player": p, "card": c})
 	events.append_array(run_list(s, p, c, g.get("do", []), {}))
@@ -1703,6 +1783,47 @@ static func _tf_ok(ig: Dictionary, m) -> bool:
 	return true
 
 
+## A "Lightsworn" monster's effect was activated: Twilightsworn monsters ("if your other "Lightsworn" monster's effect is activated")
+## and Punishment Dragon ("if your "Lightsworn" monster's effect is activated") send cards from the top of the Deck, once per turn each.
+static func lsw_fired(s: DuelState, src) -> Array:
+	var ev := []
+	if src == null or not src.is_monster() or not DuelState.is_lsw(src) or s.is_over():
+		return ev
+	var ps := s.players[src.owner]
+	for m in ps.monsters():
+		if not m.face_up or m.negated:
+			continue
+		var n := 0
+		if m != src and fx(m).has("ts_mill"):
+			n = int(fx(m)["ts_mill"])
+		elif fx(m).has("lsw_trigger_mill"):
+			n = int(fx(m)["lsw_trigger_mill"])
+		if n > 0 and int(m.tags.get("ts_turn", -1)) != s.turn and not ps.deck.is_empty():
+			m.tags["ts_turn"] = s.turn
+			ev.append(_ev(src.owner, m, Loc.t("%s sends %d") % [m.cname(), n]))
+			if fx(m).has("ts_mill"):
+				ev.append_array(lsw_fired(s, m))   # (its own effect is a Lightsworn monster's effect too)
+			ev.append_array(s.mill(src.owner, n, m))
+	return ev
+
+
+## The "Lightsworn" monsters a player can banish from the hand or GY as a cost (Twilightsworn).
+static func lsw_fodder(s: DuelState, p: int, except_name := "") -> Array:
+	var ps := s.players[p]
+	return (ps.hand + ps.gy.filter(func(g): return not s.necro_holds(g))).filter(func(x): return x.is_monster() and DuelState.is_lsw(x) and x.cname() != except_name)
+
+
+## Banish 1 of them (the least useful one by default).
+static func _pay_lsw_banish(s: DuelState, p: int, c, except_name := "") -> Array:
+	var pool: Array = lsw_fodder(s, p, except_name)
+	if pool.is_empty():
+		return []
+	pool.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+	var pay = s.pick1(p, Loc.t("%s: banish which \"Lightsworn\" monster?") % c.cname(), pool, pool[0], c)
+	s.players[p].hand.erase(pay)
+	return s._banish(pay) if not s.players[p].banished.has(pay) else []
+
+
 ## Which of your cards a Mist Valley effect sends back to the hand: one that comes right back
 ## (Mist Valley Thunderbird), one worth summoning again (Mist Valley Executor), else the least useful.
 static func mist_pick(s: DuelState, p: int, cards: Array):
@@ -1719,6 +1840,25 @@ static func mist_pick(s: DuelState, p: int, cards: Array):
 		if vx < vc:
 			cheap = x
 	return cheap
+
+
+## Ancient Gear Duel: the Fusions that mention "Ancient Gear Golem", made by banishing from your field or GY, with a Golem you control.
+static func ag_duel_plans(s: DuelState, p: int) -> Array:
+	var ps := s.players[p]
+	var out: Array = []
+	var field_up: Array = ps.monsters().filter(func(m): return m.face_up)
+	if field_up.filter(func(m): return DuelState.is_golem(m) or m.cname() == "Ancient Gear Golem - Ultimate Pound").is_empty():
+		return out
+	for f in ps.extra:
+		if f.frame() != "fusion" or not DuelState.mentions_golem(f) or not fx(f).has("fmats"):
+			continue
+		var pl: Dictionary = s._fmat_plan(p, f, ps.gy.filter(func(g): return not s.necro_holds(g)), field_up, false)
+		if pl.is_empty() or (pl["field"] as Array).filter(func(m): return DuelState.is_golem(m) or m.cname() == "Ancient Gear Golem - Ultimate Pound").is_empty():
+			continue
+		if pl["field"].is_empty() and ps.free_zone() == -1:
+			continue
+		out.append(pl)
+	return out
 
 
 ## How many Spell Counters sit on the face-up monsters this player controls.
@@ -2204,6 +2344,7 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 	if ig.get("name_once", false):
 		ps.once_names[c.cname()] = s.turn
 	var ctx := {"_ign": true}
+	events.append_array(lsw_fired(s, c))
 	match str(ig.get("cost", "none")):
 		"counter":
 			c.counter -= 1
@@ -2243,11 +2384,10 @@ static func ignite(s: DuelState, p: int, c) -> Array:
 					pick = h
 			pick = s.pick1(p, Loc.t("%s: discard 1 card as the cost") % c.cname(), can, pick, c)
 			ps.hand.erase(pick)
+			pick.set_meta("from_hand", true)
 			s._to_gy(ps, pick)
 			ctx["discarded"] = pick
 			events.append({"type": "discard", "player": p, "card": pick})
-			if fx(pick).get("minerva_mill", false):
-				events.append_array(s.mill(p, 1, pick))   # Minerva, Lightsworn Maiden: sent from the hand to the GY
 		"tribute_any":
 			# "Tribute 1 monster": any of yours, this one included. The weakest other one by default.
 			var anyp = null
@@ -2398,12 +2538,37 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 	var hit: bool = not s.pending_attack.is_empty() and int(s.pending_attack["player"]) != p and not s.pending_attack.get("negated", false)
 	if int(ps.name_lock.get(c.cname(), -1)) == s.turn:
 		return false
+	if ps.gy.has(c) and s.gk_trap_lock(p):
+		return false   # Gravekeeper's Trap
 	var pa: Dictionary = s.pending_attack
 	var battling: bool = not pa.is_empty() and not pa.get("negated", false)
 	match kind:
+		"mudora":
+			# Mudora the Sword Oracle (Quick Effect): banish it from your field or GY; shuffle up to 3 (or 5) cards from any GY into the Deck.
+			var here_m: bool = on_field or (ps.gy.has(c) and not s.necro_holds(c))
+			return here_m and int(ps.once_names.get("Mudora#q", -1)) != s.turn and window in ["attack", "battle_start", "phase", "summon", "chain"] \
+					and (not s.players[0].gy.filter(func(g): return g != c and s.gy_targetable(g) and not s.necro_holds(g)).is_empty() or not s.players[1].gy.filter(func(g): return g != c and s.gy_targetable(g) and not s.necro_holds(g)).is_empty())
+		"apex":
+			# Mist Valley Apex Avian: once per Chain, when a card or effect is activated.
+			if not on_field or window != "chain" or s.chain.is_empty() or s.chain.back().get("negated", false) or s.chain.back()["card"] == c:
+				return false
+			if c.has_meta("apex_chain") and is_same(c.get_meta("apex_chain"), s.chain[0]):
+				return false
+			return not (ps.monsters().filter(func(m): return m.face_up and m.cname().begins_with("Mist Valley")) + ps.spells.filter(func(x): return x != null and x.face_up and x.cname().begins_with("Mist Valley"))).is_empty()
+		"punishment":
+			return on_field and int(c.tags.get("pun_turn", -1)) != s.turn and ps.lp > 1000 and window in ["attack", "battle_start", "phase", "summon", "chain"]
+		"enlightenment":
+			return on_field and int(c.tags.get("enl_turn", -1)) != s.turn and ps.lp > 2000 and window in ["attack", "battle_start", "phase", "summon", "chain"]
+		"lyla_ts":
+			# Lyla, Twilightsworn Enchantress: when a Spell/Trap Card or effect is activated, once per turn.
+			if not on_field or window != "chain" or s.chain.is_empty() or s.chain.back().get("negated", false) or int(c.tags.get("lyla_turn", -1)) == s.turn:
+				return false
+			if s.chain.back()["card"].is_monster() or lsw_fodder(s, p).is_empty():
+				return false
+			return not _all_st(s).filter(func(x): return x.face_up).is_empty()
 		"thunder_lord":
 			# Mist Valley Thunder Lord: once per turn, either player's turn (Quick Effect).
-			return on_field and c.ignite_turn != s.turn and (opp_turn or s.phase == DuelState.Phase.BATTLE) and window in ["attack", "battle_start", "phase", "summon"] \
+			return on_field and c.ignite_turn != s.turn and window in ["attack", "battle_start", "phase", "summon", "chain"] \
 					and _cond(s, p, "own_other_card")
 		"ag_dragon":
 			if not on_field or window != "chain" or s.chain.is_empty() or int(ps.once_names.get("Ancient Gear Dragon", -1)) == s.turn:
@@ -2583,6 +2748,71 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 	var events := []
 	var hit: bool = not s.pending_attack.is_empty() and int(s.pending_attack["player"]) != p and not s.pending_attack.get("negated", false)
 	match kind:
+		"mudora":
+			ps.once_names["Mudora#q"] = s.turn
+			var cap_m := 5 if not (ps.gy + ps.spells.filter(func(x): return x != null and x.face_up)).filter(func(x): return x.cname() == "Exchange of the Spirit").is_empty() else 3
+			events.append_array(s._banish(c))
+			var pool_m: Array = (opp.gy + ps.gy).filter(func(g): return g != c and s.gy_targetable(g) and not s.necro_holds(g))
+			pool_m.sort_custom(func(x, y): return (1 if x.owner == opp_i else 0) * 10000 + s._card_value(x) > (1 if y.owner == opp_i else 0) * 10000 + s._card_value(y))
+			var take_m: Array = s.choose(p, Loc.t("%s: shuffle up to %d cards from the GYs into the Deck") % [c.cname(), cap_m], pool_m, mini(cap_m, pool_m.size()), pool_m.slice(0, mini(cap_m, pool_m.size())), true, c)
+			for g in take_m:
+				var gq: int = g.owner
+				s.players[gq].gy.erase(g)
+				s.players[gq].deck.append(g)
+				events.append({"type": "gy_to_deck", "player": gq, "card": g, "deck": s.players[gq].deck.size()})
+			for q in 2:
+				s._shuffle(s.players[q].deck)
+		"apex":
+			c.set_meta("apex_chain", s.chain[0])
+			var mv: Array = ps.monsters().filter(func(m): return m.face_up and m.cname().begins_with("Mist Valley")) + ps.spells.filter(func(x): return x != null and x.face_up and x.cname().begins_with("Mist Valley"))
+			var back_a = s.pick1(p, Loc.t("%s: return which \"Mist Valley\" card to the hand?") % c.cname(), mv, mist_pick(s, p, mv), c)
+			events.append_array(s._bounce(back_a))
+			events.append_array(_negate_link(s, p, c, s.chain.back()))
+		"punishment":
+			# Punishment Dragon: pay 1000; every card in the GYs and every face-up banished card goes back into the Decks, except Lightsworn monsters.
+			c.tags["pun_turn"] = s.turn
+			ps.lp -= 1000
+			events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": -1000})
+			for q in 2:
+				var pq := s.players[q]
+				for g in pq.gy.duplicate():
+					if not (g.is_monster() and DuelState.is_lsw(g)):
+						pq.gy.erase(g)
+						pq.deck.append(g)
+						events.append({"type": "gy_to_deck", "player": q, "card": g, "deck": pq.deck.size()})
+				for b in pq.banished.duplicate():
+					if b.face_up and not (b.is_monster() and DuelState.is_lsw(b)):
+						pq.banished.erase(b)
+						if CardData.is_extra(b.id):
+							pq.extra.append(b)
+						else:
+							pq.deck.append(b)
+				s._shuffle(pq.deck)
+			events.append(_ev(p, c, Loc.t("%s shuffles the Graveyards and banished cards into the Decks") % c.cname()))
+		"enlightenment":
+			# Enlightenment Dragon: pay 2000; banish every other card on the field and in the GYs.
+			c.tags["enl_turn"] = s.turn
+			ps.lp -= 2000
+			events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": -2000})
+			events.append(_ev(p, c, Loc.t("%s banishes everything else") % c.cname()))
+			for q in [opp_i, p]:
+				var pq2 := s.players[q]
+				for m in pq2.monsters():
+					if m != c:
+						events.append_array(s._banish(m))
+				for st in _all_st(s).filter(func(x): return x.owner == q):
+					events.append_array(s._banish(st))
+				for g in pq2.gy.duplicate():
+					events.append_array(s._banish(g))
+		"lyla_ts":
+			c.tags["lyla_turn"] = s.turn
+			events.append_array(lsw_fired(s, c))
+			events.append_array(_pay_lsw_banish(s, p, c))
+			var ups_l: Array = _all_st(s).filter(func(x): return x.face_up)
+			if not ups_l.is_empty():
+				ups_l.sort_custom(func(x, y): return (1 if x.owner == opp_i else 0) > (1 if y.owner == opp_i else 0))
+				var t_ly = s.pick1(p, Loc.t("%s: destroy which face-up Spell or Trap?") % c.cname(), ups_l, ups_l[0], c)
+				events.append_array(s._destroy_st(t_ly))
 		"thunder_lord":
 			c.ignite_turn = s.turn
 			events.append_array(run_list(s, p, c, [["bounce_own_other_card"], ["self_atk_turn", 500]], {}))
@@ -2600,6 +2830,8 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 			else:
 				ps.hand.erase(pay_c)
 				ps.deck.erase(pay_c)
+				pay_c.set_meta("from_hand", true)
+				pay_c.set_meta("from_deck", true)
 				s._to_gy(ps, pay_c)
 			events.append({"type": "discard", "player": p, "card": pay_c})
 			if not s.chain.is_empty():
@@ -2607,12 +2839,14 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 				events.append(_ev(p, c, Loc.t("%s negates %s") % [c.cname(), s.chain.back()["card"].cname()]))
 		"shabti":
 			ps.hand.erase(c)
+			c.set_meta("from_hand", true)
 			s._to_gy(ps, c)
 			events.append({"type": "discard", "player": p, "card": c})
 			ps.once_names["#shabti"] = s.turn
 			events.append(_ev(p, c, Loc.t("%s: your \"Gravekeeper's\" monsters can't be destroyed by battle this turn") % c.cname()))
 		"gk_watcher":
 			ps.hand.erase(c)
+			c.set_meta("from_hand", true)
 			s._to_gy(ps, c)
 			events.append({"type": "discard", "player": p, "card": c})
 			if not s.chain.is_empty():
@@ -2633,6 +2867,7 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 			events.append(_ev(p, c, Loc.t("%s: this turn your opponent takes the effect damage you would take") % c.cname()))
 		"red_gardna":
 			ps.hand.erase(c)
+			c.set_meta("from_hand", true)
 			s._to_gy(ps, c)
 			events.append({"type": "discard", "player": p, "card": c})
 			ps.once_names["#gardna"] = s.turn
@@ -2641,6 +2876,7 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 			var pa_j: Dictionary = s.pending_attack
 			var mine_j: Array = [pa_j["attacker"], pa_j["target"]].filter(func(m): return m != null and m.owner == p and ps.field.has(m))
 			ps.hand.erase(c)
+			c.set_meta("from_hand", true)
 			s._to_gy(ps, c)
 			events.append({"type": "discard", "player": p, "card": c})
 			if not mine_j.is_empty():
@@ -2654,6 +2890,7 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 				events.append(_ev(p, mj, Loc.t("%s: %s is not destroyed by this battle") % [c.cname(), mj.cname()]))
 		"barrier_resonator":
 			ps.hand.erase(c)
+			c.set_meta("from_hand", true)
 			s._to_gy(ps, c)
 			events.append({"type": "discard", "player": p, "card": c})
 			var tuners: Array = ps.monsters().filter(func(m): return m.face_up and m.is_tuner())
@@ -2664,6 +2901,7 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 				events.append(_ev(p, tb, Loc.t("%s is protected this turn") % tb.cname()))
 		"kuriphoton":
 			ps.hand.erase(c)
+			c.set_meta("from_hand", true)
 			s._to_gy(ps, c)
 			events.append({"type": "discard", "player": p, "card": c})
 			events.append_array(s._lose_lp(p, 2000))
@@ -2713,6 +2951,7 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 			events.append(_ev(p, c, Loc.t("%s negates the attack; %s loses 500 ATK") % [c.cname(), att_f.cname()]))
 		"blade_master":
 			ps.hand.erase(c)
+			c.set_meta("from_hand", true)
 			s._to_gy(ps, c)
 			events.append({"type": "discard", "player": p, "card": c})
 			for m in ps.monsters():
@@ -2727,6 +2966,7 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 			if not dr.is_empty():
 				var thrown = s.pick1(p, Loc.t("%s: discard 1 Dragon") % c.cname(), dr, dr[0], c)
 				ps.hand.erase(thrown)
+				thrown.set_meta("from_hand", true)
 				s._to_gy(ps, thrown)
 				events.append({"type": "discard", "player": p, "card": thrown})
 				s.bp_boost(c, 1000, 1000)
@@ -2737,6 +2977,7 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 				ps.hand.erase(c)
 				events.append_array(s._special(p, c, "effect", ""))
 				ps.lp += 1000
+				s.lp_gained(p)
 				events.append(_ev(p, c, Loc.t("%s: gain 1000 LP") % c.cname()))
 				events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": 1000})
 			else:
@@ -2764,6 +3005,7 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 						low = h
 				low = s.pick1(p, Loc.t("%s: discard 1 card") % c.cname(), ps.hand, low, c)
 				ps.hand.erase(low)
+				low.set_meta("from_hand", true)
 				s._to_gy(ps, low)
 				events.append({"type": "discard", "player": p, "card": low})
 				s._shield = c
@@ -2876,6 +3118,7 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 					best = s.last_summoned
 				var t2 = s.pick1(p, Loc.t("%s: negate the effects of 1 Effect Monster until the end of this turn") % c.cname(), cands, best, c)
 				ps.hand.erase(c)
+				c.set_meta("from_hand", true)
 				s._to_gy(ps, c)
 				events.append({"type": "hand_effect", "player": p, "card": c, "text": Loc.t("%s: %s's effects are negated until the end of this turn") % [c.cname(), t2.cname()]})
 				t2.negated_turn = s.turn
@@ -2909,6 +3152,7 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 				if not opp.hand.is_empty() and s.choose_option(p, Loc.t("%s: send 1 random card from their hand to the Graveyard and halve their LP?") % c.cname(), ["Yes", "No"], 0, c) == 0:
 					var rnd_c = opp.hand[randi() % opp.hand.size()]
 					opp.hand.erase(rnd_c)
+					rnd_c.set_meta("from_hand", true)
 					s._to_gy(opp, rnd_c)
 					events.append({"type": "discard", "player": opp_i, "card": rnd_c})
 					var half_c: int = opp.lp / 2
@@ -2939,6 +3183,7 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 				toss_c.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
 				var toss = s.pick1(p, Loc.t("%s: discard 1 card") % c.cname(), toss_c, toss_c[0], c)
 				ps.hand.erase(toss)
+				toss.set_meta("from_hand", true)
 				s._to_gy(ps, toss)
 				events.append({"type": "discard", "player": p, "card": toss})
 				events.append_array(_negate_link(s, p, c, s.chain.back()))
@@ -2952,6 +3197,7 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 					same.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
 					var pay = s.pick1(p, Loc.t("%s: discard 1 card of the same kind") % c.cname(), same, same[0], c)
 					ps.hand.erase(pay)
+					pay.set_meta("from_hand", true)
 					s._to_gy(ps, pay)
 					events.append({"type": "discard", "player": p, "card": pay})
 					c.tags["joker"] = s.turn
@@ -2994,6 +3240,19 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 		else:
 			lose = a > s.def_of(tgt)
 	match kind:
+		"mudora":
+			# Clean out their GY when it holds something worth taking away.
+			return not s.players[s.opponent(p)].gy.filter(func(g): return g.is_monster() and s._card_value(g) >= 1500).is_empty()
+		"apex":
+			return not s.chain.is_empty() and int(s.chain.back()["player"]) != p
+		"punishment":
+			var theirs_g: int = s.players[s.opponent(p)].gy.size()
+			return ps.lp > 3000 and theirs_g >= 8
+		"enlightenment":
+			var foe_n: int = s.players[s.opponent(p)].monsters().size() + s.players[s.opponent(p)].set_cards().size()
+			return ps.lp > 4000 and foe_n >= 2
+		"lyla_ts":
+			return not s.chain.is_empty() and int(s.chain.back()["player"]) != p
 		"thunder_lord":
 			# When the 500 ATK wins a battle it is in (or keeps it alive).
 			var pa_t: Dictionary = s.pending_attack
@@ -3201,6 +3460,8 @@ static func can_target(src, m) -> bool:
 		return false
 	if m != null and m.face_up and (m.tags.get("no_target", false) or (not m.negated and CardEffects.of(m.cname()).get("untargetable", false))):
 		return false   # Lord of D. is up and this is a Dragon / "Neither player can target this card with card effects" (Obelisk)
+	if src != null and m != null and m is DuelState.CardInst and current_state != null and src.owner != m.owner and current_state.fortress_shields(m):
+		return false   # Ancient Gear Fortress
 	if src == null or m == null or not src.is_monster() or src.frame() == "xyz" or not m.face_up or m.negated:
 		return true
 	var cap := int(CardEffects.of(m.cname()).get("untargetable_lv_max", 0))
@@ -3416,6 +3677,8 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				else:
 					ps.hand.erase(sent)
 					ps.deck.erase(sent)
+					sent.set_meta("from_hand", true)
+					sent.set_meta("from_deck", true)
 					s._to_gy(ps, sent)
 				events.append({"type": "discard", "player": p, "card": sent})
 				events.append_array(extra_ns(s, p, c, func(h): return h.cname().begins_with("Ancient Gear")))
@@ -3448,6 +3711,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 						cheap.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
 						var thrown = s.pick1(p, Loc.t("%s: discard 1 card") % name, ps.hand.duplicate(), cheap[0], c)
 						ps.hand.erase(thrown)
+						thrown.set_meta("from_hand", true)
 						s._to_gy(ps, thrown)
 						events.append({"type": "discard", "player": p, "card": thrown})
 				ps.once_names["#no_set"] = s.turn
@@ -3500,6 +3764,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				c.tags["pound_n"] = used_p + 1
 				var th_p = s.pick1(p, Loc.t("%s: discard which Machine?") % name, mh, mh[0], c)
 				ps.hand.erase(th_p)
+				th_p.set_meta("from_hand", true)
 				s._to_gy(ps, th_p)
 				events.append({"type": "discard", "player": p, "card": th_p})
 				if c.bonus_attacks_turn != s.turn:
@@ -3882,6 +4147,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				ps.once_names["Kuriphoton#gy"] = s.turn
 				var sent = s.pick1(p, Loc.t("%s: send 1 \"Photon\" monster from your hand to the GY") % name, phs, phs[0], c)
 				ps.hand.erase(sent)
+				sent.set_meta("from_hand", true)
 				s._to_gy(ps, sent)
 				events.append({"type": "discard", "player": p, "card": sent})
 				ps.gy.erase(c)
@@ -4006,6 +4272,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			if not fam.is_empty():
 				var m_f = s.pick1(p, Loc.t("%s: send 1 \"%s\" monster from your Deck to the GY") % [name, str(a[1])], fam, fam[0], c)
 				ps.deck.erase(m_f)
+				m_f.set_meta("from_deck", true)
 				s._to_gy(ps, m_f)
 				events.append({"type": "mill", "player": p, "card": m_f})
 		"zephyros":
@@ -4213,6 +4480,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				inf.sort_custom(func(x, y): return x.atk() > y.atk())
 				var sent = s.pick1(p, Loc.t("%s: send which Infernity monster to the Graveyard?") % name, inf, inf[0], c)
 				ps.hand.erase(sent)
+				sent.set_meta("from_hand", true)
 				s._to_gy(ps, sent)
 				events.append({"type": "discard", "player": p, "card": sent})
 				events.append_array(trigger(s, sent, "sent_gy"))
@@ -4229,6 +4497,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				var pq := s.players[q]
 				for h in pq.hand.duplicate():
 					pq.hand.erase(h)
+					h.set_meta("from_hand", true)
 					s._to_gy(pq, h)
 					events.append({"type": "discard", "player": q, "card": h})
 					if q == opp_i:
@@ -4826,6 +5095,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			for q in [p, opp_i]:
 				for h in s.players[q].hand.duplicate():
 					s.players[q].hand.erase(h)
+					h.set_meta("from_hand", true)
 					s._to_gy(s.players[q], h)
 					events.append({"type": "discard", "player": q, "card": h})
 			for q in [p, opp_i]:
@@ -4834,6 +5104,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			if not opp.hand.is_empty():
 				var rnd_h = opp.hand[randi() % opp.hand.size()]
 				opp.hand.erase(rnd_h)
+				rnd_h.set_meta("from_hand", true)
 				s._to_gy(opp, rnd_h)
 				events.append(_ev(p, c, Loc.t("%s: the opponent discards %s") % [name, rnd_h.cname()]))
 				events.append({"type": "discard", "player": opp_i, "card": rnd_h})
@@ -4857,6 +5128,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			# Number 104: Masquerade: "send the top card of your opponent's Deck to the Graveyard."
 			if not opp.deck.is_empty():
 				var top_m = opp.deck.pop_back()
+				top_m.set_meta("from_deck", true)
 				s._to_gy(opp, top_m)
 				events.append({"type": "mill", "player": opp_i, "card": top_m, "deck": opp.deck.size()})
 				events.append_array(trigger(s, top_m, "sent_gy"))
@@ -5050,6 +5322,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 					low_i = h
 			low_i = s.pick1(p, Loc.t("%s: send 1 card from your hand to the Graveyard") % name, ps.hand, low_i, c)
 			ps.hand.erase(low_i)
+			low_i.set_meta("from_hand", true)
 			s._to_gy(ps, low_i)
 			events.append({"type": "discard", "player": p, "card": low_i})
 			events.append_array(s._draw(p, 1))
@@ -5095,6 +5368,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			events.append(_ev(p, c, Loc.t("%s: the card drawn is %s") % [name, top_w.cname()]))
 			if not top_w.is_monster() and ps.hand.has(top_w):
 				ps.hand.erase(top_w)
+				top_w.set_meta("from_hand", true)
 				s._to_gy(ps, top_w)
 				events.append({"type": "discard", "player": p, "card": top_w})
 				events.append_array(s._destroy(c))
@@ -5351,6 +5625,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			pick_d = s.pick1(p, Loc.t("%s: choose 1 monster in the opponent's hand") % name, seen, pick_d, c)
 			if pick_d.atk() <= my_top:
 				opp.hand.erase(pick_d)
+				pick_d.set_meta("from_hand", true)
 				s._to_gy(opp, pick_d)
 				events.append(_ev(p, c, Loc.t("%s is destroyed in the hand") % pick_d.cname()))
 				events.append({"type": "discard", "player": opp_i, "card": pick_d})
@@ -5361,6 +5636,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 		"heal_per_opp_hand":
 			var gain_h: int = int(a[1]) * opp.hand.size()
 			ps.lp += gain_h
+			s.lp_gained(p)
 			events.append(_ev(p, c, Loc.t("%s: gain %d LP") % [name, gain_h]))
 			events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": gain_h})
 		"dark_panther":
@@ -5381,6 +5657,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			if not opp.hand.is_empty():
 				var rnd = opp.hand[randi() % opp.hand.size()]
 				opp.hand.erase(rnd)
+				rnd.set_meta("from_hand", true)
 				s._to_gy(opp, rnd)
 				events.append(_ev(p, c, Loc.t("%s destroys %s in the opponent's hand") % [name, rnd.cname()]))
 				events.append({"type": "discard", "player": opp_i, "card": rnd})
@@ -5464,6 +5741,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			var n_t: int = s.choose_option(p, Loc.t("%s: send how many cards from the top of your Deck to the Graveyard?") % name, labels_t, most - 1, c) + 1
 			for i in n_t:
 				var top_t = ps.deck.pop_back()
+				top_t.set_meta("from_deck", true)
 				s._to_gy(ps, top_t)
 				events.append({"type": "mill", "player": p, "card": top_t, "deck": ps.deck.size()})
 				events.append_array(trigger(s, top_t, "sent_gy"))
@@ -5517,6 +5795,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			var v_h = ctx.get("victim")
 			if v_h != null and (s.players[0].gy.has(v_h) or s.players[1].gy.has(v_h)) and v_h.atk() > 0:
 				ps.lp += v_h.atk()
+				s.lp_gained(p)
 				events.append(_ev(p, c, Loc.t("%s: gain %d LP") % [name, v_h.atk()]))
 				events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": v_h.atk()})
 		"wroughtweiler":
@@ -5769,6 +6048,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				var hw = s.pick1(p, Loc.t("%s: gain LP equal to 1 other monster's Level x 100") % name, friends, friends[0], c)
 				var gain_lp: int = hw.level() * 100
 				ps.lp += gain_lp
+				s.lp_gained(p)
 				events.append(_ev(p, c, Loc.t("%s: gain %d LP") % [name, gain_lp]))
 				events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": gain_lp})
 		"damage_per_opp_hand":
@@ -5889,6 +6169,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				hand_c.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
 				var toss = s.pick1(p, Loc.t("%s: discard 1 card") % name, hand_c, hand_c[0], c)
 				ps.hand.erase(toss)
+				toss.set_meta("from_hand", true)
 				s._to_gy(ps, toss)
 				events.append({"type": "discard", "player": p, "card": toss})
 				if ps.field.has(c):
@@ -5977,6 +6258,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			events.append_array(s._damage(p, int(a[1])))
 		"heal":
 			ps.lp += int(a[1])
+			s.lp_gained(p)
 			events.append(_ev(p, c, Loc.t("%s: gain %d LP") % [name, a[1]]))
 			events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": int(a[1])})
 		"damage_victim_atk", "damage_victim_def", "damage_victim_level", "damage_if_victim_race":
@@ -6015,7 +6297,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			events.append({"type": "search", "player": p, "card": d, "deck": ps.deck.size()})
 			events.append_array(added_by_effect(s, p, d))
 		"gy_to_hand":
-			for d in _pick(s, p, c, "add from your Graveyard to your hand", ps.gy.filter(func(x): return not s.necro_holds(x)), a[1], int(a[2])):
+			for d in _pick(s, p, c, "add from your Graveyard to your hand", ps.gy.filter(func(x): return not s.necro_holds(x) and s.gy_targetable(x)), a[1], int(a[2])):
 				ps.gy.erase(d)
 				ps.hand.append(d)
 				events.append(_ev(p, c, Loc.t("%s returns %s to the hand") % [name, d.cname()]))
@@ -6023,7 +6305,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 		"special":
 			var src: Array = ps.deck if a[1] == "deck" else (ps.hand if a[1] == "hand" else ps.gy)
 			var n: int = int(a[4]) if a.size() > 4 else 1
-			var pool: Array = src.filter(func(x): return s.can_revive(x)) if a[1] == "gy" else src.filter(func(x): return _ss_ok(x))
+			var pool: Array = src.filter(func(x): return s.can_revive(x) and s.gy_targetable(x)) if a[1] == "gy" else src.filter(func(x): return _ss_ok(x))
 			var flt: Dictionary = a[2]
 			if a[1] == "gy":
 				flt = flt.duplicate()
@@ -6031,7 +6313,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			if a[1] == "hand_gy":
 				# "...from your hand or Graveyard" (Salvage Warrior).
 				pool = ps.hand.filter(func(x): return _ss_ok(x))
-				pool.append_array(ps.gy.filter(func(x): return s.can_revive(x)))
+				pool.append_array(ps.gy.filter(func(x): return s.can_revive(x) and s.gy_targetable(x)))
 			if s.ss_locked(p):
 				pool = []   # Gagaga Head's lock
 			pool = pool.filter(func(x): return not s.big_locked(p, x, true))   # Crimson Blader
@@ -6068,6 +6350,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 					return events
 				for h in s.choose(p, Loc.t("%s: discard 2 cards") % name, ps.hand, 2, ps.hand.slice(0, 2), false, c):
 					ps.hand.erase(h)
+					h.set_meta("from_hand", true)
 					s._to_gy(ps, h)
 					events.append({"type": "discard", "player": p, "card": h})
 			if a[0] == "pay_revive":
@@ -6107,12 +6390,157 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				ctx["banished"] = t
 				events.append_array(s._banish(t))
 		"banish_opp_gy":
-			var picks: Array = s._best_monsters(opp.gy, int(a[1]))
+			var picks: Array = s._best_monsters(opp.gy.filter(func(g): return s.gy_targetable(g)), int(a[1]))
 			if not picks.is_empty():
-				picks = s.choose(p, Loc.t("%s: banish from their Graveyard") % name, s._best_monsters(opp.gy, 99), picks.size(), picks, false, c)
+				picks = s.choose(p, Loc.t("%s: banish from their Graveyard") % name, s._best_monsters(opp.gy.filter(func(g): return s.gy_targetable(g)), 99), picks.size(), picks, false, c)
 				events.append(_ev(p, c, Loc.t("%s banishes from the Graveyard") % name))
 			for g in picks:
 				events.append_array(s._banish(g))
+		"windmaster":
+			# Mist Valley Windmaster: both players send cards from their hand to the GY until they have 4.
+			for q in [p, opp_i]:
+				var hq: Array = s.players[q].hand
+				var extra_n: int = hq.size() - 4
+				if extra_n > 0:
+					var cheap_w: Array = hq.duplicate()
+					cheap_w.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+					for h in s.choose(q, Loc.t("%s: send %d cards from your hand to the GY") % [name, extra_n], cheap_w, extra_n, cheap_w.slice(0, extra_n), false, c):
+						hq.erase(h)
+						h.set_meta("from_hand", true)
+						s._to_gy(s.players[q], h)
+						events.append({"type": "discard", "player": q, "card": h})
+		"ryko_ts":
+			# Ryko, Twilightsworn Fighter: banish 1 Lightsworn monster from your hand or GY; banish 1 card on the field.
+			var on_f: Array = (opp.monsters() + _all_st(s).filter(func(x): return x.owner == opp_i))
+			if not lsw_fodder(s, p).is_empty() and not on_f.is_empty() \
+					and s.choose_option(p, Loc.t("%s: banish a Lightsworn to banish 1 card on the field?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				events.append_array(lsw_fired(s, c))
+				events.append_array(_pay_lsw_banish(s, p, c))
+				on_f.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+				var mine_f: Array = (ps.monsters() + _all_st(s).filter(func(x): return x.owner == p)).filter(func(x): return x != c)
+				var t_r = s.pick1(p, Loc.t("%s: banish which card?") % name, on_f + mine_f, on_f[0], c)
+				events.append_array(s._banish(t_r))
+		"jain_ts":
+			# Jain, Twilightsworn General: the banished monster's Level x 300 off 1 face-up monster's ATK and DEF this turn.
+			var pool_j: Array = lsw_fodder(s, p)
+			var ups_j: Array = (opp.monsters() + ps.monsters()).filter(func(m): return m.face_up and can_target(c, m))
+			if not pool_j.is_empty() and not ups_j.is_empty():
+				pool_j.sort_custom(func(x, y): return x.level() > y.level())
+				var pay_j = s.pick1(p, Loc.t("%s: banish which \"Lightsworn\" monster?") % name, pool_j, pool_j[0], c)
+				var lv_j: int = int(pay_j.data.get("level", 0))
+				ps.hand.erase(pay_j)
+				events.append_array(s._banish(pay_j))
+				ups_j.sort_custom(func(x, y): return s.atk_of(x, false) > s.atk_of(y, false))
+				var theirs_j: Array = ups_j.filter(func(m): return m.owner == opp_i)
+				var t_j = s.pick1(p, Loc.t("%s: which monster loses ATK and DEF?") % name, ups_j, theirs_j[0] if not theirs_j.is_empty() else ups_j[0], c)
+				if t_j.atk_mod_turn != s.turn:
+					t_j.atk_mod_turn = s.turn
+					t_j.atk_mod_t = 0
+				t_j.atk_mod_t -= lv_j * 300
+				if t_j.def_mod_turn != s.turn:
+					t_j.def_mod_turn = s.turn
+					t_j.def_mod_t = 0
+				t_j.def_mod_t -= lv_j * 300
+				events.append(_ev(p, c, Loc.t("%s: %s loses %d ATK and DEF") % [name, t_j.cname(), lv_j * 300]))
+		"lumina_ts":
+			# Lumina, Twilightsworn Shaman: banish 1 Lightsworn from hand/GY; Special Summon 1 of your banished Lightsworn monsters.
+			events.append_array(_pay_lsw_banish(s, p, c))
+			var back_l: Array = ps.banished.filter(func(b): return b.face_up and b.is_monster() and DuelState.is_lsw(b) and b.cname() != "Lumina, Twilightsworn Shaman" and _ss_ok(b) and not s.big_locked(p, b, true))
+			if not back_l.is_empty() and ps.free_zone() != -1 and not s.ss_locked(p):
+				var t_l = s.pick1(p, Loc.t("%s: Special Summon which banished monster?") % name, back_l, s._best_monsters(back_l, 1)[0], c)
+				ps.banished.erase(t_l)
+				events.append(_ev(p, c, Loc.t("%s calls %s") % [name, t_l.cname()]))
+				events.append_array(s._special(p, t_l, "effect"))
+				events.append_array(on_summon(s, p, t_l, "special"))
+		"athenian_send":
+			# Minerva, the Athenian: send Lightsworn monsters with different Types from the Deck, up to the Lightsworn materials used.
+			if int(ps.once_names.get("Athenian#send", -1)) != s.turn:
+				ps.once_names["Athenian#send"] = s.turn
+				var n_at: int = (c.tags.get("mat_names", []) as Array).filter(func(n): return str(n).contains("ightsworn")).size()
+				var picked_at: Array = []
+				var races_at := {}
+				for x in ps.deck.duplicate():
+					if picked_at.size() >= n_at:
+						break
+					if x.is_monster() and DuelState.is_lsw(x) and not races_at.has(str(x.data.get("race", ""))):
+						races_at[str(x.data.get("race", ""))] = true
+						picked_at.append(x)
+				if not picked_at.is_empty():
+					events.append_array(lsw_fired(s, c))
+					picked_at = s.choose(p, Loc.t("%s: send Lightsworn monsters with different Types to the GY") % name, picked_at, picked_at.size(), picked_at, true, c)
+				for x in picked_at:
+					ps.deck.erase(x)
+					s._to_gy(ps, x)
+					events.append({"type": "mill", "player": p, "card": x, "deck": ps.deck.size()})
+				s._shuffle(ps.deck)
+				if not picked_at.is_empty():
+					events.append_array(s.deck_sent(p, picked_at, c))
+		"athenian_mill":
+			# Banish up to 4 Lightsworn monsters from your GY; send that many cards from the top of your Deck to the GY.
+			var pool_at: Array = ps.gy.filter(func(g): return g.is_monster() and DuelState.is_lsw(g) and not s.necro_holds(g))
+			pool_at.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			var take_at: Array = s.choose(p, Loc.t("%s: banish up to 4 Lightsworn monsters") % name, pool_at, mini(4, pool_at.size()), pool_at.slice(0, mini(4, pool_at.size())), true, c)
+			for g in take_at:
+				events.append_array(s._banish(g))
+			if not take_at.is_empty():
+				events.append_array(s.mill(p, take_at.size(), c))
+		"gk_trap_search":
+			# Gravekeeper's Trap: discard 1 card; add 1 "Gravekeeper's" or EARTH Fairy monster from your Deck to your hand.
+			ps.once_names["GKTrap#search"] = s.turn
+			var cheap_g: Array = ps.hand.duplicate()
+			cheap_g.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			var thrown_g = s.pick1(p, Loc.t("%s: discard which card?") % name, cheap_g, cheap_g[0], c)
+			ps.hand.erase(thrown_g)
+			thrown_g.set_meta("from_hand", true)
+			s._to_gy(ps, thrown_g)
+			events.append({"type": "discard", "player": p, "card": thrown_g})
+			var pool_g: Array = ps.deck.filter(func(x): return x.is_monster() and (x.cname().begins_with("Gravekeeper's") or (str(x.data.get("attribute", "")) == "EARTH" and str(x.data.get("race", "")) == "Fairy")))
+			if not pool_g.is_empty():
+				var got_g = s.pick1(p, Loc.t("%s: add which monster?") % name, pool_g, s._best_monsters(pool_g, 1)[0], c)
+				ps.deck.erase(got_g)
+				ps.hand.append(got_g)
+				s._shuffle(ps.deck)
+				events.append({"type": "search", "player": p, "card": got_g, "deck": ps.deck.size()})
+		"sanctuary":
+			# Lightsworn Sanctuary: send 1 Lightsworn monster from your hand to the GY, then add 1 other Lightsworn monster from your GY.
+			ps.once_names["Sanctuary#use"] = s.turn
+			var hand_s: Array = ps.hand.filter(func(h): return h.is_monster() and DuelState.is_lsw(h))
+			var sent_s = s.pick1(p, Loc.t("%s: send which monster from your hand?") % name, hand_s, hand_s[0], c)
+			ps.hand.erase(sent_s)
+			sent_s.set_meta("from_hand", true)
+			s._to_gy(ps, sent_s)
+			events.append({"type": "discard", "player": p, "card": sent_s})
+			var gy_s: Array = ps.gy.filter(func(g): return g != sent_s and g.is_monster() and DuelState.is_lsw(g) and s.gy_targetable(g) and not s.necro_holds(g))
+			if not gy_s.is_empty():
+				var got_s = s.pick1(p, Loc.t("%s: add which monster?") % name, gy_s, s._best_monsters(gy_s, 1)[0], c)
+				ps.gy.erase(got_s)
+				ps.hand.append(got_s)
+				events.append({"type": "gy_to_hand", "player": p, "card": got_s})
+		"ag_duel_fusion":
+			var plans_d: Array = ag_duel_plans(s, p)
+			if not plans_d.is_empty():
+				ps.once_names["AGDuel#fusion"] = s.turn
+				var fd: Array = plans_d.map(func(x): return x["card"])
+				var want_d = s.pick1(p, Loc.t("%s: Fusion Summon which monster?") % name, fd, fd[0], c)
+				for pl in plans_d:
+					if pl["card"] == want_d:
+						events.append_array(s._do_fusion(p, pl, true))
+						if ps.field.has(want_d):
+							want_d.tags["agd_attacks"] = s.turn
+						break
+		"enlightenment_back":
+			# Enlightenment Dragon, destroyed by an opponent's card: your banished Judgment Dragon and Punishment Dragon to your hand, then Special Summon both.
+			var jd_b: Array = ps.banished.filter(func(b): return b.cname() == "Judgment Dragon")
+			var pd_b: Array = ps.banished.filter(func(b): return b.cname() == "Punishment Dragon")
+			if not jd_b.is_empty() and not pd_b.is_empty() and s.choose_option(p, Loc.t("%s: add your banished Judgment Dragon and Punishment Dragon?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				for b in [jd_b[0], pd_b[0]]:
+					ps.banished.erase(b)
+					ps.hand.append(b)
+					events.append({"type": "search", "player": p, "card": b, "deck": ps.deck.size()})
+				if ps.free_zone() != -1 and ps.field.count(null) >= 2 and not s.ss_locked(p) \
+						and s.choose_option(p, Loc.t("%s: Special Summon both?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+					for b in [jd_b[0], pd_b[0]]:
+						events.append_array(_ignoring(s, p, b, ps.hand))
 		"mill":
 			events.append_array(s.mill(p, int(a[1]), c))
 		"jenis":
@@ -6122,14 +6550,17 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				if int(s.players[q].once_names.get("#lsw_mill", -1)) == s.turn:
 					any_lsw = true
 			if any_lsw and ps.field.has(c) and c.face_up:
+				events.append_array(lsw_fired(s, c))
 				events.append_array(s._damage(opp_i, 500))
 				ps.lp += 500
+				s.lp_gained(p)
 				events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": 500})
 		"celestia":
 			# Celestia: Tribute Summoned with a "Lightsworn": send the top 4, then destroy up to 2 cards your opponent controls.
 			var tn_c: Array = c.tags.get("trib_names", [])
 			if not tn_c.filter(func(n): return str(n).contains("Lightsworn")).is_empty() \
 					and s.choose_option(p, Loc.t("%s: send the top 4 cards of your Deck to the GY and destroy up to 2 of their cards?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				events.append_array(lsw_fired(s, c))
 				events.append_array(s.mill(p, 4, c))
 				for i in 2:
 					var foe_c: Array = opp.monsters() + _all_st(s).filter(func(x): return x.owner == opp_i)
@@ -6169,6 +6600,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			var cap_m := lsw_names(s, p)
 			var drag: Array = ps.deck.filter(func(x): return x.is_monster() and str(x.data.get("attribute", "")) == "LIGHT" and str(x.data.get("race", "")) == "Dragon" and x.level() <= cap_m and not CardData.is_extra(x.id))
 			if not drag.is_empty():
+				events.append_array(lsw_fired(s, c))
 				var got_m = s.pick1(p, Loc.t("%s: add which Dragon?") % name, drag, s._best_monsters(drag, 1)[0], c)
 				ps.deck.erase(got_m)
 				ps.hand.append(got_m)
@@ -6176,7 +6608,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				events.append({"type": "search", "player": p, "card": got_m, "deck": ps.deck.size()})
 		"rinyan":
 			# Rinyan: shuffle 1 "Lightsworn" monster from your GY into the Deck, then draw 1.
-			var back_r: Array = ps.gy.filter(func(g): return g.is_monster() and DuelState.is_lsw(g) and not s.necro_holds(g))
+			var back_r: Array = ps.gy.filter(func(g): return g.is_monster() and DuelState.is_lsw(g) and not s.necro_holds(g) and s.gy_targetable(g))
 			if not back_r.is_empty():
 				var g_r = s.pick1(p, Loc.t("%s: shuffle which monster into your Deck?") % name, back_r, back_r[0], c)
 				ps.gy.erase(g_r)
@@ -6211,6 +6643,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				var lsw_d: Array = ps.deck.filter(func(x): return DuelState.is_lsw(x) and x.cname() != "Lightsworn Dragonling")
 				if not lsw_d.is_empty():
 					ps.once_names["Dragonling#send"] = s.turn
+					events.append_array(lsw_fired(s, c))
 					var pick_d = s.pick1(p, Loc.t("%s: send which card to the GY?") % name, lsw_d, lsw_d[0], c)
 					ps.deck.erase(pick_d)
 					s._to_gy(ps, pick_d)
@@ -6239,13 +6672,15 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 					events.append_array(s._banish(gone_m))
 		"michael_back":
 			# Michael, destroyed: shuffle other "Lightsworn" monsters from your GY into the Deck, 300 LP each.
-			var back_m: Array = ps.gy.filter(func(g): return g != c and g.is_monster() and DuelState.is_lsw(g) and not s.necro_holds(g))
+			var back_m: Array = ps.gy.filter(func(g): return g != c and g.is_monster() and DuelState.is_lsw(g) and not s.necro_holds(g) and s.gy_targetable(g))
 			if not back_m.is_empty():
+				events.append_array(lsw_fired(s, c))
 				for g in back_m:
 					ps.gy.erase(g)
 					ps.deck.append(g)
 				s._shuffle(ps.deck)
 				ps.lp += 300 * back_m.size()
+				s.lp_gained(p)
 				events.append(_ev(p, c, Loc.t("%s returns %d monsters to the Deck") % [name, back_m.size()]))
 				events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": 300 * back_m.size()})
 		"minerva_x":
@@ -6262,6 +6697,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			# Destroyed by battle or by an opponent's effect: send the top 3, destroy up to that many "Lightsworn" cards' worth of cards.
 			if int(ps.once_names.get("Minerva#dead", -1)) != s.turn and not ps.deck.is_empty():
 				ps.once_names["Minerva#dead"] = s.turn
+				events.append_array(lsw_fired(s, c))
 				var top_y: Array = []
 				for i in 3:
 					if ps.deck.size() > i:
@@ -6279,7 +6715,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 						events.append_array(s._destroy_st(foe_y[0]))
 		"banish_opp_gy_any":
 			# Night's End Sorcerer: "target up to 2 cards in your opponent's GY; banish them."
-			var pool_b: Array = opp.gy.filter(func(g): return not s.necro_holds(g))
+			var pool_b: Array = opp.gy.filter(func(g): return not s.necro_holds(g) and s.gy_targetable(g))
 			pool_b.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
 			var want_b: Array = pool_b.slice(0, mini(int(a[1]), pool_b.size()))
 			if not want_b.is_empty():
@@ -6304,6 +6740,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			if ps.gy.has(c) and not ps.deck.is_empty() and ps.free_zone() != -1:
 				ps.once_duel["Glow-Up Bulb"] = true
 				var top_g = ps.deck.pop_back()
+				top_g.set_meta("from_deck", true)
 				s._to_gy(ps, top_g)
 				events.append({"type": "mill", "player": p, "card": top_g, "deck": ps.deck.size()})
 				events.append(_ev(p, c, Loc.t("%s sends %s to the Graveyard") % [name, top_g.cname()]))
@@ -6616,6 +7053,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			var sent_pick: Array = s.choose(opp_i, Loc.t("%s: send 1 card of that type from your Deck to the Graveyard") % name, of_type, 1, [of_type[0]], false, c)
 			var sent_c = sent_pick[0] if not sent_pick.is_empty() else of_type[0]
 			opp.deck.erase(sent_c)
+			sent_c.set_meta("from_deck", true)
 			s._to_gy(opp, sent_c)
 			s._shuffle(opp.deck)
 			events.append({"type": "mill", "player": opp_i, "card": sent_c, "deck": opp.deck.size()})
@@ -6701,6 +7139,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			if not opp.hand.is_empty():
 				var h = opp.hand[s._rng.randi() % opp.hand.size()]
 				opp.hand.erase(h)
+				h.set_meta("from_hand", true)
 				s._to_gy(opp, h)
 				events.append(_ev(p, c, Loc.t("%s makes the opponent discard") % name))
 				events.append({"type": "discard", "player": opp_i, "card": h})
@@ -6708,6 +7147,7 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			for i in int(a[1]) if a.size() > 1 else 1:
 				if not opp.deck.is_empty():
 					var d = opp.deck.pop_back()
+					d.set_meta("from_deck", true)
 					s._to_gy(opp, d)
 					events.append(_ev(p, c, Loc.t("%s sends %s to the GY") % [name, d.cname()]))
 					events.append({"type": "mill", "player": opp_i, "card": d, "deck": opp.deck.size()})

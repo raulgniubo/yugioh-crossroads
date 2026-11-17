@@ -109,7 +109,8 @@ const FAMILIES := {
 		"Gravekeeper's Heretic", "Gravekeeper's Shaman", "Gravekeeper's Nobleman", "Gravekeeper's Ambusher", "Gravekeeper's Oracle",
 		"Gravekeeper's Spiritualist", "Gravekeeper's Supernaturalist", "A Cat of Ill Omen", "An Owl of Luck", "Charm of Shabti",
 		"Necrovalley", "Royal Tribute", "Rite of Spirit", "Gravekeeper's Stele", "Gravekeeper's Servant", "Hidden Temples of Necrovalley",
-		"Imperial Tombs of Necrovalley", "Necrovalley Temple", "Necrovalley Throne", "Gravekeeper's Inscription", "Terraforming", "Royal Decree"]},
+		"Imperial Tombs of Necrovalley", "Necrovalley Temple", "Necrovalley Throne", "Gravekeeper's Inscription", "Terraforming", "Royal Decree",
+		"Gravekeeper's Trap", "Mudora the Sword Oracle", "Pharaoh's Treasure", "Exchange of the Spirit"]},
 	"ancient_gear": {"era": "GX", "deck": "deck_ancient_gear", "cards": [
 		"Ancient Gear", "Ancient Gear Beast", "Ancient Gear Box", "Ancient Gear Cannon", "Ancient Gear Commander", "Ancient Gear Dark Golem",
 		"Ancient Gear Dragon", "Ancient Gear Engineer", "Ancient Gear Frame", "Ancient Gear Gadget", "Ancient Gear Gadjiltron Chimera",
@@ -118,14 +119,17 @@ const FAMILIES := {
 		"Ancient Gear Soldier", "Ancient Gear Statue", "Ancient Gear Tanker", "Ancient Gear Wyvern", "Chaos Ancient Gear Giant",
 		"Ultimate Ancient Gear Golem", "Ancient Gear Advance", "Ancient Gear Castle", "Ancient Gear Catapult", "Ancient Gear Drill",
 		"Ancient Gear Explosive", "Ancient Gear Factory", "Ancient Gear Fist", "Ancient Gear Fusion", "Ancient Gear Reborn", "Ancient Gear Tank",
-		"Ancient Gear Workshop", "Cross-Dimensional Duel", "Geartown", "Spell Gear"]},
+		"Ancient Gear Workshop", "Cross-Dimensional Duel", "Geartown", "Spell Gear", "Toon Ancient Gear Golem", "Ancient Gear Duel", "Ancient Gear Fortress"]},
 	"lightsworn": {"era": "5D's", "deck": "deck_lightsworn", "cards": [
 		"Judgment Dragon", "Celestia, Lightsworn Angel", "Wulf, Lightsworn Beast", "Felis, Lightsworn Archer", "Gragonith, Lightsworn Dragon",
 		"Aurkus, Lightsworn Druid", "Ryko, Lightsworn Hunter", "Minerva, Lightsworn Maiden", "Jenis, Lightsworn Mender", "Ehren, Lightsworn Monk",
 		"Jain, Lightsworn Paladin", "Rinyan, Lightsworn Rogue", "Lyla, Lightsworn Sorceress", "Shire, Lightsworn Spirit", "Lumina, Lightsworn Summoner",
 		"Garoth, Lightsworn Warrior", "Raiden, Hand of the Lightsworn", "Lightsworn Dragonling", "Michael, the Arch-Lightsworn",
 		"Minerva, the Exalted Lightsworn", "Charge of the Light Brigade", "Solar Recharge", "Lightsworn Sabre", "Light Spiral", "Realm of Light",
-		"Glorious Illusion", "Vanquishing Light", "Twilight Cloth", "March of the Dark Brigade"]},
+		"Glorious Illusion", "Vanquishing Light", "Twilight Cloth", "March of the Dark Brigade",
+		"Weiss, Lightsworn Archfiend", "Punishment Dragon", "Enlightenment Dragon", "Lyla, Twilightsworn Enchantress", "Ryko, Twilightsworn Fighter",
+		"Jain, Twilightsworn General", "Lumina, Twilightsworn Shaman", "Minerva, the Athenian Lightsworn", "Lightsworn Barrier", "Lightsworn Aegis",
+		"Lightsworn Sanctuary", "Twilight Eraser", "Twilight Twin Dragons", "Lightsworn Judgment"]},
 }
 
 
