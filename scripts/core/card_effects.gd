@@ -657,8 +657,6 @@ const FX := {
 	"Expressroid": {"note": "Summoned: add 2 roid monsters from the GY to the hand.", "any_summon": [["gy_to_hand", {"has": "roid", "not": "Expressroid"}, 2]]},
 	"Rescueroid": {"note": "When a \"roid\" monster you control is destroyed by battle: it returns to your hand.", "rescue_roid": true},
 	"Mad Archfiend": {"note": "Piercing damage. If it is targeted for an attack while in Attack Position: it changes to Defense Position.", "piercing": true, "def_when_targeted": true},
-	"Juragedo": {"note": "Tribute it: one of your monsters gains 1000 ATK this turn.",
-		"ignite": {"cost": "tribute_self", "do": [["best_own_atk", 1000]], "label": "Tribute: +1000 ATK to a monster"}},
 	"Gagaga Magician": {"note": "Once per turn: declare a Level from 1 to 8; it becomes that Level until the end of the turn. You can only control 1. Cannot be Synchro Material.", "ignite": {"cost": "none", "do": [["declare_level"]], "label": "Declare a Level (1 to 8)"}, "one_only": true, "no_synchro": true},
 	"Gagaga Cowboy": {"note": "Detach 1 material. In Attack Position: this turn, attacking a monster it gains 1000 ATK and that monster loses 500 ATK during the Damage Step. In Defense Position: 800 damage to the opponent.",
 		"ignite": {"cost": "detach", "do": [["cowboy"]], "label": "Detach 1: Attack Position +1000 / -500 in battle, Defense Position 800 damage"}},
@@ -761,6 +759,16 @@ const FX := {
 	"Umbral Horror Unform": {"note": "Destroyed by battle while attacking a monster: you can Special Summon 2 Umbral Horror monsters from your Deck. Once per turn.", "once_turn": true, "death": [["need_attacking"], ["need_deck", {"has": "Umbral Horror"}, 2], ["special", "deck", {"has": "Umbral Horror"}, "", 2]]},
 	"Umbral Horror Will o' the Wisp": {"note": "Normal or Special Summoned: you can make its Level the Level of another Umbral Horror monster you control or in your Graveyard. Destroyed by battle in Attack Position: destroy the monster that destroyed it.",
 		"summon": [["wisp_level"]], "special_only": [["wisp_level"]], "death": [["need_was_atk"], ["destroy_killer"]]},
+	# ---- The story duelists' remaining cards (Duel Monsters era)
+	"Different Dimension Dragon": {"note": "Cannot be destroyed by Spell/Trap effects that do not target it. Cannot be destroyed by battle with a monster that has 1900 or less ATK.",
+		"dd_immune": true, "battle_immune_vs_max": 1900},
+	"Spirit Ryu": {"note": "During your Battle Step, if this card battles: you can discard 1 Dragon; it gains 1000 ATK/DEF until the end of the Battle Phase.", "quick": "spirit_ryu"},
+	"Little-Winguard": {"note": "Once per turn, during your End Phase: you can change its battle position.", "end": [["may_change_pos_self"]]},
+	"The Legendary Fisherman": {"note": "While \"Umi\" is on the field: unaffected by Spell effects and cannot be targeted for attacks (your opponent can still attack you directly).", "umi_guard": true},
+	"Amazoness Chain Master": {"note": "Destroyed by battle and sent to the GY: you can pay 1500 LP; look at your opponent's hand and add 1 monster from it to your hand.", "death": [["chain_master"]]},
+	"Juragedo": {"note": "During the Battle Step: Special Summon it from your hand and gain 1000 LP (once per turn). Quick Effect: Tribute it; 1 face-up monster you control gains 1000 ATK until the end of the next turn.", "quick": "juragedo"},
+	"Giant Rex": {"note": "Cannot attack directly. If banished: you can Special Summon it, and it gains 200 ATK for each of your banished Dinosaurs (once per turn).", "no_direct": true, "banished": [["giant_rex"]]},
+	"Jigen Bakudan": {"note": "Flip: from then on, during your Standby Phase you can Tribute it: destroy all your other monsters and inflict half their total ATK to your opponent.", "flip": [["jigen_arm"]], "standby": [["jigen_bakudan"]]},
 	"Number 39: Utopia": {"note": "When a monster declares an attack: detach 1 material to negate the attack. If it is targeted for an attack while it has no material: it is destroyed.", "destroy_if_attacked_no_material": true},
 }
 

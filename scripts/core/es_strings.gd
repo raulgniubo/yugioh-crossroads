@@ -5803,4 +5803,6 @@ const ES := {
 	"presents": "presenta",
 	"Opening when the game starts": "Intro al iniciar el juego",
 	"The short flight over the four worlds before the menu. Any key skips it.": "El vuelo corto sobre los cuatro mundos antes del menú. Cualquier tecla lo salta.",
+	"Monster Legends": "Leyendas de Monstruos",
+	"Normal Monsters from every era: hundreds of them, from the classics to the rare big ones.": "Monstruos Normales de todas las eras: cientos, desde los clásicos hasta los grandes y raros.",
 }

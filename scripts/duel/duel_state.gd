@@ -164,6 +164,7 @@ class PlayerState:
 	var speed := 0                # Speed Counters (Turbo Duels)
 	var speed_turn := -1          # last turn this player used a Speed World 2 effect
 	var no_summon_turn := -1      # Scapegoat: no Summons for the rest of this turn (Sets are fine)
+	var no_set_st_turn := -1      # Left Arm Offering: no Spells/Traps Set this turn
 	var extra_normals := 0        # extra Normal Summons / Sets left this turn (Double Summon)
 	var no_damage_until := -1     # takes no damage of any kind through this turn (Synchro Barrier)
 	var once_duel := {}           # card name -> true: its once-per-Duel effect is spent (Unknown Synchron)
@@ -550,6 +551,13 @@ func enter_main2() -> Array:
 ## The end of the Battle Phase: monsters that are banished after they attack (Big Jaws).
 func _end_battle() -> Array:
 	var events := []
+	for u in bp_undo:
+		var bc: CardInst = u["card"]
+		if int(u["turn"]) == turn and bc.atk_mod_turn == turn:
+			bc.atk_mod_t -= int(u["atk"])
+		if int(u["turn"]) == turn and int(u["def"]) != 0 and bc.def_mod_turn == turn:
+			bc.def_mod_t -= int(u["def"])
+	bp_undo.clear()
 	for q in 2:
 		for m in players[q].monsters():
 			if int(m.tags.get("f0_back", -1)) == turn and m.orig_owner != -1:
@@ -688,6 +696,22 @@ func begin_end() -> Array:
 			if int(m.tags.get("limiter", -1)) == turn:
 				events.append({"type": "effect", "player": q, "card": m, "text": Loc.t("Limiter Removal: %s burns out") % m.cname()})
 				events.append_array(_destroy(m))
+	# Ectoplasmer: "Once per turn, during each player's End Phase: The turn player must Tribute 1 face-up monster, and if they do, inflict
+	# damage to their opponent equal to half the original ATK of the Tributed monster."
+	for q in 2:
+		for ec in players[q].spells:
+			if ec != null and ec.face_up and SpellRules.spec(ec).get("ecto", false) and not SpellRules.blocked(self, ec) and not is_over() and int(ec.tags.get("ecto_turn", -1)) != turn:
+				ec.tags["ecto_turn"] = turn
+				var ups: Array = players[current].monsters().filter(func(m): return m.face_up and can_tribute_fx(m))
+				if not ups.is_empty():
+					var low: Array = ups.duplicate()
+					low.sort_custom(func(x, y): return s_atk_key(x) < s_atk_key(y))
+					var tm = pick1(current, Loc.t("%s: Tribute 1 face-up monster") % ec.cname(), ups, low[0], ec)
+					var half_e := maxi(0, int(tm.data.get("atk", 0))) / 2
+					events.append({"type": "effect", "player": q, "card": ec, "text": Loc.t("%s takes %s: %d damage") % [ec.cname(), tm.cname(), half_e]})
+					events.append_array(_tribute_one(current, tm))
+					if half_e > 0:
+						events.append_array(_damage(opponent(current), half_e))
 	# Power Bond: the damage comes due.
 	for q in 2:
 		if players[q].bond_turn == turn and players[q].bond_damage > 0 and not is_over():
@@ -1374,6 +1398,8 @@ func flip_summon(p: int, c: CardInst) -> Array:
 
 
 func can_change_position(p: int, c: CardInst) -> bool:
+	if str(c.data.get("race", "")) == "Dragon" and SpellRules.field_flag(self, "dragon_jar"):
+		return false   # Dragon Capture Jar
 	return (p == current and _in_main() and not is_over() and players[p].field.has(c)
 			and c.face_up and c.summoned_turn != turn and c.pos_changed_turn != turn
 			and c.attacked_turn != turn and c.pos_lock_until < turn
@@ -1958,6 +1984,12 @@ func toon_world(q: int) -> bool:
 ## Magician Girl) must go for a Toon monster when the other side has one.
 func attack_targets_for(p: int, attacker: CardInst) -> Array[CardInst]:
 	var out := attack_targets(p)
+	# The Legendary Fisherman: "cannot be targeted for attacks" while Umi is on the field.
+	var fished: Array[CardInst] = []
+	for m in out:
+		if m == null or not umi_guard(m):
+			fished.append(m)
+	out = fished
 	# Ring of Magnetism: "all the monsters on your opponent's side of the field can only attack the monster equipped with this card".
 	for st in players[opponent(p)].spells:
 		if st != null and st.face_up and st.equipped_to != null and SpellRules.spec(st).get("magnet", false) and not SpellRules.blocked(self, st) and out.has(st.equipped_to):
@@ -2101,6 +2133,15 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 	# opponent equal to that attacking monster's ATK."
 	# Dark Sanctuary: "When an opponent's monster declares an attack: Toss a coin and if the result is heads, negate the attack, and if you do,
 	# inflict damage to your opponent equal to half the current ATK of that opponent's monster."
+	# Fairy Box: "When your opponent's monster declares an attack: Toss a coin and call it. If you call it right, the attacking
+	# monster's ATK becomes 0 until the end of the Battle Phase."
+	for fb in players[opponent(p)].spells:
+		if fb != null and fb.face_up and SpellRules.spec(fb).get("fairy_box", false) and not SpellRules.blocked(self, fb) and players[p].field.has(attacker):
+			if randi() % 2 == 0:
+				bp_boost(attacker, -atk_of(attacker, false))
+				events.append({"type": "effect", "player": opponent(p), "card": fb, "text": Loc.t("%s: called it right! %s has 0 ATK this Battle Phase") % [fb.cname(), attacker.cname()]})
+			else:
+				events.append({"type": "effect", "player": opponent(p), "card": fb, "text": Loc.t("%s: called it wrong") % fb.cname()})
 	var ds = players[opponent(p)].field_spell
 	if ds != null and ds.face_up and SpellRules.spec(ds).get("sanctuary", false) and not SpellRules.blocked(self, ds):
 		if randi() % 2 == 0:
@@ -2946,6 +2987,8 @@ var st_target = null
 
 ## Forbidden Lance: "unaffected by the effects of other Spells/Traps" this turn.
 func st_unaffected(c: CardInst) -> bool:
+	if st_resolving != null and st_resolving.is_spell() and umi_guard(c):
+		return true   # The Legendary Fisherman: "unaffected by Spell effects" while Umi is on the field
 	return st_resolving != null and int(c.tags.get("st_immune", -1)) == turn and st_resolving.cname() != "Forbidden Lance"
 
 
@@ -2956,6 +2999,10 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 		return []
 	if not by_battle and st_unaffected(c):
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is unaffected") % c.cname()}]
+	if not by_battle and st_resolving != null and st_target != c and c.face_up and not c.negated and EffectRunner.fx(c).get("dd_immune", false):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is not destroyed") % c.cname()}]   # Different Dimension Dragon
+	if not by_battle and st_resolving != null and st_resolving.is_spell() and umi_guard(c):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is unaffected") % c.cname()}]   # The Legendary Fisherman
 	if not by_battle and st_target == c:
 		# Heart of Clear Water: "not destroyed ... by the effect of a card that targets the monster."
 		for hc in SpellRules.equips_on(self, c):
@@ -3233,6 +3280,9 @@ func _banish(c: CardInst) -> Array:
 					bev.append_array(EffectRunner.trigger(self, c, "leave"))
 			elif from == "spells":
 				bev.append_array(SpellRules.left_field(self, c))
+			if c.is_monster() and CardEffects.of(c.cname()).has("banished"):
+				# "If this card is banished" (Giant Rex).
+				bev.append_array(EffectRunner.run_list(self, c.owner, c, CardEffects.of(c.cname())["banished"], {}))
 			return bev
 	return []
 
@@ -3396,7 +3446,12 @@ func _cleanup() -> Array:
 	var drain := SpellRules.field_flag(self, "drain")
 	for q in 2:
 		for m in players[q].monsters():
-			m.negated = m.face_up and (drain or m.negated_turn == turn or m.neg_perm)
+			m.negated = m.face_up and (drain or m.negated_turn == turn or m.neg_perm or (gorgon_turn == turn and not m.attack_pos))
+	# Jam Breeding Machine: "You cannot Summon any monsters, except "Slime Tokens" (but you can Set)."
+	for q in 2:
+		for st in players[q].spells:
+			if st != null and st.face_up and SpellRules.spec(st).get("jam_lock", false) and not SpellRules.blocked(self, st):
+				players[q].no_summon_turn = turn
 	# Dark Necrofear's hold ends when it leaves the Spell & Trap Zone.
 	for q in 2:
 		for m in players[q].monsters():
@@ -3704,6 +3759,21 @@ func speed_world(p: int, cost: int) -> Array:
 				events.append_array(_destroy(t))
 			else:
 				events.append_array(_destroy_st(t))
+	return events
+
+
+## Lose Life Points that are not damage (a card's price: Multiple Destruction). Zero still loses the Duel.
+func s_atk_key(m: CardInst) -> int:
+	return atk_of(m, false)
+
+
+func _lose_lp(p: int, amount: int) -> Array:
+	var ps := players[p]
+	ps.lp = maxi(0, ps.lp - amount)
+	var events: Array = [{"type": "lp", "player": p, "lp": ps.lp, "delta": -amount}]
+	if ps.lp == 0 and winner == -1:
+		_set_winner(opponent(p), Loc.t("%s's Life Points hit zero.") % ps.name)
+		events.append({"type": "win", "player": winner, "reason": win_reason})
 	return events
 
 
@@ -4301,6 +4371,49 @@ func _levels_reach(sel: Array, c: CardInst) -> bool:
 
 
 ## May this monster be Tributed for a card effect or a cost? (Level Eater: only for a Tribute Summon.)
+## Tribute 1 of player p's monsters for a card's effect (to the GY, with what that sets off).
+func _tribute_one(p: int, m: CardInst) -> Array:
+	var ps := players[p]
+	var at := ps.field.find(m)
+	if at == -1:
+		return []
+	ps.field[at] = null
+	_to_gy(ps, m)
+	var events: Array = [{"type": "tribute", "player": p, "card": m}]
+	events.append_array(EffectRunner.trigger(self, m, "tributed"))
+	events.append_array(_monster_left(m))
+	return events
+
+
+## A change that lasts until the end of this Battle Phase (Spirit Ryu, Fairy Box).
+var bp_undo: Array = []
+var gorgon_turn := -1     # Gorgon's Eye: the effects of Defense Position monsters are negated this turn
+
+
+func bp_boost(c: CardInst, atk: int, def := 0) -> void:
+	if c.atk_mod_turn != turn:
+		c.atk_mod_t = 0
+		c.atk_mod_turn = turn
+	c.atk_mod_t += atk
+	if def != 0:
+		if c.def_mod_turn != turn:
+			c.def_mod_t = 0
+			c.def_mod_turn = turn
+		c.def_mod_t += def
+	bp_undo.append({"card": c, "atk": atk, "def": def, "turn": turn})
+
+
+## The Legendary Fisherman while "Umi" is on the field.
+func umi_guard(c: CardInst) -> bool:
+	if c == null or not c.face_up or c.negated or not EffectRunner.fx(c).get("umi_guard", false):
+		return false
+	for q in 2:
+		var fsp = players[q].field_spell
+		if fsp != null and fsp.face_up and fsp.cname() == "Umi" and not SpellRules.blocked(self, fsp):
+			return true
+	return false
+
+
 func can_tribute_fx(m: CardInst) -> bool:
 	return m.no_tribute_turn != turn and not (m.face_up and EffectRunner.fx(m).get("no_effect_tribute", false))
 
@@ -4710,7 +4823,7 @@ func find_uid(uid: int) -> CardInst:
 # ------------------------------------------------------------------ spells & traps on the field
 
 func can_set_st(p: int, c: CardInst) -> bool:
-	return (p == current and _in_main() and not is_over() and not c.is_monster()
+	return (p == current and players[p].no_set_st_turn != turn and _in_main() and not is_over() and not c.is_monster()
 			and players[p].hand.has(c) and players[p].spells.find(null) != -1 and SpellRules.kind(c) != "field")
 
 

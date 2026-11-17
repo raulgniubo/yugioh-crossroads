@@ -105,6 +105,8 @@ func _ready() -> void:
 		_test_swords_stays()
 		_test_card_text_es()
 		_test_fresh_starter()
+		_test_every_card_obtainable()
+		_test_cards_b0dm()
 		await _test_album()
 		_test_save_slots()
 		_test_turbo_setup()
@@ -7592,6 +7594,224 @@ func _test_save_slots() -> void:
 		check(not Saves.exists("slot5"), "Saves: a slot can be deleted")
 	check(CardText.gist("Mirror Force", "When an opponent's monster declares an attack: Destroy all your opponent's Attack Position monsters.") == "Destroy all your opponent's Attack Position monsters.", "Caption: the part of the text that does something")
 	check(CardText.gist("Pot of Greed", "Draw 2 cards.") == "Draw 2 cards.", "Caption: a short card is said whole")
+
+
+func _set_trap(s: DuelState, p: int, name: String) -> DuelState.CardInst:
+	var t := s._make(_cid(name), p)
+	var at: int = s.players[p].spells.find(null)
+	s.players[p].spells[at] = t
+	t.face_up = false
+	t.set_turn = 0
+	return t
+
+
+## The story duelists' remaining cards, Duel Monsters era (v0.33.55), each against its printed text.
+func _test_cards_b0dm() -> void:
+	# Different Dimension Dragon: a 1900 attacker can't destroy it; Dark Hole (no target) can't; a 2000 one can.
+	var s := _new_state(5501)
+	_battle_ready(s)
+	var ddd := _mon(s, 1, "Different Dimension Dragon", 0, false)
+	var a19 := _mon(s, 0, "Luster Dragon", 0)
+	s.declare_attack(0, a19, ddd)
+	s.resolve_attack()
+	check(s.players[1].field.has(ddd), "Different Dimension Dragon: not destroyed by battle with a 1900 ATK monster")
+	s = _main_ready(5502)
+	ddd = _mon(s, 1, "Different Dimension Dragon", 0)
+	var other := _mon(s, 1, "Celtic Guardian", 1)
+	var hole := _in(s, 0, "Dark Hole", "hand")
+	s.activate(0, hole)
+	check(s.players[1].field.has(ddd) and not s.players[1].field.has(other), "Different Dimension Dragon: Dark Hole (no target) leaves it, takes the rest")
+	# Spirit Ryu: discard a Dragon in the Battle Step, +1000 until the end of the Battle Phase.
+	s = _new_state(5503)
+	_battle_ready(s)
+	var ryu := _mon(s, 0, "Spirit Ryu", 0)
+	var foe := _mon(s, 1, "Celtic Guardian", 0)
+	var fodder := _in(s, 0, "Luster Dragon", "hand")
+	s.declare_attack(0, ryu, foe)
+	check(s.responses(0, "attack").has(ryu), "Spirit Ryu: offered in its Battle Step with a Dragon in hand")
+	s.respond(0, ryu)
+	check(s.players[0].gy.has(fodder) and s.atk_of(ryu, false) == 2000, "Spirit Ryu: discards the Dragon, 2000 ATK (got %d)" % s.atk_of(ryu, false))
+	s.resolve_attack()
+	check(not s.players[1].field.has(foe), "Spirit Ryu: wins the battle with the extra 1000")
+	s._end_battle()
+	check(s.atk_of(ryu, false) == 1000, "Spirit Ryu: back to 1000 at the end of the Battle Phase (got %d)" % s.atk_of(ryu, false))
+	# The Legendary Fisherman: with Umi, no attack target and unaffected by Spells.
+	s = _new_state(5504)
+	_battle_ready(s)
+	var fish := _mon(s, 1, "The Legendary Fisherman", 0)
+	var umi := s._make(_cid("Umi"), 1)
+	umi.face_up = true
+	s.players[1].field_spell = umi
+	var bewd := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	check(not s.attack_targets_for(0, bewd).has(fish), "The Legendary Fisherman: can't be targeted for attacks while Umi is on the field")
+	s.players[1].field_spell = null
+	check(s.attack_targets_for(0, bewd).has(fish), "The Legendary Fisherman: can be attacked without Umi")
+	# Amazoness Chain Master: pay 1500, take a monster from their hand.
+	s = _new_state(5505)
+	_battle_ready(s)
+	var chain := _mon(s, 1, "Amazoness Chain Master", 0)
+	var hit := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.players[0].hand.clear()
+	var stolen := _in(s, 0, "Dark Magician", "hand")
+	var lp_c: int = s.players[1].lp
+	s.declare_attack(0, hit, chain)
+	s.resolve_attack()
+	check(s.players[1].hand.has(stolen) and s.players[1].lp <= lp_c - 1500, "Amazoness Chain Master: pays 1500 and takes the monster from their hand")
+	# Juragedo: from the hand in the Battle Step (+1000 LP); Tribute it for +1000 ATK until the end of the next turn.
+	s = _new_state(5506)
+	_battle_ready(s)
+	var jur := _in(s, 1, "Juragedo", "hand")
+	var guard := _mon(s, 1, "Celtic Guardian", 0)
+	var at2 := _mon(s, 0, "Luster Dragon", 0)
+	s.declare_attack(0, at2, guard)
+	check(s.responses(1, "attack").has(jur), "Juragedo: can come from the hand in the Battle Step")
+	var lp_j: int = s.players[1].lp
+	s.respond(1, jur)
+	check(s.players[1].field.has(jur) and s.players[1].lp == lp_j + 1000, "Juragedo: Special Summoned, 1000 LP gained")
+	s.respond(1, jur)
+	check(s.players[1].gy.has(jur) and s.atk_of(guard, false) == 2400, "Juragedo: Tributed, Celtic Guardian at 2400 (got %d)" % s.atk_of(guard, false))
+	s.turn += 1
+	check(s.atk_of(guard, false) == 2400, "Juragedo: the 1000 lasts through the next turn")
+	s.turn += 1
+	check(s.atk_of(guard, false) == 1400, "Juragedo: and is gone after it (got %d)" % s.atk_of(guard, false))
+	# Giant Rex: no direct attacks; banished, it comes back with +200 per banished Dinosaur.
+	s = _main_ready(5507)
+	var rex := _mon(s, 0, "Giant Rex", 0)
+	check(EffectRunner.fx(rex).get("no_direct", false), "Giant Rex: cannot attack directly")
+	var dino := _in(s, 0, "Sabersaurus", "gy")
+	s._banish(dino)
+	s._banish(rex)
+	check(s.players[0].field.has(rex) and s.atk_of(rex, false) == 2200, "Giant Rex: banished, back with +200 for the banished Dinosaur (got %d)" % s.atk_of(rex, false))
+	# Jigen Bakudan: flipped, then at your Standby Phase: your others are destroyed, half their ATK to the opponent.
+	s = _main_ready(5508)
+	var jb := _mon(s, 0, "Jigen Bakudan", 0, false)
+	jb.face_up = false
+	var big := _mon(s, 0, "Blue-Eyes White Dragon", 1)
+	s._flip_up_fx(jb) if s.has_method("_flip_up_fx") else EffectRunner.run_list(s, 0, jb, EffectRunner.fx(jb)["flip"], {})
+	jb.face_up = true
+	var lp_o: int = s.players[1].lp
+	EffectRunner.run_list(s, 0, jb, EffectRunner.fx(jb)["standby"], {})
+	check(not s.players[0].field.has(jb) and not s.players[0].field.has(big) and s.players[1].lp == lp_o - 1500, "Jigen Bakudan: blows up the field, 1500 damage (LP %d)" % s.players[1].lp)
+	# Little-Winguard: changes position in your End Phase.
+	s = _main_ready(5509)
+	var lw := _mon(s, 0, "Little-Winguard", 0)
+	EffectRunner.run_list(s, 0, lw, EffectRunner.fx(lw)["end"], {})
+	check(not lw.attack_pos, "Little-Winguard: changes its battle position in the End Phase")
+	# Survival Instinct: banish Dinosaurs from the GY, 400 LP each.
+	s = _main_ready(5510)
+	for i in 3:
+		_in(s, 0, "Sabersaurus", "gy")
+	var si := _set_trap(s, 0, "Survival Instinct")
+	var lp_s: int = s.players[0].lp
+	s.respond(0, si)
+	s.chain_resolve()
+	check(s.players[0].lp == lp_s + 1200 and s.players[0].banished.size() == 3, "Survival Instinct: 3 Dinosaurs banished, 1200 LP")
+	# Nutrient Z: about to take 2000+: gain 4000 first.
+	s = _new_state(5511)
+	_battle_ready(s)
+	var nz := _set_trap(s, 1, "Nutrient Z")
+	var bew2 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	s.declare_attack(0, bew2, null)
+	check(SpellRules.cond_ok(s, 1, "big_hit"), "Nutrient Z: fits a 3000 direct attack")
+	var lp_n: int = s.players[1].lp
+	s.respond(1, nz)
+	s.chain_resolve()
+	s.resolve_attack()
+	check(s.players[1].lp == lp_n + 4000 - 3000, "Nutrient Z: +4000 first, then the 3000 (LP %d)" % s.players[1].lp)
+	# Machine Duplication: 2 more of the same Machine from the Deck.
+	s = _main_ready(5512)
+	var ch := _mon(s, 0, "Mechanicalchaser", 0)
+	ch.data = ch.data.duplicate()
+	ch.data["atk"] = 500
+	s.players[0].deck.clear()
+	_in(s, 0, "Mechanicalchaser", "deck")
+	_in(s, 0, "Mechanicalchaser", "deck")
+	var md := _in(s, 0, "Machine Duplication", "hand")
+	s.activate(0, md, ch)
+	check(s.players[0].monsters().filter(func(m): return m.cname() == "Mechanicalchaser").size() == 3, "Machine Duplication: two more Mechanicalchasers")
+	# Left Arm Offering: hand banished, a Spell added, no Sets this turn.
+	s = _main_ready(5513)
+	s.players[0].hand.clear()
+	var la := _in(s, 0, "Left Arm Offering", "hand")
+	_in(s, 0, "Celtic Guardian", "hand")
+	_in(s, 0, "Kuriboh", "hand")
+	s.players[0].deck.clear()
+	var want := _in(s, 0, "Pot of Greed", "deck")
+	s.activate(0, la)
+	check(s.players[0].hand.has(want) and s.players[0].banished.size() == 2, "Left Arm Offering: hand banished, Pot of Greed added")
+	var trap_x := _in(s, 0, "Mirror Force", "hand")
+	check(not s.can_set_st(0, trap_x), "Left Arm Offering: no Spell/Trap Sets this turn")
+	# Multiple Destruction: hands to the bottom, 300 per card, both draw 5.
+	s = _main_ready(5514)
+	for q in 2:
+		s.players[q].hand.clear()
+		for i in 3:
+			_in(s, q, "Kuriboh", "hand")
+		for i in 10:
+			_in(s, q, "Celtic Guardian", "deck")
+	var mdx := _set_trap(s, 0, "Multiple Destruction")
+	var lp_m: int = s.players[0].lp
+	s.respond(0, mdx)
+	s.chain_resolve()
+	check(s.players[0].hand.size() == 5 and s.players[1].hand.size() == 5 and s.players[0].lp == lp_m - 1800, "Multiple Destruction: both draw 5, 6 cards back cost 1800 (LP %d)" % s.players[0].lp)
+	# Dragon Capture Jar: face-up Dragons to Defense, and they stay there.
+	s = _main_ready(5515)
+	var drg := _mon(s, 1, "Luster Dragon", 0)
+	var jar := _set_trap(s, 0, "Dragon Capture Jar")
+	s.respond(0, jar)
+	s.chain_resolve()
+	check(not drg.attack_pos and jar.face_up, "Dragon Capture Jar: the Dragon goes to Defense Position")
+	s.current = 1
+	drg.summoned_turn = -1
+	check(not s.can_change_position(1, drg), "Dragon Capture Jar: Dragons cannot change position")
+	# Gorgon's Eye: Defense Position monsters' effects are negated this turn.
+	s = _main_ready(5516)
+	var dm_def := _mon(s, 1, "Different Dimension Dragon", 0, false)
+	var ge := _set_trap(s, 0, "Gorgon's Eye")
+	s.respond(0, ge)
+	s.chain_resolve()
+	s._cleanup()
+	check(dm_def.negated, "Gorgon's Eye: the Defense Position monster's effect is negated")
+	# Ectoplasmer: the turn player Tributes a face-up monster in the End Phase; half its original ATK to the opponent.
+	s = _main_ready(5517)
+	var ecto := _in(s, 0, "Ectoplasmer", "hand")
+	s.activate(0, ecto)
+	var bw3 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
+	var lp_e: int = s.players[1].lp
+	s.begin_end()
+	check(not s.players[0].field.has(bw3) and s.players[1].lp == lp_e - 1500, "Ectoplasmer: Blue-Eyes Tributed, 1500 damage (LP %d)" % s.players[1].lp)
+	# Jam Breeding Machine: no Summons except Slime Tokens; a token each Standby Phase.
+	s = _main_ready(5518)
+	var jam := _in(s, 0, "Jam Breeding Machine", "hand")
+	s.activate(0, jam)
+	s._cleanup()
+	check(s.players[0].no_summon_turn == s.turn, "Jam Breeding Machine: no Summons while it is up")
+	SpellRules.standby(s, 0)
+	check(not s.players[0].monsters().filter(func(m): return m.cname() == "Slime Token" and m.attack_pos).is_empty(), "Jam Breeding Machine: a Slime Token in Attack Position in the Standby Phase")
+
+
+## Every card the game can play can be had somewhere: a booster set, Lumen (her own cards) or
+## the highway (Speed Spells). A card that plays but can't be obtained fails the build.
+func _test_every_card_obtainable() -> void:
+	var have := {}
+	for i in Collection.all_cards():
+		have[int(i)] = true
+	var pl: Array = Collection.every_playable().duplicate()
+	for i in CardData.CARDS:
+		if Collection.playable(int(i)) and not pl.has(int(i)):
+			pl.append(int(i))
+	var miss: Array = []
+	for i in pl:
+		if not have.has(int(i)) and not CardData.ORIGINALS.has(int(i)) and not CardData.get_card(int(i)).get("speed_spell", false):
+			miss.append(str(CardData.get_card(int(i)).get("name", i)))
+	check(miss.is_empty(), "Cards: every playable card can be obtained (%d can't: %s)" % [miss.size(), ", ".join(miss.slice(0, 8))])
+	check(Collection.pool("legends").size() > 100 or CardData.EXT.size() < 1000, "Cards: Monster Legends holds the Normal Monsters (%d)" % Collection.pool("legends").size())
+	var dup := 0
+	for id in Collection.pool("legends"):
+		for other in ["Duel Monsters", "GX", "5D's", "ZEXAL", "Vault"]:
+			if Collection.pool(other).has(id):
+				dup += 1
+	check(dup == 0, "Cards: Monster Legends repeats no card of another series set (%d)" % dup)
 
 
 func _test_fresh_starter() -> void:

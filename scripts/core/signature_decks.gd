@@ -285,6 +285,11 @@ static func _works(id: int) -> bool:
 ## with "Black Luster Ritual".) Anything more is an effect, and an effect needs rules.
 static func _only_summon_text(d: Dictionary) -> bool:
 	var text := str(d.get("desc", d.get("text", "")))
+	if text.strip_edges() == "":
+		# (A card written into the game itself carries no text of its own: the card folder's.)
+		text = str((CardData.EXT.get(int(d.get("id", 0)), {}) as Dictionary).get("desc", ""))
+		if text == "":
+			text = str((CardData.EXT.get(int(CardData.NAME_TO_ID.get(str(d.get("name", "")).to_lower(), 0)), {}) as Dictionary).get("desc", ""))
 	var paren := RegEx.new()
 	paren.compile("\\([^)]*\\)")
 	text = paren.sub(text, "", true).strip_edges()

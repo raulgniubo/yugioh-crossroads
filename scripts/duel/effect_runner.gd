@@ -360,6 +360,8 @@ static func survives_battle(s: DuelState, c) -> bool:
 			return true   # Viser Des: "This card cannot be destroyed by battle while the targeted monster is on the field."
 	if f.get("battle_immune", false):
 		return true
+	if f.has("battle_immune_vs_max") and s.battle_foe != null and s.atk_of(s.battle_foe, false) <= int(f["battle_immune_vs_max"]):
+		return true   # Different Dimension Dragon: "cannot be destroyed by battle with a monster that has 1900 or less ATK"
 	if int(c.tags.get("unbreak_turn", -1)) == s.turn:
 		return true   # Half Unbreak
 	if s.current != c.owner and c.cname().contains("Blackwing"):
@@ -1856,7 +1858,19 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 	var hit: bool = not s.pending_attack.is_empty() and int(s.pending_attack["player"]) != p and not s.pending_attack.get("negated", false)
 	if int(ps.name_lock.get(c.cname(), -1)) == s.turn:
 		return false
+	var pa: Dictionary = s.pending_attack
+	var battling: bool = not pa.is_empty() and not pa.get("negated", false)
 	match kind:
+		"spirit_ryu":
+			# "During your Battle Step, if this card battles (Quick Effect): You can discard 1 Dragon monster to the GY"
+			return on_field and window == "attack" and battling and s.current == p and pa["target"] != null and (pa["attacker"] == c or pa["target"] == c) \
+					and not ps.hand.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Dragon").is_empty()
+		"juragedo":
+			# From the hand during the Battle Step (once per turn), or Tribute it from the field (any time).
+			if ps.hand.has(c):
+				return window == "attack" and battling and ps.free_zone() != -1 and ps.no_summon_turn != s.turn and int(ps.once_names.get("Juragedo", -1)) != s.turn
+			return on_field and window in ["attack", "chain", "summon", "battle_start", "phase"] and s.can_tribute_fx(c) \
+					and not ps.monsters().filter(func(m): return m != c and m.face_up).is_empty()
 		"majestic_star":
 			# "when your opponent activates a card or effect: You can Tribute this card; negate the activation, and if you do, destroy all cards your opponent controls."
 			return on_field and window == "chain" and not s.chain.is_empty() and int(s.chain.back()["player"]) != p and not s.chain.back().get("negated", false)
@@ -1975,6 +1989,32 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 	var events := []
 	var hit: bool = not s.pending_attack.is_empty() and int(s.pending_attack["player"]) != p and not s.pending_attack.get("negated", false)
 	match kind:
+		"spirit_ryu":
+			var dr: Array = ps.hand.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Dragon")
+			if not dr.is_empty():
+				var thrown = s.pick1(p, Loc.t("%s: discard 1 Dragon") % c.cname(), dr, dr[0], c)
+				ps.hand.erase(thrown)
+				s._to_gy(ps, thrown)
+				events.append({"type": "discard", "player": p, "card": thrown})
+				s.bp_boost(c, 1000, 1000)
+				events.append(_ev(p, c, Loc.t("%s: +1000 ATK/DEF until the end of the Battle Phase") % c.cname()))
+		"juragedo":
+			if ps.hand.has(c):
+				ps.once_names["Juragedo"] = s.turn
+				ps.hand.erase(c)
+				events.append_array(s._special(p, c, "effect", ""))
+				ps.lp += 1000
+				events.append(_ev(p, c, Loc.t("%s: gain 1000 LP") % c.cname()))
+				events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": 1000})
+			else:
+				var mine: Array = ps.monsters().filter(func(m): return m != c and m.face_up)
+				if not mine.is_empty():
+					var best: Array = s._best_monsters(mine, 1)
+					var to = s.pick1(p, Loc.t("%s: 1 face-up monster gains 1000 ATK") % c.cname(), mine, best[0] if not best.is_empty() else mine[0], c)
+					events.append_array(s._tribute_one(p, c))
+					to.tmp_atk = (to.tmp_atk if to.tmp_until >= s.turn else 0) + 1000
+					to.tmp_until = s.turn + 1
+					events.append(_ev(p, to, Loc.t("%s: +1000 ATK until the end of the next turn") % to.cname()))
 		"ghibli":
 			ps.hand.erase(c)
 			events.append(_ev(p, c, Loc.t("%s jumps in front of the direct attack") % c.cname()))
@@ -2221,6 +2261,22 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 		else:
 			lose = a > s.def_of(tgt)
 	match kind:
+		"spirit_ryu":
+			# When the extra 1000 turns the battle.
+			var pa_r: Dictionary = s.pending_attack
+			var foe_r = pa_r["target"] if pa_r["attacker"] == c else pa_r["attacker"]
+			if foe_r == null:
+				return false
+			var mine_r: int = s.atk_of(c, true, foe_r, true) if c.attack_pos else s.def_of(c)
+			var theirs_r: int = s.atk_of(foe_r, true, c, true) if foe_r.attack_pos else s.def_of(foe_r)
+			return mine_r <= theirs_r and mine_r + 1000 > theirs_r
+		"juragedo":
+			if ps.hand.has(c):
+				return true
+			# Tribute it to save a battle or win one: when one of ours is about to lose by 1000 or less.
+			if not hit or tgt == null or tgt.owner != p or tgt == c:
+				return false
+			return lose and s.atk_of(att, true, tgt, true) - s.atk_of(tgt, false) < 1000 and tgt.attack_pos
 		"majestic_star":
 			# Worth the Tribute when their side has 3 or more cards, or this would be lost anyway.
 			var theirs_ms: int = s.players[s.opponent(p)].monsters().size() + s.players[s.opponent(p)].set_cards().size()
@@ -2539,6 +2595,60 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 	var name: String = c.cname()
 	var events := []
 	match a[0]:
+		"may_change_pos_self":
+			# Little-Winguard: "Once per turn, during your End Phase: You can change the battle position of this card."
+			if ps.field.has(c) and c.face_up and s.choose_option(p, Loc.t("%s: change its battle position?") % name, ["Change it", "Leave it"], 0 if c.attack_pos else 1, c) == 0:
+				c.attack_pos = not c.attack_pos
+				events.append({"type": "position", "player": p, "card": c, "zone": ps.field.find(c)})
+		"chain_master":
+			# Amazoness Chain Master: "You can pay 1500 LP; look at your opponent's hand, then add 1 monster from their hand to your hand."
+			if ps.lp > 1500 and not opp.hand.is_empty() and ps.gy.has(c) and s.choose_option(p, Loc.t("%s: pay 1500 LP to look at their hand and take a monster?") % name, ["Pay 1500", "No"], 0 if ps.lp > 3500 else 1, c) == 0:
+				ps.lp -= 1500
+				events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": -1500})
+				events.append(_ev(p, c, Loc.t("%s looks at the opponent's hand: %s") % [name, ", ".join(opp.hand.map(func(h): return h.cname()))]))
+				var mons: Array = opp.hand.filter(func(h): return h.is_monster())
+				if not mons.is_empty():
+					var best: Array = s._best_monsters(mons, 1)
+					var took = s.pick1(p, Loc.t("%s: take 1 monster from their hand") % name, mons, best[0] if not best.is_empty() else mons[0], c)
+					opp.hand.erase(took)
+					took.owner = p
+					ps.hand.append(took)
+					events.append(_ev(p, c, Loc.t("%s takes %s") % [name, took.cname()]))
+		"giant_rex":
+			# Giant Rex: "If this card is banished: You can Special Summon this card, and if you do, this card gains 200 ATK for each of your banished Dinosaur monsters."
+			if ps.banished.has(c) and ps.free_zone() != -1 and ps.no_summon_turn != s.turn and int(ps.once_names.get(name, -1)) != s.turn \
+					and s.choose_option(p, Loc.t("%s was banished: Special Summon it?") % name, ["Summon it", "No"], 0, c) == 0:
+				ps.once_names[name] = s.turn
+				ps.banished.erase(c)
+				events.append_array(s._special(p, c, "effect", ""))
+				var dinos: int = ps.banished.filter(func(b): return b.is_monster() and str(b.data.get("race", "")) == "Dinosaur").size()
+				if dinos > 0:
+					c.atk_mod += 200 * dinos
+					events.append(_ev(p, c, Loc.t("%s: %+d ATK") % [name, 200 * dinos]))
+		"jigen_arm":
+			c.tags["jigen"] = true
+		"jigen_bakudan":
+			# Jigen Bakudan: "After this card is flipped, offer it as a Tribute during your Standby Phase to destroy all monsters on your side of
+			# the field and inflict Direct Damage equal to half of the total ATK of the destroyed cards (excluding this monster)."
+			if c.tags.get("jigen", false) and ps.field.has(c) and s.current == p and s.can_tribute_fx(c):
+				var others: Array = ps.monsters().filter(func(m): return m != c)
+				var total := 0
+				for m in others:
+					if m.face_up:
+						total += s.atk_of(m, false)
+				if s.choose_option(p, Loc.t("%s: Tribute it to destroy your other monsters and deal %d damage?") % [name, total / 2], ["Tribute it", "Not now"], 0 if total >= 1600 or others.is_empty() else 1, c) == 0:
+					events.append(_ev(p, c, Loc.t("%s goes off") % name))
+					events.append_array(s._tribute_one(p, c))
+					var dealt := 0
+					for m in others:
+						if ps.field.has(m):
+							var was := s.atk_of(m, false) if m.face_up else 0
+							var r := s._destroy(m)
+							events.append_array(r)
+							if not ps.field.has(m):
+								dealt += was
+					if dealt > 0:
+						events.append_array(s._damage(opp_i, dealt / 2))
 		"spark_blaster":
 			# Spark Blaster: "target 1 face-up monster; change the battle position of that target. After you use this effect 3 times, destroy this card."
 			var all_f: Array = []

@@ -1743,7 +1743,7 @@ func _today() -> String:
 ## The trader's single of the day: the same card all day, a different one tomorrow.
 func _trade_card() -> int:
 	var good: Array = []
-	for era in ["Duel Monsters", "GX", "5D's", "ZEXAL", "Vault"]:
+	for era in Collection.SERIES:
 		for id in Collection.pool(era):
 			if CardData.rarity(id) >= 2:
 				good.append(id)
@@ -1812,7 +1812,7 @@ func _play_claw() -> void:
 	Sfx.play("charge", -4.0)
 	await get_tree().create_timer(1.1).timeout
 	var pools: Array = []
-	for era in ["Duel Monsters", "GX", "5D's", "ZEXAL", "Vault"]:
+	for era in Collection.SERIES:
 		pools.append_array(Collection.pool(era))
 	if pools.is_empty():
 		_dlg_text.text = Loc.t("It comes up empty. The machine gives your points back.")

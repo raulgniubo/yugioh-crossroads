@@ -29,6 +29,18 @@ const FX := {
 	"Echo Resonance": {"k": "normal", "cond": "echo_ready", "do": [["echo_resonance"]]},
 	"Echo Call": {"k": "normal", "do": [["search", {"has": "Lumen"}]]},
 	"Echo Veil": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["draw_if_own", "Lumen", 1]]},
+	# ---------------------------------------------------------------- The story duelists' remaining cards (Duel Monsters era)
+	"Survival Instinct": {"k": "trap", "win": ["free"], "cond": "dino_in_gy", "do": [["survival_instinct"]]},
+	"Hunting Instinct": {"k": "trap", "win": ["summon"], "subj_special": true, "cond": "dino_in_hand", "do": [["special_from_hand", {"race": "Dinosaur"}]]},
+	"Nutrient Z": {"k": "trap", "win": ["free"], "only_win": "damage", "dmg": true, "cond": "big_hit", "do": [["heal", 4000]]},
+	"Fairy Box": {"k": "ctrap", "win": ["free"], "fairy_box": true, "upkeep": 500, "upkeep_ask": true},
+	"Jam Breeding Machine": {"k": "cont", "jam_lock": true, "standby": [["tokens", 1, "Slime Token", 21770261, 500, 500, 1, "WATER", "Aqua", "free", "atk"]]},
+	"Left Arm Offering": {"k": "normal", "cond": "left_arm", "do": [["left_arm"]]},
+	"Machine Duplication": {"k": "normal", "t": "own_face", "must": {"race": "Machine", "max_atk": 500}, "do": [["duplicate", "target", 2]]},
+	"Multiple Destruction": {"k": "trap", "win": ["free"], "cond": "multi_destruction", "do": [["multiple_destruction"]]},
+	"Dragon Capture Jar": {"k": "ctrap", "win": ["free"], "dragon_jar": true, "do": [["jar_all_def"]]},
+	"Gorgon's Eye": {"k": "trap", "win": ["free"], "do": [["gorgon_eye"]]},
+	"Ectoplasmer": {"k": "cont", "ecto": true},
 	# ---------------------------------------------------------------- Normal Spells
 	"Heavy Storm": {"k": "normal", "do": [["destroy", "all_st"]]},
 	"Harpie's Feather Duster": {"k": "normal", "do": [["destroy", "opp_st"]]},
@@ -735,6 +747,31 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			return s.players[p].free_zone() != -1 and not s.players[p].gy.filter(func(g): return g.cname() == "Harpie Lady" or str(CardEffects.of(g.cname()).get("name_as_fg", "")) == "Harpie Lady").is_empty()
 		"own_amazoness":
 			return not s.players[p].monsters().filter(func(m): return m.face_up and m.cname().contains("Amazoness")).is_empty()
+		"dino_in_gy":
+			return not s.players[p].gy.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Dinosaur").is_empty()
+		"big_hit":
+			# Nutrient Z: "when you are about to take 2000 or more battle damage".
+			var pa: Dictionary = s.pending_attack
+			if pa.is_empty() or int(pa["player"]) == p or pa.get("negated", false) or s.players[p].no_damage_turn == s.turn:
+				return false
+			var att = pa["attacker"]
+			var tgt = pa["target"]
+			var hurt := 0
+			if tgt == null:
+				hurt = s.atk_of(att, true)
+			elif tgt.attack_pos and tgt.face_up:
+				hurt = s.atk_of(att, true, tgt, true) - s.atk_of(tgt, false, att, true)
+			elif EffectRunner.fx(att).get("piercing", false):
+				hurt = s.atk_of(att, true, tgt, true) - s.def_of(tgt)
+			return hurt >= 2000
+		"left_arm":
+			# "If you have 2 or more other cards in your hand"
+			var n_la: int = s.players[p].hand.size()
+			if not s.players[p].hand.filter(func(h): return h.cname() == "Left Arm Offering").is_empty():
+				n_la -= 1
+			return n_la >= 2 and not s.players[p].deck.filter(func(d): return d.is_spell()).is_empty()
+		"multi_destruction":
+			return s.players[0].hand.size() >= 3 and s.players[1].hand.size() >= 3 and int(s.players[p].once_names.get("Multiple Destruction", -1)) != s.turn
 		"dino_in_hand":
 			return not s.players[p].hand.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Dinosaur" and not CardEffects.of(h.cname()).get("no_special", false)).is_empty()
 		"own_big_dino":
@@ -1204,6 +1241,8 @@ static func targets(s: DuelState, p: int, c) -> Array:
 				ok = false   # Cyber Phoenix: a Spell/Trap that targets 1 Machine its controller has does nothing
 			if ok and sp.get("must_xyz_empty", false) and not (m.frame() == "xyz" and m.overlays.is_empty()):
 				ok = false   # "1 face-up Xyz Monster on the field that has no Xyz Material" (Galaxy Storm)
+			if ok and c.is_spell() and s.umi_guard(m):
+				ok = false   # The Legendary Fisherman: "unaffected by Spell effects" while Umi is on the field
 			if ok and int(m.tags.get("st_immune", -1)) == s.turn:
 				ok = false   # Forbidden Lance: "unaffected by the effects of other Spells/Traps" this turn
 			if ok and sp.get("only_monster", false) and s.players[m.owner].monsters().size() != 1:
@@ -2776,6 +2815,75 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			md["race"] = str(a[5])
 			c.data = md
 			events.append_array(s._special(p, c, "effect", "def"))
+		"survival_instinct":
+			# "Banish any number of Dinosaur-Type monsters from your Graveyard; gain 400 Life Points for each"
+			var dinos: Array = ps.gy.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Dinosaur")
+			if not dinos.is_empty():
+				var labels: Array = []
+				for i in dinos.size():
+					labels.append(Loc.t("Banish %d") % (i + 1))
+				var n_si := s.choose_option(p, Loc.t("%s: how many Dinosaurs?") % name, labels, dinos.size() - 1, c) + 1
+				var gone := 0
+				for i in n_si:
+					var left: Array = ps.gy.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Dinosaur")
+					if left.is_empty():
+						break
+					var b = s.pick1(p, Loc.t("%s: banish 1 Dinosaur") % name, left, left[0], c)
+					events.append_array(s._banish(b))
+					gone += 1
+				if gone > 0:
+					ps.lp += 400 * gone
+					events.append(_ev(p, c, Loc.t("%s: gain %d LP") % [name, 400 * gone]))
+					events.append({"type": "lp", "player": p, "lp": ps.lp, "delta": 400 * gone})
+		"left_arm":
+			# "Banish your entire hand; add 1 Spell from your Deck to your hand. You cannot Set Spells/Traps during the turn you activate this card."
+			ps.no_set_st_turn = s.turn
+			for h in ps.hand.duplicate():
+				if h != c:
+					events.append_array(s._banish(h))
+			var sp_l: Array = ps.deck.filter(func(d): return d.is_spell())
+			if not sp_l.is_empty():
+				var got = s.pick1(p, Loc.t("%s: add 1 Spell from your Deck") % name, sp_l, sp_l[0], c)
+				ps.deck.erase(got)
+				ps.hand.append(got)
+				events.append({"type": "search", "player": p, "card": got})
+				ps.deck.shuffle()
+		"duplicate":
+			# Machine Duplication: "Special Summon up to 2 monsters from your Deck with the same name as that face-up monster."
+			for t in _sel(s, p, c, str(a[1]), ctx):
+				for i in int(a[2]):
+					var same: Array = ps.deck.filter(func(d): return d.cname() == t.cname())
+					if same.is_empty() or ps.free_zone() == -1 or ps.no_summon_turn == s.turn:
+						break
+					if i > 0 and s.choose_option(p, Loc.t("%s: Special Summon another %s?") % [name, t.cname()], ["Yes", "No"], 0, c) == 1:
+						break
+					ps.deck.erase(same[0])
+					events.append_array(s._special(p, same[0], "effect", ""))
+					events.append_array(EffectRunner.on_summon(s, p, same[0], "special"))
+		"multiple_destruction":
+			# Each player places their hand on the bottom of the Deck; you lose 300 per card returned; each player draws 5.
+			ps.once_names["Multiple Destruction"] = s.turn
+			var back := 0
+			for q in [p, opp_i]:
+				for h in s.players[q].hand.duplicate():
+					if h == c:
+						continue
+					s.players[q].hand.erase(h)
+					s.players[q].deck.insert(0, h)
+					back += 1
+			events.append(_ev(p, c, Loc.t("%s: %d cards go back to the Decks") % [name, back]))
+			events.append_array(s._lose_lp(p, maxi(1, back) * 300))
+			for q in [p, opp_i]:
+				events.append_array(s._draw(q, 5))
+		"jar_all_def":
+			for q in 2:
+				for m in s.players[q].monsters():
+					if m.face_up and m.attack_pos and str(m.data.get("race", "")) == "Dragon":
+						m.attack_pos = false
+						events.append({"type": "position", "player": q, "card": m, "zone": s.players[q].field.find(m)})
+		"gorgon_eye":
+			s.gorgon_turn = s.turn
+			events.append(_ev(p, c, Loc.t("%s: the effects of Defense Position monsters are negated this turn") % name))
 		"tokens":
 			# ["tokens", n, name, id, atk, def, level, attribute, race]: n Tokens in Defense Position.
 			CardData.TOKENS[int(a[3])] = {"name": str(a[2]), "frame": "token", "atk": int(a[4]), "def": int(a[5]), "level": int(a[6]),
@@ -2786,7 +2894,7 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			for i in int(a[1]):
 				if ps.free_zone() == -1:
 					break
-				events.append_array(s._special(p, s._make(int(a[3]), p), "effect", "def"))
+				events.append_array(s._special(p, s._make(int(a[3]), p), "effect", "atk" if a.size() > 10 and str(a[10]) == "atk" else "def"))
 			s.last_summoned = null
 		"negate_fx":
 			for t in _sel(s, p, c, str(a[1]), ctx):

@@ -31,6 +31,7 @@ const PACKS := [
 	{"key": "5D's", "tab": 0, "name": "Signer's Road", "color": Color("2de2e6"), "blurb": "Cards from the 5D's era."},
 	{"key": "ZEXAL", "tab": 0, "name": "Overlay Network", "color": Color("ffd23a"), "blurb": "Cards from the ZEXAL era."},
 	{"key": "Vault", "tab": 0, "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
+	{"key": "legends", "tab": 0, "name": "Monster Legends", "color": Color("e8b04a"), "blurb": "Normal Monsters from every era: hundreds of them, from the classics to the rare big ones."},
 	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen, her forms and the cards around her. Only the ones the story has already handed you, up to three of each."},
 	{"key": "beyond", "tab": 0, "name": "Beyond the Limit", "color": Color("b06bff"), "blurb": "Fusion, Synchro, Xyz and Ritual monsters, and the Spells that call them."},
 	{"key": "dragons", "tab": 1, "name": "Dragon's Roar", "color": Color("ff5a3c"), "blurb": "Dragons, Dinosaurs, Reptiles and Sea Serpents."},
@@ -76,6 +77,8 @@ const STARTERS := [
 ]
 
 ## Solid Normal Monsters that round out the Vault.
+## The series sets: together they hold every card you can collect (the themed sets sort the same cards).
+const SERIES := ["Duel Monsters", "GX", "5D's", "ZEXAL", "Vault", "legends"]
 const VAULT_EXTRAS := ["Gemini Elf", "Vorse Raider", "Luster Dragon", "Mad Dog of Darkness", "Insect Knight", "Gene-Warped Warwolf",
 	"Archfiend Soldier", "Sabersaurus", "Alexandrite Dragon", "Summoned Skull", "Luster Dragon #2", "Mystical Elf", "Giant Soldier of Stone",
 	"La Jinn the Mystical Genie of the Lamp", "Dark Blade", "Blazing Inpachi", "Neo the Magic Swordsman", "Sky Scout"]
@@ -1307,7 +1310,7 @@ func all_cards() -> Array:
 	if _pools.has("*"):
 		return _pools["*"]
 	var ids := {}
-	for era in ["Duel Monsters", "GX", "5D's", "ZEXAL", "Vault"]:
+	for era in SERIES:
 		for id in pool(era):
 			ids[id] = true
 	for id in ids.keys():
@@ -1360,7 +1363,21 @@ func pool(era: String) -> Array:
 	if _pools.has(era):
 		return _pools[era]
 	var ids := {}
-	if not (era in ["Duel Monsters", "GX", "5D's", "ZEXAL", "Vault"]):
+	if era == "legends":
+		# Every Normal Monster in the card folder that no other set hands out (they used to work
+		# in the game with no way to get one).
+		var taken := {}
+		for other in ["Duel Monsters", "GX", "5D's", "ZEXAL", "Vault"]:
+			for id in pool(other):
+				taken[id] = true
+		for id in CardData.EXT:
+			var d: Dictionary = CardData.EXT[id]
+			if str(d.get("frame", "")) == "normal" and int(d.get("level", 0)) > 0 and not str(d.get("name", "")).contains("Token") \
+					and not taken.has(int(id)) and CardExact.ok(CardData.get_card(int(id))):
+				ids[int(id)] = true
+		_pools[era] = ids.keys()
+		return _pools[era]
+	if not (era in SERIES):
 		var themed: Array = []
 		for id in all_cards():
 			if _in_theme(era, id):
@@ -1376,6 +1393,11 @@ func pool(era: String) -> Array:
 		for name in SpellRules.FX.keys() + CardEffects.FX.keys() + CardEffectsAuto.FX.keys() + VAULT_EXTRAS:
 			var id: int = CardData.NAME_TO_ID.get(str(name).to_lower(), 0)
 			if id != 0 and not taken.has(id) and not CardData.get_card(id).is_empty() and not CardData.get_card(id).get("speed_spell", false) and CardExact.ok(CardData.get_card(id)):
+				ids[id] = true
+		# The game's own cards that ready-made decks are written with (Fissure and the like).
+		for cid in CardData.CARDS:
+			var id := int(cid)
+			if not taken.has(id) and not CardData.ORIGINALS.has(id) and not CardData.get_card(id).get("speed_spell", false) and CardExact.ok(CardData.get_card(id)):
 				ids[id] = true
 		_pools[era] = ids.keys()
 		return _pools[era]
