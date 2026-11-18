@@ -530,6 +530,10 @@ static std::vector<uint8_t> run_op(int code, const uint8_t* data, size_t size) {
 			mons.push(std::move(row));
 		}
 		res.set("lp", std::move(lp)); res.set("hand", std::move(hand)); res.set("gy", std::move(gy)); res.set("st", std::move(sets)); res.set("mons", std::move(mons));
+		JV pl = JV::arr(), lg = JV::arr();
+		for(uint32_t c : mr.played) pl.push((int64_t)c);
+		for(auto& l : mr.logs) lg.push(JV(l));
+		res.set("played", std::move(pl)); res.set("logs", std::move(lg));
 		encode(out, res);
 		break; }
 	case 34: {  // timing: how long a fresh duel takes to set up, and to replay (handle, repeats)
@@ -569,6 +573,12 @@ static std::vector<uint8_t> run_op(int code, const uint8_t* data, size_t size) {
 		MatchResult mr = play_match(h, level0, level1, seed, ms, max_turns);
 		put32(out, (uint32_t)mr.winner); put32(out, (uint32_t)mr.turns); put32(out, (uint32_t)mr.decisions); put32(out, (uint32_t)mr.sims);
 		put32(out, (uint32_t)mr.think_ms); put32(out, (uint32_t)mr.max_ms); put32(out, (uint32_t)mr.refused);
+		// then: every card that was played, and what the scripts complained about (for the sweep)
+		put32(out, (uint32_t)mr.played.size());
+		for(uint32_t c : mr.played) put32(out, c);
+		JV logs = JV::arr();
+		for(size_t i = 0; i < mr.logs.size() && i < 20; ++i) logs.push(mr.logs[i]);
+		encode(out, logs);
 		break; }
 	default: break;
 	}

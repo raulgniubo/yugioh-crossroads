@@ -25,6 +25,11 @@ const POS_ATTACK := 0x3
 ## The field Crossroads plays on: Fusion, Synchro and Xyz, no Link zones, no Pendulum zones,
 ## no draw for whoever goes first.
 const DUEL_FLAGS := 0x40000 | 0x10000 | 0x80000
+const ATTACK_FIRST_TURN := 0x02      # (puzzles: the board is the middle of a duel)
+
+## Cards that are rules, not cards of anybody's deck.
+const SPEED_WORLD := 99100000        # each rider's road in a Turbo Duel (it sits in the Field Zone, unseen)
+const DESTINY := 99199999            # (only a number its questions are filed under)
 
 static var _ready_state := 0     # 0 not tried, 1 loaded, -1 not there
 static var _strings := {}
@@ -80,7 +85,10 @@ const ORIGINAL_LINES := {
 	99200003: ["Destroy 1 card your opponent controls"],
 	99200004: ["Detach 1: Special Summon a \"Lumen\" monster from your Graveyard"],
 	99200005: ["Destroy 1 card your opponent controls", "Gain 1000 Life Points"],
+	99100000: ["4 Speed Counters: 800 damage for each Spell in your hand", "7 Speed Counters: draw 1 card", "10 Speed Counters: destroy 1 card on their field"],
+	99199999: ["Destiny Draw: reach for the card you need?", "Destiny Draw: choose the card you draw"],
 }
+const QUICK_ORIGINALS := [99100004, 99100007]
 
 
 ## The cards that exist only in this game (your partner and her cards) are in no card
@@ -93,7 +101,20 @@ static func register_originals() -> void:
 	var rows: Array = []
 	for id in CardData.ORIGINALS:
 		rows.append(int(id))
-	b.put_u32(rows.size())
+	b.put_u32(rows.size() + 1)
+	# Speed World 2: a Field Spell nobody owns a copy of.
+	b.put_u32(SPEED_WORLD)
+	b.put_u32(0)
+	b.put_u32(0x2 | 0x80000)
+	b.put_u32(0)
+	b.put_u32(0)
+	b.put_u64(0)
+	b.put_32(0)
+	b.put_32(0)
+	b.put_u32(0)
+	b.put_u32(0)
+	b.put_u32(0)
+	b.put_u8(0)
 	for id in rows:
 		var d: Dictionary = CardData.get_card(id)
 		var frame := str(d.get("frame", "normal"))
@@ -101,6 +122,8 @@ static func register_originals() -> void:
 		var type := 0
 		if kind == "spell":
 			type = 0x2 | int({"Quick-Play": 0x10000, "Continuous": 0x20000, "Equip": 0x40000, "Field": 0x80000, "Ritual": 0x80}.get(str(d.get("race", "")), 0))
+			if QUICK_ORIGINALS.has(id):
+				type |= 0x10000
 		elif kind == "trap":
 			type = 0x4 | int({"Continuous": 0x20000, "Counter": 0x100000}.get(str(d.get("race", "")), 0))
 		else:
@@ -149,7 +172,7 @@ static func create(seed: int, lp: Array, hand: Array, flags := DUEL_FLAGS) -> in
 	return r.decode_u32(0) if r.size() >= 4 else 0
 
 
-## cards: [[team, code, location, position], ...] in the order they go in.
+## cards: [[team, code, location, position, sequence (optional)], ...] in the order they go in.
 static func add_cards(handle: int, cards: Array) -> void:
 	var b := StreamPeerBuffer.new()
 	b.put_u32(handle)
@@ -160,9 +183,31 @@ static func add_cards(handle: int, cards: Array) -> void:
 		b.put_u32(int(c[1]))
 		b.put_u8(int(c[0]))
 		b.put_u32(int(c[2]))
-		b.put_u32(0)
+		b.put_u32(int(c[4]) if c.size() > 4 else 0)
 		b.put_u32(int(c[3]))
 	op(11, b.data_array)
+
+
+## Run one more script in a duel before it starts (a rule of this game: Destiny Draw, a starting speed).
+static func load_script(handle: int, name: String, text: String) -> void:
+	var b := _h(handle)
+	var nb := name.to_utf8_buffer()
+	b.resize(6)
+	b.encode_u16(4, nb.size())
+	b.append_array(nb)
+	b.append_array(text.to_utf8_buffer())
+	op(19, b)
+
+
+## A card's name: the game's own, else the engine's Token or rule names.
+static func card_name(code: int) -> String:
+	if code == SPEED_WORLD:
+		return "Speed World 2"
+	var n := str(CardData.get_card(code).get("name", ""))
+	if n != "" and n != "Unknown":
+		return n
+	var t := token_data(code)
+	return str(t.get("name", "?"))
 
 
 static func _h(handle: int) -> PackedByteArray:
@@ -268,8 +313,16 @@ static func match_duel(decks: Array, extras: Array, levels: Array, seed: int, ms
 	var r := op(33, b.data_array)
 	if r.size() < 28:
 		return {"winner": 2}
-	return {"winner": r.decode_u32(0), "turns": r.decode_u32(4), "decisions": r.decode_u32(8), "sims": r.decode_u32(12),
-		"think_ms": r.decode_u32(16), "max_ms": r.decode_u32(20), "refused": r.decode_u32(24)}
+	var out := {"winner": r.decode_u32(0), "turns": r.decode_u32(4), "decisions": r.decode_u32(8), "sims": r.decode_u32(12),
+		"think_ms": r.decode_u32(16), "max_ms": r.decode_u32(20), "refused": r.decode_u32(24), "played": [], "logs": []}
+	if r.size() >= 32:
+		var n := r.decode_u32(28)
+		for i in n:
+			(out["played"] as Array).append(r.decode_u32(32 + 4 * i))
+		var lg = bytes_to_var(r.slice(32 + 4 * n))
+		if lg is Array:
+			out["logs"] = lg
+	return out
 
 
 # ------------------------------------------------------------------ the engine's words

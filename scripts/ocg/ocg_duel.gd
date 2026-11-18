@@ -39,7 +39,13 @@ var _phase_raw := 0
 var _cards: Array = []
 var _seed := 0
 
-func prepare(state: DuelState, decks: Array, extras: Array, names: Array, first: int, seed := -1) -> void:
+## setup (optional): cards already in place when the duel starts, each a list per player:
+##   "hand": [[ids], [ids]]   "mons": [[[id, "atk" | "def" | "set"], ...], ...]   "st": [[ids set], ...]
+##   "gy": [[ids], [ids]]     "turbo": true (each side's Speed World 2)
+var turbo := false
+var speed := [0, 0]
+
+func prepare(state: DuelState, decks: Array, extras: Array, names: Array, first: int, seed := -1, setup := {}) -> void:
 	st = state
 	swap = first == 1
 	EffectRunner.current_state = st
@@ -50,10 +56,36 @@ func prepare(state: DuelState, decks: Array, extras: Array, names: Array, first:
 	else:
 		rng.randomize()
 	_cards = []
+	turbo = bool(setup.get("turbo", false))
 	for t in 2:
 		var p := t ^ int(swap)
 		var ps: DuelState.PlayerState = st.players[p]
 		ps.name = str(names[p])
+		if turbo:
+			_cards.append([t, OcgCore.SPEED_WORLD, OcgCore.LOC_SZONE, OcgCore.POS_FU_ATK, 5])
+		var zone := 0
+		for pair in (setup.get("mons", [[], []]) as Array)[p]:
+			var mc := _new_card(int(pair[0]), p)
+			var how := str(pair[1])
+			mc.face_up = how != "set"
+			mc.attack_pos = how == "atk"
+			mc.summoned_turn = 0
+			ps.field[zone] = mc
+			_cards.append([t, mc.id, OcgCore.LOC_MZONE, OcgCore.POS_FU_ATK if how == "atk" else (OcgCore.POS_FU_DEF if how == "def" else OcgCore.POS_FD_DEF), zone])
+			zone += 1
+		zone = 0
+		for id in (setup.get("st", [[], []]) as Array)[p]:
+			var sc := _new_card(int(id), p)
+			sc.face_up = false
+			ps.spells[zone] = sc
+			_cards.append([t, sc.id, OcgCore.LOC_SZONE, 0xa, zone])
+			zone += 1
+		for id in (setup.get("hand", [[], []]) as Array)[p]:
+			ps.hand.append(_new_card(int(id), p))
+			_cards.append([t, int(id), OcgCore.LOC_HAND, 0xa])
+		for id in (setup.get("gy", [[], []]) as Array)[p]:
+			ps.gy.append(_new_card(int(id), p))
+			_cards.append([t, int(id), OcgCore.LOC_GRAVE, OcgCore.POS_FU_ATK])
 		var main: Array = (decks[p] as Array).duplicate()
 		for i in range(main.size() - 1, 0, -1):
 			var j := rng.randi_range(0, i)
@@ -72,15 +104,25 @@ func prepare(state: DuelState, decks: Array, extras: Array, names: Array, first:
 
 
 ## Start the engine: Life Points and opening hands per player. False when the engine is not there.
-func start(lp: Array, hand: Array) -> bool:
+## rules: {"flags": extra duel flags, "destiny": [may player 0, may player 1], "speed": [counters to start with]}
+func start(lp: Array, hand: Array, rules := {}) -> bool:
 	if not OcgCore.ensure_loaded():
 		return false
 	OcgCore.register_originals()
 	for p in 2:
 		st.players[p].lp = int(lp[p])
-	handle = OcgCore.create(_seed, [lp[int(swap)], lp[1 - int(swap)]], [hand[int(swap)], hand[1 - int(swap)]])
+	handle = OcgCore.create(_seed, [lp[int(swap)], lp[1 - int(swap)]], [hand[int(swap)], hand[1 - int(swap)]], OcgCore.DUEL_FLAGS | int(rules.get("flags", 0)))
 	if handle == 0:
 		return false
+	# This game's own rules go in before the cards do (the cards' scripts read what is set here).
+	var sp: Array = rules.get("speed", [0, 0])
+	if turbo and (int(sp[0]) > 0 or int(sp[1]) > 0):
+		OcgCore.load_script(handle, "crossroads_speed.lua", "CROSSROADS_SPEED_START={[0]=%d,[1]=%d}" % [int(sp[int(swap)]), int(sp[1 - int(swap)])])
+	var dz: Array = rules.get("destiny", [false, false])
+	if bool(dz[0]) or bool(dz[1]):
+		var text := FileAccess.get_file_as_string("res://data/ocg/destiny.lua")
+		if text != "":
+			OcgCore.load_script(handle, "crossroads_destiny.lua", "CROSSROADS_DESTINY={[0]=%s,[1]=%s}\n%s" % [str(bool(dz[int(swap)])).to_lower(), str(bool(dz[1 - int(swap)])).to_lower(), text])
 	OcgCore.add_cards(handle, _cards)
 	OcgCore.start(handle)
 	return true
@@ -135,10 +177,17 @@ func advance() -> Array:
 		request = null
 	var lg := OcgCore.logs(handle)
 	for s in lg.get("logs", []):
-		_err("script: " + str(s))
+		if not str(s).begins_with("9:"):     # (9: the thinking opponent's own notes, not an error)
+			_err("script: " + str(s))
 	for s in lg.get("missing", []):
 		_err("missing script: " + str(s))
 	_sync()
+	if turbo:
+		for p in 2:
+			var ps: DuelState.PlayerState = st.players[p]
+			if ps.speed != int(speed[p]):
+				events.append({"type": "speed", "player": p, "speed": int(speed[p]), "delta": int(speed[p]) - ps.speed})
+				ps.speed = int(speed[p])
 	if request == null and not over:
 		_err("the engine stopped without a question")
 		over = true
@@ -646,7 +695,7 @@ func _chaining(m: Dictionary, ev: Array) -> void:
 	if c != null:
 		text = c.cname()
 	else:
-		text = str(CardData.get_card(int(cl["code"])).get("name", ""))
+		text = OcgCore.card_name(int(cl["code"]))
 	var line := OcgCore.desc(int(m["desc"]))
 	if line != "" and line.length() < 70:
 		text += ": " + line
@@ -767,7 +816,15 @@ func _sync() -> void:
 		var sz: Array = d.get(str(OcgCore.LOC_SZONE), [])
 		for i in 5:
 			ps.spells[i] = _sync_slot(ps.spells[i], sz[i] if i < sz.size() else null, p, "spell zone")
-		ps.field_spell = _sync_slot(ps.field_spell, sz[5] if sz.size() > 5 else null, p, "field zone")
+		var fz = sz[5] if sz.size() > 5 else null
+		if fz != null and int(fz.get("code", 0)) == OcgCore.SPEED_WORLD:
+			# Speed World 2 is the road, not a card on the table: only its counters are read.
+			var n := 0
+			for ct in fz.get("ctr", []):
+				n += int(ct) >> 16
+			speed[p] = n
+		else:
+			ps.field_spell = _sync_slot(ps.field_spell, fz, p, "field zone")
 		if cn.size() == 2:
 			var want := int(cn[t]["deck"])
 			if ps.deck.size() != want:

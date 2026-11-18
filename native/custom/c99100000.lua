@@ -30,6 +30,21 @@ function Speed.Need(rc)
 	if HEAVY[rc:GetOriginalCode()] then n=n+2 end
 	return n
 end
+--A Grand Prix lap or a tuned runner starts with Speed Counters already on the dial
+--(CROSSROADS_SPEED_START={[0]=n,[1]=n}, set by the game before the duel starts).
+if CROSSROADS_SPEED_START and not Speed.started then
+	Speed.started=true
+	local ge=Effect.GlobalEffect()
+	ge:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_CONTINUOUS)
+	ge:SetCode(EVENT_STARTUP)
+	ge:SetOperation(function()
+		for p=0,1 do
+			local n=CROSSROADS_SPEED_START[p] or 0
+			if n>0 then Speed.Add(p,n) end
+		end
+	end)
+	Duel.RegisterEffect(ge,0)
+end
 function s.initial_effect(c)
 	c:EnableCounterPermit(COUNTER_SPEED)
 	c:SetCounterLimit(COUNTER_SPEED,12)

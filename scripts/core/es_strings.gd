@@ -6672,4 +6672,12 @@ const ES := {
 	"Plans its turn by trying its plays on copies of the duel and checks what you could answer. Tuned deck.": "Planea su turno probando sus jugadas en copias del duelo y revisa qué podrías responder. Deck afinado.",
 	"Tries more plays, against more of what you might be holding, for longer. Tuned deck. It never looks at your hand or face-down cards.": "Prueba más jugadas, contra más de lo que podrías tener, por más tiempo. Deck afinado. Nunca mira tu mano ni tus cartas boca abajo.",
 	"The new rules engine, with the opponent that thinks ahead: Normal, Hard and Extreme. Standard duels only for now.": "El nuevo motor de reglas, con el rival que piensa por adelantado: Normal, Difícil y Extremo. Por ahora solo duelos estándar.",
+	"4 Speed Counters: 800 damage for each Spell in your hand": "4 Contadores de Velocidad: 800 de daño por cada Mágica en tu mano",
+	"7 Speed Counters: draw 1 card": "7 Contadores de Velocidad: roba 1 carta",
+	"10 Speed Counters: destroy 1 card on their field": "10 Contadores de Velocidad: destruye 1 carta en su Campo",
+	"Destiny Draw: reach for the card you need?": "Robo del Destino: ¿buscas la carta que necesitas?",
+	"Opponent difficulty": "Dificultad del oponente",
+	"How every opponent in Story and in the worlds thinks. Normal looks a little ahead and sometimes slips. Hard plans its turn and checks what you could answer. Extreme tries more plays for longer. None of them looks at your hand or face-down cards. Free Duel has its own buttons.": "Cómo piensa cada oponente en la Historia y en los mundos. Normal mira un poco hacia adelante y a veces falla. Difícil planea su turno y revisa qué podrías responder. Extremo prueba más jugadas durante más tiempo. Ninguno mira tu mano ni tus cartas boca abajo. Duelo Libre tiene sus propios botones.",
+	"Classic duel rules": "Reglas de duelo clásicas",
+	"Off: duels run on the new rules engine, with the opponent that thinks ahead. On: duels run on the rules the game used before. Only here as a way back if a duel goes wrong; it goes away in a later version.": "Apagado: los duelos usan el nuevo motor de reglas, con el oponente que piensa por adelantado. Encendido: los duelos usan las reglas que el juego tenía antes. Solo está aquí como vuelta atrás si un duelo sale mal; desaparece en una versión futura.",
 }

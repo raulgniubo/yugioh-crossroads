@@ -13,6 +13,8 @@
 #include <map>
 #include <set>
 #include <atomic>
+#include <mutex>
+#include <memory>
 
 struct Sim {
 	Duel d;
@@ -27,6 +29,7 @@ struct Sim {
 	long steps = 0;
 	int hint[2] = { 0, 0 };          // the last "select..." line each player was given
 	int attacker_seq[2] = { -1, -1 }; // the monster each player last declared an attack with
+	std::set<uint32_t>* played = nullptr;   // (sweeps: every card that was summoned or had an effect go on the chain)
 	~Sim() { if(d.d) OCG_DestroyDuel(d.d); }
 };
 
@@ -49,6 +52,8 @@ static void sim_step(Sim& s) {
 			else if(t == 40 && l >= 2) { s.turns++; s.turn_player = buf[pos + 1]; }
 			else if(t == 41 && l >= 3) s.phase = buf[pos + 1] | (buf[pos + 2] << 8);
 			else if(t == 1) s.retry = true;
+			else if(s.played && (t == 60 || t == 62 || t == 64 || t == 70 || t == 54) && l >= 5) { uint32_t code; std::memcpy(&code, buf + pos + 1, 4); if(code) s.played->insert(code); }
+			else if(s.played && t == 50 && l >= 17 && (buf[pos + 16] & 0x0c)) { uint32_t code; std::memcpy(&code, buf + pos + 1, 4); if(code) s.played->insert(code); }   // (moved onto the table, Set or not)
 			else if(t == 2 && l >= 11 && buf[pos + 1] == 3 && buf[pos + 2] < 2) { uint64_t hv; std::memcpy(&hv, buf + pos + 3, 8); s.hint[buf[pos + 2]] = (int)hv; }
 			else if(is_select(t)) { s.ask = parse_msg(buf + pos, l); s.has_ask = true; }
 			pos += l;
@@ -207,14 +212,18 @@ static std::vector<uint8_t> bytes_pick(const std::vector<int>& idx) {
 static std::vector<uint8_t> bytes_pick_one(int idx) { std::vector<uint8_t> b(8); int32_t a = 1, i = idx; std::memcpy(b.data(), &a, 4); std::memcpy(b.data() + 4, &i, 4); return b; }
 
 
+// A way to win this very turn that the search found: the answers still to give.
+struct Hunt { int turn = -1; int looked = 0; std::vector<std::vector<uint8_t>> line; };
+
 struct PMemo {
+	std::shared_ptr<Hunt> hunt;
 	int turn = -1, who = -1, acts = 0, sets = 0;
 	std::set<std::string> done;
 	std::map<int, int> skip;
 	std::map<std::string, int> chains;
 	int target_seq = -1;     // the monster it means to attack (their zone), for the question that follows
 	int announce = 0;
-	void fresh(int t, int w) { if(turn != t || who != w) { *this = PMemo(); turn = t; who = w; } }
+	void fresh(int t, int w) { if(turn != t || who != w) { auto keep = hunt; *this = PMemo(); hunt = keep; turn = t; who = w; } }
 };
 
 static const JV& arr(const JV& m, const char* k) { static JV none = JV::arr(); auto* v = m.get(k); return v ? *v : none; }
@@ -674,7 +683,7 @@ static std::vector<Cand> candidates(Sim& s, const JV& m, size_t cap) {
 }
 
 // ---------------------------------------------------------------- deciding
-struct Level { int worlds; size_t cap; int ms; int horizon; double slip; int deal; double bias; int mode; double margin; int threads; int deep; };
+struct Level { int worlds; size_t cap; int ms; int horizon; double slip; int deal; double bias; int mode; double margin; int threads; int deep; int finish; };
 // worlds: how many different deals of your hidden cards each answer is tried against (at most).
 // horizon: how many more turns start before a line is scored. deal: what is re-dealt (see
 // OCG_DuelDeterminize). margin: how much better than the steady answer another has to be.
@@ -682,9 +691,9 @@ struct Level { int worlds; size_t cap; int ms; int horizon; double slip; int dea
 static Level level_of(int level) {
 	Level lv;
 	switch(level) {
-	case 1: lv = { 2, 6, 700, 2, 0.20, 31, 90.0, 1, 0.0, 2, 0 }; break;      // Normal
-	case 2: lv = { 6, 10, 1600, 2, 0.0, 31, 90.0, 1, 60.0, 4, 0 }; break;    // Hard
-	default: lv = { 12, 14, 3600, 2, 0.0, 31, 90.0, 1, 60.0, 4, 3 }; break;  // Extreme
+	case 1: lv = { 2, 6, 700, 2, 0.20, 31, 90.0, 1, 0.0, 2, 0, 0 }; break;        // Normal
+	case 2: lv = { 6, 10, 1600, 2, 0.0, 31, 90.0, 1, 60.0, 4, 0, 350 }; break;    // Hard
+	default: lv = { 12, 14, 3600, 2, 0.0, 31, 90.0, 1, 60.0, 4, 3, 900 }; break;  // Extreme
 	}
 	// Dev: OCG_AI="worlds=4,cap=12,ms=3000,horizon=2,deal=31,bias=90,threads=1,deep=0" overrides, for tuning.
 	if(const char* env = std::getenv("OCG_AI")) {
@@ -693,6 +702,7 @@ static Level level_of(int level) {
 		lv.worlds = (int)val("worlds", lv.worlds); lv.cap = (size_t)val("cap", (double)lv.cap); lv.ms = (int)val("ms", lv.ms);
 		lv.horizon = (int)val("horizon", lv.horizon); lv.deal = (int)val("deal", lv.deal); lv.bias = val("bias", lv.bias);
 		lv.mode = (int)val("mode", lv.mode); lv.margin = val("margin", lv.margin); lv.threads = (int)val("threads", lv.threads); lv.deep = (int)val("deep", lv.deep);
+		lv.finish = (int)val("finish", lv.finish);
 	}
 	unsigned hw = std::thread::hardware_concurrency();
 	if(hw >= 2) lv.threads = std::min<int>(lv.threads, (int)hw - 1);
@@ -706,6 +716,156 @@ static uint64_t mix(uint64_t x) { x += 0x9E3779B97F4A7C15ull; x = (x ^ (x >> 30)
 
 static void world_seed(uint64_t seed, int w, uint64_t out[4]) {
 	out[0] = mix(seed + 77 * (uint64_t)w + 1); out[1] = mix(seed ^ (0xABCDEFull + w)); out[2] = mix(seed + 3 * (uint64_t)w); out[3] = mix(seed + 9);
+}
+
+// ---------------------------------------------------------------- the finishing blow
+// Is there a way to win this very turn? The search above looks one or two decisions ahead, and a
+// win that takes four (an Equip Spell, another, the right attack, the second attack) gets past
+// it. So before anything else, on its own turn, it plays the rest of the turn out many times
+// with anything legal, and when one of those wins it checks that line against other deals of
+// your hidden cards. A line that holds is then simply played.
+
+// Any legal answer, for the side hunting for the win (it keeps playing while it has something to play).
+static std::vector<uint8_t> wild(Sim& s, const JV& m, PMemo& mm, uint64_t& r) {
+	auto next = [&]() { r ^= r << 13; r ^= r >> 7; r ^= r << 17; return r; };
+	int t = (int)m.geti("t");
+	switch(t) {
+	case 11: {
+		const char* names[5] = { "summon", "spsummon", "repos", "sset", "chains" };
+		int kinds[5] = { 0, 1, 2, 4, 5 };
+		std::vector<int> opts;
+		for(int k = 0; k < 5; ++k) {
+			const JV& l = arr(m, names[k]);
+			for(size_t i = 0; i < l.a.size(); ++i) opts.push_back(((int)i << 16) | kinds[k]);
+		}
+		bool bp = m.geti("to_bp") != 0;
+		if(bp && (opts.empty() || next() % 100 < 22)) return bytes_i32(6);
+		if(opts.empty()) return bytes_i32(m.geti("to_ep") != 0 ? 7 : 6);
+		return bytes_i32(opts[next() % opts.size()]);
+	}
+	case 10: {
+		std::vector<int> opts;
+		const JV& at = arr(m, "attacks");
+		for(size_t i = 0; i < at.a.size(); ++i) opts.push_back(((int)i << 16) | 1);
+		const JV& ch = arr(m, "chains");
+		for(size_t i = 0; i < ch.a.size(); ++i) opts.push_back((int)i << 16);
+		if(opts.empty()) return bytes_i32(m.geti("to_m2") != 0 ? 2 : 3);
+		return bytes_i32(opts[next() % opts.size()]);
+	}
+	case 15: {
+		const JV& l = arr(m, "cards");
+		int n = (int)l.a.size(), lo = std::max<int>(1, (int)m.geti("min"));
+		if(n == 0) break;
+		std::vector<int> idx(n);
+		for(int i = 0; i < n; ++i) idx[i] = i;
+		for(int i = n - 1; i > 0; --i) std::swap(idx[i], idx[next() % (i + 1)]);
+		idx.resize(std::min(lo, n));
+		return bytes_pick(idx);
+	}
+	case 16: {
+		const JV& ch = arr(m, "chains");
+		if(ch.a.empty()) return bytes_i32(-1);
+		if(m.geti("forced") == 0 && next() % 2 == 0) return bytes_i32(-1);
+		return bytes_i32((int)(next() % ch.a.size()));
+	}
+	case 12: case 13: return bytes_i32((int)(next() % 2));
+	case 14: { const JV& o = arr(m, "opts"); if(o.a.empty()) break; return bytes_i32((int)(next() % o.a.size())); }
+	case 19: { int ok = (int)m.geti("positions"); for(int bit : { 1, 4, 8, 2 }) if(ok & bit) return bytes_i32(bit); break; }
+	default: break;
+	}
+	return policy(s, m, mm, false, r, 1);
+}
+
+// The rest of this turn in world `w`: `script` is given first (the hunter's answers, in order), then
+// wild play if `then_wild`. True when the hunter has won before the turn passes. `mine`: what it answered.
+static bool hunt_try(const History& h, const Level& lv, uint64_t seed, int w, int me, const std::vector<std::vector<uint8_t>>& script,
+		bool then_wild, uint64_t rnd, std::vector<std::vector<uint8_t>>* mine) {
+	uint64_t ws[4];
+	world_seed(seed, w, ws);
+	auto sim = sim_replay(h);
+	if(!sim || !sim->has_ask) return false;
+	if(lv.deal) OCG_DuelDeterminize(sim->d.d, (uint8_t)(1 - me), ws, (uint32_t)lv.deal);
+	const int turn0 = sim->turns;
+	PMemo memo[2];
+	size_t si = 0;
+	uint64_t r = rnd | 1;
+	uint64_t orn = ws[1] | 1;
+	for(int step = 0; step < 400; ++step) {
+		if(sim->winner != -1 || sim->status == OCG_DUEL_STATUS_END || !sim->has_ask || sim->turns != turn0) break;
+		int p = (int)sim->ask.geti("p");
+		if(p < 0 || p > 1) break;
+		std::vector<uint8_t> ans;
+		if(p != me) ans = policy(*sim, sim->ask, memo[p], sim->retry, orn, 0);   // (the other side answers with whatever it holds)
+		else if(sim->retry) return false;
+		else if(si < script.size()) ans = script[si++];
+		else if(then_wild) ans = wild(*sim, sim->ask, memo[p], r);
+		else return false;
+		if(p == me && mine) mine->push_back(ans);
+		note_answer(*sim, sim->ask, ans);
+		OCG_DuelSetResponse(sim->d.d, ans.data(), (uint32_t)ans.size());
+		sim_step(*sim);
+	}
+	return sim->winner == me;
+}
+
+static const int HUNT_WORLDS = 4;
+
+// Does the line win against (nearly) every deal of the other side's hidden cards?
+static bool hunt_holds(const History& h, const Level& lv, uint64_t seed, int me, const std::vector<std::vector<uint8_t>>& line, int known_world, std::atomic<int>& sims) {
+	int ok = 0;
+	for(int w = 0; w < HUNT_WORLDS; ++w) {
+		if(w == known_world) { ok++; continue; }
+		sims.fetch_add(1);
+		if(hunt_try(h, lv, seed, w, me, line, false, 0, nullptr)) ok++;
+		else if(w + 1 - ok > 1) return false;
+	}
+	return ok >= HUNT_WORLDS - 1;
+}
+
+static bool finish_blow(const History& h, const Level& lv, uint64_t seed, int me, Sim& root, Hunt& hu, std::vector<uint8_t>& first, std::atomic<int>& sims, bool may_search) {
+	if(hu.turn != root.turns) { hu = Hunt(); hu.turn = root.turns; }
+	if(!hu.line.empty()) {
+		// A line found a moment ago: does it still hold from here? (Every answer of it is given, the small ones too.)
+		if(hunt_holds(h, lv, seed, me, hu.line, -1, sims)) { first = hu.line.front(); hu.line.erase(hu.line.begin()); return true; }
+		hu.line.clear();
+	}
+	if(!may_search) return false;
+	Board b = read_board(root);
+	int reach = 0;
+	for(int z = 0; z < 7; ++z) if(b.m[me][z].there) reach += std::max(b.m[me][z].atk, 0);
+	if(b.lp[1 - me] > reach * 2 + b.hand[me] * 1500) return false;     // (out of reach: not worth the look)
+	const double budget = lv.finish * (hu.looked == 0 ? 1.0 : 0.3);
+	hu.looked++;
+	auto t0 = std::chrono::steady_clock::now();
+	auto elapsed = [&]() { return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count(); };
+	std::atomic<int> next{ 0 };
+	std::atomic<bool> found{ false };
+	std::mutex mu;
+	std::vector<std::vector<uint8_t>> best;
+	auto worker = [&]() {
+		for(;;) {
+			int j = next.fetch_add(1);
+			if(found.load() || j >= 600 || elapsed() > budget) break;
+			std::vector<std::vector<uint8_t>> mine;
+			int w = j % HUNT_WORLDS;
+			sims.fetch_add(1);
+			if(!hunt_try(h, lv, seed, w, me, {}, true, mix(seed + 1000 + (uint64_t)j), &mine) || mine.empty()) continue;
+			if(!hunt_holds(h, lv, seed, me, mine, w, sims)) continue;
+			std::lock_guard<std::mutex> g(mu);
+			if(!found.load() || mine.size() < best.size()) { best = mine; found.store(true); }
+		}
+	};
+	{
+		std::vector<std::thread> pool;
+		for(int i = 1; i < lv.threads; ++i) pool.emplace_back(worker);
+		worker();
+		for(auto& t : pool) t.join();
+	}
+	if(!found.load() || best.empty()) return false;
+	first = best.front();
+	best.erase(best.begin());
+	hu.line = best;
+	return true;
 }
 
 // One try: the duel as it stands, your hidden cards re-dealt for world `w`, these answers given, then played out.
@@ -753,12 +913,32 @@ static Decision decide(const History& h, int level, int time_ms, uint64_t seed, 
 	const JV m = root->ask;
 	int me = (int)m.geti("p");
 	PMemo* live = (lives && me >= 0 && me < 2) ? &lives[me] : nullptr;   // what the steady policy remembers of this turn
+	if(live && !live->hunt) live->hunt = std::make_shared<Hunt>();
 	PMemo mm;
 	if(live) mm = *live;
 	if(root->retry || level <= 0) { out.bytes = policy(*root, m, mm, root->retry, rnd); if(live) *live = mm; out.ms = elapsed(); return out; }
 	Level lv = level_of(level);
-	if(time_ms > 0) { lv.ms = time_ms; lv.deep = 0; }
-	std::vector<Cand> cands = candidates(*root, m, lv.cap);
+	if(time_ms > 0) { lv.ms = time_ms; lv.deep = 0; lv.finish = std::min(lv.finish, time_ms / 2); }
+	{
+		int tq = (int)m.geti("t");
+		if(lv.finish > 0 && live && root->turn_player == me) {
+			std::atomic<int> hs{ 0 };
+			std::vector<uint8_t> first;
+			if(finish_blow(h, lv, seed, me, *root, *live->hunt, first, hs, tq == 10 || tq == 11)) {
+				out.bytes = first; out.sims = hs.load(); out.cands = 1; out.ms = elapsed(); out.notes = "the finishing blow";
+				return out;
+			}
+			out.sims = hs.load();
+		}
+	}
+	size_t cap = lv.cap;
+	{
+		// One card out of the Deck (a search, a Destiny Draw): every different card gets its look.
+		const JV& l = arr(m, "cards");
+		if((int)m.geti("t") == 15 && m.geti("min") == 1 && m.geti("max") == 1 && !l.a.empty() && ((int)l.a[0].geti("loc") & 0x7f) == 0x01)
+			cap = std::max<size_t>(cap, 30);
+	}
+	std::vector<Cand> cands = candidates(*root, m, cap);
 	std::vector<uint8_t> base = policy(*root, m, mm, false, rnd, lv.mode);
 	if(live) { live->fresh(root->turns, root->turn_player); live->acts++; }
 	if(cands.size() <= 1) { out.bytes = cands.size() == 1 ? cands[0].bytes : base; if(live && out.bytes == base) *live = mm; out.ms = elapsed(); return out; }
@@ -849,7 +1029,7 @@ static Decision decide(const History& h, int level, int time_ms, uint64_t seed, 
 			if(best2 > -1e17) value[a] = std::max(value[a], best2 + (passive.count(cands[a].key) ? 0.0 : lv.bias));
 		}
 	}
-	out.sims = sims.load();
+	out.sims += sims.load();
 	size_t best = 0; double best_v = -1e18;
 	std::vector<std::pair<double, size_t>> ranked;
 	for(size_t c = 0; c < N; ++c) {
@@ -875,12 +1055,13 @@ static Decision decide(const History& h, int level, int time_ms, uint64_t seed, 
 }
 
 // ---------------------------------------------------------------- a whole duel, both sides (for measuring)
-struct MatchResult { int winner = 2; int turns = 0; long decisions = 0; long sims = 0; double think_ms = 0; double max_ms = 0; int refused = 0; Board end; };
+struct MatchResult { int winner = 2; int turns = 0; long decisions = 0; long sims = 0; double think_ms = 0; double max_ms = 0; int refused = 0; Board end; std::set<uint32_t> played; std::vector<std::string> logs; };
 
 static MatchResult play_match(History h, int level0, int level1, uint64_t seed, int time_ms, int max_turns) {
 	MatchResult r;
 	auto live = sim_new(h);
 	if(!live) return r;
+	live->played = &r.played;
 	sim_step(*live);
 	PMemo memo[2];
 	uint64_t rnd = mix(seed) | 1;
@@ -916,5 +1097,8 @@ static MatchResult play_match(History h, int level0, int level1, uint64_t seed, 
 	r.winner = live->winner == -1 ? 2 : live->winner;
 	r.turns = live->turns;
 	r.end = read_board(*live);
+	live->played = nullptr;
+	r.logs = live->d.logs;
+	for(auto& ms : live->d.missing) r.logs.push_back("missing script: " + ms);
 	return r;
 }

@@ -961,9 +961,8 @@ func _build_setup() -> void:
 	var groups: Array = [[_turbo_btn, "TYPE", ["Standard", "Turbo Duel"], ["A normal duel at the table.", "Both duelists ride runners. Spells need Speed Counters."]],
 			[_match_btn, "LENGTH", ["1 duel", "Best of 3"], ["One duel decides it.", "First to win two duels. You can swap Side Deck cards between duels."]],
 			[_fate_off_btn, "DESTINY DRAW", ["On", "Off"], ["Once per duel, at 2000 Life Points or less (or under half of your opponent's), you choose the card you draw. Hard opponents can do it too.", "Every draw is the top card, as usual."]]]
-	if OcgCore.available():
-		groups.append([_engine_btn, "ENGINE", ["Classic", "New (test)"], ["The rules the game has always used.", "The new rules engine, with the opponent that thinks ahead: Normal, Hard and Extreme. Standard duels only for now."]])
-		_engine_btn.toggled.connect(func(_on): _refresh_setup())
+	# (The rules engine runs every duel now; Settings has the switch back to the classic rules.)
+	_engine_btn.button_pressed = OcgCore.available() and not Settings.classic_engine
 	var rules := HBoxContainer.new()
 	rules.add_theme_constant_override("separation", 8)
 	v.add_child(rules)
@@ -1277,7 +1276,7 @@ func _start_duel() -> void:
 	var cfg := {"player_char": _me, "opponent": _opp, "player_deck": _my_deck, "difficulty": _difficulty, "field": _field, "match": is_match and not _gauntlet,
 		"turbo": _turbo_btn != null and _turbo_btn.button_pressed, "lp": _lp, "hand": _hand_n,
 		"destiny": not (_fate_off_btn != null and _fate_off_btn.button_pressed),
-		"engine": "new" if (_engine_btn != null and _engine_btn.button_pressed) else "classic"}
+		"cpu_level": _difficulty}
 	if _their_deck != "":
 		cfg["opponent_deck"] = _their_deck
 		cfg["opponent_deck_full"] = true   # a deck you picked for them is the real one, aces included

@@ -32,25 +32,45 @@ func _init(scene) -> void:
 	s = scene
 
 
-## Is this duel to be run by the new engine? (Free Duel's test switch; not Turbo Duels or puzzles yet.)
+## Is this duel run by the rules engine? Every duel is, unless Settings asks for the classic
+## rules (kept for one build as a way back) or the engine's library did not load.
 static func wanted(cfg: Dictionary) -> bool:
-	var on: bool = str(cfg.get("engine", "")) == "new" or "--ocg" in OS.get_cmdline_user_args()
-	if not on or bool(cfg.get("turbo", false)) or str(cfg.get("puzzle", "")) != "":
+	var args := OS.get_cmdline_user_args()
+	if "--classic" in args or str(cfg.get("engine", "")) == "classic":
+		return false
+	if Settings.classic_engine and not "--ocg" in args and str(cfg.get("engine", "")) != "new":
 		return false
 	return OcgCore.ensure_loaded()
 
 
+## How the opponent thinks in this duel: Free Duel says it itself, everywhere else Settings does.
+static func level_for(cfg: Dictionary) -> int:
+	var lv := clampi(int(cfg.get("cpu_level", Settings.cpu_level)), 1, 3)
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--ocg-level="):
+			lv = clampi(int(a.trim_prefix("--ocg-level=")), 0, 3)
+	return lv
+
+
 ## Build the mirror (the two sides, no cards drawn yet). The engine itself starts in begin().
-func prepare(my_list: Array, opp_list: Array, my_extra: Array, opp_extra: Array, me_name: String, opp_name: String, first: int, hand: Array) -> void:
+## setup: cards already in place (see OcgDuel.prepare). rules: see OcgDuel.start.
+var rules := {}
+var puzzle := false        # one turn to win: when it passes, the duel is lost
+var speed_acts: Array = [] # Speed World 2's effects you could pay for right now: [[label, answer], ...]
+var _destiny_ask := [false, false]    # that player said yes to the Destiny Draw: the next pick is the card
+var _destiny_draw := [false, false]   # ... and their next draw is that card (it lands quietly)
+
+func prepare(my_list: Array, opp_list: Array, my_extra: Array, opp_extra: Array, me_name: String, opp_name: String, first: int, hand: Array, setup := {}, rules_in := {}) -> void:
 	_hand = hand
-	d.prepare(s.state, [my_list, opp_list], [my_extra, opp_extra], [me_name, opp_name], first)
+	rules = rules_in
+	d.prepare(s.state, [my_list, opp_list], [my_extra, opp_extra], [me_name, opp_name], first, -1, setup)
 	s._turn_finished.connect(_on_abort)
 
 
 ## Start the engine with the Life Points the scene settled on. Returns the opening events.
 func begin() -> Array:
 	var st: DuelState = s.state
-	if not d.start([st.players[ME].lp, st.players[AI].lp], _hand):
+	if not d.start([st.players[ME].lp, st.players[AI].lp], _hand, rules):
 		st._set_winner(DuelState.DRAW, "The new engine could not start.")
 		return []
 	return d.advance()
@@ -98,10 +118,28 @@ func loop() -> void:
 			for e in events:
 				kinds.append(e["type"])
 			print("OCG turn ", s.state.turn, " asked ", int(m["t"]), " p", p, " -> ", kinds, " errors ", d.errors.size())
-		await s._play(events)
+		var passed := false
 		for e in events:
 			if e["type"] == "turn":
-				s._materials.clear()   # (materials of a Summon that never came)
+				passed = true
+			elif e["type"] == "draw" and _destiny_draw[int(e.get("player", 0))]:
+				# The show already took this card off the Deck: it just lands in the hand.
+				_destiny_draw[int(e["player"])] = false
+				s._destiny_card = e["card"]
+		if puzzle and passed and not s.state.is_over():
+			# The one turn is over and they are still standing.
+			var cut: Array = []
+			for e in events:
+				if e["type"] == "turn":
+					break
+				cut.append(e)
+			await s._play(cut)
+			resync()
+			s.state._set_winner(AI, "The turn ended and they are still standing.")
+			break
+		await s._play(events)
+		if passed:
+			s._materials.clear()   # (materials of a Summon that never came)
 		resync()
 	req = null
 	if _log or not d.errors.is_empty():
@@ -117,10 +155,17 @@ func _cpu_answer(m: Dictionary) -> PackedByteArray:
 		_turn_think = 0
 		_turn_asks = 0
 	_turn_asks += 1
+	if _is_destiny_offer(m):
+		_destiny_ask[AI] = true
+		return OcgDuel.i32(1)
 	var command: bool = int(m["t"]) in [10, 11]
+	var reach: bool = _destiny_ask[AI] and int(m["t"]) == 15
+	_destiny_ask[AI] = false
 	if level <= 0 or _turn_asks > 140:
 		if command and not s._autoplay:
 			await s._ai_wait(0.35)
+		if reach:
+			await _destiny_show(AI, 0)
 		return cpu.decide(d, _turn_asks > 180)
 	var cap := 0
 	if _turn_think > int(TURN_BUDGET[level]):
@@ -143,6 +188,8 @@ func _cpu_answer(m: Dictionary) -> PackedByteArray:
 			# A command that came at once still gets a beat, so its plays do not blur together.
 			if command and not s._autoplay and Time.get_ticks_msec() - t0 < 300:
 				await s._ai_wait(0.3)
+			if reach:
+				await _destiny_show(AI, 0)
 			return ans
 		if not shown and Time.get_ticks_msec() - t0 > 900:
 			shown = true
@@ -151,7 +198,60 @@ func _cpu_answer(m: Dictionary) -> PackedByteArray:
 			break
 	if shown:
 		s.hud.set_coach("")
+	if reach:
+		await _destiny_show(AI, 0)
 	return cpu.decide(d)
+
+
+# ------------------------------------------------------------------ Destiny Draw
+
+func _is_destiny_offer(m: Dictionary) -> bool:
+	return int(m["t"]) == 13 and int(m["desc"]) == (OcgCore.DESTINY << 20)
+
+
+## The moment itself: the duelist reaches for the card. (code 0: it stays face-down, their card.)
+func _destiny_show(p: int, code: int) -> void:
+	var st: DuelState = s.state
+	st.destiny_used[p] = true
+	_destiny_draw[p] = true
+	print("DESTINY ", p, " ", OcgCore.card_name(code) if code > 0 else "?")
+	s._update_counts()
+	if s._autoplay or (s._human_test and not "--destiny-show" in OS.get_cmdline_user_args()):
+		return
+	s.hud.hide_actions()
+	s.board.duelist_body(p, "draw")
+	await s.DestinyShow.play(s.hud, {
+		"side": p, "key": str(s.hud.portrait_keys[p]), "who": str(st.players[p].name),
+		"color": UITheme.ACCENT if p == ME else Comic.RED,
+		"back": Cards.duel_back(p), "face": Cards.get_face(code) if code > 0 else null, "name": OcgCore.card_name(code) if code > 0 else "",
+		"spirit": LumenSpirit.portrait(s) if (p == ME and s._me_key == "player" and LumenBubble.with_you()) else null,
+	})
+	if p == AI:
+		s.hud.feed(p, "★", Loc.t("Destiny Draw: chose the card they drew"))
+		s._lumen("their_destiny")
+
+
+## You said yes: every different card in your Deck, best first. Returns the engine's answer.
+func _ask_destiny_card(m: Dictionary):
+	var list: Array = m["cards"]
+	var seen := {}
+	var opts: Array = []
+	var index := {}
+	for i in list.size():
+		var code := int(list[i]["code"])
+		if seen.has(code):
+			continue
+		seen[code] = true
+		var c = _temp(code, ME)
+		opts.append(c)
+		index[c.uid] = i
+	var rank := func(c) -> int: return 0 if c.is_monster() else (1 if c.is_spell() else 2)
+	opts.sort_custom(func(a, b): return rank.call(a) < rank.call(b) if rank.call(a) != rank.call(b) else (a.atk() > b.atk() if a.is_monster() and a.atk() != b.atk() else a.cname() < b.cname()))
+	var got = await s.hud.ask_pick(Loc.t("Destiny Draw: choose the card you draw"), opts, "Draw this card", "")
+	if got == null:
+		got = opts[0]
+	await _destiny_show(ME, got.id)
+	return OcgDuel.pick([int(index[got.uid])])
 
 
 # ------------------------------------------------------------------ questions for the player
@@ -222,8 +322,16 @@ func _ask(m: Dictionary):
 			var src = d.card_at(int(cd["con"]), int(cd["loc"]), int(cd["seq"]), int(cd.get("pos", 0)))
 			out = OcgDuel.i32(1 if await s.hud.ask_choice(text, [Loc.t("Yes"), Loc.t("No")], src) == 0 else 0)
 		13:
-			var text2 := OcgCore.desc(int(m["desc"]))
-			out = OcgDuel.i32(1 if await s.hud.ask_choice(text2 if text2 != "" else Loc.t("Do it?"), [Loc.t("Yes"), Loc.t("No")]) == 0 else 0)
+			if _is_destiny_offer(m):
+				var yes := true
+				if not s._human_test:
+					s._lumen("destiny")
+					yes = await s.hud.ask_destiny()
+				_destiny_ask[ME] = yes
+				out = OcgDuel.i32(1 if yes else 0)
+			else:
+				var text2 := OcgCore.desc(int(m["desc"]))
+				out = OcgDuel.i32(1 if await s.hud.ask_choice(text2 if text2 != "" else Loc.t("Do it?"), [Loc.t("Yes"), Loc.t("No")]) == 0 else 0)
 		14:
 			var opts: Array = []
 			for o in m["opts"]:
@@ -231,7 +339,12 @@ func _ask(m: Dictionary):
 				opts.append(line if line != "" else Loc.t("Option %d") % (opts.size() + 1))
 			out = OcgDuel.i32(await s.hud.ask_choice(_hint_text(ME, OcgCore.sys(555)), opts))
 		15:
-			out = await _ask_cards(m)
+			if _destiny_ask[ME]:
+				_destiny_ask[ME] = false
+				d.hints.erase(ME)
+				out = await _ask_destiny_card(m)
+			else:
+				out = await _ask_cards(m)
 		20:
 			out = await _ask_cards(m, true)
 		26:
@@ -485,7 +598,13 @@ func _ask_chain(m: Dictionary):
 func _ask_command(m: Dictionary):
 	req = m
 	acts = {}
+	speed_acts = []
 	var battle := int(m["t"]) == 10
+	if d.turbo:
+		var ch: Array = m["chains"]
+		for i in ch.size():
+			if int(ch[i]["code"]) == OcgCore.SPEED_WORLD:
+				speed_acts.append([OcgCore.desc(int(ch[i]["desc"])), OcgDuel.i32((i << 16) | (0 if battle else 5))])
 	if battle:
 		_add_all(m["chains"], 0, "act")
 		_add_all(m["attacks"], 1, "attack")
@@ -507,6 +626,7 @@ func _ask_command(m: Dictionary):
 	var bytes = await answered
 	req = null
 	acts = {}
+	speed_acts = []
 	pick = {}
 	s.mode = ""
 	s.hud.hide_actions()
@@ -554,7 +674,7 @@ func refresh() -> void:
 	var st: DuelState = s.state
 	if st.players.size() < 2:
 		return
-	hud.set_speed_button(false)
+	hud.set_speed_button(active() and not speed_acts.is_empty())
 	board.set_extra_count(AI, st.players[AI].extra.size())
 	if not active():
 		hud.set_phase_buttons("", false, false)
@@ -674,10 +794,68 @@ func on_action(action: String) -> bool:
 	if not action.begins_with("ocg:"):
 		return false
 	s._menu_card = null
-	var i := int(action.substr(4))
-	if active() and i >= 0 and i < _menu.size():
-		_answer(_menu[i][1])
+	var parts := action.split(":")
+	var list: Array = _menu
+	var i := int(parts[1])
+	if parts.size() >= 3:
+		# (a card dropped on the table: "ocg:<card uid>:<which of its actions>")
+		list = acts.get(int(parts[1]), [])
+		i = int(parts[2])
+	if active() and i >= 0 and i < list.size():
+		_answer(list[i][1])
 	return true
+
+
+## What dropping a hand card on your rows would do (see the duel scene's _drop_plan): a monster
+## on the monster row, a Spell or Trap on the back row; face-up on the left, Set on the right.
+func drop_plan(inst) -> Dictionary:
+	if not active() or not acts.has(inst.uid):
+		return {}
+	var list: Array = acts[inst.uid]
+	var up := -1
+	var down := -1
+	var word := ""
+	for i in list.size():
+		match str(list[i][2]):
+			"special":
+				up = i
+				word = "SPECIAL SUMMON"
+			"summon":
+				if up == -1:
+					up = i
+					word = "SUMMON"
+			"act":
+				if not inst.is_monster() and up == -1:
+					up = i
+					word = "ACTIVATE"
+			"mset", "sset":
+				if down == -1:
+					down = i
+	var cells: Array = []
+	if up >= 0:
+		cells.append(["ocg:%d:%d" % [inst.uid, up], word])
+	if down >= 0:
+		cells.append(["ocg:%d:%d" % [inst.uid, down], "SET"])
+	if cells.is_empty():
+		return {}
+	return {(0 if inst.is_monster() else 1): cells}
+
+
+## Speed World 2: which of its effects to pay for.
+func on_speed_pressed() -> void:
+	if not active() or speed_acts.is_empty():
+		Router.toast("Not enough Speed Counters yet")
+		return
+	var labels: Array = []
+	for a in speed_acts:
+		labels.append(a[0])
+	labels.append(Loc.t("Cancel"))
+	var list := speed_acts.duplicate()
+	var i: int = await s.hud.ask_choice(Loc.t("Speed World 2   ·   you have %d Speed Counters") % s.state.players[ME].speed, labels)
+	if i < 0 or i >= list.size() or not active():
+		return
+	Sfx.play("gong", -6.0)
+	_answer(list[i][1])
 
 
 func on_phase_button(action: String) -> void:

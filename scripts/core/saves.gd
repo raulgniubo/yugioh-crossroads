@@ -511,15 +511,12 @@ static func read_admin() -> void:
 
 # ------------------------------------------------------------------ story difficulty
 
-## 0 Easy, 1 Normal, 2 Hard. Kept with the settings, so it follows you across saves.
+## 0 Normal, 1 Hard, 2 Extreme: how opponents think (Settings.cpu_level, one setting for the whole
+## game, shown here and in Settings). It also moves how tuned a story opponent's deck is, as before.
 static func story_difficulty() -> int:
-	var cfg := ConfigFile.new()
-	cfg.load("user://admin.cfg")
-	return clampi(int(cfg.get_value("story", "difficulty", 1)), 0, 2)
+	return clampi(Settings.cpu_level - 1, 0, 2)
 
 
 static func set_story_difficulty(d: int) -> void:
-	var cfg := ConfigFile.new()
-	cfg.load("user://admin.cfg")
-	cfg.set_value("story", "difficulty", clampi(d, 0, 2))
-	cfg.save("user://admin.cfg")
+	Settings.cpu_level = clampi(d, 0, 2) + 1
+	Settings.save_settings()

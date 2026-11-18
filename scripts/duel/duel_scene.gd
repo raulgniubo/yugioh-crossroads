@@ -155,11 +155,7 @@ func _start() -> void:
 	if OcgTable.wanted(cfg):
 		state = OcgMirror.new()
 		ocg = OcgTable.new(self)
-		# The Free Duel difficulty buttons are the opponent's level there: Normal, Hard, Extreme.
-		ocg.level = clampi(int(cfg.get("difficulty", 2)), 1, 3)
-		for oa in OS.get_cmdline_user_args():
-			if oa.begins_with("--ocg-level="):
-				ocg.level = clampi(int(oa.trim_prefix("--ocg-level=")), 0, 3)
+		ocg.level = OcgTable.level_for(cfg)
 		print("DUEL ENGINE new, opponent level ", ocg.level)
 	_opp_key = cfg.get("opponent", "kaiba")
 	Avatars.dress = {}
@@ -277,8 +273,6 @@ func _start() -> void:
 	state.destiny_who = [true, bool(cfg.get("destiny_opp", _ai_level >= 3 or (_ai_level >= 2 and bool(cfg.get("rare", false)))))]
 	if "--destiny-all" in OS.get_cmdline_user_args():
 		state.destiny_who = [true, true]   # dev: both sides may, whatever the difficulty
-	if ocg != null:
-		state.destiny = false   # (Destiny Draw is a rule of the classic engine for now)
 	board.state_ref = state
 	var my_list: Array[int] = CardData.deck_list(my_deck)
 	if state.turbo:
@@ -290,7 +284,21 @@ func _start() -> void:
 			for id in [CardData.SPEED_SPELLS[0], CardData.SPEED_SPELLS[0], CardData.SPEED_SPELLS[1]] + kit.slice(0, 4):
 				side_list.append(int(id))
 	var events: Array
-	if not _puzzle.is_empty():
+	if not _puzzle.is_empty() and ocg != null:
+		# The position is handed to the engine as it stands: your hand, both fields, the Graveyards.
+		first = ME
+		var lay := {"hand": [Puzzles.hand_ids(_puzzle), []], "mons": [[], []], "gy": [[], []]}
+		for side in 2:
+			for pair in _puzzle.get("mine" if side == 0 else "theirs", []):
+				(lay["mons"][side] as Array).append([Puzzles._id(str(pair[0])), str(pair[1])])
+			for n in _puzzle.get("my_gy" if side == 0 else "their_gy", []):
+				(lay["gy"][side] as Array).append(Puzzles._id(str(n)))
+		ocg.puzzle = true
+		ocg.prepare([], Puzzles.filler_ids(), [], [], me_name, opp_name, first, [0, 5], lay, {"flags": OcgCore.ATTACK_FIRST_TURN})
+		events = []
+		cfg["my_lp"] = int(_puzzle.get("my_lp", 4000))
+		cfg["opp_lp"] = int(_puzzle.get("opp_lp", 4000))
+	elif not _puzzle.is_empty():
 		first = ME
 		events = Puzzles.begin(state, _puzzle)
 		state.players[ME].name = me_name
@@ -298,20 +306,28 @@ func _start() -> void:
 		cfg["my_lp"] = int(_puzzle.get("my_lp", 4000))
 		cfg["opp_lp"] = int(_puzzle.get("opp_lp", 4000))
 	elif ocg != null:
+		var speed0 := [0, 0]
+		if state.turbo:
+			var tune0 := int(Collection.record.get("runner_tune", 0))
+			if cfg.has("speed_start"):
+				speed0 = [int((cfg["speed_start"] as Array)[0]), int((cfg["speed_start"] as Array)[1])]
+			elif tune0 > 0 and not _autoplay:
+				speed0 = [tune0, 0]
 		ocg.prepare(my_list, opp_list, CardData.extra_list(my_deck), CardData.extra_list(opp_deck, opp_plain), me_name, opp_name, first,
-				[5 + int(state.bonus_cards[ME]), 5 + int(state.bonus_cards[AI])])
+				[5 + int(state.bonus_cards[ME]), 5 + int(state.bonus_cards[AI])], {"turbo": state.turbo},
+				{"speed": speed0, "destiny": [state.destiny and state.destiny_who[ME], state.destiny and state.destiny_who[AI]]})
 		events = []
 	else:
 		events = state.setup(my_list, opp_list, me_name, opp_name, first, -1,
 				CardData.extra_list(my_deck), CardData.extra_list(opp_deck, opp_plain))
 	# Grand Prix: your lap decides how many Speed Counters each rider starts with.
-	if state.turbo and cfg.has("speed_start"):
+	if state.turbo and cfg.has("speed_start") and ocg == null:
 		for p in 2:
 			state.players[p].speed = clampi(int((cfg["speed_start"] as Array)[p]), 0, DuelState.SPEED_MAX)
 			hud.set_speed(p, state.players[p].speed, 0)
 	# A runner tuned at the Satellite garage starts with Speed Counters already on the dial.
 	var tune := int(Collection.record.get("runner_tune", 0))
-	if state.turbo and tune > 0 and not cfg.has("speed_start") and not _autoplay:
+	if state.turbo and tune > 0 and not cfg.has("speed_start") and not _autoplay and ocg == null:
 		state.players[ME].speed = clampi(state.players[ME].speed + tune, 0, DuelState.SPEED_MAX)
 		hud.set_speed(ME, state.players[ME].speed, 0)
 	# House rules from Free Duel: starting Life Points (and what a Gauntlet carried over).
@@ -432,6 +448,12 @@ func _start() -> void:
 	if ocg != null:
 		events = ocg.begin()
 	await _play(events)
+	if not _puzzle.is_empty() and ocg != null:
+		_update_counts()
+		hud.effect_text(Loc.t(str(_puzzle.get("hint", ""))))
+		await hud.banner("WIN THIS TURN", UITheme.GOLD, true)
+		_loop()
+		return
 	if not _puzzle.is_empty():
 		# The position is laid out, then it is your move: this turn is the only one you get.
 		Settings.pace = 0.45
@@ -1609,7 +1631,7 @@ func _on_phase_button(action: String) -> void:
 ## [action id, the word shown over it]: face-up on the left, Set on the right.
 func _drop_plan(inst) -> Dictionary:
 	if ocg != null:
-		return {}
+		return ocg.drop_plan(inst)
 	var plan := {}
 	if inst.is_monster():
 		var cells: Array = []
@@ -1977,6 +1999,9 @@ func _on_board_card_clicked(card: Card3D) -> void:
 
 ## Speed World 2: pick which of its three effects to pay for.
 func _on_speed_pressed() -> void:
+	if ocg != null:
+		ocg.on_speed_pressed()
+		return
 	if not _my_turn():
 		return
 	_cancel_mode()
