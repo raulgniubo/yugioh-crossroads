@@ -1323,7 +1323,7 @@ static func auto_build() -> Dictionary:
 	take.call(func(id): return plain.call(id) and d.call(id).get("kind", "") == "monster" and int(d.call(id).get("level", 0)) in [5, 6], 3, main)
 	take.call(func(id): return plain.call(id) and d.call(id).get("kind", "") == "monster" and int(d.call(id).get("level", 0)) >= 7, 2, main)
 	take.call(func(id): return str(d.call(id).get("name", "")) in STAPLES or str(d.call(id).get("name", "")) in GOOD_TRAPS, 40 - main.size(), main)
-	take.call(func(id): return d.call(id).get("kind", "") != "monster" and SpellRules.FX.has(str(d.call(id).get("name", ""))), 40 - main.size(), main)
+	take.call(func(id): return d.call(id).get("kind", "") != "monster" and (CardPool.has(int(id)) or SpellRules.FX.has(str(d.call(id).get("name", "")))), 40 - main.size(), main)
 	take.call(func(id): return plain.call(id) and d.call(id).get("kind", "") == "monster" and int(d.call(id).get("level", 0)) <= 4, 40 - main.size(), main)
 	var by_atk: Array = ids.filter(func(id): return CardData.is_extra(id))
 	by_atk.sort_custom(func(a, b): return int(CardData.get_card(a).get("atk", 0)) > int(CardData.get_card(b).get("atk", 0)))

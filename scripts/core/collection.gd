@@ -33,6 +33,7 @@ const PACKS := [
 	{"key": "Vault", "tab": 0, "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
 	{"key": "legends", "tab": 0, "name": "Monster Legends", "color": Color("e8b04a"), "blurb": "Normal Monsters from every era: hundreds of them, from the classics to the rare big ones."},
 	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen, her forms and the cards around her. Only the ones the story has already handed you, up to three of each."},
+	{"key": "six_samurai", "tab": 1, "name": "Way of the Six", "color": Color("d04a3c"), "family": true, "blurb": "The Six Samurai: warriors who cover for each other, Bushido Counters that pay for searches and draws, the Legendary and Secret Six, and Shi En, who shuts down a Spell or Trap every turn."},
 	{"key": "monarchs", "tab": 1, "name": "Rule of the Monarchs", "color": Color("e0c070"), "family": true, "blurb": "Monarchs: Tribute Summon them and each one strikes as it lands. The Mega Monarchs rise from a Tribute Summoned monster, the Squires and Vassals feed the Tributes, and the Monarch Spells and Traps keep the field yours."},
 	{"key": "chaos", "tab": 1, "name": "Envoys of Chaos", "color": Color("c8b0ff"), "family": true, "blurb": "Black Luster Soldier and Gaia the Fierce Knight: the Rituals that call the Soldier, the Gaia knights that ride beside him, the Light and Darkness Ritual, and the LIGHT and DARK monsters of Chaos."},
 	{"key": "gem_knight", "tab": 1, "name": "Brilliant Gems", "color": Color("7ae0ff"), "family": true, "blurb": "Gem-Knights: Normal Monsters that fuse into shining knights, the Fusion Spells that pull materials from the Deck and Graveyard, and the Diamonds on top."},
@@ -80,6 +81,7 @@ const THEME_DECKS := [
 	{"key": "deck_shadow", "worlds": ["academy", "satellite"], "art": "shadow", "color": Color("9a6bff"), "blurb": "Fiends with heavy hits at Level 4, Dark Resonator to tune them into Chaos King Archfiend, and Number 66 for the rest."},
 	{"key": "deck_machine", "worlds": ["newdomino", "satellite", "heartland"], "art": "machines", "color": Color("6fc3ff"), "blurb": "The V, W, X, Y and Z Unions: equip them to each other, then fuse up to VWXYZ-Dragon Catapult Cannon."},
 	{"key": "deck_wild", "worlds": ["heartland", "domino"], "art": "wild", "color": Color("ff9a3c"), "blurb": "Big Beasts at Level 4 with Fusions on top: Chimera the Flying Mythical Beast and Rabid Horseman."},
+	{"key": "deck_six_samurai", "art": "warriors", "cover": "Legendary Six Samurai - Shi En", "color": Color("d04a3c"), "era": "5D's", "blurb": "One Samurai on the field calls the next from your hand: Kageki, Kizan and the Grandmaster arrive for free, Six Samurai United draws, and a Tuner turns them into Shi En."},
 	{"key": "deck_monarchs", "art": "shadow", "cover": "Caius the Mega Monarch", "color": Color("e0c070"), "era": "GX", "blurb": "Squires and Vassals step out so a Monarch can be Tribute Summoned, then a Mega Monarch Tributes that one. Every landing clears something off their side."},
 	{"key": "deck_chaos", "art": "warriors", "cover": "Black Luster Soldier - Super Soldier", "color": Color("c8b0ff"), "era": "Duel Monsters", "blurb": "Super Soldier Ritual turns two Level 4 Knights into Black Luster Soldier, and the Knights give him their powers. Gaia rides in when he falls, and Chaos Form brings back the old legends."},
 	{"key": "deck_gem_knight", "art": "warriors", "cover": "Gem-Knight Master Diamond", "color": Color("7ae0ff"), "era": "ZEXAL", "blurb": "Gem-Knight Fusion turns two plain knights into a Fusion Monster, Brilliant Fusion fuses straight from the Deck, and Gem-Knight Fusion comes back from the Graveyard to do it again."},
@@ -139,6 +141,21 @@ const FAMILIES := {
 		"Weiss, Lightsworn Archfiend", "Punishment Dragon", "Enlightenment Dragon", "Lyla, Twilightsworn Enchantress", "Ryko, Twilightsworn Fighter",
 		"Jain, Twilightsworn General", "Lumina, Twilightsworn Shaman", "Minerva, the Athenian Lightsworn", "Lightsworn Barrier", "Lightsworn Aegis",
 		"Lightsworn Sanctuary", "Twilight Eraser", "Twilight Twin Dragons", "Lightsworn Judgment"]},
+	"six_samurai": {"era": "5D's", "deck": "deck_six_samurai", "cards": [
+		"Secret Six Samurai - Rihan", "Secret Six Samurai - Fuma", "Shien's Squire", "Kagemusha of the Blue Flame", "Kagemusha of the Six Samurai",
+		"Secret Six Samurai - Genba", "Shien's Footsoldier", "Tactical Trainer of the Six Samurai", "Anarchist Monk of the Six Samurai",
+		"Chamberlain of the Six Samurai", "Elder of the Six Samurai", "Hand of the Six Samurai", "Legendary Six Samurai - Kageki",
+		"Legendary Six Samurai - Mizuho", "Legendary Six Samurai - Shinai", "Secret Six Samurai - Hatsume", "Spirit of the Six Samurai",
+		"The Six Samurai - Kamon", "The Six Samurai - Yaichi", "The Six Samurai - Yariza", "Legendary Secret of the Six Samurai",
+		"Legendary Six Samurai - Enishi", "Legendary Six Samurai - Kizan", "Secret Six Samurai - Doji", "Secret Six Samurai - Kizaru", "Shien's Advisor",
+		"Shien's Daredevil", "Tenkabito Shien", "The Six Samurai - Irou", "The Six Samurai - Nisashi", "The Six Samurai - Zanji",
+		"Grandmaster of the Six Samurai", "Enishi, Shien's Chancellor", "Great Shogun Shien", "Asceticism of the Six Samurai",
+		"Cunning of the Six Samurai", "Gateway of the Six", "Legendary Ebon Steed", "Secret Skills of the Six Samurai", "Shien's Castle of Mist",
+		"Shien's Dojo", "Shien's Smoke Signal", "Six Samurai United", "Six Scrolls of the Samurai", "Six Strike - Double Assault",
+		"Six Strike - Triple Impact", "Temple of the Six", "Legendary Lord Six Samurai - Enishi", "Legendary Lord Six Samurai - Kizan",
+		"Legendary Lord Six Samurai - Shi En", "Legendary Six Samurai - Shi En", "Backs to the Wall", "Breakthrough!", "Double-Edged Sword Technique",
+		"Musakani Magatama", "Return of the Six Samurai", "Shien's Scheme", "Six Strike - Sextuple Barrage", "Six Style - Dual Wield",
+		"Swift Samurai Storm!", "Swiftstrike Armor", "The Six Shinobi", "Shadow of the Six Samurai - Shien"]},
 }
 
 
@@ -1461,20 +1478,6 @@ func pool(era: String) -> Array:
 	if FAMILIES.has(era):
 		_pools[era] = family_ids(era)
 		return _pools[era]
-	if era == "legends":
-		# Every Normal Monster in the card folder that no other set hands out (they used to work
-		# in the game with no way to get one).
-		var taken := {}
-		for other in ["Duel Monsters", "GX", "5D's", "ZEXAL", "Vault"]:
-			for id in pool(other):
-				taken[id] = true
-		for id in CardData.EXT:
-			var d: Dictionary = CardData.EXT[id]
-			if str(d.get("frame", "")) == "normal" and int(d.get("level", 0)) > 0 and not str(d.get("name", "")).contains("Token") \
-					and not taken.has(int(id)) and CardExact.ok(CardData.get_card(int(id))):
-				ids[int(id)] = true
-		_pools[era] = ids.keys()
-		return _pools[era]
 	if not (era in SERIES):
 		var themed: Array = []
 		for id in all_cards():
@@ -1482,39 +1485,30 @@ func pool(era: String) -> Array:
 				themed.append(id)
 		_pools[era] = themed
 		return themed
-	if era == "Vault":
-		# Every card the game has rules for that the four era packs do not hand out.
-		var taken := {}
-		for other in ["Duel Monsters", "GX", "5D's", "ZEXAL"]:
+	# A series set: what was written down for it (CardPool), and for the four eras also every
+	# family of that era and everything its duelists' decks play.
+	for id in CardPool.era(era):
+		ids[int(id)] = true
+	if era in ["Vault", "legends"]:
+		# (These two hold what the era packs do not hand out.)
+		for other in (["Duel Monsters", "GX", "5D's", "ZEXAL"] if era == "Vault" else ["Duel Monsters", "GX", "5D's", "ZEXAL", "Vault"]):
 			for id in pool(other):
-				taken[id] = true
-		for name in SpellRules.FX.keys() + CardEffects.FX.keys() + CardEffectsAuto.FX.keys() + VAULT_EXTRAS:
-			var id: int = CardData.NAME_TO_ID.get(str(name).to_lower(), 0)
-			if id != 0 and not taken.has(id) and not CardData.get_card(id).is_empty() and not CardData.get_card(id).get("speed_spell", false) and CardExact.ok(CardData.get_card(id)):
+				ids.erase(id)
+	else:
+		for fk in FAMILIES:
+			if str(FAMILIES[fk]["era"]) == era:
+				for id in family_ids(fk):
+					ids[id] = true
+		for k in Characters.ORDER:
+			var d: Dictionary = Characters.DATA[k]
+			if str(d.get("era", "")) != era or not CardData.has_deck(str(d["deck"])):
+				continue
+			for id in CardData.deck_list(str(d["deck"])) + CardData.extra_list(str(d["deck"])):
 				ids[id] = true
-		# The game's own cards that ready-made decks are written with (Fissure and the like).
-		for cid in CardData.CARDS:
-			var id := int(cid)
-			if not taken.has(id) and not CardData.ORIGINALS.has(id) and not CardData.get_card(id).get("speed_spell", false) and CardExact.ok(CardData.get_card(id)):
-				ids[id] = true
-		_pools[era] = ids.keys()
-		return _pools[era]
-	for fk in FAMILIES:
-		if str(FAMILIES[fk]["era"]) == era:
-			for id in family_ids(fk):
-				ids[id] = true
-	for k in Characters.ORDER:
-		var d: Dictionary = Characters.DATA[k]
-		if str(d.get("era", "")) != era or not CardData.has_deck(str(d["deck"])):
-			continue
-		for id in CardData.deck_list(str(d["deck"])) + CardData.extra_list(str(d["deck"])):
-			ids[id] = true
-		# ...and every card they are known for that works here, whether their deck plays it yet or not.
-		var wish: Dictionary = SignatureDecks.WISH.get(str(k), {})
-		for n in (wish.get("main", []) as Array) + (wish.get("extra", []) as Array):
-			var wid: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
-			if wid != 0 and SignatureDecks._works(wid):
-				ids[wid] = true
+	for id in ids.keys():
+		var cd := CardData.get_card(int(id))
+		if cd.is_empty() or str(cd.get("name", "Unknown")) == "Unknown":
+			ids.erase(id)      # (the card folder does not know it)
 	_pools[era] = ids.keys()
 	return _pools[era]
 

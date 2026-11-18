@@ -271,6 +271,8 @@ static func _works(id: int) -> bool:
 	var d := CardData.get_card(id)
 	if d.is_empty() or not CardExact.ok(d):
 		return false
+	if CardPool.has(id):
+		return true       # (in the game's pool: the rules engine plays it by its real script)
 	var name := str(d.get("name", ""))
 	if str(d.get("kind", "monster")) != "monster":
 		return SpellRules.FX.has(name) or str(d.get("effect", "")) != ""

@@ -597,7 +597,12 @@ static func spec(c) -> Dictionary:
 
 
 static func kind(c) -> String:
-	return str(spec(c).get("k", ""))
+	var k := str(spec(c).get("k", ""))
+	if k == "" and c != null and not c.is_monster():
+		# A card the classic rules never knew (the rules engine plays it): what its card says it is.
+		var st := str(c.data.get("st", "")).to_lower()
+		k = str({"quick-play": "quick", "continuous": "cont", "counter": "counter", "equip": "equip", "field": "field", "ritual": "ritual"}.get(st, "trap" if c.is_trap() else "normal"))
+	return k
 
 
 ## Cards without a hand-written entry: old effect tags, and Equip / Field / Ritual Spells whose text

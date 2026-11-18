@@ -26,6 +26,11 @@ func _ready() -> void:
 		for pz in Puzzles.LIST:
 			for nm in Puzzles.names(pz):
 				ids[Puzzles._id(str(nm))] = true
+		# (every name the game adds on top of the written-down pool, whether or not anything else lists it yet)
+		for nm in CardPool.added_names():
+			var aid := int(CardData.NAME_TO_ID.get(str(nm).to_lower(), 0))
+			if aid != 0:
+				ids[aid] = true
 		var f := FileAccess.open(b, FileAccess.WRITE)
 		for id in ids:
 			f.store_line(str(id))
@@ -36,6 +41,40 @@ func _ready() -> void:
 	if not OcgCore.ensure_loaded():
 		print("ENGINE NOT LOADED: ", OcgCore.why_not())
 		get_tree().quit(1)
+		return
+	if a == "freeze":
+		# Dev: the card pool as the game works it out today, written down (data/pool.json is made from this).
+		var out := {}
+		for era in Collection.SERIES:
+			var l: Array = []
+			for id in Collection.pool(str(era)):
+				l.append(int(id))
+			l.sort()
+			out[str(era)] = l
+		var all: Array = []
+		for id in Collection.all_cards():
+			all.append(int(id))
+		all.sort()
+		out["all"] = all
+		var every: Array = []
+		for id in Collection.every_playable():
+			every.append(int(id))
+		every.sort()
+		out["every_playable"] = every
+		var lost: Array = []
+		for fk in Collection.FAMILIES:
+			for nm in Collection.FAMILIES[fk]["cards"]:
+				var fid := int(CardData.NAME_TO_ID.get(str(nm).to_lower(), 0))
+				if fid == 0 or not all.has(fid):
+					lost.append("%s: %s (%d)" % [fk, nm, fid])
+		out["family_names_not_in_pool"] = lost
+		var f2 := FileAccess.open(b, FileAccess.WRITE)
+		f2.store_string(JSON.stringify(out))
+		f2.close()
+		print("freeze: all ", all.size(), " every_playable ", every.size(), " family names not in pool ", lost.size(), " -> ", b)
+		for l in lost:
+			print("   ", l)
+		get_tree().quit(0)
 		return
 	if a == "gaps":
 		# Dev: Fusion Monsters in the game whose listed materials are not in the game.

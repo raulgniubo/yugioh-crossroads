@@ -812,6 +812,13 @@ const NOT_YET := {
 
 ## Is this card's effect exact? Cards with no effect of their own always are.
 static func ok(d: Dictionary) -> bool:
+	# Since duels run on the rules engine, a card works when it is in the game's pool (CardPool):
+	# its real script plays it. What follows this line is how the classic rules decided it, kept
+	# for cards asked about by data alone.
+	if d.has("id"):
+		if bool(d.get("original", false)) or CardData.ORIGINALS.has(int(d["id"])) or CardData.TOKENS.has(int(d["id"])):
+			return true
+		return CardPool.has(int(d["id"]))
 	var name := str(d.get("name", ""))
 	if str(d.get("kind", "monster")) != "monster":
 		return not NOT_YET.has(name)

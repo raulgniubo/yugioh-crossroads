@@ -324,6 +324,8 @@ const NAMED_DECKS := {
 		"Spell Gear": 1, "Ancient Gear Catapult": 1, "Polymerization": 1, "Mystical Space Typhoon": 1, "Pot of Greed": 1, "Limiter Removal": 1,
 		"Cross-Dimensional Duel": 2, "Ancient Gear Reborn": 1},
 		"extra": {"Ultimate Ancient Gear Golem": 2, "Ancient Gear Howitzer": 2, "Ancient Gear Megaton Golem": 1, "Chaos Ancient Gear Giant": 1}},
+	"deck_six_samurai": {"name": "Way of the Six", "cards": {"Legendary Six Samurai - Kizan": 3, "Legendary Six Samurai - Kageki": 3, "Kagemusha of the Six Samurai": 3, "Grandmaster of the Six Samurai": 2, "Legendary Six Samurai - Enishi": 1, "Legendary Six Samurai - Mizuho": 2, "Legendary Six Samurai - Shinai": 2, "The Six Samurai - Zanji": 1, "The Six Samurai - Irou": 1, "Hand of the Six Samurai": 1, "Great Shogun Shien": 1, "Secret Six Samurai - Fuma": 1, "Six Samurai United": 3, "Gateway of the Six": 2, "Shien's Smoke Signal": 3, "Asceticism of the Six Samurai": 2, "Shien's Dojo": 1, "Temple of the Six": 1, "Reinforcement of the Army": 1, "Double-Edged Sword Technique": 2, "Musakani Magatama": 2, "Return of the Six Samurai": 1, "Six Style - Dual Wield": 1},
+		"extra": {"Legendary Six Samurai - Shi En": 2, "Legendary Lord Six Samurai - Shi En": 1, "Legendary Lord Six Samurai - Kizan": 1, "Legendary Lord Six Samurai - Enishi": 1, "Shadow of the Six Samurai - Shien": 2, "Secret Six Samurai - Rihan": 1}},
 	"deck_monarchs": {"name": "Rule of the Monarchs", "cards": {"Caius the Shadow Monarch": 2, "Zaborg the Thunder Monarch": 2, "Mobius the Frost Monarch": 1, "Raiza the Storm Monarch": 1,
 		"Thestalos the Firestorm Monarch": 1, "Granmarg the Rock Monarch": 1, "Kuraz the Light Monarch": 1, "Eidos the Underworld Monarch": 1, "Caius the Mega Monarch": 1,
 		"Zaborg the Mega Monarch": 1, "Erebus the Underworld Monarch": 1, "Ehther the Heavenly Monarch": 1, "Edea the Heavenly Squire": 2, "Eidos the Underworld Squire": 2,
@@ -689,8 +691,8 @@ static func _resolve(names: Dictionary, extra: bool) -> Dictionary:
 		if id == 0:
 			continue
 		var d := get_card(id)
-		if d["kind"] != "monster" and not d.has("effect") and not SpellRules.FX.has(str(d.get("name", ""))) and not str(d.get("st", "")) in ["equip", "field", "ritual"]:
-			continue
+		if d["kind"] != "monster" and not CardPool.has(id) and not d.has("effect") and not SpellRules.FX.has(str(d.get("name", ""))) and not str(d.get("st", "")) in ["equip", "field", "ritual"]:
+			continue      # (a Spell or Trap that is not in the game)
 		if (d.get("frame", "") in ["fusion", "synchro", "xyz"]) != extra:
 			continue
 		if d.get("frame", "") == "link":

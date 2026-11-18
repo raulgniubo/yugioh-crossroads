@@ -6684,4 +6684,9 @@ const ES := {
 	"Declare 1 card name": "Declara el nombre de 1 carta",
 	"classic duel rules": "reglas de duelo clásicas",
 	"The rules engine did not load on this computer, so duels run on the classic rules.": "El motor de reglas no cargó en este equipo, así que los duelos usan las reglas clásicas.",
+	"Way of the Six": "El Camino de los Seis",
+	"The Six Samurai: warriors who cover for each other, Bushido Counters that pay for searches and draws, the Legendary and Secret Six, and Shi En, who shuts down a Spell or Trap every turn.": "Los Seis Samuráis: guerreros que se cubren entre sí, Contadores Bushido que pagan búsquedas y robos, los Seis Legendarios y Secretos, y Shi En, que niega una Mágica o Trampa cada turno.",
+	"One Samurai on the field calls the next from your hand: Kageki, Kizan and the Grandmaster arrive for free, Six Samurai United draws, and a Tuner turns them into Shi En.": "Un Samurái en el Campo llama al siguiente desde tu mano: Kageki, Kizan y el Gran Maestro llegan gratis, Six Samurai United roba, y un Cantante los convierte en Shi En.",
+	"Six of us on every shift, and each one covers the next. My deck works the same way.": "Somos seis en cada turno, y cada uno cubre al siguiente. Mi Deck funciona igual.",
+	"By the book, all six of us!": "¡Según el reglamento, los seis!",
 }
