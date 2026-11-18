@@ -29,6 +29,11 @@ const FX := {
 	"Echo Resonance": {"k": "normal", "cond": "echo_ready", "do": [["echo_resonance"]]},
 	"Echo Call": {"k": "normal", "do": [["search", {"has": "Lumen"}]]},
 	"Echo Veil": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["draw_if_own", "Lumen", 1]]},
+	# ---------------------------------------------------------------- Light and Darkness (0.34.4.5)
+	"Light and Darkness Ritual": {"k": "ritual", "rit": {"names": ["Magician of Dark Chaos - Black Chaos", "Black Luster Soldier - Soldier of Light and Darkness"], "gy_banish": {}}, "do": [["ritual"]]},
+	"Mind Shuffle": {"k": "ctrap", "win": ["free"], "ai": "always"},
+	"Chaos Mystic Box": {"k": "trap", "win": ["chain"], "chain_if": "mystic_box", "do": [["mystic_box"]], "box_destroyed": true},
+	"Chaos Magical Hats": {"k": "quick", "win": ["chain"], "chain_if": "hats", "do": [["hats"]]},
 	# ---------------------------------------------------------------- Chaos (0.34.4)
 	"Chaos Form": {"k": "ritual", "rit": {"has_any": ["Chaos", "Black Luster Soldier"], "exact": true, "gy_banish": ["Blue-Eyes White Dragon", "Dark Magician"]}, "do": [["ritual"]]},
 	"Super Soldier Ritual": {"k": "ritual", "rit": {"has_any": ["Black Luster Soldier"], "exact": true, "lv": 8}, "do": [["ritual"]]},
@@ -736,7 +741,19 @@ static func fits(s: DuelState, p: int, c, window: String, subject) -> bool:
 	if sp.has("chain_if"):
 		if window != "chain" or not (subject is Dictionary):
 			return false
-		if str(sp["chain_if"]) == "ss_shield":
+		if str(sp["chain_if"]) == "mystic_box":
+			# "When your opponent activates a card or effect that targets another card(s) you control".
+			var tb = subject.get("target")
+			if int(subject["player"]) == p or not (tb is DuelState.CardInst) or tb == c or tb.owner != p or not (s.players[p].field.has(tb) or s.players[p].spells.has(tb)):
+				return false
+		elif str(sp["chain_if"]) == "hats":
+			# Chaos Magical Hats: "When your opponent activates a monster effect, or a Normal Spell/Trap Card".
+			var kk: String = str(subject.get("spec", {}).get("k", ""))
+			if int(subject["player"]) == p or not (subject["card"].is_monster() or kk in ["normal", "trap"]):
+				return false
+			if not hats_ready(s, p):
+				return false
+		elif str(sp["chain_if"]) == "ss_shield":
 			# Super Soldier Shield: "When a Spell/Trap Card, or monster effect, is activated that targets a monster(s) on the field,
 			# while you control a "Black Luster Soldier" monster".
 			var tg_s = subject.get("target")
@@ -2739,6 +2756,25 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			ps.once_names[str(a[1])] = s.turn
 		"gem_fusion":
 			events.append_array(EffectRunner.gem_fusion(s, p, c, str(a[1])))
+		"mystic_box":
+			# Chaos Mystic Box: return 1 targeted card to the hand, destroy 1 card on the field, then a Light and Darkness monster from your hand.
+			var subj_b = ctx.get("subject")
+			var tb_b = subj_b.get("target") if subj_b is Dictionary else null
+			if tb_b != null and (ps.field.has(tb_b) or ps.spells.has(tb_b)):
+				var back_name: String = tb_b.cname()
+				events.append_array(s._bounce(tb_b))
+				var all_b: Array = opp.monsters() + _all_st_of(s, opp_i) + ps.monsters()
+				if not all_b.is_empty():
+					all_b.sort_custom(func(x, y): return (1 if x.owner == opp_i else 0) * 10000 + s._card_value(x) > (1 if y.owner == opp_i else 0) * 10000 + s._card_value(y))
+					var t_b = s.pick1(p, Loc.t("%s: destroy which card?") % name, all_b, all_b[0], c)
+					events.append_array(s._destroy(t_b) if t_b.is_monster() and s.players[t_b.owner].field.has(t_b) else s._destroy_st(t_b))
+				var ld_b: Array = ps.hand.filter(func(h): return h.is_monster() and mentions_ld(h) and h.cname() != back_name)
+				if not ld_b.is_empty() and ps.free_zone() != -1 and not s.ss_locked(p) and s.choose_option(p, Loc.t("%s: Special Summon a monster from your hand?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+					var n_b = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, ld_b, s._best_monsters(ld_b, 1)[0], c)
+					events.append_array(EffectRunner._ignoring(s, p, n_b, ps.hand))
+					events.append_array(EffectRunner.on_summon(s, p, n_b, "special"))
+		"hats":
+			events.append_array(_hats(s, p, c, ctx.get("subject")))
 		"rebirth":
 			# Super Soldier Rebirth: send 1 "Black Luster Soldier" monster you control to the GY; Special Summon 1 with a different name from your hand.
 			var bl_r: Array = ps.monsters().filter(func(m): return m.face_up and EffectRunner.is_bls(m) and not ps.hand.filter(func(h): return EffectRunner.is_bls(h) and h.cname() != m.cname()).is_empty())
@@ -4588,6 +4624,79 @@ static func after_battle_death(s: DuelState, loser) -> Array:
 		events.append_array(s.chain_resolve())
 		break
 	return events
+
+
+## Chaos Magical Hats: 3 Spells/Traps become face-down Normal Monsters, the monster joins them face-down, and the opponent's effect
+## becomes "Destroy 1 monster your opponent controls in face-down Defense Position".
+static func _hats(s: DuelState, p: int, c, subj) -> Array:
+	var ps := s.players[p]
+	var events := []
+	var pool: Array = []
+	var seen := {}
+	for x in ps.deck:
+		if not x.is_monster() and not seen.has(x.cname()):
+			seen[x.cname()] = true
+			pool.append(x)
+	var hats: Array = s.choose(p, Loc.t("%s: choose 3 Spells/Traps with different names") % c.cname(), pool, 3, pool.slice(0, 3), false, c)
+	var ld_m: Array = ps.monsters().filter(func(m): return mentions_ld(m))
+	if ld_m.is_empty():
+		return events
+	var star = s.pick1(p, Loc.t("%s: which monster hides with them?") % c.cname(), ld_m, ld_m[0], c)
+	for h in hats:
+		if ps.free_zone() == -1:
+			break
+		ps.deck.erase(h)
+		var orig_h: Dictionary = h.data
+		var md: Dictionary = h.data.duplicate()
+		md["name"] = "Chaos Magical Hats"
+		md["kind"] = "monster"
+		md["frame"] = "normal"
+		md["race"] = "Spellcaster"
+		md["attribute"] = "DARK"
+		md["level"] = 8
+		md["atk"] = 0
+		md["def"] = 0
+		h.data = md
+		events.append_array(s._special(p, h, "effect", "def"))
+		h.set_meta("hat_data", orig_h)
+		h.face_up = false
+		h.attack_pos = false
+	s._shuffle(ps.deck)
+	if star.face_up:
+		star.face_up = false
+		star.attack_pos = false
+	events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s: the hats shuffle!") % c.cname()})
+	if subj is Dictionary:
+		subj["negated"] = true
+		var q: int = s.opponent(p)
+		var fd: Array = ps.monsters().filter(func(m): return not m.face_up and not m.attack_pos)
+		if not fd.is_empty():
+			var guess = s.pick1(q, Loc.t("Chaos Magical Hats: destroy which face-down monster?"), fd, fd[s._rng.randi() % fd.size()], c)
+			events.append({"type": "effect", "player": q, "card": c, "text": Loc.t("%s's effect becomes: destroy 1 face-down monster") % subj["card"].cname()})
+			var was := s.effect_by
+			s.effect_by = q
+			events.append_array(s._destroy(guess))
+			s.effect_by = was
+	return events
+
+
+## Does this card mention "Light and Darkness Ritual"?
+static func mentions_ld(x) -> bool:
+	return x != null and x.cname() != "Light and Darkness Ritual" and str(x.data.get("desc", "")).contains("\"Light and Darkness Ritual\"")
+
+
+## Chaos Magical Hats: 3 Spells/Traps with different names in the Deck, a monster that mentions Light and Darkness Ritual in the Main Monster Zone, and 3 free zones.
+static func hats_ready(s: DuelState, p: int) -> bool:
+	var ps := s.players[p]
+	var names := {}
+	for x in ps.deck:
+		if not x.is_monster():
+			names[x.cname()] = true
+	var free := 0
+	for z in ps.field.size():
+		if ps.field[z] == null:
+			free += 1
+	return names.size() >= 3 and free >= 3 and not ps.monsters().filter(func(m): return mentions_ld(m)).is_empty()
 
 
 ## Chaos Space: what it can add for this cost (LIGHT/DARK, can't be Normal Summoned, Level 4-8, the other Attribute).

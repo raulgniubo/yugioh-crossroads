@@ -4261,7 +4261,8 @@ var pending_events: Array = []
 var deck_batch: Array = []
 ## Mist Valley Baby Roc just went from the hand to the GY: offered a Special Summon by _cleanup.
 var baby_roc: Array = []
-var spark_dead: Array = []   # face-up "Gem-Knight" monsters your opponent's attack or effect just destroyed (Brilliant Spark)
+var spark_dead: Array = []
+var box_dead: Array = []   # Chaos Mystic Box cards the opponent just destroyed   # face-up "Gem-Knight" monsters your opponent's attack or effect just destroyed (Brilliant Spark)
 
 
 func _gy_redirect(c: CardInst = null) -> bool:
@@ -4292,6 +4293,8 @@ func _banish(c: CardInst) -> Array:
 		return [{"type": "effect", "player": c.owner, "card": null, "text": Loc.t("Gravekeeper's Inscription: %s stays in the Graveyard") % c.cname()}]
 	if necro_holds(c):
 		return [{"type": "effect", "player": c.owner, "card": null, "text": Loc.t("Necrovalley: %s stays in the Graveyard") % c.cname()}]
+	if (players[0].spells.has(c) or players[1].spells.has(c) or players[c.owner].field_spell == c) and st_guarded(c):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("Magician of Dark Chaos: %s can't be banished") % c.cname()}]
 	if not can_banish(effect_by if effect_by != -1 else current):
 		return [{"type": "effect", "player": c.owner, "card": null, "text": Loc.t("Chaos Hunter: %s can't be banished") % c.cname()}]
 	if (players[0].field.has(c) or players[1].field.has(c)) and st_unaffected(c):
@@ -4369,6 +4372,12 @@ func _best_monsters(list: Array, n: int) -> Array:
 
 func _destroy_st(c: CardInst) -> Array:
 	var ps := players[c.owner]
+	if st_guarded(c):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("Magician of Dark Chaos: %s can't be destroyed") % c.cname()}]
+	if SpellRules.spec(c).get("box_destroyed", false) and effect_by == opponent(c.owner):
+		# Chaos Mystic Box: "If this card in its owner's possession is destroyed by an opponent's card: Special Summon 1 Ritual Monster
+		# that mentions "Light and Darkness Ritual" from your hand or Deck."
+		box_dead.append(c)
 	if sanctuary_saves(c):
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("Lightsworn Sanctuary: 2 Shine Counters go instead of %s") % c.cname()}]
 	if c.face_up and SpellRules.spec(c).get("realm", false) and c.counter >= 2 and (ps.field_spell == c):
@@ -4479,6 +4488,10 @@ func _destroy_st(c: CardInst) -> Array:
 ## Equip cards (and Call of the Haunted) go when their monster goes.
 func _monster_left(m: CardInst) -> Array:
 	var events := []
+	if m.has_meta("hat_data"):
+		# Chaos Magical Hats: off the field, the hat is its own Spell/Trap Card again.
+		m.data = m.get_meta("hat_data")
+		m.remove_meta("hat_data")
 	if m.is_monster() and (players[0].gy.has(m) or players[1].gy.has(m)):
 		_gateway_count()
 	if m.face_up and not m.negated and effect_by == opponent(m.owner) and not in_damage_step and not is_over():
@@ -4563,6 +4576,22 @@ func _cleanup() -> Array:
 				m.set_meta("zw_untarget_owner", q)
 			elif m.has_meta("zw_untarget_owner"):
 				m.remove_meta("zw_untarget_owner")
+	if not box_dead.is_empty() and chain.is_empty() and not is_over():
+		var bxs := box_dead.duplicate()
+		box_dead.clear()
+		for bx in bxs:
+			var pb := players[bx.owner]
+			if not pb.gy.has(bx):
+				continue
+			var rr: Array = (pb.hand + pb.deck).filter(func(x): return x.is_monster() and x.frame() == "ritual" and SpellRules.mentions_ld(x))
+			if not rr.is_empty() and pb.free_zone() != -1 and not ss_locked(bx.owner) and choose_option(bx.owner, Loc.t("%s: Special Summon a Ritual Monster from your hand or Deck?") % bx.cname(), [Loc.t("Yes"), Loc.t("No")], 0, bx) == 0:
+				var tr = pick1(bx.owner, Loc.t("%s: Special Summon which monster?") % bx.cname(), rr, _best_monsters(rr, 1)[0], bx)
+				var dk: bool = pb.deck.has(tr)
+				pb.hand.erase(tr)
+				pb.deck.erase(tr)
+				if dk:
+					_shuffle(pb.deck)
+				events.append_array(_special(bx.owner, tr, "effect"))
 	if not spark_dead.is_empty() and chain.is_empty() and not is_over():
 		var dead_s := spark_dead.duplicate()
 		spark_dead.clear()
@@ -4991,6 +5020,9 @@ func _damage(p: int, amount: int, battle := false) -> Array:
 	var ps := players[p]
 	if ps.no_damage_until >= turn:
 		return [{"type": "effect", "player": p, "card": null, "text": "No damage!"}]
+	if int(ps.once_names.get("#zero_next", -1)) == turn:
+		ps.once_names.erase("#zero_next")   # Griffoh: "The next battle or effect damage you take this turn will become 0."
+		return [{"type": "effect", "player": p, "card": null, "text": Loc.t("Griffoh: no damage!")}]
 	if not battle and ps.no_effect_damage_turn == turn:
 		return [{"type": "effect", "player": p, "card": null, "text": "No effect damage this turn!"}]
 	if battle and next_bd_zero[p] == turn:
@@ -5118,6 +5150,8 @@ func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 	c.attacked_turn = -1
 	c.reset_mods()
 	c.tags["ss"] = true   # "a Special Summoned monster" (Gagaga Girl)
+	if method in ["fusion", "synchro", "xyz"]:
+		ps.once_names["#ed_ss"] = turn
 	last_summoned = c
 	var events := [{"type": "special", "player": p, "card": c, "zone": zone, "method": method}]
 	if not c.attack_pos:
@@ -5212,6 +5246,9 @@ func heretic_shield(c, src = null) -> bool:
 		return true   # Ancient Gear Howitzer: "Unaffected by other cards' effects."
 	if f.get("unaffected_st", false) and src != null and src is CardInst and not src.is_monster():
 		return true   # Chaos Ancient Gear Giant: "Unaffected by Spell/Trap effects."
+	if f.get("unaffected_rgy", false) and src != null and src is CardInst and src.owner != c.owner \
+			and not players[c.owner].gy.filter(func(g): return str(SpellRules.spec(g).get("k", "")) == "ritual").is_empty():
+		return true   # Black Chaos: "While you have a Ritual Spell in your GY, this card is unaffected by your opponent's activated effects."
 	if f.get("unaffected_opp", false) and src != null and src is CardInst and src.owner != c.owner:
 		# "Unaffected by your opponent's activated effects, unless they target this card."
 		var aimed: bool = (st_resolving == src and st_target == c) or (int(src.tags.get("picked_t", -1)) == turn and c.uid in (src.tags.get("picked_u", []) as Array))
@@ -5722,6 +5759,8 @@ func big_locked(p: int, c: CardInst, special := false) -> bool:
 		return true   # Gem-Knight Quartz / Scatter Fusion: only "Gem-Knight" monsters from the Extra Deck
 	if c != null and special and CardData.is_extra(c.id) and int(ps.once_names.get("#ed_fusion_only", -1)) == turn and c.frame() != "fusion":
 		return true   # Gem-Knight Master Diamond Dispersion: only Fusion Monsters from the Extra Deck
+	if c != null and special and CardData.is_extra(c.id) and int(ps.once_names.get("#ed_once", -1)) == turn and int(ps.once_names.get("#ed_ss", -1)) == turn:
+		return true   # Celtic Mystic: "for the rest of this turn, you can only Special Summon once from the Extra Deck"
 	if c != null and special and int(ps.once_names.get("#ss_gem_only", -1)) == turn and not CardEffects.matches(c.data, {"has": "Gem-Knight"}):
 		return true   # Absorb Fusion: "You cannot Special Summon monsters the turn you activate this card, except "Gem-Knight" monsters."
 	if c != null and special and int(ps.once_names.get("#ss_ag_only", -1)) == turn and not c.cname().begins_with("Ancient Gear"):
@@ -6313,6 +6352,16 @@ func _gaia_watch(p: int, c: CardInst) -> Array:
 	return events
 
 
+## Magician of Dark Chaos - Black Chaos: "Spells/Traps you control cannot be destroyed, or banished, by your opponent's card effects."
+func st_guarded(c: CardInst) -> bool:
+	if c.is_monster() or effect_by != opponent(c.owner):
+		return false
+	for m in players[c.owner].monsters():
+		if m.face_up and not m.negated and EffectRunner.fx(m).get("st_guard", false):
+			return true
+	return false
+
+
 func bp_locked(q: int) -> bool:
 	for m in players[q].monsters():
 		if m.face_up and not m.negated and EffectRunner.fx(m).get("bp_lock", false):
@@ -6402,6 +6451,7 @@ func responses(p: int, window: String, subject = null) -> Array:
 	quicks.append_array(ps.monsters())
 	quicks.append_array(ps.hand)
 	quicks.append_array(ps.gy)
+	quicks.append_array(ps.spells.filter(func(x): return x != null and x.face_up))   # (Mind Shuffle)
 	for qc in quicks:
 		if fx_locked:
 			break
@@ -6484,7 +6534,7 @@ func _kalut_target(p: int) -> CardInst:
 func respond(p: int, c: CardInst, subject = null) -> Array:
 	var ps := players[p]
 	var events := []
-	if CardEffects.of(c.cname()).has("quick") and (c.is_monster() or ps.gy.has(c)):
+	if CardEffects.of(c.cname()).has("quick") and (c.is_monster() or ps.gy.has(c) or (ps.spells.has(c) and c.face_up)):
 		return EffectRunner.quick_run(self, p, c)
 	if ps.field.has(c) and EffectRunner.fx(c).get("stardust", false) and not chain.is_empty():
 		# Tribute Stardust Dragon: negate that activation and destroy the card.

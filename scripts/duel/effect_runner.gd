@@ -632,6 +632,31 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 		return not s.players[p].deck.filter(func(x): return x.cname() == "Ancient Gear Golem" or (not x.is_monster() and str(x.data.get("desc", "")).contains("Ancient Gear Golem"))).is_empty()
 	if cond == "ag_fusion_hand":
 		return not ag_plans(s, p, false).is_empty()
+	if cond == "modc":
+		return int(s.players[p].once_names.get("MoDC#ban", -1)) != s.turn and s.can_banish(p) and not (s.players[s.opponent(p)].monsters() + SpellRules._all_st_of(s, s.opponent(p))).is_empty()
+	if cond == "black_chaos":
+		var pbc := s.players[p]
+		return int(pbc.once_names.get("BlackChaos#ss", -1)) != s.turn and not (pbc.hand + pbc.gy.filter(func(g): return not s.necro_holds(g))).filter(func(x): return x.is_monster() and x.frame() == "ritual" and str(x.data.get("race", "")) in ["Spellcaster", "Warrior"]).is_empty()
+	if cond == "bc_trap":
+		var pbt := s.players[p]
+		return pbt.spells.has(null) and not (pbt.deck + pbt.gy.filter(func(g): return not s.necro_holds(g))).filter(func(x): return x.is_trap() and str(SpellRules.spec(x).get("k", "")) == "ctrap" and SpellRules.mentions_ld(x)).is_empty()
+	if cond == "bc_ban":
+		return int(s.players[p].once_names.get("BlackChaos#ban", -1)) != s.turn and s.can_banish(p) and (s.players[s.opponent(p)].monsters() + SpellRules._all_st_of(s, s.opponent(p))).size() >= 1
+	if cond == "skull":
+		var psk := s.players[p]
+		if int(psk.once_names.get("Skull#ss", -1)) == s.turn or psk.free_zone() == -1 or s.ss_locked(p):
+			return false
+		var pool_k: Array = _skull_pool(s, p, current_skull)
+		return pool_k.size() >= 3 and not pool_k.filter(func(x): return SpellRules.mentions_ld(x) or x.cname() == "Light and Darkness Ritual").is_empty()
+	if cond == "celtic":
+		var pce := s.players[p]
+		return int(pce.once_names.get("Celtic#ss", -1)) != s.turn and not pce.hand.filter(func(h): return h.is_monster() and h.frame() == "ritual" and SpellRules.mentions_ld(h)).is_empty()
+	if cond == "ms_search":
+		return int(s.players[p].once_names.get("MindShuffle#1", -1)) != s.turn and int(s.players[p].once_names.get("MindShuffle#chain", -1)) != s.turn \
+				and not s.players[p].deck.filter(func(x): return x.is_monster() and SpellRules.mentions_ld(x)).is_empty()
+	if cond == "ldr_back":
+		var pld := s.players[p]
+		return int(pld.once_names.get("LDR#gy", -1)) != s.turn and not pld.gy.filter(func(g): return SpellRules.mentions_ld(g) and s.gy_targetable(g) and not s.necro_holds(g)).is_empty()
 	if cond == "ssr_gy":
 		var pr := s.players[p]
 		var gl: Array = pr.gy.filter(func(g): return g.is_monster() and not s.necro_holds(g))
@@ -1120,6 +1145,20 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 			s._shuffle(ps.deck)
 			events.append({"type": "set_st", "player": p, "card": gkt[0], "zone": zt})
 			events.append({"type": "reveal", "player": p, "card": gkt[0], "zone": zt})
+		return events
+	if f.get("black_chaos", false):
+		# Black Chaos: shuffle 1 Spellcaster or Warrior Ritual Monster from your hand or GY into the Deck.
+		ps.once_names["BlackChaos#ss"] = s.turn
+		var rr: Array = (ps.hand + ps.gy.filter(func(g): return not s.necro_holds(g))).filter(func(x): return x != c and x.is_monster() and x.frame() == "ritual" and str(x.data.get("race", "")) in ["Spellcaster", "Warrior"])
+		var back_r = s.pick1(p, Loc.t("%s: shuffle which Ritual Monster into the Deck?") % c.cname(), rr, rr[0], c)
+		ps.hand.erase(back_r)
+		ps.gy.erase(back_r)
+		ps.deck.append(back_r)
+		s._shuffle(ps.deck)
+		events.append({"type": "gy_to_deck", "player": p, "card": back_r, "deck": ps.deck.size()})
+		ps.hand.erase(c)
+		c.proper = true
+		events.append_array(s._special(p, c, "effect"))
 		return events
 	if f.get("twilight", false):
 		# BLS - Envoy of the Evening Twilight: banish all LIGHT or all DARK monsters from your GY (equal numbers of each).
@@ -1819,6 +1858,7 @@ static func gy_can(s: DuelState, p: int, c) -> bool:
 		return false
 	if c.is_monster() and s.mon_fx_locked(p):
 		return false
+	current_skull = c
 	if s.shaman_blocks(c) or (int(s.inscription.get("mode", -1)) == 0 and int(s.inscription.get("until", -1)) >= s.turn) or s.gk_trap_lock(p):
 		return false   # Gravekeeper's Shaman / Inscription
 	if int(s.players[p].name_lock.get(c.cname(), -1)) == s.turn:
@@ -1852,6 +1892,7 @@ static func hand_can(s: DuelState, p: int, c) -> bool:
 		return s.players[p].spells.find(null) != -1 and not _cocoon_hosts(s, p, str(g["equip_to"])).is_empty()
 	if g.get("zw", false):
 		return not _zw_hosts(s, p, c).is_empty()
+	current_skull = c
 	if g.has("cond") and not _cond(s, p, str(g["cond"])):
 		return false   # Gem-Knight Quartz: "if your opponent controls a monster"
 	for a in g.get("do", []):
@@ -2235,6 +2276,18 @@ static func gem_fusion(s: DuelState, p: int, c, mode: String) -> Array:
 		"field":
 			f.tags["particle_turn"] = s.turn
 	return events
+
+
+static var current_skull = null
+
+
+## Skull Archfiend of Chaos: the other cards it could put back (GYs and face-up banishment).
+static func _skull_pool(s: DuelState, p: int, me) -> Array:
+	var out: Array = []
+	for q in 2:
+		out += s.players[q].gy.filter(func(g): return g != me and not s.necro_holds(g) and s.gy_targetable(g))
+		out += s.players[q].banished.filter(func(b): return b != me and b.face_up)
+	return out
 
 
 ## How many face-up Field Spells are on the field (Chaos Daedalus)?
@@ -3087,6 +3140,15 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 			if s.chain.back()["card"].is_monster() or lsw_fodder(s, p).is_empty():
 				return false
 			return not _all_st(s).filter(func(x): return x.face_up).is_empty()
+		"griffoh":
+			return ps.hand.has(c) and int(ps.once_names.get("Griffoh#q", -1)) != s.turn and window in ["attack", "damage", "battle_start", "chain", "phase", "summon"]
+		"mind_shuffle":
+			if not ps.spells.has(c) or not c.face_up or SpellRules.blocked(s, c):
+				return false
+			var can1: bool = int(ps.once_names.get("MindShuffle#1", -1)) != s.turn and not ps.deck.filter(func(x): return x.is_monster() and SpellRules.mentions_ld(x)).is_empty()
+			var can2: bool = window == "chain" and not s.chain.is_empty() and int(s.chain.back()["player"]) != p and int(ps.once_names.get("MindShuffle#2", -1)) != s.turn \
+					and not ps.monsters().filter(func(m): return m.face_up and m.level() >= 7 and not ps.hand.filter(func(h): return h.is_monster() and SpellRules.mentions_ld(h) and h.cname() != m.cname()).is_empty()).is_empty()
+			return window in ["attack", "battle_start", "chain", "phase", "summon"] and (can1 or can2)
 		"envoy_chaos":
 			# Envoy of Chaos: in the Battle Phase, from the hand.
 			return ps.hand.has(c) and s.phase == DuelState.Phase.BATTLE and window in ["attack", "damage", "battle_start", "chain", "phase"] \
@@ -3410,6 +3472,49 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 			events.append_array(run_list(s, p, c, [["bounce_own_other_card"], ["self_atk_turn", 500]], {}))
 		"mdd":
 			events.append_array(run_list(s, p, c, [["mdd"]], {}))
+		"griffoh":
+			ps.once_names["Griffoh#q"] = s.turn
+			ps.hand.erase(c)
+			c.set_meta("from_hand", true)
+			s._to_gy(ps, c)
+			events.append({"type": "discard", "player": p, "card": c})
+			var qp: Array = ps.deck.filter(func(x): return (str(SpellRules.spec(x).get("k", "")) == "quick" or x.is_trap()) and SpellRules.mentions_ld(x))
+			var k_gr := 0
+			if not qp.is_empty() and ps.spells.has(null):
+				k_gr = s.choose_option(p, Loc.t("%s: which effect?") % c.cname(), [Loc.t("Your next damage this turn becomes 0"), Loc.t("Set a Quick-Play Spell or Trap from your Deck")], 0 if hit else 1, c)
+			if k_gr == 0:
+				ps.once_names["#zero_next"] = s.turn
+				events.append(_ev(p, c, Loc.t("%s: the next damage you take this turn becomes 0") % c.cname()))
+			else:
+				var t_q = s.pick1(p, Loc.t("%s: Set which card?") % c.cname(), qp, qp[0], c)
+				ps.deck.erase(t_q)
+				s._shuffle(ps.deck)
+				var zq := ps.spells.find(null)
+				ps.spells[zq] = t_q
+				t_q.face_up = false
+				t_q.set_turn = s.turn - 1   # "It can be activated this turn."
+				events.append({"type": "set_st", "player": p, "card": t_q, "zone": zq})
+		"mind_shuffle":
+			ps.once_names["MindShuffle#chain"] = s.turn
+			var can2_r: bool = not s.chain.is_empty() and int(s.chain.back()["player"]) != p and int(ps.once_names.get("MindShuffle#2", -1)) != s.turn \
+					and not ps.monsters().filter(func(m): return m.face_up and m.level() >= 7 and not ps.hand.filter(func(h): return h.is_monster() and SpellRules.mentions_ld(h) and h.cname() != m.cname()).is_empty()).is_empty()
+			var can1_r: bool = int(ps.once_names.get("MindShuffle#1", -1)) != s.turn and not ps.deck.filter(func(x): return x.is_monster() and SpellRules.mentions_ld(x)).is_empty()
+			var k_ms := 1 if can2_r else 0
+			if can1_r and can2_r:
+				k_ms = s.choose_option(p, Loc.t("%s: which effect?") % c.cname(), [Loc.t("Add a monster from your Deck, discard 1"), Loc.t("Return a Level 7+ monster: Special Summon from your hand")], 1, c)
+			if k_ms == 0:
+				events.append_array(run_list(s, p, c, [["ms_search"]], {}))
+			else:
+				ps.once_names["MindShuffle#2"] = s.turn
+				var big_ms: Array = ps.monsters().filter(func(m): return m.face_up and m.level() >= 7 and not ps.hand.filter(func(h): return h.is_monster() and SpellRules.mentions_ld(h) and h.cname() != m.cname()).is_empty())
+				var b_ms = s.pick1(p, Loc.t("%s: return which monster to the hand?") % c.cname(), big_ms, big_ms[0], c)
+				var bn: String = b_ms.cname()
+				events.append_array(s._bounce(b_ms))
+				var h_ms: Array = ps.hand.filter(func(h): return h.is_monster() and SpellRules.mentions_ld(h) and h.cname() != bn)
+				if not h_ms.is_empty() and ps.free_zone() != -1:
+					var n_ms = s.pick1(p, Loc.t("%s: Special Summon which monster?") % c.cname(), h_ms, s._best_monsters(h_ms, 1)[0], c)
+					events.append_array(_ignoring(s, p, n_ms, ps.hand))
+					events.append_array(on_summon(s, p, n_ms, "special"))
 		"envoy_chaos":
 			ps.hand.erase(c)
 			c.set_meta("from_hand", true)
@@ -3993,8 +4098,10 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 			var pa_ec: Dictionary = s.pending_attack
 			return not pa_ec.is_empty() and int(pa_ec["player"]) == p and pa_ec.get("target") != null and (is_bls(pa_ec["attacker"]) or is_gaia(pa_ec["attacker"])) \
 					and s.atk_of(pa_ec["attacker"], true) <= s.atk_of(pa_ec["target"], false) + 1000
-		"soldier_gaia", "magia", "moch", "illusion", "heart_gaia", "chaos_hunter":
+		"soldier_gaia", "magia", "moch", "illusion", "heart_gaia", "chaos_hunter", "mind_shuffle":
 			return true
+		"griffoh":
+			return hit and dmg >= 1500
 		"origin":
 			return hit and lose
 		"gmkd":
@@ -7154,6 +7261,132 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				events.append(_ev(p, c, Loc.t("%s banishes from the Graveyard") % name))
 			for g in picks:
 				events.append_array(s._banish(g))
+		"sold_banish":
+			var all_s: Array = opp.monsters() + SpellRules._all_st_of(s, opp_i)
+			if int(ps.once_names.get("SoLD#ban", -1)) != s.turn and not all_s.is_empty() and s.can_banish(p) and s.choose_option(p, Loc.t("%s: banish 1 card your opponent controls?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["SoLD#ban"] = s.turn
+				all_s.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+				events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which card?") % name, all_s, all_s[0], c)))
+		"sold_kill":
+			if int(ps.once_names.get("SoLD#kill", -1)) != s.turn and s.choose_option(p, Loc.t("%s: gain 1500 ATK and attack again?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["SoLD#kill"] = s.turn
+				c.atk_mod += 1500
+				c.tags["again_turn"] = s.turn
+				events.append(_ev(p, c, Loc.t("%s gains 1500 ATK and can attack again") % name))
+		"modc_spell":
+			var sp_d: Array = ps.gy.filter(func(g): return g.is_spell() and s.gy_targetable(g) and not s.necro_holds(g))
+			if int(ps.once_names.get("MoDC#spell", -1)) != s.turn and not sp_d.is_empty() and s.choose_option(p, Loc.t("%s: add a Spell from your GY?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["MoDC#spell"] = s.turn
+				events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which Spell?") % name, sp_d, sp_d[0], c)))
+		"modc":
+			ps.once_names["MoDC#ban"] = s.turn
+			var all_d: Array = opp.monsters() + SpellRules._all_st_of(s, opp_i)
+			all_d.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+			var t_d = s.pick1(p, Loc.t("%s: banish which card face-down?") % name, all_d, all_d[0], c)
+			events.append_array(s._banish(t_d))
+			if s.players[t_d.owner].banished.has(t_d):
+				t_d.face_up = false
+		"bc_trap":
+			var tr_c: Array = (ps.deck + ps.gy.filter(func(g): return not s.necro_holds(g))).filter(func(x): return x.is_trap() and str(SpellRules.spec(x).get("k", "")) == "ctrap" and SpellRules.mentions_ld(x))
+			if not tr_c.is_empty() and ps.spells.has(null):
+				var t_c = s.pick1(p, Loc.t("%s: place which Continuous Trap?") % name, tr_c, tr_c[0], c)
+				var dk_c: bool = ps.deck.has(t_c)
+				ps.deck.erase(t_c)
+				ps.gy.erase(t_c)
+				if dk_c:
+					s._shuffle(ps.deck)
+				var zc := ps.spells.find(null)
+				ps.spells[zc] = t_c
+				t_c.face_up = true
+				t_c.set_turn = s.turn
+				events.append({"type": "set_st", "player": p, "card": t_c, "zone": zc})
+				events.append({"type": "reveal", "player": p, "card": t_c, "zone": zc})
+		"bc_ban":
+			ps.once_names["BlackChaos#ban"] = s.turn
+			var all_c: Array = opp.monsters() + SpellRules._all_st_of(s, opp_i)
+			all_c.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+			for t_bc in s.choose(p, Loc.t("%s: banish 2 cards your opponent controls") % name, all_c, mini(2, all_c.size()), all_c.slice(0, 2), false, c):
+				events.append_array(s._banish(t_bc))
+		"skull_ss":
+			ps.once_names["Skull#ss"] = s.turn
+			var pool_s: Array = _skull_pool(s, p, c)
+			var key_s: Array = pool_s.filter(func(x): return SpellRules.mentions_ld(x) or x.cname() == "Light and Darkness Ritual")
+			var first_s = s.pick1(p, Loc.t("%s: which card that mentions \"Light and Darkness Ritual\"?") % name, key_s, key_s[0], c)
+			var rest_s: Array = pool_s.filter(func(x): return x != first_s)
+			rest_s.sort_custom(func(x, y): return (1 if x.owner != p else 0) * 10000 + s._card_value(x) > (1 if y.owner != p else 0) * 10000 + s._card_value(y))
+			for x in [first_s] + s.choose(p, Loc.t("%s: 2 more cards") % name, rest_s, 2, rest_s.slice(0, 2), false, c):
+				var px := s.players[x.owner]
+				px.gy.erase(x)
+				px.banished.erase(x)
+				x.face_up = true
+				if CardData.is_extra(x.id):
+					px.extra.append(x)
+				else:
+					px.deck.insert(0, x)
+				events.append({"type": "gy_to_deck", "player": x.owner, "card": x, "deck": px.deck.size()})
+			ps.hand.erase(c)
+			ps.gy.erase(c)
+			events.append_array(s._special(p, c, "effect"))
+		"skull_sent":
+			var rs_k: Array = (ps.hand + ps.deck).filter(func(x): return str(SpellRules.spec(x).get("k", "")) == "ritual" \
+					and not ps.deck.filter(func(m): return m.is_monster() and m.frame() == "ritual" and str(x.data.get("desc", "")).contains("\"" + m.cname() + "\"")).is_empty())
+			if int(ps.once_names.get("Skull#sent", -1)) != s.turn and not rs_k.is_empty() and s.choose_option(p, Loc.t("%s: send a Ritual Spell to the GY to add a Ritual Monster?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["Skull#sent"] = s.turn
+				var r_k = s.pick1(p, Loc.t("%s: send which Ritual Spell?") % name, rs_k, rs_k[0], c)
+				var dk_k: bool = ps.deck.has(r_k)
+				ps.hand.erase(r_k)
+				ps.deck.erase(r_k)
+				s._to_gy(ps, r_k)
+				events.append({"type": "mill", "player": p, "card": r_k, "deck": ps.deck.size()})
+				if dk_k:
+					s._shuffle(ps.deck)
+				var m_k: Array = ps.deck.filter(func(m): return m.is_monster() and m.frame() == "ritual" and str(r_k.data.get("desc", "")).contains("\"" + m.cname() + "\""))
+				if not m_k.is_empty():
+					events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which Ritual Monster?") % name, m_k, s._best_monsters(m_k, 1)[0], c)))
+		"celtic_draw":
+			if int(ps.once_names.get("Celtic#draw", -1)) != s.turn and not ps.hand.filter(func(h): return SpellRules.mentions_ld(h) or h.cname() == "Light and Darkness Ritual").is_empty() \
+					and ps.deck.size() >= 3 and s.choose_option(p, Loc.t("%s: reveal your hand to draw 3, then discard 2?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["Celtic#draw"] = s.turn
+				ps.once_names["#ed_once"] = s.turn
+				events.append(_ev(p, c, Loc.t("%s: your hand is revealed") % name))
+				events.append_array(s._draw(p, 3))
+				var hd_c: Array = ps.hand.duplicate()
+				hd_c.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+				for th in s.choose(p, Loc.t("%s: discard 2 cards") % name, hd_c, mini(2, hd_c.size()), hd_c.slice(0, 2), false, c):
+					ps.hand.erase(th)
+					th.set_meta("from_hand", true)
+					s._to_gy(ps, th)
+					events.append({"type": "discard", "player": p, "card": th})
+		"celtic":
+			ps.once_names["Celtic#ss"] = s.turn
+			ps.field[ps.field.find(c)] = null
+			s._to_gy(ps, c)
+			events.append({"type": "tribute", "player": p, "card": c})
+			events.append_array(s._monster_left(c))
+			var r_c: Array = ps.hand.filter(func(h): return h.is_monster() and h.frame() == "ritual" and SpellRules.mentions_ld(h))
+			if not r_c.is_empty():
+				var t_rc = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, r_c, s._best_monsters(r_c, 1)[0], c)
+				ps.hand.erase(t_rc)
+				events.append_array(s._special(p, t_rc, "effect"))
+				events.append_array(on_summon(s, p, t_rc, "special"))
+		"ms_search":
+			ps.once_names["MindShuffle#1"] = s.turn
+			var ld_m: Array = ps.deck.filter(func(x): return x.is_monster() and SpellRules.mentions_ld(x))
+			events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which monster?") % name, ld_m, s._best_monsters(ld_m, 1)[0], c)))
+			if not ps.hand.is_empty():
+				var hd_m: Array = ps.hand.duplicate()
+				hd_m.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+				var th_m = s.pick1(p, Loc.t("%s: discard which card?") % name, hd_m, hd_m[0], c)
+				ps.hand.erase(th_m)
+				th_m.set_meta("from_hand", true)
+				s._to_gy(ps, th_m)
+				events.append({"type": "discard", "player": p, "card": th_m})
+		"ldr_back":
+			ps.once_names["LDR#gy"] = s.turn
+			var mates: Array = ps.gy.filter(func(g): return SpellRules.mentions_ld(g) and s.gy_targetable(g) and not s.necro_holds(g))
+			var mt = s.pick1(p, Loc.t("%s: add which card with it?") % name, mates, mates[0], c)
+			events.append_array(_to_hand(s, p, c))
+			events.append_array(_to_hand(s, p, mt))
 		"ssr_gy":
 			ps.once_names["SSR#gy"] = s.turn
 			events.append_array(s._banish(c))

@@ -154,6 +154,7 @@ func _ready() -> void:
 		_test_catch_up()
 		_test_gem_knight()
 		_test_chaos()
+		_test_light_darkness()
 		await _test_album()
 		_test_save_slots()
 		_test_turbo_setup()
@@ -9955,6 +9956,76 @@ func _test_lightsworn() -> void:
 
 
 ## 0.34.2.5: the cards the families were missing, and the fixes to Aurkus, Minerva, Thunder Lord, Dark Golem and the Castle.
+func _test_light_darkness() -> void:
+	# Light and Darkness Ritual: GY monsters banished as material.
+	var s := _main_ready(7801)
+	s.players[0].hand.clear()
+	s.players[0].gy.clear()
+	var g1 := _in(s, 0, "Gaia The Fierce Knight", "gy")
+	_in(s, 0, "Beginning Knight", "gy")
+	var sold := _in(s, 0, "Black Luster Soldier - Soldier of Light and Darkness", "hand")
+	s.activate(0, _rst(s, 0, "Light and Darkness Ritual"))
+	check(s.players[0].field.has(sold) and s.players[0].banished.has(g1), "Light and Darkness Ritual: Soldier from GY materials")
+	# Soldier of Light and Darkness: Raigeki doesn't touch it, battle doesn't destroy it.
+	s.current = 1
+	s.activate(1, _rst(s, 1, "Raigeki"))
+	check(s.players[0].field.has(sold), "Soldier of Light and Darkness: unaffected by Raigeki")
+	# Griffoh: the whole Tribute for a Level 8 Ritual Monster.
+	s = _main_ready(7802)
+	s.players[0].hand.clear()
+	_in(s, 0, "Griffoh", "hand")
+	var mdc := _in(s, 0, "Magician of Dark Chaos - Black Chaos", "hand")
+	s.activate(0, _rst(s, 0, "Light and Darkness Ritual"))
+	check(s.players[0].field.has(mdc), "Griffoh: enough for Magician of Dark Chaos")
+	# Magician of Dark Chaos: your Spells/Traps can't be destroyed by the opponent.
+	var st := _rst(s, 0, "Mind Shuffle", "set")
+	s.current = 1
+	s.effect_by = 1
+	s._destroy_st(st)
+	s.effect_by = -1
+	check(s.players[0].spells.has(st), "Magician of Dark Chaos: Mind Shuffle stays")
+	# Black Chaos: shuffle a Spellcaster Ritual Monster from the GY in.
+	s = _main_ready(7803)
+	s.players[0].hand.clear()
+	s.players[0].gy.clear()
+	_in(s, 0, "Magician of Black Chaos", "gy")
+	var bc := _in(s, 0, "Black Chaos", "hand")
+	check(EffectRunner.can_special_hand(s, 0, bc), "Black Chaos: can come out")
+	s.special_from_hand(0, bc)
+	check(s.players[0].field.has(bc), "Black Chaos: Special Summoned")
+	# Celtic Mystic: Tribute it for a Light and Darkness Ritual Monster.
+	s = _main_ready(7804)
+	s.players[0].hand.clear()
+	var cm := _mon(s, 0, "Celtic Mystic", 0)
+	var sold2 := _in(s, 0, "Black Luster Soldier - Soldier of Light and Darkness", "hand")
+	s.ignite(0, cm)
+	check(s.players[0].field.has(sold2), "Celtic Mystic: Soldier of Light and Darkness from the hand")
+	# Skull Archfiend of Chaos: 3 cards back, it comes out.
+	s = _main_ready(7805)
+	s.players[0].gy.clear()
+	var sk := _in(s, 0, "Skull Archfiend of Chaos", "gy")
+	_in(s, 0, "Light and Darkness Ritual", "gy")
+	_in(s, 0, "Celtic Mystic", "gy")
+	_in(s, 0, "Pot of Greed", "gy")
+	check(s.gy_effects(0).has(sk), "Skull Archfiend: ready in the GY")
+	s.gy_ignite(0, sk)
+	check(s.players[0].field.has(sk) and s.players[0].gy.is_empty(), "Skull Archfiend: out, 3 cards back in the Deck")
+	# Chaos Magical Hats: Spells become face-down monsters, and the opponent's Raigeki hits one hat.
+	s = _main_ready(7806)
+	s.current = 1
+	_mon(s, 0, "Magician of Dark Chaos - Black Chaos", 0)
+	for n in ["Pot of Greed", "Raigeki", "Dark Hole"]:
+		_in(s, 0, n, "deck")
+	var hats := _rst(s, 0, "Chaos Magical Hats", "set")
+	var rg := _rst(s, 1, "Raigeki")
+	s.chain_add(1, rg, null, "open", null)
+	check(SpellRules.fits(s, 0, hats, "chain", s.chain.back()), "Chaos Magical Hats: answers Raigeki")
+	s.chain_add(0, hats, null, "chain", s.chain.back())
+	s.chain_resolve()
+	var downs := s.players[0].monsters().filter(func(m): return not m.face_up).size()
+	check(downs == 3, "Chaos Magical Hats: 3 face-down monsters left after one is destroyed (%d)" % downs)
+
+
 func _test_chaos() -> void:
 	# Chaos Form: Blue-Eyes White Dragon banished from the GY covers the Levels exactly.
 	var s := _main_ready(7701)

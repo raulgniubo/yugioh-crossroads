@@ -5,6 +5,15 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.34.4.5
+
+**Chaos, part 2: the Light and Darkness Ritual cards.** 10 new cards, so the game now has **1,956 cards**, every one working and obtainable. The Chaos family is complete at 69 cards.
+
+- **The cards:** Light and Darkness Ritual, Black Luster Soldier - Soldier of Light and Darkness, Magician of Dark Chaos - Black Chaos, Black Chaos, Skull Archfiend of Chaos, Celtic Mystic, Griffoh, Mind Shuffle, Chaos Mystic Box and Chaos Magical Hats. They are in the Envoys of Chaos pack.
+- **New engine pieces:** Spells and Traps turned into face-down monsters that turn back into cards when they leave the field (Chaos Magical Hats), an opponent's effect replaced by a different one, Quick Effects of face-up Continuous Traps, Spells/Traps protected from the opponent's destroy and banish effects, "unaffected while you have a Ritual Spell in your GY", "the next damage you take becomes 0", a monster that is the whole Ritual Tribute by itself (Griffoh), and "only 1 Special Summon from the Extra Deck this turn".
+
+Not checked: played by the test duels, not watched.
+
 ## What is in 0.34.4
 
 **Chaos: Black Luster Soldier, Gaia the Fierce Knight and the Chaos monsters, 59 cards.** 48 of them are new, so the game now has **1,946 cards**, every one working and obtainable.
@@ -14,8 +23,6 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 - **Envoys of Chaos:** a family pack (Family tab, opens in the Duel Monsters era, sold in Domino) and a 40-card theme deck with an Extra Deck.
 - **Duelist:** the Domino High Teacher now duels with the Chaos deck.
 - Fixed: an effect that triggers when a monster is Tributed could pick the very monster being Tribute Summoned.
-
-Coming next in the same family: the Light and Darkness Ritual cards (Soldier of Light and Darkness, Magician of Dark Chaos, Black Chaos, Chaos Magical Hats and the cards around them).
 
 Not checked: played by the test duels (the Chaos deck won 2 of 8 against story decks), not watched.
 
