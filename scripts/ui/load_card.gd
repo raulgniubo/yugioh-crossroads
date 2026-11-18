@@ -36,7 +36,12 @@ func setup(key: String, title: String, sub: String) -> void:
 	_key = key if PLACES.has(key) else "domino"
 	_tip = Loc.t(TIPS[randi() % TIPS.size()])
 	var col: Color = PLACES[_key]["color"]
+	# The old lines are taken out right now, not at the end of the frame: while they were still
+	# there the new ones could not have their names ("title", "tip"...), the layout below found
+	# the old ones, and from the second loading card on everything piled up in the top left
+	# corner with the tip running down the edge one letter per line.
 	for c in get_children():
+		remove_child(c)
 		c.queue_free()
 	var era := UITheme.label(Loc.t(str(PLACES[_key]["era"])), 26, col, UITheme.title_font())
 	era.position = Vector2(110, 0)

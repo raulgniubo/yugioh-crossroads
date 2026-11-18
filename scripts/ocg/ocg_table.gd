@@ -741,11 +741,18 @@ func _ask_chain(m: Dictionary):
 		return OcgDuel.i32(-1)
 	var forced := int(m["forced"]) != 0
 	if forced:
-		# Things that must happen now, with only their order left open (in the End Phase: Swords of
-		# Revealing Light counts its turn, an effect that lasted "this turn" runs out). The order is
-		# taken as given, as EDOPro does by default; it used to stop the duel with a box that
-		# looked like you were asked to activate those cards.
-		return OcgDuel.i32(0)
+		# Something must happen now (in the End Phase: Swords of Revealing Light counts its turn).
+		# The engine lists it together with the cards you could also activate (your Set Waboku),
+		# and the box looked like an offer to activate all of them, every End Phase. What must
+		# happen is done for you, in the order given, as EDOPro does by default; your Set cards
+		# are then offered the usual way, when there is a reason to.
+		if ch.size() == 1:
+			return OcgDuel.i32(0)
+		var listed := d.cards_of(ch)
+		for i in ch.size():
+			var lc = listed[i]
+			if int(ch[i].get("mode", 0)) != 0 or (lc != null and lc.face_up and _on_field(lc)):
+				return OcgDuel.i32(i)
 	if not forced and int(m["spe"]) == 0 and not s.hud.phase_prompts:
 		return OcgDuel.i32(-1)
 	var was: bool = s._flow
