@@ -369,7 +369,8 @@ const DISTRICTS := {
 				"lines": ["Every stone in my window was cut by hand. Two plain pieces, one brilliant result.", "My deck works the same way. Care to see it shine?"],
 				"duel": {"deck": "deck_gem_knight", "difficulty": 2, "intro": "Let's see how you hold up under pressure."}},
 			{"id": "hl_boy", "char": "", "model": "student_boy", "name": "Number Hunter Fan", "color": Color("7cc4ff"), "pos": Vector3(-17, 0, -5), "face": 1.5,
-				"lines": ["Did you see Kite's Galaxy-Eyes? Unreal.", "Overlay two Level 4 monsters and you can Xyz Summon. Try it at the ring."]},
+				"lines": ["Did you see Kite's Galaxy-Eyes? Unreal.", "Overlay two Level 4 monsters and you can Xyz Summon. I do it with Warriors. Want to see?"],
+				"duel": {"deck": "deck_heroic", "difficulty": 2, "intro": "Two Level 4 Warriors. You know what comes next!"}},
 		],
 	},
 }

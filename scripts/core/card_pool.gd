@@ -8,8 +8,23 @@ extends RefCounted
 
 ## Single cards added after the pool was written down, by the era pack that hands them out.
 const ADDED := {
-	"Duel Monsters": ["Crass Clown", "Dream Clown"],     # (what Bickuribox is made of)
-	"GX": ["Ambulanceroid"],                              # (what Ambulance Rescueroid is made of)
+	# Crass Clown and Dream Clown are what Bickuribox is made of; Ambulanceroid, Ambulance Rescueroid.
+	# The rest of each era's list are the last cards its story duelists are known for
+	# (SignatureDecks.WISH): single cards that belong to no family.
+	"Duel Monsters": ["Crass Clown", "Dream Clown",
+		"Magical Hats", "Blue Flame Swordsman", "Kunai with Chain", "Magical Arm Shield", "Shadow of Eyes", "Dark Spirit of the Silent", "Dark Designator"],
+	"GX": ["Ambulanceroid",
+		"Fusion Gate", "Mirror Gate", "Bubble Shuffle", "Common Soul", "Elemental HERO Divine Neos", "Infernal Incinerator", "Ojama Country",
+		"Chthonian Blast", "Cyber Dragon Zwei", "Future Fusion", "Prima Light", "Vehicroid Connection Zone", "Destiny HERO - Diamond Dude",
+		"Destiny HERO - Departed", "D - Time", "Guard Penalty"],
+	"5D's": [
+		"Equip Shot", "Confusion Chaff", "Trust Guardian", "Force Resonator", "Trap Eater", "Blackwing - Aurora the Northern Lights",
+		"Blackwing - Abrolhos the Megaquake", "Black Return", "Fake Feather", "Black Garden", "Ivy Shackles", "Plant Food Chain", "Vengeful Servant",
+		"Overdoom Line", "Dark Tuner Nightmare Hand", "Phantom Hand", "Gatling Ogre"],
+	"ZEXAL": [
+		"Dododo Bot", "Double or Nothing!", "Guard Go!", "Number 19: Freezadon", "Number 99: Utopic Dragon", "Scrap Shark", "Xyz Remora",
+		"Torrential Reborn", "Explosive Urchin", "Full-Armored Xyz", "Xyz Unit", "Message in a Bottle", "Eternal Galaxy", "Malicevorous Spoon",
+		"Don Thousand's Throne", "Number C5: Chaos Chimera Dragon"],
 	# Three Fusion Monsters the shop's theme decks always played, but no pack handed out:
 	"Vault": ["Twin-Headed Thunder Dragon", "Rabid Horseman", "Kwagar Hercules"],
 }

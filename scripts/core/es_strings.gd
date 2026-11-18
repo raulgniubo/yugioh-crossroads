@@ -6742,4 +6742,9 @@ const ES := {
 	"Dragon Ravine sends Phalanx to the Graveyard. Dux equips it on arrival, Phalanx hops off as a Tuner, and the two make Vajrayana, who equips Phalanx again and doubles its own ATK.": "Dragon Ravine manda a Phalanx al Cementerio. Dux se lo equipa al llegar, Phalanx salta como Cantante, y los dos forman a Vajrayana, que se vuelve a equipar a Phalanx y duplica su propio ATK.",
 	"You duel too? Show me. My riders come with their own dragons. If you're boring I'm leaving.": "¿Tú también duelas? A ver. Mis jinetes traen sus propios dragones. Si eres aburrido, me voy.",
 	"Don't be boring! Riders, mount up!": "¡No seas aburrido! ¡Jinetes, a montar!",
+	"Heroic Challengers": "Desafiantes Heroicos",
+	"The Heroic Challengers: Level 4 Warriors that call each other out and overlay into the Heroic Champions. Excalibur doubles to 4000 ATK, Rhongomyniad locks the whole field, and several of them get stronger when your Life Points drop to 500.": "Los Heroic Challenger: Guerreros de Nivel 4 que se llaman unos a otros y se superponen para formar a los Heroic Champion. Excalibur se duplica a 4000 ATK, Rhongomyniad bloquea todo el Campo, y varios se vuelven más fuertes cuando tus Life Points bajan a 500.",
+	"Double Lance brings its twin, Thousand Blades calls another Heroic from the Deck, and any two Level 4 Warriors become Excalibur: detach both materials and it attacks at 4000.": "Double Lance trae a su gemelo, Thousand Blades llama a otro Heroic del Deck, y dos Guerreros de Nivel 4 cualesquiera se convierten en Excalibur: desacopla ambos materiales y ataca con 4000.",
+	"Overlay two Level 4 monsters and you can Xyz Summon. I do it with Warriors. Want to see?": "Superpón dos monstruos de Nivel 4 y puedes Invocar por Xyz. Yo lo hago con Guerreros. ¿Quieres verlo?",
+	"Two Level 4 Warriors. You know what comes next!": "Dos Guerreros de Nivel 4. ¡Ya sabes lo que viene!",
 }

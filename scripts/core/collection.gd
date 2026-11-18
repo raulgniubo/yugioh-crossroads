@@ -33,6 +33,7 @@ const PACKS := [
 	{"key": "Vault", "tab": 0, "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
 	{"key": "legends", "tab": 0, "name": "Monster Legends", "color": Color("e8b04a"), "blurb": "Normal Monsters from every era: hundreds of them, from the classics to the rare big ones."},
 	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen, her forms and the cards around her. Only the ones the story has already handed you, up to three of each."},
+	{"key": "heroic", "tab": 1, "name": "Heroic Challengers", "color": Color("e0563c"), "family": true, "blurb": "The Heroic Challengers: Level 4 Warriors that call each other out and overlay into the Heroic Champions. Excalibur doubles to 4000 ATK, Rhongomyniad locks the whole field, and several of them get stronger when your Life Points drop to 500."},
 	{"key": "dragunity", "tab": 1, "name": "Dragunity Legion", "color": Color("58b8d8"), "family": true, "blurb": "The Dragunity: winged riders who wear small Dragons as equipment. The Dragon jumps off the rider as a Tuner, and the pair become a Dragunity Knight on the spot. Dragon Ravine feeds the Graveyard they equip from."},
 	{"key": "gladiator", "tab": 1, "name": "Gladiator's Assault", "color": Color("c8843c"), "family": true, "blurb": "The Gladiator Beasts: each one that fights goes back into the Deck at the end of the Battle Phase and tags in a different one, which uses its effect as it arrives. Two or three of them on the field shuffle together into Gyzarus or Heraklinos without Polymerization."},
 	{"key": "toon", "tab": 1, "name": "Toon Kingdom", "color": Color("f2a03c"), "family": true, "blurb": "The Toons: cartoon copies of famous monsters that walk past the other side's monsters and attack directly while Toon World is open. Toon Kingdom keeps them from being destroyed, and Table of Contents finds whatever page you need."},
@@ -98,6 +99,7 @@ const THEME_DECKS := [
 	{"key": "deck_toon", "art": "arcane", "cover": "Toon Dark Magician", "color": Color("f2a03c"), "era": "Duel Monsters", "blurb": "Open Toon World or Toon Kingdom first. Then Toon Harpie Lady and Toon Cyber Dragon come down for free, Toon Dark Magician calls another Toon from the Deck, and all of them attack directly."},
 	{"key": "deck_gladiator", "art": "warriors", "cover": "Gladiator Beast Gyzarus", "color": Color("c8843c"), "era": "GX", "blurb": "Attack with anything, then tag out: Laquari comes in at 2100, Bestiari destroys a Spell or Trap, Darius brings one back from the Graveyard. Bestiari plus any other Gladiator Beast becomes Gyzarus, who destroys two cards."},
 	{"key": "deck_dragunity", "art": "dragons", "cover": "Dragunity Knight - Vajrayana", "color": Color("58b8d8"), "era": "5D's", "blurb": "Dragon Ravine sends Phalanx to the Graveyard. Dux equips it on arrival, Phalanx hops off as a Tuner, and the two make Vajrayana, who equips Phalanx again and doubles its own ATK."},
+	{"key": "deck_heroic", "art": "warriors", "cover": "Heroic Champion - Excalibur", "color": Color("e0563c"), "era": "ZEXAL", "blurb": "Double Lance brings its twin, Thousand Blades calls another Heroic from the Deck, and any two Level 4 Warriors become Excalibur: detach both materials and it attacks at 4000."},
 	{"key": "deck_monarchs", "art": "shadow", "cover": "Caius the Mega Monarch", "color": Color("e0c070"), "era": "GX", "blurb": "Squires and Vassals step out so a Monarch can be Tribute Summoned, then a Mega Monarch Tributes that one. Every landing clears something off their side."},
 	{"key": "deck_chaos", "art": "warriors", "cover": "Black Luster Soldier - Super Soldier", "color": Color("c8b0ff"), "era": "Duel Monsters", "blurb": "Super Soldier Ritual turns two Level 4 Knights into Black Luster Soldier, and the Knights give him their powers. Gaia rides in when he falls, and Chaos Form brings back the old legends."},
 	{"key": "deck_gem_knight", "art": "warriors", "cover": "Gem-Knight Master Diamond", "color": Color("7ae0ff"), "era": "ZEXAL", "blurb": "Gem-Knight Fusion turns two plain knights into a Fusion Monster, Brilliant Fusion fuses straight from the Deck, and Gem-Knight Fusion comes back from the Graveyard to do it again."},
@@ -261,6 +263,13 @@ const FAMILIES := {
 		"Dragunity Knight - Areadbhair", "Dragunity Knight - Areus", "Dragunity Knight - Ascalon", "Dragunity Knight - Barcha",
 		"Dragunity Knight - Gae Bulg", "Dragunity Knight - Gae Dearg", "Dragunity Knight - Gormfaobhar", "Dragunity Knight - Luin",
 		"Dragunity Knight - Trident", "Dragunity Knight - Vajrayana", "Dragunity Legion", "Dragunity Oubliette"]},
+	"heroic": {"era": "ZEXAL", "deck": "deck_heroic", "cards": [
+		"Heroic Challenger - Ambush Soldier", "Heroic Challenger - Clasp Sword", "Heroic Challenger - Knuckle Sword",
+		"Heroic Challenger - Assault Halberd", "Heroic Challenger - Double Lance", "Heroic Challenger - Extra Sword", "Heroic Challenger - Morning Star",
+		"Heroic Challenger - Night Watchman", "Heroic Challenger - Spartan", "Heroic Challenger - Swordshield", "Heroic Challenger - Thousand Blades",
+		"Heroic Challenger - War Hammer", "Heroic Call", "Heroic Chance", "Heroic Envoy", "Heroic Advance", "Heroic Gift", "Heroic Retribution Sword",
+		"Heroic Champion - Claivesolish", "Heroic Champion - Excalibur", "Heroic Champion - Gandiva", "Heroic Champion - Jarngreipr",
+		"Heroic Champion - Kusanagi", "Heroic Champion - Magnum Excalibur", "Number 86: Heroic Champion - Rhongomyniad"]},
 }
 
 

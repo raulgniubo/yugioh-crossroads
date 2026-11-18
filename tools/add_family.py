@@ -8,7 +8,7 @@ spec.json:
   key, era ("Duel Monsters" | "GX" | "5D's" | "ZEXAL"), cards [names],
   pack {name, color, blurb}, deck {key, name, art, cover, blurb, cards {name: n}, extra {name: n}},
   worlds [shops that sell the pack], stage (the story stage that opens it, like its era's),
-  npc {id, old_deck, lines [..] (optional), swap [[old line, new line], ..] (optional), intro (optional)}
+  npc {id, old_deck | new_duel {difficulty, intro} (for someone who has no duel yet), lines [..] (optional), swap [[old line, new line], ..] (optional), intro (optional)}
 """
 import json, re, sys
 ROOT = __file__.rsplit('/tools/', 1)[0]
@@ -63,7 +63,18 @@ def main(spec):
     edit('scripts/core/unlocks.gd', lambda s: s.replace('const PACK_STAGE := {', 'const PACK_STAGE := {%s: %d, ' % (q(key), spec['stage']), 1))
     npc = spec['npc']
     def roam(s):
-        a = s.index('{"id": %s' % q(npc['id'])); b = s.index('"duel": {', a); c = s.index('}}', b)
+        a = s.index('{"id": %s' % q(npc['id']))
+        if npc.get('new_duel'):
+            # someone who stands in that world already and has never dueled: they get this deck
+            e = s.index(']}', a)
+            assert '"duel": {' not in s[a:e], 'that duelist already has a duel'
+            nd = npc['new_duel']
+            if npc.get('lines'):
+                head = re.sub(r'"lines": \[.*?\]$', lambda _: '"lines": [%s]' % ', '.join(q(l) for l in npc['lines']), s[a:e + 1], count=1, flags=re.S)
+            else:
+                head = s[a:e + 1]
+            return s[:a] + head + ',\n\t\t\t\t"duel": {"deck": %s, "difficulty": %d, "intro": %s}' % (q(dk), int(nd.get('difficulty', 1)), q(nd.get('intro', ''))) + s[e + 1:]
+        b = s.index('"duel": {', a); c = s.index('}}', b)
         block = s[a:c]
         assert block.count('{"id": ') == 1, 'that duelist has no duel of their own'
         assert '"deck": %s' % q(npc['old_deck']) in block, 'the duelist does not play ' + npc['old_deck']

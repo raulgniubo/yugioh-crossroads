@@ -33,7 +33,15 @@ func _ready() -> void:
 	var want_extras: Array = extras
 	var fill_mains: Array = mains
 	var focus_deck := ""
-	if focus_key != "":
+	if focus_key == "added":
+		# (the single cards named in CardPool.ADDED, in decks filled from the whole pool)
+		var ids := {}
+		for nm in CardPool.added_names():
+			ids[int(CardData.NAME_TO_ID.get(str(nm).to_lower(), 0))] = true
+		want_mains = mains.filter(func(id): return ids.has(id))
+		want_extras = extras.filter(func(id): return ids.has(id))
+		print("added singles: ", want_mains.size(), " + ", want_extras.size(), " cards")
+	elif focus_key != "":
 		var fam: Dictionary = Collection.FAMILIES[focus_key]
 		var ids := {}
 		for nm in fam["cards"]:
