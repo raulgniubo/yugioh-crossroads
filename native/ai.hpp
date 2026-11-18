@@ -12,6 +12,7 @@
 #include <cmath>
 #include <map>
 #include <set>
+#include <atomic>
 
 struct Sim {
 	Duel d;
@@ -24,6 +25,8 @@ struct Sim {
 	int phase = 0;
 	bool retry = false;
 	long steps = 0;
+	int hint[2] = { 0, 0 };          // the last "select..." line each player was given
+	int attacker_seq[2] = { -1, -1 }; // the monster each player last declared an attack with
 	~Sim() { if(d.d) OCG_DestroyDuel(d.d); }
 };
 
@@ -46,6 +49,7 @@ static void sim_step(Sim& s) {
 			else if(t == 40 && l >= 2) { s.turns++; s.turn_player = buf[pos + 1]; }
 			else if(t == 41 && l >= 3) s.phase = buf[pos + 1] | (buf[pos + 2] << 8);
 			else if(t == 1) s.retry = true;
+			else if(t == 2 && l >= 11 && buf[pos + 1] == 3 && buf[pos + 2] < 2) { uint64_t hv; std::memcpy(&hv, buf + pos + 3, 8); s.hint[buf[pos + 2]] = (int)hv; }
 			else if(is_select(t)) { s.ask = parse_msg(buf + pos, l); s.has_ask = true; }
 			pos += l;
 		}
@@ -74,11 +78,25 @@ static std::unique_ptr<Sim> sim_replay(const History& h) {
 	for(auto& a : h.answers) {
 		sim_step(*s);
 		if(s->status != OCG_DUEL_STATUS_AWAITING) return s;
+		if(s->has_ask && s->ask.geti("t") == 10 && a.size() >= 4) {
+			int32_t v; std::memcpy(&v, a.data(), 4);
+			int p = (int)s->ask.geti("p");
+			if((v & 0xffff) == 1 && p >= 0 && p < 2) {
+				const JV* at = s->ask.get("attacks");
+				size_t i = (size_t)(v >> 16);
+				s->attacker_seq[p] = (at && i < at->a.size()) ? (int)at->a[i].geti("seq") : -1;
+			}
+		}
 		OCG_DuelSetResponse(s->d.d, a.data(), (uint32_t)a.size());
 	}
 	sim_step(*s);
 	return s;
 }
+
+static const CardRow* row_of(uint32_t code) { auto it = g_cards.find(code); return it == g_cards.end() ? nullptr : &it->second; }
+static int base_atk(uint32_t code) { auto* r = row_of(code); return r ? std::max(0, r->atk) : 0; }
+static int base_def(uint32_t code) { auto* r = row_of(code); return r ? std::max(0, r->def) : 0; }
+static uint32_t base_type(uint32_t code) { auto* r = row_of(code); return r ? r->type : 0; }
 
 // ---------------------------------------------------------------- what is on the table
 struct Mon { bool there = false; uint32_t code = 0; int pos = 0; int atk = 0, def = 0; uint32_t type = 0; int level = 0; };
@@ -87,6 +105,7 @@ struct Board {
 	int lp[2] = { 0, 0 };
 	int hand[2] = { 0, 0 }, deck[2] = { 0, 0 }, gy[2] = { 0, 0 }, extra[2] = { 0, 0 };
 	int st_set[2] = { 0, 0 }, st_up[2] = { 0, 0 };
+	int st_plain[2] = { 0, 0 };   // of the Set cards, the ones that are plain Spells (not Traps, not Quick-Play)
 	int max_atk(int p) const { int v = 0; for(auto& x : m[p]) if(x.there && (x.pos & 0x5)) v = std::max(v, x.atk); return v; }
 	int count(int p) const { int n = 0; for(auto& x : m[p]) if(x.there) n++; return n; }
 };
@@ -104,6 +123,25 @@ static Board read_board(Sim& s) {
 		b.deck[p] = q.u32(); b.hand[p] = q.u32(); b.gy[p] = q.u32(); q.u32(); b.extra[p] = q.u32(); q.u32();
 	}
 	for(int p = 0; p < 2; ++p) {
+		OCG_QueryInfo qs{}; qs.flags = 0x1 | 0x2; qs.con = (uint8_t)p; qs.loc = 0x08;
+		uint32_t l3 = 0;
+		auto* b3 = (const uint8_t*)OCG_DuelQueryLocation(s.d.d, &l3, &qs);
+		if(b3 && l3 >= 4) {
+			R r3(b3 + 4, l3 - 4);
+			for(int z = 0; z < 5 && r3.left() >= 2; ++z) {
+				uint32_t code = 0; uint32_t pos = 0;
+				for(;;) {
+					uint16_t size = r3.u16();
+					if(size == 0) break;
+					uint32_t flag = r3.u32();
+					size_t end = r3.pos + (size - 4);
+					if(flag == 0x80000000u) break;
+					if(flag == 0x1) code = r3.u32(); else if(flag == 0x2) pos = r3.u32();
+					if(end <= r3.n) r3.pos = end; else break;
+				}
+				if(code && !(pos & 0x5)) { uint32_t ty = base_type(code); if((ty & 0x2) && !(ty & 0x10000)) b.st_plain[p]++; }
+			}
+		}
 		OCG_QueryInfo qi{}; qi.flags = 0x1 | 0x8 | 0x10 | 0x20 | 0x100 | 0x200; qi.con = (uint8_t)p; qi.loc = 0x04;
 		uint32_t l2 = 0;
 		auto* b2 = (const uint8_t*)OCG_DuelQueryLocation(s.d.d, &l2, &qi);
@@ -130,7 +168,7 @@ static Board read_board(Sim& s) {
 	return b;
 }
 
-static double lp_worth(int lp) { return lp <= 0 ? 0.0 : 3200.0 * std::sqrt(std::min(lp, 16000) / 8000.0); }
+static double lp_worth(int lp) { if(lp <= 0) return 0.0; int v = std::min(lp, 16000); return 0.30 * v + 1600.0 * std::sqrt(v / 8000.0); }
 
 // How good the table is for `me`. Higher is better.
 static double evaluate(const Board& b, int me) {
@@ -148,9 +186,10 @@ static double evaluate(const Board& b, int me) {
 		else if(x.pos & 0x4) v -= 0.55 * x.def + 0.3 * x.atk + 250;
 		else v -= 700;
 	}
-	v += 560.0 * b.hand[me] - 540.0 * b.hand[op];
-	v += 320.0 * b.st_set[me] - 400.0 * b.st_set[op];
-	v += 260.0 * b.st_up[me] - 280.0 * b.st_up[op];
+	v += 520.0 * b.hand[me] - 520.0 * b.hand[op];
+	// Its own Set cards it knows: a Trap or a Quick-Play is better Set than held, a plain Spell is not.
+	v += 600.0 * (b.st_set[me] - b.st_plain[me]) + 470.0 * b.st_plain[me] - 640.0 * b.st_set[op];
+	v += 420.0 * b.st_up[me] - 440.0 * b.st_up[op];
 	if(b.deck[me] == 0) v -= 2500;
 	if(b.deck[op] == 0) v += 2500;
 	return v;
@@ -167,10 +206,6 @@ static std::vector<uint8_t> bytes_pick(const std::vector<int>& idx) {
 }
 static std::vector<uint8_t> bytes_pick_one(int idx) { std::vector<uint8_t> b(8); int32_t a = 1, i = idx; std::memcpy(b.data(), &a, 4); std::memcpy(b.data() + 4, &i, 4); return b; }
 
-static const CardRow* row_of(uint32_t code) { auto it = g_cards.find(code); return it == g_cards.end() ? nullptr : &it->second; }
-static int base_atk(uint32_t code) { auto* r = row_of(code); return r ? std::max(0, r->atk) : 0; }
-static int base_def(uint32_t code) { auto* r = row_of(code); return r ? std::max(0, r->def) : 0; }
-static uint32_t base_type(uint32_t code) { auto* r = row_of(code); return r ? r->type : 0; }
 
 struct PMemo {
 	int turn = -1, who = -1, acts = 0, sets = 0;
@@ -242,8 +277,25 @@ static std::vector<uint8_t> policy_sum(const JV& m) {
 	return bytes_pick(all);
 }
 
+// Remember what an answer meant, for the question that follows it (an attack, then its target).
+static void note_answer(Sim& s, const JV& ask, const std::vector<uint8_t>& ans) {
+	if(ask.geti("t") != 10 || ans.size() < 4) return;
+	int32_t v; std::memcpy(&v, ans.data(), 4);
+	int p = (int)ask.geti("p");
+	if(p < 0 || p > 1) return;
+	if((v & 0xffff) == 1) {
+		const JV* at = ask.get("attacks");
+		size_t i = (size_t)(v >> 16);
+		s.attacker_seq[p] = (at && i < at->a.size()) ? (int)at->a[i].geti("seq") : -1;
+	}
+}
+
 // The answer the steady policy gives. `safe`: the plainest legal answer (after a refusal).
-static std::vector<uint8_t> policy(Sim& s, const JV& m, PMemo& mm, bool safe, uint64_t& rnd) {
+// mode 0: plays everything it holds (the basic opponent). mode 1: the line a duel is played out
+// with when the thinking opponent weighs an answer: bring out monsters, attack what can be
+// beaten, set Traps, and use a card's effect only in answer to something. Nothing is thrown away
+// in that line, so what an answer is worth is not blurred by what comes after it.
+static std::vector<uint8_t> policy(Sim& s, const JV& m, PMemo& mm, bool safe, uint64_t& rnd, int mode = 0) {
 	int t = (int)m.geti("t");
 	int p = (int)m.geti("p");
 	mm.fresh(s.turns, s.turn_player);
@@ -271,8 +323,25 @@ static std::vector<uint8_t> policy(Sim& s, const JV& m, PMemo& mm, bool safe, ui
 			const JV& ns = arr(m, "summon");
 			const JV& ms = arr(m, "mset");
 			best = -1;
-			for(size_t i = 0; i < ns.a.size(); ++i)
-				if(best == -1 || base_atk((uint32_t)ns.a[i].geti("code")) > base_atk((uint32_t)ns.a[best].geti("code"))) best = (int)i;
+			// What a Tribute Summon would cost: its weakest monsters, one for Level 5-6, two from Level 7.
+			std::vector<int> mine;
+			for(auto& x : b.m[p]) if(x.there) mine.push_back((x.pos & 0x5) ? x.atk : x.def / 2);
+			std::sort(mine.begin(), mine.end());
+			for(size_t i = 0; i < ns.a.size(); ++i) {
+				uint32_t code = (uint32_t)ns.a[i].geti("code");
+				if(mode == 1) {
+					auto* row = row_of(code);
+					int lvl = row ? (int)(row->level & 0xff) : 4;
+					size_t need = lvl >= 7 ? 2 : (lvl >= 5 ? 1 : 0);
+					if(need > 0 && mine.size() >= need) {
+						int paid = 0, top = 0;
+						for(size_t k = 0; k < need; ++k) { paid += mine[k] + 300; top = std::max(top, mine[k]); }
+						// Not worth it when it gives up as much as it brings.
+						if(base_atk(code) <= top || base_atk(code) + 300 < paid * 0.8) continue;
+					}
+				}
+				if(best == -1 || base_atk(code) > base_atk((uint32_t)ns.a[best].geti("code"))) best = (int)i;
+			}
 			if(best != -1 && !mm.done.count("ns")) {
 				mm.done.insert("ns");
 				uint32_t code = (uint32_t)ns.a[best].geti("code");
@@ -285,7 +354,7 @@ static std::vector<uint8_t> policy(Sim& s, const JV& m, PMemo& mm, bool safe, ui
 				return bytes_i32((best << 16) | 0);
 			}
 			const JV& ch = arr(m, "chains");
-			for(size_t i = 0; i < ch.a.size(); ++i) {
+			for(size_t i = 0; mode == 0 && i < ch.a.size(); ++i) {
 				std::string key = "ac" + std::to_string(ch.a[i].geti("code")) + "_" + std::to_string(ch.a[i].geti("desc"));
 				if(mm.done.count(key)) continue;
 				mm.done.insert(key);
@@ -336,6 +405,29 @@ static std::vector<uint8_t> policy(Sim& s, const JV& m, PMemo& mm, bool safe, ui
 		if(safe) return leave;
 		Board b = read_board(s);
 		int foes = b.count(1 - p);
+		if(mode == 1 && foes > 0) {
+			// Their biggest monster that can be beaten goes to the weakest of its monsters that beats it,
+			// so the strong ones are still there for what is left.
+			std::vector<int> order;
+			for(int z = 0; z < 7; ++z) if(b.m[1 - p][z].there && (b.m[1 - p][z].pos & 0x5)) order.push_back(z);
+			std::sort(order.begin(), order.end(), [&](int a, int c) { return b.m[1 - p][a].atk > b.m[1 - p][c].atk; });
+			for(int z : order) {
+				const Mon& f = b.m[1 - p][z];
+				int wall = (f.pos & 0x1) ? f.atk : f.def;
+				int pick_i = -1, pick_power = 1 << 30;
+				for(size_t i = 0; i < at.a.size(); ++i) {
+					int seq = (int)at.a[i].geti("seq");
+					if(seq > 6 || mm.skip.count(seq) || at.a[i].geti("direct") != 0) continue;
+					int power = b.m[p][seq].atk;
+					if(power > wall && power < pick_power) { pick_power = power; pick_i = (int)i; }
+				}
+				if(pick_i != -1) {
+					mm.skip[(int)at.a[pick_i].geti("seq")] = 1;
+					mm.target_seq = z;
+					return bytes_i32((pick_i << 16) | 1);
+				}
+			}
+		}
 		for(size_t i = 0; i < at.a.size(); ++i) {
 			int seq = (int)at.a[i].geti("seq");
 			if(seq > 6 || mm.skip.count(seq)) continue;
@@ -371,6 +463,22 @@ static std::vector<uint8_t> policy(Sim& s, const JV& m, PMemo& mm, bool safe, ui
 				if((int)list.a[i].geti("con") == 1 - p && ((int)list.a[i].geti("loc") & 0x7f) == 0x04 && (int)list.a[i].geti("seq") == want) return bytes_pick({ (int)i });
 		}
 		Board b = read_board(s);
+		if(s.hint[p] == 549 && s.attacker_seq[p] >= 0 && s.attacker_seq[p] < 7 && b.m[p][s.attacker_seq[p]].there) {
+			// An attack target: the biggest monster the attacker beats, else the one that costs it least.
+			int power = b.m[p][s.attacker_seq[p]].atk;
+			int pick = -1; double pick_v = -1e18;
+			for(size_t i = 0; i < list.a.size(); ++i) {
+				int con = (int)list.a[i].geti("con"), seq = (int)list.a[i].geti("seq");
+				if(con != 1 - p || ((int)list.a[i].geti("loc") & 0x7f) != 0x04 || seq > 6 || !b.m[con][seq].there) continue;
+				const Mon& f = b.m[con][seq];
+				double v;
+				if(!(f.pos & 0x5)) v = power >= 1600 ? 300 : -600;
+				else if(f.pos & 0x1) v = power > f.atk ? 1000 + f.atk : (power == f.atk ? -200 : -2000 - (f.atk - power));
+				else v = power > f.def ? 600 + f.def * 0.3 : (power == f.def ? -50 : -500 - (f.def - power));
+				if(v > pick_v) { pick_v = v; pick = (int)i; }
+			}
+			if(pick != -1) return bytes_pick({ pick });
+		}
 		std::vector<int> score(list.a.size());
 		for(size_t i = 0; i < list.a.size(); ++i) score[i] = card_power(b, ref_of(list.a[i]));
 		// Theirs first and the strongest of them; of mine, the weakest (it is usually a price).
@@ -388,6 +496,7 @@ static std::vector<uint8_t> policy(Sim& s, const JV& m, PMemo& mm, bool safe, ui
 		if(ch.a.empty()) return bytes_i32(-1);
 		if(m.geti("forced") != 0) return bytes_i32(0);
 		if(safe) return bytes_i32(-1);
+		if(mode == 1 && m.geti("spe") == 0) return bytes_i32(-1);
 		for(size_t i = 0; i < ch.a.size(); ++i) {
 			std::string key = std::to_string(ch.a[i].geti("code")) + "_" + std::to_string(ch.a[i].geti("desc"));
 			int used = mm.chains[key];
@@ -459,7 +568,7 @@ static std::vector<uint8_t> policy(Sim& s, const JV& m, PMemo& mm, bool safe, ui
 struct Roll { double score; bool ended; };
 
 // Play on with the steady policy for both sides until `until_turns` turns have started (or the duel ends).
-static Roll rollout(Sim& s, int me, int until_turns, uint64_t rnd, int max_steps) {
+static Roll rollout(Sim& s, int me, int until_turns, uint64_t rnd, int max_steps, int mode) {
 	PMemo memo[2];
 	int refused = 0;
 	for(int step = 0; step < max_steps; ++step) {
@@ -470,7 +579,8 @@ static Roll rollout(Sim& s, int me, int until_turns, uint64_t rnd, int max_steps
 		if(p < 0 || p > 1) break;
 		bool safe = s.retry;
 		if(safe && ++refused > 6) break;
-		auto ans = policy(s, s.ask, memo[p], safe, rnd);
+		auto ans = policy(s, s.ask, memo[p], safe, rnd, mode);
+		note_answer(s, s.ask, ans);
 		OCG_DuelSetResponse(s.d.d, ans.data(), (uint32_t)ans.size());
 		sim_step(s);
 	}
@@ -564,21 +674,76 @@ static std::vector<Cand> candidates(Sim& s, const JV& m, size_t cap) {
 }
 
 // ---------------------------------------------------------------- deciding
-struct Level { int worlds; size_t cap; int ms; int horizon; double slip; };
-// horizon: how many more turns start before the line is scored (1: to the end of this turn).
+struct Level { int worlds; size_t cap; int ms; int horizon; double slip; int deal; double bias; int mode; double margin; int threads; int deep; };
+// worlds: how many different deals of your hidden cards each answer is tried against (at most).
+// horizon: how many more turns start before a line is scored. deal: what is re-dealt (see
+// OCG_DuelDeterminize). margin: how much better than the steady answer another has to be.
+// deep: how many of the best answers get a second look, one more decision ahead (Extreme).
 static Level level_of(int level) {
+	Level lv;
 	switch(level) {
-	case 1: return { 1, 6, 700, 1, 0.22 };     // Normal
-	case 2: return { 3, 10, 2200, 2, 0.0 };    // Hard
-	default: return { 5, 14, 4500, 2, 0.0 };   // Extreme
+	case 1: lv = { 2, 6, 700, 2, 0.20, 31, 90.0, 1, 0.0, 2, 0 }; break;      // Normal
+	case 2: lv = { 6, 10, 1600, 2, 0.0, 31, 90.0, 1, 60.0, 4, 0 }; break;    // Hard
+	default: lv = { 12, 14, 3600, 2, 0.0, 31, 90.0, 1, 60.0, 4, 3 }; break;  // Extreme
 	}
+	// Dev: OCG_AI="worlds=4,cap=12,ms=3000,horizon=2,deal=31,bias=90,threads=1,deep=0" overrides, for tuning.
+	if(const char* env = std::getenv("OCG_AI")) {
+		std::string e(env);
+		auto val = [&](const char* key, double d) { auto p = e.find(std::string(key) + "="); return p == std::string::npos ? d : std::atof(e.c_str() + p + std::strlen(key) + 1); };
+		lv.worlds = (int)val("worlds", lv.worlds); lv.cap = (size_t)val("cap", (double)lv.cap); lv.ms = (int)val("ms", lv.ms);
+		lv.horizon = (int)val("horizon", lv.horizon); lv.deal = (int)val("deal", lv.deal); lv.bias = val("bias", lv.bias);
+		lv.mode = (int)val("mode", lv.mode); lv.margin = val("margin", lv.margin); lv.threads = (int)val("threads", lv.threads); lv.deep = (int)val("deep", lv.deep);
+	}
+	unsigned hw = std::thread::hardware_concurrency();
+	if(hw >= 2) lv.threads = std::min<int>(lv.threads, (int)hw - 1);
+	lv.threads = std::max(1, lv.threads);
+	return lv;
 }
 
-struct Decision { std::vector<uint8_t> bytes; int sims = 0; int cands = 0; double ms = 0; };
+struct Decision { std::vector<uint8_t> bytes; int sims = 0; int cands = 0; double ms = 0; std::string notes; };
 
 static uint64_t mix(uint64_t x) { x += 0x9E3779B97F4A7C15ull; x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ull; x = (x ^ (x >> 27)) * 0x94D049BB133111EBull; return x ^ (x >> 31); }
 
-static Decision decide(const History& h, int level, int time_ms, uint64_t seed) {
+static void world_seed(uint64_t seed, int w, uint64_t out[4]) {
+	out[0] = mix(seed + 77 * (uint64_t)w + 1); out[1] = mix(seed ^ (0xABCDEFull + w)); out[2] = mix(seed + 3 * (uint64_t)w); out[3] = mix(seed + 9);
+}
+
+// One try: the duel as it stands, your hidden cards re-dealt for world `w`, these answers given, then played out.
+static double one_try(const History& h, const Level& lv, uint64_t seed, int w, int me, int until,
+		const std::vector<std::vector<uint8_t>>& answers, std::vector<std::vector<uint8_t>>* record, std::unique_ptr<Sim>* keep) {
+	uint64_t ws[4];
+	world_seed(seed, w, ws);
+	auto sim = sim_replay(h);
+	if(!sim || !sim->has_ask) return 0.0;
+	if(lv.deal) OCG_DuelDeterminize(sim->d.d, (uint8_t)(1 - me), ws, (uint32_t)lv.deal);
+	for(auto& a : answers) {
+		if(!sim->has_ask || sim->winner != -1) break;
+		note_answer(*sim, sim->ask, a);
+		OCG_DuelSetResponse(sim->d.d, a.data(), (uint32_t)a.size());
+		sim_step(*sim);
+		if(sim->retry) return -5e5;      // (not a legal answer after all)
+	}
+	uint64_t rnd = ws[0] | 1;
+	if(record) {
+		// Play on with the steady policy until it is `me` to choose between at least two things again.
+		PMemo memo[2];
+		for(int guard = 0; guard < 300; ++guard) {
+			if(!sim->has_ask || sim->winner != -1 || sim->turns >= until) break;
+			int p = (int)sim->ask.geti("p");
+			if(p == me && candidates(*sim, sim->ask, 8).size() >= 2) { if(keep) *keep = std::move(sim); return 0.0; }
+			if(p < 0 || p > 1) break;
+			auto ans = policy(*sim, sim->ask, memo[p], sim->retry, rnd, lv.mode);
+			record->push_back(ans);
+			note_answer(*sim, sim->ask, ans);
+			OCG_DuelSetResponse(sim->d.d, ans.data(), (uint32_t)ans.size());
+			sim_step(*sim);
+		}
+		return 0.0;
+	}
+	return rollout(*sim, me, until, rnd, 1500, lv.mode).score;
+}
+
+static Decision decide(const History& h, int level, int time_ms, uint64_t seed, PMemo* lives = nullptr) {
 	Decision out;
 	auto t0 = std::chrono::steady_clock::now();
 	auto elapsed = [&]() { return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count(); };
@@ -587,45 +752,110 @@ static Decision decide(const History& h, int level, int time_ms, uint64_t seed) 
 	if(!root || !root->has_ask) { out.bytes = bytes_i32(0); return out; }
 	const JV m = root->ask;
 	int me = (int)m.geti("p");
+	PMemo* live = (lives && me >= 0 && me < 2) ? &lives[me] : nullptr;   // what the steady policy remembers of this turn
 	PMemo mm;
-	if(root->retry || level <= 0) { out.bytes = policy(*root, m, mm, root->retry, rnd); out.ms = elapsed(); return out; }
+	if(live) mm = *live;
+	if(root->retry || level <= 0) { out.bytes = policy(*root, m, mm, root->retry, rnd); if(live) *live = mm; out.ms = elapsed(); return out; }
 	Level lv = level_of(level);
-	if(time_ms > 0) lv.ms = time_ms;
+	if(time_ms > 0) { lv.ms = time_ms; lv.deep = 0; }
 	std::vector<Cand> cands = candidates(*root, m, lv.cap);
-	std::vector<uint8_t> base = policy(*root, m, mm, false, rnd);
-	if(cands.size() <= 1) { out.bytes = cands.size() == 1 ? cands[0].bytes : base; out.ms = elapsed(); return out; }
+	std::vector<uint8_t> base = policy(*root, m, mm, false, rnd, lv.mode);
+	if(live) { live->fresh(root->turns, root->turn_player); live->acts++; }
+	if(cands.size() <= 1) { out.bytes = cands.size() == 1 ? cands[0].bytes : base; if(live && out.bytes == base) *live = mm; out.ms = elapsed(); return out; }
 	// The steady policy's own answer is tried first, so a short clock still has it.
 	size_t base_i = cands.size();
 	for(size_t i = 0; i < cands.size(); ++i) if(cands[i].bytes == base) base_i = i;
-	if(base_i == cands.size()) { cands.insert(cands.begin(), { base, "base" }); base_i = 0; }
-	else if(base_i != 0) std::swap(cands[0], cands[base_i]), base_i = 0;
+	if(base_i == cands.size()) cands.insert(cands.begin(), { base, "base" });
+	else if(base_i != 0) std::swap(cands[0], cands[base_i]);
 	out.cands = (int)cands.size();
-	int until = root->turns + lv.horizon;
-	std::vector<double> total(cands.size(), 0.0);
-	std::vector<int> count(cands.size(), 0);
-	bool out_of_time = false;
-	for(int w = 0; w < lv.worlds && !out_of_time; ++w) {
-		uint64_t ws[4] = { mix(seed + 77 * (uint64_t)w + 1), mix(seed ^ (0xABCDEFull + w)), mix(seed + 3 * (uint64_t)w), mix(seed + 9) };
-		for(size_t c = 0; c < cands.size(); ++c) {
-			if(elapsed() > lv.ms && (w > 0 || c > 0)) { out_of_time = true; break; }
-			auto sim = sim_replay(h);
-			if(!sim || !sim->has_ask) continue;
-			OCG_DuelDeterminize(sim->d.d, (uint8_t)(1 - me), ws, 1 | 2 | 4 | 8 | 16);
-			OCG_DuelSetResponse(sim->d.d, cands[c].bytes.data(), (uint32_t)cands[c].bytes.size());
-			sim_step(*sim);
-			double sc;
-			if(sim->retry) sc = -5e5;      // (not a legal answer after all)
-			else sc = rollout(*sim, me, until, ws[0] ^ (c * 1315423911ull), 600).score;
-			total[c] += sc; count[c]++; out.sims++;
+	const int until = root->turns + lv.horizon;
+	const size_t N = cands.size();
+	const int W = lv.worlds;
+	// score[w][c], filled world by world on a few threads. Only worlds that every answer was tried in count,
+	// so every answer is judged on the same deals.
+	std::vector<std::vector<double>> score(W, std::vector<double>(N, 0.0));
+	std::vector<std::vector<char>> have(W, std::vector<char>(N, 0));
+	std::atomic<size_t> next{ 0 };
+	std::atomic<int> sims{ 0 };
+	auto worker = [&]() {
+		for(;;) {
+			size_t j = next.fetch_add(1);
+			if(j >= N * (size_t)W) break;
+			int w = (int)(j / N); size_t c = j % N;
+			if(w > 0 && elapsed() > lv.ms) break;
+			if(w == 0 && c > 0 && elapsed() > lv.ms * 2.5) break;
+			score[w][c] = one_try(h, lv, seed, w, me, until, { cands[c].bytes }, nullptr, nullptr);
+			have[w][c] = 1;
+			sims.fetch_add(1);
+		}
+	};
+	{
+		std::vector<std::thread> pool;
+		for(int i = 1; i < lv.threads; ++i) pool.emplace_back(worker);
+		worker();
+		for(auto& t : pool) t.join();
+	}
+	std::vector<double> total(N, 0.0);
+	std::vector<int> count(N, 0);
+	int full = 0;
+	for(int w = 0; w < W; ++w) {
+		bool all = true;
+		for(size_t c = 0; c < N; ++c) if(!have[w][c]) all = false;
+		if(!all) continue;
+		full++;
+		for(size_t c = 0; c < N; ++c) { total[c] += score[w][c]; count[c]++; }
+	}
+	if(full == 0) for(size_t c = 0; c < N; ++c) if(have[0][c]) { total[c] = score[0][c]; count[c] = 1; }
+	static const std::set<std::string> passive = { "ep", "bp", "m2", "pass", "n", "none", "done" };
+	std::vector<double> value(N, -1e18);
+	for(size_t c = 0; c < N; ++c)
+		if(count[c]) value[c] = total[c] / count[c] + (passive.count(cands[c].key) ? 0.0 : lv.bias);
+	// Between doing something and doing nothing that come out the same, it does something: what a
+	// search or a set-up is worth does not show on the table yet (that is the small bias above).
+
+	// Extreme: the best few answers get a second look. After each, what is the best thing to do next?
+	int t = (int)m.geti("t");
+	if(lv.deep > 0 && (t == 10 || t == 11) && elapsed() < lv.ms * 0.8) {
+		std::vector<size_t> order;
+		for(size_t c = 0; c < N; ++c) if(count[c]) order.push_back(c);
+		std::sort(order.begin(), order.end(), [&](size_t a, size_t b) { return value[a] > value[b]; });
+		order.resize(std::min<size_t>(order.size(), (size_t)lv.deep));
+		const int W2 = std::min(3, std::max(1, full));
+		for(size_t a : order) {
+			if(passive.count(cands[a].key) && cands[a].key != "bp") continue;
+			if(elapsed() > lv.ms * 1.6) break;
+			std::vector<std::vector<uint8_t>> prefix = { cands[a].bytes };
+			std::unique_ptr<Sim> at;
+			one_try(h, lv, seed, 0, me, until, { cands[a].bytes }, &prefix, &at);
+			if(!at) continue;
+			std::vector<Cand> next_c = candidates(*at, at->ask, 7);
+			at.reset();
+			if(next_c.size() < 2) continue;
+			double best2 = -1e18;
+			for(auto& b2 : next_c) {
+				if(elapsed() > lv.ms * 1.6) break;
+				std::vector<std::vector<uint8_t>> line = prefix;
+				line.push_back(b2.bytes);
+				double sum = 0; int n = 0;
+				for(int w = 0; w < W2; ++w) {
+					// (the prefix was found in world 0; in another deal it may not fit, then that try is skipped)
+					double sc = one_try(h, lv, seed, w, me, until, line, nullptr, nullptr);
+					sims.fetch_add(1);
+					if(sc <= -4e5 && w > 0) continue;
+					sum += sc; n++;
+				}
+				if(n) best2 = std::max(best2, sum / n);
+			}
+			if(best2 > -1e17) value[a] = std::max(value[a], best2 + (passive.count(cands[a].key) ? 0.0 : lv.bias));
 		}
 	}
+	out.sims = sims.load();
 	size_t best = 0; double best_v = -1e18;
 	std::vector<std::pair<double, size_t>> ranked;
-	for(size_t c = 0; c < cands.size(); ++c) {
-		if(count[c] == 0) continue;
-		double v = total[c] / count[c];
-		ranked.push_back({ v, c });
-		if(v > best_v) { best_v = v; best = c; }
+	for(size_t c = 0; c < N; ++c) {
+		if(!count[c]) continue;
+		ranked.push_back({ value[c], c });
+		if(value[c] > best_v) { best_v = value[c]; best = c; }
 	}
 	// Normal plays like a person: now and then it takes its second idea.
 	if(lv.slip > 0 && ranked.size() >= 2) {
@@ -633,13 +863,19 @@ static Decision decide(const History& h, int level, int time_ms, uint64_t seed) 
 		rnd = mix(rnd);
 		if((rnd % 1000) / 1000.0 < lv.slip && ranked[0].first - ranked[1].first < 2500) best = ranked[1].second;
 	}
+	// The steady policy's answer stands unless another is better by a clear margin.
+	if(best != 0 && count[0] > 0 && lv.margin > 0 && lv.slip <= 0 && best_v - value[0] < lv.margin) best = 0;
+	if(live && best == 0) *live = mm;
+	for(size_t c = 0; c < N; ++c)
+		out.notes += (c == best ? "*" : " ") + cands[c].key + "=" + (count[c] ? std::to_string((long)value[c]) : "?") + "  ";
+	out.notes += "[deals " + std::to_string(full) + "]";
 	out.bytes = cands[best].bytes;
 	out.ms = elapsed();
 	return out;
 }
 
 // ---------------------------------------------------------------- a whole duel, both sides (for measuring)
-struct MatchResult { int winner = 2; int turns = 0; long decisions = 0; long sims = 0; double think_ms = 0; double max_ms = 0; int refused = 0; };
+struct MatchResult { int winner = 2; int turns = 0; long decisions = 0; long sims = 0; double think_ms = 0; double max_ms = 0; int refused = 0; Board end; };
 
 static MatchResult play_match(History h, int level0, int level1, uint64_t seed, int time_ms, int max_turns) {
 	MatchResult r;
@@ -649,6 +885,8 @@ static MatchResult play_match(History h, int level0, int level1, uint64_t seed, 
 	PMemo memo[2];
 	uint64_t rnd = mix(seed) | 1;
 	int refused = 0, last_turn = -1, turn_decisions = 0;
+	const bool trace = std::getenv("OCG_TRACE") != nullptr;
+	std::string last_notes;
 	while(live->winner == -1 && live->status == OCG_DUEL_STATUS_AWAITING && live->has_ask && live->turns <= max_turns) {
 		int p = (int)live->ask.geti("p");
 		if(p < 0 || p > 1) break;
@@ -661,10 +899,13 @@ static MatchResult play_match(History h, int level0, int level1, uint64_t seed, 
 		} else if(lv <= 0 || turn_decisions > 120) {
 			ans = policy(*live, live->ask, memo[p], turn_decisions > 160, rnd);
 		} else {
-			Decision d = decide(h, lv, time_ms, mix(seed + r.decisions));
+			Decision d = decide(h, lv, time_ms, mix(seed + r.decisions), memo);
 			ans = d.bytes;
+			last_notes = d.cands > 1 ? d.notes : "";
 			r.sims += d.sims; r.think_ms += d.ms; r.max_ms = std::max(r.max_ms, d.ms);
 		}
+		if(trace && lv > 0 && !last_notes.empty()) fprintf(stderr, "T%d ask %d: %s\n", live->turns, (int)live->ask.geti("t"), last_notes.c_str());
+		note_answer(*live, live->ask, ans);
 		r.decisions++;
 		if(live->turns != last_turn) { last_turn = live->turns; turn_decisions = 0; }
 		turn_decisions++;
@@ -674,5 +915,6 @@ static MatchResult play_match(History h, int level0, int level1, uint64_t seed, 
 	}
 	r.winner = live->winner == -1 ? 2 : live->winner;
 	r.turns = live->turns;
+	r.end = read_board(*live);
 	return r;
 }

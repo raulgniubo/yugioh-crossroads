@@ -30,8 +30,10 @@ func _ready() -> void:
 	var refused := 0
 	var turns := 0
 	for g in n:
-		var ka := str(keys[(seed0 + g) % keys.size()])
-		var kb := b if a != "all" else str(keys[(seed0 + g * 7 + 3) % keys.size()])
+		# Each pair of decks is played twice with the sides swapped, so neither level gets the better deck.
+		var pair := g / 2
+		var ka := str(keys[(seed0 * 13 + pair * 5) % keys.size()])
+		var kb := b if a != "all" else str(keys[(seed0 * 7 + pair * 11 + 3) % keys.size()])
 		var decks := [CardData.deck_list(ka), CardData.deck_list(kb)]
 		var extras := [CardData.extra_list(ka), CardData.extra_list(kb)]
 		var levels := [la, lb]
@@ -40,7 +42,7 @@ func _ready() -> void:
 			decks.reverse()
 			extras.reverse()
 			levels.reverse()
-		var r := OcgCore.match_duel(decks, extras, levels, seed0 * 1000 + g, ms)
+		var r := OcgCore.match_duel(decks, extras, levels, seed0 * 1000 + pair, ms)
 		var w := int(r["winner"])
 		if w < 2 and flip:
 			w = 1 - w

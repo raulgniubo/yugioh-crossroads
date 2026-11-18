@@ -61,10 +61,33 @@ func _ready() -> void:
 	get_tree().quit(0)
 
 
+var _native_level := 0
+
+
+func _names(cards: Array) -> String:
+	var out: Array = []
+	for c in cards:
+		out.append("%s%s" % [c.cname().left(18), "" if c.face_up else "(fd)"])
+	return str(out)
+
+
+## Card numbers in the search notes become names.
+func _pretty(notes: String) -> String:
+	var rx := RegEx.new()
+	rx.compile("([a-z]+)(\\d{4,9})@")
+	var out := notes
+	for m in rx.search_all(notes):
+		out = out.replace(m.get_string(0), m.get_string(1) + ":" + str(CardData.get_card(int(m.get_string(2))).get("name", "?")).left(16) + "@")
+	return out
+
+
 func one(ka: String, kb: String, seed: int, verbose: bool) -> Dictionary:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("-L"):
+			_native_level = int(a.substr(2))
 	var st := OcgMirror.new()
 	var d := OcgDuel.new()
-	d.log_msgs = verbose
+	d.log_msgs = verbose and "-m" in OS.get_cmdline_user_args()
 	var decks := [CardData.deck_list(ka), CardData.deck_list(kb)]
 	var extras := [CardData.extra_list(ka), CardData.extra_list(kb)]
 	if ka == "lumen_test":
@@ -104,7 +127,17 @@ func one(ka: String, kb: String, seed: int, verbose: bool) -> Dictionary:
 			last_retries = d.retries
 		elif d.retries > last_retries:
 			pass
-		d.answer(cpus[p].decide(d, safe))
+		if _native_level > 0 and p == 0 and not safe:
+			var th := OcgCore.think(d.handle, _native_level, 0, seed + guard)
+			if verbose and int(th["cands"]) > 1 and int(d.request["t"]) in [10, 11, 15, 16]:
+				var lg := OcgCore.logs(d.handle)
+				print("T", st.turn, " ask ", int(d.request["t"]), " LP ", st.players[0].lp, "/", st.players[1].lp, " mine ", _names(st.players[0].monsters()), " theirs ", _names(st.players[1].monsters()), " hand ", _names(st.players[0].hand))
+				for l in lg["logs"]:
+					if str(l).begins_with("9:"):
+						print("    ", _pretty(str(l).substr(2)))
+			d.answer(th["answer"])
+		else:
+			d.answer(cpus[p].decide(d, safe))
 		if st.turn > 80:
 			break
 	if ka == "lumen_test":

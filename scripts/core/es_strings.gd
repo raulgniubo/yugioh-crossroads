@@ -6666,4 +6666,10 @@ const ES := {
 	"The duel stopped.": "El duelo se detuvo.",
 	"The duel could not go on.": "El duelo no pudo continuar.",
 	"The duel is over.": "El duelo terminó.",
+	"%s is thinking...": "%s está pensando...",
+	"Extreme": "Extremo",
+	"Looks a little ahead and sometimes slips, like a person.": "Mira un poco adelante y a veces se equivoca, como una persona.",
+	"Plans its turn by trying its plays on copies of the duel and checks what you could answer. Tuned deck.": "Planea su turno probando sus jugadas en copias del duelo y revisa qué podrías responder. Deck afinado.",
+	"Tries more plays, against more of what you might be holding, for longer. Tuned deck. It never looks at your hand or face-down cards.": "Prueba más jugadas, contra más de lo que podrías tener, por más tiempo. Deck afinado. Nunca mira tu mano ni tus cartas boca abajo.",
+	"The new rules engine, with the opponent that thinks ahead: Normal, Hard and Extreme. Standard duels only for now.": "El nuevo motor de reglas, con el rival que piensa por adelantado: Normal, Difícil y Extremo. Por ahora solo duelos estándar.",
 }

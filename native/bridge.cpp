@@ -126,7 +126,8 @@ struct History {
 };
 
 struct AiJob;
-struct Duel { OCG_Duel d = nullptr; std::vector<std::string> logs; std::vector<std::string> missing; History hist; std::shared_ptr<AiJob> job; };
+struct PMemo;
+struct Duel { OCG_Duel d = nullptr; std::vector<std::string> logs; std::vector<std::string> missing; History hist; std::shared_ptr<AiJob> job; std::shared_ptr<PMemo> memo; };
 static int script_reader(void* payload, OCG_Duel duel, const char* name) {
 	auto it = g_scripts.find(name);
 	if(it == g_scripts.end()) {
@@ -316,7 +317,11 @@ static JV parse_query_list(const uint8_t* p, size_t n) {
 
 #include "ai.hpp"
 
-struct AiJob { std::mutex m; bool done = false; Decision d; };
+struct AiJob { std::mutex m; bool done = false; Decision d; PMemo memo[2]; };
+static PMemo* memos_of(Duel* d) {
+	if(!d->memo) d->memo = std::shared_ptr<PMemo>(new PMemo[2], std::default_delete<PMemo[]>());
+	return d->memo.get();
+}
 
 // ---------------------------------------------------------------- operations
 static std::vector<uint8_t> run_op(int code, const uint8_t* data, size_t size) {
@@ -467,15 +472,18 @@ static std::vector<uint8_t> run_op(int code, const uint8_t* data, size_t size) {
 		int level = (int)r.u32(); int ms = (int)r.u32(); uint64_t seed = r.u64();
 		if(!d) break;
 		if(code == 30) {
-			Decision dec = decide(d->hist, level, ms, seed);
+			Decision dec = decide(d->hist, level, ms, seed, memos_of(d));
 			put32(out, (uint32_t)dec.sims); put32(out, (uint32_t)dec.cands); put32(out, (uint32_t)dec.ms);
 			out.insert(out.end(), dec.bytes.begin(), dec.bytes.end());
+			d->logs.push_back("9:" + dec.notes);
 		} else {
 			auto job = std::make_shared<AiJob>();
 			d->job = job;
 			History copy = d->hist;
+			PMemo* mem = memos_of(d);
+			job->memo[0] = mem[0]; job->memo[1] = mem[1];
 			std::thread([job, copy, level, ms, seed]() {
-				Decision dec = decide(copy, level, ms, seed);
+				Decision dec = decide(copy, level, ms, seed, job->memo);
 				std::lock_guard<std::mutex> l(job->m);
 				job->d = std::move(dec);
 				job->done = true;
@@ -487,9 +495,42 @@ static std::vector<uint8_t> run_op(int code, const uint8_t* data, size_t size) {
 		if(!d || !d->job) { out.push_back(0); break; }
 		std::lock_guard<std::mutex> l(d->job->m);
 		if(!d->job->done) { out.push_back(1); break; }
+		{ PMemo* mem = memos_of(d); mem[0] = d->job->memo[0]; mem[1] = d->job->memo[1]; }
 		out.push_back(2);
 		put32(out, (uint32_t)d->job->d.sims); put32(out, (uint32_t)d->job->d.cands); put32(out, (uint32_t)d->job->d.ms);
 		out.insert(out.end(), d->job->d.bytes.begin(), d->job->d.bytes.end());
+		break; }
+	case 35: {  // a set position played on from there (test boards): explicit cards, then who thinks how
+		History h{};
+		for(int i = 0; i < 4; ++i) h.opt.seed[i] = r.u64();
+		h.opt.flags = r.u64();
+		h.opt.team1.startingLP = r.u32(); h.opt.team2.startingLP = r.u32();
+		h.opt.team1.drawCountPerTurn = 1; h.opt.team2.drawCountPerTurn = 1;
+		int level0 = (int)r.u32(), level1 = (int)r.u32(), ms = (int)r.u32(), max_turns = (int)r.u32();
+		uint64_t seed = r.u64();
+		uint32_t n = r.u32();
+		for(uint32_t i = 0; i < n && !r.bad; ++i) {
+			OCG_NewCardInfo ci{};
+			ci.team = r.u8(); ci.code = r.u32(); ci.con = ci.team; ci.loc = r.u32(); ci.seq = r.u32(); ci.pos = r.u32();
+			h.cards.push_back(ci);
+		}
+		MatchResult mr = play_match(h, level0, level1, seed, ms, max_turns);
+		JV res = JV::obj();
+		res.set("winner", mr.winner); res.set("turns", mr.turns); res.set("sims", (int64_t)mr.sims); res.set("refused", mr.refused);
+		JV lp = JV::arr(), hand = JV::arr(), gy = JV::arr(), mons = JV::arr(), sets = JV::arr();
+		for(int p = 0; p < 2; ++p) {
+			lp.push(mr.end.lp[p]); hand.push(mr.end.hand[p]); gy.push(mr.end.gy[p]); sets.push(mr.end.st_set[p] + mr.end.st_up[p]);
+			JV row = JV::arr();
+			for(int z = 0; z < 5; ++z) {
+				const Mon& mo = mr.end.m[p][z];
+				if(!mo.there) continue;
+				JV c = JV::obj(); c.set("code", mo.code); c.set("atk", mo.atk); c.set("def", mo.def); c.set("pos", mo.pos);
+				row.push(std::move(c));
+			}
+			mons.push(std::move(row));
+		}
+		res.set("lp", std::move(lp)); res.set("hand", std::move(hand)); res.set("gy", std::move(gy)); res.set("st", std::move(sets)); res.set("mons", std::move(mons));
+		encode(out, res);
 		break; }
 	case 34: {  // timing: how long a fresh duel takes to set up, and to replay (handle, repeats)
 		Duel* d = find_duel(r.u32());
