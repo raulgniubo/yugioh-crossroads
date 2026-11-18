@@ -971,11 +971,11 @@ func on_hand_card_pressed(inst, _at: Vector2) -> void:
 	hud.inspect(inst)
 	if not active():
 		return
-	hud.focus_hand_card(inst)
 	var opts := _menu_for(inst)
 	if opts.is_empty():
-		Router.toast(Loc.t("That card cannot be played right now."), 2.0)
+		# Nothing it can do right now: the tap just shows the card (no message over your hand).
 		return
+	hud.focus_hand_card(inst)
 	hud.show_actions(hud.hand_menu_anchor(inst), opts, true)
 
 

@@ -946,6 +946,10 @@ func _build_setup() -> void:
 		drow.add_child(db)
 		_diff_btns.append(db)
 	_diff_note = UITheme.label("", 15, UITheme.TEXT_DIM)
+	# It wraps inside the panel: a long line (the Extreme one, or any of them in Spanish) used to
+	# stretch the whole panel past the edge of the screen. Two lines are kept free so nothing jumps.
+	_diff_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_diff_note.custom_minimum_size = Vector2(0, 42)
 	v.add_child(_diff_note)
 	# The three medals to earn against whoever you picked, and which you hold.
 	_medal_line = UITheme.label("", 15, UITheme.GOLD, UITheme.semi_font())
