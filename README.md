@@ -5,6 +5,46 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.45.0
+
+**Six more card families and the last duelist cards: 276 new cards.** The game now has **2,491 cards**. This finishes the card plan ("the next 1,000 cards"): every row of it is in.
+
+- **Genex (5D's), 45 cards, 44 new.** Every Genex, Genex Ally and R-Genex with their Synchro Monsters. Pack and theme deck **Genex Works**, sold in Satellite and New Domino. The Runner Collector in New Domino plays it.
+- **Madolche (ZEXAL), 27 cards.** The whole kingdom of sweets with its Xyz Monsters. Pack and theme deck **Madolche Tea Party**, sold in Heartland. The Balloon Man plays it (he is only there in the morning).
+- **Toons (Duel Monsters), 38 cards, 25 new.** Every Toon monster, Toon World, Toon Kingdom and the Perfect World, the Toon Spells and Traps, Mind Scan and the cards that name Toon World. Pack and theme deck **Toon Kingdom**, sold in Domino. The Shop Regular plays it. Pegasus's own deck is unchanged.
+- **Gladiator Beasts (GX), 58 cards, 56 new.** Every Gladiator Beast with all nine Fusions, the Test monsters, the Colosseums and the Gladiator Spells and Traps. Pack and theme deck **Gladiator's Assault**, sold at the Academy. The Red Dorm Rookie plays it.
+- **Dragunity (5D's), 43 cards.** Every Dragunity rider and Dragon, the Dragunity Knights, Dragon Ravine and Dragon Mastery. Pack and theme deck **Dragunity Legion**, sold in Satellite and New Domino. The Stadium Fan plays it.
+- **Heroic (ZEXAL), 25 cards.** Every Heroic Challenger and Heroic Champion and their Spells and Traps. Pack and theme deck **Heroic Challengers**, sold in Heartland. The Number Hunter Fan plays it. He had no duel before, so he now has one.
+- **The last 56 duelist cards.** The single cards the story duelists are known for that belonged to no family: Magical Hats, Dark Designator, Future Fusion, Fusion Gate, Elemental HERO Divine Neos, Black Garden, Number 99: Utopic Dragon, Number C5: Chaos Chimera Dragon and the rest. Each is in its era's pack. The duelists' own decks are unchanged.
+- **Spanish for all 276**, and for the new packs, decks and duelists.
+
+Some families are smaller than the plan guessed (Genex about 70, Heroic about 50). The plan's numbers were estimates. These are the whole real families: everything with the name, everything that names it, minus Link and Pendulum cards.
+
+**Three pieces of the duel screen these cards needed:**
+
+- **"Declare 1 card name" is a real choice now.** A box opens with a search field. The cards you have seen in this duel are listed first, and typing searches every card in the game, with the card's picture next to the list. Before, you could only name a card you had already seen. Only names the card allows are offered (Mind Scan does not take Normal Monsters, Dark Designator only takes monsters). The opponent uses the same test, so it no longer names a card the rules refuse.
+- **Revealed cards.** When a card makes a player keep their hand revealed or lets you look at their Set cards (Mind Scan), pointing at those cards shows them, and the Graveyard viewer gets a row "Revealed by a card effect".
+- **Banished face-down.** Cards banished face-down (Toon Kingdom) stay secret from the other side in the viewer. Your own you can look at.
+
+**Tools** (`tools/`): `family_scan.py` lists a whole family before it goes in (every member by the engine's own set codes, every card that names it, every outside card its scripts lean on). `add_family.py` can now hand a deck to someone who never dueled and swap single spoken lines. `tests/ocg_sweep.tscn` takes a family name and sweeps only that family, and `tests/ocg_sim.tscn -- card <id> <deck>` tries one card on its own.
+
+How it was checked:
+
+- **Card check:** 2,491 cards, 16 families, 0 problems.
+- **Sweep:** 1,525 full duels and 928 set-up positions, no card script complained. 2,375 of the 2,491 cards (95.3%) were summoned, Set or activated in a full duel. The other 116 were put straight on the table: 65 did something, 51 only stood there. For those 51 I know they load and sit on the table without an error, not that their effect works.
+- **Every deck, 20 duels each through the game's own duel driver:** 1,140 duels over 57 decks, 0 complaints. An earlier run of the Toon deck had one: Mind Scan asked for a card name and the opponent named one the rules refuse. That is what the new name test fixed.
+- **On the real duel screen** (played by the test player, no picture): one duel with each new deck, Mind Scan revealing a hand and a Set card, Dark Designator and Mind Crush naming a card, Gladiator Beasts shuffling into Heraklinos and Essedarii. One picture of the name box with a word typed in.
+- The classic test suite still passes.
+
+Found on the way and worth knowing: a deck with fifteen copies of Blue-Eyes Toon Ultimate Dragon in the Extra Deck makes the engine very slow (its "shuffle three cards from anywhere" check is tried for every copy at every step). With the legal three copies it is fine, so I left the official script alone.
+
+Not done:
+
+- **The classic rules are still in the game** and the `ocgcore` branch is not merged into main. Same reason as before: `engine_status.txt` has not appeared on your Mac yet, so I still have no proof the engine loads there.
+- **The Academy stall is not fixed.** No `stall_log.txt` yet either.
+- Nobody has played the new families by hand. The Spanish card texts are my own translations, checked against the English by me only.
+- The name box needs a keyboard to search. With a controller you can still pick from the cards seen in the duel.
+
 ## What is in 0.44.0
 
 **Four card families at once: 252 new cards.** The game now has **2,215 cards**. This is the first part of step 4 of the engine move. Since the rules engine already knows every card, a family is now a list, a pack, a deck and a duelist, not weeks of rules.
