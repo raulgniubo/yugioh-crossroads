@@ -657,6 +657,7 @@ func _ask_command(m: Dictionary):
 		_add_all(m["chains"], 5, "act")
 	s._turn_done = false
 	refresh()
+	_ux_demo()
 	if s._human_test:
 		# Dev: nobody at the table. The commands are picked for you; the questions go through the real menus.
 		await s._ai_wait(0.15)
@@ -1102,3 +1103,35 @@ func _pile(nodes: Array, cards: Array, add: Callable) -> void:
 	nodes.clear()
 	for c in top:
 		add.call(c)
+
+
+## Dev: `--ux=menu|pick|choice|attack` opens one interaction at the first chance, for a screenshot.
+var _ux_done := false
+
+func _ux_demo() -> void:
+	if _ux_done:
+		return
+	var what := ""
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--ux="):
+			what = a.trim_prefix("--ux=")
+	if what == "":
+		return
+	_ux_done = true
+	await s.get_tree().create_timer(1.2).timeout
+	var hand: Array = s.state.players[ME].hand
+	match what:
+		"menu":
+			for c in hand:
+				if acts.has(c.uid) and c.is_monster():
+					on_hand_card_pressed(c, Vector2.ZERO)
+					break
+		"menu2":
+			for c in hand:
+				if acts.has(c.uid) and not c.is_monster():
+					on_hand_card_pressed(c, Vector2.ZERO)
+					break
+		"pick":
+			s.hud.ask_pick("Select the monsters to Tribute   (1 / 2)", hand, Loc.t("Select"), Loc.t("Cancel"), [], {})
+		"choice":
+			s.hud.ask_choice("Activate \"Dark Magical Circle\"?", [Loc.t("Yes"), Loc.t("No")])
