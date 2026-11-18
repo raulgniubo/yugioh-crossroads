@@ -45,7 +45,7 @@ const BY_RACE := {
 static func look_for(card) -> Dictionary:
 	var name := str(card.data.get("name", ""))
 	var key := str(BY_NAME.get(name, ""))
-	var sp: Dictionary = SpellRules.spec(card)
+	var sp: Dictionary = CardFacts.field(card)
 	if key == "":
 		for b in sp.get("boost", []):
 			var who: Dictionary = b[0]
@@ -66,7 +66,7 @@ static func look_for(card) -> Dictionary:
 ## What the card does, as short lines for the strip under the card panel:
 ## ["Dragon, Winged Beast, Thunder", "+200 ATK  +200 DEF"] pairs.
 static func says(card) -> Array:
-	var sp: Dictionary = SpellRules.spec(card)
+	var sp: Dictionary = CardFacts.field(card)
 	var groups := {}        # "+200 ATK  +200 DEF" -> [who, who]
 	var order: Array = []
 	for b in sp.get("boost", []):
@@ -110,9 +110,9 @@ static func delta(s: DuelState, m) -> Array:
 		var f = s.players[q].field_spell
 		if f == null or not f.face_up:
 			continue
-		var sp: Dictionary = SpellRules.spec(f)
+		var sp: Dictionary = CardFacts.field(f)
 		for b in sp.get("boost", []):
-			if CardEffects.matches(m.data, b[0]):
+			if CardFacts.matches(m.data, b[0]):
 				a += int(b[1])
 				if b.size() > 2:
 					d += int(b[2])

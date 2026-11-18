@@ -444,8 +444,8 @@ func _debug_args() -> void:
 				asked += int(want[n])
 				var id: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
 				var d := CardData.get_card(id) if id != 0 else {}
-				var note := "OK" if id != 0 and int(have.get(id, 0)) == int(want[n]) and CardExact.ok(d) else "PROBLEM"
-				print("DECK ", dk, " ", note, "  ", n, " x", want[n], "  id ", id, "  in deck ", have.get(id, 0), "  exact ", CardExact.ok(d) if id != 0 else false,
+				var note := "OK" if id != 0 and int(have.get(id, 0)) == int(want[n]) and CardFacts.ok(d) else "PROBLEM"
+				print("DECK ", dk, " ", note, "  ", n, " x", want[n], "  id ", id, "  in deck ", have.get(id, 0), "  exact ", CardFacts.ok(d) if id != 0 else false,
 						"  ", d.get("kind", "?"), " L", d.get("level", "-"), " ", d.get("atk", "-"))
 			print("DECK ", dk, " asked ", asked, " final ", got.size())
 			for id2 in have:

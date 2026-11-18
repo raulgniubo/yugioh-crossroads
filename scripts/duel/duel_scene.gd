@@ -948,9 +948,9 @@ func _play_event(ev: Dictionary) -> void:
 			hud.inspect(ev["card"])
 			Sfx.play("spell")
 			_talk(p, "spell", 0.3)
-			if SpellRules.kind(ev["card"]) in ["field", "equip", "cont", "ritual", "quick"]:
+			if CardFacts.kind(ev["card"]) in ["field", "equip", "cont", "ritual", "quick"]:
 				var titles := {"field": "FIELD SPELL", "equip": "EQUIP SPELL", "cont": "CONTINUOUS SPELL", "ritual": "RITUAL SPELL", "quick": "QUICK-PLAY SPELL"}
-				hud.effect_text("%s  ·  %s" % [titles[SpellRules.kind(ev["card"])], ev["card"].cname()], Color("7dffc8"))
+				hud.effect_text("%s  ·  %s" % [titles[CardFacts.kind(ev["card"])], ev["card"].cname()], Color("7dffc8"))
 			var sig_name := str(ev["card"].data.get("name", ""))
 			if not _autoplay:
 				_announce(p, ev["card"], false)

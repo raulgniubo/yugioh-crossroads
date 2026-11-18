@@ -49,7 +49,6 @@ var speed := [0, 0]
 func prepare(state: DuelState, decks: Array, extras: Array, names: Array, first: int, seed := -1, setup := {}) -> void:
 	st = state
 	swap = first == 1
-	EffectRunner.current_state = st
 	st.players = [DuelState.PlayerState.new(), DuelState.PlayerState.new()]
 	var rng := RandomNumberGenerator.new()
 	if seed >= 0:

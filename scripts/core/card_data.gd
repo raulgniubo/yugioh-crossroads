@@ -597,7 +597,7 @@ static func swap(id: int) -> int:
 		return _swap_cache[id]
 	var d := get_card(id)
 	var out := id
-	if not d.is_empty() and str(d.get("name", "Unknown")) != "Unknown" and not CardExact.ok(d):
+	if not d.is_empty() and str(d.get("name", "Unknown")) != "Unknown" and not CardFacts.ok(d):
 		out = _stand_in(id, d)
 	_swap_cache[id] = out
 	return out
@@ -721,7 +721,7 @@ static func _resolve(names: Dictionary, extra: bool) -> Dictionary:
 		if id == 0:
 			continue
 		var d := get_card(id)
-		if d["kind"] != "monster" and not CardPool.has(id) and not d.has("effect") and not SpellRules.FX.has(str(d.get("name", ""))) and not str(d.get("st", "")) in ["equip", "field", "ritual"]:
+		if d["kind"] != "monster" and not CardPool.has(id) and not d.has("effect") and not CardFacts.ST_K.has(str(d.get("name", ""))) and not str(d.get("st", "")) in ["equip", "field", "ritual"]:
 			continue      # (a Spell or Trap that is not in the game)
 		if (d.get("frame", "") in ["fusion", "synchro", "xyz"]) != extra:
 			continue

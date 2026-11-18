@@ -1195,7 +1195,7 @@ func _drop_zones(inst) -> Array:
 			for z in 5:
 				out.append([ME, OcgCore.LOC_MZONE, z])
 	elif _has(inst, "act") or _has(inst, "sset"):
-		if SpellRules.kind(inst) == "field":
+		if CardFacts.kind(inst) == "field":
 			out.append([ME, OcgCore.LOC_SZONE, 5])
 		else:
 			for z in 5:

@@ -1062,7 +1062,7 @@ func inspect(inst, hidden := false) -> void:
 		_inspect_def.text = str(d.get("def", 0))
 		var txt := str(d.get("desc", ""))
 		var nm := str(d.get("name", ""))
-		var note := str(CardEffects.of(nm).get("note", CardData.MONSTER_EFFECTS.get(nm, "")))
+		var note := str(CardData.MONSTER_EFFECTS.get(nm, ""))
 		# Cards built into the game carry no printed text of their own: take it from the card
 		# database, or failing that say what the card does in this game.
 		if txt == "":
@@ -1086,7 +1086,7 @@ func inspect(inst, hidden := false) -> void:
 		var is_trap: bool = str(d.get("kind", "")) == "trap"
 		var st_names := {"quick": "Quick-Play Spell", "cont": "Continuous Spell", "field": "Field Spell", "equip": "Equip Spell",
 				"ritual": "Ritual Spell", "ctrap": "Continuous Trap", "counter": "Counter Trap"}
-		_chip(str(st_names.get(SpellRules.kind(inst), "Trap" if is_trap else "Spell")), Color("ff4dd2") if is_trap else Color("2de2a0"))
+		_chip(str(st_names.get(CardFacts.kind(inst), "Trap" if is_trap else "Spell")), Color("ff4dd2") if is_trap else Color("2de2a0"))
 		if speed_need.is_valid() and not is_trap:
 			var need: int = speed_need.call(inst)
 			if need > 0:

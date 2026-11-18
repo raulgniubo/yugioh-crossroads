@@ -336,7 +336,7 @@ static func family_ids(key: String) -> Array:
 	var out: Array = []
 	for n in FAMILIES.get(key, {}).get("cards", []):
 		var id: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
-		if id != 0 and not CardData.get_card(id).is_empty() and CardExact.ok(CardData.get_card(id)):
+		if id != 0 and not CardData.get_card(id).is_empty() and CardFacts.ok(CardData.get_card(id)):
 			out.append(id)
 	return out
 const VAULT_EXTRAS := ["Gemini Elf", "Vorse Raider", "Luster Dragon", "Mad Dog of Darkness", "Insect Knight", "Gene-Warped Warwolf",
@@ -1493,7 +1493,7 @@ func pack_price(pack: Dictionary) -> int:
 
 func _spell_kind(id: int) -> String:
 	var d := CardData.get_card(id)
-	var k := str(SpellRules.FX.get(str(d.get("name", "")), {}).get("k", ""))
+	var k := str(CardFacts.ST_K.get(str(d.get("name", "")), ""))
 	if k == "":
 		k = str(d.get("st", "")).to_lower()
 	return {"quick-play": "quick", "continuous": "cont"}.get(k, k)
@@ -1567,7 +1567,7 @@ func every_playable() -> Array:
 			ids[int(id)] = true
 	# Only cards whose rules match their printed text (see CardExact).
 	for id in ids.keys():
-		if not CardExact.ok(CardData.get_card(int(id))):
+		if not CardFacts.ok(CardData.get_card(int(id))):
 			ids.erase(id)
 	_pools["**"] = ids.keys()
 	return _pools["**"]
@@ -1583,7 +1583,7 @@ func playable(id: int) -> bool:
 		# The game's own cards (the ones ready-made decks are written with, Fissure and the
 		# like) are in the game even when no booster pack carries them.
 		for i in CardData.CARDS:
-			if CardExact.ok(CardData.get_card(int(i))):
+			if CardFacts.ok(CardData.get_card(int(i))):
 				st[int(i)] = true
 		_pools["set"] = st
 	return (_pools["set"] as Dictionary).has(id) or id == CardData.LUMEN
@@ -1598,7 +1598,7 @@ func all_cards() -> Array:
 		for id in pool(era):
 			ids[id] = true
 	for id in ids.keys():
-		if not CardExact.ok(CardData.get_card(int(id))):
+		if not CardFacts.ok(CardData.get_card(int(id))):
 			ids.erase(id)
 	_pools["*"] = ids.keys()
 	return _pools["*"]

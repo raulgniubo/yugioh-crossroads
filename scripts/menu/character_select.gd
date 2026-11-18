@@ -383,7 +383,7 @@ func _refresh_slots() -> void:
 		sl["title"].text = str(info.get("title", ""))
 		if side == "opp":
 			# How they play, so you know what you walk into.
-			var how: String = {"aggro": "Plays aggressive", "wall": "Plays defensive", "trap": "Sets traps"}.get(DuelAI.style_for(key), "")
+			var how: String = {"aggro": "Plays aggressive", "wall": "Plays defensive", "trap": "Sets traps"}.get(CardFacts.style_for(key), "")
 			if how != "":
 				sl["title"].text = (Loc.t(sl["title"].text) + "   ·   " if sl["title"].text != "" else "") + Loc.t(how)
 		var deck_key := _deck_of(side)

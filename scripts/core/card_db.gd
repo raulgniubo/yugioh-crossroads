@@ -579,8 +579,7 @@ func _make_original_face(id: int) -> Texture2D:
 ## The picture on a Speed Spell: the road rushing at you, and how many Speed Counters it asks for.
 func _speed_art(art_box: Control, id: int) -> void:
 	var need := 0
-	var sp: Dictionary = SpellRules.FX.get(str(CardData.get_card(id).get("name", "")), {})
-	need = int(sp.get("speed", 0))
+	need = int(CardFacts.SPEED.get(str(CardData.get_card(id).get("name", "")), 0))
 	var c := Control.new()
 	c.size = Vector2(328, 300)
 	art_box.add_child(c)

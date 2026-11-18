@@ -1170,7 +1170,7 @@ static func _worth(id: int) -> int:
 	if str(d.get("kind", "")) != "monster":
 		return 1800 + (500 if nm in STAPLES else 0)
 	var s := int(d.get("atk", 0))
-	if str(d.get("frame", "")) == "effect" or CardEffects.of(nm).size() > 0:
+	if str(d.get("frame", "")) == "effect" or CardFacts.FX_ANY.has(nm):
 		s += 350
 	var l := int(d.get("level", 0))
 	if l >= 7:
@@ -1323,7 +1323,7 @@ static func auto_build() -> Dictionary:
 	take.call(func(id): return plain.call(id) and d.call(id).get("kind", "") == "monster" and int(d.call(id).get("level", 0)) in [5, 6], 3, main)
 	take.call(func(id): return plain.call(id) and d.call(id).get("kind", "") == "monster" and int(d.call(id).get("level", 0)) >= 7, 2, main)
 	take.call(func(id): return str(d.call(id).get("name", "")) in STAPLES or str(d.call(id).get("name", "")) in GOOD_TRAPS, 40 - main.size(), main)
-	take.call(func(id): return d.call(id).get("kind", "") != "monster" and (CardPool.has(int(id)) or SpellRules.FX.has(str(d.call(id).get("name", "")))), 40 - main.size(), main)
+	take.call(func(id): return d.call(id).get("kind", "") != "monster" and (CardPool.has(int(id)) or CardFacts.ST_K.has(str(d.call(id).get("name", "")))), 40 - main.size(), main)
 	take.call(func(id): return plain.call(id) and d.call(id).get("kind", "") == "monster" and int(d.call(id).get("level", 0)) <= 4, 40 - main.size(), main)
 	var by_atk: Array = ids.filter(func(id): return CardData.is_extra(id))
 	by_atk.sort_custom(func(a, b): return int(CardData.get_card(a).get("atk", 0)) > int(CardData.get_card(b).get("atk", 0)))
@@ -1695,9 +1695,6 @@ func _show(id: int) -> void:
 	if d["kind"] == "monster":
 		lines.append(Loc.t("Level %d  ·  %s  ·  %s") % [int(d.get("level", 0)), d.get("attribute", ""), d.get("race", "")])
 		lines.append(Loc.t("ATK %d   DEF %d") % [int(d.get("atk", 0)), int(d.get("def", 0))])
-		var note := str(CardEffects.of(str(d.get("name", ""))).get("note", ""))
-		if note != "":
-			lines.append(Loc.t("IN THIS GAME: ") + note)
 	lines.append(CardText.shown(str(d.get("name", "")), str(d.get("desc", d.get("text", "")))))
 	lines.append(Loc.t("You own %d.") % Collection.count(id) + "   " + Loc.t(Foil.NAMES[CardData.rarity(id)]))
 	if Collection.banlist and Collection.limit(id) < 3:
