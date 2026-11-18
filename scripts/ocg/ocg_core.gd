@@ -75,6 +75,27 @@ static func ensure_loaded() -> bool:
 	return true
 
 
+## The engine's own card table says what kind of card an id is (bits: 0x1 monster, 0x2 Spell,
+## 0x4 Trap, 0x40 Fusion, 0x2000 Synchro, 0x800000 Xyz, 0x1000000 Pendulum, 0x4000000 Link).
+## Read straight from the packed table, so it works whether or not the library loaded. 0: unknown.
+const TYPE_PENDULUM := 0x1000000
+const TYPE_LINK := 0x4000000
+static var _types := {}
+
+static func type_of(id: int) -> int:
+	if _types.is_empty():
+		var b := FileAccess.get_file_as_bytes("res://data/ocg/cards.bin")
+		var at := 4
+		var n := b.decode_u32(0) if b.size() >= 4 else 0
+		for i in n:
+			if at + 49 > b.size():
+				break
+			_types[b.decode_u32(at)] = b.decode_u32(at + 8)
+			at += 48 + 1 + 2 * b.decode_u8(at + 48)
+		_types[0] = 0
+	return int(_types.get(id, 0))
+
+
 const ATTRS := {"EARTH": 0x1, "WATER": 0x2, "FIRE": 0x4, "WIND": 0x8, "LIGHT": 0x10, "DARK": 0x20, "DIVINE": 0x40}
 const RACES := ["Warrior", "Spellcaster", "Fairy", "Fiend", "Zombie", "Machine", "Aqua", "Pyro", "Rock", "Winged Beast", "Plant", "Insect",
 	"Thunder", "Dragon", "Beast", "Beast-Warrior", "Dinosaur", "Fish", "Sea Serpent", "Reptile", "Psychic", "Divine-Beast", "Creator God", "Wyrm", "Cyberse"]

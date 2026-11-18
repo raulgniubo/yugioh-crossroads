@@ -60,7 +60,9 @@ static func has(id: int) -> bool:
 	if not _all.has(id):
 		return false
 	var d: Dictionary = CardData.EXT.get(id, {})
-	return not bool(d.get("pendulum", false)) and str(d.get("frame", "")) != "link"
+	if bool(d.get("pendulum", false)) or str(d.get("frame", "")) == "link":
+		return false
+	return OcgCore.type_of(id) & (OcgCore.TYPE_PENDULUM | OcgCore.TYPE_LINK) == 0
 
 
 ## Every name the game adds on top of the written-down pool (for the tools that pack engine data).

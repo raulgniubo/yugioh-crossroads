@@ -28,7 +28,7 @@ func _ready() -> void:
 			problems.append("not in the card folder: \"%s\"" % nm)
 	for id in pool:
 		var pd: Dictionary = CardData.get_card(id)
-		if bool(pd.get("pendulum", false)) or str(pd.get("frame", "")) == "link" or str(pd.get("desc", "")).contains("[ Pendulum Effect ]"):
+		if bool(pd.get("pendulum", false)) or str(pd.get("frame", "")) == "link" or str(pd.get("desc", "")).contains("[ Pendulum Effect ]") or OcgCore.type_of(id) & (OcgCore.TYPE_PENDULUM | OcgCore.TYPE_LINK) != 0:
 			problems.append("a Pendulum or Link Monster is in the game: %s (%d)" % [str(pd.get("name", "?")), id])
 	# 2. The rules engine loads every card (its script runs once when the card is created).
 	var chunk: Array = []
