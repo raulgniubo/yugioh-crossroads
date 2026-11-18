@@ -1,0 +1,11 @@
+[configuration]
+
+entry_symbol = "ocg_bridge_init"
+compatibility_minimum = "4.7"
+reloadable = false
+
+[libraries]
+
+linux.x86_64 = "res://bin/libocgbridge.linux.x86_64.so"
+macos = "res://bin/libocgbridge.macos.dylib"
+windows.x86_64 = "res://bin/ocgbridge.windows.x86_64.dll"
