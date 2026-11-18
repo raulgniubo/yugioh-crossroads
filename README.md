@@ -20,6 +20,8 @@ Nothing in the game changed here, so there is no build. This is a stricter check
 - 8 of those are weaker checks, and I say so: the four Spirit Message cards only count as placed by Destiny Board (they never activate themselves), and Decoyroid, Rainbow Flower, Stone Statue of the Aztecs and Banisher of the Light have effects that are always on, so the check is that they stand face-up through the turns without a complaint.
 - **1 can never be used in this game: The Six Shinobi.** It needs six Six Samurai monsters with six different Attributes on your field, and this game's field has five Monster Zones (no Extra Monster Zone). You can own it. You can never activate it.
 
+**Update: The Six Shinobi is out of the game** (Raul's call, since it could never be played). That makes **2,490 cards**. It is in the code now and will be in the next build; 0.45.0 still has it.
+
 So every card but that one has now been seen doing something on the engine without a complaint. What this still does not prove: that each effect does exactly what the card says. The scripts are the official ones, and I trust them for that. I did not read 2,491 results by eye.
 
 Two things I thought were bugs and were not:

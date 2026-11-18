@@ -173,7 +173,7 @@ const FAMILIES := {
 		"Six Strike - Triple Impact", "Temple of the Six", "Legendary Lord Six Samurai - Enishi", "Legendary Lord Six Samurai - Kizan",
 		"Legendary Lord Six Samurai - Shi En", "Legendary Six Samurai - Shi En", "Backs to the Wall", "Breakthrough!", "Double-Edged Sword Technique",
 		"Musakani Magatama", "Return of the Six Samurai", "Shien's Scheme", "Six Strike - Sextuple Barrage", "Six Style - Dual Wield",
-		"Swift Samurai Storm!", "Swiftstrike Armor", "The Six Shinobi", "Shadow of the Six Samurai - Shien"]},
+		"Swift Samurai Storm!", "Swiftstrike Armor", "Shadow of the Six Samurai - Shien"]},
 	"constellar": {"era": "ZEXAL", "deck": "deck_constellar", "cards": [
 		"Constellar Siat", "Constellar Rasalhague", "Constellar Aldebaran", "Constellar Leonis", "Constellar Sheratan", "Constellar Acubens",
 		"Constellar Algiedi", "Constellar Caduceus", "Constellar Castor", "Constellar Kaus", "Constellar Pollux", "Constellar Sombre",

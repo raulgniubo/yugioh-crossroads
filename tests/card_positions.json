@@ -1804,14 +1804,6 @@
 "turns": 4
 },
 {
-"card": "The Six Shinobi",
-"me": {},
-"opp": {},
-"turns": 1,
-"pass": "never",
-"why": "It needs six Six Samurai monsters with six different Attributes on your field. This game's field has five Monster Zones (no Extra Monster Zone), so it can be owned but never activated."
-},
-{
 "card": "Splash Capture",
 "me": {
 "st": [
