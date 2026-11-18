@@ -336,10 +336,14 @@ func _ask(m: Dictionary):
 			var dv := int(m["desc"])
 			var text := ""
 			var nm := _name(int(cd["code"]))
-			if dv == 0:
+			if dv == 0 or dv == 200 or dv == 221:
+				# (the engine's own line for this has two blanks, card and place, in an order that
+				# changes with the language: it came out as "the effect of []")
 				text = Loc.t("Activate the effect of %s?") % nm
 			elif (dv >> 20) == 0:
 				text = OcgCore.fill(OcgCore.sys(dv), nm)
+				if text.contains("[]") or text.contains("%ls") or text.strip_edges() == "":
+					text = Loc.t("Activate the effect of %s?") % nm
 			else:
 				text = nm + ": " + OcgCore.desc(dv) + "?"
 			var src = d.card_at(int(cd["con"]), int(cd["loc"]), int(cd["seq"]), int(cd.get("pos", 0)))

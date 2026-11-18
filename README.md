@@ -7,9 +7,10 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
 ## What is in 0.50.1
 
-Two fixes Raul found right after 0.50.0. No cards added: 3,106 total.
+Three fixes Raul found right after 0.50.0. No cards added: 3,106 total.
 
 - **Free Duel: the right panel ran off the screen.** The line under the difficulty buttons did not wrap, and a long one (Extreme, and most of them in Spanish) stretched the whole panel past the edge, cutting the third difficulty button and DUEL. It wraps now, with room kept for two lines.
+- **"Activate the effect of []?"** The question for a monster's effect came out with an empty pair of brackets (in Spanish: "Desde [Magician's Rod]. Activar el efecto de []?"). It now reads "Activate the effect of Magician's Rod?".
 - **Tapping a card just to read it.** A hand card that cannot be played right now no longer puts "That card cannot be played right now" over your hand. The tap shows the card and nothing else.
 
 ## What is in 0.50.0
