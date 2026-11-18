@@ -1,0 +1,112 @@
+{
+ "key": "toon",
+ "era": "Duel Monsters",
+ "cards": [
+  "Blue-Eyes Toon Ultimate Dragon",
+  "Comic Cat",
+  "Dark-Eyes Illusionist Faceless Mage",
+  "Funny Dark Rabbit",
+  "Toon Alligator",
+  "Toon Cannon Soldier",
+  "Toon Gemini Elf",
+  "Toon Goblin Attack Force",
+  "Toon Harpie Lady",
+  "Toon Masked Sorcerer",
+  "Toon Mermaid",
+  "Toon Cyber Dragon",
+  "Evil Box",
+  "Toon Dark Magician Girl",
+  "Toon Summoned Skull",
+  "Manga Ryu-Ran",
+  "Red-Eyes Toon Dragon",
+  "Toon Barrel Dragon",
+  "Toon Buster Blader",
+  "Toon Dark Magician",
+  "Blue-Eyes Toon Dragon",
+  "Toon Ancient Gear Golem",
+  "Toon Black Luster Soldier",
+  "Comic Hand",
+  "Mimicat",
+  "Shadow Toon",
+  "Toon Bookmark",
+  "Toon Kingdom",
+  "Toon Page-Flip",
+  "Toon Rollback",
+  "Toon Table of Contents",
+  "Toon World",
+  "Toon World the Perfect World",
+  "Mind Scan",
+  "Toon Briefcase",
+  "Toon Defense",
+  "Toon Mask",
+  "Toon Terror"
+ ],
+ "pack": {
+  "name": "Toon Kingdom",
+  "color": "f2a03c",
+  "blurb": "The Toons: cartoon copies of famous monsters that walk past the other side's monsters and attack directly while Toon World is open. Toon Kingdom keeps them from being destroyed, and Table of Contents finds whatever page you need."
+ },
+ "deck": {
+  "key": "deck_toon",
+  "name": "Toon Kingdom",
+  "art": "arcane",
+  "cover": "Toon Dark Magician",
+  "blurb": "Open Toon World or Toon Kingdom first. Then Toon Harpie Lady and Toon Cyber Dragon come down for free, Toon Dark Magician calls another Toon from the Deck, and all of them attack directly.",
+  "cards": {
+   "Toon Gemini Elf": 2,
+   "Toon Masked Sorcerer": 1,
+   "Toon Mermaid": 2,
+   "Toon Harpie Lady": 2,
+   "Toon Cyber Dragon": 2,
+   "Toon Dark Magician Girl": 1,
+   "Toon Summoned Skull": 1,
+   "Toon Dark Magician": 2,
+   "Red-Eyes Toon Dragon": 1,
+   "Toon Barrel Dragon": 1,
+   "Toon Black Luster Soldier": 1,
+   "Blue-Eyes Toon Dragon": 1,
+   "Funny Dark Rabbit": 1,
+   "Comic Cat": 1,
+   "Evil Box": 1,
+   "Toon World": 1,
+   "Toon Kingdom": 2,
+   "Toon World the Perfect World": 1,
+   "Toon Table of Contents": 3,
+   "Toon Bookmark": 1,
+   "Toon Page-Flip": 1,
+   "Toon Rollback": 1,
+   "Shadow Toon": 1,
+   "Comic Hand": 1,
+   "Mimicat": 1,
+   "Toon Mask": 1,
+   "Toon Terror": 1,
+   "Toon Briefcase": 1,
+   "Toon Defense": 1,
+   "Mind Scan": 1,
+   "Mirror Force": 1,
+   "Mystical Space Typhoon": 1
+  },
+  "extra": {
+   "Blue-Eyes Toon Ultimate Dragon": 1
+  }
+ },
+ "worlds": [
+  "domino"
+ ],
+ "stage": 0,
+ "npc": {
+  "id": "regular",
+  "old_deck": "alexis",
+  "swap": [
+   [
+    "My deck's all about tempo. You'll see.",
+    "People laugh at my deck. Then the drawings climb out of the book."
+   ],
+   [
+    "I need a new ace card...",
+    "Who wants to see a cartoon?"
+   ]
+  ],
+  "intro": "Table two is mine! Don't laugh yet."
+ }
+}

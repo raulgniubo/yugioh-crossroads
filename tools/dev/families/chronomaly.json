@@ -1,0 +1,99 @@
+{
+ "key": "chronomaly",
+ "era": "ZEXAL",
+ "pack": {
+  "name": "Out-of-Place Artifacts",
+  "color": "c9a24a",
+  "blurb": "The Chronomaly: stone heads, crystal skulls and golden jets from places they should not be. They call each other out fast, change their own Levels, drop the other side's ATK to 0, and overlay into the Chronomaly Numbers."
+ },
+ "deck": {
+  "key": "deck_chronomaly",
+  "name": "Out-of-Place Artifacts",
+  "art": "arcane",
+  "cover": "Number 33: Chronomaly Machu Mech",
+  "blurb": "Nebra Disk searches, Crystal Bones and Moai arrive for free, and two Level 4 Chronomaly make Chateau Huyuk, who turns a monster's ATK to 0. Then Machu Mech burns for the difference.",
+  "cards": {
+   "Chronomaly Nebra Disk": 3,
+   "Chronomaly Tuspa Rocket": 2,
+   "Chronomaly Magella Globe": 2,
+   "Chronomaly Crystal Skull": 2,
+   "Chronomaly Crystal Bones": 2,
+   "Chronomaly Golden Jet": 2,
+   "Chronomaly Moai": 2,
+   "Chronomaly Gordian Knot": 1,
+   "Chronomaly Aztec Mask Golem": 1,
+   "Chronomaly Colossal Head": 1,
+   "Chronomaly Winged Sphinx": 1,
+   "Chronomaly Tula Guardian": 1,
+   "Chronomaly Mud Golem": 1,
+   "Chronomaly Pyramid Eye Tablet": 2,
+   "Chronomaly Technology": 2,
+   "Chronomaly City Babylon": 2,
+   "Chronomaly Temple - Trilithon": 1,
+   "Mystical Space Typhoon": 2,
+   "Monster Reborn": 1,
+   "Dark Hole": 1,
+   "Book of Moon": 1,
+   "Stonehenge Methods": 2,
+   "Chronomaly Esperanza Glyph": 1,
+   "Mirror Force": 1,
+   "Bottomless Trap Hole": 1,
+   "Call of the Haunted": 1,
+   "Dimensional Prison": 1
+  },
+  "extra": {
+   "Number 36: Chronomaly Chateau Huyuk": 2,
+   "Number 33: Chronomaly Machu Mech": 1,
+   "Chronomaly Vimana": 1,
+   "Chronomaly Crystal Chrononaut": 1,
+   "Number 6: Chronomaly Atlandis": 1,
+   "Number C6: Chronomaly Chaos Atlandis": 1,
+   "Number 39: Utopia": 1
+  }
+ },
+ "worlds": [
+  "heartland"
+ ],
+ "stage": 4,
+ "npc": {
+  "id": "night_heartland",
+  "old_deck": "kite",
+  "lines": [
+   "The tower lights tell me who is coming. Tonight they said: someone with a little light of their own.",
+   "My cards are older than the tower. Older than the city. Let us see if the lights were right."
+  ],
+  "intro": "The stones already know how this ends."
+ },
+ "cards": [
+  "Chronomaly Crystal Bones",
+  "Chronomaly Crystal Skull",
+  "Chronomaly Gordian Knot",
+  "Chronomaly Mayan Machine",
+  "Chronomaly Aztec Mask Golem",
+  "Chronomaly Cabrera Trebuchet",
+  "Chronomaly Colossal Head",
+  "Chronomaly Golden Jet",
+  "Chronomaly Magella Globe",
+  "Chronomaly Mud Golem",
+  "Chronomaly Nebra Disk",
+  "Chronomaly Tuspa Rocket",
+  "Chronomaly Acambaro Figures",
+  "Chronomaly Moai",
+  "Chronomaly Moai Carrier",
+  "Chronomaly Tula Guardian",
+  "Chronomaly Winged Sphinx",
+  "Chronomaly Sol Monolith",
+  "Chronomaly City Babylon",
+  "Chronomaly Pyramid Eye Tablet",
+  "Chronomaly Technology",
+  "Chronomaly Temple - Trilithon",
+  "Chronomaly Esperanza Glyph",
+  "Stonehenge Methods",
+  "Chronomaly Crystal Chrononaut",
+  "Chronomaly Vimana",
+  "Number 33: Chronomaly Machu Mech",
+  "Number 36: Chronomaly Chateau Huyuk",
+  "Number 6: Chronomaly Atlandis",
+  "Number C6: Chronomaly Chaos Atlandis"
+ ]
+}

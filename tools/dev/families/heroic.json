@@ -1,0 +1,97 @@
+{
+ "key": "heroic",
+ "era": "ZEXAL",
+ "cards": [
+  "Heroic Challenger - Ambush Soldier",
+  "Heroic Challenger - Clasp Sword",
+  "Heroic Challenger - Knuckle Sword",
+  "Heroic Challenger - Assault Halberd",
+  "Heroic Challenger - Double Lance",
+  "Heroic Challenger - Extra Sword",
+  "Heroic Challenger - Morning Star",
+  "Heroic Challenger - Night Watchman",
+  "Heroic Challenger - Spartan",
+  "Heroic Challenger - Swordshield",
+  "Heroic Challenger - Thousand Blades",
+  "Heroic Challenger - War Hammer",
+  "Heroic Call",
+  "Heroic Chance",
+  "Heroic Envoy",
+  "Heroic Advance",
+  "Heroic Gift",
+  "Heroic Retribution Sword",
+  "Heroic Champion - Claivesolish",
+  "Heroic Champion - Excalibur",
+  "Heroic Champion - Gandiva",
+  "Heroic Champion - Jarngreipr",
+  "Heroic Champion - Kusanagi",
+  "Heroic Champion - Magnum Excalibur",
+  "Number 86: Heroic Champion - Rhongomyniad"
+ ],
+ "pack": {
+  "name": "Heroic Challengers",
+  "color": "e0563c",
+  "blurb": "The Heroic Challengers: Level 4 Warriors that call each other out and overlay into the Heroic Champions. Excalibur doubles to 4000 ATK, Rhongomyniad locks the whole field, and several of them get stronger when your Life Points drop to 500."
+ },
+ "deck": {
+  "key": "deck_heroic",
+  "name": "Heroic Challengers",
+  "art": "warriors",
+  "cover": "Heroic Champion - Excalibur",
+  "blurb": "Double Lance brings its twin, Thousand Blades calls another Heroic from the Deck, and any two Level 4 Warriors become Excalibur: detach both materials and it attacks at 4000.",
+  "cards": {
+   "Heroic Challenger - Double Lance": 3,
+   "Heroic Challenger - Thousand Blades": 3,
+   "Heroic Challenger - Assault Halberd": 3,
+   "Heroic Challenger - Morning Star": 2,
+   "Heroic Challenger - Extra Sword": 2,
+   "Heroic Challenger - Spartan": 2,
+   "Heroic Challenger - Night Watchman": 1,
+   "Heroic Challenger - Swordshield": 1,
+   "Heroic Challenger - Knuckle Sword": 1,
+   "Heroic Challenger - Clasp Sword": 1,
+   "Heroic Challenger - Ambush Soldier": 1,
+   "Heroic Challenger - War Hammer": 1,
+   "Heroic Envoy": 3,
+   "Heroic Call": 2,
+   "Heroic Chance": 2,
+   "Mystical Space Typhoon": 2,
+   "Monster Reborn": 1,
+   "Dark Hole": 1,
+   "Book of Moon": 1,
+   "Heroic Advance": 1,
+   "Heroic Retribution Sword": 1,
+   "Heroic Gift": 1,
+   "Mirror Force": 1,
+   "Bottomless Trap Hole": 1,
+   "Call of the Haunted": 1,
+   "Dimensional Prison": 1
+  },
+  "extra": {
+   "Heroic Champion - Excalibur": 2,
+   "Heroic Champion - Gandiva": 1,
+   "Heroic Champion - Kusanagi": 1,
+   "Heroic Champion - Claivesolish": 1,
+   "Heroic Champion - Magnum Excalibur": 1,
+   "Heroic Champion - Jarngreipr": 1,
+   "Number 86: Heroic Champion - Rhongomyniad": 1,
+   "Number 39: Utopia": 1,
+   "Gagaga Cowboy": 1
+  }
+ },
+ "worlds": [
+  "heartland"
+ ],
+ "stage": 4,
+ "npc": {
+  "id": "hl_boy",
+  "new_duel": {
+   "difficulty": 2,
+   "intro": "Two Level 4 Warriors. You know what comes next!"
+  },
+  "lines": [
+   "Did you see Kite's Galaxy-Eyes? Unreal.",
+   "Overlay two Level 4 monsters and you can Xyz Summon. I do it with Warriors. Want to see?"
+  ]
+ }
+}

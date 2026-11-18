@@ -1,0 +1,114 @@
+{
+ "key": "crystal_beast",
+ "scan": "crystal",
+ "era": "GX",
+ "drop": [
+  "Rainbow Bridge Bifrost"
+ ],
+ "pack": {
+  "name": "Rainbow Ruins",
+  "color": "6fd6c8",
+  "blurb": "The Crystal Beasts: seven gem animals that don't go to the Graveyard when they are destroyed. They wait in your Spell and Trap Zone as crystals, come back with Crystal Promise and Ruby Carbuncle, and with all seven out Rainbow Dragon arrives."
+ },
+ "deck": {
+  "key": "deck_crystal_beast",
+  "name": "Rainbow Ruins",
+  "art": "arcane",
+  "cover": "Rainbow Dragon",
+  "blurb": "Sapphire Pegasus and Crystal Bond fill your back row with crystals. Crystal Beacon and Crystal Promise turn them back into monsters, Rare Value draws from them, and seven different Crystal Beasts on your field or in your Graveyard call Rainbow Dragon.",
+  "cards": {
+   "Crystal Beast Sapphire Pegasus": 3,
+   "Crystal Beast Ruby Carbuncle": 2,
+   "Crystal Beast Topaz Tiger": 2,
+   "Crystal Beast Amber Mammoth": 2,
+   "Crystal Beast Cobalt Eagle": 2,
+   "Crystal Beast Amethyst Cat": 2,
+   "Crystal Beast Emerald Tortoise": 1,
+   "Crystal Beast Rainbow Dragon": 1,
+   "Rainbow Dragon": 2,
+   "Crystal Bond": 3,
+   "Crystal Beacon": 2,
+   "Crystal Promise": 2,
+   "Crystal Blessing": 2,
+   "Rare Value": 2,
+   "Crystal Abundance": 1,
+   "Ancient City - Rainbow Ruins": 2,
+   "Golden Rule": 1,
+   "Crystal Release": 1,
+   "Crystal Raigeki": 2,
+   "Crystal Pair": 1,
+   "Rainbow Path": 1,
+   "Rainbow Gravity": 1,
+   "Crystal Conclave": 1,
+   "Crystal Miracle": 1
+  },
+  "extra": {
+   "Rainbow Overdragon": 1,
+   "Ultimate Crystal Rainbow Dragon Overdrive": 1
+  }
+ },
+ "worlds": [
+  "academy"
+ ],
+ "stage": 2,
+ "npc": {
+  "id": "professor",
+  "new_duel": {
+   "difficulty": 2,
+   "intro": "Today's lesson: seven crystals and one dragon."
+  },
+  "lines": [
+   "Welcome to Duel Academy. Classes are in the main building, duels are everywhere else.",
+   "A good duelist knows every rule. I teach with gems: break one of my monsters and it only changes shape."
+  ]
+ },
+ "cards": [
+  "Rainbow Neos",
+  "Rainbow Overdragon",
+  "Ultimate Crystal Rainbow Dragon Overdrive",
+  "Malefic Rainbow Dragon",
+  "Rainbow Dark Dragon",
+  "Rainbow Dragon",
+  "Advanced Crystal Beast Amethyst Cat",
+  "Advanced Crystal Beast Emerald Tortoise",
+  "Advanced Crystal Beast Ruby Carbuncle",
+  "Crystal Beast Amethyst Cat",
+  "Crystal Beast Emerald Tortoise",
+  "Crystal Beast Ruby Carbuncle",
+  "Advanced Crystal Beast Amber Mammoth",
+  "Advanced Crystal Beast Cobalt Eagle",
+  "Advanced Crystal Beast Sapphire Pegasus",
+  "Advanced Crystal Beast Topaz Tiger",
+  "Crystal Beast Amber Mammoth",
+  "Crystal Beast Cobalt Eagle",
+  "Crystal Beast Sapphire Pegasus",
+  "Crystal Beast Topaz Tiger",
+  "Crystal Beast Rainbow Dragon",
+  "Advanced Dark",
+  "Ancient City - Rainbow Ruins",
+  "Awakening of the Crystal Ultimates",
+  "Crystal Abundance",
+  "Crystal Aegis",
+  "Crystal Beacon",
+  "Crystal Blessing",
+  "Crystal Bond",
+  "Crystal Promise",
+  "Crystal Release",
+  "Crystal Tree",
+  "Golden Rule",
+  "Rainbow Bridge of the Heart",
+  "Rainbow Refraction",
+  "Rare Value",
+  "Counter Gem",
+  "Crystal Boon",
+  "Crystal Brilliance",
+  "Crystal Conclave",
+  "Crystal Miracle",
+  "Crystal Pair",
+  "Crystal Raigeki",
+  "Rainbow Bridge of Salvation",
+  "Rainbow Gravity",
+  "Rainbow Path",
+  "Ultimate Crystal Magic"
+ ]
+}

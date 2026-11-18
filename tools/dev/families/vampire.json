@@ -1,0 +1,92 @@
+{
+ "key": "vampire",
+ "era": "GX",
+ "pack": {
+  "name": "Vampire Kingdom",
+  "color": "8a2040",
+  "blurb": "The Vampires: Zombies that pay Life Points for what they want. They send cards from the other side's Deck to the Graveyard, take over monsters they destroy in battle, and Vampire Kingdom destroys a card every time the other Deck loses one."
+ },
+ "deck": {
+  "key": "deck_vampire",
+  "name": "Vampire Kingdom",
+  "art": "shadow",
+  "cover": "Vampire Lord",
+  "blurb": "Vampire Takeover opens the Kingdom straight from the Deck. Shadow Vampire and Duke bring more Vampires with them, Fraulein pays Life Points to win any battle, and what your Vampires destroy comes back on your side.",
+  "cards": {
+   "Vampire Familiar": 2,
+   "Vampire Retainer": 2,
+   "Vampire Ghost": 2,
+   "Vampire Sorcerer": 3,
+   "Vampire Lady": 2,
+   "Shadow Vampire": 2,
+   "Vampire Duke": 2,
+   "Vampire Fraulein": 2,
+   "Vampire Grace": 1,
+   "Vampire Red Baron": 1,
+   "Vampire Scarlet Scourge": 1,
+   "Vampire Vamp": 1,
+   "Vampire Lord": 1,
+   "Vampire Kingdom": 2,
+   "Vampire's Desire": 2,
+   "Vampire's Domain": 2,
+   "Terraforming": 1,
+   "Mystical Space Typhoon": 1,
+   "Monster Reborn": 1,
+   "Book of Moon": 1,
+   "Vampire Takeover": 2,
+   "Vampire Domination": 2,
+   "Vampire Awakening": 2,
+   "Mirror Force": 1,
+   "Call of the Haunted": 1
+  },
+  "extra": {
+   "Crimson Knight Vampire Bram": 2,
+   "Dhampir Vampire Sheridan": 2,
+   "The Zombie Vampire": 1
+  }
+ },
+ "worlds": [
+  "academy"
+ ],
+ "stage": 2,
+ "npc": {
+  "id": "night_academy",
+  "old_deck": "zane",
+  "lines": [
+   "They say a graduate still walks the island at night, looking for one more duel.",
+   "They are right. And he has not been hungry for duels alone."
+  ],
+  "intro": "Class is in session. Mind your neck."
+ },
+ "cards": [
+  "Vampire Familiar",
+  "Vampire Retainer",
+  "Vampire Baby",
+  "Vampire Ghost",
+  "Vampire Hunter",
+  "Vampire Lady",
+  "Vampire Sorcerer",
+  "Shadow Vampire",
+  "Vampire Dragon",
+  "Vampire Duke",
+  "Vampire Fraulein",
+  "Vampire Grimson",
+  "Vampire Lord",
+  "Vampire Grace",
+  "Vampire Red Baron",
+  "Vampire Scarlet Scourge",
+  "Vampire's Curse",
+  "Vampire Vamp",
+  "Vampire Genesis",
+  "Vampire Voivode",
+  "Vampire Kingdom",
+  "Vampire's Desire",
+  "Vampire's Domain",
+  "Vampire Awakening",
+  "Vampire Domination",
+  "Vampire Takeover",
+  "Crimson Knight Vampire Bram",
+  "Dhampir Vampire Sheridan",
+  "The Zombie Vampire"
+ ]
+}

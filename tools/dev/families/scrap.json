@@ -1,0 +1,97 @@
+{
+ "key": "scrap",
+ "era": "5D's",
+ "drop": [
+  "Raviel, Lord of Phantasms - Shimmering Scraper"
+ ],
+ "pack": {
+  "name": "Scrapyard",
+  "color": "a08060",
+  "blurb": "The Scraps: monsters built from junk that are meant to be destroyed. Break one with another Scrap's effect and it hands you a different one from the Graveyard, Scrap Factory replaces it from the Deck, and Scrap Dragon trades one of your cards for one of theirs every turn."
+ },
+ "deck": {
+  "key": "deck_scrap",
+  "name": "Scrapyard",
+  "art": "machines",
+  "cover": "Scrap Dragon",
+  "blurb": "Scrap Chimera brings a Tuner back from the Graveyard for Scrap Dragon. Scrap Dragon destroys one of your own Scraps and one of their cards, the Scrap you destroyed fetches another, and Scrap Factory calls a new one from the Deck.",
+  "cards": {
+   "Scrap Chimera": 3,
+   "Scrap Beast": 3,
+   "Scrap Goblin": 2,
+   "Scrap Raptor": 2,
+   "Scrap Orthros": 2,
+   "Scrap Golem": 2,
+   "Scrap Kong": 1,
+   "Scrap Searcher": 2,
+   "Scrap Recycler": 1,
+   "Scrap Hunter": 1,
+   "Scrap Breaker": 1,
+   "Scrap Soldier": 1,
+   "Scrap Worm": 1,
+   "Scrapyard": 3,
+   "Scrap Factory": 2,
+   "Scrapstorm": 2,
+   "Scrap Sheen": 1,
+   "Guts of Steel": 1,
+   "Terraforming": 1,
+   "Mystical Space Typhoon": 1,
+   "Monster Reborn": 1,
+   "Scrap Crash": 1,
+   "Scrap Rage": 1,
+   "Scrap Garage": 1,
+   "Mirror Force": 1,
+   "Bottomless Trap Hole": 1,
+   "Call of the Haunted": 1
+  },
+  "extra": {
+   "Scrap Dragon": 2,
+   "Scrap Twin Dragon": 1,
+   "Atomic Scrap Dragon": 1,
+   "Scrap Archfiend": 1
+  }
+ },
+ "worlds": [
+  "satellite",
+  "newdomino"
+ ],
+ "stage": 3,
+ "npc": {
+  "id": "night_satellite",
+  "old_deck": "kalin",
+  "intro": "Everything here was thrown away once. Watch what it does now."
+ },
+ "cards": [
+  "Scrap Mind Reader",
+  "Scrap Searcher",
+  "Scrap Synchron",
+  "Scrap Worm",
+  "Scrap Goblin",
+  "Scrap Hunter",
+  "Scrap Recycler",
+  "Scrap Beast",
+  "Scrap Chimera",
+  "Scrap Kong",
+  "Scrap Orthros",
+  "Scrap Raptor",
+  "Scrap Shark",
+  "Scrap Golem",
+  "Scrap Soldier",
+  "Scrap Breaker",
+  "Guts of Steel",
+  "Scrap Factory",
+  "Scrap Fist",
+  "Scrap Lube",
+  "Scrap Sheen",
+  "Scrapstorm",
+  "Scrapyard",
+  "Atomic Scrap Dragon",
+  "Scrap Archfiend",
+  "Scrap Dragon",
+  "Scrap Twin Dragon",
+  "Scrap Warrior",
+  "Scrap Crash",
+  "Scrap Garage",
+  "Scrap Rage"
+ ]
+}

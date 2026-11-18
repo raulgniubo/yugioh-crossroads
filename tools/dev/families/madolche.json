@@ -1,0 +1,99 @@
+{
+ "key": "madolche",
+ "era": "ZEXAL",
+ "cards": [
+  "Madolche Baaple",
+  "Madolche Chickolates",
+  "Madolche Cruffssant",
+  "Madolche Hootcake",
+  "Madolche Mewfeuille",
+  "Madolche Anjelly",
+  "Madolche Butlerusk",
+  "Madolche Chouxvalier",
+  "Madolche Magileine",
+  "Madolche Marmalmaide",
+  "Madolche Messengelato",
+  "Madolche Petingcessoeur",
+  "Madolche Puddingcess",
+  "Madolche Chateau",
+  "Madolche Salon",
+  "Madolche Ticket",
+  "Madolche Dessert",
+  "Madolche Lesson",
+  "Madolche Nights",
+  "Madolche Promenade",
+  "Madolche Tea Break",
+  "Madolche Waltz",
+  "Madolchepalooza",
+  "Madolche Puddingcess Chocolat-a-la-Mode",
+  "Madolche Queen Tiarafraise",
+  "Madolche Queen Tiaramisu",
+  "Madolche Teacher Glassouffle"
+ ],
+ "pack": {
+  "name": "Madolche Tea Party",
+  "color": "f08ab0",
+  "blurb": "The Madolche: a kingdom of sweets that never stays in the Graveyard. Destroyed Madolche shuffle back into the Deck, Ticket and Chateau turn that into new cards, and Queen Tiaramisu sends the other side's field back with them."
+ },
+ "deck": {
+  "key": "deck_madolche",
+  "name": "Madolche Tea Party",
+  "art": "arcane",
+  "cover": "Madolche Queen Tiaramisu",
+  "blurb": "Magileine and Anjelly fetch the rest of the court, Hootcake calls one more from the Deck, and two Level 4 Madolche make Queen Tiaramisu, who shuffles two of your opponent's cards away. Keep your Graveyard empty and Puddingcess does the rest.",
+  "cards": {
+   "Madolche Magileine": 3,
+   "Madolche Anjelly": 3,
+   "Madolche Hootcake": 3,
+   "Madolche Messengelato": 2,
+   "Madolche Mewfeuille": 2,
+   "Madolche Puddingcess": 2,
+   "Madolche Petingcessoeur": 2,
+   "Madolche Butlerusk": 1,
+   "Madolche Chouxvalier": 1,
+   "Madolche Marmalmaide": 1,
+   "Madolche Chateau": 2,
+   "Madolche Ticket": 3,
+   "Madolche Salon": 1,
+   "Terraforming": 1,
+   "Mystical Space Typhoon": 2,
+   "Dark Hole": 1,
+   "Book of Moon": 1,
+   "Madolche Lesson": 1,
+   "Madolche Tea Break": 1,
+   "Madolche Nights": 1,
+   "Madolche Promenade": 1,
+   "Madolchepalooza": 1,
+   "Madolche Dessert": 1,
+   "Madolche Waltz": 1,
+   "Mirror Force": 1,
+   "Fiendish Chain": 1
+  },
+  "extra": {
+   "Madolche Queen Tiaramisu": 2,
+   "Madolche Queen Tiarafraise": 1,
+   "Madolche Teacher Glassouffle": 1,
+   "Madolche Puddingcess Chocolat-a-la-Mode": 1,
+   "Number 39: Utopia": 1,
+   "Gagaga Cowboy": 1,
+   "Leviair the Sea Dragon": 1,
+   "Number 17: Leviathan Dragon": 1,
+   "Photon Papilloperative": 1,
+   "Gem-Knight Pearl": 1,
+   "Number 101: Silent Honor ARK": 1
+  }
+ },
+ "worlds": [
+  "heartland"
+ ],
+ "stage": 4,
+ "npc": {
+  "id": "dawn_heartland",
+  "old_deck": "yuma",
+  "lines": [
+   "I fill the festival balloons before anybody is up. Four hundred of them. Then I set out the sweets stand.",
+   "Duel me while the helium settles. My deck is all cake and it still bites. I am gone by ten."
+  ],
+  "intro": "Tea is served. Up, up and away."
+ }
+}
