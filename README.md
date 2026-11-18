@@ -5,6 +5,28 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.42.0
+
+**The opponent that thinks ahead.** This is step 2 of the engine move: on the new engine the CPU now has three levels, Normal, Hard and Extreme. No cards added: the game still has **1,998 cards**, every one working and obtainable.
+
+- **Try it:** Free Duel, ENGINE: New (test). The three difficulty buttons there now read Normal, Hard and Extreme.
+- **How it thinks:** before it answers, it copies the duel, gives each answer it could give on a copy, plays the next turns out, and scores where that leaves it. The real card scripts run in every one of those tries, so it works for every card, including ones nobody wrote any rules of thumb for.
+- **It does not cheat:** it never reads your hand, your Deck or your face-down cards. Each try re-deals everything it cannot see (a different random deal each time), so it plans against what you might have, not what you do have. That also covers coin tosses and its own next draws.
+- **The levels:** Normal looks a little ahead, tries each answer against 2 deals, and now and then takes its second-best idea. Hard tries each answer against up to 6 deals. Extreme goes up to 12, and for its best ideas also looks one more decision ahead. It thinks on its own threads, so the screen never freezes; "is thinking..." shows when it takes more than a moment.
+- **No more handicap on the new engine:** the classic Hard gives the CPU an extra starting card. On the new engine it does not get one. Its edge is how it plays. It still brings the tuned deck on Hard and Extreme.
+- **ygo-agent (the outside AI) is not used.** It only knows the cards on its own list and it runs as a Python server, so it cannot play our decks inside the game. The opponent here is our own.
+- **Under the hood:** `native/ai.hpp` (the search), one addition to the engine (`OCG_DuelDeterminize`, the fair re-deal), scripts are compiled once so a copy of a duel starts in 5 ms instead of 17.
+
+How it measured (all on the new engine, decks paired so each side plays both decks):
+
+- Hard against the step 1 placeholder: **151 wins, 48 losses, 1 draw in 200 duels (75.5%)**. My bar was 80%. It did not reach it. For scale: a version that was allowed to see every hidden card only reached 70% before the last improvements, so a lot of what is left is the luck of the draw.
+- Normal against the placeholder: 45 wins, 34 losses, 1 draw in 80 duels (56%).
+- Extreme against Hard: 20 wins, 18 losses in 38 duels. Too close to call. On my test machine both get about the same number of tries per decision; Extreme pulls ahead of Hard only when the computer gives it more of them (it uses up to 4 threads on yours).
+- Test boards (30 set positions: a win on the table, an attack that would be a mistake, a card that should or should not be played): Hard 30 of 30, Extreme 30 of 30, Normal 28 of 30. The placeholder gets 27 of 30, so these boards mostly prove it does not do dumb things, not that it is brilliant.
+- Thinking time on my slow test machine, one thread: the longest single decision was 1.8 seconds on Hard.
+
+Not checked: nobody has played against it yet, and I cannot run the Mac or Windows library myself. Story, free roam, Turbo Duels and puzzles are still on the classic engine until the next build.
+
 ## What is in 0.41.0
 
 **The new rules engine is inside the game.** This is step 1 of moving duels from the hand-written rules to ocgcore, the engine EDOPro runs on. No cards added: the game still has **1,998 cards**, every one working and obtainable.
