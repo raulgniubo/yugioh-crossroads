@@ -1,0 +1,100 @@
+{
+ "key": "ghostrick",
+ "era": "ZEXAL",
+ "pack": {
+  "name": "Ghostrick Night",
+  "color": "8a5ad8",
+  "blurb": "The Ghostrick spooks who hide face-down and flip up to play their tricks, the haunted mansion where nobody can attack a face-down monster, and the angel who wins once she collects ten materials."
+ },
+ "deck": {
+  "key": "deck_ghostrick",
+  "name": "Ghostrick Night",
+  "art": "shadow",
+  "cover": "Ghostrick Jiangshi",
+  "blurb": "Boo. The spooks hide face-down where nothing can attack them, turn your monsters face-down too, and pop up one by one to play their tricks.",
+  "cards": {
+   "Ghostrick Jiangshi": 2,
+   "Ghostrick Siren": 2,
+   "Ghostrick Lantern": 2,
+   "Ghostrick Specter": 1,
+   "Ghostrick Jackfrost": 1,
+   "Ghostrick Mary": 1,
+   "Ghostrick Witch": 2,
+   "Ghostrick Yuki-onna": 1,
+   "Ghostrick Stein": 1,
+   "Ghostrick Skeleton": 1,
+   "Ghostrick Mummy": 2,
+   "Ghostrick Nekomusume": 1,
+   "Ghostrick Warwolf": 1,
+   "Ghostrick Doll": 1,
+   "Ghostrick Fairy": 1,
+   "Ghostrick Mansion": 2,
+   "Ghostrick Museum": 1,
+   "Ghostrick Parade": 1,
+   "Ghostrick Shot": 1,
+   "Mystical Space Typhoon": 1,
+   "Book of Moon": 2,
+   "Ghostrick Scare": 2,
+   "Ghostrick Break": 1,
+   "Ghostrick Vanish": 1,
+   "Ghostrick-Go-Round": 1,
+   "Ghostrick Night": 1,
+   "Ghostrick Renovation": 1,
+   "Mirror Force": 1,
+   "Bottomless Trap Hole": 1,
+   "Call of the Haunted": 1,
+   "Compulsory Evacuation Device": 1,
+   "Dimensional Prison": 1
+  },
+  "extra": {
+   "Ghostrick Angel of Mischief": 1,
+   "Ghostrick Socuteboss": 1,
+   "Ghostrick Dullahan": 2
+  }
+ },
+ "worlds": [
+  "heartland"
+ ],
+ "stage": 4,
+ "npc": {
+  "id": "night_heartland",
+  "rotate": true,
+  "intro": "Trick or treat? Trick. Always trick.",
+  "lines_add": [
+   "On the darkest nights I bring the Ghostricks. You can't hit what you can't see."
+  ]
+ },
+ "cards": [
+  "Ghostrick Museum",
+  "Ghostrick Stein",
+  "Ghostrick Nekomusume",
+  "Ghostrick or Treat",
+  "Ghostrick Witch",
+  "Ghostrick Parade",
+  "Ghostrick Socuteboss",
+  "Ghostrick Fairy",
+  "Ghostrick-Go-Round",
+  "Ghostrick Dullahan",
+  "Ghostrick Doll",
+  "Ghostrick Vanish",
+  "Ghostrick Skeleton",
+  "Ghostrick Angel of Mischief",
+  "Ghostrick Yuki-onna",
+  "Ghostrick Lantern",
+  "Ghostrick Jackfrost",
+  "Ghostrick Renovation",
+  "Ghostrick Siren",
+  "Ghostrick Shot",
+  "Ghostrick Warwolf",
+  "Ghostrick Break",
+  "Ghostrick Jiangshi",
+  "Ghostrick Specter",
+  "Ghostrick Yeti",
+  "Ghostrick Ghoul",
+  "Ghostrick Night",
+  "Ghostrick Scare",
+  "Ghostrick Mummy",
+  "Ghostrick Mary",
+  "Ghostrick Mansion"
+ ]
+}

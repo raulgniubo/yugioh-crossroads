@@ -3408,5 +3408,263 @@
 },
 "opp": {},
 "turns": 3
+},
+{
+"card": "The Fang of Critias",
+"me": {
+"hand": [
+"The Fang of Critias",
+"Mirror Force"
+],
+"extra": [
+"Mirror Force Dragon"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Relinquished Fusion",
+"me": {
+"hand": [
+"Relinquished Fusion"
+],
+"gy": [
+"Relinquished",
+"Thousand-Eyes Idol"
+],
+"extra": [
+"Thousand-Eyes Restrict"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Sacrifice Level-Up",
+"me": {
+"m": [
+"Gagaga Magician",
+"Goblindbergh"
+],
+"hand": [
+"Sacrifice Level-Up"
+],
+"extra": [
+"Number 39: Utopia",
+"Number 61: Volcasaurus"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Legendary Knight Hermos",
+"me": {
+"m": [
+"Celtic Guardian"
+],
+"hand": [
+"Legend of Heart",
+"The Claw of Hermos"
+],
+"deck": [
+"Legendary Knight Hermos"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Moulinglacia the Elemental Lord",
+"me": {
+"hand": [
+"Moulinglacia the Elemental Lord"
+],
+"gy": [
+"Mother Grizzly",
+"Hammer Shark",
+"Saber Shark",
+"Spear Shark",
+"Big Jaws"
+]
+},
+"opp": {
+"hand": [
+"Battle Ox",
+"Kuriboh",
+"Fissure"
+]
+},
+"turns": 3
+},
+{
+"card": "Elemental HERO Grandmerge",
+"me": {
+"m": [
+"Elemental HERO Avian",
+"Elemental HERO Burstinatrix"
+],
+"hand": [
+"Polymerization"
+],
+"extra": [
+"Elemental HERO Grandmerge"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Cyber Energy Shock",
+"me": {
+"m": [
+"Jinzo"
+],
+"hand": [
+"Cyber Energy Shock"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+],
+"st": [
+"Mirror Force"
+]
+},
+"turns": 3
+},
+{
+"card": "Earthbound Immortal Revival",
+"me": {
+"hand": [
+"Earthbound Immortal Revival",
+"Blue-Eyes White Dragon"
+],
+"gy": [
+"Earthbound Immortal Uru",
+"Forest"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Resonator Engine",
+"me": {
+"hand": [
+"Resonator Engine"
+],
+"gy": [
+"Dark Resonator",
+"Dark Resonator"
+],
+"deck": [
+"Battle Ox",
+"Gene-Warped Warwolf"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Necroid Synchro",
+"me": {
+"hand": [
+"Necroid Synchro"
+],
+"gy": [
+"Junk Synchron",
+"Battle Ox",
+"Kuriboh"
+],
+"extra": [
+"Stardust Dragon"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Junk Warrior/Assault Mode",
+"me": {
+"m": [
+"Junk Warrior"
+],
+"st": [
+"Assault Mode Activate"
+],
+"deck": [
+"Junk Warrior/Assault Mode"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Abyss-strom",
+"me": {
+"fieldspell": [
+"Umi"
+],
+"st": [
+"Abyss-strom"
+]
+},
+"opp": {
+"st": [
+"Mirror Force",
+"Torrential Tribute"
+]
+},
+"turns": 3
+},
+{
+"card": "Spellbook of the Grand Circle",
+"me": {
+"hand": [
+"Spellbook of the Grand Circle",
+"Battle Ox",
+"Kuriboh"
+],
+"deck": [
+"Hiita the Fire Charmer",
+"Eria the Water Charmer",
+"Wynn the Wind Charmer",
+"Aussa the Earth Charmer"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Supreme Arcanite Magician",
+"me": {
+"m": [
+"Arcanite Magician",
+"Dark Magician"
+],
+"hand": [
+"Polymerization"
+],
+"extra": [
+"Supreme Arcanite Magician"
+]
+},
+"opp": {},
+"turns": 3
 }
 ]

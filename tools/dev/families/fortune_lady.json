@@ -1,0 +1,71 @@
+{
+ "key": "fortune_lady",
+ "era": "5D's",
+ "pack": {
+  "name": "Ladies of Fortune",
+  "color": "c06ad8",
+  "blurb": "The Fortune Ladies, spellcasters of time whose Level rises every Standby Phase and whose ATK grows with it, and Fortune Lady Every, the Synchro who stands over them all."
+ },
+ "deck": {
+  "key": "deck_fortune_lady",
+  "name": "Ladies of Fortune",
+  "art": "arcane",
+  "cover": "Fortune Lady Earth",
+  "blurb": "Every turn the Ladies grow one Level older and stronger. Light calls the next Lady when it leaves, Fire burns a monster on arrival, and time is always on their side.",
+  "cards": {
+   "Fortune Lady Light": 3,
+   "Fortune Lady Fire": 2,
+   "Fortune Lady Wind": 3,
+   "Fortune Lady Water": 3,
+   "Fortune Lady Dark": 2,
+   "Fortune Lady Earth": 2,
+   "Fortune Lady Past": 2,
+   "Fortune Fairy Hikari": 1,
+   "Fortune Lady Calling": 3,
+   "Monster Reborn": 1,
+   "Mystical Space Typhoon": 2,
+   "Magical Dimension": 1,
+   "Dark Hole": 1,
+   "Fortune Lady Rewind": 2,
+   "Mirror Force": 1,
+   "Call of the Haunted": 2,
+   "Bottomless Trap Hole": 1,
+   "Sakuretsu Armor": 2,
+   "Torrential Tribute": 1,
+   "Compulsory Evacuation Device": 1,
+   "Solemn Judgment": 1,
+   "Dimensional Prison": 1,
+   "Magic Cylinder": 1,
+   "Swords of Revealing Light": 1
+  },
+  "extra": {
+   "Fortune Lady Every": 2,
+   "Arcanite Magician": 1,
+   "Explosive Magician": 1
+  }
+ },
+ "worlds": [
+  "newdomino"
+ ],
+ "stage": 3,
+ "npc": {
+  "id": "nd_cafe",
+  "rotate": true,
+  "intro": "Shall I read your fortune? It says you lose.",
+  "lines_add": [
+   "Some days I read fortunes instead. The Ladies are always right in the end."
+  ]
+ },
+ "cards": [
+  "Fortune Lady Calling",
+  "Fortune Lady Water",
+  "Fortune Lady Light",
+  "Fortune Lady Dark",
+  "Fortune Lady Past",
+  "Fortune Lady Every",
+  "Fortune Lady Fire",
+  "Fortune Lady Wind",
+  "Fortune Lady Earth",
+  "Fortune Lady Rewind"
+ ]
+}

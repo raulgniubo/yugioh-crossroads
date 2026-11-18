@@ -3042,7 +3042,11 @@ func _rest_of_landmarks() -> void:
 	# Landmarks at the far end of each road
 	var dome := prop("duel_dome", Vector3(-54, 0, 0), PI / 2, 34.0)
 	if dome:
-		neon_sign("DUEL DOME", Vector3(-38.5, 9.5, 0), theme["accent"], 300, PI / 2)
+		collide(dome, 0.92)      # (you walked into its steps and walls: it is a backdrop, not a building you go into)
+		# (On the front of the rim, with a dark edge: it stood behind the rim, pale against the sky.)
+		var dsign := neon_sign("DUEL DOME", Vector3(-35.6, 8.4, 0), theme["accent"], 260, PI / 2)
+		dsign.outline_size = 22
+		dsign.outline_modulate = Color(0.05, 0.03, 0.12, 0.9)
 	var school := prop("school", Vector3(54, 0, 0), -PI / 2, 30.0)
 	if school:
 		neon_sign("DOMINO HIGH", Vector3(38.5, 12.5, 0), Color("ffe9a8"), 220, -PI / 2, false)

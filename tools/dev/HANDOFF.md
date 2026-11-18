@@ -137,3 +137,21 @@ and the story difficulty moves it. All of that is build 1. Build 2 is only the f
 - Full decks: `tools/dev/tiers/make_tiers.py --write` swapped up to 3 weak generics for era singles in 8 family decks
   (not Exodia or Kuriboh, stall decks).
 - ocg_sim: `-L1 -B` makes both sides think in the engine (needed to see deck differences; the plain policy can't use staples).
+
+### Build 2 shipped as 0.53.0
+- 19 families (specs in `tools/dev/families/b6.py`, Spanish card text in `tools/dev/cardes/`): legends_king (pack renamed
+  "Swords of Legend"), jurrac, darklord, spirit (+ Elemental Lords), union, hero, sacred_beast, cyber (+ Roids), meklord,
+  synchron, karakuri, fabled, fortune_lady, gusto, mermail, wind_up, spellbook (+ Charmers), ghostrick, dragon_ruler.
+  661 cards, 4,864 total. Dropped: Speedroids, Cyberse, Rokket Synchron, Cybersal Cyclone (unplanned shows); A Legendary Ocean
+  (not in the card folder). The Shop Regular has "chats", not "lines", so add_family's rotate step fails on him: done by hand.
+- **Volumes** (`Collection`: VOLUME_SIZE 150, volumes(), all_volumes(), shop_packs(), pack_title(), base_key()). The big
+  SERIES sets are sold as "Duel Monsters#1".."#9" etc. pool("X#n") is the n-th slice of pool("X") sorted by
+  `data/release_order.json` (card id -> Konami database number, made by `tools/dev/release/make_release_order.py` from
+  yaml-yugi's aggregate cards.json on GitHub). PACKS still lists the whole sets: the album, album goals and pack covers keep
+  using them. Unlocks.pack strips "#n". card_check checks the volumes cover each set exactly once.
+- **Multi-open**: Collection.open_packs(key, n) (MULTI 5 -> 4.5x, 10 -> 8.5x the price), PackOpening.counter/last/skip_rest,
+  `scripts/menu/pack_summary.gd` for the end screen. Dev: `--open=packmulti`, `packmulti10`, `packmulti10s` (skips to the end).
+- Pack shop shelf is inside a ScrollContainer; album set names shrink to fit; Duel Dome solid (collide 0.92) with its sign on
+  the rim's front; Kame Game back-left shelf removed for the vending machine.
+- To see a prop that only lives on Raul's Mac in a test shot: copy its .glb from the staged uploads into
+  `<test assets>/places/<name>.glb` (CityBuilder.own_place) and pass that folder as --assets. Don't commit it.

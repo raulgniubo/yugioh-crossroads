@@ -18,6 +18,11 @@ var _beams: Array = []      # [x, color, born]
 var _sparks: Array = []     # [pos, vel, color, born]
 var _t := 0.0
 var _btn: Button
+## Opening several packs in a row (0.53.0): "Pack 3 of 10" at the top, a Next pack button, and
+## a way out to the summary.
+var counter := ""
+var last := true
+var skip_rest := false
 
 
 func _init(pulls: Array, owned_before: Dictionary, color: Color, title: String, pack := {}) -> void:
@@ -44,7 +49,30 @@ func _ready() -> void:
 	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fx.draw.connect(_draw_fx)
 	add_child(_fx)
+	if counter != "":
+		var cl := UITheme.label(counter, 30, _color.lightened(0.5), UITheme.title_font())
+		cl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cl.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+		cl.position.y = 36
+		add_child(cl)
+		cl.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		var sk := Button.new()
+		sk.text = "  %s  " % Loc.t("Skip to all the pulls")
+		sk.add_theme_font_size_override("font_size", 20)
+		sk.focus_mode = Control.FOCUS_NONE
+		add_child(sk)
+		sk.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+		sk.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		sk.position += Vector2(-36, 30)
+		sk.pressed.connect(_skip_all)
 	_run.call_deferred()
+
+
+func _skip_all() -> void:
+	skip_rest = true
+	_skip = true
+	if _done:
+		_close()
 
 
 func _process(delta: float) -> void:
@@ -197,8 +225,11 @@ func _run() -> void:
 	for i in order:
 		await _flip(_cards[i])
 	_done = true
+	if skip_rest:
+		_close()
+		return
 	_btn = Button.new()
-	_btn.text = "  Continue  "
+	_btn.text = "  %s  " % Loc.t("Continue" if last else "Next pack")
 	_btn.add_theme_font_size_override("font_size", 26)
 	add_child(_btn)
 	await get_tree().process_frame
@@ -264,7 +295,13 @@ func _flip(c: Dictionary) -> void:
 	await _wait(0.22 if r == 0 else (0.5 if r == 1 else 0.95))
 
 
+var _closing := false
+
+
 func _close() -> void:
+	if _closing:
+		return
+	_closing = true
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 0.0, 0.2)
 	await tw.finished
@@ -278,7 +315,11 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_accept"):
+	if event.is_action_pressed("ui_cancel") and counter != "":
+		# (With several packs, Back skips to the summary.)
+		get_viewport().set_input_as_handled()
+		_skip_all()
+	elif event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_accept"):
 		get_viewport().set_input_as_handled()
 		if _done:
 			_close()

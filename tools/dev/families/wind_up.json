@@ -1,0 +1,83 @@
+{
+ "key": "wind_up",
+ "era": "ZEXAL",
+ "pack": {
+  "name": "Wind-Up Toybox",
+  "color": "e0c040",
+  "blurb": "The Wind-Up toys, each with an effect it can use once while face-up, the Wind-Up Factory that keeps them coming, and the Zenmai Xyz Monsters that wind them up again."
+ },
+ "deck": {
+  "key": "deck_wind_up",
+  "name": "Wind-Up Toybox",
+  "art": "machines",
+  "cover": "Wind-Up Magician",
+  "blurb": "Each toy does its trick once, then waits to be wound up again. Wind-Up Magician calls a friend every time a trick goes off, and the Zenmai reset the whole box.",
+  "cards": {
+   "Wind-Up Magician": 3,
+   "Wind-Up Rat": 3,
+   "Wind-Up Shark": 3,
+   "Wind-Up Hunter": 2,
+   "Wind-Up Rabbit": 2,
+   "Wind-Up Kitten": 1,
+   "Wind-Up Soldier": 2,
+   "Wind-Up Warrior": 1,
+   "Wind-Up Knight": 1,
+   "Wind-Up Juggler": 1,
+   "Wind-Up Dog": 1,
+   "Wind-Up Bat": 1,
+   "Wind-Up Factory": 3,
+   "Legendary Wind-Up Key": 1,
+   "Mystical Space Typhoon": 2,
+   "Monster Reborn": 1,
+   "Book of Moon": 1,
+   "Mirror Force": 1,
+   "Call of the Haunted": 2,
+   "Bottomless Trap Hole": 1,
+   "Torrential Tribute": 1,
+   "Compulsory Evacuation Device": 1,
+   "Solemn Judgment": 1,
+   "Dimensional Prison": 1,
+   "Fiendish Chain": 1,
+   "Sakuretsu Armor": 1,
+   "Wind-Up Honeybee": 1
+  },
+  "extra": {
+   "Wind-Up Zenmaister": 2,
+   "Wind-Up Carrier Zenmaity": 2,
+   "Wind-Up Arsenal Zenmaioh": 1
+  }
+ },
+ "worlds": [
+  "heartland"
+ ],
+ "stage": 4,
+ "npc": {
+  "id": "dawn_heartland",
+  "rotate": true,
+  "intro": "Wind them up and let them go!",
+  "lines_add": [
+   "Some mornings I open the toybox. Every toy does its trick once, then I wind it up again."
+  ]
+ },
+ "cards": [
+  "Wind-Up Dog",
+  "Wind-Up Soldier",
+  "Wind-Up Hunter",
+  "Wind-Up Shark",
+  "Wind-Up Kitten",
+  "Wind-Up Bat",
+  "Wind-Up Rabbit",
+  "Wind-Up Warrior",
+  "Wind-Up Rat",
+  "Wind-Up Snail",
+  "Wind-Up Magician",
+  "Wind-Up Zenmaister",
+  "Legendary Wind-Up Key",
+  "Wind-Up Arsenal Zenmaioh",
+  "Wind-Up Knight",
+  "Wind-Up Carrier Zenmaity",
+  "Wind-Up Juggler",
+  "Wind-Up Honeybee",
+  "Wind-Up Factory"
+ ]
+}

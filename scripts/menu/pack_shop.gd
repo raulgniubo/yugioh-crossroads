@@ -7,6 +7,8 @@ signal closed
 
 var _dp: Label
 var _shelf: HBoxContainer
+var _scroll: ScrollContainer
+var _multi: Array = []          # the Open 5 and Open 10 buttons
 var _slots: Array = []          # [{button, wrap, pack}]
 var _sel := -1
 var _tab := 0
@@ -25,9 +27,12 @@ var _busy := false
 var _t := 0.0
 
 
+## How many cards the info panel shows (best in the pack, or the best you just pulled).
+const FEATURED := 5
+
 ## What each world's card shop keeps on its shelf.
-const WORLD_PACKS := {"domino": ["Duel Monsters", "red_eyes", "blue_eyes", "dark_magician", "kuriboh", "exodia", "guardian", "amazoness", "toon", "archfiend", "gravekeeper", "chaos", "Vault", "legends"], "academy": ["GX", "armed_dragon", "cloudian", "arcana_force", "koaki_meiru", "volcanic", "alien", "vampire", "crystal_beast", "gladiator", "dark_world", "ancient_gear", "monarchs", "Vault", "legends"], "satellite": ["5D's", "nordic", "tg", "naturia", "ice_barrier", "x_saber", "scrap", "morphtronic", "dragunity", "genex", "six_samurai", "lightsworn", "beyond"], "newdomino": ["5D's", "nordic", "tg", "naturia", "ice_barrier", "x_saber", "scrap", "morphtronic", "dragunity", "genex", "six_samurai", "lightsworn", "beyond", "Vault"],
-	"heartland": ["ZEXAL", "bujin", "fire_fist", "ninja", "battlin_boxer", "gimmick_puppet", "chronomaly", "heroic", "madolche", "constellar", "gem_knight", "beyond", "legends"]}
+const WORLD_PACKS := {"domino": ["Duel Monsters", "union", "spirit", "darklord", "jurrac", "legends_king", "red_eyes", "blue_eyes", "dark_magician", "kuriboh", "exodia", "guardian", "amazoness", "toon", "archfiend", "gravekeeper", "chaos", "Vault", "legends"], "academy": ["GX", "cyber", "sacred_beast", "hero", "armed_dragon", "cloudian", "arcana_force", "koaki_meiru", "volcanic", "alien", "vampire", "crystal_beast", "gladiator", "dark_world", "ancient_gear", "monarchs", "Vault", "legends"], "satellite": ["5D's", "fabled", "synchron", "nordic", "tg", "naturia", "ice_barrier", "x_saber", "scrap", "morphtronic", "dragunity", "genex", "six_samurai", "lightsworn", "beyond"], "newdomino": ["5D's", "gusto", "fortune_lady", "fabled", "karakuri", "synchron", "meklord", "nordic", "tg", "naturia", "ice_barrier", "x_saber", "scrap", "morphtronic", "dragunity", "genex", "six_samurai", "lightsworn", "beyond", "Vault"],
+	"heartland": ["ZEXAL", "dragon_ruler", "ghostrick", "wind_up", "spellbook", "mermail", "bujin", "fire_fist", "ninja", "battlin_boxer", "gimmick_puppet", "chronomaly", "heroic", "madolche", "constellar", "gem_knight", "beyond", "legends"]}
 
 
 func _ready() -> void:
@@ -98,11 +103,27 @@ func _ready() -> void:
 	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	tabs.add_child(hint)
 	# The shelf.
+	# (It scrolls sideways: a shelf of twenty packs is wider than any screen, and it used to push
+	# the whole counter off the right edge.)
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.custom_minimum_size = Vector2(0, 420)
+	_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_scroll.follow_focus = true
+	v.add_child(_scroll)
 	_shelf = HBoxContainer.new()
 	_shelf.alignment = BoxContainer.ALIGNMENT_CENTER
-	_shelf.add_theme_constant_override("separation", 34)
-	_shelf.custom_minimum_size = Vector2(0, 430)
-	v.add_child(_shelf)
+	_shelf.add_theme_constant_override("separation", 30)
+	_shelf.custom_minimum_size = Vector2(0, 404)
+	_shelf.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# (Room at both ends so the pack you hold, a little bigger, is not cut off at the edge.)
+	var pad := MarginContainer.new()
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for side in ["left", "right"]:
+		pad.add_theme_constant_override("margin_" + side, 18)
+	_scroll.add_child(pad)
+	pad.add_child(_shelf)
 	var plank := ColorRect.new()
 	plank.color = Color(UITheme.ACCENT, 0.5)
 	plank.custom_minimum_size = Vector2(0, 3)
@@ -110,13 +131,15 @@ func _ready() -> void:
 	# What is in the pack you are holding.
 	var info := HBoxContainer.new()
 	info.add_theme_constant_override("separation", 40)
-	info.custom_minimum_size = Vector2(0, 250)
+	info.custom_minimum_size = Vector2(0, 240)
+	info.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(info)
 	var left := VBoxContainer.new()
 	left.add_theme_constant_override("separation", 8)
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.add_child(left)
-	_name = UITheme.label("", 46, Color.WHITE, UITheme.title_font())
+	_name = UITheme.label("", 40, Color.WHITE, UITheme.title_font())
+	_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	left.add_child(_name)
 	_blurb = UITheme.label("", 22, UITheme.TEXT)
 	_blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -125,7 +148,7 @@ func _ready() -> void:
 	left.add_child(_have)
 	_bar = ProgressBar.new()
 	_bar.show_percentage = false
-	_bar.custom_minimum_size = Vector2(520, 14)
+	_bar.custom_minimum_size = Vector2(480, 14)
 	_bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	var bar_bg := StyleBoxFlat.new()
 	bar_bg.bg_color = Color(1, 1, 1, 0.1)
@@ -140,20 +163,31 @@ func _ready() -> void:
 	odds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	left.add_child(odds)
 	var buy := HBoxContainer.new()
-	buy.add_theme_constant_override("separation", 16)
+	buy.add_theme_constant_override("separation", 12)
 	left.add_child(buy)
 	_open_btn = Button.new()
-	_open_btn.custom_minimum_size = Vector2(360, 70)
-	_open_btn.add_theme_font_size_override("font_size", 30)
+	_open_btn.custom_minimum_size = Vector2(280, 66)
+	_open_btn.add_theme_font_size_override("font_size", 26)
 	_open_btn.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.GOLD, 0.22), UITheme.GOLD, 16))
 	_open_btn.add_theme_stylebox_override("hover", UITheme.button_box(Color(UITheme.GOLD, 0.4), Color.WHITE, 16))
 	_open_btn.add_theme_stylebox_override("focus", UITheme.button_box(Color(UITheme.GOLD, 0.4), Color.WHITE, 16))
 	_open_btn.pressed.connect(func(): _open(_packs[_sel]))
 	buy.add_child(_open_btn)
+	# Open 5 or 10 at once, for less.
+	for n in [5, 10]:
+		var mb := Button.new()
+		mb.custom_minimum_size = Vector2(0, 66)
+		mb.add_theme_font_size_override("font_size", 20)
+		mb.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.GOLD, 0.12), Color(UITheme.GOLD, 0.7), 16))
+		mb.add_theme_stylebox_override("hover", UITheme.button_box(Color(UITheme.GOLD, 0.35), Color.WHITE, 16))
+		mb.add_theme_stylebox_override("focus", UITheme.button_box(Color(UITheme.GOLD, 0.35), Color.WHITE, 16))
+		mb.pressed.connect(func(): _open(_packs[_sel], n))
+		buy.add_child(mb)
+		_multi.append(mb)
 	var done := Button.new()
 	done.text = "Leave the counter"
-	done.custom_minimum_size = Vector2(260, 70)
-	done.add_theme_font_size_override("font_size", 24)
+	done.custom_minimum_size = Vector2(0, 66)
+	done.add_theme_font_size_override("font_size", 20)
 	done.pressed.connect(_close)
 	buy.add_child(done)
 	var right := VBoxContainer.new()
@@ -180,19 +214,20 @@ func _show_tab(t: int) -> void:
 		_shelf.remove_child(c)
 		c.queue_free()
 	_slots.clear()
-	_packs = Collection.PACKS.filter(func(p): return int(p.get("tab", 0)) == t)
+	_packs = Collection.shop_packs().filter(func(p): return int(p.get("tab", 0)) == t)
 	# A shop inside a world sells that world's own cards (and the Vault). The full shelf is
 	# in the main menu.
 	var here := str(Router.roam.get("district", "")) if get_tree().current_scene and "district" in get_tree().current_scene and "_npcs" in get_tree().current_scene else ""
 	if here != "" and WORLD_PACKS.has(here) and t <= 1:
 		var mine: Array = WORLD_PACKS[here]
-		var kept: Array = _packs.filter(func(p): return str(p["key"]) in mine)
+		var kept: Array = _packs.filter(func(p): return Collection.base_key(str(p["key"])) in mine)
 		if not kept.is_empty():
 			_packs = kept
 	_sel = -1
 	for i in _packs.size():
 		_shelf.add_child(_slot(i))
 	_select(0, true)
+	_scroll.scroll_horizontal = 0
 	(_slots[0]["button"] as Button).grab_focus.call_deferred()
 
 
@@ -200,15 +235,15 @@ func _slot(i: int) -> Control:
 	var pack: Dictionary = _packs[i]
 	var b := Button.new()
 	b.flat = true
-	b.custom_minimum_size = Vector2(250, 428)
+	b.custom_minimum_size = Vector2(230, 396)
 	b.focus_mode = Control.FOCUS_ALL
 	for st in ["normal", "hover", "pressed", "focus"]:
 		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
 	var wrap := PackWrapper.new().setup(pack)
-	wrap.custom_minimum_size = Vector2(250, 384)
-	wrap.size = Vector2(250, 384)
-	wrap.position = Vector2(0, 40)
-	wrap.pivot_offset = Vector2(125, 384)
+	wrap.custom_minimum_size = Vector2(230, 353)
+	wrap.size = Vector2(230, 353)
+	wrap.position = Vector2(0, 38)
+	wrap.pivot_offset = Vector2(115, 353)
 	b.add_child(wrap)
 	# Click a pack to pick it; only the Open button spends Duel Points.
 	b.pressed.connect(func(): _select(i))
@@ -219,7 +254,7 @@ func _slot(i: int) -> Control:
 	wrap.position.y = -60
 	var tw := wrap.create_tween().set_parallel()
 	tw.tween_property(wrap, "modulate:a", 1.0, 0.25).set_delay(0.1 + i * 0.07)
-	tw.tween_property(wrap, "position:y", 40.0, 0.4).set_delay(0.1 + i * 0.07).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(wrap, "position:y", 38.0, 0.4).set_delay(0.1 + i * 0.07).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	return b
 
 
@@ -248,9 +283,12 @@ func _select(i: int, quiet := false) -> void:
 		_backdrop.texture = w._art
 		_backdrop.modulate.a = 0.0
 		create_tween().tween_property(_backdrop, "modulate:a", 0.55, 0.35)
-	_name.text = Loc.t(str(pack["name"])).to_upper()
+	_name.text = Collection.pack_title(pack).to_upper()
+	_scroll.ensure_control_visible(_slots[i]["button"])
 	_name.add_theme_color_override("font_color", col.lightened(0.45))
 	_blurb.text = Loc.t(str(pack["blurb"]))
+	if int(pack.get("vol", 0)) > 0:
+		_blurb.text += " " + Loc.t("Volume %d of %d, in the order the cards first came out.") % [int(pack["vol"]), int(pack["vols"])]
 	_show_featured(pack)
 	_refresh()
 
@@ -266,7 +304,7 @@ func _show_featured(pack: Dictionary) -> void:
 		if ra != rb:
 			return ra > rb
 		return int(CardData.get_card(a).get("atk", 0)) > int(CardData.get_card(b).get("atk", 0)))
-	for k in mini(5, pool.size()):
+	for k in mini(FEATURED, pool.size()):
 		_featured.add_child(_thumb(pool[k], k, Collection.count(pool[k]) > 0, false))
 
 
@@ -275,10 +313,10 @@ func _thumb(id: int, k: int, owned: bool, is_new: bool) -> Control:
 	holder.add_theme_constant_override("separation", 4)
 	var tr := TextureRect.new()
 	tr.texture = Cards.get_face(id)
-	tr.custom_minimum_size = Vector2(138, 201)
+	tr.custom_minimum_size = Vector2(120, 175)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	tr.pivot_offset = Vector2(69, 100)
+	tr.pivot_offset = Vector2(60, 87)
 	tr.tooltip_text = str(CardData.get_card(id).get("name", ""))
 	holder.add_child(tr)
 	Foil.apply(tr, CardData.rarity(id))
@@ -310,6 +348,14 @@ func _refresh() -> void:
 	_have.text = Loc.t("You have %d of %d cards.") % [have, pool.size()]
 	_bar.max_value = maxi(1, pool.size())
 	_bar.value = have
+	var single_only := str(pack["key"]) == "echo"
+	for k in _multi.size():
+		var mb: Button = _multi[k]
+		var n: int = [5, 10][k]
+		mb.visible = not single_only
+		mb.text = Loc.t("%d packs  ·  %d DP") % [n, Collection.multi_price(pack, n)]
+		mb.tooltip_text = Loc.t("%d%% off") % (10 if n == 5 else 15)
+		mb.disabled = pool.is_empty() or not Unlocks.pack(str(pack["key"])) or Collection.dp < Collection.multi_price(pack, n)
 	if pool.is_empty():
 		_open_btn.text = "Needs the card database"
 		_open_btn.disabled = true
@@ -320,49 +366,79 @@ func _refresh() -> void:
 		if not Unlocks.pack(str(pack["key"])):
 			_open_btn.text = Unlocks.pack_why(str(pack["key"]))
 			_open_btn.disabled = true
+			for mb in _multi:
+				mb.visible = false
 
 
-func _open(pack: Dictionary) -> void:
+func _open(pack: Dictionary, n := 1) -> void:
 	if _busy:
 		return
 	var before := Collection.owned.duplicate()
-	var pulls := Collection.open_pack(str(pack["key"]))
-	if pulls.is_empty():
+	var batches := Collection.open_packs(str(pack["key"]), n)
+	if batches.is_empty():
 		if Unlocks.pack(str(pack["key"])):
 			Router.toast("Not enough Duel Points")
 		Sfx.play("blip", -6.0, 0.6)
 		return
 	_busy = true
-	# Collection goals reached by this pack (and daily or weekly pack goals), told once the cards are out.
+	# Collection goals reached by these packs (and daily or weekly pack goals), told once the cards are out.
 	var pays: Array = Goals.pay_album() + Goals.pay_due()
-	for k in pays.size():
-		var line: Array = pays[k]
-		get_tree().create_timer(4.0 + 2.2 * k).timeout.connect(func():
-			Router.toast(Loc.t("%s   +%d Duel Points") % [str(line[0]), int(line[1])])
-			Sfx.play("quest", -4.0))
 	_refresh()
-	# The pack lifts off the shelf, then the opening scene takes over.
+	# The pack lifts off the shelf, then the opening scene takes over: one pack after another,
+	# the same show each time, and with several a look at everything at the end.
 	var w: PackWrapper = _slots[_sel]["wrap"]
 	var lift := w.create_tween()
 	lift.tween_property(w, "position:y", 0.0, 0.18).set_ease(Tween.EASE_OUT)
 	Sfx.play("whoosh", -6.0, 1.3)
 	await lift.finished
 	w.modulate.a = 0.0
-	var scene := PackOpening.new(pulls, before.duplicate(), pack.get("color", UITheme.ACCENT), str(pack.get("name", "")), pack)
-	add_child(scene)
-	await scene.closed
+	var seen := before.duplicate()
+	var all: Array = []
+	for b in batches:
+		all += b
+	for k in batches.size():
+		var scene := PackOpening.new(batches[k], seen.duplicate(), pack.get("color", UITheme.ACCENT), Collection.pack_title(pack), pack)
+		if batches.size() > 1:
+			scene.counter = Loc.t("Pack %d of %d") % [k + 1, batches.size()]
+			scene.last = k == batches.size() - 1
+		add_child(scene)
+		await scene.closed
+		for id in batches[k]:
+			seen[id] = 1
+		if scene.skip_rest:
+			break
+	if batches.size() > 1:
+		var sum := PackSummary.new(all, before, pack.get("color", UITheme.ACCENT), Collection.pack_title(pack))
+		add_child(sum)
+		await sum.closed
+	for k in pays.size():
+		var line: Array = pays[k]
+		get_tree().create_timer(0.6 + 2.2 * k).timeout.connect(func():
+			Router.toast(Loc.t("%s   +%d Duel Points") % [str(line[0]), int(line[1])])
+			Sfx.play("quest", -4.0))
 	# A fresh pack slides into the empty place, and what you pulled stays on show.
 	w.position.y = -60
 	var back := w.create_tween().set_parallel()
 	back.tween_property(w, "modulate:a", 1.0, 0.2)
-	back.tween_property(w, "position:y", 40.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	back.tween_property(w, "position:y", 38.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_last_title.text = Loc.t("YOU PULLED")
 	for c in _featured.get_children():
 		c.queue_free()
-	for i in pulls.size():
-		var id: int = pulls[i]
+	var show: Array = []
+	for id in all:
+		if not show.has(id):
+			show.append(id)
+	if all.size() > FEATURED:
+		# (From several packs: the best of them, new ones first.)
+		show.sort_custom(func(a, b):
+			var na := int(before.get(a, 0)) == 0
+			var nb := int(before.get(b, 0)) == 0
+			if CardData.rarity(a) != CardData.rarity(b):
+				return CardData.rarity(a) > CardData.rarity(b)
+			return na and not nb)
+	for i in mini(FEATURED, show.size()):
+		var id: int = show[i]
 		_featured.add_child(_thumb(id, i, true, int(before.get(id, 0)) == 0))
-		before[id] = 1
 	_busy = false
 	_refresh()
 	_open_btn.grab_focus.call_deferred()

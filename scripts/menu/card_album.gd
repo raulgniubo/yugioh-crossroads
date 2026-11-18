@@ -879,7 +879,11 @@ class _SetButton extends Button:
 		draw_style_box(sb, r)
 		draw_rect(Rect2(Vector2(0, 10), Vector2(5, size.y - 20)), col)
 		var f := UITheme.title_font()
-		draw_string(f, Vector2(18, 28), title, HORIZONTAL_ALIGNMENT_LEFT, size.x - 110, 21, Color.WHITE if active else Color(0.9, 0.93, 1.0, 0.92))
+		# (A long name gets a smaller size rather than losing its end: "La Biblioteca de la Profecía".)
+		var tsz := 21
+		while tsz > 13 and f.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, tsz).x > size.x - 92:
+			tsz -= 1
+		draw_string(f, Vector2(18, 28), title, HORIZONTAL_ALIGNMENT_LEFT, size.x - 92, tsz, Color.WHITE if active else Color(0.9, 0.93, 1.0, 0.92))
 		var pct := float(have) / maxf(1.0, total)
 		var t := "%d%%" % int(floor(pct * 100.0))
 		var fs := UITheme.semi_font()

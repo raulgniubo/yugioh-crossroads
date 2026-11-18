@@ -33,6 +33,25 @@ const PACKS := [
 	{"key": "Vault", "tab": 0, "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
 	{"key": "legends", "tab": 0, "name": "Monster Legends", "color": Color("e8b04a"), "blurb": "Normal Monsters from every era: hundreds of them, from the classics to the rare big ones."},
 	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen, her forms and the cards around her. Only the ones the story has already handed you, up to three of each."},
+	{"key": "dragon_ruler", "tab": 1, "name": "Dragon Rulers", "color": Color("d84a2a"), "family": true, "blurb": "The four Dragon Rulers of fire, water, wind and earth and their four little ones, the two that rule light and darkness, and the Rank 7 dragons that rule them all."},
+	{"key": "ghostrick", "tab": 1, "name": "Ghostrick Night", "color": Color("8a5ad8"), "family": true, "blurb": "The Ghostrick spooks who hide face-down and flip up to play their tricks, the haunted mansion where nobody can attack a face-down monster, and the angel who wins once she collects ten materials."},
+	{"key": "wind_up", "tab": 1, "name": "Wind-Up Toybox", "color": Color("e0c040"), "family": true, "blurb": "The Wind-Up toys, each with an effect it can use once while face-up, the Wind-Up Factory that keeps them coming, and the Zenmai Xyz Monsters that wind them up again."},
+	{"key": "spellbook", "tab": 1, "name": "The Prophecy Library", "color": Color("4a5ad8"), "family": true, "blurb": "The Spellbook Spells and the Prophecy spellcasters who read them, the Spell Counter magicians of Endymion's citadel, and the Charmers who take control of monsters of their own Attribute."},
+	{"key": "mermail", "tab": 1, "name": "Atlantis Rising", "color": Color("2a7ad8"), "family": true, "blurb": "The Mermails of the deep and the Atlantean sea serpents: WATER monsters that discard each other to come out, the Abyss- Spells and Traps, and the Poseidra dragons that rule the tide."},
+	{"key": "gusto", "tab": 1, "name": "Winds of Gusto", "color": Color("5ac08a"), "family": true, "blurb": "The Gusto, the wind people and their beast companions who call each other from the Deck when they fall, and the Daigusto Synchro Monsters they ride into battle."},
+	{"key": "fortune_lady", "tab": 1, "name": "Ladies of Fortune", "color": Color("c06ad8"), "family": true, "blurb": "The Fortune Ladies, spellcasters of time whose Level rises every Standby Phase and whose ATK grows with it, and Fortune Lady Every, the Synchro who stands over them all."},
+	{"key": "fabled", "tab": 1, "name": "Realm of the Fabled", "color": Color("5a3a7a"), "family": true, "blurb": "The Fabled, fiends who do their best work from the discard pile: discard them and they come right back, and their Synchro lords punish your opponent for every card in hand."},
+	{"key": "karakuri", "tab": 1, "name": "Karakuri Workshop", "color": Color("b07a3a"), "family": true, "blurb": "The Karakuri clockwork puppets that charge in, flip to defense when attacked, and trigger something every time their battle position changes, and the Karakuri Shoguns they tune into."},
+	{"key": "synchron", "tab": 1, "name": "Junk, Wings and Resonance", "color": Color("e0a020"), "family": true, "blurb": "The rest of the Synchron and Junk monsters that build Synchro Summons out of scrap, the Blackwings and their Assault Blackwings, and the Resonators that tune for the Archfiends."},
+	{"key": "meklord", "tab": 1, "name": "Machine Emperors and Earthbound Gods", "color": Color("8a8a9a"), "family": true, "blurb": "The Meklord Emperors that steal Synchro Monsters and wear them, their Armies and Astro dragons, and the Earthbound Immortals, the giant gods drawn on the earth that attack your Life Points directly."},
+	{"key": "cyber", "tab": 1, "name": "Cyber Style", "color": Color("6ac0d8"), "family": true, "blurb": "The machines of the Cyber style: the rest of the Cyber Dragon line, the Cyberdark monsters that arm themselves from the Graveyard, Cyber Ogre and the old Cyber monsters, and the Roid vehicles."},
+	{"key": "sacred_beast", "tab": 1, "name": "The Three Phantasms", "color": Color("8a1a2a"), "family": true, "blurb": "Uria, Hamon and Raviel, the three Sacred Beasts, with the martyrs and summoners that serve them, the fallen paradise they rise in, and Armityle, the phantasm they become together."},
+	{"key": "hero", "tab": 1, "name": "Heroes and Villains", "color": Color("c03030"), "family": true, "blurb": "Every kind of HERO: the Evil HEROes who fuse with Dark Fusion, the Masked HEROes behind Mask Change, the Vision and Destiny HEROes, and the rest of the Elemental HEROes and their Neos fusions."},
+	{"key": "union", "tab": 1, "name": "Union Hangar", "color": Color("3a8ad8"), "family": true, "blurb": "The Union monsters that equip to each other and split apart again: the A-B-C Dragon Buster pieces, the X-Y-Z cannons' new parts, Kiryu, the beasts of fire and ice, and the hangar that launches them."},
+	{"key": "spirit", "tab": 1, "name": "Spirits of the Old Shrine", "color": Color("d84a6a"), "family": true, "blurb": "The Spirit monsters who strike and return to the hand at the end of the turn, the Shinobird ritual, and the six Elemental Lords who wake when five of their Attribute rest in the Graveyard."},
+	{"key": "darklord", "tab": 1, "name": "Fall of the Darklords", "color": Color("6a2a8a"), "family": true, "blurb": "The fallen angels who lead the Darklords: Morningstar, Superbia and the rest, the Spells and Traps they cast twice from the grave, and the First Darklord they fuse into."},
+	{"key": "jurrac", "tab": 1, "name": "Age of the Jurrac", "color": Color("e0602a"), "family": true, "blurb": "The fire dinosaurs of the Jurrac: raptors that call the next one from the Deck, giants that break the field in half, and the meteor that ends it all."},
+	{"key": "legends_king", "tab": 1, "name": "Swords of Legend", "color": Color("c08a2e"), "family": true, "blurb": "The swordsman who slays dragons and the swords that serve him, the Legendary Knights who answer the Legend of Heart, Jinzo and the cyborgs that hunt Traps, and the Relinquished ritual."},
 	{"key": "bujin", "tab": 1, "name": "Divine Warriors of the Sun", "color": Color("e0c070"), "family": true, "blurb": "The Bujin: Beast-Warrior gods and their Bujingi beast servants, who throw themselves from the hand to double an attack or stop one cold. The Bujintei Xyz lead them, one of each."},
 	{"key": "nordic", "tab": 1, "name": "Twilight of the Gods", "color": Color("8ab4d8"), "family": true, "blurb": "The Nordics: Alfar, Beasts and Ascendants who Summon each other in pairs, the Relics they carry, and the three Aesir gods Odin, Thor and Loki who come back every time they fall."},
 	{"key": "armed_dragon", "tab": 1, "name": "Climbing Levels", "color": Color("8a9aa8"), "family": true, "blurb": "The Armed Dragons and every LV monster: they start small, level up by sending themselves away, and come back stronger. Armed Dragon LV10, Horus LV8 and Silent Magician LV8 wait at the top."},
@@ -156,6 +175,25 @@ const THEME_DECKS := [
 	{"key": "deck_armed_dragon", "art": "dragons", "cover": "Armed Dragon LV10", "color": Color("8a9aa8"), "era": "GX", "blurb": "LV3 becomes LV5, LV5 becomes LV7, and Level Up! skips the waiting. By the time LV10 lands, a single discard wipes their whole board."},
 	{"key": "deck_nordic", "art": "arcane", "cover": "Odin, Father of the Aesir", "color": Color("8ab4d8"), "era": "5D's", "blurb": "Dverg and Ljosalf bring a second Nordic every turn, the Beasts and Ascendants tune them up, and an Aesir hits the field. Destroy one and it comes back at the End Phase."},
 	{"key": "deck_bujin", "art": "warriors", "cover": "Bujintei Susanowo", "color": Color("e0c070"), "era": "ZEXAL", "blurb": "Yamato searches every End Phase, Crane doubles its ATK from the hand, and Turtle and Hare make it untouchable. Two of them become Susanowo, who strikes every monster they have."},
+	{"key": "deck_legends_king", "art": "warriors", "cover": "Buster Blader, the Destruction Swordmaster", "color": Color("c08a2e"), "era": "Duel Monsters", "blurb": "Buster Blader takes up the Destruction Swords, Jinzo keeps every Trap shut, and a dragon on the other side of the field only makes the swordsman stronger."},
+	{"key": "deck_jurrac", "art": "wild", "cover": "Jurrac Titano", "color": Color("e0602a"), "era": "Duel Monsters", "blurb": "Every raptor that falls calls another from the Deck. Keep them coming until Titano shows up, then let the meteor burn the whole field down."},
+	{"key": "deck_darklord", "art": "shadow", "cover": "Darklord Superbia", "color": Color("6a2a8a"), "era": "Duel Monsters", "blurb": "The Darklords pay Life Points to cast their Spells and Traps a second time from the Graveyard. Morningstar calls the host down, and three of them become the First Darklord."},
+	{"key": "deck_spirit", "art": "forest", "cover": "Yata-Garasu", "color": Color("d84a6a"), "era": "Duel Monsters", "blurb": "Spirits hit hard and go home before your opponent can touch them. Aratama finds them, Nikitama doubles the summons, and the Shinobirds come down to finish the job."},
+	{"key": "deck_union", "art": "machines", "cover": "B-Buster Drake", "color": Color("3a8ad8"), "era": "Duel Monsters", "blurb": "Every machine snaps onto another to shield it, then breaks off when it's needed. Get A, B and C on the field and they combine into the Dragon Buster."},
+	{"key": "deck_hero", "art": "warriors", "cover": "Evil HERO Malicious Edge", "color": Color("c03030"), "era": "GX", "blurb": "Not every hero wears white. Dark Fusion turns the Elemental HEROes into fiends nobody can target, and Mask Change keeps a Masked HERO ready for every fight."},
+	{"key": "deck_sacred_beast", "art": "shadow", "cover": "Hamon, Lord of Striking Thunder", "color": Color("8a1a2a"), "era": "GX", "blurb": "Three beasts sealed under the school. The martyrs and summoners open the doors one by one, and once all three stand on the field they can merge into Armityle."},
+	{"key": "deck_cyber", "art": "machines", "cover": "Cyber Dragon", "color": Color("6ac0d8"), "era": "GX", "blurb": "Cyber Dragon drops in for free, Power Bond doubles whatever it fuses, and the Cyberdark dragons pull a monster out of the Graveyard to wear as armor."},
+	{"key": "deck_meklord", "art": "machines", "cover": "Meklord Emperor Wisel", "color": Color("8a8a9a"), "era": "5D's", "blurb": "The Meklord Armies march in and fall on purpose, because every machine destroyed by an effect calls down an Emperor. And every Emperor wants your Synchro Monsters."},
+	{"key": "deck_synchron", "art": "warriors", "cover": "Junk Synchron", "color": Color("e0a020"), "era": "5D's", "blurb": "Nothing in Satellite goes to waste. Junk Synchron pulls a buddy back from the Graveyard, and a pile of small monsters turns into Junk Warrior, then into something bigger."},
+	{"key": "deck_karakuri", "art": "machines", "cover": "Karakuri Muso mdl 818 \"Haipa\"", "color": Color("b07a3a"), "era": "5D's", "blurb": "The puppets must attack, and they flip to defense the moment they're targeted. Every flip winds up another effect, and the Shoguns turn the turning into card advantage."},
+	{"key": "deck_fabled", "art": "shadow", "cover": "Fabled Grimro", "color": Color("5a3a7a"), "era": "5D's", "blurb": "Throw your hand away. Cerburrel and Lurrie jump straight back out of the Graveyard, Grimro finds the next one, and the Fabled lords tune them into something your opponent can't answer."},
+	{"key": "deck_fortune_lady", "art": "arcane", "cover": "Fortune Lady Earth", "color": Color("c06ad8"), "era": "5D's", "blurb": "Every turn the Ladies grow one Level older and stronger. Light calls the next Lady when it leaves, Fire burns a monster on arrival, and time is always on their side."},
+	{"key": "deck_gusto", "art": "gale", "cover": "Windaar, Sage of Gusto", "color": Color("5ac08a"), "era": "5D's", "blurb": "When a Gusto falls, the wind carries another out of the Deck. Shuffle the fallen back in to keep it going, and ride the Daigusto beasts once the field fills up."},
+	{"key": "deck_mermail", "art": "tide", "cover": "Mermail Abyssmegalo", "color": Color("2a7ad8"), "era": "ZEXAL", "blurb": "The Mermails throw other WATER monsters away to rise from the hand, and every Atlantean that sinks to the Graveyard strikes back on its way down."},
+	{"key": "deck_spellbook", "art": "spellbook", "cover": "High Priestess of Prophecy", "color": Color("4a5ad8"), "era": "ZEXAL", "blurb": "The Prophecy spellcasters read one Spellbook after another. Every Spellbook in the Graveyard makes the next spell stronger, and the High Priestess turns pages into destruction."},
+	{"key": "deck_wind_up", "art": "machines", "cover": "Wind-Up Magician", "color": Color("e0c040"), "era": "ZEXAL", "blurb": "Each toy does its trick once, then waits to be wound up again. Wind-Up Magician calls a friend every time a trick goes off, and the Zenmai reset the whole box."},
+	{"key": "deck_ghostrick", "art": "shadow", "cover": "Ghostrick Jiangshi", "color": Color("8a5ad8"), "era": "ZEXAL", "blurb": "Boo. The spooks hide face-down where nothing can attack them, turn your monsters face-down too, and pop up one by one to play their tricks."},
+	{"key": "deck_dragon_ruler", "art": "dragons", "cover": "Blaster, Dragon Ruler of Infernos", "color": Color("d84a2a"), "era": "ZEXAL", "blurb": "A little dragon throws itself away to call its ruler from the Deck. The rulers come back from the Graveyard by banishing their own kind, and two of them make a Rank 7."},
 	{"key": "deck_monarchs", "art": "shadow", "cover": "Caius the Mega Monarch", "color": Color("e0c070"), "era": "GX", "blurb": "Squires and Vassals step out so a Monarch can be Tribute Summoned, then a Mega Monarch Tributes that one. Every landing clears something off their side."},
 	{"key": "deck_chaos", "art": "warriors", "cover": "Black Luster Soldier - Super Soldier", "color": Color("c8b0ff"), "era": "Duel Monsters", "blurb": "Super Soldier Ritual turns two Level 4 Knights into Black Luster Soldier, and the Knights give him their powers. Gaia rides in when he falls, and Chaos Form brings back the old legends."},
 	{"key": "deck_gem_knight", "art": "warriors", "cover": "Gem-Knight Master Diamond", "color": Color("7ae0ff"), "era": "ZEXAL", "blurb": "Gem-Knight Fusion turns two plain knights into a Fusion Monster, Brilliant Fusion fuses straight from the Deck, and Gem-Knight Fusion comes back from the Graveyard to do it again."},
@@ -576,6 +614,146 @@ const FAMILIES := {
 		"Bujingi Quilin", "Bujingi Raven", "Bujingi Sinyou", "Bujingi Swallow", "Bujingi Turtle", "Bujingi Warg", "Bujingi Wolf",
 		"Bujin Regalia - The Mirror", "Bujincandescence", "Bujincarnation", "Bujintervention", "Bujinunity", "Bujin Regalia - The Jewel",
 		"Bujin Regalia - The Sword", "Bujincident", "Bujinfidel", "Bujinki Amaterasu", "Bujintei Kagutsuchi", "Bujintei Susanowo", "Bujintei Tsukuyomi"]},
+	"legends_king": {"era": "Duel Monsters", "deck": "deck_legends_king", "cards": [
+		"Wizard Buster Destruction Sword", "Buster Blader, the Destruction Swordmaster", "Samsara Lotus", "Jinzo - Returner", "The Fang of Critias",
+		"Destruction Sword Flash", "Sword of Dark Rites", "Nightmare-Eyes Restrict", "Destruction Sword Memories", "Prologue of the Destruction Swordsman",
+		"Jinzo - Lord", "Byroad Sacrifice", "Robot Buster Destruction Sword", "Jinzo the Machine Menace", "Destruction Swordsman Fusion",
+		"Buster Whelp of the Destruction Swordsman", "Jinzo - Jector", "Relinquished Spider", "Samsara Kaiser", "Dragon Buster Destruction Sword",
+		"Relinquished Fusion", "Karma of the Destruction Swordsman", "Legendary Knight Timaeus", "Legendary Knight Hermos", "Legendary Knight Critias",
+		"Buster Blader, the Dragon Destroyer Swordsman", "Sacrifice Level-Up", "Jinzo - Layered", "Legend of Heart", "Buster Dragon", "Doom Virus Dragon", "Destruction Dragon", "Tyrant Burst Dragon", "Mirror Force Dragon", "Tyrant Wing"]},
+	"jurrac": {"era": "Duel Monsters", "deck": "deck_jurrac", "cards": [
+		"Jurrac Impact", "Jurrac Brachis", "Jurrac Guaiba", "Jurrac Herra", "Jurrac Meteor", "Jurrac Dino", "Jurrac Stego", "Jurrac Protops",
+		"Jurrac Monoloph", "Jurrac Gallim", "Jurrac Spinos", "Jurrac Ptera", "Jurrac Stauriko", "Jurrac Astero", "Jurrac Velo", "Jurrac Tyrannus",
+		"Jurrac Velphito", "Jurrac Iguanon", "Jurrac Giganoto", "Jurrac Aeolo", "Jurrac Titano", "Jurrac Volcano", "Jurrac Megalo"]},
+	"darklord": {"era": "Duel Monsters", "deck": "deck_darklord", "cards": [
+		"The First Darklord", "Darklord Eveningstar", "Darklord Djehuty", "Darklord Superbia", "Darklord Contact", "Darklord Nergal", "Darklord Nasten",
+		"Darklord Morningstar", "Darklord Zerato", "Darklord Edeh Arae", "The Sanctified Darklord", "Darklord Rebellion", "Darklord Amdusc",
+		"Darklord Ixchel", "Darklord Uprising", "Capricious Darklord", "Darklord Desire", "Darklord Marie", "Darklord Descent", "Darklord Nurse Reficule",
+		"Indulged Darklord", "Darklord Gulgolet", "Darklord Asmodeus", "Banishment of the Darklords", "Darklord Enchantment", "Darklord Tezcatlipoca",
+		"Darklord Ukoback", "Fallen Angel in Darkness", "Darklord Dance"]},
+	"spirit": {"era": "Duel Monsters", "deck": "deck_spirit", "cards": [
+		"Asura Priest", "Great Long Nose", "Yata-Garasu", "Ichiki Sayori-Hime", "Aratama", "Gishki Natalia", "Amaterasu", "Nikitama",
+		"Shinobaroness Peacock", "Amano-Iwato", "Shinobaroness Shade Peacock", "Tsukuyomi", "Fushi No Tori", "Gundari", "Otohime", "Shinobird Crow",
+		"Susa Soldier", "Maharaghi", "Rasetsu", "Izanami", "Kinka-byo", "Fenghuang", "Shinobaron Peacock", "Konohanasakuya", "Shinobaron Shade Peacock",
+		"Shinobird Crane", "Sakitama", "Gishki Emilia", "Hino-Kagu-Tsuchi", "Yamata Dragon", "Inaba White Rabbit", "Tsumuha-Kutsunagi the Lord of Swords",
+		"Yamato-no-Kami", "Dark Dust Spirit", "Hebo, Lord of the River", "Shinobird Pigeon", "Yaksha", "Phosphorage the Elemental Lord",
+		"Moulinglacia the Elemental Lord", "Pyrorex the Elemental Lord", "Windrose the Elemental Lord", "Umbramirage the Elemental Lord",
+		"Grandsoil the Elemental Lord", "Palace of the Elemental Lords", "Shinobird's Calling"]},
+	"union": {"era": "Duel Monsters", "deck": "deck_union", "cards": [
+		"C-Crush Wyvern", "Y-Yare Head", "Protective Soul Ailin", "Des Dendle", "Second Goblin", "Valkyrie Chariot", "A-Assault Core", "Oilman",
+		"Z-Zillion Tank", "Fortune Chariot", "Pitch-Dark Dragon", "Zombie Tiger", "Trigon", "Doitsu", "Burning Beast", "Buster Blaster", "Koitsu",
+		"Leng Ling", "B-Buster Drake", "Kiryu", "Freezing Beast", "Armor Breaker", "Union Pilot", "Union Driver", "Decayed Commander",
+		"Indomitable Fighter Lei Lei", "Vampiric Orchis", "ABC-Dragon Buster", "A-to-Z-Dragon Buster Cannon", "Union Controller", "Union Rider",
+		"Unauthorized Reactivation", "Formation Union", "Union Activation", "Union Scramble", "Frontline Base", "Union Attack", "Union Hangar"]},
+	"hero": {"era": "GX", "deck": "deck_hero", "cards": [
+		"Evil HERO Toxic Bubble", "Elemental HERO Marine Neos", "Elemental HERO Neo Bubbleman", "Elemental HERO Clay Guardian", "Elemental HERO Voltic",
+		"Masked HERO Dusk Crow", "Masked HERO Vapor", "Favorite HERO Flame Wingman", "Evil HERO Wild Cyclone", "Evil HERO Adusted Gold",
+		"Evil HERO Neos Lord", "Elemental HERO Chaos Neos", "Elemental HERO Thunder Giant - Voltic Thunder", "Evil HERO Lightning Golem",
+		"Masked HERO Divine Wind", "Evil HERO Inferno Wing", "Contrast HERO Chaos", "Legacy of a HERO", "Destiny HERO - Dark Angel",
+		"Evil HERO Dead-End Prison", "Miracle Ejector", "Evil HERO Vicious Claws", "Destiny HERO - Dread Servant", "Elemental HERO Grandmerge",
+		"Elemental HERO Ocean", "Elemental HERO Nebula Neos", "Elemental HERO Ice Edge", "Elemental HERO Darkbright", "Evil HERO Sinister Necrom",
+		"Evil HERO Infernal Sniper", "Evil HERO Infernal Prodigy", "Masked HERO Koga", "Elemental HERO Poison Rose", "Vision HERO Gravito",
+		"Elemental HERO Shining Neos Wingman", "Masked HERO Goka", "Masked HERO Furnace", "Evil HERO Dark Gaia", "Evil HERO Malicious Edge",
+		"Masked HERO Anki", "Evil HERO Inferno Wing - Backfire", "Elemental HERO Plasma Vice", "Vision HERO Minimum Ray", "Elemental HERO Knospe",
+		"Masked HERO Dian", "Destiny HERO - Decider", "Masked HERO Fountain", "Destiny HERO - Dreamer", "Elemental HERO Inferno", "Elemental HERO Flash",
+		"Elemental HERO Neos Alius", "Elemental HERO Neos Knight", "Elemental HERO Terra Firma", "Elemental HERO Woodsman", "HERO's Bond",
+		"Evil HERO Infernal Rider", "Elemental HERO Captain Gold", "Vision HERO Witch Raider", "Vision HERO Poisoner", "Masked HERO Atomic",
+		"Evil HERO Malicious Bane", "Evil HERO Darkest Knight", "Evil HERO Malicious Fiend", "Favorite HERO Shining Flare Wingman",
+		"Elemental HERO Prisma", "Masked HERO Blast", "Elemental HERO Cosmo Neos", "Elemental HERO Neos Kluger", "Destiny HERO - Drilldark",
+		"Elemental HERO Lady Heat", "Elemental HERO Core", "Evil HERO Infernal Gainer", "Vision HERO Multiply Guy", "Elemental HERO Heat", "Dark Fusion",
+		"Metamorphosis", "Rose Bud"]},
+	"sacred_beast": {"era": "GX", "deck": "deck_sacred_beast", "cards": [
+		"Sacred Beasts Thunderclap", "The Chaotic Phantasmal Sacred Beasts", "Summoner of the Sacred Beasts",
+		"Inferno of the Sacred Beasts - Uria, Lord of Searing Flames", "Raviel, Lord of Phantasms - Shimmering Scraper", "Illusion Gate",
+		"Sacred Beasts Released", "Armityle the Chaos Phantasm", "Sacred Beasts Combined Assault",
+		"Calamity of the Sacred Beasts - Hamon, Lord of Striking Thunder", "Phantasmal Summoning Beast", "Awakening of the Sacred Beasts",
+		"Martyr of the Sacred Beasts", "Armityle the Chaos Phantasm - Phantom of Fury", "Fallen Paradise of the Sacred Beasts",
+		"Raviel, Lord of Phantasms", "Abyss of the Sacred Beasts", "Phantasmal Martyrs", "Phantasm Emperor Trilojig",
+		"Infinity of the Sacred Beasts - Raviel, Lord of Phantasms", "Uria, Lord of Searing Flames", "Hamon, Lord of Striking Thunder",
+		"Dimension Fusion Destruction"]},
+	"cyber": {"era": "GX", "deck": "deck_cyber", "cards": [
+		"Cyberdark Invasion", "Malefic Cyber End Dragon", "Cyber Valley", "Cyberdark Chimera", "Cyber Network", "Cyberdarkness Dragon",
+		"Cyber Jormungardr", "Cyber Pharos", "Cyber Ouroboros", "Cyber End Dragon the Decisive Strike Dragon", "Cyber Eternal", "Cyber Jar",
+		"Cyber Ogre 2", "Cyberdark End Dragon", "Cyber Energy Shock", "Cyber Dinosaur", "Cyber Raider", "Cyber Tutubon", "Cyberdark Inferno",
+		"Cyberdark Cannon", "Cyberdark Wurm", "Cyber Ogre", "Cyberdark Realm", "The Fiend Megacyber", "Revolution Cyber Dragon", "Armored Cybern",
+		"Attachment Cybern", "Cyberdark Claw", "Cyber Shadow Gardna", "Cyber Esper", "Psychic Megacyber", "Stegocyber", "Dragonroid", "Shuttleroid",
+		"Carrierroid", "Einroid", "Meteor Rush - Monochroid"]},
+	"meklord": {"era": "5D's", "deck": "deck_meklord", "cards": [
+		"Meklord Army of Granel", "Meklord Astro the Eradicator", "Meklord Army Deployer Obbligato", "Meklord Emperor Granel",
+		"Meklord Astro Dragon Triskelion", "Earthbound Immortal Red Nova", "Earthbound Immortal Aslla piscu", "Boon of the Meklord Emperor",
+		"Earthbound Immortal Uru", "Meklord Emperor Wisel - Synchro Absorption", "Meklord Emperor Skiel", "Earthbound Immortal Cusillu",
+		"Meklord Astro Dragon Asterisk", "Meklord Assembly", "Meklord Army of Wisel", "Earthbound Immortal Wiraqocha Rasca",
+		"Roar of the Earthbound Immortal", "The Resolute Meklord Army", "Meklord Astro Mekanikle", "Earthbound Immortal Revival", "Meklord Deflection",
+		"Meklord Fortress", "Meklord Emperor Wisel", "Earthbound Immortal Chacu Challhua", "Ultimate Earthbound Immortal", "Meklord Army of Skiel",
+		"Meklord Nucleus Infinity Core", "Meklord Factory", "Earthbound Immortal Ccarayhua"]},
+	"synchron": {"era": "5D's", "deck": "deck_synchron", "cards": [
+		"Starlight Junktion", "Junk Changer", "Blackwing - Hillen the Tengu-wind", "Junk Dragonlet", "Blackwing - Zonda the Dusk", "Resonator Command",
+		"Blackwing - Gofu the Vague Shadow", "Starjunk Synchron", "Resonator Engine", "Junk Warrior Extreme", "Blackwing - Boreas the Sharp",
+		"Blackwing - Gram the Shining Star", "Blackwing - Auster the South Wind", "Assault Blackwing - Sayo the Rain Hider",
+		"Blackwing - Decay the Ill Wind", "Fleur Synchron", "Junk Warrior/Assault Mode", "Synchro Deflector", "Junk Anchor", "Changer Synchron",
+		"Junk Signal", "Blackwing - Gladius the Midnight Sun", "Assault Blackwing - Kusanagi the Gathering Storm", "Junk Giant",
+		"Blackwing - Hurricane the Tornado", "Accel Synchron", "Blackwing - Jin the Rain Shadow", "Junk Mail", "Mirror Resonator", "Junk Breaker",
+		"Necro Synchron", "Blackwing - Kogarashi the Wanderer", "Junk Blader", "Bri Synchron", "Blackwing - Brisote the Tailwind",
+		"Blackwing - Sharnga the Waning Moon", "Blackwing - Pinaki the Waxing Moon", "Junk Sleep", "Mono Synchron", "Satellite Synchron",
+		"Blackwing - Damascus the Polar Night", "Junk Collector", "Wheel Synchron", "Double Resonator", "Junk Defender",
+		"Assault Blackwing - Kunai the Drizzle", "Junk Meister", "Blackwing - Tornado the Reverse Wind", "Steam Synchron", "Darkness Resonator",
+		"Junk Armor", "Necroid Synchro"]},
+	"karakuri": {"era": "5D's", "deck": "deck_karakuri", "cards": [
+		"Karakuri Cash Shed", "Karakuri Cash Inn", "Karakuri Soldier mdl 236 \"Nisamu\"", "Karakuri Gama Oil", "Karakuri Gold Dust",
+		"Karakuri Showdown Castle", "Karakuri Shogun mdl 00 \"Burei\"", "Karakuri Muso mdl 818 \"Haipa\"", "Karakuri Komachi mdl 224 \"Ninishi\"",
+		"Karakuri Super Shogun mdl 00N \"Bureibu\"", "Karakuri Merchant mdl 177 \"Inashichi\"", "Karakuri Trick House",
+		"Karakuri Bushi mdl 6318 \"Muzanichiha\"", "Karakuri Spider", "Karakuri Bonze mdl 9763 \"Kunamzan\"", "Karakuri Strategist mdl 248 \"Nishipachi\"",
+		"Karakuri Steel Shogun mdl 00X \"Bureido\"", "Karakuri Watchdog mdl 313 \"Saizan\"", "Karakuri Gama mdl 4624 \"Shirokunishi\"", "Karakuri Klock",
+		"Karakuri Cash Cache", "Runaway Karakuri", "Karakuri Anatomy", "Karakuri Barrel mdl 96 \"Shinkuro\""]},
+	"fabled": {"era": "5D's", "deck": "deck_fabled", "cards": [
+		"Fabled Miztoji", "Fabled Andwraith", "Fabled Ashenveil", "The Fabled Ganashia", "Fabled Krus", "Fabled Levilazebul", "Stairway to a Fabled Realm",
+		"Fabled Grimro", "The Fabled Kokkator", "The Fabled Chawa", "Fabled Leviathan", "The Fabled Unicore", "Fabled Topi", "Fabled Raven",
+		"Fabled Ragin", "Fabled Oltro", "Fabled Dianaira", "Fabled Valkyrus", "The Fabled Nozoochee", "Fabled Treason", "The Fabled Catsith",
+		"Fabled Marcosia", "Fabled Realm's Revival", "Fabled Gallabas", "The Fabled Behilmoth", "Fabled Soulkius", "Fabled Urustos",
+		"The Fabled Cerburrel", "The Fabled Abanc", "Fabled Dyf", "The Fabled Kudabbi", "The Fabled Peggulsus", "Fabled Gammajin", "The Fabled Rubyruda",
+		"Fabled Kushano", "Fabled Lurrie"]},
+	"fortune_lady": {"era": "5D's", "deck": "deck_fortune_lady", "cards": [
+		"Fortune Lady Calling", "Fortune Lady Water", "Fortune Lady Light", "Fortune Lady Dark", "Fortune Lady Past", "Fortune Lady Every",
+		"Fortune Lady Fire", "Fortune Lady Wind", "Fortune Lady Earth", "Fortune Lady Rewind"]},
+	"gusto": {"era": "5D's", "deck": "deck_gusto", "cards": [
+		"Gusto Squirro", "Tailwind of Gusto", "Daigusto Phoenix", "Dust Storm of Gusto", "Musto, Oracle of Gusto", "Gusto Codor", "Daigusto Eguls",
+		"Windaar, Sage of Gusto", "Gusto Thunbolt", "Daigusto Sphreez", "Daigusto Falcos", "Reeze, Whirlwind of Gusto", "Gusto Griffin", "Gusto Falco",
+		"Winda, Priestess of Gusto", "Gusto Gulldo", "Pilica, Descendant of Gusto", "Kamui, Hope of Gusto", "Daigusto Laplampilica", "Blessings for Gusto",
+		"Contact with Gusto", "Daigusto Gulldos", "Gusto Vedir", "Caam, Serenity of Gusto", "Gusto Egul", "Whirlwind of Gusto"]},
+	"mermail": {"era": "ZEXAL", "deck": "deck_mermail", "cards": [
+		"Mermail Abyssnose", "Atlantean Marksman", "Atlantean Attack Squad", "Abysstrite, the Atlantean Spirit", "Abyssrhine, the Atlantean Spirit",
+		"Neptabyss, the Atlantean Prince", "Mermail Abyssmander", "Mermail Abyssmegalo", "Mermail Abyssturge", "Mermail Abyssteus", "Mermail Abysslinde",
+		"Mermail Abyssocea", "Legendary Atlantean Tridon", "Atlantean Heavy Infantry", "Mermail Abyssleed", "Poseidra, the Atlantean Dragon",
+		"Mermail Shadow Squad", "Mermail Abysspike", "Mermail Abysstrite", "Poseidra Abyss, the Atlantean Dragon Lord", "Mermail Abyssgunde",
+		"Mermail Abyssnerei", "Call of the Atlanteans", "Mermail Abyssdine", "Atlantean Dragoons", "Mermail Abyssgaios", "Mermail Abyssbalaen",
+		"Mermail Abysslung", "Mermail Abysshilde", "Poseidra, the Storming Atlantean", "Abyss-scale of the Kraken", "Abyss-scale of Cetus",
+		"Abyss-scale of the Mizuchi", "Abyss-squall", "Abyss-sphere", "Abyss-steam", "Abyss-scorn", "Abyss-sting Triaina", "Abyss-strom"]},
+	"spellbook": {"era": "ZEXAL", "deck": "deck_spellbook", "cards": [
+		"Empress of Prophecy", "Defender, the Magical Knight", "Armor Exe", "Reaper of Prophecy", "Spellbook of the Grand Circle", "Strength of Prophecy",
+		"Spellbook Magician of Prophecy", "Magical Contract Door", "Spellbook Library of the Heliosphere", "Supreme Arcanite Magician",
+		"Type Zero Magic Crusher", "Hidden Spellbook", "Spellbook of Knowledge", "Spellbook of Power", "Time Wizard of Tomorrow", "Justice of Prophecy",
+		"World of Prophecy", "Mega Ton Magical Cannon", "Magical Merchant", "The Grand Spellbook Tower", "Magical Scientist", "Amores of Prophecy",
+		"Spellbook Library of the Crescent", "Endymion, the Master Magician", "Spellbook of Miracles", "Ebon Magician Curran", "Spellbook of Judgment",
+		"Gilti-Gearfried the Magical Steel Knight", "Charioteer of Prophecy", "Giltia the D. Knight", "Spellbook of Life", "Emperor of Prophecy",
+		"Stoic of Prophecy", "Prophecy Destroyer", "Spellbook Star Hall", "Spellbook of the Master", "Spellbook of Eternity", "Fool of Prophecy",
+		"Wheel of Prophecy", "Magical Mid-Breaker Field", "Giltia the D. Knight - Soul Spear", "White Magician Pikeru", "High Priestess of Prophecy",
+		"Temperance of Prophecy", "Spellbook of Wisdom", "Spellbook of Secrets", "Hermit of Prophecy", "Hierophant of Prophecy", "Spellbook Organization",
+		"Spellbook of Fate", "Magical Citadel of Endymion", "Hiita the Fire Charmer", "Dharc the Dark Charmer", "Wynn the Wind Charmer", "Aussa the Earth Charmer", "Lyna the Light Charmer", "Eria the Water Charmer", "Familiar-Possessed - Hiita", "Familiar-Possessed - Dharc", "Familiar-Possessed - Wynn", "Familiar-Possessed - Aussa", "Familiar-Possessed - Lyna", "Familiar-Possessed - Eria", "Eria the Water Channeler", "Aussa the Earth Channeler", "Hiita the Fire Channeler", "Wynn the Wind Channeler", "Unpossessed", "Possessed Destiny", "Spiritual Art Familiars", "Charmers of the Grand Circle", "Possessed Destiny - Wynn", "Awakening of the Possessed", "Spirit Charmers", "Grand Spiritual Art - Ichirin"]},
+	"wind_up": {"era": "ZEXAL", "deck": "deck_wind_up", "cards": [
+		"Wind-Up Dog", "Wind-Up Soldier", "Wind-Up Hunter", "Wind-Up Shark", "Wind-Up Kitten", "Wind-Up Bat", "Wind-Up Rabbit", "Wind-Up Warrior",
+		"Wind-Up Rat", "Wind-Up Snail", "Wind-Up Magician", "Wind-Up Zenmaister", "Legendary Wind-Up Key", "Wind-Up Arsenal Zenmaioh", "Wind-Up Knight",
+		"Wind-Up Carrier Zenmaity", "Wind-Up Juggler", "Wind-Up Honeybee", "Wind-Up Factory"]},
+	"ghostrick": {"era": "ZEXAL", "deck": "deck_ghostrick", "cards": [
+		"Ghostrick Museum", "Ghostrick Stein", "Ghostrick Nekomusume", "Ghostrick or Treat", "Ghostrick Witch", "Ghostrick Parade", "Ghostrick Socuteboss",
+		"Ghostrick Fairy", "Ghostrick-Go-Round", "Ghostrick Dullahan", "Ghostrick Doll", "Ghostrick Vanish", "Ghostrick Skeleton",
+		"Ghostrick Angel of Mischief", "Ghostrick Yuki-onna", "Ghostrick Lantern", "Ghostrick Jackfrost", "Ghostrick Renovation", "Ghostrick Siren",
+		"Ghostrick Shot", "Ghostrick Warwolf", "Ghostrick Break", "Ghostrick Jiangshi", "Ghostrick Specter", "Ghostrick Yeti", "Ghostrick Ghoul",
+		"Ghostrick Night", "Ghostrick Scare", "Ghostrick Mummy", "Ghostrick Mary", "Ghostrick Mansion"]},
+	"dragon_ruler": {"era": "ZEXAL", "deck": "deck_dragon_ruler", "cards": [
+		"Chasma, Dragon Ruler of Auroras", "Tidal, Dragon Ruler of Waterfalls", "Stream, Dragon Ruler of Droplets",
+		"Eclipse, Dragon Ruler of Catastrophes", "Burner, Dragon Ruler of Sparks", "Blaster, Dragon Ruler of Infernos",
+		"Spectral, Dragon Ruler of Flickers", "Disaster, Dragon Ruler of All Apocalypses", "Lightning, Dragon Ruler of Drafts",
+		"Redox, Dragon Ruler of Boulders", "Reactan, Dragon Ruler of Pebbles", "Nebulus, Dragon Ruler of Mishaps"]},
 }
 
 
@@ -1083,7 +1261,7 @@ var _covers := {}
 func pack_cover(key: String) -> int:
 	if _covers.is_empty():
 		var used := {}
-		for p in PACKS:
+		for p in PACKS + all_volumes():
 			var ids: Array = pool(str(p["key"])).duplicate()
 			var monsters: Array = ids.filter(func(id): return CardData.get_card(id).get("kind", "") == "monster")
 			if not monsters.is_empty():
@@ -1894,6 +2072,9 @@ func pool(era: String) -> Array:
 		return lumen_pool()           # (grows with the story: never kept from one look to the next)
 	if _pools.has(era):
 		return _pools[era]
+	if era.contains("#"):
+		_pools[era] = _volume_ids(era)
+		return _pools[era]
 	var ids := {}
 	if FAMILIES.has(era):
 		_pools[era] = family_ids(era)
@@ -1935,19 +2116,31 @@ func pool(era: String) -> Array:
 
 ## Buy and open a pack. Returns the card ids pulled (empty if you can't afford it).
 func open_pack(era: String) -> Array:
+	var got := open_packs(era, 1)
+	return [] if got.is_empty() else got[0]
+
+
+## Several of the same pack at once, for less: 5 cost the price of 4.5, 10 the price of 8.5.
+const MULTI := {1: 1.0, 5: 4.5, 10: 8.5}
+
+
+func multi_price(pack: Dictionary, n: int) -> int:
+	return int(round(pack_price(pack) * float(MULTI.get(n, n))))
+
+
+## Buy and open n of a pack in one go. Returns one array of card ids per pack (empty if you
+## can't afford them all).
+func open_packs(era: String, n: int) -> Array:
 	if not Unlocks.pack(era):
 		Router.toast(Unlocks.pack_why(era))
 		return []
 	var cards := pool(era)
-	var price := PACK_PRICE
-	var count := PACK_SIZE
-	for p in PACKS:
-		if p["key"] == era:
-			price = pack_price(p)
-			count = int(p.get("size", PACK_SIZE))
+	var pk := pack_of(era)
+	var price := multi_price(pk, n)
+	var count := int(pk.get("size", PACK_SIZE))
 	if era == "echo":
 		# Never more than three of a card of Lumen's: a pack only holds the ones you still lack.
-		if dp < price:
+		if n != 1 or dp < price:
 			return []
 		if lumen_pool(true).is_empty():
 			Router.toast(Loc.t("You hold three of every card of Lumen's that the story has given you so far."))
@@ -1961,25 +2154,135 @@ func open_pack(era: String) -> Array:
 			got.append(id2)
 		daily_bump("pack")
 		save()
-		return got
+		return [got]
 	if dp < price or cards.is_empty():
 		return []
 	dp -= price
-	var pulls := []
+	var out := []
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-	for i in PACK_SIZE:
-		var id: int = cards[rng.randi() % cards.size()]
-		# The last slot leans toward stronger cards.
-		if i == PACK_SIZE - 1:
-			for tries in 6:
-				var alt: int = cards[rng.randi() % cards.size()]
-				var a := CardData.get_card(alt)
-				if CardData.rarity(alt) >= 2:
-					id = alt
-					break
-		pulls.append(id)
-		owned[id] = int(owned.get(id, 0)) + 1
-	daily_bump("pack")
+	for k in n:
+		var pulls := []
+		for i in PACK_SIZE:
+			var id: int = cards[rng.randi() % cards.size()]
+			# The last slot leans toward stronger cards.
+			if i == PACK_SIZE - 1:
+				for tries in 6:
+					var alt: int = cards[rng.randi() % cards.size()]
+					if CardData.rarity(alt) >= 2:
+						id = alt
+						break
+			pulls.append(id)
+			owned[id] = int(owned.get(id, 0)) + 1
+		out.append(pulls)
+		daily_bump("pack")
 	save()
-	return pulls
+	return out
+
+
+## The shop entry for a pack key (a volume's own entry for "Duel Monsters#2").
+func pack_of(key: String) -> Dictionary:
+	for p in PACKS:
+		if str(p["key"]) == key:
+			return p
+	for p in all_volumes():
+		if str(p["key"]) == key:
+			return p
+	return {"key": key, "tab": 0}
+
+
+# ---- Volumes (0.53.0). The era sets got too big to collect from one pack (Legend of the King
+# held over a thousand cards), so the shop sells each one in volumes of about VOLUME_SIZE cards,
+# in the order the cards first came out (data/release_order.json: Konami's database number for
+# each card). The whole set stays one page in the album; "Duel Monsters#2" is its second volume.
+const VOLUME_SIZE := 150
+var _release := {}
+
+
+static func base_key(key: String) -> String:
+	return key.get_slice("#", 0)
+
+
+static func volume_of(key: String) -> int:
+	return int(key.get_slice("#", 1)) if key.contains("#") else 0
+
+
+func volume_count(era: String) -> int:
+	if not (era in SERIES):
+		return 1
+	return maxi(1, int(ceil(float(pool(era).size()) / VOLUME_SIZE)))
+
+
+## The volumes of one set as shop entries (just the set itself when it is small enough).
+func volumes(era: String) -> Array:
+	var base := {}
+	for p in PACKS:
+		if str(p["key"]) == era:
+			base = p
+	var n := volume_count(era)
+	if n <= 1 or base.is_empty():
+		return [] if base.is_empty() else [base]
+	var out := []
+	for v in n:
+		var e: Dictionary = base.duplicate()
+		e["key"] = "%s#%d" % [era, v + 1]
+		e["vol"] = v + 1
+		e["vols"] = n
+		e["color"] = (base["color"] as Color).lerp(Color.WHITE if v % 2 == 0 else Color.BLACK, 0.06 * (v % 3))
+		out.append(e)
+	return out
+
+
+## Every volume of every split set.
+func all_volumes() -> Array:
+	var out := []
+	for era in SERIES:
+		if volume_count(era) > 1:
+			out += volumes(era)
+	return out
+
+
+## What the shop puts on its shelves: the split sets as their volumes.
+func shop_packs() -> Array:
+	var out := []
+	for p in PACKS:
+		if str(p["key"]) in SERIES and volume_count(str(p["key"])) > 1:
+			out += volumes(str(p["key"]))
+		else:
+			out.append(p)
+	return out
+
+
+## A pack's name as the shop shows it ("Legend of the King Vol. 2").
+static func pack_title(pack: Dictionary) -> String:
+	var t := Loc.t(str(pack.get("name", "")))
+	if int(pack.get("vol", 0)) > 0:
+		t += " Vol. %d" % int(pack["vol"])
+	return t
+
+
+func release_rank(id: int) -> int:
+	if _release.is_empty():
+		var f := FileAccess.open("res://data/release_order.json", FileAccess.READ)
+		if f:
+			var d = JSON.parse_string(f.get_as_text())
+			if d is Dictionary:
+				for k in d:
+					_release[int(k)] = int(d[k])
+		if _release.is_empty():
+			_release[0] = 0
+	# (Cards with no number go last, by their own number.)
+	return int(_release.get(id, 100000000 + (id % 100000000)))
+
+
+func _volume_ids(key: String) -> Array:
+	var era := base_key(key)
+	var v := volume_of(key)
+	var ids: Array = pool(era).duplicate()
+	ids.sort_custom(func(a, b):
+		var ra := release_rank(a)
+		var rb := release_rank(b)
+		return ra < rb if ra != rb else a < b)
+	var n := volume_count(era)
+	var per := int(ceil(float(ids.size()) / n))
+	return ids.slice((v - 1) * per, mini(ids.size(), v * per))

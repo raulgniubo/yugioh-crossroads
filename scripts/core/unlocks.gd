@@ -35,10 +35,11 @@ static func world_why(key: String) -> String:
 
 
 # ---- packs: each era's pack opens with the story; the special ones need wins.
-const PACK_STAGE := {"bujin": 4, "nordic": 3, "armed_dragon": 2, "red_eyes": 0, "blue_eyes": 0, "dark_magician": 0, "fire_fist": 4, "tg": 3, "naturia": 3, "cloudian": 2, "kuriboh": 0, "ninja": 4, "ice_barrier": 3, "arcana_force": 2, "koaki_meiru": 2, "exodia": 0, "battlin_boxer": 4, "gimmick_puppet": 4, "x_saber": 3, "volcanic": 2, "alien": 2, "guardian": 0, "chronomaly": 4, "scrap": 3, "morphtronic": 3, "vampire": 2, "crystal_beast": 2, "amazoness": 0, "heroic": 4, "dragunity": 3, "gladiator": 2, "toon": 0, "madolche": 4, "genex": 3, "archfiend": 0, "dark_world": 2, "constellar": 4, "six_samurai": 3, "gravekeeper": 0, "ancient_gear": 2, "lightsworn": 3, "gem_knight": 4, "chaos": 0, "monarchs": 2, "Duel Monsters": 0, "Vault": 1, "legends": 0, "echo": 1, "GX": 2, "5D's": 3, "beyond": 3, "ZEXAL": 4}
+const PACK_STAGE := {"dragon_ruler": 4, "ghostrick": 4, "wind_up": 4, "spellbook": 4, "mermail": 4, "gusto": 3, "fortune_lady": 3, "fabled": 3, "karakuri": 3, "synchron": 3, "meklord": 3, "cyber": 2, "sacred_beast": 2, "hero": 2, "union": 0, "spirit": 0, "darklord": 0, "jurrac": 0, "legends_king": 0, "bujin": 4, "nordic": 3, "armed_dragon": 2, "red_eyes": 0, "blue_eyes": 0, "dark_magician": 0, "fire_fist": 4, "tg": 3, "naturia": 3, "cloudian": 2, "kuriboh": 0, "ninja": 4, "ice_barrier": 3, "arcana_force": 2, "koaki_meiru": 2, "exodia": 0, "battlin_boxer": 4, "gimmick_puppet": 4, "x_saber": 3, "volcanic": 2, "alien": 2, "guardian": 0, "chronomaly": 4, "scrap": 3, "morphtronic": 3, "vampire": 2, "crystal_beast": 2, "amazoness": 0, "heroic": 4, "dragunity": 3, "gladiator": 2, "toon": 0, "madolche": 4, "genex": 3, "archfiend": 0, "dark_world": 2, "constellar": 4, "six_samurai": 3, "gravekeeper": 0, "ancient_gear": 2, "lightsworn": 3, "gem_knight": 4, "chaos": 0, "monarchs": 2, "Duel Monsters": 0, "Vault": 1, "legends": 0, "echo": 1, "GX": 2, "5D's": 3, "beyond": 3, "ZEXAL": 4}
 const THEMED_WINS := 6
 
 static func pack(key: String, tab := 0) -> bool:
+	key = Collection.base_key(key)      # (a volume opens with its set)
 	if Saves.admin:
 		return true
 	if PACK_STAGE.has(key):
@@ -47,6 +48,7 @@ static func pack(key: String, tab := 0) -> bool:
 
 
 static func pack_why(key: String) -> String:
+	key = Collection.base_key(key)
 	if PACK_STAGE.has(key):
 		return Loc.t("Locked: opens when you finish Chapter %d of the story.") % maxi(1, int(PACK_STAGE[key]) - 1) if int(PACK_STAGE[key]) > 1 else Loc.t("Locked: opens when you finish the Prologue.")
 	return Loc.t("Locked: beat %d different duelists to open the themed packs (%d so far).") % [THEMED_WINS, wins()]

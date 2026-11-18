@@ -1,0 +1,90 @@
+{
+ "key": "sacred_beast",
+ "era": "GX",
+ "pack": {
+  "name": "The Three Phantasms",
+  "color": "8a1a2a",
+  "blurb": "Uria, Hamon and Raviel, the three Sacred Beasts, with the martyrs and summoners that serve them, the fallen paradise they rise in, and Armityle, the phantasm they become together."
+ },
+ "deck": {
+  "key": "deck_sacred_beast",
+  "name": "The Three Phantasms",
+  "art": "shadow",
+  "cover": "Hamon, Lord of Striking Thunder",
+  "blurb": "Three beasts sealed under the school. The martyrs and summoners open the doors one by one, and once all three stand on the field they can merge into Armityle.",
+  "cards": {
+   "Uria, Lord of Searing Flames": 1,
+   "Hamon, Lord of Striking Thunder": 1,
+   "Raviel, Lord of Phantasms": 1,
+   "Inferno of the Sacred Beasts - Uria, Lord of Searing Flames": 1,
+   "Calamity of the Sacred Beasts - Hamon, Lord of Striking Thunder": 1,
+   "Infinity of the Sacred Beasts - Raviel, Lord of Phantasms": 1,
+   "Raviel, Lord of Phantasms - Shimmering Scraper": 1,
+   "Summoner of the Sacred Beasts": 2,
+   "Martyr of the Sacred Beasts": 3,
+   "Phantasmal Summoning Beast": 2,
+   "Sacred Beasts Released": 2,
+   "Fallen Paradise of the Sacred Beasts": 2,
+   "Sacred Beasts Thunderclap": 2,
+   "Dimension Fusion Destruction": 1,
+   "Polymerization": 1,
+   "Foolish Burial": 1,
+   "Monster Reborn": 1,
+   "Illusion Gate": 1,
+   "Phantasmal Martyrs": 1,
+   "Mystical Space Typhoon": 1,
+   "Book of Moon": 1,
+   "Abyss of the Sacred Beasts": 3,
+   "Sacred Beasts Combined Assault": 2,
+   "Awakening of the Sacred Beasts": 1,
+   "Call of the Haunted": 2,
+   "Mirror Force": 1,
+   "Torrential Tribute": 1,
+   "Bottomless Trap Hole": 1,
+   "Dimensional Prison": 1
+  },
+  "extra": {
+   "Armityle the Chaos Phantasm": 1,
+   "Armityle the Chaos Phantasm - Phantom of Fury": 1,
+   "Phantasm Emperor Trilojig": 1,
+   "The Chaotic Phantasmal Sacred Beasts": 1
+  }
+ },
+ "worlds": [
+  "academy"
+ ],
+ "stage": 2,
+ "npc": {
+  "id": "night_academy",
+  "rotate": true,
+  "intro": "You hear that rumbling under the school? That's them.",
+  "lines_add": [
+   "Some nights the ground shakes. Those are the nights I bring the three beasts."
+  ]
+ },
+ "cards": [
+  "Sacred Beasts Thunderclap",
+  "The Chaotic Phantasmal Sacred Beasts",
+  "Summoner of the Sacred Beasts",
+  "Inferno of the Sacred Beasts - Uria, Lord of Searing Flames",
+  "Raviel, Lord of Phantasms - Shimmering Scraper",
+  "Illusion Gate",
+  "Sacred Beasts Released",
+  "Armityle the Chaos Phantasm",
+  "Sacred Beasts Combined Assault",
+  "Calamity of the Sacred Beasts - Hamon, Lord of Striking Thunder",
+  "Phantasmal Summoning Beast",
+  "Awakening of the Sacred Beasts",
+  "Martyr of the Sacred Beasts",
+  "Armityle the Chaos Phantasm - Phantom of Fury",
+  "Fallen Paradise of the Sacred Beasts",
+  "Raviel, Lord of Phantasms",
+  "Abyss of the Sacred Beasts",
+  "Phantasmal Martyrs",
+  "Phantasm Emperor Trilojig",
+  "Infinity of the Sacred Beasts - Raviel, Lord of Phantasms",
+  "Uria, Lord of Searing Flames",
+  "Hamon, Lord of Striking Thunder",
+  "Dimension Fusion Destruction"
+ ]
+}

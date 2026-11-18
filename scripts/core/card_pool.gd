@@ -83,6 +83,8 @@ const ADDED := {
 		"Fusion Destiny", "D-Fusion", "D - Tactics", "Destiny HERO - Destroyer Phoenix Enforcer", "Destiny HERO - Dangerous", "Destiny HERO - Dystopia",
 		"Destiny HERO - Dusktopia", "Destiny HERO - Dominance"],
 	"5D's": [
+		# 0.53.0: a Synchro the plan listed with the Synchron family that belongs to none.
+		"Magical Android",
 		# 0.52.0: card plan part 3, single cards (staples and support that belong to no family).
 		"Fire Ant Ascator", "Supay", "Oracle of the Sun",
 		"Ancient Fairy Dragon", "Goyo Guardian", "Stardust Spark Dragon", "Ally of Justice Catastor", "Mist Wurm", "Ancient Sacred Wyvern",

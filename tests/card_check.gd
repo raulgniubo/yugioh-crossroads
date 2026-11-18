@@ -91,6 +91,24 @@ func _ready() -> void:
 				problems.append("deck %s has %d copies of %s" % [k, int(count[id]), str(CardData.get_card(int(id)).get("name", "?"))])
 		if CardData.NAMED_DECKS.has(k) and (main.size() < 40 or main.size() > 60 or ex.size() > 15):
 			problems.append("deck %s is not a legal list: %d cards, %d in the Extra Deck" % [k, main.size(), ex.size()])
+	# 4b. The split sets: their volumes hold every card of the set once, none bigger than it should be.
+	for era in Collection.SERIES:
+		var n := Collection.volume_count(era)
+		if n <= 1:
+			continue
+		var seen := {}
+		for p in Collection.volumes(era):
+			var vp: Array = Collection.pool(str(p["key"]))
+			if vp.size() > Collection.VOLUME_SIZE + 10 or vp.is_empty():
+				problems.append("volume %s holds %d cards" % [str(p["key"]), vp.size()])
+			for id in vp:
+				if seen.has(id):
+					problems.append("%s is in two volumes of %s" % [str(CardData.get_card(int(id)).get("name", "?")), era])
+				seen[id] = true
+		for id in Collection.pool(era):
+			if not seen.has(id):
+				problems.append("%s is in no volume of %s" % [str(CardData.get_card(int(id)).get("name", "?")), era])
+		print("volumes: %s in %d volumes of about %d" % [era, n, Collection.pool(era).size() / n])
 	# 5. Every family: a pack, a theme deck, somebody who plays it, and every card of it obtainable.
 	for fk in Collection.FAMILIES:
 		var fam: Dictionary = Collection.FAMILIES[fk]

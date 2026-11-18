@@ -1,0 +1,99 @@
+{
+ "key": "darklord",
+ "era": "Duel Monsters",
+ "pack": {
+  "name": "Fall of the Darklords",
+  "color": "6a2a8a",
+  "blurb": "The fallen angels who lead the Darklords: Morningstar, Superbia and the rest, the Spells and Traps they cast twice from the grave, and the First Darklord they fuse into."
+ },
+ "deck": {
+  "key": "deck_darklord",
+  "name": "Fall of the Darklords",
+  "art": "shadow",
+  "cover": "Darklord Superbia",
+  "blurb": "The Darklords pay Life Points to cast their Spells and Traps a second time from the Graveyard. Morningstar calls the host down, and three of them become the First Darklord.",
+  "cards": {
+   "Darklord Ukoback": 3,
+   "Darklord Djehuty": 2,
+   "Indulged Darklord": 1,
+   "Darklord Nasten": 1,
+   "Darklord Ixchel": 2,
+   "Darklord Amdusc": 1,
+   "Darklord Tezcatlipoca": 1,
+   "Darklord Nergal": 1,
+   "Darklord Superbia": 1,
+   "Darklord Asmodeus": 1,
+   "Darklord Desire": 1,
+   "Darklord Zerato": 1,
+   "Darklord Morningstar": 1,
+   "Darklord Gulgolet": 1,
+   "Capricious Darklord": 1,
+   "Banishment of the Darklords": 2,
+   "Darklord Contact": 1,
+   "Darklord Dance": 1,
+   "Foolish Burial": 1,
+   "Monster Reborn": 1,
+   "Mystical Space Typhoon": 1,
+   "Dark Hole": 1,
+   "Polymerization": 1,
+   "Fallen Angel in Darkness": 2,
+   "The Sanctified Darklord": 1,
+   "Darklord Rebellion": 1,
+   "Darklord Uprising": 1,
+   "Darklord Enchantment": 1,
+   "Darklord Descent": 1,
+   "Mirror Force": 1,
+   "Call of the Haunted": 1,
+   "Bottomless Trap Hole": 1,
+   "Torrential Tribute": 1,
+   "Dimensional Prison": 1
+  },
+  "extra": {
+   "The First Darklord": 1,
+   "Darklord Eveningstar": 2
+  }
+ },
+ "worlds": [
+  "domino"
+ ],
+ "stage": 0,
+ "npc": {
+  "id": "teacher",
+  "rotate": true,
+  "intro": "Today's lesson: angels fall, too.",
+  "lines_add": [
+   "Some days I teach the fallen angels instead. The Darklords never forget a Spell."
+  ]
+ },
+ "cards": [
+  "The First Darklord",
+  "Darklord Eveningstar",
+  "Darklord Djehuty",
+  "Darklord Superbia",
+  "Darklord Contact",
+  "Darklord Nergal",
+  "Darklord Nasten",
+  "Darklord Morningstar",
+  "Darklord Zerato",
+  "Darklord Edeh Arae",
+  "The Sanctified Darklord",
+  "Darklord Rebellion",
+  "Darklord Amdusc",
+  "Darklord Ixchel",
+  "Darklord Uprising",
+  "Capricious Darklord",
+  "Darklord Desire",
+  "Darklord Marie",
+  "Darklord Descent",
+  "Darklord Nurse Reficule",
+  "Indulged Darklord",
+  "Darklord Gulgolet",
+  "Darklord Asmodeus",
+  "Banishment of the Darklords",
+  "Darklord Enchantment",
+  "Darklord Tezcatlipoca",
+  "Darklord Ukoback",
+  "Fallen Angel in Darkness",
+  "Darklord Dance"
+ ]
+}

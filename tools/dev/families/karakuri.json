@@ -1,0 +1,88 @@
+{
+ "key": "karakuri",
+ "era": "5D's",
+ "pack": {
+  "name": "Karakuri Workshop",
+  "color": "b07a3a",
+  "blurb": "The Karakuri clockwork puppets that charge in, flip to defense when attacked, and trigger something every time their battle position changes, and the Karakuri Shoguns they tune into."
+ },
+ "deck": {
+  "key": "deck_karakuri",
+  "name": "Karakuri Workshop",
+  "art": "machines",
+  "cover": "Karakuri Muso mdl 818 \"Haipa\"",
+  "blurb": "The puppets must attack, and they flip to defense the moment they're targeted. Every flip winds up another effect, and the Shoguns turn the turning into card advantage.",
+  "cards": {
+   "Karakuri Merchant mdl 177 \"Inashichi\"": 3,
+   "Karakuri Strategist mdl 248 \"Nishipachi\"": 2,
+   "Karakuri Komachi mdl 224 \"Ninishi\"": 3,
+   "Karakuri Bonze mdl 9763 \"Kunamzan\"": 2,
+   "Karakuri Gama mdl 4624 \"Shirokunishi\"": 2,
+   "Karakuri Muso mdl 818 \"Haipa\"": 2,
+   "Karakuri Bushi mdl 6318 \"Muzanichiha\"": 2,
+   "Karakuri Soldier mdl 236 \"Nisamu\"": 2,
+   "Karakuri Watchdog mdl 313 \"Saizan\"": 1,
+   "Karakuri Barrel mdl 96 \"Shinkuro\"": 1,
+   "Karakuri Spider": 1,
+   "Karakuri Cash Cache": 2,
+   "Karakuri Showdown Castle": 1,
+   "Karakuri Gama Oil": 1,
+   "Karakuri Anatomy": 1,
+   "Monster Reborn": 1,
+   "Mystical Space Typhoon": 1,
+   "Karakuri Cash Inn": 2,
+   "Karakuri Trick House": 2,
+   "Karakuri Klock": 1,
+   "Karakuri Cash Shed": 1,
+   "Mirror Force": 1,
+   "Call of the Haunted": 1,
+   "Bottomless Trap Hole": 1,
+   "Torrential Tribute": 1,
+   "Compulsory Evacuation Device": 1,
+   "Solemn Judgment": 1
+  },
+  "extra": {
+   "Karakuri Shogun mdl 00 \"Burei\"": 2,
+   "Karakuri Steel Shogun mdl 00X \"Bureido\"": 1,
+   "Karakuri Super Shogun mdl 00N \"Bureibu\"": 1
+  }
+ },
+ "worlds": [
+  "newdomino"
+ ],
+ "stage": 3,
+ "npc": {
+  "id": "nd_officer",
+  "rotate": true,
+  "intro": "Wind it up and watch it march.",
+  "lines_add": [
+   "Off duty I build clockwork. The Karakuri never stop moving."
+  ]
+ },
+ "cards": [
+  "Karakuri Cash Shed",
+  "Karakuri Cash Inn",
+  "Karakuri Soldier mdl 236 \"Nisamu\"",
+  "Karakuri Gama Oil",
+  "Karakuri Gold Dust",
+  "Karakuri Showdown Castle",
+  "Karakuri Shogun mdl 00 \"Burei\"",
+  "Karakuri Muso mdl 818 \"Haipa\"",
+  "Karakuri Komachi mdl 224 \"Ninishi\"",
+  "Karakuri Super Shogun mdl 00N \"Bureibu\"",
+  "Karakuri Merchant mdl 177 \"Inashichi\"",
+  "Karakuri Trick House",
+  "Karakuri Bushi mdl 6318 \"Muzanichiha\"",
+  "Karakuri Spider",
+  "Karakuri Bonze mdl 9763 \"Kunamzan\"",
+  "Karakuri Strategist mdl 248 \"Nishipachi\"",
+  "Karakuri Steel Shogun mdl 00X \"Bureido\"",
+  "Karakuri Watchdog mdl 313 \"Saizan\"",
+  "Karakuri Gama mdl 4624 \"Shirokunishi\"",
+  "Karakuri Klock",
+  "Karakuri Cash Cache",
+  "Runaway Karakuri",
+  "Karakuri Anatomy",
+  "Karakuri Barrel mdl 96 \"Shinkuro\""
+ ]
+}

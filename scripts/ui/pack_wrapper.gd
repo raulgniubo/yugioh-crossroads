@@ -80,7 +80,7 @@ func _draw() -> void:
 	for i in 10:
 		draw_rect(Rect2(0, by + band * i / 10.0, w, band / 10.0 + 1), Color(0.02, 0.03, 0.06, 0.55 + 0.4 * i / 9.0))
 	draw_rect(Rect2(0, by, w, 3), col)
-	var name_s := Loc.t(str(pack.get("name", ""))).to_upper()
+	var name_s := Collection.pack_title(pack).to_upper()
 	var fs := int(h * 0.062)
 	while fs > 10 and _title_font.get_string_size(name_s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > w - 20.0:
 		fs -= 1
@@ -92,7 +92,12 @@ func _draw() -> void:
 	var sw := _semi.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, ss).x
 	draw_string(_semi, Vector2((w - sw) / 2.0, by + band * 0.83), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, ss, col.lightened(0.55))
 	# Era tag, top left of the art.
-	var era := str(pack.get("key", "")).to_upper()
+	var era := Collection.base_key(str(pack.get("key", "")))
+	if Collection.FAMILIES.has(era):
+		era = str(Collection.FAMILIES[era].get("era", ""))      # (the family's era, not its key)
+	era = era.to_upper()
+	if int(pack.get("vol", 0)) > 0:
+		era += "  ·  VOL. %d/%d" % [int(pack["vol"]), int(pack["vols"])]
 	var es := int(h * 0.036)
 	var ew := _semi.get_string_size(era, HORIZONTAL_ALIGNMENT_LEFT, -1, es).x
 	draw_rect(Rect2(0, seal + 10, ew + 22, es + 12), Color(0.02, 0.03, 0.06, 0.8))

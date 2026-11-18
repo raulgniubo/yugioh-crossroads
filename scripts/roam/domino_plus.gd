@@ -284,7 +284,7 @@ static func _forecourts(city: CityBuilder) -> void:
 	for h: float in [-1.0, 1.0]:
 		city.cyl(0.07, 0.07, 7.0, Vector3(-41.8, 3.5, h * 8.0), city.mat(Color(0.8, 0.82, 0.86), 0.3, 0.8))
 		city.box(Vector3(0.05, 3.6, 1.5), Vector3(-41.8, 4.8, h * 8.0 - h * 0.85), city.glow_mat(Color("b48cff"), 0.9), false)
-	city.neon_sign("DUEL DOME", Vector3(-42.4, 6.4, 0), Color("b48cff"), 150, PI / 2)
+	# (Its name is the big sign over the dome; a second one here sat hidden under the dome's rim.)
 	city.neon_sign("TONIGHT  ·  OPEN CHALLENGE", Vector3(-42.4, 4.9, 0), Color("ffd166"), 64, PI / 2, false)
 	# East: Domino High. A gate, a notice board and cherry trees.
 	var gate := city.mat(Color(0.86, 0.82, 0.74), 0.8)

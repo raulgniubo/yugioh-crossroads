@@ -1,0 +1,90 @@
+{
+ "key": "jurrac",
+ "era": "Duel Monsters",
+ "pack": {
+  "name": "Age of the Jurrac",
+  "color": "e0602a",
+  "blurb": "The fire dinosaurs of the Jurrac: raptors that call the next one from the Deck, giants that break the field in half, and the meteor that ends it all."
+ },
+ "deck": {
+  "key": "deck_jurrac",
+  "name": "Age of the Jurrac",
+  "art": "wild",
+  "cover": "Jurrac Titano",
+  "blurb": "Every raptor that falls calls another from the Deck. Keep them coming until Titano shows up, then let the meteor burn the whole field down.",
+  "cards": {
+   "Jurrac Guaiba": 3,
+   "Jurrac Velo": 3,
+   "Jurrac Protops": 2,
+   "Jurrac Stego": 1,
+   "Jurrac Megalo": 2,
+   "Jurrac Iguanon": 1,
+   "Jurrac Monoloph": 1,
+   "Jurrac Dino": 1,
+   "Jurrac Brachis": 1,
+   "Jurrac Herra": 1,
+   "Jurrac Aeolo": 2,
+   "Jurrac Titano": 1,
+   "Jurrac Tyrannus": 1,
+   "Jurrac Volcano": 2,
+   "Monster Reborn": 1,
+   "Mystical Space Typhoon": 2,
+   "Big Evolution Pill": 1,
+   "Jurassic World": 1,
+   "Miracle Jurassic Egg": 1,
+   "Dark Hole": 1,
+   "Swords of Revealing Light": 1,
+   "Jurrac Impact": 1,
+   "Mirror Force": 1,
+   "Call of the Haunted": 2,
+   "Bottomless Trap Hole": 1,
+   "Sakuretsu Armor": 2,
+   "Torrential Tribute": 1,
+   "Compulsory Evacuation Device": 1,
+   "Solemn Judgment": 1
+  },
+  "extra": {
+   "Jurrac Meteor": 1,
+   "Jurrac Astero": 1,
+   "Jurrac Velphito": 1,
+   "Jurrac Giganoto": 1
+  }
+ },
+ "worlds": [
+  "domino"
+ ],
+ "stage": 0,
+ "npc": {
+  "id": "dockhand",
+  "rotate": true,
+  "intro": "Ever seen a dinosaur breathe fire? You're about to.",
+  "lines_add": [
+   "Some days the Amazons stay home and the dinosaurs come out. They eat a lot."
+  ]
+ },
+ "cards": [
+  "Jurrac Impact",
+  "Jurrac Brachis",
+  "Jurrac Guaiba",
+  "Jurrac Herra",
+  "Jurrac Meteor",
+  "Jurrac Dino",
+  "Jurrac Stego",
+  "Jurrac Protops",
+  "Jurrac Monoloph",
+  "Jurrac Gallim",
+  "Jurrac Spinos",
+  "Jurrac Ptera",
+  "Jurrac Stauriko",
+  "Jurrac Astero",
+  "Jurrac Velo",
+  "Jurrac Tyrannus",
+  "Jurrac Velphito",
+  "Jurrac Iguanon",
+  "Jurrac Giganoto",
+  "Jurrac Aeolo",
+  "Jurrac Titano",
+  "Jurrac Volcano",
+  "Jurrac Megalo"
+ ]
+}

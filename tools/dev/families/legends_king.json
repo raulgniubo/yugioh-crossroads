@@ -1,0 +1,96 @@
+{
+ "key": "legends_king",
+ "era": "Duel Monsters",
+ "pack": {
+  "name": "Legends of the King",
+  "color": "c08a2e",
+  "blurb": "The swordsman who slays dragons and the swords that serve him, the Legendary Knights who answer the Legend of Heart, Jinzo and the cyborgs that hunt Traps, and the Relinquished ritual."
+ },
+ "deck": {
+  "key": "deck_legends_king",
+  "name": "Legends of the King",
+  "art": "warriors",
+  "cover": "Buster Blader, the Destruction Swordmaster",
+  "blurb": "Buster Blader takes up the Destruction Swords, Jinzo keeps every Trap shut, and a dragon on the other side of the field only makes the swordsman stronger.",
+  "cards": {
+   "Buster Blader": 3,
+   "Buster Blader, the Destruction Swordmaster": 2,
+   "Buster Whelp of the Destruction Swordsman": 3,
+   "Wizard Buster Destruction Sword": 1,
+   "Robot Buster Destruction Sword": 2,
+   "Dragon Buster Destruction Sword": 2,
+   "Jinzo": 2,
+   "Jinzo - Jector": 2,
+   "Jinzo - Returner": 1,
+   "Jinzo the Machine Menace": 1,
+   "Jinzo - Lord": 1,
+   "Destruction Swordsman Fusion": 2,
+   "Karma of the Destruction Swordsman": 1,
+   "Polymerization": 1,
+   "Monster Reborn": 1,
+   "Mystical Space Typhoon": 2,
+   "Reinforcement of the Army": 1,
+   "Dark Hole": 1,
+   "Book of Moon": 1,
+   "Destruction Sword Memories": 1,
+   "Prologue of the Destruction Swordsman": 1,
+   "Destruction Sword Flash": 1,
+   "Mirror Force": 1,
+   "Call of the Haunted": 1,
+   "Bottomless Trap Hole": 1,
+   "Compulsory Evacuation Device": 1,
+   "Torrential Tribute": 1,
+   "Dimensional Prison": 1,
+   "Solemn Judgment": 1
+  },
+  "extra": {
+   "Buster Blader, the Dragon Destroyer Swordsman": 2,
+   "Buster Dragon": 1,
+   "Jinzo - Layered": 1
+  }
+ },
+ "worlds": [
+  "domino"
+ ],
+ "stage": 0,
+ "npc": {
+  "id": "stage_champ",
+  "rotate": true,
+  "intro": "Swords out. Traps down. Let's see what you've got.",
+  "lines_add": [
+   "Some days I bring the swordsman instead. Dragons hate that deck."
+  ]
+ },
+ "cards": [
+  "Wizard Buster Destruction Sword",
+  "Buster Blader, the Destruction Swordmaster",
+  "Samsara Lotus",
+  "Jinzo - Returner",
+  "The Fang of Critias",
+  "Destruction Sword Flash",
+  "Sword of Dark Rites",
+  "Nightmare-Eyes Restrict",
+  "Destruction Sword Memories",
+  "Prologue of the Destruction Swordsman",
+  "Jinzo - Lord",
+  "Byroad Sacrifice",
+  "Robot Buster Destruction Sword",
+  "Jinzo the Machine Menace",
+  "Destruction Swordsman Fusion",
+  "Buster Whelp of the Destruction Swordsman",
+  "Jinzo - Jector",
+  "Relinquished Spider",
+  "Samsara Kaiser",
+  "Dragon Buster Destruction Sword",
+  "Relinquished Fusion",
+  "Karma of the Destruction Swordsman",
+  "Legendary Knight Timaeus",
+  "Legendary Knight Hermos",
+  "Legendary Knight Critias",
+  "Buster Blader, the Dragon Destroyer Swordsman",
+  "Sacrifice Level-Up",
+  "Jinzo - Layered",
+  "Legend of Heart",
+  "Buster Dragon"
+ ]
+}

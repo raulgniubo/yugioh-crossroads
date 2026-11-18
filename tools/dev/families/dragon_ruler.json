@@ -1,0 +1,82 @@
+{
+ "key": "dragon_ruler",
+ "era": "ZEXAL",
+ "pack": {
+  "name": "Dragon Rulers",
+  "color": "d84a2a",
+  "blurb": "The four Dragon Rulers of fire, water, wind and earth and their four little ones, the two that rule light and darkness, and the Rank 7 dragons that rule them all."
+ },
+ "deck": {
+  "key": "deck_dragon_ruler",
+  "name": "Dragon Rulers",
+  "art": "dragons",
+  "cover": "Blaster, Dragon Ruler of Infernos",
+  "blurb": "A little dragon throws itself away to call its ruler from the Deck. The rulers come back from the Graveyard by banishing their own kind, and two of them make a Rank 7.",
+  "cards": {
+   "Tidal, Dragon Ruler of Waterfalls": 2,
+   "Blaster, Dragon Ruler of Infernos": 2,
+   "Redox, Dragon Ruler of Boulders": 2,
+   "Tempest, Dragon Ruler of Storms": 2,
+   "Stream, Dragon Ruler of Droplets": 1,
+   "Burner, Dragon Ruler of Sparks": 1,
+   "Reactan, Dragon Ruler of Pebbles": 1,
+   "Lightning, Dragon Ruler of Drafts": 1,
+   "Spectral, Dragon Ruler of Flickers": 1,
+   "Nebulus, Dragon Ruler of Mishaps": 1,
+   "Masked Dragon": 2,
+   "Alexandrite Dragon": 1,
+   "Spear Dragon": 2,
+   "Luster Dragon": 2,
+   "Axe Dragonute": 1,
+   "Lord of D.": 1,
+   "Monster Reborn": 1,
+   "Mystical Space Typhoon": 2,
+   "Foolish Burial": 1,
+   "Card Destruction": 1,
+   "Upstart Goblin": 1,
+   "Dark Hole": 1,
+   "Mirror Force": 1,
+   "Call of the Haunted": 1,
+   "Bottomless Trap Hole": 1,
+   "Torrential Tribute": 1,
+   "Compulsory Evacuation Device": 1,
+   "Solemn Judgment": 1,
+   "Dimensional Prison": 1,
+   "Sakuretsu Armor": 1,
+   "Fiendish Chain": 1,
+   "Trap Dustshoot": 1
+  },
+  "extra": {
+   "Chasma, Dragon Ruler of Auroras": 1,
+   "Eclipse, Dragon Ruler of Catastrophes": 1,
+   "Disaster, Dragon Ruler of All Apocalypses": 1,
+   "Number 11: Big Eye": 1
+  }
+ },
+ "worlds": [
+  "heartland"
+ ],
+ "stage": 4,
+ "npc": {
+  "id": "hl_jeweler",
+  "rotate": true,
+  "intro": "These aren't gems. They're dragon eyes.",
+  "lines_add": [
+   "Some days I deal dragons instead of jewels. Four elements, four rulers, one me."
+  ]
+ },
+ "cards": [
+  "Chasma, Dragon Ruler of Auroras",
+  "Tidal, Dragon Ruler of Waterfalls",
+  "Stream, Dragon Ruler of Droplets",
+  "Eclipse, Dragon Ruler of Catastrophes",
+  "Burner, Dragon Ruler of Sparks",
+  "Blaster, Dragon Ruler of Infernos",
+  "Spectral, Dragon Ruler of Flickers",
+  "Disaster, Dragon Ruler of All Apocalypses",
+  "Lightning, Dragon Ruler of Drafts",
+  "Redox, Dragon Ruler of Boulders",
+  "Reactan, Dragon Ruler of Pebbles",
+  "Nebulus, Dragon Ruler of Mishaps"
+ ]
+}

@@ -576,7 +576,7 @@ func _debug_args() -> void:
 				menu.add_child(ds)
 				if what.ends_with("2"):
 					ds._show_tab.call_deferred(1)
-			elif what.begins_with("packs") or what == "packopen":
+			elif what.begins_with("packs") or what == "packopen" or what.begins_with("packmulti"):
 				var ps := PackShop.new()
 				ps.z_index = 100
 				menu.add_child(ps)
@@ -586,6 +586,17 @@ func _debug_args() -> void:
 					Collection.dp += 500
 					await get_tree().create_timer(0.6).timeout
 					ps._open(Collection.PACKS[0])
+				if what.begins_with("packmulti"):
+					# --open=packmulti / packmulti10: the first pack on the shelf, 5 (or 10) at once.
+					Collection.dp += 5000
+					await get_tree().create_timer(0.6).timeout
+					ps._refresh()
+					ps._open(ps._packs[0], 10 if what.contains("10") else 5)
+					if what.ends_with("s"):
+						# (…s: skip to the summary after the first pack starts.)
+						await get_tree().create_timer(2.5).timeout
+						for n in ps.find_children("*", "PackOpening", true, false):
+							n.call("_skip_all")
 		elif a.begins_with("--perf="):
 			# Dev: run the performance test after this many seconds, then quit.
 			await get_tree().create_timer(float(a.substr(7))).timeout

@@ -1,0 +1,95 @@
+{
+ "key": "meklord",
+ "era": "5D's",
+ "pack": {
+  "name": "Machine Emperors and Earthbound Gods",
+  "color": "8a8a9a",
+  "blurb": "The Meklord Emperors that steal Synchro Monsters and wear them, their Armies and Astro dragons, and the Earthbound Immortals, the giant gods drawn on the earth that attack your Life Points directly."
+ },
+ "deck": {
+  "key": "deck_meklord",
+  "name": "Machine Emperors",
+  "art": "machines",
+  "cover": "Meklord Emperor Wisel",
+  "blurb": "The Meklord Armies march in and fall on purpose, because every machine destroyed by an effect calls down an Emperor. And every Emperor wants your Synchro Monsters.",
+  "cards": {
+   "Meklord Army of Wisel": 3,
+   "Meklord Army of Skiel": 3,
+   "Meklord Army of Granel": 3,
+   "Meklord Army Deployer Obbligato": 2,
+   "Meklord Nucleus Infinity Core": 2,
+   "Meklord Emperor Wisel": 1,
+   "Meklord Emperor Skiel": 1,
+   "Meklord Emperor Granel": 1,
+   "Meklord Emperor Wisel - Synchro Absorption": 1,
+   "Meklord Astro Dragon Asterisk": 1,
+   "Meklord Astro Dragon Triskelion": 1,
+   "Meklord Astro Mekanikle": 1,
+   "Meklord Assembly": 2,
+   "Meklord Fortress": 1,
+   "Boon of the Meklord Emperor": 1,
+   "Meklord Deflection": 1,
+   "The Resolute Meklord Army": 1,
+   "Monster Reborn": 1,
+   "Mystical Space Typhoon": 1,
+   "Dark Hole": 1,
+   "Limiter Removal": 1,
+   "Meklord Factory": 2,
+   "Meklord Astro the Eradicator": 1,
+   "Mirror Force": 1,
+   "Call of the Haunted": 1,
+   "Bottomless Trap Hole": 1,
+   "Torrential Tribute": 1,
+   "Compulsory Evacuation Device": 1,
+   "Dimensional Prison": 1,
+   "Sakuretsu Armor": 1
+  }
+ },
+ "worlds": [
+  "newdomino"
+ ],
+ "stage": 3,
+ "npc": {
+  "id": "nd_rep",
+  "new_duel": {
+   "difficulty": 2,
+   "intro": "Our newest model has no driver at all. Care for a test run?"
+  },
+  "lines": [
+   "Welcome to the Duel Runner Showcase. Please don't touch the paint.",
+   "The red one tops out faster than Security's pursuit runners. Officially, I never said that.",
+   "Our partners build machines that drive themselves now. I duel with them on my breaks."
+  ]
+ },
+ "cards": [
+  "Meklord Army of Granel",
+  "Meklord Astro the Eradicator",
+  "Meklord Army Deployer Obbligato",
+  "Meklord Emperor Granel",
+  "Meklord Astro Dragon Triskelion",
+  "Earthbound Immortal Red Nova",
+  "Earthbound Immortal Aslla piscu",
+  "Boon of the Meklord Emperor",
+  "Earthbound Immortal Uru",
+  "Meklord Emperor Wisel - Synchro Absorption",
+  "Meklord Emperor Skiel",
+  "Earthbound Immortal Cusillu",
+  "Meklord Astro Dragon Asterisk",
+  "Meklord Assembly",
+  "Meklord Army of Wisel",
+  "Earthbound Immortal Wiraqocha Rasca",
+  "Roar of the Earthbound Immortal",
+  "The Resolute Meklord Army",
+  "Meklord Astro Mekanikle",
+  "Earthbound Immortal Revival",
+  "Meklord Deflection",
+  "Meklord Fortress",
+  "Meklord Emperor Wisel",
+  "Earthbound Immortal Chacu Challhua",
+  "Ultimate Earthbound Immortal",
+  "Meklord Army of Skiel",
+  "Meklord Nucleus Infinity Core",
+  "Meklord Factory",
+  "Earthbound Immortal Ccarayhua"
+ ]
+}

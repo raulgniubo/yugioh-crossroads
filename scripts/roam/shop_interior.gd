@@ -37,7 +37,9 @@ static func build(city: CityBuilder) -> void:
 	# Furniture
 	# (Built, with real cards behind the glass: the bought-in counter had cards painted on as a blur.)
 	ShopFittings.counter(city, o + Vector3(0, 0, -2.9), 0.0, 4.8)
-	for x in [-5.6, -3.0, 3.0, 5.6]:
+	# (The far left spot along the back wall is the vending machine's: a shelf there and the machine in
+	# the corner stood inside each other.)
+	for x in [-3.0, 3.0, 5.6]:
 		city.collide(city.prop("shop_shelf", o + Vector3(x, 0, -4.45), 0.0, 2.7, true))
 	for z in [-2.2, 0.6]:
 		city.collide(city.prop("shop_shelf", o + Vector3(-6.45, 0, z), PI / 2, 2.7, true))
@@ -48,7 +50,7 @@ static func build(city: CityBuilder) -> void:
 	city.collide(dt0, 0.75)
 	city.collide(city.prop("duel_table", o + Vector3(4.0, 0, 2.9), 0.0, 2.5), 0.75)
 	city.collide(city.prop("arcade_cabinet", o + Vector3(6.35, 0, 3.6), -PI / 2, 1.9, true))
-	city.collide(city.prop("vending", o + Vector3(-6.45, 0, -4.2), PI / 2, 1.95, true))
+	city.collide(city.prop("vending", o + Vector3(-5.6, 0, -4.55), 0.0, 1.95, true))
 	# Mirror (change your look) and the door out
 	var frame := city.box(Vector3(0.12, 2.3, 1.3), o + Vector3(-6.92, 1.35, 3.4), trim, false)
 	frame.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

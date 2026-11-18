@@ -1,0 +1,97 @@
+{
+ "key": "gusto",
+ "era": "5D's",
+ "pack": {
+  "name": "Winds of Gusto",
+  "color": "5ac08a",
+  "blurb": "The Gusto, the wind people and their beast companions who call each other from the Deck when they fall, and the Daigusto Synchro Monsters they ride into battle."
+ },
+ "deck": {
+  "key": "deck_gusto",
+  "name": "Winds of Gusto",
+  "art": "gale",
+  "cover": "Windaar, Sage of Gusto",
+  "blurb": "When a Gusto falls, the wind carries another out of the Deck. Shuffle the fallen back in to keep it going, and ride the Daigusto beasts once the field fills up.",
+  "cards": {
+   "Winda, Priestess of Gusto": 2,
+   "Kamui, Hope of Gusto": 1,
+   "Gusto Gulldo": 2,
+   "Gusto Egul": 2,
+   "Gusto Falco": 2,
+   "Gusto Codor": 2,
+   "Gusto Griffin": 2,
+   "Gusto Squirro": 2,
+   "Gusto Vedir": 2,
+   "Pilica, Descendant of Gusto": 1,
+   "Musto, Oracle of Gusto": 1,
+   "Caam, Serenity of Gusto": 1,
+   "Windaar, Sage of Gusto": 1,
+   "Reeze, Whirlwind of Gusto": 1,
+   "Gusto Thunbolt": 1,
+   "Tailwind of Gusto": 2,
+   "Contact with Gusto": 1,
+   "Mystical Space Typhoon": 1,
+   "Monster Reborn": 1,
+   "Rising Air Current": 1,
+   "Blessings for Gusto": 2,
+   "Whirlwind of Gusto": 1,
+   "Dust Storm of Gusto": 1,
+   "Mirror Force": 1,
+   "Call of the Haunted": 1,
+   "Bottomless Trap Hole": 1,
+   "Torrential Tribute": 1,
+   "Compulsory Evacuation Device": 1,
+   "Solemn Judgment": 1,
+   "Dimensional Prison": 1
+  },
+  "extra": {
+   "Daigusto Eguls": 1,
+   "Daigusto Sphreez": 1,
+   "Daigusto Falcos": 1,
+   "Daigusto Gulldos": 1,
+   "Daigusto Laplampilica": 1,
+   "Daigusto Phoenix": 1,
+   "Daigusto Emeral": 1
+  }
+ },
+ "worlds": [
+  "newdomino"
+ ],
+ "stage": 3,
+ "npc": {
+  "id": "nd_fan",
+  "rotate": true,
+  "intro": "Feel that breeze? That's my deck coming.",
+  "lines_add": [
+   "When the wind's right I bring the Gusto. They ride the same currents as the runners."
+  ]
+ },
+ "cards": [
+  "Gusto Squirro",
+  "Tailwind of Gusto",
+  "Daigusto Phoenix",
+  "Dust Storm of Gusto",
+  "Musto, Oracle of Gusto",
+  "Gusto Codor",
+  "Daigusto Eguls",
+  "Windaar, Sage of Gusto",
+  "Gusto Thunbolt",
+  "Daigusto Sphreez",
+  "Daigusto Falcos",
+  "Reeze, Whirlwind of Gusto",
+  "Gusto Griffin",
+  "Gusto Falco",
+  "Winda, Priestess of Gusto",
+  "Gusto Gulldo",
+  "Pilica, Descendant of Gusto",
+  "Kamui, Hope of Gusto",
+  "Daigusto Laplampilica",
+  "Blessings for Gusto",
+  "Contact with Gusto",
+  "Daigusto Gulldos",
+  "Gusto Vedir",
+  "Caam, Serenity of Gusto",
+  "Gusto Egul",
+  "Whirlwind of Gusto"
+ ]
+}

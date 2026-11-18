@@ -5,6 +5,46 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.53.0
+
+**Card plan part 3, build 2: 19 new card families, 661 new cards. The game now has 4,864 cards** (it had 4,203). Plus smaller era packs, opening 5 or 10 packs at once, and layout fixes.
+
+Every family has its own booster pack (Card families tab), a 40-card theme deck in the deck shop, and an ordinary duelist in its era's world who plays it (no new street duelists: each one picks up a family deck next to the decks they already had). All new card text is in Spanish too.
+
+| Family | Era | Pack / theme deck | Who plays it |
+|---|---|---|---|
+| Legendary swordsmen, Jinzo, Relinquished | Duel Monsters | Swords of Legend | Plaza Champion (Domino) |
+| Jurrac | Duel Monsters | Age of the Jurrac | Dock Worker (Domino) |
+| Darklord | Duel Monsters | Fall of the Darklords | Domino High Teacher |
+| Spirit monsters and the Elemental Lords | Duel Monsters | Spirits of the Old Shrine | Shop Regular (Kame Game) |
+| Union monsters | Duel Monsters | Union Hangar | The Morning Runner (Domino, early morning) |
+| Evil, Masked, Vision, Destiny and Elemental HEROes | GX | Heroes and Villains | Practice Partner (Academy) |
+| Sacred Beasts | GX | The Three Phantasms | The Lighthouse Ghost (Academy, at night) |
+| Cyber Dragon line, Cyberdark, Roids | GX | Cyber Style | Professor (Academy) |
+| Meklord and the Earthbound Immortals | 5D's | Machine Emperors and Earthbound Gods (deck: Machine Emperors) | Showcase Rep (New Domino) |
+| Synchron, Junk, Blackwing, Resonator | 5D's | Junk, Wings and Resonance (deck: Junk Squad) | Mechanic (Satellite) |
+| Karakuri | 5D's | Karakuri Workshop | Security Officer (New Domino) |
+| Fabled | 5D's | Realm of the Fabled | The Scrap King (Satellite, at night) |
+| Fortune Lady | 5D's | Ladies of Fortune | Cafe Regular (New Domino) |
+| Gusto | 5D's | Winds of Gusto | Stadium Fan (New Domino) |
+| Mermail and Atlantean | ZEXAL | Atlantis Rising | The Balloon Man (Heartland, early morning) |
+| Wind-Up | ZEXAL | Wind-Up Toybox | The Balloon Man (his third deck) |
+| Spellbook, Prophecy and the Charmers | ZEXAL | The Prophecy Library | Heartland Student (third deck) |
+| Ghostrick | ZEXAL | Ghostrick Night | The Neon Oracle (third deck) |
+| Dragon Rulers | ZEXAL | Dragon Rulers | Jewelry Shop Owner (third deck) |
+
+- **Left out, on purpose:** Speedroids (Arc-V) and the Cyberse cards (VRAINS), from shows the game doesn't cover. Rokket Synchron and Cybersal Cyclone went with them. A Legendary Ocean isn't in the card database, so the Mermail field spell is the only one missing there.
+- **"Legends of the King" is now "Swords of Legend"**, so it doesn't clash with the Legend of the King volumes.
+- **Era packs come in volumes.** Legend of the King had 1,242 cards in one pack. Every big set is now split into volumes of about 150 cards, in the order the cards first came out (Konami's database number): Legend of the King 9 volumes, Academy Heroes 7, Signer's Road 7, Overlay Network 7, Monster Legends 4, Duelist's Vault 2. The album still shows each set as one page, and its rewards are the same.
+- **Open 5 or 10 packs at once**, on every pack in every tab: 5 for the price of 4.5 (10% off), 10 for the price of 8.5 (15% off). Each pack plays the same opening, with "Pack 3 of 10" at the top and a Next pack button. "Skip to all the pulls" (or Back) jumps to the end, where everything you got is on one screen: best first, new ones marked, doubles counted. The Echo Pack stays one at a time.
+- **Fixes:**
+  - The pack shop ran off the right side of the screen (a shelf of 20 packs is wider than the screen). The shelf scrolls sideways now and the rest stays inside the screen.
+  - Card album: long set names were cut off ("La Biblioteca de la Profe..."). They get a smaller size now.
+  - Kame Game: the vending machine stood inside a shelf. The shelf is gone from that corner. The Academy card shop was checked and has no overlaps.
+  - Duel Dome: you could walk into its steps and walls. It is solid now. Its sign moved to the front of the rim with a dark edge so you can read it, and a second hidden sign under the rim was removed.
+  - Earthbound Immortal Revival now has a working test position.
+- **Windows:** only the .exe changed. The .dll is the same as 0.51.0.
+
 ## What is in 0.52.1
 
 Three fixes Raul found right after 0.52.0. No cards added: 4,203 total.
