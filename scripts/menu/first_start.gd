@@ -248,6 +248,9 @@ func _start() -> void:
 	await _cine.build_all()
 	if not is_inside_tree():
 		return
+	await _prepare_bands()
+	if not is_inside_tree():
+		return
 	if _skipped:
 		# Skipped while the worlds were still being built: the city comes in behind the title.
 		if not _left:
@@ -361,6 +364,51 @@ func _play() -> void:
 ## One world goes by: a band in its colour across the lower part of the picture, with its name
 ## and three of its duelists if you have them. It stays up for `hold` seconds.
 func _world(i: int, hold := 1.0) -> void:
+	var from_left := i % 2 == 0
+	var band: Control = _bands.get(i)
+	if band == null or not is_instance_valid(band):
+		band = _make_band(i)
+	_bands.erase(i)
+	band.visible = true
+	Sfx.play("whoosh", -6.0, 0.9 + i * 0.08)
+	var tw := create_tween()
+	tw.tween_property(band, "position:x", 0.0, 0.26).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(band, "position:x", 30.0 if from_left else -30.0, maxf(0.6, hold - 0.5))
+	tw.tween_property(band, "position:x", size.x if from_left else -size.x, 0.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tw.tween_callback(band.queue_free)
+
+
+## The four bands are made while the screen is still dark, and so are the duelists' pictures
+## on them. A duelist's picture is a 3D model that has to be loaded: done in the middle of the
+## show, that stopped the picture dead at every change of world.
+var _bands := {}
+
+
+func _prepare_bands() -> void:
+	for i in WORLDS.size():
+		for key in WORLDS[i]["faces"]:
+			if Avatars.has_avatar(str(key)):
+				Portraits.get_portrait(str(key))
+				await get_tree().process_frame
+				if not is_inside_tree():
+					return
+		_bands[i] = _make_band(i)
+		await get_tree().process_frame
+		if not is_inside_tree():
+			return
+	# One frame with every band drawn (unseen, behind the dark), so their letters are ready too.
+	for i in _bands:
+		(_bands[i] as Control).visible = true
+		(_bands[i] as Control).modulate.a = 0.0
+	await get_tree().process_frame
+	await get_tree().process_frame
+	for i in _bands:
+		if is_instance_valid(_bands[i]):
+			(_bands[i] as Control).visible = false
+			(_bands[i] as Control).modulate.a = 1.0
+
+
+func _make_band(i: int) -> Control:
 	var w: Dictionary = WORLDS[i]
 	var col: Color = w["color"]
 	var from_left := i % 2 == 0
@@ -368,6 +416,7 @@ func _world(i: int, hold := 1.0) -> void:
 	band.size = Vector2(size.x, 320.0)
 	band.position = Vector2(-size.x if from_left else size.x, size.y - 320.0 - size.y * 0.11 - 30.0)
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	band.visible = false
 	add_child(band)
 	move_child(band, _text.get_index())
 	var grad := GradientTexture2D.new()
@@ -422,12 +471,7 @@ func _world(i: int, hold := 1.0) -> void:
 		face.clip_contents = true
 		band.add_child(face)
 		fx -= 190.0
-	Sfx.play("whoosh", -6.0, 0.9 + i * 0.08)
-	var tw := create_tween()
-	tw.tween_property(band, "position:x", 0.0, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(band, "position:x", 30.0 if from_left else -30.0, maxf(0.6, hold - 0.45))
-	tw.tween_property(band, "position:x", size.x if from_left else -size.x, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	tw.tween_callback(band.queue_free)
+	return band
 
 
 func _land_title() -> void:
@@ -508,4 +552,20 @@ func leave() -> void:
 	Music.set_boost(0.0)
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 0.0, 0.6)
-	tw.tween_callback(queue_free)
+	tw.tween_callback(_take_down)
+
+
+## Four whole worlds go with the opening. Freed in one frame they made the menu stumble just
+## as it appeared: they go one at a time, a few frames apart, with nothing on screen anymore.
+func _take_down() -> void:
+	visible = false
+	if _cine != null and is_instance_valid(_cine):
+		_cine.freeze()
+		for vp in _cine.get_children():
+			if vp is SubViewport:
+				vp.queue_free()
+				for f in 4:
+					await get_tree().process_frame
+					if not is_inside_tree():
+						return
+	queue_free()
