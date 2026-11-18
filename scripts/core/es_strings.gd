@@ -6702,4 +6702,10 @@ const ES := {
 	"The Archfiends: the chess pieces of Pandemonium that cost Life Points every turn and roll a die against whatever targets them, Summoned Skull and everything that takes his name, and the Archfiend Synchros, Fusions and Rituals.": "Los Archfiend: las piezas de ajedrez de Pandemonium que cuestan Life Points cada turno y lanzan un dado contra lo que los seleccione, Summoned Skull y todo lo que toma su nombre, y las Sincronías, Fusiones y Rituales Archfiend.",
 	"Pandemonium takes away the Life Point cost and replaces every Archfiend that falls. Terrorking and Infernalqueen hit hard for Level 4, the General fetches the field, and two Level 6 make Archfiend's Ascent.": "Pandemonium quita el costo de Life Points y repone cada Archfiend que cae. Terrorking e Infernalqueen pegan fuerte para ser de Nivel 4, el General trae el Campo, y dos de Nivel 6 forman a Archfiend's Ascent.",
 	"Your move. Mine is already made.": "Tu jugada. La mía ya está hecha.",
+	"Built on": "Hecho sobre",
+	"Duel rules: ocgcore, by Edoardo Lolletti (edo9300)": "Reglas de duelo: ocgcore, de Edoardo Lolletti (edo9300)",
+	"Card scripts: Project Ignis": "Scripts de cartas: Project Ignis",
+	"Game engine: Godot": "Motor del juego: Godot",
+	"Credits": "Créditos",
+	"Made by Atlas Peak Games. The duel rules run on ocgcore by Edoardo Lolletti (edo9300), and every card plays by its script from Project Ignis. Both are free software under the AGPL-3.0 license. The game is built with the Godot engine.": "Hecho por Atlas Peak Games. Las reglas de duelo usan ocgcore, de Edoardo Lolletti (edo9300), y cada carta juega según su script de Project Ignis. Ambos son software libre bajo la licencia AGPL-3.0. El juego está hecho con el motor Godot.",
 }

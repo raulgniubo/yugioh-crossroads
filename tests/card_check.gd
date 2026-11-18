@@ -26,6 +26,10 @@ func _ready() -> void:
 	for nm in CardPool.added_names():
 		if int(CardData.NAME_TO_ID.get(str(nm).to_lower(), 0)) == 0:
 			problems.append("not in the card folder: \"%s\"" % nm)
+	for id in pool:
+		var pd: Dictionary = CardData.get_card(id)
+		if bool(pd.get("pendulum", false)) or str(pd.get("frame", "")) == "link" or str(pd.get("desc", "")).contains("[ Pendulum Effect ]"):
+			problems.append("a Pendulum or Link Monster is in the game: %s (%d)" % [str(pd.get("name", "?")), id])
 	# 2. The rules engine loads every card (its script runs once when the card is created).
 	var chunk: Array = []
 	var loaded := 0

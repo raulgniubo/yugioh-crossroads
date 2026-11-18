@@ -1337,6 +1337,7 @@ const SCRIPTS := {
 		{"credits": ["#Yu-Gi-Oh! Crossroads", "A fan story in five chapters", "", "#The Echo Deck", "{player}", "Lumen", "", "#Friends along the way",
 			"Yugi Muto    Seto Kaiba    Joey Wheeler    Mai Valentine", "Jaden Yuki    Chazz Princeton    Alexis Rhodes", "Syrus and Zane Truesdale", "Yusei Fudo    Jack Atlas    Crow Hogan    Akiza Izinski", "Yuma Tsukumo    Kite Tenjo    Shark", "",
 			"#The Museum", "Aurel Thane, the Curator", "Vellum, Head Archivist", "Vesper Quill", "Kairo and Ren Vance", "", "#And at the folding table", "Solomon Muto", "",
+			"#Built on", "Duel rules: ocgcore, by Edoardo Lolletti (edo9300)", "Card scripts: Project Ignis", "Game engine: Godot", "",
 			"Yu-Gi-Oh! and its characters belong to their owners.", "This is a private fan game, made for the love of the duel.", "", "#Thank you for playing"]},
 		{"end": "The End", "unlock": "", "teaser": "Every world is still open, and Lumen is still with you. There are duelists out there you have not beaten yet."},
 	],

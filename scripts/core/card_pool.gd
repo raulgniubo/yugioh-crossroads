@@ -54,10 +54,13 @@ static func era(e: String) -> Array:
 	return _eras.get(e, [])
 
 
-## Is this card in the game?
+## Is this card in the game? (Never a Pendulum or Link Monster: this game has no zones for them.)
 static func has(id: int) -> bool:
 	_load()
-	return _all.has(id)
+	if not _all.has(id):
+		return false
+	var d: Dictionary = CardData.EXT.get(id, {})
+	return not bool(d.get("pendulum", false)) and str(d.get("frame", "")) != "link"
 
 
 ## Every name the game adds on top of the written-down pool (for the tools that pack engine data).

@@ -731,7 +731,7 @@ static func load_external(folder: String) -> void:
 	if not FileAccess.file_exists(src):
 		return
 	var cache := "user://card_index.json"
-	var stamp := str(FileAccess.get_modified_time(src)) + "-v10"
+	var stamp := str(FileAccess.get_modified_time(src)) + "-v11"
 	if FileAccess.file_exists(cache):
 		var c = JSON.parse_string(FileAccess.get_file_as_string(cache))
 		if typeof(c) == TYPE_DICTIONARY and c.get("stamp", "") == stamp:
@@ -767,6 +767,8 @@ static func _from_db(raw: Dictionary) -> Dictionary:
 	elif frame.begins_with("normal"):
 		frame = "normal"
 	var d := {"name": name, "frame": frame, "desc": str(raw.get("desc", ""))}
+	if str(raw.get("frameType", "")).contains("pendulum") or str(raw.get("type", "")).contains("Pendulum") or str(d["desc"]).contains("[ Pendulum Effect ]"):
+		d["pendulum"] = true      # (not a card of this game: see CardPool)
 	if frame == "spell" or frame == "trap":
 		d["st"] = str(raw.get("race", "")).to_lower()
 		if SPELL_EFFECTS.has(name):
