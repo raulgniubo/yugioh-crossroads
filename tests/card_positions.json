@@ -2176,5 +2176,74 @@
 ]
 },
 "turns": 3
+},
+{
+"card": "Mustering of the Dark Scorpions",
+"me": {
+"m": [
+"Don Zaloog"
+],
+"hand": [
+"Mustering of the Dark Scorpions",
+"Dark Scorpion - Cliff the Trap Remover",
+"Dark Scorpion - Chick the Yellow"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Dark Scorpion Combination",
+"me": {
+"m": [
+"Don Zaloog",
+"Dark Scorpion - Cliff the Trap Remover",
+"Dark Scorpion - Chick the Yellow",
+"Dark Scorpion - Gorg the Strong",
+"Dark Scorpion - Meanae the Thorn"
+],
+"st": [
+"Dark Scorpion Combination"
+]
+},
+"opp": {},
+"turns": 4
+},
+{
+"card": "Scrap Fist",
+"me": {
+"m": [
+"Junk Warrior"
+],
+"hand": [
+"Scrap Fist"
+]
+},
+"opp": {
+"m": [
+[
+"Battle Ox",
+"atk"
+]
+]
+},
+"turns": 3
+},
+{
+"card": "Scrap Warrior",
+"me": {
+"m": [
+"Scrap Synchron",
+"Speed Warrior"
+],
+"extra": [
+"Scrap Warrior"
+],
+"deck": [
+"Junk Synchron"
+]
+},
+"opp": {},
+"turns": 3
 }
 ]

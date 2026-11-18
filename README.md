@@ -5,6 +5,21 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.46.0
+
+**Build 1 of the second card plan ("the next 1,000 cards, part 2"): six families, 214 new cards.** The game now has **2,704 cards**. (The Six Shinobi is gone as of this build, as agreed.)
+
+- **Amazoness + Dark Scorpion (Duel Monsters), 42 cards, 37 new.** Every Amazoness with their Fusion Monsters, village and traps, and Don Zaloog's whole gang with their two cards. Pack and theme deck **Amazoness Village**, sold in Domino. The Dock Worker plays it.
+- **Crystal Beast (GX), 47 cards.** The seven Crystal Beasts, the Rainbow Dragons, the Ultimate Crystal monsters, the Advanced Crystal Beasts and all their Spells and Traps. Pack and theme deck **Rainbow Ruins**, sold at the Academy. The Professor plays it (he had no duel before).
+- **Vampire (GX), 29 cards, 28 new.** Every Vampire, their Xyz Monster and their Spells and Traps. Pack and theme deck **Vampire Kingdom**, sold at the Academy. The Lighthouse Ghost plays it at night.
+- **Morphtronic (5D's), 44 cards.** Every Morphtronic, their Synchro Monsters, Spells and Traps, and Power Tool Dragon with them. Pack and theme deck **Morphtronic Workshop**, sold in Satellite and New Domino. The Satellite Kid plays it.
+- **Scrap (5D's), 31 cards, 29 new.** Every Scrap monster with the Scrap Synchro Monsters, Scrapyard, Scrapstorm and the rest, plus Scrap Synchron, Scrap Fist and Scrap Warrior. Pack and theme deck **Scrapyard**, sold in Satellite and New Domino. The Scrap King plays it at night.
+- **Chronomaly (ZEXAL), 30 cards, 29 new.** Every Chronomaly with their Xyz Monsters and Numbers 6, 33 and 36. Pack and theme deck **Out-of-Place Artifacts**, sold in Heartland. The Neon Oracle plays it at night.
+
+**How it was checked.** Card check: 2,704 cards, 0 problems. Each family got its own sweep (92 to 114 duels each): 216 of the 223 family cards were summoned or activated in a full duel, 3 more used an effect in a random set-up position, and the last 4 (Mustering of the Dark Scorpions, Dark Scorpion Combination, Scrap Fist, Scrap Warrior) got a position written by hand and pass. All hand-made positions: 131 pass. Every deck in the game played 20 duels on the engine: 1,260 duels over 63 decks, 0 complaints. One duel per new deck was also played through the real duel screen without a window.
+
+**Not checked:** nobody has played these six decks by hand yet, and I have not looked at them on a real screen. Same as before, the check is "the official script ran and nothing complained", not "I read every effect by eye".
+
 ## After 0.45.0 (tests only, no new build)
 
 Nothing in the game changed here, so there is no build. This is a stricter check of the cards, and it corrects a number I gave too kindly.
