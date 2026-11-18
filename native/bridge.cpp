@@ -533,6 +533,9 @@ static std::vector<uint8_t> run_op(int code, const uint8_t* data, size_t size) {
 		JV pl = JV::arr(), lg = JV::arr();
 		for(uint32_t c : mr.played) pl.push((int64_t)c);
 		for(auto& l : mr.logs) lg.push(JV(l));
+		JV ac = JV::arr();
+		for(uint32_t c : mr.acted) ac.push((int64_t)c);
+		res.set("acted", std::move(ac));
 		res.set("played", std::move(pl)); res.set("logs", std::move(lg));
 		encode(out, res);
 		break; }
@@ -578,7 +581,12 @@ static std::vector<uint8_t> run_op(int code, const uint8_t* data, size_t size) {
 		for(uint32_t c : mr.played) put32(out, c);
 		JV logs = JV::arr();
 		for(size_t i = 0; i < mr.logs.size() && i < 20; ++i) logs.push(mr.logs[i]);
-		encode(out, logs);
+		// (and which of the played cards were summoned or went on the chain, not merely Set)
+		JV acted = JV::arr();
+		for(uint32_t c : mr.acted) acted.push((int64_t)c);
+		JV tail = JV::obj();
+		tail.set("logs", std::move(logs)); tail.set("acted", std::move(acted));
+		encode(out, tail);
 		break; }
 	default: break;
 	}

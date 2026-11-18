@@ -423,6 +423,9 @@ static func match_duel(decks: Array, extras: Array, levels: Array, seed: int, ms
 		var lg = bytes_to_var(r.slice(32 + 4 * n))
 		if lg is Array:
 			out["logs"] = lg
+		elif lg is Dictionary:
+			out["logs"] = lg.get("logs", [])
+			out["acted"] = lg.get("acted", [])
 	return out
 
 

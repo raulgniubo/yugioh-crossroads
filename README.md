@@ -5,6 +5,30 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## After 0.45.0 (tests only, no new build)
+
+Nothing in the game changed here, so there is no build. This is a stricter check of the cards, and it corrects a number I gave too kindly.
+
+**The correction.** For 0.44.0 and 0.45.0 I wrote that about 95% of the cards were "summoned, Set or activated" in a full duel, and that 38, then 51, cards were left that had not been seen working. That count was too kind: it took a Spell or Trap as played when it was only Set face-down and never activated. Counted properly (summoned or activated; being Set is not enough, except for a Normal Monster, which has nothing more to show):
+
+- **2,300 of the 2,491 cards (92.3%)** were summoned or activated in a full duel.
+- The other 191 were put into random set-up positions. 97 used an effect there. **94 did not.**
+
+**What I did about the 94.** I wrote a position by hand for each one: the monsters it needs around it, the right cards in the Graveyard, an opponent who does the thing it answers (`tests/card_positions.json`, 128 positions, played by `tests/card_positions.tscn`, now part of `tools/cards.sh`).
+
+- **127 pass:** the card is summoned or activated and no script complains.
+- 8 of those are weaker checks, and I say so: the four Spirit Message cards only count as placed by Destiny Board (they never activate themselves), and Decoyroid, Rainbow Flower, Stone Statue of the Aztecs and Banisher of the Light have effects that are always on, so the check is that they stand face-up through the turns without a complaint.
+- **1 can never be used in this game: The Six Shinobi.** It needs six Six Samurai monsters with six different Attributes on your field, and this game's field has five Monster Zones (no Extra Monster Zone). You can own it. You can never activate it.
+
+So every card but that one has now been seen doing something on the engine without a complaint. What this still does not prove: that each effect does exactly what the card says. The scripts are the official ones, and I trust them for that. I did not read 2,491 results by eye.
+
+Two things I thought were bugs and were not:
+
+- **Double or Nothing!** would not activate after Scrap-Iron Scarecrow negated my attack. That is the real ruling: Scarecrow Sets itself afterwards, so the timing is missed. After Draining Shield it works.
+- **Shien's Scheme** would not activate when my Six Samurai lost a battle. Another Six Samurai on my field was being destroyed in its place (their own effect), so nothing was destroyed by battle. With one Six Samurai alone it works.
+
+Also in the sweep: an Extra Deck monster now gets what it is made from put in reach (Polymerization and its materials, monsters of the right Levels), and each back row gets a Set card or two, so more cards get a fair chance in the random part.
+
 ## What is in 0.45.0
 
 **Six more card families and the last duelist cards: 276 new cards.** The game now has **2,491 cards**. This finishes the card plan ("the next 1,000 cards"): every row of it is in.

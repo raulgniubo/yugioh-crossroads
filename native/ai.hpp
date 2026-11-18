@@ -29,6 +29,7 @@ struct Sim {
 	long steps = 0;
 	int hint[2] = { 0, 0 };          // the last "select..." line each player was given
 	int attacker_seq[2] = { -1, -1 }; // the monster each player last declared an attack with
+	std::set<uint32_t>* acted = nullptr;    // (card positions: only what was summoned or went on the chain, not what was merely Set)
 	std::set<uint32_t>* played = nullptr;   // (sweeps: every card that was summoned or had an effect go on the chain)
 	~Sim() { if(d.d) OCG_DestroyDuel(d.d); }
 };
@@ -52,7 +53,7 @@ static void sim_step(Sim& s) {
 			else if(t == 40 && l >= 2) { s.turns++; s.turn_player = buf[pos + 1]; }
 			else if(t == 41 && l >= 3) s.phase = buf[pos + 1] | (buf[pos + 2] << 8);
 			else if(t == 1) s.retry = true;
-			else if(s.played && (t == 60 || t == 62 || t == 64 || t == 70 || t == 54) && l >= 5) { uint32_t code; std::memcpy(&code, buf + pos + 1, 4); if(code) s.played->insert(code); }
+			else if(s.played && (t == 60 || t == 62 || t == 64 || t == 70 || t == 54) && l >= 5) { uint32_t code; std::memcpy(&code, buf + pos + 1, 4); if(code) { s.played->insert(code); if(s.acted && t != 54) s.acted->insert(code); } }
 			else if(s.played && t == 50 && l >= 17 && (buf[pos + 16] & 0x0c)) { uint32_t code; std::memcpy(&code, buf + pos + 1, 4); if(code) s.played->insert(code); }   // (moved onto the table, Set or not)
 			else if(t == 2 && l >= 11 && buf[pos + 1] == 3 && buf[pos + 2] < 2) { uint64_t hv; std::memcpy(&hv, buf + pos + 3, 8); s.hint[buf[pos + 2]] = (int)hv; }
 			else if(is_select(t)) { s.ask = parse_msg(buf + pos, l); s.has_ask = true; }
@@ -1103,13 +1104,14 @@ static Decision decide(const History& h, int level, int time_ms, uint64_t seed, 
 }
 
 // ---------------------------------------------------------------- a whole duel, both sides (for measuring)
-struct MatchResult { int winner = 2; int turns = 0; long decisions = 0; long sims = 0; double think_ms = 0; double max_ms = 0; int refused = 0; Board end; std::set<uint32_t> played; std::vector<std::string> logs; };
+struct MatchResult { int winner = 2; int turns = 0; long decisions = 0; long sims = 0; double think_ms = 0; double max_ms = 0; int refused = 0; Board end; std::set<uint32_t> played; std::set<uint32_t> acted; std::vector<std::string> logs; };
 
 static MatchResult play_match(History h, int level0, int level1, uint64_t seed, int time_ms, int max_turns) {
 	MatchResult r;
 	auto live = sim_new(h);
 	if(!live) return r;
 	live->played = &r.played;
+	live->acted = &r.acted;
 	sim_step(*live);
 	PMemo memo[2];
 	uint64_t rnd = mix(seed) | 1;
@@ -1134,6 +1136,12 @@ static MatchResult play_match(History h, int level0, int level1, uint64_t seed, 
 			r.sims += d.sims; r.think_ms += d.ms; r.max_ms = std::max(r.max_ms, d.ms);
 		}
 		if(trace && lv > 0 && !last_notes.empty()) fprintf(stderr, "T%d ask %d: %s\n", live->turns, (int)live->ask.geti("t"), last_notes.c_str());
+		if(trace && lv <= 0) {
+			// (the basic opponent: what it was asked, what was on offer, what it answered)
+			std::string offer;
+			for(auto& c : arr(live->ask, "chains").a) offer += " " + std::to_string(c.geti("code"));
+			fprintf(stderr, "T%d p%d ask %d chains[%s ] forced %d answer %d\n", live->turns, p, (int)live->ask.geti("t"), offer.c_str(), (int)live->ask.geti("forced"), ans.size() >= 4 ? (int)(ans[0] | (ans[1] << 8) | (ans[2] << 16) | (ans[3] << 24)) : -9);
+		}
 		note_answer(*live, live->ask, ans);
 		r.decisions++;
 		if(live->turns != last_turn) { last_turn = live->turns; turn_decisions = 0; }
@@ -1146,6 +1154,7 @@ static MatchResult play_match(History h, int level0, int level1, uint64_t seed, 
 	r.turns = live->turns;
 	r.end = read_board(*live);
 	live->played = nullptr;
+	live->acted = nullptr;
 	r.logs = live->d.logs;
 	for(auto& ms : live->d.missing) r.logs.push_back("missing script: " + ms);
 	return r;

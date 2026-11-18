@@ -1,0 +1,2188 @@
+[
+{
+"card": "Dark Magic Attack",
+"me": {
+"m": [
+"Dark Magician"
+],
+"hand": [
+"Dark Magic Attack"
+]
+},
+"opp": {
+"st": [
+"Mirror Force",
+"Trap Hole"
+]
+},
+"turns": 3
+},
+{
+"card": "Ultra Evolution Pill",
+"me": {
+"m": [
+"Gagagigo"
+],
+"hand": [
+"Ultra Evolution Pill",
+"Black Tyranno"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Machine Duplication",
+"me": {
+"m": [
+"Cyber Larva"
+],
+"deck": [
+"Cyber Larva",
+"Cyber Larva"
+],
+"hand": [
+"Machine Duplication"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Harpie Lady Phoenix Formation",
+"me": {
+"m": [
+"Harpie Lady",
+"Harpie Lady",
+"Harpie Lady"
+],
+"hand": [
+"Harpie Lady Phoenix Formation"
+]
+},
+"opp": {
+"m": [
+"Vorse Raider",
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Chaos Greed",
+"me": {
+"rm": [
+"Vorse Raider",
+"Battle Ox",
+"Kuriboh",
+"Mystical Elf"
+],
+"hand": [
+"Chaos Greed"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Checkmate",
+"me": {
+"m": [
+"Terrorking Archfiend",
+"Shadowknight Archfiend"
+],
+"hand": [
+"Checkmate"
+]
+},
+"opp": {
+"m": [
+"Blue-Eyes White Dragon"
+]
+},
+"turns": 3
+},
+{
+"card": "Overload Fusion",
+"me": {
+"gy": [
+"Cyber Dragon",
+"Steamroid",
+"Drillroid"
+],
+"hand": [
+"Overload Fusion"
+],
+"extra": [
+"Chimeratech Overdragon"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Ojama Delta Hurricane!!",
+"me": {
+"m": [
+"Ojama Green",
+"Ojama Yellow",
+"Ojama Black"
+],
+"hand": [
+"Ojama Delta Hurricane!!"
+]
+},
+"opp": {
+"m": [
+"Vorse Raider"
+]
+},
+"turns": 3
+},
+{
+"card": "Instant Neo Space",
+"me": {
+"m": [
+"Elemental HERO Flare Neos"
+],
+"hand": [
+"Instant Neo Space"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Ancient Gear Factory",
+"me": {
+"hand": [
+"Ancient Gear Factory",
+"Ancient Gear Golem"
+],
+"gy": [
+"Ancient Gear Golem",
+"Ancient Gear Golem"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Ojamuscle",
+"me": {
+"m": [
+"Ojama King",
+"Ojama Green",
+"Ojama Yellow"
+],
+"hand": [
+"Ojamuscle"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Vehicroid Connection Zone",
+"me": {
+"hand": [
+"Vehicroid Connection Zone",
+"Steamroid",
+"Drillroid",
+"Submarineroid"
+],
+"extra": [
+"Super Vehicroid Jumbo Drill"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Gladiator's Return",
+"me": {
+"gy": [
+"Gladiator Beast Laquari",
+"Gladiator Beast Darius",
+"Gladiator Beast Bestiari"
+],
+"hand": [
+"Gladiator's Return"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Silver Wing",
+"me": {
+"m": [
+"Stardust Dragon"
+],
+"hand": [
+"Silver Wing"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "ZERO-MAX",
+"me": {
+"st": [
+"ZERO-MAX"
+],
+"gy": [
+"Infernity General"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Six Strike - Triple Impact",
+"me": {
+"m": [
+"Legendary Six Samurai - Kizan",
+"The Six Samurai - Zanji",
+"The Six Samurai - Irou"
+],
+"hand": [
+"Six Strike - Triple Impact"
+]
+},
+"opp": {
+"m": [
+"Vorse Raider"
+]
+},
+"turns": 3
+},
+{
+"card": "Armored Xyz",
+"me": {
+"m": [
+"Vorse Raider"
+],
+"gy": [
+"Number 39: Utopia"
+],
+"hand": [
+"Armored Xyz"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Raptor Wing Strike",
+"me": {
+"m": [
+"Blackwing - Bora the Spear"
+],
+"deck": [
+"Blackwing - Gale the Whirlwind"
+],
+"hand": [
+"Raptor Wing Strike"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Larvae Moth",
+"me": {
+"m": [
+[
+"Petit Moth",
+"def"
+]
+],
+"hand": [
+"Vorse Raider",
+"Cocoon of Evolution",
+"Larvae Moth"
+]
+},
+"opp": {},
+"turns": 8
+},
+{
+"card": "Great Moth",
+"me": {
+"m": [
+[
+"Petit Moth",
+"def"
+]
+],
+"hand": [
+"Vorse Raider",
+"Cocoon of Evolution",
+"Great Moth"
+]
+},
+"opp": {},
+"turns": 12
+},
+{
+"card": "Perfectly Ultimate Great Moth",
+"me": {
+"m": [
+[
+"Petit Moth",
+"def"
+]
+],
+"hand": [
+"Vorse Raider",
+"Cocoon of Evolution",
+"Perfectly Ultimate Great Moth"
+]
+},
+"opp": {},
+"turns": 16
+},
+{
+"card": "Red-Eyes Black Metal Dragon",
+"me": {
+"m": [
+"Red-Eyes Black Dragon"
+],
+"st": [
+"Metalmorph"
+],
+"deck": [
+"Red-Eyes Black Metal Dragon"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Silent Magician LV8",
+"me": {
+"m": [
+[
+"Silent Magician LV4",
+"def"
+]
+],
+"hand": [
+"Silent Magician LV8"
+]
+},
+"opp": {},
+"turns": 14
+},
+{
+"card": "Blackwing - Aurora the Northern Lights",
+"me": {
+"m": [
+"Blackwing - Gale the Whirlwind",
+"Blackwing - Bora the Spear"
+],
+"hand": [
+"Blackwing - Aurora the Northern Lights"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Master of Chaos",
+"me": {
+"hand": [
+"Polymerization",
+"Dark Magician",
+"Black Luster Soldier"
+],
+"extra": [
+"Master of Chaos"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Archfiend Black Skull Dragon",
+"me": {
+"hand": [
+"Polymerization",
+"Summoned Skull",
+"Red-Eyes Black Dragon"
+],
+"extra": [
+"Archfiend Black Skull Dragon"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Gladiator Beast Claudius",
+"me": {
+"gy": [
+"Gladiator Beast Laquari",
+"Gladiator Beast Darius",
+"Gladiator Beast Bestiari",
+"Gladiator Beast Equeste",
+"Gladiator Beast Murmillo"
+],
+"extra": [
+"Gladiator Beast Claudius"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Gladiator Beast Andabata",
+"me": {
+"m": [
+"Gladiator Beast Augustus",
+"Gladiator Beast Laquari",
+"Gladiator Beast Darius"
+],
+"extra": [
+"Gladiator Beast Andabata"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Gladiator Beast Nerokius",
+"me": {
+"m": [
+"Gladiator Beast Equeste",
+"Gladiator Beast Laquari",
+"Gladiator Beast Darius"
+],
+"extra": [
+"Gladiator Beast Nerokius"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Gladiator Beast Gyzarus",
+"me": {
+"m": [
+"Gladiator Beast Bestiari",
+"Gladiator Beast Laquari"
+],
+"extra": [
+"Gladiator Beast Gyzarus"
+]
+},
+"opp": {
+"st": [
+"Mirror Force"
+],
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Bickuribox",
+"me": {
+"hand": [
+"Polymerization",
+"Crass Clown",
+"Dream Clown"
+],
+"extra": [
+"Bickuribox"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "UFOroid Fighter",
+"me": {
+"hand": [
+"Polymerization",
+"UFOroid",
+"Queen's Knight"
+],
+"extra": [
+"UFOroid Fighter"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Cyber End Dragon",
+"me": {
+"hand": [
+"Polymerization",
+"Cyber Dragon",
+"Cyber Dragon",
+"Cyber Dragon"
+],
+"extra": [
+"Cyber End Dragon"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Grapha, Dragon Overlord of Dark World",
+"me": {
+"hand": [
+"Polymerization",
+"Grapha, Dragon Lord of Dark World",
+"Zure, Knight of Dark World"
+],
+"extra": [
+"Grapha, Dragon Overlord of Dark World"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Arcana Knight Joker",
+"me": {
+"hand": [
+"Polymerization",
+"Queen's Knight",
+"King's Knight",
+"Jack's Knight"
+],
+"extra": [
+"Arcana Knight Joker"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Blue-Eyes Toon Ultimate Dragon",
+"me": {
+"m": [
+"Blue-Eyes Toon Dragon",
+"Toon Gemini Elf",
+"Toon Mermaid"
+],
+"fieldspell": [
+"Toon World"
+],
+"extra": [
+"Blue-Eyes Toon Ultimate Dragon"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Archfiend Zombie-Skull",
+"me": {
+"m": [
+"Plaguespreader Zombie",
+"Armored Zombie",
+"Skull Servant"
+],
+"extra": [
+"Archfiend Zombie-Skull"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Hot Red Dragon Archfiend Bane",
+"me": {
+"m": [
+"Nitro Synchron",
+"Red Dragon Archfiend"
+],
+"extra": [
+"Hot Red Dragon Archfiend Bane"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Chaos Archfiend",
+"me": {
+"m": [
+"Felis, Lightsworn Archer",
+"Zure, Knight of Dark World"
+],
+"extra": [
+"Chaos Archfiend"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Scarred Dragon Archfiend",
+"me": {
+"m": [
+"Plaguespreader Zombie",
+"Summoned Skull"
+],
+"extra": [
+"Scarred Dragon Archfiend"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Dragunity Knight - Vajrayana",
+"me": {
+"m": [
+"Dragunity Phalanx",
+"Dragunity Dux"
+],
+"gy": [
+"Dragunity Phalanx"
+],
+"extra": [
+"Dragunity Knight - Vajrayana"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Dragunity Knight - Trident",
+"me": {
+"m": [
+"Dragunity Phalanx",
+"Dragunity Angusticlavii"
+],
+"extra": [
+"Dragunity Knight - Trident"
+]
+},
+"opp": {
+"extra": [
+"Stardust Dragon",
+"Number 39: Utopia"
+]
+},
+"turns": 3
+},
+{
+"card": "Dragunity Knight - Barcha",
+"me": {
+"m": [
+"Dragunity Darkspear",
+"Dragunity Primus Pilus"
+],
+"gy": [
+"Dragunity Phalanx",
+"Dragunity Aklys"
+],
+"extra": [
+"Dragunity Knight - Barcha"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Dragunity Knight - Gormfaobhar",
+"me": {
+"m": [
+"Dragunity Phalanx",
+"Dragunity Primus Pilus"
+],
+"gy": [
+"Dragunity Phalanx"
+],
+"extra": [
+"Dragunity Knight - Gormfaobhar"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Dragunity Knight - Luin",
+"me": {
+"m": [
+"Dragunity Phalanx",
+"Dragunity Dux"
+],
+"gy": [
+"Dragunity Aklys"
+],
+"extra": [
+"Dragunity Knight - Luin"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Number 102: Star Seraph Sentry",
+"me": {
+"m": [
+"Photon Thrasher",
+"Photon Crusher",
+"Galaxy Wizard"
+],
+"extra": [
+"Number 102: Star Seraph Sentry"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Number C102: Archfiend Seraph",
+"me": {
+"m": [
+"Number 102: Star Seraph Sentry"
+],
+"hand": [
+"Rank-Up-Magic Barian's Force"
+],
+"extra": [
+"Number C102: Archfiend Seraph"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Number C96: Dark Storm",
+"me": {
+"m": [
+"Number 96: Dark Mist"
+],
+"hand": [
+"Rank-Up-Magic Barian's Force"
+],
+"extra": [
+"Number C96: Dark Storm"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Starliege Lord Galaxion",
+"me": {
+"m": [
+"Photon Thrasher",
+"Photon Crusher"
+],
+"deck": [
+"Galaxy-Eyes Photon Dragon"
+],
+"extra": [
+"Starliege Lord Galaxion"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Number F0: Utopic Future",
+"me": {
+"m": [
+"Photon Papilloperative",
+"Gem-Knight Pearl"
+],
+"extra": [
+"Number F0: Utopic Future"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Number 61: Volcasaurus",
+"me": {
+"m": [
+"Cyber Dragon",
+"Cyber Dragon"
+],
+"extra": [
+"Number 61: Volcasaurus"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Neo Galaxy-Eyes Photon Dragon",
+"me": {
+"m": [
+"Galaxy-Eyes Photon Dragon",
+"Galaxy-Eyes Photon Dragon",
+"Galaxy-Eyes Photon Dragon"
+],
+"extra": [
+"Neo Galaxy-Eyes Photon Dragon"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Number 83: Galaxy Queen",
+"me": {
+"m": [
+"Key Mace",
+"Leghul",
+"Dark Plant"
+],
+"extra": [
+"Number 83: Galaxy Queen"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Number 56: Gold Rat",
+"me": {
+"m": [
+"Key Mace",
+"Leghul",
+"Dark Plant"
+],
+"extra": [
+"Number 56: Gold Rat"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Number 39: Utopia Roots",
+"me": {
+"m": [
+"Key Mace",
+"Leghul"
+],
+"extra": [
+"Number 39: Utopia Roots"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Number 43: Manipulator of Souls",
+"me": {
+"m": [
+"Gagaga Sister",
+"Kiseitai",
+"Scarr, Scout of Dark World"
+],
+"extra": [
+"Number 43: Manipulator of Souls"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Number 99: Utopic Dragon",
+"me": {
+"m": [
+"Number 39: Utopia"
+],
+"hand": [
+"Rank-Up-Magic Barian's Force"
+],
+"extra": [
+"Number 99: Utopic Dragon"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Stellarknight Triverr",
+"me": {
+"m": [
+"Satellarknight Altair",
+"Satellarknight Vega",
+"Satellarknight Deneb"
+],
+"extra": [
+"Stellarknight Triverr"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Madolche Teacher Glassouffle",
+"me": {
+"m": [
+"Madolche Magileine",
+"Madolche Messengelato"
+],
+"extra": [
+"Madolche Teacher Glassouffle"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Heroic Champion - Excalibur",
+"me": {
+"m": [
+"Heroic Challenger - Spartan",
+"Heroic Challenger - Double Lance"
+],
+"extra": [
+"Heroic Champion - Excalibur"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Magical Hats",
+"me": {
+"m": [
+"Dark Magician"
+],
+"st": [
+"Magical Hats"
+],
+"deck": [
+"Mirror Force",
+"Trap Hole"
+]
+},
+"opp": {
+"m": [
+"Blue-Eyes White Dragon"
+]
+},
+"turns": 4
+},
+{
+"card": "Dark Designator",
+"me": {
+"hand": [
+"Dark Designator"
+]
+},
+"opp": {
+"deck": [
+"Vorse Raider"
+]
+},
+"turns": 3
+},
+{
+"card": "Future Fusion",
+"me": {
+"hand": [
+"Future Fusion"
+],
+"deck": [
+"Cyber Dragon",
+"Cyber Dragon",
+"Cyber Dragon"
+],
+"extra": [
+"Cyber End Dragon"
+]
+},
+"opp": {},
+"turns": 6
+},
+{
+"card": "Fusion Gate",
+"me": {
+"hand": [
+"Fusion Gate",
+"Cyber Dragon",
+"Cyber Dragon",
+"Cyber Dragon"
+],
+"extra": [
+"Cyber End Dragon"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Black Garden",
+"me": {
+"hand": [
+"Black Garden",
+"Vorse Raider"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Mind Scan",
+"me": {
+"st": [
+"Mind Scan"
+],
+"m": [
+"Toon Gemini Elf"
+],
+"fieldspell": [
+"Toon World"
+]
+},
+"opp": {
+"hand": [
+"Vorse Raider"
+]
+},
+"turns": 4
+},
+{
+"card": "Exstellarknight Constellar Ptolemy Ω7",
+"me": {
+"m": [
+"Constellar Ptolemy M7"
+],
+"extra": [
+"Exstellarknight Constellar Ptolemy Ω7"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Twilight Twin Dragons",
+"me": {
+"m": [
+"Punishment Dragon"
+],
+"gy": [
+"Judgment Dragon"
+],
+"hand": [
+"Twilight Twin Dragons"
+],
+"lp": 500
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Chaos Magical Hats",
+"me": {
+"m": [
+"Celtic Mystic"
+],
+"st": [
+"Chaos Magical Hats"
+],
+"deck": [
+"Mirror Force",
+"Trap Hole",
+"Dark Hole"
+]
+},
+"opp": {
+"hand": [
+"Dark Hole"
+]
+},
+"turns": 4
+},
+{
+"card": "Spirit Message \"I\"",
+"me": {
+"st": [
+"Destiny Board"
+],
+"deck": [
+"Spirit Message \"I\"",
+"Spirit Message \"N\"",
+"Spirit Message \"A\"",
+"Spirit Message \"L\""
+]
+},
+"opp": {},
+"turns": 12,
+"pass": "placed"
+},
+{
+"card": "Spirit Message \"N\"",
+"me": {
+"st": [
+"Destiny Board"
+],
+"deck": [
+"Spirit Message \"I\"",
+"Spirit Message \"N\"",
+"Spirit Message \"A\"",
+"Spirit Message \"L\""
+]
+},
+"opp": {},
+"turns": 12,
+"pass": "placed"
+},
+{
+"card": "Spirit Message \"A\"",
+"me": {
+"st": [
+"Destiny Board"
+],
+"deck": [
+"Spirit Message \"I\"",
+"Spirit Message \"N\"",
+"Spirit Message \"A\"",
+"Spirit Message \"L\""
+]
+},
+"opp": {},
+"turns": 12,
+"pass": "placed"
+},
+{
+"card": "Spirit Message \"L\"",
+"me": {
+"st": [
+"Destiny Board"
+],
+"deck": [
+"Spirit Message \"I\"",
+"Spirit Message \"N\"",
+"Spirit Message \"A\"",
+"Spirit Message \"L\""
+]
+},
+"opp": {},
+"turns": 12,
+"pass": "placed"
+},
+{
+"card": "Multiply",
+"me": {
+"m": [
+"Kuriboh"
+],
+"hand": [
+"Multiply"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Chaos End",
+"me": {
+"rm": [
+"Vorse Raider",
+"Battle Ox",
+"Kuriboh",
+"Mystical Elf",
+"Celtic Guardian",
+"Gemini Elf",
+"Giant Soldier of Stone"
+],
+"hand": [
+"Chaos End"
+]
+},
+"opp": {
+"m": [
+"Blue-Eyes White Dragon"
+]
+},
+"turns": 3
+},
+{
+"card": "Dedication through Light and Darkness",
+"me": {
+"m": [
+"Dark Magician"
+],
+"hand": [
+"Dedication through Light and Darkness"
+],
+"deck": [
+"Dark Magician of Chaos"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "A Deal with Dark Ruler",
+"me": {
+"m": [
+[
+"Blue-Eyes White Dragon",
+"atk"
+]
+],
+"st": [
+"A Deal with Dark Ruler"
+],
+"deck": [
+"Berserk Dragon"
+]
+},
+"opp": {
+"m": [
+"Blue-Eyes Ultimate Dragon"
+]
+},
+"turns": 4
+},
+{
+"card": "Throne of the Archfiends",
+"me": {
+"hand": [
+"Throne of the Archfiends",
+"Matador Archfiend",
+"Summoned Skull"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Burst Return",
+"me": {
+"m": [
+"Elemental HERO Burstinatrix",
+"Elemental HERO Sparkman"
+],
+"hand": [
+"Burst Return"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Over Destiny",
+"me": {
+"gy": [
+"Destiny HERO - Dogma"
+],
+"st": [
+"Over Destiny"
+],
+"deck": [
+"Destiny HERO - Diamond Dude"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Bubble Shuffle",
+"me": {
+"m": [
+"Elemental HERO Bubbleman"
+],
+"hand": [
+"Bubble Shuffle",
+"Elemental HERO Sparkman"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Dark World Accession",
+"me": {
+"gy": [
+"Grapha, Dragon Lord of Dark World",
+"Zure, Knight of Dark World"
+],
+"hand": [
+"Dark World Accession"
+],
+"extra": [
+"Grapha, Dragon Overlord of Dark World"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Gladiator Beast United",
+"me": {
+"m": [
+"Vorse Raider"
+],
+"gy": [
+"Gladiator Beast Bestiari",
+"Gladiator Beast Laquari"
+],
+"st": [
+"Gladiator Beast United"
+],
+"extra": [
+"Gladiator Beast Gyzarus"
+]
+},
+"opp": {},
+"turns": 4
+},
+{
+"card": "Cunning of the Six Samurai",
+"me": {
+"m": [
+"The Six Samurai - Irou"
+],
+"gy": [
+"Legendary Six Samurai - Kizan"
+],
+"hand": [
+"Cunning of the Six Samurai"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Secret Skills of the Six Samurai",
+"me": {
+"m": [
+"Vorse Raider"
+],
+"rm": [
+"Legendary Six Samurai - Kizan"
+],
+"hand": [
+"Secret Skills of the Six Samurai"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Six Scrolls of the Samurai",
+"me": {
+"m": [
+"The Six Samurai - Zanji",
+"The Six Samurai - Irou"
+],
+"deck": [
+"Great Shogun Shien"
+],
+"hand": [
+"Six Scrolls of the Samurai"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Photon Trident",
+"me": {
+"m": [
+"Photon Thrasher"
+],
+"st": [
+"Photon Trident"
+]
+},
+"opp": {
+"m": [
+[
+"Mystical Elf",
+"def"
+]
+],
+"st": [
+"Trap Hole"
+]
+},
+"turns": 4
+},
+{
+"card": "Photon Stream of Destruction",
+"me": {
+"m": [
+"Galaxy-Eyes Photon Dragon"
+],
+"hand": [
+"Photon Stream of Destruction"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Double or Nothing!",
+"me": {
+"m": [
+"Blue-Eyes White Dragon"
+],
+"st": [
+"Double or Nothing!"
+]
+},
+"opp": {
+"st": [
+"Draining Shield"
+],
+"m": [
+"Battle Ox"
+]
+},
+"turns": 4
+},
+{
+"card": "Hunting Instinct",
+"me": {
+"st": [
+"Hunting Instinct"
+],
+"hand": [
+"Sabersaurus",
+"Sabersaurus"
+]
+},
+"opp": {
+"hand": [
+"Monster Reborn"
+],
+"gy": [
+"Blue-Eyes White Dragon"
+]
+},
+"turns": 4
+},
+{
+"card": "Amazoness Archers",
+"me": {
+"m": [
+[
+"Amazoness Paladin",
+"atk"
+]
+],
+"st": [
+"Amazoness Archers"
+]
+},
+"opp": {
+"m": [
+"Blue-Eyes White Dragon"
+]
+},
+"turns": 4
+},
+{
+"card": "Wonder Garage",
+"me": {
+"st": [
+"Wonder Garage"
+],
+"hand": [
+"Steamroid",
+"Drillroid"
+]
+},
+"opp": {
+"hand": [
+"Mystical Space Typhoon"
+]
+},
+"turns": 4
+},
+{
+"card": "D - Shield",
+"me": {
+"m": [
+[
+"Destiny HERO - Diamond Dude",
+"atk"
+]
+],
+"st": [
+"D - Shield"
+]
+},
+"opp": {
+"hand": [
+"Vorse Raider"
+]
+},
+"turns": 4
+},
+{
+"card": "Chthonian Polymer",
+"me": {
+"m": [
+"Vorse Raider"
+],
+"st": [
+"Chthonian Polymer"
+]
+},
+"opp": {
+"hand": [
+"Polymerization",
+"Elemental HERO Avian",
+"Elemental HERO Burstinatrix"
+],
+"extra": [
+"Elemental HERO Flame Wingman"
+]
+},
+"turns": 4
+},
+{
+"card": "Mirror Gate",
+"me": {
+"m": [
+[
+"Elemental HERO Sparkman",
+"atk"
+]
+],
+"st": [
+"Mirror Gate"
+]
+},
+"opp": {
+"m": [
+"Blue-Eyes White Dragon"
+]
+},
+"turns": 4
+},
+{
+"card": "D - Time",
+"me": {
+"m": [
+[
+"Elemental HERO Sparkman",
+"atk"
+]
+],
+"st": [
+"D - Time"
+],
+"deck": [
+"Destiny HERO - Diamond Dude"
+]
+},
+"opp": {
+"hand": [
+"Smashing Ground"
+]
+},
+"turns": 4
+},
+{
+"card": "Synchro Barrier",
+"me": {
+"m": [
+"Stardust Dragon"
+],
+"st": [
+"Synchro Barrier"
+]
+},
+"opp": {
+"m": [
+"Blue-Eyes White Dragon"
+]
+},
+"turns": 4
+},
+{
+"card": "Crimson Fire",
+"me": {
+"m": [
+"Red Dragon Archfiend"
+],
+"st": [
+"Crimson Fire"
+]
+},
+"opp": {
+"hand": [
+"Hinotama"
+]
+},
+"turns": 4
+},
+{
+"card": "Blackwing - Bombardment",
+"me": {
+"m": [
+"Blackwing - Bora the Spear",
+"Stardust Dragon"
+],
+"st": [
+"Blackwing - Bombardment"
+]
+},
+"opp": {
+"m": [
+"Blue-Eyes White Dragon"
+]
+},
+"turns": 4
+},
+{
+"card": "Black Feather Beacon",
+"me": {
+"st": [
+"Black Feather Beacon"
+],
+"hand": [
+"Blackwing - Shura the Blue Flame",
+"Blackwing - Shura the Blue Flame",
+"Blackwing - Shura the Blue Flame"
+]
+},
+"opp": {
+"hand": [
+"Hinotama"
+]
+},
+"turns": 4
+},
+{
+"card": "Descending Lost Star",
+"me": {
+"m": [
+[
+"Stardust Dragon",
+"atk"
+]
+],
+"st": [
+"Descending Lost Star"
+]
+},
+"opp": {
+"m": [
+"Blue-Eyes Ultimate Dragon"
+]
+},
+"turns": 6
+},
+{
+"card": "Blackboost",
+"me": {
+"m": [
+"Blackwing - Gale the Whirlwind",
+"Blackwing - Blizzard the Far North"
+],
+"st": [
+"Blackboost"
+]
+},
+"opp": {},
+"turns": 4
+},
+{
+"card": "Twilight Eraser",
+"me": {
+"m": [
+"Ehren, Lightsworn Monk",
+"Garoth, Lightsworn Warrior"
+],
+"gy": [
+"Lyla, Lightsworn Sorceress",
+"Wulf, Lightsworn Beast"
+],
+"hand": [
+"Twilight Eraser"
+]
+},
+"opp": {
+"m": [
+"Battle Ox",
+"Vorse Raider"
+]
+},
+"turns": 3
+},
+{
+"card": "Urgent Tuning",
+"me": {
+"m": [
+"Blue-Eyes White Dragon"
+]
+},
+"opp": {
+"m": [
+"Junk Synchron",
+"Vorse Raider"
+],
+"st": [
+"Urgent Tuning"
+],
+"extra": [
+"Black Rose Dragon"
+]
+},
+"turns": 3
+},
+{
+"card": "Black Return",
+"me": {
+"m": [
+"Blackwing - Gale the Whirlwind"
+],
+"hand": [
+"Blackwing - Bora the Spear"
+],
+"st": [
+"Black Return"
+]
+},
+"opp": {
+"m": [
+"Blue-Eyes White Dragon"
+]
+},
+"turns": 3
+},
+{
+"card": "Shien's Scheme",
+"me": {
+"m": [
+[
+"The Six Samurai - Irou",
+"atk"
+]
+],
+"st": [
+"Shien's Scheme"
+],
+"hand": [
+"Vorse Raider",
+"The Six Samurai - Zanji"
+]
+},
+"opp": {
+"hand": [
+"Gemini Elf"
+]
+},
+"turns": 4
+},
+{
+"card": "The Six Shinobi",
+"me": {},
+"opp": {},
+"turns": 1,
+"pass": "never",
+"why": "It needs six Six Samurai monsters with six different Attributes on your field. This game's field has five Monster Zones (no Extra Monster Zone), so it can be owned but never activated."
+},
+{
+"card": "Splash Capture",
+"me": {
+"st": [
+"Splash Capture"
+],
+"gy": [
+"Great White",
+"Hammer Shark"
+]
+},
+"opp": {
+"m": [
+"Vorse Raider",
+"Battle Ox"
+],
+"extra": [
+"Number 39: Utopia"
+]
+},
+"turns": 4
+},
+{
+"card": "Full-Armored Xyz",
+"me": {
+"m": [
+"Number 39: Utopia",
+"Vorse Raider",
+"Battle Ox"
+],
+"st": [
+"Full-Armored Xyz"
+],
+"extra": [
+"Gagaga Cowboy"
+]
+},
+"opp": {},
+"turns": 4
+},
+{
+"card": "Eternal Galaxy",
+"me": {
+"m": [
+"Photon Papilloperative"
+],
+"st": [
+"Eternal Galaxy"
+],
+"extra": [
+"Neo Galaxy-Eyes Photon Dragon"
+]
+},
+"opp": {},
+"turns": 4
+},
+{
+"card": "Heroic Advance",
+"me": {
+"m": [
+[
+"Heroic Challenger - Spartan",
+"atk"
+],
+[
+"Heroic Challenger - Double Lance",
+"atk"
+]
+],
+"st": [
+"Heroic Advance"
+]
+},
+"opp": {
+"m": [
+"Blue-Eyes White Dragon"
+]
+},
+"turns": 4
+},
+{
+"card": "Decoyroid",
+"me": {
+"m": [
+[
+"Decoyroid",
+"def"
+],
+[
+"Vorse Raider",
+"atk"
+]
+]
+},
+"opp": {
+"m": [
+"Blue-Eyes White Dragon"
+]
+},
+"turns": 4,
+"pass": "stands"
+},
+{
+"card": "Rainbow Flower",
+"me": {
+"m": [
+"Rainbow Flower"
+]
+},
+"opp": {
+"m": [
+[
+"Mystical Elf",
+"def"
+]
+]
+},
+"turns": 3,
+"pass": "stands"
+},
+{
+"card": "Stone Statue of the Aztecs",
+"me": {
+"m": [
+[
+"Stone Statue of the Aztecs",
+"def"
+]
+]
+},
+"opp": {
+"m": [
+"Vorse Raider"
+]
+},
+"turns": 4,
+"pass": "stands"
+},
+{
+"card": "Banisher of the Light",
+"me": {
+"m": [
+[
+"Banisher of the Light",
+"def"
+]
+],
+"hand": [
+"Dark Hole"
+]
+},
+"opp": {
+"m": [
+"Vorse Raider"
+]
+},
+"turns": 4,
+"pass": "stands"
+},
+{
+"card": "Hero Kid",
+"me": {
+"hand": [
+"Monster Reborn"
+],
+"gy": [
+"Hero Kid"
+],
+"deck": [
+"Hero Kid",
+"Hero Kid"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Ancient Gear Box",
+"me": {
+"hand": [
+"Monster Reincarnation",
+"Kuriboh",
+"Kuriboh",
+"Kuriboh"
+],
+"gy": [
+"Ancient Gear Box"
+],
+"deck": [
+"Ancient Gear Gadget"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Ambulanceroid",
+"me": {
+"m": [
+"Ambulanceroid"
+],
+"hand": [
+"Monster Reincarnation",
+"Kuriboh",
+"Kuriboh",
+"Kuriboh"
+],
+"gy": [
+"Steamroid"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Red Gardna",
+"me": {
+"m": [
+"Red Dragon Archfiend"
+],
+"hand": [
+"Vorse Raider",
+"Red Gardna"
+]
+},
+"opp": {
+"hand": [
+"Dark Hole"
+]
+},
+"turns": 4
+},
+{
+"card": "Jenis, Lightsworn Mender",
+"me": {
+"m": [
+[
+"Jenis, Lightsworn Mender",
+"def"
+],
+[
+"Lyla, Lightsworn Sorceress",
+"atk"
+]
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Genex Ally Solid",
+"me": {
+"m": [
+"Genex Ally Solid",
+"Genex Undine"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Ganbara Knight",
+"me": {
+"m": [
+[
+"Ganbara Knight",
+"atk"
+]
+]
+},
+"opp": {
+"hand": [
+"Vorse Raider"
+]
+},
+"turns": 4
+},
+{
+"card": "Tripod Fish",
+"me": {
+"hand": [
+"Monster Reborn"
+],
+"gy": [
+"Tripod Fish"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Gem-Turtle",
+"me": {
+"m": [
+[
+"Gem-Turtle",
+"set"
+]
+],
+"deck": [
+"Gem-Knight Fusion"
+]
+},
+"opp": {
+"m": [
+"Blue-Eyes White Dragon"
+]
+},
+"turns": 4
+},
+{
+"card": "Bite Bug",
+"me": {
+"hand": [
+"Bite Bug"
+]
+},
+"opp": {
+"m": [
+"Number 39: Utopia"
+]
+},
+"turns": 3
+},
+{
+"card": "Archfiend's Manifestation",
+"me": {
+"hand": [
+"Polymerization",
+"Summoned Skull",
+"Zure, Knight of Dark World"
+],
+"extra": [
+"Archfiend's Manifestation"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Arcanite Magician",
+"me": {
+"m": [
+"Junk Synchron",
+"Skilled Dark Magician"
+],
+"extra": [
+"Arcanite Magician"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Turbo Synchron",
+"me": {
+"m": [
+"Turbo Synchron"
+]
+},
+"opp": {
+"m": [
+[
+"Cocoon of Evolution",
+"atk"
+]
+]
+},
+"turns": 3
+}
+]

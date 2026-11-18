@@ -2,7 +2,8 @@ extends Node
 ## Dev: the sweep. Every deck the game has, then decks dealt from the whole card pool (leaning
 ## toward cards that have not been played yet), played out by the basic opponent on both sides.
 ## What it reports: how many of the game's cards were summoned or had an effect go on the chain
-## at least once, which never were, and everything the card scripts complained about.
+## at least once (being Set is not enough, except for a Normal Monster), which never were, and
+## everything the card scripts complained about.
 ##   godot --headless res://tests/ocg_sweep.tscn -- <rounds of pool decks> [seed] [out file] [family key]
 ## With a family key the sweep is about that family only: its deck against the others, decks
 ## dealt from its cards, and what is left of it set up on the table.
@@ -61,8 +62,12 @@ func _ready() -> void:
 	var note := func(r: Dictionary, tag: String):
 		n["duels"] += 1
 		n["refused"] += int(r.get("refused", 0))
+		# A card counts when it was summoned or went on the chain. Merely being Set does not count,
+		# except for a Normal Monster, which has nothing more to show.
+		var did: Array = r.get("acted", [])
 		for c in r.get("played", []):
-			(into[0] as Dictionary)[int(c)] = true
+			if did.has(c) or str(CardData.get_card(int(c)).get("frame", "")) == "normal":
+				(into[0] as Dictionary)[int(c)] = true
 		for l in r.get("logs", []):
 			var k := str(l).left(150)
 			if k.begins_with("9:"):
@@ -180,6 +185,7 @@ func _ready() -> void:
 			refs = rj.get("refs", {})
 			back = rj.get("back", {})
 	var some: Array = mains.filter(func(id): return str(CardData.get_card(id).get("kind", "")) == "monster")
+	var backs: Array = mains.filter(func(id): return str(CardData.get_card(id).get("kind", "")) in ["spell", "trap"] and str(CardData.get_card(id).get("st", "")) in ["normal", "quick", ""])
 	for id in want_mains + want_extras:
 		if played.has(id):
 			continue
@@ -189,10 +195,15 @@ func _ready() -> void:
 		for fid in (refs.get(str(id), []) as Array) + (back.get(str(id), []) as Array):
 			if not friends.has(int(fid)):
 				friends.append(int(fid))
+		var frame := str(cd.get("frame", ""))
 		for g in 8:
 			var cards: Array = []
 			var grng := RandomNumberGenerator.new()
 			grng.seed = id * 31 + g
+			# An Extra Deck monster, second half: what it is made from is put in reach (Polymerization
+			# and its materials in the hand; monsters of the right Levels on the field), so the way it
+			# normally arrives gets played, not only the monster standing there.
+			var mats: Array = _materials(id, cd, mains, grng, poly) if g >= 4 and frame in ["fusion", "synchro", "xyz"] else []
 			for side in 2:
 				for k in 24:
 					cards.append([side, some[grng.randi() % some.size()], 0x01, 0, 0x8])
@@ -200,6 +211,18 @@ func _ready() -> void:
 					cards.append([side, mains[grng.randi() % mains.size()], 0x02, 0, 0x8])
 				for k in 3:
 					cards.append([side, some[grng.randi() % some.size()], 0x10, 0, 0x1])
+				# (a Set card or two in each back row, so cards that answer or destroy one have something there)
+				for k in 2:
+					cards.append([side, backs[grng.randi() % backs.size()], 0x08, 3 + k, 0xa])
+				if side == 0 and not mats.is_empty():
+					var mz := 0
+					for mt in mats:
+						if frame == "fusion" and (g < 6 or int(mt) == poly):
+							cards.append([0, int(mt), 0x02, 0, 0x8])
+						elif mz <= 2:
+							cards.append([0, int(mt), 0x04, mz, 0x1])
+							mz += 1
+					continue
 				cards.append([side, fodder[grng.randi() % fodder.size()], 0x04, 1, 0x1])
 				cards.append([side, some[grng.randi() % some.size()], 0x04, 2, 0x1 if side == 0 else 0x4])
 			# Its friends: on the field, in the hand, in the Graveyard and on top of the Deck, turn about.
@@ -221,7 +244,7 @@ func _ready() -> void:
 				if not extra_deck and g % 2 == 1:
 					cards.append([0, fid, 0x01, 0, 0x8])
 			var is_extra := str(cd.get("frame", "")) in ["fusion", "synchro", "xyz"]
-			if g >= 4 and not friends.is_empty():
+			if g >= 4 and (not friends.is_empty() or not mats.is_empty()):
 				# The second half: the card is not on the table yet. It is where it would come from.
 				if is_extra:
 					cards.append([0, id, 0x40, 0, 0x8])
@@ -257,8 +280,18 @@ func _ready() -> void:
 	never = quiet
 	var f := FileAccess.open(out_path, FileAccess.WRITE)
 	f.store_line("full duels %d (the game's decks %d, pool decks %d, decks built around a card %d)  set-up positions %d  cards in the pool %d  refused answers %d" % [duels_full, duels_decks, duels_pool, duels_built, n["duels"] - duels_full, total, n["refused"]])
-	f.store_line("played in a full duel %d (%.1f%%): after the game's own decks %d, after pool decks %d, after decks built around a card %d" % [after_built, 100.0 * float(after_built) / float(total), after_decks, after_pool, after_built])
+	f.store_line("summoned or activated in a full duel %d (%.1f%%): after the game's own decks %d, after pool decks %d, after decks built around a card %d" % [after_built, 100.0 * float(after_built) / float(total), after_decks, after_pool, after_built])
 	f.store_line("put on the table in a set-up position: %d, of which %d used an effect there and %d only stood there" % [staged.size(), used_n, quiet.size()])
+	# The cards left over that have a hand-made position (tests/card_positions.json) are tried there.
+	var pos_names := {}
+	var pj = JSON.parse_string(FileAccess.get_file_as_string("res://tests/card_positions.json"))
+	if pj is Array:
+		for e in pj:
+			if str(e.get("pass", "")) != "open":
+				pos_names[str(e["card"]).to_lower()] = true
+	var open_ones: Array = never.filter(func(id): return not pos_names.has(str(CardData.get_card(id).get("name", "")).to_lower()))
+	f.store_line("of those %d, %d have a hand-made position and %d have none yet" % [never.size(), never.size() - open_ones.size(), open_ones.size()])
+	never = open_ones
 	var by := {}
 	for id in never:
 		var cd: Dictionary = CardData.get_card(id)
@@ -267,7 +300,7 @@ func _ready() -> void:
 			by[k] = []
 		(by[k] as Array).append("%s (%d)" % [str(cd.get("name", "?")), id])
 	for k in by:
-		f.store_line("ONLY STOOD THERE %s x%d: %s" % [k, (by[k] as Array).size(), ", ".join(PackedStringArray(by[k]))])
+		f.store_line("NO POSITION YET %s x%d: %s" % [k, (by[k] as Array).size(), ", ".join(PackedStringArray(by[k]))])
 	var ek := errors.keys()
 	ek.sort_custom(func(x, y): return int(errors[x][0]) > int(errors[y][0]))
 	f.store_line("COMPLAINTS %d kinds" % ek.size())
@@ -276,6 +309,63 @@ func _ready() -> void:
 	f.close()
 	print("SWEEP DONE: duels ", n["duels"], " played ", after_built, " of ", total, " staged ", staged.size(), " (used ", used_n, ") complaints ", ek.size(), " ms ", Time.get_ticks_msec() - t0, " -> ", out_path)
 	get_tree().quit(0)
+
+
+## What an Extra Deck monster is made from, as well as the card data can tell: a Fusion's listed
+## materials and Polymerization; for a Synchro, a Tuner and a non-Tuner whose Levels add up; for an
+## Xyz, three monsters of its Rank. Cards of the monster's own family come first.
+func _materials(id: int, cd: Dictionary, mains: Array, rng: RandomNumberGenerator, poly: int) -> Array:
+	var frame := str(cd.get("frame", ""))
+	var out: Array = []
+	if frame == "fusion":
+		if poly > 0:
+			out.append(poly)
+			out.append(poly)
+		for m in CardData.fusion_materials(cd):
+			if int(m) > 0:
+				out.append(int(m))
+	var kin := {}
+	for fk in Collection.FAMILIES:
+		var names: Array = Collection.FAMILIES[fk]["cards"]
+		if names.has(str(cd.get("name", ""))):
+			for nm in names:
+				kin[int(CardData.NAME_TO_ID.get(str(nm).to_lower(), 0))] = true
+	if frame == "fusion":
+		# ("2 monsters of the family" names nobody: a few of its own Main Deck monsters stand in)
+		var fam_mons: Array = mains.filter(func(mid): return kin.has(mid) and str(CardData.get_card(mid).get("kind", "")) == "monster")
+		while out.size() < 6 and not fam_mons.is_empty():
+			out.append(fam_mons.pop_at(rng.randi() % fam_mons.size()))
+		return out
+	var lv := int(cd.get("level", 0))
+	var pick := func(level: int, tuner: bool, n: int) -> Array:
+		var own: Array = []
+		var any: Array = []
+		for mid in mains:
+			var md: Dictionary = CardData.get_card(mid)
+			if str(md.get("kind", "")) != "monster" or int(md.get("level", 0)) != level or bool(md.get("tuner", false)) != tuner:
+				continue
+			if str(md.get("frame", "")) == "ritual":
+				continue
+			(own if kin.has(mid) else any).append(mid)
+		var got: Array = []
+		while got.size() < n and not (own.is_empty() and any.is_empty()):
+			var src: Array = own if not own.is_empty() else any
+			got.append(src[rng.randi() % src.size()])
+			if own.size() <= 1 and src == own:
+				own = []
+		return got
+	if frame == "xyz":
+		return pick.call(lv, false, 3) if rng.randi() % 2 == 0 else pick.call(lv, false, 2)
+	if frame == "synchro":
+		for t in [1, 2, 3, 4, 5].filter(func(x): return x < lv):
+			var tl: int = [3, 2, 1, 4, 5][rng.randi() % 5] if t == 1 else t
+			if tl >= lv:
+				continue
+			var tu: Array = pick.call(tl, true, 1)
+			var nt: Array = pick.call(lv - tl, false, 1)
+			if not tu.is_empty() and not nt.is_empty():
+				return tu + nt
+	return out
 
 
 ## A set position played on from there by the basic opponent on both sides (see ocg_boards).
