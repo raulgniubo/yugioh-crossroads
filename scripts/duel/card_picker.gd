@@ -84,6 +84,10 @@ func open(h, text: String, list: Array, opts: Dictionary, animate := true) -> vo
 	_info = UITheme.label("", 20, Comic.YELLOW, UITheme.semi_font())
 	_info.visible = false
 	_body.add_child(_info)
+	# (room for a chosen card to lift without touching the line above)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, 6)
+	_body.add_child(gap)
 	# Up to nine across; long lists (a Deck search) wrap and scroll.
 	var all: Array = cards.duplicate()
 	if live:

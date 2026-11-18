@@ -61,3 +61,27 @@ Duel interaction plan (engine path lives in scripts/ocg/ocg_table.gd; HUD in scr
 5. Animations for summon, set, special summon, attack, direct attack.
 6. Remove the stale note "Not in this game yet: this card plays with its ATK and DEF only." (duel_hud.gd ~1066, 1102).
 Dev tools: `/tmp/shot.sh <name> <seconds> args` takes a screenshot of a duel (xvfb + opengl3); `--ux=menu|pick|choice` opens one interaction (OcgTable._ux_demo).
+
+### Where that batch ended (0.50.0)
+
+Shipped as 0.50.0 and merged into `main` (the default branch from now on; `ocgcore` is the same commit).
+
+How the duel is played now (all in scripts/ocg/ocg_table.gd unless said otherwise):
+- `acts[uid]` entries are `[word, answer, kind, second line, can attack directly]`. Kinds: summon, tribute, special, mset, sset, act, repos, flipsummon, attack. `_menu_for(card, only)` builds the menu; hud.show_actions takes `[id, word, enabled, kind, second line]`.
+- `want` = what the player already said before the engine asks: `zone` (a hand card dropped on a zone), `target` / `direct` (an aimed attack), `attacker` (an attack dragged out of Main Phase 1). `_ask_place`, `_ask_cards` and message 13 (desc 31, "attack directly?") read it.
+- `aim` = an attack being aimed (`_aim_start`, `_aim_go`, `on_input` for the drag). Nothing is sent to the engine until the target is chosen.
+- Picks: `hud.ask_cards()` (scripts/duel/card_picker.gd, class CardPicker) for anything not on the table; `_pick_on_board`, `_pick_many_on_board`, `_pick_live_on_board` when every candidate is on the field. Message 26 (materials one at a time) is "live": the box or the markers stay up between the engine's steps (`_live`, `_live_end`).
+- Zones: `board.show_zone_picks(zones, word)`, `board.zone_at(screen, zones)`; zone = [player, location, sequence].
+- Engine events: a Tribute for a Normal Summon carries RELEASE + SUMMON + MATERIAL. ocg_duel.gd sends it as "tribute" (not "material"), and the loop clears `s._materials` at every free moment (messages 10 / 11). Before, such cards floated over the table for the whole turn.
+
+Dev tools:
+- `tools/dev/shot.sh <name> <game seconds> args` : a screenshot of a duel (software rendering is about 4x slower than the clock; never run two at once, and take a snapshot of the scripts first if you keep editing).
+- `--ux=menu|menu2|pick|pick1|choice|pos|drag|zone|aim|many|tsummon|tsummon2` opens one interaction (OcgTable._ux_demo). Puzzles are the quick way to a board with monsters: `--puzzle=tribute --ux=aim`, `--puzzle=mage --ux=aim` (direct attack), `--puzzle=tribute --ux=tsummon2` (a whole Tribute Summon).
+- `tools/dev/ht.sh <name> <deck> <opp deck>` : a headless duel where the boxes, the picks on the table and the zones are answered at random (`--human-test --human-board`). It finds script errors in the interaction code.
+- `--lay=<json file>` puts cards in place at the start of a normal duel (see duel_scene.gd `_start`).
+
+Still open:
+- The classic rules files are dead weight but not deleted: duel_state.gd is the base of the table's view model (OcgMirror) and has 500+ calls into effect_runner / spell_rules; collection.gd, card_data.gd, signature_decks.gd and deck_builder.gd read CardExact / SpellRules.FX / CardEffects for card facts. Plan for a later cleanup: move the few facts the menus need (spell kind, "is this card in the game") to CardPool / card data, cut DuelState down to the fields and helpers the table reads, then delete effect_runner.gd, spell_rules.gd, duel_ai.gd, card_effects.gd, card_exact.gd and the classic tests in tests/test_runner.gd.
+- Controller support for aiming an attack and for choosing a zone.
+- Intro fix and every animation: not seen on a real GPU yet.
+- Card plan part 2, builds 2 to 5 (Raul will switch to Opus 5.5 medium for those). Next card build is 0.51.0.

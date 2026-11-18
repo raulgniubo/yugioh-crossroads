@@ -5,6 +5,41 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.50.0
+
+**The duel runs on the rules engine only, and the way you play a duel got a fresh pass.** No cards were added: the game still has **3,106 cards**. This is the build where `ocgcore` became `main`.
+
+**Playing a card, attacking and choosing things**
+
+- **The menu on a card.** Tap a card and its choices spring out with their own icon and color and a line that says what each one does: Summon (face-up, Attack Position), Tribute Summon, Set, Special Summon, Activate, Use its effect (with the effect's own text), Flip Summon, To Attack or To Defense Position.
+- **Drag a card onto the table.** Pick a card up from your hand and the zones it can go to light up. Drop it on the zone you want. If there is one way to play it, it is played there at once; a monster you could Summon or Set opens those two choices right over that zone.
+- **You choose the zone.** A monster played from its menu lights up the free zones and you tap one. "Place it for me" (or Esc) puts it in the middle first, like before. Spell and Trap Cards played from the menu are placed for you; dragged ones go where you drop them.
+- **Attacks are aimed.** Tap one of your monsters in the Battle Phase: an arrow runs from it to the pointer, their monsters light up red, and their side of the field becomes a "DIRECT ATTACK" target when the attack can go direct. Tap the target, or hold the press, drag onto it and let go. Nothing is declared until you choose, and Esc or a right-click calls it off. In Main Phase 1 you can drag one of your Attack Position monsters onto a target: the Battle Phase starts by itself and the attack is declared.
+- **One box to choose cards.** Tributes, materials for a Synchro, Xyz or Fusion Summon, discards, cards from the Deck or a Graveyard: one box, tap a card to choose it (it lifts, gets a green rim and its number), tap it again to take it back, a counter shows how many, and Confirm lights up when the choice is legal. Sums (a Ritual's Levels) show the total so far. With one card to choose, a second tap on it confirms.
+- **Cards on the table are chosen on the table.** When every card you can choose is on the field (Tributes for a Tribute Summon, Xyz materials, a target), they get a marker over them, you tap them there, and the line at the top has the counter and Confirm.
+- **Attack or Defense.** When a Special Summon lets you choose, the card itself is shown each way it can go and you tap one. Only the positions the rules allow are offered.
+- **Wording.** "Activate the effect of X?", "Choose 2 monsters to Tribute", "X: tap the monster it attacks", "Choose a zone for X". The stale note "Not in this game yet: this card plays with its ATK and DEF only" is gone from every card.
+
+**Animations**
+
+- A card you play leaves from where it was in your hand (or where you let go of it), not from the middle of the screen.
+- **Summon:** it rises over its zone, the zone lights under it, and it is slammed down with a flash, a ring and sparks. **Set:** it glides in low and is laid face-down with a soft ring.
+- **Attack:** the monster leans back like a drawn bow while a red ring closes on its target, lunges (slow off the mark, fastest when it lands), the monster it hits is knocked back, and it recoils before going home. A direct attack goes all the way with a bigger blast.
+
+**Fixed**
+
+- **Tributes left hanging in the air.** Monsters Tributed for a Tribute Summon (three for a Level 10, for example) stayed floating over the table until the turn ended. The engine calls those cards "materials", and the table waited for a Special Summon that never came. They now go to the Graveyard the way Tributes do, as lights that the new monster collects.
+- **The opening.** The four worlds and the duelist faces are prepared before the first picture, so there is no stop when the next world comes in, and the worlds are put away one at a time at the end instead of all in one frame. This was fixed by reading the code; the cloud has no graphics card, so the first real look is yours.
+
+**The old duel rules are out of play.** The switch in Settings is gone, Free Duel no longer falls back to them, and the duel screen has no code left that could run them (it went from 2,858 lines to 1,620). If the rules engine cannot load on a computer, a duel says so instead of starting on the old rules.
+
+**Not done, said plainly**
+
+- **Old rules files still in the repo.** `duel_state.gd`, `effect_runner.gd`, `spell_rules.gd`, `duel_ai.gd`, `card_effects.gd` and `card_exact.gd` are still there. Nothing runs a duel with them, but the table's picture of the duel is built on `duel_state.gd`, and the collection and the Deck Builder read card facts from the others. Taking them out is its own careful job, and it comes next as 0.50.1 (no change you can see in the game).
+- **Chain replies** ("your opponent activated X, respond?") use the new box, but Spell and Trap zones from the menu, the order of simultaneous effects and counters are still chosen for you.
+- **Controller:** aiming an attack and choosing a zone are mouse and touch only for now.
+- **Nothing here was seen on a real graphics card.** Every interaction was run and photographed in the cloud (software rendering), and duels were played through automatically with random choices in the new boxes and on the table.
+
 ## What is in 0.47.0
 
 **All 24 character decks rebuilt to be competitive. 402 new cards.** The game now has **3,106 cards**. The plan was "Crossroads: competitive character decks"; the full lists are in `tools/dev/character_decks/decks.py` and in `SignatureDecks.TUNE`.
