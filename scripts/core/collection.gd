@@ -33,6 +33,7 @@ const PACKS := [
 	{"key": "Vault", "tab": 0, "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
 	{"key": "legends", "tab": 0, "name": "Monster Legends", "color": Color("e8b04a"), "blurb": "Normal Monsters from every era: hundreds of them, from the classics to the rare big ones."},
 	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen, her forms and the cards around her. Only the ones the story has already handed you, up to three of each."},
+	{"key": "dark_world", "tab": 1, "name": "Lords of Dark World", "color": Color("7a4bd0"), "family": true, "blurb": "Dark World: Fiends that want to be discarded. Throw one away and it draws, destroys or comes back to the field, and Grapha returns from the Graveyard again and again. With the discard cards built around them."},
 	{"key": "constellar", "tab": 1, "name": "Starlight Knights", "color": Color("8fb4ff"), "family": true, "blurb": "Constellar and the tellarknights: LIGHT knights that call each other out of the hand, change their Levels, and stack into Xyz Monsters from Praesepe up to Ptolemy M7."},
 	{"key": "six_samurai", "tab": 1, "name": "Way of the Six", "color": Color("d04a3c"), "family": true, "blurb": "The Six Samurai: warriors who cover for each other, Bushido Counters that pay for searches and draws, the Legendary and Secret Six, and Shi En, who shuts down a Spell or Trap every turn."},
 	{"key": "monarchs", "tab": 1, "name": "Rule of the Monarchs", "color": Color("e0c070"), "family": true, "blurb": "Monarchs: Tribute Summon them and each one strikes as it lands. The Mega Monarchs rise from a Tribute Summoned monster, the Squires and Vassals feed the Tributes, and the Monarch Spells and Traps keep the field yours."},
@@ -84,6 +85,7 @@ const THEME_DECKS := [
 	{"key": "deck_wild", "worlds": ["heartland", "domino"], "art": "wild", "color": Color("ff9a3c"), "blurb": "Big Beasts at Level 4 with Fusions on top: Chimera the Flying Mythical Beast and Rabid Horseman."},
 	{"key": "deck_six_samurai", "art": "warriors", "cover": "Legendary Six Samurai - Shi En", "color": Color("d04a3c"), "era": "5D's", "blurb": "One Samurai on the field calls the next from your hand: Kageki, Kizan and the Grandmaster arrive for free, Six Samurai United draws, and a Tuner turns them into Shi En."},
 	{"key": "deck_constellar", "art": "arcane", "cover": "Constellar Ptolemy M7", "color": Color("8fb4ff"), "era": "ZEXAL", "blurb": "Pollux and Algiedi put two Constellars on the field in one turn, Kaus moves their Levels, and the pair becomes Praesepe, Pleiades or Ptolemy M7. The tellarknights search each other on the way."},
+	{"key": "deck_dark_world", "art": "shadow", "cover": "Grapha, Dragon Lord of Dark World", "color": Color("7a4bd0"), "era": "GX", "blurb": "Dark World Dealings and The Gates of Dark World discard your Fiends, and each discard pays you: Broww draws, Snoww searches, Sillva and Goldd arrive, and Grapha destroys a card."},
 	{"key": "deck_monarchs", "art": "shadow", "cover": "Caius the Mega Monarch", "color": Color("e0c070"), "era": "GX", "blurb": "Squires and Vassals step out so a Monarch can be Tribute Summoned, then a Mega Monarch Tributes that one. Every landing clears something off their side."},
 	{"key": "deck_chaos", "art": "warriors", "cover": "Black Luster Soldier - Super Soldier", "color": Color("c8b0ff"), "era": "Duel Monsters", "blurb": "Super Soldier Ritual turns two Level 4 Knights into Black Luster Soldier, and the Knights give him their powers. Gaia rides in when he falls, and Chaos Form brings back the old legends."},
 	{"key": "deck_gem_knight", "art": "warriors", "cover": "Gem-Knight Master Diamond", "color": Color("7ae0ff"), "era": "ZEXAL", "blurb": "Gem-Knight Fusion turns two plain knights into a Fusion Monster, Brilliant Fusion fuses straight from the Deck, and Gem-Knight Fusion comes back from the Graveyard to do it again."},
@@ -170,6 +172,19 @@ const FAMILIES := {
 		"Constellar Praesepe", "Constellar Ptolemy M7", "Darktellarknight Batlamyus", "Exstellarknight Constellar Ptolemy Ω7",
 		"Stellarknight Constellar Diamond", "Stellarknight Delteros", "Stellarknight Triverr", "Tellarknight Constellar Caduceus",
 		"Tellarknight Constellar Delteros", "Tellarknight Ptolemaeus"]},
+	"dark_world": {"era": "GX", "deck": "deck_dark_world", "cards": [
+		"Clorless, Chaos King of Dark World", "Grapha, Dragon Overlord of Dark World", "Ceruli, Guru of Dark World", "Parl, Hermit of Dark World",
+		"Gren, Tactician of Dark World", "Kahkki, Guerilla of Dark World", "Scarr, Scout of Dark World", "Broww, Huntsman of Dark World",
+		"Tour Guide From the Underworld", "Beiige, Vanguard of Dark World", "Brron, Mad King of Dark World", "Dark Grepher",
+		"Genta, Gateman of Dark World", "Renge, Gatekeeper of Dark World", "Snoww, Unlight of Dark World", "Zure, Knight of Dark World",
+		"Goldd, Wu-Lord of Dark World", "Sillva, Warlord of Dark World", "Latinum, Exarch of Dark World", "Lucent, Netherlord of Dark World",
+		"Reign-Beaux, Overlord of Dark World", "Grapha, Dragon Lord of Dark World", "Reign-Beaux, Overking of Dark World", "Allure of Darkness",
+		"Charge Into a Dark World", "Dark Corridor", "Dark Eruption", "Dark World Accession", "Dark World Archives", "Dark World Dealings",
+		"Dark World Grimoire", "Dark World Lightning", "Dark World Puppetry", "Dragged Down into the Grave", "Gateway to Dark World", "Hand Destruction",
+		"Into the Void", "Recurring Nightmare", "The Cheerful Coffin", "The Gates of Dark World", "Dark Deal", "Dark Smog", "Dark World Brainwashing",
+		"Dark World Punishment", "Deck Devastation Virus", "Eradicator Epidemic Virus", "Mind Crush", "The Forces of Darkness",
+		"Adreus, Keeper of Armageddon", "Hieratic Sun Dragon Overlord of Heliopolis", "Leviair the Sea Dragon", "Number 22: Zombiestein",
+		"Number 80: Rhapsody in Berserk"]},
 }
 
 

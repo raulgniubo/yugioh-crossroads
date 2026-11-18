@@ -6694,4 +6694,8 @@ const ES := {
 	"Pollux and Algiedi put two Constellars on the field in one turn, Kaus moves their Levels, and the pair becomes Praesepe, Pleiades or Ptolemy M7. The tellarknights search each other on the way.": "Pollux y Algiedi ponen dos Constellar en el Campo en un turno, Kaus mueve sus Niveles, y la pareja se convierte en Praesepe, Pleiades o Ptolemy M7. Los tellarknights se buscan entre sí por el camino.",
 	"My knights are named after stars. I'm not just a fan, you know. Duel me!": "Mis caballeros llevan nombres de estrellas. No soy solo una fan, ¿sabes? ¡Duela conmigo!",
 	"Watch the stars line up!": "¡Mira cómo se alinean las estrellas!",
+	"Lords of Dark World": "Señores del Mundo Oscuro",
+	"Dark World: Fiends that want to be discarded. Throw one away and it draws, destroys or comes back to the field, and Grapha returns from the Graveyard again and again. With the discard cards built around them.": "Dark World: Demonios que quieren ser descartados. Tira uno y roba, destruye o vuelve al Campo, y Grapha regresa del Cementerio una y otra vez. Con las cartas de descarte creadas a su alrededor.",
+	"Dark World Dealings and The Gates of Dark World discard your Fiends, and each discard pays you: Broww draws, Snoww searches, Sillva and Goldd arrive, and Grapha destroys a card.": "Dark World Dealings y The Gates of Dark World descartan a tus Demonios, y cada descarte te paga: Broww roba, Snoww busca, Sillva y Goldd llegan, y Grapha destruye una carta.",
+	"My deck wins by throwing its own cards away. Work that one out.": "Mi Deck gana tirando sus propias cartas. A ver si lo entiendes.",
 }

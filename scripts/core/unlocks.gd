@@ -35,7 +35,7 @@ static func world_why(key: String) -> String:
 
 
 # ---- packs: each era's pack opens with the story; the special ones need wins.
-const PACK_STAGE := {"constellar": 4, "six_samurai": 3, "gravekeeper": 0, "ancient_gear": 2, "lightsworn": 3, "gem_knight": 4, "chaos": 0, "monarchs": 2, "Duel Monsters": 0, "Vault": 1, "legends": 0, "echo": 1, "GX": 2, "5D's": 3, "beyond": 3, "ZEXAL": 4}
+const PACK_STAGE := {"dark_world": 2, "constellar": 4, "six_samurai": 3, "gravekeeper": 0, "ancient_gear": 2, "lightsworn": 3, "gem_knight": 4, "chaos": 0, "monarchs": 2, "Duel Monsters": 0, "Vault": 1, "legends": 0, "echo": 1, "GX": 2, "5D's": 3, "beyond": 3, "ZEXAL": 4}
 const THEMED_WINS := 6
 
 static func pack(key: String, tab := 0) -> bool:
