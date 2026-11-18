@@ -740,7 +740,11 @@ func _ask_chain(m: Dictionary):
 	if ch.is_empty():
 		return OcgDuel.i32(-1)
 	var forced := int(m["forced"]) != 0
-	if forced and ch.size() == 1:
+	if forced:
+		# Things that must happen now, with only their order left open (in the End Phase: Swords of
+		# Revealing Light counts its turn, an effect that lasted "this turn" runs out). The order is
+		# taken as given, as EDOPro does by default; it used to stop the duel with a box that
+		# looked like you were asked to activate those cards.
 		return OcgDuel.i32(0)
 	if not forced and int(m["spe"]) == 0 and not s.hud.phase_prompts:
 		return OcgDuel.i32(-1)
