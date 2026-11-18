@@ -5,6 +5,41 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.44.0
+
+**Four card families at once: 252 new cards.** The game now has **2,215 cards**. This is the first part of step 4 of the engine move. Since the rules engine already knows every card, a family is now a list, a pack, a deck and a duelist, not weeks of rules.
+
+- **Six Samurai (5D's), 63 cards, 59 new.** The Six Samurai, the Legendary and Secret Six, the Shien cards, the Six Strike cards and Shi En. Pack and theme deck **Way of the Six**, sold in Satellite and New Domino. The Security Officer in New Domino plays it.
+- **Constellar (ZEXAL), 56 cards, 55 new.** Every Constellar and tellarknight with their Xyz Monsters and the Stellarnova cards. Pack and theme deck **Starlight Knights**, sold in Heartland. The Heartland Student plays it.
+- **Archfiends (Duel Monsters), 104 cards, 85 new.** The chess Archfiends of Pandemonium, Summoned Skull and everything that takes his name, the Red Dragon Archfiend Synchros, and the five cards they need from outside the name (Berserk Dragon, Plaguespreader Zombie, Cave Dragon, Number 102, Contract with the Abyss). Pack and theme deck **Court of the Archfiends**, sold in Domino. The Plaza Champion plays it. The plan said about 70; the whole family is bigger and I did not cut it.
+- **Dark World (GX), 53 cards, 50 new.** Every Dark World card plus the discard cards and Xyz Monsters its decks are built with (Dragged Down into the Grave, Allure of Darkness, Tour Guide From the Underworld, Number 22: Zombiestein and so on). Pack and theme deck **Lords of Dark World**, sold at the Academy. The Yellow Dorm Strategist plays it.
+- **Three cards two Fusions were waiting for:** Crass Clown and Dream Clown (Bickuribox) in the Duel Monsters pack, Ambulanceroid (Ambulance Rescueroid) in the GX pack.
+- **Spanish for everything:** all 252 new cards, the packs, decks and duelists, and the flavor text of 586 Normal Monsters that only had English. Every card in the game now has Spanish text.
+- **Credits:** ocgcore (Edoardo Lolletti) and Project Ignis are in the Story credits and in Settings.
+
+**The count, corrected.** 1,998 was not quite right, in two ways. 38 Pendulum Normal Monsters had slipped into the Monster Legends pack back when the Normal Monsters went in, because the card file calls them Normal. This game has no Pendulum Zones, so they are out. And 3 Fusion Monsters that the shop's theme decks always played (Twin-Headed Thunder Dragon, Rabid Horseman, Kwagar Hercules) were in no pack and never counted; they are in the Duelist's Vault pack now. 1,998 - 38 + 3 = 1,963, plus 252 new = 2,215.
+
+**How cards get added now** (`tools/`):
+
+- The card pool as it stood is written down in `data/pool.json`. It is no longer worked out from the old rules tables.
+- `tools/add_family.py spec.json` adds a family from one file: card list, pack, theme deck, where it is sold, when it unlocks, and which duelist switches to it.
+- `tools/cards.sh` is the one command afterwards. It repacks the engine's data and checks every card: the card folder knows it, the engine loads it without a complaint, it has Spanish text, no Pendulum or Link got in, every deck deals exactly what is written, and every family has a pack, a deck in the shop and somebody who plays it. It caught two real mistakes of mine while I built these families.
+
+**Two small files next to your saves**, so I can see what happens on your computer without asking you: `engine_status.txt` (from 0.43.1) and now `stall_log.txt`, which gets a line whenever the game drops under 4 frames a second while nothing is loading: where, and how long after the place opened.
+
+How it was checked:
+
+- **Card check:** 2,215 cards, 10 families, 0 problems.
+- **Sweep:** 1,490 full duels and 720 set-up positions, no card script complained. 2,125 of the 2,215 cards (95.9%) were summoned, Set or activated in a full duel. The other 90 were put straight on the table: 52 did something, 38 only stood there. For those 38 I know they load and sit on the table without an error, not that their effect works.
+- **Every deck, 20 duels each through the game's own duel driver:** 1,020 duels over 51 decks. The table and the engine never disagreed. One card script complained once: Doble Passe read its attack target after that monster had already left the field. That is a slip in the official script, and the game now carries a corrected copy.
+- The classic test suite still passes.
+
+Not done:
+
+- **The classic rules are still in the game** (the switch in Settings). I do not take them out, and I do not merge the `ocgcore` branch into main, until `engine_status.txt` shows the engine loading and playing duels on your Mac. That is the rest of step 4.
+- **The Academy stall is not fixed.** I still have no measurement from the Academy. The new `stall_log.txt` will give me one the next time you walk through it.
+- Nobody has played the new families by hand. The Spanish card texts are my own translations, checked against the English by me only.
+
 ## What is in 0.43.1
 
 **A fix on top of 0.43.0, made before anyone opened 0.43.0.** No cards added: **1,998 cards**.

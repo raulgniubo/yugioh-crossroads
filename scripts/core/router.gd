@@ -56,6 +56,7 @@ func _process(delta: float) -> void:
 		else:
 			line += "   (F3)"
 		_fps.text = line
+	_stall_watch(delta)
 	if _frame_log and delta > 0.06:
 		print("SLOWFRAME %.0f ms  t=%.1f  busy=%s loading=%s  process %.1f ms physics %.1f ms" % [delta * 1000.0, Time.get_ticks_msec() / 1000.0, _busy, loading,
 				Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0])
@@ -76,6 +77,45 @@ var _frame_log := "--frame-log" in OS.get_cmdline_user_args()   # dev: say every
 var _click_at := 0
 var _click_ms := -1.0
 var _click_wait := false
+
+
+# A note next to the saves whenever the game runs like a slideshow (frames slower than a
+# quarter second while nothing is loading): where, how long after the place opened, how bad.
+# It is there so a stall on a machine nobody can look at can be read afterwards.
+var _stall_n := 0
+var _stall_worst := 0.0
+var _stall_t := 0.0
+var _scene_age := 0.0
+var _scene_was := ""
+
+func _stall_watch(delta: float) -> void:
+	var here := str(get_tree().current_scene.scene_file_path) if get_tree().current_scene != null else ""
+	if here != _scene_was:
+		_scene_was = here
+		_scene_age = 0.0
+	_scene_age += delta
+	if delta > 0.25 and not _busy and not loading:
+		_stall_n += 1
+		_stall_worst = maxf(_stall_worst, delta)
+	_stall_t += delta
+	if _stall_t < 5.0:
+		return
+	_stall_t = 0.0
+	if _stall_n >= 2 and not "--no-report" in OS.get_cmdline_user_args():
+		var path := Saves.saves_dir().path_join("stall_log.txt")
+		var old_text := FileAccess.get_file_as_string(path)
+		var lines := old_text.split("\n", false)
+		var vp := get_viewport()
+		lines.append("%s  v%s  %s  %s  %d frames slower than 0.25 s in 5 s, worst %.1f s, %.0f s after the place opened  CPU %.0f ms GPU %.0f ms  %s" % [
+			Time.get_datetime_string_from_system(false, true), str(ProjectSettings.get_setting("application/config/version", "?")), here.get_file(),
+			str(roam.get("district", "")), _stall_n, _stall_worst, _scene_age,
+			RenderingServer.viewport_get_measured_render_time_cpu(vp.get_viewport_rid()), RenderingServer.viewport_get_measured_render_time_gpu(vp.get_viewport_rid()), Settings.gfx_preset_name()])
+		var f := FileAccess.open(path, FileAccess.WRITE)
+		if f != null:
+			f.store_string("\n".join(lines.slice(maxi(0, lines.size() - 80))) + "\n")
+			f.close()
+	_stall_n = 0
+	_stall_worst = 0.0
 
 
 func _input(event: InputEvent) -> void:
