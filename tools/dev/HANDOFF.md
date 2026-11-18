@@ -155,3 +155,10 @@ and the story difficulty moves it. All of that is build 1. Build 2 is only the f
   the rim's front; Kame Game back-left shelf removed for the vending machine.
 - To see a prop that only lives on Raul's Mac in a test shot: copy its .glb from the staged uploads into
   `<test assets>/places/<name>.glb` (CityBuilder.own_place) and pass that folder as --assets. Don't commit it.
+
+### Next: card plan parts 4 and 5 (doc aeb9ec09-f61b-428c-a4e7-235e63dc3e90, "Crossroads: card plan parts 4 and 5")
+- Build 1 = 0.54.0: Duel Monsters and GX years (~1,390 cards, Konami id < 7734), mostly singles; 6 small group decks with packs
+  (D.D., Goblins, Masks, Toys/Puppets, Barrier Statues/Counter Fairies, Frogs/Penguins) + 4 Type decks (Rock, Insect, Zombie,
+  Machine); Chrysalis joins hero. Build 2 = 0.55.0: 5D's and ZEXAL years (~1,640), 19 families (table in the doc).
+- Missing list: /tmp/missing.json (from yaml-yugi aggregate cards.json minus /tmp/ocg_ids.txt, no Link/Pendulum). Era by
+  Konami id: GX starts 6310, 5D's 7734, ZEXAL 9575, Arc-V 11213.
