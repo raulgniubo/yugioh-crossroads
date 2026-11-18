@@ -40,7 +40,7 @@ const DISTRICTS := {
 				"lines": ["Battle City finals registration is right here on the plaza.", "Mr. Kaiba watches every duel in the city from up there. Every single one."]},
 			{"id": "stage_champ", "char": "", "model": "duelist_m9", "name": "Plaza Champion", "color": Color("7cc4ff"), "pos": Vector3(13.4, 0, -44.0), "face": -1.2,
 				"lines": ["Nobody has knocked me off this stage all morning.", "Step up, challenger!"],
-				"duel": {"deck": "zane", "difficulty": 2, "intro": "The stage is mine!"}},
+				"duel": {"deck": "deck_archfiend", "difficulty": 2, "intro": "Your move. Mine is already made."}},
 			{"id": "rex", "char": "rex", "pos": Vector3(-36.2, 0, -4.4), "face": 1.4,
 				"lines": ["The Duel Dome's sold out, so I'm dueling out here instead.", "My dinos are gonna stomp ya flat!"],
 				"duel": {"deck": "rex", "difficulty": 1, "intro": "Dino stampede!"}},
