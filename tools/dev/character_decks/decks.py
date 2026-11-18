@@ -78,8 +78,8 @@ deck('weevil', 'Weevil', 'Duel Monsters',
 deck('rex', 'Rex', 'Duel Monsters',
  "Modern Dinosaurs. The baby dinosaurs summon big ones from the Deck when they are destroyed, Souleating Oviraptor and Fossil Dig search anything, and Ultimate Conductor Tyranno flips the whole field face-down and attacks everything.",
  "Souleating Oviraptor x3|Miscellaneousaurus x3|Babycerasaurus x3|Petiteranodon x3|Giant Rex x3|Ultimate Conductor Tyranno x3|Megalosmasher X x2|Overtex Qoatlus|Animadorned Archosaur|Xeno Meteorus|Super Conductor Tyranno",
- "Fossil Dig x3|Double Evolution Pill x3|Lost World x2|Dark Hole|Pot of Greed|Monster Reborn",
- "Survival's End x2|Mirror Force|Torrential Tribute|Call of the Haunted",
+ "Fossil Dig x3|Lost World x3|Terraforming|Dark Hole|Pot of Greed|Monster Reborn",
+ "Survival's End x3|Mirror Force|Torrential Tribute|Call of the Haunted",
  "Evolzar Laggia x2|Evolzar Dolkka x2|Tornado Dragon|Castel, the Skyblaster Musketeer|Abyss Dweller|Diamond Dire Wolf|Number 38: Hope Harbinger Dragon Titanic Galaxy|Number 97: Draglubion|Divine Dragon Knight Felgrand|Gachi Gachi Gantetsu|Sky Cavalry Centaurea|Herald of Pure Light|Number 107: Galaxy-Eyes Tachyon Dragon",
  keep="Super Conductor Tyranno, Babycerasaurus",
  out="Two-Headed King Rex, Black Tyranno, Tyrant Dragon, Serpent Night Dragon, Ultimate Tyranno, Sabersaurus, Jurassic World")
@@ -108,7 +108,7 @@ deck('zane', 'Zane', 'GX',
  "Cyber Dragon x3|Cyber Dragon Core x3|Cyber Dragon Herz x3|Cyber Dragon Nachster x2|Cyber Dragon Vier|Cyber Dragon Drei|Galaxy Soldier x2|Cyber Eltanin",
  "Cyber Emergency x3|Cyber Repair Plant x2|Cybernetic Horizon x2|Power Bond x2|Overload Fusion x2|Machine Duplication x2|Cyber Revsystem|Cyberload Fusion|Limiter Removal|De-Fusion|Heavy Storm|Pot of Greed|Monster Reborn",
  "Cybernetic Overflow x3|Call of the Haunted",
- "Cyber End Dragon x2|Cyber Twin Dragon x2|Chimeratech Rampage Dragon x2|Chimeratech Overdragon|Chimeratech Fortress Dragon|Chimeratech Megafleet Dragon|Cyber Eternity Dragon|Cyber Dragon Nova x2|Cyber Dragon Infinity x2|Number 61: Volcasaurus",
+ "Cyber End Dragon x2|Cyber Twin Dragon x2|Chimeratech Rampage Dragon x2|Chimeratech Overdragon|Chimeratech Fortress Dragon|Constellar Pleiades|Cyber Eternity Dragon|Cyber Dragon Nova x2|Cyber Dragon Infinity x2|Number 61: Volcasaurus",
  keep="Cyber Dragon x3, Cyber End Dragon, Cyber Twin Dragon, Chimeratech Overdragon, Power Bond, Limiter Removal, De-Fusion",
  out="the Cyberdark monsters, Cyber Barrier Dragon, Cyber Laser Dragon, Cyber Phoenix, Proto-Cyber Dragon")
 
@@ -145,7 +145,7 @@ deck('yusei', 'Yusei', "5D's",
  "Junk Synchron x3|Junk Converter x3|Doppelwarrior x3|Jet Synchron x2|Stardust Synchron x2|Assault Synchron x2|Revolution Synchron|Quickdraw Synchron|Synchron Carrier|Synchron Explorer|Stardust Trail|Level Eater x2|Tuningware x2|Quillbolt Hedgehog|Effect Veiler x2",
  "Tuning x3|Reinforcement of the Army x2|Stardust Illumination|One for One|Foolish Burial|Pot of Greed|Monster Reborn",
  "Scrap-Iron Scarecrow|Starlight Road|Graceful Revival",
- "Junk Speeder x2|Junk Warrior|Formula Synchron|T.G. Hyper Librarian|Stardust Charge Warrior|Accel Synchro Stardust Dragon|Stardust Dragon|Shooting Riser Dragon|Satellite Warrior|Shooting Star Dragon|Shooting Majestic Star Dragon|Cosmic Blazar Dragon|Shooting Quasar Dragon|Crimson Dragon",
+ "Junk Speeder x2|Junk Warrior|Formula Synchron|T.G. Hyper Librarian|Stardust Charge Warrior|Accel Synchro Stardust Dragon|Stardust Dragon|Shooting Riser Dragon|Satellite Warrior|Shooting Star Dragon|Stardust Warrior|Cosmic Blazar Dragon|Shooting Quasar Dragon|Crimson Dragon",
  keep="Junk Synchron, Junk Warrior, Stardust Dragon, Shooting Star Dragon, Shooting Quasar Dragon, Formula Synchron, Quillbolt Hedgehog, Effect Veiler, Scrap-Iron Scarecrow, Starlight Road",
  out="Speed Warrior, Max Warrior, Shield Warrior, Debris Dragon, Majestic Dragon and Majestic Star Dragon, Junk Archer, Nitro Warrior, Turbo Warrior")
 

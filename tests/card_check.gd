@@ -129,6 +129,19 @@ func _ready() -> void:
 		var got := Collection.family_ids(str(fk)).size()
 		if got != (fam["cards"] as Array).size():
 			problems.append("family %s: %d of its %d cards are in the game" % [fk, got, (fam["cards"] as Array).size()])
+	# 6. Every card can be obtained: some pack hands it out (an era pack, the Vault, the legends
+	# pack or a family pack). A card that leaves a duelist's deck must still be in one of them.
+	var handed := {}
+	for e in Collection.SERIES:
+		for id in Collection.pool(str(e)):
+			handed[int(id)] = true
+	for fk in Collection.FAMILIES:
+		for id in Collection.family_ids(str(fk)):
+			handed[int(id)] = true
+	for id in pool:
+		if not handed.has(int(id)) and not CardData.ORIGINALS.has(int(id)) and not int(id) in CardData.SPEED_SPELLS:
+			problems.append("no pack hands out: " + str(CardData.get_card(int(id)).get("name", "?")))
+	notes.append("cards some pack hands out: %d" % handed.size())
 	var f := FileAccess.open(out_path, FileAccess.WRITE)
 	f.store_line("cards in the game: %d   loaded in the engine: %d   families: %d   problems: %d" % [pool.size(), loaded, Collection.FAMILIES.size(), problems.size()])
 	for n in notes:

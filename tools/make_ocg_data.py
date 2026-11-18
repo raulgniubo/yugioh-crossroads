@@ -45,6 +45,10 @@ if ids_file:
         if alias.get(cid):
             todo.append(alias[cid])
         f = os.path.join(scr, 'official', 'c%d.lua' % cid)
+        if not os.path.exists(f):
+            # (a card whose text was changed keeps its number, and its current script sits in
+            # "pre-errata" beside the old one: Red-Eyes Darkness Metal Dragon)
+            f = os.path.join(scr, 'pre-errata', 'c%d.lua' % cid)
         if os.path.exists(f):
             files.append(f)
             for ref in re.findall(r'Load(?:Card)?Script\("c(\d+)\.lua"\)', open(f, encoding='utf-8', errors='ignore').read()):
