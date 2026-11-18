@@ -243,6 +243,15 @@ static func desc(v: int) -> String:
 	return ""
 
 
+## A Token the game's own card data does not know, as card data (or {} if the engine does not know it either).
+static func token_data(code: int) -> Dictionary:
+	var t: Dictionary = (_strings.get("tokens", {}) as Dictionary).get(str(code), {})
+	if t.is_empty():
+		return {}
+	return {"id": code, "name": str(t["name"]), "frame": "token", "kind": "monster", "atk": int(t["atk"]), "def": int(t["def"]),
+		"level": int(t["level"]), "attribute": str(t["attribute"]), "race": str(t["race"]), "text": ""}
+
+
 ## "%ls" in a system line is a card name.
 static func fill(text: String, card_name: String, place := "") -> String:
 	var out := text

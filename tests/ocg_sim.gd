@@ -50,6 +50,22 @@ func one(ka: String, kb: String, seed: int, verbose: bool) -> Dictionary:
 	d.log_msgs = verbose
 	var decks := [CardData.deck_list(ka), CardData.deck_list(kb)]
 	var extras := [CardData.extra_list(ka), CardData.extra_list(kb)]
+	if ka == "lumen_test":
+		# Your partner and her cards, with plain monsters around them.
+		CardData.lumen_tuner_test = true
+		var l: Array[int] = []
+		for pair in [[99200001, 3], [99200005, 2], [99200011, 3], [99200012, 3], [99200013, 3]]:
+			for i in int(pair[1]):
+				l.append(int(pair[0]))
+		for id in CardData.deck_list("deck_gem_knight"):
+			if l.size() < 40 and CardData.get_card(id)["kind"] == "monster" and int(CardData.get_card(id).get("level", 9)) <= 4:
+				l.append(id)
+		for id in CardData.deck_list("deck_monarchs"):
+			if l.size() < 40 and CardData.get_card(id)["kind"] == "monster" and int(CardData.get_card(id).get("level", 9)) <= 4:
+				l.append(id)
+		decks[0] = l
+		var ex: Array[int] = [99200002, 99200003, 99200003, 99200004, 99200004]
+		extras[0] = ex
 	if not d.setup(st, decks, extras, ["A", "B"], seed % 2, [8000, 8000], [5, 5], seed):
 		return {"winner": 2, "errors": ["setup failed"]}
 	var cpus := [OcgCpu.new(), OcgCpu.new()]
@@ -74,6 +90,12 @@ func one(ka: String, kb: String, seed: int, verbose: bool) -> Dictionary:
 		d.answer(cpus[p].decide(d, safe))
 		if st.turn > 80:
 			break
+	if ka == "lumen_test":
+		var seen := {}
+		for c in st.players[0].gy + st.players[0].banished + st.players[0].monsters() + st.players[0].hand:
+			if c.id >= 99200000:
+				seen[c.cname()] = int(seen.get(c.cname(), 0)) + 1
+		print("  lumen cards that got out: ", seen)
 	var w: int = st.winner if st.winner in [0, 1] else 2
 	if guard >= 6000:
 		d.errors.append("too many steps")

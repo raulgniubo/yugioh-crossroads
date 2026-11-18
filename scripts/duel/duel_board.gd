@@ -1591,8 +1591,10 @@ func anim_special(p: int, inst, zone: int, method: String, materials: Array) -> 
 		_dim_field(1.9)
 		_summon_scene(method, at, core, col, materials.size())
 	# Materials spiral into the core and vanish
-	var tw: Tween = create_tween().set_parallel() if materials.size() > 0 else null
-	for m in materials:
+	# (Only materials that still have a card on the table fly in: a tween with nothing in it never ends.)
+	var flying: Array = materials.filter(func(m): return card_for(m) != null)
+	var tw: Tween = create_tween().set_parallel() if flying.size() > 0 else null
+	for m in flying:
 		var mc := card_for(m)
 		if mc == null:
 			continue

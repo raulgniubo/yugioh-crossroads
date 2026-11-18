@@ -5,6 +5,20 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.41.0
+
+**The new rules engine is inside the game.** This is step 1 of moving duels from the hand-written rules to ocgcore, the engine EDOPro runs on. No cards added: the game still has **1,998 cards**, every one working and obtainable.
+
+- **Try it:** Free Duel has a new switch, **ENGINE: Classic / New (test)**. Classic is the default and plays exactly as before. New (test) runs the whole duel on the new engine, on the same duel screen: summons, attacks, chains, card effects, the Graveyard, the Extra Deck.
+- **Every card is already in it:** all 1,998 cards are in the engine's card database with their real scripts, so each card does what the real card does. Lumen and her seven cards exist only in this game, so they got scripts written for the new engine.
+- **The opponent there is a placeholder:** on New (test) the CPU only makes legal, basic moves. The smart opponent (Normal, Hard, Extreme) is the next build.
+- **Not on the new engine yet:** Story duels, free roam duels, Turbo Duels, puzzles and Destiny Draw all stay on the classic engine for now. On New (test), zones are picked for you and cards are played from their menu (no drag and drop yet).
+- **Under the hood:** a native library (`bin/`, built from `native/`) for macOS (Apple Silicon and Intel), Windows and Linux; the engine's card table, scripts and question texts in `data/ocg/`; the duel driver in `scripts/ocg/`. Rebuild with `native/build.sh` and `tools/make_ocg_data.py`.
+- **Windows:** the game is now two files, `Crossroads.exe` and `ocgbridge.windows.x86_64.dll`. Keep them together. Without the second file the game still runs, only the ENGINE switch is not there.
+- **Credits:** the rules engine is ocgcore by Edoardo Lolletti (edo9300) and the card scripts are from Project Ignis, both under AGPL-3.0. Their license files are in `native/ocgcore/`.
+
+Checked: 940 automated duels on the new engine (each of the game's 47 decks, 20 duels) with no script error and no stuck question, plus full duels through the real duel screen with nobody at the table. Not checked: I cannot run the Mac or Windows library myself, and nobody has watched a duel on New (test) yet. If the library does not load on your computer, the game plays as before and the switch does not appear.
+
 ## What is in 0.40.0
 
 **Stable save point.** This is the same game as 0.34.5, with **1,998 cards**, every one working and obtainable. No cards added in this build.

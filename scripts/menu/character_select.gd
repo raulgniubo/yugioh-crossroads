@@ -29,6 +29,7 @@ var _hand_n := 5
 var _match_btn: CheckButton
 var _turbo_btn: CheckButton
 var _fate_off_btn: CheckButton          # Destiny Draw switched off for this duel
+var _engine_btn: CheckButton            # the new rules engine for this duel (a test switch while it is being built)
 var _my_deck := "yugi"
 var _field := "auto"
 var _root: Control
@@ -956,12 +957,16 @@ func _build_setup() -> void:
 	_turbo_btn = CheckButton.new()
 	_fate_off_btn = CheckButton.new()
 	_fate_off_btn.button_pressed = not Settings.destiny_draw
+	_engine_btn = CheckButton.new()
+	var groups: Array = [[_turbo_btn, "TYPE", ["Standard", "Turbo Duel"], ["A normal duel at the table.", "Both duelists ride runners. Spells need Speed Counters."]],
+			[_match_btn, "LENGTH", ["1 duel", "Best of 3"], ["One duel decides it.", "First to win two duels. You can swap Side Deck cards between duels."]],
+			[_fate_off_btn, "DESTINY DRAW", ["On", "Off"], ["Once per duel, at 2000 Life Points or less (or under half of your opponent's), you choose the card you draw. Hard opponents can do it too.", "Every draw is the top card, as usual."]]]
+	if OcgCore.available():
+		groups.append([_engine_btn, "ENGINE", ["Classic", "New (test)"], ["The rules the game has always used.", "The new rules engine, still being built. Its opponent only makes basic moves for now. Standard duels only."]])
 	var rules := HBoxContainer.new()
 	rules.add_theme_constant_override("separation", 8)
 	v.add_child(rules)
-	for grp in [[_turbo_btn, "TYPE", ["Standard", "Turbo Duel"], ["A normal duel at the table.", "Both duelists ride runners. Spells need Speed Counters."]],
-			[_match_btn, "LENGTH", ["1 duel", "Best of 3"], ["One duel decides it.", "First to win two duels. You can swap Side Deck cards between duels."]],
-			[_fate_off_btn, "DESTINY DRAW", ["On", "Off"], ["Once per duel, at 2000 Life Points or less (or under half of your opponent's), you choose the card you draw. Hard opponents can do it too.", "Every draw is the top card, as usual."]]]:
+	for grp in groups:
 		var cb: CheckButton = grp[0]
 		var gv := VBoxContainer.new()
 		gv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1262,7 +1267,8 @@ func _start_duel() -> void:
 		"orig": {"main": Collection.main.duplicate(), "side": Collection.side.duplicate()}} if is_match else {}
 	var cfg := {"player_char": _me, "opponent": _opp, "player_deck": _my_deck, "difficulty": _difficulty, "field": _field, "match": is_match and not _gauntlet,
 		"turbo": _turbo_btn != null and _turbo_btn.button_pressed, "lp": _lp, "hand": _hand_n,
-		"destiny": not (_fate_off_btn != null and _fate_off_btn.button_pressed)}
+		"destiny": not (_fate_off_btn != null and _fate_off_btn.button_pressed),
+		"engine": "new" if (_engine_btn != null and _engine_btn.button_pressed) else "classic"}
 	if _their_deck != "":
 		cfg["opponent_deck"] = _their_deck
 		cfg["opponent_deck_full"] = true   # a deck you picked for them is the real one, aces included

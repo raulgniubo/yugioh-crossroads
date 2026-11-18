@@ -63,6 +63,21 @@ if len(sys.argv) > 3:
         if strs:
             card[str(r[0])] = strs
     strings['card'] = card
+    # Tokens are not cards of the game's own data: keep their names and numbers for the table.
+    attrs = {1: 'EARTH', 2: 'WATER', 4: 'FIRE', 8: 'WIND', 16: 'LIGHT', 32: 'DARK', 64: 'DIVINE'}
+    races = ["Warrior", "Spellcaster", "Fairy", "Fiend", "Zombie", "Machine", "Aqua", "Pyro", "Rock", "Winged Beast", "Plant", "Insect",
+             "Thunder", "Dragon", "Beast", "Beast-Warrior", "Dinosaur", "Fish", "Sea Serpent", "Reptile", "Psychic", "Divine-Beast", "Creator God", "Wyrm", "Cyberse"]
+    names = {r[0]: r[1] for r in db.execute('select id,name from texts')}
+    tokens = {}
+    for cid, alias, setc, typ, atk, de, lvl, race, attr in rows:
+        if typ & 0x4000:
+            rn = ''
+            for i, n in enumerate(races):
+                if race & (1 << i):
+                    rn = n
+            tokens[str(cid)] = {'name': names.get(cid, 'Token'), 'atk': max(0, atk), 'def': max(0, de), 'level': lvl & 0xff,
+                                'attribute': attrs.get(attr, ''), 'race': rn}
+    strings['tokens'] = tokens
     json.dump(strings, open(os.path.join(out, 'strings.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
 print('cards', len(rows), 'scripts', len(files), 'raw MB', round(len(raw) / 1e6, 1),
       'packed MB', round(os.path.getsize(os.path.join(out, 'scripts.bin')) / 1e6, 1))

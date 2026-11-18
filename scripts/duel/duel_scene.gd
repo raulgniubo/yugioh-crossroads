@@ -6,6 +6,7 @@ const ME := 0
 const AI := 1
 
 var state := DuelState.new()
+var ocg: OcgTable = null     # set when the new rules engine runs this duel (see OcgTable)
 var board: DuelBoard
 var hud: DuelHUD
 var busy := false
@@ -151,6 +152,10 @@ func _start() -> void:
 	if "--cine" in OS.get_cmdline_user_args() or "--battle-demo" in OS.get_cmdline_user_args():
 		_debug_cine()
 	var cfg: Dictionary = Router.duel_config
+	if OcgTable.wanted(cfg):
+		state = OcgMirror.new()
+		ocg = OcgTable.new(self)
+		print("DUEL ENGINE new")
 	_opp_key = cfg.get("opponent", "kaiba")
 	Avatars.dress = {}
 	if str(cfg.get("opponent_coat", "")) != "":
@@ -267,6 +272,8 @@ func _start() -> void:
 	state.destiny_who = [true, bool(cfg.get("destiny_opp", _ai_level >= 3 or (_ai_level >= 2 and bool(cfg.get("rare", false)))))]
 	if "--destiny-all" in OS.get_cmdline_user_args():
 		state.destiny_who = [true, true]   # dev: both sides may, whatever the difficulty
+	if ocg != null:
+		state.destiny = false   # (Destiny Draw is a rule of the classic engine for now)
 	board.state_ref = state
 	var my_list: Array[int] = CardData.deck_list(my_deck)
 	if state.turbo:
@@ -285,6 +292,10 @@ func _start() -> void:
 		state.players[AI].name = opp_name
 		cfg["my_lp"] = int(_puzzle.get("my_lp", 4000))
 		cfg["opp_lp"] = int(_puzzle.get("opp_lp", 4000))
+	elif ocg != null:
+		ocg.prepare(my_list, opp_list, CardData.extra_list(my_deck), CardData.extra_list(opp_deck, opp_plain), me_name, opp_name, first,
+				[5 + int(state.bonus_cards[ME]), 5 + int(state.bonus_cards[AI])])
+		events = []
 	else:
 		events = state.setup(my_list, opp_list, me_name, opp_name, first, -1,
 				CardData.extra_list(my_deck), CardData.extra_list(opp_deck, opp_plain))
@@ -316,7 +327,7 @@ func _start() -> void:
 			state.players[p].lp = _start_lp[p]
 			hud.set_lp(p, _start_lp[p], 0)
 	for p in 2:
-		board.set_deck_count(p, state.players[p].deck.size() + 5 + state.bonus_cards[p])
+		board.set_deck_count(p, state.players[p].deck.size() + (0 if ocg != null else 5 + state.bonus_cards[p]))
 	_update_counts()
 	hud.set_phase_buttons("", false, false)
 	hud.set_extra_button(state.players[ME].extra.size(), 0, false)
@@ -413,6 +424,8 @@ func _start() -> void:
 			board.turbo_blow(AI if state.winner == ME else ME)
 		_finish()
 		return
+	if ocg != null:
+		events = ocg.begin()
 	await _play(events)
 	if not _puzzle.is_empty():
 		# The position is laid out, then it is your move: this turn is the only one you get.
@@ -540,6 +553,10 @@ func _loop() -> void:
 		if da.begins_with("--demo-destiny"):
 			_demo_destiny(da.trim_prefix("--demo-destiny").trim_prefix("="))
 			return
+	if ocg != null:
+		await ocg.loop()
+		_finish()
+		return
 	while not state.is_over():
 		# Draw Phase, Standby Phase, then Main Phase 1. Both players may act in each.
 		await _destiny_step()
@@ -1441,10 +1458,15 @@ var _flow := false   # true while a chain / target prompt is running
 func _my_turn() -> bool:
 	if _flow:
 		return false
+	if ocg != null:
+		return ocg.active() and not hud.overlay_visible()
 	return state.current == ME and not busy and not state.is_over() and not hud.overlay_visible()
 
 
 func _refresh() -> void:
+	if ocg != null:
+		ocg.refresh()
+		return
 	hud.set_speed_button(_my_turn() and (state.can_speed_world(ME, 4) or state.can_speed_world(ME, 7) or state.can_speed_world(ME, 10)))
 	if not _my_turn():
 		hud.set_phase_buttons("", false, false)
@@ -1559,6 +1581,9 @@ func _clear_glows() -> void:
 
 
 func _on_phase_button(action: String) -> void:
+	if ocg != null:
+		ocg.on_phase_button(action)
+		return
 	if not _my_turn():
 		return
 	_cancel_mode()
@@ -1578,6 +1603,8 @@ func _on_phase_button(action: String) -> void:
 ## plan[row] is one entry (the whole row does it) or two (left half, right half), each
 ## [action id, the word shown over it]: face-up on the left, Set on the right.
 func _drop_plan(inst) -> Dictionary:
+	if ocg != null:
+		return {}
 	var plan := {}
 	if inst.is_monster():
 		var cells: Array = []
@@ -1645,7 +1672,7 @@ func _on_deck_clicked() -> void:
 	_menu_card = null
 	_deck_menu = true
 	var deck_opts := [["piles", "Graveyards", true], ["pause", "Duel menu", true], ["surrender", "Surrender", true]]
-	if _my_turn() and not state.gy_effects(ME).is_empty():
+	if (not ocg.pile_effects().is_empty()) if ocg != null else (_my_turn() and not state.gy_effects(ME).is_empty()):
 		# A card in your Graveyard can use its effect from there (Destiny HERO - Malicious).
 		deck_opts.push_front(["gyfx", "Effect from the Graveyard", true])
 	hud.show_actions(board.camera.unproject_position(board.deck_pos(ME)) + Vector2(-420, -60), deck_opts)
@@ -1716,6 +1743,9 @@ func _drag_attack_go(a, target, direct: bool) -> void:
 
 
 func _on_hand_card_pressed(inst, at: Vector2) -> void:
+	if ocg != null:
+		ocg.on_hand_card_pressed(inst, at)
+		return
 	if not _my_turn() or mode != "":
 		return
 	if hud.actions_visible() and _menu_card == inst:
@@ -1754,6 +1784,12 @@ func _on_action(action: String) -> void:
 		hud.hide_actions()
 		_on_phase_button(action.trim_prefix("phase:"))
 		return
+	if ocg != null and action == "gyfx":
+		_deck_menu = false
+		ocg.on_pile_effects()
+		return
+	if ocg != null and ocg.on_action(action):
+		return
 	if action in ["surrender", "piles", "pause", "gyfx"]:
 		_deck_menu = false
 		match action:
@@ -1780,7 +1816,7 @@ func _on_action(action: String) -> void:
 		return
 	var c = _menu_card
 	_menu_card = null
-	if c == null or not _my_turn():
+	if c == null or not _my_turn() or ocg != null:
 		return
 	if action.begins_with("fuse:"):
 		var uid := int(action.substr(5))
@@ -1853,6 +1889,9 @@ func _refresh_tribute() -> void:
 
 
 func _on_board_card_clicked(card: Card3D) -> void:
+	if ocg != null:
+		ocg.on_board_card_clicked(card)
+		return
 	var reopened: bool = (hud.actions_visible() and _menu_card != null and _menu_card == card.inst) or (_closed_card != null and _closed_card == card.inst and Time.get_ticks_msec() - _closed_at < 120)
 	_closed_card = null
 	hud.hide_actions()
@@ -1957,6 +1996,9 @@ func _on_speed_pressed() -> void:
 
 
 func _on_extra_pressed() -> void:
+	if ocg != null:
+		ocg.on_extra_pressed()
+		return
 	if not _my_turn():
 		return
 	_cancel_mode()
@@ -1992,6 +2034,9 @@ var _extra_sel: Array = []
 
 ## Pick materials yourself: tap monsters on your field, or press Auto.
 func _on_extra_chosen(inst) -> void:
+	if ocg != null:
+		ocg.on_extra_chosen(inst)
+		return
 	if not _my_turn():
 		return
 	if CardEffects.of(inst.cname()).has("contact") or (state.extra_materials(ME, inst).is_empty() and state.xyz_base(ME, inst) != null):
@@ -2252,6 +2297,8 @@ func _start_attack(inst) -> void:
 
 
 func _on_direct_attack() -> void:
+	if ocg != null:
+		return
 	if mode == "materials" and _my_turn():
 		var target = _extra_target
 		_cancel_mode()
@@ -2266,6 +2313,8 @@ func _on_direct_attack() -> void:
 
 
 func _cancel_mode() -> void:
+	if ocg != null:
+		ocg.cancel()
 	board.stop_aim()
 	board.show_direct_target(false)
 	mode = ""

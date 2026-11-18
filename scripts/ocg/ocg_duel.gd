@@ -35,12 +35,11 @@ var _limbo: Array = []
 var _phase_raw := 0
 
 
-## Build the two sides and start. `first`: who goes first (0 or 1). Returns false when the
-## engine is not there.
-func setup(state: DuelState, decks: Array, extras: Array, names: Array, first: int, lp: Array, hand: Array, seed := -1) -> bool:
-	if not OcgCore.ensure_loaded():
-		return false
-	OcgCore.register_originals()
+## Build the two sides (the mirror's cards, nothing drawn yet). `first`: who goes first (0 or 1).
+var _cards: Array = []
+var _seed := 0
+
+func prepare(state: DuelState, decks: Array, extras: Array, names: Array, first: int, seed := -1) -> void:
 	st = state
 	swap = first == 1
 	EffectRunner.current_state = st
@@ -50,12 +49,11 @@ func setup(state: DuelState, decks: Array, extras: Array, names: Array, first: i
 		rng.seed = seed
 	else:
 		rng.randomize()
-	var cards: Array = []
+	_cards = []
 	for t in 2:
 		var p := t ^ int(swap)
 		var ps: DuelState.PlayerState = st.players[p]
 		ps.name = str(names[p])
-		ps.lp = int(lp[p])
 		var main: Array = (decks[p] as Array).duplicate()
 		for i in range(main.size() - 1, 0, -1):
 			var j := rng.randi_range(0, i)
@@ -64,18 +62,35 @@ func setup(state: DuelState, decks: Array, extras: Array, names: Array, first: i
 			main[j] = tmp
 		for id in main:
 			ps.deck.append(_new_card(int(id), p))
-			cards.append([t, int(id), OcgCore.LOC_DECK, OcgCore.POS_FD_DEF])
+			_cards.append([t, int(id), OcgCore.LOC_DECK, OcgCore.POS_FD_DEF])
 		for id in extras[p]:
 			ps.extra.append(_new_card(int(id), p))
-			cards.append([t, int(id), OcgCore.LOC_EXTRA, OcgCore.POS_FD_DEF])
+			_cards.append([t, int(id), OcgCore.LOC_EXTRA, OcgCore.POS_FD_DEF])
 	st.current = first
 	st.turn = 0
-	handle = OcgCore.create(rng.randi(), [lp[int(swap)], lp[1 - int(swap)]], [hand[int(swap)], hand[1 - int(swap)]])
+	_seed = rng.randi()
+
+
+## Start the engine: Life Points and opening hands per player. False when the engine is not there.
+func start(lp: Array, hand: Array) -> bool:
+	if not OcgCore.ensure_loaded():
+		return false
+	OcgCore.register_originals()
+	for p in 2:
+		st.players[p].lp = int(lp[p])
+	handle = OcgCore.create(_seed, [lp[int(swap)], lp[1 - int(swap)]], [hand[int(swap)], hand[1 - int(swap)]])
 	if handle == 0:
 		return false
-	OcgCore.add_cards(handle, cards)
+	OcgCore.add_cards(handle, _cards)
 	OcgCore.start(handle)
 	return true
+
+
+func setup(state: DuelState, decks: Array, extras: Array, names: Array, first: int, lp: Array, hand: Array, seed := -1) -> bool:
+	if not OcgCore.ensure_loaded():
+		return false
+	prepare(state, decks, extras, names, first, seed)
+	return start(lp, hand)
 
 
 func close() -> void:
@@ -86,8 +101,9 @@ func close() -> void:
 
 func _new_card(id: int, owner: int) -> DuelState.CardInst:
 	var c: DuelState.CardInst = st._make(id, owner)
-	if c.data.is_empty() or str(c.data.get("name", "")) == "":
-		c.data = {"name": "Token", "frame": "token", "kind": "monster", "atk": 0, "def": 0, "level": 1}
+	if c.data.is_empty() or str(c.data.get("name", "")) in ["", "Unknown"]:
+		var td := OcgCore.token_data(id)
+		c.data = td if not td.is_empty() else {"id": id, "name": "Token", "frame": "token", "kind": "monster", "atk": 0, "def": 0, "level": 1}
 	return c
 
 
@@ -761,8 +777,10 @@ func _sync() -> void:
 					_limbo.append(ps.deck.pop_back())
 				while ps.deck.size() < want:
 					ps.deck.append(_new_card(0, p))
-			if ps.lp != int(cn[t]["lp"]):
-				ps.lp = int(cn[t]["lp"])
+			var elp := int(cn[t]["lp"])
+			if elp > 0x7fffffff:
+				elp -= 0x100000000     # (the engine lets Life Points go below zero)
+			ps.lp = maxi(0, elp)
 	# Equip links, now that every card is in place.
 	for t in 2:
 		var p := t ^ int(swap)

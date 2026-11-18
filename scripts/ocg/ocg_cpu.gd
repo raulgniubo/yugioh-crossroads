@@ -125,10 +125,16 @@ func _base_atk(c) -> int:
 
 func _battle(d: OcgDuel, m: Dictionary, mm: Dictionary, safe: bool) -> PackedByteArray:
 	var leave := OcgDuel.i32(2 if int(m["to_m2"]) else 3)
+	var at: Array = m["attacks"]
+	if int(m["to_m2"]) == 0 and int(m["to_ep"]) == 0:
+		# It may not leave the Battle Phase yet (a monster that must attack): do what is open.
+		if not at.is_empty():
+			return OcgDuel.i32(1)
+		if not (m["chains"] as Array).is_empty():
+			return OcgDuel.i32(0)
 	if safe:
 		return leave
 	var p := int(m["p"])
-	var at: Array = m["attacks"]
 	var foes: Array = d.st.players[1 - p].monsters()
 	for i in at.size():
 		var a = d.card_at(int(at[i]["con"]), int(at[i]["loc"]), int(at[i]["seq"]))
