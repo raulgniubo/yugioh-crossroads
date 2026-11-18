@@ -7,6 +7,7 @@ extends RefCounted
 
 const R_DESTROY := 0x1
 const R_RELEASE := 0x2
+const R_SUMMON := 0x10
 const R_MATERIAL := 0x8
 const R_BATTLE := 0x20
 const R_EFFECT := 0x40
@@ -753,7 +754,11 @@ func _move(m: Dictionary, ev: Array) -> void:
 		OcgCore.LOC_GRAVE:
 			match F:
 				OcgCore.LOC_MZONE:
-					if reason & R_MATERIAL:
+					if (reason & R_RELEASE) and (reason & R_SUMMON):
+						# Tributed for a Normal Summon or Set (the engine also calls these "material"):
+						# they go the way Tributes go, and the monster that follows is a plain Summon.
+						ev.append({"type": "tribute", "player": pf, "card": c})
+					elif reason & R_MATERIAL:
 						ev.append({"type": "material", "player": pf, "card": c, "from": "field"})
 					elif reason & R_RELEASE:
 						ev.append({"type": "tribute", "player": pf, "card": c})

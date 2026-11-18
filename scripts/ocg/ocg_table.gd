@@ -16,7 +16,12 @@ var cpu := OcgCpu.new()
 var me_cpu := OcgCpu.new() # (autoplay: the CPU plays your side too)
 var req = null             # the idle / battle question open for the player right now
 var acts := {}             # card uid -> [[label, answer], ...] for that question
-var pick := {}             # an on-board pick in progress: {"cands", "answers", "cancel"}
+var pick := {}             # an on-board pick in progress: {"cands", "cancel", "sig"}; "many": taps toggle
+var want := {}             # what you already said with a drag or a tap, before the engine asks:
+                           # "zone": [location, sequence], "target": card uid, "direct": true, "attacker": card uid
+var aim := {}              # an attack being aimed: {"inst", "answer", "direct", "from", "held", "moved"}
+var press := {}            # a press on one of your monsters in Main Phase 1 that may turn into a dragged attack
+var zone_pick: Array = []  # the zones lit up for you to choose from
 var _hand := [5, 5]
 var _menu: Array = []
 var level := 2             # how the opponent thinks: 0 the plain policy, 1 Normal, 2 Hard, 3 Extreme
@@ -26,6 +31,14 @@ var _turn_asks := 0
 const TURN_BUDGET := [0, 6000, 14000, 28000]     # after this much thinking in one turn it hurries
 const NAMES := ["Basic", "Normal", "Hard", "Extreme"]
 var _log := "--ocg-log" in OS.get_cmdline_user_args()
+## Dev (with --human-test): picks on the table and zone choices are made too, at random, so
+## the code that runs when you point at cards and zones is exercised without anybody there.
+var _auto_board := "--human-board" in OS.get_cmdline_user_args()
+var _auto_steps := 0
+
+func _auto(what: Callable) -> void:
+	if _auto_board and s._human_test:
+		s.get_tree().create_timer(0.04).timeout.connect(what)
 
 
 func _init(scene) -> void:
@@ -90,6 +103,13 @@ func loop() -> void:
 			break
 		var p := int(m["p"])
 		var bytes = null
+		if int(m["t"]) in [10, 11] and not s.board._orbs.is_empty():
+			s.board.clear_orbs()
+		if int(m["t"]) in [10, 11] and not s._materials.is_empty():
+			# A free moment in a turn: nothing is in the middle of being Summoned, so no card is
+			# left hanging in the air as a "material" (they used to float there until the turn ended).
+			s._materials.clear()
+			resync()
 		var refused: bool = d.retries > seen_retries
 		seen_retries = d.retries
 		if refused:
@@ -108,6 +128,11 @@ func loop() -> void:
 			break
 		d.answer(bytes)
 		var events := d.advance()
+		if _live:
+			# A pick made card by card stays up between its steps, and goes when it is over.
+			var nx = d.request
+			if nx == null or int(nx["p"]) != ME or int(nx["t"]) != 26 or not events.is_empty() or s._autoplay:
+				_live_end()
 		if _log:
 			var kinds: Array = []
 			for e in events:
@@ -312,7 +337,7 @@ func _ask(m: Dictionary):
 			var text := ""
 			var nm := _name(int(cd["code"]))
 			if dv == 0:
-				text = OcgCore.fill(OcgCore.sys(200), nm, Loc.t(d._zone_name(int(cd["loc"]))))
+				text = Loc.t("Activate the effect of %s?") % nm
 			elif (dv >> 20) == 0:
 				text = OcgCore.fill(OcgCore.sys(dv), nm)
 			else:
@@ -327,6 +352,10 @@ func _ask(m: Dictionary):
 					yes = await s.hud.ask_destiny()
 				_destiny_ask[ME] = yes
 				out = OcgDuel.i32(1 if yes else 0)
+			elif int(m["desc"]) == 31 and (want.has("target") or want.has("direct")):
+				# "Attack directly?" You already said which, when you aimed the attack.
+				out = OcgDuel.i32(1 if want.has("direct") else 0)
+				want.erase("direct")
 			else:
 				var text2 := OcgCore.desc(int(m["desc"]))
 				out = OcgDuel.i32(1 if await s.hud.ask_choice(text2 if text2 != "" else Loc.t("Do it?"), [Loc.t("Yes"), Loc.t("No")]) == 0 else 0)
@@ -360,8 +389,10 @@ func _ask(m: Dictionary):
 			for o in m["opts"]:
 				nums.append(str(int(o)))
 			out = OcgDuel.i32(await s.hud.ask_choice(_hint_text(ME, OcgCore.sys(565)), nums))
+		18:
+			out = await _ask_place(m)
 		_:
-			# Zones, sort orders and the like: taken care of for you.
+			# Sort orders and the like: taken care of for you.
 			out = me_cpu.decide(d)
 	s._flow = was
 	return out
@@ -414,56 +445,86 @@ func _ask_cards(m: Dictionary, tribute := false):
 		if cards[i] == null:
 			cards[i] = _temp(int(list[i]["code"]), int(list[i]["con"]) if int(list[i]["con"]) < 2 else ME)
 	var lo := int(m["min"])
-	var hi := int(m["max"])
+	var hi := mini(int(m["max"]), cards.size())
 	var can_cancel := int(m["cancel"]) != 0
 	var text := _hint_text(ME, OcgCore.sys(500) if tribute else OcgCore.sys(560))
-	# One card that is on the table: point at it there.
-	if lo == 1 and hi == 1 and not tribute:
-		var all_field := true
-		for c in cards:
-			if not _on_field(c):
-				all_field = false
-				break
-		if all_field and not s._human_test:
-			var got = await _pick_on_board(cards, text, can_cancel)
-			if got == null:
-				return OcgDuel.i32(-1) if can_cancel else OcgDuel.pick([0])
-			return OcgDuel.pick([cards.find(got)])
-	var picked: Array = []
-	var left := cards.duplicate()
-	var weight := 0
-	while picked.size() < hi and not left.is_empty():
-		var enough: bool = (weight >= lo) if tribute else (picked.size() >= lo)
-		var line := text
-		if hi > 1:
-			line += "   (%d / %d)" % [picked.size() + 1, hi if lo == hi else lo]
-		var stop := ""
-		if enough:
-			stop = Loc.t("Done")
-		elif can_cancel and picked.is_empty():
-			stop = Loc.t("Cancel")
-		var got2 = await s.hud.ask_pick(line, left, Loc.t("Select"), stop, _hidden(left), _labels(left))
-		if got2 == null:
+	if tribute:
+		# (said plainly, with the number when there is one)
+		text = Loc.t("Choose the monster to Tribute") if hi <= 1 else (Loc.t("Choose %d monsters to Tribute") % lo if lo == hi else Loc.t("Choose the monsters to Tribute"))
+	if want.has("target") or want.has("direct"):
+		# The target of an attack you aimed: it is already chosen.
+		var uid := int(want.get("target", -1))
+		want.erase("target")
+		want.erase("direct")
+		for i in cards.size():
+			if cards[i].uid == uid:
+				return OcgDuel.pick([i])
+		Router.toast(Loc.t("That one cannot be attacked. Choose another target."), 2.4)
+	var all_field: bool = not s._human_test or _auto_board
+	for c in cards:
+		if not _on_field(c):
+			all_field = false
 			break
-		var gi := cards.find(got2)
-		picked.append(gi)
-		weight += maxi(1, int(list[gi].get("param", 1))) if tribute else 1
-		left.erase(got2)
-		if tribute and weight >= lo and lo == hi:
-			break
-	var ok: bool = (weight >= lo) if tribute else (picked.size() >= lo)
-	if not ok:
+	# One card: point at it on the table, or tap it in the box.
+	if hi <= 1 and lo <= 1:
+		var got = null
+		if all_field:
+			got = await _pick_on_board(cards, text, can_cancel or lo == 0, "TRIBUTE" if tribute else "SELECT")
+		else:
+			var res = await s.hud.ask_cards(text, cards, {"min": 1, "max": 1, "cancel": Loc.t("Cancel") if can_cancel else (Loc.t("None") if lo == 0 else ""), "hidden": _hidden(cards), "labels": _labels(cards)})
+			if res is Array and not (res as Array).is_empty():
+				got = res[0]
+		if got == null:
+			if can_cancel:
+				return OcgDuel.i32(-1)
+			return OcgDuel.pick([] if lo == 0 else [0])
+		return OcgDuel.pick([cards.find(got)])
+	# Several: tap them all, then Confirm.
+	var weigh := func(chosen: Array) -> int:
+		var w := 0
+		for c in chosen:
+			w += maxi(1, int(list[cards.find(c)].get("param", 1))) if tribute else 1
+		return w
+	var valid := func(chosen: Array) -> bool:
+		return chosen.size() <= hi and int(weigh.call(chosen)) >= lo and (not tribute or chosen.size() >= 1 or lo == 0)
+	var info := func(chosen: Array) -> String:
+		if tribute and int(weigh.call(chosen)) != chosen.size():
+			return Loc.t("Counts as %d Tributes") % int(weigh.call(chosen))
+		return ""
+	var count := [lo, hi]
+	var picked = null
+	if all_field:
+		picked = await _pick_many_on_board(cards, text, count, valid, can_cancel, "TRIBUTE" if tribute else "SELECT")
+	else:
+		picked = await s.hud.ask_cards(text, cards, {"min": lo, "max": hi, "valid": valid, "info": info, "cancel": Loc.t("Cancel") if can_cancel else "", "hidden": _hidden(cards), "labels": _labels(cards)})
+	if picked == null:
 		if can_cancel:
 			return OcgDuel.i32(-1)
-		# Not enough chosen and it cannot be skipped: fill it up.
-		for i in cards.size():
-			if picked.size() >= lo:
+		# It cannot be skipped: the first ones that fit are taken.
+		picked = []
+		for c in cards:
+			if int(weigh.call(picked)) >= lo:
 				break
-			if not picked.has(i):
-				picked.append(i)
-	return OcgDuel.pick(picked)
+			(picked as Array).append(c)
+	var idx: Array = []
+	for c in picked:
+		idx.append(cards.find(c))
+	return OcgDuel.pick(idx)
 
 
+var _live := false
+
+func _live_end() -> void:
+	_live = false
+	if pick.is_empty():
+		s.board.clear_picks()
+		s.hud.hide_prompt()
+	s.hud.close_cards()
+
+
+## Materials the rules check one card at a time (Synchro, Xyz, Fusion): every tap goes to the
+## engine, which answers with what may still be added. On your side it is one pick: the cards
+## stay lit (or the box stays open) until you confirm.
 func _ask_unselect(m: Dictionary):
 	var list: Array = m["cards"]
 	var uns: Array = m["unsel"]
@@ -472,23 +533,30 @@ func _ask_unselect(m: Dictionary):
 		if cards[i] == null:
 			cards[i] = _temp(int(list[i]["code"]), ME)
 	var chosen := d.cards_of(uns)
-	var text := _hint_text(ME, OcgCore.sys(560))
-	var labels := _labels(cards)
-	var options := cards.duplicate()
 	for i in chosen.size():
-		if chosen[i] != null and not options.has(chosen[i]):
-			options.append(chosen[i])
-			labels[chosen[i].uid] = Loc.t("Chosen (tap to take back)")
-	var stop := ""
-	if int(m["finish"]) != 0:
-		stop = Loc.t("Done")
-	elif int(m["cancel"]) != 0:
-		stop = Loc.t("Cancel")
-	if options.is_empty():
+		if chosen[i] == null:
+			chosen[i] = _temp(int(uns[i]["code"]), ME)
+	var text := _hint_text(ME, OcgCore.sys(560))
+	var finish := int(m["finish"]) != 0
+	var can_cancel := int(m["cancel"]) != 0
+	if cards.is_empty() and chosen.is_empty():
 		return OcgDuel.i32(-1)
-	var got = await s.hud.ask_pick(text, options, Loc.t("Select"), stop, _hidden(options), labels)
-	if got == null:
-		return OcgDuel.i32(-1) if stop != "" else OcgDuel.pick_one(0)
+	var all_field: bool = not s._human_test or _auto_board
+	for c in cards + chosen:
+		if not _on_field(c):
+			all_field = false
+			break
+	var got = null
+	_live = true
+	if all_field:
+		s.hud.close_cards()
+		got = await _pick_live_on_board(cards, chosen, text, finish, can_cancel)
+	else:
+		var labels := _labels(cards + chosen)
+		got = await s.hud.ask_cards(text, cards, {"live": true, "chosen": chosen, "finish": finish,
+				"cancel": Loc.t("Cancel") if (can_cancel and not finish) else "", "hidden": _hidden(cards), "labels": labels})
+	if got == null or (got is String):
+		return OcgDuel.i32(-1) if (finish or can_cancel) else OcgDuel.pick_one(0)
 	var gi := cards.find(got)
 	if gi == -1:
 		gi = cards.size() + chosen.find(got)
@@ -497,41 +565,101 @@ func _ask_unselect(m: Dictionary):
 
 func _ask_position(m: Dictionary):
 	var ok := int(m["positions"])
-	var names := {1: "Attack Position", 2: "Face-down Attack Position", 4: "Defense Position", 8: "Face-down Defense Position"}
 	var bits: Array = []
-	var words: Array = []
 	for b in [1, 4, 8, 2]:
 		if ok & b:
 			bits.append(b)
-			words.append(Loc.t(names[b]))
 	if bits.size() == 1:
 		return OcgDuel.i32(bits[0])
 	var c = _temp(int(m["code"]), ME)
-	var i: int = await s.hud.ask_choice(Loc.t("%s: which position?") % c.cname(), words, c)
+	var i: int = await s.hud.ask_position(c, bits)
 	return OcgDuel.i32(bits[clampi(i, 0, bits.size() - 1)])
 
 
+## Zone of your choice. A card you dragged goes where you dropped it. A monster played from its
+## menu: the free zones light up and you tap one (Esc or "Place it for me": the middle first).
+## Spell and Trap Cards played from the menu are placed for you.
+func _ask_place(m: Dictionary):
+	var said = want.get("zone")
+	want.erase("zone")
+	if int(m["count"]) > 1 or (s._human_test and not _auto_board):
+		return me_cpu.decide(d)
+	var can: Array = []
+	var monster := false
+	for o in d.place_options(m):
+		if int(o[2]) < 5:
+			can.append(o)
+			if int(o[1]) == OcgCore.LOC_MZONE:
+				monster = true
+	if can.size() <= 1:
+		return me_cpu.decide(d)
+	if said != null:
+		for o in can:
+			if int(o[0]) == ME and int(o[1]) == int(said[0]) and int(o[2]) == int(said[1]):
+				return d.place([o])
+	if not monster:
+		return me_cpu.decide(d)
+	var code := int(d.hints.get(ME, 0))
+	d.hints.erase(ME)
+	var nm := str(CardData.get_card(code).get("name", "")) if code > 10000 else ""
+	var theirs := int(can[0][0]) != ME
+	var text := Loc.t("Choose one of their zones") if theirs else Loc.t("Choose a zone")
+	if nm != "":
+		text = (Loc.t("Choose one of their zones for %s") if theirs else Loc.t("Choose a zone for %s")) % nm
+	zone_pick = can
+	s.board.show_zone_picks(can, "HERE")
+	s.hud.show_prompt(text, false, "", "Place it for me")
+	_auto(func(): _zone_picked.emit(can.pick_random() if randf() < 0.85 else null))
+	var got = await _zone_picked
+	zone_pick = []
+	s.board.show_zone_picks([])
+	s.hud.hide_prompt()
+	if got == null:
+		return me_cpu.decide(d)
+	return d.place([got])
+
+signal _zone_picked(zone)
+
+
 func _ask_sum(m: Dictionary):
-	# Levels that have to add up (a Ritual's Tributes, some Synchro picks). Pick until it fits.
+	# Values that have to add up (a Ritual's Tributes, some Synchro picks): one pick, with the
+	# total so far in view. Confirm lights up when it fits.
 	var list: Array = m["cards"]
 	var cards := d.cards_of(list)
 	for i in cards.size():
 		if cards[i] == null:
 			cards[i] = _temp(int(list[i]["code"]), ME)
 	var text := _hint_text(ME, OcgCore.sys(560))
-	var picked: Array = []
-	var left := cards.duplicate()
-	while not left.is_empty():
-		if _sum_ok(m, picked):
+	var acc := int(m["acc"])
+	var base := 0
+	for c in m["must"]:
+		base += int(c["param"]) & 0xffff
+	var idx_of := func(chosen: Array) -> Array:
+		var out: Array = []
+		for c in chosen:
+			out.append(cards.find(c))
+		return out
+	var valid := func(chosen: Array) -> bool:
+		return _sum_ok(m, idx_of.call(chosen))
+	var info := func(chosen: Array) -> String:
+		var total := base
+		for c in chosen:
+			total += int(list[cards.find(c)]["param"]) & 0xffff
+		return Loc.t("Total so far: %d   ·   needed: %d") % [total, acc] if int(m["mode"]) == 0 else Loc.t("Total so far: %d   ·   needed: at least %d") % [total, acc]
+	var all_field: bool = not s._human_test or _auto_board
+	for c in cards:
+		if not _on_field(c):
+			all_field = false
 			break
-		var got = await s.hud.ask_pick(text + "   (%d)" % (picked.size() + 1), left, Loc.t("Select"), "", _hidden(left), _labels(left))
-		if got == null:
-			break
-		picked.append(cards.find(got))
-		left.erase(got)
-	if not _sum_ok(m, picked):
+	var hi := cards.size() if int(m["mode"]) != 0 else mini(maxi(1, int(m["max"])), cards.size())
+	var picked = null
+	if all_field:
+		picked = await _pick_many_on_board(cards, text, [1, hi], valid, false, "SELECT", info)
+	else:
+		picked = await s.hud.ask_cards(text, cards, {"min": 1, "max": hi, "valid": valid, "info": info, "hidden": _hidden(cards), "labels": _labels(cards)})
+	if picked == null or not _sum_ok(m, idx_of.call(picked)):
 		return me_cpu._sum(m)
-	return OcgDuel.pick(picked)
+	return OcgDuel.pick(idx_of.call(picked))
 
 
 func _sum_ok(m: Dictionary, picked: Array) -> bool:
@@ -613,8 +741,10 @@ func _ask_chain(m: Dictionary):
 		text = Loc.t("%s was activated. Respond?") % last.cname()
 	if forced:
 		text = OcgCore.sys(206) if OcgCore.sys(206) != "" else text
-	var got = await s.hud.ask_response(text, uniq, Loc.t("Activate"), "" if forced else Loc.t("Don't activate"), [], Color("ff4dd2"), _labels(uniq))
+	var res = await s.hud.ask_cards(text, uniq, {"min": 1, "max": 1, "confirm": Loc.t("Activate"), "cancel": "" if forced else Loc.t("Don't activate"),
+			"tint": Color("ff4dd2"), "labels": _labels(uniq)})
 	s._flow = was
+	var got = res[0] if (res is Array and not (res as Array).is_empty()) else null
 	if got == null:
 		return OcgDuel.i32(0 if forced else -1)
 	var idxs: Array = []
@@ -656,6 +786,19 @@ func _ask_command(m: Dictionary):
 		_add_all(m["sset"], 4, "sset")
 		_add_all(m["chains"], 5, "act")
 	s._turn_done = false
+	# An attack dragged out of Main Phase 1: the Battle Phase has started, now it is declared.
+	var said := want
+	want = {}
+	if battle and said.has("attacker"):
+		for a in acts.get(int(said["attacker"]), []):
+			if str(a[2]) == "attack":
+				for k in ["target", "direct"]:
+					if said.has(k):
+						want[k] = said[k]
+				req = null
+				acts = {}
+				return a[1]
+		Router.toast(Loc.t("That monster cannot attack right now."), 2.2)
 	refresh()
 	_ux_demo()
 	if s._human_test:
@@ -669,6 +812,9 @@ func _ask_command(m: Dictionary):
 	acts = {}
 	speed_acts = []
 	pick = {}
+	press = {}
+	if not aim.is_empty():
+		_aim_stop()
 	s.mode = ""
 	s.hud.hide_actions()
 	s.hud.hide_prompt()
@@ -678,6 +824,8 @@ func _ask_command(m: Dictionary):
 	return bytes
 
 
+## One entry per thing a card can do right now: [the word, the answer, what kind of move, a
+## second line for the menu ("" = the usual one for that kind), can it attack directly].
 func _add_all(list: Array, kind: int, what: String) -> void:
 	var cards := d.cards_of(list)
 	for i in list.size():
@@ -685,25 +833,43 @@ func _add_all(list: Array, kind: int, what: String) -> void:
 		if c == null:
 			continue
 		var label := ""
+		var hint := ""
+		var k := what
 		match what:
-			"summon": label = Loc.t("Summon")
+			"summon":
+				label = Loc.t("Summon")
+				if c.level() >= 5:
+					label = Loc.t("Tribute Summon")
+					k = "tribute"
 			"special": label = Loc.t("Special Summon")
-			"mset", "sset": label = Loc.t("Set")
+			"mset":
+				label = Loc.t("Set")
+				if c.level() >= 5:
+					hint = "Face-down. It needs Tributes too"
+			"sset": label = Loc.t("Set")
 			"attack": label = Loc.t("Attack")
 			"repos":
-				label = Loc.t("Flip Summon") if not c.face_up else (Loc.t("To Defense") if c.attack_pos else Loc.t("To Attack"))
+				label = Loc.t("Flip Summon") if not c.face_up else (Loc.t("To Defense Position") if c.attack_pos else Loc.t("To Attack Position"))
+				if not c.face_up:
+					k = "flipsummon"
 			"act":
 				var line := OcgCore.desc(int(list[i]["desc"]))
 				var plain: bool = not c.is_monster() and (s.state.players[ME].hand.has(c) or not c.face_up)
-				label = Loc.t("Activate") if plain or line == "" else Loc.t("Effect: ") + line
+				label = Loc.t("Activate") if not c.is_monster() else Loc.t("Use its effect")
+				if not plain and line != "":
+					hint = line
 		if not acts.has(c.uid):
 			acts[c.uid] = []
-		(acts[c.uid] as Array).append([label, OcgDuel.i32((i << 16) | kind), what])
+		(acts[c.uid] as Array).append([label, OcgDuel.i32((i << 16) | kind), k, hint, int(list[i].get("direct", 0)) != 0])
+
+
+func _is(a: Array, what: String) -> bool:
+	return str(a[2]) == what or (what == "summon" and str(a[2]) == "tribute") or (what == "repos" and str(a[2]) == "flipsummon")
 
 
 func _has(c, what: String) -> bool:
 	for a in acts.get(c.uid, []):
-		if a[2] == what:
+		if _is(a, what):
 			return true
 	return false
 
@@ -761,12 +927,12 @@ func refresh() -> void:
 
 func _coach(battle: bool, ready: int) -> String:
 	if battle:
-		return Loc.t("Tap one of your glowing monsters to attack, or press Main Phase 2 / End Turn.")
+		return Loc.t("Tap a glowing monster and then its target, or drag it there.")
 	if ready > 0:
 		return Loc.t("A monster in your Extra Deck is ready. Glowing cards can do something.")
 	if acts.is_empty():
 		return Loc.t("Nothing to play. Go to the Battle Phase or end your turn.")
-	return Loc.t("Glowing cards can do something. Tap one.")
+	return Loc.t("Glowing cards can do something: tap one, or drag it onto the table.")
 
 
 func _answer(bytes: PackedByteArray) -> void:
@@ -775,11 +941,19 @@ func _answer(bytes: PackedByteArray) -> void:
 	answered.emit(bytes)
 
 
-func _menu_for(c) -> Array:
+## The menu of a card: every entry carries its kind (for the icon and the color) and, when it
+## has one, its own second line. `only`: just these kinds (a card dropped on a zone).
+func _menu_for(c, only: Array = []) -> Array:
 	var opts: Array = []
 	_menu = acts.get(c.uid, [])
 	for i in _menu.size():
-		opts.append(["ocg:%d" % i, _menu[i][0], true])
+		var e: Array = _menu[i]
+		if not only.is_empty() and not only.has(str(e[2])):
+			continue
+		var o: Array = ["ocg:%d" % i, e[0], true, str(e[2])]
+		if str(e[3]) != "":
+			o.append(str(e[3]))
+		opts.append(o)
 	return opts
 
 
@@ -789,6 +963,9 @@ func on_hand_card_pressed(inst, _at: Vector2) -> void:
 		hud.hide_actions()
 		s._menu_card = null
 		return
+	if not aim.is_empty():
+		s._cancel_mode()
+	want = {}
 	s._deck_menu = false
 	s._menu_card = inst
 	hud.inspect(inst)
@@ -802,6 +979,10 @@ func on_hand_card_pressed(inst, _at: Vector2) -> void:
 	hud.show_actions(hud.hand_menu_anchor(inst), opts, true)
 
 
+func _mine(inst) -> bool:
+	return s.state.players[ME].field.has(inst)
+
+
 func on_board_card_clicked(card) -> void:
 	var hud = s.hud
 	var inst = card.inst
@@ -809,24 +990,40 @@ func on_board_card_clicked(card) -> void:
 		return
 	if not pick.is_empty():
 		if (pick["cands"] as Array).has(inst):
-			var done = pick
-			pick = {}
-			done["result"] = inst
-			(done["sig"] as Callable).call(inst)
+			(pick["sig"] as Callable).call(inst)
 		return
-	var reopened: bool = hud.actions_visible() and s._menu_card != null and s._menu_card == inst
+	if not zone_pick.is_empty():
+		return
+	if not aim.is_empty():
+		# An attack is being aimed: one of theirs is the target; the attacker again calls it off.
+		if s.state.players[AI].field.has(inst):
+			_aim_go(inst, false)
+		elif _mine(inst) and inst != aim["inst"] and _has(inst, "attack"):
+			_aim_from(inst)
+		else:
+			s._cancel_mode()
+		return
+	# (a second tap on the card whose menu is open closes it; the tap itself may already have put the menu away)
+	var reopened: bool = (hud.actions_visible() and s._menu_card != null and s._menu_card == inst) or (s._closed_card != null and s._closed_card == inst and Time.get_ticks_msec() - int(s._closed_at) < 150)
+	s._closed_card = null
 	hud.hide_actions()
 	s._deck_menu = false
 	if not active() or reopened:
 		s._menu_card = null
+		press = {}
 		return
+	want = {}
+	var battle := int(req["t"]) == 10
+	if not battle and int(req["to_bp"]) != 0 and _mine(inst) and inst.face_up and inst.attack_pos:
+		# In Main Phase 1 a press that turns into a drag is an attack: the Battle Phase starts by itself.
+		press = {"inst": inst, "from": s.get_viewport().get_mouse_position()}
 	var opts := _menu_for(inst)
 	if opts.is_empty():
 		return
 	s._menu_card = inst
-	if opts.size() == 1 and _menu[0][2] == "attack":
+	if opts.size() == 1 and _is(_menu[0], "attack"):
 		s._menu_card = null
-		_answer(_menu[0][1])
+		_aim_from(inst)
 		return
 	hud.show_actions(s.board.screen_pos(inst) + Vector2(60, 0), opts)
 
@@ -834,6 +1031,7 @@ func on_board_card_clicked(card) -> void:
 func on_action(action: String) -> bool:
 	if not action.begins_with("ocg:"):
 		return false
+	var card = s._menu_card
 	s._menu_card = null
 	var parts := action.split(":")
 	var list: Array = _menu
@@ -843,43 +1041,207 @@ func on_action(action: String) -> bool:
 		list = acts.get(int(parts[1]), [])
 		i = int(parts[2])
 	if active() and i >= 0 and i < list.size():
+		if _is(list[i], "attack") and card != null and _mine(card):
+			# Attack: now say at what. Nothing is declared until you do.
+			_aim_start(card, list[i][1], bool(list[i][4]), false)
+			return true
 		_answer(list[i][1])
 	return true
 
 
-## What dropping a hand card on your rows would do (see the duel scene's _drop_plan): a monster
-## on the monster row, a Spell or Trap on the back row; face-up on the left, Set on the right.
-func drop_plan(inst) -> Dictionary:
+# ------------------------------------------------------------------ attacking
+
+func _foes() -> Array:
+	return s.state.players[AI].monsters()
+
+
+func _aim_from(inst) -> void:
+	for a in acts.get(inst.uid, []):
+		if _is(a, "attack"):
+			_aim_start(inst, a[1], bool(a[4]), true)
+			return
+
+
+## Aim an attack: an arrow runs from the attacker to the pointer, their monsters light up, and
+## their side of the field becomes a target when the attack can go direct. Tap a target, or
+## hold the press and let go over it. `answer` is null for an attack dragged out of Main Phase 1.
+func _aim_start(inst, answer, direct: bool, held: bool) -> void:
+	var foes := _foes()
+	if answer == null:
+		direct = foes.is_empty()
+	elif foes.is_empty():
+		direct = true
+	aim = {"inst": inst, "answer": answer, "direct": direct, "from": s.get_viewport().get_mouse_position(),
+			"held": held and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT), "moved": false}
+	press = {}
+	s.mode = "attack"
+	s.hud.hide_actions()
+	s._menu_card = null
+	s._clear_glows()
+	var node = s.board.card_for(inst)
+	if node:
+		node.set_glow(true, UITheme.GOLD)
+	for t in foes:
+		var tc = s.board.card_for(t)
+		if tc:
+			tc.set_glow(true, UITheme.DANGER)
+	s.board.start_aim(inst)
+	s.board.show_direct_target(direct)
+	Sfx.play("hover", -8.0, 0.9)
+	var nm := str(inst.cname())
+	if foes.is_empty():
+		s.hud.show_prompt(Loc.t("%s: tap their side of the field to attack directly") % nm, false)
+	elif direct:
+		s.hud.show_prompt(Loc.t("%s: tap a monster to attack it, or their side of the field to attack directly") % nm, false)
+	else:
+		s.hud.show_prompt(Loc.t("%s: tap the monster it attacks") % nm, false)
+
+
+func _aim_stop() -> void:
+	aim = {}
+	s.board.stop_aim()
+	s.board.show_direct_target(false)
+	s.mode = ""
+	s.hud.hide_prompt()
+
+
+## The attack is on: at `target`, or directly.
+func _aim_go(target, direct: bool) -> void:
+	var a := aim
+	if a.is_empty():
+		return
+	if direct and not bool(a["direct"]):
+		Sfx.play("error", -8.0)
+		return
+	_aim_stop()
+	if not active():
+		refresh()
+		return
+	want = {"direct": true} if direct else {"target": target.uid}
+	Sfx.play("card", -4.0, 0.8)
+	if a["answer"] != null:
+		_answer(a["answer"])
+	else:
+		want["attacker"] = a["inst"].uid
+		_answer(OcgDuel.i32(6))
+
+
+## Their side of the field was tapped while aiming.
+func on_direct() -> void:
+	if not aim.is_empty():
+		_aim_go(null, true)
+
+
+## The second button of the line at the top (Confirm).
+func on_prompt_button() -> void:
+	if not pick.is_empty() and pick.has("sig"):
+		(pick["sig"] as Callable).call("ok")
+
+
+## The pointer, before anything else sees it: a tap on a lit zone, and presses that turn into drags.
+func on_input(event: InputEvent) -> bool:
+	if not zone_pick.is_empty():
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			var z = s.board.zone_at(event.position, zone_pick)
+			if z != null:
+				Sfx.play("card", -6.0)
+				_zone_picked.emit(z)
+				return true
+		return false
+	if event is InputEventMouseMotion:
+		if not press.is_empty() and aim.is_empty() and active():
+			if (event.position as Vector2).distance_to(press["from"]) > 22.0:
+				var inst = press["inst"]
+				press = {}
+				_aim_start(inst, null, false, true)
+				if not aim.is_empty():
+					aim["moved"] = true
+		elif not aim.is_empty() and aim["held"] and not aim["moved"]:
+			if (event.position as Vector2).distance_to(aim["from"]) > 22.0:
+				aim["moved"] = true
+	elif event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		press = {}
+		if not aim.is_empty() and aim["held"]:
+			aim["held"] = false
+			if aim["moved"]:
+				# Let go: over one of their monsters, over their side of the field, or nowhere.
+				var hit = s.board.enemy_card_at(event.position, _foes())
+				if hit != null:
+					_aim_go(hit.inst, false)
+				elif bool(aim["direct"]) and s.board.side_at(event.position) == 1:
+					_aim_go(null, true)
+				else:
+					s._cancel_mode()
+	return false
+
+
+# ------------------------------------------------------------------ dragging a card out of the hand
+
+## The zones a hand card can be dropped on: free Monster Zones for a monster you can Summon or
+## Set, free Spell & Trap Zones for a Spell or Trap (the Field Zone for a Field Spell).
+func _drop_zones(inst) -> Array:
+	var out: Array = []
 	if not active() or not acts.has(inst.uid):
-		return {}
-	var list: Array = acts[inst.uid]
-	var up := -1
-	var down := -1
-	var word := ""
-	for i in list.size():
-		match str(list[i][2]):
-			"special":
-				up = i
-				word = "SPECIAL SUMMON"
-			"summon":
-				if up == -1:
-					up = i
-					word = "SUMMON"
-			"act":
-				if not inst.is_monster() and up == -1:
-					up = i
-					word = "ACTIVATE"
-			"mset", "sset":
-				if down == -1:
-					down = i
-	var cells: Array = []
-	if up >= 0:
-		cells.append(["ocg:%d:%d" % [inst.uid, up], word])
-	if down >= 0:
-		cells.append(["ocg:%d:%d" % [inst.uid, down], "SET"])
-	if cells.is_empty():
-		return {}
-	return {(0 if inst.is_monster() else 1): cells}
+		return out
+	var ps: DuelState.PlayerState = s.state.players[ME]
+	if inst.is_monster():
+		if not (_has(inst, "summon") or _has(inst, "mset") or _has(inst, "special")):
+			return out
+		for z in 5:
+			if ps.field[z] == null:
+				out.append([ME, OcgCore.LOC_MZONE, z])
+		if out.is_empty():
+			# A full row: it takes the place of a monster you Tribute.
+			for z in 5:
+				out.append([ME, OcgCore.LOC_MZONE, z])
+	elif _has(inst, "act") or _has(inst, "sset"):
+		if SpellRules.kind(inst) == "field":
+			out.append([ME, OcgCore.LOC_SZONE, 5])
+		else:
+			for z in 5:
+				if ps.spells[z] == null:
+					out.append([ME, OcgCore.LOC_SZONE, z])
+	return out
+
+
+## (the duel scene asks this to know whether a hand card can be dragged at all)
+func drop_plan(inst) -> Dictionary:
+	return {} if _drop_zones(inst).is_empty() else {0: []}
+
+
+func on_hand_drag(inst, on: bool) -> void:
+	if not on:
+		s.board.show_zone_picks([])
+		return
+	s._menu_card = null
+	var word := "PLAY"
+	if inst.is_monster():
+		word = "SUMMON" if (_has(inst, "summon") or _has(inst, "special")) else "SET"
+	elif not _has(inst, "act"):
+		word = "SET"
+	s.board.show_zone_picks(_drop_zones(inst), word)
+
+
+## A hand card let go over the table. On a lit zone it is played there: at once when there is
+## one way to play it, and with its choices (Summon or Set) opening over that zone otherwise.
+func on_hand_drop(inst, at: Vector2) -> bool:
+	var z = s.board.zone_at(at, _drop_zones(inst))
+	if z == null or not active():
+		return false
+	var kinds: Array = ["summon", "tribute", "special", "mset"] if inst.is_monster() else ["act", "sset"]
+	var opts := _menu_for(inst, kinds)
+	if opts.is_empty():
+		return false
+	want = {"zone": [int(z[1]), int(z[2])]}
+	Sfx.play("card", -4.0)
+	if opts.size() == 1:
+		s._menu_card = inst
+		on_action.call_deferred(str(opts[0][0]))
+		return true
+	s._menu_card = inst
+	s.hud.focus_hand_card(inst)
+	s.hud.show_actions(s.board.camera.unproject_position(s.board.zone_pos(z)) + Vector2(0, -40), opts, true)
+	return false
 
 
 ## Speed World 2: which of its effects to pay for.
@@ -918,6 +1280,7 @@ func on_phase_button(action: String) -> void:
 func on_extra_pressed() -> void:
 	if not active():
 		return
+	want = {}
 	var opts: Array = []
 	for x in s.state.players[ME].extra:
 		var ok: bool = acts.has(x.uid)
@@ -953,10 +1316,12 @@ func pile_effects() -> Array:
 
 
 func on_pile_effects() -> void:
+	want = {}
 	var cards := pile_effects()
 	if cards.is_empty():
 		return
-	var got = await s.hud.ask_pick(Loc.t("Use which card's effect?"), cards, Loc.t("Activate"), Loc.t("Not now"), [], _labels(cards))
+	var res = await s.hud.ask_cards(Loc.t("Use which card's effect?"), cards, {"min": 1, "max": 1, "confirm": Loc.t("Activate"), "cancel": Loc.t("Not now"), "labels": _labels(cards)})
+	var got = res[0] if (res is Array and not (res as Array).is_empty()) else null
 	if got == null or not active() or not acts.has(got.uid):
 		return
 	var list: Array = acts[got.uid]
@@ -965,30 +1330,114 @@ func on_pile_effects() -> void:
 		return
 	var words: Array = []
 	for a in list:
-		words.append(a[0])
+		words.append(a[3] if str(a[3]) != "" else a[0])
 	var i: int = await s.hud.ask_choice(Loc.t("%s: which effect?") % got.cname(), words, got)
 	if active():
 		_answer(list[clampi(i, 0, list.size() - 1)][1])
 
 
-func cancel() -> void:
-	if not pick.is_empty() and bool(pick.get("cancel", false)):
-		var done = pick
-		pick = {}
-		(done["sig"] as Callable).call(null)
+## Esc, a right-click or the Cancel button. True when something of the table's own was open
+## (a pick, a zone choice): the scene then leaves the rest alone.
+func cancel() -> bool:
+	press = {}
+	if not zone_pick.is_empty():
+		_zone_picked.emit(null)
+		return true
+	if not pick.is_empty():
+		if bool(pick.get("cancel", false)):
+			(pick["sig"] as Callable).call(null)
+		else:
+			Sfx.play("error", -10.0)
+		return true
+	aim = {}
+	return false
 
 
 ## Point at one card on the table. Returns the card, or null if it was cancelled.
 signal _picked(card)
 
-func _pick_on_board(cards: Array, text: String, can_cancel: bool):
+func _pick_on_board(cards: Array, text: String, can_cancel: bool, word := "SELECT"):
 	pick = {"cands": cards, "cancel": can_cancel, "sig": func(c): _picked.emit(c)}
-	s.board.show_picks(cards, [])
-	s.hud.show_prompt(text + ("" if not can_cancel else "   " + Loc.t("(Esc: cancel)")), false)
+	s.board.show_picks(cards, [], word)
+	s.hud.show_prompt(text, false, "", "Cancel" if can_cancel else "")
+	_auto(func(): _picked.emit(null if (can_cancel and randf() < 0.15) else cards.pick_random()))
 	var got = await _picked
+	while got is String:      # (a stray Confirm: there is nothing to confirm here)
+		got = await _picked
 	pick = {}
 	s.board.clear_picks()
 	s.hud.hide_prompt()
+	return got
+
+
+## Point at several cards on the table: a tap chooses one, a second tap takes it back, the
+## counter at the top keeps score and Confirm sends them. count = [fewest, most]; `valid` says
+## whether the cards chosen so far may be confirmed. Returns the cards, or null if cancelled.
+func _pick_many_on_board(cards: Array, text: String, count: Array, valid: Callable, can_cancel: bool, word := "SELECT", info := Callable()):
+	var chosen: Array = []
+	pick = {"cands": cards, "cancel": can_cancel, "many": true, "sig": func(c): _picked.emit(c)}
+	var hi := int(count[1])
+	var out = null
+	while true:
+		s.board.show_picks(cards, chosen, word, "CHOSEN")
+		var ok: bool = valid.call(chosen)
+		var line := "%s   ·   %d / %d" % [text, chosen.size(), hi if int(count[0]) == hi else maxi(int(count[0]), chosen.size())]
+		if info.is_valid() and str(info.call(chosen)) != "":
+			line += "   ·   " + str(info.call(chosen))
+		s.hud.show_prompt(line, true, "Confirm", "Cancel" if can_cancel else "", ok)
+		_auto_steps += 1
+		var step := _auto_steps
+		_auto(func():
+			if step != _auto_steps or pick.is_empty():
+				return
+			if ok and (randf() < 0.6 or chosen.size() >= hi):
+				_picked.emit("ok")
+			elif step % 40 == 39:
+				_picked.emit(null if can_cancel else "stop")
+			else:
+				_picked.emit(cards.pick_random()))
+		var got = await _picked
+		if got is String and str(got) == "stop":
+			break
+		if got == null:
+			break
+		if got is String:
+			if ok:
+				out = chosen
+				break
+			Sfx.play("error", -10.0)
+			continue
+		if chosen.has(got):
+			chosen.erase(got)
+			Sfx.play("card", -10.0, 0.9)
+		elif chosen.size() >= hi:
+			Sfx.play("error", -10.0)
+		else:
+			chosen.append(got)
+			Sfx.play("card", -8.0, 1.15 + 0.06 * chosen.size())
+	pick = {}
+	s.board.clear_picks()
+	s.hud.hide_prompt()
+	return out
+
+
+## One step of a pick the engine checks card by card, on the table: the cards that may be added
+## and the ones already in (tap one of those to take it back). Returns the card tapped,
+## "ok" for Confirm, or null for a cancel.
+func _pick_live_on_board(cards: Array, chosen: Array, text: String, finish: bool, can_cancel: bool):
+	var all: Array = cards + chosen
+	pick = {"cands": all, "cancel": can_cancel or finish, "sig": func(c): _picked.emit(c)}
+	s.board.show_picks(all, chosen, "SELECT", "CHOSEN")
+	s.hud.show_prompt("%s   ·   %s" % [text, Loc.t("%d chosen") % chosen.size()], true, "Confirm", "Cancel" if (can_cancel and not finish) else "", finish)
+	_auto(func(): _picked.emit("ok" if (finish and (randf() < 0.5 or cards.is_empty())) else (all.pick_random() if not cards.is_empty() or finish else null)))
+	var got = await _picked
+	while got is String and not finish:
+		Sfx.play("error", -10.0)
+		got = await _picked
+	pick = {}
+	if got == null or got is String:
+		s.board.clear_picks()
+		s.hud.hide_prompt()
 	return got
 
 
@@ -1107,9 +1556,19 @@ func _pile(nodes: Array, cards: Array, add: Callable) -> void:
 
 ## Dev: `--ux=menu|pick|choice|attack` opens one interaction at the first chance, for a screenshot.
 var _ux_done := false
+var _ux_busy := false
+
+func _ux_summon() -> bool:
+	for c in s.state.players[ME].hand:
+		for a in acts.get(c.uid, []):
+			if str(a[2]) == "summon":
+				_answer(a[1])
+				return true
+	return false
+
 
 func _ux_demo() -> void:
-	if _ux_done:
+	if _ux_done or _ux_busy:
 		return
 	var what := ""
 	for a in OS.get_cmdline_user_args():
@@ -1117,21 +1576,101 @@ func _ux_demo() -> void:
 			what = a.trim_prefix("--ux=")
 	if what == "":
 		return
-	_ux_done = true
+	_ux_busy = true
 	await s.get_tree().create_timer(1.2).timeout
+	_ux_busy = false
+	if not active():
+		return
 	var hand: Array = s.state.players[ME].hand
+	var mons: Array = s.state.players[ME].monsters()
+	var battle := int(req["t"]) == 10
 	match what:
 		"menu":
+			_ux_done = true
 			for c in hand:
 				if acts.has(c.uid) and c.is_monster():
 					on_hand_card_pressed(c, Vector2.ZERO)
 					break
 		"menu2":
+			_ux_done = true
 			for c in hand:
 				if acts.has(c.uid) and not c.is_monster():
 					on_hand_card_pressed(c, Vector2.ZERO)
 					break
 		"pick":
-			s.hud.ask_pick("Select the monsters to Tribute   (1 / 2)", hand, Loc.t("Select"), Loc.t("Cancel"), [], {})
+			_ux_done = true
+			s.hud.ask_cards("Select the cards to discard", hand, {"min": 2, "max": 2, "cancel": Loc.t("Cancel"), "labels": _labels(hand)})
+			await s.get_tree().create_timer(0.6).timeout
+			s.hud._picker._tap(hand[1])
+			s.hud._picker._tap(hand[3])
+		"pick1":
+			_ux_done = true
+			s.hud.ask_cards("Add 1 card to your hand", s.state.players[ME].deck.slice(0, 14), {"min": 1, "max": 1})
+			await s.get_tree().create_timer(0.6).timeout
+			s.hud._picker._tap(s.state.players[ME].deck[2])
 		"choice":
-			s.hud.ask_choice("Activate \"Dark Magical Circle\"?", [Loc.t("Yes"), Loc.t("No")])
+			_ux_done = true
+			s.hud.ask_choice("Activate \"Dark Magical Circle\"?", [Loc.t("Yes"), Loc.t("No")], hand[0])
+		"pos":
+			_ux_done = true
+			s.hud.ask_position(hand[0], [1, 4, 8])
+		"drag":
+			_ux_done = true
+			for c in hand:
+				if acts.has(c.uid) and c.is_monster():
+					on_hand_drag(c, true)
+					break
+		"zone":
+			_ux_done = true
+			_ux_summon()
+		"tsummon", "tsummon2":
+			_ux_done = true
+			for c in hand:
+				for a in acts.get(c.uid, []):
+					if str(a[2]) == "tribute":
+						_answer(a[1])
+						if what == "tsummon2":
+							# (the whole way: the Tribute is tapped, then a zone)
+							await s.get_tree().create_timer(1.5).timeout
+							if not pick.is_empty():
+								(pick["sig"] as Callable).call((pick["cands"] as Array)[0])
+							await s.get_tree().create_timer(1.5).timeout
+							if not zone_pick.is_empty():
+								_zone_picked.emit(zone_pick[0])
+						return
+		"aim", "direct":
+			s.hud.auto_answer = true
+			if battle:
+				var who = null
+				for mm in mons:
+					if _has(mm, "attack"):
+						who = mm
+						break
+				if who != null:
+					_ux_done = true
+					s.hud.auto_answer = false
+					_aim_from(who)
+				else:
+					_answer(OcgDuel.i32(3))
+			elif mons.is_empty():
+				want = {"zone": [OcgCore.LOC_MZONE, 1]}
+				if not _ux_summon():
+					_answer(OcgDuel.i32(7))
+			elif int(req["to_bp"]) != 0:
+				_answer(OcgDuel.i32(6))
+			else:
+				_answer(OcgDuel.i32(7))
+		"many":
+			s.hud.auto_answer = true
+			if mons.size() >= 2:
+				_ux_done = true
+				s.hud.auto_answer = false
+				_pick_many_on_board(mons, "Select the monsters to Tribute", [2, 2], func(ch: Array): return ch.size() == 2, true, "TRIBUTE")
+				await s.get_tree().create_timer(0.5).timeout
+				(pick["sig"] as Callable).call(mons[0])
+			elif battle:
+				_answer(OcgDuel.i32(3))
+			else:
+				want = {"zone": [OcgCore.LOC_MZONE, mons.size() * 3]}
+				if not _ux_summon():
+					_answer(OcgDuel.i32(7))

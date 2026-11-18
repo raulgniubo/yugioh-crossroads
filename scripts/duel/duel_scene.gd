@@ -13,10 +13,6 @@ var busy := false
 var mode := ""  # "", "tribute", "attack"
 var _shown = null                 # the monster whose arrival show just played
 var _puzzle := {}                 # a duel puzzle: win this turn (see Puzzles)
-var _pending_card = null
-var _pending_set := false
-var _tributes: Array = []
-var _attacker = null
 var _menu_card = null
 var _turn_done := false
 var _finished := false
@@ -171,11 +167,9 @@ func _start() -> void:
 	_ai_level = int(cfg.get("difficulty", 1))
 	# Who you face decides how they play and what you hear.
 	var mood := str(Characters.get_char(_opp_key).get("personality", ""))
-	DuelAI.styles = ["", DuelAI.style_for(_opp_key)]
 	var opp_ace := int(Characters.get_char(_opp_key).get("ace", 0))
 	if opp_ace == 0:
 		opp_ace = int(CardData.NAME_TO_ID.get(str(Characters.get_char(_opp_key).get("ace_name", "")).to_lower(), 0))
-	DuelAI.aces = [0, opp_ace]
 	if not cfg.get("turbo", false):
 		_theme = {"cocky": "duel_rival", "cool": "duel_rival", "dark": "duel_dark", "wild": "duel_wild"}.get(mood, "duel")
 		# A boss brings their own music.
@@ -275,7 +269,7 @@ func _start() -> void:
 	var opp_extra: Array[int] = CardData.extra_list(opp_deck, opp_plain)
 	SignatureDecks.cpu = false
 	var extra_hand := int(cfg.get("hand", 5)) - 5
-	state.bonus_cards = [extra_hand, extra_hand + (1 if _ai_level >= 2 and ocg == null else 0)]   # (on the new engine the opponent's edge is how it thinks, not an extra card)
+	state.bonus_cards = [extra_hand, extra_hand]   # (the opponent's edge is how it thinks, not an extra card)
 	# Destiny Draw: as the Free Duel screen says, else as Settings says. Never in a puzzle.
 	# You always have it; of your opponents, the strong ones do: 4 and 5 stars, and story bosses.
 	state.destiny = bool(cfg.get("destiny", Settings.destiny_draw)) and str(cfg.get("puzzle", "")) == ""
@@ -293,7 +287,7 @@ func _start() -> void:
 			for id in [CardData.SPEED_SPELLS[0], CardData.SPEED_SPELLS[0], CardData.SPEED_SPELLS[1]] + kit.slice(0, 4):
 				side_list.append(int(id))
 	var events: Array
-	if not _puzzle.is_empty() and ocg != null:
+	if not _puzzle.is_empty():
 		# The position is handed to the engine as it stands: your hand, both fields, the Graveyards.
 		first = ME
 		var lay := {"hand": [Puzzles.hand_ids(_puzzle), []], "mons": [[], []], "gy": [[], []]}
@@ -307,14 +301,7 @@ func _start() -> void:
 		events = []
 		cfg["my_lp"] = int(_puzzle.get("my_lp", 4000))
 		cfg["opp_lp"] = int(_puzzle.get("opp_lp", 4000))
-	elif not _puzzle.is_empty():
-		first = ME
-		events = Puzzles.begin(state, _puzzle)
-		state.players[ME].name = me_name
-		state.players[AI].name = opp_name
-		cfg["my_lp"] = int(_puzzle.get("my_lp", 4000))
-		cfg["opp_lp"] = int(_puzzle.get("opp_lp", 4000))
-	elif ocg != null:
+	else:
 		var speed0 := [0, 0]
 		if state.turbo:
 			var tune0 := int(Collection.record.get("runner_tune", 0))
@@ -341,19 +328,6 @@ func _start() -> void:
 				[5 + int(state.bonus_cards[ME]), 5 + int(state.bonus_cards[AI])], lay,
 				{"speed": speed0, "destiny": [state.destiny and state.destiny_who[ME], state.destiny and state.destiny_who[AI]]})
 		events = []
-	else:
-		events = state.setup(my_list, opp_list, me_name, opp_name, first, -1,
-				CardData.extra_list(my_deck), opp_extra)
-	# Grand Prix: your lap decides how many Speed Counters each rider starts with.
-	if state.turbo and cfg.has("speed_start") and ocg == null:
-		for p in 2:
-			state.players[p].speed = clampi(int((cfg["speed_start"] as Array)[p]), 0, DuelState.SPEED_MAX)
-			hud.set_speed(p, state.players[p].speed, 0)
-	# A runner tuned at the Satellite garage starts with Speed Counters already on the dial.
-	var tune := int(Collection.record.get("runner_tune", 0))
-	if state.turbo and tune > 0 and not cfg.has("speed_start") and not _autoplay and ocg == null:
-		state.players[ME].speed = clampi(state.players[ME].speed + tune, 0, DuelState.SPEED_MAX)
-		hud.set_speed(ME, state.players[ME].speed, 0)
 	# House rules from Free Duel: starting Life Points (and what a Gauntlet carried over).
 	_start_lp = [int(cfg.get("lp", DuelState.START_LP)), int(cfg.get("lp", DuelState.START_LP))]
 	if cfg.has("my_lp"):
@@ -372,7 +346,7 @@ func _start() -> void:
 			state.players[p].lp = _start_lp[p]
 			hud.set_lp(p, _start_lp[p], 0)
 	for p in 2:
-		board.set_deck_count(p, state.players[p].deck.size() + (0 if ocg != null else 5 + state.bonus_cards[p]))
+		board.set_deck_count(p, state.players[p].deck.size())
 	_update_counts()
 	hud.set_phase_buttons("", false, false)
 	hud.set_extra_button(state.players[ME].extra.size(), 0, false)
@@ -486,20 +460,10 @@ func _start() -> void:
 			board.turbo_blow(AI if state.winner == ME else ME)
 		_finish()
 		return
-	if ocg != null:
-		events = ocg.begin()
+	events = ocg.begin()
 	await _play(events)
-	if not _puzzle.is_empty() and ocg != null:
-		_update_counts()
-		hud.effect_text(Loc.t(str(_puzzle.get("hint", ""))))
-		await hud.banner("WIN THIS TURN", UITheme.GOLD, true)
-		_loop()
-		return
 	if not _puzzle.is_empty():
 		# The position is laid out, then it is your move: this turn is the only one you get.
-		Settings.pace = 0.45
-		await _play(Puzzles.place(state, _puzzle))
-		Settings.pace = 1.0
 		_update_counts()
 		hud.effect_text(Loc.t(str(_puzzle.get("hint", ""))))
 		await hud.banner("WIN THIS TURN", UITheme.GOLD, true)
@@ -517,55 +481,6 @@ func _speaker(p: int) -> String:
 
 const DestinyShow := preload("res://scripts/duel/destiny_show.gd")
 var _destiny_card = null          # the card the show has already drawn: its draw event is quiet
-
-
-## Before a turn begins: a duelist in trouble may reach for the card they need (once per duel).
-## You are asked; the computer decides for itself. Then the moment plays, and the Draw Phase
-## that follows draws that card.
-func _destiny_step() -> void:
-	var p: int = state.current
-	if "--destiny-dbg" in OS.get_cmdline_user_args():
-		print("DDBG p ", p, " can ", state.can_destiny(p), " on ", state.destiny, " who ", state.destiny_who, " used ", state.destiny_used, " turn ", state.turn, " lp ", state.players[p].lp, " skip ", state.players[p].skip_draw, " fin ", _finished)
-	if not state.can_destiny(p) or _finished:
-		return
-	var pick = null
-	if p == ME and not _autoplay:
-		if _human_test:
-			pick = state.players[ME].deck[randi() % state.players[ME].deck.size()]
-		else:
-			_lumen("destiny")
-			if not await hud.ask_destiny():
-				return
-			var seen := {}
-			var opts: Array = []
-			for c in state.players[ME].deck:
-				if not seen.has(c.cname()):
-					seen[c.cname()] = true
-					opts.append(c)
-			var rank := func(c) -> int: return 0 if c.is_monster() else (1 if c.is_spell() else 2)
-			opts.sort_custom(func(a, b): return rank.call(a) < rank.call(b) if rank.call(a) != rank.call(b) else (a.atk() > b.atk() if a.is_monster() and a.atk() != b.atk() else a.cname() < b.cname()))
-			pick = await hud.ask_pick(Loc.t("Destiny Draw: choose the card you draw"), opts, "Draw this card", "Not now")
-			if pick == null:
-				return
-	else:
-		pick = DuelAI.pick_destiny(state, p)
-	if pick == null or not state.set_destiny(p, pick):
-		return
-	_destiny_card = pick
-	print("DESTINY ", p, " ", pick.cname())
-	if _autoplay or (_human_test and not "--destiny-show" in OS.get_cmdline_user_args()):
-		return
-	hud.hide_actions()
-	var who_name: String = state.players[p].name
-	board.duelist_body(p, "draw")
-	await DestinyShow.play(hud, {
-		"side": p, "key": str(hud.portrait_keys[p]), "who": who_name,
-		"color": UITheme.ACCENT if p == ME else Comic.RED,
-		"back": Cards.duel_back(p), "face": Cards.get_face(pick.id) if p == ME else null, "name": pick.cname() if p == ME else "",
-		"spirit": LumenSpirit.portrait(self) if (p == ME and _me_key == "player" and LumenBubble.with_you()) else null,
-	})
-	if p == AI:
-		_lumen("their_destiny")
 
 
 ## Dev: the Destiny Draw offer ("--demo-destiny=ask") or the moment itself, stopped at a stage
@@ -621,107 +536,11 @@ func _loop() -> void:
 		if da.begins_with("--demo-destiny"):
 			_demo_destiny(da.trim_prefix("--demo-destiny").trim_prefix("="))
 			return
-	if ocg != null:
-		await ocg.loop()
-		_finish()
-		return
-	while not state.is_over():
-		# Draw Phase, Standby Phase, then Main Phase 1. Both players may act in each.
-		await _destiny_step()
-		await _act("begin_turn", [true])
-		if state.is_over():
-			break
-		await _phase_window("Draw Phase")
-		if not state.is_over():
-			await _act("begin_standby", [])
-			await _phase_window("Standby Phase")
-		if state.is_over():
-			break
-		await _act("begin_main1", [])
-		if state.current == AI or _autoplay or _human_test:
-			await _ai_turn(state.current)
-			Settings.pace = 1.0
-		else:
-			Settings.pace = 1.0
-			_turn_done = false
-			_refresh()
-			if "--demo-actions" in OS.get_cmdline_user_args():
-				_demo_actions()
-			await _turn_finished
-		if state.is_over():
-			break
-		_cancel_mode()
-		if not _puzzle.is_empty():
-			# The one turn is over and they are still standing.
-			state._set_winner(AI, "The turn ended and they are still standing.")
-			break
-		await _act("begin_end", [])
-		await _phase_window("End Phase")
-		if state.is_over():
-			break
-		await _act("finish_turn", [])
+	await ocg.loop()
 	_finish()
 
 
-## A chance for both players to act in a phase (the turn player first).
-func _phase_window(phase_name: String) -> void:
-	if state.is_over() or _finished:
-		return
-	await _window(state.current, "phase", null, Loc.t("%s. Activate a card?") % phase_name)
-
-
 # ------------------------------------------------------------------ running the rules
-
-## Run a rules action for real. Every choice it leaves to the human (a discard, a target, a
-## material, a position) is found first by trying the action on a copy of the duel, asked,
-## then replayed in the same order. Nothing is picked for you.
-func _run(fn: Callable, args: Array = [], settle := true) -> Array:
-	var answers: Array = []
-	if not _autoplay:
-		var guard := 0
-		while guard < 30:
-			guard += 1
-			var sim := state.clone()
-			sim.manual = state.manual.duplicate()
-			sim.answers = answers.duplicate(true)
-			fn.call(sim, _map(sim, args))
-			if sim.need == null:
-				break
-			answers.append(await _ask(sim.need))
-	state.answers = answers
-	state.need = null
-	var ev: Array = fn.call(state, args)
-	state.answers = []
-	await _play(ev)
-	if settle:
-		await _settle()
-	return ev
-
-
-func _act(method: String, args: Array = [], settle := true) -> Array:
-	return await _run(func(st, a): return st.callv(method, a), args, settle)
-
-
-## The same cards / chain links inside a copy of the duel.
-func _map(st: DuelState, v):
-	if st == state:
-		return v
-	if v is DuelState.CardInst:
-		return st.find_uid(v.uid)
-	if v is Array:
-		var out: Array = []
-		for x in v:
-			out.append(_map(st, x))
-		return out
-	if v is Dictionary:
-		var idx := state.chain.find(v)
-		if idx != -1 and idx < st.chain.size():
-			return st.chain[idx]
-		var d := {}
-		for k in v:
-			d[k] = _map(st, v[k])
-		return d
-	return v
 
 
 func _where(c) -> String:
@@ -735,53 +554,6 @@ func _where(c) -> String:
 		if ps.banished.has(c): return who + Loc.t(" banished")
 		if ps.extra.has(c): return who + Loc.t(" Extra Deck")
 	return ""
-
-
-## Put one decision in front of the player. Returns card uids, or [index] for an option.
-func _ask(need: Dictionary) -> Array:
-	var was := _flow
-	_flow = true
-	if _human_test:
-		var key := str(need["prompt"]).get_slice(":", 0).left(28)
-		_asked[key] = int(_asked.get(key, 0)) + 1
-	var src = state.find_uid(int(need.get("source", -1)))
-	if need.has("options"):
-		var idx: int = await hud.ask_choice(str(need["prompt"]), need["options"], src)
-		_flow = was
-		return [idx]
-	var cands: Array = []
-	for uid in need["cands"]:
-		var x = state.find_uid(int(uid))
-		if x != null:
-			cands.append(x)
-	var n: int = int(need["n"])
-	var picked: Array = []
-	while picked.size() < n and not cands.is_empty():
-		var text := str(need["prompt"])
-		if n > 1:
-			text += Loc.t("   (%d of %d)") % [picked.size() + 1, n]
-		var hidden: Array = []
-		var labels := {}
-		for x in cands:
-			labels[x.uid] = _where(x)
-			if x.owner != ME and not x.face_up and (state.players[AI].field.has(x) or state.players[AI].spells.has(x)):
-				hidden.append(x)
-			elif state.players[AI].hand.has(x):
-				hidden.append(x)
-		var got = await hud.ask_pick(text, cands, "Select", "Skip" if need.get("optional", false) else "", hidden, labels)
-		if got == null:
-			picked = []
-			break
-		picked.append(got.uid)
-		cands.erase(got)
-	_flow = was
-	return picked
-
-
-## Effects that triggered and are waiting go on a chain, and the chain plays out.
-func _settle() -> void:
-	if not state.pending_fx.is_empty() and not state.is_over() and not _finished:
-		await _window(state.opponent(state.current), "chain", null, "")
 
 
 func _finish() -> void:
@@ -808,8 +580,6 @@ func _finish() -> void:
 	if _human_test:
 		print("PROMPTS: ", _asked)
 	print("DUEL OVER: winner %d (%s) LP %d vs %d turn %d" % [state.winner, state.win_reason, state.players[0].lp, state.players[1].lp, state.turn])
-	if ocg == null and not _autoplay:
-		OcgReport.duel("duel (classic rules)", str(state.players[AI].name), _ai_level, int(state.winner), int(state.turn), str(state.win_reason), [])
 	Router.last_stats = {"won": won and not _surrendered, "lp": int(state.players[ME].lp), "turns": int(state.turn), "low": int(_my_low)}
 	var earned := 0
 	if not _puzzle.is_empty():
@@ -1133,7 +903,7 @@ func _play_event(ev: Dictionary) -> void:
 				hud.add_hand_card(ev["card"])
 		"summon", "set":
 			if p == ME:
-				hud.remove_hand_card(ev["card"])
+				_leave_hand(ev["card"])
 			Sfx.play("card")
 			var is_ace: bool = ev["type"] == "summon" and (ev["card"].level() >= 7 or ev["card"].id == Characters.get_char(_opp_key).get("ace", 0))
 			if ev["type"] == "summon":
@@ -1172,7 +942,7 @@ func _play_event(ev: Dictionary) -> void:
 			await board.anim_position(p, ev["card"], ev["zone"])
 		"activate":
 			if p == ME:
-				hud.remove_hand_card(ev["card"])
+				_leave_hand(ev["card"])
 			elif ev["card"].is_trap():
 				_lumen("trap")
 			hud.inspect(ev["card"])
@@ -1256,7 +1026,7 @@ func _play_event(ev: Dictionary) -> void:
 			await board.anim_attack_stopped(ev["card"])
 		"set_st":
 			if p == ME:
-				hud.remove_hand_card(ev["card"])
+				_leave_hand(ev["card"])
 			_talk(p, "set", 0.25)
 			Sfx.play("card")
 			await board.anim_set_st(p, ev["card"], ev["zone"])
@@ -1283,7 +1053,7 @@ func _play_event(ev: Dictionary) -> void:
 			await board.anim_destroy(ev["card"])
 		"hand_effect":
 			if p == ME:
-				hud.remove_hand_card(ev["card"])
+				_leave_hand(ev["card"])
 			hud.effect_text(ev["text"])
 			await board.anim_hand_effect(p, ev["card"])
 		"speed":
@@ -1332,14 +1102,14 @@ func _play_event(ev: Dictionary) -> void:
 		"material":
 			board.hide_stats_for(ev["card"])
 			if ev["from"] == "hand" and p == ME:
-				hud.remove_hand_card(ev["card"])
+				_leave_hand(ev["card"])
 			_materials.append(ev["card"])
 			Sfx.play("card", -4.0)
 			await board.anim_material(p, ev["card"], ev["from"], board.monster_zone_pos(p, 2))
 		"special":
 			var method: String = ev["method"]
 			if p == ME:
-				hud.remove_hand_card(ev["card"])
+				_leave_hand(ev["card"])
 			if method == "puzzle":
 				Sfx.play("card", -6.0)
 				await board.anim_special(p, ev["card"], ev["zone"], method, [])
@@ -1360,12 +1130,12 @@ func _play_event(ev: Dictionary) -> void:
 			await board.anim_special(p, ev["card"], ev["zone"], method, mats)
 		"discard":
 			if p == ME:
-				hud.remove_hand_card(ev["card"])
+				_leave_hand(ev["card"])
 			await board.anim_discard(p, ev["card"])
 		"banish":
 			board.hide_stats_for(ev["card"])
 			if str(ev.get("from", "")) == "hand" and int(ev.get("side", p)) == ME:
-				hud.remove_hand_card(ev["card"])
+				_leave_hand(ev["card"])
 			Sfx.play("destroy", -6.0)
 			hud.effect_text(Loc.t("%s is banished") % ev["card"].cname(), Color("c9a0ff"))
 			await board.anim_banish(ev["card"], str(ev.get("from", "")), int(ev.get("side", p)))
@@ -1538,117 +1308,11 @@ var _flow := false   # true while a chain / target prompt is running
 func _my_turn() -> bool:
 	if _flow:
 		return false
-	if ocg != null:
-		return ocg.active() and not hud.overlay_visible()
-	return state.current == ME and not busy and not state.is_over() and not hud.overlay_visible()
+	return ocg.active() and not hud.overlay_visible()
 
 
 func _refresh() -> void:
-	if ocg != null:
-		ocg.refresh()
-		return
-	hud.set_speed_button(_my_turn() and (state.can_speed_world(ME, 4) or state.can_speed_world(ME, 7) or state.can_speed_world(ME, 10)))
-	if not _my_turn():
-		hud.set_phase_buttons("", false, false)
-		hud.set_extra_button(state.players[ME].extra.size() if state.players.size() > 0 else 0, 0, false)
-		if state.players.size() > 1:
-			board.set_extra_count(ME, state.players[ME].extra.size(), 0)
-			board.set_extra_count(AI, state.players[AI].extra.size())
-		hud.set_playable([])
-		hud.set_coach("")
-		_clear_glows()
-		return
-	match state.phase:
-		DuelState.Phase.MAIN1:
-			hud.set_phase_buttons("Battle Phase", state.can_enter_battle(), true)
-		DuelState.Phase.BATTLE:
-			hud.set_phase_buttons("Main Phase 2", true, true)
-		DuelState.Phase.MAIN2:
-			hud.set_phase_buttons("", false, true)
-		_:
-			hud.set_phase_buttons("", false, false)
-	var ready := 0
-	for x in state.players[ME].extra:
-		if state.can_extra_summon(ME, x):
-			ready += 1
-	hud.set_extra_button(state.players[ME].extra.size(), ready, true)
-	board.set_extra_count(ME, state.players[ME].extra.size(), ready)
-	board.set_extra_count(AI, state.players[AI].extra.size())
-	var playable := []
-	for c in state.players[ME].hand:
-		if state.can_normal_summon(ME, c) or state.can_activate(ME, c) or state.can_special_from_hand(ME, c) or (c.is_trap() and state.can_set_st(ME, c)):
-			playable.append(c)
-	hud.set_playable(playable)
-	hud.set_coach(_coach_line(ready) if mode == "" else "")
-	_clear_glows()
-	if mode == "":
-		for st in state.players[ME].spells:
-			var sc := board.card_for(st) if st != null else null
-			if sc and not st.face_up:
-				sc.set_glow(state.can_activate(ME, st), Color("ff4dd2"))
-			elif sc and SpellRules.can_fire(state, ME, st):
-				sc.set_glow(true, Color("ffd23a"))
-		for m in state.players[ME].monsters():
-			var c := board.card_for(m)
-			if c and (state.can_attack(ME, m) or state.can_flip_summon(ME, m) or state.can_change_position(ME, m)):
-				c.set_glow(true, Comic.SKY)
-
-
-## A few words on what is open to you right now, so a glowing card is never a riddle.
-func _coach_line(extra_ready: int) -> String:
-	var me: DuelState.PlayerState = state.players[ME]
-	var parts: Array = []
-	if state.phase == DuelState.Phase.BATTLE:
-		var n := 0
-		for m in me.monsters():
-			if state.can_attack(ME, m):
-				n += 1
-		if n > 0:
-			parts.append(Loc.t("Tap a glowing monster to attack  (%d ready)") % n)
-		else:
-			parts.append(Loc.t("No attacks left: go to Main Phase 2 or end your turn"))
-		return "   ·   ".join(parts)
-	if state.phase != DuelState.Phase.MAIN1 and state.phase != DuelState.Phase.MAIN2:
-		return ""
-	var summon := false
-	var special := false
-	var spell := false
-	var trap := false
-	for c in me.hand:
-		if state.can_normal_summon(ME, c):
-			summon = true
-		elif state.can_special_from_hand(ME, c):
-			special = true
-		if not c.is_monster() and state.can_activate(ME, c):
-			spell = true
-		if c.is_trap() and state.can_set_st(ME, c):
-			trap = true
-	if summon:
-		parts.append(Loc.t("Summon or Set a monster"))
-	if special:
-		parts.append(Loc.t("Special Summon from your hand"))
-	if extra_ready > 0:
-		parts.append(Loc.t("Extra Deck summon ready"))
-	if spell:
-		parts.append(Loc.t("Play a Spell"))
-	if trap and parts.size() < 3:
-		parts.append(Loc.t("Set a Trap"))
-	var set_ready := false
-	for st in me.spells:
-		if st != null and ((not st.face_up and state.can_activate(ME, st)) or (st.face_up and SpellRules.can_fire(state, ME, st))):
-			set_ready = true
-	if set_ready and parts.size() < 3:
-		parts.append(Loc.t("Use a card on your field"))
-	if state.phase == DuelState.Phase.MAIN1 and state.can_enter_battle():
-		var can_hit := false
-		for m in me.monsters():
-			if m.face_up and m.attack_pos:
-				can_hit = true
-		if can_hit and parts.size() < 3:
-			parts.append(Loc.t("Battle Phase to attack"))
-	if parts.is_empty():
-		return Loc.t("Nothing left to play: end your turn")
-	return "   ·   ".join(parts.slice(0, 3))
+	ocg.refresh()
 
 
 func _clear_glows() -> void:
@@ -1661,83 +1325,33 @@ func _clear_glows() -> void:
 
 
 func _on_phase_button(action: String) -> void:
-	if ocg != null:
-		ocg.on_phase_button(action)
-		return
-	if not _my_turn():
-		return
-	_cancel_mode()
-	if action == "battle":
-		if state.phase == DuelState.Phase.MAIN1:
-			await _act("enter_battle", [])
-			await _window(AI, "battle_start", null, "")
-		elif state.phase == DuelState.Phase.BATTLE:
-			await _act("enter_main2", [])
-			await _window(AI, "phase", null, "")
-	elif action == "end":
-		_turn_finished.emit()
+	ocg.on_phase_button(action)
 
 
-## What dropping a hand card on your rows would do. A card only goes where its kind goes: a
-## monster on the monster row (0), a Spell or Trap on the back row (1). The other row stays dark.
-## plan[row] is one entry (the whole row does it) or two (left half, right half), each
-## [action id, the word shown over it]: face-up on the left, Set on the right.
+## Whether a hand card can be dragged onto the table right now (see OcgTable.drop_plan).
 func _drop_plan(inst) -> Dictionary:
-	if ocg != null:
-		return ocg.drop_plan(inst)
-	var plan := {}
-	if inst.is_monster():
-		var cells: Array = []
-		if state.can_special_from_hand(ME, inst):
-			cells.append(["special_hand", "SPECIAL SUMMON"])
-		elif state.can_normal_summon(ME, inst):
-			cells.append(["summon", "SUMMON"])
-		if state.can_normal_summon(ME, inst):
-			cells.append(["set", "SET"])
-		if not cells.is_empty():
-			plan[0] = cells
-	elif inst.is_trap():
-		if state.can_set_st(ME, inst):
-			plan[1] = [["set_st", "SET"]]
-	else:
-		var cells2: Array = []
-		if state.can_activate(ME, inst):
-			cells2.append(["activate", "ACTIVATE"])
-		if state.can_set_st(ME, inst):
-			cells2.append(["set_st", "SET"])
-		if not cells2.is_empty():
-			plan[1] = cells2
-	return plan
+	return ocg.drop_plan(inst)
+
+
+## A card leaves your hand to be played: the table is told where it was on the screen, so its
+## flight starts from there.
+func _leave_hand(inst) -> void:
+	var at: Vector2 = hud.hand_card_center(inst)
+	if at.x >= 0.0:
+		board.fly_from = at
+		board.fly_at = Time.get_ticks_msec()
+	hud.remove_hand_card(inst)
 
 
 func _on_hand_drag(inst, on: bool) -> void:
-	if not on:
-		board.show_drop([], false)
-		return
-	var plan := _drop_plan(inst)
-	_menu_card = null
-	var rows: Array = [[], []]
-	for r in plan:
-		for cell in plan[r]:
-			(rows[int(r)] as Array).append(Loc.t(str(cell[1])))
-	board.show_drop(rows, true)
+	ocg.on_hand_drag(inst, on)
 
 
-## A hand card let go over the table. True when it lands on a part of a row that takes it.
+## A hand card let go over the table. True when it lands on a zone that takes it.
 func _on_hand_drop(inst, at: Vector2) -> bool:
 	if not _my_turn() or mode != "":
 		return false
-	var plan := _drop_plan(inst)
-	var cell := board.drop_cell(at)
-	var row := int(cell[0])
-	if not plan.has(row):
-		return false
-	var cells: Array = plan[row]
-	var pick: Array = cells[0] if cells.size() == 1 else cells[clampi(int(cell[1]), 0, cells.size() - 1)]
-	_menu_card = inst
-	Sfx.play("card", -4.0)
-	_on_action.call_deferred(str(pick[0]))
-	return true
+	return ocg.on_hand_drop(inst, at)
 
 
 ## Your own deck: the things you would reach for it to do.
@@ -1752,7 +1366,7 @@ func _on_deck_clicked() -> void:
 	_menu_card = null
 	_deck_menu = true
 	var deck_opts := [["piles", "Graveyards", true], ["pause", "Duel menu", true], ["surrender", "Surrender", true]]
-	if (not ocg.pile_effects().is_empty()) if ocg != null else (_my_turn() and not state.gy_effects(ME).is_empty()):
+	if not ocg.pile_effects().is_empty():
 		# A card in your Graveyard can use its effect from there (Destiny HERO - Malicious).
 		deck_opts.push_front(["gyfx", "Effect from the Graveyard", true])
 	hud.show_actions(board.camera.unproject_position(board.deck_pos(ME)) + Vector2(-420, -60), deck_opts)
@@ -1761,102 +1375,15 @@ func _on_deck_clicked() -> void:
 var _deck_menu := false
 var _closed_card = null          # the card whose menu this very tap just closed
 var _closed_at := 0
-var _drag_atk := {}              # a press on one of your monsters that may turn into a drag
 
 
 func _input(event: InputEvent) -> void:
-	if _drag_atk.is_empty():
-		return
-	if event is InputEventMouseMotion and not _drag_atk["on"]:
-		if (event.position as Vector2).distance_to(_drag_atk["from"]) < 22.0 or not _my_turn():
-			return
-		_drag_atk["on"] = true
-		var a = _drag_atk["inst"]
-		hud.hide_actions()
-		_menu_card = null
-		if mode != "attack":
-			# Dragging out of Main Phase 1 aims the same way; the Battle Phase starts on release.
-			_clear_glows()
-			var ac := board.card_for(a)
-			if ac:
-				ac.set_glow(true, UITheme.GOLD)
-			for t in state.attack_targets_for(ME, a):
-				var tc := board.card_for(t)
-				if tc:
-					tc.set_glow(true, UITheme.DANGER)
-			board.start_aim(a)
-			board.show_direct_target(state.can_direct_attack(ME) or state.can_direct_attack_with(ME, a))
-	elif event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var d := _drag_atk
-		_drag_atk = {}
-		if not d["on"]:
-			return
-		var hit := board.enemy_card_at(event.position, state.attack_targets_for(ME, d["inst"]))
-		var direct: bool = hit == null and board.side_at(event.position) == 1
-		_drag_attack_go(d["inst"], hit.inst if hit else null, direct)
-
-
-func _drag_attack_go(a, target, direct: bool) -> void:
-	var aiming := mode == "attack"
-	if target == null and not direct:
-		# Let go over nothing: a tap-style attack keeps waiting for its target, a drag is dropped.
-		if not aiming:
-			_cancel_mode()
-		return
-	if not _my_turn():
-		_cancel_mode()
-		return
-	_cancel_mode()
-	if state.phase == DuelState.Phase.MAIN1:
-		if not state.can_enter_battle():
-			return
-		await _act("enter_battle", [])
-		await _window(AI, "battle_start", null, "")
-	if not _my_turn() or not state.can_attack(ME, a):
-		return
-	if target != null and state.attack_targets_for(ME, a).has(target):
-		await _do_attack(ME, a, target)
-	elif target == null and (state.can_direct_attack(ME) or state.can_direct_attack_with(ME, a)):
-		await _do_attack(ME, a, null)
-	else:
-		Sfx.play("error", -8.0)
+	if ocg != null and not _finished and not hud.overlay_visible() and ocg.on_input(event):
+		get_viewport().set_input_as_handled()
 
 
 func _on_hand_card_pressed(inst, at: Vector2) -> void:
-	if ocg != null:
-		ocg.on_hand_card_pressed(inst, at)
-		return
-	if not _my_turn() or mode != "":
-		return
-	if hud.actions_visible() and _menu_card == inst:
-		# A second tap on the same card puts it back.
-		hud.hide_actions()
-		_menu_card = null
-		return
-	_deck_menu = false
-	_menu_card = inst
-	hud.inspect(inst)
-	hud.focus_hand_card(inst)
-	at = hud.hand_menu_anchor(inst)
-	if inst.is_monster():
-		var can := state.can_normal_summon(ME, inst)
-		var need := state.tributes_needed(inst)
-		var suffix := "" if need == 0 else Loc.t(" (%d tribute%s)") % [need, "" if need == 1 else "s"]
-		var opts := [["summon", Loc.t("Summon") + suffix, can], ["set", "Set", can]]
-		# Every monster with its own way out of the hand gets the button, not only Cyber Dragon.
-		if inst.cname() == "Cyber Dragon" or EffectRunner.has_special_hand(inst) or state.can_special_from_hand(ME, inst):
-			opts.push_front(["special_hand", "Special Summon", state.can_special_from_hand(ME, inst)])
-		if EffectRunner.fx(inst).has("hand_ignite"):
-			opts.append(["hand_fx", Loc.t("Effect: ") + Loc.t(str(EffectRunner.fx(inst)["hand_ignite"].get("label", "Discard it"))), state.can_hand_ignite(ME, inst)])
-		hud.show_actions(at, opts, true)
-	elif inst.is_trap():
-		hud.show_actions(at, [["set_st", "Set", state.can_set_st(ME, inst)]], true)
-	else:
-		hud.show_actions(at, [["activate", "Activate", state.can_activate(ME, inst)], ["set_st", "Set", state.can_set_st(ME, inst)]], true)
-	# Nothing to press: say why, so a greyed-out card is never a mystery.
-	var why := state.why_not(ME, inst)
-	if why != "":
-		Router.toast(why, 2.6)
+	ocg.on_hand_card_pressed(inst, at)
 
 
 func _on_action(action: String) -> void:
@@ -1864,553 +1391,64 @@ func _on_action(action: String) -> void:
 		hud.hide_actions()
 		_on_phase_button(action.trim_prefix("phase:"))
 		return
-	if ocg != null and action == "gyfx":
+	if action == "gyfx":
 		_deck_menu = false
 		ocg.on_pile_effects()
 		return
-	if ocg != null and ocg.on_action(action):
+	if ocg.on_action(action):
 		return
-	if action in ["surrender", "piles", "pause", "gyfx"]:
-		_deck_menu = false
-		match action:
-			"gyfx":
-				var can_g: Array = state.gy_effects(ME)
-				if can_g.is_empty() or not _my_turn():
-					return
-				var g_labels := []
-				for g in can_g:
-					g_labels.append("%s: %s" % [g.cname(), Loc.t(str(EffectRunner.fx(g)["gy_ignite"].get("label", "Activate")))])
-				g_labels.append(Loc.t("Not now"))
-				var gi: int = await hud.ask_choice(Loc.t("Use which effect from your Graveyard?"), g_labels)
-				if gi >= 0 and gi < can_g.size() and _my_turn():
-					await _act("gy_ignite", [ME, can_g[gi]], false)
-					await _after_summon(ME)
-			"surrender":
-				var sure := await hud.ask_choice(Loc.t("Surrender this duel?"), [Loc.t("Keep dueling"), Loc.t("Surrender")])
-				if sure == 1:
-					_on_pause_action("surrender")
-			"piles":
-				hud.show_piles(ME)
-			"pause":
-				_on_pause_action("open")
-		return
-	var c = _menu_card
-	_menu_card = null
-	if c == null or not _my_turn() or ocg != null:
-		return
-	if action.begins_with("fuse:"):
-		var uid := int(action.substr(5))
-		for x in state.players[ME].extra:
-			if x.uid == uid:
-				await _activate_flow(ME, c, x)
-				return
-		return
+	_deck_menu = false
 	match action:
-		"summon", "set":
-			var need := state.tributes_needed(c)
-			if need == 0:
-				await _act("normal_summon", [ME, c, [], action == "set"], false)
-				await _after_summon(ME)
-			else:
-				mode = "tribute"
-				_pending_card = c
-				_pending_set = action == "set"
-				_tributes = []
-				_refresh_tribute()
-		"activate":
-			if c.data.get("effect", "") == "fusion":
-				var opts := state.fusion_targets(ME, c)
-				if opts.size() > 1:
-					_menu_card = c
-					var list := []
-					for o in opts:
-						list.append([Loc.t("fuse:%d") % o["card"].uid, o["card"].data["name"], true])
-					hud.show_actions(get_viewport().get_mouse_position(), list)
-					return
-			await _activate_flow(ME, c, null)
-		"fire":
-			await _run(func(st, a): return SpellRules.fire(st, ME, a[0]), [c])
-		"attack":
-			if state.phase == DuelState.Phase.MAIN1:
-				await _act("enter_battle", [])
-				await _window(AI, "battle_start", null, "")
-			if state.can_attack(ME, c):
-				_start_attack(c)
-		"flip":
-			await _act("flip_summon", [ME, c], false)
-			await _after_summon(ME)
-		"ignite":
-			await _act("ignite", [ME, c], false)
-			await _after_summon(ME)
-		"set_st":
-			await _act("set_st", [ME, c])
-		"special_hand":
-			await _act("special_from_hand", [ME, c], false)
-			await _after_summon(ME)
-		"hand_fx":
-			await _act("hand_ignite", [ME, c], false)
-		"position":
-			await _act("change_position", [ME, c])
-
-
-func _refresh_tribute() -> void:
-	var need := state.tributes_needed(_pending_card)
-	if need == 1:
-		hud.show_prompt(Loc.t("Tap the monster you give up for %s") % _pending_card.cname())
-	else:
-		hud.show_prompt(Loc.t("Tap %d monsters to give up for %s   ·   %d of %d chosen") % [need, _pending_card.cname(), _tributes.size(), need])
-	_clear_glows()
-	for m in state.tributable(ME):
-		var c := board.card_for(m)
-		if c:
-			c.set_glow(true, Color("5df07a") if _tributes.has(m) else UITheme.GOLD)
-	# The cards themselves say what to do: an arrow over each one you can give up.
-	board.show_picks(state.tributable(ME), _tributes, "TRIBUTE", "CHOSEN")
+		"surrender":
+			var sure := await hud.ask_choice(Loc.t("Surrender this duel?"), [Loc.t("Keep dueling"), Loc.t("Surrender")])
+			if sure == 1:
+				_on_pause_action("surrender")
+		"piles":
+			hud.show_piles(ME)
+		"pause":
+			_on_pause_action("open")
 
 
 func _on_board_card_clicked(card: Card3D) -> void:
-	if ocg != null:
-		ocg.on_board_card_clicked(card)
-		return
-	var reopened: bool = (hud.actions_visible() and _menu_card != null and _menu_card == card.inst) or (_closed_card != null and _closed_card == card.inst and Time.get_ticks_msec() - _closed_at < 120)
-	_closed_card = null
-	hud.hide_actions()
-	_deck_menu = false
-	if not _my_turn() or reopened:
-		# A second tap on the card whose menu is open just closes it.
-		_menu_card = null
-		return
-	var inst = card.inst
-	if inst == null:
-		return
-	var mine: bool = state.players[ME].field.has(inst)
-	var theirs: bool = state.players[AI].field.has(inst)
-	if mine and mode in ["", "attack"] and inst.face_up and (inst.attack_pos or EffectRunner.fx(inst).get("direct_from_def", false)) and (state.can_attack(ME, inst)
-			or (state.phase == DuelState.Phase.MAIN1 and state.can_enter_battle() and inst.attacked_turn != state.turn)):
-		_drag_atk = {"inst": inst, "from": get_viewport().get_mouse_position(), "on": false}
-	if mode == "materials":
-		if mine:
-			_toggle_material(inst)
-		return
-	if mode == "" and state.players[ME].spells.has(inst):
-		# Your own Spell & Trap cards: flip a Set one, or fire a charged one.
-		var st_opts := []
-		if not inst.face_up and state.can_activate(ME, inst):
-			st_opts.append(["activate", "Activate", true])
-		if state.can_ignite(ME, inst):
-			# A Union monster riding as an Equip Card: take it off and Special Summon it.
-			st_opts.append(["ignite", Loc.t("Effect: ") + str(EffectRunner.ignite_spec(inst).get("label", "Activate")), true])
-		if SpellRules.can_fire(state, ME, inst):
-			st_opts.append(["fire", Loc.t("Fire (%d damage)") % (inst.counter * int(SpellRules.spec(inst)["cannon"])), true])
-		if not st_opts.is_empty():
-			_menu_card = inst
-			hud.show_actions(board.screen_pos(inst) + Vector2(60, 0), st_opts)
-		return
-	if mode == "tribute":
-		if mine and state.tributable(ME).has(inst):
-			if _tributes.has(inst):
-				_tributes.erase(inst)
-			else:
-				_tributes.append(inst)
-			if _tributes.size() == state.tributes_needed(_pending_card):
-				var c = _pending_card
-				var t := _tributes.duplicate()
-				var s := _pending_set
-				_cancel_mode()
-				await _act("normal_summon", [ME, c, t, s], false)
-				await _after_summon(ME)
-			else:
-				_refresh_tribute()
-		return
-	if mode == "attack":
-		if theirs:
-			var a = _attacker
-			_cancel_mode()
-			await _do_attack(ME, a, inst)
-		elif mine and state.can_attack(ME, inst):
-			_start_attack(inst)
-		return
-	if not mine:
-		return
-	if state.phase == DuelState.Phase.BATTLE and state.can_attack(ME, inst):
-		_start_attack(inst)
-		return
-	var opts := []
-	if state.phase == DuelState.Phase.MAIN1 and state.can_enter_battle() and inst.face_up and inst.attack_pos and inst.attacked_turn != state.turn:
-		opts.append(["attack", "Attack", true])
-	if state.can_ignite(ME, inst):
-		opts.append(["ignite", Loc.t("Effect: ") + str(EffectRunner.ignite_spec(inst).get("label", "Activate")), true])
-	if state.can_flip_summon(ME, inst):
-		opts.append(["flip", "Flip Summon", true])
-	if state.can_change_position(ME, inst):
-		opts.append(["position", "To Defense" if inst.attack_pos else "To Attack", true])
-	if opts.is_empty():
-		return
-	_menu_card = inst
-	hud.show_actions(board.screen_pos(inst) + Vector2(60, 0), opts)
+	ocg.on_board_card_clicked(card)
 
 
-## Speed World 2: pick which of its three effects to pay for.
+## Speed World 2: pick which of its effects to pay for.
 func _on_speed_pressed() -> void:
-	if ocg != null:
-		ocg.on_speed_pressed()
-		return
-	if not _my_turn():
-		return
-	_cancel_mode()
-	var costs := []
-	var labels := []
-	var spells: int = state.players[ME].hand.filter(func(c): return not c.is_monster() and not c.is_trap()).size()
-	for pair in [[4, Loc.t("4 counters: %d damage (800 for each Speed Spell in your hand)") % (800 * spells)],
-			[7, Loc.t("7 counters: draw 1 card")], [10, Loc.t("10 counters: destroy 1 card on their field")]]:
-		if state.can_speed_world(ME, pair[0]):
-			costs.append(pair[0])
-			labels.append(pair[1])
-	if costs.is_empty():
-		Router.toast("Not enough Speed Counters yet")
-		return
-	labels.append(Loc.t("Cancel"))
-	var pick: int = await hud.ask_choice(Loc.t("Speed World 2   ·   you have %d Speed Counters") % state.players[ME].speed, labels)
-	if pick < 0 or pick >= costs.size():
-		return
-	Sfx.play("gong", -6.0)
-	await _act("speed_world", [ME, costs[pick]])
-	_refresh()
+	ocg.on_speed_pressed()
 
 
 func _on_extra_pressed() -> void:
-	if ocg != null:
-		ocg.on_extra_pressed()
-		return
-	if not _my_turn():
-		return
-	_cancel_mode()
-	var opts := []
-	var has_poly := false
-	for h in state.players[ME].hand:
-		if h.data.get("effect", "") == "fusion":
-			has_poly = true
-	for x in state.players[ME].extra:
-		var status := ""
-		var ok := false
-		match x.frame():
-			"fusion":
-				if CardEffects.of(x.cname()).has("contact"):
-					# Contact Fusion: no Polymerization, the materials go from your field.
-					ok = state.can_extra_summon(ME, x)
-					status = "Contact Fusion" if ok else "Needs its materials on your field"
-				else:
-					status = "Use Polymerization" if has_poly else "Needs Polymerization"
-			"synchro":
-				ok = state.can_extra_summon(ME, x)
-				status = "Synchro Summon" if ok else Loc.t("Tuner + %d levels") % x.level()
-			"xyz":
-				ok = state.can_extra_summon(ME, x)
-				status = "Xyz Summon" if ok else Loc.t("2 Level %d monsters") % x.level()
-		opts.append([x, status, ok])
-	hud.show_extra(opts)
+	ocg.on_extra_pressed()
 
 
-var _extra_target = null
-var _extra_sel: Array = []
 
 
-## Pick materials yourself: tap monsters on your field, or press Auto.
 func _on_extra_chosen(inst) -> void:
-	if ocg != null:
-		ocg.on_extra_chosen(inst)
-		return
-	if not _my_turn():
-		return
-	if CardEffects.of(inst.cname()).has("contact") or (state.extra_materials(ME, inst).is_empty() and state.xyz_base(ME, inst) != null):
-		if state.can_extra_summon(ME, inst):
-			_cancel_mode()
-			await _act("extra_summon", [ME, inst, []], false)
-			await _after_summon(ME)
-		return
-	var options := state.extra_materials(ME, inst)
-	if options.is_empty():
-		return
-	mode = "materials"
-	_extra_target = inst
-	_extra_sel = []
-	_refresh_materials()
+	ocg.on_extra_chosen(inst)
 
 
-func _material_candidates() -> Array:
-	var out := []
-	for opt in state.extra_materials(ME, _extra_target):
-		for m in opt:
-			if not out.has(m):
-				out.append(m)
-	return out
-
-
-func _refresh_materials() -> void:
-	var what := "Synchro" if _extra_target.frame() == "synchro" else "Xyz"
-	var hint := Loc.t("a Tuner plus monsters adding up to Level %d") % _extra_target.level() if what == "Synchro" else Loc.t("2 Level %d monsters") % _extra_target.level()
-	hud.show_prompt(Loc.t("%s Summon %s: pick %s") % [what, _extra_target.data["name"], hint], true, "Auto-pick")
-	_clear_glows()
-	for m in _material_candidates():
-		var c := board.card_for(m)
-		if c:
-			c.set_glow(true, Color("5df07a") if _extra_sel.has(m) else UITheme.GOLD)
-	board.show_picks(_material_candidates(), _extra_sel, "TAP", "CHOSEN")
-
-
-func _toggle_material(inst) -> void:
-	if not _material_candidates().has(inst):
-		return
-	if _extra_sel.has(inst):
-		_extra_sel.erase(inst)
-	else:
-		_extra_sel.append(inst)
-	Sfx.play("card", -6.0, 1.2)
-	for opt in state.extra_materials(ME, _extra_target):
-		if opt.size() == _extra_sel.size() and opt.all(func(m): return _extra_sel.has(m)):
-			var target = _extra_target
-			var mats := _extra_sel.duplicate()
-			_cancel_mode()
-			await _act("extra_summon", [ME, target, mats], false)
-			await _after_summon(ME)
-			return
-	_refresh_materials()
-
-
-## Declare, give the defender a chance to respond, then resolve.
-func _do_attack(p: int, attacker, target) -> void:
-	var ev: Array = await _act("declare_attack", [p, attacker, target], false)
-	if ev.is_empty():
-		return
-	await _window(state.opponent(p), "attack", null, Loc.t("%s attacks! Respond?") % attacker.data["name"])
-	# Replay: the defender's monsters changed, so the attacker chooses again.
-	var replays := 0
-	while state.replay_needed() and replays < 3:
-		replays += 1
-		var opts: Array = state.attack_targets_for(p, attacker)
-		var pick = null
-		var go := true
-		if p == AI or _autoplay:
-			var again := DuelAI.next_attack(state, p, _level_for(p))
-			go = not again.is_empty() and again["card"] == attacker
-			pick = again.get("target") if go else null
-		else:
-			var labels := []
-			for m in opts:
-				labels.append(Loc.t("Attack %s") % (m.cname() if m.face_up else "the face-down monster"))
-			if state.can_direct_attack_with(p, attacker):
-				labels.append("Attack directly")
-			labels.append("Stop the attack")
-			var idx: int = await hud.ask_choice(Loc.t("Replay! Their monsters changed. %s:") % attacker.cname(), labels, attacker)
-			go = idx < labels.size() - 1
-			pick = opts[idx] if idx < opts.size() else null
-		if not go:
-			await _act("cancel_attack", [])
-			return
-		await _act("replay_attack", [pick], false)
-	# Damage Step: only ATK / DEF changers and Counter Traps.
-	if not state.pending_attack.is_empty() and not state.pending_attack["negated"]:
-		await _window(p, "damage", null, "Damage Step. Change ATK or DEF?")
-	await _act("resolve_attack", [])
-
-
-## After a summon, the other player may respond (Trap Hole, Solemn Judgment and friends).
-func _after_summon(p: int) -> void:
-	var subj = state.last_summoned
-	if subj == null or state.is_over():
-		await _settle()
-		return
-	state.last_summoned = null
-	await _window(state.opponent(p), "summon", subj, Loc.t("%s was summoned. Respond?") % subj.data["name"])
-
-
-## Activate a Spell/Trap with the full chain: target, the other player's response, then resolve.
-func _activate_flow(who: int, c, target) -> void:
-	var sp := SpellRules.spec(c)
-	if target == null and who == ME and not _autoplay and not sp.has("legacy") and not sp.has("modes") and SpellRules._needs_target(sp):
-		target = await _pick_target(who, c)
-		if target == null:
-			return
-	_flow = true
-	var ev: Array = await _act("chain_add", [who, c, target, "open", null], false)
-	if ev.is_empty():
-		_flow = false
-		return
-	await _window(state.opponent(who), "chain", null, "")
-	_flow = false
-	_refresh()
-	await _after_summon(who)
-
-
-func _pick_target(who: int, c):
-	var cands := SpellRules.targets(state, who, c)
-	if cands.is_empty():
-		return null
-	if who == AI or _autoplay:
-		return SpellRules.auto_target(state, who, c)
-	if _human_test:
-		return cands[0]
-	var hidden := []
-	for x in cands:
-		if x.owner != who and not x.face_up:
-			hidden.append(x)
-	_flow = true
-	var pick = await hud.ask_pick(Loc.t("Choose a target for %s") % c.cname(), cands, "Select", "Cancel", hidden)
-	_flow = false
-	return pick
-
-
-## A response window. Players take turns adding to the chain until both pass, then it resolves.
-## window: "attack" | "summon" | "chain" | "battle_start". `first` gets the first chance.
-func _window(first: int, window: String, subject, prompt: String) -> void:
-	var who := first
-	var passes := 0
-	var was_flow := _flow
-	_flow = true
-	if not state.pending_fx.is_empty():
-		await _act("fx_to_chain", [], false)
-	while passes < 2 and not state.is_over() and not _finished:
-		var win := window if state.chain.is_empty() else "chain"
-		var subj = subject if state.chain.is_empty() else state.chain.back()
-		var opts := state.responses(who, win, subj)
-		if win == "chain" and window in ["attack", "summon"] and str(state.chain.back()["spec"].get("k", "")) != "counter":
-			# Cards made for the original trigger still fit while the chain builds.
-			for o in state.responses(who, window, subject):
-				if not opts.has(o) and not o.is_monster() and SpellRules.kind(o) != "counter":
-					opts.append(o)
-		var choice = null
-		if not opts.is_empty():
-			if who == AI or _autoplay:
-				choice = DuelAI.choose_response(state, who, win, opts, _level_for(who))
-				if choice != null:
-					await _ai_wait(0.3)
-			elif window in ["phase", "battle_start"] and win == window and not hud.phase_prompts:
-				choice = null
-			elif not hud.phase_prompts and _nothing_to_answer(who, win, opts):
-				choice = null
-			else:
-				var text := prompt
-				var my_attack: bool = win == "attack" and not state.pending_attack.is_empty() and int(state.pending_attack["player"]) == who
-				if win == "chain":
-					text = Loc.t("Chain to %s%s?") % [state.chain.back()["card"].cname(), "'s effect" if state.chain.back()["kind"] == "fx" else ""]
-				elif window == "battle_start":
-					text = "The Battle Phase begins. Respond?"
-				elif my_attack:
-					text = Loc.t("%s attacks. Use a card?") % str(state.pending_attack["attacker"].cname())
-					if not hud.phase_prompts:
-						opts = opts.filter(_helps_my_attack)
-				hud.ask_why = Loc.t("Your monster declared an attack. A card of yours can be used before it lands. Pick one, or let the attack go on.") if my_attack else Loc.t({
-					"attack": "Your opponent declared an attack. A Trap or Quick-Play Spell can answer it before it lands. Pick a card to use it, or let the attack go through.",
-					"summon": "A monster was just summoned. This is your chance to answer the summon with a Trap. Pick a card to use it, or let it stand.",
-					"chain": "A card or effect was just activated. You can chain one of yours on top of it: the last card played resolves first.",
-					"battle_start": "Cards that work at the start of the Battle Phase can be used now.",
-					"phase": "You have a card that can be used in this phase. Use it now or keep it for later.",
-				}.get(win, "You have a card that can respond right now. Use it or keep it."))
-				choice = await hud.ask_response(text, opts)
-		if choice != null:
-			if choice.is_monster() or (choice.cname() == "Kuriboh" and state.players[who].hand.has(choice)) or state.players[who].gy.has(choice):
-				await _act("respond", [who, choice, subject], false)
-			else:
-				var target = null
-				var sp := SpellRules.spec(choice)
-				if not sp.has("legacy") and not sp.has("modes") and SpellRules._needs_target(sp):
-					target = await _pick_target(who, choice)
-					_flow = true
-					if target == null:
-						passes += 1
-						who = state.opponent(who)
-						continue
-				await _act("chain_add", [who, choice, target, win, subj], false)
-			passes = 0
-		else:
-			passes += 1
-		who = state.opponent(who)
-	if not state.chain.is_empty():
-		await _act("chain_resolve", [], false)
-	_flow = was_flow
-	# Effects that triggered while that chain resolved start a chain of their own.
-	if not state.pending_fx.is_empty() and not state.is_over() and not _finished:
-		await _window(state.opponent(state.current), "chain", null, "")
-
-
-## With "Ask me at every chance" off: is this a stop with nothing in it to answer? Your own
-## card going on the chain (there is nothing of theirs to answer), or your own attack when all
-## you hold are cards for when you are the one being attacked.
-func _nothing_to_answer(who: int, win: String, opts: Array) -> bool:
-	if win == "chain" and not state.chain.is_empty() and int(state.chain.back()["player"]) == who:
-		return true
-	if win == "attack" and not state.pending_attack.is_empty() and int(state.pending_attack["player"]) == who:
-		return opts.filter(_helps_my_attack).is_empty()
-	return false
-
-
-## A card worth being asked about while your own monster attacks: one that makes a monster
-## stronger (Rush Recklessly), or a monster's own effect from the hand.
-func _helps_my_attack(c) -> bool:
-	if c.is_monster():
-		return true
-	var sp := SpellRules.spec(c)
-	var lists: Array = [sp.get("do", [])]
-	for m in sp.get("modes", []):
-		lists.append((m as Dictionary).get("do", []))
-	for acts in lists:
-		for a in acts:
-			if str(a[0]) in ["atk", "def"] and a.size() > 2 and int(a[2]) > 0:
-				return true
-	return false
-
-
-func _start_attack(inst) -> void:
-	mode = "attack"
-	_attacker = inst
-	_clear_glows()
-	board.card_for(inst).set_glow(true, UITheme.GOLD)
-	for t in state.attack_targets_for(ME, inst):
-		var c := board.card_for(t)
-		if c:
-			c.set_glow(true, UITheme.DANGER)
-	board.start_aim(inst)
-	board.show_direct_target(state.can_direct_attack_with(ME, inst))
-	if state.can_direct_attack(ME):
-		hud.show_prompt("No monsters in the way. Click their side of the field to attack directly!", false)
-	elif state.can_direct_attack_with(ME, inst):
-		hud.show_prompt(Loc.t("Click a monster, or their side of the field: %s can attack directly!") % inst.data.get("name", ""), false)
-	else:
-		hud.show_prompt(Loc.t("Tap a monster to attack with %s") % inst.data.get("name", ""), false)
-
-
+## Their side of the field tapped while an attack is aimed, or the Confirm button of a pick on the table.
 func _on_direct_attack() -> void:
-	if ocg != null:
-		return
-	if mode == "materials" and _my_turn():
-		var target = _extra_target
-		_cancel_mode()
-		await _act("extra_summon", [ME, target, []], false)
-		await _after_summon(ME)
-		return
-	if mode != "attack" or not _my_turn():
-		return
-	var a = _attacker
-	_cancel_mode()
-	await _do_attack(ME, a, null)
+	if mode == "attack":
+		ocg.on_direct()
+	else:
+		ocg.on_prompt_button()
 
 
 func _cancel_mode() -> void:
-	if ocg != null:
-		ocg.cancel()
+	if ocg != null and ocg.cancel():
+		return
 	board.stop_aim()
 	board.show_direct_target(false)
 	mode = ""
-	_pending_card = null
-	_attacker = null
-	_tributes = []
 	hud.hide_prompt()
 	hud.hide_actions()
 	_refresh()
 
 
 func _on_board_card_hovered(card: Card3D, inside: bool) -> void:
-	if (mode == "attack" or not _drag_atk.is_empty()) and card.inst != null and state.players[AI].field.has(card.inst):
+	if mode == "attack" and card.inst != null and state.players[AI].field.has(card.inst):
 		board.set_aim_target(card if inside else null)
 	if not inside or card.inst == null:
 		return
@@ -2471,12 +1509,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			# Right-click on the table: the phase moves open right where the pointer is.
 			var opts := []
-			match state.phase:
-				DuelState.Phase.MAIN1:
-					opts.append(["phase:battle", Loc.t("Battle Phase"), state.can_enter_battle()])
-				DuelState.Phase.BATTLE:
-					opts.append(["phase:battle", Loc.t("Main Phase 2"), true])
-			opts.append(["phase:end", Loc.t("End turn"), true])
+			var rq: Dictionary = ocg.req
+			if int(rq["t"]) == 10:
+				opts.append(["phase:battle", Loc.t("Main Phase 2"), int(rq["to_m2"]) != 0, "repos", Loc.t("Back to playing cards")])
+			elif state.phase == DuelState.Phase.MAIN1:
+				opts.append(["phase:battle", Loc.t("Battle Phase"), int(rq["to_bp"]) != 0, "attack", Loc.t("Attack with your monsters")])
+			opts.append(["phase:end", Loc.t("End turn"), int(rq["to_ep"]) != 0, "view", Loc.t("Your opponent plays next")])
 			_menu_card = null
 			hud.show_actions(event.position, opts)
 		get_viewport().set_input_as_handled()
@@ -2577,247 +1615,9 @@ func _restore_match_deck() -> void:
 
 # ------------------------------------------------------------------ AI
 
-func _ai_turn(who: int) -> void:
-	# The other side's turn runs a notch quicker: you are watching, not deciding.
-	# The opponent's turn plays at the same speed as yours: you need to see what they do.
-	Settings.pace = 1.0
-	await _ai_wait(0.45)
-	var steps := 0
-	while steps < 20 and not state.is_over() and not _finished:
-		steps += 1
-		var act := DuelAI.next_main_action(state, who, _level_for(who))
-		if act.is_empty():
-			break
-		if act["do"] == "activate":
-			var n0 := state.players[who].hand.size() + state.players[who].set_cards().size()
-			await _activate_flow(who, act["card"], act.get("choice"))
-			if state.players[who].hand.size() + state.players[who].set_cards().size() == n0:
-				break
-			await _ai_wait(0.35)
-			continue
-		var ev: Array = await _run(func(st, a): return DuelAI.apply(st, who, a[0]), [act], false)
-		if ev.is_empty():
-			break
-		if act["do"] in ["summon", "extra", "special_hand", "flip"]:
-			await _after_summon(who)
-		await _settle()
-		await _ai_wait(0.35)
-	if state.can_enter_battle() and not state.is_over() and not _finished:
-		var any_attack := false
-		for m in state.players[who].monsters():
-			if m.face_up and m.attack_pos and state.attacks_left(m) > 0:
-				any_attack = true
-		if any_attack:
-			await _act("enter_battle", [])
-			await _window(state.opponent(who), "battle_start", null, "")
-			await _ai_wait(0.3)
-			steps = 0
-			while steps < 10 and not state.is_over() and not _finished:
-				steps += 1
-				var atk := DuelAI.next_attack(state, who, _level_for(who))
-				if atk.is_empty():
-					break
-				await _do_attack(who, atk["card"], atk["target"])
-				await _ai_wait(0.3)
-			if not state.is_over() and not _finished:
-				await _act("enter_main2", [])
-				await _window(state.opponent(who), "phase", null, "Main Phase 2 begins. Activate a card?")
-				steps = 0
-				while steps < 10 and not state.is_over() and not _finished:
-					steps += 1
-					var act2 := DuelAI.next_main_action(state, who, _level_for(who))
-					if act2.is_empty():
-						break
-					if act2["do"] == "activate":
-						var n1 := state.players[who].hand.size() + state.players[who].set_cards().size()
-						await _activate_flow(who, act2["card"], act2.get("choice"))
-						if state.players[who].hand.size() + state.players[who].set_cards().size() == n1:
-							break
-						await _ai_wait(0.3)
-						continue
-					var ev2: Array = await _run(func(st, a): return DuelAI.apply(st, who, a[0]), [act2], false)
-					if ev2.is_empty():
-						break
-					if act2["do"] in ["summon", "extra", "special_hand", "flip"]:
-						await _after_summon(who)
-					await _settle()
-					await _ai_wait(0.3)
-	await _ai_wait(0.3)
-
-
-func _level_for(who: int) -> int:
-	return _ai_level if who == AI else 1
-
 
 func _ai_wait(sec: float) -> void:
 	await get_tree().create_timer(Settings.t(sec)).timeout
-
-
-func _run_ai(act: Dictionary, who: int) -> Array:
-	match act["do"]:
-		"activate":
-			return state.activate(who, act["card"], act.get("choice"))
-		"extra":
-			return state.extra_summon(who, act["card"])
-		"summon":
-			return state.normal_summon(who, act["card"], act["tributes"], false)
-		"set":
-			return state.normal_summon(who, act["card"], act["tributes"], true)
-		"flip":
-			return state.flip_summon(who, act["card"])
-		"position":
-			return state.change_position(who, act["card"])
-		"ignite":
-			return state.ignite(who, act["card"])
-		"gy_ignite":
-			return state.gy_ignite(who, act["card"])
-		"hand_ignite":
-			return state.hand_ignite(who, act["card"])
-		"speed":
-			return state.speed_world(who, int(act["cost"]))
-	return []
-
-
-
-func _demo_actions() -> void:
-	await get_tree().create_timer(0.6).timeout
-	if "--demo-say" in OS.get_cmdline_user_args():
-		var t := Timer.new()
-		t.wait_time = 2.4
-		t.autostart = true
-		add_child(t)
-		var both := func():
-			hud.say(0, "My turn. Draw!")
-			hud.say(1, "You're wasting my time. Let's get this over with.")
-		t.timeout.connect(both)
-		both.call()
-	if "--demo-big" in OS.get_cmdline_user_args():
-		hud.cut_in(0, "DARK MAGICIAN", "ATK 2500   ·   DEF 2100", Color("a070ff"), 30.0, true)
-		return
-	if "--demo-opp" in OS.get_cmdline_user_args():
-		hud.cut_in(1, "BLUE-EYES WHITE DRAGON", "Attack!", Comic.RED, 30.0)
-		return
-	if "--demo-deck" in OS.get_cmdline_user_args():
-		_on_deck_clicked()
-		return
-	if "--demo-clicks" in OS.get_cmdline_user_args():
-		# Click probe: what a press on a hand card costs, and how long the frames after it take.
-		await get_tree().create_timer(2.0).timeout
-		for i in 8:
-			var hand: Array = state.players[ME].hand
-			if hand.is_empty():
-				break
-			var hc = hand[i % hand.size()]
-			hud.inspect(hc)
-			await get_tree().process_frame
-			var t0 := Time.get_ticks_usec()
-			_on_hand_card_pressed(hc, Vector2.ZERO)
-			var t1 := Time.get_ticks_usec()
-			await get_tree().process_frame
-			var t2 := Time.get_ticks_usec()
-			await get_tree().process_frame
-			var t3 := Time.get_ticks_usec()
-			await get_tree().process_frame
-			var t4 := Time.get_ticks_usec()
-			print("CLICK %s handler %.2f ms, frames after: %.1f %.1f %.1f ms  (menu %s)" % [hc.cname(), (t1 - t0) / 1000.0, (t2 - t1) / 1000.0, (t3 - t2) / 1000.0, (t4 - t3) / 1000.0, str(hud.actions_visible())])
-			await get_tree().create_timer(0.5).timeout
-			hud.hide_actions()
-			_menu_card = null
-			await get_tree().create_timer(0.3).timeout
-		return
-	for da in OS.get_cmdline_user_args():
-		if da.begins_with("--demo-field="):
-			# Dev: two of your monsters and one of theirs on the table, then you play this Field
-			# Spell by its real rules (--demo-field=Mountain). A second name after a comma is
-			# played by you three seconds later, in its place; "-" after a comma takes yours away again.
-			var names := da.trim_prefix("--demo-field=").split(",")
-			var z := 1
-			for pl in [ME, AI]:
-				var side = state.players[pl]
-				z = 1
-				for c in side.deck.duplicate():
-					if z > (2 if pl == ME else 1):
-						break
-					if c.is_monster() and c.level() <= 4:
-						side.deck.erase(c)
-						side.field[z] = c
-						c.face_up = true
-						c.attack_pos = true
-						await board.anim_summon(pl, c, z, false)
-						z += 1
-			board.sync_holos(state)
-			board.refresh_stats(state)
-			var fid := int(CardData.NAME_TO_ID.get(names[0].to_lower(), 0))
-			if fid == 0:
-				print("DEMO FIELD: no card called ", names[0])
-				return
-			var fc := state._make(fid, ME)
-			state.players[ME].hand.append(fc)
-			hud.add_hand_card(fc)
-			await get_tree().create_timer(0.6).timeout
-			await _play(state.activate(ME, fc))
-			if names.size() > 1:
-				await get_tree().create_timer(3.0).timeout
-				if names[1] == "-":
-					await _play(state._destroy_st(fc))
-				else:
-					var fc2 := state._make(int(CardData.NAME_TO_ID.get(names[1].to_lower(), 0)), ME)
-					state.players[ME].hand.append(fc2)
-					hud.add_hand_card(fc2)
-					await _play(state.activate(ME, fc2))
-			return
-		if da.begins_with("--demo-tribute"):
-			# Dev: two monsters on your field and a big one in hand, stopped at "what do I give up".
-			var me = state.players[ME]
-			var z := 1
-			var put := []
-			for c in me.deck.duplicate():
-				if z > 2:
-					break
-				if c.is_monster() and c.level() <= 4:
-					me.deck.erase(c)
-					me.field[z] = c
-					c.face_up = true
-					c.attack_pos = true
-					put.append(c)
-					await board.anim_summon(ME, c, z, false)
-					z += 1
-			board.sync_holos(state)
-			var big = null
-			for want in [2, 1]:
-				for c in me.hand + me.deck:
-					if big == null and c.is_monster() and state.tributes_needed(c) == want:
-						big = c
-			if big == null:
-				return
-			if not me.hand.has(big):
-				me.deck.erase(big)
-				me.hand.append(big)
-			_refresh()
-			await get_tree().create_timer(1.5).timeout
-			mode = "tribute"
-			_pending_card = big
-			_pending_set = false
-			_tributes = [put[0]] if da.ends_with("=1") and not put.is_empty() else []
-			_refresh_tribute()
-			return
-	for da2 in OS.get_cmdline_user_args():
-		# --demo-drop (a monster), --demo-drop=spell, --demo-drop=trap: light the rows as if that
-		# kind of card from your hand were being dragged.
-		if not da2.begins_with("--demo-drop"):
-			continue
-		var want := da2.get_slice("=", 1) if "=" in da2 else "monster"
-		for c in state.players[ME].hand:
-			var is_kind: bool = (want == "monster" and c.is_monster()) or (want == "trap" and c.is_trap()) or (want == "spell" and c.is_spell())
-			if is_kind and not _drop_plan(c).is_empty():
-				hud.inspect(c)
-				_on_hand_drag(c, true)
-				return
-	for c in state.players[ME].hand:
-		if c.is_monster():
-			hud.inspect(c)
-			_on_hand_card_pressed(c, Vector2.ZERO)
-			return
 
 
 func _exit_tree() -> void:
@@ -2826,8 +1626,6 @@ func _exit_tree() -> void:
 	Music.set_boost(0.0)
 	if Engine.time_scale < 1.0:
 		Engine.time_scale = 1.0
-	DuelAI.styles = ["", ""]
-	DuelAI.aces = [0, 0]
 	if board and board.turbo:
 		Sfx.ambience_pitch(1.0)
 		Sfx.ambience("")

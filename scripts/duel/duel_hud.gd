@@ -37,6 +37,7 @@ var _inspect_text: Label
 var _prompt: PanelContainer
 var _prompt_label: Label
 var _btn_direct: Button
+var _btn_cancel: Button
 var _menu: VBoxContainer
 var _banner: Label
 var _float_root: Control
@@ -1062,9 +1063,6 @@ func inspect(inst, hidden := false) -> void:
 		var txt := str(d.get("desc", ""))
 		var nm := str(d.get("name", ""))
 		var note := str(CardEffects.of(nm).get("note", CardData.MONSTER_EFFECTS.get(nm, "")))
-		if note == "" and (frame == "effect" or (frame in ["synchro", "xyz", "fusion"] and txt.length() > 80)):
-			_inspect_note.text = Loc.t("Not in this game yet: this card plays with its ATK and DEF only.")
-			_inspect_note.visible = true
 		# Cards built into the game carry no printed text of their own: take it from the card
 		# database, or failing that say what the card does in this game.
 		if txt == "":
@@ -1098,9 +1096,6 @@ func inspect(inst, hidden := false) -> void:
 		if body == "":
 			body = str(CardData.EXT.get(int(inst.id), {}).get("desc", ""))
 		_inspect_text.text = CardText.shown(str(d.get("name", "")), body)
-		if SpellRules.spec(inst).is_empty():
-			_inspect_note.text = Loc.t("Not in this game yet: you can still Set it as a bluff.")
-			_inspect_note.visible = true
 
 
 # ------------------------------------------------------------------ hand
@@ -1299,12 +1294,17 @@ func _build_prompt() -> void:
 	h.add_child(_prompt_label)
 	_btn_direct = Button.new()
 	_btn_direct.text = "Direct Attack"
+	_btn_direct.custom_minimum_size = Vector2(150, 44)
+	_btn_direct.add_theme_stylebox_override("normal", UITheme.button_box(Color(Comic.GREEN, 0.3), Comic.GREEN, 14))
+	_btn_direct.add_theme_stylebox_override("hover", UITheme.button_box(Color(Comic.GREEN, 0.55), Color.WHITE, 14))
+	_btn_direct.add_theme_stylebox_override("disabled", UITheme.button_box(Color(1, 1, 1, 0.04), Color(1, 1, 1, 0.16), 14))
 	_btn_direct.pressed.connect(func(): direct_attack_pressed.emit())
 	h.add_child(_btn_direct)
-	var cancel := Button.new()
-	cancel.text = "Cancel"
-	cancel.pressed.connect(func(): cancel_pressed.emit())
-	h.add_child(cancel)
+	_btn_cancel = Button.new()
+	_btn_cancel.text = "Cancel"
+	_btn_cancel.custom_minimum_size = Vector2(110, 44)
+	_btn_cancel.pressed.connect(func(): cancel_pressed.emit())
+	h.add_child(_btn_cancel)
 	_prompt.visible = false
 	# The coach line: what you can do right now, in a few words.
 	_coach = PanelContainer.new()
@@ -1339,16 +1339,31 @@ func set_coach(text: String) -> void:
 	_coach.visible = show
 
 
-func show_prompt(text: String, direct := false, direct_label := "Direct Attack") -> void:
+## The line at the top of the table while you point at something on it. `direct` adds a second
+## button (its word is `direct_label`; greyed out while `direct_on` is false); an empty
+## `cancel_label` leaves the cancel button out (the pick cannot be skipped).
+func show_prompt(text: String, direct := false, direct_label := "Direct Attack", cancel_label := "Cancel", direct_on := true) -> void:
+	var fresh: bool = not _prompt.visible
 	_prompt_label.text = text
-	_btn_direct.text = direct_label
+	_btn_direct.text = Loc.t(direct_label)
 	_btn_direct.visible = direct
+	_btn_direct.disabled = not direct_on
+	_btn_cancel.visible = cancel_label != ""
+	_btn_cancel.text = Loc.t(cancel_label)
 	_prompt.visible = true
 	if _coach:
 		_coach.visible = false
 	_prompt.reset_size()
 	_prompt.offset_left = -_prompt.size.x / 2.0
 	_prompt.offset_right = _prompt.size.x / 2.0
+	if fresh:
+		# It drops in from just above, so the eye catches that the table is asking something.
+		_prompt.pivot_offset = _prompt.size / 2.0
+		_prompt.scale = Vector2(0.9, 0.9)
+		_prompt.modulate.a = 0.0
+		var tw := create_tween().set_parallel()
+		tw.tween_property(_prompt, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(_prompt, "modulate:a", 1.0, 0.1)
 
 
 func hide_prompt() -> void:
@@ -1361,6 +1376,167 @@ func hide_prompt() -> void:
 ## `labels` (uid -> text) adds a caption under each card, e.g. where it is. An empty `cancel` means the pick is required.
 func ask_pick(text: String, options: Array, button := "Select", cancel := "Cancel", hidden: Array = [], labels := {}):
 	return await ask_response(text, options, button, cancel, hidden, Color("7fd8ff"), labels)
+
+
+## Choose cards in one box: tap to choose, tap again to take back, Confirm. See CardPicker.
+## o: "min", "max"; "valid" (chosen cards -> bool) when a plain count is not the rule; "info"
+## (chosen cards -> a line of text, e.g. the Levels so far); "cancel" (the word on the button, ""
+## when it cannot be skipped); "hidden", "labels" as in ask_pick; "why".
+## "live": every tap is an answer and the box stays open for the next one ("chosen": the cards
+## already in, "finish": it may be confirmed now). Returns the chosen cards (live: the card
+## tapped, or "finish"), or null when it was cancelled.
+var _picker: CardPicker
+
+func ask_cards(text: String, cards: Array, o := {}):
+	var live := bool(o.get("live", false))
+	if auto_answer:
+		await get_tree().process_frame
+		if live:
+			if (bool(o.get("finish", false)) and randf() < 0.5) or cards.is_empty():
+				return "finish" if bool(o.get("finish", false)) else null
+			return cards[randi() % cards.size()]
+		var lo := int(o.get("min", 1))
+		var hi := mini(int(o.get("max", 1)), cards.size())
+		var v = o.get("valid")
+		for _try in 40:
+			var pool := cards.duplicate()
+			pool.shuffle()
+			var got: Array = pool.slice(0, randi_range(mini(lo, hi), hi))
+			if (v is Callable and (v as Callable).call(got)) or (not (v is Callable) and got.size() >= lo):
+				return got
+		return null
+	await stage_clear()
+	var keep: bool = live and _picker != null and is_instance_valid(_picker)
+	if not keep:
+		close_cards()
+		_picker = CardPicker.new()
+		add_child(_picker)
+	_picker.open(self, text, cards, o, not keep)
+	var res = await _picker.done
+	if not live:
+		close_cards()
+	return res
+
+
+## Put the card box away (a live pick leaves it open between answers).
+func close_cards() -> void:
+	if _picker != null and is_instance_valid(_picker):
+		_picker.close()
+	_picker = null
+
+
+func cards_open() -> bool:
+	return _picker != null and is_instance_valid(_picker)
+
+
+## Attack or Defense, face-up or face-down: the card itself is shown each way it can go, and
+## you tap the one you want. `bits`: 1 Attack, 4 Defense, 8 face-down Defense, 2 face-down Attack.
+func ask_position(card, bits: Array) -> int:
+	if auto_answer:
+		await get_tree().process_frame
+		return randi() % bits.size()
+	await stage_clear()
+	var root := PanelContainer.new()
+	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.042, 0.078, 0.156, 0.97), 22, Color(UITheme.ACCENT, 0.7)))
+	root.z_index = 60
+	add_child(root)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	root.add_child(v)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 18)
+	v.add_child(head)
+	var text := Loc.t("%s: which position?") % card.cname()
+	var t := UITheme.label(text, 30, Color.WHITE, UITheme.title_font())
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(t)
+	var fold := _foldable(root, text, UITheme.ACCENT)
+	head.add_child(fold[0])
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 18)
+	v.add_child(row)
+	var names := {1: "Attack Position", 4: "Defense Position", 8: "Face-down Defense", 2: "Face-down Attack"}
+	var subs := {1: "Fights with its ATK", 4: "Guards with its DEF", 8: "Set: they cannot see it", 2: "Hidden, upright"}
+	inspect(card)
+	var first: Button = null
+	for i in bits.size():
+		var bit := int(bits[i])
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(250, 330)
+		b.add_theme_stylebox_override("normal", UITheme.button_box(Color(1, 1, 1, 0.04), Color(1, 1, 1, 0.22), 16))
+		b.add_theme_stylebox_override("hover", UITheme.button_box(Color(UITheme.ACCENT, 0.22), UITheme.ACCENT, 16))
+		b.add_theme_stylebox_override("focus", UITheme.button_box(Color(UITheme.ACCENT, 0.22), UITheme.ACCENT, 16))
+		var pic := TextureRect.new()
+		pic.texture = Cards.get_face(card.id) if bit in [1, 4] else Cards.duel_back(int(card.owner))
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_SCALE
+		pic.size = Vector2(150, 219)
+		pic.pivot_offset = pic.size / 2.0
+		pic.position = Vector2(50, 12)
+		pic.rotation = 0.0 if bit in [1, 2] else -PI / 2.0
+		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(pic)
+		var nm := UITheme.label(Loc.t(str(names[bit])), 23, Color.WHITE, UITheme.title_font())
+		nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		nm.position = Vector2(0, 246)
+		nm.size = Vector2(250, 30)
+		nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(nm)
+		var sub := UITheme.label(Loc.t(str(subs[bit])), 16, UITheme.TEXT_DIM)
+		sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sub.position = Vector2(0, 280)
+		sub.size = Vector2(250, 24)
+		sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(sub)
+		b.mouse_entered.connect(func():
+			Sfx.play("blip", -18.0, 1.3)
+			create_tween().tween_property(pic, "scale", Vector2(1.08, 1.08), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT))
+		b.mouse_exited.connect(func(): create_tween().tween_property(pic, "scale", Vector2.ONE, 0.1))
+		b.pressed.connect(func():
+			Sfx.play("click", -6.0, 1.1)
+			_choice_picked.emit(i))
+		row.add_child(b)
+		if first == null:
+			first = b
+		# Each way of placing it turns into place.
+		pic.modulate.a = 0.0
+		var from_rot := pic.rotation + 0.5
+		var to_rot := pic.rotation
+		pic.rotation = from_rot
+		var tw := create_tween().set_parallel()
+		tw.tween_property(pic, "modulate:a", 1.0, 0.12).set_delay(0.06 * i)
+		tw.tween_property(pic, "rotation", to_rot, 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(0.06 * i)
+	root.reset_size()
+	await get_tree().process_frame
+	var vs := get_viewport_rect().size
+	root.position = Vector2((vs.x - root.size.x) / 2.0, vs.y * 0.26)
+	_pop_in(root)
+	if first:
+		first.grab_focus()
+	var idx: int = await _choice_picked
+	root.queue_free()
+	(fold[1] as Button).queue_free()
+	return idx
+
+
+## A box that asks something arrives with a small spring instead of just being there.
+func _pop_in(root: Control) -> void:
+	root.pivot_offset = root.size / 2.0
+	root.scale = Vector2(0.92, 0.92)
+	root.modulate.a = 0.0
+	var tw := create_tween().set_parallel()
+	tw.tween_property(root, "modulate:a", 1.0, 0.12)
+	tw.tween_property(root, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## Where a card of your hand is on the screen right now (its middle), or (-1, -1).
+func hand_card_center(inst) -> Vector2:
+	for e in _hand:
+		if e["inst"] == inst and is_instance_valid(e["node"]):
+			var n: Control = e["node"]
+			return n.global_position + HAND_CARD * n.scale / 2.0
+	return Vector2(-1, -1)
 
 
 ## Your duel spirit, floating by your panel (bottom left) for the whole duel.
@@ -1580,7 +1756,13 @@ func ask_choice(text: String, answers: Array, card = null) -> int:
 		if i == 0:
 			b.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.ACCENT, 0.25), UITheme.ACCENT, 14))
 			first = b
-		b.pressed.connect(func(): _choice_picked.emit(i))
+		b.add_theme_font_size_override("font_size", 23)
+		b.add_theme_stylebox_override("hover", UITheme.button_box(Color(UITheme.ACCENT, 0.45), Color.WHITE, 14))
+		b.add_theme_stylebox_override("focus", UITheme.button_box(Color(UITheme.ACCENT, 0.35), Color.WHITE, 14))
+		b.mouse_entered.connect(func(): Sfx.play("blip", -18.0, 1.3))
+		b.pressed.connect(func():
+			Sfx.play("click", -6.0, 1.1)
+			_choice_picked.emit(i))
 		v.add_child(b)
 	var fold := _foldable(root, text, UITheme.ACCENT)
 	(fold[0] as Button).flat = true
@@ -1589,8 +1771,8 @@ func ask_choice(text: String, answers: Array, card = null) -> int:
 	await get_tree().process_frame
 	var vs := get_viewport_rect().size
 	root.position = Vector2((vs.x - root.size.x) / 2.0, vs.y * 0.3)
-	root.modulate.a = 0.0
-	create_tween().tween_property(root, "modulate:a", 1.0, 0.15)
+	_pop_in(root)
+	Sfx.play("hover", -8.0, 1.1)
 	if first:
 		first.grab_focus()
 	var idx: int = await _choice_picked
@@ -1854,6 +2036,7 @@ const ACTION_ICONS := {
 	"summon": "▲", "set": "▼", "activate": "✦", "flip": "⟳", "position": "⟲",
 	"attack": "⚔", "direct": "⚔", "fuse": "✸", "set_st": "▼", "special_hand": "★", "ignite": "✦", "fire": "✹",
 	"surrender": "⚑", "piles": "☰", "pause": "⚙",
+	"special": "★", "mset": "▼", "sset": "▼", "act": "✦", "repos": "⟲", "flipsummon": "⟳", "tribute": "▲", "gyfx": "✦",
 }
 var _focused = null
 
@@ -1864,6 +2047,9 @@ const ACTION_HINTS := {
 	"attack": "Pick a target, or go direct", "fuse": "Fusion Summon this monster", "special_hand": "Does not use your Normal Summon",
 	"ignite": "Use this monster's effect", "fire": "Spend its counters", "surrender": "Give up this duel", "piles": "Look through both Graveyards",
 	"pause": "Settings, rules and more",
+	"special": "Does not use your Normal Summon", "mset": "Face-down, in Defense Position", "sset": "Face-down. Use it on a later turn",
+	"act": "Use it right now", "repos": "Switch its battle position", "flipsummon": "Turn it face-up, in Attack Position",
+	"tribute": "Give up monsters you control for it", "gyfx": "A card there can use its effect",
 }
 
 
@@ -1876,10 +2062,13 @@ func show_actions(at: Vector2, options: Array, above := false) -> void:
 		_menu.remove_child(c)
 		c.queue_free()
 	_menu.add_theme_constant_override("separation", 7)
+	var nth := 0
 	for o in options:
 		var id: String = o[0]
-		var key := id.split(":")[0]
-		var col: Color = Comic.RED if key in ["attack", "direct", "surrender"] else (Color("d99a00") if key in ["fuse", "special_hand", "ignite"] else (Color("8a5cf0") if key in ["set", "set_st"] else (Comic.BLUE if key in ["piles", "pause", "view"] else Comic.ORANGE_DEEP)))
+		# (an entry may say what kind of move it is, and bring its own second line)
+		var key: String = str(o[3]) if o.size() > 3 else id.split(":")[0]
+		var hint: String = str(o[4]) if o.size() > 4 else str(ACTION_HINTS.get(key, ""))
+		var col: Color = Comic.RED if key in ["attack", "direct", "surrender"] else (Color("d99a00") if key in ["fuse", "special_hand", "ignite", "special", "act", "gyfx"] else (Color("8a5cf0") if key in ["set", "set_st", "mset", "sset"] else (Comic.BLUE if key in ["piles", "pause", "view", "repos", "position"] else Comic.ORANGE_DEEP)))
 		var b := Button.new()
 		b.disabled = not o[2]
 		b.custom_minimum_size = Vector2(330, 66)
@@ -1925,18 +2114,35 @@ func show_actions(at: Vector2, options: Array, above := false) -> void:
 		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var title := Comic.label(Loc.t(str(o[1])), 27, Color.WHITE if o[2] else Color(1, 1, 1, 0.4), 2 if o[2] else 0)
 		words.add_child(title)
-		if ACTION_HINTS.has(key):
-			var sub := UITheme.label(Loc.t(str(ACTION_HINTS[key])) if o[2] else Loc.t("Not possible right now"), 15, Color(1, 1, 1, 0.92) if o[2] else Color(1, 1, 1, 0.35), UITheme.semi_font())
+		if hint != "":
+			var sub := UITheme.label(Loc.t(hint) if o[2] else Loc.t("Not possible right now"), 15, Color(1, 1, 1, 0.92) if o[2] else Color(1, 1, 1, 0.35), UITheme.semi_font())
+			sub.clip_text = true
+			sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 			words.add_child(sub)
+		title.clip_text = true
+		title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		row.add_child(words)
 		b.pressed.connect(func():
 			Sfx.play("click", -6.0, 1.1)
 			hide_actions()
 			action_chosen.emit(id))
+		b.pivot_offset = Vector2(165, 33)
 		b.mouse_entered.connect(func():
 			if not b.disabled:
-				Sfx.play("blip", -18.0, 1.3))
+				Sfx.play("blip", -18.0, 1.3)
+				_menu_pop(b, 1.05))
+		b.mouse_exited.connect(func(): _menu_pop(b, 1.0))
+		b.focus_entered.connect(func(): _menu_pop(b, 1.05))
+		b.focus_exited.connect(func(): _menu_pop(b, 1.0))
 		_menu.add_child(b)
+		# Each choice springs out a beat after the one before it. It answers from the first frame.
+		b.scale = Vector2(0.82, 0.82)
+		b.modulate.a = 0.0
+		var tw := create_tween().set_parallel()
+		tw.tween_property(b, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(0.03 * nth)
+		tw.tween_property(b, "modulate:a", 1.0, 0.08).set_delay(0.03 * nth)
+		b.set_meta("tw", tw)
+		nth += 1
 	_menu.visible = true
 	_menu.reset_size()
 	var sz := _menu.get_combined_minimum_size()
@@ -1947,7 +2153,6 @@ func show_actions(at: Vector2, options: Array, above := false) -> void:
 	_menu.position = Vector2(clampf(x, 10, vs.x - sz.x - 10), clampf(at.y - sz.y / 2.0, 10, vs.y - sz.y - 10))
 	if above:
 		_menu.position = Vector2(clampf(at.x - sz.x / 2.0, 10, vs.x - sz.x - 10), maxf(10.0, at.y - sz.y))
-	# No pop, no fade: the menu is there, whole, on the frame of the click.
 	_menu.scale = Vector2.ONE
 	_menu.modulate.a = 1.0
 	Sfx.play("hover", -8.0, 1.3)
@@ -1955,6 +2160,18 @@ func show_actions(at: Vector2, options: Array, above := false) -> void:
 		if c is Button and not c.disabled:
 			c.grab_focus()
 			break
+
+
+func _menu_pop(b: Button, to: float) -> void:
+	if not is_instance_valid(b):
+		return
+	var old: Tween = b.get_meta("tw") if b.has_meta("tw") else null
+	if old and old.is_valid():
+		old.kill()
+	b.modulate.a = 1.0
+	var tw := create_tween()
+	tw.tween_property(b, "scale", Vector2(to, to), 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	b.set_meta("tw", tw)
 
 
 ## Where a hand card's menu opens: just over the top edge of the card once it is lifted,

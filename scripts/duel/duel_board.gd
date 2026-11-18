@@ -1360,6 +1360,40 @@ func _near_camera_xform() -> Transform3D:
 	return Transform3D(b, Vector3(0, 4.6, 4.3))
 
 
+## Where the card you are playing is on the screen (in your hand, or where you let go of it).
+## The duel sets it just before the card is played, so the card on the table starts its flight
+## from that very spot instead of from the middle of the screen.
+var fly_from := Vector2(-1, -1)
+var fly_at := 0
+
+func _hand_xform() -> Transform3D:
+	if fly_from.x < 0.0 or Time.get_ticks_msec() - fly_at > 600:
+		return _near_camera_xform()
+	var sp := fly_from
+	fly_from = Vector2(-1, -1)
+	# (at this depth the card is as big as it is in your hand)
+	return Transform3D(camera.global_transform.basis, camera.project_position(sp, 5.2))
+
+
+## A straight, accelerating move: the way a card is slammed down or an attacker lunges.
+func _dash(c: Card3D, to: Transform3D, dur: float) -> void:
+	var from := c.transform
+	var q0 := from.basis.get_rotation_quaternion()
+	var q1 := to.basis.get_rotation_quaternion()
+	var tw := create_tween()
+	tw.tween_method(func(t: float):
+		var e := t * t * t
+		c.transform = Transform3D(Basis(q0.slerp(q1, minf(1.0, t * 1.6))), from.origin.lerp(to.origin, e)), 0.0, 1.0, Settings.t(dur))
+	await tw.finished
+
+
+## The little bounce of a card that just landed.
+func _land(c: Card3D, amount := 0.14) -> void:
+	c.scale = Vector3.ONE * (1.0 + amount)
+	var tw := create_tween()
+	tw.tween_property(c, "scale", Vector3.ONE, Settings.t(0.22)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
 func _layout_opp_hand() -> void:
 	var n := _opp_hand.size()
 	for i in n:
@@ -1415,20 +1449,37 @@ func anim_summon(p: int, inst, zone: int, set_card: bool) -> void:
 	var c: Card3D
 	if p == 0:
 		c = _new_card(inst)
-		c.transform = _near_camera_xform()
+		c.transform = _hand_xform()
 	else:
 		c = _take_from_opp_hand(inst)
 	c.set_pickable(true)
 	var to := Transform3D(table_basis(p, not set_card, not set_card), monster_zone_pos(p, zone) + Vector3(0, 0.02, 0))
-	var hover := Transform3D(to.basis, to.origin + Vector3(0, 1.1, 0))
-	await _move(c, hover, 0.3, 0.4)
+	var col: Color = Comic.SKY if p == 0 else Color("ff8a98")
+	if set_card:
+		# Set: it glides in low and is laid face-down, quietly. A soft ring, no fanfare.
+		await _move(c, Transform3D(to.basis, to.origin + Vector3(0, 0.5, 0)), 0.3, 0.45)
+		if not _orbs.is_empty():
+			await _consume_orbs(to.origin)
+		await _move(c, to, 0.14, 0.0)
+		_land(c, 0.08)
+		_burst(to.origin, Color("9d7bff"), 0.9)
+		shake(0.1)
+		return
+	# Summon: up over its zone, the zone lights under it, a beat in the air, then it is slammed down.
+	var hover := Transform3D(to.basis * Basis(Vector3.RIGHT, 0.35), to.origin + Vector3(0, 1.25, 0.25 if p == 0 else -0.25))
+	await _move(c, hover, 0.28, 0.4)
 	if not _orbs.is_empty():
 		await _consume_orbs(to.origin)
-	await _move(c, to, 0.11, 0.0)
-	_burst(to.origin, Comic.SKY if p == 0 else Color("ff8a98"), 1.0 if set_card else 1.6)
-	shake(0.12 if set_card else 0.25)
-	if not set_card:
-		await hologram(inst, to.origin)
+	_ring_fx(to.origin + Vector3(0, 0.03, 0), col, 0.9, 0.0, 0.0)
+	await _wait(0.06)
+	await _dash(c, to, 0.12)
+	_land(c)
+	create_tween().tween_method(c.flash, 1.6, 0.0, Settings.t(0.4))
+	_burst(to.origin, col, 1.7)
+	_burst(to.origin, Color.WHITE, 0.9)
+	_sparks(to.origin + Vector3(0, 0.1, 0), col, 14)
+	shake(0.3)
+	await hologram(inst, to.origin)
 
 
 func hologram(inst, at: Vector3, force_big := false) -> void:
@@ -1561,7 +1612,7 @@ func anim_material(p: int, inst, from: String, center: Vector3) -> void:
 	if from == "hand":
 		if p == 0:
 			c = _new_card(inst)
-			c.transform = _near_camera_xform()
+			c.transform = _hand_xform()
 		else:
 			c = _take_from_opp_hand(inst)
 	if c == null:
@@ -1905,6 +1956,16 @@ func anim_tribute(inst) -> void:
 	_add_to_gy(inst)
 
 
+## Tribute lights that no Summon came to collect (a Tribute paid as a cost) fade out.
+func clear_orbs() -> void:
+	for o in _orbs:
+		if is_instance_valid(o):
+			var tw := create_tween()
+			tw.tween_property(o, "scale", Vector3(0.01, 0.01, 0.01), Settings.t(0.25))
+			tw.tween_callback(o.queue_free)
+	_orbs.clear()
+
+
 func _consume_orbs(at: Vector3) -> void:
 	if _orbs.is_empty():
 		return
@@ -1950,7 +2011,7 @@ func anim_activate(p: int, inst, zone := 2) -> void:
 	var c: Card3D
 	if p == 0:
 		c = _new_card(inst)
-		c.transform = _near_camera_xform()
+		c.transform = _hand_xform()
 	else:
 		c = _take_from_opp_hand(inst)
 	c.set_pickable(true)
@@ -1982,13 +2043,16 @@ func anim_set_st(p: int, inst, zone: int) -> void:
 	var c: Card3D
 	if p == 0:
 		c = _new_card(inst)
-		c.transform = _near_camera_xform()
+		c.transform = _hand_xform()
 	else:
 		c = _take_from_opp_hand(inst)
 	c.set_pickable(true)
 	var to := Transform3D(table_basis(p, false, true), spell_zone_pos(p, zone) + Vector3(0, 0.02, 0))
-	await _move(c, to, 0.32, 0.4)
+	await _move(c, Transform3D(to.basis, to.origin + Vector3(0, 0.4, 0)), 0.28, 0.4)
+	await _move(c, to, 0.12, 0.0)
+	_land(c, 0.08)
 	_burst(to.origin, Color("b98cff"), 0.8)
+	shake(0.06)
 
 
 ## A set trap flips up with a flash.
@@ -2085,7 +2149,7 @@ func anim_hand_effect(p: int, inst) -> void:
 	var c: Card3D
 	if p == 0:
 		c = _new_card(inst)
-		c.transform = _near_camera_xform()
+		c.transform = _hand_xform()
 	else:
 		c = _take_from_opp_hand(inst)
 	var show_at := Transform3D(Basis(Vector3.RIGHT, -0.7), Vector3(0, 2.2, 1.6 if p == 0 else -0.6))
@@ -2191,8 +2255,44 @@ func anim_declare(p: int, inst, target) -> void:
 	var home := c.transform
 	c.set_meta("home", home)
 	var goal := _attack_goal(p, target)
-	var lift := Transform3D(home.basis, home.origin + Vector3(0, 0.7, 0) + (goal - home.origin) * 0.08)
-	await _move(c, lift, 0.22, 0.0)
+	var dir := (goal - home.origin)
+	dir.y = 0.0
+	dir = dir.normalized() if dir.length() > 0.01 else Vector3(0, 0, -1.0 if p == 0 else 1.0)
+	# It rises, leans back like a drawn bow, and a ring locks on to what it is about to hit.
+	var lean := Basis(dir.cross(Vector3.UP).normalized(), 0.3) * home.basis
+	var lift := Transform3D(lean, home.origin + Vector3(0, 0.75, 0) - dir * 0.35)
+	_lock_on(goal, target == null)
+	await _move(c, lift, 0.24, 0.0)
+
+
+## A red ring that closes on the target of an attack.
+func _lock_on(at: Vector3, direct: bool) -> void:
+	var mi := MeshInstance3D.new()
+	var t := TorusMesh.new()
+	t.inner_radius = 0.56
+	t.outer_radius = 0.63
+	t.rings = 40
+	t.ring_segments = 6
+	mi.mesh = t
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.no_depth_test = true
+	m.albedo_color = Color("ff4d5e", 0.0)
+	mi.material_override = m
+	mi.position = Vector3(at.x, 0.12, at.z)
+	var big := 3.4 if direct else 2.6
+	var small := 1.5 if direct else 0.95
+	mi.scale = Vector3(big, 1, big)
+	add_child(mi)
+	var tw := create_tween()
+	tw.tween_property(m, "albedo_color:a", 0.95, Settings.t(0.08))
+	tw.parallel().tween_property(mi, "scale", Vector3(small, 1, small), Settings.t(0.24)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(mi, "rotation:y", 1.6, Settings.t(0.24))
+	tw.tween_interval(Settings.t(0.3))
+	tw.tween_property(m, "albedo_color:a", 0.0, Settings.t(0.18))
+	tw.tween_callback(mi.queue_free)
 
 
 func anim_battle(p: int, inst, target) -> void:
@@ -2202,19 +2302,42 @@ func anim_battle(p: int, inst, target) -> void:
 	var home: Transform3D = c.get_meta("home", c.transform)
 	var goal := _attack_goal(p, target)
 	_battle_shot(p, home.origin, goal)
-	await _wait(0.3)
-	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.82) + Vector3(0, 0.25, 0))
-	await _move(c, hit, 0.16, 0.15)
+	await _wait(0.26)
+	# The lunge: slow off the mark, fastest at the moment it lands.
+	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.84) + Vector3(0, 0.25, 0))
+	await _dash(c, hit, 0.15)
 	StrikeFx.play(self, inst, home.origin, goal)
 	_attr_hit(inst, home.origin, goal + Vector3(0, 0.15, 0))
 	var th := holo_for(target)
 	if th:
 		th.hit()
+	var tc := card_for(target) if target != null else null
+	if tc != null:
+		_jolt(tc, (goal - home.origin).normalized())
+	else:
+		# Nothing in the way: the blow goes all the way to the duelist.
+		_burst(Vector3(goal.x, 0.05, goal.z), Color("ff5a6a"), 2.4)
+		_flash(goal, Color("ffd0c0"))
+		shake(0.5)
 	await hit_stop(0.1 if target != null else 0.14)
-	await _wait(0.25)
-	await _move(c, home, 0.32, 0.3)
+	# A short recoil off the hit, then home.
+	await _move(c, Transform3D(home.basis, hit.origin.lerp(home.origin, 0.18) + Vector3(0, 0.3, 0)), 0.1, 0.0)
+	await _wait(0.14)
+	await _move(c, home, 0.3, 0.3)
 	cam_release(0.45)
 	c.set_glow(false)
+
+
+## A card that was just hit is knocked back a hand's width and settles again.
+func _jolt(c: Card3D, dir: Vector3) -> void:
+	if c == null or not is_instance_valid(c):
+		return
+	var home := c.position
+	var push := Vector3(dir.x, 0.0, dir.z).normalized() * 0.22
+	var tw := create_tween()
+	tw.tween_property(c, "position", home + push + Vector3(0, 0.08, 0), Settings.t(0.05))
+	tw.tween_property(c, "position", home - push * 0.25, Settings.t(0.09))
+	tw.tween_property(c, "position", home, Settings.t(0.12)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 ## Freeze the whole table for a blink when a hit lands. Skipped when the duel is being
@@ -2830,6 +2953,117 @@ func _update_drop() -> void:
 		(b["label"] as Label3D).position.y = 0.5 + (0.12 if hot else 0.0)
 
 
+# ------------------------------------------------------------------ pointing at a zone
+
+var _zone_marks: Array = []      # {node, mat, rim, label, zone}
+var _zone_word := ""
+
+
+## Where a zone is. zone = [player, location (4 = Monster Zone, 8 = Spell & Trap Zone), sequence].
+func zone_pos(zone: Array) -> Vector3:
+	var p := int(zone[0])
+	return monster_zone_pos(p, int(zone[2])) if int(zone[1]) == 4 else st_pos(p, int(zone[2]))
+
+
+## Light up the zones a card may go to (an empty list puts the lights out). The one under the
+## pointer burns brighter and shows `word`.
+func show_zone_picks(zones: Array, word := "") -> void:
+	for m in _zone_marks:
+		if is_instance_valid(m["node"]):
+			(m["node"] as Node3D).queue_free()
+	_zone_marks.clear()
+	_zone_word = word
+	for z in zones:
+		var monster := int(z[1]) == 4
+		var size := Vector2(0.98, 0.98) if monster else Vector2(0.72, 0.98)
+		var root := Node3D.new()
+		root.position = zone_pos(z) + Vector3(0, 0.035, 0)
+		add_child(root)
+		var mi := MeshInstance3D.new()
+		var pm := PlaneMesh.new()
+		pm.size = size
+		mi.mesh = pm
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		mat.albedo_color = Color(Comic.SKY, 0.2)
+		mi.material_override = mat
+		root.add_child(mi)
+		# Four bright bars around it, so the zone reads as a frame and not as a blur.
+		var rim := StandardMaterial3D.new()
+		rim.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		rim.albedo_color = Comic.SKY
+		rim.emission_enabled = true
+		rim.emission = Comic.SKY
+		rim.emission_energy_multiplier = 2.2
+		for side in 4:
+			var bar := MeshInstance3D.new()
+			var bm := BoxMesh.new()
+			var along_x := side < 2
+			bm.size = Vector3(size.x + 0.05, 0.02, 0.045) if along_x else Vector3(0.045, 0.02, size.y + 0.05)
+			bar.mesh = bm
+			bar.material_override = rim
+			bar.position = Vector3(0, 0, (size.y / 2.0) * (1 if side == 0 else -1)) if along_x else Vector3((size.x / 2.0) * (1 if side == 2 else -1), 0, 0)
+			root.add_child(bar)
+		var l := Label3D.new()
+		l.font = Comic.button_font()
+		l.font_size = 60
+		l.pixel_size = 0.0034
+		l.outline_size = 18
+		l.outline_modulate = Color(0.03, 0.04, 0.09, 0.95)
+		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		l.no_depth_test = true
+		l.render_priority = 7
+		l.outline_render_priority = 6
+		l.position.y = 0.55
+		l.text = Loc.t(word) if word != "" else ""
+		l.visible = false
+		root.add_child(l)
+		# Each one rises out of the table a beat after its neighbour.
+		root.scale = Vector3(0.6, 1, 0.6)
+		var tw := create_tween()
+		tw.tween_property(root, "scale", Vector3.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(0.025 * _zone_marks.size())
+		_zone_marks.append({"node": root, "mat": mat, "rim": rim, "label": l, "zone": z})
+
+
+## The lit zone a point of the screen is over, or null.
+func zone_at(screen: Vector2, zones: Array):
+	var w := table_point(screen)
+	var best = null
+	var best_d := 1.08      # (1.0 = the edge of the zone; a little slop around it)
+	for z in zones:
+		var zp := zone_pos(z)
+		var d := maxf(absf(w.x - zp.x) / (0.62 if int(z[1]) == 4 else 0.5), absf(w.z - zp.z) / 0.62)
+		if d < best_d:
+			best_d = d
+			best = z
+	return best
+
+
+func _update_zone_marks() -> void:
+	if _zone_marks.is_empty():
+		return
+	var zones: Array = []
+	for m in _zone_marks:
+		zones.append(m["zone"])
+	var hot = zone_at(get_viewport().get_mouse_position(), zones)
+	var pulse := 0.5 + 0.5 * sin(_time * 5.0)
+	for m in _zone_marks:
+		if not is_instance_valid(m["node"]):
+			continue
+		var on: bool = hot != null and m["zone"] == hot
+		var col: Color = Color("ffe28a") if on else Comic.SKY
+		(m["mat"] as StandardMaterial3D).albedo_color = Color(col, (0.42 + 0.14 * pulse) if on else (0.1 + 0.1 * pulse))
+		(m["rim"] as StandardMaterial3D).albedo_color = col
+		(m["rim"] as StandardMaterial3D).emission = col
+		(m["rim"] as StandardMaterial3D).emission_energy_multiplier = 3.4 if on else (1.4 + 1.0 * pulse)
+		var n: Node3D = m["node"]
+		n.position.y = lerpf(n.position.y, 0.11 if on else 0.035, 0.3)
+		(m["label"] as Label3D).visible = on and _zone_word != ""
+		(m["label"] as Label3D).modulate = Color("fff2c8")
+
+
 # ------------------------------------------------------------------ direct attack target
 
 var _direct: Node3D
@@ -2952,6 +3186,7 @@ func _make_arrow() -> Node3D:
 
 func _update_arrow() -> void:
 	_update_drop()
+	_update_zone_marks()
 	if _arrow == null or not _arrow.visible or _aim_from == null or not is_instance_valid(_aim_from):
 		return
 	var from := _aim_from.global_position + Vector3(0, 0.25, 0)
