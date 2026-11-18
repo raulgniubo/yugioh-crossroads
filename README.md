@@ -5,6 +5,55 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.47.0
+
+**All 24 character decks rebuilt to be competitive. 402 new cards.** The game now has **3,106 cards**. The plan was "Crossroads: competitive character decks"; the full lists are in `tools/dev/character_decks/decks.py` and in `SignatureDecks.TUNE`.
+
+Each deck is built around the duelist's real ace with the official support cards for it: Yugi on Dark Magician, Kaiba on Blue-Eyes, Joey on Red-Eyes Fusion, Mai on Harpies, Bakura on Dark Necrofear and Destiny Board, Marik on Ra with the Slimes, Pegasus on Toons, Weevil on Insects, Rex on modern Dinosaurs, Jaden on HERO Fusion, Chazz on Armed Dragon Thunder, Zane on Cyber Dragon, Alexis on Cyber Angels, Syrus on Vehicroids, Aster on Destiny HERO, Yusei on Synchrons, Jack on Resonators, Crow on Blackwings, Akiza on Rose Dragons, Kalin on Infernity, Yuma on Utopia, Shark on Sharks, Kite on Galaxy-Eyes Photon, Vector on Umbral Horror with Don Thousand's Numeron cards.
+
+- **Every card can still be obtained.** The new cards are in their era's packs (generic Xyz Monsters in the ZEXAL pack). The cards that left the decks (Slifer, Obelisk, the Neo-Spacians, the Ojamas, Time Wizard, Great Moth and the rest) stay in the game and in the packs. The card check now proves it: all 3,106 cards are handed out by some pack.
+- **Street duelists who borrow a character's deck** keep the plain version, as before.
+
+**Five changes from the plan, found while building:**
+
+- **Zane:** Chimeratech Megafleet Dragon is not in. It needs monsters in the Extra Monster Zone, and this game has none. Constellar Pleiades has its slot. That is why it is 402 cards and not 403.
+- **Yusei:** Shooting Majestic Star Dragon needs Majestic Dragon, which left the deck. Stardust Warrior has its slot.
+- **Rex:** Double Evolution Pill needs a monster that is not a Dinosaur, and his deck has none. A third Lost World, a third Survival's End and Terraforming replace it. (The card itself is in the game.)
+- **Alexis:** Pre-Preparation of Rites cannot find a Cyber Angel (Machine Angel Ritual names no monster), so it would be a dead card. Two more Preparation of Rites and a third Cyber Angel Dakini replace it. (The card itself is in the game.)
+- **Jaden:** the original Elemental HERO Flame Wingman is back in the Extra Deck. It is his ace card in the menus, and Infernal Rage can summon it.
+
+**How strong are they, measured.** Each deck played 40 engine duels with the CPU on both sides against two strong shop decks (Monarchs and Amazoness), before and after. Wins out of 40:
+
+| Deck | Before | Now |  | Deck | Before | Now |
+| --- | --- | --- | --- | --- | --- | --- |
+| Kaiba | 5 | 38 |  | Yuma | 13 | 19 |
+| Yugi | 10 | 29 |  | Bakura | 18 | 16 |
+| Joey | 6 | 27 |  | Aster | 3 | 15 |
+| Shark | 9 | 26 |  | Mai | 7 | 14 |
+| Jaden | 3 | 25 |  | Zane | 8 | 12 |
+| Weevil | 1 | 22 |  | Marik | 2 | 10 |
+| Rex | 7 | 20 |  | Akiza | 3 | 9 |
+| Crow | 12 | 20 |  | Pegasus | 9 | 9 |
+| Jack | 8 | 19 |  | Alexis | 3 | 9 |
+
+and Yusei 6 to 8, Kalin 9 to 8, Kite 3 to 7, Chazz 7 to 7, Syrus 6 to 6, Vector 6 to 6. All 24 together: 164 wins before, 381 now, out of 960.
+
+**What that table does and does not say.** It is the CPU playing the decks, not you. The CPU plays straightforward decks well (Blue-Eyes, Dark Magician, Red-Eyes, Sharks, HEROes) and long combo decks badly: it does not find Yusei's, Kalin's or Kite's full lines. Those decks should be much stronger in your hands than the numbers show, but I have not played them by hand, so that part is not checked.
+
+**A second list for the CPU, for six decks.** Because of that, when the CPU plays these decks against you it gets a version it can pilot. You always get the real list.
+
+- **Chazz, Syrus, Vector:** the CPU keeps the list from before this build. With the new list it won 3, 1 and 2 of 40.
+- **Zane:** the new list without the cards the CPU throws away (Chimeratech Overdragon, Fortress Dragon, Overload Fusion), with plain removal instead. 5 of 40 became 12.
+- **Rex, Yuma:** a handful of cards the CPU never played make room for plain removal. 10 became 20, and 10 became 19.
+
+I tried the same for Kite, Akiza, Alexis, Marik, Yusei, Pegasus and Mai. It did not help, so they play the real list.
+
+**Checks.** Card check: 3,106 cards, 0 problems (with a new check: every card is handed out by some pack). 1,260 engine duels over all 63 decks: 0 complaints. Classic tests: 0 failures. Hand-made positions: 147 pass.
+
+**Not checked:** nobody has played the 24 decks by hand. The new cards were not each watched doing their effect: in the sweep, 2,823 of the 3,106 cards were summoned or activated in a full duel and 155 more used an effect in a set-up position. Of the other 128, 65 already had a hand-made position, and I wrote 16 more for the new cards the sweep did not reach (two of those, Number 93: Utopia Kaiser and Number iC1000, are the weaker "stands on the field" check). That leaves 47 older cards that were not seen doing anything in this run. They were seen in earlier builds, when they were still in a character's deck or in their family's sweep, and their scripts have not changed, but this run did not show them again.
+
+Also new for development: `DUEL_LOG=1` on `tests/ocg_sim.tscn` prints what each side did in a duel, `-- deck all` prints the lists the game really deals, and the engine data tool now finds a card's current script in the `pre-errata` folder (Red-Eyes Darkness Metal Dragon).
+
 ## What is in 0.46.0
 
 **Build 1 of the second card plan ("the next 1,000 cards, part 2"): six families, 214 new cards.** The game now has **2,704 cards**. (The Six Shinobi is gone as of this build, as agreed.)

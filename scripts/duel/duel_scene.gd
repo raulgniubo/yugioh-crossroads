@@ -264,7 +264,11 @@ func _start() -> void:
 	# (A street duelist with "Yusei's deck" plays the plain version; only Yusei plays his own.)
 	# (In Free Duel, a deck you hand the opponent yourself is the real one.)
 	var opp_plain := SignatureDecks.borrowed(opp_deck, _opp_key) and not bool(cfg.get("opponent_deck_full", false))
+	# (A few duelists have a list the CPU can pilot: SignatureDecks.cpu picks it for the opponent only.)
+	SignatureDecks.cpu = true
 	var opp_list := CardData.legend_deck(opp_deck, opp_plain) if _ai_level >= 2 else CardData.deck_list(opp_deck, opp_plain)
+	var opp_extra: Array[int] = CardData.extra_list(opp_deck, opp_plain)
+	SignatureDecks.cpu = false
 	var extra_hand := int(cfg.get("hand", 5)) - 5
 	state.bonus_cards = [extra_hand, extra_hand + (1 if _ai_level >= 2 and ocg == null else 0)]   # (on the new engine the opponent's edge is how it thinks, not an extra card)
 	# Destiny Draw: as the Free Duel screen says, else as Settings says. Never in a puzzle.
@@ -328,13 +332,13 @@ func _start() -> void:
 								row.append([Puzzles._id(str(x[0])), str(x[1])] if x is Array else Puzzles._id(str(x)))
 							sides.append(row)
 						lay[k] = sides
-		ocg.prepare(my_list, opp_list, CardData.extra_list(my_deck), CardData.extra_list(opp_deck, opp_plain), me_name, opp_name, first,
+		ocg.prepare(my_list, opp_list, CardData.extra_list(my_deck), opp_extra, me_name, opp_name, first,
 				[5 + int(state.bonus_cards[ME]), 5 + int(state.bonus_cards[AI])], lay,
 				{"speed": speed0, "destiny": [state.destiny and state.destiny_who[ME], state.destiny and state.destiny_who[AI]]})
 		events = []
 	else:
 		events = state.setup(my_list, opp_list, me_name, opp_name, first, -1,
-				CardData.extra_list(my_deck), CardData.extra_list(opp_deck, opp_plain))
+				CardData.extra_list(my_deck), opp_extra)
 	# Grand Prix: your lap decides how many Speed Counters each rider starts with.
 	if state.turbo and cfg.has("speed_start") and ocg == null:
 		for p in 2:

@@ -2245,5 +2245,261 @@
 },
 "opp": {},
 "turns": 3
+},
+{
+"card": "Double Evolution Pill",
+"me": {
+"hand": [
+"Double Evolution Pill"
+],
+"gy": [
+"Babycerasaurus",
+"Battle Ox"
+],
+"deck": [
+"Super Conductor Tyranno"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Cybernetic Horizon",
+"me": {
+"hand": [
+"Cybernetic Horizon",
+"Cyber Dragon"
+],
+"deck": [
+"Cyberdark Horn",
+"Cyber Dragon Core"
+],
+"extra": [
+"Cyber End Dragon"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Pre-Preparation of Rites",
+"me": {
+"hand": [
+"Pre-Preparation of Rites"
+],
+"deck": [
+"Black Luster Ritual",
+"Black Luster Soldier"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "King's Synchro",
+"me": {
+"m": [
+[
+"Stardust Dragon",
+"atk"
+]
+],
+"st": [
+"King's Synchro"
+],
+"gy": [
+"Junk Synchron"
+]
+},
+"opp": {
+"hand": [
+"Vorse Raider"
+],
+"m": [
+[
+"Blue-Eyes White Dragon",
+"atk"
+]
+]
+},
+"turns": 4
+},
+{
+"card": "Red Carpet",
+"me": {
+"m": [
+"Stardust Dragon"
+],
+"st": [
+"Red Carpet"
+],
+"gy": [
+"Dark Resonator",
+"Synkron Resonator"
+]
+},
+"opp": {},
+"turns": 4
+},
+{
+"card": "Black Shadow Squall",
+"me": {
+"m": [
+"Black-Winged Dragon"
+],
+"gy": [
+"Black Shadow Squall"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Blackwing - Boobytrap",
+"me": {
+"m": [
+"Blackwing - Shura the Blue Flame"
+],
+"st": [
+"Blackwing - Boobytrap"
+]
+},
+"opp": {
+"hand": [
+"Mystical Space Typhoon",
+"Heavy Storm"
+]
+},
+"turns": 4
+},
+{
+"card": "Ebon High Magician",
+"me": {
+"m": [
+"Dark Magician",
+"Dark Magician"
+],
+"extra": [
+"Ebon High Magician"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Evolzar Dolkka",
+"me": {
+"m": [
+"Sabersaurus",
+"Sabersaurus"
+],
+"extra": [
+"Evolzar Dolkka"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Quintet Magician",
+"me": {
+"hand": [
+"Polymerization",
+"Dark Magician",
+"Dark Magician Girl",
+"Skilled Dark Magician",
+"Breaker the Magical Warrior",
+"Magician's Rod"
+],
+"extra": [
+"Quintet Magician"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Elemental HERO Sunrise",
+"me": {
+"hand": [
+"Polymerization",
+"Elemental HERO Sparkman",
+"Elemental HERO Clayman"
+],
+"extra": [
+"Elemental HERO Sunrise"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Elemental HERO Flame Wingman - Infernal Rage",
+"me": {
+"hand": [
+"Polymerization",
+"Elemental HERO Avian",
+"Elemental HERO Burstinatrix"
+],
+"extra": [
+"Elemental HERO Flame Wingman - Infernal Rage"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Vision HERO Trinity",
+"me": {
+"hand": [
+"Polymerization",
+"Elemental HERO Sparkman",
+"Elemental HERO Clayman",
+"Elemental HERO Avian"
+],
+"extra": [
+"Vision HERO Trinity"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Blackwing Tamer - Obsidian Hawk Joe",
+"me": {
+"m": [
+"Blackwing - Gale the Whirlwind",
+"Blackwing - Bora the Spear"
+],
+"extra": [
+"Blackwing Tamer - Obsidian Hawk Joe"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Number 93: Utopia Kaiser",
+"me": {
+"m": [
+"Number 93: Utopia Kaiser"
+]
+},
+"opp": {},
+"turns": 3,
+"pass": "stands",
+"why": "It needs two Number Xyz Monsters that still have material, and a set-up position cannot give materials. The check is that it stands on the field through the turns without a complaint."
+},
+{
+"card": "Number iC1000: Numerounius Numerounia",
+"me": {
+"m": [
+"Number iC1000: Numerounius Numerounia"
+]
+},
+"opp": {},
+"turns": 3,
+"pass": "stands",
+"why": "Only Number C1000's own effect can summon it. The check is that it stands on the field through the turns without a complaint."
 }
 ]

@@ -8,6 +8,21 @@ func _ready() -> void:
 	var n := int(args[2]) if args.size() > 2 else 3
 	var seed0 := int(args[3]) if args.size() > 3 else 1
 	var verbose := "-v" in args
+	if a == "deck":
+		# (dev: the list a deck is really dealt, after SignatureDecks has had its say)
+		for key in (Characters.ORDER if b == "all" else [b]):
+			var dk := str(Characters.get_char(str(key)).get("deck", key)) if b == "all" else str(key)
+			var cnt := {}
+			for id in CardData.deck_list(dk):
+				var nm := str(CardData.get_card(int(id)).get("name", "?"))
+				cnt[nm] = int(cnt.get(nm, 0)) + 1
+			var cx := {}
+			for id in CardData.extra_list(dk):
+				var nm2 := str(CardData.get_card(int(id)).get("name", "?"))
+				cx[nm2] = int(cx.get(nm2, 0)) + 1
+			print("DECK ", dk, " ", JSON.stringify({"main": cnt, "extra": cx}))
+		get_tree().quit()
+		return
 	if a == "ids":
 		# Dev: every card id the game can put in a duel, for tools/make_ocg_data.py.
 		var ids := {}
@@ -197,8 +212,11 @@ func one(ka: String, kb: String, seed: int, verbose: bool) -> Dictionary:
 	var st := OcgMirror.new()
 	var d := OcgDuel.new()
 	d.log_msgs = verbose and "-m" in OS.get_cmdline_user_args()
+	# (The CPU plays both sides here, so both get the list the CPU is given; HUMAN_LISTS=1 for the player's.)
+	SignatureDecks.cpu = OS.get_environment("HUMAN_LISTS") == ""
 	var decks := [CardData.deck_list(ka), CardData.deck_list(kb)]
 	var extras := [CardData.extra_list(ka), CardData.extra_list(kb)]
+	SignatureDecks.cpu = false
 	if ka == "lumen_test":
 		# Your partner and her cards, with plain monsters around them.
 		CardData.lumen_tuner_test = true
@@ -236,11 +254,15 @@ func one(ka: String, kb: String, seed: int, verbose: bool) -> Dictionary:
 	var cpus := [OcgCpu.new(), OcgCpu.new()]
 	cpus[0].rng.seed = seed
 	cpus[1].rng.seed = seed + 7
+	var log_ev := OS.get_environment("DUEL_LOG") != ""
 	var guard := 0
 	var last_retries := 0
 	while not d.over and guard < 6000:
 		guard += 1
 		for e in d.advance():
+			if log_ev and (e["type"] in ["summon", "special", "set", "activate", "effect", "attack", "lp", "turn", "destroy"] or OS.get_environment("DUEL_LOG") == "all"):
+				# (dev: DUEL_LOG=1 prints what each side did, to see how the CPU plays a deck)
+				print("  T", st.turn, " p", e.get("player", "?"), " ", e["type"], " ", str(e["text"]) if e.has("text") else str(e["card"].cname() if e.get("card") != null else ""), " ", e.get("amount", ""))
 			if e["type"] in ["effect", "activate"]:
 				var nm := str(e["text"]) if e.has("text") else str(e["card"].cname() if e.get("card") != null else "?")
 				if nm.begins_with("Speed "):

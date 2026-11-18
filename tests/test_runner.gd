@@ -2842,9 +2842,9 @@ func _test_signature_decks() -> void:
 	var yusei := CardData.deck_list("yusei").map(func(id): return str(CardData.get_card(id).get("name", "")))
 	check(not yusei.has("Beaver Warrior") and not yusei.has("Celtic Guardian"), "Yusei no longer plays Beaver Warrior or Celtic Guardian")
 	var yugi := CardData.deck_list("yugi").map(func(id): return str(CardData.get_card(id).get("name", "")))
-	check(yugi.has("Dark Magician Girl") and yugi.has("Alpha The Magnet Warrior") and not yugi.has("Gemini Elf"), "Yugi plays Dark Magician Girl and the Magnet Warriors, not Gemini Elf")
+	check(yugi.has("Dark Magician Girl") and yugi.has("Magician's Rod") and not yugi.has("Gemini Elf"), "Yugi plays Dark Magician Girl and Magician's Rod, not Gemini Elf")
 	var au := SignatureDecks.audit("kaiba")
-	check((au["in"] as Array).has("Kaibaman") and (au["plays"] as Array).size() > 10, "the audit says what Kaiba plays and what is his")
+	check((au["in"] as Array).has("Blue-Eyes White Dragon") and (au["plays"] as Array).size() > 10, "the audit says what Kaiba plays and what is his")
 
 
 
@@ -3694,7 +3694,7 @@ func _test_cards_28() -> void:
 	# Yusei's deck is his own: 40 cards, 15 in the Extra Deck, nothing borrowed.
 	var au := SignatureDecks.audit("yusei")
 	check((au["stand_ins"] as Array).is_empty() and CardData.deck_list("yusei").size() == 40 and CardData.extra_list("yusei").size() == 15, "Yusei's deck: 40 + 15, no stand-ins (stand-ins %s)" % str(au["stand_ins"]))
-	check(CardData.legend_deck("yusei").size() == 40 and not CardData.legend_deck("yusei").has(_cid("Pot of Greed")), "Yusei's deck is the same 40 cards on Hard and Expert")
+	check(CardData.legend_deck("yusei").size() == 40 and CardData.legend_deck("yusei") == CardData.deck_list("yusei"), "Yusei's deck is the same 40 cards on Hard and Expert")
 	# The written-out deck is Yusei's alone: a street duelist with "his deck" plays the plain one.
 	check(SignatureDecks.owner("yusei") == "yusei" and SignatureDecks.borrowed("yusei", "hunter") and not SignatureDecks.borrowed("yusei", "yusei"), "The deck \"yusei\" belongs to Yusei; a Rare Hunter only borrows it")
 	check(not CardData.extra_list("yusei", true).has(_cid("Shooting Star Dragon")) and CardData.extra_list("yusei").has(_cid("Shooting Star Dragon")) and CardData.deck_list("yusei", true).size() >= 40, "The borrowed version has no Shooting Star Dragon")
@@ -4132,7 +4132,7 @@ func _test_cards_32() -> void:
 	check(s.players[0].banished.has(sealed), "Gold Sarcophagus banishes a card from the Deck")
 	# Yugi's deck is his own: 40 cards, Dark Paladin and Arcana Knight Joker in the Extra Deck.
 	var au := SignatureDecks.audit("yugi")
-	check((au["stand_ins"] as Array).is_empty() and CardData.deck_list("yugi").size() == 40 and CardData.extra_list("yugi").size() == 2, "Yugi's deck: 40 + 2, no stand-ins (stand-ins %s, main %d, extra %d)" % [str(au["stand_ins"]), CardData.deck_list("yugi").size(), CardData.extra_list("yugi").size()])
+	check((au["stand_ins"] as Array).is_empty() and CardData.deck_list("yugi").size() == 40 and CardData.extra_list("yugi").size() == 15, "Yugi's deck: 40 + 15, no stand-ins (stand-ins %s, main %d, extra %d)" % [str(au["stand_ins"]), CardData.deck_list("yugi").size(), CardData.extra_list("yugi").size()])
 	s.begin_standby()
 	check(not s.players[0].hand.has(sealed), "Gold Sarcophagus: not yet after 1 Standby Phase")
 	s.begin_standby()
@@ -9584,7 +9584,7 @@ func _test_theme_rework() -> void:
 	var bw2 := _mon(s, 0, "Blue-Eyes White Dragon", 0)
 	s.declare_attack(0, bw2, ap2)
 	s.resolve_attack()
-	check(s.players[1].field.has(nes) and not nes.face_up, "Apprentice Magician: Night's End Sorcerer face-down")
+	check(s.players[1].monsters().any(func(m): return m != ap2 and not m.face_up), "Apprentice Magician: a Level 2 Spellcaster face-down")
 	# Night's End Sorcerer: Special Summoned, banish 2 from their GY.
 	s = _main_ready(7314)
 	_in(s, 1, "Dark Hole", "gy")

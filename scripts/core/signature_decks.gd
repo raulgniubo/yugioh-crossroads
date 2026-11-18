@@ -5,6 +5,11 @@ class_name SignatureDecks
 ## every duelist, which of these are ready, which still need their effect built, and which
 ## the card database does not have under that name.
 
+## Set while a deck is being dealt to the CPU. A few duelists have a second list for that
+## ("cpu_main", "cpu_extra" in TUNE): the list the CPU can actually pilot. The player always
+## gets the real one.
+static var cpu := false
+
 const WISH := {
 	"yugi": {"main": ["Knight's Title", "Dark Magician Knight", "Graceful Charity", "Premature Burial", "Change of Heart", "Call of the Haunted", "Dark Magician", "Dark Magician Girl", "Buster Blader", "Black Luster Soldier", "Magician of Black Chaos", "Summoned Skull", "Gaia The Fierce Knight", "Curse of Dragon",
 			"Celtic Guardian", "Obnoxious Celtic Guard", "Kuriboh", "Big Shield Gardna", "Alpha The Magnet Warrior", "Beta The Magnet Warrior", "Gamma The Magnet Warrior", "Valkyrion the Magna Warrior",
@@ -196,34 +201,45 @@ const TUNE := {
 		# Rex's best deck (v0.33.36): Dinosaurs with Gilasaurus and Babycerasaurus for Tributes, Black Tyranno, Dark Driceratops, Ultimate Tyranno and Super Conductor Tyranno, Jurassic World and Tail Swipe. v0.33.37: Tyrant Dragon.
 		# v0.47.0, the competitive list: Modern Dinosaurs.
 		"main": {"Souleating Oviraptor": 3, "Miscellaneousaurus": 3, "Babycerasaurus": 3, "Petiteranodon": 3, "Giant Rex": 3, "Ultimate Conductor Tyranno": 3, "Megalosmasher X": 2, "Overtex Qoatlus": 1, "Animadorned Archosaur": 1, "Xeno Meteorus": 1, "Super Conductor Tyranno": 1, "Fossil Dig": 3, "Lost World": 3, "Terraforming": 1, "Dark Hole": 1, "Pot of Greed": 1, "Monster Reborn": 1, "Survival's End": 3, "Mirror Force": 1, "Torrential Tribute": 1, "Call of the Haunted": 1},
-		"extra": {"Evolzar Laggia": 2, "Evolzar Dolkka": 2, "Tornado Dragon": 1, "Castel, the Skyblaster Musketeer": 1, "Abyss Dweller": 1, "Diamond Dire Wolf": 1, "Number 38: Hope Harbinger Dragon Titanic Galaxy": 1, "Number 97: Draglubion": 1, "Divine Dragon Knight Felgrand": 1, "Gachi Gachi Gantetsu": 1, "Sky Cavalry Centaurea": 1, "Herald of Pure Light": 1, "Number 107: Galaxy-Eyes Tachyon Dragon": 1}},
+		"extra": {"Evolzar Laggia": 2, "Evolzar Dolkka": 2, "Tornado Dragon": 1, "Castel, the Skyblaster Musketeer": 1, "Abyss Dweller": 1, "Diamond Dire Wolf": 1, "Number 38: Hope Harbinger Dragon Titanic Galaxy": 1, "Number 97: Draglubion": 1, "Divine Dragon Knight Felgrand": 1, "Gachi Gachi Gantetsu": 1, "Sky Cavalry Centaurea": 1, "Herald of Pure Light": 1, "Number 107: Galaxy-Eyes Tachyon Dragon": 1},
+		# In the CPU's hands: the cards it never plays make room for plain removal.
+		"cpu_swap": {"out": {"Overtex Qoatlus": 1, "Xeno Meteorus": 1, "Terraforming": 1, "Super Conductor Tyranno": 1}, "in": {"Raigeki": 1, "Book of Moon": 1, "Dimensional Prison": 1, "Mystical Space Typhoon": 1}}},
 	# Jaden's best deck: Neos, the Neo-Spacians and Contact Fusion, with the first Elemental HEROes behind them (v0.33.32).
 	"jaden": {"out": ["Celtic Guardian"], "in": {"Elemental HERO Bladedge": 1},
 		# Jaden, deck pass (v0.33.39): tested over 60 duels each. Yubel and her forms are out (they sat dead in the hand: 3 Tributes), two of each fusion half, Clayman/Bubbleman x2, Wildheart, an extra Emergency Call and Miracle Fusion. 14 -> 21 wins of 60.
 		# v0.47.0, the competitive list: HERO Fusion at full speed.
 		"main": {"Elemental HERO Stratos": 3, "Vision HERO Vyon": 3, "Vision HERO Faris": 2, "Vision HERO Increase": 1, "Elemental HERO Shadow Mist": 2, "Elemental HERO Liquid Soldier": 2, "Elemental HERO Solid Soldier": 1, "Elemental HERO Blazeman": 2, "Elemental HERO Neos": 1, "Elemental HERO Honest Neos": 1, "Elemental HERO Spirit of Neos": 1, "Destiny HERO - Malicious": 1, "E - Emergency Call": 3, "A Hero Lives": 2, "Polymerization": 3, "Miracle Fusion": 2, "Super Polymerization": 2, "Mask Change": 2, "Neos Fusion": 2, "Reinforcement of the Army": 1, "Pot of Greed": 1, "Monster Reborn": 1, "Hero Signal": 1},
-		"extra": {"Elemental HERO Sunrise": 2, "Elemental HERO Absolute Zero": 1, "Elemental HERO Great Tornado": 1, "Elemental HERO The Shining": 1, "Elemental HERO Nova Master": 1, "Elemental HERO Gaia": 1, "Elemental HERO Escuridao": 1, "Elemental HERO Brave Neos": 1, "Elemental HERO Flame Wingman - Infernal Rage": 1, "Wake Up Your Elemental HERO": 1, "Masked HERO Dark Law": 1, "Masked HERO Acid": 1, "Vision HERO Adoration": 1, "Vision HERO Trinity": 1}},
+		"extra": {"Elemental HERO Sunrise": 2, "Elemental HERO Absolute Zero": 1, "Elemental HERO Great Tornado": 1, "Elemental HERO The Shining": 1, "Elemental HERO Nova Master": 1, "Elemental HERO Gaia": 1, "Elemental HERO Escuridao": 1, "Elemental HERO Brave Neos": 1, "Elemental HERO Flame Wingman - Infernal Rage": 1, "Wake Up Your Elemental HERO": 1, "Masked HERO Dark Law": 1, "Masked HERO Acid": 1, "Vision HERO Adoration": 1, "Elemental HERO Flame Wingman": 1}},
 	"chazz": {"out": ["Dragon Treasure", "Rush Recklessly"], "in": {"Masked Dragon": 2, "V-Tiger Jet": 1},
 		# Chazz's best deck (v0.33.36): the Armed Dragons up to LV10 with Level Up!, the Ojamas into Ojama King and Ojama Delta Hurricane!!, and the VWXYZ Union line. v0.33.37: Light and Darkness Dragon, Ojama Knight.
 		# v0.47.0, the competitive list: Armed Dragon Thunder.
 		"main": {"Armed Dragon Thunder LV10": 2, "Armed Dragon Thunder LV7": 3, "Armed Dragon Thunder LV5": 3, "Armed Dragon Thunder LV3": 3, "Armed Dragon LV10 White": 1, "Armed Dragon LV10": 1, "Armed Dragon LV7": 1, "Pile Armed Dragon": 2, "Tempest, Dragon Ruler of Storms": 2, "Light and Darkness Dragon": 1, "Armed Dragon Flash": 3, "Armed Dragon Blitz": 2, "Armed Dragon Lightning": 2, "Level Up!": 1, "Dragon Shrine": 2, "Foolish Burial": 1, "Heavy Storm": 1, "Pot of Greed": 1, "Monster Reborn": 1, "Armed Dragon Thunderbolt": 2, "Ojama Trio": 2, "Mirror Force": 1, "Torrential Tribute": 1, "Call of the Haunted": 1},
-		"extra": {"Number 11: Big Eye": 1, "Mecha Phantom Beast Dracossack": 1, "Red-Eyes Flare Metal Dragon": 1, "Odd-Eyes Absolute Dragon": 1, "Number 61: Volcasaurus": 1, "Tiras, Keeper of Genesis": 1, "Adreus, Keeper of Armageddon": 1, "Leviair the Sea Dragon": 1, "Wind-Up Zenmaines": 1, "Superdreadnought Rail Cannon Gustav Max": 1}},
+		"extra": {"Number 11: Big Eye": 1, "Mecha Phantom Beast Dracossack": 1, "Red-Eyes Flare Metal Dragon": 1, "Odd-Eyes Absolute Dragon": 1, "Number 61: Volcasaurus": 1, "Tiras, Keeper of Genesis": 1, "Adreus, Keeper of Armageddon": 1, "Leviair the Sea Dragon": 1, "Wind-Up Zenmaines": 1, "Superdreadnought Rail Cannon Gustav Max": 1},
+		# In the CPU's hands: the list from before v0.47.0. It cannot pilot the new one (it won 3 of 40 with it, against 7 with this).
+		"cpu_main": {"Armed Dragon LV3": 3, "Armed Dragon LV5": 2, "Armed Dragon LV7": 2, "Armed Dragon LV10": 1, "Masked Dragon": 2, "X-Head Cannon": 2, "Y-Dragon Head": 2, "Z-Metal Tank": 2, "V-Tiger Jet": 1, "W-Wing Catapult": 1, "Ojama Yellow": 3, "Ojama Green": 2, "Ojama Black": 2, "Ojama Red": 1, "Level Up!": 2, "Ojamagic": 1, "Ojama Delta Hurricane!!": 1, "Ojamuscle": 1, "Polymerization": 2, "Pot of Greed": 1, "Monster Reborn": 1, "Heavy Storm": 1, "Call of the Haunted": 2, "Ring of Destruction": 1, "Light and Darkness Dragon": 1},
+		"cpu_extra": {"XYZ-Dragon Cannon": 1, "VW-Tiger Catapult": 1, "VWXYZ-Dragon Catapult Cannon": 1, "Ojama King": 2, "Ojama Knight": 1}},
 	"zane": {"out": ["X-Head Cannon", "Elemental HERO Burstinatrix", "Charcoal Inpachi", "Millennium Shield"], "in": {"Call of the Haunted": 1},
 		# Zane, deck pass (v0.33.37): Cyberdark Impact! and Chimeratech Overdragon in, Cyber Dragon Zwei for a fourth Cyber Dragon, one Polymerization out.
 		# v0.47.0, the competitive list: Cyber Dragon.
 		"main": {"Cyber Dragon": 3, "Cyber Dragon Core": 3, "Cyber Dragon Herz": 3, "Cyber Dragon Nachster": 2, "Cyber Dragon Vier": 1, "Cyber Dragon Drei": 1, "Galaxy Soldier": 2, "Cyber Eltanin": 1, "Cyber Emergency": 3, "Cyber Repair Plant": 2, "Cybernetic Horizon": 2, "Power Bond": 2, "Overload Fusion": 2, "Machine Duplication": 2, "Cyber Revsystem": 1, "Cyberload Fusion": 1, "Limiter Removal": 1, "De-Fusion": 1, "Heavy Storm": 1, "Pot of Greed": 1, "Monster Reborn": 1, "Cybernetic Overflow": 3, "Call of the Haunted": 1},
-		"extra": {"Cyber End Dragon": 2, "Cyber Twin Dragon": 2, "Chimeratech Rampage Dragon": 2, "Chimeratech Overdragon": 1, "Chimeratech Fortress Dragon": 1, "Constellar Pleiades": 1, "Cyber Eternity Dragon": 1, "Cyber Dragon Nova": 2, "Cyber Dragon Infinity": 2, "Number 61: Volcasaurus": 1}},
+		"extra": {"Cyber End Dragon": 2, "Cyber Twin Dragon": 2, "Chimeratech Rampage Dragon": 2, "Chimeratech Overdragon": 1, "Chimeratech Fortress Dragon": 1, "Constellar Pleiades": 1, "Cyber Eternity Dragon": 1, "Cyber Dragon Nova": 2, "Cyber Dragon Infinity": 2, "Number 61: Volcasaurus": 1},
+		# In the CPU's hands: the same deck without the cards it throws away (Chimeratech Overdragon, Fortress Dragon, Overload Fusion).
+		"cpu_main": {"Cyber Dragon": 3, "Cyber Dragon Core": 3, "Cyber Dragon Herz": 3, "Cyber Dragon Nachster": 2, "Cyber Dragon Vier": 1, "Cyber Dragon Drei": 1, "Galaxy Soldier": 2, "Cyber Eltanin": 1, "Cyber Emergency": 3, "Cyber Repair Plant": 2, "Power Bond": 2, "Polymerization": 2, "Machine Duplication": 2, "Cyber Revsystem": 1, "Mystical Space Typhoon": 2, "Book of Moon": 1, "Heavy Storm": 1, "Pot of Greed": 1, "Monster Reborn": 1, "Cybernetic Overflow": 3, "Mirror Force": 1, "Torrential Tribute": 1, "Call of the Haunted": 1},
+		"cpu_extra": {"Cyber End Dragon": 2, "Cyber Twin Dragon": 3, "Cyber Dragon Nova": 2, "Cyber Dragon Infinity": 2, "Constellar Pleiades": 1, "Number 61: Volcasaurus": 1}},
 	"alexis": {"out": ["Dian Keto the Cure Master", "Luminous Spark", "Horn of the Unicorn", "Fissure", "Cyber Petit Angel"],
 		"in": {"Hallowed Life Barrier": 1, "Machine Angel Ritual": 3, "Fusion Weapon": 1, "Ritual Weapon": 2}, "extra_in": {"Cyber Blader": 2},
 		# Alexis, deck pass (v0.33.39): Mystical Space Typhoon instead of Heavy Storm.
 		# v0.47.0, the competitive list: Cyber Angel Rituals.
-		"main": {"Cyber Angel Benten": 3, "Cyber Angel Idaten": 2, "Cyber Angel Dakini": 2, "Cyber Angel Natasha": 1, "Cyber Angel Vrash": 1, "Cyber Angel Izana": 1, "Cyber Petit Angel": 3, "Cyber Egg Angel": 2, "Manju of the Ten Thousand Hands": 3, "Etoile Cyber": 1, "Blade Skater": 1, "Honest": 1, "Machine Angel Ritual": 3, "Machine Angel Absolute Ritual": 2, "Pre-Preparation of Rites": 3, "Preparation of Rites": 1, "Ritual Sanctuary": 1, "Merciful Machine Angel": 1, "Magnificent Machine Angel": 1, "Incarnated Machine Angel": 1, "Polymerization": 1, "Pot of Greed": 1, "Monster Reborn": 1, "Mirror Force": 1, "Torrential Tribute": 1, "Call of the Haunted": 1},
+		"main": {"Cyber Angel Benten": 3, "Cyber Angel Idaten": 2, "Cyber Angel Dakini": 3, "Cyber Angel Natasha": 1, "Cyber Angel Vrash": 1, "Cyber Angel Izana": 1, "Cyber Petit Angel": 3, "Cyber Egg Angel": 2, "Manju of the Ten Thousand Hands": 3, "Etoile Cyber": 1, "Blade Skater": 1, "Honest": 1, "Machine Angel Ritual": 3, "Machine Angel Absolute Ritual": 2, "Preparation of Rites": 3, "Ritual Sanctuary": 1, "Merciful Machine Angel": 1, "Magnificent Machine Angel": 1, "Incarnated Machine Angel": 1, "Polymerization": 1, "Pot of Greed": 1, "Monster Reborn": 1, "Mirror Force": 1, "Torrential Tribute": 1, "Call of the Haunted": 1},
 		"extra": {"Cyber Blader": 2, "Constellar Ptolemy M7": 1, "Photon Strike Bounzer": 1, "Number 38: Hope Harbinger Dragon Titanic Galaxy": 1, "Divine Dragon Knight Felgrand": 1, "Herald of Pure Light": 1, "Castel, the Skyblaster Musketeer": 1}},
 	"syrus": {"out": ["Elemental HERO Clayman", "Dian Keto the Cure Master"], "in": {"Shield Crush": 1},
 		# Syrus, deck pass (v0.33.39): No Entry!! out (it turned his own attackers to Defense), Mirror Force and Sakuretsu Armor in. 17 -> 30 wins of 60.
 		# v0.47.0, the competitive list: Vehicroids with their own search cards.
 		"main": {"Expressroid": 3, "Mixeroid": 3, "Submarineroid": 2, "Drillroid": 2, "Steamroid": 1, "Stealthroid": 1, "Truckroid": 1, "Armoroid": 1, "UFOroid": 1, "Ambulanceroid": 1, "Rescueroid": 1, "Cyber Dragon": 1, "Megaroid City": 3, "Vehicroid Connection Zone": 3, "Power Bond": 2, "Polymerization": 2, "Terraforming": 1, "Limiter Removal": 1, "Pot of Greed": 1, "Monster Reborn": 1, "Emergeroid Call": 3, "Supercharge": 2, "Mirror Force": 1, "Call of the Haunted": 1, "Torrential Tribute": 1},
-		"extra": {"Super Vehicroid - Mobile Base": 2, "Barbaroid, the Ultimate Battle Machine": 1, "Super Vehicroid Jumbo Drill": 1, "Super Vehicroid - Stealth Union": 1, "Ambulance Rescueroid": 1, "Steam Gyroid": 1, "Pair Cycroid": 1, "UFOroid Fighter": 1, "Gear Gigant X": 2, "Castel, the Skyblaster Musketeer": 1, "Abyss Dweller": 1, "Tornado Dragon": 1, "Evilswarm Exciton Knight": 1}},
+		"extra": {"Super Vehicroid - Mobile Base": 2, "Barbaroid, the Ultimate Battle Machine": 1, "Super Vehicroid Jumbo Drill": 1, "Super Vehicroid - Stealth Union": 1, "Ambulance Rescueroid": 1, "Steam Gyroid": 1, "Pair Cycroid": 1, "UFOroid Fighter": 1, "Gear Gigant X": 2, "Castel, the Skyblaster Musketeer": 1, "Abyss Dweller": 1, "Tornado Dragon": 1, "Evilswarm Exciton Knight": 1},
+		# In the CPU's hands: the list from before v0.47.0. It cannot pilot the new one (it won 3 of 40 with it, against 7 with this).
+		"cpu_main": {"Steamroid": 3, "Drillroid": 3, "Submarineroid": 2, "Gyroid": 2, "Expressroid": 2, "Truckroid": 2, "Stealthroid": 2, "UFOroid": 2, "Cycroid": 1, "Decoyroid": 1, "Rescueroid": 1, "Armoroid": 1, "Polymerization": 3, "Power Bond": 3, "Pot of Greed": 1, "Monster Reborn": 1, "Limiter Removal": 1, "Supercharge": 2, "Negate Attack": 1, "Draining Shield": 1, "Shield Crush": 1, "Call of the Haunted": 2, "Mirror Force": 1, "Sakuretsu Armor": 1},
+		"cpu_extra": {"Steam Gyroid": 2, "Super Vehicroid Jumbo Drill": 2, "Super Vehicroid - Stealth Union": 2, "Pair Cycroid": 1}},
 	"aster": {"out": ["Celtic Guardian", "Mystic Plasma Zone"],
 		# Aster, deck pass (v0.33.39): two Clock Tower Prisons for Dreadmaster, Mystical Space Typhoon instead of Heavy Storm (it broke his own Prison). 14 -> 20 wins of 60.
 		# v0.47.0, the competitive list: Destiny HERO around Fusion Destiny.
@@ -264,7 +280,9 @@ const TUNE := {
 		# Yuma's best deck (v0.33.36): the Gagaga engine into Utopia, the ZW weapons on Utopia Ray, Utopia Ray V and Victory, Utopia Beyond. v0.33.37: Utopia the Lightning, Utopic Future.
 		# v0.47.0, the competitive list: Utopia with the Gagaga, Gogogo, Dododo and Zubaba cards merged into two monsters that search and summon each other.
 		"main": {"Zubababancho Gagagacoat": 3, "Dodododwarf Gogogoglove": 3, "Gagaga Magician": 2, "Gagaga Sister": 2, "Gagaga Girl": 2, "Utopic Onomatopoeia": 1, "ZS - Ascended Sage": 2, "ZS - Armed Sage": 1, "ZW - Pegasus Twin Saber": 1, "ZW - Sylphid Wing": 1, "ZW - Eagle Claw": 1, "Goblindbergh": 1, "Onomatopaira": 3, "Onomatopickup": 2, "Zexal Construction": 2, "Zexal Entrust": 2, "Double or Nothing!": 2, "Rank-Up-Magic Zexal Force": 1, "Xyz Change Tactics": 1, "Reinforcement of the Army": 1, "Pot of Greed": 1, "Monster Reborn": 1, "Xyz Reborn": 1, "Mirror Force": 1, "Torrential Tribute": 1, "Call of the Haunted": 1},
-		"extra": {"Number 39: Utopia": 1, "Number 39: Utopia Double": 2, "Number S39: Utopia the Lightning": 1, "Number S39: Utopia Prime": 1, "Number 39: Utopia Rising": 1, "Number C39: Utopia Ray": 1, "Number 39: Utopia Beyond": 1, "Number 99: Utopic Dragon": 1, "Number 93: Utopia Kaiser": 1, "Number F0: Utopic Future": 1, "Number F0: Utopic Draco Future": 1, "ZW - Dragonic Halberd": 1, "Gagagaga Magician": 1, "Gagagaga Girl": 1}},
+		"extra": {"Number 39: Utopia": 1, "Number 39: Utopia Double": 2, "Number S39: Utopia the Lightning": 1, "Number S39: Utopia Prime": 1, "Number 39: Utopia Rising": 1, "Number C39: Utopia Ray": 1, "Number 39: Utopia Beyond": 1, "Number 99: Utopic Dragon": 1, "Number 93: Utopia Kaiser": 1, "Number F0: Utopic Future": 1, "Number F0: Utopic Draco Future": 1, "ZW - Dragonic Halberd": 1, "Gagagaga Magician": 1, "Gagagaga Girl": 1},
+		# In the CPU's hands: the cards it never plays make room for plain removal.
+		"cpu_swap": {"out": {"Gagaga Sister": 2, "ZS - Armed Sage": 1, "Double or Nothing!": 2, "Rank-Up-Magic Zexal Force": 1, "Xyz Change Tactics": 1, "Zexal Entrust": 2}, "in": {"Goblindbergh": 2, "Gagaga Magician": 1, "Kagetokage": 1, "Raigeki": 1, "Dark Hole": 1, "Dimensional Prison": 1, "Book of Moon": 1, "Mystical Space Typhoon": 1}}},
 	# Shark's best deck: the WATER swarm into Bahamut Shark, Nightmare Shark, Shark Drake and Black Ray Lancer (v0.33.34).
 	"shark": {"out": ["Dian Keto the Cure Master", "Steel Shell"], "in": {"Hyper-Ancient Shark Megalodon": 1},
 		# Shark's best deck (v0.33.36): WATER Fish into Shark Drake and Veiss, Silent Honor ARK ranked up to DARK, Spider Shark, Bahamut, Poseidon Wave.
@@ -281,7 +299,10 @@ const TUNE := {
 		# Vector, deck pass (v0.33.39): Torrential Tribute out (it kept wiping his own Xyz), Raigeki and a third Sakuretsu Armor in. 15 -> 23 wins of 60.
 		# v0.47.0, the competitive list: Two plans.
 		"main": {"Umbral Horror Ghoul": 3, "Umbral Horror Unform": 3, "Umbral Horror Will o' the Wisp": 3, "Umbral Horror Ghost": 2, "Malicevorous Fork": 2, "Malicevorous Knife": 2, "Malicevorous Spoon": 1, "Numeron Wall": 1, "Numeron Network": 3, "Numeron Calling": 3, "Terraforming": 1, "Allure of Darkness": 2, "Rank-Up-Magic Barian's Force": 1, "Rank-Up-Magic - The Seventh One": 1, "Mystical Space Typhoon": 1, "Dark Hole": 1, "Raigeki": 1, "Pot of Greed": 1, "Monster Reborn": 1, "Fiendish Chain": 2, "Vain Betrayer": 1, "Dark Bribe": 1, "Mirror Force": 1, "Torrential Tribute": 1, "Call of the Haunted": 1},
-		"extra": {"Number 104: Masquerade": 2, "Number C104: Umbral Horror Masquerade": 1, "Number 1: Numeron Gate Ekam": 1, "Number 2: Numeron Gate Dve": 1, "Number 3: Numeron Gate Trini": 1, "Number 4: Numeron Gate Catvari": 1, "Number C1: Numeron Chaos Gate Sunya": 1, "Number C1000: Numerounius": 1, "Number iC1000: Numerounius Numerounia": 1, "Number 66: Master Key Beetle": 1, "Number 96: Dark Mist": 1, "Number C96: Dark Storm": 1, "Number 65: Djinn Buster": 1, "Number C65: King Overfiend": 1}},
+		"extra": {"Number 104: Masquerade": 2, "Number C104: Umbral Horror Masquerade": 1, "Number 1: Numeron Gate Ekam": 1, "Number 2: Numeron Gate Dve": 1, "Number 3: Numeron Gate Trini": 1, "Number 4: Numeron Gate Catvari": 1, "Number C1: Numeron Chaos Gate Sunya": 1, "Number C1000: Numerounius": 1, "Number iC1000: Numerounius Numerounia": 1, "Number 66: Master Key Beetle": 1, "Number 96: Dark Mist": 1, "Number C96: Dark Storm": 1, "Number 65: Djinn Buster": 1, "Number C65: King Overfiend": 1},
+		# In the CPU's hands: the list from before v0.47.0. It cannot pilot the new one (it won 3 of 40 with it, against 7 with this).
+		"cpu_main": {"Umbral Horror Ghoul": 3, "Umbral Horror Unform": 3, "Umbral Horror Will o' the Wisp": 3, "Umbral Horror Ghost": 3, "Malicevorous Fork": 3, "Malicevorous Knife": 3, "Rank-Up-Magic Barian's Force": 2, "Rank-Up-Magic Limited Barian's Force": 1, "Monster Reborn": 1, "Pot of Greed": 1, "Dark Hole": 1, "Mystical Space Typhoon": 2, "Swords of Revealing Light": 1, "Book of Moon": 1, "Shadow Spell": 2, "Vain Betrayer": 2, "Dark Bribe": 2, "Mirror Force": 2, "Sakuretsu Armor": 2, "Call of the Haunted": 1, "Raigeki": 1},
+		"cpu_extra": {"Number 104: Masquerade": 2, "Number C104: Umbral Horror Masquerade": 1, "Number 66: Master Key Beetle": 1, "Number 65: Djinn Buster": 1, "Number C65: King Overfiend": 1, "Number 96: Dark Mist": 1, "Number C96: Dark Storm": 1, "Number 43: Manipulator of Souls": 1}},
 }
 
 
@@ -359,11 +380,12 @@ static func tune(deck_key: String, list: Array[int], plain := false) -> Array[in
 		# that is not in this copy of the card folder (or does not work yet) leaves a gap, and the
 		# gap is filled from the old list.
 		var built: Array[int] = []
-		for n in t["main"]:
+		var want: Dictionary = t["cpu_main"] if cpu and t.has("cpu_main") else t["main"]
+		for n in want:
 			var id3: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
 			if id3 == 0 or not _works(id3):
 				continue
-			for k in mini(3, int(t["main"][n])):
+			for k in mini(3, int(want[n])):
 				built.append(id3)
 		for id in list:
 			if built.size() >= CardData.MIN_DECK:
@@ -371,6 +393,21 @@ static func tune(deck_key: String, list: Array[int], plain := false) -> Array[in
 			if not gone.has(id) and built.count(id) < 3:
 				built.append(id)
 		if built.size() >= CardData.MIN_DECK:
+			if cpu and t.has("cpu_swap") and want == t["main"]:
+				var sw: Dictionary = t["cpu_swap"]
+				var alt: Array[int] = built.duplicate()
+				for n in sw["out"]:
+					var oid: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
+					for k in int(sw["out"][n]):
+						alt.erase(oid)
+				for n in sw["in"]:
+					var iid: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
+					if iid != 0 and _works(iid):
+						for k in int(sw["in"][n]):
+							if alt.count(iid) < 3:
+								alt.append(iid)
+				if alt.size() == built.size():
+					return alt
 			return built
 	var kept: Array[int] = []
 	var removed: Array[int] = []
@@ -400,11 +437,12 @@ static func tune_extra(deck_key: String, list: Array[int], plain := false) -> Ar
 	var gone := _ids(t.get("extra_out", []))
 	if t.has("extra") and not plain:
 		var whole: Array[int] = []
-		for n in t["extra"]:
+		var want_x: Dictionary = t["cpu_extra"] if cpu and t.has("cpu_extra") else t["extra"]
+		for n in want_x:
 			var id3: int = CardData.NAME_TO_ID.get(str(n).to_lower(), 0)
 			if id3 == 0 or not _works(id3):
 				continue
-			for k in int(t["extra"][n]):
+			for k in int(want_x[n]):
 				if whole.size() < 15:
 					whole.append(id3)
 		if whole.size() >= 1:
@@ -438,6 +476,11 @@ static func audit(key: String) -> Dictionary:
 	var theirs := {}
 	for n in (wish["main"] as Array) + (wish["extra"] as Array):
 		theirs[str(n).to_lower()] = true
+	# The written-out deck is theirs too, card for card (the support cards printed for their
+	# aces long after the shows are not in WISH, which lists what they played on screen).
+	for part in ["main", "extra"]:
+		for n in (TUNE.get(deck, {}) as Dictionary).get(part, {}):
+			theirs[str(n).to_lower()] = true
 	var now := {}
 	for id in Array(CardData.deck_list(deck)) + CardData.extra_list(deck):
 		var nm := str(CardData.get_card(int(id)).get("name", "?"))
