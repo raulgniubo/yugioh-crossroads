@@ -29,7 +29,7 @@ Branch `ocgcore`. `main` stays at 0.40.0. Version 0.50.0 is reserved for removin
 ## One build
 1. All families as above, then `godot --headless res://tests/ocg_sim.tscn -- all x 20 1` (about 6 minutes, run in the background), `tools/dev/parse.sh`, the classic test runner, and one on-screen duel per new deck with `tools/dev/scr.sh`.
 2. Bump `project.godot` and `export_presets.cfg`, README section on top, commit, `tools/dev/ship.sh <version> ocgcore`.
-3. Send both zips, copy them to `Old builds/Crossroads-latest*.zip` on the Mac, unzip, check the file list matches, `cp -R` over the app in place, exe + dll to the Windows folder.
+3. Send both zips, copy them to `Old builds/Crossroads-latest*.zip` on the Mac, unzip. **Never copy over the app in place:** once macOS has run an app, overwriting its files makes it die at launch with "Code Signature Invalid" (this happened with 0.47.0). Instead `mv` the old app into `_to_delete/` under a new name, then `cp -Rp` the freshly unzipped app into the Mac folder, and `diff -rq` the two. Exe + dll to the Windows folder.
 4. Mark the rows Shipped in the part 2 plan doc and add an entry to the migration plan doc.
 
 The copies here were saved from /tmp and /home/claude/work so they survive a restart; the working copies still live there.
