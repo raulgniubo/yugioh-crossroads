@@ -33,6 +33,7 @@ const PACKS := [
 	{"key": "Vault", "tab": 0, "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
 	{"key": "legends", "tab": 0, "name": "Monster Legends", "color": Color("e8b04a"), "blurb": "Normal Monsters from every era: hundreds of them, from the classics to the rare big ones."},
 	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen, her forms and the cards around her. Only the ones the story has already handed you, up to three of each."},
+	{"key": "gladiator", "tab": 1, "name": "Gladiator's Assault", "color": Color("c8843c"), "family": true, "blurb": "The Gladiator Beasts: each one that fights goes back into the Deck at the end of the Battle Phase and tags in a different one, which uses its effect as it arrives. Two or three of them on the field shuffle together into Gyzarus or Heraklinos without Polymerization."},
 	{"key": "toon", "tab": 1, "name": "Toon Kingdom", "color": Color("f2a03c"), "family": true, "blurb": "The Toons: cartoon copies of famous monsters that walk past the other side's monsters and attack directly while Toon World is open. Toon Kingdom keeps them from being destroyed, and Table of Contents finds whatever page you need."},
 	{"key": "madolche", "tab": 1, "name": "Madolche Tea Party", "color": Color("f08ab0"), "family": true, "blurb": "The Madolche: a kingdom of sweets that never stays in the Graveyard. Destroyed Madolche shuffle back into the Deck, Ticket and Chateau turn that into new cards, and Queen Tiaramisu sends the other side's field back with them."},
 	{"key": "genex", "tab": 1, "name": "Genex Works", "color": Color("4fb0a8"), "family": true, "blurb": "The Genex: machines built from every Attribute. Genex Controller tunes them into Synchros that change with the material you feed them, and the R-Genex line searches itself out of the Deck one card after another."},
@@ -94,6 +95,7 @@ const THEME_DECKS := [
 	{"key": "deck_genex", "art": "machines", "cover": "Locomotion R-Genex", "color": Color("4fb0a8"), "era": "5D's", "blurb": "Undine fetches Genex Controller, Magma fetches Crusher, Crusher fetches Accelerator, and Accelerator puts every searched Genex straight onto the field. Then the Controller tunes them into Triarm, Hydro or Locomotion."},
 	{"key": "deck_madolche", "art": "arcane", "cover": "Madolche Queen Tiaramisu", "color": Color("f08ab0"), "era": "ZEXAL", "blurb": "Magileine and Anjelly fetch the rest of the court, Hootcake calls one more from the Deck, and two Level 4 Madolche make Queen Tiaramisu, who shuffles two of your opponent's cards away. Keep your Graveyard empty and Puddingcess does the rest."},
 	{"key": "deck_toon", "art": "arcane", "cover": "Toon Dark Magician", "color": Color("f2a03c"), "era": "Duel Monsters", "blurb": "Open Toon World or Toon Kingdom first. Then Toon Harpie Lady and Toon Cyber Dragon come down for free, Toon Dark Magician calls another Toon from the Deck, and all of them attack directly."},
+	{"key": "deck_gladiator", "art": "warriors", "cover": "Gladiator Beast Gyzarus", "color": Color("c8843c"), "era": "GX", "blurb": "Attack with anything, then tag out: Laquari comes in at 2100, Bestiari destroys a Spell or Trap, Darius brings one back from the Graveyard. Bestiari plus any other Gladiator Beast becomes Gyzarus, who destroys two cards."},
 	{"key": "deck_monarchs", "art": "shadow", "cover": "Caius the Mega Monarch", "color": Color("e0c070"), "era": "GX", "blurb": "Squires and Vassals step out so a Monarch can be Tribute Summoned, then a Mega Monarch Tributes that one. Every landing clears something off their side."},
 	{"key": "deck_chaos", "art": "warriors", "cover": "Black Luster Soldier - Super Soldier", "color": Color("c8b0ff"), "era": "Duel Monsters", "blurb": "Super Soldier Ritual turns two Level 4 Knights into Black Luster Soldier, and the Knights give him their powers. Gaia rides in when he falls, and Chaos Form brings back the old legends."},
 	{"key": "deck_gem_knight", "art": "warriors", "cover": "Gem-Knight Master Diamond", "color": Color("7ae0ff"), "era": "ZEXAL", "blurb": "Gem-Knight Fusion turns two plain knights into a Fusion Monster, Brilliant Fusion fuses straight from the Deck, and Gem-Knight Fusion comes back from the Graveyard to do it again."},
@@ -235,6 +237,19 @@ const FAMILIES := {
 		"Toon Dark Magician", "Blue-Eyes Toon Dragon", "Toon Ancient Gear Golem", "Toon Black Luster Soldier", "Comic Hand", "Mimicat", "Shadow Toon",
 		"Toon Bookmark", "Toon Kingdom", "Toon Page-Flip", "Toon Rollback", "Toon Table of Contents", "Toon World", "Toon World the Perfect World",
 		"Mind Scan", "Toon Briefcase", "Toon Defense", "Toon Mask", "Toon Terror"]},
+	"gladiator": {"era": "GX", "deck": "deck_gladiator", "cards": [
+		"Gladiator Beast Andabata", "Gladiator Beast Claudius", "Gladiator Beast Domitianus", "Gladiator Beast Essedarii", "Gladiator Beast Gaiodiaz",
+		"Gladiator Beast Gyzarus", "Gladiator Beast Heraklinos", "Gladiator Beast Nerokius", "Gladiator Beast Tamer Editor", "Test Ape",
+		"Gladiator Beast Gistel", "Gladiator Beast Murmillo", "Gladiator Beast Retiari", "Gladiator Beast Sagittarii", "Gladiator Beast Samnite",
+		"Gladiator Beast Torax", "Test Tiger", "Gladiator Beast Andal", "Gladiator Beast Attorix", "Gladiator Beast Bestiari", "Gladiator Beast Darius",
+		"Gladiator Beast Dimacari", "Gladiator Beast Equeste", "Gladiator Beast Hoplomus", "Gladiator Beast Lanista", "Gladiator Beast Laquari",
+		"Gladiator Beast Secutor", "Gladiator Beast Tygerius", "Test Bear", "Gladiator Beast Noxious", "Gladiator Beast Spartacus",
+		"Gladiator Beast Alexander", "Gladiator Beast Octavius", "Gladiator Beast Vespasius", "Gladiator Beast Augustus",
+		"Colosseum - Cage of the Gladiator Beasts", "Flavian - Colosseum of the Gladiator Beasts", "Gladiator Beast United",
+		"Gladiator Beast's Battle Archfiend Shield", "Gladiator Beast's Battle Gladius", "Gladiator Beast's Battle Halberd",
+		"Gladiator Beast's Battle Manica", "Gladiator Beast's Comeback", "Gladiator Beast's Respite", "Gladiator Proving Ground", "Gladiator Rejection",
+		"Gladiator Taming", "Gladiator's Return", "Indomitable Gladiator Beast", "Defensive Tactics", "Disarm", "Double Tag Team",
+		"Gladiator Beast Charge", "Gladiator Beast War Chariot", "Gladiator Lash", "Gladiator Naumachia", "Parry", "Trojan Gladiator Beast"]},
 }
 
 

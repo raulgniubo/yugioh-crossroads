@@ -6732,4 +6732,9 @@ const ES := {
 	"%d names match": "%d nombres coinciden",
 	"REVEALED BY A CARD EFFECT": "REVELADAS POR EL EFECTO DE UNA CARTA",
 	"Their cards are revealed. Click their Graveyard to look at them.": "Sus cartas están reveladas. Haz clic en su Cementerio para verlas.",
+	"Gladiator's Assault": "Asalto de los Gladiadores",
+	"The Gladiator Beasts: each one that fights goes back into the Deck at the end of the Battle Phase and tags in a different one, which uses its effect as it arrives. Two or three of them on the field shuffle together into Gyzarus or Heraklinos without Polymerization.": "Los Gladiator Beast: cada uno que pelea vuelve al Deck al final de la Battle Phase y le da el relevo a otro distinto, que usa su efecto al llegar. Dos o tres en el Campo se barajan juntos para formar a Gyzarus o Heraklinos sin Polymerization.",
+	"Attack with anything, then tag out: Laquari comes in at 2100, Bestiari destroys a Spell or Trap, Darius brings one back from the Graveyard. Bestiari plus any other Gladiator Beast becomes Gyzarus, who destroys two cards.": "Ataca con cualquiera y luego da el relevo: Laquari entra con 2100, Bestiari destruye una Mágica o Trampa, Darius trae a uno del Cementerio. Bestiari más cualquier otro Gladiator Beast se convierte en Gyzarus, que destruye dos cartas.",
+	"My monsters fight in shifts. One goes back to the Deck, the next one runs out. Bet you a fried shrimp you can't keep up.": "Mis monstruos pelean por turnos. Uno vuelve al Deck y sale corriendo el siguiente. Te apuesto un camarón frito a que no les sigues el ritmo.",
+	"Fried shrimp on the line! Tag in!": "¡Un camarón frito en juego! ¡Relevo!",
 }
