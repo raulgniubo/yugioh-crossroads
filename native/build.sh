@@ -29,13 +29,13 @@ for what in "$@"; do
 	macos)
 		for A in aarch64 x86_64; do
 			one $A-macos "python3 -m ziglang c++ -target $A-macos" -fvisibility=hidden
-			python3 -m ziglang c++ -target $A-macos -shared -o build/ocgbridge.$A.dylib build/$A-macos/*.o
+			python3 -m ziglang c++ -target $A-macos -shared -s -o build/ocgbridge.$A.dylib build/$A-macos/*.o
 		done
 		python3 fat.py build/ocgbridge.aarch64.dylib build/ocgbridge.x86_64.dylib $OUT/libocgbridge.macos.dylib
 		;;
 	windows)
 		one x86_64-windows-gnu "python3 -m ziglang c++ -target x86_64-windows-gnu"
-		python3 -m ziglang c++ -target x86_64-windows-gnu -shared -o $OUT/ocgbridge.windows.x86_64.dll build/x86_64-windows-gnu/*.o
+		python3 -m ziglang c++ -target x86_64-windows-gnu -shared -s -o $OUT/ocgbridge.windows.x86_64.dll build/x86_64-windows-gnu/*.o
 		rm -f $OUT/*.lib $OUT/*.pdb
 		;;
 	esac

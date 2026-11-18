@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Packs the engine's card table and card scripts for the game.
 
-  python3 tools/make_ocg_data.py <BabelCDB folder> <CardScripts folder> [<Distribution folder>]
+  python3 tools/make_ocg_data.py <BabelCDB folder> <CardScripts folder> <Distribution folder> [<card ids file>]
 
 Writes data/ocg/cards.bin (every card in cards.cdb) and data/ocg/scripts.bin (gzip: the
-library scripts plus every official card script). With the
+library scripts plus the card scripts: every official one, or with a card ids file only the
+ones the game's cards need. The ids file comes from
+`godot --headless res://tests/ocg_sim.tscn -- ids <file>`). With the
 Distribution folder it also writes data/ocg/strings.json (the words of the engine's questions).
 Run it again to pick up new cards.
 """
@@ -23,7 +25,33 @@ for cid, alias, setc, typ, atk, de, lvl, race, attr in rows:
                            (lvl >> 24) & 0xff, (lvl >> 16) & 0xff, link, len(sets)))
     buf.append(struct.pack('<%dH' % len(sets), *sets))
 open(os.path.join(out, 'cards.bin'), 'wb').write(b''.join(buf))
-files = sorted(glob.glob(os.path.join(scr, '*.lua'))) + sorted(glob.glob(os.path.join(scr, 'official', '*.lua')))
+import re
+files = sorted(glob.glob(os.path.join(scr, '*.lua')))
+ids_file = [a for a in sys.argv[4:] if not a.startswith('--')]
+if ids_file:
+    # Only the scripts the game's own cards need (and whatever those scripts load in turn).
+    alias = {r[0]: r[1] for r in rows}
+    want = set()
+    for line in open(ids_file[0]):
+        if line.strip():
+            want.add(int(line))
+    todo = list(want)
+    seen = set()
+    while todo:
+        cid = todo.pop()
+        if cid in seen:
+            continue
+        seen.add(cid)
+        if alias.get(cid):
+            todo.append(alias[cid])
+        f = os.path.join(scr, 'official', 'c%d.lua' % cid)
+        if os.path.exists(f):
+            files.append(f)
+            for ref in re.findall(r'Load(?:Card)?Script\("c(\d+)\.lua"\)', open(f, encoding='utf-8', errors='ignore').read()):
+                todo.append(int(ref))
+    files = files[:25] + sorted(files[25:])
+else:
+    files += sorted(glob.glob(os.path.join(scr, 'official', '*.lua')))
 # The cards of this game (Lumen and hers) have their scripts in native/custom.
 files += sorted(glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'native', 'custom', '*.lua')))
 parts = [struct.pack('<I', len(files))]

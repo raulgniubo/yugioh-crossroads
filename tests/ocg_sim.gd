@@ -8,6 +8,23 @@ func _ready() -> void:
 	var n := int(args[2]) if args.size() > 2 else 3
 	var seed0 := int(args[3]) if args.size() > 3 else 1
 	var verbose := "-v" in args
+	if a == "ids":
+		# Dev: every card id the game can put in a duel, for tools/make_ocg_data.py.
+		var ids := {}
+		for id in Collection.all_cards():
+			ids[int(id)] = true
+		for id in CardData.ORIGINALS:
+			ids[int(id)] = true
+		for k in CardData.DECKS.keys() + CardData.NAMED_DECKS.keys():
+			for id in CardData.deck_list(str(k)) + CardData.extra_list(str(k)) + CardData.legend_deck(str(k)):
+				ids[int(id)] = true
+		var f := FileAccess.open(b, FileAccess.WRITE)
+		for id in ids:
+			f.store_line(str(id))
+		f.close()
+		print("ids ", ids.size(), " -> ", b)
+		get_tree().quit(0)
+		return
 	if not OcgCore.ensure_loaded():
 		print("ENGINE NOT LOADED: ", OcgCore.why_not())
 		get_tree().quit(1)
