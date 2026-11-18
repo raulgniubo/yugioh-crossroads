@@ -110,3 +110,11 @@ Things learned on the way:
 - `native/custom/c39163598.lua`: fixed copy of Planet Pollutant Virus (official script errors on a deleted effect). `native/custom/c43582229.lua`: Freezing Chains of the Ice Barrier (immunity condition recursed through set-code effects; seen in deck_ice_barrier vs deck_ninja, sim seed 4901). Files in native/custom override official scripts of the same name.
 - Hand-made positions added for 12 cards. Counter Traps with a "reveal from hand" cost need a hand the AI cannot empty first (Snake Deity's Command uses two Venom Boa).
 - No card plan is queued after this. Next is whatever Raul asks; the old-rules cleanup stays parked until he says go.
+
+## Card plan part 3 (drafted Nov 18, waiting for Raul's approval)
+Plan doc: https://claude.ai/artifact/1UfohMDpMZddGeut9ACkXb (project 03dcff0c-47fa-45ee-a7b2-821ed9925a02, node a1da7b6f-7154).
+About 975 cards: 21 families (~650) and ~330 single cards, even across the eras, plus deck strength by stars
+(Starter 1-2 stars / Standard 3 / Full 4-5; stars pick the deck, stars + Settings.cpu_level pick the play).
+Lists: `tools/dev/plan3/plan.json` (families per era and singles per era, all checked missing from the game; Uria and Hamon
+belong to the Sacred Beast family, not the singles). Build 1 = 0.52.0 (stars + singles), build 2 = 0.53.0 (families).
+Do not start until Raul answers the four questions at the bottom of the doc.
