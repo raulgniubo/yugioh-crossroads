@@ -107,6 +107,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func _ready() -> void:
 	apply_own_icon.call_deferred()
+	# (a note next to the saves: did the rules engine load on this computer?)
+	get_tree().create_timer(1.5).timeout.connect(func():
+		if not "--no-report" in OS.get_cmdline_user_args():
+			OcgReport.boot())
 	# One look everywhere: the game's theme becomes the default for every control, also the
 	# ones on screens that never set a theme of their own.
 	ThemeDB.get_default_theme().merge_with(UITheme.build())

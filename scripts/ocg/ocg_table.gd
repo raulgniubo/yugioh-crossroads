@@ -144,6 +144,9 @@ func loop() -> void:
 	req = null
 	if _log or not d.errors.is_empty():
 		print("OCG END winner ", s.state.winner, " turn ", s.state.turn, " errors ", d.errors.slice(0, 8))
+	if not s._autoplay or "--report" in OS.get_cmdline_user_args():
+		var kind := "puzzle" if puzzle else ("turbo duel" if d.turbo else "duel")
+		OcgReport.duel(kind + " (engine)", str(s.state.players[AI].name), level, int(s.state.winner), int(s.state.turn), str(s.state.win_reason), d.errors)
 	d.close()
 
 

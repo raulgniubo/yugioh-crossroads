@@ -767,6 +767,8 @@ func _finish() -> void:
 	if _human_test:
 		print("PROMPTS: ", _asked)
 	print("DUEL OVER: winner %d (%s) LP %d vs %d turn %d" % [state.winner, state.win_reason, state.players[0].lp, state.players[1].lp, state.turn])
+	if ocg == null and not _autoplay:
+		OcgReport.duel("duel (classic rules)", str(state.players[AI].name), _ai_level, int(state.winner), int(state.turn), str(state.win_reason), [])
 	Router.last_stats = {"won": won and not _surrendered, "lp": int(state.players[ME].lp), "turns": int(state.turn), "low": int(_my_low)}
 	var earned := 0
 	if not _puzzle.is_empty():

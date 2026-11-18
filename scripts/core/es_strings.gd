@@ -6682,4 +6682,6 @@ const ES := {
 	"Off: duels run on the new rules engine, with the opponent that thinks ahead. On: duels run on the rules the game used before. Only here as a way back if a duel goes wrong; it goes away in a later version.": "Apagado: los duelos usan el nuevo motor de reglas, con el oponente que piensa por adelantado. Encendido: los duelos usan las reglas que el juego tenía antes. Solo está aquí como vuelta atrás si un duelo sale mal; desaparece en una versión futura.",
 	"You can change this any time. It changes how well opponents play, not what happens. The same setting is in Settings.": "Puedes cambiarlo cuando quieras. Cambia qué tan bien juegan los oponentes, no lo que pasa. El mismo ajuste está en Ajustes.",
 	"Declare 1 card name": "Declara el nombre de 1 carta",
+	"classic duel rules": "reglas de duelo clásicas",
+	"The rules engine did not load on this computer, so duels run on the classic rules.": "El motor de reglas no cargó en este equipo, así que los duelos usan las reglas clásicas.",
 }

@@ -5,6 +5,16 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.43.1
+
+**A fix on top of 0.43.0, made before anyone opened 0.43.0.** No cards added: **1,998 cards**.
+
+- **The Mac library now loads on macOS 11 and later.** By my mistake it was built for macOS 15 or later (in 0.41.0, 0.42.0 and 0.43.0 too). On an older macOS the engine would not have loaded, and duels would have quietly run on the classic rules.
+- **The game now says which rules it runs on.** If the rules engine did not load (or Classic duel rules is on in Settings), the line at the bottom of the main menu ends with "classic duel rules", and a notice says so once.
+- **`engine_status.txt`** in `Crossroads Data/saves`: a small text file the game writes. It says whether the engine loaded on that computer, and it keeps one line for each of the last 60 duels with anything the engine or the table complained about. Nothing personal is in it. It is there so a problem can be read afterwards instead of guessed at.
+
+Not checked: whether the Mac library really loads on a Mac. I looked at the file itself (both processor types, signed, only needs the system library, minimum macOS 11), which is not the same as running it.
+
 ## What is in 0.43.0
 
 **Every duel runs on the new engine.** This is step 3 of the engine move. Story, free roam, Free Duel, Turbo Duels, puzzles, tournaments and the duel of the day all run on ocgcore now, against the opponent that thinks ahead. No cards added: the game still has **1,998 cards**.

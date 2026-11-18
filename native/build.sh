@@ -28,8 +28,8 @@ for what in "$@"; do
 		;;
 	macos)
 		for A in aarch64 x86_64; do
-			one $A-macos "python3 -m ziglang c++ -target $A-macos" -fvisibility=hidden
-			python3 -m ziglang c++ -target $A-macos -shared -s -o build/ocgbridge.$A.dylib build/$A-macos/*.o
+			one $A-macos "python3 -m ziglang c++ -target $A-macos.11.0" -fvisibility=hidden
+			python3 -m ziglang c++ -target $A-macos.11.0 -shared -s -o build/ocgbridge.$A.dylib build/$A-macos/*.o
 		done
 		python3 fat.py build/ocgbridge.aarch64.dylib build/ocgbridge.x86_64.dylib $OUT/libocgbridge.macos.dylib
 		;;
