@@ -37,6 +37,21 @@ func _ready() -> void:
 		print("ENGINE NOT LOADED: ", OcgCore.why_not())
 		get_tree().quit(1)
 		return
+	if a == "gaps":
+		# Dev: Fusion Monsters in the game whose listed materials are not in the game.
+		var pool := {}
+		for id in Collection.all_cards():
+			pool[int(id)] = true
+		for id in pool.keys():
+			var cd: Dictionary = CardData.get_card(int(id))
+			var lacking: Array = []
+			for m in CardData.fusion_materials(cd):
+				if int(m) > 0 and not pool.has(int(m)):
+					lacking.append("%s (%d)" % [OcgCore.card_name(int(m)) if OcgCore.ensure_loaded() else "?", int(m)])
+			if not lacking.is_empty():
+				print("GAP ", cd.get("name", "?"), " (", id, ") needs ", lacking)
+		get_tree().quit(0)
+		return
 	if a == "puzzles":
 		# Dev: every puzzle, laid out as the duel screen lays it out, with the thinking opponent in your seat.
 		var solved := 0

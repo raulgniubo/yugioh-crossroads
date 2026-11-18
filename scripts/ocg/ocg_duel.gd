@@ -63,8 +63,11 @@ func prepare(state: DuelState, decks: Array, extras: Array, names: Array, first:
 		ps.name = str(names[p])
 		if turbo:
 			_cards.append([t, OcgCore.SPEED_WORLD, OcgCore.LOC_SZONE, OcgCore.POS_FU_ATK, 5])
-		var zone := 0
+		var order := [2, 1, 3, 0, 4]       # (laid out from the middle, as a person would)
+		var zi := 0
 		for pair in (setup.get("mons", [[], []]) as Array)[p]:
+			var zone: int = order[mini(zi, 4)]
+			zi += 1
 			var mc := _new_card(int(pair[0]), p)
 			var how := str(pair[1])
 			mc.face_up = how != "set"
@@ -72,14 +75,14 @@ func prepare(state: DuelState, decks: Array, extras: Array, names: Array, first:
 			mc.summoned_turn = 0
 			ps.field[zone] = mc
 			_cards.append([t, mc.id, OcgCore.LOC_MZONE, OcgCore.POS_FU_ATK if how == "atk" else (OcgCore.POS_FU_DEF if how == "def" else OcgCore.POS_FD_DEF), zone])
-			zone += 1
-		zone = 0
+		zi = 0
 		for id in (setup.get("st", [[], []]) as Array)[p]:
+			var szone: int = order[mini(zi, 4)]
+			zi += 1
 			var sc := _new_card(int(id), p)
 			sc.face_up = false
-			ps.spells[zone] = sc
-			_cards.append([t, sc.id, OcgCore.LOC_SZONE, 0xa, zone])
-			zone += 1
+			ps.spells[szone] = sc
+			_cards.append([t, sc.id, OcgCore.LOC_SZONE, 0xa, szone])
 		for id in (setup.get("hand", [[], []]) as Array)[p]:
 			ps.hand.append(_new_card(int(id), p))
 			_cards.append([t, int(id), OcgCore.LOC_HAND, 0xa])

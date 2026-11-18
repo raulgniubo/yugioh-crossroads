@@ -355,6 +355,8 @@ func _ask(m: Dictionary):
 			out = await _ask_sum(m)
 		140, 141:
 			out = await _ask_bits(m)
+		142:
+			out = await _ask_announce(m)
 		143:
 			var nums: Array = []
 			for o in m["opts"]:
@@ -365,6 +367,41 @@ func _ask(m: Dictionary):
 			out = me_cpu.decide(d)
 	s._flow = was
 	return out
+
+
+## "Declare 1 card name." When the card allows only a few names, those; otherwise every different
+## card your opponent has shown this duel, then your own (a card nobody has seen cannot be told
+## apart by looking at the table anyway).
+func _ask_announce(m: Dictionary):
+	var ids: Array = []
+	for o in m["opts"]:
+		var v := int(o)
+		if v > 0 and v < 0x100000000 and not ids.has(v) and str(CardData.get_card(v).get("name", "Unknown")) != "Unknown":
+			ids.append(v)
+	if ids.is_empty():
+		var st: DuelState = s.state
+		var theirs: DuelState.PlayerState = st.players[AI]
+		var mine: DuelState.PlayerState = st.players[ME]
+		var known: Array = theirs.gy + theirs.banished + theirs.monsters() + theirs.set_cards() + ([theirs.field_spell] if theirs.field_spell != null else [])
+		for c in known:
+			if c != null and c.face_up and c.id > 0 and not ids.has(c.id):
+				ids.append(c.id)
+		var own: Array = []
+		for c in mine.hand + mine.deck + mine.gy + mine.banished + mine.monsters() + mine.set_cards():
+			if c != null and c.id > 0 and not ids.has(c.id) and not own.has(c.id):
+				own.append(c.id)
+		own.sort_custom(func(a, b): return OcgCore.card_name(a) < OcgCore.card_name(b))
+		ids.append_array(own)
+	if ids.is_empty():
+		return me_cpu.decide(d)
+	var cards: Array = []
+	for id in ids:
+		cards.append(_temp(int(id), ME))
+	var text := _hint_text(ME, OcgCore.sys(564))
+	var got = await s.hud.ask_pick(text if text != "" else Loc.t("Declare 1 card name"), cards, Loc.t("Select"), "")
+	if got == null:
+		got = cards[0]
+	return OcgDuel.i32(int(got.id))
 
 
 func _ask_cards(m: Dictionary, tribute := false):

@@ -56,7 +56,15 @@ func _ready() -> void:
 				var da: Array = CardData.legend_deck(ka, plain) if legend == 1 else CardData.deck_list(ka, plain)
 				var db: Array = CardData.legend_deck(kb, plain) if legend == 1 else CardData.deck_list(kb, plain)
 				note.call(OcgCore.match_duel([da, db], [CardData.extra_list(ka, plain), CardData.extra_list(kb, plain)], [0, 0], seed0 + ki * 100 + g * 2 + legend, 0, 8000 if g < 3 else 16000, 50), ka)
-	var after_decks := played.size()
+	var pool_ids: Array = mains + extras
+	var in_pool := func() -> int:
+		var k := 0
+		for id in pool_ids:
+			if played.has(id):
+				k += 1
+		return k
+	var after_decks: int = in_pool.call()
+	var duels_decks: int = n["duels"]
 	print("decks done: ", n["duels"], " duels, ", after_decks, " cards played, ms ", Time.get_ticks_msec() - t0)
 	# 2. Decks dealt from the whole pool. Cards not played yet come first, three copies each.
 	for r in rounds:
@@ -81,7 +89,8 @@ func _ready() -> void:
 		note.call(OcgCore.match_duel(decks, exs, [0, 0], seed0 * 1000 + r, 0, 16000, 60), "pool")
 		if r % 200 == 199:
 			print("pool round ", r + 1, ": ", played.size(), " cards played, ", errors.size(), " kinds of complaint, ms ", Time.get_ticks_msec() - t0)
-	var after_pool := played.size()
+	var after_pool: int = in_pool.call()
+	var duels_pool: int = n["duels"] - duels_decks
 	# 3. Cards that need their own deck around them: a Fusion Monster with its materials and
 	# Polymerization, a Ritual Monster with every Ritual Spell the game has.
 	var poly := int(CardData.NAME_TO_ID.get("polymerization", 0))
@@ -120,19 +129,33 @@ func _ready() -> void:
 			note.call(OcgCore.match_duel([deck, other], [ex, []], [0, 0], seed0 * 77 + id % 1000 + g, 0, 16000, 40), "built")
 			if played.has(id):
 				break
-	var after_built := played.size()
+	var after_built: int = in_pool.call()
+	var duels_built: int = n["duels"] - duels_decks - duels_pool
+	var duels_full: int = n["duels"]
 	print("built decks done: ", after_built, " cards played, ms ", Time.get_ticks_msec() - t0)
 	# 4. What is left gets put straight onto the table in a set-up position, a few times, and the
 	# duel is played on from there. This checks that the card stands on the table and its effects
 	# run without a complaint; it does not check the usual way the card gets there.
 	into[0] = staged_used
+	# (cards its script names, and cards whose scripts name it, go on the table with it: /tmp/refs.json, made from the script files)
+	var refs := {}
+	var back := {}
+	if FileAccess.file_exists("/tmp/refs.json"):
+		var rj = JSON.parse_string(FileAccess.get_file_as_string("/tmp/refs.json"))
+		if rj is Dictionary:
+			refs = rj.get("refs", {})
+			back = rj.get("back", {})
 	var some: Array = mains.filter(func(id): return str(CardData.get_card(id).get("kind", "")) == "monster")
 	for id in mains + extras:
 		if played.has(id):
 			continue
 		var cd: Dictionary = CardData.get_card(id)
 		staged[id] = true
-		for g in 4:
+		var friends: Array = []
+		for fid in (refs.get(str(id), []) as Array) + (back.get(str(id), []) as Array):
+			if not friends.has(int(fid)):
+				friends.append(int(fid))
+		for g in 8:
 			var cards: Array = []
 			var grng := RandomNumberGenerator.new()
 			grng.seed = id * 31 + g
@@ -145,7 +168,35 @@ func _ready() -> void:
 					cards.append([side, some[grng.randi() % some.size()], 0x10, 0, 0x1])
 				cards.append([side, fodder[grng.randi() % fodder.size()], 0x04, 1, 0x1])
 				cards.append([side, some[grng.randi() % some.size()], 0x04, 2, 0x1 if side == 0 else 0x4])
-			if str(cd.get("kind", "")) == "monster":
+			# Its friends: on the field, in the hand, in the Graveyard and on top of the Deck, turn about.
+			var zone := 3
+			for fi in friends.size():
+				var fid: int = friends[fi]
+				var fk := str(CardData.get_card(fid).get("kind", "monster"))
+				var extra_deck := str(CardData.get_card(fid).get("frame", "")) in ["fusion", "synchro", "xyz"]
+				var where := (fi + g) % 4
+				if fk == "monster" and where == 0 and zone <= 4:
+					cards.append([0, fid, 0x04, zone, 0x1])
+					zone += 1
+				elif where == 2 and not extra_deck:
+					cards.append([0, fid, 0x10, 0, 0x1])
+				elif extra_deck:
+					cards.append([0, fid, 0x40, 0, 0x8])
+				else:
+					cards.append([0, fid, 0x02, 0, 0x8])
+				if not extra_deck and g % 2 == 1:
+					cards.append([0, fid, 0x01, 0, 0x8])
+			var is_extra := str(cd.get("frame", "")) in ["fusion", "synchro", "xyz"]
+			if g >= 4 and not friends.is_empty():
+				# The second half: the card is not on the table yet. It is where it would come from.
+				if is_extra:
+					cards.append([0, id, 0x40, 0, 0x8])
+				else:
+					cards.append([0, id, 0x02, 0, 0x8])
+					cards.append([0, id, 0x01, 0, 0x8])
+					if str(cd.get("kind", "")) == "trap":
+						cards.append([0, id, 0x08, 0, 0x8])
+			elif str(cd.get("kind", "")) == "monster":
 				cards.append([0, id, 0x04, 0, 0x1])
 				if g >= 2:
 					cards.append([0, id, 0x10, 0, 0x1])   # (and one in the Graveyard, for effects from there)
@@ -171,8 +222,8 @@ func _ready() -> void:
 			used_n += 1
 	never = quiet
 	var f := FileAccess.open(out_path, FileAccess.WRITE)
-	f.store_line("duels %d  cards in the pool %d  refused answers %d" % [n["duels"], total, n["refused"]])
-	f.store_line("played in a full duel %d (%.1f%%): after the game's own decks %d, after pool decks %d, after decks built around a card %d" % [played.size() if played.size() <= total else total, 100.0 * float(after_built) / float(total), after_decks, after_pool, after_built])
+	f.store_line("full duels %d (the game's decks %d, pool decks %d, decks built around a card %d)  set-up positions %d  cards in the pool %d  refused answers %d" % [duels_full, duels_decks, duels_pool, duels_built, n["duels"] - duels_full, total, n["refused"]])
+	f.store_line("played in a full duel %d (%.1f%%): after the game's own decks %d, after pool decks %d, after decks built around a card %d" % [after_built, 100.0 * float(after_built) / float(total), after_decks, after_pool, after_built])
 	f.store_line("put on the table in a set-up position: %d, of which %d used an effect there and %d only stood there" % [staged.size(), used_n, quiet.size()])
 	var by := {}
 	for id in never:

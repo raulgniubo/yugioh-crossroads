@@ -5,6 +5,32 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.43.0
+
+**Every duel runs on the new engine.** This is step 3 of the engine move. Story, free roam, Free Duel, Turbo Duels, puzzles, tournaments and the duel of the day all run on ocgcore now, against the opponent that thinks ahead. No cards added: the game still has **1,998 cards**.
+
+- **Nothing to switch on.** The ENGINE switch in Free Duel is gone. The new engine is simply what duels run on.
+- **One difficulty for the whole game: Normal, Hard or Extreme.** It is in Settings (Opponent difficulty) and in the Story panel (the same setting, shown in both places). It decides how every opponent in Story and in the worlds thinks. It starts on Hard. Free Duel keeps its own three buttons. The old Story choice of Easy, Normal and Hard is now this one.
+- **Turbo Duels.** Speed World 2 is a real card script now, one in each rider's Field Zone: 1 Speed Counter each Standby Phase (2 when you are 2000 or more behind), lose 1 for each 1000 damage taken at once, Spells need their speed, and its three effects at 4, 7 and 10 counters come up on the Speed World button. The 10 Speed Spells got engine scripts. A Grand Prix lap and a tuned runner still start you with counters.
+- **Destiny Draw.** Same rule as before (once per duel, at 2000 Life Points or less or under half of your opponent's), now a rule script inside the engine, with the same moment on screen. The opponent picks its card by trying every different card in its Deck on copies of the duel.
+- **Puzzles.** All 9 are laid out in the engine as they stand and are won the same way. Checked: each one can be solved on the new engine, and the Extreme opponent solves all 9 when it sits in your seat.
+- **Drag and drop is back.** Drop a monster on your monster row (left half: Summon, right half: Set) or a Spell or Trap on your back row (Activate or Set).
+- **The opponent now looks for the win first.** On its own turn, before anything else, it plays the rest of the turn out hundreds of times with anything legal. When one of those wins, it checks the line against other deals of your hidden cards, and if it holds it plays it. This is what finds the win that needs four steps (an Equip Spell, another, the right attack, then the second). Hard and Extreme do this; Normal does not. Deck searches also look at every different card now instead of the first ten.
+- **Classic duel rules** is a switch in Settings, off by default. It puts duels back on the old hand-written rules if something goes wrong. It goes away in the next build, when the old rules come out of the code.
+- **Under the hood:** `OcgDuel.prepare` takes a laid-out position (hand, monsters, Set cards, Graveyard) and game rules, `native/custom/c99100000.lua` to `c99100010.lua` (Speed World 2 and the Speed Spells), `data/ocg/destiny.lua`, `tests/ocg_sweep.gd` (the sweep below), `finish_blow` in `native/ai.hpp`.
+
+What I counted in the Story: no duel there uses a stacked deck or a set starting hand. The special ones are the two bosses with extra Life Points (Vellum 10000, the Curator 12000), the Turbo Duels, and the duels you may lose. All of those work on the new engine. The game has no scripted tutorial duel, so there was nothing to rebuild there; the coach line at the top of the duel screen works on the new engine.
+
+How it was checked:
+
+- **The sweep: 1,339 full duels and 560 set-up positions, and no card script complained once.** 1,928 of the 1,998 cards (96.5%) were summoned, Set or activated in a full duel: first every deck in the game (the street versions too), then 600 decks dealt from the whole card pool, then a deck built around each Fusion and Ritual Monster still missing. The 70 left were put straight onto the table in made-up positions, together with the cards their own scripts name, and played on from there: 44 of them did something, 26 only stood there. Those 26 are cards that wait for something rare (Great Moth, Magic Formula, Ultra Evolution Pill) or whose effect is always on and never "activates" (Cyber End Dragon). For those 26 I know they load and sit on the table without an error, not that their effect works.
+- **Every deck, 20 duels each through the game's own duel driver:** 940 duels, the table and the engine never disagreed, no stuck question. Turbo Duels: 282 more, same result.
+- **On the real duel screen with nobody at the table:** a standard duel, a Turbo Duel, a solved puzzle, a failed puzzle, your Destiny Draw, the opponent's Destiny Draw, and the first duel of the Story started from the Story itself.
+- **The win search, measured:** with it, the Extreme opponent solves 9 of the 9 puzzles; without it, 6. Against the basic opponent it changed nothing I can measure: Hard won 45 of 60 duels with it and 45 of 60 without it (75%, the same paired decks). So it finishes duels it used to let slip, but it does not win more of them in that test. Longest single decision: 1.7 seconds.
+- **Found by the sweep:** three cards that Fusion Monsters in the game are made of are not in the game: Crass Clown and Dream Clown (for Bickuribox) and Ambulanceroid (for Ambulance Rescueroid). So those two Fusions cannot be made the proper way yet. The three cards come in with the next build.
+
+Not checked: I still cannot run the Mac or Windows library myself, and nobody has played any of this by hand. A person clicking through menus will find things my runs do not.
+
 ## What is in 0.42.0
 
 **The opponent that thinks ahead.** This is step 2 of the engine move: on the new engine the CPU now has three levels, Normal, Hard and Extreme. No cards added: the game still has **1,998 cards**, every one working and obtainable.
