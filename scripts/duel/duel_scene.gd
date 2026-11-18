@@ -155,7 +155,12 @@ func _start() -> void:
 	if OcgTable.wanted(cfg):
 		state = OcgMirror.new()
 		ocg = OcgTable.new(self)
-		print("DUEL ENGINE new")
+		# The Free Duel difficulty buttons are the opponent's level there: Normal, Hard, Extreme.
+		ocg.level = clampi(int(cfg.get("difficulty", 2)), 1, 3)
+		for oa in OS.get_cmdline_user_args():
+			if oa.begins_with("--ocg-level="):
+				ocg.level = clampi(int(oa.trim_prefix("--ocg-level=")), 0, 3)
+		print("DUEL ENGINE new, opponent level ", ocg.level)
 	_opp_key = cfg.get("opponent", "kaiba")
 	Avatars.dress = {}
 	if str(cfg.get("opponent_coat", "")) != "":
@@ -265,7 +270,7 @@ func _start() -> void:
 	var opp_plain := SignatureDecks.borrowed(opp_deck, _opp_key) and not bool(cfg.get("opponent_deck_full", false))
 	var opp_list := CardData.legend_deck(opp_deck, opp_plain) if _ai_level >= 2 else CardData.deck_list(opp_deck, opp_plain)
 	var extra_hand := int(cfg.get("hand", 5)) - 5
-	state.bonus_cards = [extra_hand, extra_hand + (1 if _ai_level >= 2 else 0)]
+	state.bonus_cards = [extra_hand, extra_hand + (1 if _ai_level >= 2 and ocg == null else 0)]   # (on the new engine the opponent's edge is how it thinks, not an extra card)
 	# Destiny Draw: as the Free Duel screen says, else as Settings says. Never in a puzzle.
 	# You always have it; of your opponents, the strong ones do: 4 and 5 stars, and story bosses.
 	state.destiny = bool(cfg.get("destiny", Settings.destiny_draw)) and str(cfg.get("puzzle", "")) == ""

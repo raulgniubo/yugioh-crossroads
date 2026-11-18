@@ -299,3 +299,157 @@ void* OCG_DuelQueryField(OCG_Duel ocg_duel, uint32_t* length) {
 		*length = static_cast<uint32_t>(query.size());
 	return query.data();
 }
+
+
+/*** CROSSROADS ADDITION (not part of upstream ocgcore) ***/
+namespace {
+struct XorShift {
+	uint64_t s;
+	uint64_t next() { s ^= s << 13; s ^= s >> 7; s ^= s << 17; return s; }
+	uint32_t below(uint32_t n) { return n ? static_cast<uint32_t>(next() % n) : 0; }
+};
+struct Place {
+	uint8_t controler, location, sequence;
+	uint32_t position;
+	bool pzone;
+	uint32_t status;
+	uint16_t turnid;
+	uint32_t fieldid, fieldid_r;
+	card::summon_info summon;
+	uint32_t reason;
+	uint8_t reason_player;
+	card* reason_card;
+	effect* reason_effect;
+	uint8_t p_controler, p_location;
+	uint32_t p_sequence, p_position, p_reason;
+	bool p_pzone;
+};
+Place place_of(card* c) {
+	return { c->current.controler, c->current.location, static_cast<uint8_t>(c->current.sequence), c->current.position, c->current.pzone,
+		c->status, c->turnid, c->fieldid, c->fieldid_r, c->summon, c->current.reason, c->current.reason_player, c->current.reason_card,
+		c->current.reason_effect, c->previous.controler, c->previous.location, c->previous.sequence, c->previous.position,
+		c->previous.reason, c->previous.pzone };
+}
+void seat(field& f, card* c, const Place& p) {
+	c->sendto_param.position = static_cast<uint8_t>(p.position);
+	f.add_card(p.controler, c, p.location, (p.location == LOCATION_DECK) ? 0 : p.sequence, p.pzone);
+	c->current.position = p.position;
+	c->status = p.status;
+	c->turnid = p.turnid;
+	c->fieldid = p.fieldid;
+	c->fieldid_r = p.fieldid_r;
+	c->summon = p.summon;
+	c->current.reason = p.reason;
+	c->current.reason_player = p.reason_player;
+	c->current.reason_card = p.reason_card;
+	c->current.reason_effect = p.reason_effect;
+	c->previous.controler = p.p_controler;
+	c->previous.location = p.p_location;
+	c->previous.sequence = p.p_sequence;
+	c->previous.position = p.p_position;
+	c->previous.reason = p.p_reason;
+	c->previous.pzone = p.p_pzone;
+}
+/* 0 anything, 1 a monster, 2 a Spell/Trap (what kind of card may sit in that place) */
+bool fits(card* c, int kind) {
+	if(kind == 1) return (c->data.type & TYPE_MONSTER) != 0;
+	if(kind == 2) return (c->data.type & (TYPE_SPELL | TYPE_TRAP)) != 0 && !(c->data.type & TYPE_FIELD);
+	return true;
+}
+}
+
+void OCG_DuelDeterminize(OCG_Duel ocg_duel, uint8_t team, const uint64_t* seed, uint32_t flags) {
+	auto* pduel = static_cast<duel*>(ocg_duel);
+	if(team > 1 || !seed)
+		return;
+	auto& f = *pduel->game_field;
+	XorShift rng{ seed[0] ^ 0x9E3779B97F4A7C15ull };
+	if(rng.s == 0)
+		rng.s = 0x1234567ull;
+	auto& pl = f.player[team];
+	const bool saved_check = f.core.shuffle_check_disabled;
+	f.core.shuffle_check_disabled = true;
+	const auto saved_sent = f.core.just_sent_cards;
+	/* every hidden card of that player, and the kind of card its place asks for */
+	std::vector<card*> cards;
+	std::vector<int> kinds;
+	std::vector<size_t> targets;
+	auto hidden = [team](card* c) {
+		return c && c->owner == team && c->current.controler == team && !c->overlay_target && !c->equiping_target
+			&& c->xyz_materials.empty() && c->counters.empty();
+	};
+	for(auto* c : pl.list_hand) {
+		if(hidden(c) && !(c->current.position & POS_FACEUP) && !c->is_affected_by_effect(EFFECT_PUBLIC)) {
+			if(flags & 1) targets.push_back(cards.size());
+			cards.push_back(c); kinds.push_back(0);
+		}
+	}
+	if(flags & 2) {
+		for(size_t i = 0; i < 5 && i < pl.list_mzone.size(); ++i) {
+			auto* c = pl.list_mzone[i];
+			if(hidden(c) && (c->current.position & POS_FACEDOWN) && !(c->previous.position & POS_FACEUP)
+				&& (c->previous.location & (LOCATION_HAND | LOCATION_DECK)) && (c->data.type & TYPE_MONSTER)) {
+				targets.push_back(cards.size());
+				cards.push_back(c); kinds.push_back(1);
+			}
+		}
+	}
+	if(flags & 4) {
+		for(size_t i = 0; i < 5 && i < pl.list_szone.size(); ++i) {
+			auto* c = pl.list_szone[i];
+			if(hidden(c) && (c->current.position & POS_FACEDOWN) && !(c->previous.position & POS_FACEUP)
+				&& (c->previous.location & (LOCATION_HAND | LOCATION_DECK)) && fits(c, 2)) {
+				targets.push_back(cards.size());
+				cards.push_back(c); kinds.push_back(2);
+			}
+		}
+	}
+	if(!targets.empty()) {
+		for(auto* c : pl.list_main) {
+			if(hidden(c)) { cards.push_back(c); kinds.push_back(0); }
+		}
+		for(int pass = 0; pass < 2; ++pass) {
+			for(size_t t : targets) {
+				size_t j = rng.below(static_cast<uint32_t>(cards.size()));
+				if(j == t || cards[j] == cards[t])
+					continue;
+				card* a = cards[t];
+				card* b = cards[j];
+				if(!fits(b, kinds[t]) || !fits(a, kinds[j]))
+					continue;
+				if(a->current.location == LOCATION_DECK && b->current.location == LOCATION_DECK)
+					continue;
+				const Place pa = place_of(a);
+				const Place pb = place_of(b);
+				f.remove_card(a);
+				f.remove_card(b);
+				seat(f, b, pa);
+				seat(f, a, pb);
+				if(a->current.location == 0 || b->current.location == 0) {
+					/* a place refused its new card: put both back where they were */
+					if(a->current.location) f.remove_card(a);
+					if(b->current.location) f.remove_card(b);
+					seat(f, a, pa);
+					seat(f, b, pb);
+					continue;
+				}
+				cards[t] = b;
+				cards[j] = a;
+			}
+		}
+	}
+	if(flags & 8) {
+		for(int p = 0; p < 2; ++p) {
+			auto& deck = f.player[p].list_main;
+			for(size_t i = deck.size(); i > 1; --i)
+				std::swap(deck[i - 1], deck[rng.below(static_cast<uint32_t>(i))]);
+			f.reset_sequence(static_cast<uint8_t>(p), LOCATION_DECK);
+		}
+	}
+	if(flags & 16) {
+		const uint64_t fresh[4] = { seed[0] | 1, seed[1] ^ rng.next(), seed[2] ^ rng.next(), seed[3] ^ rng.next() };
+		pduel->reseed(fresh);
+	}
+	f.core.just_sent_cards = saved_sent;
+	f.core.shuffle_check_disabled = saved_check;
+}

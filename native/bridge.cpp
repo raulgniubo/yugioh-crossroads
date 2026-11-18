@@ -4,6 +4,8 @@
 // own binary Variant format, so GDScript reads them with bytes_to_var().
 #include "gdextension_interface.h"
 #include "ocgcore/ocgapi.h"
+#include <lua.h>
+#include <lauxlib.h>
 #include <cstring>
 #include <cstdlib>
 #include <cstdint>
@@ -12,6 +14,12 @@
 #include <unordered_map>
 #include <mutex>
 #include <memory>
+#include <chrono>
+#include <thread>
+#include <algorithm>
+#include <cmath>
+#include <map>
+#include <set>
 
 // ---------------------------------------------------------------- a tiny value tree
 struct JV {
@@ -77,6 +85,23 @@ struct R {
 struct CardRow { uint32_t code, alias, type, level, attribute; uint64_t race; int32_t atk, def; uint32_t lscale, rscale, link; std::vector<uint16_t> sets; };
 static std::unordered_map<uint32_t, CardRow> g_cards;
 static std::unordered_map<std::string, std::string> g_scripts;
+// The same scripts already compiled. A duel loads about a megabyte of script when it starts, and
+// the opponent starts hundreds of duels to think: compiled once, each start is several times faster.
+static std::unordered_map<std::string, std::string> g_compiled;
+static int dump_writer(lua_State*, const void* p, size_t sz, void* ud) { static_cast<std::string*>(ud)->append((const char*)p, sz); return 0; }
+static void compile_scripts() {
+	lua_State* L = luaL_newstate();
+	if(!L) return;
+	for(auto& kv : g_scripts) {
+		if(g_compiled.count(kv.first)) continue;
+		if(luaL_loadbuffer(L, kv.second.data(), kv.second.size(), kv.first.c_str()) == LUA_OK) {
+			std::string out;
+			if(lua_dump(L, dump_writer, &out, 0) == 0) g_compiled[kv.first] = std::move(out);
+		}
+		lua_settop(L, 0);
+	}
+	lua_close(L);
+}
 static std::mutex g_mutex;
 
 static void card_reader(void*, uint32_t code, OCG_CardData* d) {
@@ -92,7 +117,16 @@ static void card_reader(void*, uint32_t code, OCG_CardData* d) {
 }
 static void card_reader_done(void*, OCG_CardData*) {}
 
-struct Duel { OCG_Duel d = nullptr; std::vector<std::string> logs; std::vector<std::string> missing; };
+// Everything needed to play a duel again from its first card: how it began and every answer given.
+struct History {
+	OCG_DuelOptions opt{};
+	std::vector<OCG_NewCardInfo> cards;
+	std::vector<std::vector<uint8_t>> answers;
+	std::vector<std::pair<std::string, std::string>> scripts;
+};
+
+struct AiJob;
+struct Duel { OCG_Duel d = nullptr; std::vector<std::string> logs; std::vector<std::string> missing; History hist; std::shared_ptr<AiJob> job; };
 static int script_reader(void* payload, OCG_Duel duel, const char* name) {
 	auto it = g_scripts.find(name);
 	if(it == g_scripts.end()) {
@@ -108,6 +142,8 @@ static int script_reader(void* payload, OCG_Duel duel, const char* name) {
 		if(payload && real) static_cast<Duel*>(payload)->missing.push_back(name);
 		return 0;
 	}
+	auto bc = g_compiled.find(name);
+	if(bc != g_compiled.end()) return OCG_LoadScript(duel, bc->second.data(), (uint32_t)bc->second.size(), name);
 	return OCG_LoadScript(duel, it->second.data(), (uint32_t)it->second.size(), name);
 }
 static void log_handler(void* payload, const char* str, int type) {
@@ -278,6 +314,10 @@ static JV parse_query_list(const uint8_t* p, size_t n) {
 	return out;
 }
 
+#include "ai.hpp"
+
+struct AiJob { std::mutex m; bool done = false; Decision d; };
+
 // ---------------------------------------------------------------- operations
 static std::vector<uint8_t> run_op(int code, const uint8_t* data, size_t size) {
 	std::lock_guard<std::mutex> lock(g_mutex);
@@ -308,6 +348,7 @@ static std::vector<uint8_t> run_op(int code, const uint8_t* data, size_t size) {
 			if(r.left() < dl) break;
 			g_scripts[name] = std::string((const char*)r.p + r.pos, dl); r.pos += dl;
 		}
+		compile_scripts();
 		put32(out, (uint32_t)g_scripts.size());
 		break; }
 	case 10: {  // create a duel
@@ -321,6 +362,7 @@ static std::vector<uint8_t> run_op(int code, const uint8_t* data, size_t size) {
 		o.payload2 = d.get(); o.payload3 = d.get();
 		int st = OCG_CreateDuel(&d->d, &o);
 		if(st != 0 || !d->d) { put32(out, 0); put32(out, (uint32_t)st); break; }
+		d->hist.opt = o;
 		for(const char* f : { "constant.lua", "utility.lua" }) script_reader(d.get(), d->d, f);
 		uint32_t h = g_next++;
 		g_duels[h] = std::move(d);
@@ -333,6 +375,7 @@ static std::vector<uint8_t> run_op(int code, const uint8_t* data, size_t size) {
 			OCG_NewCardInfo c{};
 			c.team = r.u8(); c.duelist = r.u8(); c.code = r.u32(); c.con = r.u8(); c.loc = r.u32(); c.seq = r.u32(); c.pos = r.u32();
 			OCG_DuelNewCard(d->d, &c);
+			d->hist.cards.push_back(c);
 		}
 		break; }
 	case 12: { Duel* d = find_duel(r.u32()); if(d) OCG_StartDuel(d->d); break; }
@@ -360,7 +403,13 @@ static std::vector<uint8_t> run_op(int code, const uint8_t* data, size_t size) {
 		res.set("msgs", std::move(msgs));
 		encode(out, res);
 		break; }
-	case 14: { Duel* d = find_duel(r.u32()); if(d) OCG_DuelSetResponse(d->d, r.p + r.pos, (uint32_t)r.left()); break; }
+	case 14: {
+		Duel* d = find_duel(r.u32());
+		if(d) {
+			OCG_DuelSetResponse(d->d, r.p + r.pos, (uint32_t)r.left());
+			d->hist.answers.emplace_back(r.p + r.pos, r.p + r.pos + r.left());
+		}
+		break; }
 	case 15: {  // query: handle, location mask. Returns [player][location] lists.
 		Duel* d = find_duel(r.u32());
 		uint32_t mask = r.u32();
@@ -411,6 +460,74 @@ static std::vector<uint8_t> run_op(int code, const uint8_t* data, size_t size) {
 		if(!d || r.left() < nl) break;
 		std::string name((const char*)r.p + r.pos, nl); r.pos += nl;
 		put32(out, (uint32_t)OCG_LoadScript(d->d, (const char*)r.p + r.pos, (uint32_t)r.left(), name.c_str()));
+		d->hist.scripts.emplace_back(name, std::string((const char*)r.p + r.pos, r.left()));
+		break; }
+	case 30: case 31: {  // the opponent thinks: handle, level, time (ms), seed. 30 waits for the answer, 31 thinks in the background.
+		Duel* d = find_duel(r.u32());
+		int level = (int)r.u32(); int ms = (int)r.u32(); uint64_t seed = r.u64();
+		if(!d) break;
+		if(code == 30) {
+			Decision dec = decide(d->hist, level, ms, seed);
+			put32(out, (uint32_t)dec.sims); put32(out, (uint32_t)dec.cands); put32(out, (uint32_t)dec.ms);
+			out.insert(out.end(), dec.bytes.begin(), dec.bytes.end());
+		} else {
+			auto job = std::make_shared<AiJob>();
+			d->job = job;
+			History copy = d->hist;
+			std::thread([job, copy, level, ms, seed]() {
+				Decision dec = decide(copy, level, ms, seed);
+				std::lock_guard<std::mutex> l(job->m);
+				job->d = std::move(dec);
+				job->done = true;
+			}).detach();
+		}
+		break; }
+	case 32: {  // is the answer ready? 0 nothing asked, 1 thinking, 2 ready (then: tries, answers weighed, ms, the answer)
+		Duel* d = find_duel(r.u32());
+		if(!d || !d->job) { out.push_back(0); break; }
+		std::lock_guard<std::mutex> l(d->job->m);
+		if(!d->job->done) { out.push_back(1); break; }
+		out.push_back(2);
+		put32(out, (uint32_t)d->job->d.sims); put32(out, (uint32_t)d->job->d.cands); put32(out, (uint32_t)d->job->d.ms);
+		out.insert(out.end(), d->job->d.bytes.begin(), d->job->d.bytes.end());
+		break; }
+	case 34: {  // timing: how long a fresh duel takes to set up, and to replay (handle, repeats)
+		Duel* d = find_duel(r.u32());
+		uint32_t n = r.u32();
+		if(!d) break;
+		auto t0 = std::chrono::steady_clock::now();
+		for(uint32_t i = 0; i < n; ++i) { auto sm = sim_new(d->hist); if(sm) sim_step(*sm); }
+		auto t1 = std::chrono::steady_clock::now();
+		for(uint32_t i = 0; i < n; ++i) { auto sm = sim_replay(d->hist); }
+		auto t2 = std::chrono::steady_clock::now();
+		put32(out, (uint32_t)std::chrono::duration<double, std::micro>(t1 - t0).count() / std::max<uint32_t>(1, n));
+		put32(out, (uint32_t)std::chrono::duration<double, std::micro>(t2 - t1).count() / std::max<uint32_t>(1, n));
+		put32(out, (uint32_t)d->hist.answers.size());
+		break; }
+	case 33: {  // a whole duel between two levels, no screen: for measuring how strong they are
+		History h{};
+		for(int i = 0; i < 4; ++i) h.opt.seed[i] = r.u64();
+		h.opt.flags = r.u64();
+		h.opt.team1.startingLP = r.u32(); h.opt.team1.startingDrawCount = r.u32(); h.opt.team1.drawCountPerTurn = 1;
+		h.opt.team2.startingLP = r.u32(); h.opt.team2.startingDrawCount = r.u32(); h.opt.team2.drawCountPerTurn = 1;
+		int level0 = (int)r.u32(), level1 = (int)r.u32(), ms = (int)r.u32(), max_turns = (int)r.u32();
+		uint64_t seed = r.u64();
+		uint64_t sh = mix(seed) | 1;
+		for(int t = 0; t < 2; ++t) {
+			for(int part = 0; part < 2; ++part) {
+				uint32_t n = r.u32();
+				std::vector<uint32_t> codes;
+				for(uint32_t i = 0; i < n && !r.bad; ++i) codes.push_back(r.u32());
+				if(part == 0) for(size_t i = codes.size(); i > 1; --i) { sh = mix(sh); std::swap(codes[i - 1], codes[sh % i]); }
+				for(uint32_t c : codes) {
+					OCG_NewCardInfo ci{}; ci.team = (uint8_t)t; ci.code = c; ci.con = (uint8_t)t; ci.loc = part == 0 ? 0x01 : 0x40; ci.pos = 0x8;
+					h.cards.push_back(ci);
+				}
+			}
+		}
+		MatchResult mr = play_match(h, level0, level1, seed, ms, max_turns);
+		put32(out, (uint32_t)mr.winner); put32(out, (uint32_t)mr.turns); put32(out, (uint32_t)mr.decisions); put32(out, (uint32_t)mr.sims);
+		put32(out, (uint32_t)mr.think_ms); put32(out, (uint32_t)mr.max_ms); put32(out, (uint32_t)mr.refused);
 		break; }
 	default: break;
 	}

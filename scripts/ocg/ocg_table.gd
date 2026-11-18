@@ -19,6 +19,12 @@ var acts := {}             # card uid -> [[label, answer], ...] for that questio
 var pick := {}             # an on-board pick in progress: {"cands", "answers", "cancel"}
 var _hand := [5, 5]
 var _menu: Array = []
+var level := 2             # how the opponent thinks: 0 the plain policy, 1 Normal, 2 Hard, 3 Extreme
+var _turn_think := 0       # ms it has thought this turn
+var _turn_seen := -1
+var _turn_asks := 0
+const TURN_BUDGET := [0, 6000, 14000, 28000]     # after this much thinking in one turn it hurries
+const NAMES := ["Basic", "Normal", "Hard", "Extreme"]
 var _log := "--ocg-log" in OS.get_cmdline_user_args()
 
 
@@ -79,10 +85,10 @@ func loop() -> void:
 			bytes = (cpu if p == AI else me_cpu).decide(d, true)
 		elif p == ME and not s._autoplay:
 			bytes = await _ask(m)
+		elif p == AI:
+			bytes = await _cpu_answer(m)
 		else:
-			if int(m["t"]) in [10, 11] and not s._autoplay:
-				await s._ai_wait(0.35)
-			bytes = (cpu if p == AI else me_cpu).decide(d)
+			bytes = me_cpu.decide(d)
 		if s._finished or s.state.is_over() or bytes == null:
 			break
 		d.answer(bytes)
@@ -101,6 +107,51 @@ func loop() -> void:
 	if _log or not d.errors.is_empty():
 		print("OCG END winner ", s.state.winner, " turn ", s.state.turn, " errors ", d.errors.slice(0, 8))
 	d.close()
+
+
+## The opponent's answer. From Normal up it thinks in the engine (on its own thread, so the
+## screen keeps moving): it tries its options on copies of the duel and takes the best.
+func _cpu_answer(m: Dictionary) -> PackedByteArray:
+	if s.state.turn != _turn_seen:
+		_turn_seen = s.state.turn
+		_turn_think = 0
+		_turn_asks = 0
+	_turn_asks += 1
+	var command: bool = int(m["t"]) in [10, 11]
+	if level <= 0 or _turn_asks > 140:
+		if command and not s._autoplay:
+			await s._ai_wait(0.35)
+		return cpu.decide(d, _turn_asks > 180)
+	var cap := 0
+	if _turn_think > int(TURN_BUDGET[level]):
+		cap = 350
+	var t0 := Time.get_ticks_msec()
+	OcgCore.think_start(d.handle, level, cap, randi())
+	var shown := false
+	while true:
+		await s.get_tree().process_frame
+		var r := OcgCore.think_poll(d.handle)
+		if not r.is_empty():
+			_turn_think += int(r["ms"])
+			if _log and int(r["cands"]) > 1:
+				print("OCG think: ", int(r["cands"]), " answers, ", int(r["sims"]), " tries, ", int(r["ms"]), " ms")
+			if shown:
+				s.hud.set_coach("")
+			var ans: PackedByteArray = r["answer"]
+			if ans.is_empty():
+				break
+			# A command that came at once still gets a beat, so its plays do not blur together.
+			if command and not s._autoplay and Time.get_ticks_msec() - t0 < 300:
+				await s._ai_wait(0.3)
+			return ans
+		if not shown and Time.get_ticks_msec() - t0 > 900:
+			shown = true
+			s.hud.set_coach(Loc.t("%s is thinking...") % str(s.state.players[AI].name))
+		if Time.get_ticks_msec() - t0 > 20000 or s._finished:
+			break
+	if shown:
+		s.hud.set_coach("")
+	return cpu.decide(d)
 
 
 # ------------------------------------------------------------------ questions for the player

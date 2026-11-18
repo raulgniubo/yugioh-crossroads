@@ -113,6 +113,13 @@ func one(ka: String, kb: String, seed: int, verbose: bool) -> Dictionary:
 			if c.id >= 99200000:
 				seen[c.cname()] = int(seen.get(c.cname(), 0)) + 1
 		print("  lumen cards that got out: ", seen)
+	if "-t" in OS.get_cmdline_user_args():
+		var hb := PackedByteArray()
+		hb.resize(8)
+		hb.encode_u32(0, d.handle)
+		hb.encode_u32(4, 20)
+		var tr := OcgCore.op(34, hb)
+		print("  timing: new duel ", tr.decode_u32(0), " us, replay of ", tr.decode_u32(8), " answers ", tr.decode_u32(4), " us")
 	var w: int = st.winner if st.winner in [0, 1] else 2
 	if guard >= 6000:
 		d.errors.append("too many steps")

@@ -44,6 +44,14 @@ OCGAPI void* OCG_DuelQuery(OCG_Duel ocg_duel, uint32_t* length, const OCG_QueryI
 OCGAPI void* OCG_DuelQueryLocation(OCG_Duel ocg_duel, uint32_t* length, const OCG_QueryInfo* info_ptr);
 OCGAPI void* OCG_DuelQueryField(OCG_Duel ocg_duel, uint32_t* length);
 
+/*** CROSSROADS ADDITION (not part of upstream ocgcore) ***/
+/* Re-deal what one player cannot see of the other, for a search that must not peek.
+ * hidden_team: whose hidden cards are re-dealt (their hand, their Deck, and with the flags
+ * below their face-down cards that were never face-up). Cards trade places only with cards
+ * of the same owner that are just as hidden, so every public fact stays true.
+ * flags: 1 hand, 2 face-down monsters, 4 Set Spells/Traps, 8 shuffle both Decks, 16 new random seed. */
+OCGAPI void OCG_DuelDeterminize(OCG_Duel ocg_duel, uint8_t hidden_team, const uint64_t* seed, uint32_t flags);
+
 #undef OCGAPI
 #undef EXTERN_C
 

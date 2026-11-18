@@ -109,6 +109,10 @@ public:
 	inline int read_script(const char* name) {
 		return read_script_callback(read_script_payload, this, name);
 	}
+	/* CROSSROADS ADDITION (not part of upstream ocgcore): a new random seed, for OCG_DuelDeterminize */
+	inline void reseed(const uint64_t* s) {
+		random = RNG::Xoshiro256StarStar({ s[0], s[1], s[2], s[3] });
+	}
 private:
 	std::deque<duel_message> messages;
 	RNG::Xoshiro256StarStar random;

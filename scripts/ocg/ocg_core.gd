@@ -211,6 +211,67 @@ static func destroy(handle: int) -> void:
 	op(16, _h(handle))
 
 
+# ------------------------------------------------------------------ the opponent's brain
+
+## Ask the engine-side opponent for its answer to the open question. level: 1 Normal, 2 Hard,
+## 3 Extreme (0: the plain policy). Blocks until it has it; use think_start / think_poll in a duel.
+static func think(handle: int, level: int, ms := 0, seed := 1) -> Dictionary:
+	var b := _h(handle)
+	b.resize(20)
+	b.encode_u32(4, level)
+	b.encode_u32(8, ms)
+	b.encode_u64(12, seed)
+	var r := op(30, b)
+	if r.size() < 12:
+		return {"answer": PackedByteArray(), "sims": 0, "cands": 0, "ms": 0}
+	return {"sims": r.decode_u32(0), "cands": r.decode_u32(4), "ms": r.decode_u32(8), "answer": r.slice(12)}
+
+
+static func think_start(handle: int, level: int, ms := 0, seed := 1) -> void:
+	var b := _h(handle)
+	b.resize(20)
+	b.encode_u32(4, level)
+	b.encode_u32(8, ms)
+	b.encode_u64(12, seed)
+	op(31, b)
+
+
+## {} while it is still thinking, else {"answer", "sims", "cands", "ms"}.
+static func think_poll(handle: int) -> Dictionary:
+	var r := op(32, _h(handle))
+	if r.size() < 13 or r[0] != 2:
+		return {}
+	return {"sims": r.decode_u32(1), "cands": r.decode_u32(5), "ms": r.decode_u32(9), "answer": r.slice(13)}
+
+
+## A whole duel between two levels with no screen (for measuring). decks/extras: [side 0, side 1].
+static func match_duel(decks: Array, extras: Array, levels: Array, seed: int, ms := 0, lp := 8000, max_turns := 60) -> Dictionary:
+	var b := StreamPeerBuffer.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	for i in 4:
+		b.put_u64(rng.randi() | (rng.randi() << 32))
+	b.put_u64(DUEL_FLAGS)
+	for p in 2:
+		b.put_u32(lp)
+		b.put_u32(5)
+	b.put_u32(int(levels[0]))
+	b.put_u32(int(levels[1]))
+	b.put_u32(ms)
+	b.put_u32(max_turns)
+	b.put_u64(seed)
+	for p in 2:
+		for part in [decks[p], extras[p]]:
+			b.put_u32((part as Array).size())
+			for id in part:
+				b.put_u32(int(id))
+	var r := op(33, b.data_array)
+	if r.size() < 28:
+		return {"winner": 2}
+	return {"winner": r.decode_u32(0), "turns": r.decode_u32(4), "decisions": r.decode_u32(8), "sims": r.decode_u32(12),
+		"think_ms": r.decode_u32(16), "max_ms": r.decode_u32(20), "refused": r.decode_u32(24)}
+
+
 # ------------------------------------------------------------------ the engine's words
 
 static func _lang() -> String:

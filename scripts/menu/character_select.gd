@@ -962,7 +962,8 @@ func _build_setup() -> void:
 			[_match_btn, "LENGTH", ["1 duel", "Best of 3"], ["One duel decides it.", "First to win two duels. You can swap Side Deck cards between duels."]],
 			[_fate_off_btn, "DESTINY DRAW", ["On", "Off"], ["Once per duel, at 2000 Life Points or less (or under half of your opponent's), you choose the card you draw. Hard opponents can do it too.", "Every draw is the top card, as usual."]]]
 	if OcgCore.available():
-		groups.append([_engine_btn, "ENGINE", ["Classic", "New (test)"], ["The rules the game has always used.", "The new rules engine, still being built. Its opponent only makes basic moves for now. Standard duels only."]])
+		groups.append([_engine_btn, "ENGINE", ["Classic", "New (test)"], ["The rules the game has always used.", "The new rules engine, with the opponent that thinks ahead: Normal, Hard and Extreme. Standard duels only for now."]])
+		_engine_btn.toggled.connect(func(_on): _refresh_setup())
 	var rules := HBoxContainer.new()
 	rules.add_theme_constant_override("separation", 8)
 	v.add_child(rules)
@@ -1207,9 +1208,17 @@ func _refresh_deck_row() -> void:
 func _refresh_setup() -> void:
 	for i in _diff_btns.size():
 		_diff_btns[i].set_pressed_no_signal(i + 1 == maxi(1, _difficulty))
-	_diff_note.text = ["Plays sensibly and attacks when it can.", "Plays sensibly and attacks when it can.",
-			"Thinks ahead, brings a tuned deck and starts with one extra card.",
-			"Plans two plays ahead and sees your counterattack coming. Tuned deck, one extra card."][_difficulty]
+	var new_engine: bool = _engine_btn != null and _engine_btn.button_pressed
+	for i in _diff_btns.size():
+		_diff_btns[i].text = Loc.t((["Normal", "Hard", "Extreme"] if new_engine else ["Easy", "Normal", "Hard"])[i])
+	if new_engine:
+		_diff_note.text = ["", "Looks a little ahead and sometimes slips, like a person.",
+				"Plans its turn by trying its plays on copies of the duel and checks what you could answer. Tuned deck.",
+				"Tries more plays, against more of what you might be holding, for longer. Tuned deck. It never looks at your hand or face-down cards."][_difficulty]
+	else:
+		_diff_note.text = ["Plays sensibly and attacks when it can.", "Plays sensibly and attacks when it can.",
+				"Thinks ahead, brings a tuned deck and starts with one extra card.",
+				"Plans two plays ahead and sees your counterattack coming. Tuned deck, one extra card."][_difficulty]
 	var th := FieldThemes.resolve(_field, _opp)
 	_field_name.text = (Loc.t("Auto  ·  %s") % th["name"]) if _field == "auto" else str(th["name"])
 	for ak in _arena_tiles:
