@@ -33,6 +33,9 @@ const PACKS := [
 	{"key": "Vault", "tab": 0, "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
 	{"key": "legends", "tab": 0, "name": "Monster Legends", "color": Color("e8b04a"), "blurb": "Normal Monsters from every era: hundreds of them, from the classics to the rare big ones."},
 	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen, her forms and the cards around her. Only the ones the story has already handed you, up to three of each."},
+	{"key": "chronomaly", "tab": 1, "name": "Out-of-Place Artifacts", "color": Color("c9a24a"), "family": true, "blurb": "The Chronomaly: stone heads, crystal skulls and golden jets from places they should not be. They call each other out fast, change their own Levels, drop the other side's ATK to 0, and overlay into the Chronomaly Numbers."},
+	{"key": "scrap", "tab": 1, "name": "Scrapyard", "color": Color("a08060"), "family": true, "blurb": "The Scraps: monsters built from junk that are meant to be destroyed. Break one with another Scrap's effect and it hands you a different one from the Graveyard, Scrap Factory replaces it from the Deck, and Scrap Dragon trades one of your cards for one of theirs every turn."},
+	{"key": "morphtronic", "tab": 1, "name": "Morphtronic Workshop", "color": Color("f0c040"), "family": true, "blurb": "The Morphtronics: toys and gadgets that do one thing in Attack Position and another in Defense Position. Celfon rolls a die to call more of them, Radion and Boarden turn a field of small machines into direct attacks, and Power Tool Dragon fetches their equipment."},
 	{"key": "vampire", "tab": 1, "name": "Vampire Kingdom", "color": Color("8a2040"), "family": true, "blurb": "The Vampires: Zombies that pay Life Points for what they want. They send cards from the other side's Deck to the Graveyard, take over monsters they destroy in battle, and Vampire Kingdom destroys a card every time the other Deck loses one."},
 	{"key": "crystal_beast", "tab": 1, "name": "Rainbow Ruins", "color": Color("6fd6c8"), "family": true, "blurb": "The Crystal Beasts: seven gem animals that don't go to the Graveyard when they are destroyed. They wait in your Spell and Trap Zone as crystals, come back with Crystal Promise and Ruby Carbuncle, and with all seven out Rainbow Dragon arrives."},
 	{"key": "amazoness", "tab": 1, "name": "Amazoness Village", "color": Color("c9773a"), "family": true, "blurb": "The Amazoness: a tribe of Warriors who punish every attack. Princess searches, Queen keeps them from dying in battle, Onslaught banishes what they fight, and the Pet Liger Fusions close the game. The Dark Scorpion gang rides along in this pack: five thieves who each steal something when they hit you directly."},
@@ -106,6 +109,9 @@ const THEME_DECKS := [
 	{"key": "deck_amazoness", "art": "warriors", "cover": "Amazoness Queen", "color": Color("c9773a"), "era": "Duel Monsters", "blurb": "Princess fetches a Spell or Trap and calls another Amazoness when she attacks. With Queen on the field none of them die in battle, and Secret Arts fuses them into Empress or Pet Liger."},
 	{"key": "deck_crystal_beast", "art": "arcane", "cover": "Rainbow Dragon", "color": Color("6fd6c8"), "era": "GX", "blurb": "Sapphire Pegasus and Crystal Bond fill your back row with crystals. Crystal Beacon and Crystal Promise turn them back into monsters, Rare Value draws from them, and seven different Crystal Beasts on your field or in your Graveyard call Rainbow Dragon."},
 	{"key": "deck_vampire", "art": "shadow", "cover": "Vampire Lord", "color": Color("8a2040"), "era": "GX", "blurb": "Vampire Takeover opens the Kingdom straight from the Deck. Shadow Vampire and Duke bring more Vampires with them, Fraulein pays Life Points to win any battle, and what your Vampires destroy comes back on your side."},
+	{"key": "deck_morphtronic", "art": "machines", "cover": "Power Tool Dragon", "color": Color("f0c040"), "era": "5D's", "blurb": "Celfon rolls a die and calls a Morphtronic from the top of your Deck. Radion gives them all 800 ATK, Boarden lets them attack directly, and a Tuner turns two of them into Power Tool Dragon."},
+	{"key": "deck_scrap", "art": "machines", "cover": "Scrap Dragon", "color": Color("a08060"), "era": "5D's", "blurb": "Scrap Chimera brings a Tuner back from the Graveyard for Scrap Dragon. Scrap Dragon destroys one of your own Scraps and one of their cards, the Scrap you destroyed fetches another, and Scrap Factory calls a new one from the Deck."},
+	{"key": "deck_chronomaly", "art": "arcane", "cover": "Number 33: Chronomaly Machu Mech", "color": Color("c9a24a"), "era": "ZEXAL", "blurb": "Nebra Disk searches, Crystal Bones and Moai arrive for free, and two Level 4 Chronomaly make Chateau Huyuk, who turns a monster's ATK to 0. Then Machu Mech burns for the difference."},
 	{"key": "deck_monarchs", "art": "shadow", "cover": "Caius the Mega Monarch", "color": Color("e0c070"), "era": "GX", "blurb": "Squires and Vassals step out so a Monarch can be Tribute Summoned, then a Mega Monarch Tributes that one. Every landing clears something off their side."},
 	{"key": "deck_chaos", "art": "warriors", "cover": "Black Luster Soldier - Super Soldier", "color": Color("c8b0ff"), "era": "Duel Monsters", "blurb": "Super Soldier Ritual turns two Level 4 Knights into Black Luster Soldier, and the Knights give him their powers. Gaia rides in when he falls, and Chaos Form brings back the old legends."},
 	{"key": "deck_gem_knight", "art": "warriors", "cover": "Gem-Knight Master Diamond", "color": Color("7ae0ff"), "era": "ZEXAL", "blurb": "Gem-Knight Fusion turns two plain knights into a Fusion Monster, Brilliant Fusion fuses straight from the Deck, and Gem-Knight Fusion comes back from the Graveyard to do it again."},
@@ -301,6 +307,27 @@ const FAMILIES := {
 		"Vampire Scarlet Scourge", "Vampire's Curse", "Vampire Vamp", "Vampire Genesis", "Vampire Voivode", "Vampire Kingdom", "Vampire's Desire",
 		"Vampire's Domain", "Vampire Awakening", "Vampire Domination", "Vampire Takeover", "Crimson Knight Vampire Bram", "Dhampir Vampire Sheridan",
 		"The Zombie Vampire"]},
+	"morphtronic": {"era": "5D's", "deck": "deck_morphtronic", "cards": [
+		"Gadget Driver", "Morphtronic Celfon", "Morphtronic Lantron", "Morphtronic Magnen Bar", "Morphtronic Smartfon", "Morphtronic Telefon",
+		"Morphtronic Vacuumen", "Gadget Arms", "Morphtronic Cameran", "Morphtronic Clocken", "Gadget Gamer", "Morphtronic Boarden", "Morphtronic Datatron",
+		"Morphtronic Magnen", "Morphtronic Remoten", "Morphtronic Scopen", "Morphtronic Boomboxen", "Morphtronic Radion", "Morphtronic Slingen",
+		"Morphtronic Staplen", "Morphtronic Videon", "Gadget Hauler", "Morphtronic Scannen", "Double Tool C&D", "Factory of 100 Machines", "Gadget Box",
+		"Junk Box", "Morphtronic Accelerator", "Morphtronic Converter", "Morphtronic Cord", "Morphtronic Engine", "Morphtronic Map",
+		"Morphtronic Repair Unit", "Morphtronic Rusty Engine", "Morphtronic Earfon", "Power Tool Dragon", "Morphtransition", "Morphtronic Bind",
+		"Morphtronic Forcefield", "Morphtronic Impact Return", "Morphtronic Mix-up", "Morphtronic Monitron", "Morphtronics, Scramble!", "Power-Up Adapter"]},
+	"scrap": {"era": "5D's", "deck": "deck_scrap", "cards": [
+		"Scrap Mind Reader", "Scrap Searcher", "Scrap Synchron", "Scrap Worm", "Scrap Goblin", "Scrap Hunter", "Scrap Recycler", "Scrap Beast",
+		"Scrap Chimera", "Scrap Kong", "Scrap Orthros", "Scrap Raptor", "Scrap Shark", "Scrap Golem", "Scrap Soldier", "Scrap Breaker", "Guts of Steel",
+		"Scrap Factory", "Scrap Fist", "Scrap Lube", "Scrap Sheen", "Scrapstorm", "Scrapyard", "Atomic Scrap Dragon", "Scrap Archfiend", "Scrap Dragon",
+		"Scrap Twin Dragon", "Scrap Warrior", "Scrap Crash", "Scrap Garage", "Scrap Rage"]},
+	"chronomaly": {"era": "ZEXAL", "deck": "deck_chronomaly", "cards": [
+		"Chronomaly Crystal Bones", "Chronomaly Crystal Skull", "Chronomaly Gordian Knot", "Chronomaly Mayan Machine", "Chronomaly Aztec Mask Golem",
+		"Chronomaly Cabrera Trebuchet", "Chronomaly Colossal Head", "Chronomaly Golden Jet", "Chronomaly Magella Globe", "Chronomaly Mud Golem",
+		"Chronomaly Nebra Disk", "Chronomaly Tuspa Rocket", "Chronomaly Acambaro Figures", "Chronomaly Moai", "Chronomaly Moai Carrier",
+		"Chronomaly Tula Guardian", "Chronomaly Winged Sphinx", "Chronomaly Sol Monolith", "Chronomaly City Babylon", "Chronomaly Pyramid Eye Tablet",
+		"Chronomaly Technology", "Chronomaly Temple - Trilithon", "Chronomaly Esperanza Glyph", "Stonehenge Methods", "Chronomaly Crystal Chrononaut",
+		"Chronomaly Vimana", "Number 33: Chronomaly Machu Mech", "Number 36: Chronomaly Chateau Huyuk", "Number 6: Chronomaly Atlandis",
+		"Number C6: Chronomaly Chaos Atlandis"]},
 }
 
 
