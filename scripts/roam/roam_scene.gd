@@ -1886,10 +1886,14 @@ func _start_duel() -> void:
 	var opp_key: String = d.get("char", "")
 	if opp_key == "":
 		opp_key = d["id"]
+	# How strong their deck is goes with their stars (1-2 Starter, 3 Standard, 4-5 Full). The
+	# show's characters always play their own deck whole.
+	var stars := Unlocks.stars_of(d)
+	var opp_deck := DeckTiers.for_duel(str(duel.get("deck", "joey")), opp_key, stars)
 	Router.duel_config = {
-		"opponent": opp_key, "opponent_deck": duel.get("deck", "joey"),
+		"opponent": opp_key, "opponent_deck": opp_deck,
 		"player_deck": Collection.active_deck(), "player_char": "player",
-		"difficulty": Unlocks.level_for(Unlocks.stars_of(d)), "destiny_opp": Unlocks.stars_of(d) >= 4, "field": _field_here(),
+		"difficulty": Unlocks.level_for(stars), "destiny_opp": stars >= 4, "field": _field_here(),
 		"story": true, "lose_ok": true, "return_to": Router.ROAM, "continue_label": Loc.t("Back to %s") % Loc.t(str(district.get("name", "town"))),
 	}
 	# Both of you walk into the duel dressed as you were when the challenge was made.

@@ -2422,6 +2422,9 @@ func _start_duel(d: Dictionary) -> void:
 	var opp_deck := str(d.get("opp_deck", d["opponent"]))
 	if not CardData.has_deck(opp_deck):
 		opp_deck = str(d.get("fallback", "kairo"))
+	# Which version of their deck they bring (DeckTiers): simpler early in the story, whole for the
+	# bosses. Hard brings each one a step stronger, Extreme two.
+	opp_deck = DeckTiers.with_version(opp_deck, DeckTiers.shift(str(d.get("deck_tier", "full")), Saves.story_difficulty()))
 	Router.match_state = {}
 	Router.duel_config = {
 		"opponent": d["opponent"], "opponent_deck": opp_deck, "player_deck": deck, "player_char": "player",

@@ -166,7 +166,7 @@ static func my_match(id: String) -> Dictionary:
 static func duel_config(id: String) -> Dictionary:
 	var opp := my_match(id)
 	var d: Dictionary = DEFS[id]
-	return {"opponent": str(opp["char"]), "opponent_name": str(opp["name"]), "opponent_deck": str(opp["deck"]),
+	return {"opponent": str(opp["char"]), "opponent_name": str(opp["name"]), "opponent_deck": DeckTiers.for_duel(str(opp["deck"]), str(opp["char"]), int(opp["diff"]) + 1),
 		"player_deck": Collection.active_deck(), "player_char": "player", "difficulty": int(opp["diff"]),
 		"field": str(d["field"]), "story": true, "lose_ok": true, "return_to": Router.ROAM, "tourney": id,
 		"turbo": is_turbo(id), "continue_label": Loc.t("Back to the bracket")}

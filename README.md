@@ -5,6 +5,23 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.52.0
+
+**Card plan part 3, build 1: 334 new cards, deck strength by stars, and a Story review. The game now has 4,203 cards** (it had 3,869).
+
+- **334 new cards**, 329 of them single cards that belong to no family: staples and support from each era (Duel Monsters 99, GX 64, 5D's 70, ZEXAL 96). The rest are cards those name. Each one is in its era's booster packs, and monsters also turn up in the Type and Element packs. All have Spanish text.
+- **How strong a duelist's deck is goes with their stars.** Every deck now comes in three versions:
+  - **Starter (1-2 stars):** the deck's own small monsters, one or two of its bigger ones, plain Normal Monsters that fit it, a few of its own Spells and Traps, and basic cards.
+  - **Standard (3 stars):** the deck without the strongest generic cards (Mirror Force, Dark Hole, Solemn Judgment and the like, swapped for plain ones), two copies of its own cards instead of three, and no generic Extra Deck power cards.
+  - **Full (4-5 stars):** the deck as it is. Eight family decks also picked up a few of the new single cards.
+  This applies in Free Roam, the Academy, tournaments and turbo riders. **The show's characters always play their own deck whole.** A duel still pays out cards from the whole deck.
+- **Story review.** Character decks in Story are now simpler early and whole for the bosses:
+  - Prologue to Chapter 2 (Kairo, Kaiba, Weevil, the hunter, Joey) use the Starter version. Chazz and Kairo at the Academy use Standard.
+  - Chapter 3 and 4: Crow uses Starter. Jack, Yusei, Yuma and Shark use Standard. Kalin, Kite, Vellum, the final Kairo and the Curator use the whole deck.
+  - **Hard** moves every story duel one step up, and **Extreme** two. Their deck in Free Roam and Free Duel doesn't change.
+  - Weevil starts with 6000 Life Points. The hunter in Chapter 1 plays a fiend deck instead of Yusei's deck.
+- **Windows:** only the .exe changed. The .dll is the same as 0.51.0.
+
 ## What is in 0.51.0
 
 **Card plan part 2, builds 2 to 5 in one go: 22 new card families, 763 new cards. The game now has 3,869 cards** (it had 3,106).

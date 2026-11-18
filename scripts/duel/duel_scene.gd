@@ -262,7 +262,7 @@ func _start() -> void:
 	hud.auto_answer = _human_test
 	# (A street duelist with "Yusei's deck" plays the plain version; only Yusei plays his own.)
 	# (In Free Duel, a deck you hand the opponent yourself is the real one.)
-	var opp_plain := SignatureDecks.borrowed(opp_deck, _opp_key) and not bool(cfg.get("opponent_deck_full", false))
+	var opp_plain := SignatureDecks.borrowed(str(DeckTiers.split(opp_deck)[0]), _opp_key) and not bool(cfg.get("opponent_deck_full", false))
 	# (A few duelists have a list the CPU can pilot: SignatureDecks.cpu picks it for the opponent only.)
 	SignatureDecks.cpu = true
 	var opp_list := CardData.legend_deck(opp_deck, opp_plain) if _ai_level >= 2 else CardData.deck_list(opp_deck, opp_plain)
@@ -596,7 +596,7 @@ func _finish() -> void:
 			rinfo["stake"] = int(Router.duel_config["stake"])   # what they put on the line when they challenged you
 		earned = Collection.reward(won and not _surrendered, _ai_level, rinfo.merged({"opponent": _opp_key, "lp": my_lp,
 			"flawless": my_lp >= int(_start_lp[ME]), "turns": state.turn,
-			"deck": str(Router.duel_config.get("opponent_deck", Characters.get_char(_opp_key).get("deck", ""))), "rare": bool(Router.duel_config.get("rare", false))}))
+			"deck": str(DeckTiers.split(str(Router.duel_config.get("opponent_deck", Characters.get_char(_opp_key).get("deck", ""))))[0]), "rare": bool(Router.duel_config.get("rare", false))}))
 		if won:
 			Router.duel_config.erase("stake")   # it changed hands: a rematch is not for the same card
 		# Free Duel: the medals this win earned against them (each pays once).

@@ -235,7 +235,7 @@ static func my_rank() -> int:
 
 static func duel_config(t: Dictionary) -> Dictionary:
 	var cfg := {
-		"opponent": t["char"], "opponent_deck": t["deck"], "opponent_name": t["name"],
+		"opponent": t["char"], "opponent_deck": DeckTiers.for_duel(str(t["deck"]), str(t["char"]), int(t["difficulty"]) + 1), "opponent_name": t["name"],
 		"player_deck": Engine.get_main_loop().root.get_node("Collection").active_deck(), "player_char": "player",
 		"difficulty": t["difficulty"], "field": "academy",
 		"story": true, "lose_ok": true, "return_to": "res://scenes/main_menu.tscn", "continue_label": "Back to the Academy",

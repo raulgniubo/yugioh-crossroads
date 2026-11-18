@@ -1,6 +1,6 @@
 extends Node
 ## Dev: placeholder CPU against placeholder CPU on the new engine, no screen.
-##   godot --headless -s tests/ocg_sim.gd -- <deck a|all> <deck b> <duels> [seed] [-v]
+##   godot --headless -s tests/ocg_sim.gd -- <deck a|all> <deck b> <duels> [seed] [-v] [-L<level>: deck a thinks in the engine; -B: deck b too]
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	var a := str(args[0]) if args.size() > 0 else "deck_monarchs"
@@ -292,7 +292,7 @@ func one(ka: String, kb: String, seed: int, verbose: bool) -> Dictionary:
 			last_retries = d.retries
 		elif d.retries > last_retries:
 			pass
-		if _native_level > 0 and p == 0 and not safe:
+		if _native_level > 0 and (p == 0 or "-B" in OS.get_cmdline_user_args()) and not safe:
 			var th := OcgCore.think(d.handle, _native_level, 0, seed + guard)
 			if verbose and int(th["cands"]) > 1 and int(d.request["t"]) in [10, 11, 15, 16]:
 				var lg := OcgCore.logs(d.handle)

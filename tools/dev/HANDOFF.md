@@ -111,10 +111,29 @@ Things learned on the way:
 - Hand-made positions added for 12 cards. Counter Traps with a "reveal from hand" cost need a hand the AI cannot empty first (Snake Deity's Command uses two Venom Boa).
 - No card plan is queued after this. Next is whatever Raul asks; the old-rules cleanup stays parked until he says go.
 
-## Card plan part 3 (drafted Nov 18, waiting for Raul's approval)
+## Card plan part 3
 Plan doc: https://claude.ai/artifact/1UfohMDpMZddGeut9ACkXb (project 03dcff0c-47fa-45ee-a7b2-821ed9925a02, node a1da7b6f-7154).
 About 975 cards: 21 families (~650) and ~330 single cards, even across the eras, plus deck strength by stars
 (Starter 1-2 stars / Standard 3 / Full 4-5; stars pick the deck, stars + Settings.cpu_level pick the play).
 Lists: `tools/dev/plan3/plan.json` (families per era and singles per era, all checked missing from the game; Uria and Hamon
 belong to the Sacred Beast family, not the singles). Build 1 = 0.52.0 (stars + singles), build 2 = 0.53.0 (families).
-Do not start until Raul answers the four questions at the bottom of the doc.
+Raul's answers (Nov 18): keep the 21 families; stars 1-2 Starter, 3 Standard, 4-5 Full; characters always keep their own deck
+(Free Roam, Free Duel); two builds. Mid-build he added: Story gets simpler character decks early, whole decks for the bosses,
+and the story difficulty moves it. All of that is build 1. Build 2 is only the families (cards, packs, decks, duelists).
+
+### Build 1 shipped as 0.52.0
+- 334 singles in CardPool.ADDED (comment "0.52.0: card plan part 3"). 4,203 cards. Dropped: Raidraptor RUMs and Number 8
+  (unplanned archetypes), NEX and the two Neo-Spacians not in the card folder, Uria/Hamon (Sacred Beast family, build 2).
+- **Deck versions** (`scripts/core/deck_tiers.gd`): a key "deck_x@starter" / "@standard" asks CardData for that version; it is
+  built at deal time from the Full list, so it follows the deck. Standard = no TOP staples (swapped for MID), 3rd copies of its own
+  cards cut to 2 (plain Normals / MID fill), no GENERIC_EXTRA. Starter = own Level 4 or lower monsters (2 each, ~14), 1-2 bigger,
+  plain Normals that share its Type/Attribute to 18, 6 own Spells/Traps (1 each), BASICS to 40, 3 weakest own extras.
+  Prize cards still come from the whole deck (duel_scene passes the base key).
+- Who gets which: `DeckTiers.for_duel(deck, who, stars)` in roam_scene, tournament, academy, turbo_ride. Unlocks.SERIES_STARS
+  characters, DECKS keys and starter_* decks are always whole. NOTE: the engine's thinking is Settings.cpu_level everywhere; the
+  per-duel "difficulty" only picks legend_deck and Destiny Draw, so the deck version is the main thing stars change.
+- Story: every story duel has "deck_tier" in story_data; StoryDirector shifts it by Saves.story_difficulty() (Hard +1, Extreme +2).
+  The hunter plays deck_shadow (was Yusei's deck).
+- Full decks: `tools/dev/tiers/make_tiers.py --write` swapped up to 3 weak generics for era singles in 8 family decks
+  (not Exodia or Kuriboh, stall decks).
+- ocg_sim: `-L1 -B` makes both sides think in the engine (needed to see deck differences; the plain policy can't use staples).

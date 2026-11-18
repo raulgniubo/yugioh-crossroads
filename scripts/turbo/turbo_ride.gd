@@ -1300,7 +1300,7 @@ func _challenge() -> void:
 		deck = ["yusei", "jaden", "kaiba", "yugi", "joey"][absi(key.hash()) % 5]
 	Router.match_state = {}
 	Router.duel_config = {
-		"opponent": key, "opponent_deck": deck, "player_deck": Collection.active_deck(), "player_char": "player",
+		"opponent": key, "opponent_deck": DeckTiers.for_duel(deck, key, int(info["difficulty"]) + 1), "player_deck": Collection.active_deck(), "player_char": "player",
 		"difficulty": int(info["difficulty"]), "turbo": true, "story": true, "lose_ok": true, "return_to": Router.RIDE,
 		"continue_label": Loc.t("Back to the highway"),
 		"speed_start": [mine, theirs], "first_turn": 0 if worth[1] else 1,
