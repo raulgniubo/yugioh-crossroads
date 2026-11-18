@@ -65,6 +65,7 @@ def main(spec):
     def roam(s):
         a = s.index('{"id": %s' % q(npc['id'])); b = s.index('"duel": {', a); c = s.index('}}', b)
         block = s[a:c]
+        assert block.count('{"id": ') == 1, 'that duelist has no duel of their own'
         assert '"deck": %s' % q(npc['old_deck']) in block, 'the duelist does not play ' + npc['old_deck']
         block = block.replace('"deck": %s' % q(npc['old_deck']), '"deck": %s' % q(dk))
         if npc.get('lines'):

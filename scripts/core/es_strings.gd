@@ -6689,4 +6689,9 @@ const ES := {
 	"One Samurai on the field calls the next from your hand: Kageki, Kizan and the Grandmaster arrive for free, Six Samurai United draws, and a Tuner turns them into Shi En.": "Un Samurái en el Campo llama al siguiente desde tu mano: Kageki, Kizan y el Gran Maestro llegan gratis, Six Samurai United roba, y un Cantante los convierte en Shi En.",
 	"Six of us on every shift, and each one covers the next. My deck works the same way.": "Somos seis en cada turno, y cada uno cubre al siguiente. Mi Deck funciona igual.",
 	"By the book, all six of us!": "¡Según el reglamento, los seis!",
+	"Starlight Knights": "Caballeros de la Luz Estelar",
+	"Constellar and the tellarknights: LIGHT knights that call each other out of the hand, change their Levels, and stack into Xyz Monsters from Praesepe up to Ptolemy M7.": "Constellar y los tellarknights: caballeros de LUZ que se llaman entre sí desde la mano, cambian sus Niveles y se apilan en Monstruos Xyz, desde Praesepe hasta Ptolemy M7.",
+	"Pollux and Algiedi put two Constellars on the field in one turn, Kaus moves their Levels, and the pair becomes Praesepe, Pleiades or Ptolemy M7. The tellarknights search each other on the way.": "Pollux y Algiedi ponen dos Constellar en el Campo en un turno, Kaus mueve sus Niveles, y la pareja se convierte en Praesepe, Pleiades o Ptolemy M7. Los tellarknights se buscan entre sí por el camino.",
+	"My knights are named after stars. I'm not just a fan, you know. Duel me!": "Mis caballeros llevan nombres de estrellas. No soy solo una fan, ¿sabes? ¡Duela conmigo!",
+	"Watch the stars line up!": "¡Mira cómo se alinean las estrellas!",
 }
