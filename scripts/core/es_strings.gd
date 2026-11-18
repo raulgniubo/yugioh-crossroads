@@ -6737,4 +6737,9 @@ const ES := {
 	"Attack with anything, then tag out: Laquari comes in at 2100, Bestiari destroys a Spell or Trap, Darius brings one back from the Graveyard. Bestiari plus any other Gladiator Beast becomes Gyzarus, who destroys two cards.": "Ataca con cualquiera y luego da el relevo: Laquari entra con 2100, Bestiari destruye una Mágica o Trampa, Darius trae a uno del Cementerio. Bestiari más cualquier otro Gladiator Beast se convierte en Gyzarus, que destruye dos cartas.",
 	"My monsters fight in shifts. One goes back to the Deck, the next one runs out. Bet you a fried shrimp you can't keep up.": "Mis monstruos pelean por turnos. Uno vuelve al Deck y sale corriendo el siguiente. Te apuesto un camarón frito a que no les sigues el ritmo.",
 	"Fried shrimp on the line! Tag in!": "¡Un camarón frito en juego! ¡Relevo!",
+	"Dragunity Legion": "Legión Dragunity",
+	"The Dragunity: winged riders who wear small Dragons as equipment. The Dragon jumps off the rider as a Tuner, and the pair become a Dragunity Knight on the spot. Dragon Ravine feeds the Graveyard they equip from.": "Los Dragunity: jinetes alados que llevan Dragones pequeños como equipo. El Dragón salta del jinete como Cantante, y la pareja se convierte en un Dragunity Knight al momento. Dragon Ravine llena el Cementerio del que se equipan.",
+	"Dragon Ravine sends Phalanx to the Graveyard. Dux equips it on arrival, Phalanx hops off as a Tuner, and the two make Vajrayana, who equips Phalanx again and doubles its own ATK.": "Dragon Ravine manda a Phalanx al Cementerio. Dux se lo equipa al llegar, Phalanx salta como Cantante, y los dos forman a Vajrayana, que se vuelve a equipar a Phalanx y duplica su propio ATK.",
+	"You duel too? Show me. My riders come with their own dragons. If you're boring I'm leaving.": "¿Tú también duelas? A ver. Mis jinetes traen sus propios dragones. Si eres aburrido, me voy.",
+	"Don't be boring! Riders, mount up!": "¡No seas aburrido! ¡Jinetes, a montar!",
 }

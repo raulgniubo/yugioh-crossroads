@@ -26,7 +26,7 @@ var _t := 0.0
 
 
 ## What each world's card shop keeps on its shelf.
-const WORLD_PACKS := {"domino": ["Duel Monsters", "toon", "archfiend", "gravekeeper", "chaos", "Vault", "legends"], "academy": ["GX", "gladiator", "dark_world", "ancient_gear", "monarchs", "Vault", "legends"], "satellite": ["5D's", "genex", "six_samurai", "lightsworn", "beyond"], "newdomino": ["5D's", "genex", "six_samurai", "lightsworn", "beyond", "Vault"],
+const WORLD_PACKS := {"domino": ["Duel Monsters", "toon", "archfiend", "gravekeeper", "chaos", "Vault", "legends"], "academy": ["GX", "gladiator", "dark_world", "ancient_gear", "monarchs", "Vault", "legends"], "satellite": ["5D's", "dragunity", "genex", "six_samurai", "lightsworn", "beyond"], "newdomino": ["5D's", "dragunity", "genex", "six_samurai", "lightsworn", "beyond", "Vault"],
 	"heartland": ["ZEXAL", "madolche", "constellar", "gem_knight", "beyond", "legends"]}
 
 
