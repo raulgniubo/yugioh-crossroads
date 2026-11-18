@@ -10,4 +10,5 @@ DB=${1:-/home/claude/probe/BabelCDB}; SC=${2:-/home/claude/probe/CardScripts}; D
 godot --headless --import > /dev/null 2>&1 || true
 godot --headless res://tests/ocg_sim.tscn -- ids /tmp/ocg_ids.txt 2>&1 | grep "^ids" 
 python3 tools/make_ocg_data.py "$DB" "$SC" "$DI" /tmp/ocg_ids.txt | tail -1
+python3 tools/script_refs.py "$SC" /tmp/ocg_ids.txt /tmp/refs.json
 godot --headless res://tests/card_check.tscn -- /tmp/card_check.txt 2>&1 | grep "CARD CHECK\|PROBLEM\|note:"

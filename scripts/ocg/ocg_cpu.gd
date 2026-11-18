@@ -376,6 +376,11 @@ func _announce(d: OcgDuel, m: Dictionary, mm: Dictionary) -> PackedByteArray:
 	for c in d.st.players[1 - p].gy + d.st.players[1 - p].monsters() + d.st.players[p].deck + d.st.players[p].hand:
 		if c != null and c.id > 0 and not pool.has(c.id):
 			pool.append(c.id)
+	# (only names the engine will take: the question carries its own test)
+	pool = pool.filter(func(id): return OcgCore.announce_ok(m.get("opts", []), int(id)))
+	for staple in [55144522, 83764718, 44095762, 5318639]:
+		if pool.size() < 2 and OcgCore.announce_ok(m.get("opts", []), staple):
+			pool.append(staple)
 	var k := int(mm.get("announce", 0))
 	mm["announce"] = k + 1
 	return OcgDuel.i32(int(pool[k % pool.size()]) if not pool.is_empty() else 55144522)

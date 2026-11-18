@@ -313,8 +313,23 @@ func _start() -> void:
 				speed0 = [int((cfg["speed_start"] as Array)[0]), int((cfg["speed_start"] as Array)[1])]
 			elif tune0 > 0 and not _autoplay:
 				speed0 = [tune0, 0]
+		var lay := {"turbo": state.turbo}
+		for arg in OS.get_cmdline_user_args():
+			if arg.begins_with("--lay="):
+				# Dev: cards already in place, by name, from a JSON file:
+				#   {"hand": [[..], [..]], "mons": [[[name, "atk"|"def"|"set"]], []], "st": [[name | [name, "up"]], []], "gy": [[..], [..]]}
+				var lj = JSON.parse_string(FileAccess.get_file_as_string(arg.trim_prefix("--lay=")))
+				if lj is Dictionary:
+					for k in lj:
+						var sides: Array = []
+						for side in lj[k]:
+							var row: Array = []
+							for x in side:
+								row.append([Puzzles._id(str(x[0])), str(x[1])] if x is Array else Puzzles._id(str(x)))
+							sides.append(row)
+						lay[k] = sides
 		ocg.prepare(my_list, opp_list, CardData.extra_list(my_deck), CardData.extra_list(opp_deck, opp_plain), me_name, opp_name, first,
-				[5 + int(state.bonus_cards[ME]), 5 + int(state.bonus_cards[AI])], {"turbo": state.turbo},
+				[5 + int(state.bonus_cards[ME]), 5 + int(state.bonus_cards[AI])], lay,
 				{"speed": speed0, "destiny": [state.destiny and state.destiny_who[ME], state.destiny and state.destiny_who[AI]]})
 		events = []
 	else:
@@ -425,6 +440,23 @@ func _start() -> void:
 			# Dev: the question you get when a Trap can answer an attack.
 			hud.ask_why = Loc.t("Your opponent declared an attack. A Trap or Quick-Play Spell can answer it before it lands. Pick a card to use it, or let the attack go through.")
 			await hud.ask_response("Your opponent attacks. Respond?", state.players[ME].hand.slice(0, 2))
+			return
+		if "--ask-name" in OS.get_cmdline_user_args() or "--ask-name-typed" in OS.get_cmdline_user_args():
+			# Dev: "declare 1 card name", first as it opens, then with a word typed in.
+			var quick: Array = []
+			for c in state.players[ME].hand:
+				quick.append([c.id, c.cname()])
+			var all: Array = []
+			for id in Collection.all_cards():
+				if OcgCore.announce_ok([0x7, 0x4000010200000000], int(id)):
+					all.append([int(id), OcgCore.card_name(int(id))])
+			all.sort_custom(func(x, y): return str(x[1]) < str(y[1]))
+			if "--ask-name-typed" in OS.get_cmdline_user_args():
+				get_tree().create_timer(1.5).timeout.connect(func():
+					for n in hud.find_children("", "LineEdit", true, false):
+						(n as LineEdit).text = "toon d"
+						(n as LineEdit).text_changed.emit("toon d"))
+			print("ASK NAME got ", await hud.ask_name(Loc.t("Declare 1 card name"), quick, all))
 			return
 		if "--ask-mode" in OS.get_cmdline_user_args():
 			# Dev: a card with two effects asks which one you want.
@@ -1475,6 +1507,16 @@ func _update_counts() -> void:
 		var ps := state.players[p]
 		hud.set_counts(p, ps.deck.size(), ps.hand.size(), ps.gy.size(), ps.banished.size())
 		hud.piles[p] = [ps.gy, ps.banished]
+		# (what a card effect makes them keep revealed: their hand, their Set cards)
+		var shown: Array = []
+		for c in ps.hand + ps.field + ps.spells:
+			if c != null and c.tags.has("public") and (not c.face_up or ps.hand.has(c)):
+				shown.append(c)
+		if p == AI and not shown.is_empty() and (hud.revealed[p] as Array).is_empty():
+			hud.feed(AI, "✦", Loc.t("Their cards are revealed. Click their Graveyard to look at them."))
+		if "--ocg-log" in OS.get_cmdline_user_args() and shown.size() != (hud.revealed[p] as Array).size():
+			print("REVEALED p", p, " ", shown.map(func(c): return c.cname()))
+		hud.revealed[p] = shown
 		hud.set_destiny(p, 0 if not (state.destiny and state.destiny_who[p]) else (2 if state.destiny_used[p] else 1))
 		board.set_gy_count(p, ps.gy.size())
 
@@ -2366,7 +2408,7 @@ func _on_board_card_hovered(card: Card3D, inside: bool) -> void:
 	var inst = card.inst
 	# Anything of theirs that is face-down (monsters, Set Spells and Traps) or in their hand stays secret.
 	var theirs: bool = state.players[AI].field.has(inst) or state.players[AI].spells.has(inst) or state.players[AI].field_spell == inst
-	var hidden: bool = (theirs and not inst.face_up) or state.players[AI].hand.has(inst)
+	var hidden: bool = ((theirs and not inst.face_up) or state.players[AI].hand.has(inst)) and not inst.tags.has("public")
 	hud.inspect(inst, hidden)
 
 

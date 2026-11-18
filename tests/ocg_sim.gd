@@ -42,6 +42,29 @@ func _ready() -> void:
 		print("ENGINE NOT LOADED: ", OcgCore.why_not())
 		get_tree().quit(1)
 		return
+	if a == "card":
+		# Dev: one card, three copies of it in a deck, a few duels by the basic opponent.
+		#   -- card <card id> <deck key> [duels]     (to find the card behind a hang or a complaint)
+		var cid := int(b)
+		var key := str(args[2]) if args.size() > 2 else "deck_monarchs"
+		var deck: Array = CardData.deck_list(key)
+		var ex: Array = CardData.extra_list(key)
+		if str(CardData.get_card(cid).get("frame", "")) in ["fusion", "synchro", "xyz"]:
+			ex = [cid, cid, cid] + ex.slice(0, 12)
+		else:
+			deck = [cid, cid, cid] + deck.slice(3)
+		var errs := {}
+		var seen := false
+		var games := int(args[3]) if args.size() > 3 else 6
+		for g in games:
+			var r: Dictionary = OcgCore.match_duel([deck, CardData.deck_list(key)], [ex, CardData.extra_list(key)], [0, 0], 500 + g, 0, 16000, 50)
+			seen = seen or (cid in (r.get("played", []) as Array))
+			for l in r.get("logs", []):
+				if not str(l).begins_with("9:"):
+					errs[str(l).left(140)] = true
+		print("card ", cid, " ", str(CardData.get_card(cid).get("name", "?")), ": played ", seen, " complaints ", errs.keys())
+		get_tree().quit(0)
+		return
 	if a == "freeze":
 		# Dev: the card pool as the game works it out today, written down (data/pool.json is made from this).
 		var out := {}

@@ -40,7 +40,7 @@ var _cards: Array = []
 var _seed := 0
 
 ## setup (optional): cards already in place when the duel starts, each a list per player:
-##   "hand": [[ids], [ids]]   "mons": [[[id, "atk" | "def" | "set"], ...], ...]   "st": [[ids set], ...]
+##   "hand": [[ids], [ids]]   "mons": [[[id, "atk" | "def" | "set"], ...], ...]   "st": [[id (Set) | [id, "up"], ...], ...]
 ##   "gy": [[ids], [ids]]     "turbo": true (each side's Speed World 2)
 var turbo := false
 var speed := [0, 0]
@@ -79,10 +79,12 @@ func prepare(state: DuelState, decks: Array, extras: Array, names: Array, first:
 		for id in (setup.get("st", [[], []]) as Array)[p]:
 			var szone: int = order[mini(zi, 4)]
 			zi += 1
-			var sc := _new_card(int(id), p)
-			sc.face_up = false
+			# (a bare id is Set; [id, "up"] is already face-up, for a Continuous card in play)
+			var up: bool = id is Array and str(id[1]) == "up"
+			var sc := _new_card(int(id[0]) if id is Array else int(id), p)
+			sc.face_up = up
 			ps.spells[szone] = sc
-			_cards.append([t, sc.id, OcgCore.LOC_SZONE, 0xa, szone])
+			_cards.append([t, sc.id, OcgCore.LOC_SZONE, OcgCore.POS_FU_ATK if up else 0xa, szone])
 		for id in (setup.get("hand", [[], []]) as Array)[p]:
 			ps.hand.append(_new_card(int(id), p))
 			_cards.append([t, int(id), OcgCore.LOC_HAND, 0xa])
@@ -810,8 +812,22 @@ func _sync() -> void:
 		var ps: DuelState.PlayerState = st.players[p]
 		var d: Dictionary = q[t]
 		_sync_list(ps.hand, d.get(str(OcgCore.LOC_HAND), []), p, "hand")
+		# (a hand a card effect keeps revealed: the engine says so card by card)
+		var eh: Array = d.get(str(OcgCore.LOC_HAND), [])
+		for i in mini(ps.hand.size(), eh.size()):
+			if eh[i] != null and int(eh[i].get("pub", 0)) != 0:
+				ps.hand[i].tags["public"] = true
+			else:
+				ps.hand[i].tags.erase("public")
 		_sync_list(ps.gy, d.get(str(OcgCore.LOC_GRAVE), []), p, "gy")
 		_sync_list(ps.banished, d.get(str(OcgCore.LOC_REMOVED), []), p, "banished")
+		# (banished face-down: its owner may look, the other side may not)
+		var eb: Array = d.get(str(OcgCore.LOC_REMOVED), [])
+		for i in mini(ps.banished.size(), eb.size()):
+			if eb[i] != null and (int(eb[i].get("pos", 1)) & OcgCore.POS_FACEUP) == 0:
+				ps.banished[i].tags["facedown"] = true
+			else:
+				ps.banished[i].tags.erase("facedown")
 		_sync_list(ps.extra, d.get(str(OcgCore.LOC_EXTRA), []), p, "extra")
 		var mz: Array = d.get(str(OcgCore.LOC_MZONE), [])
 		for i in 5:
@@ -918,6 +934,10 @@ func _sync_slot(c, e, p: int, what: String):
 	c.face_up = (pos & OcgCore.POS_FACEUP) != 0
 	c.attack_pos = (pos & OcgCore.POS_ATTACK) != 0
 	c.owner = p
+	if not c.face_up and int(e.get("pub", 0)) != 0:
+		c.tags["public"] = true     # (a Set card a card effect lets the other side look at)
+	else:
+		c.tags.erase("public")
 	var own := int(e.get("owner", 0)) ^ int(swap)
 	c.orig_owner = own if own != p else -1
 	if int(e.get("type", 0)) & 0x1:

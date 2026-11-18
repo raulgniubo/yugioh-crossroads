@@ -99,6 +99,49 @@ static std::unique_ptr<Sim> sim_replay(const History& h) {
 }
 
 static const CardRow* row_of(uint32_t code) { auto it = g_cards.find(code); return it == g_cards.end() ? nullptr : &it->second; }
+// Whether a card may be named for "declare 1 card name" (the engine's own check, playerop.cpp is_declarable).
+static bool declarable(const CardRow& cd, const std::vector<JV>& ops) {
+	std::vector<int64_t> st;
+	bool alias = false, token = false;
+	auto bin = [&](auto f) { if(st.size() >= 2) { int64_t r = st.back(); st.pop_back(); int64_t l = st.back(); st.pop_back(); st.push_back(f(l, r)); } };
+	auto un = [&](auto f) { if(st.size() >= 1) { int64_t v = st.back(); st.pop_back(); st.push_back(f(v)); } };
+	for(auto& o : ops) {
+		const uint64_t op = (uint64_t)o.i;
+		switch(op) {
+		case 0x4000000000000000ULL: bin([](int64_t l, int64_t r) { return l + r; }); break;
+		case 0x4000000100000000ULL: bin([](int64_t l, int64_t r) { return l - r; }); break;
+		case 0x4000000200000000ULL: bin([](int64_t l, int64_t r) { return l * r; }); break;
+		case 0x4000000300000000ULL: bin([](int64_t l, int64_t r) { return r ? l / r : 0; }); break;
+		case 0x4000000400000000ULL: bin([](int64_t l, int64_t r) { return (int64_t)(l && r); }); break;
+		case 0x4000000500000000ULL: bin([](int64_t l, int64_t r) { return (int64_t)(l || r); }); break;
+		case 0x4000000600000000ULL: un([](int64_t v) { return -v; }); break;
+		case 0x4000000700000000ULL: un([](int64_t v) { return (int64_t)!v; }); break;
+		case 0x4000000800000000ULL: bin([](int64_t l, int64_t r) { return l & r; }); break;
+		case 0x4000000900000000ULL: bin([](int64_t l, int64_t r) { return l | r; }); break;
+		case 0x4000001000000000ULL: un([](int64_t v) { return ~v; }); break;
+		case 0x4000001100000000ULL: bin([](int64_t l, int64_t r) { return l ^ r; }); break;
+		case 0x4000001200000000ULL: bin([](int64_t l, int64_t r) { return l << (r & 63); }); break;
+		case 0x4000001300000000ULL: bin([](int64_t l, int64_t r) { return l >> (r & 63); }); break;
+		case 0x4000001400000000ULL: alias = true; break;
+		case 0x4000001500000000ULL: token = true; break;
+		case 0x4000010000000000ULL: un([&](int64_t v) { return (int64_t)(cd.code == (uint32_t)v); }); break;
+		case 0x4000010100000000ULL: un([&](int64_t v) {
+			uint16_t ty = (uint16_t)(v & 0xfff), sub = (uint16_t)(v & 0xf000);
+			for(uint16_t sc : cd.sets) if((sc & 0xfff) == ty && (sc & 0xf000 & sub) == sub) return (int64_t)1;
+			return (int64_t)0; }); break;
+		case 0x4000010200000000ULL: un([&](int64_t v) { return (int64_t)(cd.type & (uint32_t)v); }); break;
+		case 0x4000010300000000ULL: un([&](int64_t v) { return (int64_t)(cd.race & (uint64_t)v); }); break;
+		case 0x4000010400000000ULL: un([&](int64_t v) { return (int64_t)(cd.attribute & (uint32_t)v); }); break;
+		case 0x4000010500000000ULL: st.push_back(cd.code); break;
+		case 0x4000010700000000ULL: st.push_back(cd.type); break;
+		case 0x4000010800000000ULL: st.push_back((int64_t)cd.race); break;
+		case 0x4000010900000000ULL: st.push_back(cd.attribute); break;
+		default: st.push_back((int64_t)op); break;
+		}
+	}
+	if(st.size() != 1 || st.back() == 0) return false;
+	return (alias || !cd.alias) && (token || (cd.type & 0x4001) != 0x4001);
+}
 static int base_atk(uint32_t code) { auto* r = row_of(code); return r ? std::max(0, r->atk) : 0; }
 static int base_def(uint32_t code) { auto* r = row_of(code); return r ? std::max(0, r->def) : 0; }
 static uint32_t base_type(uint32_t code) { auto* r = row_of(code); return r ? r->type : 0; }
@@ -562,10 +605,15 @@ static std::vector<uint8_t> policy(Sim& s, const JV& m, PMemo& mm, bool safe, ui
 	}
 	case 142: {
 		// Name a card: one it can see on their side, else a staple.
+		// (only names the engine will take: the question carries its own test)
 		Board b = read_board(s);
+		const std::vector<JV>& ops = arr(m, "opts").a;
 		std::vector<uint32_t> pool;
-		for(auto& x : b.m[1 - p]) if(x.there && x.code && (x.pos & 0x5)) pool.push_back(x.code);
-		for(auto& c : { 55144522u, 83764718u, 44095762u, 5318639u }) pool.push_back(c);
+		auto fits = [&](uint32_t c) { auto* r = row_of(c); return r && declarable(*r, ops); };
+		for(auto& x : b.m[1 - p]) if(x.there && x.code && (x.pos & 0x5) && fits(x.code)) pool.push_back(x.code);
+		for(auto& c : { 55144522u, 83764718u, 44095762u, 5318639u, 12580477u, 53129443u }) if(fits(c)) pool.push_back(c);
+		if(pool.empty()) for(auto& kv : g_cards) if(declarable(kv.second, ops)) { pool.push_back(kv.first); if(pool.size() >= 4) break; }
+		if(pool.empty()) pool.push_back(55144522u);
 		return bytes_i32((int32_t)pool[(mm.announce++) % pool.size()]);
 	}
 	case 143: return bytes_i32(0);

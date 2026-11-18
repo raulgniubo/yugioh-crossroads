@@ -3,12 +3,15 @@ extends Node
 ## toward cards that have not been played yet), played out by the basic opponent on both sides.
 ## What it reports: how many of the game's cards were summoned or had an effect go on the chain
 ## at least once, which never were, and everything the card scripts complained about.
-##   godot --headless res://tests/ocg_sweep.tscn -- <rounds of pool decks> [seed] [out file]
+##   godot --headless res://tests/ocg_sweep.tscn -- <rounds of pool decks> [seed] [out file] [family key]
+## With a family key the sweep is about that family only: its deck against the others, decks
+## dealt from its cards, and what is left of it set up on the table.
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	var rounds := int(args[0]) if args.size() > 0 else 400
 	var seed0 := int(args[1]) if args.size() > 1 else 1
 	var out_path := str(args[2]) if args.size() > 2 else "/tmp/sweep.txt"
+	var focus_key := str(args[3]) if args.size() > 3 else ""
 	if not OcgCore.ensure_loaded():
 		print("ENGINE NOT LOADED")
 		get_tree().quit(1)
@@ -26,6 +29,20 @@ func _ready() -> void:
 			extras.append(int(id))
 		else:
 			mains.append(int(id))
+	var want_mains: Array = mains
+	var want_extras: Array = extras
+	var fill_mains: Array = mains
+	var focus_deck := ""
+	if focus_key != "":
+		var fam: Dictionary = Collection.FAMILIES[focus_key]
+		var ids := {}
+		for nm in fam["cards"]:
+			ids[int(CardData.NAME_TO_ID.get(str(nm).to_lower(), 0))] = true
+		want_mains = mains.filter(func(id): return ids.has(id))
+		want_extras = extras.filter(func(id): return ids.has(id))
+		focus_deck = str(fam["deck"])
+		fill_mains = CardData.deck_list(focus_deck)
+		print("family ", focus_key, ": ", want_mains.size(), " + ", want_extras.size(), " cards")
 	var played := {}
 	var errors := {}
 	var n := {"duels": 0, "refused": 0}
@@ -50,13 +67,17 @@ func _ready() -> void:
 	for ki in keys.size():
 		var ka := str(keys[ki])
 		var kb := str(keys[(ki + 1) % keys.size()])
+		if focus_deck != "":
+			if ka != focus_deck:
+				continue
+			kb = str(keys[(ki + 1 + int(seed0)) % keys.size()])
 		for g in 6:
 			for legend in 2:
 				var plain := g % 2 == 1     # (the version a street duelist plays, not the owner's own)
 				var da: Array = CardData.legend_deck(ka, plain) if legend == 1 else CardData.deck_list(ka, plain)
 				var db: Array = CardData.legend_deck(kb, plain) if legend == 1 else CardData.deck_list(kb, plain)
 				note.call(OcgCore.match_duel([da, db], [CardData.extra_list(ka, plain), CardData.extra_list(kb, plain)], [0, 0], seed0 + ki * 100 + g * 2 + legend, 0, 8000 if g < 3 else 16000, 50), ka)
-	var pool_ids: Array = mains + extras
+	var pool_ids: Array = want_mains + want_extras
 	var in_pool := func() -> int:
 		var k := 0
 		for id in pool_ids:
@@ -71,18 +92,23 @@ func _ready() -> void:
 		var decks: Array = []
 		var exs: Array = []
 		for side in 2:
-			var want: Array = mains.filter(func(id): return not played.has(id))
+			var want: Array = want_mains.filter(func(id): return not played.has(id))
 			var deck: Array = []
 			_shuffle(want, rng)
 			for id in want.slice(0, 10):
 				for k in 3:
 					deck.append(id)
 			while deck.size() < 40:
-				deck.append(mains[rng.randi() % mains.size()])
-			var wx: Array = extras.filter(func(id): return not played.has(id))
+				deck.append(fill_mains[rng.randi() % fill_mains.size()])
+			var wx: Array = want_extras.filter(func(id): return not played.has(id))
 			_shuffle(wx, rng)
 			var ex: Array = wx.slice(0, 15)
-			while ex.size() < 15:
+			if focus_key != "":
+				# (a family's own Extra Deck cards, never more than three of one)
+				for id in want_extras:
+					while ex.count(id) < 3 and ex.size() < 15:
+						ex.append(id)
+			while ex.size() < 15 and focus_key == "":
 				ex.append(extras[rng.randi() % extras.size()])
 			decks.append(deck)
 			exs.append(ex)
@@ -98,7 +124,7 @@ func _ready() -> void:
 	var fodder: Array = mains.filter(func(id):
 		var cd: Dictionary = CardData.get_card(id)
 		return str(cd.get("frame", "")) == "normal" and int(cd.get("level", 9)) <= 4 and int(cd.get("atk", 0)) >= 1500)
-	for id in extras + mains:
+	for id in want_extras + want_mains:
 		if played.has(id):
 			continue
 		var cd: Dictionary = CardData.get_card(id)
@@ -146,7 +172,7 @@ func _ready() -> void:
 			refs = rj.get("refs", {})
 			back = rj.get("back", {})
 	var some: Array = mains.filter(func(id): return str(CardData.get_card(id).get("kind", "")) == "monster")
-	for id in mains + extras:
+	for id in want_mains + want_extras:
 		if played.has(id):
 			continue
 		var cd: Dictionary = CardData.get_card(id)
@@ -207,10 +233,10 @@ func _ready() -> void:
 				cards.append([0, id, 0x02, 0, 0x8])
 			note.call(_board(cards, seed0 + id + g, 8), "staged %d" % id)
 	print("staged done: ", staged.size(), " staged, ", staged_used.size(), " did something, ms ", Time.get_ticks_msec() - t0)
-	var total := mains.size() + extras.size()
+	var total := want_mains.size() + want_extras.size()
 	var never: Array = []
 	var quiet: Array = []
-	for id in mains + extras:
+	for id in want_mains + want_extras:
 		if not played.has(id):
 			if staged_used.has(id):
 				pass

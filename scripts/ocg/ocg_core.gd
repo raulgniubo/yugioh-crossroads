@@ -96,6 +96,86 @@ static func type_of(id: int) -> int:
 	return int(_types.get(id, 0))
 
 
+static var _rows := {}
+
+## What the engine's card table says about a card: [alias, type, attribute, race, [set codes]].
+static func row_of(id: int) -> Array:
+	if _rows.is_empty():
+		var b := FileAccess.get_file_as_bytes("res://data/ocg/cards.bin")
+		var at := 4
+		var n := b.decode_u32(0) if b.size() >= 4 else 0
+		for i in n:
+			if at + 49 > b.size():
+				break
+			var cnt := b.decode_u8(at + 48)
+			var sets: Array = []
+			for k in cnt:
+				sets.append(b.decode_u16(at + 49 + 2 * k))
+			_rows[b.decode_u32(at)] = [b.decode_u32(at + 4), b.decode_u32(at + 8), b.decode_u32(at + 16), b.decode_s64(at + 20), sets]
+			at += 49 + 2 * cnt
+		_rows[0] = []
+	return _rows.get(id, [])
+
+
+## "Declare 1 card name": whether the engine will take this card for the question's own test
+## (the list of numbers that comes with the question). The engine's rule, step for step.
+static func announce_ok(opts: Array, id: int) -> bool:
+	var row := row_of(id)
+	if row.is_empty():
+		return false
+	var st: Array = []
+	var alias := false
+	var token := false
+	for o in opts:
+		var op := int(o)
+		match op:
+			0x4000000000000000, 0x4000000100000000, 0x4000000200000000, 0x4000000300000000, 0x4000000400000000, 0x4000000500000000, \
+			0x4000000800000000, 0x4000000900000000, 0x4000001100000000, 0x4000001200000000, 0x4000001300000000:
+				if st.size() >= 2:
+					var r: int = st.pop_back()
+					var l: int = st.pop_back()
+					match op:
+						0x4000000000000000: st.append(l + r)
+						0x4000000100000000: st.append(l - r)
+						0x4000000200000000: st.append(l * r)
+						0x4000000300000000: st.append(l / r if r != 0 else 0)
+						0x4000000400000000: st.append(1 if l != 0 and r != 0 else 0)
+						0x4000000500000000: st.append(1 if l != 0 or r != 0 else 0)
+						0x4000000800000000: st.append(l & r)
+						0x4000000900000000: st.append(l | r)
+						0x4000001100000000: st.append(l ^ r)
+						0x4000001200000000: st.append(l << (r & 63))
+						0x4000001300000000: st.append(l >> (r & 63))
+			0x4000000600000000, 0x4000000700000000, 0x4000001000000000, 0x4000010000000000, 0x4000010100000000, 0x4000010200000000, \
+			0x4000010300000000, 0x4000010400000000:
+				if st.size() >= 1:
+					var v: int = st.pop_back()
+					match op:
+						0x4000000600000000: st.append(-v)
+						0x4000000700000000: st.append(1 if v == 0 else 0)
+						0x4000001000000000: st.append(~v)
+						0x4000010000000000: st.append(1 if id == (v & 0xffffffff) else 0)
+						0x4000010100000000:
+							var hit := 0
+							for sc in row[4]:
+								if (int(sc) & 0xfff) == (v & 0xfff) and (int(sc) & 0xf000 & v) == (v & 0xf000):
+									hit = 1
+							st.append(hit)
+						0x4000010200000000: st.append(int(row[1]) & v)
+						0x4000010300000000: st.append(int(row[3]) & v)
+						0x4000010400000000: st.append(int(row[2]) & v)
+			0x4000001400000000: alias = true
+			0x4000001500000000: token = true
+			0x4000010500000000: st.append(id)
+			0x4000010700000000: st.append(int(row[1]))
+			0x4000010800000000: st.append(int(row[3]))
+			0x4000010900000000: st.append(int(row[2]))
+			_: st.append(op)
+	if st.size() != 1 or int(st[0]) == 0:
+		return false
+	return (alias or int(row[0]) == 0) and (token or (int(row[1]) & 0x4001) != 0x4001)
+
+
 const ATTRS := {"EARTH": 0x1, "WATER": 0x2, "FIRE": 0x4, "WIND": 0x8, "LIGHT": 0x10, "DARK": 0x20, "DIVINE": 0x40}
 const RACES := ["Warrior", "Spellcaster", "Fairy", "Fiend", "Zombie", "Machine", "Aqua", "Pyro", "Rock", "Winged Beast", "Plant", "Insect",
 	"Thunder", "Dragon", "Beast", "Beast-Warrior", "Dinosaur", "Fish", "Sea Serpent", "Reptile", "Psychic", "Divine-Beast", "Creator God", "Wyrm", "Cyberse"]

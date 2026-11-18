@@ -33,6 +33,9 @@ const PACKS := [
 	{"key": "Vault", "tab": 0, "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
 	{"key": "legends", "tab": 0, "name": "Monster Legends", "color": Color("e8b04a"), "blurb": "Normal Monsters from every era: hundreds of them, from the classics to the rare big ones."},
 	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen, her forms and the cards around her. Only the ones the story has already handed you, up to three of each."},
+	{"key": "toon", "tab": 1, "name": "Toon Kingdom", "color": Color("f2a03c"), "family": true, "blurb": "The Toons: cartoon copies of famous monsters that walk past the other side's monsters and attack directly while Toon World is open. Toon Kingdom keeps them from being destroyed, and Table of Contents finds whatever page you need."},
+	{"key": "madolche", "tab": 1, "name": "Madolche Tea Party", "color": Color("f08ab0"), "family": true, "blurb": "The Madolche: a kingdom of sweets that never stays in the Graveyard. Destroyed Madolche shuffle back into the Deck, Ticket and Chateau turn that into new cards, and Queen Tiaramisu sends the other side's field back with them."},
+	{"key": "genex", "tab": 1, "name": "Genex Works", "color": Color("4fb0a8"), "family": true, "blurb": "The Genex: machines built from every Attribute. Genex Controller tunes them into Synchros that change with the material you feed them, and the R-Genex line searches itself out of the Deck one card after another."},
 	{"key": "archfiend", "tab": 1, "name": "Court of the Archfiends", "color": Color("b0303c"), "family": true, "blurb": "The Archfiends: the chess pieces of Pandemonium that cost Life Points every turn and roll a die against whatever targets them, Summoned Skull and everything that takes his name, and the Archfiend Synchros, Fusions and Rituals."},
 	{"key": "dark_world", "tab": 1, "name": "Lords of Dark World", "color": Color("7a4bd0"), "family": true, "blurb": "Dark World: Fiends that want to be discarded. Throw one away and it draws, destroys or comes back to the field, and Grapha returns from the Graveyard again and again. With the discard cards built around them."},
 	{"key": "constellar", "tab": 1, "name": "Starlight Knights", "color": Color("8fb4ff"), "family": true, "blurb": "Constellar and the tellarknights: LIGHT knights that call each other out of the hand, change their Levels, and stack into Xyz Monsters from Praesepe up to Ptolemy M7."},
@@ -88,6 +91,9 @@ const THEME_DECKS := [
 	{"key": "deck_constellar", "art": "arcane", "cover": "Constellar Ptolemy M7", "color": Color("8fb4ff"), "era": "ZEXAL", "blurb": "Pollux and Algiedi put two Constellars on the field in one turn, Kaus moves their Levels, and the pair becomes Praesepe, Pleiades or Ptolemy M7. The tellarknights search each other on the way."},
 	{"key": "deck_dark_world", "art": "shadow", "cover": "Grapha, Dragon Lord of Dark World", "color": Color("7a4bd0"), "era": "GX", "blurb": "Dark World Dealings and The Gates of Dark World discard your Fiends, and each discard pays you: Broww draws, Snoww searches, Sillva and Goldd arrive, and Grapha destroys a card."},
 	{"key": "deck_archfiend", "art": "shadow", "cover": "Terrorking Archfiend", "color": Color("b0303c"), "era": "Duel Monsters", "blurb": "Pandemonium takes away the Life Point cost and replaces every Archfiend that falls. Terrorking and Infernalqueen hit hard for Level 4, the General fetches the field, and two Level 6 make Archfiend's Ascent."},
+	{"key": "deck_genex", "art": "machines", "cover": "Locomotion R-Genex", "color": Color("4fb0a8"), "era": "5D's", "blurb": "Undine fetches Genex Controller, Magma fetches Crusher, Crusher fetches Accelerator, and Accelerator puts every searched Genex straight onto the field. Then the Controller tunes them into Triarm, Hydro or Locomotion."},
+	{"key": "deck_madolche", "art": "arcane", "cover": "Madolche Queen Tiaramisu", "color": Color("f08ab0"), "era": "ZEXAL", "blurb": "Magileine and Anjelly fetch the rest of the court, Hootcake calls one more from the Deck, and two Level 4 Madolche make Queen Tiaramisu, who shuffles two of your opponent's cards away. Keep your Graveyard empty and Puddingcess does the rest."},
+	{"key": "deck_toon", "art": "arcane", "cover": "Toon Dark Magician", "color": Color("f2a03c"), "era": "Duel Monsters", "blurb": "Open Toon World or Toon Kingdom first. Then Toon Harpie Lady and Toon Cyber Dragon come down for free, Toon Dark Magician calls another Toon from the Deck, and all of them attack directly."},
 	{"key": "deck_monarchs", "art": "shadow", "cover": "Caius the Mega Monarch", "color": Color("e0c070"), "era": "GX", "blurb": "Squires and Vassals step out so a Monarch can be Tribute Summoned, then a Mega Monarch Tributes that one. Every landing clears something off their side."},
 	{"key": "deck_chaos", "art": "warriors", "cover": "Black Luster Soldier - Super Soldier", "color": Color("c8b0ff"), "era": "Duel Monsters", "blurb": "Super Soldier Ritual turns two Level 4 Knights into Black Luster Soldier, and the Knights give him their powers. Gaia rides in when he falls, and Chaos Form brings back the old legends."},
 	{"key": "deck_gem_knight", "art": "warriors", "cover": "Gem-Knight Master Diamond", "color": Color("7ae0ff"), "era": "ZEXAL", "blurb": "Gem-Knight Fusion turns two plain knights into a Fusion Monster, Brilliant Fusion fuses straight from the Deck, and Gem-Knight Fusion comes back from the Graveyard to do it again."},
@@ -208,6 +214,27 @@ const FAMILIES := {
 		"Tyrant Red Dragon Archfiend", "Archfiend Playtime", "Archfiend's Fervor", "Archfiend's Ghastly Glitch", "Archfiend's Roar", "Battle-Scarred",
 		"Call of the Archfiend", "Nightmare Archfiends", "Red Dragon Archfiend's Chain", "Simul Archfiends", "Archfiend's Ascent",
 		"Number 102: Star Seraph Sentry", "Number C102: Archfiend Seraph"]},
+	"genex": {"era": "5D's", "deck": "deck_genex", "cards": [
+		"Genex Power Planner", "Genex Recycled", "R-Genex Oracle", "Genex Ally Chemistrer", "Genex Ally Solid", "R-Genex Crusher", "R-Genex Overseer",
+		"R-Genex Turing", "Genex Ally Birdman", "Genex Ally Changer", "Genex Ally Remote", "Genex Controller", "Genex Doctor", "Genex Gaia", "Genex Spare",
+		"Genex Undine", "Genex Worker", "R-Genex Magma", "Genex Ally Bellflame", "Genex Ally Crusher", "Genex Ally Duradark", "Genex Ally Powercell",
+		"Genex Ally Volcannon", "Genex Blastfan", "Genex Neutron", "Genex Searcher", "Genex Turbine", "R-Genex Accelerator", "R-Genex Turbo",
+		"R-Genex Ultimum", "R-Genex Undine", "Genex Ally Reliever", "Genex Furnace", "Genex Army", "Genex Solar", "Arms of Genex Return Zero",
+		"Genex Ally Axel", "Genex Ally Triarm", "Genex Ally Triforce", "Geo Genex", "Hydro Genex", "Locomotion R-Genex", "Thermal Genex",
+		"Vindikite R-Genex", "Windmill Genex"]},
+	"madolche": {"era": "ZEXAL", "deck": "deck_madolche", "cards": [
+		"Madolche Baaple", "Madolche Chickolates", "Madolche Cruffssant", "Madolche Hootcake", "Madolche Mewfeuille", "Madolche Anjelly",
+		"Madolche Butlerusk", "Madolche Chouxvalier", "Madolche Magileine", "Madolche Marmalmaide", "Madolche Messengelato", "Madolche Petingcessoeur",
+		"Madolche Puddingcess", "Madolche Chateau", "Madolche Salon", "Madolche Ticket", "Madolche Dessert", "Madolche Lesson", "Madolche Nights",
+		"Madolche Promenade", "Madolche Tea Break", "Madolche Waltz", "Madolchepalooza", "Madolche Puddingcess Chocolat-a-la-Mode",
+		"Madolche Queen Tiarafraise", "Madolche Queen Tiaramisu", "Madolche Teacher Glassouffle"]},
+	"toon": {"era": "Duel Monsters", "deck": "deck_toon", "cards": [
+		"Blue-Eyes Toon Ultimate Dragon", "Comic Cat", "Dark-Eyes Illusionist Faceless Mage", "Funny Dark Rabbit", "Toon Alligator", "Toon Cannon Soldier",
+		"Toon Gemini Elf", "Toon Goblin Attack Force", "Toon Harpie Lady", "Toon Masked Sorcerer", "Toon Mermaid", "Toon Cyber Dragon", "Evil Box",
+		"Toon Dark Magician Girl", "Toon Summoned Skull", "Manga Ryu-Ran", "Red-Eyes Toon Dragon", "Toon Barrel Dragon", "Toon Buster Blader",
+		"Toon Dark Magician", "Blue-Eyes Toon Dragon", "Toon Ancient Gear Golem", "Toon Black Luster Soldier", "Comic Hand", "Mimicat", "Shadow Toon",
+		"Toon Bookmark", "Toon Kingdom", "Toon Page-Flip", "Toon Rollback", "Toon Table of Contents", "Toon World", "Toon World the Perfect World",
+		"Mind Scan", "Toon Briefcase", "Toon Defense", "Toon Mask", "Toon Terror"]},
 }
 
 

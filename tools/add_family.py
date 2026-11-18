@@ -8,7 +8,7 @@ spec.json:
   key, era ("Duel Monsters" | "GX" | "5D's" | "ZEXAL"), cards [names],
   pack {name, color, blurb}, deck {key, name, art, cover, blurb, cards {name: n}, extra {name: n}},
   worlds [shops that sell the pack], stage (the story stage that opens it, like its era's),
-  npc {id, old_deck, lines [..] (optional), intro (optional)}
+  npc {id, old_deck, lines [..] (optional), swap [[old line, new line], ..] (optional), intro (optional)}
 """
 import json, re, sys
 ROOT = __file__.rsplit('/tools/', 1)[0]
@@ -70,6 +70,9 @@ def main(spec):
         block = block.replace('"deck": %s' % q(npc['old_deck']), '"deck": %s' % q(dk))
         if npc.get('lines'):
             block = re.sub(r'"lines": \[.*?\]', lambda _: '"lines": [%s]' % ', '.join(q(l) for l in npc['lines']), block, count=1, flags=re.S)
+        for old, new in npc.get('swap', []):
+            assert q(old) in block, 'the duelist never says ' + old
+            block = block.replace(q(old), q(new))
         if npc.get('intro'):
             block = re.sub(r'"intro": "(?:[^"\\]|\\.)*"', lambda _: '"intro": ' + q(npc['intro']), block, count=1)
         return s[:a] + block + s[c:]

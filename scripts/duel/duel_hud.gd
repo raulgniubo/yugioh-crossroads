@@ -257,6 +257,8 @@ func react(p: int, kind: String) -> void:
 
 ## [graveyard, banished] card lists per player, kept fresh by the scene for the pile viewer.
 var piles: Array = [[[], []], [[], []]]
+## Cards a player has to keep revealed because of a card effect (their hand, their Set cards).
+var revealed: Array = [[], []]
 var _pile_panel: Control
 
 
@@ -301,16 +303,17 @@ func show_piles(p: int) -> void:
 	panel.add_child(v)
 	var who: String = str(player_names[p]) if player_names.size() > p else ("You" if p == 0 else "Opponent")
 	v.add_child(UITheme.label(who.to_upper(), 20, UITheme.TEXT_DIM, UITheme.semi_font()))
-	var titles := ["GRAVEYARD", "BANISHED"]
-	var cols := [UITheme.ACCENT, Color("b06cff")]
-	for k in 2:
-		var list: Array = piles[p][k]
-		v.add_child(UITheme.label("%s  ·  %d" % [titles[k], list.size()], 34, cols[k], UITheme.title_font()))
+	var titles := ["GRAVEYARD", "BANISHED", "REVEALED BY A CARD EFFECT"]
+	var cols := [UITheme.ACCENT, Color("b06cff"), UITheme.GOLD]
+	var tall: bool = not (revealed[p] as Array).is_empty()
+	for k in ([2, 0, 1] if tall else [0, 1]):
+		var list: Array = revealed[p] if k == 2 else piles[p][k]
+		v.add_child(UITheme.label("%s  ·  %d" % [Loc.t(titles[k]), list.size()], 26 if tall else 34, cols[k], UITheme.title_font()))
 		if list.is_empty():
 			v.add_child(UITheme.label("Empty" if k == 0 else "No cards have been banished.", 18, UITheme.TEXT_DIM))
 			continue
 		var sc := ScrollContainer.new()
-		sc.custom_minimum_size = Vector2(1080, 196)
+		sc.custom_minimum_size = Vector2(1080, 150 if tall else 196)
 		sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		v.add_child(sc)
 		var row := HBoxContainer.new()
@@ -319,12 +322,16 @@ func show_piles(p: int) -> void:
 		for i in range(list.size() - 1, -1, -1):
 			var inst = list[i]
 			var tr := TextureRect.new()
-			tr.texture = Cards.get_face(inst.id)
-			tr.custom_minimum_size = Vector2(124, 181)
+			# (their face-down banished cards stay secret; your own you may look at)
+			var secret: bool = k == 1 and p != 0 and inst.tags.has("facedown")
+			tr.texture = Cards.duel_back(int(inst.owner)) if secret else Cards.get_face(inst.id)
+			if k == 1 and inst.tags.has("facedown"):
+				tr.modulate = Color(0.72, 0.72, 0.85)
+			tr.custom_minimum_size = Vector2(92, 134) if tall else Vector2(124, 181)
 			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			tr.mouse_filter = Control.MOUSE_FILTER_STOP
-			tr.mouse_entered.connect(func(): inspect(inst))
+			tr.mouse_entered.connect(func(): inspect(inst, secret))
 			row.add_child(tr)
 	var close := Button.new()
 	close.text = "Close"
@@ -1590,6 +1597,106 @@ func ask_choice(text: String, answers: Array, card = null) -> int:
 	root.queue_free()
 	(fold[1] as Button).queue_free()
 	return idx
+
+
+signal _name_picked(id: int)
+
+## "Declare 1 card name": a search box over every card name the question allows. The cards you
+## have seen in this duel are offered first, so most of the time it is one click. `quick` and
+## `all` are lists of [id, name]. Returns the id of the card named.
+func ask_name(text: String, quick: Array, all: Array) -> int:
+	if auto_answer:
+		await get_tree().process_frame
+		var src: Array = quick if not quick.is_empty() else all
+		return int(src[randi() % src.size()][0]) if not src.is_empty() else 0
+	await stage_clear()
+	var root := PanelContainer.new()
+	root.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.042, 0.078, 0.156, 0.97), 22, Color(UITheme.ACCENT, 0.7)))
+	root.z_index = 60
+	add_child(root)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 22)
+	root.add_child(h)
+	var face := TextureRect.new()
+	face.custom_minimum_size = Vector2(190, 277)
+	face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	h.add_child(face)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	h.add_child(v)
+	var t := UITheme.label(text, 28, Color.WHITE, UITheme.title_font())
+	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	t.custom_minimum_size = Vector2(460, 0)
+	v.add_child(t)
+	var search := LineEdit.new()
+	search.placeholder_text = Loc.t("Type a card name")
+	search.clear_button_enabled = true
+	search.add_theme_font_size_override("font_size", 20)
+	search.custom_minimum_size = Vector2(460, 44)
+	v.add_child(search)
+	var note := UITheme.label("", 16, UITheme.TEXT, UITheme.semi_font())
+	v.add_child(note)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(460, 300)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 4)
+	scroll.add_child(list)
+	var peek := func(id: int): face.texture = Cards.get_face(id)
+	var fill := func(word: String):
+		for c in list.get_children():
+			c.queue_free()
+		var rows: Array = []
+		var w := word.strip_edges().to_lower()
+		if w == "":
+			rows = quick
+			note.text = Loc.t("Cards seen in this duel. Type to search every card.") if not quick.is_empty() else Loc.t("Type to search every card.")
+		else:
+			var starts: Array = []
+			var holds: Array = []
+			for r in all:
+				var nm := str(r[1]).to_lower()
+				if nm.begins_with(w):
+					starts.append(r)
+				elif w in nm:
+					holds.append(r)
+			rows = starts + holds
+			note.text = Loc.t("%d names match") % rows.size()
+		for r in rows.slice(0, 40):
+			var b := Button.new()
+			b.text = str(r[1])
+			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			b.clip_text = true
+			b.custom_minimum_size = Vector2(440, 40)
+			b.add_theme_font_size_override("font_size", 18)
+			var id := int(r[0])
+			b.pressed.connect(func(): _name_picked.emit(id))
+			b.mouse_entered.connect(func(): peek.call(id))
+			b.focus_entered.connect(func(): peek.call(id))
+			list.add_child(b)
+		if not rows.is_empty():
+			peek.call(int(rows[0][0]))
+	search.text_changed.connect(func(nt): fill.call(nt))
+	# (Enter names the first match)
+	search.text_submitted.connect(func(_nt):
+		for c in list.get_children():
+			if c is Button and not c.is_queued_for_deletion():
+				(c as Button).pressed.emit()
+				return)
+	fill.call("")
+	root.reset_size()
+	await get_tree().process_frame
+	var vs := get_viewport_rect().size
+	root.position = Vector2((vs.x - root.size.x) / 2.0, maxf(20.0, (vs.y - root.size.y) * 0.4))
+	root.modulate.a = 0.0
+	create_tween().tween_property(root, "modulate:a", 1.0, 0.15)
+	search.grab_focus()
+	var got: int = await _name_picked
+	root.queue_free()
+	return got
 
 
 func ask_response(text: String, options: Array, button := "Activate", cancel := "Don't activate", hidden: Array = [], tint := Color("ff4dd2"), labels := {}):

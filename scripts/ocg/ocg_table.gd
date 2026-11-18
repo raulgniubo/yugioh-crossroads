@@ -376,35 +376,40 @@ func _ask(m: Dictionary):
 ## card your opponent has shown this duel, then your own (a card nobody has seen cannot be told
 ## apart by looking at the table anyway).
 func _ask_announce(m: Dictionary):
-	var ids: Array = []
-	for o in m["opts"]:
-		var v := int(o)
-		if v > 0 and v < 0x100000000 and not ids.has(v) and str(CardData.get_card(v).get("name", "Unknown")) != "Unknown":
-			ids.append(v)
-	if ids.is_empty():
-		var st: DuelState = s.state
-		var theirs: DuelState.PlayerState = st.players[AI]
-		var mine: DuelState.PlayerState = st.players[ME]
-		var known: Array = theirs.gy + theirs.banished + theirs.monsters() + theirs.set_cards() + ([theirs.field_spell] if theirs.field_spell != null else [])
-		for c in known:
-			if c != null and c.face_up and c.id > 0 and not ids.has(c.id):
-				ids.append(c.id)
-		var own: Array = []
-		for c in mine.hand + mine.deck + mine.gy + mine.banished + mine.monsters() + mine.set_cards():
-			if c != null and c.id > 0 and not ids.has(c.id) and not own.has(c.id):
-				own.append(c.id)
-		own.sort_custom(func(a, b): return OcgCore.card_name(a) < OcgCore.card_name(b))
-		ids.append_array(own)
-	if ids.is_empty():
+	# "Declare 1 card name". Any card the question allows can be named, so the dialog searches
+	# every card in the game; the ones seen in this duel are offered first.
+	var opts: Array = m["opts"]
+	var seen: Array = []
+	var st: DuelState = s.state
+	var theirs: DuelState.PlayerState = st.players[AI]
+	var mine: DuelState.PlayerState = st.players[ME]
+	var known: Array = theirs.gy + theirs.banished + theirs.monsters() + theirs.set_cards() + ([theirs.field_spell] if theirs.field_spell != null else [])
+	for c in known:
+		if c != null and c.face_up and c.id > 0 and not seen.has(c.id):
+			seen.append(c.id)
+	var own: Array = []
+	for c in mine.hand + mine.deck + mine.gy + mine.banished + mine.monsters() + mine.set_cards():
+		if c != null and c.id > 0 and not seen.has(c.id) and not own.has(c.id):
+			own.append(c.id)
+	own.sort_custom(func(a, b): return OcgCore.card_name(a) < OcgCore.card_name(b))
+	var quick: Array = []
+	for id in seen + own:
+		if OcgCore.announce_ok(opts, int(id)):
+			quick.append([int(id), OcgCore.card_name(int(id))])
+	if _name_list.is_empty():
+		for id in Collection.all_cards():
+			_name_list.append([int(id), OcgCore.card_name(int(id))])
+		_name_list.sort_custom(func(a, b): return str(a[1]) < str(b[1]))
+	var all: Array = _name_list.filter(func(r): return OcgCore.announce_ok(opts, int(r[0])))
+	if quick.is_empty() and all.is_empty():
 		return me_cpu.decide(d)
-	var cards: Array = []
-	for id in ids:
-		cards.append(_temp(int(id), ME))
 	var text := _hint_text(ME, OcgCore.sys(564))
-	var got = await s.hud.ask_pick(text if text != "" else Loc.t("Declare 1 card name"), cards, Loc.t("Select"), "")
-	if got == null:
-		got = cards[0]
-	return OcgDuel.i32(int(got.id))
+	var got: int = await s.hud.ask_name(text if text != "" else Loc.t("Declare 1 card name"), quick, all)
+	if got <= 0:
+		got = int((quick if not quick.is_empty() else all)[0][0])
+	return OcgDuel.i32(got)
+
+var _name_list: Array = []
 
 
 func _ask_cards(m: Dictionary, tribute := false):
