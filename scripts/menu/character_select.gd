@@ -1044,7 +1044,7 @@ func _build_setup() -> void:
 	_field_swatch = ColorRect.new()
 	var asc := ScrollContainer.new()
 	asc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	asc.custom_minimum_size = Vector2(0, 210)
+	asc.custom_minimum_size = Vector2(0, 130)   # (the column is 936 tall: more than this pushed the DUEL button off the panel)
 	asc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	v.add_child(asc)
 	var agrid := HFlowContainer.new()
@@ -1058,11 +1058,7 @@ func _build_setup() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	v.add_child(row)
-	# Everything above takes what it needs; the button row sits on the floor of the column.
-	var push := Control.new()
-	push.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	v.add_child(push)
-	v.move_child(push, row.get_index())
+	# (The arena list takes whatever height is left, so the button row sits on the floor of the column.)
 	var rnd := Button.new()
 	rnd.text = "Random rival"
 	rnd.custom_minimum_size = Vector2(0, 86)

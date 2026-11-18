@@ -811,9 +811,10 @@ func _ask_command(m: Dictionary):
 		_add_all(m["summon"], 0, "summon")
 		_add_all(m["spsummon"], 1, "special")
 		_add_all(m["repos"], 2, "repos")
+		# (Activate comes before Set: a Spell in your hand is usually there to be played.)
+		_add_all(m["chains"], 5, "act")
 		_add_all(m["mset"], 3, "mset")
 		_add_all(m["sset"], 4, "sset")
-		_add_all(m["chains"], 5, "act")
 	s._turn_done = false
 	# An attack dragged out of Main Phase 1: the Battle Phase has started, now it is declared.
 	var said := want

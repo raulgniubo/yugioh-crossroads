@@ -5,6 +5,15 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.52.1
+
+Three fixes Raul found right after 0.52.0. No cards added: 4,203 total.
+
+- **Free Duel: the DUEL! button ran off the bottom of the screen.** The settings column grew taller than its box (the arena list asked for more room than was left). The arena list now takes only the room left over, so the buttons sit inside the box again.
+- **Lumen's card picture with a line through her eye.** Her picture is taken from her live figure, and it could be taken mid-blink or while one of the blank cards circling her was passing in front of her face. It now waits for her eyes to be open and her face to be clear.
+- **Spell menu: Activate is on top now**, above Set.
+- **Windows:** only the .exe changed.
+
 ## What is in 0.52.0
 
 **Card plan part 3, build 1: 334 new cards, deck strength by stars, and a Story review. The game now has 4,203 cards** (it had 3,869).

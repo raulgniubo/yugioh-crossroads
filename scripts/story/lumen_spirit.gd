@@ -401,6 +401,22 @@ func spin() -> void:
 	_spin = 1.0
 
 
+## Eyes fully open and no tear running through her: a good moment to hold a still picture of her.
+## (A picture stopped mid-blink left her card with one eye half shut.)
+## Also none of the blank cards circling her is passing in front of her face (the pictures are
+## taken from the front): one did, and on her card it looked like a line through her eye.
+func at_rest() -> bool:
+	if _lids < 1.0 or _glitch > 0.0 or _talk > 0.0:
+		return false
+	if _ring and is_inside_tree():
+		for holder in _ring.get_children():
+			for card in (holder as Node3D).get_children():
+				var p: Vector3 = (card as Node3D).global_position - global_position
+				if p.z > 0.15 and absf(p.x) < 0.14 * maxf(size, 0.1):
+					return false
+	return true
+
+
 ## Her picture tears for a moment.
 func glitch(seconds := 0.25) -> void:
 	_glitch = seconds
@@ -553,9 +569,16 @@ static func portrait_form(host: Node, f: int) -> Texture2D:
 		_form_vps[f] = vp
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	var held := vp
-	host.get_tree().create_timer(3.0).timeout.connect(func():
-		if is_instance_valid(held):
-			held.render_target_update_mode = SubViewport.UPDATE_DISABLED)
+	var tree := host.get_tree()
+	var hold_still := func(again: Callable) -> void:
+		if not is_instance_valid(held):
+			return
+		var her = held.get_children().filter(func(n): return n is LumenSpirit)
+		if her.is_empty() or (her[0] as LumenSpirit).at_rest():
+			held.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		else:
+			tree.create_timer(0.1).timeout.connect(func(): again.call(again))   # (not mid-blink: wait for her eyes to open)
+	tree.create_timer(3.0).timeout.connect(func(): hold_still.call(hold_still))
 	return vp.get_texture()
 
 
@@ -641,7 +664,7 @@ static func portrait(host: Node) -> Texture2D:
 	nap.wait_time = 0.5
 	nap.autostart = true
 	nap.timeout.connect(func():
-		if is_instance_valid(_vp) and Time.get_ticks_msec() / 1000.0 > _awake_until:
+		if is_instance_valid(_vp) and Time.get_ticks_msec() / 1000.0 > _awake_until and (not is_instance_valid(l) or l.at_rest()):
 			_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED)
 	_vp.add_child(nap)
 	return _vp.get_texture()
