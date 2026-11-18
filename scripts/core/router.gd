@@ -648,9 +648,20 @@ func go(path: String) -> void:
 	# The new screen takes clicks straight away; the fade-in is only for the eye.
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_busy = false
-	var tw2 := create_tween()
+	# The loading card goes with the dark behind it, as one. (The dark used to clear first and
+	# the card sat over the finished world for a moment, still, before it popped off.)
+	var tw2 := create_tween().set_parallel()
 	tw2.tween_property(_fade, "color:a", 0.0, 0.45 if _card.visible else 0.22)
-	tw2.tween_callback(func(): _card.visible = false)
+	if _card.visible:
+		tw2.tween_property(_card, "modulate:a", 0.0, 0.3)
+	tw2.chain().tween_callback(func():
+		_card.visible = false
+		_card.modulate.a = 1.0
+		# A message that came while the place was loading (the weather, say) is shown now.
+		if not _held_toast.is_empty():
+			var h: Array = _held_toast
+			_held_toast = []
+			toast(str(h[0]), float(h[1])))
 
 
 ## Your own picture as the game's icon while it runs (the Dock on a Mac, the taskbar on Windows):
@@ -686,6 +697,7 @@ func _show_card(path: String) -> void:
 		title = Loc.t(str(d.get("name", key)))
 		sub = Loc.t(str(d.get("area", "")))
 	_card.setup(key, title, sub)
+	_card.modulate.a = 1.0
 	_card.visible = true
 
 
@@ -735,7 +747,12 @@ var _toast_tw: Tween
 
 ## A line at the bottom of the screen. A long one wraps inside the screen (it used to run off
 ## both sides) and stays up long enough to be read.
+var _held_toast: Array = []
+
 func toast(message: String, hold := 1.8) -> void:
+	if loading or (_card != null and _card.visible):
+		_held_toast = [message, hold]      # (not over the loading card: it waits for the place to show)
+		return
 	var view: Vector2 = _toast.get_viewport_rect().size
 	var max_w: float = maxf(600.0, view.x * 0.78)
 	_toast.autowrap_mode = TextServer.AUTOWRAP_OFF

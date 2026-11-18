@@ -1102,7 +1102,7 @@ func inspect(inst, hidden := false) -> void:
 	if d.get("kind", "monster") == "monster":
 		var frame: String = d.get("frame", "normal")
 		var lv_word := "Rank" if frame == "xyz" else "Level"
-		_chip("%s %d" % [lv_word, int(d.get("level", 0))], Color("ffd23a"))
+		_chip("%s %d" % [Loc.t(lv_word), int(d.get("level", 0))], Color("ffd23a"))
 		_chip(str(d.get("attribute", "")), Cards.ATTRIBUTE_COLORS.get(d.get("attribute", ""), [Color.GRAY, Color.GRAY])[1])
 		_chip(str(d.get("race", "")), UITheme.ACCENT)
 		_chip(frame.capitalize() + (" Tuner" if d.get("tuner", false) else ""), Color("b0b8c8"))
@@ -1424,7 +1424,10 @@ func hide_prompt() -> void:
 ## Pick one card from a list (targets, materials...). `hidden` cards are shown face-down.
 ## `labels` (uid -> text) adds a caption under each card, e.g. where it is. An empty `cancel` means the pick is required.
 func ask_pick(text: String, options: Array, button := "Select", cancel := "Cancel", hidden: Array = [], labels := {}):
-	return await ask_response(text, options, button, cancel, hidden, Color("7fd8ff"), labels)
+	# (the box where you tap a card and confirm: a button under every card made long lists,
+	# like the Destiny Draw's whole Deck, run off both sides of the screen)
+	var res = await ask_cards(text, options, {"min": 1, "max": 1, "confirm": Loc.t(button), "cancel": Loc.t(cancel) if cancel != "" else "", "hidden": hidden, "labels": labels})
+	return res[0] if (res is Array and not (res as Array).is_empty()) else null
 
 
 ## Choose cards in one box: tap to choose, tap again to take back, Confirm. See CardPicker.
@@ -2175,19 +2178,25 @@ func show_actions(at: Vector2, options: Array, above := false) -> void:
 		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var title := Comic.label(Loc.t(str(o[1])), 27, Color.WHITE if o[2] else Color(1, 1, 1, 0.4), 2 if o[2] else 0)
 		words.add_child(title)
+		# The button is as wide as its words need (Spanish runs longer: "Invocación por Sacrificio"
+		# was cut off). Only a very long effect line is trimmed, at twice the usual width.
+		var wide: float = title.get_minimum_size().x
 		if hint != "":
 			var sub := UITheme.label(Loc.t(hint) if o[2] else Loc.t("Not possible right now"), 15, Color(1, 1, 1, 0.92) if o[2] else Color(1, 1, 1, 0.35), UITheme.semi_font())
+			wide = maxf(wide, sub.get_minimum_size().x)
 			sub.clip_text = true
 			sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 			words.add_child(sub)
 		title.clip_text = true
 		title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		b.custom_minimum_size.x = clampf(wide + 16.0 + 42.0 + 14.0 + 14.0 + 16.0, 330.0, 660.0)
 		row.add_child(words)
 		b.pressed.connect(func():
 			Sfx.play("click", -6.0, 1.1)
 			hide_actions()
 			action_chosen.emit(id))
 		b.pivot_offset = Vector2(165, 33)
+		b.resized.connect(func(): b.pivot_offset = b.size / 2.0)
 		b.mouse_entered.connect(func():
 			if not b.disabled:
 				Sfx.play("blip", -18.0, 1.3)

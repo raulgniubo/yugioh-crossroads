@@ -544,15 +544,16 @@ func _loop() -> void:
 
 
 func _where(c) -> String:
+	# (whole phrases, so each one can be said properly in Spanish: it used to glue "Your" to a translated word)
 	for q in 2:
 		var ps: DuelState.PlayerState = state.players[q]
-		var who := "Your" if q == ME else "Their"
-		if ps.hand.has(c): return who + Loc.t(" hand")
-		if ps.field.has(c) or ps.spells.has(c) or ps.field_spell == c: return who + Loc.t(" field")
-		if ps.gy.has(c): return who + Loc.t(" Graveyard")
-		if ps.deck.has(c): return who + " Deck"
-		if ps.banished.has(c): return who + Loc.t(" banished")
-		if ps.extra.has(c): return who + Loc.t(" Extra Deck")
+		var mine := q == ME
+		if ps.hand.has(c): return Loc.t("Your hand") if mine else Loc.t("Their hand")
+		if ps.field.has(c) or ps.spells.has(c) or ps.field_spell == c: return Loc.t("Your field") if mine else Loc.t("Their field")
+		if ps.gy.has(c): return Loc.t("Your Graveyard") if mine else Loc.t("Their Graveyard")
+		if ps.deck.has(c): return Loc.t("Your Deck") if mine else Loc.t("Their Deck")
+		if ps.banished.has(c): return Loc.t("Your banished cards") if mine else Loc.t("Their banished cards")
+		if ps.extra.has(c): return Loc.t("Your Extra Deck") if mine else Loc.t("Their Extra Deck")
 	return ""
 
 

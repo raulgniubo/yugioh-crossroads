@@ -10,6 +10,10 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 More fixes from Raul's first duels on 0.50. No cards added: 3,106 total.
 
 - **The card panel no longer covers your duelist.** It keeps one size whatever the card says. The text has the room that is left and scrolls with the mouse wheel (wherever the pointer is), with "scroll to read the rest" under it when there is more. Before, long texts made the panel grow over your character and were still cut off after nine lines.
+- **Spanish: "Your Deck", "Your mano".** The line under a card in a pick box was glued together from an English word and a translated one. They are whole phrases now ("Tu Deck", "Tu mano", "Su Cementerio"), and the Level chip is translated.
+- **Destiny Draw ran off both sides of the screen.** Its card choice had a long button under every card. It uses the new box now (tap a card, then "Draw this card"), and so does every other one-card pick. A search for one card is no longer sent on the first tap: tap, then Confirm (or tap it again).
+- **Entering a world (the Academy):** a message like "It is raining" no longer shows on top of the loading card (it waits until the world is on screen), and the card fades out together with the dark behind it instead of sitting over the finished world and popping off. The blink Raul saw before that could not be reproduced without a graphics card; no double load was found in the code.
+- **Menu words cut off.** The buttons on a card ("Invocación por Sacrificio") are now as wide as their words need.
 - **ATK and DEF are whole numbers.** The panel showed "3300.0".
 - **The box at the top ("X activates Y") gets out of the way.** It is smaller, shows at most two lines of the effect, and stays 1.5 to 2.6 seconds (it stayed up to six). The line that says what happened sits under it, not across it, and a new line replaces the last one.
 

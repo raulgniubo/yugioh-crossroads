@@ -107,7 +107,12 @@ func open(h, text: String, list: Array, opts: Dictionary, animate := true) -> vo
 		sc.custom_minimum_size = Vector2(9 * (csize.x + 18) + 24, 520)
 		sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		_body.add_child(sc)
-		sc.add_child(grid)
+		# (room above the first row for a chosen card to lift, and beside the scroll bar)
+		var pad := MarginContainer.new()
+		pad.add_theme_constant_override("margin_top", 14)
+		pad.add_theme_constant_override("margin_right", 14)
+		sc.add_child(pad)
+		pad.add_child(grid)
 	else:
 		_body.add_child(grid)
 	var nth := 0

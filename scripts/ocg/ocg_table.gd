@@ -551,6 +551,20 @@ func _ask_unselect(m: Dictionary):
 			all_field = false
 			break
 	var got = null
+	if int(m["max"]) <= 1 and chosen.is_empty():
+		# One card (a search, a single material): the same as any pick of one. Tap it and Confirm,
+		# or point at it on the table. It is not sent on the first tap, so a slip can be taken back.
+		_live_end()
+		var skip: bool = can_cancel or finish
+		if all_field:
+			got = await _pick_on_board(cards, text, skip, "SELECT")
+		else:
+			var res = await s.hud.ask_cards(text, cards, {"min": 1, "max": 1, "cancel": Loc.t("Cancel") if skip else "", "hidden": _hidden(cards), "labels": _labels(cards)})
+			if res is Array and not (res as Array).is_empty():
+				got = res[0]
+		if got == null:
+			return OcgDuel.i32(-1) if skip else OcgDuel.pick_one(0)
+		return OcgDuel.pick_one(cards.find(got))
 	_live = true
 	if all_field:
 		s.hud.close_cards()
@@ -1612,6 +1626,11 @@ func _ux_demo() -> void:
 			s.hud.ask_cards("Add 1 card to your hand", s.state.players[ME].deck.slice(0, 14), {"min": 1, "max": 1})
 			await s.get_tree().create_timer(0.6).timeout
 			s.hud._picker._tap(s.state.players[ME].deck[2])
+		"destiny":
+			_ux_done = true
+			s.hud.ask_pick(Loc.t("Destiny Draw: choose the card you draw"), s.state.players[ME].deck.duplicate(), "Draw this card", "")
+			await s.get_tree().create_timer(0.8).timeout
+			s.hud._picker._tap(s.state.players[ME].deck[4])
 		"choice":
 			_ux_done = true
 			s.hud.ask_choice("Activate \"Dark Magical Circle\"?", [Loc.t("Yes"), Loc.t("No")], hand[0])
