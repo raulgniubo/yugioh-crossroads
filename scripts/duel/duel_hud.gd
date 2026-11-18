@@ -936,7 +936,7 @@ func _build_inspector() -> void:
 	_inspect_panel.offset_left = 30
 	_inspect_panel.offset_right = 390
 	_inspect_panel.offset_top = -420
-	_inspect_panel.offset_bottom = 250
+	_inspect_panel.offset_bottom = 262
 	_inspect_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_inspect_panel)
 	var v := VBoxContainer.new()
@@ -952,7 +952,7 @@ func _build_inspector() -> void:
 	_inspect_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_inspect_head.add_child(_inspect_name)
 	_inspect_tex = TextureRect.new()
-	_inspect_tex.custom_minimum_size = Vector2(320, 318)
+	_inspect_tex.custom_minimum_size = Vector2(320, 286)
 	_inspect_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_inspect_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	v.add_child(_inspect_tex)
@@ -968,23 +968,65 @@ func _build_inspector() -> void:
 	_inspect_atk = _stat_box("ATK", Color("ff6b6b"))
 	_inspect_def = _stat_box("DEF", Color("6bc8ff"))
 	_inspect_stats = UITheme.label("", 1, Color.TRANSPARENT)
+	# The panel keeps its size whatever the card says (it used to grow over your duelist, and
+	# still cut long texts off). The text has the room that is left and scrolls: the mouse
+	# wheel, wherever the pointer is.
+	_inspect_scroll = ScrollContainer.new()
+	_inspect_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_inspect_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_inspect_scroll.custom_minimum_size = Vector2(320, 150)
+	_inspect_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	v.add_child(_inspect_scroll)
+	var tv := VBoxContainer.new()
+	tv.add_theme_constant_override("separation", 6)
+	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_inspect_scroll.add_child(tv)
 	_inspect_text = UITheme.label("", 15, UITheme.TEXT_DIM)
 	_inspect_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_inspect_text.custom_minimum_size = Vector2(320, 0)
-	_inspect_text.max_lines_visible = 9
+	_inspect_text.custom_minimum_size = Vector2(304, 0)
 	_inspect_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(_inspect_text)
-	# Only shown when this game plays the card differently from what the card says.
+	_inspect_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tv.add_child(_inspect_text)
+	# (what is under an Xyz Monster, Lumen's bonds)
 	_inspect_note = UITheme.label("", 15, Color("ffcf6b"), UITheme.semi_font())
 	_inspect_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_inspect_note.custom_minimum_size = Vector2(320, 0)
+	_inspect_note.custom_minimum_size = Vector2(304, 0)
 	_inspect_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_inspect_note.visible = false
-	v.add_child(_inspect_note)
+	_inspect_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tv.add_child(_inspect_note)
+	_inspect_more = UITheme.label("", 13, Color(UITheme.ACCENT, 0.9), UITheme.semi_font())
+	_inspect_more.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_inspect_more.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(_inspect_more)
 	_inspect_panel.modulate.a = 0.0
 
 
 var _inspect_head: PanelContainer
+var _inspect_scroll: ScrollContainer
+var _inspect_more: Label
+
+
+## After a card is shown: back to the top of its text, and a word under it when there is more to read.
+func _inspect_fit() -> void:
+	_inspect_scroll.scroll_vertical = 0
+	_inspect_more.text = " "
+	await get_tree().process_frame
+	if not is_instance_valid(_inspect_scroll):
+		return
+	var bar := _inspect_scroll.get_v_scroll_bar()
+	_inspect_more.text = Loc.t("▾  scroll to read the rest") if (bar != null and bar.max_value > bar.page + 2.0) else " "
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	# The mouse wheel, wherever the pointer is, moves the text of the card being shown.
+	if event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] \
+			and _inspect_panel != null and _inspect_panel.modulate.a > 0.5 and not overlay_visible():
+		_inspect_scroll.scroll_vertical += (-48 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 48)
+		var bar := _inspect_scroll.get_v_scroll_bar()
+		if bar != null and bar.value >= bar.max_value - bar.page - 2.0:
+			_inspect_more.text = " "
 const HEAD_COLORS := {"normal": Color("d9a441"), "effect": Color("f07a26"), "fusion": Color("9a55d6"), "ritual": Color("3f7fe0"),
 		"synchro": Color("9aa7bd"), "xyz": Color("39405c"), "spell": Color("17a88c"), "trap": Color("d0408f"), "hidden": Color("2b6bff")}
 
@@ -1029,9 +1071,16 @@ func _chip(text: String, col: Color) -> void:
 	_inspect_chips.add_child(l)
 
 
+var _inspect_shown = null
+var _inspect_hidden := false
+
 func inspect(inst, hidden := false) -> void:
 	if inst == null:
 		return
+	if _inspect_shown != inst or _inspect_hidden != hidden:
+		_inspect_shown = inst
+		_inspect_hidden = hidden
+		_inspect_fit()
 	if _inspect_panel.modulate.a < 0.99:
 		create_tween().tween_property(_inspect_panel, "modulate:a", 1.0, 0.15)
 	for c in _inspect_chips.get_children():
@@ -1058,8 +1107,8 @@ func inspect(inst, hidden := false) -> void:
 		_chip(str(d.get("race", "")), UITheme.ACCENT)
 		_chip(frame.capitalize() + (" Tuner" if d.get("tuner", false) else ""), Color("b0b8c8"))
 		_inspect_stat_row.visible = true
-		_inspect_atk.text = str(d.get("atk", 0))
-		_inspect_def.text = str(d.get("def", 0))
+		_inspect_atk.text = str(int(d.get("atk", 0)))      # (whole numbers: it showed "3300.0")
+		_inspect_def.text = str(int(d.get("def", 0)))
 		var txt := str(d.get("desc", ""))
 		var nm := str(d.get("name", ""))
 		var note := str(CardEffects.of(nm).get("note", CardData.MONSTER_EFFECTS.get(nm, "")))
@@ -1990,31 +2039,37 @@ func action_caption(title: String, detail: String, color: Color, mine: bool) -> 
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 2)
 	pc.add_child(v)
-	var t := UITheme.label(title, 26, color.lightened(0.35), UITheme.title_font())
+	var t := UITheme.label(title, 23, color.lightened(0.35), UITheme.title_font())
 	v.add_child(t)
 	if detail != "":
-		var d := UITheme.label(detail, 19, Color(0.9, 0.93, 1.0))
+		var d := UITheme.label(detail, 17, Color(0.9, 0.93, 1.0))
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		d.custom_minimum_size = Vector2(minf(760.0, 18.0 + detail.length() * 9.5), 0)
+		d.max_lines_visible = 2
+		d.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		d.custom_minimum_size = Vector2(minf(640.0, 18.0 + detail.length() * 8.5), 0)
 		v.add_child(d)
 	add_child(pc)
 	_caption = pc
 	pc.reset_size()
 	var vs := get_viewport_rect().size
-	pc.position = Vector2((vs.x - pc.size.x) / 2.0, vs.y * 0.085)
+	pc.position = Vector2((vs.x - pc.size.x) / 2.0, vs.y * 0.075)
 	pc.modulate.a = 0.0
 	pc.position.y -= 14.0
 	var tw := pc.create_tween()
 	tw.set_parallel()
 	tw.tween_property(pc, "modulate:a", 1.0, 0.16)
 	tw.tween_property(pc, "position:y", pc.position.y + 14.0, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.chain().tween_interval(maxf(2.2, 1.2 + detail.length() * 0.035))
-	tw.chain().tween_property(pc, "modulate:a", 0.0, 0.35)
+	# Long enough to read, short enough to be out of the way of what happens next (it stayed
+	# up to six seconds, on top of the lines that followed).
+	tw.chain().tween_interval(Settings.t(clampf(1.3 + detail.length() * 0.011, 1.5, 2.6)))
+	tw.chain().tween_property(pc, "modulate:a", 0.0, 0.25)
 	tw.chain().tween_callback(pc.queue_free)
 
 
+var _fx_line: Label
+
 func effect_text(text: String, color := Color("ffd23a")) -> void:
-	var l := UITheme.label(text, 30, Color.WHITE, UITheme.semi_font())
+	var l := UITheme.label(text, 26, Color.WHITE, UITheme.semi_font())
 	var sb := UITheme.button_box(Color(0.042, 0.058, 0.125, 0.92), color, 16)
 	sb.content_margin_left = 22
 	sb.content_margin_right = 22
@@ -2023,7 +2078,13 @@ func effect_text(text: String, color := Color("ffd23a")) -> void:
 	add_child(l)
 	l.reset_size()
 	var vs := get_viewport_rect().size
-	l.position = Vector2((vs.x - l.size.x) / 2.0, vs.y * 0.17)
+	var y := vs.y * 0.17
+	if _caption != null and is_instance_valid(_caption) and _caption.modulate.a > 0.05:
+		y = maxf(y, _caption.position.y + _caption.size.y + 10.0)      # (under the "X activates Y" box, never across it)
+	if _fx_line != null and is_instance_valid(_fx_line):
+		_fx_line.queue_free()                                         # (one line at a time: a new one replaces the last)
+	_fx_line = l
+	l.position = Vector2((vs.x - l.size.x) / 2.0, y)
 	l.modulate.a = 0.0
 	var tw := create_tween()
 	tw.tween_property(l, "modulate:a", 1.0, 0.15)

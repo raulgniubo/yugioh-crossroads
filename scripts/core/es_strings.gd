@@ -6816,4 +6816,5 @@ const ES := {
 	"Choose the monster to Tribute": "Elige el monstruo a Sacrificar",
 	"Choose %d monsters to Tribute": "Elige %d monstruos a Sacrificar",
 	"Choose the monsters to Tribute": "Elige los monstruos a Sacrificar",
+	"▾  scroll to read the rest": "▾  desplaza para leer el resto",
 }

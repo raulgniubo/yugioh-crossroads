@@ -5,6 +5,14 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.50.2
+
+More fixes from Raul's first duels on 0.50. No cards added: 3,106 total.
+
+- **The card panel no longer covers your duelist.** It keeps one size whatever the card says. The text has the room that is left and scrolls with the mouse wheel (wherever the pointer is), with "scroll to read the rest" under it when there is more. Before, long texts made the panel grow over your character and were still cut off after nine lines.
+- **ATK and DEF are whole numbers.** The panel showed "3300.0".
+- **The box at the top ("X activates Y") gets out of the way.** It is smaller, shows at most two lines of the effect, and stays 1.5 to 2.6 seconds (it stayed up to six). The line that says what happened sits under it, not across it, and a new line replaces the last one.
+
 ## What is in 0.50.1
 
 Three fixes Raul found right after 0.50.0. No cards added: 3,106 total.
@@ -43,7 +51,7 @@ Three fixes Raul found right after 0.50.0. No cards added: 3,106 total.
 
 **Not done, said plainly**
 
-- **Old rules files still in the repo.** `duel_state.gd`, `effect_runner.gd`, `spell_rules.gd`, `duel_ai.gd`, `card_effects.gd` and `card_exact.gd` are still there. Nothing runs a duel with them, but the table's picture of the duel is built on `duel_state.gd`, and the collection and the Deck Builder read card facts from the others. Taking them out is its own careful job, and it comes next as 0.50.2 (no change you can see in the game).
+- **Old rules files still in the repo.** `duel_state.gd`, `effect_runner.gd`, `spell_rules.gd`, `duel_ai.gd`, `card_effects.gd` and `card_exact.gd` are still there. Nothing runs a duel with them, but the table's picture of the duel is built on `duel_state.gd`, and the collection and the Deck Builder read card facts from the others. Taking them out is its own careful job, and it comes later, when Raul says so (no change you can see in the game).
 - **Chain replies** ("your opponent activated X, respond?") use the new box, but Spell and Trap zones from the menu, the order of simultaneous effects and counters are still chosen for you.
 - **Controller:** aiming an attack and choosing a zone are mouse and touch only for now.
 - **Nothing here was seen on a real graphics card.** Every interaction was run and photographed in the cloud (software rendering), and duels were played through automatically with random choices in the new boxes and on the table.
