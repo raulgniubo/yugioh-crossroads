@@ -1,0 +1,19 @@
+PYR = '"Pyramid of Light"'
+SPH = 'Puedes pagar 500 LP para Invocar esta carta de Modo Especial cuando ' + PYR + ' esté en el Campo. Esta carta no puede atacar durante el turno en que sea Invocada de Modo Normal o Especial. Esta carta no puede ser Invocada de Modo Especial desde el Cementerio. Si esta carta destruye en batalla un monstruo en Posición de Defensa, inflige a tu adversario daño igual a la mitad %s del monstruo destruido.'
+ES = {
+"Andro Sphinx": SPH % 'del ATK',
+"Sphinx Teleia": SPH % 'de la DEF',
+"Theinen the Great Sphinx": 'Esta carta no puede ser Invocada de Modo Normal ni Colocada. Esta carta no puede ser Invocada de Modo Especial excepto pagando 500 LP cuando "Andro Sphinx" y "Sphinx Teleia" en tu lado del Campo sean destruidos a la vez; entonces puedes Invocar este monstruo de Modo Especial desde tu mano o Deck. Cuando esta carta sea Invocada de Modo Especial con éxito, paga 500 LP para aumentar el ATK de esta carta en 3000 hasta el final de la End Phase.',
+"Fortress Whale's Oath": 'Esta carta se usa para Invocar por Ritual "Fortress Whale". También debes Sacrificar monstruos de tu mano o Campo cuyos Niveles sumen 7 o más.',
+"The First Sarcophagus": 'Una vez por turno, durante la End Phase de tu adversario: coloca boca arriba en tu Zona de Mágicas y Trampas 1 "The Second Sarcophagus" o (después de haberlo hecho) "The Third Sarcophagus" de tu mano o Deck. Después, si controlas "The First Sarcophagus", "The Second Sarcophagus" y "The Third Sarcophagus", mándalos todos al Cementerio y, si lo haces, Invoca de Modo Especial 1 "Spirit of the Pharaoh" de tu mano o Deck. Si cualquiera de estas cartas, incluida esta carta, deja tu Campo, manda al Cementerio todas las que controles, incluida esta carta.',
+"The Second Sarcophagus": 'Esta carta sólo puede ser colocada en el Campo por el efecto de "The First Sarcophagus".',
+"The Third Sarcophagus": 'Esta carta sólo puede ser colocada en el Campo por el efecto de "The First Sarcophagus".',
+"The Sanctuary in the Sky": 'El daño de batalla al controlador de un monstruo de Tipo Hada en una batalla que involucre a ese monstruo pasa a ser 0.',
+"Fire Ant Ascator": 'Cuando esta carta sea destruida en batalla y mandada al Cementerio: puedes seleccionar 1 monstruo de Nivel 5 en tu Cementerio; Invoca de Modo Especial ese objetivo, pero sus efectos quedan negados y, además, mándalo al Cementerio durante la End Phase de este turno.',
+"Supay": 'Cuando esta carta sea mandada del Campo al Cementerio por un efecto de carta: puedes Invocar de Modo Especial 1 "Oracle of the Sun" de tu Deck y, si lo haces, duplica su ATK y, además, devuélvelo a la mano durante la End Phase de este turno.',
+"Oracle of the Sun": 'Si sólo tu adversario controla un monstruo, puedes Invocar esta carta de Modo Especial (desde tu mano). Cuando esta carta en el Campo sea destruida y mandada al Cementerio: puedes añadir a tu mano 1 "Fire Ant Ascator" o "Supay" de tu Deck.',
+}
+ES.update({
+"Neo-Spacian Twinkle Moss": 'El nombre de esta carta también se trata como "Neo-Spacian Glow Moss". Esta carta no puede ser Invocada de Modo Especial excepto con "NEX". Cuando esta carta ataque o sea atacada, roba 1 carta. Muestra esa carta y, según su tipo, aplica el efecto correspondiente.\n● Monstruo: termina la Battle Phase.\n● Mágica: puedes cambiar el ataque de esta carta a un ataque directo.\n● Trampa: este monstruo se cambia a Posición de Defensa.',
+"Neo-Spacian Marine Dolphin": 'El nombre de esta carta también se trata como "Neo-Spacian Aqua Dolphin". Esta carta no puede ser Invocada de Modo Especial excepto con "NEX". Una vez por turno, puedes descartar 1 carta para mirar la mano de tu adversario y seleccionar 1 Carta de Monstruo de ella. Si controlas un monstruo con ATK mayor o igual que el del monstruo seleccionado, destruye el monstruo seleccionado e inflige 500 de daño a tu adversario.',
+})

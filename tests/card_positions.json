@@ -2718,5 +2718,695 @@
 },
 "opp": {},
 "turns": 3
+},
+{
+"card": "Magical Dimension",
+"me": {
+"m": [
+"Gemini Elf"
+],
+"hand": [
+"Magical Dimension",
+"Dark Magician"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Rainbow Bridge",
+"me": {
+"hand": [
+"Rainbow Bridge"
+],
+"deck": [
+"Crystal Promise",
+"Crystal Blessing"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "The Second Sarcophagus",
+"me": {
+"hand": [
+"The First Sarcophagus"
+],
+"deck": [
+"The Second Sarcophagus",
+"The Third Sarcophagus",
+"Spirit of the Pharaoh"
+]
+},
+"opp": {},
+"turns": 8,
+"pass": "placed",
+"why": "Only The First Sarcophagus puts it on the field."
+},
+{
+"card": "The Third Sarcophagus",
+"me": {
+"hand": [
+"The First Sarcophagus"
+],
+"deck": [
+"The Second Sarcophagus",
+"The Third Sarcophagus",
+"Spirit of the Pharaoh"
+]
+},
+"opp": {},
+"turns": 8,
+"pass": "placed",
+"why": "Only The First Sarcophagus puts it on the field."
+},
+{
+"card": "Spirit of the Pharaoh",
+"me": {
+"hand": [
+"The First Sarcophagus"
+],
+"deck": [
+"The Second Sarcophagus",
+"The Third Sarcophagus",
+"Spirit of the Pharaoh"
+],
+"gy": [
+"Pharaoh's Servant",
+"Pharaoh's Servant"
+]
+},
+"opp": {},
+"turns": 8
+},
+{
+"card": "Archlord Zerato",
+"me": {
+"fieldspell": [
+"The Sanctuary in the Sky"
+],
+"m": [
+"Warrior of Zera"
+],
+"hand": [
+"Archlord Zerato",
+"Shining Angel"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Fusion Sage",
+"me": {
+"hand": [
+"Fusion Sage"
+],
+"deck": [
+"Polymerization"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Fusion Recovery",
+"me": {
+"hand": [
+"Polymerization",
+"Elemental HERO Avian",
+"Elemental HERO Burstinatrix",
+"Fusion Recovery"
+],
+"extra": [
+"Elemental HERO Flame Wingman"
+]
+},
+"opp": {},
+"turns": 4
+},
+{
+"card": "Fifth Hope",
+"me": {
+"gy": [
+"Elemental HERO Avian",
+"Elemental HERO Burstinatrix",
+"Elemental HERO Bubbleman",
+"Elemental HERO Neos",
+"Elemental HERO Avian"
+],
+"hand": [
+"Fifth Hope"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Contact Out",
+"me": {
+"m": [
+"Elemental HERO Air Neos"
+],
+"hand": [
+"Contact Out"
+],
+"deck": [
+"Elemental HERO Neos",
+"Neo-Spacian Air Hummingbird"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Convert Contact",
+"me": {
+"st": [
+"Convert Contact"
+],
+"hand": [
+"Neo-Spacian Grand Mole"
+],
+"deck": [
+"Neo-Spacian Aqua Dolphin"
+]
+},
+"opp": {},
+"turns": 3,
+"pass": "open",
+"why": "The test opponent Summons its Neo-Spacian before playing the Spell, and the Spell needs an empty field."
+},
+{
+"card": "Bubble Blaster",
+"me": {
+"m": [
+"Elemental HERO Bubbleman"
+],
+"hand": [
+"Bubble Blaster"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "King of the Swamp",
+"me": {
+"hand": [
+"King of the Swamp",
+"Polymerization",
+"Flame Manipulator"
+],
+"extra": [
+"Flame Swordsman"
+],
+"deck": [
+"Polymerization"
+]
+},
+"opp": {},
+"turns": 4
+},
+{
+"card": "Arcanite Magician/Assault Mode",
+"me": {
+"m": [
+"Arcanite Magician"
+],
+"st": [
+"Assault Mode Activate"
+],
+"deck": [
+"Arcanite Magician/Assault Mode"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 4
+},
+{
+"card": "Tin Goldfish",
+"me": {
+"hand": [
+"Tin Goldfish",
+"Tin Goldfish"
+]
+},
+"opp": {},
+"turns": 3,
+"pass": "open",
+"why": "The test opponent always Sets it (800 ATK, 2000 DEF), so its Normal Summon effect never fires here."
+},
+{
+"card": "Last Turn",
+"me": {
+"m": [
+"Vorse Raider"
+],
+"st": [
+"Last Turn"
+],
+"lp": 1000
+},
+"opp": {
+"m": [
+"Battle Ox"
+],
+"deck": [
+"Battle Ox",
+"Vorse Raider"
+]
+},
+"turns": 3
+},
+{
+"card": "Magical Explosion",
+"me": {
+"st": [
+"Magical Explosion"
+],
+"gy": [
+"Pot of Greed",
+"Dark Hole",
+"Raigeki"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Hero Counterattack",
+"me": {
+"m": [
+"Elemental HERO Avian"
+],
+"st": [
+"Hero Counterattack"
+],
+"hand": [
+"Elemental HERO Bubbleman"
+]
+},
+"opp": {
+"m": [
+"Vorse Raider",
+"Battle Ox"
+]
+},
+"turns": 4,
+"pass": "open",
+"why": "Needs the opponent to attack into an Elemental HERO and a random hand card to be a HERO; the test opponent rarely gives both."
+},
+{
+"card": "D - Counter",
+"me": {
+"m": [
+"Destiny HERO - Diamond Dude"
+],
+"st": [
+"D - Counter"
+]
+},
+"opp": {
+"m": [
+"Vorse Raider"
+]
+},
+"turns": 3
+},
+{
+"card": "Mirror of Oaths",
+"me": {
+"m": [
+"Vorse Raider"
+],
+"st": [
+"Mirror of Oaths"
+]
+},
+"opp": {
+"hand": [
+"Cyber Dragon",
+"Cyber Dragon"
+]
+},
+"turns": 4,
+"pass": "open",
+"why": "Needs the opponent to Special Summon from its Deck or hand while this is Set; the test opponent Normal Summons instead."
+},
+{
+"card": "Earthbound Release",
+"me": {
+"fieldspell": [
+"Mountain"
+],
+"m": [
+"Earthbound Immortal Ccapac Apu",
+"Vorse Raider"
+],
+"st": [
+"Earthbound Release"
+],
+"hand": [
+"Summoned Skull"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Wonder Xyz",
+"me": {
+"m": [
+"Vorse Raider",
+"Battle Ox"
+],
+"st": [
+"Wonder Xyz"
+],
+"extra": [
+"Number 39: Utopia"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Xyz Universe",
+"me": {
+"m": [
+"Number 39: Utopia",
+"Gagaga Cowboy"
+],
+"st": [
+"Xyz Universe"
+],
+"extra": [
+"Neo Galaxy-Eyes Photon Dragon"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Xyz Revenge Shuffle",
+"me": {
+"m": [
+"Gagaga Cowboy"
+],
+"gy": [
+"Number 39: Utopia"
+],
+"st": [
+"Xyz Revenge Shuffle"
+]
+},
+"opp": {
+"m": [
+"Vorse Raider",
+"Battle Ox"
+]
+},
+"turns": 4,
+"pass": "open",
+"why": "Needs the opponent to attack an Xyz Monster; the test opponent does not attack into it."
+},
+{
+"card": "Xyz Encore",
+"me": {
+"hand": [
+"Xyz Encore"
+],
+"m": [
+"Vorse Raider"
+]
+},
+"opp": {
+"m": [
+"Battle Ox",
+"Axe Raider"
+],
+"extra": [
+"Number 39: Utopia"
+]
+},
+"turns": 4,
+"pass": "open",
+"why": "Needs an opponent Xyz Monster with materials; the test opponent does not Xyz Summon."
+},
+{
+"card": "Rank-Up-Magic Numeron Force",
+"me": {
+"m": [
+"Number 39: Utopia"
+],
+"hand": [
+"Rank-Up-Magic Numeron Force"
+],
+"extra": [
+"Number C39: Utopia Ray V"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Overlay Capture",
+"me": {
+"m": [
+"Gagaga Cowboy"
+],
+"hand": [
+"Overlay Capture"
+]
+},
+"opp": {
+"m": [
+"Battle Ox",
+"Axe Raider"
+],
+"extra": [
+"Number 39: Utopia"
+]
+},
+"turns": 4
+},
+{
+"card": "Gagaga Academy Emergency Network",
+"me": {
+"hand": [
+"Gagaga Academy Emergency Network"
+],
+"deck": [
+"Gagaga Magician"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Fairy Cheer Girl",
+"me": {
+"m": [
+"Shining Angel",
+"Shining Angel"
+],
+"extra": [
+"Fairy Cheer Girl"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Number 94: Crystalzero",
+"me": {
+"m": [
+"Kairyu-Shin",
+"Kairyu-Shin"
+],
+"extra": [
+"Number 94: Crystalzero"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Number 100: Numeron Dragon",
+"me": {
+"m": [
+"Number 39: Utopia",
+"Number 39: Utopia"
+],
+"extra": [
+"Number 100: Numeron Dragon"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Number 46: Dragluon",
+"me": {
+"m": [
+"Blue-Eyes White Dragon",
+"Blue-Eyes White Dragon"
+],
+"extra": [
+"Number 46: Dragluon"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Number 64: Ronin Raccoon Sandayu",
+"me": {
+"m": [
+"Nimble Momonga",
+"Nimble Momonga"
+],
+"extra": [
+"Number 64: Ronin Raccoon Sandayu"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Number C106: Giant Red Hand",
+"me": {
+"m": [
+"Kairyu-Shin",
+"Kairyu-Shin",
+"Kairyu-Shin"
+],
+"extra": [
+"Number C106: Giant Red Hand"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Doomkaiser Dragon",
+"me": {
+"m": [
+"Plaguespreader Zombie",
+"Goblin Zombie"
+],
+"extra": [
+"Doomkaiser Dragon"
+]
+},
+"opp": {
+"gy": [
+"Goblin Zombie"
+]
+},
+"turns": 3
+},
+{
+"card": "Dark Highlander",
+"me": {
+"m": [
+"Dark Resonator",
+"Archfiend Soldier"
+],
+"extra": [
+"Dark Highlander"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Sun Dragon Inti",
+"me": {
+"m": [
+"Fire Ant Ascator",
+"Kairyu-Shin"
+],
+"extra": [
+"Sun Dragon Inti"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Chaos Goddess",
+"me": {
+"m": [
+"Effect Veiler",
+"Archfiend Soldier",
+"Spirit Reaper"
+],
+"extra": [
+"Chaos Goddess"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Revived King Ha Des",
+"me": {
+"m": [
+"Plaguespreader Zombie",
+"Goblin Zombie"
+],
+"extra": [
+"Revived King Ha Des"
+]
+},
+"opp": {},
+"turns": 3
 }
 ]
