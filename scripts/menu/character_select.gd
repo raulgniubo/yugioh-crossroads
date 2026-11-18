@@ -962,7 +962,7 @@ func _build_setup() -> void:
 			[_match_btn, "LENGTH", ["1 duel", "Best of 3"], ["One duel decides it.", "First to win two duels. You can swap Side Deck cards between duels."]],
 			[_fate_off_btn, "DESTINY DRAW", ["On", "Off"], ["Once per duel, at 2000 Life Points or less (or under half of your opponent's), you choose the card you draw. Hard opponents can do it too.", "Every draw is the top card, as usual."]]]
 	# (The rules engine runs every duel now; Settings has the switch back to the classic rules.)
-	_engine_btn.button_pressed = OcgCore.available() and not Settings.classic_engine
+	_engine_btn.button_pressed = true
 	var rules := HBoxContainer.new()
 	rules.add_theme_constant_override("separation", 8)
 	v.add_child(rules)

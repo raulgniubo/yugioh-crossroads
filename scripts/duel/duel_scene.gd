@@ -152,11 +152,16 @@ func _start() -> void:
 	if "--cine" in OS.get_cmdline_user_args() or "--battle-demo" in OS.get_cmdline_user_args():
 		_debug_cine()
 	var cfg: Dictionary = Router.duel_config
-	if OcgTable.wanted(cfg):
-		state = OcgMirror.new()
-		ocg = OcgTable.new(self)
-		ocg.level = OcgTable.level_for(cfg)
-		print("DUEL ENGINE new, opponent level ", ocg.level)
+	if not OcgTable.wanted(cfg):
+		# The rules engine runs every duel. If its library did not load here, there is no duel.
+		print("DUEL ENGINE not loaded: ", OcgCore.why_not())
+		Router.toast(Loc.t("The rules engine did not load on this computer, so duels cannot start. Send the file engine_status.txt from the saves folder."), 9.0)
+		Router.go(cfg.get("return_to", Router.MAIN_MENU))
+		return
+	state = OcgMirror.new()
+	ocg = OcgTable.new(self)
+	ocg.level = OcgTable.level_for(cfg)
+	print("DUEL ENGINE new, opponent level ", ocg.level)
 	_opp_key = cfg.get("opponent", "kaiba")
 	Avatars.dress = {}
 	if str(cfg.get("opponent_coat", "")) != "":

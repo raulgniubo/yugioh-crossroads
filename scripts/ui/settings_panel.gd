@@ -235,13 +235,7 @@ static func open(parent: Node) -> SidePanel:
 		Settings.cpu_level = i + 1
 		Settings.save_settings())
 	_row(game, "Opponent difficulty", "How every opponent in Story and in the worlds thinks. Normal looks a little ahead and sometimes slips. Hard plans its turn and checks what you could answer. Extreme tries more plays for longer. None of them looks at your hand or face-down cards. Free Duel has its own buttons.", brain)
-	var old_rules := CheckButton.new()
-	old_rules.button_pressed = Settings.classic_engine
-	old_rules.toggled.connect(func(on):
-		Settings.classic_engine = on
-		Settings.save_settings())
 	_row(game, "Credits", "Made by Atlas Peak Games. The duel rules run on ocgcore by Edoardo Lolletti (edo9300), and every card plays by its script from Project Ignis. Both are free software under the AGPL-3.0 license. The game is built with the Godot engine.", Control.new())
-	_row(game, "Classic duel rules", "Off: duels run on the new rules engine, with the opponent that thinks ahead. On: duels run on the rules the game used before. Only here as a way back if a duel goes wrong; it goes away in a later version.", old_rules)
 	var field := OptionButton.new()
 	var fkeys := ["auto"] + FieldThemes.ORDER
 	for i in fkeys.size():

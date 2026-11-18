@@ -861,12 +861,10 @@ func _open_profile(first: bool) -> void:
 func _build_footer() -> void:
 	var version: String = ProjectSettings.get_setting("application/config/version", "0.1")
 	var credit: String = Loc.t("Fan project  ·  v%s  ·  by %s") % [version, "Atlas Peak Games"]
-	if Settings.classic_engine or not OcgCore.ensure_loaded():
-		credit += "  ·  " + Loc.t("classic duel rules")     # (so it is never a guess which rules a duel runs on)
 	var left := UITheme.label(credit, 16, Color(1, 1, 1, 0.35))
-	if not Settings.classic_engine and not OcgCore.ensure_loaded() and not _engine_told:
+	if not OcgCore.ensure_loaded() and not _engine_told:
 		_engine_told = true
-		get_tree().create_timer(2.0).timeout.connect(func(): Router.toast(Loc.t("The rules engine did not load on this computer, so duels run on the classic rules."), 7.0))
+		get_tree().create_timer(2.0).timeout.connect(func(): Router.toast(Loc.t("The rules engine did not load on this computer, so duels cannot start. Send the file engine_status.txt from the saves folder."), 9.0))
 	_anchor_bottom(left, 410, 1060)
 	# On the same line as the three round buttons beside it (they span 112 to 48 from the bottom).
 	left.offset_top = -112

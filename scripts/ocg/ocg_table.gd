@@ -32,14 +32,9 @@ func _init(scene) -> void:
 	s = scene
 
 
-## Is this duel run by the rules engine? Every duel is, unless Settings asks for the classic
-## rules (kept for one build as a way back) or the engine's library did not load.
-static func wanted(cfg: Dictionary) -> bool:
-	var args := OS.get_cmdline_user_args()
-	if "--classic" in args or str(cfg.get("engine", "")) == "classic":
-		return false
-	if Settings.classic_engine and not "--ocg" in args and str(cfg.get("engine", "")) != "new":
-		return false
+## Every duel is run by the rules engine. False only when its library did not load on this
+## computer: then no duel can start (the game says so instead).
+static func wanted(_cfg: Dictionary) -> bool:
 	return OcgCore.ensure_loaded()
 
 
