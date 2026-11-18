@@ -85,3 +85,18 @@ Still open:
 - Controller support for aiming an attack and for choosing a zone.
 - Intro fix and every animation: not seen on a real GPU yet.
 - Card plan part 2, builds 2 to 5 (Raul will switch to Opus 5.5 medium for those). Next card build is 0.51.0.
+
+### After 0.50.0: 0.50.1 and 0.50.2 (same day), and the parked cleanup
+
+Raul played 0.50.0 and sent fixes one after another; they shipped as 0.50.1 and 0.50.2 (see the README). main is at 0.50.2.
+
+**The old-rules cleanup is PARKED on purpose. Raul said: do not continue it until he says so.** Its first step is on the branch `cleanup-old-rules` (pushed), cut from the 0.50.0 commit:
+- `scripts/core/card_facts.gd` (class CardFacts) holds the few facts menus still read (Spell/Trap kind, Field Spell boosts, which of the game's own cards work, Speed Spell costs) and every outside caller of SpellRules / CardExact / CardEffects / DuelAI / EffectRunner uses it instead. Nothing is deleted yet.
+- `tests/facts_gen.gd` made the tables and a baseline of every answer for all 14,339 known cards and every deck (`tools/dev/facts/base.json`); `tests/facts_check.gd` + `tools/dev/facts/cmp.sh` compare the new code against it ("FACTS SAME" when identical). It was identical.
+- Left to do when he says go: rebase that branch on main (0.50.1 / 0.50.2 touched ocg_table.gd, duel_hud.gd, duel_scene.gd), cut `duel_state.gd` down to what the table reads (OcgMirror extends it; it has 500+ calls into the old files), delete effect_runner.gd, spell_rules.gd, duel_ai.gd, card_effects.gd, card_effects_auto.gd, card_exact.gd and the classic tests in tests/test_runner.gd, then: parse, cmp.sh, tools/cards.sh, the 1,260-duel sim, ht.sh duels.
+
+Things learned on the way:
+- The loading card (scripts/ui/load_card.gd) must `remove_child` its old labels before adding new ones with the same names.
+- A forced chain question (message 16, forced = 1) can list mandatory steps together with optional Set cards. The table answers with the first entry that is mandatory-looking (mode != 0, or face-up on the field) and never shows a box for it.
+- `Router.toast` holds messages while a place is loading.
+- Software rendering here is about 4x slower than the clock: screenshot time limits must allow for it (tools/dev/shot.sh does).
