@@ -943,6 +943,68 @@ const FX := {
 	"Giant Rex": {"note": "Cannot attack directly. If banished: you can Special Summon it, and it gains 200 ATK for each of your banished Dinosaurs (once per turn).", "no_direct": true, "banished": [["giant_rex"]]},
 	"Jigen Bakudan": {"note": "Flip: from then on, during your Standby Phase you can Tribute it: destroy all your other monsters and inflict half their total ATK to your opponent.", "flip": [["jigen_arm"]], "standby": [["jigen_bakudan"]]},
 	"Number 39: Utopia": {"note": "When a monster declares an attack: detach 1 material to negate the attack. If it is targeted for an attack while it has no material: it is destroyed.", "destroy_if_attacked_no_material": true},
+	# ---- Monarchs (0.34.5)
+	"Mobius the Frost Monarch": {"note": "Tribute Summoned: destroy up to 2 Spells/Traps on the field.", "ts": [["mon_st", 2]]},
+	"Granmarg the Mega Monarch": {"note": "Can be Tribute Summoned with 1 Tribute Summoned monster. Tribute Summoned: destroy up to 2 Set cards; Tributed an EARTH monster: then draw 1.",
+		"one_tribute_ts": true, "ts": [["mega_granmarg"]]},
+	"Erebus the Underworld Monarch": {"note": "Can be Tribute Summoned with 1 Tribute Summoned monster. Tribute Summoned: send 2 \"Monarch\" Spells/Traps with different names from your hand/Deck to the GY; shuffle 1 card from your opponent's hand (random), GY or field into the Deck. Either Main Phase, in your GY (once per turn): discard 1 \"Monarch\" Spell/Trap; add 1 monster with 2400+ ATK and 1000 DEF from your GY.",
+		"one_tribute_ts": true, "ts": [["erebus"]], "quick": "erebus_gy"},
+	"Mobius the Mega Monarch": {"note": "Can be Tribute Summoned with 1 Tribute Summoned monster. Tribute Summoned: destroy up to 3 Spells/Traps on the field (Tributed a WATER monster: your opponent can't respond).",
+		"one_tribute_ts": true, "ts": [["mon_st", 3]]},
+	"Thestalos the Firestorm Monarch": {"note": "Tribute Summoned: discard 1 random card from your opponent's hand; a monster: damage = its Level x 100.", "ts": [["thestalos", 100]]},
+	"Eidos the Underworld Monarch": {"note": "Normal or Special Summoned: add 1 \"Monarch\" Spell/Trap or 1 monster with 2800 ATK/1000 DEF from your Deck or GY. Declare an Attribute: 1 face-up monster becomes it. When you Tribute Summon a 2400+/1000 monster while it is in your GY: add it to your hand or Special Summon it. Each once per turn.",
+		"any_summon": [["eidos_search"]], "ignite": {"cost": "none", "cond": "eidos_attr", "do": [["eidos_attr"]], "label": "Declare an Attribute"}},
+	"Kuraz the Light Monarch": {"note": "Normal or Special Summoned: destroy up to 2 cards on the field; each player draws 1 for each of their cards destroyed. It can't attack that turn.",
+		"any_summon": [["kuraz"]]},
+	"Angmarl the Fiendish Monarch": {"note": "Tribute Summoned: banish 1 Spell from your GY; add 1 card with the same name from your Deck.", "ts": [["angmarl"]]},
+	"Tessera the Primal Squire": {"note": "Reveal 1 \"Monarch\" Spell/Trap in your hand: Special Summon it from your hand, then you can Tribute Summon 1 monster right away. Sent to the GY: Special Summon 1 monster with 800 ATK/1000 DEF from your Deck (no Extra Deck Special Summons this turn). Each once per turn.",
+		"special_hand_if": "tessera", "tessera": true, "sent_gy": [["tessera_gy"]]},
+	"Thestalos the Mega Monarch": {"note": "Can be Tribute Summoned with 1 Tribute Summoned monster. Tribute Summoned: look at your opponent's hand and discard 1; a monster: damage = its Level x 200. Tributed a FIRE monster: then 1000 damage.",
+		"one_tribute_ts": true, "ts": [["thestalos_mega"]]},
+	"Raiza the Mega Monarch": {"note": "Can be Tribute Summoned with 1 Tribute Summoned monster. Tribute Summoned: put 1 card on the field and 1 card in a GY on top of the Deck; Tributed a WIND monster: also return 1 more card on the field to the hand.",
+		"one_tribute_ts": true, "ts": [["raiza_mega"]]},
+	"Raiza the Storm Monarch": {"note": "Tribute Summoned: put 1 card on the field on top of the Deck.", "ts": [["raiza"]]},
+	"Thestalos the Shadowfire Monarch": {"note": "Can be Tribute Summoned with 1 monster your opponent controls and 1 Tribute Summoned monster you control. Tribute Summoned: banish 1 random card from your opponent's hand, 1000 damage; Tributed a Level 8+ Tribute Summoned monster: then banish 1 card on the field (a FIRE or DARK monster: damage = its Level x 200).",
+		"shadowfire": true, "ts": [["shadowfire"]]},
+	"Delg the Dark Monarch": {"note": "Normal or Special Summoned: banish up to 2 cards from your opponent's GY, then send that many from the top of their Deck to the GY. It can't attack that turn.",
+		"any_summon": [["delg"]]},
+	"Caius the Mega Monarch": {"note": "Can be Tribute Summoned with 1 Tribute Summoned monster. Tribute Summoned: banish 1 card on the field (2 if you Tributed a DARK monster), 1000 damage each; a DARK monster: banish every card of that name from that player's hand, Deck, Extra Deck and GY.",
+		"one_tribute_ts": true, "ts": [["caius_mega"]]},
+	"Zaborg the Mega Monarch": {"note": "Can be Tribute Summoned with 1 Tribute Summoned monster. Tribute Summoned: destroy 1 monster; if it was LIGHT, both players send cards from their Extra Deck to the GY, up to its Level/Rank (Tributed a LIGHT monster: you choose theirs).",
+		"one_tribute_ts": true, "ts": [["zaborg_mega"]]},
+	"Edea the Heavenly Squire": {"note": "Normal or Special Summoned: Special Summon 1 monster with 800 ATK/1000 DEF from your Deck in Defense Position, except Edea (no Extra Deck Special Summons this turn). Sent to the GY: add 1 of your banished \"Monarch\" Spells/Traps. Each once per turn.",
+		"any_summon": [["edea"]], "sent_gy": [["edea_gy"]]},
+	"Ehther the Heavenly Monarch": {"note": "Can be Tribute Summoned with 1 Tribute Summoned monster. Tribute Summoned: send 2 \"Monarch\" Spells/Traps with different names from your hand/Deck to the GY; Special Summon 1 monster with 2400+ ATK and 1000 DEF from your Deck (back to the hand in the End Phase). In your opponent's Main Phase, from your hand: banish 1 \"Monarch\" Spell/Trap from your GY; Tribute Summon it right away.",
+		"one_tribute_ts": true, "ts": [["ehther"]], "quick": "ehther"},
+	"Garum the Storm Vassal": {"note": "Return 1 Tribute Summoned monster you control to the hand: Special Summon it from your hand (no Extra Deck Special Summons this turn). Tributed for a Tribute Summon: add 1 monster with 800 ATK/1000 DEF from your Deck, except Garum. Each once per turn.",
+		"special_hand_if": "garum", "garum": true, "tributed": [["vassal", "garum"]]},
+	"Mithra the Thunder Vassal": {"note": "From your hand: Special Summon it, and 1 Vassal Token to your opponent's field in Defense Position (no Extra Deck Special Summons this turn). Tributed for a Tribute Summon: you can Tribute Summon 1 more monster this turn. Each once per turn.",
+		"special_hand_if": "mithra", "mithra": true, "tributed": [["vassal", "mithra"]]},
+	"Escher the Frost Vassal": {"note": "If your opponent controls 2 or more cards in their Spell & Trap Zones, Special Summon it from your hand.", "special_hand_if": "escher"},
+	"Lucius the Shadow Vassal": {"note": "Banish 1 Level 5 or higher monster from your GY: Special Summon it from your hand (no Extra Deck Special Summons this turn). Tributed for a Tribute Summon: look at every Set card your opponent controls. Each once per turn.",
+		"special_hand_if": "lucius", "lucius": true, "tributed": [["vassal", "lucius"]]},
+	"Berlineth the Firestorm Vassal": {"note": "Discard 1 card: Special Summon it from your hand (no Extra Deck Special Summons this turn). Tributed for a Tribute Summon: look at your opponent's hand and banish 1 card from it until the End Phase. Each once per turn.",
+		"special_hand_if": "berlineth", "berlineth": true, "tributed": [["vassal", "berlineth"]]},
+	"Landrobe the Rock Vassal": {"note": "From your hand, targeting 1 face-up monster your opponent controls: Special Summon it, and change that monster to face-down Defense Position (no Extra Deck Special Summons this turn). Tributed for a Tribute Summon: add 1 monster with 800 ATK/1000 DEF from your GY, except Landrobe. Each once per turn.",
+		"special_hand_if": "landrobe", "landrobe": true, "tributed": [["vassal", "landrobe"]]},
+	"Eidos the Underworld Squire": {"note": "Normal or Special Summoned: you can Tribute Summon 1 more monster this turn. In your GY: banish it; Special Summon 1 monster with 800 ATK/1000 DEF from your GY in Defense Position (no Extra Deck Special Summons this turn). Once per turn.",
+		"any_summon": [["extra_ts"]], "gy_ignite": {"custom": true, "cond": "eidos_squire", "do": [["eidos_squire"]], "label": "Banish it: an 800/1000 monster from your GY"}},
+	"The First Monarch": {"note": "Summoned as a monster: discard 1 card and declare an Attribute; it becomes that Attribute and counts as 2 Tributes for a monster of that Attribute; you can only Special Summon monsters of that Attribute."},
+	"The Prime Monarch": {"note": "Once per turn: shuffle 2 \"Monarch\" Spells/Traps from your GY into the Deck, then draw 1. In your GY: banish 1 other \"Monarch\" Spell/Trap from your GY; Special Summon it as a Normal Monster (Fairy/LIGHT/Level 5/1000/2400) in Defense Position (once per turn).",
+		"ignite": {"st": true, "cost": "none", "cond": "prime", "do": [["prime"]], "label": "Shuffle 2 Monarch cards back, draw 1"},
+		"gy_ignite": {"custom": true, "cond": "prime_gy", "do": [["prime_gy"]], "label": "Banish a Monarch card: Special Summon it"}},
+	"Strike of the Monarchs": {"note": "In your Main Phase, in your GY: banish it and declare an Attribute; every face-up monster becomes that Attribute this turn.",
+		"gy_ignite": {"custom": true, "cond": "strike_gy", "do": [["strike_gy"]], "label": "Banish it: declare an Attribute"}},
+	"The Monarchs Revolt": {"note": "In your GY: banish it; Special Summon 1 monster with 800 ATK/1000 DEF from your hand (once per turn).",
+		"gy_ignite": {"custom": true, "cond": "revolt_gy", "do": [["revolt_gy"]], "label": "Banish it: an 800/1000 monster from your hand"}},
+	"Pantheism of the Monarchs": {"note": "In your GY: banish it; reveal 3 \"Monarch\" Spells/Traps from your Deck, your opponent picks 1 for your hand (once per turn).",
+		"gy_ignite": {"custom": true, "cond": "pantheism_gy", "do": [["pantheism_gy"]], "label": "Banish it: reveal 3 Monarch cards"}},
+	"Frost Blast of the Monarchs": {"note": "In your GY: banish it and 1 \"Monarch\" Spell/Trap from your GY; destroy 1 Set card.",
+		"gy_ignite": {"custom": true, "cond": "frost_gy", "do": [["frost_gy"]], "label": "Banish it and a Monarch card: destroy a Set card"}},
+	"The Monarchs Masterplan": {"note": "Banished: add 1 monster with 2400 ATK/1000 DEF and the Attribute of a face-up monster your opponent controls from your Deck or GY, then you can Normal Summon one of the six original Monarchs right away (once per turn).",
+		"banished": [["masterplan"]]},
+	"Domain of the True Monarchs": {"note": "Once per turn: 1 monster with 2800 ATK/1000 DEF in your hand is 2 Levels lower this turn.",
+		"ignite": {"st": true, "cost": "none", "cond": "domain", "do": [["domain"]], "label": "Lower a 2800/1000 monster's Level by 2"}},
 	# ---- Light and Darkness (0.34.4.5)
 	"Black Luster Soldier - Soldier of Light and Darkness": {"note": "Ritual (Light and Darkness Ritual). Unaffected by your opponent's activated effects unless they target it; can't be destroyed by battle. Special Summoned: banish 1 card your opponent controls. Destroys a monster by battle: +1500 ATK and it attacks again. Each once per turn.",
 		"unaffected_opp": true, "battle_immune": true, "special_only": [["sold_banish"]], "kill": [["sold_kill"]]},
@@ -1271,6 +1333,14 @@ static func matches(d: Dictionary, f: Dictionary) -> bool:
 				ok = true
 		if not ok:
 			return false
+	if f.get("monarch_st", false) and not (n.contains("Monarch") and str(d.get("kind", "monster")) != "monster"):
+		return false   # "Monarch" Spells/Traps
+	if f.has("atk_in") and not (int(d.get("atk", -1)) in (f["atk_in"] as Array)):
+		return false   # (the Monarchs: "2400 ATK/1000 DEF, or 2800 ATK/1000 DEF")
+	if f.has("def_eq") and int(d.get("def", -1)) != int(f["def_eq"]):
+		return false
+	if f.has("min_atk") and int(d.get("atk", 0)) < int(f["min_atk"]):
+		return false
 	if f.get("gaia", false):
 		# "Gaia The Fierce Knight" monsters: the name has it, or the card is always treated as one (Gaia the Magical Knight, Heart of Gaia).
 		if not ((n.contains("Gaia") and n.contains("Fierce Knight")) or str(of(n).get("also_named", "")) == "Gaia The Fierce Knight"):

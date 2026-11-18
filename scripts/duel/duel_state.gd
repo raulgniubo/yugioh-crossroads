@@ -1117,7 +1117,44 @@ func tributes_needed(c: CardInst) -> int:
 	# of its counters is equal to or greater than the number of required Tribute(s)."
 	if raw > 0 and c.cname().begins_with("Ancient Gear") and _castle_for(c.owner, raw) != null:
 		return 0
+	# The Mega Monarchs: "You can Tribute Summon this card by Tributing 1 Tribute Summoned monster."
+	if raw >= 2 and EffectRunner.fx(c).get("one_tribute_ts", false) and ts_for(c.owner) != null:
+		raw = 1
+	# Thestalos the Shadowfire Monarch: 1 monster your opponent controls and 1 Tribute Summoned monster you control.
+	if raw >= 2 and EffectRunner.fx(c).get("shadowfire", false) and ts_for(c.owner) != null and not tributable(opponent(c.owner)).is_empty():
+		raw = 1
+	# The Monarchs Stormforth: once, a monster your opponent controls can be one of the Tributes.
+	elif raw >= 1 and stormforth_ready(c.owner) and not tributable(opponent(c.owner)).is_empty():
+		raw -= 1
 	return raw
+
+
+## Is this monster on the field by a Tribute Summon?
+static func is_ts(m) -> bool:
+	return m != null and m.tags.get("ns", false) and int(m.tags.get("tributes_n", 0)) > 0
+
+
+## A Tribute Summoned monster player p could Tribute, or null.
+func ts_for(p: int) -> CardInst:
+	for m in tributable(p):
+		if is_ts(m):
+			return m
+	return null
+
+
+func stormforth_ready(p: int) -> bool:
+	return int(players[p].once_names.get("#stormforth", -1)) == turn and int(players[p].once_names.get("#stormforth_used", -1)) != turn
+
+
+## How many of this Tribute Summon's Tributes come from the opponent's side (Stormforth, Shadowfire)?
+func _opp_tributes(c: CardInst) -> int:
+	var raw0 := _tributes_needed(c)
+	if raw0 >= 2 and EffectRunner.fx(c).get("shadowfire", false) and ts_for(c.owner) != null and not tributable(opponent(c.owner)).is_empty():
+		return 1
+	if raw0 >= 1 and stormforth_ready(c.owner) and not tributable(opponent(c.owner)).is_empty() \
+			and not (raw0 >= 2 and EffectRunner.fx(c).get("one_tribute_ts", false) and ts_for(c.owner) != null):
+		return 1
+	return 0
 
 
 func _castle_for(p: int, need: int) -> CardInst:
@@ -1152,6 +1189,10 @@ func _tributes_needed(c: CardInst) -> int:
 ## The monster this player controls that counts as 2 Tributes for `c` (Kaiser Sea Horse for a LIGHT monster), or null.
 func kaiser_for(c: CardInst) -> CardInst:
 	for m in tributable(c.owner):
+		if m.face_up and str(m.tags.get("dt_attr", "-")) == str(c.data.get("attribute", "")):
+			return m   # The First Monarch: "can be treated as 2 Tributes for the Tribute Summon of a monster with the same Attribute"
+		if m.tags.get("dt_any", false):
+			return m   # Restoration of the Monarchs: "The equipped monster can be treated as 2 Tributes for a Tribute Summon."
 		if m.face_up and not m.negated and (str(EffectRunner.fx(m).get("double_tribute_attr", "-")) == str(c.data.get("attribute", "")) \
 				or str(EffectRunner.fx(m).get("double_tribute_race", "-")) == str(c.data.get("race", ""))):
 			return m   # (Gaia the Fierce Knight Origin: "2 Tributes for the Tribute Summon of a Warrior monster")
@@ -1477,6 +1518,8 @@ func necroshade_for(c: CardInst) -> CardInst:
 func can_normal_summon(p: int, c: CardInst) -> bool:
 	if big_locked(p, c):
 		return false   # Crimson Blader
+	if normal_summoned and int(players[p].once_names.get("#extra_ts", -1)) == turn and players[p].extra_normals > 0 and int(players[p].once_names.get("#extra_any", -1)) != turn and tributes_needed(c) <= 0:
+		return false   # Eidos the Underworld Squire / Mithra: the additional Summon must be a Tribute Summon
 	if CardEffects.of(c.cname()).get("one_only", false):
 		for m in players[p].monsters():
 			if m.face_up and m.cname() == c.cname():
@@ -1487,7 +1530,8 @@ func can_normal_summon(p: int, c: CardInst) -> bool:
 			for m in players[q].monsters():
 				if m.face_up and m.cname().begins_with(fam):
 					return false   # "There can only be 1 "Earthbound Immortal" monster on the field."
-	if p != current or not _in_main() or (normal_summoned and players[p].extra_normals <= 0 and not seraph_ok(p)) or is_over():
+	var quick_ts: bool = int(players[p].once_names.get("#quick_ts", -1)) == turn   # (Escalation, Ehther, Tessera: "Tribute Summon right away")
+	if (not quick_ts and (p != current or not _in_main() or (normal_summoned and players[p].extra_normals <= 0 and not seraph_ok(p)))) or is_over():
 		return false
 	if not c.is_monster() or not players[p].hand.has(c):
 		return false
@@ -1593,7 +1637,8 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 	elif tributes.size() == 1 and c.level() >= 7 and plant_for(c) != null and str(tributes[0].data.get("race", "")) != str(CardEffects.of(c.cname()).get("one_tribute_race", "")):
 		tributes = [plant_for(c)]   # (one Tribute is only enough when it is a Plant)
 	if tributes.size() == 1 and c.level() >= 7 and plant_for(c) == null and kaiser_for(c) != null and str(EffectRunner.fx(tributes[0]).get("double_tribute_attr", "-")) != str(c.data.get("attribute", "")) \
-			and str(EffectRunner.fx(tributes[0]).get("double_tribute_race", "-")) != str(c.data.get("race", "")):
+			and str(EffectRunner.fx(tributes[0]).get("double_tribute_race", "-")) != str(c.data.get("race", "")) and str(tributes[0].tags.get("dt_attr", "-")) != str(c.data.get("attribute", "")) \
+			and not tributes[0].tags.get("dt_any", false) and not (EffectRunner.fx(c).get("one_tribute_ts", false) and is_ts(tributes[0])):
 		tributes = [kaiser_for(c)]   # (one Tribute is only enough when it is the Kaiser Sea Horse)
 	if not set_card and players[p].no_summon_turn == turn:
 		return []
@@ -1618,16 +1663,41 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 			return []
 	var ps := players[p]
 	var events := []
+	if tributes.size() == 1 and EffectRunner.fx(c).get("one_tribute_ts", false) and _tributes_needed(c) >= 2 and not is_ts(tributes[0]) and kaiser_for(c) == null:
+		tributes = [ts_for(p)]   # (one Tribute is only enough when it is a Tribute Summoned monster)
+	if EffectRunner.fx(c).get("shadowfire", false) and tributes.size() == 1 and _opp_tributes(c) == 1 and not is_ts(tributes[0]):
+		tributes = [ts_for(p)]
 	for t in tributes:
 		var idx := ps.field.find(t)
 		if idx == -1:
 			return []
+	var opp_trib: Array = []
+	if not set_card and _opp_tributes(c) > 0 and tributes.size() == tributes_needed(c):
+		var theirs: Array = tributable(opponent(p))
+		theirs.sort_custom(func(x, y): return _card_value(x) > _card_value(y))
+		opp_trib.append(pick1(p, Loc.t("%s: Tribute which monster your opponent controls?") % c.cname(), theirs, theirs[0], c))
+		if not EffectRunner.fx(c).get("shadowfire", false) or tributes_needed(c) == _tributes_needed(c):
+			ps.once_names["#stormforth_used"] = turn
 	# (Out of the hand first: a "when Tributed" effect must not pick the monster being Summoned, Arisen Gaia.)
 	ps.hand.erase(c)
+	var trib_attrs: Array = []
+	var trib_ts_lv := 0
+	for t in tributes + opp_trib:
+		trib_attrs.append(str(t.data.get("attribute", "")))
+		if is_ts(t):
+			trib_ts_lv = maxi(trib_ts_lv, t.level())
+	for t in opp_trib:
+		var oq: PlayerState = players[t.owner]
+		oq.field[oq.field.find(t)] = null
+		_to_gy(players[t.owner if t.orig_owner == -1 else t.orig_owner], t)
+		events.append({"type": "tribute", "player": opponent(p), "card": t})
+		events.append_array(_monster_left(t))
 	for t in tributes:
 		ps.field[ps.field.find(t)] = null
 		_to_gy(ps, t)
 		events.append({"type": "tribute", "player": p, "card": t})
+		if not set_card:
+			t.set_meta("ts_tribute", turn)   # "If this card is Tributed for a Tribute Summon" (the Vassals)
 		events.append_array(EffectRunner.trigger(self, t, "tributed"))
 		# An Equip Card on a Tributed monster goes with it, right now (it used to sit there,
 		# looking active, until the next sweep).
@@ -1648,6 +1718,9 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 	c.tags["trib_gk"] = trib_gk   # (Gravekeeper's Oracle)
 	c.tags["trib_lv"] = trib_lv
 	c.tags["trib_names"] = trib_names   # (Ancient Gear Gadjiltron, Hydra, Reactor Dragon)
+	c.tags["tributes_n"] = n_tributes + opp_trib.size()
+	c.tags["trib_attrs"] = trib_attrs   # (the Mega Monarchs: "If this card was Tribute Summoned by Tributing a WATER monster")
+	c.tags["trib_ts_lv"] = trib_ts_lv   # (Thestalos the Shadowfire Monarch)
 	if castle_used != null:
 		c.tags["tributes_n"] = 1
 		events.append({"type": "effect", "player": p, "card": castle_used, "text": Loc.t("%s is Tributed instead") % castle_used.cname()})
@@ -1674,6 +1747,8 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 			c.lv_set = as_lv
 			c.lv_turn = -1
 	events.append({"type": "set" if set_card else "summon", "player": p, "card": c, "zone": zone})
+	if not set_card and int(c.tags.get("tributes_n", 0)) > 0:
+		pending_events.append_array(EffectRunner.on_tribute_summon(self, p, c))
 	if not set_card and CardEffects.of(c.cname()).get("armoroid", false) and not tributes.filter(func(tm): return tm.cname().to_lower().contains("roid")).is_empty():
 		# Armoroid: "If this card is Tribute Summoned by Tributing at least 1 "roid" monster: Banish all Spells and Traps on the field."
 		events.append({"type": "effect", "player": p, "card": c, "text": Loc.t("%s banishes every Spell and Trap on the field") % c.cname()})
@@ -3981,6 +4056,8 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed by card effects") % c.cname()}]
 	if not by_battle and c.face_up and not c.negated and EffectRunner.fx(c).get("opp_fx_unbreak", false) and effect_by == opponent(c.owner):
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed by your opponent's card effects") % c.cname()}]
+	if not by_battle and march_guard(c):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("March of the Monarchs: %s cannot be destroyed by card effects") % c.cname()}]
 	if not by_battle and cloth_guard(c):
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed by card effects") % c.cname()}]
 	if c.face_up and CardEffects.matches(c.data, {"has": "Gem-Knight"}) and ((by_battle and current != c.owner) or (not by_battle and effect_by == opponent(c.owner))) and not spark_dead.has(c):
@@ -4354,7 +4431,7 @@ func _banish(c: CardInst) -> Array:
 			if from == "gy" and c.is_monster() and CardEffects.of(c.cname()).has("banished_gy") and not is_over():
 				# "If this card is banished from the GY" (Beginning Knight, Evening Twilight Knight).
 				bev.append_array(EffectRunner.run_list(self, c.owner, c, CardEffects.of(c.cname())["banished_gy"], {}))
-			if c.is_monster() and CardEffects.of(c.cname()).has("banished"):
+			if CardEffects.of(c.cname()).has("banished") and (c.is_monster() or c.is_spell() or c.is_trap()):
 				# "If this card is banished" (Giant Rex).
 				bev.append_array(EffectRunner.run_list(self, c.owner, c, CardEffects.of(c.cname())["banished"], {}))
 			return bev
@@ -4653,9 +4730,14 @@ func _cleanup() -> Array:
 				ma.lv_aura = false
 	# Effect negation (Skill Drain and one-turn negations) is re-derived from what is on the field.
 	var drain := SpellRules.field_flag(self, "drain")
+	var erupt := false   # The Monarchs Erupt: "Negate the effects of all face-up monsters on the field, ... except Tribute Summoned monsters'."
+	for q in 2:
+		for st in players[q].spells:
+			if st != null and st.face_up and SpellRules.spec(st).get("erupt", false) and not SpellRules.blocked(self, st):
+				erupt = true
 	for q in 2:
 		for m in players[q].monsters():
-			m.negated = m.face_up and (drain or m.negated_turn == turn or m.neg_perm or int(m.tags.get("neg_until", -1)) >= turn or (gorgon_turn == turn and not m.attack_pos))
+			m.negated = m.face_up and (drain or m.negated_turn == turn or m.neg_perm or int(m.tags.get("neg_until", -1)) >= turn or (gorgon_turn == turn and not m.attack_pos) or (erupt and not is_ts(m)))
 	# Hidden Temples of Necrovalley: "If either a "Gravekeeper's" monster or "Necrovalley" is not on the field, destroy this card."
 	if not gk_and_valley():
 		for q in 2:
@@ -5239,6 +5321,8 @@ func gk_and_valley() -> bool:
 
 ## Gravekeeper's Heretic: "unaffected by all other card effects, as long as "Necrovalley" is also on the field."
 func heretic_shield(c, src = null) -> bool:
+	if c is CardInst and c.has_meta("awaken") and src != null and src != c.get_meta("awaken") and (players[0].field.has(c) or players[1].field.has(c)):
+		return true   # The Monarchs Awaken: "it is unaffected by the effects of cards other than this card"
 	if c == null or not (c is CardInst) or not c.face_up or c.negated or src == c:
 		return false
 	var f := EffectRunner.fx(c)
@@ -5759,7 +5843,11 @@ func big_locked(p: int, c: CardInst, special := false) -> bool:
 		return true   # Gem-Knight Quartz / Scatter Fusion: only "Gem-Knight" monsters from the Extra Deck
 	if c != null and special and CardData.is_extra(c.id) and int(ps.once_names.get("#ed_fusion_only", -1)) == turn and c.frame() != "fusion":
 		return true   # Gem-Knight Master Diamond Dispersion: only Fusion Monsters from the Extra Deck
-	if c != null and special and CardData.is_extra(c.id) and int(ps.once_names.get("#ed_once", -1)) == turn and int(ps.once_names.get("#ed_ss", -1)) == turn:
+	if c != null and special and CardData.is_extra(c.id) and (int(ps.once_names.get("#no_ed", -1)) == turn or _no_ed_spell(p)):
+		return true   # the Monarchs and their Vassals: "you cannot Special Summon monsters from the Extra Deck"
+	if c != null and special and int(ps.once_names.get("#ss_attr_only", -1)) == turn and str(c.data.get("attribute", "")) != str(ps.once_names.get("#ss_attr", "")):
+		return true   # The First Monarch: "you cannot Special Summon monsters, except monsters with this card's Attribute"
+	if c != null and special and int(ps.once_names.get("#ed_once", -1)) == turn and int(ps.once_names.get("#ed_ss", -1)) == turn:
 		return true   # Celtic Mystic: "for the rest of this turn, you can only Special Summon once from the Extra Deck"
 	if c != null and special and int(ps.once_names.get("#ss_gem_only", -1)) == turn and not CardEffects.matches(c.data, {"has": "Gem-Knight"}):
 		return true   # Absorb Fusion: "You cannot Special Summon monsters the turn you activate this card, except "Gem-Knight" monsters."
@@ -6358,6 +6446,29 @@ func st_guarded(c: CardInst) -> bool:
 		return false
 	for m in players[c.owner].monsters():
 		if m.face_up and not m.negated and EffectRunner.fx(m).get("st_guard", false):
+			return true
+	return false
+
+
+## March / Return of the Monarchs face-up ("You cannot Special Summon monsters from the Extra Deck."), and Domain of the True Monarchs for the opponent.
+func _no_ed_spell(p: int) -> bool:
+	for st in players[p].spells:
+		if st != null and st.face_up and SpellRules.spec(st).get("no_ed", false) and not SpellRules.blocked(self, st):
+			return true
+	var q := opponent(p)
+	var dm := players[q].field_spell
+	if dm != null and dm.face_up and SpellRules.spec(dm).get("domain", false) and not SpellRules.blocked(self, dm) and players[q].extra.is_empty() \
+			and not players[q].monsters().filter(func(m): return is_ts(m)).is_empty() and players[p].monsters().filter(func(m): return is_ts(m)).is_empty():
+		return true
+	return false
+
+
+## March of the Monarchs: "Tribute Summoned monsters you control cannot be destroyed by card effects, also neither player can target them".
+func march_guard(m: CardInst) -> bool:
+	if not is_ts(m):
+		return false
+	for st in players[m.owner].spells:
+		if st != null and st.face_up and SpellRules.spec(st).get("march", false) and not SpellRules.blocked(self, st):
 			return true
 	return false
 

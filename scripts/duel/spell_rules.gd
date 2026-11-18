@@ -29,6 +29,24 @@ const FX := {
 	"Echo Resonance": {"k": "normal", "cond": "echo_ready", "do": [["echo_resonance"]]},
 	"Echo Call": {"k": "normal", "do": [["search", {"has": "Lumen"}]]},
 	"Echo Veil": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["draw_if_own", "Lumen", 1]]},
+	# ---------------------------------------------------------------- Monarchs (0.34.5)
+	"Strike of the Monarchs": {"k": "normal", "cond": "strike", "do": [["strike"]]},
+	"The First Monarch": {"k": "trap", "win": ["free"], "cond": "trap_mon_room", "do": [["trap_monster", 1000, 2400, 6, "DARK", "Fiend"], ["first_monarch"]]},
+	"The Monarchs Revolt": {"k": "normal", "cond": "revolt", "cost": "discard", "do": [["mark_once", "Revolt#1"], ["revolt"]]},
+	"Escalation of the Monarchs": {"k": "ctrap", "win": ["free"], "ai": "always"},
+	"March of the Monarchs": {"k": "cont", "march": true, "no_ed": true, "ai": "always"},
+	"Pantheism of the Monarchs": {"k": "normal", "cost": "discard_f", "cost_f": {"monarch_st": true, "monster": false}, "cond": "pantheism", "do": [["draw", 2]]},
+	"The Monarchs Awaken": {"k": "trap", "win": ["free"], "t": "own_face", "cond": "awaken", "do": [["awaken"]]},
+	"Tenacity of the Monarchs": {"k": "normal", "cond": "tenacity", "do": [["mark_once", "Tenacity of the Monarchs"], ["tenacity"]]},
+	"The Monarchs Erupt": {"k": "ctrap", "win": ["free"], "cond": "erupt", "erupt": true, "ai": "always"},
+	"The Prime Monarch": {"k": "ctrap", "win": ["free"], "ai": "always"},
+	"Monarchic Perfection": {"k": "ctrap", "win": ["free"], "ai": "always"},
+	"Return of the Monarchs": {"k": "cont", "no_ed": true, "return_m": true, "ai": "always"},
+	"The Monarchs Masterplan": {"k": "normal", "cond": "masterplan", "do": [["masterplan_send"]]},
+	"The Monarchs Stormforth": {"k": "normal", "cond": "stormforth", "do": [["stormforth"]]},
+	"Domain of the True Monarchs": {"k": "field", "domain": true},
+	"Restoration of the Monarchs": {"k": "equip", "cond": "restoration", "do": [["mark_once", "Restoration of the Monarchs"], ["revive", "own_gy", "def", "link", {"atk_in": [2400, 2800], "def_eq": 1000}, "negate"], ["restoration"]]},
+	"Frost Blast of the Monarchs": {"k": "normal", "cond": "frost", "do": [["frost"]]},
 	# ---------------------------------------------------------------- Light and Darkness (0.34.4.5)
 	"Light and Darkness Ritual": {"k": "ritual", "rit": {"names": ["Magician of Dark Chaos - Black Chaos", "Black Luster Soldier - Soldier of Light and Darkness"], "gy_banish": {}}, "do": [["ritual"]]},
 	"Mind Shuffle": {"k": "ctrap", "win": ["free"], "ai": "always"},
@@ -958,6 +976,40 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			if int(s.players[p].once_names.get("killed_def", -1)) != s.turn:
 				return false
 			return not s.players[p].monsters().filter(func(m): return m.face_up and m.level() == 8 and m.frame() != "xyz").is_empty()
+		"trap_mon_room":
+			return s.players[p].free_zone() != -1
+		"strike":
+			var pst := s.players[p]
+			var lv5: Array = pst.monsters().filter(func(m): return m.face_up and m.level() >= 5 and m.tags.get("ns", false) and s.can_tribute_fx(m))
+			var ups: bool = not (s.players[0].monsters() + s.players[1].monsters() + _all_st_of(s, 0) + _all_st_of(s, 1)).filter(func(x): return x.face_up).is_empty()
+			return not lv5.is_empty() and ups
+		"revolt":
+			var prv := s.players[p]
+			return int(prv.once_names.get("Revolt#1", -1)) != s.turn and prv.hand.size() >= 2 and EffectRunner._revolt_pool(prv.deck).size() >= 3
+		"pantheism":
+			return s.players[p].deck.size() >= 2 and not s.players[p].hand.filter(func(h): return EffectRunner.is_monarch_st(h)).is_empty()
+		"awaken":
+			return s.players[p].extra.is_empty() and not s.players[p].monsters().filter(func(m): return m.face_up and DuelState.is_ts(m)).is_empty()
+		"tenacity":
+			var pte := s.players[p]
+			return int(pte.once_names.get("Tenacity of the Monarchs", -1)) != s.turn and not pte.hand.filter(func(h): return h.is_monster() and int(h.data.get("def", -1)) == 1000 and int(h.data.get("atk", -1)) in [2400, 2800]).is_empty() \
+					and not pte.deck.filter(func(x): return EffectRunner.is_monarch_st(x) and x.cname() != "Tenacity of the Monarchs").is_empty()
+		"erupt":
+			return s.players[p].extra.is_empty() and not s.players[p].monsters().filter(func(m): return DuelState.is_ts(m)).is_empty()
+		"masterplan":
+			return not s.players[p].deck.filter(func(x): return EffectRunner.is_monarch_st(x) and x.cname() != "The Monarchs Masterplan").is_empty()
+		"stormforth":
+			return int(s.players[p].once_names.get("#stormforth", -1)) != s.turn
+		"restoration":
+			return int(s.players[p].once_names.get("Restoration of the Monarchs", -1)) != s.turn and s.players[p].free_zone() != -1 \
+					and not s.players[p].gy.filter(func(g): return g.is_monster() and int(g.data.get("def", -1)) == 1000 and int(g.data.get("atk", -1)) in [2400, 2800] and s.can_revive(g)).is_empty()
+		"frost":
+			var pfr := s.players[p]
+			var any_set := false
+			for q in 2:
+				if not s.players[q].set_cards().is_empty():
+					any_set = true
+			return any_set and not pfr.monsters().filter(func(m): return m.face_up and m.def() == 1000 and m.atk() >= 2400).is_empty()
 		"synth_once":
 			return int(s.players[p].once_names.get("Super Soldier Synthesis", -1)) != s.turn
 		"rebirth":
@@ -2756,6 +2808,85 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			ps.once_names[str(a[1])] = s.turn
 		"gem_fusion":
 			events.append_array(EffectRunner.gem_fusion(s, p, c, str(a[1])))
+		"first_monarch":
+			# The First Monarch, Summoned this way: discard 1 card and declare an Attribute.
+			if not ps.field.has(c) or ps.hand.is_empty():
+				return events
+			var hd_f: Array = ps.hand.duplicate()
+			hd_f.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			if s.choose_option(p, Loc.t("%s: discard 1 card to declare an Attribute?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) != 0:
+				return events
+			var th_f = s.pick1(p, Loc.t("%s: discard which card?") % name, hd_f, hd_f[0], c)
+			ps.hand.erase(th_f)
+			th_f.set_meta("from_hand", true)
+			s._to_gy(ps, th_f)
+			events.append({"type": "discard", "player": p, "card": th_f})
+			var want_a := 1
+			for h in ps.hand:
+				if h.is_monster() and h.level() >= 7:
+					want_a = maxi(0, ATTRS.find(str(h.data.get("attribute", "DARK"))))
+					break
+			var k_a := s.choose_option(p, Loc.t("%s: declare which Attribute?") % name, ATTRS.slice(0, 6), want_a, c)
+			var at: String = ATTRS[k_a]
+			var md: Dictionary = (c.data as Dictionary).duplicate()
+			md["attribute"] = at
+			c.data = md
+			c.tags["dt_attr"] = at
+			ps.once_names["#ss_attr_only"] = s.turn
+			ps.once_names["#ss_attr"] = at
+			events.append(_ev(p, c, Loc.t("%s is %s: it counts as 2 Tributes for a %s monster") % [name, at, at]))
+		"strike":
+			var lv5_s: Array = ps.monsters().filter(func(m): return m.face_up and m.level() >= 5 and m.tags.get("ns", false) and s.can_tribute_fx(m))
+			lv5_s.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			var tr_s = s.pick1(p, Loc.t("%s: Tribute which monster?") % name, lv5_s, lv5_s[0], c)
+			ps.field[ps.field.find(tr_s)] = null
+			s._to_gy(ps, tr_s)
+			events.append({"type": "tribute", "player": p, "card": tr_s})
+			events.append_array(EffectRunner.trigger(s, tr_s, "tributed"))
+			events.append_array(s._monster_left(tr_s))
+			var ups_s: Array = (opp.monsters() + _all_st_of(s, opp_i) + ps.monsters() + _all_st_of(s, p)).filter(func(x): return x.face_up and x != c)
+			if not ups_s.is_empty():
+				ups_s.sort_custom(func(x, y): return (1 if x.owner == opp_i else 0) * 10000 + s._card_value(x) > (1 if y.owner == opp_i else 0) * 10000 + s._card_value(y))
+				var t_s = s.pick1(p, Loc.t("%s: negate which card?") % name, ups_s, ups_s[0], c)
+				t_s.negated_turn = s.turn
+				t_s.negated = true
+				events.append(_ev(p, t_s, Loc.t("%s's effects are negated this turn") % t_s.cname()))
+			events.append_array(s._draw(p, 1))
+		"revolt":
+			events.append_array(EffectRunner.revolt(s, p, c))
+		"awaken":
+			var t_aw = ctx.get("target")
+			if t_aw != null and ps.field.has(t_aw):
+				t_aw.neg_perm = true
+				t_aw.negated = true
+				t_aw.set_meta("awaken", c)
+				events.append(_ev(p, t_aw, Loc.t("%s: its effects are negated, and only this card can affect it") % t_aw.cname()))
+		"tenacity":
+			var mst: Array = ps.deck.filter(func(x): return EffectRunner.is_monarch_st(x) and x.cname() != "Tenacity of the Monarchs")
+			var shown_t: Array = ps.hand.filter(func(h): return h.is_monster() and int(h.data.get("def", -1)) == 1000 and int(h.data.get("atk", -1)) in [2400, 2800])
+			events.append(_ev(p, shown_t[0], Loc.t("%s is revealed") % shown_t[0].cname()))
+			events.append_array(EffectRunner._to_hand(s, p, s.pick1(p, Loc.t("%s: add which card?") % name, mst, mst[0], c)))
+		"masterplan_send":
+			var ms: Array = ps.deck.filter(func(x): return EffectRunner.is_monarch_st(x) and x.cname() != "The Monarchs Masterplan")
+			var t_m = s.pick1(p, Loc.t("%s: send which card to the GY?") % name, ms, ms[0], c)
+			ps.deck.erase(t_m)
+			s._to_gy(ps, t_m)
+			s._shuffle(ps.deck)
+			events.append({"type": "mill", "player": p, "card": t_m, "deck": ps.deck.size()})
+			events.append_array(s.deck_sent(p, [t_m], c))
+		"stormforth":
+			ps.once_names["#stormforth"] = s.turn
+			ps.once_names["#no_ed"] = s.turn
+			events.append(_ev(p, c, Loc.t("%s: this turn, 1 Tribute for a Tribute Summon can be a monster your opponent controls") % name))
+		"restoration":
+			if c.linked != null:
+				c.linked.tags["dt_any"] = true
+		"frost":
+			var sets_f: Array = opp.set_cards() + ps.set_cards().filter(func(x): return x != c)
+			sets_f.sort_custom(func(x, y): return (1 if x.owner == opp_i else 0) > (1 if y.owner == opp_i else 0))
+			if not sets_f.is_empty():
+				var t_fr = s.pick1(p, Loc.t("%s: destroy which Set card?") % name, sets_f, sets_f[0], c)
+				events.append_array(s._destroy(t_fr) if t_fr.is_monster() and s.players[t_fr.owner].field.has(t_fr) else s._destroy_st(t_fr))
 		"mystic_box":
 			# Chaos Mystic Box: return 1 targeted card to the hand, destroy 1 card on the field, then a Light and Darkness monster from your hand.
 			var subj_b = ctx.get("subject")
@@ -4264,6 +4395,15 @@ static func _up(s: DuelState, q: int) -> Array:
 
 
 static func atk_bonus(s: DuelState, c, attacking: bool, vs) -> int:
+	var dom := 0
+	if attacking and vs != null and DuelState.is_ts(c) and s.players[c.owner].field.has(c):
+		var fs = s.players[c.owner].field_spell
+		if fs != null and fs.face_up and spec(fs).get("domain", false) and not blocked(s, fs):
+			dom = 800   # Domain of the True Monarchs: "If a Tribute Summoned monster you control attacks an opponent's monster, it gains 800 ATK during damage calculation only."
+	return dom + _atk_bonus0(s, c, attacking, vs)
+
+
+static func _atk_bonus0(s: DuelState, c, attacking: bool, vs) -> int:
 	var b := 0
 	for q in 2:
 		for st in _up(s, q):

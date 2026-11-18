@@ -155,6 +155,7 @@ func _ready() -> void:
 		_test_gem_knight()
 		_test_chaos()
 		_test_light_darkness()
+		_test_monarchs()
 		await _test_album()
 		_test_save_slots()
 		_test_turbo_setup()
@@ -9956,6 +9957,91 @@ func _test_lightsworn() -> void:
 
 
 ## 0.34.2.5: the cards the families were missing, and the fixes to Aurkus, Minerva, Thunder Lord, Dark Golem and the Castle.
+func _test_monarchs() -> void:
+	# Mega Monarch: 1 Tribute Summoned monster is enough.
+	var s := _main_ready(7901)
+	s.players[0].hand.clear()
+	var zab := _in(s, 0, "Zaborg the Thunder Monarch", "hand")
+	var fod := _mon(s, 0, "Edea the Heavenly Squire", 0)
+	s.normal_summon(0, zab, [fod], false)
+	check(DuelState.is_ts(zab), "Zaborg: Tribute Summoned")
+	s.normal_summoned = false
+	var foe := _mon(s, 1, "Gaia The Fierce Knight", 0)
+	var zm := _in(s, 0, "Zaborg the Mega Monarch", "hand")
+	check(s.tributes_needed(zm) == 1, "Zaborg the Mega Monarch: 1 Tribute (%d)" % s.tributes_needed(zm))
+	s.normal_summon(0, zm, [zab], false)
+	s._cleanup()
+	check(s.players[0].field.has(zm) and not s.players[1].field.has(foe), "Zaborg the Mega Monarch: out, destroyed their monster")
+	# Thestalos: random discard, Level x 100.
+	s = _main_ready(7902)
+	s.players[0].hand.clear()
+	s.players[1].hand.clear()
+	_in(s, 1, "Gaia The Fierce Knight", "hand")
+	var th := _in(s, 0, "Thestalos the Firestorm Monarch", "hand")
+	var f2 := _mon(s, 0, "Edea the Heavenly Squire", 0)
+	var lp := s.players[1].lp
+	s.normal_summon(0, th, [f2], false)
+	s._cleanup()
+	check(s.players[1].lp == lp - 700 and s.players[1].hand.is_empty(), "Thestalos: discarded Gaia, 700 damage (%d)" % (lp - s.players[1].lp))
+	# The Monarchs Stormforth: Tribute their monster.
+	s = _main_ready(7903)
+	s.players[0].hand.clear()
+	var foe3 := _mon(s, 1, "Gaia The Fierce Knight", 0)
+	s.activate(0, _rst(s, 0, "The Monarchs Stormforth"))
+	var mob := _in(s, 0, "Mobius the Frost Monarch", "hand")
+	check(s.tributes_needed(mob) == 0, "Stormforth: their monster is the Tribute")
+	s.normal_summon(0, mob, [], false)
+	check(s.players[0].field.has(mob) and s.players[1].gy.has(foe3), "Stormforth: Gaia was Tributed")
+	# Return of the Monarchs: Tribute Summon, add another Monarch.
+	s = _main_ready(7904)
+	s.players[0].hand.clear()
+	var ret := _rst(s, 0, "Return of the Monarchs")
+	s.activate(0, ret)
+	_in(s, 0, "Caius the Shadow Monarch", "deck")
+	var gr := _in(s, 0, "Granmarg the Rock Monarch", "hand")
+	s.normal_summon(0, gr, [_mon(s, 0, "Edea the Heavenly Squire", 0)], false)
+	s._cleanup()
+	check(not s.players[0].hand.filter(func(h): return h.cname() == "Caius the Shadow Monarch").is_empty(), "Return of the Monarchs: Caius added")
+	# March of the Monarchs: no Extra Deck Special Summons, Tribute Summoned monsters stay.
+	s = _main_ready(7905)
+	s.activate(0, _rst(s, 0, "March of the Monarchs"))
+	var ex := _in(s, 0, "Gaia the Dragon Champion", "extra")
+	check(s.big_locked(0, ex, true), "March: no Extra Deck Special Summons")
+	# The First Monarch: a DARK Monarch with 1 Tribute.
+	s = _main_ready(7906)
+	s.players[0].hand.clear()
+	_in(s, 0, "Pot of Greed", "hand")
+	var fm := _rst(s, 0, "The First Monarch", "set")
+	s.chain_add(0, fm, null, "free", null)
+	s.chain_resolve()
+	check(s.players[0].field.has(fm), "The First Monarch: a monster")
+	var cai := _in(s, 0, "Caius the Mega Monarch", "hand")
+	if str(fm.tags.get("dt_attr", "")) == "DARK":
+		check(s.tributes_needed(cai) == 1, "The First Monarch: 2 Tributes for a DARK Monarch")
+	# Tessera: reveal a Monarch Spell, Special Summon it.
+	s = _main_ready(7907)
+	s.players[0].hand.clear()
+	var tes := _in(s, 0, "Tessera the Primal Squire", "hand")
+	_in(s, 0, "Tenacity of the Monarchs", "hand")
+	check(EffectRunner.can_special_hand(s, 0, tes), "Tessera: can come out")
+	s.special_from_hand(0, tes)
+	check(s.players[0].field.has(tes), "Tessera: Special Summoned")
+	# Mithra: itself and a Vassal Token for the opponent.
+	s = _main_ready(7908)
+	s.players[0].hand.clear()
+	var mi := _in(s, 0, "Mithra the Thunder Vassal", "hand")
+	s.special_from_hand(0, mi)
+	check(s.players[0].field.has(mi) and not s.players[1].monsters().filter(func(m): return m.cname() == "Vassal Token").is_empty(), "Mithra: a Vassal Token on their side")
+	# Domain: a Tribute Summoned monster attacking gains 800.
+	s = _main_ready(7909)
+	s.activate(0, _rst(s, 0, "Domain of the True Monarchs"))
+	var cs := _mon(s, 0, "Caius the Shadow Monarch", 0)
+	cs.tags["ns"] = true
+	cs.tags["tributes_n"] = 1
+	var f9 := _mon(s, 1, "Gaia The Fierce Knight", 0)
+	check(s.atk_of(cs, true, f9, true) == 3200, "Domain: 3200 attacking (%d)" % s.atk_of(cs, true, f9, true))
+
+
 func _test_light_darkness() -> void:
 	# Light and Darkness Ritual: GY monsters banished as material.
 	var s := _main_ready(7801)

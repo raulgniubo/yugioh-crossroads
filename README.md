@@ -5,6 +5,17 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.34.5
+
+**Monarchs: the whole family, 45 cards.** 42 of them are new, so the game now has **1,998 cards**, every one working and obtainable.
+
+- **The cards:** every Monarch (Caius, Zaborg, Mobius, Raiza, Thestalos, Granmarg, Kuraz, Delg, Angmarl, Eidos), the Mega Monarchs, Erebus, Ehther and Thestalos the Shadowfire Monarch, the Squires and Vassals, and all 17 Monarch Spells and Traps.
+- **New engine pieces:** Tribute Summons remember what they Tributed (Attribute, Level, a Tribute Summoned monster), Mega Monarchs need only 1 Tribute Summoned monster, Tributing your opponent's monsters (Stormforth, Shadowfire), extra Tribute Summons and Tribute Summons in your opponent's turn (Escalation, Ehther), "Tributed for a Tribute Summon" effects, "you cannot Special Summon from the Extra Deck" locks, Traps that become monsters and count as 2 Tributes (The First Monarch), and the Monarch field and continuous cards (Domain, March, Erupt, Awaken).
+- **Rule of the Monarchs:** a family pack (Family tab, opens in the GX era, sold at the Academy) and a 40-card theme deck with no Extra Deck, the way Monarchs like it.
+- **Duelist:** the Blue Dorm Senior at the Academy now duels with the Monarch deck.
+
+Not checked: played by the test duels (the Monarch deck won 5 of 8 against story decks), not watched.
+
 ## What is in 0.34.4.5
 
 **Chaos, part 2: the Light and Darkness Ritual cards.** 10 new cards, so the game now has **1,956 cards**, every one working and obtainable. The Chaos family is complete at 69 cards.

@@ -632,6 +632,50 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 		return not s.players[p].deck.filter(func(x): return x.cname() == "Ancient Gear Golem" or (not x.is_monster() and str(x.data.get("desc", "")).contains("Ancient Gear Golem"))).is_empty()
 	if cond == "ag_fusion_hand":
 		return not ag_plans(s, p, false).is_empty()
+	if cond == "tessera":
+		var pt := s.players[p]
+		return int(pt.once_names.get("Tessera#ss", -1)) != s.turn and not pt.hand.filter(func(h): return is_monarch_st(h)).is_empty()
+	if cond == "garum":
+		return int(s.players[p].once_names.get("Garum#ss", -1)) != s.turn and not s.players[p].monsters().filter(func(m): return DuelState.is_ts(m)).is_empty()
+	if cond == "mithra":
+		return int(s.players[p].once_names.get("Mithra#ss", -1)) != s.turn and s.players[s.opponent(p)].free_zone() != -1
+	if cond == "escher":
+		return SpellRules._all_st_of(s, s.opponent(p)).filter(func(x): return x.owner == s.opponent(p) and s.players[s.opponent(p)].spells.has(x)).size() >= 2
+	if cond == "lucius":
+		return int(s.players[p].once_names.get("Lucius#ss", -1)) != s.turn and s.can_banish(p) and not s.players[p].gy.filter(func(g): return g.is_monster() and g.level() >= 5 and not s.necro_holds(g)).is_empty()
+	if cond == "berlineth":
+		return int(s.players[p].once_names.get("Berlineth#ss", -1)) != s.turn and s.players[p].hand.size() >= 2
+	if cond == "landrobe":
+		return int(s.players[p].once_names.get("Landrobe#ss", -1)) != s.turn and not s.players[s.opponent(p)].monsters().filter(func(m): return m.face_up).is_empty()
+	if cond == "eidos_attr":
+		var pe := s.players[p]
+		return int(pe.once_names.get("Eidos#attr", -1)) != s.turn and not (pe.monsters() + s.players[s.opponent(p)].monsters()).filter(func(m): return m.face_up).is_empty()
+	if cond == "eidos_squire":
+		var pes := s.players[p]
+		return int(pes.once_names.get("EidosSquire#gy", -1)) != s.turn and s.can_banish(p) and pes.free_zone() != -1 and not s.ss_locked(p) \
+				and not pes.gy.filter(func(g): return g.cname() != "Eidos the Underworld Squire" and mstat(g, [800]) and s.can_revive(g)).is_empty()
+	if cond == "prime":
+		var pp := s.players[p]
+		return not pp.spells.filter(func(x): return x != null and x.face_up and x.cname() == "The Prime Monarch" and int(x.tags.get("pm_turn", -1)) != s.turn).is_empty() \
+				and pp.gy.filter(func(g): return is_monarch_st(g) and s.gy_targetable(g)).size() >= 2
+	if cond == "prime_gy":
+		var ppg := s.players[p]
+		return int(ppg.once_names.get("Prime#gy", -1)) != s.turn and ppg.free_zone() != -1 and s.can_banish(p) and not ppg.gy.filter(func(g): return is_monarch_st(g) and g.cname() != "The Prime Monarch").is_empty()
+	if cond == "strike_gy":
+		return s.can_banish(p)
+	if cond == "revolt_gy":
+		var prg := s.players[p]
+		return int(prg.once_names.get("Revolt#2", -1)) != s.turn and s.can_banish(p) and prg.free_zone() != -1 and not prg.hand.filter(func(h): return mstat(h, [800])).is_empty()
+	if cond == "pantheism_gy":
+		return int(s.players[p].once_names.get("Pantheism#gy", -1)) != s.turn and s.can_banish(p) and s.players[p].deck.filter(func(x): return is_monarch_st(x)).size() >= 3
+	if cond == "frost_gy":
+		var any_set := false
+		for q in 2:
+			if not s.players[q].set_cards().is_empty():
+				any_set = true
+		return any_set and s.can_banish(p) and s.players[p].gy.filter(func(g): return is_monarch_st(g) and g.cname() != "Frost Blast of the Monarchs").size() >= 1
+	if cond == "domain":
+		return int(s.players[p].once_names.get("Domain#lv", -1)) != s.turn and not s.players[p].hand.filter(func(h): return mstat(h, [2800])).is_empty()
 	if cond == "modc":
 		return int(s.players[p].once_names.get("MoDC#ban", -1)) != s.turn and s.can_banish(p) and not (s.players[s.opponent(p)].monsters() + SpellRules._all_st_of(s, s.opponent(p))).is_empty()
 	if cond == "black_chaos":
@@ -1145,6 +1189,9 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 			s._shuffle(ps.deck)
 			events.append({"type": "set_st", "player": p, "card": gkt[0], "zone": zt})
 			events.append({"type": "reveal", "player": p, "card": gkt[0], "zone": zt})
+		return events
+	if f.get("tessera", false) or f.get("garum", false) or f.get("mithra", false) or f.get("lucius", false) or f.get("berlineth", false) or f.get("landrobe", false):
+		events.append_array(_vassal_ss(s, p, c))
 		return events
 	if f.get("black_chaos", false):
 		# Black Chaos: shuffle 1 Spellcaster or Warrior Ritual Monster from your hand or GY into the Deck.
@@ -1762,6 +1809,32 @@ static func standby(s: DuelState, p: int) -> Array:
 static func end_phase(s: DuelState, p: int) -> Array:
 	var events := []
 	var pe := s.players[p]
+	for q in 2:
+		var pq := s.players[q]
+		for b in pq.banished.duplicate():
+			if int(b.tags.get("exile_eot", -1)) == s.turn:
+				# Berlineth: "banish 1 card from their hand until the End Phase"
+				b.tags.erase("exile_eot")
+				pq.banished.erase(b)
+				pq.hand.append(b)
+				events.append(_ev(q, b, Loc.t("%s returns to the hand") % b.cname()))
+		for m in pq.monsters():
+			if int(m.tags.get("ehther_back", -1)) == s.turn:
+				# Ehther: "but return it to the hand during the End Phase"
+				m.tags.erase("ehther_back")
+				events.append_array(s._bounce(m))
+		for m in pq.monsters():
+			if m.has_meta("attr_turn") and int(m.get_meta("attr_turn")) == s.turn:
+				var md: Dictionary = (m.data as Dictionary).duplicate()
+				md["attribute"] = str(m.get_meta("attr_before"))
+				m.data = md
+				m.remove_meta("attr_turn")
+				m.remove_meta("attr_before")
+	# The Monarchs Erupt: "During your End Phase, if you control no Tribute Summoned monsters, send this card to the GY."
+	if pe.monsters().filter(func(m): return DuelState.is_ts(m)).is_empty():
+		for st in pe.spells.duplicate():
+			if st != null and st.face_up and SpellRules.spec(st).get("erupt", false):
+				events.append_array(s.send_st(st))
 	for b in pe.banished.duplicate():
 		if b.tags.get("exile_back", false):
 			# "...banish 1 random card from your opponent's hand face-down, until your opponent's End Phase"
@@ -2359,6 +2432,256 @@ static func ag_duel_plans(s: DuelState, p: int) -> Array:
 	return out
 
 
+## Could player p Tribute Summon this monster from the hand right now (Escalation, Ehther)?
+static func _quick_ts_ok(s: DuelState, p: int, h) -> bool:
+	var ps := s.players[p]
+	ps.once_names["#quick_ts"] = s.turn
+	var ok: bool = s.can_normal_summon(p, h) and s.tributes_needed(h) > 0
+	ps.once_names.erase("#quick_ts")
+	return ok
+
+
+## Monarchic Perfection: which of its 6 effects can still be used this turn.
+static func _perfection_modes(s: DuelState, p: int) -> Array:
+	var ps := s.players[p]
+	var opp_i := s.opponent(p)
+	var mons: Array = s.players[0].monsters() + s.players[1].monsters()
+	var sts: Array = SpellRules._all_st_of(s, 0) + SpellRules._all_st_of(s, 1)
+	var downs: Array = (mons + sts).filter(func(x): return not x.face_up)
+	var out: Array = []
+	var ok := [not mons.is_empty(), not sts.is_empty(), not s.players[opp_i].hand.is_empty(), not downs.is_empty(), not (mons + sts).is_empty(), not (mons + sts).is_empty() and s.can_banish(p)]
+	for i in 6:
+		if ok[i] and int(ps.once_names.get("Perfection#%d" % i, -1)) != s.turn:
+			out.append(i)
+	return out
+
+
+static func _perfection(s: DuelState, p: int, c) -> Array:
+	var ps := s.players[p]
+	var opp_i := s.opponent(p)
+	var opp := s.players[opp_i]
+	var events := []
+	var modes: Array = _perfection_modes(s, p)
+	if modes.is_empty():
+		return events
+	var labels: Array = [Loc.t("Destroy 1 monster"), Loc.t("Destroy up to 2 Spells/Traps"), Loc.t("Discard 1 random card from their hand"), Loc.t("Destroy 1 face-down card"), Loc.t("Put 1 card on top of the Deck"), Loc.t("Banish 1 card")]
+	var shown: Array = modes.map(func(i): return labels[i])
+	var k: int = modes[s.choose_option(p, Loc.t("%s: which effect?") % c.cname(), shown, 0, c)]
+	ps.once_names["Perfection#%d" % k] = s.turn
+	var all_c: Array = opp.monsters() + SpellRules._all_st_of(s, opp_i) + ps.monsters() + SpellRules._all_st_of(s, p).filter(func(x): return x != c)
+	all_c.sort_custom(func(x, y): return (1 if x.owner == opp_i else 0) * 10000 + s._card_value(x) > (1 if y.owner == opp_i else 0) * 10000 + s._card_value(y))
+	match k:
+		0:
+			var mons: Array = all_c.filter(func(x): return x.is_monster() and (s.players[x.owner].field.has(x)))
+			events.append_array(s._destroy(s.pick1(p, Loc.t("%s: destroy which monster?") % c.cname(), mons, mons[0], c)))
+		1:
+			var sts: Array = all_c.filter(func(x): return not (s.players[0].field.has(x) or s.players[1].field.has(x)))
+			for t in s.choose(p, Loc.t("%s: destroy up to 2 Spells/Traps") % c.cname(), sts, mini(2, sts.size()), sts.slice(0, 2), true, c):
+				events.append_array(s._destroy_st(t))
+		2:
+			var x = opp.hand[s._rng.randi() % opp.hand.size()]
+			opp.hand.erase(x)
+			x.set_meta("from_hand", true)
+			s._to_gy(opp, x)
+			events.append({"type": "discard", "player": opp_i, "card": x})
+		3:
+			var downs: Array = all_c.filter(func(x): return not x.face_up)
+			var t3 = s.pick1(p, Loc.t("%s: destroy which face-down card?") % c.cname(), downs, downs[0], c)
+			events.append_array(s._destroy(t3) if t3.is_monster() and s.players[t3.owner].field.has(t3) else s._destroy_st(t3))
+		4:
+			events.append_array(_to_deck_top(s, s.pick1(p, Loc.t("%s: put which card on top of the Deck?") % c.cname(), all_c, all_c[0], c)))
+		5:
+			events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which card?") % c.cname(), all_c, all_c[0], c)))
+	return events
+
+
+## Put a card on top of its owner's Deck (Raiza).
+static func _to_deck_top(s: DuelState, x) -> Array:
+	var events := []
+	var q: int = x.owner if x.orig_owner == -1 else x.orig_owner
+	var pq := s.players[q]
+	for side in 2:
+		var sp := s.players[side]
+		if sp.field.has(x):
+			sp.field[sp.field.find(x)] = null
+			events.append_array(s._monster_left(x))
+		elif sp.spells.has(x):
+			sp.spells[sp.spells.find(x)] = null
+			events.append_array(SpellRules.left_field(s, x))
+		elif sp.field_spell == x:
+			sp.field_spell = null
+		sp.gy.erase(x)
+	if x.is_token():
+		return events
+	x.face_up = true
+	x.owner = q
+	x.orig_owner = -1
+	if CardData.is_extra(x.id):
+		pq.extra.append(x)
+	else:
+		pq.deck.append(x)
+	events.append({"type": "gy_to_deck", "player": q, "card": x, "deck": pq.deck.size()})
+	return events
+
+
+## The Squires' and Vassals' own Special Summons from the hand.
+static func _vassal_ss(s: DuelState, p: int, c) -> Array:
+	var ps := s.players[p]
+	var opp_i := s.opponent(p)
+	var opp := s.players[opp_i]
+	var f := fx(c)
+	var events := []
+	var target_l = null
+	if f.get("tessera", false):
+		ps.once_names["Tessera#ss"] = s.turn
+		var mh: Array = ps.hand.filter(func(h): return is_monarch_st(h))
+		events.append(_ev(p, mh[0], Loc.t("%s is revealed") % mh[0].cname()))
+	else:
+		ps.once_names["#no_ed"] = s.turn
+	if f.get("garum", false):
+		ps.once_names["Garum#ss"] = s.turn
+		var ts: Array = ps.monsters().filter(func(m): return DuelState.is_ts(m))
+		events.append_array(s._bounce(s.pick1(p, Loc.t("%s: return which monster to the hand?") % c.cname(), ts, ts[0], c)))
+	if f.get("mithra", false):
+		ps.once_names["Mithra#ss"] = s.turn
+	if f.get("lucius", false):
+		ps.once_names["Lucius#ss"] = s.turn
+		var big: Array = ps.gy.filter(func(g): return g.is_monster() and g.level() >= 5 and not s.necro_holds(g))
+		big.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+		events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which monster?") % c.cname(), big, big[0], c)))
+	if f.get("berlineth", false):
+		ps.once_names["Berlineth#ss"] = s.turn
+		var hd: Array = ps.hand.filter(func(h): return h != c)
+		hd.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+		var th = s.pick1(p, Loc.t("%s: discard which card?") % c.cname(), hd, hd[0], c)
+		ps.hand.erase(th)
+		th.set_meta("from_hand", true)
+		s._to_gy(ps, th)
+		events.append({"type": "discard", "player": p, "card": th})
+	if f.get("landrobe", false):
+		ps.once_names["Landrobe#ss"] = s.turn
+		var ups: Array = opp.monsters().filter(func(m): return m.face_up and can_target(c, m))
+		ups.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+		if not ups.is_empty():
+			target_l = s.pick1(p, Loc.t("%s: which monster goes face-down?") % c.cname(), ups, ups[0], c)
+	ps.hand.erase(c)
+	events.append_array(s._special(p, c, "effect"))
+	if f.get("mithra", false) and opp.free_zone() != -1:
+		CardData.TOKENS[22404676] = {"name": "Vassal Token", "frame": "token", "atk": 800, "def": 1000, "level": 1, "attribute": "LIGHT", "race": "Thunder",
+				"desc": Loc.t("Special Summoned with the effect of \"Mithra the Thunder Vassal\".")}
+		events.append_array(s._special(opp_i, s._make(22404676, opp_i), "effect", "def"))
+	if target_l != null and opp.field.has(target_l):
+		target_l.face_up = false
+		target_l.attack_pos = false
+		events.append({"type": "position", "player": opp_i, "card": target_l, "zone": opp.field.find(target_l)})
+	if f.get("tessera", false) and s._in_main() and s.current == p and s.choose_option(p, Loc.t("%s: Tribute Summon 1 monster right away?") % c.cname(), [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+		events.append_array(quick_tribute_summon(s, p, c, func(h): return true))
+	return events
+
+
+## "Monarch" Spells/Traps.
+static func is_monarch_st(x) -> bool:
+	return x != null and not x.is_monster() and x.cname().contains("Monarch")
+
+
+## The Monarchs' numbers: original ATK in atks and 1000 DEF.
+static func mstat(x, atks: Array) -> bool:
+	return x != null and x.is_monster() and int(x.data.get("def", -1)) == 1000 and int(x.data.get("atk", -1)) in atks
+
+
+## 2400 or more ATK and 1000 DEF.
+static func mstat_big(x) -> bool:
+	return x != null and x.is_monster() and int(x.data.get("def", -1)) == 1000 and int(x.data.get("atk", -1)) >= 2400
+
+
+static func _revolt_pool(deck: Array) -> Array:
+	return deck.filter(func(x): return x.is_monster() and int(x.data.get("def", -1)) == 1000 and (int(x.data.get("atk", -1)) >= 2400 or int(x.data.get("atk", -1)) == 800))
+
+
+## Tribute Summon a monster right now, outside the usual one Normal Summon (Escalation, Ehther, Tessera, Masterplan).
+static func quick_tribute_summon(s: DuelState, p: int, c, pred: Callable, need_tribute := true) -> Array:
+	var ps := s.players[p]
+	var events := []
+	var was_ns := s.normal_summoned
+	var was_x := ps.extra_normals
+	ps.once_names["#quick_ts"] = s.turn
+	var can_t: Array = ps.hand.filter(func(h): return h.is_monster() and pred.call(h) and s.can_normal_summon(p, h) and (not need_tribute or s.tributes_needed(h) > 0))
+	if not can_t.is_empty():
+		var t_t = s.pick1(p, Loc.t("%s: Tribute Summon which monster?") % c.cname(), can_t, s._best_monsters(can_t, 1)[0], c)
+		var need_t := s.tributes_needed(t_t)
+		var fod_t: Array = s.tributable(p)
+		fod_t.sort_custom(func(x, y): return (1 if DuelState.is_ts(x) else 0) * -100000 + s.atk_of(x, false) < (1 if DuelState.is_ts(y) else 0) * -100000 + s.atk_of(y, false))
+		var tribs_t: Array = s.choose(p, Loc.t("%s: Tribute %d monster(s)") % [c.cname(), need_t], fod_t, need_t, fod_t.slice(0, need_t), false, c) if need_t > 0 else []
+		events.append_array(s.normal_summon(p, t_t, tribs_t))
+	ps.once_names.erase("#quick_ts")
+	s.normal_summoned = was_ns
+	ps.extra_normals = was_x
+	return events
+
+
+## The Monarchs Revolt: reveal 3, the opponent picks 1 for your hand, the rest go to the GY; no Extra Deck Special Summons this turn.
+static func revolt(s: DuelState, p: int, c) -> Array:
+	var ps := s.players[p]
+	var events := []
+	var pool: Array = _revolt_pool(ps.deck)
+	pool.sort_custom(func(x, y): return x.atk() > y.atk())
+	var shown: Array = s.choose(p, Loc.t("%s: reveal 3 monsters") % c.cname(), pool, 3, pool.slice(0, 3), false, c)
+	var weakest = shown[0]
+	for x in shown:
+		if x.atk() < weakest.atk():
+			weakest = x
+	var picked = s.pick1(s.opponent(p), Loc.t("%s: which one does your opponent add?") % c.cname(), shown, weakest, c)
+	var sent: Array = []
+	for x in shown:
+		ps.deck.erase(x)
+		if x == picked:
+			ps.hand.append(x)
+			events.append({"type": "search", "player": p, "card": x, "deck": ps.deck.size()})
+		else:
+			s._to_gy(ps, x)
+			sent.append(x)
+			events.append({"type": "mill", "player": p, "card": x, "deck": ps.deck.size()})
+	s._shuffle(ps.deck)
+	events.append_array(s.deck_sent(p, sent, c))
+	ps.once_names["#no_ed"] = s.turn
+	return events
+
+
+## A Tribute Summon just happened: the monster's own "If this card is Tribute Summoned", Return of the Monarchs, Eidos in the GY.
+static func on_tribute_summon(s: DuelState, p: int, c) -> Array:
+	var ps := s.players[p]
+	var events := []
+	if c.face_up and fx(c).has("ts") and ps.field.has(c):
+		events.append_array(run_list(s, p, c, fx(c)["ts"], {}))
+	# Return of the Monarchs: "When you Tribute Summon a monster: add 1 monster with 2400 (or 2800) ATK and 1000 DEF with a different name."
+	for st in ps.spells:
+		if st != null and st.face_up and SpellRules.spec(st).get("return_m", false) and not SpellRules.blocked(s, st) and int(ps.once_names.get("Return of the Monarchs", -1)) != s.turn and ps.field.has(c) and c.face_up:
+			var pool_r: Array = ps.deck.filter(func(x): return mstat(x, [2400, 2800]) and x.cname() != c.cname())
+			if not pool_r.is_empty() and s.choose_option(p, Loc.t("%s: add a monster from your Deck?") % st.cname(), [Loc.t("Yes"), Loc.t("No")], 0, st) == 0:
+				ps.once_names["Return of the Monarchs"] = s.turn
+				events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which monster?") % st.cname(), pool_r, s._best_monsters(pool_r, 1)[0], st)))
+			break
+	# Eidos the Underworld Monarch: "If you Tribute Summon a monster with 2400 or more ATK and 1000 DEF, while this card is in your GY: add it to your hand or Special Summon it."
+	if mstat_big(c):
+		for g in ps.gy.duplicate():
+			if g.cname() == "Eidos the Underworld Monarch" and int(ps.once_names.get("Eidos#gy", -1)) != s.turn and not s.necro_holds(g) and not s.mon_fx_locked(p):
+				var opts: Array = [Loc.t("Add it to your hand"), Loc.t("No")]
+				if ps.free_zone() != -1 and s.can_revive(g):
+					opts.insert(1, Loc.t("Special Summon it"))
+				var k := s.choose_option(p, Loc.t("%s: come back from the GY?") % g.cname(), opts, 0, g)
+				if opts[k] == Loc.t("No"):
+					break
+				ps.once_names["Eidos#gy"] = s.turn
+				if opts[k] == Loc.t("Special Summon it"):
+					ps.gy.erase(g)
+					events.append_array(s._special(p, g, "reborn"))
+					events.append_array(on_summon(s, p, g, "special"))
+				else:
+					events.append_array(_to_hand(s, p, g))
+				break
+	return events
+
+
 ## "Black Luster Soldier" monsters (Super Soldier Soul while it is named that).
 static func is_bls(x) -> bool:
 	return x != null and x.is_monster() and x.cname().contains("Black Luster Soldier")
@@ -2482,7 +2805,7 @@ static func can_ignite(s: DuelState, p: int, c) -> bool:
 	if int(s.players[p].name_lock.get(c.cname(), -1)) == s.turn:
 		return false
 	# (A face-up Spell with an effect you use from the field, like Infernity Launcher, says "st".)
-	var here_i: bool = s.players[p].field.has(c) or (ig.get("st", false) and s.players[p].spells.has(c) and not SpellRules.blocked(s, c))
+	var here_i: bool = s.players[p].field.has(c) or (ig.get("st", false) and (s.players[p].spells.has(c) or s.players[p].field_spell == c) and not SpellRules.blocked(s, c))
 	if not here_i or not c.face_up or (c.ignite_turn == s.turn and not ig.get("repeat", false)):
 		return false
 	if ig.has("cond") and not _cond(s, p, str(ig["cond"])):
@@ -3140,6 +3463,28 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 			if s.chain.back()["card"].is_monster() or lsw_fodder(s, p).is_empty():
 				return false
 			return not _all_st(s).filter(func(x): return x.face_up).is_empty()
+		"erebus_gy":
+			# Erebus: either player's Main Phase, in your GY.
+			return ps.gy.has(c) and not s.necro_holds(c) and s._in_main() and int(ps.once_names.get("Erebus#gy", -1)) != s.turn and window in ["phase", "summon", "chain"] \
+					and not ps.hand.filter(func(h): return is_monarch_st(h)).is_empty() and not ps.gy.filter(func(g): return mstat_big(g) and s.gy_targetable(g)).is_empty()
+		"ehther":
+			# Ehther, in your hand, in your opponent's Main Phase.
+			return ps.hand.has(c) and s.current != p and s._in_main() and window in ["phase", "summon", "chain"] and s.can_banish(p) \
+					and not ps.gy.filter(func(g): return is_monarch_st(g) and not s.necro_holds(g)).is_empty() and _quick_ts_ok(s, p, c)
+		"escalation":
+			# Escalation of the Monarchs: once per turn, in your opponent's Main Phase or Battle Phase.
+			if not ps.spells.has(c) or not c.face_up or SpellRules.blocked(s, c) or s.current == p or int(ps.once_names.get("Escalation#q", -1)) == s.turn:
+				return false
+			if not (s._in_main() or s.phase == DuelState.Phase.BATTLE) or not window in ["phase", "summon", "chain", "attack", "battle_start"]:
+				return false
+			return not ps.hand.filter(func(h): return h.is_monster() and _quick_ts_ok(s, p, h)).is_empty()
+		"perfection":
+			# Monarchic Perfection: once per Chain, when your opponent Special Summons, while you control a Tribute Summoned monster.
+			if not ps.spells.has(c) or not c.face_up or SpellRules.blocked(s, c) or window != "summon" or _subject == null or _subject is Dictionary or _subject.owner == p or not _subject.tags.get("ss", false):
+				return false
+			if ps.monsters().filter(func(m): return DuelState.is_ts(m)).is_empty() or ps.gy.filter(func(g): return is_monarch_st(g) and not s.necro_holds(g)).is_empty() or not s.can_banish(p):
+				return false
+			return not _perfection_modes(s, p).is_empty()
 		"griffoh":
 			return ps.hand.has(c) and int(ps.once_names.get("Griffoh#q", -1)) != s.turn and window in ["attack", "damage", "battle_start", "chain", "phase", "summon"]
 		"mind_shuffle":
@@ -3472,8 +3817,31 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 			events.append_array(run_list(s, p, c, [["bounce_own_other_card"], ["self_atk_turn", 500]], {}))
 		"mdd":
 			events.append_array(run_list(s, p, c, [["mdd"]], {}))
-		"griffoh":
-			ps.once_names["Griffoh#q"] = s.turn
+		"erebus_gy":
+			ps.once_names["Erebus#gy"] = s.turn
+			var mh: Array = ps.hand.filter(func(h): return is_monarch_st(h))
+			mh.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			var th_e = s.pick1(p, Loc.t("%s: discard which card?") % c.cname(), mh, mh[0], c)
+			ps.hand.erase(th_e)
+			th_e.set_meta("from_hand", true)
+			s._to_gy(ps, th_e)
+			events.append({"type": "discard", "player": p, "card": th_e})
+			var bg: Array = ps.gy.filter(func(g): return mstat_big(g) and s.gy_targetable(g))
+			events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which monster?") % c.cname(), bg, s._best_monsters(bg, 1)[0], c)))
+		"ehther":
+			var gm: Array = ps.gy.filter(func(g): return is_monarch_st(g) and not s.necro_holds(g))
+			gm.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which card?") % c.cname(), gm, gm[0], c)))
+			events.append_array(quick_tribute_summon(s, p, c, func(h): return h == c))
+		"escalation":
+			ps.once_names["Escalation#q"] = s.turn
+			events.append_array(quick_tribute_summon(s, p, c, func(h): return _quick_ts_ok(s, p, h)))
+		"perfection":
+			ps.once_names["Perfection#chain"] = s.turn
+			var gm_p: Array = ps.gy.filter(func(g): return is_monarch_st(g) and not s.necro_holds(g))
+			gm_p.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which card?") % c.cname(), gm_p, gm_p[0], c)))
+			events.append_array(_perfection(s, p, c))
 			ps.hand.erase(c)
 			c.set_meta("from_hand", true)
 			s._to_gy(ps, c)
@@ -4098,7 +4466,7 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 			var pa_ec: Dictionary = s.pending_attack
 			return not pa_ec.is_empty() and int(pa_ec["player"]) == p and pa_ec.get("target") != null and (is_bls(pa_ec["attacker"]) or is_gaia(pa_ec["attacker"])) \
 					and s.atk_of(pa_ec["attacker"], true) <= s.atk_of(pa_ec["target"], false) + 1000
-		"soldier_gaia", "magia", "moch", "illusion", "heart_gaia", "chaos_hunter", "mind_shuffle":
+		"soldier_gaia", "magia", "moch", "illusion", "heart_gaia", "chaos_hunter", "mind_shuffle", "erebus_gy", "ehther", "escalation", "perfection":
 			return true
 		"griffoh":
 			return hit and dmg >= 1500
@@ -4322,6 +4690,8 @@ static func can_target(src, m) -> bool:
 		return false   # Lord of D. is up and this is a Dragon / "Neither player can target this card with card effects" (Obelisk)
 	if src != null and m != null and m is DuelState.CardInst and current_state != null and src.owner != m.owner and current_state.fortress_shields(m):
 		return false   # Ancient Gear Fortress
+	if src != null and m != null and m is DuelState.CardInst and current_state != null and current_state.march_guard(m):
+		return false   # March of the Monarchs: "neither player can target them with card effects"
 	if src != null and m != null and m is DuelState.CardInst and src.owner != m.owner and m.face_up and not m.negated and fx(m).get("untargetable_opp", false):
 		return false   # Blue-Eyes Chaos Dragon: "Your opponent cannot target this card with card effects"
 	if src != null and m != null and m is DuelState.CardInst and current_state != null and src.owner != m.owner and m.face_up and str(m.data.get("attribute", "")) in ["LIGHT", "DARK"] \
@@ -7261,6 +7631,409 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				events.append(_ev(p, c, Loc.t("%s banishes from the Graveyard") % name))
 			for g in picks:
 				events.append_array(s._banish(g))
+		"mon_st":
+			# Mobius: destroy up to N Spells/Traps on the field.
+			var sts: Array = SpellRules._all_st_of(s, opp_i) + SpellRules._all_st_of(s, p)
+			if opp.field_spell != null:
+				sts.append(opp.field_spell)
+			sts.sort_custom(func(x, y): return (1 if x.owner == opp_i else 0) > (1 if y.owner == opp_i else 0))
+			var foes_m: Array = sts.filter(func(x): return x.owner == opp_i)
+			if not sts.is_empty():
+				for t_m in s.choose(p, Loc.t("%s: destroy up to %d Spells/Traps") % [name, int(a[1])], sts, mini(int(a[1]), foes_m.size()), foes_m.slice(0, int(a[1])), true, c):
+					events.append_array(s._destroy_st(t_m))
+		"mega_granmarg":
+			var sets_g: Array = opp.set_cards() + ps.set_cards()
+			var foes_g: Array = opp.set_cards()
+			for t_g in s.choose(p, Loc.t("%s: destroy up to 2 Set cards") % name, sets_g, mini(2, foes_g.size()), foes_g.slice(0, 2), true, c):
+				events.append_array(s._destroy(t_g) if t_g.is_monster() and s.players[t_g.owner].field.has(t_g) else s._destroy_st(t_g))
+			if "EARTH" in (c.tags.get("trib_attrs", []) as Array):
+				events.append_array(s._draw(p, 1))
+		"erebus", "ehther":
+			# Send 2 "Monarch" Spells/Traps with different names from your hand/Deck to the GY, and if you do...
+			var pool_e: Array = (ps.hand + ps.deck).filter(func(x): return is_monarch_st(x))
+			var names_e := {}
+			for x in pool_e:
+				names_e[x.cname()] = true
+			if names_e.size() < 2 or s.choose_option(p, Loc.t("%s: send 2 \"Monarch\" Spells/Traps to the GY?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) != 0:
+				return events
+			var first_e = s.pick1(p, Loc.t("%s: send which card?") % name, pool_e, pool_e[0], c)
+			var rest_e: Array = pool_e.filter(func(x): return x.cname() != first_e.cname())
+			var second_e = s.pick1(p, Loc.t("%s: and which card?") % name, rest_e, rest_e[0], c)
+			var deck_e: Array = []
+			for x in [first_e, second_e]:
+				if ps.deck.has(x):
+					ps.deck.erase(x)
+					deck_e.append(x)
+				else:
+					ps.hand.erase(x)
+					x.set_meta("from_hand", true)
+				s._to_gy(ps, x)
+				events.append({"type": "mill", "player": p, "card": x, "deck": ps.deck.size()})
+			if not deck_e.is_empty():
+				s._shuffle(ps.deck)
+				events.append_array(s.deck_sent(p, deck_e, c))
+			if a[0] == "erebus":
+				var opts_e: Array = []
+				if not opp.hand.is_empty():
+					opts_e.append(Loc.t("A random card from their hand"))
+				if not opp.gy.is_empty():
+					opts_e.append(Loc.t("A card in their GY"))
+				if not (opp.monsters() + SpellRules._all_st_of(s, opp_i)).is_empty():
+					opts_e.append(Loc.t("A card on their field"))
+				if opts_e.is_empty():
+					return events
+				var k_e: int = s.choose_option(p, Loc.t("%s: shuffle which card into the Deck?") % name, opts_e, opts_e.size() - 1, c)
+				var x_e = null
+				if opts_e[k_e] == Loc.t("A random card from their hand"):
+					x_e = opp.hand[s._rng.randi() % opp.hand.size()]
+					opp.hand.erase(x_e)
+				elif opts_e[k_e] == Loc.t("A card in their GY"):
+					var og: Array = opp.gy.filter(func(g): return s.gy_targetable(g))
+					og.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+					x_e = s.pick1(p, Loc.t("%s: which card?") % name, og, og[0], c)
+					opp.gy.erase(x_e)
+				else:
+					var of: Array = opp.monsters() + SpellRules._all_st_of(s, opp_i)
+					of.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+					x_e = s.pick1(p, Loc.t("%s: which card?") % name, of, of[0], c)
+					if opp.field.has(x_e):
+						opp.field[opp.field.find(x_e)] = null
+						events.append_array(s._monster_left(x_e))
+					else:
+						opp.spells[opp.spells.find(x_e)] = null
+						events.append_array(SpellRules.left_field(s, x_e))
+				if x_e != null and not x_e.is_token():
+					if CardData.is_extra(x_e.id):
+						opp.extra.append(x_e)
+					else:
+						opp.deck.append(x_e)
+						s._shuffle(opp.deck)
+					events.append(_ev(p, c, Loc.t("%s shuffles %s into the Deck") % [name, x_e.cname()]))
+			else:
+				var big_e: Array = ps.deck.filter(func(x): return mstat_big(x) and _ss_ok(x))
+				if not big_e.is_empty() and ps.free_zone() != -1 and not s.ss_locked(p):
+					var t_e = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, big_e, s._best_monsters(big_e, 1)[0], c)
+					ps.deck.erase(t_e)
+					s._shuffle(ps.deck)
+					events.append_array(s._special(p, t_e, "effect"))
+					t_e.tags["ehther_back"] = s.turn
+					events.append_array(on_summon(s, p, t_e, "special"))
+		"thestalos", "thestalos_mega":
+			if opp.hand.is_empty():
+				if a[0] == "thestalos_mega" and "FIRE" in (c.tags.get("trib_attrs", []) as Array):
+					events.append_array(s._damage(opp_i, 1000))
+				return events
+			var x_t = null
+			if a[0] == "thestalos":
+				x_t = opp.hand[s._rng.randi() % opp.hand.size()]
+			else:
+				events.append(_ev(p, c, Loc.t("%s looks at your opponent's hand") % name))
+				var oh: Array = opp.hand.duplicate()
+				oh.sort_custom(func(x, y): return (x.level() if x.is_monster() else 0) * 1000 + s._card_value(x) > (y.level() if y.is_monster() else 0) * 1000 + s._card_value(y))
+				x_t = s.pick1(p, Loc.t("%s: discard which card?") % name, oh, oh[0], c)
+			opp.hand.erase(x_t)
+			x_t.set_meta("from_hand", true)
+			s._to_gy(opp, x_t)
+			events.append({"type": "discard", "player": opp_i, "card": x_t})
+			if x_t.is_monster():
+				events.append_array(s._damage(opp_i, int(x_t.data.get("level", 0)) * (100 if a[0] == "thestalos" else 200)))
+			if a[0] == "thestalos_mega" and "FIRE" in (c.tags.get("trib_attrs", []) as Array):
+				events.append_array(s._damage(opp_i, 1000))
+		"raiza", "raiza_mega":
+			var field_r: Array = opp.monsters() + SpellRules._all_st_of(s, opp_i) + ps.monsters().filter(func(m): return m != c) + SpellRules._all_st_of(s, p)
+			field_r.sort_custom(func(x, y): return (1 if x.owner == opp_i else 0) * 10000 + s._card_value(x) > (1 if y.owner == opp_i else 0) * 10000 + s._card_value(y))
+			var tops: Array = []
+			if not field_r.is_empty():
+				tops.append(s.pick1(p, Loc.t("%s: put which card on top of the Deck?") % name, field_r, field_r[0], c))
+			var extra_r = null
+			if a[0] == "raiza_mega":
+				var gys: Array = (opp.gy + ps.gy).filter(func(g): return s.gy_targetable(g) and not s.necro_holds(g))
+				if not gys.is_empty():
+					gys.sort_custom(func(x, y): return (1 if x.owner == opp_i else 0) * 10000 + s._card_value(x) > (1 if y.owner == opp_i else 0) * 10000 + s._card_value(y))
+					tops.append(s.pick1(p, Loc.t("%s: and which card in a GY?") % name, gys, gys[0], c))
+				if "WIND" in (c.tags.get("trib_attrs", []) as Array):
+					var more: Array = field_r.filter(func(x): return not tops.has(x))
+					if not more.is_empty():
+						extra_r = s.pick1(p, Loc.t("%s: return which other card to the hand?") % name, more, more[0], c)
+			for x in tops:
+				events.append_array(_to_deck_top(s, x))
+			if extra_r != null:
+				events.append_array(s._bounce(extra_r))
+		"shadowfire":
+			if not opp.hand.is_empty():
+				var x_s = opp.hand[s._rng.randi() % opp.hand.size()]
+				events.append_array(s._banish(x_s))
+				events.append_array(s._damage(opp_i, 1000))
+				if int(c.tags.get("trib_ts_lv", 0)) >= 8:
+					var all_s: Array = opp.monsters() + SpellRules._all_st_of(s, opp_i) + ps.monsters().filter(func(m): return m != c)
+					if not all_s.is_empty() and s.choose_option(p, Loc.t("%s: banish 1 card on the field?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+						all_s.sort_custom(func(x, y): return (1 if x.owner == opp_i else 0) * 10000 + s._card_value(x) > (1 if y.owner == opp_i else 0) * 10000 + s._card_value(y))
+						var t_s = s.pick1(p, Loc.t("%s: banish which card?") % name, all_s, all_s[0], c)
+						var dmg_s: int = int(t_s.data.get("level", 0)) * 200 if t_s.is_monster() and str(t_s.data.get("attribute", "")) in ["FIRE", "DARK"] else 0
+						events.append_array(s._banish(t_s))
+						if dmg_s > 0:
+							events.append_array(s._damage(opp_i, dmg_s))
+		"caius_mega":
+			var n_c := 2 if "DARK" in (c.tags.get("trib_attrs", []) as Array) else 1
+			var all_c: Array = opp.monsters() + SpellRules._all_st_of(s, opp_i) + ps.monsters().filter(func(m): return m != c) + SpellRules._all_st_of(s, p)
+			var foes_c: Array = all_c.filter(func(x): return x.owner == opp_i)
+			foes_c.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+			if all_c.is_empty():
+				return events
+			for t_c in s.choose(p, Loc.t("%s: banish up to %d cards") % [name, n_c], all_c, mini(n_c, maxi(1, foes_c.size())), foes_c.slice(0, n_c) if not foes_c.is_empty() else all_c.slice(0, 1), false, c):
+				var dark_c: bool = t_c.is_monster() and str(t_c.data.get("attribute", "")) == "DARK"
+				var nm_c: String = t_c.cname()
+				var who_c: int = t_c.owner
+				events.append_array(s._banish(t_c))
+				events.append_array(s._damage(opp_i, 1000))
+				if dark_c:
+					var pw := s.players[who_c]
+					for x in (pw.hand + pw.deck + pw.extra + pw.gy).filter(func(x): return x.cname() == nm_c):
+						events.append_array(s._banish(x))
+		"zaborg_mega":
+			var all_z: Array = opp.monsters() + ps.monsters().filter(func(m): return m != c)
+			if all_z.is_empty():
+				return events
+			var foes_z: Array = opp.monsters()
+			foes_z.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+			var t_z = s.pick1(p, Loc.t("%s: destroy which monster?") % name, all_z, foes_z[0] if not foes_z.is_empty() else all_z[0], c)
+			var light_z: bool = str(t_z.data.get("attribute", "")) == "LIGHT"
+			var lv_z: int = maxi(int(t_z.data.get("level", 0)), 0)
+			events.append_array(s._destroy(t_z))
+			if light_z and lv_z > 0:
+				var mine_pick: bool = "LIGHT" in (c.tags.get("trib_attrs", []) as Array)
+				for q in 2:
+					var pz := s.players[q]
+					var n_z := mini(lv_z, pz.extra.size())
+					if n_z <= 0:
+						continue
+					var ex: Array = pz.extra.duplicate()
+					ex.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y)) if q == opp_i else ex.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+					var chooser: int = p if (q == p or mine_pick) else q
+					var gone: Array = s.choose(chooser, Loc.t("%s: send %d cards from the Extra Deck to the GY") % [name, n_z], ex, n_z, ex.slice(0, n_z), false, c)
+					for x in gone:
+						pz.extra.erase(x)
+						s._to_gy(pz, x)
+						events.append({"type": "mill", "player": q, "card": x, "deck": pz.deck.size()})
+		"angmarl":
+			var sp_a: Array = ps.gy.filter(func(g): return g.is_spell() and not s.necro_holds(g) and not ps.deck.filter(func(x): return x.cname() == g.cname()).is_empty())
+			if not sp_a.is_empty() and s.can_banish(p) and s.choose_option(p, Loc.t("%s: banish a Spell from your GY to add another copy?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				var b_a = s.pick1(p, Loc.t("%s: banish which Spell?") % name, sp_a, sp_a[0], c)
+				var nm_a: String = b_a.cname()
+				events.append_array(s._banish(b_a))
+				var cp_a: Array = ps.deck.filter(func(x): return x.cname() == nm_a)
+				if not cp_a.is_empty():
+					events.append_array(_to_hand(s, p, cp_a[0]))
+		"eidos_search":
+			var pool_ei: Array = (ps.deck + ps.gy.filter(func(g): return s.gy_targetable(g) and not s.necro_holds(g))).filter(func(x): return is_monarch_st(x) or mstat(x, [2800]))
+			if int(ps.once_names.get("Eidos#search", -1)) != s.turn and not pool_ei.is_empty() and s.choose_option(p, Loc.t("%s: add a \"Monarch\" Spell/Trap or a 2800/1000 monster?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["Eidos#search"] = s.turn
+				events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which card?") % name, pool_ei, pool_ei[0], c)))
+		"eidos_attr":
+			ps.once_names["Eidos#attr"] = s.turn
+			var ups_e: Array = (ps.monsters() + opp.monsters()).filter(func(m): return m.face_up)
+			var t_ea = s.pick1(p, Loc.t("%s: which monster?") % name, ups_e, ups_e[0], c)
+			var k_ea := s.choose_option(p, Loc.t("%s: declare which Attribute?") % name, SpellRules.ATTRS.slice(0, 6), 0, c)
+			var md_e: Dictionary = (t_ea.data as Dictionary).duplicate()
+			md_e["attribute"] = SpellRules.ATTRS[k_ea]
+			t_ea.data = md_e
+			events.append(_ev(p, t_ea, Loc.t("%s is %s now") % [t_ea.cname(), SpellRules.ATTRS[k_ea]]))
+		"kuraz", "delg":
+			c.attack_count_turn = s.turn
+			c.attack_count = 99
+			if a[0] == "kuraz":
+				var all_k: Array = opp.monsters() + SpellRules._all_st_of(s, opp_i) + ps.monsters().filter(func(m): return m != c) + SpellRules._all_st_of(s, p)
+				var foes_k: Array = all_k.filter(func(x): return x.owner == opp_i)
+				foes_k.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+				if all_k.is_empty() or s.choose_option(p, Loc.t("%s: destroy up to 2 cards?") % name, [Loc.t("Yes"), Loc.t("No")], 0 if not foes_k.is_empty() else 1, c) != 0:
+					return events
+				var lost := [0, 0]
+				for t_k in s.choose(p, Loc.t("%s: destroy up to 2 cards") % name, all_k, mini(2, maxi(1, foes_k.size())), foes_k.slice(0, 2) if not foes_k.is_empty() else all_k.slice(0, 1), true, c):
+					var ow: int = t_k.owner
+					var before: bool = s.players[ow].field.has(t_k) or s.players[ow].spells.has(t_k)
+					events.append_array(s._destroy(t_k) if t_k.is_monster() and s.players[ow].field.has(t_k) else s._destroy_st(t_k))
+					if before and not (s.players[ow].field.has(t_k) or s.players[ow].spells.has(t_k)):
+						lost[ow] += 1
+				for q in 2:
+					if lost[q] > 0 and s.choose_option(q, Loc.t("%s: draw %d?") % [name, lost[q]], [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+						events.append_array(s._draw(q, lost[q]))
+			else:
+				var og_d: Array = opp.gy.filter(func(g): return s.gy_targetable(g) and not s.necro_holds(g))
+				if og_d.is_empty() or not s.can_banish(p) or s.choose_option(p, Loc.t("%s: banish up to 2 cards from your opponent's GY?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) != 0:
+					return events
+				og_d.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+				var picks_d: Array = s.choose(p, Loc.t("%s: banish up to 2 cards") % name, og_d, mini(2, og_d.size()), og_d.slice(0, 2), true, c)
+				for g in picks_d:
+					events.append_array(s._banish(g))
+				events.append_array(s.mill(opp_i, picks_d.size(), c))
+		"edea":
+			var ed: Array = ps.deck.filter(func(x): return mstat(x, [800]) and x.cname() != "Edea the Heavenly Squire" and _ss_ok(x))
+			if int(ps.once_names.get("Edea#ss", -1)) != s.turn and not ed.is_empty() and ps.free_zone() != -1 and not s.ss_locked(p) \
+					and s.choose_option(p, Loc.t("%s: Special Summon an 800/1000 monster from your Deck?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["Edea#ss"] = s.turn
+				ps.once_names["#no_ed"] = s.turn
+				var t_ed = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, ed, ed[0], c)
+				ps.deck.erase(t_ed)
+				s._shuffle(ps.deck)
+				events.append_array(s._special(p, t_ed, "effect", "def"))
+				events.append_array(on_summon(s, p, t_ed, "special"))
+		"edea_gy":
+			var bm: Array = ps.banished.filter(func(b): return b.face_up and is_monarch_st(b))
+			if int(ps.once_names.get("Edea#gy", -1)) != s.turn and not bm.is_empty() and s.choose_option(p, Loc.t("%s: add a banished \"Monarch\" Spell/Trap?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["Edea#gy"] = s.turn
+				events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which card?") % name, bm, bm[0], c)))
+		"tessera_gy":
+			var td: Array = ps.deck.filter(func(x): return mstat(x, [800]) and _ss_ok(x))
+			if int(ps.once_names.get("Tessera#gy", -1)) != s.turn and not td.is_empty() and ps.free_zone() != -1 and not s.ss_locked(p) \
+					and s.choose_option(p, Loc.t("%s: Special Summon an 800/1000 monster from your Deck?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["Tessera#gy"] = s.turn
+				ps.once_names["#no_ed"] = s.turn
+				var t_td = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, td, td[0], c)
+				ps.deck.erase(t_td)
+				s._shuffle(ps.deck)
+				events.append_array(s._special(p, t_td, "effect"))
+				events.append_array(on_summon(s, p, t_td, "special"))
+		"extra_ts":
+			# Eidos the Underworld Squire: "you can Tribute Summon 1 monster, in addition to your Normal Summon/Set" (once per turn).
+			if int(ps.once_names.get("#extra_ts", -1)) != s.turn:
+				ps.once_names["#extra_ts"] = s.turn
+				ps.extra_normals += 1
+				events.append(_ev(p, c, Loc.t("%s: you can Tribute Summon 1 more monster this turn") % name))
+		"eidos_squire":
+			ps.once_names["EidosSquire#gy"] = s.turn
+			ps.once_names["#no_ed"] = s.turn
+			var sq: Array = ps.gy.filter(func(g): return g.cname() != "Eidos the Underworld Squire" and mstat(g, [800]) and s.can_revive(g))
+			var t_sq = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, sq, sq[0], c)
+			events.append_array(s._banish(c))
+			ps.gy.erase(t_sq)
+			events.append_array(s._special(p, t_sq, "reborn", "def"))
+		"vassal":
+			# "If this card is Tributed for a Tribute Summon".
+			if int(c.get_meta("ts_tribute", -1)) != s.turn or int(ps.once_names.get(c.cname() + "#trib", -1)) == s.turn:
+				return events
+			match str(a[1]):
+				"garum":
+					var g8: Array = ps.deck.filter(func(x): return mstat(x, [800]) and x.cname() != "Garum the Storm Vassal")
+					if not g8.is_empty() and s.choose_option(p, Loc.t("%s: add an 800/1000 monster from your Deck?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+						ps.once_names[c.cname() + "#trib"] = s.turn
+						events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which monster?") % name, g8, g8[0], c)))
+				"mithra":
+					if int(ps.once_names.get("#extra_ts", -1)) != s.turn:
+						ps.once_names[c.cname() + "#trib"] = s.turn
+						ps.once_names["#extra_ts"] = s.turn
+						ps.extra_normals += 1
+						events.append(_ev(p, c, Loc.t("%s: you can Tribute Summon 1 more monster this turn") % name))
+				"lucius":
+					var sets_l: Array = opp.set_cards()
+					if not sets_l.is_empty():
+						ps.once_names[c.cname() + "#trib"] = s.turn
+						for x in sets_l:
+							events.append({"type": "effect", "player": p, "card": x, "text": Loc.t("%s sees %s") % [name, x.cname()]})
+				"berlineth":
+					if not opp.hand.is_empty() and s.can_banish(p):
+						ps.once_names[c.cname() + "#trib"] = s.turn
+						events.append(_ev(p, c, Loc.t("%s looks at your opponent's hand") % name))
+						var oh_b: Array = opp.hand.duplicate()
+						oh_b.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+						var x_b = s.pick1(p, Loc.t("%s: banish which card until the End Phase?") % name, oh_b, oh_b[0], c)
+						opp.hand.erase(x_b)
+						opp.banished.append(x_b)
+						x_b.tags["exile_eot"] = s.turn
+						events.append({"type": "banish", "player": opp_i, "card": x_b, "from": "hand", "zone": -1, "side": opp_i})
+				"landrobe":
+					var l8: Array = ps.gy.filter(func(g): return mstat(g, [800]) and g.cname() != "Landrobe the Rock Vassal" and s.gy_targetable(g) and not s.necro_holds(g))
+					if not l8.is_empty() and s.choose_option(p, Loc.t("%s: add an 800/1000 monster from your GY?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+						ps.once_names[c.cname() + "#trib"] = s.turn
+						events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which monster?") % name, l8, l8[0], c)))
+		"prime":
+			var pm: Array = ps.spells.filter(func(x): return x != null and x.face_up and x.cname() == "The Prime Monarch")
+			if not pm.is_empty():
+				pm[0].tags["pm_turn"] = s.turn
+			var gm: Array = ps.gy.filter(func(g): return is_monarch_st(g) and s.gy_targetable(g))
+			for x in s.choose(p, Loc.t("%s: shuffle 2 \"Monarch\" Spells/Traps into the Deck") % name, gm, 2, gm.slice(0, 2), false, c):
+				ps.gy.erase(x)
+				ps.deck.append(x)
+				events.append({"type": "gy_to_deck", "player": p, "card": x, "deck": ps.deck.size()})
+			s._shuffle(ps.deck)
+			events.append_array(s._draw(p, 1))
+		"prime_gy":
+			ps.once_names["Prime#gy"] = s.turn
+			var gp: Array = ps.gy.filter(func(g): return is_monarch_st(g) and g.cname() != "The Prime Monarch")
+			events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which card?") % name, gp, gp[0], c)))
+			if ps.gy.has(c):
+				ps.gy.erase(c)
+				c.set_meta("trap_data", c.data)
+				var md_p: Dictionary = (c.data as Dictionary).duplicate()
+				md_p["kind"] = "monster"
+				md_p["frame"] = "normal"
+				md_p["race"] = "Fairy"
+				md_p["attribute"] = "LIGHT"
+				md_p["level"] = 5
+				md_p["atk"] = 1000
+				md_p["def"] = 2400
+				c.data = md_p
+				events.append_array(s._special(p, c, "effect", "def"))
+		"strike_gy":
+			var k_s := s.choose_option(p, Loc.t("%s: declare which Attribute?") % name, SpellRules.ATTRS.slice(0, 6), 0, c)
+			events.append_array(s._banish(c))
+			for q in 2:
+				for m in s.players[q].monsters().filter(func(m): return m.face_up):
+					if not m.has_meta("attr_before"):
+						m.set_meta("attr_before", str(m.data.get("attribute", "")))
+						m.set_meta("attr_turn", s.turn)
+					var md_s: Dictionary = (m.data as Dictionary).duplicate()
+					md_s["attribute"] = SpellRules.ATTRS[k_s]
+					m.data = md_s
+			events.append(_ev(p, c, Loc.t("Every face-up monster is %s this turn") % SpellRules.ATTRS[k_s]))
+		"revolt_gy":
+			ps.once_names["Revolt#2"] = s.turn
+			var h8: Array = ps.hand.filter(func(h): return mstat(h, [800]))
+			var t_h8 = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, h8, h8[0], c)
+			events.append_array(s._banish(c))
+			ps.hand.erase(t_h8)
+			events.append_array(s._special(p, t_h8, "effect"))
+			events.append_array(on_summon(s, p, t_h8, "special"))
+		"pantheism_gy":
+			ps.once_names["Pantheism#gy"] = s.turn
+			var pm3: Array = ps.deck.filter(func(x): return is_monarch_st(x))
+			var shown_p: Array = s.choose(p, Loc.t("%s: reveal 3 \"Monarch\" Spells/Traps") % name, pm3, 3, pm3.slice(0, 3), false, c)
+			events.append_array(s._banish(c))
+			var got_p = s.pick1(opp_i, Loc.t("%s: which one does your opponent add?") % name, shown_p, shown_p[s._rng.randi() % shown_p.size()], c)
+			events.append_array(_to_hand(s, p, got_p))
+		"frost_gy":
+			var gm2: Array = ps.gy.filter(func(g): return is_monarch_st(g) and g.cname() != "Frost Blast of the Monarchs")
+			events.append_array(s._banish(c))
+			events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which card?") % name, gm2, gm2[0], c)))
+			var sets_f: Array = opp.set_cards() + ps.set_cards()
+			var foe_f: Array = opp.set_cards()
+			if not sets_f.is_empty():
+				var t_f = s.pick1(p, Loc.t("%s: destroy which Set card?") % name, sets_f, foe_f[0] if not foe_f.is_empty() else sets_f[0], c)
+				events.append_array(s._destroy(t_f) if t_f.is_monster() and s.players[t_f.owner].field.has(t_f) else s._destroy_st(t_f))
+		"masterplan":
+			if int(ps.once_names.get("Masterplan#ban", -1)) == s.turn:
+				return events
+			var ups_m: Array = opp.monsters().filter(func(m): return m.face_up)
+			if ups_m.is_empty():
+				return events
+			var attrs := {}
+			for m in ups_m:
+				attrs[str(m.data.get("attribute", ""))] = true
+			var pool_m: Array = (ps.deck + ps.gy.filter(func(g): return s.gy_targetable(g) and not s.necro_holds(g))).filter(func(x): return mstat(x, [2400]) and attrs.has(str(x.data.get("attribute", ""))))
+			if pool_m.is_empty() or s.choose_option(p, Loc.t("%s: add a 2400/1000 monster with the Attribute of their monster?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) != 0:
+				return events
+			ps.once_names["Masterplan#ban"] = s.turn
+			events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which monster?") % name, pool_m, pool_m[0], c)))
+			var six := ["Zaborg the Thunder Monarch", "Mobius the Frost Monarch", "Thestalos the Firestorm Monarch", "Granmarg the Rock Monarch", "Raiza the Storm Monarch", "Caius the Shadow Monarch"]
+			if s.current == p and s._in_main() and not ps.hand.filter(func(h): return h.cname() in six).is_empty() \
+					and s.choose_option(p, Loc.t("%s: Normal Summon a Monarch right away?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				events.append_array(quick_tribute_summon(s, p, c, func(h): return h.cname() in six, false))
+		"domain":
+			ps.once_names["Domain#lv"] = s.turn
+			var h28: Array = ps.hand.filter(func(h): return mstat(h, [2800]))
+			var t_dm = s.pick1(p, Loc.t("%s: which monster?") % name, h28, h28[0], c)
+			t_dm.lv_set = t_dm.level() - 2
+			t_dm.lv_turn = s.turn
+			events.append(_ev(p, t_dm, Loc.t("%s is Level %d this turn") % [t_dm.cname(), t_dm.lv_set]))
 		"sold_banish":
 			var all_s: Array = opp.monsters() + SpellRules._all_st_of(s, opp_i)
 			if int(ps.once_names.get("SoLD#ban", -1)) != s.turn and not all_s.is_empty() and s.can_banish(p) and s.choose_option(p, Loc.t("%s: banish 1 card your opponent controls?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
