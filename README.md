@@ -31,7 +31,7 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 - **Tributes left hanging in the air.** Monsters Tributed for a Tribute Summon (three for a Level 10, for example) stayed floating over the table until the turn ended. The engine calls those cards "materials", and the table waited for a Special Summon that never came. They now go to the Graveyard the way Tributes do, as lights that the new monster collects.
 - **The opening.** The four worlds and the duelist faces are prepared before the first picture, so there is no stop when the next world comes in, and the worlds are put away one at a time at the end instead of all in one frame. This was fixed by reading the code; the cloud has no graphics card, so the first real look is yours.
 
-**The old duel rules are out of play.** The switch in Settings is gone, Free Duel no longer falls back to them, and the duel screen has no code left that could run them (it went from 2,858 lines to 1,620). If the rules engine cannot load on a computer, a duel says so instead of starting on the old rules.
+**The old duel rules are out of play.** The switch in Settings is gone, Free Duel no longer falls back to them, and the duel screen has no code left that could run them (it went from 2,858 lines to about 1,630). If the rules engine cannot load on a computer, a duel says so instead of starting on the old rules.
 
 **Not done, said plainly**
 
