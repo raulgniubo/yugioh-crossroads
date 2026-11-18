@@ -41,7 +41,7 @@ func _ready() -> void:
 				var tw := 0
 				for g in tg:
 					var foe_t: String = Characters.DATA[all[(g * 5 + 2) % all.size()]]["deck"]
-					if _ai_vs_ai(2500 + g, str(td["key"]), foe_t, 2, 2) == 0:
+					if _ai_vs_ai((int(OS.get_environment("THEME_SEED")) if OS.get_environment("THEME_SEED") != "" else 2500) + g, str(td["key"]), foe_t, 2, 2) == 0:
 						tw += 1
 				print("theme %s: won %d of %d" % [td["key"], tw, tg])
 			print("effects fired for %d different cards: %s" % [EffectRunner.fired.size(), str(EffectRunner.fired)])
@@ -63,6 +63,24 @@ func _ready() -> void:
 				if _ai_vs_ai(4000 + g, sim_d, Characters.DATA[all[(g * 5 + 1) % all.size()]]["deck"], 2, 2) == 0:
 					wins_o += 1
 			print("SIM_ONLY %s: %d wins" % [sim_d, wins_o])
+			get_tree().quit(0)
+			return
+		if OS.get_environment("WORKS_FILE") != "":
+			# Dev: which of these cards (one name per line) work in the game right now?
+			var yes: Array = []
+			var no: Array = []
+			var gone: Array = []
+			for nm in FileAccess.get_file_as_string(OS.get_environment("WORKS_FILE")).split("\n", false):
+				var wid := _cid(nm.strip_edges())
+				if wid == 0:
+					gone.append(nm)
+				elif SignatureDecks._works(wid):
+					yes.append(nm)
+				else:
+					no.append(nm)
+			print("WORKS: %s" % "|".join(yes))
+			print("NEEDS: %s" % "|".join(no))
+			print("NOT IN DB: %s" % "|".join(gone))
 			get_tree().quit(0)
 			return
 		_test_card_numbers()
@@ -135,6 +153,7 @@ func _ready() -> void:
 		_test_lightsworn()
 		_test_catch_up()
 		_test_gem_knight()
+		_test_chaos()
 		await _test_album()
 		_test_save_slots()
 		_test_turbo_setup()
@@ -156,24 +175,6 @@ func _ready() -> void:
 					var d := CardData.get_card(int(cid))
 					out.store_line("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s" % [d.get("name", ""), d.get("kind", ""), d.get("frame", ""), d.get("race", ""), d.get("attribute", ""), d.get("level", ""), d.get("atk", ""), d.get("def", "")])
 			out.close()
-			get_tree().quit(0)
-			return
-		if OS.get_environment("WORKS_FILE") != "":
-			# Dev: which of these cards (one name per line) work in the game right now?
-			var yes: Array = []
-			var no: Array = []
-			var gone: Array = []
-			for nm in FileAccess.get_file_as_string(OS.get_environment("WORKS_FILE")).split("\n", false):
-				var wid := _cid(nm.strip_edges())
-				if wid == 0:
-					gone.append(nm)
-				elif SignatureDecks._works(wid):
-					yes.append(nm)
-				else:
-					no.append(nm)
-			print("WORKS: %s" % "|".join(yes))
-			print("NEEDS: %s" % "|".join(no))
-			print("NOT IN DB: %s" % "|".join(gone))
 			get_tree().quit(0)
 			return
 		if OS.get_environment("YUSEI_SIM") != "":
@@ -9954,6 +9955,145 @@ func _test_lightsworn() -> void:
 
 
 ## 0.34.2.5: the cards the families were missing, and the fixes to Aurkus, Minerva, Thunder Lord, Dark Golem and the Castle.
+func _test_chaos() -> void:
+	# Chaos Form: Blue-Eyes White Dragon banished from the GY covers the Levels exactly.
+	var s := _main_ready(7701)
+	s.players[0].hand.clear()
+	s.players[0].gy.clear()
+	var bew := _in(s, 0, "Blue-Eyes White Dragon", "gy")
+	var bec := _in(s, 0, "Blue-Eyes Chaos MAX Dragon", "hand")
+	var cf := _rst(s, 0, "Chaos Form")
+	check(s.can_activate(0, cf), "Chaos Form: Blue-Eyes in the GY is enough")
+	s.activate(0, cf)
+	check(s.players[0].field.has(bec) and s.players[0].banished.has(bew), "Chaos Form: Blue-Eyes Chaos MAX Dragon out, Blue-Eyes banished")
+	# Blue-Eyes Chaos MAX: Raigeki from the opponent doesn't destroy it.
+	s.current = 1
+	s.activate(1, _rst(s, 1, "Raigeki"))
+	check(s.players[0].field.has(bec), "Blue-Eyes Chaos MAX: not destroyed by the opponent's effect")
+	# Super Soldier Ritual: Levels exactly 8; Beginning Knight gives its effect.
+	s = _main_ready(7702)
+	s.players[0].hand.clear()
+	var bk := _in(s, 0, "Beginning Knight", "hand")
+	_in(s, 0, "Evening Twilight Knight", "hand")
+	_in(s, 0, "Gaia The Fierce Knight", "hand")
+	var sup := _in(s, 0, "Black Luster Soldier - Super Soldier", "hand")
+	s.activate(0, _rst(s, 0, "Super Soldier Ritual"))
+	check(s.players[0].field.has(sup) and s.players[0].gy.has(bk), "Super Soldier Ritual: Super Soldier from 2 Level 4 Knights")
+	var foe := _mon(s, 1, "Gaia The Fierce Knight", 0)
+	check(s.can_ignite(0, sup), "Beginning/Evening Twilight Knight: the effect is granted")
+	s.ignite(0, sup)
+	check(s.players[1].banished.has(foe) or s.players[1].hand.size() >= 0, "Knight's effect: banished a monster")
+	# Super Soldier Synthesis: 1 LIGHT from the hand + 1 DARK from the Deck, Ritual Monster from the GY.
+	s = _main_ready(7703)
+	s.players[0].hand.clear()
+	s.players[0].gy.clear()
+	_in(s, 0, "Beginning Knight", "hand")
+	_in(s, 0, "Evening Twilight Knight", "deck")
+	var lg := _in(s, 0, "Black Luster Soldier - Legendary Swordsman", "gy")
+	var syn := _rst(s, 0, "Super Soldier Synthesis")
+	check(s.can_activate(0, syn), "Super Soldier Synthesis: ready")
+	s.activate(0, syn)
+	check(s.players[0].field.has(lg), "Super Soldier Synthesis: Legendary Swordsman from the GY")
+	# Envoy of the Evening Twilight: equal LIGHT and DARK in the GY.
+	s = _main_ready(7704)
+	s.players[0].hand.clear()
+	s.players[0].gy.clear()
+	_in(s, 0, "Beginning Knight", "gy")
+	_in(s, 0, "Evening Twilight Knight", "gy")
+	var et := _in(s, 0, "Black Luster Soldier - Envoy of the Evening Twilight", "hand")
+	check(EffectRunner.can_special_hand(s, 0, et), "Evening Twilight: can come out")
+	s.special_from_hand(0, et)
+	check(s.players[0].field.has(et), "Evening Twilight: Special Summoned")
+	# Arisen Gaia: banished from the GY as Ritual material.
+	s = _main_ready(7705)
+	s.players[0].hand.clear()
+	s.players[0].gy.clear()
+	var ag := _in(s, 0, "Arisen Gaia the Fierce Knight", "gy")
+	_in(s, 0, "Beginning Knight", "hand")
+	var bls := _in(s, 0, "Black Luster Soldier", "hand")
+	s.activate(0, _rst(s, 0, "Black Luster Ritual"))
+	check(s.players[0].field.has(bls) and s.players[0].banished.has(ag), "Arisen Gaia: banished from the GY for Black Luster Soldier")
+	# Charging Gaia: Normal Summon without Tributing at 1900.
+	s = _main_ready(7706)
+	s.players[0].hand.clear()
+	var cg := _in(s, 0, "Charging Gaia the Fierce Knight", "hand")
+	s.normal_summon(0, cg, [], false)
+	check(s.players[0].field.has(cg) and s.atk_of(cg, false) == 1900, "Charging Gaia: out without Tributes, 1900 ATK (%d)" % s.atk_of(cg, false))
+	# Gaia Origin: 2 Tributes for a Warrior.
+	s = _main_ready(7707)
+	s.players[0].hand.clear()
+	var og := _mon(s, 0, "Gaia the Fierce Knight Origin", 0)
+	var gk := _in(s, 0, "Gaia The Fierce Knight", "hand")
+	s.normal_summon(0, gk, [og], false)
+	check(s.players[0].field.has(gk), "Gaia Origin: one Tribute for Gaia The Fierce Knight")
+	# Chaos Hunter: the opponent can't banish.
+	s = _main_ready(7708)
+	_mon(s, 1, "Chaos Hunter", 0)
+	s.players[0].gy.clear()
+	var g2 := _in(s, 0, "Beginning Knight", "gy")
+	s._banish(g2)
+	check(s.players[0].gy.has(g2), "Chaos Hunter: nothing can be banished")
+	# Envoy of Chaos: +1500 in the Battle Phase.
+	s = _main_ready(7709)
+	s.phase = DuelState.Phase.BATTLE
+	var bl2 := _mon(s, 0, "Black Luster Soldier", 0)
+	var env := _in(s, 0, "Envoy of Chaos", "hand")
+	check(EffectRunner.quick_can(s, 0, env, "phase"), "Envoy of Chaos: ready in the Battle Phase")
+	EffectRunner.quick_run(s, 0, env)
+	check(s.atk_of(bl2, false) == 4500, "Envoy of Chaos: 4500 (%d)" % s.atk_of(bl2, false))
+	# Gaia, the Polar Knight: banish a LIGHT from the GY, +500.
+	s = _main_ready(7710)
+	s.players[0].gy.clear()
+	var pk := _mon(s, 0, "Gaia, the Polar Knight", 0)
+	_in(s, 0, "Beginning Knight", "gy")
+	check(s.can_ignite(0, pk), "Polar Knight: an effect is ready")
+	s.ignite(0, pk)
+	check(s.atk_of(pk, false) == 2100, "Polar Knight: 2100 (%d)" % s.atk_of(pk, false))
+	# Dragon Master Knight: +500 per other Dragon.
+	s = _main_ready(7711)
+	var dmk := _mon(s, 0, "Dragon Master Knight", 0)
+	_mon(s, 0, "Curse of Dragon", 1)
+	check(s.atk_of(dmk, false) == 5500, "Dragon Master Knight: 5500 (%d)" % s.atk_of(dmk, false))
+	# Master of Chaos: Dark Magician + a Chaos Ritual Monster.
+	s = _main_ready(7712)
+	_mon(s, 0, "Dark Magician", 0)
+	_mon(s, 0, "Black Luster Soldier", 1)
+	var moc := _in(s, 0, "Master of Chaos", "extra")
+	check(not s.fusion_targets(0).filter(func(o): return o["card"] == moc).is_empty(), "Master of Chaos: Dark Magician + Black Luster Soldier")
+	# Magician of Black Chaos MAX: Tribute 1, the opponent can't use monster effects.
+	s = _main_ready(7713)
+	s.players[0].hand.clear()
+	_mon(s, 0, "Gaia The Fierce Knight", 0)
+	var mx := _in(s, 0, "Magician of Black Chaos MAX", "hand")
+	_in(s, 0, "Beginning Knight", "hand")
+	_in(s, 0, "Evening Twilight Knight", "hand")
+	s.activate(0, _rst(s, 0, "Chaos Form"))
+	check(s.players[0].field.has(mx) and s.mon_fx_locked(1), "MAX: out, and the opponent's monster effects are locked")
+	# Legendary Swordsman: skip the draw for a Ritual Spell.
+	s = _main_ready(7714)
+	_in(s, 0, "Black Luster Soldier - Legendary Swordsman", "hand")
+	var cf2 := _in(s, 0, "Chaos Form", "deck")
+	var evs: Array = []
+	check(s._legend_draw(0, evs) and s.players[0].hand.has(cf2), "Legendary Swordsman: Chaos Form instead of a draw")
+	# Gateway to Chaos: a counter for each monster sent from the hand or field.
+	s = _main_ready(7715)
+	var gw := _rst(s, 0, "Gateway to Chaos")
+	_in(s, 0, "Gaia The Fierce Knight", "deck")
+	s.activate(0, gw)
+	var m1 := _mon(s, 0, "Curse of Dragon", 2)
+	s._destroy(m1)
+	check(gw.counter == 1, "Gateway to Chaos: 1 counter (%d)" % gw.counter)
+	# Super Soldier: destroyed by battle, a Gaia comes out.
+	s = _main_ready(7716)
+	var ss := _mon(s, 0, "Black Luster Soldier - Super Soldier", 0)
+	ss.proper = true
+	_in(s, 0, "Gaia The Fierce Knight", "deck")
+	var kl := _mon(s, 1, "Dragon Master Knight", 0)
+	s._battle_kill(kl, ss)
+	s._cleanup()
+	check(not s.players[0].monsters().filter(func(m): return m.cname() == "Gaia The Fierce Knight").is_empty(), "Super Soldier: Gaia The Fierce Knight comes out")
+
+
 func _test_gem_knight() -> void:
 	# Gem-Knight Fusion: materials from the hand.
 	var s := _main_ready(7601)

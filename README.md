@@ -5,6 +5,20 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.34.4
+
+**Chaos: Black Luster Soldier, Gaia the Fierce Knight and the Chaos monsters, 59 cards.** 48 of them are new, so the game now has **1,946 cards**, every one working and obtainable.
+
+- **The cards:** every Black Luster Soldier (Super Soldier, Legendary Swordsman, Sacred Soldier, Envoy of the Evening Twilight and the rest), Beginning Knight and Evening Twilight Knight, Super Soldier Soul, all the Gaia knights (Charging, Arisen, Lord, Soldier, Swift, Origin, the Magical Knight, the Mid-Knight Sun, the Polar Knight, Heart of Gaia), Sky Galloping Gaia and Gaia the Magical Knight of Dragons, Chaos Form and its Rituals (Blue-Eyes Chaos Dragon, Blue-Eyes Chaos MAX Dragon, Magician of Chaos, Magician of Black Chaos MAX, Illusion of Chaos), Master of Chaos, Dragon Master Knight and Dragon Master Magia, the Chaos LIGHT/DARK monsters (Valkyria, Hunter, Betrayer, Daedalus, Levianeer), and the Spells and Traps: Super Soldier Ritual, Synthesis, Rebirth and Shield, Gateway to Chaos, Galloping Gaia, Spiral Spear Strike, Spiral Discharge, Beginning of Heaven and Earth, Chaos Space, Chaos End, Chaos Greed.
+- **New engine pieces:** Ritual Summons rebuilt: Levels that must add up exactly, materials banished from the Graveyard (Chaos Form, Arisen Gaia), materials from the Deck (Super Soldier Synthesis), Ritual Monsters from the Graveyard, and effects a Ritual Monster gains from the monsters used to summon it. Also: skipping your draw for a card (Legendary Swordsman), no responses in your Battle Phase, "unaffected unless it targets this card", "your opponent can't banish", "your opponent can't activate monster effects this turn", a card that counts as 2 Tributes for one Type, cards banished from the hand until the End Phase, attack-target locks, and "when this card declares an attack" effects.
+- **Envoys of Chaos:** a family pack (Family tab, opens in the Duel Monsters era, sold in Domino) and a 40-card theme deck with an Extra Deck.
+- **Duelist:** the Domino High Teacher now duels with the Chaos deck.
+- Fixed: an effect that triggers when a monster is Tributed could pick the very monster being Tribute Summoned.
+
+Coming next in the same family: the Light and Darkness Ritual cards (Soldier of Light and Darkness, Magician of Dark Chaos, Black Chaos, Chaos Magical Hats and the cards around them).
+
+Not checked: played by the test duels (the Chaos deck won 2 of 8 against story decks), not watched.
+
 ## What is in 0.34.3
 
 **Gem-Knights: the whole family, 45 cards.** 39 of them are new, so the game now has **1,898 cards**, every one working and obtainable.

@@ -22,6 +22,12 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 	b += _gk_bonus(s, c)
 	if int(c.tags.get("bf_up_until", -1)) >= s.turn:
 		b += c.atk()   # Brilliant Fusion: "gains ATK/DEF equal to its original ATK/DEF"
+	if int(c.tags.get("soul_until", -1)) >= s.turn and not c.negated:
+		b += 3000 - c.atk()   # Super Soldier Soul: "this card's ATK becomes 3000"
+	if int(c.tags.get("pair_until", -1)) >= s.turn:
+		b += int(c.tags.get("pair_mod", 0))   # Gaia, the Mid-Knight Sun / the Polar Knight
+	if f.get("dmk", false) and c.face_up and s.players[c.owner].field.has(c):
+		b += 500 * s.players[c.owner].monsters().filter(func(m): return m != c and m.face_up and str(m.data.get("race", "")) == "Dragon").size()   # Dragon Master Knight
 	if c.tags.get("green_300", false) and c.face_up and not c.negated:
 		b += 300   # Ancient Gear Gadjiltron Chimera with Green Gadget
 	if int(c.tags.get("cdd_turn", -1)) == s.turn and c.face_up:
@@ -379,6 +385,8 @@ static func max_attacks(c) -> int:
 	if f.get("double_vs_def", false):
 		# Twin-Sword Marauder: a second attack in a row only after it attacked a Defense Position monster.
 		return 2 if c.hit_def_turn != -1 and c.hit_def_turn == c.attack_count_turn else 1
+	if int(c.tags.get("again_turn", -1)) != -1 and int(c.tags["again_turn"]) == c.attack_count_turn and not c.negated:
+		return 2   # Beginning Knight's gift: "this card can make a second attack in a row"
 	if f.get("double_after_kill", false):
 		# Black Luster Soldier - Envoy of the Beginning: one of its two effects each turn.
 		return 2 if c.killed_turn != -1 and c.killed_turn == c.attack_count_turn and c.ignite_turn != c.killed_turn else 1
@@ -624,6 +632,91 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 		return not s.players[p].deck.filter(func(x): return x.cname() == "Ancient Gear Golem" or (not x.is_monster() and str(x.data.get("desc", "")).contains("Ancient Gear Golem"))).is_empty()
 	if cond == "ag_fusion_hand":
 		return not ag_plans(s, p, false).is_empty()
+	if cond == "ssr_gy":
+		var pr := s.players[p]
+		var gl: Array = pr.gy.filter(func(g): return g.is_monster() and not s.necro_holds(g))
+		return int(pr.once_names.get("SSR#gy", -1)) != s.turn and s.can_banish(p) and pr.free_zone() != -1 and not s.ss_locked(p) \
+				and not gl.filter(func(g): return str(g.data.get("attribute", "")) == "LIGHT").is_empty() and not gl.filter(func(g): return str(g.data.get("attribute", "")) == "DARK").is_empty() \
+				and not pr.hand.filter(func(h): return h.frame() == "ritual" and is_bls(h)).is_empty()
+	if cond == "rebirth_gy":
+		return s.can_banish(p) and not s.players[p].gy.filter(func(g): return is_bls(g) and s.gy_targetable(g) and not s.necro_holds(g)).is_empty()
+	if cond == "shield_gy":
+		var psh := s.players[p]
+		return psh.spells.has(null) and not (psh.monsters() + psh.spells.filter(func(x): return x != null)).filter(func(x): return x.face_up and x.counter > 0).is_empty()
+	if cond == "gateway_fx":
+		var pg := s.players[p]
+		return not pg.spells.filter(func(x): return x != null and x.face_up and x.cname() == "Gateway to Chaos" and x.counter >= 3 and int(x.tags.get("gw_turn", -1)) != s.turn).is_empty() \
+				and not pg.deck.filter(func(x): return str(SpellRules.spec(x).get("k", "")) == "ritual").is_empty()
+	if cond == "space_gy":
+		return int(s.players[p].once_names.get("Chaos Space#2", -1)) != s.turn and s.can_banish(p) and not s.players[p].banished.filter(func(b): return b.face_up and _nomi_ld(b)).is_empty() and not s.players[p].deck.is_empty()
+	if cond == "galloping":
+		var pga := s.players[p]
+		if int(pga.once_names.get("Galloping Gaia#fx", -1)) == s.turn:
+			return false
+		var d5h := not pga.hand.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Dragon" and h.level() == 5).is_empty()
+		var gh := not pga.hand.filter(func(h): return is_gaia(h)).is_empty()
+		return (gh and not pga.deck.filter(func(x): return x.is_monster() and str(x.data.get("race", "")) == "Dragon" and x.level() == 5).is_empty()) \
+				or (d5h and not pga.deck.filter(func(x): return is_gaia(x)).is_empty())
+	if cond == "knight_grant":
+		var kc = current_ignite
+		if kc == null:
+			return false
+		var ok_b: bool = int(kc.tags.get("kg_ban", -1)) != s.turn and not s.players[s.opponent(p)].monsters().is_empty() and s.can_banish(p)
+		var ok_h: bool = "Evening Twilight Knight" in _knight_names(kc) and int(kc.tags.get("kg_hand", -1)) != s.turn and not s.players[s.opponent(p)].hand.is_empty() and s.can_banish(p)
+		return ok_b or ok_h
+	if cond == "twilight":
+		var ptw := s.players[p]
+		var nl := ptw.gy.filter(func(g): return g.is_monster() and str(g.data.get("attribute", "")) == "LIGHT").size()
+		var nd := ptw.gy.filter(func(g): return g.is_monster() and str(g.data.get("attribute", "")) == "DARK").size()
+		return nl > 0 and nl == nd and s.can_banish(p)
+	if cond == "opp_more":
+		return s.players[s.opponent(p)].monsters().size() > s.players[p].monsters().size()
+	if cond == "only_card":
+		return s.players[p].hand.size() == 1
+	if cond == "magical_knight":
+		return s.players[p].monsters().is_empty() or not s.players[s.opponent(p)].monsters().filter(func(m): return m.face_up and s.atk_of(m, false) >= 2300).is_empty()
+	if cond == "lv5_on_field":
+		for q in 2:
+			if not s.players[q].monsters().filter(func(m): return m.face_up and m.level() >= 5).is_empty():
+				return true
+		return false
+	if cond == "origin":
+		var por := s.players[p]
+		return int(por.once_names.get("Origin#ss", -1)) != s.turn and not por.hand.filter(func(h): return h.is_monster() and h.level() >= 5).is_empty()
+	if cond == "valkyria":
+		var pva := s.players[p]
+		return int(pva.once_names.get("Valkyria#ss", -1)) != s.turn and s.can_banish(p) and not pva.gy.filter(func(g): return g.is_monster() and str(g.data.get("attribute", "")) in ["LIGHT", "DARK"] and not s.necro_holds(g)).is_empty()
+	if cond == "levianeer":
+		return s.can_banish(p) and s.players[p].gy.filter(func(g): return g.is_monster() and str(g.data.get("attribute", "")) in ["LIGHT", "DARK"] and not s.necro_holds(g)).size() >= 3
+	if cond == "soul":
+		return int(s.players[p].once_names.get("Soul#fx", -1)) != s.turn and not s.players[p].hand.filter(func(h): return is_bls(h)).is_empty()
+	if cond == "soul_gy":
+		return int(s.players[p].once_names.get("Soul#gy", -1)) != s.turn and s.can_banish(p) and not s.players[p].deck.filter(func(x): return x.cname() in ["Beginning Knight", "Evening Twilight Knight"]).is_empty()
+	if cond == "soldier_search":
+		var pss := s.players[p]
+		return int(pss.once_names.get("SoldierGaia#search", -1)) != s.turn and not pss.deck.filter(func(x): return x.is_monster() and str(x.data.get("race", "")) == "Warrior" and x.level() >= 7 and x.cname() != "Soldier Gaia the Fierce Knight").is_empty()
+	if cond == "knight_pair":
+		return not _pair_modes(s, p, current_ignite).is_empty()
+	if cond == "moc":
+		var pmo := s.players[p]
+		var ms := pmo.monsters().filter(func(m): return m.face_up and s.can_tribute_fx(m))
+		return int(pmo.once_names.get("MoC#ban", -1)) != s.turn and not ms.filter(func(m): return str(m.data.get("attribute", "")) == "LIGHT").is_empty() \
+				and not ms.filter(func(m): return str(m.data.get("attribute", "")) == "DARK").is_empty() and not s.players[s.opponent(p)].monsters().is_empty() and s.can_banish(p)
+	if cond == "artillery":
+		var pat := s.players[p]
+		return int(pat.once_names.get("Artillery#fx", -1)) != s.turn and not s.ss_locked(p) and not (pat.hand + pat.deck).filter(func(x): return (is_gaia(x) or (x.is_monster() and str(x.data.get("race", "")) == "Dragon" and x.level() == 5)) and not CardData.is_extra(x.id)).is_empty()
+	if cond == "blue_counter":
+		return s.can_banish(p) and not (s.players[p].monsters() + s.players[p].spells.filter(func(x): return x != null)).filter(func(x): return x.face_up and _counter_cap(x) > x.counter).is_empty()
+	if cond == "betrayer":
+		var pbe := s.players[p]
+		var g_be: Array = pbe.gy.filter(func(g): return g.is_monster() and g.cname() != "Chaos Betrayer" and not s.necro_holds(g))
+		return int(pbe.once_names.get("Betrayer#gy", -1)) != s.turn and pbe.free_zone() != -1 and s.can_banish(p) \
+				and not g_be.filter(func(g): return str(g.data.get("attribute", "")) == "LIGHT").is_empty() and not g_be.filter(func(g): return str(g.data.get("attribute", "")) == "DARK").is_empty()
+	if cond == "daedalus":
+		return int(s.players[p].once_names.get("Daedalus#fx", -1)) != s.turn and s.can_banish(p) and _field_spells_up(s) > 0
+	if cond == "illusion":
+		var pil := s.players[p]
+		return int(pil.once_names.get("Illusion#reveal", -1)) != s.turn and not pil.deck.filter(func(x): return x.is_monster() and x.frame() != "ritual" and (x.cname() == "Dark Magician" or str(x.data.get("desc", "")).contains("\"Dark Magician\""))).is_empty()
 	if cond == "scatter":
 		var psf := s.players[p]
 		return int(psf.once_names.get("Scatter Fusion#fx", -1)) != s.turn and not s.players[s.opponent(p)].monsters().is_empty() and not gem_fusion_plans(s, p, "scatter").is_empty()
@@ -943,7 +1036,7 @@ static func can_special_hand(s: DuelState, p: int, c) -> bool:
 				return true
 		return false
 	if f.get("special_banish_ld", false):
-		return _gy_attr(s, p, "LIGHT") != null and _gy_attr(s, p, "DARK") != null
+		return _gy_attr(s, p, "LIGHT") != null and _gy_attr(s, p, "DARK") != null and s.can_banish(p)
 	if f.get("lava_golem", false):
 		# "Must first be Special Summoned (from your hand) to your opponent's field by Tributing 2 monsters they control. You cannot Normal Summon/Set the turn you Special Summon this card."
 		return s.players[s.opponent(p)].monsters().filter(func(m): return s.can_tribute_fx(m)).size() >= 2 and not s.normal_summoned
@@ -1027,6 +1120,83 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 			s._shuffle(ps.deck)
 			events.append({"type": "set_st", "player": p, "card": gkt[0], "zone": zt})
 			events.append({"type": "reveal", "player": p, "card": gkt[0], "zone": zt})
+		return events
+	if f.get("twilight", false):
+		# BLS - Envoy of the Evening Twilight: banish all LIGHT or all DARK monsters from your GY (equal numbers of each).
+		var k_t := s.choose_option(p, Loc.t("%s: banish all LIGHT or all DARK monsters from your GY?") % c.cname(), [Loc.t("All LIGHT"), Loc.t("All DARK")], 0 if s.players[s.opponent(p)].hand.is_empty() else 1, c)
+		var attr_t: String = ["LIGHT", "DARK"][k_t]
+		for g in ps.gy.filter(func(g): return g.is_monster() and str(g.data.get("attribute", "")) == attr_t):
+			events.append_array(s._banish(g))
+		ps.hand.erase(c)
+		c.proper = true
+		events.append_array(s._special(p, c, "effect"))
+		if s.choose_option(p, Loc.t("%s: use its effect (no Battle Phase this turn)?") % c.cname(), [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+			ps.once_names["#no_bp"] = s.turn
+			if attr_t == "LIGHT":
+				var all_t: Array = s.players[s.opponent(p)].monsters() + ps.monsters().filter(func(m): return m != c)
+				if not all_t.is_empty():
+					var t_t = s.pick1(p, Loc.t("%s: banish which monster?") % c.cname(), all_t, s._best_monsters(s.players[s.opponent(p)].monsters(), 1)[0] if not s.players[s.opponent(p)].monsters().is_empty() else all_t[0], c)
+					events.append_array(s._banish(t_t))
+			else:
+				events.append_array(_hand_exile(s, p, c))
+		return events
+	if f.get("origin", false):
+		# Gaia the Fierce Knight Origin: send 1 Level 5 or higher monster from your hand to the GY.
+		ps.once_names["Origin#ss"] = s.turn
+		var big_o: Array = ps.hand.filter(func(h): return h.is_monster() and h.level() >= 5)
+		big_o.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+		var th_o = s.pick1(p, Loc.t("%s: send which monster?") % c.cname(), big_o, big_o[0], c)
+		ps.hand.erase(th_o)
+		th_o.set_meta("from_hand", true)
+		s._to_gy(ps, th_o)
+		events.append({"type": "discard", "player": p, "card": th_o})
+		ps.hand.erase(c)
+		events.append_array(s._special(p, c, "effect"))
+		return events
+	if f.get("valkyria", false):
+		ps.once_names["Valkyria#ss"] = s.turn
+		var ld_v: Array = ps.gy.filter(func(g): return g.is_monster() and str(g.data.get("attribute", "")) in ["LIGHT", "DARK"] and not s.necro_holds(g))
+		ld_v.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+		events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which monster?") % c.cname(), ld_v, ld_v[0], c)))
+		ps.hand.erase(c)
+		c.proper = true
+		events.append_array(s._special(p, c, "effect"))
+		return events
+	if f.get("levianeer", false):
+		# Chaos Dragon Levianeer: banish 3 LIGHT and/or DARK monsters from your GY.
+		var ld_l: Array = ps.gy.filter(func(g): return g.is_monster() and str(g.data.get("attribute", "")) in ["LIGHT", "DARK"] and not s.necro_holds(g))
+		ld_l.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+		var paid_l: Array = s.choose(p, Loc.t("%s: banish 3 LIGHT and/or DARK monsters") % c.cname(), ld_l, 3, ld_l.slice(0, 3), false, c)
+		var attrs := {}
+		for g in paid_l:
+			attrs[str(g.data.get("attribute", ""))] = true
+			events.append_array(s._banish(g))
+		ps.hand.erase(c)
+		c.proper = true
+		events.append_array(s._special(p, c, "effect"))
+		if int(ps.once_names.get("Levianeer#fx", -1)) != s.turn and s.choose_option(p, Loc.t("%s: use its effect (it can't attack this turn)?") % c.cname(), [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+			ps.once_names["Levianeer#fx"] = s.turn
+			c.attack_count_turn = s.turn
+			c.attack_count = 99
+			if attrs.size() == 2:
+				var foes_l: Array = s.players[s.opponent(p)].monsters() + SpellRules._all_st_of(s, s.opponent(p))
+				foes_l.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+				for t_l in s.choose(p, Loc.t("%s: destroy up to 2 cards") % c.cname(), foes_l + ps.monsters().filter(func(m): return m != c), mini(2, foes_l.size()), foes_l.slice(0, 2), true, c):
+					events.append_array(s._destroy(t_l) if t_l.is_monster() and s.players[t_l.owner].field.has(t_l) else s._destroy_st(t_l))
+			elif attrs.has("LIGHT"):
+				var rev_l: Array = (ps.gy + s.players[s.opponent(p)].gy).filter(func(g): return g.is_monster() and s.can_revive(g) and s.gy_targetable(g))
+				if not rev_l.is_empty() and ps.free_zone() != -1:
+					var b_l = s.pick1(p, Loc.t("%s: Special Summon which monster?") % c.cname(), rev_l, s._best_monsters(rev_l, 1)[0], c)
+					s.players[b_l.owner].gy.erase(b_l)
+					events.append_array(s._special(p, b_l, "reborn", "def"))
+			else:
+				var oh_l: Array = s.players[s.opponent(p)].hand
+				if not oh_l.is_empty():
+					var x_l = oh_l[s._rng.randi() % oh_l.size()]
+					oh_l.erase(x_l)
+					s.players[s.opponent(p)].deck.append(x_l)
+					s._shuffle(s.players[s.opponent(p)].deck)
+					events.append(_ev(p, c, Loc.t("%s shuffles a random card from your opponent's hand into the Deck") % c.cname()))
 		return events
 	if f.get("brilliant_rose", false):
 		# Brilliant Rose: discard 1 "Gem-Knight" or "Melodious" card; Special Summon it.
@@ -1340,6 +1510,16 @@ static func left_by_opp(s: DuelState, m) -> Array:
 	var p: int = m.owner
 	var ps := s.players[p]
 	var events := []
+	if f.get("magia", false) and m.proper:
+		# Dragon Master Magia: "If this face-up card in its owner's control leaves the field because of an opponent's card: Special Summon 1
+		# "Blue-Eyes" monster or 1 "Chaos" or "Black Luster Soldier" Ritual Monster from your Extra Deck or GY."
+		var pool_mg: Array = (ps.extra + ps.gy.filter(func(g): return s.can_revive(g) and s.gy_targetable(g))).filter(func(x): return x != m and x.is_monster() \
+				and (x.cname().contains("Blue-Eyes") or (x.frame() == "ritual" and (x.cname().contains("Chaos") or is_bls(x)))) and (not ps.extra.has(x) or x.proper))
+		if not pool_mg.is_empty() and ps.free_zone() != -1 and not s.ss_locked(p) and s.choose_option(p, Loc.t("%s: Special Summon a monster from your Extra Deck or GY?") % m.cname(), [Loc.t("Yes"), Loc.t("No")], 0, m) == 0:
+			var t_mg = s.pick1(p, Loc.t("%s: Special Summon which monster?") % m.cname(), pool_mg, s._best_monsters(pool_mg, 1)[0], m)
+			ps.extra.erase(t_mg)
+			ps.gy.erase(t_mg)
+			events.append_array(s._special(p, t_mg, "effect"))
 	if f.get("ag_frame", false):
 		# Ancient Gear Frame: "Special Summon up to 3 "Ancient Gear Golem" and/or "Ancient Gear Golem - Ultimate Pound" from your hand, ignoring their Summoning conditions."
 		var gs: Array = ps.hand.filter(func(x): return x.cname() == "Ancient Gear Golem" or x.cname() == "Ancient Gear Golem - Ultimate Pound")
@@ -1431,7 +1611,17 @@ static func trigger(s: DuelState, c, key: String, ctx := {}) -> Array:
 			var out_t: Array = s._destroy_st(hit_t)
 			out_t.append_array(trigger(s, c, key, ctx))
 			return out_t
+	if key == "kill" and is_bls(c) and "Beginning Knight" in _knight_names(c) and int(c.tags.get("bk_kill", -1)) != s.turn and not c.negated:
+		c.tags["bk_kill"] = s.turn
+		c.tags["again_turn"] = s.turn
+		var out_k := [_ev(c.owner, c, Loc.t("%s can attack again (Beginning Knight)") % c.cname())]
+		if not fx(c).has("kill"):
+			return out_k
+		out_k.append_array(trigger(s, c, key, ctx))
+		return out_k
 	var f := fx(c)
+	if c.is_monster() and s.mon_fx_locked(c.owner) and f.has(key) and s.players[c.owner].field.has(c):
+		return [_ev(c.owner, c, Loc.t("%s: monster effects can't be activated this turn") % c.cname())]
 	if not f.has(key) or s.is_over() or _spent(s, c.owner, c):
 		return []
 	if s.gy_fx_off == c.owner and s.players[c.owner].gy.has(c):
@@ -1532,6 +1722,27 @@ static func standby(s: DuelState, p: int) -> Array:
 
 static func end_phase(s: DuelState, p: int) -> Array:
 	var events := []
+	var pe := s.players[p]
+	for b in pe.banished.duplicate():
+		if b.tags.get("exile_back", false):
+			# "...banish 1 random card from your opponent's hand face-down, until your opponent's End Phase"
+			b.tags.erase("exile_back")
+			pe.banished.erase(b)
+			pe.hand.append(b)
+			events.append(_ev(p, b, Loc.t("%s returns to the hand") % b.cname()))
+	for g in pe.gy.duplicate():
+		if g.cname() == "Envoy of Chaos" and int(pe.once_names.get("Envoy#back", -1)) != s.turn and not s.necro_holds(g) and s.can_banish(p):
+			# Envoy of Chaos: "Once per turn, during the End Phase, if this card is in your GY: banish 1 LIGHT and 1 DARK monster from your GY, except this card; add this card to your hand."
+			var ls: Array = pe.gy.filter(func(x): return x != g and x.is_monster() and str(x.data.get("attribute", "")) == "LIGHT" and not s.necro_holds(x))
+			var ds: Array = pe.gy.filter(func(x): return x != g and x.is_monster() and str(x.data.get("attribute", "")) == "DARK" and not s.necro_holds(x))
+			if not ls.is_empty() and not ds.is_empty() and s.choose_option(p, Loc.t("%s: banish a LIGHT and a DARK monster to add it to your hand?") % g.cname(), [Loc.t("Yes"), Loc.t("No")], 0, g) == 0:
+				pe.once_names["Envoy#back"] = s.turn
+				ls.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+				ds.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+				events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which LIGHT monster?") % g.cname(), ls, ls[0], g)))
+				events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which DARK monster?") % g.cname(), ds, ds[0], g)))
+				events.append_array(_to_hand(s, p, g))
+			break
 	for q in 2:
 		for m in s.players[q].monsters().filter(func(m): return int(m.tags.get("fragment_turn", -1)) == s.turn):
 			m.tags.erase("fragment_turn")
@@ -1606,6 +1817,8 @@ static func gy_can(s: DuelState, p: int, c) -> bool:
 	var g: Dictionary = fx(c).get("gy_ignite", {})
 	if g.is_empty() or not s.players[p].gy.has(c):
 		return false
+	if c.is_monster() and s.mon_fx_locked(p):
+		return false
 	if s.shaman_blocks(c) or (int(s.inscription.get("mode", -1)) == 0 and int(s.inscription.get("until", -1)) >= s.turn) or s.gk_trap_lock(p):
 		return false   # Gravekeeper's Shaman / Inscription
 	if int(s.players[p].name_lock.get(c.cname(), -1)) == s.turn:
@@ -1633,7 +1846,7 @@ static func gy_can(s: DuelState, p: int, c) -> bool:
 ## An effect used from the hand by discarding the card itself.
 static func hand_can(s: DuelState, p: int, c) -> bool:
 	var g: Dictionary = fx(c).get("hand_ignite", {})
-	if g.is_empty() or int(s.players[p].name_lock.get(c.cname(), -1)) == s.turn:
+	if g.is_empty() or int(s.players[p].name_lock.get(c.cname(), -1)) == s.turn or s.mon_fx_locked(p):
 		return false
 	if g.has("equip_to"):
 		return s.players[p].spells.find(null) != -1 and not _cocoon_hosts(s, p, str(g["equip_to"])).is_empty()
@@ -1694,6 +1907,11 @@ static func hand_run(s: DuelState, p: int, c) -> Array:
 		host.tags["cocoon_turn"] = s.turn
 		return [{"type": "activate", "player": p, "card": c, "zone": zone_c},
 				_ev(p, c, Loc.t("%s wraps %s: it is now %d / %d") % [c.cname(), host.cname(), c.atk(), c.def()])]
+	if g.get("reveal", false):
+		# "You can reveal this card in your hand" (Illusion of Chaos): it stays in the hand.
+		var rv := [_ev(p, c, Loc.t("%s is revealed") % c.cname())]
+		rv.append_array(run_list(s, p, c, g.get("do", []), {}))
+		return rv
 	var events := [_ev(p, c, Loc.t("%s is discarded for its effect") % c.cname())]
 	ps.hand.erase(c)
 	c.set_meta("from_hand", true)
@@ -2019,6 +2237,43 @@ static func gem_fusion(s: DuelState, p: int, c, mode: String) -> Array:
 	return events
 
 
+## How many face-up Field Spells are on the field (Chaos Daedalus)?
+static func _field_spells_up(s: DuelState) -> int:
+	var n := 0
+	for q in 2:
+		if s.players[q].field_spell != null and s.players[q].field_spell.face_up:
+			n += 1
+	return n
+
+
+## Spell Counters this card can hold.
+static func _counter_cap(x) -> int:
+	if x.is_monster():
+		return int(fx(x).get("counter_on_spell", 0))
+	var sp := SpellRules.spec(x)
+	return 6 if sp.get("gateway", false) else int(sp.get("counter_cap", 0))
+
+
+static var current_ignite = null
+
+
+## Gaia, the Mid-Knight Sun / the Polar Knight: which of its two effects can be used now.
+static func _pair_modes(s: DuelState, p: int, c) -> Array:
+	if c == null:
+		return []
+	var ps := s.players[p]
+	var pr: Array = fx(c).get("pair", ["LIGHT", "DARK"])
+	var out: Array = []
+	if int(ps.once_names.get(c.cname() + "#1", -1)) != s.turn and not ps.monsters().filter(func(m): return m != c and m.face_up and str(m.data.get("attribute", "")) == pr[0] and s.can_tribute_fx(m)).is_empty() \
+			and not ps.deck.filter(func(x): return x.is_monster() and x.level() == 4 and str(x.data.get("race", "")) == "Warrior" and str(x.data.get("attribute", "")) == pr[1]).is_empty():
+		out.append(0)
+	if int(ps.once_names.get(c.cname() + "#2", -1)) != s.turn and s.can_banish(p) and not ps.gy.filter(func(g): return g.is_monster() and str(g.data.get("attribute", "")) == pr[1] and not s.necro_holds(g)).is_empty():
+		var tg: Array = ps.monsters() if pr[0] == "DARK" else s.players[s.opponent(p)].monsters() + ps.monsters()
+		if not tg.filter(func(m): return m.face_up).is_empty():
+			out.append(1)
+	return out
+
+
 ## Particle Fusion: the "Gem-Knight" materials of this Fusion Monster still in the GY.
 static func _particle_mats(s: DuelState, p: int, f) -> Array:
 	var uids: Array = f.tags.get("mats", [])
@@ -2049,6 +2304,57 @@ static func ag_duel_plans(s: DuelState, p: int) -> Array:
 			continue
 		out.append(pl)
 	return out
+
+
+## "Black Luster Soldier" monsters (Super Soldier Soul while it is named that).
+static func is_bls(x) -> bool:
+	return x != null and x.is_monster() and x.cname().contains("Black Luster Soldier")
+
+
+## "Gaia The Fierce Knight" monsters (and the cards always treated as one).
+static func is_gaia(x) -> bool:
+	return x != null and x.is_monster() and CardEffects.matches(x.data, {"gaia": true})
+
+
+## "Gaia the Dragon Champion" on the field (Sky Galloping Gaia and the Magical Knight of Dragons are, too).
+static func is_gaia_dc(m) -> bool:
+	return m != null and (m.cname() == "Gaia the Dragon Champion" or str(fx(m).get("name_as", "")) == "Gaia the Dragon Champion")
+
+
+## LIGHT or DARK monsters that "cannot be Normal Summoned/Set" (Chaos Space).
+static func _nomi_ld(x) -> bool:
+	if not x.is_monster() or not str(x.data.get("attribute", "")) in ["LIGHT", "DARK"]:
+		return false
+	var d := str(x.data.get("desc", "")).to_lower()
+	return d.contains("cannot be normal summoned") or x.frame() == "ritual"
+
+
+## Pull a card from wherever it is into the hand (search events).
+static func _to_hand(s: DuelState, p: int, x) -> Array:
+	var ps := s.players[p]
+	var was_deck: bool = ps.deck.has(x)
+	ps.deck.erase(x)
+	ps.gy.erase(x)
+	ps.banished.erase(x)
+	ps.hand.append(x)
+	if was_deck:
+		s._shuffle(ps.deck)
+		return [{"type": "search", "player": p, "card": x, "deck": ps.deck.size()}]
+	return [{"type": "gy_to_hand", "player": p, "card": x}]
+
+
+## Banish a random card from the opponent's hand face-down until their (next) End Phase.
+static func _hand_exile(s: DuelState, p: int, c) -> Array:
+	var opp_i := s.opponent(p)
+	var oh: Array = s.players[opp_i].hand
+	if oh.is_empty():
+		return []
+	var x = oh[s._rng.randi() % oh.size()]
+	oh.erase(x)
+	s.players[opp_i].banished.append(x)
+	x.tags["exile_back"] = true
+	return [_ev(p, c, Loc.t("%s banishes a random card from your opponent's hand until their End Phase") % c.cname()),
+			{"type": "banish", "player": opp_i, "card": x, "from": "hand", "zone": -1, "side": opp_i}]
 
 
 ## Is this monster a Normal Monster right now? Gemini monsters are, on the field and in the GY, until Normal Summoned again.
@@ -2091,7 +2397,15 @@ static func ignite_spec(c) -> Dictionary:
 		return {"label": "Equip to a partner / unequip"}
 	if fx(c).has("gemini_ignite") and c.tags.has("gemini_on"):
 		return fx(c)["gemini_ignite"]   # Gigaplant: once it is an Effect Monster, its own effect
+	if not fx(c).has("ignite") and is_bls(c) and not c.negated and _knight_names(c).size() > 0:
+		# Beginning Knight / Evening Twilight Knight: "A "Black Luster Soldier" monster Ritual Summoned using this card gains these effects."
+		return {"cost": "none", "cond": "knight_grant", "do": [["knight_grant"]], "repeat": true, "label": "Knight's effect: banish"}
 	return fx(c).get("ignite", {})
+
+
+static func _knight_names(c) -> Array:
+	var mats: Array = c.tags.get("rit_mats", [])
+	return ["Beginning Knight", "Evening Twilight Knight"].filter(func(n): return n in mats)
 
 
 static func can_ignite(s: DuelState, p: int, c) -> bool:
@@ -2106,7 +2420,10 @@ static func can_ignite(s: DuelState, p: int, c) -> bool:
 		if s.players[p].spells.has(c):
 			return c.face_up and c.equipped_to != null and s.players[p].free_zone() != -1
 		return s.players[p].field.has(c) and c.face_up and not s.union_hosts(p, c).is_empty() and s.players[p].spells.find(null) != -1
+	if c.is_monster() and s.mon_fx_locked(p):
+		return false   # Magician of Black Chaos MAX
 	var ig := ignite_spec(c)
+	current_ignite = c
 	if ig.is_empty() or p != s.current or s.is_over() or not s._in_main():
 		return false
 	if int(s.players[p].name_lock.get(c.cname(), -1)) == s.turn:
@@ -2733,7 +3050,7 @@ static func _is_effect_monster(m) -> bool:
 ## Cards on the field, in the hand (Effect Veiler) and in the Graveyard (Skill Successor) are all asked.
 static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) -> bool:
 	var kind := str(CardEffects.of(c.cname()).get("quick", ""))
-	if kind == "" or s.is_over():
+	if kind == "" or s.is_over() or (c.is_monster() and s.mon_fx_locked(p)):
 		return false
 	var ps := s.players[p]
 	var opp := s.players[s.opponent(p)]
@@ -2770,6 +3087,50 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 			if s.chain.back()["card"].is_monster() or lsw_fodder(s, p).is_empty():
 				return false
 			return not _all_st(s).filter(func(x): return x.face_up).is_empty()
+		"envoy_chaos":
+			# Envoy of Chaos: in the Battle Phase, from the hand.
+			return ps.hand.has(c) and s.phase == DuelState.Phase.BATTLE and window in ["attack", "damage", "battle_start", "chain", "phase"] \
+					and not ps.monsters().filter(func(m): return m.face_up and (is_bls(m) or is_gaia(m))).is_empty()
+		"soldier_gaia":
+			return ps.hand.has(c) and int(ps.once_names.get("SoldierGaia#ss", -1)) != s.turn and window in ["attack", "battle_start", "phase", "summon", "chain"] \
+					and not ps.monsters().filter(func(m): return m.face_up and m.frame() == "fusion" and str(m.data.get("race", "")) == "Dragon" and s.can_tribute_fx(m)).is_empty() and not s.ss_locked(p)
+		"origin":
+			# Gaia the Fierce Knight Origin, in your GY: in the Battle Phase.
+			if not ps.gy.has(c) or s.necro_holds(c) or s.phase != DuelState.Phase.BATTLE or int(ps.once_names.get("Origin#gy", -1)) == s.turn or not s.can_banish(p):
+				return false
+			for q in 2:
+				for m in s.players[q].monsters():
+					if m.face_up and s.atk_of(m, false) != m.atk():
+						return true
+			return false
+		"gmkd":
+			return on_field and s._in_main() and int(ps.once_names.get("GMKD#q", -1)) != s.turn and s.atk_of(c, false) >= 2600 and window in ["phase", "summon", "chain"] \
+					and not (opp.monsters() + _all_st(s).filter(func(x): return x.owner != p)).is_empty()
+		"magia":
+			if not on_field or window != "chain" or s.chain.is_empty():
+				return false
+			var lk_m: Dictionary = s.chain.back()
+			var kind_m: String = "monster" if lk_m["card"].is_monster() else ("spell" if lk_m["card"].is_spell() else "trap")
+			return int(lk_m["player"]) != p and not lk_m.get("negated", false) and int(ps.once_names.get("Magia#" + kind_m, -1)) != s.turn
+		"moch":
+			if not on_field or window != "chain" or s.chain.is_empty() or int(ps.once_names.get("MoCh#q", -1)) == s.turn:
+				return false
+			return not s.chain.back()["card"].is_monster() and not (opp.monsters() + _all_st(s).filter(func(x): return x.owner != p)).is_empty()
+		"illusion":
+			if not on_field or window != "chain" or s.chain.is_empty() or int(ps.once_names.get("Illusion#q", -1)) == s.turn:
+				return false
+			var lk_i: Dictionary = s.chain.back()
+			return int(lk_i["player"]) != p and lk_i["card"].is_monster() and not lk_i.get("negated", false) \
+					and not ps.gy.filter(func(g): return g.cname() == "Dark Magician" and s.can_revive(g)).is_empty()
+		"heart_gaia":
+			if not on_field or window != "chain" or s.chain.is_empty() or int(ps.once_names.get("HeartGaia#q", -1)) == s.turn:
+				return false
+			var lk_h: Dictionary = s.chain.back()
+			return int(lk_h["player"]) != p and lk_h["card"].is_monster() and not lk_h.get("negated", false) \
+					and not ps.monsters().filter(func(m): return m != c and m.face_up and m.level() >= 5).is_empty()
+		"chaos_hunter":
+			return ps.hand.has(c) and window == "summon" and _subject != null and not (_subject is Dictionary) and _subject.owner != p and _subject.tags.get("ss", false) \
+					and ps.free_zone() != -1 and not s.ss_locked(p) and ps.hand.size() >= 2
 		"mdd":
 			# Master Diamond Dispersion (Quick Effect): in either player's Main Phase.
 			return on_field and window in ["phase", "summon", "chain"] and _cond(s, p, "mdd")
@@ -3049,6 +3410,95 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 			events.append_array(run_list(s, p, c, [["bounce_own_other_card"], ["self_atk_turn", 500]], {}))
 		"mdd":
 			events.append_array(run_list(s, p, c, [["mdd"]], {}))
+		"envoy_chaos":
+			ps.hand.erase(c)
+			c.set_meta("from_hand", true)
+			s._to_gy(ps, c)
+			events.append({"type": "discard", "player": p, "card": c})
+			var tg_e: Array = ps.monsters().filter(func(m): return m.face_up and (is_bls(m) or is_gaia(m)))
+			if not tg_e.is_empty():
+				var t_e = s.pick1(p, Loc.t("%s: which monster?") % c.cname(), tg_e, tg_e[0], c)
+				if t_e.atk_mod_turn != s.turn:
+					t_e.atk_mod_turn = s.turn
+					t_e.atk_mod_t = 0
+				t_e.atk_mod_t += 1500
+				t_e.tags["envoy_turn"] = s.turn
+				events.append(_ev(p, t_e, Loc.t("%s gains 1500 ATK; monsters battling it use their original ATK") % t_e.cname()))
+		"soldier_gaia":
+			ps.once_names["SoldierGaia#ss"] = s.turn
+			var df: Array = ps.monsters().filter(func(m): return m.face_up and m.frame() == "fusion" and str(m.data.get("race", "")) == "Dragon" and s.can_tribute_fx(m))
+			var t_sg = s.pick1(p, Loc.t("%s: Tribute which Dragon Fusion Monster?") % c.cname(), df, df[0], c)
+			ps.field[ps.field.find(t_sg)] = null
+			s._to_gy(ps, t_sg)
+			events.append({"type": "tribute", "player": p, "card": t_sg})
+			events.append_array(trigger(s, t_sg, "tributed"))
+			events.append_array(s._monster_left(t_sg))
+			ps.hand.erase(c)
+			events.append_array(s._special(p, c, "effect"))
+			events.append_array(on_summon(s, p, c, "special"))
+		"origin":
+			ps.once_names["Origin#gy"] = s.turn
+			var ch_o: Array = []
+			for q in 2:
+				for m in s.players[q].monsters():
+					if m.face_up and s.atk_of(m, false) != m.atk():
+						ch_o.append(m)
+			ch_o.sort_custom(func(x, y): return (1 if x.owner != p else 0) * 10000 + absi(s.atk_of(x, false) - x.atk()) > (1 if y.owner != p else 0) * 10000 + absi(s.atk_of(y, false) - y.atk()))
+			var t_or = s.pick1(p, Loc.t("%s: whose ATK becomes its original ATK?") % c.cname(), ch_o, ch_o[0], c)
+			events.append_array(s._banish(c))
+			t_or.tags["orig_atk"] = true
+			events.append(_ev(p, t_or, Loc.t("%s's ATK becomes %d") % [t_or.cname(), t_or.atk()]))
+		"gmkd":
+			ps.once_names["GMKD#q"] = s.turn
+			var foes_g: Array = opp.monsters() + _all_st(s).filter(func(x): return x.owner != p)
+			if opp.field_spell != null:
+				foes_g.append(opp.field_spell)
+			foes_g.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+			var t_gm = s.pick1(p, Loc.t("%s: destroy which card?") % c.cname(), foes_g, foes_g[0], c)
+			c.atk_mod -= 2600
+			events.append(_ev(p, c, Loc.t("%s loses 2600 ATK") % c.cname()))
+			events.append_array(s._destroy(t_gm) if t_gm.is_monster() and s.players[t_gm.owner].field.has(t_gm) else s._destroy_st(t_gm))
+		"magia":
+			var lk_g: Dictionary = s.chain.back()
+			var kind_g: String = "monster" if lk_g["card"].is_monster() else ("spell" if lk_g["card"].is_spell() else "trap")
+			ps.once_names["Magia#" + kind_g] = s.turn
+			events.append_array(_negate_link(s, p, c, lk_g))
+		"moch":
+			ps.once_names["MoCh#q"] = s.turn
+			var foes_mc: Array = opp.monsters() + _all_st(s).filter(func(x): return x.owner != p)
+			foes_mc.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+			var t_mc = s.pick1(p, Loc.t("%s: destroy which card?") % c.cname(), foes_mc, foes_mc[0], c)
+			events.append_array(s._destroy(t_mc) if t_mc.is_monster() and s.players[t_mc.owner].field.has(t_mc) else s._destroy_st(t_mc))
+		"illusion":
+			ps.once_names["Illusion#q"] = s.turn
+			var lk_il: Dictionary = s.chain.back()
+			events.append_array(s._bounce(c))
+			var dm_g: Array = ps.gy.filter(func(g): return g.cname() == "Dark Magician" and s.can_revive(g))
+			if not dm_g.is_empty() and ps.free_zone() != -1:
+				ps.gy.erase(dm_g[0])
+				events.append_array(s._special(p, dm_g[0], "reborn"))
+				lk_il["negated"] = true
+				events.append(_ev(p, c, Loc.t("%s negates %s") % [c.cname(), lk_il["card"].cname()]))
+		"heart_gaia":
+			ps.once_names["HeartGaia#q"] = s.turn
+			var big_h: Array = ps.monsters().filter(func(m): return m != c and m.face_up and m.level() >= 5)
+			big_h.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			var t_hg = s.pick1(p, Loc.t("%s: send which monster to the GY?") % c.cname(), big_h, big_h[0], c)
+			ps.field[ps.field.find(t_hg)] = null
+			s._to_gy(ps, t_hg)
+			events.append({"type": "destroy", "player": p, "card": t_hg, "zone": -1, "overlays": []})
+			events.append_array(s._monster_left(t_hg))
+			events.append_array(_negate_link(s, p, c, s.chain.back()))
+		"chaos_hunter":
+			var hd_ch: Array = ps.hand.filter(func(h): return h != c)
+			hd_ch.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			var th_ch = s.pick1(p, Loc.t("%s: discard which card?") % c.cname(), hd_ch, hd_ch[0], c)
+			ps.hand.erase(th_ch)
+			th_ch.set_meta("from_hand", true)
+			s._to_gy(ps, th_ch)
+			events.append({"type": "discard", "player": p, "card": th_ch})
+			ps.hand.erase(c)
+			events.append_array(s._special(p, c, "effect"))
 		"rose_diamond":
 			ps.once_names["Rose#q"] = s.turn
 			var pay_rd: Array = ps.gy.filter(func(g): return CardEffects.matches(g.data, {"has": "Gem-Knight", "monster": false}) and not s.necro_holds(g))
@@ -3539,6 +3989,16 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 			return ps.lp > 4000 and foe_n >= 2
 		"lyla_ts":
 			return not s.chain.is_empty() and int(s.chain.back()["player"]) != p
+		"envoy_chaos":
+			var pa_ec: Dictionary = s.pending_attack
+			return not pa_ec.is_empty() and int(pa_ec["player"]) == p and pa_ec.get("target") != null and (is_bls(pa_ec["attacker"]) or is_gaia(pa_ec["attacker"])) \
+					and s.atk_of(pa_ec["attacker"], true) <= s.atk_of(pa_ec["target"], false) + 1000
+		"soldier_gaia", "magia", "moch", "illusion", "heart_gaia", "chaos_hunter":
+			return true
+		"origin":
+			return hit and lose
+		"gmkd":
+			return s.current == p and not s.players[s.opponent(p)].monsters().filter(func(m): return s._card_value(m) >= 2000).is_empty()
 		"mdd":
 			# Swing out when it calls at least two monsters.
 			return _mdd_pool(s, p).size() >= 2 and s.current != p
@@ -3755,6 +4215,11 @@ static func can_target(src, m) -> bool:
 		return false   # Lord of D. is up and this is a Dragon / "Neither player can target this card with card effects" (Obelisk)
 	if src != null and m != null and m is DuelState.CardInst and current_state != null and src.owner != m.owner and current_state.fortress_shields(m):
 		return false   # Ancient Gear Fortress
+	if src != null and m != null and m is DuelState.CardInst and src.owner != m.owner and m.face_up and not m.negated and fx(m).get("untargetable_opp", false):
+		return false   # Blue-Eyes Chaos Dragon: "Your opponent cannot target this card with card effects"
+	if src != null and m != null and m is DuelState.CardInst and current_state != null and src.owner != m.owner and m.face_up and str(m.data.get("attribute", "")) in ["LIGHT", "DARK"] \
+			and _field_spells_up(current_state) > 0 and not current_state.players[m.owner].monsters().filter(func(x): return x.face_up and not x.negated and fx(x).get("daedalus", false)).is_empty():
+		return false   # Chaos Daedalus
 	if src == null or m == null or not src.is_monster() or src.frame() == "xyz" or not m.face_up or m.negated:
 		return true
 	var cap := int(CardEffects.of(m.cname()).get("untargetable_lv_max", 0))
@@ -6689,6 +7154,403 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				events.append(_ev(p, c, Loc.t("%s banishes from the Graveyard") % name))
 			for g in picks:
 				events.append_array(s._banish(g))
+		"ssr_gy":
+			ps.once_names["SSR#gy"] = s.turn
+			events.append_array(s._banish(c))
+			for attr_s in ["LIGHT", "DARK"]:
+				var g_s: Array = ps.gy.filter(func(g): return g.is_monster() and str(g.data.get("attribute", "")) == attr_s and not s.necro_holds(g))
+				g_s.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+				events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which %s monster?") % [name, attr_s], g_s, g_s[0], c)))
+			var h_s: Array = ps.hand.filter(func(h): return h.frame() == "ritual" and is_bls(h))
+			if not h_s.is_empty():
+				var t_ss = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, h_s, s._best_monsters(h_s, 1)[0], c)
+				events.append_array(_ignoring(s, p, t_ss, ps.hand))
+				events.append_array(on_summon(s, p, t_ss, "special"))
+		"rebirth_gy":
+			var b_rg: Array = ps.gy.filter(func(g): return is_bls(g) and s.gy_targetable(g) and not s.necro_holds(g))
+			events.append_array(s._banish(c))
+			events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which monster?") % name, b_rg, s._best_monsters(b_rg, 1)[0], c)))
+		"shield_gy":
+			var hold: Array = (ps.monsters() + ps.spells.filter(func(x): return x != null)).filter(func(x): return x.face_up and x.counter > 0)
+			var h_c = s.pick1(p, Loc.t("%s: remove a Spell Counter from which card?") % name, hold, hold[0], c)
+			h_c.counter -= 1
+			if ps.gy.has(c) and ps.spells.has(null):
+				ps.gy.erase(c)
+				var z_sh := ps.spells.find(null)
+				ps.spells[z_sh] = c
+				c.face_up = false
+				c.set_turn = s.turn
+				c.leave_banish = true
+				events.append({"type": "set_st", "player": p, "card": c, "zone": z_sh})
+		"gateway_fx":
+			var gw: Array = ps.spells.filter(func(x): return x != null and x.face_up and x.cname() == "Gateway to Chaos" and x.counter >= 3)
+			gw[0].counter -= 3
+			gw[0].tags["gw_turn"] = s.turn
+			var rs_g: Array = ps.deck.filter(func(x): return str(SpellRules.spec(x).get("k", "")) == "ritual")
+			events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which Ritual Spell?") % name, rs_g, rs_g[0], c)))
+		"space_gy":
+			ps.once_names["Chaos Space#2"] = s.turn
+			var b_sp: Array = ps.banished.filter(func(b): return b.face_up and _nomi_ld(b))
+			var t_sp = s.pick1(p, Loc.t("%s: put which banished monster on the bottom of your Deck?") % name, b_sp, b_sp[0], c)
+			events.append_array(s._banish(c))
+			ps.banished.erase(t_sp)
+			ps.deck.insert(0, t_sp)
+			events.append({"type": "gy_to_deck", "player": p, "card": t_sp, "deck": ps.deck.size()})
+			events.append_array(s._draw(p, 1))
+		"galloping":
+			ps.once_names["Galloping Gaia#fx"] = s.turn
+			var gh_g: Array = ps.hand.filter(func(h): return is_gaia(h))
+			var d5_d: Array = ps.deck.filter(func(x): return x.is_monster() and str(x.data.get("race", "")) == "Dragon" and x.level() == 5)
+			var d5_h: Array = ps.hand.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Dragon" and h.level() == 5)
+			var g_d: Array = ps.deck.filter(func(x): return is_gaia(x))
+			var opts_g: Array = []
+			if not gh_g.is_empty() and not d5_d.is_empty():
+				opts_g.append(0)
+			if not d5_h.is_empty() and not g_d.is_empty():
+				opts_g.append(1)
+			var k_g: int = opts_g[0]
+			if opts_g.size() == 2:
+				k_g = s.choose_option(p, Loc.t("%s: which?") % name, [Loc.t("Reveal a Gaia: add a Level 5 Dragon"), Loc.t("Reveal a Level 5 Dragon: add a Gaia")], 0, c)
+			var shown_g = s.pick1(p, Loc.t("%s: reveal which card?") % name, gh_g if k_g == 0 else d5_h, (gh_g if k_g == 0 else d5_h)[0], c)
+			events.append(_ev(p, shown_g, Loc.t("%s is revealed") % shown_g.cname()))
+			var pool_g: Array = d5_d if k_g == 0 else g_d
+			events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which monster?") % name, pool_g, s._best_monsters(pool_g, 1)[0], c)))
+		"knight_grant":
+			# Beginning / Evening Twilight Knight's gift: banish 1 monster your opponent controls, or (Evening) a random card from their hand.
+			var opts_k: Array = []
+			if int(c.tags.get("kg_ban", -1)) != s.turn and not opp.monsters().is_empty():
+				opts_k.append(Loc.t("Banish 1 monster your opponent controls"))
+			if "Evening Twilight Knight" in _knight_names(c) and int(c.tags.get("kg_hand", -1)) != s.turn and not opp.hand.is_empty():
+				opts_k.append(Loc.t("Banish 1 random card from their hand"))
+			if opts_k.is_empty():
+				return events
+			var k_k: int = s.choose_option(p, Loc.t("%s: which effect?") % name, opts_k, 0, c)
+			if opts_k[k_k] == Loc.t("Banish 1 monster your opponent controls"):
+				c.tags["kg_ban"] = s.turn
+				var foes_k: Array = opp.monsters()
+				foes_k.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+				events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which monster?") % name, foes_k, foes_k[0], c)))
+			else:
+				c.tags["kg_hand"] = s.turn
+				events.append_array(_hand_exile(s, p, c))
+		"legend_shuffle":
+			# Legendary Swordsman: attacking, Ritual Summoned with a Normal Monster: shuffle every card your opponent controls into the Deck.
+			if c.tags.get("rit_normal", false) and s.current == p and not s.pending_attack.is_empty() and s.pending_attack.get("attacker") == c:
+				var all_l: Array = opp.monsters() + SpellRules._all_st_of(s, opp_i)
+				if not all_l.is_empty() and s.choose_option(p, Loc.t("%s: shuffle every card your opponent controls into the Deck?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+					for x in all_l:
+						if opp.field.has(x):
+							opp.field[opp.field.find(x)] = null
+							events.append_array(s._monster_left(x))
+						elif opp.spells.has(x):
+							opp.spells[opp.spells.find(x)] = null
+							events.append_array(SpellRules.left_field(s, x))
+						elif opp.field_spell == x:
+							opp.field_spell = null
+						if CardData.is_extra(x.id):
+							opp.extra.append(x)
+						elif not x.is_token():
+							opp.deck.append(x)
+					s._shuffle(opp.deck)
+					events.append(_ev(p, c, Loc.t("%s shuffles your opponent's field into the Deck") % name))
+		"sacred_swap":
+			# Sacred Soldier: return 1 of your banished LIGHT/DARK monsters to the GY; banish 1 card your opponent controls.
+			var ban_s: Array = ps.banished.filter(func(b): return b.face_up and b.is_monster() and str(b.data.get("attribute", "")) in ["LIGHT", "DARK"])
+			var foes_s: Array = opp.monsters() + SpellRules._all_st_of(s, opp_i)
+			if int(ps.once_names.get("Sacred#fx", -1)) != s.turn and not ban_s.is_empty() and not foes_s.is_empty() and s.can_banish(p) \
+					and s.choose_option(p, Loc.t("%s: return a banished monster to the GY and banish 1 card?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["Sacred#fx"] = s.turn
+				var r_s = s.pick1(p, Loc.t("%s: return which monster to the GY?") % name, ban_s, ban_s[0], c)
+				foes_s.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+				var t_s = s.pick1(p, Loc.t("%s: banish which card?") % name, foes_s, foes_s[0], c)
+				ps.banished.erase(r_s)
+				ps.gy.append(r_s)
+				events.append(_ev(p, r_s, Loc.t("%s returns to the GY") % r_s.cname()))
+				events.append_array(s._banish(t_s))
+		"sacred_kill":
+			var w_s: Array = ps.gy.filter(func(g): return g.is_monster() and str(g.data.get("race", "")) == "Warrior" and g.level() <= 7 and s.gy_targetable(g) and not s.necro_holds(g))
+			if not w_s.is_empty() and s.choose_option(p, Loc.t("%s: add a Level 7 or lower Warrior from your GY?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which monster?") % name, w_s, s._best_monsters(w_s, 1)[0], c)))
+		"ss_gaia", "ss_gaia_any":
+			# Super Soldier / Skilled Blue Magician: 1 "Gaia The Fierce Knight" monster from your hand, Deck or GY.
+			var g_g: Array = (ps.hand + ps.deck + ps.gy.filter(func(g): return s.can_revive(g) and s.gy_targetable(g))).filter(func(x): return is_gaia(x) and not CardData.is_extra(x.id) and _ss_ok(x))
+			if not g_g.is_empty() and ps.free_zone() != -1 and not s.ss_locked(p) and (a[0] == "ss_gaia_any" or s.choose_option(p, Loc.t("%s: Special Summon a \"Gaia The Fierce Knight\" monster?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0):
+				var t_g = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, g_g, s._best_monsters(g_g, 1)[0], c)
+				var was_d: bool = ps.deck.has(t_g)
+				ps.hand.erase(t_g)
+				ps.deck.erase(t_g)
+				ps.gy.erase(t_g)
+				if was_d:
+					s._shuffle(ps.deck)
+				events.append_array(s._special(p, t_g, "effect"))
+				events.append_array(on_summon(s, p, t_g, "special"))
+		"soul":
+			ps.once_names["Soul#fx"] = s.turn
+			var bl: Array = ps.hand.filter(func(h): return is_bls(h))
+			var th_b = s.pick1(p, Loc.t("%s: send which monster?") % name, bl, bl[0], c)
+			ps.hand.erase(th_b)
+			th_b.set_meta("from_hand", true)
+			s._to_gy(ps, th_b)
+			events.append({"type": "discard", "player": p, "card": th_b})
+			c.tags["as"] = "Black Luster Soldier"
+			c.tags["as_turn"] = s.turn + 1
+			c.tags["soul_until"] = s.turn + 1
+			events.append(_ev(p, c, Loc.t("%s is \"Black Luster Soldier\" with 3000 ATK until your opponent's End Phase") % name))
+		"soul_gy":
+			ps.once_names["Soul#gy"] = s.turn
+			var kn: Array = ps.deck.filter(func(x): return x.cname() in ["Beginning Knight", "Evening Twilight Knight"])
+			events.append_array(s._banish(c))
+			events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which Knight?") % name, kn, kn[0], c)))
+		"knight_back":
+			# Beginning Knight / Evening Twilight Knight, banished from the GY: a Ritual Spell / a Ritual Monster from your Deck.
+			var key_k: String = c.cname() + "#back"
+			var pool_k: Array = ps.deck.filter(func(x): return (str(SpellRules.spec(x).get("k", "")) == "ritual") if str(a[1]) == "spell" else (x.is_monster() and x.frame() == "ritual"))
+			if int(ps.once_names.get(key_k, -1)) != s.turn and not pool_k.is_empty() and s.choose_option(p, Loc.t("%s: add a Ritual card from your Deck?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names[key_k] = s.turn
+				events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which card?") % name, pool_k, pool_k[0], c)))
+		"arisen":
+			var b_a: Array = (ps.hand + ps.gy.filter(func(g): return s.can_revive(g) and s.gy_targetable(g))).filter(func(x): return is_bls(x) and _ss_ok(x) and (x.frame() != "ritual" or x.proper))
+			if int(ps.once_names.get("Arisen#fx", -1)) != s.turn and not b_a.is_empty() and ps.free_zone() != -1 and not s.ss_locked(p) \
+					and s.choose_option(p, Loc.t("%s: Special Summon a \"Black Luster Soldier\" monster?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["Arisen#fx"] = s.turn
+				var t_a = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, b_a, s._best_monsters(b_a, 1)[0], c)
+				ps.hand.erase(t_a)
+				ps.gy.erase(t_a)
+				events.append_array(s._special(p, t_a, "effect"))
+				events.append_array(on_summon(s, p, t_a, "special"))
+		"charging":
+			var b_c: Array = ps.deck.filter(func(x): return is_bls(x))
+			if int(ps.once_names.get("Charging#fx", -1)) != s.turn and not b_c.is_empty() and s.choose_option(p, Loc.t("%s: add a \"Black Luster Soldier\" monster from your Deck?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["Charging#fx"] = s.turn
+				events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which monster?") % name, b_c, b_c[0], c)))
+		"soldier_pos":
+			var atk_p: Array = (opp.monsters() + ps.monsters()).filter(func(m): return m.face_up and m.attack_pos and m != c)
+			if int(ps.once_names.get("SoldierGaia#pos", -1)) != s.turn and not atk_p.is_empty() and s.choose_option(p, Loc.t("%s: change 1 Attack Position monster to Defense Position?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["SoldierGaia#pos"] = s.turn
+				atk_p.sort_custom(func(x, y): return (1 if x.owner == opp_i else 0) * 10000 + s.atk_of(x, false) > (1 if y.owner == opp_i else 0) * 10000 + s.atk_of(y, false))
+				var t_p = s.pick1(p, Loc.t("%s: which monster?") % name, atk_p, atk_p[0], c)
+				t_p.attack_pos = false
+				events.append({"type": "position", "player": t_p.owner, "card": t_p, "zone": s.players[t_p.owner].field.find(t_p)})
+		"soldier_search":
+			ps.once_names["SoldierGaia#search"] = s.turn
+			ps.field[ps.field.find(c)] = null
+			s._to_gy(ps, c)
+			events.append({"type": "tribute", "player": p, "card": c})
+			events.append_array(s._monster_left(c))
+			var w7: Array = ps.deck.filter(func(x): return x.is_monster() and str(x.data.get("race", "")) == "Warrior" and x.level() >= 7 and x.cname() != "Soldier Gaia the Fierce Knight")
+			events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which monster?") % name, w7, s._best_monsters(w7, 1)[0], c)))
+		"magical_knight":
+			var d5: Array = (ps.hand + ps.gy.filter(func(g): return s.can_revive(g) and s.gy_targetable(g))).filter(func(x): return x.is_monster() and str(x.data.get("race", "")) == "Dragon" and x.level() == 5 and _ss_ok(x))
+			if int(ps.once_names.get("MagicalKnight#fx", -1)) != s.turn and not d5.is_empty() and ps.free_zone() != -1 and not s.ss_locked(p) \
+					and s.choose_option(p, Loc.t("%s: Special Summon a Level 5 Dragon in Defense Position?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["MagicalKnight#fx"] = s.turn
+				var t_d = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, d5, s._best_monsters(d5, 1)[0], c)
+				ps.hand.erase(t_d)
+				ps.gy.erase(t_d)
+				events.append_array(s._special(p, t_d, "effect", "def"))
+		"knight_pair":
+			var modes: Array = _pair_modes(s, p, c)
+			var pr: Array = fx(c).get("pair", ["LIGHT", "DARK"])
+			var labels: Array = [Loc.t("Tribute a %s monster: add a Level 4 %s Warrior") % [pr[0], pr[1]], Loc.t("Banish a %s monster from your GY: 500 ATK") % pr[1]]
+			var k_p: int = modes[0] if modes.size() == 1 else s.choose_option(p, Loc.t("%s: which effect?") % name, [labels[0], labels[1]], 0, c)
+			if not modes.has(k_p):
+				k_p = modes[0]
+			ps.once_names[c.cname() + "#" + str(k_p + 1)] = s.turn
+			if k_p == 0:
+				var tr_p: Array = ps.monsters().filter(func(m): return m != c and m.face_up and str(m.data.get("attribute", "")) == pr[0] and s.can_tribute_fx(m))
+				tr_p.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+				var t_kp = s.pick1(p, Loc.t("%s: Tribute which monster?") % name, tr_p, tr_p[0], c)
+				ps.field[ps.field.find(t_kp)] = null
+				s._to_gy(ps, t_kp)
+				events.append({"type": "tribute", "player": p, "card": t_kp})
+				events.append_array(trigger(s, t_kp, "tributed"))
+				events.append_array(s._monster_left(t_kp))
+				var w4: Array = ps.deck.filter(func(x): return x.is_monster() and x.level() == 4 and str(x.data.get("race", "")) == "Warrior" and str(x.data.get("attribute", "")) == pr[1])
+				if not w4.is_empty():
+					events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which monster?") % name, w4, w4[0], c)))
+				if not ps.hand.is_empty():
+					var hd_p: Array = ps.hand.duplicate()
+					hd_p.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+					var th_p = s.pick1(p, Loc.t("%s: send which card from your hand?") % name, hd_p, hd_p[0], c)
+					ps.hand.erase(th_p)
+					th_p.set_meta("from_hand", true)
+					s._to_gy(ps, th_p)
+					events.append({"type": "discard", "player": p, "card": th_p})
+			else:
+				var gy_p: Array = ps.gy.filter(func(g): return g.is_monster() and str(g.data.get("attribute", "")) == pr[1] and not s.necro_holds(g))
+				gy_p.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+				events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which monster?") % name, gy_p, gy_p[0], c)))
+				if pr[0] == "LIGHT":
+					var t_m: Array = (opp.monsters() + ps.monsters()).filter(func(m): return m.face_up)
+					t_m.sort_custom(func(x, y): return (1 if x.owner == opp_i else 0) * 10000 + s.atk_of(x, false) > (1 if y.owner == opp_i else 0) * 10000 + s.atk_of(y, false))
+					var tm = s.pick1(p, Loc.t("%s: which monster loses 500 ATK?") % name, t_m, t_m[0], c)
+					tm.tags["pair_mod"] = -500
+					tm.tags["pair_until"] = s.turn + 1
+				else:
+					var t_o: Array = ps.monsters().filter(func(m): return m.face_up)
+					t_o.sort_custom(func(x, y): return s.atk_of(x, false) > s.atk_of(y, false))
+					var to = s.pick1(p, Loc.t("%s: which monster gains 500 ATK?") % name, t_o, t_o[0], c)
+					to.tags["pair_mod"] = 500
+					to.tags["pair_until"] = s.turn + 1
+		"spiral_fetch":
+			var sp_f: Array = (ps.deck + ps.gy.filter(func(g): return s.gy_targetable(g) and not s.necro_holds(g))).filter(func(x): return x.cname() == "Spiral Spear Strike")
+			if not sp_f.is_empty() and s.choose_option(p, Loc.t("%s: add \"Spiral Spear Strike\"?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				events.append_array(_to_hand(s, p, sp_f[0]))
+		"flip_target_pos":
+			var tg_f = ctx.get("target")
+			if tg_f != null and tg_f.owner == opp_i and opp.field.has(tg_f) and s.choose_option(p, Loc.t("%s: change the battle position of %s?") % [name, tg_f.cname() if tg_f.face_up else Loc.t("the monster")], [Loc.t("Yes"), Loc.t("No")], 0 if tg_f.attack_pos and s.atk_of(tg_f, false) > s.def_of(tg_f) else 1, c) == 0:
+				if not tg_f.face_up:
+					tg_f.face_up = true
+					tg_f.attack_pos = true
+				else:
+					tg_f.attack_pos = not tg_f.attack_pos
+				events.append({"type": "position", "player": tg_f.owner, "card": tg_f, "zone": opp.field.find(tg_f)})
+		"gmkd_up":
+			if int(ps.once_names.get("GMKD#up", -1)) != s.turn and s.choose_option(p, Loc.t("%s: gain 2600 ATK?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["GMKD#up"] = s.turn
+				c.atk_mod += 2600
+				events.append(_ev(p, c, Loc.t("%s gains 2600 ATK") % name))
+		"moc_revive":
+			var ld_m: Array = ps.gy.filter(func(g): return g != c and g.is_monster() and str(g.data.get("attribute", "")) in ["LIGHT", "DARK"] and s.can_revive(g) and s.gy_targetable(g))
+			if int(ps.once_names.get("MoC#rev", -1)) != s.turn and not ld_m.is_empty() and ps.free_zone() != -1 \
+					and s.choose_option(p, Loc.t("%s: Special Summon a LIGHT or DARK monster from your GY?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["MoC#rev"] = s.turn
+				var t_mr = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, ld_m, s._best_monsters(ld_m, 1)[0], c)
+				ps.gy.erase(t_mr)
+				events.append_array(s._special(p, t_mr, "reborn"))
+		"moc_spell", "max_spell":
+			# Master of Chaos (Fusion Summoned and destroyed) / Magician of Black Chaos MAX (destroys a monster by battle): 1 Spell from your GY.
+			var key_ms: String = c.cname() + "#spell"
+			var sp_m: Array = ps.gy.filter(func(g): return g.is_spell() and s.gy_targetable(g) and not s.necro_holds(g))
+			if (a[0] == "max_spell" or c.proper) and int(ps.once_names.get(key_ms, -1)) != s.turn and not sp_m.is_empty() \
+					and s.choose_option(p, Loc.t("%s: add a Spell from your GY?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names[key_ms] = s.turn
+				events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which Spell?") % name, sp_m, sp_m[0], c)))
+		"moc":
+			ps.once_names["MoC#ban"] = s.turn
+			for attr_m in ["LIGHT", "DARK"]:
+				var tr_m: Array = ps.monsters().filter(func(m): return m.face_up and str(m.data.get("attribute", "")) == attr_m and s.can_tribute_fx(m))
+				tr_m.sort_custom(func(x, y): return (1 if x == c else 0) * 10000 + s._card_value(x) < (1 if y == c else 0) * 10000 + s._card_value(y))
+				if tr_m.is_empty():
+					continue
+				var t_mo = s.pick1(p, Loc.t("%s: Tribute which %s monster?") % [name, attr_m], tr_m, tr_m[0], c)
+				ps.field[ps.field.find(t_mo)] = null
+				s._to_gy(ps, t_mo)
+				events.append({"type": "tribute", "player": p, "card": t_mo})
+				events.append_array(trigger(s, t_mo, "tributed"))
+				events.append_array(s._monster_left(t_mo))
+			for m in opp.monsters():
+				events.append_array(s._banish(m))
+		"max_lock":
+			var tr_x: Array = ps.monsters().filter(func(m): return m != c and s.can_tribute_fx(m))
+			if int(ps.once_names.get("MAX#lock", -1)) != s.turn and not tr_x.is_empty() and s.choose_option(p, Loc.t("%s: Tribute 1 monster so your opponent can't activate monster effects this turn?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["MAX#lock"] = s.turn
+				tr_x.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+				var t_x = s.pick1(p, Loc.t("%s: Tribute which monster?") % name, tr_x, tr_x[0], c)
+				ps.field[ps.field.find(t_x)] = null
+				s._to_gy(ps, t_x)
+				events.append({"type": "tribute", "player": p, "card": t_x})
+				events.append_array(trigger(s, t_x, "tributed"))
+				events.append_array(s._monster_left(t_x))
+				opp.once_names["#no_mon_fx"] = s.turn
+				events.append(_ev(p, c, Loc.t("%s: your opponent can't activate monster effects this turn") % name))
+		"moch_back":
+			# Magician of Chaos, Ritual Summoned and destroyed: a "Chaos" or "Black Luster Soldier" Ritual Monster from your hand, ignoring its conditions.
+			var r_c: Array = ps.hand.filter(func(h): return h.is_monster() and h.frame() == "ritual" and (h.cname().contains("Chaos") or is_bls(h)) and h.cname() != "Magician of Chaos")
+			if c.proper and not r_c.is_empty() and ps.free_zone() != -1 and not s.ss_locked(p) and s.choose_option(p, Loc.t("%s: Special Summon a Ritual Monster from your hand?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				var t_rc = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, r_c, s._best_monsters(r_c, 1)[0], c)
+				events.append_array(_ignoring(s, p, t_rc, ps.hand))
+				events.append_array(on_summon(s, p, t_rc, "special"))
+		"bec_attack":
+			# Blue-Eyes Chaos Dragon, Ritual Summoned with Blue-Eyes White Dragon: change every opponent's monster's position, ATK/DEF 0, piercing.
+			if "Blue-Eyes White Dragon" in (c.tags.get("rit_mats", []) as Array) and not opp.monsters().is_empty() \
+					and s.choose_option(p, Loc.t("%s: change the position of every monster your opponent controls (their ATK/DEF become 0)?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				for m in opp.monsters():
+					if not m.face_up:
+						m.face_up = true
+						m.attack_pos = true
+					else:
+						m.attack_pos = not m.attack_pos
+					m.tags["bec_zero"] = true
+					events.append({"type": "position", "player": m.owner, "card": m, "zone": opp.field.find(m)})
+				c.tags["pierce_turn"] = s.turn
+				events.append(_ev(p, c, Loc.t("%s: their monsters have 0 ATK and DEF") % name))
+		"illusion_search":
+			ps.once_names["Illusion#reveal"] = s.turn
+			var dm_i: Array = ps.deck.filter(func(x): return x.is_monster() and x.frame() != "ritual" and (x.cname() == "Dark Magician" or str(x.data.get("desc", "")).contains("\"Dark Magician\"")))
+			events.append_array(_to_hand(s, p, s.pick1(p, Loc.t("%s: add which monster?") % name, dm_i, dm_i[0], c)))
+			if not ps.hand.is_empty():
+				var hd_i: Array = ps.hand.duplicate()
+				hd_i.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+				var top_i = s.pick1(p, Loc.t("%s: put which card on top of your Deck?") % name, hd_i, hd_i[0], c)
+				ps.hand.erase(top_i)
+				ps.deck.append(top_i)
+				events.append({"type": "gy_to_deck", "player": p, "card": top_i, "deck": ps.deck.size()})
+		"artillery":
+			ps.once_names["Artillery#fx"] = s.turn
+			var tr_a: Array = ps.monsters().filter(func(m): return s.can_tribute_fx(m))
+			tr_a.sort_custom(func(x, y): return (1 if x == c else 0) * -10000 + s._card_value(x) < (1 if y == c else 0) * -10000 + s._card_value(y))
+			if tr_a.is_empty():
+				return events
+			var t_ar = s.pick1(p, Loc.t("%s: Tribute which monster?") % name, tr_a, tr_a[0], c)
+			ps.field[ps.field.find(t_ar)] = null
+			s._to_gy(ps, t_ar)
+			events.append({"type": "tribute", "player": p, "card": t_ar})
+			events.append_array(trigger(s, t_ar, "tributed"))
+			events.append_array(s._monster_left(t_ar))
+			var pool_ar: Array = (ps.hand + ps.deck).filter(func(x): return (is_gaia(x) or (x.is_monster() and str(x.data.get("race", "")) == "Dragon" and x.level() == 5)) and not CardData.is_extra(x.id) and _ss_ok(x))
+			if not pool_ar.is_empty() and ps.free_zone() != -1:
+				var t_ac = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, pool_ar, s._best_monsters(pool_ar, 1)[0], c)
+				var dk_a: bool = ps.deck.has(t_ac)
+				ps.hand.erase(t_ac)
+				ps.deck.erase(t_ac)
+				if dk_a:
+					s._shuffle(ps.deck)
+				events.append_array(s._special(p, t_ac, "effect"))
+				events.append_array(on_summon(s, p, t_ac, "special"))
+		"blue_counter":
+			var tgt_b: Array = (ps.monsters() + ps.spells.filter(func(x): return x != null)).filter(func(x): return x.face_up and _counter_cap(x) > x.counter)
+			events.append_array(s._banish(c))
+			var t_bc = s.pick1(p, Loc.t("%s: place a Spell Counter on which card?") % name, tgt_b, tgt_b[0], c)
+			t_bc.counter += 1
+			events.append(_ev(p, t_bc, Loc.t("%s gets a Spell Counter") % t_bc.cname()))
+		"valkyria_send":
+			var ld_vs: Array = ps.deck.filter(func(x): return x.is_monster() and str(x.data.get("attribute", "")) in ["LIGHT", "DARK"])
+			if int(ps.once_names.get("Valkyria#send", -1)) != s.turn and not ld_vs.is_empty() and s.choose_option(p, Loc.t("%s: send a LIGHT or DARK monster from your Deck to the GY?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["Valkyria#send"] = s.turn
+				var t_vs = s.pick1(p, Loc.t("%s: send which monster?") % name, ld_vs, ld_vs[0], c)
+				ps.deck.erase(t_vs)
+				s._to_gy(ps, t_vs)
+				s._shuffle(ps.deck)
+				ps.name_lock[t_vs.cname()] = s.turn
+				events.append({"type": "mill", "player": p, "card": t_vs, "deck": ps.deck.size()})
+				events.append_array(s.deck_sent(p, [t_vs], c))
+		"betrayer":
+			ps.once_names["Betrayer#gy"] = s.turn
+			for attr_b in ["LIGHT", "DARK"]:
+				var g_b: Array = ps.gy.filter(func(g): return g.is_monster() and g.cname() != "Chaos Betrayer" and str(g.data.get("attribute", "")) == attr_b and not s.necro_holds(g))
+				g_b.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+				events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which %s monster?") % [name, attr_b], g_b, g_b[0], c)))
+			if ps.gy.has(c):
+				ps.gy.erase(c)
+				c.leave_banish = true
+				events.append_array(s._special(p, c, "reborn", "def"))
+				events.append_array(on_summon(s, p, c, "special"))
+		"betrayer_ban":
+			var og: Array = opp.gy.filter(func(g): return s.gy_targetable(g) and not s.necro_holds(g))
+			if int(ps.once_names.get("Betrayer#ban", -1)) != s.turn and not og.is_empty() and s.can_banish(p) and s.choose_option(p, Loc.t("%s: banish 1 card from your opponent's GY?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["Betrayer#ban"] = s.turn
+				og.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+				events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which card?") % name, og, og[0], c)))
+		"daedalus":
+			ps.once_names["Daedalus#fx"] = s.turn
+			var n_d := _field_spells_up(s)
+			var all_d: Array = opp.monsters() + SpellRules._all_st_of(s, opp_i)
+			if opp.field_spell != null:
+				all_d.append(opp.field_spell)
+			all_d.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+			for t_dd in s.choose(p, Loc.t("%s: banish up to %d cards") % [name, n_d], all_d, mini(n_d, all_d.size()), all_d.slice(0, n_d), true, c):
+				events.append_array(s._banish(t_dd))
 		"scatter_fx":
 			ps.once_names["Scatter Fusion#fx"] = s.turn
 			events.append_array(gem_fusion(s, p, c, "scatter"))

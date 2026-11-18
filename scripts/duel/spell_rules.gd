@@ -29,6 +29,20 @@ const FX := {
 	"Echo Resonance": {"k": "normal", "cond": "echo_ready", "do": [["echo_resonance"]]},
 	"Echo Call": {"k": "normal", "do": [["search", {"has": "Lumen"}]]},
 	"Echo Veil": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["draw_if_own", "Lumen", 1]]},
+	# ---------------------------------------------------------------- Chaos (0.34.4)
+	"Chaos Form": {"k": "ritual", "rit": {"has_any": ["Chaos", "Black Luster Soldier"], "exact": true, "gy_banish": ["Blue-Eyes White Dragon", "Dark Magician"]}, "do": [["ritual"]]},
+	"Super Soldier Ritual": {"k": "ritual", "rit": {"has_any": ["Black Luster Soldier"], "exact": true, "lv": 8}, "do": [["ritual"]]},
+	"Super Soldier Synthesis": {"k": "ritual", "cond": "synth_once", "rit": {"has_any": ["Black Luster Soldier"], "exact": true, "lv": 8, "synthesis": true, "from_gy": true}, "do": [["mark_once", "Super Soldier Synthesis"], ["ritual"]]},
+	"Super Soldier Rebirth": {"k": "trap", "win": ["free"], "cond": "rebirth", "do": [["mark_once", "Super Soldier Rebirth"], ["rebirth"]]},
+	"Super Soldier Shield": {"k": "trap", "win": ["chain"], "chain_if": "ss_shield", "do": [["ss_shield"]]},
+	"Gateway to Chaos": {"k": "cont", "cond": "gateway", "gateway": true, "do": [["mark_once", "Gateway to Chaos"], ["gateway_search"]]},
+	"Beginning of Heaven and Earth": {"k": "trap", "win": ["free"], "cond": "bhe", "do": [["mark_once", "Beginning of Heaven and Earth"], ["bhe"]]},
+	"Chaos End": {"k": "normal", "cond": "chaos_end", "do": [["destroy", "all_mons"]]},
+	"Chaos Greed": {"k": "normal", "cond": "chaos_greed", "do": [["draw", 2]]},
+	"Chaos Space": {"k": "normal", "cond": "chaos_space", "do": [["chaos_space"]]},
+	"Galloping Gaia": {"k": "cont", "galloping": true, "ai": "always"},
+	"Spiral Spear Strike": {"k": "cont", "spiral_spear": true, "ai": "always"},
+	"Spiral Discharge": {"k": "ctrap", "win": ["free"], "spiral_discharge": true, "ai": "always"},
 	# ---------------------------------------------------------------- Gem-Knight (0.34.3)
 	"Gem-Knight Fusion": {"k": "normal", "cond": "gemf:hf", "do": [["gem_fusion", "hf"]]},
 	"Pyroxene Fusion": {"k": "trap", "win": ["free"], "cond": "gemf:hf", "do": [["gem_fusion", "hf"]]},
@@ -453,8 +467,8 @@ const FX := {
 	"Slip Summon": {"k": "trap", "win": ["summon"], "do": [["slip_summon"]]},
 	"Limiter Overload": {"k": "trap", "win": [], "sent_gy": [["special_named_anywhere", "Speed Warrior"]]},
 	# ---- Yugi (v0.33.32)
-	"Black Luster Ritual": {"k": "ritual", "do": [["ritual"]]},
-	"Black Magic Ritual": {"k": "ritual", "do": [["ritual"]]},
+	"Black Luster Ritual": {"k": "ritual", "rit": {"names": ["Black Luster Soldier"]}, "do": [["ritual"]]},
+	"Black Magic Ritual": {"k": "ritual", "rit": {"names": ["Magician of Black Chaos"]}, "do": [["ritual"]]},
 	"Dark Magic Attack": {"k": "normal", "cond": "own_dark_magician", "do": [["destroy", "opp_st"]]},
 	"Thousand Knives": {"k": "normal", "cond": "own_dark_magician", "t": "opp_mon", "do": [["destroy", "target"]]},
 	"Dark Magic Curtain": {"k": "normal", "cost": "half_lp", "cond": "no_summon_yet", "do": [["special_named", "Dark Magician", ["deck"]], ["no_more_summons"]]},
@@ -720,8 +734,18 @@ static func fits(s: DuelState, p: int, c, window: String, subject) -> bool:
 	if sp.has("only_win") and window != str(sp["only_win"]):
 		return false   # a card for one moment only (Defense Draw: damage calculation)
 	if sp.has("chain_if"):
-		# Starlight Road: "When a card or effect is activated that would destroy 2 or more cards you control".
-		if window != "chain" or not (subject is Dictionary) or destroy_count(s, subject, p) < 2:
+		if window != "chain" or not (subject is Dictionary):
+			return false
+		if str(sp["chain_if"]) == "ss_shield":
+			# Super Soldier Shield: "When a Spell/Trap Card, or monster effect, is activated that targets a monster(s) on the field,
+			# while you control a "Black Luster Soldier" monster".
+			var tg_s = subject.get("target")
+			if int(subject["player"]) == p or not (tg_s is DuelState.CardInst) or not tg_s.is_monster() or not (s.players[0].field.has(tg_s) or s.players[1].field.has(tg_s)):
+				return false
+			if s.players[p].monsters().filter(func(m): return m.face_up and EffectRunner.is_bls(m)).is_empty():
+				return false
+		elif destroy_count(s, subject, p) < 2:
+			# Starlight Road: "When a card or effect is activated that would destroy 2 or more cards you control".
 			return false
 	# Damage Step: only cards that change ATK / DEF (and Counter Traps) may be activated.
 	if window == "damage":
@@ -917,6 +941,35 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			if int(s.players[p].once_names.get("killed_def", -1)) != s.turn:
 				return false
 			return not s.players[p].monsters().filter(func(m): return m.face_up and m.level() == 8 and m.frame() != "xyz").is_empty()
+		"synth_once":
+			return int(s.players[p].once_names.get("Super Soldier Synthesis", -1)) != s.turn
+		"rebirth":
+			var prb := s.players[p]
+			if int(prb.once_names.get("Super Soldier Rebirth", -1)) == s.turn or s.ss_locked(p):
+				return false
+			for m in prb.monsters().filter(func(m): return m.face_up and EffectRunner.is_bls(m)):
+				if not prb.hand.filter(func(h): return EffectRunner.is_bls(h) and h.cname() != m.cname()).is_empty():
+					return true
+			return false
+		"gateway":
+			var pgw := s.players[p]
+			return int(pgw.once_names.get("Gateway to Chaos", -1)) != s.turn
+		"bhe":
+			var pbh := s.players[p]
+			var w_b: Array = pbh.deck.filter(func(x): return x.is_monster() and str(x.data.get("race", "")) == "Warrior")
+			return int(pbh.once_names.get("Beginning of Heaven and Earth", -1)) != s.turn and w_b.size() >= 3 and not w_b.filter(func(x): return EffectRunner.is_bls(x) or EffectRunner.is_gaia(x)).is_empty()
+		"chaos_end":
+			return s.players[p].banished.size() >= 7
+		"chaos_greed":
+			return s.players[p].banished.size() >= 4 and s.players[p].gy.is_empty() and s.players[p].deck.size() >= 2
+		"chaos_space":
+			var pcs := s.players[p]
+			if int(pcs.once_names.get("Chaos Space#1", -1)) == s.turn:
+				return false
+			for h in pcs.hand.filter(func(h): return h.is_monster() and str(h.data.get("attribute", "")) in ["LIGHT", "DARK"]):
+				if not _chaos_space_pool(s, p, h).is_empty():
+					return true
+			return false
 		"brilliant_fusion":
 			return int(s.players[p].once_names.get("Brilliant Fusion", -1)) != s.turn and not EffectRunner.gem_fusion_plans(s, p, "deck").is_empty()
 		"absorb":
@@ -2686,6 +2739,64 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 			ps.once_names[str(a[1])] = s.turn
 		"gem_fusion":
 			events.append_array(EffectRunner.gem_fusion(s, p, c, str(a[1])))
+		"rebirth":
+			# Super Soldier Rebirth: send 1 "Black Luster Soldier" monster you control to the GY; Special Summon 1 with a different name from your hand.
+			var bl_r: Array = ps.monsters().filter(func(m): return m.face_up and EffectRunner.is_bls(m) and not ps.hand.filter(func(h): return EffectRunner.is_bls(h) and h.cname() != m.cname()).is_empty())
+			if bl_r.is_empty():
+				return events
+			var t_r = s.pick1(p, Loc.t("%s: send which monster to the GY?") % name, bl_r, bl_r[0], c)
+			ps.field[ps.field.find(t_r)] = null
+			s._to_gy(ps, t_r)
+			events.append({"type": "destroy", "player": p, "card": t_r, "zone": -1, "overlays": []})
+			events.append_array(s._monster_left(t_r))
+			var h_r: Array = ps.hand.filter(func(h): return EffectRunner.is_bls(h) and h.cname() != t_r.cname())
+			if not h_r.is_empty() and ps.free_zone() != -1:
+				var n_r = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, h_r, s._best_monsters(h_r, 1)[0], c)
+				events.append_array(EffectRunner._ignoring(s, p, n_r, ps.hand))
+				events.append_array(EffectRunner.on_summon(s, p, n_r, "special"))
+		"ss_shield":
+			var subj_s = ctx.get("subject")
+			if subj_s is Dictionary:
+				events.append_array(EffectRunner._negate_link(s, p, c, subj_s))
+		"gateway_search":
+			var g_s: Array = ps.deck.filter(func(x): return (x.frame() == "ritual" and EffectRunner.is_bls(x)) or EffectRunner.is_gaia(x))
+			if not g_s.is_empty():
+				events.append_array(EffectRunner._to_hand(s, p, s.pick1(p, Loc.t("%s: add which monster?") % name, g_s, g_s[0], c)))
+		"bhe":
+			# Beginning of Heaven and Earth: reveal 3 Warriors (at least 1 BLS/Gaia); the opponent picks 1 at random.
+			var w_h: Array = ps.deck.filter(func(x): return x.is_monster() and str(x.data.get("race", "")) == "Warrior")
+			var key_h: Array = w_h.filter(func(x): return EffectRunner.is_bls(x) or EffectRunner.is_gaia(x))
+			var first = s.pick1(p, Loc.t("%s: reveal which \"Black Luster Soldier\" or \"Gaia\" monster?") % name, key_h, key_h[0], c)
+			var rest_h: Array = w_h.filter(func(x): return x != first)
+			rest_h.sort_custom(func(x, y): return (1 if (EffectRunner.is_bls(x) or EffectRunner.is_gaia(x)) else 0) > (1 if (EffectRunner.is_bls(y) or EffectRunner.is_gaia(y)) else 0))
+			var shown: Array = [first] + s.choose(p, Loc.t("%s: reveal 2 more Warriors") % name, rest_h, 2, rest_h.slice(0, 2), false, c)
+			var picked = shown[s._rng.randi() % shown.size()]
+			events.append(_ev(p, c, Loc.t("%s: your opponent picked %s") % [name, picked.cname()]))
+			var keep: bool = EffectRunner.is_bls(picked) or EffectRunner.is_gaia(picked)
+			var sent_h: Array = []
+			for x in shown:
+				ps.deck.erase(x)
+				if keep and x == picked:
+					ps.hand.append(x)
+					events.append({"type": "search", "player": p, "card": x, "deck": ps.deck.size()})
+				else:
+					s._to_gy(ps, x)
+					sent_h.append(x)
+					events.append({"type": "mill", "player": p, "card": x, "deck": ps.deck.size()})
+			s._shuffle(ps.deck)
+			events.append_array(s.deck_sent(p, sent_h, c))
+		"chaos_space":
+			ps.once_names["Chaos Space#1"] = s.turn
+			var cost_cs: Array = ps.hand.filter(func(h): return h.is_monster() and str(h.data.get("attribute", "")) in ["LIGHT", "DARK"] and not _chaos_space_pool(s, p, h).is_empty())
+			cost_cs.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			var cc = s.pick1(p, Loc.t("%s: send which monster from your hand?") % name, cost_cs, cost_cs[0], c)
+			var pool_cs: Array = _chaos_space_pool(s, p, cc)
+			ps.hand.erase(cc)
+			cc.set_meta("from_hand", true)
+			s._to_gy(ps, cc)
+			events.append({"type": "discard", "player": p, "card": cc})
+			if not pool_cs.is_empty():
+				events.append_array(EffectRunner._to_hand(s, p, s.pick1(p, Loc.t("%s: add which monster?") % name, pool_cs, s._best_monsters(pool_cs, 1)[0], c)))
 		"absorb":
 			# Absorb Fusion: add 1 "Gem-Knight" card from your Deck; then you can Fusion Summon by banishing materials from your hand/field.
 			ps.once_names["#ss_gem_only"] = s.turn
@@ -3875,36 +3986,131 @@ static func _gy_fusions(s: DuelState, p: int, filter: Dictionary) -> Array:
 # ------------------------------------------------------------------ Ritual Summons
 
 ## {"monster", "tributes"} for the best Ritual Monster this spell can bring out, or {}.
-static func ritual_plan(s: DuelState, p: int, c) -> Dictionary:
+## A Ritual Spell's rules ("rit" in its spec): which Ritual Monsters ("names" / "has_any", else the cards that name each other),
+## "exact" (Levels exactly equal), "lv" (a fixed total, Super Soldier Ritual: 8), "gy_banish" (GY monsters it can banish as
+## material: Chaos Form, Light and Darkness Ritual), "from_gy" (the Ritual Monster from the GY too), "synthesis" (1 LIGHT + 1 DARK,
+## one from the hand and one from the Deck, sent to the GY: Super Soldier Synthesis).
+static func _rit(c) -> Dictionary:
+	return spec(c).get("rit", {})
+
+
+## Does this Ritual Spell summon this Ritual Monster?
+static func rit_fits(c, h) -> bool:
+	if not h.is_monster() or h.frame() != "ritual":
+		return false
+	var rs := _rit(c)
+	if rs.has("names"):
+		return h.cname() in (rs["names"] as Array)
+	if rs.has("has_any"):
+		for part in rs["has_any"]:
+			if h.cname().contains(str(part)):
+				return true
+		return false
+	var text: String = str(h.data.get("desc", h.data.get("text", "")))
+	return text.contains(c.cname()) or str(c.data.get("desc", c.data.get("text", ""))).contains(h.cname())
+
+
+## The Ritual Monsters this spell could summon (before materials).
+static func _rit_monsters(s: DuelState, p: int, c) -> Array:
 	var ps := s.players[p]
-	if ps.free_zone() == -1 and ps.monsters().is_empty():
-		return {}
+	var src: Array = ps.hand.duplicate()
+	if _rit(c).get("from_gy", false):
+		src += ps.gy.filter(func(g): return not s.necro_holds(g) and s.gy_targetable(g))
+	return src.filter(func(h): return rit_fits(c, h) and not s.big_locked(p, h, true) and not (s.players[p].gy.has(h) and s.gk_trap_lock(p)))
+
+
+## The cards that could be material for this Ritual Monster, cheapest first.
+static func rit_pool(s: DuelState, p: int, c, h) -> Array:
+	var ps := s.players[p]
+	var rs := _rit(c)
+	var pool: Array = []
+	if rs.get("synthesis", false):
+		for x in ps.hand + ps.deck:
+			if x != h and x.is_monster() and not CardData.is_extra(x.id) and str(x.data.get("attribute", "")) in ["LIGHT", "DARK"]:
+				pool.append(x)
+		return pool
+	for x in ps.hand:
+		if x != h and x.is_monster() and not CardData.is_extra(x.id):
+			pool.append(x)   # (another Ritual Monster in the hand can be a Tribute too)
+	for m in ps.monsters():
+		if m != h and s.can_tribute_fx(m):
+			pool.append(m)
+	if rs.has("gy_banish"):
+		for g in ps.gy:
+			if g != h and g.is_monster() and not s.necro_holds(g) and _rit_gy_ok(g, rs["gy_banish"]):
+				pool.append(g)
+	if h.cname().contains("Black Luster Soldier"):
+		# Arisen Gaia the Fierce Knight: "you can banish this card from your Graveyard as 1 of the monsters required".
+		for g in ps.gy:
+			if g != h and g.cname() == "Arisen Gaia the Fierce Knight" and not s.necro_holds(g) and not pool.has(g):
+				pool.append(g)
+	pool.sort_custom(func(a, b): return (1 if ps.gy.has(a) else 0) * -100000 + s._card_value(a) < (1 if ps.gy.has(b) else 0) * -100000 + s._card_value(b))
+	return pool
+
+
+static func _rit_gy_ok(g, rule) -> bool:
+	if rule is Array:
+		return g.cname() in rule or str(CardEffects.of(g.cname()).get("name_as_fg", "")) in rule
+	return CardEffects.matches(g.data, rule)
+
+
+## The Level a material counts as. Griffoh: "If you Ritual Summon exactly 1 Level 8 Ritual Monster ... this card can be used as the entire Tribute."
+static func _rit_lv(x, need: int) -> int:
+	if need == 8 and x.cname() == "Griffoh":
+		return 8
+	return maxi(1, x.level())
+
+
+## Can these materials (levels) still reach the target? exact: a subset hits it exactly; else the sum reaches it.
+static func _rit_reach(pool: Array, need: int, exact: bool, h) -> bool:
+	if need <= 0:
+		return not exact or need == 0
+	var lvs: Array = pool.map(func(x): return _rit_lv(x, int(h.level())))
+	if not exact:
+		var sum := 0
+		for v in lvs:
+			sum += int(v)
+		return sum >= need
+	var can := {0: true}
+	for v in lvs:
+		for k in can.keys():
+			if int(k) + int(v) <= need:
+				can[int(k) + int(v)] = true
+	return can.has(need)
+
+
+## Synthesis: 1 LIGHT and 1 DARK, one from the hand and one from the Deck, Levels exactly the target.
+static func _synth_pairs(s: DuelState, p: int, pool: Array, need: int) -> Array:
+	var ps := s.players[p]
+	var out: Array = []
+	for a in pool.filter(func(x): return ps.hand.has(x)):
+		for b in pool.filter(func(x): return ps.deck.has(x)):
+			var at := [str(a.data.get("attribute", "")), str(b.data.get("attribute", ""))]
+			if "LIGHT" in at and "DARK" in at and a.level() + b.level() == need:
+				out.append([a, b])
+	return out
+
+
+static func _rit_ok(s: DuelState, p: int, c, h) -> bool:
+	var rs := _rit(c)
+	var need := int(rs.get("lv", h.level()))
+	var pool := rit_pool(s, p, c, h)
+	if rs.get("synthesis", false):
+		return not _synth_pairs(s, p, pool, need).is_empty() and s.players[p].free_zone() != -1
+	if s.players[p].free_zone() == -1 and pool.filter(func(x): return s.players[p].field.has(x)).is_empty():
+		return false
+	return _rit_reach(pool, need, rs.get("exact", false), h)
+
+
+static func ritual_plan(s: DuelState, p: int, c) -> Dictionary:
 	var best := {}
-	for h in ps.hand:
-		if not h.is_monster() or h.frame() != "ritual":
-			continue
-		var text: String = str(h.data.get("desc", h.data.get("text", "")))
-		if not text.contains(c.cname()) and not str(c.data.get("desc", c.data.get("text", ""))).contains(h.cname()):
-			continue
-		var pool: Array = []
-		for x in ps.hand:
-			if x != h and x.is_monster() and not CardData.is_extra(x.id):
-				pool.append(x)   # (another Ritual Monster in the hand can be a Tribute too)
-		pool.append_array(ps.monsters())
-		pool.sort_custom(func(a, b): return s._card_value(a) < s._card_value(b))
-		var picks := []
-		var total := 0
-		for x in pool:
-			if total >= h.level():
-				break
-			picks.append(x)
-			total += maxi(1, x.level())
-		if total >= h.level() and (best.is_empty() or h.atk() > best["monster"].atk()):
-			best = {"monster": h, "tributes": picks}
+	for h in _rit_monsters(s, p, c):
+		if _rit_ok(s, p, c, h) and (best.is_empty() or h.atk() > best["monster"].atk()):
+			best = {"monster": h}
 	return best
 
 
-## Everything that could be Tributed for this Ritual Monster, cheapest first.
+## Everything that could be Tributed for this Ritual Monster, cheapest first (older callers).
 static func _ritual_pool(s: DuelState, p: int, h) -> Array:
 	var ps := s.players[p]
 	var pool: Array = []
@@ -3916,52 +4122,95 @@ static func _ritual_pool(s: DuelState, p: int, h) -> Array:
 	return pool
 
 
-static func _do_ritual(s: DuelState, p: int, c) -> Array:
-	var plan := ritual_plan(s, p, c)
-	var events := []
-	if plan.is_empty():
-		return events
-	var ps := s.players[p]
-	# Which Ritual Monster, then which Tributes (their Levels must reach its Level): the player's call.
-	var able: Array = []
-	for h in ps.hand:
-		if h.is_monster() and h.frame() == "ritual":
-			var text: String = str(h.data.get("desc", h.data.get("text", "")))
-			if not text.contains(c.cname()) and not str(c.data.get("desc", c.data.get("text", ""))).contains(h.cname()):
-				continue
-			var sum := 0
-			for x in _ritual_pool(s, p, h):
-				sum += maxi(1, x.level())
-			if sum >= h.level():
-				able.append(h)
-	var m = s.pick1(p, Loc.t("%s: Ritual Summon which monster?") % c.cname(), able, plan["monster"], c)
-	var pool := _ritual_pool(s, p, m)
-	var tributes: Array = []
+## Pick the materials: one at a time, only ones that still leave the Ritual possible.
+static func rit_pick(s: DuelState, p: int, c, h) -> Array:
+	var rs := _rit(c)
+	var need := int(rs.get("lv", h.level()))
+	var exact: bool = rs.get("exact", false)
+	var pool := rit_pool(s, p, c, h)
+	if rs.get("synthesis", false):
+		var pairs := _synth_pairs(s, p, pool, need)
+		var firsts: Array = []
+		for pr in pairs:
+			if not firsts.has(pr[0]):
+				firsts.append(pr[0])
+		var a = s.pick1(p, Loc.t("%s: send which monster from your hand?") % h.cname(), firsts, firsts[0], c)
+		var seconds: Array = pairs.filter(func(pr): return pr[0] == a).map(func(pr): return pr[1])
+		var b = s.pick1(p, Loc.t("%s: send which monster from your Deck?") % h.cname(), seconds, seconds[0], c)
+		return [a, b]
+	var picks: Array = []
 	var total := 0
-	while total < m.level() and not pool.is_empty():
-		var t = s.pick1(p, Loc.t("%s: Tribute (Levels %d of %d)") % [m.cname(), total, m.level()], pool, pool[0], c)
+	while (total < need) and not pool.is_empty():
+		var left := need - total
+		var ok: Array = pool.filter(func(x):
+			var rest: Array = pool.filter(func(y): return y != x)
+			var v := _rit_lv(x, int(h.level()))
+			if not exact:
+				return true
+			return v <= left and _rit_reach(rest, left - v, true, h))
+		if ok.is_empty():
+			break
+		var t = s.pick1(p, Loc.t("%s: material (Levels %d of %d)") % [h.cname(), total, need], ok, ok[0], c)
 		pool.erase(t)
-		tributes.append(t)
-		total += maxi(1, t.level())
-	for t in tributes:
+		picks.append(t)
+		total += _rit_lv(t, int(h.level()))
+	return picks
+
+
+## Ritual Summon h with Ritual Spell (or effect) c, using these materials.
+static func rit_summon(s: DuelState, p: int, c, h, mats: Array) -> Array:
+	var ps := s.players[p]
+	var events := []
+	var deck_m: Array = []
+	for t in mats:
 		if ps.hand.has(t):
 			ps.hand.erase(t)
 			t.set_meta("from_hand", true)
 			s._to_gy(ps, t)
 			events.append({"type": "discard", "player": p, "card": t})
-			# A Ritual Tribute from the hand is a Tribute too ("If this card is Tributed").
-			events.append_array(EffectRunner.trigger(s, t, "tributed"))
-		else:
+			if not _rit(c).get("synthesis", false):
+				# A Ritual Tribute from the hand is a Tribute too ("If this card is Tributed").
+				events.append_array(EffectRunner.trigger(s, t, "tributed"))
+		elif ps.deck.has(t):
+			ps.deck.erase(t)
+			s._to_gy(ps, t)
+			deck_m.append(t)
+			events.append({"type": "mill", "player": p, "card": t, "deck": ps.deck.size()})
+		elif ps.gy.has(t):
+			events.append_array(s._banish(t))
+		elif ps.field.has(t):
 			ps.field[ps.field.find(t)] = null
 			s._to_gy(ps, t)
 			events.append({"type": "tribute", "player": p, "card": t})
 			events.append_array(EffectRunner.trigger(s, t, "tributed"))
-	ps.hand.erase(m)
-	m.proper = true
-	events.append_array(s._special(p, m, "ritual"))
-	events.append_array(EffectRunner.on_summon(s, p, m, "special"))
-	events.append_array(EffectRunner.trigger(s, m, "ritual_summoned"))
+			events.append_array(s._monster_left(t))
+	if not deck_m.is_empty():
+		s._shuffle(ps.deck)
+		events.append_array(s.deck_sent(p, deck_m, c))
+	ps.hand.erase(h)
+	ps.gy.erase(h)
+	h.proper = true
+	events.append_array(s._special(p, h, "ritual"))
+	h.tags["rit_mats"] = mats.map(func(m): return m.cname())
+	h.tags["rit_normal"] = not mats.filter(func(m): return m.frame() == "normal").is_empty()
+	h.tags["rit_turn"] = s.turn
+	events.append_array(EffectRunner.on_summon(s, p, h, "special"))
+	events.append_array(EffectRunner.trigger(s, h, "ritual_summoned"))
 	return events
+
+
+static func _do_ritual(s: DuelState, p: int, c) -> Array:
+	var events := []
+	var ps := s.players[p]
+	var able: Array = _rit_monsters(s, p, c).filter(func(h): return _rit_ok(s, p, c, h))
+	if able.is_empty():
+		return events
+	able.sort_custom(func(x, y): return x.atk() > y.atk())
+	var m = s.pick1(p, Loc.t("%s: Ritual Summon which monster?") % c.cname(), able, able[0], c)
+	var mats := rit_pick(s, p, c, m)
+	if mats.is_empty() and m.level() > 0:
+		return events
+	return rit_summon(s, p, c, m, mats)
 
 
 # ------------------------------------------------------------------ cards that stay on the field
@@ -4339,6 +4588,22 @@ static func after_battle_death(s: DuelState, loser) -> Array:
 		events.append_array(s.chain_resolve())
 		break
 	return events
+
+
+## Chaos Space: what it can add for this cost (LIGHT/DARK, can't be Normal Summoned, Level 4-8, the other Attribute).
+static func _chaos_space_pool(s: DuelState, p: int, h) -> Array:
+	var other: String = "DARK" if str(h.data.get("attribute", "")) == "LIGHT" else "LIGHT"
+	return s.players[p].deck.filter(func(x): return EffectRunner._nomi_ld(x) and str(x.data.get("attribute", "")) == other and x.level() >= 4 and x.level() <= 8)
+
+
+## Spiral Spear Strike: does this monster pierce with it?
+static func spiral_spear(s: DuelState, p: int, m) -> bool:
+	if not (m.cname() in ["Gaia The Fierce Knight", "Swift Gaia the Fierce Knight"] or EffectRunner.is_gaia_dc(m)):
+		return false
+	for st in s.players[p].spells:
+		if st != null and st.face_up and spec(st).get("spiral_spear", false) and not blocked(s, st):
+			return true
+	return false
 
 
 ## Brilliant Spark: "If a face-up "Gem-Knight" monster(s) you control is destroyed by your opponent's attack or card effect."

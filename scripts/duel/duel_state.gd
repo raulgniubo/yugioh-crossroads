@@ -380,6 +380,26 @@ func is_over() -> bool:
 
 # ------------------------------------------------------------------ turn flow
 
+## Black Luster Soldier - Legendary Swordsman: "During your Draw Phase, before you draw: You can reveal this card in your hand; give up
+## your normal draw this turn, and if you do, add 1 Ritual Spell from your Deck to your hand."
+func _legend_draw(p: int, events: Array) -> bool:
+	var ps := players[p]
+	var lg: Array = ps.hand.filter(func(h): return EffectRunner.fx(h).get("legend_draw", false))
+	var rs: Array = ps.deck.filter(func(x): return str(SpellRules.spec(x).get("k", "")) == "ritual")
+	if lg.is_empty() or rs.is_empty():
+		return false
+	var want := 0 if ps.hand.filter(func(h): return str(SpellRules.spec(h).get("k", "")) == "ritual").is_empty() else 1
+	if choose_option(p, Loc.t("%s: skip your draw to add a Ritual Spell from your Deck?") % lg[0].cname(), [Loc.t("Yes"), Loc.t("No, draw")], want, lg[0]) != 0:
+		return false
+	var got = pick1(p, Loc.t("%s: add which Ritual Spell?") % lg[0].cname(), rs, rs[0], lg[0])
+	ps.deck.erase(got)
+	ps.hand.append(got)
+	_shuffle(ps.deck)
+	events.append({"type": "effect", "player": p, "card": lg[0], "text": Loc.t("%s is revealed: no draw this turn") % lg[0].cname()})
+	events.append({"type": "search", "player": p, "card": got, "deck": ps.deck.size()})
+	return true
+
+
 func begin_turn(step := false) -> Array:
 	redirected.clear()
 	turn += 1
@@ -397,6 +417,8 @@ func begin_turn(step := false) -> Array:
 		if players[current].skip_draw > 0:
 			players[current].skip_draw -= 1
 			events.append({"type": "effect", "player": current, "card": null, "text": "Draw Phase skipped"})
+		elif _legend_draw(current, events):
+			pass
 		else:
 			var fated: CardInst = destiny_next[current]
 			destiny_next[current] = null
@@ -542,7 +564,7 @@ func begin_main1() -> Array:
 
 
 func can_enter_battle() -> bool:
-	return phase == Phase.MAIN1 and turn > 1
+	return phase == Phase.MAIN1 and turn > 1 and int(players[current].once_names.get("#no_bp", -1)) != turn
 
 
 func enter_battle() -> Array:
@@ -1130,8 +1152,9 @@ func _tributes_needed(c: CardInst) -> int:
 ## The monster this player controls that counts as 2 Tributes for `c` (Kaiser Sea Horse for a LIGHT monster), or null.
 func kaiser_for(c: CardInst) -> CardInst:
 	for m in tributable(c.owner):
-		if m.face_up and not m.negated and str(EffectRunner.fx(m).get("double_tribute_attr", "-")) == str(c.data.get("attribute", "")):
-			return m
+		if m.face_up and not m.negated and (str(EffectRunner.fx(m).get("double_tribute_attr", "-")) == str(c.data.get("attribute", "")) \
+				or str(EffectRunner.fx(m).get("double_tribute_race", "-")) == str(c.data.get("race", ""))):
+			return m   # (Gaia the Fierce Knight Origin: "2 Tributes for the Tribute Summon of a Warrior monster")
 	return null
 
 
@@ -1569,7 +1592,8 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 			tributes = [plant_for(c)]   # (one Tribute is only enough when it is a "Gravekeeper's" monster)
 	elif tributes.size() == 1 and c.level() >= 7 and plant_for(c) != null and str(tributes[0].data.get("race", "")) != str(CardEffects.of(c.cname()).get("one_tribute_race", "")):
 		tributes = [plant_for(c)]   # (one Tribute is only enough when it is a Plant)
-	if tributes.size() == 1 and c.level() >= 7 and plant_for(c) == null and kaiser_for(c) != null and str(EffectRunner.fx(tributes[0]).get("double_tribute_attr", "-")) != str(c.data.get("attribute", "")):
+	if tributes.size() == 1 and c.level() >= 7 and plant_for(c) == null and kaiser_for(c) != null and str(EffectRunner.fx(tributes[0]).get("double_tribute_attr", "-")) != str(c.data.get("attribute", "")) \
+			and str(EffectRunner.fx(tributes[0]).get("double_tribute_race", "-")) != str(c.data.get("race", "")):
 		tributes = [kaiser_for(c)]   # (one Tribute is only enough when it is the Kaiser Sea Horse)
 	if not set_card and players[p].no_summon_turn == turn:
 		return []
@@ -1598,6 +1622,8 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 		var idx := ps.field.find(t)
 		if idx == -1:
 			return []
+	# (Out of the hand first: a "when Tributed" effect must not pick the monster being Summoned, Arisen Gaia.)
+	ps.hand.erase(c)
 	for t in tributes:
 		ps.field[ps.field.find(t)] = null
 		_to_gy(ps, t)
@@ -1607,7 +1633,9 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 		# looking active, until the next sweep).
 		events.append_array(_monster_left(t))
 	var zone := ps.free_zone()
-	ps.hand.erase(c)
+	if zone == -1:
+		ps.hand.append(c)   # (a "when Tributed" effect filled the last zone)
+		return events
 	ps.field[zone] = c
 	c.face_up = not set_card
 	c.attack_pos = not set_card
@@ -2265,7 +2293,14 @@ func _legacy_spell(p: int, c: CardInst, choice = null) -> Array:
 ## One card of the player's choosing (auto when the rules or the AI decide).
 func pick1(who: int, prompt: String, cands: Array, auto: CardInst = null, source: CardInst = null) -> CardInst:
 	var got := choose(who, prompt, cands, 1, [auto] if auto != null else [], false, source)
-	return got[0] if not got.is_empty() else auto
+	var res: CardInst = got[0] if not got.is_empty() else auto
+	if source != null and res != null:
+		# (What an effect picked counts as what it targeted: "unless they target this card")
+		if int(source.tags.get("picked_t", -1)) != turn:
+			source.tags["picked_t"] = turn
+			source.tags["picked_u"] = []
+		(source.tags["picked_u"] as Array).append(res.uid)
+	return res
 
 
 func _strongest_face_up(p: int) -> CardInst:
@@ -2645,6 +2680,17 @@ func attack_targets_for(p: int, attacker: CardInst) -> Array[CardInst]:
 			var only_m: Array[CardInst] = [st.equipped_to]
 			out = only_m
 			break
+	# Spiral Discharge: "While "Gaia the Dragon Champion" is in your Monster Zone, your opponent's monsters can only target "Gaia the Dragon Champion" for attacks."
+	var gdcs: Array = players[opponent(p)].monsters().filter(func(m): return m.face_up and EffectRunner.is_gaia_dc(m))
+	if not gdcs.is_empty():
+		for st in players[opponent(p)].spells:
+			if st != null and st.face_up and SpellRules.spec(st).get("spiral_discharge", false) and not SpellRules.blocked(self, st):
+				var only_g: Array[CardInst] = []
+				for m in out:
+					if m != null and gdcs.has(m):
+						only_g.append(m)
+				out = only_g
+				break
 	# Decoyroid: "your opponent cannot select a face-up monster as an attack target except "Decoyroid"."
 	if not players[opponent(p)].monsters().filter(func(m): return m.face_up and not m.negated and EffectRunner.fx(m).get("decoy", false)).is_empty():
 		var only_d: Array[CardInst] = []
@@ -2829,6 +2875,25 @@ func declare_attack(p: int, attacker: CardInst, target: CardInst) -> Array:
 			var ta = pick1(p, Loc.t("%s: which monster?") % attacker.cname(), asl, best_a, attacker)
 			ta.attack_pos = not ta.attack_pos
 			events.append({"type": "position", "player": ta.owner, "card": ta, "zone": players[ta.owner].field.find(ta)})
+	# "When this card declares an attack" (Blue-Eyes Chaos Dragon, Sky Galloping Gaia).
+	if attacker.face_up and not attacker.negated and EffectRunner.fx(attacker).has("on_attack"):
+		events.append_array(EffectRunner.run_list(self, p, attacker, EffectRunner.fx(attacker)["on_attack"], {"target": target}))
+	# Spiral Discharge: "When an attack is declared involving your "Gaia the Dragon Champion": You can target 1 card on the field; destroy it."
+	for q in 2:
+		var gdc = attacker if attacker.owner == q else target
+		if gdc != null and EffectRunner.is_gaia_dc(gdc) and gdc.face_up:
+			for sd in players[q].spells:
+				if sd != null and sd.face_up and SpellRules.spec(sd).get("spiral_discharge", false) and not SpellRules.blocked(self, sd) and int(players[q].once_names.get("Spiral Discharge#fx", -1)) != turn:
+					var foe_sd: Array = players[opponent(q)].monsters() + SpellRules._all_st_of(self, opponent(q))
+					if not foe_sd.is_empty() and choose_option(q, Loc.t("%s: destroy 1 card on the field?") % sd.cname(), [Loc.t("Destroy one"), Loc.t("No")], 0, sd) == 0:
+						players[q].once_names["Spiral Discharge#fx"] = turn
+						foe_sd.sort_custom(func(x, y): return _card_value(x) > _card_value(y))
+						var t_sd = pick1(q, Loc.t("%s: destroy which card?") % sd.cname(), foe_sd, foe_sd[0], sd)
+						var was_sd := effect_by
+						effect_by = q
+						events.append_array(_destroy(t_sd) if t_sd.is_monster() and players[t_sd.owner].field.has(t_sd) else _destroy_st(t_sd))
+						effect_by = was_sd
+					break
 	# Yubel: "Before damage calculation, if this face-up Attack Position card is targeted for an attack: Inflict damage to your
 	# opponent equal to that attacking monster's ATK."
 	# Dark Sanctuary: "When an opponent's monster declares an attack: Toss a coin and if the result is heads, negate the attack, and if you do,
@@ -3374,7 +3439,22 @@ func _resolve_attack() -> Array:
 			if EffectRunner.piercing(self, p, attacker) or SpellRules.equip_flag(self, attacker, "pierce"):
 				events.append({"type": "effect", "player": p, "card": attacker, "text": "Piercing damage!"})
 				var lp_pierce := players[opp].lp
-				events.append_array(_battle_damage(opp, a - d, attacker, target))
+				var pd := a - d
+				if EffectRunner.fx(attacker).get("pierce_x2", false) and attacker.face_up:
+					pd *= 2   # Blue-Eyes Chaos MAX Dragon: "inflict double piercing battle damage"
+				events.append_array(_battle_damage(opp, pd, attacker, target))
+				if players[opp].lp < lp_pierce and not is_over() and EffectRunner.is_gaia_dc(attacker) and SpellRules.spiral_spear(self, p, attacker):
+					# Spiral Spear Strike: "If "Gaia the Dragon Champion" inflicts battle damage with this effect: Draw 2 cards, then discard 1 card."
+					events.append({"type": "effect", "player": p, "card": attacker, "text": Loc.t("Spiral Spear Strike: draw 2, then discard 1")})
+					events.append_array(_draw(p, 2))
+					if not players[p].hand.is_empty():
+						var hd: Array = players[p].hand.duplicate()
+						hd.sort_custom(func(x, y): return _card_value(x) < _card_value(y))
+						var th = pick1(p, Loc.t("Spiral Spear Strike: discard which card?"), hd, hd[0], null)
+						players[p].hand.erase(th)
+						th.set_meta("from_hand", true)
+						_to_gy(players[p], th)
+						events.append({"type": "discard", "player": p, "card": th})
 				# Drill Synchron: "Once per turn, when you inflict battle damage to your opponent with this effect: You can draw 1 card."
 				if players[opp].lp < lp_pierce and not is_over():
 					for dr in players[p].monsters():
@@ -3724,6 +3804,12 @@ func _after_attack(attacker: CardInst, target = null) -> Array:
 func atk_of(c: CardInst, attacking: bool, vs: CardInst = null, battling := false) -> int:
 	if not mon_equips(c, "shocktopus").is_empty():
 		return 0   # Shocktopus: "That monster's ATK becomes 0"
+	if c.tags.get("bec_zero", false):
+		return 0   # Blue-Eyes Chaos Dragon: "the ATK/DEF of those changed monsters become 0"
+	if battling and vs != null and vs.owner != c.owner and int(vs.tags.get("envoy_turn", -1)) == turn:
+		return c.atk()   # Envoy of Chaos: "every opponent's monster that battles it this turn has its ATK become that monster's original ATK"
+	if c.tags.get("orig_atk", false):
+		return c.atk()   # Gaia the Fierce Knight Origin: "its ATK becomes its original ATK"
 	var v := c.atk()
 	var arm := mon_equips(c, "armored")
 	if not arm.is_empty():
@@ -3743,6 +3829,8 @@ func atk_of(c: CardInst, attacking: bool, vs: CardInst = null, battling := false
 
 
 func def_of(c: CardInst) -> int:
+	if c.tags.get("bec_zero", false):
+		return 0
 	return maxi(0, c.def() + c.def_mod + (c.def_mod_t if c.def_mod_turn == turn else 0) + SpellRules.def_bonus(self, c) + EffectRunner.def_bonus(self, c))
 
 
@@ -3891,6 +3979,8 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 				break
 	if not by_battle and c.face_up and not c.negated and EffectRunner.fx(c).get("supernat", false) and necro_on():
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed by card effects") % c.cname()}]
+	if not by_battle and c.face_up and not c.negated and EffectRunner.fx(c).get("opp_fx_unbreak", false) and effect_by == opponent(c.owner):
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed by your opponent's card effects") % c.cname()}]
 	if not by_battle and cloth_guard(c):
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed by card effects") % c.cname()}]
 	if c.face_up and CardEffects.matches(c.data, {"has": "Gem-Knight"}) and ((by_battle and current != c.owner) or (not by_battle and effect_by == opponent(c.owner))) and not spark_dead.has(c):
@@ -4118,7 +4208,17 @@ func _to_gy(ps: PlayerState, c: CardInst) -> void:
 
 ## "When this card is sent to the Graveyard" from anywhere: the field, the hand, the Deck, as
 ## an Xyz Material (Skull-Mark Ladybug). What it does is picked up by _cleanup.
+## Gateway to Chaos: "Each time a Monster Card(s) is sent from the hand or field to the GY, place 1 Spell Counter on this card (max. 6)."
+func _gateway_count() -> void:
+	for q in 2:
+		for st in players[q].spells:
+			if st != null and st.face_up and SpellRules.spec(st).get("gateway", false) and not SpellRules.blocked(self, st) and st.counter < 6:
+				st.counter += 1
+
+
 func _sent_to_gy(c: CardInst) -> void:
+	if c.is_monster() and c.has_meta("from_hand"):
+		_gateway_count()
 	if c.has_meta("from_hand"):
 		c.remove_meta("from_hand")
 		# "If this card is sent from the hand to the GY" (Gem-Knight Obsidian, Nepyrim).
@@ -4192,6 +4292,8 @@ func _banish(c: CardInst) -> Array:
 		return [{"type": "effect", "player": c.owner, "card": null, "text": Loc.t("Gravekeeper's Inscription: %s stays in the Graveyard") % c.cname()}]
 	if necro_holds(c):
 		return [{"type": "effect", "player": c.owner, "card": null, "text": Loc.t("Necrovalley: %s stays in the Graveyard") % c.cname()}]
+	if not can_banish(effect_by if effect_by != -1 else current):
+		return [{"type": "effect", "player": c.owner, "card": null, "text": Loc.t("Chaos Hunter: %s can't be banished") % c.cname()}]
 	if (players[0].field.has(c) or players[1].field.has(c)) and st_unaffected(c):
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s is unaffected") % c.cname()}]
 	if players[c.owner].field.has(c) and c.face_up and c.is_monster() and is_lsw(c) \
@@ -4246,6 +4348,9 @@ func _banish(c: CardInst) -> Array:
 					bev.append_array(EffectRunner.trigger(self, c, "leave"))
 			elif from == "spells":
 				bev.append_array(SpellRules.left_field(self, c))
+			if from == "gy" and c.is_monster() and CardEffects.of(c.cname()).has("banished_gy") and not is_over():
+				# "If this card is banished from the GY" (Beginning Knight, Evening Twilight Knight).
+				bev.append_array(EffectRunner.run_list(self, c.owner, c, CardEffects.of(c.cname())["banished_gy"], {}))
 			if c.is_monster() and CardEffects.of(c.cname()).has("banished"):
 				# "If this card is banished" (Giant Rex).
 				bev.append_array(EffectRunner.run_list(self, c.owner, c, CardEffects.of(c.cname())["banished"], {}))
@@ -4374,6 +4479,8 @@ func _destroy_st(c: CardInst) -> Array:
 ## Equip cards (and Call of the Haunted) go when their monster goes.
 func _monster_left(m: CardInst) -> Array:
 	var events := []
+	if m.is_monster() and (players[0].gy.has(m) or players[1].gy.has(m)):
+		_gateway_count()
 	if m.face_up and not m.negated and effect_by == opponent(m.owner) and not in_damage_step and not is_over():
 		events.append_array(EffectRunner.left_by_opp(self, m))
 	for q in 2:
@@ -5022,6 +5129,7 @@ func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 		events.append_array(_summon_tax(p, c))
 		if not ps.field.has(c):
 			return events
+	events.append_array(_gaia_watch(p, c))
 	if str(c.data.get("race", "")) == "Machine":
 		# Cyber Summon Blaster: "Each time a Machine monster(s) is Special Summoned, while this card is already face-up: 300 damage to your opponent."
 		for q in 2:
@@ -5104,6 +5212,11 @@ func heretic_shield(c, src = null) -> bool:
 		return true   # Ancient Gear Howitzer: "Unaffected by other cards' effects."
 	if f.get("unaffected_st", false) and src != null and src is CardInst and not src.is_monster():
 		return true   # Chaos Ancient Gear Giant: "Unaffected by Spell/Trap effects."
+	if f.get("unaffected_opp", false) and src != null and src is CardInst and src.owner != c.owner:
+		# "Unaffected by your opponent's activated effects, unless they target this card."
+		var aimed: bool = (st_resolving == src and st_target == c) or (int(src.tags.get("picked_t", -1)) == turn and c.uid in (src.tags.get("picked_u", []) as Array))
+		if not aimed:
+			return true
 	# Ancient Gear Duel: ""Ancient Gear Golem", and monsters that mention it, in your Monster Zone are unaffected by your opponent's activated monster effects."
 	if src != null and src is CardInst and src.is_monster() and src.owner != c.owner and players[c.owner].field.has(c) and (is_golem(c) or mentions_golem(c)):
 		for st in players[c.owner].spells:
@@ -5170,6 +5283,9 @@ func fusion_targets(p: int, poly: CardInst = null, from_gy := false, ask := fals
 		if EffectRunner.fx(f).has("fmats"):
 			# Fusion Monsters whose materials are described, not named ("2 "Ojama" monsters", ""Cyber Dragon" + 1+ Machine monsters").
 			var plan_f := _fmat_plan(p, f, pool_hand, pool_field.filter(func(m): return m.face_up), ask)
+			if plan_f.is_empty() and EffectRunner.fx(f).has("fmats_alt"):
+				# Dragon Master Magia: ""Blue-Eyes Ultimate Dragon" or 3 "Blue-Eyes" monsters + ..."
+				plan_f = _fmat_plan(p, f, pool_hand, pool_field.filter(func(m): return m.face_up), ask, "fmats_alt")
 			if not plan_f.is_empty() and not (plan_f["field"].is_empty() and ps.free_zone() == -1):
 				out.append(plan_f)
 			continue
@@ -5267,8 +5383,10 @@ static func live_data(x: CardInst) -> Dictionary:
 	return d
 
 
-func _fmat_plan(p: int, f: CardInst, pool_hand: Array, pool_field: Array, ask: bool) -> Dictionary:
-	var fx_f := EffectRunner.fx(f)
+func _fmat_plan(p: int, f: CardInst, pool_hand: Array, pool_field: Array, ask: bool, key := "fmats") -> Dictionary:
+	var fx_f := EffectRunner.fx(f).duplicate()
+	if key != "fmats":
+		fx_f["fmats"] = fx_f[key]
 	var used_hand := []
 	var used_field := []
 	var cands: Array = pool_hand.filter(func(h): return h.is_monster()) + pool_field.filter(func(m): return not m.is_token())
@@ -6171,6 +6289,54 @@ func set_st(p: int, c: CardInst) -> Array:
 
 ## Cards player `p` could activate right now in a response window.
 ## window: "attack" (an opponent's monster declared an attack) or "summon".
+## In player q's Battle Phase, may the other player not activate anything? (Legendary Swordsman; Galloping Gaia with Gaia the Dragon Champion.)
+## A monster just came out for player p: Heart of Gaia (+7 Levels in Attack Position) and Lord Gaia (+700 when it has more ATK) on the other side.
+func _gaia_watch(p: int, c: CardInst) -> Array:
+	var events := []
+	var q := opponent(p)
+	for m in players[q].monsters():
+		if not m.face_up or m.negated:
+			continue
+		var f := EffectRunner.fx(m)
+		if f.get("heart_gaia", false) and c.attack_pos and c.face_up and c.level() > 0:
+			c.lv_set = c.level() + 7
+			c.lv_turn = -1
+			events.append({"type": "effect", "player": q, "card": m, "text": Loc.t("%s: %s is Level %d") % [m.cname(), c.cname(), c.lv_set]})
+		if f.get("lord_gaia", false) and c.tags.get("ss", false) and int(m.tags.get("lord_turn", -1)) != turn and atk_of(c, false) > atk_of(m, false) \
+				and choose_option(q, Loc.t("%s: gain 700 ATK this turn?") % m.cname(), [Loc.t("Yes"), Loc.t("No")], 0, m) == 0:
+			m.tags["lord_turn"] = turn
+			if m.atk_mod_turn != turn:
+				m.atk_mod_turn = turn
+				m.atk_mod_t = 0
+			m.atk_mod_t += 700
+			events.append({"type": "effect", "player": q, "card": m, "text": Loc.t("%s gains 700 ATK") % m.cname()})
+	return events
+
+
+func bp_locked(q: int) -> bool:
+	for m in players[q].monsters():
+		if m.face_up and not m.negated and EffectRunner.fx(m).get("bp_lock", false):
+			return true
+	if not players[q].monsters().filter(func(m): return m.face_up and EffectRunner.is_gaia_dc(m)).is_empty():
+		for st in players[q].spells:
+			if st != null and st.face_up and SpellRules.spec(st).get("galloping", false) and not SpellRules.blocked(self, st):
+				return true
+	return false
+
+
+## Magician of Black Chaos MAX: can't player p activate monster effects right now?
+func mon_fx_locked(p: int) -> bool:
+	return int(players[p].once_names.get("#no_mon_fx", -1)) == turn
+
+
+## Chaos Hunter: "Your opponent cannot banish cards." May player p banish cards?
+func can_banish(p: int) -> bool:
+	for m in players[opponent(p)].monsters():
+		if m.face_up and not m.negated and EffectRunner.fx(m).get("hunter", false):
+			return false
+	return true
+
+
 func responses(p: int, window: String, subject = null) -> Array:
 	var out := []
 	var ps := players[p]
@@ -6184,6 +6350,11 @@ func responses(p: int, window: String, subject = null) -> Array:
 		for ct in [pending_attack.get("attacker"), pending_attack.get("target")]:
 			if ct != null and ct.owner != p and ct.face_up and not ct.negated and EffectRunner.fx(ct).get("citrine", false) and players[ct.owner].field.has(ct):
 				return out
+	# Black Luster Soldier - Legendary Swordsman / Galloping Gaia: "Your opponent cannot activate cards or effects during your Battle Phase."
+	if phase == Phase.BATTLE and current != p and bp_locked(current):
+		return out
+	# Magician of Black Chaos MAX: "your opponent cannot activate monster effects this turn"
+	var max_locked: bool = int(ps.once_names.get("#no_mon_fx", -1)) == turn
 	# Ancient Gear Fortress: "Your opponent cannot activate cards or effects in response to the activation of "Ancient Gear" cards and effects."
 	if window == "chain" and not chain.is_empty():
 		var lk_f: Dictionary = chain.back()
@@ -6197,6 +6368,8 @@ func responses(p: int, window: String, subject = null) -> Array:
 		for m in players[opponent(p)].monsters():
 			if m.face_up and not m.negated and EffectRunner.fx(m).get("chaos_giant", false):
 				fx_locked = true
+	if max_locked:
+		fx_locked = true
 	var traps_off: bool = trap_bp_lock == turn and phase == Phase.BATTLE
 	if not pending_attack.is_empty() and pending_attack["player"] != p and not pending_attack.get("negated", false):
 		var atk_c: CardInst = pending_attack["attacker"]
