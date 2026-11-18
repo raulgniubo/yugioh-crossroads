@@ -5,6 +5,13 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.40.0
+
+**Stable save point.** This is the same game as 0.34.5, with **1,998 cards**, every one working and obtainable. No cards added in this build.
+
+- It marks the end of the current duel engine. The work to move duels onto a new rules engine (and a much smarter CPU with Normal, Hard and Extreme) happens on the `ocgcore` branch from here.
+- Tagged `v0.40.0` on GitHub, so this exact build can always be rebuilt.
+
 ## What is in 0.34.5
 
 **Monarchs: the whole family, 45 cards.** 42 of them are new, so the game now has **1,998 cards**, every one working and obtainable.
