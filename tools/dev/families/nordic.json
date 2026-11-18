@@ -1,0 +1,113 @@
+{
+ "key": "nordic",
+ "era": "5D's",
+ "pack": {
+  "name": "Twilight of the Gods",
+  "color": "8ab4d8",
+  "blurb": "The Nordics: Alfar, Beasts and Ascendants who Summon each other in pairs, the Relics they carry, and the three Aesir gods Odin, Thor and Loki who come back every time they fall."
+ },
+ "deck": {
+  "key": "deck_nordic",
+  "name": "Twilight of the Gods",
+  "art": "arcane",
+  "cover": "Odin, Father of the Aesir",
+  "blurb": "Dverg and Ljosalf bring a second Nordic every turn, the Beasts and Ascendants tune them up, and an Aesir hits the field. Destroy one and it comes back at the End Phase.",
+  "cards": {
+   "Dverg of the Nordic Alfar": 2,
+   "Ljosalf of the Nordic Alfar": 1,
+   "Svartalf of the Nordic Alfar": 2,
+   "Mara of the Nordic Alfar": 1,
+   "Mimir of the Nordic Ascendant": 1,
+   "Vanadis of the Nordic Ascendant": 1,
+   "Nordic Beast Gullinbursti": 1,
+   "Tanngnjostr of the Nordic Beasts": 2,
+   "Tanngrisnir of the Nordic Beasts": 1,
+   "Guldfaxe of the Nordic Beasts": 1,
+   "Garmr of the Nordic Beasts": 1,
+   "Nordic Smith Ivaldi": 2,
+   "Tyr of the Nordic Champions": 1,
+   "Nordic Relic Hlidskjalf": 1,
+   "Nordic Relic Draupnir": 1,
+   "The Nordic Lights": 1,
+   "March Towards Ragnarok": 1,
+   "Monster Reborn": 1,
+   "Mystical Space Typhoon": 1,
+   "Dark Hole": 1,
+   "Gleipnir, the Fetters of Fenrir": 2,
+   "Nordic Relic Megingjord": 1,
+   "Nordic Relic Gungnir": 1,
+   "Nordic Relic Svalinn": 1,
+   "Nordic Relic Laevateinn": 1,
+   "Divine Relic Mjollnir": 1,
+   "Solemn Authority": 1,
+   "Mirror Force": 1,
+   "Bottomless Trap Hole": 1,
+   "Call of the Haunted": 1,
+   "Solemn Judgment": 1,
+   "Torrential Tribute": 1,
+   "Compulsory Evacuation Device": 1,
+   "Dimensional Prison": 1,
+   "Fiendish Chain": 1
+  },
+  "extra": {
+   "Odin, Father of the Aesir": 1,
+   "Thor, Lord of the Aesir": 1,
+   "Loki, Lord of the Aesir": 1,
+   "Stardust Dragon": 1,
+   "Formula Synchron": 1
+  }
+ },
+ "worlds": [
+  "satellite",
+  "newdomino"
+ ],
+ "stage": 3,
+ "npc": {
+  "id": "nd_mc",
+  "new_duel": {
+   "difficulty": 2,
+   "intro": "Laaadies and gentlemen! A surprise match!"
+  },
+  "lines": [
+   "Laaadies and gentlemen! The Fortune Cup qualifiers are open to every duelist in New Domino!",
+   "The King himself is waiting by the doors. Beat him and the crowd will never forget your name.",
+   "Between announcements I warm up the crowd with a duel. Gods of the north, live on stage!"
+  ]
+ },
+ "cards": [
+  "Dverg of the Nordic Alfar",
+  "Fenrir the Nordic Wolf",
+  "Mara of the Nordic Alfar",
+  "Mimir of the Nordic Ascendant",
+  "Valkyrie of the Nordic Ascendant",
+  "Nordic Beast Gullinbursti",
+  "Tanngnjostr of the Nordic Beasts",
+  "Tanngrisnir of the Nordic Beasts",
+  "Alviss of the Nordic Alfar",
+  "Garmr of the Nordic Beasts",
+  "Guldfaxe of the Nordic Beasts",
+  "Ljosalf of the Nordic Alfar",
+  "Nordic Smith Ivaldi",
+  "Tyr of the Nordic Champions",
+  "Vanadis of the Nordic Ascendant",
+  "Svartalf of the Nordic Alfar",
+  "Jormungardr the Nordic Serpent",
+  "Gotterdammerung",
+  "March Towards Ragnarok",
+  "Nordic Relic Draupnir",
+  "Nordic Relic Hlidskjalf",
+  "The Nordic Lights",
+  "Loki, Lord of the Aesir",
+  "Odin, Father of the Aesir",
+  "Thor, Lord of the Aesir",
+  "Divine Relic Mjollnir",
+  "Gleipnir, the Fetters of Fenrir",
+  "Nordic Relic Brisingamen",
+  "Nordic Relic Gungnir",
+  "Nordic Relic Laevateinn",
+  "Nordic Relic Megingjord",
+  "Nordic Relic Svalinn",
+  "Odin's Eye",
+  "Solemn Authority"
+ ]
+}

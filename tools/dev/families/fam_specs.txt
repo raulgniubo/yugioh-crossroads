@@ -1,0 +1,22 @@
+guardian|0x1052|Sanga of the Thunder|"Kazejin"|"Suijin"|"Gate Guardian"|Guardian (Baou|Ceal|Dreadscythe|Eatos|Elma|Grarl|Kay'est|Tryce)
+alien|0xc|A-Counter|"Alien"
+volcanic|0x32|"Volcanic"
+x_saber|0x100d|"X-Saber"|"XX-Saber"|"Saber" monster|"Saber" card
+gimmick_puppet|0x1083|"Gimmick Puppet"
+battlin_boxer|0x84|"Battlin' Boxer"
+exodia|0xde,0x51,0x28|"Exodia"|Forbidden One|"Gadget"|"Batteryman"
+koaki_meiru|0x1d|"Koa'ki Meiru"|Iron Core of Koa'ki Meiru
+arcana_force|0x5|"Arcana Force"
+ice_barrier|0x2f|"Ice Barrier"
+ninja|0x2b|"Ninja"
+kuriboh|0xa4,0x1066,0x64|"Kuriboh"|"Magnet Warrior"|"Harpie"|"Harpie Lady"
+cloudian|0x18,0x14c,0x50|"Cloudian"|Fog Counter|"Fossil"|"Venom"|Venom Counter
+naturia|0x2a|"Naturia"
+tg|0x27|"T.G."
+fire_fist|0x79,0x7c|"Fire Fist"|"Fire Formation"
+dark_magician|0x10a2,0x30a2|"Dark Magician"|"Dark Magician Girl"
+blue_eyes|0xdd|"Blue-Eyes"|"Blue-Eyes White Dragon"
+red_eyes|0x3b|"Red-Eyes"|"Red-Eyes Black Dragon"
+armed_dragon|0x111,0x41|"Armed Dragon"|"LV"
+nordic|0x42,0x4b|"Nordic"|"Aesir"
+bujin|0x88|"Bujin"

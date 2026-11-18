@@ -2501,5 +2501,222 @@
 "turns": 3,
 "pass": "stands",
 "why": "Only Number C1000's own effect can summon it. The check is that it stands on the field through the turns without a complaint."
+},
+{
+"card": "Guardian Kay'est",
+"me": {
+"m": [
+"Vorse Raider"
+],
+"hand": [
+"Rod of Silence - Kay'est",
+"Guardian Kay'est"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Short Circuit",
+"me": {
+"m": [
+"Batteryman AA",
+"Batteryman AA",
+"Batteryman C"
+],
+"hand": [
+"Short Circuit"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+],
+"st": [
+"Trap Hole"
+]
+},
+"turns": 3
+},
+{
+"card": "Magnet Reverse",
+"me": {
+"gy": [
+"Giant Soldier of Stone",
+"Vorse Raider"
+],
+"hand": [
+"Fossil Fusion",
+"Time Stream",
+"Magnet Reverse"
+],
+"extra": [
+"Fossil Warrior Skull Bone",
+"Fossil Warrior Skull Knight"
+]
+},
+"opp": {},
+"turns": 4
+},
+{
+"card": "Time Stream",
+"me": {
+"m": [
+"Fossil Warrior Skull Bone"
+],
+"hand": [
+"Time Stream"
+],
+"extra": [
+"Fossil Warrior Skull Knight",
+"Fossil Warrior Skull King"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Snake Deity's Command",
+"me": {
+"st": [
+"Snake Deity's Command"
+],
+"hand": [
+"Venom Boa",
+"Venom Boa"
+]
+},
+"opp": {
+"hand": [
+"Pot of Greed",
+"Raigeki",
+"Dark Hole",
+"Upstart Goblin",
+"Mystical Space Typhoon"
+],
+"deck": [
+"Upstart Goblin",
+"Pot of Greed",
+"Raigeki"
+]
+},
+"turns": 4
+},
+{
+"card": "Fossil Dragon Skullgar",
+"me": {
+"gy": [
+"Giant Soldier of Stone"
+],
+"hand": [
+"Fossil Fusion"
+],
+"extra": [
+"Fossil Dragon Skullgar"
+]
+},
+"opp": {
+"gy": [
+"Battle Ox"
+]
+},
+"turns": 3
+},
+{
+"card": "Fossil Warrior Skull Bone",
+"me": {
+"gy": [
+"Giant Soldier of Stone",
+"Vorse Raider"
+],
+"hand": [
+"Fossil Fusion"
+],
+"extra": [
+"Fossil Warrior Skull Bone"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "T.G. Glaive Blaster",
+"me": {
+"m": [
+"Formula Synchron",
+"T.G. Power Gladiator",
+"T.G. Hyper Librarian"
+],
+"extra": [
+"T.G. Glaive Blaster"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Dark Sage",
+"me": {
+"m": [
+"Time Wizard",
+"Dark Magician"
+],
+"hand": [
+"Dark Sage"
+]
+},
+"opp": {
+"m": [
+"Battle Ox"
+]
+},
+"turns": 6
+},
+{
+"card": "Red-Eyes Black Dragon Sword",
+"me": {
+"m": [
+"Vorse Raider"
+],
+"hand": [
+"The Claw of Hermos",
+"Red-Eyes Black Dragon"
+],
+"extra": [
+"Red-Eyes Black Dragon Sword"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Red-Eyes Zombie Dragon Lord",
+"me": {
+"m": [
+"Plaguespreader Zombie",
+"Goblin Zombie",
+"Goblin Zombie"
+],
+"extra": [
+"Red-Eyes Zombie Dragon Lord"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Ojamatch",
+"me": {
+"hand": [
+"Ojamatch",
+"Ojama Yellow"
+],
+"deck": [
+"Ojama Green",
+"Armed Dragon LV3"
+]
+},
+"opp": {},
+"turns": 3
 }
 ]

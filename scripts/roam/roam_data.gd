@@ -13,7 +13,7 @@ const DISTRICTS := {
 				"duel": {"deck": "deck_gravekeeper", "difficulty": 2, "intro": "A quick one. I am on a schedule. And nothing comes back from my valley."}},
 			{"id": "night_domino", "char": "", "model": "duelist_m7", "name": "The Midnight Collector", "color": Color("b78cff"), "pos": Vector3(8.0, 0, -40.2), "face": 0.2, "night": true, "aloof": true,
 				"lines": ["I only come out when the plaza is empty. Fewer witnesses.", "Every card I own was won after midnight. Yours will be too."],
-				"duel": {"deck": "kaiba", "difficulty": 3, "intro": "The night shift starts now.", "rare": true}},
+				"duel": {"deck": "deck_red_eyes", "difficulty": 3, "intro": "The night shift starts now.", "rare": true}},
 			{"id": "yugi", "char": "yugi", "pos": Vector3(-6.6, 0, -12.6), "face": 0.0,
 				"lines": ["Hey, {player}! Grandpa says the shop is getting a new shipment today.", "Whenever you want a real test, I'll be here."],
 				"duel": {"deck": "yugi", "difficulty": 2, "intro": "Let's see how much you've grown!"}},
@@ -27,17 +27,19 @@ const DISTRICTS := {
 				"lines": ["Oh! Sorry, I was miles away.", "Do you ever feel like the city is... watching you?"],
 				"duel": {"deck": "bakura", "difficulty": 2, "intro": "Let's play a little game, shall we?"}},
 			{"id": "kid", "char": "", "model": "street_duelist", "name": "Rookie Duelist", "color": Color("f0a040"), "pos": Vector3(3, 0, 14), "face": 3.0,
-				"lines": ["I just built my first deck! Wanna duel? Please?"],
-				"duel": {"deck": "joey", "difficulty": 0, "intro": "Here goes nothing!"}},
+				"lines": ["I just built my first deck! It has all five pieces of Exodia in it. Wanna duel? Please?"],
+				"duel": {"deck": "deck_exodia", "difficulty": 0, "intro": "If I draw all five, I win. That's the rule!"}},
 			{"id": "vendor", "char": "", "model": "shopkeeper", "name": "Card Vendor", "color": Color("40c0a0"), "pos": Vector3(-4, 0, -12), "face": 0.4,
 				"lines": ["Kame Game's been here longer than KaibaCorp tower, you know.", "Win some duels around town and the shop might have something special for you."]},
 			{"id": "guard", "char": "", "model": "office_worker", "name": "KaibaCorp Guard", "color": Color("4070e0"), "pos": Vector3(4.6, 0, -51.0), "face": 0.0,
-				"lines": ["KaibaCorp Tower. The lobby is open to duelists during the tournament.", "The elevators are not. Don't even look at them."]},
+				"lines": ["KaibaCorp Tower. The lobby is open to duelists during the tournament.", "The elevators are not. And if you want past me, you go through three of my guardians first."],
+				"duel": {"deck": "deck_guardian", "difficulty": 2, "intro": "Nobody gets past the gate. Not today."}},
 			{"id": "kaiba", "char": "kaiba", "pos": Vector3(-4.4, 0, -48.4), "face": 0.3,
 				"lines": ["You're standing on my plaza.", "If you want my attention, earn it. I don't hold back for anyone."],
 				"duel": {"deck": "kaiba", "difficulty": 3, "intro": "Witness the power of my Blue-Eyes!"}},
 			{"id": "official", "char": "", "model": "stylish_woman", "name": "Tournament Official", "color": Color("ffd166"), "pos": Vector3(-9.0, 0, -40.0), "face": 0.6,
-				"lines": ["Battle City finals registration is right here on the plaza.", "Mr. Kaiba watches every duel in the city from up there. Every single one."]},
+				"lines": ["Battle City finals registration is right here on the plaza.", "Mr. Kaiba watches every duel in the city from up there. Every single one.", "Between registrations I duel. White dragons only. Don't ask where I got three."],
+				"duel": {"deck": "deck_blue_eyes", "difficulty": 3, "intro": "Registration check. Let's see that deck in action."}},
 			{"id": "stage_champ", "char": "", "model": "duelist_m9", "name": "Plaza Champion", "color": Color("7cc4ff"), "pos": Vector3(13.4, 0, -44.0), "face": -1.2,
 				"lines": ["Nobody has knocked me off this stage all morning.", "Step up, challenger!"],
 				"duel": {"deck": "deck_archfiend", "difficulty": 2, "intro": "Your move. Mine is already made."}},
@@ -45,7 +47,8 @@ const DISTRICTS := {
 				"lines": ["The Duel Dome's sold out, so I'm dueling out here instead.", "My dinos are gonna stomp ya flat!"],
 				"duel": {"deck": "rex", "difficulty": 1, "intro": "Dino stampede!"}},
 			{"id": "dome_fan", "char": "", "model": "student_boy", "name": "Dome Fan", "color": Color("b48cff"), "pos": Vector3(-36.4, 0, 4.8), "face": 1.8,
-				"lines": ["I've been in line for the Duel Dome since five this morning.", "They say the finals arena floats. FLOATS."]},
+				"lines": ["I've been in line for the Duel Dome since five this morning.", "They say the finals arena floats. FLOATS.", "My deck is all Kuribohs. Laugh now. You won't get a single hit through."],
+				"duel": {"deck": "deck_kuriboh", "difficulty": 1, "intro": "Kuri kuri! Okay, I'll stop. Duel!"}},
 			{"id": "weevil", "char": "weevil", "pos": Vector3(38.4, 0, 3.4), "face": -1.5,
 				"lines": ["Hyohyohyo! Skipping class to duel? So am I.", "My insects have been waiting for a fresh victim."],
 				"duel": {"deck": "weevil", "difficulty": 1, "intro": "Come into my web!"}},
@@ -59,7 +62,8 @@ const DISTRICTS := {
 				"lines": ["Ah, the sea air! Simply fabulous for the complexion.", "Shall we play a little game while my yacht refuels?"],
 				"duel": {"deck": "pegasus", "difficulty": 2, "intro": "It's time for a toon-up!"}},
 			{"id": "tourist", "char": "", "model": "student_girl", "name": "Tourist", "color": Color("7cf0ff"), "pos": Vector3(8.0, 0, 58.6), "face": 2.9,
-				"lines": ["You can see Duel Academy's volcano from the end of the pier on a clear day!", "Somebody said a duelist stands out there every night, all alone."]},
+				"lines": ["You can see Duel Academy's volcano from the end of the pier on a clear day!", "Somebody said a duelist stands out there every night, all alone.", "I brought my deck on vacation. It's all Dark Magicians. Want a souvenir duel?"],
+				"duel": {"deck": "deck_dark_magician", "difficulty": 2, "intro": "Let me show you a real magic trick!"}},
 			{"id": "marik", "char": "marik", "pos": Vector3(1.4, 0, 86.0), "face": 3.1,
 				"lines": ["The sea keeps what it is given. So do the shadows.", "You walked a long way to lose."],
 				"duel": {"deck": "marik", "difficulty": 3, "intro": "Let the shadows decide."}},
@@ -142,8 +146,8 @@ const DISTRICTS := {
 			[Vector2(-30, 5), Vector2(-30, -17)], [Vector2(19, 2), Vector2(19, 32)], [Vector2(19, 30), Vector2(43, 30)]]},
 		"npcs": [
 			{"id": "dawn_academy", "char": "", "model": "duelist_m4", "name": "The Dawn Patrol", "color": Color("ffb86b"), "pos": Vector3(36.0, 0, 30.0), "face": -1.4, "hours": [5, 10], "aloof": true,
-				"lines": ["Lights-out is a suggestion. Sunrise is a rule. I walk the harbor path every morning before class.", "Duel before breakfast and your hands remember it all day."],
-				"duel": {"deck": "chazz", "difficulty": 2, "intro": "Before the bell, then."}},
+				"lines": ["Lights-out is a suggestion. Sunrise is a rule. I walk the harbor path every morning before class.", "Duel before breakfast and your hands remember it all day. My dragons level up the same way."],
+				"duel": {"deck": "deck_armed_dragon", "difficulty": 2, "intro": "Before the bell, then."}},
 			{"id": "night_academy", "char": "", "model": "duelist_m10", "name": "The Lighthouse Ghost", "color": Color("9fe0ff"), "pos": Vector3(6.0, 0, 46.0), "face": -0.5, "night": true, "aloof": true,
 				"lines": ["They say a graduate still walks the island at night, looking for one more duel.", "They are right. And he has not been hungry for duels alone."],
 				"duel": {"deck": "deck_vampire", "difficulty": 3, "intro": "Class is in session. Mind your neck.", "rare": true}},
@@ -166,7 +170,8 @@ const DISTRICTS := {
 				"lines": ["A pro doesn't usually duel students. I'll make an exception.", "Destiny already picked the winner."],
 				"duel": {"deck": "aster", "difficulty": 2, "intro": "Your fate is sealed."}},
 			{"id": "student_a", "char": "", "model": "student_girl", "dorm": "yellow", "name": "First-Year Student", "color": Color("ffd166"), "pos": Vector3(36, 0, 0), "face": -1.6,
-				"lines": ["Yellow dorm has the best curry on the island. It's not close.", "Did you see the volcano glowing last night?"]},
+				"lines": ["Yellow dorm has the best curry on the island. It's not close.", "Did you see the volcano glowing last night? I built my deck out of it. Want to feel the heat?"],
+				"duel": {"deck": "deck_volcanic", "difficulty": 2, "intro": "The volcano is glowing again. So am I."}},
 			{"id": "ac_yellow_2", "char": "yellow_student", "name": "Yellow Dorm Strategist", "color": Color("f2c230"), "pos": Vector3(34.6, 0, -9), "face": -1.2,
 				"lines": ["Ra Yellow is where the planners live. I counted your steps on the way over.", "My deck wins by throwing its own cards away. Work that one out."],
 				"duel": {"deck": "deck_dark_world", "difficulty": 2, "intro": "According to my notes, I win."}},
@@ -180,16 +185,17 @@ const DISTRICTS := {
 				"lines": ["They call Slifer Red the bottom dorm. We call it the fun dorm.", "My monsters fight in shifts. One goes back to the Deck, the next one runs out. Bet you a fried shrimp you can't keep up."],
 				"duel": {"deck": "deck_gladiator", "difficulty": 0, "intro": "Fried shrimp on the line! Tag in!"}},
 			{"id": "student_b", "char": "", "model": "student_boy", "dorm": "red", "name": "Red Dorm Student", "color": Color("ff6b6b"), "pos": Vector3(-33, 0, 2), "face": 1.2,
-				"lines": ["I failed the written exam but I'm unbeaten at lunch-table duels.", "Want to test that record?"],
-				"duel": {"deck": "joey", "difficulty": 0, "intro": "Lunch-table rules!"}},
+				"lines": ["I failed the written exam but I'm unbeaten at lunch-table duels.", "My monsters fall apart unless I feed them iron cores. Want to test that record?"],
+				"duel": {"deck": "deck_koaki_meiru", "difficulty": 0, "intro": "Lunch-table rules! Iron cores and all."}},
 			{"id": "captain", "char": "", "model": "office_worker", "name": "Ferry Captain", "color": Color("7cc4ff"), "pos": Vector3(2.4, 0, 60), "face": 0.0,
-				"lines": ["The ferry runs to Domino City whenever you're ready.", "Step onto the pier when you want to head back."]},
+				"lines": ["The ferry runs to Domino City whenever you're ready.", "Step onto the pier when you want to head back.", "Out at sea the fog rolls in thick. I learned to duel with it. Want to see?"],
+				"duel": {"deck": "deck_cloudian", "difficulty": 2, "intro": "Fog's rolling in. Hope you brought a compass."}},
 			{"id": "ac_beach", "char": "", "model": "stylish_woman", "dorm": "yellow", "name": "Sunbathing Student", "color": Color("f2c230"), "pos": Vector3(44, 0, 48), "face": -2.4,
-				"lines": ["Classes? It's a beach day. Every day is a beach day if you're brave enough.", "Fine, one duel. Then back to the sun."],
-				"duel": {"deck": "deck_water", "difficulty": 1, "intro": "Surf's up!"}},
+				"lines": ["Classes? It's a beach day. Every day is a beach day if you're brave enough.", "Fine, one duel. Then back to the sun.", "Some nights there are lights over the water. I deal a different deck when they show up."],
+				"duel": {"deck": "deck_water", "decks": ["deck_water", "deck_alien"], "intros": {"deck_water": "Surf's up!", "deck_alien": "Did you see the lights over the water last night? Those were mine."}, "difficulty": 1, "intro": "Surf's up!"}},
 			{"id": "ac_ghost", "char": "", "model": "duelist_m1", "name": "Old Dorm Wanderer", "color": Color("8a6ab4"), "pos": Vector3(-46, 0, 47.5), "face": 3.14,
-				"lines": ["Students used to live here. Then they stopped coming back from the woods.", "...I'm joking. Mostly. Duel me and find out."],
-				"duel": {"deck": "deck_shadow", "difficulty": 2, "intro": "The old dorm remembers..."}},
+				"lines": ["Students used to live here. Then they stopped coming back from the woods.", "...I'm joking. Mostly. Duel me and find out.", "Some nights I don't pick my deck. I flip a coin and the Arcana pick it for me."],
+				"duel": {"deck": "deck_shadow", "decks": ["deck_shadow", "deck_arcana_force"], "intros": {"deck_shadow": "The old dorm remembers...", "deck_arcana_force": "The cards told me you would come."}, "difficulty": 2, "intro": "The old dorm remembers..."}},
 			{"id": "ac_court", "char": "", "model": "duelist_m8", "dorm": "red", "name": "Practice Partner", "color": Color("d9342b"), "pos": Vector3(18, 0, -19.6), "face": 3.14,
 				"lines": ["Practice fields are first come, first served. I came first.", "Want a warm-up duel?"],
 				"duel": {"deck": "deck_fire", "difficulty": 1, "intro": "Warm-up time!"}},
@@ -268,7 +274,7 @@ const DISTRICTS := {
 				"duel": {"deck": "jack", "difficulty": 2, "intro": "Before the market opens."}},
 			{"id": "night_newdomino", "char": "", "model": "stylish_woman", "name": "The Ring Phantom", "color": Color("2de2e6"), "pos": Vector3(-4.6, 0, 13.6), "face": 0.3, "night": true, "aloof": true,
 				"lines": ["Up there they race in the dark. Down here I wait for whoever is brave enough to walk.", "Standing still is harder than it looks. Show me."],
-				"duel": {"deck": "jack", "difficulty": 3, "intro": "No engines. Just nerve.", "rare": true}},
+				"duel": {"deck": "deck_ice_barrier", "difficulty": 3, "intro": "Cold out tonight. It gets colder.", "rare": true}},
 			{"id": "jack", "char": "jack", "pos": Vector3(3.5, 0, -27.5), "face": 0.3,
 				"lines": ["There is only one King, and you are looking at him.", "Entertain me, challenger."],
 				"duel": {"deck": "jack", "difficulty": 2, "intro": "Bow before the King!"}},
@@ -279,9 +285,11 @@ const DISTRICTS := {
 				"lines": ["Sector Security. Keep your runner under the limit and your deck out of trouble.", "Six of us on every shift, and each one covers the next. My deck works the same way."],
 				"duel": {"deck": "deck_six_samurai", "difficulty": 2, "intro": "By the book, all six of us!"}},
 			{"id": "nd_chief", "char": "", "model": "office_worker", "name": "Security Chief", "color": Color("7cc4ff"), "pos": Vector3(-33.0, 0, 8.5), "face": 1.8,
-				"lines": ["The highway is the only road between here and Satellite. We watch every meter of it.", "Riders who race up there think we don't notice. We notice."]},
+				"lines": ["The highway is the only road between here and Satellite. We watch every meter of it.", "My squad duels with swords. Every one of them brings a friend. Think you can keep up?"],
+				"duel": {"deck": "deck_x_saber", "difficulty": 2, "intro": "Draw your blade. Security does not lose."}},
 			{"id": "nd_mc", "char": "", "model": "duelist_m3", "name": "Stadium MC", "color": Color("ffd166"), "pos": Vector3(-4.5, 0, -27.0), "face": 0.2,
-				"lines": ["Laaadies and gentlemen! The Fortune Cup qualifiers are open to every duelist in New Domino!", "The King himself is waiting by the doors. Beat him and the crowd will never forget your name."]},
+				"lines": ["Laaadies and gentlemen! The Fortune Cup qualifiers are open to every duelist in New Domino!", "The King himself is waiting by the doors. Beat him and the crowd will never forget your name.", "Between announcements I warm up the crowd with a duel. Gods of the north, live on stage!"],
+				"duel": {"deck": "deck_nordic", "difficulty": 2, "intro": "Laaadies and gentlemen! A surprise match!"}},
 			{"id": "nd_fan", "char": "", "model": "student_girl", "name": "Stadium Fan", "color": Color("ff5a7a"), "pos": Vector3(9.0, 0, -22.0), "face": -0.5,
 				"lines": ["I have a ticket for every one of Jack's duels. Every. One.", "You duel too? Show me. My riders come with their own dragons. If you're boring I'm leaving."],
 				"duel": {"deck": "deck_dragunity", "difficulty": 1, "intro": "Don't be boring! Riders, mount up!"}},
@@ -291,10 +299,11 @@ const DISTRICTS := {
 			{"id": "nd_clerk", "char": "", "model": "shopkeeper", "name": "Card Shop Clerk", "color": Color("ffd166"), "pos": Vector3(30.5, 0, 28.0), "face": -1.57, "shop": true,
 				"lines": ["Welcome! Synchro support is our best seller. Tuners fly off the shelf.", "Packs, deck building, or switching decks?"]},
 			{"id": "nd_rider", "char": "", "model": "street_duelist", "name": "Runner Mechanic", "color": Color("ff8a3a"), "pos": Vector3(-5.5, 0, 44.5), "face": 0.6,
-				"lines": ["The gate behind me puts you straight onto the highway ring. Satellite is one exit down.", "There's a race flag at the start line. First across after a full lap takes the pot."]},
+				"lines": ["The gate behind me puts you straight onto the highway ring. Satellite is one exit down.", "There's a race flag at the start line. First across after a full lap takes the pot.", "I build my deck like I build engines. Break a part, a better one drops in."],
+				"duel": {"deck": "deck_tg", "difficulty": 2, "intro": "Engine's warm. Let's see what yours can do."}},
 			{"id": "nd_cafe", "char": "", "model": "duelist_f1", "name": "Cafe Regular", "color": Color("ff8ac0"), "pos": Vector3(-18.5, 0, 31.0), "face": 1.2,
-				"lines": ["Three coffees and I still can't beat my own deck in a mirror match.", "Help me test it?"],
-				"duel": {"deck": "alexis", "difficulty": 2, "intro": "Espresso speed!"}},
+				"lines": ["Three coffees and I still can't beat my own deck in a mirror match.", "I grow the beans myself, and the deck too. Help me test it?"],
+				"duel": {"deck": "deck_naturia", "difficulty": 2, "intro": "Fresh from the garden. Espresso speed!"}},
 			{"id": "nd_rep", "char": "", "model": "stylish_woman", "name": "Showcase Rep", "color": Color("ff8a3a"), "pos": Vector3(-29.0, 0, -9.6), "face": 0.0,
 				"lines": ["Welcome to the Duel Runner Showcase. Please don't touch the paint.", "The red one tops out faster than Security's pursuit runners. Officially, I never said that."]},
 			{"id": "nd_collector", "char": "", "model": "duelist_m18", "name": "Runner Collector", "color": Color("2de2e6"), "pos": Vector3(-21.0, 0, -11.2), "face": -0.9,
@@ -347,8 +356,8 @@ const DISTRICTS := {
 				"lines": ["I fill the festival balloons before anybody is up. Four hundred of them. Then I set out the sweets stand.", "Duel me while the helium settles. My deck is all cake and it still bites. I am gone by ten."],
 				"duel": {"deck": "deck_madolche", "difficulty": 2, "intro": "Tea is served. Up, up and away."}},
 			{"id": "night_heartland", "char": "", "model": "duelist_m12", "name": "The Neon Oracle", "color": Color("ff5ab4"), "pos": Vector3(6.0, 0, -24.0), "face": 0.2, "night": true, "aloof": true,
-				"lines": ["The tower lights tell me who is coming. Tonight they said: someone with a little light of their own.", "My cards are older than the tower. Older than the city. Let us see if the lights were right."],
-				"duel": {"deck": "deck_chronomaly", "difficulty": 3, "intro": "The stones already know how this ends.", "rare": true}},
+				"lines": ["The tower lights tell me who is coming. Tonight they said: someone with a little light of their own.", "My cards are older than the tower. Older than the city. Let us see if the lights were right.", "Some nights the stones stay quiet and the dolls talk instead."],
+				"duel": {"deck": "deck_chronomaly", "decks": ["deck_chronomaly", "deck_gimmick_puppet"], "intros": {"deck_chronomaly": "The stones already know how this ends.", "deck_gimmick_puppet": "My dolls were waiting up for you."}, "difficulty": 3, "intro": "The stones already know how this ends.", "rare": true}},
 			{"id": "yuma", "char": "yuma", "pos": Vector3(-5, 0, 12), "face": 0.3,
 				"lines": ["I'm feeling the flow! Wait, are you a duelist too?", "Then high-five the sky and let's duel!"],
 				"duel": {"deck": "yuma", "difficulty": 1, "intro": "I'm feeling the flow!"}},
@@ -364,14 +373,14 @@ const DISTRICTS := {
 			{"id": "hl_vendor", "char": "", "model": "shopkeeper", "name": "Card Shop Clerk", "color": Color("ffd166"), "pos": Vector3(19, 0, 16), "face": -2.2, "shop": true,
 				"lines": ["Welcome! Xyz packs are flying off the shelf today.", "Packs, deck building, or switching decks?"]},
 			{"id": "hl_girl", "char": "", "model": "student_girl", "name": "Heartland Student", "color": Color("ff5ab4"), "pos": Vector3(6, 0, 15.5), "face": -2.8,
-				"lines": ["The tower lights change color when someone wins a big duel.", "My knights are named after stars. I'm not just a fan, you know. Duel me!"],
-				"duel": {"deck": "deck_constellar", "difficulty": 2, "intro": "Watch the stars line up!"}},
+				"lines": ["The tower lights change color when someone wins a big duel.", "My knights are named after stars. I'm not just a fan, you know. Duel me!", "When the stars hide, I call on older names. The Bujin, the warrior gods."],
+				"duel": {"deck": "deck_constellar", "decks": ["deck_constellar", "deck_bujin"], "intros": {"deck_constellar": "Watch the stars line up!", "deck_bujin": "The stars are out. So are the gods."}, "difficulty": 2, "intro": "Watch the stars line up!"}},
 			{"id": "hl_jeweler", "char": "", "model": "office_worker", "name": "Jewelry Shop Owner", "color": Color("7ae0ff"), "pos": Vector3(-11.0, 0, 3.5), "face": 1.2,
-				"lines": ["Every stone in my window was cut by hand. Two plain pieces, one brilliant result.", "My deck works the same way. Care to see it shine?"],
-				"duel": {"deck": "deck_gem_knight", "difficulty": 2, "intro": "Let's see how you hold up under pressure."}},
+				"lines": ["Every stone in my window was cut by hand. Two plain pieces, one brilliant result.", "My deck works the same way. Care to see it shine?", "On quiet days I close the shop early and practice a different art. You won't see it coming."],
+				"duel": {"deck": "deck_gem_knight", "decks": ["deck_gem_knight", "deck_ninja"], "intros": {"deck_gem_knight": "Let's see how you hold up under pressure.", "deck_ninja": "You never saw me coming. That's the point."}, "difficulty": 2, "intro": "Let's see how you hold up under pressure."}},
 			{"id": "hl_boy", "char": "", "model": "student_boy", "name": "Number Hunter Fan", "color": Color("7cc4ff"), "pos": Vector3(-17, 0, -5), "face": 1.5,
-				"lines": ["Did you see Kite's Galaxy-Eyes? Unreal.", "Overlay two Level 4 monsters and you can Xyz Summon. I do it with Warriors. Want to see?"],
-				"duel": {"deck": "deck_heroic", "difficulty": 2, "intro": "Two Level 4 Warriors. You know what comes next!"}},
+				"lines": ["Did you see Kite's Galaxy-Eyes? Unreal.", "Overlay two Level 4 monsters and you can Xyz Summon. I do it with Warriors. Want to see?", "Some days I duel with Warriors, some days with boxers. Both hit hard.", "And on the hot days I fight with the Fire Fist. Three decks, one me."],
+				"duel": {"deck": "deck_heroic", "decks": ["deck_heroic", "deck_battlin_boxer", "deck_fire_fist"], "intros": {"deck_heroic": "Two Level 4 Warriors. You know what comes next!", "deck_battlin_boxer": "Gloves on. Round one!", "deck_fire_fist": "Fists up. The Brotherhood is in town!"}, "difficulty": 2, "intro": "Two Level 4 Warriors. You know what comes next!"}},
 		],
 	},
 }
@@ -388,4 +397,49 @@ const WORLDS := [
 
 
 static func district(key: String) -> Dictionary:
-	return DISTRICTS.get(key, DISTRICTS["domino"])
+	var d: Dictionary = DISTRICTS.get(key, DISTRICTS["domino"])
+	var day := today_number()
+	var k := key if DISTRICTS.has(key) else "domino"
+	if not _today.has(k) or int(_today[k][0]) != day:
+		_today[k] = [day, _deck_of_the_day(d, day)]
+	return _today[k][1]
+
+
+## Some ordinary duelists carry more than one deck ("decks" in their duel) and play a different
+## one each day: the one for today is put in "deck" (and its own line in "intro", from
+## "intros"), so everything that reads a duelist sees today's deck. No new people for it.
+static var _today := {}
+
+static func today_number() -> int:
+	return int(Time.get_unix_time_from_datetime_string(Time.get_date_string_from_system()) / 86400)
+
+
+static func deck_today(duel: Dictionary, who: String, day := -1) -> String:
+	var list: Array = duel.get("decks", [])
+	if list.is_empty():
+		return str(duel.get("deck", ""))
+	if day < 0:
+		day = today_number()
+	# (each person starts the week on a different one of their decks)
+	return str(list[posmod(day + who.length() * 7 + who.unicode_at(0), list.size())])
+
+
+static func _deck_of_the_day(d: Dictionary, day: int) -> Dictionary:
+	var has_any := false
+	for n in d.get("npcs", []):
+		if (n as Dictionary).has("duel") and ((n as Dictionary)["duel"] as Dictionary).has("decks"):
+			has_any = true
+	if not has_any:
+		return d
+	var out: Dictionary = d.duplicate(true)
+	for n in out["npcs"]:
+		if not (n as Dictionary).has("duel"):
+			continue
+		var duel: Dictionary = n["duel"]
+		if not duel.has("decks"):
+			continue
+		duel["deck"] = deck_today(duel, str(n["id"]), day)
+		var intros: Dictionary = duel.get("intros", {})
+		if intros.has(duel["deck"]):
+			duel["intro"] = intros[duel["deck"]]
+	return out

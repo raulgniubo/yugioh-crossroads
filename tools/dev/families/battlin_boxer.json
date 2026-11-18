@@ -1,0 +1,96 @@
+{
+ "key": "battlin_boxer",
+ "era": "ZEXAL",
+ "pack": {
+  "name": "Ring of Champions",
+  "color": "ff4a3d",
+  "blurb": "The Battlin' Boxers: FIRE fighters who come in pairs, take the hits for each other, and overlay into the Numbers 79 and 105. Jolt Counter and Last Counter answer every punch."
+ },
+ "deck": {
+  "key": "deck_battlin_boxer",
+  "name": "Ring of Champions",
+  "art": "warriors",
+  "cover": "Number 105: Battlin' Boxer Star Cestus",
+  "blurb": "Promoter and Uppercutter fill the ring, King Dempsey keeps the corner stocked, and Star Cestus turns their own attacks back on them. Then Comet Cestus throws the last punch.",
+  "cards": {
+   "Battlin' Boxer Promoter": 3,
+   "Battlin' Boxer Uppercutter": 3,
+   "Battlin' Boxer Switchitter": 2,
+   "Battlin' Boxer Headgeared": 2,
+   "Battlin' Boxer Glassjaw": 2,
+   "Battlin' Boxer Sparrer": 2,
+   "Battlin' Boxer Chief Second": 2,
+   "Battlin' Boxer Shadow": 1,
+   "Battlin' Boxer Veil": 1,
+   "Battlin' Boxer Counterpunch": 1,
+   "Battlin' Boxer Rib Gardna": 1,
+   "Battlin' Boxer Rabbit Puncher": 1,
+   "Battlin' Boxer Big Bandage": 1,
+   "Battlin' Boxing Spirits": 2,
+   "Ring Announcer": 2,
+   "Reinforcement of the Army": 1,
+   "Rank-Up-Magic Barian's Force": 1,
+   "Monster Reborn": 1,
+   "Double Summon": 1,
+   "Mystical Space Typhoon": 1,
+   "Dark Hole": 1,
+   "Jolt Counter": 2,
+   "Last Counter": 1,
+   "Battlin' Boxing Cross Counter": 2,
+   "Mirror Force": 1,
+   "Bottomless Trap Hole": 1,
+   "Dimensional Prison": 1
+  },
+  "extra": {
+   "Battlin' Boxer King Dempsey": 2,
+   "Battlin' Boxer Lead Yoke": 1,
+   "Number 79: Battlin' Boxer Nova Kaiser": 1,
+   "Number C79: Battlin' Boxer General Kaiser": 1,
+   "Number 105: Battlin' Boxer Star Cestus": 1,
+   "Number C105: Battlin' Boxer Comet Cestus": 1,
+   "Battlin' Boxer Cheat Commissioner": 1,
+   "Number 39: Utopia": 1,
+   "Diamond Dire Wolf": 1,
+   "Castel, the Skyblaster Musketeer": 1
+  }
+ },
+ "worlds": [
+  "heartland"
+ ],
+ "stage": 4,
+ "npc": {
+  "id": "hl_boy",
+  "rotate": true,
+  "intro": "Gloves on. Round one!",
+  "lines_add": [
+   "Some days I duel with Warriors, some days with boxers. Both hit hard."
+  ]
+ },
+ "cards": [
+  "Battlin' Boxer Big Bandage",
+  "Battlin' Boxer Counterpunch",
+  "Battlin' Boxer Rabbit Puncher",
+  "Battlin' Boxer Rib Gardna",
+  "Battlin' Boxer Chief Second",
+  "Battlin' Boxer Glassjaw",
+  "Battlin' Boxer Headgeared",
+  "Battlin' Boxer Promoter",
+  "Battlin' Boxer Shadow",
+  "Battlin' Boxer Sparrer",
+  "Battlin' Boxer Switchitter",
+  "Battlin' Boxer Uppercutter",
+  "Battlin' Boxer Veil",
+  "Battlin' Boxing Spirits",
+  "Ring Announcer",
+  "Battlin' Boxing Cross Counter",
+  "Jolt Counter",
+  "Last Counter",
+  "Battlin' Boxer Cheat Commissioner",
+  "Battlin' Boxer King Dempsey",
+  "Battlin' Boxer Lead Yoke",
+  "Number 105: Battlin' Boxer Star Cestus",
+  "Number 79: Battlin' Boxer Nova Kaiser",
+  "Number C105: Battlin' Boxer Comet Cestus",
+  "Number C79: Battlin' Boxer General Kaiser"
+ ]
+}

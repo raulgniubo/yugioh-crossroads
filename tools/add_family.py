@@ -8,7 +8,9 @@ spec.json:
   key, era ("Duel Monsters" | "GX" | "5D's" | "ZEXAL"), cards [names],
   pack {name, color, blurb}, deck {key, name, art, cover, blurb, cards {name: n}, extra {name: n}},
   worlds [shops that sell the pack], stage (the story stage that opens it, like its era's),
-  npc {id, old_deck | new_duel {difficulty, intro} (for someone who has no duel yet), lines [..] (optional), swap [[old line, new line], ..] (optional), intro (optional)}
+  npc {id, old_deck | new_duel {difficulty, intro} (for someone who has no duel yet) | rotate: true (someone who
+       already duels carries this deck too and plays a different one each day; at most three), lines [..] (optional),
+       lines_add [..] (rotate: lines added), swap [[old line, new line], ..] (optional), intro (optional)}
 """
 import json, re, sys
 ROOT = __file__.rsplit('/tools/', 1)[0]
@@ -74,6 +76,36 @@ def main(spec):
             else:
                 head = s[a:e + 1]
             return s[:a] + head + ',\n\t\t\t\t"duel": {"deck": %s, "difficulty": %d, "intro": %s}' % (q(dk), int(nd.get('difficulty', 1)), q(nd.get('intro', ''))) + s[e + 1:]
+        if npc.get('rotate'):
+            # someone who already duels: this deck joins theirs, a different one each day (at most three)
+            b = s.index('"duel": {', a); c = s.index('}}', b)
+            block = s[a:c]
+            assert block.count('{"id": ') == 1, 'that duelist has no duel of their own'
+            dm = re.search(r'"duel": \{"deck": ("[a-z_0-9]+")', block)
+            assert dm, 'no deck on that duel'
+            lm = re.search(r', "decks": \[(.*?)\]', block)
+            if lm:
+                decks = json.loads('[' + lm.group(1) + ']')
+                assert len(decks) < 3, 'that duelist already carries three decks'
+                decks.append(dk)
+                block = block[:lm.start()] + ', "decks": %s' % json.dumps(decks) + block[lm.end():]
+            else:
+                block = block.replace(dm.group(0), dm.group(0) + ', "decks": [%s, %s]' % (dm.group(1), q(dk)), 1)
+            if npc.get('intro'):
+                im = re.search(r', "intros": \{(.*?)\}', block)
+                if im:
+                    block = block[:im.end() - 1] + ', %s: %s}' % (q(dk), q(npc['intro'])) + block[im.end():]
+                else:
+                    # (the deck they had keeps its own line)
+                    old_intro = re.search(r'"intro": ("(?:[^"\\]|\\.)*")', block)
+                    first = json.loads(re.search(r'"decks": (\[.*?\])', block).group(1))[0]
+                    intros = '{%s: %s, %s: %s}' % (q(first), old_intro.group(1) if old_intro else '""', q(dk), q(npc['intro']))
+                    block = block.replace(dm.group(0), dm.group(0), 1)
+                    block = re.sub(r'(, "decks": \[.*?\])', lambda m: m.group(1) + ', "intros": ' + intros, block, count=1)
+            if npc.get('lines_add'):
+                lm2 = re.search(r'"lines": \[(.*?)\]', block, flags=re.S)
+                block = block[:lm2.end() - 1] + ''.join(', ' + q(l) for l in npc['lines_add']) + block[lm2.end() - 1:]
+            return s[:a] + block + s[c:]
         b = s.index('"duel": {', a); c = s.index('}}', b)
         block = s[a:c]
         assert block.count('{"id": ') == 1, 'that duelist has no duel of their own'

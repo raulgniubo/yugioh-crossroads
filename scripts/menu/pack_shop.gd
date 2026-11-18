@@ -26,8 +26,8 @@ var _t := 0.0
 
 
 ## What each world's card shop keeps on its shelf.
-const WORLD_PACKS := {"domino": ["Duel Monsters", "amazoness", "toon", "archfiend", "gravekeeper", "chaos", "Vault", "legends"], "academy": ["GX", "vampire", "crystal_beast", "gladiator", "dark_world", "ancient_gear", "monarchs", "Vault", "legends"], "satellite": ["5D's", "scrap", "morphtronic", "dragunity", "genex", "six_samurai", "lightsworn", "beyond"], "newdomino": ["5D's", "scrap", "morphtronic", "dragunity", "genex", "six_samurai", "lightsworn", "beyond", "Vault"],
-	"heartland": ["ZEXAL", "chronomaly", "heroic", "madolche", "constellar", "gem_knight", "beyond", "legends"]}
+const WORLD_PACKS := {"domino": ["Duel Monsters", "red_eyes", "blue_eyes", "dark_magician", "kuriboh", "exodia", "guardian", "amazoness", "toon", "archfiend", "gravekeeper", "chaos", "Vault", "legends"], "academy": ["GX", "armed_dragon", "cloudian", "arcana_force", "koaki_meiru", "volcanic", "alien", "vampire", "crystal_beast", "gladiator", "dark_world", "ancient_gear", "monarchs", "Vault", "legends"], "satellite": ["5D's", "nordic", "tg", "naturia", "ice_barrier", "x_saber", "scrap", "morphtronic", "dragunity", "genex", "six_samurai", "lightsworn", "beyond"], "newdomino": ["5D's", "nordic", "tg", "naturia", "ice_barrier", "x_saber", "scrap", "morphtronic", "dragunity", "genex", "six_samurai", "lightsworn", "beyond", "Vault"],
+	"heartland": ["ZEXAL", "bujin", "fire_fist", "ninja", "battlin_boxer", "gimmick_puppet", "chronomaly", "heroic", "madolche", "constellar", "gem_knight", "beyond", "legends"]}
 
 
 func _ready() -> void:

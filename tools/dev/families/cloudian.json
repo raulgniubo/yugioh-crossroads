@@ -1,0 +1,112 @@
+{
+ "key": "cloudian",
+ "era": "GX",
+ "pack": {
+  "name": "Fog, Fangs and Fossils",
+  "color": "c8d8e8",
+  "blurb": "The Cloudians, who spread fog counters and burst on contact; the Venom snakes and their swamp; and the Fossil fusions dug up from both Graveyards."
+ },
+ "deck": {
+  "key": "deck_cloudian",
+  "name": "Rolling Fog",
+  "art": "gale",
+  "cover": "Cloudian - Eye of the Typhoon",
+  "blurb": "Smoke Ball and Sheep Cloud fill the field with fog, Turbulence and Cirrostratus spend it to blow cards away, and every Cloudian that bursts comes back with Raging Cloudian.",
+  "cards": {
+   "Cloudian - Smoke Ball": 3,
+   "Cloudian - Sheep Cloud": 2,
+   "Cloudian - Poison Cloud": 2,
+   "Cloudian - Ghost Fog": 1,
+   "Cloudian - Acid Cloud": 2,
+   "Cloudian - Altus": 2,
+   "Cloudian - Cirrostratus": 2,
+   "Cloudian - Turbulence": 2,
+   "Cloudian - Storm Dragon": 2,
+   "Cloudian - Nimbusman": 1,
+   "Cloudian - Eye of the Typhoon": 1,
+   "Summon Cloud": 2,
+   "Cloudian Squall": 1,
+   "Fog Control": 2,
+   "Diamond-Dust Cyclone": 1,
+   "Cloudian Aerosol": 2,
+   "Lucky Cloud": 1,
+   "Monster Reborn": 1,
+   "Mystical Space Typhoon": 1,
+   "Raging Cloudian": 2,
+   "Rain Storm": 1,
+   "Natural Disaster": 1,
+   "Updraft": 1,
+   "Waboku": 1,
+   "Mirror Force": 1,
+   "Call of the Haunted": 1,
+   "Bottomless Trap Hole": 1
+  },
+  "extra": {
+   "Number 39: Utopia": 1,
+   "Castel, the Skyblaster Musketeer": 1,
+   "Abyss Dweller": 1,
+   "Daigusto Emeral": 1
+  }
+ },
+ "worlds": [
+  "academy"
+ ],
+ "stage": 2,
+ "npc": {
+  "id": "captain",
+  "new_duel": {
+   "difficulty": 2,
+   "intro": "Fog's rolling in. Hope you brought a compass."
+  },
+  "lines": [
+   "The ferry runs to Domino City whenever you're ready.",
+   "Step onto the pier when you want to head back.",
+   "Out at sea the fog rolls in thick. I learned to duel with it. Want to see?"
+  ]
+ },
+ "cards": [
+  "Fossil Dragon Skullgar",
+  "Fossil Dragon Skullgios",
+  "Fossil Machine Skull Buggy",
+  "Fossil Machine Skull Convoy",
+  "Fossil Machine Skull Wagon",
+  "Fossil Warrior Skull Bone",
+  "Fossil Warrior Skull King",
+  "Fossil Warrior Skull Knight",
+  "Cloudian - Ghost Fog",
+  "Cloudian - Sheep Cloud",
+  "Cloudian - Smoke Ball",
+  "Vennominaga the Deity of Poisonous Snakes",
+  "Cloudian - Poison Cloud",
+  "Flint Cragger",
+  "Venom Snake",
+  "Cloudian - Acid Cloud",
+  "Cloudian - Altus",
+  "Cloudian - Cirrostratus",
+  "Cloudian - Storm Dragon",
+  "Cloudian - Turbulence",
+  "Venom Cobra",
+  "Venom Serpent",
+  "Cloudian - Nimbusman",
+  "Venom Boa",
+  "Cloudian - Eye of the Typhoon",
+  "Vennominon the King of Poisonous Snakes",
+  "Cloudian Aerosol",
+  "Cloudian Squall",
+  "Diamond-Dust Cyclone",
+  "Fog Control",
+  "Fossil Fusion",
+  "Lucky Cloud",
+  "Summon Cloud",
+  "Time Stream",
+  "Venom Shot",
+  "Venom Swamp",
+  "Ambush Fangs",
+  "Natural Disaster",
+  "Raging Cloudian",
+  "Rain Storm",
+  "Snake Deity's Command",
+  "Updraft",
+  "Venom Burn"
+ ]
+}

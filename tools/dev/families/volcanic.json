@@ -1,0 +1,88 @@
+{
+ "key": "volcanic",
+ "era": "GX",
+ "pack": {
+  "name": "Volcano Island",
+  "color": "ff6a2a",
+  "blurb": "The Volcanics: Pyro monsters that burn, blow up and come back, and the Blaze Accelerator cannons that fire them. Volcanic Emperor and Volcanic Doomfire burn the whole field down."
+ },
+ "deck": {
+  "key": "deck_volcanic",
+  "name": "Volcano Island",
+  "art": "wild",
+  "cover": "Volcanic Emperor",
+  "blurb": "Load the Blaze Accelerator, fire small Volcanics at their monsters, and every one that hits the Graveyard burns. When three Pyros are gone, Volcanic Emperor rises.",
+  "cards": {
+   "Volcanic Scattershot": 3,
+   "Volcanic Shell": 2,
+   "Volcanic Rimfire": 2,
+   "Volcanic Trooper": 3,
+   "Volcanic Rocket": 2,
+   "Volcanic Slicer": 1,
+   "Volcanic Blaster": 1,
+   "Volcanic Counter": 1,
+   "Volcanic Rat": 1,
+   "Volcanic Hammerer": 1,
+   "Volcanic Queen": 1,
+   "Volcanic Emperor": 2,
+   "Volcanic Doomfire": 1,
+   "Blaze Accelerator": 2,
+   "Tri-Blaze Accelerator": 1,
+   "Volcanic Blaze Accelerator": 2,
+   "Fire Ejection": 2,
+   "Foolish Burial": 1,
+   "Monster Reborn": 1,
+   "Mystical Space Typhoon": 1,
+   "Volcanic Emission": 2,
+   "Volcanic Inferno": 2,
+   "Blaze Accelerator Reload": 2,
+   "Volcanic Recharge": 1,
+   "Mirror Force": 1,
+   "Bottomless Trap Hole": 1
+  },
+  "extra": {
+   "Number 61: Volcasaurus": 1,
+   "Number 30: Acid Golem of Destruction": 1,
+   "Lavalval Chain": 1
+  }
+ },
+ "worlds": [
+  "academy"
+ ],
+ "stage": 2,
+ "npc": {
+  "id": "student_a",
+  "new_duel": {
+   "difficulty": 2,
+   "intro": "The volcano is glowing again. So am I."
+  },
+  "lines": [
+   "Yellow dorm has the best curry on the island. It's not close.",
+   "Did you see the volcano glowing last night? I built my deck out of it. Want to feel the heat?"
+  ]
+ },
+ "cards": [
+  "Volcanic Rat",
+  "Volcanic Rimfire",
+  "Volcanic Shell",
+  "Volcanic Scattershot",
+  "Volcanic Blaster",
+  "Volcanic Counter",
+  "Volcanic Trooper",
+  "Volcanic Rocket",
+  "Volcanic Slicer",
+  "Volcanic Hammerer",
+  "Volcanic Queen",
+  "Volcanic Doomfire",
+  "Volcanic Emperor",
+  "Blaze Accelerator",
+  "Fire Ejection",
+  "Tri-Blaze Accelerator",
+  "Volcanic Blaze Accelerator",
+  "Blaze Accelerator Reload",
+  "Volcanic Emission",
+  "Volcanic Eruption",
+  "Volcanic Inferno",
+  "Volcanic Recharge"
+ ]
+}

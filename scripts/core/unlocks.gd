@@ -35,7 +35,7 @@ static func world_why(key: String) -> String:
 
 
 # ---- packs: each era's pack opens with the story; the special ones need wins.
-const PACK_STAGE := {"chronomaly": 4, "scrap": 3, "morphtronic": 3, "vampire": 2, "crystal_beast": 2, "amazoness": 0, "heroic": 4, "dragunity": 3, "gladiator": 2, "toon": 0, "madolche": 4, "genex": 3, "archfiend": 0, "dark_world": 2, "constellar": 4, "six_samurai": 3, "gravekeeper": 0, "ancient_gear": 2, "lightsworn": 3, "gem_knight": 4, "chaos": 0, "monarchs": 2, "Duel Monsters": 0, "Vault": 1, "legends": 0, "echo": 1, "GX": 2, "5D's": 3, "beyond": 3, "ZEXAL": 4}
+const PACK_STAGE := {"bujin": 4, "nordic": 3, "armed_dragon": 2, "red_eyes": 0, "blue_eyes": 0, "dark_magician": 0, "fire_fist": 4, "tg": 3, "naturia": 3, "cloudian": 2, "kuriboh": 0, "ninja": 4, "ice_barrier": 3, "arcana_force": 2, "koaki_meiru": 2, "exodia": 0, "battlin_boxer": 4, "gimmick_puppet": 4, "x_saber": 3, "volcanic": 2, "alien": 2, "guardian": 0, "chronomaly": 4, "scrap": 3, "morphtronic": 3, "vampire": 2, "crystal_beast": 2, "amazoness": 0, "heroic": 4, "dragunity": 3, "gladiator": 2, "toon": 0, "madolche": 4, "genex": 3, "archfiend": 0, "dark_world": 2, "constellar": 4, "six_samurai": 3, "gravekeeper": 0, "ancient_gear": 2, "lightsworn": 3, "gem_knight": 4, "chaos": 0, "monarchs": 2, "Duel Monsters": 0, "Vault": 1, "legends": 0, "echo": 1, "GX": 2, "5D's": 3, "beyond": 3, "ZEXAL": 4}
 const THEMED_WINS := 6
 
 static func pack(key: String, tab := 0) -> bool:

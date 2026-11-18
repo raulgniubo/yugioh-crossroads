@@ -1,0 +1,89 @@
+{
+ "key": "arcana_force",
+ "era": "GX",
+ "pack": {
+  "name": "Turn of the Arcana",
+  "color": "f0e0a0",
+  "blurb": "The Arcana Force: Fairies that toss a coin when they are Summoned. Heads, a blessing; tails, a curse. Light Barrier lets you skip the coin and pick."
+ },
+ "deck": {
+  "key": "deck_arcana_force",
+  "name": "Turn of the Arcana",
+  "art": "arcane",
+  "cover": "Arcana Force EX - The Light Ruler",
+  "blurb": "Every Summon is a coin toss until Light Barrier hits the field. After that you choose heads every time, and the three Rulers take over.",
+  "cards": {
+   "Arcana Force 0 - The Fool": 1,
+   "Arcana Force I - The Magician": 2,
+   "Arcana Force III - The Empress": 2,
+   "Arcana Force IV - The Emperor": 2,
+   "Arcana Force V - The Hierophant": 2,
+   "Arcana Force VI - The Lovers": 2,
+   "Arcana Force VII - The Chariot": 2,
+   "Arcana Force XII - The Hangman": 1,
+   "Arcana Force XIV - Temperance": 1,
+   "Arcana Force XIX - The Sun": 1,
+   "Arcana Force XV - The Fiend": 1,
+   "Arcana Force XVIII - The Moon": 1,
+   "Arcana Force XXI - The World": 1,
+   "Arcana Force EX - The Light Ruler": 1,
+   "Arcana Force EX - The Dark Ruler": 1,
+   "Light Barrier": 3,
+   "Light Force": 1,
+   "Arcana Reading": 2,
+   "Arcana Spread": 2,
+   "Terraforming": 1,
+   "Monster Reborn": 1,
+   "Mystical Space Typhoon": 1,
+   "Double Summon": 1,
+   "Reversal of Fate": 2,
+   "Arcana Call": 1,
+   "Mirror Force": 1,
+   "Call of the Haunted": 1,
+   "Bottomless Trap Hole": 1,
+   "Solemn Judgment": 1
+  },
+  "extra": {
+   "Arcana Force EX - The Chaos Ruler": 1,
+   "Number 39: Utopia": 1,
+   "Castel, the Skyblaster Musketeer": 1,
+   "Diamond Dire Wolf": 1
+  }
+ },
+ "worlds": [
+  "academy"
+ ],
+ "stage": 2,
+ "npc": {
+  "id": "ac_ghost",
+  "rotate": true,
+  "intro": "The cards told me you would come.",
+  "lines_add": [
+   "Some nights I don't pick my deck. I flip a coin and the Arcana pick it for me."
+  ]
+ },
+ "cards": [
+  "Arcana Force EX - The Chaos Ruler",
+  "Arcana Force 0 - The Fool",
+  "Arcana Force EX - The Dark Ruler",
+  "Arcana Force EX - The Light Ruler",
+  "Arcana Force I - The Magician",
+  "Arcana Force III - The Empress",
+  "Arcana Force IV - The Emperor",
+  "Arcana Force V - The Hierophant",
+  "Arcana Force VI - The Lovers",
+  "Arcana Force VII - The Chariot",
+  "Arcana Force XII - The Hangman",
+  "Arcana Force XIV - Temperance",
+  "Arcana Force XIX - The Sun",
+  "Arcana Force XV - The Fiend",
+  "Arcana Force XVIII - The Moon",
+  "Arcana Force XXI - The World",
+  "Arcana Reading",
+  "Arcana Spread",
+  "Light Barrier",
+  "Light Force",
+  "Arcana Call",
+  "Reversal of Fate"
+ ]
+}

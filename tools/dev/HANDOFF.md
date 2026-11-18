@@ -1,11 +1,11 @@
 # Card plan part 2: where it stands and how a build is made
 
-Branch `ocgcore`. `main` stays at 0.40.0. Version 0.50.0 is reserved for removing classic rules and merging.
+Branch `main` (ocgcore was merged in 0.50.0). Card plan part 2 is done: build 1 shipped as 0.46.0, builds 2 to 5 shipped together as **0.51.0**.
 
 ## Done
 - Build 1 shipped as **0.46.0**: Amazoness + Dark Scorpion, Crystal Beast, Vampire, Morphtronic, Scrap, Chronomaly. 214 new cards, 2,704 total.
 
-## Left (ship each build the same way, no questions in between)
+## Builds 2 to 5 (all shipped together in 0.51.0; kept for the record)
 - **Build 2 (0.47.0):** Guardian (the weapon Guardians and Gate Guardian only, about 35, sorted by hand because set code "Guardian" is a name grab bag), Alien, Volcanic, X-Saber, Gimmick Puppet, Battlin' Boxer.
   First add the mechanic: in Heartland and at the Academy **one ordinary duelist carries up to three family decks and plays a different one each day**. No new characters. Heartland has no free duelist left, so Gimmick Puppet and Battlin' Boxer need this.
 - **Build 3 (0.48.0):** Exodia + Gadget + Batteryman, Koa'ki Meiru, Arcana Force, Ice Barrier, Ninja.
@@ -100,3 +100,13 @@ Things learned on the way:
 - A forced chain question (message 16, forced = 1) can list mandatory steps together with optional Set cards. The table answers with the first entry that is mandatory-looking (mode != 0, or face-up on the field) and never shows a box for it.
 - `Router.toast` holds messages while a place is loading.
 - Software rendering here is about 4x slower than the clock: screenshot time limits must allow for it (tools/dev/shot.sh does).
+
+## 0.51.0 shipped: card plan part 2, builds 2 to 5 in one build (done)
+763 new cards, 3,869 total. 22 families (29 sub-families), each with pack, theme deck and duelist; see the README table.
+- Build scripts: `tools/dev/families/b2.py` .. `b5.py` (specs + Spanish UI strings, run with `python3 bN.py [key]`), scans in `fam_specs.txt` + `extra/`, Spanish card text in `tools/dev/cardes/<key>.py` (+ `extra3.py`, `extra4.py` for the five helper cards).
+- **Rotation mechanic** (`RoamData.district` / `deck_today`, `add_family.py` npc `rotate: true`): a world duel may carry `"decks"` (max 3) and `"intros"`; the deck of the day comes from the real date. Used by ac_beach, ac_ghost, night_heartland, hl_boy (3 decks), hl_jeweler, hl_girl.
+- Cards that moved into families were taken out of `CardPool.ADDED` (`/tmp/dedup_added.py` logic: any ADDED name that is in a family). Cross-family duplicates kept in the first family (Chronicle Sorceress/Magician, Strength in Unity, Destined Rivals, Red-Eyes Dark Dragoon in Dark Magician; Winged Kuriboh LVs, Magnet Circle LV2, Multiplying Kuriboh!, Magikuriboh in Kuriboh). Cards already in older families were dropped from the new ones.
+- Before shipping a family, list the cards its texts name that the game lacks (tokens aside) and add them: that is how The Claw of Hermos, Rise of the Snake Deity, Shining Sarcophagus, White Veil and Fairy Tale Prologue came in.
+- `native/custom/c39163598.lua`: fixed copy of Planet Pollutant Virus (official script errors on a deleted effect). `native/custom/c43582229.lua`: Freezing Chains of the Ice Barrier (immunity condition recursed through set-code effects; seen in deck_ice_barrier vs deck_ninja, sim seed 4901). Files in native/custom override official scripts of the same name.
+- Hand-made positions added for 12 cards. Counter Traps with a "reveal from hand" cost need a hand the AI cannot empty first (Snake Deity's Command uses two Venom Boa).
+- No card plan is queued after this. Next is whatever Raul asks; the old-rules cleanup stays parked until he says go.

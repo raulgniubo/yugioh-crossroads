@@ -5,6 +5,42 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.51.0
+
+**Card plan part 2, builds 2 to 5 in one go: 22 new card families, 763 new cards. The game now has 3,869 cards** (it had 3,106).
+
+Every family has its own booster pack in the shop (Card families tab), a 40-card theme deck in the deck shop, and an ordinary duelist in its era's world who plays it. All new card text is in Spanish too.
+
+| Family | Era | Pack / theme deck | Who plays it |
+|---|---|---|---|
+| Gate Guardians and the weapon Guardians | Duel Monsters | Gate of the Guardians | KaibaCorp Guard (Domino, at the tower) |
+| Exodia, Batteryman, Gadget | Duel Monsters | The Forbidden One | Rookie Duelist (Domino) |
+| Kuriboh, Magnet Warrior, Harpie | Duel Monsters | Kuriboh and Company | Dome Fan (Domino) |
+| Dark Magician | Duel Monsters | School of Dark Magic | Tourist (Domino pier) |
+| Blue-Eyes | Duel Monsters | Legend of the White Dragon | Tournament Official (Domino plaza) |
+| Red-Eyes | Duel Monsters | Eyes of Red Potential | The Midnight Collector (Domino, at night, rare) |
+| Alien | GX | Invasion of the A-Counters | Sunbathing Student (Academy beach, some days) |
+| Volcanic | GX | Volcano Island | First-Year Student (Academy) |
+| Koa'ki Meiru | GX | Iron Core | Red Dorm Student (Academy) |
+| Arcana Force | GX | Turn of the Arcana | Old Dorm Wanderer (Academy, some days) |
+| Cloudian, Venom, Fossil | GX | Fog, Fangs and Fossils (deck: Rolling Fog) | Ferry Captain (Academy pier) |
+| Armed Dragon and the LV monsters | GX | Climbing Levels (deck: Armed Dragon Ascent) | The Dawn Patrol (Academy, early morning) |
+| X-Saber | 5D's | Sabers of the Sword Saints | Security Chief (New Domino) |
+| Ice Barrier | 5D's | Guardians of the Ice Barrier | The Ring Phantom (New Domino, at night, rare) |
+| Naturia | 5D's | Voice of the Forest | Cafe Regular (New Domino) |
+| T.G. | 5D's | Tech Genus | Runner Mechanic (New Domino) |
+| Nordic | 5D's | Twilight of the Gods | Stadium MC (New Domino) |
+| Gimmick Puppet | ZEXAL | Mansion of the Dreadful Dolls | The Neon Oracle (Heartland, at night, some nights) |
+| Battlin' Boxer | ZEXAL | Ring of Champions | Number Hunter Fan (Heartland, some days) |
+| Fire Fist | ZEXAL | Brotherhood of the Fire Fist | Number Hunter Fan (Heartland, some days) |
+| Ninja | ZEXAL | Way of the Ninja | Jewelry Shop Owner (Heartland, some days) |
+| Bujin | ZEXAL | Divine Warriors of the Sun | Heartland Student (Heartland, some days) |
+
+- **Duelists with more than one deck.** Heartland and the Academy had no free duelists left, so some ordinary duelists now carry two or three decks and play a different one each day (by the real date). They say a different line before the duel depending on the deck. The Number Hunter Fan has three: Heroic, Battlin' Boxer and Fire Fist.
+- **The character decks are unchanged.** Kuriboh, Dark Magician, Blue-Eyes, Red-Eyes, Armed Dragon and Harpie are families now (packs and a shop deck), but Yugi, Kaiba, Joey, Mai, Chazz and the rest play exactly the lists they had. Cards those decks already used that now belong to a family moved from the era packs into the family packs.
+- **Cards the new families need.** The Claw of Hermos (for Red-Eyes Black Dragon Sword), Rise of the Snake Deity (for Vennominaga), Shining Sarcophagus (the Gadget and Dark Magician cards that search it), White Veil (Armed Dragon LV10 White) and Fairy Tale Prologue: Journey's Dawn (Bat, the Forest Ninja) were added so no card is left without what it asks for.
+- **Two official script bugs fixed in the game's own copies:** Planet Pollutant Virus stopped the engine's end-of-turn bookkeeping with an error once the card had left the field, and Freezing Chains of the Ice Barrier looped until the engine ran out of stack when a card like Ninjitsu Art Tool - Iron Digger was on the field.
+
 ## What is in 0.50.2
 
 More fixes from Raul's first duels on 0.50. No cards added: 3,106 total.

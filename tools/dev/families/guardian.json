@@ -1,0 +1,99 @@
+{
+ "key": "guardian",
+ "era": "Duel Monsters",
+ "pack": {
+  "name": "Gate of the Guardians",
+  "color": "7a9cff",
+  "blurb": "Sanga, Kazejin and Suijin, the three who stand at the gate, and the Gate Guardians they become. With them, the weapon Guardians who can only take the field once their own weapon is on it."
+ },
+ "deck": {
+  "key": "deck_guardian",
+  "name": "Gate of the Guardians",
+  "art": "arsenal",
+  "cover": "Gate Guardian",
+  "blurb": "Thunder, wind and water hold the line until the three of them fuse into a Gate Guardian. Dark Element calls up the darkest one, and Guardian Eatos swings her sword between them.",
+  "cards": {
+   "Sanga of the Thunder": 3,
+   "Kazejin": 3,
+   "Suijin": 3,
+   "Labyrinth Heavy Tank": 2,
+   "Gate Guardian": 1,
+   "Dark Guardian": 1,
+   "Guardian Eatos": 2,
+   "Guardian Dreadscythe": 1,
+   "Guardian Grarl": 1,
+   "Guardian Ceal": 1,
+   "Labyrinth Wall Shadow": 2,
+   "Dark Element": 2,
+   "Double Attack! Wind and Thunder!!": 2,
+   "Riryoku Guardian": 1,
+   "Celestial Sword - Eatos": 1,
+   "Reaper Scythe - Dreadscythe": 1,
+   "Gravity Axe - Grarl": 1,
+   "Shooting Star Bow - Ceal": 1,
+   "Monster Reborn": 1,
+   "Dark Hole": 1,
+   "Upstart Goblin": 2,
+   "Mystical Space Typhoon": 1,
+   "Prey of the Jirai Gumo": 2,
+   "Call of the Haunted": 2,
+   "Mirror Force": 1,
+   "Bottomless Trap Hole": 1
+  },
+  "extra": {
+   "Gate Guardian of Thunder and Wind": 1,
+   "Gate Guardian of Water and Thunder": 1,
+   "Gate Guardian of Wind and Water": 1,
+   "Gate Guardians Combined": 1
+  }
+ },
+ "worlds": [
+  "domino"
+ ],
+ "stage": 0,
+ "npc": {
+  "id": "guard",
+  "new_duel": {
+   "difficulty": 2,
+   "intro": "Nobody gets past the gate. Not today."
+  },
+  "lines": [
+   "KaibaCorp Tower. The lobby is open to duelists during the tournament.",
+   "The elevators are not. And if you want past me, you go through three of my guardians first."
+  ]
+ },
+ "cards": [
+  "Gate Guardian of Thunder and Wind",
+  "Gate Guardian of Water and Thunder",
+  "Gate Guardian of Wind and Water",
+  "Gate Guardians Combined",
+  "Gate Guardian",
+  "Dark Guardian",
+  "Guardian Elma",
+  "Guardian Baou",
+  "Guardian Ceal",
+  "Guardian Kay'est",
+  "Guardian Grarl",
+  "Guardian Tryce",
+  "Kazejin",
+  "Labyrinth Heavy Tank",
+  "Sanga of the Thunder",
+  "Suijin",
+  "Guardian Dreadscythe",
+  "Guardian Eatos",
+  "Butterfly Dagger - Elma",
+  "Celestial Sword - Eatos",
+  "Dark Element",
+  "Double Attack! Wind and Thunder!!",
+  "Gravity Axe - Grarl",
+  "Labyrinth Wall Shadow",
+  "Power of the Guardians",
+  "Reaper Scythe - Dreadscythe",
+  "Riryoku Guardian",
+  "Rod of Silence - Kay'est",
+  "Shooting Star Bow - Ceal",
+  "Twin Swords of Flashing Light - Tryce",
+  "Wicked-Breaking Flamberge - Baou",
+  "Prey of the Jirai Gumo"
+ ]
+}
