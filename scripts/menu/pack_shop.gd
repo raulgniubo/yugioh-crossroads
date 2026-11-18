@@ -27,7 +27,7 @@ var _t := 0.0
 
 ## What each world's card shop keeps on its shelf.
 const WORLD_PACKS := {"domino": ["Duel Monsters", "gravekeeper", "Vault", "legends"], "academy": ["GX", "ancient_gear", "Vault", "legends"], "satellite": ["5D's", "lightsworn", "beyond"], "newdomino": ["5D's", "lightsworn", "beyond", "Vault"],
-	"heartland": ["ZEXAL", "beyond", "legends"]}
+	"heartland": ["ZEXAL", "gem_knight", "beyond", "legends"]}
 
 
 func _ready() -> void:

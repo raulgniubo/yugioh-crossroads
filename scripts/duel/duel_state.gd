@@ -579,6 +579,11 @@ func enter_main2() -> Array:
 func _end_battle() -> Array:
 	var events := []
 	_roar_undo()
+	# Gem-Knight Aquamarine: "If this card attacks, it is changed to Defense Position at the end of the Battle Phase."
+	for m in players[current].monsters():
+		if m.face_up and m.attack_pos and not m.negated and EffectRunner.fx(m).get("def_end_bp", false) and m.attacked_turn == turn:
+			m.attack_pos = false
+			events.append({"type": "position", "player": current, "card": m, "zone": players[current].field.find(m)})
 	for u in bp_undo:
 		var bc: CardInst = u["card"]
 		if int(u["turn"]) == turn and bc.atk_mod_turn == turn:
@@ -1262,6 +1267,8 @@ func deck_sent(p: int, sent: Array, src) -> Array:
 		if gf.get("minerva_mill", false):
 			ev.append_array(mill(p, 1, g))
 			continue
+		if gf.has("deck_gy") and not gk_trap_lock(p):
+			ev.append_array(EffectRunner.run_list(self, p, g, gf["deck_gy"], {}))   # Gem-Knight Nepyrim: "sent from the hand or Deck to the GY"
 		var gs := SpellRules.spec(g) if not g.is_monster() else {}
 		# Lightsworn Sabre: "When this card is sent from your Deck to the Graveyard: equip this card to a "Lightsworn" monster you control."
 		if gs.get("sabre", false) and ps.spells.has(null):
@@ -1398,6 +1405,13 @@ func fortress_shields(m: CardInst) -> bool:
 	return false
 
 
+## Gem-Knight Seraphinite: "During your Main Phase, you can Normal Summon/Set 1 monster in addition to your Normal Summon/Set."
+func seraph_ok(p: int) -> bool:
+	if int(players[p].once_names.get("#seraph", -1)) == turn:
+		return false
+	return not players[p].monsters().filter(func(m): return m.face_up and not m.negated and EffectRunner.fx(m).get("seraph", false)).is_empty()
+
+
 ## Twilight Cloth: this player's Lightsworn monsters can't be destroyed this turn.
 func cloth_guard(c: CardInst) -> bool:
 	return c != null and c.face_up and is_lsw(c) and c.is_monster() and int(players[c.owner].once_names.get("#cloth", -1)) == turn
@@ -1450,7 +1464,7 @@ func can_normal_summon(p: int, c: CardInst) -> bool:
 			for m in players[q].monsters():
 				if m.face_up and m.cname().begins_with(fam):
 					return false   # "There can only be 1 "Earthbound Immortal" monster on the field."
-	if p != current or not _in_main() or (normal_summoned and players[p].extra_normals <= 0) or is_over():
+	if p != current or not _in_main() or (normal_summoned and players[p].extra_normals <= 0 and not seraph_ok(p)) or is_over():
 		return false
 	if not c.is_monster() or not players[p].hand.has(c):
 		return false
@@ -1620,7 +1634,10 @@ func normal_summon(p: int, c: CardInst, tributes: Array, set_card := false) -> A
 	if not set_card:
 		pending_events.append_array(_thorn_tax(p, c))
 	if normal_summoned:
-		ps.extra_normals -= 1   # Double Summon: this is the second one
+		if ps.extra_normals <= 0 and seraph_ok(p):
+			ps.once_names["#seraph"] = turn   # Gem-Knight Seraphinite's additional Normal Summon
+		else:
+			ps.extra_normals -= 1   # Double Summon: this is the second one
 	normal_summoned = true
 	# Level Warrior: "If there are no monsters on the field, you can Normal Summon this card as a Level 2 monster."
 	var as_lv := int(CardEffects.of(c.cname()).get("lv_normal_if_empty", 0))
@@ -3752,7 +3769,14 @@ func _battle_destroy(c: CardInst) -> Array:
 	if c.cname() == "Gogogo Golem" and not c.attack_pos and c.used_turn != turn:
 		c.used_turn = turn
 		return [{"type": "effect", "player": c.owner, "card": c, "text": "Gogogo Golem holds on!"}]
-	return _destroy(c, true)
+	var gem_fus: bool = c.frame() == "fusion" and CardEffects.matches(c.data, {"has": "Gem-Knight"})
+	var out_b := _destroy(c, true)
+	if gem_fus and players[c.owner].gy.has(c) and not is_over():
+		# Gem-Knight Master Diamond Dispersion: "If your "Gem-Knight" Fusion Monster is destroyed by battle, while this card is in your GY: Special Summon it."
+		for g in players[c.owner].gy.filter(func(g): return g.cname() == "Gem-Knight Master Diamond Dispersion" and g != c):
+			out_b.append_array(EffectRunner.run_list(self, c.owner, g, [["mdd_back"]], {}))
+			break
+	return out_b
 
 
 func _battle_damage(p: int, amount: int, dealer: CardInst = null, taker: CardInst = null) -> Array:
@@ -3869,6 +3893,12 @@ func _destroy(c: CardInst, by_battle := false) -> Array:
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed by card effects") % c.cname()}]
 	if not by_battle and cloth_guard(c):
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed by card effects") % c.cname()}]
+	if c.face_up and CardEffects.matches(c.data, {"has": "Gem-Knight"}) and ((by_battle and current != c.owner) or (not by_battle and effect_by == opponent(c.owner))) and not spark_dead.has(c):
+		spark_dead.append(c)   # (checked in _cleanup: only if it really left the field)
+	if not by_battle and c.face_up and CardEffects.matches(c.data, {"has": "Gem-Knight"}) and current != c.owner and int(players[c.owner].once_names.get("#rose_guard", -1)) != turn \
+			and not players[c.owner].monsters().filter(func(m): return m.face_up and not m.negated and EffectRunner.fx(m).get("rose_guard", false)).is_empty():
+		players[c.owner].once_names["#rose_guard"] = turn
+		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("Gem-Knight Lady Rose Diamond: %s is not destroyed") % c.cname()}]
 	if not by_battle and fortress_guard(c):
 		return [{"type": "effect", "player": c.owner, "card": c, "text": Loc.t("%s cannot be destroyed by card effects") % c.cname()}]
 	if not by_battle and sanctuary_saves(c):
@@ -4091,6 +4121,9 @@ func _to_gy(ps: PlayerState, c: CardInst) -> void:
 func _sent_to_gy(c: CardInst) -> void:
 	if c.has_meta("from_hand"):
 		c.remove_meta("from_hand")
+		# "If this card is sent from the hand to the GY" (Gem-Knight Obsidian, Nepyrim).
+		if c.is_monster() and EffectRunner.fx(c).has("hand_gy") and not is_over() and not gk_trap_lock(c.owner):
+			pending_events.append_array(EffectRunner.run_list(self, c.owner, c, EffectRunner.fx(c)["hand_gy"], {}))
 		# Mist Valley Baby Roc: "When this card is sent from the hand to the GY: You can Special Summon it."
 		if c.is_monster() and EffectRunner.fx(c).get("hand_gy_ss", false) and not is_over() and not gk_trap_lock(c.owner):
 			baby_roc.append(c)
@@ -4111,6 +4144,10 @@ func _sent_to_gy(c: CardInst) -> void:
 				pending_events.append_array(SpellRules._run(self, c.owner, c, a, {}))
 			effect_by = was_by
 		return
+	# "If this card is sent to the GY by a card effect" (Gem-Knight Lazuli).
+	var by_fx: Array = CardEffects.of(c.cname()).get("fx_sent_gy", [])
+	if not by_fx.is_empty() and (st_resolving != null or (fx_src != null and fx_src != c)) and not is_over() and not gk_trap_lock(c.owner):
+		pending_events.append_array(EffectRunner.run_list(self, c.owner, c, by_fx, {}))
 	var sent: Array = CardEffects.of(c.cname()).get("sent_gy", [])
 	if not sent.is_empty() and not is_over() and not gk_trap_lock(c.owner):
 		pending_events.append_array(EffectRunner.run_list(self, c.owner, c, sent, {}))
@@ -4124,6 +4161,7 @@ var pending_events: Array = []
 var deck_batch: Array = []
 ## Mist Valley Baby Roc just went from the hand to the GY: offered a Special Summon by _cleanup.
 var baby_roc: Array = []
+var spark_dead: Array = []   # face-up "Gem-Knight" monsters your opponent's attack or effect just destroyed (Brilliant Spark)
 
 
 func _gy_redirect(c: CardInst = null) -> bool:
@@ -4418,6 +4456,13 @@ func _cleanup() -> Array:
 				m.set_meta("zw_untarget_owner", q)
 			elif m.has_meta("zw_untarget_owner"):
 				m.remove_meta("zw_untarget_owner")
+	if not spark_dead.is_empty() and chain.is_empty() and not is_over():
+		var dead_s := spark_dead.duplicate()
+		spark_dead.clear()
+		for ds in dead_s:
+			if players[ds.owner].field.has(ds):
+				continue   # (it wasn't destroyed after all)
+			events.append_array(SpellRules.spark_offer(self, ds))
 	for br in baby_roc.duplicate():
 		baby_roc.erase(br)
 		var pb := players[br.owner]
@@ -4834,6 +4879,8 @@ func _lose_lp(p: int, amount: int) -> Array:
 func _damage(p: int, amount: int, battle := false) -> Array:
 	if amount <= 0:
 		return []
+	if not battle and int(players[p].once_names.get("#half_fx_main", -1)) == turn and _in_main():
+		amount = amount / 2   # Gem-Knight Nepyrim / Dispersion: "any effect damage your opponent takes during the Main Phase this turn is halved"
 	var ps := players[p]
 	if ps.no_damage_until >= turn:
 		return [{"type": "effect", "player": p, "card": null, "text": "No damage!"}]
@@ -4951,6 +4998,10 @@ func _special(p: int, c: CardInst, method: String, pos := "") -> Array:
 	ps.field[zone] = c
 	c.face_up = true
 	c.attack_pos = pos != "def"
+	if EffectRunner.fx(c).get("ss_once_name", false):
+		ps.once_names["#ss1:" + c.cname()] = turn
+	if not CardEffects.matches(c.data, {"has": "Gem-Knight"}):
+		ps.once_names["#ss_non_gem"] = turn   # (Absorb Fusion asks this)
 	if pos == "" and manual[p]:
 		c.attack_pos = choose_option(p, Loc.t("Special Summon %s in:") % c.cname(), ["Attack Position", "Defense Position"], 0, c) == 0
 	elif pos == "" and c.atk() < 1500 and c.def() >= c.atk() + 800:
@@ -5100,7 +5151,7 @@ func can_revive(c: CardInst) -> bool:
 ## Each option: {"card", "hand": [materials], "field": [materials]}
 ## `ask` (only while resolving, for the one Fusion Monster in `only`): when a material could come
 ## from the hand or from the field, the player says which.
-func fusion_targets(p: int, poly: CardInst = null, from_gy := false, ask := false, only: CardInst = null) -> Array:
+func fusion_targets(p: int, poly: CardInst = null, from_gy := false, ask := false, only: CardInst = null, other_pool = null, field_pool = null) -> Array:
 	var ps := players[p]
 	var out := []
 	for f in ps.extra:
@@ -5111,9 +5162,11 @@ func fusion_targets(p: int, poly: CardInst = null, from_gy := false, ask := fals
 		if poly != null and poly.cname() == "Power Bond" and str(f.data.get("race", "")) != "Machine":
 			continue   # Power Bond: "Fusion Summon 1 Machine Fusion Monster"
 		var pool_hand: Array = ps.hand.duplicate() if not from_gy else ps.gy.duplicate()
+		if other_pool != null:
+			pool_hand = (other_pool as Array).duplicate()   # (materials from other places: the Deck, the GY, the Extra Deck)
 		if poly:
 			pool_hand.erase(poly)
-		var pool_field: Array = ps.monsters()
+		var pool_field: Array = ps.monsters() if field_pool == null else (field_pool as Array).duplicate()
 		if EffectRunner.fx(f).has("fmats"):
 			# Fusion Monsters whose materials are described, not named ("2 "Ojama" monsters", ""Cyber Dragon" + 1+ Machine monsters").
 			var plan_f := _fmat_plan(p, f, pool_hand, pool_field.filter(func(m): return m.face_up), ask)
@@ -5200,6 +5253,20 @@ func fusion_orig_atk(plan: Dictionary) -> int:
 
 ## Materials by description: fx "fmats" is a list of filters, one card each; "fmats_rest" takes every other card that fits
 ## (at least 1); "fmats_same" asks for one name for all of them. Hand first, then the field; the weakest go first.
+## A card's data as it stands right now: a name, Type or Attribute it took on until the End Phase (Brilliant Rose, Master Diamond).
+static func live_data(x: CardInst) -> Dictionary:
+	if not (x.tags.has("as") or x.tags.has("race_as") or x.tags.has("attr_as")):
+		return x.data
+	var d: Dictionary = x.data.duplicate()
+	if x.tags.has("as"):
+		d["name"] = str(x.tags["as"])
+	if x.tags.has("race_as"):
+		d["race"] = str(x.tags["race_as"])
+	if x.tags.has("attr_as"):
+		d["attribute"] = str(x.tags["attr_as"])
+	return d
+
+
 func _fmat_plan(p: int, f: CardInst, pool_hand: Array, pool_field: Array, ask: bool) -> Dictionary:
 	var fx_f := EffectRunner.fx(f)
 	var used_hand := []
@@ -5211,7 +5278,7 @@ func _fmat_plan(p: int, f: CardInst, pool_hand: Array, pool_field: Array, ask: b
 		# (On the field and in the GY a card can go by another name: Ancient Gear Dark Golem is "Ancient Gear Golem" there.)
 		var flt_f: Dictionary = flt.duplicate()
 		flt_f["zone"] = "field"
-		var fits: Array = cands.filter(func(x): return (CardEffects.matches(x.data, flt) or ((pool_field.has(x) or players[p].gy.has(x)) and CardEffects.matches(x.data, flt_f))) and (same == "" or x.cname() == same))
+		var fits: Array = cands.filter(func(x): return (CardEffects.matches(live_data(x), flt) or ((pool_field.has(x) or players[p].gy.has(x)) and CardEffects.matches(live_data(x), flt_f))) and (same == "" or x.cname() == same))
 		if fx_f.get("fmats_same", false) and same == "" and not fits.is_empty():
 			# "2 Machine monsters with the same name": a name that has two.
 			var named := ""
@@ -5252,11 +5319,23 @@ func _do_fusion(p: int, plan: Dictionary, banish := false) -> Array:
 		for m in plan["hand"] + plan["field"]:
 			events.append_array(_banish(m))
 	else:
+		var from_deck_m: Array = []
 		for m in plan["hand"]:
-			ps.hand.erase(m)
-			m.set_meta("from_hand", true)
+			if ps.deck.has(m):
+				ps.deck.erase(m)
+				from_deck_m.append(m)
+			elif ps.extra.has(m):
+				ps.extra.erase(m)
+			elif ps.gy.has(m):
+				continue   # (already in the GY: it stays there; used as material)
+			else:
+				ps.hand.erase(m)
+				m.set_meta("from_hand", true)
 			_to_gy(ps, m)
 			events.append({"type": "material", "player": p, "card": m, "from": "hand"})
+		if not from_deck_m.is_empty():
+			_shuffle(ps.deck)
+			events.append_array(deck_sent(p, from_deck_m, plan.get("src")))
 		for m in plan["field"]:
 			var z := ps.field.find(m)
 			ps.field[z] = null
@@ -5267,6 +5346,10 @@ func _do_fusion(p: int, plan: Dictionary, banish := false) -> Array:
 	ps.extra.erase(f)
 	f.proper = true
 	events.append_array(_special(p, f, "fusion"))
+	# "If this card is used as material for a Fusion Summon, and sent to the GY or banished" (Gem-Knight Quartz).
+	for m in plan["hand"] + plan["field"]:
+		if EffectRunner.fx(m).has("fusion_material") and (ps.gy.has(m) or ps.banished.has(m)) and not is_over():
+			events.append_array(EffectRunner.run_list(self, p, m, EffectRunner.fx(m)["fusion_material"], {}))
 	if ps.field.has(f):
 		f.tags["mats"] = (plan["hand"] + plan["field"]).map(func(m): return m.uid)   # (De-Fusion brings them back)
 		var all_m: Array = plan["hand"] + plan["field"]
@@ -5515,6 +5598,14 @@ func big_locked(p: int, c: CardInst, special := false) -> bool:
 		return true   # Photon Sanctuary: "You cannot Summon other monsters the turn you activate this card, except LIGHT monsters."
 	if c != null and special and SpellRules.field_flag(self, "hidden_temples") and not c.cname().begins_with("Gravekeeper's"):
 		return true   # Hidden Temples of Necrovalley: "Neither player can Special Summon monsters, except "Gravekeeper's" monsters."
+	if c != null and special and EffectRunner.fx(c).get("ss_once_name", false) and int(ps.once_names.get("#ss1:" + c.cname(), -1)) == turn:
+		return true   # "You can only Special Summon "Gem-Knight Lady Brilliant Diamond(s)" once per turn."
+	if c != null and special and CardData.is_extra(c.id) and int(ps.once_names.get("#ed_gem_only", -1)) == turn and not CardEffects.matches(c.data, {"has": "Gem-Knight"}):
+		return true   # Gem-Knight Quartz / Scatter Fusion: only "Gem-Knight" monsters from the Extra Deck
+	if c != null and special and CardData.is_extra(c.id) and int(ps.once_names.get("#ed_fusion_only", -1)) == turn and c.frame() != "fusion":
+		return true   # Gem-Knight Master Diamond Dispersion: only Fusion Monsters from the Extra Deck
+	if c != null and special and int(ps.once_names.get("#ss_gem_only", -1)) == turn and not CardEffects.matches(c.data, {"has": "Gem-Knight"}):
+		return true   # Absorb Fusion: "You cannot Special Summon monsters the turn you activate this card, except "Gem-Knight" monsters."
 	if c != null and special and int(ps.once_names.get("#ss_ag_only", -1)) == turn and not c.cname().begins_with("Ancient Gear"):
 		return true   # Ancient Gear Fortress: "you cannot Special Summon monsters for the rest of this turn, except "Ancient Gear" monsters"
 	if c != null and special and int(ps.once_names.get("#ss_water_only", -1)) == turn and str(c.data.get("attribute", "")) != "WATER":
@@ -6088,6 +6179,11 @@ func responses(p: int, window: String, subject = null) -> Array:
 	# Infernity Beast: while it attacks with its owner's hand empty, the other side cannot use Spells or Traps.
 	var st_locked := false
 	var fx_locked := false
+	# Gem-Knight Citrine: "If this card attacks or is attacked, your opponent cannot activate cards or effects until the end of the Damage Step."
+	if not pending_attack.is_empty() and not pending_attack.get("negated", false):
+		for ct in [pending_attack.get("attacker"), pending_attack.get("target")]:
+			if ct != null and ct.owner != p and ct.face_up and not ct.negated and EffectRunner.fx(ct).get("citrine", false) and players[ct.owner].field.has(ct):
+				return out
 	# Ancient Gear Fortress: "Your opponent cannot activate cards or effects in response to the activation of "Ancient Gear" cards and effects."
 	if window == "chain" and not chain.is_empty():
 		var lk_f: Dictionary = chain.back()

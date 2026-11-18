@@ -29,6 +29,19 @@ const FX := {
 	"Echo Resonance": {"k": "normal", "cond": "echo_ready", "do": [["echo_resonance"]]},
 	"Echo Call": {"k": "normal", "do": [["search", {"has": "Lumen"}]]},
 	"Echo Veil": {"k": "trap", "win": ["attack"], "do": [["negate_attack"], ["draw_if_own", "Lumen", 1]]},
+	# ---------------------------------------------------------------- Gem-Knight (0.34.3)
+	"Gem-Knight Fusion": {"k": "normal", "cond": "gemf:hf", "do": [["gem_fusion", "hf"]]},
+	"Pyroxene Fusion": {"k": "trap", "win": ["free"], "cond": "gemf:hf", "do": [["gem_fusion", "hf"]]},
+	"Particle Fusion": {"k": "normal", "cond": "gemf:field", "do": [["gem_fusion", "field"]]},
+	"Fragment Fusion": {"k": "trap", "win": ["free"], "cond": "gemf:gy", "do": [["gem_fusion", "gy"]]},
+	"Brilliant Fusion": {"k": "cont", "cond": "brilliant_fusion", "do": [["mark_once", "Brilliant Fusion"], ["gem_fusion", "deck"]]},
+	"Scatter Fusion": {"k": "cont", "ai": "always"},
+	"Absorb Fusion": {"k": "normal", "cond": "absorb", "do": [["mark_once", "Absorb Fusion"], ["absorb"]]},
+	"Gem-Knight Dispersion": {"k": "normal", "modes": [
+		{"label": "Fusion Summon a \"Gem-Knight\" Fusion Monster (up to 2 materials from your Deck/Extra Deck)", "cond": "disp_fusion", "do": [["mark_once", "Dispersion#1"], ["gem_fusion", "disp"]]},
+		{"label": "Add 1 \"Gem-\" monster from your Deck or banishment", "cond": "disp_search", "do": [["mark_once", "Dispersion#2"], ["disp_search"]]}]},
+	"Gem-Enhancement": {"k": "trap", "win": ["free"], "cond": "gem_enh", "do": [["gem_enhancement"]]},
+	"Brilliant Spark": {"k": "trap", "win": [], "spark": true, "cond": "spark", "do": [["mark_once", "Brilliant Spark"], ["spark"]]},
 	# ---------------------------------------------------------------- Catch-up (0.34.2.5)
 	"Gravekeeper's Trap": {"k": "ctrap", "win": ["free"], "ai": "always"},
 	"Pharaoh's Treasure": {"k": "trap", "win": ["free"], "ai": "always", "do": [["to_deck_self", "shuffle"]]},
@@ -839,6 +852,8 @@ static func _assault_pairs(s: DuelState, p: int) -> Array:
 
 
 static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
+	if cond.begins_with("gemf:"):
+		return not EffectRunner.gem_fusion_plans(s, p, cond.substr(5)).is_empty()
 	if cond.begins_with("opp_lp_over:"):
 		return s.players[s.opponent(p)].lp > int(cond.substr(12))
 	match cond:
@@ -902,6 +917,25 @@ static func cond_ok(s: DuelState, p: int, cond: String) -> bool:
 			if int(s.players[p].once_names.get("killed_def", -1)) != s.turn:
 				return false
 			return not s.players[p].monsters().filter(func(m): return m.face_up and m.level() == 8 and m.frame() != "xyz").is_empty()
+		"brilliant_fusion":
+			return int(s.players[p].once_names.get("Brilliant Fusion", -1)) != s.turn and not EffectRunner.gem_fusion_plans(s, p, "deck").is_empty()
+		"absorb":
+			var pab := s.players[p]
+			return int(pab.once_names.get("Absorb Fusion", -1)) != s.turn and int(pab.once_names.get("#ss_non_gem", -1)) != s.turn \
+					and not pab.deck.filter(func(x): return CardEffects.matches(x.data, {"has": "Gem-Knight", "monster": false})).is_empty()
+		"disp_fusion":
+			return int(s.players[p].once_names.get("Dispersion#1", -1)) != s.turn and not EffectRunner.gem_fusion_plans(s, p, "disp").is_empty()
+		"disp_search":
+			var pds := s.players[p]
+			return int(pds.once_names.get("Dispersion#2", -1)) != s.turn and not (pds.deck + pds.banished.filter(func(b): return b.face_up)).filter(func(x): return x.is_monster() and CardEffects.matches(x.data, {"has": "Gem-"})).is_empty()
+		"gem_enh":
+			var pge := s.players[p]
+			# (The Tributed monster can be the one that comes back.)
+			var gk_ge: Array = pge.monsters().filter(func(m): return m.face_up and CardEffects.matches(m.data, {"has": "Gem-Knight"}) and s.can_tribute_fx(m))
+			var gy_ge: Array = pge.gy.filter(func(g): return g.is_monster() and CardEffects.matches(g.data, {"has": "Gem-Knight"}) and s.can_revive(g) and s.gy_targetable(g))
+			return not gk_ge.is_empty() and not s.ss_locked(p) and (not gy_ge.is_empty() or not gk_ge.filter(func(m): return m.proper or not CardData.is_extra(m.id)).is_empty())
+		"spark":
+			return int(s.players[p].once_names.get("Brilliant Spark", -1)) != s.turn and s.has_meta("spark_dead")
 		"advance_ok":
 			return int(s.players[p].once_names.get("Ancient Gear Advance", -1)) != s.turn
 		"catapult":
@@ -2650,6 +2684,55 @@ static func _run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 						events.append({"type": "discard", "player": q, "card": h})
 		"mark_once":
 			ps.once_names[str(a[1])] = s.turn
+		"gem_fusion":
+			events.append_array(EffectRunner.gem_fusion(s, p, c, str(a[1])))
+		"absorb":
+			# Absorb Fusion: add 1 "Gem-Knight" card from your Deck; then you can Fusion Summon by banishing materials from your hand/field.
+			ps.once_names["#ss_gem_only"] = s.turn
+			var pool_ab: Array = ps.deck.filter(func(x): return CardEffects.matches(x.data, {"has": "Gem-Knight", "monster": false}))
+			if not pool_ab.is_empty():
+				pool_ab.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+				var g_ab = s.pick1(p, Loc.t("%s: add which card?") % name, pool_ab, pool_ab[0], c)
+				ps.deck.erase(g_ab)
+				ps.hand.append(g_ab)
+				s._shuffle(ps.deck)
+				events.append({"type": "search", "player": p, "card": g_ab, "deck": ps.deck.size()})
+			if not EffectRunner.gem_fusion_plans(s, p, "absorb").is_empty() \
+					and s.choose_option(p, Loc.t("%s: Fusion Summon by banishing the materials?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				events.append_array(EffectRunner.gem_fusion(s, p, c, "absorb"))
+		"disp_search":
+			# Gem-Knight Dispersion: a "Gem-" monster from your Deck or banishment; your opponent's Main Phase effect damage is halved this turn.
+			var pool_ds: Array = (ps.deck + ps.banished.filter(func(b): return b.face_up)).filter(func(x): return x.is_monster() and CardEffects.matches(x.data, {"has": "Gem-"}))
+			if not pool_ds.is_empty():
+				var g_ds = s.pick1(p, Loc.t("%s: add which monster?") % name, pool_ds, s._best_monsters(pool_ds, 1)[0], c)
+				ps.deck.erase(g_ds)
+				ps.banished.erase(g_ds)
+				ps.hand.append(g_ds)
+				s._shuffle(ps.deck)
+				events.append({"type": "search", "player": p, "card": g_ds, "deck": ps.deck.size()})
+			opp.once_names["#half_fx_main"] = s.turn
+		"gem_enhancement":
+			# Gem-Enhancement: Tribute 1 "Gem-Knight" monster; Special Summon 1 "Gem-Knight" monster from your GY.
+			var tr_ge: Array = ps.monsters().filter(func(m): return m.face_up and CardEffects.matches(m.data, {"has": "Gem-Knight"}) and s.can_tribute_fx(m))
+			if tr_ge.is_empty():
+				return events
+			tr_ge.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			var t_ge = s.pick1(p, Loc.t("%s: Tribute which monster?") % name, tr_ge, tr_ge[0], c)
+			ps.field[ps.field.find(t_ge)] = null
+			s._to_gy(ps, t_ge)
+			events.append({"type": "tribute", "player": p, "card": t_ge})
+			events.append_array(EffectRunner.trigger(s, t_ge, "tributed"))
+			events.append_array(s._monster_left(t_ge))
+			var back_ge: Array = ps.gy.filter(func(g): return g.is_monster() and CardEffects.matches(g.data, {"has": "Gem-Knight"}) and s.can_revive(g) and s.gy_targetable(g))
+			if not back_ge.is_empty() and ps.free_zone() != -1 and not s.ss_locked(p):
+				var b_ge = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, back_ge, s._best_monsters(back_ge, 1)[0], c)
+				ps.gy.erase(b_ge)
+				events.append_array(s._special(p, b_ge, "reborn"))
+		"spark":
+			# Brilliant Spark: damage equal to the destroyed "Gem-Knight" monster's original ATK.
+			var dead_s = s.get_meta("spark_dead") if s.has_meta("spark_dead") else null
+			if dead_s != null:
+				events.append_array(s._damage(opp_i, int(dead_s.atk())))
 		"search_field":
 			var fields: Array = ps.deck.filter(func(x): return str(spec(x).get("k", "")) == "field")
 			if not fields.is_empty():
@@ -4155,6 +4238,11 @@ static func left_field(s: DuelState, c) -> Array:
 		var m = c.linked
 		c.linked = null
 		events.append_array(s._destroy(m))
+	if c.cname() == "Scatter Fusion":
+		# "When this card leaves the field, destroy all monsters Summoned by this card's effect."
+		for q in 2:
+			for m in s.players[q].monsters().filter(func(m): return int(m.tags.get("scatter_from", -1)) == c.uid):
+				events.append_array(s._destroy(m))
 	if sp.get("control", false) and c.equipped_to != null:
 		events.append_array(s._return_control(c.equipped_to))
 	for a in sp.get("on_leave", []):
@@ -4249,6 +4337,27 @@ static func after_battle_death(s: DuelState, loser) -> Array:
 		s.set_meta("battle_dead", loser)
 		events.append_array(s.chain_add(p, st, null, "free"))
 		events.append_array(s.chain_resolve())
+		break
+	return events
+
+
+## Brilliant Spark: "If a face-up "Gem-Knight" monster(s) you control is destroyed by your opponent's attack or card effect."
+static func spark_offer(s: DuelState, dead) -> Array:
+	var p: int = dead.owner
+	var events := []
+	for st in s.players[p].spells.duplicate():
+		if st == null or st.face_up or st.set_turn >= s.turn or not spec(st).get("spark", false) or blocked(s, st):
+			continue
+		s.set_meta("spark_dead", dead)
+		if not feasible(s, p, st, "free", null):
+			s.remove_meta("spark_dead")
+			continue
+		if s.choose_option(p, Loc.t("%s was destroyed. Activate %s?") % [dead.cname(), st.cname()], ["Activate it", "No"], 0, st) != 0:
+			s.remove_meta("spark_dead")
+			continue
+		events.append_array(s.chain_add(p, st, null, "free"))
+		events.append_array(s.chain_resolve())
+		s.remove_meta("spark_dead")
 		break
 	return events
 

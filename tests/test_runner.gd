@@ -134,6 +134,7 @@ func _ready() -> void:
 		_test_theme_rework()
 		_test_lightsworn()
 		_test_catch_up()
+		_test_gem_knight()
 		await _test_album()
 		_test_save_slots()
 		_test_turbo_setup()
@@ -9953,6 +9954,163 @@ func _test_lightsworn() -> void:
 
 
 ## 0.34.2.5: the cards the families were missing, and the fixes to Aurkus, Minerva, Thunder Lord, Dark Golem and the Castle.
+func _test_gem_knight() -> void:
+	# Gem-Knight Fusion: materials from the hand.
+	var s := _main_ready(7601)
+	s.players[0].hand.clear()
+	_in(s, 0, "Gem-Knight Garnet", "hand")
+	_in(s, 0, "Gem-Knight Sapphire", "hand")
+	var ruby := _in(s, 0, "Gem-Knight Ruby", "extra")
+	var gkf := _rst(s, 0, "Gem-Knight Fusion")
+	check(s.can_activate(0, gkf), "Gem-Knight Fusion: can make Ruby")
+	s.activate(0, gkf)
+	check(s.players[0].field.has(ruby), "Gem-Knight Fusion: Ruby is on the field")
+	# ...and back from the GY by banishing a Gem-Knight.
+	s.players[0].gy.erase(gkf)
+	s.players[0].gy.append(gkf)
+	check(s.gy_effects(0).has(gkf), "Gem-Knight Fusion: GY effect ready")
+	s.gy_ignite(0, gkf)
+	check(s.players[0].hand.has(gkf), "Gem-Knight Fusion: back in the hand")
+	# Brilliant Fusion: materials from the Deck, 0 ATK, and the monster goes when the card does.
+	s = _main_ready(7602)
+	_in(s, 0, "Gem-Knight Garnet", "deck")
+	_in(s, 0, "Gem-Knight Tourmaline", "deck")
+	var ruby2 := _in(s, 0, "Gem-Knight Ruby", "extra")
+	var bf := _rst(s, 0, "Brilliant Fusion")
+	s.activate(0, bf)
+	check(s.players[0].field.has(ruby2) and s.atk_of(ruby2, false) == 0, "Brilliant Fusion: Ruby out with 0 ATK (%d)" % s.atk_of(ruby2, false))
+	s.players[0].hand.clear()
+	var junk := _in(s, 0, "Pot of Greed", "hand")
+	check(s.can_ignite(0, bf), "Brilliant Fusion: discard a Spell to power up")
+	s.ignite(0, bf)
+	check(s.atk_of(ruby2, false) == 2500 and s.players[0].gy.has(junk), "Brilliant Fusion: Ruby back to 2500 (%d)" % s.atk_of(ruby2, false))
+	s._destroy_st(bf)
+	check(not s.players[0].field.has(ruby2), "Brilliant Fusion: gone, Ruby goes too")
+	# Fragment Fusion: GY materials banished, destroyed in the End Phase.
+	s = _main_ready(7603)
+	s.players[0].gy.clear()
+	var g1 := _in(s, 0, "Gem-Knight Garnet", "gy")
+	_in(s, 0, "Gem-Knight Sapphire", "gy")
+	var ruby3 := _in(s, 0, "Gem-Knight Ruby", "extra")
+	var ff := _rst(s, 0, "Fragment Fusion", "set")
+	s.chain_add(0, ff, null, "free", null)
+	s.chain_resolve()
+	check(s.players[0].field.has(ruby3) and s.players[0].banished.has(g1), "Fragment Fusion: Ruby out, Garnet banished")
+	EffectRunner.end_phase(s, 0)
+	check(not s.players[0].field.has(ruby3), "Fragment Fusion: Ruby destroyed in the End Phase")
+	# Seraphinite: one more Normal Summon.
+	s = _main_ready(7604)
+	_mon(s, 0, "Gem-Knight Seraphinite", 0)
+	s.normal_summoned = true
+	check(s.seraph_ok(0), "Seraphinite: an extra Normal Summon")
+	# Master Diamond: +100 per Gem- monster in the GY.
+	s = _main_ready(7605)
+	s.players[0].gy.clear()
+	var md := _mon(s, 0, "Gem-Knight Master Diamond", 0)
+	_in(s, 0, "Gem-Knight Garnet", "gy")
+	_in(s, 0, "Gem-Armadillo", "gy")
+	check(s.atk_of(md, false) == 3100, "Master Diamond: 2900 + 200 (%d)" % s.atk_of(md, false))
+	# Master Diamond copies Ruby: its name and effects, no more ATK boost.
+	var ruby_g := _in(s, 0, "Gem-Knight Ruby", "gy")
+	ruby_g.proper = true
+	s.ignite(0, md)
+	check(md.cname() == "Gem-Knight Ruby" and s.atk_of(md, false) == 2900, "Master Diamond: is Ruby now (%s, %d)" % [md.cname(), s.atk_of(md, false)])
+	# Lady Lapis Lazuli: 500 for each Special Summoned monster.
+	s = _main_ready(7606)
+	var ll := _mon(s, 0, "Gem-Knight Lady Lapis Lazuli", 0)
+	ll.tags["ss"] = true
+	var foe := _mon(s, 1, "Gem-Knight Garnet", 0)
+	foe.tags["ss"] = true
+	_in(s, 0, "Gem-Knight Garnet", "deck")
+	var lp1: int = s.players[1].lp
+	s.ignite(0, ll)
+	check(s.players[1].lp == lp1 - 1000, "Lady Lapis Lazuli: 1000 damage (%d)" % (lp1 - s.players[1].lp))
+	# Nepyrim: Summoned, searches a Gem-Knight card.
+	s = _main_ready(7607)
+	s.players[0].hand.clear()
+	var nep := _in(s, 0, "Gem-Knight Nepyrim", "hand")
+	_in(s, 0, "Gem-Knight Fusion", "deck")
+	s.normal_summon(0, nep, [], false)
+	s._cleanup()
+	check(not s.players[0].hand.filter(func(h): return h.cname() == "Gem-Knight Fusion").is_empty(), "Nepyrim: added Gem-Knight Fusion")
+	# Obsidian: sent from the hand, calls a Normal Monster from the GY.
+	s = _main_ready(7608)
+	s.players[0].hand.clear()
+	s.players[0].gy.clear()
+	_in(s, 0, "Gem-Knight Obsidian", "hand")
+	var gar := _in(s, 0, "Gem-Knight Garnet", "gy")
+	s.activate(0, _rst(s, 0, "Card Destruction"))
+	s._cleanup()
+	check(s.players[0].field.has(gar), "Obsidian: Garnet comes back")
+	# Brilliant Spark: your Gem-Knight destroyed by the opponent's effect: damage = its ATK.
+	s = _main_ready(7609)
+	s.current = 1
+	_mon(s, 0, "Gem-Knight Garnet", 0)
+	_rst(s, 0, "Brilliant Spark", "set")
+	var lp2: int = s.players[1].lp
+	s.activate(1, _rst(s, 1, "Raigeki"))
+	s._cleanup()
+	check(s.players[1].lp == lp2 - 1900, "Brilliant Spark: 1900 damage (%d)" % (lp2 - s.players[1].lp))
+	# Hollowcore: negates from the GY while you have a Gem-Knight Fusion.
+	s = _main_ready(7610)
+	s.players[0].gy.clear()
+	var hc := _in(s, 0, "Gem-Knight Hollowcore", "gy")
+	_in(s, 0, "Gem-Knight Garnet", "gy")
+	_in(s, 0, "Gem-Knight Fusion", "gy")
+	var zr := _mon(s, 0, "Gem-Knight Zirconia", 0)
+	zr.proper = true
+	s.chain_add(1, _rst(s, 1, "Raigeki"), null, "open", null)
+	check(EffectRunner.quick_can(s, 0, hc, "chain"), "Hollowcore: can answer Raigeki")
+	EffectRunner.quick_run(s, 0, hc)
+	check(s.chain.back()["negated"] and s.atk_of(zr, false) == 3900, "Hollowcore: negated, Zirconia 3900 (%d)" % s.atk_of(zr, false))
+	# Brilliant Rose: takes Ruby's name, Type and Attribute.
+	s = _main_ready(7611)
+	var br := _mon(s, 0, "Brilliant Rose", 0)
+	_in(s, 0, "Gem-Knight Citrine", "extra")
+	s.ignite(0, br)
+	check(br.cname() == "Gem-Knight Citrine" and str(DuelState.live_data(br).get("race", "")) == "Pyro", "Brilliant Rose: now Citrine, a Pyro")
+	# Gem-Knight Dispersion: a material from the Deck when Gem-Knight Fusion is in the GY.
+	s = _main_ready(7612)
+	s.players[0].hand.clear()
+	_in(s, 0, "Gem-Knight Garnet", "hand")
+	_in(s, 0, "Gem-Knight Tourmaline", "deck")
+	_in(s, 0, "Gem-Knight Fusion", "gy")
+	var ruby4 := _in(s, 0, "Gem-Knight Ruby", "extra")
+	var disp := _rst(s, 0, "Gem-Knight Dispersion")
+	disp.mode = 0
+	s.activate(0, disp)
+	check(s.players[0].field.has(ruby4), "Gem-Knight Dispersion: Ruby with Tourmaline from the Deck")
+	# Scatter Fusion: from the Deck, and those monsters leave with it.
+	s = _main_ready(7613)
+	_mon(s, 1, "Gem-Knight Garnet", 0)
+	_in(s, 0, "Gem-Knight Garnet", "deck")
+	_in(s, 0, "Gem-Knight Sapphire", "deck")
+	var ruby5 := _in(s, 0, "Gem-Knight Ruby", "extra")
+	var sc := _rst(s, 0, "Scatter Fusion", "set")
+	sc.face_up = true
+	check(s.can_ignite(0, sc), "Scatter Fusion: ready")
+	s.ignite(0, sc)
+	check(s.players[0].field.has(ruby5), "Scatter Fusion: Ruby from the Deck")
+	s._destroy_st(sc)
+	check(not s.players[0].field.has(ruby5), "Scatter Fusion: gone, Ruby goes too")
+	# Lady Brilliant Diamond: send a Gem-Knight, call a Gem-Knight Fusion ignoring conditions.
+	s = _main_ready(7614)
+	var lbd := _mon(s, 0, "Gem-Knight Lady Brilliant Diamond", 0)
+	_mon(s, 0, "Gem-Knight Garnet", 1)
+	var top := _in(s, 0, "Gem-Knight Topaz", "extra")
+	s.ignite(0, lbd)
+	check(s.players[0].field.has(top), "Lady Brilliant Diamond: Topaz out")
+	# Gem-Enhancement: Tribute one, bring one back.
+	s = _main_ready(7615)
+	s.players[0].gy.clear()
+	_mon(s, 0, "Gem-Knight Sapphire", 0)
+	var cr := _in(s, 0, "Gem-Knight Crystal", "gy")
+	var ge := _rst(s, 0, "Gem-Enhancement", "set")
+	s.chain_add(0, ge, null, "free", null)
+	s.chain_resolve()
+	check(s.players[0].field.has(cr), "Gem-Enhancement: Crystal back")
+
+
 func _test_catch_up() -> void:
 	# Aurkus: a Lightsworn monster in the GY can't be targeted either (Monster Reborn).
 	var s := _main_ready(7501)

@@ -20,6 +20,8 @@ static func atk_bonus(s: DuelState, c, attacking: bool, vs, battling: bool) -> i
 	var f := fx(c)
 	var b := union_boost(s, c)
 	b += _gk_bonus(s, c)
+	if int(c.tags.get("bf_up_until", -1)) >= s.turn:
+		b += c.atk()   # Brilliant Fusion: "gains ATK/DEF equal to its original ATK/DEF"
 	if c.tags.get("green_300", false) and c.face_up and not c.negated:
 		b += 300   # Ancient Gear Gadjiltron Chimera with Green Gadget
 	if int(c.tags.get("cdd_turn", -1)) == s.turn and c.face_up:
@@ -167,6 +169,10 @@ static func def_bonus(s: DuelState, c) -> int:
 	var f := fx(c)
 	var u := union_boost(s, c)
 	u += _gk_bonus(s, c)
+	if int(c.tags.get("bf_up_until", -1)) >= s.turn:
+		u += c.def()
+	if not s.pending_attack.is_empty() and is_same(s.pending_attack.get("ele_def"), c):
+		u += 1000   # Gem-Elephant: "+1000 DEF during that damage calculation only"
 	if c.face_up and not c.negated and f.get("shaman", false):
 		u += 200 * s.players[c.owner].gy.filter(func(g): return g.cname().begins_with("Gravekeeper's") and g.is_monster()).size()   # Gravekeeper's Shaman
 	for zu in s.unions_on(c):
@@ -205,6 +211,8 @@ static func _count(s: DuelState, owner: int, spec: String) -> int:
 	var n := 0
 	if kind == "own_banished":
 		return s.players[owner].banished.size()
+	if kind == "own_gy_has":
+		return s.players[owner].gy.filter(func(g): return g.is_monster() and CardEffects.matches(g.data, {"has": val})).size()   # Gem-Knight Master Diamond
 	if kind == "lsw_names":
 		return lsw_names(s, owner)   # "each "Lightsworn" monster with a different name in your Graveyard"
 	if kind == "gy_named":
@@ -616,6 +624,69 @@ static func _cond(s: DuelState, p: int, cond: String) -> bool:
 		return not s.players[p].deck.filter(func(x): return x.cname() == "Ancient Gear Golem" or (not x.is_monster() and str(x.data.get("desc", "")).contains("Ancient Gear Golem"))).is_empty()
 	if cond == "ag_fusion_hand":
 		return not ag_plans(s, p, false).is_empty()
+	if cond == "scatter":
+		var psf := s.players[p]
+		return int(psf.once_names.get("Scatter Fusion#fx", -1)) != s.turn and not s.players[s.opponent(p)].monsters().is_empty() and not gem_fusion_plans(s, p, "scatter").is_empty()
+	if cond == "brilliant_up":
+		var pbu := s.players[p]
+		var bf: Array = pbu.spells.filter(func(x): return x != null and x.face_up and x.cname() == "Brilliant Fusion" and x.linked != null and pbu.field.has(x.linked) and int(x.tags.get("up_turn", -1)) != s.turn)
+		return not bf.is_empty() and not pbu.hand.filter(func(h): return h.is_spell()).is_empty()
+	if cond == "gkf_back":
+		return not s.players[p].gy.filter(func(g): return g.is_monster() and CardEffects.matches(g.data, {"has": "Gem-Knight"}) and not s.necro_holds(g)).is_empty()
+	if cond == "particle_back":
+		var ppb := s.players[p]
+		for m in ppb.monsters():
+			if int(m.tags.get("particle_turn", -1)) == s.turn and not _particle_mats(s, p, m).is_empty():
+				return true
+		return false
+	if cond == "spark_back":
+		return not s.players[p].hand.filter(func(h): return CardEffects.matches(h.data, {"has": "Gem-Knight", "monster": false})).is_empty()
+	if cond == "lbd":
+		var pl2 := s.players[p]
+		return not pl2.monsters().filter(func(m): return m.face_up and CardEffects.matches(m.data, {"has": "Gem-Knight"})).is_empty() \
+				and not gem_fusions(pl2.extra).filter(func(x): return not s.big_locked(p, x, true)).is_empty() and not s.ss_locked(p)
+	if cond == "mdd":
+		return int(s.players[p].once_names.get("MDD#q", -1)) != s.turn and s._in_main() and not _mdd_pool(s, p).is_empty()
+	if cond == "master_diamond":
+		return not gem_fusions(s.players[p].gy).filter(func(g): return g.level() <= 7 and not s.necro_holds(g)).is_empty()
+	if cond == "lapis_lazuli":
+		var pll := s.players[p]
+		return not (pll.deck + pll.extra).filter(func(x): return x.is_monster() and CardEffects.matches(x.data, {"has": "Gem-Knight"})).is_empty()
+	if cond == "ruby":
+		return not s.players[p].monsters().filter(func(m): return m.face_up and CardEffects.matches(m.data, {"has": "Gem-"}) and fx(m).get("seraph", null) == null and s.can_tribute_fx(m) and m.cname() != "Gem-Knight Ruby").is_empty()
+	if cond == "any_face_card":
+		for q in 2:
+			if not s.players[q].monsters().filter(func(m): return m.face_up).is_empty() or not _all_st(s).filter(func(x): return x.face_up).is_empty():
+				return true
+		return false
+	if cond == "iolite":
+		var pio := s.players[p]
+		return not pio.gy.filter(func(g): return g.is_monster() and CardEffects.matches(g.data, {"has": "Gem-"}) and not s.necro_holds(g)).is_empty() \
+				and pio.gy.filter(func(g): return CardEffects.matches(g.data, {"has": "Gem-Knight", "monster": false}) and s.gy_targetable(g) and not s.necro_holds(g)).size() >= 1
+	if cond == "amber":
+		return not s.players[p].banished.filter(func(b): return b.face_up and b.is_monster()).is_empty()
+	if cond == "quartz":
+		var pq := s.players[p]
+		return int(pq.once_names.get("Quartz#set", -1)) != s.turn and not s.players[s.opponent(p)].monsters().is_empty() and pq.spells.has(null) \
+				and not pq.deck.filter(func(x): return x.cname().contains("Fusion") and str(SpellRules.spec(x).get("k", "")) == "cont").is_empty()
+	if cond == "brilliant_rose":
+		var pbr := s.players[p]
+		return int(pbr.once_names.get("BRose#ss", -1)) != s.turn and pbr.hand.filter(func(h): return h.cname() != "Brilliant Rose" and (CardEffects.matches(h.data, {"has": "Gem-Knight|Melodious", "monster": false}))).size() >= 1
+	if cond == "rose_copy_extra":
+		return not s.players[p].extra.filter(func(x): return CardEffects.matches(x.data, {"has": "Gem-Knight|Melodious"})).is_empty()
+	if cond == "rose_copy_deck":
+		var prc := s.players[p]
+		return not (prc.hand + prc.deck).filter(func(x): return x.is_monster() and not CardData.is_extra(x.id) and CardEffects.matches(x.data, {"has": "Gem-Knight|Melodious"})).is_empty()
+	if cond == "crystal_rose":
+		var pcr := s.players[p]
+		return int(pcr.once_names.get("CRose#gy", -1)) != s.turn and pcr.free_zone() != -1 and not pcr.gy.filter(func(g): return g.is_monster() and g.frame() == "fusion" and not s.necro_holds(g)).is_empty()
+	if cond == "emerald":
+		var pe := s.players[p]
+		return not pe.monsters().filter(func(m): return m.face_up and is_normal_now(m)).is_empty() \
+				and not gem_fusions(pe.gy).filter(func(g): return g.proper and s.can_revive(g) and s.gy_targetable(g)).is_empty()
+	if cond == "hollowcore":
+		var ph := s.players[p]
+		return int(ph.once_names.get("Hollowcore#ss", -1)) != s.turn and not ph.deck.filter(func(x): return x.cname() == "Gem-Knight Fusion" or (x.frame() == "normal" and x.cname().begins_with("Gem-Knight"))).is_empty()
 	if cond == "lsw4_banished":
 		var seen_b := {}
 		for g in s.players[p].banished:
@@ -956,6 +1027,32 @@ static func special_hand(s: DuelState, p: int, c) -> Array:
 			s._shuffle(ps.deck)
 			events.append({"type": "set_st", "player": p, "card": gkt[0], "zone": zt})
 			events.append({"type": "reveal", "player": p, "card": gkt[0], "zone": zt})
+		return events
+	if f.get("brilliant_rose", false):
+		# Brilliant Rose: discard 1 "Gem-Knight" or "Melodious" card; Special Summon it.
+		ps.once_names["BRose#ss"] = s.turn
+		var pay_b: Array = ps.hand.filter(func(h): return h != c and CardEffects.matches(h.data, {"has": "Gem-Knight|Melodious", "monster": false}))
+		pay_b.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+		var paid_b = s.pick1(p, Loc.t("%s: discard which card?") % c.cname(), pay_b, pay_b[0], c)
+		ps.hand.erase(paid_b)
+		paid_b.set_meta("from_hand", true)
+		s._to_gy(ps, paid_b)
+		events.append({"type": "discard", "player": p, "card": paid_b})
+		ps.hand.erase(c)
+		events.append_array(s._special(p, c, "effect"))
+		return events
+	if f.get("hollowcore", false):
+		# Hollowcore: send 1 "Gem-Knight" Normal Monster or "Gem-Knight Fusion" from your Deck to the GY; Special Summon it in Defense Position.
+		ps.once_names["Hollowcore#ss"] = s.turn
+		var pay_h: Array = ps.deck.filter(func(x): return x.cname() == "Gem-Knight Fusion" or (x.frame() == "normal" and x.cname().begins_with("Gem-Knight")))
+		var paid_h = s.pick1(p, Loc.t("%s: send which card from your Deck?") % c.cname(), pay_h, pay_h[0], c)
+		ps.deck.erase(paid_h)
+		s._to_gy(ps, paid_h)
+		s._shuffle(ps.deck)
+		events.append({"type": "mill", "player": p, "card": paid_h, "deck": ps.deck.size()})
+		events.append_array(s.deck_sent(p, [paid_h], c))
+		ps.hand.erase(c)
+		events.append_array(s._special(p, c, "effect", "def"))
 		return events
 	if f.get("weiss", false):
 		# Weiss: place 1 other "Lightsworn" card from your hand on top of the Deck; Special Summon it, then send the top 2 to the GY.
@@ -1312,6 +1409,8 @@ static func _state_necro() -> bool:
 
 static func trigger(s: DuelState, c, key: String, ctx := {}) -> Array:
 	current_state = s
+	if fx(c).get("gemini", false) and not c.tags.has("gemini_on") and fx(c).has(key):
+		return []   # (a Gemini monster is a Normal Monster until it is Normal Summoned again)
 	if s.shaman_blocks(c):
 		return [_ev(c.owner, c, Loc.t("Gravekeeper's Shaman negates %s") % c.cname())]
 	if (s.players[0].gy.has(c) or s.players[1].gy.has(c)) and int(s.inscription.get("mode", -1)) == 0 and int(s.inscription.get("until", -1)) >= s.turn:
@@ -1434,8 +1533,15 @@ static func standby(s: DuelState, p: int) -> Array:
 static func end_phase(s: DuelState, p: int) -> Array:
 	var events := []
 	for q in 2:
+		for m in s.players[q].monsters().filter(func(m): return int(m.tags.get("fragment_turn", -1)) == s.turn):
+			m.tags.erase("fragment_turn")
+			events.append(_ev(q, m, Loc.t("Fragment Fusion: %s is destroyed") % m.cname()))
+			events.append_array(s._destroy(m))
+	for q in 2:
 		for m in s.players[q].monsters():
 			if int(m.tags.get("as_turn", -99)) == s.turn:
+				m.tags.erase("race_as")
+				m.tags.erase("attr_as")
 				m.tags.erase("as")   # Ancient Gear Gadget: "until the End Phase, this card's name becomes that name"
 				m.tags.erase("as_turn")
 	var ps_e := s.players[p]
@@ -1533,6 +1639,8 @@ static func hand_can(s: DuelState, p: int, c) -> bool:
 		return s.players[p].spells.find(null) != -1 and not _cocoon_hosts(s, p, str(g["equip_to"])).is_empty()
 	if g.get("zw", false):
 		return not _zw_hosts(s, p, c).is_empty()
+	if g.has("cond") and not _cond(s, p, str(g["cond"])):
+		return false   # Gem-Knight Quartz: "if your opponent controls a monster"
 	for a in g.get("do", []):
 		if a[0] == "search" and _take(s.players[p].deck, a[1], 1).is_empty():
 			return false
@@ -1842,6 +1950,88 @@ static func mist_pick(s: DuelState, p: int, cards: Array):
 	return cheap
 
 
+## The "Gem-Knight" Fusion Summons a Gem-Knight Fusion card could make right now. mode says where the materials come from:
+## hf (hand/field), field, deck (Brilliant Fusion), gy (Fragment Fusion, banished), absorb (hand/field, banished),
+## scatter (Deck, non-Rock result), disp (hand/field, plus up to 2 non-Rock "Gem-Knight" monsters from the Deck/Extra Deck).
+static func gem_fusion_plans(s: DuelState, p: int, mode: String, ask := false, only = null) -> Array:
+	var ps := s.players[p]
+	var other = null
+	var fpool = null
+	match mode:
+		"field":
+			other = []
+		"deck", "scatter":
+			other = ps.deck.filter(func(x): return x.is_monster())
+			fpool = []
+		"gy":
+			other = ps.gy.filter(func(g): return g.is_monster() and not s.necro_holds(g))
+			fpool = []
+		"disp":
+			other = ps.hand.duplicate()
+			if not ps.gy.filter(func(g): return g.cname() == "Gem-Knight Fusion").is_empty():
+				other += (ps.deck + ps.extra).filter(func(x): return x.is_monster() and CardEffects.matches(x.data, {"has": "Gem-Knight"}) and str(x.data.get("race", "")) != "Rock")
+	if s.ss_locked(p):
+		return []
+	var plans: Array = s.fusion_targets(p, null, false, ask, only, other, fpool)
+	return plans.filter(func(pl):
+		var f = pl["card"]
+		if not CardEffects.matches(f.data, {"has": "Gem-Knight"}) or s.big_locked(p, f, true):
+			return false
+		if mode == "scatter" and str(f.data.get("race", "")) == "Rock":
+			return false
+		if mode == "disp" and pl["hand"].filter(func(m): return ps.deck.has(m) or ps.extra.has(m)).size() > 2:
+			return false
+		return true)
+
+
+## Run a "Gem-Knight" Fusion Summon (see gem_fusion_plans).
+static func gem_fusion(s: DuelState, p: int, c, mode: String) -> Array:
+	var ps := s.players[p]
+	var events := []
+	var plans: Array = gem_fusion_plans(s, p, mode)
+	if plans.is_empty():
+		return events
+	var fc: Array = plans.map(func(x): return x["card"])
+	var want = s.pick1(p, Loc.t("%s: Fusion Summon which monster?") % c.cname(), fc, fc[0], c)
+	var mine: Array = gem_fusion_plans(s, p, mode, true, want)
+	if mine.is_empty():
+		return events
+	var pl: Dictionary = mine[0].duplicate()
+	pl["src"] = c
+	events.append_array(s._do_fusion(p, pl, mode in ["gy", "absorb"]))
+	var f = pl["card"]
+	if not ps.field.has(f):
+		return events
+	match mode:
+		"deck":
+			# Brilliant Fusion: "change its ATK/DEF to 0. If this card leaves the field, destroy that monster."
+			f.atk_mod -= f.atk()
+			f.def_mod -= f.def()
+			c.linked = f
+			events.append(_ev(p, f, Loc.t("%s: %s has 0 ATK and DEF") % [c.cname(), f.cname()]))
+		"gy":
+			f.tags["fragment_turn"] = s.turn   # Fragment Fusion: "Destroy it during the End Phase."
+		"scatter":
+			f.tags["scatter_from"] = c.uid
+			ps.once_names["#ed_gem_only"] = s.turn
+		"field":
+			f.tags["particle_turn"] = s.turn
+	return events
+
+
+## Particle Fusion: the "Gem-Knight" materials of this Fusion Monster still in the GY.
+static func _particle_mats(s: DuelState, p: int, f) -> Array:
+	var uids: Array = f.tags.get("mats", [])
+	return s.players[p].gy.filter(func(g): return g.uid in uids and CardEffects.matches(g.data, {"has": "Gem-Knight"}) and s.gy_targetable(g))
+
+
+## Gem-Knight Master Diamond Dispersion: the non-Rock "Gem-" monsters it can call from your Extra Deck and GY.
+static func _mdd_pool(s: DuelState, p: int) -> Array:
+	var ps := s.players[p]
+	return (ps.extra + ps.gy.filter(func(g): return not s.necro_holds(g) and s.gy_targetable(g))).filter(func(x): return x.is_monster() and CardEffects.matches(x.data, {"has": "Gem-"}) \
+			and str(x.data.get("race", "")) != "Rock" and x.cname() != "Gem-Knight Master Diamond Dispersion" and not s.big_locked(p, x, true))
+
+
 ## Ancient Gear Duel: the Fusions that mention "Ancient Gear Golem", made by banishing from your field or GY, with a Golem you control.
 static func ag_duel_plans(s: DuelState, p: int) -> Array:
 	var ps := s.players[p]
@@ -1859,6 +2049,20 @@ static func ag_duel_plans(s: DuelState, p: int) -> Array:
 			continue
 		out.append(pl)
 	return out
+
+
+## Is this monster a Normal Monster right now? Gemini monsters are, on the field and in the GY, until Normal Summoned again.
+static func is_normal_now(c) -> bool:
+	if c == null or not c.is_monster():
+		return false
+	if c.frame() == "normal":
+		return true
+	return fx(c).get("gemini", false) and not c.tags.has("gemini_on")
+
+
+## Gem-Knight Fusion Monsters in a pile.
+static func gem_fusions(pile: Array) -> Array:
+	return pile.filter(func(x): return x.is_monster() and x.frame() == "fusion" and CardEffects.matches(x.data, {"has": "Gem-Knight"}))
 
 
 ## How many Spell Counters sit on the face-up monsters this player controls.
@@ -2566,6 +2770,33 @@ static func quick_can(s: DuelState, p: int, c, window: String, _subject = null) 
 			if s.chain.back()["card"].is_monster() or lsw_fodder(s, p).is_empty():
 				return false
 			return not _all_st(s).filter(func(x): return x.face_up).is_empty()
+		"mdd":
+			# Master Diamond Dispersion (Quick Effect): in either player's Main Phase.
+			return on_field and window in ["phase", "summon", "chain"] and _cond(s, p, "mdd")
+		"rose_diamond":
+			# Lady Rose Diamond: in your turn, when your opponent activates a monster effect.
+			if not on_field or s.current != p or window != "chain" or s.chain.is_empty() or int(ps.once_names.get("Rose#q", -1)) == s.turn:
+				return false
+			var lk_r: Dictionary = s.chain.back()
+			return int(lk_r["player"]) != p and not lk_r.get("negated", false) and lk_r["card"].is_monster() \
+					and not ps.gy.filter(func(g): return CardEffects.matches(g.data, {"has": "Gem-Knight", "monster": false}) and not s.necro_holds(g)).is_empty() \
+					and not (opp.monsters().filter(func(m): return m.face_up) + _all_st(s).filter(func(x): return x.face_up and x.owner != p)).is_empty()
+		"gem_elephant":
+			# Gem-Elephant: once per battle, in damage calculation, if it battles.
+			return on_field and window == "damage" and battling and pa["target"] != null and (pa["attacker"] == c or pa["target"] == c) \
+					and not pa.has("ele_used") and not ps.hand.filter(func(h): return h.is_monster() and h.frame() == "normal").is_empty()
+		"gem_merchant":
+			# Gem-Merchant: from the hand, in the Damage Step, when a face-up EARTH Normal Monster you control battles.
+			if not ps.hand.has(c) or window != "damage" or not battling or pa["target"] == null:
+				return false
+			return not [pa["attacker"], pa["target"]].filter(func(m): return m != null and m.owner == p and ps.field.has(m) and m.face_up and is_normal_now(m) and str(m.data.get("attribute", "")) == "EARTH").is_empty()
+		"hollowcore":
+			# Hollowcore (Quick Effect, from the GY): while you control a "Gem-Knight" Fusion Monster, when your opponent activates a card or effect.
+			if not ps.gy.has(c) or s.necro_holds(c) or window != "chain" or s.chain.is_empty() or int(ps.once_names.get("Hollowcore#q", -1)) == s.turn:
+				return false
+			var lk_h: Dictionary = s.chain.back()
+			return int(lk_h["player"]) != p and not lk_h.get("negated", false) and not gem_fusions(ps.monsters().filter(func(m): return m.face_up)).is_empty() \
+					and ps.gy.filter(func(g): return g != c and CardEffects.matches(g.data, {"has": "Gem-Knight", "monster": false}) and not s.necro_holds(g)).size() >= 2
 		"thunder_lord":
 			# Mist Valley Thunder Lord: once per turn, either player's turn (Quick Effect).
 			return on_field and c.ignite_turn != s.turn and window in ["attack", "battle_start", "phase", "summon", "chain"] \
@@ -2816,6 +3047,61 @@ static func quick_run(s: DuelState, p: int, c) -> Array:
 		"thunder_lord":
 			c.ignite_turn = s.turn
 			events.append_array(run_list(s, p, c, [["bounce_own_other_card"], ["self_atk_turn", 500]], {}))
+		"mdd":
+			events.append_array(run_list(s, p, c, [["mdd"]], {}))
+		"rose_diamond":
+			ps.once_names["Rose#q"] = s.turn
+			var pay_rd: Array = ps.gy.filter(func(g): return CardEffects.matches(g.data, {"has": "Gem-Knight", "monster": false}) and not s.necro_holds(g))
+			pay_rd.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which card?") % c.cname(), pay_rd, pay_rd[0], c)))
+			var ups_rd: Array = opp.monsters().filter(func(m): return m.face_up and can_target(c, m)) + _all_st(s).filter(func(x): return x.face_up and x.owner != p)
+			if not ups_rd.is_empty():
+				ups_rd.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+				var t_rd = s.pick1(p, Loc.t("%s: destroy which face-up card?") % c.cname(), ups_rd, ups_rd[0], c)
+				events.append(_ev(p, c, Loc.t("%s destroys %s") % [c.cname(), t_rd.cname()]))
+				events.append_array(s._destroy(t_rd) if t_rd.is_monster() and opp.field.has(t_rd) else s._destroy_st(t_rd))
+		"gem_elephant":
+			s.pending_attack["ele_used"] = true
+			var nm_el: Array = ps.hand.filter(func(h): return h.is_monster() and h.frame() == "normal")
+			nm_el.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			var th_el = s.pick1(p, Loc.t("%s: send which Normal Monster?") % c.cname(), nm_el, nm_el[0], c)
+			ps.hand.erase(th_el)
+			th_el.set_meta("from_hand", true)
+			s._to_gy(ps, th_el)
+			events.append({"type": "discard", "player": p, "card": th_el})
+			s.pending_attack["ele_def"] = c
+			events.append(_ev(p, c, Loc.t("%s gains 1000 DEF for this battle") % c.cname()))
+		"gem_merchant":
+			var pa_g: Dictionary = s.pending_attack
+			var mine_g: Array = [pa_g["attacker"], pa_g["target"]].filter(func(m): return m != null and m.owner == p and ps.field.has(m) and m.face_up)
+			ps.hand.erase(c)
+			c.set_meta("from_hand", true)
+			s._to_gy(ps, c)
+			events.append({"type": "discard", "player": p, "card": c})
+			if not mine_g.is_empty():
+				var mg = mine_g[0]
+				if mg.atk_mod_turn != s.turn:
+					mg.atk_mod_t = 0
+					mg.atk_mod_turn = s.turn
+				mg.atk_mod_t += 1000
+				if mg.def_mod_turn != s.turn:
+					mg.def_mod_t = 0
+					mg.def_mod_turn = s.turn
+				mg.def_mod_t += 1000
+				events.append(_ev(p, mg, Loc.t("%s: %s gains 1000 ATK and DEF") % [c.cname(), mg.cname()]))
+		"hollowcore":
+			ps.once_names["Hollowcore#q"] = s.turn
+			var pay_hc: Array = ps.gy.filter(func(g): return g != c and CardEffects.matches(g.data, {"has": "Gem-Knight", "monster": false}) and not s.necro_holds(g))
+			pay_hc.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			events.append_array(s._banish(c))
+			for b in s.choose(p, Loc.t("%s: banish 2 more \"Gem-Knight\" cards") % c.cname(), pay_hc, 2, pay_hc.slice(0, 2), false, c):
+				events.append_array(s._banish(b))
+			if not s.chain.is_empty():
+				s.chain.back()["negated"] = true
+				events.append(_ev(p, c, Loc.t("%s negates %s") % [c.cname(), s.chain.back()["card"].cname()]))
+			for m in ps.monsters().filter(func(m): return m.face_up and CardEffects.matches(m.data, {"has": "Gem-Knight"})):
+				m.atk_mod += 1000
+			events.append(_ev(p, c, Loc.t("Your \"Gem-Knight\" monsters gain 1000 ATK")))
 		"ag_dragon":
 			ps.once_names["Ancient Gear Dragon"] = s.turn
 			var pay: Array = ps.hand.filter(func(h): return h.is_monster() and str(h.data.get("race", "")) == "Machine") \
@@ -3253,6 +3539,13 @@ static func quick_ai(s: DuelState, p: int, c, window: String) -> bool:
 			return ps.lp > 4000 and foe_n >= 2
 		"lyla_ts":
 			return not s.chain.is_empty() and int(s.chain.back()["player"]) != p
+		"mdd":
+			# Swing out when it calls at least two monsters.
+			return _mdd_pool(s, p).size() >= 2 and s.current != p
+		"rose_diamond", "hollowcore":
+			return true
+		"gem_elephant", "gem_merchant":
+			return lose or dmg > 0
 		"thunder_lord":
 			# When the 500 ATK wins a battle it is in (or keeps it alive).
 			var pa_t: Dictionary = s.pending_attack
@@ -6396,6 +6689,297 @@ static func run(s: DuelState, p: int, c, a: Array, ctx: Dictionary) -> Array:
 				events.append(_ev(p, c, Loc.t("%s banishes from the Graveyard") % name))
 			for g in picks:
 				events.append_array(s._banish(g))
+		"scatter_fx":
+			ps.once_names["Scatter Fusion#fx"] = s.turn
+			events.append_array(gem_fusion(s, p, c, "scatter"))
+		"brilliant_up":
+			# Brilliant Fusion: discard 1 Spell; the monster gains ATK/DEF equal to its original ATK/DEF until the end of your opponent's turn.
+			var spl: Array = ps.hand.filter(func(h): return h.is_spell())
+			spl.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			var th_b = s.pick1(p, Loc.t("%s: discard which Spell?") % name, spl, spl[0], c)
+			ps.hand.erase(th_b)
+			th_b.set_meta("from_hand", true)
+			s._to_gy(ps, th_b)
+			events.append({"type": "discard", "player": p, "card": th_b})
+			c.tags["up_turn"] = s.turn
+			if c.linked != null and ps.field.has(c.linked):
+				c.linked.tags["bf_up_until"] = s.turn + 1
+				events.append(_ev(p, c.linked, Loc.t("%s gets its ATK and DEF back until the end of your opponent's turn") % c.linked.cname()))
+		"gkf_back":
+			# Gem-Knight Fusion, in your GY: banish 1 "Gem-Knight" monster from your GY; add this card to your hand.
+			var pay_g: Array = ps.gy.filter(func(g): return g.is_monster() and CardEffects.matches(g.data, {"has": "Gem-Knight"}) and not s.necro_holds(g))
+			pay_g.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which monster?") % name, pay_g, pay_g[0], c)))
+			if ps.gy.has(c):
+				ps.gy.erase(c)
+				ps.hand.append(c)
+				events.append({"type": "gy_to_hand", "player": p, "card": c})
+		"particle_back":
+			# Particle Fusion: banish it from the GY; the Fusion Summoned monster gains the ATK of 1 "Gem-Knight" material until the End Phase.
+			var fus_p: Array = ps.monsters().filter(func(m): return int(m.tags.get("particle_turn", -1)) == s.turn and not _particle_mats(s, p, m).is_empty())
+			if fus_p.is_empty():
+				return events
+			var f_p = fus_p[0]
+			var mats_p: Array = _particle_mats(s, p, f_p)
+			mats_p.sort_custom(func(x, y): return x.atk() > y.atk())
+			var m_p = s.pick1(p, Loc.t("%s: which material's ATK?") % name, mats_p, mats_p[0], c)
+			events.append_array(s._banish(c))
+			f_p.tags.erase("particle_turn")
+			if f_p.atk_mod_turn != s.turn:
+				f_p.atk_mod_turn = s.turn
+				f_p.atk_mod_t = 0
+			f_p.atk_mod_t += m_p.atk()
+			events.append(_ev(p, f_p, Loc.t("%s gains %d ATK") % [f_p.cname(), m_p.atk()]))
+		"spark_back":
+			# Brilliant Spark, in your GY: send 1 "Gem-Knight" card from your hand to the GY; add this card to your hand.
+			var pay_s: Array = ps.hand.filter(func(h): return CardEffects.matches(h.data, {"has": "Gem-Knight", "monster": false}))
+			pay_s.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			var th_s = s.pick1(p, Loc.t("%s: send which card?") % name, pay_s, pay_s[0], c)
+			ps.hand.erase(th_s)
+			th_s.set_meta("from_hand", true)
+			s._to_gy(ps, th_s)
+			events.append({"type": "discard", "player": p, "card": th_s})
+			if ps.gy.has(c):
+				ps.gy.erase(c)
+				ps.hand.append(c)
+				events.append({"type": "gy_to_hand", "player": p, "card": c})
+		"bounce_opp_card":
+			# Gem-Knight Aquamarine: return 1 card your opponent controls to the hand.
+			var foe_b: Array = opp.monsters() + _all_st(s).filter(func(x): return x.owner == opp_i)
+			if not foe_b.is_empty():
+				foe_b.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+				events.append_array(s._bounce(s.pick1(p, Loc.t("%s: return which card to the hand?") % name, foe_b, foe_b[0], c)))
+		"bounce_set_st_all":
+			# Gem-Knight Amethyst: every Set Spell and Trap on the field back to the hand.
+			for st in _all_st(s).filter(func(x): return not x.face_up):
+				events.append_array(s._bounce(st))
+		"bounce_self":
+			if ps.field.has(c):
+				events.append_array(s._bounce(c))
+		"lbd":
+			# Lady Brilliant Diamond: send 1 face-up Gem-Knight you control to the GY; a Gem-Knight Fusion from the Extra Deck, ignoring its conditions.
+			var gk_l: Array = ps.monsters().filter(func(m): return m.face_up and CardEffects.matches(m.data, {"has": "Gem-Knight"}))
+			gk_l.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			var sent_l = s.pick1(p, Loc.t("%s: send which monster to the GY?") % name, gk_l, gk_l[0], c)
+			ps.field[ps.field.find(sent_l)] = null
+			s._to_gy(ps, sent_l)
+			events.append({"type": "destroy", "player": p, "card": sent_l, "zone": -1, "overlays": []})
+			events.append_array(s._monster_left(sent_l))
+			var fus_l: Array = gem_fusions(ps.extra).filter(func(x): return not s.big_locked(p, x, true))
+			if not fus_l.is_empty() and ps.free_zone() != -1:
+				var t_l2 = s.pick1(p, Loc.t("%s: Special Summon which Fusion Monster?") % name, fus_l, s._best_monsters(fus_l, 1)[0], c)
+				events.append_array(_ignoring(s, p, t_l2, ps.extra))
+				events.append_array(on_summon(s, p, t_l2, "special"))
+		"mdd":
+			# Master Diamond Dispersion: send it to the GY; up to 3 non-Rock "Gem-" monsters with different names from the Extra Deck/GY, ignoring conditions.
+			ps.once_names["MDD#q"] = s.turn
+			if ps.field.has(c):
+				ps.field[ps.field.find(c)] = null
+				s._to_gy(ps, c)
+				events.append({"type": "destroy", "player": p, "card": c, "zone": -1, "overlays": []})
+				events.append_array(s._monster_left(c))
+			var pool_d: Array = _mdd_pool(s, p)
+			var chosen_d: Array = []
+			var names_d := {}
+			pool_d.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+			for x in pool_d:
+				if chosen_d.size() < 3 and not names_d.has(x.cname()):
+					names_d[x.cname()] = true
+					chosen_d.append(x)
+			chosen_d = s.choose(p, Loc.t("%s: Special Summon up to 3 (different names)") % name, pool_d, chosen_d.size(), chosen_d, true, c)
+			var seen_d := {}
+			for x in chosen_d:
+				if seen_d.has(x.cname()) or ps.free_zone() == -1:
+					continue
+				seen_d[x.cname()] = true
+				var from_d: Array = ps.extra if ps.extra.has(x) else ps.gy
+				events.append_array(_ignoring(s, p, x, from_d))
+				events.append_array(on_summon(s, p, x, "special"))
+			ps.once_names["#ed_fusion_only"] = s.turn
+		"mdd_back":
+			if ps.gy.has(c) and int(ps.once_names.get("MDD#back", -1)) != s.turn and ps.free_zone() != -1 and c.proper and s.can_revive(c):
+				ps.once_names["MDD#back"] = s.turn
+				ps.gy.erase(c)
+				events.append_array(s._special(p, c, "reborn"))
+		"master_diamond":
+			# Master Diamond: banish a Level 7 or lower Gem-Knight Fusion from your GY; until the End Phase, its name and original effects.
+			var fus_m: Array = gem_fusions(ps.gy).filter(func(g): return g.level() <= 7 and not s.necro_holds(g))
+			var cp = s.pick1(p, Loc.t("%s: banish which Fusion Monster?") % name, fus_m, s._best_monsters(fus_m, 1)[0], c)
+			events.append_array(s._banish(cp))
+			c.tags["as"] = cp.cname()
+			c.tags["as_turn"] = s.turn
+			events.append(_ev(p, c, Loc.t("%s becomes %s until the End Phase") % [name, cp.cname()]))
+		"lapis_lazuli":
+			# Lady Lapis Lazuli: send 1 Gem-Knight monster from your Main or Extra Deck to the GY; 500 for each Special Summoned monster on the field.
+			var pool_ll: Array = (ps.deck + ps.extra).filter(func(x): return x.is_monster() and CardEffects.matches(x.data, {"has": "Gem-Knight"}))
+			var sent_ll = s.pick1(p, Loc.t("%s: send which monster to the GY?") % name, pool_ll, pool_ll[0], c)
+			var from_deck_ll: bool = ps.deck.has(sent_ll)
+			ps.deck.erase(sent_ll)
+			ps.extra.erase(sent_ll)
+			s._to_gy(ps, sent_ll)
+			events.append({"type": "mill", "player": p, "card": sent_ll, "deck": ps.deck.size()})
+			if from_deck_ll:
+				s._shuffle(ps.deck)
+				events.append_array(s.deck_sent(p, [sent_ll], c))
+			var n_ss := 0
+			for q in 2:
+				for m in s.players[q].monsters():
+					if m.tags.get("ss", false):
+						n_ss += 1
+			if n_ss > 0:
+				events.append_array(s._damage(opp_i, 500 * n_ss))
+		"ruby":
+			# Ruby: Tribute 1 face-up "Gem-" monster; gains its ATK until the End Phase.
+			var gems_r: Array = ps.monsters().filter(func(m): return m != c and m.face_up and CardEffects.matches(m.data, {"has": "Gem-"}) and s.can_tribute_fx(m))
+			gems_r.sort_custom(func(x, y): return s.atk_of(x, false) > s.atk_of(y, false))
+			var tr_r = s.pick1(p, Loc.t("%s: Tribute which monster?") % name, gems_r, gems_r[0], c)
+			var gain_r: int = s.atk_of(tr_r, false)
+			ps.field[ps.field.find(tr_r)] = null
+			s._to_gy(ps, tr_r)
+			events.append({"type": "tribute", "player": p, "card": tr_r})
+			events.append_array(trigger(s, tr_r, "tributed"))
+			events.append_array(s._monster_left(tr_r))
+			if c.atk_mod_turn != s.turn:
+				c.atk_mod_turn = s.turn
+				c.atk_mod_t = 0
+			c.atk_mod_t += gain_r
+			events.append(_ev(p, c, Loc.t("%s gains %d ATK") % [name, gain_r]))
+		"iolite":
+			# Iolite: banish 1 "Gem-" monster from your GY; add 1 "Gem-Knight" card from your GY to your hand.
+			var pay_i: Array = ps.gy.filter(func(g): return g.is_monster() and CardEffects.matches(g.data, {"has": "Gem-"}) and not s.necro_holds(g))
+			pay_i.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+			var b_i = s.pick1(p, Loc.t("%s: banish which monster?") % name, pay_i, pay_i[0], c)
+			events.append_array(s._banish(b_i))
+			var get_i: Array = ps.gy.filter(func(g): return CardEffects.matches(g.data, {"has": "Gem-Knight", "monster": false}) and s.gy_targetable(g) and not s.necro_holds(g))
+			if not get_i.is_empty():
+				get_i.sort_custom(func(x, y): return s._card_value(x) > s._card_value(y))
+				var g_i = s.pick1(p, Loc.t("%s: add which card?") % name, get_i, get_i[0], c)
+				ps.gy.erase(g_i)
+				ps.hand.append(g_i)
+				events.append({"type": "gy_to_hand", "player": p, "card": g_i})
+		"amber":
+			# Amber: add 1 of your banished monsters to your hand.
+			var ban_a: Array = ps.banished.filter(func(b): return b.face_up and b.is_monster())
+			if not ban_a.is_empty():
+				var g_a = s.pick1(p, Loc.t("%s: add which banished monster?") % name, ban_a, s._best_monsters(ban_a, 1)[0], c)
+				ps.banished.erase(g_a)
+				ps.hand.append(g_a)
+				events.append({"type": "search", "player": p, "card": g_a, "deck": ps.deck.size()})
+		"nepyrim":
+			# Nepyrim, Normal or Special Summoned: add 1 "Gem-Knight" card; halve their effect damage in the Main Phase; then you can Normal Summon 1 "Gem-" monster.
+			if int(ps.once_names.get("Nepyrim#search", -1)) != s.turn:
+				var pool_n: Array = ps.deck.filter(func(x): return CardEffects.matches(x.data, {"has": "Gem-Knight", "monster": false}) and x.cname() != "Gem-Knight Nepyrim")
+				if not pool_n.is_empty() and s.choose_option(p, Loc.t("%s: add a \"Gem-Knight\" card from your Deck?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+					ps.once_names["Nepyrim#search"] = s.turn
+					var g_n = s.pick1(p, Loc.t("%s: add which card?") % name, pool_n, pool_n[0], c)
+					ps.deck.erase(g_n)
+					ps.hand.append(g_n)
+					s._shuffle(ps.deck)
+					events.append({"type": "search", "player": p, "card": g_n, "deck": ps.deck.size()})
+					opp.once_names["#half_fx_main"] = s.turn
+					if s.current == p and s._in_main() and not ps.hand.filter(func(h): return h.is_monster() and CardEffects.matches(h.data, {"has": "Gem-"})).is_empty() \
+							and s.choose_option(p, Loc.t("%s: Normal Summon 1 \"Gem-\" monster now?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+						events.append_array(extra_ns(s, p, c, func(h): return CardEffects.matches(h.data, {"has": "Gem-"})))
+		"nepyrim_back":
+			# Nepyrim, sent from the hand or Deck to the GY: send 1 card from your hand to the GY; Special Summon it.
+			if ps.gy.has(c) and int(ps.once_names.get("Nepyrim#back", -1)) != s.turn and not ps.hand.is_empty() and ps.free_zone() != -1 and s.can_revive(c) \
+					and s.choose_option(p, Loc.t("%s: send 1 card from your hand to the GY to Special Summon it?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				ps.once_names["Nepyrim#back"] = s.turn
+				var cheap_n: Array = ps.hand.duplicate()
+				cheap_n.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+				var th_n = s.pick1(p, Loc.t("%s: send which card?") % name, cheap_n, cheap_n[0], c)
+				ps.hand.erase(th_n)
+				th_n.set_meta("from_hand", true)
+				s._to_gy(ps, th_n)
+				events.append({"type": "discard", "player": p, "card": th_n})
+				ps.gy.erase(c)
+				events.append_array(s._special(p, c, "reborn"))
+				events.append_array(on_summon(s, p, c, "special"))
+		"obsidian":
+			# Obsidian, sent from the hand to the GY: Special Summon 1 Level 4 or lower Normal Monster from your GY.
+			var pool_o: Array = ps.gy.filter(func(g): return g != c and is_normal_now(g) and g.level() <= 4 and s.can_revive(g) and s.gy_targetable(g))
+			if not pool_o.is_empty() and ps.free_zone() != -1 and not s.ss_locked(p) \
+					and s.choose_option(p, Loc.t("%s: Special Summon a Normal Monster from your GY?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				var t_o = s.pick1(p, Loc.t("%s: Special Summon which monster?") % name, pool_o, s._best_monsters(pool_o, 1)[0], c)
+				ps.gy.erase(t_o)
+				events.append_array(s._special(p, t_o, "reborn"))
+		"quartz_set":
+			# Quartz: Set 1 "Fusion" Continuous Spell from your Deck; only "Gem-Knight" monsters from the Extra Deck the rest of this turn.
+			ps.once_names["Quartz#set"] = s.turn
+			ps.once_names["#ed_gem_only"] = s.turn
+			var pool_q: Array = ps.deck.filter(func(x): return x.cname().contains("Fusion") and str(SpellRules.spec(x).get("k", "")) == "cont")
+			if not pool_q.is_empty() and ps.spells.has(null):
+				var q_s = s.pick1(p, Loc.t("%s: Set which card?") % name, pool_q, pool_q[0], c)
+				ps.deck.erase(q_s)
+				var zq := ps.spells.find(null)
+				ps.spells[zq] = q_s
+				q_s.face_up = false
+				q_s.set_turn = s.turn
+				s._shuffle(ps.deck)
+				events.append({"type": "set_st", "player": p, "card": q_s, "zone": zq})
+		"quartz_back":
+			# Quartz, used as Fusion Material: add 1 "Gem-Knight" monster from your GY, except Quartz.
+			if int(ps.once_names.get("Quartz#back", -1)) != s.turn:
+				var pool_qb: Array = ps.gy.filter(func(g): return g.is_monster() and CardEffects.matches(g.data, {"has": "Gem-Knight"}) and g.cname() != "Gem-Knight Quartz" and not CardData.is_extra(g.id) and s.gy_targetable(g) and not s.necro_holds(g))
+				if not pool_qb.is_empty():
+					ps.once_names["Quartz#back"] = s.turn
+					var g_q = s.pick1(p, Loc.t("%s: add which monster?") % name, pool_qb, s._best_monsters(pool_qb, 1)[0], c)
+					ps.gy.erase(g_q)
+					ps.hand.append(g_q)
+					events.append({"type": "gy_to_hand", "player": p, "card": g_q})
+		"rose_copy":
+			# Brilliant Rose / Crystal Rose: send a "Gem-Knight" (or "Melodious") monster; take its name (Brilliant Rose: and Type/Attribute) until the End Phase.
+			var from_r: Array = ps.extra if str(a[1]) == "extra" else (ps.hand + ps.deck).filter(func(x): return not CardData.is_extra(x.id))
+			var pool_rc: Array = from_r.filter(func(x): return x.is_monster() and CardEffects.matches(x.data, {"has": "Gem-Knight|Melodious"}) and x != c)
+			if not pool_rc.is_empty():
+				var t_rc = s.pick1(p, Loc.t("%s: send which monster to the GY?") % name, pool_rc, pool_rc[0], c)
+				var was_deck: bool = ps.deck.has(t_rc)
+				ps.extra.erase(t_rc)
+				ps.deck.erase(t_rc)
+				if ps.hand.has(t_rc):
+					ps.hand.erase(t_rc)
+					t_rc.set_meta("from_hand", true)
+				s._to_gy(ps, t_rc)
+				events.append({"type": "mill", "player": p, "card": t_rc, "deck": ps.deck.size()})
+				if was_deck:
+					s._shuffle(ps.deck)
+					events.append_array(s.deck_sent(p, [t_rc], c))
+				c.tags["as"] = str(t_rc.data.get("name", ""))
+				c.tags["as_turn"] = s.turn
+				if str(a[1]) == "extra":
+					c.tags["race_as"] = str(t_rc.data.get("race", ""))
+					c.tags["attr_as"] = str(t_rc.data.get("attribute", ""))
+				events.append(_ev(p, c, Loc.t("%s becomes %s until the End Phase") % [name, t_rc.cname()]))
+		"crystal_rose_back":
+			# Crystal Rose, in your GY: banish 1 Fusion Monster from your GY; Special Summon it in Defense Position.
+			var fus_c: Array = ps.gy.filter(func(g): return g.is_monster() and g.frame() == "fusion" and not s.necro_holds(g))
+			if ps.gy.has(c) and not fus_c.is_empty():
+				ps.once_names["CRose#gy"] = s.turn
+				fus_c.sort_custom(func(x, y): return s._card_value(x) < s._card_value(y))
+				events.append_array(s._banish(s.pick1(p, Loc.t("%s: banish which Fusion Monster?") % name, fus_c, fus_c[0], c)))
+				ps.gy.erase(c)
+				events.append_array(s._special(p, c, "reborn", "def"))
+		"emerald":
+			# Emerald: banish it and 1 face-up Normal Monster you control; Special Summon 1 "Gem-Knight" Fusion Monster from your GY.
+			var nm_e: Array = ps.monsters().filter(func(m): return m != c and m.face_up and is_normal_now(m))
+			if nm_e.is_empty():
+				return events
+			var pay_e = s.pick1(p, Loc.t("%s: banish which Normal Monster?") % name, nm_e, nm_e[0], c)
+			events.append_array(s._banish(c))
+			events.append_array(s._banish(pay_e))
+			var fus_e: Array = gem_fusions(ps.gy).filter(func(g): return g.proper and s.can_revive(g) and s.gy_targetable(g))
+			if not fus_e.is_empty() and ps.free_zone() != -1:
+				var t_e = s.pick1(p, Loc.t("%s: Special Summon which Fusion Monster?") % name, fus_e, s._best_monsters(fus_e, 1)[0], c)
+				ps.gy.erase(t_e)
+				events.append_array(s._special(p, t_e, "reborn"))
+		"lazuli":
+			# Lazuli, sent to the GY by a card effect: add 1 Normal Monster from your GY to your hand.
+			var pool_lz: Array = ps.gy.filter(func(g): return g != c and is_normal_now(g) and s.gy_targetable(g) and not s.necro_holds(g))
+			if not pool_lz.is_empty() and s.choose_option(p, Loc.t("%s: add a Normal Monster from your GY?") % name, [Loc.t("Yes"), Loc.t("No")], 0, c) == 0:
+				var g_lz = s.pick1(p, Loc.t("%s: add which monster?") % name, pool_lz, s._best_monsters(pool_lz, 1)[0], c)
+				ps.gy.erase(g_lz)
+				ps.hand.append(g_lz)
+				events.append({"type": "gy_to_hand", "player": p, "card": g_lz})
 		"windmaster":
 			# Mist Valley Windmaster: both players send cards from their hand to the GY until they have 4.
 			for q in [p, opp_i]:
@@ -7278,6 +7862,18 @@ static func _destroy_action(s: DuelState, p: int, c, what: String, ctx: Dictiona
 				return events
 			events.append(_ev(p, c, Loc.t("%s destroys %s") % [c.cname(), got6[0].cname()]))
 			events.append_array(s._destroy_st(got6[0]))
+			return events
+		"face_card_pick":
+			# "Target 1 face-up card on the field; destroy that target" (Gem-Knight Prismaura).
+			var ups_f: Array = (opp.monsters() + s.players[p].monsters()).filter(func(m): return m.face_up and m != c and can_target(c, m)) + _all_st(s).filter(func(x): return x.face_up)
+			if not ups_f.is_empty():
+				ups_f.sort_custom(func(x, y): return (1 if x.owner == opp_i else 0) * 10000 + s._card_value(x) > (1 if y.owner == opp_i else 0) * 10000 + s._card_value(y))
+				var got_f = s.pick1(p, Loc.t("%s: destroy which face-up card?") % c.cname(), ups_f, ups_f[0], c)
+				events.append(_ev(p, c, Loc.t("%s destroys %s") % [c.cname(), got_f.cname()]))
+				if got_f.is_monster() and (s.players[0].field.has(got_f) or s.players[1].field.has(got_f)):
+					events.append_array(s._destroy(got_f))
+				else:
+					events.append_array(s._destroy_st(got_f))
 			return events
 		"opp_st_pick":
 			# "Target 1 Spell/Trap your opponent controls; destroy that target" (Explosive Magician).

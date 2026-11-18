@@ -5,6 +5,17 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.34.3
+
+**Gem-Knights: the whole family, 45 cards.** 39 of them are new, so the game now has **1,898 cards**, every one working and obtainable.
+
+- **The cards:** the Gem-Knight Normal Monsters (Garnet, Sapphire, Tourmaline, Lapis, Crystal), the effect monsters (Nepyrim, Alexandrite, Quartz, Obsidian, Lazuli, Emerald, Hollowcore, Brilliant Rose, Crystal Rose, the three Geminis, Gem-Elephant, Gem-Merchant, Gem-Turtle), 14 Fusions up to Lady Brilliant Diamond, Master Diamond and Master Diamond Dispersion, Gem-Knight Pearl, and every Gem-Knight Spell and Trap: Gem-Knight Fusion, Brilliant, Particle, Pyroxene, Fragment, Absorb and Scatter Fusion, Gem-Knight Dispersion, Gem-Enhancement and Brilliant Spark.
+- **New engine pieces they needed:** Fusion Summons with materials from the Deck, the Graveyard (banished) or the Extra Deck; a Spell that destroys the monsters it Summoned when it leaves; a monster that takes another monster's name, Type and Attribute until the End Phase (and counts as it for Fusion materials); Master Diamond copying a Fusion's effects; "only Gem-Knight / only Fusion monsters from the Extra Deck this turn"; halved effect damage in the Main Phase; a Trap that fires when your monster is destroyed by the opponent's attack or effect; effects that trigger when a card is used as Fusion Material.
+- **Brilliant Gems:** a family pack (Family tab, opens in the ZEXAL era, sold in Heartland) and a 40-card theme deck with a 15-card Extra Deck.
+- **New duelist:** the Jewelry Shop Owner in Heartland plays the Gem-Knight deck.
+
+Not checked: played by the test duels (the Gem-Knight deck won 4 of 8 against story decks), not watched.
+
 ## What is in 0.34.2.5
 
 **Catch-up: the cards the first families were missing, and every card working exactly as written.** 25 new cards, so the game now has **1,859 cards**, every one working and obtainable. New rule from here on: a card that needs a new engine piece gets the piece, it is never skipped or changed (only Link and Pendulum cards stay out).
