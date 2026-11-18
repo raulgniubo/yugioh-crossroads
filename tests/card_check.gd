@@ -71,7 +71,7 @@ func _ready() -> void:
 	for nm in no_es:
 		problems.append("no Spanish text: " + str(nm))
 	if no_flavor > 0:
-		notes.append("%d Normal Monsters have no Spanish flavor text (they have no effect to read, so this is a note, not a problem)" % no_flavor)
+		problems.append("%d Normal Monsters have no Spanish flavor text" % no_flavor)
 	# 4. Every deck: its cards exist, are in the game, and it is a legal list.
 	var roam_src := ""
 	for f in ["roam_data.gd", "interiors.gd", "street_duels.gd", "roam_scene.gd"]:
