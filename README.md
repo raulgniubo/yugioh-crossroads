@@ -31,7 +31,7 @@ How it was checked:
 
 - **Card check:** 2,215 cards, 10 families, 0 problems.
 - **Sweep:** 1,490 full duels and 720 set-up positions, no card script complained. 2,125 of the 2,215 cards (95.9%) were summoned, Set or activated in a full duel. The other 90 were put straight on the table: 52 did something, 38 only stood there. For those 38 I know they load and sit on the table without an error, not that their effect works.
-- **Every deck, 20 duels each through the game's own duel driver:** 1,020 duels over 51 decks. The table and the engine never disagreed. One card script complained once: Doble Passe read its attack target after that monster had already left the field. That is a slip in the official script, and the game now carries a corrected copy.
+- **Every deck, 20 duels each through the game's own duel driver:** 1,020 duels over 51 decks. The table and the engine never disagreed. The first run had one complaint in 1,020 duels: the official Doble Passe script read its attack target after that monster had already left the field. The game now carries a corrected copy, and the same 1,020 duels run again came back with none.
 - The classic test suite still passes.
 
 Not done:
