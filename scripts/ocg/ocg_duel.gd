@@ -27,6 +27,7 @@ var retries := 0
 var steps := 0
 var log_msgs := false
 var chain_cards: Array = []  # what is on the chain right now, in order
+var _chain_n := 0            # how long the chain being built or resolved is
 var _pending = null         # a card that just reached the field, waiting for its Summon / Set / activation message
 var _flip = null            # a Set Spell/Trap that just turned face-up, waiting for its activation message
 var _last_request = null
@@ -397,7 +398,7 @@ func _flush(events: Array) -> void:
 		var c = a["card"]
 		if a["kind"] == "m":
 			if c.face_up:
-				events.append({"type": "special", "player": a["p"], "card": c, "zone": a["zone"], "method": _method(c, int(a["from"]))})
+				events.append({"type": "special", "player": a["p"], "card": c, "zone": a["zone"], "method": _method(c, int(a["from"])), "origin": int(a["from"])})
 			else:
 				events.append({"type": "set", "player": a["p"], "card": c, "zone": a["zone"]})
 		elif c.face_up:
@@ -476,9 +477,19 @@ func _one(m: Dictionary, ev: Array) -> void:
 				ev.append({"type": "flip", "player": int(m["card"]["con"]), "card": fc, "zone": int(m["card"]["seq"])})
 		70:
 			_chaining(m, ev)
-		73, 75, 76:
-			pass
+		72:
+			if _chain_n >= 2:
+				ev.append({"type": "chain_solving", "n": int(m["n"])})
+		73:
+			if _chain_n >= 2:
+				ev.append({"type": "chain_solved", "n": int(m["n"])})
+		75, 76:
+			# (negated: the activation itself; disabled: its effect. Either way it does nothing.)
+			ev.append({"type": "chain_negated", "n": int(m["n"]), "card": chain_cards[int(m["n"]) - 1] if int(m["n"]) >= 1 and int(m["n"]) <= chain_cards.size() else null})
 		74:
+			if _chain_n >= 1:
+				ev.append({"type": "chain_end"})
+			_chain_n = 0
 			chain_cards.clear()
 		90:
 			var dp := int(m["p"])
@@ -679,7 +690,7 @@ func _arrived(cl: Dictionary, kind: String, ev: Array) -> void:
 			if a == null:
 				return   # (already there: a Summon that was being negotiated)
 			if c.face_up:
-				ev.append({"type": "special", "player": con, "card": c, "zone": seq, "method": _method(c, from)})
+				ev.append({"type": "special", "player": con, "card": c, "zone": seq, "method": _method(c, from), "origin": from})
 			else:
 				ev.append({"type": "set", "player": con, "card": c, "zone": seq})
 
@@ -692,17 +703,21 @@ func _chaining(m: Dictionary, ev: Array) -> void:
 	var who := int(m["tc"])
 	var n := int(m["n"])
 	chain_cards.append(c)
-	if n > 1:
-		ev.append({"type": "chain", "n": n, "player": who})
+	_chain_n = n
+	# (0.57.0) Every link is told to the table after its card has been shown: the table hangs a
+	# numbered link on it once the chain is two long.
+	var link := {"type": "chain_link", "n": n, "player": who, "card": c}
 	if _pending != null and _pending["card"] == c and _pending["kind"] == "s":
 		var a: Dictionary = _pending
 		_pending = null
 		ev.append({"type": "activate", "player": who, "card": c, "zone": a["zone"]})
+		ev.append(link)
 		return
 	if _flip != null and _flip["card"] == c:
 		var b: Dictionary = _flip
 		_flip = null
 		ev.append({"type": "trap", "player": who, "card": c, "zone": b["zone"]})
+		ev.append(link)
 		return
 	_flush(ev)
 	var text := ""
@@ -714,6 +729,7 @@ func _chaining(m: Dictionary, ev: Array) -> void:
 	if line != "" and line.length() < 70:
 		text += ": " + line
 	ev.append({"type": "effect", "player": who, "card": c if c != null and (loc & OcgCore.LOC_ONFIELD) != 0 else null, "text": text})
+	ev.append(link)
 
 
 func _move(m: Dictionary, ev: Array) -> void:

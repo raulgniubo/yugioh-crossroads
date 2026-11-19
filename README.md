@@ -5,6 +5,21 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.57.0
+
+Duels feel alive, part 1. No cards added: 8,384 total.
+
+- **A chain you can see.** Every card that goes on a chain gets a numbered link over it, joined to the one before by a chain of light. When the chain resolves the links go off from the last to the first: the link swells, its chain snaps and it bursts. A negated card gets a red cross stamped on it. (Before, a chain was only a "CHAIN 2" banner.)
+- **A set piece for each kind of summon, with the real materials.** Synchro: the Tuner becomes rings of light (one per Level), the other materials become stars that fly up through them, and a pillar of light answers. Xyz: a galaxy opens in the floor, each material turns into a light and spirals down into it, it bursts and the monster rises out of it. Fusion: the materials circle a whirl of two colors, are drawn in, and it folds to a point and bursts. Ritual: a magic circle draws itself, blue flames light around it, the offerings sink in, and the monster comes down inside a pillar of light. (Before, these were rings and a plain beam, and the camera sat too low to see them.)
+- **Xyz Materials circle their monster** as lights, one for each. Using one sends its light flying off.
+- **Cards land on the field like in Master Duel.** A Normal Summon: the zone locks on, the card shows itself over it for a beat and is slammed down, and the zone answers with the card's outline flashing outward, a ring and streaks of light. A Set is quiet: a violet outline and the card laid face-down. Spells open a circle of light under them, Traps spring open with light behind them, and Special Summons come from where the card really was (it rises out of the Graveyard in a pillar of gold, comes out of the Deck, the Extra Deck or the banished pile).
+- **The finishing blow.** The attack that ends the duel is played in slow motion: cinema bars, the attacker gathers itself over a circle of light, crosses the whole field with a trail behind it, and the picture breaks like glass on the hit. A last hit from a card effect breaks the glass too.
+- **Duelists say more.** New lines for chaining, negating (and being negated) and for each kind of summon, for every personality and for your own duelist, in English and Spanish.
+- The monster's name band now waits a moment, so you see the monster standing on the field first.
+- A light follows the card when you draw.
+- New kit behind all of this: `DuelFx` (shader-drawn rings, magic circles, pillars, spirals, glows, card outlines, rays, chains), `SummonFx`, `ChainFx`, `ScreenFx`. The effects are pre-loaded when a duel starts so the first one does not stutter.
+- **Windows:** only the .exe changed.
+
 ## What is in 0.56.0
 
 Card plan part 6: 533 picked cards from after ZEXAL. **533 cards added: 8,384 total.**

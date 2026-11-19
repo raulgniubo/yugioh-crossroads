@@ -1322,6 +1322,8 @@ func sync_holos(state) -> void:
 				_holos[m.uid] = h
 			h.card = c
 			h.set_defense(not m.attack_pos)
+			if "overlays" in m and (m.overlays.size() > 0 or _orbits.has(m.uid)):
+				set_overlays(m)
 	for uid in _holos.keys():
 		if not seen.has(uid):
 			var h2: MonsterHolo = _holos[uid]
@@ -1423,6 +1425,14 @@ func anim_draw(p: int, inst, deck_count: int) -> void:
 			fly.call()
 			await _wait(0.16)
 			return
+		# (a line of light follows the card off the Deck)
+		var trail := DuelFx.orb(self, c.position, Color("9fd8ff"), 0.22)
+		var ttw := create_tween()
+		ttw.tween_method(func(_t: float):
+			if is_instance_valid(trail) and is_instance_valid(c):
+				trail.position = c.position, 0.0, 1.0, Settings.t(0.3))
+		ttw.tween_callback(trail.queue_free)
+		DuelFx.ring(self, deck_pos(p), Color("9fd8ff"), 0.2, 0.75, 0.35, 0.05)
 		await _move(c, _near_camera_xform(), 0.3, 0.8)
 		var tw := create_tween()
 		tw.tween_method(c.set_alpha, 1.0, 0.0, Settings.t(0.1))
@@ -1456,30 +1466,46 @@ func anim_summon(p: int, inst, zone: int, set_card: bool) -> void:
 	var to := Transform3D(table_basis(p, not set_card, not set_card), monster_zone_pos(p, zone) + Vector3(0, 0.02, 0))
 	var col: Color = Comic.SKY if p == 0 else Color("ff8a98")
 	if set_card:
-		# Set: it glides in low and is laid face-down, quietly. A soft ring, no fanfare.
+		# Set: its zone draws a quiet outline, the card glides in low and is laid face-down in it.
+		var violet := Color("9d7bff")
+		DuelFx.rect(self, to.origin, violet, 1.5, 1.0, 0.36, true, 1.5)
 		await _move(c, Transform3D(to.basis, to.origin + Vector3(0, 0.5, 0)), 0.3, 0.45)
 		if not _orbs.is_empty():
 			await _consume_orbs(to.origin)
-		await _move(c, to, 0.14, 0.0)
-		_land(c, 0.08)
-		_burst(to.origin, Color("9d7bff"), 0.9)
-		shake(0.1)
+		await _move(c, to, 0.16, 0.0)
+		_land(c, 0.07)
+		DuelFx.rect(self, to.origin, violet, 1.0, 1.4, 0.45, true, 2.2, 0.6)
+		DuelFx.sparks(self, to.origin + Vector3(0, 0.04, 0), Color("c9b8ff"), 10, 1.7, 0.0, 0.5, -0.5, 0.04)
+		Sfx.play("set", -6.0)
+		shake(0.08)
 		return
-	# Summon: up over its zone, the zone lights under it, a beat in the air, then it is slammed down.
+	# Summon: the zone locks on, the card comes over it and shows itself for a beat, then it is
+	# slammed down and the zone answers with light.
+	DuelFx.rect(self, to.origin, col, 1.8, 1.0, 0.4, false, 1.6)
 	var hover := Transform3D(to.basis * Basis(Vector3.RIGHT, 0.35), to.origin + Vector3(0, 1.25, 0.25 if p == 0 else -0.25))
 	await _move(c, hover, 0.28, 0.4)
 	if not _orbs.is_empty():
 		await _consume_orbs(to.origin)
-	_ring_fx(to.origin + Vector3(0, 0.03, 0), col, 0.9, 0.0, 0.0)
-	await _wait(0.06)
-	await _dash(c, to, 0.12)
+	create_tween().tween_method(c.flash, 1.4, 0.2, Settings.t(0.14))
+	await _wait(0.08)
+	await _dash(c, to, 0.11)
 	_land(c)
-	create_tween().tween_method(c.flash, 1.6, 0.0, Settings.t(0.4))
-	_burst(to.origin, col, 1.7)
-	_burst(to.origin, Color.WHITE, 0.9)
-	_sparks(to.origin + Vector3(0, 0.1, 0), col, 14)
-	shake(0.3)
+	slam(to.origin, col, 1.0)
+	create_tween().tween_method(c.flash, 1.8, 0.0, Settings.t(0.45))
 	await hologram(inst, to.origin)
+
+
+## A card hits the table hard: the outline of the card flashes outward, a ring runs over the
+## floor, light is thrown along it and the table shakes. `k` is how hard (1 = a Normal Summon).
+func slam(at: Vector3, col: Color, k := 1.0, sideways := false) -> void:
+	DuelFx.rect(self, at, Color.WHITE.lerp(col, 0.35), 1.0, 1.5 + 0.5 * k, 0.4 + 0.1 * k, sideways, 3.0, 1.0)
+	DuelFx.ring(self, at, col, 0.35, 1.3 + 0.9 * k, 0.5 + 0.1 * k, 0.05)
+	DuelFx.rays(self, at, col.lightened(0.25), 1.5 + 0.9 * k, 0.4, int(20 + 10 * k))
+	DuelFx.glow(self, at + Vector3(0, 0.25, 0), col.lightened(0.5), 1.6 + 1.2 * k, 0.35, 0.6 * k, 2.6)
+	DuelFx.sparks(self, at + Vector3(0, 0.06, 0), col.lightened(0.3), int(14 + 16 * k), 3.2 + 1.5 * k, 0.12, 0.6, -3.0)
+	Sfx.play("land", -5.0, 1.0 - 0.12 * (k - 1.0))
+	shake(0.3 * k)
+	house(clampf(0.15 * k, 0.1, 0.6), col, at)
 
 
 func hologram(inst, at: Vector3, force_big := false) -> void:
@@ -1507,7 +1533,6 @@ func hologram(inst, at: Vector3, force_big := false) -> void:
 	spr.add_child(glow)
 	var beam := _beam(at, big)
 	if big:
-		ace_summoned.emit(inst)
 		_ring_fx(at + Vector3(0, 0.05, 0), col, 1.4, 0.0, 0.0)
 		_ring_fx(at + Vector3(0, 0.05, 0), col, 2.2, 0.15, 0.0)
 		_flash(at + Vector3(0, h * 0.5, 0), col)
@@ -1520,11 +1545,13 @@ func hologram(inst, at: Vector3, force_big := false) -> void:
 	if big:
 		shake(0.45)
 		Sfx.play("impact")
+		# (The monster is seen standing there for a moment before its name crosses the screen.)
+		get_tree().create_timer(Settings.t(0.4)).timeout.connect(func(): ace_summoned.emit(inst))
 	# Idle: a gentle float while it is on screen.
 	var float_tw := create_tween().set_loops(2).set_trans(Tween.TRANS_SINE)
 	float_tw.tween_property(spr, "position:y", spr.position.y + 0.12, Settings.t(0.4))
 	float_tw.tween_property(spr, "position:y", spr.position.y, Settings.t(0.4))
-	await _wait(1.6 if big else 0.55)
+	await _wait(1.95 if big else 0.55)
 	float_tw.kill()
 	if big:
 		cam_release(0.55)
@@ -1575,26 +1602,8 @@ func _beam(at: Vector3, big: bool) -> MeshInstance3D:
 
 
 func _burst(at: Vector3, color: Color, size: float) -> void:
-	var mi := MeshInstance3D.new()
-	var t := TorusMesh.new()
-	t.inner_radius = 0.42
-	t.outer_radius = 0.5
-	t.rings = 48
-	t.ring_segments = 6
-	mi.mesh = t
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	m.albedo_color = Color(color, 1.0)
-	mi.material_override = m
-	mi.position = at + Vector3(0, 0.05, 0)
-	mi.scale = Vector3(0.4, 0.4, 0.4)
-	add_child(mi)
-	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(mi, "scale", Vector3(size * 2.2, 1, size * 2.2), Settings.t(0.5))
-	tw.tween_property(m, "albedo_color:a", 0.0, Settings.t(0.5))
-	tw.chain().tween_callback(mi.queue_free)
+	# (a ring of light spreading over the floor; drawn by DuelFx since 0.57.0)
+	DuelFx.ring(self, at + Vector3(0, 0.02, 0), color, 0.2 * size, 1.1 * size, 0.5, 0.055)
 
 
 const METHOD_COLORS := {
@@ -1623,51 +1632,65 @@ func anim_material(p: int, inst, from: String, center: Vector3) -> void:
 	await _move(c, to, 0.32, 0.4)
 
 
+# ---- the chain (see ChainFx)
+
+var chain_fx: ChainFx
+
+
+## Where a card that goes on the chain is, as far as the table can show it.
+func chain_spot(inst, p: int) -> Vector3:
+	var c := card_for(inst) if inst != null else null
+	if c != null and not is_instance_valid(c):
+		c = null
+	if c != null and _opp_hand.has(c):
+		return Vector3(c.position.x * 0.8, 0.2, -3.0)
+	if c != null and is_instance_valid(c):
+		# (on the table, not where a card held up to be read happens to be)
+		return Vector3(c.position.x, 0.03, c.position.z - (0.3 if c.position.y > 0.6 else 0.0))
+	if inst != null and state_ref != null:
+		var ps = state_ref.players[int(inst.owner)]
+		if ps.gy.has(inst):
+			return gy_pos(int(inst.owner)) + Vector3(0, 0.1, 0)
+		if ps.banished.has(inst):
+			return banish_pos(int(inst.owner)) + Vector3(0, 0.1, 0)
+	return Vector3(0, 0.25, 3.2 if p == 0 else -3.0)
+
+
+func chain_link(n: int, p: int, inst) -> void:
+	if chain_fx == null:
+		chain_fx = ChainFx.new(self)
+		add_child(chain_fx)
+	chain_fx.link(n, p, inst, chain_spot(inst, p))
+
+
 func special_center(p: int, zone: int) -> Vector3:
 	return monster_zone_pos(p, zone)
 
 
-## Pull the materials together, play the method's effect, then land the monster.
-func anim_special(p: int, inst, zone: int, method: String, materials: Array) -> void:
+## A Special Summon. The Extra Deck and Ritual Summons get their set piece with the real
+## materials (SummonFx); a monster back from the Graveyard rises out of it; anything else comes
+## from where it was (hand, Deck, Extra Deck, banished). `origin` is the engine's location.
+func anim_special(p: int, inst, zone: int, method: String, materials: Array, origin := 0) -> void:
 	var col: Color = METHOD_COLORS.get(method, UITheme.ACCENT)
-	if method == "reborn":
-		remove_from_gy(inst)
+	var from_gy := method == "reborn"
 	var at := monster_zone_pos(p, zone) + Vector3(0, 0.02, 0)
 	var core := at + Vector3(0, 1.6, 0)
 	var grand: bool = method in ["fusion", "synchro", "xyz", "ritual"]
+	var attack: bool = true if not ("attack_pos" in inst) else bool(inst.attack_pos)
+	var to := Transform3D(table_basis(p, true, attack), at)
 	if grand:
 		# The camera drops low and looks up at the summon while the field goes dark.
 		var side := 1.0 if at.x <= 0.0 else -1.0
-		cam_shot(at + Vector3(2.6 * side, 1.5, 4.6 if p == 0 else 5.4), core + Vector3(0, 0.5, 0), 0.5)
-		_dim_field(1.9)
-		_summon_scene(method, at, core, col, materials.size())
-	# Materials spiral into the core and vanish
-	# (Only materials that still have a card on the table fly in: a tween with nothing in it never ends.)
-	var flying: Array = materials.filter(func(m): return card_for(m) != null)
-	var tw: Tween = create_tween().set_parallel() if flying.size() > 0 else null
-	for m in flying:
-		var mc := card_for(m)
-		if mc == null:
-			continue
-		tw.tween_property(mc, "position", core, Settings.t(0.45)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-		tw.tween_property(mc, "scale", Vector3(0.2, 0.2, 0.2), Settings.t(0.45))
-		tw.tween_method(mc.set_alpha, 1.0, 0.0, Settings.t(0.45))
-	match method:
-		"synchro":
-			for i in 3:
-				_ring_fx(at + Vector3(0, 0.3 + i * 0.7, 0), col, 0.8, 0.12 * i, 1.0)
-		"xyz":
-			_vortex(core, col)
-		"fusion":
-			_swirl(core, col)
-		_:
-			_ring_fx(at + Vector3(0, 0.1, 0), col, 1.0, 0.0, 1.0)
-	if tw:
-		await tw.finished
-	else:
-		await _wait(0.45)
-	if grand:
-		await _wait(0.55)
+		if method == "fusion":
+			# (the whirl hangs in the air: seen from low down)
+			cam_shot(at + Vector3(2.6 * side, 1.5, 4.6 if p == 0 else 5.4), core + Vector3(0, 0.5, 0), 0.5)
+		else:
+			# (rings, a galaxy, a magic circle: seen from above, at an angle, so the floor shows)
+			cam_shot(at + Vector3(2.3 * side, 4.4, 4.7 if p == 0 else 5.5), at + Vector3(0, 1.15, 0), 0.5)
+		_dim_field(2.3)
+		house(0.6, col, at, 1.2)
+		var flying: Array = materials.filter(func(m): return card_for(m) != null)
+		await SummonFx.play(self, method, at, core, flying)
 	for m in materials:
 		var mc := card_for(m)
 		if mc:
@@ -1675,72 +1698,133 @@ func anim_special(p: int, inst, zone: int, method: String, materials: Array) -> 
 			mc.queue_free()
 		if method != "xyz":
 			_add_to_gy(m)
-	shake(0.6)
-	_flash(core, col)
-	var c := _new_card(inst)
-	c.transform = Transform3D(table_basis(p, true, true), core)
-	c.scale = Vector3(0.1, 0.1, 0.1)
-	var grow := create_tween()
-	grow.tween_property(c, "scale", Vector3.ONE, Settings.t(0.25)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	await grow.finished
-	await _move(c, Transform3D(table_basis(p, true, true), at), 0.25, 0.0)
-	_burst(at, col, 2.2)
-	if method == "xyz":
-		set_overlays(inst)
+	var c: Card3D
 	if grand:
-		for i in 3:
-			_burst(at, col.lightened(0.2 * i), 2.6 + i * 1.2)
-		_sparks(at + Vector3(0, 0.4, 0), col.lightened(0.3), 70)
-		shake(0.9)
-	await hologram(inst, at, true)
+		c = _new_card(inst)
+		match method:
+			"xyz":
+				# It rises out of the galaxy, turning, and settles on its zone.
+				c.transform = Transform3D(to.basis, at + Vector3(0, 0.05, 0))
+				c.scale = Vector3.ONE * 0.25
+				var up := create_tween().set_parallel()
+				up.tween_property(c, "position:y", at.y + 1.25, Settings.t(0.34)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+				up.tween_property(c, "scale", Vector3.ONE, Settings.t(0.3)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				up.tween_property(c, "rotation:y", c.rotation.y + TAU, Settings.t(0.34)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+				up.tween_method(c.flash, 3.0, 0.4, Settings.t(0.34))
+				await up.finished
+				c.transform = Transform3D(to.basis, at + Vector3(0, 1.25, 0))
+				await _wait(0.06)
+				await _dash(c, to, 0.12)
+			"ritual":
+				# It comes down inside the pillar of light.
+				c.transform = Transform3D(to.basis, at + Vector3(0, 4.2, 0))
+				c.flash(2.5)
+				var down := create_tween().set_parallel()
+				down.tween_property(c, "position:y", at.y, Settings.t(0.42)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+				down.tween_method(c.flash, 2.5, 0.6, Settings.t(0.42))
+				await down.finished
+				c.transform = to
+			_:
+				# It takes shape in the light, hangs there for a beat, and is slammed down.
+				c.transform = Transform3D(to.basis * Basis(Vector3.RIGHT, 0.3), core)
+				c.scale = Vector3.ONE * 0.1
+				c.flash(3.0)
+				var grow := create_tween().set_parallel()
+				grow.tween_property(c, "scale", Vector3.ONE * 1.15, Settings.t(0.22)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				grow.tween_method(c.flash, 3.0, 0.5, Settings.t(0.3))
+				await grow.finished
+				await _wait(0.1)
+				c.scale = Vector3.ONE
+				await _dash(c, to, 0.12)
+		_land(c, 0.18)
+		slam(at, col, 1.8, not attack)
+		create_tween().tween_method(c.flash, 2.2, 0.0, Settings.t(0.5))
+		if method == "xyz":
+			set_overlays(inst)
+	else:
+		# From where it was: the Graveyard, the hand, a Deck, the banished pile.
+		var start := Transform3D(to.basis * Basis(Vector3.RIGHT, 0.3), core)
+		var gold := Color("ffe9a8")
+		if from_gy:
+			var gp := gy_pos(int(inst.owner)) + Vector3(0, 0.12, 0)
+			remove_from_gy(inst)
+			start = Transform3D(table_basis(int(inst.owner), true, true), gp)
+			DuelFx.pillar(self, gp, gold, 0.42, 4.0, 0.75, 0.0, 2.4)
+			DuelFx.glyph(self, gp, gold, 0.7, 0.8, {"rings": 1, "ticks": 24, "star": 0, "turn": 1.2})
+			DuelFx.sparks(self, gp, gold, 20, 2.6, 0.9, 0.8, 1.0)
+		elif origin == OcgCore.LOC_HAND:
+			if p == 0:
+				c = _new_card(inst)
+				c.transform = _hand_xform()
+			else:
+				c = _take_from_opp_hand(inst)
+		elif origin == OcgCore.LOC_DECK:
+			start = Transform3D(table_basis(p, false, true), deck_pos(p) + Vector3(0, 0.4, 0))
+		elif origin == OcgCore.LOC_EXTRA:
+			start = Transform3D(table_basis(p, false, true), extra_pos(p) + Vector3(0, 0.4, 0))
+		elif origin == OcgCore.LOC_REMOVED:
+			remove_from_banished(inst)
+			start = Transform3D(table_basis(p, true, true), banish_pos(int(inst.owner)) + Vector3(0, 0.3, 0))
+			_rift(start.origin + Vector3(0, 0.4, 0))
+		if c == null:
+			c = _new_card(inst)
+			c.transform = start
+			if origin == 0 and not from_gy:
+				# (made out of nothing: a Token)
+				c.scale = Vector3.ONE * 0.1
+				create_tween().tween_property(c, "scale", Vector3.ONE, Settings.t(0.22)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				DuelFx.glow(self, core, col, 2.0, 0.4, 0.6)
+		c.set_pickable(true)
+		var lit: Color = gold if from_gy else col
+		DuelFx.glyph(self, at, lit, 0.85, 0.75, {"rings": 1, "ticks": 28, "star": 0, "turn": 1.4})
+		var orb := DuelFx.orb(self, c.position, lit, 0.3)
+		var hover := Transform3D(to.basis * Basis(Vector3.RIGHT, 0.35), at + Vector3(0, 1.25, 0.25 if p == 0 else -0.25))
+		var ot := create_tween()
+		ot.tween_property(orb, "position", hover.origin, Settings.t(0.34))
+		ot.tween_callback(orb.queue_free)
+		orb.trail = from_gy or origin != OcgCore.LOC_HAND
+		orb.visible = orb.trail
+		await _move(c, hover, 0.34, 0.9 if from_gy else 0.5)
+		await _wait(0.06)
+		await _dash(c, to, 0.11)
+		_land(c)
+		slam(at, lit, 1.25, not attack)
+		create_tween().tween_method(c.flash, 2.0, 0.0, Settings.t(0.45))
+	await hologram(inst, at, grand)
 	if grand:
 		cam_release(0.6)
 
 
+var _orbits := {}    # Xyz Monster uid -> the lights of its materials
+
+
+## The Xyz Materials of a monster circle its card as lights, one for each.
 func set_overlays(inst) -> void:
 	var c := card_for(inst)
 	if c == null:
 		return
-	var lbl := c.get_node_or_null("Overlays") as Label3D
-	if lbl == null:
-		lbl = Label3D.new()
-		lbl.name = "Overlays"
-		lbl.font = UITheme.title_font()
-		lbl.font_size = 56
-		lbl.pixel_size = 0.004
-		lbl.outline_size = 14
-		lbl.modulate = Color("ffd23a")
-		lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		lbl.no_depth_test = true
-		lbl.position = Vector3(0.3, 0.42, 0.25)
-		c.add_child(lbl)
-	lbl.text = "◆ %d" % inst.overlays.size()
-	lbl.visible = inst.overlays.size() > 0
+	var n: int = inst.overlays.size() if "overlays" in inst else 0
+	var o: FxOrbit = _orbits.get(inst.uid)
+	if o == null or not is_instance_valid(o):
+		if n == 0:
+			return
+		o = FxOrbit.new()
+		add_child(o)
+		_orbits[inst.uid] = o
+	o.card = c
+	o.set_count(n)
 
 
 func _ring_fx(at: Vector3, color: Color, size: float, delay: float, rise: float) -> void:
-	var mi := MeshInstance3D.new()
-	var t := TorusMesh.new()
-	t.inner_radius = 0.55
-	t.outer_radius = 0.6
-	t.rings = 48
-	t.ring_segments = 6
-	mi.mesh = t
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	m.albedo_color = Color(color, 0.0)
-	mi.material_override = m
-	mi.position = at
-	mi.scale = Vector3(size, 1, size)
-	add_child(mi)
+	# A ring that lights, lifts by `rise`, then widens and fades.
+	var m := DuelFx._mat("glyph", DuelFx.HEAD + DuelFx.GLYPH, {"color": color, "energy": 2.4, "alpha": 0.0, "radius": 0.86, "width": 0.035, "soft": 0.07, "spin": 0.0})
+	var mi := DuelFx._piece(self, DuelFx._quad(0.6 * size * 2.33, true), m, at)
 	var tw := create_tween()
 	tw.tween_interval(Settings.t(delay))
-	tw.tween_property(m, "albedo_color:a", 1.0, Settings.t(0.12))
+	tw.tween_property(m, "shader_parameter/alpha", 1.0, Settings.t(0.12))
 	tw.parallel().tween_property(mi, "position:y", at.y + rise, Settings.t(0.6))
-	tw.tween_property(m, "albedo_color:a", 0.0, Settings.t(0.35))
-	tw.parallel().tween_property(mi, "scale", Vector3(size * 1.8, 1, size * 1.8), Settings.t(0.35))
+	tw.tween_property(m, "shader_parameter/alpha", 0.0, Settings.t(0.35))
+	tw.parallel().tween_property(mi, "scale", Vector3(1.8, 1, 1.8), Settings.t(0.35))
 	tw.tween_callback(mi.queue_free)
 
 
@@ -1763,51 +1847,6 @@ func _dim_field(dur: float) -> void:
 	tw.tween_interval(Settings.t(dur))
 	tw.tween_property(m, "albedo_color:a", 0.0, Settings.t(0.5))
 	tw.tween_callback(veil.queue_free)
-
-
-## The set piece for each kind of Extra Deck or Ritual Summon.
-func _summon_scene(method: String, at: Vector3, core: Vector3, col: Color, count: int) -> void:
-	house(0.6, col, at, 1.2)
-	match method:
-		"synchro":
-			# Green rings stack up into a tunnel and a pillar of light runs through them.
-			for i in maxi(3, count + 2):
-				_ring_fx(at + Vector3(0, 0.2 + i * 0.55, 0), col, 1.0 - i * 0.05, 0.1 * i, 0.5)
-			var beam := _beam(at, true)
-			(beam.material_override as StandardMaterial3D).albedo_color = Color(col, 0.0)
-			var tw := create_tween()
-			tw.tween_interval(Settings.t(0.45))
-			tw.tween_property(beam.material_override, "albedo_color:a", 0.5, Settings.t(0.15))
-			tw.tween_property(beam.material_override, "albedo_color:a", 0.0, Settings.t(0.9))
-			tw.tween_callback(beam.queue_free)
-			_star_shower(core, Color.WHITE, 26)
-		"xyz":
-			# A galaxy opens on the floor and pulls everything in before it bursts.
-			for i in 5:
-				_spin_ring(at + Vector3(0, 0.05, 0), col.lerp(Color("b15cff"), i / 5.0), 2.2 - i * 0.36, 1.2 + i * 0.5)
-			_vortex(core, Color("b15cff"))
-			_star_shower(core + Vector3(0, 1.0, 0), col, 30)
-		"fusion":
-			# Two colors spiral into each other.
-			_swirl(core, Color("ff8a3a"))
-			_swirl(core + Vector3(0, 0.2, 0), Color("3aa0ff"))
-			for i in 3:
-				_spin_ring(core, col.lightened(i * 0.15), 1.6 - i * 0.4, 2.0 + i)
-		"ritual":
-			# A circle of blue flames around the altar, then the light comes down.
-			for i in 8:
-				var a := TAU * i / 8.0
-				var fp := at + Vector3(cos(a) * 1.25, 0, sin(a) * 1.25)
-				for k in 3:
-					_ring_fx(fp + Vector3(0, 0.05, 0), col.lerp(Color.WHITE, k * 0.25), 0.16, 0.05 * i + 0.1 * k, 1.1)
-			_spin_ring(at + Vector3(0, 0.05, 0), col, 1.9, 1.5)
-			var b2 := _beam(at, true)
-			(b2.material_override as StandardMaterial3D).albedo_color = Color(col, 0.0)
-			var tw2 := create_tween()
-			tw2.tween_interval(Settings.t(0.5))
-			tw2.tween_property(b2.material_override, "albedo_color:a", 0.45, Settings.t(0.2))
-			tw2.tween_property(b2.material_override, "albedo_color:a", 0.0, Settings.t(0.8))
-			tw2.tween_callback(b2.queue_free)
 
 
 ## A flat ring that spins on the floor and shrinks away.
@@ -1996,7 +2035,8 @@ func anim_flip(p: int, inst, zone: int) -> void:
 		return
 	var to := Transform3D(table_basis(p, true, inst.attack_pos), monster_zone_pos(p, zone) + Vector3(0, 0.02, 0))
 	await _move(c, to, 0.4, 0.7)
-	_burst(to.origin, UITheme.ACCENT, 1.1)
+	_land(c, 0.1)
+	slam(to.origin, UITheme.ACCENT, 0.6, not bool(inst.attack_pos))
 
 
 func anim_position(p: int, inst, zone: int) -> void:
@@ -2005,6 +2045,7 @@ func anim_position(p: int, inst, zone: int) -> void:
 		return
 	var to := Transform3D(table_basis(p, inst.face_up, inst.attack_pos), monster_zone_pos(p, zone) + Vector3(0, 0.02, 0))
 	await _move(c, to, 0.3, 0.25)
+	DuelFx.rect(self, to.origin, Color("9fd8ff"), 1.0, 1.3, 0.35, not bool(inst.attack_pos), 1.8)
 
 
 func anim_activate(p: int, inst, zone := 2) -> void:
@@ -2016,13 +2057,21 @@ func anim_activate(p: int, inst, zone := 2) -> void:
 		c = _take_from_opp_hand(inst)
 	c.set_pickable(true)
 	var to := Transform3D(table_basis(p, true, true), st_pos(p, zone if zone >= 0 else 2) + Vector3(0, 0.02, 0))
-	await _move(c, Transform3D(to.basis, to.origin + Vector3(0, 0.8, 0)), 0.35, 0.3)
-	c.set_glow(true, UITheme.ACCENT)
+	var teal := Color("2de2a0")
+	# Its zone lights, the card comes down on it face-up, and a circle of light opens under it.
+	DuelFx.rect(self, to.origin, teal, 1.7, 1.0, 0.36, false, 1.6)
+	await _move(c, Transform3D(to.basis, to.origin + Vector3(0, 0.8, 0)), 0.32, 0.3)
+	c.set_glow(true, teal)
 	var tw := create_tween()
-	tw.tween_method(c.flash, 2.5, 0.0, Settings.t(0.5))
-	_burst(to.origin + Vector3(0, 0.8, 0), Color("2de2a0"), 1.4)
-	await _move(c, to, 0.15, 0.0)
-	await _wait(0.35)
+	tw.tween_method(c.flash, 2.5, 0.0, Settings.t(0.55))
+	await _dash(c, to, 0.12)
+	_land(c, 0.1)
+	DuelFx.rect(self, to.origin, Color.WHITE.lerp(teal, 0.5), 1.0, 1.7, 0.45, false, 2.8, 0.9)
+	DuelFx.glyph(self, to.origin, teal, 0.95, 0.85, {"rings": 1, "ticks": 30, "star": 0, "turn": 2.0, "energy": 2.6})
+	DuelFx.pillar(self, to.origin, teal.lightened(0.3), 0.36, 2.6, 0.6, 0.0, 1.8)
+	DuelFx.sparks(self, to.origin + Vector3(0, 0.1, 0), teal.lightened(0.3), 18, 2.4, 0.85, 0.7, 0.5, 0.04)
+	shake(0.14)
+	await _wait(0.4)
 	c.set_glow(false)
 
 
@@ -2048,10 +2097,14 @@ func anim_set_st(p: int, inst, zone: int) -> void:
 		c = _take_from_opp_hand(inst)
 	c.set_pickable(true)
 	var to := Transform3D(table_basis(p, false, true), spell_zone_pos(p, zone) + Vector3(0, 0.02, 0))
+	var violet := Color("b98cff")
+	DuelFx.rect(self, to.origin, violet, 1.5, 1.0, 0.34, false, 1.4)
 	await _move(c, Transform3D(to.basis, to.origin + Vector3(0, 0.4, 0)), 0.28, 0.4)
-	await _move(c, to, 0.12, 0.0)
-	_land(c, 0.08)
-	_burst(to.origin, Color("b98cff"), 0.8)
+	await _move(c, to, 0.13, 0.0)
+	_land(c, 0.07)
+	DuelFx.rect(self, to.origin, violet, 1.0, 1.4, 0.42, false, 2.2, 0.6)
+	DuelFx.sparks(self, to.origin + Vector3(0, 0.04, 0), Color("d8c8ff"), 8, 1.5, 0.0, 0.45, -0.5, 0.04)
+	Sfx.play("set", -8.0)
 	shake(0.06)
 
 
@@ -2064,8 +2117,14 @@ func anim_trap(p: int, inst, zone: int) -> void:
 	var up := Transform3D(Basis(Vector3.RIGHT, -0.6 if p == 0 else -0.25), st_pos(p, zone) + Vector3(0, 1.2 if p == 0 else 1.5, 0.3))
 	c.set_glow(true, Color("ff4dd2"))
 	await _move(c, up, 0.3, 0.2)
-	_flash(up.origin, Color("ff4dd2"))
-	_burst(up.origin, Color("ff4dd2"), 1.6)
+	var pink := Color("ff4dd2")
+	_flash(up.origin, pink)
+	# It springs open: light bursts from behind the card and its zone flares under it.
+	DuelFx.rays(self, up.origin + Vector3(0, 0, -0.05), pink, 1.9, 0.45, 26, false, 2.8)
+	DuelFx.glow(self, up.origin, pink.lightened(0.4), 2.6, 0.4, 0.8, 2.6)
+	var zp := st_pos(p, zone)
+	DuelFx.rect(self, zp, pink, 1.0, 1.8, 0.5, false, 2.6, 0.8)
+	DuelFx.ring(self, zp, pink, 0.3, 1.5, 0.5, 0.05)
 	shake(0.3)
 	var tw := create_tween()
 	tw.tween_method(c.flash, 3.0, 0.2, Settings.t(0.5))
@@ -2326,6 +2385,81 @@ func anim_battle(p: int, inst, target) -> void:
 	await _move(c, home, 0.3, 0.3)
 	cam_release(0.45)
 	c.set_glow(false)
+
+
+signal finisher_hit(at: Vector3, color: Color)
+
+
+## The last attack of the duel (0.57.0). The attacker gathers itself over a circle of light,
+## the clock slows, it crosses the whole field with a trail behind it and lands like a bomb.
+## The duel screen answers finisher_hit with the flash and the breaking glass.
+func anim_finisher(p: int, inst, target) -> void:
+	var c := card_for(inst)
+	if c == null:
+		return
+	var home: Transform3D = c.get_meta("home", c.transform)
+	var tc := card_for(target) if target != null else null
+	var toward := -1.0 if p == 0 else 1.0
+	var goal: Vector3 = tc.position if tc != null else Vector3(0, 0.9, toward * 5.4)
+	var floor_at := Vector3(goal.x, 0.02, goal.z)
+	var col: Color = ATTR_COLORS.get(str(inst.data.get("attribute", "")), Color("ffd27a"))
+	var slow_ok := absf(Engine.time_scale - 1.0) < 0.01 and Settings.anim_speed <= 2.0
+	var dir := goal - home.origin
+	dir.y = 0.0
+	dir = dir.normalized() if dir.length() > 0.01 else Vector3(0, 0, toward)
+	# The wind-up: low behind the attacker, looking down the field at what it is about to hit.
+	var sx := 1.0 if home.origin.x <= 0.0 else -1.0
+	cam_shot(home.origin + Vector3(1.7 * sx, 1.25, -toward * 3.1), home.origin.lerp(goal, 0.55) + Vector3(0, 0.7, 0), 0.4)
+	DuelFx.glyph(self, home.origin, col, 1.25, 1.2, {"rings": 1, "ticks": 30, "star": 0, "turn": 3.4, "energy": 2.6})
+	DuelFx.embers(self, home.origin, col.lightened(0.2), 0.55, 44, 0.85, 2.6, 0.08)
+	c.set_glow(true, col)
+	create_tween().tween_method(c.flash, 0.0, 3.0, Settings.t(0.5))
+	Sfx.play("charge", -3.0, 0.8)
+	var back := Transform3D(Basis(dir.cross(Vector3.UP).normalized(), 0.45) * home.basis, home.origin + Vector3(0, 1.15, 0) - dir * 0.75)
+	await _move(c, back, 0.5, 0.0)
+	await _wait(0.1)
+	# The lunge, in slow motion.
+	if slow_ok:
+		Engine.time_scale = 0.32
+	var orb := DuelFx.orb(self, c.position, col.lightened(0.35), 0.75)
+	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.9) + Vector3(0, 0.3, 0))
+	create_tween().tween_property(orb, "position", hit.origin, Settings.t(0.2)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	Sfx.play("attack", 0.0, 0.7)
+	await _dash(c, hit, 0.2)
+	if is_instance_valid(orb):
+		orb.pop(1.6)
+	# The hit.
+	StrikeFx.play(self, inst, home.origin, goal)
+	finisher_hit.emit(goal, col)
+	DuelFx.glow(self, goal + Vector3(0, 0.5, 0), Color.WHITE, 3.6, 0.55, 1.0, 2.6)
+	for i in 3:
+		DuelFx.ring(self, floor_at, col.lightened(0.15 * i), 0.4, 2.4 + i * 1.4, 0.7 + 0.15 * i, 0.07, 0.08 * i)
+	DuelFx.rays(self, floor_at, col, 4.2, 0.6, 40)
+	DuelFx.rays(self, goal + Vector3(0, 0.6, 0), Color.WHITE, 3.4, 0.5, 30, false)
+	DuelFx.pillar(self, Vector3(goal.x, 0.0, goal.z), col.lightened(0.3), 1.0, 8.0, 1.1, 0.0, 2.0)
+	DuelFx.sparks(self, goal + Vector3(0, 0.3, 0), col.lightened(0.2), 110, 9.0, 0.5, 1.2)
+	_flash(goal + Vector3(0, 1.0, 0), col)
+	Sfx.play("impact", 2.0, 0.6)
+	Sfx.play("direct", -2.0)
+	shake(1.3)
+	house(1.0, col, goal, 1.0)
+	var th := holo_for(target)
+	if th:
+		th.hit()
+	if tc != null:
+		_jolt(tc, dir)
+	if slow_ok:
+		# A held breath on the frame of the hit, then the world comes back up to speed.
+		Engine.time_scale = 0.04
+		await get_tree().create_timer(0.24, true, false, true).timeout
+		Engine.time_scale = 0.5
+		await get_tree().create_timer(0.45, true, false, true).timeout
+		Engine.time_scale = 1.0
+	else:
+		await _wait(0.3)
+	await _move(c, home, 0.34, 0.3)
+	c.set_glow(false)
+	cam_release(0.6)
 
 
 ## A card that was just hit is knocked back a hand's width and settles again.
@@ -3344,7 +3478,8 @@ func add_duelists(me_key: String, opp_key: String) -> void:
 ## The duelist at the table acts out what they just said.
 const TALK_MOVES := {"intro": "challenge", "taunt": "chat", "ace": "cheer", "attack": "agree", "react": "scratch",
 	"destroyed": "stomp", "low": "alert", "hurt": "alert", "trap": "agree", "spell": "chat", "set": "listen",
-	"big_hit": "cheer", "comeback": "cheer", "turn": "", "draw_pressure": "scratch"}
+	"big_hit": "cheer", "comeback": "cheer", "turn": "", "draw_pressure": "scratch",
+	"chain": "agree", "negate": "challenge", "negated": "stomp", "fusion": "cheer", "synchro": "cheer", "xyz": "cheer", "ritual": "cheer"}
 
 
 func duelist_gesture(p: int, kind: String) -> void:

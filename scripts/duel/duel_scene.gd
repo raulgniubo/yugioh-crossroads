@@ -93,6 +93,14 @@ func _ready() -> void:
 	layer.add_child(hud)
 	board.card_clicked.connect(_on_board_card_clicked)
 	board.card_hovered.connect(_on_board_card_hovered)
+	board.finisher_hit.connect(func(at: Vector3, col: Color):
+		var cam := get_viewport().get_camera_3d()
+		var sp: Vector2 = hud.get_viewport_rect().size * 0.5
+		if cam and not cam.is_position_behind(at):
+			sp = cam.unproject_position(at)
+		ScreenFx.flash(hud, Color.WHITE.lerp(col, 0.25), 0.4, 0.9)
+		ScreenFx.shatter(hud, sp, 1.25)
+		ScreenFx.speed_lines(hud, sp, Color(1, 1, 1, 0.8), 0.7))
 	board.direct_clicked.connect(_on_direct_attack)
 	board.ace_summoned.connect(func(inst):
 		Sfx.play("gong", -9.0, 1.2)
@@ -147,6 +155,9 @@ func _start() -> void:
 	print("DUEL START vs ", Router.duel_config.get("opponent", "?"), " cfg keys ", Router.duel_config.keys())
 	if "--cine" in OS.get_cmdline_user_args() or "--battle-demo" in OS.get_cmdline_user_args():
 		_debug_cine()
+	if FxDemo.wanted() != "":
+		FxDemo.run(self)
+	DuelFx.warm(board)
 	var cfg: Dictionary = Router.duel_config
 	if not OcgTable.wanted(cfg):
 		# The rules engine runs every duel. If its library did not load here, there is no duel.
@@ -704,6 +715,16 @@ Match won: +%d Duel Points") % 200
 func _play(events: Array) -> void:
 	busy = true
 	_refresh()
+	# (0.57.0) The attack that ends the duel is played as the finishing blow.
+	for i in events.size():
+		var fe: Dictionary = events[i]
+		if str(fe["type"]) == "lp" and int(fe.get("delta", 0)) < 0 and int(fe.get("lp", 1)) <= 0:
+			for k in range(i - 1, -1, -1):
+				if str(events[k]["type"]) == "battle":
+					events[k]["finisher"] = true
+					fe["finished"] = true
+					break
+			break
 	for ev in events:
 		await _play_event(ev)
 		board.refresh_stats(state)
@@ -968,10 +989,39 @@ func _play_event(ev: Dictionary) -> void:
 			await board.anim_settle(p, ev["card"], int(ev["zone"]))
 		"st_reset":
 			await board.anim_reset(p, ev["card"], int(ev["zone"]))
-		"chain":
-			Sfx.play("spell", -2.0, 1.25)
-			hud.banner(Loc.t("CHAIN %d") % int(ev["n"]), Color("ffd23a"), true)
-			await get_tree().create_timer(Settings.t(0.35)).timeout
+		"chain_link":
+			# (0.57.0) A numbered link over every card on the chain, joined by a chain of light.
+			var cn := int(ev["n"])
+			board.chain_link(cn, p, ev.get("card"))
+			if cn >= 2:
+				hud.effect_text(Loc.t("CHAIN %d") % cn, Color("ffd23a"))
+				if cn == 2 or randf() < 0.5:
+					_talk(p, "chain", 0.7)
+				await get_tree().create_timer(Settings.t(0.42)).timeout
+		"chain_solving":
+			if board.chain_fx != null:
+				board.chain_fx.solving(int(ev["n"]))
+				await get_tree().create_timer(Settings.t(0.3)).timeout
+		"chain_negated":
+			if board.chain_fx == null:
+				board.chain_link(0, p, null)
+			board.chain_fx.negated(int(ev["n"]), ev.get("card"))
+			hud.effect_text(Loc.t("Negated!"), Color("ff5a6a"))
+			var nc = ev.get("card")
+			if nc != null:
+				# (the one who stopped it has the word; sometimes the one who was stopped)
+				if randf() < 0.7:
+					_talk(1 - int(nc.owner), "negate", 1.0)
+				else:
+					_talk(int(nc.owner), "negated", 1.0)
+			await get_tree().create_timer(Settings.t(0.5)).timeout
+		"chain_solved":
+			if board.chain_fx != null:
+				board.chain_fx.solved(int(ev["n"]))
+				await get_tree().create_timer(Settings.t(0.12)).timeout
+		"chain_end":
+			if board.chain_fx != null:
+				board.chain_fx.end()
 		"control":
 			Sfx.play("special", -3.0)
 			board.hide_stats_for(ev["card"])
@@ -1017,6 +1067,11 @@ func _play_event(ev: Dictionary) -> void:
 					hud.speed_fx.kick(0.5)
 			await board.anim_declare(p, ev["card"], ev["target"])
 		"battle":
+			if ev.get("finisher", false) and not _autoplay and not board.turbo:
+				ScreenFx.letterbox(hud, 2.6)
+				board.duelist_gesture(p, "attack")
+				await board.anim_finisher(p, ev["card"], ev["target"])
+				return
 			get_tree().create_timer(Settings.t(0.12)).timeout.connect(func(): Sfx.play("impact"))
 			var hit_at: Vector3 = board._attack_goal(p, ev["target"])
 			var heavy: bool = ev["target"] == null or int(ev["card"].atk()) >= 2400
@@ -1117,7 +1172,8 @@ func _play_event(ev: Dictionary) -> void:
 				return
 			var titles := {"fusion": "FUSION SUMMON", "synchro": "SYNCHRO SUMMON", "xyz": "XYZ SUMMON", "reborn": "REVIVED", "ritual": "RITUAL SUMMON"}
 			Sfx.play("special")
-			_talk(p, "ace", 1.0, 0.0)
+			_talk(p, method if method in ["fusion", "synchro", "xyz", "ritual"] else "ace", 1.0, 0.0)
+			board.duelist_body(p, "summon", 1.5)
 			hud.react(p, "ace")
 			hud.banner(titles.get(method, "SPECIAL SUMMON"), board.METHOD_COLORS.get(method, UITheme.ACCENT), true)
 			if _shows and Settings.big_shows and SummonShow.wants(ev["card"].data):
@@ -1128,7 +1184,7 @@ func _play_event(ev: Dictionary) -> void:
 				await get_tree().create_timer(Settings.t(1.5)).timeout
 			var mats := _materials.duplicate()
 			_materials.clear()
-			await board.anim_special(p, ev["card"], ev["zone"], method, mats)
+			await board.anim_special(p, ev["card"], ev["zone"], method, mats, int(ev.get("origin", 0)))
 		"discard":
 			if p == ME:
 				_leave_hand(ev["card"])
@@ -1163,6 +1219,11 @@ func _play_event(ev: Dictionary) -> void:
 			hud.set_lp(p, ev["lp"], ev["delta"])
 			if p == ME:
 				_my_low = mini(_my_low, int(ev["lp"]))
+			if ev["delta"] < 0 and int(ev["lp"]) <= 0 and not _autoplay and not ev.get("finished", false) and not board.turbo:
+				# (a last hit that was not an attack: the picture breaks all the same)
+				var lsp: Vector2 = hud.get_viewport_rect().size * Vector2(0.5, 0.32 if p == AI else 0.68)
+				ScreenFx.flash(hud, Color.WHITE, 0.35, 0.8)
+				ScreenFx.shatter(hud, lsp, 1.2)
 			if ev["delta"] < 0 and int(ev["lp"]) <= 0 and not _autoplay:
 				# The last hit of the duel: the winner gets the screen.
 				hud.cut_in(1 - p, Loc.t("FINISHING BLOW!"), Characters.line(_speaker(ME) if p == AI else _opp_key, "win"), UITheme.GOLD, 0.8, true)

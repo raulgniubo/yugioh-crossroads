@@ -222,3 +222,22 @@ and the story difficulty moves it. All of that is build 1. Build 2 is only the f
   Test card folder /tmp/testassets3 now uses Raul's cards.json (staged from his Mac); the old one is /tmp/cards_old_14321.json.
 - Spanish: tools/dev/cardes/official_es.py (official text, quotes back to English) + b56_hand.py (11 written here).
 - ocg_sweep focus "list:<json of names>".
+
+### 0.57.0 and 0.58.0: duels feel alive (Raul asked for two builds back to back, overnight)
+- Kit: `scripts/duel/duel_fx.gd` (DuelFx: ring, glyph, pillar, spiral, pit, glow, rect, rays, sparks, embers, orb, chain;
+  all shader quads, additive, self-freeing, Settings.t speed; warm(board) pre-builds the shaders), `fx_orb.gd` (trail),
+  `fx_orbit.gd` (Xyz Materials circling a card), `summon_fx.gd` (SummonFx.play per method, returns when the monster
+  should appear), `chain_fx.gd` (ChainFx: link/solving/negated/solved/end), `screen_fx.gd` (flash, letterbox, speed lines,
+  shatter: a canvas shader over the screen texture).
+- Engine events added in ocg_duel.gd: "chain_link" (after the card's own activate/trap/effect event), "chain_solving",
+  "chain_solved" (both only for chains of 2+), "chain_negated" (messages 75/76), "chain_end"; "special" carries "origin"
+  (the engine location the card came from). The old "chain" banner event is gone.
+- DuelBoard: anim_summon/slam(), anim_special(..., origin), set_overlays -> FxOrbit, chain_spot/chain_link, anim_finisher +
+  signal finisher_hit. duel_scene._play marks the last "battle" before a lethal "lp" in the same batch as "finisher".
+  hologram() emits ace_summoned 0.4 s after the art is up (the name band used to hide the arrival).
+- A tweened shader parameter must be set when the material is made (a null start value makes tween_property return null).
+- Looking at an animation without playing to it: `--fxdemo=<name>[:frames[:gap]]` (scripts/duel/fx_demo.gd; names: summon,
+  set, oppsummon, synchro, xyz, fusion, ritual, battle, finish, chain, effects, kit). /tmp/fx.sh in the session made a
+  contact sheet from the frames (1280x720 xvfb, FX_WAIT default 16 s so the deal is over, clock at 0.2x).
+  A whole duel on screen with the test player: `--duel --skip-opening --human-test --speed=2 --deck=.. --oppdeck=..`.
+- Two renders at once is the most this machine does in time.
