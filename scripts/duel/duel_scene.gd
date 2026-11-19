@@ -451,8 +451,9 @@ func _start() -> void:
 			if "--ask-name-typed" in OS.get_cmdline_user_args():
 				get_tree().create_timer(1.5).timeout.connect(func():
 					for n in hud.find_children("", "LineEdit", true, false):
-						(n as LineEdit).text = "toon d"
-						(n as LineEdit).text_changed.emit("toon d"))
+						var word := OS.get_environment("ASK_WORD") if OS.has_environment("ASK_WORD") else "toon d"
+						(n as LineEdit).text = word
+						(n as LineEdit).text_changed.emit(word))
 			print("ASK NAME got ", await hud.ask_name(Loc.t("Declare 1 card name"), quick, all))
 			return
 		if "--ask-mode" in OS.get_cmdline_user_args():

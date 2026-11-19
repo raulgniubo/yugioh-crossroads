@@ -12,6 +12,10 @@ const ADDED := {
 	# The rest of each era's list are the last cards its story duelists are known for
 	# (SignatureDecks.WISH): single cards that belong to no family.
 	"Duel Monsters": [
+		# 0.59.0: the sea, whole. Umi's other names, and the newer support for the Legendary Fisherman, Kairyu-Shin and Fortress Whale.
+		"A Legendary Ocean", "Lemuria, the Forgotten City", "The Legendary Fisherman II", "The Legendary Fisherman III", "Ocean Dragon Lord - Kairyu-Shin",
+		"Kairyu-Shin's Dark Reef", "Rage of Kairyu-Shin", "Fury of Kairyu-Shin", "Sea Stealth Attack", "Sea Stealth II", "Mega Fortress Whale",
+		"Amphibious Bugroth MK-11", "Fish Sonar", "Electric Jellyfish", "Doom Kraken", "Yorishiro of the Aqua",
 		# 0.52.0: card plan part 3, single cards (staples and support that belong to no family).
 		"Andro Sphinx", "Sphinx Teleia", "Theinen the Great Sphinx", "Fortress Whale's Oath", "The First Sarcophagus", "The Second Sarcophagus", "The Third Sarcophagus", "The Sanctuary in the Sky",
 		"Witch of the Black Forest", "Sinister Serpent", "Tribe-Infecting Virus", "Fiber Jar", "Sacred Phoenix of Nephthys", "Night Assailant",
@@ -51,6 +55,8 @@ const ADDED := {
 		"Animadorned Archosaur", "Xeno Meteorus", "Fossil Dig", "Double Evolution Pill", "Lost World", "Survival's End", "Evolzar Laggia",
 		"Evolzar Dolkka"],
 	"GX": [
+		# 0.59.0: the sea.
+		"Neo-Spacian Marine Dolphin",
 		# 0.52.0: card plan part 3, single cards (staples and support that belong to no family).
 		"Treeborn Frog", "Cyber-Stein", "Royal Oppression", "Magical Explosion", "Phantom of Chaos", "Dark Crusader", "Gorz the Emissary of Darkness",
 		"Tragoedia", "Kycoo the Ghost Destroyer", "Doomcaliber Knight", "Mezuki", "Zombie World", "Magical Stone Excavation", "Ultimate Offering",
@@ -83,6 +89,8 @@ const ADDED := {
 		"Fusion Destiny", "D-Fusion", "D - Tactics", "Destiny HERO - Destroyer Phoenix Enforcer", "Destiny HERO - Dangerous", "Destiny HERO - Dystopia",
 		"Destiny HERO - Dusktopia", "Destiny HERO - Dominance"],
 	"5D's": [
+		# 0.59.0: the sea. Deep Sea Diva's family, whole, and their city.
+		"Deep Sea Sentry", "Deep Sea Minstrel", "Deep Sea Artisan", "Deep Sea Aria", "Deep Sea Repetiteur", "Deep Sea Prima Donna", "Magellanica, the Deep Sea City",
 		# 0.53.0: a Synchro the plan listed with the Synchron family that belongs to none.
 		"Magical Android",
 		# 0.52.0: card plan part 3, single cards (staples and support that belong to no family).
@@ -117,6 +125,9 @@ const ADDED := {
 		"White Rose Cloister", "Blooming of the Darkest Rose", "Ruddy Rose Dragon", "Black Rose Moonlight Dragon", "Garden Rose Maiden",
 		"Garden Rose Flora", "Infernity Sage", "Infernity Wildcat", "Armageddon Knight", "Infernity Suppression", "Beelze of the Diabolic Dragons"],
 	"ZEXAL": [
+		# 0.59.0: the sea. Phantasm Spiral Dragon's cards, and its city.
+		"Pacifis, the Phantasm City", "Phantasm Spiral Grip", "Phantasm Spiral Wave", "Phantasm Spiral Crash", "Phantasm Spiral Assault", "Phantasm Spiral Power",
+		"Phantasm Spiral Battle",
 		# 0.52.0: card plan part 3, single cards (staples and support that belong to no family).
 		"Maxx \"C\"", "Soul Charge", "Number 16: Shock Master", "Number 85: Crazy Box", "Number 82: Heartlandraco", "Number 44: Sky Pegasus",
 		"Number 52: Diamond Crab King", "Maestroke the Symphony Djinn", "Downerd Magician", "Kachi Kochi Dragon", "Grenosaurus", "Number 106: Giant Hand",

@@ -1864,7 +1864,7 @@ func ask_name(text: String, quick: Array, all: Array) -> int:
 	t.custom_minimum_size = Vector2(460, 0)
 	v.add_child(t)
 	var search := LineEdit.new()
-	search.placeholder_text = Loc.t("Type a card name")
+	search.placeholder_text = Loc.t("Type a card name (English or Spanish)")
 	search.clear_button_enabled = true
 	search.add_theme_font_size_override("font_size", 20)
 	search.custom_minimum_size = Vector2(460, 44)
@@ -1884,24 +1884,26 @@ func ask_name(text: String, quick: Array, all: Array) -> int:
 		for c in list.get_children():
 			c.queue_free()
 		var rows: Array = []
-		var w := word.strip_edges().to_lower()
+		var w := CardSearch.fold(word)
 		if w == "":
 			rows = quick
 			note.text = Loc.t("Cards seen in this duel. Type to search every card.") if not quick.is_empty() else Loc.t("Type to search every card.")
 		else:
 			var starts: Array = []
 			var holds: Array = []
+			# (its English or its Spanish name)
 			for r in all:
-				var nm := str(r[1]).to_lower()
-				if nm.begins_with(w):
+				var sc := CardSearch.score(int(r[0]), str(r[1]), w)
+				if sc >= 3:
 					starts.append(r)
-				elif w in nm:
+				elif sc > 0:
 					holds.append(r)
 			rows = starts + holds
 			note.text = Loc.t("%d names match") % rows.size()
 		for r in rows.slice(0, 40):
 			var b := Button.new()
-			b.text = str(r[1])
+			var alt := CardSearch.other_name(int(r[0]), str(r[1]), w)
+			b.text = str(r[1]) + ("   ·   " + alt if alt != "" else "")
 			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			b.clip_text = true
 			b.custom_minimum_size = Vector2(440, 40)

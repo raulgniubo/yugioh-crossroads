@@ -5,6 +5,21 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.59.0
+
+The sea, and searching cards in either language. **31 cards added: 8,415 total.**
+
+- **A Legendary Ocean is in.** It was in your card folder but no pack sold it, so Warrior of Atlantis searched for a card you couldn't get. It's in Legend of the King Vol. 15 (Domino City) and Relic Arsenal (every card shop). Shark's deck now plays the two copies it was always meant to.
+- **The rest of the sea.** Every WATER monster from the four shows' eras was already in except one, so this fills in the support around them (30 cards):
+  - Umi's other names: Lemuria, the Forgotten City; Pacifis, the Phantasm City; Magellanica, the Deep Sea City.
+  - The Legendary Fisherman II and III, and the newer cards for Kairyu-Shin, Fortress Whale and the Bugroths: Ocean Dragon Lord - Kairyu-Shin, Kairyu-Shin's Dark Reef, Rage of Kairyu-Shin, Fury of Kairyu-Shin, Mega Fortress Whale, Amphibious Bugroth MK-11, Sea Stealth Attack, Sea Stealth II, Fish Sonar, Electric Jellyfish, Doom Kraken, Yorishiro of the Aqua (Legend of the King).
+  - Deep Sea Diva's whole family: Sentry, Minstrel, Artisan, Aria, Repetiteur and Prima Donna (Signer's Road).
+  - Phantasm Spiral Dragon's cards: Grip, Wave, Crash, Assault, Power and Battle (Overlay Network).
+  - Neo-Spacian Marine Dolphin (Academy Heroes).
+  - They also show up in the Type and Element packs that fit them (Flame and Tide, Relic Arsenal, Face-Down Secrets...). Card text in Spanish for all of them (official).
+- **Search cards by their English or their Spanish name, whatever language the game is in.** The Card Album, the deck builder and "declare a card name" in a duel all find a card by either name. Accents, capitals and dashes don't matter: "ojos azules", "oceano legendario", "Blue Eyes" and "blue-eyes" all work. When a card is found by its other name, that name shows next to it (in the duel list, "Dark Magician · Mago Oscuro"; in the album, under the card's name). The deck builder also searches card text in both languages. Card names still show in English as before, and card text follows the game's language.
+- **Windows:** only the .exe changed.
+
 ## What is in 0.58.0
 
 Duels feel alive, part 2. No cards added: 8,384 total.

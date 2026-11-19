@@ -361,19 +361,19 @@ func _build_center() -> Control:
 		foot.add_child(fb)
 		_filter_btns[str(f[0])] = fb
 	_search_box = LineEdit.new()
-	_search_box.placeholder_text = Loc.t("Search any card")
-	_search_box.custom_minimum_size = Vector2(250, 46)
-	_search_box.add_theme_font_size_override("font_size", 19)
+	_search_box.placeholder_text = Loc.t("Search any card (English or Spanish name)")
+	_search_box.custom_minimum_size = Vector2(380, 46)
+	_search_box.add_theme_font_size_override("font_size", 18)
 	_search_box.clear_button_enabled = true
 	_search_box.text_changed.connect(func(t):
-		_search = t.strip_edges().to_lower()
+		_search = CardSearch.fold(t)
 		_refilter(true))
 	_search_box.text_submitted.connect(func(_t): _search_box.release_focus())
 	foot.add_child(_search_box)
 	if OS.get_environment("ALBUM_SEARCH") != "":
 		# (dev: open with a search typed in)
 		_search_box.set_deferred("text", OS.get_environment("ALBUM_SEARCH"))
-		_search = OS.get_environment("ALBUM_SEARCH").to_lower()
+		_search = CardSearch.fold(OS.get_environment("ALBUM_SEARCH"))
 		_refilter.call_deferred(true)
 		if OS.get_environment("ALBUM_WHERE") != "":
 			get_tree().create_timer(1.5).timeout.connect(_open_where)
@@ -543,7 +543,8 @@ func _refilter(keep_page: bool) -> void:
 		if _search != "":
 			# A name you type finds the card even if you have never met it (three letters or more),
 			# so you can look up where to find it. Its picture stays hidden until you meet it.
-			if not str(CardData.get_card(id).get("name", "")).to_lower().contains(_search):
+			# (Its English or its Spanish name, whatever language the game is in.)
+			if not CardSearch.matches(id, str(CardData.get_card(id).get("name", "")), _search):
 				continue
 		_list.append(id)
 	_numbers = nums
@@ -655,7 +656,7 @@ func _show_card(id: int, st: String, num: int) -> void:
 		(_d_unknown as _Mystery).tint = Color(s["color"])
 		(_d_unknown as _Mystery).number = num
 		_d_unknown.queue_redraw()
-		_d_name.text = str(d.get("name", "")) if _search.length() >= 3 else Loc.t("Not found yet")
+		_d_name.text = _shown_name(id, d) if _search.length() >= 3 else Loc.t("Not found yet")
 		_d_type.text = "#%03d  ·  %s" % [num, Loc.t(str(s["name"]))]
 		_d_stats.text = ""
 		_d_text.text = Loc.t("Open packs of its set, or meet it in a duel to see what it is.") if _d_from.text == "" else Loc.t("You haven't found it yet. Here is where to look:")
@@ -672,7 +673,7 @@ func _show_card(id: int, st: String, num: int) -> void:
 	_d_face.pivot_offset = Vector2(170, 180)
 	_d_face.scale = Vector2(0.94, 0.94)
 	create_tween().tween_property(_d_face, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_d_name.text = str(d.get("name", ""))
+	_d_name.text = _shown_name(id, d)
 	var kind := str(d.get("kind", ""))
 	var bits: Array = []
 	if kind == "monster":
@@ -1050,3 +1051,10 @@ class _Mystery extends Control:
 		var fs := UITheme.semi_font()
 		var ts := fs.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 26)
 		draw_string(fs, Vector2(r.get_center().x - ts.x / 2.0, r.end.y - 26), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color(1, 1, 1, 0.4))
+
+
+## The card's name, and the Spanish one under it when that is the name the search found it by.
+func _shown_name(id: int, d: Dictionary) -> String:
+	var en := str(d.get("name", ""))
+	var alt := CardSearch.other_name(id, en, _search)
+	return en + ("\n(" + alt + ")" if alt != "" else "")

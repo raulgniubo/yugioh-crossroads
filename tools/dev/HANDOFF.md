@@ -262,3 +262,15 @@ and the story difficulty moves it. All of that is build 1. Build 2 is only the f
     (that was 71 script errors in one duel after an Xyz card was redrawn; the lights never came back).
   - fxdemo names added: looks, holo, direct, oppbattle, ace. Env: FX_CASE=lose|tie|wall for "battle", FX_SKIP=<seconds>
     to start filming later. Deck names for --deck / --oppdeck carry the "deck_" prefix (deck_chaos).
+
+### 0.59.0: the sea, and search in both languages
+- 31 cards in CardPool.ADDED (marked "0.59.0: the sea"). A WATER check against yaml-yugi found only 3 cards up to
+  ZEXAL's end missing (A Legendary Ocean, Lemuria, Neo-Spacian Marine Dolphin); the rest is the newer support for
+  families already in the game (Umi, Kairyu-Shin, Fortress Whale, Legendary Fisherman, Deep Sea, Phantasm Spiral).
+  Spanish text: tools/dev/cardes/official_es.py. Sweep of the 31: all played, 0 complaints.
+- `scripts/core/card_search.gd` (CardSearch): fold(), score(id, english, folded query), matches(), es_name(),
+  other_name(). Spanish names in data/card_names_es.json, made by tools/dev/cardes/names_es.py (needs
+  /tmp/game_ids.txt from dump_ids and /tmp/dl_ygo/yy/cards.json); tools/cards.sh now runs it at the end.
+  Used by the Card Album, the deck builder (_found: names, and card text in both languages via CardText.spanish)
+  and the duel's "declare a card name" (ask_name). Dev: ASK_WORD="..." with --ask-test --ask-name-typed.
+- A missing Spanish name (no official one yet, ~290 cards) just means that card is found by its English name only.

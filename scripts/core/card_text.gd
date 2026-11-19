@@ -10,6 +10,17 @@ static var _loaded := false
 static func shown(name: String, english: String) -> String:
 	if Loc.lang() != "es" or english == "":
 		return english
+	_load()
+	return str(_es.get(name, english))
+
+
+## The card's Spanish text whatever language the game is in, or "" (for searching).
+static func spanish(name: String) -> String:
+	_load()
+	return str(_es.get(name, ""))
+
+
+static func _load() -> void:
 	if not _loaded:
 		_loaded = true
 		var f := FileAccess.open("res://data/card_text_es.json", FileAccess.READ)
@@ -17,7 +28,6 @@ static func shown(name: String, english: String) -> String:
 			var got = JSON.parse_string(f.get_as_text())
 			if got is Dictionary:
 				_es = got
-	return str(_es.get(name, english))
 
 
 ## What the card does, in one short line (for the caption when it is activated): the part of

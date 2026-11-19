@@ -17,6 +17,7 @@ var _detail_name: Label
 var _detail_text: Label
 var _filter := "all"
 var _search := ""
+var _search_f := ""     # the same, folded for names (CardSearch)
 var _filter_btns := {}
 var _use_btn: Button
 var _attr := ""
@@ -361,13 +362,14 @@ func _ready() -> void:
 	bar2.add_theme_constant_override("v_separation", 6)
 	col.add_child(bar2)
 	var search := LineEdit.new()
-	search.placeholder_text = "Search name or card text"
+	search.placeholder_text = Loc.t("Search a name or card text (English or Spanish)")
 	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	search.custom_minimum_size = Vector2(170, 40)
 	search.clear_button_enabled = true
 	search.add_theme_font_size_override("font_size", 16)
 	search.text_changed.connect(func(t):
-		_search = t.to_lower()
+		_search = t.strip_edges().to_lower()
+		_search_f = CardSearch.fold(t)
 		_rebuild_grid())
 	bar2.add_child(search)
 	var attr := OptionButton.new()
@@ -555,7 +557,7 @@ func _rebuild_grid() -> void:
 			continue
 		if _filter in ["monster", "spell", "trap"] and (d["kind"] != _filter or is_extra):
 			continue
-		if _search != "" and not str(d.get("name", "")).to_lower().contains(_search) and not str(d.get("desc", d.get("text", ""))).to_lower().contains(_search):
+		if _search != "" and not _found(id, d):
 			continue
 		if _attr != "" and str(d.get("attribute", "")) != _attr:
 			continue
@@ -1763,3 +1765,16 @@ func _close() -> void:
 	await tw.finished
 	closed.emit()
 	queue_free()
+
+
+## Does what was typed find this card? Its English or Spanish name, or its text in either
+## language, whatever language the game is in (0.59.0).
+func _found(id: int, d: Dictionary) -> bool:
+	var nm := str(d.get("name", ""))
+	if _search_f != "" and CardSearch.matches(id, nm, _search_f):
+		return true
+	var en := str(d.get("desc", d.get("text", "")))
+	if en.to_lower().contains(_search):
+		return true
+	var es := CardText.spanish(nm)
+	return es != "" and es.to_lower().contains(_search)

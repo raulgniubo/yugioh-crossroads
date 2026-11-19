@@ -15,3 +15,7 @@ python3 tools/script_refs.py "$SC" /tmp/ocg_ids.txt /tmp/refs.json
 godot --headless res://tests/card_check.tscn -- /tmp/card_check.txt 2>&1 | grep "CARD CHECK\|PROBLEM\|note:"
 # Hand-made positions for the cards random duels never get to play (tests/card_positions.json).
 godot --headless res://tests/card_positions.tscn 2>&1 | grep "CARD POSITIONS\|NOT OK\|??\|^open\|^never"
+# Spanish card names for search (data/card_names_es.json), when the yaml-yugi data is on hand.
+if [ -f /tmp/dl_ygo/yy/cards.json ]; then
+  godot --headless res://tools/dev/dump_ids.tscn > /dev/null 2>&1 && python3 tools/dev/cardes/names_es.py
+fi
