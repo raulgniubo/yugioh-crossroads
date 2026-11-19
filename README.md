@@ -5,6 +5,48 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.55.0
+
+**Card plan part 5: the 5D's and ZEXAL years. 1,608 new cards. The game now has 7,851 cards** (it had 6,243). That's every card from the four shows' years except Links and Pendulums. Plus packs of a better size.
+
+- **1,233 single cards** from the 5D's years (607) and the ZEXAL years (626), in their era's packs: Signer's Road now has 13 volumes and Overlay Network 12.
+- **19 new families**, each with a theme deck and a duelist:
+
+| Family | Era | Theme deck | Who plays it |
+|---|---|---|---|
+| Worm | 5D's | The Worm Invasion | Satellite Kid |
+| Steelswarm, Evilswarm, Infestation | 5D's | Swarm of the Lswarm | The Scrap King (Satellite, at night) |
+| Vylon | 5D's | Vylon Assembly | Tops Resident (New Domino) |
+| Gishki and the Aquamirror | 5D's | The Aquamirror | The Ring Phantom (New Domino, at night) |
+| Watt | 5D's | Wattage | Runner Mechanic (New Domino) |
+| Laval | 5D's | Laval Eruption | Security Chief (New Domino) |
+| Ally of Justice | 5D's | Allies of Justice | Runner Collector (New Domino) |
+| Flamvell | 5D's | Flamvell Fire | Stadium MC (New Domino) |
+| Reptilianne | 5D's | Reptilianne Den | Showcase Rep (New Domino) |
+| Evoltile, Evolsaur, Evolzar | ZEXAL | Evolution of the Dinosaurs | Juice Bar Regular (Heartland Lounge) |
+| Hieratic | ZEXAL | Hieratic Dynasty | Juice Bar Regular |
+| Noble Knights | ZEXAL | Knights of the Round Table | Table Champion (Heartland Lounge) |
+| Artifact | ZEXAL | Artifact Armory | Table Champion |
+| Inzektor | ZEXAL | Inzektor Hive | Night Owl Student (Heartland Lounge) |
+| Mecha Phantom Beasts | ZEXAL | Mecha Phantom Beasts | Night Owl Student |
+| Heraldic Beasts | ZEXAL | Heraldic Beasts | Card Artist (Heartland Lounge) |
+| Sylvan | ZEXAL | Sylvan Grove | Card Artist |
+| Geargia and the trains | ZEXAL | Gears and Rails | Train Spotter (Heartland Lounge) |
+| Hazy Flame and Fire Kings | ZEXAL | Hazy Flame and Fire Kings | Train Spotter |
+
+- **Heartland Lounge regulars.** Heartland's ordinary duelists all carried 3 decks already, so the empty Heartland Lounge now has 5 regulars at the tables, each with 2 of the ZEXAL family decks.
+- **Packs of 100 to 300 cards:**
+  - **Card families:** the 88 family packs (10 to 104 cards each) are now 18 packs of 127 to 220 cards, each holding related families of one era. For example, *Legends of Dragons and Magic* has Blue-Eyes, Red-Eyes, Dark Magician and Swords of Legend. Every family keeps its own theme deck and its own album page, and each pack opens at the same point in the story as its families.
+  - **Big packs come in volumes:** Beyond the Limit (4), the Type packs (2 or 3 each), Flame and Tide, Sky Riders, Deep Woods, Sorcerer's Library and Face-Down Secrets (3 to 5 each), all between 196 and 270 cards.
+  - The only pack outside the range is the Echo Pack, which holds only Lumen's cards.
+- **The card guide** in the album knows the new packs, volumes and the Lounge regulars.
+- **Fixes:**
+  - Sorcerer's Library (Normal and Quick-Play Spells) had been handing out the Spellbook family's cards since 0.53.0, because the two packs shared a key. It sells Spells again.
+  - Gozen Match threw an error when The Graveyard in the Fourth Dimension set it off.
+  - Deck editor: the collection column ran off the right side of the screen (the sort menu and the toggles at the bottom). Its rows wrap now and the card grid shows as many columns as fit.
+  - Card album and deck editor: the NUEVA tag was cut off. It's as wide as its word now.
+- **Windows:** only the .exe changed. The .dll is the same as 0.54.0.
+
 ## What is in 0.54.0
 
 **Card plan part 4: the Duel Monsters and GX years. 1,379 new cards. The game now has 6,243 cards** (it had 4,864). Plus a card search that tells you where to find any card, and an engine crash fixed.

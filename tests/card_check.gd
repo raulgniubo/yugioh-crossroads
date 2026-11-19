@@ -74,7 +74,7 @@ func _ready() -> void:
 		problems.append("%d Normal Monsters have no Spanish flavor text" % no_flavor)
 	# 4. Every deck: its cards exist, are in the game, and it is a legal list.
 	var roam_src := ""
-	for f in ["roam_data.gd", "interiors.gd", "street_duels.gd", "roam_scene.gd"]:
+	for f in ["roam_data.gd", "interiors.gd", "street_duels.gd", "roam_scene.gd", "more_rooms.gd", "academy_rooms.gd"]:
 		roam_src += FileAccess.get_file_as_string("res://scripts/roam/" + f)
 	for k in CardData.DECKS.keys() + CardData.NAMED_DECKS.keys():
 		var main: Array = CardData.deck_list(str(k))
@@ -109,6 +109,25 @@ func _ready() -> void:
 			if not seen.has(id):
 				problems.append("%s is in no volume of %s" % [str(CardData.get_card(int(id)).get("name", "?")), era])
 		print("volumes: %s in %d volumes of about %d" % [era, n, Collection.pool(era).size() / n])
+	# 4c. Bundles (0.55.0): every family sold in exactly one bundle; packs between 100 and 300 cards.
+	var in_bundle := {}
+	for b in Collection.BUNDLES:
+		for fk in b["families"]:
+			if not Collection.FAMILIES.has(str(fk)):
+				problems.append("bundle %s names a family that is not there: %s" % [str(b["key"]), str(fk)])
+			if in_bundle.has(str(fk)):
+				problems.append("family %s is in two bundles" % str(fk))
+			in_bundle[str(fk)] = true
+	for fk in Collection.FAMILIES:
+		if not in_bundle.has(str(fk)):
+			problems.append("family %s is in no bundle (no pack in the shop)" % fk)
+	for p in Collection.shop_packs():
+		var n := Collection.pool(str(p["key"])).size()
+		var tag := "" if n >= 100 and n <= 300 else "  <- outside 100-300"
+		print("pack size: %s %s %d%s" % [str(p["key"]), Collection.pack_title(p), n, tag])
+	for p in Collection.PACKS:
+		if Collection.FAMILIES.has(str(p["key"])) and not bool(p.get("family", false)):
+			problems.append("pack %s has the same key as a family" % str(p["key"]))
 	# 5. Every family: a pack, a theme deck, somebody who plays it, and every card of it obtainable.
 	for fk in Collection.FAMILIES:
 		var fam: Dictionary = Collection.FAMILIES[fk]

@@ -163,12 +163,15 @@ func _draw_over() -> void:
 		_over.draw_style_box(sb, b)
 		_over.draw_string(f2, b.position + Vector2(7, 20), t2, HORIZONTAL_ALIGNMENT_LEFT, -1, 19, UITheme.GOLD)
 	if is_new and state == "owned":
-		var nb := Rect2(cr.position + Vector2(-3, -3), Vector2(44, 20))
+		# (The tag fits its word: "NUEVA" was cut off in a box sized for "NEW".)
+		var nt := Loc.t("NEW")
+		var nw := UITheme.title_font().get_string_size(nt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+		var nb := Rect2(cr.position + Vector2(-3, -3), Vector2(nw + 14, 20))
 		var sb2 := StyleBoxFlat.new()
 		sb2.bg_color = UITheme.ACCENT
 		sb2.set_corner_radius_all(6)
 		_over.draw_style_box(sb2, nb)
-		_over.draw_string(UITheme.title_font(), nb.position + Vector2(7, 16), Loc.t("NEW"), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Comic.INK)
+		_over.draw_string(UITheme.title_font(), nb.position + Vector2(7, 16), nt, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Comic.INK)
 	if selected or _hover > 0.01:
 		var k := 1.0 if selected else _hover * 0.6
 		var pulse := 0.75 + 0.25 * sin(_sel_t * 5.0) if selected else 1.0

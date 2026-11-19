@@ -179,3 +179,17 @@ and the story difficulty moves it. All of that is build 1. Build 2 is only the f
   build/<target> dir first: build.sh skips objects that exist, and a changed header otherwise leaves stale objects.
 - Sweep focus "singles" = data/singles.json only. SWEEP_TRACE=1 prints each staged card to stderr.
 - deck_mask was retuned by hand after the sim (5 weak curses out, staple traps in); b7.py still has the first list.
+
+### Build 2 of parts 4-5 shipped as 0.55.0
+- 19 families via `tools/dev/families/b8.py` (5D's: worm swarm vylon gishki watt laval ally_justice flamvell reptilianne; ZEXAL:
+  evol phantom_beast noble_knight gears inzektor sylvan hazy hieratic artifact heraldic). ZEXAL duelists are new Heartland
+  Lounge regulars (MoreRooms.PEOPLE["hl_lounge"], 2 decks each); add_family.py accepts npc: None now.
+- Singles for 5D's/ZEXAL years in data/singles.json. Spanish: tools/dev/cardes/b55_official_es.json.
+- Bundles: Collection.BUNDLES (18), shop_packs() replaces every family pack with its bundle; family packs stay in PACKS for the
+  album, goals and covers. unlock_key() (static) maps a volume to its set and a bundle to its first family. card_check prints
+  every shop pack's size and fails a family that is in no bundle or two. A new family must be added to a bundle by hand.
+- BIG_PACKS (Type/Element/Beyond/spells/traps) come in volumes of up to BIG_VOLUME (280).
+- The tab-3 pack "spellbook" (Sorcerer's Library) is now "spells": its key had collided with the Spellbook family's.
+- native/custom/c53334471.lua (Gozen Match): tp nil guard.
+- Found, not fixed: memory grows about 2 MB per duel in a long ocg_sim run (20 duels 490 MB, 200 duels 860 MB); the full
+  `all` sim got OOM-killed after ~2,400 duels (8 GB container). Check the bridge for duels or Lua states not freed.

@@ -33,6 +33,25 @@ const PACKS := [
 	{"key": "Vault", "tab": 0, "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
 	{"key": "legends", "tab": 0, "name": "Monster Legends", "color": Color("e8b04a"), "blurb": "Normal Monsters from every era: hundreds of them, from the classics to the rare big ones."},
 	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen, her forms and the cards around her. Only the ones the story has already handed you, up to three of each."},
+	{"key": "sylvan", "tab": 1, "name": "Sylvan Grove", "color": Color("5aa04a"), "family": true, "blurb": "The Sylvan plants of the high mountain: they dig through the top of the Deck, send Plants to the Graveyard and grow into the Sylvan High Protector and High Arbiter."},
+	{"key": "heraldic", "tab": 1, "name": "Heraldic Beasts", "color": Color("8a5ac0"), "family": true, "blurb": "The Heraldic Beasts of the coats of arms, the Heraldry spells that copy and return them, and the Heraldry Numbers they build."},
+	{"key": "artifact", "tab": 1, "name": "Artifact Armory", "color": Color("a0b0d0"), "family": true, "blurb": "The Artifacts, LIGHT weapons of the gods that sit face-down as Spells and come out the moment the other side destroys them."},
+	{"key": "hieratic", "tab": 1, "name": "Hieratic Dynasty", "color": Color("e0c060"), "family": true, "blurb": "The Hieratic dragons of the sun: they Tribute each other from the hand and the field to call Dragon Normal Monsters, and the Sun Dragon Overlord rises over them all."},
+	{"key": "hazy", "tab": 1, "name": "Hazy Flame and Fire Kings", "color": Color("ff6a2a"), "family": true, "blurb": "The Hazy Flame beasts that cannot be targeted and need FIRE Tributes, and the Fire King Avatars that burn themselves to rise again."},
+	{"key": "inzektor", "tab": 1, "name": "Inzektor Hive", "color": Color("4a8a3a"), "family": true, "blurb": "The Inzektor, DARK insects that equip to each other and fire their effects when they let go, and the Exa Xyz that rule the hive."},
+	{"key": "gears", "tab": 1, "name": "Gears and Rails", "color": Color("8a8aa0"), "family": true, "blurb": "The Geargia machines that gear up into Xyz, and the trains of the railway: Level 10 locomotives, their freight cars and the Superdreadnought Rail Cannons."},
+	{"key": "noble_knight", "tab": 1, "name": "Knights of the Round Table", "color": Color("c0a050"), "family": true, "blurb": "The Noble Knights of Artorigus's round table, the Noble Arms they carry, Gwenhwyfar their queen, and the Ignoble Knights who turned against them."},
+	{"key": "phantom_beast", "tab": 1, "name": "Mecha Phantom Beasts", "color": Color("5a8ab0"), "family": true, "blurb": "The Mecha Phantom Beasts, WIND machines that make Tokens to protect themselves and fight together in the air, with Dracossack at their head and the Phantom Beasts of old."},
+	{"key": "evol", "tab": 1, "name": "Evolution of the Dinosaurs", "color": Color("d86a3a"), "family": true, "blurb": "The Evoltiles that flip and evolve into Evolsaurs, the Evolzar dragons they become, and the Evo- cards that drive the change."},
+	{"key": "reptilianne", "tab": 1, "name": "Reptilianne Den", "color": Color("6aa04a"), "family": true, "blurb": "The Reptilianne, serpent-women who turn monsters to stone: they drop the other side's ATK to 0 and then feed on what is left."},
+	{"key": "flamvell", "tab": 1, "name": "Flamvell Fire", "color": Color("ff7a3a"), "family": true, "blurb": "The Flamvell, FIRE dragons and fiends from a world of fire, and the Neo Flamvell who burn the other side's Graveyard to ash."},
+	{"key": "ally_justice", "tab": 1, "name": "Allies of Justice", "color": Color("a0a0b0"), "family": true, "blurb": "The Ally of Justice machines built to hunt LIGHT monsters, from the little Cycle Reader up to Decisive Armor and the Field Marshal."},
+	{"key": "laval", "tab": 1, "name": "Laval Eruption", "color": Color("e04a2a"), "family": true, "blurb": "The Laval of the volcano: FIRE monsters that grow stronger with every Laval in the Graveyard, and the Lavalval Synchros and Xyz they melt into."},
+	{"key": "watt", "tab": 1, "name": "Wattage", "color": Color("f0d040"), "family": true, "blurb": "The Watt monsters, small LIGHT Thunder beasts that strike for their effects when they deal damage, and the Watt Synchros that charge through."},
+	{"key": "gishki", "tab": 1, "name": "The Aquamirror", "color": Color("3a7ad8"), "family": true, "blurb": "The Gishki ritualists of the water and the Evigishki they summon through the Aquamirror, with the Aquamirror spells that find a ritual in the Deck."},
+	{"key": "vylon", "tab": 1, "name": "Vylon Assembly", "color": Color("e0e8ff"), "family": true, "blurb": "The Vylon, LIGHT machine-angels that Synchro Summon and then equip themselves with the Vylon Equip Spells, and the Vylon Omega and Disigma at the top."},
+	{"key": "swarm", "tab": 1, "name": "Swarm of the Lswarm", "color": Color("6a4a7a"), "family": true, "blurb": "The Steelswarm demons and the Evilswarm they became after the Infestation: Tributes for the old ones, Xyz Summons for the new, and the Infestation cards that spread through both."},
+	{"key": "worm", "tab": 1, "name": "The Worm Invasion", "color": Color("8ab060"), "family": true, "blurb": "The Worms, LIGHT Reptiles from another planet: they flip face-down, swarm the field and turn every flip into a trick, until Worm Zero takes their place."},
 	{"key": "frog", "tab": 1, "name": "Frogs and Penguins", "color": Color("4ab08a"), "family": true, "blurb": "The Frogs that swap, copy and sacrifice themselves for each other, the frog Xyz that rules the pond, and the Penguins that flip up to send your monsters home."},
 	{"key": "barrier", "tab": 1, "name": "Wardens of the Barrier", "color": Color("e0d070"), "family": true, "blurb": "The six Barrier Statues that lock out every Attribute but their own, and the Counter Fairies who answer every Counter Trap with a reward."},
 	{"key": "toy", "tab": 1, "name": "Toy Box Troubles", "color": Color("d87a3a"), "family": true, "blurb": "The chess Puppets from pawn to king, the Toy soldiers and magicians that hide in the Spell & Trap Zone until they spring out, and the puppeteers who pull every string."},
@@ -112,7 +131,7 @@ const PACKS := [
 	{"key": "tide", "tab": 3, "name": "Flame and Tide", "color": Color("4aa8ff"), "blurb": "Every WATER and FIRE monster."},
 	{"key": "gale", "tab": 3, "name": "Sky Riders", "color": Color("7de0b0"), "blurb": "WIND monsters and Winged Beasts."},
 	{"key": "forest", "tab": 3, "name": "Deep Woods", "color": Color("5fd070"), "blurb": "Insects, Plants, Rocks, Aqua, Fish and Pyro."},
-	{"key": "spellbook", "tab": 3, "name": "Sorcerer's Library", "color": Color("3fe0c0"), "blurb": "Normal and Quick-Play Spells: removal, draw power, revival."},
+	{"key": "spells", "tab": 3, "name": "Sorcerer's Library", "color": Color("3fe0c0"), "blurb": "Normal and Quick-Play Spells: removal, draw power, revival."},
 	{"key": "arsenal", "tab": 3, "name": "Relic Arsenal", "color": Color("8fb8c8"), "blurb": "Equip, Field and Continuous Spells."},
 	{"key": "traps", "tab": 3, "name": "Face-Down Secrets", "color": Color("ff5a8a"), "blurb": "Every Trap card in the game."},
 ]
@@ -210,6 +229,25 @@ const THEME_DECKS := [
 	{"key": "deck_insect", "art": "forest", "cover": "Chainsaw Insect", "color": Color("7ab040"), "era": "GX", "blurb": "Mantises, beetles and swarms that come in numbers. Chainsaw Insect hits hard, the swarms clear the way, and the bugs keep coming."},
 	{"key": "deck_zombie", "art": "shadow", "cover": "Lich Lord, King of the Underworld", "color": Color("5a7a5a"), "era": "GX", "blurb": "The dead don't stay down. Zombie World and Book of Life bring them back, Mezuki and the Pyramid Turtle dig them up, and the mummies just keep walking."},
 	{"key": "deck_machina", "art": "machines", "cover": "Machina Force", "color": Color("8a9ab0"), "era": "Duel Monsters", "blurb": "The Machina soldiers and the Machine Kings, the old cannons and robots of the arcade. Line up three Machina and they build Machina Force."},
+	{"key": "deck_worm", "art": "wild", "cover": "Worm King", "color": Color("8ab060"), "era": "5D's", "blurb": "Flip the Worms face-up one after another: each one sets up the next, and the King and Queen come down when the field is full of them."},
+	{"key": "deck_swarm", "art": "shadow", "cover": "Evilswarm Ophion", "color": Color("6a4a7a"), "era": "5D's", "blurb": "Line up two Level 4 Evilswarm and overlay them. Ophion locks out big monsters, Bahamut steals the field, and the Infestation traps keep the swarm coming back."},
+	{"key": "deck_vylon", "art": "machines", "cover": "Vylon Omega", "color": Color("e0e8ff"), "era": "5D's", "blurb": "Tune a Vylon, Synchro Summon, and every Vylon that leaves the field brings an Equip Spell with it. The more equips you stack, the stronger they get."},
+	{"key": "deck_gishki", "art": "tide", "cover": "Evigishki Gustkraken", "color": Color("3a7ad8"), "era": "5D's", "blurb": "The Gishki find the ritual and the monster, the Aquamirror brings them across, and Gustkraken looks at the other side's hand before it sends it away."},
+	{"key": "deck_watt", "art": "arcane", "cover": "Wattaildragon", "color": Color("f0d040"), "era": "5D's", "blurb": "Small Watt monsters that hit the other duelist directly and get a reward each time. Keep the current flowing and Wattchimera never stops."},
+	{"key": "deck_laval", "art": "wild", "cover": "Laval Stennon", "color": Color("e04a2a"), "era": "5D's", "blurb": "Fill the Graveyard with Laval and the ones on the field burn hotter. The Volcano Handmaiden sends more down and the Synchros finish the job."},
+	{"key": "deck_ally_justice", "art": "machines", "cover": "Ally of Justice Decisive Armor", "color": Color("a0a0b0"), "era": "5D's", "blurb": "Machines that punish LIGHT monsters: they destroy them in battle, take their attacks, and tune into Synchros that lock them out."},
+	{"key": "deck_flamvell", "art": "wild", "cover": "Ancient Flamvell Deity", "color": Color("ff7a3a"), "era": "5D's", "blurb": "Small FIRE monsters that search each other out and tune into the Ancient Flamvell Deity, while the Neo Flamvell banish whatever the other side wanted back."},
+	{"key": "deck_reptilianne", "art": "wild", "cover": "Reptilianne Vaskii", "color": Color("6aa04a"), "era": "5D's", "blurb": "Drop their monsters to 0 ATK and they're easy prey. Gorgon and Scylla bring the stone, Vaskii comes out when the field is full of statues."},
+	{"key": "deck_evol", "art": "wild", "cover": "Evolzar Solda", "color": Color("d86a3a"), "era": "ZEXAL", "blurb": "Flip an Evoltile and it calls an Evolsaur from the Deck. Two of those make an Evolzar, and the Evolzar stop Summons and traps cold."},
+	{"key": "deck_phantom_beast", "art": "machines", "cover": "Mecha Phantom Beast Dracossack", "color": Color("5a8ab0"), "era": "ZEXAL", "blurb": "Every Mecha Phantom Beast makes a Hamstrat Token or two. The Tokens keep them alive, raise their Levels and become Xyz material for Dracossack."},
+	{"key": "deck_noble_knight", "art": "warriors", "cover": "Artorigus, King of the Noble Knights", "color": Color("c0a050"), "era": "ZEXAL", "blurb": "Each Noble Knight picks up a Noble Arms and passes it on. Two of them at Level 4 call the King to the table."},
+	{"key": "deck_gears", "art": "machines", "cover": "Superdreadnought Rail Cannon Gustav Max", "color": Color("8a8aa0"), "era": "ZEXAL", "blurb": "The Geargia flip and search each other into a Rank 3, and when the big trains roll in, two Level 10s make a Rail Cannon."},
+	{"key": "deck_inzektor", "art": "forest", "cover": "Inzektor Exa-Beetle", "color": Color("4a8a3a"), "era": "ZEXAL", "blurb": "Dragonfly and Centipede equip Hornet and Ladybug, then send them off to destroy a card. Every swap is another card gone from the other side."},
+	{"key": "deck_hazy", "art": "wild", "cover": "Fire King High Avatar Garunix", "color": Color("ff6a2a"), "era": "ZEXAL", "blurb": "Level 6 Hazy Flames nobody can target, and Fire King Avatars that destroy a card of their own to come back from the flames."},
+	{"key": "deck_hieratic", "art": "dragons", "cover": "Hieratic Sun Dragon Overlord of Heliopolis", "color": Color("e0c060"), "era": "ZEXAL", "blurb": "Tribute a Hieratic and it pulls a Dragon Normal Monster out of the Deck with its ATK and DEF at 0. Pile them up into Atum and Heliopolis."},
+	{"key": "deck_artifact", "art": "arcane", "cover": "Artifact Moralltach", "color": Color("a0b0d0"), "era": "ZEXAL", "blurb": "Set the Artifacts in the Spell & Trap Zone and wait. When the other duelist destroys one on their turn, it jumps out and strikes back."},
+	{"key": "deck_heraldic", "art": "arcane", "cover": "Number 69: Heraldry Crest", "color": Color("8a5ac0"), "era": "ZEXAL", "blurb": "Level 4 beasts that call each other and turn into Heraldry Numbers. Heraldry Crest takes the other side's effects for its own."},
+	{"key": "deck_sylvan", "art": "forest", "cover": "Orea, the Sylvan High Arbiter", "color": Color("5aa04a"), "era": "ZEXAL", "blurb": "Excavate the top of the Deck: every Plant that gets sent to the Graveyard sets off a Sylvan's effect, and the big trees grow out of what's left."},
 	{"key": "deck_monarchs", "art": "shadow", "cover": "Caius the Mega Monarch", "color": Color("e0c070"), "era": "GX", "blurb": "Squires and Vassals step out so a Monarch can be Tribute Summoned, then a Mega Monarch Tributes that one. Every landing clears something off their side."},
 	{"key": "deck_chaos", "art": "warriors", "cover": "Black Luster Soldier - Super Soldier", "color": Color("c8b0ff"), "era": "Duel Monsters", "blurb": "Super Soldier Ritual turns two Level 4 Knights into Black Luster Soldier, and the Knights give him their powers. Gaia rides in when he falls, and Chaos Form brings back the old legends."},
 	{"key": "deck_gem_knight", "art": "warriors", "cover": "Gem-Knight Master Diamond", "color": Color("7ae0ff"), "era": "ZEXAL", "blurb": "Gem-Knight Fusion turns two plain knights into a Fusion Monster, Brilliant Fusion fuses straight from the Deck, and Gem-Knight Fusion comes back from the Graveyard to do it again."},
@@ -803,6 +841,97 @@ const FAMILIES := {
 		"Nightmare Penguin", "Flip Flop Frog", "Dupe Frog", "Swap Frog", "Tradetoad", "Ronintoadin", "Puny Penguin", "Guard Penguin",
 		"The Great Emperor Penguin", "T.A.D.P.O.L.E.", "Substitoad", "Submarine Frog", "Treeborn Frog", "Penguin Soldier", "Penguin Ninja",
 		"Flying Penguin", "Bolt Penguin", "Slime Toad", "Toad Master", "Toadally Awesome", "Fishborg Blaster"]},
+	"worm": {"era": "5D's", "deck": "deck_worm", "cards": [
+		"Shield Worm", "Warm Worm", "Worm Bait", "Worm Call", "Worm Falco", "Worm Gulse", "Worm Hope", "Worm Illidan", "Worm Jetelikpse", "Worm King",
+		"Worm Linx", "Worm Millidith", "Worm Noble", "Worm Opera", "Worm Prince", "Worm Queen", "Worm Rakuyeh", "Worm Solid", "Worm Tentacles",
+		"Worm Ugly", "Worm Victory", "Worm Warlord", "Worm Xex", "Worm Yagan", "Worm Zero", "Dungeon Worm", "Needle Worm", "Scrap Worm", "Worm Drake"]},
+	"swarm": {"era": "5D's", "deck": "deck_swarm", "cards": [
+		"Evilswarm Azzathoth", "Evilswarm Bahamut", "Evilswarm Castor", "Evilswarm Coppelia", "Evilswarm Golem", "Evilswarm Hraesvelg",
+		"Evilswarm Kerykeion", "Evilswarm Ketos", "Evilswarm Mandragora", "Evilswarm Nightmare", "Evilswarm O'lantern", "Evilswarm Obliviwisp",
+		"Evilswarm Ophion", "Evilswarm Ouroboros", "Evilswarm Salamandra", "Evilswarm Thanatos", "Evilswarm Thunderbird", "Evilswarm Zahak",
+		"First Step Towards Infestation", "Infestation Infection", "Infestation Pandemic", "Infestation Ripples", "Infestation Terminus",
+		"Infestation Tool", "Infestation Wave", "Steelswarm Caller", "Steelswarm Caucastag", "Steelswarm Cell", "Steelswarm Gatekeeper",
+		"Steelswarm Genome", "Steelswarm Girastag", "Steelswarm Hercules", "Steelswarm Longhorn", "Steelswarm Mantis", "Steelswarm Moth",
+		"Steelswarm Scout", "Steelswarm Sentinel", "Steelswarm Sting", "Evilswarm Exciton Knight", "Evilswarm Heliotrope", "Steelswarm Roach"]},
+	"vylon": {"era": "5D's", "deck": "deck_vylon", "cards": [
+		"Vylon Alpha", "Vylon Charger", "Vylon Component", "Vylon Cube", "Vylon Delta", "Vylon Disigma", "Vylon Element", "Vylon Epsilon",
+		"Vylon Filament", "Vylon Hept", "Vylon Material", "Vylon Matter", "Vylon Ohm", "Vylon Omega", "Vylon Pentachloro", "Vylon Polytope", "Vylon Prism",
+		"Vylon Segment", "Vylon Sigma", "Vylon Soldier", "Vylon Sphere", "Vylon Stella", "Vylon Stigma", "Vylon Tesseract", "Vylon Tetra", "Vylon Vanguard"]},
+	"gishki": {"era": "5D's", "deck": "deck_gishki", "cards": [
+		"Aquamirror Cycle", "Aquamirror Illusion", "Aquamirror Meditation", "Contact with the Aquamirror", "Evigishki Gustkraken", "Evigishki Levianima",
+		"Evigishki Merrowgeist", "Evigishki Mind Augus", "Evigishki Soul Ogre", "Evigishki Tetrogre", "Forbidden Arts of the Gishki", "Gishki Abyss",
+		"Gishki Aquamirror", "Gishki Ariel", "Gishki Avance", "Gishki Beast", "Gishki Chain", "Gishki Diviner", "Gishki Marker", "Gishki Mollusk",
+		"Gishki Noellia", "Gishki Photomirror", "Gishki Psychelone", "Gishki Reliever", "Gishki Shadow", "Gishki Vanity", "Gishki Vision",
+		"Gishki Zielgigas", "Ritual Buster", "Spiritual Forest", "Gishki Emilia", "Gishki Natalia", "Ritual Weapon"]},
+	"watt": {"era": "5D's", "deck": "deck_watt", "cards": [
+		"Wattberyx", "Wattbetta", "Wattcannon", "Wattcastle", "Wattchimera", "Wattcine", "Wattcobra", "Wattcube", "Wattdragonfly", "Wattfox",
+		"Wattgiraffe", "Watthopper", "Watthydra", "Wattjustment", "Wattkeeper", "Wattkey", "Wattkiwi", "Wattlemur", "Wattmole", "Wattpheasant",
+		"Wattsquirrel", "Wattsychic Fighter", "Wattwoodpecker", "Wattaildragon", "Wattkid"]},
+	"laval": {"era": "5D's", "deck": "deck_laval", "cards": [
+		"Laval Blaster", "Laval Burner", "Laval Cannon", "Laval Coatl", "Laval Dual Slasher", "Laval Forest Sprite", "Laval Judgment Lord",
+		"Laval Lakeside Lady", "Laval Lancelord", "Laval Magma Cannoneer", "Laval Miller", "Laval Phlogis", "Laval Stennon", "Laval Volcano Handmaiden",
+		"Laval Warrior", "Laval the Greater", "Lavalval Dragon", "Lavalval Dragun", "Lavalval Ignis", "Lavalval Chain"]},
+	"ally_justice": {"era": "5D's", "deck": "deck_ally_justice", "cards": [
+		"Ally of Justice Core Destroyer", "Ally of Justice Cosmic Gateway", "Ally of Justice Cyclone Creator", "Ally of Justice Enemy Catcher",
+		"Ally of Justice Field Marshal", "Ally of Justice Light Gazer", "Ally of Justice Nullfier", "Ally of Justice Omni-Weapon",
+		"Ally of Justice Quarantine", "Ally of Justice Reverse Break", "Ally of Justice Searcher", "Ally of Justice Thousand Arms",
+		"Ally of Justice Thunder Armor", "Ally of Justice Unknown Crusher", "Ally of Justice Unlimiter", "Ally of Justice Catastor",
+		"Ally of Justice Clausolas", "Ally of Justice Cycle Reader", "Ally of Justice Decisive Armor", "Ally of Justice Garadholg"]},
+	"flamvell": {"era": "5D's", "deck": "deck_flamvell", "cards": [
+		"Ancient Flamvell Deity", "Flamvell Archer", "Flamvell Baby", "Flamvell Commando", "Flamvell Counter", "Flamvell Fiend", "Flamvell Firedog",
+		"Flamvell Grunika", "Flamvell Poun", "Neo Flamvell Garuda", "Neo Flamvell Hedgehog", "Neo Flamvell Origin", "Neo Flamvell Sabre",
+		"Neo Flamvell Shaman", "Flamvell Guard"]},
+	"reptilianne": {"era": "5D's", "deck": "deck_reptilianne", "cards": [
+		"Reptilianne Gardna", "Reptilianne Gorgon", "Reptilianne Hydra", "Reptilianne Medusa", "Reptilianne Naga", "Reptilianne Poison",
+		"Reptilianne Rage", "Reptilianne Scylla", "Reptilianne Servant", "Reptilianne Spawn", "Reptilianne Vaskii", "Reptilianne Viper"]},
+	"evol": {"era": "ZEXAL", "deck": "deck_evol", "cards": [
+		"Evo-Branch", "Evo-Diversity", "Evo-Force", "Evo-Instant", "Evo-Karma", "Evo-Miracle", "Evo-Price", "Evo-Singularity", "Evolsaur Cerato",
+		"Evolsaur Darwino", "Evolsaur Diplo", "Evolsaur Elias", "Evolsaur Pelta", "Evolsaur Terias", "Evolsaur Vulcano", "Evoltile Casinerio",
+		"Evoltile Elginero", "Evoltile Gephyro", "Evoltile Lagosucho", "Evoltile Najasho", "Evoltile Odonto", "Evoltile Pleuro", "Evoltile Westlo",
+		"Evolutionary Bridge", "Evolzar Solda", "Evolzar Dolkka", "Evolzar Laggia"]},
+	"phantom_beast": {"era": "ZEXAL", "deck": "deck_phantom_beast", "cards": [
+		"Horn of the Phantom Beast", "Mecha Phantom Beast Aerosguin", "Mecha Phantom Beast Blackfalcon", "Mecha Phantom Beast Blue Impala",
+		"Mecha Phantom Beast Coltwing", "Mecha Phantom Beast Concoruda", "Mecha Phantom Beast Hamstrat", "Mecha Phantom Beast Harrliard",
+		"Mecha Phantom Beast Kalgriffin", "Mecha Phantom Beast Megaraptor", "Mecha Phantom Beast O-Lion", "Mecha Phantom Beast Sabre Hawk",
+		"Mecha Phantom Beast Stealthray", "Mecha Phantom Beast Tetherwolf", "Mecha Phantom Beast Turtletracer", "Mecha Phantom Beast Warbluran",
+		"Chimera the Flying Mythical Beast", "Gazelle the King of Mythical Beasts", "Mecha Phantom Beast Dracossack", "Phantom Beast Wild-Horn"]},
+	"noble_knight": {"era": "ZEXAL", "deck": "deck_noble_knight", "cards": [
+		"Artorigus, King of the Noble Knights", "Gwenhwyfar, Queen of Noble Arms", "Ignoble Knight of Black Laundsallyn",
+		"Ignoble Knight of High Laundsallyn", "Noble Arms - Arfeudutyr", "Noble Arms - Caliburn", "Noble Arms - Excaliburn", "Noble Arms - Gallatin",
+		"Noble Arms of Destiny", "Noble Knight Borz", "Noble Knight Brothers", "Noble Knight Drystan", "Noble Knight Eachtar", "Noble Knight Gawayn",
+		"Noble Knight Gwalchavad", "Noble Knight Joan", "Noble Knight Medraut", "Noble Knight Peredur", "Noble Knights of the Round Table",
+		"Sacred Noble Knight of King Artorigus", "Celestial Sword - Eatos", "Noble Knight Artorigus"]},
+	"gears": {"era": "ZEXAL", "deck": "deck_gears", "cards": [
+		"Construction Train Signal Red", "Express Train Trolley Olley", "Geargiaccelerator", "Geargiagear", "Geargiagear Gigant XG", "Geargiano",
+		"Geargiano Mk-II", "Geargiano Mk-III", "Geargiarmor", "Geargiarsenal", "Geargiattacker", "Geargiauger", "Lionhearted Locomotive",
+		"Night Express Knight", "Rocket Arrow Express", "Ruffian Railcar", "Snow Plow Hustle Rustle", "Special Schedule", "Train Connection",
+		"Number 81: Superdreadnought Rail Cannon Super Dora", "Superdreadnought Rail Cannon Gustav Max"]},
+	"inzektor": {"era": "ZEXAL", "deck": "deck_inzektor", "cards": [
+		"Inzektor Ant", "Inzektor Axe - Zektahawk", "Inzektor Centipede", "Inzektor Crossbow - Zektarrow", "Inzektor Dragonfly", "Inzektor Earwig",
+		"Inzektor Exa-Beetle", "Inzektor Exa-Stag", "Inzektor Firefly", "Inzektor Gauntlet", "Inzektor Giga-Cricket", "Inzektor Giga-Mantis",
+		"Inzektor Giga-Weevil", "Inzektor Hopper", "Inzektor Hornet", "Inzektor Ladybug", "Inzektor Orb", "Inzektor Sword - Zektkaliber"]},
+	"hazy": {"era": "ZEXAL", "deck": "deck_hazy", "cards": [
+		"Circle of the Fire Kings", "Fire King Avatar Barong", "Fire King Avatar Garunix", "Fire King Avatar Kirin", "Fire King Avatar Yaksha",
+		"Fire King High Avatar Garunix", "Hazy Flame Basiltrice", "Hazy Flame Cerbereus", "Hazy Flame Griffin", "Hazy Flame Hydra", "Hazy Flame Hyppogrif",
+		"Hazy Flame Mantikor", "Hazy Flame Peryton", "Hazy Flame Sphynx", "Hazy Glory", "Hazy Pillar", "Onslaught of the Fire Kings"]},
+	"hieratic": {"era": "ZEXAL", "deck": "deck_hieratic", "cards": [
+		"Hieratic Dragon King of Atum", "Hieratic Dragon of Asar", "Hieratic Dragon of Eset", "Hieratic Dragon of Gebeb", "Hieratic Dragon of Nebthet",
+		"Hieratic Dragon of Nuit", "Hieratic Dragon of Su", "Hieratic Dragon of Sutekh", "Hieratic Dragon of Tefnuit", "Hieratic Seal From the Ashes",
+		"Hieratic Seal of Banishment", "Hieratic Seal of Convocation", "Hieratic Seal of Reflection", "Hieratic Seal of Supremacy",
+		"Hieratic Seal of the Dragon King", "Hieratic Seal of the Sun Dragon Overlord", "Hieratic Sun Dragon Overlord of Heliopolis"]},
+	"artifact": {"era": "ZEXAL", "deck": "deck_artifact", "cards": [
+		"Artifact Achilleshield", "Artifact Aegis", "Artifact Beagalltach", "Artifact Caduceus", "Artifact Durendal", "Artifact Failnaught",
+		"Artifact Ignition", "Artifact Labrys", "Artifact Moralltach", "Artifact Sanctum", "Artifact Scythe", "Artifacts Unleashed"]},
+	"heraldic": {"era": "ZEXAL", "deck": "deck_heraldic", "cards": [
+		"Advanced Heraldry Art", "Augmented Heraldry", "Heraldic Beast Aberconway", "Heraldic Beast Basilisk", "Heraldic Beast Berners Falcon",
+		"Heraldic Beast Eale", "Heraldic Beast Leo", "Heraldic Beast Twin-Headed Eagle", "Heraldic Beast Unicorn", "Heraldry Change", "Heraldry Reborn",
+		"Heraldry Record", "Number 8: Heraldic King Genom-Heritage", "Number 18: Heraldry Patriarch", "Number 69: Heraldry Crest",
+		"Number C69: Heraldry Crest of Horror"]},
+	"sylvan": {"era": "ZEXAL", "deck": "deck_sylvan", "cards": [
+		"Alsei, the Sylvan High Protector", "Mount Sylvania", "Orea, the Sylvan High Arbiter", "Sylvan Bladefender", "Sylvan Blessing", "Sylvan Charity",
+		"Sylvan Cherubsprout", "Sylvan Flowerknight", "Sylvan Guardioak", "Sylvan Hermitree", "Sylvan Komushroomo", "Sylvan Lotuswain",
+		"Sylvan Marshalleaf", "Sylvan Mikorange", "Sylvan Peaskeeper", "Sylvan Sagequoia", "Sylvan Snapdrassinagon", "Sylvan Waterslide",
+		"Sylvan Princessprout"]},
 }
 
 
@@ -1310,7 +1439,7 @@ var _covers := {}
 func pack_cover(key: String) -> int:
 	if _covers.is_empty():
 		var used := {}
-		for p in PACKS + all_volumes():
+		for p in PACKS + all_volumes() + BUNDLES.map(func(b): return bundle_pack(b)):
 			var ids: Array = pool(str(p["key"])).duplicate()
 			var monsters: Array = ids.filter(func(id): return CardData.get_card(id).get("kind", "") == "monster")
 			if not monsters.is_empty():
@@ -1963,7 +2092,7 @@ func daily_rows() -> Array:
 
 
 func pack_price(pack: Dictionary) -> int:
-	return int(pack.get("price", PACK_PRICE if int(pack.get("tab", 0)) == 0 and str(pack.get("key", "")) != "beyond" else THEMED_PRICE))
+	return int(pack.get("price", PACK_PRICE if int(pack.get("tab", 0)) == 0 and base_key(str(pack.get("key", ""))) != "beyond" else THEMED_PRICE))
 
 
 func _spell_kind(id: int) -> String:
@@ -1988,7 +2117,7 @@ func _in_theme(theme: String, id: int) -> bool:
 			return kind == "spell" and (name.contains("Fusion") or name.contains("Polymerization") or name.contains("Ritual") or name == "Dragon's Mirror")
 		"traps":
 			return kind == "trap"
-		"spellbook":
+		"spells":      # (was "spellbook" until 0.55.0: that is the Spellbook family's key since 0.53.0)
 			return kind == "spell" and not (_spell_kind(id) in ["equip", "field", "cont"])
 		"arsenal":
 			return kind == "spell" and _spell_kind(id) in ["equip", "field", "cont"]
@@ -2124,6 +2253,15 @@ func pool(era: String) -> Array:
 	if era.contains("#"):
 		_pools[era] = _volume_ids(era)
 		return _pools[era]
+	if is_bundle(era):
+		var seen := {}
+		for b in BUNDLES:
+			if str(b["key"]) == era:
+				for fk in b["families"]:
+					for id in family_ids(str(fk)):
+						seen[int(id)] = true
+		_pools[era] = seen.keys()
+		return _pools[era]
 	var ids := {}
 	if FAMILIES.has(era):
 		_pools[era] = family_ids(era)
@@ -2237,6 +2375,9 @@ func pack_of(key: String) -> Dictionary:
 	for p in all_volumes():
 		if str(p["key"]) == key:
 			return p
+	for b in BUNDLES:
+		if str(b["key"]) == key:
+			return bundle_pack(b)
 	return {"key": key, "tab": 0}
 
 
@@ -2257,9 +2398,12 @@ static func volume_of(key: String) -> int:
 
 
 func volume_count(era: String) -> int:
-	if not (era in SERIES):
-		return 1
-	return maxi(1, int(ceil(float(pool(era).size()) / VOLUME_SIZE)))
+	if era in SERIES:
+		return maxi(1, int(ceil(float(pool(era).size()) / VOLUME_SIZE)))
+	if era in BIG_PACKS:
+		# (the Type, Element and Beyond packs: volumes of up to BIG_VOLUME cards, 0.55.0)
+		return maxi(1, int(ceil(float(pool(era).size()) / BIG_VOLUME)))
+	return 1
 
 
 ## The volumes of one set as shop entries (just the set itself when it is small enough).
@@ -2285,7 +2429,7 @@ func volumes(era: String) -> Array:
 ## Every volume of every split set.
 func all_volumes() -> Array:
 	var out := []
-	for era in SERIES:
+	for era in SERIES + BIG_PACKS:
 		if volume_count(era) > 1:
 			out += volumes(era)
 	return out
@@ -2294,12 +2438,112 @@ func all_volumes() -> Array:
 ## What the shop puts on its shelves: the split sets as their volumes.
 func shop_packs() -> Array:
 	var out := []
+	var bundled := false
 	for p in PACKS:
-		if str(p["key"]) in SERIES and volume_count(str(p["key"])) > 1:
-			out += volumes(str(p["key"]))
+		var k := str(p["key"])
+		if FAMILIES.has(k) and bundle_of(k) != "":
+			# (a family's cards are sold in its bundle: one bigger pack for several related families)
+			if not bundled:
+				bundled = true
+				for b in BUNDLES:
+					out.append(bundle_pack(b))
+			continue
+		if (k in SERIES or k in BIG_PACKS) and volume_count(k) > 1:
+			out += volumes(k)
 		else:
 			out.append(p)
 	return out
+
+
+# ---- Bundles (0.55.0). A family pack held 10 to 100 cards, too few to be worth a shelf of its
+# own, so related families of one era are sold together in a pack of about 120 to 250 cards.
+# Each family keeps its theme deck and its album page; "b_dm_dragons" is a bundle's key.
+const BUNDLES := [
+	{"key": "b_dm_dragons", "era": "Duel Monsters", "name": "Legends of Dragons and Magic", "color": Color("6a7ad8"),
+		"blurb": "Blue-Eyes and Red-Eyes with all their support, Dark Magician and his school of magic, and the dragon-slaying swordsman with Jinzo and the Legendary Knights.",
+		"families": ["blue_eyes", "red_eyes", "dark_magician", "legends_king"]},
+	{"key": "b_dm_kingdom", "era": "Duel Monsters", "name": "Kingdom of Wonders", "color": Color("e0a050"),
+		"blurb": "Kuriboh and its cousins, the Magnet Warriors and the Harpies, the Toons of Toon World, and Exodia with Batteryman and the Gadgets.",
+		"families": ["kuriboh", "toon", "exodia"]},
+	{"key": "b_dm_fiends", "era": "Duel Monsters", "name": "Fiends and Curses", "color": Color("8a2a5a"),
+		"blurb": "The Archfiends and their court, the fallen Darklords, and the masks and old curses that wear a duelist down.",
+		"families": ["archfiend", "darklord", "mask"]},
+	{"key": "b_dm_guardians", "era": "Duel Monsters", "name": "Guardians and Warriors", "color": Color("c08a3a"),
+		"blurb": "The Amazons, the Gravekeepers of the Valley of the Kings, the Gate Guardians and their weapons, the Union machines and the Jurrac dinosaurs.",
+		"families": ["amazoness", "gravekeeper", "guardian", "union", "jurrac"]},
+	{"key": "b_dm_dimensions", "era": "Duel Monsters", "name": "Chaos and Other Dimensions", "color": Color("7a5ad8"),
+		"blurb": "The Envoys of Chaos, the D.D. monsters of the other dimension, the Spirits of the old shrine, the goblin gang and the toys that come alive.",
+		"families": ["chaos", "dd", "spirit", "goblin", "toy"]},
+	{"key": "b_gx_heroes", "era": "GX", "name": "Heroes, Gems and Machines", "color": Color("d84a4a"),
+		"blurb": "Every kind of HERO and their fusions, the seven Crystal Beasts and their rainbow, and the Cyber Dragons and Cyberdarks.",
+		"families": ["hero", "crystal_beast", "cyber"]},
+	{"key": "b_gx_dark", "era": "GX", "name": "Dark Powers", "color": Color("6a3a9a"),
+		"blurb": "The Fiends of Dark World, the Vampire Kingdom, the three Sacred Beasts, the Arcana Force tarot and the Monarchs.",
+		"families": ["dark_world", "vampire", "sacred_beast", "arcana_force", "monarchs"]},
+	{"key": "b_gx_iron", "era": "GX", "name": "Iron and Fire", "color": Color("b07a4a"),
+		"blurb": "The Ancient Gear machines, the Koa'ki Meiru with their iron cores, the Alien invaders, the Barrier Statues and Counter Fairies, and the Volcanics.",
+		"families": ["ancient_gear", "koaki_meiru", "alien", "barrier", "volcanic"]},
+	{"key": "b_gx_arena", "era": "GX", "name": "Arena of Beasts", "color": Color("5a9a5a"),
+		"blurb": "The Gladiator Beasts, the Armed Dragons and every LV monster, the Cloudians, Venoms and Fossils, and the Frogs and Penguins.",
+		"families": ["gladiator", "armed_dragon", "cloudian", "frog"]},
+	{"key": "b_5d_junk", "era": "5D's", "name": "Junk and Gears", "color": Color("e0a020"),
+		"blurb": "The Synchrons, Junk and Blackwings, the T.G. machines, the Morphtronics, the Scraps and the Meklord Emperors with the Earthbound Immortals.",
+		"families": ["synchron", "tg", "morphtronic", "scrap", "meklord"]},
+	{"key": "b_5d_blade", "era": "5D's", "name": "Way of the Blade", "color": Color("c04a3a"),
+		"blurb": "The Six Samurai and their Shien, the X-Sabers, the Karakuri puppets and the Genex machines.",
+		"families": ["six_samurai", "x_saber", "karakuri", "genex"]},
+	{"key": "b_5d_skies", "era": "5D's", "name": "Light and Wind", "color": Color("8ab4d8"),
+		"blurb": "The Lightsworn, the Dragunity, the Fabled, the Fortune Ladies, the Gusto, the Vylon angels and the Nordic gods.",
+		"families": ["lightsworn", "dragunity", "fabled", "fortune_lady", "gusto", "vylon", "nordic"]},
+	{"key": "b_5d_elements", "era": "5D's", "name": "Ice, Forest and Flame", "color": Color("4ab0a0"),
+		"blurb": "The Ice Barrier, the Naturia of the forest, the Laval and Flamvell of the fire, and the Gishki rituals of the water.",
+		"families": ["ice_barrier", "naturia", "laval", "flamvell", "gishki"]},
+	{"key": "b_5d_invaders", "era": "5D's", "name": "Invaders from Beyond", "color": Color("6a8a4a"),
+		"blurb": "The Worm aliens, the Steelswarm and the Infestation, the Reptilianne, the Watt monsters and the Ally of Justice machines.",
+		"families": ["worm", "swarm", "reptilianne", "watt", "ally_justice"]},
+	{"key": "b_zx_knights", "era": "ZEXAL", "name": "Knights and Stars", "color": Color("e0c050"),
+		"blurb": "The Heroic Challengers, the Noble Knights of the round table, the Constellar stars, the Battlin' Boxers and the Gem-Knights.",
+		"families": ["heroic", "noble_knight", "constellar", "battlin_boxer", "gem_knight"]},
+	{"key": "b_zx_gods", "era": "ZEXAL", "name": "Gods and Dragons", "color": Color("d86a2a"),
+		"blurb": "The Bujin, the Hieratic dragons of the sun, the Dragon Rulers, the Evoltile and Evolsaur, the Fire Fist, the Hazy Flame and Fire Kings, and the Artifacts.",
+		"families": ["bujin", "hieratic", "dragon_ruler", "evol", "fire_fist", "hazy", "artifact"]},
+	{"key": "b_zx_tricks", "era": "ZEXAL", "name": "Toys, Tricks and Spellbooks", "color": Color("b05ad8"),
+		"blurb": "The Madolche sweets, the Wind-Up toys, the Ghostrick spooks, the Gimmick Puppets and the Spellbooks of Prophecy.",
+		"families": ["madolche", "wind_up", "ghostrick", "gimmick_puppet", "spellbook"]},
+	{"key": "b_zx_hidden", "era": "ZEXAL", "name": "Hidden Worlds", "color": Color("3a8a8a"),
+		"blurb": "The Chronomaly relics, the Ninjas, the Mermails, the Inzektor and the Sylvan, the Phantom Beasts, the Geargia and Trains, and the Heraldic Beasts.",
+		"families": ["chronomaly", "ninja", "mermail", "inzektor", "sylvan", "phantom_beast", "gears", "heraldic"]},
+]
+## Packs big enough to come in volumes of BIG_VOLUME cards (the Type, Element and Beyond packs).
+const BIG_PACKS := ["beyond", "dragons", "warriors", "arcane", "shadow", "machines", "wild", "tide", "gale", "forest", "spells", "traps"]
+const BIG_VOLUME := 280
+
+
+## The bundle a family is sold in ("" if none).
+func bundle_of(family: String) -> String:
+	for b in BUNDLES:
+		if (b["families"] as Array).has(family):
+			return str(b["key"])
+	return ""
+
+
+static func is_bundle(key: String) -> bool:
+	return key.begins_with("b_")
+
+
+## A bundle as a shop entry (tab 1, priced like the family packs).
+func bundle_pack(b: Dictionary) -> Dictionary:
+	return {"key": b["key"], "tab": 1, "name": b["name"], "color": b["color"], "blurb": b["blurb"], "era": b["era"], "bundle": true, "families": b["families"]}
+
+
+## The key unlocks and shelves are decided by: a volume's set, a bundle's first family.
+static func unlock_key(key: String) -> String:
+	key = base_key(key)
+	if is_bundle(key):
+		for b in BUNDLES:
+			if str(b["key"]) == key:
+				return str(b["families"][0])
+	return key
 
 
 ## A pack's name as the shop shows it ("Legend of the King Vol. 2").

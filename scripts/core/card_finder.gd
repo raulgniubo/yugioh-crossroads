@@ -33,8 +33,16 @@ static func _build() -> void:
 				_decks_of[int(id)] = []
 			if not (_decks_of[int(id)] as Array).has(dk):
 				(_decks_of[int(id)] as Array).append(dk)
+	var where := {}         # (who stands in which world: the streets, the shop, and the rooms you walk into)
 	for w in RoamData.DISTRICTS:
-		for npc in RoamData.DISTRICTS[w].get("npcs", []) + RoamData.DISTRICTS[w].get("shop_npcs", []):
+		where[w] = RoamData.DISTRICTS[w].get("npcs", []) + RoamData.DISTRICTS[w].get("shop_npcs", [])
+	var rooms := Interiors.all_rooms()
+	for rk in rooms:
+		var w := str(rooms[rk].get("district", "domino"))
+		if where.has(w):
+			where[w] = (where[w] as Array) + Interiors.people(str(rk))
+	for w in where:
+		for npc in where[w]:
 			var duel: Dictionary = npc.get("duel", {})
 			if duel.is_empty():
 				continue
@@ -66,7 +74,7 @@ static func shops_for(pack: Dictionary) -> Array:
 		return [Loc.t("every card shop")]       # (the Type and Element packs are on every shelf)
 	var base := Collection.base_key(str(pack["key"]))
 	for w in PackShop.WORLD_PACKS:
-		if (PackShop.WORLD_PACKS[w] as Array).has(base):
+		if (PackShop.WORLD_PACKS[w] as Array).has(base) or (pack.get("families", []) as Array).any(func(f): return (PackShop.WORLD_PACKS[w] as Array).has(f)):
 			out.append(world_name(str(w)))
 	return out
 

@@ -31,8 +31,8 @@ var _t := 0.0
 const FEATURED := 5
 
 ## What each world's card shop keeps on its shelf.
-const WORLD_PACKS := {"domino": ["Duel Monsters", "toy", "mask", "goblin", "dd", "union", "spirit", "darklord", "jurrac", "legends_king", "red_eyes", "blue_eyes", "dark_magician", "kuriboh", "exodia", "guardian", "amazoness", "toon", "archfiend", "gravekeeper", "chaos", "Vault", "legends"], "academy": ["GX", "frog", "barrier", "cyber", "sacred_beast", "hero", "armed_dragon", "cloudian", "arcana_force", "koaki_meiru", "volcanic", "alien", "vampire", "crystal_beast", "gladiator", "dark_world", "ancient_gear", "monarchs", "Vault", "legends"], "satellite": ["5D's", "fabled", "synchron", "nordic", "tg", "naturia", "ice_barrier", "x_saber", "scrap", "morphtronic", "dragunity", "genex", "six_samurai", "lightsworn", "beyond"], "newdomino": ["5D's", "gusto", "fortune_lady", "fabled", "karakuri", "synchron", "meklord", "nordic", "tg", "naturia", "ice_barrier", "x_saber", "scrap", "morphtronic", "dragunity", "genex", "six_samurai", "lightsworn", "beyond", "Vault"],
-	"heartland": ["ZEXAL", "dragon_ruler", "ghostrick", "wind_up", "spellbook", "mermail", "bujin", "fire_fist", "ninja", "battlin_boxer", "gimmick_puppet", "chronomaly", "heroic", "madolche", "constellar", "gem_knight", "beyond", "legends"]}
+const WORLD_PACKS := {"domino": ["Duel Monsters", "toy", "mask", "goblin", "dd", "union", "spirit", "darklord", "jurrac", "legends_king", "red_eyes", "blue_eyes", "dark_magician", "kuriboh", "exodia", "guardian", "amazoness", "toon", "archfiend", "gravekeeper", "chaos", "Vault", "legends"], "academy": ["GX", "frog", "barrier", "cyber", "sacred_beast", "hero", "armed_dragon", "cloudian", "arcana_force", "koaki_meiru", "volcanic", "alien", "vampire", "crystal_beast", "gladiator", "dark_world", "ancient_gear", "monarchs", "Vault", "legends"], "satellite": ["5D's", "reptilianne", "flamvell", "ally_justice", "laval", "watt", "gishki", "vylon", "swarm", "worm", "fabled", "synchron", "nordic", "tg", "naturia", "ice_barrier", "x_saber", "scrap", "morphtronic", "dragunity", "genex", "six_samurai", "lightsworn", "beyond"], "newdomino": ["5D's", "reptilianne", "flamvell", "ally_justice", "laval", "watt", "gishki", "vylon", "swarm", "worm", "gusto", "fortune_lady", "fabled", "karakuri", "synchron", "meklord", "nordic", "tg", "naturia", "ice_barrier", "x_saber", "scrap", "morphtronic", "dragunity", "genex", "six_samurai", "lightsworn", "beyond", "Vault"],
+	"heartland": ["ZEXAL", "sylvan", "heraldic", "artifact", "hieratic", "hazy", "inzektor", "gears", "noble_knight", "phantom_beast", "evol", "dragon_ruler", "ghostrick", "wind_up", "spellbook", "mermail", "bujin", "fire_fist", "ninja", "battlin_boxer", "gimmick_puppet", "chronomaly", "heroic", "madolche", "constellar", "gem_knight", "beyond", "legends"]}
 
 
 func _ready() -> void:
@@ -220,7 +220,7 @@ func _show_tab(t: int) -> void:
 	var here := str(Router.roam.get("district", "")) if get_tree().current_scene and "district" in get_tree().current_scene and "_npcs" in get_tree().current_scene else ""
 	if here != "" and WORLD_PACKS.has(here) and t <= 1:
 		var mine: Array = WORLD_PACKS[here]
-		var kept: Array = _packs.filter(func(p): return Collection.base_key(str(p["key"])) in mine)
+		var kept: Array = _packs.filter(func(p): return Collection.base_key(str(p["key"])) in mine or (p.get("families", []) as Array).any(func(f): return f in mine))
 		if not kept.is_empty():
 			_packs = kept
 	_sel = -1

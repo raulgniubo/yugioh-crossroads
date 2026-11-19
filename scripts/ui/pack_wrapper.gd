@@ -93,7 +93,9 @@ func _draw() -> void:
 	draw_string(_semi, Vector2((w - sw) / 2.0, by + band * 0.83), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, ss, col.lightened(0.55))
 	# Era tag, top left of the art.
 	var era := Collection.base_key(str(pack.get("key", "")))
-	if Collection.FAMILIES.has(era):
+	if pack.has("era"):
+		era = str(pack["era"])
+	elif Collection.FAMILIES.has(era):
 		era = str(Collection.FAMILIES[era].get("era", ""))      # (the family's era, not its key)
 	era = era.to_upper()
 	if int(pack.get("vol", 0)) > 0:

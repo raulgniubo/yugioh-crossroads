@@ -322,8 +322,10 @@ func _ready() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
 	cp.add_child(col)
-	var bar := HBoxContainer.new()
-	bar.add_theme_constant_override("separation", 6)
+	# (These rows wrap instead of pushing the panel off the right edge: the Spanish labels are long.)
+	var bar := HFlowContainer.new()
+	bar.add_theme_constant_override("h_separation", 6)
+	bar.add_theme_constant_override("v_separation", 6)
 	col.add_child(bar)
 	bar.add_child(UITheme.label("COLLECTION", 18, UITheme.ACCENT, UITheme.semi_font()))
 	var bsp := Control.new()
@@ -354,13 +356,14 @@ func _ready() -> void:
 	# How much you own, and how much of it the filters are letting through.
 	_owned_l = UITheme.label("", 16, UITheme.TEXT, UITheme.semi_font())
 	col.add_child(_owned_l)
-	var bar2 := HBoxContainer.new()
-	bar2.add_theme_constant_override("separation", 6)
+	var bar2 := HFlowContainer.new()
+	bar2.add_theme_constant_override("h_separation", 6)
+	bar2.add_theme_constant_override("v_separation", 6)
 	col.add_child(bar2)
 	var search := LineEdit.new()
 	search.placeholder_text = "Search name or card text"
 	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	search.custom_minimum_size = Vector2(190, 0)
+	search.custom_minimum_size = Vector2(170, 40)
 	search.clear_button_enabled = true
 	search.add_theme_font_size_override("font_size", 16)
 	search.text_changed.connect(func(t):
@@ -370,7 +373,8 @@ func _ready() -> void:
 	var attr := OptionButton.new()
 	attr.add_theme_font_size_override("font_size", 16)
 	attr.fit_to_longest_item = false
-	attr.custom_minimum_size = Vector2(118, 0)
+	attr.clip_text = true
+	attr.custom_minimum_size = Vector2(130, 0)
 	attr.add_item("Attribute")
 	for a in ["DARK", "LIGHT", "EARTH", "WATER", "FIRE", "WIND", "DIVINE"]:
 		attr.add_item(a)
@@ -388,6 +392,7 @@ func _ready() -> void:
 	var rc := OptionButton.new()
 	rc.add_theme_font_size_override("font_size", 16)
 	rc.fit_to_longest_item = false
+	rc.clip_text = true
 	rc.custom_minimum_size = Vector2(100, 0)
 	rc.add_item("Type")
 	for r in race_names:
@@ -399,6 +404,7 @@ func _ready() -> void:
 	var lv := OptionButton.new()
 	lv.add_theme_font_size_override("font_size", 16)
 	lv.fit_to_longest_item = false
+	lv.clip_text = true
 	lv.custom_minimum_size = Vector2(100, 0)
 	for t in ["Level", "Level 1 to 4", "Level 5 and 6", "Level 7 and up"]:
 		lv.add_item(t)
@@ -409,7 +415,8 @@ func _ready() -> void:
 	var so := OptionButton.new()
 	so.add_theme_font_size_override("font_size", 16)
 	so.fit_to_longest_item = false
-	so.custom_minimum_size = Vector2(118, 0)
+	so.clip_text = true
+	so.custom_minimum_size = Vector2(150, 0)
 	for t in ["Sort: type", "Sort: ATK", "Sort: Level", "Sort: name"]:
 		so.add_item(t)
 	so.item_selected.connect(func(i):
@@ -429,8 +436,14 @@ func _ready() -> void:
 		gpad.add_theme_constant_override("margin_" + side_, 8)
 	gscroll.add_child(gpad)
 	gpad.add_child(_grid)
-	var foot := HBoxContainer.new()
-	foot.add_theme_constant_override("separation", 8)
+	# As many columns as fit (it was always 6, and six cards were wider than the panel on some screens).
+	gscroll.resized.connect(func():
+		var cols := clampi(int((gscroll.size.x - 24.0) / 120.0), 3, 8)
+		if cols != _grid.columns:
+			_grid.columns = cols)
+	var foot := HFlowContainer.new()
+	foot.add_theme_constant_override("h_separation", 18)
+	foot.add_theme_constant_override("v_separation", 4)
 	col.add_child(foot)
 	var can_t := CheckButton.new()
 	can_t.text = "Only what I can add"
@@ -442,9 +455,6 @@ func _ready() -> void:
 		_addable = on
 		_rebuild_grid())
 	foot.add_child(can_t)
-	var fsp := Control.new()
-	fsp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	foot.add_child(fsp)
 	var side_t := CheckButton.new()
 	side_t.text = "Double-click: Side Deck"
 	side_t.add_theme_font_size_override("font_size", 15)
@@ -621,10 +631,15 @@ func _tile(id: int) -> Control:
 		var nsb := UITheme.panel_box(Color(Comic.RED, 0.95), 7, Color.WHITE)
 		nsb.content_margin_left = 6
 		nsb.content_margin_right = 6
+		nsb.content_margin_top = 1
+		nsb.content_margin_bottom = 1
 		nw.add_theme_stylebox_override("normal", nsb)
-		nw.position = Vector2(66, 4)
 		nw.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(nw)
+		# (Pinned to the top-right corner, whatever the word's length: "NUEVA" ran past the card.)
+		nw.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+		nw.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		nw.position += Vector2(-4, 4)
 	var refresh := func():
 		var used := Collection.in_deck(id)
 		var lim := Collection.limit(id)

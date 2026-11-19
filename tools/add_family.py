@@ -71,7 +71,10 @@ def main(spec):
         edit('scripts/menu/pack_shop.gd', shop)
     if not spec.get('no_pack'):
       edit('scripts/core/unlocks.gd', lambda s: s.replace('const PACK_STAGE := {', 'const PACK_STAGE := {%s: %d, ' % (q(key), spec['stage']), 1))
-    npc = spec['npc']
+    npc = spec.get('npc')
+    if not npc:
+        print('added %s: %d cards, deck %s (no duelist yet)' % (key, len(spec.get('cards', [])), dk))
+        return
     def roam(s):
         a = s.index('{"id": %s' % q(npc['id']))
         if npc.get('new_duel'):
