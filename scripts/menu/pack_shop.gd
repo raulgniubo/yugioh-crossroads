@@ -11,6 +11,8 @@ var _scroll: ScrollContainer
 var _multi: Array = []          # the Open 5 and Open 10 buttons
 var _slots: Array = []          # [{button, wrap, pack}]
 var _sel := -1
+var _see_btn: Button
+var _viewing := false
 var _tab := 0
 var _packs: Array = []          # the packs on the shelf being shown
 var _tab_btns: Array = []
@@ -198,10 +200,36 @@ func _ready() -> void:
 	_featured = HBoxContainer.new()
 	_featured.add_theme_constant_override("separation", 12)
 	right.add_child(_featured)
+	# Every card the pack can give you (0.55.3).
+	_see_btn = Button.new()
+	_see_btn.custom_minimum_size = Vector2(0, 52)
+	_see_btn.add_theme_font_size_override("font_size", 20)
+	_see_btn.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.ACCENT, 0.14), Color(UITheme.ACCENT, 0.75), 14))
+	_see_btn.add_theme_stylebox_override("hover", UITheme.button_box(Color(UITheme.ACCENT, 0.35), Color.WHITE, 14))
+	_see_btn.add_theme_stylebox_override("focus", UITheme.button_box(Color(UITheme.ACCENT, 0.35), Color.WHITE, 14))
+	_see_btn.pressed.connect(_see_cards)
+	right.add_child(_see_btn)
 	_last = _featured
 	_show_tab(int(OS.get_environment("PACK_TAB")) if OS.get_environment("PACK_TAB") != "" else 0)
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.25)
+	if OS.has_environment("PACK_CARDS"):	# dev: open the card list of a pack on the shelf
+		get_tree().create_timer(1.2).timeout.connect(func():
+			_select(int(OS.get_environment("PACK_CARDS")), true)
+			_see_cards())
+
+
+## The window with every card this pack can give you.
+func _see_cards() -> void:
+	if _busy or _viewing or _sel < 0 or Collection.pool(str(_packs[_sel]["key"])).is_empty():
+		return
+	_viewing = true
+	Sfx.play("click")
+	var v := CardListView.new("pack", _packs[_sel])
+	add_child(v)
+	await v.closed
+	_viewing = false
+	_see_btn.grab_focus.call_deferred()
 
 
 func _show_tab(t: int) -> void:
@@ -346,6 +374,8 @@ func _refresh() -> void:
 		if Collection.count(id) > 0:
 			have += 1
 	_have.text = Loc.t("You have %d of %d cards.") % [have, pool.size()]
+	_see_btn.text = Loc.t("SEE ALL %d CARDS") % pool.size()
+	_see_btn.visible = not pool.is_empty()
 	_bar.max_value = maxi(1, pool.size())
 	_bar.value = have
 	var single_only := str(pack["key"]) == "echo"
@@ -447,7 +477,7 @@ func _open(pack: Dictionary, n := 1) -> void:
 ## Left and right (D-pad, stick or arrow keys) walk along the shelf, whatever has focus, before
 ## the buttons get a chance to move focus somewhere else.
 func _input(event: InputEvent) -> void:
-	if _busy or _slots.is_empty() or not is_visible_in_tree():
+	if _busy or _viewing or _slots.is_empty() or not is_visible_in_tree():
 		return
 	if event.is_action_pressed("ui_left") or event.is_action_pressed("ui_right"):
 		var step := -1 if event.is_action_pressed("ui_left") else 1
@@ -462,8 +492,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
 		_close()
-	elif _busy:
+	elif _busy or _viewing:
 		return
+	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C) \
+			or (event is InputEventJoypadButton and event.pressed and Pad.b(event) == JOY_BUTTON_X):
+		# C or X: every card in the pack you are on.
+		get_viewport().set_input_as_handled()
+		_see_cards()
 	elif event is InputEventJoypadButton and event.pressed and Pad.b(event) == JOY_BUTTON_Y and _sel >= 0:
 		# Y opens the pack you are on straight away.
 		get_viewport().set_input_as_handled()

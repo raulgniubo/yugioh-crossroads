@@ -10,7 +10,7 @@ const CARD := Vector2(128, 186)
 
 var id := 0
 var number := 0                # its place in the set: #001, #002...
-var state := "unknown"         # owned | seen | lookup (found by searching its name) | unknown
+var state := "unknown"         # owned | seen | missing (grey: not yours) | unknown (an empty pocket)
 var copies := 0
 var tint := Color("7fe8ff")    # the set's color
 var selected := false:
@@ -77,10 +77,30 @@ func load_face() -> void:
 		Foil.apply(_card, CardData.rarity(id))
 		_card.modulate = Color.WHITE
 	else:
-		_card.material = null
-		_card.modulate = Color(0.42, 0.47, 0.58, 1.0)
+		# Not yours yet: the picture in grey, darker, so it reads at a glance (0.55.3; it was a "?").
+		_card.material = gray_material()
+		_card.modulate = Color.WHITE
 	_card.modulate.a = 0.0
 	create_tween().tween_property(_card, "modulate:a", 1.0, 0.18)
+
+
+static var _gray: ShaderMaterial
+
+
+## Grey and dark: how a card you don't own looks in the album and the "Where to find it" window.
+static func gray_material() -> ShaderMaterial:
+	if _gray == null:
+		var sh := Shader.new()
+		sh.code = """shader_type canvas_item;
+uniform float dim = 0.5;
+void fragment() {
+	vec4 c = texture(TEXTURE, UV) * COLOR;
+	float g = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+	COLOR = vec4(mix(vec3(g), c.rgb, 0.12) * dim, c.a);
+}"""
+		_gray = ShaderMaterial.new()
+		_gray.shader = sh
+	return _gray
 
 
 func _gui_input(e: InputEvent) -> void:
@@ -143,13 +163,19 @@ func _draw_over() -> void:
 	# Light catching the sleeve.
 	var sheen := PackedVector2Array([cr.position + Vector2(CARD.x * 0.55, 0), cr.position + Vector2(CARD.x * 0.8, 0), cr.position + Vector2(CARD.x * 0.25, CARD.y), cr.position + Vector2(0, CARD.y)])
 	_over.draw_colored_polygon(sheen, Color(1, 1, 1, 0.035 + 0.03 * _hover))
-	if state == "seen" or state == "lookup":
-		var tag := Rect2(cr.position + Vector2(0, CARD.y * 0.42), Vector2(CARD.x, 30))
-		_over.draw_rect(tag, Color(0.02, 0.04, 0.09, 0.82))
+	if state != "owned" and state != "unknown":
+		# A small tag along the bottom: you don't have this one.
 		var f := UITheme.title_font()
-		var t := Loc.t("SEEN") if state == "seen" else Loc.t("MISSING")
-		var ts := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 20)
-		_over.draw_string(f, Vector2(cr.get_center().x - ts.x / 2.0, tag.position.y + 23), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0.75, 0.85, 1.0, 0.9))
+		var t := Loc.t("MISSING")
+		var ts := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 16)
+		var tag := Rect2(Vector2(cr.get_center().x - ts.x / 2.0 - 10, cr.end.y - 30), Vector2(ts.x + 20, 24))
+		var tsb := StyleBoxFlat.new()
+		tsb.bg_color = Color(0.03, 0.05, 0.1, 0.92)
+		tsb.set_corner_radius_all(12)
+		tsb.border_color = Color(1.0, 0.5, 0.5, 0.75)
+		tsb.set_border_width_all(1)
+		_over.draw_style_box(tsb, tag)
+		_over.draw_string(f, Vector2(tag.position.x + 10, tag.position.y + 18), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 0.7, 0.7))
 	if state == "owned" and copies > 1:
 		var t2 := "x%d" % copies
 		var f2 := UITheme.title_font()

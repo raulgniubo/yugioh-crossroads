@@ -8,6 +8,12 @@ static var _packs_of := {}      # card id -> [shop pack entries]
 static var _decks_of := {}      # card id -> [theme deck keys]
 static var _duelists_of := {}   # card id -> [[name, world key, hours]]
 static var _built := -1
+static var _decks_any := {}     # card id -> [deck catalog entries] (theme decks and duelists' decks, 0.55.3)
+static var _people := {}        # card id -> [{name, world, place, hours, color}] (everyone, the show's characters too)
+
+## The worlds in travel order, and what their card shop is called.
+const WORLD_ORDER := ["domino", "academy", "satellite", "newdomino", "heartland"]
+const SHOP_NAME := {"domino": "Kame Game", "academy": "Academy card shop", "satellite": "The Card Dealer", "newdomino": "Card shop", "heartland": "Card shop"}
 
 
 static func _build() -> void:
@@ -33,19 +39,50 @@ static func _build() -> void:
 				_decks_of[int(id)] = []
 			if not (_decks_of[int(id)] as Array).has(dk):
 				(_decks_of[int(id)] as Array).append(dk)
+	_decks_any = {}
+	_people = {}
+	for e in Collection.deck_catalog():
+		for id in CardData.deck_list(str(e["key"])) + CardData.extra_list(str(e["key"])):
+			if not _decks_any.has(int(id)):
+				_decks_any[int(id)] = []
+			if not (_decks_any[int(id)] as Array).any(func(x): return x["key"] == e["key"]):
+				(_decks_any[int(id)] as Array).append(e)
 	var where := {}         # (who stands in which world: the streets, the shop, and the rooms you walk into)
+	var place_of := {}      # npc id -> where in the world they stand
 	for w in RoamData.DISTRICTS:
 		where[w] = RoamData.DISTRICTS[w].get("npcs", []) + RoamData.DISTRICTS[w].get("shop_npcs", [])
+		for npc in RoamData.DISTRICTS[w].get("shop_npcs", []):
+			place_of[str(npc.get("id", ""))] = str(SHOP_NAME.get(w, "Card shop"))
 	var rooms := Interiors.all_rooms()
 	for rk in rooms:
 		var w := str(rooms[rk].get("district", "domino"))
 		if where.has(w):
 			where[w] = (where[w] as Array) + Interiors.people(str(rk))
+			for npc in Interiors.people(str(rk)):
+				place_of[str(npc.get("id", ""))] = str(rooms[rk].get("name", ""))
 	for w in where:
 		for npc in where[w]:
 			var duel: Dictionary = npc.get("duel", {})
 			if duel.is_empty():
 				continue
+			# Everyone who duels, for the "Where to find it" window: the show's characters too.
+			var who_nm := str(npc.get("name", ""))
+			var ck := str(npc.get("char", ""))
+			if who_nm == "" and ck != "":
+				who_nm = str(Characters.get_char(ck).get("name", ""))
+			if who_nm == "" and Characters.DATA.has(str(npc.get("id", ""))):
+				who_nm = str(Characters.get_char(str(npc.get("id", ""))).get("name", ""))
+			if who_nm != "":
+				var person := {"name": who_nm, "world": str(w), "place": str(place_of.get(str(npc.get("id", "")), "")), "hours": npc.get("hours", []),
+					"color": npc.get("color", Characters.get_char(ck if ck != "" else str(npc.get("id", ""))).get("color", Color.WHITE))}
+				for dk2 in duel.get("decks", [duel.get("deck", "")]):
+					if not CardData.has_deck(str(dk2)):
+						continue
+					for id2 in CardData.deck_list(str(dk2)) + CardData.extra_list(str(dk2)):
+						if not _people.has(int(id2)):
+							_people[int(id2)] = []
+						if not (_people[int(id2)] as Array).any(func(r): return r["name"] == who_nm and r["world"] == str(w)):
+							(_people[int(id2)] as Array).append(person)
 			# (Ordinary duelists only: the show's characters are listed under "Played by".)
 			var nm := str(npc.get("name", ""))
 			if nm == "" or str(npc.get("char", "")) != "":
@@ -117,3 +154,74 @@ static func lines(id: int) -> Array:
 	if out.is_empty():
 		out.append(Loc.t("Not sold in any shop: it comes from the story or from duels."))
 	return out
+
+
+## When someone is around: "" (all day), "early mornings" or "at night".
+static func when_text(h: Array) -> String:
+	if h.size() != 2:
+		return ""
+	if int(h[0]) < 9 and int(h[1]) <= 12:
+		return Loc.t("early mornings")
+	if int(h[0]) >= 19 or int(h[1]) <= 5:
+		return Loc.t("at night")
+	return Loc.t("some hours")
+
+
+## Everything the "Where to find it" window shows (0.55.3), world by world:
+## {"everywhere": [packs on every shelf], "worlds": [{key, name, color, shop, packs, decks, people}]}
+static func places(id: int) -> Dictionary:
+	_build()
+	var out := {"everywhere": [], "worlds": []}
+	var packs: Array = _packs_of.get(id, [])
+	for p in packs:
+		if int(p.get("tab", 0)) > 1:
+			(out["everywhere"] as Array).append(p)
+	var colors := {}
+	for wd in RoamData.WORLDS:
+		colors[str(wd[0])] = wd[3]
+	for w in WORLD_ORDER:
+		var row := {"key": w, "name": world_name(w), "color": colors.get(w, UITheme.ACCENT), "shop": Loc.t(str(SHOP_NAME.get(w, "Card shop"))), "packs": [], "decks": [], "people": []}
+		for p in packs:
+			if int(p.get("tab", 0)) > 1:
+				continue
+			var base := Collection.base_key(str(p["key"]))
+			var shelf: Array = PackShop.WORLD_PACKS.get(w, [])
+			if shelf.has(base) or (p.get("families", []) as Array).any(func(f): return shelf.has(f)):
+				(row["packs"] as Array).append(p)
+		for e in _decks_any.get(id, []):
+			var sold := false
+			if str(e["kind"]) == "theme":
+				sold = Collection.theme_sold_in(str(e["key"]), w)
+			else:
+				sold = str(e.get("era", "")) == str(Collection.WORLD_ERA.get(w, "-"))
+			if sold:
+				(row["decks"] as Array).append(e)
+		for r in _people.get(id, []):
+			if str(r["world"]) == w:
+				(row["people"] as Array).append(r)
+		if not (row["packs"] as Array).is_empty() or not (row["decks"] as Array).is_empty() or not (row["people"] as Array).is_empty():
+			(out["worlds"] as Array).append(row)
+	return out
+
+
+## One line for the album's side panel: "3 packs · 2 decks · 4 duelists".
+static func summary(id: int) -> String:
+	var pl := places(id)
+	var np := (pl["everywhere"] as Array).size()
+	var nd := {}
+	var nw := 0
+	var who := {}
+	for row in pl["worlds"]:
+		np += (row["packs"] as Array).size()
+		for e in row["decks"]:
+			nd[str(e["key"])] = true
+		for r in row["people"]:
+			who[str(r["name"])] = true
+	var bits: Array = []
+	if np > 0:
+		bits.append(Loc.t("%d packs") % np if np != 1 else Loc.t("1 pack"))
+	if not nd.is_empty():
+		bits.append(Loc.t("%d decks") % nd.size() if nd.size() != 1 else Loc.t("1 deck"))
+	if not who.is_empty():
+		bits.append(Loc.t("%d duelists") % who.size() if who.size() != 1 else Loc.t("1 duelist"))
+	return "  ·  ".join(bits)

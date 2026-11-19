@@ -5,6 +5,15 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.55.3
+
+Three new ways to look at cards. No cards added: 7,851 total.
+
+- **"Where to find it" window.** In the album, the card's side panel has a ¿DÓNDE CONSEGUIRLA? button (W or Enter on the keyboard, A on the controller). It opens a window laid out world by world: the packs that world's card shop sells with the card (with their wrappers and prices), the ready-made decks there that include it (with their boxes), and the duelists there who play it, with where they stand and when they're around. Packs every card shop sells sit together at the top. Click a pack or deck in it to see every card inside. It only tells you where to go: buying still means walking to that shop.
+- **The album shows every card's picture.** No more "?" pockets. Cards you own are in full color with their foil; the ones you're missing are grey and dark with a TE FALTA tag. The side panel still says "Seen in a duel" when you've met the card.
+- **See every card in a pack or deck.** In the card shop, every pack and every ready-made deck has a VER LAS N CARTAS button (C on the keyboard, X on the controller). It opens a window with every card that can come out of it, owned ones in color and missing ones in grey, how many you have out of the total, and a count per rarity. Filter by have / missing (F or Y) and by rarity (R or X, or click a rarity), move with the arrows, and the card you're on shows big with its text on the right. For decks it also says how many copies the deck has.
+- **Windows:** only the .exe changed.
+
 ## What is in 0.55.2
 
 One change to the card search. No cards added: 7,851 total.

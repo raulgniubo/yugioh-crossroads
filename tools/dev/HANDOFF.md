@@ -194,3 +194,16 @@ and the story difficulty moves it. All of that is build 1. Build 2 is only the f
 - Fixed in 0.55.1: the bridge's Duel never called OCG_DestroyDuel (only Sim did), so every played duel leaked its engine.
   Duel now frees it in its destructor (non-copyable), Sim relies on that, and OcgDuel.close() also runs on PREDELETE.
   Check: `godot --headless res://tests/leak_check.tscn -- 200` prints growth per duel (0 KB now, ~800 KB before).
+
+### 0.55.2 and 0.55.3: finding cards
+- 0.55.2: album search lists every matching card with its picture.
+- 0.55.3: the album never shows "?" for a real card any more: AlbumSlot state is owned | seen | missing, and anything not owned
+  is drawn with AlbumSlot.gray_material() plus a TE FALTA (Loc "MISSING") pill.
+- CardWhere (scripts/menu/card_where.gd): the "Where to find it" window, from the album's side panel (W/Enter, pad A).
+  Data from CardFinder.places(id) / summary(id); every pack or deck in it is clickable and opens CardListView. It shows
+  information only, by Raul's rule: no button that takes you to a shop. If packs or decks move, CardFinder follows
+  shop_packs(), THEME_DECKS, deck_catalog() and the roam/room people, so it updates by itself.
+- CardListView (scripts/menu/card_list_view.gd): every card in a pack (Collection.pool) or deck (deck_list + extra_list),
+  from the pack shop and deck shop (button, C key, pad X). Filters have/missing (F/Y) and rarity (R/X); faces load 10 a frame.
+- Dev env: ALBUM_SEARCH, ALBUM_WHERE, WHERE_SCROLL, WHERE_LIST, PACK_CARDS=<shelf index>, DECK_CARDS=<index>,
+  LIST_FILTER=all|have|missing|<rarity>, LIST_SEL=<index>.

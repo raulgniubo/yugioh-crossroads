@@ -21,6 +21,8 @@ var _keys: HBoxContainer
 var _buy: Button
 var _use: Button
 var _face: TextureRect
+var _see_btn: Button
+var _viewing := false
 
 
 func _ready() -> void:
@@ -129,6 +131,15 @@ func _ready() -> void:
 	_keys = HBoxContainer.new()
 	_keys.add_theme_constant_override("separation", 10)
 	right.add_child(_keys)
+	# Every card in the deck (0.55.3).
+	_see_btn = Button.new()
+	_see_btn.custom_minimum_size = Vector2(0, 50)
+	_see_btn.add_theme_font_size_override("font_size", 20)
+	_see_btn.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.ACCENT, 0.14), Color(UITheme.ACCENT, 0.75), 14))
+	_see_btn.add_theme_stylebox_override("hover", UITheme.button_box(Color(UITheme.ACCENT, 0.35), Color.WHITE, 14))
+	_see_btn.add_theme_stylebox_override("focus", UITheme.button_box(Color(UITheme.ACCENT, 0.35), Color.WHITE, 14))
+	_see_btn.pressed.connect(_see_cards)
+	right.add_child(_see_btn)
 	var sp := Control.new()
 	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right.add_child(sp)
@@ -159,6 +170,23 @@ func _ready() -> void:
 			_do_buy())
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.25)
+	if OS.has_environment("DECK_CARDS"):	# dev: open the card list of a deck on the shelf
+		get_tree().create_timer(1.2).timeout.connect(func():
+			_select(int(OS.get_environment("DECK_CARDS")), true)
+			_see_cards())
+
+
+## The window with every card in this deck.
+func _see_cards() -> void:
+	if _viewing or _sel < 0:
+		return
+	_viewing = true
+	Sfx.play("click")
+	var v := CardListView.new("deck", _entries[_sel])
+	add_child(v)
+	await v.closed
+	_viewing = false
+	_see_btn.grab_focus.call_deferred()
 
 
 func _show_tab(t: int) -> void:
@@ -269,6 +297,7 @@ func _select(i: int, quiet := false) -> void:
 		if ra != rb:
 			return ra > rb
 		return int(CardData.get_card(a).get("atk", 0)) > int(CardData.get_card(b).get("atk", 0)))
+	_see_btn.text = Loc.t("SEE ALL %d CARDS") % pool.size()
 	for k in mini(4, pool.size()):
 		var tr := TextureRect.new()
 		tr.texture = Cards.get_face(pool[k])
@@ -330,9 +359,16 @@ func _do_use() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _viewing:
+		return
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
 		_close()
+	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C) \
+			or (event is InputEventJoypadButton and event.pressed and Pad.b(event) == JOY_BUTTON_X):
+		# C or X: every card in the deck you are on.
+		get_viewport().set_input_as_handled()
+		_see_cards()
 	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_Q, KEY_E]) \
 			or (event is InputEventJoypadButton and event.pressed and Pad.b(event) in [JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER]):
 		get_viewport().set_input_as_handled()

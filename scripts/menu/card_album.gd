@@ -50,6 +50,8 @@ var _d_text: Label
 var _d_owned: Label
 var _d_from: Label
 var _d_who: Label
+var _where_btn: Button      # "Where to find it": opens CardWhere (0.55.3)
+var _where_sum: Label       # "3 packs · 2 decks · 4 duelists"
 var _d_card_id := -1
 
 
@@ -188,10 +190,8 @@ func _state(id: int) -> String:
 		return "owned"
 	if (Collection.record.get("met", {}) as Dictionary).has(str(id)):
 		return "seen"
-	# (A card you look up by name shows itself, picture and all, so you can see what you're after.)
-	if _search.length() >= 3:
-		return "lookup"
-	return "unknown"
+	# (0.55.3: every card shows its picture, in grey when it isn't yours. It was a "?" until you met it.)
+	return "missing"
 
 
 func _have(ids: Array) -> int:
@@ -375,6 +375,8 @@ func _build_center() -> Control:
 		_search_box.set_deferred("text", OS.get_environment("ALBUM_SEARCH"))
 		_search = OS.get_environment("ALBUM_SEARCH").to_lower()
 		_refilter.call_deferred(true)
+		if OS.get_environment("ALBUM_WHERE") != "":
+			get_tree().create_timer(1.5).timeout.connect(_open_where)
 	return v
 
 
@@ -431,7 +433,29 @@ func _build_detail() -> Control:
 	_d_who = UITheme.label("", 15, UITheme.TEXT_DIM)
 	_d_who.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tv.add_child(_d_who)
+	# Where to find it: a short count, and a button that opens the full window with the packs,
+	# decks and duelists world by world (it was a paragraph of text until 0.55.3).
+	_where_sum = UITheme.label("", 15, UITheme.TEXT_DIM, UITheme.semi_font())
+	_where_sum.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(_where_sum)
+	_where_btn = Button.new()
+	_where_btn.text = Loc.t("WHERE TO FIND IT")
+	_where_btn.add_theme_font_size_override("font_size", 21)
+	_where_btn.custom_minimum_size = Vector2(0, 52)
+	_where_btn.focus_mode = Control.FOCUS_NONE
+	_where_btn.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.ACCENT, 0.2), UITheme.ACCENT, 14))
+	_where_btn.add_theme_stylebox_override("hover", UITheme.button_box(Color(UITheme.ACCENT, 0.38), Color.WHITE, 14))
+	_where_btn.add_theme_stylebox_override("pressed", UITheme.button_box(Color(UITheme.ACCENT, 0.5), Color.WHITE, 14))
+	_where_btn.pressed.connect(_open_where)
+	v.add_child(_where_btn)
 	return panel
+
+
+func _open_where() -> void:
+	if _d_card_id == 0 or _d_card_id in LUMEN_IDS or _d_card_id in SPEED_IDS or find_children("*", "CardWhere", false, false).size() > 0:
+		return
+	Sfx.play("click")
+	add_child(CardWhere.new(_d_card_id))
 
 
 func _place_slots() -> void:
@@ -519,7 +543,7 @@ func _refilter(keep_page: bool) -> void:
 		if _search != "":
 			# A name you type finds the card even if you have never met it (three letters or more),
 			# so you can look up where to find it. Its picture stays hidden until you meet it.
-			if (st == "unknown" and _search.length() < 3) or not str(CardData.get_card(id).get("name", "")).to_lower().contains(_search):
+			if not str(CardData.get_card(id).get("name", "")).to_lower().contains(_search):
 				continue
 		_list.append(id)
 	_numbers = nums
@@ -602,18 +626,25 @@ func _show_card(id: int, st: String, num: int) -> void:
 	if id == 0:
 		_d_face.texture = null
 		_d_unknown.visible = false
-		for l in [_d_name, _d_type, _d_stats, _d_text, _d_owned, _d_from, _d_who]:
+		for l in [_d_name, _d_type, _d_stats, _d_text, _d_owned, _d_from, _d_who, _where_sum]:
 			(l as Label).text = ""
+		_where_btn.visible = false
 		return
 	var d := CardData.get_card(id)
 	var who: Array = _played_by.get(id, [])
 	var from: Array = _comes_from.get(id, [])
 	# Where to find it (0.54.0): the packs and which world's shop sells them, the shop decks
 	# that include it, the duelists who play it. Only for cards in the game's shops and worlds.
-	if id in LUMEN_IDS or id in SPEED_IDS:
+	var special := id in LUMEN_IDS or id in SPEED_IDS
+	if special:
 		_d_from.text = (Loc.t("Comes from: %s") % ", ".join(from.map(func(n): return Loc.t(str(n))))) if not from.is_empty() else ""
 	else:
-		_d_from.text = "\n".join(CardFinder.lines(id))
+		_d_from.text = ""
+	_where_btn.visible = not special
+	_where_sum.visible = not special
+	_where_sum.text = CardFinder.summary(id) if not special else ""
+	if _where_sum.text == "" and not special:
+		_where_sum.text = Loc.t("Not sold in any shop: it comes from the story or from duels.")
 	var names := ", ".join(who.slice(0, 4))
 	if who.size() > 4:
 		names += " " + Loc.t("and %d more") % (who.size() - 4)
@@ -636,8 +667,8 @@ func _show_card(id: int, st: String, num: int) -> void:
 		Foil.apply(_d_face, CardData.rarity(id))
 		_d_face.modulate = Color.WHITE
 	else:
-		_d_face.material = null
-		_d_face.modulate = Color(0.55, 0.6, 0.72)
+		_d_face.material = AlbumSlot.gray_material()
+		_d_face.modulate = Color.WHITE
 	_d_face.pivot_offset = Vector2(170, 180)
 	_d_face.scale = Vector2(0.94, 0.94)
 	create_tween().tween_property(_d_face, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -675,7 +706,7 @@ func _show_card(id: int, st: String, num: int) -> void:
 		_d_owned.text = (Loc.t("You own %d copies") % n) if n != 1 else Loc.t("You own 1 copy")
 		_d_owned.add_theme_color_override("font_color", UITheme.GOLD)
 	else:
-		_d_owned.text = Loc.t("Seen in a duel. Not in your collection yet.") if st == "seen" else Loc.t("You haven't found it yet. Here is where to look:")
+		_d_owned.text = Loc.t("Seen in a duel. Not in your collection yet.") if st == "seen" else Loc.t("You don't have it yet.")
 		_d_owned.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0))
 
 
@@ -749,6 +780,8 @@ func _input(e: InputEvent) -> void:
 				_cycle_filter()
 			KEY_SLASH:
 				_search_box.grab_focus()
+			KEY_W, KEY_ENTER:
+				_open_where()
 			KEY_ESCAPE, KEY_BACKSPACE:
 				_close()
 			_:
@@ -771,6 +804,8 @@ func _input(e: InputEvent) -> void:
 				_pick_set((_set + 1) % _sets.size())
 			JOY_BUTTON_X:
 				_cycle_filter()
+			JOY_BUTTON_A:
+				_open_where()
 			JOY_BUTTON_B:
 				_close()
 			_:
@@ -810,10 +845,10 @@ func _relabel_hint() -> void:
 	if not is_instance_valid(_hint):
 		return
 	if Pad.connected:
-		_hint.text = Loc.t("%s move     %s / %s turn the page     %s / %s change set     %s show: all, owned, missing     %s close") % [
-			Pad.g("D-pad ↑").replace(" ↑", ""), Pad.g("LB"), Pad.g("RB"), Pad.g("LT"), Pad.g("RT"), Pad.g("X"), Pad.g("B")]
+		_hint.text = Loc.t("%s move     %s / %s turn the page     %s / %s change set     %s show: all, owned, missing     %s where to find it     %s close") % [
+			Pad.g("D-pad ↑").replace(" ↑", ""), Pad.g("LB"), Pad.g("RB"), Pad.g("LT"), Pad.g("RT"), Pad.g("X"), Pad.g("A"), Pad.g("B")]
 	else:
-		_hint.text = Loc.t("Arrows  move     Q / E or the mouse wheel  turn the page     Tab  next set     F  show: all, owned, missing     /  search     Esc  close")
+		_hint.text = Loc.t("Arrows  move     Q / E or the mouse wheel  turn the page     Tab  next set     F  show: all, owned, missing     W  where to find it     /  search     Esc  close")
 
 
 func _process(_d: float) -> void:
