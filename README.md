@@ -5,6 +5,14 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.55.4
+
+Two fixes from your screenshots. No cards added: 7,851 total.
+
+- **Story dialogue no longer cuts off the last line.** Long lines (Spanish runs longer than English) used to spill past the bottom of the box. Now the text steps down a size or two until the whole line fits.
+- **Pack names fit on the small pack pictures.** In the "Where to find it" window the names ran off the wrapper. The small packs are now drawn like the ones on the shop shelf and scaled down, so the name fits the same way.
+- **Windows:** only the .exe changed.
+
 ## What is in 0.55.3
 
 Three new ways to look at cards. No cards added: 7,851 total.

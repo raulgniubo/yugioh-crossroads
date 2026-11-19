@@ -1204,6 +1204,8 @@ func _say(st: Dictionary) -> void:
 			get_tree().create_timer(0.45).timeout.connect(func(): _emote(rwho, rmark))
 	var info := Characters.get_char(who) if who != "" and who != "player" else {}
 	var text := Loc.t(str(st["t"])).replace("{player}", Profile.duelist_name)
+	if OS.has_environment("DEV_SAY"):	# dev: check how a long line fits the box
+		text = Loc.t(OS.get_environment("DEV_SAY"))
 	_box.visible = true
 	_more.visible = false
 	var m := _text.get_parent().get_parent() as MarginContainer
@@ -1239,6 +1241,7 @@ func _say(st: Dictionary) -> void:
 			pt.tween_property(_portrait, "modulate:a", 1.0, 0.14)
 			pt.tween_property(_portrait, "offset_top", -88.0 - 236.0, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			pt.tween_property(_portrait, "offset_bottom", -90.0, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_fit_text(text, who == "")
 	if st.has("emote"):
 		_emote(who, str(st["emote"]))
 	if st.has("anim"):
@@ -2759,6 +2762,34 @@ func _auto_shot() -> void:
 
 
 ## A line of narration on the picture itself (no box): for cinematics and memories.
+## Long lines (Spanish runs longer) step the type down until the whole line fits in the box,
+## instead of the last line being cut off at the bottom (0.55.3).
+func _fit_text(text: String, italic: bool) -> void:
+	var size := 28
+	if _text.size.x > 100.0 and _text.size.y > 40.0:
+		# Measure the real thing: the label lays the line out at each size and says how tall it is.
+		for fs in [28, 26, 24, 22, 20, 18]:
+			size = fs
+			_text.add_theme_font_size_override("normal_font_size", fs)
+			_text.add_theme_font_size_override("italics_font_size", fs)
+			if _text.get_content_height() <= _text.size.y:
+				break
+		return
+	# (Before the box has ever been laid out: estimate from the font.)
+	var m := _text.get_parent().get_parent() as MarginContainer
+	var width := get_viewport().get_visible_rect().size.x - 500.0 - m.get_theme_constant("margin_left") - m.get_theme_constant("margin_right") - 60.0
+	var height := (_box.offset_bottom - _box.offset_top) - m.get_theme_constant("margin_top") - m.get_theme_constant("margin_bottom") - 20.0
+	var font: Font = _text.get_theme_font("italics_font" if italic else "normal_font")
+	for fs in [28, 26, 24, 22, 20, 18]:
+		size = fs
+		var lh := font.get_height(fs) + 7.0
+		var lines := ceili(font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, width, fs).y / font.get_height(fs) - 0.01)
+		if lines * lh <= height:
+			break
+	_text.add_theme_font_size_override("normal_font_size", size)
+	_text.add_theme_font_size_override("italics_font_size", size)
+
+
 func _caption(text: String) -> void:
 	if _cap_tw and _cap_tw.is_valid():
 		_cap_tw.kill()

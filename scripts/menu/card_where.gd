@@ -214,9 +214,11 @@ func _pack_item(p: Dictionary) -> Control:
 	_clickable(v, holder, "pack", p)
 	var wrap := PackWrapper.new().setup(p)
 	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	wrap.custom_minimum_size = Vector2(118, 182)
-	wrap.size = Vector2(118, 182)
-	wrap.position = Vector2(16, 4)
+	# Drawn at its shelf size, then scaled down, so the name on it fits like it does in the shop.
+	wrap.custom_minimum_size = Vector2(230, 353)
+	wrap.size = Vector2(230, 353)
+	wrap.scale = Vector2(0.52, 0.52)
+	wrap.position = Vector2(15, 4)
 	holder.add_child(wrap)
 	var n := UITheme.label(Collection.pack_title(p), 15, Color.WHITE, UITheme.semi_font())
 	n.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

@@ -155,8 +155,9 @@ func _left_column(col: Color) -> Control:
 	left.add_child(holder)
 	if _kind == "pack":
 		var w := PackWrapper.new().setup(_info)
-		w.size = Vector2(186, 288)
-		w.custom_minimum_size = w.size
+		w.custom_minimum_size = Vector2(230, 353)
+		w.size = Vector2(230, 353)
+		w.scale = Vector2(0.81, 0.81)
 		w.position = Vector2(52, 6)
 		holder.add_child(w)
 	else:

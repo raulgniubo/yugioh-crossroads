@@ -82,10 +82,11 @@ func _draw() -> void:
 	draw_rect(Rect2(0, by, w, 3), col)
 	var name_s := Collection.pack_title(pack).to_upper()
 	var fs := int(h * 0.062)
-	while fs > 10 and _title_font.get_string_size(name_s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > w - 20.0:
+	while fs > 7 and _title_font.get_string_size(name_s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > w - 20.0:
 		fs -= 1
 	var ns := _title_font.get_string_size(name_s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-	draw_string_outline(_title_font, Vector2((w - ns.x) / 2.0, by + band * 0.5), name_s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, Color(0, 0, 0, 0.9))
+	# (The outline follows the type size: a fixed 6 px swamped the name on small wrappers.)
+	draw_string_outline(_title_font, Vector2((w - ns.x) / 2.0, by + band * 0.5), name_s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, maxi(2, int(fs * 0.3)), Color(0, 0, 0, 0.9))
 	draw_string(_title_font, Vector2((w - ns.x) / 2.0, by + band * 0.5), name_s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
 	var sub := Loc.t("%d CARDS  ·  BOOSTER PACK") % Collection.PACK_SIZE
 	var ss := int(h * 0.034)
