@@ -6,5 +6,5 @@ func _ready() -> void:
 	for id in Collection.all_cards():
 		f.store_line(str(id))
 	f.close()
-	print("dumped ", Collection.all_cards().size())
+	print("dumped ", Collection.all_cards().size(), " folder ", Settings.card_folder, " ext ", CardData.EXT.size())
 	get_tree().quit()

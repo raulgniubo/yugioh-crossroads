@@ -207,3 +207,18 @@ and the story difficulty moves it. All of that is build 1. Build 2 is only the f
   from the pack shop and deck shop (button, C key, pad X). Filters have/missing (F/Y) and rarity (R/X); faces load 10 a frame.
 - Dev env: ALBUM_SEARCH, ALBUM_WHERE, WHERE_SCROLL, WHERE_LIST, PACK_CARDS=<shelf index>, DECK_CARDS=<index>,
   LIST_FILTER=all|have|missing|<rarity>, LIST_SEL=<index>.
+
+### 0.56.0: card plan part 6 (doc 58a967cf-f14c-4403-9370-ec56132562b3, "Crossroads: card plan part 6")
+- Raul chose a picked set from after ZEXAL instead of all ~4,500. Picks: `tools/dev/plan6/` (pick.py with RELAX=1,
+  staples.txt, fam_extra.txt, drop.txt -> picked.json; apply.py --write places them; decks.py --write adds the 7 decks).
+  Rule: no Link/Pendulum monsters and no text that needs them; "Fusion, Synchro, Xyz, or Link Monster" lists are fine.
+- Four-show cards: into their FAMILIES list when the game has one (apply.py FAMKEY), else data/singles.json by era.
+- "frontier" is a SERIES set (singles.json era "frontier"), PACKS tab 0, price 200, Heartland only, PACK_STAGE 6 (end of
+  story; pack_why says so). pool() keeps frontier ids out of the themed packs; trader and claw skip it until it opens.
+  THEME_DECKS entries can carry "stage": the deck shop shows them locked until Unlocks.stage() reaches it.
+- data/cards_extra.json (tools/dev/make_cards_extra.py <game ids> <reference cards.json> <player's cards.json>): Raul's
+  cards.json renames cards and has some only under reprint ids; CardData._load_extra adds/renames them and IMAGE_ALT points
+  the picture at the reprint. Regenerate it after adding cards (game ids from tools/dev/dump_ids.tscn).
+  Test card folder /tmp/testassets3 now uses Raul's cards.json (staged from his Mac); the old one is /tmp/cards_old_14321.json.
+- Spanish: tools/dev/cardes/official_es.py (official text, quotes back to English) + b56_hand.py (11 written here).
+- ocg_sweep focus "list:<json of names>".

@@ -484,6 +484,20 @@ const NAMED_DECKS := {
 		"extra": {"Number 8: Heraldic King Genom-Heritage": 1, "Number 18: Heraldry Patriarch": 1, "Number 69: Heraldry Crest": 1, "Number C69: Heraldry Crest of Horror": 1}},
 	"deck_sylvan": {"name": "Sylvan Grove", "cards": {"Sylvan Marshalleaf": 2, "Sylvan Komushroomo": 2, "Sylvan Peaskeeper": 2, "Sylvan Cherubsprout": 2, "Sylvan Mikorange": 2, "Sylvan Hermitree": 2, "Sylvan Snapdrassinagon": 2, "Sylvan Sagequoia": 1, "Sylvan Lotuswain": 1, "Sylvan Guardioak": 1, "Sylvan Bladefender": 1, "Sylvan Flowerknight": 1, "Sylvan Princessprout": 1, "Mount Sylvania": 2, "Sylvan Charity": 2, "Monster Reborn": 1, "Mystical Space Typhoon": 1, "Pot of Duality": 1, "Sylvan Waterslide": 1, "Sylvan Blessing": 2, "Mirror Force": 1, "Bottomless Trap Hole": 2, "Solemn Judgment": 1, "Torrential Tribute": 1, "Call of the Haunted": 1, "Dimensional Prison": 2, "Compulsory Evacuation Device": 1, "Sakuretsu Armor": 1},
 		"extra": {"Alsei, the Sylvan High Protector": 1, "Orea, the Sylvan High Arbiter": 1}},
+	"deck_branded": {"name": "Branded Despia", "cards": {"Fallen of Albaz": 3, "Aluber the Jester of Despia": 3, "Despian Tragedy": 1, "Despian Comedy": 1, "Guiding Quem, the Virtuous": 1, "Albion the Shrouded Dragon": 1, "The Bystial Aluber": 1, "Bystial Magnamhut": 1, "Bystial Saronir": 1, "Albaz the Ashen": 1, "Ash Blossom & Joyous Spring": 2, "Branded Fusion": 3, "Branded Opening": 2, "Branded in Red": 1, "Branded Lost": 1, "Branded in High Spirits": 1, "Branded Regained": 1, "Despia, Theater of the Branded": 1, "Called by the Grave": 1, "Branded Bond": 1, "Dark Ruler No More": 1, "Triple Tactics Talent": 1, "Branded Retribution": 2, "Branded Expulsion": 1, "Branded Banishment": 2, "Branded Beast": 1, "Infinite Impermanence": 2, "Branded Sword": 1, "Screams of the Branded": 1},
+		"extra": {"Mirrorjade the Iceblade Dragon": 1, "Albion the Branded Dragon": 2, "Titaniklad the Ash Dragon": 1, "Lubellion the Searing Dragon": 1, "Granguignol the Dusk Dragon": 1, "Brigrand the Glory Dragon": 1, "Alba-Lenatus the Abyss Dragon": 1, "Sprind the Irondash Dragon": 1, "Despian Quaeritis": 1, "Rindbrumm the Striking Dragon": 1, "Masquerade the Blazing Dragon": 1, "Despian Luluwalilith": 1}},
+	"deck_drytron": {"name": "Drytron Constellation", "cards": {"Drytron Alpha Thuban": 3, "Drytron Beta Rastaban": 2, "Drytron Gamma Eltanin": 2, "Drytron Zeta Aldhibah": 3, "Drytron Delta Altais": 1, "Drytron Meteonis Draconids": 2, "Drytron Meteonis Quadrantids": 1, "Ash Blossom & Joyous Spring": 3, "Ghost Ogre & Snow Rabbit": 1, "Meteonis Drytron": 3, "Drytron Nova": 2, "Drytron Fafnir": 1, "Drytron Asterism": 1, "Drytron Eclipse": 1, "Pot of Prosperity": 1, "Called by the Grave": 1, "Dark Ruler No More": 1, "Triple Tactics Talent": 1, "Drytron Meteor Shower": 2, "Dimensional Barrier": 1, "Solemn Judgment": 1, "Infinite Impermanence": 3, "Solemn Strike": 1, "Evenly Matched": 1, "Torrential Tribute": 1},
+		"extra": {"Drytron Mu Beta Fafnir": 2, "Divine Arsenal AA-ZEUS - Sky Thunder": 1}},
+	"deck_dragonmaid": {"name": "Dragonmaid Household", "cards": {"Kitchen Dragonmaid": 3, "Nurse Dragonmaid": 3, "Laundry Dragonmaid": 3, "Parlor Dragonmaid": 2, "Chamber Dragonmaid": 2, "Dragonmaid Lorpar": 1, "Dragonmaid Tinkhec": 1, "Dragonmaid Ernus": 1, "Dragonmaid Nudyarl": 1, "Ash Blossom & Joyous Spring": 2, "Dragonmaid Welcome": 1, "Dragonmaid Changeover": 3, "Dragonmaid Hospitality": 1, "Dragonmaid Send-Off": 1, "Called by the Grave": 1, "Pot of Prosperity": 1, "Dark Ruler No More": 1, "Triple Tactics Talent": 1, "Polymerization": 1, "Dragonmaid Tidying": 2, "Dragonmaid Downtime": 1, "Dimensional Barrier": 1, "Ice Dragon's Prison": 1, "Infinite Impermanence": 2, "Solemn Strike": 1, "Evenly Matched": 1, "Torrential Tribute": 1},
+		"extra": {"House Dragonmaid": 2, "Dragonmaid Sheou": 2}},
+	"deck_swordsoul": {"name": "Swordsoul Mountain", "cards": {"Swordsoul of Mo Ye": 3, "Swordsoul of Taia": 3, "Swordsoul Strategist Longyuan": 3, "Swordsoul Auspice Chunjun": 1, "The Iris Swordsoul": 1, "The Golden Swordsoul": 1, "Ash Blossom & Joyous Spring": 3, "Ghost Belle & Haunted Mansion": 1, "Droll & Lock Bird": 1, "Swordsoul Emergence": 3, "Swordsoul Sacred Summit": 2, "Called by the Grave": 1, "Pot of Prosperity": 2, "Dark Ruler No More": 1, "Triple Tactics Talent": 1, "Swordsoul Punishment": 1, "Swordsoul Strife": 2, "Swordsoul Blackout": 2, "Swordsoul Assessment": 1, "Dimensional Barrier": 1, "Infinite Impermanence": 3, "Solemn Strike": 1, "Evenly Matched": 1, "Torrential Tribute": 1},
+		"extra": {"Swordsoul Grandmaster - Chixiao": 2, "Swordsoul Supreme Sovereign - Chengying": 2, "Swordsoul Sinister Sovereign - Qixing Longyuan": 1, "Baronne de Fleur": 1, "Crystal Wing Synchro Dragon": 1, "Stardust Dragon": 1, "Herald of the Arc Light": 1, "Tri-Edge Master": 1, "Coral Dragon": 1, "Ravenous Crocodragon Archethys": 1, "Groza, Tyrant of Thunder": 1}},
+	"deck_witchcrafter": {"name": "Witchcrafter Atelier", "cards": {"Witchcrafter Genni": 3, "Witchcrafter Potterie": 2, "Witchcrafter Pittore": 3, "Witchcrafter Schmietta": 3, "Witchcrafter Edel": 1, "Witchcrafter Haine": 2, "Witchcrafter Madame Verre": 2, "Witchcrafter Golem Aruru": 1, "Ash Blossom & Joyous Spring": 2, "Witchcrafter Creation": 3, "Witchcrafter Holiday": 2, "Witchcrafter Confusion Confession": 1, "Witchcrafter Collaboration": 1, "Witchcrafter Draping": 1, "Witchcrafter Scroll": 1, "Witchcrafter Bystreet": 1, "Witchcrafter Unveiling": 1, "Called by the Grave": 1, "Dark Ruler No More": 1, "Witchcrafter Masterpiece": 1, "Witchcrafter Patronus": 1, "Dimensional Barrier": 1, "Infinite Impermanence": 2, "Solemn Strike": 1, "Evenly Matched": 1, "Torrential Tribute": 1},
+		"extra": {"Witchcrafter Vice-Madame": 2, "Abyss Dweller": 1}},
+	"deck_true_draco": {"name": "True Draco Throne", "cards": {"Master Peace, the True Dracoslayer": 2, "Master Peace, the True Dracoslaying King": 1, "Dinomight Knight, the True Dracofighter": 2, "Ignis Heat, the True Dracowarrior": 2, "Majesty Maiden, the True Dracocaster": 2, "Dreiath III, the True Dracocavalry General": 1, "Metaltron XII, the True Dracombatant": 1, "True King Agnimazud, the Vanisher": 2, "True King Bahrastos, the Fathomer": 1, "True King Lithosagym, the Disaster": 1, "Mariamne, the True Dracophoenix": 1, "Ash Blossom & Joyous Spring": 2, "True Draco Heritage": 1, "Disciples of the True Dracophoenix": 1, "Dragonic Diagram": 3, "Pot of Prosperity": 1, "Called by the Grave": 1, "Dark Ruler No More": 1, "Triple Tactics Talent": 1, "Foolish Burial Goods": 1, "Monster Reborn": 1, "True Draco Apocalypse": 2, "True King's Return": 2, "Solemn Judgment": 1, "Ice Dragon's Prison": 1, "Infinite Impermanence": 2, "Solemn Strike": 1, "Evenly Matched": 1, "Torrential Tribute": 1},
+		"extra": {"True King of All Calamities": 1}},
+	"deck_cipher": {"name": "Cipher Squadron", "cards": {"Cipher Wing": 3, "Cipher Twin Raptor": 3, "Cipher Mirror Knight": 2, "Cipher Biplane": 2, "Cipher Etranger": 2, "Photon Thrasher": 2, "Galaxy Soldier": 2, "Photon Vanisher": 1, "Cipher Soldier": 2, "Ash Blossom & Joyous Spring": 2, "Double Cipher": 2, "Cipher Interference": 1, "Double Exposure": 1, "Rank-Up-Magic Cipher Ascension": 1, "Galaxy Expedition": 1, "Called by the Grave": 1, "Pot of Prosperity": 1, "Dark Ruler No More": 1, "Triple Tactics Talent": 1, "Cipher Spectrum": 2, "Dimensional Barrier": 1, "Cipher Bit": 1, "Infinite Impermanence": 2, "Solemn Strike": 1, "Evenly Matched": 1, "Torrential Tribute": 1},
+		"extra": {"Galaxy-Eyes Cipher Dragon": 2, "Neo Galaxy-Eyes Cipher Dragon": 1, "Number 62: Galaxy-Eyes Prime Photon Dragon": 1, "Abyss Dweller": 1, "Number 39: Utopia": 1}},
 	"deck_monarchs": {"name": "Rule of the Monarchs", "cards": {"Caius the Shadow Monarch": 2, "Zaborg the Thunder Monarch": 2, "Mobius the Frost Monarch": 1, "Raiza the Storm Monarch": 1,
 		"Thestalos the Firestorm Monarch": 1, "Granmarg the Rock Monarch": 1, "Kuraz the Light Monarch": 1, "Eidos the Underworld Monarch": 1, "Caius the Mega Monarch": 1,
 		"Zaborg the Mega Monarch": 1, "Erebus the Underworld Monarch": 1, "Ehther the Heavenly Monarch": 1, "Edea the Heavenly Squire": 2, "Eidos the Underworld Squire": 2,
@@ -901,6 +915,7 @@ static func load_external(folder: String) -> void:
 				var d: Dictionary = c["cards"][k]
 				EXT[int(k)] = d
 				NAME_TO_ID[str(d["name"]).to_lower()] = int(k)
+			_load_extra()
 			return
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string(src))
 	if typeof(parsed) != TYPE_ARRAY:
@@ -919,6 +934,39 @@ static func load_external(folder: String) -> void:
 	var f := FileAccess.open(cache, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify({"stamp": stamp, "cards": compact}))
+	_load_extra()
+
+
+## res://data/cards_extra.json (0.56.0): the cards the game names that a cards.json may know by
+## another name (versions rename cards) or not have at all. A missing card is added; the game's
+## name always finds its card. (tools/make_cards_extra.py)
+## A card whose picture in the card folder is under another id (a reprint's), from cards_extra.json.
+static var IMAGE_ALT := {}
+
+
+static func _load_extra() -> void:
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string("res://data/cards_extra.json"))
+	if typeof(parsed) != TYPE_ARRAY:
+		return
+	for raw in parsed:
+		var id := int(raw.get("id", 0))
+		if id == 0:
+			continue
+		if not EXT.has(id):
+			var d := _from_db(raw)
+			if d.is_empty():
+				continue
+			EXT[id] = d
+		elif str(EXT[id].get("name", "")) != str(raw.get("name", "")):
+			# (renamed in this cards.json: the game keeps the name its decks, packs and texts use)
+			(EXT[id] as Dictionary)["name"] = str(raw.get("name", ""))
+		NAME_TO_ID[str(raw.get("name", "")).to_lower()] = id
+		if raw.has("image"):
+			IMAGE_ALT[id] = int(raw["image"])
+
+
+static func _num(v) -> int:
+	return int(v) if v is int or v is float or (v is String and (v as String).is_valid_int()) else 0
 
 
 static func _from_db(raw: Dictionary) -> Dictionary:
@@ -937,9 +985,10 @@ static func _from_db(raw: Dictionary) -> Dictionary:
 			d["effect"] = SPELL_EFFECTS[name]
 			d["text"] = d["desc"]
 		return d
-	d["atk"] = int(raw.get("atk", 0))
-	d["def"] = int(raw.get("def", 0))
-	d["level"] = int(raw.get("level", raw.get("linkval", 0)))
+	# (Some cards.json versions write null for "?" ATK/DEF: int(null) is an error.)
+	d["atk"] = _num(raw.get("atk", 0))
+	d["def"] = _num(raw.get("def", 0))
+	d["level"] = _num(raw.get("level", raw.get("linkval", 0)))
 	d["attribute"] = str(raw.get("attribute", ""))
 	d["race"] = str(raw.get("race", ""))
 	if "Tuner" in str(raw.get("type", "")):

@@ -322,6 +322,10 @@ func _refresh() -> void:
 	_buy.disabled = Collection.dp < int(e["price"])
 	if _buy.disabled and not mine:
 		_buy.text = Loc.t("%d DP  ·  you need %d more") % [int(e["price"]), int(e["price"]) - Collection.dp]
+	if not mine and int(e.get("stage", 0)) > 0 and Unlocks.stage() < int(e.get("stage", 0)):
+		# (The New Frontier decks, 0.56.0: they open with the end of the story, like their pack.)
+		_buy.text = Loc.t("Locked: opens when you finish the story.")
+		_buy.disabled = true
 	_use.visible = mine
 	var using := Collection.using_origin(key) and Collection.active_deck() == "custom"
 	_use.text = Loc.t("✓ Yours. You are dueling with it.") if using else Loc.t("Yours. Duel with this deck")

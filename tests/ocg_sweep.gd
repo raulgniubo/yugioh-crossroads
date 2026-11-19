@@ -44,6 +44,14 @@ func _ready() -> void:
 		want_mains = mains.filter(func(id): return ids.has(id))
 		want_extras = extras.filter(func(id): return ids.has(id))
 		print("singles: ", want_mains.size(), " + ", want_extras.size(), " cards")
+	elif focus_key.begins_with("list:"):
+		# (the card names in a JSON file, e.g. one build's new cards: "list:/tmp/new.json")
+		var ids := {}
+		for nm in JSON.parse_string(FileAccess.get_file_as_string(focus_key.substr(5))):
+			ids[int(CardData.NAME_TO_ID.get(str(nm).to_lower(), 0))] = true
+		want_mains = mains.filter(func(id): return ids.has(id))
+		want_extras = extras.filter(func(id): return ids.has(id))
+		print("listed: ", want_mains.size(), " + ", want_extras.size(), " cards")
 	elif focus_key == "added":
 		# (the single cards named in CardPool.ADDED, in decks filled from the whole pool)
 		var ids := {}

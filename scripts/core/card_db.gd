@@ -45,6 +45,8 @@ func get_face(id: int) -> Texture2D:
 	if _face_cache.has(id):
 		return _face_cache[id]
 	var tex := _load_image(Settings.card_folder.path_join("cards/%d.jpg" % id))
+	if tex == null and CardData.IMAGE_ALT.has(id):
+		tex = _load_image(Settings.card_folder.path_join("cards/%d.jpg" % int(CardData.IMAGE_ALT[id])))
 	if tex == null:
 		tex = _make_placeholder_face(id)
 	_face_cache[id] = tex
@@ -56,6 +58,8 @@ func get_art(id: int) -> Texture2D:
 	if _art_cache.has(id):
 		return _art_cache[id]
 	var tex := _load_image(Settings.card_folder.path_join("art/%d.jpg" % id))
+	if tex == null and CardData.IMAGE_ALT.has(id):
+		tex = _load_image(Settings.card_folder.path_join("art/%d.jpg" % int(CardData.IMAGE_ALT[id])))
 	if tex == null:
 		tex = get_face(id)
 	_art_cache[id] = tex
@@ -169,7 +173,7 @@ func back_for_char(key: String) -> Texture2D:
 ## inside a double gold frame with the name along the bottom.
 func _make_sleeve(id: int) -> Texture2D:
 	var d := get_card(id)
-	var art := _load_image(Settings.card_folder.path_join("art/%d.jpg" % id))
+	var art := _load_image(Settings.card_folder.path_join("art/%d.jpg" % int(CardData.IMAGE_ALT.get(id, id))))
 	var vp := _new_viewport()
 	var root := Control.new()
 	root.size = Vector2(CARD_SIZE)

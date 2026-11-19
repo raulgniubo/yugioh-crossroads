@@ -1,0 +1,2385 @@
+[
+{
+"id": 7293697,
+"name": "Toon World the Perfect World",
+"type": "Spell Card",
+"humanReadableCardType": "Field Spell",
+"frameType": "spell",
+"desc": "This card's name becomes \"Toon World\" while in the Field Zone. Once per turn, during your Main Phase: You can add 1 \"Toon\" card, or 1 card that mentions a \"Toon\" card by name, from your Deck to your hand. You can only use this effect of \"Perfect Toon World\" thrice per turn. If another card's effect activates, at the start of its resolution, you can banish 1 Toon monster you control until immediately after that effect resolves (each unique original monster name can only be banished once per turn, by you, by this effect of \"Perfect Toon World\").",
+"race": "Field",
+"card_sets": [
+{
+"set_name": "Magnificent Maestros",
+"set_code": "MAMS-EN044",
+"set_rarity": "Secret Rare",
+"set_rarity_code": "(ScR)",
+"set_price": "0"
+},
+{
+"set_name": "Magnificent Maestros",
+"set_code": "MAMS-EN044",
+"set_rarity": "Starlight Rare",
+"set_rarity_code": "(StR)",
+"set_price": "0"
+},
+{
+"set_name": "Magnificent Maestros",
+"set_code": "MAMS-EN044",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+}
+],
+"banlist_info": {
+"ban_ocg": "Limited"
+}
+},
+{
+"id": 10789972,
+"name": "Cú Chulainn the Awakened",
+"typeline": [
+"Warrior",
+"Ritual",
+"Effect"
+],
+"type": "Ritual Effect Monster",
+"humanReadableCardType": "Ritual Effect Monster",
+"frameType": "ritual",
+"desc": "This card can only be Ritual Summoned with the Ritual Spell Card, Emblem of the Awakening. Once per turn, you can remove from play 1 Normal Monster in your Graveyard. This card gains ATK equal to that Normal Monster's ATK, until the Standby Phase of your next turn.",
+"race": "Warrior",
+"atk": 500,
+"def": 1000,
+"level": 4,
+"attribute": "LIGHT",
+"card_sets": [
+{
+"set_name": "Strike of Neos",
+"set_code": "STON-EN033",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+}
+]
+},
+{
+"id": 11549357,
+"name": "Gamma The Magnet Warrior",
+"typeline": [
+"Rock",
+"Normal"
+],
+"type": "Normal Monster",
+"humanReadableCardType": "Normal Monster",
+"frameType": "normal",
+"desc": "Alpha, Beta, and Gamma meld as one to form a powerful monster.",
+"race": "Rock",
+"atk": 1500,
+"def": 1800,
+"level": 4,
+"attribute": "EARTH",
+"archetype": "Magnet Warrior",
+"card_sets": [
+{
+"set_name": "Legendary Collection 3: Yugi's World Mega Pack",
+"set_code": "LCYW-EN014",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.25"
+},
+{
+"set_name": "Retro Pack 2",
+"set_code": "RP02-EN091",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "0"
+},
+{
+"set_name": "Speed Duel: Battle City Box",
+"set_code": "SBCB-EN025",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.16"
+},
+{
+"set_name": "Structure Deck: Yugi Muto",
+"set_code": "SDMY-EN009",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Yu-Gi-Oh! The Duelists of the Roses promotional cards",
+"set_code": "DOR-003",
+"set_rarity": "Prismatic Secret Rare",
+"set_rarity_code": "(PScR)",
+"set_price": "8"
+},
+{
+"set_name": "Yu-Gi-Oh! The Duelists of the Roses promotional cards",
+"set_code": "DOR-E003",
+"set_rarity": "Prismatic Secret Rare",
+"set_rarity_code": "(PScR)",
+"set_price": "21.6"
+},
+{
+"set_name": "Yugi's Legendary Decks",
+"set_code": "YGLD-ENB13",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.51"
+}
+]
+},
+{
+"id": 14965712,
+"name": "Multiplying Kuriboh!",
+"typeline": [
+"Fiend",
+"Effect"
+],
+"type": "Effect Monster",
+"humanReadableCardType": "Effect Monster",
+"frameType": "effect",
+"desc": "When your opponent activates a monster effect, or an opponent's monster declares an attack (Quick Effect): You can Special Summon this card from your hand. You can only use this effect of \"Kuriboh - Multiply!\" once per turn. Once per turn, when your opponent activates a monster effect on the field, or during damage calculation when an opponent's monster attacks (Quick Effect): You can add to your hand or Special Summon, from your Deck or GY, 1 \"Dark Magician\" or 1 monster with 300 ATK/200 DEF, then you can change that opponent's monster's ATK to 0.",
+"race": "Fiend",
+"atk": 300,
+"def": 200,
+"level": 1,
+"attribute": "DARK",
+"archetype": "Kuriboh",
+"card_sets": [
+{
+"set_name": "Magnificent Monsters",
+"set_code": "MAMO-EN002",
+"set_rarity": "Grand Master Rare",
+"set_rarity_code": "",
+"set_price": "0"
+},
+{
+"set_name": "Magnificent Monsters",
+"set_code": "MAMO-EN002",
+"set_rarity": "New",
+"set_rarity_code": "",
+"set_price": "0"
+},
+{
+"set_name": "Magnificent Monsters",
+"set_code": "MAMO-EN002",
+"set_rarity": "Starlight Rare",
+"set_rarity_code": "(StR)",
+"set_price": "0"
+},
+{
+"set_name": "Magnificent Monsters",
+"set_code": "MAMO-EN002",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+}
+]
+},
+{
+"id": 18144506,
+"name": "Harpie's Feather Duster",
+"type": "Spell Card",
+"humanReadableCardType": "Normal Spell",
+"frameType": "spell",
+"desc": "Destroy all Spell and Trap Cards your opponent controls.",
+"race": "Normal",
+"archetype": "Harpie",
+"card_sets": [
+{
+"set_name": "2025 Mega-Pack Tin",
+"set_code": "MP25-EN016",
+"set_rarity": "Starlight Rare",
+"set_rarity_code": "(StR)",
+"set_price": "0"
+},
+{
+"set_name": "25th Anniversary Tin: Dueling Mirrors",
+"set_code": "MP24-EN058",
+"set_rarity": "Prismatic Secret Rare",
+"set_rarity_code": "(PScR)",
+"set_price": "0"
+},
+{
+"set_name": "Battle Pack: Epic Dawn",
+"set_code": "BP01-EN035",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "0"
+},
+{
+"set_name": "Battle Pack: Epic Dawn",
+"set_code": "BP01-EN035",
+"set_rarity": "Starfoil Rare",
+"set_rarity_code": "(SFR)",
+"set_price": "0"
+},
+{
+"set_name": "Egyptian God Deck: Obelisk the Tormentor",
+"set_code": "EGO1-EN022",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "6.6"
+},
+{
+"set_name": "Egyptian God Deck: Slifer the Sky Dragon",
+"set_code": "EGS1-EN022",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "7.92"
+},
+{
+"set_name": "Legendary Collection 3: Yugi's World Mega Pack",
+"set_code": "LCYW-EN149",
+"set_rarity": "Secret Rare",
+"set_rarity_code": "(ScR)",
+"set_price": "0"
+},
+{
+"set_name": "Legendary Collection 4: Joey's World Mega Pack",
+"set_code": "LCJW-EN099",
+"set_rarity": "Secret Rare",
+"set_rarity_code": "(ScR)",
+"set_price": "0"
+},
+{
+"set_name": "Legendary Modern Decks 2026",
+"set_code": "L26D-ENS06",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Magnificent Mavens",
+"set_code": "MAMA-EN076",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+},
+{
+"set_name": "Maximum Gold",
+"set_code": "MAGO-EN042",
+"set_rarity": "Premium Gold Rare",
+"set_rarity_code": "(PG)",
+"set_price": "0"
+},
+{
+"set_name": "OTS Tournament Pack 24",
+"set_code": "OP24-EN003",
+"set_rarity": "Ultimate Rare",
+"set_rarity_code": "(UtR)",
+"set_price": "0"
+},
+{
+"set_name": "Structure Deck: Beware of Traptrix",
+"set_code": "SDBT-EN026",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Tournament Pack 8",
+"set_code": "TP8-EN002",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "0"
+},
+{
+"set_name": "Winner's Pack 2026-2027",
+"set_code": "WI26-EN020",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+},
+{
+"set_name": "Yu-Gi-Oh! World Championship Tournament 2004 promotional cards",
+"set_code": "WC4-E003",
+"set_rarity": "Prismatic Secret Rare",
+"set_rarity_code": "(PScR)",
+"set_price": "144.56"
+},
+{
+"set_name": "Yu-Gi-Oh! Worldwide Edition: Stairway to the Destined Duel promotional cards",
+"set_code": "SDD-003",
+"set_rarity": "Prismatic Secret Rare",
+"set_rarity_code": "(PScR)",
+"set_price": "29.53"
+}
+],
+"banlist_info": {
+"ban_tcg": "Limited",
+"ban_ocg": "Limited",
+"ban_goat": "Forbidden"
+},
+"image": 18144507
+},
+{
+"id": 18807108,
+"name": "Spellbinding Circle",
+"type": "Trap Card",
+"humanReadableCardType": "Continuous Trap",
+"frameType": "trap",
+"desc": "Activate this card by targeting 1 monster your opponent controls; it cannot attack or change its battle position. When that monster is destroyed, destroy this card.",
+"race": "Continuous",
+"card_sets": [
+{
+"set_name": "Dark Beginning 1",
+"set_code": "DB1-EN006",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "0"
+},
+{
+"set_name": "Duelist Pack: Yugi",
+"set_code": "DPYG-EN026",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.5"
+},
+{
+"set_name": "Legendary Collection 3: Yugi's World Mega Pack",
+"set_code": "LCYW-EN092",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.24"
+},
+{
+"set_name": "Magic Ruler",
+"set_code": "MRL-006",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "17.43"
+},
+{
+"set_name": "Magic Ruler",
+"set_code": "MRL-E006",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "43.82"
+},
+{
+"set_name": "Speed Duel Starter Decks: Match of the Millennium",
+"set_code": "SS04-ENA28",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Speed Duel: Scars of Battle",
+"set_code": "SBSC-EN005",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.16"
+},
+{
+"set_name": "Spell Ruler",
+"set_code": "SRL-006",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "8.29"
+},
+{
+"set_name": "Spell Ruler",
+"set_code": "SRL-EN006",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+},
+{
+"set_name": "Starter Deck: Yu-Gi-Oh! 5D's",
+"set_code": "5DS1-EN034",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Starter Deck: Yugi Evolution",
+"set_code": "SYE-045",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.57"
+},
+{
+"set_name": "Starter Deck: Yugi Reloaded",
+"set_code": "YSYR-EN041",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.73"
+},
+{
+"set_name": "Yugi's Legendary Decks",
+"set_code": "YGLD-ENB36",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.08"
+}
+],
+"image": 18807109
+},
+{
+"id": 19230407,
+"name": "Offerings to the Doomed",
+"type": "Spell Card",
+"humanReadableCardType": "Quick-Play Spell",
+"frameType": "spell",
+"desc": "Target 1 face-up monster on the field; destroy that target, also skip your next Draw Phase.",
+"race": "Quick-Play",
+"card_sets": [
+{
+"set_name": "Battle Pack 3: Monster League",
+"set_code": "BP03-EN138",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Battle Pack 3: Monster League",
+"set_code": "BP03-EN138",
+"set_rarity": "Shatterfoil Rare",
+"set_rarity_code": "(SHR)",
+"set_price": "0"
+},
+{
+"set_name": "Battle Pack: Epic Dawn",
+"set_code": "BP01-EN070",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Battle Pack: Epic Dawn",
+"set_code": "BP01-EN070",
+"set_rarity": "Starfoil Rare",
+"set_rarity_code": "(SFR)",
+"set_price": "0"
+},
+{
+"set_name": "Duel Terminal 2",
+"set_code": "DT02-EN039",
+"set_rarity": "Duel Terminal Normal Parallel Rare",
+"set_rarity_code": "(DNPR)",
+"set_price": "0.00"
+},
+{
+"set_name": "Gold Series",
+"set_code": "GLD1-EN034",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Labyrinth of Nightmare",
+"set_code": "LON-051",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.98"
+},
+{
+"set_name": "Labyrinth of Nightmare",
+"set_code": "LON-E051",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "3.43"
+},
+{
+"set_name": "Labyrinth of Nightmare",
+"set_code": "LON-EN051",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0.00"
+},
+{
+"set_name": "OTS Tournament Pack 1",
+"set_code": "OP01-EN023",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Speed Duel Starter Decks: Twisted Nightmares",
+"set_code": "SS05-ENA22",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "2.42"
+},
+{
+"set_name": "Speed Duel Tournament Pack 3",
+"set_code": "STP3-EN010",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "0"
+},
+{
+"set_name": "Starter Deck: Kaiba Reloaded",
+"set_code": "YSKR-EN033",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.44"
+},
+{
+"set_name": "Structure Deck: Powercode Link",
+"set_code": "SDPL-EN023",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "The Lost Art Promotion (series)",
+"set_code": "LART-EN017",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "The Lost Art Promotion 2020 E",
+"set_code": "LART-EN017",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+}
+],
+"image": 19230408
+},
+{
+"id": 30275298,
+"name": "Cyber End Dragon the Decisive Strike Dragon",
+"typeline": [
+"Machine",
+"Fusion",
+"Effect"
+],
+"type": "Fusion Monster",
+"humanReadableCardType": "Fusion Effect Monster",
+"frameType": "fusion",
+"desc": "3 Machine monsters with 2100 or more ATK\r\nMust be Fusion Summoned. If this card is Fusion Summoned using only LIGHT monsters: You can pay 4000 LP; add 1 \"Limiter Removal\" from your Deck to your hand. You can only use this effect of \"Cyber End Dragon, the Final Strike Dragon\" once per turn. If this card attacks a Defense Position monster, inflict piercing battle damage to your opponent. While its ATK is higher than its original ATK, this card can make up to 3 attacks during each Battle Phase.",
+"race": "Machine",
+"atk": 4000,
+"def": 2800,
+"level": 10,
+"attribute": "LIGHT",
+"archetype": "Cyber",
+"card_sets": [
+{
+"set_name": "Magnificent Maestros",
+"set_code": "MAMS-EN004",
+"set_rarity": "Grand Master Rare",
+"set_rarity_code": "",
+"set_price": "0"
+},
+{
+"set_name": "Magnificent Maestros",
+"set_code": "MAMS-EN004",
+"set_rarity": "Starlight Rare",
+"set_rarity_code": "(StR)",
+"set_price": "0"
+},
+{
+"set_name": "Magnificent Maestros",
+"set_code": "MAMS-EN004",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+}
+]
+},
+{
+"id": 35537860,
+"name": "Synch Blast Wave",
+"type": "Spell Card",
+"humanReadableCardType": "Normal Spell",
+"frameType": "spell",
+"desc": "If you control a Synchro Monster: Target 1 monster your opponent controls; destroy that target.",
+"race": "Normal",
+"card_sets": [
+{
+"set_name": "Duelist Pack Collection Tin 2010",
+"set_code": "DPCT-ENY03",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "2.32"
+},
+{
+"set_name": "Legendary Collection 5D's Mega Pack",
+"set_code": "LC5D-EN250",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.42"
+},
+{
+"set_name": "Starter Deck: Yu-Gi-Oh! 5D's",
+"set_code": "5DS1-EN021",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.13"
+},
+{
+"set_name": "THANK YOU PACK",
+"set_code": "TYP1-EN023",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "THANK YOU PACK",
+"set_code": "TYP1-EN023",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "0"
+}
+]
+},
+{
+"id": 39751093,
+"name": "Otohime",
+"typeline": [
+"Spellcaster",
+"Spirit",
+"Effect"
+],
+"type": "Spirit Monster",
+"humanReadableCardType": "Spirit Effect Monster",
+"frameType": "effect",
+"desc": "Cannot be Special Summoned. During the End Phase of the turn this card is Normal Summoned or flipped face-up: Return it to the hand. When this card is Normal Summoned or flipped face-up: You can target 1 face-up monster your opponent controls; change that target's battle position.",
+"race": "Spellcaster",
+"atk": 0,
+"def": 100,
+"level": 3,
+"attribute": "LIGHT",
+"card_sets": [
+{
+"set_name": "Dark Beginning 2",
+"set_code": "DB2-EN181",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.26"
+},
+{
+"set_name": "Legacy of Darkness",
+"set_code": "LOD-069",
+"set_rarity": "Super Short Print",
+"set_rarity_code": "(SSP)",
+"set_price": "1.94"
+},
+{
+"set_name": "Legacy of Darkness",
+"set_code": "LOD-EN069",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Legacy of Darkness",
+"set_code": "LOD-EN069",
+"set_rarity": "Super Short Print",
+"set_rarity_code": "(SSP)",
+"set_price": "0.00"
+},
+{
+"set_name": "The Lost Art Promotion 2025 A",
+"set_code": "LART-EN076",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+},
+{
+"set_name": "War of the Giants Reinforcements",
+"set_code": "WGRT-EN005",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "4.15"
+},
+{
+"set_name": "War of the Giants: Round 2",
+"set_code": "BPW2-EN005",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.55"
+}
+],
+"image": 39751094
+},
+{
+"id": 56043446,
+"name": "Viser Des",
+"typeline": [
+"Fiend",
+"Effect"
+],
+"type": "Effect Monster",
+"humanReadableCardType": "Effect Monster",
+"frameType": "effect",
+"desc": "If this card is Normal Summoned: Target 1 monster your opponent controls; during your third Standby Phase after this effect's activation, destroy that monster. This card cannot be destroyed by battle while the targeted monster is on the field.",
+"race": "Fiend",
+"atk": 500,
+"def": 1200,
+"level": 4,
+"attribute": "DARK",
+"card_sets": [
+{
+"set_name": "Absolute Powerforce",
+"set_code": "ABPF-EN093",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "0"
+},
+{
+"set_name": "Millennium Pack",
+"set_code": "MIL1-EN037",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.08"
+},
+{
+"set_name": "Speed Duel Starter Decks: Twisted Nightmares",
+"set_code": "SS05-ENB16",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.1"
+},
+{
+"set_name": "Structure Deck: Marik (TCG)",
+"set_code": "SDMA-EN003",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.16"
+}
+],
+"image": 56043447
+},
+{
+"id": 61032879,
+"name": "Synch Realm",
+"type": "Spell Card",
+"humanReadableCardType": "Continuous Spell",
+"frameType": "spell",
+"desc": "Each time you Synchro Summon a Synchro Monster, inflict 500 damage to your opponent.",
+"race": "Continuous",
+"archetype": "Synchron",
+"card_sets": [
+{
+"set_name": "Starter Deck: Yu-Gi-Oh! 5D's",
+"set_code": "5DS1-EN022",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "2.49"
+}
+]
+},
+{
+"id": 64335804,
+"name": "Red-Eyes Black Metal Dragon",
+"typeline": [
+"Machine",
+"Effect"
+],
+"type": "Effect Monster",
+"humanReadableCardType": "Effect Monster",
+"frameType": "effect",
+"desc": "Cannot be Normal Summoned/Set. Must first be Special Summoned (from your Deck) by Tributing \"Red-Eyes B. Dragon\" equipped with \"Metalmorph\".",
+"race": "Machine",
+"atk": 2800,
+"def": 2400,
+"level": 8,
+"attribute": "DARK",
+"archetype": "Red-Eyes",
+"card_sets": [
+{
+"set_name": "Legendary Collection 4: Joey's World Mega Pack",
+"set_code": "LCJW-EN031",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Millennium Pack",
+"set_code": "MIL1-EN035",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.84"
+},
+{
+"set_name": "Premium Pack (TCG)",
+"set_code": "PP01-EN015",
+"set_rarity": "Secret Rare",
+"set_rarity_code": "(ScR)",
+"set_price": "19.84"
+},
+{
+"set_name": "Premium Pack (TCG)",
+"set_code": "PP01-EN015",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "5.19"
+},
+{
+"set_name": "Yu-Gi-Oh! Forbidden Memories promotional cards",
+"set_code": "FMR-001",
+"set_rarity": "Prismatic Secret Rare",
+"set_rarity_code": "(PScR)",
+"set_price": "223.05"
+}
+],
+"image": 64335805
+},
+{
+"id": 66664203,
+"name": "Revolution Cyber Dragon",
+"typeline": [
+"Machine",
+"Effect"
+],
+"type": "Effect Monster",
+"humanReadableCardType": "Effect Monster",
+"frameType": "effect",
+"desc": "If you control no monsters, you can Special Summon this card (from your hand). You can only use each of the following effects of \"Cyber Dragon, the Luminous Mech Dragon\" once per turn. If this card is Special Summoned: You can target 1 face-up monster your opponent controls; negate its effects until the end of this turn. During your Main Phase: You can Fusion Summon 1 Machine Fusion Monster from your Extra Deck, using this card you control and monsters from your hand or field.",
+"race": "Machine",
+"atk": 2100,
+"def": 1600,
+"level": 5,
+"attribute": "LIGHT",
+"archetype": "Cyber",
+"card_sets": [
+{
+"set_name": "Magnificent Maestros",
+"set_code": "MAMS-EN005",
+"set_rarity": "Grand Master Rare",
+"set_rarity_code": "",
+"set_price": "0"
+},
+{
+"set_name": "Magnificent Maestros",
+"set_code": "MAMS-EN005",
+"set_rarity": "Starlight Rare",
+"set_rarity_code": "(StR)",
+"set_price": "0"
+},
+{
+"set_name": "Magnificent Maestros",
+"set_code": "MAMS-EN005",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+}
+]
+},
+{
+"id": 68075840,
+"name": "Power Pro Knight Girls",
+"typeline": [
+"Warrior",
+"Normal"
+],
+"type": "Normal Monster",
+"humanReadableCardType": "Normal Monster",
+"frameType": "normal",
+"desc": "''The stadium is now open, and our all-star ladies are ready to take you out to the ball game! It's the beginning of a new baseball legend!\r\nPresenting: The three navigators of the Power Pro world! That's Paa-chan on the left, bright, energetic, and (usually) dependable. On the right we've got Waa-chan, calm, earnest, and level-headed (usually...). And Namiki is in charge up front with little Chikuwa in her tote bag, helping us cheer everyone on!''",
+"race": "Warrior",
+"atk": 1200,
+"def": 2400,
+"level": 4,
+"attribute": "LIGHT"
+},
+{
+"id": 68540058,
+"name": "Metalmorph",
+"type": "Trap Card",
+"humanReadableCardType": "Normal Trap",
+"frameType": "trap",
+"desc": "Target 1 face-up monster on the field; equip this card to that target. It gains 300 ATK/DEF. If it attacks, it gains ATK equal to half the ATK of the attack target, during damage calculation only.",
+"race": "Normal",
+"card_sets": [
+{
+"set_name": "Battle Pack 2: War of the Giants",
+"set_code": "BP02-EN173",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Battle Pack 2: War of the Giants",
+"set_code": "BP02-EN173",
+"set_rarity": "Mosaic Rare",
+"set_rarity_code": "(MSR)",
+"set_price": "0"
+},
+{
+"set_name": "Battle Pack 3: Monster League",
+"set_code": "BP03-EN189",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Battle Pack 3: Monster League",
+"set_code": "BP03-EN189",
+"set_rarity": "Shatterfoil Rare",
+"set_rarity_code": "(SHR)",
+"set_price": "0"
+},
+{
+"set_name": "Duel Terminal 2",
+"set_code": "DT02-EN046",
+"set_rarity": "Duel Terminal Normal Parallel Rare",
+"set_rarity_code": "(DNPR)",
+"set_price": "1.96"
+},
+{
+"set_name": "Geargia Rampage Structure Deck",
+"set_code": "SDGR-EN031",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.34"
+},
+{
+"set_name": "Legendary Collection 4: Joey's World Mega Pack",
+"set_code": "LCJW-EN075",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Machina Mayhem Structure Deck",
+"set_code": "SDMM-EN033",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "2.67"
+},
+{
+"set_name": "Millennium Pack",
+"set_code": "MIL1-EN045",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.28"
+},
+{
+"set_name": "OTS Tournament Pack 26",
+"set_code": "OP26-EN026",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Premium Pack (TCG)",
+"set_code": "PP01-EN014",
+"set_rarity": "Secret Rare",
+"set_rarity_code": "(ScR)",
+"set_price": "4.52"
+},
+{
+"set_name": "Premium Pack (TCG)",
+"set_code": "PP01-EN014",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "3.49"
+},
+{
+"set_name": "Speed Duel GX: Duel Academy Box",
+"set_code": "SGX1-END17",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Speed Duel: Scars of Battle",
+"set_code": "SBSC-EN030",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "3.88"
+},
+{
+"set_name": "Speed Duel: Streets of Battle City",
+"set_code": "SBC1-ENF17",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Star Pack 2013",
+"set_code": "SP13-EN042",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Star Pack 2013",
+"set_code": "SP13-EN042",
+"set_rarity": "Starfoil Rare",
+"set_rarity_code": "(SFR)",
+"set_price": "0"
+},
+{
+"set_name": "World Championship 2011 Card Pack",
+"set_code": "WP11-EN020",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "0"
+},
+{
+"set_name": "Yu-Gi-Oh! Forbidden Memories promotional cards",
+"set_code": "FMR-003",
+"set_rarity": "Prismatic Secret Rare",
+"set_rarity_code": "(PScR)",
+"set_price": "74.3"
+}
+],
+"image": 68540059
+},
+{
+"id": 69678646,
+"name": "Stellarnova Binding",
+"type": "Spell Card",
+"humanReadableCardType": "Normal Spell",
+"frameType": "spell",
+"desc": "Activate 1 of these effects, also you cannot Special Summon from the Extra Deck for the rest of this turn, except Xyz Monsters.\r\n● Discard 1 card, and if you do, Special Summon 1 \"tellarknight\" or \"Constellar\" monster from your Deck with a different Type from the monsters you control.\r\n● Target face-up monsters your opponent controls, up to the number of \"tellarknight\" and \"Constellar\" monsters you control; negate their effects until the end of this turn.\r\nYou can only activate 1 \"Stellarnova Bonds\" per turn.",
+"race": "Normal",
+"card_sets": [
+{
+"set_name": "Battles of Legend: Glorious Gallery",
+"set_code": "BLGG-EN020",
+"set_rarity": "Secret Rare",
+"set_rarity_code": "(ScR)",
+"set_price": "0"
+},
+{
+"set_name": "Battles of Legend: Glorious Gallery",
+"set_code": "BLGG-EN020",
+"set_rarity": "Starlight Rare",
+"set_rarity_code": "(StR)",
+"set_price": "0"
+}
+]
+},
+{
+"id": 72921536,
+"name": "Comic Cat",
+"typeline": [
+"Beast",
+"Effect"
+],
+"type": "Effect Monster",
+"humanReadableCardType": "Effect Monster",
+"frameType": "effect",
+"desc": "This card is treated as a Toon monster while \"Toon World\" is on the field. During the Main Phase (Quick Effect): You can Tribute 1 monster (if you control \"Toon World\", you can Tribute 1 monster your opponent controls instead), and if you do, Special Summon 1 monster that mentions \"Toon World\" from your hand or Deck, ignoring its Summoning conditions. You can only use this effect of \"Animimicat\" once per turn.",
+"race": "Beast",
+"atk": 0,
+"def": 0,
+"level": 1,
+"attribute": "DARK",
+"card_sets": [
+{
+"set_name": "Magnificent Maestros",
+"set_code": "MAMS-EN040",
+"set_rarity": "Secret Rare",
+"set_rarity_code": "(ScR)",
+"set_price": "0"
+},
+{
+"set_name": "Magnificent Maestros",
+"set_code": "MAMS-EN040",
+"set_rarity": "Starlight Rare",
+"set_rarity_code": "(StR)",
+"set_price": "0"
+},
+{
+"set_name": "Magnificent Maestros",
+"set_code": "MAMS-EN040",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+}
+]
+},
+{
+"id": 73134081,
+"name": "Final Flame",
+"type": "Spell Card",
+"humanReadableCardType": "Normal Spell",
+"frameType": "spell",
+"desc": "Inflict 600 points of damage to your opponent's Life Points.",
+"race": "Normal",
+"card_sets": [
+{
+"set_name": "Legend of Blue Eyes White Dragon",
+"set_code": "LOB-100",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "3.3"
+},
+{
+"set_name": "Legend of Blue Eyes White Dragon",
+"set_code": "LOB-E080",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "3.19"
+},
+{
+"set_name": "Legend of Blue Eyes White Dragon",
+"set_code": "LOB-EN100",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "0"
+},
+{
+"set_name": "Tournament Pack: 3rd Season",
+"set_code": "TP3-012",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "3.37"
+}
+],
+"image": 73134082
+},
+{
+"id": 78540593,
+"name": "Mariña, Princess of Sunflowers",
+"typeline": [
+"Plant",
+"Effect"
+],
+"type": "Effect Monster",
+"humanReadableCardType": "Effect Monster",
+"frameType": "effect",
+"desc": "If exactly 1 other Plant-Type monster you control (and no other cards) is destroyed by battle or by card effect and sent to the Graveyard: You can target 1 card your opponent controls; destroy that target. This card must be face-up on the field to activate and to resolve this effect.",
+"race": "Plant",
+"atk": 2800,
+"def": 1600,
+"level": 8,
+"attribute": "FIRE",
+"card_sets": [
+{
+"set_name": "2014 Mega-Tin Mega Pack",
+"set_code": "MP14-EN157",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "0"
+},
+{
+"set_name": "Secret Slayers",
+"set_code": "SESL-EN053",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "0.00"
+},
+{
+"set_name": "Shadow Specters",
+"set_code": "SHSP-EN040",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "0"
+}
+]
+},
+{
+"id": 79759861,
+"name": "Tribute to The Doomed",
+"type": "Spell Card",
+"humanReadableCardType": "Normal Spell",
+"frameType": "spell",
+"desc": "Discard 1 card, then target 1 monster on the field; destroy it.",
+"race": "Normal",
+"card_sets": [
+{
+"set_name": "Battle Pack: Epic Dawn",
+"set_code": "BP01-EN066",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Battle Pack: Epic Dawn",
+"set_code": "BP01-EN066",
+"set_rarity": "Starfoil Rare",
+"set_rarity_code": "(SFR)",
+"set_price": "0"
+},
+{
+"set_name": "Dark Beginning 1",
+"set_code": "DB1-EN165",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "0"
+},
+{
+"set_name": "Metal Raiders",
+"set_code": "MRD-057",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "3.44"
+},
+{
+"set_name": "Metal Raiders",
+"set_code": "MRD-E057",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "10.29"
+},
+{
+"set_name": "Metal Raiders",
+"set_code": "MRD-EN057",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "0"
+},
+{
+"set_name": "Speed Duel Starter Decks: Twisted Nightmares",
+"set_code": "SS05-ENB21",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.47"
+},
+{
+"set_name": "Starter Deck 2006",
+"set_code": "YSD-EN026",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Starter Deck: Kaiba Evolution",
+"set_code": "SKE-035",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.73"
+},
+{
+"set_name": "Starter Deck: Kaiba Reloaded",
+"set_code": "YSKR-EN030",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.28"
+},
+{
+"set_name": "Starter Deck: Yu-Gi-Oh! 5D's 2009",
+"set_code": "5DS2-EN024",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Structure Deck: Blaze of Destruction",
+"set_code": "SD3-EN020",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "War of the Giants Reinforcements",
+"set_code": "WGRT-EN065",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "3.77"
+},
+{
+"set_name": "War of the Giants: Round 2",
+"set_code": "BPW2-EN065",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "4.53"
+}
+]
+},
+{
+"id": 80604091,
+"name": "Ultimate Offering",
+"type": "Trap Card",
+"humanReadableCardType": "Continuous Trap",
+"frameType": "trap",
+"desc": "During your Main Phase or your opponent's Battle Phase: You can pay 500 Life Points; immediately after this effect resolves, Normal Summon/Set 1 monster.",
+"race": "Continuous",
+"card_sets": [
+{
+"set_name": "Champion Pack: Game Four",
+"set_code": "CP04-EN002",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "0"
+},
+{
+"set_name": "Duel Terminal 3",
+"set_code": "DT03-EN099",
+"set_rarity": "Duel Terminal Rare Parallel Rare",
+"set_rarity_code": "(DRPR)",
+"set_price": "0"
+},
+{
+"set_name": "Duelist League 13 participation cards",
+"set_code": "DL13-EN019",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "6.94"
+},
+{
+"set_name": "Quarter Century Bonanza",
+"set_code": "RA03-EN088",
+"set_rarity": "Platinum Secret Rare",
+"set_rarity_code": "(PS)",
+"set_price": "0"
+},
+{
+"set_name": "Quarter Century Bonanza",
+"set_code": "RA03-EN088",
+"set_rarity": "Quarter Century Secret Rare",
+"set_rarity_code": "",
+"set_price": "0"
+},
+{
+"set_name": "Starter Deck: Joey",
+"set_code": "SDJ-047",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.48"
+},
+{
+"set_name": "Starter Deck: Kaiba",
+"set_code": "SDK-050",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.52"
+},
+{
+"set_name": "Starter Deck: Kaiba",
+"set_code": "SDK-E046",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "8.15"
+},
+{
+"set_name": "Starter Deck: Pegasus",
+"set_code": "SDP-046",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.46"
+},
+{
+"set_name": "Starter Deck: Yugi",
+"set_code": "SDY-050",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.4"
+},
+{
+"set_name": "Starter Deck: Yugi",
+"set_code": "SDY-E046",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "2.21"
+},
+{
+"set_name": "Structure Deck: Invincible Fortress",
+"set_code": "SD7-EN027",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.64"
+},
+{
+"set_name": "Structure Deck: Machine Re-Volt",
+"set_code": "SD10-EN032",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.53"
+},
+{
+"set_name": "The Lost Art Promotion 2024",
+"set_code": "LART-EN070",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+},
+{
+"set_name": "Tournament Pack 8",
+"set_code": "TP8-EN012",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+}
+],
+"banlist_info": {
+"ban_tcg": "Forbidden",
+"ban_ocg": "Forbidden"
+},
+"image": 80604092
+},
+{
+"id": 80727036,
+"name": "Man-eating Black Shark",
+"typeline": [
+"Fish",
+"Fusion"
+],
+"type": "Fusion Monster",
+"humanReadableCardType": "Fusion Monster",
+"frameType": "fusion",
+"desc": "\"Sea Kamen\" + \"Gruesome Goo\" + \"Amazon of the Seas\"",
+"race": "Fish",
+"atk": 2100,
+"def": 1300,
+"level": 5,
+"attribute": "WATER",
+"card_sets": [
+{
+"set_name": "Astral Pack Six",
+"set_code": "AP06-EN021",
+"set_rarity": "Short Print",
+"set_rarity_code": "(SP)",
+"set_price": "8.82"
+}
+]
+},
+{
+"id": 81480460,
+"name": "Barrel Dragon",
+"typeline": [
+"Machine",
+"Effect"
+],
+"type": "Effect Monster",
+"humanReadableCardType": "Effect Monster",
+"frameType": "effect",
+"desc": "Once per turn: You can target 1 monster your opponent controls; toss a coin 3 times and destroy it if at least 2 of the results are heads.",
+"race": "Machine",
+"atk": 2600,
+"def": 2200,
+"level": 7,
+"attribute": "DARK",
+"card_sets": [
+{
+"set_name": "Dark Beginning 2",
+"set_code": "DB2-EN072",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "9.69"
+},
+{
+"set_name": "Dark Legends",
+"set_code": "DLG1-EN045",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "2.55"
+},
+{
+"set_name": "Duel Terminal 2",
+"set_code": "DT02-EN005",
+"set_rarity": "Duel Terminal Super Parallel Rare",
+"set_rarity_code": "(DSPR)",
+"set_price": "11.05"
+},
+{
+"set_name": "Duelist League Series 1 participation cards",
+"set_code": "DL1-E002",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "6.53"
+},
+{
+"set_name": "Duelist Pack: Battle City",
+"set_code": "DPBC-EN041",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "2.14"
+},
+{
+"set_name": "Legendary Collection 4: Joey's World Mega Pack",
+"set_code": "LCJW-EN177",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.29"
+},
+{
+"set_name": "Legendary Duelists: Ancient Millennium",
+"set_code": "LED2-EN019",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.12"
+},
+{
+"set_name": "Legendary Duelists: Season 1",
+"set_code": "LDS1-EN075",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.06"
+},
+{
+"set_name": "Master Collection Volume 1",
+"set_code": "MC1-EN002",
+"set_rarity": "Secret Rare",
+"set_rarity_code": "(ScR)",
+"set_price": "9.99"
+},
+{
+"set_name": "Metal Raiders",
+"set_code": "MRD-126",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "9.69"
+},
+{
+"set_name": "Metal Raiders",
+"set_code": "MRD-E126",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "16.78"
+},
+{
+"set_name": "Metal Raiders",
+"set_code": "MRD-EN126",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+},
+{
+"set_name": "Retro Pack",
+"set_code": "RP01-EN044",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "6.72"
+},
+{
+"set_name": "Speed Duel Tournament Pack 2",
+"set_code": "STP2-EN003",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "31.92"
+},
+{
+"set_name": "Speed Duel: Scars of Battle",
+"set_code": "SBSC-EN026",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "4.95"
+},
+{
+"set_name": "The Lost Art Promotion 2021 G",
+"set_code": "LART-EN037",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "13"
+}
+],
+"image": 81480461
+},
+{
+"id": 82044279,
+"name": "Clear Wing Synchro Dragon",
+"typeline": [
+"Dragon",
+"Synchro",
+"Effect"
+],
+"type": "Synchro Monster",
+"humanReadableCardType": "Synchro Effect Monster",
+"frameType": "synchro",
+"desc": "1 Tuner + 1+ non-Tuner monsters\r\nOnce per turn, when another Level 5 or higher monster activates its effect on the field (Quick Effect): You can negate the activation, and if you do, destroy it. Once per turn, when a monster effect is activated that targets 1 Level 5 or higher monster on the field (and no other cards) (Quick Effect): You can negate the activation, and if you do, destroy it. If this card's effect destroys a monster, this card gains ATK equal to the destroyed monster's original ATK until the end of this turn.",
+"race": "Dragon",
+"atk": 2500,
+"def": 2000,
+"level": 7,
+"attribute": "WIND",
+"archetype": "Clear Wing",
+"card_sets": [
+{
+"set_name": "2016 Mega-Tin Mega Pack",
+"set_code": "MP16-EN022",
+"set_rarity": "Secret Rare",
+"set_rarity_code": "(ScR)",
+"set_price": "0"
+},
+{
+"set_name": "Crossed Souls",
+"set_code": "CROS-EN046",
+"set_rarity": "Ghost Rare",
+"set_rarity_code": "(GR)",
+"set_price": "0"
+},
+{
+"set_name": "Crossed Souls",
+"set_code": "CROS-EN046",
+"set_rarity": "Secret Rare",
+"set_rarity_code": "(ScR)",
+"set_price": "0"
+},
+{
+"set_name": "Crossed Souls",
+"set_code": "CROS-EN046",
+"set_rarity": "Ultimate Rare",
+"set_rarity_code": "(UtR)",
+"set_price": "0"
+},
+{
+"set_name": "Legendary Arc-V Decks",
+"set_code": "LAVD-ENS24",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Legendary Dragon Decks",
+"set_code": "LEDD-ENC29",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "3.61"
+},
+{
+"set_name": "Legendary Duelists: Synchro Storm",
+"set_code": "LED8-EN001",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "0"
+},
+{
+"set_name": "Quarter Century Stampede",
+"set_code": "RA04-EN249",
+"set_rarity": "Platinum Secret Rare",
+"set_rarity_code": "(PS)",
+"set_price": "0"
+},
+{
+"set_name": "Quarter Century Stampede",
+"set_code": "RA04-EN249",
+"set_rarity": "Quarter Century Secret Rare",
+"set_rarity_code": "",
+"set_price": "0"
+}
+],
+"image": 82044280
+},
+{
+"id": 82556058,
+"name": "Fiendish Engine Ω",
+"typeline": [
+"Machine",
+"Effect"
+],
+"type": "Effect Monster",
+"humanReadableCardType": "Effect Monster",
+"frameType": "effect",
+"desc": "During your End Phase: Special Summon 1 \"Engine Token\" (Machine-Type/EARTH/Level 1/ATK 200/DEF 200) in Attack Position. Once per turn: You can have this card gain 1000 ATK until the End Phase. During the End Phase, if this effect of this card was used: Destroy this card.",
+"race": "Machine",
+"atk": 2800,
+"def": 2000,
+"level": 8,
+"attribute": "DARK",
+"card_sets": [
+{
+"set_name": "Legendary Collection 4: Joey's World Mega Pack",
+"set_code": "LCJW-EN181",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "The Duelist Genesis",
+"set_code": "TDGS-EN095",
+"set_rarity": "Secret Rare",
+"set_rarity_code": "(ScR)",
+"set_price": "0"
+}
+]
+},
+{
+"id": 83011277,
+"name": "Mystic Tomato",
+"typeline": [
+"Plant",
+"Effect"
+],
+"type": "Effect Monster",
+"humanReadableCardType": "Effect Monster",
+"frameType": "effect",
+"desc": "When this card is destroyed by battle and sent to the GY: You can Special Summon 1 DARK monster with 1500 or less ATK from your Deck, in face-up Attack Position.",
+"race": "Plant",
+"atk": 1400,
+"def": 1100,
+"level": 4,
+"attribute": "DARK",
+"card_sets": [
+{
+"set_name": "Dark Beginning 1",
+"set_code": "DB1-EN057",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "0"
+},
+{
+"set_name": "Dark Legends",
+"set_code": "DLG1-EN077",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.78"
+},
+{
+"set_name": "Dark Saviors",
+"set_code": "DASA-EN046",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "2.15"
+},
+{
+"set_name": "Dragons Collide Structure Deck",
+"set_code": "SDDC-EN016",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Duel Terminal 6a",
+"set_code": "DT06-EN005",
+"set_rarity": "Duel Terminal Normal Parallel Rare",
+"set_rarity_code": "(DNPR)",
+"set_price": "0"
+},
+{
+"set_name": "Duelist League 2010 participation cards",
+"set_code": "DL09-EN006",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "7.95"
+},
+{
+"set_name": "Hobby League 3 participation card E",
+"set_code": "HL03-EN005",
+"set_rarity": "Ultra Parallel Rare",
+"set_rarity_code": "(UPR)",
+"set_price": "15.79"
+},
+{
+"set_name": "Legendary Collection 3: Yugi's World Mega Pack",
+"set_code": "LCYW-EN239",
+"set_rarity": "Secret Rare",
+"set_rarity_code": "(ScR)",
+"set_price": "0"
+},
+{
+"set_name": "Magic Ruler",
+"set_code": "MRL-094",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "2.94"
+},
+{
+"set_name": "Magic Ruler",
+"set_code": "MRL-E094",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "9.64"
+},
+{
+"set_name": "Retro Pack",
+"set_code": "RP01-EN076",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "2.33"
+},
+{
+"set_name": "Spell Ruler",
+"set_code": "SRL-094",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "2.42"
+},
+{
+"set_name": "Spell Ruler",
+"set_code": "SRL-EN094",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "0"
+},
+{
+"set_name": "Starter Deck: Kaiba Evolution",
+"set_code": "SKE-021",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.94"
+},
+{
+"set_name": "Starter Deck: Yu-Gi-Oh! 5D's",
+"set_code": "5DS1-EN017",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Structure Deck: Marik (TCG)",
+"set_code": "SDMA-EN002",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.8"
+},
+{
+"set_name": "Tournament Pack 4",
+"set_code": "TP4-015",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "3.02"
+}
+],
+"image": 83011278
+},
+{
+"id": 83764718,
+"name": "Monster Reborn",
+"type": "Spell Card",
+"humanReadableCardType": "Normal Spell",
+"frameType": "spell",
+"desc": "Target 1 monster in either GY; Special Summon it.",
+"race": "Normal",
+"card_sets": [
+{
+"set_name": "2019 Gold Sarcophagus Tin",
+"set_code": "TN19-EN011",
+"set_rarity": "Prismatic Secret Rare",
+"set_rarity_code": "(PScR)",
+"set_price": "4.44"
+},
+{
+"set_name": "25th Anniversary Ultimate Kaiba Set",
+"set_code": "KC01-EN037",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+},
+{
+"set_name": "Battle Pack 2: War of the Giants",
+"set_code": "BP02-EN128",
+"set_rarity": "Mosaic Rare",
+"set_rarity_code": "(MSR)",
+"set_price": "0"
+},
+{
+"set_name": "Battle Pack 2: War of the Giants",
+"set_code": "BP02-EN128",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "0"
+},
+{
+"set_name": "Battles of Legend: Relentless Revenge",
+"set_code": "BLRR-EN046",
+"set_rarity": "Secret Rare",
+"set_rarity_code": "(ScR)",
+"set_price": "0"
+},
+{
+"set_name": "Dark Beginning 1",
+"set_code": "DB1-EN133",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+},
+{
+"set_name": "Dark Legends",
+"set_code": "DLG1-EN017",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "14.92"
+},
+{
+"set_name": "Duelist Pack: Yugi",
+"set_code": "DPYG-EN019",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "1.91"
+},
+{
+"set_name": "Egyptian God Deck: Obelisk the Tormentor",
+"set_code": "EGO1-EN024",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.44"
+},
+{
+"set_name": "Egyptian God Deck: Slifer the Sky Dragon",
+"set_code": "EGS1-EN023",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.51"
+},
+{
+"set_name": "Hobby League 7 participation card A",
+"set_code": "HL07-EN001",
+"set_rarity": "Ultra Parallel Rare",
+"set_rarity_code": "(UPR)",
+"set_price": "43.71"
+},
+{
+"set_name": "Legend of Blue Eyes White Dragon",
+"set_code": "LOB-118",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "27.29"
+},
+{
+"set_name": "Legend of Blue Eyes White Dragon",
+"set_code": "LOB-E096",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "27.53"
+},
+{
+"set_name": "Legend of Blue Eyes White Dragon",
+"set_code": "LOB-EN118",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+},
+{
+"set_name": "Legendary 5D&apos;s Decks",
+"set_code": "L5DD-ENA15",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Legendary Collection 3: Yugi's World Mega Pack",
+"set_code": "LCYW-EN058",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+},
+{
+"set_name": "Legendary Collection 4: Joey's World Mega Pack",
+"set_code": "LCJW-EN060",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+},
+{
+"set_name": "Legendary Duelists: Rage of Ra",
+"set_code": "LED7-EN012",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Legendary Hero Decks",
+"set_code": "LEHD-ENA23",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.58"
+},
+{
+"set_name": "Legendary Hero Decks",
+"set_code": "LEHD-ENB19",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.4"
+},
+{
+"set_name": "Legendary Hero Decks",
+"set_code": "LEHD-ENC16",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.42"
+},
+{
+"set_name": "Limited Pack World Championship 2026",
+"set_code": "26LP-EN001",
+"set_rarity": "Secret Rare",
+"set_rarity_code": "(ScR)",
+"set_price": "0"
+},
+{
+"set_name": "Limited Pack World Championship 2026",
+"set_code": "26LP-EN001",
+"set_rarity": "Starlight Rare",
+"set_rarity_code": "(StR)",
+"set_price": "0"
+},
+{
+"set_name": "Maximum Gold",
+"set_code": "MAGO-EN045",
+"set_rarity": "Premium Gold Rare",
+"set_rarity_code": "(PG)",
+"set_price": "0"
+},
+{
+"set_name": "Quarter Century Bonanza",
+"set_code": "RA03-EN052",
+"set_rarity": "Collector's Rare",
+"set_rarity_code": "(CR)",
+"set_price": "0"
+},
+{
+"set_name": "Quarter Century Bonanza",
+"set_code": "RA03-EN052",
+"set_rarity": "Platinum Secret Rare",
+"set_rarity_code": "(PS)",
+"set_price": "0"
+},
+{
+"set_name": "Quarter Century Bonanza",
+"set_code": "RA03-EN052",
+"set_rarity": "Quarter Century Secret Rare",
+"set_rarity_code": "",
+"set_price": "0"
+},
+{
+"set_name": "Quarter Century Bonanza",
+"set_code": "RA03-EN052",
+"set_rarity": "Secret Rare",
+"set_rarity_code": "(ScR)",
+"set_price": "0"
+},
+{
+"set_name": "Quarter Century Bonanza",
+"set_code": "RA03-EN052",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "0"
+},
+{
+"set_name": "Quarter Century Bonanza",
+"set_code": "RA03-EN052",
+"set_rarity": "Ultimate Rare",
+"set_rarity_code": "(UtR)",
+"set_price": "0"
+},
+{
+"set_name": "Quarter Century Bonanza",
+"set_code": "RA03-EN052",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+},
+{
+"set_name": "Rarity Collection 5",
+"set_code": "RA05-EN108",
+"set_rarity": "Starlight Rare",
+"set_rarity_code": "(StR)",
+"set_price": "0"
+},
+{
+"set_name": "Rarity Collection 5",
+"set_code": "RA05-EN108",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+},
+{
+"set_name": "Retro Pack",
+"set_code": "RP01-EN016",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "50.61"
+},
+{
+"set_name": "Saga of Blue-Eyes White Dragon Structure Deck",
+"set_code": "SDBE-EN028",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.81"
+},
+{
+"set_name": "Starter Deck: Codebreaker",
+"set_code": "YS18-EN024",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Starter Deck: Joey",
+"set_code": "SDJ-035",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "2.19"
+},
+{
+"set_name": "Starter Deck: Kaiba",
+"set_code": "SDK-036",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.77"
+},
+{
+"set_name": "Starter Deck: Kaiba",
+"set_code": "SDK-E033",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "16.52"
+},
+{
+"set_name": "Starter Deck: Kaiba Evolution",
+"set_code": "SKE-029",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "2.28"
+},
+{
+"set_name": "Starter Deck: Pegasus",
+"set_code": "SDP-035",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "2.07"
+},
+{
+"set_name": "Starter Deck: Yugi",
+"set_code": "SDY-030",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "2.68"
+},
+{
+"set_name": "Starter Deck: Yugi",
+"set_code": "SDY-E028",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "10.09"
+},
+{
+"set_name": "Starter Deck: Yugi Evolution",
+"set_code": "SYE-029",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "2.02"
+},
+{
+"set_name": "THANK YOU PACK",
+"set_code": "TYP1-EN018",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "THANK YOU PACK",
+"set_code": "TYP1-EN018",
+"set_rarity": "Super Rare",
+"set_rarity_code": "(SR)",
+"set_price": "0"
+},
+{
+"set_name": "The Lost Art Promotion (series)",
+"set_code": "LART-EN001",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "The Lost Art Promotion 2024 H",
+"set_code": "LART-EN074",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+},
+{
+"set_name": "The Lost Art Promotion A",
+"set_code": "LART-EN001",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "62.69"
+},
+{
+"set_name": "Ultimate Tournament Pack 2",
+"set_code": "UP02-EN037",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Yugi's Legendary Decks",
+"set_code": "YGLD-ENA23",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.78"
+},
+{
+"set_name": "Yugi's Legendary Decks",
+"set_code": "YGLD-ENB16",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.84"
+},
+{
+"set_name": "Yugi's Legendary Decks",
+"set_code": "YGLD-ENC24",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.73"
+}
+],
+"banlist_info": {
+"ban_tcg": "Limited",
+"ban_ocg": "Limited",
+"ban_goat": "Forbidden"
+},
+"image": 83764719
+},
+{
+"id": 84257639,
+"name": "Dian Keto the Cure Master",
+"type": "Spell Card",
+"humanReadableCardType": "Normal Spell",
+"frameType": "spell",
+"desc": "Increase your Life Points by 1000 points.",
+"race": "Normal",
+"card_sets": [
+{
+"set_name": "Starter Deck: Joey",
+"set_code": "SDJ-027",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.83"
+},
+{
+"set_name": "Starter Deck: Pegasus",
+"set_code": "SDP-027",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.96"
+},
+{
+"set_name": "Starter Deck: Yugi",
+"set_code": "SDY-023",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.52"
+},
+{
+"set_name": "Starter Deck: Yugi",
+"set_code": "SDY-E021",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "2.81"
+},
+{
+"set_name": "Starter Deck: Yugi Evolution",
+"set_code": "SYE-027",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "1.37"
+}
+],
+"image": 84257640
+},
+{
+"id": 86170989,
+"name": "Falchionβ",
+"typeline": [
+"Machine",
+"Effect"
+],
+"type": "Effect Monster",
+"humanReadableCardType": "Effect Monster",
+"frameType": "effect",
+"desc": "If this card destroys an opponent's monster by battle: Activate 1 of these effects.\n● Send 1 LIGHT Machine-Type monster with 1200 or less ATK from your Deck to your Graveyard.\n● Target 1 LIGHT Machine-Type monster with 1200 or less ATK in your Graveyard; Special Summon that target.",
+"race": "Machine",
+"atk": 1200,
+"def": 800,
+"level": 4,
+"attribute": "LIGHT",
+"card_sets": [
+{
+"set_name": "Ancient Prophecy",
+"set_code": "ANPR-EN039",
+"set_rarity": "Rare",
+"set_rarity_code": "(R)",
+"set_price": "0"
+},
+{
+"set_name": "Cyber Dragon Revolution Structure Deck",
+"set_code": "SDCR-EN015",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Speed Duel: Battle City Box",
+"set_code": "SBCB-EN070",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+}
+]
+},
+{
+"id": 92936364,
+"name": "Red Dragon Archfiend's Chain",
+"type": "Trap Card",
+"humanReadableCardType": "Continuous Trap",
+"frameType": "trap",
+"desc": "You can activate this card the turn it was Set, by revealing 1 \"Red Dragon Archfiend\" in your Extra Deck. Activate this card by revealing any number of monsters in your hand, then target Effect Monsters your opponent controls equal to the number of Tuners revealed +1; those monsters lose 100 ATK for each card revealed, also their effects are negated. If none of those monsters are on the field, destroy this card. You can only activate 1 \"Red Dragon Archfiend's Chains\" per turn.",
+"race": "Continuous",
+"archetype": "Archfiend",
+"card_sets": [
+{
+"set_name": "Magnificent Maestros",
+"set_code": "MAMS-EN009",
+"set_rarity": "Grand Master Rare",
+"set_rarity_code": "",
+"set_price": "0"
+},
+{
+"set_name": "Magnificent Maestros",
+"set_code": "MAMS-EN009",
+"set_rarity": "Starlight Rare",
+"set_rarity_code": "(StR)",
+"set_price": "0"
+},
+{
+"set_name": "Magnificent Maestros",
+"set_code": "MAMS-EN009",
+"set_rarity": "Ultra Rare",
+"set_rarity_code": "(UR)",
+"set_price": "0"
+}
+]
+},
+{
+"id": 96938777,
+"name": "Machine Lord Ür",
+"typeline": [
+"Machine",
+"Effect"
+],
+"type": "Effect Monster",
+"humanReadableCardType": "Effect Monster",
+"frameType": "effect",
+"desc": "This card can attack all monsters your opponent controls once each. If this card attacks or is attacked, your opponent takes no battle damage.",
+"race": "Machine",
+"atk": 1600,
+"def": 1500,
+"level": 4,
+"attribute": "EARTH",
+"card_sets": [
+{
+"set_name": "Battle Pack 2: War of the Giants",
+"set_code": "BP02-EN072",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+},
+{
+"set_name": "Battle Pack 2: War of the Giants",
+"set_code": "BP02-EN072",
+"set_rarity": "Mosaic Rare",
+"set_rarity_code": "(MSR)",
+"set_price": "0"
+},
+{
+"set_name": "Crossroads of Chaos",
+"set_code": "CSOC-EN093",
+"set_rarity": "Secret Rare",
+"set_rarity_code": "(ScR)",
+"set_price": "0"
+}
+]
+},
+{
+"id": 98535702,
+"name": "Damage Vaccine Ω MAX",
+"type": "Trap Card",
+"humanReadableCardType": "Normal Trap",
+"frameType": "trap",
+"desc": "When you take damage by battle or by a card effect: Gain Life Points equal to the damage you took.",
+"race": "Normal",
+"card_sets": [
+{
+"set_name": "Generation Force",
+"set_code": "GENF-EN066",
+"set_rarity": "Common",
+"set_rarity_code": "(C)",
+"set_price": "0"
+}
+]
+}
+]

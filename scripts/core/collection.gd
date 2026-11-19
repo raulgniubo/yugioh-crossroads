@@ -31,6 +31,7 @@ const PACKS := [
 	{"key": "5D's", "tab": 0, "name": "Signer's Road", "color": Color("2de2e6"), "blurb": "Cards from the 5D's era."},
 	{"key": "ZEXAL", "tab": 0, "name": "Overlay Network", "color": Color("ffd23a"), "blurb": "Cards from the ZEXAL era."},
 	{"key": "Vault", "tab": 0, "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
+	{"key": "frontier", "tab": 0, "name": "New Frontier", "color": Color("4ad8c8"), "price": 200, "blurb": "Cards from after the four shows, picked for this world: hand traps, removal and Extra Deck monsters any deck can use, and seven newer families. Opens when you finish the story."},
 	{"key": "legends", "tab": 0, "name": "Monster Legends", "color": Color("e8b04a"), "blurb": "Normal Monsters from every era: hundreds of them, from the classics to the rare big ones."},
 	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen, her forms and the cards around her. Only the ones the story has already handed you, up to three of each."},
 	{"key": "sylvan", "tab": 1, "name": "Sylvan Grove", "color": Color("5aa04a"), "family": true, "blurb": "The Sylvan plants of the high mountain: they dig through the top of the Deck, send Plants to the Graveyard and grow into the Sylvan High Protector and High Arbiter."},
@@ -248,6 +249,13 @@ const THEME_DECKS := [
 	{"key": "deck_artifact", "art": "arcane", "cover": "Artifact Moralltach", "color": Color("a0b0d0"), "era": "ZEXAL", "blurb": "Set the Artifacts in the Spell & Trap Zone and wait. When the other duelist destroys one on their turn, it jumps out and strikes back."},
 	{"key": "deck_heraldic", "art": "arcane", "cover": "Number 69: Heraldry Crest", "color": Color("8a5ac0"), "era": "ZEXAL", "blurb": "Level 4 beasts that call each other and turn into Heraldry Numbers. Heraldry Crest takes the other side's effects for its own."},
 	{"key": "deck_sylvan", "art": "forest", "cover": "Orea, the Sylvan High Arbiter", "color": Color("5aa04a"), "era": "ZEXAL", "blurb": "Excavate the top of the Deck: every Plant that gets sent to the Graveyard sets off a Sylvan's effect, and the big trees grow out of what's left."},
+	{"key": "deck_branded", "worlds": ["heartland"], "stage": 6, "art": "dragons", "cover": "Fallen of Albaz", "color": Color("c86a3a"), "era": "", "blurb": "Fallen of Albaz fuses with whatever stands across from it. Branded Fusion pulls two cards straight from the Deck, and every Fusion that leaves the field brings the next Branded card with it."},
+	{"key": "deck_drytron", "worlds": ["heartland"], "stage": 6, "art": "machines", "cover": "Drytron Meteonis Draconids", "color": Color("8ab4ff"), "era": "", "blurb": "The Drytron are Rituals with no Ritual Spell needed: they Tribute each other from the hand to come out, and Meteonis Drytron calls the Level 12 Draconids down on top of them."},
+	{"key": "deck_dragonmaid", "worlds": ["heartland"], "stage": 6, "art": "dragons", "cover": "House Dragonmaid", "color": Color("7ad0c0"), "era": "", "blurb": "Maids by day, dragons when it matters. Each little Dragonmaid trades places with its big dragon form at the end of the Battle Phase, and House Dragonmaid keeps them coming."},
+	{"key": "deck_swordsoul", "worlds": ["heartland"], "stage": 6, "art": "warriors", "cover": "Swordsoul Grandmaster - Chixiao", "color": Color("5ac0a0"), "era": "", "blurb": "Every Swordsoul makes a Wyrm Token tuner as it lands, so one card is already a Synchro Summon. Chixiao searches the next one and Chengying banishes whatever is in the way."},
+	{"key": "deck_witchcrafter", "worlds": ["heartland"], "stage": 6, "art": "arcane", "cover": "Witchcrafter Madame Verre", "color": Color("c890e0"), "era": "", "blurb": "The Witchcrafters pay for their magic by discarding Spells, and every Witchcrafter Spell comes back from the Graveyard at the End Phase. Madame Verre wins the fights the others start."},
+	{"key": "deck_true_draco", "worlds": ["heartland"], "stage": 6, "art": "dragons", "cover": "Master Peace, the True Dracoslayer", "color": Color("d0a040"), "era": "", "blurb": "Big Wyrms that Tribute Summon fast. The True Dracos get stronger the more Continuous Spells and Traps you Tribute for them, and the True Kings come out of the hand by destroying cards."},
+	{"key": "deck_cipher", "worlds": ["heartland"], "stage": 6, "art": "machines", "cover": "Galaxy-Eyes Cipher Dragon", "color": Color("6a9aff"), "era": "", "blurb": "Two Level 4 Ciphers make Galaxy-Eyes Cipher Dragon, the same dragon Kite flies. It takes control of the other side's best monster, and the Cipher spells and traps rank it up."},
 	{"key": "deck_monarchs", "art": "shadow", "cover": "Caius the Mega Monarch", "color": Color("e0c070"), "era": "GX", "blurb": "Squires and Vassals step out so a Monarch can be Tribute Summoned, then a Mega Monarch Tributes that one. Every landing clears something off their side."},
 	{"key": "deck_chaos", "art": "warriors", "cover": "Black Luster Soldier - Super Soldier", "color": Color("c8b0ff"), "era": "Duel Monsters", "blurb": "Super Soldier Ritual turns two Level 4 Knights into Black Luster Soldier, and the Knights give him their powers. Gaia rides in when he falls, and Chaos Form brings back the old legends."},
 	{"key": "deck_gem_knight", "art": "warriors", "cover": "Gem-Knight Master Diamond", "color": Color("7ae0ff"), "era": "ZEXAL", "blurb": "Gem-Knight Fusion turns two plain knights into a Fusion Monster, Brilliant Fusion fuses straight from the Deck, and Gem-Knight Fusion comes back from the Graveyard to do it again."},
@@ -272,7 +280,7 @@ const STARTERS := [
 
 ## Solid Normal Monsters that round out the Vault.
 ## The series sets: together they hold every card you can collect (the themed sets sort the same cards).
-const SERIES := ["Duel Monsters", "GX", "5D's", "ZEXAL", "Vault", "legends"]
+const SERIES := ["Duel Monsters", "GX", "5D's", "ZEXAL", "Vault", "legends", "frontier"]
 ## Card families (the 1,000-card plan): each one has its own booster pack, a theme deck in the shop, and its
 ## cards also join its era's pack. One entry per family, in the order they were added.
 const FAMILIES := {
@@ -295,7 +303,8 @@ const FAMILIES := {
 		"Ancient Gear Explosive", "Ancient Gear Factory", "Ancient Gear Fist", "Ancient Gear Fusion", "Ancient Gear Reborn", "Ancient Gear Tank",
 		"Ancient Gear Workshop", "Cross-Dimensional Duel", "Geartown", "Spell Gear", "Toon Ancient Gear Golem", "Ancient Gear Duel", "Ancient Gear Fortress"]},
 	"monarchs": {"era": "GX", "deck": "deck_monarchs", "cards": ["Mobius the Frost Monarch", "Strike of the Monarchs", "The First Monarch", "The Monarchs Revolt", "Caius the Shadow Monarch", "Granmarg the Mega Monarch", "Escalation of the Monarchs", "March of the Monarchs", "Pantheism of the Monarchs", "Erebus the Underworld Monarch", "Mobius the Mega Monarch", "Thestalos the Firestorm Monarch", "The Monarchs Awaken", "Eidos the Underworld Monarch", "Tenacity of the Monarchs", "The Monarchs Erupt", "Zaborg the Thunder Monarch", "The Prime Monarch", "Kuraz the Light Monarch", "Monarchic Perfection", "Granmarg the Rock Monarch", "Return of the Monarchs", "The Monarchs Masterplan", "Angmarl the Fiendish Monarch", "Tessera the Primal Squire", "Thestalos the Mega Monarch", "Raiza the Mega Monarch", "Raiza the Storm Monarch", "Thestalos the Shadowfire Monarch", "The Monarchs Stormforth", "Domain of the True Monarchs", "Delg the Dark Monarch", "Caius the Mega Monarch", "Zaborg the Mega Monarch", "Edea the Heavenly Squire", "Ehther the Heavenly Monarch", "Restoration of the Monarchs", "Frost Blast of the Monarchs", "Garum the Storm Vassal", "Mithra the Thunder Vassal", "Escher the Frost Vassal", "Lucius the Shadow Vassal", "Berlineth the Firestorm Vassal", "Landrobe the Rock Vassal", "Eidos the Underworld Squire"]},
-	"chaos": {"era": "Duel Monsters", "deck": "deck_chaos", "cards": ["Black Luster Soldier", "Black Luster Soldier - Envoy of the Beginning", "Black Luster Soldier - Envoy of the Evening Twilight", "Black Luster Soldier - Legendary Swordsman", "Black Luster Soldier - Sacred Soldier", "Black Luster Soldier - Super Soldier", "Black Luster Ritual", "Super Soldier Ritual", "Super Soldier Rebirth", "Super Soldier Shield", "Super Soldier Soul", "Super Soldier Synthesis", "Beginning Knight", "Evening Twilight Knight", "Chaos Form", "Envoy of Chaos", "Gateway to Chaos", "Beginning of Heaven and Earth", "Chaos Sorcerer", "Dark Magician of Chaos", "Chaos Emperor Dragon - Envoy of the End", "Chaos Valkyria", "Chaos Hunter", "Chaos Betrayer", "Chaos Daedalus", "Chaos Dragon Levianeer", "Chaos End", "Chaos Greed", "Chaos Space", "Gaia The Fierce Knight", "Gaia the Dragon Champion", "Arisen Gaia the Fierce Knight", "Charging Gaia the Fierce Knight", "Lord Gaia the Fierce Knight", "Soldier Gaia the Fierce Knight", "Swift Gaia the Fierce Knight", "Gaia the Fierce Knight Origin", "Gaia the Magical Knight", "Gaia, the Mid-Knight Sun", "Gaia, the Polar Knight", "Sky Galloping Gaia the Dragon Champion", "Gaia the Magical Knight of Dragons", "Galloping Gaia", "Dragon Master Knight", "Dragon Master Magia", "Master of Chaos", "Magician of Black Chaos", "Magician of Black Chaos MAX", "Magician of Chaos", "Blue-Eyes Chaos Dragon", "Blue-Eyes Chaos MAX Dragon", "Five-Headed Dragon", "Curse of Dragon", "Spiral Spear Strike", "Spiral Discharge", "Illusion of Chaos", "Heart of Gaia", "Artillery Catapult Turtle", "Skilled Blue Magician", "Light and Darkness Ritual", "Black Luster Soldier - Soldier of Light and Darkness", "Magician of Dark Chaos - Black Chaos", "Black Chaos", "Chaos Magical Hats", "Skull Archfiend of Chaos", "Mind Shuffle", "Celtic Mystic", "Chaos Mystic Box", "Griffoh"]},
+	"chaos": {"era": "Duel Monsters", "deck": "deck_chaos", "cards": ["Black Luster Soldier", "Black Luster Soldier - Envoy of the Beginning", "Black Luster Soldier - Envoy of the Evening Twilight", "Black Luster Soldier - Legendary Swordsman", "Black Luster Soldier - Sacred Soldier", "Black Luster Soldier - Super Soldier", "Black Luster Ritual", "Super Soldier Ritual", "Super Soldier Rebirth", "Super Soldier Shield", "Super Soldier Soul", "Super Soldier Synthesis", "Beginning Knight", "Evening Twilight Knight", "Chaos Form", "Envoy of Chaos", "Gateway to Chaos", "Beginning of Heaven and Earth", "Chaos Sorcerer", "Dark Magician of Chaos", "Chaos Emperor Dragon - Envoy of the End", "Chaos Valkyria", "Chaos Hunter", "Chaos Betrayer", "Chaos Daedalus", "Chaos Dragon Levianeer", "Chaos End", "Chaos Greed", "Chaos Space", "Gaia The Fierce Knight", "Gaia the Dragon Champion", "Arisen Gaia the Fierce Knight", "Charging Gaia the Fierce Knight", "Lord Gaia the Fierce Knight", "Soldier Gaia the Fierce Knight", "Swift Gaia the Fierce Knight", "Gaia the Fierce Knight Origin", "Gaia the Magical Knight", "Gaia, the Mid-Knight Sun", "Gaia, the Polar Knight", "Sky Galloping Gaia the Dragon Champion", "Gaia the Magical Knight of Dragons", "Galloping Gaia", "Dragon Master Knight", "Dragon Master Magia", "Master of Chaos", "Magician of Black Chaos", "Magician of Black Chaos MAX", "Magician of Chaos", "Blue-Eyes Chaos Dragon", "Blue-Eyes Chaos MAX Dragon", "Five-Headed Dragon", "Curse of Dragon", "Spiral Spear Strike", "Spiral Discharge", "Illusion of Chaos", "Heart of Gaia", "Artillery Catapult Turtle", "Skilled Blue Magician", "Light and Darkness Ritual", "Black Luster Soldier - Soldier of Light and Darkness", "Magician of Dark Chaos - Black Chaos", "Black Chaos", "Chaos Magical Hats", "Skull Archfiend of Chaos", "Mind Shuffle", "Celtic Mystic", "Chaos Mystic Box", "Griffoh",
+		"Chaos Angel", "Chaos Beast", "Chaos Core", "Chaos Grepher", "Chaos Mirage Dragon", "Chaos Nephthys", "Chaos Phantasm", "Chaos Ruler, the Chaotic Magical Dragon", "Chaos Summoning Beast", "Chaos Witch", "Core of Chaos", "Curse of Dragon, the Cursed Dragon", "Curse of Dragon, the Magical Knight Dragon", "Eternal Chaos", "Gaia Blaze, the Force of the Sun", "Gaia Prominence, the Fierce Force", "Gaiarmor Dragonshell", "Shell of Chaos", "Spiral Fusion", "Spiral Reborn", "Tachyon Spiral Galaxy", "Tachyon Spiral of Destruction", "The Chaos Creator"]},
 	"gem_knight": {"era": "ZEXAL", "deck": "deck_gem_knight", "cards": ["Gem-Enhancement", "Gem-Knight Fusion", "Brilliant Spark", "Gem-Knight Seraphinite", "Brilliant Fusion", "Gem-Knight Zirconia", "Gem-Knight Aquamarine", "Gem-Elephant", "Gem-Knight Obsidian", "Gem-Knight Lady Brilliant Diamond", "Gem-Knight Dispersion", "Gem-Knight Master Diamond Dispersion", "Gem-Armadillo", "Gem-Knight Sapphire", "Gem-Knight Quartz", "Particle Fusion", "Gem-Knight Master Diamond", "Scatter Fusion", "Gem-Knight Sardonyx", "Gem-Knight Iolite", "Gem-Knight Lady Lapis Lazuli", "Gem-Knight Topaz", "Gem-Knight Nepyrim", "Gem-Merchant", "Gem-Knight Tourmaline", "Gem-Knight Lady Rose Diamond", "Pyroxene Fusion", "Brilliant Rose", "Gem-Turtle", "Gem-Knight Citrine", "Gem-Knight Emerald", "Absorb Fusion", "Gem-Knight Pearl", "Gem-Knight Amethyst", "Fragment Fusion", "Gem-Knight Amber", "Gem-Knight Ruby", "Gem-Knight Crystal", "Crystal Rose", "Gem-Knight Lazuli", "Gem-Knight Hollowcore", "Gem-Knight Alexandrite", "Gem-Knight Garnet", "Gem-Knight Prismaura", "Gem-Knight Lapis"]},
 	"lightsworn": {"era": "5D's", "deck": "deck_lightsworn", "cards": [
 		"Judgment Dragon", "Celestia, Lightsworn Angel", "Wulf, Lightsworn Beast", "Felis, Lightsworn Archer", "Gragonith, Lightsworn Dragon",
@@ -367,7 +376,8 @@ const FAMILIES := {
 		"Red Dragon Archfiend", "Scarlight Red Dragon Archfiend", "Scarred Dragon Archfiend", "Scrap Archfiend", "Thought Ruler Archfiend",
 		"Tyrant Red Dragon Archfiend", "Archfiend Playtime", "Archfiend's Fervor", "Archfiend's Ghastly Glitch", "Archfiend's Roar", "Battle-Scarred",
 		"Call of the Archfiend", "Nightmare Archfiends", "Red Dragon Archfiend's Chain", "Simul Archfiends", "Archfiend's Ascent",
-		"Number 102: Star Seraph Sentry", "Number C102: Archfiend Seraph"]},
+		"Number 102: Star Seraph Sentry", "Number C102: Archfiend Seraph",
+		"Contract with the Void", "Fiendish Golem", "Infernity Conjurer", "Infernity Paranoia", "Infernity Patriarch", "Infernity Pawn", "Infernity Queen", "King Scarlet", "Red Cocoon", "Red Supremacy", "Red Zone", "This Creepy Little Punk", "Void Cauldron"]},
 	"genex": {"era": "5D's", "deck": "deck_genex", "cards": [
 		"Genex Power Planner", "Genex Recycled", "R-Genex Oracle", "Genex Ally Chemistrer", "Genex Ally Solid", "R-Genex Crusher", "R-Genex Overseer",
 		"R-Genex Turing", "Genex Ally Birdman", "Genex Ally Changer", "Genex Ally Remote", "Genex Controller", "Genex Doctor", "Genex Gaia", "Genex Spare",
@@ -450,7 +460,8 @@ const FAMILIES := {
 		"Morphtronic Staplen", "Morphtronic Videon", "Gadget Hauler", "Morphtronic Scannen", "Double Tool C&D", "Factory of 100 Machines", "Gadget Box",
 		"Junk Box", "Morphtronic Accelerator", "Morphtronic Converter", "Morphtronic Cord", "Morphtronic Engine", "Morphtronic Map",
 		"Morphtronic Repair Unit", "Morphtronic Rusty Engine", "Morphtronic Earfon", "Power Tool Dragon", "Morphtransition", "Morphtronic Bind",
-		"Morphtronic Forcefield", "Morphtronic Impact Return", "Morphtronic Mix-up", "Morphtronic Monitron", "Morphtronics, Scramble!", "Power-Up Adapter"]},
+		"Morphtronic Forcefield", "Morphtronic Impact Return", "Morphtronic Mix-up", "Morphtronic Monitron", "Morphtronics, Scramble!", "Power-Up Adapter",
+		"Power Tool Braver Dragon"]},
 	"scrap": {"era": "5D's", "deck": "deck_scrap", "cards": [
 		"Scrap Mind Reader", "Scrap Searcher", "Scrap Synchron", "Scrap Worm", "Scrap Goblin", "Scrap Hunter", "Scrap Recycler", "Scrap Beast",
 		"Scrap Chimera", "Scrap Kong", "Scrap Orthros", "Scrap Raptor", "Scrap Shark", "Scrap Golem", "Scrap Soldier", "Scrap Breaker", "Guts of Steel",
@@ -620,7 +631,8 @@ const FAMILIES := {
 		"Dedication through Light and Darkness", "Illusion Magic", "Knight's Title", "Magic Formula", "Magician's Salvation", "Sage's Stone",
 		"Secrets of Dark Magic", "Soul Servant", "Strength in Unity", "The Eye of Timaeus", "The Gaze of Timaeus", "Thousand Knives",
 		"Dark Magic Mirror Force", "Dark Magic Talisman", "Destined Rivals", "Eternal Soul", "Magician Navigation", "Magicians' Combination",
-		"Miracle Restoring"]},
+		"Miracle Restoring",
+		"Apple Magician Girl", "Berry Magician Girl", "Chaos Scepter Blast", "Chocolate Magician Girl", "Kiwi Magician Girl", "Lemon Magician Girl"]},
 	"blue_eyes": {"era": "Duel Monsters", "deck": "deck_blue_eyes", "cards": [
 		"Blue-Eyes Alternative Ultimate Dragon", "Blue-Eyes Twin Burst Dragon", "Blue-Eyes Tyrant Dragon", "Blue-Eyes Ultimate Dragon",
 		"Neo Blue-Eyes Ultimate Dragon", "Kaibaman the Legend", "Maiden of White", "Maiden with Eyes of Blue", "Master with Eyes of Blue",
@@ -653,7 +665,8 @@ const FAMILIES := {
 		"Armed Dragon LV7", "Armed Dragon Thunder LV7", "Dark Armed Dragon", "Dark Armed Dragon Punisher", "Metaphys Armed Dragon", "Pile Armed Dragon",
 		"Silent Swordsman LV7", "Ultimate Insect LV7", "Dark Lucius LV8", "Horus the Black Flame Dragon LV8", "Silent Magician LV8", "Armed Dragon Blitz",
 		"Armed Dragon Flash", "Armed Dragon Lightning", "Feast of the Wild LV5", "Level Down!?", "Level Modulation", "Level Up!", "Ojamatch",
-		"The Graveyard in the Fourth Dimension", "Armed Dragon Thunderbolt", "Ojama Pajama"]},
+		"The Graveyard in the Fourth Dimension", "Armed Dragon Thunderbolt", "Ojama Pajama",
+		"Ojama Duo", "Ojama Pink", "Ojamassimilation"]},
 	"nordic": {"era": "5D's", "deck": "deck_nordic", "cards": [
 		"Dverg of the Nordic Alfar", "Fenrir the Nordic Wolf", "Mara of the Nordic Alfar", "Mimir of the Nordic Ascendant",
 		"Valkyrie of the Nordic Ascendant", "Nordic Beast Gullinbursti", "Tanngnjostr of the Nordic Beasts", "Tanngrisnir of the Nordic Beasts",
@@ -715,7 +728,8 @@ const FAMILIES := {
 		"Evil HERO Malicious Bane", "Evil HERO Darkest Knight", "Evil HERO Malicious Fiend", "Favorite HERO Shining Flare Wingman",
 		"Elemental HERO Prisma", "Masked HERO Blast", "Elemental HERO Cosmo Neos", "Elemental HERO Neos Kluger", "Destiny HERO - Drilldark",
 		"Elemental HERO Lady Heat", "Elemental HERO Core", "Evil HERO Infernal Gainer", "Vision HERO Multiply Guy", "Elemental HERO Heat", "Dark Fusion",
-		"Metamorphosis", "Rose Bud"]},
+		"Metamorphosis", "Rose Bud",
+		"Battle of Sleeping Spirits", "Break the Destiny", "Contact Gate", "Cross Keeper", "D - Force", "D Cubed", "Doctor D", "Double Hero Attack", "EN - Engage Neo Space", "EN Shuffle", "EN Wave", "Eternal Favorite", "Evil Mind", "Favorite Contact", "Favorite Hero", "Geistgrinder Golem", "Gruesome Grave Squirmer", "Instant Contact", "Magistery Alchemist", "Mask Charge", "Mature Chronicle", "NEXT", "Neo Space Connector", "Nightmare Pain", "Nightmare Throne", "Over Fusion", "Phantom of Yubel", "Protection of the Elements", "Samsara D Lotus", "Skydive Scorcher", "Spirit of Yubel", "Supreme King's Castle", "Yubel - The Loving Defender Forever"]},
 	"sacred_beast": {"era": "GX", "deck": "deck_sacred_beast", "cards": [
 		"Sacred Beasts Thunderclap", "The Chaotic Phantasmal Sacred Beasts", "Summoner of the Sacred Beasts",
 		"Inferno of the Sacred Beasts - Uria, Lord of Searing Flames", "Raviel, Lord of Phantasms - Shimmering Scraper", "Illusion Gate",
@@ -731,7 +745,8 @@ const FAMILIES := {
 		"Cyber Ogre 2", "Cyberdark End Dragon", "Cyber Energy Shock", "Cyber Dinosaur", "Cyber Raider", "Cyber Tutubon", "Cyberdark Inferno",
 		"Cyberdark Cannon", "Cyberdark Wurm", "Cyber Ogre", "Cyberdark Realm", "The Fiend Megacyber", "Revolution Cyber Dragon", "Armored Cybern",
 		"Attachment Cybern", "Cyberdark Claw", "Cyber Shadow Gardna", "Cyber Esper", "Psychic Megacyber", "Stegocyber", "Dragonroid", "Shuttleroid",
-		"Carrierroid", "Einroid", "Meteor Rush - Monochroid"]},
+		"Carrierroid", "Einroid", "Meteor Rush - Monochroid",
+		"Cybernetic Revolution"]},
 	"meklord": {"era": "5D's", "deck": "deck_meklord", "cards": [
 		"Meklord Army of Granel", "Meklord Astro the Eradicator", "Meklord Army Deployer Obbligato", "Meklord Emperor Granel",
 		"Meklord Astro Dragon Triskelion", "Earthbound Immortal Red Nova", "Earthbound Immortal Aslla piscu", "Boon of the Meklord Emperor",
@@ -739,7 +754,8 @@ const FAMILIES := {
 		"Meklord Astro Dragon Asterisk", "Meklord Assembly", "Meklord Army of Wisel", "Earthbound Immortal Wiraqocha Rasca",
 		"Roar of the Earthbound Immortal", "The Resolute Meklord Army", "Meklord Astro Mekanikle", "Earthbound Immortal Revival", "Meklord Deflection",
 		"Meklord Fortress", "Meklord Emperor Wisel", "Earthbound Immortal Chacu Challhua", "Ultimate Earthbound Immortal", "Meklord Army of Skiel",
-		"Meklord Nucleus Infinity Core", "Meklord Factory", "Earthbound Immortal Ccarayhua"]},
+		"Meklord Nucleus Infinity Core", "Meklord Factory", "Earthbound Immortal Ccarayhua",
+		"Earthbound Fusion", "Earthbound Geoglyph", "Earthbound Greater Linewalker", "Earthbound Prison", "Earthbound Prisoner Ground Keeper", "Earthbound Prisoner Line Walker", "Earthbound Prisoner Stone Sweeper", "Earthbound Resonance", "Earthbound Servant Geo Grasha", "Earthbound Servant Geo Gremlin", "Earthbound Servant Geo Gremlina", "Earthbound Servant Geo Gryphon", "Earthbound Servant Geo Kraken", "Zoma the Earthbound Spirit"]},
 	"synchron": {"era": "5D's", "deck": "deck_synchron", "cards": [
 		"Starlight Junktion", "Junk Changer", "Blackwing - Hillen the Tengu-wind", "Junk Dragonlet", "Blackwing - Zonda the Dusk", "Resonator Command",
 		"Blackwing - Gofu the Vague Shadow", "Starjunk Synchron", "Resonator Engine", "Junk Warrior Extreme", "Blackwing - Boreas the Sharp",
@@ -751,7 +767,8 @@ const FAMILIES := {
 		"Blackwing - Sharnga the Waning Moon", "Blackwing - Pinaki the Waxing Moon", "Junk Sleep", "Mono Synchron", "Satellite Synchron",
 		"Blackwing - Damascus the Polar Night", "Junk Collector", "Wheel Synchron", "Double Resonator", "Junk Defender",
 		"Assault Blackwing - Kunai the Drizzle", "Junk Meister", "Blackwing - Tornado the Reverse Wind", "Steam Synchron", "Darkness Resonator",
-		"Junk Armor", "Necroid Synchro"]},
+		"Junk Armor", "Necroid Synchro",
+		"Arrive in Light", "Converging Wills Dragon", "Converging Wishes", "Cosmic Flare", "Final Cross", "Majestic Absorption", "Majestic Mirage", "On Your Mark, Get Set, DUEL!", "Rokket Synchron", "Rush Warrior", "Shooting Majestic Star Dragon", "Stardust Assault Warrior", "Stardust Chronicle Spark Dragon", "Stardust Flash", "Stardust Mirage", "Stardust Re-Spark", "Stardust Sifr Divine Dragon", "Stardust Wish", "Stardust Wurm", "Synchro Chase", "Synchro Dilemma"]},
 	"karakuri": {"era": "5D's", "deck": "deck_karakuri", "cards": [
 		"Karakuri Cash Shed", "Karakuri Cash Inn", "Karakuri Soldier mdl 236 \"Nisamu\"", "Karakuri Gama Oil", "Karakuri Gold Dust",
 		"Karakuri Showdown Castle", "Karakuri Shogun mdl 00 \"Burei\"", "Karakuri Muso mdl 818 \"Haipa\"", "Karakuri Komachi mdl 224 \"Ninishi\"",
@@ -768,7 +785,8 @@ const FAMILIES := {
 		"Fabled Kushano", "Fabled Lurrie"]},
 	"fortune_lady": {"era": "5D's", "deck": "deck_fortune_lady", "cards": [
 		"Fortune Lady Calling", "Fortune Lady Water", "Fortune Lady Light", "Fortune Lady Dark", "Fortune Lady Past", "Fortune Lady Every",
-		"Fortune Lady Fire", "Fortune Lady Wind", "Fortune Lady Earth", "Fortune Lady Rewind"]},
+		"Fortune Lady Fire", "Fortune Lady Wind", "Fortune Lady Earth", "Fortune Lady Rewind",
+		"Fortune Vision"]},
 	"gusto": {"era": "5D's", "deck": "deck_gusto", "cards": [
 		"Gusto Squirro", "Tailwind of Gusto", "Daigusto Phoenix", "Dust Storm of Gusto", "Musto, Oracle of Gusto", "Gusto Codor", "Daigusto Eguls",
 		"Windaar, Sage of Gusto", "Gusto Thunbolt", "Daigusto Sphreez", "Daigusto Falcos", "Reeze, Whirlwind of Gusto", "Gusto Griffin", "Gusto Falco",
@@ -866,11 +884,13 @@ const FAMILIES := {
 	"watt": {"era": "5D's", "deck": "deck_watt", "cards": [
 		"Wattberyx", "Wattbetta", "Wattcannon", "Wattcastle", "Wattchimera", "Wattcine", "Wattcobra", "Wattcube", "Wattdragonfly", "Wattfox",
 		"Wattgiraffe", "Watthopper", "Watthydra", "Wattjustment", "Wattkeeper", "Wattkey", "Wattkiwi", "Wattlemur", "Wattmole", "Wattpheasant",
-		"Wattsquirrel", "Wattsychic Fighter", "Wattwoodpecker", "Wattaildragon", "Wattkid"]},
+		"Wattsquirrel", "Wattsychic Fighter", "Wattwoodpecker", "Wattaildragon", "Wattkid",
+		"Wattkinetic Puppeteer", "Wattkingdom", "Wattkyuki", "Wattrain", "Wattsychic Fighting Porter", "Wattuna"]},
 	"laval": {"era": "5D's", "deck": "deck_laval", "cards": [
 		"Laval Blaster", "Laval Burner", "Laval Cannon", "Laval Coatl", "Laval Dual Slasher", "Laval Forest Sprite", "Laval Judgment Lord",
 		"Laval Lakeside Lady", "Laval Lancelord", "Laval Magma Cannoneer", "Laval Miller", "Laval Phlogis", "Laval Stennon", "Laval Volcano Handmaiden",
-		"Laval Warrior", "Laval the Greater", "Lavalval Dragon", "Lavalval Dragun", "Lavalval Ignis", "Lavalval Chain"]},
+		"Laval Warrior", "Laval the Greater", "Lavalval Dragon", "Lavalval Dragun", "Lavalval Ignis", "Lavalval Chain",
+		"Laval Archer", "Lavalval Exlord", "Lavalval Salamander"]},
 	"ally_justice": {"era": "5D's", "deck": "deck_ally_justice", "cards": [
 		"Ally of Justice Core Destroyer", "Ally of Justice Cosmic Gateway", "Ally of Justice Cyclone Creator", "Ally of Justice Enemy Catcher",
 		"Ally of Justice Field Marshal", "Ally of Justice Light Gazer", "Ally of Justice Nullfier", "Ally of Justice Omni-Weapon",
@@ -888,24 +908,28 @@ const FAMILIES := {
 		"Evo-Branch", "Evo-Diversity", "Evo-Force", "Evo-Instant", "Evo-Karma", "Evo-Miracle", "Evo-Price", "Evo-Singularity", "Evolsaur Cerato",
 		"Evolsaur Darwino", "Evolsaur Diplo", "Evolsaur Elias", "Evolsaur Pelta", "Evolsaur Terias", "Evolsaur Vulcano", "Evoltile Casinerio",
 		"Evoltile Elginero", "Evoltile Gephyro", "Evoltile Lagosucho", "Evoltile Najasho", "Evoltile Odonto", "Evoltile Pleuro", "Evoltile Westlo",
-		"Evolutionary Bridge", "Evolzar Solda", "Evolzar Dolkka", "Evolzar Laggia"]},
+		"Evolutionary Bridge", "Evolzar Solda", "Evolzar Dolkka", "Evolzar Laggia",
+		"Beta Evolution Pill - Ultranscendance", "Cocoon of Ultra Evolution", "Evolsaur Lios", "Evoltile Megachirella", "Evoltile Pholis", "Evolution End Burst", "Evolzar Lars"]},
 	"phantom_beast": {"era": "ZEXAL", "deck": "deck_phantom_beast", "cards": [
 		"Horn of the Phantom Beast", "Mecha Phantom Beast Aerosguin", "Mecha Phantom Beast Blackfalcon", "Mecha Phantom Beast Blue Impala",
 		"Mecha Phantom Beast Coltwing", "Mecha Phantom Beast Concoruda", "Mecha Phantom Beast Hamstrat", "Mecha Phantom Beast Harrliard",
 		"Mecha Phantom Beast Kalgriffin", "Mecha Phantom Beast Megaraptor", "Mecha Phantom Beast O-Lion", "Mecha Phantom Beast Sabre Hawk",
 		"Mecha Phantom Beast Stealthray", "Mecha Phantom Beast Tetherwolf", "Mecha Phantom Beast Turtletracer", "Mecha Phantom Beast Warbluran",
-		"Chimera the Flying Mythical Beast", "Gazelle the King of Mythical Beasts", "Mecha Phantom Beast Dracossack", "Phantom Beast Wild-Horn"]},
+		"Chimera the Flying Mythical Beast", "Gazelle the King of Mythical Beasts", "Mecha Phantom Beast Dracossack", "Phantom Beast Wild-Horn",
+		"Mecha Phantom Beast Jaculuslan", "Mecha Phantom Beast Raiten"]},
 	"noble_knight": {"era": "ZEXAL", "deck": "deck_noble_knight", "cards": [
 		"Artorigus, King of the Noble Knights", "Gwenhwyfar, Queen of Noble Arms", "Ignoble Knight of Black Laundsallyn",
 		"Ignoble Knight of High Laundsallyn", "Noble Arms - Arfeudutyr", "Noble Arms - Caliburn", "Noble Arms - Excaliburn", "Noble Arms - Gallatin",
 		"Noble Arms of Destiny", "Noble Knight Borz", "Noble Knight Brothers", "Noble Knight Drystan", "Noble Knight Eachtar", "Noble Knight Gawayn",
 		"Noble Knight Gwalchavad", "Noble Knight Joan", "Noble Knight Medraut", "Noble Knight Peredur", "Noble Knights of the Round Table",
-		"Sacred Noble Knight of King Artorigus", "Celestial Sword - Eatos", "Noble Knight Artorigus"]},
+		"Sacred Noble Knight of King Artorigus", "Celestial Sword - Eatos", "Noble Knight Artorigus",
+		"Camelot, Realm of Noble Knights and Noble Arms", "Celtic Guard of Noble Arms", "Glory of the Noble Knights", "Heritage of the Chalice", "Horse of the Floral Knights", "Last Chapter of the Noble Knights", "Merlin", "Morgan, the Enchantress of Avalon", "Noble Arms - Clarent", "Noble Arms Museum", "Noble Knight Bedwyr", "Noble Knight Iyvanne", "Noble Knight Pellinore", "Noble Knight's Shield-Bearer", "Noble Knight's Spearholder", "Sacred Noble Knight of King Custennin", "The Continuing Epic of Charles", "Until Noble Arms are Needed Once Again"]},
 	"gears": {"era": "ZEXAL", "deck": "deck_gears", "cards": [
 		"Construction Train Signal Red", "Express Train Trolley Olley", "Geargiaccelerator", "Geargiagear", "Geargiagear Gigant XG", "Geargiano",
 		"Geargiano Mk-II", "Geargiano Mk-III", "Geargiarmor", "Geargiarsenal", "Geargiattacker", "Geargiauger", "Lionhearted Locomotive",
 		"Night Express Knight", "Rocket Arrow Express", "Ruffian Railcar", "Snow Plow Hustle Rustle", "Special Schedule", "Train Connection",
-		"Number 81: Superdreadnought Rail Cannon Super Dora", "Superdreadnought Rail Cannon Gustav Max"]},
+		"Number 81: Superdreadnought Rail Cannon Super Dora", "Superdreadnought Rail Cannon Gustav Max",
+		"Geargia Change", "Geargianchor"]},
 	"inzektor": {"era": "ZEXAL", "deck": "deck_inzektor", "cards": [
 		"Inzektor Ant", "Inzektor Axe - Zektahawk", "Inzektor Centipede", "Inzektor Crossbow - Zektarrow", "Inzektor Dragonfly", "Inzektor Earwig",
 		"Inzektor Exa-Beetle", "Inzektor Exa-Stag", "Inzektor Firefly", "Inzektor Gauntlet", "Inzektor Giga-Cricket", "Inzektor Giga-Mantis",
@@ -913,25 +937,30 @@ const FAMILIES := {
 	"hazy": {"era": "ZEXAL", "deck": "deck_hazy", "cards": [
 		"Circle of the Fire Kings", "Fire King Avatar Barong", "Fire King Avatar Garunix", "Fire King Avatar Kirin", "Fire King Avatar Yaksha",
 		"Fire King High Avatar Garunix", "Hazy Flame Basiltrice", "Hazy Flame Cerbereus", "Hazy Flame Griffin", "Hazy Flame Hydra", "Hazy Flame Hyppogrif",
-		"Hazy Flame Mantikor", "Hazy Flame Peryton", "Hazy Flame Sphynx", "Hazy Glory", "Hazy Pillar", "Onslaught of the Fire Kings"]},
+		"Hazy Flame Mantikor", "Hazy Flame Peryton", "Hazy Flame Sphynx", "Hazy Glory", "Hazy Pillar", "Onslaught of the Fire Kings",
+		"Cursed Fire King Doom Burst", "Echelon of the Fire Kings", "Fire King Avatar Arvata", "Fire King Avatar Rangbali", "Fire King High Avatar Kirin", "Fire King Island", "Fire King Sanctuary", "Fire King Sky Burn", "Garunix Eternity, Hyang of the Fire Kings", "Legendary Fire King Ponix", "Sacred Fire King Garunix"]},
 	"hieratic": {"era": "ZEXAL", "deck": "deck_hieratic", "cards": [
 		"Hieratic Dragon King of Atum", "Hieratic Dragon of Asar", "Hieratic Dragon of Eset", "Hieratic Dragon of Gebeb", "Hieratic Dragon of Nebthet",
 		"Hieratic Dragon of Nuit", "Hieratic Dragon of Su", "Hieratic Dragon of Sutekh", "Hieratic Dragon of Tefnuit", "Hieratic Seal From the Ashes",
 		"Hieratic Seal of Banishment", "Hieratic Seal of Convocation", "Hieratic Seal of Reflection", "Hieratic Seal of Supremacy",
-		"Hieratic Seal of the Dragon King", "Hieratic Seal of the Sun Dragon Overlord", "Hieratic Sun Dragon Overlord of Heliopolis"]},
+		"Hieratic Seal of the Dragon King", "Hieratic Seal of the Sun Dragon Overlord", "Hieratic Sun Dragon Overlord of Heliopolis",
+		"Hieratic Seal of Creation", "Hieratic Sky Dragon Overlord of Heliopolis"]},
 	"artifact": {"era": "ZEXAL", "deck": "deck_artifact", "cards": [
 		"Artifact Achilleshield", "Artifact Aegis", "Artifact Beagalltach", "Artifact Caduceus", "Artifact Durendal", "Artifact Failnaught",
-		"Artifact Ignition", "Artifact Labrys", "Artifact Moralltach", "Artifact Sanctum", "Artifact Scythe", "Artifacts Unleashed"]},
+		"Artifact Ignition", "Artifact Labrys", "Artifact Moralltach", "Artifact Sanctum", "Artifact Scythe", "Artifacts Unleashed",
+		"Artifact Chakram", "Artifact Lancea", "Artifact Mjollnir", "Artifact Vajra"]},
 	"heraldic": {"era": "ZEXAL", "deck": "deck_heraldic", "cards": [
 		"Advanced Heraldry Art", "Augmented Heraldry", "Heraldic Beast Aberconway", "Heraldic Beast Basilisk", "Heraldic Beast Berners Falcon",
 		"Heraldic Beast Eale", "Heraldic Beast Leo", "Heraldic Beast Twin-Headed Eagle", "Heraldic Beast Unicorn", "Heraldry Change", "Heraldry Reborn",
 		"Heraldry Record", "Number 8: Heraldic King Genom-Heritage", "Number 18: Heraldry Patriarch", "Number 69: Heraldry Crest",
-		"Number C69: Heraldry Crest of Horror"]},
+		"Number C69: Heraldry Crest of Horror",
+		"Charged-Up Heraldry"]},
 	"sylvan": {"era": "ZEXAL", "deck": "deck_sylvan", "cards": [
 		"Alsei, the Sylvan High Protector", "Mount Sylvania", "Orea, the Sylvan High Arbiter", "Sylvan Bladefender", "Sylvan Blessing", "Sylvan Charity",
 		"Sylvan Cherubsprout", "Sylvan Flowerknight", "Sylvan Guardioak", "Sylvan Hermitree", "Sylvan Komushroomo", "Sylvan Lotuswain",
 		"Sylvan Marshalleaf", "Sylvan Mikorange", "Sylvan Peaskeeper", "Sylvan Sagequoia", "Sylvan Snapdrassinagon", "Sylvan Waterslide",
-		"Sylvan Princessprout"]},
+		"Sylvan Princessprout",
+		"Sylvan Princessprite"]},
 }
 
 
@@ -1272,7 +1301,7 @@ func deck_catalog() -> Array:
 	for t in THEME_DECKS:
 		if CardData.has_deck(str(t["key"])):
 			out.append({"key": t["key"], "name": CardData.deck_name(str(t["key"])), "owner": "", "who": "", "color": t["color"],
-				"blurb": t["blurb"], "art": t["art"], "price": THEME_PRICE, "kind": "theme", "era": str(t.get("era", ""))})
+				"blurb": t["blurb"], "art": t["art"], "price": THEME_PRICE, "kind": "theme", "era": str(t.get("era", "")), "stage": int(t.get("stage", 0))})
 	return out
 
 
@@ -2268,8 +2297,13 @@ func pool(era: String) -> Array:
 		return _pools[era]
 	if not (era in SERIES):
 		var themed: Array = []
+		# (New Frontier's cards stay in New Frontier: it opens after the story, so they are not
+		# sold early in the Type and Element packs.)
+		var later := {}
+		for id in pool("frontier"):
+			later[id] = true
 		for id in all_cards():
-			if _in_theme(era, id):
+			if _in_theme(era, id) and not later.has(id):
 				themed.append(id)
 		_pools[era] = themed
 		return themed

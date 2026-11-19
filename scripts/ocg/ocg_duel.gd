@@ -149,8 +149,10 @@ func close() -> void:
 
 ## A duel that ends early (you leave the table, the scene closes) still frees its engine.
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE:
-		close()
+	# (Inline, not close(): while it is being freed, calling its own methods fails.)
+	if what == NOTIFICATION_PREDELETE and handle != 0:
+		OcgCore.destroy(handle)
+		handle = 0
 
 
 func _new_card(id: int, owner: int) -> DuelState.CardInst:

@@ -5,6 +5,20 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.56.0
+
+Card plan part 6: 533 picked cards from after ZEXAL. **533 cards added: 8,384 total.**
+
+- **274 newer cards for the four shows' families and aces** (newer Stardust, Utopia, Galaxy-Eyes, Yubel, HERO, Magician Girl, Chaos, Noble Knight, Fire King, Earthbound and more). Most join their family's pack (Synchron, HERO, Chaos, Noble Knight, Hazy Flame and Fire Kings, Earthbound in Meklord...), the rest go into their era's packs.
+- **New Frontier**, a new pack (2 volumes, 200 DP each) sold only at the Heartland card shop, opening when you finish the story. It holds 121 general-use cards (hand traps like Ash Blossom and Ghost Ogre, Kaiju, Dark Ruler No More, Pot of Prosperity, Baronne de Fleur, Crystal Wing...) and 7 newer families: Branded and Despia, Drytron, Dragonmaid, Swordsoul, Witchcrafter, True Draco and Cipher.
+- **7 new theme decks** for those families at the Heartland deck counter, also after the story: Branded Despia, Drytron Constellation, Dragonmaid Household, Swordsoul Mountain, Witchcrafter Atelier, True Draco Throne and Cipher Squadron.
+- The New Frontier cards stay out of the Type and Element packs, the trader and the claw machine until the story is done.
+- No Link or Pendulum monsters, and no card whose text needs them. Cards that only list Link next to Fusion, Synchro and Xyz ("1 Fusion, Synchro, Xyz, or Link Monster") count as fully working and are in (that is how Mirrorjade and the other Albaz dragons came in, so Branded is whole).
+- 4 picked cards are left out because your card folder doesn't have them yet (Fire King Consort Ulkanix, Drytron Meteonis Alpha Draconids, Drytron Nu2, Meteoaurora Drytron).
+- **Fix: cards your card folder knows by another name.** Your cards.json renames some cards (Multiplying Kuriboh! is "Kuriboh - Multiply!" there) and has a few only under a reprint's number, so 25 of the game's cards were quietly missing on your Mac (Harpie's Feather Duster, Barrel Dragon, Metalmorph and others). The game now carries its own entries for those (data/cards_extra.json) and shows the reprint's picture. Cards with "?" ATK no longer break when the card list loads.
+- Spanish card text: official Spanish for 522 cards, 11 written here (no official Spanish text yet).
+- **Windows:** only the .exe changed.
+
 ## What is in 0.55.4
 
 Two fixes from your screenshots. No cards added: 7,851 total.

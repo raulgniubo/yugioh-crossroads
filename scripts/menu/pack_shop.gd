@@ -34,7 +34,7 @@ const FEATURED := 5
 
 ## What each world's card shop keeps on its shelf.
 const WORLD_PACKS := {"domino": ["Duel Monsters", "toy", "mask", "goblin", "dd", "union", "spirit", "darklord", "jurrac", "legends_king", "red_eyes", "blue_eyes", "dark_magician", "kuriboh", "exodia", "guardian", "amazoness", "toon", "archfiend", "gravekeeper", "chaos", "Vault", "legends"], "academy": ["GX", "frog", "barrier", "cyber", "sacred_beast", "hero", "armed_dragon", "cloudian", "arcana_force", "koaki_meiru", "volcanic", "alien", "vampire", "crystal_beast", "gladiator", "dark_world", "ancient_gear", "monarchs", "Vault", "legends"], "satellite": ["5D's", "reptilianne", "flamvell", "ally_justice", "laval", "watt", "gishki", "vylon", "swarm", "worm", "fabled", "synchron", "nordic", "tg", "naturia", "ice_barrier", "x_saber", "scrap", "morphtronic", "dragunity", "genex", "six_samurai", "lightsworn", "beyond"], "newdomino": ["5D's", "reptilianne", "flamvell", "ally_justice", "laval", "watt", "gishki", "vylon", "swarm", "worm", "gusto", "fortune_lady", "fabled", "karakuri", "synchron", "meklord", "nordic", "tg", "naturia", "ice_barrier", "x_saber", "scrap", "morphtronic", "dragunity", "genex", "six_samurai", "lightsworn", "beyond", "Vault"],
-	"heartland": ["ZEXAL", "sylvan", "heraldic", "artifact", "hieratic", "hazy", "inzektor", "gears", "noble_knight", "phantom_beast", "evol", "dragon_ruler", "ghostrick", "wind_up", "spellbook", "mermail", "bujin", "fire_fist", "ninja", "battlin_boxer", "gimmick_puppet", "chronomaly", "heroic", "madolche", "constellar", "gem_knight", "beyond", "legends"]}
+	"heartland": ["ZEXAL", "sylvan", "heraldic", "artifact", "hieratic", "hazy", "inzektor", "gears", "noble_knight", "phantom_beast", "evol", "dragon_ruler", "ghostrick", "wind_up", "spellbook", "mermail", "bujin", "fire_fist", "ninja", "battlin_boxer", "gimmick_puppet", "chronomaly", "heroic", "madolche", "constellar", "gem_knight", "beyond", "legends", "frontier"]}
 
 
 func _ready() -> void:
@@ -215,7 +215,9 @@ func _ready() -> void:
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.25)
 	if OS.has_environment("PACK_CARDS"):	# dev: open the card list of a pack on the shelf
 		get_tree().create_timer(1.2).timeout.connect(func():
-			_select(int(OS.get_environment("PACK_CARDS")), true)
+			var want := OS.get_environment("PACK_CARDS")
+			var at := int(want) if want.is_valid_int() else maxi(0, _packs.map(func(p): return str(p["key"])).find(want))
+			_select(at, true)
 			_see_cards())
 
 

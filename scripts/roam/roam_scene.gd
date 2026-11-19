@@ -1744,6 +1744,8 @@ func _today() -> String:
 func _trade_card() -> int:
 	var good: Array = []
 	for era in Collection.SERIES:
+		if era == "frontier" and not Unlocks.pack(era):
+			continue
 		for id in Collection.pool(era):
 			if CardData.rarity(id) >= 2:
 				good.append(id)
@@ -1813,7 +1815,8 @@ func _play_claw() -> void:
 	await get_tree().create_timer(1.1).timeout
 	var pools: Array = []
 	for era in Collection.SERIES:
-		pools.append_array(Collection.pool(era))
+		if era != "frontier" or Unlocks.pack(era):
+			pools.append_array(Collection.pool(era))
 	if pools.is_empty():
 		_dlg_text.text = Loc.t("It comes up empty. The machine gives your points back.")
 		Collection.dp += 60
