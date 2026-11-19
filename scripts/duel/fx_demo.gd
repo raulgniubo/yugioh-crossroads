@@ -187,6 +187,51 @@ static func _play(scene, board, st, name: String) -> void:
 			var t0 := Time.get_ticks_msec()
 			await ExodiaShow.play(scene, board, scene.hud, AI if OS.get_environment("FX_OPP") == "1" else ME)
 			print("EXODIA took ", (Time.get_ticks_msec() - t0) * Engine.time_scale / 1000.0, " s of game time")
+		"emblems":
+			# Every emblem, in rows over the table, with the flourish of each kind under it.
+			var ks: Array = CardFx.KINDS.keys()
+			board.cam_shot(Vector3(0, 9.5, 5.2), Vector3(0, 0.6, -0.3), 0.2)
+			await scene.get_tree().create_timer(0.4).timeout
+			for i in ks.size():
+				var col := i % 6
+				var row := i / 6
+				var at := Vector3(-4.0 + col * 1.6, 0.03, -2.6 + row * 1.5)
+				CardFx.play(board, at, str(ks[i]), 1.0)
+			await scene.get_tree().create_timer(1.2).timeout
+		"cardfx":
+			# FX_CARD = a Spell or Trap (default Change of Heart), played by you on their monster.
+			var nm := OS.get_environment("FX_CARD") if OS.has_environment("FX_CARD") else "Change of Heart"
+			var cs1 = _mk(st, nm, ME)
+			var foe2 = _mk(st, "Gogogo Golem", AI)
+			var fc: Card3D = board._new_card(foe2)
+			fc.transform = Transform3D(board.table_basis(AI, true, true), board.monster_zone_pos(AI, 3) + Vector3(0, 0.02, 0))
+			print("CARDFX ", nm, " -> ", CardFx.kind(cs1, ""))
+			await scene._play([{"type": "activate", "player": ME, "card": cs1, "zone": 1, "label": ""},
+				{"type": "targets", "player": ME, "cards": [foe2]},
+				{"type": "lp", "player": AI, "lp": 7000, "delta": -1000},
+				{"type": "lp", "player": ME, "lp": 9000, "delta": 1000},
+				{"type": "chain_end"}])
+		"win":
+			# FX_KIND = destiny_board | countdown | deckout | card:<id>; FX_OPP=1: the opponent wins.
+			await WinShow.play(scene, board, scene.hud, AI if OS.get_environment("FX_OPP") == "1" else ME, OS.get_environment("FX_KIND"))
+		"fieldlooks":
+			# Every Field Spell place, one after the other (film with a gap of 2.4 and FX_SKIP=2.2).
+			board.cam_shot(Vector3(0.4, 3.6, 4.4), Vector3(0.2, 0, 0.4), 0.2)
+			await scene.get_tree().create_timer(0.3).timeout
+			for fk in FieldLooks.LOOKS.keys():
+				var lk: Dictionary = (FieldLooks.LOOKS[fk] as Dictionary).duplicate()
+				lk["key"] = fk
+				lk["name"] = fk
+				board.set_field_look(lk, board.field_pos(ME))
+				await scene.get_tree().create_timer(2.4).timeout
+		"fieldspell":
+			# FX_CARD = a Field Spell (default Mountain): its place takes the field over. FX_ZOOM=1 looks closer.
+			var fn := OS.get_environment("FX_CARD") if OS.has_environment("FX_CARD") else "Mountain"
+			var fcard = _mk(st, fn, ME)
+			board.set_field_look(FieldLooks.look_for(fcard), board.field_pos(ME))
+			if OS.get_environment("FX_ZOOM") == "1":
+				board.cam_shot(Vector3(0.5, 3.2, 3.6), Vector3(0.3, 0, 0.6), 0.3)
+			await scene.get_tree().create_timer(6.0).timeout
 		"looks":
 			# The trips between piles, a monster's effect, and ATK going up and down.
 			var g1 = _mk(st, "Gagaga Magician", ME)

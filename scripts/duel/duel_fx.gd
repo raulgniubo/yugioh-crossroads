@@ -244,6 +244,26 @@ static func _piece(board: Node, mesh: Mesh, mat: Material, at: Vector3) -> MeshI
 	return mi
 
 
+static var _dot: GradientTexture2D
+
+
+## A soft round dot for every small particle (sparks, embers, snow): a bright heart, a soft
+## edge. Without it a particle is a plain square.
+static func dot_tex() -> Texture2D:
+	if _dot == null:
+		var g := Gradient.new()
+		g.offsets = PackedFloat32Array([0.0, 0.35, 1.0])
+		g.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0.85), Color(1, 1, 1, 0.0)])
+		_dot = GradientTexture2D.new()
+		_dot.gradient = g
+		_dot.fill = GradientTexture2D.FILL_RADIAL
+		_dot.fill_from = Vector2(0.5, 0.5)
+		_dot.fill_to = Vector2(0.5, 0.0)
+		_dot.width = 48
+		_dot.height = 48
+	return _dot
+
+
 static func _hdr(c: Color, k := 1.0) -> Color:
 	return Color(c.r * k, c.g * k, c.b * k, 1.0)
 
@@ -422,6 +442,7 @@ static func sparks(board: Node, at: Vector3, color: Color, amount := 30, speed :
 	var qm := StandardMaterial3D.new()
 	qm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	qm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	qm.albedo_texture = dot_tex()
 	qm.vertex_color_use_as_albedo = true
 	qm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	qm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
@@ -466,6 +487,7 @@ static func embers(board: Node, at: Vector3, color: Color, radius := 0.6, amount
 	var qm := StandardMaterial3D.new()
 	qm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	qm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	qm.albedo_texture = dot_tex()
 	qm.vertex_color_use_as_albedo = true
 	qm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	qm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD

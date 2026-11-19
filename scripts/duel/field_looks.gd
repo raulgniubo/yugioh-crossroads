@@ -22,6 +22,7 @@ const LOOKS := {
 	"sky": {"surface": 20, "glow": Color("9fffd0"), "fog": Color("cfe9ff"), "sky": [Color("2a78d8"), Color("d6ecff")], "air": "wind", "props": "clouds", "dark": true, "day": true, "shade": 0.76},
 	"city": {"surface": 9, "glow": Color("7cc4ff"), "fog": Color("1a1430"), "sky": [Color("06081a"), Color("3a2a6a")], "air": "none", "props": "towers"},
 	"sand": {"surface": 4, "glow": Color("ffe0a0"), "fog": Color("e8c890"), "sky": [Color("3a5fae"), Color("ffcf8a")], "air": "dust", "props": "ruins", "dark": true, "day": true, "shade": 0.95},
+	"gears": {"surface": 23, "glow": Color("ffc66a"), "fog": Color("3a2a1a"), "sky": [Color("120c08"), Color("6a4a2a")], "air": "embers", "props": "towers"},
 	"marble": {"surface": 14, "glow": Color("ffe9a0"), "fog": Color("c8d8f0"), "sky": [Color("3a5a9a"), Color("e8f0ff")], "air": "motes_light", "props": "pillars", "dark": true, "day": true, "shade": 0.8},
 }
 
@@ -31,7 +32,22 @@ const BY_NAME := {
 	"Gaia Power": "forest", "Molten Destruction": "lava", "Luminous Spark": "light", "Mystic Plasma Zone": "plasma",
 	"Rising Air Current": "sky", "Jurassic World": "forest", "Harpies' Hunting Ground": "waste",
 	"Skyscraper": "city", "Necrovalley": "sand", "Chorus of Sanctuary": "marble",
+	# (0.61.0)
+	"Geartown": "gears", "Skyscraper 2 - Hero City": "city", "Dark City": "city", "Clock Tower Prison": "city", "Kyoutou Waterfront": "city", "Union Hangar": "city",
+	"Dragon Ravine": "peak", "Canyon": "waste", "Zombie World": "dark", "Dark Zone": "dark", "Pandemonium": "dark", "Chaos Zone": "dark", "Gateway to Chaos": "dark",
+	"Black Garden": "forest", "Venom Swamp": "forest", "Secret Village of the Spellcasters": "forest", "Ojama Country": "grass",
+	"Ancient City - Rainbow Ruins": "marble", "The Sanctuary in the Sky": "marble", "Magical Citadel of Endymion": "marble", "Realm of Light": "light",
+	"Mausoleum of the Emperor": "sand", "Savage Colosseum": "sand", "Temple of the Kings": "sand",
+	"Lemuria, the Forgotten City": "sea", "Pacifis, the Phantasm City": "sea", "Magellanica, the Deep Sea City": "sea",
+	"Neo Space": "sky", "Divine Wind of Mist Valley": "sky", "Fusion Gate": "plasma", "Xyz Territory": "plasma",
 }
+## Words in a Field Spell's text that say what place it is, when nothing else does.
+const BY_WORD := [
+	["ancient gear", "gears"], ["machine", "city"], ["cyber", "city"], ["water", "sea"], ["fish", "sea"], ["sea serpent", "sea"], ["aqua", "sea"],
+	["fire", "lava"], ["pyro", "lava"], ["wind", "sky"], ["winged beast", "sky"], ["dragon", "peak"], ["thunder", "peak"],
+	["zombie", "dark"], ["fiend", "dark"], ["dark", "dark"], ["fairy", "light"], ["light", "light"], ["spellcaster", "marble"],
+	["plant", "forest"], ["insect", "forest"], ["beast", "forest"], ["dinosaur", "waste"], ["rock", "waste"], ["earth", "waste"], ["warrior", "grass"],
+]
 const BY_ATTR := {"FIRE": "lava", "WATER": "sea", "WIND": "sky", "EARTH": "forest", "LIGHT": "light", "DARK": "dark"}
 const BY_RACE := {
 	"Dragon": "peak", "Winged Beast": "peak", "Thunder": "peak", "Warrior": "grass", "Beast-Warrior": "grass",
@@ -55,6 +71,15 @@ static func look_for(card) -> Dictionary:
 				key = BY_RACE[str(who["race"])]
 			if key != "":
 				break
+	if key == "":
+		# (0.61.0) A newer Field Spell: the first Attribute or Type its text names.
+		var text := (name + ". " + str(card.data.get("desc", card.data.get("text", "")))).to_lower()
+		var at := 1 << 30
+		for w in BY_WORD:
+			var i := text.find(str(w[0]))
+			if i >= 0 and i < at:
+				at = i
+				key = str(w[1])
 	if key == "":
 		key = "plasma"
 	var out: Dictionary = (LOOKS[key] as Dictionary).duplicate()

@@ -159,6 +159,7 @@ func _start() -> void:
 		FxDemo.run(self)
 	DuelFx.warm(board)
 	ElementFx.warm(board)
+	CardFx.warm(board)
 	var opp_ace_id := int(Characters.get_char(_opp_key).get("ace", 0))
 	if opp_ace_id != 0:
 		board.ace_ids[opp_ace_id] = true
@@ -469,6 +470,10 @@ func _start() -> void:
 	if "--end-test" in OS.get_cmdline_user_args():
 		state.winner = AI if "--lose" in OS.get_cmdline_user_args() else ME
 		state.win_reason = "Test finish."
+		for wa in OS.get_cmdline_user_args():
+			# Dev: --end-test --win=destiny_board | countdown | deckout | card:<id> [--lose]
+			if wa.begins_with("--win="):
+				state.win_kind = wa.substr(6)
 		if "--exodia" in OS.get_cmdline_user_args():
 			# Dev: the duel ends with the five pieces (--end-test --exodia [--lose]).
 			state.win_kind = "exodia"
@@ -595,8 +600,14 @@ func _finish() -> void:
 	var won := state.winner == ME
 	var tied := state.winner == DuelState.DRAW
 	# (0.60.0) The five pieces of Exodia: the win gets its show before anything else.
-	if str(state.win_kind) == "exodia" and not tied and not board.turbo and not _surrendered:
-		await ExodiaShow.play(self, board, hud, int(state.winner))
+	# (0.61.0) So do the other special endings: Destiny Board, Final Countdown, an empty Deck,
+	# any card that wins by its own effect.
+	var wk := str(state.win_kind)
+	if wk != "" and not tied and not board.turbo and not _surrendered:
+		if wk == "exodia":
+			await ExodiaShow.play(self, board, hud, int(state.winner))
+		else:
+			await WinShow.play(self, board, hud, int(state.winner), wk)
 	if "--auto-story" in OS.get_cmdline_user_args():
 		get_tree().create_timer(2.0).timeout.connect(func():
 			Router.story_result = "won" if state.winner == ME else "lost"
@@ -992,10 +1003,12 @@ func _play_event(ev: Dictionary) -> void:
 				# Their Spell lands on the field, then it is held up to be read before it does anything.
 				await board.anim_activate(p, ev["card"], int(ev.get("zone", 2)))
 				await hud.showcase(ev["card"], Loc.t("SPELL CARD"), Color("3fd9a8"), state.players[AI].name)
-				StrikeFx.card(board, sig_name, p)
+				_card_look(p, ev["card"], str(ev.get("label", "")))
 				await get_tree().create_timer(Settings.t(0.3)).timeout
 			else:
-				get_tree().create_timer(Settings.t(0.45)).timeout.connect(func(): StrikeFx.card(board, sig_name, p))
+				var act_card = ev["card"]
+				var act_label := str(ev.get("label", ""))
+				get_tree().create_timer(Settings.t(0.45)).timeout.connect(func(): _card_look(p, act_card, act_label))
 				await board.anim_activate(p, ev["card"], int(ev.get("zone", 2)))
 		"st_settle":
 			await board.anim_settle(p, ev["card"], int(ev["zone"]))
@@ -1035,6 +1048,19 @@ func _play_event(ev: Dictionary) -> void:
 		"chain_end":
 			if board.chain_fx != null:
 				board.chain_fx.end()
+			_fx_card = null
+			_fx_kind = ""
+		"targets":
+			# The effect that was just activated picked these: a line of its kind runs to each.
+			if _fx_kind != "" and not _autoplay:
+				var aimed := 0
+				for tcard in ev.get("cards", []):
+					var t3 := board.card_for(tcard)
+					if t3 != null and is_instance_valid(t3) and tcard != _fx_card and t3.position.y < 0.7 and aimed < 3:
+						CardFx.aim(board, _fx_at, t3.position, _fx_kind)
+						aimed += 1
+				if aimed > 0:
+					await get_tree().create_timer(Settings.t(0.3)).timeout
 		"control":
 			Sfx.play("special", -3.0)
 			board.hide_stats_for(ev["card"])
@@ -1117,7 +1143,7 @@ func _play_event(ev: Dictionary) -> void:
 			elif not _autoplay and Settings.card_showcase:
 				hud.banner(str(ev["card"].data["name"]).to_upper(), Color("ff4dd2"), true)
 				await get_tree().create_timer(Settings.t(0.45)).timeout
-			StrikeFx.card(board, str(ev["card"].data.get("name", "")), p)
+			_card_look(p, ev["card"], str(ev.get("label", "")))
 			await get_tree().create_timer(Settings.t(0.35)).timeout
 		"st_done":
 			await board.anim_spell_done(ev["card"])
@@ -1141,10 +1167,21 @@ func _play_event(ev: Dictionary) -> void:
 			Sfx.play("charge" if ev["delta"] > 0 else "error", -9.0, 1.0 + 0.05 * float(ev["speed"]))
 		"effect":
 			var on_field: bool = ev["card"] != null and board.card_for(ev["card"]) != null and (state.players[0].field.has(ev["card"]) or state.players[1].field.has(ev["card"]))
+			# (0.61.0) What kind of effect it is shows in its colour and its emblem.
+			var fx_src = ev["card"] if ev["card"] != null else ev.get("src")
+			var fx_kind := CardFx.kind(fx_src, str(ev.get("label", "")))
+			_fx_card = fx_src
+			_fx_kind = fx_kind
+			_fx_p = p
 			if on_field:
-				board.effect_burst(ev["card"], UITheme.GOLD)
-			elif ev["card"] != null:
-				board.pulse(ev["card"], UITheme.GOLD)
+				board.effect_burst(ev["card"], CardFx.color(fx_kind))
+				_fx_at = board.card_for(ev["card"]).position
+				CardFx.emblem(board, _fx_at + Vector3(0, 2.0, 0), fx_kind)
+			elif fx_src != null and not _autoplay:
+				if ev["card"] != null:
+					board.pulse(ev["card"], CardFx.color(fx_kind))
+				_fx_at = board.chain_spot(fx_src, p)
+				CardFx.play(board, _fx_at, fx_kind, 1.25)
 			hud.effect_text(ev["text"])
 			Sfx.play("effect", -3.0)
 			Sfx.play("sparkle", -10.0, 1.2)
@@ -1235,6 +1272,12 @@ func _play_event(ev: Dictionary) -> void:
 					hud.remove_hand_card(e["inst"])
 			board.set_deck_count(p, ev["deck"])
 		"lp":
+			# (0.61.0) Damage and healing from a card effect go from the card to the duelist.
+			if _fx_kind == "burn" and int(ev["delta"]) < 0 and not _autoplay:
+				CardFx.to_duelist(board, _fx_at, p, "burn")
+				await get_tree().create_timer(Settings.t(0.2)).timeout
+			elif int(ev["delta"]) > 0 and not _autoplay:
+				CardFx.bless(board, p)
 			hud.set_lp(p, ev["lp"], ev["delta"])
 			if p == ME:
 				_my_low = mini(_my_low, int(ev["lp"]))
@@ -1710,3 +1753,24 @@ func _exit_tree() -> void:
 	if board and board.turbo:
 		Sfx.ambience_pitch(1.0)
 		Sfx.ambience("")
+
+
+var _fx_card = null        # the card whose effect was just activated (CardFx)
+var _fx_kind := ""
+var _fx_p := 0
+var _fx_at := Vector3.ZERO
+
+
+## A Spell or Trap was just activated: its own signature look if it has one, and the emblem
+## and flourish of what kind of card it is.
+func _card_look(p: int, card, label: String) -> void:
+	if card == null or board == null:
+		return
+	var sig := StrikeFx.card(board, str(card.data.get("name", "")), p)
+	var k := CardFx.kind(card, label)
+	_fx_card = card
+	_fx_kind = k
+	_fx_p = p
+	_fx_at = board.chain_spot(card, p)
+	if not _autoplay:
+		CardFx.play(board, _fx_at, k, 1.25, sig)

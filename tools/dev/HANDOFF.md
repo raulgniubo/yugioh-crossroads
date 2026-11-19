@@ -280,6 +280,40 @@ and the story difficulty moves it. All of that is build 1. Build 2 is only the f
   logs slow frames; ALBUM_TYPE="word" times each search; for real keyboard input, run on a manual Xvfb display and
   drive it with xdotool (screen coords x1.2 = viewport coords at 1280x720).
 
+### 0.61.0: effect looks (CardFx), special wins (WinShow), Field Spell floors
+- `scripts/duel/card_fx.gd`: CardFx.kind(inst, label) picks one of 24 kinds (KINDS: emblem number, colour, second
+  colour). Order: the effect's script label (LABELS); for a Spell/Trap the first thing its text does after a
+  first-sentence cost, else the tags; for a monster the tags, then the text. Tags are `data/card_cats.json`
+  (BabelCDB datas.category, built by tools/dev/make_card_cats.py from /tmp/game_ids.txt, which
+  tools/dev/dump_ids.tscn writes). play(board, spot, k, high, quiet), aim(board, from, to, k),
+  to_duelist(board, from, p, k), bless(board, p), emblem(), warm(board). The emblem is one shader with 24 SDF
+  pictograms (blend_mix, no depth test, billboard).
+- `scripts/ocg/ocg_duel.gd`: "activate" / "trap" / "effect" carry "label" (English script description), "effect" also
+  "src"; engine message 83 becomes {"type": "targets", "cards": [...]}. Win kinds: 16 exodia, 21 destiny_board,
+  17 countdown, 2 deckout, any other reason above 16 is "card:<id>".
+- `scripts/duel/duel_scene.gd`: _card_look(p, card, label) plays StrikeFx.card then CardFx.play (quiet when the card
+  has a signature look); "targets" calls CardFx.aim (up to 3); "lp" sends burn damage with to_duelist and any gain
+  with bless; _fx_card / _fx_kind / _fx_p / _fx_at remember the effect that is resolving and are cleared on
+  chain_end. _finish() plays ExodiaShow or WinShow.play(scene, board, hud, winner, kind).
+- `scripts/duel/win_show.gd`: _destiny, _countdown, _deckout, _card. Same skip rule as ExodiaShow (_w()).
+- Field floors (`field_themes.gd` GROUND_GLSL): the blocky floors came from value noise on a square grid plus a
+  sine hash that loses precision on some GPUs. Now g_hash has no sine, g_noise is gradient noise and g_fbm rotates
+  each octave. ground_lit(p, kind, t) adds relief from the slope of the luminance plus grain; the mat shader in
+  duel_board uses it for both surfaces. Surface 3 (Mountain) repainted, surface 23 (brass and gears) is new
+  (look "gears"). field_looks.gd: about 30 more names in BY_NAME, and BY_WORD reads the first Attribute or Type
+  word of the text before falling back to "plasma".
+- The air particles of a place (_field_air) need billboard_keep_scale = true: without it every particle that has
+  not been emitted yet is drawn at the emitter, full size and black (default Color). The arena's particles already
+  had it. Additive particles never showed it.
+- Renderers: the Mac runs Forward+ (Vulkan). `--rendering-driver vulkan` reproduces it here on lavapipe (minutes per
+  run); opengl3 is the fast one for everything else.
+- Dev: `--fxdemo=emblems`, `cardfx` (FX_CARD), `win` (FX_KIND=destiny_board|countdown|deckout|card:<id>, FX_OPP=1),
+  `fieldlooks` (FX_SCALE=1 FX_SKIP=2.2, 14 frames, gap 2.4), `fieldspell` (FX_CARD, FX_ZOOM=1);
+  `--duel --end-test --win=<kind>`; `--menu-open=decks` opens My Decks.
+- Not checked: a real GPU with real card art (the floor fix was checked on a software Vulkan renderer), sound mix,
+  controller, Turbo Duels with the new looks, a real Destiny Board or Final Countdown win played to the end (the
+  shows were triggered directly).
+
 ### 0.60.0: Attribute attacks (ElementFx) and the Exodia win (ExodiaShow)
 - `scripts/duel/element_fx.gd`: gather(board, inst, at, tier) from anim_declare, travel(board, inst, from, to, tier, dur)
   with the dash in anim_battle, impact(board, inst, from, at, tier) on the hit. tier_of(inst): 0 under 1500 ATK, 1 from

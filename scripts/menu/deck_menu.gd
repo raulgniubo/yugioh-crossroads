@@ -258,9 +258,15 @@ func _add_row(entry: Dictionary, title: String, sub: String, col: Color, dim: bo
 	var picked: bool = entry == _sel
 	var t := UITheme.label(title, 26, Color(0.02, 0.07, 0.1) if picked else Color(1, 1, 1, 0.5 if dim else 1.0), UITheme.semi_font())
 	t.clip_text = true
+	t.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(t)
 	var s := UITheme.label(sub, 17, Color(0.03, 0.14, 0.18, 0.9) if picked else UITheme.TEXT_DIM)
+	# (0.61.0) A long line under the name ("40 cards · Zane Truesdale's deck · changed") used to
+	# push the READY tag off the end of the row. Now the line gives way (it ends in "…") and
+	# the tag always has its place.
+	s.clip_text = true
+	s.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	s.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(s)
 	if ready > 0 and not _in_use(entry):

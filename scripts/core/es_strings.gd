@@ -7335,4 +7335,9 @@ const ES := {
 	"Arrows  move     Page Up / Page Down or the mouse wheel  turn the page     Tab  next set     Type  search     Enter  where to find it     Esc  close": "Flechas  moverte     Re Pág / Av Pág o la rueda del ratón  pasar página     Tab  siguiente set     Escribe  buscar     Enter  dónde conseguirla     Esc  cerrar",
 	"None in this set. %d in All cards (the first set on the left).": "Ninguna en este set. %d en Todas las cartas (el primer set de la izquierda).",
 	"Search…": "Buscar…",
+	"The message is complete": "El mensaje está completo",
+	"The countdown is over": "La cuenta atrás terminó",
+	"NO CARDS LEFT": "SIN CARTAS",
+	"The Deck is empty": "El Deck está vacío",
+	"Special victory": "Victoria especial",
 }

@@ -444,8 +444,25 @@ func _one(m: Dictionary, ev: Array) -> void:
 			var wp := int(m["p"])
 			var why := OcgCore.victory(int(m["reason"]))
 			st._set_winner(wp if wp < 2 else DuelState.DRAW, why if why != "" else "The duel is over.")
-			if int(m["reason"]) == 16 and wp < 2:
-				st.win_kind = "exodia"      # (victory 16: the five pieces in hand)
+			# What kind of ending it was, for the show the duel screen plays (ExodiaShow, WinShow).
+			var wr := int(m["reason"])
+			if wp < 2:
+				if wr == 16:
+					st.win_kind = "exodia"      # (the five pieces in hand)
+				elif wr == 21:
+					st.win_kind = "destiny_board"
+				elif wr == 17:
+					st.win_kind = "countdown"
+				elif wr == 2:
+					st.win_kind = "deckout"
+				elif wr > 16:
+					# (any other card that wins by its own effect: the card named in the engine's line)
+					var en := str(((OcgCore._strings.get("en", {}) as Dictionary).get("victory", {}) as Dictionary).get(str(wr), ""))
+					var q1 := en.find("\"")
+					var q2 := en.rfind("\"")
+					var wid := int(CardData.NAME_TO_ID.get(en.substr(q1 + 1, q2 - q1 - 1).to_lower(), 0)) if q2 > q1 and q1 >= 0 else 0
+					if wid != 0:
+						st.win_kind = "card:%d" % wid
 		31:
 			_confirm(m, ev)
 		33:
@@ -525,6 +542,15 @@ func _one(m: Dictionary, ev: Array) -> void:
 			var cc = card_at(int(m["con"]), int(m["loc"]), int(m["seq"]))
 			if cc != null:
 				cc.counter = maxi(0, cc.counter + (int(m["n"]) if t == 101 else -int(m["n"])))
+		83:
+			# (0.61.0) The cards an effect was aimed at.
+			var aimed: Array = []
+			for tl in m.get("cards", []):
+				var tc = _loc_card(tl)
+				if tc != null:
+					aimed.append(tc)
+			if not aimed.is_empty():
+				ev.append({"type": "targets", "player": int(st.turn_player) if "turn_player" in st else 0, "cards": aimed})
 		110:
 			_attacker = _loc_card(m["a"])
 			if _attacker != null:
@@ -712,16 +738,19 @@ func _chaining(m: Dictionary, ev: Array) -> void:
 	# (0.57.0) Every link is told to the table after its card has been shown: the table hangs a
 	# numbered link on it once the chain is two long.
 	var link := {"type": "chain_link", "n": n, "player": who, "card": c}
+	# (0.61.0) "label" is the line the card's script gives this effect ("Destroy", "Special
+	# Summon"...): the table shows what kind of effect it is (CardFx).
+	var line := OcgCore.desc(int(m["desc"]))
 	if _pending != null and _pending["card"] == c and _pending["kind"] == "s":
 		var a: Dictionary = _pending
 		_pending = null
-		ev.append({"type": "activate", "player": who, "card": c, "zone": a["zone"]})
+		ev.append({"type": "activate", "player": who, "card": c, "zone": a["zone"], "label": line})
 		ev.append(link)
 		return
 	if _flip != null and _flip["card"] == c:
 		var b: Dictionary = _flip
 		_flip = null
-		ev.append({"type": "trap", "player": who, "card": c, "zone": b["zone"]})
+		ev.append({"type": "trap", "player": who, "card": c, "zone": b["zone"], "label": line})
 		ev.append(link)
 		return
 	_flush(ev)
@@ -730,10 +759,9 @@ func _chaining(m: Dictionary, ev: Array) -> void:
 		text = c.cname()
 	else:
 		text = OcgCore.card_name(int(cl["code"]))
-	var line := OcgCore.desc(int(m["desc"]))
 	if line != "" and line.length() < 70:
 		text += ": " + line
-	ev.append({"type": "effect", "player": who, "card": c if c != null and (loc & OcgCore.LOC_ONFIELD) != 0 else null, "text": text})
+	ev.append({"type": "effect", "player": who, "card": c if c != null and (loc & OcgCore.LOC_ONFIELD) != 0 else null, "text": text, "label": line, "src": c})
 	ev.append(link)
 
 

@@ -59,17 +59,31 @@ const THEMES := {
 ## Painted ground for the open-air fields, shared by the playmat and the land around it.
 ## p is in meters on the table plane.
 const GROUND_GLSL := """
-float g_hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+// (0.61.0) The noise the ground is painted with. It used to be the plain kind that reads every
+// point off a square grid (which shows as little squares up close, more so on some graphics
+// chips where its sine-based dice lose precision). Now: dice with no sine in them, noise that
+// slopes between grid points instead of stepping, and every finer layer turned a little so no
+// two line up.
+float g_hash(vec2 p) {
+	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+	p3 += dot(p3, p3.yzx + 33.33);
+	return fract((p3.x + p3.y) * p3.z);
+}
+vec2 g_grad(vec2 i) { float a = g_hash(i) * 6.2831853; return vec2(cos(a), sin(a)); }
 float g_noise(vec2 p) {
 	vec2 i = floor(p);
 	vec2 f = fract(p);
-	f = f * f * (3.0 - 2.0 * f);
-	return mix(mix(g_hash(i), g_hash(i + vec2(1.0, 0.0)), f.x), mix(g_hash(i + vec2(0.0, 1.0)), g_hash(i + vec2(1.0, 1.0)), f.x), f.y);
+	vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+	float a = dot(g_grad(i), f);
+	float b = dot(g_grad(i + vec2(1.0, 0.0)), f - vec2(1.0, 0.0));
+	float c = dot(g_grad(i + vec2(0.0, 1.0)), f - vec2(0.0, 1.0));
+	float d = dot(g_grad(i + vec2(1.0, 1.0)), f - vec2(1.0, 1.0));
+	return clamp(0.5 + 0.95 * mix(mix(a, b, u.x), mix(c, d, u.x), u.y), 0.0, 1.0);
 }
 float g_fbm(vec2 p) {
 	float a = 0.5;
 	float s = 0.0;
-	for (int i = 0; i < 4; i++) { s += a * g_noise(p); p *= 2.03; a *= 0.5; }
+	for (int i = 0; i < 4; i++) { s += a * g_noise(p); p = mat2(vec2(1.62, 1.22), vec2(-1.22, 1.62)) * p + vec2(13.7, 7.1); a *= 0.5; }
 	return s;
 }
 vec2 g_voro(vec2 p) {
@@ -107,12 +121,23 @@ vec3 ground_color(vec2 p, int kind, float t) {
 		vec3 lava = mix(vec3(1.0, 0.24, 0.02), vec3(1.0, 0.78, 0.22), crack * crack) * pulse;
 		return mix(rock, lava * 1.7, crack);
 	} else if (kind == 3) {
-		float n = g_fbm(p * 1.1 + 3.0);
-		vec2 v = g_voro(p * 0.7);
-		vec3 rock = mix(vec3(0.26, 0.28, 0.33), vec3(0.43, 0.45, 0.5), g_fbm(p * 4.0));
-		rock *= 0.78 + 0.22 * smoothstep(0.0, 0.07, v.x);
-		float snow = smoothstep(0.46, 0.6, n + 0.1 * g_noise(p * 9.0));
-		return mix(rock, vec3(0.8, 0.87, 0.97) * (0.9 + 0.1 * g_noise(p * 20.0)), snow);
+		// Mountain: slabs of grey rock with their strata showing, snow lying in drifts between
+		// them (deepest in the joints), blue shade at each drift's edge, ice glinting in it.
+		vec2 v = g_voro(p * 0.8 + g_fbm(p * 0.6) * 0.8);
+		float n = g_fbm(p * 0.75 + 3.0);
+		float strata = 0.5 + 0.5 * sin((p.x * 0.6 + p.y * 1.7) * 3.0 + g_fbm(p * 1.3) * 5.0);
+		vec3 rock = mix(vec3(0.24, 0.26, 0.31), vec3(0.42, 0.44, 0.5), g_fbm(p * 3.0) * 0.7 + strata * 0.3);
+		rock = mix(rock, vec3(0.34, 0.31, 0.29), smoothstep(0.52, 0.75, g_fbm(p * 1.9 + 21.0)) * 0.5);
+		rock *= 0.7 + 0.3 * smoothstep(0.0, 0.09, v.x);
+		rock *= 0.9 + 0.2 * v.y;
+		float drift = n + 0.12 * g_fbm(p * 4.0) + 0.1 * (1.0 - smoothstep(0.0, 0.2, v.x));
+		float snow = smoothstep(0.47, 0.55, drift);
+		vec3 sn = mix(vec3(0.74, 0.82, 0.95), vec3(0.97, 0.98, 1.0), smoothstep(0.5, 0.78, drift + 0.1 * g_fbm(p * 7.0)));
+		sn -= vec3(0.12, 0.08, 0.02) * (1.0 - smoothstep(0.0, 0.08, drift - 0.47));
+		vec2 gc = floor(p * 26.0);
+		float glint = step(0.93, g_hash(gc)) * smoothstep(0.6, 0.95, 0.5 + 0.5 * sin(t * 2.0 + g_hash(gc + 5.0) * 40.0));
+		glint *= 1.0 - smoothstep(0.08, 0.3, length(fract(p * 26.0) - 0.5));
+		return mix(rock, sn + vec3(glint) * 0.45, snow);
 	} else if (kind == 4) {
 		float ripple = 0.5 + 0.5 * sin(p.y * 9.0 + g_fbm(p * 1.2) * 7.0);
 		vec3 sand = mix(vec3(0.7, 0.56, 0.34), vec3(0.87, 0.75, 0.5), ripple * 0.55 + 0.45 * g_fbm(p * 3.0));
@@ -288,10 +313,56 @@ vec3 ground_color(vec2 p, int kind, float t) {
 		vec3 g = vec3(0.03, 0.015, 0.06) * (0.8 + 0.8 * g_fbm(p * 3.0));
 		return g + vec3(0.62, 0.2, 1.0) * arc * (0.7 + 0.3 * sin(t * 5.0 + n * 30.0)) + vec3(0.16, 0.03, 0.26) * smoothstep(0.4, 0.75, n);
 	}
+	if (kind == 23) {
+		// A town of gears: brushed brass plates bolted down, and round wells in them where big
+		// steel gears turn over the glow of a furnace, each the other way from its neighbour.
+		vec2 q = p * 0.5;
+		vec2 f = abs(fract(q) - 0.5);
+		float seam = smoothstep(0.455, 0.5, max(f.x, f.y));
+		vec3 brass = mix(vec3(0.33, 0.23, 0.1), vec3(0.6, 0.45, 0.2), g_fbm(p * 1.4) * 0.65 + 0.35 * g_noise(vec2(p.x * 2.0, p.y * 26.0)));
+		brass *= 0.86 + 0.2 * g_hash(floor(q));
+		float rivet = 1.0 - smoothstep(0.03, 0.05, length(f - vec2(0.38)));
+		vec2 gq = p / 3.2;
+		vec2 gc = floor(gq);
+		vec2 gf = (fract(gq) - 0.5) * 3.2;
+		float dir = mod(gc.x + gc.y, 2.0) * 2.0 - 1.0;
+		float gr = length(gf);
+		float ga = atan(gf.y, gf.x) + t * 0.35 * dir + gc.x * 1.3;
+		float teeth = 1.34 + 0.11 * smoothstep(-0.25, 0.25, sin(ga * 16.0));
+		float rim = smoothstep(teeth, teeth - 0.04, gr) * smoothstep(0.98, 1.03, gr);
+		float sp = (1.0 - smoothstep(0.07, 0.11, abs(sin(ga * 3.0)) * gr)) * step(gr, 1.03) * step(0.3, gr);
+		float hub = 1.0 - smoothstep(0.3, 0.34, gr);
+		float gm = clamp(rim + sp + hub, 0.0, 1.0);
+		vec3 steel = mix(vec3(0.2, 0.19, 0.2), vec3(0.46, 0.44, 0.42), 0.5 + 0.5 * sin(ga * 2.0 + gr * 3.0));
+		steel *= 1.0 - 0.5 * (1.0 - smoothstep(0.1, 0.14, gr));
+		vec3 pit = vec3(0.05, 0.035, 0.03) + vec3(0.6, 0.28, 0.06) * 0.3 * (0.6 + 0.4 * sin(t * 1.3 + gc.x * 2.0 + gc.y));
+		float well = 1.0 - smoothstep(1.5, 1.55, gr);
+		vec3 inwell = mix(pit, steel, gm) * (0.7 + 0.3 * smoothstep(1.55, 1.15, gr));
+		vec3 c = mix(brass * (1.0 - 0.55 * seam), inwell, well);
+		c = mix(c, vec3(0.8, 0.64, 0.3), rivet * (1.0 - well) * 0.8);
+		c += vec3(0.9, 0.7, 0.3) * (1.0 - smoothstep(0.0, 0.05, abs(gr - 1.58))) * 0.3;
+		return c;
+	}
 	float n = g_fbm(p * 0.9 + vec2(t * 0.05, -t * 0.03));
 	float n2 = g_fbm(p * 2.2 - vec2(t * 0.04));
 	vec3 c = mix(vec3(0.03, 0.01, 0.06), vec3(0.22, 0.05, 0.32), smoothstep(0.35, 0.75, n));
 	return c + vec3(0.5, 0.15, 0.7) * pow(smoothstep(0.55, 0.8, n2), 2.0) * 0.35;
+}
+// The ground with light on it (0.61.0): what is painted is read as height too, so cracks sit
+// lower, stones and drifts stand up, and a fine grain keeps any flat patch alive. Three
+// readings of the ground instead of one: for the mat itself, not for the land far around it.
+vec3 ground_lit(vec2 p, int kind, float t) {
+	vec3 c = ground_color(p, kind, t);
+	if (kind == 0) { return c; }
+	const vec3 LUM = vec3(0.3, 0.5, 0.2);
+	float e = 0.03;
+	float h = dot(c, LUM);
+	vec2 slope = vec2(dot(ground_color(p + vec2(e, 0.0), kind, t), LUM) - h, dot(ground_color(p + vec2(0.0, e), kind, t), LUM) - h) / e;
+	// (moving, glowing grounds get less of it: water, lava, sky, light, plasma)
+	float k = (kind == 5 || kind == 2 || kind == 20 || kind == 21 || kind == 22 || kind == 6) ? 0.018 : 0.05;
+	c *= 1.0 + clamp(dot(slope, vec2(-0.55, -0.8)) * k, -0.3, 0.4);
+	c *= 0.955 + 0.09 * g_noise(p * 33.0 + 7.0);
+	return c;
 }
 """
 

@@ -5,6 +5,28 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.61.0
+
+Card effects you can read at a glance, the other special wins, and Field Spell places redone. No cards added: 8,415 total.
+
+- **Spells and Traps show what they do.** When a card is activated, an emblem pops up over it (a small round sign with a picture) and a short flourish in the same colour plays under it. There are 24 kinds: destroy, banish, return to hand, draw, search, summon, revive, damage, gain Life Points, raise ATK, lower ATK, take control, negate, change position, equip, discard, send from the Deck, lock, protect, counters, coin or dice, look at cards, change Level, and a plain one for everything else. The game reads each card to pick its kind (6,117 of the 8,415 cards carry tags for it; the rest are read from their text). (Before, only a handful of famous cards had a look of their own. Those keep it, and get the emblem too.)
+- **Monster effects work the same way.** When a monster uses an effect, its burst takes the colour of what the effect does and the emblem shows over the hologram.
+- **Targets are pointed at.** When an effect picks its targets, a line of the effect's colour runs from the card to each one and marks it.
+- **Effect damage travels.** Damage from a card flies from that card to the duelist it hits. Gaining Life Points raises green light around that duelist.
+- **Three more ways to win have their own show** (each a few seconds, any key or button skips it), and they play the same when the opponent does it to you:
+  - **Destiny Board:** the five letters light up one by one over the Spell and Trap Zones, come together, "FINAL" crosses the screen and a wave of shadow sweeps the field.
+  - **Final Countdown:** a clock face opens over the field, the hand runs through all 20 turns, a bell tolls and the field burns.
+  - **Running out of cards:** the camera goes to the empty Deck Zone of the duelist who cannot draw. "NO CARDS LEFT".
+  - Any other card that wins by itself stands over the field with "Special victory". (Before, all of these just ended with the win screen.)
+- **Field Spell places are repainted.** The floors were blocky on some graphics cards (Mountain and Geartown in your photos). The patterns are drawn a new way now, so they are smooth, and every floor has a little relief and grain under the light.
+  - **Mountain** is new: slabs of rock, layers, snow drifts and glints.
+  - **Geartown** has its own floor: brass plates and big gears that turn. (Before, it used a generic one.)
+  - About 30 more Field Spells got a place that fits them by name, and any other Field Spell picks its place from the Attribute or Type it talks about.
+  - What drifts in the air (snow, dust, embers, sparks) is round and soft instead of square.
+  - Fixed: a dark blot hung over the field for the first seconds after a Field Spell came in (specks waiting to be let go were drawn in black). This one was in older builds too.
+- **My Decks:** the READY / NOT READY / IN USE tag always fits now. A long line under the deck name is cut with "…" instead of pushing the tag out.
+- **Windows:** only the .exe changed.
+
 ## What is in 0.60.0
 
 Attacks made of their Attribute, and the Exodia win. No cards added: 8,415 total.

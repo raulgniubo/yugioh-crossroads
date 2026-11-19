@@ -278,7 +278,7 @@ void fragment() {
 	float wild = step(0.5, float(surface));
 	if (surface > 0) {
 		// Open-air fields: the ground is the mat, the markings are painted on it.
-		col = ground_color(p, surface, TIME) * (0.78 + 0.3 * vig);
+		col = ground_lit(p, surface, TIME) * (0.78 + 0.3 * vig);
 	}
 	float dark_p = dark_paint;
 	if (field_surface > 0 && field_r > 0.01) {
@@ -286,7 +286,7 @@ void fragment() {
 		// front running outward, lit along its edge.
 		float fd = length((p - field_o) * vec2(1.0, 1.2)) + (g_fbm(p * 1.4 + 5.0) - 0.5) * 1.5;
 		float fm = 1.0 - smoothstep(field_r - 0.45, field_r, fd);
-		vec3 fc = ground_color(p, field_surface, TIME) * (0.8 + 0.28 * vig) * field_shade;
+		vec3 fc = ground_lit(p, field_surface, TIME) * (0.8 + 0.28 * vig) * field_shade;
 		col = mix(col, fc, fm);
 		float front = (1.0 - smoothstep(0.0, 0.3, abs(fd - field_r + 0.2))) * (1.0 - smoothstep(16.0, 19.0, field_r));
 		col += field_glow * front * 1.5;
@@ -699,6 +699,10 @@ func _field_air(kind: String, glow: Color) -> void:
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	# (0.61.0) Keep the particle's own scale: a speck that has not been let go yet has none, so it
+	# stays hidden. Without this every waiting speck was drawn at the emitter, black and full size
+	# (a dark blot over the field for the first seconds of a place).
+	m.billboard_keep_scale = true
 	m.vertex_color_use_as_albedo = true
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	var col := Color.WHITE
@@ -2685,6 +2689,7 @@ func _sparks(at: Vector3, color: Color, amount: int) -> void:
 	var qm := StandardMaterial3D.new()
 	qm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	qm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	qm.albedo_texture = DuelFx.dot_tex()
 	qm.vertex_color_use_as_albedo = true
 	qm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	qm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
