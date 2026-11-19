@@ -241,3 +241,24 @@ and the story difficulty moves it. All of that is build 1. Build 2 is only the f
   contact sheet from the frames (1280x720 xvfb, FX_WAIT default 16 s so the deal is over, clock at 0.2x).
   A whole duel on screen with the test player: `--duel --skip-opening --human-test --speed=2 --deck=.. --oppdeck=..`.
 - Two renders at once is the most this machine does in time.
+- 0.58.0 (part 2):
+  - `scripts/duel/clash_fx.gd` (ClashFx.play(host, a, b, a_mine, b_is_def, hit_in)): 2D, over the HUD. The loser's
+    number is two copies of the Label under a shader that keeps one side of a jagged line (varying = VERTEX). The
+    "battle" event now carries "atk", "t_atk", "t_def", "t_defending" straight from engine message 111 (aa/da/dd and
+    the target's position bits), so the clash shows what the engine fought with. The clash starts 0.41 s before the hit
+    (anim_battle: 0.26 wait + 0.15 dash); change both together.
+  - DuelBoard: soul(from, to, color) is the light with a trail that carries a card between piles; _pile_arrives hides
+    the card on the pile until the light lands; hand_pos(p); anim_travel(kind, p, inst) for search / gy_to_hand /
+    gy_to_deck / mill; pile_flare, _deck_fan; anim_negated(inst) (seal at chain_spot); _stat_pop from refresh_stats
+    (tracks _last_stats per uid); anim_destroy / anim_banish / anim_bounce / anim_discard / effect_burst redone on DuelFx.
+  - MonsterHolo: CODE (the picture, + ace gleam), AURA (one shader for the back plane and the front plane: `front`,
+    `depth`, `mode` 0-8 = how its Attribute or signature figure moves), POOL (floor light + the ace's circle).
+    render_priority: back 0, picture 1, front 2 (stat labels are 2 with no depth test). height_for(data) sets the size.
+    setup(..., ace): signature cards (SummonShow.SIGNATURE) are aces on their own; board.ace_ids adds the opponent's.
+    Settings.gfx.detail 0 drops the front plane.
+  - Camera: cam_punch(deg, roll) (field of view kick + roll, decays in _process), _battle_follow, the whip to the
+    duelist on a direct attack (duelist_shot), the low swing in hologram() for big monsters (cam_shot then cam_drift).
+  - set_overlays / sync_holos / holo_for read their dictionaries untyped: a freed node cannot go into a typed variable
+    (that was 71 script errors in one duel after an Xyz card was redrawn; the lights never came back).
+  - fxdemo names added: looks, holo, direct, oppbattle, ace. Env: FX_CASE=lose|tie|wall for "battle", FX_SKIP=<seconds>
+    to start filming later. Deck names for --deck / --oppdeck carry the "deck_" prefix (deck_chaos).

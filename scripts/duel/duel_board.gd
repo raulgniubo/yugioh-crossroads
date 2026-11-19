@@ -1301,6 +1301,7 @@ var cam_home := CAM_POS
 var cam_home_target := CAM_TARGET
 var deal_fast := false
 var _holos := {}      # card uid -> MonsterHolo
+var ace_ids := {}     # card ids of the two duelists' ace monsters (their holograms get the ace idle)
 
 
 ## Keep one hologram over every face-up monster on the field, and break the ones that left.
@@ -1314,11 +1315,12 @@ func sync_holos(state) -> void:
 			if c == null:
 				continue
 			seen[m.uid] = true
-			var h: MonsterHolo = _holos.get(m.uid)
-			if h == null or not is_instance_valid(h):
+			var had = _holos.get(m.uid)
+			var h: MonsterHolo = had if had != null and is_instance_valid(had) else null
+			if h == null:
 				h = MonsterHolo.new()
 				add_child(h)
-				h.setup(m, c, ATTR_COLORS.get(str(m.data.get("attribute", "")), UITheme.ACCENT), Settings.t(0.75))
+				h.setup(m, c, ATTR_COLORS.get(str(m.data.get("attribute", "")), UITheme.ACCENT), Settings.t(0.75), ace_ids.has(int(m.id)))
 				_holos[m.uid] = h
 			h.card = c
 			h.set_defense(not m.attack_pos)
@@ -1326,9 +1328,9 @@ func sync_holos(state) -> void:
 				set_overlays(m)
 	for uid in _holos.keys():
 		if not seen.has(uid):
-			var h2: MonsterHolo = _holos[uid]
-			if is_instance_valid(h2):
-				h2.shatter()
+			var h2 = _holos[uid]
+			if h2 != null and is_instance_valid(h2):
+				(h2 as MonsterHolo).shatter()
 			_holos.erase(uid)
 
 
@@ -1336,8 +1338,8 @@ func sync_holos(state) -> void:
 func holo_for(inst) -> MonsterHolo:
 	if inst == null:
 		return null
-	var h: MonsterHolo = _holos.get(inst.uid)
-	return h if h != null and is_instance_valid(h) else null
+	var h = _holos.get(inst.uid)
+	return (h as MonsterHolo) if h != null and is_instance_valid(h) else null
 
 
 func _move(c: Card3D, to: Transform3D, dur: float, arc := 0.6) -> void:
@@ -1505,6 +1507,7 @@ func slam(at: Vector3, col: Color, k := 1.0, sideways := false) -> void:
 	DuelFx.sparks(self, at + Vector3(0, 0.06, 0), col.lightened(0.3), int(14 + 16 * k), 3.2 + 1.5 * k, 0.12, 0.6, -3.0)
 	Sfx.play("land", -5.0, 1.0 - 0.12 * (k - 1.0))
 	shake(0.3 * k)
+	cam_punch(1.6 * k)
 	house(clampf(0.15 * k, 0.1, 0.6), col, at)
 
 
@@ -1536,7 +1539,9 @@ func hologram(inst, at: Vector3, force_big := false) -> void:
 		_ring_fx(at + Vector3(0, 0.05, 0), col, 1.4, 0.0, 0.0)
 		_ring_fx(at + Vector3(0, 0.05, 0), col, 2.2, 0.15, 0.0)
 		_flash(at + Vector3(0, h * 0.5, 0), col)
-		cam_shot(at + Vector3(at.x * -0.3, 0.9, 5.2), at + Vector3(0, h * 0.62, 0), 0.5)
+		# (0.58.0) The camera drops almost to the floor on one side and looks up at it...
+		var swing := -1.0 if at.x > 0.0 else 1.0
+		cam_shot(at + Vector3(2.6 * swing, 0.45, 5.1), at + Vector3(0, h * 0.56, 0), 0.42)
 	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(spr, "scale", Vector3.ONE, Settings.t(0.45 if big else 0.35))
 	tw.tween_property(spr, "modulate:a", 0.97, Settings.t(0.25))
@@ -1544,6 +1549,10 @@ func hologram(inst, at: Vector3, force_big := false) -> void:
 	await tw.finished
 	if big:
 		shake(0.45)
+		cam_punch(3.0, 0.03 * (-1.0 if at.x > 0.0 else 1.0))
+		# ...then swings slowly round in front of it while it stands there.
+		var swing2 := -1.0 if at.x > 0.0 else 1.0
+		cam_drift(at + Vector3(-1.5 * swing2, 0.8, 5.5), Settings.t(1.9))
 		Sfx.play("impact")
 		# (The monster is seen standing there for a moment before its name crosses the screen.)
 		get_tree().create_timer(Settings.t(0.4)).timeout.connect(func(): ace_summoned.emit(inst))
@@ -1804,9 +1813,13 @@ func set_overlays(inst) -> void:
 	if c == null:
 		return
 	var n: int = inst.overlays.size() if "overlays" in inst else 0
-	var o: FxOrbit = _orbits.get(inst.uid)
-	if o == null or not is_instance_valid(o):
+	# (untyped on purpose: lights that freed themselves with their card are still in the list,
+	# and a freed object cannot be put in a typed variable)
+	var had = _orbits.get(inst.uid)
+	var o: FxOrbit = had if had != null and is_instance_valid(had) else null
+	if o == null:
 		if n == 0:
+			_orbits.erase(inst.uid)
 			return
 		o = FxOrbit.new()
 		add_child(o)
@@ -2166,16 +2179,62 @@ func anim_control(p: int, inst, zone: int) -> void:
 	c.set_glow(false)
 
 
-## A card on the field goes back to the hand (or Extra Deck).
+## Where a duelist's hand is, for lights that fly to it or out of it.
+func hand_pos(p: int) -> Vector3:
+	return Vector3(0, 0.9, 4.3) if p == 0 else Vector3(0, 1.0, -3.75)
+
+
+## What is left of a card flies somewhere as a light with a trail: to the Graveyard, the
+## banished pile, the hand, the Deck. It arcs over the table and lands with a small ring.
+## Not awaited: it is over in `dur` seconds on its own.
+func soul(from: Vector3, to: Vector3, color: Color, dur := 0.32, size := 0.3) -> void:
+	var o := DuelFx.orb(self, from, color, size)
+	var mid := (from + to) * 0.5 + Vector3(0, 0.9 + from.distance_to(to) * 0.12, 0)
+	var tw := create_tween()
+	tw.tween_method(func(t: float):
+		if is_instance_valid(o):
+			o.position = from.lerp(mid, t).lerp(mid.lerp(to, t), t), 0.0, 1.0, Settings.t(dur)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_callback(func():
+		if is_instance_valid(o):
+			o.queue_free()
+		DuelFx.glow(self, to, color, size * 3.0, 0.3, 0.4)
+		if to.y < 0.6:
+			DuelFx.ring(self, Vector3(to.x, 0.03, to.z), color, 0.15, 0.6, 0.35, 0.05))
+
+
+## The card just put on a pile (Graveyard or banished) stays unseen until the light carrying it gets there.
+func _pile_arrives(inst, delay: float) -> void:
+	for piles in [_gy_cards, _ban_cards]:
+		for pile in piles:
+			for gc in pile:
+				if is_instance_valid(gc) and gc.inst == inst:
+					(gc as Card3D).set_alpha(0.0)
+					var tw := (gc as Card3D).create_tween()
+					tw.tween_interval(Settings.t(delay))
+					tw.tween_method((gc as Card3D).set_alpha, 0.0, 1.0, Settings.t(0.12))
+					return
+
+
+## A card on the field goes back to the hand (or Extra Deck): a gust lifts it off the table
+## and it is gone, a light flying back to its owner's hand.
 func anim_bounce(inst) -> void:
 	var c := card_for(inst)
 	if c == null:
 		return
-	c.set_glow(true, Color("9fd0ff"))
+	var wind := Color("9fd0ff")
+	c.set_glow(true, wind)
+	var at := c.position
+	DuelFx.spiral(self, at + Vector3(0, 0.5, 0), Color.WHITE, wind, 0.95, 0.55, {"flat": false, "arms": 3, "twist": 3.0, "speed": 9.0, "energy": 2.0, "open": 0.18})
+	DuelFx.ring(self, Vector3(at.x, 0.03, at.z), wind, 0.3, 1.1, 0.4, 0.05)
+	Sfx.play("whoosh", -6.0, 1.5)
 	var tw := create_tween().set_parallel()
-	tw.tween_property(c, "position:y", c.position.y + 1.3, Settings.t(0.28)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	tw.tween_method(c.set_alpha, 1.0, 0.0, Settings.t(0.28))
+	tw.tween_property(c, "position:y", c.position.y + 1.1, Settings.t(0.26)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tw.tween_property(c, "rotation:y", c.rotation.y + PI * 1.5, Settings.t(0.26)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(c, "scale", Vector3.ONE * 0.4, Settings.t(0.26)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_method(c.set_alpha, 1.0, 0.0, Settings.t(0.26))
 	await tw.finished
+	var to_extra: bool = inst.has_method("frame") and inst.frame() in ["fusion", "synchro", "xyz"]
+	soul(at + Vector3(0, 1.1, 0), extra_pos(int(inst.owner)) + Vector3(0, 0.2, 0) if to_extra else hand_pos(int(inst.owner)), wind, 0.28)
 	_cards.erase(inst.uid)
 	c.queue_free()
 
@@ -2246,39 +2305,12 @@ func effect_burst(inst, color: Color) -> void:
 		return
 	c.set_glow(true, color)
 	var at := c.global_position
-	var ring := MeshInstance3D.new()
-	var tm := TorusMesh.new()
-	tm.inner_radius = 0.42
-	tm.outer_radius = 0.5
-	tm.rings = 40
-	ring.mesh = tm
-	var rm := StandardMaterial3D.new()
-	rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	rm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	rm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	rm.albedo_color = Color(color, 0.95)
-	ring.material_override = rm
-	ring.scale = Vector3(0.6, 0.12, 0.6)
-	ring.position = Vector3(at.x, 0.05, at.z)
-	add_child(ring)
-	var beam := MeshInstance3D.new()
-	var cm := CylinderMesh.new()
-	cm.top_radius = 0.5
-	cm.bottom_radius = 0.42
-	cm.height = 2.6
-	cm.cap_top = false
-	cm.cap_bottom = false
-	beam.mesh = cm
-	var bm := StandardMaterial3D.new()
-	bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	bm.cull_mode = BaseMaterial3D.CULL_DISABLED
-	bm.albedo_color = Color(color, 0.32)
-	beam.material_override = bm
-	beam.position = Vector3(at.x, 1.3, at.z)
-	beam.scale = Vector3(1, 0.05, 1)
-	add_child(beam)
+	var floor_at := Vector3(at.x, 0.03, at.z)
+	var sideways: bool = "attack_pos" in inst and not bool(inst.attack_pos)
+	DuelFx.rect(self, floor_at, color, 1.0, 1.7, 0.5, sideways, 2.6, 0.7)
+	DuelFx.glyph(self, floor_at, color, 0.95, 0.9, {"rings": 1, "ticks": 28, "star": 0, "turn": 2.2, "energy": 2.4})
+	DuelFx.pillar(self, Vector3(at.x, 0.0, at.z), color, 0.42, 2.8, 0.7, 0.0, 1.7)
+	DuelFx.sparks(self, at + Vector3(0, 0.15, 0), color.lightened(0.3), 16, 2.2, 0.9, 0.7, 0.8, 0.04)
 	var light := OmniLight3D.new()
 	light.light_color = color
 	light.light_energy = 0.0
@@ -2287,10 +2319,6 @@ func effect_burst(inst, color: Color) -> void:
 	add_child(light)
 	var d := Settings.t(1.0)
 	var tw := create_tween().set_parallel()
-	tw.tween_property(ring, "scale", Vector3(3.4, 0.12, 3.4), 0.6 * d).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
-	tw.tween_property(rm, "albedo_color:a", 0.0, 0.6 * d)
-	tw.tween_property(beam, "scale", Vector3(1, 1, 1), 0.18 * d).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
-	tw.tween_property(bm, "albedo_color:a", 0.0, 0.45 * d).set_delay(0.25 * d)
 	tw.tween_property(light, "light_energy", 5.0, 0.1 * d)
 	tw.tween_property(light, "light_energy", 0.0, 0.5 * d).set_delay(0.12 * d)
 	tw.tween_method(c.flash, 3.0, 0.0, 0.7 * d)
@@ -2298,8 +2326,6 @@ func effect_burst(inst, color: Color) -> void:
 	tw.tween_property(c, "position:y", home.y + 0.32, 0.14 * d).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(c, "position:y", home.y, 0.3 * d).set_delay(0.4 * d).set_trans(Tween.TRANS_SINE)
 	tw.chain().tween_callback(func():
-		ring.queue_free()
-		beam.queue_free()
 		light.queue_free()
 		if is_instance_valid(c):
 			c.set_glow(false))
@@ -2364,25 +2390,37 @@ func anim_battle(p: int, inst, target) -> void:
 	await _wait(0.26)
 	# The lunge: slow off the mark, fastest at the moment it lands.
 	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.84) + Vector3(0, 0.25, 0))
+	# (0.58.0) The camera goes with it: it runs down the field behind the attacker and
+	# arrives as the blow lands, leaning into the side the hit comes from.
+	_battle_follow(p, home.origin, goal, target == null)
 	await _dash(c, hit, 0.15)
 	StrikeFx.play(self, inst, home.origin, goal)
 	_attr_hit(inst, home.origin, goal + Vector3(0, 0.15, 0))
+	var lean := 0.035 if goal.x >= home.origin.x else -0.035
 	var th := holo_for(target)
 	if th:
 		th.hit()
 	var tc := card_for(target) if target != null else null
 	if tc != null:
 		_jolt(tc, (goal - home.origin).normalized())
+		cam_punch(3.2 + clampf(float(inst.atk()) / 1000.0, 0.0, 4.0) * 0.6, lean)
 	else:
 		# Nothing in the way: the blow goes all the way to the duelist.
 		_burst(Vector3(goal.x, 0.05, goal.z), Color("ff5a6a"), 2.4)
 		_flash(goal, Color("ffd0c0"))
 		shake(0.5)
+		cam_punch(5.5, lean * 1.6)
 	await hit_stop(0.1 if target != null else 0.14)
+	if target == null and _duelists.has(1 - p) and not turbo:
+		# The camera whips round to the duelist who took it.
+		duelist_shot(1 - p, 0.2)
+		cam_punch(-3.0)
 	# A short recoil off the hit, then home.
 	await _move(c, Transform3D(home.basis, hit.origin.lerp(home.origin, 0.18) + Vector3(0, 0.3, 0)), 0.1, 0.0)
 	await _wait(0.14)
 	await _move(c, home, 0.3, 0.3)
+	if target == null and _duelists.has(1 - p) and not turbo:
+		await _wait(0.2)
 	cam_release(0.45)
 	c.set_glow(false)
 
@@ -2500,6 +2538,23 @@ func _battle_shot(p: int, from: Vector3, goal: Vector3) -> void:
 	else:
 		var mid := from.lerp(goal, 0.5)
 		cam_shot(Vector3(mid.x * 0.5 + 1.5, 2.6, goal.z + 5.0), mid + Vector3(0, 0.6, 0), 0.35)
+
+
+## The camera follows an attack down the field. Yours: it runs in behind the attacker, low,
+## and ends just short of the target. Theirs: it swings round to meet the blow where it lands.
+func _battle_follow(p: int, from: Vector3, goal: Vector3, direct: bool) -> void:
+	if turbo:
+		return
+	var dir := goal - from
+	dir.y = 0.0
+	dir = dir.normalized() if dir.length() > 0.01 else Vector3(0, 0, -1)
+	var side := 1.0 if from.x <= goal.x else -1.0
+	if p == 0:
+		# (off to one side and above the attacker's shoulder, so its card never fills the lens)
+		var back := 3.9 if direct else 3.3
+		cam_shot(goal - dir * back + Vector3(-1.7 * side, 1.95, 0.0), goal + Vector3(0, 0.55, 0) - dir * 0.2, 0.17)
+	else:
+		cam_shot(Vector3(goal.x * 0.6 + 1.3 * side, 1.9, goal.z + (3.6 if direct else 3.9)), goal + Vector3(0, 0.5, 0) - dir * 0.3, 0.17)
 
 
 const ATTR_COLORS := {"FIRE": Color("ff5a2a"), "WATER": Color("3aa0ff"), "WIND": Color("6dff9a"), "EARTH": Color("d99a4a"),
@@ -2707,7 +2762,8 @@ func _add_to_banished(inst) -> void:
 		create_tween().tween_property(bl, "modulate:a", 0.9, Settings.t(0.4))
 
 
-## A card is removed from play: it lifts, twists into a violet rift and lands on the banished pile.
+## A card is removed from play: it lifts, a violet rift opens behind it and pulls it in, and
+## what is left of it lands on the banished pile as a light.
 func anim_banish(inst, from: String, side: int) -> void:
 	var c := card_for(inst)
 	if from == "gy":
@@ -2715,8 +2771,15 @@ func anim_banish(inst, from: String, side: int) -> void:
 	elif from == "hand" and side == 1:
 		c = _take_from_opp_hand(inst)
 	var at: Vector3 = c.position if c else gy_pos(inst.owner) + Vector3(0, 0.1, 0)
+	if c == null and from == "hand" and side == 0:
+		at = hand_pos(0)
+	elif c == null and from == "deck":
+		at = deck_pos(int(inst.owner)) + Vector3(0, 0.3, 0)
+	var hole := at + Vector3(0, 0.75, 0)
 	if c:
 		c.set_glow(true, BANISH_COLOR)
+		DuelFx.spiral(self, hole, BANISH_COLOR.lightened(0.3), Color(0.25, 0.05, 0.5), 0.85, 0.62, {"flat": false, "arms": 2, "twist": 6.0, "speed": 8.0, "hole": 0.16, "energy": 2.2, "open": 0.2})
+		_rift(hole)
 		var tw := create_tween().set_parallel()
 		tw.tween_property(c, "position:y", at.y + 0.7, Settings.t(0.22)).set_trans(Tween.TRANS_SINE)
 		tw.tween_method(c.flash, 0.0, 2.2, Settings.t(0.22))
@@ -2728,10 +2791,14 @@ func anim_banish(inst, from: String, side: int) -> void:
 		await tw2.finished
 		_cards.erase(inst.uid)
 		c.queue_free()
-	_rift(at + Vector3(0, 0.5, 0))
-	_impact(banish_pos(inst.owner) + Vector3(0, 0.1, 0), BANISH_COLOR)
+		DuelFx.rays(self, hole, BANISH_COLOR.lightened(0.2), 1.3, 0.35, 16, false)
+	else:
+		_rift(hole)
+	var pile := banish_pos(inst.owner) + Vector3(0, 0.12, 0)
+	soul(hole, pile, BANISH_COLOR.lightened(0.25), 0.3)
 	_add_to_banished(inst)
-	await _wait(0.18)
+	_pile_arrives(inst, 0.28)
+	await _wait(0.2)
 
 
 ## A thin violet tear in the air where a card left the duel.
@@ -2769,6 +2836,8 @@ func remove_from_gy(inst) -> void:
 				return
 
 
+## A card is destroyed: it shudders and cracks white, bursts into shards, and what is left of
+## it flies to the Graveyard as a light.
 func anim_destroy(inst, overlays: Array = []) -> void:
 	var c := card_for(inst)
 	if c == null:
@@ -2776,27 +2845,158 @@ func anim_destroy(inst, overlays: Array = []) -> void:
 	for o in overlays:
 		_add_to_gy(o)
 	c.set_glow(true, UITheme.DANGER)
+	var home := c.position
+	var red := Color("ff6a5a")
 	var tw := create_tween()
-	tw.tween_method(c.flash, 0.0, 3.0, Settings.t(0.12))
+	tw.tween_method(func(t: float):
+		if is_instance_valid(c):
+			c.position = home + Vector3(sin(t * 60.0) * 0.04, 0.03, cos(t * 47.0) * 0.03)
+			c.flash(t * 3.0), 0.0, 1.0, Settings.t(0.15))
 	await tw.finished
-	_shatter(c.position, _frame_color(inst))
+	var floor_at := Vector3(home.x, 0.03, home.z)
+	_shatter(home, _frame_color(inst))
+	DuelFx.rays(self, floor_at, red, 1.8, 0.4, 22)
+	DuelFx.ring(self, floor_at, red, 0.3, 1.5, 0.5, 0.05)
+	DuelFx.glow(self, home + Vector3(0, 0.3, 0), Color(1.0, 0.85, 0.8), 1.9, 0.35, 0.5, 2.4)
+	shake(0.25)
 	var tw2 := create_tween().set_parallel()
-	tw2.tween_property(c, "position:y", 0.5, Settings.t(0.2))
-	tw2.tween_property(c, "scale", Vector3(1.15, 1.15, 1.15), Settings.t(0.2))
-	tw2.tween_method(c.set_alpha, 1.0, 0.0, Settings.t(0.2))
+	tw2.tween_property(c, "position:y", 0.5, Settings.t(0.18))
+	tw2.tween_property(c, "scale", Vector3(1.15, 1.15, 1.15), Settings.t(0.18))
+	tw2.tween_method(c.set_alpha, 1.0, 0.0, Settings.t(0.18))
 	await tw2.finished
 	_cards.erase(inst.uid)
 	c.queue_free()
+	soul(home + Vector3(0, 0.45, 0), gy_pos(int(inst.owner)) + Vector3(0, 0.15, 0), Color("c8d4ff"), 0.3)
 	_add_to_gy(inst)
+	_pile_arrives(inst, 0.28)
 
 
+## A card is discarded from the hand: it goes to the Graveyard as a light.
 func anim_discard(p: int, inst) -> void:
+	var from := hand_pos(p)
 	if p == 1:
 		var c := _take_from_opp_hand(inst)
 		_cards.erase(inst.uid)
-		c.queue_free()
+		if c != null and is_instance_valid(c):
+			from = c.position
+			c.queue_free()
+	soul(from, gy_pos(int(inst.owner)) + Vector3(0, 0.15, 0), Color("c8d4ff"), 0.3)
 	_add_to_gy(inst)
-	await _wait(0.2)
+	_pile_arrives(inst, 0.28)
+	await _wait(0.24)
+
+
+## A card moves between piles without touching the field (0.58.0): each trip has its own
+## colour. A search fans a glow out of the Deck and a gold light flies to the hand; a card
+## taken back from the Graveyard rises out of it in green; one shuffled back sinks into the
+## Deck in blue; a milled card drops off the top of the Deck into the Graveyard.
+func anim_travel(kind: String, p: int, inst) -> void:
+	var own: int = int(inst.owner) if inst != null else p
+	var deck := deck_pos(own) + Vector3(0, 0.25, 0)
+	var gy := gy_pos(own) + Vector3(0, 0.15, 0)
+	if turbo or Settings.anim_speed > 2.0:
+		if kind == "mill":
+			_add_to_gy(inst)
+		return
+	match kind:
+		"search":
+			var gold := Color("ffd76a")
+			pile_flare(deck, gold)
+			_deck_fan(own, gold)
+			Sfx.play("sparkle", -8.0, 1.3)
+			await _wait(0.2)
+			soul(deck + Vector3(0, 0.3, 0), hand_pos(p), gold, 0.3, 0.34)
+			await _wait(0.26)
+		"gy_to_hand":
+			var green := Color("8dffb0")
+			pile_flare(gy, green)
+			Sfx.play("sparkle", -9.0, 1.0)
+			await _wait(0.14)
+			soul(gy + Vector3(0, 0.3, 0), hand_pos(p), green, 0.3, 0.32)
+			await _wait(0.26)
+		"gy_to_deck":
+			var blue := Color("7ab8ff")
+			pile_flare(gy, blue)
+			soul(gy + Vector3(0, 0.3, 0), deck, blue, 0.3)
+			await _wait(0.3)
+			DuelFx.ring(self, Vector3(deck.x, 0.03, deck.z), blue, 0.3, 0.9, 0.35, 0.05)
+		"mill":
+			soul(deck, gy, Color("c8d4ff"), 0.26, 0.26)
+			_add_to_gy(inst)
+			_pile_arrives(inst, 0.24)
+			Sfx.play("card", -8.0, 1.2)
+			await _wait(0.16)
+
+
+## The Deck opens like a fan for a moment: five ghost cards spread out over it and fold back.
+func _deck_fan(p: int, color: Color) -> void:
+	var at := deck_pos(p) + Vector3(0, 0.35, 0)
+	var facing := 1.0 if p == 0 else -1.0
+	for i in 5:
+		var q := MeshInstance3D.new()
+		var mesh := QuadMesh.new()
+		mesh.size = Vector2(0.62, 0.9)
+		q.mesh = mesh
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.albedo_color = Color(color, 0.0)
+		q.material_override = m
+		q.position = at
+		q.rotation = Vector3(-0.5 * facing, 0.0 if p == 0 else PI, 0)
+		add_child(q)
+		var spread := float(i - 2)
+		var tw := create_tween().set_parallel()
+		tw.tween_property(q, "position", at + Vector3(spread * 0.34 * facing, 0.5 - absf(spread) * 0.08, 0.0), Settings.t(0.2)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(q, "rotation:z", -spread * 0.2 * facing, Settings.t(0.2))
+		tw.tween_property(m, "albedo_color:a", 0.5, Settings.t(0.12))
+		tw.chain().tween_interval(Settings.t(0.12))
+		tw.chain().tween_property(q, "position", at, Settings.t(0.16)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.parallel().tween_property(m, "albedo_color:a", 0.0, Settings.t(0.16))
+		tw.chain().tween_callback(q.queue_free)
+
+
+## An effect is negated (0.58.0): a red seal stamps down over the card, holds it for a beat,
+## then cracks and flies apart. The card shudders under it.
+func anim_negated(inst) -> void:
+	if inst == null:
+		return
+	var c := card_for(inst)
+	if c != null and (not is_instance_valid(c) or _opp_hand.has(c) or c.position.y > 0.6):
+		c = null      # (in a hand, or held up to be read: the seal lands where it stands on the table)
+	var spot := chain_spot(inst, int(inst.owner))
+	var at := Vector3(spot.x, 0.05, spot.z)
+	var red := Color("ff3b4a")
+	var seal := DuelFx.glyph(self, at, red, 0.9, 1.0, {"rings": 2, "ticks": 12, "star": 4, "turn": -0.5, "energy": 3.2, "keep": true})
+	DuelFx.rect(self, at, red, 1.7, 1.0, 0.3, false, 3.0, 0.8)
+	DuelFx.pillar(self, Vector3(at.x, 0.0, at.z), red, 0.5, 2.4, 0.4, 0.0, 1.6)
+	var home := c.position if c != null else Vector3.ZERO
+	if c != null:
+		c.set_glow(true, red)
+	var tw := create_tween()
+	tw.tween_method(func(t: float):
+		if c != null and is_instance_valid(c):
+			c.position = home + Vector3(sin(t * 70.0) * 0.035 * (1.0 - t), 0.0, 0.0), 0.0, 1.0, Settings.t(0.3))
+	tw.tween_interval(Settings.t(0.25))
+	tw.tween_callback(func():
+		# The seal cracks.
+		DuelFx.fade(seal, 0.12)
+		DuelFx.rays(self, at, red.lightened(0.3), 1.6, 0.35, 14)
+		DuelFx.ring(self, at, red, 0.7, 1.6, 0.4, 0.04)
+		DuelFx.sparks(self, at + Vector3(0, 0.1, 0), red.lightened(0.2), 20, 3.0, 0.5, 0.6, -5.0, 0.06)
+		Sfx.play("destroy", -10.0, 1.7)
+		if c != null and is_instance_valid(c):
+			c.position = home
+			c.set_glow(false))
+
+
+## A pile lights up: a card is coming out of it or going onto it (the Deck for a search, the
+## Graveyard for a card that comes back).
+func pile_flare(at: Vector3, color: Color) -> void:
+	DuelFx.glyph(self, Vector3(at.x, 0.02, at.z), color, 0.7, 0.6, {"rings": 1, "ticks": 20, "star": 0, "turn": 1.6})
+	DuelFx.pillar(self, Vector3(at.x, 0.0, at.z), color, 0.3, 2.2, 0.5, 0.0, 1.8)
 
 
 func _add_to_gy(inst) -> void:
@@ -2851,6 +3051,14 @@ func refresh_stats(state: DuelState) -> void:
 			# The Level or Rank star sits on the card's corner nearest you.
 			pair[3].position = base + Vector3(-0.4 if m.attack_pos else -0.5, 0.1, 0.36 if m.attack_pos else 0.24)
 			var shown_atk := state.atk_of(m, false)
+			if not hidden and m.face_up:
+				# (0.58.0) A change of ATK or DEF pops up over the card, up in gold or down in red.
+				var now_def := int(state.def_of(m))
+				if _last_stats.has(m.uid):
+					var was: Array = _last_stats[m.uid]
+					if int(was[0]) != int(shown_atk) or int(was[1]) != now_def:
+						_stat_pop(base, int(shown_atk) - int(was[0]), now_def - int(was[1]))
+				_last_stats[m.uid] = [int(shown_atk), now_def]
 			pair[0].text = "?" if hidden else str(shown_atk)
 			if not hidden and shown_atk != m.atk():
 				pair[0].modulate = Color("ffd23a") if shown_atk > m.atk() else Color("ff7a7a")
@@ -2893,6 +3101,47 @@ func refresh_stats(state: DuelState) -> void:
 			for l in _stats[uid]:
 				l.queue_free()
 			_stats.erase(uid)
+	for uid in _last_stats.keys():
+		if not seen.has(uid):
+			_last_stats.erase(uid)
+
+
+var _last_stats := {}    # monster uid -> [ATK, DEF] as last shown
+
+
+## "+500" rising in gold with light going up, or "-500" sinking in red with light going down.
+func _stat_pop(base: Vector3, d_atk: int, d_def: int) -> void:
+	var lead := d_atk if d_atk != 0 else d_def
+	if lead == 0:
+		return
+	var up := lead > 0
+	var col := Color("ffd23a") if up else Color("ff6a6a")
+	var bits: Array = []
+	if d_atk != 0:
+		bits.append("%+d" % d_atk)
+	if d_def != 0 and d_def != d_atk:
+		bits.append("%+d DEF" % d_def)
+	var l := _stat_label()
+	l.text = ("▲ " if up else "▼ ") + "  ".join(bits)
+	l.font_size = 96
+	l.outline_size = 22
+	l.modulate = col
+	l.position = base + Vector3(0, 0.75, 0.1)
+	l.visible = true
+	l.scale = Vector3.ONE * 0.4
+	var tw := create_tween().set_parallel()
+	tw.tween_property(l, "scale", Vector3.ONE, Settings.t(0.16)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "position:y", l.position.y + (0.55 if up else -0.3), Settings.t(0.9)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "modulate:a", 0.0, Settings.t(0.3)).set_delay(Settings.t(0.75))
+	tw.chain().tween_callback(l.queue_free)
+	var floor_at := Vector3(base.x, 0.03, base.z)
+	DuelFx.rect(self, floor_at, col, 1.0, 1.35, 0.5, false, 2.2, 0.6)
+	if up:
+		DuelFx.embers(self, floor_at, col, 0.42, 22, 0.55, 2.4, 0.06)
+		Sfx.play("charge", -12.0, 1.4)
+	else:
+		DuelFx.sparks(self, base + Vector3(0, 1.0, 0), col, 16, 1.2, 0.0, 0.7, -6.0, 0.05)
+		Sfx.play("fizz", -10.0, 0.8)
 
 
 func hide_stats_for(inst) -> void:
@@ -3634,6 +3883,20 @@ func shake(amount: float) -> void:
 	_shake = maxf(_shake, amount)
 
 
+var _punch := 0.0       # degrees of field of view taken off (a quick push in)
+var _tilt := 0.0        # roll, in radians
+var _fov_home := 0.0
+
+
+## The camera lunges in for an instant (`deg` degrees narrower) and tips sideways by `roll`.
+func cam_punch(deg := 3.0, roll := 0.0) -> void:
+	if turbo or Settings.anim_speed > 2.0:
+		return
+	_punch = clampf(maxf(_punch, deg) if deg >= 0.0 else deg, -8.0, 9.0)
+	if roll != 0.0:
+		_tilt = clampf(roll, -0.09, 0.09)
+
+
 func _process(delta: float) -> void:
 	_time += delta
 	_process_extra(_time)
@@ -3646,4 +3909,12 @@ func _process(delta: float) -> void:
 	var tgt := cam_home_target.lerp(cam_target, cam_weight) + jitter * 0.5
 	camera.position = pos
 	camera.look_at(tgt)
+	# (0.58.0) The lens kicks in on a hit and the horizon tips, then both settle.
+	_punch = lerpf(_punch, 0.0, 1.0 - exp(-delta * 7.0))
+	_tilt = lerpf(_tilt, 0.0, 1.0 - exp(-delta * 5.0))
+	if _fov_home <= 0.0:
+		_fov_home = camera.fov
+	camera.fov = clampf(_fov_home - _punch, 20.0, 80.0)
+	if absf(_tilt) > 0.0005:
+		camera.rotate_object_local(Vector3(0, 0, 1), _tilt)
 	_update_arrow()

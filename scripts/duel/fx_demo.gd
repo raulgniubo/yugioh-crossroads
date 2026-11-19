@@ -30,6 +30,9 @@ static func run(scene) -> void:
 
 static func _film(scene, name: String, frames: int, gap: float) -> void:
 	var tree: SceneTree = scene.get_tree()
+	if OS.has_environment("FX_SKIP"):
+		# (start filming this many seconds into the animation)
+		await tree.create_timer(float(OS.get_environment("FX_SKIP"))).timeout
 	for i in frames:
 		await tree.create_timer(gap).timeout
 		await RenderingServer.frame_post_draw
@@ -90,9 +93,16 @@ static func _play(scene, board, st, name: String) -> void:
 				var cf: Card3D = board._new_card(foe)
 				cf.transform = Transform3D(board.table_basis(AI, true, true), board.monster_zone_pos(AI, 2) + Vector3(0, 0.02, 0))
 				await scene.get_tree().create_timer(0.2).timeout
-				await board.anim_declare(ME, a, foe)
-				await board.anim_battle(ME, a, foe)
-				await board.anim_destroy(foe)
+				# FX_CASE: win (default), lose, tie, wall (a Defense Position monster that holds)
+				var case := OS.get_environment("FX_CASE")
+				var t_atk := {"": 2500, "lose": 3300, "tie": 3000, "wall": 2500}.get(case, 2500) as int
+				var evs: Array = [{"type": "attack", "player": ME, "card": a, "target": foe},
+					{"type": "battle", "player": ME, "card": a, "target": foe, "atk": 3000, "t_atk": t_atk, "t_def": 3400 if case == "wall" else 2100, "t_defending": case == "wall"}]
+				if case == "" or case == "tie":
+					evs.append({"type": "destroy", "player": AI, "card": foe})
+				if case == "lose" or case == "tie":
+					evs.append({"type": "destroy", "player": ME, "card": a})
+				await scene._play(evs)
 			else:
 				await scene.get_tree().create_timer(0.2).timeout
 				await scene._play([{"type": "attack", "player": ME, "card": a, "target": null},
@@ -112,7 +122,7 @@ static func _play(scene, board, st, name: String) -> void:
 				{"type": "trap", "player": ME, "card": s3, "zone": 3},
 				{"type": "chain_link", "player": ME, "card": s3, "n": 3},
 				{"type": "chain_solving", "n": 3}, {"type": "chain_solved", "n": 3},
-				{"type": "chain_solving", "n": 2}, {"type": "chain_negated", "n": 2}, {"type": "chain_solved", "n": 2},
+				{"type": "chain_solving", "n": 2}, {"type": "chain_negated", "n": 2, "card": s2, "player": AI}, {"type": "chain_solved", "n": 2},
 				{"type": "chain_solving", "n": 1}, {"type": "chain_solved", "n": 1},
 				{"type": "chain_end"}])
 		"effects":
@@ -129,6 +139,68 @@ static func _play(scene, board, st, name: String) -> void:
 			await board.anim_banish(cs[1], "field", AI)
 			await board.anim_bounce(cs[2])
 			await board.anim_tribute(cs[3])
+		"direct", "oppbattle", "ace":
+			var d1 = _mk(st, "Blue-Eyes White Dragon", ME)
+			var d2 = _mk(st, "Dark Magician", AI)
+			if name == "ace":
+				await board.anim_summon(ME, d1, 3, false)
+				return
+			for dm in [d1, d2]:
+				if name == "direct" and dm == d2:
+					continue
+				var dc: Card3D = board._new_card(dm)
+				dc.transform = Transform3D(board.table_basis(dm.owner, true, true), board.monster_zone_pos(dm.owner, 1 if dm == d1 else 3) + Vector3(0, 0.02, 0))
+			await scene.get_tree().create_timer(0.2).timeout
+			if name == "direct":
+				await scene._play([{"type": "attack", "player": ME, "card": d1, "target": null},
+					{"type": "battle", "player": ME, "card": d1, "target": null},
+					{"type": "lp", "player": AI, "lp": 5000, "delta": -3000}])
+			else:
+				await scene._play([{"type": "attack", "player": AI, "card": d2, "target": d1},
+					{"type": "battle", "player": AI, "card": d2, "target": d1, "atk": 2500, "t_atk": 3000, "t_def": 2500, "t_defending": false},
+					{"type": "destroy", "player": AI, "card": d2}])
+		"looks":
+			# The trips between piles, a monster's effect, and ATK going up and down.
+			var g1 = _mk(st, "Gagaga Magician", ME)
+			var g2 = _mk(st, "Gogogo Golem", AI)
+			for m3 in [g1, g2]:
+				var c5: Card3D = board._new_card(m3)
+				c5.transform = Transform3D(board.table_basis(m3.owner, true, true), board.monster_zone_pos(m3.owner, 2) + Vector3(0, 0.02, 0))
+			var x1 = _mk(st, "Speed Warrior", ME)
+			var x2 = _mk(st, "Junk Synchron", ME)
+			var x3 = _mk(st, "Mirror Force", AI)
+			await scene.get_tree().create_timer(0.2).timeout
+			await board.anim_travel("search", ME, x1)
+			await board.anim_travel("mill", ME, x2)
+			await board.anim_travel("mill", AI, x3)
+			board.remove_from_gy(x2)
+			await board.anim_travel("gy_to_hand", ME, x2)
+			board.remove_from_gy(x3)
+			await board.anim_travel("gy_to_deck", AI, x3)
+			await board.effect_burst(g1, Color("ffd23a"))
+			await scene.get_tree().create_timer(0.5).timeout
+			board._stat_pop(board.monster_zone_pos(ME, 2), 800, 0)
+			board._stat_pop(board.monster_zone_pos(AI, 2), -500, -500)
+			await scene.get_tree().create_timer(1.0).timeout
+		"holo":
+			# Holograms side by side: every Attribute, small and big, and three signature monsters.
+			var mine := ["Kuriboh", "Dark Magician", "Blue-Eyes White Dragon", "Red-Eyes Black Dragon", "Gagaga Magician"]
+			var theirs := ["Mother Grizzly", "Harpie Lady", "Obelisk the Tormentor", "Giant Soldier of Stone", "Flame Manipulator"]
+			for i in 5:
+				for pr in [[mine[i], ME], [theirs[i], AI]]:
+					var hm = _mk(st, pr[0], pr[1])
+					var hc: Card3D = board._new_card(hm)
+					hc.transform = Transform3D(board.table_basis(pr[1], true, true), board.monster_zone_pos(pr[1], i) + Vector3(0, 0.02, 0))
+					var hh := MonsterHolo.new()
+					board.add_child(hh)
+					hh.setup(hm, hc, board.ATTR_COLORS.get(str(hm.data.get("attribute", "")), UITheme.ACCENT), 0.1)
+			await scene.get_tree().create_timer(1.1).timeout
+			board.cam_shot(Vector3(0.6, 1.9, 6.4), Vector3(0, 0.9, 1.2), 0.3)
+			await scene.get_tree().create_timer(1.0).timeout
+			board.cam_shot(Vector3(-1.2, 2.4, 2.6), Vector3(0.2, 0.9, -1.6), 0.3)
+			await scene.get_tree().create_timer(1.0).timeout
+			board.cam_shot(Vector3(1.6, 1.3, 4.6), Vector3(0, 1.0, 1.4), 0.3)
+			await scene.get_tree().create_timer(1.0).timeout
 		"kit":
 			var z0: Vector3 = board.monster_zone_pos(ME, 0)
 			DuelFx.glyph(board, board.monster_zone_pos(ME, 0), Color("5aa8ff"), 1.1, 3.0)

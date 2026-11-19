@@ -158,6 +158,9 @@ func _start() -> void:
 	if FxDemo.wanted() != "":
 		FxDemo.run(self)
 	DuelFx.warm(board)
+	var opp_ace_id := int(Characters.get_char(_opp_key).get("ace", 0))
+	if opp_ace_id != 0:
+		board.ace_ids[opp_ace_id] = true
 	var cfg: Dictionary = Router.duel_config
 	if not OcgTable.wanted(cfg):
 		# The rules engine runs every duel. If its library did not load here, there is no duel.
@@ -1006,6 +1009,7 @@ func _play_event(ev: Dictionary) -> void:
 			if board.chain_fx == null:
 				board.chain_link(0, p, null)
 			board.chain_fx.negated(int(ev["n"]), ev.get("card"))
+			board.anim_negated(ev.get("card"))
 			hud.effect_text(Loc.t("Negated!"), Color("ff5a6a"))
 			var nc = ev.get("card")
 			if nc != null:
@@ -1038,6 +1042,7 @@ func _play_event(ev: Dictionary) -> void:
 					await board.anim_add_to_opp_hand(ev["card"])
 		"gy_to_deck":
 			board.remove_from_gy(ev["card"])
+			await board.anim_travel("gy_to_deck", p, ev["card"])
 			board.set_deck_count(p, ev["deck"])
 		"spell_done":
 			await board.anim_spell_done(ev["card"])
@@ -1077,6 +1082,9 @@ func _play_event(ev: Dictionary) -> void:
 			var heavy: bool = ev["target"] == null or int(ev["card"].atk()) >= 2400
 			get_tree().create_timer(Settings.t(0.46)).timeout.connect(func():
 				hud.impact(hit_at + Vector3(0, 0.3, 0), Comic.SKY if p == ME else Color("ff5a7a"), 1.0 if heavy else 0.55))
+			if ev["target"] != null and ev.has("atk") and not _autoplay:
+				var defending: bool = bool(ev.get("t_defending", false))
+				ClashFx.play(hud, int(ev["atk"]), int(ev["t_def"] if defending else ev["t_atk"]), p == ME, defending, 0.41)
 			await board.anim_battle(p, ev["card"], ev["target"])
 		"attack_stopped":
 			await board.anim_attack_stopped(ev["card"])
@@ -1133,6 +1141,7 @@ func _play_event(ev: Dictionary) -> void:
 			Sfx.play("sparkle", -10.0, 1.2)
 			await get_tree().create_timer(Settings.t(0.75 if on_field else 0.5)).timeout
 		"search":
+			await board.anim_travel("search", p, ev["card"])
 			if p == ME:
 				hud.add_hand_card(ev["card"])
 			else:
@@ -1203,13 +1212,14 @@ func _play_event(ev: Dictionary) -> void:
 			await get_tree().create_timer(Settings.t(0.2)).timeout
 		"gy_to_hand":
 			board.remove_from_gy(ev["card"])
+			await board.anim_travel("gy_to_hand", p, ev["card"])
 			if p == ME:
 				hud.add_hand_card(ev["card"])
 			else:
 				await board.anim_add_to_opp_hand(ev["card"])
 		"mill":
-			board._add_to_gy(ev["card"])
 			board.set_deck_count(p, ev["deck"])
+			await board.anim_travel("mill", p, ev["card"])
 		"redraw":
 			if p == ME:
 				for e in hud._hand.duplicate():

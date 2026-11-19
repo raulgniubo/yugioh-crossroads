@@ -5,6 +5,27 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.58.0
+
+Duels feel alive, part 2. No cards added: 8,384 total.
+
+- **Battle clashes.** When two monsters fight, their numbers fly in from the two sides of the screen (yours in blue on the left, theirs in red on the right) and crash into each other at the exact moment the hit lands. The loser's number cracks in two and falls. A tie breaks both. Against a Defense Position monster that holds, the attacker's number bounces off and dims. The numbers are the real ones the engine used for that fight, boosts included. (Before, you only saw the hit and then the LP change.)
+- **A look for each way a card leaves or moves.**
+  - Destroyed: the card shudders, cracks white, bursts into shards with a red ring, and a light flies to the Graveyard, where the card shows up when the light gets there.
+  - Banished: a violet rift opens over the card and pulls it in, and a light lands on the banished pile.
+  - Returned to the hand: a gust spins the card up off the table and a streak flies back to its owner's hand.
+  - Negated: a red seal stamps down over the card, holds it for a beat, then cracks apart.
+  - Search: the Deck glows, fans open for a moment and a gold light flies to the hand.
+  - Back from the Graveyard: it rises out in green. Shuffled back into the Deck: it sinks in blue. Milled and discarded cards fly to the Graveyard as a light.
+  - A monster's effect: its outline flashes outward with a turning circle and a pillar in the effect's color.
+  - ATK and DEF changes pop up over the monster: "▲ +500" in gold with light rising, "▼ -500" in red with light falling.
+  (Before, destroy, banish and bounce had simpler versions, and search, mill, recover and stat changes showed nothing on the table.)
+- **Holograms with depth.** Each monster now stands in three layers: a halo behind it in its Attribute's color (with a faint echo of the picture and the light coming up from the card), the monster, and a few motes drifting in front of it, so it shifts with the camera instead of looking like a flat picture. Each Attribute moves its own way: FIRE has rising embers and a flame halo, WATER has bubbles, WIND has gusts going by, EARTH has dust and chips settling, LIGHT has sparkles and rays, DARK has sinking wisps. Bigger monsters stand taller (size goes by Level or Rank and ATK, from under a metre to almost twice that). Signature monsters (Dark Magician, Blue-Eyes, Stardust, Utopia, your Lumen cards and the rest of that list, plus your opponent's ace) get an idle of their own: their own two colors, a circle that keeps turning under their feet and a gleam that crosses them every few seconds. Blue-Eyes and Summoned Skull crackle with lightning, Black Rose drops petals. (Before, every hologram was one flat layer with a small range of sizes.)
+- **Camera with attitude.** The camera follows an attack down the field and arrives with the blow, the lens kicks in on the hit and the horizon tips a little. A direct attack whips the camera round to the duelist who took it. When a big monster lands, the camera drops almost to the floor on one side, looks up at it, and swings slowly round in front of it. Every card slammed onto the field gives the lens a small push. (Before, attacks had one fixed low shot and big summons one fixed shot.)
+- **Fix (a 0.57.0 bug):** after some Xyz Summons (I caught it on a Rank-Up into Number C40) the circling Material lights could vanish and never come back for the rest of the duel. Fixed.
+- On the lowest graphics setting holograms keep the halo layer and drop the front one.
+- **Windows:** only the .exe changed.
+
 ## What is in 0.57.0
 
 Duels feel alive, part 1. No cards added: 8,384 total.

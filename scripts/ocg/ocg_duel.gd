@@ -531,7 +531,10 @@ func _one(m: Dictionary, ev: Array) -> void:
 		111:
 			var ba = _loc_card(m["a"])
 			if ba != null:
-				ev.append({"type": "battle", "player": int(m["a"]["con"]), "card": ba, "target": _loc_card(m["b"]) if int(m["b"]["loc"]) != 0 else null})
+				# (0.58.0) The numbers the two go into the fight with, for the clash on screen.
+				ev.append({"type": "battle", "player": int(m["a"]["con"]), "card": ba, "target": _loc_card(m["b"]) if int(m["b"]["loc"]) != 0 else null,
+					"atk": maxi(0, int(m.get("aa", 0))), "t_atk": maxi(0, int(m.get("da", 0))), "t_def": maxi(0, int(m.get("dd", 0))),
+					"t_defending": (int(m["b"].get("pos", 0)) & 0xC) != 0})
 		112:
 			if _attacker != null:
 				ev.append({"type": "attack_stopped", "player": _attacker.owner, "card": _attacker})
