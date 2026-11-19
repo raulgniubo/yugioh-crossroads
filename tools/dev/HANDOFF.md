@@ -274,3 +274,8 @@ and the story difficulty moves it. All of that is build 1. Build 2 is only the f
   Used by the Card Album, the deck builder (_found: names, and card text in both languages via CardText.spanish)
   and the duel's "declare a card name" (ask_name). Dev: ASK_WORD="..." with --ask-test --ask-name-typed.
 - A missing Spanish name (no official one yet, ~290 cards) just means that card is found by its English name only.
+- 0.59.1: card_album._input sends any printable key (and Backspace) to the search box when it isn't focused; letter
+  shortcuts are gone. Searches are debounced (0.15 s Timer) in the album and the deck builder. CardSearch also
+  matches when every typed word is in the name. Dev: `--shots=<prefix>` (router) saves a screenshot every 0.5 s and
+  logs slow frames; ALBUM_TYPE="word" times each search; for real keyboard input, run on a manual Xvfb display and
+  drive it with xdotool (screen coords x1.2 = viewport coords at 1280x720).

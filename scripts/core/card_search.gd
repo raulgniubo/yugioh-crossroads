@@ -70,7 +70,17 @@ static func score(id: int, english: String, query: String) -> int:
 			best = maxi(best, 2)
 		elif n.contains(query):
 			best = maxi(best, 1)
+		elif best == 0 and query.contains(" ") and _all_words(n, query):
+			best = 1
 	return best
+
+
+## Every word typed is in the name, in any order ("absorb kid" finds Absorbing Kid from the Sky).
+static func _all_words(name: String, query: String) -> bool:
+	for w in query.split(" ", false):
+		if not name.contains(w):
+			return false
+	return true
 
 
 static func matches(id: int, english: String, query: String) -> bool:

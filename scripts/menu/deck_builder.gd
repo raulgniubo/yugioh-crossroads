@@ -362,15 +362,22 @@ func _ready() -> void:
 	bar2.add_theme_constant_override("v_separation", 6)
 	col.add_child(bar2)
 	var search := LineEdit.new()
-	search.placeholder_text = Loc.t("Search a name or card text (English or Spanish)")
+	search.placeholder_text = Loc.t("Search…")
+	search.tooltip_text = Loc.t("Name or text (English or Spanish)")
 	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	search.custom_minimum_size = Vector2(170, 40)
 	search.clear_button_enabled = true
 	search.add_theme_font_size_override("font_size", 16)
-	search.text_changed.connect(func(t):
-		_search = t.strip_edges().to_lower()
-		_search_f = CardSearch.fold(t)
+	# (0.59.1: the grid is rebuilt a moment after the last key, not on every key)
+	var wait := Timer.new()
+	wait.one_shot = true
+	wait.wait_time = 0.15
+	add_child(wait)
+	wait.timeout.connect(func():
+		_search = search.text.strip_edges().to_lower()
+		_search_f = CardSearch.fold(search.text)
 		_rebuild_grid())
+	search.text_changed.connect(func(_t): wait.start())
 	bar2.add_child(search)
 	var attr := OptionButton.new()
 	attr.add_theme_font_size_override("font_size", 16)

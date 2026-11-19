@@ -37,6 +37,7 @@ var _rewards: HBoxContainer
 var _page_label: Label
 var _filter_btns := {}
 var _search_box: LineEdit
+var _search_wait: Timer
 var _total_label: Label
 var _total_pct: Label
 var _hint: Label
@@ -361,20 +362,50 @@ func _build_center() -> Control:
 		foot.add_child(fb)
 		_filter_btns[str(f[0])] = fb
 	_search_box = LineEdit.new()
-	_search_box.placeholder_text = Loc.t("Search any card (English or Spanish name)")
+	_search_box.placeholder_text = Loc.t("Search (English or Spanish name)")
 	_search_box.custom_minimum_size = Vector2(380, 46)
 	_search_box.add_theme_font_size_override("font_size", 18)
 	_search_box.clear_button_enabled = true
-	_search_box.text_changed.connect(func(t):
-		_search = CardSearch.fold(t)
+	# (0.59.1) The search runs a moment after the last key, not on every key: typing fast
+	# no longer queues one search of the whole album per letter.
+	_search_wait = Timer.new()
+	_search_wait.one_shot = true
+	_search_wait.wait_time = 0.15
+	_search_wait.timeout.connect(func():
+		_search = CardSearch.fold(_search_box.text)
 		_refilter(true))
-	_search_box.text_submitted.connect(func(_t): _search_box.release_focus())
+	add_child(_search_wait)
+	_search_box.text_changed.connect(func(_t): _search_wait.start())
+	_search_box.text_submitted.connect(func(_t):
+		_search_wait.stop()
+		_search = CardSearch.fold(_search_box.text)
+		_refilter(true)
+		_search_box.release_focus())
 	foot.add_child(_search_box)
-	if OS.get_environment("ALBUM_SEARCH") != "":
+	if OS.get_environment("ALBUM_SEARCH") != "" or OS.get_environment("ALBUM_TYPE") != "":
 		# (dev: open with a search typed in)
 		_search_box.set_deferred("text", OS.get_environment("ALBUM_SEARCH"))
 		_search = CardSearch.fold(OS.get_environment("ALBUM_SEARCH"))
 		_refilter.call_deferred(true)
+		if OS.get_environment("ALBUM_TYPE") != "":
+			# (dev: type a word one letter at a time, and time each search)
+			var word := OS.get_environment("ALBUM_TYPE")
+			get_tree().create_timer(2.0).timeout.connect(func():
+				for k in range(1, word.length() + 1):
+					var t0 := Time.get_ticks_usec()
+					_search_box.text = word.substr(0, k)
+					_search = CardSearch.fold(_search_box.text)
+					_refilter(true)
+					print("ALBUM TYPE '%s' %d ms, %d cards" % [word.substr(0, k), (Time.get_ticks_usec() - t0) / 1000, _list.size()])
+					await get_tree().process_frame
+					await get_tree().process_frame
+				for k in range(word.length() - 1, -1, -1):
+					var t1 := Time.get_ticks_usec()
+					_search_box.text = word.substr(0, k)
+					_search = CardSearch.fold(_search_box.text)
+					_refilter(true)
+					print("ALBUM BACK '%s' %d ms, %d cards" % [word.substr(0, k), (Time.get_ticks_usec() - t1) / 1000, _list.size()])
+					await get_tree().process_frame)
 		if OS.get_environment("ALBUM_WHERE") != "":
 			get_tree().create_timer(1.5).timeout.connect(_open_where)
 	return v
@@ -580,6 +611,14 @@ func _show_spread(dir: int) -> void:
 			slot.setup(0, 0, "unknown", 0, Color(s["color"]))
 	_page_label.text = Loc.t("Pages %d-%d of %d") % [_spread * 2 + 1, _spread * 2 + 2, _spreads() * 2]
 	(_binder as _Binder).empty_text = "" if not _list.is_empty() else (Loc.t("No cards match.") if _search != "" or _filter != "all" else "")
+	if _list.is_empty() and _search != "" and _set != 0:
+		# (the search only looks in the set you are on: say if other sets have it)
+		var elsewhere := 0
+		for oid in _sets[0]["ids"]:
+			if CardSearch.matches(int(oid), str(CardData.get_card(int(oid)).get("name", "")), _search):
+				elsewhere += 1
+		if elsewhere > 0:
+			(_binder as _Binder).empty_text = Loc.t("None in this set. %d in All cards (the first set on the left).") % elsewhere
 	_binder.queue_redraw()
 	_sel = clampi(_sel, 0, maxi(0, mini(SPREAD, _list.size() - base) - 1))
 	_select(_sel, false)
@@ -760,30 +799,42 @@ func _input(e: InputEvent) -> void:
 			_search_box.release_focus()
 			get_viewport().set_input_as_handled()
 		return
+	# (0.59.1) Letters and numbers always go to the search, even when the box isn't focused
+	# (after clicking a card, or after Enter). They used to be shortcuts (A/D/W/S moved, Q/E
+	# turned pages, F filtered, W opened "where to find it"), so a word typed after the box lost
+	# focus jumped around the album, and Backspace closed it.
+	if e is InputEventKey and e.pressed and not (e.ctrl_pressed or e.meta_pressed or e.alt_pressed):
+		var ch := String.chr(e.unicode) if e.unicode >= 32 else ""
+		if ch != "" or (e.keycode == KEY_BACKSPACE and _search_box.text != ""):
+			_search_box.grab_focus()
+			if ch != "":
+				_search_box.insert_text_at_caret(ch)
+			else:
+				_search_box.text = _search_box.text.substr(0, _search_box.text.length() - 1)
+				_search_box.caret_column = _search_box.text.length()
+				_search_box.text_changed.emit(_search_box.text)
+			get_viewport().set_input_as_handled()
+			return
 	var handled := true
 	if e is InputEventKey and e.pressed and not e.echo or (e is InputEventKey and e.pressed and e.echo and e.keycode in [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN]):
 		match e.keycode:
-			KEY_LEFT, KEY_A:
+			KEY_LEFT:
 				_move(-1, 0)
-			KEY_RIGHT, KEY_D:
+			KEY_RIGHT:
 				_move(1, 0)
-			KEY_UP, KEY_W:
+			KEY_UP:
 				_move(0, -1)
-			KEY_DOWN, KEY_S:
+			KEY_DOWN:
 				_move(0, 1)
-			KEY_Q, KEY_PAGEUP:
+			KEY_PAGEUP:
 				_flip(-1)
-			KEY_E, KEY_PAGEDOWN:
+			KEY_PAGEDOWN:
 				_flip(1)
 			KEY_TAB:
 				_pick_set((_set + (-1 if e.shift_pressed else 1) + _sets.size()) % _sets.size())
-			KEY_F:
-				_cycle_filter()
-			KEY_SLASH:
-				_search_box.grab_focus()
-			KEY_W, KEY_ENTER:
+			KEY_ENTER, KEY_KP_ENTER:
 				_open_where()
-			KEY_ESCAPE, KEY_BACKSPACE:
+			KEY_ESCAPE:
 				_close()
 			_:
 				handled = false
@@ -849,7 +900,7 @@ func _relabel_hint() -> void:
 		_hint.text = Loc.t("%s move     %s / %s turn the page     %s / %s change set     %s show: all, owned, missing     %s where to find it     %s close") % [
 			Pad.g("D-pad ↑").replace(" ↑", ""), Pad.g("LB"), Pad.g("RB"), Pad.g("LT"), Pad.g("RT"), Pad.g("X"), Pad.g("A"), Pad.g("B")]
 	else:
-		_hint.text = Loc.t("Arrows  move     Q / E or the mouse wheel  turn the page     Tab  next set     F  show: all, owned, missing     W  where to find it     /  search     Esc  close")
+		_hint.text = Loc.t("Arrows  move     Page Up / Page Down or the mouse wheel  turn the page     Tab  next set     Type  search     Enter  where to find it     Esc  close")
 
 
 func _process(_d: float) -> void:

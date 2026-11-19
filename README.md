@@ -5,6 +5,17 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.59.1
+
+The album search, fixed. No cards added: 8,415 total.
+
+- **Typing in the album no longer jumps around or closes it.** Letters on the keyboard used to be album shortcuts (A/D/W/S moved the selection, Q/E turned pages, F changed the filter, W opened "where to find it", Backspace closed the album). So if the search box lost focus (after clicking a card, or after pressing Enter), the rest of what you typed moved things around or closed the album, and it looked frozen. Now letters and numbers always go into the search, and Backspace deletes from it. Shortcuts that stay: arrows to move, Page Up / Page Down or the mouse wheel to turn pages, Tab for the next set, Enter for "where to find it", Esc to close. The hint line at the bottom says so.
+- **The search waits for you to stop typing** (a split second) before going through the album, instead of searching the whole album on every key. The deck builder does the same.
+- **Words in any order:** "absorb kid" finds Absorbing Kid from the Sky.
+- If nothing matches in the set you're on but other sets have it, the album says how many are in All cards.
+- Shorter search placeholders, so they're not cut off ("Buscar carta (inglés o español)" in the album, "Buscar…" in the deck builder with the full hint when you hover).
+- **Windows:** only the .exe changed.
+
 ## What is in 0.59.0
 
 The sea, and searching cards in either language. **31 cards added: 8,415 total.**

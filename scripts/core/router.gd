@@ -255,6 +255,27 @@ func _debug_args() -> void:
 			shot = a.substr(7)
 		elif a.begins_with("--after="):
 			after = float(a.substr(8))
+		elif a.begins_with("--shots="):
+			# Dev: a screenshot every half second to /tmp/<prefix>_NNN.png, plus a line in the log
+			# for every frame that took over 100 ms (for watching the game while something else
+			# types into it).
+			var prefix := a.substr(8)
+			var hb := func():
+				var k := 0
+				var last := Time.get_ticks_msec()
+				var next_shot := last + 500
+				while true:
+					await get_tree().process_frame
+					var now := Time.get_ticks_msec()
+					if now - last > 100:
+						print("SLOW FRAME %d ms" % (now - last))
+					last = now
+					if now >= next_shot:
+						next_shot = now + 500
+						print("FRAME ALIVE %d" % now)
+						get_viewport().get_texture().get_image().save_png("/tmp/%s_%03d.png" % [prefix, k])
+						k += 1
+			hb.call()
 		elif a.begins_with("--menu-open="):
 			menu_open = a.substr(12)   # dev: open the main menu on one of its panels (select, decks...)
 		elif a == "--duel":
