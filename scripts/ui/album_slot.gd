@@ -10,7 +10,7 @@ const CARD := Vector2(128, 186)
 
 var id := 0
 var number := 0                # its place in the set: #001, #002...
-var state := "unknown"         # owned | seen | unknown
+var state := "unknown"         # owned | seen | lookup (found by searching its name) | unknown
 var copies := 0
 var tint := Color("7fe8ff")    # the set's color
 var selected := false:
@@ -143,11 +143,11 @@ func _draw_over() -> void:
 	# Light catching the sleeve.
 	var sheen := PackedVector2Array([cr.position + Vector2(CARD.x * 0.55, 0), cr.position + Vector2(CARD.x * 0.8, 0), cr.position + Vector2(CARD.x * 0.25, CARD.y), cr.position + Vector2(0, CARD.y)])
 	_over.draw_colored_polygon(sheen, Color(1, 1, 1, 0.035 + 0.03 * _hover))
-	if state == "seen":
+	if state == "seen" or state == "lookup":
 		var tag := Rect2(cr.position + Vector2(0, CARD.y * 0.42), Vector2(CARD.x, 30))
 		_over.draw_rect(tag, Color(0.02, 0.04, 0.09, 0.82))
 		var f := UITheme.title_font()
-		var t := Loc.t("SEEN")
+		var t := Loc.t("SEEN") if state == "seen" else Loc.t("MISSING")
 		var ts := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 20)
 		_over.draw_string(f, Vector2(cr.get_center().x - ts.x / 2.0, tag.position.y + 23), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0.75, 0.85, 1.0, 0.9))
 	if state == "owned" and copies > 1:

@@ -188,6 +188,9 @@ func _state(id: int) -> String:
 		return "owned"
 	if (Collection.record.get("met", {}) as Dictionary).has(str(id)):
 		return "seen"
+	# (A card you look up by name shows itself, picture and all, so you can see what you're after.)
+	if _search.length() >= 3:
+		return "lookup"
 	return "unknown"
 
 
@@ -672,7 +675,7 @@ func _show_card(id: int, st: String, num: int) -> void:
 		_d_owned.text = (Loc.t("You own %d copies") % n) if n != 1 else Loc.t("You own 1 copy")
 		_d_owned.add_theme_color_override("font_color", UITheme.GOLD)
 	else:
-		_d_owned.text = Loc.t("Seen in a duel. Not in your collection yet.")
+		_d_owned.text = Loc.t("Seen in a duel. Not in your collection yet.") if st == "seen" else Loc.t("You haven't found it yet. Here is where to look:")
 		_d_owned.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0))
 
 

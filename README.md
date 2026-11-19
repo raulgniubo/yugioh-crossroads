@@ -5,6 +5,13 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.55.2
+
+One change to the card search. No cards added: 7,851 total.
+
+- **Searching shows every matching card with its picture.** Cards you'd never seen did come up in the search, but as blank "?" pockets with only a number, so it looked like they weren't there. Now every card that matches your search (3 letters or more) shows its full picture and name. The ones you don't have yet are marked TE FALTA, and the side panel says where to find them. When you're not searching, cards you've never met stay hidden as before.
+- **Windows:** only the .exe changed.
+
 ## What is in 0.55.1
 
 A memory leak fix. No cards added: 7,851 total.

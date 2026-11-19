@@ -7229,4 +7229,5 @@ const ES := {
 	"The Madolche sweets, the Wind-Up toys, the Ghostrick spooks, the Gimmick Puppets and the Spellbooks of Prophecy.": "Los dulces Madolche, los juguetes Wind-Up, los fantasmas Ghostrick, las Gimmick Puppet y los Libros de Hechizos de la Profecía.",
 	"Hidden Worlds": "Mundos Ocultos",
 	"The Chronomaly relics, the Ninjas, the Mermails, the Inzektor and the Sylvan, the Phantom Beasts, the Geargia and Trains, and the Heraldic Beasts.": "Las reliquias Chronomaly, los Ninjas, los Mermail, los Inzektor y los Sylvan, las Bestias Fantasma, los Geargia y los Trenes, y las Bestias Heráldicas.",
+	"MISSING": "TE FALTA",
 }
