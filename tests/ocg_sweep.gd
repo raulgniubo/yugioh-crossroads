@@ -34,7 +34,17 @@ func _ready() -> void:
 	var want_extras: Array = extras
 	var fill_mains: Array = mains
 	var focus_deck := ""
-	if focus_key == "added":
+	if focus_key == "singles":
+		# (the single cards of data/singles.json, card plan parts 4 and 5, in decks filled from the whole pool)
+		var ids := {}
+		var more := CardPool.singles()
+		for e in more:
+			for nm in more[e]:
+				ids[int(CardData.NAME_TO_ID.get(str(nm).to_lower(), 0))] = true
+		want_mains = mains.filter(func(id): return ids.has(id))
+		want_extras = extras.filter(func(id): return ids.has(id))
+		print("singles: ", want_mains.size(), " + ", want_extras.size(), " cards")
+	elif focus_key == "added":
 		# (the single cards named in CardPool.ADDED, in decks filled from the whole pool)
 		var ids := {}
 		for nm in CardPool.added_names():
@@ -187,7 +197,7 @@ func _ready() -> void:
 	var some: Array = mains.filter(func(id): return str(CardData.get_card(id).get("kind", "")) == "monster")
 	var backs: Array = mains.filter(func(id): return str(CardData.get_card(id).get("kind", "")) in ["spell", "trap"] and str(CardData.get_card(id).get("st", "")) in ["normal", "quick", ""])
 	for id in want_mains + want_extras:
-		if played.has(id):
+		if played.has(id) or (OS.get_environment("SWEEP_ONLY") != "" and str(id) != OS.get_environment("SWEEP_ONLY")):
 			continue
 		var cd: Dictionary = CardData.get_card(id)
 		staged[id] = true
@@ -262,6 +272,8 @@ func _ready() -> void:
 			else:
 				cards.append([0, id, 0x02, 0, 0x8])
 				cards.append([0, id, 0x02, 0, 0x8])
+			if OS.get_environment("SWEEP_TRACE") != "":
+				printerr("staging ", id, " ", g)
 			note.call(_board(cards, seed0 + id + g, 8), "staged %d" % id)
 	print("staged done: ", staged.size(), " staged, ", staged_used.size(), " did something, ms ", Time.get_ticks_msec() - t0)
 	var total := want_mains.size() + want_extras.size()

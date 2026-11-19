@@ -358,7 +358,7 @@ func _build_center() -> Control:
 		foot.add_child(fb)
 		_filter_btns[str(f[0])] = fb
 	_search_box = LineEdit.new()
-	_search_box.placeholder_text = Loc.t("Search your cards")
+	_search_box.placeholder_text = Loc.t("Search any card")
 	_search_box.custom_minimum_size = Vector2(250, 46)
 	_search_box.add_theme_font_size_override("font_size", 19)
 	_search_box.clear_button_enabled = true
@@ -367,6 +367,11 @@ func _build_center() -> Control:
 		_refilter(true))
 	_search_box.text_submitted.connect(func(_t): _search_box.release_focus())
 	foot.add_child(_search_box)
+	if OS.get_environment("ALBUM_SEARCH") != "":
+		# (dev: open with a search typed in)
+		_search_box.set_deferred("text", OS.get_environment("ALBUM_SEARCH"))
+		_search = OS.get_environment("ALBUM_SEARCH").to_lower()
+		_refilter.call_deferred(true)
 	return v
 
 
@@ -509,8 +514,9 @@ func _refilter(keep_page: bool) -> void:
 		if _filter == "missing" and st == "owned":
 			continue
 		if _search != "":
-			# Only names you know: searching does not give away cards you have never met.
-			if st == "unknown" or not str(CardData.get_card(id).get("name", "")).to_lower().contains(_search):
+			# A name you type finds the card even if you have never met it (three letters or more),
+			# so you can look up where to find it. Its picture stays hidden until you meet it.
+			if (st == "unknown" and _search.length() < 3) or not str(CardData.get_card(id).get("name", "")).to_lower().contains(_search):
 				continue
 		_list.append(id)
 	_numbers = nums
@@ -599,7 +605,12 @@ func _show_card(id: int, st: String, num: int) -> void:
 	var d := CardData.get_card(id)
 	var who: Array = _played_by.get(id, [])
 	var from: Array = _comes_from.get(id, [])
-	_d_from.text = (Loc.t("Comes from: %s") % ", ".join(from.slice(0, 3).map(func(n): return Loc.t(str(n))))) if not from.is_empty() else ""
+	# Where to find it (0.54.0): the packs and which world's shop sells them, the shop decks
+	# that include it, the duelists who play it. Only for cards in the game's shops and worlds.
+	if id in LUMEN_IDS or id in SPEED_IDS:
+		_d_from.text = (Loc.t("Comes from: %s") % ", ".join(from.map(func(n): return Loc.t(str(n))))) if not from.is_empty() else ""
+	else:
+		_d_from.text = "\n".join(CardFinder.lines(id))
 	var names := ", ".join(who.slice(0, 4))
 	if who.size() > 4:
 		names += " " + Loc.t("and %d more") % (who.size() - 4)
@@ -610,10 +621,10 @@ func _show_card(id: int, st: String, num: int) -> void:
 		(_d_unknown as _Mystery).tint = Color(s["color"])
 		(_d_unknown as _Mystery).number = num
 		_d_unknown.queue_redraw()
-		_d_name.text = Loc.t("Not found yet")
+		_d_name.text = str(d.get("name", "")) if _search.length() >= 3 else Loc.t("Not found yet")
 		_d_type.text = "#%03d  ·  %s" % [num, Loc.t(str(s["name"]))]
 		_d_stats.text = ""
-		_d_text.text = Loc.t("Open packs of its set, or meet it in a duel to see what it is.")
+		_d_text.text = Loc.t("Open packs of its set, or meet it in a duel to see what it is.") if _d_from.text == "" else Loc.t("You haven't found it yet. Here is where to look:")
 		_d_owned.text = ""
 		return
 	_d_unknown.visible = false

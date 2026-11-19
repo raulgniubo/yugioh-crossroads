@@ -259,8 +259,10 @@ struct DamageStep : public Process<false> {
 };
 struct ForcedBattle : public Process<false> {
 	uint16_t backup_phase;
+	card* backup_attacker;      // (Crossroads: the attack this forced one happened inside, e.g. "Last Turn")
+	card* backup_target;
 	ForcedBattle(uint16_t step_) :
-		Process(step_), backup_phase(0) {}
+		Process(step_), backup_phase(0), backup_attacker(nullptr), backup_target(nullptr) {}
 };
 struct AddChain : public Process<false> {
 	bool is_activated_effect;

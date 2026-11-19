@@ -5,6 +5,7 @@ deck list, where it is sold, when it unlocks, and which ordinary duelist switche
   python3 tools/add_family.py spec.json          (then run tools/cards.sh)
 
 spec.json:
+  no_pack: true = a theme deck only (no family, pack or shelf), deck {.., color}
   key, era ("Duel Monsters" | "GX" | "5D's" | "ZEXAL"), cards [names],
   pack {name, color, blurb}, deck {key, name, art, cover, blurb, cards {name: n}, extra {name: n}},
   worlds [shops that sell the pack], stage (the story stage that opens it, like its era's),
@@ -38,6 +39,11 @@ def main(spec):
     dk = deck['key']
     assert sum(deck['cards'].values()) >= 40, 'deck has %d cards' % sum(deck['cards'].values())
     def collection(s):
+        if spec.get('no_pack'):
+            # A theme deck built from single cards (a Type deck): no family and no pack of its own.
+            m = s.index('\n\t{"key": "deck_monarchs", "art"')
+            td = '\n\t{"key": %s, "art": %s, "cover": %s, "color": Color(%s), "era": %s, "blurb": %s},' % (q(dk), q(deck['art']), q(deck['cover']), q(deck['color']), q(era), q(deck['blurb']))
+            return s[:m] + td + s[m:]
         assert '"%s": {"era"' % key not in s, 'family already there'
         i = s.index('const FAMILIES := {'); j = s.index('\n}\n', i)
         fam = '\n\t%s: {"era": %s, "deck": %s, "cards": [\n%s]},' % (q(key), q(era), q(dk), wrap(spec['cards']))
@@ -61,8 +67,10 @@ def main(spec):
             a = s.index('"%s": [' % w, s.index('const WORLD_PACKS')); b = s.index(']', a)
             s = s[:a] + s[a:b].replace(q(era), q(era) + ', ' + q(key), 1) + s[b:]
         return s
-    edit('scripts/menu/pack_shop.gd', shop)
-    edit('scripts/core/unlocks.gd', lambda s: s.replace('const PACK_STAGE := {', 'const PACK_STAGE := {%s: %d, ' % (q(key), spec['stage']), 1))
+    if not spec.get('no_pack'):
+        edit('scripts/menu/pack_shop.gd', shop)
+    if not spec.get('no_pack'):
+      edit('scripts/core/unlocks.gd', lambda s: s.replace('const PACK_STAGE := {', 'const PACK_STAGE := {%s: %d, ' % (q(key), spec['stage']), 1))
     npc = spec['npc']
     def roam(s):
         a = s.index('{"id": %s' % q(npc['id']))
@@ -120,7 +128,7 @@ def main(spec):
             block = re.sub(r'"intro": "(?:[^"\\]|\\.)*"', lambda _: '"intro": ' + q(npc['intro']), block, count=1)
         return s[:a] + block + s[c:]
     edit('scripts/roam/roam_data.gd', roam)
-    print('added family %s: %d cards, deck %s (%d + %d)' % (key, len(spec['cards']), dk, sum(deck['cards'].values()), sum(deck.get('extra', {}).values())))
+    print('added %s: %d cards, deck %s (%d + %d)' % (key, len(spec.get('cards', [])) if True else 0, dk, sum(deck['cards'].values()), sum(deck.get('extra', {}).values())))
 
 if __name__ == '__main__':
     main(json.load(open(sys.argv[1], encoding='utf-8')))

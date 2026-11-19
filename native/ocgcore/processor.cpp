@@ -1786,6 +1786,14 @@ bool field::process(Processors::IdleCommand& arg) {
 	return TRUE;
 }
 bool field::process(Processors::BattleCommand& arg) {
+	// (Crossroads: an attack whose attacker is gone, e.g. a forced attack inside it ended, is over.)
+	if(arg.step >= 9 && arg.step <= 13 && !core.attacker) {
+		core.chain_attack = false;
+		arg.step = Processors::restart;
+		reset_phase(PHASE_DAMAGE);
+		adjust_all();
+		return FALSE;
+	}
 	switch(arg.step) {
 	case 0: {
 		core.select_chains.clear();
@@ -2803,6 +2811,8 @@ bool field::process(Processors::ForcedBattle& arg) {
 		get_attack_target(tmp_attacker, &cv);
 		if((cv.size() == 0 && tmp_attacker->direct_attackable == 0) || (tmp_attack_target && std::find(cv.begin(), cv.end(), tmp_attack_target)==cv.end()))
 			return TRUE;
+		arg.backup_attacker = core.attacker;
+		arg.backup_target = core.attack_target;
 		core.attacker = tmp_attacker;
 		core.attack_target = tmp_attack_target;
 		for(uint8_t p = 0; p < 2; ++p) {
@@ -2853,8 +2863,8 @@ bool field::process(Processors::ForcedBattle& arg) {
 				pcard->battled_cards.clear();
 			}
 		}
-		core.attacker = nullptr;
-		core.attack_target = nullptr;
+		core.attacker = arg.backup_attacker;      // (Crossroads: back to the attack it interrupted, if any)
+		core.attack_target = arg.backup_target;
 		auto message = pduel->new_message(MSG_NEW_PHASE);
 		message->write<uint16_t>(infos.phase);
 		return TRUE;

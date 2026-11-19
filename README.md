@@ -5,6 +5,34 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.54.0
+
+**Card plan part 4: the Duel Monsters and GX years. 1,379 new cards. The game now has 6,243 cards** (it had 4,864). Plus a card search that tells you where to find any card, and an engine crash fixed.
+
+- **1,272 single cards** from the Duel Monsters years (742) and the GX years (530): effect monsters, Spells and Traps that belong to no family. They're in their era's packs: Legend of the King now has 14 volumes and Academy Heroes 11. Monsters also show up in the Monster types and Elements packs.
+- **6 new families, each with a pack, a theme deck and a duelist:**
+
+| Family | Era | Pack / theme deck | Who plays it |
+|---|---|---|---|
+| D.D. (different dimension) | Duel Monsters | Different Dimension | KaibaCorp Guard (Domino) |
+| Goblins and Ogre Grottos | Duel Monsters | Goblin Gang | Dome Fan (Domino) |
+| Masks and curses | Duel Monsters | Masks and Curses | The Midnight Collector (Domino, at night) |
+| Puppets and Toys | Duel Monsters | Toy Box Troubles | Rookie Duelist (Domino) |
+| Barrier Statues and Counter Fairies | GX | Wardens of the Barrier | Blue Dorm Prefect (Academy) |
+| Frogs and Penguins | GX | Frogs and Penguins | Ferry Captain (Academy) |
+
+  These families came in whole, so a few of their cards are from later years (the later D.D. monsters, Dupe Frog, Swap Frog and so on).
+- **4 new Type decks** built mostly from the new single cards, sold in the deck shop with no pack of their own: Rock Solid (the Old Timer in Kame Game plays it), Machine Assembly (the Pack Fanatic in Kame Game), Insect Swarm (Red Dorm Rookie, Academy) and Zombie Night (The Lighthouse Ghost, Academy, at night).
+- **Card search: where to find a card.** In the card album, type at least three letters of any card's name, even one you've never seen. Pick it and it tells you:
+  - which packs hold it (with the volume) and which world's card shop sells them,
+  - which ready-made decks in the shops include it,
+  - which duelists in the worlds play it, and where.
+
+  It only tells you where to go. You still walk to that shop to buy. A card you haven't found yet keeps its picture hidden.
+- **Spanish card text.** The new cards use the official Spanish card text, with card names kept in English like the rest of the game. The 8 cards with no official Spanish text were translated by hand.
+- **Engine fix:** "Last Turn" (added in 0.52.0) could crash the game when played during an attack. Its forced attack ended the attack it was played in, and the engine then looked for an attacker that was gone. The engine now goes back to the interrupted attack, and an attack whose attacker is gone just ends.
+- **Windows:** the .exe and the .dll both changed this time (the engine fix). Copy both.
+
 ## What is in 0.53.0
 
 **Card plan part 3, build 2: 19 new card families, 661 new cards. The game now has 4,864 cards** (it had 4,203). Plus smaller era packs, opening 5 or 10 packs at once, and layout fixes.

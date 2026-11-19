@@ -168,6 +168,19 @@ const ADDED := {
 	"Vault": ["Twin-Headed Thunder Dragon", "Rabid Horseman", "Kwagar Hercules"],
 }
 
+static var _singles := {}
+
+
+## The single cards of card plan parts 4 and 5 (data/singles.json): {era: [names]}.
+static func singles() -> Dictionary:
+	if _singles.is_empty():
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string("res://data/singles.json"))
+		_singles = (parsed as Dictionary).get("eras", {}) if parsed is Dictionary else {}
+		if _singles.is_empty():
+			_singles = {"_": []}
+	return _singles
+
+
 static var _eras := {}
 static var _all := {}
 static var _n := -1
@@ -187,6 +200,15 @@ static func _load() -> void:
 			l.append(int(id))
 			_all[int(id)] = true
 		_eras[str(e)] = l
+	var more := singles()
+	for e in more:
+		for n in more[e]:
+			var id := int(CardData.NAME_TO_ID.get(str(n).to_lower(), 0))
+			if id != 0:
+				if not _eras.has(str(e)):
+					_eras[str(e)] = []
+				(_eras[str(e)] as Array).append(id)
+				_all[id] = true
 	for e in ADDED:
 		for n in ADDED[e]:
 			var id := int(CardData.NAME_TO_ID.get(str(n).to_lower(), 0))
@@ -224,6 +246,9 @@ static func added_names() -> Array:
 	var out: Array = []
 	for e in ADDED:
 		out.append_array(ADDED[e])
+	var more := singles()
+	for e in more:
+		out.append_array(more[e])
 	for fk in Collection.FAMILIES:
 		out.append_array(Collection.FAMILIES[fk]["cards"])
 	return out

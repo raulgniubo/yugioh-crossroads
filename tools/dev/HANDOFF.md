@@ -162,3 +162,20 @@ and the story difficulty moves it. All of that is build 1. Build 2 is only the f
   Machine); Chrysalis joins hero. Build 2 = 0.55.0: 5D's and ZEXAL years (~1,640), 19 families (table in the doc).
 - Missing list: /tmp/missing.json (from yaml-yugi aggregate cards.json minus /tmp/ocg_ids.txt, no Link/Pendulum). Era by
   Konami id: GX starts 6310, 5D's 7734, ZEXAL 9575, Arc-V 11213.
+
+### Build 1 of parts 4-5 shipped as 0.54.0
+- Singles live in `data/singles.json` (CardPool.singles(), joined into era pools and added_names). 1,272 names, era by Konami id.
+- Groups (`tools/dev/families/b7.py`, lists in `tools/dev/families/groups.py`): dd, goblin, mask, toy (DM), barrier, frog (GX).
+- Type decks (`tools/dev/families/typedecks.py`): deck_rock, deck_machina (NOT deck_machine: that key is the old Gear Works
+  deck), deck_insect, deck_zombie. add_family.py takes `"no_pack": true` for a theme deck with no family/pack.
+- Spanish card text for new cards: official Spanish from yaml-yugi (`tools/dev/cardes/b54_official_es.json`), quoted names
+  mapped back to English (es->en name map, then positional match with the English text's quotes). 8 hand-written.
+- CardFinder (`scripts/core/card_finder.gd`): album card view lists packs (+ which world shops), theme decks (+ worlds),
+  ordinary duelists (npcs + shop_npcs). Album search finds unknown cards from 3 letters (picture stays hidden).
+  Dev: `ALBUM_SEARCH="name" ... --menu-open=album`.
+- Engine fix (native/ocgcore/processor.cpp, processor_unit.h): ForcedBattle keeps the attacker/target it interrupted and
+  restores them; BattleCommand steps 9-13 end the attack if core.attacker is null. Repro was Last Turn in a staged position
+  (`SWEEP_ONLY=28566710 ... ocg_sweep.tscn -- 0 1 out added`). When rebuilding native, delete the non-l_*.o objects in every
+  build/<target> dir first: build.sh skips objects that exist, and a changed header otherwise leaves stale objects.
+- Sweep focus "singles" = data/singles.json only. SWEEP_TRACE=1 prints each staged card to stderr.
+- deck_mask was retuned by hand after the sim (5 weak curses out, staple traps in); b7.py still has the first list.
