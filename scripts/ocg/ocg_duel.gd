@@ -444,6 +444,8 @@ func _one(m: Dictionary, ev: Array) -> void:
 			var wp := int(m["p"])
 			var why := OcgCore.victory(int(m["reason"]))
 			st._set_winner(wp if wp < 2 else DuelState.DRAW, why if why != "" else "The duel is over.")
+			if int(m["reason"]) == 16 and wp < 2:
+				st.win_kind = "exodia"      # (victory 16: the five pieces in hand)
 		31:
 			_confirm(m, ev)
 		33:

@@ -158,6 +158,7 @@ func _start() -> void:
 	if FxDemo.wanted() != "":
 		FxDemo.run(self)
 	DuelFx.warm(board)
+	ElementFx.warm(board)
 	var opp_ace_id := int(Characters.get_char(_opp_key).get("ace", 0))
 	if opp_ace_id != 0:
 		board.ace_ids[opp_ace_id] = true
@@ -468,6 +469,10 @@ func _start() -> void:
 	if "--end-test" in OS.get_cmdline_user_args():
 		state.winner = AI if "--lose" in OS.get_cmdline_user_args() else ME
 		state.win_reason = "Test finish."
+		if "--exodia" in OS.get_cmdline_user_args():
+			# Dev: the duel ends with the five pieces (--end-test --exodia [--lose]).
+			state.win_kind = "exodia"
+			state.win_reason = OcgCore.victory(16)
 		if "--blow" in OS.get_cmdline_user_args() and board.track != null:
 			# Dev: the slow motion last hit of a Turbo Duel, a few seconds in so a picture can catch it.
 			await get_tree().create_timer(4.0).timeout
@@ -589,6 +594,9 @@ func _finish() -> void:
 		await get_tree().process_frame
 	var won := state.winner == ME
 	var tied := state.winner == DuelState.DRAW
+	# (0.60.0) The five pieces of Exodia: the win gets its show before anything else.
+	if str(state.win_kind) == "exodia" and not tied and not board.turbo and not _surrendered:
+		await ExodiaShow.play(self, board, hud, int(state.winner))
 	if "--auto-story" in OS.get_cmdline_user_args():
 		get_tree().create_timer(2.0).timeout.connect(func():
 			Router.story_result = "won" if state.winner == ME else "lost"
@@ -1078,14 +1086,14 @@ func _play_event(ev: Dictionary) -> void:
 				board.duelist_gesture(p, "attack")
 				await board.anim_finisher(p, ev["card"], ev["target"])
 				return
-			get_tree().create_timer(Settings.t(0.12)).timeout.connect(func(): Sfx.play("impact"))
+			var hit_in: float = board.battle_hit_time(ev["card"])      # (a strong monster winds up longer)
 			var hit_at: Vector3 = board._attack_goal(p, ev["target"])
 			var heavy: bool = ev["target"] == null or int(ev["card"].atk()) >= 2400
-			get_tree().create_timer(Settings.t(0.46)).timeout.connect(func():
+			get_tree().create_timer(Settings.t(hit_in + 0.05)).timeout.connect(func():
 				hud.impact(hit_at + Vector3(0, 0.3, 0), Comic.SKY if p == ME else Color("ff5a7a"), 1.0 if heavy else 0.55))
 			if ev["target"] != null and ev.has("atk") and not _autoplay:
 				var defending: bool = bool(ev.get("t_defending", false))
-				ClashFx.play(hud, int(ev["atk"]), int(ev["t_def"] if defending else ev["t_atk"]), p == ME, defending, 0.41)
+				ClashFx.play(hud, int(ev["atk"]), int(ev["t_def"] if defending else ev["t_atk"]), p == ME, defending, hit_in)
 			await board.anim_battle(p, ev["card"], ev["target"])
 		"attack_stopped":
 			await board.anim_attack_stopped(ev["card"])

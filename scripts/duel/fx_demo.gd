@@ -36,7 +36,7 @@ static func _film(scene, name: String, frames: int, gap: float) -> void:
 	for i in frames:
 		await tree.create_timer(gap).timeout
 		await RenderingServer.frame_post_draw
-		scene.get_viewport().get_texture().get_image().save_png("/tmp/fx_%s_%02d.png" % [name, i])
+		scene.get_viewport().get_texture().get_image().save_png("/tmp/fx_%s_%02d.png" % [OS.get_environment("FX_TAG") if OS.has_environment("FX_TAG") else name, i])
 	print("FXDEMO done ", name)
 	Engine.time_scale = 1.0
 	tree.quit()
@@ -159,6 +159,34 @@ static func _play(scene, board, st, name: String) -> void:
 				await scene._play([{"type": "attack", "player": AI, "card": d2, "target": d1},
 					{"type": "battle", "player": AI, "card": d2, "target": d1, "atk": 2500, "t_atk": 3000, "t_def": 2500, "t_defending": false},
 					{"type": "destroy", "player": AI, "card": d2}])
+		"elem":
+			# One attack, start to end. FX_CARD = the attacker (default Tyrant Dragon), FX_OPP=1 the
+			# opponent attacks, FX_DIRECT=1 a direct attack, FX_GATHER=1 stop after the declaration.
+			var who := OS.get_environment("FX_CARD") if OS.has_environment("FX_CARD") else "Tyrant Dragon"
+			var side := AI if OS.get_environment("FX_OPP") == "1" else ME
+			var e1 = _mk(st, who, side)
+			var e2 = _mk(st, "Gogogo Golem", 1 - side)
+			var ec: Card3D = board._new_card(e1)
+			ec.transform = Transform3D(board.table_basis(side, true, true), board.monster_zone_pos(side, 1) + Vector3(0, 0.02, 0))
+			var tgt = null
+			if OS.get_environment("FX_DIRECT") != "1":
+				tgt = e2
+				var ec2: Card3D = board._new_card(e2)
+				ec2.transform = Transform3D(board.table_basis(1 - side, true, true), board.monster_zone_pos(1 - side, 3) + Vector3(0, 0.02, 0))
+			print("ELEM ", who, " attr ", ElementFx.attr_of(e1), " tier ", ElementFx.tier_of(e1), " ranged ", ElementFx.ranged(e1), " kind ", StrikeFx.kind_of(e1))
+			await scene.get_tree().create_timer(0.2).timeout
+			await board.anim_declare(side, e1, tgt)
+			if OS.get_environment("FX_GATHER") == "1":
+				await scene.get_tree().create_timer(1.0).timeout
+				return
+			await board.anim_battle(side, e1, tgt)
+			if tgt != null:
+				await board.anim_destroy(tgt)
+		"exodia":
+			# FX_OPP=1: the opponent is the one who assembles it.
+			var t0 := Time.get_ticks_msec()
+			await ExodiaShow.play(scene, board, scene.hud, AI if OS.get_environment("FX_OPP") == "1" else ME)
+			print("EXODIA took ", (Time.get_ticks_msec() - t0) * Engine.time_scale / 1000.0, " s of game time")
 		"looks":
 			# The trips between piles, a monster's effect, and ATK going up and down.
 			var g1 = _mk(st, "Gagaga Magician", ME)

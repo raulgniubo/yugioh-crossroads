@@ -5,6 +5,25 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.60.0
+
+Attacks made of their Attribute, and the Exodia win. No cards added: 8,415 total.
+
+- **Every attack is made of the monster's Attribute now, in three beats.** The element gathers around the monster when it declares the attack, crosses the field with it, and lands on the target, leaving something behind for a moment.
+  - **FIRE:** tongues of flame rise around it, a stream of fire crosses the field (the floor under it catches), and it ends in a fireball that cools to smoke, a scorch of glowing embers and, for strong monsters, a pillar of fire.
+  - **WATER:** water jumps up around it, a torrent and a wave run across the field, and it crashes in a crown of spray with ripples spreading over the floor. Strong monsters raise a waterspout.
+  - **WIND:** a whirlwind winds up around it, lines of air and blades of wind fly ahead, and a tornado stands on the target.
+  - **EARTH:** the floor cracks under it, the crack runs across the field throwing up stones, and rocks burst up under the target in a ring with dust.
+  - **LIGHT:** a halo opens over it, a lance of light crosses the field, blades of light fall around the target and a column comes down from the sky over a seal.
+  - **DARK:** a pool of shadow opens under it, black smoke crawls over the floor, and fangs of shadow come up around the target and close, with dark flames.
+  - **DIVINE:** a gold seal and a pillar, lightning across the field, and thunder coming down three times on the target.
+- **The monster's Type still decides how it strikes.** Dragons, Machines, Spellcasters and the other kinds that shoot stay back and fire the element from where they stand. Warriors, Beasts and the kinds that fight up close carry it across the field with them. So a FIRE dragon and a FIRE warrior don't attack the same way.
+- **It scales with ATK.** Under 1500 ATK it is a quick version, as long as an attack always was. From 1500 it is a full one. From 2400 ATK (or Level 7 and up) it is the big show: the monster holds its pose a beat longer, the camera sits a little further back so all of it fits, and the extras come in (the fire pillar, the waterspout, the second whirlwind). The finishing blow uses the big version too.
+- **Each Attribute has its own sounds** for gathering, crossing and landing (21 new ones).
+- Signature attacks (White Lightning and the rest) and Turbo Duels play as before.
+- **Winning with Exodia has its own show** (about 8 seconds, and any key or button skips it). The field goes dark and the music drops. The five pieces fly out of the hand one by one and land, each with a gong, on the points of a gold seal, chained to each other. The chains snap, the cards rise and stand together as one towering figure (head, two arms, two legs), seen from the loser's end looking up. "EXODIA" crosses the screen, the figure gathers light and fires a beam down the whole field, and the picture goes white and breaks like glass. Then the usual win screen. It plays the same way when the opponent does it to you. (Before, the duel just ended with the win screen.)
+- **Windows:** only the .exe changed.
+
 ## What is in 0.59.1
 
 The album search, fixed. No cards added: 8,415 total.

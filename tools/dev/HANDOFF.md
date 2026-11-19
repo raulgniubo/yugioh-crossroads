@@ -279,3 +279,23 @@ and the story difficulty moves it. All of that is build 1. Build 2 is only the f
   matches when every typed word is in the name. Dev: `--shots=<prefix>` (router) saves a screenshot every 0.5 s and
   logs slow frames; ALBUM_TYPE="word" times each search; for real keyboard input, run on a manual Xvfb display and
   drive it with xdotool (screen coords x1.2 = viewport coords at 1280x720).
+
+### 0.60.0: Attribute attacks (ElementFx) and the Exodia win (ExodiaShow)
+- `scripts/duel/element_fx.gd`: gather(board, inst, at, tier) from anim_declare, travel(board, inst, from, to, tier, dur)
+  with the dash in anim_battle, impact(board, inst, from, at, tier) on the hit. tier_of(inst): 0 under 1500 ATK, 1 from
+  1500, 2 from 2400 or Level 7+. ranged(inst) = StrikeFx kind is beam or blast: those stop at 30% of the way and fire.
+  Pieces: ribbon (one shader, modes 0 fire 1 water 2 wind 3 light 4 dark 5 earth crack 6 divine; world_vertex_coords,
+  faces the camera or lies flat), puff (0 fireball 1 flame 2 mist 3 smoke 4 dark flame), decal (0 scorch 1 ripples
+  2 shadow pool 3 cracks), twister, crown, wave, spike (rock or fang), lance, light. Fire, water and dark pieces use
+  blend_mix (they keep their colour; additive washed out to white), the rest are additive. warm(board) at duel start.
+  anim_battle timings by tier are BATTLE_WAIT / BATTLE_DASH; duel_scene asks board.battle_hit_time(inst) so the clash
+  numbers and the speed lines land with the hit. _attr_hit is no longer called.
+- `scripts/duel/exodia_show.gd`: ExodiaShow.play(scene, board, hud, winner), awaited in duel_scene._finish when
+  state.win_kind == "exodia" (set by ocg_duel on victory reason 16, and by the old engine's own check). The figure
+  always faces the loser and the camera sits at the loser's end; the opponent's hand cards and the HUD hand are hidden
+  while it plays. Every wait goes through _w(), which returns true once any key or button was pressed.
+- Dev: `--fxdemo=elem` (FX_CARD="name", FX_OPP=1, FX_DIRECT=1, FX_GATHER=1), `--fxdemo=exodia` (FX_OPP=1),
+  `--duel --end-test --exodia [--lose]` for the show at the end of a real duel, FX_TAG to name the frames,
+  `--parse-all` to list scripts that do not compile.
+- This box's saved settings have anim_speed=2.0, so every demo here runs twice as fast as a default install:
+  what takes 4.3 s in a demo takes about 8.5 s for a player on normal speed.

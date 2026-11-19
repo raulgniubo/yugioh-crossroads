@@ -2347,7 +2347,13 @@ func anim_declare(p: int, inst, target) -> void:
 	var lean := Basis(dir.cross(Vector3.UP).normalized(), 0.3) * home.basis
 	var lift := Transform3D(lean, home.origin + Vector3(0, 0.75, 0) - dir * 0.35)
 	_lock_on(goal, target == null)
+	# (0.60.0) Beat 1: its element gathers around it.
+	var tier := ElementFx.tier_of(inst)
+	if not turbo and Settings.anim_speed <= 2.0:
+		ElementFx.gather(self, inst, home.origin, tier)
 	await _move(c, lift, 0.24, 0.0)
+	if tier >= 2 and not turbo and Settings.anim_speed <= 2.0:
+		await _wait(0.16)      # (a strong monster holds the pose a beat longer)
 
 
 ## A red ring that closes on the target of an attack.
@@ -2380,22 +2386,45 @@ func _lock_on(at: Vector3, direct: bool) -> void:
 	tw.tween_callback(mi.queue_free)
 
 
+## How long after anim_battle starts the hit lands, for what has to land with it (the numbers
+## of the clash, the speed lines). A strong monster winds up a little longer.
+func battle_hit_time(inst) -> float:
+	var tier := ElementFx.tier_of(inst)
+	return BATTLE_WAIT[tier] + BATTLE_DASH[tier]
+
+
+const BATTLE_WAIT := [0.26, 0.28, 0.36]
+const BATTLE_DASH := [0.15, 0.16, 0.2]
+
+
 func anim_battle(p: int, inst, target) -> void:
 	var c := card_for(inst)
 	if c == null:
 		return
 	var home: Transform3D = c.get_meta("home", c.transform)
 	var goal := _attack_goal(p, target)
+	var tier := ElementFx.tier_of(inst)
+	var shoots := ElementFx.ranged(inst)
+	var show := not turbo and Settings.anim_speed <= 2.0
 	_battle_shot(p, home.origin, goal)
-	await _wait(0.26)
-	# The lunge: slow off the mark, fastest at the moment it lands.
-	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.84) + Vector3(0, 0.25, 0))
+	await _wait(BATTLE_WAIT[tier])
+	# The lunge: slow off the mark, fastest at the moment it lands. A monster that shoots
+	# (a dragon's breath, a spell) throws itself forward a little and lets the element go;
+	# one that fights up close goes all the way in.
+	var reach := 0.3 if shoots and show else 0.84
+	var hit := Transform3D(home.basis, home.origin.lerp(goal, reach) + Vector3(0, 0.25 if not shoots else 0.45, 0))
 	# (0.58.0) The camera goes with it: it runs down the field behind the attacker and
 	# arrives as the blow lands, leaning into the side the hit comes from.
-	_battle_follow(p, home.origin, goal, target == null)
-	await _dash(c, hit, 0.15)
+	_battle_follow(p, home.origin, goal, target == null, tier if show else 0)
+	# (0.60.0) Beat 2: its element crosses the field with it.
+	if show:
+		ElementFx.travel(self, inst, home.origin, goal, tier, BATTLE_DASH[tier])
+	await _dash(c, hit, BATTLE_DASH[tier])
 	StrikeFx.play(self, inst, home.origin, goal)
-	_attr_hit(inst, home.origin, goal + Vector3(0, 0.15, 0))
+	# Beat 3: it lands.
+	_impact(goal + Vector3(0, 0.15, 0), ATTR_COLORS.get(ElementFx.attr_of(inst), Color("ff8a5c")))
+	if show:
+		ElementFx.impact(self, inst, home.origin, goal, tier)
 	var lean := 0.035 if goal.x >= home.origin.x else -0.035
 	var th := holo_for(target)
 	if th:
@@ -2417,7 +2446,7 @@ func anim_battle(p: int, inst, target) -> void:
 		cam_punch(-3.0)
 	# A short recoil off the hit, then home.
 	await _move(c, Transform3D(home.basis, hit.origin.lerp(home.origin, 0.18) + Vector3(0, 0.3, 0)), 0.1, 0.0)
-	await _wait(0.14)
+	await _wait(0.14 + (0.12 * tier if show else 0.0))      # (the bigger the hit, the longer you get to look at it)
 	await _move(c, home, 0.3, 0.3)
 	if target == null and _duelists.has(1 - p) and not turbo:
 		await _wait(0.2)
@@ -2450,6 +2479,7 @@ func anim_finisher(p: int, inst, target) -> void:
 	cam_shot(home.origin + Vector3(1.7 * sx, 1.25, -toward * 3.1), home.origin.lerp(goal, 0.55) + Vector3(0, 0.7, 0), 0.4)
 	DuelFx.glyph(self, home.origin, col, 1.25, 1.2, {"rings": 1, "ticks": 30, "star": 0, "turn": 3.4, "energy": 2.6})
 	DuelFx.embers(self, home.origin, col.lightened(0.2), 0.55, 44, 0.85, 2.6, 0.08)
+	ElementFx.gather(self, inst, home.origin, 2)
 	c.set_glow(true, col)
 	create_tween().tween_method(c.flash, 0.0, 3.0, Settings.t(0.5))
 	Sfx.play("charge", -3.0, 0.8)
@@ -2463,11 +2493,13 @@ func anim_finisher(p: int, inst, target) -> void:
 	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.9) + Vector3(0, 0.3, 0))
 	create_tween().tween_property(orb, "position", hit.origin, Settings.t(0.2)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	Sfx.play("attack", 0.0, 0.7)
+	ElementFx.travel(self, inst, home.origin, floor_at, 2, 0.2)
 	await _dash(c, hit, 0.2)
 	if is_instance_valid(orb):
 		orb.pop(1.6)
 	# The hit.
 	StrikeFx.play(self, inst, home.origin, goal)
+	ElementFx.impact(self, inst, home.origin, floor_at, 2)
 	finisher_hit.emit(goal, col)
 	DuelFx.glow(self, goal + Vector3(0, 0.5, 0), Color.WHITE, 3.6, 0.55, 1.0, 2.6)
 	for i in 3:
@@ -2542,19 +2574,21 @@ func _battle_shot(p: int, from: Vector3, goal: Vector3) -> void:
 
 ## The camera follows an attack down the field. Yours: it runs in behind the attacker, low,
 ## and ends just short of the target. Theirs: it swings round to meet the blow where it lands.
-func _battle_follow(p: int, from: Vector3, goal: Vector3, direct: bool) -> void:
+func _battle_follow(p: int, from: Vector3, goal: Vector3, direct: bool, tier := 0) -> void:
 	if turbo:
 		return
+	# (a bigger attack is seen from a little further back, so all of it fits in the picture)
+	var wide := 0.55 * tier
 	var dir := goal - from
 	dir.y = 0.0
 	dir = dir.normalized() if dir.length() > 0.01 else Vector3(0, 0, -1)
 	var side := 1.0 if from.x <= goal.x else -1.0
 	if p == 0:
 		# (off to one side and above the attacker's shoulder, so its card never fills the lens)
-		var back := 3.9 if direct else 3.3
-		cam_shot(goal - dir * back + Vector3(-1.7 * side, 1.95, 0.0), goal + Vector3(0, 0.55, 0) - dir * 0.2, 0.17)
+		var back := (3.9 if direct else 3.3) + wide
+		cam_shot(goal - dir * back + Vector3(-1.7 * side, 1.95 + wide * 0.5, 0.0), goal + Vector3(0, 0.55 + wide * 0.3, 0) - dir * 0.2, 0.17)
 	else:
-		cam_shot(Vector3(goal.x * 0.6 + 1.3 * side, 1.9, goal.z + (3.6 if direct else 3.9)), goal + Vector3(0, 0.5, 0) - dir * 0.3, 0.17)
+		cam_shot(Vector3(goal.x * 0.6 + 1.3 * side, 1.9 + wide * 0.5, goal.z + (3.6 if direct else 3.9) + wide), goal + Vector3(0, 0.5 + wide * 0.3, 0) - dir * 0.3, 0.17)
 
 
 const ATTR_COLORS := {"FIRE": Color("ff5a2a"), "WATER": Color("3aa0ff"), "WIND": Color("6dff9a"), "EARTH": Color("d99a4a"),

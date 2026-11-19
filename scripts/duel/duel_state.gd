@@ -204,6 +204,7 @@ var phase := Phase.DRAW
 var normal_summoned := false
 var winner := -1
 var win_reason := ""
+var win_kind := ""       # "exodia" when the five pieces won it (the duel screen plays its show)
 var _uid := 0
 ## Extra cards in the opening hand (Hard mode gives the AI +1).
 var bonus_cards := [0, 0]
@@ -1079,6 +1080,7 @@ func _check_exodia() -> Array:
 				have[h.cname()] = true
 		if have.size() == 5:
 			_set_winner(q, Loc.t("%s assembled all five pieces of Exodia!") % players[q].name)
+			win_kind = "exodia"
 			return [{"type": "effect", "player": q, "card": null, "text": "EXODIA! OBLITERATE!"},
 					{"type": "win", "player": winner, "reason": win_reason}]
 	return []
@@ -6295,6 +6297,7 @@ func clone() -> DuelState:
 	s.normal_summoned = normal_summoned
 	s.winner = winner
 	s.win_reason = win_reason
+	s.win_kind = win_kind
 	s._uid = _uid
 	s._rng.seed = _rng.seed
 	s._rng.state = _rng.state
