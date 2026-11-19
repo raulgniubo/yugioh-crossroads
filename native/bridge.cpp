@@ -127,7 +127,15 @@ struct History {
 
 struct AiJob;
 struct PMemo;
-struct Duel { OCG_Duel d = nullptr; std::vector<std::string> logs; std::vector<std::string> missing; History hist; std::shared_ptr<AiJob> job; std::shared_ptr<PMemo> memo; };
+struct Duel {
+	OCG_Duel d = nullptr; std::vector<std::string> logs; std::vector<std::string> missing; History hist; std::shared_ptr<AiJob> job; std::shared_ptr<PMemo> memo;
+	// (0.55.1: a duel frees its engine when it goes. Before, only the AI's practice copies did, and every duel you
+	// played left a whole engine behind in memory.)
+	Duel() = default;
+	Duel(const Duel&) = delete;
+	Duel& operator=(const Duel&) = delete;
+	~Duel() { if(d) OCG_DestroyDuel(d); }
+};
 static int script_reader(void* payload, OCG_Duel duel, const char* name) {
 	auto it = g_scripts.find(name);
 	if(it == g_scripts.end()) {

@@ -191,5 +191,6 @@ and the story difficulty moves it. All of that is build 1. Build 2 is only the f
 - BIG_PACKS (Type/Element/Beyond/spells/traps) come in volumes of up to BIG_VOLUME (280).
 - The tab-3 pack "spellbook" (Sorcerer's Library) is now "spells": its key had collided with the Spellbook family's.
 - native/custom/c53334471.lua (Gozen Match): tp nil guard.
-- Found, not fixed: memory grows about 2 MB per duel in a long ocg_sim run (20 duels 490 MB, 200 duels 860 MB); the full
-  `all` sim got OOM-killed after ~2,400 duels (8 GB container). Check the bridge for duels or Lua states not freed.
+- Fixed in 0.55.1: the bridge's Duel never called OCG_DestroyDuel (only Sim did), so every played duel leaked its engine.
+  Duel now frees it in its destructor (non-copyable), Sim relies on that, and OcgDuel.close() also runs on PREDELETE.
+  Check: `godot --headless res://tests/leak_check.tscn -- 200` prints growth per duel (0 KB now, ~800 KB before).

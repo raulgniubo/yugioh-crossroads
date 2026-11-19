@@ -31,7 +31,7 @@ struct Sim {
 	int attacker_seq[2] = { -1, -1 }; // the monster each player last declared an attack with
 	std::set<uint32_t>* acted = nullptr;    // (card positions: only what was summoned or went on the chain, not what was merely Set)
 	std::set<uint32_t>* played = nullptr;   // (sweeps: every card that was summoned or had an effect go on the chain)
-	~Sim() { if(d.d) OCG_DestroyDuel(d.d); }
+	// (its Duel frees the engine)
 };
 
 static bool is_select(int t) { return (t >= 10 && t <= 26) || (t >= 140 && t <= 143) || t == 132; }

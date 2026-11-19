@@ -5,6 +5,13 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.55.1
+
+A memory leak fix. No cards added: 7,851 total.
+
+- **Every duel left the rules engine behind in memory.** When a duel ended, the game threw away its own record of it but never shut down the engine that ran it, so memory grew with every duel you played (about 1 MB or more per duel). Now each duel frees its engine when it ends, and also when you leave the table in the middle. A test of 200 duels in a row shows no growth, and the full engine run (2,660 duels) finished with 0 errors and no memory trouble. It had run out of memory before.
+- **Windows:** the .exe and the .dll both changed. Copy both.
+
 ## What is in 0.55.0
 
 **Card plan part 5: the 5D's and ZEXAL years. 1,608 new cards. The game now has 7,851 cards** (it had 6,243). That's every card from the four shows' years except Links and Pendulums. Plus packs of a better size.

@@ -147,6 +147,12 @@ func close() -> void:
 		handle = 0
 
 
+## A duel that ends early (you leave the table, the scene closes) still frees its engine.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		close()
+
+
 func _new_card(id: int, owner: int) -> DuelState.CardInst:
 	var c: DuelState.CardInst = st._make(id, owner)
 	if c.data.is_empty() or str(c.data.get("name", "")) in ["", "Unknown"]:
