@@ -5,6 +5,25 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.63.1
+
+Fixes from the first day of 0.63.0: how the duelists move on the real models, memory, the deck editor, and the sound of a hit. No cards added: 8,415 total.
+
+- **Duelists no longer cover their own faces or cross their arms in an X.** The motions were made on a test body with shorter arms than the real models (theirs are about 45% longer, with bigger hands and heads). Every motion is now fitted to each model's own measurements: hands go where they should relative to that body, and they are kept off the face, both from the front and from the corner camera's side. Checked on the skeletons of all 25 models.
+- **Card motions made by hand for each body:** the draw, playing a monster, setting a card, a Spell, a Trap, thinking (looking over the cards, not a hand on the chin), one ace gesture, and the fired-up stance (it was the boxer's guard that showed as crossed arms on the victory screen).
+- **Out of duels:** two everyday motions that looked odd on the long arms. Losing a monster or being negated is a step back now, going second is a nod.
+- **The card panel no longer covers your duelist.** It ends above their head, and long texts scroll inside it.
+- **The live portrait is wider with soft edges,** so a hand at arm's length is not sliced by the frame, and its camera stands further back with a longer lens, so a hand reaching forward is not huge.
+- **Pain sounds (Spanish).** A grunt for a small hit, a cry for a big one, a long one for the hit that ends the duel: 48 sounds, 4 for each of the 12 duelist voices. Heard when the hit lands. Same one-voice rule as every line: if somebody is talking it waits a moment, and if they are not done it is skipped. English gets its 48 with the rest of its voices.
+- **Quiet after the last hit.** Once a hit takes someone to 0, nobody comments as if the duel went on (Lumen said "they are almost out" after the winning blow). The only words left are the ending's.
+- **Memory.** Card pictures used to stay in memory at full size forever, and so did the 3D model behind every duelist picture ever shown. After a few duels and packs that was gigabytes: the world dropped to 15-20 FPS and, on a smaller graphics card, new cards came up as white boxes. Now pictures are kept at the size they are shown at, only the recent ones are kept, and models that nobody is looking at are let go. Tested by playing duels in a row and by opening and closing every big screen and the world several times: memory holds steady.
+- **The deck editor opens at once.** It loaded the full-size picture of every card you own before showing anything (600 cards: 8 seconds and 2.6 GB; thousands: minutes). It now loads only the cards near what is on screen, in the background. 5,000 cards: 1 second.
+- **Buying a deck adds its cards to yours.** A card you already had one of, and the deck has one of, is now two (up to three).
+- **Accumulated Fortune and Chain Strike.** With "Ask me at every chance" off, the game passed for you after your own card, so you could not stack up to Chain Link 4. While you hold one of these, you are asked at every link of a chain. The cards themselves were right (checked with real chains, now a permanent test: `tests/chain_check.tscn`). Every chain is also written to the game's log.
+- **Exodia's show (and the other special wins) can't be skipped by accident.** A mouse click or the wheel used to cut it off in the middle. Now only Esc, Enter, Space or a controller button skips it, and not in its first second.
+- **Card search knows short names:** FGD (Five-Headed Dragon), BEWD, DMG, BLS and the initials of any card.
+- **Windows:** only the .exe changed.
+
 ## What is in 0.63.0
 
 Duelists come alive: they move like duelists, the camera goes to them at the big moments, the duel has an ending, and they talk a lot more. No cards added: 8,415 total.

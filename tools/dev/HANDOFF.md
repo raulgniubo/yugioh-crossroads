@@ -635,3 +635,31 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
  c. dropped-in model textures: `_fit_textures` (figures 1024, portraits 2048 color, 1024 the rest).
  Test: `godot --headless --path . res://tests/duel_leak.tscn -- --autoplay --duels=5 --assets=/tmp/realfit`
  BEFORE: nodes 42 -> 1745 after 5 duels, static memory 146 -> 650 MB. (after: see below)
+
+
+#### 0.63.1 notes of Nov 20, late afternoon (what was done, how it was checked, what was NOT)
+- Items 1-5, 8 (poses): arm pass + hand-made motions (see above). Final `pose_review --mode=check` on the 25 real skeletons:
+  6 motions still hide more than 12% of a face on at least one model for a moment (stomp 69% pegasus, cheer_one 34% jack,
+  agree 31% kaiba, punch_pose 20% alexis, head_hold 14%, scratch 14%). stomp and agree are OUT of duels (TALK_MOVES:
+  destroyed/negated -> back_off, second -> nod, chain -> "-"). cheer_one (kind win), punch_pose (joey, yuma, wild face-off),
+  head_hold (meant to hold the head) and scratch stay. They are still used in the world (star_life, street_duels).
+- Item 6 pain sounds: Voices.pain + duel_scene._ouch (small needs talk > 0, 300+ damage, 4 s apart; big 2000+; last = lethal).
+  A duelist's "hurt" line waits for their own cry (say_kind wait). 48 Spanish files in voices/es; English: in todo.json.
+- Item 7: `_decided` (set in the "lp" event when LP <= 0) + Voices.hush(); _lumen/_talk refuse everything but LAST_WORDS.
+- Item 9/12 + "check for leaks": card_db caps (FACE 130 at 512 wide, THUMB 240 at 256, FULL 6, ART 48), Avatars._trim_stages
+  (STAGE_MODELS 4, idle 12 s, not shown), _fit_textures. Tests: tests/duel_leak.tscn (--keep=1 --rest --blame --orphans),
+  tests/screens_leak.tscn (every big screen + the world, 4 rounds: flat), tests/editor_open.tscn. Stand-in pictures for tests:
+  /tmp/fakecards (48 made-up jpgs of the real size hard-linked to card ids), /tmp/realfit/cards.
+  One true leak found and fixed: a Label never added to the tree (duel_hud _inspect_stats), one per duel.
+  NOT measured: a real graphics card (all numbers are headless RAM), and Windows.
+  Still held on purpose after leaving the world: its model and mesh caches (about 560 MB headless; flat across reloads).
+- Item 10: CardSearch NICKNAMES + initials (3 to 6 letters). Item 11: Collection.buy_deck + test in test_runner (_test_0631).
+- Item 13 (deck search shows a card once): NOT reproduced. `--pick-debug` prints what the engine offers; a card with 3 copies
+  came up 3 times and the picker draws one tile per entry. Waiting for the card name if it happens again.
+- Item 14: deck_builder tiles are shells; _grid_tick fills near the view (Cards.thumb_later on worker threads), empties far ones.
+- Extra reports the same afternoon: Destiny Draw skipped a turn (NOT reproduced: `--destiny-debug` says no three times and
+  the offer came back every turn); Accumulated Fortune (engine right; ocg_table CHAIN_CARDS asks at every link; the brother
+  had the switch ON, so his case is most likely the opponent's own Jar of Greed in the chain; chains are now printed to the
+  log as "CHAIN n links [...] | you may add [...]"); Exodia show cut off (skip was any key/click/wheel; now Esc/Enter/Space/pad
+  after 1 s, in exodia_show.gd and win_show.gd).
+- A 0.6 s hitch about 2 s after the game starts shows in every headless test (not from any screen; not looked into).
