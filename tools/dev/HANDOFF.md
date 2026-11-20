@@ -539,3 +539,10 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
   under 400 MiB; the Windows zip is 410 MiB. The Mac install (inst.sh) and the Windows folder on the Mac stay as before.
 - The GitHub repo is PUBLIC (checked with `gh api`), told Raul; his call whether to switch it.
 - English: batch 94 made (18 of 20). Next batch 95. The limit gives room back a little at a time through the afternoon.
+
+#### FIX LIST for the next build (Raul sends items; DO NOT START until he says go)
+1. (Nov 20, 1:19 PM, photos c972c10e-image.jpg and 357bada5-image.jpg in /mnt/user-data/uploads) On his real models
+   the duelists cover their face with their hand: his own duelist (bottom left) and the opponent (top right) both
+   hold the right hand flat over the face at 8000 LP / Mano 5, turn 1. Looks like a stance or the opening pose landing
+   the hand on the face on his bodies (the motions were only checked on the stand-in models here). To check when
+   told: which clip is playing there (st_<style>, "ready"/battle_pose, face-off pose, think) and the arm retarget.
