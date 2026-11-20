@@ -616,3 +616,6 @@ along the face and along the corner camera's line) and out of the head. Mannequi
 Review tool: `tests/pose_review.tscn` (--mode=check numbers for all 25; --mode=sheet pictures).
 Baseline: 38 of 60 motions hid more than 12% of a face; after the pass: 12, all brief. st_wild (a boxer's guard,
 fists at the chin) is what he saw as "crossed arms" at the start and on the victory screen: replace that stance.
+11. (1:50 PM) His brother: buying a deck that has a card you already own did not add it. Confirmed in
+   `Collection.buy_deck` (it took the larger of the two counts). FIXED: the deck's copies are added to yours, up to 3.
+   (`_grant_decks` on load still only makes sure you have at least what the decks you own need.) Add a unit test.

@@ -1247,8 +1247,10 @@ func buy_deck(key: String) -> bool:
 	var need := {}
 	for id in CardData.deck_list(key) + CardData.extra_list(key):
 		need[id] = int(need.get(id, 0)) + 1
+	# Buying a deck adds its cards to what you have (0.63.1): one Polymerization at home and one in the
+	# deck is two. (Before, a card you already had was not added.) Three copies is the most a grant gives.
 	for id in need:
-		owned[id] = maxi(int(owned.get(id, 0)), mini(3, int(need[id])))
+		owned[id] = maxi(int(owned.get(id, 0)), mini(3, int(owned.get(id, 0)) + int(need[id])))
 	_store_slot()
 	if origin_slot(key) < 0:
 		slots.append(_recipe_slot(key))

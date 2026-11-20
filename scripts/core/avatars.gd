@@ -451,6 +451,288 @@ func _retarget(src: Animation, dskel: Skeleton3D, skel: Skeleton3D, skel_path: S
 	return out
 
 
+## Bring the head and the neck most of the way back to how the model holds them at rest (keep = how
+## much of the clip's own nod or bow stays). `also`: more bones to straighten the same way (the spine).
+func _calm_head(anim: Animation, skel: Skeleton3D, skel_path: String, keep: float, also: Array = []) -> void:
+	for bn in ["Head", "neck", "Neck"] + also:
+		var bi := skel.find_bone(bn)
+		var ti := anim.find_track(NodePath("%s:%s" % [skel_path, bn]), Animation.TYPE_ROTATION_3D)
+		if bi < 0 or ti < 0:
+			continue
+		var rest := skel.get_bone_rest(bi).basis.orthonormalized().get_rotation_quaternion()
+		for k in anim.track_get_key_count(ti):
+			anim.track_set_key_value(ti, k, rest.slerp(anim.track_get_key_value(ti, k) as Quaternion, keep))
+
+
+## ---- Motions made here, by hand, for the moments of a duel that happen every turn (0.63.1).
+## Recorded motions are fitted to each body as well as they can be; these are BUILT on each body, so
+## they are exact on any proportions: the hand goes to the Duel Disk on that body's own forearm, the
+## card comes up beside that body's own face. Each key says where the two hands are, in the body's
+## own measures: x in shoulders (1 = at its own shoulder, -1 = at the other one, past that in arm
+## lengths), y from the line of the shoulders (1 = the top of the head, -1 = the hips), z forward in
+## arm lengths. "lo"/"ro" turn a hand: [where the fingers point, where the palm faces], as (out to its
+## own side, up, forward). "twist" turns the chest toward the right hand, "lean" bows it, "look" turns
+## the head toward the right hand and down. null = the arm hangs as it does standing.
+const DISK := Vector3(-0.35, -0.50, 0.55)         # the left forearm across the body, Duel Disk up
+const ON_DISK := Vector3(-0.35, -0.40, 0.56)      # the right hand on the deck of that disk
+const PALM_DOWN := [Vector3(-1, 0, 0.25), Vector3(0, -1, 0)]
+const WILD_HAND := [Vector3(-0.25, -0.1, 1), Vector3(-1, -0.2, 0)]      # hands ready in front of the hips, palms in
+const MADE_MOTIONS := {
+	"g_draw": {"len": 2.4, "keys": [
+		{"t": 0.0},
+		{"t": 0.30, "l": DISK, "r": Vector3(0.2, -0.55, 0.45), "look": Vector2(-8, 12)},
+		{"t": 0.55, "l": DISK, "r": ON_DISK, "ro": PALM_DOWN, "lean": 4, "look": Vector2(-10, 16)},
+		{"t": 0.95, "l": DISK, "r": Vector3(1.55, 0.50, 0.30), "ro": [Vector3(0, 1, 0), Vector3(-0.85, 0, -0.4)], "twist": 8, "look": Vector2(20, 0)},
+		{"t": 1.55, "l": DISK, "r": Vector3(1.55, 0.52, 0.30), "ro": [Vector3(0, 1, 0), Vector3(-0.85, 0, -0.4)], "twist": 8, "look": Vector2(20, 0)},
+		{"t": 1.95, "l": Vector3(0.3, -0.75, 0.35), "r": Vector3(0.55, -0.50, 0.48), "look": Vector2(0, 0)},
+		{"t": 2.4}]},
+	"g_play": {"len": 2.05, "keys": [
+		{"t": 0.0},
+		{"t": 0.30, "l": DISK, "r": Vector3(1.45, 0.78, 0.15), "ro": [Vector3(0, 1, 0), Vector3(0, 0, 1)], "twist": 10},
+		{"t": 0.50, "l": DISK, "r": Vector3(1.45, 0.80, 0.13), "ro": [Vector3(0, 1, 0), Vector3(0, 0, 1)], "twist": 11},
+		{"t": 0.72, "l": DISK, "r": ON_DISK, "ro": PALM_DOWN, "twist": -12, "lean": 7, "look": Vector2(-8, 10)},
+		{"t": 1.05, "l": DISK, "r": ON_DISK, "ro": PALM_DOWN, "twist": -12, "lean": 7, "look": Vector2(-8, 10)},
+		{"t": 1.35, "l": DISK, "r": Vector3(0.7, -0.15, 0.85), "ro": [Vector3(0.2, 0, 1), Vector3(0, -1, 0)], "twist": -4},
+		{"t": 1.65, "l": DISK, "r": Vector3(0.7, -0.15, 0.86), "ro": [Vector3(0.2, 0, 1), Vector3(0, -1, 0)], "twist": -4},
+		{"t": 2.05}]},
+	"g_cset": {"len": 1.9, "keys": [
+		{"t": 0.0},
+		{"t": 0.35, "l": DISK, "r": Vector3(0.5, -0.35, 0.50), "ro": PALM_DOWN, "look": Vector2(-6, 12)},
+		{"t": 0.75, "l": DISK, "r": Vector3(-0.3, -0.45, 0.58), "ro": PALM_DOWN, "lean": 5, "look": Vector2(-10, 16)},
+		{"t": 1.15, "l": DISK, "r": Vector3(-0.3, -0.45, 0.58), "ro": PALM_DOWN, "lean": 5, "look": Vector2(-10, 16)},
+		{"t": 1.50, "l": Vector3(0.3, -0.75, 0.35), "r": Vector3(0.6, -0.6, 0.4)},
+		{"t": 1.9}]},
+	"g_cspell": {"len": 2.1, "keys": [
+		{"t": 0.0},
+		{"t": 0.35, "l": Vector3(1.05, -0.9, 0.1), "r": Vector3(1.35, 1.05, 0.2), "ro": [Vector3(0, 1, 0), Vector3(0, 0, 1)], "twist": 8},
+		{"t": 0.60, "l": Vector3(1.05, -0.9, 0.1), "r": Vector3(1.35, 1.07, 0.2), "ro": [Vector3(0, 1, 0), Vector3(0, 0, 1)], "twist": 9},
+		{"t": 0.85, "l": Vector3(1.05, -0.9, 0.1), "r": Vector3(1.05, -0.30, 0.85), "ro": [Vector3(0, 0.45, 1), Vector3(-1, 0, 0)], "twist": -10, "lean": 4},
+		{"t": 1.35, "l": Vector3(1.05, -0.9, 0.1), "r": Vector3(1.05, -0.29, 0.86), "ro": [Vector3(0, 0.45, 1), Vector3(-1, 0, 0)], "twist": -10, "lean": 4},
+		{"t": 2.1}]},
+	"g_ctrap": {"len": 1.7, "keys": [
+		{"t": 0.0},
+		{"t": 0.28, "r": Vector3(-0.7, -0.55, 0.45), "ro": PALM_DOWN, "twist": -14, "lean": 4},
+		{"t": 0.58, "r": Vector3(1.95, 0.05, 0.30), "ro": [Vector3(1, 0, 0.2), Vector3(0, 0, 1)], "twist": 16},
+		{"t": 1.10, "r": Vector3(1.95, 0.06, 0.30), "ro": [Vector3(1, 0, 0.2), Vector3(0, 0, 1)], "twist": 16},
+		{"t": 1.7}]},
+	# The ace arrives, the hard way: the arm goes up, then comes down and points it onto the field.
+	# (The recorded one dropped to the floor to slam it, and left the picture.)
+	"g_ace_slam": {"len": 2.6, "keys": [
+		{"t": 0.0},
+		{"t": 0.40, "l": Vector3(1.05, -0.9, 0.1), "r": Vector3(1.3, 1.25, 0.1), "ro": [Vector3(0, 1, 0), Vector3(0, 0, 1)], "twist": 12, "look": Vector2(10, -8)},
+		{"t": 0.65, "l": Vector3(1.05, -0.9, 0.1), "r": Vector3(1.3, 1.28, 0.08), "ro": [Vector3(0, 1, 0), Vector3(0, 0, 1)], "twist": 13, "look": Vector2(10, -8)},
+		{"t": 0.90, "l": Vector3(1.05, -0.9, 0.1), "r": Vector3(0.75, -0.38, 0.9), "ro": [Vector3(0.1, -0.2, 1), Vector3(0, -1, 0)], "twist": -14, "lean": 11, "look": Vector2(-4, 8)},
+		{"t": 1.70, "l": Vector3(1.05, -0.9, 0.1), "r": Vector3(0.75, -0.37, 0.91), "ro": [Vector3(0.1, -0.2, 1), Vector3(0, -1, 0)], "twist": -14, "lean": 11, "look": Vector2(-4, 8)},
+		{"t": 2.6}]},
+	# Thinking: the Duel Disk up, the other hand moving over the cards, eyes on them and then on the
+	# field. (The recorded one bowed the head into a hand and hid the face.)
+	"g_think": {"len": 4.0, "keys": [
+		{"t": 0.0},
+		{"t": 0.50, "l": DISK, "r": Vector3(0.15, -0.36, 0.50), "ro": PALM_DOWN, "look": Vector2(-8, 13)},
+		{"t": 1.40, "l": DISK, "r": Vector3(-0.50, -0.37, 0.56), "ro": PALM_DOWN, "twist": -4, "look": Vector2(-14, 15)},
+		{"t": 2.30, "l": DISK, "r": Vector3(0.25, -0.34, 0.50), "ro": PALM_DOWN, "twist": 3, "look": Vector2(4, -2)},
+		{"t": 3.20, "l": DISK, "r": Vector3(-0.20, -0.37, 0.55), "ro": PALM_DOWN, "look": Vector2(-10, 14)},
+		{"t": 4.0}]},
+	# The fired-up stance: leaning in, elbows bent, hands ready in front of the hips, turning from side
+	# to side. (The recorded one was a boxer's guard, fists at the chin.)
+	"g_st_wild": {"len": 1.8, "loop": true, "keys": [
+		{"t": 0.0, "l": Vector3(1.0, -0.60, 0.40), "r": Vector3(1.0, -0.66, 0.34), "lo": WILD_HAND, "ro": WILD_HAND, "twist": 5, "lean": 5},
+		{"t": 0.45, "l": Vector3(1.0, -0.63, 0.37), "r": Vector3(1.0, -0.63, 0.37), "lo": WILD_HAND, "ro": WILD_HAND, "twist": 0, "lean": 7},
+		{"t": 0.9, "l": Vector3(1.0, -0.66, 0.34), "r": Vector3(1.0, -0.60, 0.40), "lo": WILD_HAND, "ro": WILD_HAND, "twist": -5, "lean": 5},
+		{"t": 1.35, "l": Vector3(1.0, -0.63, 0.37), "r": Vector3(1.0, -0.63, 0.37), "lo": WILD_HAND, "ro": WILD_HAND, "twist": 0, "lean": 7},
+		{"t": 1.8, "l": Vector3(1.0, -0.60, 0.40), "r": Vector3(1.0, -0.66, 0.34), "lo": WILD_HAND, "ro": WILD_HAND, "twist": 5, "lean": 5}]},
+}
+
+
+func _body_point(fr: Dictionary, ax: Basis, mid: Vector3, sgn: float, v: Vector3) -> Vector3:
+	var w := float(fr["w"])
+	var arm := float(fr["len"])
+	var x := w * v.x if absf(v.x) <= 1.0 else signf(v.x) * (w + (absf(v.x) - 1.0) * arm)
+	var y := 0.0
+	if v.y >= 0.0:
+		y = float(fr["up"]) * v.y if v.y <= 1.0 else float(fr["up"]) + (v.y - 1.0) * arm
+	else:
+		y = float(fr["down"]) * v.y if v.y >= -1.0 else -float(fr["down"]) + (v.y + 1.0) * arm
+	return mid + ax * Vector3(x * sgn, y, v.z * arm)
+
+
+## Build one of MADE_MOTIONS on this model's own skeleton. null when the body lacks the bones.
+func _made_motion(model: Node, nm: String, skel: Skeleton3D, skel_path: String) -> Animation:
+	var fr := _arm_frame(skel)
+	if fr.is_empty() or rest_idle(model) == "":
+		return null
+	var ap := anim_player(model)
+	var rest_anim := ap.get_animation("g_rest")
+	var spec: Dictionary = MADE_MOTIONS[nm]
+	var keys: Array = spec["keys"]
+	var body := _body_stats(skel, fr)
+	var n := skel.get_bone_count()
+	# How the body stands: the first frame of its own calm stand.
+	var base: Array = []
+	for i in n:
+		var loc := skel.get_bone_rest(i)
+		var rt := rest_anim.find_track(NodePath("%s:%s" % [skel_path, skel.get_bone_name(i)]), Animation.TYPE_ROTATION_3D)
+		if rt >= 0 and rest_anim.track_get_key_count(rt) > 0:
+			loc.basis = Basis(rest_anim.track_get_key_value(rt, 0) as Quaternion)
+		var pt := rest_anim.find_track(NodePath("%s:%s" % [skel_path, skel.get_bone_name(i)]), Animation.TYPE_POSITION_3D)
+		if pt >= 0 and rest_anim.track_get_key_count(pt) > 0:
+			loc.origin = rest_anim.track_get_key_value(pt, 0)
+		var par := skel.get_bone_parent(i)
+		base.append((base[par] as Transform3D) * loc if par >= 0 else loc)
+	var chest := int(fr["chest"])
+	var upper := {chest: true}      # the chest and everything that hangs from it
+	for i in n:
+		if skel.get_bone_parent(i) >= 0 and upper.has(skel.get_bone_parent(i)):
+			upper[i] = true
+	var head := int(fr["head"])
+	var ax0: Basis = fr["axes"]
+	var out := Animation.new()
+	out.length = float(spec["len"])
+	out.loop_mode = Animation.LOOP_LINEAR if bool(spec.get("loop", false)) else Animation.LOOP_NONE
+	var tracks: Array = []
+	for i in n:
+		var ti := out.add_track(Animation.TYPE_ROTATION_3D)
+		out.track_set_path(ti, NodePath("%s:%s" % [skel_path, skel.get_bone_name(i)]))
+		tracks.append(ti)
+	var hips := int(fr["hips"])
+	var hip_t := out.add_track(Animation.TYPE_POSITION_3D)
+	out.track_set_path(hip_t, NodePath("%s:%s" % [skel_path, skel.get_bone_name(hips)]))
+	var hip_local := skel.get_bone_rest(hips).origin
+	var hpt := rest_anim.find_track(NodePath("%s:%s" % [skel_path, skel.get_bone_name(hips)]), Animation.TYPE_POSITION_3D)
+	if hpt >= 0 and rest_anim.track_get_key_count(hpt) > 0:
+		hip_local = rest_anim.track_get_key_value(hpt, 0)
+	var frames := int(ceil(out.length * 30.0)) + 1
+	for f in frames:
+		var t := minf(float(f) / 30.0, out.length)
+		var k1 := 0
+		while k1 < keys.size() - 1 and float(keys[k1]["t"]) < t:
+			k1 += 1
+		var k0 := maxi(k1 - 1, 0)
+		var span := float(keys[k1]["t"]) - float(keys[k0]["t"])
+		var u := smoothstep(0.0, 1.0, (t - float(keys[k0]["t"])) / span) if span > 0.0001 else 1.0
+		var a: Dictionary = keys[k0]
+		var b: Dictionary = keys[k1]
+		var twist := deg_to_rad(lerpf(float(a.get("twist", 0.0)), float(b.get("twist", 0.0)), u))
+		var lean := deg_to_rad(lerpf(float(a.get("lean", 0.0)), float(b.get("lean", 0.0)), u))
+		var look: Vector2 = (a.get("look", Vector2.ZERO) as Vector2).lerp(b.get("look", Vector2.ZERO) as Vector2, u)
+		var g: Array = base.duplicate()
+		# The chest turns (toward the right hand is "twist") and bows; the head keeps facing the field.
+		var turn := Basis(ax0.y, -twist) * Basis(ax0.x, lean)
+		var pivot: Vector3 = (base[chest] as Transform3D).origin
+		for i in n:
+			if upper.has(i):
+				var bt: Transform3D = base[i]
+				g[i] = Transform3D(turn * bt.basis, pivot + turn * (bt.origin - pivot))
+		var ht: Transform3D = g[head]
+		g[head] = Transform3D(Basis(ax0.y, -deg_to_rad(look.x)) * Basis(ax0.x, deg_to_rad(look.y)) * (base[head] as Transform3D).basis, ht.origin)
+		for c in skel.get_bone_children(head):
+			var rel: Transform3D = (base[head] as Transform3D).affine_inverse() * (base[c] as Transform3D)
+			g[c] = (g[head] as Transform3D) * rel
+		var ax := turn * ax0
+		var mid: Vector3 = ((g[int(fr["arm"][0])] as Transform3D).origin + (g[int(fr["arm"][1])] as Transform3D).origin) * 0.5
+		for side in 2:
+			var sgn := 1.0 if side == 0 else -1.0
+			var kk := "l" if side == 0 else "r"
+			var ia := int(fr["arm"][side])
+			var ie := int(fr["fore"][side])
+			var ih := int(fr["hand"][side])
+			var s0: Vector3 = (g[ia] as Transform3D).origin
+			var e0: Vector3 = (g[ie] as Transform3D).origin
+			var h0: Vector3 = (g[ih] as Transform3D).origin
+			var pa: Vector3 = _body_point(fr, ax, mid, sgn, a[kk]) if a.get(kk) != null else h0
+			var pb: Vector3 = _body_point(fr, ax, mid, sgn, b[kk]) if b.get(kk) != null else h0
+			var target := pa.lerp(pb, u)
+			# (a hand that travels far swings a little out and forward on the way: an arc, not a rail)
+			target += (ax.z * 0.5 + ax.x * sgn * 0.5 + ax.y * 0.3) * (pa.distance_to(pb) * 0.12 * sin(u * PI))
+			# ...and never in front of the face, whatever this body's proportions are.
+			if a.get(kk) != null or b.get(kk) != null:
+				var h_turn: Basis = (g[head] as Transform3D).basis * skel.get_bone_global_rest(head).basis.orthonormalized().inverse()
+				var face: Vector3 = (g[head] as Transform3D).origin + h_turn * ((body["face"] as Vector3) - skel.get_bone_global_rest(head).origin)
+				var head_c: Vector3 = (g[head] as Transform3D).origin + h_turn * ((body["head_c"] as Vector3) - skel.get_bone_global_rest(head).origin)
+				var reach := (target - s0).normalized()
+				var fingers := reach
+				var kn: Dictionary = a if u < 0.5 else b
+				if kn.get("lo" if side == 0 else "ro") != null:
+					var fd: Vector3 = kn["lo" if side == 0 else "ro"][0]
+					fingers = (ax * Vector3(fd.x * sgn, fd.y, fd.z)).normalized()
+				target = _off_face(target, sgn, fingers, reach, float(body["hand"][side]), float(fr["b"][side]), face, (h_turn * ax0.z).normalized(), (h_turn * ax0.y).normalized(),
+					head_c, body, float(fr["len"]), (ax0.x * 0.42 - ax0.y * 0.2 + ax0.z * 1.75).normalized(), ax)
+			var la := float(fr["a"][side])
+			var lb := float(fr["b"][side])
+			var to := target - s0
+			var dist := clampf(to.length(), absf(la - lb) + (la + lb) * 0.04, (la + lb) * 0.995)
+			var dirn := to.normalized() if to.length() > 0.00001 else (h0 - s0).normalized()
+			var pole: Vector3 = -ax.y * 0.7 + ax.x * sgn * 0.55 - ax.z * 0.45
+			pole = (pole - dirn * pole.dot(dirn)).normalized()
+			var x := (la * la - lb * lb + dist * dist) / (2.0 * dist)
+			var elbow := s0 + dirn * x + pole * sqrt(maxf(la * la - x * x, 0.0))
+			var hand := s0 + dirn * dist
+			var u0 := (e0 - s0).normalized()
+			var f0 := (h0 - e0).normalized()
+			var u1 := (elbow - s0).normalized()
+			var f1 := (hand - elbow).normalized()
+			var gu: Basis = (g[ia] as Transform3D).basis
+			var gf: Basis = (g[ie] as Transform3D).basis
+			var gh: Basis = (g[ih] as Transform3D).basis
+			if u0.dot(u1) < 0.999999 and u0.dot(u1) > -0.9999:
+				gu = Basis(Quaternion(u0, u1)) * gu
+			var line := Basis.IDENTITY
+			if f0.dot(f1) < 0.999999 and f0.dot(f1) > -0.9999:
+				line = Basis(Quaternion(f0, f1))
+			gf = line * gf
+			# The hand: in line with the forearm, or turned the way the key says.
+			var ok := "lo" if side == 0 else "ro"
+			var qa := (line * gh).orthonormalized().get_rotation_quaternion()
+			var qb := qa
+			for which in 2:
+				var kd: Dictionary = a if which == 0 else b
+				if kd.get(ok) != null:
+					var d0: Vector3 = body["hand_dir"][side]
+					var n0 := (-ax0.y - d0 * (-ax0.y).dot(d0)).normalized()
+					var want_d: Vector3 = (kd[ok][0] as Vector3)
+					var want_n: Vector3 = (kd[ok][1] as Vector3)
+					var d1 := (ax * Vector3(want_d.x * sgn, want_d.y, want_d.z)).normalized()
+					var n1 := ax * Vector3(want_n.x * sgn, want_n.y, want_n.z)
+					n1 = (n1 - d1 * n1.dot(d1)).normalized()
+					var q := (Basis(d1, n1, d1.cross(n1)) * Basis(d0, n0, d0.cross(n0)).inverse() * skel.get_bone_global_rest(ih).basis.orthonormalized()).orthonormalized().get_rotation_quaternion()
+					if which == 0:
+						qa = q
+					else:
+						qb = q
+			gh = Basis(qa.slerp(qb, u))
+			g[ia] = Transform3D(gu, s0)
+			g[ie] = Transform3D(gf, elbow)
+			g[ih] = Transform3D(gh, hand)
+		for i in n:
+			var par := skel.get_bone_parent(i)
+			var lbs: Basis = ((g[par] as Transform3D).basis.inverse() * (g[i] as Transform3D).basis) if par >= 0 else (g[i] as Transform3D).basis
+			out.rotation_track_insert_key(tracks[i], t, lbs.orthonormalized().get_rotation_quaternion())
+		out.position_track_insert_key(hip_t, t, hip_local)
+	return out
+
+
+var made_motions := true      # (off: the recorded clips of the same names play instead)
+
+func _made_for(model: Node, nm: String, skel: Skeleton3D) -> String:
+	if rest_idle(model) == "":
+		return ""
+	var ap := anim_player(model)
+	var root := ap.get_node_or_null(ap.root_node) if ap != null else null
+	if root == null:
+		return ""
+	var skel_path := str(root.get_path_to(skel))
+	var ck := "%s|%s|%s" % [str(model.get_meta("file", "")), skel_path, nm]
+	var anim: Animation = _gest_cache.get(ck) if model.has_meta("file") else null
+	if anim == null:
+		anim = _made_motion(model, nm, skel, skel_path)
+		if anim == null:
+			return ""
+		if model.has_meta("file"):
+			_gest_cache[ck] = anim
+	ap.get_animation_library(ap.get_animation_library_list()[0]).add_animation(nm, anim)
+	return nm
+
+
 ## Off for a look at the old way (bones turned the same amount and nothing else).
 var arms_by_position := true
 
@@ -636,40 +918,54 @@ func _arm_wants(dskel: Skeleton3D, skel: Skeleton3D, da: Dictionary, ta: Diction
 		var r_ax: Basis = ta["axes"]
 		var cam_dir := (r_ax.x * 0.42 - r_ax.y * 0.2 + r_ax.z * 1.75).normalized()
 		var head_c: Vector3 = (tp[int(ta["head"])] as Vector3) + h_turn * ((body["head_c"] as Vector3) - skel.get_bone_global_rest(int(ta["head"])).origin)
-		for pass_i in 4:
-			var push := Vector3.ZERO
-			for sm in 5:
-				var pt := want + hdir * hl * (0.5 * sm) if sm < 3 else want - fdir * float(ta["b"][side]) * (0.4 if sm == 3 else 0.8)
-				var thick := hl * 0.38 if sm < 3 else hl * 0.22
-				for axis in [f_fwd, cam_dir]:
-					var dd := pt - face
-					var al := dd.dot(axis)
-					if al < -float(body["face_r"]) * 0.4 or al > float(ta["len"]) * 1.8:
-						continue
-					var rad: Vector3 = dd - axis * al
-					var need := float(body["face_r"]) + thick + 0.3 * maxf(al, 0.0)
-					if rad.length() < need:
-						var dirn := rad.normalized() if rad.length() > need * 0.08 else (-f_up + t_ax.x * sgn * 0.6).normalized()
-						# (down past the chin or out to its own side, never up over the eyes)
-						if dirn.dot(f_up) > 0.25 and rad.dot(f_up) < need * 0.55:
-							dirn = (dirn - f_up * dirn.dot(f_up) * 1.4 + t_ax.x * sgn * 0.5).normalized()
-						dirn = (dirn - axis * dirn.dot(axis)).normalized()
-						var pv := dirn * (need - rad.dot(dirn))
-						if pv.length() > push.length():
-							push = pv
-				var hd := pt - head_c
-				var hneed := float(body["head_r"]) + thick
-				if hd.length() < hneed:
-					var out_dir := hd.normalized() if hd.length() > hneed * 0.1 else (t_ax.x * sgn).normalized()
-					var pv2 := out_dir * (hneed - hd.length())
-					if pv2.length() > push.length():
-						push = pv2
-			if push == Vector3.ZERO:
-				break
-			want += push
+		want = _off_face(want, sgn, hdir, fdir, hl, float(ta["b"][side]), face, f_fwd, f_up, head_c, body, float(ta["len"]), cam_dir, t_ax)
 		res.append({"t": t, "s": s, "e": e, "h": h, "want": want, "pg": tg[skel.get_bone_parent(int(ta["arm"][side]))] if skel.get_bone_parent(int(ta["arm"][side])) >= 0 else Basis.IDENTITY,
 			"gu": tg[int(ta["arm"][side])], "gf": tg[int(ta["fore"][side])], "gh": tg[int(ta["hand"][side])], "out": t_ax.x * sgn, "down": -t_ax.y})
 	return res
+
+
+## The whole hand (wrist, palm, fingertips) and the forearm, pushed out of the face and the head: see
+## _arm_wants. Returns where the wrist may be.
+func _off_face(want: Vector3, sgn: float, hdir: Vector3, fdir: Vector3, hl: float, fore_len: float, face: Vector3, f_fwd: Vector3, f_up: Vector3, head_c: Vector3, body: Dictionary, arm_len: float, cam_dir: Vector3, t_ax: Basis) -> Vector3:
+	for pass_i in 4:
+		var push := Vector3.ZERO
+		for sm in 5:
+			var pt := want + hdir * hl * (0.5 * sm) if sm < 3 else want - fdir * fore_len * (0.4 if sm == 3 else 0.8)
+			var thick := hl * 0.38 if sm < 3 else hl * 0.22
+			for axis in [f_fwd, cam_dir]:
+				var dd := pt - face
+				var al := dd.dot(axis)
+				if al < -float(body["face_r"]) * 0.4 or al > arm_len * 1.8:
+					continue
+				var rad: Vector3 = dd - axis * al
+				var need := float(body["face_r"]) + thick + 0.3 * maxf(al, 0.0)
+				if rad.length() < need:
+					# Which way out: a hand held up (a card shown, a salute, a hand to the chin) goes out
+					# to its own side and stays up, beside the face; a hand lower down goes down past
+					# the chin. Never up over the eyes.
+					var side_dir: Vector3 = t_ax.x * sgn
+					side_dir = (side_dir - axis * side_dir.dot(axis)).normalized()
+					var down_dir: Vector3 = (-f_up - axis * (-f_up).dot(axis)).normalized()
+					var dirn := side_dir
+					if rad.dot(f_up) < -float(body["face_r"]) * 0.5:
+						dirn = (down_dir + side_dir * 0.45).normalized()
+					elif rad.dot(side_dir) < -need * 0.6:
+						dirn = (down_dir * 0.8 - side_dir * 0.6).normalized()      # (reached right across: under the chin)
+					var along := rad.dot(dirn)
+					var pv := dirn * (-along + sqrt(maxf(along * along + need * need - rad.length_squared(), 0.0)))
+					if pv.length() > push.length():
+						push = pv
+			var hd := pt - head_c
+			var hneed := float(body["head_r"]) + thick
+			if hd.length() < hneed:
+				var out_dir := hd.normalized() if hd.length() > hneed * 0.1 else (t_ax.x * sgn).normalized()
+				var pv2 := out_dir * (hneed - hd.length())
+				if pv2.length() > push.length():
+					push = pv2
+		if push == Vector3.ZERO:
+			break
+		want += push
+	return want
 
 
 ## Bend each elbow so the hand is where it should be, and write the keys of the six arm bones.
@@ -753,6 +1049,10 @@ func gesture(model: Node, motion: String) -> String:
 		return nm
 	if model.has_meta("no_gestures"):
 		return ""
+	if MADE_MOTIONS.has(nm) and made_motions:
+		var made := _made_for(model, nm, skel)
+		if made != "":
+			return made
 	if _gest == null or not is_instance_valid(_gest):
 		var ps = load(GESTURES)
 		if not (ps is PackedScene):
@@ -810,6 +1110,12 @@ func gesture(model: Node, motion: String) -> String:
 			_plant_legs(anim, ap.get_animation("g_rest"))
 		if nm in ["g_stand", "g_stand2", "g_sit", "g_sittalk", "g_chat", "g_listen"]:
 			anim.loop_mode = Animation.LOOP_LINEAR
+		if nm in ["g_scheme", "g_fist_pump", "g_head_hold"]:
+			# (bowed until the face was gone: the head comes up, and the back with it)
+			_calm_head(anim, skel, skel_path, 0.45, ["Spine", "Spine01", "Spine02"] if nm == "g_scheme" else [])
+		if nm.begins_with("g_st_"):
+			# A stance is held for minutes, so the head stays up: whoever stands there shows their face.
+			_calm_head(anim, skel, skel_path, 0.3)
 		if model.has_meta("file"):
 			_gest_cache[ck] = anim
 	lib.add_animation(nm, anim)

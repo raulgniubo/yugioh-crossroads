@@ -3891,14 +3891,16 @@ func duelist_gesture(p: int, kind: String) -> void:
 ## duels, in place of the whole figure tilting as one piece. moment -> [clip, speed, from, to (seconds
 ## of the clip, 0 = to its end)], or a list of those to pick from.
 const ACTS := {
-	"draw": ["draw", 1.4, 0.0, 0.0], "summon": ["play", 1.4, 0.0, 0.0], "summon_big": ["summon_big", 1.2, 0.0, 0.0],
-	"set": ["cset", 1.4, 0.0, 0.0], "spell": ["cspell", 1.3, 0.0, 0.0], "trap": ["ctrap", 1.2, 0.0, 0.0],
+	"draw": ["draw", 1.2, 0.0, 0.0], "summon": ["play", 1.0, 0.0, 0.0], "summon_big": ["summon_big", 1.2, 0.0, 0.0],
+	"set": ["cset", 1.0, 0.0, 0.0], "spell": ["cspell", 1.0, 0.0, 0.0], "trap": ["ctrap", 1.0, 0.0, 0.0],
 	"attack": [["point", 1.3, 0.0, 0.0], ["challenge", 1.6, 0.0, 0.0]], "direct": ["direct", 1.2, 0.0, 0.0], "end": ["endturn", 1.2, 0.0, 0.0],
 	"hurt": [["hit2", 1.0, 0.0, 0.0], ["hit_waist", 1.25, 0.0, 0.0]], "hurt_big": [["hit", 1.0, 0.0, 0.0], ["hit_waist", 1.0, 0.0, 0.0]],
 	"think": ["think", 1.0, 0.0, 0.0], "ace_lost": ["head_hold", 1.1, 0.0, 0.0], "cheer": ["fist_pump", 1.0, 0.0, 0.0],
 	"ready": ["battle_pose", 1.0, 0.0, 0.0]}
 ## When a card shows in the duelist's hand during a motion: moment -> [from, for how long] (seconds of the clip).
-const CARD_IN_HAND := {"draw": [0.9, 2.2], "summon": [0.0, 1.3], "set": [0.0, 1.4], "spell": [0.0, 1.6]}
+## (0.63.1: timed to the hand-made motions in Avatars.MADE_MOTIONS: the card appears as the hand lifts off
+## the deck and is gone as it touches the Duel Disk.)
+const CARD_IN_HAND := {"draw": [0.55, 1.35], "summon": [0.0, 0.76], "set": [0.0, 0.8], "spell": [0.0, 1.0]}
 ## The old whole-body move for a moment, for a figure that cannot play the motion.
 const ACT_OLD := {"draw": "draw", "summon": "summon", "summon_big": "summon", "ace": "summon", "attack": "attack", "direct": "attack", "hurt": "hurt", "hurt_big": "hurt"}
 
