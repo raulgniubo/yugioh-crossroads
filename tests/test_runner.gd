@@ -2032,10 +2032,12 @@ func _test_decks() -> void:
 ## v0.32: the world clock, and the shape of the story script (lists, clashes, who is in it).
 ## 0.63.1: a card found by its short name; a bought deck adds copies of cards you already have.
 func _test_0631() -> void:
-	var fgd := int(CardData.NAME_TO_ID.get("five-headed dragon", 0))
-	var bewd := int(CardData.NAME_TO_ID.get("blue-eyes white dragon", 0))
-	var dmg := int(CardData.NAME_TO_ID.get("dark magician girl", 0))
-	check(fgd > 0 and CardSearch.matches(fgd, "Five-Headed Dragon", CardSearch.fold("FGD")), "Search: FGD finds Five-Headed Dragon")
+	# (The cards' own numbers, written out: the search must not need the card data folder, which the
+	# automatic check on GitHub does not have.)
+	var fgd := 99267150
+	var bewd := 89631139
+	var dmg := 38033121
+	check(CardSearch.matches(fgd, "Five-Headed Dragon", CardSearch.fold("FGD")), "Search: FGD finds Five-Headed Dragon")
 	check(CardSearch.matches(fgd, "Five-Headed Dragon", CardSearch.fold("F.G.D.")), "Search: F.G.D. finds it too")
 	check(CardSearch.matches(bewd, "Blue-Eyes White Dragon", CardSearch.fold("bewd")), "Search: BEWD finds Blue-Eyes White Dragon")
 	check(CardSearch.matches(dmg, "Dark Magician Girl", CardSearch.fold("DMG")), "Search: DMG finds Dark Magician Girl")
