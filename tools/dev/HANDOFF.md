@@ -302,19 +302,28 @@ and the story difficulty moves it. All of that is build 1. Build 2 is only the f
 - The lines: `tools/voices/build_lines.py tools/voices/lines_src.json tools/voices/names_out.json` writes
   `lines.json` (1,792: 896 per language) and `todo.json` (what has no file, by `made.json`). New lines live in
   `new_lines.json` (with their Spanish). Voice ids of Raul's ElevenLabs account: `voices.json`.
-- **State of the audio:** Spanish is complete (896 + 7 narrator lines in `voices/es`). English: 178 lines made and
-  parked in `tools/voices/wip/en` (outside the build, `.gdignore`), 718 to go (`todo.json`), plus the 7 English
+- **State of the audio:** Spanish is complete (896 + 7 narrator lines in `voices/es`). English: 216 lines made and
+  parked in `tools/voices/wip/en` (outside the build, `.gdignore`), 680 to go (`todo.json`), plus the 7 English
   narrator lines already cut (in `wip/en/narrator`). When English is done: move `wip/en` to `voices/en`, import,
   ship as 0.62.1. Do not ship English half-voiced.
 - How the audio was made (ElevenLabs connector, model eleven_v4, about 1 credit per character): a flow with 20
   speech nodes, 20 lines per run, files collected and joined in the connector's sandbox with a 1 kHz beep between
   lines, the pack downloaded on Raul's Mac through Blender (he approved that use), split at the beeps, trimmed,
   levelled to -17 LUFS, saved as mono ogg. Things that bit: a DAILY generation cap (429
-  daily_generation_limit_reached) separate from the monthly credits; the voice library is full at 30 of 30, so
+  daily_generation_limit_reached) separate from the monthly credits. It is a ROLLING 24 hours, not a reset at
+  midnight UTC: after about 1,100 lines in one afternoon it closed, let 38 more through at 00:01 UTC and closed
+  again. Plan a big batch for when the previous day's lines are a day old; the voice library is full at 30 of 30, so
   the narrator is NOT a saved voice: his 7 lines per language were cut from one voice-design take (seed 6262, the
   whole script as the sample text) at the pauses. To add narrator lines, a slot must be freed first or the same
   trick repeated (he will not sound exactly the same). Never transcribe a pack to check it (1,509 credits once).
   I cannot hear: voices were picked by description and measured pitch, lines were checked by length only.
+- **Shipping got a size limit:** one file to the chat or to Raul's Mac can be at most 400 MiB. 0.62.0: the Windows
+  zip fits with `zip -9` (396.7 MiB; /tmp/ship.sh now uses -9). The Mac zip (420 MiB) does not: `split -b 220m`,
+  send the two parts with SendUserFile, commit them to `Old builds/`, join them there with `cat` in device_bash
+  into `Crossroads-latest.zip`, check the md5, move the parts to `Old builds/_to_delete`, then `inst.sh`. With
+  English voices (+27 MB) the Windows zip will need the same.
+- Dev: `--open=settings --tab=3` opens Settings on Audio (for pictures). `--opening-auto` plays the first-turn
+  game by itself, so the face-off and the shout can be watched in a test: `--duel --opening-auto --voicelog`.
 - Hand reorder: `duel_hud.gd` `_hand_band` / `_hand_move` (a sideways drag inside the hand moves the card, up
   plays it). Dev check: `--handtest` with `--duel --first=me`. Exodia: the star pairs in `exodia_show.gd`.
 
