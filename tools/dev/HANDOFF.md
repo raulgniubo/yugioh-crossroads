@@ -663,3 +663,8 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
   log as "CHAIN n links [...] | you may add [...]"); Exodia show cut off (skip was any key/click/wheel; now Esc/Enter/Space/pad
   after 1 s, in exodia_show.gd and win_show.gd).
 - A 0.6 s hitch about 2 s after the game starts shows in every headless test (not from any screen; not looked into).
+- SHIPPED 0.63.1 at 4:50 PM Nov 20 (commit 35fb90e, pushed). Installed on the Mac with inst.sh (mac identical, 0.63.1, windows
+  identical). Windows zip is 431 MB now: sent in the chat as Crossroads-0.63.1-windows.part1/.part2 (split -b 215m) with the
+  copy /b line. device_commit_files needs a fileUuid from SendUserFile (a stagedPath under outputs was refused with HTTP 400).
+  Suite: TESTS DONE failures 0, CARD CHECK 8415 problems 0, positions 206 pass (6 with none), VOICE OVERLAP PASS, LINE NAMES
+  PASS, CHAIN CHECK PASS. Next: English voices (1,243 left, next batch 98), 0.64.0 when complete.
