@@ -591,3 +591,10 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
    duelist line: big_hit, hurt, low, comeback, react) once the hit takes Life Points to 0 or the duel is finished;
    also drop lines still WAITING in the voice queue when the duel ends, so nothing mid-duel plays over the ending.
    Check the same for the losing side (his LP to 0 -> no "we're hanging on" line).
+8. (Nov 20, 1:28 PM, photo cecd0c41-image.jpg) Victory screen: his duelist (wild style: should hop, then hold the
+   long cheer `win_a` with the arms up) stands with both forearms crossed in an X in front of the chest/face.
+   Not intended. More proof for the root cause of 1, 4, 5: on his real rigs the arms end up rotated inward/crossed
+   (a cheer with arms UP becomes arms CROSSED). So FIRST job when told to go: load one of his real models' skeleton
+   (rest pose, bone names, arm bone roll) and compare with the stand-in used for import_motions.gd ("same"/"smplh"
+   maps); fix the retarget, then re-check every clip from the portrait camera AND the wide ending camera.
+   Note: his model files stay on his Mac (only skeleton data may come here): read the rest pose with Blender there.
