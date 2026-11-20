@@ -504,3 +504,24 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
   frames of it), opening face-off with a signature pose. NOT seen: ace look, direct-attack look, hit sparks on the body,
   battle damage flying on, duelist_look head turns (too small to judge in pictures), Style choice in the profile editor,
   the new settings rows, tall/short/female bodies (the test models are stand-ins).
+
+#### 0.63.0 notes of Nov 20, early afternoon (ship day)
+- Raul: "I want it today. Like, as soon as you have it." Nothing is parked on a date; only what the voice limit blocks waits.
+  He will keep sending requests; they go into the next build as they come.
+- His report: a duelist named the wrong card (Zane, Kaiba's fusion). Cause: each character's "ace" line names their
+  monster and played for ANY Level 7+ summon and for every Special Summon that was not Fusion/Synchro/Xyz/Ritual.
+  Fix: `Characters.LINE_NEEDS` (34 lines -> the exact card name, a "Name*" family, "*text*", or "ace" = the speaker's
+  own ace), `Characters.line(key, kind, card_id)` filters by it and falls back to the personality's lines;
+  `duel_scene._talk/_call` take `about` (the card the line is about; attacks pass the attacker). Yugi's
+  "Go, attack directly!" moved to kind "direct"; Jaden's fusion line moved to kind "fusion". A monster brought out
+  by an effect is "ace" only when big (Level 7+, the speaker's ace, or one of PLAYER_CALLS), otherwise a "summon" call.
+  Test: `godot --headless --path . res://tests/line_names.tscn` -> "LINE NAMES: PASS" (in /tmp/alltests.sh too).
+  NOT changed: "ace_lost" lines still play for any Level 7+ destroyed (they say "my ace", no name).
+- Live portraits: the portrait camera steps back when a hand is lifted or thrown out past the frame
+  (`_pwide`, `PORTRAIT_WIDE_MAX` 1.5, in `_update_portrait`), seen in pictures. Talking: `hud.said` signal ->
+  `board.duelist_mouth` -> `RoamFigure.mouth_for` (mouth shapes when the model has them, head nods always).
+  The test stand-in models have 0 face parts, so the mouth itself was never seen moving.
+- The turn's draw motion is guarded by turn number now (`_beat_drew`), not by the clock.
+- Spanish redos done (33, batches 90-91), Spanish to-do 0, voices/es 1,529 files. English: batches 88-93 made
+  (b89 and b93 partial), about 1,225 to go, parked in tools/voices/wip/en. Limit closed again about 12:50.
+- Meshy 366 used / 171 left, told Raul (it passed the 300 named first). ElevenLabs about 63,900 of 131,000.
