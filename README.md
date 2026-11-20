@@ -5,6 +5,25 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.62.0
+
+Voices. The duel talks now, and so does the opening. No cards added: 8,415 total.
+
+**Spanish has every voice in this build. English has none yet** (it plays with text bubbles, like before) and comes in a small follow-up build.
+
+- **Opponents speak their lines.** Every duelist has one of eight original voices picked by their personality (kind, cocky, cool, wild, dark; male and female), each pitched a hair differently so two duelists with the same voice do not sound identical. They are new voices made for this game. None imitates a character or an actor from the shows.
+- **Lumen speaks**, in duels and outside them. Three voices to choose from: **Warm** (the default), **Bright** (the lighter one) and **Calm**.
+- **Your duelist speaks** at the big moments (the face-off, the ace, Fusion/Synchro/Xyz/Ritual, a big hit, a comeback, winning and losing) and names 28 famous monsters when they hit the field. Four voices: **Male A, Male B, Female A, Female B**. By default it follows your duelist's look.
+- **The face-off before a duel.** The music steps back while the two of you have your say, each line gets exactly the time its voice needs, and both shout "¡Duelo!" as the DUEL title lands. A duelist who remembers the last duel against you says so (one line if you beat them, another if they beat you).
+- **The opening has a narrator.** On the very first start a narrator names Atlas Peak Games, each of the four worlds and the title, and Lumen's lines there are spoken. On every later start the narrator says the title, and Lumen greets you once at the main menu (what she says depends on whether you won or lost your last duel, or whether she has news).
+- **Voices never talk over each other.** One voice at a time, with a short breath between lines. Small lines (a taunt, a draw) are skipped if somebody is already talking, and their text still shows. Big lines wait their turn for up to 4 seconds. The only moment with two voices at once is the "¡Duelo!" shout, on purpose. A test in the project checks this (`tests/voice_overlap.tscn`).
+- **Music steps back** a little while somebody speaks and comes back up after.
+- **Settings > Audio:** **Voices** (the master switch: off means text only, like before), **Voice volume**, **Opponents' voices** (on/off), **Lumen's voice** (Warm / Bright / Calm / No voice), **My duelist's voice** (Fits my duelist's look / Male A / Male B / Female A / Female B / No voice). Everything is on by default. Choosing a voice plays a sample.
+- **The voice files are inside the game** (903 Spanish lines, about 27 MB). Nothing is saved outside the game's folder.
+- **Reorder the cards in your hand.** Drag a card sideways inside the hand to move it. Dragging it up still plays it.
+- **Exodia:** the chains draw a full five-point star now. (Before, one side of the star was missing.)
+- **Windows:** only the .exe changed (it is about 27 MB bigger).
+
 ## What is in 0.61.0
 
 Card effects you can read at a glance, the other special wins, and Field Spell places redone. No cards added: 8,415 total.

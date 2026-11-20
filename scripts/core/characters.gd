@@ -255,12 +255,19 @@ static func available(key: String) -> bool:
 	return DATA.has(key) and CardData.has_deck(DATA[key]["deck"])
 
 
+## The English of the line `line()` picked last (the voices are looked up by it, see Voices).
+static var last_en := ""
+
+
 static func line(key: String, kind: String) -> String:
+	last_en = ""
 	# Your own duelist says the lines you picked for them.
 	if key == "player" and kind == "intro" and Profile.intro > 0:
-		return Loc.t(str(Profile.INTROS[Profile.intro]))
+		last_en = str(Profile.INTROS[Profile.intro])
+		return Loc.t(last_en)
 	if key == "player" and kind == "win" and Profile.win_line > 0:
-		return Loc.t(str(Profile.WINS[Profile.win_line]))
+		last_en = str(Profile.WINS[Profile.win_line])
+		return Loc.t(last_en)
 	var own: Dictionary = PLAYER_LINES if key == "player" else DATA.get(key, STORY_CAST.get(key, {})).get("lines", {})
 	var arr: Array = own.get(kind, [])
 	if arr.is_empty() and key != "player":
@@ -270,4 +277,5 @@ static func line(key: String, kind: String) -> String:
 		arr = PERSONALITY_LINES["wild"].get(kind, [])
 	if arr.is_empty():
 		return ""
-	return Loc.t(str(arr[randi() % arr.size()]))
+	last_en = str(arr[randi() % arr.size()])
+	return Loc.t(last_en)

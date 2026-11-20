@@ -1217,6 +1217,14 @@ var can_drag := Callable()       # (inst) -> bool, set by the duel
 var drop_handler := Callable()   # (inst, screen position) -> bool: true when the card was played
 
 
+## Where the hand's own row starts on the screen: a card dropped below this line was only moved
+## inside the hand, not played.
+func _hand_band() -> float:
+	return get_viewport_rect().size.y - HAND_CARD.y * 1.1
+
+
+## Dragging a card: up onto the table plays it (when it can be played), and sideways inside the hand
+## moves it to a new place among the others, so you can keep your cards in the order you like.
 func _input(event: InputEvent) -> void:
 	if _drag.is_empty():
 		return
@@ -1228,9 +1236,11 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		var mp: Vector2 = event.position
 		if not _drag["on"]:
-			if mp.distance_to(_drag["from"]) < 16.0 or not (can_drag.is_valid() and can_drag.call(entry["inst"])):
+			if mp.distance_to(_drag["from"]) < 16.0:
 				return
 			_drag["on"] = true
+			_drag["can"] = can_drag.is_valid() and can_drag.call(entry["inst"])
+			_drag["out"] = false
 			hide_actions()
 			var old: Tween = node.get_meta("tw") if node.has_meta("tw") else null
 			if old and old.is_valid():
@@ -1239,17 +1249,27 @@ func _input(event: InputEvent) -> void:
 			node.z_index = 60
 			node.modulate.a = 0.94
 			Sfx.play("whoosh", -14.0, 1.4)
-			hand_drag.emit(entry["inst"], true)
+		# A card that cannot be played right now stays in the hand's row: it can only change places.
+		if not _drag["can"]:
+			mp.y = maxf(mp.y, _hand_band() + HAND_CARD.y * 0.3)
+		var outside: bool = mp.y < _hand_band()
+		if outside != bool(_drag["out"]) and _drag["can"]:
+			_drag["out"] = outside
+			hand_drag.emit(entry["inst"], outside)      # the table lights up where it can go
 		node.global_position = mp - HAND_CARD / 2.0
 		node.scale = node.scale.lerp(Vector2(0.86, 0.86), 0.35)
 		node.rotation = lerpf(node.rotation, clampf(event.relative.x * 0.012, -0.3, 0.3), 0.3)
+		if not outside:
+			_hand_move(entry, mp.x)
 	elif event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var was_on: bool = _drag["on"]
+		var was_out: bool = bool(_drag.get("out", false))
 		_drag = {}
 		if not was_on:
 			return
-		hand_drag.emit(entry["inst"], false)
-		var played: bool = drop_handler.is_valid() and drop_handler.call(entry["inst"], event.position)
+		if was_out:
+			hand_drag.emit(entry["inst"], false)
+		var played: bool = was_out and drop_handler.is_valid() and drop_handler.call(entry["inst"], event.position)
 		if played:
 			# It stays where it was dropped until the summon takes it off the hand.
 			get_tree().create_timer(2.5).timeout.connect(func():
@@ -1258,7 +1278,85 @@ func _input(event: InputEvent) -> void:
 					_layout_hand())
 		else:
 			node.remove_meta("held")
+			node.z_index = 0
 			_layout_hand()
+
+
+## The held card takes the place its middle is over: the others make room as it passes them.
+func _hand_move(entry: Dictionary, x: float) -> void:
+	var at := _hand.find(entry)
+	if at < 0:
+		return
+	var want := 0
+	for e in _hand:
+		if e == entry:
+			continue
+		var n: Control = e["node"]
+		if is_instance_valid(n) and n.global_position.x + HAND_CARD.x * 0.5 < x:
+			want += 1
+	if want == at:
+		return
+	_hand.remove_at(at)
+	_hand.insert(want, entry)
+	_hand_hover = -1
+	Sfx.play("blip", -18.0, 1.7)
+	_layout_hand()
+
+
+## Dev (--handtest): drags the first card of the hand sideways past the next two, then tries to pull a
+## card it cannot play up onto the table, and prints what happened (the order must change, nothing is played).
+func dev_hand_test() -> void:
+	if _hand.size() < 3:
+		print("HANDTEST too few cards: ", _hand.size())
+		return
+	var vp := get_viewport()
+	var send := func(ev: InputEvent) -> void:
+		vp.push_input(ev, true)
+	var drag := func(from: Vector2, to: Vector2) -> void:
+		var down := InputEventMouseButton.new()
+		down.button_index = MOUSE_BUTTON_LEFT
+		down.pressed = true
+		down.position = from
+		down.global_position = from
+		send.call(down)
+		await get_tree().process_frame
+		for k in 12:
+			var mv := InputEventMouseMotion.new()
+			mv.position = from.lerp(to, float(k + 1) / 12.0)
+			mv.global_position = mv.position
+			mv.relative = (to - from) / 12.0
+			mv.button_mask = MOUSE_BUTTON_MASK_LEFT
+			send.call(mv)
+			await get_tree().process_frame
+		var up := InputEventMouseButton.new()
+		up.button_index = MOUSE_BUTTON_LEFT
+		up.pressed = false
+		up.position = to
+		up.global_position = to
+		send.call(up)
+		await get_tree().create_timer(0.5).timeout
+	var first: Dictionary = _hand[0]
+	var size0 := _hand.size()
+	var a: Control = _hand[0]["node"]
+	var c: Control = _hand[2]["node"]
+	var from: Vector2 = a.global_position + HAND_CARD * Vector2(0.5, 0.35)
+	var to := Vector2(c.global_position.x + HAND_CARD.x * 0.75, from.y)
+	await drag.call(from, to)
+	print("HANDTEST sideways: first card now at index %d of %d (was 0 of %d)" % [_hand.find(first), _hand.size(), size0])
+	# Up onto the table with a card that cannot be played: it must stay in the hand.
+	var stuck: Dictionary = {}
+	for e in _hand:
+		if not (can_drag.is_valid() and can_drag.call(e["inst"])):
+			stuck = e
+			break
+	if stuck.is_empty():
+		print("HANDTEST up: every card can be played, nothing to check")
+	else:
+		var n: Control = stuck["node"]
+		var f2: Vector2 = n.global_position + HAND_CARD * Vector2(0.5, 0.35)
+		await drag.call(f2, Vector2(f2.x, 300.0))
+		print("HANDTEST up: still in hand %s, hand size %d" % [str(_hand.has(stuck)), _hand.size()])
+	print("HANDTEST done")
 
 
 func remove_hand_card(inst) -> void:

@@ -132,11 +132,17 @@ func _run(_scene: Node, winner: int) -> void:
 		Sfx.play("land", -6.0, 0.8)
 		board.shake(0.3 + i * 0.06)
 		board.cam_punch(1.5)
-		# A chain of light to the piece before it (and the last one closes the ring).
-		if i > 0:
-			_chains.append(DuelFx.chain(board, spots[i - 1] + Vector3(0, 0.1, 0), spot + Vector3(0, 0.1, 0), GOLD, board.camera, 0.2, 0.22))
-		if i == 4:
-			_chains.append(DuelFx.chain(board, spot + Vector3(0, 0.1, 0), spots[0] + Vector3(0, 0.1, 0), GOLD, board.camera, 0.2, 0.22))
+		# Chains of light to the pieces across from it: the five chains draw a five-point star, so every
+		# piece ends up linked to the two that are not its neighbours. (0.62.0: they used to go from each
+		# piece to the one before it, which left the star incomplete.)
+		for pair in [[0, 4], [4, 1], [1, 2], [2, 3], [3, 0]]:
+			var other := -1
+			if pair[0] == i and pair[1] < i:
+				other = pair[1]
+			elif pair[1] == i and pair[0] < i:
+				other = pair[0]
+			if other >= 0:
+				_chains.append(DuelFx.chain(board, spots[other] + Vector3(0, 0.1, 0), spot + Vector3(0, 0.1, 0), GOLD, board.camera, 0.2, 0.22))
 		if await _w(0.12 if i < 4 else 0.45):
 			_end()
 			return

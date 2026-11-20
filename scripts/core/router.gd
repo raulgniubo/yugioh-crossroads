@@ -578,6 +578,9 @@ func _debug_args() -> void:
 			elif what == "deck":
 				menu._on_deck()
 			elif what == "settings":
+				for t in OS.get_cmdline_user_args():
+					if t.begins_with("--tab="):      # dev: open on that tab (3 is Audio)
+						SettingsPanel._tab_at["settings"] = int(t.substr(6))
 				menu._on_settings()
 			elif what.begins_with("story"):
 				menu._on_story()

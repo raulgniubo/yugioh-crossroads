@@ -1,0 +1,152 @@
+{
+ "lumen": {
+  "en": {
+   "id": "NWvZelrWGl0D6SE0XYf3",
+   "name": "Crossroads - Lumen"
+  },
+  "es": {
+   "id": "PLPCoDf1oinxWsfubeXC",
+   "name": "Crossroads ES - Lumen"
+  }
+ },
+ "kind_m": {
+  "en": {
+   "id": "X6bQnk5PHHEnqdb3Jxwb",
+   "name": "Crossroads - Kind (M)"
+  },
+  "es": {
+   "id": "77WL1spJPpvbK7Q8ZBle",
+   "name": "Crossroads ES - Kind (M)"
+  }
+ },
+ "kind_f": {
+  "en": {
+   "id": "97qqYqkUYqjEahxmTRBx",
+   "name": "Crossroads - Kind (F)"
+  },
+  "es": {
+   "id": "nRih61WyuhamoSYOKLFW",
+   "name": "Crossroads ES - Kind (F)"
+  }
+ },
+ "cocky_m": {
+  "en": {
+   "id": "28JzOfTTzMalFHSMa8fp",
+   "name": "Crossroads - Cocky (M)"
+  },
+  "es": {
+   "id": "M6db9FVYM2K3z0idi0TA",
+   "name": "Crossroads ES - Cocky (M)"
+  }
+ },
+ "cocky_f": {
+  "en": {
+   "id": "AJp7qb9PL0goKE30PeP8",
+   "name": "Crossroads - Cocky (F)"
+  },
+  "es": {
+   "id": "1bHLXIhU7Kj1kDNhAMzI",
+   "name": "Crossroads ES - Cocky (F)"
+  }
+ },
+ "cool_m": {
+  "en": {
+   "id": "Es8MR2t3KExOhmLZBsiN",
+   "name": "Crossroads - Cool (M)"
+  },
+  "es": {
+   "id": "XF3bt82VWje1mRV9vVdU",
+   "name": "Crossroads ES - Cool (M)"
+  }
+ },
+ "cool_f": {
+  "en": {
+   "id": "wQsBjyD2NIJprOUyfZ6n",
+   "name": "Crossroads - Cool (F)"
+  },
+  "es": {
+   "id": "NBSHpsW1306jKAzA1isH",
+   "name": "Crossroads ES - Cool (F)"
+  }
+ },
+ "wild_m": {
+  "en": {
+   "id": "JtoU72ZJB878VFjlb5x2",
+   "name": "Crossroads - Wild (M)"
+  },
+  "es": {
+   "id": "hVeMrK3HgcaKwQz1oQ3L",
+   "name": "Crossroads ES - Wild (M)"
+  }
+ },
+ "dark_m": {
+  "en": {
+   "id": "t4iD9mPr55rEGxA7fmiA",
+   "name": "Crossroads - Dark (M)"
+  },
+  "es": {
+   "id": "KA1Gc2bt3Wa34L5YIzIy",
+   "name": "Crossroads ES - Dark (M)"
+  }
+ },
+ "player_m": {
+  "en": {
+   "id": "MxE6ZI4HIYu4XEiztMSu",
+   "name": "Crossroads - Player (M)"
+  },
+  "es": {
+   "id": "Y73iBFYUEIyKplGnyDqM",
+   "name": "Crossroads ES - Player (M)"
+  }
+ },
+ "player_f": {
+  "en": {
+   "id": "WKOqfgZLDgoExHPqjkTM",
+   "name": "Crossroads - Player (F)"
+  },
+  "es": {
+   "id": "NrQUVlPVHYuqhLotmRYl",
+   "name": "Crossroads ES - Player (F)"
+  }
+ },
+ "lumen_b": {
+  "en": {
+   "id": "mMYPhNlKlgqpIJw0bWsw",
+   "name": "Crossroads - Lumen (Warm)"
+  },
+  "es": {
+   "id": "qWTSRmXCN6GhqDUjwVlN",
+   "name": "Crossroads ES - Lumen (Warm)"
+  }
+ },
+ "lumen_c": {
+  "en": {
+   "id": "7p9JF2i9xHqgtdalf5Wd",
+   "name": "Crossroads - Lumen (Calm)"
+  },
+  "es": {
+   "id": "joBMYtP5QbZiJOX1jorj",
+   "name": "Crossroads ES - Lumen (Calm)"
+  }
+ },
+ "player_m2": {
+  "en": {
+   "id": "EuKMODqVzC5JW8uv4rV0",
+   "name": "Crossroads - Player (M2)"
+  },
+  "es": {
+   "id": "1WAmoTJyJafJZiQoiwED",
+   "name": "Crossroads ES - Player (M2)"
+  }
+ },
+ "player_f2": {
+  "en": {
+   "id": "sBPKfnzF5OJ6lzdDopAj",
+   "name": "Crossroads - Player (F2)"
+  },
+  "es": {
+   "id": "cwZ2p09QMncdSsBbbwHq",
+   "name": "Crossroads ES - Player (F2)"
+  }
+ }
+}

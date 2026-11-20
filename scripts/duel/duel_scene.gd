@@ -31,6 +31,7 @@ var _my_turns := 0            # turns of your own so far
 var _theme := "duel"          # the music for this opponent
 var _materials: Array = []
 var _opened := false             # the opening already played on the field
+var _vs_key := ""                # who this duelist is on your record (how the last duel with them went)
 ## Dev: the AI plays your side too, but through the human path, with prompts answered at random.
 var _human_test := "--human-test" in OS.get_cmdline_user_args()
 var _asked := {}
@@ -197,6 +198,7 @@ func _start() -> void:
 	var my_deck: String = cfg.get("player_deck", "yugi")
 	var opp_deck: String = cfg.get("opponent_deck", opp.get("deck", "kaiba"))
 	var opp_name: String = str(cfg.get("opponent_name", opp.get("name", "Rival")))
+	_vs_key = "%s|%s" % [_opp_key, opp_name]
 	_me_key = cfg.get("player_char", "player")
 	var me_info := Portraits.info(_me_key)
 	var me_name: String = me_info.get("name", Profile.duelist_name)
@@ -234,18 +236,28 @@ func _start() -> void:
 				opp_sub = "%s  ·  %s" % [Loc.t(str(opp["title"])), opp_sub]
 			board.cam_cut(Vector3(2.4, 1.25, -dz + 4.8), Vector3(0.0, 1.5, -dz))
 			board.cam_drift(Vector3(1.3, 1.5, -dz + 3.4), 2.6)
+			# The face-off: the music steps back while the two of them have their say.
+			Voices.focus(true)
 			await get_tree().create_timer(0.3).timeout
-			hud.name_plate(1, opp_name, opp_sub, opp_col, 1.9, Loc.t(Characters.line(_opp_key, "intro")))
+			# Each of them gets as long as their line takes out loud, so nobody talks over the other.
+			var opp_line := _opp_intro()
+			var opp_len := maxf(2.5, Voices.length(_opp_key, Characters.last_en, false) + 0.5)
+			hud.name_plate(1, opp_name, opp_sub, opp_col, opp_len - 0.6, opp_line)
+			Voices.say_kind(_opp_key, "intro", Characters.last_en, false)
 			board.duelist_gesture(1, "intro")
-			await get_tree().create_timer(2.5).timeout
+			await get_tree().create_timer(opp_len).timeout
 			board.cam_cut(Vector3(-2.4, 1.25, dz - 4.8), Vector3(0.0, 1.5, dz))
 			board.cam_drift(Vector3(-1.3, 1.5, dz - 3.4), 2.2)
-			hud.name_plate(0, me_name, Loc.t("%s Deck") % CardData.deck_name(my_deck), me_col, 1.5, Loc.t(Characters.line(_me_key, "intro")))
+			var my_line := Loc.t(Characters.line(_me_key, "intro"))
+			var my_len := maxf(2.0, Voices.length(_me_key, Characters.last_en, true) + 0.5)
+			hud.name_plate(0, me_name, Loc.t("%s Deck") % CardData.deck_name(my_deck), me_col, my_len - 0.5, my_line)
+			Voices.say_kind(_me_key, "intro", Characters.last_en, true)
 			board.duelist_gesture(0, "intro")
-			await get_tree().create_timer(2.0).timeout
+			await get_tree().create_timer(my_len).timeout
 			# Over your shoulder, the whole field between you and them.
 			board.cam_cut(Vector3(3.0, 2.5, dz + 3.9), Vector3(-2.4, 1.2, -dz))
 			board.cam_drift(Vector3(2.6, 2.7, dz + 3.5), 8.0)
+			Voices.focus(false)
 			await hud.vs_slam(me_col, opp_col)
 			if cfg.has("first_turn"):
 				# Already settled on the road (the ride into a Turbo Duel): no game for it.
@@ -402,7 +414,16 @@ func _start() -> void:
 				else:
 					board.duelist_gesture(rs, "intro")
 				await get_tree().create_timer(2.5).timeout
+	if not _autoplay and _puzzle.is_empty():
+		# A held breath, then both of them shout it as the word lands and the music comes back up.
+		Voices.focus(true)
+		await get_tree().create_timer(0.35).timeout
+		Voices.shout(_me_key, _opp_key, Voices.DUEL)
+		Voices.focus(false)
 	await hud.banner("DUEL!", Comic.YELLOW)
+	if "--handtest" in OS.get_cmdline_user_args():
+		# Dev: move the hand around with the mouse and print what happened (see DuelHud.dev_hand_test).
+		get_tree().create_timer(9.0).timeout.connect(hud.dev_hand_test)
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--cutin="):
 			# Dev: hold a cut-in on screen for a screenshot. me | opp | big | hit
@@ -623,7 +644,7 @@ func _finish() -> void:
 			earned = Puzzles.mark(str(_puzzle["id"]))
 			Collection.last_reward = [["Puzzle solved", earned]] if earned > 0 else []
 	elif not _autoplay:
-		Profile.record_result(won)
+		Profile.record_result(won, _vs_key)
 		var my_lp: int = state.players[ME].lp
 		var rinfo := {}
 		if Router.duel_config.has("stake"):
@@ -660,6 +681,7 @@ func _finish() -> void:
 		board.track.hush()
 	Sfx.play("cheer", -4.0 if won else -12.0)
 	hud.say(AI, Characters.line(_opp_key, "lose" if won else "win"))
+	Voices.say_kind(_opp_key, "lose" if won else "win", Characters.last_en, false)
 	# The winner gets the camera.
 	var champ := ME if won else AI
 	# The loser drops their head first, then the winner gets the camera and celebrates.
@@ -807,21 +829,21 @@ var _last_talk := [-10.0, -10.0]
 
 ## Lumen, your partner, has an opinion about the duel. Each kind of remark once per duel.
 const LUMEN_SAYS := {
-	"start": ["I'm in your deck! Draw me, draw me!", "Okay. Deep breath. I believe in you. Also in me. Mostly you."],
-	"me": ["That's me! Hi! One monster for your hand, coming right up!", "I'm on the field! Don't look at my ATK. Look at my heart."],
-	"my_ace": ["Ooh, the big one! Get them!", "THERE it is! I love this part!"],
-	"their_ace": ["That's their best monster. Don't panic. I'm panicking, but you shouldn't.", "Uh oh. Big. Very big. You have a plan, right?"],
-	"ace_down": ["You took down their ace! Did you see their face?!", "Their best monster is GONE! Keep going!"],
-	"ace_lost": ["Your ace... okay. Okay! We can still do this.", "It's fine! We have more cards! ...We have more cards, right?"],
-	"my_low": ["Your Life Points are low. I'm not worried. *bzzt* I'm a little worried.", "Careful! One more hit like that and we're done!"],
-	"their_low": ["They're almost out! One more push!", "They're on the ropes! Finish it!"],
-	"hit": ["Ow! That one hurt just to watch.", "Okay, that was a lot of Life Points. We still have the rest!"],
-	"direct": ["Right through! Nothing in the way!", "Direct hit! They felt that one!"],
-	"trap": ["A Trap! I KNEW that card looked shifty.", "They were waiting for that. Sneaky."],
-	"topdeck": ["No cards in hand... so the next one has to count. No pressure!", "Empty hand. This is where the good draws happen. Right? Right."],
-	"comeback": ["You're back in it! I never doubted you. *bzzt* Much.", "From almost nothing to THIS? That's my duelist!"],
-	"destiny": ["{player}. The Deck is listening. Ask it for the one card you need!", "This is it. One card can turn this around. Reach for it!"],
-	"their_destiny": ["They can do that too?! Okay. Okay. Stay sharp.", "That was THEIR big draw. Whatever it is, we can take it."],
+	"start": ["I'm in your deck! Draw me, draw me!", "Okay. Deep breath. I believe in you. Also in me. Mostly you.", "New duel, new us! Well. Same us. But ready!", "I shuffled myself extra well this time. You're welcome."],
+	"me": ["That's me! Hi! One monster for your hand, coming right up!", "I'm on the field! Don't look at my ATK. Look at my heart.", "Ta-da! It's me! Try to look impressed.", "Lumen, reporting for duty! Small but mighty!"],
+	"my_ace": ["Ooh, the big one! Get them!", "THERE it is! I love this part!", "Yes! YES! That's the one I was hoping for!", "Your ace is here! Everybody look busy!"],
+	"their_ace": ["That's their best monster. Don't panic. I'm panicking, but you shouldn't.", "Uh oh. Big. Very big. You have a plan, right?", "Okay, that one has a LOT of teeth. We've handled worse. Probably.", "Their ace. Great. Fine. We planned for this. Did we plan for this?"],
+	"ace_down": ["You took down their ace! Did you see their face?!", "Their best monster is GONE! Keep going!", "Boom! Their ace is history!", "That was their best card! Not anymore!"],
+	"ace_lost": ["Your ace... okay. Okay! We can still do this.", "It's fine! We have more cards! ...We have more cards, right?", "They got your ace... Shake it off! The duel isn't over.", "Ouch. Okay, new plan. I like new plans."],
+	"my_low": ["Your Life Points are low. I'm not worried. *bzzt* I'm a little worried.", "Careful! One more hit like that and we're done!", "We're hanging by a thread. A very brave thread!", "Life Points are getting low. Time for something clever!"],
+	"their_low": ["They're almost out! One more push!", "They're on the ropes! Finish it!", "They're wobbling! One good hit!", "Look at their Life Points! We're so close!"],
+	"hit": ["Ow! That one hurt just to watch.", "Okay, that was a lot of Life Points. We still have the rest!", "Yikes! Okay, we felt that.", "That stung. We're still standing!"],
+	"direct": ["Right through! Nothing in the way!", "Direct hit! They felt that one!", "Wide open! Go, go, go!", "Straight to their Life Points! Beautiful!"],
+	"trap": ["A Trap! I KNEW that card looked shifty.", "They were waiting for that. Sneaky.", "A Trap! Of course there was a Trap.", "Sneaky! I should have seen that coming."],
+	"topdeck": ["No cards in hand... so the next one has to count. No pressure!", "Empty hand. This is where the good draws happen. Right? Right.", "Nothing in hand. Everything rides on the next draw!", "One card at a time. That's all we need."],
+	"comeback": ["You're back in it! I never doubted you. *bzzt* Much.", "From almost nothing to THIS? That's my duelist!", "And we're back! I knew it the whole time!", "What a turnaround! Do that again!"],
+	"destiny": ["{player}. The Deck is listening. Ask it for the one card you need!", "This is it. One card can turn this around. Reach for it!", "I can feel it. The next card is the one. Draw!", "Deep breath... now reach for it!"],
+	"their_destiny": ["They can do that too?! Okay. Okay. Stay sharp.", "That was THEIR big draw. Whatever it is, we can take it.", "Uh oh. Their deck answered them. Heads up!", "A big draw for them. Stay calm. Stay very calm."],
 }
 var _lumen_box: LumenBubble
 var _lumen_said := {}
@@ -855,7 +877,10 @@ func _lumen(kind: String) -> void:
 	_lumen_said[kind] = true
 	_lumen_at = now
 	var lines: Array = LUMEN_SAYS[kind]
-	_lumen_box.say(str(lines[randi() % lines.size()]))
+	var said := str(lines[randi() % lines.size()])
+	# Her bubble stays up for as long as she is talking (her voice may start a moment late, after a duelist's).
+	_lumen_box.say(said, maxf(2.6 + said.length() * 0.055, Voices.length("lumen", said) + 1.2))
+	Voices.say("lumen", said, true, true)
 	if _lumen_3d != null:
 		_lumen_3d.speak(2.4)
 		if kind in ["my_ace", "ace_down", "their_low", "destiny", "direct", "me", "comeback"]:
@@ -877,17 +902,39 @@ func _announce(p: int, card, trap: bool) -> void:
 	hud.action_caption(("✦  " if not trap else "⚠  ") + title, CardText.gist(nm, txt), Color("ff4dd2") if trap else Color("3fd9a8"), p == ME)
 
 
-func _talk(p: int, kind: String, chance := 1.0, min_gap := 2.5) -> void:
+## What the opponent opens with: their own intro or, two times out of three when you have met
+## before, a word about how the last duel went. Leaves the English in Characters.last_en.
+func _opp_intro() -> String:
+	var line := Characters.line(_opp_key, "intro")
+	var rem := Voices.rematch_line(_opp_key, Profile.last_vs(_vs_key))
+	if rem != "" and randf() < 0.67:
+		Characters.last_en = rem
+		return Loc.t(rem)
+	return line
+
+
+## A duelist says a line of a kind (a bubble, a gesture, and their voice when they have one).
+## `card_id`: the monster that just hit the field; a duelist with a call-out for it names it instead.
+func _talk(p: int, kind: String, chance := 1.0, min_gap := 2.5, card_id := 0) -> void:
 	if _autoplay or randf() > chance:
 		return
 	var now := Time.get_ticks_msec() / 1000.0
 	if now - float(_last_talk[p]) < min_gap:
 		return
-	var line := Characters.line(_speaker(p) if p == ME else _opp_key, kind)
+	var who := _speaker(p) if p == ME else _opp_key
+	if card_id > 0 and (kind == "ace" or randf() < 0.5):
+		var call: Array = Voices.call_line(who, card_id)
+		if not call.is_empty() and Voices.say(who, str(call[1]), p == ME, true):
+			_last_talk[p] = now
+			hud.say(p, str(call[0]))
+			board.duelist_gesture(p, "ace")
+			return
+	var line := _opp_intro() if (p == AI and kind == "intro") else Characters.line(who, kind)
 	if line == "":
 		return
 	_last_talk[p] = now
 	hud.say(p, line)
+	Voices.say_kind(who, kind, Characters.last_en, p == ME)
 	board.duelist_gesture(p, kind)
 
 
@@ -951,6 +998,8 @@ func _play_event(ev: Dictionary) -> void:
 				_leave_hand(ev["card"])
 			Sfx.play("card")
 			var is_ace: bool = ev["type"] == "summon" and (ev["card"].level() >= 7 or ev["card"].id == Characters.get_char(_opp_key).get("ace", 0))
+			if ev["type"] == "summon" and p == ME and int(ev["card"].id) in Voices.PLAYER_CALLS:
+				is_ace = true
 			if ev["type"] == "summon":
 				get_tree().create_timer(Settings.t(0.5)).timeout.connect(func(): Sfx.play("summon", -4.0))
 			# A big monster arrives: its own show, in its own colors (see SummonShow).
@@ -961,7 +1010,7 @@ func _play_event(ev: Dictionary) -> void:
 				SummonShow.play(self, sd, p == ME)
 				await get_tree().create_timer(Settings.t(1.5)).timeout
 			if is_ace:
-				_talk(p, "ace", 1.0, 0.0)
+				_talk(p, "ace", 1.0, 0.0, int(ev["card"].id))
 				hud.react(p, "ace")
 				_lumen("my_ace" if p == ME else "their_ace")
 			elif p == ME and ev["type"] == "summon" and ev["card"].id == CardData.LUMEN:
@@ -1227,7 +1276,7 @@ func _play_event(ev: Dictionary) -> void:
 				return
 			var titles := {"fusion": "FUSION SUMMON", "synchro": "SYNCHRO SUMMON", "xyz": "XYZ SUMMON", "reborn": "REVIVED", "ritual": "RITUAL SUMMON"}
 			Sfx.play("special")
-			_talk(p, method if method in ["fusion", "synchro", "xyz", "ritual"] else "ace", 1.0, 0.0)
+			_talk(p, method if method in ["fusion", "synchro", "xyz", "ritual"] else "ace", 1.0, 0.0, int(ev["card"].id))
 			board.duelist_body(p, "summon", 1.5)
 			hud.react(p, "ace")
 			hud.banner(titles.get(method, "SPECIAL SUMMON"), board.METHOD_COLORS.get(method, UITheme.ACCENT), true)
@@ -1289,6 +1338,7 @@ func _play_event(ev: Dictionary) -> void:
 			if ev["delta"] < 0 and int(ev["lp"]) <= 0 and not _autoplay:
 				# The last hit of the duel: the winner gets the screen.
 				hud.cut_in(1 - p, Loc.t("FINISHING BLOW!"), Characters.line(_speaker(ME) if p == AI else _opp_key, "win"), UITheme.GOLD, 0.8, true)
+				Voices.say_kind(_speaker(ME) if p == AI else _opp_key, "win", Characters.last_en, p == AI)
 			if ev["delta"] < 0:
 				# The house: a roar for a hit on the other side, a gasp (and red light) for one on yours.
 				var hit_col := Color(1.0, 0.82, 0.3) if p == AI else Color(1.0, 0.3, 0.26)
@@ -1745,6 +1795,7 @@ func _ai_wait(sec: float) -> void:
 
 
 func _exit_tree() -> void:
+	Voices.hush(true)
 	Settings.pace = 1.0
 	Sfx.boost_db = 0.0
 	Music.set_boost(0.0)

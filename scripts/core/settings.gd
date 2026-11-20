@@ -16,6 +16,12 @@ var fs_resolution := Vector2i.ZERO   # in fullscreen: the size the 3D picture is
 var master_volume := 0.8
 var music_volume := 0.7
 var sfx_volume := 0.8
+## Voices in duels (0.62.0): the master switch, how loud, and who talks.
+var voices_on := true
+var voice_volume := 0.9
+var voice_opp := true
+var voice_lumen := 0         # Lumen: 0 warm, 1 bright, 2 calm, 3 no voice
+var voice_me := 0            # your duelist: 0 the voice that fits their look, 1 male A, 2 male B, 3 female A, 4 female B, 5 no voice
 var anim_speed := 1.0
 var crowd_cam := true         # after a big hit the camera glances at the people watching
 var ask_always := false       # duels: stop at every chance to use a card (off: only when there is something to answer)
@@ -375,6 +381,7 @@ func tune_sun(l: DirectionalLight3D) -> void:
 
 
 func _ready() -> void:
+	Voices.warm.call_deferred()
 	# Before anything reads a save: a load, a new game or leaving admin mode asked for last run.
 	Saves.session_start()
 	Saves.apply_pending()
@@ -484,6 +491,11 @@ func load_settings() -> void:
 	master_volume = cfg.get_value("audio", "master", master_volume)
 	music_volume = cfg.get_value("audio", "music", music_volume)
 	sfx_volume = cfg.get_value("audio", "sfx", sfx_volume)
+	voices_on = bool(cfg.get_value("audio", "voices", voices_on))
+	voice_volume = cfg.get_value("audio", "voice", voice_volume)
+	voice_opp = bool(cfg.get_value("audio", "voice_opp", voice_opp))
+	voice_lumen = clampi(int(cfg.get_value("audio", "lumen_voice", voice_lumen)), 0, 3)
+	voice_me = clampi(int(cfg.get_value("audio", "my_voice", voice_me)), 0, 5)
 	anim_speed = cfg.get_value("game", "anim_speed", anim_speed)
 	crowd_cam = bool(cfg.get_value("game", "crowd_cam", crowd_cam))
 	ask_always = bool(cfg.get_value("game", "ask_always", ask_always))
@@ -564,6 +576,11 @@ func save_settings() -> void:
 	cfg.set_value("audio", "master", master_volume)
 	cfg.set_value("audio", "music", music_volume)
 	cfg.set_value("audio", "sfx", sfx_volume)
+	cfg.set_value("audio", "voices", voices_on)
+	cfg.set_value("audio", "voice", voice_volume)
+	cfg.set_value("audio", "voice_opp", voice_opp)
+	cfg.set_value("audio", "lumen_voice", voice_lumen)
+	cfg.set_value("audio", "my_voice", voice_me)
 	cfg.set_value("game", "anim_speed", anim_speed)
 	cfg.set_value("game", "crowd_cam", crowd_cam)
 	cfg.set_value("game", "ask_always", ask_always)
@@ -648,7 +665,7 @@ func _is_desktop() -> bool:
 
 
 func _ensure_buses() -> void:
-	for bus_name in ["Music", "SFX"]:
+	for bus_name in ["Music", "SFX", "Voice"]:
 		if AudioServer.get_bus_index(bus_name) == -1:
 			AudioServer.add_bus()
 			var idx := AudioServer.bus_count - 1
@@ -660,6 +677,7 @@ func _apply_audio() -> void:
 	_set_bus("Master", master_volume)
 	_set_bus("Music", music_volume)
 	_set_bus("SFX", sfx_volume)
+	_set_bus("Voice", voice_volume)
 
 
 func _set_bus(bus_name: String, value: float) -> void:

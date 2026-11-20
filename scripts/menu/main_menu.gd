@@ -3,6 +3,7 @@ extends Control
 
 const MenuBackground := preload("res://scripts/menu/menu_city.gd")
 
+var _hello_box: LumenBubble = null      # where Lumen says hello when the game opens
 var _items: Array[Button] = []
 var _menu_box: Control
 var _title_box: Control
@@ -54,6 +55,8 @@ func _ready() -> void:
 		_first_start(true)
 	_intro()
 	if not replay:
+		if first_menu and Profile.created and Router.menu_open == "":
+			get_tree().create_timer(0.9).timeout.connect(_lumen_hello)
 		_lumen_news.call_deferred()
 	Router.roam["story"] = ""
 	if Router.menu_open == "":
@@ -819,6 +822,7 @@ func _replay_due() -> bool:
 func _opening_done() -> void:
 	_first = null
 	_panel_open = false
+	_lumen_hello()
 	_lumen_news()
 	if _starter_due():
 		_open_starter()
@@ -916,6 +920,20 @@ func _pick_language() -> void:
 	var lp := LanguagePick.new()
 	lp.z_index = 200
 	add_child(lp)
+
+
+## Lumen says hello, once each time the game is started: a line in her box, and out loud in the voice
+## you picked for her. She knows how your last duel went and whether she has new cards for you.
+func _lumen_hello() -> void:
+	if Voices.greeted or not Profile.created or not is_inside_tree():
+		return
+	Voices.greeted = true
+	var line := Voices.hello_line(Profile.last_won, not Collection.lumen_news.is_empty())
+	if _hello_box == null or not is_instance_valid(_hello_box):
+		_hello_box = LumenBubble.new(26.0, -150.0)
+		add_child(_hello_box)
+	_hello_box.say(line, maxf(4.2, Voices.length("lumen", line) + 0.6))    # the bubble stays while she talks
+	Voices.say("lumen", line, true, true)
 
 
 ## New cards of Lumen's came with the story since the last time the menu was up: say so.

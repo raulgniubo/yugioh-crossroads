@@ -172,6 +172,41 @@ static func open(parent: Node) -> SidePanel:
 	_row(aud, "Master", "", _slider(Settings.master_volume, func(v): Settings.master_volume = v))
 	_row(aud, "Music", "", _slider(Settings.music_volume, func(v): Settings.music_volume = v))
 	_row(aud, "Effects", "Cards, attacks, the crowd.", _slider(Settings.sfx_volume, func(v): Settings.sfx_volume = v))
+	# Voices in duels: one switch for all of them, then who talks.
+	var mk_switch := func(on: bool, setter: Callable) -> CheckButton:
+		var cb := CheckButton.new()
+		cb.button_pressed = on
+		cb.toggled.connect(func(v):
+			setter.call(v)
+			if not v:
+				Voices.hush(true)
+			Settings.save_settings())
+		return cb
+	_row(aud, "Voices", "Duelists, Lumen and the narrator of the opening say their lines out loud. Turn it off and the lines are only text, like before.", mk_switch.call(Settings.voices_on, func(v): Settings.voices_on = v))
+	_row(aud, "Voice volume", "", _slider(Settings.voice_volume, func(v): Settings.voice_volume = v))
+	_row(aud, "Opponents' voices", "", mk_switch.call(Settings.voice_opp, func(v): Settings.voice_opp = v))
+	var lum := OptionButton.new()
+	for i in 4:
+		lum.add_item(Loc.t(["Warm", "Bright", "Calm", "No voice"][i]), i)
+	lum.select(int(Settings.voice_lumen))
+	lum.item_selected.connect(func(i):
+		Settings.voice_lumen = i
+		Settings.save_settings()
+		Voices.hush(true)
+		if i != 3:
+			Voices.say("lumen", "Lumen, reporting for duty! Small but mighty!", true))
+	_row(aud, "Lumen's voice", "Three voices to pick from, or none: she still shows what she says. Pick one and you hear it.", lum)
+	var mine := OptionButton.new()
+	for i in 6:
+		mine.add_item(Loc.t(["Fits my duelist's look", "Male A", "Male B", "Female A", "Female B", "No voice"][i]), i)
+	mine.select(int(Settings.voice_me))
+	mine.item_selected.connect(func(i):
+		Settings.voice_me = i
+		Settings.save_settings()
+		Voices.hush(true)
+		if i != 5:
+			Voices.say("player", "Let's do this.", true))
+	_row(aud, "My duelist's voice", "Your duelist speaks at the big moments: the start, their ace, a Fusion, the last hit. Pick one and you hear it.", mine)
 
 	var game := _card(p, "Gameplay", "⚔", Color("ffd166"))
 	_row(game, "Mouse camera speed", "In the worlds, hold the right mouse button and drag to turn the camera.", _pad_slider(Settings.mouse_sens, func(v): Settings.mouse_sens = v))

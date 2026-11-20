@@ -1,0 +1,318 @@
+{
+ "female": [
+  "akiza",
+  "alexis",
+  "mai",
+  "student_girl",
+  "stylish_woman",
+  "vesper"
+ ],
+ "say": {
+  "en": [
+   [
+    "*bzzt* ",
+    ""
+   ],
+   [
+    "{player}. ",
+    ""
+   ],
+   [
+    "ATK",
+    "attack points"
+   ],
+   [
+    "XYZ",
+    "/ˈɪksiːz/"
+   ],
+   [
+    "Xyz",
+    "/ˈɪksiːz/"
+   ],
+   [
+    "HERO",
+    "Hero"
+   ],
+   [
+    "Tch.",
+    "[scoffs]"
+   ],
+   [
+    "Hehehe...",
+    "[laughs darkly]"
+   ],
+   [
+    "Heh heh heh...",
+    "[chuckles]"
+   ],
+   [
+    "Hehe...",
+    "[giggles]"
+   ],
+   [
+    "Hahaha!",
+    "[laughs]"
+   ]
+  ],
+  "es": [
+   [
+    "*bzzt* ",
+    ""
+   ],
+   [
+    "{player}. ",
+    ""
+   ],
+   [
+    "ATK",
+    "ataque"
+   ],
+   [
+    "XYZ",
+    "/ˈeksis/"
+   ],
+   [
+    "Xyz",
+    "/ˈeksis/"
+   ],
+   [
+    "HERO",
+    "Hero"
+   ],
+   [
+    "Tch.",
+    "[scoffs]"
+   ],
+   [
+    "Jejeje...",
+    "[laughs darkly]"
+   ],
+   [
+    "Je, je, je...",
+    "[chuckles]"
+   ],
+   [
+    "Jeje...",
+    "[giggles]"
+   ],
+   [
+    "¡Jajaja!",
+    "[laughs]"
+   ]
+  ]
+ },
+ "calls": {
+  "kind": [
+   "Come on out, {n}!",
+   "¡Sal ya, {n}!"
+  ],
+  "cocky": [
+   "Behold! {n}!",
+   "¡Contempla! ¡{n}!"
+  ],
+  "cool": [
+   "{n}. Go.",
+   "{n}. Adelante."
+  ],
+  "wild": [
+   "Here it comes! {n}!",
+   "¡Aquí viene! ¡{n}!"
+  ],
+  "dark": [
+   "Rise... {n}.",
+   "Álzate... {n}."
+  ]
+ },
+ "player_calls": [
+  "Blue-Eyes White Dragon",
+  "Dark Magician",
+  "Red-Eyes Black Dragon",
+  "Dark Magician Girl",
+  "Slifer the Sky Dragon",
+  "Obelisk the Tormentor",
+  "The Winged Dragon of Ra",
+  "Black Luster Soldier",
+  "Blue-Eyes Ultimate Dragon",
+  "Summoned Skull",
+  "Buster Blader",
+  "Dark Paladin",
+  "Jinzo",
+  "Elemental HERO Neos",
+  "Elemental HERO Flame Wingman",
+  "Cyber Dragon",
+  "Cyber End Dragon",
+  "Rainbow Dragon",
+  "Stardust Dragon",
+  "Red Dragon Archfiend",
+  "Black Rose Dragon",
+  "Junk Warrior",
+  "Shooting Star Dragon",
+  "Number 39: Utopia",
+  "Galaxy-Eyes Photon Dragon",
+  "Five-Headed Dragon",
+  "Chaos Emperor Dragon - Envoy of the End",
+  "Black Luster Soldier - Envoy of the Beginning"
+ ],
+ "lumen": {
+  "start": [
+   "New duel, new us! Well. Same us. But ready!",
+   "I shuffled myself extra well this time. You're welcome."
+  ],
+  "me": [
+   "Ta-da! It's me! Try to look impressed.",
+   "Lumen, reporting for duty! Small but mighty!"
+  ],
+  "my_ace": [
+   "Yes! YES! That's the one I was hoping for!",
+   "Your ace is here! Everybody look busy!"
+  ],
+  "their_ace": [
+   "Okay, that one has a LOT of teeth. We've handled worse. Probably.",
+   "Their ace. Great. Fine. We planned for this. Did we plan for this?"
+  ],
+  "ace_down": [
+   "Boom! Their ace is history!",
+   "That was their best card! Not anymore!"
+  ],
+  "ace_lost": [
+   "They got your ace... Shake it off! The duel isn't over.",
+   "Ouch. Okay, new plan. I like new plans."
+  ],
+  "my_low": [
+   "We're hanging by a thread. A very brave thread!",
+   "Life Points are getting low. Time for something clever!"
+  ],
+  "their_low": [
+   "They're wobbling! One good hit!",
+   "Look at their Life Points! We're so close!"
+  ],
+  "comeback": [
+   "And we're back! I knew it the whole time!",
+   "What a turnaround! Do that again!"
+  ],
+  "destiny": [
+   "I can feel it. The next card is the one. Draw!",
+   "Deep breath... now reach for it!"
+  ],
+  "their_destiny": [
+   "Uh oh. Their deck answered them. Heads up!",
+   "A big draw for them. Stay calm. Stay very calm."
+  ],
+  "direct": [
+   "Wide open! Go, go, go!",
+   "Straight to their Life Points! Beautiful!"
+  ],
+  "hit": [
+   "Yikes! Okay, we felt that.",
+   "That stung. We're still standing!"
+  ],
+  "topdeck": [
+   "Nothing in hand. Everything rides on the next draw!",
+   "One card at a time. That's all we need."
+  ],
+  "trap": [
+   "A Trap! Of course there was a Trap.",
+   "Sneaky! I should have seen that coming."
+  ]
+ },
+ "es": {
+  "New duel, new us! Well. Same us. But ready!": "¡Duelo nuevo, nosotros nuevos! Bueno. Los mismos. ¡Pero listos!",
+  "I shuffled myself extra well this time. You're welcome.": "Esta vez me barajé súper bien. De nada.",
+  "Ta-da! It's me! Try to look impressed.": "¡Tachán! ¡Soy yo! Intenta parecer impresionado.",
+  "Lumen, reporting for duty! Small but mighty!": "¡Lumen, lista para la acción! ¡Pequeña pero matona!",
+  "Yes! YES! That's the one I was hoping for!": "¡Sí! ¡SÍ! ¡Esa es la que estaba esperando!",
+  "Your ace is here! Everybody look busy!": "¡Llegó tu as! ¡Que todo el mundo disimule!",
+  "Okay, that one has a LOT of teeth. We've handled worse. Probably.": "Vale, ese tiene MUCHOS dientes. Hemos visto cosas peores. Probablemente.",
+  "Their ace. Great. Fine. We planned for this. Did we plan for this?": "Su as. Genial. Bien. Teníamos un plan para esto. ¿Teníamos un plan para esto?",
+  "Boom! Their ace is history!": "¡Bum! ¡Su as ya es historia!",
+  "That was their best card! Not anymore!": "¡Esa era su mejor carta! ¡Ya no!",
+  "They got your ace... Shake it off! The duel isn't over.": "Se llevaron tu as... ¡Sacúdetelo! El duelo no ha terminado.",
+  "Ouch. Okay, new plan. I like new plans.": "Ay. Vale, plan nuevo. Me gustan los planes nuevos.",
+  "We're hanging by a thread. A very brave thread!": "Estamos colgando de un hilo. ¡Un hilo muy valiente!",
+  "Life Points are getting low. Time for something clever!": "Quedan pocos Life Points. ¡Hora de hacer algo ingenioso!",
+  "They're wobbling! One good hit!": "¡Se tambalean! ¡Un buen golpe!",
+  "Look at their Life Points! We're so close!": "¡Mira sus Life Points! ¡Estamos muy cerca!",
+  "And we're back! I knew it the whole time!": "¡Y hemos vuelto! ¡Lo supe todo el tiempo!",
+  "What a turnaround! Do that again!": "¡Menuda remontada! ¡Hazlo otra vez!",
+  "I can feel it. The next card is the one. Draw!": "Lo noto. La siguiente carta es la buena. ¡Roba!",
+  "Deep breath... now reach for it!": "Respira hondo... ¡y ahora ve a por ella!",
+  "Uh oh. Their deck answered them. Heads up!": "Oh, oh. Su Deck les respondió. ¡Ojo!",
+  "A big draw for them. Stay calm. Stay very calm.": "Un gran robo para ellos. Calma. Mucha calma.",
+  "Wide open! Go, go, go!": "¡Vía libre! ¡Vamos, vamos, vamos!",
+  "Straight to their Life Points! Beautiful!": "¡Directo a sus Life Points! ¡Precioso!",
+  "Yikes! Okay, we felt that.": "¡Uf! Vale, eso lo notamos.",
+  "That stung. We're still standing!": "Eso picó. ¡Seguimos en pie!",
+  "Nothing in hand. Everything rides on the next draw!": "Nada en la mano. ¡Todo depende del siguiente robo!",
+  "One card at a time. That's all we need.": "Carta a carta. No hace falta más.",
+  "A Trap! Of course there was a Trap.": "¡Una Trampa! Claro que había una Trampa.",
+  "Sneaky! I should have seen that coming.": "¡Qué astutos! Tendría que haberlo visto venir.",
+  "Duel!": "¡Duelo!",
+  "You beat me last time. I've been practicing!": "Me ganaste la última vez. ¡He estado practicando!",
+  "Back for another? I'd love to!": "¿Vienes por otra? ¡Me encanta!",
+  "You again. Last time was a fluke.": "Otra vez tú. Lo de la última vez fue suerte.",
+  "Back for more? I'll make it quick again.": "¿Vienes por más? Lo haré rápido otra vez.",
+  "You won last time. Not today.": "Ganaste la última vez. Hoy no.",
+  "Again? Same result.": "¿Otra vez? Mismo resultado.",
+  "YOU! I want my rematch! Right now!": "¡TÚ! ¡Quiero mi revancha! ¡Ahora mismo!",
+  "Ha! Came back for another beating?": "¡Ja! ¿Volviste por otra paliza?",
+  "I remember you. I remember losing. Never again.": "Te recuerdo. Recuerdo perder. Nunca más.",
+  "You return... to lose once more.": "Regresas... para perder una vez más.",
+  "You're back! I kept your deck warm.": "¡Volviste! Te guardé el Deck calentito.",
+  "There you are! Shall we duel?": "¡Ahí estás! ¿Echamos un duelo?",
+  "Hi! I was just counting our cards. Again.": "¡Hola! Estaba contando nuestras cartas. Otra vez.",
+  "Oh good, it's you. I was getting bored.": "Menos mal, eres tú. Ya me estaba aburriendo.",
+  "Still smiling about that last win. Let's get another!": "Sigo sonriendo por esa última victoria. ¡Vamos por otra!",
+  "The winner is back! Who's next?": "¡Volvió quien gana! ¿Quién sigue?",
+  "The last one got away from us. Today we get it back.": "El último se nos escapó. Hoy lo recuperamos.",
+  "New day, new duel. That loss doesn't count anymore. I checked.": "Día nuevo, duelo nuevo. Esa derrota ya no cuenta. Lo comprobé.",
+  "Psst. I have new cards for you!": "Pss. ¡Tengo cartas nuevas para ti!",
+  "...Hello?": "...¿Hola?",
+  "Oh! There you are. I was hoping someone would come.": "¡Oh! Ahí estás. Esperaba que viniera alguien.",
+  "There are four worlds out there. Four eras of duelists.": "Hay cuatro mundos ahí fuera. Cuatro eras de duelistas.",
+  "They were never meant to meet. But the roads have crossed.": "Nunca debieron encontrarse. Pero los caminos se han cruzado.",
+  "I have a deck with no cards in it yet. I think it is yours.": "Tengo un deck que aún no tiene cartas. Creo que es tuyo.",
+  "So, tell me. Who are you?": "Dime. ¿Quién eres?"
+ },
+ "duel": "Duel!",
+ "rematch": {
+  "kind": [
+   "You beat me last time. I've been practicing!",
+   "Back for another? I'd love to!"
+  ],
+  "cocky": [
+   "You again. Last time was a fluke.",
+   "Back for more? I'll make it quick again."
+  ],
+  "cool": [
+   "You won last time. Not today.",
+   "Again? Same result."
+  ],
+  "wild": [
+   "YOU! I want my rematch! Right now!",
+   "Ha! Came back for another beating?"
+  ],
+  "dark": [
+   "I remember you. I remember losing. Never again.",
+   "You return... to lose once more."
+  ]
+ },
+ "hello": [
+  "You're back! I kept your deck warm.",
+  "There you are! Shall we duel?",
+  "Hi! I was just counting our cards. Again.",
+  "Oh good, it's you. I was getting bored.",
+  "Still smiling about that last win. Let's get another!",
+  "The winner is back! Who's next?",
+  "The last one got away from us. Today we get it back.",
+  "New day, new duel. That loss doesn't count anymore. I checked.",
+  "Psst. I have new cards for you!"
+ ],
+ "first": [
+  "...Hello?",
+  "Oh! There you are. I was hoping someone would come.",
+  "There are four worlds out there. Four eras of duelists.",
+  "They were never meant to meet. But the roads have crossed.",
+  "I have a deck with no cards in it yet. I think it is yours.",
+  "So, tell me. Who are you?"
+ ]
+}

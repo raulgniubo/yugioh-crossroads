@@ -46,6 +46,9 @@ var intro := 0
 var win_line := 0
 var wins := 0
 var losses := 0
+## How the last duel with each duelist went: key -> 1 (you won) or -1 (they won).
+var vs := {}
+var last_won := 0            # how your last duel went: 1 won, -1 lost, 0 none yet
 
 
 func _ready() -> void:
@@ -79,6 +82,9 @@ func _ready() -> void:
 	win_line = clampi(cfg.get_value("profile", "win_line", 0), 0, WINS.size() - 1)
 	wins = cfg.get_value("stats", "wins", 0)
 	losses = cfg.get_value("stats", "losses", 0)
+	var v = cfg.get_value("stats", "vs", {})
+	vs = v if v is Dictionary else {}
+	last_won = int(cfg.get_value("stats", "last_won", 0))
 	_dev_look()
 
 
@@ -118,6 +124,8 @@ func save() -> void:
 	cfg.set_value("profile", "win_line", win_line)
 	cfg.set_value("stats", "wins", wins)
 	cfg.set_value("stats", "losses", losses)
+	cfg.set_value("stats", "vs", vs)
+	cfg.set_value("stats", "last_won", last_won)
 	cfg.save(PATH)
 	changed.emit()
 
@@ -171,9 +179,17 @@ func level() -> int:
 	return 1 + wins / 3
 
 
-func record_result(won: bool) -> void:
+func record_result(won: bool, against := "") -> void:
 	if won:
 		wins += 1
 	else:
 		losses += 1
+	last_won = 1 if won else -1
+	if against != "":
+		vs[against] = 1 if won else -1
 	save()
+
+
+## 1 = you won the last duel with them, -1 = they did, 0 = you have not met.
+func last_vs(against: String) -> int:
+	return int(vs.get(against, 0))

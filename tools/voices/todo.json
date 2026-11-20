@@ -1,0 +1,6464 @@
+[
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "5418a446266e",
+"kind": "ace",
+"en": "My Harpies always come in style!",
+"text": "My Harpies always come in style!",
+"tts": "My Harpies always come in style!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "6b4ec4a65a6f",
+"kind": "ace",
+"en": "Now witness true power!",
+"text": "Now witness true power!",
+"tts": "Now witness true power!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "a44868d66e6d",
+"kind": "ace",
+"en": "A perfect lap. Admire it.",
+"text": "A perfect lap. Admire it.",
+"tts": "A perfect lap. Admire it."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "53668a100a4a",
+"kind": "ace_lost",
+"en": "You... you destroyed it?!",
+"text": "You... you destroyed it?!",
+"tts": "You... you destroyed it?!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "d0fc0701b3a7",
+"kind": "ace_lost",
+"en": "That was my best card! You'll pay for that!",
+"text": "That was my best card! You'll pay for that!",
+"tts": "That was my best card! You'll pay for that!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "9c6fadfd1fbc",
+"kind": "attack",
+"en": "Crush them!",
+"text": "Crush them!",
+"tts": "Crush them!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "b1ba408383ef",
+"kind": "attack",
+"en": "Cyclone Attack!",
+"text": "Cyclone Attack!",
+"tts": "Cyclone Attack!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "2a41ee39e69a",
+"kind": "big_hit",
+"en": "Feel that? That's the gap between us.",
+"text": "Feel that? That's the gap between us.",
+"tts": "Feel that? That's the gap between us."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "1fdee17c2e5f",
+"kind": "call",
+"en": "call:52040216",
+"text": "Behold! Harpie's Pet Dragon!",
+"tts": "Behold! Harpie's Pet Dragon!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "20fc7358d6e3",
+"kind": "chain",
+"en": "You forgot about my cards.",
+"text": "You forgot about my cards.",
+"tts": "You forgot about my cards."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "be2a450ea5d6",
+"kind": "chain",
+"en": "Not on my watch. Chain!",
+"text": "Not on my watch. Chain!",
+"tts": "Not on my watch. Chain!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "908aee581c85",
+"kind": "comeback",
+"en": "Back where I belong. On top.",
+"text": "Back where I belong. On top.",
+"tts": "Back where I belong. On top."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "408afef2d056",
+"kind": "destroyed",
+"en": "Hmph. A minor setback.",
+"text": "Hmph. A minor setback.",
+"tts": "Hmph. A minor setback."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "731667a5e664",
+"kind": "draw_pressure",
+"en": "Hmph. This changes nothing.",
+"text": "Hmph. This changes nothing.",
+"tts": "Hmph. This changes nothing."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "e9790a830ffb",
+"kind": "duel",
+"en": "Duel!",
+"text": "Duel!",
+"tts": "Duel!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "7af8d4d783f4",
+"kind": "fusion",
+"en": "Two become one, and it's mine. Fusion Summon!",
+"text": "Two become one, and it's mine. Fusion Summon!",
+"tts": "Two become one, and it's mine. Fusion Summon!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "f1b5a5d63b23",
+"kind": "hurt",
+"en": "A lucky shot.",
+"text": "A lucky shot.",
+"tts": "A lucky shot."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "0165479dca9d",
+"kind": "intro",
+"en": "This won't take long.",
+"text": "This won't take long.",
+"tts": "This won't take long."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "c445c01fc486",
+"kind": "intro",
+"en": "Try to keep up, hon.",
+"text": "Try to keep up, hon.",
+"tts": "Try to keep up, hon."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "eb566768a539",
+"kind": "intro",
+"en": "Hold still. This will make a lovely exhibit.",
+"text": "Hold still. This will make a lovely exhibit.",
+"tts": "Hold still. This will make a lovely exhibit."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "d465ea00b982",
+"kind": "lose",
+"en": "...It's loud again.",
+"text": "...It's loud again.",
+"tts": "...It's loud again."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "ee7564fe78e5",
+"kind": "lose",
+"en": "Impossible...!",
+"text": "Impossible...!",
+"tts": "Impossible...!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "790a4f4a5107",
+"kind": "low",
+"en": "Don't think you've won yet!",
+"text": "Don't think you've won yet!",
+"tts": "Don't think you've won yet!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "90a191cec2a1",
+"kind": "negate",
+"en": "Did you think I'd allow that?",
+"text": "Did you think I'd allow that?",
+"tts": "Did you think I'd allow that?"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "e137d7d70f45",
+"kind": "negate",
+"en": "Denied.",
+"text": "Denied.",
+"tts": "Denied."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "18036c6cbd2f",
+"kind": "negated",
+"en": "You stopped it? Tch.",
+"text": "You stopped it? Tch.",
+"tts": "You stopped it? [scoffs]"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "dfbe1aa5a0c4",
+"kind": "react",
+"en": "Is that supposed to scare me?",
+"text": "Is that supposed to scare me?",
+"tts": "Is that supposed to scare me?"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "0f63e033bad1",
+"kind": "rematch",
+"en": "You again. Last time was a fluke.",
+"text": "You again. Last time was a fluke.",
+"tts": "You again. Last time was a fluke."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "262d624423ca",
+"kind": "rematch",
+"en": "Back for more? I'll make it quick again.",
+"text": "Back for more? I'll make it quick again.",
+"tts": "Back for more? I'll make it quick again."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "dea8b4e885ff",
+"kind": "ritual",
+"en": "The ritual answers to me.",
+"text": "The ritual answers to me.",
+"tts": "The ritual answers to me."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "25fcab5d0e6c",
+"kind": "set",
+"en": "Go on. Attack. I dare you.",
+"text": "Go on. Attack. I dare you.",
+"tts": "Go on. Attack. I dare you."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "877522f1a367",
+"kind": "spell",
+"en": "Watch this.",
+"text": "Watch this.",
+"tts": "Watch this."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "ebd95971ae3f",
+"kind": "synchro",
+"en": "Watch the stars line up for me. Synchro Summon!",
+"text": "Watch the stars line up for me. Synchro Summon!",
+"tts": "Watch the stars line up for me. Synchro Summon!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "2535877e2635",
+"kind": "taunt",
+"en": "Is that all you've got?",
+"text": "Is that all you've got?",
+"tts": "Is that all you've got?"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "896869b90d9a",
+"kind": "taunt",
+"en": "You're behind.",
+"text": "You're behind.",
+"tts": "You're behind."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "91d0bc5a5ff1",
+"kind": "taunt",
+"en": "Pathetic.",
+"text": "Pathetic.",
+"tts": "Pathetic."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "23afa08a74f9",
+"kind": "trap",
+"en": "Walked right into it.",
+"text": "Walked right into it.",
+"tts": "Walked right into it."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "66d173547cc1",
+"kind": "trap",
+"en": "Did you really think I'd leave myself open?",
+"text": "Did you really think I'd leave myself open?",
+"tts": "Did you really think I'd leave myself open?"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "63f3528eb537",
+"kind": "turn",
+"en": "Watch and learn.",
+"text": "Watch and learn.",
+"tts": "Watch and learn."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "bb269c0d34e0",
+"kind": "turn",
+"en": "My move.",
+"text": "My move.",
+"tts": "My move."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "66b3bdc108f6",
+"kind": "win",
+"en": "As expected.",
+"text": "As expected.",
+"tts": "As expected."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "e0ecddb4be95",
+"kind": "win",
+"en": "Catalogued.",
+"text": "Catalogued.",
+"tts": "Catalogued."
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "966e0b9792d8",
+"kind": "xyz",
+"en": "Two monsters, one Rank. Xyz Summon!",
+"text": "Two monsters, one Rank. Xyz Summon!",
+"tts": "Two monsters, one Rank. /ˈɪksiːz/ Summon!"
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "dbef0e3c8237",
+"kind": "taunt",
+"en": "I can read you like a comic book!",
+"text": "I can read you like a comic book!",
+"tts": "I can read you like a comic book!"
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "23afa08a74f9",
+"kind": "trap",
+"en": "Walked right into it.",
+"text": "Walked right into it.",
+"tts": "Walked right into it."
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "66d173547cc1",
+"kind": "trap",
+"en": "Did you really think I'd leave myself open?",
+"text": "Did you really think I'd leave myself open?",
+"tts": "Did you really think I'd leave myself open?"
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "12bf10b96f0c",
+"kind": "turn",
+"en": "My turn. Watch closely.",
+"text": "My turn. Watch closely.",
+"tts": "My turn. Watch closely."
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "63f3528eb537",
+"kind": "turn",
+"en": "Watch and learn.",
+"text": "Watch and learn.",
+"tts": "Watch and learn."
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "74900dcdf18d",
+"kind": "turn",
+"en": "Draw!",
+"text": "Draw!",
+"tts": "Draw!"
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "bb269c0d34e0",
+"kind": "turn",
+"en": "My move.",
+"text": "My move.",
+"tts": "My move."
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "66b3bdc108f6",
+"kind": "win",
+"en": "As expected.",
+"text": "As expected.",
+"tts": "As expected."
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "6947c155cafe",
+"kind": "win",
+"en": "As expected. Come back when you're worth my time.",
+"text": "As expected. Come back when you're worth my time.",
+"tts": "As expected. Come back when you're worth my time."
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "966e0b9792d8",
+"kind": "xyz",
+"en": "Two monsters, one Rank. Xyz Summon!",
+"text": "Two monsters, one Rank. Xyz Summon!",
+"tts": "Two monsters, one Rank. /ˈɪksiːz/ Summon!"
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "a4594c26dce2",
+"kind": "ace",
+"en": "Bloom, Black Rose Dragon!",
+"text": "Bloom, Black Rose Dragon!",
+"tts": "Bloom, Black Rose Dragon!"
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "b5ba57590a09",
+"kind": "ace",
+"en": "Here it comes.",
+"text": "Here it comes.",
+"tts": "Here it comes."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "0135442798fb",
+"kind": "ace_lost",
+"en": "So you can beat it. Noted.",
+"text": "So you can beat it. Noted.",
+"tts": "So you can beat it. Noted."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "d4b77a57c8e0",
+"kind": "ace_lost",
+"en": "...Impressive. That was my ace.",
+"text": "...Impressive. That was my ace.",
+"tts": "...Impressive. That was my ace."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "90cda07ebdf8",
+"kind": "attack",
+"en": "Go.",
+"text": "Go.",
+"tts": "Go."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "4ddf390099dc",
+"kind": "big_hit",
+"en": "Clean hit.",
+"text": "Clean hit.",
+"tts": "Clean hit."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "174e7794bb6e",
+"kind": "call",
+"en": "call:73580471",
+"text": "Black Rose Dragon. Go.",
+"tts": "Black Rose Dragon. Go."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "f63eeafd3fda",
+"kind": "chain",
+"en": "Chain.",
+"text": "Chain.",
+"tts": "Chain."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "fc88cee96ef8",
+"kind": "comeback",
+"en": "Now it's even.",
+"text": "Now it's even.",
+"tts": "Now it's even."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "856abe4f8ed6",
+"kind": "destroyed",
+"en": "It did its job.",
+"text": "It did its job.",
+"tts": "It did its job."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "3a38d1be3961",
+"kind": "draw_pressure",
+"en": "Stay calm.",
+"text": "Stay calm.",
+"tts": "Stay calm."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "e9790a830ffb",
+"kind": "duel",
+"en": "Duel!",
+"text": "Duel!",
+"tts": "Duel!"
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "78fb0ec2f847",
+"kind": "fusion",
+"en": "Fusion Summon.",
+"text": "Fusion Summon.",
+"tts": "Fusion Summon."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "b22e91389be1",
+"kind": "hurt",
+"en": "Not bad.",
+"text": "Not bad.",
+"tts": "Not bad."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "3061d5e43021",
+"kind": "intro",
+"en": "Be careful. My roses have thorns.",
+"text": "Be careful. My roses have thorns.",
+"tts": "Be careful. My roses have thorns."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "c0c68dc16d3a",
+"kind": "intro",
+"en": "Let's go.",
+"text": "Let's go.",
+"tts": "Let's go."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "2b01e5396178",
+"kind": "lose",
+"en": "You earned it.",
+"text": "You earned it.",
+"tts": "You earned it."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "8bdb92c77b8c",
+"kind": "low",
+"en": "It's not over.",
+"text": "It's not over.",
+"tts": "It's not over."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "f98419afa136",
+"kind": "negate",
+"en": "Negated.",
+"text": "Negated.",
+"tts": "Negated."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "a3ce393f5e97",
+"kind": "negated",
+"en": "...Stopped.",
+"text": "...Stopped.",
+"tts": "...Stopped."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "60ac90e9261a",
+"kind": "react",
+"en": "Interesting.",
+"text": "Interesting.",
+"tts": "Interesting."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "82339cc425a8",
+"kind": "rematch",
+"en": "You won last time. Not today.",
+"text": "You won last time. Not today.",
+"tts": "You won last time. Not today."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "f4ea2daf4a09",
+"kind": "rematch",
+"en": "Again? Same result.",
+"text": "Again? Same result.",
+"tts": "Again? Same result."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "fbc91e2b3341",
+"kind": "ritual",
+"en": "Ritual Summon.",
+"text": "Ritual Summon.",
+"tts": "Ritual Summon."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "d35651b2546a",
+"kind": "set",
+"en": "One face-down.",
+"text": "One face-down.",
+"tts": "One face-down."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "d1d40efc0c3b",
+"kind": "spell",
+"en": "Spell.",
+"text": "Spell.",
+"tts": "Spell."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "fc26d65c064a",
+"kind": "synchro",
+"en": "Synchro Summon.",
+"text": "Synchro Summon.",
+"tts": "Synchro Summon."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "6c6182564034",
+"kind": "taunt",
+"en": "Your move.",
+"text": "Your move.",
+"tts": "Your move."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "c3192b57701d",
+"kind": "trap",
+"en": "Trap card.",
+"text": "Trap card.",
+"tts": "Trap card."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "dec7640c04a1",
+"kind": "trap",
+"en": "I saw that coming.",
+"text": "I saw that coming.",
+"tts": "I saw that coming."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "6590c9116c10",
+"kind": "turn",
+"en": "Draw.",
+"text": "Draw.",
+"tts": "Draw."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "c33111d5df94",
+"kind": "win",
+"en": "Good duel.",
+"text": "Good duel.",
+"tts": "Good duel."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "d1a34ba7adba",
+"kind": "xyz",
+"en": "Xyz Summon.",
+"text": "Xyz Summon.",
+"tts": "/ˈɪksiːz/ Summon."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "0e8eec7427c8",
+"kind": "ace",
+"en": "Clustering wishes become a new shining star!",
+"text": "Clustering wishes become a new shining star!",
+"tts": "Clustering wishes become a new shining star!"
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "161afeccedea",
+"kind": "ace",
+"en": "Rise from the depths, Leviathan Dragon!",
+"text": "Rise from the depths, Leviathan Dragon!",
+"tts": "Rise from the depths, Leviathan Dragon!"
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "8d4d777dee54",
+"kind": "ace",
+"en": "A masterpiece. I kept it perfect.",
+"text": "A masterpiece. I kept it perfect.",
+"tts": "A masterpiece. I kept it perfect."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "974a0bd7a135",
+"kind": "ace",
+"en": "This echo is mine now.",
+"text": "This echo is mine now.",
+"tts": "This echo is mine now."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "b5ba57590a09",
+"kind": "ace",
+"en": "Here it comes.",
+"text": "Here it comes.",
+"tts": "Here it comes."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "d0430982ca0a",
+"kind": "ace",
+"en": "Galaxy-Eyes Photon Dragon! Descend!",
+"text": "Galaxy-Eyes Photon Dragon! Descend!",
+"tts": "Galaxy-Eyes Photon Dragon! Descend!"
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "da395ac150e5",
+"kind": "ace",
+"en": "Cyber End Dragon. Evolution complete.",
+"text": "Cyber End Dragon. Evolution complete.",
+"tts": "Cyber End Dragon. Evolution complete."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "ede2bb5d2083",
+"kind": "ace",
+"en": "Take flight, Stardust Dragon!",
+"text": "Take flight, Stardust Dragon!",
+"tts": "Take flight, Stardust Dragon!"
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "0135442798fb",
+"kind": "ace_lost",
+"en": "So you can beat it. Noted.",
+"text": "So you can beat it. Noted.",
+"tts": "So you can beat it. Noted."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "d4b77a57c8e0",
+"kind": "ace_lost",
+"en": "...Impressive. That was my ace.",
+"text": "...Impressive. That was my ace.",
+"tts": "...Impressive. That was my ace."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "1fb103afe92d",
+"kind": "attack",
+"en": "Go!",
+"text": "Go!",
+"tts": "Go!"
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "53f3be958f4a",
+"kind": "attack",
+"en": "Shooting Sonic!",
+"text": "Shooting Sonic!",
+"tts": "Shooting Sonic!"
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "56344510a7d3",
+"kind": "attack",
+"en": "Photon Stream of Destruction!",
+"text": "Photon Stream of Destruction!",
+"tts": "Photon Stream of Destruction!"
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "90cda07ebdf8",
+"kind": "attack",
+"en": "Go.",
+"text": "Go.",
+"tts": "Go."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "4ddf390099dc",
+"kind": "big_hit",
+"en": "Clean hit.",
+"text": "Clean hit.",
+"tts": "Clean hit."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "059be9077299",
+"kind": "call",
+"en": "call:1546123",
+"text": "Cyber End Dragon. Go.",
+"tts": "Cyber End Dragon. Go."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "10058dc09805",
+"kind": "call",
+"en": "call:89631139",
+"text": "Blue-Eyes White Dragon. Go.",
+"tts": "Blue-Eyes White Dragon. Go."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "1bdfa09d55f6",
+"kind": "call",
+"en": "call:44508094",
+"text": "Stardust Dragon. Go.",
+"tts": "Stardust Dragon. Go."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "2cb19a02df83",
+"kind": "call",
+"en": "call:74677422",
+"text": "Red-Eyes Black Dragon. Go.",
+"tts": "Red-Eyes Black Dragon. Go."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "41432c1e79ab",
+"kind": "call",
+"en": "call:69610924",
+"text": "Number 17: Leviathan Dragon. Go.",
+"tts": "Number 17: Leviathan Dragon. Go."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "9f45b3d2b4fe",
+"kind": "call",
+"en": "call:93717133",
+"text": "Galaxy-Eyes Photon Dragon. Go.",
+"tts": "Galaxy-Eyes Photon Dragon. Go."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "f63eeafd3fda",
+"kind": "chain",
+"en": "Chain.",
+"text": "Chain.",
+"tts": "Chain."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "fc88cee96ef8",
+"kind": "comeback",
+"en": "Now it's even.",
+"text": "Now it's even.",
+"tts": "Now it's even."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "856abe4f8ed6",
+"kind": "destroyed",
+"en": "It did its job.",
+"text": "It did its job.",
+"tts": "It did its job."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "3a38d1be3961",
+"kind": "draw_pressure",
+"en": "Stay calm.",
+"text": "Stay calm.",
+"tts": "Stay calm."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "e9790a830ffb",
+"kind": "duel",
+"en": "Duel!",
+"text": "Duel!",
+"tts": "Duel!"
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "78fb0ec2f847",
+"kind": "fusion",
+"en": "Fusion Summon.",
+"text": "Fusion Summon.",
+"tts": "Fusion Summon."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "8b23c495b91a",
+"kind": "hurt",
+"en": "I can still turn this around.",
+"text": "I can still turn this around.",
+"tts": "I can still turn this around."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "b22e91389be1",
+"kind": "hurt",
+"en": "Not bad.",
+"text": "Not bad.",
+"tts": "Not bad."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "4995c83280ea",
+"kind": "intro",
+"en": "Show me your bonds.",
+"text": "Show me your bonds.",
+"tts": "Show me your bonds."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "69ce05199222",
+"kind": "intro",
+"en": "Don't waste my time.",
+"text": "Don't waste my time.",
+"tts": "Don't waste my time."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "6c93232a7ba3",
+"kind": "intro",
+"en": "I'll take your soul, Number holder.",
+"text": "I'll take your soul, Number holder.",
+"tts": "I'll take your soul, Number holder."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "82389589c60f",
+"kind": "intro",
+"en": "Show me respect by giving everything you've got.",
+"text": "Show me respect by giving everything you've got.",
+"tts": "Show me respect by giving everything you've got."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "a67009bab430",
+"kind": "intro",
+"en": "Stay out of my way.",
+"text": "Stay out of my way.",
+"tts": "Stay out of my way."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "be2e1c4b1a45",
+"kind": "intro",
+"en": "Please don't touch the exhibits.",
+"text": "Please don't touch the exhibits.",
+"tts": "Please don't touch the exhibits."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "c0c68dc16d3a",
+"kind": "intro",
+"en": "Let's go.",
+"text": "Let's go.",
+"tts": "Let's go."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "e6f8203570f9",
+"kind": "intro",
+"en": "Let's ride.",
+"text": "Let's ride.",
+"tts": "Let's ride."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "2b01e5396178",
+"kind": "lose",
+"en": "You earned it.",
+"text": "You earned it.",
+"tts": "You earned it."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "c5bc745bc757",
+"kind": "lose",
+"en": "You earned that. I'll be stronger next time.",
+"text": "You earned that. I'll be stronger next time.",
+"tts": "You earned that. I'll be stronger next time."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "c72a1ee1001b",
+"kind": "lose",
+"en": "...I had forgotten what losing felt like. It is not so bad.",
+"text": "...I had forgotten what losing felt like. It is not so bad.",
+"tts": "...I had forgotten what losing felt like. It is not so bad."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "d7dc7bc46c4a",
+"kind": "lose",
+"en": "...Lucky.",
+"text": "...Lucky.",
+"tts": "...Lucky."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "8bdb92c77b8c",
+"kind": "low",
+"en": "It's not over.",
+"text": "It's not over.",
+"tts": "It's not over."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "f98419afa136",
+"kind": "negate",
+"en": "Negated.",
+"text": "Negated.",
+"tts": "Negated."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "a3ce393f5e97",
+"kind": "negated",
+"en": "...Stopped.",
+"text": "...Stopped.",
+"tts": "...Stopped."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "60ac90e9261a",
+"kind": "react",
+"en": "Interesting.",
+"text": "Interesting.",
+"tts": "Interesting."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "82339cc425a8",
+"kind": "rematch",
+"en": "You won last time. Not today.",
+"text": "You won last time. Not today.",
+"tts": "You won last time. Not today."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "f4ea2daf4a09",
+"kind": "rematch",
+"en": "Again? Same result.",
+"text": "Again? Same result.",
+"tts": "Again? Same result."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "fbc91e2b3341",
+"kind": "ritual",
+"en": "Ritual Summon.",
+"text": "Ritual Summon.",
+"tts": "Ritual Summon."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "d35651b2546a",
+"kind": "set",
+"en": "One face-down.",
+"text": "One face-down.",
+"tts": "One face-down."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "d1d40efc0c3b",
+"kind": "spell",
+"en": "Spell.",
+"text": "Spell.",
+"tts": "Spell."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "fc26d65c064a",
+"kind": "synchro",
+"en": "Synchro Summon.",
+"text": "Synchro Summon.",
+"tts": "Synchro Summon."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "5dfd69232c60",
+"kind": "taunt",
+"en": "Nothing in here ever gets worse.",
+"text": "Nothing in here ever gets worse.",
+"tts": "Nothing in here ever gets worse."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "6c6182564034",
+"kind": "taunt",
+"en": "Your move.",
+"text": "Your move.",
+"tts": "Your move."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "e4fc05c9335d",
+"kind": "taunt",
+"en": "You're slow.",
+"text": "You're slow.",
+"tts": "You're slow."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "c3192b57701d",
+"kind": "trap",
+"en": "Trap card.",
+"text": "Trap card.",
+"tts": "Trap card."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "dec7640c04a1",
+"kind": "trap",
+"en": "I saw that coming.",
+"text": "I saw that coming.",
+"tts": "I saw that coming."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "2f5a4811dbcb",
+"kind": "turn",
+"en": "I won't give up.",
+"text": "I won't give up.",
+"tts": "I won't give up."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "6590c9116c10",
+"kind": "turn",
+"en": "Draw.",
+"text": "Draw.",
+"tts": "Draw."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "8c2a0b88247c",
+"kind": "turn",
+"en": "My turn. Draw.",
+"text": "My turn. Draw.",
+"tts": "My turn. Draw."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "6c88fb85455a",
+"kind": "win",
+"en": "Good duel. You've got heart.",
+"text": "Good duel. You've got heart.",
+"tts": "Good duel. You've got heart."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "884c938dd2af",
+"kind": "win",
+"en": "Told you. Go home.",
+"text": "Told you. Go home.",
+"tts": "Told you. Go home."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "c33111d5df94",
+"kind": "win",
+"en": "Good duel.",
+"text": "Good duel.",
+"tts": "Good duel."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "d2991890734f",
+"kind": "win",
+"en": "There. Now this moment is safe too.",
+"text": "There. Now this moment is safe too.",
+"tts": "There. Now this moment is safe too."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "d1a34ba7adba",
+"kind": "xyz",
+"en": "Xyz Summon.",
+"text": "Xyz Summon.",
+"tts": "/ˈɪksiːz/ Summon."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "025ff0a23578",
+"kind": "ace",
+"en": "Behold... a power from another time!",
+"text": "Behold... a power from another time!",
+"tts": "Behold... a power from another time!"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "2535b3dcb4b5",
+"kind": "ace",
+"en": "Despair!",
+"text": "Despair!",
+"tts": "Despair!"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "6235990f25b9",
+"kind": "ace",
+"en": "Feel the power of the shadows!",
+"text": "Feel the power of the shadows!",
+"tts": "Feel the power of the shadows!"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "81aed8d76db0",
+"kind": "ace",
+"en": "Catalogue number one.",
+"text": "Catalogue number one.",
+"tts": "Catalogue number one."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "91a4795e9fa9",
+"kind": "ace",
+"en": "Rise from the shadows!",
+"text": "Rise from the shadows!",
+"tts": "Rise from the shadows!"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "e9cea0553291",
+"kind": "ace",
+"en": "Satisfaction guaranteed!",
+"text": "Satisfaction guaranteed!",
+"tts": "Satisfaction guaranteed!"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "0c33430de885",
+"kind": "ace_lost",
+"en": "It will rise again. They always do.",
+"text": "It will rise again. They always do.",
+"tts": "It will rise again. They always do."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "fefa23950cbb",
+"kind": "ace_lost",
+"en": "You dare...!",
+"text": "You dare...!",
+"tts": "You dare...!"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "8f1835395f0a",
+"kind": "attack",
+"en": "Devour them!",
+"text": "Devour them!",
+"tts": "Devour them!"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "a2dbc5d70077",
+"kind": "big_hit",
+"en": "Scream for me.",
+"text": "Scream for me.",
+"tts": "Scream for me."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "00f59f3594fd",
+"kind": "call",
+"en": "call:7152333",
+"text": "Rise... Umbral Horror Ghoul.",
+"tts": "Rise... Umbral Horror Ghoul."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "5def15a00d9b",
+"kind": "call",
+"en": "call:72896720",
+"text": "Rise... Infernity Doom Dragon.",
+"tts": "Rise... Infernity Doom Dragon."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "b89f53c14691",
+"kind": "call",
+"en": "call:53982768",
+"text": "Rise... Dark Ruler Ha Des.",
+"tts": "Rise... Dark Ruler Ha Des."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "d23043215b61",
+"kind": "call",
+"en": "call:38445524",
+"text": "Rise... Gil Garth.",
+"tts": "Rise... Gil Garth."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "e59df8301e62",
+"kind": "call",
+"en": "call:46986414",
+"text": "Rise... Dark Magician.",
+"tts": "Rise... Dark Magician."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "4ba1d4841741",
+"kind": "chain",
+"en": "Your move wakes mine.",
+"text": "Your move wakes mine.",
+"tts": "Your move wakes mine."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "b6ef477d6765",
+"kind": "chain",
+"en": "The chain tightens.",
+"text": "The chain tightens.",
+"tts": "The chain tightens."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "80f7da455c7c",
+"kind": "comeback",
+"en": "The shadows always return.",
+"text": "The shadows always return.",
+"tts": "The shadows always return."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "3437cbaa24de",
+"kind": "destroyed",
+"en": "It will return...",
+"text": "It will return...",
+"tts": "It will return..."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "018ef9c98944",
+"kind": "draw_pressure",
+"en": "Interesting... very interesting.",
+"text": "Interesting... very interesting.",
+"tts": "Interesting... very interesting."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "e9790a830ffb",
+"kind": "duel",
+"en": "Duel!",
+"text": "Duel!",
+"tts": "Duel!"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "549d050f6494",
+"kind": "fusion",
+"en": "Two shadows, one shape. Fusion Summon.",
+"text": "Two shadows, one shape. Fusion Summon.",
+"tts": "Two shadows, one shape. Fusion Summon."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "725c737f07d5",
+"kind": "hurt",
+"en": "Hehehe... pain is delicious.",
+"text": "Hehehe... pain is delicious.",
+"tts": "[laughs darkly] pain is delicious."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "11761b0b6672",
+"kind": "intro",
+"en": "Your soul will be mine.",
+"text": "Your soul will be mine.",
+"tts": "Your soul will be mine."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "27e366219364",
+"kind": "intro",
+"en": "Let's have some fun... like old times.",
+"text": "Let's have some fun... like old times.",
+"tts": "Let's have some fun... like old times."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "39c945c345b3",
+"kind": "intro",
+"en": "Your rare cards belong to Vellum now.",
+"text": "Your rare cards belong to Vellum now.",
+"tts": "Your rare cards belong to Vellum now."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "52625f38ef98",
+"kind": "intro",
+"en": "Let's play a little game, shall we?",
+"text": "Let's play a little game, shall we?",
+"tts": "Let's play a little game, shall we?"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "b15a22b0fad9",
+"kind": "intro",
+"en": "Everything gets filed. Even you.",
+"text": "Everything gets filed. Even you.",
+"tts": "Everything gets filed. Even you."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "f0336c28f46b",
+"kind": "intro",
+"en": "Welcome to the shadows.",
+"text": "Welcome to the shadows.",
+"tts": "Welcome to the shadows."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "fe9f355bcd77",
+"kind": "intro",
+"en": "Aww, you actually think you can win? Cute!",
+"text": "Aww, you actually think you can win? Cute!",
+"tts": "Aww, you actually think you can win? Cute!"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "5942aa085214",
+"kind": "lose",
+"en": "This isn't the end...",
+"text": "This isn't the end...",
+"tts": "This isn't the end..."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "f09e7035a402",
+"kind": "lose",
+"en": "An error in the record... impossible.",
+"text": "An error in the record... impossible.",
+"tts": "An error in the record... impossible."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "f9bc058228bc",
+"kind": "low",
+"en": "You think this is over?",
+"text": "You think this is over?",
+"tts": "You think this is over?"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "4e44c370335b",
+"kind": "negate",
+"en": "It dies unheard.",
+"text": "It dies unheard.",
+"tts": "It dies unheard."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "bb0fbabfe948",
+"kind": "negate",
+"en": "Silence.",
+"text": "Silence.",
+"tts": "Silence."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "17f58835cf1a",
+"kind": "negated",
+"en": "You cut the thread...",
+"text": "You cut the thread...",
+"tts": "You cut the thread..."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "bd0edca63d80",
+"kind": "react",
+"en": "Oh? How amusing.",
+"text": "Oh? How amusing.",
+"tts": "Oh? How amusing."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "22f073eb0b81",
+"kind": "rematch",
+"en": "You return... to lose once more.",
+"text": "You return... to lose once more.",
+"tts": "You return... to lose once more."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "51126ae9f697",
+"kind": "rematch",
+"en": "I remember you. I remember losing. Never again.",
+"text": "I remember you. I remember losing. Never again.",
+"tts": "I remember you. I remember losing. Never again."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "8a45b78fd379",
+"kind": "ritual",
+"en": "The offering is accepted.",
+"text": "The offering is accepted.",
+"tts": "The offering is accepted."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "af9ac9271bfc",
+"kind": "set",
+"en": "Something waits in the dark...",
+"text": "Something waits in the dark...",
+"tts": "Something waits in the dark..."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "5498ae8f275a",
+"kind": "spell",
+"en": "Let the ritual begin.",
+"text": "Let the ritual begin.",
+"tts": "Let the ritual begin."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "b34f1971bddb",
+"kind": "synchro",
+"en": "The stars align in the dark.",
+"text": "The stars align in the dark.",
+"tts": "The stars align in the dark."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "3e65e09483df",
+"kind": "taunt",
+"en": "Noted.",
+"text": "Noted.",
+"tts": "Noted."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "9d3ef387206f",
+"kind": "taunt",
+"en": "Hahaha! Did that hurt?",
+"text": "Hahaha! Did that hurt?",
+"tts": "[laughs] Did that hurt?"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "d688b9cfc348",
+"kind": "taunt",
+"en": "Can you feel the darkness closing in?",
+"text": "Can you feel the darkness closing in?",
+"tts": "Can you feel the darkness closing in?"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "095310940365",
+"kind": "trap",
+"en": "Struggle all you like.",
+"text": "Struggle all you like.",
+"tts": "Struggle all you like."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "48cb987bb398",
+"kind": "trap",
+"en": "Caught in my web.",
+"text": "Caught in my web.",
+"tts": "Caught in my web."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "cbe3a6867185",
+"kind": "turn",
+"en": "Now, the fun begins.",
+"text": "Now, the fun begins.",
+"tts": "Now, the fun begins."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "35e03a4178a3",
+"kind": "win",
+"en": "Your soul is mine.",
+"text": "Your soul is mine.",
+"tts": "Your soul is mine."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "edc23bf2b0ec",
+"kind": "win",
+"en": "Filed under: forgotten.",
+"text": "Filed under: forgotten.",
+"tts": "Filed under: forgotten."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "da1077288684",
+"kind": "xyz",
+"en": "From the void between the stars, rise.",
+"text": "From the void between the stars, rise.",
+"tts": "From the void between the stars, rise."
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "15b859059832",
+"kind": "ace",
+"en": "I believe in you!",
+"text": "I believe in you!",
+"tts": "I believe in you!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "7410de741774",
+"kind": "ace",
+"en": "Take the stage, Cyber Blader!",
+"text": "Take the stage, Cyber Blader!",
+"tts": "Take the stage, Cyber Blader!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "3a009c1e65a0",
+"kind": "ace_lost",
+"en": "No...! I'm sorry, my friend.",
+"text": "No...! I'm sorry, my friend.",
+"tts": "No...! I'm sorry, my friend."
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "c9a5f04ab1f5",
+"kind": "ace_lost",
+"en": "You fought well. Rest now.",
+"text": "You fought well. Rest now.",
+"tts": "You fought well. Rest now."
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "0d10edd2754a",
+"kind": "attack",
+"en": "Go, attack!",
+"text": "Go, attack!",
+"tts": "Go, attack!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "0b65681acc53",
+"kind": "big_hit",
+"en": "That one landed!",
+"text": "That one landed!",
+"tts": "That one landed!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "bc1d06ec3122",
+"kind": "call",
+"en": "call:10248389",
+"text": "Come on out, Cyber Blader!",
+"tts": "Come on out, Cyber Blader!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "20e1f35f5144",
+"kind": "chain",
+"en": "I'll chain to that!",
+"text": "I'll chain to that!",
+"tts": "I'll chain to that!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "b3b2b07cd03c",
+"kind": "chain",
+"en": "Wait, I have a response!",
+"text": "Wait, I have a response!",
+"tts": "Wait, I have a response!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "fe0dca842255",
+"kind": "comeback",
+"en": "See? Never give up!",
+"text": "See? Never give up!",
+"tts": "See? Never give up!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "8a872b034b67",
+"kind": "destroyed",
+"en": "Sorry, partner...",
+"text": "Sorry, partner...",
+"tts": "Sorry, partner..."
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "6403161bf88d",
+"kind": "draw_pressure",
+"en": "Okay, think... think...",
+"text": "Okay, think... think...",
+"tts": "Okay, think... think..."
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "e9790a830ffb",
+"kind": "duel",
+"en": "Duel!",
+"text": "Duel!",
+"tts": "Duel!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "87556cf9197e",
+"kind": "fusion",
+"en": "Together now! Fusion Summon!",
+"text": "Together now! Fusion Summon!",
+"tts": "Together now! Fusion Summon!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "4deb42ce5a68",
+"kind": "hurt",
+"en": "That hurt... but I'm okay.",
+"text": "That hurt... but I'm okay.",
+"tts": "That hurt... but I'm okay."
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "11a40c160910",
+"kind": "intro",
+"en": "Good luck! Let's have a great duel.",
+"text": "Good luck! Let's have a great duel.",
+"tts": "Good luck! Let's have a great duel."
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "366aa3f99933",
+"kind": "intro",
+"en": "Let's see if you can keep up with my dance.",
+"text": "Let's see if you can keep up with my dance.",
+"tts": "Let's see if you can keep up with my dance."
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "2547477a8d24",
+"kind": "lose",
+"en": "You're amazing. Well played.",
+"text": "You're amazing. Well played.",
+"tts": "You're amazing. Well played."
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "671fe04588a7",
+"kind": "low",
+"en": "I can still turn this around!",
+"text": "I can still turn this around!",
+"tts": "I can still turn this around!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "265786e86449",
+"kind": "negate",
+"en": "I had to stop that one.",
+"text": "I had to stop that one.",
+"tts": "I had to stop that one."
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "92b02e30a210",
+"kind": "negate",
+"en": "Sorry, that won't work!",
+"text": "Sorry, that won't work!",
+"tts": "Sorry, that won't work!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "005953ad5025",
+"kind": "negated",
+"en": "Oh no, it was stopped!",
+"text": "Oh no, it was stopped!",
+"tts": "Oh no, it was stopped!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "18605f64ea68",
+"kind": "react",
+"en": "Wow, that's a strong monster!",
+"text": "Wow, that's a strong monster!",
+"tts": "Wow, that's a strong monster!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "0135e4b5e728",
+"kind": "rematch",
+"en": "Back for another? I'd love to!",
+"text": "Back for another? I'd love to!",
+"tts": "Back for another? I'd love to!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "92e11bfc4030",
+"kind": "rematch",
+"en": "You beat me last time. I've been practicing!",
+"text": "You beat me last time. I've been practicing!",
+"tts": "You beat me last time. I've been practicing!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "d69295a0ba01",
+"kind": "ritual",
+"en": "The ritual is ready!",
+"text": "The ritual is ready!",
+"tts": "The ritual is ready!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "595a32e659da",
+"kind": "set",
+"en": "I'll leave this face-down... just in case.",
+"text": "I'll leave this face-down... just in case.",
+"tts": "I'll leave this face-down... just in case."
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "1a69f29f10e7",
+"kind": "spell",
+"en": "Let's try this!",
+"text": "Let's try this!",
+"tts": "Let's try this!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "7c2fa58bc3a0",
+"kind": "synchro",
+"en": "Everyone in tune! Synchro Summon!",
+"text": "Everyone in tune! Synchro Summon!",
+"tts": "Everyone in tune! Synchro Summon!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "4eda6d9b0028",
+"kind": "taunt",
+"en": "You're really good!",
+"text": "You're really good!",
+"tts": "You're really good!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "6c8636b6356b",
+"kind": "trap",
+"en": "Wait, I have a card for this!",
+"text": "Wait, I have a card for this!",
+"tts": "Wait, I have a card for this!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "88f5909d6dd0",
+"kind": "trap",
+"en": "Oh! I set a Trap. Sorry!",
+"text": "Oh! I set a Trap. Sorry!",
+"tts": "Oh! I set a Trap. Sorry!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "986d93290c5c",
+"kind": "turn",
+"en": "My turn! Here goes.",
+"text": "My turn! Here goes.",
+"tts": "My turn! Here goes."
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "834597dca394",
+"kind": "win",
+"en": "That was fun! Thank you.",
+"text": "That was fun! Thank you.",
+"tts": "That was fun! Thank you."
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "d8aba08ca5e0",
+"kind": "xyz",
+"en": "Side by side! Xyz Summon!",
+"text": "Side by side! Xyz Summon!",
+"tts": "Side by side! /ˈɪksiːz/ Summon!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "15b859059832",
+"kind": "ace",
+"en": "I believe in you!",
+"text": "I believe in you!",
+"tts": "I believe in you!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "47ee7d2f17ec",
+"kind": "ace",
+"en": "Dark Magician, I summon you!",
+"text": "Dark Magician, I summon you!",
+"tts": "Dark Magician, I summon you!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "515f75b62994",
+"kind": "ace",
+"en": "Full speed ahead!",
+"text": "Full speed ahead!",
+"tts": "Full speed ahead!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "98e7249b4faa",
+"kind": "ace",
+"en": "My most trusted monster!",
+"text": "My most trusted monster!",
+"tts": "My most trusted monster!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "3a009c1e65a0",
+"kind": "ace_lost",
+"en": "No...! I'm sorry, my friend.",
+"text": "No...! I'm sorry, my friend.",
+"tts": "No...! I'm sorry, my friend."
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "c9a5f04ab1f5",
+"kind": "ace_lost",
+"en": "You fought well. Rest now.",
+"text": "You fought well. Rest now.",
+"tts": "You fought well. Rest now."
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "0d10edd2754a",
+"kind": "attack",
+"en": "Go, attack!",
+"text": "Go, attack!",
+"tts": "Go, attack!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "17fb06f85c21",
+"kind": "attack",
+"en": "Dark Magic Attack!",
+"text": "Dark Magic Attack!",
+"tts": "Dark Magic Attack!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "fa2d155ccdf0",
+"kind": "attack",
+"en": "Go, attack directly!",
+"text": "Go, attack directly!",
+"tts": "Go, attack directly!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "0b65681acc53",
+"kind": "big_hit",
+"en": "That one landed!",
+"text": "That one landed!",
+"tts": "That one landed!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "4dce8e16452f",
+"kind": "call",
+"en": "call:5368615",
+"text": "Come on out, Steam Gyroid!",
+"tts": "Come on out, Steam Gyroid!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "e59df8301e62",
+"kind": "call",
+"en": "call:46986414",
+"text": "Come on out, Dark Magician!",
+"tts": "Come on out, Dark Magician!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "20e1f35f5144",
+"kind": "chain",
+"en": "I'll chain to that!",
+"text": "I'll chain to that!",
+"tts": "I'll chain to that!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "b3b2b07cd03c",
+"kind": "chain",
+"en": "Wait, I have a response!",
+"text": "Wait, I have a response!",
+"tts": "Wait, I have a response!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "fe0dca842255",
+"kind": "comeback",
+"en": "See? Never give up!",
+"text": "See? Never give up!",
+"tts": "See? Never give up!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "8a872b034b67",
+"kind": "destroyed",
+"en": "Sorry, partner...",
+"text": "Sorry, partner...",
+"tts": "Sorry, partner..."
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "6403161bf88d",
+"kind": "draw_pressure",
+"en": "Okay, think... think...",
+"text": "Okay, think... think...",
+"tts": "Okay, think... think..."
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "e9790a830ffb",
+"kind": "duel",
+"en": "Duel!",
+"text": "Duel!",
+"tts": "Duel!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "87556cf9197e",
+"kind": "fusion",
+"en": "Together now! Fusion Summon!",
+"text": "Together now! Fusion Summon!",
+"tts": "Together now! Fusion Summon!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "1f3e8a69dc94",
+"kind": "hurt",
+"en": "That was a good move...",
+"text": "That was a good move...",
+"tts": "That was a good move..."
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "4deb42ce5a68",
+"kind": "hurt",
+"en": "That hurt... but I'm okay.",
+"text": "That hurt... but I'm okay.",
+"tts": "That hurt... but I'm okay."
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "d29333e3708b",
+"kind": "hurt",
+"en": "I'm not done yet!",
+"text": "I'm not done yet!",
+"tts": "I'm not done yet!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "0a29e4a51788",
+"kind": "intro",
+"en": "Let's see what kind of duelist you are.",
+"text": "Let's see what kind of duelist you are.",
+"tts": "Let's see what kind of duelist you are."
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "11a40c160910",
+"kind": "intro",
+"en": "Good luck! Let's have a great duel.",
+"text": "Good luck! Let's have a great duel.",
+"tts": "Good luck! Let's have a great duel."
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "a910b24dce19",
+"kind": "intro",
+"en": "I-I can do this! Let's duel!",
+"text": "I-I can do this! Let's duel!",
+"tts": "I-I can do this! Let's duel!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "fed48382fd8f",
+"kind": "intro",
+"en": "I'm ready. Let's duel!",
+"text": "I'm ready. Let's duel!",
+"tts": "I'm ready. Let's duel!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "2547477a8d24",
+"kind": "lose",
+"en": "You're amazing. Well played.",
+"text": "You're amazing. Well played.",
+"tts": "You're amazing. Well played."
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "6624e032875f",
+"kind": "lose",
+"en": "You won fair and square. Well played!",
+"text": "You won fair and square. Well played!",
+"tts": "You won fair and square. Well played!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "671fe04588a7",
+"kind": "low",
+"en": "I can still turn this around!",
+"text": "I can still turn this around!",
+"tts": "I can still turn this around!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "265786e86449",
+"kind": "negate",
+"en": "I had to stop that one.",
+"text": "I had to stop that one.",
+"tts": "I had to stop that one."
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "92b02e30a210",
+"kind": "negate",
+"en": "Sorry, that won't work!",
+"text": "Sorry, that won't work!",
+"tts": "Sorry, that won't work!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "005953ad5025",
+"kind": "negated",
+"en": "Oh no, it was stopped!",
+"text": "Oh no, it was stopped!",
+"tts": "Oh no, it was stopped!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "18605f64ea68",
+"kind": "react",
+"en": "Wow, that's a strong monster!",
+"text": "Wow, that's a strong monster!",
+"tts": "Wow, that's a strong monster!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "0135e4b5e728",
+"kind": "rematch",
+"en": "Back for another? I'd love to!",
+"text": "Back for another? I'd love to!",
+"tts": "Back for another? I'd love to!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "92e11bfc4030",
+"kind": "rematch",
+"en": "You beat me last time. I've been practicing!",
+"text": "You beat me last time. I've been practicing!",
+"tts": "You beat me last time. I've been practicing!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "d69295a0ba01",
+"kind": "ritual",
+"en": "The ritual is ready!",
+"text": "The ritual is ready!",
+"tts": "The ritual is ready!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "595a32e659da",
+"kind": "set",
+"en": "I'll leave this face-down... just in case.",
+"text": "I'll leave this face-down... just in case.",
+"tts": "I'll leave this face-down... just in case."
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "1a69f29f10e7",
+"kind": "spell",
+"en": "Let's try this!",
+"text": "Let's try this!",
+"tts": "Let's try this!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "7c2fa58bc3a0",
+"kind": "synchro",
+"en": "Everyone in tune! Synchro Summon!",
+"text": "Everyone in tune! Synchro Summon!",
+"tts": "Everyone in tune! Synchro Summon!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "4eda6d9b0028",
+"kind": "taunt",
+"en": "You're really good!",
+"text": "You're really good!",
+"tts": "You're really good!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "6c8636b6356b",
+"kind": "trap",
+"en": "Wait, I have a card for this!",
+"text": "Wait, I have a card for this!",
+"tts": "Wait, I have a card for this!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "88f5909d6dd0",
+"kind": "trap",
+"en": "Oh! I set a Trap. Sorry!",
+"text": "Oh! I set a Trap. Sorry!",
+"tts": "Oh! I set a Trap. Sorry!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "23808e92e27f",
+"kind": "turn",
+"en": "The cards won't let me down.",
+"text": "The cards won't let me down.",
+"tts": "The cards won't let me down."
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "2c183b7f7684",
+"kind": "turn",
+"en": "My turn. I draw!",
+"text": "My turn. I draw!",
+"tts": "My turn. I draw!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "986d93290c5c",
+"kind": "turn",
+"en": "My turn! Here goes.",
+"text": "My turn! Here goes.",
+"tts": "My turn! Here goes."
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "23466f4630bc",
+"kind": "win",
+"en": "That was a great duel. Let's do it again sometime.",
+"text": "That was a great duel. Let's do it again sometime.",
+"tts": "That was a great duel. Let's do it again sometime."
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "834597dca394",
+"kind": "win",
+"en": "That was fun! Thank you.",
+"text": "That was fun! Thank you.",
+"tts": "That was fun! Thank you."
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "d8aba08ca5e0",
+"kind": "xyz",
+"en": "Side by side! Xyz Summon!",
+"text": "Side by side! Xyz Summon!",
+"tts": "Side by side! /ˈɪksiːz/ Summon!"
+},
+{
+"voice": "lumen",
+"lang": "en",
+"key": "13d5f1b2252d",
+"kind": "first",
+"en": "They were never meant to meet. But the roads have crossed.",
+"text": "They were never meant to meet. But the roads have crossed.",
+"tts": "They were never meant to meet. But the roads have crossed."
+},
+{
+"voice": "lumen",
+"lang": "en",
+"key": "4c17ce27ea8c",
+"kind": "first",
+"en": "I have a deck with no cards in it yet. I think it is yours.",
+"text": "I have a deck with no cards in it yet. I think it is yours.",
+"tts": "I have a deck with no cards in it yet. I think it is yours."
+},
+{
+"voice": "lumen",
+"lang": "en",
+"key": "ac5a32b55858",
+"kind": "first",
+"en": "Oh! There you are. I was hoping someone would come.",
+"text": "Oh! There you are. I was hoping someone would come.",
+"tts": "Oh! There you are. I was hoping someone would come."
+},
+{
+"voice": "lumen",
+"lang": "en",
+"key": "b3d12adac983",
+"kind": "first",
+"en": "There are four worlds out there. Four eras of duelists.",
+"text": "There are four worlds out there. Four eras of duelists.",
+"tts": "There are four worlds out there. Four eras of duelists."
+},
+{
+"voice": "lumen",
+"lang": "en",
+"key": "b4c5f04f0a1d",
+"kind": "first",
+"en": "So, tell me. Who are you?",
+"text": "So, tell me. Who are you?",
+"tts": "So, tell me. Who are you?"
+},
+{
+"voice": "lumen",
+"lang": "en",
+"key": "f139008edd8c",
+"kind": "first",
+"en": "...Hello?",
+"text": "...Hello?",
+"tts": "...Hello?"
+},
+{
+"voice": "lumen",
+"lang": "en",
+"key": "073b865da05a",
+"kind": "hello",
+"en": "Oh good, it's you. I was getting bored.",
+"text": "Oh good, it's you. I was getting bored.",
+"tts": "Oh good, it's you. I was getting bored."
+},
+{
+"voice": "lumen",
+"lang": "en",
+"key": "07fe6e774564",
+"kind": "hello",
+"en": "There you are! Shall we duel?",
+"text": "There you are! Shall we duel?",
+"tts": "There you are! Shall we duel?"
+},
+{
+"voice": "lumen",
+"lang": "en",
+"key": "25a6956ad848",
+"kind": "hello",
+"en": "You're back! I kept your deck warm.",
+"text": "You're back! I kept your deck warm.",
+"tts": "You're back! I kept your deck warm."
+},
+{
+"voice": "lumen",
+"lang": "en",
+"key": "4115fa56e2d5",
+"kind": "hello",
+"en": "Still smiling about that last win. Let's get another!",
+"text": "Still smiling about that last win. Let's get another!",
+"tts": "Still smiling about that last win. Let's get another!"
+},
+{
+"voice": "lumen",
+"lang": "en",
+"key": "5ead50f7eccc",
+"kind": "hello",
+"en": "New day, new duel. That loss doesn't count anymore. I checked.",
+"text": "New day, new duel. That loss doesn't count anymore. I checked.",
+"tts": "New day, new duel. That loss doesn't count anymore. I checked."
+},
+{
+"voice": "lumen",
+"lang": "en",
+"key": "5fead90139ec",
+"kind": "hello",
+"en": "The last one got away from us. Today we get it back.",
+"text": "The last one got away from us. Today we get it back.",
+"tts": "The last one got away from us. Today we get it back."
+},
+{
+"voice": "lumen",
+"lang": "en",
+"key": "681771956ef7",
+"kind": "hello",
+"en": "Psst. I have new cards for you!",
+"text": "Psst. I have new cards for you!",
+"tts": "Psst. I have new cards for you!"
+},
+{
+"voice": "lumen",
+"lang": "en",
+"key": "e93bd2379e40",
+"kind": "hello",
+"en": "The winner is back! Who's next?",
+"text": "The winner is back! Who's next?",
+"tts": "The winner is back! Who's next?"
+},
+{
+"voice": "lumen",
+"lang": "en",
+"key": "fc86c7d5740c",
+"kind": "hello",
+"en": "Hi! I was just counting our cards. Again.",
+"text": "Hi! I was just counting our cards. Again.",
+"tts": "Hi! I was just counting our cards. Again."
+},
+{
+"voice": "lumen_b",
+"lang": "en",
+"key": "0511176183d2",
+"kind": "their_ace",
+"en": "That's their best monster. Don't panic. I'm panicking, but you shouldn't.",
+"text": "That's their best monster. Don't panic. I'm panicking, but you shouldn't.",
+"tts": "That's their best monster. Don't panic. I'm panicking, but you shouldn't."
+},
+{
+"voice": "lumen_b",
+"lang": "en",
+"key": "c525ba62d046",
+"kind": "their_destiny",
+"en": "That was THEIR big draw. Whatever it is, we can take it.",
+"text": "That was THEIR big draw. Whatever it is, we can take it.",
+"tts": "That was THEIR big draw. Whatever it is, we can take it."
+},
+{
+"voice": "lumen_b",
+"lang": "en",
+"key": "db7491bcb555",
+"kind": "their_destiny",
+"en": "A big draw for them. Stay calm. Stay very calm.",
+"text": "A big draw for them. Stay calm. Stay very calm.",
+"tts": "A big draw for them. Stay calm. Stay very calm."
+},
+{
+"voice": "lumen_b",
+"lang": "en",
+"key": "b52d15bcd76e",
+"kind": "their_low",
+"en": "They're on the ropes! Finish it!",
+"text": "They're on the ropes! Finish it!",
+"tts": "They're on the ropes! Finish it!"
+},
+{
+"voice": "lumen_b",
+"lang": "en",
+"key": "d34b82c8790e",
+"kind": "their_low",
+"en": "They're almost out! One more push!",
+"text": "They're almost out! One more push!",
+"tts": "They're almost out! One more push!"
+},
+{
+"voice": "lumen_b",
+"lang": "en",
+"key": "f935df58bfb6",
+"kind": "their_low",
+"en": "They're wobbling! One good hit!",
+"text": "They're wobbling! One good hit!",
+"tts": "They're wobbling! One good hit!"
+},
+{
+"voice": "lumen_b",
+"lang": "en",
+"key": "16ccff1d6525",
+"kind": "topdeck",
+"en": "Empty hand. This is where the good draws happen. Right? Right.",
+"text": "Empty hand. This is where the good draws happen. Right? Right.",
+"tts": "Empty hand. This is where the good draws happen. Right? Right."
+},
+{
+"voice": "lumen_b",
+"lang": "en",
+"key": "53c4c0165357",
+"kind": "topdeck",
+"en": "Nothing in hand. Everything rides on the next draw!",
+"text": "Nothing in hand. Everything rides on the next draw!",
+"tts": "Nothing in hand. Everything rides on the next draw!"
+},
+{
+"voice": "lumen_b",
+"lang": "en",
+"key": "83b7abbf6455",
+"kind": "topdeck",
+"en": "No cards in hand... so the next one has to count. No pressure!",
+"text": "No cards in hand... so the next one has to count. No pressure!",
+"tts": "No cards in hand... so the next one has to count. No pressure!"
+},
+{
+"voice": "lumen_b",
+"lang": "en",
+"key": "f1f93b2cd882",
+"kind": "topdeck",
+"en": "One card at a time. That's all we need.",
+"text": "One card at a time. That's all we need.",
+"tts": "One card at a time. That's all we need."
+},
+{
+"voice": "lumen_b",
+"lang": "en",
+"key": "1122aeb00e2f",
+"kind": "trap",
+"en": "A Trap! Of course there was a Trap.",
+"text": "A Trap! Of course there was a Trap.",
+"tts": "A Trap! Of course there was a Trap."
+},
+{
+"voice": "lumen_b",
+"lang": "en",
+"key": "17e7b3dbc166",
+"kind": "trap",
+"en": "They were waiting for that. Sneaky.",
+"text": "They were waiting for that. Sneaky.",
+"tts": "They were waiting for that. Sneaky."
+},
+{
+"voice": "lumen_b",
+"lang": "en",
+"key": "e3ddceb78210",
+"kind": "trap",
+"en": "Sneaky! I should have seen that coming.",
+"text": "Sneaky! I should have seen that coming.",
+"tts": "Sneaky! I should have seen that coming."
+},
+{
+"voice": "lumen_b",
+"lang": "en",
+"key": "f8cff11e6958",
+"kind": "trap",
+"en": "A Trap! I KNEW that card looked shifty.",
+"text": "A Trap! I KNEW that card looked shifty.",
+"tts": "A Trap! I KNEW that card looked shifty."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "152bd2a401df",
+"kind": "ace_down",
+"en": "Boom! Their ace is history!",
+"text": "Boom! Their ace is history!",
+"tts": "Boom! Their ace is history!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "5291e8e31c36",
+"kind": "ace_down",
+"en": "You took down their ace! Did you see their face?!",
+"text": "You took down their ace! Did you see their face?!",
+"tts": "You took down their ace! Did you see their face?!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "cad27a28db9a",
+"kind": "ace_down",
+"en": "Their best monster is GONE! Keep going!",
+"text": "Their best monster is GONE! Keep going!",
+"tts": "Their best monster is GONE! Keep going!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "f4095f4d56c3",
+"kind": "ace_down",
+"en": "That was their best card! Not anymore!",
+"text": "That was their best card! Not anymore!",
+"tts": "That was their best card! Not anymore!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "14ea9ece365c",
+"kind": "ace_lost",
+"en": "Ouch. Okay, new plan. I like new plans.",
+"text": "Ouch. Okay, new plan. I like new plans.",
+"tts": "Ouch. Okay, new plan. I like new plans."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "6156f8a733f4",
+"kind": "ace_lost",
+"en": "It's fine! We have more cards! ...We have more cards, right?",
+"text": "It's fine! We have more cards! ...We have more cards, right?",
+"tts": "It's fine! We have more cards! ...We have more cards, right?"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "a7ab1147a52f",
+"kind": "ace_lost",
+"en": "Your ace... okay. Okay! We can still do this.",
+"text": "Your ace... okay. Okay! We can still do this.",
+"tts": "Your ace... okay. Okay! We can still do this."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "b92b97910768",
+"kind": "ace_lost",
+"en": "They got your ace... Shake it off! The duel isn't over.",
+"text": "They got your ace... Shake it off! The duel isn't over.",
+"tts": "They got your ace... Shake it off! The duel isn't over."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "1b0919fbe8a5",
+"kind": "comeback",
+"en": "From almost nothing to THIS? That's my duelist!",
+"text": "From almost nothing to THIS? That's my duelist!",
+"tts": "From almost nothing to THIS? That's my duelist!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "37eba158e1bd",
+"kind": "comeback",
+"en": "And we're back! I knew it the whole time!",
+"text": "And we're back! I knew it the whole time!",
+"tts": "And we're back! I knew it the whole time!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "6e5dd5ffdea2",
+"kind": "comeback",
+"en": "You're back in it! I never doubted you. *bzzt* Much.",
+"text": "You're back in it! I never doubted you. *bzzt* Much.",
+"tts": "You're back in it! I never doubted you. Much."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "cb0f0622413f",
+"kind": "comeback",
+"en": "What a turnaround! Do that again!",
+"text": "What a turnaround! Do that again!",
+"tts": "What a turnaround! Do that again!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "347417478def",
+"kind": "destiny",
+"en": "This is it. One card can turn this around. Reach for it!",
+"text": "This is it. One card can turn this around. Reach for it!",
+"tts": "This is it. One card can turn this around. Reach for it!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "6a9b22ccb9cf",
+"kind": "destiny",
+"en": "{player}. The Deck is listening. Ask it for the one card you need!",
+"text": "{player}. The Deck is listening. Ask it for the one card you need!",
+"tts": "The Deck is listening. Ask it for the one card you need!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "86fb106cd49c",
+"kind": "destiny",
+"en": "I can feel it. The next card is the one. Draw!",
+"text": "I can feel it. The next card is the one. Draw!",
+"tts": "I can feel it. The next card is the one. Draw!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "f280ee0c8c34",
+"kind": "destiny",
+"en": "Deep breath... now reach for it!",
+"text": "Deep breath... now reach for it!",
+"tts": "Deep breath... now reach for it!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "4faf0a4ee90d",
+"kind": "direct",
+"en": "Straight to their Life Points! Beautiful!",
+"text": "Straight to their Life Points! Beautiful!",
+"tts": "Straight to their Life Points! Beautiful!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "9615296a8593",
+"kind": "direct",
+"en": "Right through! Nothing in the way!",
+"text": "Right through! Nothing in the way!",
+"tts": "Right through! Nothing in the way!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "9a829c87480d",
+"kind": "direct",
+"en": "Wide open! Go, go, go!",
+"text": "Wide open! Go, go, go!",
+"tts": "Wide open! Go, go, go!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "e453f6bc5720",
+"kind": "direct",
+"en": "Direct hit! They felt that one!",
+"text": "Direct hit! They felt that one!",
+"tts": "Direct hit! They felt that one!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "13d5f1b2252d",
+"kind": "first",
+"en": "They were never meant to meet. But the roads have crossed.",
+"text": "They were never meant to meet. But the roads have crossed.",
+"tts": "They were never meant to meet. But the roads have crossed."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "4c17ce27ea8c",
+"kind": "first",
+"en": "I have a deck with no cards in it yet. I think it is yours.",
+"text": "I have a deck with no cards in it yet. I think it is yours.",
+"tts": "I have a deck with no cards in it yet. I think it is yours."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "ac5a32b55858",
+"kind": "first",
+"en": "Oh! There you are. I was hoping someone would come.",
+"text": "Oh! There you are. I was hoping someone would come.",
+"tts": "Oh! There you are. I was hoping someone would come."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "b3d12adac983",
+"kind": "first",
+"en": "There are four worlds out there. Four eras of duelists.",
+"text": "There are four worlds out there. Four eras of duelists.",
+"tts": "There are four worlds out there. Four eras of duelists."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "b4c5f04f0a1d",
+"kind": "first",
+"en": "So, tell me. Who are you?",
+"text": "So, tell me. Who are you?",
+"tts": "So, tell me. Who are you?"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "f139008edd8c",
+"kind": "first",
+"en": "...Hello?",
+"text": "...Hello?",
+"tts": "...Hello?"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "073b865da05a",
+"kind": "hello",
+"en": "Oh good, it's you. I was getting bored.",
+"text": "Oh good, it's you. I was getting bored.",
+"tts": "Oh good, it's you. I was getting bored."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "07fe6e774564",
+"kind": "hello",
+"en": "There you are! Shall we duel?",
+"text": "There you are! Shall we duel?",
+"tts": "There you are! Shall we duel?"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "25a6956ad848",
+"kind": "hello",
+"en": "You're back! I kept your deck warm.",
+"text": "You're back! I kept your deck warm.",
+"tts": "You're back! I kept your deck warm."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "4115fa56e2d5",
+"kind": "hello",
+"en": "Still smiling about that last win. Let's get another!",
+"text": "Still smiling about that last win. Let's get another!",
+"tts": "Still smiling about that last win. Let's get another!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "5ead50f7eccc",
+"kind": "hello",
+"en": "New day, new duel. That loss doesn't count anymore. I checked.",
+"text": "New day, new duel. That loss doesn't count anymore. I checked.",
+"tts": "New day, new duel. That loss doesn't count anymore. I checked."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "5fead90139ec",
+"kind": "hello",
+"en": "The last one got away from us. Today we get it back.",
+"text": "The last one got away from us. Today we get it back.",
+"tts": "The last one got away from us. Today we get it back."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "681771956ef7",
+"kind": "hello",
+"en": "Psst. I have new cards for you!",
+"text": "Psst. I have new cards for you!",
+"tts": "Psst. I have new cards for you!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "e93bd2379e40",
+"kind": "hello",
+"en": "The winner is back! Who's next?",
+"text": "The winner is back! Who's next?",
+"tts": "The winner is back! Who's next?"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "fc86c7d5740c",
+"kind": "hello",
+"en": "Hi! I was just counting our cards. Again.",
+"text": "Hi! I was just counting our cards. Again.",
+"tts": "Hi! I was just counting our cards. Again."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "65b249ffe67c",
+"kind": "hit",
+"en": "Okay, that was a lot of Life Points. We still have the rest!",
+"text": "Okay, that was a lot of Life Points. We still have the rest!",
+"tts": "Okay, that was a lot of Life Points. We still have the rest!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "a27acbac3956",
+"kind": "hit",
+"en": "That stung. We're still standing!",
+"text": "That stung. We're still standing!",
+"tts": "That stung. We're still standing!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "adadc58b80c6",
+"kind": "hit",
+"en": "Yikes! Okay, we felt that.",
+"text": "Yikes! Okay, we felt that.",
+"tts": "Yikes! Okay, we felt that."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "bad67e388d73",
+"kind": "hit",
+"en": "Ow! That one hurt just to watch.",
+"text": "Ow! That one hurt just to watch.",
+"tts": "Ow! That one hurt just to watch."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "2d509db1293a",
+"kind": "me",
+"en": "Ta-da! It's me! Try to look impressed.",
+"text": "Ta-da! It's me! Try to look impressed.",
+"tts": "Ta-da! It's me! Try to look impressed."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "3693b72b14bf",
+"kind": "me",
+"en": "Lumen, reporting for duty! Small but mighty!",
+"text": "Lumen, reporting for duty! Small but mighty!",
+"tts": "Lumen, reporting for duty! Small but mighty!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "5e963773f023",
+"kind": "me",
+"en": "I'm on the field! Don't look at my ATK. Look at my heart.",
+"text": "I'm on the field! Don't look at my ATK. Look at my heart.",
+"tts": "I'm on the field! Don't look at my attack points. Look at my heart."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "a89b2f4ef9e3",
+"kind": "me",
+"en": "That's me! Hi! One monster for your hand, coming right up!",
+"text": "That's me! Hi! One monster for your hand, coming right up!",
+"tts": "That's me! Hi! One monster for your hand, coming right up!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "45af4b594c78",
+"kind": "my_ace",
+"en": "Your ace is here! Everybody look busy!",
+"text": "Your ace is here! Everybody look busy!",
+"tts": "Your ace is here! Everybody look busy!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "86b27a26be84",
+"kind": "my_ace",
+"en": "Yes! YES! That's the one I was hoping for!",
+"text": "Yes! YES! That's the one I was hoping for!",
+"tts": "Yes! YES! That's the one I was hoping for!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "e35815de53aa",
+"kind": "my_ace",
+"en": "THERE it is! I love this part!",
+"text": "THERE it is! I love this part!",
+"tts": "THERE it is! I love this part!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "ef7b0c16d8bf",
+"kind": "my_ace",
+"en": "Ooh, the big one! Get them!",
+"text": "Ooh, the big one! Get them!",
+"tts": "Ooh, the big one! Get them!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "0b6a79b9d053",
+"kind": "my_low",
+"en": "Careful! One more hit like that and we're done!",
+"text": "Careful! One more hit like that and we're done!",
+"tts": "Careful! One more hit like that and we're done!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "1c3c5a92665f",
+"kind": "my_low",
+"en": "We're hanging by a thread. A very brave thread!",
+"text": "We're hanging by a thread. A very brave thread!",
+"tts": "We're hanging by a thread. A very brave thread!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "3505ce50606a",
+"kind": "my_low",
+"en": "Your Life Points are low. I'm not worried. *bzzt* I'm a little worried.",
+"text": "Your Life Points are low. I'm not worried. *bzzt* I'm a little worried.",
+"tts": "Your Life Points are low. I'm not worried. I'm a little worried."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "ce8a200b29c8",
+"kind": "my_low",
+"en": "Life Points are getting low. Time for something clever!",
+"text": "Life Points are getting low. Time for something clever!",
+"tts": "Life Points are getting low. Time for something clever!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "184b6a742694",
+"kind": "start",
+"en": "Okay. Deep breath. I believe in you. Also in me. Mostly you.",
+"text": "Okay. Deep breath. I believe in you. Also in me. Mostly you.",
+"tts": "Okay. Deep breath. I believe in you. Also in me. Mostly you."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "649a098f74e5",
+"kind": "start",
+"en": "New duel, new us! Well. Same us. But ready!",
+"text": "New duel, new us! Well. Same us. But ready!",
+"tts": "New duel, new us! Well. Same us. But ready!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "9b0a3273cb9f",
+"kind": "start",
+"en": "I shuffled myself extra well this time. You're welcome.",
+"text": "I shuffled myself extra well this time. You're welcome.",
+"tts": "I shuffled myself extra well this time. You're welcome."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "ecf9822e1826",
+"kind": "start",
+"en": "I'm in your deck! Draw me, draw me!",
+"text": "I'm in your deck! Draw me, draw me!",
+"tts": "I'm in your deck! Draw me, draw me!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "0511176183d2",
+"kind": "their_ace",
+"en": "That's their best monster. Don't panic. I'm panicking, but you shouldn't.",
+"text": "That's their best monster. Don't panic. I'm panicking, but you shouldn't.",
+"tts": "That's their best monster. Don't panic. I'm panicking, but you shouldn't."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "46707fd7c5d1",
+"kind": "their_ace",
+"en": "Okay, that one has a LOT of teeth. We've handled worse. Probably.",
+"text": "Okay, that one has a LOT of teeth. We've handled worse. Probably.",
+"tts": "Okay, that one has a LOT of teeth. We've handled worse. Probably."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "7ab4cfd00945",
+"kind": "their_ace",
+"en": "Uh oh. Big. Very big. You have a plan, right?",
+"text": "Uh oh. Big. Very big. You have a plan, right?",
+"tts": "Uh oh. Big. Very big. You have a plan, right?"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "ac5e6e53ca08",
+"kind": "their_ace",
+"en": "Their ace. Great. Fine. We planned for this. Did we plan for this?",
+"text": "Their ace. Great. Fine. We planned for this. Did we plan for this?",
+"tts": "Their ace. Great. Fine. We planned for this. Did we plan for this?"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "5be302789ba6",
+"kind": "their_destiny",
+"en": "They can do that too?! Okay. Okay. Stay sharp.",
+"text": "They can do that too?! Okay. Okay. Stay sharp.",
+"tts": "They can do that too?! Okay. Okay. Stay sharp."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "a683b4235b8e",
+"kind": "their_destiny",
+"en": "Uh oh. Their deck answered them. Heads up!",
+"text": "Uh oh. Their deck answered them. Heads up!",
+"tts": "Uh oh. Their deck answered them. Heads up!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "c525ba62d046",
+"kind": "their_destiny",
+"en": "That was THEIR big draw. Whatever it is, we can take it.",
+"text": "That was THEIR big draw. Whatever it is, we can take it.",
+"tts": "That was THEIR big draw. Whatever it is, we can take it."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "db7491bcb555",
+"kind": "their_destiny",
+"en": "A big draw for them. Stay calm. Stay very calm.",
+"text": "A big draw for them. Stay calm. Stay very calm.",
+"tts": "A big draw for them. Stay calm. Stay very calm."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "39b28b38e6a8",
+"kind": "their_low",
+"en": "Look at their Life Points! We're so close!",
+"text": "Look at their Life Points! We're so close!",
+"tts": "Look at their Life Points! We're so close!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "b52d15bcd76e",
+"kind": "their_low",
+"en": "They're on the ropes! Finish it!",
+"text": "They're on the ropes! Finish it!",
+"tts": "They're on the ropes! Finish it!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "d34b82c8790e",
+"kind": "their_low",
+"en": "They're almost out! One more push!",
+"text": "They're almost out! One more push!",
+"tts": "They're almost out! One more push!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "f935df58bfb6",
+"kind": "their_low",
+"en": "They're wobbling! One good hit!",
+"text": "They're wobbling! One good hit!",
+"tts": "They're wobbling! One good hit!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "16ccff1d6525",
+"kind": "topdeck",
+"en": "Empty hand. This is where the good draws happen. Right? Right.",
+"text": "Empty hand. This is where the good draws happen. Right? Right.",
+"tts": "Empty hand. This is where the good draws happen. Right? Right."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "53c4c0165357",
+"kind": "topdeck",
+"en": "Nothing in hand. Everything rides on the next draw!",
+"text": "Nothing in hand. Everything rides on the next draw!",
+"tts": "Nothing in hand. Everything rides on the next draw!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "83b7abbf6455",
+"kind": "topdeck",
+"en": "No cards in hand... so the next one has to count. No pressure!",
+"text": "No cards in hand... so the next one has to count. No pressure!",
+"tts": "No cards in hand... so the next one has to count. No pressure!"
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "f1f93b2cd882",
+"kind": "topdeck",
+"en": "One card at a time. That's all we need.",
+"text": "One card at a time. That's all we need.",
+"tts": "One card at a time. That's all we need."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "1122aeb00e2f",
+"kind": "trap",
+"en": "A Trap! Of course there was a Trap.",
+"text": "A Trap! Of course there was a Trap.",
+"tts": "A Trap! Of course there was a Trap."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "17e7b3dbc166",
+"kind": "trap",
+"en": "They were waiting for that. Sneaky.",
+"text": "They were waiting for that. Sneaky.",
+"tts": "They were waiting for that. Sneaky."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "e3ddceb78210",
+"kind": "trap",
+"en": "Sneaky! I should have seen that coming.",
+"text": "Sneaky! I should have seen that coming.",
+"tts": "Sneaky! I should have seen that coming."
+},
+{
+"voice": "lumen_c",
+"lang": "en",
+"key": "f8cff11e6958",
+"kind": "trap",
+"en": "A Trap! I KNEW that card looked shifty.",
+"text": "A Trap! I KNEW that card looked shifty.",
+"tts": "A Trap! I KNEW that card looked shifty."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "1f284ab20e96",
+"kind": "ace",
+"en": "Here's my best!",
+"text": "Here's my best!",
+"tts": "Here's my best!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "6a5a81aad08b",
+"kind": "ace",
+"en": "This is my ace!",
+"text": "This is my ace!",
+"tts": "This is my ace!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "30ab2f5e74bf",
+"kind": "ace_lost",
+"en": "They got my best monster. Think. Think!",
+"text": "They got my best monster. Think. Think!",
+"tts": "They got my best monster. Think. Think!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "a96e3f3944d2",
+"kind": "ace_lost",
+"en": "My ace...! Not yet. I'm not done.",
+"text": "My ace...! Not yet. I'm not done.",
+"tts": "My ace...! Not yet. I'm not done."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "077aff0294db",
+"kind": "big_hit",
+"en": "Direct hit!",
+"text": "Direct hit!",
+"tts": "Direct hit!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "e1c100ca1597",
+"kind": "big_hit",
+"en": "That's a big one!",
+"text": "That's a big one!",
+"tts": "That's a big one!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "059be9077299",
+"kind": "call",
+"en": "call:1546123",
+"text": "Cyber End Dragon!",
+"tts": "Cyber End Dragon!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "10058dc09805",
+"kind": "call",
+"en": "call:89631139",
+"text": "Blue-Eyes White Dragon!",
+"tts": "Blue-Eyes White Dragon!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "174e7794bb6e",
+"kind": "call",
+"en": "call:73580471",
+"text": "Black Rose Dragon!",
+"tts": "Black Rose Dragon!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "1871401cc8e0",
+"kind": "call",
+"en": "call:89943723",
+"text": "Elemental HERO Neos!",
+"tts": "Elemental Hero Neos!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "18a5dcc87310",
+"kind": "call",
+"en": "call:78193831",
+"text": "Buster Blader!",
+"tts": "Buster Blader!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "1a5f79b0bdae",
+"kind": "call",
+"en": "call:70781052",
+"text": "Summoned Skull!",
+"tts": "Summoned Skull!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "1bdfa09d55f6",
+"kind": "call",
+"en": "call:44508094",
+"text": "Stardust Dragon!",
+"tts": "Stardust Dragon!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "1e9d3ac991f2",
+"kind": "call",
+"en": "call:79856792",
+"text": "Rainbow Dragon!",
+"tts": "Rainbow Dragon!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "2cb19a02df83",
+"kind": "call",
+"en": "call:74677422",
+"text": "Red-Eyes Black Dragon!",
+"tts": "Red-Eyes Black Dragon!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "2dc35959c610",
+"kind": "call",
+"en": "call:60800381",
+"text": "Junk Warrior!",
+"tts": "Junk Warrior!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "31390dab19ae",
+"kind": "call",
+"en": "call:77585513",
+"text": "Jinzo!",
+"tts": "Jinzo!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "4228b64cd9ac",
+"kind": "call",
+"en": "call:10000020",
+"text": "Slifer the Sky Dragon!",
+"tts": "Slifer the Sky Dragon!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "53e575f4bbc1",
+"kind": "call",
+"en": "call:38033121",
+"text": "Dark Magician Girl!",
+"tts": "Dark Magician Girl!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "646b9fe5484e",
+"kind": "call",
+"en": "call:23995346",
+"text": "Blue-Eyes Ultimate Dragon!",
+"tts": "Blue-Eyes Ultimate Dragon!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "65b4eac490dd",
+"kind": "call",
+"en": "call:72989439",
+"text": "Black Luster Soldier - Envoy of the Beginning!",
+"tts": "Black Luster Soldier, Envoy of the Beginning!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "687859607f2f",
+"kind": "call",
+"en": "call:24696097",
+"text": "Shooting Star Dragon!",
+"tts": "Shooting Star Dragon!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "9177776b12f7",
+"kind": "call",
+"en": "call:35809262",
+"text": "Elemental HERO Flame Wingman!",
+"tts": "Elemental Hero Flame Wingman!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "9ec1fe1dfcbd",
+"kind": "call",
+"en": "call:10000010",
+"text": "The Winged Dragon of Ra!",
+"tts": "The Winged Dragon of Ra!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "9f45b3d2b4fe",
+"kind": "call",
+"en": "call:93717133",
+"text": "Galaxy-Eyes Photon Dragon!",
+"tts": "Galaxy-Eyes Photon Dragon!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "a7bb724844ef",
+"kind": "call",
+"en": "call:98502113",
+"text": "Dark Paladin!",
+"tts": "Dark Paladin!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "b2aa3b83140b",
+"kind": "call",
+"en": "call:70095154",
+"text": "Cyber Dragon!",
+"tts": "Cyber Dragon!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "bb0bb0e9b175",
+"kind": "call",
+"en": "call:10000000",
+"text": "Obelisk the Tormentor!",
+"tts": "Obelisk the Tormentor!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "bb18df08cac3",
+"kind": "call",
+"en": "call:82301904",
+"text": "Chaos Emperor Dragon - Envoy of the End!",
+"tts": "Chaos Emperor Dragon, Envoy of the End!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "c4bd53a6a949",
+"kind": "call",
+"en": "call:70902743",
+"text": "Red Dragon Archfiend!",
+"tts": "Red Dragon Archfiend!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "d6fd6f616ccc",
+"kind": "call",
+"en": "call:84013237",
+"text": "Number 39: Utopia!",
+"tts": "Number 39: Utopia!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "e59df8301e62",
+"kind": "call",
+"en": "call:46986414",
+"text": "Dark Magician!",
+"tts": "Dark Magician!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "f7b4c24a56b3",
+"kind": "call",
+"en": "call:5405694",
+"text": "Black Luster Soldier!",
+"tts": "Black Luster Soldier!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "fc57be3f9fb6",
+"kind": "call",
+"en": "call:99267150",
+"text": "Five-Headed Dragon!",
+"tts": "Five-Headed Dragon!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "77f564519ec4",
+"kind": "chain",
+"en": "I chain this!",
+"text": "I chain this!",
+"tts": "I chain this!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "a468ea54ab14",
+"kind": "chain",
+"en": "Not so fast!",
+"text": "Not so fast!",
+"tts": "Not so fast!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "e687f96a9b04",
+"kind": "comeback",
+"en": "We're back in this!",
+"text": "We're back in this!",
+"tts": "We're back in this!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "e9790a830ffb",
+"kind": "duel",
+"en": "Duel!",
+"text": "Duel!",
+"tts": "Duel!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "120b2f9c45d7",
+"kind": "fusion",
+"en": "Fusion Summon!",
+"text": "Fusion Summon!",
+"tts": "Fusion Summon!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "433a3e8343aa",
+"kind": "lose",
+"en": "Good duel. I'll be back.",
+"text": "Good duel. I'll be back.",
+"tts": "Good duel. I'll be back."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "ebe3f723972d",
+"kind": "lose",
+"en": "Next time...",
+"text": "Next time...",
+"tts": "Next time..."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "28b8424ec735",
+"kind": "negate",
+"en": "Negated!",
+"text": "Negated!",
+"tts": "Negated!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "7a3496874a58",
+"kind": "negate",
+"en": "That effect stops here.",
+"text": "That effect stops here.",
+"tts": "That effect stops here."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "19cd6cd2fce6",
+"kind": "pick",
+"en": "Too easy.",
+"text": "Too easy.",
+"tts": "Too easy."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "20153366ce57",
+"kind": "pick",
+"en": "My deck has no pathetic cards.",
+"text": "My deck has no pathetic cards.",
+"tts": "My deck has no pathetic cards."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "32dd59cb4c87",
+"kind": "pick",
+"en": "And that's game.",
+"text": "And that's game.",
+"tts": "And that's game."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "4555df649c26",
+"kind": "pick",
+"en": "That was close. Again some time?",
+"text": "That was close. Again some time?",
+"tts": "That was close. Again some time?"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "4a46392e2b95",
+"kind": "pick",
+"en": "Don't blink.",
+"text": "Don't blink.",
+"tts": "Don't blink."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "801a0ef25ed8",
+"kind": "pick",
+"en": "Let's do this.",
+"text": "Let's do this.",
+"tts": "Let's do this."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "92591661d373",
+"kind": "pick",
+"en": "Show me what you've got.",
+"text": "Show me what you've got.",
+"tts": "Show me what you've got."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "982b87142916",
+"kind": "pick",
+"en": "I won't hold back.",
+"text": "I won't hold back.",
+"tts": "I won't hold back."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "abe491df33f8",
+"kind": "pick",
+"en": "Let's make this one to remember.",
+"text": "Let's make this one to remember.",
+"tts": "Let's make this one to remember."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "c2f6894ada34",
+"kind": "pick",
+"en": "I've been waiting for this.",
+"text": "I've been waiting for this.",
+"tts": "I've been waiting for this."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "c33111d5df94",
+"kind": "pick",
+"en": "Good duel.",
+"text": "Good duel.",
+"tts": "Good duel."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "d40ec9827019",
+"kind": "pick",
+"en": "It's time to duel!",
+"text": "It's time to duel!",
+"tts": "It's time to duel!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "e405b318c090",
+"kind": "pick",
+"en": "My cards came through.",
+"text": "My cards came through.",
+"tts": "My cards came through."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "ec44e653a2de",
+"kind": "pick",
+"en": "That's how it's done!",
+"text": "That's how it's done!",
+"tts": "That's how it's done!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "f2a9c606c845",
+"kind": "pick",
+"en": "Believe in your deck.",
+"text": "Believe in your deck.",
+"tts": "Believe in your deck."
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "fa84e0bc8405",
+"kind": "pick",
+"en": "Yes! I won!",
+"text": "Yes! I won!",
+"tts": "Yes! I won!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "b7bf85a02ee0",
+"kind": "ritual",
+"en": "Ritual Summon!",
+"text": "Ritual Summon!",
+"tts": "Ritual Summon!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "c92670de588b",
+"kind": "synchro",
+"en": "Synchro Summon!",
+"text": "Synchro Summon!",
+"tts": "Synchro Summon!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "3406b6b5dd35",
+"kind": "trap",
+"en": "I was waiting for that!",
+"text": "I was waiting for that!",
+"tts": "I was waiting for that!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "c9a15ee540fe",
+"kind": "trap",
+"en": "Not so fast! Trap card!",
+"text": "Not so fast! Trap card!",
+"tts": "Not so fast! Trap card!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "5844a8d01f1f",
+"kind": "xyz",
+"en": "Xyz Summon!",
+"text": "Xyz Summon!",
+"tts": "/ˈɪksiːz/ Summon!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "1f284ab20e96",
+"kind": "ace",
+"en": "Here's my best!",
+"text": "Here's my best!",
+"tts": "Here's my best!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "6a5a81aad08b",
+"kind": "ace",
+"en": "This is my ace!",
+"text": "This is my ace!",
+"tts": "This is my ace!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "30ab2f5e74bf",
+"kind": "ace_lost",
+"en": "They got my best monster. Think. Think!",
+"text": "They got my best monster. Think. Think!",
+"tts": "They got my best monster. Think. Think!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "a96e3f3944d2",
+"kind": "ace_lost",
+"en": "My ace...! Not yet. I'm not done.",
+"text": "My ace...! Not yet. I'm not done.",
+"tts": "My ace...! Not yet. I'm not done."
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "077aff0294db",
+"kind": "big_hit",
+"en": "Direct hit!",
+"text": "Direct hit!",
+"tts": "Direct hit!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "e1c100ca1597",
+"kind": "big_hit",
+"en": "That's a big one!",
+"text": "That's a big one!",
+"tts": "That's a big one!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "059be9077299",
+"kind": "call",
+"en": "call:1546123",
+"text": "Cyber End Dragon!",
+"tts": "Cyber End Dragon!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "10058dc09805",
+"kind": "call",
+"en": "call:89631139",
+"text": "Blue-Eyes White Dragon!",
+"tts": "Blue-Eyes White Dragon!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "174e7794bb6e",
+"kind": "call",
+"en": "call:73580471",
+"text": "Black Rose Dragon!",
+"tts": "Black Rose Dragon!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "1871401cc8e0",
+"kind": "call",
+"en": "call:89943723",
+"text": "Elemental HERO Neos!",
+"tts": "Elemental Hero Neos!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "18a5dcc87310",
+"kind": "call",
+"en": "call:78193831",
+"text": "Buster Blader!",
+"tts": "Buster Blader!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "1a5f79b0bdae",
+"kind": "call",
+"en": "call:70781052",
+"text": "Summoned Skull!",
+"tts": "Summoned Skull!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "1bdfa09d55f6",
+"kind": "call",
+"en": "call:44508094",
+"text": "Stardust Dragon!",
+"tts": "Stardust Dragon!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "1e9d3ac991f2",
+"kind": "call",
+"en": "call:79856792",
+"text": "Rainbow Dragon!",
+"tts": "Rainbow Dragon!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "2cb19a02df83",
+"kind": "call",
+"en": "call:74677422",
+"text": "Red-Eyes Black Dragon!",
+"tts": "Red-Eyes Black Dragon!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "2dc35959c610",
+"kind": "call",
+"en": "call:60800381",
+"text": "Junk Warrior!",
+"tts": "Junk Warrior!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "31390dab19ae",
+"kind": "call",
+"en": "call:77585513",
+"text": "Jinzo!",
+"tts": "Jinzo!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "4228b64cd9ac",
+"kind": "call",
+"en": "call:10000020",
+"text": "Slifer the Sky Dragon!",
+"tts": "Slifer the Sky Dragon!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "53e575f4bbc1",
+"kind": "call",
+"en": "call:38033121",
+"text": "Dark Magician Girl!",
+"tts": "Dark Magician Girl!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "646b9fe5484e",
+"kind": "call",
+"en": "call:23995346",
+"text": "Blue-Eyes Ultimate Dragon!",
+"tts": "Blue-Eyes Ultimate Dragon!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "65b4eac490dd",
+"kind": "call",
+"en": "call:72989439",
+"text": "Black Luster Soldier - Envoy of the Beginning!",
+"tts": "Black Luster Soldier, Envoy of the Beginning!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "687859607f2f",
+"kind": "call",
+"en": "call:24696097",
+"text": "Shooting Star Dragon!",
+"tts": "Shooting Star Dragon!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "9177776b12f7",
+"kind": "call",
+"en": "call:35809262",
+"text": "Elemental HERO Flame Wingman!",
+"tts": "Elemental Hero Flame Wingman!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "9ec1fe1dfcbd",
+"kind": "call",
+"en": "call:10000010",
+"text": "The Winged Dragon of Ra!",
+"tts": "The Winged Dragon of Ra!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "9f45b3d2b4fe",
+"kind": "call",
+"en": "call:93717133",
+"text": "Galaxy-Eyes Photon Dragon!",
+"tts": "Galaxy-Eyes Photon Dragon!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "a7bb724844ef",
+"kind": "call",
+"en": "call:98502113",
+"text": "Dark Paladin!",
+"tts": "Dark Paladin!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "b2aa3b83140b",
+"kind": "call",
+"en": "call:70095154",
+"text": "Cyber Dragon!",
+"tts": "Cyber Dragon!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "bb0bb0e9b175",
+"kind": "call",
+"en": "call:10000000",
+"text": "Obelisk the Tormentor!",
+"tts": "Obelisk the Tormentor!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "bb18df08cac3",
+"kind": "call",
+"en": "call:82301904",
+"text": "Chaos Emperor Dragon - Envoy of the End!",
+"tts": "Chaos Emperor Dragon, Envoy of the End!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "c4bd53a6a949",
+"kind": "call",
+"en": "call:70902743",
+"text": "Red Dragon Archfiend!",
+"tts": "Red Dragon Archfiend!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "d6fd6f616ccc",
+"kind": "call",
+"en": "call:84013237",
+"text": "Number 39: Utopia!",
+"tts": "Number 39: Utopia!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "e59df8301e62",
+"kind": "call",
+"en": "call:46986414",
+"text": "Dark Magician!",
+"tts": "Dark Magician!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "f7b4c24a56b3",
+"kind": "call",
+"en": "call:5405694",
+"text": "Black Luster Soldier!",
+"tts": "Black Luster Soldier!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "fc57be3f9fb6",
+"kind": "call",
+"en": "call:99267150",
+"text": "Five-Headed Dragon!",
+"tts": "Five-Headed Dragon!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "77f564519ec4",
+"kind": "chain",
+"en": "I chain this!",
+"text": "I chain this!",
+"tts": "I chain this!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "a468ea54ab14",
+"kind": "chain",
+"en": "Not so fast!",
+"text": "Not so fast!",
+"tts": "Not so fast!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "e687f96a9b04",
+"kind": "comeback",
+"en": "We're back in this!",
+"text": "We're back in this!",
+"tts": "We're back in this!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "e9790a830ffb",
+"kind": "duel",
+"en": "Duel!",
+"text": "Duel!",
+"tts": "Duel!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "120b2f9c45d7",
+"kind": "fusion",
+"en": "Fusion Summon!",
+"text": "Fusion Summon!",
+"tts": "Fusion Summon!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "433a3e8343aa",
+"kind": "lose",
+"en": "Good duel. I'll be back.",
+"text": "Good duel. I'll be back.",
+"tts": "Good duel. I'll be back."
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "ebe3f723972d",
+"kind": "lose",
+"en": "Next time...",
+"text": "Next time...",
+"tts": "Next time..."
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "28b8424ec735",
+"kind": "negate",
+"en": "Negated!",
+"text": "Negated!",
+"tts": "Negated!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "7a3496874a58",
+"kind": "negate",
+"en": "That effect stops here.",
+"text": "That effect stops here.",
+"tts": "That effect stops here."
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "19cd6cd2fce6",
+"kind": "pick",
+"en": "Too easy.",
+"text": "Too easy.",
+"tts": "Too easy."
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "20153366ce57",
+"kind": "pick",
+"en": "My deck has no pathetic cards.",
+"text": "My deck has no pathetic cards.",
+"tts": "My deck has no pathetic cards."
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "32dd59cb4c87",
+"kind": "pick",
+"en": "And that's game.",
+"text": "And that's game.",
+"tts": "And that's game."
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "4555df649c26",
+"kind": "pick",
+"en": "That was close. Again some time?",
+"text": "That was close. Again some time?",
+"tts": "That was close. Again some time?"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "4a46392e2b95",
+"kind": "pick",
+"en": "Don't blink.",
+"text": "Don't blink.",
+"tts": "Don't blink."
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "801a0ef25ed8",
+"kind": "pick",
+"en": "Let's do this.",
+"text": "Let's do this.",
+"tts": "Let's do this."
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "92591661d373",
+"kind": "pick",
+"en": "Show me what you've got.",
+"text": "Show me what you've got.",
+"tts": "Show me what you've got."
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "982b87142916",
+"kind": "pick",
+"en": "I won't hold back.",
+"text": "I won't hold back.",
+"tts": "I won't hold back."
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "abe491df33f8",
+"kind": "pick",
+"en": "Let's make this one to remember.",
+"text": "Let's make this one to remember.",
+"tts": "Let's make this one to remember."
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "c2f6894ada34",
+"kind": "pick",
+"en": "I've been waiting for this.",
+"text": "I've been waiting for this.",
+"tts": "I've been waiting for this."
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "c33111d5df94",
+"kind": "pick",
+"en": "Good duel.",
+"text": "Good duel.",
+"tts": "Good duel."
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "d40ec9827019",
+"kind": "pick",
+"en": "It's time to duel!",
+"text": "It's time to duel!",
+"tts": "It's time to duel!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "e405b318c090",
+"kind": "pick",
+"en": "My cards came through.",
+"text": "My cards came through.",
+"tts": "My cards came through."
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "ec44e653a2de",
+"kind": "pick",
+"en": "That's how it's done!",
+"text": "That's how it's done!",
+"tts": "That's how it's done!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "f2a9c606c845",
+"kind": "pick",
+"en": "Believe in your deck.",
+"text": "Believe in your deck.",
+"tts": "Believe in your deck."
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "fa84e0bc8405",
+"kind": "pick",
+"en": "Yes! I won!",
+"text": "Yes! I won!",
+"tts": "Yes! I won!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "b7bf85a02ee0",
+"kind": "ritual",
+"en": "Ritual Summon!",
+"text": "Ritual Summon!",
+"tts": "Ritual Summon!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "c92670de588b",
+"kind": "synchro",
+"en": "Synchro Summon!",
+"text": "Synchro Summon!",
+"tts": "Synchro Summon!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "3406b6b5dd35",
+"kind": "trap",
+"en": "I was waiting for that!",
+"text": "I was waiting for that!",
+"tts": "I was waiting for that!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "c9a15ee540fe",
+"kind": "trap",
+"en": "Not so fast! Trap card!",
+"text": "Not so fast! Trap card!",
+"tts": "Not so fast! Trap card!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "5844a8d01f1f",
+"kind": "xyz",
+"en": "Xyz Summon!",
+"text": "Xyz Summon!",
+"tts": "/ˈɪksiːz/ Summon!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "1f284ab20e96",
+"kind": "ace",
+"en": "Here's my best!",
+"text": "Here's my best!",
+"tts": "Here's my best!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "6a5a81aad08b",
+"kind": "ace",
+"en": "This is my ace!",
+"text": "This is my ace!",
+"tts": "This is my ace!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "30ab2f5e74bf",
+"kind": "ace_lost",
+"en": "They got my best monster. Think. Think!",
+"text": "They got my best monster. Think. Think!",
+"tts": "They got my best monster. Think. Think!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "a96e3f3944d2",
+"kind": "ace_lost",
+"en": "My ace...! Not yet. I'm not done.",
+"text": "My ace...! Not yet. I'm not done.",
+"tts": "My ace...! Not yet. I'm not done."
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "077aff0294db",
+"kind": "big_hit",
+"en": "Direct hit!",
+"text": "Direct hit!",
+"tts": "Direct hit!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "e1c100ca1597",
+"kind": "big_hit",
+"en": "That's a big one!",
+"text": "That's a big one!",
+"tts": "That's a big one!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "059be9077299",
+"kind": "call",
+"en": "call:1546123",
+"text": "Cyber End Dragon!",
+"tts": "Cyber End Dragon!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "10058dc09805",
+"kind": "call",
+"en": "call:89631139",
+"text": "Blue-Eyes White Dragon!",
+"tts": "Blue-Eyes White Dragon!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "174e7794bb6e",
+"kind": "call",
+"en": "call:73580471",
+"text": "Black Rose Dragon!",
+"tts": "Black Rose Dragon!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "1871401cc8e0",
+"kind": "call",
+"en": "call:89943723",
+"text": "Elemental HERO Neos!",
+"tts": "Elemental Hero Neos!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "18a5dcc87310",
+"kind": "call",
+"en": "call:78193831",
+"text": "Buster Blader!",
+"tts": "Buster Blader!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "1a5f79b0bdae",
+"kind": "call",
+"en": "call:70781052",
+"text": "Summoned Skull!",
+"tts": "Summoned Skull!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "1bdfa09d55f6",
+"kind": "call",
+"en": "call:44508094",
+"text": "Stardust Dragon!",
+"tts": "Stardust Dragon!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "1e9d3ac991f2",
+"kind": "call",
+"en": "call:79856792",
+"text": "Rainbow Dragon!",
+"tts": "Rainbow Dragon!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "2cb19a02df83",
+"kind": "call",
+"en": "call:74677422",
+"text": "Red-Eyes Black Dragon!",
+"tts": "Red-Eyes Black Dragon!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "2dc35959c610",
+"kind": "call",
+"en": "call:60800381",
+"text": "Junk Warrior!",
+"tts": "Junk Warrior!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "31390dab19ae",
+"kind": "call",
+"en": "call:77585513",
+"text": "Jinzo!",
+"tts": "Jinzo!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "4228b64cd9ac",
+"kind": "call",
+"en": "call:10000020",
+"text": "Slifer the Sky Dragon!",
+"tts": "Slifer the Sky Dragon!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "53e575f4bbc1",
+"kind": "call",
+"en": "call:38033121",
+"text": "Dark Magician Girl!",
+"tts": "Dark Magician Girl!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "646b9fe5484e",
+"kind": "call",
+"en": "call:23995346",
+"text": "Blue-Eyes Ultimate Dragon!",
+"tts": "Blue-Eyes Ultimate Dragon!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "65b4eac490dd",
+"kind": "call",
+"en": "call:72989439",
+"text": "Black Luster Soldier - Envoy of the Beginning!",
+"tts": "Black Luster Soldier, Envoy of the Beginning!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "687859607f2f",
+"kind": "call",
+"en": "call:24696097",
+"text": "Shooting Star Dragon!",
+"tts": "Shooting Star Dragon!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "9177776b12f7",
+"kind": "call",
+"en": "call:35809262",
+"text": "Elemental HERO Flame Wingman!",
+"tts": "Elemental Hero Flame Wingman!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "9ec1fe1dfcbd",
+"kind": "call",
+"en": "call:10000010",
+"text": "The Winged Dragon of Ra!",
+"tts": "The Winged Dragon of Ra!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "9f45b3d2b4fe",
+"kind": "call",
+"en": "call:93717133",
+"text": "Galaxy-Eyes Photon Dragon!",
+"tts": "Galaxy-Eyes Photon Dragon!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "a7bb724844ef",
+"kind": "call",
+"en": "call:98502113",
+"text": "Dark Paladin!",
+"tts": "Dark Paladin!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "b2aa3b83140b",
+"kind": "call",
+"en": "call:70095154",
+"text": "Cyber Dragon!",
+"tts": "Cyber Dragon!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "bb0bb0e9b175",
+"kind": "call",
+"en": "call:10000000",
+"text": "Obelisk the Tormentor!",
+"tts": "Obelisk the Tormentor!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "bb18df08cac3",
+"kind": "call",
+"en": "call:82301904",
+"text": "Chaos Emperor Dragon - Envoy of the End!",
+"tts": "Chaos Emperor Dragon, Envoy of the End!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "c4bd53a6a949",
+"kind": "call",
+"en": "call:70902743",
+"text": "Red Dragon Archfiend!",
+"tts": "Red Dragon Archfiend!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "d6fd6f616ccc",
+"kind": "call",
+"en": "call:84013237",
+"text": "Number 39: Utopia!",
+"tts": "Number 39: Utopia!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "e59df8301e62",
+"kind": "call",
+"en": "call:46986414",
+"text": "Dark Magician!",
+"tts": "Dark Magician!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "f7b4c24a56b3",
+"kind": "call",
+"en": "call:5405694",
+"text": "Black Luster Soldier!",
+"tts": "Black Luster Soldier!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "fc57be3f9fb6",
+"kind": "call",
+"en": "call:99267150",
+"text": "Five-Headed Dragon!",
+"tts": "Five-Headed Dragon!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "77f564519ec4",
+"kind": "chain",
+"en": "I chain this!",
+"text": "I chain this!",
+"tts": "I chain this!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "a468ea54ab14",
+"kind": "chain",
+"en": "Not so fast!",
+"text": "Not so fast!",
+"tts": "Not so fast!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "e687f96a9b04",
+"kind": "comeback",
+"en": "We're back in this!",
+"text": "We're back in this!",
+"tts": "We're back in this!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "e9790a830ffb",
+"kind": "duel",
+"en": "Duel!",
+"text": "Duel!",
+"tts": "Duel!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "120b2f9c45d7",
+"kind": "fusion",
+"en": "Fusion Summon!",
+"text": "Fusion Summon!",
+"tts": "Fusion Summon!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "433a3e8343aa",
+"kind": "lose",
+"en": "Good duel. I'll be back.",
+"text": "Good duel. I'll be back.",
+"tts": "Good duel. I'll be back."
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "ebe3f723972d",
+"kind": "lose",
+"en": "Next time...",
+"text": "Next time...",
+"tts": "Next time..."
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "28b8424ec735",
+"kind": "negate",
+"en": "Negated!",
+"text": "Negated!",
+"tts": "Negated!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "7a3496874a58",
+"kind": "negate",
+"en": "That effect stops here.",
+"text": "That effect stops here.",
+"tts": "That effect stops here."
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "19cd6cd2fce6",
+"kind": "pick",
+"en": "Too easy.",
+"text": "Too easy.",
+"tts": "Too easy."
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "20153366ce57",
+"kind": "pick",
+"en": "My deck has no pathetic cards.",
+"text": "My deck has no pathetic cards.",
+"tts": "My deck has no pathetic cards."
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "32dd59cb4c87",
+"kind": "pick",
+"en": "And that's game.",
+"text": "And that's game.",
+"tts": "And that's game."
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "4555df649c26",
+"kind": "pick",
+"en": "That was close. Again some time?",
+"text": "That was close. Again some time?",
+"tts": "That was close. Again some time?"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "4a46392e2b95",
+"kind": "pick",
+"en": "Don't blink.",
+"text": "Don't blink.",
+"tts": "Don't blink."
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "801a0ef25ed8",
+"kind": "pick",
+"en": "Let's do this.",
+"text": "Let's do this.",
+"tts": "Let's do this."
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "92591661d373",
+"kind": "pick",
+"en": "Show me what you've got.",
+"text": "Show me what you've got.",
+"tts": "Show me what you've got."
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "982b87142916",
+"kind": "pick",
+"en": "I won't hold back.",
+"text": "I won't hold back.",
+"tts": "I won't hold back."
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "abe491df33f8",
+"kind": "pick",
+"en": "Let's make this one to remember.",
+"text": "Let's make this one to remember.",
+"tts": "Let's make this one to remember."
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "c2f6894ada34",
+"kind": "pick",
+"en": "I've been waiting for this.",
+"text": "I've been waiting for this.",
+"tts": "I've been waiting for this."
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "c33111d5df94",
+"kind": "pick",
+"en": "Good duel.",
+"text": "Good duel.",
+"tts": "Good duel."
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "d40ec9827019",
+"kind": "pick",
+"en": "It's time to duel!",
+"text": "It's time to duel!",
+"tts": "It's time to duel!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "e405b318c090",
+"kind": "pick",
+"en": "My cards came through.",
+"text": "My cards came through.",
+"tts": "My cards came through."
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "ec44e653a2de",
+"kind": "pick",
+"en": "That's how it's done!",
+"text": "That's how it's done!",
+"tts": "That's how it's done!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "f2a9c606c845",
+"kind": "pick",
+"en": "Believe in your deck.",
+"text": "Believe in your deck.",
+"tts": "Believe in your deck."
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "fa84e0bc8405",
+"kind": "pick",
+"en": "Yes! I won!",
+"text": "Yes! I won!",
+"tts": "Yes! I won!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "b7bf85a02ee0",
+"kind": "ritual",
+"en": "Ritual Summon!",
+"text": "Ritual Summon!",
+"tts": "Ritual Summon!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "c92670de588b",
+"kind": "synchro",
+"en": "Synchro Summon!",
+"text": "Synchro Summon!",
+"tts": "Synchro Summon!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "3406b6b5dd35",
+"kind": "trap",
+"en": "I was waiting for that!",
+"text": "I was waiting for that!",
+"tts": "I was waiting for that!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "c9a15ee540fe",
+"kind": "trap",
+"en": "Not so fast! Trap card!",
+"text": "Not so fast! Trap card!",
+"tts": "Not so fast! Trap card!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "5844a8d01f1f",
+"kind": "xyz",
+"en": "Xyz Summon!",
+"text": "Xyz Summon!",
+"tts": "/ˈɪksiːz/ Summon!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "1f284ab20e96",
+"kind": "ace",
+"en": "Here's my best!",
+"text": "Here's my best!",
+"tts": "Here's my best!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "6a5a81aad08b",
+"kind": "ace",
+"en": "This is my ace!",
+"text": "This is my ace!",
+"tts": "This is my ace!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "30ab2f5e74bf",
+"kind": "ace_lost",
+"en": "They got my best monster. Think. Think!",
+"text": "They got my best monster. Think. Think!",
+"tts": "They got my best monster. Think. Think!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "a96e3f3944d2",
+"kind": "ace_lost",
+"en": "My ace...! Not yet. I'm not done.",
+"text": "My ace...! Not yet. I'm not done.",
+"tts": "My ace...! Not yet. I'm not done."
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "077aff0294db",
+"kind": "big_hit",
+"en": "Direct hit!",
+"text": "Direct hit!",
+"tts": "Direct hit!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "e1c100ca1597",
+"kind": "big_hit",
+"en": "That's a big one!",
+"text": "That's a big one!",
+"tts": "That's a big one!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "059be9077299",
+"kind": "call",
+"en": "call:1546123",
+"text": "Cyber End Dragon!",
+"tts": "Cyber End Dragon!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "10058dc09805",
+"kind": "call",
+"en": "call:89631139",
+"text": "Blue-Eyes White Dragon!",
+"tts": "Blue-Eyes White Dragon!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "174e7794bb6e",
+"kind": "call",
+"en": "call:73580471",
+"text": "Black Rose Dragon!",
+"tts": "Black Rose Dragon!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "1871401cc8e0",
+"kind": "call",
+"en": "call:89943723",
+"text": "Elemental HERO Neos!",
+"tts": "Elemental Hero Neos!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "18a5dcc87310",
+"kind": "call",
+"en": "call:78193831",
+"text": "Buster Blader!",
+"tts": "Buster Blader!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "1a5f79b0bdae",
+"kind": "call",
+"en": "call:70781052",
+"text": "Summoned Skull!",
+"tts": "Summoned Skull!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "1bdfa09d55f6",
+"kind": "call",
+"en": "call:44508094",
+"text": "Stardust Dragon!",
+"tts": "Stardust Dragon!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "1e9d3ac991f2",
+"kind": "call",
+"en": "call:79856792",
+"text": "Rainbow Dragon!",
+"tts": "Rainbow Dragon!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "2cb19a02df83",
+"kind": "call",
+"en": "call:74677422",
+"text": "Red-Eyes Black Dragon!",
+"tts": "Red-Eyes Black Dragon!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "2dc35959c610",
+"kind": "call",
+"en": "call:60800381",
+"text": "Junk Warrior!",
+"tts": "Junk Warrior!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "31390dab19ae",
+"kind": "call",
+"en": "call:77585513",
+"text": "Jinzo!",
+"tts": "Jinzo!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "4228b64cd9ac",
+"kind": "call",
+"en": "call:10000020",
+"text": "Slifer the Sky Dragon!",
+"tts": "Slifer the Sky Dragon!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "53e575f4bbc1",
+"kind": "call",
+"en": "call:38033121",
+"text": "Dark Magician Girl!",
+"tts": "Dark Magician Girl!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "646b9fe5484e",
+"kind": "call",
+"en": "call:23995346",
+"text": "Blue-Eyes Ultimate Dragon!",
+"tts": "Blue-Eyes Ultimate Dragon!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "65b4eac490dd",
+"kind": "call",
+"en": "call:72989439",
+"text": "Black Luster Soldier - Envoy of the Beginning!",
+"tts": "Black Luster Soldier, Envoy of the Beginning!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "687859607f2f",
+"kind": "call",
+"en": "call:24696097",
+"text": "Shooting Star Dragon!",
+"tts": "Shooting Star Dragon!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "9177776b12f7",
+"kind": "call",
+"en": "call:35809262",
+"text": "Elemental HERO Flame Wingman!",
+"tts": "Elemental Hero Flame Wingman!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "9ec1fe1dfcbd",
+"kind": "call",
+"en": "call:10000010",
+"text": "The Winged Dragon of Ra!",
+"tts": "The Winged Dragon of Ra!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "9f45b3d2b4fe",
+"kind": "call",
+"en": "call:93717133",
+"text": "Galaxy-Eyes Photon Dragon!",
+"tts": "Galaxy-Eyes Photon Dragon!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "a7bb724844ef",
+"kind": "call",
+"en": "call:98502113",
+"text": "Dark Paladin!",
+"tts": "Dark Paladin!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "b2aa3b83140b",
+"kind": "call",
+"en": "call:70095154",
+"text": "Cyber Dragon!",
+"tts": "Cyber Dragon!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "bb0bb0e9b175",
+"kind": "call",
+"en": "call:10000000",
+"text": "Obelisk the Tormentor!",
+"tts": "Obelisk the Tormentor!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "bb18df08cac3",
+"kind": "call",
+"en": "call:82301904",
+"text": "Chaos Emperor Dragon - Envoy of the End!",
+"tts": "Chaos Emperor Dragon, Envoy of the End!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "c4bd53a6a949",
+"kind": "call",
+"en": "call:70902743",
+"text": "Red Dragon Archfiend!",
+"tts": "Red Dragon Archfiend!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "d6fd6f616ccc",
+"kind": "call",
+"en": "call:84013237",
+"text": "Number 39: Utopia!",
+"tts": "Number 39: Utopia!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "e59df8301e62",
+"kind": "call",
+"en": "call:46986414",
+"text": "Dark Magician!",
+"tts": "Dark Magician!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "f7b4c24a56b3",
+"kind": "call",
+"en": "call:5405694",
+"text": "Black Luster Soldier!",
+"tts": "Black Luster Soldier!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "fc57be3f9fb6",
+"kind": "call",
+"en": "call:99267150",
+"text": "Five-Headed Dragon!",
+"tts": "Five-Headed Dragon!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "77f564519ec4",
+"kind": "chain",
+"en": "I chain this!",
+"text": "I chain this!",
+"tts": "I chain this!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "a468ea54ab14",
+"kind": "chain",
+"en": "Not so fast!",
+"text": "Not so fast!",
+"tts": "Not so fast!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "e687f96a9b04",
+"kind": "comeback",
+"en": "We're back in this!",
+"text": "We're back in this!",
+"tts": "We're back in this!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "e9790a830ffb",
+"kind": "duel",
+"en": "Duel!",
+"text": "Duel!",
+"tts": "Duel!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "120b2f9c45d7",
+"kind": "fusion",
+"en": "Fusion Summon!",
+"text": "Fusion Summon!",
+"tts": "Fusion Summon!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "433a3e8343aa",
+"kind": "lose",
+"en": "Good duel. I'll be back.",
+"text": "Good duel. I'll be back.",
+"tts": "Good duel. I'll be back."
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "ebe3f723972d",
+"kind": "lose",
+"en": "Next time...",
+"text": "Next time...",
+"tts": "Next time..."
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "28b8424ec735",
+"kind": "negate",
+"en": "Negated!",
+"text": "Negated!",
+"tts": "Negated!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "7a3496874a58",
+"kind": "negate",
+"en": "That effect stops here.",
+"text": "That effect stops here.",
+"tts": "That effect stops here."
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "19cd6cd2fce6",
+"kind": "pick",
+"en": "Too easy.",
+"text": "Too easy.",
+"tts": "Too easy."
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "20153366ce57",
+"kind": "pick",
+"en": "My deck has no pathetic cards.",
+"text": "My deck has no pathetic cards.",
+"tts": "My deck has no pathetic cards."
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "32dd59cb4c87",
+"kind": "pick",
+"en": "And that's game.",
+"text": "And that's game.",
+"tts": "And that's game."
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "4555df649c26",
+"kind": "pick",
+"en": "That was close. Again some time?",
+"text": "That was close. Again some time?",
+"tts": "That was close. Again some time?"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "4a46392e2b95",
+"kind": "pick",
+"en": "Don't blink.",
+"text": "Don't blink.",
+"tts": "Don't blink."
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "801a0ef25ed8",
+"kind": "pick",
+"en": "Let's do this.",
+"text": "Let's do this.",
+"tts": "Let's do this."
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "92591661d373",
+"kind": "pick",
+"en": "Show me what you've got.",
+"text": "Show me what you've got.",
+"tts": "Show me what you've got."
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "982b87142916",
+"kind": "pick",
+"en": "I won't hold back.",
+"text": "I won't hold back.",
+"tts": "I won't hold back."
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "abe491df33f8",
+"kind": "pick",
+"en": "Let's make this one to remember.",
+"text": "Let's make this one to remember.",
+"tts": "Let's make this one to remember."
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "c2f6894ada34",
+"kind": "pick",
+"en": "I've been waiting for this.",
+"text": "I've been waiting for this.",
+"tts": "I've been waiting for this."
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "c33111d5df94",
+"kind": "pick",
+"en": "Good duel.",
+"text": "Good duel.",
+"tts": "Good duel."
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "d40ec9827019",
+"kind": "pick",
+"en": "It's time to duel!",
+"text": "It's time to duel!",
+"tts": "It's time to duel!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "e405b318c090",
+"kind": "pick",
+"en": "My cards came through.",
+"text": "My cards came through.",
+"tts": "My cards came through."
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "ec44e653a2de",
+"kind": "pick",
+"en": "That's how it's done!",
+"text": "That's how it's done!",
+"tts": "That's how it's done!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "f2a9c606c845",
+"kind": "pick",
+"en": "Believe in your deck.",
+"text": "Believe in your deck.",
+"tts": "Believe in your deck."
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "fa84e0bc8405",
+"kind": "pick",
+"en": "Yes! I won!",
+"text": "Yes! I won!",
+"tts": "Yes! I won!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "b7bf85a02ee0",
+"kind": "ritual",
+"en": "Ritual Summon!",
+"text": "Ritual Summon!",
+"tts": "Ritual Summon!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "c92670de588b",
+"kind": "synchro",
+"en": "Synchro Summon!",
+"text": "Synchro Summon!",
+"tts": "Synchro Summon!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "3406b6b5dd35",
+"kind": "trap",
+"en": "I was waiting for that!",
+"text": "I was waiting for that!",
+"tts": "I was waiting for that!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "c9a15ee540fe",
+"kind": "trap",
+"en": "Not so fast! Trap card!",
+"text": "Not so fast! Trap card!",
+"tts": "Not so fast! Trap card!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "5844a8d01f1f",
+"kind": "xyz",
+"en": "Xyz Summon!",
+"text": "Xyz Summon!",
+"tts": "/ˈɪksiːz/ Summon!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "052410387c02",
+"kind": "ace",
+"en": "I build the Overlay Network! Come on out, Utopia!",
+"text": "I build the Overlay Network! Come on out, Utopia!",
+"tts": "I build the Overlay Network! Come on out, Utopia!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "16a190b989eb",
+"kind": "ace",
+"en": "Utopia, here we go!",
+"text": "Utopia, here we go!",
+"tts": "Utopia, here we go!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "3186580dc966",
+"kind": "ace",
+"en": "Now that's what I'm talkin' about!",
+"text": "Now that's what I'm talkin' about!",
+"tts": "Now that's what I'm talkin' about!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "87a47721a2f9",
+"kind": "ace",
+"en": "Red-Eyes, show 'em what you got!",
+"text": "Red-Eyes, show 'em what you got!",
+"tts": "Red-Eyes, show 'em what you got!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "9c8bc67975e7",
+"kind": "ace",
+"en": "Fusion time! Elemental HEROes, unite!",
+"text": "Fusion time! Elemental HEROes, unite!",
+"tts": "Fusion time! Elemental Heroes, unite!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "e583fc5dcb41",
+"kind": "ace",
+"en": "Now we're talkin'!",
+"text": "Now we're talkin'!",
+"tts": "Now we're talkin'!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "f25a52338b89",
+"kind": "ace",
+"en": "Blackwings, take to the sky!",
+"text": "Blackwings, take to the sky!",
+"tts": "Blackwings, take to the sky!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "f547e377bd64",
+"kind": "ace",
+"en": "Now we're talking!",
+"text": "Now we're talking!",
+"tts": "Now we're talking!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "418a23dcd03d",
+"kind": "ace_lost",
+"en": "NO WAY! Not my ace!",
+"text": "NO WAY! Not my ace!",
+"tts": "NO WAY! Not my ace!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "9456bcf03bf2",
+"kind": "ace_lost",
+"en": "Aw, come ON! That was my favorite!",
+"text": "Aw, come ON! That was my favorite!",
+"tts": "Aw, come ON! That was my favorite!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "45925b360018",
+"kind": "attack",
+"en": "Skyscraper Shoot!",
+"text": "Skyscraper Shoot!",
+"tts": "Skyscraper Shoot!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "acd238ede702",
+"kind": "attack",
+"en": "Go, HERO, take 'em down!",
+"text": "Go, HERO, take 'em down!",
+"tts": "Go, Hero, take 'em down!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "c97c36f1abed",
+"kind": "attack",
+"en": "Rising Sun Slash!",
+"text": "Rising Sun Slash!",
+"tts": "Rising Sun Slash!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "cee8ed3e44da",
+"kind": "attack",
+"en": "Inferno Fire Blast!",
+"text": "Inferno Fire Blast!",
+"tts": "Inferno Fire Blast!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "ea2364eaa41e",
+"kind": "attack",
+"en": "Take that!",
+"text": "Take that!",
+"tts": "Take that!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "fc90b8bcbf1c",
+"kind": "attack",
+"en": "Charge!",
+"text": "Charge!",
+"tts": "Charge!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "b1c47ec98377",
+"kind": "big_hit",
+"en": "BOOM! Right in the Life Points!",
+"text": "BOOM! Right in the Life Points!",
+"tts": "BOOM! Right in the Life Points!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "2cb19a02df83",
+"kind": "call",
+"en": "call:74677422",
+"text": "Here it comes! Red-Eyes Black Dragon!",
+"tts": "Here it comes! Red-Eyes Black Dragon!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "3ba479a3fc1c",
+"kind": "call",
+"en": "call:69031175",
+"text": "Here it comes! Blackwing Armor Master!",
+"tts": "Here it comes! Blackwing Armor Master!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "9177776b12f7",
+"kind": "call",
+"en": "call:35809262",
+"text": "Here it comes! Elemental HERO Flame Wingman!",
+"tts": "Here it comes! Elemental Hero Flame Wingman!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "d6fd6f616ccc",
+"kind": "call",
+"en": "call:84013237",
+"text": "Here it comes! Number 39: Utopia!",
+"tts": "Here it comes! Number 39: Utopia!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "dd610e821aba",
+"kind": "chain",
+"en": "Oh no you don't!",
+"text": "Oh no you don't!",
+"tts": "Oh no you don't!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "f563b5e5d92f",
+"kind": "chain",
+"en": "Hold it! I'm chaining!",
+"text": "Hold it! I'm chaining!",
+"tts": "Hold it! I'm chaining!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "2246bf423bfb",
+"kind": "comeback",
+"en": "Who's laughing now?!",
+"text": "Who's laughing now?!",
+"tts": "Who's laughing now?!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "5512c6fda294",
+"kind": "destroyed",
+"en": "Aw man, not my monster!",
+"text": "Aw man, not my monster!",
+"tts": "Aw man, not my monster!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "dd6428917598",
+"kind": "draw_pressure",
+"en": "Come on deck, don't fail me now!",
+"text": "Come on deck, don't fail me now!",
+"tts": "Come on deck, don't fail me now!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "e9790a830ffb",
+"kind": "duel",
+"en": "Duel!",
+"text": "Duel!",
+"tts": "Duel!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "ad8ea8ac55ec",
+"kind": "fusion",
+"en": "Smash 'em together! FUSION!",
+"text": "Smash 'em together! FUSION!",
+"tts": "Smash 'em together! FUSION!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "2c9160453fe2",
+"kind": "hurt",
+"en": "Ow! Hey, that one stung!",
+"text": "Ow! Hey, that one stung!",
+"tts": "Ow! Hey, that one stung!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "2d345b12b8ca",
+"kind": "hurt",
+"en": "I'm not giving up!",
+"text": "I'm not giving up!",
+"tts": "I'm not giving up!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "31fcf2187a19",
+"kind": "hurt",
+"en": "Ow! Okay, okay!",
+"text": "Ow! Okay, okay!",
+"tts": "Ow! Okay, okay!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "4c5a28d40ad3",
+"kind": "hurt",
+"en": "No way I'm goin' down like this!",
+"text": "No way I'm goin' down like this!",
+"tts": "No way I'm goin' down like this!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "ef4523438f3a",
+"kind": "hurt",
+"en": "Whoa, nice one!",
+"text": "Whoa, nice one!",
+"tts": "Whoa, nice one!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "f123a8730a34",
+"kind": "hurt",
+"en": "Ouch! Okay, okay, I got this!",
+"text": "Ouch! Okay, okay, I got this!",
+"tts": "Ouch! Okay, okay, I got this!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "fa843362c4b2",
+"kind": "hurt",
+"en": "Okay, now I'm really having fun.",
+"text": "Okay, now I'm really having fun.",
+"tts": "Okay, now I'm really having fun."
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "1356a8986a97",
+"kind": "intro",
+"en": "Delivery's here! Let's make this quick.",
+"text": "Delivery's here! Let's make this quick.",
+"tts": "Delivery's here! Let's make this quick."
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "1e08b5fc0200",
+"kind": "intro",
+"en": "Ya ready? 'Cause I'm fired up!",
+"text": "Ya ready? 'Cause I'm fired up!",
+"tts": "Ya ready? 'Cause I'm fired up!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "2665bf4e203f",
+"kind": "intro",
+"en": "Get your game on!",
+"text": "Get your game on!",
+"tts": "Get your game on!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "6d496ef58ab3",
+"kind": "intro",
+"en": "This is gonna be fun!",
+"text": "This is gonna be fun!",
+"tts": "This is gonna be fun!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "a51587fc5886",
+"kind": "intro",
+"en": "Feel the flow, let's duel!",
+"text": "Feel the flow, let's duel!",
+"tts": "Feel the flow, let's duel!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "f2db97914a36",
+"kind": "intro",
+"en": "Kattobingu! Let's go!",
+"text": "Kattobingu! Let's go!",
+"tts": "Kattobingu! Let's go!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "f8f3f7267ac1",
+"kind": "intro",
+"en": "Let's GO!",
+"text": "Let's GO!",
+"tts": "Let's GO!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "fb72c00dafec",
+"kind": "intro",
+"en": "Alright, let's throw down!",
+"text": "Alright, let's throw down!",
+"tts": "Alright, let's throw down!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "2a37c72efa0b",
+"kind": "lose",
+"en": "Aww... that was awesome though!",
+"text": "Aww... that was awesome though!",
+"tts": "Aww... that was awesome though!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "336d927d4b81",
+"kind": "lose",
+"en": "Rematch! Right now!",
+"text": "Rematch! Right now!",
+"tts": "Rematch! Right now!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "639a9ad92eb6",
+"kind": "lose",
+"en": "Aw man... rematch, right now!",
+"text": "Aw man... rematch, right now!",
+"tts": "Aw man... rematch, right now!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "66264bdc6e0b",
+"kind": "lose",
+"en": "Ha, you got me! Great duel.",
+"text": "Ha, you got me! Great duel.",
+"tts": "Ha, you got me! Great duel."
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "d29333e3708b",
+"kind": "low",
+"en": "I'm not done yet!",
+"text": "I'm not done yet!",
+"tts": "I'm not done yet!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "e9ea03bc8122",
+"kind": "negate",
+"en": "NOPE! Negated!",
+"text": "NOPE! Negated!",
+"tts": "NOPE! Negated!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "ffc2c143f4ff",
+"kind": "negate",
+"en": "Stopped it cold!",
+"text": "Stopped it cold!",
+"tts": "Stopped it cold!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "600ad16f980a",
+"kind": "negated",
+"en": "Hey! That was a good one!",
+"text": "Hey! That was a good one!",
+"tts": "Hey! That was a good one!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "2bf284be050d",
+"kind": "react",
+"en": "Whoa! That thing's huge!",
+"text": "Whoa! That thing's huge!",
+"tts": "Whoa! That thing's huge!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "aee2b483ac55",
+"kind": "rematch",
+"en": "YOU! I want my rematch! Right now!",
+"text": "YOU! I want my rematch! Right now!",
+"tts": "YOU! I want my rematch! Right now!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "cb125e700585",
+"kind": "rematch",
+"en": "Ha! Came back for another beating?",
+"text": "Ha! Came back for another beating?",
+"tts": "Ha! Came back for another beating?"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "0fbd043ceac8",
+"kind": "ritual",
+"en": "Light the fires! RITUAL!",
+"text": "Light the fires! RITUAL!",
+"tts": "Light the fires! RITUAL!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "3f0ae65c4aff",
+"kind": "set",
+"en": "Hehe... what's under there? Guess!",
+"text": "Hehe... what's under there? Guess!",
+"tts": "[giggles] what's under there? Guess!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "ecb5eb69825b",
+"kind": "spell",
+"en": "Check THIS out!",
+"text": "Check THIS out!",
+"tts": "Check THIS out!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "f68029a6e444",
+"kind": "synchro",
+"en": "Rev it up! SYNCHRO!",
+"text": "Rev it up! SYNCHRO!",
+"tts": "Rev it up! SYNCHRO!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "ef3e9957676a",
+"kind": "taunt",
+"en": "Bring it on!",
+"text": "Bring it on!",
+"tts": "Bring it on!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "47cc33123768",
+"kind": "trap",
+"en": "Gotcha! Trap card!",
+"text": "Gotcha! Trap card!",
+"tts": "Gotcha! Trap card!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "58efd024028a",
+"kind": "trap",
+"en": "Surprise!",
+"text": "Surprise!",
+"tts": "Surprise!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "4011a03ffaa1",
+"kind": "turn",
+"en": "I draw!",
+"text": "I draw!",
+"tts": "I draw!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "5cc597c93e74",
+"kind": "turn",
+"en": "Draw! Oh, sweet!",
+"text": "Draw! Oh, sweet!",
+"tts": "Draw! Oh, sweet!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "7eb318c6de8d",
+"kind": "turn",
+"en": "My turn! Let's see what I've got.",
+"text": "My turn! Let's see what I've got.",
+"tts": "My turn! Let's see what I've got."
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "89fdbff08f6b",
+"kind": "turn",
+"en": "My turn! Come on, come on!",
+"text": "My turn! Come on, come on!",
+"tts": "My turn! Come on, come on!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "9f16b5793b7a",
+"kind": "turn",
+"en": "Here goes nothin'!",
+"text": "Here goes nothin'!",
+"tts": "Here goes nothin'!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "a04bc599b88d",
+"kind": "turn",
+"en": "My draw! Come on, come on...",
+"text": "My draw! Come on, come on...",
+"tts": "My draw! Come on, come on..."
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "fabc740665cd",
+"kind": "turn",
+"en": "My turn! Kattobingu!",
+"text": "My turn! Kattobingu!",
+"tts": "My turn! Kattobingu!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "132e5673246a",
+"kind": "win",
+"en": "Gotcha! That's game!",
+"text": "Gotcha! That's game!",
+"tts": "Gotcha! That's game!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "c4b7f73ece96",
+"kind": "win",
+"en": "Yeah! Who's the man? Joey's the man!",
+"text": "Yeah! Who's the man? Joey's the man!",
+"tts": "Yeah! Who's the man? Joey's the man!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "e568d85e5f7a",
+"kind": "win",
+"en": "Woohoo! Did you see that?",
+"text": "Woohoo! Did you see that?",
+"tts": "Woohoo! Did you see that?"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "ff3b45bce738",
+"kind": "win",
+"en": "Yes! Did you see that? Kattobingu!",
+"text": "Yes! Did you see that? Kattobingu!",
+"tts": "Yes! Did you see that? Kattobingu!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "a7a4d5747fe2",
+"kind": "xyz",
+"en": "Stack 'em up! XYZ!",
+"text": "Stack 'em up! XYZ!",
+"tts": "Stack 'em up! /ˈɪksiːz/!"
+}
+]

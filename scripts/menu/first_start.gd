@@ -13,6 +13,12 @@ var short := false
 var _logo: Control
 var _done := false
 
+## What the narrator says over each world, and over the title.
+const WORLD_SAY := ["Domino City. Where it all began.", "Duel Academy. Where duelists are made.",
+	"New Domino City. Where they duel at full speed.", "Heartland. Where they reach higher."]
+const TITLE_SAY := "Yu-Gi-Oh! Crossroads. Four eras. One story."
+const TITLE_SHORT := "Yu-Gi-Oh! Crossroads."
+
 const WORLDS := [
 	{"name": "DOMINO CITY", "line": "Where it all began.", "color": Color("ffd166"), "faces": ["yugi", "kaiba", "joey"]},
 	{"name": "DUEL ACADEMY", "line": "Where duelists are made.", "color": Color("7cc4ff"), "faces": ["jaden", "chazz", "alexis"]},
@@ -227,10 +233,18 @@ func _say(i: int) -> void:
 	tw.tween_callback(func():
 		_text.text = Loc.t(LINES[i])
 		_text.visible_ratio = 0.0
-		Sfx.play("select", -14.0, 1.5))
+		Sfx.play("select", -14.0, 1.5)
+		Voices.say("lumen", LINES[i], true, true))
 	tw.tween_property(_text, "modulate:a", 1.0, 0.15)
 	tw.parallel().tween_property(_text, "visible_ratio", 1.0, clampf(LINES[i].length() * 0.022, 0.3, 1.3))
 	_flash = maxf(_flash, 0.12)
+
+
+## The time a line gets on screen: `silent` when nobody says it, and when it is spoken, at least
+## as long as the voice needs plus a breath, so the next line never has to wait for this one.
+func _room(silent: float, who: String, text: String) -> float:
+	var n := Voices.length(who, text)
+	return silent if n <= 0.0 else maxf(silent, n + 0.6)
 
 
 func _wait(sec: float, run: int) -> bool:
@@ -242,6 +256,8 @@ func _wait(sec: float, run: int) -> bool:
 func _start() -> void:
 	var t0 := Time.get_ticks_msec()
 	create_tween().tween_property(_logo, "modulate:a", 1.0, 0.45)
+	if not short:
+		Voices.say("narrator", "Atlas Peak Games presents.", true, true)
 	await get_tree().create_timer(0.5).timeout
 	if not is_inside_tree():
 		return
@@ -257,8 +273,9 @@ func _start() -> void:
 			_cine.finale(1.0)
 		return
 	var el := (Time.get_ticks_msec() - t0) / 1000.0
-	if el < 1.9:
-		await get_tree().create_timer(1.9 - el).timeout
+	var logo_len := 1.9 if short else _room(1.9, "narrator", "Atlas Peak Games presents.")
+	if el < logo_len:
+		await get_tree().create_timer(logo_len - el).timeout
 	if not is_inside_tree() or _skipped:
 		return
 	create_tween().tween_property(_logo, "modulate:a", 0.0, 0.4)
@@ -324,9 +341,9 @@ func _play() -> void:
 	_say(0)
 	if not await _wait(1.9, run): return
 	_say(1)
-	if not await _wait(3.0, run): return
+	if not await _wait(_room(3.0, "lumen", LINES[1]), run): return
 	_say(2)
-	if not await _wait(2.5, run): return
+	if not await _wait(_room(2.5, "lumen", LINES[2]), run): return
 	create_tween().tween_property(_text, "modulate:a", 0.0, 0.2)
 	# Lumen's light dives toward the screen and the flight over the four worlds begins.
 	var dive := create_tween().set_parallel()
@@ -337,10 +354,11 @@ func _play() -> void:
 	Sfx.play("whoosh", -4.0, 0.7)
 	if not await _wait(0.35, run): return
 	_flash = 0.5
-	var shot_len := 2.9
 	for i in WORLDS.size():
+		var shot_len := _room(2.9, "narrator", WORLD_SAY[i])
 		_cine.show_shot(i, shot_len + 0.6, 0.25 if i == 0 else 0.45)
 		_world(i, shot_len)
+		Voices.say("narrator", WORLD_SAY[i], true, true)
 		if not await _wait(shot_len, run): return
 	# Back over Domino, high up and dimmed; the four roads come in over it and meet.
 	_dive = 0.0
@@ -353,11 +371,11 @@ func _play() -> void:
 	_say(3)
 	create_tween().tween_property(self, "_beam", 1.0, 1.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	Sfx.play("charge", -8.0, 0.8)
-	if not await _wait(2.1, run): return
+	if not await _wait(_room(2.1, "lumen", LINES[3]), run): return
 	_land_title()
-	if not await _wait(2.2, run): return
+	if not await _wait(_room(2.2, "narrator", TITLE_SAY), run): return
 	_say(4)
-	if not await _wait(3.0, run): return
+	if not await _wait(_room(3.0, "lumen", LINES[4]), run): return
 	_question()
 
 
@@ -481,6 +499,7 @@ func _land_title() -> void:
 	create_tween().tween_property(self, "_ring", 0.0, 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	Sfx.play("gong", -2.0)
 	Sfx.play("special", -6.0)
+	Voices.say("narrator", TITLE_SHORT if short else TITLE_SAY, true, true)
 	create_tween().tween_property(_text, "modulate:a", 0.0, 0.15)
 	_title.modulate.a = 1.0
 	_title.scale = Vector2(1.7, 1.7)
@@ -522,6 +541,7 @@ func _skip() -> void:
 	if _skipped or _asked:
 		return
 	_skipped = true
+	Voices.hush(true)
 	if short:
 		_finish()
 		return

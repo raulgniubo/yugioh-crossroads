@@ -280,6 +280,44 @@ and the story difficulty moves it. All of that is build 1. Build 2 is only the f
   logs slow frames; ALBUM_TYPE="word" times each search; for real keyboard input, run on a manual Xvfb display and
   drive it with xdotool (screen coords x1.2 = viewport coords at 1280x720).
 
+### 0.62.0: voices (Voices), face-off, narrated opening, hand reorder
+- `scripts/core/voices.gd` (`Voices`): every spoken line is a file `res://voices/<lang>/<voice>/<key>.ogg`, key =
+  first 12 hex of the md5 of the ENGLISH line (`"call:<card id>"` for monster call-outs). No file = no voice, the
+  text bubble still shows. `voice_for(who)`: "narrator", "lumen" (Settings.voice_lumen: lumen_b warm, lumen bright,
+  lumen_c calm, none), "player" (Settings.voice_me or the look: player_m, player_m2, player_f, player_f2), any other
+  key by `Characters` personality + FEMALE (kind/cocky/cool/wild/dark _m/_f; wild and dark have no _f).
+  `say(who, text, mine, must)`, `say_kind`, `call_line`, `rematch_line`, `hello_line`, `shout` (both voices, the only
+  overlap), `length(who, text)` (seconds, 0 when nobody will say it: scenes use it to give a line room), `focus(on)`
+  (music further down for the face-off), `hush`. Dev: `--voicelog` prints every line and what became of it.
+- `Voices.Speaker` (a Node under root, made at start by `Voices.warm`): ONE voice at a time, 0.22 s of quiet after
+  each line, a queue of 2 for `must` lines (valid 4 s), other lines are dropped while somebody talks. Ducks the
+  Music bus (-5 dB, -11 dB under `focus`). Bus "Voice". Test: `godot --headless --path . res://tests/voice_overlap.tscn`
+  must print `VOICE OVERLAP: PASS` (30 lines in 3 s never overlap; nothing gets on top of the shout).
+- Hooks: `duel_scene.gd` (`_talk`, `_lumen`, the face-off with `_opp_intro()` and the "Duel!" shout before the
+  DUEL banner, win/lose), `first_start.gd` (`_room()` times each line by its voice; narrator WORLD_SAY / TITLE_SAY /
+  TITLE_SHORT), `main_menu.gd` `_lumen_hello()` (once per launch). `Profile.vs` / `last_vs()` / `last_won` remember
+  the last result against each duelist for the rematch lines and the greeting.
+- Settings: `voices_on`, `voice_volume`, `voice_opp`, `voice_lumen` (0 warm 1 bright 2 calm 3 none), `voice_me`
+  (0 look, 1 male A, 2 male B, 3 female A, 4 female B, 5 none).
+- The lines: `tools/voices/build_lines.py tools/voices/lines_src.json tools/voices/names_out.json` writes
+  `lines.json` (1,792: 896 per language) and `todo.json` (what has no file, by `made.json`). New lines live in
+  `new_lines.json` (with their Spanish). Voice ids of Raul's ElevenLabs account: `voices.json`.
+- **State of the audio:** Spanish is complete (896 + 7 narrator lines in `voices/es`). English: 178 lines made and
+  parked in `tools/voices/wip/en` (outside the build, `.gdignore`), 718 to go (`todo.json`), plus the 7 English
+  narrator lines already cut (in `wip/en/narrator`). When English is done: move `wip/en` to `voices/en`, import,
+  ship as 0.62.1. Do not ship English half-voiced.
+- How the audio was made (ElevenLabs connector, model eleven_v4, about 1 credit per character): a flow with 20
+  speech nodes, 20 lines per run, files collected and joined in the connector's sandbox with a 1 kHz beep between
+  lines, the pack downloaded on Raul's Mac through Blender (he approved that use), split at the beeps, trimmed,
+  levelled to -17 LUFS, saved as mono ogg. Things that bit: a DAILY generation cap (429
+  daily_generation_limit_reached) separate from the monthly credits; the voice library is full at 30 of 30, so
+  the narrator is NOT a saved voice: his 7 lines per language were cut from one voice-design take (seed 6262, the
+  whole script as the sample text) at the pauses. To add narrator lines, a slot must be freed first or the same
+  trick repeated (he will not sound exactly the same). Never transcribe a pack to check it (1,509 credits once).
+  I cannot hear: voices were picked by description and measured pitch, lines were checked by length only.
+- Hand reorder: `duel_hud.gd` `_hand_band` / `_hand_move` (a sideways drag inside the hand moves the card, up
+  plays it). Dev check: `--handtest` with `--duel --first=me`. Exodia: the star pairs in `exodia_show.gd`.
+
 ### 0.61.0: effect looks (CardFx), special wins (WinShow), Field Spell floors
 - `scripts/duel/card_fx.gd`: CardFx.kind(inst, label) picks one of 24 kinds (KINDS: emblem number, colour, second
   colour). Order: the effect's script label (LABELS); for a Spell/Trap the first thing its text does after a
