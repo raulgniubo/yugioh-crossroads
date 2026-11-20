@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.63.2
+
+Chains you can read. No cards added: 8,415 total.
+
+- **Every chained card gets its moment.** From the second card on, a card that goes on a chain shows large in the middle for a beat, with a gold glow, its chain number, its name and what it does. The card panel switches to it too. Then it tucks away so the table is free while you decide whether to respond.
+- **The chain strip.** Beside the card panel, the chain lines up as a ladder: your cards on the left with a blue edge, the rival's a step to the right with a red edge, each with its number on a gold coin, joined by a chain. The header counts the links.
+- **One card at a time when it resolves.** The chain goes backwards: the card comes forward large, you read it, it steps aside and its effect plays on the table, and only then is it the next one's turn. A card that has resolved goes dark with a check mark. A negated card gets a red cross.
+- **Point at a card in the strip (or tap it)** to read it in the card panel.
+- **Settings > Gameplay > Chain pace:** Normal, Slower (more time to read) or Fast (almost no wait).
+- The numbered links over the cards on the table are still there, so you can see where each card of the chain is.
+- **Windows:** only the .exe changed.
+
 ## What is in 0.63.1
 
 Fixes from the first day of 0.63.0: how the duelists move on the real models, memory, the deck editor, and the sound of a hit. No cards added: 8,415 total.

@@ -604,6 +604,10 @@ func _loop() -> void:
 		if da.begins_with("--demo-destiny"):
 			_demo_destiny(da.trim_prefix("--demo-destiny").trim_prefix("="))
 			return
+		if da == "--demo-chain":
+			await _demo_chain()
+			await get_tree().create_timer(600.0).timeout
+			return
 	await ocg.loop()
 	_finish()
 
@@ -891,6 +895,33 @@ func _bring_spirit() -> void:
 	var got: Array = LumenSpirit.floating(self)
 	_lumen_3d = got[1]
 	hud.show_spirit((got[0] as SubViewport).get_texture())
+
+
+## How fast a chain is shown (Settings > Gameplay > Chain pace): Normal, Slower, Fast.
+func _chain_pace() -> float:
+	if "--demo-slow" in OS.get_cmdline_user_args():
+		return 5.0      # dev: long enough to photograph each moment under a slow renderer
+	return float([1.0, 1.7, 0.5][clampi(int(Settings.chain_pace), 0, 2)])
+
+
+## Dev: a chain of four with one negated, played through the real event code ("--demo-chain").
+func _demo_chain() -> void:
+	await get_tree().create_timer(2.5).timeout
+	var ids := [[83968380, ME], [37576645, AI], [30461781, ME], [98444741, ME]]
+	var cards: Array = []
+	for pair in ids:
+		cards.append(state._make(int(pair[0]), int(pair[1])))
+	for i in cards.size():
+		await _play_event({"type": "chain_link", "n": i + 1, "player": int(ids[i][1]), "card": cards[i]})
+		await get_tree().create_timer(0.5).timeout
+	await get_tree().create_timer(1.2).timeout
+	for n in [4, 3, 2, 1]:
+		await _play_event({"type": "chain_solving", "n": n, "player": int(ids[n - 1][1])})
+		if n == 2:
+			await _play_event({"type": "chain_negated", "n": n, "player": int(ids[n - 1][1]), "card": cards[n - 1]})
+		await get_tree().create_timer(0.6).timeout
+		await _play_event({"type": "chain_solved", "n": n, "player": int(ids[n - 1][1])})
+	await _play_event({"type": "chain_end", "player": 0})
 
 
 ## The sound of taking a hit, from the one who took it. Small ones are not repeated back to back
@@ -1358,19 +1389,31 @@ func _play_event(ev: Dictionary) -> void:
 			# (0.57.0) A numbered link over every card on the chain, joined by a chain of light.
 			var cn := int(ev["n"])
 			board.chain_link(cn, p, ev.get("card"))
+			# (0.63.2) ...and the chain itself in a strip beside the card panel, where it can be read.
+			var enter := 0.0
+			if not _autoplay:
+				enter = hud.chain_strip().link(cn, p, ev.get("card"), Settings.t(0.75) * _chain_pace())
 			if cn >= 2:
 				hud.effect_text(Loc.t("CHAIN %d") % cn, Color("ffd23a"))
 				if cn == 2 or randf() < 0.5:
 					_talk(p, "chain", 0.7)
-				await get_tree().create_timer(Settings.t(0.42)).timeout
+				await get_tree().create_timer(maxf(enter, Settings.t(0.42))).timeout
 		"chain_solving":
 			if board.chain_fx != null:
 				board.chain_fx.solving(int(ev["n"]))
+			var strip_on: bool = not _autoplay and hud.chain_strip().showing()
+			if strip_on:
+				# One card at a time: it steps out, you read what it is, then its effect plays.
+				var fwd: float = hud.chain_strip().solving(int(ev["n"]), Settings.t(0.8) * _chain_pace())
+				await get_tree().create_timer(fwd).timeout
+			elif board.chain_fx != null:
 				await get_tree().create_timer(Settings.t(0.3)).timeout
 		"chain_negated":
 			if board.chain_fx == null:
 				board.chain_link(0, p, null)
 			board.chain_fx.negated(int(ev["n"]), ev.get("card"))
+			if not _autoplay:
+				hud.chain_strip().negated(int(ev["n"]))
 			board.anim_negated(ev.get("card"))
 			hud.effect_text(Loc.t("Negated!"), Color("ff5a6a"))
 			var nc = ev.get("card")
@@ -1384,10 +1427,18 @@ func _play_event(ev: Dictionary) -> void:
 		"chain_solved":
 			if board.chain_fx != null:
 				board.chain_fx.solved(int(ev["n"]))
+			if not _autoplay and hud.chain_strip().showing():
+				# (a beat on what it did before the card steps back and the next one comes forward)
+				await get_tree().create_timer(Settings.t(0.35) * _chain_pace()).timeout
+				hud.chain_strip().solved(int(ev["n"]))
+				await get_tree().create_timer(Settings.t(0.25) * _chain_pace()).timeout
+			elif board.chain_fx != null:
 				await get_tree().create_timer(Settings.t(0.12)).timeout
 		"chain_end":
 			if board.chain_fx != null:
 				board.chain_fx.end()
+			if not _autoplay:
+				hud.chain_strip().clear()
 			_fx_card = null
 			_fx_kind = ""
 		"targets":

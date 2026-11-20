@@ -668,3 +668,16 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
   copy /b line. device_commit_files needs a fileUuid from SendUserFile (a stagedPath under outputs was refused with HTTP 400).
   Suite: TESTS DONE failures 0, CARD CHECK 8415 problems 0, positions 206 pass (6 with none), VOICE OVERLAP PASS, LINE NAMES
   PASS, CHAIN CHECK PASS. Next: English voices (1,243 left, next batch 98), 0.64.0 when complete.
+- CI (GitHub build.yml) runs tests/test_runner.tscn with NO card data folder: a test must not look cards up by name there (NAME_TO_ID is nearly empty). Check with HOME=/tmp/cihome XDG_DATA_HOME=/tmp/cihome/.local/share before pushing a new test.
+
+#### 0.63.2 (Nov 20, evening): the chain strip
+- Asked for by Raul's brother ("like Master Duel": chains go by too fast to read). Raul said go at 5:14 PM.
+- scripts/duel/chain_strip.gd (a Control made by hud.chain_strip()), driven from duel_scene._play_event: chain_link ->
+  link(n, p, card, hold) (big in the middle, then into the strip), chain_solving -> solving(n, hold), chain_negated ->
+  negated(n), chain_solved -> solved(n), chain_end -> clear(). Settings.chain_pace (0 Normal, 1 Slower, 2 Fast).
+  Not shown for a chain of one, nor in autoplay. Yours left / rival's right (ZIG), newest glows gold (halo).
+- Dev: `--demo-chain` plays a 4-card chain with link 2 negated through the real event code; add `--demo-slow` to photograph
+  it under xvfb. Preview sent to Raul: work/out/chain_strip_preview.png.
+- From the brother's notes (written with another AI, taken with a grain of salt): zigzag by owner, strong glow on the new
+  card, text that updates as each card is chained. NOT taken: giant cards sitting in the middle the whole time (the table
+  must stay visible to decide a response).

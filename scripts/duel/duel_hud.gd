@@ -1096,6 +1096,18 @@ func _chip(text: String, col: Color) -> void:
 var _inspect_shown = null
 var _inspect_hidden := false
 
+## The chain strip beside the card panel (see chain_strip.gd). Made the first time a chain needs it.
+const ChainStrip := preload("res://scripts/duel/chain_strip.gd")
+var _chain_strip: Control
+
+func chain_strip() -> Control:
+	if _chain_strip == null or not is_instance_valid(_chain_strip):
+		_chain_strip = ChainStrip.new(self)
+		add_child(_chain_strip)
+		move_child(_chain_strip, mini(get_child_count() - 1, _inspect_panel.get_index() + 1))
+	return _chain_strip
+
+
 func inspect(inst, hidden := false) -> void:
 	if inst == null:
 		return

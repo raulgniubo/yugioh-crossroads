@@ -275,6 +275,14 @@ static func open(parent: Node) -> SidePanel:
 		Settings.turn_beat = i
 		Settings.save_settings())
 	_row(game, "Turn beat", "Each turn opens with a moment on the duelist whose turn it is: they call it and draw. Full: about a second, shorter from the fourth turn on. Brief: always the short one. Off: straight to the table.", beat)
+	var cpace := OptionButton.new()
+	for i in 3:
+		cpace.add_item(Loc.t(["Normal", "Slower", "Fast"][i]), i)
+	cpace.select(Settings.chain_pace)
+	cpace.item_selected.connect(func(i):
+		Settings.chain_pace = i
+		Settings.save_settings())
+	_row(game, "Chain pace", "When cards are chained, they line up in a strip beside the card panel and resolve one at a time, each with its name and what it does. Normal: a short beat on each card. Slower: more time to read. Fast: almost no wait.", cpace)
 	var crowd := CheckButton.new()
 	crowd.button_pressed = Settings.crowd_cam
 	crowd.toggled.connect(func(on):

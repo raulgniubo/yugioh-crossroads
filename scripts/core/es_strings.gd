@@ -7632,4 +7632,12 @@ const ES := {
 	"Dark": "Oscuro",
 	"Live duelists in the corners": "Duelistas en vivo en las esquinas",
 	"On: the two duelists next to the Life Points are the real 3D duelists, moving and reacting all through the duel. Off: still pictures, like before. Takes effect in the next duel.": "Activado: los dos duelistas junto a los Puntos de Vida son los duelistas 3D de verdad, moviéndose y reaccionando durante todo el duelo. Desactivado: imágenes fijas, como antes. Se aplica en el próximo duelo.",
+	"CHAIN": "CADENA",
+	"your card": "tuya",
+	"their card": "del rival",
+	"resolves": "se resuelve",
+	"NEGATED": "NEGADA",
+	"Chain pace": "Ritmo de las cadenas",
+	"Slower": "Más lento",
+	"When cards are chained, they line up in a strip beside the card panel and resolve one at a time, each with its name and what it does. Normal: a short beat on each card. Slower: more time to read. Fast: almost no wait.": "Cuando se encadenan cartas, se alinean en una tira junto al panel de la carta y se resuelven una a una, cada una con su nombre y lo que hace. Normal: una pausa corta en cada carta. Más lento: más tiempo para leer. Rápido: casi sin espera.",
 }
