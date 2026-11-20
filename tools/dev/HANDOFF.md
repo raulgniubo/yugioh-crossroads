@@ -681,3 +681,4 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
 - From the brother's notes (written with another AI, taken with a grain of salt): zigzag by owner, strong glow on the new
   card, text that updates as each card is chained. NOT taken: giant cards sitting in the middle the whole time (the table
   must stay visible to decide a response).
+- SHIPPED 0.63.2 at 5:50 PM Nov 20 (commit 2087fd6, pushed, installed on the Mac, Windows parts in the chat). Suite all pass.
