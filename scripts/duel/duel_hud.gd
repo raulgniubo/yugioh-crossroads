@@ -221,8 +221,11 @@ var _coach_label: Label
 var _coach_text := ""
 
 
+signal said(p: int, text: String)      # a duelist's line went up (their figure moves its mouth for it)
+
 func say(p: int, text: String) -> void:
 	if text.strip_edges() != "":
+		said.emit(p, text)
 		# A voice blip so a line is heard as well as read: yours a little higher than theirs.
 		Sfx.play("hey", -11.0, 1.15 if p == 0 else 0.82)
 	if text == "":

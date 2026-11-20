@@ -18,7 +18,7 @@ const DATA := {
 			"intro": ["Let's see what kind of duelist you are.", "I'm ready. Let's duel!"],
 			"turn": ["My turn. I draw!", "The cards won't let me down."],
 			"ace": ["Dark Magician, I summon you!", "My most trusted monster!"],
-			"attack": ["Dark Magic Attack!", "Go, attack directly!"],
+			"attack": ["Dark Magic Attack!"], "direct": ["Go, attack directly!"],
 			"hurt": ["That was a good move...", "I'm not done yet!"],
 			"win": ["That was a great duel. Let's do it again sometime."],
 			"lose": ["You won fair and square. Well played!"],
@@ -56,7 +56,7 @@ const DATA := {
 		"lines": {
 			"intro": ["Get your game on!", "This is gonna be fun!"],
 			"turn": ["My turn! Let's see what I've got.", "Draw! Oh, sweet!"],
-			"ace": ["Fusion time! Elemental HEROes, unite!", "Now we're talking!"],
+			"ace": ["Now we're talking!"], "fusion": ["Fusion time! Elemental HEROes, unite!"],
 			"attack": ["Go, HERO, take 'em down!", "Skyscraper Shoot!"],
 			"hurt": ["Whoa, nice one!", "Okay, now I'm really having fun."],
 			"win": ["Gotcha! That's game!"],
@@ -363,7 +363,60 @@ static var last_en := ""
 static var _last_said := {}       # "<who>|<moment>" -> the line said last time
 
 
-static func line(key: String, kind: String) -> String:
+## A line that names a card, a family of cards or a monster's own attack is only said about that
+## card (0.63.0): Kaiba does not announce "the Blue-Eyes White Dragon" for the three-headed fusion,
+## and nobody shouts a monster's attack name while another monster attacks.
+## line -> what the card must be (any one of): a card's exact name; "Name*" = its name begins so;
+## "*text*" = its name has that in it; "ace" = the speaker's own ace card.
+const LINE_NEEDS := {
+	"Dark Magician, I summon you!": ["Dark Magician"], "My most trusted monster!": ["ace"], "Dark Magic Attack!": ["Dark Magician"],
+	"Behold, the Blue-Eyes White Dragon!": ["Blue-Eyes White Dragon"], "Burst Stream of Destruction!": ["Blue-Eyes White Dragon"],
+	"Red-Eyes, show 'em what you got!": ["Red-Eyes Black Dragon"], "Inferno Fire Blast!": ["Red-Eyes Black Dragon"],
+	"Fusion time! Elemental HEROes, unite!": ["Elemental HERO*"], "Go, HERO, take 'em down!": ["*HERO*"], "Skyscraper Shoot!": ["ace"],
+	"Clustering wishes become a new shining star!": ["Stardust Dragon"], "Take flight, Stardust Dragon!": ["Stardust Dragon"], "Shooting Sonic!": ["Stardust Dragon"],
+	"I build the Overlay Network! Come on out, Utopia!": ["Number 39: Utopia"], "Utopia, here we go!": ["Number 39: Utopia"], "Rising Sun Slash!": ["Number 39: Utopia"],
+	"My Harpies always come in style!": ["Harpie *", "Cyber Harpie Lady"], "Cyclone Attack!": ["Harpie *", "Cyber Harpie Lady"],
+	"Isn't my Toon simply marvelous?": ["Toon *"],
+	"Bow to the Insect Queen!": ["Insect Queen"], "ROAR! Black Tyranno!": ["Black Tyranno"],
+	"Cyber End Dragon. Evolution complete.": ["Cyber End Dragon"], "Take the stage, Cyber Blader!": ["Cyber Blader"],
+	"Destiny HEROes, show them their fate.": ["Destiny HERO*"],
+	"The King's soul burns hot! Red Dragon Archfiend!": ["Red Dragon Archfiend"], "Absolute Powerforce!": ["Red Dragon Archfiend"],
+	"Blackwings, take to the sky!": ["Blackwing*"], "Bloom, Black Rose Dragon!": ["Black Rose Dragon"],
+	"Rise from the depths, Leviathan Dragon!": ["Number 17: Leviathan Dragon"],
+	"Galaxy-Eyes Photon Dragon! Descend!": ["Galaxy-Eyes Photon Dragon"], "Photon Stream of Destruction!": ["Galaxy-Eyes Photon Dragon"],
+	"This echo is mine now.": ["ace"], "A masterpiece. I kept it perfect.": ["ace"], "Catalogue number one.": ["ace"],
+}
+
+
+## May `key` say this line about that card (0 = no card in particular)?
+static func line_fits(key: String, text: String, card_id: int) -> bool:
+	if not LINE_NEEDS.has(text):
+		return true
+	if card_id <= 0:
+		return false
+	var nm := str(CardData.get_card(card_id).get("name", ""))
+	for need in LINE_NEEDS[text]:
+		var n := str(need)
+		if n == "ace":
+			if int(get_char(key).get("ace", 0)) == card_id:
+				return true
+		elif n.begins_with("*") and n.ends_with("*"):
+			if nm.contains(n.substr(1, n.length() - 2)):
+				return true
+		elif n.ends_with("*"):
+			if nm.begins_with(n.substr(0, n.length() - 1)):
+				return true
+		elif nm == n:
+			return true
+	return false
+
+
+static func _fitting(key: String, arr: Array, card_id: int) -> Array:
+	return arr.filter(func(t): return line_fits(key, str(t), card_id))
+
+
+## `card_id`: the card the line would be about (the monster arriving, the one attacking), 0 = none.
+static func line(key: String, kind: String, card_id := 0) -> String:
 	last_en = ""
 	# Your own duelist says the lines you picked for them.
 	if key == "player" and kind == "intro" and Profile.intro > 0:
@@ -373,7 +426,7 @@ static func line(key: String, kind: String) -> String:
 		last_en = str(Profile.WINS[Profile.win_line])
 		return Loc.t(last_en)
 	var who: Dictionary = DATA.get(key, STORY_CAST.get(key, {}))
-	var arr: Array = (PLAYER_LINES if key == "player" else who.get("lines", {})).get(kind, [])
+	var arr: Array = _fitting(key, (PLAYER_LINES if key == "player" else who.get("lines", {})).get(kind, []), card_id)
 	if key != "player":
 		var pers: String = who.get("personality", "cool")
 		if arr.is_empty():

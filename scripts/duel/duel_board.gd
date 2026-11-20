@@ -4050,6 +4050,8 @@ var _pbone := {}      # player -> [Skeleton3D, head bone]
 ## Framing, yours (a tall strip: head to waist) and theirs (a square: head and shoulders):
 ## [how far the camera stands, lens, how far under the head it aims, how far to the side it stands].
 const PORTRAIT_FRAME := [[1.75, 40.0, 0.25, 0.42], [1.7, 29.0, 0.13, 0.38]]
+const PORTRAIT_WIDE_MAX := 1.5      # how far back the camera may step for a big gesture
+var _pwide := {}      # player -> how far back it stands now (1 = the close framing)
 
 func live_portrait(p: int, px: Vector2i) -> Texture2D:
 	if not has_duelist(p):
@@ -4087,11 +4089,18 @@ func live_portrait(p: int, px: Vector2i) -> Texture2D:
 	return vp.get_texture()
 
 
+func duelist_mouth(p: int, secs: float) -> void:
+	if has_duelist(p):
+		(_duelists[p] as RoamFigure).mouth_for(secs)
+		if _act_log:
+			print("MOUTH p%d %.1fs face parts %d" % [p, secs, (_duelists[p] as RoamFigure)._face_parts.size()])
+
+
 func duelist_ready(p: int) -> bool:
 	return has_duelist(p) and (_duelists[p] as RoamFigure).ready_to_show
 
 
-func _update_portrait(p: int, k: float) -> void:
+func _update_portrait(p: int, k: float, delta := 0.0) -> void:
 	var cam: Camera3D = _pcam.get(p)
 	if cam == null or not has_duelist(p):
 		return
@@ -4101,16 +4110,40 @@ func _update_portrait(p: int, k: float) -> void:
 	if not _pbone.has(p) and fig._model != null and fig.ready_to_show:
 		var sk := Avatars._first_skeleton(fig._model)
 		if sk != null and sk.find_bone("Head") >= 0:
-			_pbone[p] = [sk, sk.find_bone("Head")]
+			_pbone[p] = [sk, sk.find_bone("Head"), sk.find_bone("LeftHand"), sk.find_bone("RightHand")]
+	var hands: Array = []
 	if _pbone.has(p) and is_instance_valid(_pbone[p][0]):
 		var sk2: Skeleton3D = _pbone[p][0]
 		head = sk2.global_transform * sk2.get_bone_global_pose(int(_pbone[p][1])).origin + Vector3(0, 0.06, 0)
+		for hi in [2, 3]:
+			if int(_pbone[p][hi]) >= 0:
+				hands.append(sk2.global_transform * sk2.get_bone_global_pose(int(_pbone[p][hi])).origin)
 	# (the camera follows the head softly: a stagger or a nod moves them inside the picture)
 	_phead[p] = head if not _phead.has(p) or k >= 1.0 else (_phead[p] as Vector3).lerp(head, k)
 	var h: Vector3 = _phead[p]
 	var f: Array = PORTRAIT_FRAME[p]
-	var at := Vector3(lerpf(h.x, 0.0, 0.5), h.y - float(f[2]), lerpf(h.z, side * DUELIST_Z, 0.5))
-	cam.global_position = at + Vector3(-float(f[3]) * side, float(f[2]) * 0.35, -side * float(f[0]))
+	# The picture opens up for a big gesture: when a hand comes up or is thrown out past the edge of
+	# the frame, the camera steps back just enough to keep it in (quickly), and comes back in slowly.
+	var wide := float(_pwide.get(p, 1.0))
+	if delta > 0.0:
+		var vp: SubViewport = _pview[p]
+		var half_h := float(f[0]) * tan(deg_to_rad(float(f[1])) * 0.5)
+		var half_w := half_h * float(vp.size.x) / maxf(float(vp.size.y), 1.0)
+		var right := cam.global_transform.basis.x
+		var up := cam.global_transform.basis.y
+		var aim := Vector3(lerpf(h.x, 0.0, 0.5), h.y - float(f[2]), lerpf(h.z, side * DUELIST_Z, 0.5))
+		var need := 1.0
+		for hp in hands:
+			var rel: Vector3 = (hp as Vector3) - aim
+			if (hp as Vector3).y < h.y - 0.5:
+				continue      # a hand at the hip or hanging down is not a gesture
+			need = maxf(need, maxf(absf(rel.dot(right)) / (half_w * 0.8), absf(rel.dot(up)) / (half_h * 0.8)))
+		need = clampf(need, 1.0, PORTRAIT_WIDE_MAX)
+		wide = lerpf(wide, need, 1.0 - exp(-delta * (7.0 if need > wide else 1.5)))
+		_pwide[p] = wide
+	var drop := float(f[2]) + (wide - 1.0) * 0.2
+	var at := Vector3(lerpf(h.x, 0.0, 0.5), h.y - drop, lerpf(h.z, side * DUELIST_Z, 0.5))
+	cam.global_position = at + Vector3(-float(f[3]) * side, drop * 0.35, -side * float(f[0]) * wide)
 	cam.look_at(at)
 
 
@@ -4230,7 +4263,7 @@ func _process(delta: float) -> void:
 	_process_extra(_time)
 	_process_picks(_time)
 	for pp in _pcam:
-		_update_portrait(pp, 1.0 - exp(-delta * 3.5))
+		_update_portrait(pp, 1.0 - exp(-delta * 3.5), delta)
 	_shake = move_toward(_shake, 0.0, delta * 1.6)
 	var sway := Vector3(sin(_time * 0.35) * 0.06, sin(_time * 0.5) * 0.04, 0)
 	var s := _shake * _shake * 0.35

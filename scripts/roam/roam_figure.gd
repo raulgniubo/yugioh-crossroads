@@ -123,6 +123,11 @@ var _face_parts: Array = []      # [[MeshInstance3D, [blink shape indexes], [mou
 var _blink_t := randf_range(1.0, 5.0)
 var _blink := 0.0
 var _mouth := 0.0
+var _mouth_until := 0.0      # the mouth moves until then (a line said at the duel table)
+
+## Move the mouth for a line that takes this long (only the face: the body keeps doing what it does).
+func mouth_for(secs: float) -> void:
+	_mouth_until = _time + secs
 
 
 func _find_face() -> void:
@@ -155,7 +160,7 @@ func _face(delta: float) -> void:
 	_blink = maxf(0.0, _blink - delta * 7.5)
 	var lid := sin(clampf(_blink, 0.0, 1.0) * PI)
 	var want := 0.0
-	if _speaking:
+	if _speaking or _time < _mouth_until:
 		want = clampf(0.3 + 0.45 * sin(_time * 13.0) * sin(_time * 5.3 + 1.0) + 0.2 * sin(_time * 21.0), 0.0, 0.85)
 	_mouth = lerpf(_mouth, want, 1.0 - exp(-delta * 22.0))
 	for part in _face_parts:
@@ -369,7 +374,7 @@ func _live(delta: float) -> void:
 		_look.yaw = lerpf(_look.yaw, want_yaw if stance == "stand" or absf(want_yaw) < 0.9 else 0.0, k)
 		# The talking clip hunches forward; lift the chin so a speaker looks at who they talk to.
 		_look.pitch = lerpf(_look.pitch, want_pitch - (0.3 if _speaking and stance == "stand" else 0.0), k)
-		if _speaking:
+		if _speaking or _time < _mouth_until:
 			# Nobody talks with a still head: small nods on the beat of the words.
 			_look.pitch += (sin(_time * 7.3) * 0.022 + sin(_time * 11.9) * 0.012) * k * 6.0
 			_look.yaw += sin(_time * 3.1) * 0.012 * k * 6.0

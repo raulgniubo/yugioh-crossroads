@@ -111,6 +111,8 @@ func _ready() -> void:
 		hud.summon_cinematic(inst.cname(), int(inst.data.get("atk", 0)), int(inst.data.get("def", 0)),
 			board._frame_color(inst), inst.owner == ME))
 	hud.hand_card_pressed.connect(_on_hand_card_pressed)
+	# A duelist's mouth moves for as long as their line takes to say (about 15 letters a second).
+	hud.said.connect(func(sp: int, text: String): board.duelist_mouth(sp, clampf(text.length() * 0.065, 0.7, 4.0)))
 	hud.hand_drag.connect(_on_hand_drag)
 	hud.can_drag = func(inst): return _my_turn() and mode == "" and not _drop_plan(inst).is_empty()
 	hud.drop_handler = _on_hand_drop
@@ -1092,6 +1094,7 @@ func _cut(p: int, moment: String, secs: float, big := false) -> bool:
 
 var _cut_log := "--pose-debug" in OS.get_cmdline_user_args()
 var _acted := {}        # player -> [moment, until]: the motion a look at the duelist has just played
+var _beat_drew := -1    # the turn whose beat already played the draw motion (counted by turn, not by the clock: a slow computer must not see it twice)
 var _turn_seen := false # the first turn has begun (before it, the opening hands are being dealt)
 var _dealt := {}        # player -> true once their opening hand has had its one pull of the arm
 
@@ -1114,14 +1117,19 @@ func _beat_secs(p: int) -> float:
 	return 1.25 if (Settings.turn_beat == 0 and state.turn <= 3) else 0.8
 
 
-func _call(p: int, kind: String, card_id := 0) -> void:
+## `about`: the card the line is about (the one attacking), when it is not one to call by name.
+func _call(p: int, kind: String, card_id := 0, about := 0) -> void:
 	var odds: Array = CALLS.get(kind, [1.0, 1.0, 1.0])
-	_talk(p, kind, float(odds[Settings.talk]), 2.5 if Settings.talk == 0 else (1.6 if Settings.talk == 1 else 0.9), card_id)
+	_talk(p, kind, float(odds[Settings.talk]), 2.5 if Settings.talk == 0 else (1.6 if Settings.talk == 1 else 0.9), card_id, about)
 
 
-func _talk(p: int, kind: String, chance := 1.0, min_gap := 2.5, card_id := 0) -> void:
+## `card_id`: a card to call out by name when this duelist has that call; `about`: the card the line
+## is about either way. A line that names a card is only ever said about that card (Characters.LINE_NEEDS).
+func _talk(p: int, kind: String, chance := 1.0, min_gap := 2.5, card_id := 0, about := 0) -> void:
 	if _autoplay or randf() > chance:
 		return
+	if about <= 0:
+		about = card_id
 	var now := Time.get_ticks_msec() / 1000.0
 	if now - float(_last_talk[p]) < min_gap:
 		return
@@ -1142,7 +1150,7 @@ func _talk(p: int, kind: String, chance := 1.0, min_gap := 2.5, card_id := 0) ->
 			hud.say(p, str(call[0]))
 			board.duelist_gesture(p, "ace")
 			return
-	var line := _opp_intro() if (p == AI and kind == "intro") else Characters.line(who, kind)
+	var line := _opp_intro() if (p == AI and kind == "intro") else Characters.line(who, kind, about)
 	if line == "":
 		return
 	_last_talk[p] = now
@@ -1188,7 +1196,7 @@ func _play_event(ev: Dictionary) -> void:
 				board.duelist_shot(p, 0.3, false, 0.0, 2.9)
 				board.duelist_act(p, "draw" if state.turn > 1 else "ready")
 				if state.turn > 1:
-					_acted[p] = ["draw", Time.get_ticks_msec() / 1000.0 + beat + 5.0]
+					_beat_drew = state.turn      # (the turn's own draw is this same pull of the arm)
 				if _cut_log:
 					print("CUT p%d beat %.2f t=%d" % [p, beat, Time.get_ticks_msec()])
 				get_tree().create_timer(Settings.t(beat)).timeout.connect(func(): board.cam_release(0.35))
@@ -1231,7 +1239,10 @@ func _play_event(ev: Dictionary) -> void:
 			# The opening hands are dealt briskly; a draw during the duel takes its moment.
 			board.deal_fast = state.turn <= 0
 			if _turn_seen:
-				_act(p, "draw")
+				if _beat_drew == state.turn:
+					_beat_drew = -1
+				else:
+					_act(p, "draw")
 			elif not _dealt.has(p):
 				_dealt[p] = true      # (the opening hand: one pull of the arm for the five cards)
 				board.duelist_act(p, "draw")
@@ -1403,11 +1414,11 @@ func _play_event(ev: Dictionary) -> void:
 				hud.cut_in(p, str(atk_card.cname()).to_upper(), Loc.t("Direct attack!") if direct else Loc.t("Attack!"), Comic.BLUE if p == ME else Color("ff5a7a"), 0.45)
 				board.duelist_gesture(p, "attack")
 				if Settings.talk > 0:
-					_call(p, "direct" if direct else "attack", 0 if direct or p != ME else int(atk_card.id))
+					_call(p, "direct" if direct else "attack", 0 if direct or p != ME else int(atk_card.id), int(atk_card.id))
 			elif direct:
-				_call(p, "direct")
+				_call(p, "direct", 0, int(atk_card.id))
 			else:
-				_call(p, "attack", int(atk_card.id) if p == ME and int(atk_card.id) in Voices.PLAYER_CALLS else 0)
+				_call(p, "attack", int(atk_card.id) if p == ME and int(atk_card.id) in Voices.PLAYER_CALLS else 0, int(atk_card.id))
 			if direct:
 				await _cut(p, "direct", 0.7, true)      # (the one who sends it in; the strike then goes into the other duelist)
 			_act(p, "direct" if direct else "attack", 1.3 if direct or int(atk_card.atk()) >= 2400 else 1.0)
@@ -1545,7 +1556,12 @@ func _play_event(ev: Dictionary) -> void:
 				return
 			var titles := {"fusion": "FUSION SUMMON", "synchro": "SYNCHRO SUMMON", "xyz": "XYZ SUMMON", "reborn": "REVIVED", "ritual": "RITUAL SUMMON"}
 			Sfx.play("special")
-			_talk(p, method if method in ["fusion", "synchro", "xyz", "ritual"] else "ace", 1.0, 0.0, int(ev["card"].id))
+			# (a monster brought back or sent out by an effect is only "the ace" when it is a big one)
+			var sp_big: bool = ev["card"].level() >= 7 or int(ev["card"].id) == int(Characters.get_char(_speaker(p)).get("ace", 0)) or (p == ME and int(ev["card"].id) in Voices.PLAYER_CALLS)
+			if method in ["fusion", "synchro", "xyz", "ritual"] or sp_big:
+				_talk(p, method if method in ["fusion", "synchro", "xyz", "ritual"] else "ace", 1.0, 0.0, int(ev["card"].id))
+			else:
+				_call(p, "summon", 0, int(ev["card"].id))
 			if method in ["fusion", "synchro", "xyz", "ritual"]:
 				await _cut(p, "summon_big", 0.9, true)
 			_act(p, "summon_big", 1.5)
