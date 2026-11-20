@@ -301,6 +301,14 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
   skeleton without the mesh), `meshy_text_to_motion` 10 credits (prime). Useful preset ids seen: 377 battle pose,
   403 fist pump, 412/59 victory, 409 finger wag, 391 head hold, 404 crouch and step back, 31 catching breath,
   51 angry shout, 178/179/171 hit reactions, idles 0, 11, 12, 243-254, 599. Balance was 537 on Nov 20.
+  **Meshy tasks made Nov 20 (66 credits so far):** test dummy text-to-3d `01a1f963-5122-73b8-9ef5-6047dd7083a7`
+  (a plain robot dummy, not a character), its rig `01a1f963-f5a4-7491-a3c3-141005099d8d` (use this rig_task_id for
+  every animate call), animation batch 1 `01a1f964-3fcf-73e0-abe8-b72b16a82018` (actions 377, 403, 409, 178, 179,
+  171, 391, 31, 51, 315 in that order), text-to-motion "draw a card" `01a1f964-61ae-7002-9a53-551b8b06c9e1` applied
+  as `01a1f965-bfbd-7770-a539-979ab69e3fd7`, text-to-motion "play a card and point" `01a1f964-66ec-753a-b3ae-70ab5b87dd77`
+  applied as `01a1f965-c320-775a-9503-7725afd65ea8` (motion clips expire after 3 days). Next batch planned: 412, 59,
+  404, 317, 318, 308, 311, 313, 306, 376, then idles 243-250. Merge tool: /home/claude/work/anim/merge.py (it merged
+  lib_a.glb + lib_b.glb from his Mac's `Yu-Gi-Oh! Crossroads/meshy/anim/` into gestures.glb, mesh stripped).
 - **Part B (duel moments): not started.** Turn beat, cards leave the duelist's hand, hits reach the body, camera cuts,
   thinking, the outro scene; settings "Camera cuts" and "Turn beat".
 
