@@ -280,6 +280,30 @@ and the story difficulty moves it. All of that is build 1. Build 2 is only the f
   logs slow frames; ALBUM_TYPE="word" times each search; for real keyboard input, run on a manual Xvfb display and
   drive it with xdotool (screen coords x1.2 = viewport coords at 1280x720).
 
+### 0.63.0 IN PROGRESS: duelists come alive (plan doc a6c08700-2d6b-4c3e-a04f-8d0eb126e125, approved Nov 20)
+Plan: https://claude.ai/artifact/MbHyzqSj3uSpMSELcQBKit . Two builds: 0.63.0 (motions + duel moments + more talking in
+Spanish), 0.64.0 (all English voices). **Raul's rule: a build never waits on voices.** If a voice limit stops the
+generation, ship with everything else and the missing voices come in their own build. He will not upgrade ElevenLabs
+($100 plan not worth it): generate whenever the rolling daily limit has room. Spending limits he accepted: 300 Meshy
+credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
+- **Part C (more talking): lines written and hooked, NOT generated yet.** `Characters.PLAYER_LINES` (every moment),
+  `Characters.MORE_LINES` (per personality, joined to a duelist's own lines in `line()`, which also never repeats a
+  line twice in a row), `LUMEN_SAYS` kinds first/second/long/thin_deck/win/close_win/flawless/lose. Attack calls by
+  name: key `atk:<card id>` (`Voices.call_line(who, id, true)`), your duelist only. `duel_scene.gd`: `CALLS` table +
+  `_call(p, kind)` (odds by `Settings.talk` 0/1/2 = Some/Normal/A lot, Settings > Audio "How much they talk"),
+  `_last_words()` (winner, loser, Lumen in turn). `Voices.PLAYER_KINDS` covers every moment now.
+  To do in C: generate (todo.json: 626 Spanish, 1,306 English = 680 old + 626 new; `batch.py` takes Spanish first),
+  list and redo the old Spanish lines with Spain-only words ("Vale", "Menuda"), test with `--voicelog`.
+- **Part A (motions): not started.** Today: `Avatars.gesture()` fits clips of `assets/models/anim/gestures.glb` to any
+  skeleton (MADE_POSES are keyed in code); duels map moments to everyday clips (`DuelBoard.TALK_MOVES`) and
+  `duelist_body()` tilts the WHOLE figure as one rigid piece for attack/hurt/summon/draw (that is the robotic look).
+  Meshy: `meshy_animate` 3 credits per preset action (up to 10 per call, `post_process extract_armature` gives the
+  skeleton without the mesh), `meshy_text_to_motion` 10 credits (prime). Useful preset ids seen: 377 battle pose,
+  403 fist pump, 412/59 victory, 409 finger wag, 391 head hold, 404 crouch and step back, 31 catching breath,
+  51 angry shout, 178/179/171 hit reactions, idles 0, 11, 12, 243-254, 599. Balance was 537 on Nov 20.
+- **Part B (duel moments): not started.** Turn beat, cards leave the duelist's hand, hits reach the body, camera cuts,
+  thinking, the outro scene; settings "Camera cuts" and "Turn beat".
+
 ### 0.62.0: voices (Voices), face-off, narrated opening, hand reorder
 - `scripts/core/voices.gd` (`Voices`): every spoken line is a file `res://voices/<lang>/<voice>/<key>.ogg`, key =
   first 12 hex of the md5 of the ENGLISH line (`"call:<card id>"` for monster call-outs). No file = no voice, the

@@ -206,7 +206,15 @@ static func open(parent: Node) -> SidePanel:
 		Voices.hush(true)
 		if i != 5:
 			Voices.say("player", "Let's do this.", true))
-	_row(aud, "My duelist's voice", "Your duelist speaks at the big moments: the start, their ace, a Fusion, the last hit. Pick one and you hear it.", mine)
+	_row(aud, "My duelist's voice", "Your duelist calls out the turn, the cards and the attacks. Pick one and you hear it.", mine)
+	var talk := OptionButton.new()
+	for i in 3:
+		talk.add_item(Loc.t(["Some", "Normal", "A lot"][i]), i)
+	talk.select(Settings.talk)
+	talk.item_selected.connect(func(i):
+		Settings.talk = i
+		Settings.save_settings())
+	_row(aud, "How much they talk", "Some: only the big moments. Normal: the draw, the battle and the end of the turn too. A lot: every card and every attack is called out, like in the shows.", talk)
 
 	var game := _card(p, "Gameplay", "⚔", Color("ffd166"))
 	_row(game, "Mouse camera speed", "In the worlds, hold the right mouse button and drag to turn the camera.", _pad_slider(Settings.mouse_sens, func(v): Settings.mouse_sens = v))

@@ -21,6 +21,7 @@ var voices_on := true
 var voice_volume := 0.9
 var voice_opp := true
 var voice_lumen := 0         # Lumen: 0 warm, 1 bright, 2 calm, 3 no voice
+var talk := 1                # how much duelists talk: 0 the big moments only, 1 the calls of a turn too, 2 every action
 var voice_me := 0            # your duelist: 0 the voice that fits their look, 1 male A, 2 male B, 3 female A, 4 female B, 5 no voice
 var anim_speed := 1.0
 var crowd_cam := true         # after a big hit the camera glances at the people watching
@@ -496,6 +497,7 @@ func load_settings() -> void:
 	voice_opp = bool(cfg.get_value("audio", "voice_opp", voice_opp))
 	voice_lumen = clampi(int(cfg.get_value("audio", "lumen_voice", voice_lumen)), 0, 3)
 	voice_me = clampi(int(cfg.get_value("audio", "my_voice", voice_me)), 0, 5)
+	talk = clampi(int(cfg.get_value("audio", "talk", talk)), 0, 2)
 	anim_speed = cfg.get_value("game", "anim_speed", anim_speed)
 	crowd_cam = bool(cfg.get_value("game", "crowd_cam", crowd_cam))
 	ask_always = bool(cfg.get_value("game", "ask_always", ask_always))
@@ -581,6 +583,7 @@ func save_settings() -> void:
 	cfg.set_value("audio", "voice_opp", voice_opp)
 	cfg.set_value("audio", "lumen_voice", voice_lumen)
 	cfg.set_value("audio", "my_voice", voice_me)
+	cfg.set_value("audio", "talk", talk)
 	cfg.set_value("game", "anim_speed", anim_speed)
 	cfg.set_value("game", "crowd_cam", crowd_cam)
 	cfg.set_value("game", "ask_always", ask_always)

@@ -398,7 +398,7 @@ func _start() -> void:
 		if cfg.has("rule"):
 			hud.effect_text(Loc.t(str(cfg["rule"])))
 			await hud.banner("SPECIAL RULE", UITheme.GOLD, true)
-		get_tree().create_timer(2.5).timeout.connect(func(): _lumen("start"))
+		get_tree().create_timer(2.5).timeout.connect(func(): _lumen("start" if randf() < 0.6 else ("first" if state.current == ME else "second")))
 	else:
 		if fly:
 			board.intro_flyover(2.5)
@@ -680,8 +680,7 @@ func _finish() -> void:
 	elif not won and not tied and board.track != null:
 		board.track.hush()
 	Sfx.play("cheer", -4.0 if won else -12.0)
-	hud.say(AI, Characters.line(_opp_key, "lose" if won else "win"))
-	Voices.say_kind(_opp_key, "lose" if won else "win", Characters.last_en, false)
+	_last_words(won, tied)
 	# The winner gets the camera.
 	var champ := ME if won else AI
 	# The loser drops their head first, then the winner gets the camera and celebrates.
@@ -923,6 +922,49 @@ func _opp_intro() -> String:
 
 ## A duelist says a line of a kind (a bubble, a gesture, and their voice when they have one).
 ## `card_id`: the monster that just hit the field; a duelist with a call-out for it names it instead.
+## The last words of a duel: the winner first, then the loser, then Lumen. Each one waits for the
+## one before, so nobody talks over anybody. (Runs beside the ending; it does not hold it up.)
+func _last_words(won: bool, tied: bool) -> void:
+	if tied:
+		hud.say(AI, Characters.line(_opp_key, "win"))
+		Voices.say_kind(_opp_key, "win", Characters.last_en, false)
+		return
+	for p in ([ME, AI] if won else [AI, ME]):
+		var who := _speaker(p) if p == ME else _opp_key
+		var kind := "win" if (p == ME) == won else "lose"
+		var line := Characters.line(who, kind)
+		if line == "":
+			continue
+		hud.say(p, line)
+		var n := Voices.length(who, Characters.last_en, p == ME)
+		Voices.say_kind(who, kind, Characters.last_en, p == ME)
+		await get_tree().create_timer(maxf(1.5, n + 0.35)).timeout
+		if not is_inside_tree():
+			return
+	var lp := int(state.players[ME].lp)
+	if not won:
+		_lumen("lose")
+	elif lp >= int(_start_lp[ME]):
+		_lumen("flawless")
+	elif lp <= 1000:
+		_lumen("close_win")
+	else:
+		_lumen("win")
+
+
+## The calls of a turn (0.63.0). How often each one is said goes by Settings.talk:
+## [big moments only, the normal amount, every action].
+const CALLS := {"turn": [0.0, 1.0, 1.0], "first": [0.0, 1.0, 1.0], "battle": [0.0, 1.0, 1.0], "direct": [0.0, 1.0, 1.0],
+	"hurt_big": [0.0, 1.0, 1.0], "end": [0.0, 0.5, 1.0], "summon": [0.0, 0.55, 1.0], "set_mon": [0.0, 0.3, 1.0],
+	"attack": [0.3, 0.6, 1.0], "set": [0.25, 0.35, 1.0], "spell": [0.3, 0.55, 1.0], "hurt": [1.0, 0.7, 1.0]}
+
+
+## Says a call of the turn, as often as the "How much they talk" setting asks for.
+func _call(p: int, kind: String, card_id := 0) -> void:
+	var odds: Array = CALLS.get(kind, [1.0, 1.0, 1.0])
+	_talk(p, kind, float(odds[Settings.talk]), 2.5 if Settings.talk == 0 else (1.6 if Settings.talk == 1 else 0.9), card_id)
+
+
 func _talk(p: int, kind: String, chance := 1.0, min_gap := 2.5, card_id := 0) -> void:
 	if _autoplay or randf() > chance:
 		return
@@ -930,6 +972,15 @@ func _talk(p: int, kind: String, chance := 1.0, min_gap := 2.5, card_id := 0) ->
 	if now - float(_last_talk[p]) < min_gap:
 		return
 	var who := _speaker(p) if p == ME else _opp_key
+	if kind == "attack" and card_id > 0:
+		# Your duelist sends a famous monster in by name.
+		var cry: Array = Voices.call_line(who, card_id, true)
+		if not cry.is_empty() and Voices.say(who, str(cry[1]), p == ME, false):
+			_last_talk[p] = now
+			hud.say(p, str(cry[0]))
+			board.duelist_gesture(p, "attack")
+			return
+		card_id = 0
 	if card_id > 0 and (kind == "ace" or randf() < 0.5):
 		var call: Array = Voices.call_line(who, card_id)
 		if not call.is_empty() and Voices.say(who, str(call[1]), p == ME, true):
@@ -966,8 +1017,15 @@ func _play_event(ev: Dictionary) -> void:
 			Sfx.play("turn")
 			if mine and state.players[ME].hand.is_empty() and state.turn > 2:
 				_lumen("topdeck")
-			if randf() < 0.45:
-				_talk(p, "turn", 1.0, 0.0)
+			if Settings.talk == 0:
+				if randf() < 0.45:
+					_talk(p, "turn", 1.0, 0.0)
+			elif state.turn <= 1 or randf() < 0.35:
+				_talk(p, "turn", 1.0, 0.0)      # (nobody draws on the very first turn)
+			else:
+				_talk(p, "draw", 1.0, 0.0)
+			if mine and state.turn == 16:
+				_lumen("long")
 			await hud.banner("YOUR TURN" if mine else Loc.t("%s'S TURN") % state.players[AI].name.to_upper(),
 					Comic.SKY if mine else Color("ff7a8a"))
 		"phase":
@@ -978,8 +1036,12 @@ func _play_event(ev: Dictionary) -> void:
 			if names.has(ph):
 				var col: Color = UITheme.DANGER if ph == DuelState.Phase.BATTLE else (Comic.BLUE if state.current == ME else Comic.RED)
 				await hud.phase_sweep(names[ph], col)
-				if ph == DuelState.Phase.END and state.current == AI and randf() < 0.3:
+				if ph == DuelState.Phase.BATTLE:
+					_call(state.current, "battle")
+				elif ph == DuelState.Phase.END and state.current == AI and randf() < 0.3:
 					_talk(AI, "taunt")
+				elif ph == DuelState.Phase.END:
+					_call(state.current, "end")
 		"draw":
 			if _destiny_card != null and ev["card"] == _destiny_card:
 				# The show already took this card off the Deck: it just lands in the hand.
@@ -999,6 +1061,8 @@ func _play_event(ev: Dictionary) -> void:
 			if state.turn > 0:
 				board.duelist_body(p, "draw")
 			await board.anim_draw(p, ev["card"], ev["deck"])
+			if p == ME and state.turn > 4 and int(ev["deck"]) <= 3:
+				_lumen("thin_deck")
 			if p == ME:
 				hud.add_hand_card(ev["card"])
 		"summon", "set":
@@ -1023,6 +1087,10 @@ func _play_event(ev: Dictionary) -> void:
 				_lumen("my_ace" if p == ME else "their_ace")
 			elif p == ME and ev["type"] == "summon" and ev["card"].id == CardData.LUMEN:
 				_lumen("me")
+			elif ev["type"] == "summon":
+				_call(p, "summon")
+			elif ev["type"] == "set":
+				_call(p, "set_mon")
 			if ev["type"] == "summon" and _pending_tributes > 0:
 				hud.banner("TRIBUTE SUMMON", UITheme.GOLD, true)
 			_pending_tributes = 0
@@ -1049,7 +1117,7 @@ func _play_event(ev: Dictionary) -> void:
 				_lumen("trap")
 			hud.inspect(ev["card"])
 			Sfx.play("spell")
-			_talk(p, "spell", 0.3)
+			_call(p, "spell")
 			if SpellRules.kind(ev["card"]) in ["field", "equip", "cont", "ritual", "quick"]:
 				var titles := {"field": "FIELD SPELL", "equip": "EQUIP SPELL", "cont": "CONTINUOUS SPELL", "ritual": "RITUAL SPELL", "quick": "QUICK-PLAY SPELL"}
 				hud.effect_text("%s  ·  %s" % [titles[SpellRules.kind(ev["card"])], ev["card"].cname()], Color("7dffc8"))
@@ -1154,8 +1222,12 @@ func _play_event(ev: Dictionary) -> void:
 			elif not _autoplay and (direct or int(atk_card.atk()) >= 2400):
 				hud.cut_in(p, str(atk_card.cname()).to_upper(), Loc.t("Direct attack!") if direct else Loc.t("Attack!"), Comic.BLUE if p == ME else Color("ff5a7a"), 0.45)
 				board.duelist_gesture(p, "attack")
-			elif randf() < 0.3:
-				_talk(p, "attack")
+				if Settings.talk > 0:
+					_call(p, "direct" if direct else "attack", 0 if direct or p != ME else int(atk_card.id))
+			elif direct:
+				_call(p, "direct")
+			else:
+				_call(p, "attack", int(atk_card.id) if p == ME and int(atk_card.id) in Voices.PLAYER_CALLS else 0)
 			board.duelist_body(p, "attack", 1.3 if direct or int(atk_card.atk()) >= 2400 else 1.0)
 			Sfx.play("attack")
 			if board.track:
@@ -1183,7 +1255,7 @@ func _play_event(ev: Dictionary) -> void:
 		"set_st":
 			if p == ME:
 				_leave_hand(ev["card"])
-			_talk(p, "set", 0.25)
+			_call(p, "set")
 			Sfx.play("card")
 			await board.anim_set_st(p, ev["card"], ev["zone"])
 		"trap":
@@ -1386,9 +1458,14 @@ func _play_event(ev: Dictionary) -> void:
 					_me_was_low = true
 					_lumen("my_low")
 				elif p == ME and ev["delta"] <= -2000 and int(ev["lp"]) > 0:
+					if Settings.talk > 0:
+						_call(ME, "hurt_big")
 					_lumen("hit")
+				elif ev["delta"] <= -2000 and Settings.talk > 0 and int(ev["lp"]) > 0:
+					_call(p, "hurt_big")
+					_talk(1 - p, "big_hit", 0.55)
 				elif ev["delta"] <= -1000:
-					_talk(p, "hurt")
+					_call(p, "hurt")
 					_talk(1 - p, "big_hit", 0.55)
 			else:
 				Sfx.play("heal")

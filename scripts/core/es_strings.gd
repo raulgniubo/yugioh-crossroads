@@ -7613,4 +7613,8 @@ const ES := {
 	"It's okay. I saw three things we do better next time.": "No pasa nada. Vi tres cosas que haremos mejor la próxima.",
 	"I draw a card!": "¡Robo una carta!",
 	"Coming at you!": "¡Allá voy!",
+	"How much they talk": "Cuánto hablan",
+	"A lot": "Mucho",
+	"Some: only the big moments. Normal: the draw, the battle and the end of the turn too. A lot: every card and every attack is called out, like in the shows.": "Poco: solo los grandes momentos. Normal: también el robo, la batalla y el fin del turno. Mucho: cada carta y cada ataque se anuncia, como en las series.",
+	"Your duelist calls out the turn, the cards and the attacks. Pick one and you hear it.": "Tu duelista anuncia el turno, las cartas y los ataques. Elige una y la escuchas.",
 }

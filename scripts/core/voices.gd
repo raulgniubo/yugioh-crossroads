@@ -9,7 +9,8 @@ class_name Voices
 const FEMALE := ["akiza", "alexis", "mai", "student_girl", "stylish_woman", "vesper"]
 const HAS_F := ["kind", "cocky", "cool"]
 ## What your own duelist says out loud (the rest stays a bubble, so they do not talk all the time).
-const PLAYER_KINDS := ["intro", "ace", "ace_lost", "chain", "negate", "fusion", "synchro", "xyz", "ritual", "trap", "big_hit", "comeback", "win", "lose"]
+const PLAYER_KINDS := ["intro", "ace", "ace_lost", "chain", "negate", "negated", "fusion", "synchro", "xyz", "ritual", "trap", "big_hit", "comeback", "win", "lose",
+	"turn", "draw", "first", "second", "summon", "set_mon", "set", "spell", "battle", "attack", "direct", "end", "hurt", "hurt_big", "react", "destroyed", "low"]
 ## A line that waits its turn when somebody is already talking (the others are dropped instead).
 const MUST := ["intro", "ace", "ace_lost", "fusion", "synchro", "xyz", "ritual", "win", "lose", "comeback"]
 ## How each personality names its ace as it hits the field.
@@ -149,9 +150,9 @@ static func say_kind(who: String, kind: String, text: String, mine := false) -> 
 
 ## The call-out for a monster hitting the field: [text for the bubble, text to speak], or [] when this
 ## duelist has none for that card.
-static func call_line(who: String, card_id: int) -> Array:
+static func call_line(who: String, card_id: int, attack := false) -> Array:
 	var voice := voice_for(who)
-	var spoken := "call:%d" % card_id
+	var spoken := ("atk:%d" if attack else "call:%d") % card_id
 	if card_id <= 0 or not has(voice, key_of(spoken)):
 		return []
 	var nm := str(CardData.get_card(card_id).get("name", ""))
@@ -161,6 +162,9 @@ static func call_line(who: String, card_id: int) -> Array:
 			nm = es
 	if nm == "":
 		return []
+	if attack:
+		# "Dark Magician, attack!" (your own duelist only, for the monsters in PLAYER_CALLS)
+		return [("¡%s, ataca!" if Loc.lang() == "es" else "%s, attack!") % nm, spoken]
 	if who == "player":
 		return [("¡%s!" if Loc.lang() == "es" else "%s!") % nm, spoken]
 	var pers := str(Characters.get_char(who).get("personality", ""))
