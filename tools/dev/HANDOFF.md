@@ -586,3 +586,8 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
    one last hit) = 48 for Spanish through the normal batch pipeline (add them to new_lines.json so todo.json picks
    them up; English voices are different voice ids, so English gets its own 48 with the English lines).
    Nodes 0-2 of the flow now hold the Spanish player_m voice (state.json node_voice updated).
+7. (Nov 20, 1:27 PM) After HIS final blow (he won), Lumen said her "they are almost out" line ("ya casi no le queda
+   nada..."). Wrong moment: the opponent is at 0. To fix when told: no "their_low"/"my_low" (or any mid-duel Lumen or
+   duelist line: big_hit, hurt, low, comeback, react) once the hit takes Life Points to 0 or the duel is finished;
+   also drop lines still WAITING in the voice queue when the duel ends, so nothing mid-duel plays over the ending.
+   Check the same for the losing side (his LP to 0 -> no "we're hanging on" line).
