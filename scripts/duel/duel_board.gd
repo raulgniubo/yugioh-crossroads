@@ -3764,9 +3764,11 @@ func add_duelists(me_key: String, opp_key: String) -> void:
 
 
 ## The duelist at the table acts out what they just said.
-const TALK_MOVES := {"intro": "challenge", "taunt": "chat", "ace": "cheer", "attack": "agree", "react": "scratch",
-	"destroyed": "stomp", "low": "alert", "hurt": "alert", "trap": "agree", "spell": "chat", "set": "listen",
-	"big_hit": "cheer", "comeback": "cheer", "turn": "", "draw_pressure": "scratch",
+## ("-": this moment has a motion of its own, played by duelist_act; the line adds no gesture to it)
+const TALK_MOVES := {"intro": "challenge", "taunt": "chat", "ace": "cheer", "attack": "-", "react": "scratch",
+	"destroyed": "stomp", "low": "alert", "hurt": "-", "hurt_big": "-", "trap": "-", "spell": "-", "set": "-", "set_mon": "-",
+	"draw": "-", "summon": "-", "direct": "-", "end": "-", "battle": "challenge", "first": "challenge", "second": "agree",
+	"big_hit": "fist_pump", "comeback": "fist_pump", "ace_lost": "head_hold", "turn": "", "draw_pressure": "scratch",
 	"chain": "agree", "negate": "challenge", "negated": "stomp", "fusion": "cheer", "synchro": "cheer", "xyz": "cheer", "ritual": "cheer"}
 
 
@@ -3775,6 +3777,8 @@ func duelist_gesture(p: int, kind: String) -> void:
 		return
 	var fig: RoamFigure = _duelists[p]
 	var move := str(TALK_MOVES.get(kind, "chat"))
+	if move == "-":
+		return
 	if move == "":
 		fig.do_nod()
 		return
@@ -3787,6 +3791,34 @@ func duelist_gesture(p: int, kind: String) -> void:
 		print("POSE ", move, " playing=", fig._anim.current_animation if fig._anim else "none", " hold=", fig._hold, " t=", Time.get_ticks_msec())
 	# Big moves run long; trim them so the duelist is back in their stance soon.
 	fig._hold = minf(fig._hold, 3.0 if move in ["stomp", "cheer", "bow", "challenge"] else 2.4)
+
+
+## What a duelist does at each moment of a duel (0.63.0): motions of the arms and the torso, made for
+## duels, in place of the whole figure tilting as one piece. moment -> [clip, speed, from, to (seconds
+## of the clip, 0 = to its end)], or a list of those to pick from.
+const ACTS := {
+	"draw": ["draw", 1.4, 0.0, 0.0], "summon": ["play", 1.4, 0.0, 0.0], "summon_big": ["summon_big", 1.2, 0.0, 0.0],
+	"set": ["cset", 1.4, 0.0, 0.0], "spell": ["cspell", 1.3, 0.0, 0.0], "trap": ["ctrap", 1.2, 0.0, 0.0],
+	"attack": ["point", 1.3, 0.0, 0.0], "direct": ["direct", 1.2, 0.0, 0.0], "end": ["endturn", 1.2, 0.0, 0.0],
+	"hurt": ["hit2", 1.0, 0.0, 0.0], "hurt_big": [["hit", 1.0, 0.0, 0.0], ["hit_waist", 1.0, 0.0, 0.0]],
+	"think": ["think", 1.0, 0.0, 0.0], "ace_lost": ["head_hold", 1.1, 0.0, 0.0], "cheer": ["fist_pump", 1.0, 0.0, 0.0]}
+## The old whole-body move for a moment, for a figure that cannot play the motion.
+const ACT_OLD := {"draw": "draw", "summon": "summon", "summon_big": "summon", "attack": "attack", "direct": "attack", "hurt": "hurt", "hurt_big": "hurt"}
+
+
+## The duelist acts out a moment of the duel. True when a real motion played.
+func duelist_act(p: int, moment: String, strength := 1.0) -> bool:
+	if turbo or not _duelists.has(p) or not is_instance_valid(_duelists[p]) or not (_duelists[p] is RoamFigure):
+		return false
+	var fig: RoamFigure = _duelists[p]
+	var a: Array = ACTS.get(moment, [])
+	if not a.is_empty() and a[0] is Array:
+		a = a[randi() % a.size()]
+	if not a.is_empty() and fig.act(str(a[0]), 0.18, float(a[1]) / maxf(Settings.t(1.0), 0.2), float(a[2]), float(a[3])):
+		return true
+	if ACT_OLD.has(moment):
+		duelist_body(p, str(ACT_OLD[moment]), strength)
+	return false
 
 
 ## The duelist's whole body sells the moment: a step into an attack, a stagger when hit,

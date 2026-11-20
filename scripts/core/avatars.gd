@@ -420,6 +420,9 @@ func _retarget(src: Animation, dskel: Skeleton3D, skel: Skeleton3D, skel_path: S
 
 const GESTURES := "res://assets/models/anim/gestures.glb"
 const CLIPS := "res://assets/models/anim/clips/"
+## Motions of the arms and the torso: the legs keep the calm stance under them.
+const PLANTED := ["g_wave", "g_chat", "g_scratch", "g_listen", "g_phone", "g_agree", "g_checkout", "g_alert", "g_challenge", "g_defeat",
+	"g_draw", "g_play", "g_cset", "g_cspell", "g_ctrap", "g_point", "g_think", "g_summon_big", "g_endturn", "g_hip"]
 var _gest: Node = null           # the shared library of everyday motions (wave, chat, sit, ...)
 var _gest_cache := {}            # "<model file>|<clip>" -> Animation, made once per model file
 
@@ -491,7 +494,7 @@ func gesture(model: Node, motion: String) -> String:
 		anim = _retarget(dap.get_animation(nm), dskel, skel, skel_path, ratio, 20.0)
 		# Standing motions only move the top half: the legs keep the calm stance of the idle,
 		# so going in and out of a gesture never shuffles the feet.
-		if nm in ["g_wave", "g_chat", "g_scratch", "g_listen", "g_phone", "g_agree", "g_checkout", "g_alert", "g_challenge", "g_defeat"] and rest_idle(model) != "":
+		if nm in PLANTED and rest_idle(model) != "":
 			_plant_legs(anim, ap.get_animation("g_rest"))
 		if nm in ["g_stand", "g_stand2", "g_sit", "g_sittalk", "g_chat", "g_listen"]:
 			anim.loop_mode = Animation.LOOP_LINEAR

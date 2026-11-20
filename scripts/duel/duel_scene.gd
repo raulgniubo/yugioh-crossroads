@@ -408,20 +408,26 @@ func _start() -> void:
 		if a.begins_with("--rider-shot="):
 			var rs := int(a.substr(13))
 			board.duelist_shot(rs, 0.1)
-			for k in 12:
+			for k in 40:
 				var pose := ""
 				for pa in OS.get_cmdline_user_args():
 					if pa.begins_with("--pose="):      # dev: look at one motion, slowed down (--rider-shot=0 --pose=draw --shots=x)
 						pose = pa.substr(7)
 				if pose != "":
-					Engine.time_scale = 0.3
-					print("POSE ", pose, " ", (board._duelists[rs] as RoamFigure).gesture(pose, 0.25))
-					await get_tree().create_timer(4.5).timeout
+					# (several motions, one after the other: --pose=draw,play,point)
+					var list := pose.split(",")
+					if k >= list.size():
+						break
+					var one := str(list[k])
+					print("POSE ", one, " ", (board._duelists[rs] as RoamFigure).gesture(one, 0.25))
+					await get_tree().create_timer(4.6).timeout
 				elif "--pose-lose" in OS.get_cmdline_user_args():
 					(board._duelists[rs] as RoamFigure).play_once("lose")
 				else:
 					board.duelist_gesture(rs, "intro")
 				if pose == "":
+					if k >= 12:
+						break
 					await get_tree().create_timer(2.5).timeout
 	if not _autoplay and _puzzle.is_empty():
 		# A held breath, then both of them shout it as the word lands and the music comes back up.
@@ -1051,6 +1057,7 @@ func _play_event(ev: Dictionary) -> void:
 					_talk(AI, "taunt")
 				elif ph == DuelState.Phase.END:
 					_call(state.current, "end")
+					board.duelist_act(state.current, "end")
 		"draw":
 			if _destiny_card != null and ev["card"] == _destiny_card:
 				# The show already took this card off the Deck: it just lands in the hand.
@@ -1068,7 +1075,7 @@ func _play_event(ev: Dictionary) -> void:
 			# The opening hands are dealt briskly; a draw during the duel takes its moment.
 			board.deal_fast = state.turn <= 0
 			if state.turn > 0:
-				board.duelist_body(p, "draw")
+				board.duelist_act(p, "draw")
 			await board.anim_draw(p, ev["card"], ev["deck"])
 			if p == ME and state.turn > 4 and int(ev["deck"]) <= 3:
 				_lumen("thin_deck")
@@ -1104,7 +1111,9 @@ func _play_event(ev: Dictionary) -> void:
 				hud.banner("TRIBUTE SUMMON", UITheme.GOLD, true)
 			_pending_tributes = 0
 			if ev["type"] == "summon":
-				board.duelist_body(p, "summon", 1.4 if is_ace else 1.0)
+				board.duelist_act(p, "summon_big" if is_ace else "summon", 1.4 if is_ace else 1.0)
+			else:
+				board.duelist_act(p, "set")
 			await board.anim_summon(p, ev["card"], ev["zone"], ev["type"] == "set")
 			if p == ME and ev["type"] == "summon" and ev["card"].atk() >= 2000:
 				_talk(AI, "react", 0.65)
@@ -1127,6 +1136,7 @@ func _play_event(ev: Dictionary) -> void:
 			hud.inspect(ev["card"])
 			Sfx.play("spell")
 			_call(p, "spell")
+			board.duelist_act(p, "spell")
 			if SpellRules.kind(ev["card"]) in ["field", "equip", "cont", "ritual", "quick"]:
 				var titles := {"field": "FIELD SPELL", "equip": "EQUIP SPELL", "cont": "CONTINUOUS SPELL", "ritual": "RITUAL SPELL", "quick": "QUICK-PLAY SPELL"}
 				hud.effect_text("%s  ·  %s" % [titles[SpellRules.kind(ev["card"])], ev["card"].cname()], Color("7dffc8"))
@@ -1237,7 +1247,7 @@ func _play_event(ev: Dictionary) -> void:
 				_call(p, "direct")
 			else:
 				_call(p, "attack", int(atk_card.id) if p == ME and int(atk_card.id) in Voices.PLAYER_CALLS else 0)
-			board.duelist_body(p, "attack", 1.3 if direct or int(atk_card.atk()) >= 2400 else 1.0)
+			board.duelist_act(p, "direct" if direct else "attack", 1.3 if direct or int(atk_card.atk()) >= 2400 else 1.0)
 			Sfx.play("attack")
 			if board.track:
 				board.track.surge(p)
@@ -1265,13 +1275,14 @@ func _play_event(ev: Dictionary) -> void:
 			if p == ME:
 				_leave_hand(ev["card"])
 			_call(p, "set")
+			board.duelist_act(p, "set")
 			Sfx.play("card")
 			await board.anim_set_st(p, ev["card"], ev["zone"])
 		"trap":
 			Sfx.play("spell", 0.0, 0.8)
 			hud.inspect(ev["card"])
 			if not _autoplay:
-				board.duelist_gesture(p, "trap")
+				board.duelist_act(p, "trap")
 			# The card turns face-up on the field first (and, with the setting on, is held up to be read).
 			if not _autoplay:
 				_announce(p, ev["card"], true)
@@ -1366,7 +1377,7 @@ func _play_event(ev: Dictionary) -> void:
 			var titles := {"fusion": "FUSION SUMMON", "synchro": "SYNCHRO SUMMON", "xyz": "XYZ SUMMON", "reborn": "REVIVED", "ritual": "RITUAL SUMMON"}
 			Sfx.play("special")
 			_talk(p, method if method in ["fusion", "synchro", "xyz", "ritual"] else "ace", 1.0, 0.0, int(ev["card"].id))
-			board.duelist_body(p, "summon", 1.5)
+			board.duelist_act(p, "summon_big", 1.5)
 			hud.react(p, "ace")
 			hud.banner(titles.get(method, "SPECIAL SUMMON"), board.METHOD_COLORS.get(method, UITheme.ACCENT), true)
 			if _shows and Settings.big_shows and SummonShow.wants(ev["card"].data):
@@ -1439,7 +1450,7 @@ func _play_event(ev: Dictionary) -> void:
 						board.turbo_blow(p)
 				else:
 					board.house(clampf(float(-ev["delta"]) / 3000.0, 0.25, 0.9), hit_col, Vector3(0, 0, -3.0 if p == AI else 3.0), 0.6)
-				board.duelist_body(p, "hurt", float(-ev["delta"]) / 1500.0)
+				board.duelist_act(p, "hurt_big" if int(ev["delta"]) <= -2000 else "hurt", float(-ev["delta"]) / 1500.0)
 				board.shake(0.5 if ev["delta"] > -2000 else 0.8)
 				# You feel it in your hands when you take the hit, a little when you land one.
 				if not _autoplay:

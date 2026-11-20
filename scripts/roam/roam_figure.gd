@@ -199,6 +199,25 @@ func gesture(motion: String, blend := 0.3) -> bool:
 	return true
 
 
+## A motion of a duel ("draw", "point", "hit", ...): like gesture(), at its own speed and, when asked,
+## only a part of the clip (seconds `from` .. `to`). Returns false when this model cannot do it.
+func act(motion: String, blend := 0.2, speed := 1.0, from := 0.0, to := 0.0) -> bool:
+	if _model == null or _riding:
+		return false
+	var c := Avatars.gesture(_model, motion)
+	if c == "":
+		return false
+	_anim = Avatars.anim_player(_model)
+	_anim.speed_scale = 1.0
+	_anim.play(c, blend, speed)
+	if from > 0.0:
+		_anim.seek(from, true)
+	var n := (to if to > from else _anim.get_animation(c).length) - from
+	_hold = maxf(0.2, n / maxf(speed, 0.1) - 0.3)
+	_cur_clip = ""
+	return true
+
+
 func _idle_clip() -> String:
 	if stance == "sit" or stance == "rest":
 		# "sit": upright at a table, hands busy. "rest": leaning on the knees, on a bench.
