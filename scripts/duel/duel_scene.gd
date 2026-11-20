@@ -844,6 +844,14 @@ const LUMEN_SAYS := {
 	"comeback": ["You're back in it! I never doubted you. *bzzt* Much.", "From almost nothing to THIS? That's my duelist!", "And we're back! I knew it the whole time!", "What a turnaround! Do that again!"],
 	"destiny": ["{player}. The Deck is listening. Ask it for the one card you need!", "This is it. One card can turn this around. Reach for it!", "I can feel it. The next card is the one. Draw!", "Deep breath... now reach for it!"],
 	"their_destiny": ["They can do that too?! Okay. Okay. Stay sharp.", "That was THEIR big draw. Whatever it is, we can take it.", "Uh oh. Their deck answered them. Heads up!", "A big draw for them. Stay calm. Stay very calm."],
+	"first": ["We go first! First is good. I like first.", "First turn! No pressure. Okay, a little pressure."],
+	"second": ["They go first. Fine! We get to see their plan.", "Second is okay! Second gets to draw."],
+	"long": ["This is a long one! I'm not tired. Are you tired?", "Still going! This is the good kind of long."],
+	"thin_deck": ["Um. The Deck is getting thin. Just saying!", "Only a few cards left in there. Make them count!"],
+	"win": ["We won! I knew it! I mostly knew it!", "Victory! High five! I don't have hands. Imagine it!"],
+	"close_win": ["We won! By THIS much! I'm shaking!", "That was so close! Never do that to me again. Okay, do it again."],
+	"flawless": ["Not a scratch on us! Did they even play?", "A perfect duel! Frame it!"],
+	"lose": ["Hey. We lost. It happens to the best. That's us.", "It's okay. I saw three things we do better next time."],
 }
 var _lumen_box: LumenBubble
 var _lumen_said := {}

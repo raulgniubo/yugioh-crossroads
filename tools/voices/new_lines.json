@@ -314,5 +314,9 @@
   "They were never meant to meet. But the roads have crossed.",
   "I have a deck with no cards in it yet. I think it is yours.",
   "So, tell me. Who are you?"
+ ],
+ "player_atk": [
+  "{n}, attack!",
+  "¡{n}, ataca!"
  ]
 }

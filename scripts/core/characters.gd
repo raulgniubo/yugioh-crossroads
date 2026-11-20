@@ -225,21 +225,124 @@ const PLAYER_LINES := {
 	"ritual": ["Ritual Summon!"],
 	"ace_lost": ["My ace...! Not yet. I'm not done.", "They got my best monster. Think. Think!"],
 	"intro": ["Let's do this.", "I won't hold back."],
-	"turn": ["My turn!", "Draw!"],
+	"turn": ["My turn!", "It's my turn!", "Here I go!"],
+	"draw": ["Draw!", "I draw a card!", "My draw!", "Come on, deck!"],
+	"first": ["I'll go first.", "First turn is mine!"],
+	"second": ["Go ahead. You start.", "You go first. I'll be right here."],
+	"summon": ["I summon this monster!", "Come out!", "Take the field!"],
+	"set_mon": ["I set a monster.", "One monster, face-down."],
 	"ace": ["This is my ace!", "Here's my best!"],
-	"attack": ["Attack!", "Go!"],
-	"hurt": ["I'm still standing.", "Not yet!"],
-	"win": ["Yes! I won!", "That's how it's done!"],
-	"lose": ["Next time...", "Good duel. I'll be back."],
+	"battle": ["Battle!", "Time to battle!", "Coming at you!"],
+	"attack": ["Attack!", "Go!", "Attack now!", "Strike!"],
+	"direct": ["Direct attack!", "Straight at your Life Points!", "Nothing in the way. Go!"],
+	"end": ["I end my turn.", "Your move.", "That's it for now."],
+	"hurt": ["I'm still standing.", "Not yet!", "Ugh!", "That stung."],
+	"hurt_big": ["Agh! That was a big one...", "My Life Points...!", "I can take it. I have to."],
+	"win": ["Yes! I won!", "That's how it's done!", "I did it!", "What a duel. Thank you!", "And that's the duel!"],
+	"lose": ["Next time...", "Good duel. I'll be back.", "I lost... but I learned something.", "Good duel. The next one is mine.", "So close..."],
 	"trap": ["Not so fast! Trap card!", "I was waiting for that!"],
-	"spell": ["Let's see how you handle this."],
-	"set": ["I'll set this and end my turn."],
+	"spell": ["Let's see how you handle this.", "I activate a Spell Card!", "Spell Card, go!"],
+	"set": ["I set a card face-down.", "One card face-down."],
 	"big_hit": ["Direct hit!", "That's a big one!"],
-	"react": ["That's a strong monster...", "Okay. I can handle that."],
-	"destroyed": ["My monster..."],
+	"react": ["That's a strong monster...", "Okay. I can handle that.", "So that's your ace..."],
+	"destroyed": ["My monster...", "No!", "I'll get you back for that."],
 	"low": ["I'm not done yet!"],
 	"comeback": ["We're back in this!"],
 }
+
+## More to say (0.63.0): the calls of a turn (draw, who starts, summon, battle, end) and more versions of
+## the lines that come up most, per personality. A duelist's own lines for a moment come first; these join them.
+const MORE_LINES := {
+	"kind": {
+		"turn": ["It's my turn!"],
+		"draw": ["Okay, here I go. Draw!", "I draw. Please be a good one!", "Draw!"],
+		"first": ["I'll go first, if that's okay.", "I'll start us off!"],
+		"second": ["You can go first. Good luck!", "After you!"],
+		"summon": ["I summon this monster!", "Come on out, friend!", "This one's up next!"],
+		"set_mon": ["I'll set a monster."],
+		"set": ["I'll leave this face-down."],
+		"spell": ["I activate a Spell Card!", "This should help!"],
+		"trap": ["Sorry! That was a Trap."],
+		"battle": ["Let's battle!", "Here we go, everyone!", "Battle!"],
+		"direct": ["Direct attack! Sorry!", "The way is open. Go!", "Straight to the Life Points!"],
+		"end": ["I end my turn.", "That's all for me. Your turn!", "Go ahead, it's your turn."],
+		"hurt_big": ["Ugh... that was a strong one.", "I felt that... but I'm still here."],
+		"win": ["We did it! Great duel!", "Thank you for dueling me."],
+		"lose": ["I lost... I'll train harder.", "That was a great duel. Really."]},
+	"cocky": {
+		"turn": ["My turn. Finally."],
+		"draw": ["My turn. Draw.", "Draw. Exactly what I needed.", "Watch and learn. Draw!"],
+		"first": ["I go first. Obviously.", "First turn is mine. Try to keep up."],
+		"second": ["Go first. You'll need the head start.", "Take the first turn. It won't matter."],
+		"summon": ["I summon this. Tremble.", "Come forth!", "Another one you can't beat."],
+		"set_mon": ["A monster, face-down. Guess."],
+		"set": ["Face-down. Go ahead, walk into it."],
+		"spell": ["A Spell Card. Pay attention.", "This is how the game is really played."],
+		"trap": ["You walked right into it."],
+		"battle": ["Battle. This won't take long.", "Time to finish this.", "Battle!"],
+		"direct": ["Direct attack. Feel that?", "Nothing to hide behind.", "Straight to your Life Points."],
+		"end": ["I end my turn. Do your worst.", "Your turn. Don't waste it.", "Go. Entertain me."],
+		"hurt_big": ["Tch... you'll pay for that.", "Enjoy it. It's the last one you get."],
+		"win": ["Was there ever any doubt?", "Come back when you're ready."],
+		"lose": ["This... isn't over.", "You got lucky. Remember that."]},
+	"cool": {
+		"turn": ["My turn."],
+		"draw": ["Draw.", "I draw.", "Draw. Good."],
+		"first": ["I'll go first.", "First turn. Mine."],
+		"second": ["You first.", "Go ahead."],
+		"summon": ["Summon.", "I summon this.", "Take the field."],
+		"set_mon": ["Monster. Face-down."],
+		"set": ["One card face-down."],
+		"spell": ["Spell Card.", "Activate."],
+		"trap": ["Trap."],
+		"battle": ["Battle.", "Battle Phase.", "Let's settle this."],
+		"direct": ["Direct attack.", "Open field. Go.", "Straight through."],
+		"end": ["Turn end.", "I end my turn.", "Your turn."],
+		"hurt_big": ["...That one counted.", "I'm still here."],
+		"win": ["It's over.", "You fought well."],
+		"lose": ["I lost. Fair.", "Next time."]},
+	"wild": {
+		"turn": ["My turn, my turn!"],
+		"draw": ["Draw! Come on, come on!", "My turn! DRAW!", "Draw! Ha! Look at this!"],
+		"first": ["Me first! Me first!", "I'm starting! Try and stop me!"],
+		"second": ["You first! Show me what you've got!", "Go on, go on! I can't wait!"],
+		"summon": ["Get out here!", "Summon! Yeah!", "Here comes trouble!"],
+		"set_mon": ["Hehe. Face-down monster!"],
+		"set": ["Face-down! Don't peek!"],
+		"spell": ["Spell Card! Boom!", "Oh, you're gonna love this one!"],
+		"trap": ["Ha! Fell for it!"],
+		"battle": ["BATTLE!", "Let's fight!", "Finally! Battle time!"],
+		"direct": ["Direct attack! WHAM!", "Nobody home! Go, go, go!", "Right at ya!"],
+		"end": ["Okay, okay, I'm done!", "Turn over! Your go!", "That's my turn! Beat that!"],
+		"hurt_big": ["YOWCH! That one hurt!", "Whoa... okay, that was a LOT."],
+		"win": ["YES! That was awesome!", "Again! Let's go again!"],
+		"lose": ["Aw, no way! So close!", "Okay, you got me. That was fun!"]},
+	"dark": {
+		"turn": ["My turn... at last."],
+		"draw": ["I draw... from the dark.", "Draw. Your end comes closer.", "My turn. Draw..."],
+		"first": ["I begin. You only wait.", "The first turn is mine."],
+		"second": ["Go first. It changes nothing.", "Begin. I am patient."],
+		"summon": ["Rise.", "I summon this from the shadows.", "Come. Serve me."],
+		"set_mon": ["Something waits, face-down."],
+		"set": ["A card in the dark. Step closer."],
+		"spell": ["A Spell Card. Despair.", "Let the dark do its work."],
+		"trap": ["The trap closes."],
+		"battle": ["Battle. Scream if you like.", "Now, the battle.", "Let it begin."],
+		"direct": ["Direct attack. Nothing protects you.", "Feel it yourself.", "Straight into you."],
+		"end": ["I end my turn. Struggle.", "Your turn. Use it well.", "Go on. Amuse me."],
+		"hurt_big": ["Pain... how nostalgic.", "You will regret that."],
+		"win": ["It ends as it had to.", "The dark takes you."],
+		"lose": ["The dark... fades...", "This is not the end."]},
+}
+
+
+## Every line a personality can say: its own table and MORE_LINES together.
+static func personality_lines(pers: String) -> Dictionary:
+	var out := {}
+	for src in [PERSONALITY_LINES.get(pers, {}), MORE_LINES.get(pers, {})]:
+		for k in src:
+			out[k] = (out.get(k, []) as Array) + (src[k] as Array)
+	return out
 
 
 static func get_char(key: String) -> Dictionary:
@@ -257,6 +360,7 @@ static func available(key: String) -> bool:
 
 ## The English of the line `line()` picked last (the voices are looked up by it, see Voices).
 static var last_en := ""
+static var _last_said := {}       # "<who>|<moment>" -> the line said last time
 
 
 static func line(key: String, kind: String) -> String:
@@ -268,14 +372,22 @@ static func line(key: String, kind: String) -> String:
 	if key == "player" and kind == "win" and Profile.win_line > 0:
 		last_en = str(Profile.WINS[Profile.win_line])
 		return Loc.t(last_en)
-	var own: Dictionary = PLAYER_LINES if key == "player" else DATA.get(key, STORY_CAST.get(key, {})).get("lines", {})
-	var arr: Array = own.get(kind, [])
-	if arr.is_empty() and key != "player":
-		var pers: String = DATA.get(key, STORY_CAST.get(key, {})).get("personality", "cool")
-		arr = PERSONALITY_LINES.get(pers, {}).get(kind, [])
-	if arr.is_empty() and key == "player":
+	var who: Dictionary = DATA.get(key, STORY_CAST.get(key, {}))
+	var arr: Array = (PLAYER_LINES if key == "player" else who.get("lines", {})).get(kind, [])
+	if key != "player":
+		var pers: String = who.get("personality", "cool")
+		if arr.is_empty():
+			arr = PERSONALITY_LINES.get(pers, {}).get(kind, [])
+		arr = arr + (MORE_LINES.get(pers, {}).get(kind, []) as Array)
+	elif arr.is_empty():
 		arr = PERSONALITY_LINES["wild"].get(kind, [])
 	if arr.is_empty():
 		return ""
-	last_en = str(arr[randi() % arr.size()])
+	# Never the same line twice in a row for the same moment.
+	var slot := key + "|" + kind
+	var pick := str(arr[randi() % arr.size()])
+	if arr.size() > 1 and pick == str(_last_said.get(slot, "")):
+		pick = str(arr[(arr.find(pick) + 1 + randi() % (arr.size() - 1)) % arr.size()])
+	_last_said[slot] = pick
+	last_en = pick
 	return Loc.t(last_en)

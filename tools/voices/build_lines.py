@@ -59,11 +59,11 @@ def main():
                 raise SystemExit("no Spanish for: " + en)
             lines[(voice, lang, key_of(en))] = {"voice": voice, "lang": lang, "key": key_of(en), "kind": kind, "en": en, "text": shown, "tts": spoken(shown, lang)}
 
-    def add_call(voice, card_id, en_name, tpl_en, tpl_es):
-        k = key_of("call:%d" % card_id)
+    def add_call(voice, card_id, en_name, tpl_en, tpl_es, what="call"):
+        k = key_of("%s:%d" % (what, card_id))
         es_name = es_names.get(str(card_id)) or en_name
         for lang, nm, tpl in (("en", en_name, tpl_en), ("es", es_name, tpl_es)):
-            lines[(voice, lang, k)] = {"voice": voice, "lang": lang, "key": k, "kind": "call", "en": "call:%d" % card_id,
+            lines[(voice, lang, k)] = {"voice": voice, "lang": lang, "key": k, "kind": what, "en": "%s:%d" % (what, card_id),
                 "text": tpl.replace("{n}", nm), "tts": spoken(tpl.replace("{n}", card_say(nm, lang)), lang)}
 
     # Opponents (and you, when you play as one of them): their own lines, then their personality's.
@@ -88,14 +88,15 @@ def main():
             add_call(v, ace, en_name, NEW["calls"][p][0], NEW["calls"][p][1])
     # Your own duelist: the big moments, the intro and win lines you can pick, and the famous monsters.
     for v in ("player_m", "player_f", "player_m2", "player_f2"):
-        for kind in PLAYER_KINDS:
-            for en in src["player"].get(kind, []):
+        for kind, arr in src["player"].items():
+            for en in arr:
                 add(v, en, kind)
         for en in src["intros"] + src["wins"]:
             add(v, en, "pick")
         add(v, NEW["duel"], "duel")
         for nm in NEW["player_calls"]:
             add_call(v, int(names[nm]), nm, "{n}!", "¡{n}!")
+            add_call(v, int(names[nm]), nm, NEW["player_atk"][0], NEW["player_atk"][1], "atk")
     # Lumen: what she already says, and the new lines.
     # (three voices to pick from: lumen = bright, lumen_b = warm, lumen_c = calm)
     for lv in ("lumen", "lumen_b", "lumen_c"):

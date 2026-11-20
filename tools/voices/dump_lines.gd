@@ -2,7 +2,15 @@ extends SceneTree
 ## Dev: writes every line a voice can speak in a duel to a JSON file (English, with the Spanish
 ## from the string table). `godot --headless -s tools/voices/dump_lines.gd -- <out.json>`
 func _init() -> void:
-	var out := {"personality": Characters.PERSONALITY_LINES, "player": Characters.PLAYER_LINES, "chars": {}, "lumen": {}, "intros": [], "wins": [], "es": {}}
+	var pers := {}
+	# (merged here: a script run with -s cannot call into Characters, only read its constants)
+	for pk in Characters.PERSONALITY_LINES:
+		var m := {}
+		for src in [Characters.PERSONALITY_LINES[pk], Characters.MORE_LINES.get(pk, {})]:
+			for k in src:
+				m[k] = (m.get(k, []) as Array) + (src[k] as Array)
+		pers[pk] = m
+	var out := {"personality": pers, "player": Characters.PLAYER_LINES, "chars": {}, "lumen": {}, "intros": [], "wins": [], "es": {}}
 	for src in [Characters.DATA, Characters.STORY_CAST]:
 		for k in src:
 			var d: Dictionary = src[k]
