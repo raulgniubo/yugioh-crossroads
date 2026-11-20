@@ -525,3 +525,8 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
 - Spanish redos done (33, batches 90-91), Spanish to-do 0, voices/es 1,529 files. English: batches 88-93 made
   (b89 and b93 partial), about 1,225 to go, parked in tools/voices/wip/en. Limit closed again about 12:50.
 - Meshy 366 used / 171 left, told Raul (it passed the 300 named first). ElevenLabs about 63,900 of 131,000.
+- **0.63.0 SHIPPED and installed on the Mac at about 1:10 PM Nov 20** (commit f1b614b; md5 of both zips checked on the
+  Mac; `inst.sh 0.62.0` -> "mac identical", 0.63.0, "windows identical"). Only the exe changed on Windows.
+  Tests at ship: failures 0, cards 8415 problems 0, positions 206 pass / 6 none, VOICE OVERLAP PASS, LINE NAMES PASS.
+  A Zane duel on screen after the fix: 0 script errors, one draw motion per turn.
+  Next: English voices (0.64.0) whenever the limit has room, plus whatever Raul asks for.
