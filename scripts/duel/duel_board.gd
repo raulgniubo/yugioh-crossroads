@@ -2890,6 +2890,7 @@ func anim_destroy(inst, overlays: Array = []) -> void:
 		_add_to_gy(o)
 	c.set_glow(true, UITheme.DANGER)
 	var home := c.position
+	duelist_look(home, 1.4)      # (both of them watch it go)
 	var red := Color("ff6a5a")
 	var tw := create_tween()
 	tw.tween_method(func(t: float):
@@ -3758,6 +3759,7 @@ func add_duelists(me_key: String, opp_key: String) -> void:
 		fig.greets = false
 		_duelists[p] = fig
 		_style[p] = style_of(key)
+		_dkey[p] = key
 		fig.stand_as("st_" + str(_style[p]))
 		# Where they look: at the other duelist, and at the action when there is some (duelist_look).
 		var eye := Node3D.new()
@@ -3785,6 +3787,25 @@ const STYLES := ["kind", "cocky", "cool", "wild", "dark"]
 const STYLE_WIN := {"kind": ["cheer_one", 1.0, 0.0, 0.0], "cocky": ["shrug", 0.8, 0.0, 0.0], "cool": ["hip", 1.0, 0.0, 0.0],
 	"wild": ["hop", 1.0, 0.0, 0.0], "dark": ["scheme", 0.9, 0.0, 0.0]}
 const STYLE_LOSE := {"kind": "defeat", "cocky": "head_hold", "cool": "defeat", "wild": "kneel_down", "dark": "kneel_down"}
+
+## Signature moves (0.63.0): every duelist with a model of their own has their own pair, a pose for the
+## face-off and a gesture for the monster they are known for. Moves made for this game; the six leads
+## each have a face-off pose nobody else uses. key -> [face-off motion, ace motion].
+const SIGNATURE := {
+	"yugi": ["fo_chest", "ace_sky"], "kaiba": ["fo_open", "ace_sweep"], "joey": ["fist_pump", "punch_pose"],
+	"jaden": ["fo_salute", "ace_snap"], "yusei": ["fo_glove", "ace_slam"], "yuma": ["punch_pose", "ace_both"],
+	"mai": ["fo_hair", "ace_snap"], "akiza": ["hip", "ace_sweep"], "alexis": ["fo_bow", "ace_sky"],
+	"aster": ["shrug", "ace_snap"], "bakura": ["scheme", "ace_both"], "marik": ["fo_beckon", "ace_slam"],
+	"pegasus": ["fo_bow", "ace_sweep"], "weevil": ["scheme", "ace_snap"], "rex": ["shout", "ace_slam"],
+	"chazz": ["hip", "summon_big"], "crow": ["challenge", "ace_sweep"], "jack": ["battle_pose", "ace_both"],
+	"kalin": ["shrug", "ace_slam"], "kite": ["challenge", "ace_sky"], "shark": ["battle_pose", "ace_sweep"],
+	"syrus": ["fo_bow", "ace_both"], "vector": ["fo_beckon", "ace_snap"], "zane": ["challenge", "ace_slam"],
+	"grandpa": ["fo_bow", "summon_big"]}
+## Everybody else squares up the way their personality does.
+const STYLE_FACEOFF := {"kind": "challenge", "cocky": "hip", "cool": "battle_pose", "wild": "punch_pose", "dark": "scheme"}
+const STYLE_TAUNT := {"kind": "talk_open", "cocky": "shrug", "cool": "hip", "wild": "shout", "dark": "scheme"}
+var _dkey := {}      # player -> the duelist's key
+
 
 static func style_of(key: String) -> String:
 	if key == "player":
@@ -3839,6 +3860,19 @@ func duelist_gesture(p: int, kind: String) -> void:
 	var move := str(TALK_MOVES.get(kind, "chat"))
 	if move == "-":
 		return
+	if kind == "taunt":
+		# A jab between turns, each personality in its own way.
+		var tm := str(STYLE_TAUNT.get(str(_style.get(p, "kind")), "talk_open"))
+		if fig.act(tm, 0.2, 1.0):
+			fig._hold = minf(fig._hold, 2.6)
+			return
+	if kind == "intro":
+		# The face-off: their own pose, or their personality's.
+		var sig: Array = SIGNATURE.get(str(_dkey.get(p, "")), [])
+		var fo := str(sig[0]) if not sig.is_empty() else str(STYLE_FACEOFF.get(str(_style.get(p, "kind")), "challenge"))
+		if fo != "challenge" and fig.act(fo, 0.2, 1.0):
+			fig._hold = minf(fig._hold, 3.2)
+			return
 	if move == "":
 		fig.do_nod()
 		return
@@ -3859,19 +3893,20 @@ func duelist_gesture(p: int, kind: String) -> void:
 const ACTS := {
 	"draw": ["draw", 1.4, 0.0, 0.0], "summon": ["play", 1.4, 0.0, 0.0], "summon_big": ["summon_big", 1.2, 0.0, 0.0],
 	"set": ["cset", 1.4, 0.0, 0.0], "spell": ["cspell", 1.3, 0.0, 0.0], "trap": ["ctrap", 1.2, 0.0, 0.0],
-	"attack": ["point", 1.3, 0.0, 0.0], "direct": ["direct", 1.2, 0.0, 0.0], "end": ["endturn", 1.2, 0.0, 0.0],
-	"hurt": ["hit2", 1.0, 0.0, 0.0], "hurt_big": [["hit", 1.0, 0.0, 0.0], ["hit_waist", 1.0, 0.0, 0.0]],
+	"attack": [["point", 1.3, 0.0, 0.0], ["challenge", 1.6, 0.0, 0.0]], "direct": ["direct", 1.2, 0.0, 0.0], "end": ["endturn", 1.2, 0.0, 0.0],
+	"hurt": [["hit2", 1.0, 0.0, 0.0], ["hit_waist", 1.25, 0.0, 0.0]], "hurt_big": [["hit", 1.0, 0.0, 0.0], ["hit_waist", 1.0, 0.0, 0.0]],
 	"think": ["think", 1.0, 0.0, 0.0], "ace_lost": ["head_hold", 1.1, 0.0, 0.0], "cheer": ["fist_pump", 1.0, 0.0, 0.0],
 	"ready": ["battle_pose", 1.0, 0.0, 0.0]}
 ## When a card shows in the duelist's hand during a motion: moment -> [from, for how long] (seconds of the clip).
 const CARD_IN_HAND := {"draw": [0.9, 2.2], "summon": [0.0, 1.3], "set": [0.0, 1.4], "spell": [0.0, 1.6]}
 ## The old whole-body move for a moment, for a figure that cannot play the motion.
-const ACT_OLD := {"draw": "draw", "summon": "summon", "summon_big": "summon", "attack": "attack", "direct": "attack", "hurt": "hurt", "hurt_big": "hurt"}
+const ACT_OLD := {"draw": "draw", "summon": "summon", "summon_big": "summon", "ace": "summon", "attack": "attack", "direct": "attack", "hurt": "hurt", "hurt_big": "hurt"}
 
 
 ## The duelist acts out a moment of the duel. True when a real motion played.
 var _act_log := "--pose-debug" in OS.get_cmdline_user_args()
 var _act_last := {}      # player -> [moment, the time its motion ends]
+var _act_pick := {}      # "<player>|<moment>" -> which version played last
 
 func duelist_act(p: int, moment: String, strength := 1.0) -> bool:
 	if turbo or not _duelists.has(p) or not is_instance_valid(_duelists[p]) or not (_duelists[p] is RoamFigure):
@@ -3884,8 +3919,17 @@ func duelist_act(p: int, moment: String, strength := 1.0) -> bool:
 	var last: Array = _act_last.get(p, ["", 0.0])
 	if str(last[0]) == moment and now < float(last[1]):
 		return true
+	if moment == "ace":
+		# The monster they are known for: their own gesture when they have one.
+		var sig: Array = SIGNATURE.get(str(_dkey.get(p, "")), [])
+		a = [str(sig[1]) if sig.size() > 1 else "summon_big", 1.15, 0.0, 0.0]
 	if not a.is_empty() and a[0] is Array:
-		a = a[randi() % a.size()]
+		# (two versions of a moment: never the same one twice in a row)
+		var pick := randi() % a.size()
+		if a.size() > 1 and int(_act_pick.get("%d|%s" % [p, moment], -1)) == pick:
+			pick = (pick + 1) % a.size()
+		_act_pick["%d|%s" % [p, moment]] = pick
+		a = a[pick]
 	if not a.is_empty() and fig.act(str(a[0]), 0.18, float(a[1]) / maxf(Settings.t(1.0), 0.2), float(a[2]), float(a[3])):
 		_act_last[p] = [moment, now + fig._hold]
 		if CARD_IN_HAND.has(moment):

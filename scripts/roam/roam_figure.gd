@@ -234,6 +234,8 @@ func hold_card(secs: float, delay := 0.0) -> void:
 		return
 	var b := sk.find_bone("RightHand")
 	if b < 0:
+		if "--pose-debug" in OS.get_cmdline_user_args():
+			print("CARD PROP no RightHand bone")
 		return
 	if _card_prop == null or not is_instance_valid(_card_prop):
 		var att := BoneAttachment3D.new()
@@ -244,12 +246,29 @@ func hold_card(secs: float, delay := 0.0) -> void:
 		var bm := BoxMesh.new()
 		bm.size = Vector3(0.085, 0.124, 0.002)
 		_card_prop.mesh = bm
+		bm.size = Vector3(0.085, 0.124, 0.006)
 		var m := StandardMaterial3D.new()
 		m.albedo_texture = Cards.get_back()
 		m.roughness = 0.5
+		# It lights itself a little, with a bright edge, so it reads in a dark arena from across the table.
 		m.emission_enabled = true
-		m.emission = Color(0.5, 0.6, 0.9)
-		m.emission_energy_multiplier = 0.25
+		m.emission_texture = Cards.get_back()
+		m.emission_energy_multiplier = 1.5
+		var rim := MeshInstance3D.new()
+		var rb := BoxMesh.new()
+		rb.size = Vector3(0.095, 0.134, 0.003)
+		rim.mesh = rb
+		var rmat := StandardMaterial3D.new()
+		rmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		rmat.albedo_color = Color(0.75, 0.9, 1.0)
+		rim.material_override = rmat
+		_card_prop.add_child(rim)
+		if "--card-debug" in OS.get_cmdline_user_args():
+			bm.size = Vector3(0.085, 0.124, 0.03)
+			m.albedo_texture = null
+			m.albedo_color = Color(1, 0, 0)
+			m.emission = Color(1, 0, 0)
+			m.emission_energy_multiplier = 3.0
 		_card_prop.material_override = m
 		att.add_child(_card_prop)
 		# The bone may live in a skeleton of another size (centimetres): undo that, so the card is its own size.
@@ -260,6 +279,8 @@ func hold_card(secs: float, delay := 0.0) -> void:
 		_card_prop.position = CARD_AT * (mine.y / maxf(sc.y, 0.0001))
 		_card_prop.rotation = CARD_TURN
 		_card_prop.visible = false
+		if "--pose-debug" in OS.get_cmdline_user_args():
+			print("CARD PROP bone ", b, " att scale ", sc, " mine ", mine, " prop scale ", _card_prop.scale, " at ", _card_prop.position, " world ", att.global_position)
 	if _card_tw:
 		_card_tw.kill()
 	_card_tw = create_tween()

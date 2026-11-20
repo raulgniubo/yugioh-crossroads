@@ -475,3 +475,16 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
   Menuda -> Qué, a por -> por, lo han notado -> sí lo sintieron, hemos vuelto -> volvimos), 33 files to record again
   (they are in todo.json; copy them over the old files, do NOT use --update=none for these). Backup of the old text:
   /tmp/extras_before_latam.tsv.
+- Signature moves (Nov 20, +140 Meshy credits = 366 used in all, 171 left): text-to-motion tasks, to be saved on his Mac as
+  `meshy/anim/motion_<name>.fbx` and converted to `g_<name>`:
+  face-off: fo_glove `01a1f9d0-037d-7676-94d1-8eb61b16f4dc`, fo_knuckles `01a1f9d0-09b9-70da-9ec4-0c9ede9284ce`,
+  fo_chest `01a1f9d0-0ef8-77d0-8b59-12e0357ad3c8`, fo_bow `01a1f9d0-1488-71c8-9a40-f9f4ef36f727`,
+  fo_hair `01a1f9d0-1a4a-7338-a81e-a65b98f970f2`, fo_salute `01a1f9d0-1ef0-70f1-ac5e-c738d08a22b6`,
+  fo_beckon `01a1f9d0-240c-71b9-95d6-1bc7b839da46`, fo_open `01a1f9d0-2961-7148-bf84-e09bcbbe57c5`;
+  ace: ace_sky `01a1f9d0-37e4-7480-8f41-5db2f09673db`, ace_both `01a1f9d0-3fb1-70aa-850e-b0d680d3361b`,
+  ace_slam `01a1f9d0-4518-7758-83bf-99bc52b14bd9`, ace_sweep `01a1f9d0-4c4a-7285-a296-c90256193893`,
+  ace_snap `01a1f9d0-5182-736d-989f-4a14fa35bc14`, ace_fist `01a1f9d0-5666-7457-b0d9-57dcf59cbc2f`.
+  He has models for 25 characters (akiza alexis aster bakura chazz crow grandpa jack jaden joey kaiba kalin kite mai
+  marik pegasus rex shark syrus vector weevil yugi yuma yusei zane). Plan: each gets their own pair (face-off pose,
+  ace gesture) out of these 14 plus the library (challenge, battle_pose, punch_pose, hip, shout, scheme, summon_big).
+  Original moves, not poses from the shows. TELL RAUL the Meshy total passed the 300 I first named (366).

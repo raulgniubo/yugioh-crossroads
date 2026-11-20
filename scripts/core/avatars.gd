@@ -422,7 +422,9 @@ const GESTURES := "res://assets/models/anim/gestures.glb"
 const CLIPS := "res://assets/models/anim/clips/"
 ## Motions of the arms and the torso: the legs keep the calm stance under them.
 const PLANTED := ["g_wave", "g_chat", "g_scratch", "g_listen", "g_phone", "g_agree", "g_checkout", "g_alert", "g_challenge", "g_defeat",
-	"g_draw", "g_play", "g_cset", "g_cspell", "g_ctrap", "g_point", "g_think", "g_summon_big", "g_endturn", "g_hip"]
+	"g_draw", "g_play", "g_cset", "g_cspell", "g_ctrap", "g_point", "g_think", "g_summon_big", "g_endturn", "g_hip",
+	"g_shrug", "g_scheme", "g_cheer_one", "g_talk_open", "g_fo_glove", "g_fo_knuckles", "g_fo_chest", "g_fo_hair", "g_fo_salute",
+	"g_fo_beckon", "g_fo_open", "g_ace_sky", "g_ace_both", "g_ace_sweep", "g_ace_snap", "g_ace_fist"]
 var _gest: Node = null           # the shared library of everyday motions (wave, chat, sit, ...)
 var _gest_cache := {}            # "<model file>|<clip>" -> Animation, made once per model file
 

@@ -5,6 +5,28 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.63.0
+
+Duelists come alive: they move like duelists, the camera goes to them at the big moments, the duel has an ending, and they talk a lot more. No cards added: 8,415 total.
+
+**Spanish has every voice in this build. English still plays with text bubbles** and gets all its voices in 0.64.0.
+
+- **Duelists that move.** 48 new motions made for duels: drawing, playing a card, setting one, a Spell, a Trap, pointing an attack in, a direct attack, ending the turn, thinking, three ways of taking a hit, holding the head when the ace falls, and more. Before, a duel borrowed everyday motions (a nod, a chat) and tilted the whole body like one stiff piece.
+- **Five personalities.** Kind, cocky, cool, wild and dark duelists each stand their own way (arms crossed, hand in the pocket, bouncing on their feet, head low...), win their own way and lose their own way. People with no personality of their own get one from their name, always the same one.
+- **Signature moves.** Each of the 25 duelists you have a model for has their own pair: a pose for the face-off and a gesture for the monster they are known for. The six leads each have a face-off pose nobody else uses. They are moves made for this game, not poses from the shows.
+- **Your Style.** Profile > You > **Style**: Pick for me, Friendly, Confident, Cool, Fired up, Dark. It decides how your duelist stands, wins and loses.
+- **A card in the hand.** When a duelist draws or plays, there is a card in their hand.
+- **They watch the duel.** Both duelists turn their heads to the card being played, the monster attacking and the one being destroyed, then back to each other.
+- **The turn beat.** Each turn (from the second on) opens with a moment on the duelist whose turn it is, calling it and drawing. About a second on the first turns, shorter after.
+- **The camera at the big moments.** An ace: the duelist first, then the monster. A Trap: a quick look at the one who sprang it. A direct attack: the one who sends it in, then the strike into the other duelist. Never more than one look every 4 seconds.
+- **Hits reach the duelist.** Battle damage flies on past the monster that lost and lands on the duelist, with a flash and sparks on the body, and the Life Points drop when it lands.
+- **The ending scene.** After the last hit: the loser takes it in, the winner has their moment and says their line, the loser answers, the camera pulls back over the arena, and Lumen has the last word. About 7 seconds; any key or button skips it. Special wins (Exodia, Destiny Board...) keep their own show and then go to a short version.
+- **A lot more talking (Spanish).** 626 new spoken lines: your duelist and the opponents call the turn, the draw, going first or second, a summon, a set, a Spell, the battle, a direct attack, the end of the turn and a big hit, each personality in its own words. Your duelist sends 28 famous monsters in by name ("¡Mago Oscuro, ataca!"). Lumen has new lines for who goes first, a long duel, a thin Deck, a close win, a flawless win and a loss. The ending plays the winner's line and then the loser's, yours included. The same line is never said twice in a row.
+- **Settings > Audio > How much they talk:** Some (the big moments, like 0.62.0), Normal (the calls of a turn too), A lot (every card and every attack).
+- **Settings > Gameplay:** **Camera cuts** (Full / Fewer / Off) and **Turn beat** (Full / Brief / Off).
+- **Spanish wording.** The new lines are neutral Latin American Spanish, and 11 of Lumen's older lines that used words from Spain ("Vale", "Menuda", "a por") were reworded.
+- **Voices still never overlap.** Same rule as before, and the test for it still passes.
+
 ## What is in 0.62.0
 
 Voices. The duel talks now, and so does the opening. No cards added: 8,415 total.

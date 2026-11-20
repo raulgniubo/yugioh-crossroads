@@ -1082,6 +1082,8 @@ func _act(p: int, moment: String, strength := 1.0) -> void:
 func _beat_secs(p: int) -> float:
 	if _autoplay or _finished or board.track != null or not board.has_duelist(p) or Settings.turn_beat == 2:
 		return 0.0
+	if state.turn <= 1:
+		return 0.0      # (the face-off has only just shown them both)
 	return 1.25 if (Settings.turn_beat == 0 and state.turn <= 3) else 0.8
 
 
@@ -1222,7 +1224,7 @@ func _play_event(ev: Dictionary) -> void:
 				get_tree().create_timer(Settings.t(0.5)).timeout.connect(func(): Sfx.play("summon", -4.0))
 			# A big monster arrives: its own show, in its own colors (see SummonShow).
 			if is_ace:
-				await _cut(p, "summon_big", 0.9, true)      # (the duelist first, then the monster)
+				await _cut(p, "ace", 1.1, true)      # (the duelist first, then the monster)
 			if ev["type"] == "summon" and _shows and Settings.big_shows and SummonShow.wants(ev["card"].data):
 				var sd: Dictionary = (ev["card"].data as Dictionary).duplicate()
 				sd["id"] = ev["card"].id
@@ -1243,7 +1245,7 @@ func _play_event(ev: Dictionary) -> void:
 				hud.banner("TRIBUTE SUMMON", UITheme.GOLD, true)
 			_pending_tributes = 0
 			if ev["type"] == "summon":
-				_act(p, "summon_big" if is_ace else "summon", 1.4 if is_ace else 1.0)
+				_act(p, "ace" if is_ace else "summon", 1.4 if is_ace else 1.0)
 			else:
 				_act(p, "set")
 			await board.anim_summon(p, ev["card"], ev["zone"], ev["type"] == "set")
