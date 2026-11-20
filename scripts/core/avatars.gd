@@ -419,6 +419,7 @@ func _retarget(src: Animation, dskel: Skeleton3D, skel: Skeleton3D, skel_path: S
 
 
 const GESTURES := "res://assets/models/anim/gestures.glb"
+const CLIPS := "res://assets/models/anim/clips/"
 var _gest: Node = null           # the shared library of everyday motions (wave, chat, sit, ...)
 var _gest_cache := {}            # "<model file>|<clip>" -> Animation, made once per model file
 
@@ -446,6 +447,17 @@ func gesture(model: Node, motion: String) -> String:
 	var dskel := _first_skeleton(_gest)
 	if dap != null and dskel != null and MADE_POSES.has(nm) and not dap.has_animation(nm):
 		_make_pose_clip(dap, dskel, nm)
+	# Motions added after the library file was made live one clip per file (tools/dev/motions).
+	if dap != null and dskel != null and not dap.has_animation(nm) and ResourceLoader.exists(CLIPS + nm + ".res"):
+		var extra := load(CLIPS + nm + ".res") as Animation
+		if extra != null:
+			var dlib := dap.get_animation_library(dap.get_animation_library_list()[0])
+			var droot := dap.get_node_or_null(dap.root_node)
+			var dpath := str(droot.get_path_to(dskel)) if droot != null else "Skeleton3D"
+			var fit := extra.duplicate() as Animation
+			for t in fit.get_track_count():
+				fit.track_set_path(t, NodePath(dpath + ":" + String(fit.track_get_path(t)).get_slice(":", 1)))
+			dlib.add_animation(nm, fit)
 	if dap == null or dskel == null or not dap.has_animation(nm):
 		return ""
 	var shared := 0

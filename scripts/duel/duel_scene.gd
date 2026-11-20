@@ -409,11 +409,20 @@ func _start() -> void:
 			var rs := int(a.substr(13))
 			board.duelist_shot(rs, 0.1)
 			for k in 12:
-				if "--pose-lose" in OS.get_cmdline_user_args():
+				var pose := ""
+				for pa in OS.get_cmdline_user_args():
+					if pa.begins_with("--pose="):      # dev: look at one motion, slowed down (--rider-shot=0 --pose=draw --shots=x)
+						pose = pa.substr(7)
+				if pose != "":
+					Engine.time_scale = 0.3
+					print("POSE ", pose, " ", (board._duelists[rs] as RoamFigure).gesture(pose, 0.25))
+					await get_tree().create_timer(4.5).timeout
+				elif "--pose-lose" in OS.get_cmdline_user_args():
 					(board._duelists[rs] as RoamFigure).play_once("lose")
 				else:
 					board.duelist_gesture(rs, "intro")
-				await get_tree().create_timer(2.5).timeout
+				if pose == "":
+					await get_tree().create_timer(2.5).timeout
 	if not _autoplay and _puzzle.is_empty():
 		# A held breath, then both of them shout it as the word lands and the music comes back up.
 		Voices.focus(true)

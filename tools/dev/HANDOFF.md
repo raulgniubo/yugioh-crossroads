@@ -309,6 +309,19 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
   applied as `01a1f965-c320-775a-9503-7725afd65ea8` (motion clips expire after 3 days). Next batch planned: 412, 59,
   404, 317, 318, 308, 311, 313, 306, 376, then idles 243-250. Merge tool: /home/claude/work/anim/merge.py (it merged
   lib_a.glb + lib_b.glb from his Mac's `Yu-Gi-Oh! Crossroads/meshy/anim/` into gestures.glb, mesh stripped).
+  **Motion pipeline that works without Blender (custom motions):** `meshy_text_to_motion` (prime, 10 credits) ->
+  `meshy_download_model(task_type "text-to-motion", save_to ".../Yu-Gi-Oh! Crossroads/meshy/anim/<name>.fbx")` saves the
+  FBX on his Mac (SMPL-H skeleton: Pelvis, L_Hip, ...) -> `device_stage_files` -> copy into the scratch project
+  `/tmp/fbxtest/in/` (project.godot + a copy of gestures.glb there), `godot --headless --path /tmp/fbxtest --import`,
+  then `godot --headless --path /tmp/fbxtest -s tools/dev/motions/import_motions.gd -- <jobs.json> <repo>/assets/models/anim/clips`
+  (jobs: src, name "g_<motion>", map "smplh" for these files or "same" for a Meshy rig file, optional from/to seconds).
+  Clips land in `assets/models/anim/clips/g_<motion>.res`; `Avatars.gesture(model, "<motion>")` loads them by name.
+  Made so far: `g_draw`, `g_play` (looked right on a test duelist: left forearm up, right hand to it; needs a closer
+  look and trimming). Preview one motion slowed down: `--duel --skip-opening --first=me --rider-shot=0 --pose=<motion>
+  --shots=<prefix>` (frames in /tmp/<prefix>_NNN.png).
+  **Preset animations are only download links** (assets.meshy.ai is blocked from his Mac's shell and from here).
+  Asked Raul on Nov 20 whether Blender may download them like the audio; WAIT for his yes, do not use Blender for
+  this before it. Until then only text-to-motion clips can come in.
 - **Part B (duel moments): not started.** Turn beat, cards leave the duelist's hand, hits reach the body, camera cuts,
   thinking, the outro scene; settings "Camera cuts" and "Turn beat".
 
