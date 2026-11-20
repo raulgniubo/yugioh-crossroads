@@ -579,3 +579,10 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
    played at the moment the hit lands, skipped if that duelist is mid-sentence. Raul: "try to generate one and send
    it to me, and if it's good, I'll tell you it's good, and then you can put it in." Test made 1:27 PM with the
    Spanish player_m voice (three sizes in one file). WAIT for his verdict.
+   6 -> APPROVED 1:26 PM ("they sound pretty good... you can add them"). He heard the three test takes (Spanish
+   player_m; prompts: "[grunts in pain] ¡Ngh!", "[shouting] [in pain] ¡Aaagh!", "[cries out in pain] ¡Aaaaaagh...! [gasps]";
+   generation ids 0zvphV0cEnEPda7G9J5B, xRLDOuWm8KKaURphehxH, cjlYSPCNhbJcZs0PhEZn; copies in the sandbox folder pain/).
+   Build it with the rest when he says go. Plan: 12 duelist voices (not Lumen's three) x 4 sounds (two small, one big,
+   one last hit) = 48 for Spanish through the normal batch pipeline (add them to new_lines.json so todo.json picks
+   them up; English voices are different voice ids, so English gets its own 48 with the English lines).
+   Nodes 0-2 of the flow now hold the Spanish player_m voice (state.json node_voice updated).
