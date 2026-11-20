@@ -319,6 +319,11 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
   Made so far: `g_draw`, `g_play` (looked right on a test duelist: left forearm up, right hand to it; needs a closer
   look and trimming). Preview one motion slowed down: `--duel --skip-opening --first=me --rider-shot=0 --pose=<motion>
   --shots=<prefix>` (frames in /tmp/<prefix>_NNN.png).
+  Text-to-motion batch 2 (Nov 20, 80 credits, total 146): set `01a1f973-6db3-71cc-80e5-2d2573bd24ac`, spell
+  `01a1f973-729b-708d-ab1f-4dd0eb465886`, trap `01a1f973-7746-73c7-a879-2fbdb7d573fd`, point
+  `01a1f973-7c0d-7709-8324-166e41297dff`, direct `01a1f973-80b8-7236-aeba-7f74bc316fab`, think
+  `01a1f973-8550-7715-802e-4f4f3df6bb8b`, summon (arm up, then thrown forward) `01a1f973-8a86-714d-b10f-4ef55cefed74`,
+  endturn `01a1f973-9005-7748-8ad3-3ac6bba225cd`. Saved on his Mac as `meshy/anim/motion_<name>.fbx`.
   **Preset animations are only download links** (assets.meshy.ai is blocked from his Mac's shell and from here).
   Asked Raul on Nov 20 whether Blender may download them like the audio; WAIT for his yes, do not use Blender for
   this before it. Until then only text-to-motion clips can come in.
