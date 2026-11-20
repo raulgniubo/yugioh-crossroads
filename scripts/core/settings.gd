@@ -53,6 +53,7 @@ var big_shows := true
 var opening := true             # play the short opening every time the game starts
 var free_difficulty := 2       # Free Duel: 1 Easy, 2 Normal, 3 Hard (its own, not whatever the last duel was)
 var card_showcase := false     # hold an activated Spell or Trap up in the middle to be read before it acts
+var live_portraits := true     # the two duelists in the corners of a duel are the real 3D duelists, moving (off: still pictures)
 var cam_cuts := 0               # looks at a duelist during a duel: 0 Full, 1 Fewer (ace, direct attack, the end), 2 Off
 var turn_beat := 0              # a moment on the duelist as each turn opens: 0 Full, 1 Short, 2 Off
 var _lang_kept := ""            # the saved language while --lang= is trying another one          # the full-screen summon and attack scenes (SummonShow)
@@ -517,6 +518,7 @@ func load_settings() -> void:
 	big_shows = bool(cfg.get_value("game", "big_shows", big_shows))
 	card_showcase = bool(cfg.get_value("game", "card_showcase", card_showcase))
 	cam_cuts = clampi(int(cfg.get_value("game", "cam_cuts", cam_cuts)), 0, 2)
+	live_portraits = bool(cfg.get_value("game", "live_portraits", live_portraits))
 	turn_beat = clampi(int(cfg.get_value("game", "turn_beat", turn_beat)), 0, 2)
 	opening = bool(cfg.get_value("game", "opening", opening))
 	free_difficulty = clampi(int(cfg.get_value("game", "free_difficulty", free_difficulty)), 1, 3)
@@ -605,6 +607,7 @@ func save_settings() -> void:
 	cfg.set_value("game", "big_shows", big_shows)
 	cfg.set_value("game", "card_showcase", card_showcase)
 	cfg.set_value("game", "cam_cuts", cam_cuts)
+	cfg.set_value("game", "live_portraits", live_portraits)
 	cfg.set_value("game", "turn_beat", turn_beat)
 	cfg.set_value("game", "free_difficulty", free_difficulty)
 	cfg.set_value("game", "opening", opening)

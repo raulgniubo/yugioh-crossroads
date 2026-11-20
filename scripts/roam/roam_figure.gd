@@ -56,6 +56,9 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 		_add_head_look()
 		_find_face()
 		Avatars.request_lods(_model)
+		ready_to_show = true
+		if extra_layers != 0:
+			_apply_layers(self)
 	else:
 		_build_standin(color)
 	if show_name and display_name != "":
@@ -221,6 +224,22 @@ func act(motion: String, blend := 0.2, speed := 1.0, from := 0.0, to := 0.0) -> 
 	return true
 
 
+## Draw this figure on more render layers as well (a camera that only sees duelists: the live portraits).
+var extra_layers := 0
+var ready_to_show := false     # the model is in and dressed
+
+func show_on_layers(mask: int) -> void:
+	extra_layers |= mask
+	_apply_layers(self)
+
+
+func _apply_layers(n: Node) -> void:
+	if n is VisualInstance3D and not (n is Light3D):
+		(n as VisualInstance3D).layers |= extra_layers
+	for c in n.get_children():
+		_apply_layers(c)
+
+
 ## A card in the right hand for a moment (a duelist drawing one, or about to play one). It is a prop:
 ## the back of a card, a little larger than life so it reads from across the table.
 var _card_prop: MeshInstance3D = null
@@ -279,6 +298,8 @@ func hold_card(secs: float, delay := 0.0) -> void:
 		_card_prop.position = CARD_AT * (mine.y / maxf(sc.y, 0.0001))
 		_card_prop.rotation = CARD_TURN
 		_card_prop.visible = false
+		if extra_layers != 0:
+			_apply_layers(att)
 		if "--pose-debug" in OS.get_cmdline_user_args():
 			print("CARD PROP bone ", b, " att scale ", sc, " mine ", mine, " prop scale ", _card_prop.scale, " at ", _card_prop.position, " world ", att.global_position)
 	if _card_tw:

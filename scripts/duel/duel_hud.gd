@@ -139,6 +139,7 @@ func _plate(p: int) -> Control:
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 				direct_attack_pressed.emit())
 	_portraits[p] = dp.portrait
+	_panels[p] = dp
 	dp.name_label.text = player_names[p].to_upper()
 	_name_labels[p] = dp.name_label
 	_lp_labels[p] = dp.lp_label
@@ -184,7 +185,22 @@ func set_names(a: String, b: String) -> void:
 func set_portraits(a: String, b: String) -> void:
 	portrait_keys = [a, b]
 	for i in 2:
+		if _panels[i] != null and (_panels[i] as DuelistPanel).live:
+			continue
 		_portraits[i].texture = Portraits.get_portrait(portrait_keys[i], true)
+
+
+## The live duelists in the corners (0.63.0): the size the board should draw each one at, and the
+## switch from the still picture to the live one.
+var _panels := [null, null]
+
+func live_size(p: int) -> Vector2i:
+	return (_panels[p] as DuelistPanel).live_size() if _panels[p] != null else Vector2i(380, 380)
+
+
+func go_live(p: int, tex: Texture2D) -> void:
+	if _panels[p] != null and tex != null:
+		(_panels[p] as DuelistPanel).go_live(tex)
 
 
 ## Whose turn it is: their panel gets the bright rim and the TURN tab.

@@ -89,6 +89,25 @@ func _init(p: int) -> void:
 	set_process(true)
 
 
+## The live picture (0.63.0): the real duelist from the board, drawn by a camera of their own, in place
+## of the still. It fills the strip exactly; the camera does the framing.
+var live := false
+
+func live_size() -> Vector2i:
+	var clip := portrait.get_parent() as Control
+	return Vector2i(int(clip.size.x) * 2, int(clip.size.y) * 2)
+
+
+func go_live(tex: Texture2D) -> void:
+	var clip := portrait.get_parent() as Control
+	live = true
+	portrait.texture = tex
+	portrait.size = clip.size
+	portrait.position = Vector2.ZERO
+	portrait.set_meta("home_x", 0.0)
+	portrait.pivot_offset = portrait.size / 2.0
+
+
 func side_color() -> Color:
 	return Comic.BLUE if side == 0 else Comic.RED
 

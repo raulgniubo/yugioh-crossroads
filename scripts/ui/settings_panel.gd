@@ -252,6 +252,12 @@ static func open(parent: Node) -> SidePanel:
 	_row(game, "Opening when the game starts", "The short flight over the four worlds before the menu. Any key skips it.", op)
 	_row(game, "Show activated cards big", "Off: a Spell or Trap goes straight into what it does, with a line at the top saying what it is. On: the duel stops to show the card in the middle first.", cs)
 	_row(game, "Big summon and attack scenes", "The full-screen scene when a strong monster arrives or attacks. Turn it off if a duel freezes or closes there.", bs)
+	var lp := CheckButton.new()
+	lp.button_pressed = Settings.live_portraits
+	lp.toggled.connect(func(on):
+		Settings.live_portraits = on
+		Settings.save_settings())
+	_row(game, "Live duelists in the corners", "On: the two duelists next to the Life Points are the real 3D duelists, moving and reacting all through the duel. Off: still pictures, like before. Takes effect in the next duel.", lp)
 	# The looks at the duelists (0.63.0): how often the camera leaves the table for one of them.
 	var cuts := OptionButton.new()
 	for i in 3:

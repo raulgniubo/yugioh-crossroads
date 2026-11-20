@@ -488,3 +488,19 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
   marik pegasus rex shark syrus vector weevil yugi yuma yusei zane). Plan: each gets their own pair (face-off pose,
   ace gesture) out of these 14 plus the library (challenge, battle_pose, punch_pose, hip, shout, scheme, summon_big).
   Original moves, not poses from the shows. TELL RAUL the Meshy total passed the 300 I first named (366).
+- **LIVE PORTRAITS (Raul said yes, Nov 20 ~12:10):** `DuelBoard.live_portrait(p, px)` makes a SubViewport that shares
+  the board's world, with a Camera3D that only sees render layer 10 (`PORTRAIT_LAYER`); the duelist figures are put on
+  that layer too (`RoamFigure.show_on_layers`, `_apply_layers`, `ready_to_show`). The camera follows the Head bone
+  softly (`_update_portrait`, framing in `PORTRAIT_FRAME`: [distance, lens, aim under the head, side] for you and for
+  them) and has its own Environment (flat ambient light, so the face reads in any arena). `duel_scene._go_live()` (after
+  both `add_duelists` calls) swaps each still for the live texture when the model is in: `hud.go_live(p, tex)` ->
+  `DuelistPanel.go_live` (the TextureRect fills its clip strip; `live_size()` = strip x 2). `Settings.live_portraits`
+  (Gameplay row "Live duelists in the corners"). Not in Turbo Duels, not for a figure with no model (the still stays).
+  SEEN in a duel: stance, draw, Spell with the card in the hand, set, thinking, on both sides.
+- Signature moves are in (`DuelBoard.SIGNATURE`, `STYLE_FACEOFF`, `STYLE_TAUNT`, moment "ace"); face-off and ace clips
+  seen on the test body. fo_knuckles and ace_fist were too faint and are not used; back_off is not used (it walks off).
+- Seen on screen so far: stances (5), win_a, kneel_down, shrug, scheme, hop, cheer_one, 8 face-off poses, 6 ace gestures,
+  card in the hand (summon, Spell), turn beat, Trap look, the ending (winner, loser's answer; the pull back only a few
+  frames of it), opening face-off with a signature pose. NOT seen: ace look, direct-attack look, hit sparks on the body,
+  battle damage flying on, duelist_look head turns (too small to judge in pictures), Style choice in the profile editor,
+  the new settings rows, tall/short/female bodies (the test models are stand-ins).

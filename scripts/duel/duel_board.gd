@@ -4038,6 +4038,82 @@ func duelist_look(at: Vector3, secs := 1.6, only := -1) -> void:
 		_focus_tw[p] = tw
 
 
+# ------------------------------------------------------------------ live portraits (0.63.0)
+## The two duelists in the corners of the screen are these same figures, each drawn by a small camera
+## of its own that sees nothing but duelists (render layer 10) and follows their head. Whatever they
+## do at the table (a draw, a stagger, a kneel, a card in the hand) shows there, all through the duel.
+const PORTRAIT_LAYER := 1 << 9
+var _pview := {}      # player -> SubViewport
+var _pcam := {}       # player -> Camera3D
+var _phead := {}      # player -> where their head is, smoothed
+var _pbone := {}      # player -> [Skeleton3D, head bone]
+## Framing, yours (a tall strip: head to waist) and theirs (a square: head and shoulders):
+## [how far the camera stands, lens, how far under the head it aims, how far to the side it stands].
+const PORTRAIT_FRAME := [[1.75, 40.0, 0.25, 0.42], [1.7, 29.0, 0.13, 0.38]]
+
+func live_portrait(p: int, px: Vector2i) -> Texture2D:
+	if not has_duelist(p):
+		return null
+	if _pview.has(p):
+		return (_pview[p] as SubViewport).get_texture()
+	var fig: RoamFigure = _duelists[p]
+	fig.show_on_layers(PORTRAIT_LAYER)
+	var vp := SubViewport.new()
+	vp.size = px
+	vp.transparent_bg = true
+	vp.world_3d = get_viewport().find_world_3d()
+	vp.msaa_3d = Settings.small_view_msaa()
+	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(vp)
+	var cam := Camera3D.new()
+	cam.cull_mask = PORTRAIT_LAYER
+	cam.fov = float(PORTRAIT_FRAME[p][1])
+	cam.near = 0.2
+	cam.far = 12.0
+	# Its own light and air: the same in every arena, so a face is never lost in a dark field.
+	var env := Environment.new()
+	env.background_mode = Environment.BG_CLEAR_COLOR
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.82, 0.86, 1.0)
+	env.ambient_light_energy = 0.85
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	cam.environment = env
+	vp.add_child(cam)
+	cam.current = true
+	_pview[p] = vp
+	_pcam[p] = cam
+	_update_portrait(p, 1.0)
+	return vp.get_texture()
+
+
+func duelist_ready(p: int) -> bool:
+	return has_duelist(p) and (_duelists[p] as RoamFigure).ready_to_show
+
+
+func _update_portrait(p: int, k: float) -> void:
+	var cam: Camera3D = _pcam.get(p)
+	if cam == null or not has_duelist(p):
+		return
+	var fig: RoamFigure = _duelists[p]
+	var side := 1.0 if p == 0 else -1.0
+	var head := fig.global_position + Vector3(0, 1.62 * fig.scale.y, 0)
+	if not _pbone.has(p) and fig._model != null and fig.ready_to_show:
+		var sk := Avatars._first_skeleton(fig._model)
+		if sk != null and sk.find_bone("Head") >= 0:
+			_pbone[p] = [sk, sk.find_bone("Head")]
+	if _pbone.has(p) and is_instance_valid(_pbone[p][0]):
+		var sk2: Skeleton3D = _pbone[p][0]
+		head = sk2.global_transform * sk2.get_bone_global_pose(int(_pbone[p][1])).origin + Vector3(0, 0.06, 0)
+	# (the camera follows the head softly: a stagger or a nod moves them inside the picture)
+	_phead[p] = head if not _phead.has(p) or k >= 1.0 else (_phead[p] as Vector3).lerp(head, k)
+	var h: Vector3 = _phead[p]
+	var f: Array = PORTRAIT_FRAME[p]
+	var at := Vector3(lerpf(h.x, 0.0, 0.5), h.y - float(f[2]), lerpf(h.z, side * DUELIST_Z, 0.5))
+	cam.global_position = at + Vector3(-float(f[3]) * side, float(f[2]) * 0.35, -side * float(f[0]))
+	cam.look_at(at)
+
+
 ## A hit reaches the duelist's body: a flash of light on them and sparks off the chest, sized to the hit.
 func duelist_hit(p: int, big: bool) -> void:
 	if not has_duelist(p):
@@ -4153,6 +4229,8 @@ func _process(delta: float) -> void:
 	_time += delta
 	_process_extra(_time)
 	_process_picks(_time)
+	for pp in _pcam:
+		_update_portrait(pp, 1.0 - exp(-delta * 3.5))
 	_shake = move_toward(_shake, 0.0, delta * 1.6)
 	var sway := Vector3(sin(_time * 0.35) * 0.06, sin(_time * 0.5) * 0.04, 0)
 	var s := _shake * _shake * 0.35

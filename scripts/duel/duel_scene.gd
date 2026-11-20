@@ -227,6 +227,7 @@ func _start() -> void:
 			# across the bottom, the two of them squared up, VS, and the game for the first turn
 			# right there between them.
 			board.add_duelists(_me_key, _opp_key)
+			_go_live()
 			hud.set_chrome(false)
 			var dz := DuelBoard.DUELIST_Z
 			var opp_col := Color(opp.get("color", UITheme.DANGER))
@@ -382,6 +383,7 @@ func _start() -> void:
 	board.set_extra_count(AI, state.players[AI].extra.size())
 	if not _opened:
 		board.add_duelists(_me_key, _opp_key)
+		_go_live()
 	var fly := "--no-fly" not in OS.get_cmdline_user_args()
 	_bring_spirit()
 	if _opened:
@@ -1040,6 +1042,31 @@ const CALLS := {"turn": [0.0, 1.0, 1.0], "first": [0.0, 1.0, 1.0], "battle": [0.
 
 
 ## Says a call of the turn, as often as the "How much they talk" setting asks for.
+## The duelists in the corners go live (0.63.0): each still picture is swapped for the real duelist from
+## the board as soon as their model is in. (Not in a Turbo Duel: there they are on their runners.)
+func _go_live() -> void:
+	if not Settings.live_portraits or board.track != null or _autoplay:
+		return
+	for p in 2:
+		_live_when_ready(p)
+
+
+func _live_when_ready(p: int) -> void:
+	for i in 240:
+		if not is_inside_tree():
+			return
+		if board.duelist_ready(p):
+			break
+		await get_tree().process_frame
+	if not board.duelist_ready(p):
+		return
+	var tex := board.live_portrait(p, hud.live_size(p))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if tex != null and is_inside_tree():
+		hud.go_live(p, tex)
+
+
 ## The director (0.63.0): a short look at a duelist at a set moment, so what they do with their body
 ## is seen. The caller awaits it: the table waits for the look to end. Never more than one every few
 ## seconds, never in a Turbo Duel, never when the setting says no. big = the moments "Fewer" keeps.
