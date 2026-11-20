@@ -546,3 +546,9 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
    hold the right hand flat over the face at 8000 LP / Mano 5, turn 1. Looks like a stance or the opening pose landing
    the hand on the face on his bodies (the motions were only checked on the stand-in models here). To check when
    told: which clip is playing there (st_<style>, "ready"/battle_pose, face-off pose, think) and the arm retarget.
+2. (Nov 20, 1:21 PM, photo 12adbee6-image.jpg) The card info panel on the left (name, picture, chips, ATK/DEF, effect
+   text with its scroll) reaches down over the head of his duelist in the bottom-left corner. He thought this was
+   already fixed (it was fitted to the old still picture; the live portrait is taller). His words: "Play with the
+   scroll view, maybe make that smaller... make it really nice. Don't make it ugly... somehow so that it doesn't
+   cover the characters." So: the panel must end above the live portrait's head (shorter effect area that scrolls,
+   or a smaller card picture), and still look good. Check with a tall duelist and with the camera stepped back.
