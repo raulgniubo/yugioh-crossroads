@@ -570,3 +570,12 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
    Rule to hold after the fix: in NO motion may a hand sit in front of the face as seen from the portrait camera
    (check every clip on a real rig from the portrait camera, both sides). The card panel also still overlaps the
    hair here (item 2).
+   3b. (1:25 PM, photo 4313fcd0-image.jpg) Same edge problem: a hand reaching toward the camera is sliced by the
+   right edge of his portrait AND looks oversized (it is very close to the portrait camera, wide lens). Fix with 3:
+   no hard clip on the table side, and keep the camera far enough / the lens long enough that a forward hand does
+   not balloon (a longer lens from further back for his side: now 40 deg at 1.75 m).
+6. (1:24-1:25 PM) IDEA, test first: pain sounds when a hit lands (a grunt for a normal hit, a cry for a big one, a
+   long one for the last hit), one set per voice (about 4 x 15 voices, no words, so both languages share them),
+   played at the moment the hit lands, skipped if that duelist is mid-sentence. Raul: "try to generate one and send
+   it to me, and if it's good, I'll tell you it's good, and then you can put it in." Test made 1:27 PM with the
+   Spanish player_m voice (three sizes in one file). WAIT for his verdict.
