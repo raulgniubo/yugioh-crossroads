@@ -598,3 +598,21 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
    (rest pose, bone names, arm bone roll) and compare with the stand-in used for import_motions.gd ("same"/"smplh"
    maps); fix the retarget, then re-check every clip from the portrait camera AND the wide ending camera.
    Note: his model files stay on his Mac (only skeleton data may come here): read the rest pose with Blender there.
+9. (Nov 20, 1:45 PM) His brother: the world runs fine, then after about 5 duels going back to the world gives 15-20
+   FPS. Check for a leak: things of each duel that stay alive after it ends (live portrait SubViewports, figures on
+   the portrait layer, cached retargeted clips, voice players, timers, the ocgcore engine). Unknown which version he has.
+10. (1:46 PM) "We might be missing Five-Headed Dragon / FGD": it IS in the game (id 99267150; Legend of the King Vol. 6,
+   Chaos and Other Dimensions, Beyond the Limit Vol. 1, Dragon's Roar Vol. 1; Dragon's Den theme deck). To do: the
+   card search should understand the old name "FGD" / "F.G.D." (`tests/find_card.tscn -- "<name>"` answers these).
+GO GIVEN 1:32 PM for 1-8 ("please do all of that... make a good review of all the poses and how the characters move
+... all the animations ... spot on ... amazing ... even voices"). Build: 0.63.1.
+ROOT CAUSE of 1, 4, 5, 8 (measured, tools/dev/motions/skel.py run on the Mac -> meshy_work/skeleton_report.json,
+numbers only): his 25 models have arms about 45% longer than the donor/stand-ins (upper+fore 0.47 m vs 0.33 m),
+hands 0.22 m long, and heads 0.41 m tall with the chin AT shoulder height. Turning bones the same amount overshoots.
+Fix in `Avatars._retarget`: the arm pass (`_arm_frame`, `_body_stats`, `_arm_wants`, `_arm_solve`): hands placed
+relative to the body, two-bone IK, straight arms keep direction, and the hand+forearm kept out of the face (cone
+along the face and along the corner camera's line) and out of the head. Mannequins with his exact skeletons:
+`python3 tools/dev/motions/build_proxy.py /home/claude/work/rig/real.json /tmp/realproxy/characters`.
+Review tool: `tests/pose_review.tscn` (--mode=check numbers for all 25; --mode=sheet pictures).
+Baseline: 38 of 60 motions hid more than 12% of a face; after the pass: 12, all brief. st_wild (a boxer's guard,
+fists at the chin) is what he saw as "crossed arms" at the start and on the victory screen: replace that stance.

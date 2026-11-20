@@ -334,6 +334,14 @@ func _borrow_clips(g: Node) -> void:
 ## numbers across bends everything the wrong way. Instead: work out how far each donor bone has
 ## turned from its own rest pose, in world terms, and turn the matching bone the same amount
 ## from where the donor's rest would put it.
+##
+## The arms get a second pass (0.63.1), because turning bones the same amount is only right when
+## the two bodies have the same proportions. A model with longer arms and a bigger head ends up
+## with a hand that should stop at the chin flat on the face, and two fists that should meet in
+## front of the chest crossed past each other. So each hand is put where the donor's hand is
+## RELATIVE TO THE BODY (between the shoulders, up to the top of the head, down to the hips, each
+## measured on its own body), the elbow is bent to reach it, and no hand may sit in front of the
+## face. A straight arm (pointing, hanging, a cheer) keeps its direction instead.
 func _retarget(src: Animation, dskel: Skeleton3D, skel: Skeleton3D, skel_path: String, ratio: float, fps := 30.0) -> Animation:
 	var dn := dskel.get_bone_count()
 	var rot_t := {}
@@ -386,6 +394,18 @@ func _retarget(src: Animation, dskel: Skeleton3D, skel: Skeleton3D, skel_path: S
 	var hip_parent_inv := Transform3D.IDENTITY
 	if hip >= 0 and skel.get_bone_parent(hip) >= 0:
 		hip_parent_inv = skel.get_bone_global_rest(skel.get_bone_parent(hip)).affine_inverse()
+	# The arms by position: what each body measures, and the bones whose keys wait for that pass.
+	var da := _arm_frame(dskel)
+	var ta := _arm_frame(skel)
+	var arms: bool = arms_by_position and not da.is_empty() and not ta.is_empty()
+	var later := {}
+	var body := {}
+	if arms:
+		body = _body_stats(skel, ta)
+		for side in 2:
+			for k in ["arm", "fore", "hand"]:
+				later[int(ta[k][side])] = true
+	var rec: Array = []
 	var frames := int(ceil(src.length * fps)) + 1
 	for f in frames:
 		var t := minf(float(f) / fps, src.length)
@@ -402,9 +422,17 @@ func _retarget(src: Animation, dskel: Skeleton3D, skel: Skeleton3D, skel_path: S
 			dg[b] = (dg[dp] * loc) if dp >= 0 else loc
 		var tg: Array = []
 		tg.resize(tn)
+		var tp: Array = []      # where each of this skeleton's joints is (skeleton space)
+		tp.resize(tn)
 		for tb in tn:
 			var par := skel.get_bone_parent(tb)
 			var pg: Basis = tg[par] if par >= 0 else Basis.IDENTITY
+			if tb == hip and dhip >= 0:
+				tp[tb] = (dg[dhip] as Transform3D).origin * ratio
+			elif par >= 0:
+				tp[tb] = (tp[par] as Vector3) + pg * skel.get_bone_rest(tb).origin
+			else:
+				tp[tb] = skel.get_bone_rest(tb).origin
 			var b: int = from_donor[tb]
 			if b < 0:
 				tg[tb] = pg * skel.get_bone_rest(tb).basis.orthonormalized()
@@ -412,10 +440,292 @@ func _retarget(src: Animation, dskel: Skeleton3D, skel: Skeleton3D, skel_path: S
 			var turned := (dg[b] as Transform3D).basis.orthonormalized() * dskel.get_bone_global_rest(b).basis.orthonormalized().inverse()
 			var gb: Basis = turned * (fix[tb] as Basis) * skel.get_bone_global_rest(tb).basis.orthonormalized()
 			tg[tb] = gb
-			out.rotation_track_insert_key(track_of[tb], t, (pg.inverse() * gb).orthonormalized().get_rotation_quaternion())
+			if not later.has(tb):
+				out.rotation_track_insert_key(track_of[tb], t, (pg.inverse() * gb).orthonormalized().get_rotation_quaternion())
 		if hip_track >= 0:
 			out.position_track_insert_key(hip_track, t, hip_parent_inv * ((dg[dhip] as Transform3D).origin * ratio))
+		if arms:
+			rec.append(_arm_wants(dskel, skel, da, ta, body, dg, tg, tp, t))
+	if arms:
+		_arm_solve(out, track_of, ta, rec)
 	return out
+
+
+## Off for a look at the old way (bones turned the same amount and nothing else).
+var arms_by_position := true
+
+
+## What a body measures for the arm pass: the bones, the line of the shoulders, how long the arms
+## are, how far the top of the head and the hips are from the shoulders. {} when it is not a body
+## with the usual arm bones.
+func _arm_frame(sk: Skeleton3D) -> Dictionary:
+	var d := {"arm": [sk.find_bone("LeftArm"), sk.find_bone("RightArm")], "fore": [sk.find_bone("LeftForeArm"), sk.find_bone("RightForeArm")],
+		"hand": [sk.find_bone("LeftHand"), sk.find_bone("RightHand")], "head": sk.find_bone("Head"), "hips": sk.find_bone("Hips")}
+	for k in ["arm", "fore", "hand"]:
+		if int(d[k][0]) < 0 or int(d[k][1]) < 0:
+			return {}
+	if int(d["head"]) < 0 or int(d["hips"]) < 0:
+		return {}
+	var la := sk.get_bone_global_rest(int(d["arm"][0])).origin
+	var ra := sk.get_bone_global_rest(int(d["arm"][1])).origin
+	var chest := sk.get_bone_parent(int(d["arm"][0]))
+	if chest >= 0 and sk.get_bone_name(chest).to_lower().contains("shoulder"):
+		chest = sk.get_bone_parent(chest)
+	if chest < 0:
+		return {}
+	d["chest"] = chest
+	var mid := (la + ra) * 0.5
+	var hips := sk.get_bone_global_rest(int(d["hips"])).origin
+	var lat := (la - ra).normalized()
+	var up := (mid - hips)
+	up = (up - lat * up.dot(lat)).normalized()
+	var fwd := lat.cross(up).normalized()
+	d["axes"] = Basis(lat, up, fwd)
+	d["mid"] = mid
+	d["w"] = maxf((la - ra).length() * 0.5, 0.0001)
+	d["a"] = [(sk.get_bone_global_rest(int(d["fore"][0])).origin - la).length(), (sk.get_bone_global_rest(int(d["fore"][1])).origin - ra).length()]
+	d["b"] = [(sk.get_bone_global_rest(int(d["hand"][0])).origin - sk.get_bone_global_rest(int(d["fore"][0])).origin).length(),
+		(sk.get_bone_global_rest(int(d["hand"][1])).origin - sk.get_bone_global_rest(int(d["fore"][1])).origin).length()]
+	d["len"] = maxf(float(d["a"][0]) + float(d["b"][0]), 0.0001)
+	var head := sk.get_bone_global_rest(int(d["head"])).origin
+	var he := sk.find_bone("head_end")
+	var top := sk.get_bone_global_rest(he).origin if he >= 0 else head + up * float(d["len"]) * 0.6
+	d["up"] = maxf((top - mid).dot(up), float(d["len"]) * 0.3)
+	d["down"] = maxf((mid - hips).dot(up), float(d["len"]) * 0.3)
+	return d
+
+
+## What the arm pass needs to know about the body's surface (skeleton space, rest pose): how long
+## each hand is and where the face is. Read off the skin once per skeleton; a body with no skin to
+## read gets sensible guesses from its bones.
+func _body_stats(skel: Skeleton3D, fr: Dictionary) -> Dictionary:
+	if skel.has_meta("body_stats"):
+		return skel.get_meta("body_stats")
+	var ax: Basis = fr["axes"]
+	var head := skel.get_bone_global_rest(int(fr["head"])).origin
+	var hand_dir: Array = []
+	var st := {"hand": [float(fr["b"][0]) * 0.9, float(fr["b"][1]) * 0.9]}
+	for side in 2:
+		hand_dir.append((skel.get_bone_global_rest(int(fr["hand"][side])).origin - skel.get_bone_global_rest(int(fr["fore"][side])).origin).normalized())
+	var chin := (head - (fr["mid"] as Vector3)).dot(ax.y) - float(fr["up"]) * 0.15
+	var top := float(fr["up"])
+	var front := float(fr["len"]) * 0.3
+	var seen := [0.0, 0.0]
+	var lo := INF
+	var hi := -INF
+	var fz := -INF
+	var bz := INF
+	var hands := [int(fr["hand"][0]), int(fr["hand"][1])]
+	var head_set := {int(fr["head"]): true}
+	for c in skel.get_bone_children(int(fr["head"])):
+		head_set[c] = true
+	var pool: Array = skel.find_children("*", "MeshInstance3D", true, false)
+	if skel.get_parent() != null:
+		pool += skel.get_parent().find_children("*", "MeshInstance3D", true, false)
+	var done := {}
+	for n in pool:
+		var mi := n as MeshInstance3D
+		if done.has(mi) or mi.mesh == null or mi.skin == null:
+			continue
+		done[mi] = true
+		var bind_bone: Array = []
+		var bind_xf: Array = []
+		for i in mi.skin.get_bind_count():
+			var bb := mi.skin.get_bind_bone(i)
+			if bb < 0 and str(mi.skin.get_bind_name(i)) != "":
+				bb = skel.find_bone(mi.skin.get_bind_name(i))
+			bind_bone.append(bb)
+			bind_xf.append(skel.get_bone_global_rest(bb) * mi.skin.get_bind_pose(i) if bb >= 0 else Transform3D.IDENTITY)
+		for si in mi.mesh.get_surface_count():
+			var arr := mi.mesh.surface_get_arrays(si)
+			if arr.size() <= Mesh.ARRAY_WEIGHTS or arr[Mesh.ARRAY_BONES] == null or arr[Mesh.ARRAY_WEIGHTS] == null:
+				continue
+			var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+			var bs = arr[Mesh.ARRAY_BONES]
+			var ws = arr[Mesh.ARRAY_WEIGHTS]
+			var per := int(bs.size() / maxi(vs.size(), 1))
+			if per < 1:
+				continue
+			for vi in vs.size():
+				var best := 0
+				for k in range(1, per):
+					if ws[vi * per + k] > ws[vi * per + best]:
+						best = k
+				var bind := int(bs[vi * per + best])
+				if bind < 0 or bind >= bind_bone.size():
+					continue
+				var bone: int = bind_bone[bind]
+				if bone == hands[0] or bone == hands[1]:
+					var side := 0 if bone == hands[0] else 1
+					var p: Vector3 = (bind_xf[bind] as Transform3D) * vs[vi]
+					seen[side] = maxf(seen[side], (p - skel.get_bone_global_rest(bone).origin).dot(hand_dir[side]))
+				elif head_set.has(bone):
+					var p2: Vector3 = (bind_xf[bind] as Transform3D) * vs[vi] - (fr["mid"] as Vector3)
+					lo = minf(lo, p2.dot(ax.y))
+					hi = maxf(hi, p2.dot(ax.y))
+					fz = maxf(fz, p2.dot(ax.z))
+					bz = minf(bz, p2.dot(ax.z))
+	for side in 2:
+		if seen[side] > float(fr["b"][side]) * 0.3:
+			st["hand"][side] = seen[side]
+	if hi > lo:
+		chin = lo
+		top = hi
+		front = fz
+	# The face: the lower two thirds of the head, seen from the front (heights above the shoulder line).
+	var tall := maxf(top - chin, 0.0001)
+	st["face"] = (fr["mid"] as Vector3) + ax.y * (chin + tall * 0.34)
+	st["face"] = (st["face"] as Vector3) + ax.x * (head - (fr["mid"] as Vector3)).dot(ax.x) + ax.z * (head - (fr["mid"] as Vector3)).dot(ax.z)
+	st["face_r"] = tall * 0.28
+	st["front"] = front - (head - (fr["mid"] as Vector3)).dot(ax.z)      # how far the face is in front of the head joint
+	st["hand_dir"] = hand_dir
+	# The head as a ball (hair and all, but not the tips of the spikes) that no arm passes through.
+	var deep := (fz + bz) * 0.5 if hi > lo else (head - (fr["mid"] as Vector3)).dot(ax.z)
+	st["head_c"] = (fr["mid"] as Vector3) + ax.y * (chin + tall * 0.5) + ax.x * (head - (fr["mid"] as Vector3)).dot(ax.x) + ax.z * deep
+	st["head_r"] = tall * 0.4
+	skel.set_meta("body_stats", st)
+	return st
+
+
+func _stretch(v: float, zone_d: float, zone_t: float, k_out: float) -> float:
+	# (inside the zone the body's own measure counts; past it, the length of the arm)
+	var a := absf(v)
+	var r := a * (zone_t / zone_d) if a <= zone_d else zone_t + (a - zone_d) * k_out
+	return r * signf(v)
+
+
+## Where both hands should be at this moment, and everything the solve needs: one entry per side.
+func _arm_wants(dskel: Skeleton3D, skel: Skeleton3D, da: Dictionary, ta: Dictionary, body: Dictionary, dg: Array, tg: Array, tp: Array, t: float) -> Array:
+	var d_turn := (dg[int(da["chest"])] as Transform3D).basis.orthonormalized() * dskel.get_bone_global_rest(int(da["chest"])).basis.orthonormalized().inverse()
+	var t_turn := (tg[int(ta["chest"])] as Basis) * skel.get_bone_global_rest(int(ta["chest"])).basis.orthonormalized().inverse()
+	var d_ax := d_turn * (da["axes"] as Basis)
+	var t_ax := t_turn * (ta["axes"] as Basis)
+	var d_mid := ((dg[int(da["arm"][0])] as Transform3D).origin + (dg[int(da["arm"][1])] as Transform3D).origin) * 0.5
+	var t_mid := ((tp[int(ta["arm"][0])] as Vector3) + (tp[int(ta["arm"][1])] as Vector3)) * 0.5
+	var k_len := float(ta["len"]) / float(da["len"])
+	var k_w := float(ta["w"]) / float(da["w"])
+	# The face, now: a little in front of the head joint, turned with the head.
+	var h_turn := (tg[int(ta["head"])] as Basis) * skel.get_bone_global_rest(int(ta["head"])).basis.orthonormalized().inverse()
+	var face: Vector3 = (tp[int(ta["head"])] as Vector3) + h_turn * ((body["face"] as Vector3) - skel.get_bone_global_rest(int(ta["head"])).origin)
+	var f_fwd := (h_turn * (ta["axes"] as Basis).z).normalized()
+	var f_up := (h_turn * (ta["axes"] as Basis).y).normalized()
+	var res: Array = []
+	for side in 2:
+		var sgn := 1.0 if side == 0 else -1.0
+		var ds := (dg[int(da["arm"][side])] as Transform3D).origin
+		var dh := (dg[int(da["hand"][side])] as Transform3D).origin
+		var q := d_ax.inverse() * (dh - d_mid)
+		var x := _stretch(q.x * sgn, float(da["w"]), float(ta["w"]), k_len) * sgn
+		var y := _stretch(q.y, float(da["up"]) if q.y >= 0.0 else float(da["down"]), float(ta["up"]) if q.y >= 0.0 else float(ta["down"]), k_len)
+		var z := _stretch(q.z, float(da["len"]) * 0.5, float(da["len"]) * 0.5 * k_w, k_len)
+		var want := t_mid + t_ax * Vector3(x, y, z)
+		var s: Vector3 = tp[int(ta["arm"][side])]
+		var e: Vector3 = tp[int(ta["fore"][side])]
+		var h: Vector3 = tp[int(ta["hand"][side])]
+		# A straight arm keeps its direction (a pointing finger must point where it pointed).
+		var ext := (dh - ds).length() / (float(da["a"][side]) + float(da["b"][side]))
+		var keep := smoothstep(0.82, 0.97, ext)
+		want = want.lerp(h, keep)
+		# No hand in front of the face. The whole hand (wrist, palm, fingertips) and the forearm stay
+		# out of: a cone that opens forward from the face; the same cone opened toward the corner
+		# camera (which stands in front of the duelist, a little to their left); and the head itself.
+		var hand_turn := (tg[int(ta["hand"][side])] as Basis) * skel.get_bone_global_rest(int(ta["hand"][side])).basis.orthonormalized().inverse()
+		var hdir := (hand_turn * (body["hand_dir"][side] as Vector3)).normalized()
+		var hl := float(body["hand"][side])
+		var fdir := (h - e).normalized()
+		var r_ax: Basis = ta["axes"]
+		var cam_dir := (r_ax.x * 0.42 - r_ax.y * 0.2 + r_ax.z * 1.75).normalized()
+		var head_c: Vector3 = (tp[int(ta["head"])] as Vector3) + h_turn * ((body["head_c"] as Vector3) - skel.get_bone_global_rest(int(ta["head"])).origin)
+		for pass_i in 4:
+			var push := Vector3.ZERO
+			for sm in 5:
+				var pt := want + hdir * hl * (0.5 * sm) if sm < 3 else want - fdir * float(ta["b"][side]) * (0.4 if sm == 3 else 0.8)
+				var thick := hl * 0.38 if sm < 3 else hl * 0.22
+				for axis in [f_fwd, cam_dir]:
+					var dd := pt - face
+					var al := dd.dot(axis)
+					if al < -float(body["face_r"]) * 0.4 or al > float(ta["len"]) * 1.8:
+						continue
+					var rad: Vector3 = dd - axis * al
+					var need := float(body["face_r"]) + thick + 0.3 * maxf(al, 0.0)
+					if rad.length() < need:
+						var dirn := rad.normalized() if rad.length() > need * 0.08 else (-f_up + t_ax.x * sgn * 0.6).normalized()
+						# (down past the chin or out to its own side, never up over the eyes)
+						if dirn.dot(f_up) > 0.25 and rad.dot(f_up) < need * 0.55:
+							dirn = (dirn - f_up * dirn.dot(f_up) * 1.4 + t_ax.x * sgn * 0.5).normalized()
+						dirn = (dirn - axis * dirn.dot(axis)).normalized()
+						var pv := dirn * (need - rad.dot(dirn))
+						if pv.length() > push.length():
+							push = pv
+				var hd := pt - head_c
+				var hneed := float(body["head_r"]) + thick
+				if hd.length() < hneed:
+					var out_dir := hd.normalized() if hd.length() > hneed * 0.1 else (t_ax.x * sgn).normalized()
+					var pv2 := out_dir * (hneed - hd.length())
+					if pv2.length() > push.length():
+						push = pv2
+			if push == Vector3.ZERO:
+				break
+			want += push
+		res.append({"t": t, "s": s, "e": e, "h": h, "want": want, "pg": tg[skel.get_bone_parent(int(ta["arm"][side]))] if skel.get_bone_parent(int(ta["arm"][side])) >= 0 else Basis.IDENTITY,
+			"gu": tg[int(ta["arm"][side])], "gf": tg[int(ta["fore"][side])], "gh": tg[int(ta["hand"][side])], "out": t_ax.x * sgn, "down": -t_ax.y})
+	return res
+
+
+## Bend each elbow so the hand is where it should be, and write the keys of the six arm bones.
+func _arm_solve(out: Animation, track_of: Dictionary, ta: Dictionary, rec: Array) -> void:
+	for side in 2:
+		var a := float(ta["a"][side])
+		var b := float(ta["b"][side])
+		# The move asked of the hand, smoothed over a few frames so a push off the face never pops.
+		var off: Array = []
+		for r in rec:
+			off.append((r[side]["want"] as Vector3) - (r[side]["h"] as Vector3))
+		var soft: Array = []
+		for i in off.size():
+			var acc := Vector3.ZERO
+			var wsum := 0.0
+			for k in range(-2, 3):
+				var j := clampi(i + k, 0, off.size() - 1)
+				var w := 3.0 - absf(k)
+				acc += (off[j] as Vector3) * w
+				wsum += w
+			# (never softer than the push itself asked for: smoothing may add, not take away)
+			var sm := acc / wsum
+			soft.append(sm if sm.length() >= (off[i] as Vector3).length() * 0.85 else (off[i] as Vector3))
+		var last_pole := Vector3.ZERO
+		for i in rec.size():
+			var r: Dictionary = rec[i][side]
+			var s: Vector3 = r["s"]
+			var target: Vector3 = (r["h"] as Vector3) + (soft[i] as Vector3)
+			var to := target - s
+			var dist := clampf(to.length(), absf(a - b) + (a + b) * 0.04, (a + b) * 0.998)
+			var n := to.normalized() if to.length() > 0.00001 else ((r["h"] as Vector3) - s).normalized()
+			var e0 := (r["e"] as Vector3) - s
+			var pole := e0 - n * e0.dot(n)
+			if pole.length() < (a + b) * 0.02:
+				pole = last_pole if last_pole != Vector3.ZERO else ((r["down"] as Vector3) + (r["out"] as Vector3) * 0.5)
+				pole = pole - n * pole.dot(n)
+			pole = pole.normalized()
+			last_pole = pole
+			var x := (a * a - b * b + dist * dist) / (2.0 * dist)
+			var hgt := sqrt(maxf(a * a - x * x, 0.0))
+			var elbow := s + n * x + pole * hgt
+			var hand := s + n * dist
+			var u0 := ((r["e"] as Vector3) - s).normalized()
+			var f0 := ((r["h"] as Vector3) - (r["e"] as Vector3)).normalized()
+			var u1 := (elbow - s).normalized()
+			var f1 := (hand - elbow).normalized()
+			var gu: Basis = r["gu"]
+			var gf: Basis = r["gf"]
+			if u0.dot(u1) < 0.999999 and u0.dot(u1) > -0.9999:
+				gu = Basis(Quaternion(u0, u1)) * gu
+			if f0.dot(f1) < 0.999999 and f0.dot(f1) > -0.9999:
+				gf = Basis(Quaternion(f0, f1)) * gf
+			var t := float(r["t"])
+			out.rotation_track_insert_key(track_of[int(ta["arm"][side])], t, ((r["pg"] as Basis).inverse() * gu).orthonormalized().get_rotation_quaternion())
+			out.rotation_track_insert_key(track_of[int(ta["fore"][side])], t, (gu.inverse() * gf).orthonormalized().get_rotation_quaternion())
+			out.rotation_track_insert_key(track_of[int(ta["hand"][side])], t, (gf.inverse() * (r["gh"] as Basis)).orthonormalized().get_rotation_quaternion())
 
 
 const GESTURES := "res://assets/models/anim/gestures.glb"
