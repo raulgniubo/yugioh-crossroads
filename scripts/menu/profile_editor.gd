@@ -9,7 +9,7 @@ signal closed
 
 ## Everything the editor can change on the profile, so Cancel can put it all back.
 const FIELDS := ["duelist_name", "gender", "color_index", "look_body", "look_hair", "look_outfit", "look_height", "look_build",
-	"look_skin", "look_haircol", "look_eyes", "look_top", "look_bottom", "look_shoes", "title", "intro", "win_line"]
+	"look_skin", "look_haircol", "look_eyes", "look_top", "look_bottom", "look_shoes", "title", "intro", "win_line", "style"]
 const TABS := ["Body", "Hair", "Outfit", "You"]
 
 var _first_time := false
@@ -246,6 +246,16 @@ func _page_you(v: VBoxContainer) -> void:
 		Profile.win_line = i
 		_soft_change())
 	v.add_child(win_pick)
+	v.add_child(_section("STYLE   ·   how you stand and move in a duel"))
+	var style_pick := OptionButton.new()
+	style_pick.custom_minimum_size = Vector2(0, 48)
+	for i in Profile.STYLE_NAMES.size():
+		style_pick.add_item(Loc.t(str(Profile.STYLE_NAMES[i])), i)
+	style_pick.select(Profile.style)
+	style_pick.item_selected.connect(func(i):
+		Profile.style = i
+		_soft_change())
+	v.add_child(style_pick)
 	v.add_child(_section("CARD SLEEVE   ·   the back of your cards"))
 	var sl_scroll := ScrollContainer.new()
 	sl_scroll.custom_minimum_size = Vector2(0, 150)

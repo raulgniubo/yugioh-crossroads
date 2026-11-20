@@ -11626,5 +11626,302 @@
 "en": "Stack 'em up! XYZ!",
 "text": "Stack 'em up! XYZ!",
 "tts": "Stack 'em up! /ˈɪksiːz/!"
+},
+{
+"voice": "lumen",
+"lang": "es",
+"key": "14ea9ece365c",
+"kind": "ace_lost",
+"en": "Ouch. Okay, new plan. I like new plans.",
+"text": "Ay. Bueno, plan nuevo. Me gustan los planes nuevos.",
+"tts": "Ay. Bueno, plan nuevo. Me gustan los planes nuevos."
+},
+{
+"voice": "lumen",
+"lang": "es",
+"key": "37eba158e1bd",
+"kind": "comeback",
+"en": "And we're back! I knew it the whole time!",
+"text": "¡Y volvimos! ¡Lo supe todo el tiempo!",
+"tts": "¡Y volvimos! ¡Lo supe todo el tiempo!"
+},
+{
+"voice": "lumen",
+"lang": "es",
+"key": "cb0f0622413f",
+"kind": "comeback",
+"en": "What a turnaround! Do that again!",
+"text": "¡Qué remontada! ¡Hazlo otra vez!",
+"tts": "¡Qué remontada! ¡Hazlo otra vez!"
+},
+{
+"voice": "lumen",
+"lang": "es",
+"key": "347417478def",
+"kind": "destiny",
+"en": "This is it. One card can turn this around. Reach for it!",
+"text": "Es ahora. Una carta puede darle la vuelta a esto. ¡Ve por ella!",
+"tts": "Es ahora. Una carta puede darle la vuelta a esto. ¡Ve por ella!"
+},
+{
+"voice": "lumen",
+"lang": "es",
+"key": "f280ee0c8c34",
+"kind": "destiny",
+"en": "Deep breath... now reach for it!",
+"text": "Respira hondo... ¡y ahora ve por ella!",
+"tts": "Respira hondo... ¡y ahora ve por ella!"
+},
+{
+"voice": "lumen",
+"lang": "es",
+"key": "e453f6bc5720",
+"kind": "direct",
+"en": "Direct hit! They felt that one!",
+"text": "¡Ataque directo! ¡Ese sí lo sintieron!",
+"tts": "¡Ataque directo! ¡Ese sí lo sintieron!"
+},
+{
+"voice": "lumen",
+"lang": "es",
+"key": "65b249ffe67c",
+"kind": "hit",
+"en": "Okay, that was a lot of Life Points. We still have the rest!",
+"text": "Bueno, esos fueron muchos Puntos de Vida. ¡Todavía nos queda el resto!",
+"tts": "Bueno, esos fueron muchos Puntos de Vida. ¡Todavía nos queda el resto!"
+},
+{
+"voice": "lumen",
+"lang": "es",
+"key": "adadc58b80c6",
+"kind": "hit",
+"en": "Yikes! Okay, we felt that.",
+"text": "¡Uf! Bueno, esa sí la sentimos.",
+"tts": "¡Uf! Bueno, esa sí la sentimos."
+},
+{
+"voice": "lumen",
+"lang": "es",
+"key": "ef7b0c16d8bf",
+"kind": "my_ace",
+"en": "Ooh, the big one! Get them!",
+"text": "¡Uy, el grande! ¡Vamos por ellos!",
+"tts": "¡Uy, el grande! ¡Vamos por ellos!"
+},
+{
+"voice": "lumen",
+"lang": "es",
+"key": "46707fd7c5d1",
+"kind": "their_ace",
+"en": "Okay, that one has a LOT of teeth. We've handled worse. Probably.",
+"text": "Okey, ese tiene MUCHOS dientes. Hemos visto cosas peores. Probablemente.",
+"tts": "Okey, ese tiene MUCHOS dientes. Hemos visto cosas peores. Probablemente."
+},
+{
+"voice": "lumen",
+"lang": "es",
+"key": "5be302789ba6",
+"kind": "their_destiny",
+"en": "They can do that too?! Okay. Okay. Stay sharp.",
+"text": "¿¡Ellos también pueden hacer eso!? Okey. Okey. Atento.",
+"tts": "¿¡Ellos también pueden hacer eso!? Okey. Okey. Atento."
+},
+{
+"voice": "lumen_b",
+"lang": "es",
+"key": "14ea9ece365c",
+"kind": "ace_lost",
+"en": "Ouch. Okay, new plan. I like new plans.",
+"text": "Ay. Bueno, plan nuevo. Me gustan los planes nuevos.",
+"tts": "Ay. Bueno, plan nuevo. Me gustan los planes nuevos."
+},
+{
+"voice": "lumen_b",
+"lang": "es",
+"key": "37eba158e1bd",
+"kind": "comeback",
+"en": "And we're back! I knew it the whole time!",
+"text": "¡Y volvimos! ¡Lo supe todo el tiempo!",
+"tts": "¡Y volvimos! ¡Lo supe todo el tiempo!"
+},
+{
+"voice": "lumen_b",
+"lang": "es",
+"key": "cb0f0622413f",
+"kind": "comeback",
+"en": "What a turnaround! Do that again!",
+"text": "¡Qué remontada! ¡Hazlo otra vez!",
+"tts": "¡Qué remontada! ¡Hazlo otra vez!"
+},
+{
+"voice": "lumen_b",
+"lang": "es",
+"key": "347417478def",
+"kind": "destiny",
+"en": "This is it. One card can turn this around. Reach for it!",
+"text": "Es ahora. Una carta puede darle la vuelta a esto. ¡Ve por ella!",
+"tts": "Es ahora. Una carta puede darle la vuelta a esto. ¡Ve por ella!"
+},
+{
+"voice": "lumen_b",
+"lang": "es",
+"key": "f280ee0c8c34",
+"kind": "destiny",
+"en": "Deep breath... now reach for it!",
+"text": "Respira hondo... ¡y ahora ve por ella!",
+"tts": "Respira hondo... ¡y ahora ve por ella!"
+},
+{
+"voice": "lumen_b",
+"lang": "es",
+"key": "e453f6bc5720",
+"kind": "direct",
+"en": "Direct hit! They felt that one!",
+"text": "¡Ataque directo! ¡Ese sí lo sintieron!",
+"tts": "¡Ataque directo! ¡Ese sí lo sintieron!"
+},
+{
+"voice": "lumen_b",
+"lang": "es",
+"key": "65b249ffe67c",
+"kind": "hit",
+"en": "Okay, that was a lot of Life Points. We still have the rest!",
+"text": "Bueno, esos fueron muchos Puntos de Vida. ¡Todavía nos queda el resto!",
+"tts": "Bueno, esos fueron muchos Puntos de Vida. ¡Todavía nos queda el resto!"
+},
+{
+"voice": "lumen_b",
+"lang": "es",
+"key": "adadc58b80c6",
+"kind": "hit",
+"en": "Yikes! Okay, we felt that.",
+"text": "¡Uf! Bueno, esa sí la sentimos.",
+"tts": "¡Uf! Bueno, esa sí la sentimos."
+},
+{
+"voice": "lumen_b",
+"lang": "es",
+"key": "ef7b0c16d8bf",
+"kind": "my_ace",
+"en": "Ooh, the big one! Get them!",
+"text": "¡Uy, el grande! ¡Vamos por ellos!",
+"tts": "¡Uy, el grande! ¡Vamos por ellos!"
+},
+{
+"voice": "lumen_b",
+"lang": "es",
+"key": "46707fd7c5d1",
+"kind": "their_ace",
+"en": "Okay, that one has a LOT of teeth. We've handled worse. Probably.",
+"text": "Okey, ese tiene MUCHOS dientes. Hemos visto cosas peores. Probablemente.",
+"tts": "Okey, ese tiene MUCHOS dientes. Hemos visto cosas peores. Probablemente."
+},
+{
+"voice": "lumen_b",
+"lang": "es",
+"key": "5be302789ba6",
+"kind": "their_destiny",
+"en": "They can do that too?! Okay. Okay. Stay sharp.",
+"text": "¿¡Ellos también pueden hacer eso!? Okey. Okey. Atento.",
+"tts": "¿¡Ellos también pueden hacer eso!? Okey. Okey. Atento."
+},
+{
+"voice": "lumen_c",
+"lang": "es",
+"key": "14ea9ece365c",
+"kind": "ace_lost",
+"en": "Ouch. Okay, new plan. I like new plans.",
+"text": "Ay. Bueno, plan nuevo. Me gustan los planes nuevos.",
+"tts": "Ay. Bueno, plan nuevo. Me gustan los planes nuevos."
+},
+{
+"voice": "lumen_c",
+"lang": "es",
+"key": "37eba158e1bd",
+"kind": "comeback",
+"en": "And we're back! I knew it the whole time!",
+"text": "¡Y volvimos! ¡Lo supe todo el tiempo!",
+"tts": "¡Y volvimos! ¡Lo supe todo el tiempo!"
+},
+{
+"voice": "lumen_c",
+"lang": "es",
+"key": "cb0f0622413f",
+"kind": "comeback",
+"en": "What a turnaround! Do that again!",
+"text": "¡Qué remontada! ¡Hazlo otra vez!",
+"tts": "¡Qué remontada! ¡Hazlo otra vez!"
+},
+{
+"voice": "lumen_c",
+"lang": "es",
+"key": "347417478def",
+"kind": "destiny",
+"en": "This is it. One card can turn this around. Reach for it!",
+"text": "Es ahora. Una carta puede darle la vuelta a esto. ¡Ve por ella!",
+"tts": "Es ahora. Una carta puede darle la vuelta a esto. ¡Ve por ella!"
+},
+{
+"voice": "lumen_c",
+"lang": "es",
+"key": "f280ee0c8c34",
+"kind": "destiny",
+"en": "Deep breath... now reach for it!",
+"text": "Respira hondo... ¡y ahora ve por ella!",
+"tts": "Respira hondo... ¡y ahora ve por ella!"
+},
+{
+"voice": "lumen_c",
+"lang": "es",
+"key": "e453f6bc5720",
+"kind": "direct",
+"en": "Direct hit! They felt that one!",
+"text": "¡Ataque directo! ¡Ese sí lo sintieron!",
+"tts": "¡Ataque directo! ¡Ese sí lo sintieron!"
+},
+{
+"voice": "lumen_c",
+"lang": "es",
+"key": "65b249ffe67c",
+"kind": "hit",
+"en": "Okay, that was a lot of Life Points. We still have the rest!",
+"text": "Bueno, esos fueron muchos Puntos de Vida. ¡Todavía nos queda el resto!",
+"tts": "Bueno, esos fueron muchos Puntos de Vida. ¡Todavía nos queda el resto!"
+},
+{
+"voice": "lumen_c",
+"lang": "es",
+"key": "adadc58b80c6",
+"kind": "hit",
+"en": "Yikes! Okay, we felt that.",
+"text": "¡Uf! Bueno, esa sí la sentimos.",
+"tts": "¡Uf! Bueno, esa sí la sentimos."
+},
+{
+"voice": "lumen_c",
+"lang": "es",
+"key": "ef7b0c16d8bf",
+"kind": "my_ace",
+"en": "Ooh, the big one! Get them!",
+"text": "¡Uy, el grande! ¡Vamos por ellos!",
+"tts": "¡Uy, el grande! ¡Vamos por ellos!"
+},
+{
+"voice": "lumen_c",
+"lang": "es",
+"key": "46707fd7c5d1",
+"kind": "their_ace",
+"en": "Okay, that one has a LOT of teeth. We've handled worse. Probably.",
+"text": "Okey, ese tiene MUCHOS dientes. Hemos visto cosas peores. Probablemente.",
+"tts": "Okey, ese tiene MUCHOS dientes. Hemos visto cosas peores. Probablemente."
+},
+{
+"voice": "lumen_c",
+"lang": "es",
+"key": "5be302789ba6",
+"kind": "their_destiny",
+"en": "They can do that too?! Okay. Okay. Stay sharp.",
+"text": "¿¡Ellos también pueden hacer eso!? Okey. Okey. Atento.",
+"tts": "¿¡Ellos también pueden hacer eso!? Okey. Okey. Atento."
 }
 ]

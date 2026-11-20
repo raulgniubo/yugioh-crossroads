@@ -44,6 +44,11 @@ var look_shoes := 0
 var title := 0
 var intro := 0
 var win_line := 0
+## How your duelist carries themselves in a duel (0.63.0): the stance, the win and the loss.
+## 0 picks for you (the open, steady one); the rest are the five personalities the other duelists have.
+const STYLES := ["", "kind", "cocky", "cool", "wild", "dark"]
+const STYLE_NAMES := ["Pick for me", "Friendly", "Confident", "Cool", "Fired up", "Dark"]
+var style := 0
 var wins := 0
 var losses := 0
 ## How the last duel with each duelist went: key -> 1 (you won) or -1 (they won).
@@ -80,6 +85,7 @@ func _ready() -> void:
 	title = clampi(cfg.get_value("profile", "title", 0), 0, TITLES.size() - 1)
 	intro = clampi(cfg.get_value("profile", "intro", 0), 0, INTROS.size() - 1)
 	win_line = clampi(cfg.get_value("profile", "win_line", 0), 0, WINS.size() - 1)
+	style = clampi(int(cfg.get_value("profile", "style", 0)), 0, STYLES.size() - 1)
 	wins = cfg.get_value("stats", "wins", 0)
 	losses = cfg.get_value("stats", "losses", 0)
 	var v = cfg.get_value("stats", "vs", {})
@@ -122,6 +128,7 @@ func save() -> void:
 	cfg.set_value("profile", "title", title)
 	cfg.set_value("profile", "intro", intro)
 	cfg.set_value("profile", "win_line", win_line)
+	cfg.set_value("profile", "style", style)
 	cfg.set_value("stats", "wins", wins)
 	cfg.set_value("stats", "losses", losses)
 	cfg.set_value("stats", "vs", vs)

@@ -19,6 +19,7 @@ var _riding := false
 ## wave or nod when you walk up. `stance` is what they do when standing still: "stand", "sit"
 ## or "browse" (looking over shelves). `lively` people shift, scratch, check their phone.
 var watch: Node3D = null
+var watch_far := false     # a duelist: they follow what happens on the table, however far it is
 var stance := "stand"
 var lively := true
 var greets := true
@@ -47,6 +48,8 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 			_anim = Avatars.anim_player(_model)
 			_stand_clip = "g_rest"
 			_warm = ["wave", "chat", "scratch", "listen", "phone", "cheer"]
+			if stand_motion != "":
+				stand_as(stand_motion)
 		if _anim == null:
 			Avatars._relax_pose(_model)
 			_collect_bones()
@@ -218,6 +221,72 @@ func act(motion: String, blend := 0.2, speed := 1.0, from := 0.0, to := 0.0) -> 
 	return true
 
 
+## A card in the right hand for a moment (a duelist drawing one, or about to play one). It is a prop:
+## the back of a card, a little larger than life so it reads from across the table.
+var _card_prop: MeshInstance3D = null
+var _card_tw: Tween = null
+
+func hold_card(secs: float, delay := 0.0) -> void:
+	if _model == null or not is_inside_tree():
+		return
+	var sk := Avatars._first_skeleton(_model)
+	if sk == null:
+		return
+	var b := sk.find_bone("RightHand")
+	if b < 0:
+		return
+	if _card_prop == null or not is_instance_valid(_card_prop):
+		var att := BoneAttachment3D.new()
+		att.name = "CardHand"
+		sk.add_child(att)
+		att.bone_name = "RightHand"
+		_card_prop = MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(0.085, 0.124, 0.002)
+		_card_prop.mesh = bm
+		var m := StandardMaterial3D.new()
+		m.albedo_texture = Cards.get_back()
+		m.roughness = 0.5
+		m.emission_enabled = true
+		m.emission = Color(0.5, 0.6, 0.9)
+		m.emission_energy_multiplier = 0.25
+		_card_prop.material_override = m
+		att.add_child(_card_prop)
+		# The bone may live in a skeleton of another size (centimetres): undo that, so the card is its own size.
+		var sc := att.global_transform.basis.get_scale()
+		var mine := global_transform.basis.get_scale()
+		_card_prop.scale = Vector3(mine.x / maxf(sc.x, 0.0001), mine.y / maxf(sc.y, 0.0001), mine.z / maxf(sc.z, 0.0001))
+		# Out past the fingers, standing up in the hand.
+		_card_prop.position = CARD_AT * (mine.y / maxf(sc.y, 0.0001))
+		_card_prop.rotation = CARD_TURN
+		_card_prop.visible = false
+	if _card_tw:
+		_card_tw.kill()
+	_card_tw = create_tween()
+	_card_tw.tween_interval(maxf(delay, 0.001))
+	_card_tw.tween_callback(func(): _card_prop.visible = true)
+	_card_tw.tween_interval(secs)
+	_card_tw.tween_callback(func(): _card_prop.visible = false)
+
+const CARD_AT := Vector3(0.0, 0.11, 0.025)
+const CARD_TURN := Vector3(0.0, 1.5708, 0.0)
+
+
+## Stand in a motion of the library from now on (a duelist's own stance), in place of the calm stand.
+var stand_motion := ""
+
+func stand_as(motion: String) -> bool:
+	stand_motion = motion
+	if _model == null or not _model.is_inside_tree():
+		return false      # (the model is still on its way: setup applies it when it is in)
+	var c := Avatars.gesture(_model, motion)
+	if c == "":
+		return false
+	_stand_clip = c
+	_cur_clip = ""
+	return true
+
+
 func _idle_clip() -> String:
 	if stance == "sit" or stance == "rest":
 		# "sit": upright at a table, hands busy. "rest": leaning on the knees, on a bench.
@@ -247,7 +316,7 @@ func _live(delta: float) -> void:
 	if watch and is_instance_valid(watch) and watch != self:
 		var local := to_local(watch.global_position + Vector3(0, 1.5, 0)) - Vector3(0, 1.5, 0)
 		var dist := Vector2(local.x, local.z).length()
-		if dist < 5.5 and dist > 0.25:
+		if dist < (40.0 if watch_far else 5.5) and dist > 0.25:
 			var ang := atan2(local.x, local.z)
 			if absf(ang) < 1.75:
 				want_yaw = clampf(ang, -1.15, 1.15)

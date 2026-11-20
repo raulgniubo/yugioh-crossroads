@@ -1470,6 +1470,7 @@ func anim_summon(p: int, inst, zone: int, set_card: bool) -> void:
 		c = _take_from_opp_hand(inst)
 	c.set_pickable(true)
 	var to := Transform3D(table_basis(p, not set_card, not set_card), monster_zone_pos(p, zone) + Vector3(0, 0.02, 0))
+	duelist_look(to.origin)
 	var col: Color = Comic.SKY if p == 0 else Color("ff8a98")
 	if set_card:
 		# Set: its zone draws a quiet outline, the card glides in low and is laid face-down in it.
@@ -1684,6 +1685,7 @@ func special_center(p: int, zone: int) -> Vector3:
 ## materials (SummonFx); a monster back from the Graveyard rises out of it; anything else comes
 ## from where it was (hand, Deck, Extra Deck, banished). `origin` is the engine's location.
 func anim_special(p: int, inst, zone: int, method: String, materials: Array, origin := 0) -> void:
+	duelist_look(monster_zone_pos(p, zone), 2.2)
 	var col: Color = METHOD_COLORS.get(method, UITheme.ACCENT)
 	var from_gy := method == "reborn"
 	var at := monster_zone_pos(p, zone) + Vector3(0, 0.02, 0)
@@ -2130,6 +2132,7 @@ func anim_trap(p: int, inst, zone: int) -> void:
 	var c := card_for(inst)
 	if c == null:
 		return
+	duelist_look(c.position, 1.8)
 	# The card lifts and shows its face to you, whoever flipped it.
 	var up := Transform3D(Basis(Vector3.RIGHT, -0.6 if p == 0 else -0.25), st_pos(p, zone) + Vector3(0, 1.2 if p == 0 else 1.5, 0.3))
 	c.set_glow(true, Color("ff4dd2"))
@@ -2344,6 +2347,8 @@ func anim_declare(p: int, inst, target) -> void:
 	var home := c.transform
 	c.set_meta("home", home)
 	var goal := _attack_goal(p, target)
+	duelist_look(home.origin, 0.6, 1 - p)      # (the one attacked looks at what is coming...)
+	duelist_look(goal, 1.8, p)                 # (...and the attacker at what they are sending it into)
 	var dir := (goal - home.origin)
 	dir.y = 0.0
 	dir = dir.normalized() if dir.length() > 0.01 else Vector3(0, 0, -1.0 if p == 0 else 1.0)
@@ -3752,6 +3757,15 @@ func add_duelists(me_key: String, opp_key: String) -> void:
 		fig.lively = false
 		fig.greets = false
 		_duelists[p] = fig
+		_style[p] = style_of(key)
+		fig.stand_as("st_" + str(_style[p]))
+		# Where they look: at the other duelist, and at the action when there is some (duelist_look).
+		var eye := Node3D.new()
+		eye.position = Vector3(0.0, 0.0, -side * DUELIST_Z)      # (a figure looks 1.5 above what it watches: a person's feet)
+		add_child(eye)
+		_focus[p] = eye
+		fig.watch = eye
+		fig.watch_far = true
 		var spot := SpotLight3D.new()
 		spot.light_color = Color.WHITE.lerp(col, 0.25)
 		spot.light_energy = 7.0
@@ -3763,13 +3777,59 @@ func add_duelists(me_key: String, opp_key: String) -> void:
 		spot.look_at(Vector3(0, 1.3, side * DUELIST_Z))
 
 
+## How a duelist carries themselves (0.63.0): one of the five personalities. A named duelist has their
+## own; anybody else gets one from their name, always the same one; yours is the Style on your profile.
+var _style := {}
+const STYLES := ["kind", "cocky", "cool", "wild", "dark"]
+## What each personality does when it wins and when it loses: [motion, speed, from, to, hold it?].
+const STYLE_WIN := {"kind": ["cheer_one", 1.0, 0.0, 0.0], "cocky": ["shrug", 0.8, 0.0, 0.0], "cool": ["hip", 1.0, 0.0, 0.0],
+	"wild": ["hop", 1.0, 0.0, 0.0], "dark": ["scheme", 0.9, 0.0, 0.0]}
+const STYLE_LOSE := {"kind": "defeat", "cocky": "head_hold", "cool": "defeat", "wild": "kneel_down", "dark": "kneel_down"}
+
+static func style_of(key: String) -> String:
+	if key == "player":
+		var mine := str(Profile.STYLES[Profile.style])
+		return mine if mine != "" else "kind"
+	var pers := str(Characters.get_char(key).get("personality", ""))
+	if pers in STYLES:
+		return pers
+	return str(STYLES[absi(key.hash()) % STYLES.size()])
+
+
+## The winner's moment and the loser's, each in their own way. hold: the loser stays down.
+func duelist_win(p: int) -> void:
+	if not has_duelist(p):
+		return
+	var fig: RoamFigure = _duelists[p]
+	var w: Array = STYLE_WIN.get(str(_style.get(p, "kind")), STYLE_WIN["kind"])
+	if not fig.act(str(w[0]), 0.2, float(w[1]), float(w[2]), float(w[3])):
+		fig.play_once("victory", 2)
+	else:
+		# ...and then the long cheer, so they are not standing still while the results come up.
+		var first := fig._hold
+		get_tree().create_timer(maxf(0.4, first)).timeout.connect(func():
+			if is_instance_valid(fig) and fig.act("win_a" if str(_style.get(p, "")) in ["kind", "wild"] else "hip", 0.3):
+				fig._hold = 30.0)
+
+
+func duelist_lose(p: int) -> void:
+	if not has_duelist(p):
+		return
+	var fig: RoamFigure = _duelists[p]
+	var m := str(STYLE_LOSE.get(str(_style.get(p, "kind")), "defeat"))
+	if fig.act(m, 0.25, 1.0):
+		fig._hold = 30.0      # (they stay that way: the clip ends in the pose)
+	else:
+		fig.play_once("lose")
+
+
 ## The duelist at the table acts out what they just said.
 ## ("-": this moment has a motion of its own, played by duelist_act; the line adds no gesture to it)
-const TALK_MOVES := {"intro": "challenge", "taunt": "chat", "ace": "cheer", "attack": "-", "react": "scratch",
+const TALK_MOVES := {"intro": "challenge", "taunt": "chat", "ace": "-", "attack": "-", "react": "scratch",
 	"destroyed": "stomp", "low": "alert", "hurt": "-", "hurt_big": "-", "trap": "-", "spell": "-", "set": "-", "set_mon": "-",
 	"draw": "-", "summon": "-", "direct": "-", "end": "-", "battle": "challenge", "first": "challenge", "second": "agree",
 	"big_hit": "fist_pump", "comeback": "fist_pump", "ace_lost": "head_hold", "turn": "", "draw_pressure": "scratch",
-	"chain": "agree", "negate": "challenge", "negated": "stomp", "fusion": "cheer", "synchro": "cheer", "xyz": "cheer", "ritual": "cheer"}
+	"chain": "agree", "negate": "challenge", "negated": "stomp", "fusion": "-", "synchro": "-", "xyz": "-", "ritual": "-"}
 
 
 func duelist_gesture(p: int, kind: String) -> void:
@@ -3801,22 +3861,36 @@ const ACTS := {
 	"set": ["cset", 1.4, 0.0, 0.0], "spell": ["cspell", 1.3, 0.0, 0.0], "trap": ["ctrap", 1.2, 0.0, 0.0],
 	"attack": ["point", 1.3, 0.0, 0.0], "direct": ["direct", 1.2, 0.0, 0.0], "end": ["endturn", 1.2, 0.0, 0.0],
 	"hurt": ["hit2", 1.0, 0.0, 0.0], "hurt_big": [["hit", 1.0, 0.0, 0.0], ["hit_waist", 1.0, 0.0, 0.0]],
-	"think": ["think", 1.0, 0.0, 0.0], "ace_lost": ["head_hold", 1.1, 0.0, 0.0], "cheer": ["fist_pump", 1.0, 0.0, 0.0]}
+	"think": ["think", 1.0, 0.0, 0.0], "ace_lost": ["head_hold", 1.1, 0.0, 0.0], "cheer": ["fist_pump", 1.0, 0.0, 0.0],
+	"ready": ["battle_pose", 1.0, 0.0, 0.0]}
+## When a card shows in the duelist's hand during a motion: moment -> [from, for how long] (seconds of the clip).
+const CARD_IN_HAND := {"draw": [0.9, 2.2], "summon": [0.0, 1.3], "set": [0.0, 1.4], "spell": [0.0, 1.6]}
 ## The old whole-body move for a moment, for a figure that cannot play the motion.
 const ACT_OLD := {"draw": "draw", "summon": "summon", "summon_big": "summon", "attack": "attack", "direct": "attack", "hurt": "hurt", "hurt_big": "hurt"}
 
 
 ## The duelist acts out a moment of the duel. True when a real motion played.
 var _act_log := "--pose-debug" in OS.get_cmdline_user_args()
+var _act_last := {}      # player -> [moment, the time its motion ends]
 
 func duelist_act(p: int, moment: String, strength := 1.0) -> bool:
 	if turbo or not _duelists.has(p) or not is_instance_valid(_duelists[p]) or not (_duelists[p] is RoamFigure):
 		return false
 	var fig: RoamFigure = _duelists[p]
 	var a: Array = ACTS.get(moment, [])
+	# The same motion is not started over while it is still playing (five cards dealt in a row are
+	# one pull of the arm, not five).
+	var now := Time.get_ticks_msec() / 1000.0
+	var last: Array = _act_last.get(p, ["", 0.0])
+	if str(last[0]) == moment and now < float(last[1]):
+		return true
 	if not a.is_empty() and a[0] is Array:
 		a = a[randi() % a.size()]
 	if not a.is_empty() and fig.act(str(a[0]), 0.18, float(a[1]) / maxf(Settings.t(1.0), 0.2), float(a[2]), float(a[3])):
+		_act_last[p] = [moment, now + fig._hold]
+		if CARD_IN_HAND.has(moment):
+			var ch: Array = CARD_IN_HAND[moment]
+			fig.hold_card(float(ch[1]) / maxf(float(a[1]), 0.1), float(ch[0]) / maxf(float(a[1]), 0.1))
 		if _act_log:
 			print("ACT p%d %s %s t=%d" % [p, moment, str(a[0]), Time.get_ticks_msec()])
 		return true
@@ -3879,17 +3953,61 @@ func duelist_body(p: int, kind: String, strength := 1.0) -> void:
 
 ## Close-up on one duelist (0 = you, 1 = opponent), from the front and slightly below.
 ## `aside` slides the duelist toward the left of the frame, leaving room for a panel.
-func duelist_shot(p: int, dur := 0.6, cheer := false, aside := 0.0) -> void:
+func duelist_shot(p: int, dur := 0.6, cheer := false, aside := 0.0, dist := 3.6) -> void:
 	if not _duelists.has(p):
 		return
 	var side := 1.0 if p == 0 else -1.0
 	var z := side * DUELIST_Z
 	_aside = aside
-	cam_shot(Vector3(-1.35 * side, 1.55, z - side * 3.6), Vector3((0.1 - aside) * side, 1.45, z), dur)
+	var from := Vector3(-1.35 * side * dist / 3.6, 1.55, z - side * dist)
+	var at := Vector3((0.1 - aside) * side, 1.45, z)
+	if dur <= 0.0:
+		# A cut (from one duelist to the other: no flight down the table in between), with a little drift.
+		cam_cut(from, at)
+		cam_drift(from + Vector3(0.25 * side, 0.05, side * 0.2), 4.0)
+	else:
+		cam_shot(from, at, dur)
 	if cheer:
-		(_duelists[p] as RoamFigure).play_once("victory", 2)
-		if _duelists.has(1 - p):
-			(_duelists[1 - p] as RoamFigure).play_once("lose")
+		duelist_win(p)
+		if _duelists.has(1 - p) and (_duelists[1 - p] as RoamFigure)._hold < 5.0:
+			duelist_lose(1 - p)
+
+
+## Both duelists turn their heads to a spot on the table for a moment, then back to each other.
+var _focus := {}
+var _focus_tw := {}
+
+func duelist_look(at: Vector3, secs := 1.6, only := -1) -> void:
+	for p in _focus:
+		if only >= 0 and p != only:
+			continue
+		var eye: Node3D = _focus[p]
+		if not is_instance_valid(eye):
+			continue
+		if _focus_tw.has(p) and _focus_tw[p]:
+			(_focus_tw[p] as Tween).kill()
+		var side := 1.0 if p == 0 else -1.0
+		eye.position = Vector3(at.x, -1.3, at.z)
+		var tw := create_tween()
+		tw.tween_interval(Settings.t(secs))
+		tw.tween_property(eye, "position", Vector3(0.0, 0.0, -side * DUELIST_Z), 0.4)
+		_focus_tw[p] = tw
+
+
+## A hit reaches the duelist's body: a flash of light on them and sparks off the chest, sized to the hit.
+func duelist_hit(p: int, big: bool) -> void:
+	if not has_duelist(p):
+		return
+	var side := 1.0 if p == 0 else -1.0
+	var at := Vector3(0.0, 1.25, side * (DUELIST_Z - 0.35))
+	_flash(at, Color("ffd0c0") if big else Color("ffb0a0"))
+	_sparks(at, Color("ff6a5a"), 46 if big else 20)
+	if big:
+		_burst(Vector3(0.0, 0.04, side * DUELIST_Z), Color("ff5a6a"), 1.5)
+
+
+func has_duelist(p: int) -> bool:
+	return not turbo and _duelists.has(p) and is_instance_valid(_duelists[p]) and (_duelists[p] is RoamFigure)
 
 
 ## Park the camera on the opening shot (your rival) while the VS card is up.
@@ -3939,6 +4057,21 @@ func duelist_orbit(p: int, dur := 6.0) -> void:
 		_cam_tween.kill()
 	_cam_tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_cam_tween.tween_property(self, "cam_pos", Vector3(0.6 * side, 1.75, z - side * 3.9), dur)
+
+
+## The end of the ending scene: the camera pulls back and up from across the table, the winner small
+## at the far end with the house behind them, and keeps drifting while the results are up.
+func outro_pullback(p: int, dur := 2.0) -> void:
+	var side := 1.0 if p == 0 else -1.0
+	if _cam_tween:
+		_cam_tween.kill()
+	cam_weight = 1.0
+	var to := Vector3(-4.2 * side, 5.0, -side * (DUELIST_Z - 0.6))
+	_cam_tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_cam_tween.set_parallel()
+	_cam_tween.tween_property(self, "cam_pos", to, dur)
+	_cam_tween.tween_property(self, "cam_target", Vector3(0.0, 1.9, side * DUELIST_Z), dur)
+	_cam_tween.chain().tween_property(self, "cam_pos", to + Vector3(-1.6 * side, 1.1, -side * 1.8), 9.0)
 
 
 ## Opening shot: a sweep over the arena that settles on the table.

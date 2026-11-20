@@ -430,3 +430,48 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
   `--parse-all` to list scripts that do not compile.
 - This box's saved settings have anim_speed=2.0, so every demo here runs twice as fast as a default install:
   what takes 4.3 s in a demo takes about 8.5 s for a player on normal speed.
+#### 0.63.0 notes of Nov 20, late morning (read after a context break)
+- Part C Spanish: DONE. All 626 new Spanish lines are in `voices/es` (1,529 files), `made.json` has 1,752, Spanish
+  to-do 0, overlap test PASS, a Spanish duel with `--voicelog` found every line. English: 1,266 left; the daily limit
+  closed about 10:55 AM after 666 lines (see /home/claude/work/voices/PROCEDURE.md). Packs 88-89 (26 English lines)
+  are still to be packed. ALWAYS read the clock with the time tool before telling Raul a time (I guessed 2 h off once).
+- FOUND: with the table camera nobody sees the duelists' bodies. Their motions show only when the camera goes to
+  them. So Part B's looks are what make Part A visible. Asked Raul (11:15 AM) whether he wants LIVE PORTRAITS (the two
+  pictures by the Life Points become the 3D duelist from the chest up, all the time). NEW IDEA: wait for his yes.
+- Part B written (compiles; turn beat, a Trap look and the ending seen in pictures, the rest not yet):
+  `duel_scene.gd`: `_cut(p, moment, secs, big)` (awaited look at a duelist; gap 4 s Full / 8 s Fewer; `Settings.cam_cuts`
+  0 Full 1 Fewer 2 Off), `_beat_secs(p)` + the beat in the "turn" event (`Settings.turn_beat` 0 Full 1 Brief 2 Off; 1.25 s
+  on turns 1-3, 0.8 s after; banner moved to 27% of the height), `_act(p, moment)` (skips a motion a look has just
+  played), opening hand = one pull of the arm (`_turn_seen`, `_dealt`), END/BATTLE calls use the event's player (state
+  is a step ahead), battle damage flies on to the duelist (`_spill_at`, "lp" event) and `board.duelist_hit(p, big)`,
+  `_outro(won, short)` (loser, winner + line, loser's answer, `board.outro_pullback`, Lumen; any key skips;
+  `_outro_wait`, `_say_last`, `_lumen_last`). `duel_board.gd`: `duelist_shot(..., dist)` (dur 0 = a cut),
+  `has_duelist`, `duelist_hit`, `outro_pullback`, `ACTS["ready"]`, no restart of a motion still playing (`_act_last`).
+  Settings rows under Gameplay: "Camera cuts" (Full/Fewer/Off), "Turn beat" (Full/Brief/Off). Dev: `--pose-debug`
+  prints ACT / CUT / OUTRO lines; `--duel --skip-opening --end-test [--lose]` goes straight to the ending.
+- Meshy Nov 20 (second round, +80 = 226 of the 300 mark): preset batch 2 `01a1f9c2-6ca3-7262-82dd-1f3d10583d68`
+  (412 victory, 59 victory cheer, 365 kneel on one knee and stand, 317 shrug, 318 scheming hand rub, 404 crouch and
+  step back, 417 hop arms raised, 306 cheer one hand, 313 talk hands open, 376 punch pose); stances by personality
+  (text-to-motion, 5 s): cocky `01a1f9c2-7115-77c7-8972-3a210d419b46`, wild `01a1f9c2-77ef-74dc-b344-1cd1ce9c9d3c`,
+  dark `01a1f9c2-7e31-75eb-8625-f9b120622e24`, cool and kind: see the next lines.
+  cool `01a1f9c2-8d77-70c3-a802-48b133a4cd52`, kind `01a1f9c2-9568-702a-b6ea-f63fabcea682`. Saved on his Mac as
+  `meshy/anim/motion_st_<pers>.fbx` (cocky is `motion_st_cocky2.fbx`, same file twice) and `lib_d.glb` (preset batch 2).
+- Converter (`tools/dev/motions/import_motions.gd`) new job keys: `"loop": secs` (the end eases back into the first
+  frame, loop on), `"hips": true` (the hips travel too: a kneel, a hop, a stance with bent knees; for the SMPL-H files the
+  hips' height is measured from the highest point of the whole clip). Job files: /tmp/fbxtools/jobs_st.json (stances),
+  jobs_d.json + jobs_d2.json + jobs_d3.json (preset batch 2). New clips: g_st_cocky/wild/dark/cool/kind (stances, seen:
+  good), g_win_a, g_win_b, g_kneel, g_kneel_down (first 1.1 s: ends kneeling), g_shrug, g_scheme, g_back_off, g_hop,
+  g_cheer_one, g_talk_open, g_punch_pose (NOT all looked at yet).
+- Personalities: `DuelBoard.style_of(key)` (named duelist: their personality; anybody else: one from their name; you:
+  `Profile.style`, 0 = "Pick for me" = kind), `_style[p]`, `fig.stand_as("st_<style>")` (RoamFigure.stand_as waits
+  for the model), `STYLE_WIN` / `STYLE_LOSE`, `duelist_win(p)` / `duelist_lose(p)` (used by the ending).
+  Profile editor > You: "STYLE" (Pick for me, Friendly, Confident, Cool, Fired up, Dark).
+- Card in the hand: `RoamFigure.hold_card(secs, delay)` (a card back on the RightHand bone; CARD_AT / CARD_TURN are
+  guesses, NOT seen yet), `DuelBoard.CARD_IN_HAND` (which moments, when). Preview a whole moment: `--pose=act:draw`.
+- Looking at the action: `DuelBoard.duelist_look(at, secs, only)` moves each duelist's `_focus` marker (their
+  `watch`, `watch_far`); hooked in anim_summon, anim_special, anim_trap, anim_declare. NOT seen yet.
+- Thinking: the opponent plays "think" as their Main Phase 1 opens.
+- Spanish redo (Spain-only words): 11 Lumen lines reworded in extras.tsv and new_lines.json (Vale -> Bueno/Okey,
+  Menuda -> Qué, a por -> por, lo han notado -> sí lo sintieron, hemos vuelto -> volvimos), 33 files to record again
+  (they are in todo.json; copy them over the old files, do NOT use --update=none for these). Backup of the old text:
+  /tmp/extras_before_latam.tsv.

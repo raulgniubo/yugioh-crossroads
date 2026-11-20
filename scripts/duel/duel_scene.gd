@@ -419,7 +419,10 @@ func _start() -> void:
 					if k >= list.size():
 						break
 					var one := str(list[k])
-					print("POSE ", one, " ", (board._duelists[rs] as RoamFigure).gesture(one, 0.25))
+					if one.begins_with("act:"):      # (a moment of the duel, with everything that goes with it: --pose=act:draw)
+						print("POSE ", one, " ", board.duelist_act(rs, one.substr(4)))
+					else:
+						print("POSE ", one, " ", (board._duelists[rs] as RoamFigure).gesture(one, 0.25))
 					await get_tree().create_timer(4.6).timeout
 				elif "--pose-lose" in OS.get_cmdline_user_args():
 					(board._duelists[rs] as RoamFigure).play_once("lose")
@@ -695,20 +698,23 @@ func _finish() -> void:
 	elif not won and not tied and board.track != null:
 		board.track.hush()
 	Sfx.play("cheer", -4.0 if won else -12.0)
-	_last_words(won, tied)
 	# The winner gets the camera.
 	var champ := ME if won else AI
-	# The loser drops their head first, then the winner gets the camera and celebrates.
-	if not tied and not board.track:
-		var loser := AI if won else ME
-		var lf = board._duelists.get(loser)
-		if lf is RoamFigure:
-			(lf as RoamFigure).play_once("lose")
-		board.duelist_shot(loser, 0.5, false, 0.8)
-		await get_tree().create_timer(1.3).timeout
-	board.duelist_shot(champ, 0.9, not tied, 1.0)
-	await get_tree().create_timer(1.5).timeout
-	board.duelist_orbit(champ)
+	if not tied and board.track == null and not _autoplay and board.has_duelist(ME) and board.has_duelist(AI):
+		await _outro(won, wk != "" and not _surrendered)
+	else:
+		_last_words(won, tied)
+		# The loser drops their head first, then the winner gets the camera and celebrates.
+		if not tied and not board.track:
+			var loser := AI if won else ME
+			var lf = board._duelists.get(loser)
+			if lf is RoamFigure:
+				(lf as RoamFigure).play_once("lose")
+			board.duelist_shot(loser, 0.5, false, 0.8)
+			await get_tree().create_timer(1.3).timeout
+		board.duelist_shot(champ, 0.9, not tied, 1.0)
+		await get_tree().create_timer(1.5).timeout
+		board.duelist_orbit(champ)
 	var cfg: Dictionary = Router.duel_config
 	var why: String = "You surrendered." if _surrendered else state.win_reason
 	var match_info := {}
@@ -956,6 +962,65 @@ func _last_words(won: bool, tied: bool) -> void:
 		await get_tree().create_timer(maxf(1.5, n + 0.35)).timeout
 		if not is_inside_tree():
 			return
+	_lumen_last(won)
+
+
+## The ending scene (0.63.0): the loser takes it in, the winner has their moment and their line, the
+## loser answers, and the camera pulls back over the arena before the results. About 7 seconds; any key
+## or button skips it. short: after a special win's own show (Exodia, Destiny Board...) only the winner,
+## the lines and the pull back.
+var _outro_on := false
+var _outro_skip := false
+
+func _outro(won: bool, short: bool) -> void:
+	var champ := ME if won else AI
+	var loser := 1 - champ
+	_outro_on = true
+	_outro_skip = false
+	if "--pose-debug" in OS.get_cmdline_user_args():
+		print("OUTRO start short=", short, " t=", Time.get_ticks_msec())
+	if not short:
+		board.duelist_lose(loser)
+		board.duelist_shot(loser, 0.5, false, 0.8)
+		await _outro_wait(1.6)
+	# The winner: their pose and their line.
+	if not _outro_skip:
+		board.duelist_shot(champ, 0.6 if short else 0.0, true, 1.0)
+		var n := _say_last(champ, "win")
+		await _outro_wait(maxf(1.8, n + 0.3))
+	# The loser answers.
+	if not short and not _outro_skip:
+		board.duelist_shot(loser, 0.0, false, 0.8, 3.0)
+		var n2 := _say_last(loser, "lose")
+		await _outro_wait(maxf(1.5, n2 + 0.3))
+	# Back over the arena, the house still on its feet; Lumen has the last word.
+	board.outro_pullback(champ, 2.0 if not _outro_skip else 0.6)
+	_lumen_last(won)
+	await _outro_wait(1.8)
+	_outro_on = false
+	if "--pose-debug" in OS.get_cmdline_user_args():
+		print("OUTRO end skip=", _outro_skip, " t=", Time.get_ticks_msec())
+
+
+func _outro_wait(secs: float) -> void:
+	var until := Time.get_ticks_msec() + int(secs * 1000.0)
+	while Time.get_ticks_msec() < until and not _outro_skip and is_inside_tree():
+		await get_tree().process_frame
+
+
+## A duelist's last line of the duel (the bubble and the voice). Returns how long the voice takes.
+func _say_last(p: int, kind: String) -> float:
+	var who := _speaker(p) if p == ME else _opp_key
+	var line := Characters.line(who, kind)
+	if line == "":
+		return 0.0
+	hud.say(p, line)
+	var n := Voices.length(who, Characters.last_en, p == ME)
+	Voices.say_kind(who, kind, Characters.last_en, p == ME)
+	return n
+
+
+func _lumen_last(won: bool) -> void:
 	var lp := int(state.players[ME].lp)
 	if not won:
 		_lumen("lose")
@@ -975,6 +1040,51 @@ const CALLS := {"turn": [0.0, 1.0, 1.0], "first": [0.0, 1.0, 1.0], "battle": [0.
 
 
 ## Says a call of the turn, as often as the "How much they talk" setting asks for.
+## The director (0.63.0): a short look at a duelist at a set moment, so what they do with their body
+## is seen. The caller awaits it: the table waits for the look to end. Never more than one every few
+## seconds, never in a Turbo Duel, never when the setting says no. big = the moments "Fewer" keeps.
+var _last_cut := -99.0
+
+func _cut(p: int, moment: String, secs: float, big := false) -> bool:
+	if _autoplay or _finished or board.track != null or not board.has_duelist(p):
+		return false
+	if Settings.cam_cuts == 2 or (Settings.cam_cuts == 1 and not big):
+		return false
+	var now := Time.get_ticks_msec() / 1000.0
+	if now < _last_cut + (4.0 if Settings.cam_cuts == 0 else 8.0):
+		return false
+	_last_cut = now + secs
+	board.duelist_shot(p, 0.28, false, 0.0, 2.9)
+	board.duelist_act(p, moment)
+	_acted[p] = [moment, now + secs + 3.0]
+	if _cut_log:
+		print("CUT p%d %s %.2f t=%d" % [p, moment, secs, Time.get_ticks_msec()])
+	await get_tree().create_timer(Settings.t(secs)).timeout
+	board.cam_release(0.35)
+	return true
+
+var _cut_log := "--pose-debug" in OS.get_cmdline_user_args()
+var _acted := {}        # player -> [moment, until]: the motion a look at the duelist has just played
+var _turn_seen := false # the first turn has begun (before it, the opening hands are being dealt)
+var _dealt := {}        # player -> true once their opening hand has had its one pull of the arm
+
+
+## A duelist's motion for a moment of the duel, unless a look at them has just played that same one.
+func _act(p: int, moment: String, strength := 1.0) -> void:
+	var a: Array = _acted.get(p, ["", 0.0])
+	if str(a[0]) == moment and Time.get_ticks_msec() / 1000.0 < float(a[1]):
+		_acted.erase(p)
+		return
+	board.duelist_act(p, moment, strength)
+
+
+## The turn beat: how long the camera stays on the duelist as their turn opens (0 = it does not go).
+func _beat_secs(p: int) -> float:
+	if _autoplay or _finished or board.track != null or not board.has_duelist(p) or Settings.turn_beat == 2:
+		return 0.0
+	return 1.25 if (Settings.turn_beat == 0 and state.turn <= 3) else 0.8
+
+
 func _call(p: int, kind: String, card_id := 0) -> void:
 	var odds: Array = CALLS.get(kind, [1.0, 1.0, 1.0])
 	_talk(p, kind, float(odds[Settings.talk]), 2.5 if Settings.talk == 0 else (1.6 if Settings.talk == 1 else 0.9), card_id)
@@ -1027,6 +1137,7 @@ func _play_event(ev: Dictionary) -> void:
 	match ev["type"]:
 		"turn":
 			var mine := p == ME
+			_turn_seen = true
 			if mine:
 				_my_turns += 1
 			Sfx.play("turn")
@@ -1041,23 +1152,39 @@ func _play_event(ev: Dictionary) -> void:
 				_talk(p, "draw", 1.0, 0.0)
 			if mine and state.turn == 16:
 				_lumen("long")
+			# The turn beat: a moment on the duelist whose turn it is, calling it and drawing.
+			var beat := _beat_secs(p)
+			if beat > 0.0:
+				_last_cut = Time.get_ticks_msec() / 1000.0 + beat
+				board.duelist_shot(p, 0.3, false, 0.0, 2.9)
+				board.duelist_act(p, "draw" if state.turn > 1 else "ready")
+				if state.turn > 1:
+					_acted[p] = ["draw", Time.get_ticks_msec() / 1000.0 + beat + 5.0]
+				if _cut_log:
+					print("CUT p%d beat %.2f t=%d" % [p, beat, Time.get_ticks_msec()])
+				get_tree().create_timer(Settings.t(beat)).timeout.connect(func(): board.cam_release(0.35))
 			await hud.banner("YOUR TURN" if mine else Loc.t("%s'S TURN") % state.players[AI].name.to_upper(),
-					Comic.SKY if mine else Color("ff7a8a"))
+					Comic.SKY if mine else Color("ff7a8a"), beat > 0.0, 0.27 if beat > 0.0 else -1.0)
+			if beat > 1.15:
+				await get_tree().create_timer(Settings.t(beat - 1.15)).timeout
 		"phase":
 			var ph: int = ev["phase"]
 			hud.set_phase(ph, state.current == ME, state.turn)
 			board.set_battle_mode(ph == DuelState.Phase.BATTLE)
+			if ph == DuelState.Phase.MAIN1 and p == AI and not _autoplay:
+				board.duelist_act(AI, "think")      # (they look their hand over before the first move)
 			var names := {DuelState.Phase.BATTLE: "BATTLE PHASE", DuelState.Phase.MAIN2: "MAIN PHASE 2", DuelState.Phase.END: "END PHASE"}
 			if names.has(ph):
 				var col: Color = UITheme.DANGER if ph == DuelState.Phase.BATTLE else (Comic.BLUE if state.current == ME else Comic.RED)
 				await hud.phase_sweep(names[ph], col)
 				if ph == DuelState.Phase.BATTLE:
-					_call(state.current, "battle")
-				elif ph == DuelState.Phase.END and state.current == AI and randf() < 0.3:
+					_call(p, "battle")
+				elif ph == DuelState.Phase.END and p == AI and randf() < 0.3:
 					_talk(AI, "taunt")
 				elif ph == DuelState.Phase.END:
-					_call(state.current, "end")
-					board.duelist_act(state.current, "end")
+					# (p, not state.current: the rules are already a step ahead of what is on screen)
+					_call(p, "end")
+					_act(p, "end")
 		"draw":
 			if _destiny_card != null and ev["card"] == _destiny_card:
 				# The show already took this card off the Deck: it just lands in the hand.
@@ -1074,7 +1201,10 @@ func _play_event(ev: Dictionary) -> void:
 			Sfx.play("draw", -6.0)
 			# The opening hands are dealt briskly; a draw during the duel takes its moment.
 			board.deal_fast = state.turn <= 0
-			if state.turn > 0:
+			if _turn_seen:
+				_act(p, "draw")
+			elif not _dealt.has(p):
+				_dealt[p] = true      # (the opening hand: one pull of the arm for the five cards)
 				board.duelist_act(p, "draw")
 			await board.anim_draw(p, ev["card"], ev["deck"])
 			if p == ME and state.turn > 4 and int(ev["deck"]) <= 3:
@@ -1091,6 +1221,8 @@ func _play_event(ev: Dictionary) -> void:
 			if ev["type"] == "summon":
 				get_tree().create_timer(Settings.t(0.5)).timeout.connect(func(): Sfx.play("summon", -4.0))
 			# A big monster arrives: its own show, in its own colors (see SummonShow).
+			if is_ace:
+				await _cut(p, "summon_big", 0.9, true)      # (the duelist first, then the monster)
 			if ev["type"] == "summon" and _shows and Settings.big_shows and SummonShow.wants(ev["card"].data):
 				var sd: Dictionary = (ev["card"].data as Dictionary).duplicate()
 				sd["id"] = ev["card"].id
@@ -1111,9 +1243,9 @@ func _play_event(ev: Dictionary) -> void:
 				hud.banner("TRIBUTE SUMMON", UITheme.GOLD, true)
 			_pending_tributes = 0
 			if ev["type"] == "summon":
-				board.duelist_act(p, "summon_big" if is_ace else "summon", 1.4 if is_ace else 1.0)
+				_act(p, "summon_big" if is_ace else "summon", 1.4 if is_ace else 1.0)
 			else:
-				board.duelist_act(p, "set")
+				_act(p, "set")
 			await board.anim_summon(p, ev["card"], ev["zone"], ev["type"] == "set")
 			if p == ME and ev["type"] == "summon" and ev["card"].atk() >= 2000:
 				_talk(AI, "react", 0.65)
@@ -1136,7 +1268,7 @@ func _play_event(ev: Dictionary) -> void:
 			hud.inspect(ev["card"])
 			Sfx.play("spell")
 			_call(p, "spell")
-			board.duelist_act(p, "spell")
+			_act(p, "spell")
 			if SpellRules.kind(ev["card"]) in ["field", "equip", "cont", "ritual", "quick"]:
 				var titles := {"field": "FIELD SPELL", "equip": "EQUIP SPELL", "cont": "CONTINUOUS SPELL", "ritual": "RITUAL SPELL", "quick": "QUICK-PLAY SPELL"}
 				hud.effect_text("%s  ·  %s" % [titles[SpellRules.kind(ev["card"])], ev["card"].cname()], Color("7dffc8"))
@@ -1247,7 +1379,9 @@ func _play_event(ev: Dictionary) -> void:
 				_call(p, "direct")
 			else:
 				_call(p, "attack", int(atk_card.id) if p == ME and int(atk_card.id) in Voices.PLAYER_CALLS else 0)
-			board.duelist_act(p, "direct" if direct else "attack", 1.3 if direct or int(atk_card.atk()) >= 2400 else 1.0)
+			if direct:
+				await _cut(p, "direct", 0.7, true)      # (the one who sends it in; the strike then goes into the other duelist)
+			_act(p, "direct" if direct else "attack", 1.3 if direct or int(atk_card.atk()) >= 2400 else 1.0)
 			Sfx.play("attack")
 			if board.track:
 				board.track.surge(p)
@@ -1268,6 +1402,11 @@ func _play_event(ev: Dictionary) -> void:
 			if ev["target"] != null and ev.has("atk") and not _autoplay:
 				var defending: bool = bool(ev.get("t_defending", false))
 				ClashFx.play(hud, int(ev["atk"]), int(ev["t_def"] if defending else ev["t_atk"]), p == ME, defending, hit_in)
+			if ev["target"] != null:
+				_spill_at = hit_at      # (damage from this clash flies on from here: see "lp")
+				_spill_until = Time.get_ticks_msec() + 4000
+			else:
+				_spill_at = Vector3.INF
 			await board.anim_battle(p, ev["card"], ev["target"])
 		"attack_stopped":
 			await board.anim_attack_stopped(ev["card"])
@@ -1275,14 +1414,15 @@ func _play_event(ev: Dictionary) -> void:
 			if p == ME:
 				_leave_hand(ev["card"])
 			_call(p, "set")
-			board.duelist_act(p, "set")
+			_act(p, "set")
 			Sfx.play("card")
 			await board.anim_set_st(p, ev["card"], ev["zone"])
 		"trap":
 			Sfx.play("spell", 0.0, 0.8)
 			hud.inspect(ev["card"])
 			if not _autoplay:
-				board.duelist_act(p, "trap")
+				await _cut(p, "trap", 0.75)      # (a quick look at the one who sprang it)
+				_act(p, "trap")
 			# The card turns face-up on the field first (and, with the setting on, is held up to be read).
 			if not _autoplay:
 				_announce(p, ev["card"], true)
@@ -1377,7 +1517,9 @@ func _play_event(ev: Dictionary) -> void:
 			var titles := {"fusion": "FUSION SUMMON", "synchro": "SYNCHRO SUMMON", "xyz": "XYZ SUMMON", "reborn": "REVIVED", "ritual": "RITUAL SUMMON"}
 			Sfx.play("special")
 			_talk(p, method if method in ["fusion", "synchro", "xyz", "ritual"] else "ace", 1.0, 0.0, int(ev["card"].id))
-			board.duelist_act(p, "summon_big", 1.5)
+			if method in ["fusion", "synchro", "xyz", "ritual"]:
+				await _cut(p, "summon_big", 0.9, true)
+			_act(p, "summon_big", 1.5)
 			hud.react(p, "ace")
 			hud.banner(titles.get(method, "SPECIAL SUMMON"), board.METHOD_COLORS.get(method, UITheme.ACCENT), true)
 			if _shows and Settings.big_shows and SummonShow.wants(ev["card"].data):
@@ -1425,6 +1567,12 @@ func _play_event(ev: Dictionary) -> void:
 			if _fx_kind == "burn" and int(ev["delta"]) < 0 and not _autoplay:
 				CardFx.to_duelist(board, _fx_at, p, "burn")
 				await get_tree().create_timer(Settings.t(0.2)).timeout
+			elif int(ev["delta"]) < 0 and not _autoplay and _spill_at != Vector3.INF and Time.get_ticks_msec() < _spill_until:
+				# (0.63.0) Battle damage carries on past the monster that lost and reaches the duelist;
+				# the Life Points drop when it lands.
+				CardFx.to_duelist(board, _spill_at, p, "burn")
+				_spill_at = Vector3.INF
+				await get_tree().create_timer(Settings.t(0.2)).timeout
 			elif int(ev["delta"]) > 0 and not _autoplay:
 				CardFx.bless(board, p)
 			hud.set_lp(p, ev["lp"], ev["delta"])
@@ -1451,6 +1599,8 @@ func _play_event(ev: Dictionary) -> void:
 				else:
 					board.house(clampf(float(-ev["delta"]) / 3000.0, 0.25, 0.9), hit_col, Vector3(0, 0, -3.0 if p == AI else 3.0), 0.6)
 				board.duelist_act(p, "hurt_big" if int(ev["delta"]) <= -2000 else "hurt", float(-ev["delta"]) / 1500.0)
+				if not _autoplay:
+					board.duelist_hit(p, int(ev["delta"]) <= -2000)
 				board.shake(0.5 if ev["delta"] > -2000 else 0.8)
 				# You feel it in your hands when you take the hit, a little when you land one.
 				if not _autoplay:
@@ -1657,6 +1807,11 @@ var _closed_at := 0
 
 
 func _input(event: InputEvent) -> void:
+	if _outro_on and not _outro_skip and event.is_pressed() and not event.is_echo() \
+			and (event is InputEventKey or event is InputEventMouseButton or event is InputEventJoypadButton):
+		_outro_skip = true      # (any key or button: straight to the results)
+		get_viewport().set_input_as_handled()
+		return
 	if ocg != null and not _finished and not hud.overlay_visible() and ocg.on_input(event):
 		get_viewport().set_input_as_handled()
 
@@ -1913,6 +2068,8 @@ func _exit_tree() -> void:
 
 var _fx_card = null        # the card whose effect was just activated (CardFx)
 var _fx_kind := ""
+var _spill_at := Vector3.INF      # where the last clash between two monsters landed
+var _spill_until := 0
 var _fx_p := 0
 var _fx_at := Vector3.ZERO
 

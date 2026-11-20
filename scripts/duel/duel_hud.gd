@@ -2607,14 +2607,14 @@ func impact(world: Vector3, color: Color, strength := 1.0) -> void:
 
 
 ## `high` puts the words along the top of the picture, clear of the monsters on the field.
-func banner(text: String, color := Color.WHITE, high := false) -> void:
+func banner(text: String, color := Color.WHITE, high := false, at_y := -1.0) -> void:
 	_banner.text = text
 	_banner.add_theme_color_override("font_color", color)
 	_banner.add_theme_font_size_override("font_size", 92 if high else 130)
 	_banner.reset_size()
 	var vs := get_viewport_rect().size
 	_stage_busy = maxi(_stage_busy, Time.get_ticks_msec() + int(Settings.t(0.9) * 1000.0))
-	_banner.position = Vector2((vs.x - _banner.size.x) / 2.0 - 60, vs.y * (0.115 if high else 0.4) - _banner.size.y / 2.0)
+	_banner.position = Vector2((vs.x - _banner.size.x) / 2.0 - 60, vs.y * (at_y if at_y > 0.0 else (0.115 if high else 0.4)) - _banner.size.y / 2.0)
 	var x := _banner.position.x
 	var tw := create_tween()
 	tw.set_parallel()
