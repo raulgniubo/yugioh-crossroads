@@ -3807,6 +3807,8 @@ const ACT_OLD := {"draw": "draw", "summon": "summon", "summon_big": "summon", "a
 
 
 ## The duelist acts out a moment of the duel. True when a real motion played.
+var _act_log := "--pose-debug" in OS.get_cmdline_user_args()
+
 func duelist_act(p: int, moment: String, strength := 1.0) -> bool:
 	if turbo or not _duelists.has(p) or not is_instance_valid(_duelists[p]) or not (_duelists[p] is RoamFigure):
 		return false
@@ -3815,6 +3817,8 @@ func duelist_act(p: int, moment: String, strength := 1.0) -> bool:
 	if not a.is_empty() and a[0] is Array:
 		a = a[randi() % a.size()]
 	if not a.is_empty() and fig.act(str(a[0]), 0.18, float(a[1]) / maxf(Settings.t(1.0), 0.2), float(a[2]), float(a[3])):
+		if _act_log:
+			print("ACT p%d %s %s t=%d" % [p, moment, str(a[0]), Time.get_ticks_msec()])
 		return true
 	if ACT_OLD.has(moment):
 		duelist_body(p, str(ACT_OLD[moment]), strength)
