@@ -6,7 +6,7 @@ extends Node3D
 ## cards rise and stand together as one towering figure (head, two arms, two legs: the cards
 ## themselves, from the card folder); its name crosses the screen; it gathers light and lets go
 ## a beam down the whole field at the loser, and the picture goes white and breaks.
-## The same plays when the opponent does it to you. Any key or button skips it.
+## The same plays when the opponent does it to you. Esc, Enter, Space or a controller button skips it (not a mouse click).
 ## Our own staging, drawn with light: no models.
 
 const HEAD := 33396948
@@ -19,6 +19,7 @@ const AMBER := Color("ff9a1a")
 const PALE := Color("fff6d0")
 
 var _skip := false
+var _born := Time.get_ticks_msec()
 var _board
 var _hud
 var _cards: Array = []
@@ -42,7 +43,13 @@ static func play(scene: Node, board, hud, winner: int) -> void:
 func _unhandled_input(e: InputEvent) -> void:
 	if _done:
 		return
-	if (e is InputEventKey or e is InputEventMouseButton or e is InputEventJoypadButton) and e.is_pressed():
+	# (0.63.1) Only a press that means "skip" skips it: Esc, Enter, Space or a controller button, and not
+	# in its first second. A mouse click or the mouse wheel used to count too, so a click meant for the
+	# duel (or scrolling a card's text) cut the show off in the middle and the ending started over it.
+	if Time.get_ticks_msec() - _born < 1000:
+		return
+	var key_skip: bool = e is InputEventKey and e.pressed and not e.echo and (e as InputEventKey).keycode in [KEY_ESCAPE, KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]
+	if key_skip or (e is InputEventJoypadButton and e.pressed):
 		_skip = true
 		get_viewport().set_input_as_handled()
 

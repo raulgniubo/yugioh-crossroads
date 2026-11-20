@@ -753,10 +753,39 @@ func _ask_bits(m: Dictionary):
 	return b
 
 
+## Cards that only work as a link of a chain you build yourself ("Activate only as Chain Link 4 or
+## higher"). With "Ask me at every chance" off, the table passes for you whenever nothing calls for
+## an answer, the way EDOPro does: after your own Jar of Greed nobody asked "anything on top of it?",
+## so Chain Link 4 could never be reached and Accumulated Fortune looked like it could not be
+## activated. While you have one of these Set (or in your hand, for a Quick-Play Spell), you are
+## asked at every link of a chain, whatever the switch says. (0.63.1)
+const CHAIN_CARDS := ["Accumulated Fortune", "Chain Strike"]
+
+func _holds_chain_card() -> bool:
+	var ps: DuelState.PlayerState = s.state.players[ME]
+	for c in ps.spells:
+		if c != null and not c.face_up and c.cname() in CHAIN_CARDS:
+			return true
+	for c in ps.hand:
+		if c != null and c.cname() in CHAIN_CARDS:
+			return true
+	return false
+
+
 ## "Activate a card or effect?" Only asked when there is a reason to (the engine marks the
 ## moments your cards are meant for); otherwise it passes for you, as EDOPro does.
 func _ask_chain(m: Dictionary):
 	var ch: Array = m["chains"]
+	if not d.chain_cards.is_empty() and not s._autoplay:
+		# A line in the game's log for every link of a chain: what is in it and what you could add.
+		# (So a report like "it would not let me activate X" can be checked against what happened.)
+		var inside: Array = []
+		for cc in d.chain_cards:
+			inside.append(cc.cname() if cc != null else "?")
+		var can: Array = []
+		for e in ch:
+			can.append(_name(int(e["code"])))
+		print("CHAIN %d links %s | you may add %s" % [inside.size(), str(inside), str(can)])
 	if ch.is_empty():
 		return OcgDuel.i32(-1)
 	var forced := int(m["forced"]) != 0
@@ -774,7 +803,9 @@ func _ask_chain(m: Dictionary):
 			if int(ch[i].get("mode", 0)) != 0 or (lc != null and lc.face_up and _on_field(lc)):
 				return OcgDuel.i32(i)
 	if not forced and int(m["spe"]) == 0 and not s.hud.phase_prompts:
-		return OcgDuel.i32(-1)
+		# (Unless you are building a chain for a card that needs one: see ChainAsk.)
+		if d.chain_cards.is_empty() or not _holds_chain_card():
+			return OcgDuel.i32(-1)
 	var was: bool = s._flow
 	s._flow = true
 	var cards := d.cards_of(ch)

@@ -398,6 +398,42 @@
 {
 "voice": "cocky_f",
 "lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
 "key": "dfbe1aa5a0c4",
 "kind": "react",
 "en": "Is that supposed to scare me?",
@@ -826,6 +862,42 @@
 "en": "This... isn't over.",
 "text": "This... isn't over.",
 "tts": "This... isn't over."
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
 },
 {
 "voice": "cocky_m",
@@ -1366,6 +1438,42 @@
 "en": "...Stopped.",
 "text": "...Stopped.",
 "tts": "...Stopped."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
 },
 {
 "voice": "cool_f",
@@ -2153,6 +2261,42 @@
 {
 "voice": "cool_m",
 "lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
+},
+{
+"voice": "cool_m",
+"lang": "en",
 "key": "60ac90e9261a",
 "kind": "react",
 "en": "Interesting.",
@@ -2936,6 +3080,42 @@
 {
 "voice": "dark_m",
 "lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
+},
+{
+"voice": "dark_m",
+"lang": "en",
 "key": "bd0edca63d80",
 "kind": "react",
 "en": "Oh? How amusing.",
@@ -3553,6 +3733,42 @@
 "en": "Oh no, it was stopped!",
 "text": "Oh no, it was stopped!",
 "tts": "Oh no, it was stopped!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
 },
 {
 "voice": "kind_f",
@@ -4237,6 +4453,42 @@
 "en": "Oh no, it was stopped!",
 "text": "Oh no, it was stopped!",
 "tts": "Oh no, it was stopped!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
 },
 {
 "voice": "kind_m",
@@ -6545,6 +6797,42 @@
 {
 "voice": "player_f",
 "lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
+},
+{
+"voice": "player_f",
+"lang": "en",
 "key": "19cd6cd2fce6",
 "kind": "pick",
 "en": "Too easy.",
@@ -7868,6 +8156,42 @@
 {
 "voice": "player_f2",
 "lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
 "key": "19cd6cd2fce6",
 "kind": "pick",
 "en": "Too easy.",
@@ -9191,6 +9515,42 @@
 {
 "voice": "player_m",
 "lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
+},
+{
+"voice": "player_m",
+"lang": "en",
 "key": "19cd6cd2fce6",
 "kind": "pick",
 "en": "Too easy.",
@@ -9565,546 +9925,6 @@
 "en": "Xyz Summon!",
 "text": "Xyz Summon!",
 "tts": "/ˈɪksiːz/ Summon!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "aa7ff3bde4df",
-"kind": "attack",
-"en": "Attack!",
-"text": "Attack!",
-"tts": "Attack!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "d6a1f51e4d41",
-"kind": "attack",
-"en": "Strike!",
-"text": "Strike!",
-"tts": "Strike!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "7870715fdbdc",
-"kind": "battle",
-"en": "Coming at you!",
-"text": "Coming at you!",
-"tts": "Coming at you!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "d6c11a41a40f",
-"kind": "battle",
-"en": "Battle!",
-"text": "Battle!",
-"tts": "Battle!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "646b9fe5484e",
-"kind": "call",
-"en": "call:23995346",
-"text": "Blue-Eyes Ultimate Dragon!",
-"tts": "Blue-Eyes Ultimate Dragon!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "9f45b3d2b4fe",
-"kind": "call",
-"en": "call:93717133",
-"text": "Galaxy-Eyes Photon Dragon!",
-"tts": "Galaxy-Eyes Photon Dragon!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "b2aa3b83140b",
-"kind": "call",
-"en": "call:70095154",
-"text": "Cyber Dragon!",
-"tts": "Cyber Dragon!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "bb0bb0e9b175",
-"kind": "call",
-"en": "call:10000000",
-"text": "Obelisk the Tormentor!",
-"tts": "Obelisk the Tormentor!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "bb18df08cac3",
-"kind": "call",
-"en": "call:82301904",
-"text": "Chaos Emperor Dragon - Envoy of the End!",
-"tts": "Chaos Emperor Dragon, Envoy of the End!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "c4bd53a6a949",
-"kind": "call",
-"en": "call:70902743",
-"text": "Red Dragon Archfiend!",
-"tts": "Red Dragon Archfiend!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "d6fd6f616ccc",
-"kind": "call",
-"en": "call:84013237",
-"text": "Number 39: Utopia!",
-"tts": "Number 39: Utopia!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "e59df8301e62",
-"kind": "call",
-"en": "call:46986414",
-"text": "Dark Magician!",
-"tts": "Dark Magician!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "f7b4c24a56b3",
-"kind": "call",
-"en": "call:5405694",
-"text": "Black Luster Soldier!",
-"tts": "Black Luster Soldier!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "fc57be3f9fb6",
-"kind": "call",
-"en": "call:99267150",
-"text": "Five-Headed Dragon!",
-"tts": "Five-Headed Dragon!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "77f564519ec4",
-"kind": "chain",
-"en": "I chain this!",
-"text": "I chain this!",
-"tts": "I chain this!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "a468ea54ab14",
-"kind": "chain",
-"en": "Not so fast!",
-"text": "Not so fast!",
-"tts": "Not so fast!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "e687f96a9b04",
-"kind": "comeback",
-"en": "We're back in this!",
-"text": "We're back in this!",
-"tts": "We're back in this!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "2b49fa83b43e",
-"kind": "destroyed",
-"en": "No!",
-"text": "No!",
-"tts": "No!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "32cdf7536923",
-"kind": "destroyed",
-"en": "I'll get you back for that.",
-"text": "I'll get you back for that.",
-"tts": "I'll get you back for that."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "568a7e78e04a",
-"kind": "destroyed",
-"en": "My monster...",
-"text": "My monster...",
-"tts": "My monster..."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "1c985e691766",
-"kind": "direct",
-"en": "Straight at your Life Points!",
-"text": "Straight at your Life Points!",
-"tts": "Straight at your Life Points!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "59de3d0a7a95",
-"kind": "direct",
-"en": "Direct attack!",
-"text": "Direct attack!",
-"tts": "Direct attack!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "ee0cd6dfaeb9",
-"kind": "direct",
-"en": "Nothing in the way. Go!",
-"text": "Nothing in the way. Go!",
-"tts": "Nothing in the way. Go!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "099d03439236",
-"kind": "draw",
-"en": "I draw a card!",
-"text": "I draw a card!",
-"tts": "I draw a card!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "4554dfda2848",
-"kind": "draw",
-"en": "My draw!",
-"text": "My draw!",
-"tts": "My draw!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "4c7dc9f2a42a",
-"kind": "draw",
-"en": "Come on, deck!",
-"text": "Come on, deck!",
-"tts": "Come on, deck!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "74900dcdf18d",
-"kind": "draw",
-"en": "Draw!",
-"text": "Draw!",
-"tts": "Draw!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "e9790a830ffb",
-"kind": "duel",
-"en": "Duel!",
-"text": "Duel!",
-"tts": "Duel!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "4181bd9789cf",
-"kind": "end",
-"en": "That's it for now.",
-"text": "That's it for now.",
-"tts": "That's it for now."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "6c6182564034",
-"kind": "end",
-"en": "Your move.",
-"text": "Your move.",
-"tts": "Your move."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "a2db72e9e159",
-"kind": "end",
-"en": "I end my turn.",
-"text": "I end my turn.",
-"tts": "I end my turn."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "7ca64e07cbe5",
-"kind": "first",
-"en": "First turn is mine!",
-"text": "First turn is mine!",
-"tts": "First turn is mine!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "8ea212c6eb67",
-"kind": "first",
-"en": "I'll go first.",
-"text": "I'll go first.",
-"tts": "I'll go first."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "120b2f9c45d7",
-"kind": "fusion",
-"en": "Fusion Summon!",
-"text": "Fusion Summon!",
-"tts": "Fusion Summon!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "05e40c01deeb",
-"kind": "hurt",
-"en": "Ugh!",
-"text": "Ugh!",
-"tts": "Ugh!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "565950482c89",
-"kind": "hurt",
-"en": "Not yet!",
-"text": "Not yet!",
-"tts": "Not yet!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "7a492fbae8bf",
-"kind": "hurt",
-"en": "That stung.",
-"text": "That stung.",
-"tts": "That stung."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "93717a4dec26",
-"kind": "hurt",
-"en": "I'm still standing.",
-"text": "I'm still standing.",
-"tts": "I'm still standing."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "1101183b2922",
-"kind": "hurt_big",
-"en": "My Life Points...!",
-"text": "My Life Points...!",
-"tts": "My Life Points...!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "cf5fe6b350da",
-"kind": "hurt_big",
-"en": "I can take it. I have to.",
-"text": "I can take it. I have to.",
-"tts": "I can take it. I have to."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "fd1202601006",
-"kind": "hurt_big",
-"en": "Agh! That was a big one...",
-"text": "Agh! That was a big one...",
-"tts": "Agh! That was a big one..."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "1957857d7df3",
-"kind": "lose",
-"en": "Good duel. The next one is mine.",
-"text": "Good duel. The next one is mine.",
-"tts": "Good duel. The next one is mine."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "433a3e8343aa",
-"kind": "lose",
-"en": "Good duel. I'll be back.",
-"text": "Good duel. I'll be back.",
-"tts": "Good duel. I'll be back."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "99f85754759d",
-"kind": "lose",
-"en": "I lost... but I learned something.",
-"text": "I lost... but I learned something.",
-"tts": "I lost... but I learned something."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "ebe3f723972d",
-"kind": "lose",
-"en": "Next time...",
-"text": "Next time...",
-"tts": "Next time..."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "f14b6511b703",
-"kind": "lose",
-"en": "So close...",
-"text": "So close...",
-"tts": "So close..."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "d29333e3708b",
-"kind": "low",
-"en": "I'm not done yet!",
-"text": "I'm not done yet!",
-"tts": "I'm not done yet!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "28b8424ec735",
-"kind": "negate",
-"en": "Negated!",
-"text": "Negated!",
-"tts": "Negated!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "7a3496874a58",
-"kind": "negate",
-"en": "That effect stops here.",
-"text": "That effect stops here.",
-"tts": "That effect stops here."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "de9ac6bc705a",
-"kind": "negated",
-"en": "They stopped it...!",
-"text": "They stopped it...!",
-"tts": "They stopped it...!"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "19cd6cd2fce6",
-"kind": "pick",
-"en": "Too easy.",
-"text": "Too easy.",
-"tts": "Too easy."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "20153366ce57",
-"kind": "pick",
-"en": "My deck has no pathetic cards.",
-"text": "My deck has no pathetic cards.",
-"tts": "My deck has no pathetic cards."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "32dd59cb4c87",
-"kind": "pick",
-"en": "And that's game.",
-"text": "And that's game.",
-"tts": "And that's game."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "4555df649c26",
-"kind": "pick",
-"en": "That was close. Again some time?",
-"text": "That was close. Again some time?",
-"tts": "That was close. Again some time?"
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "4a46392e2b95",
-"kind": "pick",
-"en": "Don't blink.",
-"text": "Don't blink.",
-"tts": "Don't blink."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "801a0ef25ed8",
-"kind": "pick",
-"en": "Let's do this.",
-"text": "Let's do this.",
-"tts": "Let's do this."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "92591661d373",
-"kind": "pick",
-"en": "Show me what you've got.",
-"text": "Show me what you've got.",
-"tts": "Show me what you've got."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "982b87142916",
-"kind": "pick",
-"en": "I won't hold back.",
-"text": "I won't hold back.",
-"tts": "I won't hold back."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "abe491df33f8",
-"kind": "pick",
-"en": "Let's make this one to remember.",
-"text": "Let's make this one to remember.",
-"tts": "Let's make this one to remember."
-},
-{
-"voice": "player_m2",
-"lang": "en",
-"key": "c2f6894ada34",
-"kind": "pick",
-"en": "I've been waiting for this.",
-"text": "I've been waiting for this.",
-"tts": "I've been waiting for this."
 },
 {
 "voice": "player_m2",
@@ -11014,6 +10834,42 @@
 "en": "Hey! That was a good one!",
 "text": "Hey! That was a good one!",
 "tts": "Hey! That was a good one!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
 },
 {
 "voice": "wild_m",

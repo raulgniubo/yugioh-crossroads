@@ -3845,12 +3845,15 @@ func duelist_lose(p: int) -> void:
 
 
 ## The duelist at the table acts out what they just said.
+## (0.63.1: "agree" and "stomp" are out of duels. On the real models' longer arms one arm stuck straight
+## out to the side and a hand crossed the face. Losing a monster or being negated is a step back now,
+## going second is a nod, and a chained card has its own card motion.)
 ## ("-": this moment has a motion of its own, played by duelist_act; the line adds no gesture to it)
 const TALK_MOVES := {"intro": "challenge", "taunt": "chat", "ace": "-", "attack": "-", "react": "scratch",
-	"destroyed": "stomp", "low": "alert", "hurt": "-", "hurt_big": "-", "trap": "-", "spell": "-", "set": "-", "set_mon": "-",
-	"draw": "-", "summon": "-", "direct": "-", "end": "-", "battle": "challenge", "first": "challenge", "second": "agree",
+	"destroyed": "back_off", "low": "alert", "hurt": "-", "hurt_big": "-", "trap": "-", "spell": "-", "set": "-", "set_mon": "-",
+	"draw": "-", "summon": "-", "direct": "-", "end": "-", "battle": "challenge", "first": "challenge", "second": "",
 	"big_hit": "fist_pump", "comeback": "fist_pump", "ace_lost": "head_hold", "turn": "", "draw_pressure": "scratch",
-	"chain": "agree", "negate": "challenge", "negated": "stomp", "fusion": "-", "synchro": "-", "xyz": "-", "ritual": "-"}
+	"chain": "-", "negate": "challenge", "negated": "back_off", "fusion": "-", "synchro": "-", "xyz": "-", "ritual": "-"}
 
 
 func duelist_gesture(p: int, kind: String) -> void:

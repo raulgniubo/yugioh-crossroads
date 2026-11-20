@@ -142,10 +142,12 @@ static func say(who: String, text: String, mine := false, must := false) -> bool
 
 
 ## A line of a kind for a duelist: your own duelist only speaks the big ones.
-static func say_kind(who: String, kind: String, text: String, mine := false) -> bool:
+## `wait`: say it after whoever is talking even if its kind would normally stay quiet (the words
+## that follow a duelist's own cry of pain).
+static func say_kind(who: String, kind: String, text: String, mine := false, wait := false) -> bool:
 	if who == "player" and not (kind in PLAYER_KINDS or kind == "pick"):
 		return false
-	return say(who, text, mine, kind in MUST)
+	return say(who, text, mine, kind in MUST or wait)
 
 
 ## The call-out for a monster hitting the field: [text for the bubble, text to speak], or [] when this
@@ -198,6 +200,28 @@ static func focus(on: bool) -> void:
 		return
 	if on or (_speaker != null and is_instance_valid(_speaker)):
 		_sp().deep = on
+
+
+## The sound a duelist makes when a hit lands (0.63.1). `kind`: "small" (one of two), "big" or "last"
+## (the hit that ends the duel). It follows the one-voice rule like every line: if somebody is
+## talking it waits a moment for them to finish, and if they are not done by then it is skipped.
+## Returns how long it lasts (0 when it will not be heard).
+static func pain(who: String, kind: String, mine := false) -> float:
+	if kind == "small":
+		kind = "small1" if randf() < 0.5 else "small2"
+	var voice := voice_for(who)
+	var key := key_of("pain:" + kind)
+	if not _may(who, mine) or not has(voice, key):
+		if _log:
+			print("VOICE %s [%s] pain %s -> %s" % [who, voice, kind, "off" if not _may(who, mine) else "NO FILE"])
+		return 0.0
+	var ok := _sp().take(path_of(voice, key), _pitch(who), true, 0.6)
+	if _log:
+		print("VOICE %s [%s] pain %s -> %s" % [who, voice, kind, "said or waiting a moment" if ok else "skipped"])
+	if not ok:
+		return 0.0
+	var st := load(path_of(voice, key)) as AudioStream
+	return st.get_length() / _pitch(who) if st != null else 0.0
 
 
 ## Both duelists shout the same line at once (the start of the duel). True when anybody is heard.
@@ -273,11 +297,12 @@ class Speaker extends Node:
 						_second_due = false
 						_second.play())
 
-	func take(path: String, pitch: float, must: bool) -> bool:
+	## `wait`: how long a line that must be said may wait for whoever is talking, in seconds.
+	func take(path: String, pitch: float, must: bool, wait := 4.0) -> bool:
 		if busy():
 			if not must or _queue.size() >= 2:
 				return false
-			_queue.append([path, pitch, _t + 4.0])
+			_queue.append([path, pitch, _t + wait])
 			return true
 		return _start(path, pitch)
 

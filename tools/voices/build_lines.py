@@ -112,6 +112,14 @@ def main():
         for en in NEW["first"]:
             add(lv, en, "first")
 
+    # The sound a duelist makes when a hit lands (0.63.1): two small ones, a big one and the last hit
+    # of a duel, for every duelist voice (not Lumen, not the narrator). No words on screen.
+    for v in sorted(set(k[0] for k in lines) - {"lumen", "lumen_b", "lumen_c"}):
+        for name, (t_en, t_es) in sorted(NEW["pain"].items()):
+            k = key_of("pain:" + name)
+            for lang, t in (("en", t_en), ("es", t_es)):
+                lines[(v, lang, k)] = {"voice": v, "lang": lang, "key": k, "kind": "pain", "en": "pain:" + name, "text": "", "tts": t}
+
     out = sorted(lines.values(), key=lambda e: (e["lang"], e["voice"], e["kind"], e["key"]))
     json.dump(out, open(os.path.join(HERE, "lines.json"), "w"), ensure_ascii=False, indent=0)
     done = {}

@@ -37,7 +37,8 @@ func _ready() -> void:
 		t += dt
 		frames += 1
 		while sent < 30 and t >= sent * 0.1:
-			if sp.take(str(files[sent % files.size()]), 1.0, sent % 3 == 0):
+			# (every sixth: a pain sound, which only waits a moment for its turn)
+			if sp.take(str(files[sent % files.size()]), 1.0, sent % 3 == 0, 0.6 if sent % 6 == 0 else 4.0):
 				heard += 1
 			sent += 1
 		var n := int(sp._player.playing) + int(sp._second.playing)

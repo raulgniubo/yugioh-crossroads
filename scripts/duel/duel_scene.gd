@@ -893,6 +893,20 @@ func _bring_spirit() -> void:
 	hud.show_spirit((got[0] as SubViewport).get_texture())
 
 
+## The sound of taking a hit, from the one who took it. Small ones are not repeated back to back
+## (a burn deck chipping away every second would be a lot of grunting).
+var _ouch_at := [-99.0, -99.0]
+
+func _ouch(p: int, kind: String) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	if kind == "small" and now - float(_ouch_at[p]) < 4.0:
+		return
+	var secs := Voices.pain(_speaker(p) if p == ME else _opp_key, kind, p == ME)
+	if secs > 0.0:
+		_ouch_at[p] = now
+		board.duelist_mouth(p, minf(secs, 1.2))
+
+
 ## Once the duel is decided (a hit took someone to 0, or it ended any other way) the only words
 ## left are the ending's: the winner's, the loser's and Lumen's last one.
 var _decided := false
@@ -1164,7 +1178,8 @@ func _talk(p: int, kind: String, chance := 1.0, min_gap := 2.5, card_id := 0, ab
 		return
 	_last_talk[p] = now
 	hud.say(p, line)
-	Voices.say_kind(who, kind, Characters.last_en, p == ME)
+	# (What they say about a hit comes after the sound they made taking it, not instead of it.)
+	Voices.say_kind(who, kind, Characters.last_en, p == ME, kind in ["hurt", "hurt_big"] and now - float(_ouch_at[p]) < 1.5)
 	board.duelist_gesture(p, kind)
 
 
@@ -1644,9 +1659,16 @@ func _play_event(ev: Dictionary) -> void:
 				_decided = true
 				Voices.hush()
 			if ev["delta"] < 0 and int(ev["lp"]) <= 0 and not _autoplay:
-				# The last hit of the duel: the winner gets the screen.
+				# The last hit of the duel: the one who took it cries out, then the winner gets the screen.
+				_ouch(p, "last")
 				hud.cut_in(1 - p, Loc.t("FINISHING BLOW!"), Characters.line(_speaker(ME) if p == AI else _opp_key, "win"), UITheme.GOLD, 0.8, true)
 				Voices.say_kind(_speaker(ME) if p == AI else _opp_key, "win", Characters.last_en, p == AI)
+			elif ev["delta"] < 0 and not _autoplay:
+				# A hit that lands is heard (0.63.1): a grunt for a small one, a cry for a big one.
+				if int(ev["delta"]) <= -2000:
+					_ouch(p, "big")
+				elif int(ev["delta"]) <= -300 and Settings.talk > 0:
+					_ouch(p, "small")
 			if ev["delta"] < 0:
 				# The house: a roar for a hit on the other side, a gasp (and red light) for one on yours.
 				var hit_col := Color(1.0, 0.82, 0.3) if p == AI else Color(1.0, 0.3, 0.26)

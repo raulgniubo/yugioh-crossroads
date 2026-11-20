@@ -8,9 +8,10 @@ extends Node3D
 ##                    the last one the bell tolls and the field burns.
 ##   "deckout":       the loser's Deck is empty: the place where it stood flickers and goes dark.
 ##   "card:<id>":     any other card that wins the duel by its own effect stands over the field.
-## The same plays whoever wins. Any key or button skips it. Drawn with light: no models.
+## The same plays whoever wins. Esc, Enter, Space or a controller button skips it (not a mouse click). Drawn with light: no models.
 
 var _skip := false
+var _born := Time.get_ticks_msec()
 var _done := false
 var _board
 var _hud
@@ -38,7 +39,13 @@ static func play(_scene: Node, board, hud, winner: int, kind: String) -> void:
 func _unhandled_input(e: InputEvent) -> void:
 	if _done:
 		return
-	if (e is InputEventKey or e is InputEventMouseButton or e is InputEventJoypadButton) and e.is_pressed():
+	# (0.63.1) Only a press that means "skip" skips it: Esc, Enter, Space or a controller button, and not
+	# in its first second. A mouse click or the mouse wheel used to count too, so a click meant for the
+	# duel (or scrolling a card's text) cut the show off in the middle and the ending started over it.
+	if Time.get_ticks_msec() - _born < 1000:
+		return
+	var key_skip: bool = e is InputEventKey and e.pressed and not e.echo and (e as InputEventKey).keycode in [KEY_ESCAPE, KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]
+	if key_skip or (e is InputEventJoypadButton and e.pressed):
 		_skip = true
 		get_viewport().set_input_as_handled()
 

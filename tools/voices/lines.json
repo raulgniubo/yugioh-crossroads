@@ -398,6 +398,42 @@
 {
 "voice": "cocky_f",
 "lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
+},
+{
+"voice": "cocky_f",
+"lang": "en",
 "key": "dfbe1aa5a0c4",
 "kind": "react",
 "en": "Is that supposed to scare me?",
@@ -1262,6 +1298,42 @@
 {
 "voice": "cocky_m",
 "lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
+},
+{
+"voice": "cocky_m",
+"lang": "en",
 "key": "dfbe1aa5a0c4",
 "kind": "react",
 "en": "Is that supposed to scare me?",
@@ -1879,6 +1951,42 @@
 "en": "...Stopped.",
 "text": "...Stopped.",
 "tts": "...Stopped."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
 },
 {
 "voice": "cool_f",
@@ -2666,6 +2774,42 @@
 {
 "voice": "cool_m",
 "lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
+},
+{
+"voice": "cool_m",
+"lang": "en",
 "key": "60ac90e9261a",
 "kind": "react",
 "en": "Interesting.",
@@ -3449,6 +3593,42 @@
 {
 "voice": "dark_m",
 "lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
+},
+{
+"voice": "dark_m",
+"lang": "en",
 "key": "bd0edca63d80",
 "kind": "react",
 "en": "Oh? How amusing.",
@@ -4066,6 +4246,42 @@
 "en": "Oh no, it was stopped!",
 "text": "Oh no, it was stopped!",
 "tts": "Oh no, it was stopped!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
 },
 {
 "voice": "kind_f",
@@ -4750,6 +4966,42 @@
 "en": "Oh no, it was stopped!",
 "text": "Oh no, it was stopped!",
 "tts": "Oh no, it was stopped!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
 },
 {
 "voice": "kind_m",
@@ -8417,6 +8669,42 @@
 {
 "voice": "player_f",
 "lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "player_f",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
+},
+{
+"voice": "player_f",
+"lang": "en",
 "key": "19cd6cd2fce6",
 "kind": "pick",
 "en": "Too easy.",
@@ -9740,6 +10028,42 @@
 {
 "voice": "player_f2",
 "lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
+},
+{
+"voice": "player_f2",
+"lang": "en",
 "key": "19cd6cd2fce6",
 "kind": "pick",
 "en": "Too easy.",
@@ -11063,6 +11387,42 @@
 {
 "voice": "player_m",
 "lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "player_m",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
+},
+{
+"voice": "player_m",
+"lang": "en",
 "key": "19cd6cd2fce6",
 "kind": "pick",
 "en": "Too easy.",
@@ -12382,6 +12742,42 @@
 "en": "They stopped it...!",
 "text": "They stopped it...!",
 "tts": "They stopped it...!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "player_m2",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
 },
 {
 "voice": "player_m2",
@@ -13385,6 +13781,42 @@
 {
 "voice": "wild_m",
 "lang": "en",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] Aaaaaagh...! [gasps]"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] Ngh!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] Ugh...!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] Aaagh!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
 "key": "2bf284be050d",
 "kind": "react",
 "en": "Whoa! That thing's huge!",
@@ -14092,6 +14524,42 @@
 "en": "You stopped it? Tch.",
 "text": "¿Lo paraste? Tch.",
 "tts": "¿Lo paraste? [scoffs]"
+},
+{
+"voice": "cocky_f",
+"lang": "es",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] ¡Aaaaaagh...! [gasps]"
+},
+{
+"voice": "cocky_f",
+"lang": "es",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] ¡Ngh!"
+},
+{
+"voice": "cocky_f",
+"lang": "es",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] ¡Ugh...!"
+},
+{
+"voice": "cocky_f",
+"lang": "es",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] ¡Aaagh!"
 },
 {
 "voice": "cocky_f",
@@ -14960,6 +15428,42 @@
 {
 "voice": "cocky_m",
 "lang": "es",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] ¡Aaaaaagh...! [gasps]"
+},
+{
+"voice": "cocky_m",
+"lang": "es",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] ¡Ngh!"
+},
+{
+"voice": "cocky_m",
+"lang": "es",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] ¡Ugh...!"
+},
+{
+"voice": "cocky_m",
+"lang": "es",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] ¡Aaagh!"
+},
+{
+"voice": "cocky_m",
+"lang": "es",
 "key": "dfbe1aa5a0c4",
 "kind": "react",
 "en": "Is that supposed to scare me?",
@@ -15577,6 +16081,42 @@
 "en": "...Stopped.",
 "text": "...Parado.",
 "tts": "...Parado."
+},
+{
+"voice": "cool_f",
+"lang": "es",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] ¡Aaaaaagh...! [gasps]"
+},
+{
+"voice": "cool_f",
+"lang": "es",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] ¡Ngh!"
+},
+{
+"voice": "cool_f",
+"lang": "es",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] ¡Ugh...!"
+},
+{
+"voice": "cool_f",
+"lang": "es",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] ¡Aaagh!"
 },
 {
 "voice": "cool_f",
@@ -16364,6 +16904,42 @@
 {
 "voice": "cool_m",
 "lang": "es",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] ¡Aaaaaagh...! [gasps]"
+},
+{
+"voice": "cool_m",
+"lang": "es",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] ¡Ngh!"
+},
+{
+"voice": "cool_m",
+"lang": "es",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] ¡Ugh...!"
+},
+{
+"voice": "cool_m",
+"lang": "es",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] ¡Aaagh!"
+},
+{
+"voice": "cool_m",
+"lang": "es",
 "key": "60ac90e9261a",
 "kind": "react",
 "en": "Interesting.",
@@ -17147,6 +17723,42 @@
 {
 "voice": "dark_m",
 "lang": "es",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] ¡Aaaaaagh...! [gasps]"
+},
+{
+"voice": "dark_m",
+"lang": "es",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] ¡Ngh!"
+},
+{
+"voice": "dark_m",
+"lang": "es",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] ¡Ugh...!"
+},
+{
+"voice": "dark_m",
+"lang": "es",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] ¡Aaagh!"
+},
+{
+"voice": "dark_m",
+"lang": "es",
 "key": "bd0edca63d80",
 "kind": "react",
 "en": "Oh? How amusing.",
@@ -17764,6 +18376,42 @@
 "en": "Oh no, it was stopped!",
 "text": "¡Ay no, lo pararon!",
 "tts": "¡Ay no, lo pararon!"
+},
+{
+"voice": "kind_f",
+"lang": "es",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] ¡Aaaaaagh...! [gasps]"
+},
+{
+"voice": "kind_f",
+"lang": "es",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] ¡Ngh!"
+},
+{
+"voice": "kind_f",
+"lang": "es",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] ¡Ugh...!"
+},
+{
+"voice": "kind_f",
+"lang": "es",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] ¡Aaagh!"
 },
 {
 "voice": "kind_f",
@@ -18448,6 +19096,42 @@
 "en": "Oh no, it was stopped!",
 "text": "¡Ay no, lo pararon!",
 "tts": "¡Ay no, lo pararon!"
+},
+{
+"voice": "kind_m",
+"lang": "es",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] ¡Aaaaaagh...! [gasps]"
+},
+{
+"voice": "kind_m",
+"lang": "es",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] ¡Ngh!"
+},
+{
+"voice": "kind_m",
+"lang": "es",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] ¡Ugh...!"
+},
+{
+"voice": "kind_m",
+"lang": "es",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] ¡Aaagh!"
 },
 {
 "voice": "kind_m",
@@ -22115,6 +22799,42 @@
 {
 "voice": "player_f",
 "lang": "es",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] ¡Aaaaaagh...! [gasps]"
+},
+{
+"voice": "player_f",
+"lang": "es",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] ¡Ngh!"
+},
+{
+"voice": "player_f",
+"lang": "es",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] ¡Ugh...!"
+},
+{
+"voice": "player_f",
+"lang": "es",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] ¡Aaagh!"
+},
+{
+"voice": "player_f",
+"lang": "es",
 "key": "19cd6cd2fce6",
 "kind": "pick",
 "en": "Too easy.",
@@ -23438,6 +24158,42 @@
 {
 "voice": "player_f2",
 "lang": "es",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] ¡Aaaaaagh...! [gasps]"
+},
+{
+"voice": "player_f2",
+"lang": "es",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] ¡Ngh!"
+},
+{
+"voice": "player_f2",
+"lang": "es",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] ¡Ugh...!"
+},
+{
+"voice": "player_f2",
+"lang": "es",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] ¡Aaagh!"
+},
+{
+"voice": "player_f2",
+"lang": "es",
 "key": "19cd6cd2fce6",
 "kind": "pick",
 "en": "Too easy.",
@@ -24761,6 +25517,42 @@
 {
 "voice": "player_m",
 "lang": "es",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] ¡Aaaaaagh...! [gasps]"
+},
+{
+"voice": "player_m",
+"lang": "es",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] ¡Ngh!"
+},
+{
+"voice": "player_m",
+"lang": "es",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] ¡Ugh...!"
+},
+{
+"voice": "player_m",
+"lang": "es",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] ¡Aaagh!"
+},
+{
+"voice": "player_m",
+"lang": "es",
 "key": "19cd6cd2fce6",
 "kind": "pick",
 "en": "Too easy.",
@@ -26080,6 +26872,42 @@
 "en": "They stopped it...!",
 "text": "¡Lo pararon...!",
 "tts": "¡Lo pararon...!"
+},
+{
+"voice": "player_m2",
+"lang": "es",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] ¡Aaaaaagh...! [gasps]"
+},
+{
+"voice": "player_m2",
+"lang": "es",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] ¡Ngh!"
+},
+{
+"voice": "player_m2",
+"lang": "es",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] ¡Ugh...!"
+},
+{
+"voice": "player_m2",
+"lang": "es",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] ¡Aaagh!"
 },
 {
 "voice": "player_m2",
@@ -27079,6 +27907,42 @@
 "en": "Hey! That was a good one!",
 "text": "¡Oye! ¡Esa era buena!",
 "tts": "¡Oye! ¡Esa era buena!"
+},
+{
+"voice": "wild_m",
+"lang": "es",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] ¡Aaaaaagh...! [gasps]"
+},
+{
+"voice": "wild_m",
+"lang": "es",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] ¡Ngh!"
+},
+{
+"voice": "wild_m",
+"lang": "es",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] ¡Ugh...!"
+},
+{
+"voice": "wild_m",
+"lang": "es",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] ¡Aaagh!"
 },
 {
 "voice": "wild_m",

@@ -318,5 +318,23 @@
  "player_atk": [
   "{n}, attack!",
   "¡{n}, ataca!"
- ]
+ ],
+ "pain": {
+  "small1": [
+   "[grunts in pain] Ngh!",
+   "[grunts in pain] ¡Ngh!"
+  ],
+  "small2": [
+   "[winces in pain] Ugh...!",
+   "[winces in pain] ¡Ugh...!"
+  ],
+  "big": [
+   "[shouting] [in pain] Aaagh!",
+   "[shouting] [in pain] ¡Aaagh!"
+  ],
+  "last": [
+   "[cries out in pain] Aaaaaagh...! [gasps]",
+   "[cries out in pain] ¡Aaaaaagh...! [gasps]"
+  ]
+ }
 }
