@@ -9,6 +9,8 @@ func _ready() -> void:
 			n = int(a.substr(8))
 		elif a.begins_with("--assets="):
 			Settings.card_folder = a.substr(9)
+		elif a.begins_with("--keep="):
+			Avatars.STAGE_MODELS = int(a.substr(7))
 	await get_tree().process_frame
 	_report("start")
 	var decks := ["deck_dragon", "deck_warrior", "yugi", "kaiba", "joey", "jaden"]
@@ -28,6 +30,20 @@ func _ready() -> void:
 		if "--rest" in OS.get_cmdline_user_args():
 			await get_tree().create_timer(14.0).timeout      # (long enough for idle portraits to let go)
 		_report("after duel %d (%.0fs, finished %s)" % [i + 1, waited, str(waited < 240.0)])
+	if "--blame" in OS.get_cmdline_user_args():
+		# Empty one cache at a time: whoever was holding the memory shows as a drop.
+		var mem := func(): return Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0
+		var before: float = mem.call()
+		for step in [["card faces", func(): Cards._face_cache.clear()], ["card art", func(): Cards._art_cache.clear()], ["card small+big", func(): Cards._thumb_cache.clear(); Cards._full_cache.clear()],
+				["gesture clips", func(): Avatars._gest_cache.clear()], ["rest meshes", func(): Avatars._rest_cache.clear()], ["avatar sleeves", func(): Avatars._sleeve_cache.clear()],
+				["warm models", func(): Avatars._warm.clear()], ["portraits", func(): Portraits.clear_cache()], ["card sleeves", func(): Cards._sleeve_cache.clear()], ["sounds", func(): Sfx._sounds.clear(); Sfx._own.clear()]]:
+			(step[1] as Callable).call()
+			for k in 12:
+				await get_tree().process_frame
+			var now: float = mem.call()
+			print("  BLAME %-16s gave back %7.1f MB" % [step[0], before - now])
+			before = now
+		print("  BLAME left: %.1f MB  resources %d  objects %d" % [before, int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT)), int(Performance.get_monitor(Performance.OBJECT_COUNT))])
 	get_tree().quit()
 
 
@@ -69,4 +85,10 @@ func _report(tag: String) -> void:
 	var refs: Array = []
 	for k in Avatars._stages:
 		refs.append("%s:%d%s" % [k, (Avatars._stages[k] as SubViewport).get_texture().get_reference_count(), "*" if Avatars._shown(k) else ""])
-	print("  portraits %d, with a model loaded %d   picture holders %s" % [Avatars._stages.size(), held, " ".join(refs)])
+	print("  portraits %d, with a model loaded %d   picture holders %s   kept by Portraits: %s" % [Avatars._stages.size(), held, " ".join(refs), str(Portraits._cache.keys())])
+	var now := Time.get_ticks_msec()
+	for k in Avatars._stages:
+		var n: bool = Avatars._shown(k)
+		print("    %s: idle %d s  framed %s  shown %s  loaded %s" % [k, (now - int(Avatars._asked_at.get(k, 0))) / 1000, str(Avatars._framed(k)), str(n), str(Avatars._stage_of(k).call("loaded"))])
+	if "--orphans" in OS.get_cmdline_user_args():
+		Node.print_orphan_nodes()

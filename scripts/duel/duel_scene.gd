@@ -893,8 +893,15 @@ func _bring_spirit() -> void:
 	hud.show_spirit((got[0] as SubViewport).get_texture())
 
 
+## Once the duel is decided (a hit took someone to 0, or it ended any other way) the only words
+## left are the ending's: the winner's, the loser's and Lumen's last one.
+var _decided := false
+const LAST_WORDS := ["win", "lose", "flawless", "close_win"]
+
 func _lumen(kind: String) -> void:
 	if _autoplay or _lumen_said.has(kind) or not LumenBubble.with_you() or not LUMEN_SAYS.has(kind):
+		return
+	if (_decided or _finished) and not kind in LAST_WORDS:
 		return
 	# The big moments always get a word; the small ones leave her some quiet in between.
 	var now := Time.get_ticks_msec() / 1000.0
@@ -1127,6 +1134,8 @@ func _call(p: int, kind: String, card_id := 0, about := 0) -> void:
 ## is about either way. A line that names a card is only ever said about that card (Characters.LINE_NEEDS).
 func _talk(p: int, kind: String, chance := 1.0, min_gap := 2.5, card_id := 0, about := 0) -> void:
 	if _autoplay or randf() > chance:
+		return
+	if (_decided or _finished) and not kind in LAST_WORDS:
 		return
 	if about <= 0:
 		about = card_id
@@ -1628,6 +1637,12 @@ func _play_event(ev: Dictionary) -> void:
 				var lsp: Vector2 = hud.get_viewport_rect().size * Vector2(0.5, 0.32 if p == AI else 0.68)
 				ScreenFx.flash(hud, Color.WHITE, 0.35, 0.8)
 				ScreenFx.shatter(hud, lsp, 1.2)
+			if int(ev["lp"]) <= 0:
+				# The hit that ends the duel (0.63.1). From here nobody comments as if the duel went on
+				# ("they are almost out!" after they were out), and a line that was waiting its turn is
+				# dropped. The only words left are the ending's own.
+				_decided = true
+				Voices.hush()
 			if ev["delta"] < 0 and int(ev["lp"]) <= 0 and not _autoplay:
 				# The last hit of the duel: the winner gets the screen.
 				hud.cut_in(1 - p, Loc.t("FINISHING BLOW!"), Characters.line(_speaker(ME) if p == AI else _opp_key, "win"), UITheme.GOLD, 0.8, true)
@@ -1665,18 +1680,22 @@ func _play_event(ev: Dictionary) -> void:
 							board.cam_release(0.5))
 				Sfx.play("damage")
 				hud.react(p, "hurt")
-				if p == AI and ev["lp"] <= 2000 and not _said_low:
+				if _decided:
+					pass
+				elif p == AI and ev["lp"] <= 2000 and not _said_low:
 					_said_low = true
 					_talk(AI, "low", 1.0, 0.0)
 					_lumen("comeback" if _me_was_low else "their_low")
-				if p == ME and int(ev["lp"]) <= 2000 and int(ev["lp"]) > 0:
+				if _decided:
+					pass
+				elif p == ME and int(ev["lp"]) <= 2000:
 					_me_was_low = true
 					_lumen("my_low")
-				elif p == ME and ev["delta"] <= -2000 and int(ev["lp"]) > 0:
+				elif p == ME and ev["delta"] <= -2000:
 					if Settings.talk > 0:
 						_call(ME, "hurt_big")
 					_lumen("hit")
-				elif ev["delta"] <= -2000 and Settings.talk > 0 and int(ev["lp"]) > 0:
+				elif ev["delta"] <= -2000 and Settings.talk > 0:
 					_call(p, "hurt_big")
 					_talk(1 - p, "big_hit", 0.55)
 				elif ev["delta"] <= -1000:

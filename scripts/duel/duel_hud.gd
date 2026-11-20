@@ -988,6 +988,8 @@ func _build_inspector() -> void:
 	_inspect_atk = _stat_box("ATK", Color("ff6b6b"))
 	_inspect_def = _stat_box("DEF", Color("6bc8ff"))
 	_inspect_stats = UITheme.label("", 1, Color.TRANSPARENT)
+	_inspect_stats.visible = false
+	v.add_child(_inspect_stats)      # (it was never put anywhere: one stray label left behind by every duel)
 	# The panel keeps its size whatever the card says (it used to grow over your duelist, and
 	# still cut long texts off). The text has the room that is left and scrolls: the mouse
 	# wheel, wherever the pointer is.

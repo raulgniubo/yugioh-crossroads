@@ -51,6 +51,41 @@ static func _names(id: int, english: String) -> Array:
 	return _folded[id]
 
 
+## What players call a card for short (0.63.1): "FGD" is Five-Headed Dragon (from its Japanese name,
+## Five God Dragon), "BLS" is Black Luster Soldier... Each one lists how the English name starts.
+const NICKNAMES := {
+	"fgd": ["five headed dragon"],
+	"bls": ["black luster soldier"],
+	"beud": ["blue eyes ultimate dragon"],
+	"dad": ["dark armed dragon"],
+	"jd": ["judgment dragon"],
+	"tgu": ["tour guide from the underworld"],
+	"trish": ["trishula"],
+	"cydra": ["cyber dragon"],
+	"gk": ["gravekeeper"],
+}
+static var _initials := {}     # id -> the first letter of each word of the English name ("bewd")
+
+
+## Is what was typed this card's short name, or the initials of its name ("BEWD", "F.G.D.", "dmg")?
+## `tight`: the query with its spaces taken out ("f g d" -> "fgd").
+static func _short_hit(id: int, english: String, tight: String) -> bool:
+	if tight.length() < 2 or tight.length() > 6:
+		return false
+	var name: String = _names(id, english)[0]
+	for start in NICKNAMES.get(tight, []):
+		if name.begins_with(str(start)):
+			return true
+	if tight.length() < 3:
+		return false
+	if not _initials.has(id):
+		var ini := ""
+		for w in name.split(" ", false):
+			ini += w[0]
+		_initials[id] = ini
+	return str(_initials[id]) == tight
+
+
 ## How well a card's names fit what was typed: 4 a name is exactly it, 3 a name starts with it, 2 a word in a name
 ## starts with it, 1 it is somewhere in a name, 0 not at all. `query` must already be folded
 ## (fold() it once per search, not once per card).
@@ -58,6 +93,8 @@ static func score(id: int, english: String, query: String) -> int:
 	if query == "":
 		return 1
 	var best := 0
+	if query.length() <= 11 and _short_hit(id, english, query.replace(" ", "")):
+		best = 3
 	for n in _names(id, english):
 		if n == "":
 			continue

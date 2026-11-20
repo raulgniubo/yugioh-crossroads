@@ -2198,7 +2198,7 @@ func portrait(key: String, hi := false) -> Texture2D:
 ## back. Now a portrait nobody has asked for in a while lets its model go and keeps its picture; the
 ## model comes back the next time the portrait is asked for. The few most recent always stay ready
 ## (the two duelists of a duel are never reloaded in the middle of it).
-const STAGE_MODELS := 4          # the most recently asked-for portraits keep their model, come what may
+var STAGE_MODELS := 4          # the most recently asked-for portraits keep their model, come what may
 const STAGE_IDLE_MS := 12000     # the others let it go after this long without being asked for
 var _asked_at := {}              # key -> when its portrait was last asked for (msec)
 
@@ -2257,10 +2257,12 @@ func _trim_stages() -> void:
 	loaded.sort_custom(func(a, b): return int(_asked_at.get(a, 0)) > int(_asked_at.get(b, 0)))
 	for k in loaded.slice(STAGE_MODELS):
 		var vp: SubViewport = _stages[k]
-		if now - int(_asked_at.get(k, 0)) < STAGE_IDLE_MS or not _framed(k) or _shown(k):
+		if now - int(_asked_at.get(k, 0)) < STAGE_IDLE_MS or _shown(k):
 			continue
-		if DisplayServer.get_name() != "headless" and _blank(vp):
-			continue      # (never freeze an empty picture)
+		# (Never freeze a picture that is not drawn yet. With no screen nothing is ever drawn, so the
+		# tests skip this check.)
+		if DisplayServer.get_name() != "headless" and (not _framed(k) or _blank(vp)):
+			continue
 		_live.erase(k)
 		_hi.erase(k)
 		vp.render_target_update_mode = SubViewport.UPDATE_DISABLED

@@ -47,12 +47,12 @@ func has_real_images() -> bool:
 ## show one card large), and only the most recently used ones are kept. One still on screen stays
 ## alive whatever this list does: the list only decides what is kept ready for next time.
 const FACE_WIDE := 512
-const FACE_KEEP := 200
-const FULL_KEEP := 12
-const ART_KEEP := 80
+const FACE_KEEP := 130
+const FULL_KEEP := 6
+const ART_KEEP := 48
 ## Small tiles (a grid of cards about 110 wide: the deck editor, a pack's summary, a deck's list).
 const THUMB_WIDE := 256
-const THUMB_KEEP := 360
+const THUMB_KEEP := 240
 var _full_cache := {}
 var _thumb_cache := {}
 var _made_faces := {}      # id -> a face drawn here, for a card with no picture on disk

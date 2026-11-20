@@ -65,6 +65,7 @@ static func level_for(cfg: Dictionary) -> int:
 var rules := {}
 var puzzle := false        # one turn to win: when it passes, the duel is lost
 var speed_acts: Array = [] # Speed World 2's effects you could pay for right now: [[label, answer], ...]
+var _destiny_seen := 0
 var _destiny_ask := [false, false]    # that player said yes to the Destiny Draw: the next pick is the card
 var _destiny_draw := [false, false]   # ... and their next draw is that card (it lands quietly)
 
@@ -351,7 +352,12 @@ func _ask(m: Dictionary):
 		13:
 			if _is_destiny_offer(m):
 				var yes := true
-				if not s._human_test:
+				if "--destiny-debug" in OS.get_cmdline_user_args():
+					# dev: say no to the first three offers, to see that it keeps being offered
+					_destiny_seen += 1
+					yes = _destiny_seen > 3
+					print("DESTINY OFFER %d on turn %d, LP %d vs %d, answered %s" % [_destiny_seen, int(s.state.turn), int(s.state.players[ME].lp), int(s.state.players[AI].lp), "yes" if yes else "no"])
+				elif not s._human_test:
 					s._lumen("destiny")
 					yes = await s.hud.ask_destiny()
 				_destiny_ask[ME] = yes
@@ -445,6 +451,13 @@ var _name_list: Array = []
 func _ask_cards(m: Dictionary, tribute := false):
 	var list: Array = m["cards"]
 	var cards := d.cards_of(list)
+	if "--pick-debug" in OS.get_cmdline_user_args():
+		var codes: Array = []
+		var uids: Array = []
+		for i in list.size():
+			codes.append("%d@%d/%d" % [int(list[i]["code"]), int(list[i]["loc"]), int(list[i]["seq"])])
+			uids.append(cards[i].uid if cards[i] != null else -1)
+		print("PICK ", codes, " -> ", uids)
 	for i in cards.size():
 		if cards[i] == null:
 			cards[i] = _temp(int(list[i]["code"]), int(list[i]["con"]) if int(list[i]["con"]) < 2 else ME)
@@ -644,6 +657,13 @@ func _ask_sum(m: Dictionary):
 	# total so far in view. Confirm lights up when it fits.
 	var list: Array = m["cards"]
 	var cards := d.cards_of(list)
+	if "--pick-debug" in OS.get_cmdline_user_args():
+		var codes: Array = []
+		var uids: Array = []
+		for i in list.size():
+			codes.append("%d@%d/%d" % [int(list[i]["code"]), int(list[i]["loc"]), int(list[i]["seq"])])
+			uids.append(cards[i].uid if cards[i] != null else -1)
+		print("PICK ", codes, " -> ", uids)
 	for i in cards.size():
 		if cards[i] == null:
 			cards[i] = _temp(int(list[i]["code"]), ME)

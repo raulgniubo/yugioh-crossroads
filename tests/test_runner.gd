@@ -28,6 +28,7 @@ func _ready() -> void:
 	_test_stakes()
 	_test_decks()
 	_test_clock_and_story()
+	_test_0631()
 	var stress := OS.get_environment("STRESS_FOLDER")
 	if stress != "":
 		CardData.load_external(stress)
@@ -2029,6 +2030,53 @@ func _test_decks() -> void:
 
 
 ## v0.32: the world clock, and the shape of the story script (lists, clashes, who is in it).
+## 0.63.1: a card found by its short name; a bought deck adds copies of cards you already have.
+func _test_0631() -> void:
+	var fgd := int(CardData.NAME_TO_ID.get("five-headed dragon", 0))
+	var bewd := int(CardData.NAME_TO_ID.get("blue-eyes white dragon", 0))
+	var dmg := int(CardData.NAME_TO_ID.get("dark magician girl", 0))
+	check(fgd > 0 and CardSearch.matches(fgd, "Five-Headed Dragon", CardSearch.fold("FGD")), "Search: FGD finds Five-Headed Dragon")
+	check(CardSearch.matches(fgd, "Five-Headed Dragon", CardSearch.fold("F.G.D.")), "Search: F.G.D. finds it too")
+	check(CardSearch.matches(bewd, "Blue-Eyes White Dragon", CardSearch.fold("bewd")), "Search: BEWD finds Blue-Eyes White Dragon")
+	check(CardSearch.matches(dmg, "Dark Magician Girl", CardSearch.fold("DMG")), "Search: DMG finds Dark Magician Girl")
+	check(not CardSearch.matches(bewd, "Blue-Eyes White Dragon", CardSearch.fold("fgd")), "Search: FGD does not find Blue-Eyes")
+	check(CardSearch.matches(bewd, "Blue-Eyes White Dragon", CardSearch.fold("ojos azules")), "Search: the Spanish name still works")
+	# Buying a deck: a card you had one of, and the deck has one of, is now two.
+	var keep_owned: Dictionary = Collection.owned.duplicate()
+	var keep_decks: Array = Collection.decks_owned.duplicate()
+	var keep_slots: Array = Collection.slots.duplicate(true)
+	var keep_dp: int = Collection.dp
+	var key := ""
+	for td in Collection.THEME_DECKS:
+		if not Collection.decks_owned.has(str(td["key"])) and CardData.has_deck(str(td["key"])):
+			key = str(td["key"])
+			break
+	if key != "":
+		var need := {}
+		for id in CardData.deck_list(key) + CardData.extra_list(key):
+			need[id] = int(need.get(id, 0)) + 1
+		var one := -1
+		for id in need:
+			if int(need[id]) == 1:
+				one = int(id)
+				break
+		Collection.owned.clear()
+		Collection.owned[one] = 1
+		Collection.dp = 999999
+		var bought: bool = Collection.buy_deck(key)
+		check(bought and int(Collection.owned.get(one, 0)) == 2, "Buy a deck: a card you had one of is now two (got %d)" % int(Collection.owned.get(one, 0)))
+		var short := false
+		for id in need:
+			if int(Collection.owned.get(id, 0)) < mini(3, int(need[id])):
+				short = true
+		check(not short, "Buy a deck: every card of the deck is in the collection")
+		Collection.owned = keep_owned
+		Collection.decks_owned = keep_decks
+		Collection.slots = keep_slots
+		Collection.dp = keep_dp
+		Collection.save()
+
+
 func _test_clock_and_story() -> void:
 	var keep_m := WorldClock.minutes
 	var keep_d := WorldClock.day
