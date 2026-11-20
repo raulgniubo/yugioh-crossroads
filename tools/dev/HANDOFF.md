@@ -552,3 +552,8 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
    scroll view, maybe make that smaller... make it really nice. Don't make it ugly... somehow so that it doesn't
    cover the characters." So: the panel must end above the live portrait's head (shorter effect area that scrolls,
    or a smaller card picture), and still look good. Check with a tall duelist and with the camera stepped back.
+3. (Nov 20, 1:21 PM, photo 0570c8a7-image.jpg) In his live portrait (bottom left) the raised hand is cut off at the
+   right edge of the portrait strip: the fingers end in a straight vertical line where the strip is clipped. The
+   camera's step-back did not keep it in (the hand is raised beside the shoulder, outside the narrow strip). To do
+   when told: let the portrait draw wider than its strip (no hard clip on the table side) or step back sooner/further
+   for hands out to the side, so a hand is never sliced by the edge.
