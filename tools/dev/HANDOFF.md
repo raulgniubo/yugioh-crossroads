@@ -530,3 +530,12 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
   Tests at ship: failures 0, cards 8415 problems 0, positions 206 pass / 6 none, VOICE OVERLAP PASS, LINE NAMES PASS.
   A Zane duel on screen after the fix: 0 script errors, one draw motion per turn.
   Next: English voices (0.64.0) whenever the limit has room, plus whatever Raul asks for.
+- **Windows delivery from now on (Raul, Nov 20, 1:16 PM: "always give me that then, the files and the script"):** he is
+  often at the Windows PC (same monitor as the Mac), so with EVERY build also send the Windows zip in the chat:
+  `split -b 215m --numeric-suffixes=1 --suffix-length=1 Crossroads-vX-windows.zip Crossroads-X-windows.part` ->
+  SendUserFile part1 + part2, and give him this one line to paste in Windows key + R:
+  `cmd /c "cd /d %USERPROFILE%\Downloads && copy /b Crossroads-X-windows.part1+Crossroads-X-windows.part2 Crossroads-X-windows.zip"`
+  A .bat cannot be downloaded from the chat ("this file type cannot be downloaded"), so no .bat. One file must stay
+  under 400 MiB; the Windows zip is 410 MiB. The Mac install (inst.sh) and the Windows folder on the Mac stay as before.
+- The GitHub repo is PUBLIC (checked with `gh api`), told Raul; his call whether to switch it.
+- English: batch 94 made (18 of 20). Next batch 95. The limit gives room back a little at a time through the afternoon.
