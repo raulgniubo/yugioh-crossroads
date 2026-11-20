@@ -564,3 +564,9 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
    as item 1 (arms swing too far inward on his real models: check the arm/shoulder retarget against his rigs, A-pose
    vs T-pose rest, before touching single clips). Also check: head dips too low, and the pose reads as nothing once
    the card prop is gone (keep the card in the hand until the hand reaches the table side, or shorten the hold).
+5. (Nov 20, 1:23 PM, photo 1552aa4d-image.jpg) Another pose that covers the face: his duelist turned to the side,
+   right arm swung up across the body with the open hand in front of the face/cheek, wide stance (Mano 3, Cem. 3,
+   so mid-turn after a Spell or a summon). Same family as items 1 and 4 (arms crossing too far on his real models).
+   Rule to hold after the fix: in NO motion may a hand sit in front of the face as seen from the portrait camera
+   (check every clip on a real rig from the portrait camera, both sides). The card panel also still overlaps the
+   hair here (item 2).
