@@ -55,7 +55,7 @@ func _ready() -> void:
 	left.custom_minimum_size = Vector2(250, 0)
 	row.add_child(left)
 	var face := TextureRect.new()
-	face.texture = Cards.get_face(_id)
+	face.texture = Cards.get_face(_id, true)
 	face.custom_minimum_size = Vector2(250, 364)
 	face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

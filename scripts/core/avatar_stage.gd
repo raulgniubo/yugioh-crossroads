@@ -13,6 +13,36 @@ var _next_blink := 2.0
 var framed := false
 
 
+## Let go of the model (its meshes and textures are most of what a portrait costs) and keep the picture
+## as it stands. `enter()` puts a model back.
+func unload() -> void:
+	if _model != null and is_instance_valid(_model):
+		_model.queue_free()
+	_model = null
+	_blink.clear()
+
+
+func loaded() -> bool:
+	return _model != null and is_instance_valid(_model)
+
+
+## A model for a stage that let its own go.
+func enter(model: Node3D) -> void:
+	_model = model
+	add_child(model)
+	framed = false
+	await get_tree().process_frame
+	if not is_instance_valid(model) or _model != model:
+		return
+	if Avatars.anim_player(model) == null:
+		Avatars._relax_pose(model)
+	_head = Avatars.head_position(model)
+	_frame()
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	framed = true
+
+
 func setup(model: Node3D) -> void:
 	_model = model
 	add_child(model)

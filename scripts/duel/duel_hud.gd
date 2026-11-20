@@ -955,7 +955,8 @@ func _build_inspector() -> void:
 	_inspect_panel.offset_left = 30
 	_inspect_panel.offset_right = 390
 	_inspect_panel.offset_top = -420
-	_inspect_panel.offset_bottom = 262
+	# (0.63.1: it ends above your duelist's head now that the corner shows them live and taller)
+	_inspect_panel.offset_bottom = 208
 	_inspect_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_inspect_panel)
 	var v := VBoxContainer.new()
@@ -971,7 +972,7 @@ func _build_inspector() -> void:
 	_inspect_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_inspect_head.add_child(_inspect_name)
 	_inspect_tex = TextureRect.new()
-	_inspect_tex.custom_minimum_size = Vector2(320, 286)
+	_inspect_tex.custom_minimum_size = Vector2(320, 250)
 	_inspect_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_inspect_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	v.add_child(_inspect_tex)
@@ -993,7 +994,7 @@ func _build_inspector() -> void:
 	_inspect_scroll = ScrollContainer.new()
 	_inspect_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_inspect_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_inspect_scroll.custom_minimum_size = Vector2(320, 150)
+	_inspect_scroll.custom_minimum_size = Vector2(320, 132)
 	_inspect_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
 	v.add_child(_inspect_scroll)
 	var tv := VBoxContainer.new()
@@ -2563,7 +2564,7 @@ func showcase(inst, kicker: String, color: Color, who := "") -> void:
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(shade)
 	var card := TextureRect.new()
-	card.texture = Cards.get_face(inst.id)
+	card.texture = Cards.get_face(inst.id, true)
 	card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	card.size = Vector2(330, 481)

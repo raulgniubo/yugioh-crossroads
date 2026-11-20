@@ -424,7 +424,7 @@ func _show() -> void:
 
 func _tile(id: int, n: int) -> Control:
 	var tr := TextureRect.new()
-	tr.texture = Cards.get_face(id)
+	tr.texture = Cards.get_thumb(id)
 	tr.custom_minimum_size = Vector2(118, 172)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

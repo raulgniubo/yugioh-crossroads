@@ -156,7 +156,7 @@ func _group(body: VBoxContainer, title: String, cards: Array) -> void:
 		for st_name in ["normal", "hover", "pressed"]:
 			b.add_theme_stylebox_override(st_name, StyleBoxEmpty.new())
 		var tr := TextureRect.new()
-		tr.texture = Cards.get_face(id)
+		tr.texture = Cards.get_thumb(id)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

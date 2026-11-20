@@ -702,7 +702,7 @@ func _show_card(id: int, st: String, num: int) -> void:
 		_d_owned.text = ""
 		return
 	_d_unknown.visible = false
-	_d_face.texture = Cards.get_face(id)
+	_d_face.texture = Cards.get_face(id, true)
 	if st == "owned":
 		Foil.apply(_d_face, CardData.rarity(id))
 		_d_face.modulate = Color.WHITE

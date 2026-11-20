@@ -87,7 +87,7 @@ func _rebuild() -> void:
 			return str(da.get("name", "")) < str(db.get("name", "")))
 		for id in ids:
 			var tr := TextureRect.new()
-			tr.texture = Cards.get_face(id)
+			tr.texture = Cards.get_thumb(id)
 			tr.custom_minimum_size = Vector2(104, 152)
 			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

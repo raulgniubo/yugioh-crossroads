@@ -433,6 +433,7 @@ func _ready() -> void:
 		_rebuild_grid())
 	bar2.add_child(so)
 	var gscroll := ScrollContainer.new()
+	_gscroll = gscroll
 	gscroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	gscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	col.add_child(gscroll)
@@ -553,7 +554,9 @@ func _rebuild_grid() -> void:
 	for k in _filter_btns:
 		(_filter_btns[k] as Button).set_pressed_no_signal(k == _filter)
 	for c in _grid.get_children():
+		_grid.remove_child(c)
 		c.queue_free()
+	_grid_far_n = -1
 	var shown := 0
 	for id in _sorted(Collection.owned.keys()):
 		var d := CardData.get_card(id)
@@ -587,12 +590,60 @@ func _rebuild_grid() -> void:
 		_owned_l.add_theme_color_override("font_color", UITheme.TEXT if shown == total else UITheme.GOLD)
 
 
+## A tile starts as an empty box of the right size. Its picture, badges and handlers are only made
+## while it is near the part of the list on screen (_grid_tick), and dropped again when it is far.
+## Before, every owned card loaded its picture when the editor opened: with a few thousand cards
+## that was minutes of waiting and gigabytes of pictures.
 func _tile(id: int) -> Control:
 	var holder := Control.new()
 	holder.custom_minimum_size = Vector2(112, 163)
 	holder.pivot_offset = Vector2(56, 81)
+	holder.set_meta("id", id)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return holder
+
+
+var _tile_boxes := {}
+
+func _tile_box(kind: String) -> StyleBox:
+	if not _tile_boxes.has(kind):
+		var sb: StyleBoxFlat
+		match kind:
+			"badge":
+				sb = UITheme.panel_box(Color(0, 0, 0, 0.82), 9, Color(1, 1, 1, 0.25))
+				sb.content_margin_left = 7
+				sb.content_margin_right = 7
+			"strip":
+				sb = UITheme.panel_box(Color(UITheme.GOLD, 0.95), 7, UITheme.GOLD)
+				sb.content_margin_left = 5
+				sb.content_margin_right = 5
+			_:
+				sb = UITheme.panel_box(Color(Comic.RED, 0.95), 7, Color.WHITE)
+				sb.content_margin_left = 6
+				sb.content_margin_right = 6
+		sb.content_margin_top = 1
+		sb.content_margin_bottom = 1
+		_tile_boxes[kind] = sb
+	return _tile_boxes[kind]
+
+
+func _empty_tile(holder: Control) -> void:
+	for c in holder.get_children():
+		c.queue_free()
+	holder.remove_meta("refresh")
+	holder.scale = Vector2.ONE
+	holder.z_index = 0
+
+
+func _fill_tile(holder: Control) -> void:
+	var id := int(holder.get_meta("id"))
 	var tr := TextureRect.new()
-	tr.texture = Cards.get_face(id)
+	# (The picture is read off the main thread: the tile is there at once, its face a moment later.)
+	var tr_id := tr.get_instance_id()      # (by number: the tile may be gone by the time its picture is read)
+	Cards.thumb_later(id, func(tex: Texture2D):
+		var still := instance_from_id(tr_id) as TextureRect
+		if still != null:
+			still.texture = tex)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -603,12 +654,7 @@ func _tile(id: int) -> Control:
 	var badge := Label.new()
 	badge.add_theme_font_override("font", UITheme.semi_font())
 	badge.add_theme_font_size_override("font_size", 16)
-	var sb := UITheme.panel_box(Color(0, 0, 0, 0.82), 9, Color(1, 1, 1, 0.25))
-	sb.content_margin_left = 7
-	sb.content_margin_right = 7
-	sb.content_margin_top = 1
-	sb.content_margin_bottom = 1
-	badge.add_theme_stylebox_override("normal", sb)
+	badge.add_theme_stylebox_override("normal", _tile_box("badge"))
 	badge.position = Vector2(4, 4)
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(badge)
@@ -617,12 +663,7 @@ func _tile(id: int) -> Control:
 	strip.add_theme_font_override("font", UITheme.semi_font())
 	strip.add_theme_font_size_override("font_size", 13)
 	strip.add_theme_color_override("font_color", Color(0.03, 0.05, 0.1))
-	var ssb := UITheme.panel_box(Color(UITheme.GOLD, 0.95), 7, UITheme.GOLD)
-	ssb.content_margin_left = 5
-	ssb.content_margin_right = 5
-	ssb.content_margin_top = 1
-	ssb.content_margin_bottom = 1
-	strip.add_theme_stylebox_override("normal", ssb)
+	strip.add_theme_stylebox_override("normal", _tile_box("strip"))
 	strip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	strip.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	strip.offset_left = 4
@@ -637,12 +678,7 @@ func _tile(id: int) -> Control:
 		nw.add_theme_font_override("font", UITheme.semi_font())
 		nw.add_theme_font_size_override("font_size", 13)
 		nw.add_theme_color_override("font_color", Color.WHITE)
-		var nsb := UITheme.panel_box(Color(Comic.RED, 0.95), 7, Color.WHITE)
-		nsb.content_margin_left = 6
-		nsb.content_margin_right = 6
-		nsb.content_margin_top = 1
-		nsb.content_margin_bottom = 1
-		nw.add_theme_stylebox_override("normal", nsb)
+		nw.add_theme_stylebox_override("normal", _tile_box("new"))
 		nw.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(nw)
 		# (Pinned to the top-right corner, whatever the word's length: "NUEVA" ran past the card.)
@@ -681,8 +717,71 @@ func _tile(id: int) -> Control:
 	if _pin.get("from", "") == "col" and int(_pin.get("id", -1)) == id:
 		_place_mark(holder)
 	holder.set_meta("refresh", refresh)
-	holder.set_meta("id", id)
-	return holder
+
+
+## Fills the tiles near the visible part of the list (a few milliseconds' worth per frame, the ones
+## on screen first) and empties the ones that are far away.
+const TILE_FILL_MS := 7.0
+const TILE_NEAR := 260.0      # filled this far above and below what is on screen
+const TILE_FAR := 1500.0      # emptied beyond this
+
+func _grid_tick() -> void:
+	if _grid == null or _gscroll == null or not is_visible_in_tree():
+		return
+	var n := _grid.get_child_count()
+	if n == 0:
+		return
+	var cols: int = maxi(1, _grid.columns)
+	var row_h := 163.0 + 8.0
+	var top := float(_gscroll.scroll_vertical) - 8.0
+	var bottom := top + _gscroll.size.y
+	var first := clampi(int(floor((top - TILE_NEAR) / row_h)), 0, (n - 1) / cols)
+	var last := clampi(int(floor((bottom + TILE_NEAR) / row_h)), 0, (n - 1) / cols)
+	var mid := clampi(int(floor((top + bottom) * 0.5 / row_h)), first, last)
+	var t0 := Time.get_ticks_usec()
+	# From the middle of the screen outwards, so what you are looking at comes first.
+	var rows := [mid]
+	for k in range(1, last - first + 2):
+		if mid + k <= last:
+			rows.append(mid + k)
+		if mid - k >= first:
+			rows.append(mid - k)
+	var out_of_time := false
+	for r in rows:
+		for c in cols:
+			var i: int = r * cols + c
+			if i >= n:
+				break
+			var h := _grid.get_child(i) as Control
+			if h == null or h.is_queued_for_deletion() or h.has_meta("refresh"):
+				continue
+			# (No more than a screenful being read at a time: flinging the scroll bar across thousands of
+			# cards must not queue every picture it passes.)
+			if Cards.thumbs_busy() >= 48 and not Cards.has_thumb(int(h.get_meta("id"))):
+				out_of_time = true
+				break
+			_fill_tile(h)
+			if (Time.get_ticks_usec() - t0) / 1000.0 > TILE_FILL_MS:
+				out_of_time = true
+				break
+		if out_of_time:
+			break
+	# The far ones let go of their pictures (never while a card is being dragged out of the list).
+	if _grab.is_empty() and _drag == null and (_grid_far_at != _gscroll.scroll_vertical or _grid_far_n != n):
+		_grid_far_at = _gscroll.scroll_vertical
+		_grid_far_n = n
+		var keep_a := int(floor((top - TILE_FAR) / row_h)) * cols
+		var keep_b := (int(floor((bottom + TILE_FAR) / row_h)) + 1) * cols
+		for i in n:
+			if i >= keep_a and i < keep_b:
+				continue
+			var h := _grid.get_child(i) as Control
+			if h != null and h.has_meta("refresh"):
+				_empty_tile(h)
+
+var _gscroll: ScrollContainer
+var _grid_far_at := -1
+var _grid_far_n := -1
 
 
 func _rebuild_deck() -> void:
@@ -720,7 +819,7 @@ func _rebuild_deck() -> void:
 			_deck_list.add_child(tip)
 		for id in _sorted(ids):
 			var card := TextureRect.new()
-			card.texture = Cards.get_face(id)
+			card.texture = Cards.get_thumb(id)
 			card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			card.custom_minimum_size = Vector2(62, 90)
@@ -1550,6 +1649,7 @@ func _start_drag() -> void:
 
 
 func _process(delta: float) -> void:
+	_grid_tick()
 	if _drag == null:
 		return
 	var m := get_global_mouse_position()
@@ -1710,7 +1810,7 @@ func _refresh_count() -> void:
 
 func _show(id: int) -> void:
 	var d := CardData.get_card(id)
-	_detail_tex.texture = Cards.get_face(id)
+	_detail_tex.texture = Cards.get_face(id, true)
 	Foil.apply(_detail_tex, CardData.rarity(id))
 	_detail_name.text = str(d.get("name", ""))
 	var lines := []

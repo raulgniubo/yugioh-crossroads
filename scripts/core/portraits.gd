@@ -46,6 +46,7 @@ func get_portrait(key: String, hi := false) -> Texture2D:
 	if hi and Avatars.has_avatar(key):
 		Avatars.portrait(key, true)
 	if _cache.has(key):
+		Avatars.wake(key)      # (a portrait that had let its model go gets it back)
 		return _cache[key]
 	var tex: Texture2D = Avatars.portrait(key, hi) if Avatars.has_avatar(key) else null
 	if tex != null:
@@ -61,6 +62,11 @@ func get_portrait(key: String, hi := false) -> Texture2D:
 		tex = _make_placeholder(key)
 	_cache[key] = tex
 	return tex
+
+
+## Does this list hold the picture of `key`? (Avatars counts who else does.)
+func holds(key: String) -> bool:
+	return _cache.has(key)
 
 
 ## Sent after every cached portrait was thrown away: anything showing one must ask again.

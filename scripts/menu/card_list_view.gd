@@ -376,7 +376,7 @@ func _detail_column(col: Color) -> Control:
 func _show_card(id: int) -> void:
 	var d := CardData.get_card(id)
 	var n := Collection.count(id)
-	_d_face.texture = Cards.get_face(id)
+	_d_face.texture = Cards.get_face(id, true)
 	if n > 0:
 		Foil.apply(_d_face, CardData.rarity(id))
 	else:

@@ -202,6 +202,40 @@ func _load_glb(path: String) -> Node:
 	return gltf.generate_scene(state)
 
 
+## A model made outside the game usually brings three 2048 x 2048 textures (color, bumps, shine):
+## about 60 MB on the graphics card for somebody who is a few hundred pixels tall on screen. They are
+## brought down to what the screen can show: `color_max` for the color, 1024 for the rest (0.63.1).
+func _fit_textures(scene: Node, color_max: int) -> void:
+	var done := {}
+	for mi in _meshes(scene):
+		if mi.mesh == null:
+			continue
+		for i in mi.mesh.get_surface_count():
+			var mat := mi.mesh.surface_get_material(i)
+			if not (mat is BaseMaterial3D):
+				continue
+			var bm := mat as BaseMaterial3D
+			for prop in ["albedo_texture", "normal_texture", "roughness_texture", "metallic_texture", "ao_texture", "emission_texture"]:
+				var tex = bm.get(prop)
+				if not (tex is Texture2D):
+					continue
+				var cap := color_max if prop == "albedo_texture" else mini(color_max, 1024)
+				if (tex as Texture2D).get_width() <= cap and (tex as Texture2D).get_height() <= cap:
+					continue
+				var dk := "%d|%d" % [(tex as Texture2D).get_instance_id(), cap]
+				if not done.has(dk):
+					var img := (tex as Texture2D).get_image()
+					if img == null or img.is_empty():
+						continue
+					if img.is_compressed():
+						img.decompress()
+					var k := float(cap) / float(maxi(img.get_width(), img.get_height()))
+					img.resize(maxi(1, int(img.get_width() * k)), maxi(1, int(img.get_height() * k)), Image.INTERPOLATE_BILINEAR)
+					img.generate_mipmaps(prop == "normal_texture")
+					done[dk] = ImageTexture.create_from_image(img)
+				bm.set(prop, done[dk])
+
+
 ## Animation files that sit beside a dropped-in model. Most tools export one file per motion,
 ## so characters/yugi.glb can come with yugi_walk.glb, yugi_run.glb, yugi_idle.glb and
 ## yugi_victory.glb: the clip in each is added to the model under the name after the underscore.
@@ -1574,7 +1608,8 @@ func load_model(key: String) -> Node3D:
 	return m
 
 
-func _load_plain(key: String) -> Node3D:
+## `sharp`: for a portrait (a close look at the face): the color texture keeps up to 2048.
+func _load_plain(key: String, sharp := false) -> Node3D:
 	if not has_avatar(key):
 		return null
 	var path := path_for(key)
@@ -1583,6 +1618,7 @@ func _load_plain(key: String) -> Node3D:
 		if g == null:
 			return null
 		if not path.begins_with("res://"):
+			_fit_textures(g, 2048 if sharp else 1024)
 			g = _merge_clip_files(key, path, g)
 		# A rigged model without an idle, walk, run or victory of its own gets the game's
 		# (yours, and the bundled ones that came from the rigger with no clips).
@@ -2125,12 +2161,14 @@ var _count_asks := "--portrait-count" in OS.get_cmdline_user_args()
 func portrait(key: String, hi := false) -> Texture2D:
 	_asked += 1
 	key = dressed(key)
+	_asked_at[key] = Time.get_ticks_msec()
 	if _stages.has(key):
+		_restage(key)
 		_touch(key)
 		if hi:
 			_sharpen(key)
 		return (_stages[key] as SubViewport).get_texture()
-	var model := _load_plain(key.get_slice("@", 0))
+	var model := _load_plain(key.get_slice("@", 0), true)
 	if model == null:
 		return null
 	if "@" in key:
@@ -2152,6 +2190,82 @@ func portrait(key: String, hi := false) -> Texture2D:
 	if hi:
 		_sharpen(key)
 	return vp.get_texture()
+
+
+## ---- What a portrait keeps in memory (0.63.1). Every duelist whose portrait was ever shown kept a
+## whole model loaded behind their picture for the rest of the session: 50 to 60 MB each with the
+## textures of a model made outside the game, so the 25 of them were over a gigabyte that never came
+## back. Now a portrait nobody has asked for in a while lets its model go and keeps its picture; the
+## model comes back the next time the portrait is asked for. The few most recent always stay ready
+## (the two duelists of a duel are never reloaded in the middle of it).
+const STAGE_MODELS := 4          # the most recently asked-for portraits keep their model, come what may
+const STAGE_IDLE_MS := 12000     # the others let it go after this long without being asked for
+var _asked_at := {}              # key -> when its portrait was last asked for (msec)
+
+
+func _stage_of(key: String) -> Node:
+	var vp: SubViewport = _stages.get(key)
+	return vp.get_child(0) if vp != null and vp.get_child_count() > 0 else null
+
+
+## Put the model back behind a portrait that had let it go.
+func _restage(key: String) -> void:
+	var stage := _stage_of(key)
+	if stage == null or bool(stage.call("loaded")):
+		return
+	var model := _load_plain(key.get_slice("@", 0), true)
+	if model == null:
+		return
+	if "@" in key:
+		wear(model, key.get_slice("@", 0), Color.html(key.get_slice("@", 1)))
+	stage.call("enter", model)
+
+
+## Is anything on screen (or anything at all, beyond the two that always do) holding this portrait's
+## picture? The viewport holds it, and so does the Portraits list once it has handed it out.
+func _shown(key: String) -> bool:
+	var vp: SubViewport = _stages.get(key)
+	if vp == null:
+		return false
+	var tex := vp.get_texture()
+	return tex.get_reference_count() > 2 + (1 if Portraits.holds(key) else 0)
+
+
+## Somebody is about to show this portrait again (it was handed out before): if it had let its model
+## go, the model comes back and the picture is drawn fresh.
+func wake(key: String) -> void:
+	if not _stages.has(key):
+		return
+	_asked_at[key] = Time.get_ticks_msec()
+	var stage := _stage_of(key)
+	if stage != null and not bool(stage.call("loaded")):
+		_restage(key)
+		_touch(key)
+
+
+## Called now and then: a portrait nothing is showing, not asked for in a while, gives up its model
+## (the few most recent keep theirs). Its picture stays as it is.
+func _trim_stages() -> void:
+	var now := Time.get_ticks_msec()
+	var loaded: Array = []
+	for k in _stages:
+		var stage := _stage_of(k)
+		if stage != null and bool(stage.call("loaded")):
+			loaded.append(k)
+	if loaded.size() <= STAGE_MODELS:
+		return
+	loaded.sort_custom(func(a, b): return int(_asked_at.get(a, 0)) > int(_asked_at.get(b, 0)))
+	for k in loaded.slice(STAGE_MODELS):
+		var vp: SubViewport = _stages[k]
+		if now - int(_asked_at.get(k, 0)) < STAGE_IDLE_MS or not _framed(k) or _shown(k):
+			continue
+		if DisplayServer.get_name() != "headless" and _blank(vp):
+			continue      # (never freeze an empty picture)
+		_live.erase(k)
+		_hi.erase(k)
+		vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		_awake(k, false)
+		_stage_of(k).call("unload")
 
 
 ## The size every portrait is drawn at when it is not one of the few big ones. Bigger on High
@@ -2177,6 +2291,7 @@ func _sharpen(key: String) -> void:
 	while _hi.size() > HI_MAX:
 		var old: String = _hi.pop_back()
 		if _stages.has(old):
+			_restage(old)
 			(_stages[old] as SubViewport).size = stage_size()
 			# A portrait that is holding its last frame has to draw once more at the new size.
 			# (Drawn live again until a picture is really there, then frozen: a single UPDATE_ONCE could
@@ -2212,6 +2327,8 @@ var quiet := false
 
 func _process(_delta: float) -> void:
 	_tick += 1
+	if _tick % 90 == 0:
+		_trim_stages()
 	if _count_asks and _tick % 120 == 0:
 		var drawing := 0
 		for k in _stages:

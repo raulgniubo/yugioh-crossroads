@@ -40,29 +40,149 @@ func has_real_images() -> bool:
 	return DirAccess.dir_exists_absolute(Settings.card_folder.path_join("cards"))
 
 
+## Card pictures in memory (0.63.1). Every picture ever shown used to stay in memory at full size
+## (813 x 1185, about 4 MB each on the graphics card): a few duels and a few packs later that was
+## gigabytes, the frame rate fell, and on a smaller graphics card new pictures came up as white boxes.
+## Now: a picture is kept at the size it is shown at (512 wide; the full size only for the views that
+## show one card large), and only the most recently used ones are kept. One still on screen stays
+## alive whatever this list does: the list only decides what is kept ready for next time.
+const FACE_WIDE := 512
+const FACE_KEEP := 200
+const FULL_KEEP := 12
+const ART_KEEP := 80
+## Small tiles (a grid of cards about 110 wide: the deck editor, a pack's summary, a deck's list).
+const THUMB_WIDE := 256
+const THUMB_KEEP := 360
+var _full_cache := {}
+var _thumb_cache := {}
+var _made_faces := {}      # id -> a face drawn here, for a card with no picture on disk
+
+
+func _kept(cache: Dictionary, id: int):
+	if not cache.has(id):
+		return null
+	var t = cache[id]
+	cache.erase(id)      # (to the back of the line: the front of the line is what goes first)
+	cache[id] = t
+	return t
+
+
+func _keep(cache: Dictionary, id: int, tex, most: int) -> void:
+	cache[id] = tex
+	while cache.size() > most:
+		cache.erase(cache.keys()[0])
+
+
 ## Full card face. Real card image if available, otherwise a generated placeholder.
-func get_face(id: int) -> Texture2D:
-	if _face_cache.has(id):
-		return _face_cache[id]
-	var tex := _load_image(Settings.card_folder.path_join("cards/%d.jpg" % id))
+## `big`: for a view that shows this one card large (the album's detail, a pack's reveal).
+func get_face(id: int, big := false) -> Texture2D:
+	var cache: Dictionary = _full_cache if big else _face_cache
+	var have = _kept(cache, id)
+	if have != null:
+		return have
+	var wide := 0 if big else FACE_WIDE
+	var tex := _load_image(Settings.card_folder.path_join("cards/%d.jpg" % id), wide)
 	if tex == null and CardData.IMAGE_ALT.has(id):
-		tex = _load_image(Settings.card_folder.path_join("cards/%d.jpg" % int(CardData.IMAGE_ALT[id])))
+		tex = _load_image(Settings.card_folder.path_join("cards/%d.jpg" % int(CardData.IMAGE_ALT[id])), wide)
 	if tex == null:
-		tex = _make_placeholder_face(id)
-	_face_cache[id] = tex
+		if big:
+			return get_face(id)
+		# A face made here (no picture on disk) is drawn on a small viewport of its own that has to stay
+		# alive, so each is made once and kept for good, never made again. (They used to pile up: a
+		# new viewport every time one was needed.)
+		if not _made_faces.has(id):
+			_made_faces[id] = _make_placeholder_face(id)
+		return _made_faces[id]
+	_keep(cache, id, tex, FULL_KEEP if big else FACE_KEEP)
 	return tex
+
+
+## The card's face for a small tile in a grid: a quarter of the memory of get_face.
+func get_thumb(id: int) -> Texture2D:
+	var have = _kept(_thumb_cache, id)
+	if have != null:
+		return have
+	var path := Settings.card_folder.path_join("cards/%d.jpg" % id)
+	if not FileAccess.file_exists(path) and CardData.IMAGE_ALT.has(id):
+		path = Settings.card_folder.path_join("cards/%d.jpg" % int(CardData.IMAGE_ALT[id]))
+	var tex := _load_image(path, THUMB_WIDE)
+	if tex == null:
+		return get_face(id)
+	_keep(_thumb_cache, id, tex, THUMB_KEEP)
+	return tex
+
+
+## The same small picture without making the game wait for it: it is read on another thread and
+## handed to `give` when it is ready (straight away if it is already in memory). A long list of
+## cards fills in over a few frames instead of freezing while every picture is read.
+var _thumb_wait := {}      # id -> the ones waiting for it
+
+func thumb_later(id: int, give: Callable) -> void:
+	var have = _kept(_thumb_cache, id)
+	if have != null:
+		give.call(have)
+		return
+	if _thumb_wait.has(id):
+		(_thumb_wait[id] as Array).append(give)
+		return
+	var path := Settings.card_folder.path_join("cards/%d.jpg" % id)
+	if not FileAccess.file_exists(path) and CardData.IMAGE_ALT.has(id):
+		path = Settings.card_folder.path_join("cards/%d.jpg" % int(CardData.IMAGE_ALT[id]))
+	if not FileAccess.file_exists(path):
+		give.call(get_face(id))
+		return
+	_thumb_wait[id] = [give]
+	_thumb_tasks[id] = WorkerThreadPool.add_task(func():
+		var img := _read_image(path, THUMB_WIDE)
+		_thumb_ready.call_deferred(id, img))
+
+
+var _thumb_tasks := {}     # id -> the thread task reading it
+
+## (Closing the game while pictures are still being read: let them finish first.)
+func _exit_tree() -> void:
+	for id in _thumb_tasks.keys():
+		WorkerThreadPool.wait_for_task_completion(int(_thumb_tasks[id]))
+	_thumb_tasks.clear()
+
+
+func _thumb_ready(id: int, img: Image) -> void:
+	if _thumb_tasks.has(id):
+		WorkerThreadPool.wait_for_task_completion(int(_thumb_tasks[id]))      # (it is done: this only hands its slot back)
+		_thumb_tasks.erase(id)
+	var waiting: Array = _thumb_wait.get(id, [])
+	_thumb_wait.erase(id)
+	var tex: Texture2D = null
+	if img != null:
+		tex = ImageTexture.create_from_image(img)
+		_keep(_thumb_cache, id, tex, THUMB_KEEP)
+	else:
+		tex = get_face(id)
+	for give in waiting:
+		if (give as Callable).is_valid():
+			(give as Callable).call(tex)
+
+
+## How many small pictures are being read right now (a list checks this before asking for more).
+func thumbs_busy() -> int:
+	return _thumb_wait.size()
+
+
+func has_thumb(id: int) -> bool:
+	return _thumb_cache.has(id)
 
 
 ## Artwork only (for holograms). Falls back to the full face.
 func get_art(id: int) -> Texture2D:
-	if _art_cache.has(id):
-		return _art_cache[id]
+	var have = _kept(_art_cache, id)
+	if have != null:
+		return have
 	var tex := _load_image(Settings.card_folder.path_join("art/%d.jpg" % id))
 	if tex == null and CardData.IMAGE_ALT.has(id):
 		tex = _load_image(Settings.card_folder.path_join("art/%d.jpg" % int(CardData.IMAGE_ALT[id])))
 	if tex == null:
 		tex = get_face(id)
-	_art_cache[id] = tex
+	_keep(_art_cache, id, tex, ART_KEEP)
 	return tex
 
 
@@ -265,6 +385,12 @@ func _make_sleeve(id: int) -> Texture2D:
 
 func clear_cache() -> void:
 	_face_cache.clear()
+	_full_cache.clear()
+	_thumb_cache.clear()
+	_made_faces.clear()
+	for c in get_children():
+		if c is SubViewport:
+			c.queue_free()
 	_sleeve_cache.clear()
 	_art_cache.clear()
 	for c in get_children():
@@ -309,14 +435,27 @@ static func art_focus(img: Image) -> float:
 	return lerpf(0.5, sum / total, 0.8)
 
 
-func _load_image(path: String) -> Texture2D:
+## `wide`: bring a bigger picture down to this width (0 = as it is on disk).
+func _load_image(path: String, wide := 0) -> Texture2D:
+	var img := _read_image(path, wide)
+	if img == null:
+		return null
+	return ImageTexture.create_from_image(img)
+
+
+## Reads a picture from disk at the size it will be shown at. (Safe to call from another thread.)
+func _read_image(path: String, wide := 0) -> Image:
 	if not FileAccess.file_exists(path):
 		return null
 	var img := Image.load_from_file(path)
 	if img == null or img.is_empty():
 		return null
+	if wide > 0 and img.get_width() > wide:
+		while img.get_width() >= wide * 2 + 2:
+			img.shrink_x2()      # (halving first keeps small text clean; one big bilinear step would make it grainy)
+		img.resize(wide, int(round(img.get_height() * float(wide) / img.get_width())), Image.INTERPOLATE_BILINEAR)      # (3 ms; the sharper filters take 30)
 	img.generate_mipmaps()
-	return ImageTexture.create_from_image(img)
+	return img
 
 
 func _load_external_data() -> void:

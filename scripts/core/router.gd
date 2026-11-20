@@ -375,6 +375,8 @@ func _debug_args() -> void:
 			duel_config["player_coat"] = a.trim_prefix("--my-coat=")
 		elif a.begins_with("--opp="):
 			duel_config["opponent"] = a.substr(6)
+		elif a.begins_with("--me="):
+			duel_config["player_char"] = a.substr(5)      # dev: duel as one of the characters
 		elif a == "--turbo":
 			duel_config["turbo"] = true
 		elif a.begins_with("--speed-start="):

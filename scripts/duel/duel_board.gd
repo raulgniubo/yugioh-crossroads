@@ -4051,7 +4051,9 @@ var _phead := {}      # player -> where their head is, smoothed
 var _pbone := {}      # player -> [Skeleton3D, head bone]
 ## Framing, yours (a tall strip: head to waist) and theirs (a square: head and shoulders):
 ## [how far the camera stands, lens, how far under the head it aims, how far to the side it stands].
-const PORTRAIT_FRAME := [[1.75, 40.0, 0.25, 0.42], [1.7, 29.0, 0.13, 0.38]]
+## (0.63.1: a long lens from further back. From 1.75 m a hand reaching toward the camera came out
+## half as big again as it is; from 3.2 m it does not. The framing at the duelist is the same.)
+const PORTRAIT_FRAME := [[3.2, 22.6, 0.25, 0.77], [3.1, 16.2, 0.13, 0.70]]
 const PORTRAIT_WIDE_MAX := 1.5      # how far back the camera may step for a big gesture
 var _pwide := {}      # player -> how far back it stands now (1 = the close framing)
 

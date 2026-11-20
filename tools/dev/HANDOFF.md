@@ -619,3 +619,19 @@ fists at the chin) is what he saw as "crossed arms" at the start and on the vict
 11. (1:50 PM) His brother: buying a deck that has a card you already own did not add it. Confirmed in
    `Collection.buy_deck` (it took the larger of the two counts). FIXED: the deck's copies are added to yours, up to 3.
    (`_grant_decks` on load still only makes sure you have at least what the decks you own need.) Add a unit test.
+12. (2:07 PM, photo e057fe36-image.jpg, his brother, Windows) On the "TODO LO QUE TE SALIÓ" screen after opening 10
+   packs (50 cards), about 22 of the cards are blank white rectangles (the rarity and ¡NUEVA! labels are there, the
+   picture is not). Suspect the same cause as item 9: pictures held in memory without limit (texture cache), so the
+   card pictures stop loading and the frame rate drops. Check scripts/core/cards.gd (cache, eviction), the pack
+   summary's loading, and what a missing/failed picture shows (it should never be a white box).
+13. (2:23 PM, his brother) Picking a card from the Deck in a duel (a search): with two copies of a card in the Deck
+   the pop-up shows it once. Raul: "if you have two, it's nice that it shows two". Show every copy (or at least the
+   count). Look at duel_hud.gd (options grid about line 2100), card_picker.gd, and where the list is made unique.
+MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes found.
+ a. card_db.gd kept every card face forever at 813x1185 (4 MB each): now 512 wide, the last 200 only; full size
+    (`get_face(id, true)`) for the five large views, the last 12. Made-here faces once each (`_made_faces`).
+ b. Avatars._stages kept a whole model behind every portrait ever shown (3 x 2048 textures each, 50-60 MB): now
+    `_trim_stages` (the 4 most recent keep theirs, others let go after 12 s unasked; `_restage` brings one back).
+ c. dropped-in model textures: `_fit_textures` (figures 1024, portraits 2048 color, 1024 the rest).
+ Test: `godot --headless --path . res://tests/duel_leak.tscn -- --autoplay --duels=5 --assets=/tmp/realfit`
+ BEFORE: nodes 42 -> 1745 after 5 duels, static memory 146 -> 650 MB. (after: see below)

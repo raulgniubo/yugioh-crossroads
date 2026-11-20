@@ -90,21 +90,62 @@ func _init(p: int) -> void:
 
 
 ## The live picture (0.63.0): the real duelist from the board, drawn by a camera of their own, in place
-## of the still. It fills the strip exactly; the camera does the framing.
+## of the still. The camera does the framing.
+## 0.63.1: the strip no longer slices a hand off. Your picture is wider than its strip: above the slab
+## it reaches out over the table (a hand held out to the side is whole), and only behind the slab's
+## own text does it end at the strip, softly. Every outer edge fades instead of cutting.
 var live := false
+const LIVE_EXTRA := 80.0      # how far your live picture reaches past its strip on each side
+
+const LIVE_SHADER := """
+shader_type canvas_item;
+uniform float cut_x = 2.0;      // below cut_y the picture ends here (UV); 2 = it does not
+uniform float cut_y = 0.0;
+uniform float soft_l = 0.0;
+uniform float soft_r = 0.0;
+uniform float soft_t = 0.0;
+uniform float soft_b = 0.0;
+void fragment() {
+	float a = 1.0;
+	float below = smoothstep(cut_y - 0.004, cut_y + 0.004, UV.y);
+	a *= 1.0 - below * smoothstep(cut_x - 0.05, cut_x, UV.x);
+	if (soft_l > 0.0) { a *= smoothstep(0.0, soft_l, UV.x); }
+	if (soft_r > 0.0) { a *= 1.0 - smoothstep(1.0 - soft_r, 1.0, UV.x) * (1.0 - below); }
+	if (soft_t > 0.0) { a *= smoothstep(0.0, soft_t, UV.y); }
+	if (soft_b > 0.0) { a *= 1.0 - smoothstep(1.0 - soft_b, 1.0, UV.y); }
+	COLOR.a *= a;
+}
+"""
 
 func live_size() -> Vector2i:
 	var clip := portrait.get_parent() as Control
-	return Vector2i(int(clip.size.x) * 2, int(clip.size.y) * 2)
+	return Vector2i(int(clip.size.x + (LIVE_EXTRA * 2.0 if side == 0 else 0.0)) * 2, int(clip.size.y) * 2)
 
 
 func go_live(tex: Texture2D) -> void:
 	var clip := portrait.get_parent() as Control
 	live = true
 	portrait.texture = tex
-	portrait.size = clip.size
-	portrait.position = Vector2.ZERO
-	portrait.set_meta("home_x", 0.0)
+	var sh := Shader.new()
+	sh.code = LIVE_SHADER
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
+	if side == 0:
+		clip.clip_contents = false
+		portrait.size = Vector2(clip.size.x + LIVE_EXTRA * 2.0, clip.size.y)
+		portrait.position = Vector2(-LIVE_EXTRA, 0)
+		mat.set_shader_parameter("cut_x", (LIVE_EXTRA + clip.size.x) / portrait.size.x)
+		mat.set_shader_parameter("cut_y", -clip.position.y / clip.size.y)
+		mat.set_shader_parameter("soft_r", 0.08)
+		mat.set_shader_parameter("soft_t", 0.035)
+	else:
+		portrait.size = clip.size
+		portrait.position = Vector2.ZERO
+		mat.set_shader_parameter("soft_l", 0.10)
+		mat.set_shader_parameter("soft_b", 0.05)
+	portrait.material = mat
+	portrait.stretch_mode = TextureRect.STRETCH_SCALE
+	portrait.set_meta("home_x", portrait.position.x)
 	portrait.pivot_offset = portrait.size / 2.0
 
 

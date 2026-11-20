@@ -94,7 +94,7 @@ func _tile(id: int, n: int, k: int) -> Control:
 	var holder := VBoxContainer.new()
 	holder.add_theme_constant_override("separation", 2)
 	var tr := TextureRect.new()
-	tr.texture = Cards.get_face(id)
+	tr.texture = Cards.get_thumb(id)
 	tr.custom_minimum_size = Vector2(118, 172)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
