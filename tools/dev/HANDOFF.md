@@ -557,3 +557,10 @@ credits, 50,000 ElevenLabs credits. New Spanish text is neutral Latin American.
    camera's step-back did not keep it in (the hand is raised beside the shoulder, outside the narrow strip). To do
    when told: let the portrait draw wider than its strip (no hard clip on the table side) or step back sooner/further
    for hands out to the side, so a hand is never sliced by the edge.
+4. (Nov 20, 1:22 PM, photo b8440651-image.jpg) "I'm not sure what it is trying to do here": his duelist with the
+   right forearm swung across the chest, open palm facing out at the left side, left hand low at the hip, head dipped
+   forward (Mano 4, so right after a card left the hand). Best read: the "play a card"/"set" motion caught mid-sweep
+   with the card already gone, and the arm crossing further than it should on his body. Probably the SAME root cause
+   as item 1 (arms swing too far inward on his real models: check the arm/shoulder retarget against his rigs, A-pose
+   vs T-pose rest, before touching single clips). Also check: head dips too low, and the pose reads as nothing once
+   the card prop is gone (keep the card in the hand until the hand reaches the table side, or shorten the hold).
