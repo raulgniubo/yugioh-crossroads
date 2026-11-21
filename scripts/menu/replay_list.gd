@@ -90,6 +90,8 @@ func _close() -> void:
 	queue_free()
 
 
+var _dev_once := false
+
 func _fill() -> void:
 	for c in _list.get_children():
 		_list.remove_child(c)
@@ -109,6 +111,9 @@ func _fill() -> void:
 		return
 	for h in rows:
 		_list.add_child(_row(h))
+	if "--replay-rename" in OS.get_cmdline_user_args() and not _dev_once:
+		_dev_once = true      # dev: the naming box, for a picture
+		_ask_name(str(rows[0]["path"]), "%s vs %s" % [str(rows[0]["names"][0]), str(rows[0]["names"][1])])
 
 
 func _row(h: Dictionary) -> Control:
@@ -152,7 +157,13 @@ func _row(h: Dictionary) -> Control:
 	mid.add_child(title)
 	if bool(h["keep"]):
 		title.add_child(_chip(Loc.t("Favorite"), UITheme.GOLD))
-	title.add_child(UITheme.label("%s  vs  %s" % [str(names[0]), str(names[1])], 25, Color.WHITE, UITheme.title_font()))
+	var given := str(h.get("title", ""))
+	var big := UITheme.label(given if given != "" else "%s  vs  %s" % [str(names[0]), str(names[1])], 25, Color.WHITE, UITheme.title_font())
+	big.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	big.clip_text = true
+	big.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	big.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.add_child(big)
 	if bool(h["turbo"]):
 		title.add_child(_chip(Loc.t("Turbo Duel"), Color("ffb347")))
 	var how := Loc.t("Tied duel") if draw else (Loc.t("Victory") if won else Loc.t("Defeat"))
@@ -163,7 +174,9 @@ func _row(h: Dictionary) -> Control:
 	mid.add_child(line)
 	line.add_child(_chip(how, col))
 	var lp: Array = res.get("lp", [0, 0])
-	line.add_child(UITheme.label(Loc.t("%d turns") % int(res.get("turns", 0)) + "   ·   " + Loc.t("LP %d - %d") % [int(lp[0]), int(lp[1])], 16, UITheme.TEXT))
+	# (a replay with a name of its own still says who played)
+	var who := ("%s vs %s   ·   " % [str(names[0]), str(names[1])]) if given != "" else ""
+	line.add_child(UITheme.label(who + Loc.t("%d turns") % int(res.get("turns", 0)) + "   ·   " + Loc.t("LP %d - %d") % [int(lp[0]), int(lp[1])], 16, UITheme.TEXT))
 	var when := UITheme.label(str(h["date"]), 15, UITheme.TEXT_DIM)
 	mid.add_child(when)
 	# What you can do with it.
@@ -196,6 +209,13 @@ func _row(h: Dictionary) -> Control:
 	watch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	watch.pressed.connect(func(): _watch(path))
 	acts.add_child(watch)
+	# Its name: the pencil. The name is the file's name in the Replays folder.
+	var pen := RoundButton.new("pencil", Comic.BLUE, 54.0)
+	pen.tooltip_text = Loc.t("Name this replay")
+	pen.focus_mode = Control.FOCUS_ALL
+	pen.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pen.pressed.connect(func(): _ask_name(path, given if given != "" else "%s vs %s" % [str(names[0]), str(names[1])]))
+	acts.add_child(pen)
 	# Favorite: a star, hollow or gold. A favorite is never cleared out by newer duels.
 	var keep_now := bool(h["keep"])
 	var star := RoundButton.new("star_on" if keep_now else "star", Comic.BLUE, 54.0)
@@ -283,3 +303,67 @@ func _confirm_delete(path: String, label: String) -> void:
 		_fill())
 	bar.add_child(yes)
 	no.grab_focus()
+
+
+## A name for a replay: typed here, and it becomes the name of the file itself.
+func _ask_name(path: String, now: String) -> void:
+	if _ask != null and is_instance_valid(_ask):
+		_ask.queue_free()
+	_ask = Control.new()
+	_ask.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ask.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_ask)
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.6)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ask.add_child(shade)
+	var cc := CenterContainer.new()
+	cc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ask.add_child(cc)
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.05, 0.08, 0.16, 0.98), 18, Color(1, 1, 1, 0.2)))
+	cc.add_child(p)
+	var pm := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		pm.add_theme_constant_override("margin_" + side, 26)
+	p.add_child(pm)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 14)
+	pm.add_child(v)
+	v.add_child(UITheme.label("Name this replay", 28, Color.WHITE, UITheme.title_font()))
+	var edit := LineEdit.new()
+	edit.text = now
+	edit.max_length = 70
+	edit.custom_minimum_size = Vector2(560, 52)
+	edit.add_theme_font_size_override("font_size", 22)
+	v.add_child(edit)
+	var note := UITheme.label("This is also the name of its file in the Replays folder, so it is easy to find and to share. A replay with a name is never cleared out by newer duels.", 15, UITheme.TEXT_DIM)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.custom_minimum_size = Vector2(560, 0)
+	v.add_child(note)
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 12)
+	bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_child(bar)
+	var no := Button.new()
+	no.text = "Cancel"
+	no.custom_minimum_size = Vector2(170, 52)
+	no.pressed.connect(func(): _ask.queue_free())
+	bar.add_child(no)
+	var yes := Button.new()
+	yes.text = "Save name"
+	yes.custom_minimum_size = Vector2(200, 52)
+	UITheme.paint_button(yes, UITheme.ACCENT)
+	bar.add_child(yes)
+	var done := func():
+		if edit.text.strip_edges() == "":
+			return
+		if Replays.rename(path, edit.text) == "":
+			Router.toast(Loc.t("That name could not be used."))
+			return
+		_ask.queue_free()
+		_fill()
+	yes.pressed.connect(done)
+	edit.text_submitted.connect(func(_t): done.call())
+	edit.grab_focus()
+	edit.select_all()

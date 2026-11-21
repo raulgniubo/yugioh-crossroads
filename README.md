@@ -5,6 +5,16 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.64.1
+
+Replays: favorite and name them. No cards added: 8,415 total.
+
+- **Favorite a duel right when it ends.** The results screen of every duel (Story, Free Roam, Match, gauntlet, Turbo, all of them) has the star with "Keep this replay as a favorite". The end of a replay has it too. No trip to the menu.
+- **Name a replay.** The pencil on each row of the Replays screen. The name you type becomes the name of the file itself in the Replays folder, so it is easy to find and to send. It works the other way too: rename the file in Finder or Explorer and the list shows that name. A replay with a name is never cleared out by newer duels, the same as a favorite.
+- **Fixed from 0.64.0:** on the results of a free duel the four buttons ran off the right side of the screen ("Main Menu" was cut). "Watch the replay" now sits on its own line beside the favorite star.
+- The Replays screen: watch, name, favorite and delete are four buttons side by side (delete is a bin now, and still asks first).
+- **Windows:** only the .exe changed.
+
 ## What is in 0.64.0
 
 Replays. No cards added: 8,415 total.

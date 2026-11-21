@@ -809,12 +809,14 @@ Match won: +%d Duel Points") % 200
 			get_tree().create_timer(1.0).timeout.connect(func():
 				print("RESULT action ", act, " gauntlet_next=", hud.gauntlet_next, " vs=", Collection.versus(_opp_key), " decks=", Collection.decks_owned.size())
 				_on_pause_action(act))
+	if "--result-replay" in OS.get_cmdline_user_args() and Replays.last_saved == "" and not Replays.list().is_empty():
+		Replays.last_saved = str(Replays.list()[0]["path"])      # dev: a results screen with a replay to its name, for a picture
 	hud.show_result(won, why, cfg.get("story", false), cfg.get("lose_ok", false), cfg.get("continue_label", "Continue Story"),
 			{"turns": state.turn, "lp": [state.players[ME].lp, state.players[AI].lp], "names": [state.players[ME].name, state.players[AI].name],
 			"reward": Collection.last_reward.duplicate() if earned > 0 else [], "earned": earned,
 			"prize": Collection.last_prize if (earned > 0 and won) else 0,
 			"free": not cfg.has("return_to") and not cfg.get("story", false), "draw": tied, "match": match_info,
-			"replay": Replays.last_saved != "",
+			"replay": Replays.last_saved != "", "replay_path": Replays.last_saved,
 			"task": cfg.get("task", false)})
 	_won = won
 
@@ -1054,7 +1056,7 @@ func _replay_end(won: bool, tied: bool, wk: String) -> void:
 	var line := Loc.t("A draw.") if who == "" else (Loc.t("%s surrendered.") % str(state.players[ME].name) if _surrendered else Loc.t("%s won in %d turns.") % [who, turns])
 	if _r_bailed:
 		line = Loc.t("This version of the game could not show this replay to the end.") + "\n" + line
-	hud.show_replay_over(Loc.t("REPLAY OVER"), line, UITheme.GOLD if int(state.winner) == ME else Color.WHITE)
+	hud.show_replay_over(Loc.t("REPLAY OVER"), line, UITheme.GOLD if int(state.winner) == ME else Color.WHITE, str(_replay.get("path", "")))
 
 signal replay_over
 var replay_same := false

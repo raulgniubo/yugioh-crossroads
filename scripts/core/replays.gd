@@ -63,11 +63,11 @@ static func save(rec: Dictionary, result: Dictionary) -> String:
 	return path
 
 
-## Only the newest KEEP unstarred replays stay.
+## Only the newest KEEP replays that are neither a favorite nor named stay.
 static func _trim() -> void:
 	var loose: Array = []
 	for h in list():
-		if not bool(h.get("keep", false)):
+		if not bool(h.get("keep", false)) and str(h.get("title", "")) == "":      # (a replay someone named stays too)
 			loose.append(h)
 	for h in loose.slice(KEEP):
 		DirAccess.remove_absolute(str(h["path"]))
@@ -144,9 +144,50 @@ static func list() -> Array:
 		out.append({"path": d["path"], "file": fn, "when": int(d.get("when", 0)), "date": str(d.get("date", "")), "game": str(d.get("game", "?")),
 			"keep": bool(d.get("keep", false)), "names": d.get("names", ["?", "?"]), "result": d.get("result", {}),
 			"opponent": str((d.get("cfg", {}) as Dictionary).get("opponent", "")), "me": str((d.get("cfg", {}) as Dictionary).get("player_char", "player")),
-			"turbo": bool((d.get("cfg", {}) as Dictionary).get("turbo", false)), "steps": int(d.get("steps", 0)), "newer": bool(d.get("newer", false))})
+			"turbo": bool((d.get("cfg", {}) as Dictionary).get("turbo", false)), "steps": int(d.get("steps", 0)), "newer": bool(d.get("newer", false)), "title": title_of(fn)})
 	out.sort_custom(func(a, b): return int(a["when"]) > int(b["when"]))
 	return out
+
+
+## The name someone gave a replay: its file's name, when that is no longer the one the game wrote
+## ("2026-11-20 19-25-21 vs Seto Kaiba (lost)"). "" when it was never named. It works both ways:
+## named here, or the file renamed in Finder / Explorer.
+static var _auto_name: RegEx
+
+static func title_of(file_name: String) -> String:
+	if _auto_name == null:
+		_auto_name = RegEx.new()
+		_auto_name.compile("^\\d{4}-\\d{2}-\\d{2} \\d{2}-\\d{2}-\\d{2} vs .*\\((won|lost|draw)\\)$")
+	var base := file_name.get_file().trim_suffix(EXT)
+	return "" if _auto_name.search(base) != null else base
+
+
+## Gives a replay a name: the file itself is renamed, so the name is what you see in the Replays
+## folder and what you send to a friend. Returns the new path ("" when the name cannot be used).
+static func rename(path: String, name: String) -> String:
+	var clean := name.strip_edges().trim_suffix(EXT)
+	for bad in [":", "/", "\\", "?", "*", "\"", "|", "%", "<", ">", "\n", "\t"]:
+		clean = clean.replace(bad, " ")      # (what a file's name cannot hold, on Mac or on Windows)
+	clean = clean.validate_filename().strip_edges()
+	while clean.ends_with("."):
+		clean = clean.substr(0, clean.length() - 1).strip_edges()
+	clean = clean.substr(0, 70).strip_edges()
+	if clean == "" or not FileAccess.file_exists(path) or not path.ends_with(EXT):
+		return ""
+	var folder := path.get_base_dir()
+	var want := folder.path_join(clean + EXT)
+	if want == path:
+		return path
+	var n := 2
+	# (the same file with other capitals is not "taken": Mac and Windows do not tell them apart)
+	while FileAccess.file_exists(want) and want.to_lower() != path.to_lower():
+		want = folder.path_join("%s (%d)%s" % [clean, n, EXT])
+		n += 1
+	if DirAccess.rename_absolute(path, want) != OK:
+		return ""
+	if last_saved == path:
+		last_saved = want
+	return want
 
 
 ## Make a replay a favorite or not (a favorite is never cleared out by newer duels).

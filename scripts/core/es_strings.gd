@@ -7679,4 +7679,10 @@ const ES := {
 	"This version of the game could not show this replay to the end.": "Tu versión del juego no pudo mostrar esta repetición hasta el final.",
 	"Made with a newer version of the game (%s). Update the game to watch it.": "Hecha con una versión más nueva del juego (%s). Actualiza el juego para verla.",
 	"Delete this replay": "Borrar esta repetición",
+	"This replay is in your favorites": "Esta repetición está en tus favoritas",
+	"Keep this replay as a favorite": "Guardar esta repetición en favoritas",
+	"Name this replay": "Ponle nombre a esta repetición",
+	"This is also the name of its file in the Replays folder, so it is easy to find and to share. A replay with a name is never cleared out by newer duels.": "También es el nombre de su archivo en la carpeta de repeticiones, para encontrarlo y compartirlo fácil. Una repetición con nombre nunca se borra sola por duelos más nuevos.",
+	"Save name": "Guardar nombre",
+	"That name could not be used.": "No se pudo usar ese nombre.",
 }

@@ -10743,6 +10743,13 @@ func _test_0640() -> void:
 	g.store_string("not a replay")
 	g.close()
 	check(Replays.read(folder.path_join("c.cxr"), false).is_empty(), "Replay: a broken file is passed over")
-	for fn in ["a.cxr", "b.cxr", "c.cxr"]:
+	# 0.64.1: a name for a replay is its file's name.
+	check(Replays.title_of("2026-11-20 19-25-21 vs Seto Kaiba (lost).cxr") == "" and Replays.title_of("My best comeback.cxr") == "My best comeback", "Replay: only a file someone named has a title")
+	var named := Replays.rename(path, "  Raul vs Kaiba: the comeback?  ")
+	check(named.get_file() == "Raul vs Kaiba  the comeback.cxr" and FileAccess.file_exists(named) and not FileAccess.file_exists(path), "Replay: naming it renames the file (and leaves out what a file name cannot hold)")
+	check((Replays.read(named).get("tape", []) as Array).size() == 40, "Replay: a renamed replay still plays")
+	check(Replays._write(path, data) and Replays.rename(path, "Raul vs Kaiba  the comeback").get_file() == "Raul vs Kaiba  the comeback (2).cxr", "Replay: a name that is taken gets a number")
+	check(Replays.rename(named, "   ") == "" and Replays.rename(named, "RAUL vs Kaiba  the comeback").get_file() == "RAUL vs Kaiba  the comeback.cxr", "Replay: an empty name is refused, new capitals are fine")
+	for fn in ["a.cxr", "b.cxr", "c.cxr", "Raul vs Kaiba  the comeback.cxr", "RAUL vs Kaiba  the comeback.cxr", "Raul vs Kaiba  the comeback (2).cxr"]:
 		DirAccess.remove_absolute(folder.path_join(fn))
 	DirAccess.remove_absolute(folder)

@@ -75,6 +75,11 @@ func _draw() -> void:
 				draw_colored_polygon(sp, Color("ffd23a"))
 			sp.append(sp[0])
 			draw_polyline(sp, Color("ffd23a") if kind == "star_on" else w, 2.6 * k, true)
+		"pencil":
+			# to name something: a pencil, tip down to the left
+			draw_line(o + Vector2(-5, 5) * k, o + Vector2(9, -9) * k, w, 6.0 * k, true)
+			draw_colored_polygon(PackedVector2Array([o + Vector2(-13, 13) * k, o + Vector2(-10.2, 3.6) * k, o + Vector2(-3.6, 10.2) * k]), w)
+			draw_line(o + Vector2(3.5, -8.5) * k, o + Vector2(8.5, -3.5) * k, Color(0.05, 0.075, 0.16).lerp(UITheme.ACCENT, _hover), 1.8 * k, true)
 		"trash":
 			# a bin: the lid with its handle, the body, two ribs
 			draw_line(o + Vector2(-12, -9) * k, o + Vector2(12, -9) * k, w, 2.8 * k, true)

@@ -731,3 +731,15 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
   empty HOME, as on GitHub), CARD CHECK 8415 problems 0, positions 206 pass (6 with none), VOICE OVERLAP PASS, LINE NAMES
   PASS, CHAIN CHECK PASS, REPLAY CHECK 4 of 4 PASS, OTHER-VERSION REPLAY ended with 0 script errors.
   Voice check-in scheduled for 8:30 PM (trig_01GfKEAnw8gHGQaqqFmJAZ4y): batch 103 onward.
+
+#### 0.64.1 (Nov 20, night): favorite at the end of a duel, name a replay
+- Raul at 8:28 PM: a way to favorite the replay on the screen at the end of ANY duel; at 8:29 PM: rename them, and the
+  name must be the actual file's name on the computer (to share it with a name).
+- hud.favorite_toggle(path, watch) = star RoundButton + words (a clickable label); in show_result for every branch when
+  stats["replay_path"] != "", and in show_replay_over. With watch = true (the plain ending only) it also holds the
+  "Watch the replay" button: FOUR buttons in the results bar ran off the right edge in 0.64.0 (found in a picture).
+- Replays.rename(path, name): renames the FILE (DirAccess.rename_absolute), cleans what a file name cannot hold, " (2)"
+  when taken. Replays.title_of(file): "" when the name is the game's own pattern (date time vs X (won|lost|draw)),
+  else the file's base name, so a rename in Finder/Explorer shows too. _trim keeps named replays like favorites.
+  replay_list: RoundButton "pencil" -> _ask_name (LineEdit, Enter saves). Dev: --replay-rename, --result-replay.
+- test_runner _test_0640 covers file round trip, other-version settle, later format, rubbish, title_of and rename.

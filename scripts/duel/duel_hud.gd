@@ -2954,6 +2954,7 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 	bar.add_theme_constant_override("separation", 14)
 	v.add_child(bar)
 	var first: Button
+	var plain_end := false
 	if story:
 		if won or lose_ok:
 			first = _overlay_button(bar, cont, "story_continue")
@@ -2977,9 +2978,16 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 		first = _overlay_button(bar, "New match" if not mt.is_empty() else ("Run it again" if gauntlet_label != "" else "Rematch"), "rematch")
 		if stats.get("free", false):
 			_overlay_button(bar, "Change duelists", "select")
-		if stats.get("replay", false):
-			_overlay_button(bar, "Watch the replay", "watch_replay")
 		_overlay_button(bar, "Main Menu", "menu")
+		plain_end = true
+	# Whatever kind of duel it was: its replay can be made a favorite right here. And watched, when
+	# nothing else is waiting on this duel (the Story, a Match and a gauntlet go on first; the replay
+	# is in the list).
+	if str(stats.get("replay_path", "")) != "":
+		var fgap := Control.new()
+		fgap.custom_minimum_size = Vector2(0, 2)
+		v.add_child(fgap)
+		v.add_child(favorite_toggle(str(stats["replay_path"]), plain_end))
 	first.grab_focus()
 	# And if it is still taller than the window (a small window, a very long list), the whole
 	# column is made a little smaller instead of running off it.
@@ -3048,11 +3056,61 @@ func set_opp_hand(cards: Array, on: bool) -> void:
 
 
 ## A replay is over: who won, and the two ways on.
-func show_replay_over(title: String, line: String, color: Color) -> void:
+func show_replay_over(title: String, line: String, color: Color, path := "") -> void:
 	var v := _overlay_panel(title, line, color)
 	var first := _overlay_button(v, "Watch again", "replay_again")
 	_overlay_button(v, "Back to replays", "replay_back")
+	if path != "":
+		v.add_child(favorite_toggle(path))
 	first.grab_focus()
+
+
+## The favorite star for one replay, with its words: on the results of every duel and at the end of
+## a replay, so a duel worth keeping is kept right there (a favorite is never cleared out by newer
+## duels). The same star as on the Replays screen.
+func favorite_toggle(path: String, watch := false) -> Control:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 12)
+	var on := [bool(Replays.read(path, false).get("keep", false))]
+	var star := RoundButton.new("star_on" if on[0] else "star", Comic.BLUE, 54.0)
+	star.focus_mode = Control.FOCUS_ALL
+	star.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(star)
+	# (the words can be pressed too: easier to hit than the star alone)
+	var words := UITheme.label("", 22, UITheme.TEXT, UITheme.semi_font())
+	words.mouse_filter = Control.MOUSE_FILTER_STOP
+	words.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(words)
+	var paint := func():
+		star.kind = "star_on" if on[0] else "star"
+		star.tooltip_text = Loc.t("Remove from favorites") if on[0] else Loc.t("Favorite: keep this replay for good")
+		star.queue_redraw()
+		words.text = Loc.t("This replay is in your favorites") if on[0] else Loc.t("Keep this replay as a favorite")
+		words.add_theme_color_override("font_color", Color("ffd23a") if on[0] else UITheme.TEXT)
+	var flip := func():
+		on[0] = not on[0]
+		Replays.set_keep(path, on[0])
+		Sfx.play("blip", -8.0, 1.5 if on[0] else 1.0)
+		paint.call()
+	star.pressed.connect(flip)
+	words.gui_input.connect(func(e: InputEvent):
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			flip.call())
+	paint.call()
+	if watch:
+		# (beside it, not in the row of buttons above: four of those ran off the side of the screen)
+		var gap := Control.new()
+		gap.custom_minimum_size = Vector2(10, 0)
+		row.add_child(gap)
+		var b := Button.new()
+		b.text = "Watch the replay"
+		b.custom_minimum_size = Vector2(230, 54)
+		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		b.pressed.connect(func(): pause_action.emit("watch_replay"))
+		row.add_child(b)
+	return row
 
 
 func show_pause() -> void:
