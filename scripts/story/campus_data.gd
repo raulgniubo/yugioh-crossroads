@@ -39,8 +39,12 @@ const FERRY := Vector3(0, 0, 230)           # the deck of the morning ferry, out
 const DOCK := Vector3(0, 0, 76)             # the end of the pier
 const SCHOOL := Vector3(0, 0, -20)          # in front of the main building's doors
 const HALL := Vector3(400, 0, -400)         # the main hall (shop, arena, exam office)
-const STAGE := HALL + Vector3(-6.0, 0, -5.2)
+const STAGE := HALL + Vector3(0, 0, -7.0)    # the head of the hall, under the crest: exams and assemblies happen here
 const RED_OUT := Vector3(-33.0, 0, 8.0)     # the Red dorm's front yard
+## The front yard of each dorm (Red, Yellow, Blue): where a free day starts when nowhere is remembered.
+## People of the classic island who are somebody else in this story (Sato runs Red here).
+const AWAY := ["red_head"]
+const YARDS := [Vector3(-33.0, 0, 8.0), Vector3(31.0, 0, -4.0), Vector3(-29.5, 0, -12.5)]
 const RED := Vector3(480, 0, -400)          # the Red dorm's common room
 const ROOM := Vector3(500, 0, -470)         # your room (Red dorm, room 2)
 const BED := ROOM + Vector3(-1.5, 0, -0.5)
@@ -133,17 +137,17 @@ const SCRIPTS := {
 		{"goal": "Go to the main building for your exam", "at": SCHOOL + Vector3(0, 0, 4.5), "r": 3.4, "how": "Straight up the path from the dock, past the fountain."},
 		# ---- the exam
 		{"scene": {"district": "academy", "inside": "ac_hall", "pos": STAGE + Vector3(0.6, 0, 6.2), "yaw": 0.0, "tod": "day", "music": "duel_tense"},
-			"title": "The Entrance Exam", "sub": "The arena in the main hall."},
+			"title": "The Entrance Exam", "sub": "The main hall, under the crest."},
 		{"cine": true},
 		{"actor": "crowler", "at": STAGE + Vector3(0, 0, 0.4), "face": "player"},
 		{"actor": "sato", "at": STAGE + Vector3(6.4, 0, 6.6), "face": "crowler"},
-		{"actor": "nico", "at": STAGE + Vector3(-3.6, 0, 7.4), "face": "crowler", "plain": true},
+		{"actor": "nico", "at": STAGE + Vector3(-1.7, 0, 7.6), "face": "crowler", "plain": true},
 		{"actor": "dante", "at": STAGE + Vector3(4.6, 0, 2.0), "face": "player"},
 		{"actor": "lumen", "at": STAGE + Vector3(1.8, 0, 5.6), "face": "player", "spirit": true},
 		{"s": "crowler", "t": "Next! Ah. Professor Sato's recommendation.", "cam": "low", "do": "chat"},
 		{"s": "crowler", "t": "I am Doctor Crowler, head of the Blue dorm and chair of Dueling Theory. You may call me Doctor. You may not call me anything else.", "cam": "close", "do": "stomp"},
 		{"s": "nico", "t": "The one by the column is Dante Morel. His father is a pro champion. He was Blue before he got off the boat.", "cam": "close", "emote": "..."},
-		{"s": "dante", "t": "Do not bother watching this one. He will be in Red by lunch.", "cam": "low"},
+		{"s": "dante", "t": "Do not bother watching this one. Red by lunch.", "cam": "low"},
 		{"s": "crowler", "t": "Every new student faces the same exam deck. For you, I shall play it properly.", "do": "chat"},
 		{"s": "lumen", "t": "He is trying to scare you. I think he is the nervous one. Somebody vouched for you.", "cam": "close", "emote": "♪"},
 		{"s": "crowler", "t": "Duel disk on. Show me why your name is on my list.", "cam": "low", "do": "stomp"},
@@ -153,10 +157,10 @@ const SCRIPTS := {
 		{"cine": true},
 		{"actor": "crowler", "at": STAGE + Vector3(0, 0, 0.4), "face": "player"},
 		{"actor": "sato", "at": STAGE + Vector3(6.4, 0, 6.6), "face": "crowler"},
-		{"actor": "nico", "at": STAGE + Vector3(-3.6, 0, 7.4), "face": "crowler", "plain": true},
+		{"actor": "nico", "at": STAGE + Vector3(-1.7, 0, 7.6), "face": "crowler", "plain": true},
 		{"actor": "lumen", "at": STAGE + Vector3(1.8, 0, 5.6), "face": "player", "spirit": true},
 		{"s": "crowler", "t": "Hmph. Luck is not a grade. Dorm assignment: Red.", "if": "won", "cam": "low", "do": "stomp"},
-		{"s": "nico", "t": "What? But he won!", "if": "won", "emote": "!"},
+		{"s": "nico", "t": "What? But that was a win!", "if": "won", "emote": "!"},
 		{"s": "crowler", "t": "The written portion counts as well.", "if": "won", "do": "chat"},
 		{"s": "player", "t": "There was no written portion.", "if": "won", "emote": "?"},
 		{"s": "crowler", "t": "Precisely. Zero points.", "if": "won", "cam": "close"},
@@ -197,7 +201,7 @@ const SCRIPTS := {
 		{"scene": {"district": "academy", "inside": "dorm_red", "pos": RED + Vector3(0.4, 0, 5.2), "yaw": 0.0, "tod": "day", "music": "shop"},
 			"title": "The Red Dorm", "sub": "The common room. It smells like dinner."},
 		{"cine": true},
-		{"actor": "bruno", "at": RED + Vector3(4.6, 0, -5.4), "face": "player"},
+		{"actor": "bruno", "at": RED + Vector3(2.7, 0, -2.9), "face": "player"},
 		{"actor": "mika", "at": RED + Vector3(-1.4, 0, -0.5), "face": 1.57},
 		{"actor": "nico", "at": RED + Vector3(1.8, 0, 4.4), "face": "bruno"},
 		{"actor": "syrus", "at": RED + Vector3(-1.2, 0, 4.0), "face": "bruno"},
@@ -223,7 +227,7 @@ const SCRIPTS := {
 		{"campus": {"bond": ["nico", 1]}},
 		{"cine": false},
 		# ---- your move: learn the island
-		{"aim": "Get to know the island before the assembly", "in": "academy",
+		{"aim": "Get to know the island before the assembly", "in": "academy", "hide": ["ac_vendor"],
 			"cast": [{"actor": "syrus", "at": LIGHT + Vector3(-1.2, 0, 1.4), "face": -2.2}, {"actor": "nico", "at": OLD + Vector3(1.6, 0, 0.6), "face": 3.14}],
 			"tasks": [
 			{"look": BED, "label": "See your room (Red dorm, upstairs, room 2)", "prompt": "Look at your bed", "from": "bruno", "why": "Room two. You share it with Nico and the fan.", "merits": 5, "say": [
@@ -251,11 +255,11 @@ const SCRIPTS := {
 		{"cine": true},
 		{"campus": {"part": 1}},
 		{"actor": "sheppard", "at": STAGE + Vector3(0, 0, 0.4), "face": "player"},
-		{"actor": "crowler", "at": STAGE + Vector3(-2.6, 0, 0.8), "face": "player"},
-		{"actor": "sato", "at": STAGE + Vector3(2.6, 0, 0.8), "face": "player"},
+		{"actor": "crowler", "at": STAGE + Vector3(-1.9, 0, 1.0), "face": "player"},
+		{"actor": "sato", "at": STAGE + Vector3(1.9, 0, 1.0), "face": "player"},
 		{"actor": "nico", "at": STAGE + Vector3(-0.8, 0, 7.6), "face": "sheppard"},
-		{"actor": "mika", "at": STAGE + Vector3(2.8, 0, 7.4), "face": "sheppard"},
-		{"actor": "syrus", "at": STAGE + Vector3(-2.6, 0, 7.8), "face": "sheppard"},
+		{"actor": "mika", "at": STAGE + Vector3(1.9, 0, 8.0), "face": "sheppard"},
+		{"actor": "syrus", "at": STAGE + Vector3(-2.1, 0, 8.3), "face": "sheppard"},
 		{"actor": "lumen", "at": STAGE + Vector3(2.0, 0, 6.2), "face": "player", "spirit": true},
 		{"shot": {"on": STAGE + Vector3(0, 0, 1.0), "look_h": 1.6, "ang": [0.35, -0.35], "d": [12.0, 10.0], "h": [4.2, 3.0], "t": 5.0},
 			"vo": ["sheppard", "Students. Welcome, and welcome back. I am Chancellor Sheppard."]},
@@ -271,11 +275,11 @@ const SCRIPTS := {
 		{"s": "sheppard", "t": "More about that tomorrow. Tonight, eat well and find your beds.", "do": "wave"},
 		{"merits": 20, "why": "Welcome assembly"},
 		# ---- Jaden
-		{"scene": {"district": "academy", "inside": "", "pos": CLIFF + Vector3(7.5, 0, 0.5), "yaw": 1.57, "tod": "sunset", "music": "academy"},
+		{"scene": {"district": "academy", "inside": "", "pos": CLIFF + Vector3(3.4, 0, 0.5), "yaw": 1.57, "tod": "sunset", "music": "academy"},
 			"title": "Behind the Red Dorm", "sub": "The grass over the sea. Almost dinner."},
-		{"actor": "jaden", "at": CLIFF + Vector3(0, 0, 0), "face": 1.57},
-		{"actor": "syrus", "at": CLIFF + Vector3(6.2, 0, -1.2), "face": "jaden"},
-		{"actor": "lumen", "at": CLIFF + Vector3(6.8, 0, 1.6), "face": "player", "spirit": true},
+		{"actor": "jaden", "at": CLIFF + Vector3(-3.4, 0, 0.2), "face": 1.57},
+		{"actor": "syrus", "at": CLIFF + Vector3(2.2, 0, -1.4), "face": "jaden"},
+		{"actor": "lumen", "at": CLIFF + Vector3(2.8, 0, 1.8), "face": "player", "spirit": true},
 		{"s": "syrus", "t": "And that is Jaden. Second year, like me. He would be on the roof, but Bruno took the ladder away.", "do": "chat"},
 		{"s": "jaden", "t": "Hey! New kid! Nice spirit! Hi, little light!", "cam": "wide", "do": "wave"},
 		{"s": "lumen", "t": "He can see me!", "cam": "close", "emote": "!"},
@@ -289,9 +293,9 @@ const SCRIPTS := {
 		{"duel": {"opponent": "syrus", "opp_deck": "syrus", "deck_tier": "starter", "difficulty": 1, "field": "academy", "lose_ok": true,
 			"rule": "The Red dorm's welcome duel. Friendly: win or lose, dinner is waiting."}},
 		{"cine": true},
-		{"actor": "jaden", "at": CLIFF + Vector3(0, 0, 0), "face": "player"},
-		{"actor": "syrus", "at": CLIFF + Vector3(6.2, 0, -1.2), "face": "player"},
-		{"actor": "lumen", "at": CLIFF + Vector3(6.8, 0, 1.6), "face": "player", "spirit": true},
+		{"actor": "jaden", "at": CLIFF + Vector3(-1.6, 0, 0.3), "face": "player"},
+		{"actor": "syrus", "at": CLIFF + Vector3(2.2, 0, -1.4), "face": "player"},
+		{"actor": "lumen", "at": CLIFF + Vector3(2.8, 0, 1.8), "face": "player", "spirit": true},
 		{"s": "syrus", "t": "See? Mostly lose it. Welcome to Red.", "if": "won", "do": "scratch", "emote": "♪"},
 		{"s": "syrus", "t": "I won? I won! Do not tell my brother. No. Tell my brother.", "if": "lost", "do": "cheer", "emote": "!"},
 		{"merits": 25, "why": "Welcome duel won", "if": "won"},

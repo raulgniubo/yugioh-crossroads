@@ -228,6 +228,8 @@ static func island(at = null) -> void:
 	var spot = at
 	if spot == null and s_has("x"):
 		spot = Vector3(float(v("x")), 0, float(v("z")))
+	if spot == null:
+		spot = CampusData.YARDS[dorm()]      # nowhere remembered yet: the front yard of your dorm
 	r.roam = {"district": "academy", "pos": spot, "tod": tod(), "free": true}
 	if s_has("yaw") and at == null:
 		r.roam["yaw"] = float(v("yaw"))

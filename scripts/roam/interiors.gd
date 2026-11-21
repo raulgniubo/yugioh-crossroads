@@ -53,7 +53,10 @@ static func all_rooms() -> Dictionary:
 
 
 static func people(key: String) -> Array:
-	return PEOPLE.get(key, AcademyRooms.PEOPLE.get(key, MoreRooms.PEOPLE.get(key, [])))
+	var list: Array = PEOPLE.get(key, AcademyRooms.PEOPLE.get(key, MoreRooms.PEOPLE.get(key, [])))
+	if Campus.on:
+		list = list.filter(func(p): return not CampusData.AWAY.has(str((p as Dictionary).get("id", ""))))
+	return list
 
 
 ## The rooms you can walk into in one district.

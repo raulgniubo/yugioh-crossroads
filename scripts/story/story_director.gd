@@ -406,6 +406,8 @@ func _rebuild_cast() -> void:
 func _place(st: Dictionary, instant := false) -> void:
 	var key := str(st["actor"])
 	_remove(key)
+	if campus and key != "lumen" and key != "player":
+		scene.hide_npcs([key])      # the island's everyday copy of them steps aside while the story has them
 	var at: Vector3 = st["at"]
 	if scene.city and scene.city.has_method("ground_at") and scene._inside == "":
 		at.y = maxf(at.y, float(scene.city.ground_at(at.x, at.z)))

@@ -56,7 +56,7 @@ const ROOMS := {
 
 const PEOPLE := {
 	"ac_hall": [
-		{"id": "ac_vendor", "char": "", "model": "shopkeeper", "name": "Academy Card Shop", "color": Color("ffd166"), "pos": Vector3(9.2, 0, -8.6), "face": 0.0, "shop": true,
+		{"id": "ac_vendor", "char": "", "model": "duelist_f1", "name": "Academy Card Shop", "color": Color("ffd166"), "pos": Vector3(9.2, 0, -8.6), "face": 0.0, "shop": true,
 			"chats": [["Welcome to the Academy card shop! Same packs as the mainland, same prices too.", "Packs, a ready-made deck, or a look at your own decks?"],
 				["Exam week again. Everybody suddenly wants Traps.", "What can I get you?"]]},
 		{"id": "ac_shop_kid", "char": "", "model": "student_boy", "dorm": "red", "name": "Red Dorm Student", "color": Color("d9342b"), "pos": Vector3(6.0, 0, -6.0), "face": -2.6,
