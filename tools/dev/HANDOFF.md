@@ -876,3 +876,12 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
     set dorm / merits / day / time of day, end the duel won or lost, change the choices (lighthouse, who you trained,
     Dante, your second), bonds, any Circulo rank and house rule, skip requirements, a mark on lines with no voice yet.
     Outside admin none of it exists.
+- **GO GIVEN, 12:23 AM Nov 21** ("Arranca con todo... no hagas un solo build y pares, sigue haciendo todo sin parar... trata
+  de no poner ningun prompt que necesite yo dar algun permiso... puedes usar Blender en la Mac... te doy permiso para usar
+  todo"). He went to sleep. Work NON-STOP: 0.65.0, then 0.66.0 and on, each build shipped (Mac install + Windows parts in
+  the chat + the join line in the report), no stopping between builds, NO tool that raises a permission prompt
+  (no folder-access or delete-permission requests). Meshy: 5,171 credits, allowed for the 11 ORIGINAL characters and
+  interior pieces (never the shows' characters). ElevenLabs Pro. Voices order: English backlog, then Academy Spanish
+  chapter by chapter, then Academy English. Batch 105 taken whole at 12:27 AM (next 106; nothing packed since 104).
+  0.65.0 design decisions (mine, see the code): Academy chapters are StoryDirector scripts with ids "ac_*" in
+  scripts/story/campus_data.gd; their progress + the campus state live in campus.cfg (CampusProgress / Campus).
