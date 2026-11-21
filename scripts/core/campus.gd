@@ -182,22 +182,12 @@ static func enter() -> void:
 	var col = _col()
 	if col:
 		col.switch_file(CARDS if own_cards() else col.PATH)
-	dress()
 
 
-## HeroLook.CLOTH rows for the three jackets: Red, Yellow, Blue.
-const JACKET := [13, 11, 6]
-
-
-## Your dorm's uniform (before the entrance exam: your own clothes).
-static func dress() -> void:
-	var prof = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("Profile")
-	if prof == null:
-		return
-	if on and bool(v("jacket", false)):
-		prof.wear_uniform(int(JACKET[dorm()]))
-	else:
-		prof.own_clothes()
+## Your dorm's jacket, as a color, or null before the entrance exam hands you one (RoamScene and
+## the duel dress you from this while Campus.on).
+static func jacket():
+	return DORM_COLORS[dorm()] if bool(v("jacket", false)) else null
 
 
 ## Back to the rest of the game: your own collection again.
@@ -207,7 +197,6 @@ static func leave() -> void:
 	var col = _col()
 	if col:
 		col.switch_file(col.PATH)
-	dress()
 
 
 ## Change between "academia" and "libre" (from your room).

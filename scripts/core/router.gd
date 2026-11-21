@@ -445,7 +445,6 @@ func _debug_args() -> void:
 				var cparts := cw.split(":")
 				if cparts[0] != "ac_prologue":
 					Campus.put("jacket", true)
-					Campus.dress()
 				if cparts.size() > 1:
 					CampusProgress.save_position(cparts[0], int(cparts[1]), {})
 					StoryDirector.begin(cparts[0], true)

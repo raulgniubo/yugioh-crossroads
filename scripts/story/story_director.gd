@@ -3167,7 +3167,7 @@ func _campus_step(c: Dictionary) -> void:
 		Router.roam["tod"] = Campus.tod()
 	if c.has("dorm"):
 		Campus.put_many({"dorm": clampi(int(c["dorm"]), 0, 2), "jacket": true})
-		Campus.dress()
+		scene._dress_player()
 	if c.has("bond"):
 		Campus.add_bond(str(c["bond"][0]), int(c["bond"][1]))
 	if c.has("trophy"):

@@ -914,6 +914,12 @@ func _unstick(delta: float, pushing: bool) -> void:
 
 
 func _dress_player() -> void:
+	if Campus.on:
+		# The Academy story: your dorm's jacket, from the moment the entrance exam hands it over.
+		var cj = Campus.jacket()
+		if cj is Color:
+			_figure.wear_uniform(cj)
+		return
 	if Router.roam.get("district", "") == "academy":
 		var c = Academy.uniform_color()
 		if c is Color:
@@ -1099,7 +1105,7 @@ func _build_places() -> void:
 		city.add_child(rl)
 		var rmat := city.box(Vector3(3.0, 0.03, 1.6), ramp + Vector3(0, 0.2, 0), city.glow_mat(Color("ff8a3a"), 1.3), false)
 		rmat.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	if Router.roam.get("district", "") == "academy":
+	if Router.roam.get("district", "") == "academy" and not Campus.on:
 		# The exam office: a desk inside the main hall opens Duel Academy mode.
 		var desk: Vector3 = AcademyRooms.ROOMS["ac_hall"]["at"] + Vector3(6.6, 0, 5.4)
 		_spots.append({"pos": desk, "range": 2.0, "label": "Exam office: class duels, exams, tournament", "action": _open_academy})

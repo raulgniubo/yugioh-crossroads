@@ -414,7 +414,6 @@ func _admin(p: SidePanel) -> void:
 			continue
 		add.call(Loc.t("Play: %s") % Loc.t(str(ch["title"])), func():
 			Campus.put("jacket", id != "ac_prologue")
-			Campus.dress()
 			StoryDirector.begin(id))
 	add.call(Loc.t("+100 merits"), func():
 		Campus.add_merits(100, "Admin")

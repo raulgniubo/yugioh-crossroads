@@ -106,28 +106,6 @@ func _dev_look() -> void:
 			gender = look_body
 
 
-## The Academy story puts you in your dorm's uniform (the blazer, in the dorm's color). What you
-## chose for yourself is kept here meanwhile, and that is what gets saved.
-var _own_look := {}
-
-
-func wear_uniform(top: int) -> void:
-	if _own_look.is_empty():
-		_own_look = {"outfit": look_outfit, "top": look_top}
-	look_outfit = 1
-	look_top = top
-	changed.emit()
-
-
-func own_clothes() -> void:
-	if _own_look.is_empty():
-		return
-	look_outfit = int(_own_look["outfit"])
-	look_top = int(_own_look["top"])
-	_own_look = {}
-	changed.emit()
-
-
 func save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("profile", "created", created)
@@ -138,13 +116,13 @@ func save() -> void:
 	cfg.set_value("profile", "tints", tints)
 	cfg.set_value("look", "body", look_body)
 	cfg.set_value("look", "hair", look_hair)
-	cfg.set_value("look", "outfit", int(_own_look.get("outfit", look_outfit)))
+	cfg.set_value("look", "outfit", look_outfit)
 	cfg.set_value("look", "height5", look_height)
 	cfg.set_value("look", "build", look_build)
 	cfg.set_value("look", "skin", look_skin)
 	cfg.set_value("look", "haircol", look_haircol)
 	cfg.set_value("look", "eyes", look_eyes)
-	cfg.set_value("look", "top", int(_own_look.get("top", look_top)))
+	cfg.set_value("look", "top", look_top)
 	cfg.set_value("look", "bottom", look_bottom)
 	cfg.set_value("look", "shoes", look_shoes)
 	cfg.set_value("profile", "title", title)

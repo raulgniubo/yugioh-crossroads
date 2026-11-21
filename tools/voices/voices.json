@@ -148,5 +148,53 @@
    "id": "cwZ2p09QMncdSsBbbwHq",
    "name": "Crossroads ES - Player (F2)"
   }
+ },
+ "nico": {
+  "es": {
+   "id": "J9z1TRuPOE0L64KxHgPG",
+   "name": "Crossroads ES - Nico"
+  }
+ },
+ "mika": {
+  "es": {
+   "id": "fvWCD1lY5HB5f6flxMfY",
+   "name": "Crossroads ES - Mika"
+  }
+ },
+ "bruno": {
+  "es": {
+   "id": "iZaVnb2NQK2TBZ2m6mvz",
+   "name": "Crossroads ES - Bruno"
+  }
+ },
+ "sato": {
+  "es": {
+   "id": "FyP5to499NWQFdnI9BXj",
+   "name": "Crossroads ES - Sato"
+  }
+ },
+ "crowler": {
+  "es": {
+   "id": "c1WqSdgtN75M5mynAVaI",
+   "name": "Crossroads ES - Crowler"
+  }
+ },
+ "sheppard": {
+  "es": {
+   "id": "QjyXawLzlEFgvDrYyxt7",
+   "name": "Crossroads ES - Sheppard"
+  }
+ },
+ "dorothy": {
+  "es": {
+   "id": "XK6VdbFGMSJ23yGH6euz",
+   "name": "Crossroads ES - Dorothy"
+  }
+ },
+ "dante": {
+  "es": {
+   "id": "o8BKnjnD4xOA7G2FoOVs",
+   "name": "Crossroads ES - Dante"
+  }
  }
 }
