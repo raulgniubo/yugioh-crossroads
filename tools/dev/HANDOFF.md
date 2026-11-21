@@ -788,3 +788,5 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
   trunk boxes); the new stances on anyone but the hero; the star hovered; rooms' duelists (more_rooms) in a duel.
   Raul also asked: replays = favorites + 30 (yes, already; named ones are kept too); what "En tu lista" is (an errand).
   Voices: batch 103 taken, waits to be packed; next 104.
+- RULE from Raul (11:28 PM Nov 20): "script for windows? please always include it". The join+unzip line goes in the
+  TEXT of the final report of every build, in a code block (not only in the caption of the files): he missed it there.
