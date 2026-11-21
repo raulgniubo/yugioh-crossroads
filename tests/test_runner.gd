@@ -30,6 +30,7 @@ func _ready() -> void:
 	_test_clock_and_story()
 	_test_0631()
 	_test_0640()
+	_test_campus()
 	var stress := OS.get_environment("STRESS_FOLDER")
 	if stress != "":
 		CardData.load_external(stress)
@@ -10753,3 +10754,53 @@ func _test_0640() -> void:
 	for fn in ["a.cxr", "b.cxr", "c.cxr", "Raul vs Kaiba  the comeback.cxr", "RAUL vs Kaiba  the comeback.cxr", "Raul vs Kaiba  the comeback (2).cxr"]:
 		DirAccess.remove_absolute(folder.path_join(fn))
 	DirAccess.remove_absolute(folder)
+
+
+## 0.65.0: the Academy story keeps a game of its own (campus.cfg): a clock only you move, merits, bonds,
+## chapters. Whatever Academy game was there is put back at the end.
+func _test_campus() -> void:
+	var had := FileAccess.file_exists(Campus.PATH)
+	var keep := FileAccess.get_file_as_bytes(Campus.PATH) if had else PackedByteArray()
+	var was_on := Campus.on
+	Campus.new_game("academia")
+	check(Campus.started() and Campus.mode() == "academia" and Campus.own_cards(), "a new Academy game plays with the Academy's own cards")
+	check(Campus.day() == 1 and Campus.part() == 0 and Campus.dorm() == 0 and Campus.merits() == 0, "a new Academy game starts on day 1, in the morning, in Red, with no merits")
+	check(Campus.jacket() == null, "no dorm jacket before the entrance exam")
+	check(Campus.next_chapter() == "ac_prologue", "the Academy story opens with its prologue")
+	Campus.add_merits(50, "test")
+	check(Campus.merits() == 50 and Campus.merits_to_go() == Campus.NEED[0] - 50, "merits add up toward the next dorm")
+	Campus.pass_time()
+	check(Campus.part() == 1 and Campus.day() == 1, "resting moves the day on by one part")
+	Campus.sleep()
+	check(Campus.day() == 2 and Campus.part() == 0, "sleeping starts the next morning")
+	Campus.add_bond("nico", 2)
+	check(Campus.bond("nico") == 2 and Campus.closest() == "nico", "bonds are kept per person")
+	Campus.finish_chapter("ac_prologue")
+	check(Campus.chapter_done("ac_prologue"), "a finished chapter stays finished")
+	Campus.reload()
+	check(Campus.day() == 2 and Campus.merits() == 50 and Campus.bond("nico") == 2 and Campus.chapter_done("ac_prologue"), "the Academy game reads back from its own file")
+	Campus.new_game("libre")
+	check(Campus.mode() == "libre" and not Campus.own_cards() and Campus.merits() == 0 and Campus.day() == 1, "a second new game starts clean, with your own collection")
+	# Every chapter has a script, every script ends, and no spoken line names the player (a voice cannot say it).
+	for ch in CampusData.SCRIPTS:
+		var sc: Array = CampusData.SCRIPTS[ch]
+		check(sc.size() > 0 and (sc[sc.size() - 1] as Dictionary).has("end"), "Academy chapter %s ends with an end step" % ch)
+		for st in sc:
+			if (st as Dictionary).has("t"):
+				check(not str(st["t"]).contains("{player}"), "a spoken Academy line never needs the player's name: %s" % str(st["t"]).left(40))
+			if (st as Dictionary).has("merits"):
+				check(not (st as Dictionary).has("end"), "an end step pays with 'pay', never 'merits'")
+	# The yards and the people the story hides exist.
+	check(CampusData.YARDS.size() == 3 and Campus.DORMS.size() == 3 and Campus.NEED.size() == 3, "three dorms, three yards, three merit marks")
+	for who in ["nico", "mika", "bruno", "sato", "crowler", "sheppard", "dorothy", "dante"]:
+		check(Characters.get_character(who).size() > 0 if Characters.has_method("get_character") else true, "the Academy cast is known: " + who)
+		check(Voices.voice_for(who) == who, "%s speaks with a voice of their own" % who)
+	if had:
+		var f := FileAccess.open(Campus.PATH, FileAccess.WRITE)
+		f.store_buffer(keep)
+		f.close()
+	else:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(Campus.PATH))
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(Campus.PATH + ".bak"))
+	Campus.reload()
+	Campus.on = was_on

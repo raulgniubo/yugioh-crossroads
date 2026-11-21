@@ -1772,6 +1772,9 @@ func wear(model: Node, key: String, color: Color) -> void:
 			if n.has_meta("hero_mats"):
 				for m in n.get_meta("hero_mats"):
 					(m as ShaderMaterial).set_shader_parameter("top_to", Color(color.r, color.g, color.b, 1.0))
+					# The hero's jacket is mostly its accent color: a dorm jacket has to take that too,
+					# or nothing changes on the default look.
+					(m as ShaderMaterial).set_shader_parameter("accent_to", Color(color.r, color.g, color.b, 1.0))
 				return
 	apply_uniform(model, color)
 
