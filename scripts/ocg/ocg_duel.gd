@@ -113,6 +113,10 @@ func prepare(state: DuelState, decks: Array, extras: Array, names: Array, first:
 ## Start the engine: Life Points and opening hands per player. False when the engine is not there.
 ## rules: {"flags": extra duel flags, "destiny": [may player 0, may player 1], "speed": [counters to start with]}
 func start(lp: Array, hand: Array, rules := {}) -> bool:
+	if playback:
+		for p in 2:
+			st.players[p].lp = int(lp[p])
+		return true
 	if not OcgCore.ensure_loaded():
 		return false
 	OcgCore.register_originals()
@@ -161,6 +165,8 @@ func _new_card(id: int, owner: int) -> DuelState.CardInst:
 	if c.data.is_empty() or str(c.data.get("name", "")) in ["", "Unknown"]:
 		var td := OcgCore.token_data(id)
 		c.data = td if not td.is_empty() else {"id": id, "name": "Token", "frame": "token", "kind": "monster", "atk": 0, "def": 0, "level": 1}
+	if tape != null and not book.has(id):
+		book[id] = Replays.slim(c.data)      # (a replay carries what its cards are)
 	return c
 
 
@@ -171,32 +177,76 @@ func _err(text: String) -> void:
 
 # ------------------------------------------------------------------ running
 
+## The tape (0.64.0, see Replays). While a duel is played, every step of it is written down as it
+## comes out of the engine: its messages, and what the engine says is on the table afterwards.
+## Played back, the same steps go through the same code with no engine at all, so a replay shows
+## what happened whatever a later version of the rules would do.
+var tape = null             # an Array while this duel is being written down
+var book := {}              # every card this duel has seen: id -> what it is (see Replays.slim)
+var playback := false       # this duel is a tape being played: there is no engine behind it
+var _tape_q := 0            # (the table is only written again when it changed)
+var _last_q: Array = []
+var _last_c: Array = []
+const SYNC_MASK := OcgCore.LOC_HAND | OcgCore.LOC_MZONE | OcgCore.LOC_SZONE | OcgCore.LOC_GRAVE | OcgCore.LOC_REMOVED | OcgCore.LOC_EXTRA
+
+
 ## Run the engine until it asks something or the duel ends. Returns the events to play.
 func advance() -> Array:
-	var events: Array = []
 	if over or handle == 0:
-		return events
-	request = null
+		return []
 	var res := OcgCore.process(handle)
 	steps += 1
 	var msgs: Array = res.get("msgs", [])
 	if swap:
 		_norm(msgs)
-	for m in msgs:
-		_one(m, events)
-	_flush(events)
-	if int(res.get("status", 0)) == 0 and not st.is_over():
-		st._set_winner(DuelState.DRAW, "The duel ended.")
-	if st.is_over():
-		over = true
-		request = null
+	var status := int(res.get("status", 0))
+	var q := OcgCore.query(handle, SYNC_MASK)
+	var cn := OcgCore.counts(handle)
+	if tape != null:
+		var step := {"m": msgs.duplicate(true), "s": status}
+		var qh := hash([q, cn])
+		if qh != _tape_q or (tape as Array).is_empty():
+			_tape_q = qh
+			step["q"] = q.duplicate(true)
+			step["c"] = cn.duplicate(true)
+		(tape as Array).append(step)
+	var events := _apply(msgs, status, q, cn)
 	var lg := OcgCore.logs(handle)
 	for s in lg.get("logs", []):
 		if not str(s).begins_with("9:"):     # (9: the thinking opponent's own notes, not an error)
 			_err("script: " + str(s))
 	for s in lg.get("missing", []):
 		_err("missing script: " + str(s))
-	_sync()
+	return events
+
+
+## One step of a tape: the same as advance(), from what was written down.
+func feed(step: Dictionary) -> Array:
+	if over:
+		return []
+	steps += 1
+	if request != null:
+		_last_request = request      # (what answer() does in a live duel)
+	if step.has("q"):
+		_last_q = step["q"]
+		_last_c = step["c"]
+	var mm = step.get("m", [])
+	return _apply((mm as Array).duplicate(true) if mm is Array else [], int(step.get("s", 1)), _last_q, _last_c)
+
+
+func _apply(msgs: Array, status: int, q: Array, cn: Array) -> Array:
+	var events: Array = []
+	request = null
+	for m in msgs:
+		if m is Dictionary and (m as Dictionary).has("t"):      # (a tape from another version may hold what this one cannot read)
+			_one(m, events)
+	_flush(events)
+	if status == 0 and not st.is_over():
+		st._set_winner(DuelState.DRAW, "The duel ended.")
+	if st.is_over():
+		over = true
+		request = null
+	_sync(q, cn)
 	if turbo:
 		for p in 2:
 			var ps: DuelState.PlayerState = st.players[p]
@@ -204,9 +254,12 @@ func advance() -> Array:
 				events.append({"type": "speed", "player": p, "speed": int(speed[p]), "delta": int(speed[p]) - ps.speed})
 				ps.speed = int(speed[p])
 	if request == null and not over:
-		_err("the engine stopped without a question")
-		over = true
-		st._set_winner(DuelState.DRAW, "The duel stopped.")
+		if playback:
+			over = true      # (the tape ends here: a surrender, or the game was closed)
+		else:
+			_err("the engine stopped without a question")
+			over = true
+			st._set_winner(DuelState.DRAW, "The duel stopped.")
 	return events
 
 
@@ -862,13 +915,9 @@ func _move(m: Dictionary, ev: Array) -> void:
 
 ## Compare the mirror with the engine, repair it if it drifted, and copy the engine's numbers
 ## (ATK, DEF, Level, counters, positions) onto the cards.
-func _sync() -> void:
-	if handle == 0:
-		return
-	var q := OcgCore.query(handle, OcgCore.LOC_HAND | OcgCore.LOC_MZONE | OcgCore.LOC_SZONE | OcgCore.LOC_GRAVE | OcgCore.LOC_REMOVED | OcgCore.LOC_EXTRA)
+func _sync(q: Array, cn: Array) -> void:
 	if q.size() < 2:
 		return
-	var cn := OcgCore.counts(handle)
 	for t in 2:
 		var p := t ^ int(swap)
 		var ps: DuelState.PlayerState = st.players[p]

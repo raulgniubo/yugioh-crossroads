@@ -29,6 +29,7 @@ func _ready() -> void:
 	_test_decks()
 	_test_clock_and_story()
 	_test_0631()
+	_test_0640()
 	var stress := OS.get_environment("STRESS_FOLDER")
 	if stress != "":
 		CardData.load_external(stress)
@@ -10703,3 +10704,45 @@ func _test_catch_up() -> void:
 	var tag := _mon(s, 0, "Toon Ancient Gear Golem", 0)
 	s._destroy_st(tw)
 	check(s.players[0].field.has(tag), "Toon Ancient Gear Golem: stays without Toon World")
+
+
+## 0.64.0: a replay file, and a replay from "another version". (No card data folder needed.)
+func _test_0640() -> void:
+	var folder := OS.get_user_data_dir().path_join("replay_test")
+	DirAccess.make_dir_recursive_absolute(folder)
+	var path := folder.path_join("a.cxr")
+	var tape: Array = []
+	for i in 40:
+		tape.append({"m": [{"t": 5, "p": i % 2}], "s": 1})
+	var data := {"format": Replays.FORMAT, "game": "9.9.9", "when": 1000, "date": "2030-01-01 10:00", "keep": false,
+		"names": ["Me", "Zara Novak"], "result": {"winner": 0, "turns": 7, "lp": [1200, 0]}, "cfg": {"opponent": "nobody_in_this_game", "opponent_coat": "not a colour", "field": "moonbase", "player_deck": "deck_from_the_future"},
+		"lp": [8000, 8000], "steps": 40, "setup": {"first": 1, "names": ["Me", "Zara Novak"]}, "answers": ["00"], "tape": tape,
+		"cards": {990000001: {"name": "Nebula Card", "frame": "effect", "atk": 2400, "def": 1000, "level": 6, "desc": "From later on.", "es": "De más adelante."},
+			990000002: {"name": "Nebula Token", "frame": "token", "atk": 0, "def": 0, "level": 1}}}
+	check(Replays._write(path, data), "Replay: a file is written")
+	var head := Replays.read(path, false)
+	check(str(head.get("game", "")) == "9.9.9" and not head.has("tape") and int(head.get("steps", 0)) == 40, "Replay: the list reads only the top of a file")
+	var whole := Replays.read(path)
+	check((whole.get("tape", []) as Array).size() == 40 and whole.get("tape", [])[39]["m"][0]["p"] == 1, "Replay: the whole duel comes back as it was written")
+	# From another version: cards, a duelist, a coat and a deck this game does not have.
+	var cfg := Replays.config_for(whole)
+	var lost: Dictionary = cfg.get("replay_lost", {})
+	check(int(lost.get("cards", 0)) == 1 and bool(lost.get("duelist", false)), "Replay: it says what this version does not have (1 card, the duelist)")
+	check(str(CardData.get_card(990000001).get("name", "")) == "Nebula Card" and int(CardData.get_card(990000001).get("atk", 0)) == 2400, "Replay: a card this game does not have is shown from the replay")
+	check(str(cfg.get("opponent", "")) == Replays.STAND_IN and str(cfg.get("opponent_name", "")) == "Zara Novak", "Replay: a missing duelist gets a stand-in and keeps the name")
+	check(not cfg.has("opponent_coat") and not cfg.has("player_deck") and int(cfg.get("first", -1)) == 1, "Replay: what cannot be used here is dropped")
+	CardData.GUEST.clear()
+	check(str(CardData.get_card(990000001).get("name", "")) == "Unknown", "Replay: its cards leave with it")
+	# A later format: listed, not played. Rubbish: not listed.
+	var f := FileAccess.open_compressed(folder.path_join("b.cxr"), FileAccess.WRITE, FileAccess.COMPRESSION_ZSTD)
+	f.store_var({"format": Replays.FORMAT + 1, "game": "12.0.0", "names": ["A", "B"]})
+	f.store_var({"something_else": true})
+	f.close()
+	check(bool(Replays.read(folder.path_join("b.cxr"), false).get("newer", false)) and Replays.read(folder.path_join("b.cxr")).is_empty(), "Replay: a later format is listed as newer and not played")
+	var g := FileAccess.open(folder.path_join("c.cxr"), FileAccess.WRITE)
+	g.store_string("not a replay")
+	g.close()
+	check(Replays.read(folder.path_join("c.cxr"), false).is_empty(), "Replay: a broken file is passed over")
+	for fn in ["a.cxr", "b.cxr", "c.cxr"]:
+		DirAccess.remove_absolute(folder.path_join(fn))
+	DirAccess.remove_absolute(folder)

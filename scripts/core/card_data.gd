@@ -601,12 +601,23 @@ const NAMED_DECKS := {
 static var lumen_tuner_test := false      # tests: Lumen as a Tuner without a story save
 
 
+## Cards a replay brought with it that this game does not have (a replay from a later version, or
+## from someone with another set of cards): shown from what the replay says about them. Only for
+## the time that replay is on the table.
+static var GUEST := {}
+
+static func knows(id: int) -> bool:
+	return CARDS.has(id) or EXT.has(id) or TOKENS.has(id)
+
+
 static func get_card(id: int) -> Dictionary:
 	var d: Dictionary
 	if TOKENS.has(id):
 		d = TOKENS[id].duplicate()
 	elif not CARDS.has(id) and EXT.has(id):
 		d = EXT[id].duplicate()
+	elif not CARDS.has(id) and GUEST.has(id):
+		d = GUEST[id].duplicate()
 	else:
 		d = CARDS.get(id, {"name": "Unknown", "frame": "normal"}).duplicate()
 	d["id"] = id

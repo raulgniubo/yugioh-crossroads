@@ -65,6 +65,9 @@ func _ready() -> void:
 		Router.menu_open = ""
 		Router.story_result = ""
 		_on_free_duel.call_deferred()
+	elif Router.menu_open == "replays":
+		Router.menu_open = ""
+		_on_replays.call_deferred()
 	elif Router.menu_open == "knockout":
 		Router.menu_open = ""
 		var res := Router.story_result
@@ -321,6 +324,12 @@ func _build_menu() -> void:
 	album.pressed.connect(_on_album)
 	rounds.add_child(album)
 	_items.append(album)
+	var reps := RoundButton.new("replay", Comic.BLUE, 64.0)
+	reps.tooltip_text = Loc.t("Replays")
+	reps.focus_mode = Control.FOCUS_ALL
+	reps.pressed.connect(_on_replays)
+	rounds.add_child(reps)
+	_items.append(reps)
 	if OS.has_feature("pc"):
 		var quit := RoundButton.new("power", Comic.RED, 64.0)
 		quit.tooltip_text = "Quit"
@@ -1147,6 +1156,18 @@ func _on_deck() -> void:
 	add_child(db)
 	_panel_open = true
 	db.closed.connect(func():
+		_panel_open = false
+		if _items.size() > 1:
+			_items[0].grab_focus())
+
+
+## Every duel you played, to watch again (see Replays).
+func _on_replays() -> void:
+	var rl := ReplayList.new()
+	rl.z_index = 100
+	add_child(rl)
+	_panel_open = true
+	rl.closed.connect(func():
 		_panel_open = false
 		if _items.size() > 1:
 			_items[0].grab_focus())

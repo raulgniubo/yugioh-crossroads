@@ -1,7 +1,7 @@
 class_name RoundButton
 extends Button
 ## A round icon button: glass disc, thin edge, a drawn icon. Amber under the pointer or focus.
-## Icons: gear, log, piles, pause, back, close, power.
+## Icons: gear, log, piles, pause, play, skip, replay, eye, next, back, close, power, save, album, goals.
 
 var kind := "gear"
 var badge := 0          # a small count in the corner (goals waiting), 0 for none
@@ -36,11 +36,13 @@ func _draw() -> void:
 	var down := is_pressed()
 	var o := c + Vector2(0, 1 if down else 0)
 	draw_circle(c + Vector2(0, 3), r + 1.0, Color(0, 0, 0, 0.3))
-	draw_circle(o, r, Color(0.05, 0.075, 0.16, 0.95).lerp(UITheme.ACCENT, _hover))
+	draw_circle(o, r, Color(0.05, 0.075, 0.16, 0.95).lerp(Comic.RED if kind == "trash" else UITheme.ACCENT, _hover))
 	draw_arc(o, r, 0.0, TAU, 48, Color(1, 1, 1, 0.22).lerp(Color.WHITE, _hover), 1.5, true)
 	var w := Color.WHITE.lerp(Comic.INK, _hover)
 	if tint == Comic.RED and _hover < 0.5:
 		w = Color("ff8a98")
+	if kind == "trash":
+		w = Color("ff8a98").lerp(Color.WHITE, _hover)      # (deleting: red when you point at it)
 	var k := r / 30.0
 	match kind:
 		"gear":
@@ -63,6 +65,46 @@ func _draw() -> void:
 		"pause":
 			draw_rect(Rect2(o + Vector2(-9, -11) * k, Vector2(6, 22) * k), w)
 			draw_rect(Rect2(o + Vector2(3, -11) * k, Vector2(6, 22) * k), w)
+		"star", "star_on":
+			# a favorite: an outline when it is off, solid gold when it is on
+			var sp := PackedVector2Array()
+			for i in 10:
+				var a := -PI * 0.5 + i * TAU / 10.0
+				sp.append(o + Vector2(cos(a), sin(a)) * (15.0 if i % 2 == 0 else 6.4) * k)
+			if kind == "star_on":
+				draw_colored_polygon(sp, Color("ffd23a"))
+			sp.append(sp[0])
+			draw_polyline(sp, Color("ffd23a") if kind == "star_on" else w, 2.6 * k, true)
+		"trash":
+			# a bin: the lid with its handle, the body, two ribs
+			draw_line(o + Vector2(-12, -9) * k, o + Vector2(12, -9) * k, w, 2.8 * k, true)
+			draw_polyline(PackedVector2Array([o + Vector2(-4, -9) * k, o + Vector2(-4, -13.5) * k, o + Vector2(4, -13.5) * k, o + Vector2(4, -9) * k]), w, 2.4 * k, true)
+			draw_polyline(PackedVector2Array([o + Vector2(-9, -9) * k, o + Vector2(-7.5, 13) * k, o + Vector2(7.5, 13) * k, o + Vector2(9, -9) * k]), w, 2.8 * k, true)
+			draw_line(o + Vector2(-3, -3.5) * k, o + Vector2(-3, 8) * k, w, 2.2 * k, true)
+			draw_line(o + Vector2(3, -3.5) * k, o + Vector2(3, 8) * k, w, 2.2 * k, true)
+		"play":
+			draw_colored_polygon(PackedVector2Array([o + Vector2(-7, -12) * k, o + Vector2(12, 0) * k, o + Vector2(-7, 12) * k]), w)
+		"skip":
+			# to the next turn: a play arrow against a bar
+			draw_colored_polygon(PackedVector2Array([o + Vector2(-11, -11) * k, o + Vector2(5, 0) * k, o + Vector2(-11, 11) * k]), w)
+			draw_rect(Rect2(o + Vector2(7, -11) * k, Vector2(5, 22) * k), w)
+		"replay":
+			# a turn of the clock back, with a play arrow inside
+			draw_arc(o, 14.0 * k, -PI * 0.5, PI * 1.15, 28, w, 3.4 * k, true)
+			var tip := o + Vector2(cos(-PI * 0.5), sin(-PI * 0.5)) * 14.0 * k
+			draw_colored_polygon(PackedVector2Array([tip + Vector2(-8, 0) * k, tip + Vector2(2, -6) * k, tip + Vector2(2, 6) * k]), w)
+			draw_colored_polygon(PackedVector2Array([o + Vector2(-4, -7) * k, o + Vector2(7, 0) * k, o + Vector2(-4, 7) * k]), w)
+		"eye":
+			var pts := PackedVector2Array()
+			for i in 25:
+				var a := PI * i / 24.0
+				pts.append(o + Vector2(-cos(a) * 15.0, -sin(a) * 9.0) * k)
+			for i in 25:
+				var a2 := PI * i / 24.0
+				pts.append(o + Vector2(cos(a2) * 15.0, sin(a2) * 9.0) * k)
+			pts.append(pts[0])
+			draw_polyline(pts, w, 2.8 * k, true)
+			draw_circle(o, 4.6 * k, w)
 		"next":
 			draw_polyline(PackedVector2Array([o + Vector2(-3, -11) * k, o + Vector2(8, 0) * k, o + Vector2(-3, 11) * k]), w, 4.0 * k, true)
 		"back":

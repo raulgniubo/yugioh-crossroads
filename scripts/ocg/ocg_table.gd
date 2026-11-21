@@ -69,19 +69,63 @@ var _destiny_seen := 0
 var _destiny_ask := [false, false]    # that player said yes to the Destiny Draw: the next pick is the card
 var _destiny_draw := [false, false]   # ... and their next draw is that card (it lands quietly)
 
+## Replays (see Replays): `rec` is this duel being written down, `replay` a written-down duel being
+## played back. What is written is what happened, step by step (OcgDuel.tape), so playing it back
+## needs no engine and does not depend on the version of the rules. The answers are kept too: they
+## say when somebody took a Destiny Draw, and they give playback its pauses.
+var rec := {}
+var replay := {}
+var _replay_at := 0
+var ev_hash := 0           # every event of the duel, folded into one number (a replay must end on the same one)
+var replay_broken := ""    # why playback stopped early, when it did
+
 func prepare(my_list: Array, opp_list: Array, my_extra: Array, opp_extra: Array, me_name: String, opp_name: String, first: int, hand: Array, setup := {}, rules_in := {}) -> void:
+	var seed := randi() & 0x7fffffff
+	if not replay.is_empty():
+		var rs: Dictionary = replay["setup"]
+		my_list = rs["decks"][0]
+		opp_list = rs["decks"][1]
+		my_extra = rs["extras"][0]
+		opp_extra = rs["extras"][1]
+		me_name = str(rs["names"][0])
+		opp_name = str(rs["names"][1])
+		first = int(rs["first"])
+		hand = rs["hand"]
+		setup = rs["lay"]
+		rules_in = rs["rules"]
+		seed = int(rs["seed"])
+		puzzle = false
+		d.playback = true
+	elif not puzzle and not s._autoplay:
+		d.tape = []
+		rec = {"tape": d.tape, "setup": {"decks": [my_list.duplicate(), opp_list.duplicate()], "extras": [my_extra.duplicate(), opp_extra.duplicate()],
+			"names": [me_name, opp_name], "first": first, "hand": hand.duplicate(), "lay": setup.duplicate(true), "rules": rules_in.duplicate(true), "seed": seed},
+			"answers": [], "cards": d.book, "cfg": Replays.clean_cfg(Router.duel_config)}
+		# (who is at the table, said outright: a duel started without naming them still shows their picture in the list)
+		rec["cfg"]["opponent"] = str(s._opp_key)
+		rec["cfg"]["player_char"] = str(s._me_key)
 	_hand = hand
 	rules = rules_in
-	d.prepare(s.state, [my_list, opp_list], [my_extra, opp_extra], [me_name, opp_name], first, -1, setup)
+	d.prepare(s.state, [my_list, opp_list], [my_extra, opp_extra], [me_name, opp_name], first, seed, setup)
 	s._turn_finished.connect(_on_abort)
 
 
 ## Start the engine with the Life Points the scene settled on. Returns the opening events.
 func begin() -> Array:
 	var st: DuelState = s.state
+	if not replay.is_empty():
+		# (the Life Points the duel started with, whatever this game's settings say now)
+		for q in 2:
+			st.players[q].lp = int(replay["lp"][q])
+			s.hud.set_lp(q, int(replay["lp"][q]), 0)
+	elif not rec.is_empty():
+		rec["lp"] = [int(st.players[ME].lp), int(st.players[AI].lp)]
 	if not d.start([st.players[ME].lp, st.players[AI].lp], _hand, rules):
 		st._set_winner(DuelState.DRAW, "The new engine could not start.")
 		return []
+	if not replay.is_empty():
+		var tp: Array = replay.get("tape", [])
+		return d.feed(tp[0]) if not tp.is_empty() else []
 	return d.advance()
 
 
@@ -113,7 +157,11 @@ func loop() -> void:
 			resync()
 		var refused: bool = d.retries > seen_retries
 		seen_retries = d.retries
-		if refused:
+		if not replay.is_empty():
+			bytes = await _replay_answer(m)
+			if bytes == null:
+				break
+		elif refused:
 			push_warning("OCG: answer refused for message %d" % int(m["t"]))
 			if d.retries > 12:
 				s.state._set_winner(DuelState.DRAW, "The duel could not go on.")
@@ -127,8 +175,16 @@ func loop() -> void:
 			bytes = me_cpu.decide(d)
 		if s._finished or s.state.is_over() or bytes == null:
 			break
-		d.answer(bytes)
-		var events := d.advance()
+		if not rec.is_empty():
+			(rec["answers"] as Array).append((bytes as PackedByteArray).hex_encode())
+		var events: Array
+		if replay.is_empty():
+			d.answer(bytes)
+			events = d.advance()
+		else:
+			events = d.feed(replay["tape"][_replay_at])      # (answer n is followed by step n + 1)
+		for e in events:
+			ev_hash = hash([ev_hash, str(e["type"]), int(e.get("player", -1)), int(e["card"].id) if e.get("card") != null and "id" in e["card"] else 0, int(e.get("lp", 0))])
 		if _live:
 			# A pick made card by card stays up between its steps, and goes when it is over.
 			var nx = d.request
@@ -169,6 +225,37 @@ func loop() -> void:
 		var kind := "puzzle" if puzzle else ("turbo duel" if d.turbo else "duel")
 		OcgReport.duel(kind + " (engine)", str(s.state.players[AI].name), level, int(s.state.winner), int(s.state.turn), str(s.state.win_reason), d.errors)
 	d.close()
+
+
+## The next answer of a duel being played back, with the moments a live duel gives it: a breath
+## before each decision in the open, and the Destiny Draw show. null when the recording is over.
+func _replay_answer(m: Dictionary):
+	var answers: Array = replay["answers"]
+	if _replay_at >= answers.size() or _replay_at + 1 >= (replay["tape"] as Array).size():
+		return null
+	var bytes: PackedByteArray = str(answers[_replay_at]).hex_decode()
+	_replay_at += 1
+	var p := int(m["p"])
+	var t := int(m["t"])
+	if _is_destiny_offer(m):
+		_destiny_ask[p] = bytes.size() >= 4 and bytes.decode_s32(0) == 1
+		if _destiny_ask[p] and p == ME and not s._autoplay:
+			s._lumen("destiny")
+	elif _destiny_ask[p] and t == 15:
+		_destiny_ask[p] = false
+		var code := 0
+		var list: Array = m.get("cards", [])
+		# (the pick is written as: kind, how many, then the index)
+		if p == ME and bytes.size() >= 12:
+			var idx := bytes.decode_s32(8)
+			if idx >= 0 and idx < list.size():
+				code = int(list[idx]["code"])
+		await _destiny_show(p, code)
+	elif t in [10, 11] and not s._autoplay:
+		await s._ai_wait(0.45 if p == ME else 0.35)
+	elif t == 16 and not s._autoplay and bytes.size() >= 4 and bytes.decode_s32(0) >= 0:
+		await s._ai_wait(0.3)
+	return bytes
 
 
 ## The opponent's answer. From Normal up it thinks in the engine (on its own thread, so the

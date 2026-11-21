@@ -682,3 +682,36 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
   card, text that updates as each card is chained. NOT taken: giant cards sitting in the middle the whole time (the table
   must stay visible to decide a response).
 - SHIPPED 0.63.2 at 5:50 PM Nov 20 (commit 2087fd6, pushed, installed on the Mac, Windows parts in the chat). Suite all pass.
+
+#### 0.64.0 (Nov 20, night): Replays
+- Raul's idea at 6:25 PM ("save them, replay later, share with a friend"), go at 6:27 PM. 0.64.0 is now REPLAYS; the
+  English voices come in whatever build is next when they are all made (1,143 left after batch 102, next batch 103).
+- Raul's rules for it: (1) "favorito", not the word "estrella" (it is a drawn star icon button, RoundButton "star"/"star_on");
+  (2) the game version must NOT matter: "las versiones cambian constantes, el objetivo no es encontrar bugs sino ver la
+  repetición"; (3) delete asks first and stands apart from the favorite; (4) a replay from a later version may name cards,
+  characters or effects this version does not have: "ten algo in place para eso".
+- HOW: a replay is a RECORD, not a re-run. OcgDuel.tape = one entry per engine step ({"m": normalized messages, "s": status,
+  and "q"/"c" = the table snapshot, only when it changed}). Playback: OcgDuel.playback = true, no engine handle at all;
+  OcgTable.loop() calls _replay_answer(m) (pacing, the Destiny Draw show) then d.feed(tape[n]) -> _apply() (the same code a
+  live step goes through). The recorded answers are still in the file but only used for pacing.
+- scripts/core/replays.gd (class Replays): FORMAT 3. File = <Crossroads Data>/Replays/*.cxr (user://Replays with no data
+  folder), zstd, TWO store_var: first the HEAD (format, game, when, date, keep, names, result, cfg, lp, steps), then the
+  body (setup, answers, tape, cards). list() reads heads only. KEEP 30 non-favorites. EVERY FUTURE FORMAT MUST KEEP THE
+  HEAD AS THE FIRST VAR: an older game lists a newer file from it (grey row, "made with a newer version").
+- Other versions (Replays.settle, called by config_for and again at the table): "cards" in the file = OcgDuel.book, every
+  card the duel saw as Replays.slim(data) (+ "es" Spanish text). A card this game does not know goes into CardData.GUEST
+  (get_card reads it after CARDS/EXT; cleared at the next live duel) and CardText.guest(). Unknown duelist -> Replays.STAND_IN
+  ("street_duelist") with the replay's name; bad coat/deck key erased; field and music already fall back by themselves.
+  Unknown/broken messages in a tape are skipped (_apply checks each one). If playback stops with steps unread, or nothing
+  moves for REPLAY_STALL (100 s of duel time; duel_scene._replay_tick), _replay_bail(): the recorded result, no outro, and
+  the end panel says this version could not show it to the end.
+- Table: duel_scene._replay_ui / _replay_tick / _replay_end / _replay_bail, scripts/duel/replay_bar.gd (pause, 1x/2x/4x,
+  to the next turn = 12x until the turn changes, both hands = hud.set_opp_hand, leave). Engine.time_scale does the speed;
+  Voices.muted above 1x. A replay writes nothing: no save, no rewards, no WorldClock, no records (_finish returns into
+  _replay_end before any of it). Results screen "Watch the replay" only in the plain ending (not story/match/gauntlet).
+- Screen: scripts/menu/replay_list.gd (ReplayList), main menu round button "replay", Router --open=replays / replay-last.
+- Tests: tests/replay_check.tscn (`-- --human-test --duels=N --speed=10 --assets=/tmp/realfit`, every 5th duel is
+  surrendered; plays each duel, replays it from its file, compares winner, turn and a hash of every event), and
+  tests/replay_mangle.tscn (makes "a replay from another version": unknown duelist/field/song, six unknown cards, junk in
+  the tape, a later-format file, a rubbish file). Dev flags: --replay-hands, --replay-speed=N.
+  NOT in CI's test_runner (they need the card data folder). Back up the profile before replay_check (it plays real duels).

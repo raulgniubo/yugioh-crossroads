@@ -175,6 +175,16 @@ func _start() -> void:
 		return
 	state = OcgMirror.new()
 	ocg = OcgTable.new(self)
+	# A recorded duel being played back (see Replays): the table takes everything from the recording.
+	_replay = Router.duel_config.get("replay", {})
+	ocg.replay = _replay
+	if not _replay.is_empty():
+		# (again here for "watch it again": the cards a replay brings with it are settled per table)
+		Replays.settle(_replay, Router.duel_config)
+		_replay_ui()
+	else:
+		Replays.last_saved = ""
+		CardData.GUEST.clear()
 	ocg.level = OcgTable.level_for(cfg)
 	print("DUEL ENGINE new, opponent level ", ocg.level)
 	_opp_key = cfg.get("opponent", "kaiba")
@@ -204,6 +214,10 @@ func _start() -> void:
 	_me_key = cfg.get("player_char", "player")
 	var me_info := Portraits.info(_me_key)
 	var me_name: String = me_info.get("name", Profile.duelist_name)
+	if not _replay.is_empty():
+		# (the names the duel was played under, whoever is watching)
+		me_name = str(_replay["setup"]["names"][0])
+		opp_name = str(_replay["setup"]["names"][1])
 	hud.set_names(me_name, opp_name)
 	hud.set_portraits(_me_key, _opp_key)
 	var first := randi() % 2
@@ -368,7 +382,7 @@ func _start() -> void:
 	if "--destiny-low" in OS.get_cmdline_user_args():
 		_start_lp[ME] = 1500   # dev: you start in trouble, so the Destiny Draw offer comes on your first draw
 	# A burger set from Burger World: 500 extra Life Points, once.
-	if Router.roam.get("fed", false) and not _autoplay:
+	if Router.roam.get("fed", false) and not _autoplay and _replay.is_empty():
 		Router.roam["fed"] = false
 		_start_lp[ME] += 500
 		get_tree().create_timer(3.0).timeout.connect(func(): Router.toast(Loc.t("Well fed: +500 Life Points.")))
@@ -609,6 +623,18 @@ func _loop() -> void:
 			await get_tree().create_timer(600.0).timeout
 			return
 	await ocg.loop()
+	if not _replay.is_empty() and not state.is_over() and not _finished:
+		# The recording ends before the engine names a winner: a surrender, or the game was closed.
+		# Or this version of the game could not follow it: then it still ends the way the duel ended.
+		var res: Dictionary = _replay.get("result", {})
+		var unread: bool = ocg._replay_at + 1 < (_replay.get("tape", []) as Array).size() and ocg._replay_at < (_replay.get("answers", []) as Array).size()
+		if unread or ocg.replay_broken != "":
+			_r_bailed = true
+			if ocg.replay_broken == "":
+				ocg.replay_broken = "stopped at step %d of %d" % [ocg._replay_at, (_replay.get("tape", []) as Array).size()]
+			print("REPLAY BAIL: ", ocg.replay_broken)
+		_surrendered = bool(res.get("surrendered", false))
+		state._set_winner(int(res.get("winner", DuelState.DRAW)), str(res.get("reason", "")))
 	_finish()
 
 
@@ -633,8 +659,14 @@ func _finish() -> void:
 	if _finished:
 		return
 	_finished = true
+	# The duel is written down the moment it is decided (0.64.0), so it is there even if the game is
+	# closed during the ending. Watching a replay writes nothing and costs nothing.
+	if _replay.is_empty() and not _autoplay and ocg != null and not ocg.rec.is_empty():
+		var rp := Replays.save(ocg.rec, {"winner": int(state.winner), "reason": str(state.win_reason), "kind": str(state.win_kind),
+			"turns": int(state.turn), "lp": [int(state.players[ME].lp), int(state.players[AI].lp)], "surrendered": _surrendered, "hash": int(ocg.ev_hash)})
+		print("REPLAY saved ", rp.get_file(), " answers ", (ocg.rec["answers"] as Array).size(), " hash ", ocg.ev_hash)
 	# A duel takes an hour of the day (puzzles are off the clock).
-	if _puzzle.is_empty():
+	if _puzzle.is_empty() and _replay.is_empty():
 		WorldClock.add_minutes(WorldClock.DUEL_COST)
 		WorldClock.save_data()
 	_cancel_mode()
@@ -655,6 +687,9 @@ func _finish() -> void:
 			await ExodiaShow.play(self, board, hud, int(state.winner))
 		else:
 			await WinShow.play(self, board, hud, int(state.winner), wk)
+	if not _replay.is_empty():
+		await _replay_end(won, tied, wk)
+		return
 	if "--auto-story" in OS.get_cmdline_user_args():
 		get_tree().create_timer(2.0).timeout.connect(func():
 			Router.story_result = "won" if state.winner == ME else "lost"
@@ -779,6 +814,7 @@ Match won: +%d Duel Points") % 200
 			"reward": Collection.last_reward.duplicate() if earned > 0 else [], "earned": earned,
 			"prize": Collection.last_prize if (earned > 0 and won) else 0,
 			"free": not cfg.has("return_to") and not cfg.get("story", false), "draw": tied, "match": match_info,
+			"replay": Replays.last_saved != "",
 			"task": cfg.get("task", false)})
 	_won = won
 
@@ -895,6 +931,133 @@ func _bring_spirit() -> void:
 	var got: Array = LumenSpirit.floating(self)
 	_lumen_3d = got[1]
 	hud.show_spirit((got[0] as SubViewport).get_texture())
+
+
+# ---------------------------------------------------------------- watching a replay
+const ReplayBar := preload("res://scripts/duel/replay_bar.gd")
+var _rbar: Control
+var _r_speed := 1.0
+var _r_paused := false
+var _r_hands := false
+var _r_skip_from := -1       # the turn a "to the next turn" started on (-1: not skipping)
+
+func _replay_ui() -> void:
+	var res: Dictionary = _replay.get("result", {})
+	var title := "%s  ·  %s" % [str(_replay.get("date", "")), Loc.t("%d turns") % int(res.get("turns", 0))]
+	_rbar = ReplayBar.new(title)
+	hud.replay_controls(_rbar)
+	_rbar.pause_toggled.connect(func(on): _r_paused = on)
+	_rbar.speed_picked.connect(func(x): _r_speed = x)
+	_rbar.skip_turn.connect(func():
+		if _r_skip_from < 0 and not _finished:
+			_r_skip_from = int(state.turn)
+			_rbar.skipping(true))
+	_rbar.hands_toggled.connect(func(on):
+		_r_hands = on
+		if state != null and state.players.size() > 1:
+			hud.set_opp_hand(state.players[AI].hand, on))
+	_rbar.leave.connect(func(): _on_pause_action("replay_back"))
+	# What this version of the game does not have (a replay from a later version, or from someone
+	# with other cards): said once, and the replay plays anyway.
+	var lost: Dictionary = Router.duel_config.get("replay_lost", {})
+	var said: Array = []
+	if int(lost.get("cards", 0)) > 0:
+		said.append(Loc.t("This replay has %d cards that this version of the game does not have. They are shown by name.") % int(lost["cards"]))
+	if bool(lost.get("duelist", false)):
+		said.append(Loc.t("Its duelist is not in this version of the game, so someone else stands in."))
+	if not said.is_empty():
+		print("REPLAY missing here: ", lost)
+		get_tree().create_timer(1.2).timeout.connect(func(): Router.toast(" ".join(said)))
+	for a in OS.get_cmdline_user_args():
+		if a == "--replay-hands":
+			_rbar._eye_btn.pressed.emit()      # dev: start with both hands shown (for a picture)
+		elif a.begins_with("--replay-speed="):
+			_r_speed = float(a.substr(15))     # dev: a quick run to the end
+
+
+## Every frame of a replay: its speed, its pause, the rush to the next turn, the rival's hand.
+func _replay_tick() -> void:
+	if _human_test:
+		return      # (a test runs the clock itself)
+	if _finished and _r_skip_from >= 0:
+		_r_skip_from = -1
+	if _r_skip_from >= 0 and int(state.turn) != _r_skip_from:
+		_r_skip_from = -1
+		if is_instance_valid(_rbar):
+			_rbar.skipping(false)
+	var want := _r_speed
+	if _r_skip_from >= 0:
+		want = 12.0
+	if _r_paused:
+		want = 0.0001      # (not zero: a few things divide by the time a frame took)
+	Voices.muted = want > 1.01
+	# (a slow-motion moment of the duel itself is left alone: it sets the clock below 1 and back to 1)
+	if _r_paused or _finished:
+		Engine.time_scale = want if not _finished else 1.0
+	elif Engine.time_scale >= 0.99 or Engine.time_scale < 0.001:
+		Engine.time_scale = want
+	if _r_hands and not _finished and state != null and state.players.size() > 1:
+		hud.set_opp_hand(state.players[AI].hand, true)
+	# A replay never leaves you stuck: if nothing has moved for a long while (a recording this
+	# version of the game cannot follow), it goes to its end and shows how the duel ended.
+	var now := Time.get_ticks_msec()
+	var dt := clampf((now - _r_last_ms) / 1000.0, 0.0, 0.25) if _r_last_ms > 0 else 0.0
+	_r_last_ms = now
+	if ocg != null and not _finished and not _r_paused:
+		if ocg._replay_at != _r_seen:
+			_r_seen = ocg._replay_at
+			_r_stall = 0.0
+		else:
+			_r_stall += dt * maxf(1.0, Engine.time_scale)
+			if _r_stall > REPLAY_STALL:
+				_replay_bail("nothing moved after step %d" % ocg._replay_at)
+
+
+const REPLAY_STALL := 100.0      # seconds of the duel's own time
+var _r_seen := -1
+var _r_stall := 0.0
+var _r_last_ms := 0
+var _r_bailed := false
+
+func _replay_bail(why: String) -> void:
+	if _finished:
+		return
+	print("REPLAY BAIL: ", why)
+	ocg.replay_broken = why
+	_r_bailed = true
+	var res: Dictionary = _replay.get("result", {})
+	state.winner = int(res.get("winner", DuelState.DRAW))
+	state.win_reason = str(res.get("reason", ""))
+	state.win_kind = ""
+	_surrendered = bool(res.get("surrendered", false))
+	Engine.time_scale = 1.0
+	_finish()
+
+
+## A replay is over: the ending plays like the duel's own, then the way out. Nothing is won, lost
+## or written. (Also prints what a test compares with the original.)
+var _replay := {}
+
+func _replay_end(won: bool, tied: bool, wk: String) -> void:
+	var res: Dictionary = _replay.get("result", {})
+	var same: bool = ocg.replay_broken == "" and int(res.get("hash", 0)) == int(ocg.ev_hash) and int(res.get("winner", -9)) == int(state.winner) and int(res.get("turns", -9)) == int(state.turn)
+	print("REPLAY END: winner %d turn %d LP %d vs %d hash %d | recorded winner %d turn %d hash %d | %s" % [state.winner, state.turn, state.players[ME].lp, state.players[AI].lp,
+		ocg.ev_hash, int(res.get("winner", -9)), int(res.get("turns", -9)), int(res.get("hash", 0)), "MATCH" if same else ("BROKEN " + ocg.replay_broken)])
+	replay_same = same
+	if not _r_bailed and not tied and not _surrendered and not _autoplay and board.track == null and board.has_duelist(ME) and board.has_duelist(AI):
+		await _outro(won, wk != "")
+	replay_over.emit()
+	if _autoplay or _human_test:
+		return
+	var who := str(state.players[int(state.winner)].name) if int(state.winner) in [0, 1] else ""
+	var turns := int(res.get("turns", state.turn)) if _r_bailed else int(state.turn)
+	var line := Loc.t("A draw.") if who == "" else (Loc.t("%s surrendered.") % str(state.players[ME].name) if _surrendered else Loc.t("%s won in %d turns.") % [who, turns])
+	if _r_bailed:
+		line = Loc.t("This version of the game could not show this replay to the end.") + "\n" + line
+	hud.show_replay_over(Loc.t("REPLAY OVER"), line, UITheme.GOLD if int(state.winner) == ME else Color.WHITE)
+
+signal replay_over
+var replay_same := false
 
 
 ## How fast a chain is shown (Settings > Gameplay > Chain pace): Normal, Slower, Fast.
@@ -2038,6 +2201,8 @@ var _btn_watch := 0.0
 ## and nothing redrew the phase buttons, End turn stayed grey until a right-click. If it is your
 ## turn, nothing is in progress and the buttons are off, they are put right.
 func _process(delta: float) -> void:
+	if not _replay.is_empty():
+		_replay_tick()
 	_btn_watch -= delta
 	if _btn_watch > 0.0:
 		return
@@ -2166,6 +2331,22 @@ func _on_pause_action(action: String) -> void:
 			Router.go(Router.duel_config.get("return_to", Router.STORY))
 		"menu":
 			_restore_match_deck()
+			if not _replay.is_empty():
+				Router.menu_open = "replays"
+			Router.go(Router.MAIN_MENU)
+		"watch_replay":
+			# The duel that just ended, from its file.
+			var wd := Replays.read(Replays.last_saved)
+			if wd.is_empty():
+				Router.toast(Loc.t("That replay could not be opened."))
+			else:
+				_restore_match_deck()
+				Router.duel_config = Replays.config_for(wd)
+				Router.go(Router.DUEL)
+		"replay_again":
+			Router.go(Router.DUEL)
+		"replay_back":
+			Router.menu_open = "replays"
 			Router.go(Router.MAIN_MENU)
 		"decks":
 			# Lost a duel the story needs: straight to your decks. The story waits at this duel.
@@ -2192,6 +2373,9 @@ func _ai_wait(sec: float) -> void:
 
 
 func _exit_tree() -> void:
+	if not _replay.is_empty():
+		Engine.time_scale = 1.0
+		Voices.muted = false
 	Voices.hush(true)
 	Settings.pace = 1.0
 	Sfx.boost_db = 0.0

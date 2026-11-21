@@ -113,8 +113,11 @@ static func has(voice: String, key: String) -> bool:
 	return voice != "" and ResourceLoader.exists(path_of(voice, key))
 
 
+## Nobody speaks while this is on (a replay running faster than life: the lines would trail behind it).
+static var muted := false
+
 static func _may(who: String, mine: bool) -> bool:
-	if not Settings.voices_on or Settings.voice_volume <= 0.001:
+	if muted or not Settings.voices_on or Settings.voice_volume <= 0.001:
 		return false
 	if who == "narrator":
 		return true

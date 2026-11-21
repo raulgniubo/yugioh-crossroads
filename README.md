@@ -5,6 +5,20 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.64.0
+
+Replays. No cards added: 8,415 total.
+
+- **Every duel is kept by itself.** The moment a duel is decided it is written down: the last 30 stay, and the ones you mark as favorites stay until you say so. Story duels, Free Roam duels, Matches, Turbo Duels, all of them.
+- **The Replays screen** (the round button with the circling arrow on the main menu): who played, who won, how many turns, the Life Points at the end, the date. Watch, mark as favorite (the star), or delete (it asks first).
+- **Watching a replay** is the duel again on the same table: every summon, chain, attack, voice and ending, at the pace it was played. The bar on the right has pause, speed (1x, 2x, 4x), on to the next turn, show both hands (the rival's hand face up along the top), and the way out.
+- **A replay shows what happened; it does not play the duel again.** So a replay keeps working in every later version of the game, whatever changes in the rules or the cards, and it always ends the way the duel ended.
+- **Sharing:** each replay is one small file (about 100 KB for a short duel, up to about 1 MB for a very long one) in the `Replays` folder inside Crossroads Data. "Open the Replays folder" on the Replays screen takes you there. Send the file to a friend, they put it in their own Replays folder, and it is in their list. It works between Mac and Windows.
+- **A replay from another version still plays.** A replay carries what its own cards are, so a card your version does not have is shown with its name, its numbers and its text (as a plain card when you have no picture of it), and a duelist, field or song you do not have is swapped for one you do, keeping the name. It tells you once at the start what was missing. If it is written in a way your version cannot read at all, it stays in the list in grey with "made with a newer version, update the game to watch it". And if a replay ever cannot go on, it stops and shows how the duel really ended instead of hanging.
+- **After a duel**, the results screen has "Watch the replay" (when nothing else is waiting on that duel: in the Story, a Match or a gauntlet the replay is in the list instead).
+- Watching a replay gives nothing and changes nothing: no Duel Points, no records, no story.
+- **Windows:** only the .exe changed.
+
 ## What is in 0.63.2
 
 Chains you can read. No cards added: 8,415 total.
@@ -40,7 +54,7 @@ Fixes from the first day of 0.63.0: how the duelists move on the real models, me
 
 Duelists come alive: they move like duelists, the camera goes to them at the big moments, the duel has an ending, and they talk a lot more. No cards added: 8,415 total.
 
-**Spanish has every voice in this build. English still plays with text bubbles** and gets all its voices in 0.64.0.
+**Spanish has every voice in this build. English still plays with text bubbles** and gets all its voices in a later build, when they are all made.
 
 - **Live duelists in the corners.** The two pictures next to the Life Points are now the real 3D duelists, from the chest up, moving all through the duel. Whatever they do at the table shows there: the stance of their personality, the draw, the card in their hand, the play, the thinking pose, the stagger when a hit lands, the kneel when they lose. When a duelist throws an arm out or lifts a hand high, their little camera steps back by itself so the whole gesture stays in the picture, then moves back in. While they say a line their head moves with the words, and the mouth moves too on models that have a movable face. The table stays exactly as visible as before. Settings > Gameplay > **Live duelists in the corners** turns it off (still pictures, like before).
 - **Duelists that move.** Over 40 new motions made for duels: drawing, playing a card, setting one, a Spell, a Trap, pointing an attack in, a direct attack, ending the turn, thinking, three ways of taking a hit, holding the head when the ace falls, and more. Before, a duel borrowed everyday motions (a nod, a chat) and tilted the whole body like one stiff piece.

@@ -474,6 +474,7 @@ func _build_phase() -> void:
 	ask_bg.add_theme_stylebox_override("panel", asb)
 	ask_bg.add_child(ask_row)
 	box.add_child(ask_bg)
+	_ask_bg = ask_bg
 	var ask := CheckButton.new()
 	ask.text = "Ask me at every chance"
 	ask.button_pressed = phase_prompts
@@ -679,7 +680,7 @@ func end_button_off() -> bool:
 
 func set_phase_buttons(battle_text: String, battle_enabled: bool, end_enabled: bool) -> void:
 	_btn_battle.text = battle_text
-	_btn_battle.visible = battle_text != ""
+	_btn_battle.visible = battle_text != "" and not replay_mode
 	_btn_battle.disabled = not battle_enabled
 	_btn_end.disabled = not end_enabled
 
@@ -2976,6 +2977,8 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 		first = _overlay_button(bar, "New match" if not mt.is_empty() else ("Run it again" if gauntlet_label != "" else "Rematch"), "rematch")
 		if stats.get("free", false):
 			_overlay_button(bar, "Change duelists", "select")
+		if stats.get("replay", false):
+			_overlay_button(bar, "Watch the replay", "watch_replay")
 		_overlay_button(bar, "Main Menu", "menu")
 	first.grab_focus()
 	# And if it is still taller than the window (a small window, a very long list), the whole
@@ -2988,11 +2991,76 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 			v.scale = Vector2.ONE * (room / v.size.y)
 
 
+# ---------------------------------------------------------------- watching a replay (0.64.0)
+var replay_mode := false
+var _ask_bg: Control
+var _opp_row: HBoxContainer
+
+## Nobody is playing: the buttons of a live duel make room for the replay's controls.
+func replay_controls(bar: Control) -> void:
+	replay_mode = true
+	for n in [_btn_battle, _btn_end, _ask_bg, _btn_speed]:
+		if n != null and is_instance_valid(n):
+			(n as Control).visible = false
+	_phase_box.add_child(bar)
+	_phase_box.move_child(bar, mini(1, _phase_box.get_child_count() - 1))
+
+
+## The rival's hand, face up, in a row along the top (the eye button of a replay). An empty list hides it.
+func set_opp_hand(cards: Array, on: bool) -> void:
+	if _opp_row == null or not is_instance_valid(_opp_row):
+		_opp_row = HBoxContainer.new()
+		_opp_row.add_theme_constant_override("separation", 6)
+		_opp_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		_opp_row.anchor_left = 0.5
+		_opp_row.anchor_right = 0.5
+		_opp_row.offset_left = -420
+		_opp_row.offset_right = 420
+		_opp_row.offset_top = 6
+		_opp_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_opp_row.z_index = 5
+		add_child(_opp_row)
+	_opp_row.visible = on
+	if not on:
+		return
+	var have: Array = []
+	for c in _opp_row.get_children():
+		have.append(c.get_meta("uid", -1))
+	var want: Array = []
+	for c in cards:
+		want.append(int(c.uid))
+	if have == want:
+		return
+	for c in _opp_row.get_children():
+		_opp_row.remove_child(c)
+		c.queue_free()
+	for c in cards:
+		var tr := TextureRect.new()
+		tr.texture = Cards.get_thumb(int(c.id))
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_SCALE
+		tr.custom_minimum_size = Vector2(66, 96)
+		tr.mouse_filter = Control.MOUSE_FILTER_STOP
+		tr.set_meta("uid", int(c.uid))
+		var card = c
+		tr.mouse_entered.connect(func(): inspect(card))
+		_opp_row.add_child(tr)
+
+
+## A replay is over: who won, and the two ways on.
+func show_replay_over(title: String, line: String, color: Color) -> void:
+	var v := _overlay_panel(title, line, color)
+	var first := _overlay_button(v, "Watch again", "replay_again")
+	_overlay_button(v, "Back to replays", "replay_back")
+	first.grab_focus()
+
+
 func show_pause() -> void:
 	var v := _overlay_panel("PAUSED", "", Color.WHITE)
 	var first := _overlay_button(v, "Resume", "resume")
 	_overlay_button(v, "Settings", "settings")
-	_overlay_button(v, "Surrender", "surrender")
+	if not replay_mode:
+		_overlay_button(v, "Surrender", "surrender")
 	_overlay_button(v, "Main Menu", "menu")
 	first.grab_focus()
 

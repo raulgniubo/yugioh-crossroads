@@ -579,6 +579,16 @@ func _debug_args() -> void:
 						break
 			elif what == "deck":
 				menu._on_deck()
+			elif what == "replays":
+				menu._on_replays()
+			elif what == "replay-last":
+				# Dev: straight into the newest replay.
+				for rh in Replays.list():
+					if not bool(rh.get("newer", false)):
+						duel_config = Replays.config_for(Replays.read(str(rh["path"])))
+						menu_open = "replays"
+						go(DUEL)
+						break
 			elif what == "settings":
 				for t in OS.get_cmdline_user_args():
 					if t.begins_with("--tab="):      # dev: open on that tab (3 is Audio)

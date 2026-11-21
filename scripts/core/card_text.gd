@@ -20,6 +20,13 @@ static func spanish(name: String) -> String:
 	return str(_es.get(name, ""))
 
 
+## A card this game has no Spanish text for, that a replay brought its own for.
+static func guest(name: String, spanish_text: String) -> void:
+	_load()
+	if name != "" and spanish_text != "" and not _es.has(name):
+		_es[name] = spanish_text
+
+
 static func _load() -> void:
 	if not _loaded:
 		_loaded = true
