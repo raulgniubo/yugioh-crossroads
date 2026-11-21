@@ -446,6 +446,11 @@ func _place(st: Dictionary, instant := false) -> void:
 	var fig := RoamFigure.new()
 	scene.add_child(fig)
 	fig.position = st.get("from", at) if not instant else at
+	# "plain": true puts them in their own clothes, not the dorm jacket they wear later.
+	if st.get("plain", false):
+		Avatars.plain[key] = true
+	else:
+		Avatars.plain.erase(key)
 	fig.setup(key, Characters.get_char(key).get("color", Color.WHITE), "", false)
 	fig.lively = false
 	fig.greets = false

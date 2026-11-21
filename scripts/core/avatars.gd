@@ -68,6 +68,9 @@ const UNIFORMS := {"jaden": "red", "syrus": "red", "red_student": "red", "koji":
 	"chazz": "blue", "alexis": "blue", "zane": "blue", "blue_student": "blue",
 	"nico": "red", "mika": "red", "bruno": "red", "bastion": "yellow", "dante": "blue"}
 var _uniform_shader: Shader
+## People who are not in their dorm jacket right now (the Academy story's prologue: nobody has a
+## dorm before the entrance exam). key -> true.
+var plain := {}
 
 
 ## True when this character is shown with a stand-in, not their own model.
@@ -1830,7 +1833,7 @@ func _load_plain(key: String, sharp := false) -> Node3D:
 				HeroLook.apply(g, str(parts["body"]), str(parts["head"]), Profile, Profile.color())
 			else:
 				apply_hero_color(g, Profile.color(), Profile.look_outfit)
-		if UNIFORMS.has(key) and is_standin(key):
+		if UNIFORMS.has(key) and is_standin(key) and not plain.has(key):
 			apply_uniform(g, DORM_COLORS[UNIFORMS[key]])
 		keep_whole(r)
 		return r
