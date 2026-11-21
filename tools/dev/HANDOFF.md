@@ -1021,3 +1021,28 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   duelist_m4 (the same one Ivo wears; they never share a scene) until Raul drops `bastion` into characters.
 - batch.py's voice order list needs every own voice (it crashed on "bastion" until it was added there).
 - VOICES: batches 219-226 (151 files). Next batch number: 227.
+
+#### 0.65.5 STATE (Nov 21, midday; newer than the block above)
+- CHAPTER 6 "The Cup" (ac_ch6): Red dorm morning -> free walk (Mika on Octavia's deck, Jaden asleep on the cliff:
+  both optional) -> the arena -> Cup table -> two duels you watch ({"clash"}: jaden beats felix, alexis beats
+  syrus) -> you vs `octavia` (deck_barrier, standard, difficulty 2, boss, MUST be won) -> cup_add red 15 + the rule
+  -> Cup table -> Sheppard ("if"/"unless": "cup_first") -> Crane, Octavia's motion, choice, a card (32296881) ->
+  Red dorm night (Dorothy, Sato "Once.", Crowler announces the exam) -> room. `remember` cup_final_won.
+  ac_ch7 "The Exam" is named, no script.
+- NEW STORY PIECES: {"cup_table": {"title","sub","gain": {"red": 15},"mark": "red"}} (scripts/story/story_cup.gd,
+  reads Campus.cup_points(); snap "cupN"); `_board_step(panel, tag)` is the shared waiting loop for roster and Cup
+  table (a panel needs shown_after() and leave()); actor "as": a nameless figure wearing another character's body
+  ({"actor": "cup_b1", "as": "blue_student", ...}); campus ops "weekday": 0..6 (jumps to that weekday's morning),
+  "cup_floor": dorm (Campus.cup_not_last: lifts a last-placed dorm to one above the next), "cup_flags": true
+  (sets flag "cup_first"). TROPHIES cup_final, dorm_cup. WEEK_PLAN: Saturday afternoon is "Dorm Cup final".
+- THE HALL, more: something solid stands around STAGE (6.2..7.5, 8) (the audit said so); the Cup cast is in
+  /home/claude/work/campus/ch6_apply.py (SPOT list). Ambient students are sent out with
+  {"room": STAGE + Vector3(6.5, 0, 6.0), "r": 5.5}.
+- Octavia: deck_barrier, ace Voltanis the Adjudicator, own lines, in "own_duelists" (69 duel files). After a change
+  to Characters lines: `godot --headless --path . -s tools/voices/dump_lines.gd -- /tmp/x.json`, copy it over
+  tools/voices/lines_src.json, then build_lines.py.
+- Voice lists can be built before a chapter is in the repo: /tmp/w6/cbuild6.py pattern (a scratch copy of
+  campus_data.gd with the chapter applied, es_all merged with the chapter's json).
+- VOICES: batches 227-238 (219 files). Next batch number: 239.
+- Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
+  Prefect" still stands next to Octavia the prefect.

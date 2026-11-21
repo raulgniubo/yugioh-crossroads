@@ -454,11 +454,13 @@ func _place(st: Dictionary, instant := false) -> void:
 		Avatars.plain[key] = true
 	else:
 		Avatars.plain.erase(key)
-	fig.setup(key, Characters.get_char(key).get("color", Color.WHITE), "", false)
+	# "as": a face in the crowd. The story calls them by `key`; they look like the character `as`.
+	var body := str(st.get("as", key))
+	fig.setup(body, Characters.get_char(body).get("color", Color.WHITE), "", false)
 	fig.lively = false
 	fig.greets = false
 	fig.watch = scene._player
-	if st.has("coat") and Avatars.takes_jacket(key):
+	if st.has("coat") and Avatars.takes_jacket(body):
 		# A coat is only painted on a stand-in; a character with a model of their own already
 		# wears what they wear.
 		fig.wear_uniform(st["coat"])
@@ -639,6 +641,8 @@ func _do_step(st: Dictionary) -> bool:
 		await _bracket_step(st["bracket"])
 	elif st.has("roster"):
 		await _roster_step(st["roster"])
+	elif st.has("cup_table"):
+		await _board_step(StoryCup.new(st["cup_table"]), "cup%d" % step)
 	elif st.has("prize"):
 		await _bond(st)
 	elif st.has("room"):
@@ -2945,15 +2949,26 @@ func _roster_step(l: Dictionary) -> void:
 	_box.visible = false
 	if _skip:
 		return
-	var panel := StoryRoster.new(l)
+	await _board_step(StoryRoster.new(l), "roster%d" % step)
+
+
+## Anything that gets posted over the scene (the team list, the Cup table): it comes up piece by
+## piece, stays long enough to be read (or until you press on once it is all there), and goes.
+## `panel` has shown_after() and leave().
+func _board_step(panel: Control, tag: String) -> void:
+	_cutscene(true)
+	_box.visible = false
+	if _skip:
+		panel.free()
+		return
 	_ui.add_child(panel)
-	var full := panel.shown_after()
+	var full: float = panel.call("shown_after")
 	var left := full + 6.0
 	if _auto:
 		left = 0.3
 		for a in OS.get_cmdline_user_args():
 			if a.begins_with("--story-shots="):
-				await _snap("roster%d" % step, full + 0.3)
+				await _snap(tag, full + 0.3)
 	_advance_wanted = false
 	var shown := 0.0
 	while left > 0.0 and not _skip:
@@ -2967,7 +2982,7 @@ func _roster_step(l: Dictionary) -> void:
 			if shown >= full:
 				break
 	_advance_wanted = false
-	panel.leave()
+	panel.call("leave")
 
 
 func _cap_step(st: Dictionary) -> void:
@@ -3242,6 +3257,9 @@ func _bond(st: Dictionary) -> void:
 ##   "dorm": 0..2         you move up (the jacket changes)
 ##   "bond": [who, n]     somebody thinks more of you
 ##   "trophy": id         something for your room
+##   "weekday": 0..6      (with "morning") the chapter plays on this day of the week: Monday is 0
+##   "cup_floor": dorm    the oldest rule of the Cup: this dorm won the final round, so it is not last
+##   "cup_flags": true    sets the flag "cup_first" when your dorm leads the table right now
 ##   "card": id           a card for your (Academy) collection, no fanfare
 func _campus_step(c: Dictionary) -> void:
 	if c.get("sleep", false):
@@ -3266,10 +3284,21 @@ func _campus_step(c: Dictionary) -> void:
 		Campus.set_time(Campus.day() + 1, 0)
 		scene.city.apply_tod(Campus.tod())
 		Router.roam["tod"] = Campus.tod()
+	if c.has("weekday") and Campus.weekday() != int(c["weekday"]):
+		# The story says which day it is; the calendar follows (the days in between simply pass).
+		Campus.set_time(Campus.day() + posmod(int(c["weekday"]) - Campus.weekday(), 7), 0)
+		scene.city.apply_tod(Campus.tod())
+		Router.roam["tod"] = Campus.tod()
 	if c.get("cup", false):
 		Campus.cup_open()
 	if c.has("cup_add"):
 		Campus.cup_add(str(c["cup_add"][0]), int(c["cup_add"][1]))
+	if c.has("cup_floor"):
+		Campus.cup_not_last(str(c["cup_floor"]))
+	if c.get("cup_flags", false):
+		flags.erase("cup_first")
+		if Campus.cup_on() and Campus.cup_place(Campus.dorm()) == 1:
+			flags["cup_first"] = true
 	if c.has("part"):
 		Campus.put("part", clampi(int(c["part"]), 0, 2))
 		scene.city.apply_tod(Campus.tod())

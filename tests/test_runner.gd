@@ -10895,13 +10895,46 @@ func _test_campus() -> void:
 			tryouts += 1
 			check(bool(st["duel"].get("lose_ok", false)), "a tryout duel against %s can be lost and the story goes on" % str(st["duel"]["opponent"]))
 	check(tryouts == 3, "the tryouts are three duels")
+	# The Cup final (chapter 6): the oldest rule of the Cup, the table, and the people in the arena.
+	Campus.put("cup", {"open": true, "pts": [3, 40, 60], "since": 1})
+	Campus.cup_add("red", 15)
+	Campus.cup_not_last("red")
+	check(Campus.cup_place(0) == 2 and int(Campus.cup_points()[0]) == 41 and int(Campus.cup_points()[1]) == 40, "a dorm that wins the final round is lifted off last place when the table would leave it there")
+	check(StoryCup.order() == [2, 0, 1], "the Cup table lists the dorms from first to last")
+	Campus.put("cup", {"open": true, "pts": [50, 40, 60], "since": 1})
+	Campus.cup_not_last("red")
+	check(int(Campus.cup_points()[0]) == 50 and int(Campus.cup_points()[1]) == 40, "the rule changes nothing for a dorm that is not last")
+	var finals := 0
+	var crowd := 0
+	var clashes := 0
+	for st in CampusData.SCRIPTS["ac_ch6"]:
+		var sd: Dictionary = st
+		if sd.has("duel"):
+			finals += 1
+			check(str(sd["duel"]["opponent"]) == "octavia" and not bool(sd["duel"].get("lose_ok", false)), "the last duel of the Cup final is against Octavia Lenz and has to be won")
+		if sd.has("actor") and sd.has("as"):
+			crowd += 1
+			check(Characters.get_char(str(sd["as"])).get("name", "") != "" and Avatars.UNIFORMS.has(str(sd["as"])), "a face in the Cup crowd (%s) is somebody the game can dress" % str(sd["as"]))
+		if sd.has("clash"):
+			clashes += 1
+			var lp: Array = (sd["clash"]["lp"] as Array).duplicate()
+			for beat in sd["clash"]["beats"]:
+				lp[1 if str(beat[0]) == "a" else 0] = int(lp[1 if str(beat[0]) == "a" else 0]) - int(beat[3])
+			var won_a := str(sd["clash"]["win"]) == "a"
+			check(int(lp[1 if won_a else 0]) <= 0 and int(lp[0 if won_a else 1]) > 0, "the duel you watch between %s and %s ends with the loser at zero" % [str(sd["clash"]["a"]), str(sd["clash"]["b"])])
+	check(finals == 1 and clashes == 2 and crowd >= 4, "the Cup final is two duels you watch and one you play, in front of a crowd")
+	check(str(Characters.get_char("octavia").get("deck", "")) == "deck_barrier" and str(Characters.get_char("octavia").get("ace_name", "")) != "", "Octavia Lenz has a deck and an ace")
+	check(not CardData.get_card(32296881).is_empty(), "the card Octavia gives you exists")
+	check(CampusData.TROPHIES.has("cup_final") and CampusData.TROPHIES.has("dorm_cup"), "the Cup trophies have names for the agenda")
+	check(str(CampusData.WEEK_PLAN[5][1]) == "Dorm Cup final", "the week plan has the Cup final on Saturday, as the story says")
+	Campus.put("cup", {"open": true, "pts": [5, 9, 14], "since": 1})
 	Campus.trophy("rookie_champion")
 	check((Campus.v("trophies", []) as Array).has("rookie_champion") and CampusData.TROPHIES.has("rookie_champion"), "a trophy is kept and has a name for the agenda")
 	Campus.new_game("libre")
 	check(not Campus.cup_on(), "a new Academy game starts with the Dorm Cup closed")
 	# The yards and the people the story hides exist.
 	check(CampusData.YARDS.size() == 3 and Campus.DORMS.size() == 3 and Campus.NEED.size() == 3, "three dorms, three yards, three merit marks")
-	for who in ["nico", "mika", "bruno", "sato", "crowler", "sheppard", "dorothy", "dante"]:
+	for who in ["nico", "mika", "bruno", "sato", "crowler", "sheppard", "dorothy", "dante", "bastion", "octavia"]:
 		check(Voices.voice_for(who) == who, "%s speaks with a voice of their own" % who)
 	if had:
 		var f := FileAccess.open(Campus.PATH, FileAccess.WRITE)

@@ -360,6 +360,23 @@ static func cup_add(which: String, n: int) -> void:
 	feed.append([n, DORM_NAMES[i], "cup"])
 
 
+## The oldest rule of the Cup: a dorm that wins the final round cannot finish last, whatever the
+## table says. If `which` is last, it is lifted to one point above the dorm in front of it.
+static func cup_not_last(which: String) -> void:
+	var i := DORMS.find(which)
+	if not cup_on() or i < 0 or cup_place(i) < 3:
+		return
+	var c: Dictionary = (v("cup", {}) as Dictionary).duplicate(true)
+	var low := 1 << 30
+	for k in 3:
+		if k != i:
+			low = mini(low, int(c["pts"][k]))
+	var n := low + 1 - int(c["pts"][i])
+	c["pts"][i] = low + 1
+	put("cup", c)
+	feed.append([n, DORM_NAMES[i], "cup"])
+
+
 ## Your classmates get better as the year goes on: one more star (a stronger version of their deck,
 ## a sharper duelist) for each of their chapters you have finished. See CampusData.GROWTH.
 static func growth(who: String) -> int:

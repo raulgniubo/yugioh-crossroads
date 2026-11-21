@@ -5,6 +5,23 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.65.5
+
+**Academia de Duelos, chapter 6: "La Copa".** Playable from start to finish, in Spanish, with every line spoken. No cards added: 8,415 total.
+
+- **Chapter 6.** Saturday, the last morning of the term: the final round of the Dorm Cup, Red against Blue, three duels. Sato names Jaden, Syrus and you (the Blue prefect asked for you on her own sheet). Bruno, who lost the last duel three years running, carries the water. Nico gets the microphone: the Chancellor wanted a voice for the final.
+- **Two duels you watch, one you play.** Jaden beats Felix Arden in two turns, half asleep (Octavia gave Felix away on purpose so she would not spend Alexis on him). Syrus is ahead of Alexis after two turns, looks at his brother in the stands, and loses. One each: you against Octavia Lenz, and this one has to be won.
+- **Octavia has a deck, an ace and a voice in duels.** She plays the Counter Trap Fairies ("Wardens of the Barrier", a deck the shop already sold): her traps say no to what you play and her Fairies pay her each time. Mika's notes before the arena tell you how to play around it. 69 duel lines in her own voice.
+- **The oldest rule of the Cup:** a dorm that wins the final round cannot finish last, whatever the table says. The story gives Red its 15 points and, if the table would still leave Red last, lifts it one point above the dorm in front. So the council's vote to close the Red dorm has nothing to stand on, and Octavia herself moves to postpone the review until the League season is over.
+- **The Cup table on screen,** before the round and after it, with the points your game really has. If you have scored enough for Red to be first, the Chancellor says so and you get a second trophy.
+- **A crowd.** The story can now put students without a name in a scene (the three dorms fill the arena floor).
+- **The calendar follows the story:** chapter 5 plays on a Monday and chapter 6 on a Saturday, and the week plan in the agenda now has the Cup final on Saturday.
+- After the duel: 120 merits, a trophy, a card from Octavia (Bountiful Artemis), and Crane is back for a word with Nico. That night Crowler comes to the Red dorm: League rule nineteen, nobody below Yellow sits on a League bench, and the promotion exams are on Friday.
+- 219 new voice files: 150 for the chapter, 69 for Octavia's duels.
+- **Windows:** only the .exe changed.
+
+Not in this build yet: chapter 7 (the promotion exam), classes, rival decks that grow with your dorm, and the Academy story's English voices.
+
 ## What is in 0.65.4
 
 **Academia de Duelos, chapter 5: "Las pruebas del equipo".** Playable from start to finish, in Spanish, with every line spoken. No cards added: 8,415 total.

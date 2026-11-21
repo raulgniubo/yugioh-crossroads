@@ -223,7 +223,9 @@ const STORY_CAST := {
 		"lines": {"intro": ["Try to make it worth my time."], "ace": ["This is what a real deck looks like."], "taunt": ["Is that all Red has?"],
 			"win": ["As expected."], "lose": ["...Once. That happens once."]}},
 	"octavia": {"name": "Octavia Lenz", "short": "Octavia", "era": "GX", "color": Color("6a7ae8"), "title": "Blue dorm prefect. President of the Student Council",
-		"personality": "cool", "stars": 4},
+		"deck": "deck_barrier", "ace_name": "Voltanis the Adjudicator", "personality": "cool", "stars": 4,
+		"lines": {"intro": ["The answer is no. Let us find out what the question was."], "ace": ["Voltanis. The verdict is in."], "taunt": ["That was denied. Try something else."],
+			"win": ["Noted, and filed."], "lose": ["...Then I was wrong. I will write it down."]}},
 	"crane": {"name": "Silas Crane", "short": "Crane", "era": "GX", "color": Color("c9a24a"), "title": "Owner of Apex Academy. Sponsor of the League"},
 	# First-years of the Rookie Tournament (chapter 4). They wear bodies and voices the game already has.
 	"gus": {"name": "Gus Moreno", "short": "Gus", "era": "GX", "color": Color("e0603a"), "title": "Red dorm, first year. Signed up by somebody else",
