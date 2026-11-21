@@ -225,6 +225,13 @@ const STORY_CAST := {
 	"octavia": {"name": "Octavia Lenz", "short": "Octavia", "era": "GX", "color": Color("6a7ae8"), "title": "Blue dorm prefect. President of the Student Council",
 		"personality": "cool", "stars": 4},
 	"crane": {"name": "Silas Crane", "short": "Crane", "era": "GX", "color": Color("c9a24a"), "title": "Owner of Apex Academy. Sponsor of the League"},
+	# First-years of the Rookie Tournament (chapter 4). They wear bodies and voices the game already has.
+	"gus": {"name": "Gus Moreno", "short": "Gus", "era": "GX", "color": Color("e0603a"), "title": "Red dorm, first year. Signed up by somebody else",
+		"deck": "deck_goblin", "personality": "wild", "stars": 1},
+	"felix": {"name": "Felix Arden", "short": "Felix", "era": "GX", "color": Color("3f7fe8"), "title": "Blue dorm, first year. Already picked your common room",
+		"deck": "deck_archfiend", "personality": "cocky", "stars": 2},
+	"ivo": {"name": "Ivo Brandt", "short": "Ivo", "era": "GX", "color": Color("e8c040"), "title": "Yellow dorm, first year. Never raises his voice",
+		"deck": "deck_dark_world", "personality": "cool", "stars": 2},
 }
 
 const PERSONALITY_LINES := {

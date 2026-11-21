@@ -353,6 +353,12 @@ func open_agenda() -> void:
 					row.add_theme_font_override("font", UITheme.semi_font())
 		_line(p, Loc.t("Every duel you win against a student of another dorm scores for yours. Stronger duelists are worth more. Each dorm also scores a little every day."), 16, UITheme.TEXT_DIM)
 		_line(p, Loc.t("If Red finishes last this term, the Red dorm closes."), 16, UITheme.TEXT_DIM)
+	# ---- what you have won
+	var won: Array = Campus.v("trophies", [])
+	if not won.is_empty():
+		_head(p, "Trophies")
+		for t in won:
+			_line(p, "★  " + Loc.t(str(CampusData.TROPHIES.get(str(t), str(t)))), 19, UITheme.GOLD.lightened(0.2))
 	# ---- merits and moving up
 	_head(p, "Moving up")
 	var need := int(Campus.NEED[Campus.dorm()])

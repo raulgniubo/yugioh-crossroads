@@ -983,3 +983,26 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   stood right behind the Yellow. The duel line moved 2 m north (FIELD + (+-2.9, 0, -2.0)) to clear the bench.
 - Already in the director, used from 0.65.3 on (chapter 4): {"bracket": {...}} (scripts/story/story_bracket.gd, a
   16-name board between rounds) and {"prize": title, "head", "card", "text"} (the bond banner for a card you won).
+
+#### 0.65.3 STATE (Nov 21, mid-morning; newer than the block above)
+- CHAPTER 4 "The Rookie Tournament" (ac_ch4): room -> free walk to the plaza (Bruno, Mika, Jaden optional; CampusData.PLAZA
+  = the origin) -> the draw (board) -> round 1 vs `gus` (deck_goblin, diff 0) -> board -> quarterfinal vs `felix`
+  (deck_archfiend) -> Mika vs Dante as a `clash` (Dante wins, she leaves him at 1100) -> board -> semifinal vs `nico`
+  (deck_warrior) -> board -> final vs `dante` (deck_dragon, standard tier, diff 2, lose_ok, boss) -> branches on
+  flags "won"/"lost": trophy rookie_champion / rookie_finalist, `remember` of the same name (chapter 5 on: Dante wants a
+  rematch / ignores you), prize card 44095762 / 56120475 -> Octavia announces the tryouts -> Red dorm dinner -> room.
+  ac_ch5 "The Tryouts" is named, no script.
+- After every duel a bare {"scene": ...} step puts you back among the public (PLAZA + (0.6, 0, 6.2)); without it you
+  stayed in the ring and the next duelists walked into you.
+- CampusData.ROOKIES = the 16 names in bracket order (character keys, "player", or [name, dorm]); boards are
+  {"bracket": {"title", "round", "names": ROOKIES, "wins": [[8], [4], [2], [1]]}} (StoryBracket draws them; the test
+  checks they are real brackets). CampusData.TROPHIES names the trophies; the agenda lists them.
+- NEW characters `gus`, `felix`, `ivo` (Characters, Avatars.STANDINS + UNIFORMS; voices by personality: wild_m, cocky_m,
+  cool_m). Chapter 2's mocking Blue is now `felix` and chapter 3's Yellow is `ivo` (same voice files: a line's file
+  depends on its text and voice, not on who says it). cbuild.py's VOICE map has them.
+- {"room": ...} now lasts for the scene: it is applied again every time the cutscene camera comes back (after a choice,
+  a goal...), and a new scene clears it. {"prize": ...} and {"bracket": ...} are used here for the first time.
+- `dante` is in new_lines.json "own_duelists": 73 duel lines in his voice. Octavia still is not (chapter 6).
+- GROWTH: nico grows with ac_ch4. Spanish lines must not depend on the player's gender ("mi compañero de cuarto",
+  "el campeón" were rewritten); "quiero a Dante" read as romantic and was changed before it was voiced.
+- VOICES: batches 206-218 (225 files; 218 = one Octavia line reworded). voices/es = 2,654. Next batch number: 219.

@@ -62,12 +62,14 @@ const STANDINS := {
 	"nico": "student_boy", "mika": "student_girl", "bruno": "street_duelist", "sato": "stylish_woman", "crowler": "office_worker",
 	"sheppard": "elder_m", "dorothy": "duelist_f1", "bastion": "duelist_m4", "dante": "duelist_m7",
 	"octavia": "duelist_f2", "crane": "duelist_m3",
+	"gus": "student_boy", "felix": "duelist_m7", "ivo": "duelist_m4",
 }
 ## Duel Academy jackets. Painted over stand-in models only, never over a model you supplied.
 const DORM_COLORS := {"red": Color("d9342b"), "yellow": Color("f2c230"), "blue": Color("2f6fe0")}
 const UNIFORMS := {"jaden": "red", "syrus": "red", "red_student": "red", "koji": "red", "yellow_student": "yellow",
 	"chazz": "blue", "alexis": "blue", "zane": "blue", "blue_student": "blue",
-	"nico": "red", "mika": "red", "bruno": "red", "bastion": "yellow", "dante": "blue", "octavia": "blue"}
+	"nico": "red", "mika": "red", "bruno": "red", "bastion": "yellow", "dante": "blue", "octavia": "blue",
+	"gus": "red", "felix": "blue", "ivo": "yellow"}
 var _uniform_shader: Shader
 ## People who are not in their dorm jacket right now (the Academy story's prologue: nobody has a
 ## dorm before the entrance exam). key -> true.

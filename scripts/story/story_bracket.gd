@@ -138,7 +138,7 @@ func _draw_board() -> void:
 			_area.draw_style_box(sb, rect)
 			# The dorm's color down the left edge.
 			_area.draw_rect(Rect2(rect.position + Vector2(4, 5), Vector2(7, rect.size.y - 10.0)), Color(dorm_col, 0.4 if out else 1.0))
-			var fs := 26 if r == 4 else (20 if rect.size.y > 34.0 else 16)
+			var fs := 28 if r == 4 else (22 if rect.size.y > 34.0 else 17)
 			var tc := Color(1, 1, 1, 0.34) if out else Color.WHITE
 			_area.draw_string(_font, rect.position + Vector2(20, rect.size.y / 2.0 + fs * 0.36), e2[0], HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 26.0, fs, tc)
 

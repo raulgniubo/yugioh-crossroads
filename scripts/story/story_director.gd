@@ -100,6 +100,7 @@ var _name_tab: PanelContainer
 var _name_style: StyleBoxFlat
 var _solver: StoryCamera
 var _stepped_out: Array = []   # bystanders hidden while a scene plays where they stood
+var _room: Array = []          # [middle, radius] of the ground this scene keeps to itself (the "room" step)
 var _shot_subs: Array = []     # who the current wide shot holds
 var _audit := false
 var _dir := {}                 # a directed camera move in progress
@@ -641,7 +642,8 @@ func _do_step(st: Dictionary) -> bool:
 	elif st.has("room"):
 		# A scene that needs the ground to itself (a duel with an audience of its own):
 		# the people who happen to be chatting there step out until the camera lets go.
-		_make_room([st["room"]], float(st.get("r", 5.0)))
+		_room = [st["room"], float(st.get("r", 5.0))]
+		_make_room([_room[0]], _room[1])
 	elif st.has("clash"):
 		await _clash(st["clash"])
 	elif st.has("goal"):
@@ -657,8 +659,14 @@ func _do_step(st: Dictionary) -> bool:
 				await _snap("vs")
 				_ui.get_child(_ui.get_child_count() - 1).queue_free()
 				_cut = true
-			flags["won"] = true
-			print("STORY: duel skipped (auto) vs ", st["duel"]["opponent"])
+			# (--story-lose: a duel that may be lost is lost, so the other branch gets walked too.)
+			flags.erase("won")
+			flags.erase("lost")
+			if st["duel"].get("lose_ok", false) and "--story-lose" in OS.get_cmdline_user_args():
+				flags["lost"] = true
+			else:
+				flags["won"] = true
+			print("STORY: duel skipped (auto) vs ", st["duel"]["opponent"], "  lost" if flags.has("lost") else "")
 		else:
 			_start_duel(st["duel"])
 			return true
@@ -736,6 +744,8 @@ func _cutscene(on: bool) -> void:
 		_cam.current = true
 		_goal_box.visible = false
 		_hud(false)
+		if not _room.is_empty():
+			_make_room([_room[0]], _room[1])
 	else:
 		for f in _stepped_out:
 			if is_instance_valid(f):
@@ -758,6 +768,7 @@ func _cutscene(on: bool) -> void:
 
 func _do_scene(st: Dictionary) -> bool:
 	var sc: Dictionary = st["scene"]
+	_room = []
 	var district := str(sc.get("district", Router.roam.get("district", "domino")))
 	if district != str(Router.roam.get("district", "domino")):
 		# Another world: reload there and carry on from the next step.
@@ -3181,6 +3192,10 @@ func _bond(st: Dictionary) -> void:
 	await get_tree().create_timer(0.8).timeout
 	if _auto and "--story-versus" in OS.get_cmdline_user_args():
 		await _snap("bond")
+	elif _auto and not is_bond:
+		for arg in OS.get_cmdline_user_args():
+			if arg.begins_with("--story-shots="):
+				await _snap("prize%d" % step, 0.3)
 	while not _advance_wanted and not _auto:
 		await get_tree().process_frame
 	_advance_wanted = false

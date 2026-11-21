@@ -18549,6 +18549,663 @@
 "tts": "Dos monstruos, un Rango. ¡Invocación /ˈeksis/!"
 },
 {
+"voice": "dante",
+"lang": "es",
+"key": "44917687cf27",
+"kind": "ace",
+"en": "This is what a real deck looks like.",
+"text": "Así se ve un deck de verdad.",
+"tts": "Así se ve un deck de verdad."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "6b4ec4a65a6f",
+"kind": "ace",
+"en": "Now witness true power!",
+"text": "¡Ahora contempla el verdadero poder!",
+"tts": "¡Ahora contempla el verdadero poder!"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "53668a100a4a",
+"kind": "ace_lost",
+"en": "You... you destroyed it?!",
+"text": "¡¿Lo... lo destruiste?!",
+"tts": "¡¿Lo... lo destruiste?!"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "d0fc0701b3a7",
+"kind": "ace_lost",
+"en": "That was my best card! You'll pay for that!",
+"text": "¡Esa era mi mejor carta! ¡Me las vas a pagar!",
+"tts": "¡Esa era mi mejor carta! ¡Me las vas a pagar!"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "9c6fadfd1fbc",
+"kind": "attack",
+"en": "Crush them!",
+"text": "¡Aplástalos!",
+"tts": "¡Aplástalos!"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "5df8f87bbd76",
+"kind": "battle",
+"en": "Time to finish this.",
+"text": "Hora de acabar con esto.",
+"tts": "Hora de acabar con esto."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "744442c833e3",
+"kind": "battle",
+"en": "Battle. This won't take long.",
+"text": "Batalla. Esto no va a tardar.",
+"tts": "Batalla. Esto no va a tardar."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "d6c11a41a40f",
+"kind": "battle",
+"en": "Battle!",
+"text": "¡Batalla!",
+"tts": "¡Batalla!"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "2a41ee39e69a",
+"kind": "big_hit",
+"en": "Feel that? That's the gap between us.",
+"text": "¿Lo sientes? Esa es la diferencia entre nosotros.",
+"tts": "¿Lo sientes? Esa es la diferencia entre nosotros."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "20fc7358d6e3",
+"kind": "chain",
+"en": "You forgot about my cards.",
+"text": "Te olvidaste de mis cartas.",
+"tts": "Te olvidaste de mis cartas."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "be2a450ea5d6",
+"kind": "chain",
+"en": "Not on my watch. Chain!",
+"text": "No mientras yo esté aquí. ¡Cadena!",
+"tts": "No mientras yo esté aquí. ¡Cadena!"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "908aee581c85",
+"kind": "comeback",
+"en": "Back where I belong. On top.",
+"text": "De vuelta donde pertenezco. Arriba.",
+"tts": "De vuelta donde pertenezco. Arriba."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "408afef2d056",
+"kind": "destroyed",
+"en": "Hmph. A minor setback.",
+"text": "Hmph. Un contratiempo menor.",
+"tts": "Hmph. Un contratiempo menor."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "31f951360580",
+"kind": "direct",
+"en": "Straight to your Life Points.",
+"text": "Directo a tus Puntos de Vida.",
+"tts": "Directo a tus Puntos de Vida."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "994c70a9400d",
+"kind": "direct",
+"en": "Direct attack. Feel that?",
+"text": "Ataque directo. ¿Lo sientes?",
+"tts": "Ataque directo. ¿Lo sientes?"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "e3206428607e",
+"kind": "direct",
+"en": "Nothing to hide behind.",
+"text": "No tienes dónde esconderte.",
+"tts": "No tienes dónde esconderte."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "1168846f2e27",
+"kind": "draw",
+"en": "Draw. Exactly what I needed.",
+"text": "Robo. Justo lo que necesitaba.",
+"tts": "Robo. Justo lo que necesitaba."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "7e45f4d3a1d2",
+"kind": "draw",
+"en": "Watch and learn. Draw!",
+"text": "Mira y aprende. ¡Robo!",
+"tts": "Mira y aprende. ¡Robo!"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "8c2a0b88247c",
+"kind": "draw",
+"en": "My turn. Draw.",
+"text": "Mi turno. Robo.",
+"tts": "Mi turno. Robo."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "731667a5e664",
+"kind": "draw_pressure",
+"en": "Hmph. This changes nothing.",
+"text": "Hmph. Esto no cambia nada.",
+"tts": "Hmph. Esto no cambia nada."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "e9790a830ffb",
+"kind": "duel",
+"en": "Duel!",
+"text": "¡Duelo!",
+"tts": "¡Duelo!"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "6c4980c770c0",
+"kind": "end",
+"en": "Your turn. Don't waste it.",
+"text": "Tu turno. No lo desperdicies.",
+"tts": "Tu turno. No lo desperdicies."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "ce97c8a507c8",
+"kind": "end",
+"en": "Go. Entertain me.",
+"text": "Anda. Entretenme.",
+"tts": "Anda. Entretenme."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "fc4b0b5e255b",
+"kind": "end",
+"en": "I end my turn. Do your worst.",
+"text": "Termino mi turno. Haz lo que puedas.",
+"tts": "Termino mi turno. Haz lo que puedas."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "513332424275",
+"kind": "first",
+"en": "First turn is mine. Try to keep up.",
+"text": "El primer turno es mío. Intenta seguirme el paso.",
+"tts": "El primer turno es mío. Intenta seguirme el paso."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "c86f1c0a810f",
+"kind": "first",
+"en": "I go first. Obviously.",
+"text": "Voy primero. Obviamente.",
+"tts": "Voy primero. Obviamente."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "7af8d4d783f4",
+"kind": "fusion",
+"en": "Two become one, and it's mine. Fusion Summon!",
+"text": "Dos se vuelven uno, y es mío. ¡Invocación por Fusión!",
+"tts": "Dos se vuelven uno, y es mío. ¡Invocación por Fusión!"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "f1b5a5d63b23",
+"kind": "hurt",
+"en": "A lucky shot.",
+"text": "Un golpe de suerte.",
+"tts": "Un golpe de suerte."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "72196e2ebc62",
+"kind": "hurt_big",
+"en": "Enjoy it. It's the last one you get.",
+"text": "Disfrútalo. Es el último que logras.",
+"tts": "Disfrútalo. Es el último que logras."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "c8e8e6936a80",
+"kind": "hurt_big",
+"en": "Tch... you'll pay for that.",
+"text": "Tch... vas a pagar por eso.",
+"tts": "[scoffs].. vas a pagar por eso."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "0165479dca9d",
+"kind": "intro",
+"en": "This won't take long.",
+"text": "Esto no tomará mucho.",
+"tts": "Esto no tomará mucho."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "e136a0f54851",
+"kind": "intro",
+"en": "Try to make it worth my time.",
+"text": "Procura que valga mi tiempo.",
+"tts": "Procura que valga mi tiempo."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "55ab5de34425",
+"kind": "lose",
+"en": "You got lucky. Remember that.",
+"text": "Tuviste suerte. No lo olvides.",
+"tts": "Tuviste suerte. No lo olvides."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "5bd387d55825",
+"kind": "lose",
+"en": "...Once. That happens once.",
+"text": "...Una vez. Eso pasa una sola vez.",
+"tts": "...Una vez. Eso pasa una sola vez."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "a9ab61c2078b",
+"kind": "lose",
+"en": "This... isn't over.",
+"text": "Esto... no se ha acabado.",
+"tts": "Esto... no se ha acabado."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "ee7564fe78e5",
+"kind": "lose",
+"en": "Impossible...!",
+"text": "¡Imposible...!",
+"tts": "¡Imposible...!"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "790a4f4a5107",
+"kind": "low",
+"en": "Don't think you've won yet!",
+"text": "¡No creas que ya ganaste!",
+"tts": "¡No creas que ya ganaste!"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "90a191cec2a1",
+"kind": "negate",
+"en": "Did you think I'd allow that?",
+"text": "¿Creías que te lo iba a permitir?",
+"tts": "¿Creías que te lo iba a permitir?"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "e137d7d70f45",
+"kind": "negate",
+"en": "Denied.",
+"text": "Denegado.",
+"tts": "Denegado."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "18036c6cbd2f",
+"kind": "negated",
+"en": "You stopped it? Tch.",
+"text": "¿Lo paraste? Tch.",
+"tts": "¿Lo paraste? [scoffs]"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] ¡Aaaaaagh...! [gasps]"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] ¡Ngh!"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] ¡Ugh...!"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] ¡Aaagh!"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "dfbe1aa5a0c4",
+"kind": "react",
+"en": "Is that supposed to scare me?",
+"text": "¿Se supone que eso me asuste?",
+"tts": "¿Se supone que eso me asuste?"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "0f63e033bad1",
+"kind": "rematch",
+"en": "You again. Last time was a fluke.",
+"text": "Otra vez tú. Lo de la última vez fue suerte.",
+"tts": "Otra vez tú. Lo de la última vez fue suerte."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "262d624423ca",
+"kind": "rematch",
+"en": "Back for more? I'll make it quick again.",
+"text": "¿Vienes por más? Lo haré rápido otra vez.",
+"tts": "¿Vienes por más? Lo haré rápido otra vez."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "dea8b4e885ff",
+"kind": "ritual",
+"en": "The ritual answers to me.",
+"text": "El ritual me obedece a mí.",
+"tts": "El ritual me obedece a mí."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "b03778d9b670",
+"kind": "second",
+"en": "Go first. You'll need the head start.",
+"text": "Ve primero. Vas a necesitar la ventaja.",
+"tts": "Ve primero. Vas a necesitar la ventaja."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "b1714e7f8c1d",
+"kind": "second",
+"en": "Take the first turn. It won't matter.",
+"text": "Toma el primer turno. No va a importar.",
+"tts": "Toma el primer turno. No va a importar."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "25fcab5d0e6c",
+"kind": "set",
+"en": "Go on. Attack. I dare you.",
+"text": "Vamos. Ataca. Te reto.",
+"tts": "Vamos. Ataca. Te reto."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "6af0c9167591",
+"kind": "set",
+"en": "Face-down. Go ahead, walk into it.",
+"text": "Boca abajo. Anda, cae en ella.",
+"tts": "Boca abajo. Anda, cae en ella."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "fdaa05a40e4f",
+"kind": "set_mon",
+"en": "A monster, face-down. Guess.",
+"text": "Un monstruo, boca abajo. Adivina.",
+"tts": "Un monstruo, boca abajo. Adivina."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "515d905d5a05",
+"kind": "spell",
+"en": "This is how the game is really played.",
+"text": "Así se juega de verdad.",
+"tts": "Así se juega de verdad."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "74aa0c3a9b0a",
+"kind": "spell",
+"en": "A Spell Card. Pay attention.",
+"text": "Una Carta Mágica. Pon atención.",
+"tts": "Una Carta Mágica. Pon atención."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "877522f1a367",
+"kind": "spell",
+"en": "Watch this.",
+"text": "Mira esto.",
+"tts": "Mira esto."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "03d39a32f93e",
+"kind": "summon",
+"en": "Another one you can't beat.",
+"text": "Otro que no puedes vencer.",
+"tts": "Otro que no puedes vencer."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "aebd328674dd",
+"kind": "summon",
+"en": "I summon this. Tremble.",
+"text": "Invoco esto. Tiembla.",
+"tts": "Invoco esto. Tiembla."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "dfc27353d613",
+"kind": "summon",
+"en": "Come forth!",
+"text": "¡Preséntate!",
+"tts": "¡Preséntate!"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "ebd95971ae3f",
+"kind": "synchro",
+"en": "Watch the stars line up for me. Synchro Summon!",
+"text": "Mira cómo las estrellas se alinean para mí. ¡Invocación por Sincronía!",
+"tts": "Mira cómo las estrellas se alinean para mí. ¡Invocación por Sincronía!"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "2535877e2635",
+"kind": "taunt",
+"en": "Is that all you've got?",
+"text": "¿Eso es todo lo que tienes?",
+"tts": "¿Eso es todo lo que tienes?"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "708203074d47",
+"kind": "taunt",
+"en": "Is that all Red has?",
+"text": "¿Eso es todo lo que tiene el Rojo?",
+"tts": "¿Eso es todo lo que tiene el Rojo?"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "91d0bc5a5ff1",
+"kind": "taunt",
+"en": "Pathetic.",
+"text": "Patético.",
+"tts": "Patético."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "23afa08a74f9",
+"kind": "trap",
+"en": "Walked right into it.",
+"text": "Caíste directo.",
+"tts": "Caíste directo."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "66d173547cc1",
+"kind": "trap",
+"en": "Did you really think I'd leave myself open?",
+"text": "¿De verdad creíste que me dejaría abierto?",
+"tts": "¿De verdad creíste que me dejaría abierto?"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "fca06e8ed3c8",
+"kind": "trap",
+"en": "You walked right into it.",
+"text": "Caíste directo en ella.",
+"tts": "Caíste directo en ella."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "6384c23576c1",
+"kind": "turn",
+"en": "My turn. Finally.",
+"text": "Mi turno. Por fin.",
+"tts": "Mi turno. Por fin."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "63f3528eb537",
+"kind": "turn",
+"en": "Watch and learn.",
+"text": "Mira y aprende.",
+"tts": "Mira y aprende."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "bb269c0d34e0",
+"kind": "turn",
+"en": "My move.",
+"text": "Mi jugada.",
+"tts": "Mi jugada."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "46d87d8a34ff",
+"kind": "win",
+"en": "Come back when you're ready.",
+"text": "Vuelve cuando estés a la altura.",
+"tts": "Vuelve cuando estés a la altura."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "66b3bdc108f6",
+"kind": "win",
+"en": "As expected.",
+"text": "Como esperaba.",
+"tts": "Como esperaba."
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "d940b16de851",
+"kind": "win",
+"en": "Was there ever any doubt?",
+"text": "¿Acaso había alguna duda?",
+"tts": "¿Acaso había alguna duda?"
+},
+{
+"voice": "dante",
+"lang": "es",
+"key": "966e0b9792d8",
+"kind": "xyz",
+"en": "Two monsters, one Rank. Xyz Summon!",
+"text": "Dos monstruos, un Rango. ¡Invocación Xyz!",
+"tts": "Dos monstruos, un Rango. ¡Invocación /ˈeksis/!"
+},
+{
 "voice": "dark_m",
 "lang": "es",
 "key": "025ff0a23578",

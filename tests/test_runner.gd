@@ -10847,6 +10847,33 @@ func _test_campus() -> void:
 	check(Campus.growth("mika") == 0, "a classmate has not grown before their chapter")
 	Campus.finish_chapter("ac_ch3")
 	check(Campus.growth("mika") == 1 and Campus.growth("nico") == 0, "a classmate duels with one more star once their chapter is finished")
+	# The Rookie Tournament (chapter 4): every board the story shows is a real bracket.
+	check(CampusData.ROOKIES.size() == 16 and CampusData.ROOKIES.has("player"), "the Rookie Tournament has sixteen names and you are one of them")
+	var boards := 0
+	var boards_ok := true
+	for st in CampusData.SCRIPTS["ac_ch4"]:
+		if not (st as Dictionary).has("bracket"):
+			continue
+		boards += 1
+		var wins: Array = st["bracket"]["wins"]
+		var still_in: Array = range(16)
+		for r in wins.size():
+			var w: Array = wins[r]
+			var slots := {}
+			for e in w:
+				slots[int(e) >> (r + 1)] = true
+				if not still_in.has(int(e)):
+					boards_ok = false
+			if w.size() != (8 >> r) or slots.size() != w.size():
+				boards_ok = false
+			still_in = w
+	check(boards == 4 and boards_ok, "the four boards of the Rookie Tournament are brackets: one winner per match, and only winners go on")
+	for who in ["gus", "felix", "ivo"]:
+		check(Characters.get_char(who).get("name", "") != "" and Avatars.STANDINS.has(who) and Avatars.UNIFORMS.has(who)
+				and str(Characters.get_char(who).get("deck", "")).begins_with("deck_"), "%s of the Rookie Tournament has a name, a body, a jacket and a deck" % who)
+	check(not CardData.get_card(44095762).is_empty() and not CardData.get_card(56120475).is_empty(), "the two prize cards of the Rookie Tournament exist")
+	Campus.trophy("rookie_champion")
+	check((Campus.v("trophies", []) as Array).has("rookie_champion") and CampusData.TROPHIES.has("rookie_champion"), "a trophy is kept and has a name for the agenda")
 	Campus.new_game("libre")
 	check(not Campus.cup_on(), "a new Academy game starts with the Dorm Cup closed")
 	# The yards and the people the story hides exist.

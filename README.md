@@ -5,6 +5,23 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.65.3
+
+**Academia de Duelos, chapter 4: "El Torneo de Novatos".** Playable from start to finish, in Spanish, with every line spoken. No cards added: 8,415 total.
+
+- **Chapter 4.** Sixteen first-years, one plaza, one day. Nico signed all four Reds up (one of them found out that morning) and is also calling the duels. Crowler drew the bracket "at random" and two Reds meet in round one. You play four duels: Gus Moreno of your own dorm, Felix Arden of Blue (the one who laughed outside the hall in chapter 2), your roommate Nico in the semifinal, and Dante Morel in the final. Mika plays Dante in the quarterfinal in front of forty-one chairs: you watch that one, card by card. The first three must be won. **The final can be lost and the story goes on**, and it is remembered either way: if you win, Dante wants a rematch; if you lose, he walks past you.
+- **The board.** Between rounds the bracket comes up with all sixteen names in their dorm colors, who went through and where you are.
+- **The tournament counts for the Dorm Cup:** two points for every round a first-year wins, six for the winner. Red has four first-years and three of them reach the quarterfinals.
+- **What you win stays.** First place: 100 merits, a trophy and Mirror Force. Second place: 60 merits, a trophy and Sakuretsu Armor. Trophies are listed in the agenda (N).
+- **Dante speaks in duels** with his own voice (73 lines). **Three first-years have names now:** Gus Moreno (Red), Felix Arden (Blue) and Ivo Brandt (Yellow, the one from chapter 3). They use bodies and voices the game already had.
+- **Nico is stronger after this chapter**: one more star on the island.
+- Octavia tells you, at the end, that the tryouts for the League team open on Monday to all three dorms, and that she voted against it.
+- 225 new voice files (152 for the chapter, 73 for Dante's duels). Spanish voices in the game: 2,654.
+- People who happen to be standing where a scene plays now step out for the whole scene, not only for one shot.
+- **Windows:** only the .exe changed.
+
+Not in this build yet: chapters 5 onward (the tryouts, the Cup final, the promotion exam), classes, rival decks that grow with your dorm, and the Academy story's English voices.
+
 ## What is in 0.65.2
 
 **Academia de Duelos, chapter 3: "Mika no puede".** Playable from start to finish, in Spanish, with every line spoken. No cards added: 8,415 total.
