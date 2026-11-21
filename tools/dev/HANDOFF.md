@@ -777,3 +777,14 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
 7. hud.show_result: fit runs on every v.resized (deferred), shrinks around the point that centers the column in the
    SCREEN (the CenterContainer grows with its child and pins a too-tall child to its top). Dev: `--result-long`,
    `--result-replay`, `--fit-debug`.
+- SHIPPED 0.64.2 at about 11:00 PM Nov 20 (commit 928f843, pushed). Installed on the Mac (mac identical, 0.64.2, windows
+  identical). Windows parts in the chat with the join+unzip line (tar; untested on Windows). Only the .exe changed.
+  Suite: TESTS DONE failures 0 (also with an empty HOME), CARD CHECK 8415 problems 0, positions 206 pass (6 with none),
+  VOICE OVERLAP PASS, LINE NAMES PASS, CHAIN CHECK PASS, REPLAY CHECK 4 of 4, OTHER-VERSION REPLAY ended 0 errors,
+  WORLD DUELISTS 69/0 unknown, POSE CHECK 7 motions hide >12% of a face (was 6: fo_glove on a body that never uses it),
+  BODY CHECK 16 motions deeper than 3 cm, all brief (was 22, with the held kind stance in 100% of its frames).
+  Seen in pictures here: the hero (Academy Blazer, Teen and Kid) standing and in think/draw; results long case fits;
+  list box open + chip; menu credit; a world duelist's plate. NOT seen: his 25 real models (numbers only, from their
+  trunk boxes); the new stances on anyone but the hero; the star hovered; rooms' duelists (more_rooms) in a duel.
+  Raul also asked: replays = favorites + 30 (yes, already; named ones are kept too); what "En tu lista" is (an errand).
+  Voices: batch 103 taken, waits to be packed; next 104.
