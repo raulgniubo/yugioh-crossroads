@@ -868,3 +868,11 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
     happens off screen, every chapter is an episode (opening scene + title, free play, big duel, closing scene).
     About 70 cinematics. FREE CHAT IS VOICED TOO now. Voice estimate per language: 3,420 lines / 244,000 credits;
     with the pending English (26,000) about 514,000 of the 662,211.
+  * 12:18 AM (doc rev 134): DECK DECIDED by Raul: at the start of an Academy game you pick "Academia" (recommended:
+    novice deck, everything bought and improved inside the Academy, shop packs at the act's level) or "Libre" (your
+    own decks and main collection, build a deck in any other world and bring it; rivals one step up). Can be switched
+    from your room. NEW SECTION "Modo admin" (his ask: plan what admin does here): with the existing admin mode
+    (Saves.admin, PIN, real save put aside) a panel in your room: jump to any chapter, watch any cinematic, any deck,
+    set dorm / merits / day / time of day, end the duel won or lost, change the choices (lighthouse, who you trained,
+    Dante, your second), bonds, any Circulo rank and house rule, skip requirements, a mark on lines with no voice yet.
+    Outside admin none of it exists.
