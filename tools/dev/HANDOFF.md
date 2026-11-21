@@ -822,3 +822,41 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
   * In the Academy you always wear your dorm's uniform (red, yellow, blue); own clothes again in the Pro League.
   * Today's Academy mode stays reachable as "Academia clasica", a little hidden, with a "going away soon" note.
   STILL NO GO to build (asked four times; he kept refining the plan). Do not start 0.65.0 without his yes.
+- PLAN, THIRD REVISION (midnight to 12:20 AM Nov 21, doc rev 128; the doc is the truth):
+  * 28 chapters (Rojo 1-7, Amarillo 8-15, Azul 16-23, Liga Pro 24-28), about 75 story duels, about 60 cinematics.
+    New chapters: 4 Torneo de Novatos (final vs Dante can be lost), 10 Festival de las Linternas (lightning tourney,
+    choose who you watch the lanterns with), 11 Aster's exhibition (can be lost), 17 the trip to the city (Selene first
+    time), 19 playable flashback (you play Sato's old deck vs young Crane: the Corona final of ten years ago, for the
+    single pro seat), 26 "La mala racha" (choose your second). Chazz is fought three times (8, 16, 20). Final (22):
+    Bastion gives his seat to Jaden; your duel is Dante best of three, or Selene if Dante left Apex at the lighthouse.
+    Losing to del Sol (18) leads to an extra tie-break chapter vs Boreal. Only the League champion gets a direct pro
+    seat (Zane goes pro through the qualifiers).
+  * Subplots table + "what changes with what you do" (losable duels, who you train in ch.14 = Mika / Octavia / Syrus,
+    the lighthouse, three threads per act in any order). A LITTLE romance: quiet scenes with whoever you are closest to,
+    ONLY between classmates, never adults, nothing more than that; can stay friendship.
+  * Night story REPLACED (he found the ghost-dorm one weak; approved the new one): "el Circulo de Medianoche", a secret
+    student league at night in the Old Dorm, masks and nicknames, no jackets, a different house rule each night
+    (4,000 LP, three-card hand, random lent deck, swap decks), 12 duels in three ranks (Vela, Farol, Medianoche), one
+    rank per act. Nico is its secret announcer, Mika plays masked, Octavia under a nickname, an Apex scout in Act 2,
+    Crowler hunts it, Sato founded it, and the unbeaten champion "Don Nadie" is Bruno the cook.
+  * NEW SECTION Decks y dificultad (his ask): every duelist is as strong as he IS, not as the chapter needs. Stars 1-5
+    map to DeckTiers versions (starter / standard / full). Elite (Zane, Jaden, Aster, Sato, Vera Lux, Don Nadie) play
+    Full and think at Extreme from day one, whenever you challenge them (beating Zane early = trophy + he remembers).
+    Your year's students go up a version per act. GX character decks stay as they are. Crowler has three decks (exam
+    deck, exam deck + a rule against you, his real one). Story difficulty setting moves versions like the main Story.
+    PROPOSAL waiting for his answer: you start from zero in the Academy (one of three novice decks picked on the
+    ferry, an Academy collection of its own that joins the main one at graduation), with a switch to bring the full
+    collection (rivals one step up). Tuning by the auto-player: 20 runs per story duel, win-rate targets.
+  * NEW SECTION Guardado (his ask): inside the normal save (same 5 slots, same Crossroads Data, same autosave; one more
+    file in Saves.FILES). Autosave on sleeping, after each duel and story scene, merits, missions, entering places,
+    quitting. Worst case you lose the scene in progress. Write-aside-then-replace with the previous copy kept. Old
+    saves open the new Academy at the prologue; Academia clasica progress untouched. Tests: 30 forced kills.
+  * YOUR CHARACTER SPEAKS normally, voiced (decided 12:15 AM): chosen answers are said aloud. About 250 lines x the four
+    player voices.
+  * VOICES: his ElevenLabs account is now PRO: 662,211 credits, 0 used, resets Dec 21 2026, 160 voice slots (was 30
+    and full). ORDER HE SET: (1) finish the English of the normal duels, (2) the Academy in Spanish CHAPTER BY CHAPTER
+    with each build (make the chapter, then try its voices at once; if the daily cap closes, keep going in rounds as
+    before and the build does not wait), (3) the Academy in English only when ALL the Spanish is done. Estimates per
+    language: 2,720 lines / 196,000 credits (cinematics 52k, dialogues 64k, Circulo 6k, duel lines 4k, player 70k).
+    Whether the daily line cap changed with the new plan is NOT known yet: only generating shows it.
+  * Asked him at 12:15 AM whether "ahora el capitulo 1" is the yes for 0.65.0. Do not start without it.
