@@ -10783,6 +10783,8 @@ func _test_campus() -> void:
 	check(Campus.mode() == "libre" and not Campus.own_cards() and Campus.merits() == 0 and Campus.day() == 1, "a second new game starts clean, with your own collection")
 	# Every chapter has a script, every script ends, and no spoken line names the player (a voice cannot say it).
 	var unvoiced := 0
+	var unsaid := 0
+	var es_campus: Dictionary = load("res://scripts/core/es_campus.gd").ES
 	for ch in CampusData.SCRIPTS:
 		var sc: Array = CampusData.SCRIPTS[ch]
 		check(sc.size() > 0 and (sc[sc.size() - 1] as Dictionary).has("end"), "Academy chapter %s ends with an end step" % ch)
@@ -10791,16 +10793,57 @@ func _test_campus() -> void:
 				check(not str(st["t"]).contains("{player}"), "a spoken Academy line never needs the player's name: %s" % str(st["t"]).left(40))
 			if (st as Dictionary).has("merits"):
 				check(not (st as Dictionary).has("end"), "an end step pays with 'pay', never 'merits'")
-			# Every spoken line has its Spanish voice: one file per voice the speaker can have.
-			if (st as Dictionary).has("s") and (st as Dictionary).has("t") and str(st["t"]) != "":
-				var who := str(st["s"])
+			# Every spoken line has its Spanish voice: one file per voice the speaker can have. That is
+			# the lines of the scene, of the things to do, the voice over a shot, what you choose to
+			# say, and what the two duelists call out in a duel you watch.
+			var said: Array = []
+			var d := st as Dictionary
+			if d.has("s") and d.has("t") and str(d["t"]) != "":
+				said.append([str(d["s"]), str(d["t"])])
+			if d.has("vo"):
+				said.append([str(d["vo"][0]), str(d["vo"][1])])
+			for opt in d.get("choice", []):
+				if not str(opt[0]).begins_with("("):
+					said.append(["player", str(opt[0])])
+			for task in d.get("tasks", []):
+				for part in ["say", "after", "retry"]:
+					for line in (task as Dictionary).get(part, []):
+						if (line as Dictionary).has("s") and (line as Dictionary).has("t"):
+							said.append([str(line["s"]), str(line["t"])])
+			if d.has("clash"):
+				for beat in d["clash"].get("beats", []):
+					if beat.size() > 2 and str(beat[2]) != "":
+						said.append([str(d["clash"]["a" if str(beat[0]) == "a" else "b"]), str(beat[2])])
+			for pair in said:
+				var who := str(pair[0])
 				var vs: Array = Voices.MY_VOICES if who == "player" else (Voices.LUMEN_VOICES if who == "lumen" else [Voices.voice_for(who)])
 				for v in vs:
-					if not ResourceLoader.exists("res://voices/es/%s/%s.ogg" % [str(v), Voices.key_of(str(st["t"]))]):
+					if not ResourceLoader.exists("res://voices/es/%s/%s.ogg" % [str(v), Voices.key_of(str(pair[1]))]):
 						unvoiced += 1
 						if unvoiced <= 5:
-							print("UNVOICED %s %s: %s" % [ch, str(v), str(st["t"]).left(50)])
+							print("UNVOICED %s %s: %s" % [ch, str(v), str(pair[1]).left(50)])
+				if not es_campus.has(str(pair[1])):
+					unsaid += 1
+					if unsaid <= 5:
+						print("NO SPANISH %s: %s" % [ch, str(pair[1]).left(60)])
 	check(unvoiced == 0, "every Academy line that is written has its Spanish voice (%d missing)" % unvoiced)
+	check(unsaid == 0, "every Academy line that is written has its Spanish text (%d missing)" % unsaid)
+	# The Dorm Cup: closed until the story opens it; your wins against another dorm score for yours.
+	Campus.new_game("academia")
+	check(not Campus.cup_on() and Campus.cup_score("blue", 3) == 0 and Campus.cup_line() == "", "the Dorm Cup is closed until the story opens it")
+	Campus.cup_open()
+	check(Campus.cup_on() and Campus.cup_points() == Campus.CUP_START and Campus.cup_place(0) == 3 and Campus.cup_place(2) == 1, "the Dorm Cup opens with Blue first and Red last")
+	check(Campus.cup_score("red", 5) == 0, "a win against your own dorm scores nothing in the Cup")
+	check(Campus.cup_score("yellow", 2) == 2 and Campus.cup_score("blue", 9) == 5 and int(Campus.cup_points()[0]) == int(Campus.CUP_START[0]) + 7, "a win against another dorm scores its stars for yours, five at most")
+	check(Campus.cup_place(0) == 2 and Campus.cup_line() != "", "enough wins take Red out of last place")
+	var before := Campus.cup_points()
+	Campus.sleep()
+	var after := Campus.cup_points()
+	check(int(after[0]) > int(before[0]) and int(after[2]) - int(before[2]) > int(after[0]) - int(before[0]), "every new day the dorms score on their own, Blue more than Red")
+	Campus.reload()
+	check(Campus.cup_on() and Campus.cup_points() == after, "the Dorm Cup reads back from the Academy's file")
+	Campus.new_game("libre")
+	check(not Campus.cup_on(), "a new Academy game starts with the Dorm Cup closed")
 	# The yards and the people the story hides exist.
 	check(CampusData.YARDS.size() == 3 and Campus.DORMS.size() == 3 and Campus.NEED.size() == 3, "three dorms, three yards, three merit marks")
 	for who in ["nico", "mika", "bruno", "sato", "crowler", "sheppard", "dorothy", "dante"]:

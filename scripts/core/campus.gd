@@ -293,10 +293,88 @@ static func pass_time() -> bool:
 ## Sleep in your room: the next morning.
 static func sleep() -> void:
 	put_many({"day": day() + 1, "part": 0, "slept": int(v("slept")) + 1})
+	_cup_day()
 
 
 static func set_time(d: int, p: int) -> void:
+	var later := maxi(1, d) > day()
 	put_many({"day": maxi(1, d), "part": clampi(p, 0, 2)})
+	if later:
+		_cup_day()
+
+
+# ------------------------------------------------------------------ the Dorm Cup
+
+## The Dorm Cup (open from chapter 2): the three dorms' points this term, [red, yellow, blue].
+## A win against a student of another dorm scores for yours, by how strong they are. Every new
+## day the three dorms also score a little on their own: Blue the most, Red the least.
+const CUP_START := [2, 5, 9]
+const CUP_DAILY := [[1, 2], [3, 4], [5, 6, 5]]
+
+static func cup_on() -> bool:
+	return bool((v("cup", {}) as Dictionary).get("open", false))
+
+
+static func cup_points() -> Array:
+	return ((v("cup", {}) as Dictionary).get("pts", [0, 0, 0]) as Array).duplicate()
+
+
+static func cup_open() -> void:
+	if cup_on():
+		return
+	put("cup", {"open": true, "pts": CUP_START.duplicate(), "since": day()})
+	feed.append([0, "The Dorm Cup is open", "note"])
+
+
+## 1, 2 or 3: where this dorm stands in the Cup (ties go to the higher dorm, as on the board).
+static func cup_place(d: int) -> int:
+	var pts := cup_points()
+	var place := 1
+	for i in 3:
+		if i != d and (int(pts[i]) > int(pts[d]) or (int(pts[i]) == int(pts[d]) and i > d)):
+			place += 1
+	return place
+
+
+## You beat a student of `their` dorm ("red", "yellow", "blue") worth `stars`. The points scored.
+static func cup_score(their: String, stars: int) -> int:
+	if not cup_on() or not DORMS.has(their) or their == DORMS[dorm()]:
+		return 0
+	var c: Dictionary = (v("cup", {}) as Dictionary).duplicate(true)
+	var n := clampi(stars, 1, 5)
+	c["pts"][dorm()] = int(c["pts"][dorm()]) + n
+	put("cup", c)
+	feed.append([n, DORM_NAMES[dorm()], "cup"])
+	mission_count("cup", n)
+	return n
+
+
+static func _cup_day() -> void:
+	if not cup_on():
+		return
+	var c: Dictionary = (v("cup", {}) as Dictionary).duplicate(true)
+	for i in 3:
+		var steps: Array = CUP_DAILY[i]
+		c["pts"][i] = int(c["pts"][i]) + int(steps[day() % steps.size()])
+	put("cup", c)
+
+
+## One line about the Cup for the corner of the screen ("" while it is not open).
+static func cup_line() -> String:
+	if not cup_on():
+		return ""
+	var pts := cup_points()
+	var me := dorm()
+	var place := cup_place(me)
+	if place == 1:
+		return Loc.t("Dorm Cup: %s is first") % Loc.t(DORM_NAMES[me])
+	# The dorm right above yours, and how far it is.
+	var above := -1
+	for i in 3:
+		if i != me and cup_place(i) == place - 1:
+			above = i
+	var gap := int(pts[above]) - int(pts[me])
+	return Loc.t("Dorm Cup: %s is %s, %d behind %s") % [Loc.t(DORM_NAMES[me]), Loc.t("second" if place == 2 else "last"), gap, Loc.t(DORM_NAMES[above])]
 
 
 # ------------------------------------------------------------------ people
@@ -383,11 +461,12 @@ static func mission_claim(id: String) -> int:
 # ------------------------------------------------------------------ duels on the island
 
 ## A duel against somebody on the island ended (not a story duel).
-static func duel_result(won: bool, stars: int) -> void:
+static func duel_result(won: bool, stars: int, their := "") -> void:
 	put("wins" if won else "losses", int(v("wins" if won else "losses")) + 1)
 	if won:
 		add_merits(6 + 4 * clampi(stars, 1, 5), "Duel won")
 		mission_count("win")
+		cup_score(their, stars)
 	else:
 		add_merits(2, "Duel played")
 	mission_count("duel")

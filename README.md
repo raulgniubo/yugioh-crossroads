@@ -5,6 +5,22 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.65.1
+
+**Academia de Duelos, chapter 2: "La última de cuatro".** Playable from start to finish, in Spanish, with every line spoken. No cards added: 8,415 total.
+
+- **Chapter 2.** The morning of the League assembly: breakfast in Red, and Professor Sato already knows what is coming. On the way you can stop by Dorothy (she saw the helicopter land) and ask Mika what she is counting. In the hall, Headmaster Sheppard presents the Liga de Academias (Boreal, del Sol, Ápex and you: fourth of four, three years running) and its sponsor, Silas Crane, who offers the whole school a scholarship with a smile. Then Octavia Lenz, Blue prefect and president of the Student Council, reads the council's vote: if Red finishes last in the Dorm Cup again this term, the Red dorm closes. Dante asks for one red jacket to prove him wrong, Nico steps up, and loses in two turns. Outside, a Blue student laughs at him, and that duel is yours. The day ends with Sato's plan in the common room and Crane's card in Nico's hand.
+- **A duel you watch.** Dante against Nico is staged on the hall floor: the two of them face each other, each play is called out loud by the duelist who makes it, and the Life Points drop on screen. (The piece existed since 0.65.0; now it speaks.)
+- **The Dorm Cup is real.** It opens in this chapter. Every duel you win on the island against a Yellow or a Blue student scores for Red, as many points as that duelist has stars (Zane is worth five). Each dorm also scores a little every new day on its own, Blue the most. The table is in the agenda (N), a line pops up when you score, and the card on screen tells you how far Red is from the dorm above. Two new missions on the board: 10 and 30 points for your dorm.
+- **Two new people, two new voices, two new models:** Silas Crane and Octavia Lenz (original designs). 146 new voice files: the whole chapter, your character's four voices and Lumen's three included.
+- **Nico, Crowler, Mika, Bruno and Sato speak in duels.** They have their own voice in the story, and in a duel they were silent (their duel lines only existed in the shared voices). 358 new lines: every duel line of each one, in their own voice.
+- **Chapter 2 opens in the morning.** If you start it late in the day, it is the next morning.
+- **The agenda** calls the day "free time" until classes exist (they come with the next chapters), and shows the Dorm Cup once it is open.
+- **Admin:** "Dorm Cup: +5 for your dorm" in the agenda's admin block.
+- **Windows:** only the .exe changed.
+
+Not in this build yet: chapters 3 onward (classes, the Torneo de Novatos, the tryouts, the Cup final on Saturday, the promotion exam), rival decks that grow with your dorm, and the Academy story's English voices.
+
 ## What is in 0.65.0
 
 **"Los cimientos": the first piece of Academia de Duelos, a second full story mode.** The prologue and chapter 1 are playable from start to finish, in Spanish, with every line spoken. No cards added: 8,415 total.

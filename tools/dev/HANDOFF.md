@@ -941,3 +941,29 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   (NAME_TO_ID is filled from the downloaded cards.json); it was there before tonight and is not a game error.
 - NOT DONE in 0.65.0 (say so in the report): rival decks by dorm stars / +1 in "libre"; Academy English voices;
   models for crowler, dorothy, sheppard, bastion are Raul's.
+
+#### 0.65.1 STATE (Nov 21, morning; newer than the block above)
+- CHAPTER 2 "Last of Four" (ac_ch2) is written, voiced and staged: room -> breakfast -> free walk (Dorothy, Mika,
+  optional) -> the League assembly in ac_hall (Sheppard, Crane, Octavia reads the council's vote, Dante vs Nico as a
+  `clash`) -> outside the main building (a Blue student mocks: the chapter's duel, must be won) -> Red common room
+  (Sato's plan) -> room at night (Crane's card, a choice) -> sleep. ac_ch3 "Mika Cannot" is named in CHAPTERS, no script yet.
+- NEW STORY KEYS: {"campus": {"morning": true}} (a chapter that opens in the morning, started later in the day, moves
+  to the next morning) and {"campus": {"cup": true}} (opens the Dorm Cup). `_clash` now SPEAKS each beat's line with
+  the duelist's voice and holds the band for the line's length.
+- DORM CUP (scripts/core/campus.gd, "the Dorm Cup"): campus.cfg "cup" = {"open", "pts": [red, yellow, blue], "since"}.
+  CUP_START [2, 5, 9]; every new day CUP_DAILY adds [1|2, 3|4, 5|6|5]; `duel_result(won, stars, their)` -> `cup_score`
+  adds clamp(stars, 1, 5) to your dorm when `their` is another dorm (roam_scene passes the NPC's "dorm", or the
+  jacket of its "char" from Avatars.UNIFORMS). Agenda section + HUD line (`cup_line`) + pop ("cup" kind in Campus.feed)
+  + two missions (kind "cup"). The Saturday final and what the table means for the story are chapter 6's job:
+  read `Campus.cup_points()` there. CampusData.CLASSES_OPEN = false keeps the agenda saying "free time".
+- PEOPLE: octavia and crane are in Characters, Voices.OWN (Spanish voices designed: tools/voices/voices.json) and have
+  bundled models (Meshy, originals, ids in work/meshy_ids.md; 2 x 29 credits). Octavia is in Avatars.PAINTED (blue
+  jacket painted on). Octavia has NO deck or duel lines yet: give her both (and record her duel lines in her own
+  voice: add her to new_lines.json "own_duelists") before she is ever an opponent (chapter 6).
+- The mocking Blue student is the generic `blue_student` (voice cocky_m), on purpose: no new named character.
+- SPANISH: Sheppard is "el director" everywhere (never "Canciller").
+- VOICES: 358 duel lines for nico/crowler/mika/bruno/sato (own_duelists in tools/voices/new_lines.json; build_lines
+  gives an OWN duelist's lines to their own voice and skips languages the voice was not designed in) + 146 chapter 2
+  files. voices/es = 2,319. Batches 173-199 (199 = four lines redone with "director"). cbuild.py now also reads the
+  `clash` beats and choices whose flag has a digit. `_test_campus` checks scene lines, task lines, "vo", choices and
+  clash beats for a Spanish voice file AND a Spanish text. Next batch number: 200.

@@ -2420,7 +2420,16 @@ func _clash(c: Dictionary) -> void:
 			var f := _fig(key)
 			if f is RoamFigure:
 				(f as RoamFigure).gesture("cheer", 0.2)
-			await CutIn.play(_ui, 0 if who == "a" else 1, key, Loc.t(str(beat[1])), Loc.t(str(beat[2])) if beat.size() > 2 else "", col, 0.85, false)
+			# The duelist says the line out loud, and the band stays for as long as it takes.
+			var line := str(beat[2]) if beat.size() > 2 else ""
+			var hold := 0.85
+			if line != "" and Voices.say(key, line, false, true):
+				hold = maxf(hold, Voices.length(key, line, false) + 0.25)
+			await CutIn.play(_ui, 0 if who == "a" else 1, key, Loc.t(str(beat[1])), Loc.t(line), col, hold, false)
+			var waited := 0.0
+			while Voices.talking() and waited < 6.0 and not _skip:
+				await get_tree().process_frame
+				waited += get_process_delta_time()
 		var dmg := int(beat[3]) if beat.size() > 3 else 0
 		if dmg > 0:
 			var other := 1 if who == "a" else 0
@@ -3168,6 +3177,13 @@ func _campus_step(c: Dictionary) -> void:
 		tw2.tween_property(_flash, "color", Color(0, 0, 0, 0), 0.8)
 		await tw2.finished
 		Saves.autosave(true)
+	if c.get("morning", false) and Campus.part() > 0:
+		# A chapter that opens in the morning, started later in the day: it is the next morning.
+		Campus.set_time(Campus.day() + 1, 0)
+		scene.city.apply_tod(Campus.tod())
+		Router.roam["tod"] = Campus.tod()
+	if c.get("cup", false):
+		Campus.cup_open()
 	if c.has("part"):
 		Campus.put("part", clampi(int(c["part"]), 0, 2))
 		scene.city.apply_tod(Campus.tod())

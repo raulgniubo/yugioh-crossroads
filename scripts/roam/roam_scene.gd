@@ -215,7 +215,9 @@ func _after_duel() -> void:
 	for n in _npcs:
 		if n[0]["id"] == who:
 			if Campus.on:
-				Campus.duel_result(won, int((n[0] as Dictionary).get("duel", {}).get("difficulty", 1)) + 1)
+				var nd := n[0] as Dictionary
+				var their := str(nd.get("dorm", Avatars.UNIFORMS.get(str(nd.get("char", "")), "")))
+				Campus.duel_result(won, int(nd.get("duel", {}).get("difficulty", 1)) + 1, their)
 			if won:
 				_beaten[who] = true
 				(CampusProgress if Campus.on else StoryProgress).bump("street_wins")

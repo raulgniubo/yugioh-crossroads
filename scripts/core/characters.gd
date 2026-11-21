@@ -222,6 +222,9 @@ const STORY_CAST := {
 		"deck": "deck_dragon", "ace_name": "Tyrant Dragon", "personality": "cocky", "stars": 4,
 		"lines": {"intro": ["Try to make it worth my time."], "ace": ["This is what a real deck looks like."], "taunt": ["Is that all Red has?"],
 			"win": ["As expected."], "lose": ["...Once. That happens once."]}},
+	"octavia": {"name": "Octavia Lenz", "short": "Octavia", "era": "GX", "color": Color("6a7ae8"), "title": "Blue dorm prefect. President of the Student Council",
+		"personality": "cool", "stars": 4},
+	"crane": {"name": "Silas Crane", "short": "Crane", "era": "GX", "color": Color("c9a24a"), "title": "Owner of Apex Academy. Sponsor of the League"},
 }
 
 const PERSONALITY_LINES := {

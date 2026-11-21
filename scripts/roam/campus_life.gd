@@ -111,6 +111,8 @@ func next_line() -> String:
 			return "▸ " + Loc.t("A mission is finished. Collect it at the board in your room.")
 	if Campus.part() == 2:
 		return "▸ " + Loc.t("It is night. Sleep in your room to start a new day.")
+	if Campus.cup_on() and Campus.cup_place(Campus.dorm()) > 1:
+		return "▸ " + Campus.cup_line()
 	if Campus.merits_to_go() == 0:
 		return "▸ " + Loc.t("You have the merits for the promotion exam.")
 	return "▸ " + Loc.t("Free time: duel students, work on the missions.")
@@ -118,7 +120,7 @@ func next_line() -> String:
 
 func _refresh() -> void:
 	var need := int(Campus.NEED[Campus.dorm()])
-	var sig := "%d|%d|%d|%d|%s|%s" % [Campus.day(), Campus.part(), Campus.merits(), Campus.dorm(), next_line(), Loc.lang()]
+	var sig := "%d|%d|%d|%d|%s|%s|%s" % [Campus.day(), Campus.part(), Campus.merits(), Campus.dorm(), next_line(), Loc.lang(), str(Campus.cup_points())]
 	if sig == _sig:
 		return
 	_sig = sig
@@ -148,11 +150,20 @@ func _process(delta: float) -> void:
 	_chip.visible = not hide
 	while not Campus.feed.is_empty():
 		var f: Array = Campus.feed.pop_front()
-		_pop(int(f[0]), str(f[1]))
+		_pop(int(f[0]), str(f[1]), str(f[2]) if f.size() > 2 else "")
 
 
-func _pop(n: int, why: String) -> void:
-	var l := UITheme.label("%s%d %s%s" % ["+" if n > 0 else "", n, Loc.t("merits"), ("  ·  " + Loc.t(why)) if why != "" else ""], 19, UITheme.GOLD, UITheme.semi_font())
+## Something earned, in the corner: merits by default; "cup" = points for a dorm in the Dorm Cup;
+## "note" = a plain line.
+func _pop(n: int, why: String, kind := "") -> void:
+	var text := "%s%d %s%s" % ["+" if n > 0 else "", n, Loc.t("merits"), ("  ·  " + Loc.t(why)) if why != "" else ""]
+	var col := UITheme.GOLD
+	if kind == "cup":
+		text = "%s  ·  +%d %s" % [Loc.t("Dorm Cup"), n, Loc.t(why)]
+		col = Campus.DORM_COLORS[Campus.dorm()].lightened(0.35)
+	elif kind == "note":
+		text = Loc.t(why)
+	var l := UITheme.label(text, 19, col, UITheme.semi_font())
 	l.modulate.a = 0.0
 	_feed_box.add_child(l)
 	var tw := create_tween()
@@ -309,7 +320,7 @@ func open_agenda() -> void:
 	_line(p, "%s  ·  %s %d  ·  %s" % [Campus.when_text(), Loc.t("Day"), Campus.day(), Loc.t(Campus.DORM_NAMES[Campus.dorm()])], 24)
 	# Until classes, exams and the Cup open (chapter 2), the day is free time: say that, not the plan.
 	var plan_now := str(CampusData.WEEK_PLAN[Campus.weekday()][Campus.part()])
-	if not CampusData.SCRIPTS.has("ac_ch2") and Campus.part() < 2:
+	if not CampusData.CLASSES_OPEN and Campus.part() < 2:
 		plan_now = "Free time"
 	_line(p, Loc.t(plan_now), 19, UITheme.TEXT_DIM)
 	# ---- the story
@@ -328,6 +339,20 @@ func open_agenda() -> void:
 			StoryDirector.begin(str(g["chapter"])))
 		p.body.add_child(go)
 		go.grab_focus.call_deferred()
+	# ---- the Dorm Cup
+	if Campus.cup_on():
+		_head(p, "Dorm Cup")
+		var pts := Campus.cup_points()
+		for place in [1, 2, 3]:
+			for d in 3:
+				if Campus.cup_place(d) != place:
+					continue
+				var mine := d == Campus.dorm()
+				var row := _line(p, "%d.   %s   %d%s" % [place, Loc.t(Campus.DORM_NAMES[d]), int(pts[d]), ("   ◀ " + Loc.t("your dorm")) if mine else ""], 21 if mine else 19, (Campus.DORM_COLORS[d] as Color).lightened(0.3))
+				if mine:
+					row.add_theme_font_override("font", UITheme.semi_font())
+		_line(p, Loc.t("Every duel you win against a student of another dorm scores for yours. Stronger duelists are worth more. Each dorm also scores a little every day."), 16, UITheme.TEXT_DIM)
+		_line(p, Loc.t("If Red finishes last this term, the Red dorm closes."), 16, UITheme.TEXT_DIM)
 	# ---- merits and moving up
 	_head(p, "Moving up")
 	var need := int(Campus.NEED[Campus.dorm()])
@@ -350,7 +375,8 @@ func open_agenda() -> void:
 		var row := _line(p, "%s  %s:  %s" % ["▸" if today else "   ", Loc.t(Campus.WEEK[d]), "  ·  ".join(parts.slice(0, 2))], 18, Color.WHITE if today else UITheme.TEXT_DIM)
 		if today:
 			row.add_theme_font_override("font", UITheme.semi_font())
-	_line(p, Loc.t("Classes, the promotion exams and the Dorm Cup open with the next chapters. Until then every day is free time."), 16, UITheme.TEXT_DIM)
+	if not CampusData.CLASSES_OPEN:
+		_line(p, Loc.t("Classes and the promotion exams open with the next chapters. Until then every day is free time."), 16, UITheme.TEXT_DIM)
 	# ---- silver missions
 	_head(p, "Missions")
 	var any := false
@@ -431,6 +457,10 @@ func _admin(p: SidePanel) -> void:
 		open_agenda())
 	add.call(Loc.t("Merits to 0"), func():
 		Campus.put("merits", 0)
+		open_agenda())
+	add.call(Loc.t("Dorm Cup: +5 for your dorm"), func():
+		Campus.cup_open()
+		Campus.cup_score("blue" if Campus.dorm() != 2 else "red", 5)
 		open_agenda())
 	for d in 3:
 		add.call(Loc.t("Dorm: %s") % Loc.t(Campus.DORM_NAMES[d]), func():
