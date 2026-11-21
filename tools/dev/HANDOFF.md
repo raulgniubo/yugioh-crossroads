@@ -715,3 +715,19 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
   tests/replay_mangle.tscn (makes "a replay from another version": unknown duelist/field/song, six unknown cards, junk in
   the tape, a later-format file, a rubbish file). Dev flags: --replay-hands, --replay-speed=N.
   NOT in CI's test_runner (they need the card data folder). Back up the profile before replay_check (it plays real duels).
+- Looks, after Raul's notes: favorite = round star button; delete = round "trash" RoundButton (red on hover) right beside
+  it with the same gap ("that space there" between star and Delete did not look good); delete still asks first.
+- ocg_table.prepare writes the opponent and player keys into rec["cfg"] outright (a duel started without naming the
+  opponent had no picture in the list).
+- Checked: replay_check 7/7 (old code), 6/6 with 3 surrenders, 4/4 in the suite, 2/2 Turbo Duels, 5 duels with the same
+  pairing = nodes flat at 154 (memory still creeps ~10 MB a duel while the capped picture caches fill); the mangled
+  "other version" replay plays to its end with 0 script errors; watching from the results screen (--result-action=
+  watch_replay) MATCH; profile files identical before/after watching (only settings.cfg's card_folder from the dev flag).
+  NOT checked: a special-win (Exodia) replay, a Match with side decking, a story duel's replay, a replay on Windows
+  played from a Mac file (same format, no reason to differ), the stall bail-out on a real stuck recording (only the
+  "steps left unread" path and the code review), real GPU, real card pictures.
+- SHIPPED 0.64.0 at about 8:15 PM Nov 20 (commits 65b7d4e + c10d850, pushed). Installed on the Mac (mac identical, 0.64.0,
+  windows identical). Windows parts in the chat (only the .exe changed). Suite: TESTS DONE failures 0 (also with an
+  empty HOME, as on GitHub), CARD CHECK 8415 problems 0, positions 206 pass (6 with none), VOICE OVERLAP PASS, LINE NAMES
+  PASS, CHAIN CHECK PASS, REPLAY CHECK 4 of 4 PASS, OTHER-VERSION REPLAY ended with 0 script errors.
+  Voice check-in scheduled for 8:30 PM (trig_01GfKEAnw8gHGQaqqFmJAZ4y): batch 103 onward.
