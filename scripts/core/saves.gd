@@ -8,7 +8,8 @@ extends RefCounted
 ## all of those belong together. Loading, starting over and admin mode swap the save files and
 ## restart the game, so every part of it wakes up on the same save.
 
-const FILES := ["story.cfg", "shop.cfg", "roam.cfg", "turbo.cfg", "tourney.cfg", "roam_extras.cfg", "profile.cfg", "opening.cfg", "collection.cfg", "academy.cfg", "knockout.cfg", "stars.cfg", "place.cfg"]
+const FILES := ["story.cfg", "shop.cfg", "roam.cfg", "turbo.cfg", "tourney.cfg", "roam_extras.cfg", "profile.cfg", "opening.cfg", "collection.cfg", "academy.cfg", "knockout.cfg", "stars.cfg", "place.cfg",
+	"campus.cfg", "campus_cards.cfg"]     # (the Academy story, 0.65.0: its state and its own cards)
 const SLOTS := 5
 const RUNNING := "user://running.txt"      # there while the game runs; still there at the next start = it did not close properly
 const PENDING := "user://pending_save.txt"
@@ -376,6 +377,8 @@ static func _place_words(mode: String, chapter: String, district: String) -> Str
 				return "%s: %s" % [Loc.t(str(ch["title"])), Loc.t(str(ch["name"]))]
 	if mode == "roam":
 		return Loc.t(str(RoamData.district(district).get("name", "")))
+	if mode == "campus":
+		return "%s: %s" % [Loc.t("Duel Academy"), Campus.summary()]
 	return ""
 
 

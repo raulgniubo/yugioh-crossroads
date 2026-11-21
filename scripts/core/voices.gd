@@ -66,7 +66,7 @@ static func warm() -> void:
 
 static func _pitch(who: String) -> float:
 	# Each duelist sits a hair higher or lower than the others who share the voice.
-	if who == "lumen" or who == "player":
+	if who == "lumen" or who == "player" or who in OWN:
 		return 1.0
 	return 1.0 + float((abs(hash(who)) % 9) - 4) * 0.008
 
@@ -75,10 +75,18 @@ static func key_of(text: String) -> String:
 	return text.md5_text().substr(0, 12)
 
 
+## The Academy story's people have a voice of their own (one each), in the story and in duels.
+## (The six GX duelists who were here before keep the voice they always had, everywhere.)
+const OWN := ["nico", "mika", "bruno", "sato", "crowler", "sheppard", "dorothy", "bastion", "dante", "octavia",
+	"crane", "irina", "leo", "selene", "vera"]
+
+
 ## Which voice speaks for `who`: "lumen", "player" or a character's key. "" = nobody.
 static func voice_for(who: String) -> String:
 	if who == "narrator":
 		return "narrator"
+	if who in OWN:
+		return who
 	if who == "lumen":
 		return str(LUMEN_VOICES[int(Settings.voice_lumen)]) if int(Settings.voice_lumen) < LUMEN_VOICES.size() else ""
 	if who == "player":
@@ -240,6 +248,11 @@ static func shout(me: String, opp: String, text: String) -> bool:
 		return false
 	_sp().both(a, _pitch(me), b, _pitch(opp))
 	return true
+
+
+## Is a line being said right now?
+static func talking() -> bool:
+	return _speaker != null and is_instance_valid(_speaker) and _speaker.is_inside_tree() and (_speaker._player.playing or _speaker._second.playing)
 
 
 ## Nobody says anything more (the duel is over, or the scene is leaving).

@@ -3143,6 +3143,10 @@ func show_pause() -> void:
 	_overlay_button(v, "Settings", "settings")
 	if not replay_mode:
 		_overlay_button(v, "Surrender", "surrender")
+	# Admin mode: end the duel either way on the spot (for testing what comes after it).
+	if Saves.admin and not replay_mode:
+		_overlay_button(v, "Admin: win this duel", "admin_win")
+		_overlay_button(v, "Admin: lose this duel", "admin_lose")
 	_overlay_button(v, "Main Menu", "menu")
 	first.grab_focus()
 

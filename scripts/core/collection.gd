@@ -1025,9 +1025,53 @@ func _renumber() -> void:
 		save.call_deferred()
 
 
+## The file this collection lives in. The Academy story keeps cards and decks of its own
+## (campus_cards.cfg): Campus switches to it while you are on the island and back when you leave.
+var path := PATH
+
+
+## Put every list back to what a new duelist has (before another file is read).
+func _blank() -> void:
+	owned = {}
+	main = []
+	extra = []
+	dp = 300
+	deck_name = "My Deck"
+	side = []
+	slots = []
+	dropped = []
+	slot = 0
+	banlist = false
+	decks_owned = []
+	active = "echo"
+	starter_pick = ""
+	_new_save = false
+	record = {}
+	last_reward = []
+	last_prize = 0
+	deck_news = false
+	lumen_news = []
+
+
+## Change which file the collection is: what is open now is saved first, then the other one is
+## read as if the game had just started on it.
+func switch_file(to: String) -> void:
+	if to == path:
+		return
+	save()
+	path = to
+	_blank()
+	_read()
+	changed.emit()
+
+
 func _ready() -> void:
+	_read()
+
+
+func _read() -> void:
 	var cfg := ConfigFile.new()
-	if cfg.load(PATH) == OK:
+	if cfg.load(path) == OK:
 		owned = cfg.get_value("cards", "owned", {})
 		main = cfg.get_value("deck", "main", [])
 		extra = cfg.get_value("deck", "extra", [])
@@ -1046,21 +1090,25 @@ func _ready() -> void:
 		else:
 			decks_owned = ["echo"]   # (a save from before decks had a shelf: it played Echo)
 			_adopt_old_deck()
-	else:
+	elif path == PATH:
 		_adopt_old_deck()
 	_renumber()
 	if owned.is_empty():
 		_new_save = true
-		_starter()
+		if path == PATH:
+			_starter()
 	# Lumen, your partner: every duelist has her card, old saves included.
 	if int(owned.get(CardData.LUMEN, 0)) < 1:
 		owned[CardData.LUMEN] = 1
 		if not main.has(CardData.LUMEN) and main.size() < 60:
 			main.append(CardData.LUMEN)
 		save.call_deferred()
-	lumen_gifts()
+	# (The Academy's own collection starts from nothing: Lumen's cards arrive with its story.)
+	if path == PATH:
+		lumen_gifts()
 	_fill_slots()
-	lumen_deck()
+	if path == PATH:
+		lumen_deck()
 	_grant_decks()
 	_adopt_decks()
 	save.call_deferred()
@@ -1868,7 +1916,7 @@ func save() -> void:
 	cfg.set_value("deck", "owned_decks", decks_owned)
 	cfg.set_value("deck", "starter", starter_pick)
 	cfg.set_value("deck", "active", active)
-	cfg.save(PATH)
+	cfg.save(path)
 	changed.emit()
 
 

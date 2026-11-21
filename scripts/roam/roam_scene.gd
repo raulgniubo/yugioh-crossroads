@@ -58,6 +58,7 @@ var _overlay_open := false
 var extras: RoamExtras
 var _help: Label
 var story: StoryDirector          # set while a story chapter is being played in this world
+var campus: CampusLife            # the Academy story's day, merits and agenda (only while Campus.on)
 var stars: StarLife               # the main characters' own day in the open world (free roam)
 var quest: StoryDirector          # a chapter that is at "things to do yourself": rides along in the open world
 var quest_locked := false         # the list keeps you here for now: no doors, no travel
@@ -126,6 +127,11 @@ func _ready() -> void:
 	extras.scene = self
 	extras.story_mode = in_story
 	add_child(extras)
+	# The Academy story: the day, the merits and what comes next ride along on the island.
+	if Campus.on and str(district.get("builder", "")) == "academy":
+		campus = CampusLife.new()
+		campus.scene = self
+		add_child(campus)
 	if true:
 		life = WorldLife.new()
 		add_child(life)
@@ -208,9 +214,11 @@ func _after_duel() -> void:
 	Router.story_result = ""
 	for n in _npcs:
 		if n[0]["id"] == who:
+			if Campus.on:
+				Campus.duel_result(won, int((n[0] as Dictionary).get("duel", {}).get("difficulty", 1)) + 1)
 			if won:
 				_beaten[who] = true
-				StoryProgress.bump("street_wins")
+				(CampusProgress if Campus.on else StoryProgress).bump("street_wins")
 				_save_progress()
 				_refresh_marker(n)
 				if life and life.tourney:
@@ -285,6 +293,10 @@ func _build_world() -> void:
 	_own_tod = str(Router.roam.get("story", "")) != "" or key == "museum"
 	if key == "museum":
 		Router.roam["tod"] = "night"
+	# The Academy story keeps its own day: morning, afternoon, night, and it moves when you do.
+	if Campus.on and str(Router.roam.get("story", "")) == "":
+		_own_tod = true
+		Router.roam["tod"] = Campus.tod()
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--tod="):
 			Router.roam["tod"] = a.trim_prefix("--tod=")
@@ -2193,7 +2205,9 @@ func _note_place() -> void:
 	if _player == null or "--autoplay" in OS.get_cmdline_user_args():
 		return
 	var ch := str(Router.roam.get("story", ""))
-	if ch != "":
+	if Campus.on:
+		Saves.note_place("campus", {"district": "academy"})
+	elif ch != "":
 		Saves.note_place("story", {"chapter": ch, "district": str(Router.roam.get("district", "domino"))})
 	else:
 		var pp: Vector3 = _outside_pos if _inside != "" else _player.position

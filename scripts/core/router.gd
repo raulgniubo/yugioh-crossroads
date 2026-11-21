@@ -422,6 +422,35 @@ func _debug_args() -> void:
 				StoryDirector.begin(parts[0], true)
 			else:
 				StoryDirector.begin(parts[0])
+		elif a.begins_with("--campus="):
+			# Dev: the Academy story. --campus=new (a new game, "academia"), --campus=libre (a new game
+			# with your own cards), --campus=go (carry on), --campus=ac_ch1 or ac_ch1:12 (that chapter / step),
+			# --campus=island (a free day on the island).
+			var cw := a.substr(9)
+			await get_tree().create_timer(0.5).timeout
+			if cw == "new" or cw == "libre":
+				Campus.new_game("libre" if cw == "libre" else "academia")
+				Campus.go()
+			elif cw == "go":
+				Campus.go()
+			elif cw == "island":
+				if not Campus.started():
+					Campus.new_game("academia")
+				Campus.put_many({"free_days": true, "jacket": true})
+				Campus.island()
+			else:
+				if not Campus.started():
+					Campus.new_game("academia")
+				Campus.enter()
+				var cparts := cw.split(":")
+				if cparts[0] != "ac_prologue":
+					Campus.put("jacket", true)
+					Campus.dress()
+				if cparts.size() > 1:
+					CampusProgress.save_position(cparts[0], int(cparts[1]), {})
+					StoryDirector.begin(cparts[0], true)
+				else:
+					StoryDirector.begin(cparts[0])
 		elif a.begins_with("--decks-report="):
 			# (testing) every duelist in the roster with the deck they play, to a text file.
 			var out := FileAccess.open(a.trim_prefix("--decks-report="), FileAccess.WRITE)
@@ -593,6 +622,8 @@ func _debug_args() -> void:
 						menu_open = "replays"
 						go(DUEL)
 						break
+			elif what == "campus":
+				menu._on_academy()
 			elif what == "settings":
 				for t in OS.get_cmdline_user_args():
 					if t.begins_with("--tab="):      # dev: open on that tab (3 is Audio)

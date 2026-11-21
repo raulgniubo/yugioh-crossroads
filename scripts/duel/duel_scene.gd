@@ -2292,6 +2292,13 @@ func _on_pause_action(action: String) -> void:
 			_turn_finished.emit()
 			if state.current == AI or busy:
 				_finish()
+		"admin_win", "admin_lose":
+			hud.hide_overlay()
+			state.winner = ME if action == "admin_win" else AI
+			state.win_reason = "Ended from the admin menu."
+			_turn_finished.emit()
+			if state.current == AI or busy:
+				_finish()
 		"rematch":
 			if Router.duel_config.has("gauntlet"):
 				# Start the whole run again from the first duelist.

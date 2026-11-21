@@ -531,6 +531,9 @@ func _bounds() -> Dictionary:
 
 func _edge_distance(p: Vector3) -> float:
 	var b := _bounds()
+	# (The Academy's pier runs out past the shore, and the ferry is out at sea: neither is "the edge".)
+	if str(scene.district.get("builder", "")) == "academy" and absf(p.x) < 6.0 and p.z > 50.0:
+		return 99.0
 	if b.has("r"):
 		return float(b["r"]) - Vector2(p.x, p.z).length()
 	if b.get("open", false):

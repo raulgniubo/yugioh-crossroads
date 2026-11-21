@@ -19,7 +19,22 @@ extends Node
 ##   {"wait": seconds}
 ##   {"end": title, "unlock": id}
 
+## The Academy story (Campus) plays through this same director, with chapters of its own
+## (CampusData, ids "ac_*") and its own place and memory (CampusProgress, in campus.cfg).
+static var campus := false
+
+
+static func _prog():
+	return CampusProgress if campus else StoryProgress
+
+
+static func _book():
+	return CampusData if campus else StoryData
+
+
 var scene                       # RoamScene
+## A cinematic is playing: lines move on by themselves when their voice ends, no key needed.
+var _cine := false
 var free := false               # riding along in the open world: the chapter is at a list of things to do yourself
 var _in_task := false           # a task's conversation is playing
 var _tasks: Array = []          # the list being worked through (free mode)
@@ -106,8 +121,8 @@ func _ready() -> void:
 	chapter = str(Router.roam.get("story", ""))
 	if free:
 		chapter = str(Router.roam.get("quest", ""))
-	_steps = StoryData.SCRIPTS.get(chapter, [])
-	var pos := StoryProgress.position()
+	_steps = _book().SCRIPTS.get(chapter, [])
+	var pos: Dictionary = _prog().position()
 	if str(pos["chapter"]) == chapter:
 		step = int(pos["step"])
 		flags = pos["flags"]
@@ -397,14 +412,14 @@ func _place(st: Dictionary, instant := false) -> void:
 	if scene.city and scene.city.has_method("walk_top") and scene._inside == "":
 		at.y = maxf(at.y, float(scene.city.walk_top(at.x, at.z)))
 	if st.get("spirit", false):
-		if key == "lumen" and not StoryProgress.recalls("met_lumen"):
-			StoryProgress.remember("met_lumen")      # from here on she goes with you
+		if key == "lumen" and not _prog().recalls("met_lumen"):
+			_prog().remember("met_lumen")      # from here on she goes with you
 		# Lumen: a duel spirit, small and made of light, floating at shoulder height.
 		var sp := LumenSpirit.new()
 		scene.add_child(sp)
 		sp.position = Vector3(at.x, at.y + 1.1, at.z)
 		sp.watch = scene._player
-		sp.set_bonds(StoryProgress.bonds())
+		sp.set_bonds(_prog().bonds())
 		_actors[key] = sp
 		if st.get("caged", false):
 			# Held in the Curator's frame: she does not follow anybody.
@@ -567,7 +582,17 @@ func _do_step(st: Dictionary) -> bool:
 	elif st.has("credits"):
 		await _credits(st)
 	elif st.has("remember"):
-		StoryProgress.remember(str(st["remember"]))
+		_prog().remember(str(st["remember"]))
+	elif st.has("cine"):
+		_cine = bool(st["cine"]) and not _auto
+		_letterbox(_cine)
+	elif st.has("merits"):
+		Campus.add_merits(int(st["merits"]), str(st.get("why", "")))
+		Sfx.play("coin", -6.0)
+	elif st.has("campus"):
+		await _campus_step(st["campus"])
+	elif st.has("pick_deck"):
+		await _pick_deck()
 	elif st.has("music"):
 		Music.play(str(st["music"]))
 	elif st.has("sfx") and not st.has("t") and not st.has("act"):
@@ -606,7 +631,7 @@ func _do_step(st: Dictionary) -> bool:
 		await _clash(st["clash"])
 	elif st.has("goal"):
 		if not _in_task:
-			StoryProgress.save_position(chapter, step, flags)
+			_prog().save_position(chapter, step, flags)
 		await _do_goal(st)
 	elif st.has("duel"):
 		if _auto and not "--story-duel" in OS.get_cmdline_user_args():
@@ -643,9 +668,9 @@ func _do_step(st: Dictionary) -> bool:
 ## Does this step play? "if": a choice made this chapter or something the story remembers.
 ## "unless": the opposite.
 func _passes(st: Dictionary) -> bool:
-	if st.has("if") and not (flags.has(st["if"]) or StoryProgress.recalls(str(st["if"]))):
+	if st.has("if") and not (flags.has(st["if"]) or _prog().recalls(str(st["if"]))):
 		return false
-	if st.has("unless") and (flags.has(st["unless"]) or StoryProgress.recalls(str(st["unless"]))):
+	if st.has("unless") and (flags.has(st["unless"]) or _prog().recalls(str(st["unless"]))):
 		return false
 	return true
 
@@ -725,7 +750,7 @@ func _do_scene(st: Dictionary) -> bool:
 			flags["_away"] = true
 		else:
 			flags.erase("_away")
-		StoryProgress.save_position(chapter, step, flags)
+		_prog().save_position(chapter, step, flags)
 		Router.roam["district"] = district
 		Router.roam["pos"] = sc.get("pos", null)
 		if sc.has("yaw"):
@@ -1242,6 +1267,12 @@ func _say(st: Dictionary) -> void:
 			pt.tween_property(_portrait, "offset_top", -88.0 - 236.0, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			pt.tween_property(_portrait, "offset_bottom", -90.0, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_fit_text(text, who == "")
+	# The line out loud, when there is a voice for it (the Academy story is voiced; a line with
+	# no file is simply read).
+	var spoken := false
+	if who != "" and not _skip:
+		Voices.hush(true)
+		spoken = Voices.say(who, str(st["t"]), who == "player", true)
 	if st.has("emote"):
 		_emote(who, str(st["emote"]))
 	if st.has("anim"):
@@ -1260,7 +1291,7 @@ func _say(st: Dictionary) -> void:
 	while _text.visible_ratio < 1.0:
 		await get_tree().process_frame
 		blips += 1
-		if blips % 5 == 0 and who != "":
+		if blips % 5 == 0 and who != "" and not spoken:
 			Sfx.play("blip", -14.0, 1.25 if who == "lumen" else (0.85 if who in ["kaiba", "kairo", "hunter"] else 1.0))
 		if _advance_wanted or _skip:
 			_typing.kill()
@@ -1277,9 +1308,27 @@ func _say(st: Dictionary) -> void:
 				get_viewport().get_texture().get_image().save_png("/tmp/story_%s_%d.png" % [chapter, step])
 				print("STORY shot ", step)
 		return
+	if _cine or st.get("auto", false):
+		# A cinematic: the line holds for as long as it is being said (or read), then moves on.
+		var hold := 0.45 if spoken else 1.1 + text.length() * 0.045
+		var started := false
+		while hold > 0.0 and not _advance_wanted and not _skip:
+			await get_tree().process_frame
+			if spoken and Voices.talking():
+				started = true
+			elif not spoken or started or hold < 0.2:
+				hold -= get_process_delta_time()
+			else:
+				hold -= get_process_delta_time() * 0.25    # (the voice has not started yet)
+		_advance_wanted = false
+		if spoken and Voices.talking():
+			Voices.hush(true)
+		return
 	while not _advance_wanted and not _skip:
 		await get_tree().process_frame
 	_advance_wanted = false
+	if spoken:
+		Voices.hush(true)
 	Sfx.play("click", -10.0)
 
 
@@ -1405,11 +1454,15 @@ func _choose(options: Array) -> void:
 	flags[str(options[picked[0]][1])] = true
 	# Choices whose name starts with "m_" are remembered for good: later chapters look back.
 	if str(options[picked[0]][1]).begins_with("m_"):
-		StoryProgress.remember(str(options[picked[0]][1]))
+		_prog().remember(str(options[picked[0]][1]))
 	for c in _choice_box.get_children():
 		c.queue_free()
 	Sfx.play("click")
 	_advance_wanted = false
+	# In the Academy your duelist says what you picked out loud.
+	if campus and not _auto and not str(options[picked[0]][0]).begins_with("("):
+		await get_tree().process_frame
+		await _say({"s": "player", "t": str(options[picked[0]][0]), "auto": true})
 
 
 func _do_goal(st: Dictionary) -> void:
@@ -1486,10 +1539,10 @@ func _do_tasks(st: Dictionary) -> bool:
 	if not free:
 		# Out of the telling and into the open world, where you stand.
 		for w in st.get("open", []):
-			StoryProgress.remember("open_" + str(w))
+			_prog().remember("open_" + str(w))
 		flags["_where"] = home
 		flags.erase("_w0")
-		StoryProgress.save_position(chapter, step, flags)
+		_prog().save_position(chapter, step, flags)
 		WorldClock.set_look(str(scene.city.tod) if scene.city else "day")
 		if st.has("clock"):
 			# The list starts at this minute of the day (990 = half past four).
@@ -1512,9 +1565,9 @@ func _do_tasks(st: Dictionary) -> bool:
 	var here := str(Router.roam.get("district", "domino"))
 	_task_done = flags.get("_done", {})
 	if not flags.has("_w0"):
-		flags["_w0"] = StoryProgress.count("street_wins")
+		flags["_w0"] = _prog().count("street_wins")
 	flags["_where"] = here
-	StoryProgress.save_position(chapter, step, flags)
+	_prog().save_position(chapter, step, flags)
 	_build_task_ui(str(st.get("title", "WHAT TO DO")), str(st.get("aim", "")))
 	# Whoever the story has in hand is not also standing around as their everyday self.
 	var away: Array = (st.get("hide", []) as Array).duplicate()
@@ -1576,7 +1629,7 @@ func _do_tasks(st: Dictionary) -> bool:
 				if here == str(t["travel"]):
 					_finish_task(i)
 			elif t.has("wins"):
-				if StoryProgress.count("street_wins") - int(flags.get("_w0", 0)) >= int(t["wins"]):
+				if _prog().count("street_wins") - int(flags.get("_w0", 0)) >= int(t["wins"]):
 					_finish_task(i)
 			elif t.has("until"):
 				if WorldClock.look() == str(t["until"]):
@@ -1619,7 +1672,7 @@ func _do_tasks(st: Dictionary) -> bool:
 		if str(k).begins_with("_won_") or str(k).begins_with("_lost_"):
 			flags.erase(k)
 	step += 1
-	StoryProgress.save_position(chapter, step, flags)
+	_prog().save_position(chapter, step, flags)
 	Router.roam.erase("quest")
 	Router.roam["pos"] = scene._player.position
 	if _audit:
@@ -1802,7 +1855,7 @@ func _finish_task(i: int) -> void:
 	if t.has("flag"):
 		flags[str(t["flag"])] = true
 	if t.has("remember"):
-		StoryProgress.remember(str(t["remember"]))
+		_prog().remember(str(t["remember"]))
 	if t.has("reveals"):
 		var fnd: Dictionary = flags.get("_found", {})
 		for j in t["reveals"]:
@@ -1812,7 +1865,11 @@ func _finish_task(i: int) -> void:
 		Collection.dp += int(t["dp"])
 		Collection.save()
 		Router.toast(Loc.t("+%d Duel Points") % int(t["dp"]))
-	StoryProgress.save_position(chapter, step, flags)
+	if t.has("merits") and campus:
+		Campus.add_merits(int(t["merits"]), str(t.get("label", "")))
+	if t.has("bond") and campus:
+		Campus.add_bond(str(t["bond"]), 1)
+	_prog().save_position(chapter, step, flags)
 	_clear_task(i)
 	Sfx.play("sparkle", -6.0)
 	if _audit or _auto:
@@ -1832,7 +1889,7 @@ func _auto_tasks(here: String, home: String) -> bool:
 			var where := str(t.get("travel", t.get("in", home)))
 			if where != here:
 				print("TASK auto travel ", here, " -> ", where)
-				StoryProgress.save_position(chapter, step, flags)
+				_prog().save_position(chapter, step, flags)
 				Router.roam["district"] = where
 				Router.roam["pos"] = null
 				Router.go(Router.ROAM)
@@ -1871,7 +1928,7 @@ func _build_task_ui(title: String, goal := "") -> void:
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	gm.add_child(v)
 	var ch := ""
-	for c in StoryData.CHAPTERS:
+	for c in _book().CHAPTERS:
 		if c["id"] == chapter:
 			ch = Loc.t(str(c["title"])).to_upper() + "   ·   "
 	# With a goal, the small line names the stretch of the chapter and the big line says what
@@ -1973,7 +2030,7 @@ func task_rows(here: String, home: String) -> Array:
 				text += "   (" + Loc.t({"night": "at night", "day": "by day", "sunset": "in the evening", "dawn": "at dawn"}.get(str(t["when"]), "")) + ")"
 				state = "wait"
 			elif t.has("wins"):
-				text += "   %d / %d" % [mini(int(t["wins"]), StoryProgress.count("street_wins") - int(flags.get("_w0", 0))), int(t["wins"])]
+				text += "   %d / %d" % [mini(int(t["wins"]), _prog().count("street_wins") - int(flags.get("_w0", 0))), int(t["wins"])]
 				var nd = _nearest_duelist()
 				place = Loc.t("Any duelist you can challenge counts, in any world.")
 				if nd != null:
@@ -2416,7 +2473,7 @@ func _clash_shot(ka: String, kb: String) -> void:
 
 
 func _start_duel(d: Dictionary) -> void:
-	StoryProgress.save_position(chapter, step, flags)
+	_prog().save_position(chapter, step, flags)
 	Router.roam["pos"] = scene._player.position
 	Router.roam["yaw"] = scene._yaw
 	var deck: String = Collection.active_deck()
@@ -2427,7 +2484,9 @@ func _start_duel(d: Dictionary) -> void:
 		opp_deck = str(d.get("fallback", "kairo"))
 	# Which version of their deck they bring (DeckTiers): simpler early in the story, whole for the
 	# bosses. Hard brings each one a step stronger, Extreme two.
-	opp_deck = DeckTiers.with_version(opp_deck, DeckTiers.shift(str(d.get("deck_tier", "full")), Saves.story_difficulty()))
+	# (In the Academy, with your own collection brought along, everybody comes a step stronger.)
+	var harder := Saves.story_difficulty() + (1 if campus and not Campus.own_cards() else 0)
+	opp_deck = DeckTiers.with_version(opp_deck, DeckTiers.shift(str(d.get("deck_tier", "full")), harder))
 	Router.match_state = {}
 	Router.duel_config = {
 		"opponent": d["opponent"], "opponent_deck": opp_deck, "player_deck": deck, "player_char": "player",
@@ -2734,9 +2793,22 @@ func _shot_step(st: Dictionary) -> void:
 		Music.play(str(st["music"]))
 	if st.has("cap"):
 		_caption(str(st["cap"]))
+	# "vo": somebody speaks over the picture: {"vo": ["nico", "line"]}. It reads as a caption
+	# with their name, and the shot holds for as long as they talk.
+	var vo_left := 0.0
+	if st.has("vo") and not _skip:
+		var vw := str(st["vo"][0])
+		var vt := str(st["vo"][1])
+		var vname := Profile.duelist_name if vw == "player" else Loc.t(str(Characters.get_char(vw).get("short", vw)))
+		_caption("%s:  %s" % [vname.to_upper(), Loc.t(vt)])
+		Voices.hush(true)
+		if Voices.say(vw, vt, vw == "player", true):
+			vo_left = Voices.length(vw, vt, vw == "player") + 0.5
+		else:
+			vo_left = 1.4 + vt.length() * 0.05
 	if st.get("bg", false) or _skip:
 		return
-	var left := float(st["shot"].get("t", 4.0))
+	var left := maxf(float(st["shot"].get("t", 4.0)), vo_left)
 	if st.has("cap"):
 		left = maxf(left, 1.6 + str(st["cap"]).length() * 0.045)
 	if _auto:
@@ -2747,7 +2819,7 @@ func _shot_step(st: Dictionary) -> void:
 		await get_tree().process_frame
 		left -= get_process_delta_time()
 	_advance_wanted = false
-	if st.has("cap"):
+	if st.has("cap") or st.has("vo"):
 		_caption("")
 
 
@@ -3004,9 +3076,9 @@ func _bond(st: Dictionary) -> void:
 	if id != 0 and not CardData.get_card(id).is_empty():
 		Collection.owned[id] = mini(3, int(Collection.owned.get(id, 0)) + 1)
 		Collection.save()
-	StoryProgress.remember("bond_" + str(st["bond"]).to_lower().replace(" ", "_"))
+	_prog().remember("bond_" + str(st["bond"]).to_lower().replace(" ", "_"))
 	if _spirit is LumenSpirit:
-		(_spirit as LumenSpirit).set_bonds(StoryProgress.bonds())
+		(_spirit as LumenSpirit).set_bonds(_prog().bonds())
 		(_spirit as LumenSpirit).spin()
 	var shade := ColorRect.new()
 	shade.color = Color(0, 0, 0, 0.0)
@@ -3064,7 +3136,146 @@ func _bond(st: Dictionary) -> void:
 	shade.queue_free()
 
 
+## Things only the Academy story does: {"campus": {...}} with any of
+##   "sleep": true        the night passes: the next morning
+##   "part": 0..2         morning / afternoon / night (the sky follows)
+##   "dorm": 0..2         you move up (the jacket changes)
+##   "bond": [who, n]     somebody thinks more of you
+##   "trophy": id         something for your room
+##   "card": id           a card for your (Academy) collection, no fanfare
+func _campus_step(c: Dictionary) -> void:
+	if c.get("sleep", false):
+		_cutscene(true)
+		_box.visible = false
+		var tw := create_tween()
+		tw.tween_property(_flash, "color", Color(0, 0, 0, 1), 0.8)
+		await tw.finished
+		Campus.sleep()
+		scene.city.apply_tod(Campus.tod())
+		Router.roam["tod"] = Campus.tod()
+		if not _skip and not _auto:
+			_caption("%s  ·  %s %d" % [Loc.t(Campus.WEEK[Campus.weekday()]), Loc.t("Day"), Campus.day()])
+			await get_tree().create_timer(1.8).timeout
+			_caption("")
+		var tw2 := create_tween()
+		tw2.tween_property(_flash, "color", Color(0, 0, 0, 0), 0.8)
+		await tw2.finished
+		Saves.autosave(true)
+	if c.has("part"):
+		Campus.put("part", clampi(int(c["part"]), 0, 2))
+		scene.city.apply_tod(Campus.tod())
+		Router.roam["tod"] = Campus.tod()
+	if c.has("dorm"):
+		Campus.put_many({"dorm": clampi(int(c["dorm"]), 0, 2), "jacket": true})
+		Campus.dress()
+	if c.has("bond"):
+		Campus.add_bond(str(c["bond"][0]), int(c["bond"][1]))
+	if c.has("trophy"):
+		Campus.trophy(str(c["trophy"]))
+	if c.has("card"):
+		var id := int(c["card"])
+		if not CardData.get_card(id).is_empty():
+			Collection.owned[id] = mini(3, int(Collection.owned.get(id, 0)) + 1)
+			Collection.save()
+
+
+## The deck you bring to the island: one of the three starters (only when the Academy's own
+## collection is in use and has no deck yet).
+func _pick_deck() -> void:
+	if not Collection.needs_starter():
+		return
+	if _auto:
+		Collection.take_starter("starter_warrior")
+		return
+	_cutscene(true)
+	_box.visible = false
+	var pick := StarterPick.new()
+	_ui.add_child(pick)
+	await pick.closed
+	if is_instance_valid(pick):
+		pick.queue_free()
+	if Collection.needs_starter():
+		Collection.take_starter("starter_warrior")
+	_advance_wanted = false
+
+
+## An Academy chapter ends: merits, the card, and back to the island (or straight on).
+func _end_campus(st: Dictionary) -> void:
+	print("STORY END: ", chapter)
+	_cutscene(true)
+	_cine = false
+	_box.visible = false
+	_prog().clear_position()
+	var next := str(st.get("unlock", ""))
+	if next != "":
+		_prog().unlock(next)
+	var first := not Campus.chapter_done(chapter)
+	Campus.finish_chapter(chapter)
+	var pay := int(st.get("pay", 40)) if first else 0
+	if pay > 0:
+		Campus.add_merits(pay, str(st["end"]))
+	Saves.autosave(true)
+	Music.play("victory")
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.0)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(shade)
+	create_tween().tween_property(shade, "color:a", 0.86, 0.8)
+	var v := VBoxContainer.new()
+	v.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	v.offset_left = -520
+	v.offset_right = 520
+	v.offset_top = -240
+	v.offset_bottom = 240
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_theme_constant_override("separation", 14)
+	shade.add_child(v)
+	var t := UITheme.label(Loc.t(str(st["end"])).to_upper(), 70, UITheme.GOLD, UITheme.title_font())
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(t)
+	var r := UITheme.label(Loc.t("+%d merits") % pay if pay > 0 else Loc.t("You have seen this one before"), 28, UITheme.ACCENT)
+	r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(r)
+	if st.has("teaser"):
+		var te := UITheme.label(Loc.t(str(st["teaser"])), 22, UITheme.TEXT_DIM)
+		te.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		te.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		te.custom_minimum_size = Vector2(1000, 0)
+		v.add_child(te)
+	# "then": "next" goes straight into the next chapter (the prologue into chapter 1). Without
+	# it the day is yours: the island, with the next chapter on the mission board.
+	var straight: bool = str(st.get("then", "")) == "next" and next != "" and _book().SCRIPTS.has(next)
+	var go := Button.new()
+	go.text = Loc.t("Continue") if straight else Loc.t("Back to the island")
+	go.custom_minimum_size = Vector2(420, 70)
+	go.add_theme_font_size_override("font_size", 28)
+	go.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	v.add_child(go)
+	go.grab_focus.call_deferred()
+	go.pressed.connect(func():
+		if straight:
+			StoryDirector.begin(next)
+		else:
+			Campus.put("free_days", true)
+			Campus.island(st.get("wake", null)))
+	var menu := Button.new()
+	menu.text = Loc.t("Back to the menu")
+	menu.custom_minimum_size = Vector2(420, 56)
+	menu.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	menu.pressed.connect(func():
+		if not straight:
+			Campus.put("free_days", true)
+		_leave())
+	v.add_child(menu)
+	if _auto and "--story-quit" in OS.get_cmdline_user_args():
+		await _snap("end", 2.5)
+		get_tree().quit()
+
+
 func _end(st: Dictionary) -> void:
+	if campus:
+		await _end_campus(st)
+		return
 	print("STORY END: ", chapter)
 	_cutscene(true)
 	_box.visible = false
@@ -3072,14 +3283,14 @@ func _end(st: Dictionary) -> void:
 	var pay := 500
 	if side:
 		# A side scene pays once, and hands the "continue" slot back to the chapter you were in.
-		StoryProgress.restore_position()
-		pay = 0 if StoryProgress.recalls("side_" + chapter.substr(5)) else 300
-		StoryProgress.remember("side_" + chapter.substr(5))
+		_prog().restore_position()
+		pay = 0 if _prog().recalls("side_" + chapter.substr(5)) else 300
+		_prog().remember("side_" + chapter.substr(5))
 	else:
-		StoryProgress.clear_position()
+		_prog().clear_position()
 	var next := str(st.get("unlock", ""))
 	if next != "":
-		StoryProgress.unlock(next)
+		_prog().unlock(next)
 	Collection.dp += pay
 	Collection.save()
 	Music.play("victory")
@@ -3109,7 +3320,7 @@ func _end(st: Dictionary) -> void:
 		te.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		te.custom_minimum_size = Vector2(1000, 0)
 		v.add_child(te)
-	var playable := next != "" and StoryData.SCRIPTS.has(next)
+	var playable: bool = next != "" and _book().SCRIPTS.has(next)
 	var go := Button.new()
 	go.text = Loc.t("Next chapter") if playable else Loc.t("Back to the menu")
 	go.custom_minimum_size = Vector2(420, 70)
@@ -3149,25 +3360,27 @@ func _snap(tag: String, wait := 1.0) -> void:
 func _leave() -> void:
 	Router.roam["story"] = ""
 	Router.roam["pos"] = null
+	if campus:
+		Campus.leave()
 	Router.go(Router.MAIN_MENU)
 
 
 ## Start (or continue) a chapter: load the world its current scene plays in.
 static func begin(id: String, resume := false) -> void:
 	var router = Engine.get_main_loop().root.get_node("Router")
-	var steps: Array = StoryData.SCRIPTS.get(id, [])
+	var steps: Array = _book().SCRIPTS.get(id, [])
 	var at := 0
 	if resume:
-		at = int(StoryProgress.position()["step"])
+		at = int(_prog().position()["step"])
 	else:
 		if id.begins_with("bond_"):
-			StoryProgress.stash_position()   # a side scene: the chapter you were in keeps its place
-		StoryProgress.save_position(id, 0, {})
+			_prog().stash_position()   # a side scene: the chapter you were in keeps its place
+		_prog().save_position(id, 0, {})
 	# Dev: --story-step=N starts the chapter at that step (for checking one scene).
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--story-step="):
 			at = clampi(int(a.trim_prefix("--story-step=")), 0, maxi(0, steps.size() - 1))
-			StoryProgress.save_position(id, at, {})
+			_prog().save_position(id, at, {})
 	# The scene that step belongs to decides where to load.
 	var sc := {}
 	for i in mini(at + 1, steps.size()):
@@ -3178,7 +3391,7 @@ static func begin(id: String, resume := false) -> void:
 	if at < steps.size() and (steps[at] as Dictionary).has("tasks"):
 		# The chapter is at a list of things to do yourself: that is the open world, with the
 		# list riding along. You come back where you were.
-		var fl: Dictionary = StoryProgress.position()["flags"] if resume else {}
+		var fl: Dictionary = _prog().position()["flags"] if resume else {}
 		var where := str(fl.get("_where", sc.get("district", "domino")))
 		router.roam["story"] = ""
 		router.roam["quest"] = id
@@ -3201,9 +3414,9 @@ static func begin(id: String, resume := false) -> void:
 
 ## Is a chapter waiting at a list of things to do in the open world? Returns its id, or "".
 static func quest_pending() -> String:
-	var pos := StoryProgress.position()
+	var pos: Dictionary = _prog().position()
 	var id := str(pos["chapter"])
-	var steps: Array = StoryData.SCRIPTS.get(id, [])
+	var steps: Array = _book().SCRIPTS.get(id, [])
 	var at := int(pos["step"])
 	if id == "" or at >= steps.size() or not (steps[at] as Dictionary).has("tasks"):
 		return ""
@@ -3333,5 +3546,5 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_pause"):
 		get_viewport().set_input_as_handled()
-		StoryProgress.save_position(chapter, step, flags)
+		_prog().save_position(chapter, step, flags)
 		scene._open_pause()

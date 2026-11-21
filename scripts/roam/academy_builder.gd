@@ -447,7 +447,105 @@ func _build_more_paths(path: Material) -> void:
 
 ## New on the island: an outdoor arena with stands, a beach, the old woods with a ruined dorm,
 ## tennis-court style practice duel fields and a cliff-top lookout.
+## The morning ferry, out at sea south of the island: the deck where the Academy story begins.
+## It is part of the world (from the pier it is a ship on the horizon), and you can stand on it.
+const FERRY := Vector3(0, 0, 230)
+
+func _build_ferry() -> void:
+	var o := FERRY
+	var hull := mat(Color(0.93, 0.94, 0.96), 0.5, 0.1)
+	var red := mat(Color("c8322a"), 0.6)
+	var wood := surf("wood", Color(0.62, 0.46, 0.3))
+	var steel := mat(Color(0.3, 0.33, 0.38), 0.4, 0.6)
+	var glass := mat(Color(0.5, 0.75, 0.9, 1.0), 0.1, 0.3)
+	# Hull: a long white body with a red waterline and a pointed bow (toward the island, -z).
+	box(Vector3(10.4, 2.6, 30.0), o + Vector3(0, -1.25, 0.5), hull, false)
+	box(Vector3(10.5, 0.5, 30.1), o + Vector3(0, -1.0, 0.5), red, false)
+	for k in 5:
+		var w := 10.4 - (k + 1) * 1.9
+		box(Vector3(maxf(0.6, w), 2.6, 1.3), o + Vector3(0, -1.25, -14.5 - k * 1.25), hull, false)
+		box(Vector3(maxf(0.7, w + 0.1), 0.5, 1.32), o + Vector3(0, -1.0, -14.5 - k * 1.25), red, false)
+		box(Vector3(maxf(0.6, w), 0.12, 1.3), o + Vector3(0, 0.04, -14.5 - k * 1.25), wood, false)
+	# Deck planks.
+	box(Vector3(10.0, 0.12, 29.6), o + Vector3(0, 0.04, 0.5), wood, false)
+	for i in range(-4, 5):
+		box(Vector3(0.03, 0.125, 29.6), o + Vector3(i * 1.1, 0.045, 0.5), mat(Color(0.4, 0.28, 0.18), 0.9), false)
+	# Something to stand on, and rails you cannot walk through.
+	if make_solid:
+		for w in [[Vector3(10.4, 1.0, 34.0), Vector3(0, -0.4, -1.0)],                 # the deck
+				[Vector3(0.6, 4.0, 34.0), Vector3(-5.0, 2.0, -1.0)], [Vector3(0.6, 4.0, 34.0), Vector3(5.0, 2.0, -1.0)],   # sides
+				[Vector3(10.4, 4.0, 0.6), Vector3(0, 2.0, -14.4)],                    # the bow
+				[Vector3(10.4, 4.0, 0.6), Vector3(0, 2.0, 10.2)]]:                    # the cabin's front
+			var body := StaticBody3D.new()
+			var cs := CollisionShape3D.new()
+			var sh := BoxShape3D.new()
+			sh.size = w[0]
+			cs.shape = sh
+			body.add_child(cs)
+			body.position = o + (w[1] as Vector3)
+			add_child(body)
+	# Rails: posts and two bars each side, and across the bow.
+	for sx: float in [-1.0, 1.0]:
+		for i in 16:
+			cyl(0.04, 0.04, 1.05, o + Vector3(sx * 4.85, 0.6, -13.6 + i * 1.6), steel, null, 6)
+		for hh: float in [0.62, 1.1]:
+			box(Vector3(0.06, 0.06, 24.2), o + Vector3(sx * 4.85, hh, -1.6), steel, false)
+		# A life ring on the rail.
+		var ring := MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = 0.24
+		tm.outer_radius = 0.38
+		ring.mesh = tm
+		ring.material_override = mat(Color("ff7a2a"), 0.6)
+		ring.position = o + Vector3(sx * 4.8, 0.75, 3.0)
+		ring.rotation.z = PI / 2
+		add_child(ring)
+	for i in 7:
+		cyl(0.04, 0.04, 1.05, o + Vector3(-4.2 + i * 1.4, 0.6, -13.9), steel, null, 6)
+	for hh: float in [0.62, 1.1]:
+		box(Vector3(9.7, 0.06, 0.06), o + Vector3(0, hh, -13.9), steel, false)
+	# The cabin and the wheelhouse on top of it, at the stern.
+	box(Vector3(9.2, 2.8, 5.4), o + Vector3(0, 1.5, 13.0), hull, false)
+	box(Vector3(9.4, 0.16, 5.6), o + Vector3(0, 2.95, 13.0), red, false)
+	for i in 4:
+		box(Vector3(1.3, 0.9, 0.05), o + Vector3(-3.3 + i * 2.2, 1.7, 10.28), glass, false)
+	box(Vector3(1.2, 2.1, 0.06), o + Vector3(0.0, 1.15, 10.27), mat(Color(0.5, 0.34, 0.22), 0.7), false)
+	box(Vector3(5.0, 2.0, 3.2), o + Vector3(0, 4.0, 13.4), hull, false)
+	box(Vector3(4.6, 0.8, 0.05), o + Vector3(0, 4.25, 11.78), glass, false)
+	box(Vector3(5.3, 0.14, 3.5), o + Vector3(0, 5.05, 13.4), red, false)
+	# Funnel, mast and the Academy's flag.
+	cyl(0.85, 1.0, 3.2, o + Vector3(0, 6.6, 14.2), red, null, 14)
+	cyl(0.9, 0.9, 0.5, o + Vector3(0, 8.0, 14.2), mat(Color(0.12, 0.12, 0.14), 0.6), null, 14)
+	cyl(0.05, 0.07, 4.6, o + Vector3(0, 7.3, 12.0), steel, null, 6)
+	box(Vector3(0.03, 0.8, 1.4), o + Vector3(0, 9.1, 12.75), mat(Color("ffd766"), 0.7), false)
+	neon_sign("DUEL ACADEMY FERRY", o + Vector3(0, 3.4, 10.24), Color("ffe9a8"), 60, 0.0, false)
+	# Benches along the cabin and two crates of luggage.
+	for sx: float in [-1.0, 1.0]:
+		box(Vector3(2.6, 0.1, 0.6), o + Vector3(sx * 3.0, 0.55, 9.6), wood, false)
+		for k in 2:
+			box(Vector3(0.08, 0.5, 0.5), o + Vector3(sx * 3.0 - 1.1 + k * 2.2, 0.3, 9.6), steel, false)
+	box(Vector3(1.0, 0.8, 0.8), o + Vector3(3.9, 0.5, -9.5), mat(Color(0.5, 0.36, 0.22), 0.8))
+	box(Vector3(0.8, 0.6, 0.7), o + Vector3(3.8, 1.2, -9.4), mat(Color(0.3, 0.42, 0.6), 0.8))
+	box(Vector3(0.9, 0.7, 0.9), o + Vector3(-3.9, 0.45, -10.4), mat(Color(0.6, 0.3, 0.26), 0.8))
+	# Deck lamps for the early morning.
+	for sx: float in [-1.0, 1.0]:
+		var lamp := OmniLight3D.new()
+		lamp.light_color = Color(1.0, 0.86, 0.6)
+		lamp.light_energy = 1.4
+		lamp.omni_range = 9.0
+		lamp.shadow_enabled = false
+		lamp.position = o + Vector3(sx * 3.6, 2.6, 9.6)
+		add_child(lamp)
+		box(Vector3(0.16, 0.16, 0.16), o + Vector3(sx * 3.6, 2.7, 10.1), glow_mat(Color(1.0, 0.86, 0.6), 2.4), false)
+	# The wake behind her.
+	var foam := mat(Color(0.95, 0.98, 1.0, 0.55), 0.4)
+	foam.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	for k in 6:
+		box(Vector3(6.0 + k * 2.2, 0.02, 3.0), o + Vector3(0, -0.6, 18.0 + k * 3.2), foam, false)
+
+
 func _build_new_places() -> void:
+	_build_ferry()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 33
 	# Stands around the outdoor duel field.

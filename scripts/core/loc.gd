@@ -15,6 +15,10 @@ static func setup(lang: String) -> void:
 		var table: Dictionary = load("res://scripts/core/es_strings.gd").ES
 		for k in table:
 			tr.add_message(k, table[k])
+		# (The Academy story keeps its Spanish in a file of its own.)
+		var campus: Dictionary = load("res://scripts/core/es_campus.gd").ES
+		for k in campus:
+			tr.add_message(k, campus[k])
 		TranslationServer.add_translation(tr)
 	TranslationServer.set_locale(lang if lang in ["en", "es"] else "en")
 

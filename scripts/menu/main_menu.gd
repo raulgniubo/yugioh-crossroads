@@ -19,6 +19,9 @@ func _exit_tree() -> void:
 func _ready() -> void:
 	# The city behind the menu is a backdrop: keep it sharp even when the 3D resolution is set low.
 	Settings.scale_floor = 0.55
+	# Back from the Academy story: your own collection and your own clothes again.
+	if Campus.on:
+		Campus.leave()
 	theme = UITheme.build()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	Music.play("menu")
@@ -74,6 +77,9 @@ func _ready() -> void:
 		Router.story_result = ""
 		_on_knockout.call_deferred(res)
 	elif Router.menu_open == "academy":
+		Router.menu_open = ""
+		_on_academy_classic.call_deferred()
+	elif Router.menu_open == "campus":
 		Router.menu_open = ""
 		_on_academy.call_deferred()
 	elif Router.menu_open == "builder":
@@ -277,7 +283,7 @@ func _build_menu() -> void:
 			["Riding Duels", "TURBO DUEL", "Race the highway at speed.", "➤", _on_turbo, ""]],
 		[["Open world", "FREE ROAM", "Five places to walk and duel.", "◎", _on_roam, ""],
 			["Four titles", "TOURNAMENTS", "Badges, brackets, trophies.", "♛", _on_tournaments, "%d / %d" % [won, Tournament.DEFS.size()]]],
-		[["School life", "DUEL ACADEMY", "Exams, dorms, the weekly cup.", "✎", _on_academy, ""],
+		[["A story of its own", "DUEL ACADEMY", "A school year on the island.", "✎", _on_academy, ""],
 			["Your cards", "MY DECKS", "Build, rename, pick a deck.", "❖", _on_deck, ""]],
 	]
 	var y := 160.0
@@ -1129,7 +1135,9 @@ func _welcome_back() -> void:
 		go.add_theme_font_size_override("font_size", 24)
 		go.pressed.connect(func():
 			Sfx.play("click", -6.0)
-			if str(where.get("mode", "")) == "story":
+			if str(where.get("mode", "")) == "campus":
+				Campus.go()
+			elif str(where.get("mode", "")) == "story":
 				StoryDirector.begin(str(where.get("chapter", "")), true)
 			else:
 				Router.roam = {"district": str(where.get("district", "domino")), "pos": Vector3(float(where.get("x", 0.0)), 0, float(where.get("z", 8.0))), "yaw": float(where.get("yaw", PI))}
@@ -1190,7 +1198,20 @@ func _on_turbo() -> void:
 	Router.go(Router.RIDE)
 
 
+## The Academy story's door (0.65.0). The mode from before opens from the bottom of it.
 func _on_academy() -> void:
+	var gate := CampusGate.new()
+	gate.z_index = 100
+	add_child(gate)
+	_panel_open = true
+	gate.classic.connect(_on_academy_classic)
+	gate.closed.connect(func():
+		_panel_open = false
+		if _items.size() > 1:
+			_items[0].grab_focus())
+
+
+func _on_academy_classic() -> void:
 	var hub := AcademyHub.new()
 	hub.z_index = 100
 	add_child(hub)
