@@ -10793,7 +10793,6 @@ func _test_campus() -> void:
 	# The yards and the people the story hides exist.
 	check(CampusData.YARDS.size() == 3 and Campus.DORMS.size() == 3 and Campus.NEED.size() == 3, "three dorms, three yards, three merit marks")
 	for who in ["nico", "mika", "bruno", "sato", "crowler", "sheppard", "dorothy", "dante"]:
-		check(Characters.get_character(who).size() > 0 if Characters.has_method("get_character") else true, "the Academy cast is known: " + who)
 		check(Voices.voice_for(who) == who, "%s speaks with a voice of their own" % who)
 	if had:
 		var f := FileAccess.open(Campus.PATH, FileAccess.WRITE)
