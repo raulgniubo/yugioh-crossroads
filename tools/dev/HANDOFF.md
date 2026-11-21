@@ -804,3 +804,21 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
   (about 84,000 credits per language, estimates). Existing scripts/core/academy.gd (448 lines: dorms, class duels,
   Friday exam, assignments, merit, standings, tournament) is the "classic" mode.
 - WAITING for his yes before building anything. His open decisions are the checklist at the end of the doc.
+- PLAN CHANGED with Raul, 11:47 PM to midnight (the doc is the truth; the short summary above is the FIRST version):
+  * Story is now COMPETITION, not a mystery: "the Academy was number one and is now last of four". Liga de Academias by
+    teams (Academia de Duelos, Boreal, del Sol, Apex = Crane's private academy that buys the best with scholarships).
+    Red: save the dorm in the Dorm Cup + team tryouts (you are the reserve). Yellow: first League match vs Boreal (Irina
+    Volkova), Crane's offer, Dante leaves for Apex. Blue: captain, match vs del Sol (Leo Brasa), Torneo de la Corona vs
+    Zane, final vs Apex (Selene Varga, Dante). Pro: ladder, Aster, Zane, Vera Lux. No masked duelists, no "apagados".
+    The Old Dorm is an OPTIONAL night side story of 5 duels.
+  * 4 more GX characters as slots with generic stand-ins (he drops his own Meshy models into characters/ as crowler,
+    dorothy, sheppard, bastion): Crowler (Theory teacher, head of Blue, Ancient Gear; does the ENTRANCE exam and every
+    promotion exam: Raul asked for that, "not the same as the anime but similar"), Dorothy (shop), Sheppard (headmaster),
+    Bastion (team strategist). Originals now: Nico, Mika, Bruno, Dante, Octavia, Sato, Crane, Irina, Leo, Selene, Vera.
+  * BIGGEST EFFORT = cinematics, conversations, voices ("eso le da vida al juego"); cinematics also explain how the
+    world works on day one (no text tutorials); about 45 cinematics; voices from the first build (Spanish), about
+    96,000 credits per language (estimate).
+  * Everything new belongs to the WORLD (interiors, students, classes also in Free Roam and the main Story).
+  * In the Academy you always wear your dorm's uniform (red, yellow, blue); own clothes again in the Pro League.
+  * Today's Academy mode stays reachable as "Academia clasica", a little hidden, with a "going away soon" note.
+  STILL NO GO to build (asked four times; he kept refining the plan). Do not start 0.65.0 without his yes.
