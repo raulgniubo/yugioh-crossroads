@@ -860,3 +860,11 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
     language: 2,720 lines / 196,000 credits (cinematics 52k, dialogues 64k, Circulo 6k, duel lines 4k, player 70k).
     Whether the daily line cap changed with the new plan is NOT known yet: only generating shows it.
   * Asked him at 12:15 AM whether "ahora el capitulo 1" is the yes for 0.65.0. Do not start without it.
+  * 12:16 AM (doc rev 132): LUMEN gets a proper introduction and her own thread (his ask: "nothing left unexplained,
+    everything spoken, a game that looks like a series"): a blank card in your novice deck on the ferry, she appears on
+    the railing and says who she is; Jaden explains spirits in ch.1; Sheppard's History class tells the legend; one of
+    her blank cards fills in per act and joins your deck; her last blank card goes to the new student in the epilogue.
+    New rules in "Cinematicas y dialogos": every character and every system gets a spoken introduction scene, nothing
+    happens off screen, every chapter is an episode (opening scene + title, free play, big duel, closing scene).
+    About 70 cinematics. FREE CHAT IS VOICED TOO now. Voice estimate per language: 3,420 lines / 244,000 credits;
+    with the pending English (26,000) about 514,000 of the 662,211.
