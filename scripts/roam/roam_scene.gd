@@ -1912,6 +1912,8 @@ func _start_duel() -> void:
 	# How strong their deck is goes with their stars (1-2 Starter, 3 Standard, 4-5 Full). The
 	# show's characters always play their own deck whole.
 	var stars := Unlocks.stars_of(d)
+	if Campus.on:
+		stars = mini(5, stars + Campus.growth(opp_key))
 	var opp_deck := DeckTiers.for_duel(str(duel.get("deck", "joey")), opp_key, stars)
 	Router.duel_config = {
 		"opponent": opp_key, "opponent_deck": opp_deck,

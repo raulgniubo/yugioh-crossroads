@@ -967,3 +967,19 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   files. voices/es = 2,319. Batches 173-199 (199 = four lines redone with "director"). cbuild.py now also reads the
   `clash` beats and choices whose flag has a digit. `_test_campus` checks scene lines, task lines, "vo", choices and
   clash beats for a Spanish voice file AND a Spanish text. Next batch number: 200.
+
+#### 0.65.2 STATE (Nov 21, later that morning; newer than the block above)
+- CHAPTER 3 "Mika Cannot" (ac_ch3): the outdoor duel field (CampusData.FIELD = the ground in front of the stage at
+  (19, 0, 30); nobody can stand on the stage itself, it is solid) -> Mika forfeits -> your duel against the Yellow
+  (generic `yellow_student`, deck_dark_world, must be won) -> free walk (Nico, Bruno optional) -> the beach
+  (CampusData.BEACH) -> practice duel against Mika (lose_ok) -> the rematch as a `clash` (Mika wins) -> Crowler
+  notices -> room -> Lumen's second card (99200013 Echo Veil). ac_ch4 "The Rookie Tournament" is named, no script.
+- NEW: {"campus": {"cup_add": [dorm, n]}} gives Cup points from the story. CampusData.GROWTH {who: [chapters]} +
+  Campus.growth(who): one more star on the island per finished chapter (roam_scene._start_duel). Mika grows with ch3.
+- VOICES: batches 200-205 (110 files). voices/es = 2,429. Next batch number: 206.
+- Magician's Valkyria is only a story beat (Nico's gift, played in the clash): deck_arcane itself was not changed.
+- NEW step {"room": pos, "r": 7.5}: bystanders (ambient pairs, island stars) inside that circle step out until the
+  camera lets go (StoryDirector._make_room with a radius). Chapter 3's two field scenes use it: an ambient pair
+  stood right behind the Yellow. The duel line moved 2 m north (FIELD + (+-2.9, 0, -2.0)) to clear the bench.
+- Already in the director, used from 0.65.3 on (chapter 4): {"bracket": {...}} (scripts/story/story_bracket.gd, a
+  16-name board between rounds) and {"prize": title, "head", "card", "text"} (the bond banner for a card you won).

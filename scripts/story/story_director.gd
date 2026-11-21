@@ -634,6 +634,14 @@ func _do_step(st: Dictionary) -> bool:
 	elif st.has("tasks"):
 		if await _do_tasks(st):
 			return true
+	elif st.has("bracket"):
+		await _bracket_step(st["bracket"])
+	elif st.has("prize"):
+		await _bond(st)
+	elif st.has("room"):
+		# A scene that needs the ground to itself (a duel with an audience of its own):
+		# the people who happen to be chatting there step out until the camera lets go.
+		_make_room([st["room"]], float(st.get("r", 5.0)))
 	elif st.has("clash"):
 		await _clash(st["clash"])
 	elif st.has("goal"):
@@ -923,10 +931,10 @@ func _cast() -> Array:
 
 
 ## Bystanders standing in the middle of a scene step out of it until the camera lets go.
-func _make_room(spots: Array) -> void:
+func _make_room(spots: Array, r := 1.5) -> void:
 	var cast: Array = _actors.values()
 	cast.append(scene._figure)
-	for f in _solver.crowding(spots, 1.5, cast):
+	for f in _solver.crowding(spots, r, cast):
 		(f as Node3D).visible = false
 		_stepped_out.append(f)
 
@@ -2894,6 +2902,29 @@ func _caption(text: String) -> void:
 	_cap_tw.tween_property(_cap, "modulate:a", 1.0, 0.35)
 
 
+## The board of a tournament, between rounds: it comes up, stays long enough to be read (or
+## until you press on), and goes.
+func _bracket_step(b: Dictionary) -> void:
+	_cutscene(true)
+	_box.visible = false
+	if _skip:
+		return
+	var panel := StoryBracket.new(b)
+	_ui.add_child(panel)
+	var left := 9.0
+	if _auto:
+		left = 0.3
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--story-shots="):
+				await _snap("bracket%d" % step, 0.8)
+	_advance_wanted = false
+	while left > 0.0 and not _skip and not _advance_wanted:
+		await get_tree().process_frame
+		left -= get_process_delta_time()
+	_advance_wanted = false
+	panel.leave()
+
+
 func _cap_step(st: Dictionary) -> void:
 	_cutscene(true)
 	_box.visible = false
@@ -3092,10 +3123,14 @@ func _bond(st: Dictionary) -> void:
 	if id != 0 and not CardData.get_card(id).is_empty():
 		Collection.owned[id] = mini(3, int(Collection.owned.get(id, 0)) + 1)
 		Collection.save()
-	_prog().remember("bond_" + str(st["bond"]).to_lower().replace(" ", "_"))
-	if _spirit is LumenSpirit:
-		(_spirit as LumenSpirit).set_bonds(_prog().bonds())
-		(_spirit as LumenSpirit).spin()
+	# {"prize": "The Rookie Tournament", "card": id, "text": ...} is the same banner for a card
+	# that was won, not for a bond.
+	var is_bond := st.has("bond")
+	if is_bond:
+		_prog().remember("bond_" + str(st["bond"]).to_lower().replace(" ", "_"))
+		if _spirit is LumenSpirit:
+			(_spirit as LumenSpirit).set_bonds(_prog().bonds())
+			(_spirit as LumenSpirit).spin()
 	var shade := ColorRect.new()
 	shade.color = Color(0, 0, 0, 0.0)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -3110,10 +3145,10 @@ func _bond(st: Dictionary) -> void:
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_theme_constant_override("separation", 16)
 	shade.add_child(v)
-	var head := UITheme.label(Loc.t("BOND FORMED"), 30, UITheme.GOLD, UITheme.semi_font())
+	var head := UITheme.label(Loc.t("BOND FORMED" if is_bond else str(st.get("head", "PRIZE"))), 30, UITheme.GOLD, UITheme.semi_font())
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(head)
-	var who := UITheme.label(Loc.t(str(st["bond"])).to_upper(), 64, Color.WHITE, UITheme.title_font())
+	var who := UITheme.label(Loc.t(str(st["bond"] if is_bond else st["prize"])).to_upper(), 64, Color.WHITE, UITheme.title_font())
 	who.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(who)
 	var holder := CenterContainer.new()
@@ -3184,6 +3219,8 @@ func _campus_step(c: Dictionary) -> void:
 		Router.roam["tod"] = Campus.tod()
 	if c.get("cup", false):
 		Campus.cup_open()
+	if c.has("cup_add"):
+		Campus.cup_add(str(c["cup_add"][0]), int(c["cup_add"][1]))
 	if c.has("part"):
 		Campus.put("part", clampi(int(c["part"]), 0, 2))
 		scene.city.apply_tod(Campus.tod())

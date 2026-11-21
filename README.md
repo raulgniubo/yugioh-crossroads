@@ -5,6 +5,20 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.65.2
+
+**Academia de Duelos, chapter 3: "Mika no puede".** Playable from start to finish, in Spanish, with every line spoken. No cards added: 8,415 total.
+
+- **Chapter 3.** The first Cup duel of the term, on the outdoor duel field: Red against Yellow, and Mika, the best written score of her year, freezes with the winning play in her hand. She forfeits, Yellow takes three points, and you take her place to win them back. Then you look for her (Nico and Bruno can each tell you something), find her on the beach, and duel her where nobody is watching. Somebody was watching. Nico gives her a card, she asks for the Yellow again that same evening, and this time you watch her play it, turn by turn, out loud. Doctor Crowler notices.
+- **The story moves the Dorm Cup.** The forfeit gives Yellow three points and your win gives Red three, on the same table as your duels on the island.
+- **Mika is stronger after this chapter.** On the island she now duels with one more star: a stronger version of her deck and a sharper duelist. Classmates will grow this way chapter by chapter.
+- **Lumen's second card.** Another of her blank cards fills in at the end of the chapter and goes into your collection.
+- **Two places of the island now belong to the story:** the outdoor duel field (the Cup duels are played in front of its stage, with the stands behind) and the beach past the lighthouse.
+- 110 new voice files: the whole chapter, your character's four voices and Lumen's three included. The Yellow student speaks with the game's "cool" voice.
+- **Windows:** only the .exe changed.
+
+Not in this build yet: chapters 4 onward (the Torneo de Novatos, the tryouts, the Cup final on Saturday, the promotion exam), classes, rival decks that grow with your dorm, and the Academy story's English voices.
+
 ## What is in 0.65.1
 
 **Academia de Duelos, chapter 2: "La última de cuatro".** Playable from start to finish, in Spanish, with every line spoken. No cards added: 8,415 total.

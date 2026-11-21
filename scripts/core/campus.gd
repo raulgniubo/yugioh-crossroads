@@ -349,6 +349,27 @@ static func cup_score(their: String, stars: int) -> int:
 	return n
 
 
+## Points for a dorm from the story (a Cup duel on the duel field): "red", "yellow" or "blue".
+static func cup_add(which: String, n: int) -> void:
+	var i := DORMS.find(which)
+	if not cup_on() or i < 0 or n == 0:
+		return
+	var c: Dictionary = (v("cup", {}) as Dictionary).duplicate(true)
+	c["pts"][i] = int(c["pts"][i]) + n
+	put("cup", c)
+	feed.append([n, DORM_NAMES[i], "cup"])
+
+
+## Your classmates get better as the year goes on: one more star (a stronger version of their deck,
+## a sharper duelist) for each of their chapters you have finished. See CampusData.GROWTH.
+static func growth(who: String) -> int:
+	var n := 0
+	for ch in CampusData.GROWTH.get(who, []):
+		if chapter_done(str(ch)):
+			n += 1
+	return n
+
+
 static func _cup_day() -> void:
 	if not cup_on():
 		return

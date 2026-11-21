@@ -10842,6 +10842,11 @@ func _test_campus() -> void:
 	check(int(after[0]) > int(before[0]) and int(after[2]) - int(before[2]) > int(after[0]) - int(before[0]), "every new day the dorms score on their own, Blue more than Red")
 	Campus.reload()
 	check(Campus.cup_on() and Campus.cup_points() == after, "the Dorm Cup reads back from the Academy's file")
+	Campus.cup_add("yellow", 3)
+	check(int(Campus.cup_points()[1]) == int(after[1]) + 3 and int(Campus.cup_points()[0]) == int(after[0]), "the story can give Cup points to one dorm")
+	check(Campus.growth("mika") == 0, "a classmate has not grown before their chapter")
+	Campus.finish_chapter("ac_ch3")
+	check(Campus.growth("mika") == 1 and Campus.growth("nico") == 0, "a classmate duels with one more star once their chapter is finished")
 	Campus.new_game("libre")
 	check(not Campus.cup_on(), "a new Academy game starts with the Dorm Cup closed")
 	# The yards and the people the story hides exist.
