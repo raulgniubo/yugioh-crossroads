@@ -24,7 +24,17 @@ def key_of(s):
     return hashlib.md5(s.encode("utf-8")).hexdigest()[:12]
 
 
+# People with a voice of their own (Voices.OWN in the game). Their duel lines are made in that voice,
+# in the languages the voice exists in (voices.json), once they are listed in new_lines.json
+# "own_duelists" (the ones who can be dueled already). The others are left out: no lines at all,
+# and never in the voice of their personality.
+OWN = ["nico", "mika", "bruno", "sato", "crowler", "sheppard", "dorothy", "bastion", "dante", "octavia",
+       "crane", "irina", "leo", "selene", "vera"]
+
+
 def voice_of(char, pers):
+    if char in OWN:
+        return char if char in NEW.get("own_duelists", []) and char in VOICES else ""
     return "%s_%s" % (pers, "f" if char in FEMALE and pers in HAS_F else "m")
 
 
@@ -72,6 +82,8 @@ def main():
         if not p:
             continue
         v = voice_of(ck, p)
+        if not v:
+            continue
         for kind, arr in c["lines"].items():
             for en in arr:
                 add(v, en, kind)
@@ -120,6 +132,8 @@ def main():
             for lang, t in (("en", t_en), ("es", t_es)):
                 lines[(v, lang, k)] = {"voice": v, "lang": lang, "key": k, "kind": "pain", "en": "pain:" + name, "text": "", "tts": t}
 
+    # A voice only speaks the languages it was designed in.
+    lines = {k: e for k, e in lines.items() if e["lang"] in VOICES.get(e["voice"], {})}
     out = sorted(lines.values(), key=lambda e: (e["lang"], e["voice"], e["kind"], e["key"]))
     json.dump(out, open(os.path.join(HERE, "lines.json"), "w"), ensure_ascii=False, indent=0)
     done = {}

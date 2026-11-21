@@ -21,7 +21,8 @@ func _init() -> void:
 	var pr = load("res://scripts/core/profile.gd")
 	out["intros"] = pr.INTROS
 	out["wins"] = pr.WINS
-	var es: Dictionary = load("res://scripts/core/es_strings.gd").ES
+	var es: Dictionary = (load("res://scripts/core/es_strings.gd").ES as Dictionary).duplicate()
+	es.merge(load("res://scripts/core/es_campus.gd").ES)      # the Academy story's people have their duel lines there
 	var want := {}
 	var walk := func(v, f):
 		pass

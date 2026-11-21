@@ -336,5 +336,12 @@
    "[cries out in pain] Aaaaaagh...! [gasps]",
    "[cries out in pain] ¡Aaaaaagh...! [gasps]"
   ]
- }
+ },
+ "own_duelists": [
+  "nico",
+  "crowler",
+  "mika",
+  "bruno",
+  "sato"
+ ]
 }
