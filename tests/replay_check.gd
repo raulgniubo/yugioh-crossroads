@@ -10,6 +10,7 @@ func _ready() -> void:
 	var level := 2
 	var give_up := 5      # every fifth duel is surrendered a little way in
 	var turbo := false    # Turbo Duels instead
+	var one_pair := "--same" in OS.get_cmdline_user_args()
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--duels="):
 			n = int(a.substr(8))
@@ -35,6 +36,11 @@ func _ready() -> void:
 			"difficulty": 1 + (i % 3), "cpu_level": level, "lp": 4000 if i % 2 == 0 else 8000}
 		if turbo:
 			Router.duel_config["turbo"] = true
+		if one_pair:
+			# (the same pairing every time: then whatever keeps growing is a leak, not a new face being loaded)
+			Router.duel_config["player_deck"] = decks[0]
+			Router.duel_config["opponent_deck"] = decks[3]
+			Router.duel_config["opponent"] = foes[0]
 		Replays.last_saved = ""
 		var d: Node = (load("res://scenes/duel.tscn") as PackedScene).instantiate()
 		add_child(d)
