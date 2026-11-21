@@ -790,3 +790,17 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
   Voices: batch 103 taken, waits to be packed; next 104.
 - RULE from Raul (11:28 PM Nov 20): "script for windows? please always include it". The join+unzip line goes in the
   TEXT of the final report of every build, in a code block (not only in the caption of the files): he missed it there.
+
+#### NEXT BIG THING (plan sent 11:55 PM Nov 20, NO GO YET): "Academia de Duelos", a second full story
+- Plan doc (Spanish): doc 3534f9ac-5c2d-40e4-a3c0-56baa12a70e3, https://claude.ai/artifact/7a5DbXFPyc47zxYXD7BQhg
+  ("Crossroads: Academia de Duelos, el plan"; body node 2a29b44e-9fa3). Raul's ask (11:39 PM): a whole GX-style
+  story mode of its own (new student, entrance exam, Red -> Yellow -> Blue -> best of the Academy -> pro), with
+  freedom (classes, points, missions, exam when you choose), CINEMATICS + dialogues with voices and captions, original
+  characters plus the GX ones he has; plan in Spanish for him to review. 11:43 PM: keep today's Academy mode reachable
+  as "classic", a little hidden, with a "going away soon" note.
+- Plan in short: 4 acts (Rojo, Amarillo, Azul, Liga Pro), 22 chapters; mystery of a class erased ten years ago, villain
+  Silas Crane (Liga Apex) and his masked "Sin Rostro"; originals Nico, Mika, Bruno, Dante, Octavia, Sato, Brandt, Holt,
+  Vera Lux, Dona Remedios. Five builds 0.65.0 (foundations + prologue + ch.1) to 0.69.0. Voices: Spanish first, by act
+  (about 84,000 credits per language, estimates). Existing scripts/core/academy.gd (448 lines: dorms, class duels,
+  Friday exam, assignments, merit, standings, tournament) is the "classic" mode.
+- WAITING for his yes before building anything. His open decisions are the checklist at the end of the doc.
