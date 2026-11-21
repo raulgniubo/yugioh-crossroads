@@ -10872,6 +10872,29 @@ func _test_campus() -> void:
 		check(Characters.get_char(who).get("name", "") != "" and Avatars.STANDINS.has(who) and Avatars.UNIFORMS.has(who)
 				and str(Characters.get_char(who).get("deck", "")).begins_with("deck_"), "%s of the Rookie Tournament has a name, a body, a jacket and a deck" % who)
 	check(not CardData.get_card(44095762).is_empty() and not CardData.get_card(56120475).is_empty(), "the two prize cards of the Rookie Tournament exist")
+	# The posted list of the League team (chapter 5): everybody on it is somebody the game knows.
+	var lists := 0
+	var lists_ok := true
+	for st in CampusData.SCRIPTS["ac_ch5"]:
+		if not (st as Dictionary).has("roster"):
+			continue
+		lists += 1
+		var has_you := false
+		for row in (st["roster"]["rows"] as Array) + (st["roster"].get("out", []) as Array):
+			var k := str(row[1])
+			if k == "player":
+				has_you = true
+			elif Characters.get_char(k).get("name", "") == "":
+				lists_ok = false
+		if not has_you:
+			lists_ok = false
+	check(lists == 1 and lists_ok, "the League team list of chapter 5 names five people the game knows, and you are one of them")
+	var tryouts := 0
+	for st in CampusData.SCRIPTS["ac_ch5"]:
+		if (st as Dictionary).has("duel"):
+			tryouts += 1
+			check(bool(st["duel"].get("lose_ok", false)), "a tryout duel against %s can be lost and the story goes on" % str(st["duel"]["opponent"]))
+	check(tryouts == 3, "the tryouts are three duels")
 	Campus.trophy("rookie_champion")
 	check((Campus.v("trophies", []) as Array).has("rookie_champion") and CampusData.TROPHIES.has("rookie_champion"), "a trophy is kept and has a name for the agenda")
 	Campus.new_game("libre")

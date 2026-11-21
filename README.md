@@ -5,6 +5,20 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.65.4
+
+**Academia de Duelos, chapter 5: "Las pruebas del equipo".** Playable from start to finish, in Spanish, with every line spoken. No cards added: 8,415 total.
+
+- **Chapter 5.** Monday: Professor Sato opens the League team's tryouts to all three dorms, and Crowler cannot believe it. Three duels each, one against each dorm: Bruno (the wall of Red), Bastion Misawa (the best of Yellow, who wrote six decks for six kinds of duelist) and Chazz Princeton (Blue). Before you go in, Mika has notes on all three and Syrus can tell you about the captain, his brother Zane, who watches every duel and says one word all day.
+- **The three tryout duels can be lost.** Sato does not say how she scores, and she is not counting wins: each opponent says something different after a win and after a loss, and wins pay more merits. The list goes up either way.
+- **The list.** The League team is posted on screen, name by name: captain Zane, Alexis, Dante, Bastion as strategist, and you as the reserve. Under the line, sixth, Octavia Lenz, who won all three of her duels. Sato explains why in front of everybody, and Octavia does not take it well: she has asked to be drawn against you in the Cup final on Saturday.
+- What happened in the Rookie Tournament is remembered: Dante speaks to you if you beat him, and walks past if you did not.
+- Nico tried out too. He says he did not care.
+- **Bastion has a voice** (an original one, calm and low) and speaks in duels with it. 151 new voice files: 87 for the chapter, 64 for Bastion's duels.
+- **Windows:** only the .exe changed.
+
+Not in this build yet: chapters 6 and 7 (the Cup final, the promotion exam), classes, rival decks that grow with your dorm, and the Academy story's English voices.
+
 ## What is in 0.65.3
 
 **Academia de Duelos, chapter 4: "El Torneo de Novatos".** Playable from start to finish, in Spanish, with every line spoken. No cards added: 8,415 total.

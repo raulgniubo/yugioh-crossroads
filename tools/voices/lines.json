@@ -14130,6 +14130,582 @@
 "tts": "Stack 'em up! /ˈɪksiːz/!"
 },
 {
+"voice": "bastion",
+"lang": "es",
+"key": "b5ba57590a09",
+"kind": "ace",
+"en": "Here it comes.",
+"text": "Aquí viene.",
+"tts": "Aquí viene."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "0135442798fb",
+"kind": "ace_lost",
+"en": "So you can beat it. Noted.",
+"text": "Así que puedes vencerlo. Anotado.",
+"tts": "Así que puedes vencerlo. Anotado."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "d4b77a57c8e0",
+"kind": "ace_lost",
+"en": "...Impressive. That was my ace.",
+"text": "...Impresionante. Ese era mi as.",
+"tts": "...Impresionante. Ese era mi as."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "90cda07ebdf8",
+"kind": "attack",
+"en": "Go.",
+"text": "Ve.",
+"tts": "Ve."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "0293b5f86e97",
+"kind": "battle",
+"en": "Battle Phase.",
+"text": "Fase de Batalla.",
+"tts": "Fase de Batalla."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "708d37092ea7",
+"kind": "battle",
+"en": "Battle.",
+"text": "Batalla.",
+"tts": "Batalla."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "9d9b72aaa8ea",
+"kind": "battle",
+"en": "Let's settle this.",
+"text": "Resolvamos esto.",
+"tts": "Resolvamos esto."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "4ddf390099dc",
+"kind": "big_hit",
+"en": "Clean hit.",
+"text": "Golpe limpio.",
+"tts": "Golpe limpio."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "f63eeafd3fda",
+"kind": "chain",
+"en": "Chain.",
+"text": "Cadena.",
+"tts": "Cadena."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "fc88cee96ef8",
+"kind": "comeback",
+"en": "Now it's even.",
+"text": "Ahora estamos parejos.",
+"tts": "Ahora estamos parejos."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "856abe4f8ed6",
+"kind": "destroyed",
+"en": "It did its job.",
+"text": "Cumplió su trabajo.",
+"tts": "Cumplió su trabajo."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "0d906735cc18",
+"kind": "direct",
+"en": "Direct attack.",
+"text": "Ataque directo.",
+"tts": "Ataque directo."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "0f4c5c5a899f",
+"kind": "direct",
+"en": "Straight through.",
+"text": "Directo.",
+"tts": "Directo."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "c781718e5611",
+"kind": "direct",
+"en": "Open field. Go.",
+"text": "Campo abierto. Ve.",
+"tts": "Campo abierto. Ve."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "0f1ad0bad1b6",
+"kind": "draw",
+"en": "I draw.",
+"text": "Robo una carta.",
+"tts": "Robo una carta."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "69cc0e4ce0c4",
+"kind": "draw",
+"en": "Draw. Good.",
+"text": "Robo. Bien.",
+"tts": "Robo. Bien."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "3a38d1be3961",
+"kind": "draw_pressure",
+"en": "Stay calm.",
+"text": "Calma.",
+"tts": "Calma."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "e9790a830ffb",
+"kind": "duel",
+"en": "Duel!",
+"text": "¡Duelo!",
+"tts": "¡Duelo!"
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "08d1e727b260",
+"kind": "end",
+"en": "Your turn.",
+"text": "Tu turno.",
+"tts": "Tu turno."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "851a1b1e0e70",
+"kind": "end",
+"en": "Turn end.",
+"text": "Fin del turno.",
+"tts": "Fin del turno."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "a2db72e9e159",
+"kind": "end",
+"en": "I end my turn.",
+"text": "Termino mi turno.",
+"tts": "Termino mi turno."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "8ea212c6eb67",
+"kind": "first",
+"en": "I'll go first.",
+"text": "Yo empiezo.",
+"tts": "Yo empiezo."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "f70873719347",
+"kind": "first",
+"en": "First turn. Mine.",
+"text": "Primer turno. Mío.",
+"tts": "Primer turno. Mío."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "78fb0ec2f847",
+"kind": "fusion",
+"en": "Fusion Summon.",
+"text": "Invocación por Fusión.",
+"tts": "Invocación por Fusión."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "b22e91389be1",
+"kind": "hurt",
+"en": "Not bad.",
+"text": "Nada mal.",
+"tts": "Nada mal."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "5ebad54ceda8",
+"kind": "hurt_big",
+"en": "I'm still here.",
+"text": "Sigo aquí.",
+"tts": "Sigo aquí."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "8c7a43859ca7",
+"kind": "hurt_big",
+"en": "...That one counted.",
+"text": "...Esa sí contó.",
+"tts": "...Esa sí contó."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "c0c68dc16d3a",
+"kind": "intro",
+"en": "Let's go.",
+"text": "Vamos.",
+"tts": "Vamos."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "2b01e5396178",
+"kind": "lose",
+"en": "You earned it.",
+"text": "Te lo ganaste.",
+"tts": "Te lo ganaste."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "cc5f1368dd5f",
+"kind": "lose",
+"en": "Next time.",
+"text": "La próxima.",
+"tts": "La próxima."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "fdbc27268769",
+"kind": "lose",
+"en": "I lost. Fair.",
+"text": "Perdí. Es justo.",
+"tts": "Perdí. Es justo."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "8bdb92c77b8c",
+"kind": "low",
+"en": "It's not over.",
+"text": "No ha terminado.",
+"tts": "No ha terminado."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "f98419afa136",
+"kind": "negate",
+"en": "Negated.",
+"text": "Negado.",
+"tts": "Negado."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "a3ce393f5e97",
+"kind": "negated",
+"en": "...Stopped.",
+"text": "...Parado.",
+"tts": "...Parado."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "3c29a1688841",
+"kind": "pain",
+"en": "pain:last",
+"text": "",
+"tts": "[cries out in pain] ¡Aaaaaagh...! [gasps]"
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "4a52769b52b2",
+"kind": "pain",
+"en": "pain:small1",
+"text": "",
+"tts": "[grunts in pain] ¡Ngh!"
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "6891ff5916d4",
+"kind": "pain",
+"en": "pain:small2",
+"text": "",
+"tts": "[winces in pain] ¡Ugh...!"
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "765dca8512c5",
+"kind": "pain",
+"en": "pain:big",
+"text": "",
+"tts": "[shouting] [in pain] ¡Aaagh!"
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "60ac90e9261a",
+"kind": "react",
+"en": "Interesting.",
+"text": "Interesante.",
+"tts": "Interesante."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "82339cc425a8",
+"kind": "rematch",
+"en": "You won last time. Not today.",
+"text": "Ganaste la última vez. Hoy no.",
+"tts": "Ganaste la última vez. Hoy no."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "f4ea2daf4a09",
+"kind": "rematch",
+"en": "Again? Same result.",
+"text": "¿Otra vez? Mismo resultado.",
+"tts": "¿Otra vez? Mismo resultado."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "fbc91e2b3341",
+"kind": "ritual",
+"en": "Ritual Summon.",
+"text": "Invocación por Ritual.",
+"tts": "Invocación por Ritual."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "ceae05723ce1",
+"kind": "second",
+"en": "You first.",
+"text": "Tú primero.",
+"tts": "Tú primero."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "dfe5420d4624",
+"kind": "second",
+"en": "Go ahead.",
+"text": "Adelante.",
+"tts": "Adelante."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "c3613800fd09",
+"kind": "set",
+"en": "One card face-down.",
+"text": "Una carta boca abajo.",
+"tts": "Una carta boca abajo."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "d35651b2546a",
+"kind": "set",
+"en": "One face-down.",
+"text": "Una boca abajo.",
+"tts": "Una boca abajo."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "5c4d0e2a879f",
+"kind": "set_mon",
+"en": "Monster. Face-down.",
+"text": "Monstruo. Boca abajo.",
+"tts": "Monstruo. Boca abajo."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "56f7ab0784c4",
+"kind": "spell",
+"en": "Activate.",
+"text": "Activo.",
+"tts": "Activo."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "6ad55654c238",
+"kind": "spell",
+"en": "Spell Card.",
+"text": "Carta Mágica.",
+"tts": "Carta Mágica."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "d1d40efc0c3b",
+"kind": "spell",
+"en": "Spell.",
+"text": "Mágica.",
+"tts": "Mágica."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "726c14923b81",
+"kind": "summon",
+"en": "Take the field.",
+"text": "Al campo.",
+"tts": "Al campo."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "81b226834c87",
+"kind": "summon",
+"en": "I summon this.",
+"text": "Invoco esto.",
+"tts": "Invoco esto."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "dd6ae2679d36",
+"kind": "summon",
+"en": "Summon.",
+"text": "Invoco.",
+"tts": "Invoco."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "fc26d65c064a",
+"kind": "synchro",
+"en": "Synchro Summon.",
+"text": "Invocación por Sincronía.",
+"tts": "Invocación por Sincronía."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "6c6182564034",
+"kind": "taunt",
+"en": "Your move.",
+"text": "Tu jugada.",
+"tts": "Tu jugada."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "c3192b57701d",
+"kind": "trap",
+"en": "Trap card.",
+"text": "Carta de Trampa.",
+"tts": "Carta de Trampa."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "dec7640c04a1",
+"kind": "trap",
+"en": "I saw that coming.",
+"text": "Lo vi venir.",
+"tts": "Lo vi venir."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "df5856ac7edc",
+"kind": "trap",
+"en": "Trap.",
+"text": "Trampa.",
+"tts": "Trampa."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "58d592921fa8",
+"kind": "turn",
+"en": "My turn.",
+"text": "Mi turno.",
+"tts": "Mi turno."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "6590c9116c10",
+"kind": "turn",
+"en": "Draw.",
+"text": "Robo.",
+"tts": "Robo."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "3bb70419ae79",
+"kind": "win",
+"en": "It's over.",
+"text": "Se acabó.",
+"tts": "Se acabó."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "a92f26f00d7f",
+"kind": "win",
+"en": "You fought well.",
+"text": "Peleaste bien.",
+"tts": "Peleaste bien."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "c33111d5df94",
+"kind": "win",
+"en": "Good duel.",
+"text": "Buen duelo.",
+"tts": "Buen duelo."
+},
+{
+"voice": "bastion",
+"lang": "es",
+"key": "d1a34ba7adba",
+"kind": "xyz",
+"en": "Xyz Summon.",
+"text": "Invocación Xyz.",
+"tts": "Invocación /ˈeksis/."
+},
+{
 "voice": "bruno",
 "lang": "es",
 "key": "15b859059832",

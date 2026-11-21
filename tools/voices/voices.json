@@ -208,5 +208,11 @@
    "id": "ez6Og2BP7JtGFgQQHJEK",
    "name": "Crossroads ES - Octavia"
   }
+ },
+ "bastion": {
+  "es": {
+   "id": "qVkoHk0N8IiaTpsfBFzF",
+   "name": "Crossroads - Bastion (ES)"
+  }
  }
 }

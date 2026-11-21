@@ -1006,3 +1006,18 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - GROWTH: nico grows with ac_ch4. Spanish lines must not depend on the player's gender ("mi compañero de cuarto",
   "el campeón" were rewritten); "quiero a Dante" read as romantic and was changed before it was voiced.
 - VOICES: batches 206-218 (225 files; 218 = one Octavia line reworded). voices/es = 2,654. Next batch number: 219.
+
+#### 0.65.4 STATE (Nov 21, late morning; newer than the block above)
+- CHAPTER 5 "The Tryouts" (ac_ch5): Red dorm breakfast -> free walk to the main building (Mika's notes on the three
+  opponents, Syrus on the captain: both optional) -> the arena (ac_hall) -> three duels, ALL lose_ok: `bruno`
+  (deck_rock), `bastion` (deck_water), `chazz` (his own deck), standard tier, difficulty 1 -> the list
+  ({"roster": {...}}, scripts/story/story_roster.gd: rows [role, key] + "out" rows under a line) -> Sato explains ->
+  Octavia (choice) -> Red dorm night -> room. `remember` league_reserve. Lines with "if": "rookie_champion" /
+  "rookie_finalist" read what chapter 4 remembered. ac_ch6 "The Cup" is named, no script.
+- THE HALL (ac_hall), in STAGE coordinates: columns stand at x = +-3.2, z = 1, 7, 13 (radius 0.5); the indoor duel
+  stage is at (-6.2, 5.4) radius 4; benches fill x -13.4..1.0, z 9.4..11.7. Free floor: the middle strip
+  (|x| < 2.4) and the east side (x 3.9..8, z 2..9). The audit catches a spot inside a column.
+- Bastion: voice qVkoHk0N8IiaTpsfBFzF (tools/voices/voices.json), in "own_duelists". His body is still the stand-in
+  duelist_m4 (the same one Ivo wears; they never share a scene) until Raul drops `bastion` into characters.
+- batch.py's voice order list needs every own voice (it crashed on "bastion" until it was added there).
+- VOICES: batches 219-226 (151 files). Next batch number: 227.

@@ -637,6 +637,8 @@ func _do_step(st: Dictionary) -> bool:
 			return true
 	elif st.has("bracket"):
 		await _bracket_step(st["bracket"])
+	elif st.has("roster"):
+		await _roster_step(st["roster"])
 	elif st.has("prize"):
 		await _bond(st)
 	elif st.has("room"):
@@ -2932,6 +2934,38 @@ func _bracket_step(b: Dictionary) -> void:
 	while left > 0.0 and not _skip and not _advance_wanted:
 		await get_tree().process_frame
 		left -= get_process_delta_time()
+	_advance_wanted = false
+	panel.leave()
+
+
+## A list that gets posted (a team, a ranking): the names come up one by one, it stays long
+## enough to be read (or until you press on once it is all there), and goes.
+func _roster_step(l: Dictionary) -> void:
+	_cutscene(true)
+	_box.visible = false
+	if _skip:
+		return
+	var panel := StoryRoster.new(l)
+	_ui.add_child(panel)
+	var full := panel.shown_after()
+	var left := full + 6.0
+	if _auto:
+		left = 0.3
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--story-shots="):
+				await _snap("roster%d" % step, full + 0.3)
+	_advance_wanted = false
+	var shown := 0.0
+	while left > 0.0 and not _skip:
+		await get_tree().process_frame
+		var dt := get_process_delta_time()
+		left -= dt
+		shown += dt
+		# (A press before the last name is up does not close it: the list is the scene.)
+		if _advance_wanted:
+			_advance_wanted = false
+			if shown >= full:
+				break
 	_advance_wanted = false
 	panel.leave()
 
