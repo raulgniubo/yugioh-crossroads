@@ -743,3 +743,9 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
   else the file's base name, so a rename in Finder/Explorer shows too. _trim keeps named replays like favorites.
   replay_list: RoundButton "pencil" -> _ask_name (LineEdit, Enter saves). Dev: --replay-rename, --result-replay.
 - test_runner _test_0640 covers file round trip, other-version settle, later format, rubbish, title_of and rename.
+- SHIPPED 0.64.1 at about 9:08 PM Nov 20 (commit a1dda47, pushed). Installed on the Mac (mac identical, 0.64.1, windows
+  identical). Windows parts in the chat (only the .exe changed). Suite all pass (same lines as 0.64.0, REPLAY CHECK 4 of 4,
+  test_runner also with an empty HOME). Seen in pictures: the results screen with the star + Watch (plain ending only),
+  the Replays screen with the pencil, the naming box. NOT seen: the star on a Story/Match results screen (same code path,
+  added for every branch), typing a name by hand in the box (the rename itself is covered by test_runner).
+  Voices: batch 103 taken, waits to be packed; next 104; check-in trig_015LL1C4Qx5PTSKg274jW2ig at 10:01 PM.
