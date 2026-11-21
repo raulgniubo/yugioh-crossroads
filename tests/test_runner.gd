@@ -10927,6 +10927,33 @@ func _test_campus() -> void:
 	check(not CardData.get_card(32296881).is_empty(), "the card Octavia gives you exists")
 	check(CampusData.TROPHIES.has("cup_final") and CampusData.TROPHIES.has("dorm_cup"), "the Cup trophies have names for the agenda")
 	check(str(CampusData.WEEK_PLAN[5][1]) == "Dorm Cup final", "the week plan has the Cup final on Saturday, as the story says")
+	# The promotion exam (chapter 7): three problems and one duel with a rule against you.
+	var problems := 0
+	var exam_duels := 0
+	var promoted := false
+	for st in CampusData.SCRIPTS["ac_ch7"]:
+		var e7: Dictionary = st
+		if e7.has("duel") and e7["duel"].has("puzzle"):
+			problems += 1
+			var pz := Puzzles.by_id(str(e7["duel"]["puzzle"]))
+			# (Its cards come with the card folder: without one, as on the build server, only the rest is checked.)
+			check(not pz.is_empty() and bool(pz.get("exam", false)) and (Puzzles._id("Blue-Eyes White Dragon") == 0 or Puzzles.ready(pz)) and bool(e7["duel"].get("lose_ok", false)),
+					"exam problem %s exists, its cards exist, and failing it does not stop the exam" % str(e7["duel"]["puzzle"]))
+		elif e7.has("duel"):
+			exam_duels += 1
+			check(str(e7["duel"]["opponent"]) == "crowler" and int(e7["duel"].get("my_lp", 4000)) == 2000 and not bool(e7["duel"].get("lose_ok", false)),
+					"the promotion duel is against Crowler, starts you at 2000 Life Points and has to be won")
+		if e7.has("campus") and int((e7["campus"] as Dictionary).get("dorm", -1)) == 1:
+			promoted = true
+	check(problems == 3 and exam_duels == 1 and promoted, "the promotion exam is three problems, one duel and a yellow jacket")
+	for d3 in 3:
+		check(AcademyRooms.ROOMS.has(str(Campus.ROOM[d3])), "your room in the %s exists" % Campus.DORM_NAMES[d3])
+	var on_board := 0
+	for pz2 in Puzzles.LIST:
+		if not bool((pz2 as Dictionary).get("exam", false)):
+			on_board += 1
+	check(on_board == Puzzles.LIST.size() - 3, "the three exam problems are kept off the puzzle board")
+	check(CampusData.TROPHIES.has("promotion_yellow") and Campus.chapter_done(str(CampusData.ACT_CLOSERS[0])) == false, "the promotion has a trophy, and the act's last chapter is known")
 	Campus.put("cup", {"open": true, "pts": [5, 9, 14], "since": 1})
 	Campus.trophy("rookie_champion")
 	check((Campus.v("trophies", []) as Array).has("rookie_champion") and CampusData.TROPHIES.has("rookie_champion"), "a trophy is kept and has a name for the agenda")

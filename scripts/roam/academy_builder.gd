@@ -395,9 +395,15 @@ func _build_street_furniture() -> void:
 	# A statue by the school steps and banners at the dock
 	collide(prop("dragon_statue", clear_spot(Vector3(-9.0, 0.1, -26.0)), 0.5, 4.5, true), 0.6)
 	collide(prop("dragon_statue", clear_spot(Vector3(9.0, 0.1, -26.0)), -0.5, 4.5, true), 0.6)
-	neon_sign("WELCOME TO DUEL ACADEMY", Vector3(0, 4.8, 47.0 + PIER), theme["accent2"], 120, PI, false)
+	# The welcome sign over the way in from the pier. It faces the sea, on a board, so it reads by day
+	# to somebody stepping off the ferry. (It used to face the school, lit only at night: from the
+	# pier there were two bare black poles and nothing between them.)
+	box(Vector3(12.2, 1.5, 0.14), Vector3(0, 4.8, 46.9 + PIER), mat(Color(0.08, 0.1, 0.16), 0.3, 0.6), false)
+	box(Vector3(12.4, 0.1, 0.2), Vector3(0, 5.6, 46.9 + PIER), mat(Color(0.82, 0.68, 0.3), 0.6, 0.4), false)
+	box(Vector3(12.4, 0.1, 0.2), Vector3(0, 4.0, 46.9 + PIER), mat(Color(0.82, 0.68, 0.3), 0.6, 0.4), false)
+	neon_sign("WELCOME TO DUEL ACADEMY", Vector3(0, 4.8, 47.0 + PIER), Color(1.0, 0.93, 0.7), 150, 0.0, false)
 	for sx in [-1, 1]:
-		cyl(0.1, 0.1, 5.0, Vector3(sx * 6.0, 2.5, 47.0 + PIER), mat(Color(0.2, 0.2, 0.24), 0.4, 0.7))
+		cyl(0.1, 0.1, 5.7, Vector3(sx * 6.0, 2.85, 46.9 + PIER), mat(Color(0.2, 0.2, 0.24), 0.4, 0.7))
 	_build_new_places()
 	_dress_dorms()
 	_school_colors()
@@ -415,12 +421,16 @@ func _build_walls() -> void:
 		var a := i * TAU / 34.0
 		var r := SHORE - 3.0
 		var p := Vector3(cos(a) * r, 2.0, sin(a) * r)
-		if absf(p.x) < 4.0 and p.z > 50.0:
-			continue
+		var wide := 14.5
+		if absf(p.x) < 8.0 and p.z > 50.0:
+			# The two pieces either side of the pier stop at the pier's own side walls. (They used to run
+			# straight across it: nobody who stepped off the ferry could walk onto the island.)
+			wide = 10.4
+			p.x += signf(p.x) * 2.05
 		var body := StaticBody3D.new()
 		var cs := CollisionShape3D.new()
 		var sh := BoxShape3D.new()
-		sh.size = Vector3(14.5, 6, 1.2)
+		sh.size = Vector3(wide, 6, 1.2)
 		cs.shape = sh
 		body.add_child(cs)
 		body.position = p

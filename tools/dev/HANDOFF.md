@@ -1046,3 +1046,79 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - VOICES: batches 227-238 (219 files). Next batch number: 239.
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
+
+#### 0.66.0 STATE (Nov 21, afternoon; newer than the block above)
+- CHAPTER 7 "The Exam" (ac_ch7), END OF ACT 1: Room Two morning (weekday 4) -> Red dorm breakfast -> free walk
+  (octavia at the school door, jaden on the cliff: both optional) -> the hall -> three exam problems (puzzle duels,
+  lose_ok, 20 merits each when won, {"tally": "exam", "if": "won"}) -> {"tally_flags": "exam"} -> Crowler reads the
+  score (if exam_is_3/2/1/0) -> duel `crowler` (deck_ancient_gear, standard, difficulty 1, boss, "my_lp": 2000, MUST
+  be won) -> {"campus": {"dorm": 1, "trophy": "promotion_yellow"}} + remember yellow_dorm -> Red dorm night (Sato)
+  -> Room Two "The last night" (Nico, choice, he leaves) -> sleep -> dawn -> the pier (Nico, choice, bond +2) ->
+  end, unlock ac_ch8 ("A Room of Your Own", act 2: named, no script), wake on the pier.
+- NEW STORY PIECES: duel "puzzle": id (a Puzzles problem as a story duel: no versus screen, opponent_name
+  "Exam problem", difficulty 0; flags won/lost as always); {"tally": name} adds one to flags["_n_name"] (use with
+  "if"); {"tally_flags": name} sets flag "<name>_is_<count>".
+- PUZZLES: exam_1..3 are marked "exam" (the puzzle board skips them). exam_2 and exam_3 are "real_only": the old
+  small engine in tools/puzzle_check.gd cannot play Creature Swap or Enemy Controller's tribute, so it skips them.
+  Check those in the real engine: `godot --headless --path . res://tests/ocg_sim.tscn -- puzzles exam_2 3 1`
+  (wants "solved by the Extreme CPU").
+- ROOMS: Campus.ROOM is ["red_room_2", "yel_room_2", "blue_room_1"] (the old "yellow_room_1" did not exist).
+  CampusLife._build_spots places bed and mission board by dorm: Red as before; Yellow/Blue bed at the back-left
+  bed of the "fine bedroom", board on the LEFT wall at z 0.2 (the right wall has the wardrobe). Room header
+  "Your room. A door that closes." for a promoted player's own room.
+- CampusData.ACT_CLOSERS (["ac_ch6"]): the agenda's "Moving up" line "The chapter that closes this act".
+- DEV ARGS: `--campus=island --dorm=1 --inside=yel_room_2[,x,z,yaw] --shot=/tmp/x.png --after=9` (a photo of a
+  room as a promoted player).
+- Spanish rule kept: Crowler says "tu" to the player; no line depends on the player's gender.
+- VOICES: batches 239-246 (149 files). Next batch number: 247.
+- Open: Nico's wide shot on the pier printed CAM BAD in the --story-lose audit only; the exam problems and the
+  2000 LP duel were not played by hand; the Cup goes on counting after the end of term.
+
+- RAUL PLAYED THE PROLOGUE FOR THE FIRST TIME (Nov 21, noon) AND FOUND, all fixed in 0.66.0:
+  * PIER WALL: AcademyBuilder._build_walls put two 14.5 m wall pieces across the pier (ring of 34, the two at
+    |x| 6.4 were not skipped by "absf(p.x) < 4"). Now those two are 10.4 wide and pushed 2.05 outward. The
+    holographic fence shader has a `gap` uniform (roam_extras) so it does not draw across the pier.
+  * RELEASE-ONLY HANG: `while ...: await get_tree().process_frame` in a node whose scene was lifted out of the
+    tree by change_scene (alive, not in the tree, for one frame): in a DEBUG run get_tree() is null -> one SCRIPT
+    ERROR and the function ends. In a RELEASE build the error does not stop the function: it loops forever
+    without yielding (and writes the error to godot.log millions of times: 1.4 GB in 4 minutes here). Seen by Raul
+    as: pause menu -> Main Menu during a goal = black screen, music playing. Router.go now queue_frees the old
+    scene and waits a frame BEFORE change_scene_to_file, so it is deleted while still in the tree. Proven both
+    ways with a Linux RELEASE export of the game (old code: hang; new code: menu). _do_goal also returns when out
+    of the tree.
+  * HOW TO TEST IN A RELEASE BUILD HERE: add a temporary preset "LinuxTest" (platform "Linux", export_path
+    /tmp/linrel/Crossroads.x86_64, embed_pck false) to export_presets.cfg, `godot --headless --export-release
+    "LinuxTest" ...` (4 min, 540 MB), restore export_presets.cfg, run under xvfb with --rendering-driver opengl3
+    and the dev args after `--`. Its log goes to $HOME/.local/share/Crossroads/logs (watch the disk).
+  * `--esc-test` (Router._esc_test): at a story's first goal presses Esc, clicks Resume, Esc, clicks Main Menu
+    with real key and mouse events and prints "ESC TEST: ..." lines. Start it at a goal step:
+    `--campus=ac_prologue:71 --esc-test` (a profile.cfg with created=true keeps the opening out of the way).
+  * PAUSE MENU: its own CanvasLayer (60). The story's _choice_box (a VBox in the middle of the screen) ignores the
+    mouse: empty, it swallowed the clicks meant for Resume.
+  * FACES: Avatars.even_light(model): BaseMaterial3D -> a copy with disable_receive_shadows (works in both
+    renderers, checked in a small scene); the hero, uniform and hero-look shaders have render_mode
+    shadows_disabled. tools/models/smooth_head.py in.glb out.glb [normal rounds 12] [shape rounds 6]: averages the
+    head's normals and relaxes the face (shape rounds 0 for models with glasses: mika, octavia, elder_m). Run on
+    sato, nico, mika, bruno, dante, crane, octavia, elder_m (the GLBs in assets/models/people are the smoothed
+    ones; the originals are in git history).
+  * FORWARD+ CAN BE RUN HERE for small scenes: VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json xvfb-run
+    godot --rendering-driver vulkan --rendering-method forward_plus --path . -s script.gd (the whole island runs
+    out of memory: 7 GB). /tmp/glbview.sh (heads side by side), /tmp/skyview.sh (the sky alone), both renderers.
+  * SKY IN SQUARES ON A MAC: the sine hash (fract(sin(dot)) * 43758) in the lattice noise. city_builder's h1/h/h3
+    are now whole-number hashes (uvec multiply and xor). 20-odd other shaders still use the sine hash (duel
+    field, turbo track, weather...): change them the same way if squares show up there. NOT CONFIRMED ON A MAC.
+  * `--faces=sato,nico:tag` (roam dev arg): four close-ups per character as the game draws them, to
+    /tmp/face_<tag>_<key>_<n>.png; /tmp/faces.sh and /tmp/facesheet.py make the sheet.
+  * WALK CHECK: scripts/roam/walk_check.gd (WalkCheck.reach: breadth-first over half-metre steps with
+    PhysicsServer3D.body_test_motion and the player's body; a step may climb 0.5 m and must land on a floor; the
+    cell key includes a height band). StoryDirector._walk_check runs it in --story-audit before each goal and
+    each task, leg by leg through the doors (_place_of, _place_chain: scene._rooms door/out/at/half).
+    /tmp/walkall.sh runs every chapter; "WALK BLOCKED" is a failure to look at.
+  * Day card: CampusLife._place_chip puts it 12 px under scene._purse. Welcome sign: board + sign facing +z.
+    In Campus mode there is no ferry pad and extras.travel_world refuses with a toast.
+- HE ASKED FOR (next build, his words in the plan doc): voices in the open world. People greet you as you walk by
+  (quieter from far away: positional audio), everything that is text when you talk to somebody gets a voice,
+  Lumen's world remarks too, sparse, never on top of another voice. Start with the Academy, then the other worlds.
+- He asked whether the game can make money: answered (not as it is; the original parts could, with its own card
+  game; YouTube ads on videos are the tolerated route). He said it was only a question: change nothing.
+

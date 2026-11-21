@@ -133,12 +133,14 @@ uniform int kind = 0;
 uniform float tile = 1.0;
 varying vec3 wp;
 varying vec3 wn;
-float h1(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+// (Whole-number hashes: the old sine one gave a different answer for the same corner depending on
+// which neighbour asked, on Apple graphics chips, and the clouds and ground came out in hard squares.)
+float h1(vec2 p) { uvec2 q = uvec2(ivec2(floor(p + 0.5))) * uvec2(1597334673u, 3812015801u); uint n = (q.x ^ q.y) * 1597334673u; return float(n >> 8u) * (1.0 / 16777216.0); }
 float n2(vec2 p) {
 	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(h1(i), h1(i + vec2(1.0, 0.0)), f.x), mix(h1(i + vec2(0.0, 1.0)), h1(i + vec2(1.0, 1.0)), f.x), f.y);
 }
-float h3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float h3(vec3 p) { uvec3 q = uvec3(ivec3(floor(p + 0.5))) * uvec3(1597334673u, 3812015801u, 2798796415u); uint n = (q.x ^ q.y ^ q.z) * 1597334673u; return float(n >> 8u) * (1.0 / 16777216.0); }
 float n3(vec3 p) {
 	vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	float a = mix(mix(h3(i), h3(i + vec3(1.0, 0.0, 0.0)), f.x), mix(h3(i + vec3(0.0, 1.0, 0.0)), h3(i + vec3(1.0, 1.0, 0.0)), f.x), f.y);
@@ -551,7 +553,7 @@ uniform vec3 deep : source_color = vec3(0.03, 0.2, 0.42);
 uniform vec3 shallow : source_color = vec3(0.16, 0.62, 0.68);
 uniform float lum = 1.0;
 varying vec3 wp;
-float h1(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float h1(vec2 p) { uvec2 q = uvec2(ivec2(floor(p + 0.5))) * uvec2(1597334673u, 3812015801u); uint n = (q.x ^ q.y) * 1597334673u; return float(n >> 8u) * (1.0 / 16777216.0); }
 float n2(vec2 p) {
 	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(h1(i), h1(i + vec2(1.0, 0.0)), f.x), mix(h1(i + vec2(0.0, 1.0)), h1(i + vec2(1.0, 1.0)), f.x), f.y);
@@ -1902,7 +1904,7 @@ uniform vec3 cloud_col : source_color = vec3(1.0);
 uniform vec3 cloud_shade : source_color = vec3(0.6, 0.7, 0.82);
 uniform float cloud = 0.45;
 uniform float stars = 0.0;
-float h1(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float h1(vec2 p) { uvec2 q = uvec2(ivec2(floor(p + 0.5))) * uvec2(1597334673u, 3812015801u); uint n = (q.x ^ q.y) * 1597334673u; return float(n >> 8u) * (1.0 / 16777216.0); }
 float n2(vec2 p) {
 	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(h1(i), h1(i + vec2(1.0, 0.0)), f.x), mix(h1(i + vec2(0.0, 1.0)), h1(i + vec2(1.0, 1.0)), f.x), f.y);
@@ -2150,7 +2152,7 @@ uniform float wet = 1.0;
 uniform float lanes = 0.0;
 uniform vec3 tint = vec3(0.055, 0.056, 0.065);
 varying vec3 wp;
-float h(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float h(vec2 p) { uvec2 q = uvec2(ivec2(floor(p + 0.5))) * uvec2(1597334673u, 3812015801u); uint n = (q.x ^ q.y) * 1597334673u; return float(n >> 8u) * (1.0 / 16777216.0); }
 float n(vec2 p) {
 	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y);
@@ -2211,7 +2213,7 @@ shader_type spatial;
 uniform vec4 base : source_color;
 uniform float tile = 1.2;
 varying vec3 wp;
-float h(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+float h(vec2 p) { uvec2 q = uvec2(ivec2(floor(p + 0.5))) * uvec2(1597334673u, 3812015801u); uint n = (q.x ^ q.y) * 1597334673u; return float(n >> 8u) * (1.0 / 16777216.0); }
 float n(vec2 p) {
 	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(h(i), h(i + vec2(1.0, 0.0)), f.x), mix(h(i + vec2(0.0, 1.0)), h(i + vec2(1.0, 1.0)), f.x), f.y);
@@ -2299,7 +2301,7 @@ func grass_material(bright := 1.0) -> ShaderMaterial:
 shader_type spatial;
 uniform float bright = 1.0;
 varying vec3 wp;
-float h(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+float h(vec2 p) { uvec2 q = uvec2(ivec2(floor(p + 0.5))) * uvec2(1597334673u, 3812015801u); uint n = (q.x ^ q.y) * 1597334673u; return float(n >> 8u) * (1.0 / 16777216.0); }
 float n(vec2 p) {
 	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(h(i), h(i + vec2(1.0, 0.0)), f.x), mix(h(i + vec2(0.0, 1.0)), h(i + vec2(1.0, 1.0)), f.x), f.y);

@@ -20,7 +20,7 @@ const DORM_COLORS := [Color("d9342b"), Color("f2c230"), Color("2f6fe0")]
 ## Merits it takes to be allowed up from each dorm (tuned by play).
 const NEED := [300, 800, 1500]
 ## Your room, by dorm: the room key in AcademyRooms and where the bed is, from the room's centre.
-const ROOM := ["red_room_2", "yellow_room_1", "blue_room_1"]
+const ROOM := ["red_room_2", "yel_room_2", "blue_room_1"]
 const DEFAULTS := {"started": false, "mode": "academia", "day": 1, "part": 0, "dorm": 0, "merits": 0,
 	"bonds": {}, "missions": {}, "trophies": [], "seen": [], "done": [], "wins": 0, "losses": 0, "slept": 0,
 	"free_days": false, "jacket": false, "version": 1}

@@ -285,6 +285,7 @@ func _build_ui() -> void:
 	_choice_box.offset_right = 360
 	_choice_box.offset_top = -150
 	_choice_box.add_theme_constant_override("separation", 14)
+	_choice_box.mouse_filter = Control.MOUSE_FILTER_IGNORE     # (empty, it must not swallow clicks meant for what is behind it)
 	_ui.add_child(_choice_box)
 	# NEXT GOAL panel.
 	_goal_box = PanelContainer.new()
@@ -641,6 +642,12 @@ func _do_step(st: Dictionary) -> bool:
 		await _bracket_step(st["bracket"])
 	elif st.has("roster"):
 		await _roster_step(st["roster"])
+	elif st.has("tally"):
+		# {"tally": name}: one more of something (usually with "if": "won").
+		flags["_n_" + str(st["tally"])] = int(flags.get("_n_" + str(st["tally"]), 0)) + 1
+	elif st.has("tally_flags"):
+		# {"tally_flags": name}: sets the flag "<name>_is_<count>", so lines can say how it went.
+		flags["%s_is_%d" % [str(st["tally_flags"]), int(flags.get("_n_" + str(st["tally_flags"]), 0))]] = true
 	elif st.has("cup_table"):
 		await _board_step(StoryCup.new(st["cup_table"]), "cup%d" % step)
 	elif st.has("prize"):
@@ -1522,9 +1529,14 @@ func _do_goal(st: Dictionary) -> void:
 	var r := float(st.get("r", 2.6))
 	if _auto:
 		await get_tree().create_timer(1.2).timeout
+		_walk_check(str(st["goal"]), at, r)
 		scene._player.position = Vector3(at.x, scene._player.position.y, at.z + 0.6)
 	while true:
+		if not is_inside_tree():
+			return      # the chapter was left from the pause menu while a goal was up
 		await get_tree().process_frame
+		if not is_inside_tree() or not is_instance_valid(scene):
+			return
 		if st.has("who") and _actors.has(st["who"]):
 			at = (_actors[st["who"]] as Node3D).global_position
 			scene.extras.waypoint = Vector3(at.x, 0, at.z)
@@ -1932,11 +1944,79 @@ func _auto_tasks(here: String, home: String) -> bool:
 			_place_task(i, here, home)
 			var at = _task_pos(t)
 			if at != null:
+				_walk_check(str(t.get("label", "task %d" % i)), at, float(t.get("r", 2.4)))
 				scene._player.position = Vector3((at as Vector3).x, (at as Vector3).y, (at as Vector3).z + 1.4)
 				scene._player.velocity = Vector3.ZERO
 			await get_tree().create_timer(0.3).timeout
 			await _run_task(i)
 	return false
+
+
+## The audit (--story-audit) walks to each goal before it jumps there: is there a way on foot from
+## where the player stands? (See WalkCheck.) A goal in another room is walked the way a player goes:
+## to the "Leave" mat of each room on the way out, to the door of each room on the way in (rooms
+## are built far apart and a door carries you across), and the last stretch to the goal itself.
+func _walk_check(what: String, at: Vector3, r: float) -> void:
+	if not _audit or scene == null or scene._player == null:
+		return
+	var from: Vector3 = scene._player.global_position
+	var near_kame := func(p: Vector3) -> bool: return p.distance_to(ShopInterior.AT) < 30.0
+	if near_kame.call(from) != near_kame.call(at):
+		print("WALK door step ", step, "  ", what, "  (through the Kame Game door, not walked)")
+		return
+	var a := _place_chain(_place_of(from))
+	var b := _place_chain(_place_of(at))
+	var ia := 0
+	while ia < a.size() and not (a[ia] in b):
+		ia += 1
+	if ia >= a.size():
+		print("WALK BLOCKED step ", step, "  ", what, "  no chain of doors from '", a[0], "' to '", b[0], "'")
+		return
+	var ib := b.find(a[ia])
+	var legs: Array = []
+	var pos := from
+	for i in ia:
+		var rd: Dictionary = scene._rooms[a[i]]
+		legs.append([pos, (rd["at"] as Vector3) + Vector3(0, 0, (rd["half"] as Vector2).y - 0.7), 1.7, "the way out of " + str(a[i])])
+		pos = (rd["door"] as Vector3) + (rd.get("out", Vector3(0, 0, 1)) as Vector3) * float(rd.get("step", 2.2))
+	for i in range(ib - 1, -1, -1):
+		var rd: Dictionary = scene._rooms[b[i]]
+		var out: Vector3 = rd.get("out", Vector3(0, 0, 1))
+		legs.append([pos, (rd["door"] as Vector3) + out * (0.9 if not rd.has("step") else 0.6), 2.3 if not rd.has("step") else 1.3, "the door of " + str(b[i])])
+		pos = (rd["at"] as Vector3) + Vector3(0, 0, (rd["half"] as Vector2).y - 1.8)
+	legs.append([pos, at, maxf(r, 1.2), what])
+	var t0 := Time.get_ticks_msec()
+	var cells := 0
+	for leg in legs:
+		var got: Dictionary = WalkCheck.reach(scene._player, leg[0], leg[1], float(leg[2]))
+		cells += int(got["cells"])
+		if not bool(got["ok"]):
+			print("WALK BLOCKED step ", step, "  ", what, "  at: ", leg[3], "  from ", (leg[0] as Vector3).snapped(Vector3(0.1, 0.1, 0.1)), " to ", (leg[1] as Vector3).snapped(Vector3(0.1, 0.1, 0.1)),
+					"  got as close as ", (got["closest"] as Vector3).snapped(Vector3(0.1, 0.1, 0.1)), " (", snappedf(float(got["left"]), 0.1), " m short)  cells ", got["cells"])
+			return
+	print("WALK ok step ", step, "  ", what, "  legs ", legs.size(), "  cells ", cells, "  ", Time.get_ticks_msec() - t0, " ms")
+
+
+## The room a point is in ("" out of doors).
+func _place_of(p: Vector3) -> String:
+	for rk in scene._rooms:
+		var rd: Dictionary = scene._rooms[rk]
+		var c: Vector3 = rd["at"]
+		var h: Vector2 = rd["half"]
+		if absf(p.x - c.x) <= h.x + 1.0 and absf(p.z - c.z) <= h.y + 1.0:
+			return str(rk)
+	return ""
+
+
+## A room, the room its door is in, and so on out to the open air: ["red_room_2", "dorm_red", ""].
+func _place_chain(place: String) -> Array:
+	var out: Array = [place]
+	var guard := 0
+	while place != "" and guard < 6:
+		place = _place_of(scene._rooms[place]["door"])
+		out.append(place)
+		guard += 1
+	return out
 
 
 func _build_task_ui(title: String, goal := "") -> void:
@@ -2544,6 +2624,12 @@ func _start_duel(d: Dictionary) -> void:
 	for k in ["opp_lp", "my_lp", "hand", "rule", "music", "task"]:
 		if d.has(k):
 			Router.duel_config[k] = d[k]
+	# {"puzzle": id}: not a duel but a problem (Puzzles): the field is set, and there is one turn to win.
+	var problem := str(d.get("puzzle", ""))
+	if problem != "":
+		Router.duel_config["puzzle"] = problem
+		Router.duel_config["opponent_name"] = Loc.t("Exam problem")
+		Router.duel_config["difficulty"] = 0
 	# The duel a chapter ends on, and any duel with boss rules: they can make a Destiny Draw too.
 	var last_duel := true
 	for i in range(step + 1, _steps.size()):
@@ -2552,7 +2638,8 @@ func _start_duel(d: Dictionary) -> void:
 	Router.duel_config["destiny_opp"] = last_duel or d.has("opp_lp") or d.has("rule") or bool(d.get("boss", false))
 	_cutscene(true)
 	_box.visible = false
-	await _versus(str(d["opponent"]))
+	if problem == "":
+		await _versus(str(d["opponent"]))
 	Sfx.play("gong", -4.0)
 	var tw := create_tween()
 	tw.tween_property(_flash, "color", Color(1, 1, 1, 1), 0.3)

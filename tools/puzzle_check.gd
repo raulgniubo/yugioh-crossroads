@@ -11,6 +11,11 @@ func _initialize() -> void:
 	CardData.load_external("/tmp/testassets2")
 	var bad := 0
 	for pz in Puzzles.LIST:
+		if bool(pz.get("real_only", false)):
+			# Needs cards this small rules engine does not play (Creature Swap, Enemy Controller's
+			# tribute). Check it in the real one: godot --headless res://tests/ocg_sim.tscn -- puzzles <id> 3 1
+			print("PUZZLE ", pz["id"], ": skipped here, check with ocg_sim")
+			continue
 		if not Puzzles.ready(pz):
 			print("PUZZLE ", pz["id"], ": MISSING CARDS ", Puzzles.names(pz).filter(func(n): return Puzzles._id(n) == 0))
 			bad += 1

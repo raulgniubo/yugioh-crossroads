@@ -1856,6 +1856,7 @@ func _load_plain(key: String, sharp := false) -> Node3D:
 		if UNIFORMS.has(key) and takes_jacket(key) and not plain.has(key):
 			apply_uniform(g, DORM_COLORS[UNIFORMS[key]])
 		keep_whole(r)
+		even_light(r)
 		return r
 	_register()
 	var gltf := GLTFDocument.new()
@@ -1878,6 +1879,7 @@ func _load_plain(key: String, sharp := false) -> Node3D:
 	if key == "player":
 		apply_tints(scene)
 	keep_whole(root)
+	even_light(root)
 	return root
 
 
@@ -1972,6 +1974,7 @@ func apply_hero_color(scene: Node, color: Color, outfit := 0) -> void:
 		_hero_shader = Shader.new()
 		_hero_shader.code = """
 shader_type spatial;
+render_mode shadows_disabled;
 uniform sampler2D tex : source_color, filter_linear_mipmap;
 uniform float hue = 0.5;
 uniform float sat_mul = 1.0;
@@ -2086,6 +2089,7 @@ func apply_uniform(scene: Node, color: Color) -> void:
 		_uniform_shader = Shader.new()
 		_uniform_shader.code = """
 shader_type spatial;
+render_mode shadows_disabled;
 uniform sampler2D tex : source_color, filter_linear_mipmap;
 uniform vec3 coat : source_color = vec3(0.85, 0.2, 0.17);
 uniform float h = 1.7;
@@ -2641,6 +2645,29 @@ func keep_whole(model: Node) -> void:
 	for mi in _meshes(model):
 		mi.lod_bias = 1000.0
 		mi.extra_cull_margin = maxf(mi.extra_cull_margin, 1.0)
+
+
+## A character takes no shadows, its own or the world's; it still casts one on the ground. On a model
+## with few triangles the sun's shadow of the face fell back onto the face in hard, angular patches
+## (a nose and two cheeks made of a few dozen triangles each): up close it looked disfigured.
+var _even_mats := {}       # a model's material -> the same material, taking no shadows
+
+
+func even_light(model: Node) -> void:
+	if model == null:
+		return
+	for mi in _meshes(model):
+		if mi.mesh == null:
+			continue
+		for i in mi.mesh.get_surface_count():
+			var m := mi.get_active_material(i)
+			if not (m is BaseMaterial3D) or (m as BaseMaterial3D).disable_receive_shadows:
+				continue
+			if not _even_mats.has(m):
+				var d := m.duplicate() as BaseMaterial3D
+				d.disable_receive_shadows = true
+				_even_mats[m] = d
+			mi.set_surface_override_material(i, _even_mats[m])
 
 
 # ------------------------------------------------------------------ lighter versions for distance

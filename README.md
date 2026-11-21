@@ -5,6 +5,35 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.66.0
+
+**Academia de Duelos, chapter 7: "El examen". The end of Act 1.** Playable from start to finish, in Spanish, with every line spoken. No cards added: 8,415 total.
+
+- **Chapter 7.** Friday, the promotion exam. Nico left before you woke up and made his bed for the first time. Bruno cooks the exam breakfast, Mika explains how the exam works, Sato cannot be in the room and tells you what a rule against you really is. On the way you can talk to Octavia at the school door and to Jaden on the cliff (both optional).
+- **Part one: three problems written by Crowler.** Each one is a set field and a single turn to win, played on a real duel field. They can be failed: they give 20 merits each and decide which speech Crowler reads out loud (three of three down to zero of three), but they do not decide the jacket.
+- **Part two: the duel.** Crowler and his Ancient Gears, with his rule against you: you start at 2000 life points against his 4000. This one has to be won.
+- **You are Yellow.** Sheppard gives you the jacket, your character wears yellow from that moment, and you have your own room in the Yellow dorm (room 2) with your bed and your mission board. Your wins now count for Yellow in the Cup. Rule nineteen is satisfied: the League bench is yours.
+- **The last night in Room Two.** Nico was not at the exam. He finally says what has been building since chapter 2, and walks out with Crane's card. At dawn Lumen wakes you, and you find him at the end of the pier calling your exam to the sea. He stays in Red, he is going up the slow way, and he keeps the card to remember the morning he almost used it.
+- The exam problems are new duel puzzles (a wall to break, a monster to give away, a tribute that is worth it). They only appear in the exam, not on the puzzle board.
+- The agenda's "Moving up" page now knows which chapter closes the act.
+- Fixed: the room the game gives you after a promotion did not exist (the Yellow one had a wrong name), so a promoted player would have had no bed and no mission board.
+- 149 new voice files.
+
+**Fixes from the first real playthrough of the prologue (all of these were in every build so far):**
+
+- **You could not walk off the pier.** The island's invisible edge wall ran straight across it, so nobody stepping off the ferry could reach the school: the prologue could not be finished by hand. The wall now stops at the pier's sides, and the glowing edge fence no longer crosses it.
+- **The game hung on a black screen** (music still playing) when you chose "Main Menu" from the pause menu while a "go there" goal was up. In a shipped build the story's wait loop woke up once after its scene had been lifted out of the tree and then never slept again. The scene change now takes the old place down while it is still in the tree, so nothing in it can wake up half removed. This protects every screen change in the game, not only that one.
+- **"Resume" in the pause menu did not answer the mouse** during a story: an empty, invisible box of story choices lay across it. The pause menu is now on a layer of its own, above everything.
+- **Faces looked broken up close** (Professor Sato worst of all). Two causes: the sun's shadow of a low-polygon face fell back onto the face in hard angular patches, and Sato's face was rougher than the others. Characters no longer take shadows on themselves (they still cast one on the ground), and the eight original characters had their heads smoothed (tools/models/smooth_head.py).
+- **The sky came out in hard squares on a Mac.** Its clouds used a sine-based random number that Apple graphics chips answer differently for the same point; it is now a whole-number one that is the same everywhere. (Not seen on a Mac yet: this one needs confirming there.)
+- **The welcome sign at the pier faced the school.** From the ferry there were two bare black poles. It now faces the sea, on a board, readable by day.
+- **The day card sat on top of the Duel Points purse** (top right). It now sits under it, wherever the purse ends.
+- **In the Academy story the ferry stays in port:** the ferry pad is gone from the pier (it glowed in the middle of the scenes there) and the Worlds list says the other worlds are in Free Roam, instead of carrying the story's cards off the island.
+- **A real walk test.** The story's test run used to jump the player to every goal, which is how the pier wall went unnoticed. It now walks first: every goal and every task of every chapter is reached on foot, in half-metre steps with the player's own body, through each door on the way (WalkCheck, "WALK ok / WALK BLOCKED" lines in the audit).
+- **Windows:** only the .exe changed.
+
+Not in this build yet: Act 2 (chapter 8, "A Room of Your Own"), classes, rival decks that grow with your dorm, and the Academy story's English voices.
+
 ## What is in 0.65.5
 
 **Academia de Duelos, chapter 6: "La Copa".** Playable from start to finish, in Spanish, with every line spoken. No cards added: 8,415 total.

@@ -503,6 +503,11 @@ func travel_world(key: String) -> void:
 	if scene.quest_locked:
 		Router.toast(Loc.t("Not yet. Finish what you came here for first."))
 		return
+	if Campus.on:
+		# The Academy story is lived on the island (it has its own cards and its own clock).
+		Router.toast(Loc.t("The ferry does not leave before the end of term. The other worlds are in Free Roam, from the main menu."))
+		Sfx.play("error", -8.0)
+		return
 	if key == "highway":
 		Sfx.play("gong", -6.0)
 		Router.go(Router.RIDE)
@@ -550,6 +555,7 @@ shader_type spatial;
 render_mode unshaded, cull_disabled, blend_add, depth_draw_never, shadows_disabled;
 uniform vec3 player;
 uniform vec4 tint : source_color = vec4(0.3, 0.9, 1.0, 1.0);
+uniform vec2 gap = vec2(0.0, 0.0);      // a way through: half its width, and the z it starts at
 varying vec3 wp;
 void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
@@ -559,11 +565,16 @@ void fragment() {
 	float fade = 1.0 - smoothstep(0.0, 4.2, wp.y);
 	ALBEDO = tint.rgb;
 	ALPHA = (grid * 0.8 + 0.07) * near * fade;
+	if (gap.x > 0.0 && abs(wp.x) < gap.x && wp.z > gap.y) {
+		discard;
+	}
 }
 """
 	_fence_mat = ShaderMaterial.new()
 	_fence_mat.shader = sh
 	_fence_mat.set_shader_parameter("tint", Color(scene._theme.get("accent", UITheme.ACCENT)))
+	if str(scene.district.get("builder", "")) == "academy":
+		_fence_mat.set_shader_parameter("gap", Vector2(3.6, 50.0))      # the pier is a way in, not an edge
 	var b := _bounds()
 	if b.get("open", false):
 		return
@@ -1019,7 +1030,10 @@ func _process(delta: float) -> void:
 	_free_list_step(delta)
 	_street_life(delta, p)
 	if _fence_mat:
-		_fence_mat.set_shader_parameter("player", p)
+		# (Not while a scene has the camera: the fence drew bright lines down the side of the shots
+		# on the pier.)
+		var telling: bool = scene.story != null and bool(scene.story._cut)
+		_fence_mat.set_shader_parameter("player", p if not telling else Vector3(0, -9000, 0))
 	var t := Time.get_ticks_msec() / 1000.0
 	# Star Chips spin, bob and are picked up by walking into them.
 	for c in _chips.duplicate():

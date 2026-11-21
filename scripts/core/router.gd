@@ -363,6 +363,8 @@ func _debug_args() -> void:
 				var v := kv.get_slice(":", 1)
 				if Settings.gfx.has(k):
 					Settings.set_gfx(k, (v == "1" or v == "true") if typeof(Settings.gfx[k]) == TYPE_BOOL else int(v))
+		elif a == "--esc-test":
+			_esc_test()      # dev: at the story's first goal, Esc, Resume, Esc, Main Menu, and say what happened
 		elif a == "--toast-test":
 			# Dev: a very long message, to see that it wraps inside the screen.
 			get_tree().create_timer(1.5).timeout.connect(func(): toast("Lumen has new cards for you: Lumen, Echo Spirit, Lumen, Echo Radiant, Lumen, Echo Comet, Lumen, Echo Zenith, Echo Resonance, Echo Barrier, Echo Step, Echo Chorus and the rest of a very long list of names that used to run off both sides of the screen. They are in your collection.", 20.0))
@@ -437,6 +439,9 @@ func _debug_args() -> void:
 				if not Campus.started():
 					Campus.new_game("academia")
 				Campus.put_many({"free_days": true, "jacket": true})
+				for da in OS.get_cmdline_user_args():
+					if da.begins_with("--dorm="):      # dev: a free day in another dorm's jacket
+						Campus.put("dorm", clampi(int(da.substr(7)), 0, 2))
 				Campus.island()
 			else:
 				if not Campus.started():
@@ -721,6 +726,17 @@ func go(path: String) -> void:
 		# One frame so the card is on screen before the world starts building (that blocks).
 		await get_tree().process_frame
 		await get_tree().process_frame
+	# The place you are leaving is taken down first, and it stays inside the tree until it is gone.
+	# (The engine's own swap lifts the old scene out of the tree a frame before it deletes it. Anything
+	# in it that was waiting frame by frame woke up once in between, with no tree to wait on: in a
+	# shipped build that loop then never slept again. Leaving a story from the pause menu while a
+	# "go there" goal was up left the screen black for good, with the music still playing.)
+	var leaving := get_tree().current_scene
+	if leaving != null:
+		leaving.queue_free()
+		await get_tree().process_frame
+		if is_instance_valid(leaving):
+			await get_tree().process_frame
 	get_tree().change_scene_to_file(path)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -903,3 +919,66 @@ func _save_test() -> void:
 	f.store_string("load:slot1")
 	f.close()
 	get_tree().quit()
+
+
+## Dev (--esc-test): plays a story up to its first goal by pressing "accept", then works the pause
+## menu with real key and mouse events and prints what it finds.
+func _esc_test() -> void:
+	var sc: Node = null
+	for i in 900:
+		await get_tree().create_timer(0.35).timeout
+		sc = get_tree().current_scene
+		if sc != null and "story" in sc and sc.story != null and not sc.story._goal.is_empty():
+			break
+		var acc := InputEventAction.new()
+		acc.action = "ui_accept"
+		acc.pressed = true
+		Input.parse_input_event(acc)
+	await get_tree().create_timer(2.0).timeout
+	print("ESC TEST: at the goal, step ", sc.story.step)
+	for round in 2:
+		var esc := InputEventKey.new()
+		esc.keycode = KEY_ESCAPE
+		esc.physical_keycode = KEY_ESCAPE
+		esc.pressed = true
+		Input.parse_input_event(esc)
+		await get_tree().create_timer(0.1).timeout
+		esc = esc.duplicate()
+		esc.pressed = false
+		Input.parse_input_event(esc)
+		await get_tree().create_timer(0.8).timeout
+		print("ESC TEST: pause open=", sc._pause != null, "  mouse mode=", Input.mouse_mode, "  tree paused=", get_tree().paused)
+		if sc._pause == null:
+			return
+		await _dev_shot("/tmp/esc_%d.png" % round)
+		var want := "Resume" if round == 0 else "Main Menu"
+		var hit: Button = null
+		for b in sc._pause.find_children("*", "Button", true, false):
+			if (b as Button).text in [want, Loc.t(want)]:
+				hit = b
+		print("ESC TEST: button ", want, " found=", hit != null)
+		var at: Vector2 = get_tree().root.get_final_transform() * hit.get_global_rect().get_center()
+		for down in [true, false]:
+			var mb := InputEventMouseButton.new()
+			mb.button_index = MOUSE_BUTTON_LEFT
+			mb.pressed = down
+			mb.position = at
+			mb.global_position = at
+			Input.parse_input_event(mb)
+			await get_tree().create_timer(0.1).timeout
+		await get_tree().create_timer(1.0).timeout
+		if round == 0:
+			print("ESC TEST: after Resume, pause open=", sc._pause != null, "  hovered=", get_viewport().gui_get_hovered_control())
+			if sc._pause != null:
+				sc._close_pause()
+	for i in 8:
+		await get_tree().create_timer(1.0).timeout
+		var cur := get_tree().current_scene
+		print("ESC TEST: +", i + 1, "s scene=", cur.scene_file_path if cur else "none", "  busy=", _busy, "  fade=", _fade.color.a)
+	await _dev_shot("/tmp/esc_after.png")
+	get_tree().quit()
+
+
+func _dev_shot(path: String) -> void:
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(path)

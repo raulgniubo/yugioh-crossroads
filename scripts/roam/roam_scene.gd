@@ -1058,7 +1058,9 @@ func _toggle_map() -> void:
 
 func _build_places() -> void:
 	# The way to the other district (a ferry bus in town, the pier on the island).
-	if district.has("travel"):
+	# (Not in the Academy story: the term is spent on the island, and the glowing pad sat in the middle
+	# of the scenes on the pier.)
+	if district.has("travel") and not Campus.on:
 		var tr: Dictionary = district["travel"]
 		_spots.append({"pos": tr["pos"], "range": 2.6, "label": tr["label"], "action": func(): _travel_district(str(tr["to"]))})
 		var sign_l := Label3D.new()
@@ -1355,6 +1357,9 @@ func _set_inside(where: String) -> void:
 		if _rooms.has(where):
 			_loc_name.text = Loc.t(str(_rooms[where]["name"])).to_upper()
 			_loc_area.text = Loc.t(str(_rooms[where]["area"]))
+			# (The Academy story: once you have moved up, that room is nobody's but yours.)
+			if Campus.on and Campus.dorm() > 0 and where == str(Campus.ROOM[Campus.dorm()]):
+				_loc_area.text = Loc.t("Your room. A door that closes.")
 	for mp in [_map, _map_full]:
 		if mp == null:
 			continue
@@ -2207,7 +2212,12 @@ func _open_pause() -> void:
 		Router.roam["yaw"] = _yaw
 		Router.go(Router.MAIN_MENU))
 	v.add_child(menu)
-	_ui.add_child(_pause)
+	# On a layer of its own, over everything else on screen. (It used to sit under the story's own
+	# layer, where an empty, invisible box of story choices lay across "Resume" and took its clicks.)
+	var top := CanvasLayer.new()
+	top.layer = 60
+	add_child(top)
+	top.add_child(_pause)
 	resume.grab_focus()
 
 
@@ -2226,7 +2236,7 @@ func _note_place() -> void:
 
 func _close_pause() -> void:
 	if _pause:
-		_pause.queue_free()
+		_pause.get_parent().queue_free()      # (its own layer goes with it)
 		_pause = null
 
 
@@ -2310,6 +2320,81 @@ func _debug() -> void:
 			_yaw = float(parts[2]) if parts.size() > 2 else _yaw
 			_figure.rotation.y = _yaw + PI
 			_pivot.position = _player.position + Vector3(0, 1.45, 0)
+		elif a.begins_with("--inside="):
+			# Dev: stand in a room (--inside=yel_room_2[,x,z,yaw] from the room's centre).
+			var ip := a.trim_prefix("--inside=").split(",")
+			await get_tree().create_timer(0.6).timeout
+			if AcademyRooms.ROOMS.has(ip[0]):
+				var io: Vector3 = AcademyRooms.ROOMS[ip[0]]["at"]
+				_player.position = io + Vector3(float(ip[1]) if ip.size() > 1 else 0.6, 0, float(ip[2]) if ip.size() > 2 else 0.8)
+				_yaw = float(ip[3]) if ip.size() > 3 else 0.6
+				_figure.rotation.y = _yaw + PI
+				_pivot.position = _player.position + Vector3(0, 1.45, 0)
+				_set_inside(ip[0])
+		elif a.begins_with("--faces="):
+			# Dev: faces up close, as the game draws them. --faces=sato,nico[:tag] stands each one twice by
+			# the path (looking out to sea, and looking east) and saves /tmp/face_<tag>_<key>_<n>.png.
+			var spec := a.trim_prefix("--faces=").split(":")
+			var fk := spec[0].split(",")
+			var tag := spec[1] if spec.size() > 1 else "x"
+			await get_tree().create_timer(0.6).timeout
+			var figs: Array = []
+			for row in 2:
+				for i in fk.size():
+					var ff := RoamFigure.new()
+					add_child(ff)
+					ff.position = Vector3(-14.0 + i * 1.6, 0.1, 50.0 - row * 5.0)
+					ff.rotation.y = row * PI / 2.0
+					ff.setup(fk[i], Color.WHITE, "", false)
+					figs.append([ff, fk[i], row])
+			await get_tree().create_timer(6.0).timeout
+			for n in get_tree().root.find_children("*", "CanvasLayer", true, false):
+				(n as CanvasLayer).visible = false
+			var fcam := Camera3D.new()
+			fcam.fov = 24.0
+			add_child(fcam)
+			fcam.current = true
+			for fg in figs:
+				var fig: Node3D = fg[0]
+				var head := fig.global_position + Vector3(0, 1.5, 0)
+				for sk in fig.find_children("*", "Skeleton3D", true, false):
+					for bn in ["Head", "head", "J_Bip_C_Head", "mixamorig:Head"]:
+						var bi := (sk as Skeleton3D).find_bone(bn)
+						if bi >= 0:
+							head = (sk as Skeleton3D).global_transform * (sk as Skeleton3D).get_bone_global_pose(bi).origin + Vector3(0, 0.09, 0)
+							break
+				if "nc" in tag:      # try: casts no shadow (so none on itself)
+					for mi in fig.find_children("*", "MeshInstance3D", true, false):
+						(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				if "nb" in tag:      # try: the sun looks further along the normal
+					for dl in get_tree().root.find_children("*", "DirectionalLight3D", true, false):
+						(dl as DirectionalLight3D).shadow_normal_bias = 8.0
+						print("SUN ", dl.name, " bias ", (dl as DirectionalLight3D).shadow_bias, " blur ", (dl as DirectionalLight3D).shadow_blur, " mode ", (dl as DirectionalLight3D).directional_shadow_mode, " max ", (dl as DirectionalLight3D).directional_shadow_max_distance)
+				if "nl" in tag:      # try: no light casts a shadow at all
+					for dl in get_tree().root.find_children("*", "Light3D", true, false):
+						(dl as Light3D).shadow_enabled = false
+				if "pm" in tag:      # say what the figure is drawn with
+					for mi in fig.find_children("*", "MeshInstance3D", true, false):
+						var mm := (mi as MeshInstance3D).get_active_material(0)
+						print("MAT ", fg[1], " ", mi.name, " ", mm, " ", (mm as ShaderMaterial).shader.code.substr(0, 1500) if mm is ShaderMaterial else "", " override=", (mi as MeshInstance3D).material_override, " vis=", (mi as MeshInstance3D).visible)
+				if "ns" in tag:      # try: no shadows received
+					for mi in fig.find_children("*", "MeshInstance3D", true, false):
+						for si in (mi as MeshInstance3D).mesh.get_surface_count():
+							var m0 := (mi as MeshInstance3D).get_active_material(si)
+							if m0 is BaseMaterial3D:
+								var m1 := m0.duplicate() as BaseMaterial3D
+								m1.disable_receive_shadows = true
+								(mi as MeshInstance3D).set_surface_override_material(si, m1)
+				var fwd := Vector3(sin(fig.rotation.y), 0, cos(fig.rotation.y))
+				var side := Vector3(fwd.z, 0, -fwd.x)
+				for k in 2:
+					fcam.global_position = head + fwd * 0.85 + side * (0.0 if k == 0 else 0.6) + Vector3(0, 0.02, 0)
+					fcam.look_at(head)
+					await get_tree().create_timer(0.4).timeout
+					await RenderingServer.frame_post_draw
+					get_viewport().get_texture().get_image().save_png("/tmp/face_%s_%s_%d.png" % [tag, fg[1], int(fg[2]) * 2 + k])
+			print("FACES done ", fk)
+			get_tree().quit()
 		elif a == "--lineup":
 			# Model check: everyone in a row in front of the camera.
 			var keys: Array = Characters.ORDER

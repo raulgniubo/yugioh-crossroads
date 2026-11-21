@@ -102,7 +102,8 @@ func next_line() -> String:
 		return ""
 	var g := Campus.golden()
 	if g.has("chapter"):
-		return "▸ " + Loc.t("Ready when you are:") + " " + str(g["text"])
+		# ("Chapter 2: Last of Four" after a colon of its own read as two colons in a row.)
+		return "▸ " + Loc.t("Ready when you are:") + " " + str(g["text"]).replace(": ", "  ·  ")
 	for m in CampusData.MISSIONS:
 		if not Campus.mission_open(m):
 			continue
@@ -132,7 +133,20 @@ func _refresh() -> void:
 	_next.text = nl
 	_next.visible = nl != ""
 	_hint.text = Pad.keys(Loc.t("N  agenda"))
+	_place_chip.call_deferred()
 	(_chip.get_theme_stylebox("panel") as StyleBoxFlat).border_color = Color(Campus.DORM_COLORS[Campus.dorm()], 0.75)
+
+
+## The card sits right under the Duel Points purse, wherever that ends. (It was put at a fixed height
+## and the purse is taller than the room it was given: the card covered the purse's bottom edge.)
+func _place_chip() -> void:
+	if not is_instance_valid(_chip) or scene == null or not is_instance_valid(scene._purse):
+		return
+	var top: float = scene._purse.position.y + scene._purse.size.y + 12.0
+	if absf(_chip.offset_top - top) > 0.5:
+		_chip.offset_top = top
+		_chip.offset_bottom = top
+		_chip.reset_size()
 
 
 func _process(delta: float) -> void:
@@ -191,17 +205,28 @@ func _build_spots() -> void:
 	if not AcademyRooms.ROOMS.has(room):
 		return
 	var o: Vector3 = AcademyRooms.ROOMS[room]["at"]
-	scene._spots.append({"pos": o + Vector3(-1.5, 0, -0.5), "range": 1.7, "label": "Rest or sleep (your bed)", "action": _bed})
-	scene._spots.append({"pos": o + Vector3(2.3, 0, -1.2), "range": 1.6, "label": "Look at the mission board", "action": func(): open_agenda()})
+	var half: Vector2 = AcademyRooms.ROOMS[room]["half"]
+	# Red: the bunks are along the left wall and the board hangs on the right one. Yellow and Blue:
+	# one bed in the back left corner, and the board hangs on the left wall between the bed and the
+	# reading chair (their right wall has a wardrobe, a shelf, and in Blue a fireplace).
+	var bed := Vector3(-1.5, 0, -0.5)
+	var bz := -1.2
+	var side := 1.0
+	if Campus.dorm() > 0:
+		bed = Vector3(-half.x + (2.75 if Campus.dorm() == 2 else 2.05), 0, -half.y + 1.5)
+		bz = 0.2
+		side = -1.0
+	scene._spots.append({"pos": o + bed, "range": 1.7, "label": "Rest or sleep (your bed)", "action": _bed})
+	scene._spots.append({"pos": o + Vector3(side * (half.x - 0.7), 0, bz), "range": 1.6, "label": "Look at the mission board", "action": func(): open_agenda()})
 	# The board itself: cork, a frame, a gold card and a few silver ones.
 	var c: CityBuilder = scene.city
-	var wall := o + Vector3(2.92, 1.55, -1.2)
+	var wall := o + Vector3(side * (half.x - 0.08), 1.55, bz)
 	var frame := c.box(Vector3(0.06, 1.0, 1.5), wall, c.mat(Color(0.36, 0.24, 0.15), 0.8), false)
 	frame.name = "MissionBoard"
-	c.box(Vector3(0.05, 0.88, 1.38), wall + Vector3(-0.02, 0, 0), c.mat(Color(0.72, 0.56, 0.36), 0.95), false)
-	c.box(Vector3(0.02, 0.3, 0.22), wall + Vector3(-0.05, 0.2, -0.42), c.glow_mat(UITheme.GOLD, 0.9), false)
+	c.box(Vector3(0.05, 0.88, 1.38), wall + Vector3(-0.02 * side, 0, 0), c.mat(Color(0.72, 0.56, 0.36), 0.95), false)
+	c.box(Vector3(0.02, 0.3, 0.22), wall + Vector3(-0.05 * side, 0.2, -0.42), c.glow_mat(UITheme.GOLD, 0.9), false)
 	for k in 3:
-		c.box(Vector3(0.02, 0.26, 0.2), wall + Vector3(-0.05, 0.2 - (k % 2) * 0.42, -0.05 + k * 0.3), c.mat(Color(0.86, 0.88, 0.92), 0.5), false)
+		c.box(Vector3(0.02, 0.26, 0.2), wall + Vector3(-0.05 * side, 0.2 - (k % 2) * 0.42, -0.05 + k * 0.3), c.mat(Color(0.86, 0.88, 0.92), 0.5), false)
 
 
 func _bed() -> void:
@@ -365,7 +390,8 @@ func open_agenda() -> void:
 	if Campus.dorm() < 2:
 		_line(p, Loc.t("To sit the promotion exam to %s you need three things:") % Loc.t(Campus.DORM_NAMES[Campus.dorm() + 1]), 19)
 		_line(p, "%s  %s  (%d / %d)" % ["✔" if Campus.merits() >= need else "○", Loc.t("Merits"), Campus.merits(), need], 19)
-		_line(p, "○  " + Loc.t("The chapter that closes this act"), 19)
+		var closer := str(CampusData.ACT_CLOSERS[Campus.dorm()]) if Campus.dorm() < CampusData.ACT_CLOSERS.size() else ""
+		_line(p, "%s  %s" % ["✔" if closer != "" and Campus.chapter_done(closer) else "○", Loc.t("The chapter that closes this act")], 19)
 		_line(p, "○  " + Loc.t("The exam itself, on a Friday of your choice"), 19)
 	else:
 		_line(p, Loc.t("You are in the top dorm."), 19)

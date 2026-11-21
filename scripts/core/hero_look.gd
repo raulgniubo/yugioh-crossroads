@@ -101,6 +101,7 @@ static func _make_shader() -> Shader:
 		_shader = Shader.new()
 		_shader.code = """
 shader_type spatial;
+render_mode shadows_disabled;
 uniform sampler2D tex : source_color, filter_linear_mipmap;
 uniform sampler2D mask : filter_nearest;
 uniform vec4 skin_to : source_color = vec4(0.0);

@@ -40,6 +40,8 @@ func _ready() -> void:
 	v.add_child(sub)
 	var first: Button = null
 	for pz in Puzzles.LIST:
+		if bool(pz.get("exam", false)):
+			continue      # the promotion exam's problems are sat in the exam, not here
 		var id := str(pz["id"])
 		var b := Button.new()
 		var ok := Puzzles.ready(pz)

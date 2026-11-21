@@ -38,6 +38,18 @@ const LIST := [
 		"hint": "Lightning Vortex asks for a card from your hand. Which one will you miss least?",
 		"hand": ["Lightning Vortex", "Celtic Guardian", "Axe of Despair"], "mine": [["Battle Ox", "atk"], ["La Jinn the Mystical Genie of the Lamp", "atk"]],
 		"theirs": [["Vorse Raider", "atk"], ["Gemini Elf", "atk"], ["Luster Dragon", "atk"]]},
+	# The written part of the promotion exam (Academy story, chapter 7). "exam": not on the puzzle board.
+	# "real_only": tools/puzzle_check.gd cannot play it; tests/ocg_sim.tscn -- puzzles <id> 3 1 can.
+	{"id": "exam_1", "title": "Exam: The Wall", "stars": 2, "exam": true, "opp_lp": 2500, "my_lp": 4000,
+		"hint": "A monster in Defense Position is a target, not a wall.",
+		"hand": ["Shield Crush", "Rush Recklessly"], "mine": [["Gemini Elf", "atk"]], "theirs": [["Big Shield Gardna", "def"]]},
+	{"id": "exam_2", "real_only": true, "title": "Exam: Give and Take", "stars": 3, "exam": true, "opp_lp": 3500, "my_lp": 4000,
+		"hint": "You can give before you take. Choose carefully what you give.",
+		"hand": ["Creature Swap", "Axe of Despair"], "mine": [["Kuriboh", "atk"]], "theirs": [["Ancient Gear Golem", "atk"]]},
+	{"id": "exam_3", "real_only": true, "title": "Exam: The Useful Tribute", "stars": 3, "exam": true, "opp_lp": 3600, "my_lp": 4000,
+		"hint": "A monster you summon this turn can still be useful if it never attacks.",
+		"hand": ["Enemy Controller", "Vorse Raider"], "mine": [["Gemini Elf", "atk"]],
+		"theirs": [["Ancient Gear Golem", "atk"], ["Ancient Gear Soldier", "atk"]]},
 ]
 
 
