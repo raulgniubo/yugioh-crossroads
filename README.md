@@ -5,6 +5,24 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.65.0
+
+**"Los cimientos": the first piece of Academia de Duelos, a second full story mode.** The prologue and chapter 1 are playable from start to finish, in Spanish, with every line spoken. No cards added: 8,415 total.
+
+- **A new door on the Academy.** From the main menu, the Academy now opens on its own screen: New game, Continue and Load. A new game asks how you want to play. "Academia" (recommended): you start from zero with a beginner deck and a collection that belongs to this story. "Libre": you play with your own decks and collection. The Academy keeps its own save, so nothing here touches your normal game. The old Academy mode is still there, as a small "Academia clásica" link at the bottom.
+- **Prologue, "El último en llegar".** The ferry to the island, your first classmate (Nico Paz), a blank card in your deck that turns out to be Lumen (her own introduction scene: what she is, why you, what the blank cards are), the dock, Professor Sato, and the entrance exam against Doctor Crowler in the main hall. Win or lose, the story goes on: the exam decides how Crowler talks about you, not whether you get in.
+- **Chapter 1, "Bienvenida al Rojo".** The Red dorm (it leans), Syrus and his welcome duel, dinner with Bruno "Tanque", your room, a free walk around the island (Dorothy's shop, the Old Dorm sign), Headmaster Sheppard's welcome assembly (how merits, promotion exams and the Liga de Academias work, said on stage, not in a text box), Jaden at sunset (he can see Lumen too), and the first night.
+- **It plays like a series.** Scenes are staged with a camera, people walk in and out, and nobody waits for you to press a key during a cinematic. Everything is spoken: 238 new voice files, eight new voices (Nico, Mika, Bruno, Sato, Crowler, Sheppard, Dorothy, Dante), and your own character speaks with the voice you chose in your profile (all four voices are recorded), also when you pick an answer. Lumen speaks with the voice you chose for her. Jaden, Syrus and the other duelists who were already in the game keep the voice they have in duels.
+- **You always know what is next.** A small card under your Duel Points shows the next step, your merits and the day. N (d-pad down on a controller) opens the agenda: what is open now, the week's calendar, your bonds and the missions. Nothing is forced: the gold mission moves the story when you want; the rest of the day is yours.
+- **Life on the island.** Your bed ends the day (that is the only clock: nothing expires while you do something else). The board by the door has the missions. Merits are never spent: they are your way to the next dorm (300 for the Yellow exam). Packs at Dorothy's shop cost Duel Points, like everywhere.
+- **Your dorm jacket.** After the exam your character wears the Red jacket on the island, and your classmates wear theirs.
+- **New people, with their own look.** Nico, Mika, Bruno, Professor Sato and Dante have their own models (original designs). They also live on the island in Free Roam, with their own lines and duels. The headmaster's place uses a new stand-in (an older gentleman in a suit) until you drop in your own `sheppard` model; `crowler`, `dorothy` and `bastion` work the same way.
+- **Admin: win or lose a duel on the spot.** With admin on, the duel's pause menu has "win this duel" and "lose this duel", to test a story quickly.
+- **English duel voices are complete.** All 1,577 duel lines now exist in English too (the same set as Spanish), so with the game in English every duelist, your character and Lumen speak in duels. The Academy story's English voices come after all its Spanish is done.
+- **Windows:** only the .exe changed.
+
+Not in this build yet: chapters 2 onward (classes, the Dorm Cup, the tryouts and the Torneo de Novatos come with 0.66.0), rival decks that grow with your dorm, and the Academy story's English voices.
+
 ## What is in 0.64.2
 
 Seven fixes from one evening of play. No cards added: 8,415 total.

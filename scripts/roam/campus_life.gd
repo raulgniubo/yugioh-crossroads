@@ -26,6 +26,9 @@ func _ready() -> void:
 	_ui.layer = 3
 	add_child(_ui)
 	_build_chip()
+	if "--campus-agenda" in OS.get_cmdline_user_args():
+		# Dev: the agenda opens by itself a few seconds in, for a picture of it.
+		get_tree().create_timer(9.0).timeout.connect(open_agenda)
 	if not _story:
 		_build_spots.call_deferred()
 		# Back from a duel, or just arrived: where you stand is where "continue" brings you back.
@@ -138,6 +141,9 @@ func _process(delta: float) -> void:
 	# The card steps aside while a scene has the camera, or you are in a conversation.
 	var hide: bool = _story and scene.story != null and bool(scene.story._cut)
 	if scene._talking:
+		hide = true
+	# ... and while the agenda is open: the panel opens right where the card sits.
+	if _agenda != null and is_instance_valid(_agenda):
 		hide = true
 	_chip.visible = not hide
 	while not Campus.feed.is_empty():
@@ -296,11 +302,16 @@ func open_agenda() -> void:
 	var p := SidePanel.new("Agenda", 760)
 	scene._ui.add_child(p)
 	_agenda = p
+	p.closed.connect(func(): _agenda = null)
 	Sfx.play("panel", -8.0)
 	# ---- today
 	_head(p, "Today")
 	_line(p, "%s  ·  %s %d  ·  %s" % [Campus.when_text(), Loc.t("Day"), Campus.day(), Loc.t(Campus.DORM_NAMES[Campus.dorm()])], 24)
-	_line(p, Loc.t(str(CampusData.WEEK_PLAN[Campus.weekday()][Campus.part()])), 19, UITheme.TEXT_DIM)
+	# Until classes, exams and the Cup open (chapter 2), the day is free time: say that, not the plan.
+	var plan_now := str(CampusData.WEEK_PLAN[Campus.weekday()][Campus.part()])
+	if not CampusData.SCRIPTS.has("ac_ch2") and Campus.part() < 2:
+		plan_now = "Free time"
+	_line(p, Loc.t(plan_now), 19, UITheme.TEXT_DIM)
 	# ---- the story
 	_head(p, "Story")
 	var g := Campus.golden()

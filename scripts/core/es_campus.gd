@@ -343,4 +343,9 @@ const ES := {
 	"Come at the wall, then.": "Ven contra el muro, entonces.",
 	"The worst dorm is the best place to start. I say it every year. Every year somebody proves it.": "El peor dormitorio es el mejor lugar para empezar. Lo digo cada año. Cada año alguien lo demuestra.",
 	"You want a lesson? Good. Lessons are free. Winning is not.": "¿Quieres una lección? Bien. Las lecciones son gratis. Ganar no.",
+	"Tuesday": "Martes",
+	"Thursday": "Jueves",
+	"Friday": "Viernes",
+	"Saturday": "Sábado",
+	"Sunday": "Domingo",
 }

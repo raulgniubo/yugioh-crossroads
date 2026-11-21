@@ -10782,6 +10782,7 @@ func _test_campus() -> void:
 	Campus.new_game("libre")
 	check(Campus.mode() == "libre" and not Campus.own_cards() and Campus.merits() == 0 and Campus.day() == 1, "a second new game starts clean, with your own collection")
 	# Every chapter has a script, every script ends, and no spoken line names the player (a voice cannot say it).
+	var unvoiced := 0
 	for ch in CampusData.SCRIPTS:
 		var sc: Array = CampusData.SCRIPTS[ch]
 		check(sc.size() > 0 and (sc[sc.size() - 1] as Dictionary).has("end"), "Academy chapter %s ends with an end step" % ch)
@@ -10790,6 +10791,16 @@ func _test_campus() -> void:
 				check(not str(st["t"]).contains("{player}"), "a spoken Academy line never needs the player's name: %s" % str(st["t"]).left(40))
 			if (st as Dictionary).has("merits"):
 				check(not (st as Dictionary).has("end"), "an end step pays with 'pay', never 'merits'")
+			# Every spoken line has its Spanish voice: one file per voice the speaker can have.
+			if (st as Dictionary).has("s") and (st as Dictionary).has("t") and str(st["t"]) != "":
+				var who := str(st["s"])
+				var vs: Array = Voices.MY_VOICES if who == "player" else (Voices.LUMEN_VOICES if who == "lumen" else [Voices.voice_for(who)])
+				for v in vs:
+					if not ResourceLoader.exists("res://voices/es/%s/%s.ogg" % [str(v), Voices.key_of(str(st["t"]))]):
+						unvoiced += 1
+						if unvoiced <= 5:
+							print("UNVOICED %s %s: %s" % [ch, str(v), str(st["t"]).left(50)])
+	check(unvoiced == 0, "every Academy line that is written has its Spanish voice (%d missing)" % unvoiced)
 	# The yards and the people the story hides exist.
 	check(CampusData.YARDS.size() == 3 and Campus.DORMS.size() == 3 and Campus.NEED.size() == 3, "three dorms, three yards, three merit marks")
 	for who in ["nico", "mika", "bruno", "sato", "crowler", "sheppard", "dorothy", "dante"]:

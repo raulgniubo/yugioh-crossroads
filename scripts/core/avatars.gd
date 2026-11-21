@@ -60,7 +60,7 @@ const STANDINS := {
 	"professor": "duelist_m3", "red_student": "student_boy", "yellow_student": "duelist_m4", "blue_student": "duelist_m7",
 	# The Academy story: until their own model is dropped in (or made), people the game already has.
 	"nico": "student_boy", "mika": "student_girl", "bruno": "street_duelist", "sato": "stylish_woman", "crowler": "office_worker",
-	"sheppard": "shopkeeper", "dorothy": "duelist_f1", "bastion": "duelist_m4", "dante": "duelist_m7",
+	"sheppard": "elder_m", "dorothy": "duelist_f1", "bastion": "duelist_m4", "dante": "duelist_m7",
 }
 ## Duel Academy jackets. Painted over stand-in models only, never over a model you supplied.
 const DORM_COLORS := {"red": Color("d9342b"), "yellow": Color("f2c230"), "blue": Color("2f6fe0")}
@@ -71,6 +71,16 @@ var _uniform_shader: Shader
 ## People who are not in their dorm jacket right now (the Academy story's prologue: nobody has a
 ## dorm before the entrance exam). key -> true.
 var plain := {}
+
+
+## Originals of the Academy story with a model of their own that is drawn in plain clothes, so the
+## dorm jacket is painted on it the same way it is on a stand-in (and can change with a promotion).
+const PAINTED := ["nico", "mika", "bruno", "dante"]
+
+## True when a dorm jacket may be painted on this character: a stand-in, or one of the game's own
+## Academy students. Never a model you supplied.
+func takes_jacket(key: String) -> bool:
+	return is_standin(key) or (key in PAINTED and own_file(key) == "")
 
 
 ## True when this character is shown with a stand-in, not their own model.
@@ -1783,6 +1793,10 @@ func wear(model: Node, key: String, color: Color) -> void:
 func dressed(key: String) -> String:
 	if not ("@" in key) and dress.has(key):
 		return "%s@%s" % [key, str(dress[key])]
+	# In their own clothes for now (before the entrance exam): its own picture, so the one in the
+	# dorm jacket is not shown in its place, nor the other way round later.
+	if not ("@" in key) and plain.has(key) and UNIFORMS.has(key):
+		return key + "@plain"
 	return key
 
 
@@ -1836,7 +1850,7 @@ func _load_plain(key: String, sharp := false) -> Node3D:
 				HeroLook.apply(g, str(parts["body"]), str(parts["head"]), Profile, Profile.color())
 			else:
 				apply_hero_color(g, Profile.color(), Profile.look_outfit)
-		if UNIFORMS.has(key) and is_standin(key) and not plain.has(key):
+		if UNIFORMS.has(key) and takes_jacket(key) and not plain.has(key):
 			apply_uniform(g, DORM_COLORS[UNIFORMS[key]])
 		keep_whole(r)
 		return r
@@ -2357,7 +2371,7 @@ func portrait(key: String, hi := false) -> Texture2D:
 	var model := _load_plain(key.get_slice("@", 0), true)
 	if model == null:
 		return null
-	if "@" in key:
+	if "@" in key and key.get_slice("@", 1) != "plain":
 		wear(model, key.get_slice("@", 0), Color.html(key.get_slice("@", 1)))
 	var vp := SubViewport.new()
 	vp.size = stage_size()
@@ -2402,7 +2416,7 @@ func _restage(key: String) -> void:
 	var model := _load_plain(key.get_slice("@", 0), true)
 	if model == null:
 		return
-	if "@" in key:
+	if "@" in key and key.get_slice("@", 1) != "plain":
 		wear(model, key.get_slice("@", 0), Color.html(key.get_slice("@", 1)))
 	stage.call("enter", model)
 

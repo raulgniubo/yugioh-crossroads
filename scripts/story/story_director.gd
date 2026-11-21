@@ -457,7 +457,7 @@ func _place(st: Dictionary, instant := false) -> void:
 	fig.lively = false
 	fig.greets = false
 	fig.watch = scene._player
-	if st.has("coat") and Avatars.is_standin(key):
+	if st.has("coat") and Avatars.takes_jacket(key):
 		# A coat is only painted on a stand-in; a character with a model of their own already
 		# wears what they wear.
 		fig.wear_uniform(st["coat"])

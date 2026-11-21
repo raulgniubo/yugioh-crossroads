@@ -918,3 +918,26 @@ ch1 = about 130 others + 17 player x4 + 20 Lumen x3: build campus todo, generate
 split into voices/es/<voice>/); Meshy models for nico, mika, bruno, sato; tests (forced-kill save test, old save load,
 replay of an Academy duel, CI suite, memory); README "What is in 0.65.0"; bump; ship; report in Spanish with the
 Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo de Novatos, Circulo rank 1).
+
+#### 0.65.0 STATE AT 4:00 AM Nov 21 (read after the block above; this is newer)
+- VOICES: English duel voices COMPLETE and built in (voices/en, 1,577 files; wip/en gone). Academy prologue + ch1 in
+  Spanish complete (238 files, voices/es now 1,815; folders bruno, crowler, dante, dorothy, mika, nico, sato, sheppard).
+  How: work/voices/PROCEDURE.md (last notes). Next batch number 173. `_test_campus` fails if a written Academy line has
+  no Spanish file ("UNVOICED" lines in the log name them). Overlap test PASS.
+- MODELS (Meshy, 6 x 29 = 174 credits: image nano-banana-pro t-pose 9, image-to-3d meshy-t2.5 smart-topology 15000 +
+  meshy-n1 15, rig 5; ids in work/meshy_ids.md): nico, mika, bruno, sato, dante (originals) and elder_m (a generic
+  older gentleman: the stand-in for the `sheppard` slot, deliberately not a lookalike) are bundled in
+  assets/models/people. Rigged GLBs were downloaded with Blender's urllib on his Mac into
+  Downloads/Yu-Gi-Oh! Crossroads/meshy_work/<key>.glb (+ <key>.png design), staged, copied.
+  Avatars.PAINTED = nico, mika, bruno, dante: bundled models drawn in plain clothes that take the painted dorm
+  jacket like a stand-in (`takes_jacket`). Sato wears her own clothes. A plain-clothes portrait has its own cache
+  key ("<key>@plain").
+- STAGING checked in pictures with the new models: ferry, dock, exam in the hall (crowler/sato/dante/nico), Red common
+  room (Bruno clear of the TV), assembly, cliff, room. Both chapters auto-play to the end with every line "said".
+- SAVES: campus.cfg is written atomically; killed with -9 in the middle of chapter 1, the next start carries on at the
+  same step and finishes (test profile /tmp/pk).
+- Plan doc rev 141: merits are never spent (packs cost Duel Points), six GX duelists keep their duel voice, Lumen x3.
+- CI note: the single SCRIPT ERROR in `_test_vault` ('number 39: utopia') is the test profile having no card database
+  (NAME_TO_ID is filled from the downloaded cards.json); it was there before tonight and is not a game error.
+- NOT DONE in 0.65.0 (say so in the report): rival decks by dorm stars / +1 in "libre"; Academy English voices;
+  models for crowler, dorothy, sheppard, bastion are Raul's.
