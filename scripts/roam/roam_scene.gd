@@ -1899,6 +1899,13 @@ func _start_duel() -> void:
 		"difficulty": Unlocks.level_for(stars), "destiny_opp": stars >= 4, "field": _field_here(),
 		"story": true, "lose_ok": true, "return_to": Router.ROAM, "continue_label": Loc.t("Back to %s") % Loc.t(str(district.get("name", "town"))),
 	}
+	# Somebody of this world with no character sheet of their own (a student, a dock worker, the
+	# dawn and midnight duelists): the duel takes their name and their looks from here. It used to
+	# call them "Rival" and show a drawn stand-in face.
+	if Characters.get_char(opp_key).is_empty():
+		Router.duel_config["opponent_name"] = Loc.t(str(d.get("name", "Duelist")))
+		if str(d.get("model", "")) != "" and Avatars.has_avatar(str(d["model"])):
+			Router.duel_config["opponent_model"] = str(d["model"])
 	# Both of you walk into the duel dressed as you were when the challenge was made.
 	for n in _npcs:
 		if n[0] == d and n[1] and is_instance_valid(n[1]) and str(n[1].coat) != "":

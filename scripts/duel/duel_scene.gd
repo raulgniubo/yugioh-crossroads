@@ -77,6 +77,8 @@ func _ready() -> void:
 	# A duel is the loud part of the game: music and effects come up, the crowd is in the room.
 	Sfx.boost_db = 4.0
 	Music.set_boost(3.5)
+	if str(cfg0.get("opponent_model", "")) != "" and str(cfg0.get("opponent", "")) != "":
+		Avatars.look_as[str(cfg0["opponent"])] = str(cfg0["opponent_model"])      # (a duelist of the worlds: see Avatars.look_as)
 	board = DuelBoard.new()
 	board.theme = FieldThemes.resolve(str(cfg0.get("field", Settings.field_theme)), str(cfg0.get("opponent", "kaiba")))
 	if cfg0.get("turbo", false):
@@ -809,6 +811,12 @@ Match won: +%d Duel Points") % 200
 			get_tree().create_timer(1.0).timeout.connect(func():
 				print("RESULT action ", act, " gauntlet_next=", hud.gauntlet_next, " vs=", Collection.versus(_opp_key), " decks=", Collection.decks_owned.size())
 				_on_pause_action(act))
+	if "--result-long" in OS.get_cmdline_user_args():
+		# dev: the longest results there can be (a card handed over, every bonus), to see that it fits
+		for extra in [["First win against this duelist", 100], ["First win of the day", 150], ["Medal: Victory", 60], ["Medal: Standing", 120], ["Medal: Swift", 120], ["Win streak x7", 70]]:
+			Collection.last_reward.append(extra)
+		Collection.last_prize = 99267150
+		earned = maxi(earned, 1)
 	if "--result-replay" in OS.get_cmdline_user_args() and Replays.last_saved == "" and not Replays.list().is_empty():
 		Replays.last_saved = str(Replays.list()[0]["path"])      # dev: a results screen with a replay to its name, for a picture
 	hud.show_result(won, why, cfg.get("story", false), cfg.get("lose_ok", false), cfg.get("continue_label", "Continue Story"),

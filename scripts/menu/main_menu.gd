@@ -337,6 +337,8 @@ func _build_menu() -> void:
 		quit.pressed.connect(_on_quit)
 		rounds.add_child(quit)
 		_items.append(quit)
+	# (where the row ends: the line of small print beside it starts after that, however many buttons there are)
+	_rounds_end = 64.0 + rounds.get_child_count() * 64.0 + maxi(rounds.get_child_count() - 1, 0) * 14.0
 
 
 ## The four tournaments at a glance, and a way to go straight to each one's desk.
@@ -871,6 +873,8 @@ func _open_profile(first: bool) -> void:
 			_items[0].grab_focus())
 
 
+var _rounds_end := 386.0
+
 func _build_footer() -> void:
 	var version: String = ProjectSettings.get_setting("application/config/version", "0.1")
 	var credit: String = Loc.t("Fan project  ·  v%s  ·  by %s") % [version, "Atlas Peak Games"]
@@ -878,7 +882,7 @@ func _build_footer() -> void:
 	if not OcgCore.ensure_loaded() and not _engine_told:
 		_engine_told = true
 		get_tree().create_timer(2.0).timeout.connect(func(): Router.toast(Loc.t("The rules engine did not load on this computer, so duels cannot start. Send the file engine_status.txt from the saves folder."), 9.0))
-	_anchor_bottom(left, 410, 1060)
+	_anchor_bottom(left, _rounds_end + 24.0, _rounds_end + 24.0 + 650.0)
 	# On the same line as the three round buttons beside it (they span 112 to 48 from the bottom).
 	left.offset_top = -112
 	left.offset_bottom = -48

@@ -3760,7 +3760,10 @@ func add_duelists(me_key: String, opp_key: String) -> void:
 		_duelists[p] = fig
 		_style[p] = style_of(key)
 		_dkey[p] = key
-		fig.stand_as("st_" + str(_style[p]))
+		# (friendly: the calm stand itself. Its own stance held the hands together at the belly, which
+		# sank the arm and the Duel Disk into the body on some duelists.)
+		if str(_style[p]) != "kind":
+			fig.stand_as("st_" + str(_style[p]))
 		# Where they look: at the other duelist, and at the action when there is some (duelist_look).
 		var eye := Node3D.new()
 		eye.position = Vector3(0.0, 0.0, -side * DUELIST_Z)      # (a figure looks 1.5 above what it watches: a person's feet)

@@ -133,6 +133,51 @@ func _covered(key: String, skel: Skeleton3D, face: Array) -> float:
 	return float(hit) / float(face.size())
 
 
+## How deep a hand or a forearm is inside the body right now, in meters (0 = not at all). Measured
+## against the real model's own numbers (the box of each trunk joint's vertices, rounded off at the
+## corners), NOT against what the game measures at run time: an outside check.
+const TRUNK := ["Hips", "Spine", "Spine01", "Spine02", "Spine1", "Spine2", "LeftShoulder", "RightShoulder"]
+
+func _inside(key: String, skel: Skeleton3D) -> float:
+	var d: Dictionary = boxes.get(key, {})
+	var worst := 0.0
+	var pts: Array = []
+	var st := skel.global_transform      # (the boxes are in meters, as the model stands; the bones may not be)
+	for side in ["Left", "Right"]:
+		var ih := skel.find_bone(side + "Hand")
+		var ie := skel.find_bone(side + "ForeArm")
+		if ih < 0 or ie < 0:
+			continue
+		var hp := skel.get_bone_global_pose(ih)
+		var ep := skel.get_bone_global_pose(ie)
+		pts.append(hp.origin)
+		pts.append(ep.origin.lerp(hp.origin, 0.5))
+		pts.append(ep.origin.lerp(hp.origin, 0.75))
+		# (the middle of the palm: along the hand's own length, half of what the real hand measures)
+		if d.has(side + "Hand") and d[side + "Hand"].has("wlo"):
+			var hb: Dictionary = d[side + "Hand"]
+			var c_rest := (Vector3(hb["wlo"][0], hb["wlo"][1], hb["wlo"][2]) + Vector3(hb["whi"][0], hb["whi"][1], hb["whi"][2])) * 0.5
+			pts.append(hp * (skel.get_bone_global_rest(ih).affine_inverse() * (st.affine_inverse() * c_rest)))
+	for bn in TRUNK:
+		var bi := skel.find_bone(bn)
+		if bi < 0 or not d.has(bn) or not d[bn].has("wlo") or d[bn]["wlo"] == null:
+			continue
+		var lo := Vector3(d[bn]["wlo"][0], d[bn]["wlo"][1], d[bn]["wlo"][2])
+		var hi := Vector3(d[bn]["whi"][0], d[bn]["whi"][1], d[bn]["whi"][2])
+		var to_rest := st * skel.get_bone_global_rest(bi) * skel.get_bone_global_pose(bi).affine_inverse()
+		var c := (lo + hi) * 0.5
+		var r := (hi - lo) * 0.5
+		for p in pts:
+			var q: Vector3 = to_rest * (p as Vector3) - c
+			if absf(q.y) > r.y or r.x < 0.001 or r.z < 0.001:
+				continue
+			# (an oval across, as a trunk is)
+			var k := sqrt((q.x / r.x) * (q.x / r.x) + (q.z / r.z) * (q.z / r.z))
+			if k < 1.0:
+				worst = maxf(worst, (1.0 - k) * minf(r.x, r.z))
+	return worst
+
+
 func _load(key: String) -> Array:
 	var m := Avatars.load_model(key)
 	if m == null:
@@ -145,6 +190,10 @@ func _load(key: String) -> Array:
 func _check(keys: Array, motions: Array) -> void:
 	var worst := {}      # motion -> [fraction, key, time]
 	var mean := {}
+	var in_body := {}    # motion -> [meters, key, time]
+	var in_frames := {}
+	var all_frames := {}
+	Avatars.body_clear = _arg("clear", "on") != "off"
 	for key in keys:
 		var l := _load(str(key))
 		if l.is_empty() or l[1] == null:
@@ -174,6 +223,12 @@ func _check(keys: Array, motions: Array) -> void:
 					at = t
 				sum += f
 				n += 1
+				var deep := _inside(str(key), skel)
+				if deep > float(in_body.get(mo, [0.0])[0]):
+					in_body[mo] = [deep, key, t]
+				if deep > 0.03:
+					in_frames[mo] = int(in_frames.get(mo, 0)) + 1
+				all_frames[mo] = int(all_frames.get(mo, 0)) + 1
 				t += 0.1
 			if top > float(worst.get(mo, [-1.0])[0]):
 				worst[mo] = [top, key, at]
@@ -189,6 +244,16 @@ func _check(keys: Array, motions: Array) -> void:
 			bad += 1
 		print("%-14s worst %3d%% of the face hidden (%s at %.1fs)   average %2d%%" % [mo, int(round(float(w[0]) * 100)), w[1], w[2], int(round(float(mean[mo]) / maxf(keys.size(), 1) * 100))])
 	print("POSE CHECK: %d motions, %d models, %d motions hide more than 12%% of a face" % [names.size(), keys.size(), bad])
+	var deepest := in_body.keys()
+	deepest.sort_custom(func(a, b): return float(in_body[a][0]) > float(in_body[b][0]))
+	var sunk := 0
+	for mo in deepest:
+		var w2: Array = in_body[mo]
+		if float(w2[0]) > 0.03:
+			sunk += 1
+			print("%-14s a hand or forearm up to %4.1f cm inside the body (%s at %.1fs)   %2d%% of its frames" % [mo, float(w2[0]) * 100.0, w2[1], w2[2],
+				int(round(100.0 * float(in_frames.get(mo, 0)) / maxf(float(all_frames.get(mo, 1)), 1.0)))])
+	print("BODY CHECK: %d motions, %d models, %d motions put a hand or forearm more than 3 cm inside the body (clearance %s)" % [deepest.size() if not deepest.is_empty() else names.size(), keys.size(), sunk, "on" if Avatars.body_clear else "off"])
 
 
 func _view(size: Vector2i) -> Array:

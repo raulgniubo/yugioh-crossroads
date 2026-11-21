@@ -20,11 +20,16 @@ var _registered := false
 
 ## A character model: characters/<key>.vrm or .glb in the card folder (your own models),
 ## or a bundled one in res://assets/models/people/<key>.glb (townsfolk).
+## Somebody known by a name of their own who wears one of the people models: a duelist of the worlds
+## (the "First-Year Student" is `student_a` and looks like `student_girl`). Set when a duel with them
+## starts, so the duel shows them and not a drawn stand-in. (0.64.2)
+var look_as := {}
+
 func path_for(key: String) -> String:
 	var own := own_file(key)
 	if own != "":
 		return own
-	for k in [key, Profile.hero_key() if key == "player" else "", STANDINS.get(key, "")]:
+	for k in [key, Profile.hero_key() if key == "player" else "", STANDINS.get(key, ""), look_as.get(key, "")]:
 		if k == "":
 			continue
 		var bundled := "res://assets/models/people/%s.glb" % k
@@ -510,7 +515,6 @@ func _calm_head(anim: Animation, skel: Skeleton3D, skel_path: String, keep: floa
 const DISK := Vector3(-0.35, -0.50, 0.55)         # the left forearm across the body, Duel Disk up
 const ON_DISK := Vector3(-0.35, -0.40, 0.56)      # the right hand on the deck of that disk
 const PALM_DOWN := [Vector3(-1, 0, 0.25), Vector3(0, -1, 0)]
-const WILD_HAND := [Vector3(-0.25, -0.1, 1), Vector3(-1, -0.2, 0)]      # hands ready in front of the hips, palms in
 const MADE_MOTIONS := {
 	"g_draw": {"len": 2.4, "keys": [
 		{"t": 0.0},
@@ -567,14 +571,33 @@ const MADE_MOTIONS := {
 		{"t": 2.30, "l": DISK, "r": Vector3(0.25, -0.34, 0.50), "ro": PALM_DOWN, "twist": 3, "look": Vector2(4, -2)},
 		{"t": 3.20, "l": DISK, "r": Vector3(-0.20, -0.37, 0.55), "ro": PALM_DOWN, "look": Vector2(-10, 14)},
 		{"t": 4.0}]},
-	# The fired-up stance: leaning in, elbows bent, hands ready in front of the hips, turning from side
-	# to side. (The recorded one was a boxer's guard, fists at the chin.)
-	"g_st_wild": {"len": 1.8, "loop": true, "keys": [
-		{"t": 0.0, "l": Vector3(1.0, -0.60, 0.40), "r": Vector3(1.0, -0.66, 0.34), "lo": WILD_HAND, "ro": WILD_HAND, "twist": 5, "lean": 5},
-		{"t": 0.45, "l": Vector3(1.0, -0.63, 0.37), "r": Vector3(1.0, -0.63, 0.37), "lo": WILD_HAND, "ro": WILD_HAND, "twist": 0, "lean": 7},
-		{"t": 0.9, "l": Vector3(1.0, -0.66, 0.34), "r": Vector3(1.0, -0.60, 0.40), "lo": WILD_HAND, "ro": WILD_HAND, "twist": -5, "lean": 5},
-		{"t": 1.35, "l": Vector3(1.0, -0.63, 0.37), "r": Vector3(1.0, -0.63, 0.37), "lo": WILD_HAND, "ro": WILD_HAND, "twist": 0, "lean": 7},
-		{"t": 1.8, "l": Vector3(1.0, -0.60, 0.40), "r": Vector3(1.0, -0.66, 0.34), "lo": WILD_HAND, "ro": WILD_HAND, "twist": 5, "lean": 5}]},
+	# The stances a duelist HOLDS between moves (0.64.2). A pose that is held for most of a duel must
+	# look right on every body and in every outfit, so these keep the arms hanging as they do in the
+	# calm stand (no key for a hand = it hangs) and say who the duelist is with the chest and the
+	# head only. What they replace put the hands in front of the body: the fired-up one read as
+	# "carrying something", and arms crossed over a Duel Disk sank into the chest on some bodies.
+	# Fired up: never still, turning from side to side, leaning in a little.
+	"g_st_wild": {"len": 2.2, "loop": true, "keys": [
+		{"t": 0.0, "twist": 6, "lean": 3, "look": Vector2(-4, 0)},
+		{"t": 0.55, "twist": 0, "lean": 4.5},
+		{"t": 1.1, "twist": -6, "lean": 3, "look": Vector2(4, 0)},
+		{"t": 1.65, "twist": 0, "lean": 4.5},
+		{"t": 2.2, "twist": 6, "lean": 3, "look": Vector2(-4, 0)}]},
+	# Dark: leaning in, chin down, watching from under the brow, slow.
+	"g_st_dark": {"len": 7.0, "loop": true, "keys": [
+		{"t": 0.0, "twist": -3, "lean": 5, "look": Vector2(-4, 7)},
+		{"t": 3.5, "twist": 2, "lean": 6, "look": Vector2(4, 8)},
+		{"t": 7.0, "twist": -3, "lean": 5, "look": Vector2(-4, 7)}]},
+	# Cool: upright and almost still, a slow look from one side of the field to the other.
+	"g_st_cool": {"len": 8.0, "loop": true, "keys": [
+		{"t": 0.0, "twist": -2, "lean": 0, "look": Vector2(-6, 0)},
+		{"t": 4.0, "twist": 2, "lean": 0.5, "look": Vector2(6, 1)},
+		{"t": 8.0, "twist": -2, "lean": 0, "look": Vector2(-6, 0)}]},
+	# Sure of themselves: chest out, leaning back a touch, chin up, in no hurry.
+	"g_st_cocky": {"len": 6.0, "loop": true, "keys": [
+		{"t": 0.0, "twist": 4, "lean": -3.5, "look": Vector2(6, -6)},
+		{"t": 3.0, "twist": 1, "lean": -4.5, "look": Vector2(-5, -5)},
+		{"t": 6.0, "twist": 4, "lean": -3.5, "look": Vector2(6, -6)}]},
 }
 
 
@@ -691,6 +714,11 @@ func _made_motion(model: Node, nm: String, skel: Skeleton3D, skel_path: String) 
 					fingers = (ax * Vector3(fd.x * sgn, fd.y, fd.z)).normalized()
 				target = _off_face(target, sgn, fingers, reach, float(body["hand"][side]), float(fr["b"][side]), face, (h_turn * ax0.z).normalized(), (h_turn * ax0.y).normalized(),
 					head_c, body, float(fr["len"]), (ax0.x * 0.42 - ax0.y * 0.2 + ax0.z * 1.75).normalized(), ax)
+				var was := target
+				target = _off_body(target, s0, -ax.y * 0.7 + ax.x * sgn * 0.55 - ax.z * 0.45, float(fr["a"][side]), float(fr["b"][side]), side, fingers, float(body["hand"][side]), body, ax, mid, float(fr["w"]), float(fr["len"]))
+				if target != was:
+					target = _off_face(target, sgn, fingers, reach, float(body["hand"][side]), float(fr["b"][side]), face, (h_turn * ax0.z).normalized(), (h_turn * ax0.y).normalized(),
+						head_c, body, float(fr["len"]), (ax0.x * 0.42 - ax0.y * 0.2 + ax0.z * 1.75).normalized(), ax)
 			var la := float(fr["a"][side])
 			var lb := float(fr["b"][side])
 			var to := target - s0
@@ -835,6 +863,33 @@ func _body_stats(skel: Skeleton3D, fr: Dictionary) -> Dictionary:
 	var head_set := {int(fr["head"]): true}
 	for c in skel.get_bone_children(int(fr["head"])):
 		head_set[c] = true
+	# The trunk (0.64.2): everything that is not an arm or the head, measured in rows from the
+	# shoulders down past the hips: how far its front and its back are from the line of the
+	# shoulders, and how wide it is. Clothes count (a jacket, a coat): they are what a hand would
+	# sink into. See _off_body.
+	var arm_set := {}
+	for side in 2:
+		var todo: Array = [int(fr["arm"][side])]
+		while not todo.is_empty():
+			var bi: int = todo.pop_back()
+			arm_set[bi] = true
+			for c in skel.get_bone_children(bi):
+				todo.append(c)
+	var neck := skel.get_bone_parent(int(fr["head"]))
+	if neck >= 0 and skel.get_bone_name(neck).to_lower().contains("neck"):
+		head_set[neck] = true
+	var t_top := float(fr["up"]) * 0.12
+	var t_step := (t_top + float(fr["down"]) * 1.55) / float(TORSO_ROWS)
+	var t_core := float(fr["w"]) * 0.65
+	var t_front := PackedFloat32Array()
+	var t_side := PackedFloat32Array()      # (the front of the part out by the flanks)
+	var t_back := PackedFloat32Array()
+	var t_wide := PackedFloat32Array()
+	for i in TORSO_ROWS:
+		t_front.append(-INF)
+		t_side.append(-INF)
+		t_back.append(INF)
+		t_wide.append(0.0)
 	var pool: Array = skel.find_children("*", "MeshInstance3D", true, false)
 	if skel.get_parent() != null:
 		pool += skel.get_parent().find_children("*", "MeshInstance3D", true, false)
@@ -881,6 +936,18 @@ func _body_stats(skel: Skeleton3D, fr: Dictionary) -> Dictionary:
 					hi = maxf(hi, p2.dot(ax.y))
 					fz = maxf(fz, p2.dot(ax.z))
 					bz = minf(bz, p2.dot(ax.z))
+				elif not arm_set.has(bone):
+					var p3: Vector3 = (bind_xf[bind] as Transform3D) * vs[vi] - (fr["mid"] as Vector3)
+					var row := int(floor((t_top - p3.dot(ax.y)) / t_step))
+					if row >= 0 and row < TORSO_ROWS:
+						var px := absf(p3.dot(ax.x))
+						var pz := p3.dot(ax.z)
+						if px < t_core:
+							t_front[row] = maxf(t_front[row], pz)
+						else:
+							t_side[row] = maxf(t_side[row], pz)
+						t_back[row] = minf(t_back[row], pz)
+						t_wide[row] = maxf(t_wide[row], px)
 	for side in 2:
 		if seen[side] > float(fr["b"][side]) * 0.3:
 			st["hand"][side] = seen[side]
@@ -899,8 +966,105 @@ func _body_stats(skel: Skeleton3D, fr: Dictionary) -> Dictionary:
 	var deep := (fz + bz) * 0.5 if hi > lo else (head - (fr["mid"] as Vector3)).dot(ax.z)
 	st["head_c"] = (fr["mid"] as Vector3) + ax.y * (chin + tall * 0.5) + ax.x * (head - (fr["mid"] as Vector3)).dot(ax.x) + ax.z * deep
 	st["head_r"] = tall * 0.4
+	# (a row no vertex fell in takes after its neighbours; a body with no skin to read has no trunk here)
+	var any := false
+	for i in TORSO_ROWS:
+		if t_wide[i] > 0.0:
+			any = true
+	if any:
+		for i in TORSO_ROWS:
+			if t_front[i] == -INF:
+				t_front[i] = t_side[i]
+			if t_side[i] == -INF:
+				t_side[i] = t_front[i]
+		st["torso"] = {"top": t_top, "step": t_step, "core": t_core, "front": t_front, "side": t_side, "back": t_back, "wide": t_wide}
 	skel.set_meta("body_stats", st)
 	return st
+
+
+const TORSO_ROWS := 12
+
+## The trunk at one height (y from the line of the shoulders, x across): [front, back, half width],
+## or [] where there is no trunk. The rows next to it count too, so nothing slips between two rows.
+func _torso_row(tor: Dictionary, x: float, y: float) -> Array:
+	var r := int(floor((float(tor["top"]) - y) / float(tor["step"])))
+	if r < 0 or r >= TORSO_ROWS:
+		return []
+	var front := -INF
+	var back := INF
+	var wide := 0.0
+	for k in range(maxi(r - 1, 0), mini(r + 2, TORSO_ROWS)):
+		if float((tor["wide"] as PackedFloat32Array)[k]) <= 0.0:
+			continue
+		front = maxf(front, float((tor["front" if absf(x) < float(tor["core"]) else "side"] as PackedFloat32Array)[k]))
+		back = minf(back, float((tor["back"] as PackedFloat32Array)[k]))
+		# (how wide: this row only, so a hem that flares out does not widen the waist above it)
+		if k == r:
+			wide = float((tor["wide"] as PackedFloat32Array)[k])
+	if front == -INF or wide <= 0.0:
+		return []
+	return [front, back, wide]
+
+
+## No hand and no forearm inside the body (0.64.2). The wrist, the palm, the fingertips and two
+## points of the forearm are tried against the trunk as it was measured on this very model (clothes
+## and all); whatever is inside moves the wrist out: forward for a hand in front of the body,
+## backward for one behind the back, a little out to the side for one hanging beside the hips.
+## Returns where the wrist may be. `pole`: which way the elbow points.
+func _off_body(want: Vector3, s: Vector3, pole: Vector3, la: float, lb: float, side: int, hdir: Vector3, hl: float, body: Dictionary, ax: Basis, mid: Vector3, w: float, arm_len: float) -> Vector3:
+	var tor: Dictionary = body.get("torso", {})
+	if tor.is_empty() or not body_clear:
+		return want
+	var inv := ax.orthonormalized().inverse()
+	var axz := ax.z.normalized()
+	var axx := ax.x.normalized()
+	for pass_i in 4:
+		var to := want - s
+		var dist := clampf(to.length(), absf(la - lb) + (la + lb) * 0.04, (la + lb) * 0.995)
+		var n := to.normalized() if to.length() > 0.00001 else -ax.y.normalized()
+		var pl := pole - n * pole.dot(n)
+		pl = pl.normalized() if pl.length() > 0.0001 else Vector3.ZERO
+		var along := (la * la - lb * lb + dist * dist) / (2.0 * dist)
+		var elbow := s + n * along + pl * sqrt(maxf(la * la - along * along, 0.0))
+		var wrist := s + n * dist
+		var push := Vector3.ZERO
+		for sm in 5:
+			var pt := wrist + hdir * hl * (0.5 * sm) if sm < 3 else wrist.lerp(elbow, 0.3 if sm == 3 else 0.55)
+			# (the forearm is thicker than the hand, and the left one wears the Duel Disk)
+			var thick := hl * 0.2 if sm < 3 else hl * (0.42 if side == 0 else 0.3)
+			var gain := 1.0 if sm < 3 else (1.0 / 0.7 if sm == 3 else 1.0 / 0.45)
+			var q: Vector3 = inv * (pt - mid)
+			var row := _torso_row(tor, q.x, q.y)
+			if row.is_empty():
+				continue
+			var front := float(row[0])
+			var back := float(row[1])
+			var wide := float(row[2])
+			if absf(q.x) >= wide or q.z >= front + thick or q.z <= back - thick:
+				continue
+			var pv := Vector3.ZERO
+			if absf(q.x) > 0.85 * w and q.z < arm_len * 0.25 and q.z > back:
+				# Hanging beside the body: out to the side, and only when a little is enough (an arm
+				# is not held away from a wide coat: it hangs in it, as it always has).
+				var dx := wide + thick * 0.4 - absf(q.x)
+				if sm >= 3 or dx > 0.22 * w:
+					continue
+				pv = axx * signf(q.x) * dx
+			elif q.z < (front + back) * 0.5:
+				if sm >= 3:
+					continue
+				pv = -axz * (q.z - (back - thick))      # (behind the back: out the back)
+			else:
+				pv = axz * minf((front + thick - q.z) * gain, arm_len * 0.45)
+			if pv.length() > push.length():
+				push = pv
+		if push.length() < 0.0005:
+			break
+		want += push
+	return want
+
+
+var body_clear := true      # (off: for a look at how it was before)
 
 
 func _stretch(v: float, zone_d: float, zone_t: float, k_out: float) -> float:
@@ -953,6 +1117,16 @@ func _arm_wants(dskel: Skeleton3D, skel: Skeleton3D, da: Dictionary, ta: Diction
 		var cam_dir := (r_ax.x * 0.42 - r_ax.y * 0.2 + r_ax.z * 1.75).normalized()
 		var head_c: Vector3 = (tp[int(ta["head"])] as Vector3) + h_turn * ((body["head_c"] as Vector3) - skel.get_bone_global_rest(int(ta["head"])).origin)
 		want = _off_face(want, sgn, hdir, fdir, hl, float(ta["b"][side]), face, f_fwd, f_up, head_c, body, float(ta["len"]), cam_dir, t_ax)
+		# ...and no hand or forearm inside the body. (Not while the chest is bent right over, a bow or a
+		# kneel: the trunk was measured standing.)
+		if t_ax.y.normalized().dot(r_ax.y.normalized()) > 0.9:
+			var e_out := e - s
+			if e_out.length() < 0.0001:
+				e_out = -t_ax.y + t_ax.x * sgn * 0.5
+			var was := want
+			want = _off_body(want, s, e_out, float(ta["a"][side]), float(ta["b"][side]), side, hdir, hl, body, t_ax, t_mid, float(ta["w"]), float(ta["len"]))
+			if want != was:      # (out of the body must not mean into the face: the face has the last word)
+				want = _off_face(want, sgn, hdir, fdir, hl, float(ta["b"][side]), face, f_fwd, f_up, head_c, body, float(ta["len"]), cam_dir, t_ax)
 		res.append({"t": t, "s": s, "e": e, "h": h, "want": want, "pg": tg[skel.get_bone_parent(int(ta["arm"][side]))] if skel.get_bone_parent(int(ta["arm"][side])) >= 0 else Basis.IDENTITY,
 			"gu": tg[int(ta["arm"][side])], "gf": tg[int(ta["fore"][side])], "gh": tg[int(ta["hand"][side])], "out": t_ax.x * sgn, "down": -t_ax.y})
 	return res
@@ -1087,6 +1261,8 @@ func gesture(model: Node, motion: String) -> String:
 		var made := _made_for(model, nm, skel)
 		if made != "":
 			return made
+		if nm.begins_with("g_st_"):
+			return ""      # (a stance that cannot be built on this body: the calm stand, never the old recorded one)
 	if _gest == null or not is_instance_valid(_gest):
 		var ps = load(GESTURES)
 		if not (ps is PackedScene):

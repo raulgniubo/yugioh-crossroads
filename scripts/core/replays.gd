@@ -28,7 +28,7 @@ static func game_version() -> String:
 
 ## The parts of a duel's settings that a replay needs to look the same: who, where, what kind.
 ## (Not what the duel was for: a replay gives no rewards and moves no story forward.)
-const CFG_KEEP := ["opponent", "opponent_name", "opponent_deck", "opponent_deck_full", "opponent_coat", "player_char", "player_coat",
+const CFG_KEEP := ["opponent", "opponent_name", "opponent_model", "opponent_deck", "opponent_deck_full", "opponent_coat", "player_char", "player_coat",
 	"player_deck", "difficulty", "cpu_level", "turbo", "lp", "my_lp", "opp_lp", "hand", "rare", "field", "arena", "music", "tod", "destiny", "destiny_opp"]
 
 static func clean_cfg(cfg: Dictionary) -> Dictionary:
@@ -143,7 +143,8 @@ static func list() -> Array:
 			continue
 		out.append({"path": d["path"], "file": fn, "when": int(d.get("when", 0)), "date": str(d.get("date", "")), "game": str(d.get("game", "?")),
 			"keep": bool(d.get("keep", false)), "names": d.get("names", ["?", "?"]), "result": d.get("result", {}),
-			"opponent": str((d.get("cfg", {}) as Dictionary).get("opponent", "")), "me": str((d.get("cfg", {}) as Dictionary).get("player_char", "player")),
+			"opponent": str((d.get("cfg", {}) as Dictionary).get("opponent", "")), "looks": str((d.get("cfg", {}) as Dictionary).get("opponent_model", "")),
+			"me": str((d.get("cfg", {}) as Dictionary).get("player_char", "player")),
 			"turbo": bool((d.get("cfg", {}) as Dictionary).get("turbo", false)), "steps": int(d.get("steps", 0)), "newer": bool(d.get("newer", false)), "title": title_of(fn)})
 	out.sort_custom(func(a, b): return int(a["when"]) > int(b["when"]))
 	return out
@@ -249,10 +250,14 @@ static func settle(data: Dictionary, cfg: Dictionary) -> Dictionary:
 	var names: Array = data.get("names", ["?", "?"])
 	var no_duelist := false
 	var opp := str(cfg.get("opponent", ""))
-	if Characters.get_char(opp).is_empty():
+	var looks := str(cfg.get("opponent_model", ""))
+	if looks != "" and Avatars.path_for(looks) != "":
+		Avatars.look_as[opp] = looks      # (a duelist of the worlds: their own name, the looks of one of the people models)
+	elif Characters.get_char(opp).is_empty() and Avatars.path_for(opp) == "":
 		no_duelist = true
 		cfg["opponent"] = STAND_IN
 		cfg.erase("opponent_coat")
+		cfg.erase("opponent_model")
 	if names.size() > 1:
 		cfg["opponent_name"] = str(names[1])
 	var me := str(cfg.get("player_char", "player"))

@@ -140,7 +140,12 @@ func _row(h: Dictionary) -> Control:
 	face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	if str(h["opponent"]) != "":
 		# (a duelist this version of the game does not have: the stand-in's picture, the replay's name)
-		face.texture = Portraits.get_portrait(str(h["opponent"]) if not Characters.get_char(str(h["opponent"])).is_empty() else Replays.STAND_IN)
+		var who_key := str(h["opponent"])
+		if str(h.get("looks", "")) != "" and Avatars.has_avatar(str(h["looks"])):
+			who_key = str(h["looks"])
+		elif Characters.get_char(who_key).is_empty() and not Avatars.has_avatar(who_key):
+			who_key = Replays.STAND_IN
+		face.texture = Portraits.get_portrait(who_key)
 	var clip := PanelContainer.new()
 	clip.clip_contents = true
 	clip.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.02, 0.03, 0.07), 10, Color(1, 1, 1, 0.12)))

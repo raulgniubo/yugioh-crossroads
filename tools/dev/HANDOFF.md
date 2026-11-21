@@ -749,3 +749,31 @@ MEMORY (items 9, 12, and Raul 2:10 PM "check for any leaks"): three real causes 
   the Replays screen with the pencil, the naming box. NOT seen: the star on a Story/Match results screen (same code path,
   added for every branch), typing a name by hand in the box (the rename itself is covered by test_runner).
   Voices: batch 103 taken, waits to be packed; next 104; check-in trig_015LL1C4Qx5PTSKg274jW2ig at 10:01 PM.
+
+#### 0.64.2 (Nov 20, late night): seven fixes Raul sent one by one, go at 9:41 PM (list: /home/claude/work/next_build_list.md)
+1. Photo of his own duelist with the arms in the body = `g_st_kind` (the "kind" stance, hands at the belly; default
+   style "Pick for me"). Reproduced here: `--look=0,1,1,1,2 --duel --skip-opening --first=me --rider-shot=0 --pose=st_kind`
+   (/tmp/poserun.sh <prefix> <look> <poses> makes a sheet of the plate portrait). DuelBoard no longer calls stand_as for
+   "kind" (the calm stand).
+2. Jaden "holding something" = the made stance `g_st_wild`. ALL held stances are now made motions with NO hand keys
+   (arms hang as in the calm stand; chest twist/lean + head only): g_st_wild, g_st_cocky, g_st_dark, g_st_cool in
+   Avatars.MADE_MOTIONS (the recorded g_st_*.res files are no longer used). Rule: a HELD pose never puts hands in front
+   of the body.
+   Body clearance for every motion: Avatars._body_stats measures the trunk from the skin (12 rows from the shoulders
+   to below the hips: front, side-front, back, half width; arms and head left out), `_off_body` pushes the wrist so
+   wrist/palm/fingertips/two forearm points are out of it (forward; backward behind the back; a little sideways when
+   hanging beside the hips), called in `_arm_wants` (recorded clips; not while the chest is bent over) and in
+   `_made_motion`; `_off_face` runs again after it. `Avatars.body_clear = false` turns it off.
+   Outside check: `tests/pose_review.tscn --mode=check [--clear=off]` now also prints BODY CHECK (hand/forearm points
+   against the REAL models' trunk boxes from rig/real.json). Off: 22 motions deeper than 3 cm, st_kind 13.5 cm in 100%
+   of its frames. On: 16 motions, all brief (st_kind 8% and no longer used; fo_bow 22% is a bow, left alone).
+3. RoundButton "star_on": dark fill + gold rim, also hovered. hud.favorite_toggle sits on a dark strip.
+4. "RIVAL" + drawn face: roam_scene._start_duel used the npc id as the opponent key; 39 of 69 world duelists have no
+   character sheet. Now: cfg "opponent_name" (their own name) + "opponent_model"; Avatars.look_as[id] = model (path_for
+   reads it), set in duel_scene before the board and in Replays.settle; CFG_KEEP has opponent_model.
+   `tests/world_duelists.tscn` = WORLD DUELISTS: 69 duelists, 0 unknown. Dev: `--opp=student_a --oppmodel=student_girl`.
+5. main_menu: credit line starts after the row of round buttons (_rounds_end).
+6. roam_extras "ON YOUR LIST": Tab/R3 always toggles; small form is a chip; Settings.roam_list_small. Dev: `--errands=dom_card:1`.
+7. hud.show_result: fit runs on every v.resized (deferred), shrinks around the point that centers the column in the
+   SCREEN (the CenterContainer grows with its child and pins a too-tall child to its top). Dev: `--result-long`,
+   `--result-replay`, `--fit-debug`.

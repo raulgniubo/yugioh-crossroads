@@ -159,7 +159,8 @@ var _list_rows: VBoxContainer
 var _list_more: Label
 var _list_sig := "-"
 var _list_tick := 0.0
-static var list_small := true
+static var list_small := true      # (Settings.roam_list_small is what is kept between sessions)
+var _list_head: Label
 
 
 func free_list() -> Array:
@@ -198,6 +199,7 @@ func _free_list_step(delta: float) -> void:
 	if _list_box == null:
 		if rows.is_empty():
 			return
+		list_small = Settings.roam_list_small
 		_list_box = PanelContainer.new()
 		_list_box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.042, 0.0676, 0.145, 0.88), 16, Color(UITheme.GOLD, 0.6)))
 		_list_box.position = Vector2(30, 232)
@@ -214,7 +216,8 @@ func _free_list_step(delta: float) -> void:
 		v.add_theme_constant_override("separation", 3)
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		gm.add_child(v)
-		v.add_child(UITheme.label(Loc.t("ON YOUR LIST"), 13, UITheme.GOLD, UITheme.semi_font()))
+		_list_head = UITheme.label(Loc.t("ON YOUR LIST"), 13, UITheme.GOLD, UITheme.semi_font())
+		v.add_child(_list_head)
 		_list_title = UITheme.label("", 19, Color.WHITE, UITheme.semi_font())
 		_list_title.custom_minimum_size.x = 348.0
 		_list_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -233,10 +236,16 @@ func _free_list_step(delta: float) -> void:
 		return
 	_list_sig = sig
 	var key_name := "R3" if Pad.connected else "Tab"
-	var wide := 380.0 if list_small else 500.0
+	# Two forms (0.64.2): open, with everything on it, or put away as one small line that only says how
+	# many there are. Tab / R3 goes from one to the other, with one thing on the list or with ten, and
+	# the game remembers which you left it in.
+	var wide := 0.0 if list_small else 500.0
 	_list_box.custom_minimum_size.x = wide
-	_list_title.custom_minimum_size.x = wide - 32.0
+	_list_head.visible = not list_small
+	_list_title.visible = not list_small
+	_list_title.custom_minimum_size.x = maxf(wide - 32.0, 0.0)
 	_list_title.text = str(rows[0])
+	_list_box.modulate.a = 0.8 if list_small else 1.0
 	for c in _list_rows.get_children():
 		_list_rows.remove_child(c)
 		c.queue_free()
@@ -246,8 +255,8 @@ func _free_list_step(delta: float) -> void:
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.custom_minimum_size = Vector2(wide - 40.0, 0)
 		_list_rows.add_child(l)
-	_list_more.visible = rows.size() > 1
-	_list_more.text = (Loc.t("%d on your list   ·   %s  show the list") % [rows.size(), key_name]) if list_small else (Loc.t("%s  hide the list") % key_name)
+	_list_more.visible = true
+	_list_more.text = (Loc.t("On your list: %d   ·   %s") % [rows.size(), key_name]) if list_small else (Loc.t("%s  make it small") % key_name)
 	_list_box.size = Vector2.ZERO
 
 
@@ -271,6 +280,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _list_box != null and _list_box.visible and ((event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB) \
 			or (event is InputEventJoypadButton and event.pressed and Pad.b(event) == JOY_BUTTON_RIGHT_STICK)):
 		list_small = not list_small
+		Settings.roam_list_small = list_small
+		Settings.save_settings()
 		_list_tick = 0.0
 		Sfx.play("click", -10.0)
 		get_viewport().set_input_as_handled()

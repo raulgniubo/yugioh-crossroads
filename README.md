@@ -5,6 +5,19 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.64.2
+
+Seven fixes from one evening of play. No cards added: 8,415 total.
+
+- **No more arms inside the body.** Your duelist's "friendly" stand held the hands together at the belly, and on your character the arm and the Duel Disk sank into the body. That stand is gone: a friendly duelist stands normally. And every move is now checked against the body it is played on (its real shape, clothes included): a hand or a forearm that would end up inside the body is moved out in front of it.
+- **No more "holding something".** The "fired up" stand held both hands out in front of the hips and kept coming back. All the stands a duelist holds between moves now keep the arms hanging naturally and show who they are with the chest and the head only: fired up sways from side to side, confident leans back with the chin up, dark leans in and looks from under the brow, cool barely moves.
+- **Duelists of the worlds are themselves in a duel.** 39 of the 69 people you can duel in Free Roam (students, dock workers, the dawn and midnight duelists...) showed up as "RIVAL" with a drawn stand-in face. They now have their own name, their own face on the plate and their own model at the table.
+- **The favorite star when it is on:** a gold star on a dark circle with a gold rim, also when you point at it (it was gold on gold). The star's row sits on a dark strip so it reads over the table.
+- **The results screen always fits.** With a card handed over and a long list of rewards, the bottom row ran off the screen. The whole column now shrinks to fit whenever it is too tall.
+- **Main menu:** the "Fan project" line no longer starts on top of the quit button.
+- **Free Roam, "On your list":** Tab (R3 on a controller) puts the box away as one small line ("On your list: 2 · Tab") and brings it back. It works with one favor on the list too, and the game remembers how you left it.
+- **Windows:** only the .exe changed.
+
 ## What is in 0.64.1
 
 Replays: favorite and name them. No cards added: 8,415 total.

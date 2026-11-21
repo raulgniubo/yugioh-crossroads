@@ -7685,4 +7685,6 @@ const ES := {
 	"This is also the name of its file in the Replays folder, so it is easy to find and to share. A replay with a name is never cleared out by newer duels.": "También es el nombre de su archivo en la carpeta de repeticiones, para encontrarlo y compartirlo fácil. Una repetición con nombre nunca se borra sola por duelos más nuevos.",
 	"Save name": "Guardar nombre",
 	"That name could not be used.": "No se pudo usar ese nombre.",
+	"On your list: %d   ·   %s": "En tu lista: %d   ·   %s",
+	"%s  make it small": "%s  hacerla pequeña",
 }

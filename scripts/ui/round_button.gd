@@ -36,8 +36,14 @@ func _draw() -> void:
 	var down := is_pressed()
 	var o := c + Vector2(0, 1 if down else 0)
 	draw_circle(c + Vector2(0, 3), r + 1.0, Color(0, 0, 0, 0.3))
-	draw_circle(o, r, Color(0.05, 0.075, 0.16, 0.95).lerp(Comic.RED if kind == "trash" else UITheme.ACCENT, _hover))
-	draw_arc(o, r, 0.0, TAU, 48, Color(1, 1, 1, 0.22).lerp(Color.WHITE, _hover), 1.5, true)
+	if kind == "star_on":
+		# A favorite: a gold star on a dark circle with a gold rim, pointed at or not. (The usual
+		# gold fill under the pointer hid the gold star.)
+		draw_circle(o, r, Color(0.05, 0.075, 0.16, 0.97).lerp(Color(0.13, 0.17, 0.33, 1.0), _hover))
+		draw_arc(o, r, 0.0, TAU, 48, Color("ffd23a", 0.75).lerp(Color("ffe88a"), _hover), 2.0 + _hover, true)
+	else:
+		draw_circle(o, r, Color(0.05, 0.075, 0.16, 0.95).lerp(Comic.RED if kind == "trash" else UITheme.ACCENT, _hover))
+		draw_arc(o, r, 0.0, TAU, 48, Color(1, 1, 1, 0.22).lerp(Color.WHITE, _hover), 1.5, true)
 	var w := Color.WHITE.lerp(Comic.INK, _hover)
 	if tint == Comic.RED and _hover < 0.5:
 		w = Color("ff8a98")

@@ -404,6 +404,10 @@ func _debug_args() -> void:
 			get_tree().quit()
 		elif a.begins_with("--lp="):
 			duel_config["lp"] = int(a.substr(5))
+		elif a.begins_with("--oppmodel="):
+			# Dev: a duelist of the worlds, as a duel started there would name them (--opp=student_a --oppmodel=student_girl).
+			duel_config["opponent_model"] = a.substr(11)
+			duel_config["opponent_name"] = "First-Year Student"
 		elif a.begins_with("--oppdeck="):
 			duel_config["opponent_deck"] = a.substr(10)
 		elif a == "--gauntlet":

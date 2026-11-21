@@ -2991,12 +2991,26 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 	first.grab_focus()
 	# And if it is still taller than the window (a small window, a very long list), the whole
 	# column is made a little smaller instead of running off it.
+	# (Every time it changes size, not once: what the duel paid comes in after the buttons are up, and
+	# in 0.64.1 the row under them ran off the bottom of the screen.)
+	var fit := func():
+		if not is_instance_valid(v):
+			return
+		# (The box it sits in puts a column taller than itself at its top edge, not in the middle: so
+		# the column is shrunk around the point that leaves it in the middle of that box.)
+		# (as tall as the screen, not as that box: a box grows with what is in it)
+		var area := Vector2((v.get_parent() as Control).size.x, get_viewport_rect().size.y)
+		var k := minf(1.0, minf((area.y - 40.0) / maxf(v.size.y, 1.0), (area.x - 24.0) / maxf(v.size.x, 1.0)))
+		if OS.is_debug_build() and "--fit-debug" in OS.get_cmdline_user_args():
+			print("FIT area ", area, " size ", v.size, " pos ", v.position, " k ", k)
+		if k >= 0.999:
+			v.scale = Vector2.ONE
+			return
+		v.pivot_offset = ((area - v.size * k) / 2.0 - v.position) / (1.0 - k)
+		v.scale = Vector2.ONE * k
+	v.resized.connect(func(): fit.call_deferred())
 	await get_tree().process_frame
-	if is_instance_valid(v):
-		var room := get_viewport_rect().size.y - 36.0
-		if v.size.y > room:
-			v.pivot_offset = v.size / 2.0
-			v.scale = Vector2.ONE * (room / v.size.y)
+	fit.call()
 
 
 # ---------------------------------------------------------------- watching a replay (0.64.0)
@@ -3069,9 +3083,19 @@ func show_replay_over(title: String, line: String, color: Color, path := "") -> 
 ## a replay, so a duel worth keeping is kept right there (a favorite is never cleared out by newer
 ## duels). The same star as on the Replays screen.
 func favorite_toggle(path: String, watch := false) -> Control:
+	# (on a dark strip of its own: under it there may be the table and its cards)
+	var strip := PanelContainer.new()
+	var sb := UITheme.panel_box(Color(0.03, 0.05, 0.11, 0.82), 16, Color(1, 1, 1, 0.1))
+	sb.content_margin_left = 14
+	sb.content_margin_right = 18
+	sb.content_margin_top = 7
+	sb.content_margin_bottom = 7
+	strip.add_theme_stylebox_override("panel", sb)
+	strip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 12)
+	strip.add_child(row)
 	var on := [bool(Replays.read(path, false).get("keep", false))]
 	var star := RoundButton.new("star_on" if on[0] else "star", Comic.BLUE, 54.0)
 	star.focus_mode = Control.FOCUS_ALL
@@ -3110,7 +3134,7 @@ func favorite_toggle(path: String, watch := false) -> Control:
 		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		b.pressed.connect(func(): pause_action.emit("watch_replay"))
 		row.add_child(b)
-	return row
+	return strip
 
 
 func show_pause() -> void:
