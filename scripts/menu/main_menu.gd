@@ -37,9 +37,17 @@ func _ready() -> void:
 	_build_background()
 	_build_overlay()
 	_build_title()
-	_build_menu()
+	if "--open=oldmenu" in OS.get_cmdline_user_args():
+		_build_menu()          # dev: the home screen from before 0.69.1, to compare
+	else:
+		_build_home()
 	_build_featured()
 	_build_profile_chip()
+	if _home_cont != null:
+		# (Up from the Continue card is your duelist card; down from it, back to Continue.)
+		_home_cont.focus_neighbor_top = _home_cont.get_path_to(_chip)
+		_chip.focus_neighbor_bottom = _chip.get_path_to(_home_cont)
+		_chip.focus_mode = Control.FOCUS_ALL
 	_build_footer()
 	# A new duelist: the opening is up before the menu is ever seen (it used to flash by first).
 	var first_menu := not Router.opening_shown    # the first time the menu is up since the game started
@@ -931,6 +939,35 @@ func _intro() -> void:
 		_open_starter()
 	elif _items.size() > 0 and not _panel_open:
 		_items[0].grab_focus()
+	if "--focus-walk" in OS.get_cmdline_user_args():
+		_focus_walk()
+
+
+## Dev: walk the home screen with the arrow keys and print where focus goes, then quit.
+func _focus_walk() -> void:
+	var seen := {}
+	print("FOCUS start ", get_viewport().gui_get_focus_owner(), " panel_open ", _panel_open)
+	if get_viewport().gui_get_focus_owner() == null and _items.size() > 0:
+		_items[0].grab_focus()
+		await get_tree().process_frame
+		print("FOCUS grabbed ", get_viewport().gui_get_focus_owner())
+	for act in ["ui_down", "ui_down", "ui_right", "ui_right", "ui_down", "ui_right", "ui_down", "ui_right", "ui_right", "ui_right", "ui_right", "ui_up", "ui_up", "ui_up", "ui_left"]:
+		await get_tree().create_timer(0.15).timeout
+		var ev := InputEventAction.new()
+		ev.action = act
+		ev.pressed = true
+		get_viewport().push_input(ev)
+		await get_tree().process_frame
+		var f := get_viewport().gui_get_focus_owner()
+		var nm := "null"
+		if f != null:
+			nm = str(f.tooltip_text) if str(f.tooltip_text) != "" else f.get_class()
+			if f is HomeTile:
+				nm = "tile " + str((f as HomeTile).find_children("*", "Label", true, false)[1].text) if (f as HomeTile).find_children("*", "Label", true, false).size() > 1 else "tile"
+			seen[f] = true
+		print("FOCUS %s -> %s" % [act, nm])
+	print("FOCUS distinct %d of %d items" % [seen.size(), _items.size()])
+	get_tree().quit()
 
 
 ## The very first start, before anything else: which language. The menu is built again in it.
@@ -1283,3 +1320,261 @@ func _on_free_duel() -> void:
 		_panel_open = false
 		if _items.size() > 1:
 			_items[0].grab_focus())
+
+
+# ------------------------------------------------------------------ the home screen (0.69.1)
+
+var _home_cont: HomeTile = null
+const HOME_X := 64.0
+const HOME_W := 836.0
+
+
+## The home screen: the title, a big Continue card that knows what you were doing last, and the
+## modes as tiles with the game's own pictures (the same ones their own screens open on).
+func _build_home() -> void:
+	_title_box.scale = Vector2(0.8, 0.8)
+	_title_box.position = Vector2(70, 146)
+	_menu_box = Control.new()
+	_menu_box.position = Vector2.ZERO
+	_menu_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_menu_box)
+	Tournament.load_data()
+	var won := 0
+	for id in Tournament.DEFS:
+		if Tournament.titles(str(id)) > 0:
+			won += 1
+	var cont := _continue_card()
+	_home_cont = cont
+	cont.position = Vector2(HOME_X, 290)
+	_menu_box.add_child(cont)
+	_items.append(cont)
+	var story_pic := StoryGate.picture_of(StoryGate.district_of(_story_chapter()))
+	var half := (HOME_W - 14.0) / 2.0
+	var third := (HOME_W - 28.0) / 3.0
+	var rows := [
+		[476.0, 150.0, [
+			["The main story", "STORY", _chapter_label(_story_chapter()), Color("ffb62e"), [story_pic], _on_story, ""],
+			["A story of its own", "DUEL ACADEMY", Campus.summary() if Campus.started() else Loc.t("A school year on the island."), Color("e0533f"), [AcademyBackdrop.PICTURE], _on_academy, ""]]],
+		[640.0, 124.0, [
+			["Quick play", "FREE DUEL", "Any duelist, deck and field.", Color("8a6dff"), ["res://assets/ui/story_title_heartland.jpg"], _on_free_duel, ""],
+			["Riding Duels", "TURBO DUEL", "Race the highway at speed.", Color("3fc6ff"), ["res://assets/ui/roam_title_highway.jpg"], _on_turbo, ""],
+			["Open world", "FREE ROAM", "Five places to walk and duel.", Color("3fbf8a"), [_roam_picture()], _on_roam, ""]]],
+		[778.0, 104.0, [
+			["Four titles", "TOURNAMENTS", "Badges, brackets, trophies.", Color("ffd766"), ["res://assets/ui/story_title_newdomino.jpg"], _on_tournaments, "%d / %d" % [won, Tournament.DEFS.size()]],
+			["Your cards", "MY DECKS", "Build, rename, pick a deck.", Color("ff7ab8"), ["res://assets/ui/story_title_museum.jpg"], _on_deck, ""]]],
+	]
+	var grid: Array = [[cont]]
+	for row in rows:
+		var y: float = row[0]
+		var h: float = row[1]
+		var entries: Array = row[2]
+		var w: float = half if entries.size() == 2 else third
+		var x := HOME_X
+		grid.append([])
+		for e in entries:
+			var tile := HomeTile.new(Loc.t(str(e[0])), Loc.t(str(e[1])), Loc.t(str(e[2])), e[3], e[4], Vector2(w, h), str(e[6]))
+			tile.position = Vector2(x, y)
+			tile.pressed.connect(e[5])
+			tile.pressed.connect(func(): Sfx.play("click", -6.0))
+			_menu_box.add_child(tile)
+			_items.append(tile)
+			(grid[grid.size() - 1] as Array).append(tile)
+			x += w + 14.0
+	var first_round := _items.size()
+	_build_rounds()
+	grid.append(_items.slice(first_round))
+	_link_grid(grid)
+	_link_grid_later(grid)
+
+
+## Once the round buttons have been laid out, link them again by where they really are.
+func _link_grid_later(grid: Array) -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if is_inside_tree():
+		_link_grid(grid)
+		if _home_cont != null and _chip != null:
+			_home_cont.focus_neighbor_top = _home_cont.get_path_to(_chip)
+
+
+## Arrow keys and the stick move through the home screen as a grid: left and right stay in the row,
+## up and down go to the tile above or below that is closest in line.
+func _link_grid(grid: Array) -> void:
+	for r in grid.size():
+		var row: Array = grid[r]
+		for i in row.size():
+			var b: Control = row[i]
+			b.focus_neighbor_left = b.get_path_to(row[i - 1] if i > 0 else b)
+			b.focus_neighbor_right = b.get_path_to(row[i + 1] if i < row.size() - 1 else b)
+			b.focus_neighbor_top = b.get_path_to(_closest(b, grid[r - 1]) if r > 0 else b)
+			b.focus_neighbor_bottom = b.get_path_to(_closest(b, grid[r + 1]) if r < grid.size() - 1 else b)
+
+
+func _closest(b: Control, row: Array) -> Control:
+	var mid := b.global_position.x + b.size.x / 2.0
+	var best: Control = row[0]
+	var bd := INF
+	for o in row:
+		var c := o as Control
+		var d := absf(c.global_position.x + c.size.x / 2.0 - mid)
+		if d < bd:
+			bd = d
+			best = c
+	return best
+
+
+## The Free Roam tile's picture: the world you walked in last (Domino before you have been anywhere).
+func _roam_picture() -> String:
+	var where := Saves.place()
+	var dk := str(where.get("district", "")) if str(where.get("mode", "")) == "roam" else ""
+	if dk == "" or dk == "highway":
+		dk = "domino"
+	return StoryGate.picture_of(dk)
+
+
+## The chapter the Story tile shows: where you are, or the newest you can start.
+func _story_chapter() -> String:
+	var where := Saves.place()
+	if str(where.get("mode", "")) == "story" and StoryData.SCRIPTS.has(str(where.get("chapter", ""))):
+		return str(where["chapter"])
+	var pos := StoryProgress.position()
+	if str(pos.get("chapter", "")) != "" and StoryData.SCRIPTS.has(str(pos["chapter"])):
+		return str(pos["chapter"])
+	var newest := str(StoryData.CHAPTERS[0]["id"])
+	for c in StoryData.CHAPTERS:
+		if StoryProgress.unlocked().has(c["id"]) and StoryData.SCRIPTS.has(c["id"]):
+			newest = str(c["id"])
+	return newest
+
+
+## "Chapter 3: The Last Lap" for a chapter id.
+func _chapter_label(id: String) -> String:
+	for c in StoryData.CHAPTERS:
+		if str(c["id"]) == id:
+			return "%s: %s" % [Loc.t(str(c["title"])), Loc.t(str(c["name"]))]
+	return ""
+
+
+## How long ago, in words ("5 minutes ago", "yesterday").
+func _ago(when: String) -> String:
+	if when == "":
+		return ""
+	var then := Time.get_unix_time_from_datetime_string(when)
+	var now := Time.get_unix_time_from_datetime_string(Time.get_datetime_string_from_system(false, true))
+	var mins := int((now - then) / 60)
+	if mins < 2:
+		return Loc.t("Just now")
+	if mins < 60:
+		return Loc.t("%d minutes ago") % mins
+	if mins < 120:
+		return Loc.t("An hour ago")
+	if mins < 60 * 24:
+		return Loc.t("%d hours ago") % (mins / 60)
+	if mins < 60 * 48:
+		return Loc.t("Yesterday")
+	return Loc.t("%d days ago") % (mins / (60 * 24))
+
+
+## The big card on top: what you were doing last (a chapter of the story, a day at the Academy, a
+## walk in one of the worlds), with that place's picture, and one press takes you back there.
+## With nothing played yet it is the way in: the story's first chapter.
+func _continue_card() -> HomeTile:
+	var where := Saves.place()
+	var mode := str(where.get("mode", ""))
+	var over := ""
+	var title := ""
+	var sub := ""
+	var pic := StoryGate.PICTURE
+	var color := Color("ffb62e")
+	var act := Callable()
+	var ago := _ago(str(where.get("when", "")))
+	if mode == "story" and StoryData.SCRIPTS.has(str(where.get("chapter", ""))):
+		var ch := str(where["chapter"])
+		var pos := StoryProgress.position()
+		var step := int(pos.get("step", 0)) if str(pos.get("chapter", "")) == ch else 0
+		var d := StoryGate.district_of(ch, step)
+		pic = StoryGate.picture_of(d)
+		over = Loc.t("Continue") + "  ·  " + Loc.t("Story")
+		title = Saves.place_text()
+		sub = StoryGate.world_name(d) + ("  ·  " + ago if ago != "" else "")
+		act = func(): StoryDirector.begin(ch, true)
+	elif mode == "campus" and Campus.started():
+		pic = AcademyBackdrop.PICTURE
+		color = Color("e0533f")
+		over = Loc.t("Continue") + "  ·  " + Loc.t("Duel Academy")
+		title = Loc.t("Day %d on the island") % Campus.day()
+		sub = Campus.summary() + ("  ·  " + ago if ago != "" else "")
+		act = func(): Campus.go()
+	elif mode == "roam" and str(where.get("district", "")) != "":
+		var dk := str(where["district"])
+		pic = StoryGate.picture_of(dk)
+		color = StoryGate.world_color(dk)
+		over = Loc.t("Continue") + "  ·  " + Loc.t("Free Roam")
+		title = StoryGate.world_name(dk)
+		sub = Loc.t("Right where you left off") + ("  ·  " + ago if ago != "" else "")
+		act = func():
+			Router.roam = {"district": dk, "pos": Vector3(float(where.get("x", 0.0)), 0, float(where.get("z", 8.0))), "yaw": float(where.get("yaw", PI))}
+			Router.go(Router.ROAM)
+	else:
+		var st := _story_line()
+		pic = StoryGate.picture_of(StoryGate.district_of(_story_chapter()))
+		over = Loc.t("Start here") + "  ·  " + Loc.t("Story")
+		title = str(st[1])
+		sub = Loc.t("A blank deck and every era of dueling.")
+		act = _on_story
+	var hint := "▶  " + (Loc.t("Begin") if over.begins_with(Loc.t("Start here")) else Loc.t("Continue"))
+	var card := HomeTile.new(over, title, sub, color, [pic], Vector2(HOME_W, 172), "", true, hint)
+	card.pressed.connect(func():
+		Sfx.play("click", -6.0)
+		act.call())
+	return card
+
+
+## Settings, rank and goals, the album, replays and Quit: round buttons in the corner.
+func _build_rounds() -> void:
+	var rounds := HBoxContainer.new()
+	rounds.add_theme_constant_override("separation", 14)
+	rounds.anchor_top = 1.0
+	rounds.anchor_bottom = 1.0
+	rounds.offset_left = 64
+	rounds.offset_top = -112
+	rounds.offset_bottom = -48
+	add_child(rounds)
+	var gear := RoundButton.new("gear", Comic.BLUE, 64.0)
+	gear.tooltip_text = Loc.t("Settings")
+	gear.focus_mode = Control.FOCUS_ALL
+	gear.pressed.connect(_on_settings)
+	rounds.add_child(gear)
+	_items.append(gear)
+	var goals := RoundButton.new("goals", Comic.BLUE, 64.0)
+	goals.tooltip_text = Loc.t("Rank and goals")
+	goals.focus_mode = Control.FOCUS_ALL
+	var left := 0
+	for r in Goals.daily_rows():
+		if not r["done"]:
+			left += 1
+	goals.badge = left
+	goals.pressed.connect(_on_goals)
+	rounds.add_child(goals)
+	_items.append(goals)
+	var album := RoundButton.new("album", Comic.BLUE, 64.0)
+	album.tooltip_text = Loc.t("Card Album")
+	album.focus_mode = Control.FOCUS_ALL
+	album.pressed.connect(_on_album)
+	rounds.add_child(album)
+	_items.append(album)
+	var reps := RoundButton.new("replay", Comic.BLUE, 64.0)
+	reps.tooltip_text = Loc.t("Replays")
+	reps.focus_mode = Control.FOCUS_ALL
+	reps.pressed.connect(_on_replays)
+	rounds.add_child(reps)
+	_items.append(reps)
+	if OS.has_feature("pc"):
+		var quit := RoundButton.new("power", Comic.RED, 64.0)
+		quit.tooltip_text = Loc.t("Quit")
+		quit.focus_mode = Control.FOCUS_ALL
+		quit.pressed.connect(_on_quit)
+		rounds.add_child(quit)
+		_items.append(quit)
+	_rounds_end = 64.0 + rounds.get_child_count() * 64.0 + maxi(rounds.get_child_count() - 1, 0) * 14.0
+
