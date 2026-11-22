@@ -1047,7 +1047,16 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.68.0 STATE (Nov 22 morning; NEWEST, read this first)
+#### 0.69.0 STATE (Nov 22 noon; NEWEST, read this first)
+- 0.69.0 = the whole Academy story: Acts 3 and 4 + epilogue merged (branches act3, act4, acts34), the story polish
+  (no "duelar", neutral player lines, ch12 fix, Lumen's goodbye, after-story card), all Spanish voices (Acts 2-4 + polish).
+- Walk audit: 67 walks (47 scripts won, 20 lost), 178 goals reached, 0 blocked, 0 actor blocked, 0 script errors.
+- In other copies, not merged yet: /home/claude/yc_feat (Crowler, Sheppard, Bastion in Free Duel + island; Dorothy runs
+  the island shop; voice queue /tmp/feat/voice_todo.json), /home/claude/yc_menu (full-screen main story menu).
+- English: open-world English voices being made (world_todo.json); the Academy story in English waits for credits.
+  English voice ids now exist for the whole own-voice cast (tools/voices/voices.json "en").
+
+#### 0.68.0 STATE (Nov 22 morning)
 - 0.68.0 = Act 2 of the Academy (ac_ch8..ac_ch15, circle_5..8), Spanish voices complete for it, bystanders hidden by a
   "room" step no longer collide (StoryDirector._solid, _unsolid; StoryCamera.crowding(hidden)).
 - Acts 3 and 4 are integrated on branch acts34 (main + act3 + act4 merges); test copy /home/claude/yc_m34. Their voices

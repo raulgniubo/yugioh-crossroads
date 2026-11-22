@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.69.0
+
+**The whole Academy story: Acts 3 and 4 and the epilogue, plus a polish pass over all of it.** No cards added: 8,415 total.
+
+- **Act 3, "The Crown" (Blue), chapters 16 to 23**: Among the Best, The Trip, Second Match, The Last Captain, The Crown Tournament, The Eve, The Final, Graduation. You move up to Blue, the team crosses to the mainland (the story plays in New Domino for the first time: the market, a cafe, the plaza, a stadium with eleven thousand people against you), Sato tells her story through a duel you play with her old deck, you win the school's own crown, and the League final against Apex Academy is five duels with the last one yours.
+- **Act 4, "The Pro League", chapters 24 to 28 and the epilogue "The Next Ferry"**: eight names on a ladder, a bad week and an offer from Silas Crane, the captain as an equal, and Vera Lux, forty-one title defenses, with the whole Academy in the stands. A year later you come back to the island as a guest. After it, the island stays open to play.
+- **The Midnight Circle's last rank**: nights 9 to 12, the Midnight rank, your name at the top of the cellar wall.
+- **New people, all originals**: Leo Brasa of the Academy of the Sun, Selene Varga of Apex and Vera Lux have their own voices; the Sun's team and fans, Apex's seats, the pros of the ladder (Bram, Ines, Dov, Petra, Cassia, Milo) and more. Lumen gets two more of her cards.
+- **About 1,500 more spoken lines, all with Spanish voices** (3,783 new files across Acts 2 to 4).
+- **Polish over the whole story**: no more made-up "duelar" in the Academy's Spanish, no line that assumes the player is a boy or a girl, "Puntos de Vida" and "tablón de misiones" everywhere, chapter 12 no longer contradicts Sato's "eleven years", the last chapter card of Act 3 points to Act 4 on the mission board, Crowler counts his three exams right, a goodbye between you and Lumen on the pier, news of the Circle and Boreal in the epilogue, and the card after the story only promises what the game gives.
+- Tested: every chapter, class and Circle night walked on foot from start to end, won and lost; continuing in the city after a hard kill.
+
 ## What is in 0.68.0
 
 **Act 2 of the Academy story: "The Team" (Yellow).** No cards added: 8,415 total.
