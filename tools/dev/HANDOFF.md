@@ -1047,7 +1047,47 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.67.0 STATE (Nov 21, night; NEWEST, read this first)
+#### 0.67.1 STATE (Nov 22, small hours; NEWEST, read this first)
+- WHY: Raul played the start of Act 1 on Windows on the evening of Nov 21 and sent six things. All fixed here.
+- HE GAVE PERMISSION FOR SUBAGENTS (Nov 21, 11:02 PM: "utiliza tus medios si es necesario para ir más rápido... Tienes permiso a todo"),
+  and asked for everything to go faster: write a whole act, test once, one build per act. The content boundaries did not change.
+- WORLD VOICES: all six worlds are voiced in Spanish (769 files this build). `WorldLines.collect` now also lists shop_npcs, WorldLife.RIVALS,
+  WorldLife.GHOST, favors (ERRANDS ask/wait/done, in the giver's voice), walkers you talk to (roam_scene WALK_LINES, every walker voice), and
+  the lines with a blank filled in every way (`_blanks`: bout_won/bout_lost per MEETS pair, invite per stop with StarMeets.invite_text /
+  place_say / hour_text; "ace" lines are one file each, said with "esa carta"). Entries carry "tpl" + "args" | "place"+"hour" | "say";
+  /home/claude/work/world/wbuild.py builds the Spanish from them. Spanish place names with their article are es keys "@Main Hall" etc.
+  Runtime: StarLife notes the English source of a filled line with Voices.note_src so the dialog finds the file.
+  `Voices.world_voice` falls back to the model's voice when a cast character has no duel voice (the shopkeeper).
+- CENSUS: `--roam --district=<d> --voice-census` lists every line of every person standing in the built scene with no voice file ("MUTE ...",
+  "CENSUS <d> people N lines M mute K"). 0 in all worlds. New .ogg files need one `godot --headless --import` before any run sees them.
+  Lines that turn up mute while playing (Spanish) are appended to "Crossroads Data/Crash reports/lines without a voice.txt".
+- DORM ROOMS: `AcademyRooms.UPSTAIRS` + `inner_door(room)`: the closed doors on each dorm hall's gallery are the doors of red_room_N /
+  yel_room_N / blue_room_N (numbers 1-4 over the doors). RoamScene: a spot at each; `_entered` ("out" | "in" | "") and `leave_to(room, entered)`
+  decide where Leave puts you (a bedroom you were spawned in lets you out on the gallery). The outside walkway doors still work.
+- GUIDE: `RoamExtras.place_chain` / `reach_point` route through doors (way out, next door in, foot of the stairs when the door is upstairs),
+  `_wp_note` names the leg, `_place_beacon` makes the beam short indoors and stands it at the door's height. StoryDirector `_where_words`
+  says where a task is in words; `_walk_check` walks the same route (legs listed after "via").
+- DIFFICULTY: `Campus.deck_steps()`: with the Academy's own cards the tier written in the script is what they bring on Normal and Hard
+  (Settings.cpu_level defaults to 2 = Hard, which used to shift every deck up a tier); Extreme +1; "libre" = setting + 1 as before.
+  Entrance exam: "deck_exam_gear" (CardData, not sold), "fair": true (no Destiny Draw for him). Promotion duel: "opp_lp": 4000 was missing
+  (he had 8000), deck tier starter. Measured with tests/test_runner ACT_SIM (needs STRESS_FOLDER=/tmp/realfit): the machine on Hard with
+  a plain novice deck wins 85% of entrance exams (was 36% with the default setting), nico 94, syrus 83, felix 68, ivo 76, mika 61,
+  gus 92, nico semi 74, dante 40 (may lose), bruno 71, bastion 35 (may lose), octavia 74, promotion duel 36 with a novice deck.
+  ACT_SIM=<games> [ACT_EXTRA="label,deck,tier,level,my_lp,opp_lp;..."] [ACT_LIST=deck@tier,...] [ACT_MINE=deck,...].
+- TITLE SCREEN: scripts/ui/academy_backdrop.gd (assets/ui/academy_title.jpg, taken with /tmp/ishot.sh: `--no-ui --dry --eye=`),
+  scripts/ui/dorm_crest.gd, campus_gate.gd rebuilt (left column), SaveMenu.open(host, saving, academy_look) with crests;
+  Saves.info reads each slot's own campus.cfg. Dev: `--open=campus`, `--open=campus-load`, `--open=welcome`.
+- SIDE PANELS grow to the left and are capped to the window (the Spanish "welcome back" button had pushed the panel off screen).
+- TESTS ON A COPY: /tmp/synctest.py makes /home/claude/yc_test (hard links for assets/voices/import cache, real copies of scripts/tests/
+  tools/scenes/project files). /tmp/alltests_copy.sh runs everything there; /tmp/ship_copy.sh exports from the copy (the tested state)
+  and pushes from the repo. The walk audit runs three Godots (about 5 GB of the 8 GB): no pictures or simulators at the same time
+  (an OOM kill ends a walk silently: "20 of 23 walks ended").
+- VOICE PIPELINE: the flow has 40 tts nodes now (set A + /home/claude/work/voices/nodes_b.json); `python3 batch.py 2` draws two batches,
+  one update call (40 entries), two run calls, two takes. A fork ran the loop end to end for 337 lines without trouble.
+- ACTS 2-4: /home/claude/work/acts/BIBLE.md (story bible written from the plan doc), writers' output in act2/ act3/ act4/ (one .gd per
+  chapter, chapters_*.json, es_*.json, needs_*.md). Four new voices designed (irina, leo, selene, vera) in tools/voices/voices.json.
+
+#### 0.67.0 STATE (Nov 21, night)
 - ACT 1 "ROJO" IS COMPLETE WITH EVERYTHING: prologue + ch1-7, classes, the Midnight Circle's Candle rank, rival decks that grow.
   0.66.1 (voices in the world) was committed and pushed but never shipped by itself: 0.67.0 is the build that carries both.
   Raul asked for a note when Act 1 was complete "con todo todo": it went out with this build's report.
