@@ -1874,15 +1874,39 @@ var dress := {}
 ## top is repainted.
 func wear(model: Node, key: String, color: Color) -> void:
 	if key == "player":
+		var tone := player_coat(color)
 		for n in [model] + model.find_children("*", "Node3D", true, false):
 			if n.has_meta("hero_mats"):
 				for m in n.get_meta("hero_mats"):
-					(m as ShaderMaterial).set_shader_parameter("top_to", Color(color.r, color.g, color.b, 1.0))
+					(m as ShaderMaterial).set_shader_parameter("top_to", Color(tone.r, tone.g, tone.b, 1.0))
 					# The hero's jacket is mostly its accent color: a dorm jacket has to take that too,
 					# or nothing changes on the default look.
-					(m as ShaderMaterial).set_shader_parameter("accent_to", Color(color.r, color.g, color.b, 1.0))
+					var acc := player_coat(color, true)
+					(m as ShaderMaterial).set_shader_parameter("accent_to", Color(acc.r, acc.g, acc.b, 1.0))
 				return
 	apply_uniform(model, color)
+
+
+## The jacket color as the hero's paint should get it, so it reads like the other students' jackets.
+## A student's jacket is drawn as coat * (0.5 + 0.7 * the cloth's own light), which in the light of
+## the island comes to about 0.85 of the dorm color, a little greyer in the folds; the hero's paint
+## puts the color on as it is, so the same red came out purer and louder than everybody else's.
+## `accent`: for the parts the hero's paint re-hues instead of repainting (most of the Academy
+## blazer). Re-hue keeps the cloth's own brightness and only moves it part of the way to the new
+## color (60% of the brightness, 80% of the greyness), so that color has to be toned further to
+## land on the same jacket: about 0.82 of the light and 0.85 of the strength of the dorm color.
+static func player_coat(c: Color, accent := false) -> Color:
+	var grey := c.r * 0.3 + c.g * 0.59 + c.b * 0.11
+	var g := Color(grey, grey, grey)
+	if accent:
+		return c.lerp(g, PLAYER_ACCENT_GREY) * PLAYER_ACCENT_LIGHT
+	return c.lerp(g, PLAYER_COAT_GREY) * PLAYER_COAT_LIGHT
+
+
+const PLAYER_COAT_LIGHT := 0.86
+const PLAYER_COAT_GREY := 0.1
+const PLAYER_ACCENT_LIGHT := 0.72
+const PLAYER_ACCENT_GREY := 0.2
 
 
 ## The name a picture of `key` is kept under: with the jacket on, when they are wearing one.

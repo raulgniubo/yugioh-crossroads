@@ -1,8 +1,9 @@
 class_name AcademyBackdrop
 extends Control
 ## The picture behind the Academy's own screens: the island at sunset (a picture taken in the
-## game itself), drifting very slowly, darker on the side the words are on, with a few motes of
-## light going up. `shade`: how dark the whole of it is (0 for the title, more behind a list).
+## game itself), still (nothing moves on its own: on a big screen any drift reads as stutter),
+## darker on the side the words are on. `shade`: how dark the whole of it is (0 for the title,
+## more behind a list). It only changes when the player changes what it shows (fade_to).
 
 const PICTURE := "res://assets/ui/academy_title.jpg"
 
@@ -10,26 +11,15 @@ var shade := 0.0: set = set_shade
 
 var _pic: TextureRect
 var _pic2: TextureRect           # the next picture, fading in over the first when there are several
-var _cycle: Array = []           # textures shown in turn (empty: one picture, still)
-var _ci := 0
-var _ct := 0.0
 var _fading := false
-const HOLD := 7.0
-const FADE := 1.8
 var _side: TextureRect
 var _all: ColorRect
-var _t := 0.0
-var _motes: Array = []
 
 
-var _mote_col := Color(1.0, 0.9, 0.62)
-
-
-## `pic`: another picture taken in the game (the main story uses Domino City at night), and
-## `mote`: the color of the motes of light that drift up over it.
+## `pic`: another picture taken in the game (the main story uses Domino City at night).
+## (`mote` is kept so older callers still work: the motes of light are gone.)
 func _init(dark := 0.0, pic := PICTURE, mote := Color(1.0, 0.9, 0.62)) -> void:
 	shade = dark
-	_mote_col = mote
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip_contents = true
@@ -43,11 +33,15 @@ func _init(dark := 0.0, pic := PICTURE, mote := Color(1.0, 0.9, 0.62)) -> void:
 		_pic.texture = load(pic)
 	_pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_pic.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_pic.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	_pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_pic)
 	_pic2 = TextureRect.new()
 	_pic2.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_pic2.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_pic2.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_pic2.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	_pic2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_pic2.modulate.a = 0.0
 	add_child(_pic2)
@@ -88,10 +82,6 @@ func _init(dark := 0.0, pic := PICTURE, mote := Color(1.0, 0.9, 0.62)) -> void:
 	_all.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_all.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_all)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 7
-	for i in 26:
-		_motes.append({"x": rng.randf(), "y": rng.randf(), "v": rng.randf_range(0.012, 0.035), "r": rng.randf_range(1.6, 4.2), "p": rng.randf() * TAU, "a": rng.randf_range(0.25, 0.7)})
 
 
 func set_shade(v: float) -> void:
@@ -100,26 +90,18 @@ func set_shade(v: float) -> void:
 		_all.color.a = v
 
 
-## Show these pictures in turn, each held a few seconds and crossfading into the next (the main
-## story's door with no game yet, and its Load screen). One path: just that picture, still.
+## One picture from a set, held still (the main story's door with no game yet, and its Load
+## screen). The pictures no longer rotate on their own: the first one that exists is shown.
 func cycle(paths: Array) -> void:
-	_cycle = []
 	for p in paths:
 		if ResourceLoader.exists(str(p)):
-			_cycle.append(load(str(p)))
-	if _cycle.is_empty():
-		return
-	_ci = 0
-	_ct = 0.0
-	_pic.texture = _cycle[0]
-	_pic2.modulate.a = 0.0
-	if _cycle.size() == 1:
-		_cycle = []
+			_pic.texture = load(str(p))
+			_pic2.modulate.a = 0.0
+			return
 
 
 ## Show one picture now (no fading).
 func show_picture(path: String) -> void:
-	_cycle = []
 	if ResourceLoader.exists(path):
 		_pic.texture = load(path)
 	_pic2.modulate.a = 0.0
@@ -127,7 +109,6 @@ func show_picture(path: String) -> void:
 
 ## Crossfade from the picture on now to this one (the Free Roam door, as you move between worlds).
 func fade_to(path: String, secs := 0.45) -> void:
-	_cycle = []
 	if not ResourceLoader.exists(path):
 		return
 	var tex: Texture2D = load(path)
@@ -151,56 +132,6 @@ func shade_to(v: float, secs := 0.25) -> void:
 		create_tween().tween_property(_all, "color:a", v, secs)
 
 
-func _process(delta: float) -> void:
-	_t += delta
-	# The picture is a little larger than the screen and wanders inside its margin.
-	var grow := 1.07
-	_pic.size = size * grow
-	var slack := size * (grow - 1.0)
-	_pic.position = Vector2(-slack.x * (0.5 + 0.5 * sin(_t * 0.045)), -slack.y * (0.5 + 0.5 * cos(_t * 0.031)))
-	_pic2.size = _pic.size
-	_pic2.position = _pic.position
-	if _cycle.size() > 1 and not _fading:
-		_ct += delta
-		if _ct >= HOLD:
-			_ct = 0.0
-			_fading = true
-			_ci = (_ci + 1) % _cycle.size()
-			_pic2.texture = _cycle[_ci]
-			var tw := create_tween()
-			tw.tween_property(_pic2, "modulate:a", 1.0, FADE)
-			tw.tween_callback(func():
-				_pic.texture = _pic2.texture
-				_pic2.modulate.a = 0.0
-				_fading = false)
-	for m in _motes:
-		m["y"] = float(m["y"]) - float(m["v"]) * delta
-		if float(m["y"]) < -0.03:
-			m["y"] = 1.03
-	queue_redraw()
-
-
-func _draw() -> void:
-	# (Children draw over this, so the motes are drawn by a child that sits on top: see _ready.)
-	pass
-
-
 func _ready() -> void:
-	var top := Control.new()
-	top.set_anchors_preset(Control.PRESET_FULL_RECT)
-	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(top)
-	top.draw.connect(func():
-		for m in _motes:
-			var x := (float(m["x"]) + 0.012 * sin(_t * 0.6 + float(m["p"]))) * size.x
-			var y := float(m["y"]) * size.y
-			var a := float(m["a"]) * (0.6 + 0.4 * sin(_t * 1.3 + float(m["p"])))
-			top.draw_circle(Vector2(x, y), float(m["r"]) * 2.4, Color(_mote_col.darkened(0.05), a * 0.12))
-			top.draw_circle(Vector2(x, y), float(m["r"]), Color(_mote_col, a)))
-	set_process(true)
-	var redraw := func(): top.queue_redraw()
-	var tm := Timer.new()
-	tm.wait_time = 0.033
-	tm.autostart = true
-	tm.timeout.connect(redraw)
-	add_child(tm)
+	# Still: the picture fills the screen exactly, at its own sharpness. Nothing moves on its own.
+	set_process(false)
