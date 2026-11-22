@@ -257,6 +257,37 @@ const STORY_CAST := {
 		"deck": "deck_monarchs", "personality": "cocky", "stars": 3},
 	"harbor": {"name": "Harbor", "short": "Harbor", "era": "GX", "color": Color("4a88b8"), "title": "The Midnight Circle. Two years at the head of the Lantern rank",
 		"deck": "deck_water", "personality": "cool", "stars": 4},
+	# Act 3. The Academy of the Sun (the desert): orange jackets, a stadium that sings.
+	"leo": {"name": "Leo Brasa", "short": "Leo", "era": "GX", "color": Color("e8862a"), "title": "Captain of the Academy of the Sun. Cooks six days, plays on Saturdays",
+		"deck": "deck_volcanic", "ace_name": "Volcanic Doomfire", "personality": "wild", "stars": 5,
+		"lines": {"intro": ["Tomorrow I am going to burn you down. With love!"], "ace": ["Doomfire! Everybody stand back, the kitchen is open!"], "taunt": ["Eat, eat, you are too thin to lose properly."],
+			"win": ["Come back hungry. That is the highest thing we say here."], "lose": ["Ha! In my house! Give me your arm. Up!"]}},
+	"paco": {"name": "Paco Ferro", "short": "Paco", "era": "GX", "color": Color("e8862a"), "title": "Section twelve, row one. Brings his own drum",
+		"deck": "deck_fire", "personality": "wild", "stars": 3},
+	"luz": {"name": "Luz Marín", "short": "Luz", "era": "GX", "color": Color("f09a3a"), "title": "Wears the Sun's flag as a cape",
+		"deck": "deck_flamvell", "personality": "cocky", "stars": 3},
+	"brisa": {"name": "Brisa", "short": "Brisa", "era": "GX", "color": Color("e8862a"), "title": "Academy of the Sun, first seat",
+		"personality": "cocky", "stars": 3},
+	"tano": {"name": "Tano", "short": "Tano", "era": "GX", "color": Color("e8862a"), "title": "Academy of the Sun, second seat",
+		"personality": "wild", "stars": 3},
+	# Apex Academy: white blazers. The school that has not lost in ten years.
+	"selene": {"name": "Selene Varga", "short": "Selene", "era": "GX", "color": Color("e9e6dc"), "title": "Apex Academy, second seat. Measures people",
+		"deck": "deck_monarchs", "ace_name": "Caius the Shadow Monarch", "personality": "cool", "stars": 5,
+		"lines": {"intro": ["Please stand still. It does not take long."], "ace": ["Caius. Remove it."], "taunt": ["As measured."],
+			"win": ["I won. I am told that is the good part."], "lose": ["...This is the other feeling. Interesting."]}},
+	"mirela": {"name": "Mirela", "short": "Mirela", "era": "GX", "color": Color("e9e6dc"), "title": "Apex Academy, first seat", "personality": "cool", "stars": 4},
+	"otto": {"name": "Otto", "short": "Otto", "era": "GX", "color": Color("e9e6dc"), "title": "Apex Academy, second seat in the final", "personality": "cocky", "stars": 4},
+	"cassius": {"name": "Cassius", "short": "Cassius", "era": "GX", "color": Color("e9e6dc"), "title": "Apex Academy, third seat in the final", "personality": "cocky", "stars": 4},
+	"ansel": {"name": "Ansel", "short": "Ansel", "era": "GX", "color": Color("e9e6dc"), "title": "Apex Academy. Signed for one job", "personality": "cool", "stars": 4},
+	# The memory of chapter 19: the Red dorm's own final, ten years ago.
+	"crane_young": {"name": "Silas Crane", "short": "Crane", "era": "GX", "color": Color("d9342b"), "title": "Red dorm, ten years ago. Kept the scores for the whole team",
+		"deck": "deck_machina", "personality": "cool", "stars": 4},
+	# The Midnight Circle, Midnight rank.
+	"tuesday": {"name": "Tuesday", "short": "Tuesday", "era": "GX", "color": Color("b8a0d8"), "title": "The Midnight Circle. Has been one line from the top since a Tuesday",
+		"deck": "deck_spellbook", "personality": "kind", "stars": 4},
+	# People with a few lines and no deck: a League official, the referee of an old final.
+	"official": {"name": "Official", "short": "Official", "era": "GX", "color": Color("8a8f98"), "title": "The League of Academies", "personality": "cool"},
+	"referee": {"name": "Referee", "short": "Referee", "era": "GX", "color": Color("8a8f98"), "title": "The League of Academies, ten years ago", "personality": "cool"},
 }
 
 const PERSONALITY_LINES := {
