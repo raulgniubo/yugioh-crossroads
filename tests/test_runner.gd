@@ -10989,6 +10989,7 @@ func _test_campus() -> void:
 	check(CampusData.YARDS.size() == 3 and Campus.DORMS.size() == 3 and Campus.NEED.size() == 3, "three dorms, three yards, three merit marks")
 	for who in ["nico", "mika", "bruno", "sato", "crowler", "sheppard", "dorothy", "dante", "bastion", "octavia"]:
 		check(Voices.voice_for(who) == who, "%s speaks with a voice of their own" % who)
+	_test_act4()
 	if had:
 		var f := FileAccess.open(Campus.PATH, FileAccess.WRITE)
 		f.store_buffer(keep)
@@ -10998,6 +10999,127 @@ func _test_campus() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(Campus.PATH + ".bak"))
 	Campus.reload()
 	Campus.on = was_on
+
+
+## Act 4 of the Academy story (chapters 24 to 28 and the epilogue, "The Pro League"): the chain of
+## chapters, the eight names of the Ladder, the places it stands in, and how the story ends.
+func _test_act4() -> void:
+	var big := Puzzles._id("Blue-Eyes White Dragon") != 0
+	var ids: Array = []
+	for ch in CampusData.CHAPTERS:
+		ids.append(str(ch["id"]))
+	var es: Dictionary = load("res://scripts/core/es_campus.gd").ES
+	var order := ["ac_ch24", "ac_ch25", "ac_ch26", "ac_ch27", "ac_ch28", "ac_epilogue"]
+	var duels := 0
+	var may_lose := 0
+	var lumen_cards: Array = []
+	var untold := 0
+	var mute := {}
+	for k in order.size():
+		var id: String = order[k]
+		var last_one := id == "ac_epilogue"
+		var card := "Epilogue" if last_one else "Chapter %d" % (24 + k)
+		var nm := "the epilogue" if last_one else "chapter %d" % (24 + k)
+		var at := ids.find(id)
+		check(at >= 0 and int(CampusData.CHAPTERS[at]["act"]) == 4 and str(CampusData.CHAPTERS[at]["title"]) == card, "%s is on the list, in Act 4" % nm)
+		check(k == 0 or at == ids.find(order[k - 1]) + 1, "%s comes right after the one before it" % nm)
+		var sc: Array = CampusData.SCRIPTS.get(id, [])
+		check(sc.size() > 40, "%s has its script" % nm)
+		if sc.is_empty():
+			continue
+		var first: Dictionary = sc[0]
+		var last: Dictionary = sc[sc.size() - 1]
+		check(first.has("scene") and str(first.get("chapter", "")) == card, "%s opens on a scene with its chapter card" % nm)
+		check(str(last.get("end", "")) == card + " complete" and str(last.get("teaser", "")) != "", "%s ends and says what comes next" % nm)
+		if last_one:
+			check(not last.has("unlock") and int(last.get("pay", -1)) == 0 and (last.get("wake", Vector3.ZERO) as Vector3).distance_to(CampusData.DOCK) < 9.0,
+					"the epilogue unlocks nothing more, and leaves you on the pier with the island open")
+		else:
+			check(str(last.get("unlock", "")) == order[k + 1] and (last.get("wake", Vector3.ZERO) as Vector3).distance_to(CampusData.BROOM) < 3.0,
+					"%s unlocks the next one, and you wake in the Blue suite" % nm)
+		var placed := {}
+		for st in sc:
+			var d: Dictionary = st
+			if d.has("scene"):
+				placed = {}
+				var sd: Dictionary = d["scene"]
+				var inside := str(sd.get("inside", ""))
+				check(inside == "" or AcademyRooms.ROOMS.has(inside) or MoreRooms.ROOMS.has(inside), "%s: the room '%s' exists" % [nm, inside])
+				check(str(sd.get("district", "")) in ["academy", "newdomino"] and (inside == "" or str(sd["district"]) == ("newdomino" if MoreRooms.ROOMS.has(inside) and str(MoreRooms.ROOMS[inside].get("district", "")) == "newdomino" else "academy")),
+						"%s: the scene in '%s' names the world that place is in" % [nm, inside if inside != "" else "the open"])
+			for member in d.get("cast", []):
+				placed[str(member["actor"])] = true
+			if d.has("actor"):
+				var body := str(d.get("as", d["actor"]))
+				placed[str(d["actor"])] = true
+				check(body == "lumen" or not Characters.get_char(body).is_empty(), "%s: '%s' is somebody the game knows" % [nm, body])
+				check(not d.has("as") or Avatars.STANDINS.has(body), "%s: the stand-in body '%s' exists" % [nm, body])
+			if d.has("s") and d.has("t"):
+				var who := str(d["s"])
+				var line := str(d["t"])
+				check(who == "player" or placed.has(who), "%s: %s is in the scene when speaking (%s)" % [nm, who, line.left(30)])
+				if not es.has(line) or "{" in line or "%" in line:
+					untold += 1
+					if untold <= 5:
+						print("ACT 4, NO SPANISH OR A BLANK: %s" % line.left(70))
+				if who != "player" and who != "lumen" and Voices.voice_for(who) == "":
+					mute[who] = true
+			if d.has("duel"):
+				var du: Dictionary = d["duel"]
+				duels += 1
+				if bool(du.get("lose_ok", false)):
+					may_lose += 1
+				check(not Characters.get_char(str(du["opponent"])).is_empty() and placed.has(str(du["opponent"])), "%s: the opponent %s exists and is on the floor" % [nm, du["opponent"]])
+				check(not big or CardData.has_deck(str(du["opp_deck"])), "%s: the deck %s is in the game" % [nm, du["opp_deck"]])
+				check(str(du.get("deck_tier", "")) in ["starter", "standard", "full"] and str(du.get("rule", "")) != "" and not du.has("puzzle"), "%s: the duel against %s says its deck's version and its stakes" % [nm, du["opponent"]])
+			if d.has("bond") and d.has("card"):
+				check(int(d["card"]) != 0 and not d.has("card_name") and (not big or not CardData.get_card(int(d["card"])).is_empty()), "%s: the card of the bond banner is a real card" % nm)
+				if str(d["bond"]) == "Lumen":
+					lumen_cards.append(int(d["card"]))
+			if d.has("campus") and (d["campus"] as Dictionary).has("trophy"):
+				check(CampusData.TROPHIES.has(str(d["campus"]["trophy"])), "%s: the trophy '%s' has a name for the agenda" % [nm, d["campus"]["trophy"]])
+			if d.has("roster"):
+				check(d["roster"] is Dictionary and str((d["roster"] as Dictionary).get("title", "")) != "", "%s: the board has a title" % nm)
+	check(untold == 0, "every line of Act 4 has its Spanish, and none has a blank in it (%d do not)" % untold)
+	check(mute.is_empty(), "everybody who speaks in Act 4 has a voice (%s)" % str(mute.keys()))
+	check(duels == 10 and may_lose == 1, "Act 4 is ten duels: seven names of the Ladder, Aster, Zane and the champion; only the slump may be lost (%d, %d)" % [duels, may_lose])
+	check(lumen_cards == [99200003, 99200004], "Lumen fills in her last two cards in chapters 25 and 28")
+	# The Ladder: seven professionals with a deck, a temper, a body and a voice; the champion in her own.
+	for who in ["bram", "ines", "dov", "petra", "cassia", "milo", "vera"]:
+		var c := Characters.get_char(who)
+		check(not c.is_empty() and str(c.get("personality", "")) != "" and Avatars.STANDINS.has(who) and Avatars.COATS.has(who) and not Avatars.UNIFORMS.has(who), "%s has a name, a temper, a body and a coat that is no dorm's" % who)
+		check(not big or CardData.has_deck(str(c.get("deck", ""))), "%s has a deck" % who)
+	check(Voices.voice_for("vera") == "vera" and Voices.voice_for("bram") == "cocky_m" and Voices.voice_for("ines") == "cool_f" and Voices.voice_for("dov") == "dark_m"
+			and Voices.voice_for("petra") == "cocky_f" and Voices.voice_for("cassia") == "cool_f" and Voices.voice_for("milo") == "wild_m",
+			"the champion speaks in her own voice, the rest of the Ladder by temper")
+	check(Voices.voice_for("official") == "cool_m" and Voices.voice_for("rookie") == "kind_m" and Characters.get_char("rookie").get("deck", "") == "", "the League's official and the newcomer speak, and the newcomer has no deck yet")
+	# Where it happens: the stadium in the city, its front door, the pier, the Blue suite.
+	check(MoreRooms.ROOMS.has("nd_stadium") and CampusData.STADIUM == MoreRooms.ROOMS["nd_stadium"]["at"] and str(MoreRooms.ROOMS["nd_stadium"].get("district", "")) == "newdomino",
+			"the stadium is a room of the city, where the story cuts to")
+	check(CampusData.TROPHIES.has("pro_champion"), "the title has a name for the agenda")
+	# How it ends: the credits, a mark that stays, and an island that is still open.
+	var epi: Array = CampusData.SCRIPTS.get("ac_epilogue", [])
+	var rolled := false
+	var told := false
+	for st in epi:
+		if (st as Dictionary).has("credits"):
+			rolled = true
+			var names := " ".join((st as Dictionary)["credits"])
+			check("Atlas Peak Games" in names and not ("Genssy" in names), "the credits name the studio")
+		if str((st as Dictionary).get("remember", "")) == "story_told":
+			told = true
+	check(rolled and told, "the epilogue rolls the credits and marks the story as told")
+	var keep_done: Array = (Campus.v("done", []) as Array).duplicate()
+	var all_done: Array = ids.duplicate()
+	all_done.erase("ac_epilogue")
+	Campus.put("done", all_done)
+	check(Campus.next_chapter() == "" or Campus.next_chapter() == "ac_epilogue", "with everything else played, only the epilogue can be left")
+	Campus.put("done", ids.duplicate())
+	var g := Campus.golden()
+	check(Campus.next_chapter() == "" and str(g.get("text", "")) == "The story is told" and str(g.get("told", "")) == "ac_epilogue" and not g.has("chapter"),
+			"after the epilogue the board says the story is told, and offers no chapter to start")
+	check(es.has("The story is told") and es.has(str(g.get("sub", ""))), "and it says so in Spanish")
+	Campus.put("done", keep_done)
 
 
 func _test_world_voices() -> void:

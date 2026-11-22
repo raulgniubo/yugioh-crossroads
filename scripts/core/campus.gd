@@ -492,6 +492,8 @@ static func closest() -> String:
 ## What the golden (story) mission says right now: {"text", "sub"}.
 static func golden() -> Dictionary:
 	var next := next_chapter()
+	if next == "" and chapter_done("ac_epilogue"):      # Act 4: the last chapter has been played
+		return {"text": "The story is told", "sub": "The island is still yours: the Cup, the Circle, the classes and every duelist on it. Lumen is still with you.", "told": "ac_epilogue"}
 	if next == "":
 		return {"text": "The next chapter is on its way", "sub": "Until then the island is yours: duel, train, and fill your collection."}
 	for ch in CampusData.CHAPTERS:

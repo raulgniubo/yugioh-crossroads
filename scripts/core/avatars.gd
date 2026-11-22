@@ -71,6 +71,8 @@ const STANDINS := {
 	"leo": "duelist_m15", "paco": "street_duelist", "luz": "student_girl", "brisa": "duelist_f3", "tano": "duelist_m17",
 	"selene": "duelist_f1", "mirela": "duelist_f3", "otto": "duelist_m5", "cassius": "duelist_m6", "ansel": "duelist_m2",
 	"crane_young": "duelist_m3", "tuesday": "stylish_woman",
+	# Act 4: the Pro League.
+	"vera": "duelist_f3", "milo": "duelist_m19", "cassia": "duelist_f1", "petra": "student_girl", "dov": "duelist_m1", "ines": "duelist_f2", "bram": "duelist_m14",
 }
 ## Duel Academy jackets. Painted over stand-in models only, never over a model you supplied.
 const DORM_COLORS := {"red": Color("d9342b"), "yellow": Color("f2c230"), "blue": Color("2f6fe0")}
@@ -82,7 +84,8 @@ const UNIFORMS := {"jaden": "red", "syrus": "red", "red_student": "red", "koji":
 const COATS := {"irina": Color("8a8f98"), "tova": Color("8a8f98"), "rurik": Color("8a8f98"),
 	"leo": Color("e8862a"), "paco": Color("e8862a"), "luz": Color("e8862a"), "brisa": Color("e8862a"), "tano": Color("e8862a"),
 	"selene": Color("f1efe6"), "mirela": Color("f1efe6"), "otto": Color("f1efe6"), "cassius": Color("f1efe6"), "ansel": Color("f1efe6"),
-	"crane_young": Color("d9342b")}
+	"crane_young": Color("d9342b"),
+	"vera": Color("dfe4ec"), "milo": Color("5a6b4a"), "cassia": Color("c9b48a"), "petra": Color("b8322e"), "dov": Color("3a3442"), "ines": Color("5f8f9a"), "bram": Color("2b2b30")}
 var _uniform_shader: Shader
 ## People who are not in their dorm jacket right now (the Academy story's prologue: nobody has a
 ## dorm before the entrance exam). key -> true.

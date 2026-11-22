@@ -3568,7 +3568,7 @@ func _end_campus(st: Dictionary) -> void:
 	var t := UITheme.label(Loc.t(str(st["end"])).to_upper(), 70, UITheme.GOLD, UITheme.title_font())
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t)
-	var r := UITheme.label(Loc.t("+%d merits") % pay if pay > 0 else Loc.t("You have seen this one before"), 28, UITheme.ACCENT)
+	var r := UITheme.label(Loc.t("+%d merits") % pay if pay > 0 else (Loc.t("You have seen this one before") if not first else ""), 28, UITheme.ACCENT)
 	r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(r)
 	if st.has("teaser"):

@@ -210,7 +210,7 @@ func _home() -> void:
 		var g := Campus.golden()
 		var pos: Dictionary = CampusProgress.position()
 		var line := str(g.get("text", "")) if g.has("chapter") else Loc.t(str(g.get("text", "")))
-		var cid := str(g.get("chapter", ""))
+		var cid := str(g.get("chapter", g.get("told", "")))      # (story told: the row of the last act, all lit)
 		for ch in CampusData.CHAPTERS:
 			if str(ch["id"]) == str(pos.get("chapter", "")):
 				line = "%s: %s" % [Loc.t(str(ch["title"])), Loc.t(str(ch["name"]))]

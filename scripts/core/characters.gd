@@ -288,6 +288,25 @@ const STORY_CAST := {
 	# People with a few lines and no deck: a League official, the referee of an old final.
 	"official": {"name": "Official", "short": "Official", "era": "GX", "color": Color("8a8f98"), "title": "The League of Academies", "personality": "cool"},
 	"referee": {"name": "Referee", "short": "Referee", "era": "GX", "color": Color("8a8f98"), "title": "The League of Academies, ten years ago", "personality": "cool"},
+	# Act 4. The Pro League: eight names on a ladder. All of them were somebody's first-year once.
+	"vera": {"name": "Vera Lux", "short": "Vera", "era": "GX", "color": Color("dfe4ec"), "title": "Champion of the Pro League. They call her the Undefeated",
+		"deck": "deck_lightsworn", "ace_name": "Judgment Dragon", "personality": "cool", "stars": 6,
+		"lines": {"intro": ["Forty-one title defenses. I stopped keeping the trophies after the ninth."], "ace": ["Judgment Dragon. Close the account."], "taunt": ["Take your time. I have had eleven years."],
+			"win": ["Forty-two. Thank you for the walk up."], "lose": ["...So that is what the stands sound like from down here."]}},
+	"milo": {"name": "Milo Ardent", "short": "Milo", "era": "GX", "color": Color("5a8fd0"), "title": "The Pro Ladder, rank two. Four years one step from the top",
+		"deck": "deck_dragunity", "personality": "wild", "stars": 5},
+	"cassia": {"name": "Cassia Thorn", "short": "Cassia", "era": "GX", "color": Color("c9b48a"), "title": "The Pro Ladder, rank three. Eleven years on it",
+		"deck": "deck_gravekeeper", "personality": "cool", "stars": 5},
+	"petra": {"name": "Petra Sorel", "short": "Petra", "era": "GX", "color": Color("c8322a"), "title": "The Pro Ladder, rank five. Nine regional qualifiers",
+		"deck": "deck_six_samurai", "personality": "cocky", "stars": 5},
+	"dov": {"name": "Dov Arlen", "short": "Dov", "era": "GX", "color": Color("5a5468"), "title": "The Pro Ladder, rank six. Says little",
+		"deck": "deck_zombie", "personality": "dark", "stars": 4},
+	"ines": {"name": "Ines Calder", "short": "Ines", "era": "GX", "color": Color("6fb7c9"), "title": "The Pro Ladder, rank seven. Appraises people like stones",
+		"deck": "deck_gem_knight", "personality": "cool", "stars": 4},
+	"bram": {"name": "Bram Okafor", "short": "Bram", "era": "GX", "color": Color("c9a227"), "title": "The Pro Ladder, rank eight. They call him the Doorman",
+		"deck": "deck_battlin_boxer", "personality": "cocky", "stars": 4},
+	# The newcomer of the epilogue: no name yet, on purpose.
+	"rookie": {"name": "First-Year", "short": "First-Year", "era": "GX", "color": Color("d9342b"), "title": "Last one off the boat", "personality": "kind"},
 }
 
 const PERSONALITY_LINES := {
