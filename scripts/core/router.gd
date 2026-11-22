@@ -610,6 +610,8 @@ func _debug_args() -> void:
 				menu._open_panel(SettingsPanel.open_profile(menu, func(): menu._open_profile(false)))
 			elif what == "profile":
 				menu._open_profile(true)
+			elif what == "editor":
+				menu._open_profile(false)      # dev: the editor as you open it later (Cancel, Save)
 			elif what.begins_with("peek:"):
 				# Dev: a duelist's deck laid out (the Free Duel "See their deck" view).
 				var pk := what.trim_prefix("peek:")

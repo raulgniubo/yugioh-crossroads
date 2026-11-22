@@ -4,7 +4,17 @@ extends RefCounted
 
 
 ## One block of settings: a titled card with rows inside.
-static func _card(p: SidePanel, title: String, glyph: String, tint: Color) -> VBoxContainer:
+static func _card(p: SidePanel, title: String, glyph: String, tint: Color, sub := "") -> VBoxContainer:
+	if p.full:
+		# Full screen: the section's name and words are over the page, so here just its rows.
+		var sec := VBoxContainer.new()
+		sec.add_theme_constant_override("separation", 6)
+		sec.set_meta("tab", title)
+		sec.set_meta("glyph", glyph)
+		sec.set_meta("tint", tint)
+		sec.set_meta("sub", sub)
+		p.body.add_child(sec)
+		return sec
 	var pc := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.072, 0.108, 0.196, 0.9)
@@ -38,6 +48,36 @@ static func _card(p: SidePanel, title: String, glyph: String, tint: Color) -> VB
 static func _row(v: VBoxContainer, title: String, hint: String, control: Control) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
+	if v.has_meta("tab"):
+		# Full screen: each setting on its own glass strip, the control at the right edge.
+		var strip := PanelContainer.new()
+		var sb := UITheme.panel_box(Color(1, 1, 1, 0.035), 14, Color(1, 1, 1, 0.07))
+		sb.content_margin_left = 22
+		sb.content_margin_right = 18
+		sb.content_margin_top = 14
+		sb.content_margin_bottom = 14
+		strip.add_theme_stylebox_override("panel", sb)
+		strip.add_child(row)
+		v.add_child(strip)
+		var words2 := VBoxContainer.new()
+		words2.add_theme_constant_override("separation", 3)
+		words2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var tl2 := UITheme.label(title, 23, UITheme.TEXT, UITheme.semi_font())
+		tl2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		tl2.custom_minimum_size = Vector2(160, 0)
+		words2.add_child(tl2)
+		if hint != "":
+			var h2 := UITheme.label(hint, 16, UITheme.TEXT_DIM)
+			h2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			words2.add_child(h2)
+		row.add_child(words2)
+		control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		if control is OptionButton or control is LineEdit:
+			control.custom_minimum_size = Vector2(320, 50)
+		elif control is HSlider:
+			control.custom_minimum_size = Vector2(320, 36)
+		row.add_child(control)
+		return
 	var words := VBoxContainer.new()
 	words.add_theme_constant_override("separation", 0)
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -58,13 +98,16 @@ static func _row(v: VBoxContainer, title: String, hint: String, control: Control
 
 
 static func open(parent: Node) -> SidePanel:
-	var p := SidePanel.new("Settings", 820)
+	# Full screen since 0.69.1. From the main menu one still picture of a world is behind it; over a
+	# duel or a world the game stays faintly visible behind a deep dim.
+	var on_menu := parent.get_tree() != null and parent.get_tree().current_scene != null and str(parent.get_tree().current_scene.scene_file_path).contains("main_menu")
+	var p := SidePanel.new(Loc.t("Settings"), 820, true, StoryGate.all_pictures() if on_menu else [])
 	p.z_index = 100   # over whatever screen opened it (a duel's hand cards sit high)
 	p.body.add_theme_constant_override("separation", 16)
 	var desktop := OS.has_feature("pc")
 
-	# General: the language, starting over, admin mode.
-	var gen := _card(p, "General", "◈", Color("9cf0c8"))
+	# The language, then starting over and admin mode (their own section, near the end).
+	var gen := _card(p, "Language", "◈", Color("9cf0c8"), "The game's words and voices. Changing it reloads the screen you are on.")
 	var lang := OptionButton.new()
 	lang.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	for i in Loc.LANGS.size():
@@ -78,9 +121,10 @@ static func open(parent: Node) -> SidePanel:
 		# Everything on screen was built in the old language: reload the scene.
 		Router.go(parent.get_tree().current_scene.scene_file_path))
 	_row(gen, "Language / Idioma", "", lang)
-	SavesUI.settings_block(func(title, help, control): _row(gen, title, help, control), parent)
+	var data := _card(p, "Saves", "▥", Color("ff9d6b"), "Starting over, and admin mode for testing. Your save slots are in the main menu's Load.")
+	SavesUI.settings_block(func(title, help, control): _row(data, title, help, control), parent)
 
-	var disp := _card(p, "Display", "▣", Color("7cc4ff"))
+	var disp := _card(p, "Display", "▣", Color("7cc4ff"), "The window, the frame rate and the frame counter.")
 	if desktop:
 		var fs := CheckButton.new()
 		fs.button_pressed = Settings.fullscreen
@@ -168,10 +212,10 @@ static func open(parent: Node) -> SidePanel:
 
 	_graphics_card(p)
 
-	var aud := _card(p, "Audio", "♪", Color("ff8ac0"))
-	_row(aud, "Master", "", _slider(Settings.master_volume, func(v): Settings.master_volume = v))
+	var aud := _card(p, "Sound", "♪", Color("ff8ac0"), "How loud everything is. Let go of a slider and you hear the new level.")
+	_row(aud, "Master", "Everything at once.", _slider(Settings.master_volume, func(v): Settings.master_volume = v, "click"))
 	_row(aud, "Music", "", _slider(Settings.music_volume, func(v): Settings.music_volume = v))
-	_row(aud, "Effects", "Cards, attacks, the crowd.", _slider(Settings.sfx_volume, func(v): Settings.sfx_volume = v))
+	_row(aud, "Effects", "Cards, attacks, the crowd.", _slider(Settings.sfx_volume, func(v): Settings.sfx_volume = v, "card"))
 	# Voices in duels: one switch for all of them, then who talks.
 	var mk_switch := func(on: bool, setter: Callable) -> CheckButton:
 		var cb := CheckButton.new()
@@ -182,8 +226,10 @@ static func open(parent: Node) -> SidePanel:
 				Voices.hush(true)
 			Settings.save_settings())
 		return cb
+	var voi := _card(p, "Voices", "☊", Color("c7a6ff"), "Who speaks out loud in duels, in the story and in the worlds. Pick a voice and you hear it.")
+	aud = voi
 	_row(aud, "Voices", "Duelists, Lumen and the narrator of the opening say their lines out loud. Turn it off and the lines are only text, like before.", mk_switch.call(Settings.voices_on, func(v): Settings.voices_on = v))
-	_row(aud, "Voice volume", "", _slider(Settings.voice_volume, func(v): Settings.voice_volume = v))
+	_row(aud, "Voice volume", "", _slider(Settings.voice_volume, func(v): Settings.voice_volume = v, "voice"))
 	_row(aud, "Opponents' voices", "", mk_switch.call(Settings.voice_opp, func(v): Settings.voice_opp = v))
 	var lum := OptionButton.new()
 	for i in 4:
@@ -216,14 +262,7 @@ static func open(parent: Node) -> SidePanel:
 		Settings.save_settings())
 	_row(aud, "How much they talk", "Some: only the big moments. Normal: the draw, the battle and the end of the turn too. A lot: every card and every attack is called out, like in the shows.", talk)
 
-	var game := _card(p, "Gameplay", "⚔", Color("ffd166"))
-	_row(game, "Mouse camera speed", "In the worlds, hold the right mouse button and drag to turn the camera.", _pad_slider(Settings.mouse_sens, func(v): Settings.mouse_sens = v))
-	var mi := CheckButton.new()
-	mi.button_pressed = Settings.mouse_invert
-	mi.toggled.connect(func(on):
-		Settings.mouse_invert = on
-		Settings.save_settings())
-	_row(game, "Invert mouse up and down", "", mi)
+	var game := _card(p, "Gameplay", "⚔", Color("ffd166"), "How duels play and look, and how strong the opponents are.")
 	var speed := OptionButton.new()
 	var keys: Array = Settings.ANIM_SPEEDS.keys()
 	for i in keys.size():
@@ -309,7 +348,6 @@ static func open(parent: Node) -> SidePanel:
 		Settings.cpu_level = i + 1
 		Settings.save_settings())
 	_row(game, "Opponent difficulty", "How every opponent in Story and in the worlds thinks. Normal looks a little ahead and sometimes slips. Hard plans its turn and checks what you could answer. Extreme tries more plays for longer. None of them looks at your hand or face-down cards. Free Duel has its own buttons.", brain)
-	_row(game, "Credits", "Made by Atlas Peak Games. The duel rules run on ocgcore by Edoardo Lolletti (edo9300), and every card plays by its script from Project Ignis. Both are free software under the AGPL-3.0 license. The game is built with the Godot engine.", Control.new())
 	var field := OptionButton.new()
 	var fkeys := ["auto"] + FieldThemes.ORDER
 	for i in fkeys.size():
@@ -322,7 +360,7 @@ static func open(parent: Node) -> SidePanel:
 		Settings.save_settings())
 	_row(game, "Duel field", "Where duels are played when the duel itself does not say.", field)
 
-	var art := _card(p, "Card art", "▤", Color("3ddc97"))
+	var art := _card(p, "Card art", "▤", Color("3ddc97"), "Your own card pictures, card back, icon, sounds and music.")
 	var folder := LineEdit.new()
 	folder.text = Settings.card_folder
 	folder.text_submitted.connect(func(t):
@@ -343,8 +381,24 @@ static func open(parent: Node) -> SidePanel:
 	back_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	art.add_child(back_hint)
 
-	_controller_card(p)
+	# Mouse and controller together.
+	var ctl := _card(p, "Controls", "◎", Color("7cc4ff"), "The mouse, the keys and the controller.")
+	_row(ctl, "Mouse camera speed", "In the worlds, hold the right mouse button and drag to turn the camera.", _pad_slider(Settings.mouse_sens, func(v): Settings.mouse_sens = v))
+	var mi := CheckButton.new()
+	mi.button_pressed = Settings.mouse_invert
+	mi.toggled.connect(func(on):
+		Settings.mouse_invert = on
+		Settings.save_settings())
+	_row(ctl, "Invert mouse up and down", "", mi)
+	_controller_card(p, ctl)
 
+	var about := _card(p, "About", "✦", Color("ffd766"), "Who made the game, and what it is built on.")
+	_row(about, "Credits", "Made by Atlas Peak Games. The duel rules run on ocgcore by Edoardo Lolletti (edo9300), and every card plays by its script from Project Ignis. Both are free software under the AGPL-3.0 license. The game is built with the Godot engine.", Control.new())
+	var ver := UITheme.label(Loc.t("Version %s") % str(ProjectSettings.get_setting("application/config/version", "")), 17, UITheme.TEXT_DIM)
+	about.add_child(ver)
+
+	# The order of the sections down the left.
+	_order(p, ["Gameplay", "Display", "Graphics", "Sound", "Voices", "Controls", "Language", "Card art", "Saves", "About"])
 	_tabs(p)
 	parent.add_child(p)
 	return p
@@ -355,9 +409,23 @@ static func open(parent: Node) -> SidePanel:
 static var _tab_at := {}
 
 
+## Put the sections in this order (by their names); any not named stay after, as they were.
+static func _order(p: SidePanel, names: Array) -> void:
+	var at := 0
+	for n in names:
+		for c in p.body.get_children():
+			if str((c as Control).get_meta("tab", "")) == n:
+				p.body.move_child(c, at)
+				at += 1
+				break
+
+
 static func _tabs(p: SidePanel, store := "settings") -> void:
 	var cards: Array = p.body.get_children()
 	if cards.size() < 2:
+		return
+	if p.full:
+		_side_tabs(p, cards, store)
 		return
 	# The tabs wrap onto a second row when they do not fit (seven of them, longer in Spanish).
 	var bar := HFlowContainer.new()
@@ -382,6 +450,72 @@ static func _tabs(p: SidePanel, store := "settings") -> void:
 		bar.add_child(b)
 		btns.append(b)
 	show.call(clampi(int(_tab_at.get(store, 0)), 0, cards.size() - 1))
+
+
+## Full screen: the sections as a list down the left, each with its mark and color; the page on
+## the right shows one section with its name and a line about it. Up and down move through the list.
+static func _side_tabs(p: SidePanel, cards: Array, store: String) -> void:
+	var btns: Array = []
+	var show := func(i: int):
+		_tab_at[store] = i
+		for k in cards.size():
+			(cards[k] as Control).visible = k == i
+			(btns[k] as Button).set_pressed_no_signal(k == i)
+		var c: Control = cards[i]
+		p.sec_title.text = Loc.t(str(c.get_meta("tab", ""))).to_upper()
+		p.sec_title.add_theme_color_override("font_color", Color.WHITE)
+		var sub := str(c.get_meta("sub", ""))
+		p.sec_sub.text = Loc.t(sub)
+		p.sec_sub.visible = sub != ""
+		# The page starts at the top of the section.
+		var sc := p.body.get_parent().get_parent() as ScrollContainer
+		if sc:
+			sc.scroll_vertical = 0
+	for i in cards.size():
+		var c: Control = cards[i]
+		var tint: Color = c.get_meta("tint", UITheme.ACCENT)
+		var b := Button.new()
+		b.toggle_mode = true
+		b.text = "%s   %s" % [str(c.get_meta("glyph", "•")), Loc.t(str(c.get_meta("tab", "Section")))]
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.custom_minimum_size = Vector2(0, 56)
+		b.add_theme_font_size_override("font_size", 22)
+		var nb := UITheme.panel_box(Color(0.03, 0.05, 0.12, 0.62), 14, Color(1, 1, 1, 0.12))
+		nb.content_margin_left = 20
+		var hb := UITheme.panel_box(Color(0.07, 0.1, 0.2, 0.88), 14, tint.lightened(0.15))
+		hb.content_margin_left = 20
+		var on := UITheme.panel_box(Color(tint.darkened(0.62), 0.94), 14, tint)
+		on.content_margin_left = 20
+		on.border_width_left = 6
+		b.add_theme_stylebox_override("normal", nb)
+		b.add_theme_stylebox_override("hover", hb)
+		b.add_theme_stylebox_override("focus", hb)
+		b.add_theme_stylebox_override("pressed", on)
+		b.add_theme_stylebox_override("hover_pressed", on)
+		for fc in ["font_pressed_color", "font_hover_pressed_color"]:
+			b.add_theme_color_override(fc, Color.WHITE)
+		b.add_theme_color_override("font_color", Color(1, 1, 1, 0.82))
+		b.pressed.connect(func():
+			Sfx.play("click", -10.0)
+			show.call(i))
+		# Moving onto a section with the keys or the stick opens it too.
+		b.focus_entered.connect(func():
+			if not b.button_pressed:
+				show.call(i))
+		p.nav.add_child(b)
+		btns.append(b)
+	var want = _tab_at.get(store, 0)
+	var at := int(want)
+	if at >= cards.size():
+		# (The main menu asks for "the last one" to open the controller page.)
+		at = 0
+		for k in cards.size():
+			if str((cards[k] as Control).get_meta("tab", "")) == "Controls":
+				at = k
+	show.call(clampi(at, 0, cards.size() - 1))
+	(func():
+		if is_instance_valid(btns[_tab_at[store]]):
+			(btns[_tab_at[store]] as Button).grab_focus()).call_deferred()
 
 
 ## Your own things, opened from the profile bar on the home screen: the duelist you play as,
@@ -507,7 +641,7 @@ static func _fill_thumbs(p: SidePanel, thumbs: Array) -> void:
 ## Graphics: a preset on top, then every effect on its own switch. Touch one and the preset
 ## reads "Custom"; pick a preset and every switch moves to match.
 static func _graphics_card(p: SidePanel) -> void:
-	var g := _card(p, "Graphics", "◆", Color("ffb62e"))
+	var g := _card(p, "Graphics", "◆", Color("ffb62e"), "How the 3D world looks and how fast it runs.")
 	var sync: Array = []         # callables that re-read the settings into the controls
 	var preset := OptionButton.new()
 	for i in Settings.GFX_PRESET_NAMES.size():
@@ -562,8 +696,8 @@ static func _graphics_card(p: SidePanel) -> void:
 
 
 ## Controller: which button pictures, stick speeds, rumble, and moving any button to another.
-static func _controller_card(p: SidePanel) -> void:
-	var c := _card(p, "Controller", "◎", Color("7cc4ff"))
+static func _controller_card(p: SidePanel, into: VBoxContainer = null) -> void:
+	var c := into if into != null else _card(p, "Controller", "◎", Color("7cc4ff"))
 	var pads := Input.get_connected_joypads()
 	var who := UITheme.label(Loc.t("Connected: %s") % Input.get_joy_name(pads[0]) if not pads.is_empty() else Loc.t("No controller connected. Plug one in or pair it, and it works right away."), 16, UITheme.ACCENT if not pads.is_empty() else UITheme.TEXT_DIM)
 	who.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -612,7 +746,8 @@ static func _controller_card(p: SidePanel) -> void:
 		if on:
 			Pad.rumble(0.3, 0.6, 0.3))
 	_row(c, "Vibration", "The controller buzzes when you take a hit, a little when you land one.", rum)
-	c.add_child(UITheme.label(Loc.t("Buttons"), 22, UITheme.TEXT))
+	var bt_head := UITheme.label(Loc.t("Buttons"), 22 if not p.full else 26, UITheme.TEXT if not p.full else UITheme.GOLD, null if not p.full else UITheme.semi_font())
+	c.add_child(bt_head)
 	var bh := UITheme.label(Loc.t("Press a box, then press the button you want for that job. Two jobs swap buttons, so nothing is ever left without one."), 15, UITheme.TEXT_DIM)
 	bh.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	c.add_child(bh)
@@ -709,7 +844,7 @@ static func _pad_slider(value: float, setter: Callable) -> HSlider:
 	return s
 
 
-static func _slider(value: float, setter: Callable) -> HSlider:
+static func _slider(value: float, setter: Callable, test := "") -> HSlider:
 	var s := HSlider.new()
 	s.min_value = 0.0
 	s.max_value = 1.0
@@ -720,4 +855,12 @@ static func _slider(value: float, setter: Callable) -> HSlider:
 		setter.call(v)
 		Settings.apply()
 		Settings.save_settings())
+	if test != "":
+		# Let go and you hear the level: a click, a card, or Lumen saying a word.
+		s.drag_ended.connect(func(_changed: bool):
+			if test == "voice":
+				Voices.hush(true)
+				Voices.say("lumen", "Lumen, reporting for duty! Small but mighty!", true)
+			else:
+				Sfx.play(test, 0.0))
 	return s
