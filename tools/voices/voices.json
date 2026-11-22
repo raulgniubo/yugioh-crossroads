@@ -153,90 +153,150 @@
   "es": {
    "id": "J9z1TRuPOE0L64KxHgPG",
    "name": "Crossroads ES - Nico"
+  },
+  "en": {
+   "id": "wTnKAwWi2ehuESvtlLCJ",
+   "name": "Crossroads EN - Nico"
   }
  },
  "mika": {
   "es": {
    "id": "fvWCD1lY5HB5f6flxMfY",
    "name": "Crossroads ES - Mika"
+  },
+  "en": {
+   "id": "s6D6yCUBDlwsmFC7t0yd",
+   "name": "Crossroads EN - Mika"
   }
  },
  "bruno": {
   "es": {
    "id": "iZaVnb2NQK2TBZ2m6mvz",
    "name": "Crossroads ES - Bruno"
+  },
+  "en": {
+   "id": "jGVUzXhlunsm1hsghJOg",
+   "name": "Crossroads EN - Bruno"
   }
  },
  "sato": {
   "es": {
    "id": "FyP5to499NWQFdnI9BXj",
    "name": "Crossroads ES - Sato"
+  },
+  "en": {
+   "id": "tEGqe2N9XrzNQ1IZoyne",
+   "name": "Crossroads EN - Sato"
   }
  },
  "crowler": {
   "es": {
    "id": "c1WqSdgtN75M5mynAVaI",
    "name": "Crossroads ES - Crowler"
+  },
+  "en": {
+   "id": "62JIKLbhwlnLjssIWq5a",
+   "name": "Crossroads EN - Crowler"
   }
  },
  "sheppard": {
   "es": {
    "id": "QjyXawLzlEFgvDrYyxt7",
    "name": "Crossroads ES - Sheppard"
+  },
+  "en": {
+   "id": "5llwW2cx5h5X5PKWdsWu",
+   "name": "Crossroads EN - Sheppard"
   }
  },
  "dorothy": {
   "es": {
    "id": "XK6VdbFGMSJ23yGH6euz",
    "name": "Crossroads ES - Dorothy"
+  },
+  "en": {
+   "id": "fPkOFYakQetDG2QYhOjn",
+   "name": "Crossroads EN - Dorothy"
   }
  },
  "dante": {
   "es": {
    "id": "o8BKnjnD4xOA7G2FoOVs",
    "name": "Crossroads ES - Dante"
+  },
+  "en": {
+   "id": "RCx9cSqlQxGAcjVerze2",
+   "name": "Crossroads EN - Dante"
   }
  },
  "crane": {
   "es": {
    "id": "BpvggeFfYTdkM1i4i3Ku",
    "name": "Crossroads ES - Crane"
+  },
+  "en": {
+   "id": "sDpxwdTDfw8a1mioiyeE",
+   "name": "Crossroads EN - Crane"
   }
  },
  "octavia": {
   "es": {
    "id": "ez6Og2BP7JtGFgQQHJEK",
    "name": "Crossroads ES - Octavia"
+  },
+  "en": {
+   "id": "gufRKSyD5QC2E1y1GIbB",
+   "name": "Crossroads EN - Octavia"
   }
  },
  "bastion": {
   "es": {
    "id": "qVkoHk0N8IiaTpsfBFzF",
    "name": "Crossroads - Bastion (ES)"
+  },
+  "en": {
+   "id": "tSFcQZtvRmJALL22pHWZ",
+   "name": "Crossroads EN - Bastion"
   }
  },
  "irina": {
   "es": {
    "id": "D3brMQcHx7drbzXGjyxr",
    "name": "Crossroads ES - Irina"
+  },
+  "en": {
+   "id": "Lu6QwqnQGt0kU4Y2MdgI",
+   "name": "Crossroads EN - Irina"
   }
  },
  "leo": {
   "es": {
    "id": "8ot28E5jzTDDYmJ4shFJ",
    "name": "Crossroads ES - Leo"
+  },
+  "en": {
+   "id": "AJGjFMbhuyptcb0jm8Bq",
+   "name": "Crossroads EN - Leo"
   }
  },
  "selene": {
   "es": {
    "id": "nANYkhFXcyqDOdKAApcY",
    "name": "Crossroads ES - Selene"
+  },
+  "en": {
+   "id": "MVOeDt3hNHQ64oa6z299",
+   "name": "Crossroads EN - Selene"
   }
  },
  "vera": {
   "es": {
    "id": "FUSwl5xKfiDsb4nISKIO",
    "name": "Crossroads ES - Vera"
+  },
+  "en": {
+   "id": "EJxxl1d8veuzla7etvVx",
+   "name": "Crossroads EN - Vera"
   }
  }
 }
