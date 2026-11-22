@@ -1315,7 +1315,8 @@ func _on_knockout(result: String) -> void:
 
 
 func _on_free_duel() -> void:
-	var cs := CharacterSelect.new()
+	# The front screen (0.69.1); its "More options" opens the full setup screen below.
+	var cs := FreeDuelGate.new()
 	cs.z_index = 100
 	add_child(cs)
 	_panel_open = true
@@ -1589,3 +1590,18 @@ func _build_rounds() -> void:
 		_items.append(quit)
 	_rounds_end = 64.0 + rounds.get_child_count() * 64.0 + maxi(rounds.get_child_count() - 1, 0) * 14.0
 
+
+## The full Free Duel setup screen by itself (dev: --open=select-old).
+func _on_free_duel_setup() -> void:
+	var cs := CharacterSelect.new()
+	cs.z_index = 100
+	add_child(cs)
+	_panel_open = true
+	cs.start.connect(func(cfg):
+		Router.duel_config = cfg
+		Router.go(Router.DUEL))
+	cs.knockout.connect(func():
+		cs.queue_free()
+		_on_knockout(""))
+	cs.closed.connect(func():
+		_panel_open = false)

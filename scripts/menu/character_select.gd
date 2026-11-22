@@ -11,7 +11,7 @@ signal knockout          # the Knockout button: the menu swaps this screen for t
 const W := 1920.0
 const H := 1080.0
 const PANEL_SIZE := Vector2(506, 438)
-const CELL := Vector2(113, 132)
+const CELL := Vector2(102, 124)
 
 var _me := "player"
 var _opp := "kaiba"
@@ -70,6 +70,12 @@ func _ready() -> void:
 				break
 	_difficulty = Settings.free_difficulty   # Normal unless you picked another one here before
 	_my_deck = cfg.get("player_deck", "yugi")
+	# Their deck as one of its versions (Free Duel's front screen picks one: "kaiba@standard").
+	var od := str(cfg.get("opponent_deck", ""))
+	if od.contains("@"):
+		var sp: Array = DeckTiers.split(od)
+		if str(sp[0]) == str(Characters.get_char(_opp).get("deck", "")) and str(sp[1]) in ["starter", "standard"]:
+			_their_deck = "@" + str(sp[1])
 	if not CardData.has_deck(_my_deck):
 		_my_deck = "echo" if CardData.has_deck("echo") else "yugi"
 	_field = str(cfg.get("field", Settings.field_theme))
@@ -114,9 +120,9 @@ func _ready() -> void:
 	_build_tabs()
 	_build_extras()
 	_grid = GridContainer.new()
-	# Nine across, three rows: the roster owns the bottom left and never reaches the setup
+	# Ten across, three rows: the roster owns the bottom left and never reaches the setup
 	# column on the right.
-	_grid.columns = 9
+	_grid.columns = 10      # (ten across since Crowler, Sheppard and Bastion joined: 29 tiles in three rows)
 	_grid.position = Vector2(64, 632)
 	_grid.add_theme_constant_override("h_separation", 7)
 	_grid.add_theme_constant_override("v_separation", 7)
@@ -330,6 +336,8 @@ func _peek_mine() -> void:
 
 
 func _deck_of(side: String) -> String:
+	if side == "opp" and _their_deck.begins_with("@"):
+		return DeckTiers.with_version(str(Characters.get_char(_opp).get("deck", "")), _their_deck.substr(1))
 	if side == "opp" and _their_deck != "":
 		return _their_deck
 	return _my_deck if side == "me" else str(Characters.get_char(_opp).get("deck", ""))
@@ -908,6 +916,10 @@ func _build_setup() -> void:
 	_their_pick.add_theme_font_size_override("font_size", 16)
 	_their_pick.add_item(Loc.t("Their own deck"))
 	_their_keys = [""]
+	# The smaller versions of their own deck (the front screen's three cards).
+	for ver in ["standard", "starter"]:
+		_their_keys.append("@" + ver)
+		_their_pick.add_item(Loc.t("Their deck: %s") % Loc.t(str(FreeDuelGate.VERSION_NAME[ver])))
 	# One of your own decks (a good way to see how a deck you built plays from the other side).
 	for md in Collection.my_decks():
 		_their_keys.append(str(md["key"]))
@@ -915,6 +927,7 @@ func _build_setup() -> void:
 	_their_pick.item_selected.connect(func(i):
 		_their_deck = _their_keys[i]
 		_refresh_slots())
+	_their_pick.select(maxi(0, _their_keys.find(_their_deck)))
 	trow.add_child(_their_pick)
 	# Every card they play, before you pick them.
 	var peek := Button.new()
@@ -1277,7 +1290,9 @@ func _start_duel() -> void:
 		"turbo": _turbo_btn != null and _turbo_btn.button_pressed, "lp": _lp, "hand": _hand_n,
 		"destiny": not (_fate_off_btn != null and _fate_off_btn.button_pressed),
 		"cpu_level": _difficulty}
-	if _their_deck != "":
+	if _their_deck.begins_with("@"):
+		cfg["opponent_deck"] = _deck_of("opp")    # one of the smaller versions of their own deck
+	elif _their_deck != "":
 		cfg["opponent_deck"] = _their_deck
 		cfg["opponent_deck_full"] = true   # a deck you picked for them is the real one, aces included
 	if _first >= 0:

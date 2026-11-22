@@ -562,8 +562,30 @@ func _debug_args() -> void:
 			var what := a.substr(7)
 			await get_tree().create_timer(1.2).timeout
 			var menu := get_tree().current_scene
-			if what == "select":
+			if what == "select" or what == "freeduel":
 				menu._on_free_duel()
+			elif what == "select-old":
+				menu._on_free_duel_setup()
+			elif what.begins_with("freeduel-"):
+				# --open=freeduel-options: the front screen with the full setup open over it.
+				# freeduel-v1 / freeduel-v0: the Standard / Starter card picked. freeduel-play: press DUEL!
+				menu._on_free_duel()
+				await get_tree().create_timer(0.6).timeout
+				for n in menu.find_children("*", "FreeDuelGate", true, false):
+					if what == "freeduel-options":
+						n._more_options()
+					elif what in ["freeduel-v0", "freeduel-v1"]:
+						for b in n._cards_row.get_children():
+							if b.get_index() == int(what.right(1)):
+								(b as Button).pressed.emit()
+					elif what == "freeduel-play":
+						print("FREE DUEL GATE: pressing DUEL! vs ", n._opp, " ", n._config())
+						n._start_duel()
+					elif what.begins_with("freeduel-tab"):
+						# freeduel-tab2: the second era tab (0 = All, 1 = Duel Monsters, 2 = GX...).
+						n._step_era(int(what.substr(12)))
+					elif what == "freeduel-random":
+						n._random_opponent()
 			elif what == "daily-play":
 				# Straight into today's duel, the way the Free Duel card starts it.
 				menu_open = "select"
