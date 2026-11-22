@@ -305,6 +305,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # ------------------------------------------------------------------ directions
 
+var task_marks: Array = []      # the story's open tasks in this world, for the map: [pos, label, guided]
+
+
 func has_waypoint() -> bool:
 	return _wp_on
 

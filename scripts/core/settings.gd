@@ -55,6 +55,7 @@ var free_difficulty := 2       # Free Duel: 1 Easy, 2 Normal, 3 Hard (its own, n
 var card_showcase := false     # hold an activated Spell or Trap up in the middle to be read before it acts
 var live_portraits := true     # the two duelists in the corners of a duel are the real 3D duelists, moving (off: still pictures)
 var cam_cuts := 0               # looks at a duelist during a duel: 0 Full, 1 Fewer (ace, direct attack, the end), 2 Off
+var story_task_view := 0        # Story/Academy: the task box folded to one task (0), the whole list (1), put away (2)
 var roam_list_small := false    # Free Roam: the "On your list" box put away as one small line (Tab / R3)
 var chain_pace := 0             # how fast a chain is shown, link by link: 0 Normal, 1 Slower, 2 Fast
 var turn_beat := 0              # a moment on the duelist as each turn opens: 0 Full, 1 Short, 2 Off
@@ -524,6 +525,7 @@ func load_settings() -> void:
 	turn_beat = clampi(int(cfg.get_value("game", "turn_beat", turn_beat)), 0, 2)
 	chain_pace = clampi(int(cfg.get_value("game", "chain_pace", chain_pace)), 0, 2)
 	roam_list_small = bool(cfg.get_value("game", "roam_list_small", roam_list_small))
+	story_task_view = int(cfg.get_value("game", "story_task_view", story_task_view))
 	opening = bool(cfg.get_value("game", "opening", opening))
 	free_difficulty = clampi(int(cfg.get_value("game", "free_difficulty", free_difficulty)), 1, 3)
 	pad_cam = float(cfg.get_value("pad", "cam", pad_cam))
@@ -615,6 +617,7 @@ func save_settings() -> void:
 	cfg.set_value("game", "turn_beat", turn_beat)
 	cfg.set_value("game", "chain_pace", chain_pace)
 	cfg.set_value("game", "roam_list_small", roam_list_small)
+	cfg.set_value("game", "story_task_view", story_task_view)
 	cfg.set_value("game", "free_difficulty", free_difficulty)
 	cfg.set_value("game", "opening", opening)
 	cfg.set_value("pad", "cam", pad_cam)

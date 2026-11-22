@@ -803,6 +803,16 @@ func _draw_map() -> void:
 		_map.draw_circle(c, 5.5 if lit else 3.8, e["color"])
 		if lit:
 			MapArt.tag(_map, font, c + Vector2(0, 12), "%s  ·  %s" % [Loc.t(str(e["name"])), Loc.t(str(e["sub"]))], 16, Color.WHITE, Color(0, 0, 0, 0), true)
+	# The story's tasks in this world: a gold "!" each (the one you are guided to is the waypoint below).
+	for tm in extras.task_marks:
+		var tc := _to_map(tm[0])
+		if not frame.has_point(tc):
+			continue
+		_map.draw_circle(tc + Vector2(0, 1), 10.0, Color(0, 0, 0, 0.6))
+		_map.draw_circle(tc, 9.0, Color("ffd166"))
+		_map.draw_string(UITheme.title_font(), tc + Vector2(-3.5, 6.5), "!", HORIZONTAL_ALIGNMENT_LEFT, -1, 17, MapArt.INK)
+		if tc.distance_to(_map.get_local_mouse_position()) < 14.0:
+			MapArt.tag(_map, font, tc + Vector2(0, 14), str(tm[1]), 16, Color.WHITE, Color(0, 0, 0, 0), true)
 	# The way to your waypoint.
 	var pp := _to_map(scene._player.position if str(scene._inside) == "" else extras.reach_point(scene._player.position))
 	if extras.has_waypoint():
@@ -971,6 +981,11 @@ func _draw_map_flat() -> void:
 			var ts := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 19)
 			_map.draw_rect(Rect2(c + Vector2(12, -15), ts + Vector2(10, 6)), Color(0.02, 0.035, 0.065, 0.92))
 			_map.draw_string(font, c + Vector2(17, 4), Loc.t(text), HORIZONTAL_ALIGNMENT_LEFT, -1, 19, Color.WHITE)
+	# The story's tasks in this world.
+	for tm in extras.task_marks:
+		var tc := _to_map(tm[0])
+		_map.draw_circle(tc, 6.5, Color("ffd166"))
+		_map.draw_circle(tc, 3.0, Color(0.02, 0.035, 0.065))
 	# Waypoint and a line to it.
 	var pp := _to_map(scene._player.position)
 	if extras.has_waypoint():
