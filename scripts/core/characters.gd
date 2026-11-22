@@ -4,7 +4,7 @@ extends RefCounted
 
 const ORDER := [
 	"yugi", "kaiba", "joey", "mai", "bakura", "marik", "pegasus", "weevil", "rex",
-	"jaden", "chazz", "zane", "alexis", "syrus", "aster",
+	"jaden", "chazz", "zane", "alexis", "syrus", "aster", "bastion", "crowler", "sheppard",
 	"yusei", "jack", "crow", "akiza", "kalin",
 	"yuma", "shark", "kite", "vector",
 ]
@@ -122,6 +122,28 @@ const DATA := {
 	"aster": {"name": "Aster Phoenix", "short": "Aster", "era": "GX", "color": Color("9aa3b5"), "title": "Pro League Champion",
 		"deck": "aster", "ace_name": "Destiny HERO - Dasher", "wiki": "Aster Phoenix", "personality": "cocky",
 		"lines": {"intro": ["Your destiny was decided before we started."], "ace": ["Destiny HEROes, show them their fate."]}},
+	# Three people of the Academy story who are also in Free Duel and live on the island (0.69):
+	# their own model when one is dropped in characters/, else the stand-in of Avatars.STANDINS.
+	# "pool": false = their deck stays a theme deck in the shop, and its cards do not join the
+	# era's packs (nothing moves in the shop or the packs because they joined the roster).
+	"crowler": {"name": "Doctor Crowler", "short": "Crowler", "era": "GX", "color": Color("5a6ad8"), "title": "Head of the Blue dorm. Chair of Dueling Theory",
+		"deck": "deck_ancient_gear", "ace_name": "Ancient Gear Golem", "personality": "cocky", "stars": 4, "pool": false,
+		"lines": {"intro": ["Class is in session. Do take notes."], "turn": ["My turn. Observe the proper technique.", "I draw. This will be on the exam."],
+			"ace": ["Behold a proper education! Ancient Gear Golem!"], "attack": ["Attack! Consider it a practical lesson."], "direct": ["Directly! A textbook finish."],
+			"hurt": ["A minor setback. Purely theoretical.", "Hmph! That does not go on my record."], "taunt": ["A Red dorm play if I ever saw one."],
+			"win": ["Failing grade. As expected."], "lose": ["Impossible. I shall be reviewing the tape."]}},
+	"sheppard": {"name": "Chancellor Sheppard", "short": "Sheppard", "era": "GX", "color": Color("d8a23a"), "title": "Chancellor of Duel Academy",
+		"deck": "deck_cyber", "ace_name": "Cyber Dragon", "personality": "kind", "stars": 5, "pool": false,
+		"lines": {"intro": ["It has been a while since I held a Duel Disk. Do not go easy on me."], "turn": ["My turn. Let us see what the cards think.", "I draw. Old habits."],
+			"ace": ["Cyber Dragon. It still answers me after all these years."], "attack": ["Forward. Gently, but forward."], "direct": ["Straight through. Forgive me."],
+			"hurt": ["Oh! Well played. Very well played.", "Ha! I felt that one."], "taunt": ["Patience. I have been at this longer than you have been alive."],
+			"win": ["A good duel is the best lesson this school has. Thank you."], "lose": ["Wonderful. That is exactly why this school exists."]}},
+	"bastion": {"name": "Bastion Misawa", "short": "Bastion", "era": "GX", "color": Color("f2c230"), "title": "Top of the Yellow dorm. The team's strategist",
+		"deck": "deck_water", "ace_name": "Bahamut Shark", "personality": "cool", "stars": 4, "pool": false,
+		"lines": {"intro": ["I have worked out the equation for this duel. Let us see if you solve it first."], "turn": ["My turn. Variables updated.", "I draw. As projected."],
+			"ace": ["Bahamut Shark. The answer to the equation."], "attack": ["Attack. The numbers are on my side."], "direct": ["Direct attack. Quod erat demonstrandum."],
+			"hurt": ["An error in my calculations. Noted.", "Hm. That term was larger than I estimated."], "taunt": ["I accounted for that move three turns ago."],
+			"win": ["Exactly as the formula predicted. Thank you for the data."], "lose": ["Remarkable. I will need a bigger chalkboard."]}},
 	"jack": {"name": "Jack Atlas", "short": "Jack", "era": "5D's", "color": Color("e0343c"), "title": "The King",
 		"deck": "jack", "ace_name": "Red Dragon Archfiend", "wiki": "Jack Atlas", "personality": "cocky",
 		"lines": {"intro": ["There is only one King, and it's me!"], "ace": ["The King's soul burns hot! Red Dragon Archfiend!"],
@@ -209,15 +231,7 @@ const STORY_CAST := {
 		"deck": "deck_machine", "ace_name": "Machine King", "personality": "cool", "stars": 5,
 		"lines": {"intro": ["Show me what you learned."], "ace": ["I captained with this card."], "taunt": ["Think one turn further."],
 			"win": ["Again tomorrow. You are closer than you think."], "lose": ["Good. That is why I put your name on the list."]}},
-	"crowler": {"name": "Doctor Crowler", "short": "Crowler", "era": "GX", "color": Color("5a6ad8"), "title": "Head of the Blue dorm. Chair of Dueling Theory",
-		"deck": "deck_ancient_gear", "ace_name": "Ancient Gear Golem", "personality": "cocky", "stars": 4,
-		"lines": {"intro": ["Class is in session. Do take notes."], "ace": ["Behold a proper education! Ancient Gear Golem!"], "taunt": ["A Red dorm play if I ever saw one."],
-			"win": ["Failing grade. As expected."], "lose": ["Impossible. I shall be reviewing the tape."]}},
-	"sheppard": {"name": "Chancellor Sheppard", "short": "Sheppard", "era": "GX", "color": Color("d8a23a"), "title": "Chancellor of Duel Academy",
-		"deck": "deck_cyber", "ace_name": "Cyber Dragon", "personality": "kind", "stars": 5},
 	"dorothy": {"name": "Dorothy", "short": "Dorothy", "era": "GX", "color": Color("ffd166"), "title": "The Academy card shop"},
-	"bastion": {"name": "Bastion Misawa", "short": "Bastion", "era": "GX", "color": Color("f2c230"), "title": "Top of the Yellow dorm. The team's strategist",
-		"deck": "deck_water", "personality": "cool", "stars": 3},
 	"dante": {"name": "Dante Morel", "short": "Dante", "era": "GX", "color": Color("3a6ad8"), "title": "Blue dorm, first year. A champion's son",
 		"deck": "deck_dragon", "ace_name": "Tyrant Dragon", "personality": "cocky", "stars": 4,
 		"lines": {"intro": ["Try to make it worth my time."], "ace": ["This is what a real deck looks like."], "taunt": ["Is that all Red has?"],
@@ -500,7 +514,9 @@ const LINE_NEEDS := {
 	"Blackwings, take to the sky!": ["Blackwing*"], "Bloom, Black Rose Dragon!": ["Black Rose Dragon"],
 	"Rise from the depths, Leviathan Dragon!": ["Number 17: Leviathan Dragon"],
 	"Galaxy-Eyes Photon Dragon! Descend!": ["Galaxy-Eyes Photon Dragon"], "Photon Stream of Destruction!": ["Galaxy-Eyes Photon Dragon"],
-	"This echo is mine now.": ["ace"], "A masterpiece. I kept it perfect.": ["ace"], "Catalogue number one.": ["ace"],
+	"Behold a proper education! Ancient Gear Golem!": ["Ancient Gear Golem"], "Cyber Dragon. It still answers me after all these years.": ["Cyber Dragon"],
+	"Bahamut Shark. The answer to the equation.": ["Bahamut Shark"],
+		"This echo is mine now.": ["ace"], "A masterpiece. I kept it perfect.": ["ace"], "Catalogue number one.": ["ace"],
 }
 
 

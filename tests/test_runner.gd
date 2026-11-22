@@ -35,6 +35,7 @@ func _ready() -> void:
 	_test_0640()
 	_test_campus()
 	_test_world_voices()
+	_test_trio()
 	_test_classes()
 	_test_circle()
 	var stress := OS.get_environment("STRESS_FOLDER")
@@ -11121,6 +11122,84 @@ func _test_act4() -> void:
 	check(es.has("The story is told") and es.has(str(g.get("sub", ""))), "and it says so in Spanish")
 	Campus.put("done", keep_done)
 
+
+
+## Doctor Crowler, Chancellor Sheppard and Bastion in Free Duel and on the island (0.69): in the
+## roster with their own deck and lines, the show's rule for their deck (whole, with stars), the
+## shop and the packs unchanged, and a day of their own on the island with something to say.
+func _test_trio() -> void:
+	var trio := {"crowler": "deck_ancient_gear", "sheppard": "deck_cyber", "bastion": "deck_water"}
+	for who in trio:
+		var c: Dictionary = Characters.get_char(who)
+		check(Characters.ORDER.has(who) and Characters.DATA.has(who) and str(c.get("deck", "")) == trio[who], "%s is in the Free Duel roster with %s" % [who, trio[who]])
+		var big := CardData.NAME_TO_ID.has("number 39: utopia")   # (the CI profile has no theme decks)
+		check(Characters.available(who) or not big, "%s can be picked in Free Duel (the deck exists)" % who)
+		for kind in ["intro", "turn", "ace", "attack", "direct", "hurt", "win", "lose"]:
+			check((c.get("lines", {}) as Dictionary).has(kind), "%s has a line of their own for '%s'" % [who, kind])
+		check(Unlocks.SERIES_STARS.has(who) and DeckTiers.for_duel(trio[who], who, 1) == trio[who], "%s plays the whole deck in the worlds, like the show's other duelists" % who)
+		for v in ["starter", "standard"]:
+			check(CardData.deck_list(trio[who] + "@" + v).size() >= 40 or not big, "%s's deck has a %s version for the story" % [who, v])
+		check(Voices.voice_for(who) == who, "%s speaks in a voice of their own" % who)
+		check(StarLife.DAYS["academy"].has(who) and StarLife.TALK.has(who) and StarLife.ASK.has(who) and StarMeets.MORE.has(who), "%s keeps a day on the island and has something to say" % who)
+		var acts := {}
+		for st in StarLife.DAYS["academy"][who]:
+			acts[str(st[3])] = true
+		for act in acts:
+			check((StarLife.TALK[who].get("do", {}) as Dictionary).has(act), "%s has a word about '%s'" % [who, act])
+		var on_island := false
+		for n in RoamData.district("academy").get("npcs", []):
+			if str((n as Dictionary).get("id", "")) == who and str(n.get("duel", {}).get("deck", "")) == trio[who]:
+				on_island = true
+		check(on_island, "%s can be challenged on the island with their own deck" % who)
+		# Their deck stays a theme deck in the shop (nothing moves in the shop or the packs).
+		var kinds: Array = []
+		for e in Collection.deck_catalog():
+			if str(e["key"]) == trio[who]:
+				kinds.append(str(e["kind"]))
+		check(kinds == ["theme"] or not big, "%s's deck is still sold once, as the theme deck it was (%s)" % [who, str(kinds)])
+	for m in StarMeets.MEETS["academy"]:
+		for pair in m["pairs"]:
+			for who in pair:
+				var more: Dictionary = StarMeets.MORE.get(str(who), {})
+				check(more.has("bout_won") and more.has("bout_lost"), "%s can say how a duel of the day went" % who)
+	if CardData.NAME_TO_ID.has("number 39: utopia"):
+		for nm in ["ancient gear golem", "cyber dragon", "bahamut shark"]:
+			check(CardData.NAME_TO_ID.has(nm), "the ace %s is a card of this game" % nm)
+	# Every line they say has its Spanish.
+	var es: Dictionary = load("res://scripts/core/es_campus.gd").ES
+	var said: Array = []
+	for who in trio:
+		for kind in Characters.get_char(who)["lines"]:
+			said.append_array(Characters.get_char(who)["lines"][kind])
+		for k in StarLife.TALK[who]:
+			var t = StarLife.TALK[who][k]
+			if t is Dictionary:
+				said.append_array(t.values())
+			else:
+				said.append_array(t)
+		said.append_array(StarLife.ASK[who])
+		said.append_array(StarMeets.MORE[who].values())
+		for n in RoamData.district("academy").get("npcs", []):
+			if str((n as Dictionary).get("id", "")) == who:
+				said.append_array(n["lines"])
+				said.append(str(n["duel"]["intro"]))
+	var no_es := 0
+	for t in said:
+		if not es.has(str(t)) and not EsStrings.ES.has(str(t)):
+			no_es += 1
+			if no_es <= 5:
+				print("NO SPANISH (trio): ", t)
+	check(no_es == 0, "every line of Crowler, Sheppard and Bastion has its Spanish (%d missing)" % no_es)
+	# Dorothy runs the card shop in the Main Hall, in her own voice, and the shop opens as before.
+	var shop: Dictionary = {}
+	for n in Interiors.people("ac_hall"):
+		if str((n as Dictionary).get("id", "")) == "ac_vendor":
+			shop = n
+	check(str(shop.get("char", "")) == "dorothy" and bool(shop.get("shop", false)), "Dorothy is the card shop clerk, and the counter is still the shop")
+	check(Voices.world_voice("ac_vendor", str(shop.get("model", "")), "dorothy") == "dorothy", "the shop clerk speaks with Dorothy's voice")
+	for chat in shop.get("chats", []):
+		for t in chat:
+			check(es.has(str(t)) or EsStrings.ES.has(str(t)), "Dorothy's shop line has its Spanish: %s" % str(t).left(40))
 
 func _test_world_voices() -> void:
 	# Everything somebody says out in any world (walkers, people in the rooms, the shop's own, the

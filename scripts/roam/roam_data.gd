@@ -171,6 +171,16 @@ const DISTRICTS := {
 			{"id": "aster", "char": "aster", "pos": Vector3(23, 0, 25), "face": -2.6,
 				"lines": ["A pro doesn't usually duel students. I'll make an exception.", "Destiny already picked the winner."],
 				"duel": {"deck": "aster", "difficulty": 2, "intro": "Your fate is sealed."}},
+			# Three of the Academy's own (0.69): they keep a day of their own on the island (StarLife).
+			{"id": "crowler", "char": "crowler", "pos": Vector3(-5.0, 0, -28.5), "face": 0.0,
+				"lines": ["Out of my way, please. I am late for my own lecture.", "A duel? With me? Very well. Consider it extra credit."],
+				"duel": {"deck": "deck_ancient_gear", "difficulty": 2, "intro": "Pop quiz. Duel Disk out."}},
+			{"id": "sheppard", "char": "sheppard", "pos": Vector3(6.0, 0, -29.5), "face": 3.14,
+				"lines": ["Welcome, welcome. Every student on this island is my student, you know.", "My office door is always open. The dock is better for thinking, though."],
+				"duel": {"deck": "deck_cyber", "difficulty": 3, "intro": "Let us see what this year's students can do."}},
+			{"id": "bastion", "char": "bastion", "pos": Vector3(29.0, 0, -1.0), "face": -1.57,
+				"lines": ["I am charting every duel on this island on the Yellow dorm chalkboard. You keep breaking my averages.", "A duel? Excellent. I need fresh data."],
+				"duel": {"deck": "deck_water", "difficulty": 2, "intro": "Begin. I shall be taking notes."}},
 			# The Academy story's own people live on the island too (0.65.0), in the story and in Free Roam.
 			{"id": "nico", "char": "nico", "pos": Vector3(-30.5, 0, 12.5), "face": 1.2,
 				"lines": ["I have a plan for today. Step one: duel. There is no step two.", "My grandfather's deck has never lost a rematch. It has also never had one."],
