@@ -1176,16 +1176,17 @@ static func _cellar(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) ->
 		for nk in [["nick_echo", "Echo"], ["nick_static", "Static"], ["nick_ash", "Ash"]]:
 			if CampusProgress.recalls(str(nk[0])):
 				mine = str(nk[1])
-	var up := mine != "" and CampusCircle.rank_done(1)
+	var top := mine != "" and CampusCircle.rank_done(2)      # the Midnight rank: the top line, beside the name that held it
+	var up := mine != "" and CampusCircle.rank_done(1) and not top
 	for i in WALL_NAMES.size():
 		var y: float = rows[i]
 		_sign(city, Loc.t(str(WALL_NAMES[i][0])), o + Vector3(-4.05, y, wz + 0.05), 0.0, chalk_c * 0.72, 36)
 		var names: Array = (WALL_NAMES[i][1] as Array).duplicate()
-		if up and i == 1:
+		if (up and i == 1) or (top and i == 0):
 			names.push_front(mine)
 		for k in names.size():
 			var x := 0.6 if names.size() == 1 else -1.9 + k * (5.9 / maxf(1.0, names.size() - 1.0))
-			var fresh := up and i == 1 and k == 0
+			var fresh := ((up and i == 1) or (top and i == 0)) and k == 0
 			_sign(city, Loc.t(str(names[k])), o + Vector3(x, y + rng.randf_range(-0.05, 0.05), wz + 0.05), 0.0, Color(0.95, 0.95, 0.9) if fresh else chalk_c, (40 if names.size() > 4 else 50) if i > 0 else 62)
 			if fresh:
 				city.box(Vector3(1.0, 0.025, 0.02), o + Vector3(x, y - 0.2, wz + 0.04), chalk, false)
@@ -1193,7 +1194,7 @@ static func _cellar(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) ->
 			city.box(Vector3(9.4, 0.025, 0.02), o + Vector3(0, y - 0.36, wz + 0.04), chalk, false)
 	for k in WALL_MORE.size():
 		_sign(city, Loc.t(str(WALL_MORE[k])), o + Vector3(-1.9 + k * 1.97, 0.86, wz + 0.05), 0.0, chalk_c * 0.8, 46)
-	if mine != "" and not up:
+	if mine != "" and not up and not top:
 		_sign(city, Loc.t(mine), o + Vector3(2.9, 0.86, wz + 0.05), 0.0, Color(0.95, 0.95, 0.9), 54)
 		city.box(Vector3(1.3, 0.025, 0.02), o + Vector3(2.9, 0.66, wz + 0.04), chalk, false)
 	var glow := OmniLight3D.new()

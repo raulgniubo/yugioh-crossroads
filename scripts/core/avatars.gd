@@ -67,6 +67,10 @@ const STANDINS := {
 	# Act 2: Boreal Academy and the Lantern rank of the Circle.
 	"irina": "stylish_woman", "tova": "duelist_f3", "rurik": "duelist_m16",
 	"sparrow": "student_girl", "bell": "duelist_m1", "paper": "duelist_m6", "harbor": "duelist_m13",
+	# Act 3: the Academy of the Sun, Apex Academy, a memory, and the Midnight rank of the Circle.
+	"leo": "duelist_m15", "paco": "street_duelist", "luz": "student_girl", "brisa": "duelist_f3", "tano": "duelist_m17",
+	"selene": "duelist_f1", "mirela": "duelist_f3", "otto": "duelist_m5", "cassius": "duelist_m6", "ansel": "duelist_m2",
+	"crane_young": "duelist_m3", "tuesday": "stylish_woman",
 }
 ## Duel Academy jackets. Painted over stand-in models only, never over a model you supplied.
 const DORM_COLORS := {"red": Color("d9342b"), "yellow": Color("f2c230"), "blue": Color("2f6fe0")}
@@ -75,7 +79,10 @@ const UNIFORMS := {"jaden": "red", "syrus": "red", "red_student": "red", "koji":
 	"nico": "red", "mika": "red", "bruno": "red", "bastion": "yellow", "dante": "blue", "octavia": "blue",
 	"gus": "red", "felix": "blue", "ivo": "yellow"}
 ## People of other schools: the coat of their school, painted the same way (and only on stand-ins).
-const COATS := {"irina": Color("8a8f98"), "tova": Color("8a8f98"), "rurik": Color("8a8f98")}
+const COATS := {"irina": Color("8a8f98"), "tova": Color("8a8f98"), "rurik": Color("8a8f98"),
+	"leo": Color("e8862a"), "paco": Color("e8862a"), "luz": Color("e8862a"), "brisa": Color("e8862a"), "tano": Color("e8862a"),
+	"selene": Color("f1efe6"), "mirela": Color("f1efe6"), "otto": Color("f1efe6"), "cassius": Color("f1efe6"), "ansel": Color("f1efe6"),
+	"crane_young": Color("d9342b")}
 var _uniform_shader: Shader
 ## People who are not in their dorm jacket right now (the Academy story's prologue: nobody has a
 ## dorm before the entrance exam). key -> true.

@@ -519,10 +519,14 @@ func open_agenda() -> void:
 		_line(p, Loc.t("A candle on the wall: %d of 4") % mini(lit, 4), 19)
 		if lit > 4 or (lit == 4 and CampusCircle.open_duels() > 4):
 			_line(p, Loc.t("A lantern on the wall: %d of 4") % clampi(lit - 4, 0, 4), 19)
+		if lit > 8 or (lit == 8 and CampusCircle.open_duels() > 8):
+			_line(p, Loc.t("A midnight mark on the wall: %d of 4") % clampi(lit - 8, 0, 4), 19)
 		if lit >= CampusCircle.open_duels() and lit >= 4:
 			_line(p, Loc.t(CampusCircle.waiting()), 16, UITheme.TEXT_DIM)
 		elif lit == 4:
 			_line(p, Loc.t("The Candle rank is yours. The Lantern rank is open: knock at night."), 16, UITheme.TEXT_DIM)
+		elif lit == 8:
+			_line(p, Loc.t("The Lantern rank is yours. The Midnight rank is open: knock at night."), 16, UITheme.TEXT_DIM)
 	# ---- silver missions
 	_head(p, "Missions")
 	var any := false
