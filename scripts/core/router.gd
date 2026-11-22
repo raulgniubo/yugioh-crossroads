@@ -460,6 +460,14 @@ func _debug_args() -> void:
 				if not Campus.started():
 					Campus.new_game("academia")
 				Campus.enter()
+				for da in OS.get_cmdline_user_args():
+					# dev: what the story remembers from earlier chapters (--recall=m_train_mika,dante_left)
+					# and the dorm you are in by now (--dorm=2), so a late chapter can be walked on its own.
+					if da.begins_with("--recall="):
+						for rf in da.substr(9).split(",", false):
+							CampusProgress.remember(rf)
+					elif da.begins_with("--dorm="):
+						Campus.put("dorm", clampi(int(da.substr(7)), 0, 2))
 				var cparts := cw.split(":")
 				if cparts[0] != "ac_prologue":
 					Campus.put("jacket", true)

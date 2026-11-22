@@ -3578,7 +3578,7 @@ func _end_campus(st: Dictionary) -> void:
 	var t := UITheme.label(Loc.t(str(st["end"])).to_upper(), 70, UITheme.GOLD, UITheme.title_font())
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t)
-	var r := UITheme.label(Loc.t("+%d merits") % pay if pay > 0 else Loc.t("You have seen this one before"), 28, UITheme.ACCENT)
+	var r := UITheme.label(Loc.t("+%d merits") % pay if pay > 0 else (Loc.t("You have seen this one before") if not first else ""), 28, UITheme.ACCENT)
 	r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(r)
 	if st.has("teaser"):
@@ -3664,13 +3664,17 @@ func _end_circle(st: Dictionary) -> void:
 		notes.append(Loc.t("A mask of your own, hung in your room"))
 		if int(res["prize"]) != 0:
 			notes.append(Loc.t("A card for the first row of the wall: %s") % str(CardData.get_card(int(res["prize"])).get("name", "")))
+	elif bool(res["rank"]) and rk >= 2:
+		big = Loc.t("RANK COMPLETE: MIDNIGHT")
+		notes.append(Loc.t("Your name is on the top line of the wall"))
+		notes.append(Loc.t("The keys of the cellar are yours"))
 	elif bool(res["rank"]):
 		big = Loc.t("RANK COMPLETE: THE LANTERN")
 		notes.append(Loc.t("Your name goes up to the Lantern line of the wall"))
 	elif flags.has("won"):
 		var lit := clampi(int(res["wins"]) - rk * CampusCircle.PER_RANK, 0, 4)
 		big = "✦".repeat(lit) + "✧".repeat(4 - lit)
-		notes.append(Loc.t("A candle on the wall: %d of 4" if rk == 0 else "A lantern on the wall: %d of 4") % lit)
+		notes.append(Loc.t(["A candle on the wall: %d of 4", "A lantern on the wall: %d of 4", "A midnight mark on the wall: %d of 4"][mini(rk, 2)]) % lit)
 	else:
 		notes.append(Loc.t("The wall is patient. Come back another night."))
 	await _side_end(Loc.t("The night is over") if n > 0 else Loc.t("The Midnight Circle"), big, notes, CampusData.CELLAR_DOOR, n == 0 or flags.has("won"))
