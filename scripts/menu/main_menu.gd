@@ -103,7 +103,7 @@ func _ready() -> void:
 		_on_goals.call_deferred()
 	elif Router.menu_open == "decks":
 		Router.menu_open = ""
-		_on_deck.call_deferred()
+		_on_deck_list.call_deferred()
 		Router.toast.call_deferred(Loc.t("Pick or fix your deck, then press Story: it picks up at the duel you lost."))
 
 
@@ -284,7 +284,7 @@ func _build_menu() -> void:
 		[["Open world", "FREE ROAM", "Five places to walk and duel.", "◎", _on_roam, ""],
 			["Four titles", "TOURNAMENTS", "Badges, brackets, trophies.", "♛", _on_tournaments, "%d / %d" % [won, Tournament.DEFS.size()]]],
 		[["A story of its own", "DUEL ACADEMY", "A school year on the island.", "✎", _on_academy, ""],
-			["Your cards", "MY DECKS", "Build, rename, pick a deck.", "❖", _on_deck, ""]],
+			["Your cards", "DECKS & CARDS", "Your decks, the album, the shops.", "❖", _on_deck, ""]],
 	]
 	var y := 160.0
 	for ri in rows.size():
@@ -1178,7 +1178,20 @@ func _on_album() -> void:
 			_items[0].grab_focus())
 
 
+## Decks and cards (0.69.1): the full-screen door to your decks, the album and the card shops.
 func _on_deck() -> void:
+	var gate := CardsGate.new()
+	gate.z_index = 100
+	add_child(gate)
+	_panel_open = true
+	gate.closed.connect(func():
+		_panel_open = false
+		if _items.size() > 1:
+			_items[0].grab_focus())
+
+
+## My decks straight away (after a lost story duel: fix the deck, then carry on).
+func _on_deck_list() -> void:
 	var db := DeckMenu.new()
 	db.z_index = 100
 	add_child(db)

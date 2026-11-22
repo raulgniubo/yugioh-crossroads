@@ -89,7 +89,7 @@ func _draw() -> void:
 	draw_rect(Rect2(0, h - band, w, 4), col.lightened(0.25))
 	var name := Loc.t(str(info.get("name", ""))).to_upper()
 	var fs := 26
-	while fs > 14 and _title_font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > w - 20:
+	while fs > 11 and _title_font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > w - 20:
 		fs -= 1
 	draw_string(_title_font, Vector2(10, h - band + 34), name, HORIZONTAL_ALIGNMENT_CENTER, w - 20, fs, Color.WHITE)
 	var sub := Loc.t("%s's deck") % Loc.t(str(info["owner"])) if str(info.get("owner", "")) != "" else Loc.t("Theme deck")
@@ -97,10 +97,14 @@ func _draw() -> void:
 		sub = Loc.t("Starter deck")
 	elif str(info.get("kind", "")) == "gift":
 		sub = Loc.t("A gift from Lumen")
-	draw_string(_semi, Vector2(10, h - band + 58), sub, HORIZONTAL_ALIGNMENT_CENTER, w - 20, 16, col.lightened(0.55))
+	# (Small boxes, like the shelves of the Decks hub: the line gets smaller rather than cut off.)
+	var sfs := 16
+	while sfs > 10 and _semi.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs).x > w - 12:
+		sfs -= 1
+	draw_string(_semi, Vector2(6, h - band + 58), sub, HORIZONTAL_ALIGNMENT_CENTER, w - 12, sfs, col.lightened(0.55))
 	draw_rect(Rect2(0, 0, w, h), col.lightened(0.1 + 0.4 * glow), false, 3.0)
 	# Tag, top left.
-	draw_rect(Rect2(0, 12, 112, 24), Color(0, 0, 0, 0.72))
+	draw_rect(Rect2(0, 12, minf(112.0, w), 24), Color(0, 0, 0, 0.72))
 	draw_string(_semi, Vector2(8, 30), Loc.t("40 CARDS"), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, 0.9))
 	if owned:
 		draw_rect(Rect2(w - 96, 12, 96, 26), Color("2bb673"))

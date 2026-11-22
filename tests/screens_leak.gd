@@ -30,6 +30,7 @@ func _ready() -> void:
 	var screens := {
 		"deck editor": func(): return DeckBuilder.new(),
 		"deck list": func(): return DeckMenu.new(),
+		"decks and cards": func(): return CardsGate.new(),
 		"pack shop": func(): return PackShop.new(),
 		"deck shop": func(): return DeckShop.new(),
 		"pack summary (24 packs)": func(): return PackSummary.new(pulls, {}, UITheme.ACCENT, "Test"),
