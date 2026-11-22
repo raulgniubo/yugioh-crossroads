@@ -666,12 +666,28 @@ func _debug_args() -> void:
 						SettingsPanel._tab_at["settings"] = int(t.substr(6))
 				menu._on_settings()
 			elif what.begins_with("story"):
-				menu._on_story()
-				if what == "storysaves":
-					# Dev: scroll the story panel down to the saves.
+				# --open=story: the story's door. story-load: with its Load screen open.
+				# story-chapters: on its chapter page. story-new: the "new game?" question.
+				# storypanel: the side panel from before 0.69.0.
+				if what == "storypanel":
+					menu._on_story_panel()
+				else:
+					menu._on_story()
 					await get_tree().create_timer(0.4).timeout
-					for n in menu.find_children("*", "ScrollContainer", true, false):
-						(n as ScrollContainer).scroll_vertical = 100000
+					for n in menu.find_children("*", "StoryGate", true, false):
+						if what == "story-load":
+							SaveMenu.open(n, false, false, true)
+						elif what == "story-chapters":
+							n._chapters()
+						elif what == "story-new":
+							n._ask_new()
+						elif what == "story-continue":
+							# Dev: press the big button (Continue, or the chapter to play) as a player would.
+							for bt in n._left.find_children("*", "Button", true, false):
+								if (bt as Button).text.begins_with("▶"):
+									print("STORY GATE: pressing ", (bt as Button).text)
+									(bt as Button).pressed.emit()
+									break
 			elif what == "settingsend":
 				menu._on_settings()
 				await get_tree().create_timer(0.4).timeout

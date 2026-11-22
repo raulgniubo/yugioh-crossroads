@@ -381,6 +381,8 @@ static func info(slot: String) -> Dictionary:
 	if meta.has_section_key("save", "cards"):
 		out["summary"] = "%s  ·  %s  ·  %d DP" % [Loc.t(str(meta.get_value("save", "where", ""))), Loc.t("%d cards") % int(meta.get_value("save", "cards", 0)), int(meta.get_value("save", "dp", 0))]
 		out["place"] = _place_words(str(meta.get_value("save", "place_mode", "")), str(meta.get_value("save", "place_chapter", "")), str(meta.get_value("save", "place_district", "")))
+		out["story"] = {"where": str(meta.get_value("save", "where", "")), "chapter": str(meta.get_value("save", "place_chapter", "")),
+			"mode": str(meta.get_value("save", "place_mode", "")), "district": str(meta.get_value("save", "place_district", ""))}
 	# The Academy game kept in this slot (its own, not the one being played now): the dorm, the
 	# day and the merits, for the slot's crest and its line.
 	var camp := ConfigFile.new()

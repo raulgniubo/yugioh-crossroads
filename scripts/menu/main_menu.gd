@@ -1025,7 +1025,20 @@ func _on_roam() -> void:
 	_open_panel(p)
 
 
+## The main story's door (0.69.0): full screen, in the Academy door's look.
 func _on_story() -> void:
+	var gate := StoryGate.new()
+	gate.z_index = 100
+	add_child(gate)
+	_panel_open = true
+	gate.closed.connect(func():
+		_panel_open = false
+		if _items.size() > 1:
+			_items[0].grab_focus())
+
+
+## The side panel the Story tile opened before 0.69.0 (kept for the tools that still call it).
+func _on_story_panel() -> void:
 	var p := SidePanel.new("Story", 760)
 	p.z_index = 100
 	var pos := StoryProgress.position()
