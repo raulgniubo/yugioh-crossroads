@@ -1607,7 +1607,10 @@ func _talk() -> void:
 		say = favor
 	Collection.daily_bump("talk")
 	for l in say:
-		_dlg_lines.append(Loc.t(str(l)).replace("{player}", Profile.duelist_name))
+		var shown := Loc.t(str(l)).replace("{player}", Profile.duelist_name)
+		if "{player}" in str(l):
+			Voices.note_src(shown, str(l))
+		_dlg_lines.append(shown)
 	_dlg_busy = stars != null and stars.busy(str(d["id"]))
 	if d.has("duel") and favor.is_empty() and not _dlg_busy:
 		var duel: Dictionary = d["duel"]
@@ -1666,6 +1669,9 @@ func _show_line() -> void:
 		c.queue_free()
 	_dlg_text.text = _dlg_lines[_dlg_index]
 	_dlg_text.visible_ratio = 0.0
+	# Said out loud, in their own voice. (The line before it stops when you move on.)
+	Voices.hush(true)
+	Voices.say_as(npc_voice(_dlg_npc), Voices.src(str(_dlg_lines[_dlg_index])))
 	create_tween().tween_property(_dlg_text, "visible_ratio", 1.0, 0.02 * _dlg_text.text.length())
 	var last := _dlg_index == _dlg_lines.size() - 1
 	if last and _dlg_npc.has("shop"):
@@ -1885,8 +1891,14 @@ func _advance() -> void:
 		_end_talk()
 
 
+## Whose voice somebody of this world speaks with (see Voices.world_voice).
+func npc_voice(d: Dictionary) -> String:
+	return Voices.world_voice(str(d.get("id", "")), str(d.get("model", "")), str(d.get("char", "")), str(d.get("pers", "")))
+
+
 func _end_talk() -> void:
 	_talking = false
+	Voices.hush(true)
 	if _dlg_stake != null:
 		_dlg_stake.visible = false
 	_talk_rest = Time.get_ticks_msec() / 1000.0

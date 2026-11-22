@@ -1,6 +1,7 @@
 extends Node
 ## Voices never talk over each other: 30 lines are thrown at the speaker in 3 seconds and every frame is
-## checked for more than one voice playing. Then the shout (two voices on purpose) with lines thrown at it.
+## checked for more than one voice playing. Then the shout (two voices on purpose) with lines thrown at it,
+## and the voices of the world (people calling out as you walk by) mixed in with ordinary lines.
 ##   godot --headless --path . res://tests/voice_overlap.tscn
 
 func _ready() -> void:
@@ -41,7 +42,7 @@ func _ready() -> void:
 			if sp.take(str(files[sent % files.size()]), 1.0, sent % 3 == 0, 0.6 if sent % 6 == 0 else 4.0):
 				heard += 1
 			sent += 1
-		var n := int(sp._player.playing) + int(sp._second.playing)
+		var n := int(sp._player.playing) + int(sp._second.playing) + int(sp._far.playing)
 		most = maxi(most, n)
 		if sp._player.playing and sp._player.stream != last_stream:
 			last_stream = sp._player.stream
@@ -70,7 +71,7 @@ func _ready() -> void:
 			if sp.take(str(files[2 + sent % 3]), 1.0, false):
 				extra += 1
 			sent += 1
-		most2 = maxi(most2, int(sp._player.playing) + int(sp._second.playing))
+		most2 = maxi(most2, int(sp._player.playing) + int(sp._second.playing) + int(sp._far.playing))
 		if sp._second.playing and sp._player.playing and sp._player.stream != s_a:
 			cut = true
 		if sent >= 10 and not sp.busy():
@@ -78,5 +79,34 @@ func _ready() -> void:
 		await get_tree().process_frame
 	print("VOICE OVERLAP shout: most voices at once %d (2 is the shout itself), lines let in on top %d, shout cut %s" % [most2, extra, "YES" if cut else "no"])
 	ok = ok and most2 <= 2 and extra == 0 and not cut
+	# Voices out in the world (somebody calls out as you walk by): thrown in between ordinary lines,
+	# from near and from far. Never a second voice, and a world voice never cuts a line or waits in line.
+	var most3 := 0
+	var world := 0
+	var plain := 0
+	t = 0.0
+	sent = 0
+	while t < 14.0:
+		t += get_process_delta_time()
+		while sent < 24 and t >= sent * 0.12:
+			if sent % 2 == 0:
+				if sp.take_at(str(files[sent % files.size()]), 1.0, Vector3(float(sent % 5) * 6.0, 1.5, 3.0)):
+					world += 1
+			elif sp.take(str(files[sent % files.size()]), 1.0, false):
+				plain += 1
+			sent += 1
+		most3 = maxi(most3, int(sp._player.playing) + int(sp._second.playing) + int(sp._far.playing))
+		if sent >= 24 and not sp.busy() and t > 3.0:
+			break
+		await get_tree().process_frame
+	var queued := sp._queue.size()
+	# A line that has to be said (somebody you talk to) cuts the passer-by, it does not wait for them.
+	sp.take_at(str(files[0]), 1.0, Vector3(4, 1.5, 0))
+	Voices.hush(true)
+	var after_cut: bool = sp.take(str(files[1]), 1.0, false)
+	var cut_ok: bool = after_cut and not sp._far.playing and sp._player.playing
+	Voices.hush(true)
+	print("VOICE OVERLAP world: most voices at once %d, world lines heard %d, ordinary lines heard %d, left waiting %d, a talk cuts a passer-by %s" % [most3, world, plain, queued, "yes" if cut_ok else "NO"])
+	ok = ok and most3 <= 1 and world >= 1 and plain >= 1 and queued == 0 and cut_ok
 	print("VOICE OVERLAP: ", "PASS" if ok else "FAIL")
 	get_tree().quit(0 if ok else 1)

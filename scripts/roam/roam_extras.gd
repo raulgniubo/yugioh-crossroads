@@ -824,8 +824,45 @@ const ARROWS := ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"]
 const BARKS := ["Nice Duel Disk!", "Did you see that last duel?", "I need one more rare card...", "Who's the top duelist around here?",
 	"My deck is finally ready.", "Heard the card shop restocked.", "I pulled an Ultra Rare today!", "Wanna duel later?",
 	"That combo was unreal.", "I should really trade my doubles.", "One day I'll go pro.", "Heart of the cards, right?"]
+## What a passer-by calls out to YOU as you walk by, by the kind of person they are (BARKS is what
+## they say to each other). Each line has a file in every voice of that personality.
+const GREET := {
+	"kind": ["Hey! Good to see you.", "Hi there! How is it going?", "Good luck with your duels today!", "Oh, hi! How is the deck coming along?",
+		"Morning! Well, whatever time it is. Hi!", "Take care out there!"],
+	"cocky": ["Well, look who it is.", "Hey. You owe me a duel.", "Still undefeated? No? Thought so.", "Do not get comfortable. I am coming for your record.",
+		"Nice Duel Disk. Shame about the deck.", "You again? This place is too small."],
+	"cool": ["Hey.", "How is it going.", "You again. Good.", "Stay sharp out there.", "Later.", "Good deck. Keep working on it."],
+	"wild": ["HEY! Hi! Just saying hi!", "Whoa, it is you! Duel me later!", "Yo! Looking strong today!", "You! Me! A duel! Soon!", "Hi hi hi! Gotta run!",
+		"Best day ever! How about you?!"],
+}
+## ... and when there is something to say it about: the hour, the weather, and in the Academy story
+## the jacket you wear and the Cup final you won.
+const GREET_WHEN := {
+	"night": {"kind": "It is late! Do not stay out too long.", "cocky": "Out this late? Trying to dodge me in the dark?", "cool": "Late night. Good time to think.", "wild": "Night duels are the BEST duels!"},
+	"rain": {"kind": "You are getting soaked! Find a roof!", "cocky": "Great. Rain. If my cards get wet, somebody pays.", "cool": "Rain. Sleeves on your cards, I hope.", "wild": "RAIN! I love it! My cards do not!"},
+	"red": {"kind": "Hey, you in the Red jacket! Do not let anybody talk down to you.", "cocky": "Red dorm. Cute jacket. Try not to trip.", "cool": "Red dorm. Everybody starts somewhere.", "wild": "Red dorm! You guys have the best food! Is it true?!"},
+	"yellow": {"kind": "Yellow already! Congratulations!", "cocky": "Yellow, huh. Do not get used to it.", "cool": "Yellow jacket. It fits. Earn the next one.", "wild": "YELLOW! You did it! I saw the whole exam!"},
+	"cup": {"kind": "That Cup final! I was shouting the whole time.", "cocky": "One Cup final and everybody knows your name. Enjoy it.", "cool": "Good duel in the final. I took notes.", "wild": "The Cup! THE CUP! Red won the final! I still cannot sit down!"},
+}
 var _bark_in := 4.0
 var _bark: Label3D
+
+
+## What there is to talk about right now (keys of GREET_WHEN).
+func _greet_topics() -> Array:
+	var out: Array = []
+	if scene.city and str(scene.city.tod) == "night":
+		out.append("night")
+	if scene.weather and scene.weather.raining:
+		out.append("rain")
+	if Campus.on and str(scene.district.get("builder", "")) == "academy":
+		if CampusProgress.recalls("cup_final_won"):
+			out.append("cup")
+		if Campus.dorm() == 1:
+			out.append("yellow")
+		elif Campus.dorm() == 0 and bool(Campus.v("jacket", false)):
+			out.append("red")
+	return out
 
 
 func _street_life(delta: float, p: Vector3) -> void:
@@ -842,33 +879,33 @@ func _street_life(delta: float, p: Vector3) -> void:
 	_bark_in -= delta
 	if _bark_in > 0.0 or scene._overlay_open:
 		return
-	_bark_in = randf_range(5.0, 9.0)
+	# Out loud now, so there is air between two of them, and none while a scene is being told, while
+	# you are talking to somebody, or while any other voice is going.
+	if scene._talking or (scene.story != null and bool(scene.story._cut)) or Voices.busy():
+		_bark_in = 2.0
+		return
+	_bark_in = randf_range(11.0, 19.0)
 	var near := []
 	for w in scene._walkers:
 		var f: Node3D = w["fig"]
-		if is_instance_valid(f) and f.global_position.distance_to(p) < 13.0:
-			near.append(f)
+		if is_instance_valid(f) and f.visible and f.global_position.distance_to(p) < 13.0:
+			near.append(w)
 	if near.is_empty():
 		return
-	var who: Node3D = near[randi() % near.size()]
-	if _bark and is_instance_valid(_bark):
-		_bark.queue_free()
-	_bark = Label3D.new()
-	_bark.text = Loc.t(BARKS[randi() % BARKS.size()])
-	_bark.font_size = 36
-	_bark.pixel_size = 0.0042
-	_bark.outline_size = 12
-	_bark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_bark.modulate = Color(1, 1, 1, 0.0)
-	_bark.outline_modulate = Color(0.02, 0.03, 0.06, 0.9)
-	_bark.position = Vector3(0, 2.25, 0)
-	who.add_child(_bark)
-	var tw := _bark.create_tween()
-	tw.tween_property(_bark, "modulate:a", 1.0, 0.25)
-	tw.tween_interval(2.8)
-	tw.tween_property(_bark, "modulate:a", 0.0, 0.4)
-	tw.tween_callback(_bark.queue_free)
-	Sfx.play("blip", -16.0, randf_range(0.9, 1.3))
+	var pick: Dictionary = near[randi() % near.size()]
+	var who: Node3D = pick["fig"]
+	var voice := Voices.world_voice(str(pick["id"]), str(who.get("key")) if who.get("key") != null else "")
+	var pers := voice.get_slice("_", 0)
+	var line := str(BARKS[randi() % BARKS.size()])
+	# Close by, it is you they talk to: a hello, or a word about the day.
+	if who.global_position.distance_to(p) < 9.0 and randf() < 0.65 and GREET.has(pers):
+		line = str((GREET[pers] as Array)[randi() % (GREET[pers] as Array).size()])
+		var topics := _greet_topics()
+		if not topics.is_empty() and randf() < 0.4:
+			var topic: Dictionary = GREET_WHEN[topics[randi() % topics.size()]]
+			if topic.has(pers):
+				line = str(topic[pers])
+	_say_over(who, Loc.t(line), 2.8, line, voice)
 
 
 ## Indoors, the people in the room talk among themselves: each has a few lines of their own.
@@ -876,7 +913,10 @@ func _indoor_chatter(delta: float, p: Vector3) -> void:
 	_bark_in -= delta
 	if _bark_in > 0.0 or scene._overlay_open or scene._talking:
 		return
-	_bark_in = randf_range(2.6, 5.0)
+	if Voices.busy() or (scene.story != null and bool(scene.story._cut)):
+		_bark_in = 2.0
+		return
+	_bark_in = randf_range(7.0, 12.0)
 	var near := []
 	for n in scene._npcs:
 		var fig: Node3D = n[1]
@@ -887,10 +927,15 @@ func _indoor_chatter(delta: float, p: Vector3) -> void:
 	var pick: Array = near[randi() % near.size()]
 	_last_barker = pick[0]
 	var lines: Array = pick[0]["barks"]
-	_say_over(pick[1], Loc.t(str(lines[randi() % lines.size()])), 2.3)
+	var said := str(lines[randi() % lines.size()])
+	_say_over(pick[1], Loc.t(said), 2.3, said, scene.npc_voice(pick[0]))
 
 
-func _say_over(who: Node3D, text: String, hold: float) -> void:
+## A line over somebody's head. With `src` (the English line) and `voice`, it is also said out loud
+## from where they stand: quieter from far away, never on top of another voice.
+func _say_over(who: Node3D, text: String, hold: float, src := "", voice := "") -> void:
+	if src != "" and voice != "":
+		Voices.say_as(voice, src, who.global_position + Vector3(0, 1.5, 0), 1.0 + float((abs(hash(str(who.get_instance_id()))) % 7) - 3) * 0.008)
 	if _bark and is_instance_valid(_bark):
 		_bark.queue_free()
 	_bark = Label3D.new()

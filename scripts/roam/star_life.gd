@@ -699,7 +699,7 @@ func _leave(s: Dictionary, i: int, dist: float) -> void:
 	fig.stance = "stand"
 	fig._cur_clip = ""
 	if dist < 9.0 and scene.extras:
-		scene.extras._say_over(fig, _line(str(s["id"]), "leave"), 2.6)
+		scene.extras._say_over(fig, _line(str(s["id"]), "leave"), 2.6, last_src, Voices.voice_for(str(s["id"])))
 	s["at"] = i
 	_set_off(s, _spot(s, i))
 	if "--stars-check" in OS.get_cmdline_user_args():
@@ -813,11 +813,11 @@ func _hail(s: Dictionary, dist: float) -> void:
 	s["hail"] = randf_range(100.0, 150.0)
 	if str(s["doing"]) == "nap":
 		if dist < 4.5:
-			scene.extras._say_over(fig, _line(id, "do", "nap"), 3.0)
+			scene.extras._say_over(fig, _line(id, "do", "nap"), 3.0, last_src, Voices.voice_for(id))
 		else:
 			s["hail"] = 0.0
 		return
-	scene.extras._say_over(fig, _line(id, "hail"), 2.8)
+	scene.extras._say_over(fig, _line(id, "hail"), 2.8, last_src, Voices.voice_for(id))
 	if str(s["state"]) == "there":
 		if id in ALOOF:
 			fig.do_nod()
@@ -840,7 +840,15 @@ func _line(id: String, kind: String, sub := "") -> String:
 		text = str((got as Array)[randi() % (got as Array).size()])
 	elif got is String:
 		text = str(got)
-	return Loc.t(text).replace("{player}", Profile.duelist_name) if text != "" else ""
+	last_src = text
+	var shown := Loc.t(text).replace("{player}", Profile.duelist_name) if text != "" else ""
+	if text != "":
+		Voices.note_src(shown, text)
+	return shown
+
+
+## The English line the last _line() gave (its voice file is named after it).
+var last_src := ""
 
 
 ## The card the player leads with: the strongest monster in the deck they have built.
@@ -1213,7 +1221,7 @@ func _seek(s: Dictionary, delta: float, dist: float) -> void:
 		fig.rotation.y = lerp_angle(fig.rotation.y, atan2(to.x, to.z), clampf(delta * 8.0, 0.0, 1.0))
 		if not bool(s["dared"]):
 			s["dared"] = true
-			scene.extras._say_over(fig, _line(id, "dare"), 4.0)
+			scene.extras._say_over(fig, _line(id, "dare"), 4.0, last_src, Voices.voice_for(id))
 			fig.gesture("challenge", 0.25)
 			if "--stars-check" in OS.get_cmdline_user_args():
 				print("STAR ", id, " reached you after ", snappedf(float(s["seek_t"]), 0.1), " s: ", _line(id, "dare"))
@@ -1259,7 +1267,7 @@ func _seek(s: Dictionary, delta: float, dist: float) -> void:
 func _seek_over(s: Dictionary, say: bool) -> void:
 	var fig: RoamFigure = s["fig"]
 	if say and scene.extras and fig.global_position.distance_to(scene._player.global_position) < 10.0:
-		scene.extras._say_over(fig, _line(str(s["id"]), "leave"), 2.6)
+		scene.extras._say_over(fig, _line(str(s["id"]), "leave"), 2.6, last_src, Voices.voice_for(str(s["id"])))
 	_dare = {}
 	if "--stars-check" in OS.get_cmdline_user_args():
 		print("STAR ", s["id"], " gives up the challenge and goes back (said goodbye: ", say, ")")

@@ -5,6 +5,21 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.66.1
+
+**The Academy talks.** People in the world now speak out loud, in Spanish. No cards added: 8,415 total.
+
+- **Passers-by call out as you walk.** Now and then a student near you says hello, asks how it is going or throws a remark at you ("¡Hola! ¿Cómo va todo?", "Oye. Me debes un duelo."). Each one has a voice that stays theirs: a woman's or a man's by their look, and kind, cocky, cool or wild by who they are. It is not constant: one line every 11 to 19 seconds at most, only from somebody within 13 metres, and never while you are talking to somebody or a scene is being told.
+- **They know what is going on.** At night, in the rain, by the jacket you wear and after the Cup final some of them say something about it.
+- **Far is quiet, near is loud.** A voice comes from where its speaker stands: quieter with distance, and from the side they are on.
+- **Everybody you talk to has a voice.** The students, the shopkeeper, the people in the dorms and classrooms, the main characters who spend their day on the island, and the lines of the two duel questions. Moving on to the next line cuts the one before.
+- **Lumen speaks at your shoulder.** Her remarks while you walk (the hello when you arrive, the rain, the night, a duelist nearby, a card she feels) are spoken in whichever of her three voices you picked.
+- **Voices still never overlap.** A passer-by does not start while anybody is talking, and somebody you talk to cuts a passer-by off at once. The overlap test now throws world voices in with ordinary lines.
+- 13 Academy lines no longer assume who you play as ("Bienvenido..." is now "Este es...", "cuando estés listo" is "cuando quieras").
+- Fixed: a line that came right after another one was cut could be swallowed by the short breath between two voices.
+- 464 new voice files (4,962 in all). The other worlds get their voices after the Academy's Act 1 is complete.
+- Turn it off with the same setting as the opponents' voices.
+
 ## What is in 0.66.0
 
 **Academia de Duelos, chapter 7: "El examen". The end of Act 1.** Playable from start to finish, in Spanish, with every line spoken. No cards added: 8,415 total.

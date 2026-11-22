@@ -102,6 +102,55 @@ static func voice_for(who: String) -> String:
 	return "%s_%s" % [pers, "f" if who in FEMALE and pers in HAS_F else "m"]
 
 
+## The voice of somebody in the world: a main character speaks as they do in a duel, and anybody
+## else (a student, a passer-by, a shopkeeper) gets a woman's or a man's voice from their model and
+## a personality that stays theirs, worked out from who they are. `pers` fixes the personality.
+static func world_voice(id: String, model: String, char_key := "", pers := "") -> String:
+	if char_key != "" and not Characters.get_char(char_key).is_empty():
+		return voice_for(char_key)
+	var woman := model in FEMALE or "_f" in model or "girl" in model or "woman" in model
+	if pers == "":
+		var pool: Array = ["kind", "cocky", "cool"] if woman else ["kind", "cocky", "cool", "wild"]
+		pers = str(pool[abs(hash(id + "|" + model)) % pool.size()])
+	if woman and not pers in HAS_F:
+		pers = "kind"
+	return "%s_%s" % [pers, "f" if woman else "m"]
+
+
+## The English line a shown line came from. The world shows its lines already translated (and with
+## your name in them); a voice file is named after the English one. Whoever swaps a name in tells
+## us with note_src; the rest is looked up backwards in the language's table.
+static var _src := {}
+
+
+static func note_src(shown: String, english: String) -> void:
+	if shown != english:
+		if _src.size() > 400:
+			_src.clear()
+		_src[shown] = english
+
+
+static func src(shown: String) -> String:
+	return str(_src.get(shown, Loc.back(shown)))
+
+
+## A line out in the world, in a named voice ("kind_f", "nico"). `at` (a Vector3): where the speaker
+## stands, and the line comes from there: quieter from far away, and from the side they are on.
+## Never on top of another voice: with somebody already talking it is simply not said. True when
+## it will be heard.
+static func say_as(voice: String, text: String, at = null, pitch := 1.0) -> bool:
+	var key := key_of(text)
+	var may := not muted and Settings.voices_on and Settings.voice_volume > 0.001 and Settings.voice_opp
+	if voice == "" or text == "" or not may or not has(voice, key):
+		if _log:
+			print("VOICE world [%s] \"%s\" -> %s" % [voice, text.left(48), "off" if not may else ("NO FILE " + key)])
+		return false
+	var ok: bool = _sp().take_at(path_of(voice, key), pitch, at) if at is Vector3 else _sp().take(path_of(voice, key), pitch, false)
+	if _log:
+		print("VOICE world [%s] \"%s\" -> %s" % [voice, text.left(48), "said" if ok else "skipped (somebody is talking)"])
+	return ok
+
+
 static func path_of(voice: String, key: String) -> String:
 	return "res://voices/%s/%s/%s.ogg" % [Loc.lang(), voice, key]
 
@@ -252,7 +301,12 @@ static func shout(me: String, opp: String, text: String) -> bool:
 
 ## Is a line being said right now?
 static func talking() -> bool:
-	return _speaker != null and is_instance_valid(_speaker) and _speaker.is_inside_tree() and (_speaker._player.playing or _speaker._second.playing)
+	return _speaker != null and is_instance_valid(_speaker) and _speaker.is_inside_tree() and (_speaker._player.playing or _speaker._second.playing or _speaker._far.playing)
+
+
+## Somebody is talking, or just stopped: a line out in the world waits for another moment.
+static func busy() -> bool:
+	return _speaker != null and is_instance_valid(_speaker) and _speaker.busy()
 
 
 ## Nobody says anything more (the duel is over, or the scene is leaving).
@@ -269,6 +323,7 @@ class Speaker extends Node:
 	var deep := false             # the face-off: the music stays low between the lines too
 	var _player: AudioStreamPlayer
 	var _second: AudioStreamPlayer      # the other voice of a shout
+	var _far: AudioStreamPlayer3D       # a voice out in the world, heard from where its speaker stands
 	var _queue: Array = []        # [path, pitch, good until (seconds)]
 	var _duck := 0.0
 	var _t := 0.0
@@ -278,7 +333,7 @@ class Speaker extends Node:
 
 	## Somebody is talking (or just stopped, or is about to): nothing else may start now.
 	func busy() -> bool:
-		return not is_inside_tree() or _player.playing or _second.playing or _second_due or _t < _quiet_until
+		return not is_inside_tree() or _player.playing or _second.playing or _far.playing or _second_due or _t < _quiet_until
 
 	func _init() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS
@@ -286,10 +341,31 @@ class Speaker extends Node:
 		add_child(_player)
 		_second = AudioStreamPlayer.new()
 		add_child(_second)
+		_far = AudioStreamPlayer3D.new()
+		_far.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+		_far.unit_size = 4.5            # full voice at arm's length, about half at nine metres
+		_far.max_distance = 32.0
+		_far.max_db = 0.0
+		_far.panning_strength = 0.8
+		add_child(_far)
 
 	func _enter_tree() -> void:
 		_player.bus = "Voice" if AudioServer.get_bus_index("Voice") >= 0 else "SFX"
 		_second.bus = _player.bus
+		_far.bus = _player.bus
+
+	## A line from a place in the world. Not said when anybody is talking.
+	func take_at(path: String, pitch: float, at: Vector3) -> bool:
+		if busy():
+			return false
+		var s = load(path)
+		if not (s is AudioStream):
+			return false
+		_far.stream = s
+		_far.pitch_scale = pitch
+		_far.global_position = at
+		_far.play()
+		return true
 
 	## Two voices at once, the second a breath behind the first so they do not sound like one.
 	func both(a: String, pa: float, b: String, pb: float) -> void:
@@ -310,6 +386,8 @@ class Speaker extends Node:
 				else:
 					_second_due = true
 					get_tree().create_timer(0.06).timeout.connect(func():
+						if not _second_due:
+							return          # cut off in the meantime: the second voice stays quiet too
 						_second_due = false
 						_second.play())
 
@@ -337,11 +415,17 @@ class Speaker extends Node:
 		if cut:
 			_player.stop()
 			_second.stop()
+			_far.stop()
+			# Cut off on purpose (you moved on, or somebody you talk to speaks now): what comes
+			# next starts at once, with no breath to wait out.
+			_second_due = false
+			_was_busy = false
+			_quiet_until = 0.0
 
 	func _process(delta: float) -> void:
 		_t += delta
 		# One voice at a time, with a breath between two lines.
-		var talking := _player.playing or _second.playing or _second_due
+		var talking := _player.playing or _second.playing or _second_due or _far.playing
 		if _was_busy and not talking:
 			_quiet_until = _t + 0.22
 		_was_busy = talking

@@ -181,6 +181,7 @@ func say(line: String, hold := 0.0) -> void:
 	if not is_instance_valid(_bubble):
 		return
 	_bubble.say(line, hold)
+	Voices.say("lumen", line)      # (the lines with a file; the ones built on the spot stay a bubble)
 	_quiet = 14.0
 	if spirit and is_instance_valid(spirit):
 		spirit.speak(1.8)

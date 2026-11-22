@@ -1047,6 +1047,42 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
+#### 0.66.1 STATE (Nov 21, evening; NEWEST, read this first)
+- 0.66.0 (chapter 7 + the fixes from Raul's first playthrough) is shipped: Windows parts are in the chat. Its MAC INSTALL DID NOT HAPPEN:
+  his Mac disk is full (0.76 GB free of 995). With his say-so ("Puedes borrar lo q se puede en la mac?", delete permission approved for
+  the game folder, this session only) the two `_to_delete` folders were emptied (78 items) and that was not enough. He was told to restart
+  and look at System Settings > Storage; about 3 GB are needed. While it is full, device_bash and device_commit_files of big files fail;
+  Blender's Python and device_stage_files of small files (the voice packs) still work. When he has space: install the NEWEST build, not 0.66.0.
+- 0.66.1 = VOICES IN THE WORLD, Academy first (his ask: people greet you as you walk, whoever you talk to has a voice, far = quieter,
+  not constant, "tipo anime", and Lumen too). How it is built:
+  - `Voices.world_voice(id, model, char, pers)`: a main character -> their duel voice; anybody else -> _f/_m by model, personality
+    (kind/cocky/cool, +wild for men) from a hash of id+model, or fixed with "pers" in the NPC's data ("dark" on the two ghosts).
+  - `Voices.say_as(voice, english line, at, pitch)`: one of the Speaker's players is an AudioStreamPlayer3D (`_far`): inverse distance,
+    unit_size 4.5, max 32 m. Never starts while anything is talking (`Voices.busy()`), is never queued. Gated by Settings.voice_opp.
+  - The world shows lines already translated, a file is named after the ENGLISH line: `Loc.back(shown)` (inverse of es_strings,
+    es_campus, es_world) and `Voices.note_src(shown, english)` for lines with {player} in them (spoken without the name).
+  - roam_extras `_street_life`: every 11-19 s, a walker within 13 m; within 9 m 65% a GREET line (40% of those a GREET_WHEN topic:
+    night, rain, red/yellow jacket, Cup final), else a BARK. Indoor chatter 7-12 s. Not while talking, in a cutscene, or busy.
+  - roam_scene `_show_line`: hush(true) then say_as(npc_voice(npc), src(line)); `_end_talk` hushes. star_life passes src + voice to
+    `_say_over`. partner.gd `say()` speaks Lumen's remark.
+  - `Speaker.hush(true)` now also clears the 0.22 s breath and a pending second shout voice (a talk line right after a cut was swallowed).
+  - `WorldLines.collect(districts)` (scripts/roam/world_lines.gd) is THE list of what can be said in a district; tools/voices/dump_world.tscn
+    writes it out, /home/claude/work/world/wbuild.py [districts] [lang] pairs it with the Spanish and writes world_todo.json (what has no
+    file), /home/claude/work/voices/batch.py reads that after todo.json and campus_todo.json. For the next world: `python3 wbuild.py domino`
+    (or several, comma separated), then the usual batch loop. English: `wbuild.py academy en`.
+  - Test: `_test_world_voices` (every Academy world line has its Spanish file and text, nobody assumes your gender, voices are stable);
+    tests/voice_overlap.tscn has a third phase with world voices.
+- Voice batches 247-271 (464 files, about 23,300 characters). Batch 271 = 13 lines re-made after their Spanish was made gender-neutral
+  (work/i18n/es/*.tsv + tools/dev/i18n_extras.tsv edited, es_strings.gd rebuilt with work/i18n/build.py). Split order mattered: 271 last.
+  made.json has 4,962 entries. NEXT BATCH NUMBER: 272. Packs came back through the Mac as before (Blender urllib -> voice_work -> stage).
+  A sandbox command must finish in 180 s: TWO packs per call (three timed out and lost all three).
+- MEMORY: /mnt/user-data/outputs is an rclone mount whose write cache is in RAM (/dev/shm/rclone-vfscache). Seven build zips sat there
+  (3.6 GB of 8) and that is what was killing godot runs ("Killed"). After splitting a build into parts, DELETE THE ZIPS from outputs
+  (parts stay, their file uuids keep working) and check `du -sh /dev/shm/rclone-vfscache`.
+- The other Spanish "Bienvenido..." lines in the other worlds are still gendered: fix them when each world gets its voices.
+- STILL OPEN for "Act 1 with everything" (Raul wants a note when it is ALL done): classes (CLASSES_OPEN), Círculo de Medianoche rank 1,
+  rival decks that grow with your dorm. Then voices for the other worlds, then Act 2.
+
 #### 0.66.0 STATE (Nov 21, afternoon; newer than the block above)
 - CHAPTER 7 "The Exam" (ac_ch7), END OF ACT 1: Room Two morning (weekday 4) -> Red dorm breakfast -> free walk
   (octavia at the school door, jaden on the cliff: both optional) -> the hall -> three exam problems (puzzle duels,

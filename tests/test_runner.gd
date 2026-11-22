@@ -31,6 +31,7 @@ func _ready() -> void:
 	_test_0631()
 	_test_0640()
 	_test_campus()
+	_test_world_voices()
 	var stress := OS.get_environment("STRESS_FOLDER")
 	if stress != "":
 		CardData.load_external(stress)
@@ -10972,3 +10973,61 @@ func _test_campus() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(Campus.PATH + ".bak"))
 	Campus.reload()
 	Campus.on = was_on
+
+
+func _test_world_voices() -> void:
+	# Everything somebody says out in the Academy (walkers, people in the rooms, the stars, Lumen at
+	# your shoulder) has its Spanish voice file and its Spanish text.
+	var lines := WorldLines.collect(["academy"])
+	var letters := RegEx.new()
+	letters.compile("[A-Za-z]")
+	var es := {}
+	for f in ["es_strings", "es_campus", "es_world"]:
+		es.merge(load("res://scripts/core/%s.gd" % f).ES)
+	var missing := 0
+	var untold := 0
+	var gendered := 0
+	for e in lines:
+		var en := str(e["en"])
+		if letters.search(en) == null:
+			continue
+		if not ResourceLoader.exists("res://voices/es/%s/%s.ogg" % [str(e["voice"]), Voices.key_of(en)]):
+			missing += 1
+			if missing <= 5:
+				print("NO WORLD VOICE %s: %s" % [str(e["voice"]), en.left(60)])
+		if not es.has(en):
+			untold += 1
+			if untold <= 5:
+				print("NO SPANISH (world): %s" % en.left(60))
+		else:
+			# Said to you whoever you play as: no "Bienvenido", no "cuando estés listo".
+			var t := str(es[en])
+			if "ienvenido" in t or "estés listo" in t or "el de ahí" in t or "estudiante nuevo" in t:
+				gendered += 1
+				print("GENDERED (world): %s" % t.left(60))
+	check(lines.size() > 400, "the Academy has its list of things people say out loud (%d)" % lines.size())
+	check(missing == 0, "every line said out in the Academy has its Spanish voice (%d missing)" % missing)
+	check(untold == 0, "every line said out in the Academy has its Spanish text (%d missing)" % untold)
+	check(gendered == 0, "nobody out in the Academy assumes who you play as (%d lines)" % gendered)
+	# Who speaks with which voice: a main character as in a duel, anybody else by their model, and
+	# always the same one.
+	check(Voices.world_voice("a", "student_boy", "chazz") == Voices.voice_for("chazz"), "a main character keeps their duel voice out in the world")
+	check(Voices.world_voice("walker_3", "student_girl").ends_with("_f") and Voices.world_voice("walker_3", "student_boy").ends_with("_m"), "a passer-by sounds like a woman or a man by their model")
+	check(Voices.world_voice("walker_3", "student_boy") == Voices.world_voice("walker_3", "student_boy"), "a passer-by keeps one voice")
+	check(Voices.world_voice("ac_ghost", "duelist_m7", "", "dark") == "dark_m", "somebody can be given a personality by hand")
+	var heard := {}
+	for i in 40:
+		heard[Voices.world_voice("walker_%d" % i, "student_boy")] = true
+	check(heard.size() >= 3, "the passers-by do not all sound alike (%d voices among 40 men)" % heard.size())
+	for v in WorldLines.WALKERS:
+		check(RoamExtras.GREET.has(str(v).get_slice("_", 0)), "there are greetings for a %s walker" % v)
+	# A shown line finds the English one its file is named after, with or without your name in it.
+	Voices.note_src("Hola, Raul.", "Hello, {player}.")
+	check(Voices.src("Hola, Raul.") == "Hello, {player}.", "a line with your name in it still finds its voice")
+	check(Voices.src("zzz not a line") == "zzz not a line", "a line nobody knows is left as it is")
+	# Nothing is said out loud with voices off, and a line with no file is simply not said.
+	var was := Settings.voices_on
+	Settings.voices_on = false
+	check(not Voices.say_as("kind_m", "Hey! Good to see you."), "with voices off nobody calls out to you")
+	Settings.voices_on = was
+	check(not Voices.say_as("kind_m", "There is no such line anywhere in the game."), "a line with no voice file is just shown")
