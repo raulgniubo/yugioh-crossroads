@@ -56,9 +56,13 @@ const ROOMS := {
 
 const PEOPLE := {
 	"ac_hall": [
-		{"id": "ac_vendor", "char": "", "model": "duelist_f1", "name": "Academy Card Shop", "color": Color("ffd166"), "pos": Vector3(9.2, 0, -8.6), "face": 0.0, "shop": true,
-			"chats": [["Welcome to the Academy card shop! Same packs as the mainland, same prices too.", "Packs, a ready-made deck, or a look at your own decks?"],
-				["Exam week again. Everybody suddenly wants Traps.", "What can I get you?"]]},
+		# Dorothy runs the shop (0.69): the same counter and the same shop, in her own voice. When a
+		# chapter places her somewhere, this everyday copy of her steps aside (hide_npcs by "char").
+		{"id": "ac_vendor", "char": "dorothy", "color": Color("ffd166"), "pos": Vector3(9.2, 0, -8.6), "face": 0.0, "shop": true,
+			"chats": [["Welcome to the card shop, dear! Same packs as the mainland, same prices too.", "Packs, a ready-made deck, or a look at your own decks?"],
+				["Exam week again, dear. Everybody suddenly wants Traps.", "What can I get you?"],
+				["Between you and me, dear, the Blue dorm bought every Trap Hole on the shelf this morning.", "Now, what can I get you?"],
+				["Back again, dear? I hear you have been busy. I hear everything, you know.", "Packs, a deck, or a look at your own?"]]},
 		{"id": "ac_shop_kid", "char": "", "model": "student_boy", "dorm": "red", "name": "Red Dorm Student", "color": Color("d9342b"), "pos": Vector3(6.0, 0, -6.0), "face": -2.6,
 			"wander": [[Vector3(6.0, 0, -6.0), 3.14], [Vector3(12.6, 0, -6.4), 3.14], [Vector3(13.0, 0, -2.0), 1.57]], "order": [1, 2, 1, 0],
 			"chats": [["I've got exactly enough for one pack. One. This is the one."], ["The Beyond the Limit set has every Fusion monster. My wallet hates it."]]},

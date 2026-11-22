@@ -1343,7 +1343,8 @@ func deck_catalog() -> Array:
 	for k in Characters.ORDER:
 		var d: Dictionary = Characters.DATA[k]
 		var dk := str(d.get("deck", ""))
-		if seen.has(dk) or not CardData.has_deck(dk):
+		# (A duelist who plays a theme deck leaves it in the shop as the theme deck it is.)
+		if seen.has(dk) or not CardData.has_deck(dk) or not bool(d.get("pool", true)):
 			continue
 		seen[dk] = true
 		out.append({"key": dk, "name": CardData.deck_name(dk), "owner": str(d.get("name", "")), "who": k, "color": d.get("color", Color.WHITE),
@@ -2373,7 +2374,7 @@ func pool(era: String) -> Array:
 					ids[id] = true
 		for k in Characters.ORDER:
 			var d: Dictionary = Characters.DATA[k]
-			if str(d.get("era", "")) != era or not CardData.has_deck(str(d["deck"])):
+			if str(d.get("era", "")) != era or not CardData.has_deck(str(d["deck"])) or not bool(d.get("pool", true)):
 				continue
 			for id in CardData.deck_list(str(d["deck"])) + CardData.extra_list(str(d["deck"])):
 				ids[id] = true

@@ -27,6 +27,17 @@ const DAYS := {
 		"jaden": [[360, Vector3(16.0, 0, 14.0), 0.6, "nap"], [570, Vector3(2.2, 0, -27.0), 0.0, "practice"], [780, Vector3(3.5, 0, 3.0), 2.4, "eat"], [960, Vector3(19.0, 0, 21.5), 0.0, "practice"], [1200, Vector3(-32.0, 0, 9.0), 1.57, "sky"]],
 		"chazz": [[420, Vector3(-26.0, 0, -14.0), 0.6, "arms"], [720, Vector3(22.0, 0, -16.5), 3.14, "practice"], [1020, Vector3(-9.5, 0, -9.0), 0.8, "phone"], [1260, Vector3(-26.0, 0, -14.0), 0.6, "arms"]],
 		"alexis": [[420, Vector3(6.0, 0, -22.0), 2.9, "cards"], [720, Vector3(40.0, 0, 28.5), 2.2, "sky"], [990, Vector3(11.5, 0, 27.0), 1.2, "cheer"], [1230, Vector3(-22.0, 0, -12.5), 0.3, "sky"]],
+		# Crowler: the steps of the main building as classes start, the lecture hall door, the
+		# practice fields to judge the Blues, tea on the plaza, the Blue dorm at night.
+		"crowler": [[450, Vector3(-5.0, 0, -28.5), 0.0, "arms"], [600, Vector3(34.0, 0, -19.0), 1.57, "cards"], [870, Vector3(22.5, 0, -25.5), 3.14, "arms"],
+			[1080, Vector3(-4.5, 0, -6.0), 2.4, "drink"], [1260, Vector3(-25.0, 0, -15.5), 0.9, "sky"]],
+		# Sheppard: the first ferry at the dock, his office in the main building, the plaza to watch
+		# the students duel, the dock again at sunset, the office late.
+		"sheppard": [[420, Vector3(1.2, 0, 63.0), 3.14, "sky"], [570, Vector3(6.0, 0, -29.5), 3.14, "phone"], [810, Vector3(-6.5, 0, 4.0), 1.2, "cheer"],
+			[1020, Vector3(-1.2, 0, 62.0), 3.14, "sky"], [1230, Vector3(6.0, 0, -29.5), 3.14, "phone"]],
+		# Bastion: the Yellow dorm yard, the library door with his notes, the practice fields, home.
+		"bastion": [[420, Vector3(29.0, 0, -1.0), -1.57, "cards"], [660, Vector3(-16.5, 0, 28.5), -1.57, "cards"], [900, Vector3(24.0, 0, -24.0), 0.0, "practice"],
+			[1140, Vector3(29.0, 0, -6.5), -1.2, "sky"]],
 	},
 	"satellite": {
 		"yusei": [[360, Vector3(-8.0, 0, 11.0), 0.4, "tinker"], [750, Vector3(15.0, 0, 11.5), 0.6, "eat"], [960, Vector3(-9.0, 0, -6.0), 1.0, "arms"], [1230, Vector3(-8.0, 0, 11.0), 0.4, "tinker"]],
@@ -53,7 +64,7 @@ const ACTS := {
 ## The motions that are the business itself (they run on, with only a breath between).
 const STEADY := ["read", "eat", "tinker", "disk", "armsx", "skygaze"]
 ## Who keeps to themselves: a nod where the others wave.
-const ALOOF := ["kaiba", "mai", "chazz", "jack", "shark", "kite", "akiza"]
+const ALOOF := ["kaiba", "mai", "chazz", "jack", "shark", "kite", "akiza", "crowler"]
 
 ## What they say. "hail": called out as you come by. Then what a talk opens with, the first that
 ## fits: "beat_me" (you won your last duel with them), "beat_you" (you lost it), "streak" (three
@@ -103,6 +114,24 @@ const TALK := {
 		"streak": ["So the streak is real. Good. I like an opponent who is in form."], "ace": ["Leading with %s is a bold choice. Bold is fine if you can back it up."],
 		"leave": ["I should go. Take care of yourself, {player}."],
 		"do": {"cards": "I rebuild my deck every week. Not because it is wrong. Because I am not done.", "sky": "From here you can see the whole island. It makes the dorm rivalries look small.", "cheer": "I like watching the first-years. They make mistakes I had forgotten existed."}},
+	"crowler": {"hail": ["You there! Yes, you.", "{player}! A word."], "hello": ["Make it brief. I have forty exam papers and one red pen.", "Ah. One of mine. Or one of Sato's. I can never tell until you duel."],
+		"morning": ["Classes start at nine. Punctuality is the first card in any deck."], "night": ["Out after curfew? I did not see you. I am looking at the stars. Professionally."], "rain": ["Rain. My good boots. Of course."],
+		"beat_me": ["About our last duel. I was testing a theory. The theory was wrong. You may go."], "beat_you": ["You lost our last duel by one turn of thinking. Study, and come back."],
+		"streak": ["Everyone in the staff room is saying your name. I do not care for it. Prove them right, then."], "ace": ["%s? Hm. Not without merit. Not without flaws, either."],
+		"leave": ["I have a lecture to deliver. Somebody has to educate this island."],
+		"do": {"arms": "I am watching the students arrive. I can tell who did their reading by the way they walk.", "cards": "Exam papers. Half of them summoned in Attack Position into a set card. Half!", "drink": "Tea. A gentleman takes his tea before evening rounds. Do not tell the Red dorm.", "sky": "I am counting the lights in the Blue dorm. Lights out is at eleven. I am very patient."}},
+	"sheppard": {"hail": ["{player}! Come here a moment.", "Ah, {player}. Good."], "hello": ["How is island life treating you? Eat properly. Sleep a little. Duel a lot.", "I like to know every student by name. You make it easy."],
+		"morning": ["The first ferry. I meet it every morning. You never know who is on it."], "night": ["Still up? So am I. A headmaster's work is never quite done."], "rain": ["A little rain never closed this school. Mind the steps."],
+		"beat_me": ["You beat me fair and square last time. I told the whole staff room. Twice."], "beat_you": ["About our last duel: you were closer than you think. I only had experience on my side."],
+		"streak": ["Your winning streak is the talk of the staff room. Enjoy it. And keep your feet on the ground."], "ace": ["You lead with %s now? A fine card. Look after it and it will look after you."],
+		"leave": ["Off I go. The paperwork will not sign itself, sadly."],
+		"do": {"sky": "I watch the ferry come in. Every new face on this island started right here.", "phone": "...Yes, the budget. I know. ...We will manage. We always do. Ah, {player}! Sorry about that.", "cheer": "I come down to the plaza to watch the students duel. It is the best part of my day."}},
+	"bastion": {"hail": ["{player}! Just the person.", "Ah, {player}. Have you got a moment?"], "hello": ["I have been revising my deck. Version forty-one. I think this is the one.", "Good timing. I needed a second opinion on a combination."],
+		"morning": ["Up early. The chalkboard is cleaner in the morning."], "night": ["I think best at night. The numbers are quieter."], "rain": ["Rain improves my concentration by roughly twelve percent. I measured it."],
+		"beat_me": ["Our last duel. I have run it through eleven times and you still win. Well done."], "beat_you": ["About last time: you were one card short of a different result. I checked."],
+		"streak": ["Your winning streak is statistically remarkable. I would like to be the outlier that ends it."], "ace": ["%s, is it? I shall have to add a new term to my equations."],
+		"leave": ["Excuse me. I have a formula half finished on the chalkboard."],
+		"do": {"cards": "Notes. Every duel on this island, by dorm, by deck and by turn. It is a hobby.", "practice": "I am testing a new opening. Three draws, three outcomes, one answer.", "sky": "The Yellow dorm has the best sunset on the island. The Blues would disagree. They are wrong."}},
 	"yusei": {"hail": ["{player}.", "Over here, {player}."], "hello": ["{player}. Everything running all right?", "Good to see you. I could use a second pair of eyes, actually."],
 		"morning": ["Early start. The engine does not tune itself."], "night": ["The Satellite is quiet at night. You can hear every loose bolt."], "rain": ["Rain is hard on the electronics. Keep your Duel Disk dry."],
 		"beat_me": ["That last duel. Clean. You left me no opening."], "beat_you": ["You had the pieces last time. The order was off. It will come."],
@@ -156,6 +185,9 @@ const ASK := {
 	"jaden": ["So, want to throw down? Get your game on!", "Rematch! Come on, that last one was too much fun!"],
 	"chazz": ["Duel me. Then you will know your place.", "Again. That last one was a fluke and we both know it."],
 	"alexis": ["Shall we duel? I want to see what you have got.", "A rematch, then. I have had time to think about last time."],
+	"crowler": ["A duel? Very well. This counts toward nothing, but I will grade it anyway.", "A rematch. Good. Let us correct the record."],
+	"sheppard": ["Would you duel an old man? I promise not to go easy on you.", "Another? Splendid. I have been looking forward to it."],
+	"bastion": ["Shall we duel? I have a hypothesis to test.", "A rematch? Excellent. I have revised the formula since."],
 	"yusei": ["Want to duel? A deck only shows what it is under pressure.", "Again? Good. I made some adjustments."],
 	"crow": ["How about a duel? Loser buys lunch!", "Rematch! The kids are still laughing at me. Help me fix that."],
 	"jack": ["Duel me, challenger. Show the King what you have.", "Again! The King reclaims what is his!"],

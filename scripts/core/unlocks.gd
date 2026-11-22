@@ -87,7 +87,7 @@ static func stars(difficulty: int, rare := false) -> String:
 ## duelists reach the top on their own.
 const SERIES_STARS := {
 	"yugi": 5, "kaiba": 5, "marik": 5, "pegasus": 5, "joey": 4, "mai": 4, "bakura": 4, "weevil": 3, "rex": 3,
-	"jaden": 5, "zane": 5, "aster": 5, "chazz": 4, "alexis": 4, "syrus": 3,
+	"jaden": 5, "zane": 5, "aster": 5, "chazz": 4, "alexis": 4, "syrus": 3, "sheppard": 5, "crowler": 4, "bastion": 4,
 	"yusei": 5, "jack": 5, "crow": 4, "akiza": 4, "kalin": 4,
 	"kite": 5, "yuma": 4, "shark": 4, "vector": 4,
 }
