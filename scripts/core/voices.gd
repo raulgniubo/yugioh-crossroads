@@ -6,7 +6,7 @@ class_name Voices
 ## digits of the md5 of the line's English text ("call:<card id>" for a monster call-out).
 ## tools/voices/build_lines.py lists every line; a line with no file is simply not spoken.
 
-const FEMALE := ["akiza", "alexis", "mai", "student_girl", "stylish_woman", "vesper", "ink"]
+const FEMALE := ["akiza", "alexis", "mai", "student_girl", "stylish_woman", "vesper", "ink", "irina", "tova", "sparrow"]
 const HAS_F := ["kind", "cocky", "cool"]
 ## What your own duelist says out loud (the rest stays a bubble, so they do not talk all the time).
 const PLAYER_KINDS := ["intro", "ace", "ace_lost", "chain", "negate", "negated", "fusion", "synchro", "xyz", "ritual", "trap", "big_hit", "comeback", "win", "lose",

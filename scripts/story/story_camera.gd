@@ -141,7 +141,7 @@ func blocked_at(feet: Vector3) -> String:
 	if not fh.is_empty():
 		floor_y = (fh["position"] as Vector3).y
 		if floor_y > feet.y + 1.2:
-			return "(under something solid at %.1f)" % floor_y
+			return "(under something solid at %.1f: %s)" % [floor_y, str((fh["collider"] as Node).get_path()).right(70) if fh["collider"] is Node else "?"]
 		if floor_y > feet.y + 0.3:
 			return "(floor is %.2f higher than where they stand)" % (floor_y - feet.y)
 	var chest := Vector3(feet.x, floor_y + 1.05, feet.z)

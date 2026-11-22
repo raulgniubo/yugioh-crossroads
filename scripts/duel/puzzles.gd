@@ -50,6 +50,20 @@ const LIST := [
 		"hint": "A monster you summon this turn can still be useful if it never attacks.",
 		"hand": ["Enemy Controller", "Vorse Raider"], "mine": [["Gemini Elf", "atk"]],
 		"theirs": [["Ancient Gear Golem", "atk"], ["Ancient Gear Soldier", "atk"]]},
+	# The written part of the second promotion exam (chapter 15): the problems he wrote "after the
+	# last three were mistreated". A field that looks lost, an answer that costs your best monster,
+	# and the one that took him eleven minutes.
+	{"id": "exam_4", "real_only": true, "title": "Exam: The Lost Field", "stars": 2, "exam": true, "opp_lp": 5300, "my_lp": 500,
+		"hint": "Shield & Sword turns every monster on the field around. Count again with the other number.",
+		"hand": ["Shield & Sword", "Big Shield Gardna"], "mine": [["Giant Soldier of Stone", "def"], ["Mystical Elf", "def"]],
+		"theirs": [["Summoned Skull", "atk"], ["Gene-Warped Warwolf", "atk"]]},
+	{"id": "exam_5", "real_only": true, "title": "Exam: The Price", "stars": 3, "exam": true, "opp_lp": 3400, "my_lp": 4000,
+		"hint": "A Monarch arrives by tribute, and it does not arrive quietly. What you give up is not always what you lose.",
+		"hand": ["Zaborg the Thunder Monarch", "Axe of Despair"], "mine": [["Summoned Skull", "atk"]], "theirs": [["Blue-Eyes White Dragon", "atk"]]},
+	{"id": "exam_6", "real_only": true, "title": "Exam: Eleven Minutes", "stars": 4, "exam": true, "opp_lp": 4600, "my_lp": 4000,
+		"hint": "United We Stand counts every monster on your side. It does not ask how they got there, or how small they are.",
+		"hand": ["Scapegoat", "United We Stand", "Stop Defense", "Kuriboh"], "mine": [["Gemini Elf", "atk"]],
+		"theirs": [["Ancient Gear Golem", "atk"], ["Ancient Gear Soldier", "def"]]},
 	# Doctor Crowler's Duel Theory class (Academy story): one a week. "class": not on the puzzle board either.
 	{"id": "class_1", "real_only": true, "title": "Class: Take and Give", "stars": 2, "exam": true, "class": true, "opp_lp": 2600, "my_lp": 4000,
 		"hint": "Riryoku halves one monster and hands that half to another. Then one more push.",

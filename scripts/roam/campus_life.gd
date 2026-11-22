@@ -515,9 +515,14 @@ func open_agenda() -> void:
 	# ---- the Midnight Circle (once you have found it)
 	if bool(CampusCircle.state()["met"]):
 		_head(p, "The Midnight Circle")
-		_line(p, Loc.t("A candle on the wall: %d of 4") % CampusCircle.wins(), 19)
-		if CampusCircle.rank_done():
-			_line(p, Loc.t("The Candle rank is yours. The Lantern rank opens next term."), 16, UITheme.TEXT_DIM)
+		var lit := CampusCircle.wins()
+		_line(p, Loc.t("A candle on the wall: %d of 4") % mini(lit, 4), 19)
+		if lit > 4 or (lit == 4 and CampusCircle.open_duels() > 4):
+			_line(p, Loc.t("A lantern on the wall: %d of 4") % clampi(lit - 4, 0, 4), 19)
+		if lit >= CampusCircle.open_duels() and lit >= 4:
+			_line(p, Loc.t(CampusCircle.waiting()), 16, UITheme.TEXT_DIM)
+		elif lit == 4:
+			_line(p, Loc.t("The Candle rank is yours. The Lantern rank is open: knock at night."), 16, UITheme.TEXT_DIM)
 	# ---- silver missions
 	_head(p, "Missions")
 	var any := false

@@ -121,6 +121,13 @@ func _act_row(pos_chapter: String, col: Color) -> Control:
 			act = int(CampusData.CHAPTERS[i]["act"])
 			at = i
 	var open: Array = CampusProgress.unlocked()
+	if at < 0:
+		# No chapter is waiting (the story is caught up): the act you finished last, every pip lit.
+		var done: Array = Campus.v("done", [])
+		for i in CampusData.CHAPTERS.size():
+			if done.has(str(CampusData.CHAPTERS[i]["id"])) and int(CampusData.CHAPTERS[i]["act"]) > 0:
+				act = int(CampusData.CHAPTERS[i]["act"])
+				at = CampusData.CHAPTERS.size()
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 7)
 	var tag := UITheme.label(Loc.t("PROLOGUE") if act == 0 else Loc.t("ACT %d") % act, 15, UITheme.TEXT_DIM, UITheme.semi_font())
