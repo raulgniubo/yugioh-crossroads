@@ -183,7 +183,11 @@ static func invite_text(tpl: String, place: String, hour: String, shown := false
 		where = said if said != "@" + place else Loc.t(place)
 	if tpl.begins_with("%s") and where != "":
 		where = where[0].to_upper() + where.substr(1)
-	return tpl % [where, hour]
+	var out := tpl % [where, hour]
+	if Loc.lang() == "es":
+		# ("a el Dormitorio Azul" is said "al Dormitorio Azul"; "de el", "del".)
+		out = out.replace(" a el ", " al ").replace(" de el ", " del ").replace("¿A el ", "¿Al ").replace("A el ", "Al ")
+	return out
 
 
 ## The hour as people say it: "9:30", not "09:30".

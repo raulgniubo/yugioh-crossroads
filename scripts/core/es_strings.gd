@@ -852,7 +852,7 @@ const ES := {
 	"That hurt... but I'm okay.": "Eso dolió... pero estoy bien.",
 	"Wow, that's a strong monster!": "¡Vaya, qué monstruo tan fuerte!",
 	"Sorry, partner...": "Lo siento, compañero...",
-	"You're really good!": "¡Eres muy bueno!",
+	"You're really good!": "¡Juegas muy bien!",
 	"I can still turn this around!": "¡Todavía puedo darle la vuelta!",
 	"That was fun! Thank you.": "¡Fue divertido! Gracias.",
 	"You're amazing. Well played.": "Eres increíble. Bien jugado.",
@@ -7728,4 +7728,5 @@ const ES := {
 	"ACT %d": "ACTO %d",
 	"%d of %d": "%d de %d",
 	"You come in on the morning ferry with a novice deck. Everything else you earn on the island.": "Llegas en el ferry de la mañana con un deck de novato. Todo lo demás te lo ganas en la isla.",
+	"@Ferry Pier": "el Muelle del Ferry",
 }
