@@ -115,10 +115,10 @@ func survey(focus: Vector3, reach: float, cast: Array) -> void:
 
 
 ## Bystanders standing right in a conversation (closer than `r` to any of `spots`).
-func crowding(spots: Array, r: float, cast: Array) -> Array:
+func crowding(spots: Array, r: float, cast: Array, hidden := false) -> Array:
 	var out: Array = []
 	for f in scene.find_children("*", "RoamFigure", true, false):
-		if f in cast or not (f as Node3D).is_visible_in_tree():
+		if f in cast or (f as Node3D).is_visible_in_tree() == hidden:
 			continue
 		var p: Vector3 = (f as Node3D).global_position
 		for s in spots:

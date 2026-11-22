@@ -1047,7 +1047,15 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.67.1 STATE (Nov 22, small hours; NEWEST, read this first)
+#### 0.68.0 STATE (Nov 22 morning; NEWEST, read this first)
+- 0.68.0 = Act 2 of the Academy (ac_ch8..ac_ch15, circle_5..8), Spanish voices complete for it, bystanders hidden by a
+  "room" step no longer collide (StoryDirector._solid, _unsolid; StoryCamera.crowding(hidden)).
+- Acts 3 and 4 are integrated on branch acts34 (main + act3 + act4 merges); test copy /home/claude/yc_m34. Their voices
+  are still being generated (queue /home/claude/work/acts/vo/todo_now.json, loop in /home/claude/work/voices).
+- Orchestration notes: /home/claude/work/acts/ORCHESTRA.md. Story bible: /home/claude/work/acts/BIBLE.md.
+- Walk audit list (/tmp/walkall_copy.sh) has 43 walks now, -P 2, memwait (the container's memory group is 6,144 MB).
+
+#### 0.67.1 STATE (Nov 22, small hours)
 - WHY: Raul played the start of Act 1 on Windows on the evening of Nov 21 and sent six things. All fixed here.
 - HE GAVE PERMISSION FOR SUBAGENTS (Nov 21, 11:02 PM: "utiliza tus medios si es necesario para ir más rápido... Tienes permiso a todo"),
   and asked for everything to go faster: write a whole act, test once, one build per act. The content boundaries did not change.

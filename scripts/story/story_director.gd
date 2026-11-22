@@ -100,6 +100,7 @@ var _box_style: StyleBoxFlat
 var _name_tab: PanelContainer
 var _name_style: StyleBoxFlat
 var _solver: StoryCamera
+var _unsolid: Array = []      # people out of sight whose body was switched off for a scene
 var _stepped_out: Array = []   # bystanders hidden while a scene plays where they stood
 var _room: Array = []          # [middle, radius] of the ground this scene keeps to itself (the "room" step)
 var _shot_subs: Array = []     # who the current wide shot holds
@@ -801,6 +802,10 @@ func _cutscene(on: bool) -> void:
 				(f as Node3D).visible = true
 				_solid(f as Node3D, true)
 		_stepped_out.clear()
+		for f in _unsolid:
+			if is_instance_valid(f):
+				_solid(f as Node3D, true)
+		_unsolid.clear()
 		_shot_kind = ""
 		_shot_pair = []
 		_dir = {}
@@ -1000,6 +1005,11 @@ func _make_room(spots: Array, r := 1.5) -> void:
 		(f as Node3D).visible = false
 		_solid(f as Node3D, false)
 		_stepped_out.append(f)
+	# Somebody already out of sight (too far for the crowd to be drawn) still has a body there.
+	for f in _solver.crowding(spots, r, cast, true):
+		if not f in _unsolid:
+			_solid(f as Node3D, false)
+			_unsolid.append(f)
 
 
 ## A bystander who stepped out of a scene must not stay there as an invisible wall: their
@@ -1008,7 +1018,7 @@ func _solid(f: Node3D, on: bool) -> void:
 	var p := f.get_parent()
 	for b in ([p] if p is PhysicsBody3D else []) + f.find_children("*", "PhysicsBody3D", true, false):
 		for c in (b as Node).find_children("*", "CollisionShape3D", true, false):
-			(c as CollisionShape3D).set_deferred("disabled", not on)
+			(c as CollisionShape3D).disabled = not on
 
 
 ## Where Lumen waits while other people talk: past them as the camera sees it and a little

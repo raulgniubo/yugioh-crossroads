@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.68.0
+
+**Act 2 of the Academy story: "The Team" (Yellow).** No cards added: 8,415 total.
+
+- **Eight new chapters, 8 to 15**: A Room of Your Own, The Starters, The Lantern Festival, The Guest, First Match, The Offer, Without Dante, The Exam, Again. You move up to the Yellow dorm (your own room this time), make the League team as a reserve, live through the island's Lantern Festival, play Boreal Academy in the first League match, watch the team come apart and take the promotion exam for Blue against Doctor Crowler's real deck.
+- **New people, all originals**: Irina Volkova, Boreal's captain they call "the Wall", her team (Tova, Rurik), and in the Midnight Circle the Lantern rank: Sparrow, Third Bell, Paper and Harbor. Irina has her own voice.
+- **The Midnight Circle's second rank**: four more nights (5 to 8), each with its house rule, and a new rank at the end.
+- **About 840 spoken lines, all with Spanish voices**, like Act 1. Your character's lines in your chosen voice, Lumen in hers.
+- **Continue carries you on**: finishing chapter 7 opens chapter 8, and the title screen shows the act you are in (or the last one you finished, with every mark lit, when you have caught up).
+- **Fixed: people who step aside for a scene stayed there as invisible walls.** They no longer block you or the cast while they are hidden.
+- Tested like Act 1: every chapter and Circle night walked on foot from start to end, won and lost, with every choice branch, plus "finish chapter 7, then Continue".
+
 ## What is in 0.67.1
 
 **Fixes from Raul's first evening with Act 1, and voices for every world.** No cards added: 8,415 total.
