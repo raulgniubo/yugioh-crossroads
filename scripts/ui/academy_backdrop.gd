@@ -125,6 +125,25 @@ func show_picture(path: String) -> void:
 	_pic2.modulate.a = 0.0
 
 
+## Crossfade from the picture on now to this one (the Free Roam door, as you move between worlds).
+func fade_to(path: String, secs := 0.45) -> void:
+	_cycle = []
+	if not ResourceLoader.exists(path):
+		return
+	var tex: Texture2D = load(path)
+	if _pic.texture == tex:
+		return
+	_pic2.texture = tex
+	_pic2.modulate.a = 0.0
+	_fading = true
+	var tw := create_tween()
+	tw.tween_property(_pic2, "modulate:a", 1.0, secs)
+	tw.tween_callback(func():
+		_pic.texture = tex
+		_pic2.modulate.a = 0.0
+		_fading = false)
+
+
 ## Fade the whole-picture shade to `v` (going from the title to a list and back).
 func shade_to(v: float, secs := 0.25) -> void:
 	shade = v
