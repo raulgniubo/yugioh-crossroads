@@ -51,6 +51,11 @@ var _task_more: Label                 # the one line under the goal when the lis
 ## The list of things to do is folded to its goal and a count until you open it (it was a third
 ## of the screen). Remembered while the game runs.
 static var task_small := true
+static var task_view := 0            # the task box: 0 folded to one task, 1 the whole list, 2 put away (Settings.story_task_view)
+var _task_v: VBoxContainer
+var _task_head_text := ""
+var _task_subs := {}                  # task index -> the label with where it is (its metres change in place)
+var _guide := -1                      # the task the beacon shows the way to (-1: none; flags "_guide")
 var chapter := ""
 var step := 0
 var flags := {}
@@ -101,6 +106,7 @@ var _name_tab: PanelContainer
 var _name_style: StyleBoxFlat
 var _solver: StoryCamera
 var _unsolid: Array = []      # people out of sight whose body was switched off for a scene
+var _stretch_cast: Array = []  # who a free stretch places as its cast (theirs while it lasts)
 var _stepped_out: Array = []   # bystanders hidden while a scene plays where they stood
 var _room: Array = []          # [middle, radius] of the ground this scene keeps to itself (the "room" step)
 var _shot_subs: Array = []     # who the current wide shot holds
@@ -1676,6 +1682,7 @@ func _do_tasks(st: Dictionary) -> bool:
 	_tasks = st["tasks"]
 	var here := str(Router.roam.get("district", "domino"))
 	_task_done = flags.get("_done", {})
+	_guide = int(flags.get("_guide", -1))
 	if not flags.has("_w0"):
 		flags["_w0"] = _prog().count("street_wins")
 	flags["_where"] = here
@@ -1683,9 +1690,19 @@ func _do_tasks(st: Dictionary) -> bool:
 	_build_task_ui(str(st.get("title", "WHAT TO DO")), str(st.get("aim", "")))
 	# Whoever the story has in hand is not also standing around as their everyday self.
 	var away: Array = (st.get("hide", []) as Array).duplicate()
-	for t in _tasks:
-		if (t as Dictionary).has("talk"):
-			away.append(str(t["talk"]))
+	var in_hand: Array = []
+	for ti in _tasks.size():
+		var tt: Dictionary = _tasks[ti]
+		# (Once you have talked to them they are back to their everyday selves: Dorothy at her counter.)
+		if tt.has("talk") and not _task_done.has(str(ti)):
+			away.append(str(tt["talk"]))
+			in_hand.append(str(tt["talk"]))
+	_stretch_cast = []
+	for c in st.get("cast", []):
+		_stretch_cast.append(str((c as Dictionary).get("actor", "")))
+	in_hand.append_array(_stretch_cast)
+	# A shop stays open while you are free: its keeper only steps away when the story has her in hand.
+	away = away.filter(func(id): return not _keeps_shop(str(id), in_hand))
 	scene.hide_npcs(away)
 	if st.get("hide_all", false):
 		var all: Array = []
@@ -1778,7 +1795,9 @@ func _do_tasks(st: Dictionary) -> bool:
 	Sfx.play("quest", -4.0)
 	Router.toast(Loc.t("The story goes on."))
 	await get_tree().create_timer(1.1).timeout
-	for k in ["_done", "_w0", "_where", "_after_task", "_duel_task", "_seen", "_found"]:
+	_guide = -1
+	scene.extras.task_marks = []
+	for k in ["_done", "_w0", "_where", "_after_task", "_duel_task", "_seen", "_found", "_guide"]:
 		flags.erase(k)
 	for k in flags.keys():
 		if str(k).begins_with("_won_") or str(k).begins_with("_lost_"):
@@ -1791,6 +1810,17 @@ func _do_tasks(st: Dictionary) -> bool:
 		print("TASKS done step ", step - 1)
 	StoryDirector.begin(chapter, true)
 	return true
+
+
+## Is `id` (an everyday person's id or character) a shopkeeper who should stay at the counter?
+## Yes unless the story has that character in hand in this stretch (a talk task, the cast).
+func _keeps_shop(id: String, in_hand: Array) -> bool:
+	for n in scene._npcs:
+		var d: Dictionary = n[0]
+		if str(d.get("id", "")) == id or (str(d.get("char", "")) != "" and str(d.get("char", "")) == id):
+			if d.get("shop", false) and not in_hand.has(str(d.get("char", ""))) and not in_hand.has(str(d.get("id", ""))):
+				return true
+	return false
 
 
 ## The world the story is in at step `at`: the district of the last scene before it.
@@ -1983,6 +2013,9 @@ func _finish_task(i: int) -> void:
 		Campus.add_bond(str(t["bond"]), 1)
 	_prog().save_position(chapter, step, flags)
 	_clear_task(i)
+	if t.has("talk") and not _stretch_cast.has(str(t["talk"])):
+		# Done with them for now: they go back to where they live (the shop opens again).
+		scene.restore_npcs([str(t["talk"])])
 	Sfx.play("sparkle", -6.0)
 	if _audit or _auto:
 		print("TASK done ", step, ":", i, " ", str(t.get("label", "")))
@@ -2100,102 +2133,82 @@ func _place_chain(place: String) -> Array:
 func _build_task_ui(title: String, goal := "") -> void:
 	if _task_box != null:
 		return
-	_task_box = PanelContainer.new()
-	_task_box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.042, 0.0676, 0.145, 0.88), 16, Color(UITheme.GOLD, 0.6)))
-	_task_box.position = Vector2(30, 232)
-	_task_box.custom_minimum_size = Vector2(380, 0)
-	_task_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_ui.add_child(_task_box)
-	var gm := MarginContainer.new()
-	for side in ["left", "right"]:
-		gm.add_theme_constant_override("margin_" + side, 16)
-	for side in ["top", "bottom"]:
-		gm.add_theme_constant_override("margin_" + side, 9)
-	gm.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_task_box.add_child(gm)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 4)
-	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	gm.add_child(v)
-	var ch := ""
+	_task_head_text = ""
 	for c in _book().CHAPTERS:
 		if c["id"] == chapter:
-			ch = Loc.t(str(c["title"])).to_upper() + "   ·   "
-	# With a goal, the small line names the stretch of the chapter and the big line says what
-	# all of it is for.
-	v.add_child(UITheme.label(ch + (Loc.t(title).to_upper() if goal != "" else Loc.t("YOUR MOVE")), 13, UITheme.GOLD, UITheme.semi_font()))
-	_task_title = UITheme.label(Loc.t(goal if goal != "" else title), 19, Color.WHITE, UITheme.semi_font())
-	_task_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_task_title.custom_minimum_size = Vector2(348, 0)
-	v.add_child(_task_title)
-	# What to do next and where, always in sight (also with the list folded away).
-	_task_next = UITheme.label("", 16, UITheme.GOLD, UITheme.semi_font())
-	_task_next.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_task_next.custom_minimum_size = Vector2(348, 0)
-	_task_next.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(_task_next)
-	_task_list = VBoxContainer.new()
-	_task_list.add_theme_constant_override("separation", 1)
-	_task_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(_task_list)
-	# The foot of the box: how far along you are, and a small button that says what opens the
-	# list. The whole box is the button: a click anywhere on it does what Tab does.
-	var foot := HBoxContainer.new()
-	foot.add_theme_constant_override("separation", 10)
-	foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(foot)
-	_task_count = UITheme.label("", 15, Color(0.78, 0.84, 0.95, 0.9), UITheme.semi_font())
-	_task_count.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_task_count.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	foot.add_child(_task_count)
-	var pill := PanelContainer.new()
-	var pill_sb := UITheme.panel_box(Color(UITheme.GOLD, 0.13), 9, Color(UITheme.GOLD, 0.55))
-	pill_sb.set_content_margin_all(0)
-	pill_sb.shadow_size = 0
-	pill.add_theme_stylebox_override("panel", pill_sb)
-	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# A small chip on the line, never stretched to the height or width of the box.
-	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	pill.size_flags_horizontal = Control.SIZE_SHRINK_END
-	foot.add_child(pill)
-	var pm := MarginContainer.new()
-	pm.add_theme_constant_override("margin_left", 8)
-	pm.add_theme_constant_override("margin_right", 10)
-	pm.add_theme_constant_override("margin_top", 3)
-	pm.add_theme_constant_override("margin_bottom", 3)
-	pm.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pill.add_child(pm)
-	var ph := HBoxContainer.new()
-	ph.add_theme_constant_override("separation", 8)
-	ph.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pm.add_child(ph)
+			_task_head_text = Loc.t(str(c["title"])).to_upper() + "  ·  "
+	# The small line names the chapter and what this stretch is for.
+	_task_head_text += (Loc.t(goal) if goal != "" else Loc.t(title)).to_upper()
+	_task_box = PanelContainer.new()
+	_task_box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.042, 0.0676, 0.145, 0.86), 14, Color(UITheme.GOLD, 0.5)))
+	_task_box.position = Vector2(30, 232)
+	_task_box.mouse_filter = Control.MOUSE_FILTER_STOP
+	_task_box.gui_input.connect(func(e: InputEvent):
+		# A click on the box (not on a task of the list) does what Tab does.
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			_task_box.accept_event()
+			_toggle_tasks())
+	_task_box.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_ui.add_child(_task_box)
+	var gm := MarginContainer.new()
+	gm.add_theme_constant_override("margin_left", 14)
+	gm.add_theme_constant_override("margin_right", 14)
+	gm.add_theme_constant_override("margin_top", 8)
+	gm.add_theme_constant_override("margin_bottom", 8)
+	gm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_task_box.add_child(gm)
+	_task_v = VBoxContainer.new()
+	_task_v.add_theme_constant_override("separation", 3)
+	_task_v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gm.add_child(_task_v)
+	task_view = clampi(int(Settings.story_task_view), 0, 2)
+	for a in OS.get_cmdline_user_args():
+		# Dev: --task-view=0|1|2 (folded, list, put away), --task-guide=N (show the way to task N).
+		if a.begins_with("--task-view="):
+			task_view = clampi(int(a.substr(12)), 0, 2)
+		elif a.begins_with("--task-guide="):
+			_guide = int(a.substr(13))
+	task_small = task_view != 1
+	_task_sig = ""
+	Sfx.play("quest", -6.0)
+
+
+## How wide the box is: small and to the side (a quarter of the screen at most) when folded,
+## wider with the whole list open.
+func _task_width() -> float:
+	var vw: float = scene.get_viewport().get_visible_rect().size.x if scene != null else 1920.0
+	return minf(360.0, vw * 0.28) if task_view != 1 else minf(470.0, vw * 0.36)
+
+
+## A label of the box: it never takes the mouse (a click goes to the box or to its task).
+func _tlab(text: String, size: int, col: Color, font: Font = null) -> Label:
+	var l := UITheme.label(text, size, col, font)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return l
+
+
+## The little key chip: [Tab] or [F] with a word.
+func _tchip(key: String, word: String) -> HBoxContainer:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 6)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var cap := PanelContainer.new()
-	var cap_sb := UITheme.panel_box(Color(0.9, 0.92, 1.0, 0.95), 5, Color(0.55, 0.6, 0.75))
+	var cap_sb := UITheme.panel_box(Color(0.9, 0.92, 1.0, 0.95), 4, Color(0.55, 0.6, 0.75))
 	cap_sb.set_content_margin_all(0)
 	cap_sb.shadow_size = 0
 	cap.add_theme_stylebox_override("panel", cap_sb)
 	cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	ph.add_child(cap)
 	var cm := MarginContainer.new()
-	cm.add_theme_constant_override("margin_left", 6)
-	cm.add_theme_constant_override("margin_right", 6)
+	cm.add_theme_constant_override("margin_left", 5)
+	cm.add_theme_constant_override("margin_right", 5)
 	cm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cap.add_child(cm)
-	_task_key = UITheme.label("Tab", 13, Color(0.08, 0.1, 0.18), UITheme.semi_font())
-	_task_key.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cm.add_child(_task_key)
-	_task_more = UITheme.label("", 15, UITheme.GOLD, UITheme.semi_font())
-	_task_more.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ph.add_child(_task_more)
-	_task_box.mouse_filter = Control.MOUSE_FILTER_STOP
-	_task_box.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	_task_box.tooltip_text = Loc.t("Click to open or fold away the list of what there is to do.")
-	_task_box.gui_input.connect(func(e: InputEvent):
-		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
-			_task_box.accept_event()
-			_toggle_tasks())
-	Sfx.play("quest", -6.0)
+	cm.add_child(_tlab(key, 12, Color(0.08, 0.1, 0.18), UITheme.semi_font()))
+	h.add_child(cap)
+	if word != "":
+		h.add_child(_tlab(word, 13, UITheme.GOLD, UITheme.semi_font()))
+	return h
 
 
 ## One line per task, as [text, state] with state "done" | "open" | "away" | "wait".
@@ -2224,13 +2237,21 @@ func task_rows(here: String, home: String) -> Array:
 				var nd = _nearest_duelist()
 				place = Loc.t("Any duelist you can challenge counts, in any world.")
 				if nd != null:
-					place += "  " + Loc.t("Nearest one here: %d m, the beacon is on them.") % _meters(nd.global_position)
+					place += "  " + ((Loc.t("Nearest one here: %d m, the beacon is on them.") if i == _guide else Loc.t("Nearest one here: %d m.")) % _meters(nd.global_position))
 				else:
 					place += "  " + Loc.t("Nobody to challenge is out here right now.")
 			else:
 				var at = _task_pos(t)
 				if at != null and scene != null and scene._player != null:
-					place = _where_words(at)
+					place = _where_words(at, i == _guide)
+					# Right there: say which key does it.
+					if str(scene.extras._room_of(at)) == str(scene._inside) and scene._player.global_position.distance_to(at) < 5.0 and not t.has("go"):
+						var what := str(t.get("prompt", ""))
+						if what == "":
+							what = (Loc.t("Talk to %s") % _name_of(str(t["talk"]))) if t.has("talk") else Loc.t("Take a look")
+						else:
+							what = Loc.t(what)
+						place = Loc.t("Press E: %s") % what
 			if t.get("optional", false):
 				text += "   " + Loc.t("(optional)")
 		var sub := lead_sub(i)
@@ -2243,24 +2264,24 @@ func task_rows(here: String, home: String) -> Array:
 ## Where a spot is from where you stand, in plain words: in this room, upstairs, out of this
 ## building, inside another one. (Rooms are built far apart, so metres to a spot in another room
 ## mean nothing: "80 m" for your own room, one floor up.)
-func _where_words(at: Vector3) -> String:
+func _where_words(at: Vector3, beacon := true) -> String:
 	var ex = scene.extras
 	var room := str(ex._room_of(at))
 	var here := str(scene._inside)
 	if room == here:
-		return Loc.t("Here, %d m away. Follow the beacon.") % _meters(at)
+		return (Loc.t("Here, %d m away. Follow the beacon.") if beacon else Loc.t("Here, %d m away.")) % _meters(at)
 	var down: Array = ex.place_chain(room)
 	if not here in down:
-		return Loc.t("In another place. Leave this room first: the beacon is on the way out.")
+		return Loc.t("In another place. Leave this room first: the beacon is on the way out.") if beacon else Loc.t("In another place: leave this room first.")
 	var next := str(down[down.find(here) - 1])
 	var rd: Dictionary = scene._rooms.get(next, {})
 	if here == "":
 		var door: Vector3 = (rd["door"] as Vector3) if rd.has("door") else at
-		return Loc.t("Inside %s, %d m away. Follow the beacon to its door.") % [Loc.t(str(rd.get("name", next))), _meters(door)]
+		return (Loc.t("Inside %s, %d m away. Follow the beacon to its door.") if beacon else Loc.t("Inside %s, %d m away.")) % [Loc.t(str(rd.get("name", next))), _meters(door)]
 	var inner: Dictionary = AcademyRooms.inner_door(next)
 	if not inner.is_empty() and scene._player.global_position.y < float((inner["pos"] as Vector3).y) - 1.4:
-		return Loc.t("Upstairs in this building. The beacon is at the foot of the stairs.")
-	return Loc.t("Upstairs, door %s. The beacon is on the door.") % next.get_slice("_", next.get_slice_count("_") - 1)
+		return Loc.t("Upstairs in this building. The beacon is at the foot of the stairs.") if beacon else Loc.t("Upstairs in this building.")
+	return (Loc.t("Upstairs, door %s. The beacon is on the door.") if beacon else Loc.t("Upstairs, door %s.")) % next.get_slice("_", next.get_slice_count("_") - 1)
 
 
 ## How far something is from you, in whole steps of 5 m (so the list is not redrawn every step).
@@ -2462,86 +2483,198 @@ func _refresh_task_ui(here: String, home: String) -> void:
 	# Never over the map, the menu or anything else that is open on top of the world.
 	var covered: bool = scene != null and (scene._overlay_open or scene._pause != null or (scene._map_full != null and scene._map_full.visible))
 	_task_box.visible = not _cut and not covered
-	_task_box.size = Vector2.ZERO          # (never taller than what is in it)
+	# The task being guided to is done or gone: the guide goes off.
+	if _guide >= 0 and (_guide >= _tasks.size() or _task_done.has(str(_guide)) or not _task_open(_guide) or not _task_listed(_guide)):
+		_set_guide(-1)
 	var rows := task_rows(here, home)
-	var sig := str(rows) + str(task_small)
+	# The next step: the guided task, else something you can do right here, then something that has
+	# to wait for the hour, then something in another world. What is optional comes last.
+	var nxt := []
+	var rank := 999
+	for r in rows:
+		if r[1] == "done":
+			continue
+		var k: int = {"open": 0, "wait": 1, "away": 2}.get(str(r[1]), 3) + (10 if bool((_tasks[int(r[3])] as Dictionary).get("optional", false)) else 0)
+		if int(r[3]) == _guide:
+			k = -1
+		if k < rank:
+			rank = k
+			nxt = r
+	# Rebuilt only when what it says changes (not as the metres count down: those are written in
+	# place), so the box never jumps between sizes while you walk.
+	var shape := []
+	for r in rows:
+		shape.append([r[0], r[1], r[3], str(r[2]).replace("0", "").replace("1", "").replace("2", "").replace("3", "").replace("4", "").replace("5", "").replace("6", "").replace("7", "").replace("8", "").replace("9", "")])
+	var sig := str(shape) + str(task_view) + str(_guide) + str(nxt.slice(3, 4)) + str(Pad.connected)
 	if sig != _task_sig:
 		_task_sig = sig
-		# The next step: something you can do right here first, then something that has to
-		# wait for the hour, then something in another world. What is optional comes last.
-		var nxt := []
-		var rank := 99
+		_rebuild_task_box(rows, nxt)
+	else:
+		for i in _task_subs:
+			for r in rows:
+				if int(r[3]) == int(i) and is_instance_valid(_task_subs[i]):
+					var t := str(r[2]) if task_view == 1 else str(r[2]).get_slice("\n", 0)
+					if (_task_subs[i] as Label).text != "      " + t and task_view == 1:
+						(_task_subs[i] as Label).text = "      " + t
+					elif task_view != 1 and (_task_subs[i] as Label).text != t:
+						(_task_subs[i] as Label).text = t
+	_task_marks_for_map(here, home)
+	_place_guide(here, home)
+	# The marks bob.
+	for i in _task_nodes:
+		for n in _task_nodes[i]:
+			if n is Label3D and is_instance_valid(n):
+				(n as Label3D).position.y = float((n as Label3D).get_meta("base_y", 2.5)) + sin(_t * 3.2) * 0.08
+
+
+## Builds what the box shows: folded (one task), the whole list, or just a chip.
+func _rebuild_task_box(rows: Array, nxt: Array) -> void:
+	for c in _task_v.get_children():
+		_task_v.remove_child(c)
+		c.queue_free()
+	_task_subs = {}
+	var w := _task_width()
+	var tab := "R3" if Pad.connected else "Tab"
+	var fkey := "L3" if Pad.connected else "F"
+	var done_n := 0
+	for r in rows:
+		if r[1] == "done":
+			done_n += 1
+	if task_view == 2:
+		# Put away: a small chip, nothing else.
+		_task_v.add_child(_tchip(tab, Loc.t("Tasks") + "  %d / %d" % [done_n, rows.size()]))
+		_task_box.reset_size()
+		_task_box.reset_size.call_deferred()
+		return
+	var head := _tlab(_task_head_text, 12, Color(UITheme.GOLD, 0.9), UITheme.semi_font())
+	head.custom_minimum_size = Vector2(w - 28, 0)
+	head.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	head.clip_text = true
+	_task_v.add_child(head)
+	if task_view == 0:
+		if nxt.is_empty():
+			_task_v.add_child(_tlab(Loc.t("All done here."), 15, Color(0.55, 0.9, 0.62), UITheme.semi_font()))
+		else:
+			var line := _tlab(("◉  " if int(nxt[3]) == _guide else "▸  ") + str(nxt[0]), 16, Color("ffb38a") if str(nxt[1]) == "away" else Color.WHITE, UITheme.semi_font())
+			line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			line.max_lines_visible = 2
+			line.custom_minimum_size = Vector2(w - 28, 0)
+			_task_v.add_child(line)
+			var sub := _tlab(str(nxt[2]).get_slice("\n", 0), 13, Color(0.72, 0.78, 0.9, 0.85))
+			sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			sub.max_lines_visible = 2
+			sub.custom_minimum_size = Vector2(w - 28, 0)
+			_task_v.add_child(sub)
+			_task_subs[int(nxt[3])] = sub
+	else:
 		for r in rows:
+			var i := int(r[3])
+			var done: bool = r[1] == "done"
+			var row := PanelContainer.new()
+			var lit: bool = i == _guide
+			var sb := UITheme.panel_box(Color(UITheme.GOLD, 0.16) if lit else Color(1, 1, 1, 0.0), 8, Color(UITheme.GOLD, 0.7) if lit else Color(1, 1, 1, 0.0))
+			sb.shadow_size = 0
+			sb.set_content_margin_all(4)
+			row.add_theme_stylebox_override("panel", sb)
+			_task_v.add_child(row)
+			var rv := VBoxContainer.new()
+			rv.add_theme_constant_override("separation", 0)
+			rv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			row.add_child(rv)
+			var mark := "✔  " if done else ("◉  " if lit else "○  ")
+			var l := _tlab(mark + str(r[0]), 16, Color(0.55, 0.9, 0.62, 0.85) if done else (Color(0.75, 0.8, 0.9, 0.8) if r[1] in ["away", "wait"] else Color.WHITE), UITheme.semi_font())
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			l.custom_minimum_size = Vector2(w - 36, 0)
+			rv.add_child(l)
+			if not done and str(r[2]) != "":
+				var sl := _tlab("      " + str(r[2]), 13, Color(0.72, 0.78, 0.9, 0.78))
+				sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				sl.custom_minimum_size = Vector2(w - 36, 0)
+				rv.add_child(sl)
+				_task_subs[i] = sl
+			if done:
+				row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			else:
+				# Click a task: the beacon shows the way to it. Click it again: no beacon.
+				row.mouse_filter = Control.MOUSE_FILTER_STOP
+				row.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+				row.tooltip_text = Loc.t("Click: show the way to this one (again: stop showing it).")
+				row.gui_input.connect(func(e: InputEvent):
+					if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+						row.accept_event()
+						_set_guide(-1 if _guide == i else i)
+						Sfx.play("click", -10.0))
+	# The foot: how far along, the keys.
+	var foot := HBoxContainer.new()
+	foot.add_theme_constant_override("separation", 12)
+	foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_task_v.add_child(foot)
+	foot.add_child(_tchip(tab, (Loc.t("List") if task_view == 0 else Loc.t("Hide")) + "  %d / %d" % [done_n, rows.size()]))
+	var sp := Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	foot.add_child(sp)
+	if not nxt.is_empty() or _guide >= 0:
+		foot.add_child(_tchip(fkey, Loc.t("Guiding") if _guide >= 0 else Loc.t("Show the way")))
+	_task_box.reset_size()
+	_task_box.reset_size.call_deferred()
+
+
+## Which task the beacon shows the way to (-1: none). Kept with the game.
+func _set_guide(i: int) -> void:
+	if _guide == i:
+		return
+	_guide = i
+	if i >= 0:
+		flags["_guide"] = i
+	else:
+		flags.erase("_guide")
+	_task_sig = ""
+	_task_wp_at = Vector3(1e9, 0, 1e9)
+
+
+## F (or L3): show the way to the task the box shows, or stop showing it.
+func _toggle_guide() -> void:
+	if _guide >= 0:
+		_set_guide(-1)
+	else:
+		var here := str(Router.roam.get("district", "domino"))
+		var home := _district_at(step)
+		var pick := -1
+		var rank := 999
+		for r in task_rows(here, home):
 			if r[1] == "done":
 				continue
 			var k: int = {"open": 0, "wait": 1, "away": 2}.get(str(r[1]), 3) + (10 if bool((_tasks[int(r[3])] as Dictionary).get("optional", false)) else 0)
 			if k < rank:
 				rank = k
-				nxt = r
-		if nxt.is_empty():
-			_task_next.visible = false
-		else:
-			_task_next.visible = true
-			_task_next.text = "▸  " + Loc.t("Next:") + "  " + str(nxt[0]) + "\n" + str(nxt[2]).get_slice("\n", 0)
-			_task_next.add_theme_color_override("font_color", Color("ffb38a") if str(nxt[1]) == "away" else UITheme.GOLD)
-		_task_next.custom_minimum_size.x = 348.0 if task_small else 460.0
-		for c in _task_list.get_children():
-			_task_list.remove_child(c)
-			c.queue_free()
-		var done_n := 0
-		for r in rows:
-			if r[1] == "done":
-				done_n += 1
-		var key_name := "R3" if Pad.connected else "Tab"
-		_task_list.visible = not task_small
-		_task_box.custom_minimum_size.x = 380.0 if task_small else 500.0
-		_task_title.custom_minimum_size.x = 348.0 if task_small else 460.0
-		_task_count.text = Loc.t("%d of %d done") % [done_n, rows.size()]
-		_task_key.text = key_name
-		_task_more.text = (Loc.t("Show all %d tasks  ▾") % rows.size()) if task_small else Loc.t("Hide the list  ▴")
-		_task_box.size = Vector2.ZERO
-		for r in (rows if not task_small else []):
-			var done: bool = r[1] == "done"
-			var l := UITheme.label(("✔  " if done else "•  ") + str(r[0]), 18,
-					Color(0.55, 0.9, 0.62, 0.85) if done else (Color(0.75, 0.8, 0.9, 0.8) if r[1] in ["away", "wait"] else Color.WHITE), UITheme.semi_font())
-			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			l.custom_minimum_size = Vector2(460, 0)
-			l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			_task_list.add_child(l)
-			if not done and str(r[2]) != "":
-				# Who gave it to you, and what for.
-				var sl := UITheme.label("      " + str(r[2]), 14, Color(0.72, 0.78, 0.9, 0.78))
-				sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-				sl.custom_minimum_size = Vector2(460, 0)
-				sl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				_task_list.add_child(sl)
-	# The beacon stands on the nearest thing still to do here.
+				pick = int(r[3])
+		_set_guide(pick)
+	Sfx.play("click", -10.0)
+
+
+## Where a task is, for the guide: its spot, or for "win N duels" the nearest person to challenge.
+func _task_target(t: Dictionary):
+	var at = _task_pos(t)
+	if at == null and t.has("wins"):
+		var nd = _nearest_duelist()
+		if nd != null:
+			at = (nd as Node3D).global_position
+			at = Vector3(snappedf(at.x, 2.0), at.y, snappedf(at.z, 2.0))      # (they walk: do not move the beacon every step)
+	return at
+
+
+## The beacon only shows the way to the task you picked. In a free stretch nothing is forced on you.
+func _place_guide(here: String, home: String) -> void:
 	var best = null
-	var best_d := 1e9
-	var best_label := ""
-	for i in _tasks.size():
-		var t: Dictionary = _tasks[i]
-		if _task_done.has(str(i)) or not _task_open(i) or str(t.get("in", home)) != here:
-			continue
-		if t.has("when") and WorldClock.look() != str(t["when"]):
-			continue
-		var at = _task_pos(t)
-		if at == null and t.has("wins"):
-			# "Win 2 street duels" has no place of its own: it points at the nearest person
-			# you can challenge.
-			var nd = _nearest_duelist()
-			if nd != null:
-				at = (nd as Node3D).global_position
-				at = Vector3(snappedf(at.x, 2.0), at.y, snappedf(at.z, 2.0))      # (they walk: do not move the beacon every step)
-		if at == null or not scene.extras.reachable(at):
-			continue      # (never a beacon on a place that is not in this world)
-		var d: float = scene.extras.reach_point(at).distance_to(scene._player.global_position)
-		if t.get("optional", false):
-			d += 500.0
-		if d < best_d:
-			best_d = d
-			best = at
-			best_label = Loc.t(str(t.get("label", "")))
+	var label := ""
+	if _guide >= 0 and _guide < _tasks.size():
+		var t: Dictionary = _tasks[_guide]
+		if str(t.get("in", home)) == here and (not t.has("when") or WorldClock.look() == str(t["when"])):
+			var at = _task_target(t)
+			if at != null and scene.extras.reachable(at):
+				best = at
+				label = Loc.t(str(t.get("label", "")))
 	if best == null:
 		if scene.extras.has_waypoint() and _task_wp:
 			scene.extras.clear_waypoint()
@@ -2549,12 +2682,20 @@ func _refresh_task_ui(here: String, home: String) -> void:
 	elif not _task_wp or (_task_wp_at as Vector3).distance_to(best) > 0.1:
 		_task_wp = true
 		_task_wp_at = best
-		scene.extras.set_waypoint(best, best_label)
-	# The marks bob.
-	for i in _task_nodes:
-		for n in _task_nodes[i]:
-			if n is Label3D and is_instance_valid(n):
-				(n as Label3D).position.y = float((n as Label3D).get_meta("base_y", 2.5)) + sin(_t * 3.2) * 0.08
+		scene.extras.set_waypoint(best, label)
+
+
+## Every open task of this world on the map (M), with or without a guide.
+func _task_marks_for_map(here: String, home: String) -> void:
+	var marks: Array = []
+	for i in _tasks.size():
+		var t: Dictionary = _tasks[i]
+		if _task_done.has(str(i)) or not _task_open(i) or not _task_listed(i) or str(t.get("in", home)) != here:
+			continue
+		var at = _task_pos(t)
+		if at != null and scene.extras.reachable(at):
+			marks.append([scene.extras.reach_point(at), Loc.t(str(t.get("label", ""))), i == _guide])
+	scene.extras.task_marks = marks
 
 
 var _go_armed := {}
@@ -3983,7 +4124,11 @@ func _process(delta: float) -> void:
 
 
 func _toggle_tasks() -> void:
-	task_small = not task_small
+	# Folded -> the whole list -> put away (a chip) -> folded.
+	task_view = (task_view + 1) % 3
+	task_small = task_view != 1
+	Settings.story_task_view = task_view
+	Settings.save_settings()
 	_task_sig = ""
 	Sfx.play("click", -10.0)
 
@@ -3994,6 +4139,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _task_box != null and _task_box.visible and ((event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB) \
 				or (event is InputEventJoypadButton and event.pressed and Pad.b(event) == JOY_BUTTON_RIGHT_STICK)):
 			_toggle_tasks()
+			get_viewport().set_input_as_handled()
+		elif _task_box != null and _task_box.visible and ((event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F) \
+				or (event is InputEventJoypadButton and event.pressed and Pad.b(event) == JOY_BUTTON_LEFT_STICK)):
+			_toggle_guide()
 			get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("ui_accept") or (event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_SPACE, KEY_E, KEY_ENTER]) \

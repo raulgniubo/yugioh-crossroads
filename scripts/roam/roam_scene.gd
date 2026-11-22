@@ -171,6 +171,10 @@ func _ready() -> void:
 			stars = StarLife.new()
 			add_child(stars)
 			stars.setup(self)
+	if "--wheel-test" in OS.get_cmdline_user_args():
+		_wheel_test.call_deferred()
+	if "--task-check" in OS.get_cmdline_user_args():
+		_task_check.call_deferred()
 	# Everything is built: make it cheap to draw (see PerfPass).
 	var saved := PerfPass.apply(self)
 	if "--perf-probe" in OS.get_cmdline_user_args():
@@ -805,10 +809,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			_dragging = event.pressed      # right-click drag turns the camera (left click is for everything else)
-		elif event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-			_arm.spring_length = maxf(2.5, _arm.spring_length - 0.4)
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-			_arm.spring_length = minf(9.0, _arm.spring_length + 0.4)
+		elif event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and event.pressed and not _wheel_for_ui():
+			_arm.spring_length = clampf(_arm.spring_length + (-0.4 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 0.4), 2.5, 9.0)
 	elif event is InputEventMouseMotion and _dragging and not _talking:
 		_yaw -= event.relative.x * 0.006 * Settings.mouse_sens
 		_pitch = clampf(_pitch - event.relative.y * 0.004 * Settings.mouse_sens * (-1.0 if Settings.mouse_invert else 1.0), -1.1, 0.15)
@@ -1013,6 +1015,46 @@ func _probe() -> void:
 		var why := cam.blocked_at(at)
 		print("PROBE ", pt, " ", "ok" if why == "" else why)
 	get_tree().quit()
+
+
+## The wheel belongs to whatever is open over the world (the agenda, a list, the map, a shop):
+## while a panel is open, or the pointer is on anything of the interface, it never zooms the camera.
+func _wheel_for_ui() -> bool:
+	if _overlay_open or _pause != null or _talking or (_map_full != null and _map_full.visible):
+		return true
+	var h := get_viewport().gui_get_hovered_control()
+	if h != null and h.is_visible_in_tree():
+		return true
+	# A panel that covers the screen (the agenda, the mission board, a menu) is open.
+	for c in get_tree().root.find_children("*", "SidePanel", true, false):
+		if (c as Control).is_visible_in_tree():
+			return true
+	return false
+
+
+## The story is done with these people for now: their everyday selves come back where they live
+## (Dorothy at her counter after you have met her, so the shop is open again).
+func restore_npcs(ids: Array) -> void:
+	var back := false
+	var lists: Array = [[district.get("npcs", []), Vector3.ZERO], [district.get("shop_npcs", []), ShopInterior.AT]]
+	for rk in _rooms:
+		lists.append([Interiors.people(str(rk)), (_rooms[rk] as Dictionary)["at"]])
+	for pair in lists:
+		for d in pair[0]:
+			var dd: Dictionary = d
+			if not (ids.has(str(dd.get("id", ""))) or (str(dd.get("char", "")) != "" and ids.has(str(dd.get("char", ""))))):
+				continue
+			var there := false
+			for n in _npcs:
+				if str((n[0] as Dictionary).get("id", "")) == str(dd.get("id", "")):
+					there = true
+					break
+			if not there:
+				_add_npc(dd, pair[1])
+				back = true
+	if back:
+		_near = {}
+		_refresh_map_people()
 
 
 func hide_npcs(ids: Array) -> void:
@@ -1554,12 +1596,27 @@ func _update_near() -> void:
 			_loc_area.text = Loc.t(area)
 	# A door and a person can both be in reach: whichever is closer gets the prompt.
 	# During a story chapter the doors are shut: the scene decides when you go through one.
-	for sp in (_spots if story == null and not (life != null and life.seated) else []):
-		var sd := (sp["pos"] as Vector3).distance_to(_player.global_position)
-		if sd < float(sp["range"]) and (_near.is_empty() or sd < best_d):
-			_near_spot = sp
-			_near = {}
-			break
+	# A thing the story asks you to do here comes first: "Look at your bed" before "Rest or sleep",
+	# so a task standing on top of an everyday spot (a bed, a board, a counter) can always be done.
+	var cand_spots: Array = _spots if story == null and not (life != null and life.seated) else []
+	var quest_best: Dictionary = {}
+	var quest_d := INF
+	for sp in cand_spots:
+		if (sp as Dictionary).has("quest"):
+			var qd := (sp["pos"] as Vector3).distance_to(_player.global_position)
+			if qd < float(sp["range"]) and qd < quest_d:
+				quest_d = qd
+				quest_best = sp
+	if not quest_best.is_empty():
+		_near_spot = quest_best
+		_near = {}
+	else:
+		for sp in cand_spots:
+			var sd := (sp["pos"] as Vector3).distance_to(_player.global_position)
+			if sd < float(sp["range"]) and (_near.is_empty() or sd < best_d):
+				_near_spot = sp
+				_near = {}
+				break
 	# In a chapter, say so when you walk up to a door, so a shut door is never a mystery.
 	var locked := ""
 	if story != null and _near.is_empty() and not _overlay_open:
@@ -2733,3 +2790,79 @@ func _debug() -> void:
 			await get_tree().create_timer(0.5).timeout
 			_yaw = PI * 0.8
 			Input.action_press("ui_up")
+
+
+## Dev (--task-check): in a chapter's free stretch, stand at each open task and say which E prompt
+## wins; then finish the talk tasks and say who stands at the shop counter.
+func _task_check() -> void:
+	for i in 120:
+		await get_tree().process_frame
+		if quest != null and not quest._tasks.is_empty():
+			break
+	if quest == null or quest._tasks.is_empty():
+		print("TASKCHECK no task list")
+		get_tree().quit()
+		return
+	for k in 20:
+		await get_tree().process_frame
+	var shop_people := func() -> String:
+		var out := []
+		for n in _npcs:
+			var d: Dictionary = n[0]
+			if d.get("shop", false):
+				out.append("%s(%s)" % [d.get("id", ""), d.get("char", "")])
+		return ",".join(out) if not out.is_empty() else "NOBODY"
+	print("TASKCHECK shop at start: ", shop_people.call(), "  hidden actors: ", ",".join(quest._actors.keys()))
+	for i in quest._tasks.size():
+		var t: Dictionary = quest._tasks[i]
+		var at = quest._task_pos(t)
+		if at == null or t.has("go") or quest._task_done.has(str(i)):
+			continue
+		quest._place_task(i, str(Router.roam.get("district", "")), quest._district_at(quest.step))
+		_player.global_position = (at as Vector3) + Vector3(0.7, 0.05, 0.4)
+		_inside = str(extras._room_of(at))
+		for k in 3:
+			await get_tree().physics_frame
+		_update_near()
+		var got := str(_near_spot.get("label", "")) if not _near_spot.is_empty() else ("person " + str(_near.get("id", "")) if not _near.is_empty() else "nothing")
+		print("TASKCHECK task %d %s -> E: %s  %s" % [i, str(t.get("label", "")).left(40), got, "OK" if _near_spot.has("quest") else "NOT THE TASK"])
+	for i in quest._tasks.size():
+		var t: Dictionary = quest._tasks[i]
+		if t.has("talk") and not quest._task_done.has(str(i)):
+			quest._finish_task(i)
+			await get_tree().process_frame
+			print("TASKCHECK after talking to %s: shop: %s  actors: %s" % [t["talk"], shop_people.call(), ",".join(quest._actors.keys())])
+	get_tree().quit()
+
+
+## Dev (--wheel-test): the mouse wheel zooms the camera, but never while a panel is open over the world.
+func _wheel_test() -> void:
+	for i in 30:
+		await get_tree().process_frame
+	var vp := get_viewport()
+	var size := vp.get_visible_rect().size
+	var send := func(at: Vector2, up: bool):
+		for pressed in [true, false]:
+			var ev := InputEventMouseButton.new()
+			ev.button_index = MOUSE_BUTTON_WHEEL_UP if up else MOUSE_BUTTON_WHEEL_DOWN
+			ev.pressed = pressed
+			ev.position = at
+			ev.global_position = at
+			vp.push_input(ev)
+		await get_tree().process_frame
+	var d0 := _arm.spring_length
+	await send.call(size * 0.5, false)
+	await send.call(size * 0.5, false)
+	print("WHEEL no panel: %.1f -> %.1f (%s)" % [d0, _arm.spring_length, "zooms" if _arm.spring_length != d0 else "NO ZOOM"])
+	if campus:
+		campus.open_agenda()
+		for i in 20:
+			await get_tree().process_frame
+		for at in [Vector2(size.x - 300, size.y * 0.5), Vector2(size.x * 0.2, size.y * 0.5), Vector2(size.x - 300, size.y - 60)]:
+			var d1 := _arm.spring_length
+			for k in 6:
+				await send.call(at, k % 2 == 0)
+				await send.call(at, false)
+			print("WHEEL agenda open at %s: %.1f -> %.1f (%s)" % [str(at), d1, _arm.spring_length, "LEAKS TO CAMERA" if _arm.spring_length != d1 else "camera still"])
+	get_tree().quit()
+
