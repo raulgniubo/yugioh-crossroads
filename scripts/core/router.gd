@@ -653,14 +653,31 @@ func _debug_args() -> void:
 				Tournament._loaded = true
 				menu._on_tournaments()
 			elif what == "builder":
-				menu._on_deck()
+				menu._on_deck_list()
 				await get_tree().create_timer(0.5).timeout
 				for n in menu.find_children("*", "", true, false):
 					if n is DeckMenu:
 						n._edit(0)
 						break
-			elif what == "deck":
+			elif what == "deck-list":
+				menu._on_deck_list()
+			elif what == "deck" or what.begins_with("cards"):
+				# --open=cards (or deck): Decks & cards. cards-shops[:world]: its card shops page.
+				# cards-decks / cards-album / cards-edit: press that button, as a player would.
 				menu._on_deck()
+				await get_tree().create_timer(0.4).timeout
+				for n in menu.find_children("*", "CardsGate", true, false):
+					if what.begins_with("cards-shops"):
+						n._shops(what.get_slice(":", 1) if what.contains(":") else "")
+					elif what == "cards-decks":
+						n._open_decks()
+					elif what == "cards-album":
+						n._open_album()
+					elif what == "cards-edit":
+						n._edit_now()
+					elif what.begins_with("cards-go:"):
+						# Dev: the shops page's "Go to this shop" for a world.
+						CardsGate.go_to_shop(what.get_slice(":", 1))
 			elif what == "replays":
 				menu._on_replays()
 			elif what == "replay-last":

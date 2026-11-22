@@ -188,6 +188,12 @@ func _ready() -> void:
 	# The map is a picture of this world from above, taken now while the screen is still dark.
 	MapPhoto.take(self, str(Router.roam.get("district", "domino")), district)
 	_debug()
+	# Sent here to buy something (Decks & cards: Go to this shop): the guide lights the way to the counter.
+	if str(Router.roam.get("guide", "")) == "shop":
+		Router.roam.erase("guide")
+		get_tree().create_timer(1.0).timeout.connect(func():
+			if is_instance_valid(extras):
+				extras.guide_to_shop())
 
 
 # ------------------------------------------------------------------ progress
@@ -2535,6 +2541,18 @@ func _debug() -> void:
 			var target := Vector3(float(e[3]), float(e[4]), float(e[5]))
 			eye.look_at(target, Vector3.FORWARD if absf(eye.global_position.x - target.x) + absf(eye.global_position.z - target.z) < 0.01 else Vector3.UP)
 			eye.current = true
+			# --tile=ix,iy,n: one tile of an n x n grid of the same view (stitched into a bigger picture
+			# than the window can hold: a 2x2 grid of 1920x1080 tiles is a 3840x2160 backdrop).
+			for ta in OS.get_cmdline_user_args():
+				if ta.begins_with("--tile="):
+					var tp := ta.trim_prefix("--tile=").split(",")
+					var n := int(tp[2])
+					var hh := 2.0 * eye.near * tan(deg_to_rad(eye.fov) * 0.5)
+					var vs := get_viewport().get_visible_rect().size
+					var ww := hh * vs.x / vs.y
+					eye.projection = Camera3D.PROJECTION_FRUSTUM
+					eye.size = hh / float(n)
+					eye.frustum_offset = Vector2((-(n - 1) * 0.5 + float(tp[0])) * ww / float(n), ((n - 1) * 0.5 - float(tp[1])) * hh / float(n))
 		elif a == "--no-ui":
 			# Dev: a clean picture (no HUD, no player, no spirit).
 			await get_tree().create_timer(0.3).timeout
@@ -2543,6 +2561,10 @@ func _debug() -> void:
 				partner.visible = false
 			for layer in get_tree().root.find_children("*", "CanvasLayer", true, false):
 				(layer as CanvasLayer).visible = false
+		elif a == "--no-tags":
+			# Dev: no name tags or talk bubbles over people either (for a menu's backdrop). People
+			# keep calling out as they stand there, so this keeps clearing them until the picture.
+			_no_tags()
 		elif a.begins_with("--leave="):
 			# Dev: take the way out N times and say where each one put you. --leave=2[:room to enter first]
 			await get_tree().create_timer(1.0).timeout
@@ -2866,3 +2888,16 @@ func _wheel_test() -> void:
 			print("WHEEL agenda open at %s: %.1f -> %.1f (%s)" % [str(at), d1, _arm.spring_length, "LEAKS TO CAMERA" if _arm.spring_length != d1 else "camera still"])
 	get_tree().quit()
 
+
+## (Dev, --no-tags: clears name tags and talk bubbles for ten seconds, beside the other options.)
+func _no_tags() -> void:
+	for _i in 40:
+		await get_tree().create_timer(0.25).timeout
+		for n in find_children("*", "Label3D", true, false):
+			(n as Label3D).visible = false
+			# (A door's "ENTER" turns itself back on every frame: see-through instead.)
+			(n as Label3D).modulate.a = 0.0
+			(n as Label3D).outline_modulate.a = 0.0
+		for n in find_children("*", "Sprite3D", true, false):
+			if (n as Sprite3D).billboard != BaseMaterial3D.BILLBOARD_DISABLED:
+				(n as Node3D).visible = false

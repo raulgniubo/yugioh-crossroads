@@ -36,6 +36,7 @@ func _ready() -> void:
 	_test_campus()
 	_test_world_voices()
 	_test_trio()
+	await _test_cards_gate()
 	_test_classes()
 	_test_circle()
 	var stress := OS.get_environment("STRESS_FOLDER")
@@ -11842,3 +11843,35 @@ func _act_sim() -> void:
 		print(line, "   = ", int(round(100.0 * all_w / (ng * mine.size()))), "%")
 	print("TESTS DONE, failures: %d" % failures)
 	get_tree().quit(0)
+
+
+## Decks and cards (0.69.1): the door to your decks, the album and the card shops of every world.
+func _test_cards_gate() -> void:
+	var cc := CardsGate.collection_count()
+	check(int(cc[1]) > 0 and int(cc[0]) >= 0 and int(cc[0]) <= int(cc[1]), "Decks and cards counts the collection like the album: %d of %d" % [int(cc[0]), int(cc[1])])
+	var d := CardsGate.deck_now()
+	check(str(d.get("name", "")) != "" and d.get("main") is Array, "Decks and cards knows the deck you duel with (%s)" % str(d.get("name", "")))
+	var best := CardsGate.best_cards(d)
+	var in_deck := true
+	for id in best:
+		if not ((d["main"] as Array).has(int(id)) or (d["extra"] as Array).has(int(id))):
+			in_deck = false
+	check(best.size() <= CardsGate.FAN and in_deck, "the cards fanned out on Decks and cards are all from that deck")
+	for w in CardsGate.SHOP_WORLDS:
+		check(not CardsGate.world_packs(w).is_empty(), "the card shop in %s has packs on its shelf" % w)
+	var era_decks := 0
+	for w in CardsGate.SHOP_WORLDS:
+		era_decks += CardsGate.world_decks(w).size()
+	check(era_decks > 0, "the card shops show the ready-made decks they sell")
+	var gate := CardsGate.new()
+	add_child(gate)
+	await get_tree().process_frame
+	check(gate._left.get_child_count() > 0 and gate._fan_cards.size() <= CardsGate.FAN, "Decks and cards opens on its title page")
+	gate._shops("academy")
+	await get_tree().process_frame
+	check(gate._shelf_btns.size() == CardsGate.world_packs("academy").size() and gate._left.get_child_count() == 0, "its card shops page puts the island's shelf of packs out")
+	gate._home()
+	await get_tree().process_frame
+	check(gate._left.get_child_count() > 0, "and Back goes home")
+	gate.queue_free()
+	await get_tree().process_frame
