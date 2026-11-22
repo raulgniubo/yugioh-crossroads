@@ -68,13 +68,27 @@ func _build() -> void:
 	pm.initial_velocity_min = 17.0
 	pm.initial_velocity_max = 21.0
 	pm.gravity = Vector3(0, -6.0, 0)
+	# Each streak points along its own fall (mesh +Y = the way it moves, so +Y is the leading end).
+	pm.particle_flag_align_y = true
 	_drops.process_material = pm
 	var streak := BoxMesh.new()
 	streak.size = Vector3(0.03, 0.7, 0.03)
-	var sm := StandardMaterial3D.new()
-	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	sm.albedo_color = Color(0.82, 0.9, 1.0, 0.5)
+	# A drop reads as falling when its bright, sharp end leads and its tail fades behind it.
+	# Before, every streak was the same all along, and the lens streaks (below) were brightest at
+	# the top: the shape of something rising.
+	var dsh := Shader.new()
+	dsh.code = """
+shader_type spatial;
+render_mode unshaded, blend_mix, cull_disabled, depth_draw_never, shadows_disabled;
+varying float along;
+void vertex() { along = VERTEX.y / 0.7 + 0.5; }
+void fragment() {
+	ALBEDO = vec3(0.82, 0.9, 1.0);
+	ALPHA = 0.62 * smoothstep(0.0, 0.85, along) * smoothstep(1.0, 0.94, along);
+}
+"""
+	var sm := ShaderMaterial.new()
+	sm.shader = dsh
 	streak.material = sm
 	_drops.draw_pass_1 = streak
 	_drops.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -135,11 +149,12 @@ void fragment() {
 		float fi = float(i);
 		vec2 g = uv * vec2(90.0 + fi * 50.0, 5.0 + fi * 2.5);
 		g.x += g.y * 0.6;
-		g.y += TIME * (9.0 + fi * 4.0);
+		g.y -= TIME * (9.0 + fi * 4.0);   // (UV.y grows downward: subtracting moves the streaks DOWN the screen)
 		vec2 id = floor(g);
 		vec2 f = fract(g);
 		float on = step(0.86 - fi * 0.03, hash(id + fi * 17.0));
-		float line = smoothstep(0.5, 0.42, abs(f.x - 0.5) * 2.0 + 0.3) * smoothstep(0.0, 0.3, f.y) * smoothstep(1.0, 0.5, f.y);
+		// Head at the bottom (the leading end), tail fading upward.
+		float line = smoothstep(0.5, 0.42, abs(f.x - 0.5) * 2.0 + 0.3) * smoothstep(0.05, 0.85, f.y) * smoothstep(1.0, 0.93, f.y);
 		a += on * line * (0.2 - fi * 0.045);
 	}
 	COLOR = vec4(0.85, 0.92, 1.0, a);
