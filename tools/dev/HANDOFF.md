@@ -1047,7 +1047,20 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.69.0 STATE (Nov 22 noon; NEWEST, read this first)
+#### 0.69.1 STATE (Nov 22 evening; NEWEST, read this first)
+- New full-screen screens: main menu (main_menu._build_home, HomeTile), StoryGate, FreeDuelGate (free_duel_gate.gd),
+  RoamGate, TurboGate, CardsGate (cards_gate.gd), profile editor and settings full screen (side_panel _build_full).
+  Backdrops: AcademyBackdrop is still (fade_to only on player action); pictures 3840x2160 in assets/ui (*_title*.jpg),
+  rendered with --tile=ix,iy,n tiles + --gfxset=res:4,aa:3 (see /tmp/ui/vis_PROGRESS.md recipe), import lossy webp 0.92.
+- Crowler/Sheppard/Bastion in Characters.ORDER (Free Duel) and StarLife on the island; Dorothy = ac_vendor (char dorothy).
+- Academy HUD: task box views (Settings.story_task_view), guide only on request (F / click; _guide saved), task spots
+  win the E prompt, restore_npcs after talk tasks, wheel blocked by panels (roam_scene._wheel_for_ui), leads queued.
+- Work was done in copies (/home/claude/yc_*) and merged with /tmp/mergecopy.sh (never take es_strings.gd from a copy:
+  their /tmp/ui/<x>_es.tsv go to extras.tsv + build.py). Orchestration notes: /home/claude/work/acts/ORCHESTRA.md.
+- English Academy story voices wait for credits (~330k needed, ~86k left until Dec 21);
+  /home/claude/work/voices/todo_academy_en_later.json holds the cast's English duel lines.
+
+#### 0.69.0 STATE (Nov 22 noon)
 - 0.69.0 = the whole Academy story: Acts 3 and 4 + epilogue merged (branches act3, act4, acts34), the story polish
   (no "duelar", neutral player lines, ch12 fix, Lumen's goodbye, after-story card), all Spanish voices (Acts 2-4 + polish).
 - Walk audit: 67 walks (47 scripts won, 20 lost), 178 goals reached, 0 blocked, 0 actor blocked, 0 script errors.

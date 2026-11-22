@@ -5,6 +5,19 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.69.1
+
+**New screens, Raul's notes from his first evening with the whole story, and three more duelists.** No cards added: 8,415 total.
+
+- **Full-screen screens in the style of the Academy door**: the main menu (a Continue card that knows what you played last, the modes as picture tiles), the main story (the backdrop is the world your save is in), Free Duel (rivals by era with tabs, the three deck versions explained as Basic, Strong and Competitive, your record and medals, play as any duelist), Free Roam (each world's picture, its hour and weather, today's duels, who is out, favors and shops), Turbo Duel (the night highway, your D-Wheel, races, riders, the Grand Prix, the garage), Decks and collection (your deck big, the count of your collection, each world's shop shelves: buying stays at the counter), the character editor (your duelist large and lit, zoom) and the settings (ten sections, each setting explained, a test sound when you let go of a volume slider).
+- **Menu backdrops are still and sharp**: no drift, no floating lights, no automatic changes; re-rendered at 4K.
+- **Crowler, Sheppard and Bastion in Free Duel and on the island**, with their three deck versions, stars, duel lines and a day of their own; you can challenge them anywhere they are. Dorothy runs the island's card shop. Their voices in Spanish and English.
+- **English voices for everything people say in the open worlds** (1,233 files), and English voices designed for the Academy's own cast.
+- **Academy fixes from Raul's notes**: the mouse wheel no longer zooms the camera behind a panel; a story task always wins the E prompt (the bed's "sleep" was beating "Look at your bed"); Dorothy stays at her counter after you talk to her and the shop is open in the free stretches; the task box no longer flickers, is one small line by default and Tab cycles it to the full list or a tiny chip; in free stretches there is no arrow until you pick a task to be guided to (click it or press F); "New lead" cards come one at a time, low on the right.
+- **Rain falls**: the rain on the lens was scrolling upward.
+- **Your dorm jacket** is the same tone as the other students' (it was a much louder red).
+- **Spanish across the whole game**: no more made-up "duelar" (80 lines), "Puntos de Vida" everywhere, no line that assumes the player is a boy or a girl; the 66 voices that changed were made again.
+
 ## What is in 0.69.0
 
 **The whole Academy story: Acts 3 and 4 and the epilogue, plus a polish pass over all of it.** No cards added: 8,415 total.
