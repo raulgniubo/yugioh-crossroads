@@ -30,6 +30,12 @@ var _hair_box: VBoxContainer
 var _outfit_box: VBoxContainer
 var _summary: Label
 var _before := {}
+var _backdrop: AcademyBackdrop
+var _frame_m: MarginContainer
+var _title: Label
+var _cam: Camera3D
+var _zoom := 0.0          # 0: the whole figure, 1: head and shoulders
+var _zoom_to := 0.0
 var _sleeve_before := ""
 
 
@@ -43,58 +49,75 @@ func _ready() -> void:
 	for f in FIELDS:
 		_before[f] = Profile.get(f)
 	_sleeve_before = Settings.sleeve
-	var dim := ColorRect.new()
-	dim.color = Color(0.01, 0.02, 0.04, 0.9)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(dim)
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(center)
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.052, 0.088, 0.165, 0.97), 26, Color(UITheme.ACCENT, 0.3)))
-	center.add_child(panel)
+	# Full screen since 0.69.1: a still picture of the city behind, the choices on the left over
+	# its dark side, and you standing large on the right in a proper light.
+	theme = UITheme.build()
+	_backdrop = AcademyBackdrop.new(0.28, StoryGate.picture_of("domino"), Color(0.72, 0.9, 1.0))
+	add_child(_backdrop)
+	var veil := ColorRect.new()
+	veil.color = Color(0.01, 0.02, 0.05, 0.35)
+	veil.set_anchors_preset(Control.PRESET_FULL_RECT)
+	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(veil)
+	_frame_m = MarginContainer.new()
+	_frame_m.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(_frame_m)
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 28)
-	panel.add_child(h)
-	h.add_child(_build_preview())
+	h.add_theme_constant_override("separation", 24)
+	_frame_m.add_child(h)
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 10)
-	right.custom_minimum_size = Vector2(760, 0)
-	# A little air to the left of the column: the first slanted button of a row leans a few
-	# pixels past its own box, and against the edge its corner was cut off.
-	var right_m := MarginContainer.new()
-	right_m.add_theme_constant_override("margin_left", 8)
-	h.add_child(right_m)
-	right_m.add_child(right)
-	right.add_child(UITheme.label("NEW DUELIST" if _first_time else "YOUR DUELIST", 54, Color.WHITE, UITheme.title_font()))
-	right.add_child(UITheme.label("This is you in the story, the cities and every duel.", 19, UITheme.TEXT_DIM))
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right.size_flags_stretch_ratio = 1.12
+	h.add_child(right)
+	var prev := _build_preview()
+	prev.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	prev.size_flags_stretch_ratio = 0.88
+	h.add_child(prev)
+	right.add_child(UITheme.label(Loc.t("CROSSROADS"), 18, UITheme.GOLD, UITheme.semi_font()))
+	_title = UITheme.label("NEW DUELIST" if _first_time else "YOUR DUELIST", 78, Color.WHITE, UITheme.title_font())
+	_title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.55))
+	_title.add_theme_constant_override("shadow_offset_y", 4)
+	right.add_child(_title)
+	var bar := ColorRect.new()
+	bar.color = UITheme.ACCENT
+	bar.custom_minimum_size = Vector2(150, 6)
+	bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	right.add_child(bar)
+	var lead := UITheme.label("This is you in the story, the cities and every duel.", 20, UITheme.TEXT_DIM)
+	lead.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	right.add_child(lead)
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 8)
 	right.add_child(tabs)
 	for i in TABS.size():
 		var tb := _toggle(str(TABS[i]))
-		tb.custom_minimum_size = Vector2(150, 52)
+		tb.custom_minimum_size = Vector2(0, 56)
+		tb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tb.add_theme_font_size_override("font_size", 24)
 		tb.pressed.connect(func(): _show_tab(i))
 		tabs.add_child(tb)
 		_tab_btns.append(tb)
-	# What you pick from scrolls; the tabs above and the buttons under it stay put.
+	# What you pick from, on a glass page that scrolls; the tabs above and the buttons under it stay put.
+	var page_box := PanelContainer.new()
+	var pb := UITheme.panel_box(Color(0.035, 0.055, 0.12, 0.84), 20, Color(1, 1, 1, 0.13))
+	pb.content_margin_left = 26
+	pb.content_margin_right = 14
+	pb.content_margin_top = 18
+	pb.content_margin_bottom = 18
+	page_box.add_theme_stylebox_override("panel", pb)
+	page_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right.add_child(page_box)
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(768, 600)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	# The list starts 8 px left of the column and gives those 8 px back inside, so what scrolls
-	# lines up with the tabs while its slanted corners stay whole.
-	UITheme.pad_scroll(scroll, 8, 0)
-	var scroll_m := MarginContainer.new()
-	scroll_m.add_theme_constant_override("margin_left", -8)
-	right.add_child(scroll_m)
-	scroll_m.add_child(scroll)
+	UITheme.pad_scroll(scroll, 8, 6)
+	page_box.add_child(scroll)
 	var holder := VBoxContainer.new()
 	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(holder)
 	for i in TABS.size():
 		var page := VBoxContainer.new()
-		page.add_theme_constant_override("separation", 10)
+		page.add_theme_constant_override("separation", 12)
 		page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		page.visible = false
 		holder.add_child(page)
@@ -112,25 +135,29 @@ func _ready() -> void:
 	if not _first_time:
 		var cancel := Button.new()
 		cancel.text = "Cancel"
-		cancel.custom_minimum_size = Vector2(0, 60)
+		cancel.custom_minimum_size = Vector2(190, 66)
+		cancel.add_theme_font_size_override("font_size", 23)
 		cancel.pressed.connect(_cancel)
 		row.add_child(cancel)
 	var rnd := Button.new()
 	rnd.text = "Surprise me"
-	rnd.custom_minimum_size = Vector2(0, 60)
+	rnd.custom_minimum_size = Vector2(230, 66)
+	rnd.add_theme_font_size_override("font_size", 23)
 	rnd.pressed.connect(_surprise)
 	row.add_child(rnd)
 	var save := Button.new()
 	save.text = "Start my journey" if _first_time else "Save"
 	save.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	save.custom_minimum_size = Vector2(0, 60)
-	save.add_theme_font_size_override("font_size", 28)
+	save.custom_minimum_size = Vector2(0, 66)
+	save.add_theme_font_size_override("font_size", 30)
 	save.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.ACCENT, 0.3), UITheme.ACCENT, 14))
 	save.pressed.connect(_save)
 	row.add_child(save)
 	_rebuild_figure()
 	_show_tab(3 if _first_time else 0)
 	_refresh()
+	_fit()
+	get_viewport().size_changed.connect(_fit)
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.3)
 	await get_tree().process_frame
@@ -139,6 +166,17 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--creator-tab="):
 			_show_tab(clampi(int(a.trim_prefix("--creator-tab=")), 0, TABS.size() - 1))
+
+
+## Margins and the title that fit the window: roomy on a big screen, tighter on a small one.
+func _fit() -> void:
+	var vs := get_viewport_rect().size
+	var k := clampf(vs.y / 1080.0, 0.6, 1.0)
+	for side in ["left", "right"]:
+		_frame_m.add_theme_constant_override("margin_" + side, int(72 * k))
+	_frame_m.add_theme_constant_override("margin_top", int(52 * k))
+	_frame_m.add_theme_constant_override("margin_bottom", int(44 * k))
+	_title.add_theme_font_size_override("font_size", int(78 * maxf(k, 0.7)))
 
 
 func _show_tab(i: int) -> void:
@@ -318,13 +356,13 @@ func _surprise() -> void:
 # ------------------------------------------------------------------ 3D preview
 
 func _build_preview() -> Control:
-	var frame := PanelContainer.new()
-	frame.custom_minimum_size = Vector2(520, 760)
-	var fsb := UITheme.panel_box(Color(0.06, 0.09, 0.19, 1), 14, Color(1, 1, 1, 0.1))
-	fsb.set_content_margin_all(0)
-	frame.add_theme_stylebox_override("panel", fsb)
+	# No box: you stand over the picture, on a lit disc, as big as the screen allows.
+	var frame := Control.new()
+	frame.custom_minimum_size = Vector2(380, 0)
+	frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var svc := SubViewportContainer.new()
 	svc.stretch = true
+	svc.set_anchors_preset(Control.PRESET_FULL_RECT)
 	svc.mouse_filter = Control.MOUSE_FILTER_STOP
 	svc.gui_input.connect(_on_preview_input)
 	svc.mouse_default_cursor_shape = Control.CURSOR_DRAG
@@ -332,7 +370,7 @@ func _build_preview() -> Control:
 	_vp = SubViewport.new()
 	_vp.own_world_3d = true
 	_vp.transparent_bg = true
-	_vp.msaa_3d = Settings.small_view_msaa()
+	_vp.msaa_3d = Viewport.MSAA_4X
 	svc.add_child(_vp)
 	_stage = Node3D.new()
 	_vp.add_child(_stage)
@@ -358,8 +396,8 @@ func _build_preview() -> Control:
 	_stage.add_child(rim)
 	var disc := MeshInstance3D.new()
 	var cm := CylinderMesh.new()
-	cm.top_radius = 0.52
-	cm.bottom_radius = 0.58
+	cm.top_radius = 0.56
+	cm.bottom_radius = 0.62
 	cm.height = 0.06
 	disc.mesh = cm
 	var dm := StandardMaterial3D.new()
@@ -369,26 +407,47 @@ func _build_preview() -> Control:
 	disc.material_override = dm
 	disc.position.y = -0.03
 	_stage.add_child(disc)
-	var cam := Camera3D.new()
-	cam.fov = 30
-	cam.position = Vector3(0, 0.98, 4.35)
-	_stage.add_child(cam)
-	cam.look_at(Vector3(0, 0.9, 0))
-	cam.current = true
-	var hint := UITheme.label("Drag to turn", 16, UITheme.TEXT_DIM)
+	# A ring of light around the disc's edge.
+	var ring := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = 0.605
+	tm.outer_radius = 0.618
+	ring.mesh = tm
+	var rm := StandardMaterial3D.new()
+	rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	rm.albedo_color = Color(UITheme.ACCENT, 0.55)
+	rm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	ring.material_override = rm
+	ring.position.y = 0.005
+	_stage.add_child(ring)
+	_cam = Camera3D.new()
+	_cam.fov = 30
+	_stage.add_child(_cam)
+	_cam.current = true
+	_place_cam()
+	var hint := UITheme.label(Loc.t("Drag to turn") + "   ·   " + Loc.t("Wheel to zoom"), 17, UITheme.TEXT_DIM)
 	hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	hint.offset_top = -34
+	hint.offset_top = -26
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var holder := Control.new()
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(hint)
-	frame.add_child(holder)
+	frame.add_child(hint)
 	return frame
 
 
+## The camera between the whole figure (zoom 0) and head and shoulders (zoom 1).
+func _place_cam() -> void:
+	if _cam == null:
+		return
+	var z := _zoom
+	# (A transform, not look_at: the first time the stage is not in the tree yet.)
+	_cam.transform = Transform3D(Basis(), Vector3(0, lerpf(1.02, 1.42, z), lerpf(4.9, 1.75, z))).looking_at(Vector3(0, lerpf(0.84, 1.4, z), 0), Vector3.UP)
+
+
 func _on_preview_input(ev: InputEvent) -> void:
-	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
+	if ev is InputEventMouseButton and ev.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and ev.pressed:
+		_zoom_to = clampf(_zoom_to + (0.18 if ev.button_index == MOUSE_BUTTON_WHEEL_UP else -0.18), 0.0, 1.0)
+		accept_event()
+	elif ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
 		_drag = ev.pressed
 		if ev.pressed:
 			_auto_spin = false
@@ -411,6 +470,13 @@ func _process(delta: float) -> void:
 			_spin = lerp_angle(_spin, FRONT, clampf(delta * 3.0, 0.0, 1.0))
 	if _figure and is_instance_valid(_figure):
 		_figure.rotation.y = _spin
+	# The right stick up and down zooms, like the wheel.
+	var ry := Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y)
+	if absf(ry) > 0.25:
+		_zoom_to = clampf(_zoom_to - ry * delta * 1.2, 0.0, 1.0)
+	if absf(_zoom - _zoom_to) > 0.001:
+		_zoom = lerpf(_zoom, _zoom_to, clampf(delta * 8.0, 0.0, 1.0))
+		_place_cam()
 
 
 func _rebuild_figure() -> void:
@@ -426,7 +492,7 @@ func _rebuild_figure() -> void:
 # ------------------------------------------------------------------ choices
 
 func _section(t: String) -> Label:
-	return UITheme.label(t, 16, UITheme.ACCENT, UITheme.semi_font())
+	return UITheme.label(t, 18, UITheme.ACCENT, UITheme.semi_font())
 
 
 func _toggle(text: String) -> Button:
@@ -444,7 +510,7 @@ func _toggle(text: String) -> Button:
 ## A round color button. `c.a == 0` is the "as it was made" choice: a ring with a slash.
 func _swatch(c: Color, tip: String) -> Button:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(48, 48)
+	b.custom_minimum_size = Vector2(54, 54)
 	b.toggle_mode = true
 	b.tooltip_text = tip
 	var own := c.a < 0.5
