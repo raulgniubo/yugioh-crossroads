@@ -2372,6 +2372,7 @@ func _lead_tasks() -> Array:
 
 
 var _lead_wait := 0.8
+var _lead_queue: Array = []    # leads waiting for the card on screen to go
 var _lead_live := 0
 var _lead_cards: Array = []     # the lead cards on screen right now
 
@@ -2394,13 +2395,23 @@ func _announce(i: int) -> void:
 		print("LEAD ", i, " from ", str(t.get("from", "")), ": ", str(t.get("label", "")))
 	if _skip:
 		return
+	_lead_queue.append(t)
+	if _lead_queue.size() == 1:
+		_show_lead(t)
+
+
+## One lead card at a time, low on the right above the key hints (the top right holds the
+## Duel Points and the day card): two leads at once used to stack over those and each other.
+func _show_lead(t: Dictionary) -> void:
 	var who := str(t.get("from", ""))
 	var pc := PanelContainer.new()
 	pc.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.045, 0.065, 0.14, 0.95), 14, Color(UITheme.GOLD, 0.85)))
 	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pc.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	pc.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	pc.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	pc.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	pc.offset_right = -30
+	pc.offset_bottom = -96
 	_lead_live += 1
 	_ui.add_child(pc)
 	var mg := MarginContainer.new()
@@ -2436,20 +2447,8 @@ func _announce(i: int) -> void:
 		wl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		wl.custom_minimum_size = Vector2(400, 0)
 		v.add_child(wl)
-	# Under the Duel Points box, and under any lead that is still showing: each card is as tall
-	# as its text, so the next one starts where the last one really ends (they used to be placed
-	# a fixed step apart and landed on each other).
-	var top := 374.0
-	for c in _lead_cards:
-		if is_instance_valid(c):
-			top = maxf(top, float(c.get_meta("foot", 0.0)) + 10.0)
-	pc.offset_top = top
-	pc.set_meta("foot", top + pc.get_combined_minimum_size().y)
 	_lead_cards = _lead_cards.filter(func(c): return is_instance_valid(c))
 	_lead_cards.append(pc)
-	# Wrapped text only knows its real height once it has been laid out: settle them again then.
-	if not get_tree().process_frame.is_connected(_flow_leads):
-		get_tree().process_frame.connect(_flow_leads, CONNECT_ONE_SHOT)
 	Sfx.play("quest", -9.0, 1.15)
 	pc.modulate.a = 0.0
 	pc.offset_left += 40
@@ -2464,7 +2463,11 @@ func _announce(i: int) -> void:
 	tw.tween_callback(func():
 		_lead_live = maxi(0, _lead_live - 1)
 		_lead_cards.erase(pc)
-		pc.queue_free())
+		pc.queue_free()
+		if not _lead_queue.is_empty():
+			_lead_queue.pop_front()
+		if not _lead_queue.is_empty() and is_inside_tree():
+			_show_lead(_lead_queue[0]))
 
 
 func _flow_leads() -> void:
