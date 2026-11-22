@@ -688,6 +688,22 @@ func _debug_args() -> void:
 									print("STORY GATE: pressing ", (bt as Button).text)
 									(bt as Button).pressed.emit()
 									break
+			elif what.begins_with("roam-pick"):
+				# --open=roam-pick: the Free Roam door. roam-pick:<world>: on that world's page.
+				# roam-pick-go:<world>: then press Go as a player would. roampanel: the side panel from before 0.69.1.
+				menu._on_roam()
+				await get_tree().create_timer(0.4).timeout
+				for n in menu.find_children("*", "RoamGate", true, false):
+					var wk := what.get_slice(":", 1)
+					if wk != "" and n._tile_of.has(wk):
+						(n._tile_of[wk] as Button).grab_focus()
+						n._show(wk)
+					if what.begins_with("roam-pick-go"):
+						await get_tree().create_timer(0.6).timeout
+						print("ROAM GATE: pressing ", n._go.text)
+						n._go.pressed.emit()
+			elif what == "roampanel":
+				menu._on_roam_panel()
 			elif what == "settingsend":
 				menu._on_settings()
 				await get_tree().create_timer(0.4).timeout
@@ -743,6 +759,8 @@ func _debug_args() -> void:
 							(n as WorldEnvironment).environment = null
 						elif n is Node3D:
 							(n as Node3D).visible = false
+						elif n is CanvasLayer:
+							(n as CanvasLayer).visible = false
 				await get_tree().create_timer(1.5).timeout
 		if "--unfight-scan" in OS.get_cmdline_user_args():     # dev: list surfaces lying on top of each other, change nothing
 			print("UNFIGHT SCAN finds ", PerfPass.unfight(get_tree().root, true, true))

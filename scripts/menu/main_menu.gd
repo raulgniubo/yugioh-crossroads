@@ -1004,8 +1004,20 @@ func _open_panel(p: SidePanel) -> void:
 			_items[0].grab_focus())
 
 
-## Free Roam starts with a choice of world.
+## Free Roam starts with a choice of world: full screen, in the Academy door's look (0.69.1).
 func _on_roam() -> void:
+	var gate := RoamGate.new()
+	gate.z_index = 100
+	add_child(gate)
+	_panel_open = true
+	gate.closed.connect(func():
+		_panel_open = false
+		if _items.size() > 1:
+			_items[0].grab_focus())
+
+
+## The side panel the Free Roam tile opened before 0.69.1 (kept for the tools that still call it).
+func _on_roam_panel() -> void:
 	var p := SidePanel.new("Free Roam", 640)
 	p.z_index = 100
 	var hint := UITheme.label("Pick a world. Inside, press G any time to jump to another one.", 18, UITheme.TEXT_DIM)
