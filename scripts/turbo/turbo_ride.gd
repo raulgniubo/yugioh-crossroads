@@ -75,6 +75,7 @@ var _events_best := {}        # best place per event
 var _race_d := 0.0
 var _race_t := 0.0
 var _count := 0.0
+var _eye := ""                # dev: --ride-eye, a fixed camera offset for a picture
 
 
 func _ready() -> void:
@@ -100,6 +101,8 @@ func _ready() -> void:
 	var from := str(Router.roam.get("ride_from", ""))
 	_s = float(Router.roam.get("ride_s", {"satellite": 262.0, "newdomino": 1912.0}.get(from, 40.0)))
 	Router.roam["ride_from"] = ""
+	if from != "":
+		Router.roam["ride_gate"] = false     # (came on from a city's ramp, not from the Turbo screen)
 	var came_back := false
 	if Router.story_result != "" and str(Router.roam.get("turbo_rival", "")) != "":
 		var who := str(Router.roam["turbo_rival"])
@@ -148,6 +151,14 @@ func _ready() -> void:
 			get_tree().create_timer(1.0).timeout.connect(_start_race.bind(a.trim_prefix("--race=")))
 		elif a.begins_with("--momentum="):
 			_mom = float(a.trim_prefix("--momentum="))
+		elif a == "--no-ui":
+			# Dev: a clean picture of the road (the Turbo screen's backdrop): no HUD, no toasts.
+			get_tree().create_timer(0.3).timeout.connect(func():
+				for layer in get_tree().root.find_children("*", "CanvasLayer", true, false):
+					(layer as CanvasLayer).visible = false)
+		elif a.begins_with("--ride-eye="):
+			# Dev: hold the camera at an offset from your runner (x ahead, y up, z across), looking at it.
+			_eye = a.trim_prefix("--ride-eye=")
 	if "--traffic-show" in OS.get_cmdline_user_args():
 		# Dev: the four kinds of traffic lined up ahead, keeping pace, for a picture.
 		for k in TRAFFIC.size():
@@ -164,8 +175,41 @@ func _ready() -> void:
 		_start_race.call_deferred()
 	elif "--gp" in OS.get_cmdline_user_args():
 		get_tree().create_timer(1.0).timeout.connect(get_tree().quit)
-	if not came_back:
+	# From the Turbo screen: straight to the thing picked there (an event at the line, the Grand
+	# Prix, the garage, or a rider just up the road).
+	var go := str(Router.roam.get("ride_go", ""))
+	Router.roam["ride_go"] = ""
+	if go != "" and not came_back:
+		_ride_go.call_deferred(go)
+	elif not came_back:
 		Router.toast.call_deferred("The highway ring. Pull alongside a rider and press E to duel, or take an exit lane down to a city.")
+
+
+## What the Turbo screen asked for: "race:<event>", "gp", "garage" or "rider:<key>".
+func _ride_go(go: String) -> void:
+	await get_tree().create_timer(0.8).timeout
+	print("RIDE GO ", go)
+	if go.begins_with("race:"):
+		var id := go.trim_prefix("race:")
+		if EVENTS.has(id):
+			Router.toast(Loc.t("%s: get ready at the line.") % Loc.t(str(EVENTS[id]["name"])))
+			_start_race(id)
+	elif go == "gp":
+		_s = 0.0
+		_gp_key()
+	elif go == "garage":
+		_garage_panel()
+	elif go.begins_with("rider:"):
+		var key := go.trim_prefix("rider:")
+		for r in _riders:
+			if str(r["info"]["key"]) == key:
+				# Put them a little way up the road in your lane, riding easy, so you can catch them.
+				r["x"] = 26.0
+				r["z"] = _z
+				var nm := str(Characters.get_char(key).get("name", key))
+				Router.toast(Loc.t("%s is just up the road. Pull alongside and press E for a Turbo Duel.") % nm)
+				print("RIDE GO rider placed ", key, " lane ", snappedf(_z, 0.1))
+				break
 
 
 func _save() -> void:
@@ -663,6 +707,12 @@ func _curve_at(s: float) -> float:
 
 func _place_camera(w: float) -> void:
 	var c := _curve_at(_s)
+	if _eye != "":
+		var e := _eye.split(",")
+		_cam.position = Vector3(float(e[0]), float(e[1]), _z + float(e[2]))
+		_cam.look_at(Vector3(float(e[3]) if e.size() > 3 else 0.0, 0.9, _z + (float(e[4]) if e.size() > 4 else 0.0)), Vector3.UP)
+		_cam.fov = float(e[5]) if e.size() > 5 else 58.0
+		return
 	# Low and close behind the runner, the way a racing game sits: the runner fills a fifth of
 	# the picture and the road rushes under the lens. The view drops back and widens with speed.
 	var want := Vector3(-5.3 - _speed * 0.022, 2.05 + _y * 0.6, _z * 0.9 + c * 1.1)
@@ -1042,6 +1092,7 @@ func _start_race(mode := "circuit") -> void:
 		_ghost_node = null
 	if mode == "trial" and _ghost.size() >= 4:
 		_ghost_node = track.ghost_runner(TurboGarage.frame(), Color("7cc4ff"))
+	print("RIDE race start ", mode)
 	_race = "count"
 	_count = 3.99
 	_race_d = 0.0
@@ -1368,6 +1419,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		Sfx.ambience("")
 		Pad.walk_mode = false
 		Router.roam.erase("ride_s")
+		if bool(Router.roam.get("ride_gate", false)):
+			Router.menu_open = "turbo"       # came from the Turbo screen: back to it, one more Back to the menu
 		Router.go(Router.MAIN_MENU)
 	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_G) or (pad and Pad.b(event) == JOY_BUTTON_Y):
 		var gm := fposmod(_s, LAP)
