@@ -2837,7 +2837,7 @@ const SCRIPTS := {
 		{"s": "lumen", "t": "Look at the Doctor. Under the desk. He is clapping. Very small claps.", "cam": "close", "emote": "♪"},
 		{"s": "nico", "t": "Doctor Crowler! Is that applause? Under the desk?", "emote": "!"},
 		{"s": "crowler", "t": "I am inspecting this desk for woodworm. Eyes front, all of you.", "do": "stomp"},
-		{"s": "sheppard", "t": "Two duels to one. Duel Academy has won a League match. I have not said that sentence in three years. I intend to say it again at dinner.", "do": "chat", "cam": "low"},
+		{"s": "sheppard", "t": "Two duels to one. Duel Academy has won a League match. I have not said that sentence in eleven years. I intend to say it again at dinner.", "do": "chat", "cam": "low"},
 		{"roster": {"title": "The League of Academies", "sub": "After one match", "rows": [["1 won", "Duel Academy"], ["", "Academy of the Sun"], ["1 lost", "Boreal Academy"]], "out": [["Final", "Apex Academy"]]}},
 		{"remember": "league_boreal_won"},
 		{"campus": {"trophy": "league_boreal"}},
@@ -2893,7 +2893,7 @@ const SCRIPTS := {
 		{"campus": {"sleep": true}},
 		{"cine": false},
 		{"end": "Chapter 12 complete", "unlock": "ac_ch13", "pay": 120, "wake": YROOM + Vector3(0.6, 0, 1.0),
-			"teaser": "Duel Academy won its first League match in three years, two duels to one. Dante left his pin on the bench, and there is a light on the pier. Chapter 13 is on the mission board when you are ready."},
+			"teaser": "Duel Academy won its first League match in eleven years, two duels to one. Dante left his pin on the bench, and there is a light on the pier. Chapter 13 is on the mission board when you are ready."},
 	],
 	"ac_ch13": [
 		{"scene": {"district": "academy", "inside": "", "pos": DOCK + Vector3(0.3, 0, -9.0), "yaw": 3.14, "tod": "sunset", "music": "duel_tense", "away": true},
@@ -3284,6 +3284,7 @@ const SCRIPTS := {
 			"tasks": [
 			{"talk": "nico", "at": RED_OUT + Vector3(4.0, 0, 2.2), "face": 1.57, "optional": true, "label": "Tell Nico it is exam day (Red dorm, front yard)", "from": "lumen", "why": "He will hear it from the whole island otherwise.", "merits": 10, "bond": "nico", "say": [
 				{"s": "nico", "t": "Blue. Today. I know. Dorothy told Bruno, Bruno told the stove, and I heard it from the stove.", "do": "chat"},
+				{"s": "nico", "t": "Ferry rules, by the way: four Saturdays, and I carried the bags three times. My shoulders are a matter of record.", "do": "scratch", "emote": "..."},
 				{"s": "nico", "t": "If you go Blue you will be four hundred steps away. I measured. It is nothing. I measured twice.", "cam": "close"},
 				{"s": "player", "t": "Last time, this day went badly for us."},
 				{"s": "nico", "t": "Last time I was an idiot on a pier. This time I am a professional with a badge. Go and pass.", "do": "cheer"}]},
@@ -5080,7 +5081,7 @@ const SCRIPTS := {
 		{"s": "nico", "t": "It is... we... Duel Academy has... I had a sentence. I practiced a sentence all week.", "cam": "close", "emote": "..."},
 		{"s": "lumen", "t": "The microphone is on. It is getting all of this.", "cam": "close"},
 		{"s": "nico", "t": "THREE TO TWO! DUEL ACADEMY! CHAMPIONS OF THE LEAGUE! Last of four! LAST OF FOUR! Somebody hold this, I have to sit down!", "cam": "wide", "do": "cheer"},
-		{"s": "crowler", "t": "YES! I taught that one! I examined that one myself! Twice!", "cam": "low", "do": "cheer"},
+		{"s": "crowler", "t": "YES! I taught that one! I examined that one myself! Three times!", "cam": "low", "do": "cheer"},
 		{"s": "crowler", "t": "I am not shouting! This is my lecture voice! I am lecturing! Sit down, Apex!", "do": "stomp"},
 		{"s": "bruno", "t": "Give me a minute. It is the onions. There are no onions. Give me a minute.", "cam": "close", "emote": "..."},
 		{"s": "dante", "t": "Three.", "cam": "close", "emote": "...", "unless": "dante_back"},
@@ -5341,7 +5342,7 @@ const SCRIPTS := {
 		{"campus": {"sleep": true}},
 		{"cine": false},
 		{"end": "Chapter 23 complete", "unlock": "ac_ch24", "pay": 150, "wake": BROOM + Vector3(0.6, 0, 1.4),
-			"teaser": "You graduated. The Academy is first of four again, Red never closes, and the direct seat in the Pro League is yours. The Pro League starts on Saturday: the ferry leaves from the pier when you are ready."},
+			"teaser": "You graduated. The Academy is first of four again, Red never closes, and the direct seat in the Pro League is yours. The Pro League starts on Saturday. Chapter 24 is on the mission board when you are ready."},
 	],
 	# ------------------------------------------------------------ Act 4 · the Pro League · "With the Academy's Crest" (chapters 24 to 28 and the epilogue)
 	"ac_ch24": [
@@ -6320,6 +6321,9 @@ const SCRIPTS := {
 		{"s": "nico", "t": "The old captain is third on the Ladder. He comes to dinner on Sundays. He brings nothing. He does every dish.", "do": "chat"},
 		{"s": "nico", "t": "Syrus is the Red prefect. Red has a prefect now. He has a whistle. He has never once used it.", "cam": "close"},
 		{"s": "nico", "t": "Bastion left us a model that predicts everything on this island except Jaden. He says that is the model working."},
+		{"s": "nico", "t": "And the cellar under the Old Dorm opens on Thursdays. Nobody knows who has the keys. I was asked not to look at you while I said that.", "if": "circle_keeper"},
+		{"s": "nico", "t": "The top line of a certain wall still has the same nickname on it. They say nobody is in a hurry.", "unless": "circle_keeper"},
+		{"s": "nico", "t": "Boreal sent a letter after the title. It says: one. That is all. Irina signed it. Tova counted the words."},
 		{"s": "nico", "t": "Morel plays second on the League team. He asked for second. Out loud. Mika has the date.", "if": "dante_back"},
 		{"s": "nico", "t": "Morel captains Apex now. The first thing he did was put a long table in their dining hall. For talking, they say.", "unless": "dante_back"},
 		{"s": "nico", "t": "Vera Lux came over in spring. Only to look, she said. She has been back four times. She peels things.", "cam": "close"},
@@ -6356,6 +6360,8 @@ const SCRIPTS := {
 		{"s": "jaden", "t": "Nope. Nobody. Welcome to the island.", "if": "m_fest_jaden", "emote": "♪"},
 		{"s": "player", "t": "Is it like you?", "emote": "?"},
 		{"s": "lumen", "t": "A small one. It will not talk for a day or two. I did not either. I was shy. Do not laugh.", "cam": "close", "emote": "..."},
+		{"s": "player", "t": "Thank you, Lumen."},
+		{"s": "lumen", "t": "You looked twice. On the boat. Nobody had in a very long time. That is the whole story.", "cam": "close", "emote": "♪"},
 		# ---- last lines
 		{"move": "rookie", "to": DOCK + Vector3(-1.5, 0, -3.2)},
 		{"s": "alexis", "t": "They looked straight at you and had no idea who you were. Enjoy it. It lasts about a week.", "if": "m_fest_alexis", "cam": "close"},
@@ -6375,7 +6381,7 @@ const SCRIPTS := {
 			"Yu-Gi-Oh! and its characters belong to their owners.", "This is a private fan game, made for the love of the duel.", "", "#Thank you for playing"]},
 		{"cine": false},
 		{"end": "Epilogue complete", "pay": 0, "wake": DOCK + Vector3(0.2, 0, -6.0),
-			"teaser": "The story is told. The island is still yours: the Cup, the Circle, the League and the Ladder go on."},
+			"teaser": "The story is told. The island is still yours: its duels, its mission board and your collection are all still here."},
 	],
 	# ------------------------------------------------------------ classes (Monday to Thursday mornings)
 	# One short challenge each, a different one every time you go (CampusClasses). {"class": kind}
