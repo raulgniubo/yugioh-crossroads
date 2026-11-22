@@ -413,7 +413,7 @@ func _ready() -> void:
 	# go (and once more on the way out), so that folder is all another computer needs.
 	if Saves.portable():
 		var keep := Timer.new()
-		keep.wait_time = 15.0
+		keep.wait_time = 5.0
 		keep.autostart = true
 		keep.timeout.connect(Saves.push_live)
 		add_child(keep)

@@ -63,6 +63,7 @@ const STANDINS := {
 	"sheppard": "elder_m", "dorothy": "duelist_f1", "bastion": "duelist_m4", "dante": "duelist_m7",
 	"octavia": "duelist_f2", "crane": "duelist_m3",
 	"gus": "student_boy", "felix": "duelist_m7", "ivo": "duelist_m4",
+	"moth": "street_duelist", "ink": "student_girl",
 }
 ## Duel Academy jackets. Painted over stand-in models only, never over a model you supplied.
 const DORM_COLORS := {"red": Color("d9342b"), "yellow": Color("f2c230"), "blue": Color("2f6fe0")}
@@ -817,6 +818,83 @@ func _made_for(model: Node, nm: String, skel: Skeleton3D) -> String:
 
 ## Off for a look at the old way (bones turned the same amount and nothing else).
 var arms_by_position := true
+
+
+## A domino mask across the eyes (the Midnight Circle): a dark band curved around the face with two
+## pale lenses, hung on the head bone so it turns and nods with the head. Its size and place come
+## from the body's own measurements. Nothing on a body without the usual bones.
+func add_mask(model: Node, color := Color(0.045, 0.045, 0.06)) -> void:
+	var sk := _first_skeleton(model)
+	if sk == null or sk.has_node("Mask"):
+		return
+	var fr := _arm_frame(sk)
+	if fr.is_empty():
+		return
+	var st := _body_stats(sk, fr)
+	var ax: Basis = fr["axes"]
+	var head := sk.get_bone_global_rest(int(fr["head"]))
+	var tall: float = float(st["face_r"]) / 0.28          # chin to the top of the head
+	var eye: Vector3 = (st["face"] as Vector3) + ax.y * tall * MASK_UP
+	var rad := tall * MASK_R
+	var half := tall * MASK_H
+	# The band is an arc around an upright line behind the face; its front sits just off the skin.
+	var centre := eye + ax.z * (float(st["front"]) - tall * MASK_IN - rad)
+	var stl := SurfaceTool.new()
+	stl.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var steps := 14
+	for i in steps:
+		var a0 := deg_to_rad(-66.0 + 132.0 * float(i) / steps)
+		var a1 := deg_to_rad(-66.0 + 132.0 * float(i + 1) / steps)
+		# (narrower towards the temples, like a mask cut from one piece)
+		var h0 := half * (1.0 - 0.45 * absf(a0) / deg_to_rad(66.0))
+		var h1 := half * (1.0 - 0.45 * absf(a1) / deg_to_rad(66.0))
+		var p0 := Vector3(sin(a0) * rad, 0, cos(a0) * rad)
+		var p1 := Vector3(sin(a1) * rad, 0, cos(a1) * rad)
+		for tri in [[p0 + Vector3(0, h0, 0), p1 + Vector3(0, h1, 0), p1 - Vector3(0, h1, 0)], [p0 + Vector3(0, h0, 0), p1 - Vector3(0, h1, 0), p0 - Vector3(0, h0, 0)]]:
+			for p in tri:
+				stl.set_normal(Vector3((p as Vector3).x, 0, (p as Vector3).z).normalized())
+				stl.add_vertex(p)
+	var band := MeshInstance3D.new()
+	band.mesh = stl.commit()
+	var m := StandardMaterial3D.new()
+	m.albedo_color = color
+	m.roughness = 0.55
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	band.material_override = m
+	band.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Two pale lenses where the eyes are.
+	var lens_m := StandardMaterial3D.new()
+	lens_m.albedo_color = Color(0.92, 0.94, 1.0)
+	lens_m.emission_enabled = true
+	lens_m.emission = Color(0.8, 0.86, 1.0)
+	lens_m.emission_energy_multiplier = 0.55
+	lens_m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	for side in [-1.0, 1.0]:
+		var ang: float = deg_to_rad(21.0) * float(side)
+		var lens := MeshInstance3D.new()
+		var q := QuadMesh.new()
+		q.size = Vector2(rad * 0.3, half * 0.62)
+		lens.mesh = q
+		lens.material_override = lens_m
+		lens.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		lens.position = Vector3(sin(ang) * (rad + 0.0015), 0, cos(ang) * (rad + 0.0015))
+		lens.rotation.y = ang
+		band.add_child(lens)
+	var att := BoneAttachment3D.new()
+	att.name = "Mask"
+	sk.add_child(att)
+	att.bone_name = sk.get_bone_name(int(fr["head"]))
+	att.add_child(band)
+	band.transform = head.affine_inverse() * Transform3D(ax, centre)
+
+
+## The mask's measurements, in head heights (chin to crown): how far above the middle of the face
+## the eyes are, the radius of the band, half its height, and how far it sits inside the face's
+## foremost point (the nose, or a fringe of hair).
+const MASK_UP := 0.13
+const MASK_R := 0.36
+const MASK_H := 0.085
+const MASK_IN := 0.05
 
 
 ## What a body measures for the arm pass: the bones, the line of the shoulders, how long the arms

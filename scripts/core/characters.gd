@@ -234,6 +234,11 @@ const STORY_CAST := {
 		"deck": "deck_archfiend", "personality": "cocky", "stars": 2},
 	"ivo": {"name": "Ivo Brandt", "short": "Ivo", "era": "GX", "color": Color("e8c040"), "title": "Yellow dorm, first year. Never raises his voice",
 		"deck": "deck_dark_world", "personality": "cool", "stars": 2},
+	# The Midnight Circle: masks and nicknames. Nobody says who they are by day.
+	"moth": {"name": "The Moth", "short": "Moth", "era": "GX", "color": Color("b0a070"), "title": "The Midnight Circle. Wins a lot, loses loudly",
+		"deck": "deck_insect", "personality": "wild", "stars": 2},
+	"ink": {"name": "Ink", "short": "Ink", "era": "GX", "color": Color("6a78c8"), "title": "The Midnight Circle. Writes down everything you play",
+		"deck": "deck_spellbook", "personality": "cool", "stars": 2},
 }
 
 const PERSONALITY_LINES := {

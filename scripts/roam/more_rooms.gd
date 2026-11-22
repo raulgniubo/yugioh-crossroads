@@ -15,6 +15,9 @@ const ROOMS := {
 	"ac_class": {"district": "academy", "name": "Lecture Hall", "area": "Today's class is in session", "at": Vector3(800, 0, -400), "half": Vector2(8.0, 7.0), "height": 5.0,
 		"door": Vector3(36.4, 0, -19.0), "out": Vector3(-1, 0, 0), "label": "Enter the lecture hall", "music": "shop",
 		"floor": Color(0.5, 0.36, 0.24), "wall": Color(0.92, 0.9, 0.84), "trim": Color("7cc4ff")},
+	"ac_old": {"district": "academy", "name": "The Old Dorm Cellar", "area": "Candles, chalk and a circle on the floor", "at": Vector3(880, 0, -400), "half": Vector2(7.0, 6.0), "height": 3.6,
+		"door": Vector3(-43.6, 0, 46.4), "out": Vector3(0, 0, 1), "label": "Go down to the old cellar", "music": "duel_tense", "dim": true,
+		"floor": Color(0.2, 0.19, 0.21), "wall": Color(0.4, 0.33, 0.32), "trim": Color("b48cff")},
 	"nd_stadium": {"district": "newdomino", "name": "Stadium Concourse", "area": "Fortune Cup qualifiers, gates A and B", "at": Vector3(720, 0, 400), "half": Vector2(11.0, 8.0), "height": 7.0,
 		"door": Vector3(0, 0, -29.6), "out": Vector3(0, 0, 1), "label": "Enter the stadium", "music": "shop",
 		"floor": Color(0.2, 0.22, 0.28), "wall": Color(0.86, 0.88, 0.93), "trim": Color("ffd166")},
@@ -95,6 +98,9 @@ const PEOPLE := {
 			"duel": {"deck": "syrus", "difficulty": 2, "intro": "Chapter twelve: applied dueling!"}},
 	],
 }
+## What you make out on the cellar wall when you stand close to it.
+const WALL_NOTES := ["Nicknames, row over row, in a dozen different hands. Some are older than the paint.", "The top row has one name on it. Nobody has rubbed it out, and nobody has written under it.",
+	"Somebody has drawn a small candle beside every name in the bottom row. One of them is still wet.", "Low down, in a corner: 'Lost four nights running. Came back a fifth.' No name."]
 const CUP_LINES := ["The Fortune Cup. Taller than you thought, and a lot shinier.", "Names are engraved round the base. The newest one is still bright.",
 	"You can see your own face in it. It looks like it belongs there.", "A small plate reads: 'To the duelist the whole city cheered for.'"]
 const COFFEES := ["A Synchro blend, strong and smooth. You feel sharper already.", "Caramel latte with a little dragon drawn in the foam. You almost don't want to drink it.",
@@ -110,6 +116,7 @@ static func dress(city: CityBuilder, key: String, o: Vector3, half: Vector2, hgt
 		"mart": _mart(city, o, half, hgt)
 		"ac_library": _library(city, o, half, hgt)
 		"ac_class": _lecture(city, o, half, hgt)
+		"ac_old": _cellar(city, o, half, hgt)
 		"nd_stadium": _stadium(city, o, half, hgt)
 		"nd_cafe": _cafe(city, o, half, hgt)
 		"hl_lounge":
@@ -937,6 +944,31 @@ static func build_outside(city: CityBuilder, district: String) -> void:
 		var ls := city.neon_sign("LECTURE HALL", lc + Vector3(-4.5, 4.0, 0), Color("7cc4ff"), 60, -PI / 2.0, false)
 		ls.double_sided = true
 		city.side_path(Vector3(37.0, 0.1, -19.0), Vector3(-1, 0, 0), 6.0, 2.6, city.surf("paving", Color(0.74, 0.7, 0.62), 1.15))
+		# The way down to the Old Dorm's cellar: two slanted doors at the foot of the ruin, a chain,
+		# and a moon somebody chalked on the wood.
+		var cd := Vector3(-43.6, 0.1, 45.9)
+		var old_wood := city.surf("wood", Color(0.34, 0.25, 0.18))
+		var old_brick := city.surf("brick", Color(0.5, 0.45, 0.42))
+		for sx: float in [-1.0, 1.0]:
+			city.box(Vector3(0.24, 0.9, 1.5), cd + Vector3(sx * 1.05, 0.3, -0.1), old_brick, false)
+			var leaf := city.box(Vector3(0.92, 0.07, 1.6), cd + Vector3(sx * 0.47, 0.5, 0.0), old_wood, false)
+			leaf.rotation.x = 0.5
+			for b in 2:
+				var band := city.box(Vector3(0.9, 0.03, 0.09), cd + Vector3(sx * 0.47, 0.56 + (0.26 - b * 0.52), -0.45 + b * 0.9), city.mat(Color(0.12, 0.12, 0.14), 0.5, 0.6), false)
+				band.rotation.x = 0.5
+		city.box(Vector3(2.34, 1.0, 0.24), cd + Vector3(0, 0.4, -0.85), old_brick, false)
+		city.box(Vector3(2.1, 0.5, 1.5), cd + Vector3(0, 0.05, -0.05), old_brick)
+		var moon := city.cyl(0.15, 0.15, 0.012, cd + Vector3(-0.47, 0.56, 0.02), city.glow_mat(Color(0.9, 0.9, 0.84), 0.5), null, 16)
+		moon.rotation.x = 0.5
+		var gap := city.box(Vector3(0.04, 0.012, 1.5), cd + Vector3(0, 0.52, 0.02), city.glow_mat(Color(0.7, 0.5, 1.0), 1.6), false)
+		gap.rotation.x = 0.5
+		var down := OmniLight3D.new()
+		down.light_color = Color(0.66, 0.46, 1.0)
+		down.light_energy = 0.9
+		down.omni_range = 4.0
+		down.shadow_enabled = false
+		down.position = cd + Vector3(0, 1.0, 0.6)
+		city.add_child(down)
 		return
 	if district != "domino":
 		return
@@ -1006,9 +1038,13 @@ static func add_spots(scene: Node) -> void:
 			"sat_shack":
 				scene._spots.append({"pos": o + Vector3(half.x - 2.0, 0, half.y - 1.6), "range": 1.6, "label": "Scrap pull  ·  150 DP  ·  a random card", "action": func(): _scrap_pull()})
 				scene._spots.append({"pos": o + Vector3(-half.x + 1.7, 0, 0.4), "range": 1.4, "label": "Buy a drink  ·  10 DP", "action": func(): scene.life._drink() if scene.life else null})
+			"ac_old":
+				scene._spots.append({"pos": o + Vector3(0.0, 0, -half.y + 1.3), "range": 1.9, "label": "Read the wall", "action": func(): Router.toast(Loc.t(WALL_NOTES[randi() % WALL_NOTES.size()]), 4.0)})
 			"ac_class":
-				scene._spots.append({"pos": o + Vector3(1.8, 0, -4.2), "range": 1.6, "label": "Step up for today's class duel", "action": func(): _class_duel(scene)})
-				scene._spots.append({"pos": o + Vector3(0.0, 0, 3.4), "range": 1.4, "label": "Sit in on the lesson (quiz)", "action": func(): _quiz(scene)})
+				# (In the Academy story the hall has its own classes: CampusLife puts the board there.)
+				if not Campus.on:
+					scene._spots.append({"pos": o + Vector3(1.8, 0, -4.2), "range": 1.6, "label": "Step up for today's class duel", "action": func(): _class_duel(scene)})
+					scene._spots.append({"pos": o + Vector3(0.0, 0, 3.4), "range": 1.4, "label": "Sit in on the lesson (quiz)", "action": func(): _quiz(scene)})
 			"ac_library":
 				scene._spots.append({"pos": o + Vector3(-2.6, 0, 4.6), "range": 1.4, "label": "Take the duel quiz", "action": func(): _quiz(scene)})
 				scene._spots.append({"pos": o + Vector3(4.6, 0, 3.0), "range": 1.3, "label": "Read a strategy book", "action": func(): Router.toast(Loc.t(TIPS[randi() % TIPS.size()]))})
@@ -1069,6 +1105,149 @@ static func _lecture(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -
 	for sx: float in [-1.0, 1.0]:
 		for k in 3:
 			_window(city, o + Vector3(sx * (half.x - 0.03), 3.0, -4.0 + k * 4.0), 1.8, 1.8, false)
+
+
+## The nicknames chalked on the cellar wall, rank by rank (top row first). The player's own is
+## added under the Candle row once the Circle has taken them in.
+const WALL_NAMES := [["MIDNIGHT", ["Mister Nobody"]], ["LANTERN", ["Harbor", "Third Bell", "Paper"]], ["CANDLE", ["Verdict", "Margin", "Ink", "Moth"]]]
+const WALL_MORE := ["Sparrow", "Tuesday"]
+
+
+## The cellar under the Old Dorm, where the Midnight Circle meets: a chalk circle on a stone floor,
+## candles, the wall of nicknames, the box of decks and a rack of masks.
+static func _cellar(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> void:
+	var wood := city.mat(Color(0.3, 0.2, 0.13), 0.7)
+	var wood2 := city.mat(Color(0.42, 0.29, 0.18), 0.65)
+	var iron := city.mat(Color(0.12, 0.12, 0.14), 0.5, 0.6)
+	var slate := city.mat(Color(0.07, 0.08, 0.09), 0.9)
+	var chalk := city.glow_mat(Color(0.93, 0.93, 0.86), 0.5)
+	var wax := city.mat(Color(0.93, 0.88, 0.74), 0.6)
+	var flame := city.glow_mat(Color(1.0, 0.72, 0.3), 3.4)
+	var chalk_c := Color(0.62, 0.62, 0.58)
+	var c := o + Vector3(0, 0, -1.0)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	# The circle: two chalk rings drawn by hand, a line across, and a cross where each duelist stands.
+	for ring in [[2.6, 44], [2.42, 40]]:
+		var rr: float = ring[0]
+		var n: int = ring[1]
+		for i in n:
+			var a := TAU * float(i) / n
+			var seg := city.box(Vector3(TAU * rr / n * 0.8, 0.012, 0.05 + rng.randf_range(0.0, 0.025)), c + Vector3(sin(a) * rr, 0.012, cos(a) * rr), chalk, false)
+			seg.rotation.y = a
+			seg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	city.box(Vector3(3.4, 0.012, 0.05), c + Vector3(0, 0.012, 0), chalk, false).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for z: float in [-1.95, 1.95]:
+		for rot: float in [0.6, -0.6]:
+			var x := city.box(Vector3(0.5, 0.012, 0.045), c + Vector3(0, 0.013, z), chalk, false)
+			x.rotation.y = rot
+			x.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Candles: little groups round the circle (none on the way in from the stairs), stuck in their own wax.
+	for deg: float in [45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0]:
+		var a := deg_to_rad(deg)
+		var at := c + Vector3(sin(a) * 3.05, 0, cos(a) * 3.05)
+		for k in 3:
+			var p := at + Vector3(rng.randf_range(-0.22, 0.22), 0, rng.randf_range(-0.22, 0.22))
+			var h := rng.randf_range(0.12, 0.3)
+			city.cyl(0.04, 0.045, h, p + Vector3(0, h / 2.0, 0), wax, null, 8)
+			city.cyl(0.09, 0.11, 0.012, p + Vector3(0, 0.006, 0), wax, null, 8)
+			city.cyl(0.0, 0.026, 0.08, p + Vector3(0, h + 0.05, 0), flame, null, 6).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for p in [Vector3(-2.3, 0.7, -2.3), Vector3(2.3, 0.7, -2.3), Vector3(-2.3, 0.7, 2.0), Vector3(2.3, 0.7, 2.0)]:
+		var l := OmniLight3D.new()
+		l.light_color = Color(1.0, 0.66, 0.34)
+		l.light_energy = 1.5
+		l.omni_range = 6.5
+		l.shadow_enabled = false
+		l.position = c + p
+		city.add_child(l)
+	# The wall: a slate the width of the room's end, with every nickname that ever won here.
+	var wz := -half.y + 0.07
+	city.box(Vector3(10.2, 2.7, 0.08), o + Vector3(0, 1.85, wz - 0.02), slate, false)
+	city.box(Vector3(10.5, 0.12, 0.14), o + Vector3(0, 0.46, wz), wood, false)
+	city.box(Vector3(10.5, 0.12, 0.14), o + Vector3(0, 3.24, wz), wood, false)
+	for sx: float in [-1.0, 1.0]:
+		city.box(Vector3(0.12, 2.9, 0.14), o + Vector3(sx * 5.2, 1.85, wz), wood, false)
+	var rows := [2.78, 2.08, 1.36]
+	for i in WALL_NAMES.size():
+		var y: float = rows[i]
+		_sign(city, Loc.t(str(WALL_NAMES[i][0])), o + Vector3(-4.05, y, wz + 0.05), 0.0, chalk_c * 0.72, 36)
+		var names: Array = WALL_NAMES[i][1]
+		for k in names.size():
+			var x := 0.6 if names.size() == 1 else -1.9 + k * (5.9 / maxf(1.0, names.size() - 1.0))
+			_sign(city, Loc.t(str(names[k])), o + Vector3(x, y + rng.randf_range(-0.05, 0.05), wz + 0.05), 0.0, chalk_c, 50 if i > 0 else 62)
+		if i < WALL_NAMES.size() - 1:
+			city.box(Vector3(9.4, 0.025, 0.02), o + Vector3(0, y - 0.36, wz + 0.04), chalk, false)
+	for k in WALL_MORE.size():
+		_sign(city, Loc.t(str(WALL_MORE[k])), o + Vector3(-1.9 + k * 1.97, 0.86, wz + 0.05), 0.0, chalk_c * 0.8, 46)
+	# Your own nickname, in fresher chalk, once the Circle has written it up.
+	if Campus.on:
+		for nk in [["nick_echo", "Echo"], ["nick_static", "Static"], ["nick_ash", "Ash"]]:
+			if CampusProgress.recalls(str(nk[0])):
+				_sign(city, Loc.t(str(nk[1])), o + Vector3(2.9, 0.86, wz + 0.05), 0.0, Color(0.95, 0.95, 0.9), 54)
+				city.box(Vector3(1.3, 0.025, 0.02), o + Vector3(2.9, 0.66, wz + 0.04), chalk, false)
+	var glow := OmniLight3D.new()
+	glow.light_color = Color(0.66, 0.5, 1.0)
+	glow.light_energy = 0.9
+	glow.omni_range = 7.0
+	glow.shadow_enabled = false
+	glow.position = o + Vector3(0, 2.4, -half.y + 1.6)
+	city.add_child(glow)
+	# The box: a chest of decks nobody owns, on a table by the left wall.
+	var tb := o + Vector3(-half.x + 0.75, 0, 1.4)
+	city.box(Vector3(0.9, 0.07, 1.8), tb + Vector3(0, 0.78, 0), wood2)
+	for lx: float in [-0.36, 0.36]:
+		for lz: float in [-0.8, 0.8]:
+			city.box(Vector3(0.08, 0.76, 0.08), tb + Vector3(lx, 0.38, lz), wood, false)
+	city.box(Vector3(0.5, 0.3, 0.8), tb + Vector3(0, 0.97, -0.2), wood, false)
+	var lid := city.box(Vector3(0.5, 0.05, 0.8), tb + Vector3(-0.2, 1.3, -0.2), wood2, false)
+	lid.rotation.z = -1.0
+	var decks := [Color("d9342b"), Color("2a6cff"), Color("f0c040"), Color("3fbf8a"), Color("c85ad0"), Color("e8e4da"), Color("ff8a3a"), Color("5a5f6a")]
+	for k in decks.size():
+		city.box(Vector3(0.1, 0.13, 0.075), tb + Vector3(-0.1 + (k % 2) * 0.2, 1.13, -0.5 + (k / 2) * 0.2), city.mat(decks[k], 0.7), false)
+	for k in 3:
+		var loose := city.box(Vector3(0.1, 0.075, 0.13), tb + Vector3(rng.randf_range(-0.25, 0.25), 0.855, 0.45 + k * 0.17), city.mat(decks[(k * 3 + 1) % decks.size()], 0.7), false)
+		loose.rotation.y = rng.randf_range(-0.6, 0.6)
+	_sign(city, Loc.t("THE BOX"), o + Vector3(-half.x + 0.06, 2.0, 1.2), PI / 2.0, chalk_c, 46)
+	# The masks: a board of pegs on the right wall. One peg is empty.
+	var mb := o + Vector3(half.x - 0.07, 1.75, -1.4)
+	city.box(Vector3(0.07, 1.4, 3.4), mb, city.mat(Color(0.56, 0.42, 0.28), 0.7), false)
+	for k in 9:
+		if k == 6:
+			city.box(Vector3(0.1, 0.04, 0.04), mb + Vector3(-0.07, 0.3 - (k / 5) * 0.6, -1.2 + (k % 5) * 0.6), iron, false)
+			continue
+		var mp := mb + Vector3(-0.07, 0.3 - (k / 5) * 0.6, -1.2 + (k % 5) * 0.6)
+		city.box(Vector3(0.035, 0.17, 0.46), mp, city.mat(Color(0.05, 0.05, 0.07), 0.55), false)
+		for ez: float in [-0.11, 0.11]:
+			city.box(Vector3(0.04, 0.06, 0.11), mp + Vector3(-0.004, 0.008, ez), city.glow_mat(Color(0.86, 0.9, 1.0), 0.45), false)
+	_sign(city, Loc.t("LEAVE YOUR NAME AT THE DOOR"), o + Vector3(half.x - 0.06, 2.72, -1.4), -PI / 2.0, chalk_c * 0.85, 34)
+	# What the old dorm left down here: crates, barrels, a trunk, a bed frame on its side.
+	for cr in [[Vector3(5.7, 0, 4.7), 0.8], [Vector3(5.75, 0.8, 4.75), 0.62], [Vector3(4.75, 0, 5.0), 0.66], [Vector3(-5.6, 0, -3.6), 0.74], [Vector3(-5.9, 0, 4.9), 0.7]]:
+		var s: float = cr[1]
+		var cb := city.box(Vector3(s, s, s), o + (cr[0] as Vector3) + Vector3(0, s / 2.0, 0), wood2 if s > 0.7 else wood)
+		cb.rotation.y = rng.randf_range(-0.2, 0.2)
+	for bp in [Vector3(6.1, 0, 3.3), Vector3(-6.1, 0, 3.9), Vector3(5.4, 0, -4.9)]:
+		city.cyl(0.36, 0.33, 0.92, o + bp + Vector3(0, 0.46, 0), wood2, null, 14)
+		for hy: float in [0.2, 0.72]:
+			city.cyl(0.375, 0.375, 0.05, o + bp + Vector3(0, hy, 0), iron, null, 14)
+	city.box(Vector3(1.1, 0.5, 0.6), o + Vector3(3.6, 0.25, 5.2), city.mat(Color(0.24, 0.16, 0.2), 0.7))
+	city.box(Vector3(1.14, 0.06, 0.64), o + Vector3(3.6, 0.52, 5.2), iron, false)
+	for by: float in [0.5, 1.4]:
+		city.box(Vector3(0.05, 0.05, 1.9), o + Vector3(6.6, by, -4.0), iron, false)
+	for bz: float in [-4.9, -3.1]:
+		city.box(Vector3(0.05, 1.5, 0.05), o + Vector3(6.6, 0.75, bz), iron, false)
+	# The Voice's megaphone, on the crate by the wall. It has never worked.
+	var mg := city.cyl(0.17, 0.045, 0.4, o + Vector3(-5.6, 0.86, -3.6), city.mat(Color(0.74, 0.16, 0.14), 0.5), null, 14)
+	mg.rotation.z = PI / 2.0
+	mg.rotation.y = 0.5
+	# The house rules, on a slate by the stairs.
+	var hr := o + Vector3(-3.0, 1.55, half.y - 0.07)
+	city.box(Vector3(2.3, 1.3, 0.06), hr, slate, false)
+	city.box(Vector3(2.44, 0.07, 0.1), hr + Vector3(0, 0.68, 0), wood, false)
+	city.box(Vector3(2.44, 0.07, 0.1), hr + Vector3(0, -0.68, 0), wood, false)
+	_sign(city, Loc.t("HOUSE RULES"), hr + Vector3(0, 0.4, -0.05), PI, chalk_c, 44)
+	_sign(city, Loc.t("NO JACKETS  ·  NO NAMES"), hr + Vector3(0, 0.08, -0.05), PI, chalk_c * 0.85, 30)
+	_sign(city, Loc.t("ONE DUEL A NIGHT"), hr + Vector3(0, -0.2, -0.05), PI, chalk_c * 0.85, 30)
+	_sign(city, Loc.t("THE WALL REMEMBERS"), hr + Vector3(0, -0.46, -0.05), PI, chalk_c * 0.7, 26)
 
 
 ## A cup at the cafe: costs a little, comes with a duel tip from whoever is at the next table.

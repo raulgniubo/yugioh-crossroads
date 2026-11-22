@@ -53,6 +53,7 @@ static func read() -> ConfigFile:
 static func write(cfg: ConfigFile) -> void:
 	if cfg.save(PATH + ".new") != OK or DirAccess.rename_absolute(PATH + ".new", PATH) != OK:
 		cfg.save(PATH)
+	Saves.push_file(PATH.get_file())
 
 
 static func _state() -> Dictionary:
@@ -385,6 +386,41 @@ static func growth(who: String) -> int:
 		if chapter_done(str(ch)):
 			n += 1
 	return n
+
+
+## How strong somebody on the island is right now: what they are worth by themselves, plus a star
+## for every chapter that made them grow, plus (your own year only) one for every dorm you have
+## climbed, because they have been climbing too. Never more than five.
+static func stars_now(who: String, base: int) -> int:
+	var n := base + growth(who)
+	if who in CampusData.CLASSMATES:
+		n += dorm()
+	return clampi(n, 1, 5)
+
+
+## The deck somebody on the island brings, moved by how you play: your difficulty setting (Hard a
+## step up the ladder Starter, Standard, Full; Extreme two) and one more step when you brought your
+## own collection instead of building one here. A whole deck stays whole.
+static func deck_now(key: String) -> String:
+	var harder := Saves.story_difficulty() + (0 if own_cards() else 1)
+	if harder <= 0 or not key.contains("@"):
+		return key
+	var sp: Array = DeckTiers.split(key)
+	return DeckTiers.with_version(str(sp[0]), DeckTiers.shift(str(sp[1]), harder))
+
+
+## The island's best (they play their whole deck and think at Extreme from the first day): beating
+## one of them while you still wear red is a trophy, and they remember it. True the first time.
+const ELITE := ["zane", "jaden", "aster", "sato"]
+
+static func beat_elite(who: String) -> bool:
+	if not (who in ELITE) or dorm() != 0:
+		return false
+	CampusProgress.remember("beat_" + who)
+	if (v("trophies", []) as Array).has("beat_elite"):
+		return false
+	trophy("beat_elite")
+	return true
 
 
 static func _cup_day() -> void:

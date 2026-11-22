@@ -1047,7 +1047,55 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.66.1 STATE (Nov 21, evening; NEWEST, read this first)
+#### 0.67.0 STATE (Nov 21, night; NEWEST, read this first)
+- ACT 1 "ROJO" IS COMPLETE WITH EVERYTHING: prologue + ch1-7, classes, the Midnight Circle's Candle rank, rival decks that grow.
+  0.66.1 (voices in the world) was committed and pushed but never shipped by itself: 0.67.0 is the build that carries both.
+  Raul asked for a note when Act 1 was complete "con todo todo": it went out with this build's report.
+- CLASSES (scripts/core/campus_classes.gd `CampusClasses`, scripts "class_theory|practice|build|history" in CampusData.SCRIPTS,
+  `CampusData.CLASSES_OPEN = true`): Monday-Thursday mornings, open after ac_ch1, one a day, 10/20/30 merits for 1/2/3 stars, the
+  morning is spent. Theory = puzzle duel "@class" (Puzzles class_1..5, "real_only", "exam", "class": off the puzzle board), two
+  attempts (flags "solved", "second"). Practice = PRACTICE conditions, `condition_met(Router.last_stats)` ("directs", "summons" are
+  counted in duel_scene). Build = scripts/ui/class_build.gd `ClassBuild` (60 cards from `CampusClasses.pool(seed)`, pick 40,
+  `player_list`/`opponent_list` in the duel config). History = lent decks (`my_deck`, `opp_deck`, full).
+  New story steps: {"class": kind} (sets flag v<N>), {"flag": name}, {"class_check": "practice"}, {"build": true}, {"class_end": kind},
+  {"circle_end": n}, {"mask_player": true}; actor options "mask", "called" (the name on their lines), "sit". Duel keys "class",
+  "circle", "puzzle"/"rule": "@class".
+- WHERE: classes are in the LECTURE HALL (MoreRooms "ac_class", CampusData.LECT = (800,0,-400); board at -z, door at +z). In the story
+  the room's own people/spots step aside: "class_prof" is in CampusData.AWAY and MoreRooms.add_spots skips the free-roam class duel and
+  quiz when Campus.on; CampusLife puts "Today's class" at LECT + (0,0,3.0). Five seated extras (cls_a..e) in every class scene.
+- THE CIRCLE (scripts/core/campus_circle.gd `CampusCircle`, scripts circle_0..4): opens after ac_ch2, night only, one duel a night,
+  state in campus "circle" {met, wins, night}. Night rules: 1 = 4000 LP each, 2 = hand 3, 3 = both decks out of BOX, 4 = swap decks
+  (`opp_deck_exact`). Fourth win: trophy circle_candle + CANDLE_PRIZE. Nicknames: remember nick_echo|nick_static|nick_ash.
+  Cast under masks, with "called": nico = The Voice, mika = Margin, octavia = Verdict; moth and ink are new characters.
+  ROOM: MoreRooms "ac_old" (CampusData.CELLAR = (880,0,-400)), a "dim" room (Interiors._build: no wall strip, no ceiling panels,
+  weak warm lights), dressed by MoreRooms._cellar (chalk circle, candles, the wall of names from WALL_NAMES + your nickname, the box,
+  masks, house rules). Island door: slanted cellar doors at the foot of the Old Dorm (MoreRooms.build_outside), spot at
+  (-43.6, 47.3). Free Roam: you walk in ("Read the wall"). Campus: CampusLife swaps that spot's label/action for `knock`.
+  Masks: Avatars.add_mask (a band of 14 segments on a BoneAttachment "Mask"), RoamFigure.wear_mask().
+- RIVAL DECKS: Campus.stars_now(who, base) (+growth, +dorm for CampusData.CLASSMATES), Campus.deck_now(key) (difficulty and libre shift
+  the version), Campus.ELITE + beat_elite(who) (trophy beat_elite, remembered "beat_<who>").
+- VOICES: batches 272-278, 125 files (crowler, nico, lumen x3, sato, sheppard, wild_m = gus/moth, cocky_m, cool_m, cool_f = ink, mika,
+  octavia), made.json 5,087. NEXT BATCH NUMBER: 279. pack2.py uses one temp file (_t.wav): run packs ONE AFTER ANOTHER in a sandbox
+  call (`a; b`), never with `&` (the second one died reading the first one's temp file).
+- TESTS: /tmp/walkall.sh now runs 23 walks (8 chapters, 4 classes, 5 nights, 6 lost runs) three at a time through /tmp/walkone.sh
+  (own HOME each), about 17 minutes; lowest free RAM seen 2.2 GB. New dev tools: `--reach=x,z,x,z,r[;...]` (WalkCheck from A to B, in
+  roam), `--inside=<any room>[,x,z,yaw]`, `--class-desk`, `--faces=keys:mk` (masks), /tmp/shot.sh out.png args, /tmp/sheet.py (contact
+  sheet), /tmp/realduel.sh <script> (a real duel inside a story script: --story-duel --human-test; the run does not come back from the
+  result screen by itself, read DUEL START / DUEL OVER in /tmp/rd_<script>.log).
+- SAVES IN A RELEASE BUILD (found by /tmp/killside.sh <script> <step> /tmp/linrel/Crossroads.x86_64): the portable folder copy
+  (Saves.push_live) ran every 15 s and pull_live at start prefers the FOLDER's copy, so a hard kill lost up to 15 s of Academy
+  progress (a class restarted at step 0). Now Campus.write() calls Saves.push_file("campus.cfg") every time, and the timer is 5 s
+  (settings.gd). The dev build (no "Crossroads Data" beside it) never showed this. LinuxTest preset recipe: copy the Windows
+  preset's include_filter/exclude_filter ("data/*.json, data/ocg/*" / "tests/*, tools/*, native/*"), or the build has no card data.
+- The CI profile (no big card set) has no theme decks: tests that need them are guarded with `CardData.NAME_TO_ID.has("number 39: utopia")`.
+  `_test_vault` itself stops with a script error at that card on the CI profile (old, not counted as a failure): worth guarding.
+- NOT DONE: classes/Circle in Free Roam (only the rooms are), a mask in the duel scene, a cellar duel field (Circle duels use the
+  "academy" field), win rates per class, Lantern and Midnight ranks (Acts 2 and 3). Other worlds' voices: about 720 lines / 37,000
+  characters for domino, satellite, newdomino, heartland (`dump_world.tscn -- out.json domino,satellite,newdomino,heartland`).
+- Plan doc (Claude Docs 3534f9ac-..., body node 2a29b44e-9fa3) is at rev 150: three "Hecho en 0.67.0" notes (Circle, classes, decks).
+- NEXT: voices for the other worlds (fix gendered "Bienvenido..." lines as each gets voices), then Act 2 (chapter 8 "A Room of Your Own").
+
+#### 0.66.1 STATE (Nov 21, evening; committed, shipped inside 0.67.0)
 - 0.66.0 (chapter 7 + the fixes from Raul's first playthrough) is shipped: Windows parts are in the chat. Its MAC INSTALL DID NOT HAPPEN:
   his Mac disk is full (0.76 GB free of 995). With his say-so ("Puedes borrar lo q se puede en la mac?", delete permission approved for
   the game folder, this session only) the two `_to_delete` folders were emptied (78 items) and that was not enough. He was told to restart

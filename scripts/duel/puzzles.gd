@@ -50,6 +50,22 @@ const LIST := [
 		"hint": "A monster you summon this turn can still be useful if it never attacks.",
 		"hand": ["Enemy Controller", "Vorse Raider"], "mine": [["Gemini Elf", "atk"]],
 		"theirs": [["Ancient Gear Golem", "atk"], ["Ancient Gear Soldier", "atk"]]},
+	# Doctor Crowler's Duel Theory class (Academy story): one a week. "class": not on the puzzle board either.
+	{"id": "class_1", "real_only": true, "title": "Class: Take and Give", "stars": 2, "exam": true, "class": true, "opp_lp": 2600, "my_lp": 4000,
+		"hint": "Riryoku halves one monster and hands that half to another. Then one more push.",
+		"hand": ["Riryoku", "Rush Recklessly"], "mine": [["Gemini Elf", "atk"]], "theirs": [["Summoned Skull", "atk"]]},
+	{"id": "class_2", "real_only": true, "title": "Class: The Soft Back", "stars": 3, "exam": true, "class": true, "opp_lp": 1800, "my_lp": 4000,
+		"hint": "A monster that is put face-down shows its DEF, not its ATK. And some attacks go through a defender.",
+		"hand": ["Book of Moon", "Fairy Meteor Crush"], "mine": [["Gemini Elf", "atk"]], "theirs": [["Gene-Warped Warwolf", "atk"]]},
+	{"id": "class_3", "real_only": true, "title": "Class: Everything, Now", "stars": 2, "exam": true, "class": true, "opp_lp": 4800, "my_lp": 4000,
+		"hint": "Limiter Removal doubles every Machine you control, and destroys them when the turn ends. If the duel ends first, nobody minds.",
+		"hand": ["Limiter Removal"], "mine": [["Mechanicalchaser", "atk"], ["X-Head Cannon", "atk"]], "theirs": [["Summoned Skull", "atk"]]},
+	{"id": "class_4", "real_only": true, "title": "Class: Read Both Halves", "stars": 3, "exam": true, "class": true, "opp_lp": 1400, "my_lp": 4000,
+		"hint": "Megamorph doubles a monster while your Life Points are the lower ones. While yours are the higher ones, it halves it. Nothing says the monster has to be yours.",
+		"hand": ["Megamorph", "Axe of Despair"], "mine": [["Gemini Elf", "atk"]], "theirs": [["Blue-Eyes White Dragon", "atk"]]},
+	{"id": "class_5", "real_only": true, "title": "Class: Twice", "stars": 1, "exam": true, "class": true, "opp_lp": 2800, "my_lp": 4000,
+		"hint": "Tryce costs a card from your hand and 500 ATK. It pays you back with a second attack.",
+		"hand": ["Twin Swords of Flashing Light - Tryce", "Negate Attack"], "mine": [["Gemini Elf", "atk"]], "theirs": []},
 ]
 
 

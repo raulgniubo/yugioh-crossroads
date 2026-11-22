@@ -81,6 +81,12 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 		add_child(l)
 
 
+## A mask across the eyes (the Midnight Circle).
+func wear_mask() -> void:
+	if _model:
+		Avatars.add_mask(_model)
+
+
 func _add_head_look() -> void:
 	var sk := Avatars._skeleton(_model)
 	if sk == null:

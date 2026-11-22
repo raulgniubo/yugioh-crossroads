@@ -218,6 +218,8 @@ func _after_duel() -> void:
 				var nd := n[0] as Dictionary
 				var their := str(nd.get("dorm", Avatars.UNIFORMS.get(str(nd.get("char", "")), "")))
 				Campus.duel_result(won, int(nd.get("duel", {}).get("difficulty", 1)) + 1, their)
+				if won and Campus.beat_elite(str(nd.get("char", ""))):
+					Router.toast(Loc.t("Beat one of the island's best before your first promotion") + "  ★", 5.0)
 			if won:
 				_beaten[who] = true
 				(CampusProgress if Campus.on else StoryProgress).bump("street_wins")
@@ -1930,8 +1932,12 @@ func _start_duel() -> void:
 	# show's characters always play their own deck whole.
 	var stars := Unlocks.stars_of(d)
 	if Campus.on:
-		stars = mini(5, stars + Campus.growth(opp_key))
+		stars = Campus.stars_now(opp_key, stars)
 	var opp_deck := DeckTiers.for_duel(str(duel.get("deck", "joey")), opp_key, stars)
+	if Campus.on:
+		# Your difficulty setting moves their decks as in the story (Hard a step up, Extreme two), and
+		# so does bringing your own collection along. A deck that is somebody's own stays whole.
+		opp_deck = Campus.deck_now(opp_deck)
 	Router.duel_config = {
 		"opponent": opp_key, "opponent_deck": opp_deck,
 		"player_deck": Collection.active_deck(), "player_char": "player",
@@ -2336,8 +2342,8 @@ func _debug() -> void:
 			# Dev: stand in a room (--inside=yel_room_2[,x,z,yaw] from the room's centre).
 			var ip := a.trim_prefix("--inside=").split(",")
 			await get_tree().create_timer(0.6).timeout
-			if AcademyRooms.ROOMS.has(ip[0]):
-				var io: Vector3 = AcademyRooms.ROOMS[ip[0]]["at"]
+			if _rooms.has(ip[0]):
+				var io: Vector3 = _rooms[ip[0]]["at"]
 				_player.position = io + Vector3(float(ip[1]) if ip.size() > 1 else 0.6, 0, float(ip[2]) if ip.size() > 2 else 0.8)
 				_yaw = float(ip[3]) if ip.size() > 3 else 0.6
 				_figure.rotation.y = _yaw + PI
@@ -2375,6 +2381,8 @@ func _debug() -> void:
 						if bi >= 0:
 							head = (sk as Skeleton3D).global_transform * (sk as Skeleton3D).get_bone_global_pose(bi).origin + Vector3(0, 0.09, 0)
 							break
+				if "mk" in tag:      # the Midnight Circle's mask
+					(fig as RoamFigure).wear_mask()
 				if "nc" in tag:      # try: casts no shadow (so none on itself)
 					for mi in fig.find_children("*", "MeshInstance3D", true, false):
 						(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -2435,6 +2443,13 @@ func _debug() -> void:
 			var target := Vector3(float(e[3]), float(e[4]), float(e[5]))
 			eye.look_at(target, Vector3.FORWARD if absf(eye.global_position.x - target.x) + absf(eye.global_position.z - target.z) < 0.01 else Vector3.UP)
 			eye.current = true
+		elif a.begins_with("--reach="):
+			# Dev: can somebody on foot get from one point to within r of another? --reach=x,z,x,z,r[;...]
+			await get_tree().create_timer(0.8).timeout
+			for leg in a.trim_prefix("--reach=").split(";"):
+				var q := leg.split(",")
+				var got: Dictionary = WalkCheck.reach(_player, Vector3(float(q[0]), 0.1, float(q[1])), Vector3(float(q[2]), 0, float(q[3])), float(q[4]) if q.size() > 4 else 1.5)
+				print("REACH ", leg, " -> ", "ok" if got["ok"] else "BLOCKED", "  closest ", got["closest"], "  left ", got["left"])
 		elif a.begins_with("--walk-to="):
 			# Collision check: walk in straight lines through the listed points and report
 			# where the player ends up. --walk-to=x,z;x,z;...

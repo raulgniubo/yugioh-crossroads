@@ -268,6 +268,20 @@ static func save_to(slot: String) -> bool:
 static var _auto_at := -100000
 
 
+## One save file into the folder right now, without waiting for the next round of push_live. The
+## Academy's file goes this way at every step it saves, so a game that is closed hard (or a power
+## cut) a moment later still continues from that step: at the next start the folder's copy is the
+## one that is played.
+static func push_file(f: String) -> void:
+	if not portable():
+		return
+	var to := live_dir()
+	if not DirAccess.dir_exists_absolute(to):
+		return      # (the first full copy makes the folder)
+	if FileAccess.file_exists("user://" + f):
+		DirAccess.copy_absolute("user://" + f, to.path_join(f))
+
+
 static func autosave(force := false) -> void:
 	if admin:
 		return

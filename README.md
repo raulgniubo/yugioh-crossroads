@@ -5,6 +5,27 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.67.0
+
+**Academia de Duelos, Act 1 "Rojo": complete.** Classes, the first rank of the Midnight Circle and rivals whose decks grow with you, on top of the prologue and the seven chapters. In Spanish, every line spoken. This build also carries everything listed under 0.66.1 (voices in the open world), which never shipped by itself. No cards added: 8,415 total.
+
+- **Classes.** Monday to Thursday mornings, in the Lecture Hall on the island (the brick building east of the practice fields). Walk in, and the board half way down the aisle says what is on today. Going is never required. A class spends the morning and pays 10, 20 or 30 merits for one, two or three stars.
+  - **Monday, Duel Theory (Crowler).** A field already set and one turn to win it, played on a real duel field. Five problems, a different one each week. Three stars at the first attempt, two at the second.
+  - **Tuesday, Practice (Sato).** A duel against a classmate with a condition: win without one direct attack, win starting from 1000 Life Points, or put three monsters on your field in a single turn and win. Three stars for winning the way she asked, two for winning anyhow.
+  - **Wednesday, Deck Building (Crowler).** Sixty cards on your desk, a different sixty each time. You pick forty (or press "fill the rest for me"), and duel a classmate who just did the same.
+  - **Thursday, History of Dueling (Sheppard).** You are lent a famous old deck and your partner another one: the magicians against the dragons, the gambler against the harpies, and each of them from the other side of the table. Your own deck stays in its box.
+- **The Midnight Circle, the Candle rank.** Opens after chapter 2. At night, knock on the cellar doors at the foot of the Old Dorm. Inside: no jackets, no names, everybody wears a mask (you too) and goes by a nickname, which the Voice chalks on the wall. You choose yours: Eco, Estática or Ceniza. One duel a night, and each night has a house rule: 4000 Life Points each; three cards in your opening hand; both of you play a deck out of the box; you swap decks and play theirs while they play yours. Losing costs nothing but the night. The fourth win finishes the rank: a trophy, a card, and your nickname stays on the first row. The Lantern rank belongs to Act 2.
+- **A room for the Circle.** The cellar under the Old Dorm is a new room: a chalk circle on a stone floor, candles, the wall of nicknames (yours appears on it once you are in), the box of decks, a board of masks and the house rules by the stairs. Outside the story (Free Roam) you can walk down and read the wall.
+- **Classes are held in the Lecture Hall**, which already existed, with classmates sitting at the desks. In the story it belongs to Crowler, Sato and Sheppard.
+- **Rivals grow with you.** Students of your own year bring a stronger version of their deck each time you move up a dorm, and the difficulty you chose moves everybody a step. The island's best (Zane, Jaden, Aster, Professor Sato) play their whole deck at the hardest level from the first day: beating one of them while you still wear red is a trophy, and they remember it.
+- **Your agenda** (the small panel with the next steps) lists today's class, your record in each class and your candles at the Circle. Three new missions and two new trophies.
+- **Fixed: a game closed hard could go back a little.** With the game folder beside the game (how it ships), your progress was copied into that folder every 15 seconds, and at the next start the folder's copy is the one that is played. If the game was killed or the power went within those seconds, the Academy story continued from the copy before: a class restarted from its first line. Now the Academy's save goes into the folder at every step it saves, and everything else every 5 seconds. Found with the kill-and-continue test in a release build: killed in the middle of Duel Theory, Deck Building and two Circle nights, each continued at the step it was on.
+- In the story, the names on screen in the cellar are the nicknames (La Voz, Margen, Veredicto), and the card text shows on the Deck Building desk for every card.
+- 125 new voice files for the classes and the Circle (5,087 in all).
+- Tests: a walk audit now plays every chapter, every class and every Circle night (won and lost), three at a time, in about 17 minutes instead of 40.
+
+Not done or not checked in this build: classes and the Circle are story-mode only (Free Roam has the Lecture Hall's old class duel and the cellar to visit, not the new classes); there is no mask in the duel scene itself; I did not hear the 125 new voices one by one; how hard each class is was not measured with many duels; nothing here was seen on a real Windows or Mac graphics card.
+
 ## What is in 0.66.1
 
 **The Academy talks.** People in the world now speak out loud, in Spanish. No cards added: 8,415 total.

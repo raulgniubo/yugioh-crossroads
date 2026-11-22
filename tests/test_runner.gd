@@ -32,6 +32,8 @@ func _ready() -> void:
 	_test_0640()
 	_test_campus()
 	_test_world_voices()
+	_test_classes()
+	_test_circle()
 	var stress := OS.get_environment("STRESS_FOLDER")
 	if stress != "":
 		CardData.load_external(stress)
@@ -10788,7 +10790,8 @@ func _test_campus() -> void:
 	var es_campus: Dictionary = load("res://scripts/core/es_campus.gd").ES
 	for ch in CampusData.SCRIPTS:
 		var sc: Array = CampusData.SCRIPTS[ch]
-		check(sc.size() > 0 and (sc[sc.size() - 1] as Dictionary).has("end"), "Academy chapter %s ends with an end step" % ch)
+		var last_step: Dictionary = sc[sc.size() - 1] if sc.size() > 0 else {}
+		check(last_step.has("end") or last_step.has("class_end") or last_step.has("circle_end"), "Academy chapter %s ends with an end step" % ch)
 		for st in sc:
 			if (st as Dictionary).has("t"):
 				check(not str(st["t"]).contains("{player}"), "a spoken Academy line never needs the player's name: %s" % str(st["t"]).left(40))
@@ -10953,7 +10956,7 @@ func _test_campus() -> void:
 	for pz2 in Puzzles.LIST:
 		if not bool((pz2 as Dictionary).get("exam", false)):
 			on_board += 1
-	check(on_board == Puzzles.LIST.size() - 3, "the three exam problems are kept off the puzzle board")
+	check(on_board == Puzzles.LIST.size() - 8, "the three exam problems and the five class problems are kept off the puzzle board")
 	check(CampusData.TROPHIES.has("promotion_yellow") and Campus.chapter_done(str(CampusData.ACT_CLOSERS[0])) == false, "the promotion has a trophy, and the act's last chapter is known")
 	Campus.put("cup", {"open": true, "pts": [5, 9, 14], "since": 1})
 	Campus.trophy("rookie_champion")
@@ -11031,3 +11034,164 @@ func _test_world_voices() -> void:
 	check(not Voices.say_as("kind_m", "Hey! Good to see you."), "with voices off nobody calls out to you")
 	Settings.voices_on = was
 	check(not Voices.say_as("kind_m", "There is no such line anywhere in the game."), "a line with no voice file is just shown")
+
+
+func _test_classes() -> void:
+	# (the small card set CI runs with has no theme decks; the full set does)
+	var big_set: bool = CardData.NAME_TO_ID.has("number 39: utopia")
+	# The Academy's classes: Monday to Thursday mornings, one challenge each, a new one every time.
+	var had := FileAccess.file_exists(Campus.PATH)
+	var keep := FileAccess.get_file_as_bytes(Campus.PATH) if had else PackedByteArray()
+	var was_on := Campus.on
+	Campus.new_game("academia")
+	Campus.on = true
+	check(CampusData.CLASSES_OPEN and not CampusClasses.unlocked() and CampusClasses.now() == "", "no classes before your first day is over")
+	Campus.finish_chapter("ac_ch1")
+	Campus.set_time(8, 0)        # a Monday morning
+	check(Campus.weekday() == 0 and CampusClasses.now() == "theory", "Monday morning is Duel Theory")
+	for d in 4:
+		Campus.set_time(8 + d, 0)
+		var k := CampusClasses.now()
+		check(k == str(CampusClasses.KINDS[d]) and CampusData.SCRIPTS.has("class_" + k), "%s has its class and its script" % Campus.WEEK[d])
+		check(str(CampusData.WEEK_PLAN[d][0]) == str(CampusClasses.NAMES[k]), "the week plan names the class of %s" % Campus.WEEK[d])
+	Campus.set_time(12, 0)
+	check(CampusClasses.now() == "", "there is no class on a Friday")
+	Campus.set_time(8, 1)
+	check(CampusClasses.now() == "", "there is no class in the afternoon")
+	# Going to one: the stars, the merits, the morning spent, the next version next time.
+	Campus.set_time(8, 0)
+	var m0 := Campus.merits()
+	check(CampusClasses.variant("theory") == 0, "your first Duel Theory class is the first problem")
+	check(CampusClasses.stars("theory", {"solved": true, "won": true}) == 3 and CampusClasses.stars("theory", {"second": true, "won": true}) == 2
+			and CampusClasses.stars("theory", {"second": true, "lost": true}) == 1, "Duel Theory: three stars at the first attempt, two at the second, one for coming")
+	check(CampusClasses.stars("practice", {"met": true, "won": true}) == 3 and CampusClasses.stars("practice", {"won": true}) == 2 and CampusClasses.stars("practice", {"lost": true}) == 1,
+			"Practice: three stars for winning the way you were asked")
+	var pay := CampusClasses.finish("theory", 3)
+	check(pay == 30 and Campus.merits() == m0 + 30, "three stars pay 30 merits")
+	check(Campus.part() == 1 and CampusClasses.now() == "", "a class spends the morning, and there is one a day")
+	check(int(CampusClasses.record("theory")["n"]) == 1 and int(CampusClasses.record("theory")["best"]) == 3 and CampusClasses.variant("theory") == 1, "the class remembers you came, and has a new problem for next time")
+	check(int(Campus.mission("class_three")["n"]) == 1 and int(Campus.mission("class_stars")["n"]) == 1, "classes count for their missions")
+	# Every version of every class is something that can be played.
+	for i in CampusClasses.THEORY.size():
+		var pz := Puzzles.by_id(str(CampusClasses.THEORY[i]))
+		check(not pz.is_empty() and bool(pz.get("class", false)) and bool(pz.get("exam", false)) and (Puzzles._id("Blue-Eyes White Dragon") == 0 or Puzzles.ready(pz)),
+				"Duel Theory problem %d exists, with cards the game has" % (i + 1))
+	for h in CampusClasses.HISTORY:
+		check(not big_set or (CardData.has_deck(str(h["mine"])) and CardData.has_deck(str(h["theirs"]))), "History of Dueling lends decks the game has (%s against %s)" % [h["mine"], h["theirs"]])
+	check(CampusClasses.duel("theory").has("puzzle") and CampusClasses.duel("history").has("my_deck") and CampusClasses.duel("practice").has("rule"), "a class fills in its own duel")
+	check(CampusClasses.condition_met({"won": true, "directs": 0, "summons": 1}) and not CampusClasses.condition_met({"won": true, "directs": 2})
+			and not CampusClasses.condition_met({"won": false, "directs": 0}), "Practice, first condition: a win with no direct attack")
+	if DeckTiers._id("Gemini Elf") != 0:
+		var pool := CampusClasses.pool()
+		var uniq := {}
+		for id in pool:
+			uniq[id] = true
+		check(pool.size() == CampusClasses.POOL_SIZE and uniq.size() == pool.size(), "the Deck Building desk holds sixty different cards (%d)" % pool.size())
+		check(CampusClasses.pool() == pool, "the desk is the same if you leave and come back")
+		var deck := CampusClasses.pick(pool)
+		var spells := 0
+		for id in deck:
+			check(pool.has(id), "a built deck only uses cards from the desk")
+			if str(CardData.get_card(int(id)).get("kind", "")) != "monster":
+				spells += 1
+		check(deck.size() == CampusClasses.DECK_SIZE and spells >= 12 and spells <= 22, "filling a deck for you gives forty cards, monsters and Spells and Traps (%d, %d not monsters)" % [deck.size(), spells])
+		var mine: Array = pool.slice(0, 10)
+		var rest := CampusClasses.pick(pool, mine)
+		var kept := true
+		for id in mine:
+			kept = kept and rest.has(id)
+		check(rest.size() == 40 and kept, "filling the rest keeps the cards you had chosen")
+		for nm in CampusClasses.POOL_SMALL + CampusClasses.POOL_BIG + CampusClasses.POOL_SPELLS + CampusClasses.POOL_TRAPS:
+			check(DeckTiers._id(str(nm)) != 0, "the class desk card '%s' is in the game" % nm)
+	# The scripts: every class has a duel that carries its kind, and ends as a class.
+	for k in CampusClasses.KINDS:
+		var steps: Array = CampusData.SCRIPTS["class_" + str(k)]
+		var duels := 0
+		for st in steps:
+			if (st as Dictionary).has("duel"):
+				duels += 1
+				check(str(st["duel"].get("class", "")) == str(k) and bool(st["duel"].get("lose_ok", false)), "the duel of %s is the class's own, and may be lost" % k)
+		check(duels >= 1 and (steps[-1] as Dictionary).get("class_end", "") == str(k), "%s ends as a class" % k)
+	# Rival decks follow who they are and how you play.
+	Campus.put("dorm", 0)
+	check(Campus.stars_now("mika", 2) == 2 and Campus.stars_now("red_rookie", 1) == 1, "nobody is stronger than they are on your first week")
+	Campus.finish_chapter("ac_ch3")
+	check(Campus.stars_now("mika", 2) == 3, "Mika is a star stronger after her chapter")
+	Campus.put("dorm", 1)
+	check(Campus.stars_now("mika", 2) == 4 and Campus.stars_now("red_rookie", 1) == 1 and Campus.stars_now("jaden", 5) == 5, "your own year climbs with you; a rookie stays a rookie; nobody passes five stars")
+	var lvl := Settings.cpu_level
+	Settings.cpu_level = 1
+	check(Campus.deck_now("deck_insect@starter") == "deck_insect@starter", "on Normal, with the Academy's own collection, decks are as their owners are")
+	Settings.cpu_level = 2
+	check(Campus.deck_now("deck_insect@starter") == "deck_insect@standard" and Campus.deck_now("deck_insect") == "deck_insect", "on Hard their decks come a step stronger, and a whole deck stays whole")
+	Settings.cpu_level = 3
+	check(Campus.deck_now("deck_insect@starter") == "deck_insect", "on Extreme, two steps")
+	Settings.cpu_level = lvl
+	Campus.put("dorm", 0)
+	check(not Campus.beat_elite("gus") and Campus.beat_elite("zane") and not Campus.beat_elite("zane") and (Campus.v("trophies", []) as Array).has("beat_elite") and CampusProgress.recalls("beat_zane"),
+			"beating one of the island's best while you wear red is a trophy, once, and they remember")
+	if had:
+		var f := FileAccess.open(Campus.PATH, FileAccess.WRITE)
+		f.store_buffer(keep)
+		f.close()
+	else:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(Campus.PATH))
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(Campus.PATH + ".bak"))
+	Campus.reload()
+	Campus.on = was_on
+
+
+func _test_circle() -> void:
+	# (the small card set CI runs with has no theme decks; the full set does)
+	var big_set_c: bool = CardData.NAME_TO_ID.has("number 39: utopia")
+	# The Midnight Circle: at night, at the Old Dorm, one duel a night, four to the Candle rank.
+	var had := FileAccess.file_exists(Campus.PATH)
+	var keep := FileAccess.get_file_as_bytes(Campus.PATH) if had else PackedByteArray()
+	var was_on := Campus.on
+	Campus.new_game("academia")
+	Campus.on = true
+	Campus.set_time(3, 2)
+	check(str(CampusCircle.knock()["script"]) == "", "the old door stays shut before the Circle is heard of")
+	Campus.finish_chapter("ac_ch2")
+	Campus.set_time(3, 1)
+	check(str(CampusCircle.knock()["script"]) == "" and str(CampusCircle.knock()["why"]) != "", "the old door stays shut by day, and says why")
+	Campus.set_time(3, 2)
+	check(str(CampusCircle.knock()["script"]) == "circle_0", "the first night you knock, you are let in and shown around")
+	CampusCircle.finish(0, false)
+	check(bool(CampusCircle.state()["met"]) and str(CampusCircle.knock()["script"]) == "circle_1" and int(Campus.mission("old_door")["n"]) == 1, "the first visit plays no duel: the first candle is still there that night")
+	var r := CampusCircle.finish(1, false)
+	check(CampusCircle.wins() == 0 and str(CampusCircle.knock()["script"]) == "" and not bool(r["rank"]), "a lost duel lights no candle, and that was the night's duel")
+	Campus.set_time(4, 2)
+	check(str(CampusCircle.knock()["script"]) == "circle_1", "the next night the same candle is waiting")
+	for n in [1, 2, 3]:
+		Campus.set_time(4 + n, 2)
+		check(str(CampusCircle.knock()["script"]) == "circle_%d" % n, "night %d is duel %d" % [n, n])
+		CampusCircle.finish(n, true)
+		check(CampusCircle.wins() == n, "candle %d is lit" % n)
+	Campus.set_time(9, 2)
+	var last := CampusCircle.finish(4, true)
+	check(bool(last["rank"]) and CampusCircle.rank_done() and (Campus.v("trophies", []) as Array).has("circle_candle"), "the fourth candle finishes the rank and leaves a trophy")
+	check(str(CampusCircle.knock()["script"]) == "" and CampusData.TROPHIES.has("circle_candle"), "after the Candle rank the door waits for the next term")
+	for n in range(0, 5):
+		var steps: Array = CampusData.SCRIPTS.get("circle_%d" % n, [])
+		check(not steps.is_empty() and int((steps[-1] as Dictionary).get("circle_end", -1)) == n, "night %d has its script and closes as a night" % n)
+		for st in steps:
+			if (st as Dictionary).has("duel"):
+				check(int(st["duel"].get("circle", 0)) == n and bool(st["duel"].get("lose_ok", false)) and (not big_set_c or CardData.has_deck(str(st["duel"]["opp_deck"]))), "the duel of night %d may be lost, against a deck the game has" % n)
+			if (st as Dictionary).has("actor") and str(st["actor"]) != "lumen":
+				check(bool(st.get("mask", false)) and bool(st.get("plain", false)), "everybody at the Circle wears a mask and no jacket (%s, night %d)" % [st["actor"], n])
+	check(CampusCircle.duel(1, "x").get("my_lp", 0) == 4000 and CampusCircle.duel(3, "x").has("my_deck") and str(CampusCircle.duel(3, "x")["my_deck"]).get_slice("@", 0) != str(CampusCircle.duel(3, "x")["opp_deck"]),
+			"the house rules are real: 4000 Life Points on night one, two different lent decks on night three")
+	check(str(CampusCircle.duel(4, "deck_barrier")["my_deck"]) == "deck_barrier", "on the swap night you play their deck")
+	for d in CampusCircle.BOX:
+		check(not big_set_c or CardData.has_deck(str(d)), "the deck '%s' in the Circle's box is in the game" % d)
+	check(not Characters.get_char("moth").is_empty() and Voices.voice_for("moth") == "wild_m" and Voices.voice_for("ink") == "cool_f", "the Circle's duelists have a name and a voice")
+	if had:
+		var f := FileAccess.open(Campus.PATH, FileAccess.WRITE)
+		f.store_buffer(keep)
+		f.close()
+	else:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(Campus.PATH))
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(Campus.PATH + ".bak"))
+	Campus.reload()
+	Campus.on = was_on

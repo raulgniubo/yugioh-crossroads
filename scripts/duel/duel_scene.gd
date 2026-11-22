@@ -27,6 +27,9 @@ var _won := false
 var _ai_level := 1
 var _start_lp: Array = [8000, 8000]
 var _my_low := 99999          # the least Life Points you had in this duel (for the medals)
+var _my_directs := 0          # direct attacks you made (a Practice class may ask for none)
+var _my_summons_now := 0      # monsters you put on the field this turn, Normal and Special
+var _my_summons_most := 0     # ... the most in any one of your turns
 var _my_turns := 0            # turns of your own so far
 var _theme := "duel"          # the music for this opponent
 var _materials: Array = []
@@ -325,6 +328,18 @@ func _start() -> void:
 		state.destiny_who = [true, true]   # dev: both sides may, whatever the difficulty
 	board.state_ref = state
 	var my_list: Array[int] = CardData.deck_list(my_deck)
+	var my_extra: Array[int] = CardData.extra_list(my_deck)
+	# Decks handed over as plain lists of cards (the Deck Building class): no Extra Deck.
+	if cfg.has("player_list"):
+		my_list.clear()
+		my_extra.clear()
+		for id in cfg["player_list"]:
+			my_list.append(int(id))
+	if cfg.has("opponent_list"):
+		opp_list.clear()
+		opp_extra.clear()
+		for id in cfg["opponent_list"]:
+			opp_list.append(int(id))
 	if state.turbo:
 		# Every runner carries a kit of Speed Spells on top of the rider's own deck: the two
 		# starters always, plus four more that change from duel to duel.
@@ -371,7 +386,7 @@ func _start() -> void:
 								row.append([Puzzles._id(str(x[0])), str(x[1])] if x is Array else Puzzles._id(str(x)))
 							sides.append(row)
 						lay[k] = sides
-		ocg.prepare(my_list, opp_list, CardData.extra_list(my_deck), opp_extra, me_name, opp_name, first,
+		ocg.prepare(my_list, opp_list, my_extra, opp_extra, me_name, opp_name, first,
 				[5 + int(state.bonus_cards[ME]), 5 + int(state.bonus_cards[AI])], lay,
 				{"speed": speed0, "destiny": [state.destiny and state.destiny_who[ME], state.destiny and state.destiny_who[AI]]})
 		events = []
@@ -699,7 +714,8 @@ func _finish() -> void:
 	if _human_test:
 		print("PROMPTS: ", _asked)
 	print("DUEL OVER: winner %d (%s) LP %d vs %d turn %d" % [state.winner, state.win_reason, state.players[0].lp, state.players[1].lp, state.turn])
-	Router.last_stats = {"won": won and not _surrendered, "lp": int(state.players[ME].lp), "turns": int(state.turn), "low": int(_my_low)}
+	Router.last_stats = {"won": won and not _surrendered, "lp": int(state.players[ME].lp), "turns": int(state.turn), "low": int(_my_low),
+			"directs": _my_directs, "summons": _my_summons_most}
 	var earned := 0
 	if not _puzzle.is_empty():
 		# A puzzle is not a duel on your record: solving it pays once, and that is all.
@@ -1403,6 +1419,7 @@ func _play_event(ev: Dictionary) -> void:
 		"turn":
 			var mine := p == ME
 			_turn_seen = true
+			_my_summons_now = 0
 			if mine:
 				_my_turns += 1
 			Sfx.play("turn")
@@ -1482,6 +1499,9 @@ func _play_event(ev: Dictionary) -> void:
 		"summon", "set":
 			if p == ME:
 				_leave_hand(ev["card"])
+				if ev["type"] == "summon":
+					_my_summons_now += 1
+					_my_summons_most = maxi(_my_summons_most, _my_summons_now)
 			Sfx.play("card")
 			var is_ace: bool = ev["type"] == "summon" and (ev["card"].level() >= 7 or ev["card"].id == Characters.get_char(_opp_key).get("ace", 0))
 			if ev["type"] == "summon" and p == ME and int(ev["card"].id) in Voices.PLAYER_CALLS:
@@ -1649,6 +1669,7 @@ func _play_event(ev: Dictionary) -> void:
 			var atk_card = ev["card"]
 			var direct: bool = ev["target"] == null
 			if direct and p == ME:
+				_my_directs += 1
 				_lumen("direct")
 			# Big swings get a cut-in instead of a bubble: the attacker's name, shouted.
 			# A signature monster calls its attack by name, with its own picture across the screen.
@@ -1798,6 +1819,8 @@ func _play_event(ev: Dictionary) -> void:
 			var method: String = ev["method"]
 			if p == ME:
 				_leave_hand(ev["card"])
+				_my_summons_now += 1
+				_my_summons_most = maxi(_my_summons_most, _my_summons_now)
 			if method == "puzzle":
 				Sfx.play("card", -6.0)
 				await board.anim_special(p, ev["card"], ev["zone"], method, [])

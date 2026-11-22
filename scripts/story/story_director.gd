@@ -54,6 +54,7 @@ static var task_small := true
 var chapter := ""
 var step := 0
 var flags := {}
+var _called := {}          # who is called what in this scene (actor key -> the name on their lines)
 var _steps: Array = []
 var _actors := {}               # key -> RoamFigure
 var _spirit: Node3D             # Lumen's holder (hovers)
@@ -461,6 +462,15 @@ func _place(st: Dictionary, instant := false) -> void:
 	fig.lively = false
 	fig.greets = false
 	fig.watch = scene._player
+	if st.get("mask", false):
+		fig.wear_mask()      # the Midnight Circle: nobody shows their face
+	if st.get("sit", false):
+		fig.stance = "sit"   # at a desk, on a bench
+	# "called": the name on their lines here (a nickname under a mask), not their own.
+	if st.has("called"):
+		_called[key] = str(st["called"])
+	else:
+		_called.erase(key)
 	if st.has("coat") and Avatars.takes_jacket(body):
 		# A coat is only painted on a stand-in; a character with a model of their own already
 		# wears what they wear.
@@ -694,6 +704,32 @@ func _do_step(st: Dictionary) -> bool:
 	elif st.has("wait"):
 		if not _skip:
 			await get_tree().create_timer(float(st["wait"])).timeout
+	elif st.has("flag"):
+		# {"flag": name}: sets a flag of this script (with "if"/"unless": a way to say "and").
+		flags[str(st["flag"])] = true
+	elif st.has("mask_player"):
+		# {"mask_player": true}: you put your own mask on (the Midnight Circle). Gone with the scene.
+		if scene and scene._figure and scene._figure.has_method("wear_mask"):
+			scene._figure.wear_mask()
+	elif st.has("class") and st["class"] is String:
+		# {"class": kind}: which version of the class this is ("v0", "v1"...), so lines can ask.
+		for k in flags.keys():
+			if str(k).length() == 2 and str(k).begins_with("v"):
+				flags.erase(k)
+		flags["v%d" % CampusClasses.variant(str(st["class"]))] = true
+	elif st.has("class_check"):
+		# {"class_check": "practice"}: was the duel won the way the professor asked? Sets "met".
+		flags.erase("met")
+		if flags.has("won") and (_auto or CampusClasses.condition_met(Router.last_stats)):
+			flags["met"] = true
+	elif st.has("build"):
+		await _build_step()
+	elif st.has("class_end"):
+		await _end_class(st)
+		return true
+	elif st.has("circle_end"):
+		await _end_circle(st)
+		return true
 	elif st.has("end"):
 		await _end(st)
 		return true
@@ -1283,8 +1319,9 @@ func _say(st: Dictionary) -> void:
 	else:
 		var col: Color = Profile.color() if who == "player" else Color(info.get("color", UITheme.ACCENT))
 		col = col.lightened(0.15)
-		var changed := _name.text != (Profile.duelist_name if who == "player" else Loc.t(str(info.get("name", who)))).to_upper()
-		_name.text = (Profile.duelist_name if who == "player" else Loc.t(str(info.get("name", who)))).to_upper()
+		var shown: String = (Profile.duelist_name if who == "player" else Loc.t(str(_called.get(who, info.get("name", who))))).to_upper()
+		var changed := _name.text != shown
+		_name.text = shown
 		_name_style.bg_color = col
 		_name_style.border_color = col.lightened(0.3)
 		_name.add_theme_color_override("font_color", Comic.INK if col.get_luminance() > 0.4 else Color.WHITE)
@@ -2595,6 +2632,13 @@ func _clash_shot(ka: String, kb: String) -> void:
 
 func _start_duel(d: Dictionary) -> void:
 	_prog().save_position(chapter, step, flags)
+	# A class, or a night at the Circle, fills in its own duel: which problem, which decks, which rule.
+	if d.has("class"):
+		d = d.merged(CampusClasses.duel(str(d["class"])), true)
+		if str(d["class"]) == "build" and flags.has("_deck"):
+			d["my_list"] = flags["_deck"]
+	elif d.has("circle"):
+		d = d.merged(CampusCircle.duel(int(d["circle"]), str(d.get("opp_deck", ""))), true)
 	Router.roam["pos"] = scene._player.position
 	Router.roam["yaw"] = scene._yaw
 	var deck: String = Collection.active_deck()
@@ -2608,6 +2652,12 @@ func _start_duel(d: Dictionary) -> void:
 	# (In the Academy, with your own collection brought along, everybody comes a step stronger.)
 	var harder := Saves.story_difficulty() + (1 if campus and not Campus.own_cards() else 0)
 	opp_deck = DeckTiers.with_version(opp_deck, DeckTiers.shift(str(d.get("deck_tier", "full")), harder))
+	# "opp_deck_exact": that very deck, card for card (the Circle's swap night: they play yours).
+	if d.has("opp_deck_exact") and CardData.has_deck(str(d["opp_deck_exact"])):
+		opp_deck = str(d["opp_deck_exact"])
+	# "my_deck": you are lent one for this duel (a class, the Circle).
+	if d.has("my_deck") and CardData.has_deck(str(d["my_deck"])):
+		deck = str(d["my_deck"])
 	Router.match_state = {}
 	Router.duel_config = {
 		"opponent": d["opponent"], "opponent_deck": opp_deck, "player_deck": deck, "player_char": "player",
@@ -2624,11 +2674,16 @@ func _start_duel(d: Dictionary) -> void:
 	for k in ["opp_lp", "my_lp", "hand", "rule", "music", "task"]:
 		if d.has(k):
 			Router.duel_config[k] = d[k]
+	# Decks handed over as plain lists of cards (the Deck Building class).
+	if d.has("my_list"):
+		Router.duel_config["player_list"] = d["my_list"]
+	if d.has("opp_list"):
+		Router.duel_config["opponent_list"] = d["opp_list"]
 	# {"puzzle": id}: not a duel but a problem (Puzzles): the field is set, and there is one turn to win.
 	var problem := str(d.get("puzzle", ""))
 	if problem != "":
 		Router.duel_config["puzzle"] = problem
-		Router.duel_config["opponent_name"] = Loc.t("Exam problem")
+		Router.duel_config["opponent_name"] = Loc.t("Class problem") if d.has("class") else Loc.t("Exam problem")
 		Router.duel_config["difficulty"] = 0
 	# The duel a chapter ends on, and any duel with boss rules: they can make a Destiny Draw too.
 	var last_duel := true
@@ -3492,6 +3547,114 @@ func _end_campus(st: Dictionary) -> void:
 			Campus.put("free_days", true)
 		_leave())
 	v.add_child(menu)
+	if _auto and "--story-quit" in OS.get_cmdline_user_args():
+		await _snap("end", 2.5)
+		get_tree().quit()
+
+
+## The Deck Building class: the sixty cards on your desk, and the forty you choose (kept in the
+## script's flags, so the deck is still yours if the game closes before the duel).
+func _build_step() -> void:
+	var pool := CampusClasses.pool()
+	if _auto:
+		flags["_deck"] = CampusClasses.pick(pool)
+		print("STORY: deck built (auto), ", (flags["_deck"] as Array).size(), " of ", pool.size(), " cards")
+		return
+	_cutscene(true)
+	_box.visible = false
+	var desk := ClassBuild.new(pool)
+	_ui.add_child(desk)
+	var deck: Array = await desk.closed
+	if is_instance_valid(desk):
+		desk.queue_free()
+	flags["_deck"] = deck
+	_prog().save_position(chapter, step, flags)
+	_advance_wanted = false
+
+
+## A class is over: the stars, the merits, the morning spent, and back out to the island.
+func _end_class(st: Dictionary) -> void:
+	var kind := str(st["class_end"])
+	print("STORY END: ", chapter)
+	var n := CampusClasses.stars(kind, flags)
+	var pay := CampusClasses.finish(kind, n)
+	print("CLASS ", kind, " stars ", n, " merits ", pay)
+	await _side_end(Loc.t("Class over"), "★".repeat(n) + "☆".repeat(3 - n),
+			[Loc.t(str(CampusClasses.NAMES.get(kind, ""))), Loc.t("+%d merits") % pay], CampusData.LECT_DOOR, true)
+
+
+## A night at the Midnight Circle is over.
+func _end_circle(st: Dictionary) -> void:
+	var n := int(st["circle_end"])
+	print("STORY END: ", chapter)
+	var res := CampusCircle.finish(n, flags.has("won"))
+	print("CIRCLE night ", n, " won ", flags.has("won"), " -> ", res)
+	var notes: Array = []
+	var big := ""
+	if n == 0:
+		notes.append(Loc.t("Your name is on the wall."))
+	elif bool(res["rank"]):
+		big = Loc.t("RANK COMPLETE: THE CANDLE")
+		notes.append(Loc.t("A mask of your own, hung in your room"))
+		if int(res["prize"]) != 0:
+			notes.append(Loc.t("A card for the first row of the wall: %s") % str(CardData.get_card(int(res["prize"])).get("name", "")))
+	elif flags.has("won"):
+		big = "✦".repeat(int(res["wins"])) + "✧".repeat(4 - int(res["wins"]))
+		notes.append(Loc.t("A candle on the wall: %d of 4") % int(res["wins"]))
+	else:
+		notes.append(Loc.t("The wall is patient. Come back another night."))
+	await _side_end(Loc.t("The night is over") if n > 0 else Loc.t("The Midnight Circle"), big, notes, CampusData.CELLAR_DOOR, n == 0 or flags.has("won"))
+
+
+## The closing card of a side scene (a class, a night at the Circle): no chapter is finished, the
+## place in the story is given back, and the island is where you go next.
+func _side_end(title: String, big: String, notes: Array, wake: Vector3, glad: bool) -> void:
+	_cutscene(true)
+	_cine = false
+	_box.visible = false
+	_prog().clear_position()
+	Saves.autosave(true)
+	if not Saves.admin and Engine.get_main_loop() and Engine.get_main_loop().root.has_node("Collection"):
+		Saves.save_to("autosave")
+	if glad:
+		Music.play("victory")
+	var shade := ColorRect.new()
+	shade.color = Color(0, 0, 0, 0.0)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui.add_child(shade)
+	create_tween().tween_property(shade, "color:a", 0.86, 0.8)
+	var v := VBoxContainer.new()
+	v.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	v.offset_left = -520
+	v.offset_right = 520
+	v.offset_top = -240
+	v.offset_bottom = 240
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_theme_constant_override("separation", 14)
+	shade.add_child(v)
+	var t := UITheme.label(title.to_upper(), 64, UITheme.GOLD, UITheme.title_font())
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(t)
+	if big != "":
+		var b := UITheme.label(big, 54, Color.WHITE, UITheme.title_font())
+		b.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(b)
+	for line in notes:
+		var r := UITheme.label(str(line), 27, UITheme.ACCENT)
+		r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		r.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		r.custom_minimum_size = Vector2(1000, 0)
+		v.add_child(r)
+	var go := Button.new()
+	go.text = Loc.t("Back to the island")
+	go.custom_minimum_size = Vector2(420, 70)
+	go.add_theme_font_size_override("font_size", 28)
+	go.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	v.add_child(go)
+	go.grab_focus.call_deferred()
+	go.pressed.connect(func():
+		Campus.put("free_days", true)
+		Campus.island(wake))
 	if _auto and "--story-quit" in OS.get_cmdline_user_args():
 		await _snap("end", 2.5)
 		get_tree().quit()

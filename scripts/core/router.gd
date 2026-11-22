@@ -13,7 +13,7 @@ var roam := {"district": "domino", "pos": null, "last_duel": "", "result": ""}
 ## Story position handed between the story player and story duels.
 var story := {}
 var story_result := ""
-var last_stats := {}      # the last duel, for whoever started it: {won, lp, turns, low}
+var last_stats := {}      # the last duel, for whoever started it: {won, lp, turns, low, directs, summons}
 
 ## Set by the menu before starting a duel.
 var duel_config := {"player_deck": "yugi", "opponent_deck": "kaiba"}
@@ -365,6 +365,19 @@ func _debug_args() -> void:
 					Settings.set_gfx(k, (v == "1" or v == "true") if typeof(Settings.gfx[k]) == TYPE_BOOL else int(v))
 		elif a == "--esc-test":
 			_esc_test()      # dev: at the story's first goal, Esc, Resume, Esc, Main Menu, and say what happened
+		elif a == "--class-desk":
+			# Dev: the Deck Building class's desk by itself, half filled, for a picture.
+			get_tree().create_timer(2.5).timeout.connect(func():
+				var layer := CanvasLayer.new()
+				layer.layer = 80
+				add_child(layer)
+				var desk := ClassBuild.new(CampusClasses.pool(6100))
+				layer.add_child(desk)
+				await get_tree().create_timer(0.5).timeout
+				desk._fill()
+				for id in desk.pool.slice(0, 4):
+					desk._toggle(int(id))
+				print("CLASS DESK ", desk.pool.size(), " cards, chosen ", desk._in.size()))
 		elif a == "--toast-test":
 			# Dev: a very long message, to see that it wraps inside the screen.
 			get_tree().create_timer(1.5).timeout.connect(func(): toast("Lumen has new cards for you: Lumen, Echo Spirit, Lumen, Echo Radiant, Lumen, Echo Comet, Lumen, Echo Zenith, Echo Resonance, Echo Barrier, Echo Step, Echo Chorus and the rest of a very long list of names that used to run off both sides of the screen. They are in your collection.", 20.0))

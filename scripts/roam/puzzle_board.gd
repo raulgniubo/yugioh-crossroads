@@ -35,7 +35,8 @@ func _ready() -> void:
 	for pz in Puzzles.LIST:
 		if Puzzles.solved(str(pz["id"])):
 			done += 1
-	var sub := UITheme.label(Loc.t("The field is set and it is your turn. Win before the turn ends.   Solved: %d of %d") % [done, Puzzles.LIST.size()], 22, Color.WHITE, UITheme.semi_font())
+	var on_board := Puzzles.LIST.filter(func(x): return not bool((x as Dictionary).get("exam", false))).size()
+	var sub := UITheme.label(Loc.t("The field is set and it is your turn. Win before the turn ends.   Solved: %d of %d") % [done, on_board], 22, Color.WHITE, UITheme.semi_font())
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(sub)
 	var first: Button = null

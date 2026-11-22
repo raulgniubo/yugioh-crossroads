@@ -84,21 +84,26 @@ static func _build(city: CityBuilder, key: String) -> void:
 	var trim: Color = r["trim"]
 	city.box(Vector3(half.x * 2 + 0.6, 0.3, half.y * 2 + 0.6), o + Vector3(0, -0.15, 0), floor_m)
 	city.box(Vector3(half.x * 2 + 0.6, 0.3, half.y * 2 + 0.6), o + Vector3(0, hgt + 0.15, 0), city.mat(Color(r["wall"]).darkened(0.25), 0.95), false)
+	# (A "dim" room is lit by what is in it: no bright strip round the walls, no ceiling panels.)
+	var dim: bool = r.get("dim", false)
 	for sx: float in [-1.0, 1.0]:
 		city.box(Vector3(0.3, hgt, half.y * 2 + 0.6), o + Vector3(sx * (half.x + 0.15), hgt / 2.0, 0), wall_m)
-		city.box(Vector3(0.06, 0.12, half.y * 2), o + Vector3(sx * (half.x - 0.02), 1.0, 0), city.glow_mat(trim, 1.6), false)
+		if not dim:
+			city.box(Vector3(0.06, 0.12, half.y * 2), o + Vector3(sx * (half.x - 0.02), 1.0, 0), city.glow_mat(trim, 1.6), false)
 	for sz: float in [-1.0, 1.0]:
 		city.box(Vector3(half.x * 2 + 0.6, hgt, 0.3), o + Vector3(0, hgt / 2.0, sz * (half.y + 0.15)), wall_m)
-		city.box(Vector3(half.x * 2, 0.12, 0.06), o + Vector3(0, 1.0, sz * (half.y - 0.02)), city.glow_mat(trim, 1.6), false)
+		if not dim:
+			city.box(Vector3(half.x * 2, 0.12, 0.06), o + Vector3(0, 1.0, sz * (half.y - 0.02)), city.glow_mat(trim, 1.6), false)
 	for p in [Vector3(-half.x * 0.5, hgt - 0.5, -half.y * 0.4), Vector3(half.x * 0.5, hgt - 0.5, -half.y * 0.4), Vector3(0, hgt - 0.5, half.y * 0.45)]:
 		var l := OmniLight3D.new()
-		l.light_color = Color.WHITE.lerp(trim, 0.2)
-		l.light_energy = 2.4
+		l.light_color = Color.WHITE.lerp(trim, 0.2) if not dim else Color(1.0, 0.8, 0.62)
+		l.light_energy = 2.4 if not dim else 0.75
 		l.omni_range = 11.0
 		l.shadow_enabled = false
 		l.position = o + p
 		city.add_child(l)
-		city.box(Vector3(1.6, 0.06, 0.5), o + p + Vector3(0, 0.42, 0), city.glow_mat(Color.WHITE.lerp(trim, 0.25), 2.6), false)
+		if not dim:
+			city.box(Vector3(1.6, 0.06, 0.5), o + p + Vector3(0, 0.42, 0), city.glow_mat(Color.WHITE.lerp(trim, 0.25), 2.6), false)
 	# The way out.
 	match key:
 		"kc_lobby":
@@ -121,6 +126,8 @@ static func _build(city: CityBuilder, key: String) -> void:
 			city.exit_door(o + Vector3(0, 0, half.y), Color(0.34, 0.2, 0.11), Color(0.86, 0.68, 0.3), 2.4)
 		"ac_class":
 			city.exit_door(o + Vector3(0, 0, half.y), Color(0.46, 0.3, 0.18), Color(0.3, 0.42, 0.62), 2.4)
+		"ac_old":
+			city.exit_door(o + Vector3(0, 0, half.y), Color(0.3, 0.22, 0.16), Color(0.14, 0.12, 0.12), 2.0)
 		_:
 			city.exit_door(o + Vector3(0, 0, half.y), Color(0.72, 0.24, 0.18), Color(0.95, 0.88, 0.72))
 	# The shell is done; from here on it is furniture, and furniture has soft edges.

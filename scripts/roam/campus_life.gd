@@ -31,6 +31,7 @@ func _ready() -> void:
 		get_tree().create_timer(9.0).timeout.connect(open_agenda)
 	if not _story:
 		_build_spots.call_deferred()
+		_build_school_spots.call_deferred()
 		# Back from a duel, or just arrived: where you stand is where "continue" brings you back.
 		_note.call_deferred()
 		var t := Timer.new()
@@ -196,6 +197,99 @@ func _note() -> void:
 	Campus.note(pp, scene._yaw)
 
 
+# ------------------------------------------------------------------ classes and the old door
+
+## The class board in the Lecture Hall and the cellar doors of the Old Dorm.
+func _build_school_spots() -> void:
+	if scene == null:
+		return
+	# Class is in the Lecture Hall: the board is half way down the aisle.
+	scene._spots.append({"pos": CampusData.LECT + Vector3(0.0, 0, 3.0), "range": 2.2, "label": "Today's class", "action": open_class})
+	# The cellar doors of the Old Dorm stay shut on the island: you knock, and at night somebody answers.
+	var mine := false
+	for sp in scene._spots:
+		if str((sp as Dictionary).get("label", "")) == str(MoreRooms.ROOMS["ac_old"]["label"]):
+			sp["label"] = "Knock on the cellar doors (the Midnight Circle)"
+			sp["action"] = knock
+			mine = true
+	if not mine:
+		scene._spots.append({"pos": CampusData.CELLAR_DOOR + Vector3(0, 0, -1.1), "range": 2.2, "label": "Knock on the cellar doors (the Midnight Circle)", "action": knock})
+
+
+## A side scene (a class, a night at the Circle) only starts when no chapter is half told.
+func _side_ok() -> bool:
+	if str(CampusProgress.position()["chapter"]) != "":
+		Router.toast(Loc.t("Finish the chapter you are in first."), 3.0)
+		return false
+	return true
+
+
+func _class_records(p: SidePanel) -> void:
+	for k in CampusClasses.KINDS:
+		var r := CampusClasses.record(str(k))
+		var best := "★".repeat(int(r["best"])) + "☆".repeat(3 - int(r["best"])) if int(r["n"]) > 0 else Loc.t("not yet")
+		_line(p, Loc.t("%s   ·   been %d   ·   best %s") % [Loc.t(str(CampusClasses.NAMES[k])), int(r["n"]), best], 17, UITheme.TEXT_DIM)
+
+
+## The class board: what is on this morning, and the way in.
+func open_class() -> void:
+	if _agenda != null and is_instance_valid(_agenda):
+		return
+	var p := SidePanel.new("Today's class", 660)
+	scene._ui.add_child(p)
+	_agenda = p
+	p.closed.connect(func(): _agenda = null)
+	Sfx.play("panel", -8.0)
+	var kind := CampusClasses.now()
+	if kind == "":
+		var why := "No class right now. Classes are on Monday to Thursday mornings, in the Lecture Hall."
+		if not CampusClasses.unlocked():
+			why = "The classrooms open after your first day on the island."
+		elif int(Campus.v("class_day", 0)) == Campus.day():
+			why = "You have been to class today."
+		_line(p, Loc.t(why), 22)
+		if CampusClasses.unlocked():
+			_head(p, "Classes")
+			_class_records(p)
+		return
+	_line(p, Loc.t(str(CampusClasses.NAMES[kind])), 32, UITheme.GOLD)
+	_line(p, Loc.t(str(CampusClasses.TEACHERS[kind])), 20, UITheme.TEXT_DIM)
+	_line(p, Loc.t(str(CampusClasses.WHAT[kind])), 21)
+	_line(p, Loc.t("Going to class spends the morning: afterwards it is the afternoon."), 17, UITheme.TEXT_DIM)
+	var go := Button.new()
+	go.text = Loc.t("Go to class: %s") % Loc.t(str(CampusClasses.NAMES[kind]))
+	go.custom_minimum_size = Vector2(0, 66)
+	go.add_theme_font_size_override("font_size", 24)
+	go.pressed.connect(func():
+		if not _side_ok():
+			return
+		p.close()
+		_note()
+		StoryDirector.begin("class_" + kind))
+	p.body.add_child(go)
+	go.grab_focus.call_deferred()
+	var no := Button.new()
+	no.text = Loc.t("Not yet")
+	no.custom_minimum_size = Vector2(0, 54)
+	no.pressed.connect(p.close)
+	p.body.add_child(no)
+	_head(p, "Classes")
+	_class_records(p)
+
+
+## The old door. At night, with the Circle found, it opens: tonight's duel.
+func knock() -> void:
+	var k := CampusCircle.knock()
+	Sfx.play("card", -6.0, 0.6)
+	if str(k["script"]) == "":
+		Router.toast(Loc.t(str(k["why"])), 3.5)
+		return
+	if not _side_ok():
+		return
+	_note()
+	StoryDirector.begin(str(k["script"]))
+
+
 # ------------------------------------------------------------------ your room
 
 func _build_spots() -> void:
@@ -345,8 +439,10 @@ func open_agenda() -> void:
 	_line(p, "%s  ·  %s %d  ·  %s" % [Campus.when_text(), Loc.t("Day"), Campus.day(), Loc.t(Campus.DORM_NAMES[Campus.dorm()])], 24)
 	# Until classes, exams and the Cup open (chapter 2), the day is free time: say that, not the plan.
 	var plan_now := str(CampusData.WEEK_PLAN[Campus.weekday()][Campus.part()])
-	if not CampusData.CLASSES_OPEN and Campus.part() < 2:
+	if not CampusClasses.unlocked() and Campus.part() < 2:
 		plan_now = "Free time"
+	elif Campus.part() == 0 and Campus.weekday() < 4 and CampusClasses.now() == "":
+		plan_now = "Free time"       # the class is behind you: the rest of the morning is yours
 	_line(p, Loc.t(plan_now), 19, UITheme.TEXT_DIM)
 	# ---- the story
 	_head(p, "Story")
@@ -407,8 +503,21 @@ func open_agenda() -> void:
 		var row := _line(p, "%s  %s:  %s" % ["▸" if today else "   ", Loc.t(Campus.WEEK[d]), "  ·  ".join(parts.slice(0, 2))], 18, Color.WHITE if today else UITheme.TEXT_DIM)
 		if today:
 			row.add_theme_font_override("font", UITheme.semi_font())
-	if not CampusData.CLASSES_OPEN:
-		_line(p, Loc.t("Classes and the promotion exams open with the next chapters. Until then every day is free time."), 16, UITheme.TEXT_DIM)
+	# ---- classes
+	_head(p, "Classes")
+	if not CampusClasses.unlocked():
+		_line(p, Loc.t("The classrooms open after your first day on the island."), 17, UITheme.TEXT_DIM)
+	else:
+		var cls := CampusClasses.now()
+		if cls != "":
+			_line(p, Loc.t("%s, with %s. In the Lecture Hall, this morning.") % [Loc.t(str(CampusClasses.NAMES[cls])), Loc.t(str(CampusClasses.TEACHERS[cls]))], 19, UITheme.GOLD)
+		_class_records(p)
+	# ---- the Midnight Circle (once you have found it)
+	if bool(CampusCircle.state()["met"]):
+		_head(p, "The Midnight Circle")
+		_line(p, Loc.t("A candle on the wall: %d of 4") % CampusCircle.wins(), 19)
+		if CampusCircle.rank_done():
+			_line(p, Loc.t("The Candle rank is yours. The Lantern rank opens next term."), 16, UITheme.TEXT_DIM)
 	# ---- silver missions
 	_head(p, "Missions")
 	var any := false
