@@ -14,12 +14,14 @@ var can_save := true     # false from the main menu: only loading makes sense th
 
 
 var academy := false     # opened from the Academy's door: its picture behind, and each slot's dorm crest
+var story := false       # opened from the main story's door: Domino at night behind, each slot's chapter mark
 
 
-static func open(host: Node, saving := true, academy_look := false) -> SaveMenu:
+static func open(host: Node, saving := true, academy_look := false, story_look := false) -> SaveMenu:
 	var m := SaveMenu.new()
 	m.can_save = saving
 	m.academy = academy_look
+	m.story = story_look
 	m.z_index = 120
 	host.add_child(m)
 	return m
@@ -32,6 +34,10 @@ func _ready() -> void:
 	theme = UITheme.build()
 	if academy:
 		add_child(AcademyBackdrop.new(0.74))
+	elif story:
+		var bd := AcademyBackdrop.new(0.74, StoryGate.PICTURE, Color(0.72, 0.9, 1.0))
+		add_child(bd)
+		bd.cycle(StoryGate.all_pictures())
 	else:
 		add_child(MenuBackdrop.new())
 	var c := CenterContainer.new()
@@ -116,12 +122,38 @@ func _row(slot: String, i: int) -> Control:
 			col = (Campus.DORM_COLORS[int(camp["dorm"])] as Color).lightened(0.2)
 			bar.color = col
 			card.add_theme_stylebox_override("panel", UITheme.button_box(Color(0.045, 0.07, 0.14, 0.94), Color(col, 0.6), 16))
+	if story:
+		# The mark of the chapter that save has reached, in its era's color (grey when empty).
+		var sw: Dictionary = meta.get("story", {})
+		var idx := -1
+		var where_t := str(sw.get("where", ""))
+		if where_t == "" and str(meta.get("summary", "")) != "":
+			where_t = str(meta["summary"]).split("  ·  ")[0]      # (a save from an older build keeps it only in its line)
+		for k in StoryData.CHAPTERS.size():
+			if str(StoryData.CHAPTERS[k]["title"]) == where_t:
+				idx = k
+		if where_t == "Story finished":
+			idx = StoryData.CHAPTERS.size() - 1
+		var ecol := StoryEmblem.era_color(str(StoryData.CHAPTERS[idx]["era"])) if idx >= 0 else Color(0.45, 0.48, 0.56)
+		var em := StoryEmblem.new(ecol, StoryGate.mark_of(idx) if idx >= 0 else "", 58.0)
+		em.lit = 1.0 if idx >= 0 else 0.35
+		em.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(em)
+		if idx >= 0:
+			col = ecol.lightened(0.1)
+			bar.color = col
+			card.add_theme_stylebox_override("panel", UITheme.button_box(Color(0.045, 0.07, 0.14, 0.94), Color(col, 0.6), 16))
 	var name_box := VBoxContainer.new()
 	name_box.custom_minimum_size = Vector2(190, 0)
 	name_box.add_theme_constant_override("separation", -2)
 	h.add_child(name_box)
 	name_box.add_child(UITheme.label(Loc.t("AUTOSAVE") if auto else Loc.t("SAVE %d") % i, 30, col.lightened(0.2) if not empty else UITheme.TEXT_DIM, UITheme.title_font()))
 	name_box.add_child(UITheme.label(_when(str(meta.get("when", ""))) if not empty else Loc.t("Empty"), 16, UITheme.TEXT_DIM, UITheme.semi_font()))
+	if story and not empty:
+		# The world that save is in, in its color: a small tag under the date.
+		var wd := StoryGate.world_of_save(meta.get("story", {}))
+		if wd != "":
+			name_box.add_child(UITheme.label("●  " + StoryGate.world_name(wd), 15, StoryGate.world_color(wd).lightened(0.15), UITheme.semi_font()))
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.add_theme_constant_override("separation", 0)
