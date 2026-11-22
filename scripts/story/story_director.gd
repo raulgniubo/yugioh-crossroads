@@ -1526,6 +1526,11 @@ func _choose(options: Array) -> void:
 	if _auto:
 		await get_tree().create_timer(0.6).timeout
 		picked[0] = 0
+		# Dev: --story-pick=N takes option N of every choice (the last one where there are fewer),
+		# so the walk audit can go down the other branches of a chapter too.
+		for pick_arg in OS.get_cmdline_user_args():
+			if pick_arg.begins_with("--story-pick="):
+				picked[0] = clampi(int(pick_arg.trim_prefix("--story-pick=")), 0, options.size() - 1)
 	while picked[0] < 0:
 		await get_tree().process_frame
 	flags[str(options[picked[0]][1])] = true
@@ -3630,16 +3635,21 @@ func _end_circle(st: Dictionary) -> void:
 	print("CIRCLE night ", n, " won ", flags.has("won"), " -> ", res)
 	var notes: Array = []
 	var big := ""
+	var rk := maxi(0, n - 1) / CampusCircle.PER_RANK      # the rank this night belongs to: 0 Candle, 1 Lantern
 	if n == 0:
 		notes.append(Loc.t("Your name is on the wall."))
-	elif bool(res["rank"]):
+	elif bool(res["rank"]) and rk == 0:
 		big = Loc.t("RANK COMPLETE: THE CANDLE")
 		notes.append(Loc.t("A mask of your own, hung in your room"))
 		if int(res["prize"]) != 0:
 			notes.append(Loc.t("A card for the first row of the wall: %s") % str(CardData.get_card(int(res["prize"])).get("name", "")))
+	elif bool(res["rank"]):
+		big = Loc.t("RANK COMPLETE: THE LANTERN")
+		notes.append(Loc.t("Your name goes up to the Lantern line of the wall"))
 	elif flags.has("won"):
-		big = "✦".repeat(int(res["wins"])) + "✧".repeat(4 - int(res["wins"]))
-		notes.append(Loc.t("A candle on the wall: %d of 4") % int(res["wins"]))
+		var lit := clampi(int(res["wins"]) - rk * CampusCircle.PER_RANK, 0, 4)
+		big = "✦".repeat(lit) + "✧".repeat(4 - lit)
+		notes.append(Loc.t("A candle on the wall: %d of 4" if rk == 0 else "A lantern on the wall: %d of 4") % lit)
 	else:
 		notes.append(Loc.t("The wall is patient. Come back another night."))
 	await _side_end(Loc.t("The night is over") if n > 0 else Loc.t("The Midnight Circle"), big, notes, CampusData.CELLAR_DOOR, n == 0 or flags.has("won"))

@@ -239,6 +239,24 @@ const STORY_CAST := {
 		"deck": "deck_insect", "personality": "wild", "stars": 2},
 	"ink": {"name": "Ink", "short": "Ink", "era": "GX", "color": Color("6a78c8"), "title": "The Midnight Circle. Writes down everything you play",
 		"deck": "deck_spellbook", "personality": "cool", "stars": 2},
+	# Act 2. Boreal Academy (the north): grey coats, walls, nobody smiles.
+	"irina": {"name": "Irina Volkova", "short": "Irina", "era": "GX", "color": Color("9aa4b4"), "title": "Captain of Boreal Academy. They call her the Wall",
+		"deck": "deck_ice_barrier", "ace_name": "Trishula, Dragon of the Ice Barrier", "personality": "cool", "stars": 5,
+		"lines": {"intro": ["A wall is only a question asked slowly. Take your time answering."], "ace": ["Trishula. The answer is no."], "taunt": ["Boreal does not hurry."],
+			"win": ["Boreal does not celebrate. We count. Then we go home."], "lose": ["...The wall had a door. I will find out who left it open."]}},
+	"tova": {"name": "Tova Lindqvist", "short": "Tova", "era": "GX", "color": Color("8a8f98"), "title": "Boreal Academy. A notebook that is always open",
+		"deck": "deck_cloudian", "personality": "cool", "stars": 3},
+	"rurik": {"name": "Rurik", "short": "Rurik", "era": "GX", "color": Color("7c828c"), "title": "Boreal Academy. Says two words a match",
+		"personality": "dark", "stars": 3},
+	# The Midnight Circle, Lantern rank.
+	"sparrow": {"name": "Sparrow", "short": "Sparrow", "era": "GX", "color": Color("78b8a0"), "title": "The Midnight Circle. The fastest hands of the Lantern rank",
+		"deck": "deck_wind", "personality": "cocky", "stars": 3},
+	"bell": {"name": "Third Bell", "short": "Third Bell", "era": "GX", "color": Color("8a7ab0"), "title": "The Midnight Circle. Has not been seen in third period for weeks",
+		"deck": "deck_zombie", "personality": "dark", "stars": 3},
+	"paper": {"name": "Paper", "short": "Paper", "era": "GX", "color": Color("e6e2d6"), "title": "The Midnight Circle. Watches more than he plays",
+		"deck": "deck_monarchs", "personality": "cocky", "stars": 3},
+	"harbor": {"name": "Harbor", "short": "Harbor", "era": "GX", "color": Color("4a88b8"), "title": "The Midnight Circle. Two years at the head of the Lantern rank",
+		"deck": "deck_water", "personality": "cool", "stars": 4},
 }
 
 const PERSONALITY_LINES := {

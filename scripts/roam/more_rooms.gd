@@ -1108,9 +1108,10 @@ static func _lecture(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -
 
 
 ## The nicknames chalked on the cellar wall, rank by rank (top row first). The player's own is
-## added under the Candle row once the Circle has taken them in.
-const WALL_NAMES := [["MIDNIGHT", ["Mister Nobody"]], ["LANTERN", ["Harbor", "Third Bell", "Paper"]], ["CANDLE", ["Verdict", "Margin", "Ink", "Moth"]]]
-const WALL_MORE := ["Sparrow", "Tuesday"]
+## added under the Candle row once the Circle has taken them in, and goes up to the Lantern row
+## with that rank.
+const WALL_NAMES := [["MIDNIGHT", ["Mister Nobody"]], ["LANTERN", ["Harbor", "Sparrow", "Third Bell", "Paper"]], ["CANDLE", ["Verdict", "Margin", "Ink", "Moth"]]]
+const WALL_MORE := ["Tuesday"]
 
 
 ## The cellar under the Old Dorm, where the Midnight Circle meets: a chalk circle on a stone floor,
@@ -1168,23 +1169,33 @@ static func _cellar(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) ->
 	for sx: float in [-1.0, 1.0]:
 		city.box(Vector3(0.12, 2.9, 0.14), o + Vector3(sx * 5.2, 1.85, wz), wood, false)
 	var rows := [2.78, 2.08, 1.36]
+	# Your own nickname, in fresher chalk, once the Circle has written it up: under the Candle row,
+	# or on the Lantern row once that rank is yours.
+	var mine := ""
+	if Campus.on:
+		for nk in [["nick_echo", "Echo"], ["nick_static", "Static"], ["nick_ash", "Ash"]]:
+			if CampusProgress.recalls(str(nk[0])):
+				mine = str(nk[1])
+	var up := mine != "" and CampusCircle.rank_done(1)
 	for i in WALL_NAMES.size():
 		var y: float = rows[i]
 		_sign(city, Loc.t(str(WALL_NAMES[i][0])), o + Vector3(-4.05, y, wz + 0.05), 0.0, chalk_c * 0.72, 36)
-		var names: Array = WALL_NAMES[i][1]
+		var names: Array = (WALL_NAMES[i][1] as Array).duplicate()
+		if up and i == 1:
+			names.push_front(mine)
 		for k in names.size():
 			var x := 0.6 if names.size() == 1 else -1.9 + k * (5.9 / maxf(1.0, names.size() - 1.0))
-			_sign(city, Loc.t(str(names[k])), o + Vector3(x, y + rng.randf_range(-0.05, 0.05), wz + 0.05), 0.0, chalk_c, 50 if i > 0 else 62)
+			var fresh := up and i == 1 and k == 0
+			_sign(city, Loc.t(str(names[k])), o + Vector3(x, y + rng.randf_range(-0.05, 0.05), wz + 0.05), 0.0, Color(0.95, 0.95, 0.9) if fresh else chalk_c, (40 if names.size() > 4 else 50) if i > 0 else 62)
+			if fresh:
+				city.box(Vector3(1.0, 0.025, 0.02), o + Vector3(x, y - 0.2, wz + 0.04), chalk, false)
 		if i < WALL_NAMES.size() - 1:
 			city.box(Vector3(9.4, 0.025, 0.02), o + Vector3(0, y - 0.36, wz + 0.04), chalk, false)
 	for k in WALL_MORE.size():
 		_sign(city, Loc.t(str(WALL_MORE[k])), o + Vector3(-1.9 + k * 1.97, 0.86, wz + 0.05), 0.0, chalk_c * 0.8, 46)
-	# Your own nickname, in fresher chalk, once the Circle has written it up.
-	if Campus.on:
-		for nk in [["nick_echo", "Echo"], ["nick_static", "Static"], ["nick_ash", "Ash"]]:
-			if CampusProgress.recalls(str(nk[0])):
-				_sign(city, Loc.t(str(nk[1])), o + Vector3(2.9, 0.86, wz + 0.05), 0.0, Color(0.95, 0.95, 0.9), 54)
-				city.box(Vector3(1.3, 0.025, 0.02), o + Vector3(2.9, 0.66, wz + 0.04), chalk, false)
+	if mine != "" and not up:
+		_sign(city, Loc.t(mine), o + Vector3(2.9, 0.86, wz + 0.05), 0.0, Color(0.95, 0.95, 0.9), 54)
+		city.box(Vector3(1.3, 0.025, 0.02), o + Vector3(2.9, 0.66, wz + 0.04), chalk, false)
 	var glow := OmniLight3D.new()
 	glow.light_color = Color(0.66, 0.5, 1.0)
 	glow.light_energy = 0.9

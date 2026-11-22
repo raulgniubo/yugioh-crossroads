@@ -64,6 +64,9 @@ const STANDINS := {
 	"octavia": "duelist_f2", "crane": "duelist_m3",
 	"gus": "student_boy", "felix": "duelist_m7", "ivo": "duelist_m4",
 	"moth": "street_duelist", "ink": "student_girl",
+	# Act 2: Boreal Academy and the Lantern rank of the Circle.
+	"irina": "stylish_woman", "tova": "duelist_f3", "rurik": "duelist_m16",
+	"sparrow": "student_girl", "bell": "duelist_m1", "paper": "duelist_m6", "harbor": "duelist_m13",
 }
 ## Duel Academy jackets. Painted over stand-in models only, never over a model you supplied.
 const DORM_COLORS := {"red": Color("d9342b"), "yellow": Color("f2c230"), "blue": Color("2f6fe0")}
@@ -71,6 +74,8 @@ const UNIFORMS := {"jaden": "red", "syrus": "red", "red_student": "red", "koji":
 	"chazz": "blue", "alexis": "blue", "zane": "blue", "blue_student": "blue",
 	"nico": "red", "mika": "red", "bruno": "red", "bastion": "yellow", "dante": "blue", "octavia": "blue",
 	"gus": "red", "felix": "blue", "ivo": "yellow"}
+## People of other schools: the coat of their school, painted the same way (and only on stand-ins).
+const COATS := {"irina": Color("8a8f98"), "tova": Color("8a8f98"), "rurik": Color("8a8f98")}
 var _uniform_shader: Shader
 ## People who are not in their dorm jacket right now (the Academy story's prologue: nobody has a
 ## dorm before the entrance exam). key -> true.
@@ -1933,6 +1938,8 @@ func _load_plain(key: String, sharp := false) -> Node3D:
 				apply_hero_color(g, Profile.color(), Profile.look_outfit)
 		if UNIFORMS.has(key) and takes_jacket(key) and not plain.has(key):
 			apply_uniform(g, DORM_COLORS[UNIFORMS[key]])
+		elif COATS.has(key) and takes_jacket(key) and not plain.has(key):
+			apply_uniform(g, COATS[key])
 		keep_whole(r)
 		even_light(r)
 		return r
