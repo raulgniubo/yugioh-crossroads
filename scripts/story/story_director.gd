@@ -799,6 +799,7 @@ func _cutscene(on: bool) -> void:
 		for f in _stepped_out:
 			if is_instance_valid(f):
 				(f as Node3D).visible = true
+				_solid(f as Node3D, true)
 		_stepped_out.clear()
 		_shot_kind = ""
 		_shot_pair = []
@@ -997,7 +998,17 @@ func _make_room(spots: Array, r := 1.5) -> void:
 	cast.append(scene._figure)
 	for f in _solver.crowding(spots, r, cast):
 		(f as Node3D).visible = false
+		_solid(f as Node3D, false)
 		_stepped_out.append(f)
+
+
+## A bystander who stepped out of a scene must not stay there as an invisible wall: their
+## body stops colliding while they are hidden, and collides again when they come back.
+func _solid(f: Node3D, on: bool) -> void:
+	var p := f.get_parent()
+	for b in ([p] if p is PhysicsBody3D else []) + f.find_children("*", "PhysicsBody3D", true, false):
+		for c in (b as Node).find_children("*", "CollisionShape3D", true, false):
+			(c as CollisionShape3D).set_deferred("disabled", not on)
 
 
 ## Where Lumen waits while other people talk: past them as the camera sees it and a little
@@ -3557,7 +3568,7 @@ func _end_campus(st: Dictionary) -> void:
 	var t := UITheme.label(Loc.t(str(st["end"])).to_upper(), 70, UITheme.GOLD, UITheme.title_font())
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t)
-	var r := UITheme.label(Loc.t("+%d merits") % pay if pay > 0 else Loc.t("You have seen this one before"), 28, UITheme.ACCENT)
+	var r := UITheme.label(Loc.t("+%d merits") % pay if pay > 0 else (Loc.t("You have seen this one before") if not first else ""), 28, UITheme.ACCENT)
 	r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(r)
 	if st.has("teaser"):

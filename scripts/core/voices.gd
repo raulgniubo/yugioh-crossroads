@@ -7,7 +7,8 @@ class_name Voices
 ## tools/voices/build_lines.py lists every line; a line with no file is simply not spoken.
 
 const FEMALE := ["akiza", "alexis", "mai", "student_girl", "stylish_woman", "vesper", "ink", "irina", "tova", "sparrow",
-	"selene", "vera", "luz", "brisa", "mirela", "tuesday"]
+	"selene", "vera", "luz", "brisa", "mirela", "tuesday",
+	"ines", "petra", "cassia"]
 const HAS_F := ["kind", "cocky", "cool"]
 ## What your own duelist says out loud (the rest stays a bubble, so they do not talk all the time).
 const PLAYER_KINDS := ["intro", "ace", "ace_lost", "chain", "negate", "negated", "fusion", "synchro", "xyz", "ritual", "trap", "big_hit", "comeback", "win", "lose",
