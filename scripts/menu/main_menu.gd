@@ -82,6 +82,9 @@ func _ready() -> void:
 	elif Router.menu_open == "campus":
 		Router.menu_open = ""
 		_on_academy.call_deferred()
+	elif Router.menu_open == "turbo":
+		Router.menu_open = ""
+		_on_turbo.call_deferred()
 	elif Router.menu_open == "builder":
 		Router.menu_open = ""
 		(func():
@@ -1209,9 +1212,17 @@ func _on_quit() -> void:
 	get_tree().quit()
 
 
+## The highway's door (0.69.1): races, riders, the Grand Prix and the garage, then the ride.
 func _on_turbo() -> void:
 	Sfx.play("gong", -6.0)
-	Router.go(Router.RIDE)
+	var gate := TurboGate.new()
+	gate.z_index = 100
+	add_child(gate)
+	_panel_open = true
+	gate.closed.connect(func():
+		_panel_open = false
+		if is_instance_valid(gate) and _items.size() > 1:
+			_items[0].grab_focus())
 
 
 ## The Academy story's door (0.65.0). The mode from before opens from the bottom of it.

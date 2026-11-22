@@ -652,6 +652,25 @@ func _debug_args() -> void:
 				Saves.crashed_last = true
 				Saves.crash_report = "x"
 				menu._welcome_back()
+			elif what.begins_with("turbo"):
+				# --open=turbo: the highway's door. turbo-races / turbo-riders / turbo-gp: on that page.
+				# turbo-go=<what>: press into the ride as the screen would ("race:sprint", "rider:crow", "gp", "garage", "").
+				menu._on_turbo()
+				# (Wait for the screen itself: on a busy machine it takes more than a moment.)
+				for _w in 30:
+					await get_tree().create_timer(0.2).timeout
+					if not menu.find_children("*", "TurboGate", true, false).is_empty():
+						break
+				for n in menu.find_children("*", "TurboGate", true, false):
+					if what == "turbo-races":
+						n._races()
+					elif what == "turbo-riders":
+						n._riders()
+					elif what == "turbo-gp":
+						n._grand_prix()
+					elif what.begins_with("turbo-go="):
+						print("TURBO GATE: going ", what.trim_prefix("turbo-go="))
+						n._go(what.trim_prefix("turbo-go="))
 			elif what == "campus":
 				menu._on_academy()
 			elif what == "campus-load":
