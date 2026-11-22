@@ -1092,6 +1092,23 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - NOT DONE: classes/Circle in Free Roam (only the rooms are), a mask in the duel scene, a cellar duel field (Circle duels use the
   "academy" field), win rates per class, Lantern and Midnight ranks (Acts 2 and 3). Other worlds' voices: about 720 lines / 37,000
   characters for domino, satellite, newdomino, heartland (`dump_world.tscn -- out.json domino,satellite,newdomino,heartland`).
+- SHIPPED 0.67.0 about 9:55 PM Nov 21 (commit bd50e8e, pushed). Suite at ship: TESTS DONE failures 0 (both profiles), CARD CHECK
+  8415 problems 0, positions 206 pass / 6 none, VOICE OVERLAP PASS, LINE NAMES PASS, CHAIN CHECK PASS, REPLAY CHECK 4 of 4,
+  WALK 54 reached / 0 blocked / 23 of 23 ended. Kill-and-continue in a Linux release build: class_theory, class_build, circle_1,
+  circle_4 all continued at the saved step. dll crc 545646ff (unchanged: only the exe changed). md5: mac zip
+  07237c063a92785259378792878eee13, windows zip f4a623153af801ba7c2f7afb4a458e7c. Windows sent in the chat as
+  Crossroads-0.67.0-windows.part1..3 (uuids 35aaabcc-911b-42b3-b630-bdc3b76ab97e, c0b5c437-7dab-4817-ad08-861a3616d8a9,
+  645d00a8-7633-4fa1-9d1f-5bcc7c23d5e0), mac parts 36a4e937-66f6-4058-b6b2-b97354834617, 409321bc-2097-452d-925e-cbc3f8128adc,
+  179c7d4b-deb9-4d17-95d2-aa0326af79b2.
+- THE MAC HAS SPACE AGAIN (27 GB free) and 0.67.0 IS INSTALLED THERE (it had 0.65.5). device_bash was DOWN (EIO on its socket,
+  twice; the desktop app's VM probably needs a restart), so the install was done with Blender's Python on the Mac, the same steps
+  inst.sh did: join the parts in `Old builds/` into Crossroads-latest.zip / Crossroads-latest-windows.zip (md5 checked), parts moved
+  to `Old builds/_to_delete`, `/usr/bin/ditto -x -k` into `(Mac)/.new32`, old app renamed into `(Mac)/_to_delete/Yu-Gi-Oh! Crossroads
+  0.65.5.app`, new app renamed into place (Info.plist 0.67.0, codesign --verify ok, no quarantine), exe + dll written into
+  `(Windows)/` through a temp name. Not launched on the Mac. device_commit_files takes at most 1024 MB a call (five parts, then one).
+- SHIP SCRIPT: /tmp/ship.sh now writes the zips to /tmp/shipout (disk), not /mnt/user-data/outputs (RAM-backed). Split there, delete
+  the zips, SendUserFile the parts from there, delete the folder. Disk here is tight (about 3 GB free): delete /tmp/linrel/Crossroads.pck
+  before a ship.
 - Plan doc (Claude Docs 3534f9ac-..., body node 2a29b44e-9fa3) is at rev 150: three "Hecho en 0.67.0" notes (Circle, classes, decks).
 - NEXT: voices for the other worlds (fix gendered "Bienvenido..." lines as each gets voices), then Act 2 (chapter 8 "A Room of Your Own").
 
