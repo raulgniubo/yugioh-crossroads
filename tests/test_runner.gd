@@ -10978,6 +10978,7 @@ func _test_campus() -> void:
 	check(on_board == Puzzles.LIST.size() - 11, "the six exam problems and the five class problems are kept off the puzzle board")
 	check(CampusData.TROPHIES.has("promotion_yellow") and Campus.chapter_done(str(CampusData.ACT_CLOSERS[0])) == false, "the promotion has a trophy, and the act's last chapter is known")
 	_test_act2()
+	_test_act3()
 	Campus.put("cup", {"open": true, "pts": [5, 9, 14], "since": 1})
 	Campus.trophy("rookie_champion")
 	check((Campus.v("trophies", []) as Array).has("rookie_champion") and CampusData.TROPHIES.has("rookie_champion"), "a trophy is kept and has a name for the agenda")
@@ -11063,6 +11064,165 @@ func _test_world_voices() -> void:
 	check(not Voices.say_as("kind_m", "Hey! Good to see you."), "with voices off nobody calls out to you")
 	Settings.voices_on = was
 	check(not Voices.say_as("kind_m", "There is no such line anywhere in the game."), "a line with no voice file is just shown")
+
+
+## Act 3 of the Academy story (chapters 16 to 23): the chain of chapters, the city chapters, the
+## people it adds and their voices, the things it remembers from the acts before it.
+func _test_act3() -> void:
+	var big := Puzzles._id("Blue-Eyes White Dragon") != 0
+	var ids: Array = []
+	for ch in CampusData.CHAPTERS:
+		ids.append(str(ch["id"]))
+	# Everything any script can set and remember (a flag step, a remember step, an answer you pick).
+	var settable := {"won": true, "lost": true}
+	for sk in CampusData.SCRIPTS:
+		for st in CampusData.SCRIPTS[sk]:
+			var sd: Dictionary = st
+			for key in ["flag", "remember"]:
+				if sd.has(key):
+					settable[str(sd[key])] = true
+			for opt in sd.get("choice", []):
+				settable[str(opt[1])] = true
+			for task in sd.get("tasks", []):
+				for tl in (task as Dictionary).get("say", []):
+					for opt in (tl as Dictionary).get("choice", []):
+						settable[str(opt[1])] = true
+	var in_city := 0
+	var spoken := 0
+	for n in range(16, 24):
+		var id := "ac_ch%d" % n
+		var at := ids.find(id)
+		check(at >= 0 and int(CampusData.CHAPTERS[at]["act"]) == 3 and str(CampusData.CHAPTERS[at]["title"]) == "Chapter %d" % n, "chapter %d is on the list, in Act 3" % n)
+		var sc: Array = CampusData.SCRIPTS.get(id, [])
+		check(sc.size() > 40, "chapter %d has its script" % n)
+		if sc.is_empty():
+			continue
+		var first: Dictionary = sc[0]
+		var last: Dictionary = sc[sc.size() - 1]
+		check(first.has("scene") and str(first.get("chapter", "")) == "Chapter %d" % n, "chapter %d opens on a scene with its chapter card" % n)
+		check(str(last.get("unlock", "")) == "ac_ch%d" % (n + 1) and str(last.get("end", "")) == "Chapter %d complete" % n and str(last.get("teaser", "")) != "", "chapter %d ends, says what comes next and unlocks chapter %d" % [n, n + 1])
+		check((last.get("wake", Vector3.ZERO) as Vector3).distance_to(CampusData.BROOM) < 3.0, "after chapter %d you wake in the Blue suite" % n)
+		var placed := {}
+		for st in sc:
+			var d: Dictionary = st
+			for key in ["if", "unless"]:
+				check(not d.has(key) or settable.has(str(d[key])), "chapter %d: '%s' is something the story can remember" % [n, d.get(key, "")])
+			if d.has("scene"):
+				placed = {}
+				var scn: Dictionary = d["scene"]
+				var inside := str(scn.get("inside", ""))
+				var where := str(scn.get("district", "academy"))
+				check(where in ["academy", "newdomino"], "chapter %d: the story stays on the island or goes to the city (%s)" % [n, where])
+				if where == "newdomino":
+					in_city += 1
+					check(inside == "" or (MoreRooms.ROOMS.has(inside) and str(MoreRooms.ROOMS[inside].get("district", "")) == "newdomino"), "chapter %d: the room '%s' is a room of the city" % [n, inside])
+				else:
+					check(inside == "" or AcademyRooms.ROOMS.has(inside) or (MoreRooms.ROOMS.has(inside) and str(MoreRooms.ROOMS[inside].get("district", "")) == "academy"), "chapter %d: the room '%s' is a room of the island" % [n, inside])
+			for member in d.get("cast", []):
+				placed[str(member["actor"])] = true
+			if d.has("actor"):
+				var body := str(d.get("as", d["actor"]))
+				placed[str(d["actor"])] = true
+				check(body == "lumen" or not Characters.get_char(body).is_empty(), "chapter %d: '%s' is somebody the game knows" % [n, body])
+				check(not d.has("as") or Avatars.STANDINS.has(body), "chapter %d: the stand-in body '%s' exists" % [n, body])
+			if d.has("s") and d.has("t"):
+				spoken += 1
+				check(Voices.OWN.has(str(d["s"])) or str(d["s"]) in ["player", "lumen"] or Voices.voice_for(str(d["s"])) != "", "chapter %d: %s has a voice" % [n, d["s"]])
+				if str(d["s"]) != "player":
+					check(placed.has(str(d["s"])), "chapter %d: %s is in the scene when speaking (%s)" % [n, d["s"], str(d["t"]).left(30)])
+			if d.has("duel"):
+				var du: Dictionary = d["duel"]
+				check(not Characters.get_char(str(du["opponent"])).is_empty(), "chapter %d: the opponent %s exists" % [n, du["opponent"]])
+				check(not big or CardData.has_deck(str(du["opp_deck"])), "chapter %d: the deck %s is in the game" % [n, du["opp_deck"]])
+				check(not du.has("my_deck") or not big or CardData.has_deck(str(du["my_deck"])), "chapter %d: the deck you are lent (%s) is in the game" % [n, du.get("my_deck", "")])
+				check(str(du.get("deck_tier", "")) in ["starter", "standard", "full"] and str(du.get("rule", "")) != "", "chapter %d: the duel against %s says its deck's version and its stakes" % [n, du["opponent"]])
+			for key in ["prize", "bond"]:
+				if d.has(key) and d.has("card"):
+					check(int(d["card"]) != 0 and not d.has("card_name") and (not big or not CardData.get_card(int(d["card"])).is_empty()), "chapter %d: the card of the %s banner is a real card" % [n, key])
+			if d.has("campus") and (d["campus"] as Dictionary).has("trophy"):
+				check(CampusData.TROPHIES.has(str(d["campus"]["trophy"])), "chapter %d: the trophy '%s' has a name for the agenda" % [n, d["campus"]["trophy"]])
+			if d.has("bracket"):
+				check((d["bracket"]["names"] as Array).size() == 16, "chapter %d: the bracket has sixteen names" % n)
+			if d.has("clash"):
+				var dmg := {"a": 0, "b": 0}
+				for beat in d["clash"]["beats"]:
+					dmg["b" if str(beat[0]) == "a" else "a"] += int(beat[3])
+				var w := str(d["clash"]["win"])
+				var l := "b" if w == "a" else "a"
+				var lps: Array = d["clash"]["lp"]
+				check(int(dmg[l]) == int(lps[0 if l == "a" else 1]) and int(dmg[w]) < int(lps[0 if w == "a" else 1]), "chapter %d: the duel you watch (%s against %s) adds up" % [n, d["clash"]["a"], d["clash"]["b"]])
+				for side in ["a", "b"]:
+					check(not Characters.get_char(str(d["clash"][side])).is_empty() and Voices.voice_for(str(d["clash"][side])) != "", "chapter %d: %s, in a duel you watch, has a name and a voice" % [n, d["clash"][side]])
+	check(spoken > 700, "Act 3 has its lines (%d)" % spoken)
+	check(in_city >= 10, "chapters 17 and 18 are played in the city (%d scenes there)" % in_city)
+	check(str((CampusData.SCRIPTS["ac_ch17"][-1] as Dictionary).get("then", "")) == "next", "the night in the city runs straight into the match (chapter 17 into 18)")
+	check(ids.find("ac_ch24") == ids.find("ac_ch23") + 1, "the first chapter of Act 4 is announced after chapter 23")
+	# The city: the stadium and the cafe are the city's own rooms, and the outdoor spots are inside the city.
+	check(CampusData.STADIUM == MoreRooms.ROOMS["nd_stadium"]["at"] and CampusData.CAFE == MoreRooms.ROOMS["nd_cafe"]["at"]
+			and str(MoreRooms.ROOMS["nd_stadium"]["district"]) == "newdomino" and str(MoreRooms.ROOMS["nd_cafe"]["district"]) == "newdomino", "the stadium and the cafe are where the story cuts to, in the city")
+	for spot: Vector3 in [CampusData.CITY_GATE, CampusData.CITY_PLAZA, CampusData.STADIUM_OUT, CampusData.MARKET, CampusData.CAFE_OUT]:
+		check(absf(spot.x) < 60.0 and absf(spot.z) < 60.0, "the city spot %s is inside the city" % str(spot))
+	for t in ["league_sol", "crown", "league_champion", "circle_midnight"]:
+		check(CampusData.TROPHIES.has(t), "the trophy '%s' has a name for the agenda" % t)
+	# The people Act 3 adds, and the voice each one speaks with (the files are made from this table).
+	var voices := {"leo": "leo", "selene": "selene", "paco": "wild_m", "luz": "cocky_f", "brisa": "cocky_f", "tano": "wild_m", "mirela": "cool_f", "otto": "cocky_m",
+		"cassius": "cocky_m", "ansel": "cool_m", "crane_young": "crane", "tuesday": "kind_f", "official": "cool_m", "referee": "cool_m"}
+	for who in voices:
+		var c := Characters.get_char(who)
+		check(not c.is_empty() and str(c.get("personality", "")) != "", "%s has a name and a temper" % who)
+		check(Voices.voice_for(who) == str(voices[who]), "%s speaks with the voice %s (%s)" % [who, voices[who], Voices.voice_for(who)])
+		if who in ["official", "referee"]:
+			continue
+		check(Avatars.STANDINS.has(who), "%s has a body" % who)
+		if c.has("deck"):
+			check(not big or CardData.has_deck(str(c["deck"])), "%s has a deck" % who)
+	for who in ["leo", "paco", "luz", "brisa", "tano"]:
+		check(Avatars.COATS.has(who) and (Avatars.COATS[who] as Color).r > (Avatars.COATS[who] as Color).b + 0.4, "%s wears the Sun's orange" % who)
+	for who in ["selene", "mirela", "otto", "cassius", "ansel"]:
+		check(Avatars.COATS.has(who) and (Avatars.COATS[who] as Color).get_luminance() > 0.8 and not Avatars.UNIFORMS.has(who), "%s wears Apex white, not a dorm jacket" % who)
+	check(Avatars.STANDINS["crane_young"] == Avatars.STANDINS["crane"] and Avatars.COATS.has("crane_young"), "the Crane of ten years ago is the same man, in Red's jacket")
+	# The memory duel of chapter 19 is played with Sato's old deck, against the Crane of ten years ago.
+	var memory := false
+	for st in CampusData.SCRIPTS.get("ac_ch19", []):
+		if (st as Dictionary).has("duel"):
+			memory = str(st["duel"]["opponent"]) == "crane_young" and str(st["duel"].get("my_deck", "")).begins_with("deck_machine")
+	check(memory, "chapter 19 lends you Sato's old deck against Silas Crane, ten years ago")
+	# The final (chapter 22): one of two opponents, by what Dante chose the night before.
+	var fifth: Array = []
+	for st in CampusData.SCRIPTS.get("ac_ch22", []):
+		if (st as Dictionary).has("duel"):
+			fifth.append([str(st["duel"]["opponent"]), str(st.get("if", "")), str(st.get("unless", ""))])
+	check(fifth.size() == 2 and fifth.has(["dante", "", "dante_back"]) and fifth.has(["selene", "dante_back", ""]), "the last duel of the final is Dante in white, or Selene if he came back")
+	# Normal play gets here: chapter 15 hands over the Blue jacket, opens chapter 16 and wakes you in the Blue suite.
+	var to_blue := false
+	for st in CampusData.SCRIPTS.get("ac_ch15", []):
+		if (st as Dictionary).has("campus") and int((st["campus"] as Dictionary).get("dorm", -1)) == 2:
+			to_blue = true
+	var end15: Dictionary = CampusData.SCRIPTS["ac_ch15"][-1]
+	check(to_blue and str(end15.get("unlock", "")) == "ac_ch16" and (end15.get("wake", Vector3.ZERO) as Vector3).distance_to(CampusData.BROOM) < 3.0 and str(Campus.ROOM[2]) == "blue_room_1",
+			"chapter 15 moves you to Blue, opens chapter 16 and wakes you in the Blue suite")
+	# The cards people hand you in Act 3 are the cards the lines name.
+	if big:
+		var gifts := {"ac_ch18": "Blaze Accelerator", "ac_ch19": "Limiter Removal", "circle_12": "Megarock Dragon", "ac_ch23": "Lumen, Echo Chorus"}
+		for gk in gifts:
+			var got := ""
+			for st in CampusData.SCRIPTS.get(gk, []):
+				if (st as Dictionary).has("card") and ((st as Dictionary).has("bond") or (st as Dictionary).has("prize")):
+					got = str(CardData.get_card(int(st["card"])).get("name", ""))
+			check(got == str(gifts[gk]), "%s hands over %s (%s)" % [gk, gifts[gk], got])
+	# The Circle's Midnight rank: nights nine to twelve are full-deck duels that may be lost, and the last one is the keeper's.
+	for n in range(9, 13):
+		var night: Array = CampusData.SCRIPTS.get("circle_%d" % n, [])
+		var nd := {}
+		for st in night:
+			if (st as Dictionary).has("duel"):
+				nd = st["duel"]
+		check(int(nd.get("circle", 0)) == n and bool(nd.get("lose_ok", false)) and str(nd.get("deck_tier", "")) == "full" and not Characters.get_char(str(nd.get("opponent", ""))).is_empty(),
+				"night %d of the Circle is a full-deck duel that may be lost" % n)
+	# Nobody stands in the cafe's counter (it runs along the back wall, 0.9 m deep).
+	for st in CampusData.SCRIPTS.get("ac_ch17", []):
+		if (st as Dictionary).has("actor") and (st["at"] as Vector3).distance_to(CampusData.CAFE) < 9.0:
+			check((st["at"] as Vector3).z - CampusData.CAFE.z > -2.3, "at the cafe %s stands clear of the counter" % st["actor"])
 
 
 ## Act 2 of the Academy story (chapters 8 to 15): the chain of chapters, the people it adds, the
@@ -11345,6 +11505,41 @@ func _test_circle() -> void:
 		check(not big_set_c or CardData.has_deck(str(d)), "the deck '%s' in the Circle's box is in the game" % d)
 	check(not Characters.get_char("moth").is_empty() and Voices.voice_for("moth") == "wild_m" and Voices.voice_for("ink") == "cool_f", "the Circle's duelists have a name and a voice")
 	check(Voices.voice_for("sparrow") == "cocky_f" and Voices.voice_for("bell") == "dark_m" and Voices.voice_for("paper") == "cocky_m" and Voices.voice_for("harbor") == "cool_m", "the masks of the Lantern rank have a voice each")
+	# The Midnight rank: four last nights, open once chapter 16 is behind you. The last one takes a mask off.
+	Campus.finish_chapter("ac_ch16")
+	Campus.set_time(21, 2)
+	check(CampusCircle.open_duels() == 12 and str(CampusCircle.knock()["script"]) == "circle_9", "after chapter 16 the door opens on the first night of the Midnight rank")
+	for n in [9, 10, 11]:
+		Campus.set_time(12 + n, 2)
+		check(str(CampusCircle.knock()["script"]) == "circle_%d" % n, "night %d is duel %d" % [n, n])
+		var mid3 := CampusCircle.finish(n, true)
+		check(CampusCircle.wins() == n and not bool(mid3["rank"]), "midnight mark %d is on the wall" % (n - 8))
+	Campus.set_time(25, 2)
+	var lost12 := CampusCircle.finish(12, false)
+	check(CampusCircle.wins() == 11 and not bool(lost12["rank"]) and not CampusCircle.rank_done(2), "losing to the top line changes nothing: come back another night")
+	Campus.set_time(26, 2)
+	check(str(CampusCircle.knock()["script"]) == "circle_12", "the last night can be tried again")
+	var last12 := CampusCircle.finish(12, true)
+	check(bool(last12["rank"]) and int(last12["prize"]) == 0 and CampusCircle.rank_done(2) and (Campus.v("trophies", []) as Array).has("circle_midnight"), "the twelfth night finishes the Midnight rank and leaves a trophy")
+	Campus.set_time(27, 2)
+	check(str(CampusCircle.knock()["script"]) == "" and str(CampusCircle.knock()["why"]) == "The Midnight rank is yours. The top line of the wall has your name on it.", "after the Midnight rank the door has nothing left to ask")
+	for n in range(9, 13):
+		var steps3: Array = CampusData.SCRIPTS.get("circle_%d" % n, [])
+		check(not steps3.is_empty() and int((steps3[-1] as Dictionary).get("circle_end", -1)) == n, "night %d has its script and closes as a night" % n)
+		var unmasked := 0
+		for st in steps3:
+			if (st as Dictionary).has("duel"):
+				check(int(st["duel"].get("circle", 0)) == n and bool(st["duel"].get("lose_ok", false)) and (not big_set_c or CardData.has_deck(str(st["duel"]["opp_deck"]))), "the duel of night %d may be lost, against a deck the game has" % n)
+				check(CampusCircle.duel(n, str(st["duel"]["opp_deck"])).is_empty(), "night %d sets its own house rule" % n)
+			if (st as Dictionary).has("actor") and str(st["actor"]) != "lumen":
+				if not bool(st.get("mask", false)):
+					unmasked += 1
+					check(n == 12 and str(st["actor"]) == "bruno" and str(st.get("if", "")) == "won", "the only mask that ever comes off is Mister Nobody's, on the last night, and only if you win (%s, night %d)" % [st["actor"], n])
+				check(bool(st.get("plain", false)), "nobody at the Circle wears a jacket (%s, night %d)" % [st["actor"], n])
+			if (st as Dictionary).has("prize"):
+				check(n == 12 and int(st.get("card", 0)) != 0 and str(st.get("if", "")) == "won", "only the last night hands over a card, and only on a win")
+		check(unmasked == (1 if n == 12 else 0), "night %d: masks stay on" % n)
+	check(Voices.voice_for("tuesday") == "kind_f" and Voices.voice_for("crowler") == "crowler" and Voices.voice_for("bruno") == "bruno", "the masks of the Midnight rank have a voice each")
 	if had:
 		var f := FileAccess.open(Campus.PATH, FileAccess.WRITE)
 		f.store_buffer(keep)
