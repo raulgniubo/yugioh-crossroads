@@ -646,6 +646,12 @@ func _debug_args() -> void:
 				menu._welcome_back()
 			elif what == "campus":
 				menu._on_academy()
+			elif what == "campus-load":
+				# The Academy's door with its Load screen open.
+				menu._on_academy()
+				await get_tree().create_timer(0.4).timeout
+				for n in menu.find_children("*", "CampusGate", true, false):
+					SaveMenu.open(n, false, true)
 			elif what == "settings":
 				for t in OS.get_cmdline_user_args():
 					if t.begins_with("--tab="):      # dev: open on that tab (3 is Audio)

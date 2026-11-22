@@ -199,7 +199,9 @@ const SCRIPTS := {
 		{"s": "lumen", "t": "He is trying to scare you. I think he is the nervous one. Somebody vouched for you.", "cam": "close", "emote": "♪"},
 		{"s": "crowler", "t": "Duel disk on. Show me why your name is on my list.", "cam": "low", "do": "stomp"},
 		{"cine": false},
-		{"duel": {"opponent": "crowler", "opp_deck": "deck_ancient_gear", "deck_tier": "starter", "difficulty": 1, "field": "academy", "lose_ok": true, "boss": true,
+		# (The exam deck: his Ancient Gears with the Golem in it, and none of the fast pieces. The same
+		# list whatever the setting, so the first real duel of the year is a fair one.)
+		{"duel": {"opponent": "crowler", "opp_deck": "deck_exam_gear", "deck_tier": "full", "difficulty": 1, "field": "academy", "lose_ok": true, "boss": true, "fair": true,
 			"rule": "The entrance exam. Win or lose, it decides how the year begins."}},
 		{"cine": true},
 		{"actor": "crowler", "at": STAGE + Vector3(0, 0, 0.4), "face": "player"},
@@ -1644,7 +1646,9 @@ const SCRIPTS := {
 		{"s": "crowler", "t": "Ancient Gears. Thirty years of them. They do not get tired, they do not get nervous, and not one of them has ever been promoted by accident.", "cam": "low"},
 		{"cine": false},
 		{"goal": "Take your place for the promotion duel", "at": STAGE + Vector3(2.4, 0, 4.9), "r": 2.2, "how": "Doctor Crowler is waiting. You start with 2000 Life Points."},
-		{"duel": {"opponent": "crowler", "opp_deck": "deck_ancient_gear", "deck_tier": "standard", "difficulty": 1, "field": "academy", "boss": true, "my_lp": 2000,
+		# (4000 for him, as the rule says: it was missing, so he started with 8000. And the Starter
+		# version of his deck: measured with a novice deck, the Standard one won three duels in four.)
+		{"duel": {"opponent": "crowler", "opp_deck": "deck_ancient_gear", "deck_tier": "starter", "difficulty": 1, "field": "academy", "boss": true, "my_lp": 2000, "opp_lp": 4000,
 			"rule": "The promotion duel. Doctor Crowler's rule: you start with 2000 Life Points and he starts with 4000. Win, and you move up to the Yellow dorm."}},
 		{"scene": {"district": "academy", "inside": "ac_hall", "pos": STAGE + Vector3(1.0, 0, 7.6), "yaw": 0.0, "tod": "day", "music": "academy"}},
 		{"cine": true},

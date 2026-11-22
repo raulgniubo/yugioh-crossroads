@@ -6,6 +6,9 @@ var failures := 0
 
 
 func _ready() -> void:
+	if OS.get_environment("ACT_SIM") != "":
+		_act_sim()
+		return
 	_test_tributes()
 	_test_battle_math()
 	_test_synchro_xyz_fusion()
@@ -419,8 +422,12 @@ var made := {}
 var trace := false
 
 
-func _ai_vs_ai(seed: int, a := "yugi", b := "kaiba", lv_a := 1, lv_b := 1) -> int:
-	var s := _new_state(seed, a, b, lv_a >= 2, lv_b >= 2)
+func _ai_vs_ai(seed: int, a := "yugi", b := "kaiba", lv_a := 1, lv_b := 1, plain_a := false, lp_a := 0, lp_b := 0) -> int:
+	var s := _new_state(seed, a, b, lv_a >= 2 and not plain_a, lv_b >= 2)
+	if lp_a > 0:
+		s.players[0].lp = lp_a
+	if lp_b > 0:
+		s.players[1].lp = lp_b
 	var start_total := _total(s)
 	var guard := 0
 	while not s.is_over() and guard < 200:
@@ -11204,3 +11211,51 @@ func _test_circle() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(Campus.PATH + ".bak"))
 	Campus.reload()
 	Campus.on = was_on
+
+
+func _act_sim() -> void:
+	CardData.load_external(OS.get_environment("STRESS_FOLDER"))
+	if OS.get_environment("ACT_LIST") != "":
+		# ACT_LIST=deck@tier,deck : print what is in those decks.
+		for key in OS.get_environment("ACT_LIST").split(","):
+			var tally := {}
+			for id in CardData.deck_list(key):
+				var n := str(CardData.get_card(int(id)).get("name", id))
+				tally[n] = int(tally.get(n, 0)) + 1
+			var parts: Array = []
+			for n in tally:
+				var c: Dictionary = CardData.get_card(CardData.NAME_TO_ID.get(n.to_lower(), 0))
+				parts.append("%dx %s%s" % [tally[n], n, (" [L%d %d/%d]" % [int(c.get("level", 0)), int(c.get("atk", 0)), int(c.get("def", 0))]) if str(c.get("kind", "")) == "monster" else ""])
+			print("LIST ", key, " (", CardData.deck_list(key).size(), "): ", ", ".join(parts))
+		get_tree().quit(0)
+		return
+	# Dev: how hard is each duel of the Academy's first act for somebody with a novice deck?
+	# ACT_SIM=<games> [ACT_ONLY=<opponent>]. The player is the machine at its Hard level, playing
+	# the plain novice deck; each rival brings the deck and the level the story gives them.
+	var ng := int(OS.get_environment("ACT_SIM"))
+	var duels := [["nico (ferry)", "deck_warrior", "starter", 0, 0], ["crowler (exam)", "deck_ancient_gear", "starter", 1, 0], ["syrus", "syrus", "starter", 1, 0],
+		["felix", "deck_archfiend", "starter", 1, 0], ["ivo", "deck_dark_world", "starter", 1, 0], ["mika", "deck_arcane", "starter", 1, 0], ["gus", "deck_goblin", "starter", 0, 0],
+		["nico (semi)", "deck_warrior", "starter", 1, 0], ["dante", "deck_dragon", "standard", 2, 0], ["bruno", "deck_rock", "standard", 1, 0], ["bastion", "deck_water", "standard", 1, 0],
+		["chazz", "chazz", "standard", 1, 0], ["octavia", "deck_barrier", "standard", 2, 0], ["crowler (final)", "deck_ancient_gear", "standard", 1, 2000]]
+	if OS.get_environment("ACT_EXTRA") != "":
+		# ACT_EXTRA="label,deck,tier,level,my_lp;..."
+		duels = []
+		for part in OS.get_environment("ACT_EXTRA").split(";"):
+			var q := part.split(",")
+			duels.append([q[0], q[1], q[2], int(q[3]), int(q[4]) if q.size() > 4 else 0, int(q[5]) if q.size() > 5 else 0])
+	var mine: Array = OS.get_environment("ACT_MINE").split(",") if OS.get_environment("ACT_MINE") != "" else ["starter_warrior", "starter_arcane", "starter_dragon"]
+	for dd in duels:
+		if OS.get_environment("ACT_ONLY") != "" and not str(dd[0]).begins_with(OS.get_environment("ACT_ONLY")):
+			continue
+		var line := "ACT %-16s %-26s lv %d :" % [dd[0], str(dd[1]) + "@" + str(dd[2]), dd[3]]
+		var all_w := 0
+		for md in mine:
+			var w := 0
+			for g in ng:
+				if _ai_vs_ai(4100 + g * 7, str(md), DeckTiers.with_version(str(dd[1]), str(dd[2])), 2, int(dd[3]), true, int(dd[4]), int(dd[5]) if dd.size() > 5 else 0) == 0:
+					w += 1
+			all_w += w
+			line += "  %s %d/%d" % [str(md).trim_prefix("starter_"), w, ng]
+		print(line, "   = ", int(round(100.0 * all_w / (ng * mine.size()))), "%")
+	print("TESTS DONE, failures: %d" % failures)
+	get_tree().quit(0)

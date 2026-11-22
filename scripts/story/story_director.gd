@@ -2043,7 +2043,10 @@ func _walk_check(what: String, at: Vector3, r: float) -> void:
 			print("WALK BLOCKED step ", step, "  ", what, "  at: ", leg[3], "  from ", (leg[0] as Vector3).snapped(Vector3(0.1, 0.1, 0.1)), " to ", (leg[1] as Vector3).snapped(Vector3(0.1, 0.1, 0.1)),
 					"  got as close as ", (got["closest"] as Vector3).snapped(Vector3(0.1, 0.1, 0.1)), " (", snappedf(float(got["left"]), 0.1), " m short)  cells ", got["cells"])
 			return
-	print("WALK ok step ", step, "  ", what, "  legs ", legs.size(), "  cells ", cells, "  ", Time.get_ticks_msec() - t0, " ms")
+	var via: Array = []
+	for i in legs.size() - 1:
+		via.append(str(legs[i][3]))
+	print("WALK ok step ", step, "  ", what, "  legs ", legs.size(), "  cells ", cells, "  ", Time.get_ticks_msec() - t0, " ms", ("  via " + ", ".join(via)) if not via.is_empty() else "")
 
 
 ## The room a point is in ("" out of doors).
@@ -2685,7 +2688,7 @@ func _start_duel(d: Dictionary) -> void:
 	# Which version of their deck they bring (DeckTiers): simpler early in the story, whole for the
 	# bosses. Hard brings each one a step stronger, Extreme two.
 	# (In the Academy, with your own collection brought along, everybody comes a step stronger.)
-	var harder := Saves.story_difficulty() + (1 if campus and not Campus.own_cards() else 0)
+	var harder := Campus.deck_steps() if campus else Saves.story_difficulty()
 	opp_deck = DeckTiers.with_version(opp_deck, DeckTiers.shift(str(d.get("deck_tier", "full")), harder))
 	# "opp_deck_exact": that very deck, card for card (the Circle's swap night: they play yours).
 	if d.has("opp_deck_exact") and CardData.has_deck(str(d["opp_deck_exact"])):
@@ -2725,7 +2728,8 @@ func _start_duel(d: Dictionary) -> void:
 	for i in range(step + 1, _steps.size()):
 		if (_steps[i] as Dictionary).has("duel"):
 			last_duel = false
-	Router.duel_config["destiny_opp"] = last_duel or d.has("opp_lp") or d.has("rule") or bool(d.get("boss", false))
+	# ("fair": true keeps it from them: the entrance exam, where the other side gets no comeback draw.)
+	Router.duel_config["destiny_opp"] = (last_duel or d.has("opp_lp") or d.has("rule") or bool(d.get("boss", false))) and not bool(d.get("fair", false))
 	_cutscene(true)
 	_box.visible = false
 	if problem == "":

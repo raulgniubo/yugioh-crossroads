@@ -5,6 +5,21 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.67.1
+
+**Fixes from Raul's first evening with Act 1, and voices for every world.** No cards added: 8,415 total.
+
+- **Voices in all six worlds.** What 0.67.0 did for the Academy island, this build does for Domino, Satellite, New Domino, the museum and Heartland: people greet you as they pass, and everything somebody says when you talk to them is spoken, in Spanish. 769 new voice files.
+- **No more mute lines when you talk to somebody.** Lines with a name, a place or an hour in them ("Alexis got me good today!", "Meet me at the Main Hall around 9:30") had no voice, and neither did favors, the three rivals of the island, the ghost of the old dorm, the card shop's own people or the passers-by you stop. All of them speak now. A line about the card you lead with says "that card" out loud. Places are said with their article ("en el Salón Principal") and hours the way people say them (9:30, not 09:30).
+- **A check that walks the real worlds.** A new tool stands in each world as the game builds it and lists every line anybody there can say that has no voice file. It reports 0 in all of them. If one ever slips through while you play, it is written to `Crossroads Data/Crash reports/lines without a voice.txt`.
+- **Your room is where the story says it is.** The doors along the gallery upstairs in each dorm hall are now the doors of the dorm's real bedrooms: door 2 in the Red hall is your room. Before, those doors opened on small rooms for show and your real room could only be entered from the walkway outside, so the guide sent you out of the building and then seemed to send you back in.
+- **The guide beam goes where you can walk.** It routes through doors the way a person does (the way out of a room, the door of the next one, the foot of the stairs when the door is on the floor above), says which leg you are on ("up the stairs", "the way out"), and indoors it is a short beam on the floor you are on, so it no longer comes up through the floor above. The task box says where a thing is in words ("Upstairs in this building") instead of metres to a room built far away. Leaving a room puts you back at the door you came in by.
+- **The entrance exam is a fair duel.** Doctor Crowler plays an exam deck: his Ancient Gears with the Golem in it, without the fast pieces, and he gets no comeback draw. And a setting was making the whole Academy harder than written: on Hard (the setting the game starts on) every rival brought a deck one step stronger, so a new student with a novice deck met a Standard deck at the exam. With the Academy's own cards, rivals now bring the deck the story gives them on Normal and Hard; only Extreme moves them up.
+- **The promotion duel plays by its own rule.** It says you start with 2000 Life Points and Doctor Crowler with 4000, but he was starting with 8000. Fixed.
+- **The Academy's title screen** has the island at sunset behind it, your dorm's crest, the chapters of the act as a row of marks, and the same look on the Load screen, where each save shows the crest of the dorm it is in.
+- **Fixed: the "welcome back" panel ran off the screen** in Spanish (one long button stretched it). Side panels can no longer grow past the edge.
+- **Tests run on a copy of the game**, so work goes on while they run.
+
 ## What is in 0.67.0
 
 **Academia de Duelos, Act 1 "Rojo": complete.** Classes, the first rank of the Midnight Circle and rivals whose decks grow with you, on top of the prologue and the seven chapters. In Spanish, every line spoken. This build also carries everything listed under 0.66.1 (voices in the open world), which never shipped by itself. No cards added: 8,415 total.

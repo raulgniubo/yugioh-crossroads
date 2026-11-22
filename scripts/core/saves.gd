@@ -381,6 +381,14 @@ static func info(slot: String) -> Dictionary:
 	if meta.has_section_key("save", "cards"):
 		out["summary"] = "%s  ·  %s  ·  %d DP" % [Loc.t(str(meta.get_value("save", "where", ""))), Loc.t("%d cards") % int(meta.get_value("save", "cards", 0)), int(meta.get_value("save", "dp", 0))]
 		out["place"] = _place_words(str(meta.get_value("save", "place_mode", "")), str(meta.get_value("save", "place_chapter", "")), str(meta.get_value("save", "place_district", "")))
+	# The Academy game kept in this slot (its own, not the one being played now): the dorm, the
+	# day and the merits, for the slot's crest and its line.
+	var camp := ConfigFile.new()
+	if camp.load(slot_dir(slot).path_join("campus.cfg")) == OK and bool(camp.get_value("campus", "started", false)):
+		var dorm := clampi(int(camp.get_value("campus", "dorm", 0)), 0, 2)
+		out["campus"] = {"dorm": dorm, "day": maxi(1, int(camp.get_value("campus", "day", 1))), "merits": int(camp.get_value("campus", "merits", 0))}
+		if str(meta.get_value("save", "place_mode", "")) == "campus":
+			out["place"] = "%s: %s  ·  %s %d  ·  %d %s" % [Loc.t("Duel Academy"), Loc.t(Campus.DORM_NAMES[dorm]), Loc.t("Day"), int(out["campus"]["day"]), int(out["campus"]["merits"]), Loc.t("merits")]
 	return out
 
 

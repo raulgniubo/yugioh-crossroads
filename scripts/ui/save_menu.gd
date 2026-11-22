@@ -13,9 +13,13 @@ var _first: Control
 var can_save := true     # false from the main menu: only loading makes sense there
 
 
-static func open(host: Node, saving := true) -> SaveMenu:
+var academy := false     # opened from the Academy's door: its picture behind, and each slot's dorm crest
+
+
+static func open(host: Node, saving := true, academy_look := false) -> SaveMenu:
 	var m := SaveMenu.new()
 	m.can_save = saving
+	m.academy = academy_look
 	m.z_index = 120
 	host.add_child(m)
 	return m
@@ -26,7 +30,10 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	theme = UITheme.build()
-	add_child(MenuBackdrop.new())
+	if academy:
+		add_child(AcademyBackdrop.new(0.74))
+	else:
+		add_child(MenuBackdrop.new())
 	var c := CenterContainer.new()
 	c.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(c)
@@ -98,6 +105,17 @@ func _row(slot: String, i: int) -> Control:
 	bar.color = col if not empty else Color(1, 1, 1, 0.15)
 	bar.custom_minimum_size = Vector2(6, 0)
 	h.add_child(bar)
+	if academy:
+		# The crest of the dorm that save is in (a grey one when it holds no Academy game).
+		var camp: Dictionary = meta.get("campus", {})
+		var crest := DormCrest.new(int(camp.get("dorm", -1)) if not camp.is_empty() else -1, 54.0)
+		crest.lit = 1.0 if not camp.is_empty() else 0.35
+		crest.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(crest)
+		if not camp.is_empty():
+			col = (Campus.DORM_COLORS[int(camp["dorm"])] as Color).lightened(0.2)
+			bar.color = col
+			card.add_theme_stylebox_override("panel", UITheme.button_box(Color(0.045, 0.07, 0.14, 0.94), Color(col, 0.6), 16))
 	var name_box := VBoxContainer.new()
 	name_box.custom_minimum_size = Vector2(190, 0)
 	name_box.add_theme_constant_override("separation", -2)

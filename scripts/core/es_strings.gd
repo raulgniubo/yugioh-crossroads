@@ -7723,4 +7723,9 @@ const ES := {
 	"to the stairs": "hasta la escalera",
 	"to the way out": "hasta la salida",
 	"to the door": "hasta la puerta",
+	"A STORY OF ITS OWN": "UNA HISTORIA APARTE",
+	"PROLOGUE": "PRÓLOGO",
+	"ACT %d": "ACTO %d",
+	"%d of %d": "%d de %d",
+	"You come in on the morning ferry with a novice deck. Everything else you earn on the island.": "Llegas en el ferry de la mañana con un deck de novato. Todo lo demás te lo ganas en la isla.",
 }

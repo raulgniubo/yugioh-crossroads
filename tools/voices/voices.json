@@ -214,5 +214,29 @@
    "id": "qVkoHk0N8IiaTpsfBFzF",
    "name": "Crossroads - Bastion (ES)"
   }
+ },
+ "irina": {
+  "es": {
+   "id": "D3brMQcHx7drbzXGjyxr",
+   "name": "Crossroads ES - Irina"
+  }
+ },
+ "leo": {
+  "es": {
+   "id": "8ot28E5jzTDDYmJ4shFJ",
+   "name": "Crossroads ES - Leo"
+  }
+ },
+ "selene": {
+  "es": {
+   "id": "nANYkhFXcyqDOdKAApcY",
+   "name": "Crossroads ES - Selene"
+  }
+ },
+ "vera": {
+  "es": {
+   "id": "FUSwl5xKfiDsb4nISKIO",
+   "name": "Crossroads ES - Vera"
+  }
  }
 }

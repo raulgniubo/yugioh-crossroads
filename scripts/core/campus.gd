@@ -401,8 +401,20 @@ static func stars_now(who: String, base: int) -> int:
 ## The deck somebody on the island brings, moved by how you play: your difficulty setting (Hard a
 ## step up the ladder Starter, Standard, Full; Extreme two) and one more step when you brought your
 ## own collection instead of building one here. A whole deck stays whole.
+## How many steps stronger than the story wrote it every rival's deck comes (DeckTiers). With the
+## Academy's own cards you start from a novice deck, so the story's own curve is the curve: Normal
+## and Hard (the setting the game starts on) bring the decks as written, and only Extreme brings
+## them a step up. (It used to be a step up on Hard as well: the entrance exam met a new student
+## with a Standard deck.) With your own collection brought along, everybody comes one step stronger
+## on top of the setting.
+static func deck_steps() -> int:
+	if own_cards():
+		return maxi(0, Saves.story_difficulty() - 1)
+	return Saves.story_difficulty() + 1
+
+
 static func deck_now(key: String) -> String:
-	var harder := Saves.story_difficulty() + (0 if own_cards() else 1)
+	var harder := deck_steps()
 	if harder <= 0 or not key.contains("@"):
 		return key
 	var sp: Array = DeckTiers.split(key)

@@ -317,6 +317,14 @@ const NAMED_DECKS := {
 		"extra": {"XY-Dragon Cannon": 1, "XZ-Tank Cannon": 1, "YZ-Tank Dragon": 1, "XYZ-Dragon Cannon": 2, "VW-Tiger Catapult": 2, "VWXYZ-Dragon Catapult Cannon": 1}},
 	"deck_wild": {"name": "Fang and Claw", "cards": {"Gene-Warped Warwolf": 3, "Vorse Raider": 2, "Mad Dog of Darkness": 2, "Battle Ox": 2, "Mystic Horseman": 2, "Gazelle the King of Mythical Beasts": 2, "Berfomet": 2, "Bazoo the Soul-Eater": 1, "Giant Rat": 2, "Desmanian Devil": 1, "Rude Kaiser": 1, "Polymerization": 3, "Beast Fangs": 1, "Forest": 1, "Rush Recklessly": 1, "Pot of Greed": 1, "Monster Reborn": 1, "Mystical Space Typhoon": 1, "Smashing Ground": 1, "Big Bang Shot": 1, "Fissure": 1, "Monster Reincarnation": 1, "Threatening Roar": 1, "Trap Hole": 1, "Widespread Ruin": 1, "Sakuretsu Armor": 2, "Draining Shield": 1, "Call of the Haunted": 1},
 		"extra": {"Chimera the Flying Mythical Beast": 2, "Rabid Horseman": 2, "Gagaga Cowboy": 1}},
+	# Doctor Crowler's exam deck: what every new student faces at the entrance exam. His own
+	# Ancient Gears, the Golem included, but none of the fast pieces (no Geartown, no Fortress, no
+	# Fusion) and only the plainest Spells and Traps. A novice deck can beat it. Not sold anywhere.
+	"deck_exam_gear": {"name": "Exam Deck", "cards": {"Ancient Gear": 3, "Ancient Gear Soldier": 3, "Ancient Gear Statue": 2, "Ancient Gear Cannon": 1, "Ancient Gear Hunting Hound": 2,
+		"Ancient Gear Box": 2, "Ancient Gear Tanker": 1, "Ancient Gear Knight": 1, "Ancient Gear Wyvern": 1, "Ancient Gear Engineer": 1, "Ancient Gear Golem": 2, "Mechanicalchaser": 1,
+		"Ancient Gear Castle": 1, "Ancient Gear Tank": 1, "Ancient Gear Workshop": 1, "Dian Keto the Cure Master": 1, "Red Medicine": 1, "Hinotama": 1, "Stop Defense": 1,
+		"Rush Recklessly": 1, "Hammer Shot": 1, "Remove Trap": 1, "Fissure": 1, "Trap Hole": 1, "Waboku": 1, "Negate Attack": 1, "Enchanted Javelin": 1,
+		"Ookazi": 1, "Sparks": 1, "Goblin's Secret Remedy": 1, "Castle Walls": 1, "Reinforcements": 1}},
 	"deck_ancient_gear": {"name": "Clockwork Titans", "cards": {"Ancient Gear Duel": 1, "Ancient Gear Fortress": 1, "Ancient Gear Golem": 3, "Ancient Gear": 3, "Ancient Gear Soldier": 2, "Ancient Gear Knight": 1,
 		"Ancient Gear Wyvern": 2, "Ancient Gear Statue": 2, "Ancient Gear Box": 2, "Ancient Gear Tanker": 1, "Ancient Gear Commander": 1,
 		"Ancient Gear Hunting Hound": 2, "Ancient Gear Cannon": 1, "Ancient Gear Engineer": 1,

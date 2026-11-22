@@ -2478,6 +2478,14 @@ func _debug() -> void:
 			var target := Vector3(float(e[3]), float(e[4]), float(e[5]))
 			eye.look_at(target, Vector3.FORWARD if absf(eye.global_position.x - target.x) + absf(eye.global_position.z - target.z) < 0.01 else Vector3.UP)
 			eye.current = true
+		elif a == "--no-ui":
+			# Dev: a clean picture (no HUD, no player, no spirit).
+			await get_tree().create_timer(0.3).timeout
+			_figure.visible = false
+			if partner and is_instance_valid(partner):
+				partner.visible = false
+			for layer in get_tree().root.find_children("*", "CanvasLayer", true, false):
+				(layer as CanvasLayer).visible = false
 		elif a.begins_with("--leave="):
 			# Dev: take the way out N times and say where each one put you. --leave=2[:room to enter first]
 			await get_tree().create_timer(1.0).timeout
