@@ -4266,4 +4266,14 @@ const ES := {
 	"Doctor Crowler    Chancellor Sheppard    Dorothy": "Doctor Crowler    Director Sheppard    Dorothy",
 	"And one first-year, no name yet": "Y alguien de primer año, todavía sin nombre",
 	"Jaden Yuki    Alexis Rhodes    Syrus and Zane Truesdale": "Jaden Yuki    Alexis Rhodes    Syrus y Zane Truesdale",
+	# Leo's and Selene's duel lines
+	"Tomorrow I am going to burn you down. With love!": "Mañana te voy a hacer cenizas. ¡Con cariño!",
+	"Doomfire! Everybody stand back, the kitchen is open!": "¡Fuego del fin! ¡Todos atrás, la cocina está abierta!",
+	"Eat, eat, you are too thin to lose properly.": "Come, come, te falta comer para perder como se debe.",
+	"Come back hungry. That is the highest thing we say here.": "Vuelve con hambre. Es lo más alto que decimos aquí.",
+	"Ha! In my house! Give me your arm. Up!": "¡Ja! ¡En mi casa! Dame el brazo. ¡Arriba!",
+	"Please stand still. It does not take long.": "No te muevas, por favor. No tarda mucho.",
+	"Caius. Remove it.": "Caius. Retíralo.",
+	"I won. I am told that is the good part.": "Gané. Me dicen que esa es la parte buena.",
+	"...This is the other feeling. Interesting.": "...Así que esta es la otra sensación. Interesante.",
 }
