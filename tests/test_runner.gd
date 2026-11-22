@@ -11139,9 +11139,26 @@ func _test_classes() -> void:
 	Settings.cpu_level = 1
 	check(Campus.deck_now("deck_insect@starter") == "deck_insect@starter", "on Normal, with the Academy's own collection, decks are as their owners are")
 	Settings.cpu_level = 2
-	check(Campus.deck_now("deck_insect@starter") == "deck_insect@standard" and Campus.deck_now("deck_insect") == "deck_insect", "on Hard their decks come a step stronger, and a whole deck stays whole")
+	check(Campus.deck_now("deck_insect@starter") == "deck_insect@starter" and Campus.deck_now("deck_insect") == "deck_insect", "on Hard (the setting the game starts on) decks are still as the story wrote them, and a whole deck stays whole")
 	Settings.cpu_level = 3
-	check(Campus.deck_now("deck_insect@starter") == "deck_insect", "on Extreme, two steps")
+	check(Campus.deck_now("deck_insect@starter") == "deck_insect@standard", "on Extreme, one step stronger")
+	var exam_n := 0
+	for exam_card in CardData.NAMED_DECKS["deck_exam_gear"]["cards"]:
+		exam_n += int(CardData.NAMED_DECKS["deck_exam_gear"]["cards"][exam_card])
+	print("exam deck: ", exam_n, " written, ", CardData.deck_list("deck_exam_gear").size(), " found in this card set")
+	check(exam_n == 40, "Doctor Crowler's exam deck is a whole deck of forty")
+	var exam_ok := false
+	var promo_ok := false
+	for sk in CampusData.SCRIPTS:
+		for st in CampusData.SCRIPTS[sk]:
+			if (st as Dictionary).has("duel"):
+				var dd: Dictionary = st["duel"]
+				if str(dd.get("opp_deck", "")) == "deck_exam_gear" and bool(dd.get("fair", false)) and bool(dd.get("lose_ok", false)):
+					exam_ok = true
+				if int(dd.get("my_lp", 0)) == 2000 and int(dd.get("opp_lp", 0)) == 4000:
+					promo_ok = true
+	check(exam_ok, "the entrance exam is the exam deck, with no comeback draw for the examiner, and may be lost")
+	check(promo_ok, "the promotion duel gives Doctor Crowler the 4000 its rule says")
 	Settings.cpu_level = lvl
 	Campus.put("dorm", 0)
 	check(not Campus.beat_elite("gus") and Campus.beat_elite("zane") and not Campus.beat_elite("zane") and (Campus.v("trophies", []) as Array).has("beat_elite") and CampusProgress.recalls("beat_zane"),
