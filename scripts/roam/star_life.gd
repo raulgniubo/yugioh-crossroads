@@ -961,6 +961,7 @@ func lines(id: String, usual: Array) -> Array:
 		open = _line(id, "bout_won" if bool(bt.get("won", false)) else "bout_lost")
 		if open.contains("%s"):
 			open = open % _short(str(bt.get("vs", "")))
+			Voices.note_src(open, last_src % _short(str(bt.get("vs", ""))))
 		bt["told"] = true
 	elif streak >= 3 and int(m.get("streak_day", -1)) != today:
 		open = _line(id, "streak")
@@ -968,7 +969,9 @@ func lines(id: String, usual: Array) -> Array:
 	elif ace != 0 and int(m.get("ace", 0)) != ace and m.has("ace"):
 		open = _line(id, "ace")
 		if open.contains("%s"):
+			# (Out loud the card is "that card": one file for the line, whatever you lead with.)
 			open = open % Loc.t(str(CardData.get_card(ace).get("name", "")))
+			Voices.note_src(open, last_src)
 	elif scene.weather != null and scene.weather.raining and int(m.get("rain_day", -1)) != today:
 		open = _line(id, "rain")
 		m["rain_day"] = today
@@ -1329,14 +1332,17 @@ func _invite_talk(s: Dictionary, talks: int, was_nap: bool) -> Array:
 		var place := StarMeets.place_near(scene.district, st[1])
 		if place == "":
 			continue
-		var hour := "%02d:%02d" % [int(st[0]) / 60, int(st[0]) % 60]
+		var hour := StarMeets.hour_text(float(st[0]))
 		_mem["_invite"] = {"who": id, "district": _district, "day": _day, "from": float(st[0]), "until": until2, "place": place, "hour": hour, "pinged": false}
 		_mem["_invite_day"] = _day
 		_save_mem(_mem)
 		Router.toast(Loc.t("New: meet %s at %s around %s") % [_short(id), Loc.t(place), hour])
 		Sfx.play("quest", -6.0)
 		var line := _line(id, "invite")
-		return [false, (line % [Loc.t(place), hour]) if line.count("%s") == 2 else line]
+		if line.count("%s") == 2:
+			line = StarMeets.invite_text(line, place, hour, true)
+			Voices.note_src(line, StarMeets.invite_text(last_src, place, hour))
+		return [false, line]
 	return []
 
 

@@ -314,6 +314,7 @@ func has_waypoint() -> bool:
 ## you are outside, at the way out while you are in some other room, and on the spot itself
 ## once you are in the same room.
 var _wp_true := Vector3.ZERO
+var _beacon_in := "?"
 
 
 func _room_of(pos: Vector3) -> String:
@@ -346,29 +347,65 @@ func _wp_resolve() -> Vector3:
 	return reach_point(_wp_true)
 
 
-## The point to walk to right now to get to `target` (see _wp_true).
+## A room, the room its door is in, and so on out to the open air: ["red_room_2", "dorm_red", ""].
+## (A dorm's bedrooms are reached through its hall: up the stairs, along the gallery.)
+func place_chain(place: String) -> Array:
+	var out: Array = [place]
+	var guard := 0
+	while place != "" and guard < 6:
+		var inner: Dictionary = AcademyRooms.inner_door(place)
+		place = str(inner["in"]) if not inner.is_empty() and scene._rooms.has(str(inner["in"])) else ""
+		out.append(place)
+		guard += 1
+	return out
+
+
+## What the leg you are on is, said next to the goal ("the way out", "up the stairs"): "" when the
+## beam stands on the goal itself.
+var _wp_note := ""
+
+
+## The point to walk to right now to get to `target` (see _wp_true): the goal itself when it is in
+## the room you are in, otherwise the next door on the way (the way out of this room, the door of
+## the next one in, or the foot of the stairs when that door is on the floor above).
 func reach_point(target: Vector3) -> Vector3:
 	var target_room := _room_of(target)
 	var here: String = str(scene._inside)
+	_wp_note = ""
 	if target_room == here or (target_room == "" and here == ""):
 		return target
 	if here == "kame":
+		_wp_note = "the way out"
 		return ShopInterior.AT + Vector3(0, 0, 4.3)      # the way out of the shop
 	if target_room == "kame":
 		return KAME_DOOR
-	if here != "" and scene._rooms.has(here):
+	if here != "" and not scene._rooms.has(here):
+		return target
+	var down := place_chain(target_room)
+	if not here in down:
+		# Not on the way in: out of this room first.
 		var at: Vector3 = scene._rooms[here]["at"]
 		var half: Vector2 = scene._rooms[here]["half"]
+		_wp_note = "the way out"
 		return at + Vector3(0, 0, half.y - 0.7)
-	if here != "":
-		return target
-	var room: Dictionary = scene._rooms[target_room]
-	return (room["door"] as Vector3) + (room.get("out", Vector3(0, 0, 1)) as Vector3) * 0.9
+	var next := str(down[down.find(here) - 1])
+	var room: Dictionary = scene._rooms[next]
+	if here == "":
+		return (room["door"] as Vector3) + (room.get("out", Vector3(0, 0, 1)) as Vector3) * 0.9
+	# A door inside this room: a bedroom's, on the gallery.
+	var inner: Dictionary = AcademyRooms.inner_door(next)
+	var door: Vector3 = inner["pos"]
+	if scene._player.global_position.y < door.y - 1.4:
+		_wp_note = "up the stairs"
+		return inner["foot"]
+	_wp_note = str(room["name"])
+	return door
 
 
 func set_waypoint(pos: Vector3, title: String) -> void:
 	_wp_true = Vector3(pos.x, 0, pos.z)
 	waypoint = _wp_resolve()
+	_wp_h = waypoint.y
 	waypoint.y = 0.0
 	_wp_name = title
 	_wp_on = true
@@ -415,12 +452,36 @@ func set_waypoint(pos: Vector3, title: String) -> void:
 			ch.rotation.x = -PI / 2
 			scene.city.add_child(ch)
 			_trail.append(ch)
-	_beacon.position = waypoint
+	_place_beacon()
 	(_beacon.get_node("Tag") as Label3D).text = "▼ " + Loc.t(title)
 	_beacon.visible = true
 	Sfx.play("special", -8.0)
 	if not story_mode:
 		Router.toast(Loc.t("Follow the beacon to %s") % Loc.t(title))
+
+
+## How high the spot the beam stands on is (a door on a gallery upstairs).
+var _wp_h := 0.0
+
+
+## The beam on its spot. Indoors it is a short one that starts at the floor it stands on: the tall
+## one came up through the floor above and looked like it was pointing at whatever was up there.
+func _place_beacon() -> void:
+	_beacon.position = Vector3(waypoint.x, _wp_h, waypoint.z)
+	var inside: bool = scene._inside != ""
+	var beam := _beacon.get_child(0) as MeshInstance3D
+	beam.scale = Vector3(0.75, 0.075, 0.75) if inside else Vector3.ONE
+	beam.position.y = 1.5 if inside else 20.0
+	# (Indoors it is seen against lit walls: twice as strong.)
+	(beam.material_override as StandardMaterial3D).albedo_color = Color(1.0, 0.8, 0.3, 0.62 if inside else 0.3)
+	var tag := _beacon.get_node("Tag") as Label3D
+	tag.position.y = 2.75 if inside else 4.2
+	tag.font_size = 44 if inside else 72
+	var words := "▼ " + Loc.t(_wp_name)
+	if _wp_note != "":
+		var said := Loc.t(_wp_note)
+		words = "▼ " + said[0].to_upper() + said.substr(1)
+	tag.text = words
 
 
 func clear_waypoint() -> void:
@@ -1090,10 +1151,13 @@ func _process(delta: float) -> void:
 	# The way to the waypoint.
 	if _wp_on:
 		var real := _wp_resolve()
+		var real_h := real.y
 		real.y = 0.0
-		if real.distance_to(waypoint) > 0.5:
+		if real.distance_to(waypoint) > 0.5 or absf(real_h - _wp_h) > 0.5 or _beacon_in != str(scene._inside):
 			waypoint = real
-			_beacon.position = waypoint
+			_wp_h = real_h
+			_beacon_in = str(scene._inside)
+			_place_beacon()
 		var at_target := waypoint.distance_to(Vector3(_wp_true.x, 0, _wp_true.z)) < 0.6
 		var to := waypoint - p
 		to.y = 0
@@ -1108,7 +1172,9 @@ func _process(delta: float) -> void:
 		else:
 			var rel := wrapf(atan2(to.x, to.z) - (scene._yaw + PI), -PI, PI)
 			var idx := posmod(int(round(-rel / (PI / 4.0))), 8)
-			_wp_label.text = "%s   %s   %d m" % [ARROWS[idx], _wp_name, int(dist)]
+			# (With the leg you are on: "the way out", "up the stairs".)
+			var leg := "" if _wp_note == "" else "   ·   " + Loc.t(_wp_note)
+			_wp_label.text = "%s   %s%s   %d m" % [ARROWS[idx], _wp_name, leg, int(dist)]
 			_wp_label.visible = not _busy()
 			var dir := to / dist
 			_trail_check -= delta

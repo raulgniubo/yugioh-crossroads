@@ -10979,9 +10979,10 @@ func _test_campus() -> void:
 
 
 func _test_world_voices() -> void:
-	# Everything somebody says out in the Academy (walkers, people in the rooms, the stars, Lumen at
-	# your shoulder) has its Spanish voice file and its Spanish text.
-	var lines := WorldLines.collect(["academy"])
+	# Everything somebody says out in any world (walkers, people in the rooms, the shop's own, the
+	# rivals, favors, the stars, Lumen at your shoulder) has its Spanish voice file and its Spanish
+	# text. Lines with a blank in them are listed once for every way the blank is filled.
+	var lines := WorldLines.collect(["academy", "domino", "satellite", "newdomino", "museum", "heartland"])
 	var letters := RegEx.new()
 	letters.compile("[A-Za-z]")
 	var es := {}
@@ -10998,20 +10999,28 @@ func _test_world_voices() -> void:
 			missing += 1
 			if missing <= 5:
 				print("NO WORLD VOICE %s: %s" % [str(e["voice"]), en.left(60)])
-		if not es.has(en):
+		if not es.has(str(e.get("tpl", en))):
 			untold += 1
 			if untold <= 5:
 				print("NO SPANISH (world): %s" % en.left(60))
 		else:
 			# Said to you whoever you play as: no "Bienvenido", no "cuando estés listo".
-			var t := str(es[en])
+			var t := str(es[str(e.get("tpl", en))])
 			if "ienvenido" in t or "estés listo" in t or "el de ahí" in t or "estudiante nuevo" in t:
 				gendered += 1
 				print("GENDERED (world): %s" % t.left(60))
-	check(lines.size() > 400, "the Academy has its list of things people say out loud (%d)" % lines.size())
-	check(missing == 0, "every line said out in the Academy has its Spanish voice (%d missing)" % missing)
-	check(untold == 0, "every line said out in the Academy has its Spanish text (%d missing)" % untold)
-	check(gendered == 0, "nobody out in the Academy assumes who you play as (%d lines)" % gendered)
+	check(lines.size() > 1100, "the worlds have their list of things people say out loud (%d)" % lines.size())
+	check(missing == 0, "every line said out in the worlds has its Spanish voice (%d missing)" % missing)
+	check(untold <= 3, "every line said out in the worlds has its Spanish text (%d missing; three are just your name)" % untold)
+	check(gendered == 0, "nobody out in the worlds assumes who you play as (%d lines)" % gendered)
+	# The lines with a blank in them: who beat whom, where and when to meet, the card you lead with.
+	var filled := lines.filter(func(e): return (e as Dictionary).has("tpl"))
+	check(filled.size() >= 120, "the lines with a name, a place or an hour in them are listed filled in (%d)" % filled.size())
+	check(StarMeets.invite_text("Meet me at %s around %s.", "Main Hall", "9:30") == "Meet me at the Main Hall around 9:30.", "a place is said with its article")
+	check(StarMeets.invite_text("%s. %s. Be there.", "Fountain", "7:00") == "The Fountain. 7:00. Be there.", "a line that opens with the place gets its capital")
+	check(StarMeets.invite_text("Meet me at %s around %s.", "Burger World", "9:30") == "Meet me at Burger World around 9:30.", "a name that takes no article gets none")
+	check(StarMeets.hour_text(570.0) == "9:30", "the hour is said the way people say it")
+	check(Voices.world_voice("owner", "shopkeeper", "grandpa") != "", "somebody in the cast with no duel voice still has a voice in the street")
 	# Who speaks with which voice: a main character as in a duel, anybody else by their model, and
 	# always the same one.
 	check(Voices.world_voice("a", "student_boy", "chazz") == Voices.voice_for("chazz"), "a main character keeps their duel voice out in the world")

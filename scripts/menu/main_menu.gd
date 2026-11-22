@@ -1130,9 +1130,12 @@ func _welcome_back() -> void:
 	var pt := Saves.place_text()
 	if not where.is_empty() and pt != "":
 		var go := Button.new()
-		go.text = "▶  " + Loc.t("Go back to where you were") + "   ·   " + pt
-		go.custom_minimum_size = Vector2(0, 72)
-		go.add_theme_font_size_override("font_size", 24)
+		# Two lines, and the place wraps: one long line here once pushed the whole panel off
+		# the edge of the screen.
+		go.text = "▶  " + Loc.t("Go back to where you were") + "\n" + pt
+		go.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		go.custom_minimum_size = Vector2(0, 96)
+		go.add_theme_font_size_override("font_size", 23)
 		go.pressed.connect(func():
 			Sfx.play("click", -6.0)
 			if str(where.get("mode", "")) == "campus":

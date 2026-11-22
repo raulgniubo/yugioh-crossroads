@@ -493,7 +493,8 @@ func _build_walkers() -> void:
 		for k in Characters.ORDER:
 			if CardData.has_deck(Characters.DATA[k]["deck"]):
 				decks.append(Characters.DATA[k]["deck"])
-		var d := {"id": "walker_%d" % i, "char": mkey if Characters.STORY_CAST.has(mkey) else "", "name": "Passerby", "color": Color.GRAY,
+		# ("model": the voice they talk in is the one they call out in as they walk by.)
+		var d := {"id": "walker_%d" % i, "model": mkey, "char": mkey if Characters.STORY_CAST.has(mkey) else "", "name": "Passerby", "color": Color.GRAY,
 				"lines": [WALK_LINES[i % WALK_LINES.size()], "A duel? Right here? ...Sure, why not."],
 				"duel": {"deck": decks[rng.randi() % decks.size()] if not decks.is_empty() else "joey", "difficulty": i % 2, "intro": "Let's make it quick!"}}
 		var marker := Sprite3D.new()
@@ -1153,6 +1154,10 @@ func _build_rooms() -> void:
 		var half: Vector2 = room["half"]
 		_spots.append({"pos": door + out * (0.9 if not room.has("step") else 0.6), "range": 2.3 if not room.has("step") else 1.3, "label": str(room["label"]), "action": func(): _travel(rk)})
 		_spots.append({"pos": inside_at + Vector3(0, 0, half.y - 0.7), "range": 1.7, "label": "Leave", "action": func(): _travel("")})
+		# A dorm's bedrooms open off the gallery upstairs in its hall.
+		var inner: Dictionary = AcademyRooms.inner_door(rk)
+		if not inner.is_empty() and _rooms.has(str(inner["in"])):
+			_spots.append({"pos": inner["pos"], "range": 1.25, "label": str(room["label"]), "action": func(): _travel(rk)})
 		var dl := Label3D.new()
 		dl.text = Loc.t("▼  ENTER")
 		dl.font_size = 64 if not room.has("step") else 34
@@ -1262,14 +1267,18 @@ func _travel(where: String) -> void:
 		_yaw = 0.0
 	elif _rooms.has(where):
 		var room: Dictionary = _rooms[where]
-		var out2: Vector3 = room.get("out", Vector3(0, 0, 1))
-		_outside_pos = (room["door"] as Vector3) + out2 * float(room.get("step", 2.2))
-		_outside_yaw = atan2(out2.x, out2.z) + PI
+		# (Through the door in a dorm's hall, or by the room's own door out of doors.)
+		_entered = "in" if _inside != "" and str(AcademyRooms.inner_door(where).get("in", "-")) == _inside else "out"
 		_player.position = (room["at"] as Vector3) + Vector3(0, 0, (room["half"] as Vector2).y - 1.8)
 		_yaw = 0.0
 	else:
-		_player.position = _outside_pos
-		_yaw = _outside_yaw
+		# Out of a room: back to the door you came in by. A bedroom you woke up in (a scene that
+		# starts there) lets you out where its door is: on the gallery of its dorm's hall.
+		var back := leave_to(_inside, _entered)
+		_player.position = back["pos"]
+		_yaw = float(back["yaw"])
+		where = str(back["where"])
+		_entered = "out"
 	_player.velocity = Vector3.ZERO
 	_figure.rotation.y = _yaw + PI
 	_pivot.position = _player.position + Vector3(0, 1.45, 0)
@@ -1339,7 +1348,33 @@ func _update_fill() -> void:
 		fill.visible = t != "day"
 
 
+## How you came into the room you are in: "out" by its door out of doors, "in" by a door inside
+## another room (a bedroom off its dorm's gallery), "" when a scene simply started you there.
+var _entered := ""
+
+
+## Where leaving `room` puts you: {"where": the room you are in then ("" out of doors), "pos", "yaw"}.
+func leave_to(room: String, entered := "") -> Dictionary:
+	if not _rooms.has(room):
+		return {"where": "", "pos": _outside_pos, "yaw": _outside_yaw}
+	var inner: Dictionary = AcademyRooms.inner_door(room)
+	if entered != "out" and not inner.is_empty() and _rooms.has(str(inner["in"])):
+		return {"where": str(inner["in"]), "pos": inner["pos"], "yaw": 0.0}
+	var rd: Dictionary = _rooms[room]
+	var od: Vector3 = rd.get("out", Vector3(0, 0, 1))
+	return {"where": "", "pos": (rd["door"] as Vector3) + od * float(rd.get("step", 2.2)), "yaw": atan2(od.x, od.z) + PI}
+
+
 func _set_inside(where: String) -> void:
+	if _rooms.has(where):
+		# Where "outside" is from here, for the map: this room's own door, or its dorm's.
+		var top := where
+		var inn: Dictionary = AcademyRooms.inner_door(where)
+		if not inn.is_empty() and _rooms.has(str(inn["in"])) and _entered != "out":
+			top = str(inn["in"])
+		var o2: Dictionary = leave_to(top, "out")
+		_outside_pos = o2["pos"]
+		_outside_yaw = float(o2["yaw"])
 	if where != _inside:
 		Sfx.play("door", -4.0)
 		if where != "":
@@ -2344,7 +2379,7 @@ func _debug() -> void:
 			await get_tree().create_timer(0.6).timeout
 			if _rooms.has(ip[0]):
 				var io: Vector3 = _rooms[ip[0]]["at"]
-				_player.position = io + Vector3(float(ip[1]) if ip.size() > 1 else 0.6, 0, float(ip[2]) if ip.size() > 2 else 0.8)
+				_player.position = io + Vector3(float(ip[1]) if ip.size() > 1 else 0.6, float(ip[4]) if ip.size() > 4 else 0.0, float(ip[2]) if ip.size() > 2 else 0.8)
 				_yaw = float(ip[3]) if ip.size() > 3 else 0.6
 				_figure.rotation.y = _yaw + PI
 				_pivot.position = _player.position + Vector3(0, 1.45, 0)
@@ -2443,6 +2478,63 @@ func _debug() -> void:
 			var target := Vector3(float(e[3]), float(e[4]), float(e[5]))
 			eye.look_at(target, Vector3.FORWARD if absf(eye.global_position.x - target.x) + absf(eye.global_position.z - target.z) < 0.01 else Vector3.UP)
 			eye.current = true
+		elif a.begins_with("--leave="):
+			# Dev: take the way out N times and say where each one put you. --leave=2[:room to enter first]
+			await get_tree().create_timer(1.0).timeout
+			var lv := a.trim_prefix("--leave=").split(":")
+			if lv.size() > 1:
+				await _travel(lv[1])
+				print("LEAVE entered ", _inside, " (", _entered, ") at ", _player.position.snappedf(0.1))
+			for i in int(lv[0]):
+				await _travel("")
+				print("LEAVE ", i + 1, " -> in '", _inside, "' at ", _player.position.snappedf(0.1), "  outside pos ", _outside_pos.snappedf(0.1))
+			get_tree().quit()
+		elif a.begins_with("--goal="):
+			# Dev: put the guide beam on a spot (x,z), to see where it sends you from here.
+			await get_tree().create_timer(0.8).timeout
+			var g := a.trim_prefix("--goal=").split(",")
+			if extras:
+				extras.set_waypoint(Vector3(float(g[0]), 0, float(g[1])), "Test goal")
+		elif a == "--voice-census":
+			# Dev: everybody standing in this world as it is built right now (whoever added them),
+			# and every line they can say when you talk to them: which ones have no voice file?
+			await get_tree().create_timer(1.0).timeout
+			var total := 0
+			var mute := 0
+			var folk := 0
+			for n in _npcs:
+				var nd: Dictionary = n[0]
+				var v := npc_voice(nd)
+				folk += 1
+				var todo: Array = []
+				for f in ["lines", "chats", "after", "barks"]:
+					todo.append(nd.get(f))
+				if life:
+					for e in WorldLife.ERRANDS.get(str(Router.roam.get("district", "")), []):
+						if str(e["giver"]) == str(nd.get("id", "")):
+							todo.append_array([e.get("ask"), e.get("wait"), e.get("done")])
+				var flat: Array = []
+				while not todo.is_empty():
+					var x = todo.pop_back()
+					if x is Array:
+						todo.append_array(x)
+					elif x is String:
+						flat.append(x)
+				for l in flat:
+					var en := str(l)
+					var letters := false
+					for ch in en:
+						if (ch >= "a" and ch <= "z") or (ch >= "A" and ch <= "Z"):
+							letters = true
+							break
+					if "%" in en or not letters:
+						continue
+					total += 1
+					if v == "" or not Voices.has(v, Voices.key_of(en)):
+						mute += 1
+						print("MUTE ", Router.roam.get("district", ""), " | ", nd.get("id", "?"), " | ", v, " | ", en)
+			print("CENSUS ", Router.roam.get("district", ""), "  people ", folk, "  lines ", total, "  mute ", mute)
+			get_tree().quit()
 		elif a.begins_with("--reach="):
 			# Dev: can somebody on foot get from one point to within r of another? --reach=x,z,x,z,r[;...]
 			await get_tree().create_timer(0.8).timeout

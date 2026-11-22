@@ -31,6 +31,9 @@ func _init(title_text: String, width := 640.0) -> void:
 	_panel.offset_bottom = -40
 	_panel.offset_left = -_width - 40
 	_panel.offset_right = -40
+	# Whatever is put in it, it never leaves the screen: it grows to the left, and _ready
+	# keeps it narrower than the window.
+	_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	add_child(_panel)
 	# The list scrolls inside its own margins (below): slanted buttons need a little room on the
 	# left or their corners are clipped, and room on the right or they run under the scrollbar.
@@ -81,6 +84,10 @@ func _init(title_text: String, width := 640.0) -> void:
 
 
 func _ready() -> void:
+	var room: float = get_viewport_rect().size.x - 80.0
+	if _width > room:
+		_width = maxf(320.0, room)
+		_panel.offset_left = -_width - 40
 	_dim.modulate.a = 0.0
 	_panel.position.x += 36
 	_panel.modulate.a = 0.35

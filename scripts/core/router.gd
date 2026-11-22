@@ -639,6 +639,11 @@ func _debug_args() -> void:
 						menu_open = "replays"
 						go(DUEL)
 						break
+			elif what == "welcome":
+				# The "the game closed without warning" panel, as after a crash.
+				Saves.crashed_last = true
+				Saves.crash_report = "x"
+				menu._welcome_back()
 			elif what == "campus":
 				menu._on_academy()
 			elif what == "settings":

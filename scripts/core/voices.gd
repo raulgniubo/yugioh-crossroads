@@ -107,7 +107,11 @@ static func voice_for(who: String) -> String:
 ## a personality that stays theirs, worked out from who they are. `pers` fixes the personality.
 static func world_voice(id: String, model: String, char_key := "", pers := "") -> String:
 	if char_key != "" and not Characters.get_char(char_key).is_empty():
-		return voice_for(char_key)
+		# (Somebody with a face in the cast but no duel voice of their own, like the shopkeeper,
+		# talks like anybody else in the street: by their model.)
+		var own := voice_for(char_key)
+		if own != "":
+			return own
 	var woman := model in FEMALE or "_f" in model or "girl" in model or "woman" in model
 	if pers == "":
 		var pool: Array = ["kind", "cocky", "cool"] if woman else ["kind", "cocky", "cool", "wild"]
@@ -142,6 +146,8 @@ static func say_as(voice: String, text: String, at = null, pitch := 1.0) -> bool
 	var key := key_of(text)
 	var may := not muted and Settings.voices_on and Settings.voice_volume > 0.001 and Settings.voice_opp
 	if voice == "" or text == "" or not may or not has(voice, key):
+		if may and voice != "" and text != "":
+			_note_mute(voice, text)
 		if _log:
 			print("VOICE world [%s] \"%s\" -> %s" % [voice, text.left(48), "off" if not may else ("NO FILE " + key)])
 		return false
@@ -149,6 +155,35 @@ static func say_as(voice: String, text: String, at = null, pitch := 1.0) -> bool
 	if _log:
 		print("VOICE world [%s] \"%s\" -> %s" % [voice, text.left(48), "said" if ok else "skipped (somebody is talking)"])
 	return ok
+
+
+## A line somebody said out in the world that has no voice file: written down once, in
+## "Crash reports/lines without a voice.txt" next to the saves, so it can be sent in and recorded.
+## (Spanish only: the worlds have no English voices yet.)
+static var _mute := {}
+
+static func _note_mute(voice: String, text: String) -> void:
+	if Loc.lang() != "es" or _mute.has(voice + "|" + text) or _mute.size() >= 300:
+		return
+	var letters := false
+	for ch in text:
+		if (ch >= "a" and ch <= "z") or (ch >= "A" and ch <= "Z"):
+			letters = true
+			break
+	if not letters:
+		return
+	_mute[voice + "|" + text] = true
+	if DisplayServer.get_name() == "headless":
+		return
+	var base := Saves.data_dir() if Saves.data_dir() != "" else "user://"
+	var dir := base.path_join("Crash reports")
+	DirAccess.make_dir_recursive_absolute(dir)
+	var path := dir.path_join("lines without a voice.txt")
+	var f := FileAccess.open(path, FileAccess.READ_WRITE) if FileAccess.file_exists(path) else FileAccess.open(path, FileAccess.WRITE)
+	if f:
+		f.seek_end()
+		f.store_line("%s | %s | %s" % [Engine.get_main_loop().root.get_meta("game_version", ProjectSettings.get_setting("application/config/version", "")), voice, text])
+		f.close()
 
 
 static func path_of(voice: String, key: String) -> String:

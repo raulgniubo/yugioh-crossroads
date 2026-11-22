@@ -861,6 +861,7 @@ func _do_scene(st: Dictionary) -> bool:
 	scene._figure.rotation.y = scene._yaw + PI
 	scene._pivot.position = pos + Vector3(0, 1.45, 0)
 	scene._pivot.rotation = Vector3(scene._pitch, scene._yaw, 0)
+	scene._entered = ""
 	scene._set_inside(inside)
 	if sc.has("music"):
 		Music.play(str(sc["music"]))
@@ -1578,7 +1579,11 @@ func _do_goal(st: Dictionary) -> void:
 			at = (_actors[st["who"]] as Node3D).global_position
 			scene.extras.waypoint = Vector3(at.x, 0, at.z)
 		var d := Vector2(scene._player.global_position.x - at.x, scene._player.global_position.z - at.z).length()
-		_goal_dist.text = Loc.t("%d m away") % int(d)
+		# (To the door or the stairs the beacon is on, when the goal itself is in another room.)
+		var leg: Vector3 = scene.extras.waypoint
+		var leg_d := Vector2(scene._player.global_position.x - leg.x, scene._player.global_position.z - leg.z).length()
+		var note := str(scene.extras._wp_note)
+		_goal_dist.text = Loc.t("%d m away") % int(d if note == "" and leg_d + 0.5 > d else leg_d)
 		_lead_to = at
 		if d < r:
 			break
@@ -2001,8 +2006,9 @@ func _walk_check(what: String, at: Vector3, r: float) -> void:
 	if near_kame.call(from) != near_kame.call(at):
 		print("WALK door step ", step, "  ", what, "  (through the Kame Game door, not walked)")
 		return
-	var a := _place_chain(_place_of(from))
-	var b := _place_chain(_place_of(at))
+	# The same doors the guide sends the player through (RoamExtras.place_chain).
+	var a: Array = scene.extras.place_chain(_place_of(from))
+	var b: Array = scene.extras.place_chain(_place_of(at))
 	var ia := 0
 	while ia < a.size() and not (a[ia] in b):
 		ia += 1
@@ -2015,11 +2021,17 @@ func _walk_check(what: String, at: Vector3, r: float) -> void:
 	for i in ia:
 		var rd: Dictionary = scene._rooms[a[i]]
 		legs.append([pos, (rd["at"] as Vector3) + Vector3(0, 0, (rd["half"] as Vector2).y - 0.7), 1.7, "the way out of " + str(a[i])])
-		pos = (rd["door"] as Vector3) + (rd.get("out", Vector3(0, 0, 1)) as Vector3) * float(rd.get("step", 2.2))
+		pos = scene.leave_to(str(a[i]))["pos"]
 	for i in range(ib - 1, -1, -1):
 		var rd: Dictionary = scene._rooms[b[i]]
-		var out: Vector3 = rd.get("out", Vector3(0, 0, 1))
-		legs.append([pos, (rd["door"] as Vector3) + out * (0.9 if not rd.has("step") else 0.6), 2.3 if not rd.has("step") else 1.3, "the door of " + str(b[i])])
+		var inner: Dictionary = AcademyRooms.inner_door(str(b[i]))
+		if str(b[i + 1]) != "" and not inner.is_empty():
+			# Up the stairs of the hall and along the gallery to the bedroom's door.
+			legs.append([pos, inner["foot"], 1.6, "the stairs to " + str(b[i])])
+			legs.append([inner["foot"], inner["pos"], 1.25, "the door of " + str(b[i]) + " upstairs"])
+		else:
+			var out: Vector3 = rd.get("out", Vector3(0, 0, 1))
+			legs.append([pos, (rd["door"] as Vector3) + out * (0.9 if not rd.has("step") else 0.6), 2.3 if not rd.has("step") else 1.3, "the door of " + str(b[i])])
 		pos = (rd["at"] as Vector3) + Vector3(0, 0, (rd["half"] as Vector2).y - 1.8)
 	legs.append([pos, at, maxf(r, 1.2), what])
 	var t0 := Time.get_ticks_msec()
@@ -2189,7 +2201,7 @@ func task_rows(here: String, home: String) -> Array:
 			else:
 				var at = _task_pos(t)
 				if at != null and scene != null and scene._player != null:
-					place = Loc.t("Here, %d m away. Follow the beacon.") % _meters(at)
+					place = _where_words(at)
 			if t.get("optional", false):
 				text += "   " + Loc.t("(optional)")
 		var sub := lead_sub(i)
@@ -2197,6 +2209,29 @@ func task_rows(here: String, home: String) -> Array:
 			sub = place + ("\n      " + sub if sub != "" else "")
 		rows.append([text, state, sub, i])
 	return rows
+
+
+## Where a spot is from where you stand, in plain words: in this room, upstairs, out of this
+## building, inside another one. (Rooms are built far apart, so metres to a spot in another room
+## mean nothing: "80 m" for your own room, one floor up.)
+func _where_words(at: Vector3) -> String:
+	var ex = scene.extras
+	var room := str(ex._room_of(at))
+	var here := str(scene._inside)
+	if room == here:
+		return Loc.t("Here, %d m away. Follow the beacon.") % _meters(at)
+	var down: Array = ex.place_chain(room)
+	if not here in down:
+		return Loc.t("In another place. Leave this room first: the beacon is on the way out.")
+	var next := str(down[down.find(here) - 1])
+	var rd: Dictionary = scene._rooms.get(next, {})
+	if here == "":
+		var door: Vector3 = (rd["door"] as Vector3) if rd.has("door") else at
+		return Loc.t("Inside %s, %d m away. Follow the beacon to its door.") % [Loc.t(str(rd.get("name", next))), _meters(door)]
+	var inner: Dictionary = AcademyRooms.inner_door(next)
+	if not inner.is_empty() and scene._player.global_position.y < float((inner["pos"] as Vector3).y) - 1.4:
+		return Loc.t("Upstairs in this building. The beacon is at the foot of the stairs.")
+	return Loc.t("Upstairs, door %s. The beacon is on the door.") % next.get_slice("_", next.get_slice_count("_") - 1)
 
 
 ## How far something is from you, in whole steps of 5 m (so the list is not redrawn every step).

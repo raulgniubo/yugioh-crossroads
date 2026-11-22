@@ -150,6 +150,32 @@ static func day_with(district: String, id: String, stops: Array, day: int) -> Ar
 	return out
 
 
+## A place the way you say it in a sentence: "the Main Hall", but "Burger World". (English; the
+## table of the language turns "the Main Hall" into its own words, article and all.)
+const BARE := ["Burger World", "Kame Game", "Cafe La Geen", "Central Park", "Central Plaza", "Heartland Tower", "KaibaCorp Plaza", "KaibaCorp Tower", "New Domino Stadium", "Domino Mart", "Kaiba Dome"]
+
+static func place_say(place: String) -> String:
+	return place if place in BARE or place.begins_with("The ") else "the " + place
+
+
+## An invitation with its place and hour in (the same words the voice file is named after).
+## `shown`: in the language on screen. A line that opens with the place gets its capital letter.
+static func invite_text(tpl: String, place: String, hour: String, shown := false) -> String:
+	var where := place_say(place)
+	if shown and Loc.lang() != "en":
+		# ("@Main Hall" is the place with its article: "el Salón Principal".)
+		var said := Loc.t("@" + place)
+		where = said if said != "@" + place else Loc.t(place)
+	if tpl.begins_with("%s") and where != "":
+		where = where[0].to_upper() + where.substr(1)
+	return tpl % [where, hour]
+
+
+## The hour as people say it: "9:30", not "09:30".
+static func hour_text(minutes: float) -> String:
+	return "%d:%02d" % [int(minutes) / 60, int(minutes) % 60]
+
+
 ## One landmark name for a spot: the place it is at or nearest to.
 static func place_near(district: Dictionary, p: Vector3) -> String:
 	var best := ""

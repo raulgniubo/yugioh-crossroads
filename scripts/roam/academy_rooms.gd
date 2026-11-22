@@ -368,9 +368,9 @@ static func _red(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> vo
 		city.box(Vector3(0.7, 0.9, 0.02), o + Vector3(-1.8 + k * 1.6, 2.1, -half.y + 0.06), city.mat([Color("ffd166"), Color("7dd3ff"), Color("ff8a8a")][k], 0.8), false)
 	_light(city, o + Vector3(0, hgt - 0.6, -1.0), Color(1.0, 0.8, 0.55), 2.0, 9.0)
 	_ball(city, o + Vector3(0, hgt - 0.35, -1.0), 0.16, city.glow_mat(Color(1.0, 0.82, 0.5), 3.0))
-	_upstairs(city, o, half, hgt, {"h": 3.4, "side": 1.0, "rooms": 3, "wood": city.surf("wood", Color(0.5, 0.34, 0.22)),
+	_upstairs(city, o, half, hgt, {"h": 3.4, "side": 1.0, "rooms": 4, "closed": true, "wood": city.surf("wood", Color(0.5, 0.34, 0.22)),
 		"wall": city.surf("wood", Color(0.72, 0.56, 0.4)), "floor": city.surf("wood", Color(0.6, 0.44, 0.3)), "rail": city.mat(Color(0.3, 0.2, 0.13), 0.7),
-		"accent": Color("c8322a"), "first": 101})
+		"accent": Color("c8322a"), "first": 1})
 
 
 # ------------------------------------------------------------------ yellow dorm
@@ -426,9 +426,9 @@ static func _yellow(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) ->
 	for x: float in [-4.0, 0.0, 4.0]:
 		_light(city, o + Vector3(x, hgt - 0.5, 0), Color(1.0, 0.92, 0.72), 1.6, 9.0)
 		city.box(Vector3(1.4, 0.06, 0.4), o + Vector3(x, hgt - 0.05, 0), city.glow_mat(Color(1.0, 0.95, 0.8), 2.0), false)
-	_upstairs(city, o, half, hgt, {"h": 3.4, "side": -1.0, "rooms": 4, "wood": city.surf("wood", Color(0.6, 0.42, 0.26)),
+	_upstairs(city, o, half, hgt, {"h": 3.4, "side": -1.0, "rooms": 4, "closed": true, "wood": city.surf("wood", Color(0.6, 0.42, 0.26)),
 		"wall": city.surf("plaster", Color(0.98, 0.93, 0.76)), "floor": city.surf("wood", Color(0.7, 0.54, 0.36)), "rail": city.mat(Color(0.5, 0.36, 0.2), 0.6),
-		"accent": Color("f2c230"), "first": 201})
+		"accent": Color("f2c230"), "first": 1})
 
 
 # ------------------------------------------------------------------ blue dorm
@@ -526,9 +526,9 @@ static func _blue(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> v
 	var py := city.prop("holo_pylon", o + Vector3(half.x - 1.0, 0, -4.0), -PI / 2, 3.2, true)
 	if py:
 		city.collide(py, 0.5)
-	_upstairs(city, o, half, hgt, {"h": 3.8, "side": 1.0, "rooms": 4, "wood": white,
+	_upstairs(city, o, half, hgt, {"h": 3.8, "side": 1.0, "rooms": 4, "closed": true, "wood": white,
 		"wall": city.surf("plaster", Color(0.93, 0.95, 0.99)), "floor": city.mat(Color(0.82, 0.84, 0.9), 0.35, 0.1), "rail": gold,
-		"accent": Color("2f5fc0"), "first": 301, "depth": 5.4})
+		"accent": Color("2f5fc0"), "first": 1, "depth": 5.4})
 	for sx: float in [-1.0, 1.0]:
 		_plant(city, o + Vector3(sx * (half.x - 1.0), 0, half.y - 1.2), 1.5)
 		city.box(Vector3(0.06, 3.6, 2.0), o + Vector3(sx * (half.x - 0.04), 3.4, 3.0), city.glow_mat(Color(0.75, 0.88, 1.0), 0.9), false)
@@ -538,6 +538,35 @@ static func _blue(city: CityBuilder, o: Vector3, half: Vector2, hgt: float) -> v
 
 
 # ------------------------------------------------------------------ upstairs
+
+## The upper floor of each dorm hall (_upstairs): the doors along its gallery are the way into the
+## dorm's bedrooms (red_room_2 is the second door upstairs in the Red hall).
+const UPSTAIRS := {
+	"dorm_red": {"h": 3.4, "side": 1.0, "rooms": 4, "depth": 4.7, "fmt": "red_room_%d"},
+	"dorm_yellow": {"h": 3.4, "side": -1.0, "rooms": 4, "depth": 4.7, "fmt": "yel_room_%d"},
+	"dorm_blue": {"h": 3.8, "side": 1.0, "rooms": 4, "depth": 5.4, "fmt": "blue_room_%d"},
+}
+
+
+## For a bedroom: {"in": the dorm hall its door is in, "pos": where you stand at that door, on the
+## gallery, "foot": the bottom of the stairs up to the gallery, "h": how high the gallery is}.
+## Empty for any other room.
+static func inner_door(room: String) -> Dictionary:
+	for hall in UPSTAIRS:
+		var u: Dictionary = UPSTAIRS[hall]
+		var n: int = u["rooms"]
+		for i in n:
+			if str(u["fmt"]) % (i + 1) != room:
+				continue
+			var o: Vector3 = ROOMS[hall]["at"]
+			var half: Vector2 = ROOMS[hall]["half"]
+			var h: float = u["h"]
+			var ze: float = half.y - float(u["depth"])
+			var xm: float = -half.x + (i + 0.5) * (half.x * 2.0 / n)
+			var xs: float = float(u["side"]) * (half.x - 0.75)
+			return {"in": hall, "pos": o + Vector3(xm, h, ze + 0.8), "foot": o + Vector3(xs, 0, ze - h * 1.5 - 0.8), "h": h}
+	return {}
+
 
 ## An invisible ramp from `foot` (on the floor) up to `head`, `width` wide. Steps are only for
 ## show: this is what you actually walk on, so climbing is smooth.
@@ -667,6 +696,19 @@ static func _upstairs(city: CityBuilder, o: Vector3, half: Vector2, hgt: float, 
 		for fx: float in [-1.0, 1.0]:
 			city.box(Vector3(0.09, 2.2, 0.2), o + Vector3(xm + fx * (dw / 2.0 + 0.02), H + 1.1, zw), wood, false)
 		city.box(Vector3(dw + 0.22, 0.1, 0.2), o + Vector3(xm, H + 2.2, zw), wood, false)
+		if cfg.get("closed", false):
+			# A real door, shut: it is the way into that bedroom (the scene puts the "enter" spot in
+			# front of it; see AcademyRooms.inner_door). Nothing is built behind it.
+			city.box(Vector3(dw - 0.06, 2.12, 0.07), o + Vector3(xm, H + 1.06, zw - 0.01), wood, false)
+			for py: float in [0.62, 1.5]:
+				city.box(Vector3(dw - 0.36, 0.62, 0.02), o + Vector3(xm, H + py, zw - 0.055), city.mat(accent.darkened(0.25), 0.8), false)
+			city.box(Vector3(0.05, 0.12, 0.06), o + Vector3(xm + dw / 2.0 - 0.14, H + 1.02, zw - 0.08), city.mat(Color(0.86, 0.7, 0.32), 0.3, 0.8), false)
+			_block(city, Vector3(dw, 2.2, 0.16), o + Vector3(xm, H + 1.1, zw))
+			city.box(Vector3(0.5, 0.34, 0.03), o + Vector3(xm, H + 2.42, zw - 0.09), city.mat(Color(0.1, 0.1, 0.13), 0.6), false)
+			_sign(city, str(int(cfg["first"]) + i), o + Vector3(xm, H + 2.42, zw - 0.11), PI, accent.lightened(0.5), 46)
+			var mat := city.box(Vector3(1.0, 0.02, 0.46), o + Vector3(xm, H + 0.02, zw - 0.42), city.glow_mat(accent, 1.2), false)
+			mat.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			continue
 		# The door stands open, swung back against the wall inside.
 		var leaf := city.box(Vector3(dw - 0.08, 2.08, 0.05), o + Vector3(xm - dw / 2.0 + 0.04, H + 1.05, zw + 0.07 + (dw - 0.08) / 2.0), wood, false)
 		leaf.rotation.y = PI / 2.0

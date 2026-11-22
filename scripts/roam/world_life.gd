@@ -730,6 +730,10 @@ func lawn_duel(at: Vector3, yaw: float, dorm_a: String, dorm_b: String) -> void:
 
 var _bobs: Array = []
 
+const GHOST := {"id": "old_dorm_ghost", "char": "", "model": "duelist_m9", "name": "The One Who Stayed", "color": Color("9fe8ff"), "pos": Vector3(-49.0, 0.3, 42.6), "face": 1.9,
+	"aloof": true, "lines": ["...you can see me. Nobody has stayed past dark in years.", "One duel. That is all I ever wanted from this place."],
+	"duel": {"deck": "bakura", "difficulty": 3, "intro": "...draw."}}
+
 
 func _island_extras() -> void:
 	lawn_duel(Vector3(-10.5, 0.1, 10.5), 0.5, "red", "blue")
@@ -738,9 +742,7 @@ func _island_extras() -> void:
 		for r in RIVALS:
 			scene._add_npc(r, Vector3.ZERO)
 		# The ghost of the old dorm: there only at night.
-		scene._add_npc({"id": "old_dorm_ghost", "char": "", "model": "duelist_m9", "name": "The One Who Stayed", "color": Color("9fe8ff"), "pos": Vector3(-49.0, 0.3, 42.6), "face": 1.9,
-			"aloof": true, "lines": ["...you can see me. Nobody has stayed past dark in years.", "One duel. That is all I ever wanted from this place."],
-			"duel": {"deck": "bakura", "difficulty": 3, "intro": "...draw."}}, Vector3.ZERO)
+		scene._add_npc(GHOST, Vector3.ZERO)
 		_ghost = (scene._npcs.back() as Array)[1]
 		# Washed in pale blue light with a cold glow at the feet: not quite solid.
 		var veil := StandardMaterial3D.new()
