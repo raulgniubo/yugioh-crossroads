@@ -2055,6 +2055,21 @@ func _missing_in(ids: Array) -> Array:
 	return out
 
 
+## Admin mode only (0.72.1): hands over every copy the open deck is missing. Returns how many.
+func admin_fill_missing() -> int:
+	if not Saves.admin:
+		return 0
+	var n := 0
+	for m in missing_cards():
+		var short := int(m[1]) - int(m[2])
+		owned[int(m[0])] = int(m[1])
+		n += short
+		meet(int(m[0]))
+	if n > 0:
+		save()
+	return n
+
+
 ## How many copies the open deck still needs.
 func missing_count() -> int:
 	var t := 0

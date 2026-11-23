@@ -8026,4 +8026,6 @@ const ES := {
 	"You don't have this card yet": "Todavía no tienes esta carta",
 	"Missing %d of these": "Te faltan %d de estas",
 	"missing %d": "no tienes %d",
+	"Admin: add the missing card": "Admin: añadir la carta que falta",
+	"Admin: add the %d missing cards": "Admin: añadir las %d cartas que faltan",
 }

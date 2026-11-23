@@ -47,6 +47,7 @@ var _mark: Panel
 var _slot_pick: OptionButton
 var _name_edit: LineEdit
 var _warn: Label
+var _admin_fill: Button
 
 
 func _panel(pad := 16) -> PanelContainer:
@@ -174,7 +175,26 @@ func _ready() -> void:
 	_warn = UITheme.label("", 16, UITheme.DANGER)
 	_warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_warn.visible = false
-	root.add_child(_warn)
+	_warn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var warn_row := HBoxContainer.new()
+	warn_row.add_theme_constant_override("separation", 14)
+	root.add_child(warn_row)
+	warn_row.add_child(_warn)
+	# Admin mode only: one press puts every missing copy of this deck in your collection.
+	_admin_fill = Button.new()
+	_admin_fill.visible = false
+	_admin_fill.focus_mode = Control.FOCUS_NONE
+	_admin_fill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_admin_fill.add_theme_font_size_override("font_size", 16)
+	_admin_fill.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.GOLD, 0.18), UITheme.GOLD))
+	_admin_fill.add_theme_color_override("font_color", UITheme.GOLD)
+	_admin_fill.pressed.connect(func():
+		var got := Collection.admin_fill_missing()
+		if got > 0:
+			Sfx.play("coin")
+			_changed()
+			_rebuild_grid())
+	warn_row.add_child(_admin_fill)
 	var body := HBoxContainer.new()
 	body.add_theme_constant_override("separation", 16)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -726,6 +746,10 @@ func _tile_box(kind: String) -> StyleBox:
 				sb = UITheme.panel_box(Color(UITheme.GOLD, 0.95), 7, UITheme.GOLD)
 				sb.content_margin_left = 5
 				sb.content_margin_right = 5
+			"strip_missing":
+				sb = UITheme.panel_box(Color(Comic.RED, 0.95), 7, Color(Comic.RED, 0.95))
+				sb.content_margin_left = 5
+				sb.content_margin_right = 5
 			_:
 				sb = UITheme.panel_box(Color(Comic.RED, 0.95), 7, Color.WHITE)
 				sb.content_margin_left = 6
@@ -801,26 +825,23 @@ func _fill_tile(holder: Control) -> void:
 		nw.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 		nw.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 		nw.position += Vector2(-4, 4)
-	# A card you don't have yet: grey, a lock and "Not yours yet" (it can still go in a deck to plan it).
-	var lock: Control = null
-	if not have:
-		lock = _LockTag.new()
-		lock.position = Vector2(56 - 46, 81 - 32)
-		lock.size = Vector2(92, 64)
-		lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		holder.add_child(lock)
+	# A card you don't have yet: grey with x0 (it can still go in a deck to plan it).
+	# (0.72.1: no padlock: it read as "can't be added", and it can)
 	var refresh := func():
 		var used := Collection.in_deck(id)
 		var lim := Collection.limit(id)
 		var own := Collection.count(id)
 		var can_use: int = mini(mini(3, lim), own)
-		badge.text = ("x%d" % own) if own > 0 else Loc.t("Not yours yet")
+		badge.text = "x%d" % own     # (x0 in pink for a card you don't have: "Not yours yet" ran past the card)
 		badge.add_theme_color_override("font_color", Color.WHITE if own > 0 else Color("ffb3bd"))
 		if lim < 3:
 			badge.text += ["   FORBIDDEN", "   LIMITED", "   SEMI"][lim]
 		strip.visible = used > 0
+		# (short, so it fits the card; a red strip says some of those copies are not yours yet)
+		strip.add_theme_stylebox_override("normal", _tile_box("strip_missing" if used > own else "strip"))
+		strip.add_theme_color_override("font_color", Color.WHITE if used > own else Color(0.03, 0.05, 0.1))
 		if used > own:
-			strip.text = Loc.t("%d in deck · %d missing") % [used, used - own]
+			strip.text = Loc.t("In this deck: %d") % used
 		else:
 			strip.text = Loc.t("All in this deck") if used >= can_use else Loc.t("In this deck: %d") % used
 		tr.modulate = Color.WHITE if Collection.can_add(id, _to_side, true) else Color(0.5, 0.5, 0.56)
@@ -836,6 +857,7 @@ func _fill_tile(holder: Control) -> void:
 		holder.create_tween().tween_property(holder, "scale", Vector2.ONE, 0.1)
 		_show_pin())
 	tr.gui_input.connect(func(e):
+		_follow_grab(e)
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 			if e.double_click:
 				# The fast way: one more copy into the deck.
@@ -1009,6 +1031,7 @@ func _rebuild_deck() -> void:
 				card.create_tween().tween_property(card, "scale", Vector2.ONE, 0.1)
 				_show_pin())
 			card.gui_input.connect(func(e):
+				_follow_grab(e)
 				if not (e is InputEventMouseButton and e.pressed):
 					return
 				# No hidden clicks: a card only moves when you drag it or press its button.
@@ -1758,9 +1781,16 @@ var _zone_tag: Label
 
 
 func _input(event: InputEvent) -> void:
+	_follow_grab(event)
+
+
+## The grabbed card follows the pointer: from the panel's own input and, the same, from the tile that
+## was pressed (it keeps getting the pointer while the button is down), so the drag starts and lands
+## even when something else takes the panel's input first (0.72.1).
+func _follow_grab(event: InputEvent) -> void:
 	if _grab.is_empty():
 		return
-	if event is InputEventMouseMotion and _drag == null and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+	if event is InputEventMouseMotion and _drag == null and ((event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0 or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)):
 		if get_global_mouse_position().distance_to(_grab["at"]) > 7.0:
 			_start_drag()
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
@@ -1991,6 +2021,9 @@ func _refresh_count() -> void:
 		warns.append((Loc.t("You don't have 1 card of this deck yet: %s.") if lack == 1 else Loc.t("You don't have %d cards of this deck yet: %s.") % [lack, "%s"]) % ", ".join(names) + " " + Loc.t("It can be dueled with once you have them."))
 	_warn.visible = not warns.is_empty()
 	_warn.text = "\n".join(warns)
+	_admin_fill.visible = Saves.admin and lack > 0
+	if _admin_fill.visible:
+		_admin_fill.text = "  " + (Loc.t("Admin: add the missing card") if lack == 1 else Loc.t("Admin: add the %d missing cards") % lack) + "  "
 	_count.add_theme_color_override("font_color", Color.WHITE if ok else UITheme.DANGER)
 	var using: bool = Collection.active == "custom"
 	if lack > 0:

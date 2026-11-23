@@ -5,6 +5,15 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.72.1
+
+**Deck editor fixes.** No cards added: 12,745 total.
+
+- Dragging cards between the collection and the deck is sturdier: the drag also follows the card you pressed, so it starts and lands even when something else takes the editor's input first.
+- Cards you don't have yet are just greyed with "x0": no padlock (it looked like they couldn't be added), and no long "Not yours yet" label running off the card.
+- A card in the deck that you don't have enough copies of gets a short red "In this deck: N" strip instead of a long text cut off with "...".
+- **Admin mode only**: when the open deck is missing cards, a gold button next to the warning adds every missing copy to your collection in one press.
+
 ## What is in 0.72.0
 
 **Every card, and a deck editor that plans.** 4,330 cards added: 12,745 total.
