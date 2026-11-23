@@ -31,7 +31,7 @@ static var _c := {}
 static var _have := false
 ## What was just earned, for the corner of the screen: [[amount, why], ...] (CampusLife takes them).
 static var feed: Array = []
-static var from_end := false     # just came out of a chapter's end card into free time (a toast says what is next)
+static var from_end := ""        # the chapter a just-closed end card offered, on the way into free time (a toast names it)
 
 
 # ------------------------------------------------------------------ the file

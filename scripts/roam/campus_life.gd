@@ -35,13 +35,13 @@ func _ready() -> void:
 		# Back from a duel, or just arrived: where you stand is where "continue" brings you back.
 		_note.call_deferred()
 		# Straight out of a chapter's end card: the next one waiting gets a word on arrival.
-		if Campus.from_end:
-			Campus.from_end = false
-			var g := Campus.golden()
-			if g.has("chapter"):
+		if Campus.from_end != "":
+			var offered := Campus.from_end
+			Campus.from_end = ""
+			if not Campus.chapter_done(offered):
 				var title := ""
 				for ch in CampusData.CHAPTERS:
-					if str(ch["id"]) == str(g["chapter"]):
+					if str(ch["id"]) == offered:
 						title = Loc.t(str(ch["title"]))
 				get_tree().create_timer(1.6).timeout.connect(func():
 					Router.toast(Pad.keys(Loc.t("%s is ready: press N to start it") % title))

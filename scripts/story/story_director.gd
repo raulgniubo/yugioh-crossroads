@@ -3757,7 +3757,7 @@ func _end_campus(st: Dictionary) -> void:
 	if not straight:
 		buttons.append([Loc.t("Keep playing on the island") if chapter == "ac_epilogue" else Loc.t("Free time on the island"), func():
 			Campus.put("free_days", true)
-			Campus.from_end = true
+			Campus.from_end = up_next
 			Campus.island(st.get("wake", null))])
 		buttons.append([Loc.t("Main menu"), func():
 			Campus.put("free_days", true)
