@@ -5,6 +5,12 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.70.1
+
+**Professor Sato remade.** No cards added: 8,415 total.
+
+- Sato's Meshy model had a sunken face, smudged eyes and a crooked mouth; she is made again from the same design (low bun with a gray streak, black blazer with crimson lapels, crimson scarf) with a clean face.
+
 ## What is in 0.70.0
 
 **Your duelist, many more ways: hairstyles and outfits from every era. Plus Raul's notes on the shops and the Free Roam cards.** No cards added: 8,415 total (the collection counter shows 8,433 because it also counts Lumen's original cards and the Speed Spells).
