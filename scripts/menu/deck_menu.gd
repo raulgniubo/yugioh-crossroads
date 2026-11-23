@@ -15,7 +15,7 @@ var _rename: LineEdit
 var _info: Label
 var _status: Label
 var _actions: HBoxContainer
-var _grid: GridContainer
+var _grid: VBoxContainer       # the deck shown: Main, Extra and Side Deck, each under its own heading
 var _confirm_clear := false
 var _picker: Control
 var _filter := "all"          # all | ready | not
@@ -27,6 +27,20 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	theme = UITheme.build()
 	add_child(MenuBackdrop.new())
+	if "--decks-plan" in OS.get_cmdline_user_args():
+		# (dev: the deck in use gets cards you don't have yet, Main and Extra)
+		var nm := 0
+		var nx := 0
+		for cid in Collection.all_cards():
+			var cd := CardData.get_card(int(cid))
+			if Collection.count(int(cid)) > 0 or str(cd.get("kind", "")) != "monster":
+				continue
+			if CardData.is_extra(int(cid)) and nx < 3:
+				Collection.extra.append(int(cid))
+				nx += 1
+			elif not CardData.is_extra(int(cid)) and nm < 4:
+				Collection.main.append(int(cid))
+				nm += 1
 	var m := MarginContainer.new()
 	m.set_anchors_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right"]:
@@ -124,10 +138,9 @@ func _ready() -> void:
 	grid_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	grid_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	right.add_child(grid_scroll)
-	_grid = GridContainer.new()
-	_grid.columns = 9
-	_grid.add_theme_constant_override("h_separation", 10)
-	_grid.add_theme_constant_override("v_separation", 10)
+	_grid = VBoxContainer.new()
+	_grid.add_theme_constant_override("separation", 8)
+	_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid_scroll.add_child(_grid)
 	root.add_child(UITheme.label("More ready-made decks are sold at the card shop counter. A deck you buy is yours to change, and its original list can always be restored. Booster packs add single cards to your collection.", 18, UITheme.TEXT_DIM))
 	# Start on the deck in use.
@@ -362,7 +375,15 @@ func _show() -> void:
 		if Collection.slot_empty(i2):
 			_status.text = Loc.t("This deck has no cards yet. Press Edit to build it.")
 		elif not ok:
-			_status.text = Loc.t("Not ready to duel: a Main Deck needs %d to %d cards.") % [Collection.MAIN_MIN, Collection.MAIN_MAX]
+			var lack := 0
+			for m in Collection._missing_in(main + extra + (lists[2] as Array)):
+				lack += int(m[1]) - int(m[2])
+			if main.size() < Collection.MAIN_MIN or main.size() > Collection.MAIN_MAX:
+				_status.text = Loc.t("Not ready to duel: a Main Deck needs %d to %d cards.") % [Collection.MAIN_MIN, Collection.MAIN_MAX]
+			else:
+				_status.text = ""
+			if lack > 0:
+				_status.text = (_status.text + "  " if _status.text != "" else Loc.t("Not ready to duel:") + " ") + (Loc.t("1 card you don't have yet (greyed).") if lack == 1 else Loc.t("%d cards you don't have yet (greyed).") % lack)
 		else:
 			_status.text = Loc.t("Ready to duel.") if not using else Loc.t("You are dueling with this deck.")
 		_status.add_theme_color_override("font_color", UITheme.DANGER if (not ok and not Collection.slot_empty(i2)) else UITheme.TEXT_DIM)
@@ -399,37 +420,84 @@ func _show() -> void:
 		var clear := _btn(Loc.t("Press again to delete") if _confirm_clear else Loc.t("Delete"))
 		clear.pressed.connect(_clear)
 		_actions.add_child(clear)
-	# The cards, one tile each, with how many copies.
-	var counts := {}
-	var order: Array = []
-	for id in main + extra:
-		if not counts.has(id):
-			order.append(id)
-		counts[id] = int(counts.get(id, 0)) + 1
-	order.sort_custom(func(a, b):
-		var da := CardData.get_card(int(a))
-		var db := CardData.get_card(int(b))
-		var ka: int = {"monster": 0, "spell": 1, "trap": 2}.get(str(da.get("kind", "")), 3) + (10 if CardData.is_extra(int(a)) else 0)
-		var kb: int = {"monster": 0, "spell": 1, "trap": 2}.get(str(db.get("kind", "")), 3) + (10 if CardData.is_extra(int(b)) else 0)
-		if ka != kb:
-			return ka < kb
-		if int(da.get("level", 0)) != int(db.get("level", 0)):
-			return int(da.get("level", 0)) > int(db.get("level", 0))
-		if int(da.get("atk", 0)) != int(db.get("atk", 0)):
-			return int(da.get("atk", 0)) > int(db.get("atk", 0))
-		return str(da.get("name", "")) < str(db.get("name", "")))
-	for id in order:
-		_grid.add_child(_tile(int(id), int(counts[id])))
+	# The cards, one tile each, with how many copies: the Main Deck, then the Extra Deck and the
+	# Side Deck under their own headings.
+	var owned_left := {}
+	for part in [["MAIN DECK", main, Comic.SKY], ["EXTRA DECK", extra, Color("b48cff")], ["SIDE DECK", lists[2], UITheme.GOLD]]:
+		var ids: Array = part[1]
+		if ids.is_empty():
+			continue
+		var head := HBoxContainer.new()
+		head.add_theme_constant_override("separation", 10)
+		var hl := UITheme.label(Loc.t(str(part[0])), 18, part[2], UITheme.title_font())
+		head.add_child(hl)
+		head.add_child(UITheme.label(str(ids.size()), 18, Color.WHITE, UITheme.semi_font()))
+		var rule := ColorRect.new()
+		rule.color = Color(part[2], 0.3)
+		rule.custom_minimum_size = Vector2(0, 2)
+		rule.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		rule.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		head.add_child(rule)
+		if _grid.get_child_count() > 0:
+			var gap := Control.new()
+			gap.custom_minimum_size = Vector2(0, 6)
+			_grid.add_child(gap)
+		_grid.add_child(head)
+		var g := GridContainer.new()
+		g.columns = 9
+		g.add_theme_constant_override("h_separation", 10)
+		g.add_theme_constant_override("v_separation", 10)
+		_grid.add_child(g)
+		var counts := {}
+		var order: Array = []
+		for id in ids:
+			if not counts.has(id):
+				order.append(id)
+			counts[id] = int(counts.get(id, 0)) + 1
+		order.sort_custom(func(a, b):
+			var da := CardData.get_card(int(a))
+			var db := CardData.get_card(int(b))
+			var ka: int = {"monster": 0, "spell": 1, "trap": 2}.get(str(da.get("kind", "")), 3)
+			var kb: int = {"monster": 0, "spell": 1, "trap": 2}.get(str(db.get("kind", "")), 3)
+			if ka != kb:
+				return ka < kb
+			if int(da.get("level", 0)) != int(db.get("level", 0)):
+				return int(da.get("level", 0)) > int(db.get("level", 0))
+			if int(da.get("atk", 0)) != int(db.get("atk", 0)):
+				return int(da.get("atk", 0)) > int(db.get("atk", 0))
+			return str(da.get("name", "")) < str(db.get("name", "")))
+		for id in order:
+			# (copies you don't have yet: counted over the whole deck, Main first)
+			var have: int = int(owned_left.get(id, Collection.count(int(id))))
+			var n := int(counts[id])
+			owned_left[id] = maxi(0, have - n)
+			g.add_child(_tile(int(id), n, maxi(0, n - have) if int(id) != CardData.LUMEN else 0))
 
 
-func _tile(id: int, n: int) -> Control:
+func _tile(id: int, n: int, lacking := 0) -> Control:
 	var tr := TextureRect.new()
 	tr.texture = Cards.get_thumb(id)
 	tr.custom_minimum_size = Vector2(118, 172)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.tooltip_text = str(CardData.get_card(id).get("name", ""))
-	Foil.apply(tr, CardData.rarity(id))
+	if lacking > 0:
+		# (copies you don't have yet: grey, and how many are missing)
+		tr.material = AlbumSlot.gray_material()
+		tr.tooltip_text += "\n" + (Loc.t("You don't have this card yet") if lacking >= n else Loc.t("Missing %d of these") % lacking)
+		var miss := PanelContainer.new()
+		var msb := UITheme.panel_box(Color(Comic.RED, 0.95), 9, Color.WHITE)
+		msb.content_margin_left = 6
+		msb.content_margin_right = 6
+		msb.content_margin_top = 0
+		msb.content_margin_bottom = 0
+		miss.add_theme_stylebox_override("panel", msb)
+		miss.position = Vector2(6, 6)
+		miss.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		miss.add_child(UITheme.label(Loc.t("missing %d") % lacking, 14, Color.WHITE, UITheme.semi_font()))
+		tr.add_child(miss)
+	else:
+		Foil.apply(tr, CardData.rarity(id))
 	if n > 1:
 		var badge := PanelContainer.new()
 		var bsb := UITheme.panel_box(Color(0.032, 0.058, 0.125, 0.94), 9, Color(UITheme.GOLD, 0.9))

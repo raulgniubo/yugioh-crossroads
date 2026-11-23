@@ -26,6 +26,14 @@ var _sort := 0           # 0 type, 1 ATK, 2 level, 3 name
 var _to_side := false
 var _race := ""           # monster Type filter ("" = any)
 var _addable := false     # only cards that can still go into this deck
+var _grid_empty: Label
+var _all := false         # every card of the game, not only yours (the ones you don't own are greyed)
+const CLASSES := [["", "Any kind"], ["-", "Monsters"], ["normal", "Normal monster"], ["effect", "Effect monster"],
+	["ritual", "Ritual monster"], ["fusion", "Fusion"], ["synchro", "Synchro"], ["xyz", "Xyz"], ["tuner", "Tuner"],
+	["-", "Spells"], ["s:normal", "Normal Spell"], ["s:quick-play", "Quick-Play Spell"], ["s:continuous", "Continuous Spell"],
+	["s:equip", "Equip Spell"], ["s:field", "Field Spell"], ["s:ritual", "Ritual Spell"],
+	["-", "Traps"], ["t:normal", "Normal Trap"], ["t:continuous", "Continuous Trap"], ["t:counter", "Counter Trap"]]
+var _class := ""          # card class filter: "normal", "effect", "fusion"... or a Spell/Trap kind ("" = any)
 var _undo: Array = []     # earlier states of the deck, newest last
 var _undo_btn: Button
 var _ask_row: HBoxContainer
@@ -344,6 +352,12 @@ func _ready() -> void:
 		off.content_margin_left = 12
 		off.content_margin_right = 12
 		b.add_theme_stylebox_override("normal", off)
+		# (hover and focus with the same margins as normal: the theme's own cut the word short)
+		var hov := UITheme.button_box(Color(1, 1, 1, 0.12), Color(UITheme.ACCENT, 0.6), 10)
+		hov.content_margin_left = 12
+		hov.content_margin_right = 12
+		b.add_theme_stylebox_override("hover", hov)
+		b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 		for st in ["pressed", "hover_pressed"]:
 			b.add_theme_stylebox_override(st, on)
 		b.add_theme_color_override("font_pressed_color", Color(0.02, 0.05, 0.08))
@@ -363,7 +377,6 @@ func _ready() -> void:
 	col.add_child(bar2)
 	var search := LineEdit.new()
 	search.placeholder_text = Loc.t("Search…")
-	search.tooltip_text = Loc.t("Name or text (English or Spanish)")
 	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	search.custom_minimum_size = Vector2(170, 40)
 	search.clear_button_enabled = true
@@ -392,7 +405,7 @@ func _ready() -> void:
 		_rebuild_grid())
 	bar2.add_child(attr)
 	var races := {}
-	for k in Collection.owned:
+	for k in Collection.all_cards():
 		var cd := CardData.get_card(int(k))
 		if str(cd.get("kind", "")) == "monster" and str(cd.get("race", "")) != "":
 			races[str(cd["race"])] = true
@@ -415,12 +428,31 @@ func _ready() -> void:
 	lv.fit_to_longest_item = false
 	lv.clip_text = true
 	lv.custom_minimum_size = Vector2(100, 0)
-	for t in ["Level", "Level 1 to 4", "Level 5 and 6", "Level 7 and up"]:
-		lv.add_item(t)
+	for t in ["Level / Rank", "Level 1 to 4", "Level 5 and 6", "Level 7 and up"]:
+		lv.add_item(Loc.t(t))
+	for n in range(1, 13):
+		lv.add_item(Loc.t("Level / Rank %d") % n)
 	lv.item_selected.connect(func(i):
 		_level = i
 		_rebuild_grid())
 	bar2.add_child(lv)
+	# What kind of card: the monster frames, and the kinds of Spell and Trap.
+	var cl := OptionButton.new()
+	cl.add_theme_font_size_override("font_size", 16)
+	cl.fit_to_longest_item = false
+	cl.clip_text = true
+	cl.custom_minimum_size = Vector2(200, 0)     # (wide enough for "Mágica de Juego Rápido"; it goes to the second row)
+	var classes: Array = CLASSES
+	for c in classes:
+		if str(c[0]) == "-":
+			cl.add_separator(Loc.t(str(c[1])))
+		else:
+			cl.add_item(Loc.t(str(c[1])))
+			cl.set_item_metadata(cl.item_count - 1, str(c[0]))
+	cl.item_selected.connect(func(i):
+		_class = str(cl.get_item_metadata(i)) if cl.get_item_metadata(i) != null else ""
+		_rebuild_grid())
+	bar2.add_child(cl)
 	var so := OptionButton.new()
 	so.add_theme_font_size_override("font_size", 16)
 	so.fit_to_longest_item = false
@@ -432,6 +464,12 @@ func _ready() -> void:
 		_sort = i
 		_rebuild_grid())
 	bar2.add_child(so)
+	_grid_empty = UITheme.label("", 18, UITheme.TEXT_DIM, UITheme.semi_font())
+	_grid_empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_grid_empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_grid_empty.custom_minimum_size = Vector2(0, 60)
+	_grid_empty.visible = false
+	col.add_child(_grid_empty)
 	var gscroll := ScrollContainer.new()
 	_gscroll = gscroll
 	gscroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -455,6 +493,18 @@ func _ready() -> void:
 	foot.add_theme_constant_override("h_separation", 18)
 	foot.add_theme_constant_override("v_separation", 4)
 	col.add_child(foot)
+	var all_t := CheckButton.new()
+	all_t.text = Loc.t("Every card in the game")
+	all_t.add_theme_font_size_override("font_size", 15)
+	all_t.tooltip_text = Loc.t("Also shows the cards you don't have yet, greyed. You can put them in a deck to plan it; the deck can be dueled with once you have them all. A search always looks through every card.")
+	for cn in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color"]:
+		all_t.add_theme_color_override(cn, UITheme.GOLD)
+	all_t.toggled.connect(func(on):
+		_all = on
+		_rebuild_grid())
+	foot.add_child(all_t)
+	if "--builder-all" in OS.get_cmdline_user_args():
+		all_t.button_pressed = true      # (dev: pictures)
 	var can_t := CheckButton.new()
 	can_t.text = "Only what I can add"
 	can_t.add_theme_font_size_override("font_size", 15)
@@ -487,6 +537,17 @@ func _ready() -> void:
 		Collection.save()
 		_refresh_all())
 	foot.add_child(ban)
+	if "--builder-empty" in OS.get_cmdline_user_args():
+		Collection.main.clear()      # (dev: pictures of an empty deck)
+		Collection.extra.clear()
+		Collection.side.clear()
+	if "--builder-plan" in OS.get_cmdline_user_args():
+		# (dev: a deck with cards you don't have yet)
+		var n := 0
+		for cid in Collection.all_cards():
+			if Collection.count(int(cid)) == 0 and str(CardData.get_card(int(cid)).get("kind", "")) == "monster" and n < 4:
+				Collection.main.append(int(cid))
+				n += 1
 	_refresh_all()
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.25)
@@ -529,24 +590,33 @@ func _refresh_all() -> void:
 	_rebuild_deck()
 
 
-func _sorted(ids: Array) -> Array:
+## The cards in the order picked. Each card's key is worked out once (a sort that looked every
+## card up again for every comparison took seconds over the whole game). `owned_first`: yours come
+## before the ones you don't have yet.
+func _sorted(ids: Array, owned_first := false) -> Array:
+	var keys := {}
+	for id in ids:
+		var d := CardData.get_card(id)
+		var k := 0 if d["kind"] == "monster" else (1 if d["kind"] == "spell" else 2)
+		var own := 0 if (not owned_first or Collection.count(id) > 0) else 1
+		var nm := str(d.get("name", ""))
+		match _sort:
+			3:
+				keys[id] = [own, 0, 0, nm]
+			2:
+				keys[id] = [own, -int(d.get("level", 0)), k, nm]
+			1:
+				keys[id] = [own, -int(d.get("atk", 0)), k, nm]
+			_:
+				keys[id] = [own, k, -int(d.get("atk", 0)), nm]
 	var out := ids.duplicate()
 	out.sort_custom(func(a, b):
-		var da := CardData.get_card(a)
-		var db := CardData.get_card(b)
-		if _sort == 3:
-			return str(da.get("name", "")) < str(db.get("name", ""))
-		if _sort == 2 and int(da.get("level", 0)) != int(db.get("level", 0)):
-			return int(da.get("level", 0)) > int(db.get("level", 0))
-		if _sort == 1 and int(da.get("atk", 0)) != int(db.get("atk", 0)):
-			return int(da.get("atk", 0)) > int(db.get("atk", 0))
-		var ka := 0 if da["kind"] == "monster" else (1 if da["kind"] == "spell" else 2)
-		var kb := 0 if db["kind"] == "monster" else (1 if db["kind"] == "spell" else 2)
-		if ka != kb:
-			return ka < kb
-		if int(da.get("atk", 0)) != int(db.get("atk", 0)):
-			return int(da.get("atk", 0)) > int(db.get("atk", 0))
-		return str(da.get("name", "")) < str(db.get("name", "")))
+		var ka: Array = keys[a]
+		var kb: Array = keys[b]
+		for i in 3:
+			if ka[i] != kb[i]:
+				return ka[i] < kb[i]
+		return ka[3] < kb[3])
 	return out
 
 
@@ -557,28 +627,40 @@ func _rebuild_grid() -> void:
 		_grid.remove_child(c)
 		c.queue_free()
 	_grid_far_n = -1
-	var shown := 0
-	for id in _sorted(Collection.owned.keys()):
+	# Yours, or every card of the game (with "Every card in the game", and always when searching:
+	# a card you are looking for is found whether you have it or not; yours come first).
+	var everything := _all or _search != ""
+	var source: Array = Collection.all_cards() if everything else Collection.owned.keys()
+	var keep: Array = []
+	for id in source:
 		var d := CardData.get_card(id)
-		var is_extra: bool = str(d.get("frame", "")) in ["fusion", "synchro", "xyz"]
+		var fr := str(d.get("frame", ""))
+		var is_extra: bool = fr in ["fusion", "synchro", "xyz"]
 		if _filter == "extra" and not is_extra:
 			continue
 		if _filter == "ours" and not CardData.is_original(id):   # the cards that only exist in this game
 			continue
 		if _filter in ["monster", "spell", "trap"] and (d["kind"] != _filter or is_extra):
 			continue
-		if _search != "" and not _found(id, d):
-			continue
 		if _attr != "" and str(d.get("attribute", "")) != _attr:
 			continue
 		if _race != "" and (d["kind"] != "monster" or str(d.get("race", "")) != _race):
 			continue
-		if _addable and not Collection.can_add(id, _to_side):
+		if _class != "" and not _is_class(id, d, fr):
 			continue
 		if _level > 0:
 			var l := int(d.get("level", 0))
-			if d["kind"] != "monster" or (_level == 1 and l > 4) or (_level == 2 and (l < 5 or l > 6)) or (_level == 3 and l < 7):
+			if d["kind"] != "monster":
 				continue
+			if (_level == 1 and l > 4) or (_level == 2 and (l < 5 or l > 6)) or (_level == 3 and l < 7) or (_level >= 4 and l != _level - 3):
+				continue
+		if _search != "" and not _found(id, d):
+			continue
+		if _addable and not Collection.can_add(id, _to_side, true):
+			continue
+		keep.append(id)
+	var shown := 0
+	for id in _sorted(keep, everything):
 		_grid.add_child(_tile(id))
 		shown += 1
 	if _owned_l:
@@ -586,8 +668,35 @@ func _rebuild_grid() -> void:
 		for k in Collection.owned:
 			copies += int(Collection.owned[k])
 		var total: int = Collection.owned.size()
-		_owned_l.text = Loc.t("You own %d different cards  ·  %d copies in total") % [total, copies] + "  ·  " + (Loc.t("showing all of them") if shown == total else Loc.t("showing %d of %d") % [shown, total])
-		_owned_l.add_theme_color_override("font_color", UITheme.TEXT if shown == total else UITheme.GOLD)
+		var all_n: int = Collection.all_cards().size()
+		if everything:
+			_owned_l.text = Loc.t("You own %d of %d cards") % [total, all_n] + "  ·  " + (Loc.t("showing every card") if shown == all_n else Loc.t("showing %d") % shown) + "  ·  " + Loc.t("the grey ones you don't have yet")
+		else:
+			_owned_l.text = Loc.t("You own %d different cards  ·  %d copies in total") % [total, copies] + "  ·  " + (Loc.t("showing all of them") if shown == total else Loc.t("showing %d of %d") % [shown, total])
+		_owned_l.add_theme_color_override("font_color", UITheme.TEXT if shown == total and not everything else UITheme.GOLD)
+	_grid_empty.visible = shown == 0
+	if shown == 0:
+		_grid_empty.text = Loc.t("No card matches. Try fewer filters.") if everything else Loc.t("None of your cards match. Turn on \"Every card in the game\" to look through all of them.")
+
+
+## Is this card of the kind picked in the class filter?
+func _is_class(id: int, d: Dictionary, fr: String) -> bool:
+	if _class.begins_with("s:") or _class.begins_with("t:"):
+		if d["kind"] != ("spell" if _class.begins_with("s:") else "trap"):
+			return false
+		var k := DuelWhy.spell_kind(id)
+		if k == "":
+			k = "normal"
+		return k == _class.substr(2)
+	if d["kind"] != "monster":
+		return false
+	match _class:
+		"tuner":
+			return bool(d.get("tuner", false))
+		"effect":
+			return fr == "effect"
+		_:
+			return fr == _class
 
 
 ## A tile starts as an empty box of the right size. Its picture, badges and handlers are only made
@@ -650,7 +759,11 @@ func _fill_tile(holder: Control) -> void:
 	tr.mouse_filter = Control.MOUSE_FILTER_STOP
 	tr.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	holder.add_child(tr)
-	Foil.apply(tr, CardData.rarity(id))
+	var have := Collection.count(id) > 0
+	if have:
+		Foil.apply(tr, CardData.rarity(id))
+	else:
+		tr.material = AlbumSlot.gray_material()
 	var badge := Label.new()
 	badge.add_theme_font_override("font", UITheme.semi_font())
 	badge.add_theme_font_size_override("font_size", 16)
@@ -661,8 +774,11 @@ func _fill_tile(holder: Control) -> void:
 	# How many are in the deck on the table, on its own strip, so the corner only says what you own.
 	var strip := Label.new()
 	strip.add_theme_font_override("font", UITheme.semi_font())
-	strip.add_theme_font_size_override("font_size", 13)
+	strip.add_theme_font_size_override("font_size", 12)
 	strip.add_theme_color_override("font_color", Color(0.03, 0.05, 0.1))
+	# (never wider than the card: "Todas en este deck" ran past its right edge)
+	strip.clip_text = true
+	strip.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	strip.add_theme_stylebox_override("normal", _tile_box("strip"))
 	strip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	strip.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
@@ -685,16 +801,29 @@ func _fill_tile(holder: Control) -> void:
 		nw.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 		nw.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 		nw.position += Vector2(-4, 4)
+	# A card you don't have yet: grey, a lock and "Not yours yet" (it can still go in a deck to plan it).
+	var lock: Control = null
+	if not have:
+		lock = _LockTag.new()
+		lock.position = Vector2(56 - 46, 81 - 32)
+		lock.size = Vector2(92, 64)
+		lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(lock)
 	var refresh := func():
 		var used := Collection.in_deck(id)
 		var lim := Collection.limit(id)
-		var can_use: int = mini(mini(3, lim), Collection.count(id))
-		badge.text = "x%d" % Collection.count(id)
+		var own := Collection.count(id)
+		var can_use: int = mini(mini(3, lim), own)
+		badge.text = ("x%d" % own) if own > 0 else Loc.t("Not yours yet")
+		badge.add_theme_color_override("font_color", Color.WHITE if own > 0 else Color("ffb3bd"))
 		if lim < 3:
 			badge.text += ["   FORBIDDEN", "   LIMITED", "   SEMI"][lim]
 		strip.visible = used > 0
-		strip.text = Loc.t("All in this deck") if used >= can_use else Loc.t("In this deck: %d") % used
-		tr.modulate = Color.WHITE if Collection.can_add(id, _to_side) else Color(0.5, 0.5, 0.56)
+		if used > own:
+			strip.text = Loc.t("%d in deck · %d missing") % [used, used - own]
+		else:
+			strip.text = Loc.t("All in this deck") if used >= can_use else Loc.t("In this deck: %d") % used
+		tr.modulate = Color.WHITE if Collection.can_add(id, _to_side, true) else Color(0.5, 0.5, 0.56)
 	refresh.call()
 	tr.mouse_entered.connect(func():
 		if _drag != null:
@@ -810,13 +939,30 @@ func _rebuild_deck() -> void:
 			_side_head = head
 		var marked := false
 		if ids.is_empty():
-			var tip := UITheme.label({"MAIN DECK": "Empty. Drag cards here from your collection, or tap one and press Add to deck.",
-				"EXTRA DECK": "Fusion, Synchro and Xyz monsters you add go here.",
-				"SIDE DECK": "Optional. Drag cards here, or tap a deck card and press Move to Side Deck."}[section[0]], 14, UITheme.TEXT_DIM)
+			# Empty: a few dashed card places and one short line, in the place itself.
+			var ghosts: int = 5 if is_main else 3
+			for g in ghosts:
+				var gs := _GhostSlot.new()
+				gs.custom_minimum_size = Vector2(62, 90)
+				gs.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				gs.fade = 1.0 - float(g) / float(ghosts + 1)
+				gs.col = UITheme.GOLD if is_side else (Color("b48cff") if not is_main else Comic.SKY)
+				flow.add_child(gs)
+			var tip := UITheme.label({"MAIN DECK": "Drag cards here, or double-click one in the collection.",
+				"EXTRA DECK": "Fusion, Synchro and Xyz monsters land here.",
+				"SIDE DECK": "Optional: up to 15 cards to swap in between Match duels."}[section[0]], 15, UITheme.TEXT_DIM, UITheme.semi_font())
+			tip.text = Loc.t(tip.text)
 			tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			tip.custom_minimum_size = Vector2(520, 0)
-			_deck_list.add_child(tip)
+			tip.custom_minimum_size = Vector2(200, 0)
+			tip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			tip.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			var tipbox := CenterContainer.new()
+			tipbox.custom_minimum_size = Vector2(240, 90)
+			tipbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tipbox.add_child(tip)
+			flow.add_child(tipbox)
+		var seen := {}
 		for id in _sorted(ids):
 			var card := TextureRect.new()
 			card.texture = Cards.get_thumb(id)
@@ -828,6 +974,22 @@ func _rebuild_deck() -> void:
 			card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 			card.set_meta("id", id)
 			flow.add_child(card)
+			# A copy you don't have yet: grey, with a red corner (the deck waits for it).
+			seen[id] = int(seen.get(id, 0)) + 1
+			if int(seen[id]) > Collection.count(id) and id != CardData.LUMEN:
+				card.material = AlbumSlot.gray_material()
+				card.tooltip_text = Loc.t("You don't have this copy yet")
+				var dot := Panel.new()
+				var dsb := StyleBoxFlat.new()
+				dsb.bg_color = Comic.RED
+				dsb.set_corner_radius_all(7)
+				dsb.border_color = Color.WHITE
+				dsb.set_border_width_all(2)
+				dot.add_theme_stylebox_override("panel", dsb)
+				dot.size = Vector2(14, 14)
+				dot.position = Vector2(62 - 16, 2)
+				dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				card.add_child(dot)
 			# The card you just added pops, so your eye lands on it.
 			if id == _last_added and not popped:
 				popped = true
@@ -908,14 +1070,14 @@ func _changed(added := -1) -> void:
 
 
 func _quick_add(id: int, to_side := _to_side) -> void:
-	if not Collection.can_add(id, to_side):
+	if not Collection.can_add(id, to_side, true):
 		Sfx.play("click", -6.0)
 		return
 	_snap()
 	if to_side:
-		Collection.add_side(id)
+		Collection.add_side(id, true)
 	else:
-		Collection.add(id)
+		Collection.add(id, true)
 	Sfx.play("card", -4.0)
 	_changed(id)
 
@@ -949,8 +1111,8 @@ func _to_main_deck(id: int) -> void:
 		return
 	_snap()
 	Collection.side.erase(id)
-	if Collection.can_add(id):
-		Collection.add(id)
+	if Collection.can_add(id, false, true):
+		Collection.add(id, true)
 	else:
 		Collection.side.append(id)
 		Sfx.play("click", -6.0)
@@ -1192,7 +1354,7 @@ func _show_share() -> void:
 	panel.add_child(v)
 	v.add_child(UITheme.label(Loc.t("SHARE A DECK"), 30, Color.WHITE, UITheme.title_font()))
 	var code := DeckCode.encode(Collection.main, Collection.extra, Collection.side)
-	var hint := UITheme.label(Loc.t("This deck as a code. Copy it and send it to a friend: they paste it here to build the same deck from the cards they own."), 17, UITheme.TEXT_DIM)
+	var hint := UITheme.label(Loc.t("This deck as a code. Copy it and send it to a friend: they paste it here to build the same deck (the cards they don't have yet come in greyed)."), 17, UITheme.TEXT_DIM)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(hint)
 	var out := TextEdit.new()
@@ -1239,10 +1401,14 @@ func _show_share() -> void:
 		var r := apply_code(d)
 		_changed()
 		res.add_theme_color_override("font_color", UITheme.TEXT)
+		var lines: Array = []
 		if (r["missing"] as Array).is_empty():
-			res.text = Loc.t("Done: every card is in. (Undo takes it back.)")
+			lines.append(Loc.t("Done: every card is in, and you have them all. (Undo takes it back.)"))
 		else:
-			res.text = Loc.t("Built with the cards you own. Missing: %s") % ", ".join(PackedStringArray(r["missing"])))
+			lines.append(Loc.t("Done: every card is in. You don't have these yet (greyed in the deck): %s. The deck can be dueled with once you have them.") % ", ".join(PackedStringArray(r["missing"])))
+		if int(r.get("unknown", 0)) > 0:
+			lines.append(Loc.t("%d cards of the code aren't in this game and were left out.") % int(r["unknown"]))
+		res.text = "\n".join(lines))
 	btns.add_child(build)
 	var close := Button.new()
 	close.text = "  %s  " % Loc.t("Close")
@@ -1251,31 +1417,36 @@ func _show_share() -> void:
 	btns.add_child(close)
 
 
-## Puts a decoded deck in the builder, using only copies you own. Returns {"missing": [names]}.
+## Puts a decoded deck in the builder, every card of it: the ones you don't have yet go in all the
+## same, greyed, and the deck can be dueled with once you have them. Returns {"missing": [names you
+## don't have enough of], "unknown": n cards this game doesn't have at all}.
 func apply_code(d: Dictionary) -> Dictionary:
 	_snap()
 	Collection.main = []
 	Collection.extra = []
 	Collection.side = []
-	var short := {}
+	var unknown := 0
 	for part in ["main", "extra", "side"]:
 		for id in d[part]:
-			var used := Collection.in_deck(int(id))
-			if Collection.count(int(id)) > used and mini(3, Collection.limit(int(id))) > used:
-				if part == "side":
-					Collection.side.append(int(id))
-				elif part == "extra":
-					Collection.extra.append(int(id))
-				else:
-					Collection.main.append(int(id))
+			var cd := CardData.get_card(int(id))
+			if cd.is_empty() or str(cd.get("name", "Unknown")) == "Unknown" or not Collection.playable(int(id)):
+				unknown += 1
+				continue
+			if Collection.in_deck(int(id)) >= mini(3, Collection.limit(int(id))):
+				continue
+			if part == "side":
+				Collection.side.append(int(id))
+			elif part == "extra" or str(cd.get("frame", "")) in ["fusion", "synchro", "xyz"]:
+				Collection.extra.append(int(id))
 			else:
-				var nm := str(CardData.get_card(int(id)).get("name", ""))
-				short[nm] = int(short.get(nm, 0)) + 1
+				Collection.main.append(int(id))
 	Collection.save()
 	var missing := []
-	for nm in short:
-		missing.append(nm + ("" if int(short[nm]) == 1 else " x%d" % int(short[nm])))
-	return {"missing": missing}
+	for m in Collection.missing_cards():
+		var nm := str(CardData.get_card(int(m[0])).get("name", ""))
+		var short := int(m[1]) - int(m[2])
+		missing.append(nm + ("" if short == 1 else " x%d" % short))
+	return {"missing": missing, "unknown": unknown}
 
 
 const STAPLES := ["Pot of Greed", "Monster Reborn", "Raigeki", "Dark Hole", "Mirror Force", "Heavy Storm", "Harpie's Feather Duster",
@@ -1548,9 +1719,14 @@ func _refresh_actions() -> void:
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.custom_minimum_size = Vector2(290, 0)
 	_act_box.add_child(info)
+	if Collection.count(id) == 0 and id != CardData.LUMEN:
+		var nh := UITheme.label(Loc.t("You don't have this card yet. It can go in the deck to plan it; the deck can be dueled with once you have it."), 14, Color("ffb3bd"))
+		nh.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		nh.custom_minimum_size = Vector2(290, 0)
+		_act_box.add_child(nh)
 	if from == "col":
-		_act_btn(Loc.t("Add to deck"), Collection.can_add(id, false), func(): _quick_add(id, false), true)
-		_act_btn(Loc.t("Add to Side Deck"), Collection.can_add(id, true), func(): _quick_add(id, true))
+		_act_btn(Loc.t("Add to deck"), Collection.can_add(id, false, true), func(): _quick_add(id, false), true)
+		_act_btn(Loc.t("Add to Side Deck"), Collection.can_add(id, true, true), func(): _quick_add(id, true))
 		if in_main > 0:
 			_act_btn(Loc.t("Remove one from the deck"), true, func(): _take_out(id, "main"))
 	elif from == "side":
@@ -1560,7 +1736,11 @@ func _refresh_actions() -> void:
 		_act_btn(Loc.t("Remove from the deck"), true, func(): _take_out(id, from), true)
 		if from == "main":
 			_act_btn(Loc.t("Move to the Side Deck"), Collection.side.size() < Collection.SIDE_MAX, func(): _to_side_deck(id))
-		_act_btn(Loc.t("Add another copy"), Collection.can_add(id, false), func(): _quick_add(id, false))
+		_act_btn(Loc.t("Add another copy"), Collection.can_add(id, false, true), func(): _quick_add(id, false))
+	if id != CardData.LUMEN and not CardData.is_original(id) or Collection.count(id) == 0:
+		_act_btn(Loc.t("Where to find it"), true, func():
+			if find_children("*", "CardWhere", false, false).is_empty():
+				add_child(CardWhere.new(id)))
 
 
 # ---- dragging. You grab a card and it comes with the pointer, full size; the side it can go to
@@ -1757,8 +1937,8 @@ func _can_drop(zone: String, data: Variant) -> bool:
 		"col":
 			return from != "col"
 		"side":
-			return (from == "col" and Collection.can_add(id, true)) or (from == "main" and Collection.side.size() < Collection.SIDE_MAX)
-	return (from == "col" and Collection.can_add(id, false)) or from == "side"
+			return (from == "col" and Collection.can_add(id, true, true)) or (from == "main" and Collection.side.size() < Collection.SIDE_MAX)
+	return (from == "col" and Collection.can_add(id, false, true)) or from == "side"
 
 
 func _drop(zone: String, data: Variant) -> void:
@@ -1796,15 +1976,27 @@ func _refresh_count() -> void:
 	var ok := Collection.deck_ok()
 	_count.text = Loc.t("%d cards") % n
 	var bad := Collection.illegal()
-	_warn.visible = not bad.is_empty()
+	var lack := Collection.missing_count()
+	var warns: Array = []
 	if not bad.is_empty():
 		var parts := []
 		for x in bad:
 			parts.append("%s (%d, max %d)" % [x[0], x[1], x[2]])
-		_warn.text = Loc.t("Not allowed by the Forbidden/Limited list: ") + ", ".join(parts)
+		warns.append(Loc.t("Not allowed by the Forbidden/Limited list: ") + ", ".join(parts))
+	if lack > 0:
+		var names := []
+		for m in Collection.missing_cards():
+			var short := int(m[1]) - int(m[2])
+			names.append(str(CardData.get_card(int(m[0])).get("name", "")) + ("" if short == 1 else " x%d" % short))
+		warns.append((Loc.t("You don't have 1 card of this deck yet: %s.") if lack == 1 else Loc.t("You don't have %d cards of this deck yet: %s.") % [lack, "%s"]) % ", ".join(names) + " " + Loc.t("It can be dueled with once you have them."))
+	_warn.visible = not warns.is_empty()
+	_warn.text = "\n".join(warns)
 	_count.add_theme_color_override("font_color", Color.WHITE if ok else UITheme.DANGER)
 	var using: bool = Collection.active == "custom"
-	_use_btn.text = "  ✓ Using this deck  " if using and ok else "  Duel with this deck  "
+	if lack > 0:
+		_use_btn.text = "  " + (Loc.t("1 card missing") if lack == 1 else Loc.t("%d cards missing") % lack) + "  "
+	else:
+		_use_btn.text = "  ✓ Using this deck  " if using and ok else "  Duel with this deck  "
 	_use_btn.disabled = not ok
 
 
@@ -1885,3 +2077,40 @@ func _found(id: int, d: Dictionary) -> bool:
 		return true
 	var es := CardText.spanish(nm)
 	return es != "" and es.to_lower().contains(_search)
+
+
+## The lock on a card you don't have yet: a padlock drawn in a dark round badge.
+class _LockTag:
+	extends Control
+
+	func _draw() -> void:
+		var c := size / 2.0
+		draw_circle(c, 24.0, Color(0.02, 0.03, 0.08, 0.78))
+		draw_arc(c, 24.0, 0, TAU, 40, Color(1, 1, 1, 0.25), 2.0, true)
+		var body := Rect2(c + Vector2(-10, -3), Vector2(20, 15))
+		draw_arc(c + Vector2(0, -4), 7.0, PI, TAU, 16, Color(1, 1, 1, 0.9), 3.0, true)
+		draw_line(c + Vector2(-7, -4), c + Vector2(-7, -2), Color(1, 1, 1, 0.9), 3.0)
+		draw_line(c + Vector2(7, -4), c + Vector2(7, -2), Color(1, 1, 1, 0.9), 3.0)
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(1, 1, 1, 0.92)
+		sb.set_corner_radius_all(3)
+		draw_style_box(sb, body)
+		draw_circle(body.get_center() + Vector2(0, -1), 2.2, Color(0.02, 0.03, 0.08))
+
+
+## An empty card place in an empty deck: a dashed outline with a plus.
+class _GhostSlot:
+	extends Control
+	var fade := 1.0
+	var col := Color.WHITE
+
+	func _draw() -> void:
+		var r := Rect2(Vector2(2, 2), size - Vector2(4, 4))
+		var c := Color(col, 0.42 * fade)
+		var pts := [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y), r.position]
+		for i in 4:
+			draw_dashed_line(pts[i], pts[i + 1], c, 2.0, 6.0, true)
+		draw_rect(r.grow(-3), Color(col, 0.05 * fade))
+		var m := size / 2.0
+		draw_line(m + Vector2(-8, 0), m + Vector2(8, 0), c, 2.5)
+		draw_line(m + Vector2(0, -8), m + Vector2(0, 8), c, 2.5)

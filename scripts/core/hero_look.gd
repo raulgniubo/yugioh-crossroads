@@ -248,10 +248,11 @@ void fragment() {
 	if (abs(id - 40.0) < 12.0) {
 		float nw = neck_on == 1 ? COLOR.r : 0.0;
 		c = mix(min(c * skin_gain, vec3(1.0)), neck_col, nw);
-		// Body skin under a borrowed head always takes the face's tone (arms, legs and neck alike);
-		// a picked skin color repaints face and body.
+		// "Natural" skin is one color worked out from the face's own cheeks, painted on face and body
+		// alike (0.72.0: the face kept its texture before and read paler than the arms); a picked skin
+		// color repaints face and body the same way.
 		vec4 sto = skin_to;
-		if (sto.a < 0.5 && skin_nat.a > 0.5 && part != 2) {
+		if (sto.a < 0.5 && skin_nat.a > 0.5) {
 			sto = vec4(skin_nat.rgb, 1.0);
 		}
 		c = paint_e(c, mix(skin_ref * skin_gain, neck_col, nw), sto, 0.25);
@@ -342,9 +343,25 @@ static func apply(scene: Node, model: String, head_model: String, p, accent: Col
 			# than its texture; the body is lit fully and would look orange next to it)
 			var cheek := Color(ch.r * hg.x, ch.g * hg.y, ch.b * hg.z).linear_to_srgb()
 			var face := Color.from_hsv(cheek.h, cheek.s * 0.62, minf(cheek.v * 1.12, 1.0)).srgb_to_linear()
-			for m in mats:
+			for m in mats + hm:
 				(m as ShaderMaterial).set_shader_parameter("skin_nat", face)
 		mats.append_array(hm)
+	elif not mats.is_empty():
+		# The body's own head (the first outfits, and a hairstyle on the outfit's base body): Meshy painted
+		# its face paler than its hands, so with "Natural" skin the arms read orange next to the face.
+		# The whole skin takes the face's own cheek color, the same way a borrowed head's body does.
+		var sk0 := Avatars._skeleton(scene)
+		for mi in Avatars._meshes(scene):
+			if mi.mesh != null and sk0 != null:
+				_cut(mi.mesh, mi.skin, sk0, model, 2, _neck_cut(model))   # (measures; the cut is kept for later)
+		var ch0: Color = _cheeks.get("%s/2/%.3f" % [model, _neck_cut(model)], Color(0, 0, 0, 0))
+		if OS.has_environment("HERO_CUT_DEBUG"):
+			print("HEROOWNCHEEK %s %s" % [model, ch0])
+		if ch0.a > 0.0:
+			var cheek0 := ch0.linear_to_srgb()
+			var face0 := Color.from_hsv(cheek0.h, cheek0.s * 0.62, minf(cheek0.v * 1.12, 1.0)).srgb_to_linear()
+			for m in mats:
+				(m as ShaderMaterial).set_shader_parameter("skin_nat", face0)
 	if head != null and OS.get_environment("HERO_ONLY") != "":
 		# dev: see one of the two parts alone
 		head.visible = OS.get_environment("HERO_ONLY") == "head"

@@ -1047,7 +1047,23 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.71.0 STATE (Nov 23 afternoon; NEWEST, read this first)
+#### 0.72.0 STATE (Nov 23 evening; NEWEST, read this first)
+- Cards: 12,745 (was 8,415). Every card of Raul's cards.json (/tmp/testassets3) with BabelCDB data and a script, not Link/Pendulum,
+  no Link/Pendulum text (pick.py LP rule), not already in under another name/id/alias. 9 RDA support cards into FAMILIES["archfiend"];
+  the rest into data/singles.json by Konami id (37 into the four eras, 4,283 into "frontier"; 6 generic Synchros in 5D's).
+  Spanish: tools/dev/cardes/b72_es.py (yaml-yugi aggregate + per-card files of yaml-yugi master, sparse clone in /tmp/yym),
+  b72_hand.py and b72_hand2.py (written here). names_es.py also reads /tmp/yym. 258 cards have no BabelCDB data (newest) and stay out.
+  data/ocg/scripts.bin is now 4.3 MB. Run tools/cards.sh steps with `--assets=/tmp/testassets3` (with an empty HOME the card folder is
+  empty and the pack shrinks to 84 cards: never commit that).
+- Deck editor: Collection.can_add/add/add_side take `plan`; deck_ok/slot_ok reject missing cards; missing_cards(). deck_builder
+  "Every card in the game" toggle, class filter (CLASSES), level/rank exact, unowned grey + padlock, CardWhere button, apply_code puts
+  every card. deck_menu: MAIN/EXTRA/SIDE sections, "missing" pill. Dev: --builder-all/-empty/-plan, --decks-plan (deck_menu).
+- HeroLook: Natural skin = skin_nat on face and body (shader no longer skips part 2); own-head bodies measure their own cheeks via
+  _cut(role 2). Check with /tmp/fs_test.sh "0:0:0,0:2:1,1:0:2" --full --dist=2.6 --dy=0.25.
+- Not run: ocg_sweep on the new cards (a list sweep plays every deck first and took over 15 min); card_check loads every script.
+- NEXT (Raul said): multiplayer over Tailscale built into the game (libtailscale), Free Duel first. Plan doc to be written.
+
+#### 0.71.0 STATE (Nov 23 afternoon)
 - DuelWhy (scripts/ocg/duel_why.gd) reads every engine message in OcgDuel._one (why.read) and adds events "why" (reason card, DuelWhyUI.show_why), "status" (chips by the LP plates, DuelWhyUI.set_status) and "log" (HUD log_line). Lasting effects come from the English text of resolved Spells/Traps (card_text: EXT desc, "can't" normalized); face-up Continuous/Field cards are scanned when the field changes; a monster destroyed by battle whose text says "no battle damage this turn" (Lumen) counts too. Battles: expected damage from MSG_BATTLE vs MSG_DAMAGE, settled at the next attack / phase / request. The replay hash skips these events (old replays still match).
 - Tests: tests/why_unit.tscn (-- --assets=<full cards.json folder>), tests/why_replay.tscn -- <file.cxr> (prints what DuelWhy says over a saved duel), --why-demo / --why-log duel flags for pictures. Brother's 0.67 replay vs Syrus: One Day of Peace explains the missing Power Bond damage and the 4400 attacks; Lumen explains turn 5.
 - Not done: "why can't I" for an action the engine simply does not offer (only the chips say it).

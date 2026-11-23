@@ -8,6 +8,9 @@ Writes data/card_names_es.json: {"<id>": "<Spanish name>"}, sorted, one entry pe
 import json
 ROOT = __file__.rsplit('/tools/', 1)[0]
 y = json.load(open('/tmp/dl_ygo/yy/cards.json'))
+# (0.72.0: newer cards from yaml-yugi master's per-card files, when they are on hand)
+import glob
+y += [json.load(open(f)) for f in glob.glob('/tmp/yym/data/cards/*.json')]
 by_pw, by_en = {}, {}
 for c in y:
     if c.get('password'):

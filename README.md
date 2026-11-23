@@ -5,6 +5,19 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.72.0
+
+**Every card, and a deck editor that plans.** 4,330 cards added: 12,745 total.
+
+- **All the other cards**: every card in the card folder that the rules engine knows and that is not a Link or Pendulum (or needs them in its text) is in the game now, with its official Spanish text (34 written here). Red Dragon Archfiend's newer support (The Crimson King, Crimson Blade Dragon, Power Vice Dragon, Red Nova Dragon - Burning Soul, Champion's Pulse, Crimson Call, Fiend Piece Golem, King's Resonance, Soul Fist) joined Court of the Archfiends; a few older cards that were left out went to their era's packs (Golden Cloud Beast - Malong, Kuibelt, Zalen and others to 5D's); everything newer than ZEXAL is in the New Frontier packs. Every one of them can come out of a pack and the "Where to find it" window shows where.
+- **Deck editor: every card in the game**: a switch shows the whole game, the cards you don't have greyed with a padlock. They can go in a deck to plan it; a deck with missing cards shows what's missing and can't be dueled with until you have them. A search always looks through everything. Faces load as you scroll, as in the album.
+- **Better filters**: Normal, Effect, Ritual, Fusion, Synchro, Xyz, Tuner, every kind of Spell and Trap, Level or Rank from 1 to 12.
+- **Deck codes** bring in every card of the code, the ones you don't have greyed.
+- **"Where to find it"** for any card, from the editor.
+- **Empty deck** shows dashed places with a short tip instead of a wall of text; the tabs no longer cut their text on hover; the card strip stays inside the card; the search box lost its tooltip.
+- **My Decks** shows the Main, Extra and Side Deck under their own headings, missing copies greyed with a red pill.
+- **Natural skin is one tone**: the face and the body take the same color worked out from the face, on every outfit and hairstyle (the default look had a paler face than its arms).
+
 ## What is in 0.71.0
 
 **Duels say why.** When something expected does not happen, the duel now tells you what stopped it. No cards added: 8,415 total.

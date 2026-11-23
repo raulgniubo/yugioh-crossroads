@@ -377,7 +377,8 @@ const FAMILIES := {
 		"Tyrant Red Dragon Archfiend", "Archfiend Playtime", "Archfiend's Fervor", "Archfiend's Ghastly Glitch", "Archfiend's Roar", "Battle-Scarred",
 		"Call of the Archfiend", "Nightmare Archfiends", "Red Dragon Archfiend's Chain", "Simul Archfiends", "Archfiend's Ascent",
 		"Number 102: Star Seraph Sentry", "Number C102: Archfiend Seraph",
-		"Contract with the Void", "Fiendish Golem", "Infernity Conjurer", "Infernity Paranoia", "Infernity Patriarch", "Infernity Pawn", "Infernity Queen", "King Scarlet", "Red Cocoon", "Red Supremacy", "Red Zone", "This Creepy Little Punk", "Void Cauldron"]},
+		"Contract with the Void", "Fiendish Golem", "Infernity Conjurer", "Infernity Paranoia", "Infernity Patriarch", "Infernity Pawn", "Infernity Queen", "King Scarlet", "Red Cocoon", "Red Supremacy", "Red Zone", "This Creepy Little Punk", "Void Cauldron",
+		"Crimson Blade Dragon", "The Crimson King", "Power Vice Dragon", "Red Nova Dragon - Burning Soul", "Champion's Pulse", "Crimson Call", "Fiend Piece Golem", "King's Resonance", "Soul Fist"]},
 	"genex": {"era": "5D's", "deck": "deck_genex", "cards": [
 		"Genex Power Planner", "Genex Recycled", "R-Genex Oracle", "Genex Ally Chemistrer", "Genex Ally Solid", "R-Genex Crusher", "R-Genex Overseer",
 		"R-Genex Turing", "Genex Ally Birdman", "Genex Ally Changer", "Genex Ally Remote", "Genex Controller", "Genex Doctor", "Genex Gaia", "Genex Spare",
@@ -1615,7 +1616,7 @@ func slot_ok(i: int) -> bool:
 	if i == slot:
 		return deck_ok()
 	var n: int = (slots[i].get("main", []) as Array).size()
-	return n >= MAIN_MIN and n <= MAIN_MAX
+	return n >= MAIN_MIN and n <= MAIN_MAX and _missing_in((slots[i].get("main", []) as Array) + (slots[i].get("extra", []) as Array) + (slots[i].get("side", []) as Array)).is_empty()
 
 
 ## Your own decks: as many as you like, in the order you keep them. There are no empty
@@ -2009,6 +2010,8 @@ func slot_ready(i: int) -> bool:
 	var e: Array = s["extra"]
 	if m.size() < MAIN_MIN or m.size() > MAIN_MAX or e.size() > EXTRA_MAX:
 		return false
+	if not _missing_in(m + e + (s.get("side", []) as Array)).is_empty():
+		return false      # (cards you don't have yet)
 	var count := {}
 	for id in m + e:
 		if CardData.get_card(int(id)).is_empty():
@@ -2031,21 +2034,48 @@ func my_decks() -> Array:
 
 
 func deck_ok() -> bool:
-	return main.size() >= MAIN_MIN and main.size() <= MAIN_MAX and extra.size() <= EXTRA_MAX and side.size() <= SIDE_MAX and illegal().is_empty()
+	return main.size() >= MAIN_MIN and main.size() <= MAIN_MAX and extra.size() <= EXTRA_MAX and side.size() <= SIDE_MAX and illegal().is_empty() and missing_cards().is_empty()
 
 
-func can_add(id: int, to_side := false) -> bool:
+## The cards in the open deck you don't have enough copies of yet (a deck can be planned with
+## cards you are still looking for; it can't be dueled with until you have them all):
+## [[id, copies in the deck, copies you own]].
+func missing_cards() -> Array:
+	return _missing_in(main + extra + side)
+
+
+func _missing_in(ids: Array) -> Array:
+	var n := {}
+	for id in ids:
+		n[int(id)] = int(n.get(int(id), 0)) + 1
+	var out: Array = []
+	for id in n:
+		if int(n[id]) > count(int(id)) and int(id) != CardData.LUMEN:
+			out.append([int(id), int(n[id]), count(int(id))])
+	return out
+
+
+## How many copies the open deck still needs.
+func missing_count() -> int:
+	var t := 0
+	for m in missing_cards():
+		t += int(m[1]) - int(m[2])
+	return t
+
+
+## `plan`: the deck editor, where a card you don't own (yet) can go in a deck all the same.
+func can_add(id: int, to_side := false, plan := false) -> bool:
 	var d := CardData.get_card(id)
 	var is_extra: bool = str(d.get("frame", "")) in ["fusion", "synchro", "xyz"]
-	if in_deck(id) >= mini(mini(3, limit(id)), count(id)):
+	if in_deck(id) >= (mini(3, limit(id)) if plan else mini(mini(3, limit(id)), count(id))):
 		return false
 	if to_side:
 		return side.size() < SIDE_MAX
 	return extra.size() < EXTRA_MAX if is_extra else main.size() < MAIN_MAX
 
 
-func add_side(id: int) -> void:
-	if can_add(id, true):
+func add_side(id: int, plan := false) -> void:
+	if can_add(id, true, plan):
 		side.append(id)
 		save()
 
@@ -2056,8 +2086,8 @@ func remove_side(id: int) -> void:
 		save()
 
 
-func add(id: int) -> void:
-	if not can_add(id):
+func add(id: int, plan := false) -> void:
+	if not can_add(id, false, plan):
 		return
 	if str(CardData.get_card(id).get("frame", "")) in ["fusion", "synchro", "xyz"]:
 		extra.append(id)
