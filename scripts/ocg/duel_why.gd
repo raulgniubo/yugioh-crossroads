@@ -184,7 +184,7 @@ func _lasting_from(desc: String, p: int, id: int, nm: String) -> Array:
 		until = turn + (2 if turn_player == p else 1)
 	if desc.contains("neither player takes any damage") or desc.contains("neither player takes damage") or desc.contains("neither player takes any battle damage"):
 		out.append({"kind": "no_bdmg" if desc.contains("battle damage") else "no_dmg", "players": [0, 1], "id": id, "name": nm, "until": until})
-	elif desc.contains("you take no damage") or desc.contains("you do not take any damage") or desc.contains("you take no effect damage"):
+	elif desc.contains("you take no damage") or desc.contains("you do not take any damage") or desc.contains("you take no effect damage") or (desc.contains("damage you take") and desc.contains("becomes 0") and not desc.contains("from this battle")):
 		out.append({"kind": "no_dmg", "players": [p], "id": id, "name": nm, "until": until})
 	elif desc.contains("you take no battle damage") or desc.contains("you do not take any battle damage"):
 		out.append({"kind": "no_bdmg", "players": [p], "id": id, "name": nm, "until": until})
@@ -219,7 +219,7 @@ func _scan_field(duel) -> void:
 				var who: Array = [1 - p] if desc.contains("your opponent") or desc.contains("opponent's monsters") else [0, 1]
 				standing.append({"kind": "no_attack", "players": who, "id": id, "name": nm, "until": -1, "partial": partial})
 			if desc.contains("you take no battle damage") or desc.contains("battle damage to you becomes 0") or desc.contains("you do not take any battle damage"):
-				standing.append({"kind": "no_bdmg", "players": [p], "id": id, "name": nm, "until": -1, "partial": desc.contains("if ") or desc.contains("when ")})
+				standing.append({"kind": "no_bdmg", "players": [p], "id": id, "name": nm, "until": -1, "partial": desc.contains("if ") or desc.contains("when ") or desc.contains("while ")})
 			if desc.contains("neither player can special summon") or desc.contains("cannot special summon"):
 				var who2: Array = [1 - p] if desc.contains("your opponent cannot special summon") else [0, 1]
 				standing.append({"kind": "no_special", "players": who2, "id": id, "name": nm, "until": -1, "partial": partial})
