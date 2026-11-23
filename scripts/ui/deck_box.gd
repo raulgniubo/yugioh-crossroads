@@ -17,18 +17,36 @@ var _semi: Font
 var _region := Rect2()
 
 
-func setup(entry: Dictionary) -> DeckBox:
+func setup(entry: Dictionary, lazy := false) -> DeckBox:
 	info = entry
 	var ace := Collection.deck_ace(str(entry.get("key", "")))
 	if ace != 0:
-		var got := Cards.cover_art(ace)
-		_art = got[0]
-		_region = got[1]
 		_card_art = true
+		if lazy:
+			# (A row of them: the picture is read on another thread and comes in when it is ready.)
+			Cards.thumb_later(ace, func(t: Texture2D):
+				if not is_instance_valid(self) or t == null:
+					return
+				var ts := t.get_size()
+				_region = Rect2(Vector2.ZERO, ts)
+				if ts.x / maxf(ts.y, 1.0) < 0.82:
+					_region = Rect2(ts.x * 0.125, ts.y * 0.185, ts.x * 0.75, ts.x * 0.75)
+				_art = t)
+		else:
+			var got := Cards.cover_art(ace)
+			_art = got[0]
+			_region = got[1]
 	var who := str(entry.get("who", ""))
 	if str(entry.get("kind", "")) == "duelist" and who != "" and Avatars.has_avatar(who):
-		_face = Portraits.get_portrait(who)
+		if not lazy or Avatars.ready_now(who) or Portraits.holds(who):
+			_face = Portraits.get_portrait(who)
+		else:
+			_face_wait = who          # (their model is read on a worker thread first)
+			Avatars.warm(who)
 	return self
+
+
+var _face_wait := ""
 
 
 func _ready() -> void:
@@ -38,6 +56,12 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	if _face_wait != "" and is_visible_in_tree():
+		if Avatars.ready_now(_face_wait) or Portraits.holds(_face_wait):
+			_face = Portraits.get_portrait(_face_wait)
+			_face_wait = ""
+		else:
+			Avatars.warm(_face_wait)
 	queue_redraw()
 
 

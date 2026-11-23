@@ -1516,32 +1516,91 @@ func _deck_ace(key: String, used: Dictionary) -> int:
 var _covers := {}
 
 
+## The covers are worked out once (each pack's best card nobody else has on the front) and kept on
+## disk for the same cards and the same game version: working them out reads every pack's pool,
+## which took seconds the first time the shops page opened (0.69.2). `cover_step` does it a little at
+## a time for a screen that wants to stay smooth meanwhile; `pack_cover` finishes it at once.
+var _cover_q: Array = []        # packs still to give a cover (while it is done a little at a time)
+var _cover_used := {}
+const COVERS_FILE := "user://pack_covers.cfg"
+
+
+func _cover_sig() -> String:
+	var cj := Settings.card_folder.path_join("cards.json")
+	return "%s|%d|%d|%d" % [ProjectSettings.get_setting("application/config/version", ""), CardData.EXT.size(), CardData.NAME_TO_ID.size(),
+			FileAccess.get_modified_time(cj) if FileAccess.file_exists(cj) else 0]
+
+
+func covers_ready() -> bool:
+	if _covers.is_empty() and _cover_q.is_empty():
+		_covers_from_disk()
+	return not _covers.is_empty() and _cover_q.is_empty()
+
+
+func _covers_from_disk() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(COVERS_FILE) != OK or str(cfg.get_value("covers", "sig", "")) != _cover_sig():
+		return
+	var got = cfg.get_value("covers", "all", {})
+	if got is Dictionary and not (got as Dictionary).is_empty():
+		_covers = got
+
+
+## Work on the covers for about `budget_ms`; true once they are all known.
+func cover_step(budget_ms := 6.0) -> bool:
+	if covers_ready():
+		return true
+	if _cover_q.is_empty():
+		_cover_q = PACKS + all_volumes() + BUNDLES.map(func(b): return bundle_pack(b))
+		_cover_used = {}
+		_covers_partial = {}
+	var t0 := Time.get_ticks_usec()
+	while not _cover_q.is_empty() and Time.get_ticks_usec() - t0 < budget_ms * 1000.0:
+		var p: Dictionary = _cover_q.pop_front()
+		_covers_partial[str(p["key"])] = _cover_for(p)
+	if _cover_q.is_empty():
+		_covers_partial["echo"] = CardData.LUMEN       # (her own pack has her on it, whatever it holds by now)
+		_covers = _covers_partial
+		_covers_partial = {}
+		var cfg := ConfigFile.new()
+		cfg.load(COVERS_FILE)
+		cfg.set_value("covers", "sig", _cover_sig())
+		cfg.set_value("covers", "all", _covers)
+		cfg.save(COVERS_FILE)
+		return true
+	return false
+
+
+var _covers_partial := {}
+
+
+func _cover_for(p: Dictionary) -> int:
+	var ids: Array = pool(str(p["key"])).duplicate()
+	var monsters: Array = ids.filter(func(id): return CardData.get_card(id).get("kind", "") == "monster")
+	if not monsters.is_empty():
+		ids = monsters
+	ids.sort_custom(func(a, b):
+		var ra := CardData.rarity(a)
+		var rb := CardData.rarity(b)
+		if ra != rb:
+			return ra > rb
+		var aa := int(CardData.get_card(a).get("atk", 0))
+		var ab := int(CardData.get_card(b).get("atk", 0))
+		return aa > ab if aa != ab else a < b)
+	var pick := 0
+	for id in ids:
+		if not _cover_used.has(id):
+			pick = id
+			break
+	if pick == 0 and not ids.is_empty():
+		pick = ids[0]
+	_cover_used[pick] = true
+	return pick
+
+
 func pack_cover(key: String) -> int:
-	if _covers.is_empty():
-		var used := {}
-		for p in PACKS + all_volumes() + BUNDLES.map(func(b): return bundle_pack(b)):
-			var ids: Array = pool(str(p["key"])).duplicate()
-			var monsters: Array = ids.filter(func(id): return CardData.get_card(id).get("kind", "") == "monster")
-			if not monsters.is_empty():
-				ids = monsters
-			ids.sort_custom(func(a, b):
-				var ra := CardData.rarity(a)
-				var rb := CardData.rarity(b)
-				if ra != rb:
-					return ra > rb
-				var aa := int(CardData.get_card(a).get("atk", 0))
-				var ab := int(CardData.get_card(b).get("atk", 0))
-				return aa > ab if aa != ab else a < b)
-			var pick := 0
-			for id in ids:
-				if not used.has(id):
-					pick = id
-					break
-			if pick == 0 and not ids.is_empty():
-				pick = ids[0]
-			used[pick] = true
-			_covers[str(p["key"])] = pick
-		_covers["echo"] = CardData.LUMEN       # (her own pack has her on it, whatever it holds by now)
+	while not cover_step(1000000.0):
+		pass
 	return int(_covers.get(key, 0))
 
 
@@ -2483,12 +2542,37 @@ static func volume_of(key: String) -> int:
 
 
 func volume_count(era: String) -> int:
+	if not (era in SERIES or era in BIG_PACKS):
+		return 1
+	# (Kept on disk with the pack covers, for the same cards and game version: counting means
+	# working out the whole pool of a big set, and the shops page asks for every one of them.)
+	if _vols_disk.is_empty():
+		var cfg := ConfigFile.new()
+		_vols_disk = {"_": true}
+		if cfg.load(COVERS_FILE) == OK and str(cfg.get_value("vols", "sig", "")) == _cover_sig():
+			var got = cfg.get_value("vols", "all", {})
+			if got is Dictionary:
+				_vols_disk.merge(got)
+	if _vols_disk.has(era):
+		return int(_vols_disk[era])
+	var n := 1
 	if era in SERIES:
-		return maxi(1, int(ceil(float(pool(era).size()) / VOLUME_SIZE)))
-	if era in BIG_PACKS:
+		n = maxi(1, int(ceil(float(pool(era).size()) / VOLUME_SIZE)))
+	else:
 		# (the Type, Element and Beyond packs: volumes of up to BIG_VOLUME cards, 0.55.0)
-		return maxi(1, int(ceil(float(pool(era).size()) / BIG_VOLUME)))
-	return 1
+		n = maxi(1, int(ceil(float(pool(era).size()) / BIG_VOLUME)))
+	_vols_disk[era] = n
+	var save := ConfigFile.new()
+	save.load(COVERS_FILE)
+	var keep := _vols_disk.duplicate()
+	keep.erase("_")
+	save.set_value("vols", "sig", _cover_sig())
+	save.set_value("vols", "all", keep)
+	save.save(COVERS_FILE)
+	return n
+
+
+var _vols_disk := {}
 
 
 ## The volumes of one set as shop entries (just the set itself when it is small enough).

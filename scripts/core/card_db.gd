@@ -144,6 +144,9 @@ func _exit_tree() -> void:
 	for id in _thumb_tasks.keys():
 		WorkerThreadPool.wait_for_task_completion(int(_thumb_tasks[id]))
 	_thumb_tasks.clear()
+	for id in _big_tasks.keys():
+		WorkerThreadPool.wait_for_task_completion(int(_big_tasks[id]))
+	_big_tasks.clear()
 
 
 func _thumb_ready(id: int, img: Image) -> void:
@@ -158,6 +161,47 @@ func _thumb_ready(id: int, img: Image) -> void:
 		_keep(_thumb_cache, id, tex, THUMB_KEEP)
 	else:
 		tex = get_face(id)
+	for give in waiting:
+		if (give as Callable).is_valid():
+			(give as Callable).call(tex)
+
+
+## The full-size face (as get_face(id, true)) read on another thread, handed to `give` when ready.
+var _big_wait := {}
+var _big_tasks := {}
+
+func face_later(id: int, give: Callable) -> void:
+	var have = _kept(_full_cache, id)
+	if have != null:
+		give.call(have)
+		return
+	if _big_wait.has(id):
+		(_big_wait[id] as Array).append(give)
+		return
+	var path := Settings.card_folder.path_join("cards/%d.jpg" % id)
+	if not FileAccess.file_exists(path) and CardData.IMAGE_ALT.has(id):
+		path = Settings.card_folder.path_join("cards/%d.jpg" % int(CardData.IMAGE_ALT[id]))
+	if not FileAccess.file_exists(path):
+		give.call(get_face(id, true))
+		return
+	_big_wait[id] = [give]
+	_big_tasks[id] = WorkerThreadPool.add_task(func():
+		var img := _read_image(path, 0)
+		_big_ready.call_deferred(id, img))
+
+
+func _big_ready(id: int, img: Image) -> void:
+	if _big_tasks.has(id):
+		WorkerThreadPool.wait_for_task_completion(int(_big_tasks[id]))
+		_big_tasks.erase(id)
+	var waiting: Array = _big_wait.get(id, [])
+	_big_wait.erase(id)
+	var tex: Texture2D = null
+	if img != null:
+		tex = ImageTexture.create_from_image(img)
+		_keep(_full_cache, id, tex, FULL_KEEP)
+	else:
+		tex = get_face(id, true)
 	for give in waiting:
 		if (give as Callable).is_valid():
 			(give as Callable).call(tex)

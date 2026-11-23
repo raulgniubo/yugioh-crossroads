@@ -33,6 +33,11 @@ var _pack_bar: Control
 var _pack_price: Label
 var _see_btn: Button
 var _busy := false                 # a window (album, builder, card list) is open over this
+var _pages := {}                   # the shops page: world -> its page, built once and kept while the page is open
+var _page_state := {}              # world -> [packs, shelf buttons, name, blurb, have, bar, price, see, pick]
+var _tabs_by_world := {}           # world -> its tab
+static var _packs_of := {}         # world -> its shelf (worked out once a run)
+static var _decks_of := {}         # world -> the ready-made decks at its counter
 
 
 func _ready() -> void:
@@ -88,6 +93,10 @@ func _process(delta: float) -> void:
 		if is_instance_valid(tr):
 			tr.position = (f[1] as Vector2).round()
 			tr.rotation = float(f[2])
+	# The packs' covers are worked out a little each frame while the shops page is open (once a
+	# game version: then they are kept on disk).
+	if not _pages.is_empty() and not Collection.covers_ready():
+		Collection.cover_step(10.0)
 	# The shelf on the shops page: the picked pack a little bigger and lit, the others dimmed.
 	for i in _shelf_btns.size():
 		var w: PackWrapper = _shelf_btns[i][1]
@@ -111,6 +120,9 @@ func _clear() -> void:
 	_shelf_btns.clear()
 	_shelf_packs.clear()
 	_pick = -1
+	_pages.clear()
+	_page_state.clear()
+	_tabs_by_world.clear()
 
 
 # ------------------------------------------------------------------ what you have
@@ -351,11 +363,17 @@ func _build_fan(ids: Array) -> void:
 	if vs.x < 1500.0:
 		# (On a small window the fan would sit under the words: fewer, smaller cards, further right.)
 		ids = ids.slice(0, 3)
-	var cw := clampf(vs.y * 0.3, 190.0, 330.0)
-	var ch := cw * 1.459
-	var cx := vs.x * 0.75
-	var cy := vs.y * 0.5 - ch * 0.5
 	var n := ids.size()
+	# The whole fan stays inside the screen with a margin, right of the words on the left (which end
+	# at 96 + 800): its half width, the tilted outer cards' corners included, is `spread` card widths.
+	var spread := 1.606 if n >= 5 else (1.066 if n >= 3 else 0.6)
+	var left_edge := 96.0 + 800.0 + 40.0
+	var right_edge := vs.x - 56.0
+	var cw := clampf(vs.y * 0.3, 150.0, 330.0)
+	cw = minf(cw, (right_edge - left_edge) / (2.0 * spread))
+	var ch := cw * 1.459
+	var cx := clampf(vs.x * 0.75, left_edge + cw * spread, right_edge - cw * spread)
+	var cy := vs.y * 0.5 - ch * 0.5
 	# Behind the fan, the deck's name on a soft plate of light.
 	var order: Array = []          # the ace in the middle: [i, slot] with slot -2..2
 	var slots := [0, -1, 1, -2, 2]
@@ -367,7 +385,10 @@ func _build_fan(ids: Array) -> void:
 		var s: int = o[1]
 		var id := int(ids[i])
 		var tr := TextureRect.new()
-		tr.texture = Cards.get_face(id, true)
+		# (Its picture is read on another thread: the fan fades in as the cards arrive.)
+		Cards.face_later(id, func(t: Texture2D):
+			if is_instance_valid(tr):
+				tr.texture = t)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		var scale_k := 1.0 - absi(s) * 0.09
@@ -480,7 +501,19 @@ func _unhandled_input(event: InputEvent) -> void:
 ## The packs on a world's shelf: that world's own series and families (and the Vault), as the
 ## shop in that world stocks them.
 static func world_packs(world: String) -> Array:
-	var all: Array = Collection.shop_packs().filter(func(p): return int(p.get("tab", 0)) <= 1)
+	if not _packs_of.has(world):
+		_packs_of[world] = _world_packs(world)
+	return _packs_of[world]
+
+
+static var _all_packs: Array = []
+static var _catalog: Array = []
+
+
+static func _world_packs(world: String) -> Array:
+	if _all_packs.is_empty():
+		_all_packs = Collection.shop_packs()
+	var all: Array = _all_packs.filter(func(p): return int(p.get("tab", 0)) <= 1)
 	var mine: Array = PackShop.WORLD_PACKS.get(world, [])
 	var out: Array = all.filter(func(p): return Collection.base_key(str(p["key"])) in mine or (p.get("families", []) as Array).any(func(f): return f in mine))
 	return out if not out.is_empty() else all
@@ -488,9 +521,17 @@ static func world_packs(world: String) -> Array:
 
 ## The ready-made decks the same counter sells: its era's duelists and the theme decks stocked there.
 static func world_decks(world: String) -> Array:
+	if not _decks_of.has(world):
+		_decks_of[world] = _world_decks(world)
+	return _decks_of[world]
+
+
+static func _world_decks(world: String) -> Array:
 	var era := str(Collection.WORLD_ERA.get(world, ""))
 	var out: Array = []
-	for e in Collection.deck_catalog():
+	if _catalog.is_empty():
+		_catalog = Collection.deck_catalog()
+	for e in _catalog:
 		if (e["kind"] == "duelist" and str(e["era"]) == era) or (e["kind"] == "theme" and Collection.theme_sold_in(str(e["key"]), world)):
 			out.append(e)
 	return out
@@ -512,10 +553,12 @@ func _shops(world: String) -> void:
 		for w in SHOP_WORLDS:
 			if Unlocks.world(w):
 				world = w
+	if not _pages.is_empty():
+		_show_shop(world)       # (the shops page is open: only the shelf below the tabs changes)
+		return
 	_clear()
 	_world = world
 	_back.shade_to(0.78)
-	var col := StoryGate.world_color(world)
 	var title := UITheme.label(Loc.t("CARD SHOPS"), 54, Color.WHITE, UITheme.title_font())
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_box.add_child(title)
@@ -528,12 +571,12 @@ func _shops(world: String) -> void:
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
 	tabs.add_theme_constant_override("separation", 10)
 	_box.add_child(tabs)
-	var here_tab: Button = null
 	for w in SHOP_WORLDS:
 		var wc := StoryGate.world_color(w)
 		var tb := Button.new()
 		tb.toggle_mode = true
 		tb.button_pressed = w == world
+		_tabs_by_world[w] = tb
 		tb.text = "  %s  " % StoryGate.world_name(w)
 		tb.custom_minimum_size = Vector2(0, 50)
 		tb.add_theme_font_size_override("font_size", 21)
@@ -552,15 +595,54 @@ func _shops(world: String) -> void:
 			Sfx.play("click", -8.0)
 			_shops(wk))
 		tabs.add_child(tb)
-		if w == world:
-			here_tab = tb
 	var hint := UITheme.label("Q / E  or  LB / RB", 15, UITheme.TEXT_DIM)
 	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	tabs.add_child(hint)
+	_show_shop(world)
+
+
+## One world's shop under the tabs: built the first time it is shown, then kept, so moving
+## between the worlds' shops is instant.
+func _show_shop(world: String) -> void:
+	if _world != "" and _pages.has(_world):
+		(_pages[_world] as Control).visible = false
+		_page_state[_world] = [_shelf_packs, _shelf_btns, _pack_name, _pack_blurb, _pack_have, _pack_bar, _pack_price, _see_btn, _pick]
+	_world = world
+	for w in _tabs_by_world:
+		(_tabs_by_world[w] as Button).set_pressed_no_signal(w == world)
+	if _pages.has(world):
+		(_pages[world] as Control).visible = true
+		var st: Array = _page_state[world]
+		_shelf_packs = st[0]
+		_shelf_btns = st[1]
+		_pack_name = st[2]
+		_pack_blurb = st[3]
+		_pack_have = st[4]
+		_pack_bar = st[5]
+		_pack_price = st[6]
+		_see_btn = st[7]
+		_pick = int(st[8])
+		if _pick >= 0 and _pick < _shelf_btns.size():
+			(_shelf_btns[_pick][0] as Button).grab_focus.call_deferred()
+		elif _tabs_by_world.has(world):
+			(_tabs_by_world[world] as Button).grab_focus.call_deferred()
+		return
+	var pg := VBoxContainer.new()
+	pg.add_theme_constant_override("separation", _box.get_theme_constant("separation"))
+	_box.add_child(pg)
+	_pages[world] = pg
+	_shelf_btns = []
+	_shelf_packs = []
+	_pick = -1
+	_build_shop(world, pg)
+
+
+func _build_shop(world: String, page: VBoxContainer) -> void:
+	var col := StoryGate.world_color(world)
 	# The shop itself: its name, and how to get there.
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 18)
-	_box.add_child(head)
+	page.add_child(head)
 	var hv := VBoxContainer.new()
 	hv.add_theme_constant_override("separation", 0)
 	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -600,7 +682,7 @@ func _shops(world: String) -> void:
 	sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	sc.custom_minimum_size = Vector2(1240, 286)
 	sc.follow_focus = true
-	_box.add_child(sc)
+	page.add_child(sc)
 	var pad := MarginContainer.new()
 	for side in ["left", "right"]:
 		pad.add_theme_constant_override("margin_" + side, 14)
@@ -620,7 +702,7 @@ func _shops(world: String) -> void:
 		b.focus_mode = Control.FOCUS_ALL
 		for st in ["normal", "hover", "pressed", "focus"]:
 			b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
-		var wrap := PackWrapper.new().setup(p)
+		var wrap := PackWrapper.new().setup(p, true)
 		wrap.custom_minimum_size = Vector2(160, 246)
 		wrap.size = Vector2(160, 246)
 		wrap.position = Vector2(0, 20)
@@ -642,11 +724,11 @@ func _shops(world: String) -> void:
 	var plank := ColorRect.new()
 	plank.color = Color(col, 0.5)
 	plank.custom_minimum_size = Vector2(0, 3)
-	_box.add_child(plank)
+	page.add_child(plank)
 	# The pack you are looking at: what it is, how much of it you have, what it costs there.
 	var info := HBoxContainer.new()
 	info.add_theme_constant_override("separation", 26)
-	_box.add_child(info)
+	page.add_child(info)
 	var iv := VBoxContainer.new()
 	iv.add_theme_constant_override("separation", 4)
 	iv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -676,13 +758,13 @@ func _shops(world: String) -> void:
 	# The ready-made decks on the same counter, small, as their boxes.
 	if not decks.is_empty():
 		var dl := UITheme.label(Loc.t("READY-MADE DECKS AT THIS COUNTER"), 17, col.lightened(0.3), UITheme.semi_font())
-		_box.add_child(dl)
+		page.add_child(dl)
 		var dsc := ScrollContainer.new()
 		dsc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 		dsc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		dsc.custom_minimum_size = Vector2(1240, 214)
 		dsc.follow_focus = true
-		_box.add_child(dsc)
+		page.add_child(dsc)
 		var drow := HBoxContainer.new()
 		drow.add_theme_constant_override("separation", 12)
 		dsc.add_child(drow)
@@ -695,7 +777,7 @@ func _shops(world: String) -> void:
 				db.add_theme_stylebox_override(st, StyleBoxEmpty.new())
 			for st in ["hover", "focus"]:
 				db.add_theme_stylebox_override(st, UITheme.panel_box(Color(1, 1, 1, 0.06), 10, Color(e.get("color", col), 0.9)))
-			var box := DeckBox.new().setup(e)
+			var box := DeckBox.new().setup(e, true)
 			box.owned = Collection.owns_deck(str(e["key"]))
 			box.custom_minimum_size = Vector2(124, 174)
 			box.size = Vector2(124, 174)
@@ -712,8 +794,8 @@ func _shops(world: String) -> void:
 	if not packs.is_empty():
 		_pick_pack(0)
 		(_shelf_btns[0][0] as Button).grab_focus.call_deferred()
-	elif here_tab:
-		here_tab.grab_focus.call_deferred()
+	elif _tabs_by_world.has(world):
+		(_tabs_by_world[world] as Button).grab_focus.call_deferred()
 
 
 func _pick_pack(i: int) -> void:

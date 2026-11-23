@@ -19,14 +19,40 @@ var _semi: Font
 var _region := Rect2()
 
 
-func setup(p: Dictionary) -> PackWrapper:
+func setup(p: Dictionary, lazy := false) -> PackWrapper:
 	pack = p
+	if lazy:
+		# (A shelf of them: the cover comes in when it is known and its picture is read, on another
+		# thread; until then the wrapper shows its colors and name.)
+		_wait_cover = true
+		_take_cover()
+		return self
 	var cover := Collection.pack_cover(str(p.get("key", "")))
 	if cover != 0:
 		var got := Cards.cover_art(cover)
 		_art = got[0]
 		_region = got[1]
 	return self
+
+
+var _wait_cover := false
+
+
+func _take_cover() -> void:
+	if not Collection.covers_ready():
+		return
+	_wait_cover = false
+	var cover := Collection.pack_cover(str(pack.get("key", "")))
+	if cover == 0:
+		return
+	Cards.thumb_later(cover, func(t: Texture2D):
+		if not is_instance_valid(self) or t == null:
+			return
+		var ts := t.get_size()
+		_region = Rect2(Vector2.ZERO, ts)
+		if ts.x / maxf(ts.y, 1.0) < 0.82:
+			_region = Rect2(ts.x * 0.125, ts.y * 0.185, ts.x * 0.75, ts.x * 0.75)
+		_art = t)
 
 
 func _ready() -> void:
@@ -39,6 +65,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
+	if _wait_cover:
+		_take_cover()
 	queue_redraw()
 
 
