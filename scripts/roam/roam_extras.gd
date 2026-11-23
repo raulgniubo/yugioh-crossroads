@@ -97,8 +97,13 @@ func _build_hud() -> void:
 	bar.position = Vector2(600, 26)
 	bar.add_theme_constant_override("separation", 8)
 	_hud.add_child(bar)
-	for b in [["M   Map", func(): open_guide("places")], ["G   Worlds", func(): open_guide("travel")],
-			["C   Card shop", guide_to_shop], ["J   Quests", func(): open_guide("quests")], ["B   Decks", func(): scene.open_decks()]]:
+	var bar_items: Array = [["M   Map", func(): open_guide("places")], ["G   Worlds", func(): open_guide("travel")],
+			["C   Card shop", guide_to_shop], ["J   Quests", func(): open_guide("quests")], ["B   Decks", func(): scene.open_decks()]]
+	if Campus.on:
+		# (0.72.1: the Academy is its own story: no other worlds to go to, and the main game's quests
+		# are not this one's; its own list is the agenda)
+		bar_items = bar_items.filter(func(b): return not (str(b[0]).begins_with("G ") or str(b[0]).begins_with("J ")))
+	for b in bar_items:
 		var btn := Button.new()
 		btn.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED     # (translated here, before the button names go in)
 		btn.text = Pad.keys(Loc.t(str(b[0])))
@@ -147,6 +152,8 @@ func _busy() -> bool:
 func open_guide(tab := "places") -> void:
 	if _busy():
 		return
+	if Campus.on and (tab == "travel" or tab == "quests"):
+		tab = "places"
 	scene._open_overlay(CityGuide.new(scene, self, tab))
 
 
@@ -292,14 +299,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	var pad: bool = event is InputEventJoypadButton and event.pressed
-	if (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_G) or (pad and Pad.b(event) == JOY_BUTTON_BACK):
+	if ((event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_G) or (pad and Pad.b(event) == JOY_BUTTON_BACK)) and not Campus.on:
 		open_guide("travel")
 	elif (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C) or (pad and Pad.b(event) == JOY_BUTTON_X):
 		guide_to_shop()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_B:
 		scene.open_decks()
 		scene.get_viewport().set_input_as_handled()
-	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_J:
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_J and not Campus.on:
 		open_guide("quests")
 	elif pad and Pad.b(event) == JOY_BUTTON_Y:
 		open_guide("places")

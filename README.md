@@ -7,13 +7,14 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
 ## What is in 0.72.1
 
-**Deck editor fixes, a slowdown fixed, smaller status chips.** No cards added: 12,745 total.
+**Deck editor fixes, a slowdown fixed, smaller status chips, the Academy kept to itself.** No cards added: 12,745 total.
 
 - Dragging cards between the collection and the deck is sturdier: the drag also follows the card you pressed, so it starts and lands even when something else takes the editor's input first.
 - Cards you don't have yet are just greyed with "x0": no padlock (it looked like they couldn't be added), and no long "Not yours yet" label running off the card.
 - A card in the deck that you don't have enough copies of gets a short red "In this deck: N" strip instead of a long text cut off with "...".
 - **Admin mode only**: when the open deck is missing cards, a gold button next to the warning adds every missing copy to your collection in one press.
 - **Fixed the game slowing to 2 to 8 FPS everywhere after browsing cards**: a card with no picture in the card folder had its face drawn on a little screen of its own that was kept alive for good. With every card in the game, scrolling the editor or the album left hundreds of them (over a GB of video memory). Now each is drawn once, copied into a plain picture, and only the recent ones are kept. Checked: two full scrolls through all 12,745 cards and back, nothing left behind.
+- **The Academy story is its own world**: on the island there is no Worlds button, no G key, no Worlds or Quests tab in the map, and the controller strip no longer offers worlds. The agenda is its list.
 - **Duel status chips are small now** (the card and its sign), so Lumen shows. A new one opens for a few seconds to say what it is; point at any of them to read it again.
 
 ## What is in 0.72.0

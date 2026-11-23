@@ -700,8 +700,12 @@ func _relabel_help() -> void:
 	if not is_instance_valid(_help):
 		return
 	if Pad.connected:
-		_help.text = Loc.t("Left stick  move     %s  run     Right stick  look     %s  talk / enter     %s  map     %s  card shop     %s  worlds     %s  menu") % [
-			Pad.g("LB"), Pad.g("A"), Pad.g("Y"), Pad.g("X"), Pad.g("Back"), Pad.g("Start")]
+		if Campus.on:
+			_help.text = Loc.t("Left stick  move     %s  run     Right stick  look     %s  talk / enter     %s  map     %s  card shop     %s  menu") % [
+				Pad.g("LB"), Pad.g("A"), Pad.g("Y"), Pad.g("X"), Pad.g("Start")]
+		else:
+			_help.text = Loc.t("Left stick  move     %s  run     Right stick  look     %s  talk / enter     %s  map     %s  card shop     %s  worlds     %s  menu") % [
+				Pad.g("LB"), Pad.g("A"), Pad.g("Y"), Pad.g("X"), Pad.g("Back"), Pad.g("Start")]
 	else:
 		_help.text = _help_kb
 

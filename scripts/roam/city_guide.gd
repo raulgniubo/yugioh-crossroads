@@ -70,7 +70,11 @@ func _ready() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
 	left.add_child(tabs)
-	for t in [["places", "PLACES"], ["who", "WHO'S WHERE"], ["people", "PEOPLE"], ["quests", "QUESTS"], ["travel", "WORLDS"]]:
+	var tab_list: Array = [["places", "PLACES"], ["who", "WHO'S WHERE"], ["people", "PEOPLE"], ["quests", "QUESTS"], ["travel", "WORLDS"]]
+	if Campus.on:
+		# (the Academy story: no other worlds and none of the main game's quests)
+		tab_list = tab_list.filter(func(t): return str(t[0]) != "travel" and str(t[0]) != "quests")
+	for t in tab_list:
 		var b := Button.new()
 		b.text = t[1]
 		b.toggle_mode = true
