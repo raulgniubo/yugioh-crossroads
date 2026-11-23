@@ -1047,6 +1047,12 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
+#### 0.69.2 STATE (Nov 23 early morning; NEWEST, read this first)
+- Fix fork commits a5641dfd..6ae23f96: Free Duel = CharacterSelect restyled (free_duel_gate.gd deleted), shops fast (pack cover disk cache user://pack_covers.cfg, threaded pictures), deck fan fits, end-of-chapter card (Continue / Free time / Menu) in story_director + campus, Academy-only HUD, roam_scene.panel_open() hides HUD, red_room_2 fan, room 3 posters, tests/overlap_scan.gd, name tag fade, UiPictures.rounded, arrival toast.
+- Face lines fix d9e2da0e (hero_look lod cap + tools/hero_seams.py). WARNING: copies made with /tmp/synccopy2.py hard-link assets; a fork running hero_masks.py in its copy rewrote main's masks. Break links before writing assets in copies.
+- Customization (many hairs/outfits per series) is being built in /home/claude/yc_cust (progress /tmp/cust/PROGRESS.md), merges for 0.70.0.
+- Not verified: real GPU first-draw cost of Free Duel, face fix on Vulkan, overlap scan for classmates / shop staff / free-day cast, mission board vs agenda separation.
+
 #### 0.69.1 STATE (Nov 22 evening; NEWEST, read this first)
 - New full-screen screens: main menu (main_menu._build_home, HomeTile), StoryGate, FreeDuelGate (free_duel_gate.gd),
   RoamGate, TurboGate, CardsGate (cards_gate.gd), profile editor and settings full screen (side_panel _build_full).

@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.69.2
+
+**Raul's notes from 0.69.1, all of them, plus clean faces on your duelist.** No cards added: 8,415 total.
+
+- **Free Duel is the old screen again, modernized**: the big grid of duelists, the VS panels for both sides, the arena strip, play as any duelist, now with the era backdrop behind it, glass cards and Basic / Strong / Competitive on both sides. It opens without the 3 to 5 second freeze (pictures and models load in the background).
+- **Main menu**: the mode tiles no longer cover the line-up of duelists; rounded tiles no longer have square pictures poking out (Free Roam, Turbo faces).
+- **Decks and collection**: the shop shelves open in under a second (was up to 20 s) and switching worlds is instant; your deck fan is no longer cut at the edges; era tabs read "GX (9)" with a tooltip.
+- **Academy, chapter to chapter**: the card at the end of a chapter now offers "Continue: Chapter N+1", "Free time on the island" and "Main menu", and the story flows straight on. In Academy mode the main game's list, chips and counter are hidden; the world HUD hides under any open panel (the day card no longer sits over the shop).
+- **Rooms**: the ceiling fan in Red room 2, posters and props in room 3, and "your bed" only shows in your own room.
+- **Nobody standing inside anybody**: Crowler moved off the student he overlapped, a scan over every story spot checks it, and name tags fade instead of popping.
+- **Your duelist's face**: the thin lines across the face are gone (texture seams and mipmaps fixed).
+
 ## What is in 0.69.1
 
 **New screens, Raul's notes from his first evening with the whole story, and three more duelists.** No cards added: 8,415 total.
