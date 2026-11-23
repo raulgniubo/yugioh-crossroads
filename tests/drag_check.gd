@@ -106,6 +106,8 @@ func _case(name: String, tile: Control, p1: Vector2) -> void:
 	await _wait(10)
 	print("  10 frames while dragging: ", Time.get_ticks_msec() - t0, " ms")
 	var air: bool = b.get("_drag") != null
+	if OS.get_environment("DRAG_SHOT") != "":
+		get_viewport().get_texture().get_image().save_png("%s_%s.png" % [OS.get_environment("DRAG_SHOT"), name.replace(" ", "_")])
 	var zone: String = b.get("_drag_to")
 	var t1 := Time.get_ticks_msec()
 	_mouse(p1, false)
