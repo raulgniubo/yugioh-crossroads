@@ -55,7 +55,48 @@ const THUMB_WIDE := 256
 const THUMB_KEEP := 240
 var _full_cache := {}
 var _thumb_cache := {}
-var _made_faces := {}      # id -> a face drawn here, for a card with no picture on disk
+var _made_faces := {}      # id -> a face drawn here for one of the game's own cards (kept for good)
+var _made_lru := {}        # id -> a face drawn here for a card with no picture on disk (the recent ones)
+const MADE_KEEP := 140
+var _baking: Array = []    # [viewport, texture, frames waited] still being drawn
+
+
+## After a frame is drawn: copy the faces drawn by now into their pictures and free their viewports.
+func _bake_step() -> void:
+	var left: Array = []
+	for b in _baking:
+		var vp: SubViewport = b[0]
+		b[2] = int(b[2]) + 1
+		if not is_instance_valid(vp):
+			continue
+		var img: Image = vp.get_texture().get_image() if int(b[2]) >= 2 else null
+		if img != null and not img.is_empty():
+			(b[1] as ImageTexture).set_image(img)
+			vp.queue_free()
+		elif int(b[2]) < 30:
+			left.append(b)
+		else:
+			vp.queue_free()
+	_baking = left
+	if _baking.is_empty() and RenderingServer.frame_post_draw.is_connected(_bake_step):
+		RenderingServer.frame_post_draw.disconnect(_bake_step)
+
+
+## A drawn face as a plain picture: the viewport draws it once, its picture is copied into the texture
+## handed out (everyone holding it sees the picture appear) and the viewport is freed.
+func _bake_face(id: int) -> Texture2D:
+	var before := get_child_count()
+	var vt := _make_placeholder_face(id)
+	if get_child_count() <= before or DisplayServer.get_name() == "headless":
+		return vt
+	var vp := get_child(get_child_count() - 1) as SubViewport
+	if vp == null:
+		return vt
+	var tex := ImageTexture.create_from_image(Image.create(CARD_SIZE.x, CARD_SIZE.y, false, Image.FORMAT_RGBA8))
+	_baking.append([vp, tex, 0])
+	if not RenderingServer.frame_post_draw.is_connected(_bake_step):
+		RenderingServer.frame_post_draw.connect(_bake_step)
+	return tex
 
 
 func _kept(cache: Dictionary, id: int):
@@ -93,12 +134,22 @@ func get_face(id: int, big := false) -> Texture2D:
 	if tex == null:
 		if big:
 			return get_face(id)
-		# A face made here (no picture on disk) is drawn on a small viewport of its own that has to stay
-		# alive, so each is made once and kept for good, never made again. (They used to pile up: a
-		# new viewport every time one was needed.)
-		if not _made_faces.has(id):
-			_made_faces[id] = _make_placeholder_face(id)
-		return _made_faces[id]
+		# The game's own cards (Lumen's, the Speed Spells): drawn on a small viewport of their own that
+		# stays alive (some move for a moment), made once and kept for good. A few dozen at most.
+		if CardData.is_original(id):
+			if not _made_faces.has(id):
+				_made_faces[id] = _make_placeholder_face(id)
+			return _made_faces[id]
+		# Any other card with no picture on disk: drawn once on a viewport, copied into a plain picture
+		# and the viewport let go; only the most recent ones are kept (0.72.1: with every card in the
+		# game, browsing the editor or the album kept hundreds of live viewports, over a GB of video
+		# memory and every node of them, and the whole game crawled until it was restarted).
+		var made = _kept(_made_lru, id)
+		if made != null:
+			return made
+		var baked := _bake_face(id)
+		_keep(_made_lru, id, baked, MADE_KEEP)
+		return baked
 	_keep(cache, id, tex, FULL_KEEP if big else FACE_KEEP)
 	return tex
 
@@ -438,6 +489,7 @@ func clear_cache() -> void:
 	_full_cache.clear()
 	_thumb_cache.clear()
 	_made_faces.clear()
+	_made_lru.clear()
 	for c in get_children():
 		if c is SubViewport:
 			c.queue_free()

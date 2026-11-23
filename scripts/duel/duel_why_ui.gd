@@ -11,6 +11,7 @@ const KIND_COLORS := {"no_dmg": Color("5fd0ff"), "no_bdmg": Color("5fd0ff"), "no
 
 var plates: Array = [null, null]       # the two DuelistPanels (to sit next to)
 var _rows: Array = [null, null]        # the chip row of each player
+var _known := {}                       # chips already shown open once (key: player + text + card)
 var _cards: Array = []                 # reason cards on screen (newest last)
 
 
@@ -114,9 +115,12 @@ func set_status(p: int, list: Array) -> void:
 	_rows[p] = null
 	if list.is_empty():
 		return
-	var box := VBoxContainer.new()
+	# (0.72.1: a row of small chips, card and sign only, so they don't cover Lumen; a new one opens
+	# for a few seconds to say what it is, and any of them opens while the pointer is on it)
+	var box := HBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.alignment = BoxContainer.ALIGNMENT_BEGIN if p == 0 else BoxContainer.ALIGNMENT_END
 	for s in list:
 		box.add_child(_chip(s, p))
 	add_child(box)
@@ -193,6 +197,17 @@ func _chip(s: Dictionary, p: int) -> Control:
 	when.clip_text = true
 	when.custom_minimum_size = Vector2(minf(300.0, 8.0 * (str(s["when"]).length() + str(s["name"]).length())), 0)
 	v.add_child(when)
+	# closed: only the card and the sign; open while pointed at, and for a moment when it is new
+	var key := "%d|%s|%s" % [p, str(s["short"]), str(s["id"])]
+	v.visible = false
+	pc.mouse_entered.connect(func(): v.visible = true)
+	pc.mouse_exited.connect(func(): v.visible = false)
+	if not _known.has(key):
+		_known[key] = true
+		v.visible = true
+		get_tree().create_timer(4.0).timeout.connect(func():
+			if is_instance_valid(v) and is_instance_valid(pc) and not pc.get_global_rect().has_point(pc.get_global_mouse_position()):
+				v.visible = false)
 	return pc
 
 
