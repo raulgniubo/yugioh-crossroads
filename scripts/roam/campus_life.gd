@@ -34,6 +34,19 @@ func _ready() -> void:
 		_build_school_spots.call_deferred()
 		# Back from a duel, or just arrived: where you stand is where "continue" brings you back.
 		_note.call_deferred()
+		# Straight out of a chapter's end card: the next one waiting gets a word on arrival.
+		if Campus.from_end:
+			Campus.from_end = false
+			var g := Campus.golden()
+			if g.has("chapter"):
+				var title := ""
+				for ch in CampusData.CHAPTERS:
+					if str(ch["id"]) == str(g["chapter"]):
+						title = Loc.t(str(ch["title"]))
+				get_tree().create_timer(1.6).timeout.connect(func():
+					Router.toast(Pad.keys(Loc.t("%s is ready: press N to start it") % title))
+					if _audit_args():
+						print("CAMPUS TOAST: ", Loc.t("%s is ready: press N to start it") % title))
 		var t := Timer.new()
 		t.wait_time = 8.0
 		t.autostart = true
@@ -58,7 +71,12 @@ func _build_chip() -> void:
 	_chip.offset_left = -404
 	_chip.offset_right = -36
 	_chip.offset_top = 372
-	_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Click the card: the agenda (the same as N).
+	_chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	_chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_chip.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			open_agenda())
 	_ui.add_child(_chip)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 2)
@@ -133,7 +151,7 @@ func _refresh() -> void:
 	var nl := next_line()
 	_next.text = nl
 	_next.visible = nl != ""
-	_hint.text = Pad.keys(Loc.t("N  agenda"))
+	_hint.text = Pad.keys(Loc.t("N  agenda: start the chapter")) if Campus.golden().has("chapter") and not _story else Pad.keys(Loc.t("N  agenda"))
 	_place_chip.call_deferred()
 	(_chip.get_theme_stylebox("panel") as StyleBoxFlat).border_color = Color(Campus.DORM_COLORS[Campus.dorm()], 0.75)
 
@@ -162,7 +180,11 @@ func _process(delta: float) -> void:
 	# ... and while the agenda is open: the panel opens right where the card sits.
 	if _agenda != null and is_instance_valid(_agenda):
 		hide = true
+	# ... and under anything else that covers the world (a shop, a deck menu, the map): one rule.
+	if scene.panel_open():
+		hide = true
 	_chip.visible = not hide
+	_feed_box.visible = not hide
 	while not Campus.feed.is_empty():
 		var f: Array = Campus.feed.pop_front()
 		_pop(int(f[0]), str(f[1]), str(f[2]) if f.size() > 2 else "")
@@ -310,8 +332,8 @@ func _build_spots() -> void:
 		bed = Vector3(-half.x + (2.75 if Campus.dorm() == 2 else 2.05), 0, -half.y + 1.5)
 		bz = 0.2
 		side = -1.0
-	scene._spots.append({"pos": o + bed, "range": 1.7, "label": "Rest or sleep (your bed)", "action": _bed})
-	scene._spots.append({"pos": o + Vector3(side * (half.x - 0.7), 0, bz), "range": 1.6, "label": "Look at the mission board", "action": func(): open_agenda()})
+	scene._spots.append({"pos": o + bed, "range": 1.7, "label": "Rest or sleep (your bed)", "action": _bed, "in": room})
+	scene._spots.append({"pos": o + Vector3(side * (half.x - 0.7), 0, bz), "range": 1.6, "label": "Look at the mission board", "action": func(): open_agenda(), "in": room})
 	# The board itself: cork, a frame, a gold card and a few silver ones.
 	var c: CityBuilder = scene.city
 	var wall := o + Vector3(side * (half.x - 0.08), 1.55, bz)
@@ -640,3 +662,8 @@ func _admin(p: SidePanel) -> void:
 		cfg.set_value("story", "memory", {})
 		Campus.write(cfg)
 		open_agenda())
+
+
+func _audit_args() -> bool:
+	var a := OS.get_cmdline_user_args()
+	return "--story-auto" in a or "--story-endpick" in " ".join(a)

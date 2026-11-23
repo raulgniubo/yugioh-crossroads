@@ -29,6 +29,7 @@ var _dlg_text: Label
 var _dlg_face: TextureRect
 var _plate: Control
 var _purse: Control
+var _help_bar: Control
 var _dlg_fig: RoamFigure
 var _dlg_buttons: HBoxContainer
 var _dlg_stake: VBoxContainer       # "ON THE LINE": the card a duelist offers if you beat them
@@ -721,6 +722,7 @@ func _physics_process(delta: float) -> void:
 	elif _figure and _figure.position.y != 0.0:
 		_figure.position.y = 0.0
 	_follow_clock(delta)
+	_cover_hud()
 	# Walking around with nobody talking: no portrait on screen needs to move, so the live
 	# ones hold their frame (each was a small 3D view redrawn every other frame for nothing).
 	Avatars.quiet = not _talking and not _overlay_open and _pause == null and not (_dlg and _dlg.visible) \
@@ -1021,6 +1023,38 @@ func _probe() -> void:
 		var why := cam.blocked_at(at)
 		print("PROBE ", pt, " ", "ok" if why == "" else why)
 	get_tree().quit()
+
+
+## Something covers the world right now (a shop, a deck menu, the agenda, the map, the Esc menu, a
+## conversation, a side panel): the world's own cards and labels step aside until it closes.
+## (Asked by several HUD pieces each frame: the answer is worked out once per frame.)
+var _cover_frame := -1
+var _cover := false
+func panel_open() -> bool:
+	var f := Engine.get_process_frames()
+	if f == _cover_frame:
+		return _cover
+	_cover_frame = f
+	_cover = _panel_open_now()
+	return _cover
+
+
+func _panel_open_now() -> bool:
+	if _overlay_open or _pause != null or _talking or (_map_full != null and _map_full.visible):
+		return true
+	for c in get_tree().root.find_children("*", "SidePanel", true, false):
+		if (c as Control).is_visible_in_tree():
+			return true
+	return false
+
+
+## The world's own corner pieces (place card, Duel Points, small map, key strip) hide under a panel.
+## They fade by modulate, so whatever else shows or hides them keeps its own say.
+func _cover_hud() -> void:
+	var a := 0.0 if panel_open() else 1.0
+	for n in [_plate, _purse, _map, _help_bar]:
+		if n != null and is_instance_valid(n):
+			(n as CanvasItem).modulate.a = a
 
 
 ## The wheel belongs to whatever is open over the world (the agenda, a list, the map, a shop):
@@ -1605,6 +1639,8 @@ func _update_near() -> void:
 	# A thing the story asks you to do here comes first: "Look at your bed" before "Rest or sleep",
 	# so a task standing on top of an everyday spot (a bed, a board, a counter) can always be done.
 	var cand_spots: Array = _spots if story == null and not (life != null and life.seated) else []
+	# A spot that belongs to one room (your bed) only answers inside that room.
+	cand_spots = cand_spots.filter(func(sp): return not (sp as Dictionary).has("in") or str(sp["in"]) == _inside)
 	var quest_best: Dictionary = {}
 	var quest_d := INF
 	for sp in cand_spots:
@@ -2131,6 +2167,7 @@ func _build_ui() -> void:
 	help_bar.offset_bottom = -22
 	help_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_ui.add_child(help_bar)
+	_help_bar = help_bar
 	_help = help
 	# With a controller connected the strip shows its buttons instead of the keyboard's.
 	_help_kb = help.text
@@ -2262,6 +2299,8 @@ func _update_counter() -> void:
 			if _beaten.has(d["id"]):
 				won += 1
 	_counter.text = Loc.t("Street duels won  %d / %d") % [won, total]
+	# (The main game's street duels: the Academy has its own record, in its day card.)
+	_counter.visible = not Campus.on
 
 
 func _open_pause() -> void:

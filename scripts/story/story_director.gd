@@ -2372,6 +2372,7 @@ func _lead_tasks() -> Array:
 
 
 var _lead_wait := 0.8
+var _end_buttons: Array = []   # the end card's ways on (dev: --story-endpick=N presses one)
 var _lead_queue: Array = []    # leads waiting for the card on screen to go
 var _lead_live := 0
 var _lead_cards: Array = []     # the lead cards on screen right now
@@ -2484,8 +2485,11 @@ func _refresh_task_ui(here: String, home: String) -> void:
 	if _task_box == null:
 		return
 	# Never over the map, the menu or anything else that is open on top of the world.
-	var covered: bool = scene != null and (scene._overlay_open or scene._pause != null or (scene._map_full != null and scene._map_full.visible))
+	var covered: bool = scene != null and scene.panel_open()
 	_task_box.visible = not _cut and not covered
+	for lc in _lead_cards:
+		if is_instance_valid(lc):
+			(lc as Control).visible = not covered
 	# The task being guided to is done or gone: the guide goes off.
 	if _guide >= 0 and (_guide >= _tasks.size() or _task_done.has(str(_guide)) or not _task_open(_guide) or not _task_listed(_guide)):
 		_set_guide(-1)
@@ -3731,31 +3735,58 @@ func _end_campus(st: Dictionary) -> void:
 		te.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		te.custom_minimum_size = Vector2(1000, 0)
 		v.add_child(te)
-	# "then": "next" goes straight into the next chapter (the prologue into chapter 1). Without
-	# it the day is yours: the island, with the next chapter on the mission board.
-	var straight: bool = str(st.get("then", "")) == "next" and next != "" and _book().SCRIPTS.has(next)
-	var go := Button.new()
-	go.text = Loc.t("Continue") if straight else Loc.t("Back to the island")
-	go.custom_minimum_size = Vector2(420, 70)
-	go.add_theme_font_size_override("font_size", 28)
-	go.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	v.add_child(go)
-	go.grab_focus.call_deferred()
-	go.pressed.connect(func():
-		if straight:
-			StoryDirector.begin(next)
-		else:
+	# Three ways on, the first one big and focused: the next chapter straight away when it is open
+	# (the story flows chapter to chapter), free time on the Academy island, or the main menu.
+	# (Only the prologue runs straight on: before chapter 1 there is no free time on the island yet.
+	# Every later end, the finale into the epilogue too, offers all three.)
+	var straight: bool = str(st.get("then", "")) == "next" and next != "" and _book().SCRIPTS.has(next) and chapter == "ac_prologue"
+	# The chapter this one opens comes first; else whichever chapter is open and not played yet.
+	var up_next := next if (next != "" and _book().SCRIPTS.has(next) and not Campus.chapter_done(next)) else Campus.next_chapter()
+	var up_name := ""
+	for ch in CampusData.CHAPTERS:
+		if str(ch["id"]) == up_next:
+			up_name = "%s · %s" % [Loc.t(str(ch["title"])), Loc.t(str(ch["name"]))]
+	var buttons: Array = []
+	if chapter == "ac_epilogue":
+		up_next = ""          # the story is told: the island and the menu are what is left
+	if straight or up_next != "":
+		var nxt := up_next if up_next != "" else next
+		buttons.append([(Loc.t("Continue: %s") % up_name) if up_name != "" else Loc.t("Continue"), func():
 			Campus.put("free_days", true)
-			Campus.island(st.get("wake", null)))
-	var menu := Button.new()
-	menu.text = Loc.t("Back to the menu")
-	menu.custom_minimum_size = Vector2(420, 56)
-	menu.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	menu.pressed.connect(func():
-		if not straight:
+			StoryDirector.begin(nxt)])
+	if not straight:
+		buttons.append([Loc.t("Keep playing on the island") if chapter == "ac_epilogue" else Loc.t("Free time on the island"), func():
 			Campus.put("free_days", true)
-		_leave())
-	v.add_child(menu)
+			Campus.from_end = true
+			Campus.island(st.get("wake", null))])
+		buttons.append([Loc.t("Main menu"), func():
+			Campus.put("free_days", true)
+			_leave()])
+	if up_next == "" and not straight and chapter != "ac_epilogue":
+		var wait := UITheme.label(Loc.t("The next chapter is not open yet: the agenda (N) says what opens it."), 20, UITheme.TEXT_DIM)
+		wait.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(wait)
+	var first_btn: Button = null
+	for i in buttons.size():
+		var bt := Button.new()
+		bt.text = str(buttons[i][0])
+		bt.custom_minimum_size = Vector2(560 if i == 0 else 420, 72 if i == 0 else 56)
+		bt.add_theme_font_size_override("font_size", 28 if i == 0 else 22)
+		bt.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		bt.pressed.connect(buttons[i][1])
+		v.add_child(bt)
+		if i == 0:
+			first_btn = bt
+			bt.grab_focus.call_deferred()
+	_end_buttons = buttons
+	if _auto and "--story-endpick" in " ".join(OS.get_cmdline_user_args()):
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--story-endpick="):
+				var k := int(a.substr(16))
+				print("STORY ENDCARD ", chapter, ": ", buttons.map(func(x): return str(x[0])), " -> pick ", k)
+				await get_tree().create_timer(1.0).timeout
+				(buttons[mini(k, buttons.size() - 1)][1] as Callable).call()
+				return
 	if _auto and "--story-quit" in OS.get_cmdline_user_args():
 		await _snap("end", 2.5)
 		get_tree().quit()
@@ -3987,6 +4018,8 @@ static func begin(id: String, resume := false) -> void:
 		if a.begins_with("--story-step="):
 			at = clampi(int(a.trim_prefix("--story-step=")), 0, maxi(0, steps.size() - 1))
 			_prog().save_position(id, at, {})
+	if "--story-auto" in OS.get_cmdline_user_args():
+		print("STORY BEGIN ", id, " step ", at, " academy=", Campus.on)
 	# The scene that step belongs to decides where to load.
 	var sc := {}
 	for i in mini(at + 1, steps.size()):
@@ -4033,6 +4066,13 @@ static func quest_pending() -> String:
 
 func _process(delta: float) -> void:
 	_t += delta
+	# Under a panel (shop, decks, agenda, map, Esc menu) the task box and lead cards step aside at once.
+	if scene != null and is_instance_valid(scene) and scene.has_method("panel_open") and scene.panel_open():
+		if _task_box != null and _task_box.visible:
+			_task_box.visible = false
+		for lc in _lead_cards:
+			if is_instance_valid(lc):
+				(lc as Control).visible = false
 	# The portrait and the name tab live outside the box, so they follow it when it hides.
 	if _box and not _box.visible:
 		_portrait.visible = false

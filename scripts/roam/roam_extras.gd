@@ -118,6 +118,8 @@ func _build_hud() -> void:
 	_chip_label.tooltip_text = "Star Chips found in this world. Click to see what they are."
 	_chip_label.pressed.connect(explain_chips)
 	bar.add_child(_chip_label)
+	# (Star Chips belong to the main game's worlds: not counted or shown in the Academy.)
+	_chip_label.visible = not Campus.on
 	_wp_label = UITheme.label("", 26, Color("ffe9a8"), UITheme.title_font())
 	_wp_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_wp_label.offset_top = 84
@@ -191,11 +193,14 @@ func free_list() -> Array:
 
 
 func _free_list_step(delta: float) -> void:
+	if _hud != null:
+		_hud.visible = not scene.panel_open()      # (under a shop, a menu or the map, the world's labels step aside)
 	_list_tick -= delta
 	if _list_tick > 0.0:
 		return
 	_list_tick = 0.4
-	var rows := free_list() if (not story_mode and scene.quest == null) else []
+	# (The Academy keeps its own lists: the main game's errands never show on its island.)
+	var rows := free_list() if (not story_mode and scene.quest == null and not Campus.on) else []
 	if _list_box == null:
 		if rows.is_empty():
 			return
@@ -693,6 +698,8 @@ func _chip_spots() -> Array:
 
 
 func _build_chips() -> void:
+	if Campus.on:
+		return          # (the main game's Star Chips are not hidden on the Academy's island)
 	var got: Array = _got.get(_key, [])
 	var spots := _chip_spots()
 	var m := StandardMaterial3D.new()
