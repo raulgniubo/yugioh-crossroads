@@ -29,7 +29,7 @@ const DAYS := {
 		"alexis": [[420, Vector3(6.0, 0, -22.0), 2.9, "cards"], [720, Vector3(40.0, 0, 28.5), 2.2, "sky"], [990, Vector3(11.5, 0, 27.0), 1.2, "cheer"], [1230, Vector3(-22.0, 0, -12.5), 0.3, "sky"]],
 		# Crowler: the steps of the main building as classes start, the lecture hall door, the
 		# practice fields to judge the Blues, tea on the plaza, the Blue dorm at night.
-		"crowler": [[450, Vector3(-5.0, 0, -28.5), 0.0, "arms"], [600, Vector3(34.0, 0, -19.0), 1.57, "cards"], [870, Vector3(22.5, 0, -25.5), 3.14, "arms"],
+		"crowler": [[450, Vector3(-2.8, 0, -28.8), 0.2, "arms"], [600, Vector3(34.0, 0, -19.0), 1.57, "cards"], [870, Vector3(22.5, 0, -25.5), 3.14, "arms"],
 			[1080, Vector3(-4.5, 0, -6.0), 2.4, "drink"], [1260, Vector3(-25.0, 0, -15.5), 0.9, "sky"]],
 		# Sheppard: the first ferry at the dock, his office in the main building, the plaza to watch
 		# the students duel, the dock again at sunset, the office late.

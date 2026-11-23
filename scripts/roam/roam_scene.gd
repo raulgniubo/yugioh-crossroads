@@ -723,6 +723,7 @@ func _physics_process(delta: float) -> void:
 		_figure.position.y = 0.0
 	_follow_clock(delta)
 	_cover_hud()
+	_tags_step(delta)
 	# Walking around with nobody talking: no portrait on screen needs to move, so the live
 	# ones hold their frame (each was a small 3D view redrawn every other frame for nothing).
 	Avatars.quiet = not _talking and not _overlay_open and _pause == null and not (_dlg and _dlg.visible) \
@@ -1055,6 +1056,49 @@ func _cover_hud() -> void:
 	for n in [_plate, _purse, _map, _help_bar]:
 		if n != null and is_instance_valid(n):
 			(n as CanvasItem).modulate.a = a
+
+
+## Two people standing close: their name tags would print one over the other. The nearer one's
+## name stays; a tag whose box on screen overlaps a nearer one's fades out until they part.
+var _tags_t := 0.0
+func _tags_step(delta: float) -> void:
+	_tags_t -= delta
+	if _tags_t > 0.0:
+		return
+	_tags_t = 0.12
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	var tags: Array = []
+	for n in get_tree().get_nodes_in_group("name_tags"):
+		var l := n as Label3D
+		if l == null or not l.is_visible_in_tree():
+			continue
+		var at := l.global_position
+		var dist := cam.global_position.distance_to(at)
+		if dist > 16.0 or cam.is_position_behind(at):
+			l.transparency = 0.0
+			continue
+		tags.append([dist, l, at])
+	tags.sort_custom(func(a, b): return float(a[0]) < float(b[0]))
+	var kept: Array = []      # screen rects of the names that stay
+	for t in tags:
+		var l: Label3D = t[1]
+		var c := cam.unproject_position(t[2])
+		# The tag's size on screen: its height in the world is font_size * pixel_size, seen from dist.
+		var h_world := l.font_size * l.pixel_size
+		var px_per_m := get_viewport().get_visible_rect().size.y / (2.0 * float(t[0]) * tan(deg_to_rad(cam.fov) * 0.5))
+		var h := h_world * px_per_m
+		var w := h * 0.55 * l.text.length()
+		var r := Rect2(c - Vector2(w * 0.5, h * 0.5), Vector2(w, h))
+		var clash := false
+		for k in kept:
+			if (k as Rect2).intersects(r):
+				clash = true
+				break
+		l.transparency = 1.0 if clash else 0.0
+		if not clash:
+			kept.append(r)
 
 
 ## The wheel belongs to whatever is open over the world (the agenda, a list, the map, a shop):

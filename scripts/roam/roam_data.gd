@@ -172,7 +172,7 @@ const DISTRICTS := {
 				"lines": ["A pro doesn't usually duel students. I'll make an exception.", "Destiny already picked the winner."],
 				"duel": {"deck": "aster", "difficulty": 2, "intro": "Your fate is sealed."}},
 			# Three of the Academy's own (0.69): they keep a day of their own on the island (StarLife).
-			{"id": "crowler", "char": "crowler", "pos": Vector3(-5.0, 0, -28.5), "face": 0.0,
+			{"id": "crowler", "char": "crowler", "pos": Vector3(-2.8, 0, -28.8), "face": 0.2,
 				"lines": ["Out of my way, please. I am late for my own lecture.", "A duel? With me? Very well. Consider it extra credit."],
 				"duel": {"deck": "deck_ancient_gear", "difficulty": 2, "intro": "Pop quiz. Duel Disk out."}},
 			{"id": "sheppard", "char": "sheppard", "pos": Vector3(6.0, 0, -29.5), "face": 3.14,

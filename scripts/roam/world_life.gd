@@ -903,13 +903,13 @@ const ROUTINES := {
 		["office_worker", "", [[Vector3(-23.0, 0.02, -6.0), 1.5, "stand", 6.0, "phone"], [Vector3(-23.0, 0.02, 12.0), 1.5, "stand", 6.0, "checkout"]]],
 	],
 	"domino": [
-		["office_worker", "", [[Vector3(13.0, 0.2, 12.2), 0.8, "stand", 5.0, "scratch"], [Vector3(15.6, 0.2, 15.2), 0.75, "stand", 7.0, "listen"], [Vector3(8.4, 0.16, 8.2), 2.6, "stand", 6.0, "phone"]]],
+		["office_worker", "", [[Vector3(13.0, 0.2, 12.2), 0.8, "stand", 5.0, "scratch"], [Vector3(15.6, 0.2, 15.2), 0.75, "stand", 7.0, "listen"], [Vector3(6.6, 0.16, 7.0), 2.6, "stand", 6.0, "phone"]]],
 		["student_girl", "", [[Vector3(-12.4, 0.16, -13.6), PI, "browse", 6.0, ""], [Vector3(-18.0, 0.16, -9.6), PI, "browse", 5.0, ""], [Vector3(-8.2, 0.16, -8.2), 0.8, "stand", 6.5, "phone"]]],
 		["stylish_woman", "", [[Vector3(12.6, 0.2, -39.2), 0.3, "stand", 6.0, "checkout"], [Vector3(10.6, 0.2, -41.6), -0.5, "stand", 7.0, "phone"], [Vector3(16.0, 0.2, -37.2), 2.4, "stand", 5.0, "listen"]]],
 		["duelist_m9", "", [[Vector3(-12.5, 0.2, 57.4), 0.0, "stand", 7.0, "listen"], [Vector3(-4.0, 0.2, 58.6), 0.0, "stand", 6.0, "phone"], [Vector3(6.0, 0.2, 57.6), 0.0, "stand", 6.0, "scratch"]]],
 	],
 	"academy": [
-		["student_boy", "red", [[Vector3(2.4, 0.1, 2.0), -2.4, "stand", 6.0, "phone"], [Vector3(2.6, 0.1, 9.6), 0.0, "stand", 4.0, "checkout"], [Vector3(-16.6, 0.1, 27.4), -1.2, "browse", 7.0, ""]]],
+		["student_boy", "red", [[Vector3(2.4, 0.1, 2.0), -2.4, "stand", 6.0, "phone"], [Vector3(2.6, 0.1, 9.6), 0.0, "stand", 4.0, "checkout"], [Vector3(-18.4, 0.1, 26.6), -1.2, "browse", 7.0, ""]]],
 		["student_girl", "blue", [[Vector3(22.5, 0.1, -17.6), PI, "stand", 9.0, "cheer"], [Vector3(14.0, 0.1, -5.6), 1.0, "stand", 5.0, "phone"], [Vector3(3.0, 0.1, -14.0), -0.8, "stand", 6.0, "listen"]]],
 		["student_boy", "yellow", [[Vector3(-3.2, 0.1, 40.0), 0.6, "stand", 6.0, "checkout"], [Vector3(-2.6, 0.1, 54.0), 0.0, "stand", 8.0, "listen"], [Vector3(-2.4, 0.1, 22.0), 2.2, "stand", 5.0, "phone"]]],
 	],

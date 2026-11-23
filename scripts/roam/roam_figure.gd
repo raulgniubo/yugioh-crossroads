@@ -78,6 +78,8 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 		l.position = Vector3(0, 2.05, 0)
 		l.modulate = Color(1, 1, 1, 0.95)
 		l.outline_modulate = Color(0, 0, 0, 0.8)
+		l.name = "NameTag"
+		l.add_to_group("name_tags")     # (RoamScene keeps two close people's names from printing over each other)
 		add_child(l)
 
 
