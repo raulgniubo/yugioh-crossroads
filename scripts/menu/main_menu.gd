@@ -575,7 +575,8 @@ func _build_featured() -> void:
 		# The picture shows a wider piece of the world than the bust it used to (room for any
 		# hair), so the slot is bigger and the slots overlap: what overlaps is empty air.
 		var sz := Vector2(592, 740) * sc
-		var cx := vs.x - 905.0 + i * 244.0
+		# (Clear of the mode tiles on the left, which end at x 900: the outer figures stand right of them.)
+		var cx := vs.x - 815.0 + i * 228.0
 		var home := Vector2(cx - sz.x / 2.0, vs.y - 62.0 - sz.y + float(e[2]))
 		var tex := TextureRect.new()
 		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -1328,8 +1329,8 @@ func _on_knockout(result: String) -> void:
 
 
 func _on_free_duel() -> void:
-	# The front screen (0.69.1); its "More options" opens the full setup screen below.
-	var cs := FreeDuelGate.new()
+	# The full Free Duel screen, straight away (the two duelists face to face, the roster, the setup).
+	var cs := CharacterSelect.new()
 	cs.z_index = 100
 	add_child(cs)
 	_panel_open = true
@@ -1604,17 +1605,16 @@ func _build_rounds() -> void:
 	_rounds_end = 64.0 + rounds.get_child_count() * 64.0 + maxi(rounds.get_child_count() - 1, 0) * 14.0
 
 
-## The full Free Duel setup screen by itself (dev: --open=select-old).
+## (dev: --open=select-old, the same screen.)
 func _on_free_duel_setup() -> void:
-	var cs := CharacterSelect.new()
-	cs.z_index = 100
-	add_child(cs)
-	_panel_open = true
-	cs.start.connect(func(cfg):
-		Router.duel_config = cfg
-		Router.go(Router.DUEL))
-	cs.knockout.connect(func():
-		cs.queue_free()
-		_on_knockout(""))
-	cs.closed.connect(func():
-		_panel_open = false)
+	_on_free_duel()
+
+
+## While the menu sits there, the card shops' pack covers are worked out a few milliseconds a frame
+## (once a game version and card set: then they are read from disk), so the shops page never waits.
+var _idle_t := 0.0
+func _process(delta: float) -> void:
+	_idle_t += delta
+	if _idle_t > 3.0 and not Collection.covers_ready():
+		Collection.cover_step(3.0)
+

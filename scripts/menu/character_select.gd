@@ -1,8 +1,11 @@
 class_name CharacterSelect
 extends Control
-## Free Duel setup. Two big duelist panels face each other across a VS; the roster sits
-## underneath; deck, difficulty and arena sit on the right. Tap a panel (YOU / OPPONENT)
-## to say who you are choosing, then tap a duelist.
+## Free Duel (what "Free Duel" opens). Two big duelist panels face each other across a VS; the
+## roster sits underneath, by era; on the right, in glass cards: your deck, their deck (three
+## versions: Basic / Strong / Competitive), the field, the difficulty and the rules. Tap a panel
+## (YOU / OPPONENT) to say who you are choosing, then tap a duelist. Behind it all, still, the
+## world of the rival's era (or of the field you picked), under a dark shade.
+## Keys: Q / E (LB / RB) step the eras, Tab (Y) switches the side you choose, Start duels.
 
 signal start(config: Dictionary)
 signal closed
@@ -53,6 +56,42 @@ var _go: Button
 var _starting := false
 var _t := 0.0
 var _pending: Array = []      # [TextureRect, key]: roster portraits still to load, a couple per frame
+var _bg: AcademyBackdrop      # the still world picture behind everything
+var _bg_path := ""
+var _big_wait := {}           # side -> key: a big portrait waiting for its model (read on a worker thread)
+var _my_cards: HBoxContainer      # the three versions of the deck of the duelist you play as
+var _their_cards: HBoxContainer   # the three versions of the rival's deck
+var _mine_box: VBoxContainer      # your own decks (when you play as yourself)
+var _their_other: OptionButton    # or one of your decks for them
+var _their_other_keys: Array = []
+var _tab_counts := {}
+
+const VERSIONS := ["starter", "standard", "full"]
+## What the player sees for the three versions of a deck (the keys stay starter / standard / full).
+const VERSION_NAME := {"starter": "Basic", "standard": "Strong", "full": "Competitive"}
+const VERSION_HOW := {
+	"starter": "A simple version: fewer key cards, good to start.",
+	"standard": "More of their key cards and combos.",
+	"full": "Their full deck, at full power.",
+}
+## The world behind each era (5D's: the two from the Satellite stand over it).
+const ERA_PICTURE := {
+	"Duel Monsters": "res://assets/ui/story_title_domino.jpg",
+	"GX": "res://assets/ui/academy_title.jpg",
+	"5D's": "res://assets/ui/story_title_newdomino.jpg",
+	"ZEXAL": "res://assets/ui/story_title_heartland.jpg",
+}
+const SATELLITE := ["crow", "kalin"]
+## A field picked by hand shows its own world, where there is a big picture of it.
+const ARENA_PICTURE := {
+	"battlecity": "res://assets/ui/story_title_domino.jpg", "kaibacorp": "res://assets/ui/story_title_domino.jpg",
+	"pier": "res://assets/ui/story_title_domino.jpg", "academy": "res://assets/ui/academy_title.jpg",
+	"reddorm": "res://assets/ui/academy_title.jpg", "bluehall": "res://assets/ui/academy_title.jpg",
+	"satellite": "res://assets/ui/story_title_satellite.jpg", "highway": "res://assets/ui/roam_title_highway.jpg",
+	"crossroads": "res://assets/ui/story_title_newdomino.jpg", "heartland": "res://assets/ui/story_title_heartland.jpg",
+	"ruins": "res://assets/ui/story_title_museum.jpg", "shadow": "res://assets/ui/story_title_museum.jpg",
+}
+static var _version_cache := {}   # deck key -> [ace id, monsters, spells/traps, extra] (a version does not change during a run)
 var _retouch := false
 
 
@@ -81,8 +120,12 @@ func _ready() -> void:
 	_field = str(cfg.get("field", Settings.field_theme))
 	if _field != "auto" and not FieldThemes.THEMES.has(_field):
 		_field = "auto"
+	# The world of the rival's era, still, under a dark shade so the panels read over it.
+	_bg_path = _picture_for()
+	_bg = AcademyBackdrop.new(0.5, _bg_path)
+	add_child(_bg)
 	var dim := ColorRect.new()
-	dim.color = Color(0.02, 0.032, 0.075, 1.0)
+	dim.color = Color(0.02, 0.032, 0.075, 0.3)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
@@ -118,7 +161,7 @@ func _ready() -> void:
 	_build_slots()
 	_build_setup()
 	_build_tabs()
-	_build_extras()
+	_build_extras.call_deferred()      # (today's duel works out who is in it: after the first frame)
 	_grid = GridContainer.new()
 	# Ten across, three rows: the roster owns the bottom left and never reaches the setup
 	# column on the right.
@@ -129,6 +172,35 @@ func _ready() -> void:
 	_root.add_child(_grid)
 	_refresh_all()
 	_enter()
+	_focus_opp.call_deferred()
+
+
+## The tile of whoever is picked gets the keyboard / controller focus, so arrows start there.
+func _focus_opp() -> void:
+	var key := _opp if _picking == "opp" else _me
+	for c in _grid.get_children():
+		if str(c.get_meta("key", "")) == key:
+			(c as Control).grab_focus()
+			return
+	if _grid.get_child_count() > 0:
+		(_grid.get_child(0) as Control).grab_focus()
+
+
+## The picture behind: the field you picked (when there is a big picture of it), else the rival's era.
+func _picture_for() -> String:
+	if _field != "auto" and ARENA_PICTURE.has(_field):
+		return str(ARENA_PICTURE[_field])
+	if _opp in SATELLITE:
+		return "res://assets/ui/story_title_satellite.jpg"
+	var era := str(Characters.get_char(_opp).get("era", "Duel Monsters"))
+	return str(ERA_PICTURE.get(era, ERA_PICTURE["Duel Monsters"]))
+
+
+func _repaint_world() -> void:
+	var want := _picture_for()
+	if want != _bg_path and _bg != null:
+		_bg_path = want
+		_bg.fade_to(want, 0.5)
 
 
 func _center() -> void:
@@ -155,11 +227,34 @@ func _process(delta: float) -> void:
 	_zoom_t -= delta
 	if _zoom_tiles.is_empty():
 		_zoom_t = 1.5
-	# Portraits load a couple per frame, so the screen opens at once and fills in.
+	for ak in _arena_wait.keys():
+		var at := arena_picture_later(str(_arena_wait[ak]))
+		if at != null:
+			(_arena_tiles[ak][1] as TextureRect).texture = at
+			_arena_wait.erase(ak)
+	# The two big portraits come in when their models are read (on a worker thread).
+	for side in _big_wait.keys():
+		var bk := str(_big_wait[side])
+		if Avatars.ready_now(bk) or Portraits.holds(bk):
+			_big_wait.erase(side)
+			var bpt: TextureRect = _slots[side]["portrait"]
+			bpt.texture = Portraits.get_portrait(bk, true)
+			_fit_slot(bpt, bk)
+			bpt.modulate.a = 0.0
+			create_tween().tween_property(bpt, "modulate:a", 1.0, 0.25)
+			break        # (one a frame: each is a small 3D picture to set up)
+		else:
+			Avatars.warm(bk)
+	# Roster portraits: one a frame, and only once its model has been read, so the screen opens
+	# at once and nothing stops to read a file. The ones still waiting go to the back of the line.
 	for i in 2:
-		if _pending.is_empty():
+		if _pending.is_empty() or not _big_wait.is_empty():
 			break
 		var job: Array = _pending.pop_front()
+		if is_instance_valid(job[0]) and not (Avatars.ready_now(str(job[1])) or Portraits.holds(str(job[1]))):
+			Avatars.warm(str(job[1]))
+			_pending.append(job)
+			break
 		if is_instance_valid(job[0]):
 			(job[0] as TextureRect).texture = Portraits.get_portrait(job[1])
 			(job[0] as TextureRect).set_meta("key", job[1])
@@ -279,12 +374,31 @@ func _build_slots() -> void:
 		b.add_child(name_l)
 		var title_l := UITheme.label("", 19, UITheme.GOLD, UITheme.semi_font())
 		title_l.position = Vector2(22, PANEL_SIZE.y - 80)
+		title_l.size = Vector2(PANEL_SIZE.x - 44, 26)
+		title_l.clip_text = true
+		title_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		b.add_child(title_l)
 		var sub := UITheme.label("", 18, UITheme.TEXT_DIM)
 		sub.position = Vector2(22, PANEL_SIZE.y - 52)
 		sub.size = Vector2(PANEL_SIZE.x - 44, 24)
 		sub.clip_text = true
+		sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		b.add_child(sub)
+		# (Their panel only) the medals you hold against them: ★ ☆ ☆ in the top right corner.
+		var mbg := PanelContainer.new()
+		var msb := UITheme.panel_box(Color(0.02, 0.03, 0.08, 0.72), 10, Color(UITheme.GOLD, 0.55))
+		msb.content_margin_left = 10
+		msb.content_margin_right = 10
+		msb.content_margin_top = 2
+		msb.content_margin_bottom = 2
+		mbg.add_theme_stylebox_override("panel", msb)
+		mbg.position = Vector2(PANEL_SIZE.x - 108, 16)
+		mbg.mouse_filter = Control.MOUSE_FILTER_PASS
+		mbg.visible = side == "opp"
+		b.add_child(mbg)
+		var medals := UITheme.label("", 20, UITheme.GOLD, UITheme.semi_font())
+		medals.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mbg.add_child(medals)
 		# The side the roster is choosing for says so, in a ribbon across the top of its panel.
 		var ribbon := PanelContainer.new()
 		ribbon.position = Vector2(0, 0)
@@ -296,7 +410,7 @@ func _build_slots() -> void:
 		ribbon_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		ribbon.add_child(ribbon_l)
 		_slots[side] = {"button": b, "portrait": pt, "name": name_l, "title": title_l, "sub": sub, "tag": tag,
-				"tag_bg": tag_bg, "ace": ace, "glow": glow, "key": "", "ribbon": ribbon, "ribbon_l": ribbon_l}
+				"tag_bg": tag_bg, "ace": ace, "glow": glow, "key": "", "ribbon": ribbon, "ribbon_l": ribbon_l, "medals": medals, "medals_bg": mbg}
 	_vs = UITheme.label("VS", 104, Color.WHITE, Comic.shout_font())
 	_vs.position = Vector2(549, 286)
 	_vs.z_index = 5           # over both duelists' panels, also the one that is lifted while you pick
@@ -384,33 +498,51 @@ func _refresh_slots() -> void:
 		var col: Color = info.get("color", UITheme.ACCENT)
 		var changed: bool = sl["key"] != key
 		sl["key"] = key
-		sl["portrait"].texture = Portraits.get_portrait(key, true)
+		if Avatars.ready_now(key) or Portraits.holds(key):
+			_big_wait.erase(side)
+			sl["portrait"].texture = Portraits.get_portrait(key, true)
+		elif changed or sl["portrait"].texture == null:
+			sl["portrait"].texture = null       # (the panel's own color shows until the model is read)
+			_big_wait[side] = key
+			Avatars.warm(key)
 		_fit_slot(sl["portrait"], key)
 		sl["name"].text = str(info.get("name", "")).to_upper()
 		_fit_font(sl["name"], 46)
-		sl["title"].text = str(info.get("title", ""))
+		sl["title"].text = Loc.t(str(info.get("title", "")))
 		if side == "opp":
 			# How they play, so you know what you walk into.
 			var how: String = {"aggro": "Plays aggressive", "wall": "Plays defensive", "trap": "Sets traps"}.get(DuelAI.style_for(key), "")
 			if how != "":
-				sl["title"].text = (Loc.t(sl["title"].text) + "   ·   " if sl["title"].text != "" else "") + Loc.t(how)
+				sl["title"].text = (sl["title"].text + "   ·   " if sl["title"].text != "" else "") + Loc.t(how)
+		_shrink(sl["title"], 19, 14)
 		var deck_key := _deck_of(side)
-		sl["sub"].text = Loc.t("%s  ·  %s Deck") % [info.get("era", ""), CardData.deck_name(deck_key)]
+		sl["sub"].text = "%s  ·  %s" % [info.get("era", ""), _deck_words(deck_key)]
 		if side == "opp":
 			var rec := Collection.versus(key)
 			# Your record against them, and how close you are to earning their deck.
-			var bits: Array = [Loc.t("%s Deck") % CardData.deck_name(deck_key)]
+			var bits: Array = [_deck_words(deck_key)]
 			if rec[0] + rec[1] > 0:
 				bits.append(Loc.t("%d W  %d L") % [rec[0], rec[1]])
 			if rec[0] < 3 and not Collection.decks_owned.has(str(info.get("deck", ""))):
 				bits.append(Loc.t("unlocks in %d wins") % (3 - rec[0]))
 			sl["sub"].text = "  ·  ".join(bits)
+			# The medals you hold against them, small in the corner of their panel.
+			var held: Array = Collection.medals(key)
+			var mtext := ""
+			for i in 3:
+				mtext += "★" if held[i] else "☆"
+			(sl["medals"] as Label).text = mtext
+			var tips: Array = [Loc.t("Medals against %s") % str(info.get("short", key))]
+			for i in 3:
+				tips.append("%s %s: %s  (+%d DP)" % ["★" if held[i] else "☆", Loc.t(str(Collection.MEDALS[i]["name"])), Loc.t(str(Collection.MEDALS[i]["how"])), int(Collection.MEDALS[i]["dp"])])
+			(sl["medals_bg"] as Control).tooltip_text = "\n".join(tips)
+		_shrink(sl["sub"], 18, 14)
 		var ace := 0
 		if side == "opp":
 			ace = int(Characters.get_char(key).get("ace", 0))
 		if ace == 0 or CardData.get_card(ace).is_empty():
 			ace = _deck_ace(deck_key)
-		sl["ace"].texture = Cards.get_face(ace) if ace != 0 else null
+		_card_pic(sl["ace"], ace)
 		var active: bool = side == _picking
 		var sb := UITheme.button_box(Color(0.042, 0.0676, 0.136, 0.0), col if active else Color(1, 1, 1, 0.16), 20)
 		sb.set_border_width_all(4 if active else 1)
@@ -435,6 +567,25 @@ func _refresh_slots() -> void:
 			sl["portrait"].modulate = Color(2.2, 2.2, 2.2)
 			create_tween().tween_property(sl["portrait"], "modulate", Color.WHITE, 0.3)
 	_backdrop.queue_redraw()
+	_repaint_world()
+
+
+## "Red-Eyes Deck" for a deck named "Red-Eyes"; a name that already says deck stays as it is.
+func _deck_words(deck_key: String) -> String:
+	var nm := Loc.t(CardData.deck_name(deck_key))
+	if nm.to_lower().contains("deck") or nm.to_lower().contains("mazo"):
+		return nm
+	return Loc.t("%s Deck") % nm
+
+
+## A line that would not fit gets a smaller font (down to `low`), then is cut.
+func _shrink(l: Label, base: int, low: int) -> void:
+	var f: Font = l.get_theme_font("font")
+	var w := l.size.x if l.size.x > 10.0 else PANEL_SIZE.x - 44.0
+	var sz := base
+	while sz > low and f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x > w:
+		sz -= 1
+	l.add_theme_font_size_override("font_size", sz)
 
 
 # ------------------------------------------------------------------ roster
@@ -446,7 +597,9 @@ var _pick_title: Label
 ## Who the roster is choosing for, said loudly: two big switches over the roster.
 func _build_picker() -> void:
 	var box := HBoxContainer.new()
-	box.position = Vector2(604, 580)
+	box.position = Vector2(690, 580)
+	# (Its right end lines up with the roster's, whatever the language makes it measure.)
+	box.resized.connect(func(): box.position.x = 1146.0 - box.size.x)
 	box.add_theme_constant_override("separation", 10)
 	_root.add_child(box)
 	_pick_title = UITheme.label("", 20, UITheme.TEXT_DIM, UITheme.semi_font())
@@ -454,7 +607,8 @@ func _build_picker() -> void:
 	box.add_child(_pick_title)
 	for side in ["me", "opp"]:
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(150, 42)
+		b.custom_minimum_size = Vector2(140, 42)
+		b.focus_mode = Control.FOCUS_NONE       # (Tab / Y switches it; arrows stay in the roster)
 		b.add_theme_font_size_override("font_size", 18)
 		b.pressed.connect(func():
 			_picking = side
@@ -504,11 +658,19 @@ func _refresh_picker() -> void:
 		rl.text = "▼   " + (Loc.t("PICKING YOUR DUELIST") if side == "me" else Loc.t("PICKING YOUR OPPONENT")) + "   ▼"
 		rl.add_theme_color_override("font_color", Comic.INK if col2.get_luminance() > 0.45 else Color.WHITE)
 		(_slots[side]["tag_bg"] as Control).position.y = 52.0 if on2 else 16.0
+		(_slots[side]["medals_bg"] as Control).position.y = 52.0 if on2 else 16.0
 
 
 ## Next to the title: today's set duel, and the way into the Knockout.
+static var _daily := {}
+
+
 func _build_extras() -> void:
-	var day := Knockout.daily()
+	if not is_inside_tree():
+		return
+	if str(_daily.get("day", "")) != Time.get_date_string_from_system():
+		_daily = Knockout.daily()
+	var day := _daily
 	if not day.is_empty():
 		var done := Knockout.daily_done()
 		var opp := str(Characters.get_char(str(day["opponent"])).get("short", ""))
@@ -572,23 +734,64 @@ func _extra_button(at: Vector2, sz: Vector2, col: Color, head: String, mid: Stri
 func _build_tabs() -> void:
 	var row := HBoxContainer.new()
 	row.position = Vector2(64, 580)
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", 6)
 	_root.add_child(row)
 	var tabs := [["", "ALL"]]
 	for e in Characters.ERAS:
 		tabs.append([e, e.to_upper()])
 	for t in tabs:
-		var b := Button.new()
-		b.text = t[1]
-		b.toggle_mode = true
-		b.add_theme_font_size_override("font_size", 18)
-		b.add_theme_stylebox_override("hover_pressed", UITheme.button_box(UITheme.ACCENT, UITheme.ACCENT))
 		var era: String = t[0]
+		var n := 0
+		for k in Characters.ORDER:
+			if era == "" or str(Characters.DATA[k]["era"]) == era:
+				n += 1
+		if era == "":
+			n += 1        # (you, the first tile)
+		_tab_counts[era] = n
+		# The era's name, and how many duelists it has beside it, smaller and dimmer: "GX (9)".
+		var b := Button.new()
+		b.toggle_mode = true
+		b.focus_mode = Control.FOCUS_NONE
+		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		b.tooltip_text = Loc.t("%d duelists") % n
+		var ec: Color = UITheme.ACCENT if era == "" else StoryEmblem.era_color(era)
+		b.add_theme_stylebox_override("normal", UITheme.panel_box(Color(0.03, 0.05, 0.12, 0.78), 10, Color(ec, 0.4)))
+		b.add_theme_stylebox_override("hover", UITheme.panel_box(Color(0.07, 0.1, 0.2, 0.92), 10, ec.lightened(0.2)))
+		var lit := UITheme.panel_box(Color(ec.darkened(0.35), 0.96), 10, ec.lightened(0.35))
+		lit.set_border_width_all(2)
+		for st in ["pressed", "hover_pressed"]:
+			b.add_theme_stylebox_override(st, lit)
+		var hb := HBoxContainer.new()
+		hb.add_theme_constant_override("separation", 5)
+		hb.alignment = BoxContainer.ALIGNMENT_CENTER
+		hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		b.add_child(hb)
+		var nl := UITheme.label(Loc.t(str(t[1])), 16, Color.WHITE, UITheme.title_font())
+		nl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hb.add_child(nl)
+		var cl := UITheme.label("(%d)" % n, 13, Color(1, 1, 1, 0.55), UITheme.semi_font())
+		cl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hb.add_child(cl)
+		var f1: Font = nl.get_theme_font("font")
+		var f2: Font = cl.get_theme_font("font")
+		b.custom_minimum_size = Vector2(f1.get_string_size(nl.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+				+ f2.get_string_size(cl.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 30.0, 42)
 		b.pressed.connect(func():
+			Sfx.play("click", -6.0)
 			_era = era
 			_refresh_all())
 		row.add_child(b)
 		_tabs.append(b)
+
+
+## Q / E (LB / RB): the era before or after.
+func _step_era(d: int) -> void:
+	var all: Array = [""] + Characters.ERAS
+	_era = str(all[posmod(all.find(_era) + d, all.size())])
+	Sfx.play("click", -6.0)
+	_refresh_all()
+	_focus_opp.call_deferred()
 
 
 var _grid_keys: Array = []
@@ -669,6 +872,7 @@ func _roster_card(key: String) -> Control:
 	b.custom_minimum_size = CELL
 	b.clip_contents = true
 	b.flat = true
+	b.set_meta("key", key)
 	b.tooltip_text = "%s\n%s" % [info.get("name", ""), Loc.t(str(info.get("title", "")))] if met else Unlocks.opponent_why(key)
 	if met and key != "player":
 		var held: Array = Collection.medals(key)
@@ -764,7 +968,7 @@ func _roster_card(key: String) -> Control:
 		if has_deck:
 			why = "LOCKED\nBeat them in\nthe story" if Unlocks.STORY_MET.has(key) else "LOCKED\nBeat them in\ntheir world"
 		var lock := UITheme.label(why, 13, Color(0.92, 0.94, 1.0, 0.92), UITheme.semi_font())
-		lock.position = Vector2(8, 8)
+		lock.position = Vector2(8, 30 if not badges.is_empty() else 8)     # (under a YOU / CPU badge)
 		lock.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 		lock.add_theme_constant_override("outline_size", 4)
 		lock.add_theme_constant_override("line_spacing", -3)
@@ -815,12 +1019,18 @@ func _refresh_pick() -> void:
 	_fill_my_decks()
 	_refresh_deck_row()
 	_refresh_setup()
+	_refresh_versions()
 
 
 ## YOUR DECK: the deck of the duelist you play as (when that is not you), and your own saved
 ## decks. Nothing else: no list of every deck in the game.
 func _fill_my_decks() -> void:
 	if _deck_pick == null:
+		return
+	if _me != "player":
+		# Playing as a duelist: one of the three versions of their own deck (the cards above).
+		if _version_in(_me, _my_deck) == "":
+			_my_deck = _base_of(_me)
 		return
 	_deck_pick.clear()
 	_deck_keys.clear()
@@ -860,96 +1070,164 @@ func _random_opponent() -> void:
 
 # ------------------------------------------------------------------ match setup
 
-func _section(v: VBoxContainer, text: String) -> void:
-	v.add_child(UITheme.label(text, 16, UITheme.ACCENT, UITheme.semi_font()))
+func _section(v: VBoxContainer, text: String) -> Label:
+	var l := UITheme.label(Loc.t(text), 15, UITheme.ACCENT, UITheme.semi_font())
+	v.add_child(l)
+	return l
+
+
+## A glass card on the right: a clean section with its heading.
+func _glass_card(parent: Control, head: String) -> VBoxContainer:
+	var pc := PanelContainer.new()
+	var sb := UITheme.panel_box(Color(0.03, 0.05, 0.12, 0.74), 16, Color(1, 1, 1, 0.14))
+	sb.content_margin_left = 16
+	sb.content_margin_right = 16
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 10
+	pc.add_theme_stylebox_override("panel", sb)
+	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(pc)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 7)
+	pc.add_child(v)
+	if head != "":
+		var hrow := HBoxContainer.new()
+		hrow.name = "Head"
+		hrow.add_theme_constant_override("separation", 10)
+		v.add_child(hrow)
+		var hl := UITheme.label(Loc.t(head), 15, UITheme.ACCENT, UITheme.semi_font())
+		hl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		hrow.add_child(hl)
+	return v
+
+
+func _small_button(text: String, act: Callable) -> Button:
+	var b := Button.new()
+	b.text = Loc.t(text)
+	b.add_theme_font_size_override("font_size", 14)
+	b.custom_minimum_size = Vector2(0, 30)
+	for st in ["normal", "hover", "focus", "pressed"]:
+		var sb := UITheme.panel_box(Color(0.06, 0.09, 0.18, 0.9) if st == "normal" else Color(0.09, 0.13, 0.25, 0.95), 10,
+				Color(1, 1, 1, 0.2) if st == "normal" else UITheme.ACCENT)
+		sb.content_margin_left = 12
+		sb.content_margin_right = 12
+		sb.content_margin_top = 3
+		sb.content_margin_bottom = 3
+		b.add_theme_stylebox_override(st, sb)
+	b.pressed.connect(act)
+	return b
 
 
 func _build_setup() -> void:
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.052, 0.088, 0.165, 0.96), 22, Color(UITheme.ACCENT, 0.3)))
-	panel.position = Vector2(1166, 104)
-	panel.custom_minimum_size = Vector2(690, 936)
-	panel.size = Vector2(690, 936)
-	_root.add_child(panel)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 9)
-	panel.add_child(v)
-	_quote = UITheme.label("", 20, UITheme.TEXT)
-	_quote.position = Vector2(1170, 60)
+	var col := VBoxContainer.new()
+	col.position = Vector2(1166, 104)
+	col.size = Vector2(690, 936)
+	col.add_theme_constant_override("separation", 10)
+	_root.add_child(col)
+	_quote = UITheme.label("", 17, UITheme.TEXT)
+	_quote.position = Vector2(1170, 64)
 	_quote.size = Vector2(686, 26)
-	_quote.add_theme_font_size_override("font_size", 17)
 	_quote.clip_text = true
+	_quote.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_quote.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_root.add_child(_quote)
-	_section(v, "YOUR DECK")
+	# Everything but the DUEL! row scrolls, should a language or a small window make it taller.
+	var sc := ScrollContainer.new()
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(sc)
+	var v := VBoxContainer.new()
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.add_theme_constant_override("separation", 8)
+	sc.add_child(v)
+
+	# ---- YOUR DECK: your own decks (as yourself), or the three versions of theirs (as a duelist).
+	var mine := _glass_card(v, "YOUR DECK")
+	(mine.get_node("Head") as HBoxContainer).add_child(_small_button("See deck", _peek_mine))
+	_mine_box = VBoxContainer.new()
+	_mine_box.add_theme_constant_override("separation", 6)
+	mine.add_child(_mine_box)
 	_deck_pick = OptionButton.new()
 	_deck_pick.fit_to_longest_item = false
+	_deck_pick.add_theme_font_size_override("font_size", 17)
 	_deck_pick.item_selected.connect(func(i):
 		if str(_deck_keys[i]) == "":
 			return   # (a heading in the list)
 		_my_deck = _deck_keys[i]
 		_refresh_slots()
 		_refresh_deck_row())
-	var mrow := HBoxContainer.new()
-	mrow.add_theme_constant_override("separation", 10)
-	v.add_child(mrow)
-	_deck_pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	mrow.add_child(_deck_pick)
-	# Every card on your side too, before the duel.
-	var mine_b := Button.new()
-	mine_b.text = Loc.t("See deck")
-	mine_b.add_theme_font_size_override("font_size", 16)
-	mine_b.pressed.connect(_peek_mine)
-	mrow.add_child(mine_b)
+	_mine_box.add_child(_deck_pick)
 	_deck_row = HBoxContainer.new()
 	_deck_row.add_theme_constant_override("separation", 8)
-	_deck_row.custom_minimum_size = Vector2(0, 70)
-	v.add_child(_deck_row)
-	_deck_note = UITheme.label("", 15, UITheme.TEXT_DIM)
-	v.add_child(_deck_note)
-	var trow := HBoxContainer.new()
-	trow.add_theme_constant_override("separation", 10)
-	v.add_child(trow)
-	trow.add_child(UITheme.label("THEIR DECK", 16, UITheme.ACCENT, UITheme.semi_font()))
-	_their_pick = OptionButton.new()
-	_their_pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_their_pick.add_theme_font_size_override("font_size", 16)
-	_their_pick.add_item(Loc.t("Their own deck"))
-	_their_keys = [""]
-	# The smaller versions of their own deck (the front screen's three cards).
-	for ver in ["standard", "starter"]:
-		_their_keys.append("@" + ver)
-		_their_pick.add_item(Loc.t("Their deck: %s") % Loc.t(str(FreeDuelGate.VERSION_NAME[ver])))
-	# One of your own decks (a good way to see how a deck you built plays from the other side).
+	_deck_row.custom_minimum_size = Vector2(0, 62)
+	_mine_box.add_child(_deck_row)
+	_deck_note = UITheme.label("", 14, UITheme.TEXT_DIM)
+	_mine_box.add_child(_deck_note)
+	_my_cards = HBoxContainer.new()
+	_my_cards.add_theme_constant_override("separation", 10)
+	mine.add_child(_my_cards)
+
+	# ---- THEIR DECK: three versions of it as cards, or one of your own decks.
+	var theirs := _glass_card(v, "THEIR DECK")
+	var th_head := theirs.get_node("Head") as HBoxContainer
+	_their_other = OptionButton.new()
+	_their_other.add_theme_font_size_override("font_size", 14)
+	_their_other.custom_minimum_size = Vector2(190, 30)
+	_their_other.fit_to_longest_item = false
+	_their_other.tooltip_text = Loc.t("Or give them one of your own decks (to see how it plays from the other side).")
+	_their_other_keys = [""]
+	_their_other.add_item(Loc.t("Their own deck"))
 	for md in Collection.my_decks():
-		_their_keys.append(str(md["key"]))
-		_their_pick.add_item(Loc.t("My deck: %s") % str(md["name"]))
-	_their_pick.item_selected.connect(func(i):
-		_their_deck = _their_keys[i]
-		_refresh_slots())
-	_their_pick.select(maxi(0, _their_keys.find(_their_deck)))
-	trow.add_child(_their_pick)
-	# Every card they play, before you pick them.
-	var peek := Button.new()
-	peek.text = Loc.t("See deck")
-	peek.add_theme_font_size_override("font_size", 16)
-	peek.pressed.connect(_peek_deck)
-	trow.add_child(peek)
-	var dhead := HBoxContainer.new()
-	v.add_child(dhead)
-	dhead.add_child(UITheme.label("DIFFICULTY", 16, UITheme.ACCENT, UITheme.semi_font()))
-	_reward = UITheme.label("", 15, UITheme.GOLD)
-	_reward.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_their_other_keys.append(str(md["key"]))
+		_their_other.add_item(Loc.t("My deck: %s") % str(md["name"]))
+	_their_other.item_selected.connect(func(i):
+		if i == 0:
+			if not _their_deck.begins_with("@"):
+				_their_deck = ""
+		else:
+			_their_deck = str(_their_other_keys[i])
+		Sfx.play("card", -8.0)
+		_refresh_slots()
+		_refresh_versions())
+	th_head.add_child(_their_other)
+	th_head.add_child(_small_button("See deck", _peek_deck))
+	_their_cards = HBoxContainer.new()
+	_their_cards.add_theme_constant_override("separation", 10)
+	theirs.add_child(_their_cards)
+
+	# ---- THE FIELD: every arena as a small picture, in a row you scroll sideways.
+	var fld := _glass_card(v, "FIELD")
+	_field_name = UITheme.label("", 15, UITheme.TEXT, UITheme.semi_font())
+	_field_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_field_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	(fld.get_node("Head") as HBoxContainer).add_child(_field_name)
+	_field_swatch = ColorRect.new()
+	var asc := ScrollContainer.new()
+	asc.custom_minimum_size = Vector2(0, 108)
+	asc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	fld.add_child(asc)
+	var agrid := HBoxContainer.new()
+	agrid.add_theme_constant_override("separation", 8)
+	asc.add_child(agrid)
+	for key in ["auto"] + FieldThemes.ORDER:
+		agrid.add_child(_arena_tile(str(key)))
+
+	# ---- DIFFICULTY and what a win pays.
+	var dif := _glass_card(v, "DIFFICULTY")
+	_reward = UITheme.label("", 15, UITheme.GOLD, UITheme.semi_font())
 	_reward.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	dhead.add_child(_reward)
+	(dif.get_node("Head") as HBoxContainer).add_child(_reward)
 	var drow := HBoxContainer.new()
 	drow.add_theme_constant_override("separation", 8)
-	v.add_child(drow)
+	dif.add_child(drow)
 	for i in 3:
 		var db := Button.new()
 		db.text = ["Easy", "Normal", "Hard"][i]
 		db.toggle_mode = true
 		db.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		db.custom_minimum_size = Vector2(0, 36)
+		db.add_theme_font_size_override("font_size", 18)
 		_pick_style(db)
 		db.pressed.connect(func():
 			_difficulty = i + 1
@@ -958,40 +1236,36 @@ func _build_setup() -> void:
 			_refresh_setup())
 		drow.add_child(db)
 		_diff_btns.append(db)
-	_diff_note = UITheme.label("", 15, UITheme.TEXT_DIM)
-	# It wraps inside the panel: a long line (the Extreme one, or any of them in Spanish) used to
-	# stretch the whole panel past the edge of the screen. Two lines are kept free so nothing jumps.
+	_diff_note = UITheme.label("", 14, UITheme.TEXT_DIM)
+	# Two lines are kept free so nothing jumps when the note changes.
 	_diff_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_diff_note.custom_minimum_size = Vector2(0, 42)
-	v.add_child(_diff_note)
-	# The three medals to earn against whoever you picked, and which you hold.
-	_medal_line = UITheme.label("", 15, UITheme.GOLD, UITheme.semi_font())
-	_medal_line.mouse_filter = Control.MOUSE_FILTER_STOP
-	_medal_line.clip_text = true
-	v.add_child(_medal_line)
-	# How the duel is played: on foot or on runners, one duel or a match.
+	_diff_note.custom_minimum_size = Vector2(0, 36)
+	dif.add_child(_diff_note)
+
+	# ---- RULES: how the duel is played, then the house rules (each button steps through its choices).
+	var rul := _glass_card(v, "RULES")
 	_match_btn = CheckButton.new()
 	_turbo_btn = CheckButton.new()
 	_fate_off_btn = CheckButton.new()
 	_fate_off_btn.button_pressed = not Settings.destiny_draw
 	_engine_btn = CheckButton.new()
+	# (The rules engine runs every duel now; Settings has the switch back to the classic rules.)
+	_engine_btn.button_pressed = true
 	var groups: Array = [[_turbo_btn, "TYPE", ["Standard", "Turbo Duel"], ["A normal duel at the table.", "Both duelists ride runners. Spells need Speed Counters."]],
 			[_match_btn, "LENGTH", ["1 duel", "Best of 3"], ["One duel decides it.", "First to win two duels. You can swap Side Deck cards between duels."]],
 			[_fate_off_btn, "DESTINY DRAW", ["On", "Off"], ["Once per duel, at 2000 Life Points or less (or under half of your opponent's), you choose the card you draw. Hard opponents can do it too.", "Every draw is the top card, as usual."]]]
-	# (The rules engine runs every duel now; Settings has the switch back to the classic rules.)
-	_engine_btn.button_pressed = true
 	var rules := HBoxContainer.new()
-	rules.add_theme_constant_override("separation", 8)
-	v.add_child(rules)
+	rules.add_theme_constant_override("separation", 10)
+	rul.add_child(rules)
 	for grp in groups:
 		var cb: CheckButton = grp[0]
 		var gv := VBoxContainer.new()
 		gv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		gv.add_theme_constant_override("separation", 2)
 		rules.add_child(gv)
-		gv.add_child(UITheme.label(str(grp[1]), 16, UITheme.ACCENT, UITheme.semi_font()))
+		gv.add_child(UITheme.label(Loc.t(str(grp[1])), 13, UITheme.TEXT_DIM, UITheme.semi_font()))
 		var gh := HBoxContainer.new()
-		gh.add_theme_constant_override("separation", 6)
+		gh.add_theme_constant_override("separation", 4)
 		gv.add_child(gh)
 		var pair: Array = []
 		for k in 2:
@@ -999,8 +1273,9 @@ func _build_setup() -> void:
 			ob.text = str(grp[2][k])
 			ob.tooltip_text = str(grp[3][k])
 			ob.toggle_mode = true
+			ob.clip_text = true
 			ob.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			ob.add_theme_font_size_override("font_size", 18)
+			ob.add_theme_font_size_override("font_size", 14)
 			_pick_style(ob)
 			ob.button_pressed = (k == 1) == cb.button_pressed
 			gh.add_child(ob)
@@ -1010,11 +1285,9 @@ func _build_setup() -> void:
 				cb.button_pressed = k == 1
 				(pair[0] as Button).set_pressed_no_signal(k == 0)
 				(pair[1] as Button).set_pressed_no_signal(k == 1))
-	# House rules: each button steps through its choices.
-	v.add_child(UITheme.label("RULES", 16, UITheme.ACCENT, UITheme.semi_font()))
 	var rrow := HBoxContainer.new()
 	rrow.add_theme_constant_override("separation", 6)
-	v.add_child(rrow)
+	rul.add_child(rrow)
 	var lp_b := Button.new()
 	var first_b := Button.new()
 	var g_b := Button.new()
@@ -1033,15 +1306,14 @@ func _build_setup() -> void:
 		rrow.add_child(rb)
 	lp_b.tooltip_text = "Starting Life Points for both duelists."
 	first_b.tooltip_text = "Who takes the first turn."
-	g_b.tooltip_text = "Face three duelists in a row. Your Life Points carry over. Clear it for a bonus."
+	g_b.tooltip_text = "Single opponent, a Gauntlet of three in a row, or Survival: opponents keep coming until you lose. Your Life Points carry over."
+	hand_b.tooltip_text = "How many cards each duelist starts with."
 	lp_b.pressed.connect(func():
 		_lp = {4000: 8000, 8000: 16000, 16000: 4000}[_lp]
 		paint.call())
 	first_b.pressed.connect(func():
 		_first = (_first + 2) % 3 - 1
 		paint.call())
-	g_b.tooltip_text = "Single opponent, a Gauntlet of three in a row, or Survival: opponents keep coming until you lose. Your Life Points carry over."
-	hand_b.tooltip_text = "How many cards each duelist starts with."
 	hand_b.pressed.connect(func():
 		_hand_n = {5: 6, 6: 7, 7: 4, 4: 5}[_hand_n]
 		paint.call())
@@ -1050,31 +1322,18 @@ func _build_setup() -> void:
 		_gauntlet = _run > 0
 		paint.call())
 	paint.call()
-	v.add_child(UITheme.label("ARENA", 16, UITheme.ACCENT, UITheme.semi_font()))
-	# Every arena as a small picture of its ground and sky, so you can see what you pick.
-	_field_name = UITheme.label("", 18, UITheme.TEXT_DIM, UITheme.semi_font())
-	v.add_child(_field_name)
-	_field_swatch = ColorRect.new()
-	var asc := ScrollContainer.new()
-	asc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	asc.custom_minimum_size = Vector2(0, 130)   # (the column is 936 tall: more than this pushed the DUEL button off the panel)
-	asc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	v.add_child(asc)
-	var agrid := HFlowContainer.new()
-	agrid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	agrid.add_theme_constant_override("h_separation", 8)
-	agrid.add_theme_constant_override("v_separation", 8)
-	asc.add_child(agrid)
-	for key in ["auto"] + FieldThemes.ORDER:
-		agrid.add_child(_arena_tile(str(key)))
 
+	# ---- the big DUEL! (and a random rival beside it), always on the floor of the column.
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
-	v.add_child(row)
-	# (The arena list takes whatever height is left, so the button row sits on the floor of the column.)
+	col.add_child(row)
 	var rnd := Button.new()
 	rnd.text = "Random rival"
-	rnd.custom_minimum_size = Vector2(0, 86)
+	rnd.custom_minimum_size = Vector2(170, 86)
+	rnd.add_theme_font_size_override("font_size", 18)
+	rnd.add_theme_stylebox_override("normal", UITheme.panel_box(Color(0.04, 0.06, 0.14, 0.86), 16, Color(1, 1, 1, 0.22)))
+	for st in ["hover", "focus"]:
+		rnd.add_theme_stylebox_override(st, UITheme.panel_box(Color(0.08, 0.11, 0.22, 0.95), 16, UITheme.ACCENT))
 	rnd.pressed.connect(_random_opponent)
 	row.add_child(rnd)
 	_go = Button.new()
@@ -1083,9 +1342,180 @@ func _build_setup() -> void:
 	_go.custom_minimum_size = Vector2(0, 86)
 	_go.add_theme_font_size_override("font_size", 60)
 	_go.add_theme_font_override("font", Comic.shout_font())
+	_go.tooltip_text = Loc.t("Start the duel (Start on a controller)")
 	UITheme.paint_button(_go, UITheme.ACCENT)
 	_go.pressed.connect(_start_duel)
 	row.add_child(_go)
+
+
+# ------------------------------------------------------------------ deck versions
+
+func _base_of(key: String) -> String:
+	return str(Characters.get_char(key).get("deck", ""))
+
+
+func _version_key_of(key: String, v: String) -> String:
+	var base := _base_of(key)
+	return base if v == "full" else DeckTiers.with_version(base, v)
+
+
+## Which version of `key`'s own deck `deck_key` is ("" when it is not one of theirs).
+func _version_in(key: String, deck_key: String) -> String:
+	var base := _base_of(key)
+	if base == "":
+		return ""
+	if deck_key == base:
+		return "full"
+	if deck_key.contains("@"):
+		var sp: Array = DeckTiers.split(deck_key)
+		if str(sp[0]) == base and str(sp[1]) in VERSIONS:
+			return str(sp[1])
+	return ""
+
+
+func _their_version() -> String:
+	if _their_deck == "":
+		return "full"
+	if _their_deck.begins_with("@"):
+		return _their_deck.substr(1)
+	return ""
+
+
+## What is in one version of a deck: its ace (or strongest monster), monsters, Spells and Traps, Extra.
+func _version_facts(key: String, deck_key: String) -> Array:
+	if _version_cache.has(deck_key):
+		return _version_cache[deck_key]
+	var main: Array = CardData.deck_list(deck_key)
+	var extra: Array = CardData.extra_list(deck_key)
+	var best := 0
+	var best_atk := -1
+	var mons := 0
+	for id in main:
+		if not (CardData.get_card(id).get("kind", "") in ["spell", "trap"]):
+			mons += 1
+	var seen := {}
+	for id in extra + main:
+		if seen.has(id):
+			continue
+		seen[id] = true
+		var d := CardData.get_card(id)
+		if d.get("kind", "") in ["spell", "trap"]:
+			continue
+		if int(d.get("atk", 0)) > best_atk:
+			best_atk = int(d.get("atk", 0))
+			best = int(id)
+	var ace := int(Characters.get_char(key).get("ace", 0)) if Characters.get_char(key).get("ace", 0) is int else 0
+	if ace != 0 and seen.has(ace):
+		best = ace
+	var out := [best, mons, main.size() - mons, extra.size()]
+	_version_cache[deck_key] = out
+	return out
+
+
+## One version of a deck as a small card: its ace, 1-2-3 bars, the name, one plain line.
+func _version_card(key: String, v: String, on: bool, col: Color, pick: Callable) -> Button:
+	var dk := _version_key_of(key, v)
+	var ok := CardData.has_deck(_base_of(key))
+	var facts: Array = _version_facts(key, dk) if ok else [0, 0, 0, 0]
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(206, 102)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.toggle_mode = true
+	b.button_pressed = on
+	b.clip_contents = true
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	b.add_theme_stylebox_override("normal", UITheme.panel_box(Color(0.03, 0.05, 0.12, 0.72), 14, Color(1, 1, 1, 0.14)))
+	for st in ["hover", "focus"]:
+		b.add_theme_stylebox_override(st, UITheme.panel_box(Color(0.07, 0.1, 0.2, 0.92), 14, col.lightened(0.15)))
+	var lit := UITheme.panel_box(Color(col.darkened(0.6), 0.95), 14, col.lightened(0.3))
+	lit.set_border_width_all(3)
+	for st in ["pressed", "hover_pressed"]:
+		b.add_theme_stylebox_override(st, lit)
+	var art := TextureRect.new()
+	_card_pic(art, int(facts[0]))
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.position = Vector2(8, 9)
+	art.size = Vector2(58, 84)
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not on:
+		art.modulate = Color(0.72, 0.72, 0.78)
+	b.add_child(art)
+	var steps := {"starter": 1, "standard": 2, "full": 3}
+	var pips := HBoxContainer.new()
+	pips.position = Vector2(78, 12)
+	pips.add_theme_constant_override("separation", 4)
+	pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(pips)
+	for i in 3:
+		var p := ColorRect.new()
+		p.color = col.lightened(0.25) if i < int(steps[v]) else Color(1, 1, 1, 0.18)
+		p.custom_minimum_size = Vector2(22, 6)
+		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pips.add_child(p)
+	var vn := UITheme.label(Loc.t(str(VERSION_NAME[v])).to_upper(), 17, Color.WHITE if on else Color(1, 1, 1, 0.85), UITheme.title_font())
+	vn.position = Vector2(78, 22)
+	vn.size = Vector2(120, 24)
+	vn.clip_text = true
+	vn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(vn)
+	var st2 := UITheme.label(Loc.t(str(VERSION_HOW[v])), 13, Color(1, 1, 1, 0.92) if on else UITheme.TEXT_DIM, UITheme.semi_font())
+	st2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	st2.position = Vector2(78, 48)
+	st2.size = Vector2(122, 60)
+	st2.add_theme_constant_override("line_spacing", -3)
+	st2.max_lines_visible = 3
+	st2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(st2)
+	var lines: Array = [Loc.t("%d monsters") % int(facts[1])]
+	if int(facts[3]) > 0:
+		lines.append(Loc.t("%d Extra") % int(facts[3]))
+	lines.append(Loc.t("%d Spells and Traps") % int(facts[2]))
+	b.tooltip_text = "%s: %s\n%s" % [Loc.t(str(VERSION_NAME[v])), Loc.t(str(VERSION_HOW[v])), "  ·  ".join(lines)]
+	b.pressed.connect(func():
+		Sfx.play("card", -8.0)
+		pick.call(v))
+	return b
+
+
+## The two rows of version cards, drawn again for whoever is picked.
+func _refresh_versions() -> void:
+	if _their_cards == null:
+		return
+	var focus_owner := get_viewport().gui_get_focus_owner() if is_inside_tree() else null
+	var refocus := ""
+	if focus_owner != null and (_their_cards.is_ancestor_of(focus_owner) or _my_cards.is_ancestor_of(focus_owner)):
+		refocus = "their" if _their_cards.is_ancestor_of(focus_owner) else "mine"
+	for row in [_their_cards, _my_cards]:
+		for c in row.get_children():
+			row.remove_child(c)
+			c.queue_free()
+	var ocol: Color = Portraits.info(_opp).get("color", UITheme.DANGER)
+	var tv := _their_version()
+	for v in VERSIONS:
+		_their_cards.add_child(_version_card(_opp, str(v), str(v) == tv, ocol, func(pv: String):
+			_their_deck = "" if pv == "full" else "@" + pv
+			_their_other.select(0)
+			_refresh_slots()
+			_refresh_versions()))
+	_their_other.select(maxi(0, _their_other_keys.find(_their_deck)) if not _their_deck.begins_with("@") else 0)
+	# As yourself: your own decks. As a duelist: the three versions of their deck.
+	var as_char := _me != "player"
+	_mine_box.visible = not as_char
+	_my_cards.visible = as_char
+	if as_char:
+		var mcol: Color = Portraits.info(_me).get("color", UITheme.ACCENT)
+		var mv := _version_in(_me, _my_deck)
+		for v in VERSIONS:
+			_my_cards.add_child(_version_card(_me, str(v), str(v) == mv, mcol, func(pv: String):
+				_my_deck = _version_key_of(_me, pv)
+				_refresh_slots()
+				_refresh_versions()))
+	if refocus != "":
+		var row2: HBoxContainer = _their_cards if refocus == "their" else _my_cards
+		for c in row2.get_children():
+			if (c as Button).button_pressed:
+				(c as Button).grab_focus.call_deferred()
 
 
 ## A choice button: the picked one is filled bright so it is obvious which is on.
@@ -1112,9 +1542,37 @@ static func arena_picture(key: String) -> Texture2D:
 	return _arena_pics[key]
 
 
+## The same, read on another thread: null until it is in (the tile asks again each frame).
+static func arena_picture_later(key: String) -> Texture2D:
+	if _arena_pics.has(key):
+		return _arena_pics[key]
+	var path := "res://assets/arenas/%s.jpg" % key
+	if not ResourceLoader.exists(path):
+		_arena_pics[key] = null
+		return null
+	var tex := UiPictures.full(path)
+	if tex != null:
+		_arena_pics[key] = tex
+	return tex
+
+
+## A card's picture on a TextureRect, read on another thread (a small copy: these are all small).
+func _card_pic(tr: TextureRect, id: int) -> void:
+	tr.set_meta("card", id)
+	if id == 0:
+		tr.texture = null
+		return
+	Cards.thumb_later(id, func(t: Texture2D):
+		if is_instance_valid(tr) and int(tr.get_meta("card", 0)) == id:
+			tr.texture = t)
+
+
+var _arena_wait := {}      # arena tile key -> the picture it waits for
+
+
 func _arena_tile(key: String) -> Button:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(158, 112)
+	b.custom_minimum_size = Vector2(150, 98)
 	b.toggle_mode = true
 	b.clip_contents = true
 	b.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.05, 0.075, 0.16, 0.9), Color(1, 1, 1, 0.14), 8))
@@ -1130,7 +1588,7 @@ func _arena_tile(key: String) -> Button:
 	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(pic)
 	pic.position = Vector2(4, 4)
-	pic.size = Vector2(150, 84)
+	pic.size = Vector2(142, 70)
 	if key == "auto":
 		var tag := UITheme.label("AUTO", 13, Color(0.06, 0.07, 0.12), UITheme.semi_font())
 		var tb := StyleBoxFlat.new()
@@ -1150,8 +1608,8 @@ func _arena_tile(key: String) -> Button:
 	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(l)
-	l.position = Vector2(4, 90)
-	l.size = Vector2(150, 20)
+	l.position = Vector2(4, 76)
+	l.size = Vector2(142, 20)
 	l.name = "Name"
 	b.pressed.connect(func():
 		_field = key
@@ -1163,7 +1621,12 @@ func _arena_tile(key: String) -> Button:
 
 func _paint_arena(key: String) -> void:
 	var th := FieldThemes.resolve(key, _opp)
-	(_arena_tiles[key][1] as TextureRect).texture = arena_picture(str(th["key"]))
+	var apic := arena_picture_later(str(th["key"]))
+	(_arena_tiles[key][1] as TextureRect).texture = apic
+	if apic == null and ResourceLoader.exists("res://assets/arenas/%s.jpg" % str(th["key"])):
+		_arena_wait[key] = str(th["key"])
+	else:
+		_arena_wait.erase(key)
 	var b: Button = _arena_tiles[key][0]
 	(b.get_node("Name") as Label).text = Loc.t(str(th["name"]))
 	b.tooltip_text = (Loc.t("The opponent's home field") + ":  " if key == "auto" else "") + Loc.t(str(th["name"])) + "\n" + Loc.t(str(th.get("blurb", "")))
@@ -1205,10 +1668,10 @@ func _refresh_deck_row() -> void:
 	for i in mini(8, mons.size()):
 		var id: int = mons[i][1]
 		var tr := TextureRect.new()
-		tr.texture = Cards.get_face(id)
+		_card_pic(tr, id)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tr.custom_minimum_size = Vector2(48, 70)
+		tr.custom_minimum_size = Vector2(42, 62)
 		tr.tooltip_text = Loc.t("%s\nATK %d") % [CardData.get_card(id).get("name", ""), mons[i][0]]
 		tr.modulate.a = 0.0
 		_deck_row.add_child(tr)
@@ -1232,7 +1695,8 @@ func _refresh_setup() -> void:
 				"Thinks ahead, brings a tuned deck and starts with one extra card.",
 				"Plans two plays ahead and sees your counterattack coming. Tuned deck, one extra card."][_difficulty]
 	var th := FieldThemes.resolve(_field, _opp)
-	_field_name.text = (Loc.t("Auto  ·  %s") % th["name"]) if _field == "auto" else str(th["name"])
+	_field_name.text = (Loc.t("Auto  ·  %s") % Loc.t(str(th["name"]))) if _field == "auto" else Loc.t(str(th["name"]))
+	_repaint_world()
 	for ak in _arena_tiles:
 		_paint_arena(str(ak))
 	var o := Characters.get_char(_opp)
@@ -1258,6 +1722,7 @@ func _refresh_all() -> void:
 	_fill_my_decks()
 	_refresh_deck_row()
 	_refresh_setup()
+	_refresh_versions()
 
 
 # ------------------------------------------------------------------ start / close
@@ -1311,6 +1776,32 @@ func _start_duel() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	for n in get_children():
+		if n is DeckPeek:
+			return        # (the deck on show takes the keys until it closes)
+	if _starting:
+		return
+	var key: InputEventKey = event as InputEventKey
+	var pad: InputEventJoypadButton = event as InputEventJoypadButton
+	if (key and key.pressed and not key.echo and key.keycode in [KEY_Q, KEY_E]) \
+			or (pad and pad.pressed and Pad.b(pad) in [JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER]):
+		get_viewport().set_input_as_handled()
+		_step_era(-1 if (key and key.keycode == KEY_Q) or (pad and Pad.b(pad) == JOY_BUTTON_LEFT_SHOULDER) else 1)
+		return
+	# Tab / Y: choose for the other side.
+	if (key and key.pressed and not key.echo and key.keycode == KEY_TAB and not key.shift_pressed) \
+			or (pad and pad.pressed and Pad.b(pad) == JOY_BUTTON_Y):
+		get_viewport().set_input_as_handled()
+		_picking = "me" if _picking == "opp" else "opp"
+		Sfx.play("card", -8.0)
+		_refresh_pick()
+		_focus_opp.call_deferred()
+		return
+	# Start (or F on the keyboard): the duel.
+	if (pad and pad.pressed and Pad.b(pad) == JOY_BUTTON_START) or (key and key.pressed and not key.echo and key.keycode == KEY_F):
+		get_viewport().set_input_as_handled()
+		_start_duel()
+		return
 	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_pause"):
 		get_viewport().set_input_as_handled()
 		close()

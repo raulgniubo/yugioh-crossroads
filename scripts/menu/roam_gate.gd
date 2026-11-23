@@ -107,15 +107,15 @@ func _tile(key: String) -> Button:
 	b.add_theme_stylebox_override("pressed", UITheme.panel_box(Color(0.08, 0.12, 0.24, 0.95), 16, col.lightened(0.4)))
 	var pic := TextureRect.new()
 	var path := picture_of(key)
-	if ResourceLoader.exists(path):
-		pic.texture = load(path)
+	pic.texture = UiPictures.thumb(path)
 	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	pic.position = Vector2(4, 4)
 	pic.size = Vector2(150, 96)
 	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pic.modulate = Color(1, 1, 1, 1.0 if open else 0.35)
-	b.add_child(pic)
+	# (Rounded like the card around it: the square corners used to poke out of the curve.)
+	b.add_child(UiPictures.rounded(pic, 12))
 	var stripe := ColorRect.new()
 	stripe.color = col if open else Color(col, 0.35)
 	stripe.position = Vector2(154, 12)

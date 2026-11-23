@@ -14,6 +14,7 @@ var _pic2: TextureRect           # the next picture, fading in over the first wh
 var _fading := false
 var _side: TextureRect
 var _all: ColorRect
+var _want := ""                  # the picture meant to be on: its small copy shows until the sharp one is read
 
 
 ## `pic`: another picture taken in the game (the main story uses Domino City at night).
@@ -29,8 +30,7 @@ func _init(dark := 0.0, pic := PICTURE, mote := Color(1.0, 0.9, 0.62)) -> void:
 	under.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(under)
 	_pic = TextureRect.new()
-	if ResourceLoader.exists(pic):
-		_pic.texture = load(pic)
+	_set_main(pic)
 	_pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	_pic.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -95,7 +95,7 @@ func set_shade(v: float) -> void:
 func cycle(paths: Array) -> void:
 	for p in paths:
 		if ResourceLoader.exists(str(p)):
-			_pic.texture = load(str(p))
+			_set_main(str(p))
 			_pic2.modulate.a = 0.0
 			return
 
@@ -103,26 +103,52 @@ func cycle(paths: Array) -> void:
 ## Show one picture now (no fading).
 func show_picture(path: String) -> void:
 	if ResourceLoader.exists(path):
-		_pic.texture = load(path)
+		_set_main(path)
 	_pic2.modulate.a = 0.0
 
 
 ## Crossfade from the picture on now to this one (the Free Roam door, as you move between worlds).
 func fade_to(path: String, secs := 0.45) -> void:
-	if not ResourceLoader.exists(path):
+	if not ResourceLoader.exists(path) or path == _want:
 		return
-	var tex: Texture2D = load(path)
-	if _pic.texture == tex:
-		return
+	_want = path
+	var tex: Texture2D = UiPictures.full(path)
+	if tex == null:
+		tex = UiPictures.thumb(path)
+		set_process(true)          # (the sharp one replaces it when it has been read)
 	_pic2.texture = tex
 	_pic2.modulate.a = 0.0
 	_fading = true
 	var tw := create_tween()
 	tw.tween_property(_pic2, "modulate:a", 1.0, secs)
 	tw.tween_callback(func():
-		_pic.texture = tex
+		_pic.texture = _pic2.texture
 		_pic2.modulate.a = 0.0
 		_fading = false)
+
+
+## The picture at once: the sharp one if it has been read, else its small copy while it is read.
+func _set_main(path: String) -> void:
+	if not ResourceLoader.exists(path):
+		return
+	_want = path
+	var tex: Texture2D = UiPictures.full(path)
+	if tex == null:
+		tex = UiPictures.thumb(path)
+		set_process(true)
+	_pic.texture = tex
+
+
+func _process(_delta: float) -> void:
+	# The sharp picture has been read on a worker thread: it takes the small copy's place.
+	var tex: Texture2D = UiPictures.full(_want)
+	if tex == null:
+		return
+	set_process(false)
+	if _fading:
+		_pic2.texture = tex
+	else:
+		_pic.texture = tex
 
 
 ## Fade the whole-picture shade to `v` (going from the title to a list and back).
@@ -134,4 +160,5 @@ func shade_to(v: float, secs := 0.25) -> void:
 
 func _ready() -> void:
 	# Still: the picture fills the screen exactly, at its own sharpness. Nothing moves on its own.
-	set_process(false)
+	# (_process only runs to swap in a sharp picture that was still being read.)
+	set_process(UiPictures.full(_want) == null and _want != "")

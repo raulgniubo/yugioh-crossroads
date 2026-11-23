@@ -42,7 +42,7 @@ func _init(over: String, title: String, sub: String, color: Color, pics: Array, 
 	add_child(_clip)
 	for p in pics:
 		if ResourceLoader.exists(str(p)):
-			_pics.append(load(str(p)))
+			_pics.append(UiPictures.thumb(str(p)))
 	_a = _pic_rect()
 	_b = _pic_rect()
 	_b.modulate.a = 0.0
