@@ -117,6 +117,11 @@ uniform vec3 top_ref = vec3(0.5);
 uniform vec3 bottom_ref = vec3(0.5);
 uniform vec3 shoes_ref = vec3(0.5);
 uniform int part = 0;            // 0 everything, 1 the body without its head, 2 only the head
+uniform int debug_ids = 0;       // dev: 1 shows each mask region in a flat color
+// The pictures are many small islands packed edge to edge: the small mipmaps of a far-away hero
+// blend neighbouring islands together, which drew grey and dark specks and lines across the face.
+// Never going past this mipmap keeps every island its own color (1.5: up to about 3x smaller).
+uniform float lod_max = 1.5;
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 vec3 rgb2hsv(vec3 c) {
 	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
@@ -147,7 +152,9 @@ vec3 rehue(vec3 c, vec4 to) {
 	return hsv2rgb(vec3(t.x, clamp(h.y * mix(1.0, t.y / 0.8, 0.8), 0.0, 1.0), clamp(h.z * mix(1.0, t.z / 0.8, 0.6), 0.0, 1.0)));
 }
 void fragment() {
-	vec4 t = texture(tex, UV);
+	vec2 tsz = vec2(textureSize(tex, 0));
+	float lod = log2(max(max(length(dFdx(UV * tsz)), length(dFdy(UV * tsz))), 1e-6));
+	vec4 t = textureLod(tex, UV, clamp(lod, 0.0, lod_max));
 	vec2 m = texture(mask, UV).rg;
 	if (part == 1 && m.g > 0.75) {
 		discard;
@@ -171,6 +178,9 @@ void fragment() {
 		c = rehue(c, eyes_to);
 	} else if (id > 231.0) {
 		c = rehue(c, accent_to);
+	}
+	if (debug_ids == 1) {
+		c = id < 20.0 ? vec3(0.0) : (abs(id - 40.0) < 12.0 ? vec3(1.0, 0.8, 0.6) : (abs(id - 80.0) < 12.0 ? vec3(0.1, 0.9, 0.1) : (abs(id - 120.0) < 12.0 ? vec3(0.1, 0.2, 1.0) : (abs(id - 160.0) < 12.0 ? vec3(0.6, 0.0, 0.6) : (abs(id - 200.0) < 9.0 ? vec3(0.5, 0.3, 0.0) : (abs(id - 220.0) < 9.0 ? vec3(1.0, 1.0, 0.0) : (id > 231.0 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 1.0))))))));
 	}
 	ALBEDO = c;
 	ROUGHNESS = 0.85;

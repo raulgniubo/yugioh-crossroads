@@ -421,6 +421,10 @@ def main():
         table[n] = build(n, preview)
         print(n, json.dumps(table[n]))
     json.dump(table, open(path, "w"), indent=1, sort_keys=True)
+    # fill the seams of the new masks and the pictures, and make the face one even skin
+    import hero_seams
+    for n in names:
+        hero_seams.fix(n)
     if os.environ.get("HERO_NO_GD"):
         return
     lines = ["class_name HeroMasks", "## Made by tools/hero_masks.py. The usual color of each part of every built-in hero model,",
