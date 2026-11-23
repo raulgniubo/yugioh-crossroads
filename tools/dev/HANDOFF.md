@@ -1047,6 +1047,11 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
+#### 0.71.0 STATE (Nov 23 afternoon; NEWEST, read this first)
+- DuelWhy (scripts/ocg/duel_why.gd) reads every engine message in OcgDuel._one (why.read) and adds events "why" (reason card, DuelWhyUI.show_why), "status" (chips by the LP plates, DuelWhyUI.set_status) and "log" (HUD log_line). Lasting effects come from the English text of resolved Spells/Traps (card_text: EXT desc, "can't" normalized); face-up Continuous/Field cards are scanned when the field changes; a monster destroyed by battle whose text says "no battle damage this turn" (Lumen) counts too. Battles: expected damage from MSG_BATTLE vs MSG_DAMAGE, settled at the next attack / phase / request. The replay hash skips these events (old replays still match).
+- Tests: tests/why_unit.tscn (-- --assets=<full cards.json folder>), tests/why_replay.tscn -- <file.cxr> (prints what DuelWhy says over a saved duel), --why-demo / --why-log duel flags for pictures. Brother's 0.67 replay vs Syrus: One Day of Peace explains the missing Power Bond damage and the 4400 attacks; Lumen explains turn 5.
+- Not done: "why can't I" for an action the engine simply does not offer (only the chips say it).
+
 #### 0.70.0 STATE (Nov 23 morning; NEWEST, read this first)
 - Customization merged (d3912268): HeroLook OUTFITS 16 (append only), HAIRS 12 per body, head swap cuts whole triangles once per model (~100 ms each, cached), NECK_CUT / HAIR_DEPTH / BASES per body, borrowed face tinted toward NATURAL_NECK. HIDDEN_HAIRS = [[], [4, 6, 11]] (f5 Side Braid, f7 High Bun, f12 Half-Up): their faces have teal marks / blush blocks; v2 Meshy models (ids in /tmp/cust/PROGRESS.md round 4, rigged glbs in Mac meshy_work/r4_hero_f*_hair.glb) still to wire and check. f6 Pixie Cut is the v3 model.
 - Shelf fixes from the UI worker (yc_ui3): CardListView builds slots in steps + thumb_later, AlbumSlot.load_face_later, PackWrapper redraws only when lit, weakref callbacks; UITheme.clip_safe() (clip_contents without shadow) at 19 sites. cards_gate: pack click picks, second click / A opens (_open_on_up decided at button_down).

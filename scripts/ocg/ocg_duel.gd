@@ -35,6 +35,7 @@ var _attacker = null
 var _dirty := false
 var _limbo: Array = []
 var _phase_raw := 0
+var why := DuelWhy.new()       # says why things happen, and why they don't (DuelWhy)
 
 
 ## Build the two sides (the mirror's cards, nothing drawn yet). `first`: who goes first (0 or 1).
@@ -50,6 +51,8 @@ var speed := [0, 0]
 func prepare(state: DuelState, decks: Array, extras: Array, names: Array, first: int, seed := -1, setup := {}) -> void:
 	st = state
 	swap = first == 1
+	why = DuelWhy.new()
+	why.names = [str(names[0]), str(names[1])] if names.size() >= 2 else ["", ""]
 	EffectRunner.current_state = st
 	st.players = [DuelState.PlayerState.new(), DuelState.PlayerState.new()]
 	var rng := RandomNumberGenerator.new()
@@ -479,6 +482,7 @@ func _one(m: Dictionary, ev: Array) -> void:
 	var t := int(m["t"])
 	if log_msgs:
 		print("MSG ", m)
+	why.read(m, ev, self)
 	if m.has("bad"):
 		_err("short message %d" % t)
 	if (_pending != null or _flip != null) and not QUIET.has(t):
@@ -495,8 +499,8 @@ func _one(m: Dictionary, ev: Array) -> void:
 			_hint(m, ev)
 		5:
 			var wp := int(m["p"])
-			var why := OcgCore.victory(int(m["reason"]))
-			st._set_winner(wp if wp < 2 else DuelState.DRAW, why if why != "" else "The duel is over.")
+			var why_txt := OcgCore.victory(int(m["reason"]))
+			st._set_winner(wp if wp < 2 else DuelState.DRAW, why_txt if why_txt != "" else "The duel is over.")
 			# What kind of ending it was, for the show the duel screen plays (ExodiaShow, WinShow).
 			var wr := int(m["reason"])
 			if wp < 2:

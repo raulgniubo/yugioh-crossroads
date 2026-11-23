@@ -494,6 +494,33 @@ func _start() -> void:
 					hud.cut_in(0, "DARK MAGICIAN", "ATK 2500   ·   DEF 2100", Color("a070ff"), 30.0, true)
 				else:
 					hud.cut_in(0, "TRAP CARD!", "Mirror Force", Color("ff4dd2"), 30.0))
+	if "--why-demo" in OS.get_cmdline_user_args() or "--why-log" in OS.get_cmdline_user_args():
+		# Dev: the reasons on screen (DuelWhy): a reason card, what is in force by each Life Points, the log.
+		await _play(events)
+		var w := DuelWhy.new()
+		w.names = [state.players[ME].name, state.players[AI].name]
+		var ev2: Array = []
+		var peace := 33782437
+		var roar := 36361633
+		for m in [{"t": 40, "p": 0}, {"t": 70, "card": {"code": peace, "con": 0}, "n": 1}, {"t": 72, "n": 1}, {"t": 73, "n": 1}, {"t": 74},
+				{"t": 70, "card": {"code": roar, "con": 0}, "n": 1}, {"t": 72, "n": 1}, {"t": 73, "n": 1}, {"t": 74},
+				{"t": 40, "p": 1}, {"t": 110, "a": {"con": 1, "loc": 4, "seq": 0}, "b": {"con": 1, "loc": 0, "seq": 0}},
+				{"t": 111, "a": {"con": 1, "loc": 4, "seq": 0}, "aa": 4400, "b": {"con": 1, "loc": 0, "seq": 0, "pos": 0}}, {"t": 10}]:
+			w.read(m, ev2, ocg.d)
+		for e in ev2:
+			if e["type"] == "log":
+				hud.log_line(int(e["player"]), str(e["icon"]), str(e["text"]))
+		hud.why_ui.set_status(0, w.statuses(0))
+		hud.why_ui.set_status(1, w.statuses(1))
+		if "--why-demo" in OS.get_cmdline_user_args():
+			await get_tree().create_timer(10.5).timeout
+		hud.why_ui.show_why(0, Loc.t("NO DAMAGE"), Loc.t("You take no damage from this battle (%d): %s.") % [4400, "One Day of Peace"], peace)
+		if "--why-log" in OS.get_cmdline_user_args():
+			hud.log_line(1, "⚔", Loc.t("%s attacks you directly") % "Cyber Twin Dragon")
+			hud.log_line(0, "−", Loc.t("Paid %d Life Points") % 1000 + " · Hope for Escape")
+			hud.log_line(1, "+", Loc.t("Gained %d Life Points") % 3000 + " · Gift Card")
+			hud.show_log()
+		return
 	if "--ask-test" in OS.get_cmdline_user_args():
 		await _play(events)
 		var lab := {}
@@ -1763,6 +1790,19 @@ func _play_event(ev: Dictionary) -> void:
 					if ev["delta"] > 0:
 						hud.speed_fx.kick(0.35)
 			Sfx.play("charge" if ev["delta"] > 0 else "error", -9.0, 1.0 + 0.05 * float(ev["speed"]))
+		"why":
+			if not _autoplay:
+				if ev.get("quiet", false):
+					hud.effect_text(str(ev["text"]), Color("5fd0ff"))
+				else:
+					hud.why_ui.show_why(p, str(ev["title"]), str(ev["text"]), int(ev.get("id", 0)))
+					Sfx.play("error", -12.0, 1.4)
+					await get_tree().create_timer(Settings.t(0.9)).timeout
+		"status":
+			if not _autoplay:
+				hud.why_ui.set_status(p, ev["list"])
+		"log":
+			hud.log_line(p, str(ev["icon"]), str(ev["text"]))
 		"effect":
 			var on_field: bool = ev["card"] != null and board.card_for(ev["card"]) != null and (state.players[0].field.has(ev["card"]) or state.players[1].field.has(ev["card"]))
 			# (0.61.0) What kind of effect it is shows in its colour and its emblem.
@@ -2002,44 +2042,47 @@ func _feed_event(ev: Dictionary, p: int) -> void:
 			"attack":
 				if ev.get("target") == null:
 					_tally["direct"] = int(_tally.get("direct", 0)) + 1
+	# Every line goes in the card log; what the other side does also shows as a line on screen.
+	var line: Array = []
 	match str(ev["type"]):
 		"destiny":
-			if theirs:
-				hud.feed(p, "★", Loc.t("Destiny Draw: chose the card they drew"))
+			line = ["★", Loc.t("Destiny Draw: chose the card they drew") if theirs else Loc.t("Destiny Draw: you chose your card")]
 		"summon":
-			if theirs:
-				hud.feed(p, "▲", Loc.t("Summoned %s  (%d ATK)") % [cn, int(c.atk())])
+			line = ["▲", Loc.t("Summoned %s  (%d ATK)") % [cn, int(c.atk())]]
 		"set":
-			if theirs:
-				hud.feed(p, "▣", Loc.t("Set a monster face-down"))
+			line = ["▣", Loc.t("Set a monster face-down")]
 		"set_st":
-			if theirs:
-				hud.feed(p, "▣", Loc.t("Set a card face-down"))
+			line = ["▣", Loc.t("Set a card face-down")]
 		"activate":
-			if theirs:
-				hud.feed(p, "✦", Loc.t("Activated %s") % cn)
+			line = ["✦", Loc.t("Activated %s") % cn]
 		"trap":
-			if theirs:
-				hud.feed(p, "!", Loc.t("Trap: %s") % cn)
+			line = ["!", Loc.t("Trap: %s") % cn]
 		"special":
-			if theirs:
-				hud.feed(p, "★", Loc.t("Special Summoned %s") % cn)
+			line = ["★", Loc.t("Special Summoned %s") % cn]
 		"flip":
-			if theirs:
-				hud.feed(p, "↻", Loc.t("Flipped %s face-up") % cn)
+			line = ["↻", Loc.t("Flipped %s face-up") % cn]
 		"attack":
-			if theirs:
-				var tg = ev.get("target")
-				if tg == null:
-					hud.feed(p, "⚔", Loc.t("%s attacks you directly") % cn)
-				else:
-					hud.feed(p, "⚔", Loc.t("%s attacks %s") % [cn, str(tg.cname()) if tg.face_up else Loc.t("your face-down monster")])
+			var tg = ev.get("target")
+			if tg == null:
+				line = ["⚔", Loc.t("%s attacks you directly") % cn if theirs else Loc.t("%s attacks directly") % cn]
+			elif theirs:
+				line = ["⚔", Loc.t("%s attacks %s") % [cn, str(tg.cname()) if tg.face_up else Loc.t("your face-down monster")]]
+			else:
+				line = ["⚔", Loc.t("%s attacks %s") % [cn, str(tg.cname()) if tg.face_up else Loc.t("a face-down monster")]]
 		"destroy":
-			if c != null and c.owner == ME and cn != "":
-				hud.feed(AI, "✕", Loc.t("Your %s was destroyed") % cn)
+			if c != null and cn != "":
+				if c.owner == ME:
+					hud.feed(AI, "✕", Loc.t("Your %s was destroyed") % cn)
+				else:
+					hud.log_line(ME, "✕", Loc.t("%s was destroyed") % cn)
 		"effect":
-			if theirs and cn != "":
-				hud.feed(p, "✦", Loc.t("Effect: %s") % cn)
+			if cn != "":
+				line = ["✦", Loc.t("Effect: %s") % cn]
+	if not line.is_empty():
+		if theirs:
+			hud.feed(p, str(line[0]), str(line[1]))
+		else:
+			hud.log_line(p, str(line[0]), str(line[1]))
 
 
 func _update_counts() -> void:
@@ -2246,6 +2289,10 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_L and not _finished:
+		hud.show_log()
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventJoypadButton and event.pressed and _my_turn():
 		if Pad.b(event) == JOY_BUTTON_X:
 			_on_phase_button("battle")

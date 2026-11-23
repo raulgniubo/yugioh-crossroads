@@ -6389,3 +6389,59 @@ Short Layers	Capas cortas
 Half-Up	Semirrecogido
 HAIRSTYLE   ·   %d to pick from	PEINADO   ·   %d para elegir
 OUTFIT   ·   %s	ROPA   ·   %s
+%d damage	%d de daño
+%s attacks directly	%s ataca directamente
+%s can't Special Summon	%s no puede Invocar de Modo Especial
+%s can't declare attacks	%s no puede declarar ataques
+%s did no damage: %s is in force.	%s no hizo daño: %s está en efecto.
+%s takes no battle damage	%s no recibe daño de batalla
+%s takes no damage from this battle (%d): %s.	%s no recibe daño de esta batalla (%d): %s.
+%s takes no damage from this battle (%d): an effect stopped it.	%s no recibe daño de esta batalla (%d): un efecto lo impidió.
+%s takes no damage	%s no recibe daño
+%s was destroyed	%s fue destruido
+%s's monsters can't be destroyed by battle	Los monstruos de %s no pueden ser destruidos en batalla
+%s: no damage in the End Phase, %s is in force.	%s: sin daño en la End Phase, %s está en efecto.
+ATTACK STOPPED	ATAQUE DETENIDO
+Attack stopped	Ataque detenido
+Can't Special Summon	No puede Invocar de Modo Especial
+Can't attack	No puede atacar
+DAMAGE	DAÑO
+DUEL LOG	REGISTRO DEL DUELO
+Destiny Draw: you chose your card	Robo del Destino: elegiste tu carta
+Gained %d Life Points	Ganó %d Puntos de Vida
+IN FORCE	EN EFECTO
+NO ATTACKS	SIN ATAQUES
+NO DAMAGE	SIN DAÑO
+Neither player takes battle damage	Ningún jugador recibe daño de batalla
+Neither player takes damage	Ningún jugador recibe daño
+Neither player	Ningún jugador
+Newest first · everything both of you did, and why	Lo más reciente arriba · todo lo que hicieron los dos, y por qué
+No battle damage	Sin daño de batalla
+No damage	Sin daño
+No monster can declare an attack	Ningún monstruo puede declarar un ataque
+Not destroyed by battle	No se destruyen en batalla
+Paid %d Life Points	Pagó %d Puntos de Vida
+SAFE IN BATTLE	A SALVO EN BATALLA
+Some Special Summons blocked	Algunas Invocaciones Especiales bloqueadas
+Some monsters can't attack	Algunos monstruos no pueden atacar
+Some of %s's monsters can't attack	Algunos monstruos de %s no pueden atacar
+Some of your monsters can't attack	Algunos de tus monstruos no pueden atacar
+Special Summons are limited	Las Invocaciones Especiales están limitadas
+Stopped by %s.	Lo detuvo %s.
+You can't Special Summon	No puedes Invocar de Modo Especial
+You can't declare attacks	No puedes declarar ataques
+You take no battle damage	No recibes daño de batalla
+You take no damage from this battle (%d): %s.	No recibes daño de esta batalla (%d): %s.
+You take no damage from this battle (%d): an effect stopped it.	No recibes daño de esta batalla (%d): un efecto lo impidió.
+You take no damage	No recibes daño
+Your monsters can't be destroyed by battle	Tus monstruos no pueden ser destruidos en batalla
+Your opponent	Tu oponente
+battle with %s	batalla con %s
+battle	batalla
+this turn	este turno
+until the end of %s's turn	hasta el final del turno de %s
+while %s is face-up	mientras %s esté boca arriba
+Duel log: everything that happened, and why (L)	Registro del duelo: todo lo que pasó, y por qué (L)
+a face-down monster	un monstruo boca abajo
+until the end of your next turn	hasta el final de tu próximo turno
+until the end of your turn	hasta el final de tu turno

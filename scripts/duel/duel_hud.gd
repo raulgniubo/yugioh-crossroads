@@ -46,6 +46,7 @@ var player_names := ["You", "Opponent"]
 var portrait_keys := ["player", "kaiba"]
 var _portraits: Array[TextureRect] = [null, null]
 var _plates: Array[Control] = [null, null]
+var why_ui: DuelWhyUI               # the reasons and what is in force (DuelWhy)
 var _bubbles: Array[Control] = [null, null]
 var _name_labels: Array[Label] = [null, null]
 var _btn_extra: Button
@@ -58,6 +59,9 @@ func _ready() -> void:
 	# Everything in a duel answers on the press, not on the release: taps feel instant.
 	get_tree().node_added.connect(_snap_button)
 	_build_plates()
+	why_ui = DuelWhyUI.new()
+	why_ui.plates = [_plates[0], _plates[1]]
+	add_child(why_ui)
 	_build_phase()
 	_build_inspector()
 	_build_hand()
@@ -76,7 +80,7 @@ func _ready() -> void:
 	rounds.offset_bottom = -28
 	rounds.alignment = BoxContainer.ALIGNMENT_END
 	add_child(rounds)
-	for def in [["piles", "Graveyards and banished cards", Comic.BLUE], ["log", "Card log: everything played this duel", Comic.BLUE], ["gear", "Duel menu", Comic.BLUE]]:
+	for def in [["piles", "Graveyards and banished cards", Comic.BLUE], ["log", "Duel log: everything that happened, and why (L)", Comic.BLUE], ["gear", "Duel menu", Comic.BLUE]]:
 		var rb := RoundButton.new(str(def[0]), def[2])
 		rb.tooltip_text = str(def[1])
 		rounds.add_child(rb)
@@ -2432,8 +2436,11 @@ var _log_panel: Control
 ## The card log: every line the feed has shown this duel, newest first.
 func show_log() -> void:
 	if _log_panel:
-		_log_panel.queue_free()
+		var gone := _log_panel
 		_log_panel = null
+		var tw0 := create_tween()
+		tw0.tween_property(gone, "modulate:a", 0.0, 0.15)
+		tw0.tween_callback(gone.queue_free)
 		return
 	_log_panel = Control.new()
 	_log_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -2448,50 +2455,123 @@ func show_log() -> void:
 			show_log())
 	_log_panel.add_child(dim)
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL, 22))
+	var psb := UITheme.panel_box(Color(0.03, 0.05, 0.11, 0.96), 22, Color(Comic.SKY, 0.25))
+	psb.content_margin_left = 22
+	psb.content_margin_right = 22
+	psb.content_margin_top = 18
+	psb.content_margin_bottom = 18
+	psb.shadow_color = Color(0, 0, 0, 0.5)
+	psb.shadow_size = 24
+	panel.add_theme_stylebox_override("panel", psb)
 	panel.anchor_left = 1.0
 	panel.anchor_right = 1.0
 	panel.anchor_bottom = 1.0
-	panel.offset_left = -620
+	panel.offset_left = -700
 	panel.offset_right = -30
-	panel.offset_top = 230
-	panel.offset_bottom = -120
+	panel.offset_top = 210
+	panel.offset_bottom = -110
 	_log_panel.add_child(panel)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
 	panel.add_child(v)
-	v.add_child(Comic.label(Loc.t("CARD LOG"), 34, Comic.YELLOW))
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 14)
+	v.add_child(head)
+	head.add_child(Comic.label(Loc.t("DUEL LOG"), 34, Comic.YELLOW))
+	var hint := UITheme.label(Loc.t("Newest first · everything both of you did, and why"), 16, UITheme.TEXT_DIM, UITheme.semi_font())
+	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(hint)
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	v.add_child(sc)
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 6)
+	list.add_theme_constant_override("separation", 4)
 	sc.add_child(list)
 	if _log.is_empty():
-		list.add_child(UITheme.label("Nothing has been played yet.", 18, UITheme.TEXT_DIM))
+		list.add_child(UITheme.label(Loc.t("Nothing has been played yet."), 18, UITheme.TEXT_DIM))
 	var last_turn := -1
 	for i in range(_log.size() - 1, -1, -1):
 		var e: Array = _log[i]
 		if int(e[3]) != last_turn:
 			last_turn = int(e[3])
-			list.add_child(UITheme.label(Loc.t("TURN %d") % last_turn, 17, Comic.YELLOW, UITheme.semi_font()))
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 10)
-		var col: Color = Comic.SKY if int(e[0]) == 0 else Color("ff9aa6")
-		var who := UITheme.label(str(e[1]), 19, col, UITheme.title_font())
-		who.custom_minimum_size = Vector2(30, 0)
-		row.add_child(who)
-		var l := UITheme.label(str(e[2]), 18, UITheme.TEXT, UITheme.semi_font())
+			var th := HBoxContainer.new()
+			th.add_theme_constant_override("separation", 10)
+			var tl := UITheme.label(Loc.t("TURN %d") % last_turn, 17, Comic.YELLOW, UITheme.semi_font())
+			th.add_child(tl)
+			var rule := ColorRect.new()
+			rule.color = Color(Comic.YELLOW, 0.25)
+			rule.custom_minimum_size = Vector2(0, 2)
+			rule.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			rule.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			th.add_child(rule)
+			if list.get_child_count() > 0:
+				var gap := Control.new()
+				gap.custom_minimum_size = Vector2(0, 6)
+				list.add_child(gap)
+			list.add_child(th)
+		var icon := str(e[1])
+		var text := str(e[2])
+		var who := int(e[0])
+		var col: Color = Comic.SKY if who == 0 else (Color("ff9aa6") if who == 1 else UITheme.TEXT_DIM)
+		var tcol := UITheme.TEXT
+		var reason := icon == "🛡" or icon == "⏳" or icon == "✋"
+		if icon == "−":
+			tcol = Color("ff8a9a")
+		elif icon == "+":
+			tcol = Color("7be08a")
+		elif reason:
+			tcol = Color("9fdcff")
+		var row := PanelContainer.new()
+		var rsb := StyleBoxFlat.new()
+		rsb.bg_color = Color(1, 1, 1, 0.035) if not reason else Color(0.37, 0.82, 1.0, 0.08)
+		rsb.set_corner_radius_all(8)
+		rsb.content_margin_left = 8
+		rsb.content_margin_right = 10
+		rsb.content_margin_top = 3
+		rsb.content_margin_bottom = 3
+		row.add_theme_stylebox_override("panel", rsb)
+		var rh := HBoxContainer.new()
+		rh.add_theme_constant_override("separation", 10)
+		row.add_child(rh)
+		var bar := ColorRect.new()
+		bar.color = col
+		bar.custom_minimum_size = Vector2(4, 0)
+		rh.add_child(bar)
+		var ic := UITheme.label(icon if not reason else "", 19, col, UITheme.title_font())
+		ic.custom_minimum_size = Vector2(24, 0)
+		if reason:
+			var shield := DuelWhyUI._Icon.new()
+			shield.kind = "no_attack" if icon == "✋" else "no_dmg"
+			shield.col = Color("5fd0ff")
+			shield.custom_minimum_size = Vector2(18, 22)
+			shield.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			var holder := CenterContainer.new()
+			holder.custom_minimum_size = Vector2(24, 0)
+			holder.add_child(shield)
+			rh.add_child(holder)
+		else:
+			rh.add_child(ic)
+		var l := UITheme.label(text, 18, tcol, UITheme.semi_font())
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(l)
+		rh.add_child(l)
 		list.add_child(row)
 	var close := Button.new()
-	close.text = "Close"
+	close.text = Loc.t("Close")
 	close.pressed.connect(show_log)
 	v.add_child(close)
+	_log_panel.modulate.a = 0.0
+	create_tween().tween_property(_log_panel, "modulate:a", 1.0, 0.15)
+	close.grab_focus.call_deferred()
+
+
+## A line for the card log only (nothing shows on the table). `p` -1: both / the table.
+func log_line(p: int, icon: String, text: String) -> void:
+	_log.append([p, icon, text, _pill_turn])
+	if _log.size() > 300:
+		_log.pop_front()
 
 
 func feed(p: int, icon: String, text: String) -> void:

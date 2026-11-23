@@ -184,6 +184,8 @@ func loop() -> void:
 		else:
 			events = d.feed(replay["tape"][_replay_at])      # (answer n is followed by step n + 1)
 		for e in events:
+			if str(e["type"]) in ["why", "status", "log"]:
+				continue      # (what DuelWhy says is not the duel: replays recorded before it still match)
 			ev_hash = hash([ev_hash, str(e["type"]), int(e.get("player", -1)), int(e["card"].id) if e.get("card") != null and "id" in e["card"] else 0, int(e.get("lp", 0))])
 		if _live:
 			# A pick made card by card stays up between its steps, and goes when it is over.

@@ -5,6 +5,14 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.71.0
+
+**Duels say why.** When something expected does not happen, the duel now tells you what stopped it. No cards added: 8,415 total.
+
+- **A reason card the moment it matters**: an attack that lands with no damage says "NO DAMAGE: you take no damage from this battle (4400): One Day of Peace"; an End Phase bill that never comes says so ("Power Bond: no damage in the End Phase, One Day of Peace is in force"); a stopped attack names the card that stopped it (Swift Scarecrow, Negate Attack...); a burn that does nothing says what was in the way. The same reason again in a turn shows as a short line.
+- **What is in force, by the Life Points**: a chip for each lasting effect on each side, with the card's picture, what it does and until when (One Day of Peace, Waboku, Threatening Roar, Lumen after she falls, Hallowed Life Barrier...), and for face-up Continuous and Field cards that stop attacks, damage or Special Summons (Gravity Bind, Messenger of Peace, Spirit Barrier...). Point at a chip for the card's whole text.
+- **Duel log** (the list button, or L): everything both of you did, turn by turn, newest first: summons, activations, attacks, every point of damage and Life Points paid or gained with where it came from, and every reason above.
+
 ## What is in 0.70.2
 
 **Your duelist's colors and skin, and two hairstyles back.** No cards added: 8,415 total.
