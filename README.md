@@ -5,6 +5,15 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.70.0
+
+**Your duelist, many more ways: hairstyles and outfits from every era. Plus Raul's notes on the shops and the Free Roam cards.** No cards added: 8,415 total (the collection counter shows 8,433 because it also counts Lumen's original cards and the Speed Spells).
+
+- **16 outfits per body, grouped by era in the editor**: Duel Monsters (Street Duelist, Trench Coat, Varsity Jacket, Vest and Tie), GX (Academy Blazer, Track Jacket, Island Casual, Academy Cardigan), 5D's (Turbo Rider, Satellite Jacket, Duster Coat, Mechanic Overalls), ZEXAL (Heartland Casual, Windbreaker, Neon Coat, City School Uniform). All original designs.
+- **More hairstyles**: 12 for body A (Curly Top, Buzz Cut, Side Part, Messy Shag, Top Knot, Tied Back, Layered Fringe, Short Twists are new) and 9 for body B (Pixie Cut, Long Straight, Shoulder Curls, Double Buns, Short Layers are new). Every hairstyle goes with every outfit, the face keeps your skin tone on every outfit, and the neck joins cleanly. Three more for body B (Side Braid, High Bun, Half-Up) are hidden until their faces are remade.
+- **Shops shelves**: one click on a pack only picks it (name, price, your cards of it show below); a second click, Enter / A, or "See all cards" opens it. The card list builds a few rows at a time and reads small pictures in the background, so opening a pack no longer stalls the game; packs on a shelf only redraw while their shine moves.
+- **Rounded cards without gray corners**: a clipped card was cutting its own shadow into a square; fixed on Free Roam and every other screen that clips its tiles (19 places).
+
 ## What is in 0.69.2
 
 **Raul's notes from 0.69.1, all of them, plus clean faces on your duelist.** No cards added: 8,415 total.

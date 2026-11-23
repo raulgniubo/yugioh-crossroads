@@ -69,6 +69,8 @@ func _ready() -> void:
 	tints = cfg.get_value("profile", "tints", tints)
 	look_body = clampi(cfg.get_value("look", "body", 1 if gender == 1 else 0), 0, 1)
 	look_hair = clampi(cfg.get_value("look", "hair", 0), 0, HeroLook.MAX_HAIRS - 1)
+	if HeroLook.HIDDEN_HAIRS[clampi(look_body, 0, 1)].has(look_hair):
+		look_hair = 0
 	look_outfit = clampi(cfg.get_value("look", "outfit", 0), 0, HeroLook.OUTFITS.size() - 1)
 	if cfg.has_section_key("look", "height5"):
 		look_height = clampi(cfg.get_value("look", "height5", 2), 0, HEIGHTS.size() - 1)

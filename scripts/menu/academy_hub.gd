@@ -135,7 +135,7 @@ func _build() -> void:
 func _build_you(dorm: Dictionary) -> void:
 	var dcol: Color = dorm["color"]
 	var card := _card(Vector2(64, 130), Vector2(472, 840), Color(dcol.r, dcol.g, dcol.b, 0.5))
-	card.clip_contents = true
+	UITheme.clip_safe(card)
 	var v := _vbox(card, 8)
 	var who := UITheme.label(Profile.duelist_name.to_upper(), 34, Color.WHITE, UITheme.title_font())
 	v.add_child(who)
@@ -350,7 +350,7 @@ func _versus(t: Dictionary) -> Control:
 	var frame := PanelContainer.new()
 	frame.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.042, 0.0676, 0.136), 14, Color(1, 1, 1, 0.14)))
 	frame.custom_minimum_size = Vector2(176, 200)
-	frame.clip_contents = true
+	UITheme.clip_safe(frame)
 	var tex := TextureRect.new()
 	tex.texture = Portraits.get_portrait(str(t["char"]))
 	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

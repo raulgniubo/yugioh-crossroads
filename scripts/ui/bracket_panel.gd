@@ -169,7 +169,7 @@ func _build_plates(col: Color) -> void:
 				face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 				face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 				face.custom_minimum_size = Vector2(rect.size.y - 10.0, rect.size.y - 10.0)
-				face.clip_contents = true
+				UITheme.clip_safe(face)
 				h.add_child(face)
 				var nm := UITheme.label(str(e["name"]).to_upper() if you else str(e["name"]), 26 if r == 3 else 22, Color.WHITE if not lost else Color(1, 1, 1, 0.35), UITheme.title_font() if you or r == 3 else UITheme.semi_font())
 				nm.clip_text = true

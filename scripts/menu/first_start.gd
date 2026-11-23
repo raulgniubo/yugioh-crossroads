@@ -486,7 +486,7 @@ func _make_band(i: int) -> Control:
 		face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		face.size = Vector2(200, 270)
 		face.position = Vector2(fx - 200.0, 25.0)
-		face.clip_contents = true
+		UITheme.clip_safe(face)
 		band.add_child(face)
 		fx -= 190.0
 	return band

@@ -54,6 +54,30 @@ static func panel_box(color := PANEL, radius := 18, border := Color(1, 1, 1, 0.0
 	return sb
 
 
+## Clip a control's children to its rect without the square-corner bug: clipping also cuts the
+## control's own drop shadow at the rect edge, which then fills the space outside the rounded
+## corners with a gray square. So a clipped control never draws a shadow, even when a stylebox is
+## swapped in later (hover, selection).
+static func clip_safe(c: Control) -> void:
+	c.clip_contents = true
+	_unshadow(c)
+	if not c.theme_changed.is_connected(_unshadow.bind(c)):
+		c.theme_changed.connect(_unshadow.bind(c))
+
+
+static func _unshadow(c: Control) -> void:
+	if not is_instance_valid(c):
+		return
+	for st in ["normal", "hover", "focus", "pressed", "hover_pressed", "disabled", "panel"]:
+		if not c.has_theme_stylebox_override(st):
+			continue
+		var sb := c.get_theme_stylebox(st)
+		if sb is StyleBoxFlat and (sb as StyleBoxFlat).shadow_size > 0:
+			var d := (sb as StyleBoxFlat).duplicate() as StyleBoxFlat
+			d.shadow_size = 0
+			c.add_theme_stylebox_override(st, d)
+
+
 static func button_box(bg: Color, border: Color, radius := 12) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg

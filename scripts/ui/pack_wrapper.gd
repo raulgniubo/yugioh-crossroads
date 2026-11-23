@@ -7,7 +7,10 @@ const ART := {"Duel Monsters": "dm", "GX": "gx", "5D's": "5ds", "ZEXAL": "zexal"
 
 var pack := {}
 var sheen := true           # the travelling highlight
-var torn := false           # the top seal has been ripped off
+var torn := false:          # the top seal has been ripped off
+	set(v):
+		torn = v
+		queue_redraw()
 var glow := 0.0             # 0..1 extra rim light (hover / selected)
 var _art: Texture2D
 var _t := randf() * 5.0
@@ -45,14 +48,25 @@ func _take_cover() -> void:
 	var cover := Collection.pack_cover(str(pack.get("key", "")))
 	if cover == 0:
 		return
-	Cards.thumb_later(cover, func(t: Texture2D):
-		if not is_instance_valid(self) or t == null:
+	Cards.thumb_later(cover, _when_cover(weakref(self)))
+
+
+## (Static, holding a weakref: the shelf may be closed before the picture arrives.)
+static func _when_cover(me: WeakRef) -> Callable:
+	return func(t: Texture2D):
+		var w = me.get_ref()
+		if w == null or t == null:
 			return
-		var ts := t.get_size()
-		_region = Rect2(Vector2.ZERO, ts)
-		if ts.x / maxf(ts.y, 1.0) < 0.82:
-			_region = Rect2(ts.x * 0.125, ts.y * 0.185, ts.x * 0.75, ts.x * 0.75)
-		_art = t)
+		w._set_art(t)
+
+
+func _set_art(t: Texture2D) -> void:
+	var ts := t.get_size()
+	_region = Rect2(Vector2.ZERO, ts)
+	if ts.x / maxf(ts.y, 1.0) < 0.82:
+		_region = Rect2(ts.x * 0.125, ts.y * 0.185, ts.x * 0.75, ts.x * 0.75)
+	_art = t
+	queue_redraw()
 
 
 func _ready() -> void:
@@ -64,10 +78,23 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	# (A shelf holds dozens of these, and the shops page keeps every world's shelf: one hidden
+	# shelf costs nothing, and a visible one only redraws while its sheen is crossing or its rim
+	# light changes. Redrawing all of them every frame made the shops page slow.)
+	if not is_visible_in_tree():
+		return
 	_t += delta
 	if _wait_cover:
 		_take_cover()
-	queue_redraw()
+	var lit := sheen and fmod(_t, 3.4) < 1.1
+	if lit or _was_lit or absf(glow - _drawn_glow) > 0.004:
+		queue_redraw()
+	_was_lit = lit
+
+
+var _was_lit := true
+var _drawn_glow := -1.0
+var _fit := {}              # "<width>|<name>" -> font size that fits (measured once)
 
 
 ## The outline of the top seal alone (for the strip that tears away).
@@ -78,6 +105,7 @@ static func seal_rect(sz: Vector2) -> Rect2:
 func _draw() -> void:
 	var w := size.x
 	var h := size.y
+	_drawn_glow = glow
 	var col: Color = pack.get("color", UITheme.ACCENT)
 	var seal := h * 0.075
 	var band := h * 0.2
@@ -109,9 +137,13 @@ func _draw() -> void:
 		draw_rect(Rect2(0, by + band * i / 10.0, w, band / 10.0 + 1), Color(0.02, 0.03, 0.06, 0.55 + 0.4 * i / 9.0))
 	draw_rect(Rect2(0, by, w, 3), col)
 	var name_s := Collection.pack_title(pack).to_upper()
-	var fs := int(h * 0.062)
-	while fs > 7 and _title_font.get_string_size(name_s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > w - 20.0:
-		fs -= 1
+	var fk := "%d|%d|%s" % [int(w), int(h), name_s]
+	var fs := int(_fit.get(fk, 0))
+	if fs == 0:
+		fs = int(h * 0.062)
+		while fs > 7 and _title_font.get_string_size(name_s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > w - 20.0:
+			fs -= 1
+		_fit[fk] = fs
 	var ns := _title_font.get_string_size(name_s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
 	# (The outline follows the type size: a fixed 6 px swamped the name on small wrappers.)
 	draw_string_outline(_title_font, Vector2((w - ns.x) / 2.0, by + band * 0.5), name_s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, maxi(2, int(fs * 0.3)), Color(0, 0, 0, 0.9))

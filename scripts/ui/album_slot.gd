@@ -72,7 +72,27 @@ func wants_face() -> bool:
 
 func load_face() -> void:
 	_loaded = true
-	_card.texture = Cards.get_face(id)
+	_show_face(Cards.get_face(id))
+
+
+## The same, without making the game wait: the small picture is read on another thread and comes
+## in when it is ready (a pack's list of 200+ cards used to read ten full pictures a frame).
+func load_face_later() -> void:
+	_loaded = true
+	Cards.thumb_later(id, _when_face(weakref(self), id))
+
+
+## (Made in a static function so the callback holds no reference to a slot that may be freed
+## before its picture arrives; it looks the slot up through the weakref instead.)
+static func _when_face(me: WeakRef, want: int) -> Callable:
+	return func(t: Texture2D):
+		var s = me.get_ref()
+		if s != null and s.id == want and t != null:
+			s._show_face(t)
+
+
+func _show_face(tex: Texture2D) -> void:
+	_card.texture = tex
 	if state == "owned":
 		Foil.apply(_card, CardData.rarity(id))
 		_card.modulate = Color.WHITE

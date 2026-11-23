@@ -36,6 +36,8 @@ var _d_type: Label
 var _d_stats: Label
 var _d_text: RichTextLabel
 var _d_owned: Label
+var _d_id := 0
+var _rar := {}                 # id -> rarity (worked out once)
 
 
 ## kind "pack": info is the shop's pack. kind "deck": info is the deck catalog entry.
@@ -79,7 +81,8 @@ func _ready() -> void:
 	row.add_theme_constant_override("separation", 26)
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	outer.add_child(row)
-	row.add_child(_left_column(col))
+	var _lc := _left_column(col)
+	row.add_child(_lc)
 	row.add_child(_grid_column(col))
 	row.add_child(_detail_column(col))
 	var hints := UITheme.label(Loc.t("Arrows  move     F / Y  have or missing     R / X  rarity     LB / RB  page     Esc / B  close"), 16, UITheme.TEXT_DIM)
@@ -114,25 +117,22 @@ func _gather() -> void:
 		for id in Collection.pool(str(_info["key"])):
 			seen[int(id)] = true
 	_ids = seen.keys()
+	# (Each card's sort key worked out once: sorting 270 cards looked each one up again and again.)
 	var kind_rank := {"monster": 0, "spell": 1, "trap": 2}
+	var keys := {}
+	for id in _ids:
+		var d := CardData.get_card(id)
+		var r := CardData.rarity(id)
+		_rar[id] = r
+		var k := int(kind_rank.get(str(d.get("kind", "")), 3))
+		keys[id] = [-r if _kind == "pack" else 0, k, -int(d.get("level", 0)) if (_kind == "deck" and k == 0) else 0, str(d.get("name", ""))]
 	_ids.sort_custom(func(a, b):
-		var da := CardData.get_card(a)
-		var db := CardData.get_card(b)
-		if _kind == "pack":
-			var ra := CardData.rarity(a)
-			var rb := CardData.rarity(b)
-			if ra != rb:
-				return ra > rb
-		var ka := int(kind_rank.get(str(da.get("kind", "")), 3))
-		var kb := int(kind_rank.get(str(db.get("kind", "")), 3))
-		if ka != kb:
-			return ka < kb
-		if _kind == "deck" and ka == 0:
-			var la := int(da.get("level", 0))
-			var lb := int(db.get("level", 0))
-			if la != lb:
-				return la > lb
-		return str(da.get("name", "")) < str(db.get("name", "")))
+		var ka: Array = keys[a]
+		var kb: Array = keys[b]
+		for i in 3:
+			if ka[i] != kb[i]:
+				return ka[i] < kb[i]
+		return ka[3] < kb[3])
 
 
 func _color() -> Color:
@@ -154,7 +154,7 @@ func _left_column(col: Color) -> Control:
 	holder.custom_minimum_size = Vector2(290, 300)
 	left.add_child(holder)
 	if _kind == "pack":
-		var w := PackWrapper.new().setup(_info)
+		var w := PackWrapper.new().setup(_info, true)
 		w.custom_minimum_size = Vector2(230, 353)
 		w.size = Vector2(230, 353)
 		w.scale = Vector2(0.81, 0.81)
@@ -224,7 +224,7 @@ func _left_column(col: Color) -> Control:
 		var n := 0
 		var h := 0
 		for id in _ids:
-			if CardData.rarity(id) == r:
+			if int(_rar.get(id, 0)) == r:
 				n += 1
 				if Collection.count(id) > 0:
 					h += 1
@@ -317,14 +317,10 @@ func _grid_column(col: Color) -> Control:
 	_grid.add_theme_constant_override("h_separation", 8)
 	_grid.add_theme_constant_override("v_separation", 8)
 	cen.add_child(_grid)
-	for i in _ids.size():
-		var id: int = _ids[i]
-		var s := AlbumSlot.new()
-		var n := Collection.count(id)
-		s.setup(id, i + 1, "owned" if n > 0 else "missing", n, col)
-		s.picked.connect(func(sl): _select(_shown.find(sl)))
-		_grid.add_child(s)
-		_slots.append(s)
+	# (The first screenfuls now, the rest a few rows a frame: a pack of 270 cards used to build
+	# every slot in one frame.)
+	_slot_col = col
+	_add_slots(_cols * 6)
 	_empty = UITheme.label(Loc.t("Nothing here with these filters."), 22, UITheme.TEXT_DIM)
 	_empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_empty.visible = false
@@ -373,10 +369,22 @@ func _detail_column(col: Color) -> Control:
 	return pc
 
 
+static func _when_big(me: WeakRef, want: int) -> Callable:
+	return func(t: Texture2D):
+		var v = me.get_ref()
+		if v != null and v._d_id == want and t != null:
+			v._d_face.texture = t
+
+
 func _show_card(id: int) -> void:
 	var d := CardData.get_card(id)
 	var n := Collection.count(id)
-	_d_face.texture = Cards.get_face(id, true)
+	# (The sharp picture is read on another thread; the small one, if it is already in memory,
+	# stands in for the few frames that takes.)
+	var small = Cards._kept(Cards._thumb_cache, id)
+	_d_face.texture = small
+	_d_id = id
+	Cards.face_later(id, _when_big(weakref(self), id))
 	if n > 0:
 		Foil.apply(_d_face, CardData.rarity(id))
 	else:
@@ -441,17 +449,57 @@ func _set_rar(r: int) -> void:
 	_apply_filters()
 
 
+var _slot_col := Color.WHITE
+
+
+## Make the next `n` slots (in order) and put them in the grid.
+func _add_slots(n: int) -> int:
+	var made := 0
+	while made < n and _slots.size() < _ids.size():
+		var i := _slots.size()
+		var id: int = _ids[i]
+		var s := AlbumSlot.new()
+		var c := Collection.count(id)
+		s.setup(id, i + 1, "owned" if c > 0 else "missing", c, _slot_col)
+		s.picked.connect(func(sl): _select(_shown.find(sl)))
+		_grid.add_child(s)
+		_slots.append(s)
+		made += 1
+	return made
+
+
+func _passes(sl: AlbumSlot) -> bool:
+	var ok := true
+	match HAVE_FILTERS[_have_f]:
+		"have": ok = sl.state == "owned"
+		"missing": ok = sl.state != "owned"
+	if ok and _rar_f >= 0:
+		ok = int(_rar.get(sl.id, 0)) == _rar_f
+	return ok
+
+
+func _count_text() -> void:
+	# (Counted over every card, built or not yet.)
+	var n := 0
+	for id in _ids:
+		var ok := true
+		var own := Collection.count(id) > 0
+		match HAVE_FILTERS[_have_f]:
+			"have": ok = own
+			"missing": ok = not own
+		if ok and _rar_f >= 0:
+			ok = int(_rar.get(id, 0)) == _rar_f
+		if ok:
+			n += 1
+	_count.text = Loc.t("%d cards") % n if n != 1 else Loc.t("1 card")
+
+
 func _apply_filters() -> void:
 	var keep_id: int = (_shown[_sel] as AlbumSlot).id if _sel >= 0 and _sel < _shown.size() else 0
 	_shown.clear()
 	for s in _slots:
 		var sl := s as AlbumSlot
-		var ok := true
-		match HAVE_FILTERS[_have_f]:
-			"have": ok = sl.state == "owned"
-			"missing": ok = sl.state != "owned"
-		if ok and _rar_f >= 0:
-			ok = CardData.rarity(sl.id) == _rar_f
+		var ok := _passes(sl)
 		sl.visible = ok
 		sl.selected = false
 		if ok:
@@ -460,8 +508,8 @@ func _apply_filters() -> void:
 		(_have_btns[i] as Button).button_pressed = i == _have_f
 	for r in _rar_btns:
 		(_rar_btns[r] as Button).button_pressed = r == _rar_f
-	_count.text = Loc.t("%d cards") % _shown.size() if _shown.size() != 1 else Loc.t("1 card")
-	_empty.visible = _shown.is_empty()
+	_count_text()
+	_empty.visible = _shown.is_empty() and _slots.size() >= _ids.size()
 	_scroll.visible = not _shown.is_empty()
 	_sel = -1
 	var to := 0
@@ -491,6 +539,25 @@ func _select(i: int, quiet := false) -> void:
 
 
 func _process(_delta: float) -> void:
+	# The rest of the slots, a few rows a frame.
+	if _slots.size() < _ids.size():
+		var from := _slots.size()
+		_add_slots(_cols * 3)
+		var any := false
+		for k in range(from, _slots.size()):
+			var sl: AlbumSlot = _slots[k]
+			sl.visible = _passes(sl)
+			if sl.visible:
+				_shown.append(sl)
+				any = true
+		if any:
+			_scroll.visible = true
+			_empty.visible = false
+			if _sel < 0:
+				_select(0, true)
+		if _slots.size() >= _ids.size():
+			_empty.visible = _shown.is_empty()
+			_scroll.visible = not _shown.is_empty()
 	# Pictures load a few a frame, starting from what is on screen.
 	if _shown.is_empty():
 		return
@@ -500,9 +567,9 @@ func _process(_delta: float) -> void:
 	for k in _shown.size():
 		var s: AlbumSlot = _shown[(first + k) % _shown.size()]
 		if s.wants_face():
-			s.load_face()
+			s.load_face_later()
 			done += 1
-			if done >= 10:
+			if done >= 8:
 				break
 
 

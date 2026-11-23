@@ -147,7 +147,7 @@ func _row(h: Dictionary) -> Control:
 			who_key = Replays.STAND_IN
 		face.texture = Portraits.get_portrait(who_key)
 	var clip := PanelContainer.new()
-	clip.clip_contents = true
+	UITheme.clip_safe(clip)
 	clip.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.02, 0.03, 0.07), 10, Color(1, 1, 1, 0.12)))
 	clip.add_child(face)
 	row.add_child(clip)

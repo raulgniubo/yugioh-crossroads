@@ -315,7 +315,7 @@ func _build_slots() -> void:
 	for side in ["me", "opp"]:
 		var b := Button.new()
 		b.flat = true
-		b.clip_contents = true
+		UITheme.clip_safe(b)
 		b.size = PANEL_SIZE
 		b.position = Vector2(64 if side == "me" else 628, 116)
 		b.pivot_offset = PANEL_SIZE / 2.0
@@ -710,7 +710,7 @@ func _extra_button(at: Vector2, sz: Vector2, col: Color, head: String, mid: Stri
 	var b := Button.new()
 	b.position = at
 	b.size = sz
-	b.clip_contents = true
+	UITheme.clip_safe(b)
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	for st in ["normal", "hover", "pressed", "focus"]:
 		var bg := Color(0.05, 0.08, 0.15, 0.96) if st != "hover" else Color(col.darkened(0.7), 0.98)
@@ -870,7 +870,7 @@ func _roster_card(key: String) -> Control:
 	var ok := has_deck and met
 	var b := Button.new()
 	b.custom_minimum_size = CELL
-	b.clip_contents = true
+	UITheme.clip_safe(b)
 	b.flat = true
 	b.set_meta("key", key)
 	b.tooltip_text = "%s\n%s" % [info.get("name", ""), Loc.t(str(info.get("title", "")))] if met else Unlocks.opponent_why(key)
@@ -1422,7 +1422,7 @@ func _version_card(key: String, v: String, on: bool, col: Color, pick: Callable)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.toggle_mode = true
 	b.button_pressed = on
-	b.clip_contents = true
+	UITheme.clip_safe(b)
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	b.add_theme_stylebox_override("normal", UITheme.panel_box(Color(0.03, 0.05, 0.12, 0.72), 14, Color(1, 1, 1, 0.14)))
 	for st in ["hover", "focus"]:
@@ -1574,7 +1574,7 @@ func _arena_tile(key: String) -> Button:
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(150, 98)
 	b.toggle_mode = true
-	b.clip_contents = true
+	UITheme.clip_safe(b)
 	b.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.05, 0.075, 0.16, 0.9), Color(1, 1, 1, 0.14), 8))
 	b.add_theme_stylebox_override("hover", UITheme.button_box(Color(0.09, 0.13, 0.25, 0.95), Color(UITheme.ACCENT, 0.9), 8))
 	var on := UITheme.button_box(Color(0.09, 0.13, 0.25, 0.95), UITheme.ACCENT, 8)
@@ -1584,7 +1584,7 @@ func _arena_tile(key: String) -> Button:
 	var pic := TextureRect.new()
 	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	pic.clip_contents = true
+	UITheme.clip_safe(pic)
 	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(pic)
 	pic.position = Vector2(4, 4)

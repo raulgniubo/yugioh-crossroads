@@ -222,7 +222,7 @@ func _add_row(entry: Dictionary, title: String, sub: String, col: Color, dim: bo
 	b.custom_minimum_size = Vector2(0, 78)
 	b.toggle_mode = true
 	b.button_pressed = entry == _sel
-	b.clip_contents = true
+	UITheme.clip_safe(b)
 	var h := HBoxContainer.new()
 	h.set_anchors_preset(Control.PRESET_FULL_RECT)
 	h.offset_left = 18

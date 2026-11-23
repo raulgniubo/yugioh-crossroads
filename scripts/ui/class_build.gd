@@ -130,7 +130,7 @@ func _rank(id: int) -> float:
 func _tile(id: int) -> Button:
 	var b := Button.new()
 	b.custom_minimum_size = CARD
-	b.clip_contents = true
+	UITheme.clip_safe(b)
 	b.focus_mode = Control.FOCUS_ALL
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	var flat := StyleBoxFlat.new()

@@ -79,10 +79,18 @@ static func outfits() -> Array:
 	return out
 
 
+## Hairstyles kept out of the editor until their heads are remade (their faces aren't clean yet).
+## A save that has one falls back to the first hairstyle.
+const HIDDEN_HAIRS := [[], [4, 6, 11]]
+
+
 static func hairs(body: int) -> Array:
 	var out: Array = []
 	var list: Array = HAIRS[clampi(body, 0, 1)]
+	var hidden: Array = HIDDEN_HAIRS[clampi(body, 0, 1)]
 	for i in list.size():
+		if hidden.has(i):
+			continue
 		if _head_model(body, i) != "":
 			out.append(i)
 	return out
@@ -166,6 +174,11 @@ uniform int debug_ids = 0;       // dev: 1 shows each mask region in a flat colo
 // Never going past this mipmap keeps every island its own color (1.5: up to about 3x smaller).
 uniform float lod_max = 1.5;
 uniform float face_flat = 0.7;
+// Where a borrowed head meets the body: the skin of both necks is drawn in one even color (the
+// generated necks were painted with blotches, collar bleed and different shades). The weight is in
+// the vertex color, set when the mesh is cut; only cut meshes turn it on.
+uniform int neck_on = 0;
+uniform vec3 neck_col = vec3(0.8, 0.55, 0.42);
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 vec3 rgb2hsv(vec3 c) {
 	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
@@ -209,10 +222,12 @@ void fragment() {
 	float id = m.r * 255.0;
 	vec3 c = t.rgb;
 	if (abs(id - 40.0) < 12.0) {
-		c = paint(min(c * skin_gain, vec3(1.0)), skin_ref * skin_gain, skin_to);
+		float nw = neck_on == 1 ? COLOR.r : 0.0;
+		c = mix(min(c * skin_gain, vec3(1.0)), neck_col, nw);
+		c = paint(c, mix(skin_ref * skin_gain, neck_col, nw), skin_to);
 		// Faces are drawn flat, the way the art is: light that follows every small bump of a
 		// generated face shows lumps around the nose and mouth.
-		if (m.g > 0.75) {
+		if (m.g > 0.75 || nw > 0.5) {
 			NORMAL = normalize(mix(NORMAL, VIEW, face_flat));
 		}
 	} else if (abs(id - 80.0) < 12.0) {
@@ -271,21 +286,27 @@ static func apply(scene: Node, model: String, head_model: String, p, accent: Col
 	if head != null:
 		var hm: Array = []
 		_paint(head, head_model, 0, hm)
-		# The borrowed face takes the tint of the body's skin (the neck below it is the body's own),
-		# with the light and shade it was painted with. Its brightness moves only halfway, so a fair
-		# face on a tanned body (or the other way round) keeps its drawing.
+		# The borrowed face takes a nudge toward one reference skin per body type (the street body's
+		# neck), never toward the outfit's body: each generated outfit was painted a little differently,
+		# and following it made the same face beige on one jacket and orange on another. A picked
+		# skin color repaints face and body alike anyway.
+		var ref: Color = NATURAL_NECK["f" if model.begins_with("hero_f") else "m"]
 		var r: Color = _necks.get("%s/1/%.3f" % [model, _neck_cut(model)], Color(0, 0, 0, 0))
 		var d: Color = _necks.get("%s/2/%.3f" % [head_model, _neck_cut(model)], Color(0, 0, 0, 0))
-		if r.a > 0.0 and d.a > 0.0:
-			var g := Vector3(r.r / maxf(d.r, 0.02), r.g / maxf(d.g, 0.02), r.b / maxf(d.b, 0.02))
-			var gl := g.x * 0.2126 + g.y * 0.7152 + g.z * 0.0722
-			# only a nudge of the tint, half of the way: the brightness stays the face's own
-			g = (Vector3.ONE + g / maxf(gl, 0.01)) * 0.5
-			g = g.clamp(Vector3.ONE * 0.9, Vector3.ONE * 1.12)
-			if OS.has_environment("HERO_CUT_DEBUG"):
-				print("HEROSKIN body %s head %s gain %s" % [model, head_model, g])
-			for m in hm:
-				(m as ShaderMaterial).set_shader_parameter("skin_gain", g)
+		var hg := _skin_gain(d, ref)
+		if OS.has_environment("HERO_CUT_DEBUG"):
+			print("HEROSKIN body %s head %s gain head %s (body neck %s)" % [model, head_model, hg, r])
+		for m in hm:
+			(m as ShaderMaterial).set_shader_parameter("skin_gain", hg)
+		# one even neck for body and head: the face's own cheek color with its tint, a touch darker
+		var ch: Color = _cheeks.get("%s/2/%.3f" % [head_model, _neck_cut(model)], Color(0, 0, 0, 0))
+		if OS.has_environment("HERO_CUT_DEBUG"):
+			print("HERONECKCOL head %s cheeks %s" % [head_model, ch])
+		if ch.a > 0.0:
+			var nc := Vector3(ch.r * hg.x, ch.g * hg.y, ch.b * hg.z) * 0.93
+			for m in hm + mats:
+				(m as ShaderMaterial).set_shader_parameter("neck_on", 1)
+				(m as ShaderMaterial).set_shader_parameter("neck_col", nc)
 		mats.append_array(hm)
 	if head != null and OS.get_environment("HERO_ONLY") != "":
 		# dev: see one of the two parts alone
@@ -417,6 +438,7 @@ static func _build(scene: Node, build: int) -> void:
 
 
 static var _cuts := {}
+static var _cheeks := {}
 ## Where the borrowed neck takes over from the body's (meters under the head bone). A body whose
 ## own neck is ragged under the jaw hands more of it to the head.
 ## How far under the head bone a short hairstyle's hair can reach (meters); below that, what the
@@ -428,6 +450,19 @@ const NECK_CUT := {"hero_f1_street": 0.07, "hero_f1_heartland": 0.08, "hero_f1_s
 static func _neck_cut(body: String) -> float:
 	return float(NECK_CUT.get(body, 0.03))
 static var _necks := {}
+## The neck skin of the street body of each body type: what "Natural" skin looks like.
+const NATURAL_NECK := {"m": Color(0.7949, 0.542, 0.4065), "f": Color(0.7893, 0.48, 0.3415)}  # hue reference only
+
+
+## A nudge of the hue of skin painted `own` toward `ref`, half of the way, the brightness kept
+## (a fair face stays fair, a tanned one tanned). No tint when `own` was not measured.
+static func _skin_gain(own: Color, ref: Color) -> Vector3:
+	if own.a <= 0.0:
+		return Vector3.ONE
+	var g := Vector3(ref.r / maxf(own.r, 0.02), ref.g / maxf(own.g, 0.02), ref.b / maxf(own.b, 0.02))
+	var gl := g.x * 0.2126 + g.y * 0.7152 + g.z * 0.0722
+	g = (Vector3.ONE + g / maxf(gl, 0.01)) * 0.5
+	return g.clamp(Vector3.ONE * 0.9, Vector3.ONE * 1.12)
 
 
 ## A copy of a hero mesh with only some of its triangles: role 1 the body without its head (and
@@ -554,6 +589,8 @@ static func _cut(mesh: Mesh, skin: Skin, sk: Skeleton3D, model: String, role: in
 		if role == 2:
 			_drop_folds(idx, keep, vp, vr, hpos, u)
 			_drop_shards(idx, keep, vp, vr, hpos, u)
+		else:
+			_drop_shards(idx, keep, vp, vr, hpos, u, true)
 		# the usual color of the skin where body and head meet (the body's neck under the jaw, the
 		# head's chin and neck), so the head can take the body's tint
 		var tex: Texture2D = null
@@ -585,6 +622,29 @@ static func _cut(mesh: Mesh, skin: Skin, sk: Skeleton3D, model: String, role: in
 				if cnt >= 8:
 					sum /= cnt
 					_necks[key] = Color(sum.x, sum.y, sum.z, 1.0)
+				if role == 2:
+					# the cheeks' plain skin: the brighter half of their pixels (blush and shade left out)
+					var cl: Array = []
+					for t in nt:
+						if keep[t] == 0:
+							continue
+						var a2 := idx[t * 3]
+						var cen2 := (vp[a2] + vp[idx[t * 3 + 1]] + vp[idx[t * 3 + 2]]) / 3.0
+						if cen2.y < hpos.y + 0.03 * u or cen2.y > hpos.y + 0.08 * u or abs(int(vr[a2]) - 40) >= 12:
+							continue
+						var cu2 := (uv[a2] + uv[idx[t * 3 + 1]] + uv[idx[t * 3 + 2]]) / 3.0
+						var col2 := ti.get_pixel(clampi(int(cu2.x * tw), 0, tw - 1), clampi(int(cu2.y * th), 0, th - 1)).srgb_to_linear()
+						cl.append(col2)
+					if cl.size() >= 8:
+						cl.sort_custom(func(x: Color, y: Color) -> bool: return x.get_luminance() > y.get_luminance())
+						var cs := Vector3.ZERO
+						var half := cl.size() / 2
+						for i in half:
+							cs += Vector3((cl[i] as Color).r, (cl[i] as Color).g, (cl[i] as Color).b)
+						cs /= half
+						_cheeks[key] = Color(cs.x, cs.y, cs.z, 1.0)
+					if OS.has_environment("HERO_CUT_DEBUG"):
+						print("HERONECK %s %s" % [key, _necks[key]])
 		var ni := PackedInt32Array()
 		for t in nt:
 			if keep[t] == 1:
@@ -594,6 +654,15 @@ static func _cut(mesh: Mesh, skin: Skin, sk: Skeleton3D, model: String, role: in
 		if OS.has_environment("HERO_CUT_DEBUG"):
 			print("HEROCUT %s role %d surface %d: %d of %d triangles, %d ms" % [model, role, si, ni.size() / 3, nt, Time.get_ticks_msec() - t0])
 		arr[Mesh.ARRAY_INDEX] = ni
+		# neck weight per vertex (see neck_on in the shader): full from the jaw down the neck and
+		# upper chest, fading out just under the chin and above the arms' reach
+		var cols := PackedColorArray()
+		cols.resize(nv)
+		for v in nv:
+			var y := vp[v].y - hpos.y
+			var w := clampf((-0.02 * u - y) / (0.025 * u), 0.0, 1.0) * clampf((y + 0.3 * u) / (0.05 * u), 0.0, 1.0)
+			cols[v] = Color(w, 0.0, 0.0, 1.0)
+		arr[Mesh.ARRAY_COLOR] = cols
 		var fmt: int = mesh.surface_get_format(si)
 		var flags: int = fmt & Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS
 		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr, [], {}, flags)
@@ -604,7 +673,7 @@ static func _cut(mesh: Mesh, skin: Skin, sk: Skeleton3D, model: String, role: in
 
 ## Small loose pieces of a borrowed head (Meshy shards by the eyes, specks of a collar): any group of
 ## joined triangles much smaller than the head itself, unless it is an eye or skin.
-static func _drop_shards(idx: PackedInt32Array, keep: PackedByteArray, vp: PackedVector3Array, vr: PackedByteArray, hpos: Vector3, u: float) -> void:
+static func _drop_shards(idx: PackedInt32Array, keep: PackedByteArray, vp: PackedVector3Array, vr: PackedByteArray, hpos: Vector3, u: float, body := false) -> void:
 	var nt := keep.size()
 	# the same point can be several vertices (seams in the picture): join them by place
 	var weld := {}
@@ -648,7 +717,13 @@ static func _drop_shards(idx: PackedInt32Array, keep: PackedByteArray, vp: Packe
 			var r := _find(par, root[idx[t * 3]])
 			var n := int(size[r])
 			# (pieces of the face itself, eyes and brows, are close to the middle of the head)
-			var near: bool = ((mid[r] as Vector3) / n - hpos).length() < 0.2 * u
+			var at: Vector3 = (mid[r] as Vector3) / n
+			if body:
+				# the body: only loose bits floating around its neck (a collar's shards)
+				if n < 40 and at.y > hpos.y - 0.15 * u and at.y < hpos.y + 0.05 * u and Vector2(at.x - hpos.x, at.z - hpos.z).length() < 0.15 * u:
+					keep[t] = 0
+				continue
+			var near: bool = (at - hpos).length() < 0.2 * u
 			if n < small and int(eye.get(r, 0)) * 2 < n and not near:
 				keep[t] = 0
 

@@ -532,7 +532,7 @@ static func open_profile(parent: Node, edit_character: Callable) -> SidePanel:
 	face.custom_minimum_size = Vector2(190, 238)
 	face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	face.clip_contents = true
+	UITheme.clip_safe(face)
 	row.add_child(face)
 	var words := VBoxContainer.new()
 	words.add_theme_constant_override("separation", 6)
@@ -577,7 +577,7 @@ static func _sleeves_card(p: SidePanel) -> void:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(120, 178)
 		b.toggle_mode = true
-		b.clip_contents = true
+		UITheme.clip_safe(b)
 		b.button_pressed = sid == Settings.sleeve
 		b.tooltip_text = Loc.t(str(e["name"]))
 		var nb := UITheme.button_box(Color(0.042, 0.0676, 0.136, 0.9), Color(1, 1, 1, 0.12), 12)
@@ -604,7 +604,7 @@ static func _sleeves_card(p: SidePanel) -> void:
 		nm.max_lines_visible = 2
 		nm.add_theme_constant_override("line_spacing", -3)
 		nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		nm.clip_contents = true
+		UITheme.clip_safe(nm)
 		b.add_child(nm)
 		nm.position = Vector2(6, 138)
 		nm.size = Vector2(108, 34)

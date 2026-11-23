@@ -100,7 +100,7 @@ func _tile(key: String) -> Button:
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(376, 104)
 	b.focus_mode = Control.FOCUS_ALL
-	b.clip_contents = true
+	UITheme.clip_safe(b)
 	b.add_theme_stylebox_override("normal", UITheme.panel_box(Color(0.03, 0.05, 0.12, 0.8), 16, Color(col, 0.35)))
 	for st in ["hover", "focus"]:
 		b.add_theme_stylebox_override(st, UITheme.panel_box(Color(0.06, 0.09, 0.18, 0.92), 16, col.lightened(0.2)))

@@ -24,14 +24,7 @@ func setup(entry: Dictionary, lazy := false) -> DeckBox:
 		_card_art = true
 		if lazy:
 			# (A row of them: the picture is read on another thread and comes in when it is ready.)
-			Cards.thumb_later(ace, func(t: Texture2D):
-				if not is_instance_valid(self) or t == null:
-					return
-				var ts := t.get_size()
-				_region = Rect2(Vector2.ZERO, ts)
-				if ts.x / maxf(ts.y, 1.0) < 0.82:
-					_region = Rect2(ts.x * 0.125, ts.y * 0.185, ts.x * 0.75, ts.x * 0.75)
-				_art = t)
+			Cards.thumb_later(ace, _when_art(weakref(self)))
 		else:
 			var got := Cards.cover_art(ace)
 			_art = got[0]
@@ -49,6 +42,19 @@ func setup(entry: Dictionary, lazy := false) -> DeckBox:
 var _face_wait := ""
 
 
+## (Static, holding a weakref: the row may be closed before the picture arrives.)
+static func _when_art(me: WeakRef) -> Callable:
+	return func(t: Texture2D):
+		var b = me.get_ref()
+		if b == null or t == null:
+			return
+		var ts := t.get_size()
+		b._region = Rect2(Vector2.ZERO, ts)
+		if ts.x / maxf(ts.y, 1.0) < 0.82:
+			b._region = Rect2(ts.x * 0.125, ts.y * 0.185, ts.x * 0.75, ts.x * 0.75)
+		b._art = t
+
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_title_font = UITheme.title_font()
@@ -62,7 +68,15 @@ func _process(_delta: float) -> void:
 			_face_wait = ""
 		else:
 			Avatars.warm(_face_wait)
-	queue_redraw()
+	# (Drawn again only when something it shows changed: a row of boxes redrawing every frame
+	# was a steady cost on the shops page.)
+	var key := [_art, _face, owned, snappedf(glow, 0.01)]
+	if key != _drawn:
+		_drawn = key
+		queue_redraw()
+
+
+var _drawn := []
 
 
 ## A texture drawn inside a circle (as a fan of triangles with UVs).

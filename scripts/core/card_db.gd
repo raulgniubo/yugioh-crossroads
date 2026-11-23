@@ -73,6 +73,12 @@ func _keep(cache: Dictionary, id: int, tex, most: int) -> void:
 		cache.erase(cache.keys()[0])
 
 
+## Can this callback still be called? (Callers that may be freed before their picture arrives pass
+## a callback made in a static function holding a weakref, see AlbumSlot.)
+static func _alive(give: Callable) -> bool:
+	return give.is_valid()
+
+
 ## Full card face. Real card image if available, otherwise a generated placeholder.
 ## `big`: for a view that shows this one card large (the album's detail, a pack's reveal).
 func get_face(id: int, big := false) -> Texture2D:
@@ -162,7 +168,7 @@ func _thumb_ready(id: int, img: Image) -> void:
 	else:
 		tex = get_face(id)
 	for give in waiting:
-		if (give as Callable).is_valid():
+		if _alive(give):
 			(give as Callable).call(tex)
 
 
@@ -203,7 +209,7 @@ func _big_ready(id: int, img: Image) -> void:
 	else:
 		tex = get_face(id, true)
 	for give in waiting:
-		if (give as Callable).is_valid():
+		if _alive(give):
 			(give as Callable).call(tex)
 
 

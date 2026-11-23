@@ -26,6 +26,8 @@ var _world := ""                   # the shops page: the world being shown
 var _shelf_packs: Array = []       # the packs on that world's shelf
 var _shelf_btns: Array = []        # [Button, PackWrapper]
 var _pick := -1                    # the pack picked on the shelf
+var _focus_ms := 0                 # when a shelf pack last took focus
+var _open_on_up := true            # the click now going on started on the pack already picked
 var _pack_name: Label
 var _pack_blurb: Label
 var _pack_have: Label
@@ -710,12 +712,21 @@ func _build_shop(world: String, page: VBoxContainer) -> void:
 		wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(wrap)
 		var k := i
-		b.focus_entered.connect(func(): _pick_pack(k))
+		# One click (or moving onto it) only picks the pack: its name, price and cards show below.
+		# Opening its list takes a second click on the same pack, A / Enter on it, or the button.
+		# (A mouse click gives the pack focus first, so "already picked" is decided when the click
+		# starts, not when it ends.)
+		b.focus_entered.connect(func():
+			_focus_ms = Time.get_ticks_msec()
+			_pick_pack(k))
+		b.button_down.connect(func():
+			_open_on_up = _pick == k and Time.get_ticks_msec() - _focus_ms > 40)
 		b.pressed.connect(func():
-			if _pick == k:
+			if _pick == k and _open_on_up:
 				_see_pack()
 			else:
-				_pick_pack(k))
+				_pick_pack(k)
+			_open_on_up = true)
 		shelf.add_child(b)
 		_shelf_btns.append([b, wrap])
 		wrap.modulate.a = 0.0

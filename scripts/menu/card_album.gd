@@ -321,7 +321,7 @@ func _build_center() -> Control:
 	_binder = _Binder.new()
 	_binder.custom_minimum_size = Vector2(1000, 650)
 	_binder.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_binder.clip_contents = true
+	UITheme.clip_safe(_binder)
 	_binder.gui_input.connect(_binder_input)
 	v.add_child(_binder)
 	_spread_box = Control.new()
