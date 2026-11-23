@@ -1061,7 +1061,8 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - HeroLook: Natural skin = skin_nat on face and body (shader no longer skips part 2); own-head bodies measure their own cheeks via
   _cut(role 2). Check with /tmp/fs_test.sh "0:0:0,0:2:1,1:0:2" --full --dist=2.6 --dy=0.25.
 - Not run: ocg_sweep on the new cards (a list sweep plays every deck first and took over 15 min); card_check loads every script.
-- NEXT (Raul said): multiplayer over Tailscale built into the game (libtailscale), Free Duel first. Plan doc to be written.
+- NEXT (Raul said): multiplayer over Tailscale built into the game (libtailscale), Free Duel first, ship as 0.73.0.
+  Plan doc "Crossroads: multiplayer with your brother" https://claude.ai/artifact/ArUx4fcu8qnxJNuB2gwJJz (doc 4fcaeac5-a6f6-4910-a319-d41ba353ce77).
 
 #### 0.71.0 STATE (Nov 23 afternoon)
 - DuelWhy (scripts/ocg/duel_why.gd) reads every engine message in OcgDuel._one (why.read) and adds events "why" (reason card, DuelWhyUI.show_why), "status" (chips by the LP plates, DuelWhyUI.set_status) and "log" (HUD log_line). Lasting effects come from the English text of resolved Spells/Traps (card_text: EXT desc, "can't" normalized); face-up Continuous/Field cards are scanned when the field changes; a monster destroyed by battle whose text says "no battle damage this turn" (Lumen) counts too. Battles: expected damage from MSG_BATTLE vs MSG_DAMAGE, settled at the next attack / phase / request. The replay hash skips these events (old replays still match).
