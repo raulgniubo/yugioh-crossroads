@@ -2483,6 +2483,9 @@ func _debug() -> void:
 				var io: Vector3 = _rooms[ip[0]]["at"]
 				_player.position = io + Vector3(float(ip[1]) if ip.size() > 1 else 0.6, float(ip[4]) if ip.size() > 4 else 0.0, float(ip[2]) if ip.size() > 2 else 0.8)
 				_yaw = float(ip[3]) if ip.size() > 3 else 0.6
+				for pa in OS.get_cmdline_user_args():
+					if pa.begins_with("--pitch="):      # dev: look up or down (a picture of a ceiling)
+						_pitch = float(pa.substr(8))
 				_figure.rotation.y = _yaw + PI
 				_pivot.position = _player.position + Vector3(0, 1.45, 0)
 				_set_inside(ip[0])

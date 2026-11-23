@@ -837,6 +837,8 @@ static func _fine_bedroom(city: CityBuilder, o: Vector3, half: Vector2, hgt: flo
 		city.box(Vector3(1.38, 0.03, 0.34), bc + Vector3(0, 0.3 + row * 0.5, -0.02), pale, false)
 		for k in 11:
 			var bh := 0.24 + 0.06 * ((k * 3 + row + n) % 3)
+			if n == 8:
+				bh = 0.38 - k * 0.014        # (Yellow room 4: "books in height order")
 			city.box(Vector3(0.1, bh, 0.22), bc + Vector3(-0.6 + k * 0.12, 0.32 + row * 0.5 + bh / 2.0, -0.1), city.mat((spines[(k + row * 2 + n) % spines.size()] as Color).darkened(0.1), 0.8), false)
 	_block(city, Vector3(1.5, 2.1, 0.4), bc + Vector3(0, 1.05, 0))
 	# A plant in a pot.
@@ -967,7 +969,7 @@ static func _bedroom(city: CityBuilder, o: Vector3, half: Vector2, hgt: float, n
 	_block(city, Vector3(1.0, 0.4, 0.6), t + Vector3(0, 0.2, 0))
 	for c3 in [Vector3(-0.85, 0, 0), Vector3(0.85, 0, 0)]:
 		city.box(Vector3(0.5, 0.1, 0.5), t + c3 + Vector3(0, 0.05, 0), red, false)
-	for k in 4:
+	for k in (0 if n == 11 else 4):
 		var deck_card := city.box(Vector3(0.12, 0.006, 0.17), t + Vector3(-0.3 + k * 0.2, 0.376, rng.randf_range(-0.12, 0.12)), city.mat(posters[(k + n * 2) % posters.size()], 0.6), false)
 		deck_card.rotation.y = rng.randf_range(-0.5, 0.5)
 	city.box(Vector3(0.14, 0.09, 0.2), t + Vector3(0.36, 0.415, 0.1), city.mat(Color(0.5, 0.3, 0.16), 0.7), false)
@@ -975,5 +977,135 @@ static func _bedroom(city: CityBuilder, o: Vector3, half: Vector2, hgt: float, n
 	for k in 2:
 		city.box(Vector3(0.6, 0.85, 0.02), o + Vector3(-1.9 + k * 0.8, 1.95, -half.y + 0.05), city.mat(posters[(n + k) % posters.size()], 0.85), false)
 	city.box(Vector3(0.02, 0.85, 0.6), o + Vector3(half.x - 0.02, 1.95, 2.0), city.mat(posters[(n + 2) % posters.size()], 0.85), false)
+	var fan_room := dorm == "red" and n == 2
 	_light(city, o + Vector3(0, hgt - 0.5, 0.3), Color(1.0, 0.86, 0.62), 1.6, 6.0)
-	_ball(city, o + Vector3(0, hgt - 0.3, 0.3), 0.13, city.glow_mat(Color(1.0, 0.84, 0.55), 2.8))
+	# (Under the fan in room 2 the bulb hangs below its hub, as a fan's light does.)
+	_ball(city, o + Vector3(0, hgt - (0.56 if fan_room else 0.3), 0.3), 0.13, city.glow_mat(Color(1.0, 0.84, 0.55), 2.8))
+	_room_promise(city, o, half, hgt, n, dorm, wood, pale, trim)
+
+
+## What each room's card says is in it ("one very tired fan", "posters on every wall"...), in
+## plain shapes: everything is out of the way of walking and has no collision of its own.
+static func _room_promise(city: CityBuilder, o: Vector3, half: Vector2, hgt: float, n: int, dorm: String,
+		wood: Material, pale: Material, trim: Color) -> void:
+	var gilt := city.mat(Color(0.86, 0.7, 0.32), 0.3, 0.8)
+	var paper := city.mat(Color(0.97, 0.96, 0.92), 0.9)
+	var inks := [Color("ffd166"), Color("7dd3ff"), Color("ff8a8a"), Color("b79cff"), Color("8be0a4"), Color("f29f4b")]
+	match [dorm, n]:
+		["red", 2]:
+			# Red room 2: the very tired ceiling fan, high in the middle of the room.
+			var fan := TiredFan.new()
+			fan.position = o + Vector3(0, hgt, 0.3)
+			city.add_child(fan)
+			var metal := city.mat(Color(0.32, 0.3, 0.28), 0.45, 0.6)
+			city.cyl(0.018, 0.018, 0.3, Vector3(0, -0.15, 0), metal, fan, 8)
+			city.cyl(0.07, 0.07, 0.04, Vector3(0, -0.02, 0), metal, fan, 12)
+			city.cyl(0.12, 0.1, 0.12, Vector3(0, -0.36, 0), metal, fan, 14)
+			var blade_wood := city.mat(Color(0.46, 0.3, 0.18), 0.75)
+			for k in 4:
+				var arm := Node3D.new()
+				arm.rotation.y = k * TAU / 4.0
+				arm.position = Vector3(0, -0.38, 0)
+				fan.add_child(arm)
+				city.box(Vector3(0.2, 0.025, 0.05), Vector3(0.16, 0, 0), metal, false, arm)
+				var blade := city.box(Vector3(0.52, 0.016, 0.15), Vector3(0.48, -0.005, 0), blade_wood, false, arm)
+				blade.rotation.x = 0.12          # (pitched, as fan blades are)
+		["red", 3]:
+			# Red room 3: posters on every wall (plain shapes: a color, a band, a circle).
+			var spots: Array = [
+				[Vector3(2.35, 1.95, -half.y + 0.05), 0.0], [Vector3(-2.15, 1.9, half.y - 0.05), PI],
+				[Vector3(-1.35, 1.9, half.y - 0.05), PI], [Vector3(1.45, 1.9, half.y - 0.05), PI],
+				[Vector3(2.25, 1.9, half.y - 0.05), PI], [Vector3(-half.x + 0.05, 1.9, 1.45), PI / 2.0],
+				[Vector3(-half.x + 0.05, 1.9, 2.15), PI / 2.0], [Vector3(half.x - 0.05, 2.45, 0.9), -PI / 2.0],
+			]
+			for i in spots.size():
+				var at: Vector3 = o + (spots[i][0] as Vector3)
+				var holder := Node3D.new()
+				holder.position = at
+				holder.rotation.y = float(spots[i][1])
+				city.add_child(holder)
+				var tall := 0.42 if at.y > o.y + 2.3 else 0.78
+				var col: Color = inks[(i + n) % inks.size()]
+				city.box(Vector3(0.55, tall, 0.012), Vector3.ZERO, city.mat(col, 0.85), false, holder)
+				city.box(Vector3(0.55, tall * 0.16, 0.014), Vector3(0, tall * 0.3, 0.002), city.mat(col.darkened(0.45), 0.85), false, holder)
+				var dot := city.cyl(0.13 if tall > 0.5 else 0.08, 0.13 if tall > 0.5 else 0.08, 0.01, Vector3(0, -tall * 0.08, 0.008), city.mat(col.lightened(0.5), 0.8), holder, 18)
+				dot.rotation.x = PI / 2.0
+		["yel", 1]:
+			# Yellow room 1: a study timetable taped to every surface.
+			var sheets: Array = [
+				[Vector3(-0.9, 1.6, -half.y + 0.05), 0.0], [Vector3(-0.5, 1.95, -half.y + 0.05), 0.0],
+				[Vector3(half.x - 0.72, 1.4, 0.6), -PI / 2.0], [Vector3(half.x - 0.72, 1.4, 1.2), -PI / 2.0],
+				[Vector3(-1.2, 1.5, half.y - 0.05), PI], [Vector3(0.2, 1.75, half.y - 0.05), PI],
+				[Vector3(-half.x + 0.05, 1.6, 0.4), PI / 2.0],
+			]
+			for i in sheets.size():
+				var holder := Node3D.new()
+				holder.position = o + (sheets[i][0] as Vector3)
+				holder.rotation.y = float(sheets[i][1])
+				holder.rotation.z = (i % 3 - 1) * 0.04
+				city.add_child(holder)
+				city.box(Vector3(0.3, 0.42, 0.008), Vector3.ZERO, paper, false, holder)
+				city.box(Vector3(0.3, 0.05, 0.01), Vector3(0, 0.17, 0.001), city.mat(inks[i % inks.size()], 0.8), false, holder)
+				for r in 5:
+					city.box(Vector3(0.26, 0.006, 0.01), Vector3(0, 0.11 - r * 0.06, 0.002), city.mat(Color(0.55, 0.6, 0.7), 0.8), false, holder)
+				city.box(Vector3(0.006, 0.3, 0.01), Vector3(-0.05, -0.02, 0.002), city.mat(Color(0.55, 0.6, 0.7), 0.8), false, holder)
+			# And one lying on the desk.
+			city.box(Vector3(0.3, 0.004, 0.42), o + Vector3(0.2, 0.795, -half.y + 0.5), paper, false)
+		["yel", 2]:
+			# Yellow room 2: herbs growing on the windowsill.
+			city.box(Vector3(1.5, 0.04, 0.2), o + Vector3(0.9, 1.16, -half.y + 0.16), pale, false)
+			for k in 3:
+				var pot := o + Vector3(0.45 + k * 0.45, 1.18, -half.y + 0.16)
+				city.cyl(0.07, 0.055, 0.11, pot + Vector3(0, 0.055, 0), city.mat(Color(0.7, 0.4, 0.26), 0.9), null, 10)
+				for l in 4:
+					var leaf := _ball(city, pot + Vector3(cos(l * 1.6 + k) * 0.04, 0.16 + (l % 2) * 0.05, sin(l * 1.6 + k) * 0.04), 0.05,
+							city.mat(Color(0.22, 0.55, 0.25).lightened(0.08 * k), 0.95))
+					leaf.scale = Vector3(0.8, 1.3, 0.8)
+		["yel", 3]:
+			# Yellow room 3: trophies from three quiz bowls, on top of the wardrobe.
+			for k in 3:
+				var tp := o + Vector3(half.x - 0.38, 2.0, 0.55 + k * 0.35)
+				city.box(Vector3(0.14, 0.06, 0.14), tp + Vector3(0, 0.03, 0), wood, false)
+				city.cyl(0.02, 0.03, 0.1, tp + Vector3(0, 0.11, 0), gilt, null, 8)
+				city.cyl(0.08 - k * 0.01, 0.03, 0.14 + k * 0.03, tp + Vector3(0, 0.23 + k * 0.015, 0), gilt, null, 12)
+		["blue", 1]:
+			# Blue room 1: a suite with its own trophy shelf, on the left wall past the bed.
+			var sp := o + Vector3(-half.x + 0.2, 1.55, 0.5)
+			city.box(Vector3(0.34, 0.05, 1.5), sp, wood, false)
+			city.box(Vector3(0.34, 0.05, 1.5), sp + Vector3(0, 0.5, 0), wood, false)
+			for k in 4:
+				for lv in 2:
+					var tp := sp + Vector3(0, 0.025 + lv * 0.5, -0.55 + k * 0.37)
+					city.cyl(0.04, 0.05, 0.05, tp + Vector3(0, 0.025, 0), gilt, null, 8)
+					city.cyl(0.07, 0.025, 0.13 + ((k + lv) % 2) * 0.05, tp + Vector3(0, 0.13, 0), gilt if (k + lv) % 3 != 0 else city.mat(Color(0.8, 0.82, 0.86), 0.3, 0.8), null, 12)
+		["blue", 2]:
+			# Blue room 2: silk curtains to the floor and a very large mirror.
+			var silk := city.mat(trim.lightened(0.35), 0.25, 0.1)
+			for sx: float in [-1.0, 1.0]:
+				city.box(Vector3(0.42, hgt - 0.35, 0.05), o + Vector3(0.9 + sx * 1.0, (hgt - 0.35) / 2.0, -half.y + 0.16), silk, false)
+			city.box(Vector3(2.6, 0.12, 0.08), o + Vector3(0.9, hgt - 0.3, -half.y + 0.16), gilt, false)
+			var mp := o + Vector3(-half.x + 0.06, 0, 0.7)
+			city.box(Vector3(0.06, 2.4, 1.25), mp + Vector3(0, 1.3, 0), gilt, false)
+			city.box(Vector3(0.03, 2.22, 1.08), mp + Vector3(0.03, 1.3, 0), city.mat(Color(0.78, 0.86, 0.92), 0.04, 0.9), false)
+		["blue", 3]:
+			# Blue room 3: a chess set mid-game on the low table by the window.
+			var cb := o + Vector3(0.45, 0.375, 0.7)
+			city.box(Vector3(0.42, 0.02, 0.42), cb, wood, false)
+			var light_sq := city.mat(Color(0.93, 0.9, 0.82), 0.6)
+			var dark_sq := city.mat(Color(0.28, 0.2, 0.14), 0.6)
+			for r in 8:
+				for c in 8:
+					if (r + c) % 2 == 0:
+						continue
+					city.box(Vector3(0.045, 0.004, 0.045), cb + Vector3(-0.1575 + c * 0.045, 0.012, -0.1575 + r * 0.045), dark_sq, false)
+			city.box(Vector3(0.36, 0.002, 0.36), cb + Vector3(0, 0.0105, 0), light_sq, false)
+			# A game in the middle: a few pieces each, some taken and set aside.
+			var white := city.mat(Color(0.95, 0.94, 0.9), 0.4)
+			var black := city.mat(Color(0.12, 0.1, 0.1), 0.4)
+			var pieces := [[1, 1, 0], [2, 3, 0], [4, 4, 0], [6, 2, 0], [5, 6, 0], [3, 1, 1], [5, 5, 1], [2, 6, 1], [6, 6, 1], [0, 7, 1], [4, 2, 1]]
+			for pc in pieces:
+				var at := cb + Vector3(-0.1575 + int(pc[0]) * 0.045, 0.04, -0.1575 + int(pc[1]) * 0.045)
+				city.cyl(0.012, 0.016, 0.05 + (int(pc[0]) % 3) * 0.012, at, white if int(pc[2]) == 0 else black, null, 8)
+			for k in 3:
+				city.cyl(0.012, 0.016, 0.05, cb + Vector3(0.26, 0.04, -0.12 + k * 0.05), black if k < 2 else white, null, 8)
+
