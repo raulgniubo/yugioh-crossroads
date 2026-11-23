@@ -5,6 +5,13 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.72.2
+
+**The card in the air is back.** No cards added: 12,745 total.
+
+- **Dragging in the deck editor shows the card again**: opened from DECKS & CARDS, the card you grabbed and the green drop zone were being drawn behind the editor, so the card only went dim and then showed up on the other side. They are drawn above everything now. A drag also ends by itself if the button was let go outside the window.
+- **Cards you have are never darkened in the collection**: a card that could take no more copies was dimmed, which looked like a card you don't have. The strip ("All in this deck") says it instead; only the card you are holding fades while it is in the air.
+
 ## What is in 0.72.1
 
 **Deck editor fixes, a slowdown fixed, smaller status chips, the Academy kept to itself.** No cards added: 12,745 total.

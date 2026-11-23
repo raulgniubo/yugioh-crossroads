@@ -25,8 +25,14 @@ func _ready() -> void:
 			get_tree().quit()
 			return
 	else:
+		# as in the game from DECKS & CARDS: a panel at z 100 holding the editor at z 110
+		var gate := Control.new()
+		gate.set_anchors_preset(Control.PRESET_FULL_RECT)
+		gate.z_index = 100
+		get_tree().root.add_child(gate)
 		b = DeckBuilder.new()
-		get_tree().root.add_child(b)
+		b.z_index = 110
+		gate.add_child(b)
 	await _wait(60)
 	await _case("owned to deck", _first_tile(), _deck_point())
 	# type into the search box like a person (it keeps the focus), then drag

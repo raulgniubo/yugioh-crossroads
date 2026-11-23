@@ -844,7 +844,9 @@ func _fill_tile(holder: Control) -> void:
 			strip.text = Loc.t("In this deck: %d") % used
 		else:
 			strip.text = Loc.t("All in this deck") if used >= can_use else Loc.t("In this deck: %d") % used
-		tr.modulate = Color.WHITE if Collection.can_add(id, _to_side, true) else Color(0.5, 0.5, 0.56)
+		# (0.72.2: a card is never darkened for "no more copies can go in": next to the grey cards you
+		# don't have, a dark card you do have read as missing. The strip says "All in this deck".)
+		tr.modulate = Color.WHITE
 	refresh.call()
 	tr.mouse_entered.connect(func():
 		if _drag != null:
@@ -1773,6 +1775,7 @@ var _grab := {}            # the card under the pressed button: {"card", "from",
 var _drag: Control         # the card in the air
 var _drag_to := ""         # the zone under it: "main" | "side" | "col" | ""
 var _drag_vx := 0.0
+var _drag_idle := 0.0
 var _dp: Control
 var _cp: Control
 var _side_head: Control
@@ -1804,7 +1807,10 @@ func _start_drag() -> void:
 	var id := int(_grab["card"])
 	_drag = Control.new()
 	_drag.top_level = true
-	_drag.z_index = 200
+	# (0.72.2: a top-level piece is drawn at its own z, not on top of this panel's. Opened from
+	# DECKS & CARDS the editor sits at 100 + 110, so at 200 the card in the air and the glow were
+	# drawn BEHIND the editor: the card went dim and nothing came out. Now they are above everything.)
+	_drag.z_index = RenderingServer.CANVAS_ITEM_Z_MAX - 2
 	_drag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_drag)
 	var sz := Vector2(150, 218)
@@ -1837,13 +1843,13 @@ func _start_drag() -> void:
 		src.modulate = Color(src.modulate, 0.3)
 	_zone_glow = Panel.new()
 	_zone_glow.top_level = true
-	_zone_glow.z_index = 150
+	_zone_glow.z_index = RenderingServer.CANVAS_ITEM_Z_MAX - 6
 	_zone_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_zone_glow.visible = false
 	add_child(_zone_glow)
 	_zone_tag = UITheme.label("", 20, Color.WHITE, UITheme.semi_font())
 	_zone_tag.top_level = true
-	_zone_tag.z_index = 151
+	_zone_tag.z_index = RenderingServer.CANVAS_ITEM_Z_MAX - 5
 	_zone_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var pill := StyleBoxFlat.new()
 	pill.bg_color = Color(0.02, 0.03, 0.07, 0.92)
@@ -1862,6 +1868,16 @@ func _process(delta: float) -> void:
 	_grid_tick()
 	if _drag == null:
 		return
+	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_drag_idle += delta
+		if _drag_idle > 0.25:
+			# the button is up and no release came (let go outside the window): put it down
+			_drag_idle = 0.0
+			_end_drag()
+			_grab = {}
+			return
+	else:
+		_drag_idle = 0.0
 	var m := get_global_mouse_position()
 	var before := _drag.global_position
 	_drag.global_position = before.lerp(m, 1.0 - exp(-30.0 * delta))

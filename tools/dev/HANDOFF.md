@@ -1047,7 +1047,20 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.72.0 STATE (Nov 23 evening; NEWEST, read this first)
+#### 0.72.2 STATE (Nov 23 night; NEWEST, read this first)
+- 0.72.1: drawn card faces (cards with no picture) are baked to a plain ImageTexture and their SubViewport freed
+  (Cards._bake_face/_bake_step, LRU MADE_KEEP 140); before, every one kept a live viewport and the game crawled after
+  browsing. tests/leak_ui.tscn scrolls all cards twice and prints nodes/VRAM. Admin button in the editor
+  (Collection.admin_fill_missing). Duel status chips are compact (open on hover / when new). Academy island: no Worlds/Quests.
+- 0.72.2: top_level Controls are drawn at their OWN z (not the parent's): the editor's dragged card/glow were at 200/150
+  while the editor opened from CardsGate sits at 100+110, so they were hidden. Now CANVAS_ITEM_Z_MAX-2/-6/-5.
+  tests/drag_check.tscn nests the editor the same way and saves a picture mid-drag (DRAG_SHOT=prefix). ALWAYS look at
+  that picture before saying a drag works. No dimming of owned tiles any more.
+- Raul's Mac ran out of disk during install: the _to_delete folders were emptied with his permission (47 GB). Next Mac
+  .new number: 45.
+- Open: Academy "lands on the island, press agenda to start the chapter" not looked into (Campus.go: free_days).
+
+#### 0.72.0 STATE (Nov 23 evening)
 - Cards: 12,745 (was 8,415). Every card of Raul's cards.json (/tmp/testassets3) with BabelCDB data and a script, not Link/Pendulum,
   no Link/Pendulum text (pick.py LP rule), not already in under another name/id/alias. 9 RDA support cards into FAMILIES["archfiend"];
   the rest into data/singles.json by Konami id (37 into the four eras, 4,283 into "frontier"; 6 generic Synchros in 5D's).
