@@ -494,6 +494,22 @@ func _start() -> void:
 					hud.cut_in(0, "DARK MAGICIAN", "ATK 2500   ·   DEF 2100", Color("a070ff"), 30.0, true)
 				else:
 					hud.cut_in(0, "TRAP CARD!", "Mirror Force", Color("ff4dd2"), 30.0))
+	if "--extra-demo" in OS.get_cmdline_user_args():
+		# Dev: the Extra Deck list with a full Extra Deck (15), two of them ready.
+		await _play(events)
+		var demo: Array = []
+		var n := 0
+		for cid in Collection.all_cards():
+			if CardData.is_extra(int(cid)) and n < 15:
+				var inst := DuelState.CardInst.new()
+				inst.id = int(cid)
+				inst.uid = 9000 + n
+				inst.data = CardData.get_card(int(cid))
+				inst.owner = ME
+				demo.append([inst, "Synchro Summon" if n in [6, 11] else "Needs its materials", n in [6, 11]])
+				n += 1
+		hud.show_extra(demo)
+		return
 	if "--why-demo" in OS.get_cmdline_user_args() or "--why-log" in OS.get_cmdline_user_args():
 		# Dev: the reasons on screen (DuelWhy): a reason card, what is in force by each Life Points, the log.
 		await _play(events)

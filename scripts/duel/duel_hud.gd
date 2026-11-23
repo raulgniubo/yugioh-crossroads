@@ -725,25 +725,51 @@ func show_extra(options: Array) -> void:
 	ex.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ex.custom_minimum_size = Vector2(700, 0)
 	v.add_child(ex)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
+	# (0.72.2: a grid that wraps, the ones you can summon first. One long row ran off both sides of
+	# the screen with a full Extra Deck of 15 and could not be scrolled.)
+	var list: Array = options.duplicate()
+	var ready: Array = list.filter(func(o): return bool(o[2]))
+	var rest: Array = list.filter(func(o): return not bool(o[2]))
+	list = ready + rest
+	var cols: int = clampi(list.size(), 1, 8)
+	var cw := 170.0 if list.size() <= 8 else 150.0
+	var row := GridContainer.new()
+	row.columns = cols
+	row.add_theme_constant_override("h_separation", 14)
+	row.add_theme_constant_override("v_separation", 14)
 	v.add_child(row)
-	for o in options:
+	for o in list:
 		var inst = o[0]
 		var col := VBoxContainer.new()
 		col.add_theme_constant_override("separation", 6)
+		col.custom_minimum_size = Vector2(cw, 0)
 		var tr := TextureRect.new()
 		tr.texture = Cards.get_face(inst.id)
-		tr.custom_minimum_size = Vector2(170, 248)
+		tr.custom_minimum_size = Vector2(cw, cw * 248.0 / 170.0)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tr.modulate = Color.WHITE if o[2] else Color(0.55, 0.55, 0.6)
+		tr.mouse_filter = Control.MOUSE_FILTER_STOP
 		tr.mouse_entered.connect(func(): inspect(inst))
+		if o[2]:
+			# the card itself is the button too
+			tr.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			tr.gui_input.connect(func(e):
+				if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+					hide_extra()
+					extra_chosen.emit(inst))
 		col.add_child(tr)
 		var b := Button.new()
 		b.text = o[1]
 		b.disabled = not o[2]
-		b.add_theme_font_size_override("font_size", 18)
+		# (never wider than its card: "Necesita sus materiales" used to widen every column)
+		b.add_theme_font_size_override("font_size", 14)
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		b.custom_minimum_size = Vector2(cw, 50)
+		b.tooltip_text = Loc.t(str(o[1]))
+		if o[2]:
+			b.add_theme_stylebox_override("normal", UITheme.button_box(Color("ffd23a", 0.2), Color("ffd23a")))
+			b.add_theme_color_override("font_color", Color("ffe9a8"))
 		b.pressed.connect(func():
 			hide_extra()
 			extra_chosen.emit(inst))
@@ -754,8 +780,14 @@ func show_extra(options: Array) -> void:
 	close.pressed.connect(hide_extra)
 	v.add_child(close)
 	await get_tree().process_frame
+	if not is_instance_valid(panel):
+		return
 	panel.reset_size()
-	panel.position = (get_viewport_rect().size - panel.size) / 2.0
+	var vs := get_viewport_rect().size
+	# should it still not fit (a small window), it is made smaller as a whole, never cut off
+	var k := minf(1.0, minf((vs.x - 40.0) / maxf(panel.size.x, 1.0), (vs.y - 40.0) / maxf(panel.size.y, 1.0)))
+	panel.scale = Vector2(k, k)
+	panel.position = (vs - panel.size * k) / 2.0
 
 
 func hide_extra() -> void:
