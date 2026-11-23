@@ -23,6 +23,7 @@ var _back: AcademyBackdrop
 var _scroll: ScrollContainer
 var _stand: Node3D               # your runner on its turntable
 var _ride: GDScript
+var _faces_wait: Array = []      # [TextureRect, key]: rider portraits waiting for their model
 var _save := {}                  # what the highway kept: beaten, chips, best, wins, medals...
 
 
@@ -90,6 +91,19 @@ static func clock(t: float) -> String:
 
 
 func _process(_delta: float) -> void:
+	# One rider's portrait a frame, once its model has been read.
+	for i in _faces_wait.size():
+		var fw: Array = _faces_wait[i]
+		if not is_instance_valid(fw[0]):
+			_faces_wait.remove_at(i)
+			break
+		if Avatars.ready_now(str(fw[1])) or Portraits.holds(str(fw[1])):
+			var ft = Portraits.get_portrait(str(fw[1]))
+			if ft is Texture2D:
+				(fw[0] as TextureRect).texture = ft
+			_faces_wait.remove_at(i)
+			break
+		Avatars.warm(str(fw[1]))
 	# The middle page never runs past the screen: it scrolls when it is taller than the view.
 	var room := get_viewport_rect().size.y - 80.0
 	var want := _box.get_combined_minimum_size().y
@@ -563,14 +577,19 @@ func _riders() -> void:
 		face.custom_minimum_size = Vector2(96, 96)
 		face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		var tex = Portraits.get_portrait(key)
-		if tex is Texture2D:
-			face.texture = tex
+		if Avatars.ready_now(key) or Portraits.holds(key):
+			var tex = Portraits.get_portrait(key)
+			if tex is Texture2D:
+				face.texture = tex
+		else:
+			_faces_wait.append([face, key])      # (filled in once the model is read on a worker thread)
+			Avatars.warm(key)
 		var stars := "★".repeat(int(r["difficulty"])) + "☆".repeat(maxi(0, 3 - int(r["difficulty"])))
 		var lines: Array = [["%s   ·   %s" % [Loc.t(str(ch.get("title", ""))), stars], 17, col.lightened(0.35)],
 			["“%s”" % Loc.t(str(r["line"])), 17, UITheme.TEXT_DIM]]
 		lines.append([Loc.t("You beat them") + "  ✓" if beaten.has(key) else Loc.t("Not beaten yet"), 16, Color("5affa0") if beaten.has(key) else UITheme.GOLD])
-		var b := _tile(col, face, str(ch.get("name", key)), lines, Loc.t("Ride to them") + "  ▶", func(): _go("rider:" + key), false, true)
+		# (The square portrait inside the rounded card gets rounded corners of its own.)
+		var b := _tile(col, UiPictures.rounded(face, 14), str(ch.get("name", key)), lines, Loc.t("Ride to them") + "  ▶", func(): _go("rider:" + key), false, true)
 		g.add_child(b)
 		if first == null:
 			first = b
