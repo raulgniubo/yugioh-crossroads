@@ -5,6 +5,15 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.70.2
+
+**Your duelist's colors and skin, and two hairstyles back.** No cards added: 8,415 total.
+
+- **Calmer colors that keep the texture**: a picked color is a touch less saturated, highlights on hair still show, and dark picks (black, charcoal, navy) keep their folds instead of turning into a flat shape.
+- **One skin tone on the whole body**: arms, legs and neck now take the face's tone (some outfit models had orange arms and pale legs).
+- **Side Braid and High Bun are back**, remade with clean faces (no blush blocks, no marks under the eyes), and they no longer bring bits of their model's jacket onto other outfits. Half-Up stays hidden: its new model still needs work.
+- Power Bond checked in the rules engine: its End Phase damage is taken (new test board).
+
 ## What is in 0.70.1
 
 **Professor Sato remade.** No cards added: 8,415 total.

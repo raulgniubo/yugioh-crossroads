@@ -79,9 +79,11 @@ static func outfits() -> Array:
 	return out
 
 
-## Hairstyles kept out of the editor until their heads are remade (their faces aren't clean yet).
+## Hairstyles kept out of the editor until their heads are clean on every outfit.
 ## A save that has one falls back to the first hairstyle.
-const HIDDEN_HAIRS := [[], [4, 6, 11]]
+const HIDDEN_HAIRS := [[], [11]]
+## Borrowed heads whose donor jacket reaches up into the head (their clothes are left out).
+const DROP_CLOTH := ["hero_f5_hair", "hero_f7_hair"]
 
 
 static func hairs(body: int) -> Array:
@@ -179,6 +181,8 @@ uniform float face_flat = 0.7;
 // the vertex color, set when the mesh is cut; only cut meshes turn it on.
 uniform int neck_on = 0;
 uniform vec3 neck_col = vec3(0.8, 0.55, 0.42);
+uniform int drop_cloth = 0;
+uniform vec4 skin_nat = vec4(0.0);    // the borrowed face's own tone, for the body's skin
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 vec3 rgb2hsv(vec3 c) {
 	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
@@ -191,14 +195,29 @@ vec3 hsv2rgb(vec3 c) {
 	vec3 p = abs(fract(c.xxx + vec3(1.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
 	return c.z * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y);
 }
-// The new color, with the folds and shading the painted one had.
-vec3 paint(vec3 c, vec3 ref, vec4 to) {
+// The new color, with the folds and shading the painted one had. `e` is how much of the light
+// and dark of the old paint carries over (1: all of it; skin takes less, so an arm painted a little
+// darker than the legs by the model maker does not stay darker).
+vec3 paint_e(vec3 c, vec3 ref, vec4 to, float e) {
 	if (to.a < 0.5) {
 		return c;
 	}
-	float k = clamp(pow(dot(c, LUMA) / max(dot(ref, LUMA), 0.004), 0.8), 0.3, 1.5);
-	// Very dark paint keeps a little of the light the folds caught, so black is not a flat hole.
-	return clamp(to.rgb * k + vec3(0.012) * max(k - 1.0, 0.0), 0.0, 1.0);
+	float lc = dot(c, LUMA);
+	float lr = max(dot(ref, LUMA), 0.004);
+	float k = clamp(pow(lc / lr, e), 0.25, 1.8);
+	// A touch calmer than the swatch: full-strength picks read as plastic on cloth and hair.
+	float lt = dot(to.rgb, LUMA);
+	vec3 t = mix(vec3(lt), to.rgb, 0.86);
+	vec3 r = t * min(k, 1.0);
+	// Where the old paint was lighter than usual (a highlight on hair, a lit fold), lift toward white.
+	float dark = clamp(1.0 - lt / 0.3, 0.0, 1.0);
+	r += (vec3(1.0) - r) * clamp((k - 1.0) * 0.3, 0.0, 0.3) * e * mix(1.0, 0.12, dark);
+	// Dark paint keeps the folds: black cloth is never one flat color.
+	r += vec3(0.012 * k + clamp(lc - lr, -0.03, 0.12) * 0.08) * dark * e;
+	return clamp(r, 0.0, 1.0);
+}
+vec3 paint(vec3 c, vec3 ref, vec4 to) {
+	return paint_e(c, ref, to, 1.0);
 }
 vec3 rehue(vec3 c, vec4 to) {
 	if (to.a < 0.5) {
@@ -220,11 +239,22 @@ void fragment() {
 		discard;
 	}
 	float id = m.r * 255.0;
+	// Some borrowed heads carry bits of their donor's jacket (a braid lying on the shoulder):
+	// those are left out and the outfit's own shoulders show.
+	if (part == 2 && drop_cloth == 1 && id > 108.0 && id < 212.0) {
+		discard;
+	}
 	vec3 c = t.rgb;
 	if (abs(id - 40.0) < 12.0) {
 		float nw = neck_on == 1 ? COLOR.r : 0.0;
 		c = mix(min(c * skin_gain, vec3(1.0)), neck_col, nw);
-		c = paint(c, mix(skin_ref * skin_gain, neck_col, nw), skin_to);
+		// Body skin under a borrowed head always takes the face's tone (arms, legs and neck alike);
+		// a picked skin color repaints face and body.
+		vec4 sto = skin_to;
+		if (sto.a < 0.5 && skin_nat.a > 0.5 && part != 2) {
+			sto = vec4(skin_nat.rgb, 1.0);
+		}
+		c = paint_e(c, mix(skin_ref * skin_gain, neck_col, nw), sto, 0.25);
 		// Faces are drawn flat, the way the art is: light that follows every small bump of a
 		// generated face shows lumps around the nose and mouth.
 		if (m.g > 0.75 || nw > 0.5) {
@@ -298,6 +328,7 @@ static func apply(scene: Node, model: String, head_model: String, p, accent: Col
 			print("HEROSKIN body %s head %s gain head %s (body neck %s)" % [model, head_model, hg, r])
 		for m in hm:
 			(m as ShaderMaterial).set_shader_parameter("skin_gain", hg)
+			(m as ShaderMaterial).set_shader_parameter("drop_cloth", 1 if DROP_CLOTH.has(head_model) else 0)
 		# one even neck for body and head: the face's own cheek color with its tint, a touch darker
 		var ch: Color = _cheeks.get("%s/2/%.3f" % [head_model, _neck_cut(model)], Color(0, 0, 0, 0))
 		if OS.has_environment("HERO_CUT_DEBUG"):
@@ -307,6 +338,12 @@ static func apply(scene: Node, model: String, head_model: String, p, accent: Col
 			for m in hm + mats:
 				(m as ShaderMaterial).set_shader_parameter("neck_on", 1)
 				(m as ShaderMaterial).set_shader_parameter("neck_col", nc)
+			# (lighter and calmer than the cheek pixels: the face is lit flat and reads paler on screen
+			# than its texture; the body is lit fully and would look orange next to it)
+			var cheek := Color(ch.r * hg.x, ch.g * hg.y, ch.b * hg.z).linear_to_srgb()
+			var face := Color.from_hsv(cheek.h, cheek.s * 0.62, minf(cheek.v * 1.12, 1.0)).srgb_to_linear()
+			for m in mats:
+				(m as ShaderMaterial).set_shader_parameter("skin_nat", face)
 		mats.append_array(hm)
 	if head != null and OS.get_environment("HERO_ONLY") != "":
 		# dev: see one of the two parts alone
@@ -443,7 +480,7 @@ static var _cheeks := {}
 ## own neck is ragged under the jaw hands more of it to the head.
 ## How far under the head bone a short hairstyle's hair can reach (meters); below that, what the
 ## mask took for hair is the donor's dark shirt.
-const HAIR_DEPTH := {"hero_m5_hair": 0.05, "hero_m6_hair": 0.05, "hero_m7_hair": 0.05, "hero_m8_hair": 0.05, "hero_m9_hair": 0.05, "hero_m12_hair": 0.05, "hero_f6_hair": 0.05}
+const HAIR_DEPTH := {"hero_m5_hair": 0.05, "hero_m6_hair": 0.05, "hero_m7_hair": 0.05, "hero_m8_hair": 0.05, "hero_m9_hair": 0.05, "hero_m12_hair": 0.05, "hero_f6_hair": 0.05, "hero_f7_hair": 0.05}
 const NECK_CUT := {"hero_f1_street": 0.07, "hero_f1_heartland": 0.08, "hero_f1_satellite": 0.06}
 
 
@@ -579,6 +616,10 @@ static func _cut(mesh: Mesh, skin: Skin, sk: Skeleton3D, model: String, role: in
 				# takes over; never the donor's collar or shirt
 				# a short hairstyle has no hair under the neck: anything dark down there is its shirt
 				if ok and kind == 1 and HAIR_DEPTH.has(model) and (cen.y < hpos.y - float(HAIR_DEPTH[model]) * u or not on_head):
+					ok = false
+				# heads whose donor wore a jacket in the accent color: accent below the chin is that
+				# jacket, not a streak of hair
+				if ok and DROP_CLOTH.has(model) and int(cc.r * 255.0) > 231 and cen.y < hpos.y - 0.02 * u:
 					ok = false
 				# unmarked bits around the neck (folds where the hair met it) stay out
 				if ok and kind == 0 and cen.y < hpos.y + 0.02 * u:

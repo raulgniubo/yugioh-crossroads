@@ -64,6 +64,8 @@ func boards() -> Array:
 				for c in r["mons"][0]:
 					top = maxi(top, int(c["atk"]))
 				return top >= 2500),
+		b("Rules: Power Bond's End Phase damage", {"m": [["Cyber Dragon", 1], ["Cyber Dragon", 1]], "hand": ["Power Bond"], "extra": ["Cyber Twin Dragon"]}, {"lp": 8000, "m": [["Gate Guardian", 1]]},
+			func(r): return int(r["lp"][0]) == 8000 - 2800),
 		b("Tempo: direct attack instead of a pointless trade", {"m": [["Vorse Raider", 1]], "hand": ["Fissure"]}, {"lp": 1900, "m": [["Gemini Elf", 1]]}, win),
 	]
 
@@ -81,6 +83,8 @@ func cards_of(side: Dictionary, team: int, out: Array) -> void:
 		out.append([team, ids[h], 0x02, 0, 0xa])
 	for g in side.get("gy", []):
 		out.append([team, ids[g], 0x10, 0, 0x1])
+	for x in side.get("extra", []):
+		out.append([team, ids[x], 0x40, 0, 0x8])
 	for i in 10:
 		out.append([team, ids[F], 0x01, 0, 0xa])
 

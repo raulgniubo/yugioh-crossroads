@@ -34,6 +34,12 @@ func _ready() -> void:
 			yaw = float(a.substr(6))
 		elif a == "--tint":
 			tint = true
+		elif a.begins_with("--colors="):
+			var cs := a.substr(9).split(":")
+			Profile.look_haircol = int(cs[0])
+			Profile.look_top = int(cs[1])
+			Profile.look_bottom = int(cs[2])
+			Profile.look_skin = int(cs[3])
 		elif a == "--sun":
 			sun = true
 		elif a.begins_with("--looks="):
