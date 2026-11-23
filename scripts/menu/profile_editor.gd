@@ -571,7 +571,7 @@ func _fill_hair() -> void:
 	for c in _hair_box.get_children():
 		_hair_box.remove_child(c)
 		c.queue_free()
-	_hair_box.add_child(_section("HAIRSTYLE"))
+	_hair_box.add_child(_section(Loc.t("HAIRSTYLE   ·   %d to pick from") % HeroLook.hairs(Profile.look_body).size()))
 	var flow := HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 10)
 	flow.add_theme_constant_override("v_separation", 10)
@@ -580,7 +580,7 @@ func _fill_hair() -> void:
 	if not have.has(Profile.look_hair):
 		Profile.look_hair = int(have[0])
 	var btns: Array = []
-	btns.resize(4)
+	btns.resize(HeroLook.HAIRS[Profile.look_body].size())
 	for i in have:
 		var b := _toggle(Loc.t(str(HeroLook.HAIRS[Profile.look_body][i][0])))
 		b.pressed.connect(func():
@@ -593,14 +593,7 @@ func _fill_hair() -> void:
 
 ## The outfits made for this body.
 func _outfits_for_body() -> Array:
-	var out: Array = []
-	var stem := "hero_m" if Profile.look_body == 0 else "hero_f"
-	for i in HeroLook.OUTFITS.size():
-		for n in [1, 2, 3, 4]:
-			if HeroLook.has_model("%s%d_%s" % [stem, n, HeroLook.OUTFITS[i][2]]):
-				out.append(i)
-				break
-	return out
+	return HeroLook.outfits_for(Profile.look_body)
 
 
 func _fill_outfits() -> void:
@@ -609,27 +602,35 @@ func _fill_outfits() -> void:
 	for c in _outfit_box.get_children():
 		_outfit_box.remove_child(c)
 		c.queue_free()
-	_outfit_box.add_child(_section("OUTFIT   ·   one for every series"))
-	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", 10)
-	flow.add_theme_constant_override("v_separation", 10)
-	_outfit_box.add_child(flow)
 	var have := _outfits_for_body()
 	if not have.has(Profile.look_outfit):
 		Profile.look_outfit = int(have[0])
 	var btns: Array = []
 	btns.resize(HeroLook.OUTFITS.size())
-	for i in have:
-		var o: Array = HeroLook.OUTFITS[i]
-		var b := _toggle("%s\n%s" % [Loc.t(str(o[0])), str(o[1])])
-		b.custom_minimum_size = Vector2(236, 76)
-		b.add_theme_font_size_override("font_size", 20)
-		b.pressed.connect(func():
-			Profile.look_outfit = i
-			_fill_outfits()
-			_changed())
-		flow.add_child(b)
-		btns[i] = b
+	# One block per series, each with the outfits made for this body.
+	for series in HeroLook.SERIES:
+		var mine: Array = []
+		for i in have:
+			if str(HeroLook.OUTFITS[i][1]) == series:
+				mine.append(i)
+		if mine.is_empty():
+			continue
+		_outfit_box.add_child(_section(Loc.t("OUTFIT   ·   %s") % Loc.t(series).to_upper()))
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 10)
+		flow.add_theme_constant_override("v_separation", 10)
+		_outfit_box.add_child(flow)
+		for i in mine:
+			var o: Array = HeroLook.OUTFITS[i]
+			var b := _toggle(Loc.t(str(o[0])))
+			b.custom_minimum_size = Vector2(236, 58)
+			b.add_theme_font_size_override("font_size", 20)
+			b.pressed.connect(func():
+				Profile.look_outfit = i
+				_fill_outfits()
+				_changed())
+			flow.add_child(b)
+			btns[i] = b
 	_rows["look_outfit"] = btns
 	if bool(HeroLook.OUTFITS[Profile.look_outfit][3]):
 		# Duel Academy: the three dorms, one press each. The blazer takes the dorm's color.

@@ -33,6 +33,9 @@ GROUPS = {
     "hands": ["LeftHand", "RightHand"],
 }
 GN = list(GROUPS.keys())
+# Outfits whose models carry their own hairstyle's head (HeroLook.OWN_HEAD); every later outfit
+# is a body that always takes a borrowed head.
+OWN_HEAD = ("street", "academy", "rider", "satellite", "heartland")
 
 
 def load(path):
@@ -116,7 +119,7 @@ def close_to(lab, cl, chroma=11.0, pad=9.0):
     return (np.hypot(lab[..., 1] - cen[1], lab[..., 2] - cen[2]) < chroma) & (lab[..., 0] > lo - pad) & (lab[..., 0] < hi + pad)
 
 
-def build(name, preview=None):
+def build(name, preview=None, collars=False, tails=False):
     j, b = load(os.path.join(PEOPLE, name + ".glb"))
     prim = j["meshes"][0]["primitives"][0]
     P = acc(j, b, prim["attributes"]["POSITION"]).astype(np.float64)
@@ -179,6 +182,16 @@ def build(name, preview=None):
     fz = 1.0 if front[2] >= 0 else -1.0
     head_y = bone_pos["Head"][1]
     top_y = P[:, 1].max()
+    if collars:
+        # --collars: leave a finished mask as it is, but give the body back the collar pieces that
+        # are bound to the head bone (so a borrowed head brings no collar of its own along).
+        mpath = os.path.join(PEOPLE, "masks", name + ".png")
+        M = np.array(Image.open(mpath).convert("RGB"))
+        cut = used & (tg == gi["head"]) & (pos[..., 1] < head_y - 0.005) & ~np.isin(M[..., 0], [40, 80, 220]) & (M[..., 1] > 0)
+        M[..., 1][cut] = 0
+        Image.fromarray(M).save(mpath, optimize=True)
+        print(name, "collar pixels given back to the body:", int(cut.sum()))
+        return None
 
     # skin: the peach on the face, neck and hands
     cand = used & np.isin(tg, [gi["head"], gi["neck"], gi["hands"]]) & (hh > 0.01) & (hh < 0.12) & (ss > 0.12) & (ss < 0.62) & (vv > 0.55)
@@ -211,7 +224,20 @@ def build(name, preview=None):
     on_head = tri_g == gi["head"]
     brow_y = head_y + 0.5 * (top_y - head_y)
     is_hair = on_head & (tri_c[:, 1] > brow_y) & (ll > 0.5)
+    # A head-only model ("<stem>_hair") wears plain clothes picked to look nothing like its hair.
+    donor = name.endswith("_hair")
     ok = (np.where(on_head, ll > 0.45, hl > 0.6) | (tot == 0)) & (tri_c[:, 1] > 0.25)
+    if donor:
+        # Head-only models are drawn with light silver hair and dark plain clothes: off the head,
+        # only what is as light as the crown is hair.
+        crown_l = float(np.median(lab[crown][:, 0]))
+        tri_l = np.bincount(tri_of[used], weights=lab[used][:, 0], minlength=nt) / np.maximum(tot, 1)
+        teal = used & (np.abs(hh - 0.49) < 0.09) & (ss > 0.18)       # the streak, shadows and all
+        acc_f = np.bincount(tri_of[teal | (used & accent)], minlength=nt) / np.maximum(tot, 1)
+        ok = (ok & (on_head | (tri_l > crown_l - 22))) | (~on_head & (acc_f > 0.5) & (tri_c[:, 1] > 0.25))
+    if donor:
+        # Meshy makes a braid or a tail its own piece, not joined to the head: start there too.
+        is_hair |= ((hl > 0.7) | (acc_f > 0.5)) & ok & ~on_head & (tri_c[:, 1] > bone_pos["Hips"][1] + 0.1)
     vert_hair = np.zeros(weld.max() + 1, bool)
     for _ in range(600):
         vert_hair[:] = False
@@ -221,6 +247,28 @@ def build(name, preview=None):
             break
         is_hair |= grow
     in_flood = used & is_hair[np.maximum(tri_of, 0)]
+    if tails:
+        # --tails: leave a finished mask as it is, but hand the head the colored tips of a tail or
+        # a braid that hang off the hair below the head (so a borrowed head leaves none behind).
+        teal_t = used & (np.abs(hh - 0.49) < 0.09) & (ss > 0.18)
+        acc_t = np.bincount(tri_of[teal_t], minlength=nt) / np.maximum(tot, 1)
+        tip = np.zeros(nt, bool)
+        grown = is_hair.copy()
+        for _ in range(60):
+            vert_hair[:] = False
+            vert_hair[WI[grown].reshape(-1)] = True
+            g2 = ~grown & ~on_head & (acc_t > 0.5) & vert_hair[WI].any(1)
+            if not g2.any():
+                break
+            tip |= g2
+            grown |= g2
+        mpath = os.path.join(PEOPLE, "masks", name + ".png")
+        M = np.array(Image.open(mpath).convert("RGB"))
+        cut = used & tip[np.maximum(tri_of, 0)] & (M[..., 1] < 128)
+        M[..., 1][cut] = 255
+        Image.fromarray(M).save(mpath, optimize=True)
+        print(name, "tail tip pixels handed to the head:", int(cut.sum()), "triangles:", int(tip.sum()))
+        return None
     hair = in_flood & ~skin & ~accent
     back = hair & (tg != gi["head"])
     # eyes: keep the whites and the irises out of the hair
@@ -269,7 +317,8 @@ def build(name, preview=None):
         top_cl, top = region(np.isin(tg, [gi["top"]]))
     else:
         top = used & (tg == gi["top"]) & ~skin & ~accent & ~hair & close_to(lab, top_cl, 10.0, 8.0)
-    bot_cl, bottom = region(thighs | (tg == gi["waist"]) & ~close_to(lab, top_cl, 10.0, 8.0) if top_cl is not None else thighs)
+    # (A long coat covers the thighs: what is not the top's color there is the trousers or skirt.)
+    bot_cl, bottom = region((thighs | (tg == gi["waist"])) & ~close_to(lab, top_cl, 10.0, 8.0) if top_cl is not None else thighs)
     if bot_cl is None:
         bot_cl, bottom = region(np.isin(tg, [gi["legs"]]))
     else:
@@ -289,13 +338,22 @@ def build(name, preview=None):
             top |= waist & close_to(lab, top_cl, 10.0, 8.0) & (dt <= db)
             bottom |= waist & close_to(lab, bot_cl, 10.0, 8.0) & (db < dt)
         # the top's color on the upper legs is the hem of a long coat or blazer
-        hem = used & (tg == gi["legs"]) & (pos[..., 1] > bone_pos["Hips"][1] - 0.2) & ~skin & ~accent & ~hair & close_to(lab, top_cl, 10.0, 8.0) & (dt < db) & ~same
+        knee = bone_pos["LeftLeg"][1] - 0.06 if "LeftLeg" in bone_pos else bone_pos["Hips"][1] - 0.2
+        hem = used & (tg == gi["legs"]) & (pos[..., 1] > min(knee, bone_pos["Hips"][1] - 0.2)) & ~skin & ~accent & ~hair & close_to(lab, top_cl, 10.0, 8.0) & (dt < db) & ~same
         top |= hem
         bottom &= ~top
+    # An outfit made after the first five only ever lends its body: its own head is always
+    # replaced, so nothing below the head counts as hair (a white collar touching short silver
+    # hair would otherwise be cut away with the head).
+    body_only = (not donor) and name.rsplit("_", 1)[-1] not in OWN_HEAD
+    if body_only:
+        back[:] = False
+        hair &= tg == gi["head"]
     hair |= back
     top &= ~hair
     bottom &= ~hair
     shoes &= ~hair
+    iris |= (eye_zone | band) & accent & ~hair     # teal eyes are eyes, not the signature color
     accent &= ~iris
 
     ids = np.zeros((H, Wd), np.uint8)
@@ -309,8 +367,52 @@ def build(name, preview=None):
     # G: 255 = the head (face and all the hair), 128 = the skin of the neck. When a hairstyle
     # from one model goes on another, the body gives up its 255 and the head brings 128 and up,
     # so the two necks overlap in the same skin tone instead of leaving a gap.
-    part = np.where(used & ((tg == gi["head"]) | hair), 255, 0).astype(np.uint8)
+    part = np.where(used & ((tg == gi["head"]) | hair | (in_flood & donor)), 255, 0).astype(np.uint8)
+    # A collar bound to the head bone stays with the body; the face and hair go. (On a body-only
+    # outfit only what is clearly cloth: its own chin must never peek out under a borrowed head.)
+    low = used & (tg == gi["head"]) & (pos[..., 1] < head_y - 0.005) & ~hair & ~skin
+    if donor:
+        low[:] = False        # a head-only model wears a plain t-shirt: everything on its head stays
+    if body_only:
+        # (a tan collar can pass for skin: anything well under the jaw goes back to the body)
+        low = (low & np.isin(ids, [IDS["top"], IDS["bottom"], IDS["accent"]])) | \
+            (used & (tg == gi["head"]) & (pos[..., 1] < head_y - 0.025) & ~hair)
+    part[low] = 0
     part[used & (tg == gi["neck"]) & skin & (part == 0)] = 128
+    if False and donor and eyes:      # off: it cut eyelashes on clean faces; kept for reference
+        # Stray strands Meshy leaves floating in front of the face (by the eyes, on the cheeks):
+        # small pieces of hair not joined to the rest of it, below the brows. A head-only model
+        # never shows them (G 0 is never drawn on a borrowed head). Bangs are joined to the hair.
+        ey = max(float(e[1]) for e in eyes)
+        frontz = tri_c[:, 2] * fz - bone_pos["Head"][2] * fz
+        skin_t = (np.bincount(tri_of[used & skin], minlength=len(I)) / np.maximum(tot, 1) > 0.5) & on_head
+        hair_t = (np.bincount(tri_of[used & (hair | (loose & eye_zone & ~iris))], minlength=len(I)) / np.maximum(tot, 1) > 0.5) & on_head
+        ht = np.where(hair_t)[0]
+        parent = np.arange(weld.max() + 1)
+
+        def find(x):
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+        for t in ht:
+            a0, a1, a2 = (find(v) for v in WI[t])
+            parent[a1] = a0
+            parent[find(a2)] = a0
+        comp = np.array([find(WI[t][0]) for t in ht])
+        shard = np.zeros(len(I), bool)
+        for c in np.unique(comp):
+            ts = ht[comp == c]
+            cc = tri_c[ts].mean(0)
+            if len(ts) > 40 or not (head_y - 0.06 < cc[1] < ey + 0.015) or abs(cc[0] - bone_pos["Head"][0]) > 0.095:
+                continue
+            # it must stand out at or in front of the face's skin around it (an eye white is set in)
+            lo, hi = tri_c[ts, :2].min(0) - 0.01, tri_c[ts, :2].max(0) + 0.01
+            sk = skin_t & np.all(tri_c[:, :2] > lo, 1) & np.all(tri_c[:, :2] < hi, 1)
+            if sk.any() and frontz[ts].max() >= frontz[sk].max() - 0.003:
+                shard[ts] = True
+        part[used & shard[np.maximum(tri_of, 0)]] = 0
+        print(name, "strands under the eyes hidden:", int(shard.sum()))
 
     # spread into the empty gaps between the pieces, so filtering at the seams picks nothing wrong
     for _ in range(3):
@@ -405,6 +507,69 @@ def render(P, UV, I, tex, sgn, size=640):
     return Image.fromarray(img)
 
 
+def trim(name, neck=False):
+    """--trim: a short hairstyle's head-only model keeps nothing of its own below the shoulders
+    (light clothes there can pass for silver hair and would show on every outfit it goes on)."""
+    from PIL import ImageDraw
+    j, b = load(os.path.join(PEOPLE, name + ".glb"))
+    prim = j["meshes"][0]["primitives"][0]
+    P = acc(j, b, prim["attributes"]["POSITION"]).astype(np.float64)
+    UV = acc(j, b, prim["attributes"]["TEXCOORD_0"]).astype(np.float64)
+    I = acc(j, b, prim["indices"]).reshape(-1, 3).astype(np.int64)
+    skin = j["skins"][0]
+    jn = [j["nodes"][n]["name"] for n in skin["joints"]]
+    ibm = acc(j, b, skin["inverseBindMatrices"]).reshape(-1, 4, 4)
+    bp = {nm: np.linalg.inv(ibm[k].T)[:3, 3] for k, nm in enumerate(jn)}
+    sh = max(bp["LeftShoulder"][1], bp["RightShoulder"][1])
+    mpath = os.path.join(PEOPLE, "masks", name + ".png")
+    M = np.array(Image.open(mpath).convert("RGB"))
+    H, W = M.shape[:2]
+    tc = P[I].mean(1)
+    low = tc[:, 1] < (bp["neck"][1] if neck else sh - 0.08)
+    if neck:
+        # and anything out on the shoulders below the head (a donor's shoulder pads read as hair)
+        low |= (tc[:, 1] < bp["Head"][1]) & (np.abs(tc[:, 0] - bp["Head"][0]) > 0.12)
+    canvas = Image.new("L", (W, H), 0)
+    d = ImageDraw.Draw(canvas)
+    for t in np.where(low)[0]:
+        d.polygon([(UV[v, 0] * W - 0.5, UV[v, 1] * H - 0.5) for v in I[t]], fill=255, outline=255)
+    cut = (np.asarray(canvas) > 0) & (M[..., 1] > 0)
+    if neck:
+        cut &= M[..., 0] != IDS["skin"]       # (--neck: from the neck bone down; its skin stays)
+    M[..., 1][cut] = 0
+    Image.fromarray(M).save(mpath, optimize=True)
+    print(name, "pixels below the shoulders taken off the head:", int(cut.sum()))
+
+
+def floating(name):
+    """--float: bits of a body's own hair left hanging in the air beside the head once the head
+    is borrowed (tips Meshy cut off the tail): high up and off to the side, they go with the head."""
+    from PIL import ImageDraw
+    j, b = load(os.path.join(PEOPLE, name + ".glb"))
+    prim = j["meshes"][0]["primitives"][0]
+    P = acc(j, b, prim["attributes"]["POSITION"]).astype(np.float64)
+    UV = acc(j, b, prim["attributes"]["TEXCOORD_0"]).astype(np.float64)
+    I = acc(j, b, prim["indices"]).reshape(-1, 3).astype(np.int64)
+    skin = j["skins"][0]
+    jn = [j["nodes"][n]["name"] for n in skin["joints"]]
+    ibm = acc(j, b, skin["inverseBindMatrices"]).reshape(-1, 4, 4)
+    bp = {nm: np.linalg.inv(ibm[k].T)[:3, 3] for k, nm in enumerate(jn)}
+    tc = P[I].mean(1)
+    dx = np.abs(tc[:, 0] - bp["Head"][0])
+    up = (tc[:, 1] > bp["neck"][1] + 0.05) & (dx > 0.11) & (dx < 0.3)
+    mpath = os.path.join(PEOPLE, "masks", name + ".png")
+    M = np.array(Image.open(mpath).convert("RGB"))
+    H, W = M.shape[:2]
+    canvas = Image.new("L", (W, H), 0)
+    d = ImageDraw.Draw(canvas)
+    for t in np.where(up)[0]:
+        d.polygon([(UV[v, 0] * W - 0.5, UV[v, 1] * H - 0.5) for v in I[t]], fill=255, outline=255)
+    cut = (np.asarray(canvas) > 0) & (M[..., 1] < 128)
+    M[..., 1][cut] = 255
+    Image.fromarray(M).save(mpath, optimize=True)
+    print(name, "floating bits handed to the head:", int(up.sum()), "triangles,", int(cut.sum()), "pixels")
+
+
 def main():
     args = sys.argv[1:]
     preview = None
@@ -412,6 +577,29 @@ def main():
         k = args.index("--preview")
         preview = args[k + 1]
         del args[k:k + 2]
+    if "--float" in args:
+        args.remove("--float")
+        for n in args:
+            floating(n)
+        return
+    if "--trim" in args:
+        args.remove("--trim")
+        neck = "--neck" in args
+        if neck:
+            args.remove("--neck")
+        for n in args:
+            trim(n, neck)
+        return
+    if "--tails" in args:
+        args.remove("--tails")
+        for n in args:
+            build(n, tails=True)
+        return
+    if "--collars" in args:
+        args.remove("--collars")
+        for n in args:
+            build(n, collars=True)
+        return
     names = args or sorted(f[:-4] for f in os.listdir(PEOPLE) if f.startswith("hero_") and f.endswith(".glb"))
     table = {}
     path = os.path.join(PEOPLE, "masks", "refs.json")

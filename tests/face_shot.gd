@@ -5,10 +5,13 @@ var out := "/tmp/ui/face"
 var size := 640
 var dist := 0.42
 var sun := false
+var dy := 0.0  # aim this far above (or below, negative) the usual spot
 var looks: Array = []
 var ids := false
 var tint := false
 var lod := -1.0
+var full := false
+var yaw := 0.0
 
 
 func _ready() -> void:
@@ -23,6 +26,12 @@ func _ready() -> void:
 			ids = true
 		elif a.begins_with("--lod="):
 			lod = float(a.substr(6))
+		elif a == "--full":
+			full = true
+		elif a.begins_with("--dy="):
+			dy = float(a.substr(5))
+		elif a.begins_with("--yaw="):
+			yaw = float(a.substr(6))
 		elif a == "--tint":
 			tint = true
 		elif a == "--sun":
@@ -63,6 +72,8 @@ func _ready() -> void:
 			print("FACESHOT no model for ", lk)
 			continue
 		add_child(m)
+		if m is Node3D:
+			(m as Node3D).rotation_degrees.y += yaw
 		for mm in m.find_children("*", "MeshInstance3D", true, false):
 			for si in (mm as MeshInstance3D).get_surface_override_material_count():
 				var sm = (mm as MeshInstance3D).get_surface_override_material(si)
@@ -76,14 +87,17 @@ func _ready() -> void:
 					(sm as ShaderMaterial).set_shader_parameter("skin_to", Color("aa7345"))
 		for i in 20:
 			await get_tree().process_frame
-		var hp := Avatars.head_position(m) + Vector3(0, 0.07, 0)
+		var hp := Avatars.head_position(m) + Vector3(0, 0.07 + dy, 0)
+		if full:
+			# the whole figure: aim at the middle of the body
+			hp = Vector3(hp.x, hp.y * 0.53, hp.z)
 		cam.global_position = hp + Vector3(0, 0.0, dist)
 		cam.look_at(hp, Vector3.UP)
 		for i in 6:
 			await get_tree().process_frame
 		await RenderingServer.frame_post_draw
 		var img := get_viewport().get_texture().get_image()
-		var fn := "%s_b%d_h%d_o%d%s.png" % [out, lk[0], lk[1], lk[2], ("_ids" if ids else "") + ("_tint" if tint else "") + ("_lod%d" % int(lod) if lod >= 0.0 else "")]
+		var fn := "%s_b%d_h%d_o%d%s.png" % [out, lk[0], lk[1], lk[2], ("_ids" if ids else "") + ("_tint" if tint else "") + ("_lod%d" % int(lod) if lod >= 0.0 else "") + ("_full" if full else "") + ("_y%d" % int(yaw) if yaw != 0.0 else "")]
 		img.save_png(fn)
 		print("FACESHOT ", fn)
 		m.queue_free()
