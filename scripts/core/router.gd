@@ -1116,6 +1116,8 @@ func prepare() -> void:
 			Collection.pool(str(p["key"]))
 		pulse()
 	CardFinder.summary(CardData.LUMEN)
+	pulse()
+	Avatars.prime()
 	if _frame_log:
 		print("PREPARE %d ms" % (Time.get_ticks_msec() - t0))
 

@@ -151,13 +151,15 @@ func _ready() -> void:
 	_build_cine_ui()
 	# Portraits are drawn live from the models: start them now so nobody's first line shows
 	# an empty frame.
-	Portraits.get_portrait("player")
 	var seen := {}
 	for st in _steps:
 		var who := str((st as Dictionary).get("s", ""))
 		if who != "" and who != "player" and not seen.has(who) and seen.size() < 4:
 			seen[who] = true
-			Portraits.get_portrait(who)
+	Avatars.read_ahead(["player"] + seen.keys())      # (0.72.4: their files side by side, on other threads)
+	Portraits.get_portrait("player")
+	for who in seen:
+		Portraits.get_portrait(who)
 	if free:
 		# Back from a duel that one of the things to do asked for.
 		if Router.story_result != "" and flags.has("_duel_task"):

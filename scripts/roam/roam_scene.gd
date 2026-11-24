@@ -99,9 +99,9 @@ func _ready() -> void:
 				mk = str((d as Dictionary).get("id", ""))
 			if not Avatars.has_avatar(mk) and (d as Dictionary).has("model") and Avatars.has_avatar(str(d["model"])):
 				mk = str(d["model"])
-			Avatars.warm(mk)
+			Avatars.warm(mk, false)
 	for mk in ["student_boy", "student_girl", "office_worker", "stylish_woman", "street_duelist", "shopkeeper"]:
-		Avatars.warm(mk)
+		Avatars.warm(mk, false)
 	_build_world()
 	await _breath()
 	_build_player()
@@ -930,6 +930,14 @@ func _npc_color(d: Dictionary) -> Color:
 
 
 func _build_npcs() -> void:
+	# (0.72.4) The people's files are still being read on other threads: they are waited for here,
+	# with the card moving, instead of stopping dead in the middle of making somebody.
+	if Router.loading or _slice_force:
+		var t0 := Time.get_ticks_msec()
+		while Avatars.reading() and Time.get_ticks_msec() - t0 < 20000:
+			Router.pulse()
+			await get_tree().process_frame
+		_slice_t = Time.get_ticks_msec()
 	for d in district.get("npcs", []):
 		_add_npc(d, Vector3.ZERO)
 		await _breath()
@@ -1726,8 +1734,11 @@ func _npc_out(d: Dictionary) -> bool:
 	return true
 
 
+var _face_ready := 0      # (instance id) whose portrait was last got ready ahead of time
+
 func _update_near() -> void:
 	var best: Dictionary = {}
+	var best_f: Node3D = null
 	var best_d := TALK_RANGE
 	for n in _npcs:
 		var f: Node3D = n[1]
@@ -1747,8 +1758,16 @@ func _update_near() -> void:
 		if dist < best_d:
 			best_d = dist
 			best = n[0]
+			best_f = f
 	_near = best
 	_near_spot = {}
+	# (0.72.4) Whoever you are standing next to: their portrait is got ready now, on another
+	# thread, so it is there the moment you talk to them.
+	var best_id := best_f.get_instance_id() if best_f != null else 0
+	if best_id != _face_ready:
+		_face_ready = best_id
+		if best_f != null and str(best_f.get("key")) != "":
+			Avatars.prepare_face(str(best_f.get("key")))
 	if _inside == "" and _loc_area:
 		var area := _area_name()
 		if area != "" and _loc_area.text != Loc.t(area):

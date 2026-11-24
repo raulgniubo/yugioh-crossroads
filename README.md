@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.72.4
+
+**A model you dropped in is read once.** No cards added: 12,745 total.
+
+- **Read once, copied after.** A model from the `characters` folder used to be read from its file, built and fitted every time somebody needed it: for the person in the street, again for their portrait, again when the portrait came back after a rest, again on the next visit. Now the finished model is kept aside and every use is a copy that shares its meshes, textures and motions. Measured here with a 33 MB model (three 2048 textures): 0.4 s the first time on the main thread before, 5 ms now when it was read ahead (a world does that for everybody), and under 1 ms every time after.
+- **A leak is gone.** Every time one of those models was loaded, its textures stayed in memory for good (a list meant for something else held on to them). Thirty loads of one small model: +143 MB before, +0 now. Long sessions with your own models no longer grow.
+- **Their textures are sized while the file is read**, on another thread. They used to go to the graphics card at full size, be fetched back, made smaller and sent again, on the main thread.
+- **Faces that show together are read together**: the four of the home screen, the two of a duel, a tournament board, the cast of a story scene. Side by side on other threads with the ring turning, and then shown all at once, instead of one after another with the picture standing still. Whoever you stand next to in a world has their portrait got ready before you talk to them.
+- **Fitted motions survive an update.** They were thrown away with every new version, so every place worked them all out again on the first visit after each update. They are now kept for as long as the fitting itself does not change (`data/fit_rev.json`; the unit tests check it).
+- The body the walks are borrowed from and the library of everyday motions are loaded at the start, behind the card.
+- Tools: `tests/model_cost.tscn` (what a model costs the first time and again, and whether anything piles up), `tests/model_twins.tscn` (copies of one model side by side), `tests/fit_rev.tscn`, `MODEL_LAPS=1`.
+
 ## What is in 0.72.3
 
 **It runs smoothly.** A pass over everything that froze or stuttered. No cards added: 12,745 total.

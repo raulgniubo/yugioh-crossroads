@@ -188,6 +188,7 @@ func set_names(a: String, b: String) -> void:
 
 func set_portraits(a: String, b: String) -> void:
 	portrait_keys = [a, b]
+	Avatars.read_ahead([a, b])      # (0.72.4: both files at once, on other threads)
 	for i in 2:
 		if _panels[i] != null and (_panels[i] as DuelistPanel).live:
 			continue

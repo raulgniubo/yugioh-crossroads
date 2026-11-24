@@ -1047,7 +1047,39 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.72.3 STATE (Nov 23 late; NEWEST, read this first): the performance pass
+#### 0.72.4 STATE (Nov 23 night; NEWEST, read this first): dropped-in models are read once
+- Raul asked for point 1 of the list after 0.72.3 ("los modelos se leen del archivo cada vez"). About point 2 (portraits) he said:
+  "no me gusta que se vaya a la pantalla y que las cosas no se vean bien... prefiero que todo se cargue anteriormente y ya cuando
+  se vaya pues todo esté cargado". So: NO pop-in fixes. Read ahead, wait behind a card or the ring, then show everything at once.
+- Avatars._tpl: kept models. A dropped-in .glb: "<file>|<sharp>" -> the finished scene (never in the tree); every use is
+  `duplicate()` of it (shares meshes, materials, the AnimationLibrary: a gesture fitted for one copy is there for all).
+  A bundled one: "<res path>" -> its PackedScene. Budget TPL_BUDGET_MB (700) by rough weight, oldest use goes first.
+  Two per file at most: the street one (color texture 1024) and the portrait one (2048, `sharp`).
+  A file replaced while the game runs is read again (its date is in the entry).
+- THE LEAK that was there since even_light: `_even_mats` (material -> no-shadow twin) held every material of every model ever
+  loaded. For bundled models that worked as an accidental cache (which is why the kept PackedScenes exist now: without them a
+  bundled model is read from disk again each time its last person goes). The twin now lives in the material's own meta.
+- scripts/core/model_tex_fit.gd: a GLTFDocumentExtension that makes the textures smaller as they are decoded (in the worker for a
+  warmed read). Only for a read that sets "yc_cap" in the GLTFState. Tells images apart by byte length (the engine does not say
+  which image it hands over). _fit_textures still runs after as a net. NEVER call Texture.get_image() from a worker: it waits for
+  the main thread, and the main thread may be waiting for that worker (_load_glb waits for a read in progress).
+- Avatars.warm(key, sharp := true): portraits by default; a world asks with false. _warm is keyed "<file>|<cap>". A read nobody
+  came for is let go after a minute. Avatars.reading(): RoamScene._build_npcs waits for the reads with the card moving.
+  Avatars.read_ahead(keys): warm + wait (pulse, busy ring) before several faces are made (home lineup, duel HUD, bracket,
+  story cast). Avatars.prepare_face(key): whoever you stand next to (RoamScene._update_near) gets their portrait model finished.
+- Fit cache key: data/fit_rev.json instead of the game version. It is the md5 of avatars.gd from "const DONOR :=" to
+  "func anim_player(" + the motion files + every bundled body and its .import. The unit tests FAIL when it is stale:
+  `godot --headless --path . res://tests/fit_rev.tscn -- --write` (in the repo, or in yc_test and copy data/fit_rev.json back).
+  The star grid (user://star_grid_*.bin) still goes by the game version.
+- Measured (tests/model_cost.tscn, a 33 MB test model with three 2048 PNGs in /tmp/realheavy): first use 410-470 ms on the main
+  thread before; 5 ms when read ahead, <1 ms after. 30 loads: 3.8 s and +143 MB before, 0.4 s and +0 MB now.
+- NOT done: .vrm files still go the old way every time (nobody has one). A person spawned in the middle of a world whose
+  bundled model was not loaded yet still costs its disk read there (0.1-0.35 s here, 4 in the first minutes of Domino):
+  RoamFigure.setup would have to wait for the read, and the callers use the model right after setup. First-ever fits of rare
+  motions (stomp, defeat, cheer2, checkout, challenge) still happen in the world, once per model, 60-120 ms each here.
+  Points 3, 5, 6 of the list (duel entry not profiled, pack lists at start, the scene change frame) are open.
+
+#### 0.72.3 STATE (Nov 23 late): the performance pass
 - HOW TO FIND A STUTTER (do this before guessing): headless, nothing is drawn, so every slow frame is the game's own work.
   `tools/dev/roam_bisect.sh <district> [ROAM_SKIP list]` (frames over 60 ms in the first 8 s of a world);
   `--frame-log` + `FRAME_LOG_MS=35` prints SLOWFRAME by the clock (delta is capped by the engine, never trust it);

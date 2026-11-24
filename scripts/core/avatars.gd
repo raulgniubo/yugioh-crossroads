@@ -165,101 +165,166 @@ var _warm_lock := Mutex.new()
 
 
 ## Start reading this duelist's model in the background, if it is not on hand already.
-func warm(key: String) -> void:
+## `sharp`: for a portrait (the color texture keeps up to 2048); a world asks with false.
+func warm(key: String, sharp := true) -> void:
 	key = key.get_slice("@", 0)
-	if _stages.has(key) or not has_avatar(key):
+	if (sharp and _stages.has(key)) or not has_avatar(key):
 		return
 	var path := path_for(key)
 	if path.begins_with("res://"):
-		if not ResourceLoader.has_cached(path) and ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+		if not _tpl.has(path) and not ResourceLoader.has_cached(path) and ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
 			ResourceLoader.load_threaded_request(path)
+			_res_reading.append(path)
 		return
 	_reap_warm()
-	if not path.ends_with(".glb") or _warm_ids.has(path):
+	if not path.ends_with(".glb") or _kept(path, sharp):
+		return
+	var wk := _warm_key(path, 2048 if sharp else 1024)
+	if _warm_ids.has(wk):
 		return
 	_warm_lock.lock()
-	var have := _warm.has(path)
+	var have := _warm.has(wk)
 	_warm_lock.unlock()
 	if have:
 		return
 	if _warm_ids.size() >= 3:
 		# (0.72.3: three are being read: this one waits its turn instead of being forgotten)
-		if not _warm_wanted.has(path):
-			_warm_wanted.append(path)
+		if not _warm_wanted.has(wk):
+			_warm_wanted.append(wk)
 		return
-	_warm_wanted.erase(path)
-	_warm_ids[path] = WorkerThreadPool.add_task(_warm_read.bind(path), false, "read a duelist's model")
+	_warm_wanted.erase(wk)
+	_warm_start(wk)
 
 
-var _warm_wanted: Array = []      # model files waiting for a free reader
+var _warm_wanted: Array = []      # reads waiting for a free reader ("<file>|<color size>")
+var _tex_fit: GLTFDocumentExtension = null
+
+
+func _warm_key(path: String, cap: int) -> String:
+	return "%s|%d" % [path, cap]
+
+
+func _warm_start(wk: String) -> void:
+	_tex_fit_on()
+	var cut := wk.rfind("|")
+	_warm_ids[wk] = WorkerThreadPool.add_task(_warm_read.bind(wk.substr(0, cut), int(wk.substr(cut + 1))), false, "read a duelist's model")
+
+
+## The helper that sizes a model's textures while its file is read (model_tex_fit.gd), put in place
+## once. It only acts on a read that asks for it.
+func _tex_fit_on() -> void:
+	if _tex_fit == null:
+		_tex_fit = load("res://scripts/core/model_tex_fit.gd").new()
+		GLTFDocument.register_gltf_document_extension(_tex_fit)
 
 
 ## The ones that waited for a reader get theirs as the others finish.
 func _warm_next() -> void:
 	_reap_warm()
 	while _warm_ids.size() < 3 and not _warm_wanted.is_empty():
-		var path := str(_warm_wanted.pop_front())
+		var wk := str(_warm_wanted.pop_front())
 		_warm_lock.lock()
-		var have := _warm.has(path)
+		var have := _warm.has(wk)
 		_warm_lock.unlock()
-		if not have and not _warm_ids.has(path):
-			_warm_ids[path] = WorkerThreadPool.add_task(_warm_read.bind(path), false, "read a duelist's model")
+		if not have and not _warm_ids.has(wk):
+			_warm_start(wk)
 
 
-func _warm_read(path: String) -> void:
+func _warm_read(path: String, cap: int) -> void:
 	var gltf := GLTFDocument.new()
 	var state := GLTFState.new()
 	state.handle_binary_image = GLTFState.HANDLE_BINARY_EMBED_AS_UNCOMPRESSED
+	if cap > 0:
+		state.set_additional_data(&"yc_cap", cap)      # (its textures are sized as they are decoded, here on this thread)
 	var ok := gltf.append_from_file(path, state) == OK
 	_warm_lock.lock()
 	# A file that cannot be read is marked too, so nobody waits on it forever.
-	_warm[path] = [gltf, state] if ok else []
+	_warm[_warm_key(path, cap)] = [gltf, state, Time.get_ticks_msec()] if ok else []
 	_warm_lock.unlock()
 
 
-## Can this duelist be shown right now without stopping to read a file?
+## Is this model already kept aside, whole (see _own_copy)?
+func _kept(path: String, sharp: bool) -> bool:
+	var t: Dictionary = _tpl.get("%s|%d" % [path, int(sharp)], {})
+	return not t.is_empty() and is_instance_valid(t["node"])
+
+
+## Can this duelist's portrait be shown right now without stopping to read a file?
 func ready_now(key: String) -> bool:
 	key = key.get_slice("@", 0)
 	if _stages.has(key) or not has_avatar(key):
 		return true
 	var path := path_for(key)
 	if path.begins_with("res://"):
-		return ResourceLoader.has_cached(path) or ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_LOADED
-	if not path.ends_with(".glb"):
+		return _tpl.has(path) or ResourceLoader.has_cached(path) or ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_LOADED
+	if not path.ends_with(".glb") or _kept(path, true):
 		return true
 	_reap_warm()
 	_warm_lock.lock()
-	var have := _warm.has(path)
+	var have := _warm.has(_warm_key(path, 2048))
 	_warm_lock.unlock()
 	return have
 
 
+## A model that was read ahead and then never asked for (a face that was scrolled past) is let go
+## after a minute: it holds its meshes and textures.
+func _warm_expire() -> void:
+	var now := Time.get_ticks_msec()
+	_warm_lock.lock()
+	for wk in _warm.keys():
+		var w: Array = _warm[wk]
+		if w.size() >= 3 and now - int(w[2]) > 60000:
+			_warm.erase(wk)
+	_warm_lock.unlock()
+
+
 ## Finished background reads are collected (a worker task has to be waited for once).
 func _reap_warm() -> void:
-	for path in _warm_ids.keys():
-		if WorkerThreadPool.is_task_completed(int(_warm_ids[path])):
-			WorkerThreadPool.wait_for_task_completion(int(_warm_ids[path]))
-			_warm_ids.erase(path)
+	for wk in _warm_ids.keys():
+		if WorkerThreadPool.is_task_completed(int(_warm_ids[wk])):
+			WorkerThreadPool.wait_for_task_completion(int(_warm_ids[wk]))
+			_warm_ids.erase(wk)
 
 
-func _load_glb(path: String) -> Node:
+## `cap`: the size its color texture is held to as the file is read (0: everything as it is).
+func _load_glb(path: String, cap := 0) -> Node:
 	if path.begins_with("res://"):
-		var ps = load(path)
-		return ps.instantiate() if ps is PackedScene else null
-	_warm_wanted.erase(path)
-	if _warm_ids.has(path):
+		# (0.72.4) A bundled model's scene is kept (within the same budget as the dropped-in ones):
+		# with nobody made from it left, the engine lets its textures go and the next one read
+		# them from the disk again, a tenth of a second each.
+		var t: Dictionary = _tpl.get(path, {})
+		var t0 := Time.get_ticks_usec()
+		var ps = t["scene"] if not t.is_empty() else load(path)
+		if not (ps is PackedScene):
+			return null
+		var made: Node = (ps as PackedScene).instantiate()
+		if t.is_empty():
+			if _laps:
+				print("SCENE %s: %.0f ms  %s" % [path.get_file(), (Time.get_ticks_usec() - t0) / 1000.0, "behind the card" if Router.loading else "IN THE WORLD"])
+			t = {"scene": ps, "mb": _weight_mb(made)}
+			_tpl[path] = t
+			t["used"] = Time.get_ticks_msec()
+			_tpl_trim()
+		t["used"] = Time.get_ticks_msec()
+		return made
+	var wk := _warm_key(path, cap)
+	_warm_wanted.erase(wk)
+	if _warm_ids.has(wk):
 		# Being read right now: wait for that instead of reading it a second time.
-		WorkerThreadPool.wait_for_task_completion(int(_warm_ids[path]))
-		_warm_ids.erase(path)
+		WorkerThreadPool.wait_for_task_completion(int(_warm_ids[wk]))
+		_warm_ids.erase(wk)
 	_warm_lock.lock()
-	var w = _warm.get(path)
-	_warm.erase(path)
+	var w = _warm.get(wk)
+	_warm.erase(wk)
 	_warm_lock.unlock()
-	if w is Array and (w as Array).size() == 2:
+	if w is Array and (w as Array).size() >= 2:
 		return (w[0] as GLTFDocument).generate_scene(w[1])
+	_tex_fit_on()
 	var gltf := GLTFDocument.new()
 	var state := GLTFState.new()
 	state.handle_binary_image = GLTFState.HANDLE_BINARY_EMBED_AS_UNCOMPRESSED
+	if cap > 0:
+		state.set_additional_data(&"yc_cap", cap)
 	if gltf.append_from_file(path, state) != OK:
 		return null
 	return gltf.generate_scene(state)
@@ -1405,7 +1470,21 @@ var _fit_tasks: Array = []
 func _fit_path(ck: String, model: Node, file_of := "") -> String:
 	var file := file_of if file_of != "" else str(model.get_meta("file", ""))
 	var stamp := FileAccess.get_modified_time(file) if file != "" and not file.begins_with("res://") else 0
-	return FIT_DIR + ("%s|%s|%d|%s|%s" % [ck, str(ProjectSettings.get_setting("application/config/version", "")), stamp, str(arms_by_position), str(made_motions)]).md5_text() + ".res"
+	return FIT_DIR + ("%s|%s|%d|%s|%s" % [ck, _fit_mark(), stamp, str(arms_by_position), str(made_motions)]).md5_text() + ".res"
+
+
+## (0.72.4) What the kept motions are good for: the way they are fitted (data/fit_rev.json, set by
+## tests/fit_rev.gd and checked by the unit tests), not the version of the game. They used to be
+## thrown away with every update, and every place worked them all out again on the next visit.
+var _fit_rev := ""
+
+func _fit_mark() -> String:
+	if _fit_rev == "":
+		var j = JSON.parse_string(FileAccess.get_file_as_string("res://data/fit_rev.json"))
+		_fit_rev = str((j as Dictionary).get("rev", "")) if j is Dictionary else ""
+		if _fit_rev == "":
+			_fit_rev = "v" + str(ProjectSettings.get_setting("application/config/version", ""))
+	return _fit_rev
 
 
 func _fit_dir() -> void:
@@ -1413,8 +1492,8 @@ func _fit_dir() -> void:
 		return
 	_fit_checked = true
 	DirAccess.make_dir_recursive_absolute(FIT_DIR)
-	# A new version of the game: the old fits go (their names would never be asked for again).
-	var ver := str(ProjectSettings.get_setting("application/config/version", ""))
+	# Fitted another way now: the old fits go (their names would never be asked for again).
+	var ver := _fit_mark()
 	var mark := FIT_DIR + "version.txt"
 	if FileAccess.get_file_as_string(mark) != ver:
 		var d := DirAccess.open(FIT_DIR)
@@ -1440,6 +1519,8 @@ func _fit_load(ck: String, model: Node, file_of := "") -> Animation:
 
 
 func _fit_save(ck: String, model: Node, anim: Animation, file_of := "") -> void:
+	if _laps:
+		print("FIT %s  %s" % [ck.get_slice("|", 0).get_file() + " " + ck.get_slice("|", 2), "behind the card" if Router.loading else "IN THE WORLD"])
 	if (file_of == "" and not model.has_meta("file")) or anim == null or OS.has_environment("NO_FIT_CACHE"):
 		return
 	_fit_dir()
@@ -2063,6 +2144,200 @@ func dressed(key: String) -> String:
 	return key
 
 
+# ---- (0.72.4) a dropped-in model is read once
+# A model from the card folder used to be read from its file, built, its textures sized and its
+# motions fitted every single time somebody needed it: once for the person in the street, again for
+# their portrait, again when the portrait came back after a rest, again on the next visit. About
+# 0.1 s each with a small file, far more with three 2048 textures. Now the finished model is kept
+# aside (never shown itself) and every use is a copy of it: the copies share its meshes, textures
+# and motions, so a second one costs a few milliseconds and no memory to speak of.
+var _tpl := {}        # "<file>|<sharp>" -> {"node": Node, "stamp": int, "used": int, "mb": float}; a bundled one: "<res path>" -> {"scene": PackedScene, ...}
+var _laps := OS.get_environment("MODEL_LAPS") != ""      # dev: what the first reading of each model cost
+const TPL_BUDGET_MB := 700.0      # what the kept models may weigh together (meshes + textures, roughly)
+
+
+func _own_copy(key: String, path: String, sharp: bool) -> Node:
+	var t := _own_kept(key, path, sharp)
+	return (t["node"] as Node).duplicate() if not t.is_empty() else null
+
+
+## The kept model of a dropped-in file, read and finished now if it is not there yet.
+func _own_kept(key: String, path: String, sharp: bool) -> Dictionary:
+	var tk := "%s|%d" % [path, int(sharp)]
+	var stamp := int(FileAccess.get_modified_time(path))
+	var t: Dictionary = _tpl.get(tk, {})
+	if t.is_empty() or not is_instance_valid(t["node"]) or int(t["stamp"]) != stamp:
+		# (a file that was replaced while the game runs is read again)
+		_tpl_drop(tk)
+		var t0 := Time.get_ticks_usec()
+		var g := _load_glb(path, 2048 if sharp else 1024)
+		if g == null:
+			return {}
+		var t1 := Time.get_ticks_usec()
+		_fit_textures(g, 2048 if sharp else 1024)      # (a net: they were sized as the file was read)
+		var t2 := Time.get_ticks_usec()
+		g = _merge_clip_files(key, path, g)
+		_borrow_clips(g, path)
+		var ap := anim_player(g)
+		if ap:
+			_calm_idle(ap)
+		t = {"node": g, "stamp": stamp, "mb": _weight_mb(g)}
+		if _laps:
+			print("MODEL %s%s: read+build %.0f ms, textures %.0f ms, motions %.0f ms, %.0f MB kept" % [path.get_file(), " (sharp)" if sharp else "",
+					(t1 - t0) / 1000.0, (t2 - t1) / 1000.0, (Time.get_ticks_usec() - t2) / 1000.0, float(t["mb"])])
+		_tpl[tk] = t
+		t["used"] = Time.get_ticks_msec()
+		_tpl_trim()
+	t["used"] = Time.get_ticks_msec()
+	return t
+
+
+# A face that will be wanted soon (somebody you are standing next to): its file is read on another
+# thread and the model finished the moment that is done, so the portrait is there at once when asked.
+var _face_wanted := {}        # key -> true
+
+
+func prepare_face(key: String) -> void:
+	key = key.get_slice("@", 0)
+	if key == "" or not has_avatar(key) or _stages.has(key):
+		return
+	warm(key)
+	var path := path_for(key)
+	if not path.begins_with("res://") and path.ends_with(".glb") and not _kept(path, true):
+		_face_wanted[key] = true
+
+
+func _faces_step() -> void:
+	for key in _face_wanted.keys():
+		var path := path_for(key)
+		if path.begins_with("res://") or not path.ends_with(".glb") or _kept(path, true) or _stages.has(key):
+			_face_wanted.erase(key)
+			continue
+		var wk := _warm_key(path, 2048)
+		_warm_lock.lock()
+		var have := _warm.has(wk)
+		_warm_lock.unlock()
+		if have:
+			_own_kept(key, path, true)
+			_face_wanted.erase(key)
+			return      # (one a frame)
+		if not _warm_ids.has(wk) and not _warm_wanted.has(wk):
+			_face_wanted.erase(key)      # (its read was lost or let go: nothing to wait for)
+
+
+## Several faces are about to be shown together (a lineup, a bracket, the two of a duel): their
+## files are read on other threads, side by side, and waited for here with the loading card or the
+## busy ring turning. (They used to be read one after another on the main thread, the picture
+## standing still: a third of a second each for a model with big textures.) Nothing to wait for
+## when they are on hand already.
+func read_ahead(keys: Array, max_ms := 5000) -> void:
+	var want: Array = []
+	for k in keys:
+		var key := str(k).get_slice("@", 0)
+		if key == "" or key == "lumen" or want.has(key) or not has_avatar(key) or ready_now(key):
+			continue
+		want.append(key)
+		warm(key)
+	if want.is_empty():
+		return
+	Router.busy()
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < max_ms:
+		var all := true
+		for key in want:
+			if not ready_now(key):
+				warm(key)
+				all = false
+		if all:
+			break
+		_warm_next()
+		Router.pulse()
+		OS.delay_msec(2)
+
+
+## Are people's files still being read on other threads? (A world waits for them behind its card.)
+var _res_reading: Array = []
+
+func reading() -> bool:
+	_warm_next()
+	for p in _res_reading.duplicate():
+		if ResourceLoader.load_threaded_get_status(p) != ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			_res_reading.erase(p)
+	return not _warm_ids.is_empty() or not _warm_wanted.is_empty() or not _res_reading.is_empty()
+
+
+## What every model leans on, loaded once at the start: the body the walk and idle are borrowed
+## from, and the library of everyday motions. (The first person of the session used to pay for both.)
+func prime() -> void:
+	if _donor == null or not is_instance_valid(_donor):
+		var ps = load(DONOR)
+		if ps is PackedScene:
+			_donor = ps.instantiate()
+	if _gest == null or not is_instance_valid(_gest):
+		var gs = load(GESTURES)
+		if gs is PackedScene:
+			_gest = gs.instantiate()
+
+
+## Roughly what a model holds on the graphics card: its textures (with their smaller versions) and
+## its meshes.
+func _weight_mb(scene: Node) -> float:
+	var bytes := 0.0
+	var seen := {}
+	for mi in _meshes(scene):
+		if mi.mesh == null or seen.has(mi.mesh):
+			continue
+		seen[mi.mesh] = true
+		for i in mi.mesh.get_surface_count():
+			bytes += mi.mesh.surface_get_array_len(i) * 48.0 + mi.mesh.surface_get_array_index_len(i) * 4.0
+			var mat := mi.mesh.surface_get_material(i)
+			if not (mat is BaseMaterial3D):
+				continue
+			for prop in ["albedo_texture", "normal_texture", "roughness_texture", "metallic_texture", "ao_texture", "emission_texture"]:
+				var tex = (mat as BaseMaterial3D).get(prop)
+				if tex is Texture2D and not seen.has(tex):
+					seen[tex] = true
+					bytes += (tex as Texture2D).get_width() * (tex as Texture2D).get_height() * 4.0 * 1.34
+	return bytes / 1048576.0
+
+
+## The kept models stay under their budget: the ones not asked for the longest go first. (Whoever is
+## made from one keeps what it shares with it; only the spare copy goes.)
+func _tpl_trim() -> void:
+	while _tpl.size() > 1:
+		var total := 0.0
+		var oldest := ""
+		for k in _tpl:
+			total += float(_tpl[k]["mb"])
+			if oldest == "" or int(_tpl[k]["used"]) < int(_tpl[oldest]["used"]):
+				oldest = k
+		if total <= TPL_BUDGET_MB:
+			return
+		_tpl_drop(oldest)
+
+
+func kept_mb() -> float:
+	var total := 0.0
+	for k in _tpl:
+		total += float(_tpl[k]["mb"])
+	return total
+
+
+func _tpl_drop(tk: String) -> void:
+	if not _tpl.has(tk):
+		return
+	var n = _tpl[tk].get("node")
+	if n is Node and is_instance_valid(n):
+		(n as Node).free()
+	_tpl.erase(tk)
+
+
+## Every kept model is let go (leaving the game).
+func drop_kept_models() -> void:
+	for k in _tpl.keys():
+		_tpl_drop(k)
+
+
 ## Load a model as a fresh Node3D, posed, tinted (tints only for the player) and dressed.
 func load_model(key: String) -> Node3D:
 	Router.pulse()      # (keeps the loading card moving while a world's people are made)
@@ -2078,15 +2353,15 @@ func _load_plain(key: String, sharp := false) -> Node3D:
 		return null
 	var path := path_for(key)
 	if path.ends_with(".glb"):
-		var g := _load_glb(path)
+		# (0.72.4) A model dropped into the card folder is read from its file once and copied from
+		# then on (see _own_copy); a bundled one already was (the engine keeps its scene).
+		var g: Node = _own_copy(key, path, sharp) if not path.begins_with("res://") else _load_glb(path)
 		if g == null:
 			return null
-		if not path.begins_with("res://"):
-			_fit_textures(g, 2048 if sharp else 1024)
-			g = _merge_clip_files(key, path, g)
 		# A rigged model without an idle, walk, run or victory of its own gets the game's
 		# (yours, and the bundled ones that came from the rigger with no clips).
-		_borrow_clips(g, path)
+		if path.begins_with("res://"):
+			_borrow_clips(g, path)
 		var r := Node3D.new()
 		r.set_meta("file", path)
 		r.set_meta("human_bones", _guess_human_map(g))
@@ -2803,10 +3078,13 @@ func _process(_delta: float) -> void:
 		_warm_next()
 	if not _warm_q.is_empty():
 		_warm_step()
+	if not _face_wanted.is_empty() and _tick % 4 == 0:
+		_faces_step()
 	if not _fit_tasks.is_empty() and _tick % 30 == 0:
 		_fit_wait()
 	if _tick % 90 == 0:
 		_trim_stages()
+		_warm_expire()
 	if _count_asks and _tick % 120 == 0:
 		var drawing := 0
 		for k in _stages:
@@ -2919,7 +3197,6 @@ func keep_whole(model: Node) -> void:
 ## A character takes no shadows, its own or the world's; it still casts one on the ground. On a model
 ## with few triangles the sun's shadow of the face fell back onto the face in hard, angular patches
 ## (a nose and two cheeks made of a few dozen triangles each): up close it looked disfigured.
-var _even_mats := {}       # a model's material -> the same material, taking no shadows
 
 
 func even_light(model: Node) -> void:
@@ -2932,11 +3209,16 @@ func even_light(model: Node) -> void:
 			var m := mi.get_active_material(i)
 			if not (m is BaseMaterial3D) or (m as BaseMaterial3D).disable_receive_shadows:
 				continue
-			if not _even_mats.has(m):
-				var d := m.duplicate() as BaseMaterial3D
+			# (0.72.4) The twin is kept on the material itself, not in a list here: the list held
+			# on to every material of every dropped-in model ever loaded, textures and all.
+			# (That list also kept the bundled models' textures loaded once their people were gone,
+			# which is why a second visit was quick: that job is now done on purpose, see _tpl.)
+			var d: BaseMaterial3D = m.get_meta("even_twin") if m.has_meta("even_twin") else null
+			if d == null:
+				d = m.duplicate() as BaseMaterial3D
 				d.disable_receive_shadows = true
-				_even_mats[m] = d
-			mi.set_surface_override_material(i, _even_mats[m])
+				m.set_meta("even_twin", d)
+			mi.set_surface_override_material(i, d)
 
 
 # ------------------------------------------------------------------ lighter versions for distance
@@ -3012,6 +3294,8 @@ func _notification(what: int) -> void:
 				WorkerThreadPool.wait_for_task_completion(t)
 		_lod_tasks.clear()
 		_fit_wait(true)
+		if what != NOTIFICATION_WM_CLOSE_REQUEST:
+			drop_kept_models()
 
 
 func _lod_work(src: ArrayMesh, surfaces: Array, shapes: Array, mode: int) -> void:

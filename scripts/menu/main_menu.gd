@@ -610,6 +610,11 @@ func _build_featured() -> void:
 		tag.draw.connect(_draw_name_tag.bind(tag))
 		holder.add_child(tag)
 		_line[i] = {"tex": tex, "tex2": tex2, "tag": tag, "key": "", "home": home, "pool": pools[i], "at": 0, "dim": 0.82 if sc < 1.0 else 1.0}
+	# (0.72.4) The four who stand there first: read side by side, not one after another.
+	var first: Array = []
+	for i in LINEUP:
+		first.append(str((_line[i]["pool"] as Array)[0]))
+	Avatars.read_ahead(first)
 	for i in LINEUP:
 		_set_lineup(i, str((_line[i]["pool"] as Array)[0]), true)
 	for i in LINEUP:

@@ -173,6 +173,9 @@ func _ready() -> void:
 		_test_knockout()
 		_test_lumen()
 		_test_ai_targets()
+		# (0.72.4) The mark the kept fitted motions go by must be the one of the fitting code as it is.
+		var fit_rev = load("res://tests/fit_rev.gd")
+		check(fit_rev.current() != "" and fit_rev.current() == fit_rev.stored(), "data/fit_rev.json is not up to date: run  godot --headless --path . res://tests/fit_rev.tscn -- --write")
 		if OS.get_environment("ONLY_TEST") != "":
 			# Dev: run just these test functions (comma separated) and stop.
 			for fn in OS.get_environment("ONLY_TEST").split(","):

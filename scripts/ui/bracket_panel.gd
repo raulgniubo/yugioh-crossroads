@@ -122,6 +122,13 @@ func _plate_rect(r: int, i: int) -> Rect2:
 func _build_plates(col: Color) -> void:
 	var s := Tournament.st(id)
 	var rounds: Array = s["rounds"]
+	# (0.72.4) Everybody on the board: their files are read side by side before the first face is made.
+	var faces: Array = []
+	for rr in rounds:
+		for e in (rr as Array):
+			if e is Dictionary and (e as Dictionary).has("char"):
+				faces.append(str(e["char"]))
+	Avatars.read_ahead(faces)
 	for r in 4:
 		var n := 8 >> r
 		var head := UITheme.label(Loc.t(Tournament.ROUNDS[r]), 16, col if r < 3 else UITheme.GOLD, UITheme.semi_font())
