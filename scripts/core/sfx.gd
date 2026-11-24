@@ -238,7 +238,7 @@ func _build_more() -> void:
 	water.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	water.loop_end = wn
 	call_deferred("_add_sounds", {"water": water})
-	for kind in ["city", "sea", "wind", "hum", "crowd", "shop", "engine"]:
+	for kind in ["city", "sea", "wind", "hum", "crowd", "shop", "engine", "rain"]:
 		loops["amb_" + kind] = _ambience(6.0, kind, r)
 		call_deferred("_add_sounds", loops.duplicate())
 		loops.clear()
@@ -389,6 +389,8 @@ func _audit() -> void:
 func _add_sounds(more: Dictionary) -> void:
 	for k in more:
 		_sounds[k] = more[k]
+	if _wx_want != "" and _sounds.has("amb_" + _wx_want) and (_wx == null or not _wx.playing):
+		weather(_wx_want, _wx_db)
 	if _amb_want != "" and _sounds.has("amb_" + _amb_want) and _amb_name != _amb_want:
 		ambience(_amb_want)
 
@@ -419,12 +421,21 @@ func _ambience(dur: float, kind: String, r: RandomNumberGenerator) -> AudioStrea
 	buf.resize(n)
 	var a := 0.0
 	var b := 0.0
+	var c := 0.0
 	var ph := 0.0
 	for i in n:
 		var t := float(i) / RATE
 		var x := r.randf_range(-1.0, 1.0)
 		var v := 0.0
 		match kind:
+			"rain":
+				# (0.74.1) Rain on a road at speed: a bright hiss, a low wash, and drops ticking.
+				a += 0.55 * (x - a)
+				b += 0.03 * (x - b)
+				if r.randf() < 0.0012:
+					c = r.randf_range(0.4, 1.0)
+				c *= 0.993
+				v = (x - a) * 0.22 + (a - b) * 0.5 + b * 0.9 + c * x * 0.35
 			"sea":
 				a += 0.05 * (x - a)
 				v = a * (0.35 + 0.65 * pow(0.5 + 0.5 * sin(TAU * t / 6.0 * 2.0 - 1.2), 2.0)) * 1.6
@@ -471,6 +482,36 @@ func _ambience(dur: float, kind: String, r: RandomNumberGenerator) -> AudioStrea
 
 ## Background sound for where you are: "city", "sea", "wind", "hum", "crowd", "shop" or "" for none.
 ## Bend the pitch of whatever ambience is playing (an engine that follows the throttle).
+## (0.74.1) A second background loop that plays over the ambience: the weather ("rain", or "").
+var _wx: AudioStreamPlayer
+var _wx_want := ""
+var _wx_db := -18.0
+
+
+func weather(kind: String, volume_db := -18.0) -> void:
+	_wx_want = kind
+	_wx_db = volume_db
+	if _wx == null:
+		_wx = AudioStreamPlayer.new()
+		_wx.bus = "SFX"
+		add_child(_wx)
+	if kind == "" or not _sounds.has("amb_" + kind):
+		if _wx.playing:
+			var tw := create_tween()
+			tw.tween_property(_wx, "volume_db", -60.0, 0.8)
+			tw.tween_callback(_wx.stop)
+		return
+	_wx.stream = _sounds["amb_" + kind]
+	_wx.volume_db = -50.0
+	_wx.play()
+	create_tween().tween_property(_wx, "volume_db", volume_db, 1.2)
+
+
+## A built loop by name ("engine", "rain"...), or null while it is still being made.
+func loop(kind: String) -> AudioStream:
+	return _sounds.get("amb_" + kind, null)
+
+
 func ambience_pitch(pitch: float) -> void:
 	if not _amb.is_empty():
 		(_amb[_amb_on] as AudioStreamPlayer).pitch_scale = clampf(pitch, 0.4, 2.5)

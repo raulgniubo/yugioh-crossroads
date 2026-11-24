@@ -189,7 +189,7 @@ const ORIGINAL_LINES := {
 	99100000: ["4 Speed Counters: 800 damage for each Spell in your hand", "7 Speed Counters: draw 1 card", "10 Speed Counters: destroy 1 card on their field"],
 	99199999: ["Destiny Draw: reach for the card you need?", "Destiny Draw: choose the card you draw"],
 }
-const QUICK_ORIGINALS := [99100004, 99100007]
+const QUICK_ORIGINALS := [99100004, 99100007, 99100012, 99100013, 99100017]
 
 
 ## The cards that exist only in this game (your partner and her cards) are in no card

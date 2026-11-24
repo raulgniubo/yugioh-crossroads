@@ -146,6 +146,12 @@ func _ready() -> void:
 			get_tree().create_timer(2.0).timeout.connect(_garage_panel)
 		elif a == "--events":
 			get_tree().create_timer(2.0).timeout.connect(_events_panel)
+		elif a == "--corner-test":
+			# Dev (0.74.1): race the first rival to the first corner with the throttle held.
+			Input.action_press("ui_up")
+			get_tree().create_timer(2.0).timeout.connect(func():
+				_near = 0
+				_challenge())
 		elif a == "--race-test":
 			_test_on = true
 			Engine.time_scale = 8.0
@@ -269,6 +275,7 @@ func _build_world() -> void:
 		var info: Dictionary = r
 		var col: Color = Characters.get_char(str(info["key"])).get("color", Color.WHITE)
 		track.add_rider(i, str(info["key"]), Vector3(40.0 * i, 0, 0), col)
+		track.engine_on(i, 0.78 + 0.07 * float(i), -5.0)      # (0.74.1) you hear them come up and go past
 		var tag := Label3D.new()
 		tag.font_size = 44
 		tag.pixel_size = 0.006
@@ -825,6 +832,8 @@ func _process(delta: float) -> void:
 	track.target_speed = _speed
 	track.speed = lerpf(track.speed, _speed, clampf(delta * 6.0, 0.0, 1.0))
 	track.place_rider(0, Vector3(0, _y, _z), -_vz * 0.035)
+	if not _corner.is_empty():
+		_corner_tick(delta)
 	track.set_tuck(0, 1.0 if _boost > 0.0 or _tuck_test else clampf((_speed - 45.0) / 40.0, 0.0, 0.5))
 	# Tail lights ahead, for the wet road to mirror.
 	var lights: Array = []
@@ -840,7 +849,10 @@ func _process(delta: float) -> void:
 	for r in _riders:
 		var info: Dictionary = r["info"]
 		var pace := float(info["pace"])
-		if _race == "count":
+		var racing_me: bool = not _corner.is_empty() and _corner["r"] == r
+		if racing_me:
+			pace = _speed      # (racing you to the first corner: _corner_tick moves them)
+		elif _race == "count":
 			pace = _speed
 		elif _race == "on":
 			# Racing: their own top speed, easing off a little when far ahead, pushing when behind.
@@ -852,6 +864,7 @@ func _process(delta: float) -> void:
 		if _mode == "trial" and _race in ["count", "on", "done"]:
 			r["x"] = -3000.0       # a time trial is ridden alone
 		r["x"] = float(r["x"]) + (pace - _speed) * delta
+		track.set_rev(int(r["index"]), pace / 50.0)
 		if _race == "":
 			if float(r["x"]) > LAP / 2.0:
 				r["x"] = float(r["x"]) - LAP
@@ -1121,7 +1134,7 @@ func _events_panel() -> void:
 
 
 func _start_race(mode := "circuit") -> void:
-	if _race != "":
+	if _race != "" or not _corner.is_empty():
 		return
 	_mode = mode
 	_race_len = SPRINT_LEN if mode == "sprint" else LAP
@@ -1366,11 +1379,61 @@ func _gp_duel(place: int) -> void:
 	Router.go(Router.DUEL)
 
 
-func _challenge() -> void:
-	if _exit >= 0:
+## (0.74.1) The first corner: before a Turbo Duel on the road, the two of you race to the
+## first bend, CORNER_LEN meters away. Whoever takes it first takes the first turn.
+const CORNER_LEN := 340.0
+var _corner := {}      # {r, mine, theirs, count, pace} while the race to the corner is on
+
+
+func _corner_start(r: Dictionary) -> void:
+	_corner = {"r": r, "mine": 0.0, "theirs": 0.0, "count": 2.99, "pace": float(r["info"]["race"]) * 0.97}
+	r["x"] = 1.5
+	r["z"] = clampf(_z + (LANE if _z < LANE else -LANE), -LANE * 2.0, LANE * 2.0)
+	Sfx.play("gong", -3.0)
+	Router.toast(str(r["info"]["line"]))
+	_pop(Loc.t("RACE TO THE FIRST CORNER: first there takes the first turn"), Color("ffd166"))
+	print("RIDE corner start vs ", r["info"]["key"])
+
+
+func _corner_tick(delta: float) -> void:
+	var r: Dictionary = _corner["r"]
+	if float(_corner["count"]) > 0.0:
+		var before := int(_corner["count"]) + 1
+		_corner["count"] = float(_corner["count"]) - delta
+		var now := int(_corner["count"]) + 1
+		_big.text = str(now) if float(_corner["count"]) > 0.0 else Loc.t("GO!")
+		_big.add_theme_color_override("font_color", Color("ffd166") if float(_corner["count"]) > 0.0 else Color("5aff90"))
+		if now != before or float(_corner["count"]) <= 0.0:
+			Sfx.play("phase" if float(_corner["count"]) > 0.0 else "special", -2.0)
+		r["x"] = 1.5
+		return
+	_corner["mine"] = float(_corner["mine"]) + _speed * delta
+	_corner["theirs"] = float(_corner["theirs"]) + float(_corner["pace"]) * delta
+	r["x"] = float(_corner["theirs"]) - float(_corner["mine"]) + 1.5
+	var left := CORNER_LEN - maxf(float(_corner["mine"]), float(_corner["theirs"]))
+	_big.text = Loc.t("CORNER  %d m") % maxi(0, int(left))
+	_big.add_theme_color_override("font_color", Color.WHITE)
+	if left <= 0.0:
+		var me_first := float(_corner["mine"]) >= float(_corner["theirs"])
+		_corner = {}
+		_big.text = Loc.t("YOU TAKE THE CORNER!") if me_first else Loc.t("THEY TAKE THE CORNER")
+		_big.add_theme_color_override("font_color", Color("5aff90") if me_first else Color("ff8a5a"))
+		Sfx.play("win" if me_first else "error", -4.0)
+		print("RIDE corner done me_first=", me_first)
+		_near = _riders.find(r)
+		_challenge(1 if me_first else 0)
+
+
+func _challenge(first := -1) -> void:
+	if _exit >= 0 and first < 0:
 		_take_exit()
 		return
+	if not _corner.is_empty():
+		return
 	if _near < 0:
+		return
+	if first < 0 and not "--no-corner" in OS.get_cmdline_user_args():
+		_corner_start(_riders[_near])
 		return
 	var info: Dictionary = _riders[_near]["info"]
 	var key := str(info["key"])
@@ -1385,6 +1448,8 @@ func _challenge() -> void:
 	var worth := _mom_worth()
 	var mine := mini(DuelState.SPEED_MAX, int(worth[0]) + int(Collection.record.get("runner_tune", 0)))
 	var theirs := maxi(0, int(info["difficulty"]) - 1)
+	if first >= 0:
+		worth[1] = first == 1       # (the first corner decided who goes first, not Momentum)
 	Router.toast.call_deferred(Loc.t("Momentum %d: you start with %d Speed Counters (%s has %d) and %s.") % [int(_mom), mine,
 		str(Characters.get_char(key).get("short", key)), theirs, Loc.t("you take the first turn") if worth[1] else Loc.t("they take the first turn")])
 	print("RIDE duel setup: momentum=%d speed=[%d,%d] first=%s" % [int(_mom), mine, theirs, "me" if worth[1] else "them"])

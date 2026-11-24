@@ -931,6 +931,16 @@ func go(path: String) -> void:
 		# One frame so the card is on screen before the world starts building (that blocks).
 		await get_tree().process_frame
 		await get_tree().process_frame
+	elif path == DUEL and DisplayServer.get_name() != "headless":
+		# (0.74.1) A duel takes a few seconds to set up (the engine, both decks, both duelists): a
+		# card while it does, instead of a black screen. It goes with the dark as the duel opens.
+		var turbo := bool(duel_config.get("turbo", false))
+		var who := str(duel_config.get("opponent_name", Characters.get_char(str(duel_config.get("opponent", ""))).get("name", "")))
+		_card.setup("ride" if turbo else "boot", Loc.t("Turbo Duel") if turbo else Loc.t("Duel"), (Loc.t("against %s") % who) if who != "" else "")
+		_card.modulate.a = 1.0
+		_card.visible = true
+		await get_tree().process_frame
+		await get_tree().process_frame
 	# The place you are leaving is taken down first, and it stays inside the tree until it is gone.
 	# (The engine's own swap lifts the old scene out of the tree a frame before it deletes it. Anything
 	# in it that was waiting frame by frame woke up once in between, with no tree to wait on: in a

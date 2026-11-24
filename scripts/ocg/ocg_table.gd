@@ -1181,7 +1181,13 @@ func refresh() -> void:
 	var st: DuelState = s.state
 	if st.players.size() < 2:
 		return
-	hud.set_speed_button(active() and not speed_acts.is_empty())
+	var costs: Array = []
+	if active():
+		for a in speed_acts:
+			var lead := str(a[0]).get_slice(" ", 0)
+			if lead.is_valid_int():
+				costs.append(int(lead))
+	hud.set_speed_button(active() and not speed_acts.is_empty(), costs)
 	board.set_extra_count(AI, st.players[AI].extra.size())
 	if not active():
 		hud.set_phase_buttons("", false, false)
@@ -1909,6 +1915,21 @@ func _ux_demo() -> void:
 				if not pe.is_empty():
 					print("UX using ", pe[0].cname())
 					s.hud.pile_chosen.emit(pe[0])
+		"useall":
+			# (dev, 0.74.1) Play every Speed Spell in hand that can be played, one after another
+			# (prompts answered on their own), then end the turn. For checking new cards.
+			s.hud.auto_answer = true
+			print("UX useall hand: ", hand.map(func(c): return "%s%s" % [c.cname(), "*" if acts.has(c.uid) else ""]))
+			for c in hand:
+				if c.cname().begins_with("Speed Spell") and acts.has(c.uid):
+					for a in acts[c.uid]:
+						if str(a[2]) == "act":
+							print("UX useall ", c.cname())
+							_answer(a[1])
+							return
+			_ux_done = true
+			print("UX useall done")
+			_answer(OcgDuel.i32(7))
 		"fakehit":
 			# (dev, 0.74.0) Your first monster on the field throws a direct attack again and again
 			# (the picture only: nothing in the duel changes), for screenshots of a blow landing.

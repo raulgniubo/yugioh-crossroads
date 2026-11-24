@@ -89,8 +89,7 @@ func _ready() -> void:
 		board.theme = {"key": "highway", "name": "New Domino Highway", "base": Color("05070d"), "accent": Color("ff8a3a"), "accent2": Color("2de2e6"),
 			"pattern": 1, "sky_top": Color("03040a"), "sky_horizon": Color("26163a"), "fog": Color("0c0a18")}
 		Music.play("turbo")
-		Sfx.ambience("engine", -21.0)
-		Sfx.ambience_pitch(0.8)
+		Sfx.ambience("wind", -24.0)      # (0.74.1: the engines are the runners' own now; the air rushing past stays)
 	add_child(board)
 	if board.track != null:
 		# (0.74.0) The weather on the road: the same as the highway you rode in from, otherwise
@@ -401,7 +400,7 @@ func _start() -> void:
 						for side in lj[k]:
 							var row: Array = []
 							for x in side:
-								row.append([Puzzles._id(str(x[0])), str(x[1])] if x is Array else Puzzles._id(str(x)))
+								row.append([Puzzles._id(str(x[0])), str(x[1])] if x is Array else (int(x) if str(x).is_valid_int() else Puzzles._id(str(x))))
 							sides.append(row)
 						lay[k] = sides
 		ocg.prepare(my_list, opp_list, my_extra, opp_extra, me_name, opp_name, first,
@@ -1552,6 +1551,7 @@ func _ouch(p: int, kind: String) -> void:
 ## Once the duel is decided (a hit took someone to 0, or it ended any other way) the only words
 ## left are the ending's: the winner's, the loser's and Lumen's last one.
 var _decided := false
+var _lead_sign := 0       # Turbo Duels: who led on Life Points last (1 you, -1 them, 0 nobody yet)
 const LAST_WORDS := ["win", "lose", "flawless", "close_win"]
 
 func _lumen(kind: String) -> void:
@@ -1710,7 +1710,7 @@ const CALLS := {"turn": [0.0, 1.0, 1.0], "first": [0.0, 1.0, 1.0], "battle": [0.
 ## The duelists in the corners go live (0.63.0): each still picture is swapped for the real duelist from
 ## the board as soon as their model is in. (Not in a Turbo Duel: there they are on their runners.)
 func _go_live() -> void:
-	if not Settings.live_portraits or board.track != null or _autoplay:
+	if not Settings.live_portraits or _autoplay:
 		return
 	for p in 2:
 		_live_when_ready(p)
@@ -2180,6 +2180,7 @@ func _play_event(ev: Dictionary) -> void:
 			if board.track:
 				board.track.target_speed = 22.0 + 3.2 * float(state.players[ME].speed + state.players[AI].speed) / 2.0
 				board.road_rush = clampf(float(maxi(state.players[ME].speed, state.players[AI].speed)) / 12.0, 0.0, 1.0)
+				board.track.set_rev(p, float(ev["speed"]) / 12.0)
 				if int(ev["speed"]) >= 10 and int(ev["speed"]) - int(ev["delta"]) < 10 and not _autoplay:
 					# (0.74.0) Top speed: the road opens up, the runner surges and the screen says so.
 					board.track.surge(p)
@@ -2341,6 +2342,21 @@ func _play_event(ev: Dictionary) -> void:
 				var lead := clampf(float(state.players[ME].lp - state.players[AI].lp) / 4000.0, -1.0, 1.0) * 1.5
 				board.track.set_lead(ME, lead)
 				board.track.set_lead(AI, -lead)
+				# (0.74.1) The rider who takes the lead goes past for real: a burst of speed, the two
+				# runners side by side for a moment, and a word as they go by.
+				var lsign := signi(state.players[ME].lp - state.players[AI].lp)
+				if lsign != 0 and lsign != _lead_sign and _lead_sign != 0 and not _autoplay and int(ev["lp"]) > 0:
+					var ahead := ME if lsign > 0 else AI
+					board.track.surge(ahead)
+					board.track.alongside(1 - ahead, 2.2)
+					var said := Characters.line(_speaker(ME) if ahead == ME else _opp_key, "comeback")
+					if said != "":
+						hud.say(ahead, said)
+				if lsign != 0:
+					_lead_sign = lsign
+				# Badly hurt: the runner trails smoke until the Life Points come back up.
+				for q in 2:
+					board.track.low_smoke(q, state.players[q].lp > 0 and state.players[q].lp <= 2000)
 			if p == ME:
 				_my_low = mini(_my_low, int(ev["lp"]))
 			if ev["delta"] < 0 and int(ev["lp"]) <= 0 and not _autoplay and not ev.get("finished", false) and not board.turbo:

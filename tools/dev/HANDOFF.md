@@ -1047,7 +1047,25 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.74.0 STATE (Nov 24 afternoon; NEWEST, read this first): Turbo Duels look and feel
+#### 0.74.1 STATE (Nov 24 evening; NEWEST, read this first): Turbo top 5 + Raul's fixes
+- Runners back at the two ends (TURBO_RIDER (0,0,6.7)/(0,0,-7.3), camera as before, fov 47): 0.74.0's left-edge spot hid
+  them under the card panel, the intro looked at empty road, the opponent's hand floated. Your runner is in your corner
+  picture now: live portraits run in Turbo too (_has_fig, the runner's meshes on PORTRAIT_LAYER, camera ahead of the
+  rider). duelist_shot and outro_pullback have turbo framings (rider_at).
+- Sound: Sfx.weather(kind) second loop ("rain" built in _ambience), Sfx.loop(kind); TurboTrack.engine_on(i, base, db) /
+  set_rev(i, 0-1): a 3D engine per runner (duel: both; ride: the five rivals). Duel ambience is now "wind".
+- 12 new Speed Spells 99100011-99100022 (native/custom, CardData, SpellRules speed, QUICK_ORIGINALS 12/13/17, Spanish in
+  data/card_text_es.json); album uses CardData.SPEED_SPELLS. Checked in duels: all but Chequered Flag were played.
+  --lay takes card ids as strings; --ux=useall plays Speed Spells from hand.
+- First corner: _challenge on the highway starts _corner_start (CORNER_LEN 340 m vs the rival's race pace x0.97);
+  the winner takes the first turn; --no-corner skips; --corner-test.
+- Speed World 2 button: chips 4 / 7 / 10 lit by what can be paid now (set_speed_button(enabled, costs)).
+- Rivals react: lead flip -> surge + "comeback" line; low_smoke(i) under 2000 LP; alongside() only when close.
+- Router.go(DUEL) shows the LoadCard while the duel builds (no black screen).
+- NEXT (Raul): mouse look while walking in every open world, no right click (Settings.mouse_look exists but nothing
+  reads it). Everything that needs the pointer there must get a key or a menu entry; the pointer comes back in menus.
+
+#### 0.74.0 STATE (Nov 24 afternoon; previous): Turbo Duels look and feel
 - Speed World 2 starting counters (GP place, Momentum, runner_tune, --speed-start) were LOST: the global EVENT_STARTUP
   effect set up while scripts loaded never fired. Now an EVENT_STARTUP effect on the card itself (native/custom/c99100000.lua,
   s.startup). tools/dev/patch_scripts.py puts native/custom/*.lua into data/ocg/scripts.bin without a full repack.

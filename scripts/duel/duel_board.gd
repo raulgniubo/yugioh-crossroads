@@ -181,9 +181,9 @@ func _build_environment() -> void:
 	camera.fov = 44
 	if turbo:
 		# Lower and further back on the road: the far rider and the skyline stay in the picture.
-		cam_home = Vector3(-0.45, 7.3, 9.7)
-		cam_home_target = Vector3(-0.45, 0.0, 0.45)
-		camera.fov = 50
+		cam_home = Vector3(0, 7.0, 9.3)
+		cam_home_target = Vector3(0, 0.0, 0.55)
+		camera.fov = 47
 	for a in OS.get_cmdline_user_args():
 		# --duel-cam=px,py,pz,tx,ty,tz (testing): where the table camera sits, for wide pictures.
 		if a.begins_with("--duel-cam="):
@@ -3758,7 +3758,7 @@ func cam_release(dur := 0.5) -> void:
 var _duelists := {}   # player index -> RoamFigure
 var _aside := 0.0
 const DUELIST_Z := 6.7
-const TURBO_RIDER := [Vector3(-6.9, 0, 1.5), Vector3(-6.9, 0, -2.0)]
+const TURBO_RIDER := [Vector3(0, 0, 6.7), Vector3(0, 0, -7.3)]
 
 
 ## Where a rider is on the road right now (a Turbo Duel), for a blow or a camera to find them.
@@ -3781,10 +3781,13 @@ func add_duelists(me_key: String, opp_key: String) -> void:
 				# Your own runner, the way you left it in the garage.
 				look = {"frame": TurboGarage.frame(), "trail": TurboGarage.trail(TurboGarage.paint(col)), "mark": TurboGarage.mark()}
 				col = TurboGarage.paint(col)
-			# (0.74.0) Both runners ride side by side just left of the field, the field floating
-			# ahead of them: both are in the picture (yours used to sit under the screen's edge,
-			# theirs behind their own hand).
+			# (0.74.1) Back at the two ends of the field (0.74.0 had them side by side at its left
+			# edge: the card panel covered them, the intro looked at an empty road and their hand
+			# floated with nobody holding it). Theirs rides just behind the cards they hold; yours
+			# is in your corner picture, live on its runner.
 			_duelists[p] = track.add_rider(p, me_key if p == 0 else opp_key, TURBO_RIDER[p], col, look)
+			# (0.74.1) Two engines you can tell apart: yours a little higher, theirs deeper.
+			track.engine_on(p, 1.08 if p == 0 else 0.86, -9.0)
 		return
 	for p in 2:
 		var key := me_key if p == 0 else opp_key
@@ -4082,6 +4085,11 @@ func duelist_shot(p: int, dur := 0.6, cheer := false, aside := 0.0, dist := 3.6)
 	_aside = aside
 	var from := Vector3(-1.35 * side * dist / 3.6, 1.55, z - side * dist)
 	var at := Vector3((0.1 - aside) * side, 1.45, z)
+	if turbo:
+		# (0.74.1) On a runner: out ahead of it and to the outside, looking back at the rider's face.
+		var r := rider_at(p)
+		from = r + Vector3(dist * 0.95, 1.5, side * dist * 0.45)
+		at = r + Vector3(0.25, 1.3, 0)
 	if dur <= 0.0:
 		# A cut (from one duelist to the other: no flight down the table in between), with a little drift.
 		cam_cut(from, at)
@@ -4133,12 +4141,17 @@ const PORTRAIT_WIDE_MAX := 1.5      # how far back the camera may step for a big
 var _pwide := {}      # player -> how far back it stands now (1 = the close framing)
 
 func live_portrait(p: int, px: Vector2i) -> Texture2D:
-	if not has_duelist(p):
+	if not _has_fig(p):
 		return null
 	if _pview.has(p):
 		return (_pview[p] as SubViewport).get_texture()
 	var fig: RoamFigure = _duelists[p]
 	fig.show_on_layers(PORTRAIT_LAYER)
+	if turbo and fig.get_parent() is Node3D:
+		# (0.74.1) In a Turbo Duel the picture is of the rider on their runner: the runner too.
+		for mi in (fig.get_parent() as Node3D).find_children("*", "MeshInstance3D", true, false):
+			if not fig.is_ancestor_of(mi) and not ((mi as MeshInstance3D).mesh is QuadMesh):      # (not the light trails)
+				(mi as VisualInstance3D).layers |= PORTRAIT_LAYER
 	var vp := SubViewport.new()
 	vp.size = px
 	vp.transparent_bg = true
@@ -4149,7 +4162,7 @@ func live_portrait(p: int, px: Vector2i) -> Texture2D:
 	add_child(vp)
 	var cam := Camera3D.new()
 	cam.cull_mask = PORTRAIT_LAYER
-	cam.fov = float(PORTRAIT_FRAME[p][1])
+	cam.fov = float(PORTRAIT_FRAME[p][1]) * ((1.45 if p == 0 else 1.7) if turbo else 1.0)
 	cam.near = 0.2
 	cam.far = 12.0
 	# Its own light and air: the same in every arena, so a face is never lost in a dark field.
@@ -4176,12 +4189,17 @@ func duelist_mouth(p: int, secs: float) -> void:
 
 
 func duelist_ready(p: int) -> bool:
-	return has_duelist(p) and (_duelists[p] as RoamFigure).ready_to_show
+	return _has_fig(p) and (_duelists[p] as RoamFigure).ready_to_show
+
+
+## A duelist figure is there at all (on foot, or on a runner in a Turbo Duel).
+func _has_fig(p: int) -> bool:
+	return _duelists.has(p) and is_instance_valid(_duelists[p]) and (_duelists[p] is RoamFigure)
 
 
 func _update_portrait(p: int, k: float, delta := 0.0) -> void:
 	var cam: Camera3D = _pcam.get(p)
-	if cam == null or not has_duelist(p):
+	if cam == null or not _has_fig(p):
 		return
 	var fig: RoamFigure = _duelists[p]
 	var side := 1.0 if p == 0 else -1.0
@@ -4221,6 +4239,13 @@ func _update_portrait(p: int, k: float, delta := 0.0) -> void:
 		wide = lerpf(wide, need, 1.0 - exp(-delta * (7.0 if need > wide else 1.5)))
 		_pwide[p] = wide
 	var drop := float(f[2]) + (wide - 1.0) * 0.2
+	if turbo:
+		# On the runner the rider faces down the road (+x): the camera rides ahead of them, a
+		# little to the side, and takes in the rider and the front of the machine.
+		var at2 := h - Vector3(-0.2, 0.42 if p == 0 else 0.32, 0)
+		cam.global_position = at2 + Vector3(float(f[0]) * 0.9, 0.3, side * 1.3)
+		cam.look_at(at2)
+		return
 	var at := Vector3(lerpf(h.x, 0.0, 0.5), h.y - drop, lerpf(h.z, side * DUELIST_Z, 0.5))
 	cam.global_position = at + Vector3(-float(f[3]) * side, drop * 0.35, -side * float(f[0]) * wide)
 	cam.look_at(at)
@@ -4298,6 +4323,18 @@ func outro_pullback(p: int, dur := 2.0) -> void:
 	if _cam_tween:
 		_cam_tween.kill()
 	cam_weight = 1.0
+	if turbo:
+		# (0.74.1) A Turbo Duel ends on the winner riding on: the camera out ahead of their
+		# runner, looking back at them, and slowly letting them pull toward it.
+		var r := rider_at(p)
+		cam_pos = r + Vector3(6.4, 2.2, side * 3.8)
+		# (aimed off to the side, so the rider sits left in the picture, clear of the results)
+		var fwd := (r - cam_pos).normalized()
+		var right := fwd.cross(Vector3.UP).normalized()
+		cam_target = r + Vector3(0, 1.0, 0) + right * 2.4
+		_cam_tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		_cam_tween.tween_property(self, "cam_pos", r + Vector3(8.6, 3.0, side * 5.0), dur + 9.0)
+		return
 	var to := Vector3(-4.2 * side, 5.0, -side * (DUELIST_Z - 0.6))
 	_cam_tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_cam_tween.set_parallel()

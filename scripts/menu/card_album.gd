@@ -13,7 +13,7 @@ const SPREAD := 18
 const ROWS := 3
 const COLS := 3
 const LUMEN_IDS := [99200001, 99200002, 99200003, 99200004, 99200005, 99200011, 99200012, 99200013]
-const SPEED_IDS := [99100001, 99100002, 99100003, 99100004, 99100005, 99100006, 99100007, 99100008, 99100009, 99100010]
+const SPEED_IDS := CardData.SPEED_SPELLS
 
 var _sets: Array = []            # [{key, name, color, ids, group}]
 var _set := 0

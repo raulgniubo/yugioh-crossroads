@@ -1397,6 +1397,7 @@ var _sprays: Array = []
 ## graphics allow it, falls past `host` (the camera) and sprays off every rear wheel.
 func set_weather(mood: String, rain: bool, host: Node3D = null) -> void:
 	weather = {"mood": mood, "rain": rain}
+	Sfx.weather("rain" if rain else "", -15.0)
 	var detail := int(Settings.gfx.get("detail", 2))
 	if _dome:
 		_dome.set_shader_parameter("night", 1.0 if mood == "night" else 0.0)
@@ -1531,6 +1532,53 @@ func _push_reflections() -> void:
 	_road.set_shader_parameter("refl_n", n)
 
 
+## (0.74.1) Each runner's own engine, heard from where it is: pitch follows `rev` (0 idling
+## along, 1 flat out), `base` sets the voice of the machine (a big bike lower, a light one higher).
+var _engines := {}      # index -> [AudioStreamPlayer3D, base pitch, rev now, rev wanted]
+
+
+func engine_on(i: int, base := 1.0, volume_db := -8.0) -> void:
+	if i >= _bikes.size() or _engines.has(i):
+		return
+	var ap := AudioStreamPlayer3D.new()
+	ap.bus = "SFX"
+	ap.volume_db = volume_db
+	ap.unit_size = 7.0
+	ap.max_distance = 140.0
+	ap.attenuation_filter_cutoff_hz = 9000.0
+	ap.doppler_tracking = AudioStreamPlayer3D.DOPPLER_TRACKING_IDLE_STEP
+	(_bikes[i][0] as Node3D).add_child(ap)
+	_engines[i] = [ap, base, 0.3, 0.3]
+
+
+func set_rev(i: int, rev: float) -> void:
+	if _engines.has(i):
+		_engines[i][3] = clampf(rev, 0.0, 1.2)
+
+
+func _engines_step(delta: float) -> void:
+	for i in _engines:
+		var e: Array = _engines[i]
+		var ap: AudioStreamPlayer3D = e[0]
+		if not is_instance_valid(ap):
+			continue
+		if ap.stream == null:
+			var st = Sfx.loop("engine")
+			if st == null:
+				continue
+			ap.stream = st
+			ap.play(randf() * 2.0)
+		e[2] = lerpf(float(e[2]), float(e[3]), clampf(delta * 2.5, 0.0, 1.0))
+		var fx: Dictionary = _fx.get(i, {})
+		var kick := 0.18 if fx.has("surge") else (-0.12 if fx.has("wobble") else 0.0)
+		ap.pitch_scale = clampf(float(e[1]) * (0.72 + 0.6 * float(e[2]) + kick), 0.4, 2.4)
+
+
+func _exit_tree_sound() -> void:
+	if bool(weather.get("rain", false)):
+		Sfx.weather("")
+
+
 ## Sparks off a runner scraping along the barrier (ride mode), on or off.
 func scrape(i: int, on: bool) -> void:
 	if i >= _bikes.size():
@@ -1552,6 +1600,39 @@ func set_tuck(i: int, amount: float) -> void:
 
 var _lead := [0.0, 0.0]        # how far ahead each runner rides right now (the Life Points lead)
 var _lead_to := [0.0, 0.0]
+
+
+var _side := [0.0, 0.0]        # pulled across toward the other runner (riding alongside)
+var _side_to := [0.0, 0.0]
+
+
+## (0.74.1) For `secs` this runner swings across next to the other one, then back to its line.
+func alongside(i: int, secs: float) -> void:
+	if i < 0 or i > 1 or _bikes.size() < 2:
+		return
+	var gap := (_bikes[1 - i][1] as Vector3).z - (_bikes[i][1] as Vector3).z
+	if absf(gap) > 6.0:
+		return      # (riding at the two ends of the field: the burst of speed says it alone)
+	_side_to[i] = gap - signf(gap) * 1.5
+	get_tree().create_timer(secs).timeout.connect(func(): _side_to[i] = 0.0)
+
+
+## A thin trail of smoke from a runner in trouble, on or off.
+func low_smoke(i: int, on: bool) -> void:
+	if i >= _bikes.size():
+		return
+	var h: Node3D = _bikes[i][0]
+	var sm = h.get_meta("low_smoke") if h.has_meta("low_smoke") else null
+	if on and not (sm is CPUParticles3D and is_instance_valid(sm)):
+		var sp := smoke(i)
+		if sp:
+			sp.amount = 18
+			sp.scale_amount_max = 0.7
+			h.set_meta("low_smoke", sp)
+	elif not on and sm is CPUParticles3D and is_instance_valid(sm):
+		(sm as CPUParticles3D).emitting = false
+		h.remove_meta("low_smoke")
+		get_tree().create_timer(1.5).timeout.connect(func(): if is_instance_valid(sm): sm.queue_free())
 
 
 ## Ride `x` meters ahead of (or behind, below 0) where this runner usually rides.
@@ -1615,9 +1696,9 @@ var blow_busy := false
 
 
 ## Thick smoke off a runner that has been beaten.
-func smoke(i: int) -> void:
+func smoke(i: int) -> CPUParticles3D:
 	if i >= _bikes.size():
-		return
+		return null
 	var sp := CPUParticles3D.new()
 	sp.amount = 46
 	sp.lifetime = 1.1
@@ -1648,6 +1729,7 @@ func smoke(i: int) -> void:
 	sp.mesh = qm
 	sp.position = Vector3(-0.8, 0.7, 0)
 	(_bikes[i][0] as Node3D).add_child(sp)
+	return sp
 
 
 var _puff_tex: GradientTexture2D
@@ -1704,6 +1786,7 @@ func finish_blow(loser: int) -> void:
 
 
 func _exit_tree() -> void:
+	_exit_tree_sound()
 	if blow_busy:
 		Engine.time_scale = 1.0
 
@@ -1745,6 +1828,7 @@ const TUCK_SIGN := 1.0
 func _process(delta: float) -> void:
 	_t += delta
 	_push_reflections()
+	_engines_step(delta)
 	_react_step(delta)
 	speed = lerpf(speed, target_speed, clampf(delta * 1.5, 0.0, 1.0))
 	# Every repeat on the road (6, 12, 16, 20, 36, 48 ... meters) divides this, so nothing
@@ -1814,10 +1898,13 @@ func _process(delta: float) -> void:
 				fx.erase("wobble")
 				if fx.has("sparks") and is_instance_valid(fx["sparks"]):
 					(fx["sparks"] as CPUParticles3D).emitting = false
+		var across := 0.0
 		if idx < 2:
 			_lead[idx] = lerpf(float(_lead[idx]), float(_lead_to[idx]), clampf(delta * 0.9, 0.0, 1.0))
+			_side[idx] = lerpf(float(_side[idx]), float(_side_to[idx]), clampf(delta * 2.0, 0.0, 1.0))
+			across = float(_side[idx])
 		var ahead := float(_lead[idx]) if idx < 2 else 0.0
-		h.position = base + Vector3(ahead + sin(_t * 0.43 + ph) * 0.5 + surge * 2.4 - wob * 0.9, absf(sin(_t * 9.0 + ph)) * 0.012, sway * 0.28 + sin(_t * 24.0) * 0.22 * wob)
+		h.position = base + Vector3(ahead + sin(_t * 0.43 + ph) * 0.5 + surge * 2.4 - wob * 0.9, absf(sin(_t * 9.0 + ph)) * 0.012, across + sway * 0.28 + sin(_t * 24.0) * 0.22 * wob)
 		h.rotation.x = cos(_t * 0.7 + ph) * 0.07 + sin(_t * 31.0) * 0.16 * wob
 		h.rotation.z = surge * 0.2
 	for tr in _trails:

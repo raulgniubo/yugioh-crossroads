@@ -7582,3 +7582,12 @@ Deck: %d  ·  Hand: %d  ·  GY: %d	Deck: %d  ·  Mano: %d  ·  Cem.: %d
 TOP SPEED!	¡VELOCIDAD MÁXIMA!
 %s hits top speed!	¡%s llega a velocidad máxima!
 ⚡ %d · %d to go	⚡ %d · faltan %d
+RACE TO THE FIRST CORNER: first there takes the first turn	CARRERA A LA PRIMERA CURVA: el que llegue primero empieza el duelo
+CORNER  %d m	CURVA  %d m
+YOU TAKE THE CORNER!	¡TOMAS LA CURVA!
+THEY TAKE THE CORNER	TE GANAN LA CURVA
+4: 800 damage for each Spell in your hand	4: 800 de daño por cada Mágica en tu mano
+7: draw 1 card	7: roba 1 carta
+10: destroy 1 card on their field	10: destruye 1 carta de su campo
+Duel	Duelo
+against %s	contra %s

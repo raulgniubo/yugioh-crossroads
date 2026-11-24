@@ -656,6 +656,8 @@ var _gauge_val := [0.0, 0.0]
 var _gauge_to := [0, 0]
 var _gauge_kick := [0.0, 0.0]
 var _btn_speed: Button
+var _speed_chips: Array = []
+const SPEED_COSTS := [4, 7, 10]
 
 
 ## Show the two speedometers and the Speed World 2 button.
@@ -683,6 +685,34 @@ func enable_turbo() -> void:
 	_btn_speed.add_theme_color_override("font_color", Color("ff8a3a"))
 	_btn_speed.tooltip_text = "Spend Speed Counters, once per turn: 4 to burn, 7 to draw, 10 to destroy a card."
 	_btn_speed.pressed.connect(func(): speed_pressed.emit())
+	_btn_speed.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_btn_speed.add_theme_constant_override("h_separation", 0)
+	var chips := HBoxContainer.new()
+	chips.add_theme_constant_override("separation", 6)
+	chips.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	chips.offset_left = -150
+	chips.offset_right = -12
+	chips.offset_top = -15
+	chips.offset_bottom = 15
+	chips.alignment = BoxContainer.ALIGNMENT_END
+	chips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_btn_speed.add_child(chips)
+	var tips := ["4: 800 damage for each Spell in your hand", "7: draw 1 card", "10: destroy 1 card on their field"]
+	for k in SPEED_COSTS.size():
+		var chip := Label.new()
+		chip.text = str(SPEED_COSTS[k])
+		chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		chip.custom_minimum_size = Vector2(40, 28)
+		chip.add_theme_font_size_override("font_size", 18)
+		var sb := StyleBoxFlat.new()
+		sb.set_corner_radius_all(8)
+		sb.bg_color = Color("232733", 0.9)
+		chip.add_theme_stylebox_override("normal", sb)
+		chip.add_theme_color_override("font_color", Color("6b7080"))
+		chip.tooltip_text = Loc.t(tips[k])
+		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chips.add_child(chip)
+		_speed_chips.append(chip)
 	_phase_box.add_child(_btn_speed)
 	_phase_box.move_child(_btn_speed, 4)
 
@@ -736,9 +766,15 @@ func _speed_badges() -> void:
 		b.position = Vector2((HAND_CARD.x - b.size.x) / 2.0, -14.0)
 
 
-func set_speed_button(enabled: bool) -> void:
+func set_speed_button(enabled: bool, costs: Array = []) -> void:
 	if _btn_speed:
 		_btn_speed.disabled = not enabled
+		# (0.74.1) The three things the road can do, lit when you can pay for them right now.
+		for k in _speed_chips.size():
+			var on := enabled and costs.has(int(SPEED_COSTS[k]))
+			var chip: Label = _speed_chips[k]
+			chip.add_theme_color_override("font_color", Color("1a1206") if on else Color("6b7080"))
+			(chip.get_theme_stylebox("normal") as StyleBoxFlat).bg_color = Color("ffb347") if on else Color("232733", 0.9)
 
 
 func _tick_gauges(delta: float) -> void:

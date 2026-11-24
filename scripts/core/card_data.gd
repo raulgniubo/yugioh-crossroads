@@ -16,6 +16,19 @@ const CARDS := {
 	99100008: {"name": "Speed Spell - Overtake", "frame": "spell", "text": "Needs 6 Speed Counters. Spend 3 Speed Counters: destroy the monster your opponent controls with the highest DEF.", "speed_spell": true},
 	99100009: {"name": "Speed Spell - Redline", "frame": "spell", "text": "Needs 8 Speed Counters. Spend 6 Speed Counters: inflict 2000 damage to your opponent.", "speed_spell": true},
 	99100010: {"name": "Speed Spell - Shockwave", "frame": "spell", "text": "Needs 7 Speed Counters. Spend 4 Speed Counters: destroy every Spell and Trap your opponent controls.", "speed_spell": true},
+	# (0.74.1) Twelve more, so every Turbo Duel draws a different hand of them.
+	99100011: {"name": "Speed Spell - Green Light", "frame": "spell", "text": "Needs 1 Speed Counter. Draw 1 card, then gain 1 Speed Counter.", "speed_spell": true},
+	99100012: {"name": "Speed Spell - Drift Guard", "frame": "spell", "text": "Needs 3 Speed Counters. Target 1 face-up monster you control: it cannot be destroyed by battle this turn.", "speed_spell": true},
+	99100013: {"name": "Speed Spell - Pace Car", "frame": "spell", "text": "Needs 2 Speed Counters. Target 1 face-up monster your opponent controls: it loses 600 ATK until the end of this turn.", "speed_spell": true},
+	99100014: {"name": "Speed Spell - Pit Crew", "frame": "spell", "text": "Needs 3 Speed Counters. Add 1 monster from your Graveyard to your hand.", "speed_spell": true},
+	99100015: {"name": "Speed Spell - Fuel Line", "frame": "spell", "text": "Needs 5 Speed Counters. Gain 1000 Life Points, then draw 1 card.", "speed_spell": true},
+	99100016: {"name": "Speed Spell - Jump Start", "frame": "spell", "text": "Needs 4 Speed Counters. Special Summon 1 Level 4 or lower monster from your Graveyard in Defense Position.", "speed_spell": true},
+	99100017: {"name": "Speed Spell - Brake Check", "frame": "spell", "text": "Needs 4 Speed Counters. Target 1 face-up Attack Position monster your opponent controls: change it to Defense Position.", "speed_spell": true},
+	99100018: {"name": "Speed Spell - Rev Limiter", "frame": "spell", "text": "Needs 6 Speed Counters. Spend 2 Speed Counters: your opponent loses 4 Speed Counters.", "speed_spell": true},
+	99100019: {"name": "Speed Spell - Final Lap", "frame": "spell", "text": "Needs 9 Speed Counters. Spend 5 Speed Counters: every face-up monster you control gains 1000 ATK until the end of this turn.", "speed_spell": true},
+	99100020: {"name": "Speed Spell - Double Lap", "frame": "spell", "text": "Needs 7 Speed Counters. Spend 3 Speed Counters: target 1 face-up monster you control; it can make a second attack during each Battle Phase this turn.", "speed_spell": true},
+	99100021: {"name": "Speed Spell - Spin Out", "frame": "spell", "text": "Needs 5 Speed Counters. Spend 2 Speed Counters: target 1 monster your opponent controls; return it to the hand.", "speed_spell": true},
+	99100022: {"name": "Speed Spell - Chequered Flag", "frame": "spell", "text": "Needs 10 Speed Counters. Spend 8 Speed Counters: draw 2 cards, then inflict 1000 damage to your opponent.", "speed_spell": true},
 	# Your partner. She is in your deck from the first day (every starter has her) and grows with every bond.
 	99200001: {"name": "Lumen, Echo Spirit", "frame": "effect", "atk": 500, "def": 500, "level": 2, "attribute": "LIGHT", "race": "Fairy", "partner": true,
 		"text": "Normal Summoned: add 1 monster with 1500 or less ATK from your Deck to your hand. Destroyed by battle: you take no battle damage this turn. Gains 300 ATK and DEF for every bond you have made."},
@@ -162,7 +175,8 @@ const MIN_DECK := 40
 ## The cards made for this game, with their place in the Crossroads set (CR-001 ...). They
 ## carry the Crossroads mark on their face and in every card list.
 const ORIGINALS := [99200001, 99200002, 99200003, 99200004, 99200005, 99200011, 99200012, 99200013,
-	99100001, 99100002, 99100003, 99100004, 99100005, 99100006, 99100007, 99100008, 99100009, 99100010]
+	99100001, 99100002, 99100003, 99100004, 99100005, 99100006, 99100007, 99100008, 99100009, 99100010,
+	99100011, 99100012, 99100013, 99100014, 99100015, 99100016, 99100017, 99100018, 99100019, 99100020, 99100021, 99100022]
 ## Lumen's cards, and the story stage (see StoryProgress.stage) that hands each one over:
 ## [stage, id, copies]. Stage 1 is the prologue done, 2 Domino, 3 the Academy, 4 the 5D's
 ## worlds, 5 Heartland.
@@ -189,7 +203,8 @@ const RENUMBERED := {59546797: 95360850, 63142001: 94538053, 51447164: 18013090,
 ## Lumen, your partner spirit, as a card.
 const LUMEN := 99200001
 ## The Speed Spells every rider carries in a Turbo Duel.
-const SPEED_SPELLS := [99100001, 99100002, 99100003, 99100004, 99100005, 99100006, 99100007, 99100008, 99100009, 99100010]
+const SPEED_SPELLS := [99100001, 99100002, 99100003, 99100004, 99100005, 99100006, 99100007, 99100008, 99100009, 99100010,
+	99100011, 99100012, 99100013, 99100014, 99100015, 99100016, 99100017, 99100018, 99100019, 99100020, 99100021, 99100022]
 
 static var EXT := {}
 ## Tokens made during a duel (Sheep Tokens...): id -> card data. Not real cards, never in a deck.
