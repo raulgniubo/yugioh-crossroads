@@ -31,7 +31,7 @@ func _ready() -> void:
 	theme = UITheme.build()
 	# The same deep blue glass as the other big menus (it was a plain black screen with a box
 	# in the middle, which read as an error message).
-	var dim := MenuBackdrop.new(1.0, UITheme.GOLD.lerp(UITheme.ACCENT, 0.35))
+	var dim := AcademyBackdrop.new(0.45, StoryGate.PICTURE, Color(1.0, 0.9, 0.6))
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
 	# Laid out for 1920 x 1080 and scaled to the window like the rest of the menus.

@@ -234,6 +234,17 @@ func _home() -> void:
 			Sfx.play("click", -6.0)
 			Campus.go())
 		_left.add_child(first)
+		# (with a chapter waiting, Continue starts it: the island on its own is the smaller button)
+		if str(pos.get("chapter", "")) == "" and Campus.next_chapter() != "" and Campus.v("free_days", false):
+			var isl := Button.new()
+			isl.text = Loc.t("Free time on the island")
+			isl.custom_minimum_size = Vector2(780, 54)
+			isl.add_theme_font_size_override("font_size", 22)
+			isl.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.05, 0.08, 0.16, 0.85), Color(col, 0.6), 14))
+			isl.pressed.connect(func():
+				Sfx.play("click", -6.0)
+				Campus.island())
+			_left.add_child(isl)
 	else:
 		var hello := UITheme.label(Loc.t("You come in on the morning ferry with a novice deck. Everything else you earn on the island."), 22, Color(0.95, 0.96, 1.0))
 		hello.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

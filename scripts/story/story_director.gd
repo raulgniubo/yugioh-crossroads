@@ -3656,6 +3656,8 @@ func _campus_step(c: Dictionary) -> void:
 		flags.erase("cup_first")
 		if Campus.cup_on() and Campus.cup_place(Campus.dorm()) == 1:
 			flags["cup_first"] = true
+	if c.get("cup_end", false):
+		Campus.cup_end()
 	if c.has("part"):
 		Campus.put("part", clampi(int(c["part"]), 0, 2))
 		scene.city.apply_tod(Campus.tod())

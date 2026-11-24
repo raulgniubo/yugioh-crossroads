@@ -5,6 +5,17 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.73.2
+
+**What was left open, closed, and every menu with a picture behind it.** No cards added: 12,745 total.
+
+- **Duel Academy: Continue starts the next chapter.** Once the first free day had come, Continue put you on the island and the chapter waited behind the agenda. Now the chapter starts; "Free time on the island" is a button of its own under Continue.
+- **The Dorm Cup ends with the term.** After the final round the table is the final one: no more daily points or points from duels, the Cup's missions close (one already finished can still be handed in), and the island says who won it.
+- **Hairstyles take their colors whole**: Curly Top, Buzz Cut, Messy Shag, Tied Back, Layered Fringe, Twin Tails, Side Braid and Pixie Cut had irises that kept their own color, grey brows and grey strands. Pixie Cut, whose picture is a patchwork, is painted one skin tone and one hair tone.
+- **No more blue mouth** (Ponytail and others, seen from a few steps away), and the face is lifted a shade so it matches the arms and neck.
+- **Clothes keep their details in a new color**: stripes, trims, a belt in another color, grey parts and dark cloth (no blotches on black trousers).
+- **Menus**: Replays, My Decks, the Deck Builder, the Card Album, the deck shop, Knockout, the Academy (classic) and the save screen have the game's pictures behind them, like the newer screens.
+
 ## What is in 0.73.1
 
 **The Online screens, nicer.** No cards added: 12,745 total.

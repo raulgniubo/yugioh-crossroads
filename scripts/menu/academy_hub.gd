@@ -25,7 +25,7 @@ func _ready() -> void:
 		_news = Academy.resolve(Router.story_result == "won")
 		Router.story_result = ""
 	# The same glass backdrop as the other big menus, lit in your dorm's color.
-	var dim := MenuBackdrop.new(0.985, (Academy.dorm()["color"] as Color).lerp(Color.WHITE, 0.15))
+	var dim := AcademyBackdrop.new(0.5, AcademyBackdrop.PICTURE)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 	var glow := Control.new()

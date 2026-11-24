@@ -1047,7 +1047,21 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.73.0 STATE (Nov 24 night; NEWEST, read this first): online duels (the plan in the "Crossroads: online duels for anyone" doc)
+#### 0.73.2 STATE (Nov 24 morning; NEWEST, read this first): open items closed, menus
+- Campus.go: an open, unplayed chapter starts even after free_days (the agenda wait is gone); CampusGate shows
+  "Free time on the island" under Continue when a chapter waits.
+- Cup: Campus.cup_over() (cup "over" flag set by {"campus": {"cup_end": true}} after the ch6 final table, or ac_ch6 done for
+  old saves); _cup_day, cup_score, cup_add stop; Cup missions close (a done-but-unpaid one stays to claim); cup_line says who won.
+- Masks: tools/dev/mend_mask.py (needs tests/tri_dump.tscn output in /tmp/masktool/tris/<m>.json). Finds the two eyes as a pair,
+  marks irises, stray eye bits -> streak, hair by color, hanging locks, brows; mouth zone -> skin (all 42 outfit masks got the
+  mouth step: --only-mouth). hero_f6_hair is HeroLook.FLAT_PAINT (skin and hair one tone in the shader). Originals of the
+  masks are NOT kept in the repo (git has them). After a mask change: --import in the repo.
+- HeroLook shader: paint_cloth for top/bottom/shoes (keeps other hues, greys, trims), unmarked head texels read at lod 0,
+  greyed, flat normals; face skin * face_lift 1.06.
+- Menus on AcademyBackdrop pictures: replay_list, deck_menu, deck_builder, card_album, deck_shop, save_menu, bracket_panel,
+  knockout_screen, academy_hub. MenuBackdrop is no longer used by any screen (kept).
+
+#### 0.73.0 STATE (Nov 24 night): online duels (the plan in the "Crossroads: online duels for anyone" doc)
 - Pieces: tools/netlink (Go, tsnet from tailscale v1.86.5; `tools/netlink/build.sh` builds netbin/crossroads-link-*.bin,
   which are .gitignored: build them before exporting, the presets include them per platform). Proxy/vanity Go domains are
   blocked here: build.sh clones from GitHub and adds replace lines; wintun is a local stub (tools/netlink/wintunstub).

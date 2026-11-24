@@ -219,7 +219,7 @@ func _have(ids: Array) -> int:
 # ------------------------------------------------------------------ layout
 
 func _build_ui() -> void:
-	add_child(MenuBackdrop.new())
+	add_child(AcademyBackdrop.new(0.58, CardsGate.PICTURE, Color(1.0, 0.86, 0.5)))
 	var m := MarginContainer.new()
 	m.set_anchors_preset(Control.PRESET_FULL_RECT)
 	m.add_theme_constant_override("margin_left", 52)

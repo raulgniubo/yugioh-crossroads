@@ -21,7 +21,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	theme = UITheme.build()
-	add_child(MenuBackdrop.new(0.96))
+	add_child(AcademyBackdrop.new(0.5, StoryGate.PICTURE, Color(1.0, 0.9, 0.6)))
 	var d: Dictionary = Tournament.DEFS[id]
 	var s := Tournament.st(id)
 	var col: Color = d["color"]

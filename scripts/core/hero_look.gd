@@ -84,6 +84,8 @@ static func outfits() -> Array:
 const HIDDEN_HAIRS := [[], [11]]
 ## Borrowed heads whose donor jacket reaches up into the head (their clothes are left out).
 const DROP_CLOTH := ["hero_f5_hair", "hero_f7_hair"]
+## Heads painted as a patchwork of tones: skin and hair one even color each (see flat_paint).
+const FLAT_PAINT := ["hero_f6_hair"]
 
 
 static func hairs(body: int) -> Array:
@@ -176,6 +178,7 @@ uniform int debug_ids = 0;       // dev: 1 shows each mask region in a flat colo
 // Never going past this mipmap keeps every island its own color (1.5: up to about 3x smaller).
 uniform float lod_max = 1.5;
 uniform float face_flat = 0.7;
+uniform float face_lift = 1.06;
 uniform vec3 line_r = vec3(7.0, 20.0, 44.0);   // (texels) how far around a pixel the lightest skin is looked for
 uniform vec2 line_w = vec2(0.09, 0.30);        // how much darker than that counts as drawn: from, fully
 uniform int all_face = 0;      // a borrowed head: all of its skin is face (its mask may call part of it body)
@@ -187,6 +190,9 @@ uniform int neck_on = 0;
 uniform vec3 neck_col = vec3(0.8, 0.55, 0.42);
 uniform int drop_cloth = 0;
 uniform vec4 skin_nat = vec4(0.0);    // the borrowed face's own tone, for the body's skin
+// (0.73.2) A head whose picture is a patchwork of tones (Pixie Cut): its skin and hair are painted
+// one even color each, whatever the picture says (the light shades them; the eyes keep theirs).
+uniform int flat_paint = 0;
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 const vec2 RING[8] = vec2[8](vec2(1.0, 0.0), vec2(0.707, 0.707), vec2(0.0, 1.0), vec2(-0.707, 0.707), vec2(-1.0, 0.0), vec2(-0.707, -0.707), vec2(0.0, -1.0), vec2(0.707, -0.707));
 vec3 rgb2hsv(vec3 c) {
@@ -224,6 +230,37 @@ vec3 paint_e(vec3 c, vec3 ref, vec4 to, float e) {
 vec3 paint(vec3 c, vec3 ref, vec4 to) {
 	return paint_e(c, ref, to, 1.0);
 }
+// (0.73.2) Cloth keeps its details through a new color: what is lighter or darker than the cloth
+// (a stripe, a seam, a white trim) stays that much lighter or darker, a part painted in another hue
+// (a brown belt on green overalls, a colored stripe on black trousers) keeps its own color, and
+// a grey part of a colored jacket stays grey. Dark cloth no longer comes out in blotches: its faint
+// noise is measured against the cloth, not blown up as a ratio of two tiny numbers.
+vec3 paint_cloth(vec3 c, vec3 ref, vec4 to) {
+	if (to.a < 0.5) {
+		return c;
+	}
+	float lc = dot(c, LUMA);
+	float lr = dot(ref, LUMA);
+	float k = clamp((lc + 0.05) / (lr + 0.05), 0.25, 1.8);
+	float lt = dot(to.rgb, LUMA);
+	vec3 t = mix(vec3(lt), to.rgb, 0.86);
+	vec3 r = t * min(k, 1.0);
+	float dark = clamp(1.0 - lt / 0.3, 0.0, 1.0);
+	r += (vec3(1.0) - r) * clamp((k - 1.0) * 0.3, 0.0, 0.3) * mix(1.0, 0.6, dark);
+	r += vec3(0.012 * k + clamp(lc - lr, -0.03, 0.12) * 0.08) * dark;
+	vec3 hc = rgb2hsv(c);
+	vec3 hr = rgb2hsv(ref);
+	float lit = smoothstep(0.18, 0.3, hc.z) * smoothstep(0.1, 0.2, hr.z);
+	// greyer than the cloth: stays grey
+	float grey = clamp(hc.y / max(hr.y, 0.12), 0.0, 1.0);
+	r = mix(r, vec3(dot(r, LUMA)), (1.0 - grey) * 0.8 * lit);
+	// another hue than the cloth (and clearly colored): its own color
+	float hd = abs(hc.x - hr.x);
+	hd = min(hd, 1.0 - hd);
+	float other = hr.y > 0.15 ? smoothstep(0.07, 0.14, hd) : smoothstep(0.2, 0.35, hc.y - hr.y);
+	other *= smoothstep(0.14, 0.28, hc.y) * smoothstep(0.18, 0.3, hc.z);
+	return clamp(mix(r, c, other * 0.9), 0.0, 1.0);
+}
 vec3 rehue(vec3 c, vec4 to) {
 	if (to.a < 0.5) {
 		return c;
@@ -244,12 +281,26 @@ void fragment() {
 		discard;
 	}
 	float id = m.r * 255.0;
+	if (id < 20.0) {
+		// (unmarked bits keep the picture's own paint: read sharp, so from a few steps away a mouth
+		// or the white of an eye never takes the color of the island next to it in the picture)
+		t = textureLod(tex, UV, 0.0);
+	}
 	// Some borrowed heads carry bits of their donor's jacket (a braid lying on the shoulder):
 	// those are left out and the outfit's own shoulders show.
 	if (part == 2 && drop_cloth == 1 && id > 108.0 && id < 212.0) {
 		discard;
 	}
 	vec3 c = t.rgb;
+	if (flat_paint == 1) {
+		if (abs(id - 40.0) < 12.0) {
+			c = skin_ref;
+		} else if (abs(id - 80.0) < 12.0) {
+			c = hair_to.a > 0.5 ? hair_ref : vec3(0.24, 0.2, 0.23);
+		} else if (id < 20.0 && m.g > 0.75) {
+			c = vec3(0.93, 0.93, 0.95);      // (the whites of the eyes, painted in patches too)
+		}
+	}
 	if (abs(id - 40.0) < 12.0) {
 		float nw = neck_on == 1 ? COLOR.r : 0.0;
 		c = mix(min(c * skin_gain, vec3(1.0)), neck_col, nw);
@@ -262,7 +313,7 @@ void fragment() {
 		}
 		vec3 sref = mix(skin_ref * skin_gain, neck_col, nw);
 		vec3 even = paint_e(c, sref, sto, 0.25);
-		if (sto.a > 0.5 && face_lines > 0.0 && (m.g > 0.75 || all_face == 1)) {
+		if (sto.a > 0.5 && face_lines > 0.0 && flat_paint == 0 && (m.g > 0.75 || all_face == 1)) {
 			// (0.72.5) What is DRAWN on the skin keeps its strength: the line of a nose, a mouth, a
 			// lash, a crease. Painting everything toward one tone (above) is right for the skin itself
 			// (an arm a little darker than a leg, a face paler than its hands) and wiped these out:
@@ -303,19 +354,34 @@ void fragment() {
 		// generated face shows lumps around the nose and mouth.
 		if (m.g > 0.75 || nw > 0.5) {
 			NORMAL = normalize(mix(NORMAL, VIEW, face_flat));
+			// (0.73.2) A flat-lit face read a shade darker than the arms and neck next to it, which
+			// take the light full on: the face's skin is lifted to meet them.
+			if (m.g > 0.75 && nw < 0.5) {
+				c = min(c * face_lift, vec3(1.0));
+			}
 		}
 	} else if (abs(id - 80.0) < 12.0) {
-		c = paint(c, hair_ref, hair_to);
+		c = flat_paint == 1 && hair_to.a < 0.5 ? c : paint(c, hair_ref, hair_to);
 	} else if (abs(id - 120.0) < 12.0) {
-		c = paint(c, top_ref, top_to);
+		c = paint_cloth(c, top_ref, top_to);
 	} else if (abs(id - 160.0) < 12.0) {
-		c = paint(c, bottom_ref, bottom_to);
+		c = paint_cloth(c, bottom_ref, bottom_to);
 	} else if (abs(id - 200.0) < 9.0) {
-		c = paint(c, shoes_ref, shoes_to);
+		c = paint_cloth(c, shoes_ref, shoes_to);
 	} else if (abs(id - 220.0) < 9.0) {
-		c = rehue(c, eyes_to);
+		// (a patchwork head's irises are partly grey: a hue alone does not take on grey)
+		c = flat_paint == 1 ? paint(c, vec3(0.45), eyes_to.a > 0.5 ? eyes_to : vec4(0.32, 0.42, 0.7, 1.0)) : rehue(c, eyes_to);
 	} else if (id > 231.0) {
 		c = rehue(c, accent_to);
+	}
+	if (id < 20.0 && flat_paint == 0 && (m.g > 0.75 || all_face == 1)) {
+		// (what is left unmarked on a head is the mouth, the teeth, lashes and the whites of the
+		// eyes: they keep how light or dark they are, without the stray tint some heads were
+		// painted with: a blue mouth on Ponytail)
+		c = mix(c, vec3(dot(c, LUMA)), 0.85);
+		// (lit flat like the face around them: teeth and the whites of the eyes face into the head
+		// on a borrowed face, and took the sky's blue from the shade)
+		NORMAL = normalize(mix(NORMAL, VIEW, face_flat));
 	}
 	if (debug_ids == 1) {
 		c = id < 20.0 ? vec3(0.0) : (abs(id - 40.0) < 12.0 ? vec3(1.0, 0.8, 0.6) : (abs(id - 80.0) < 12.0 ? vec3(0.1, 0.9, 0.1) : (abs(id - 120.0) < 12.0 ? vec3(0.1, 0.2, 1.0) : (abs(id - 160.0) < 12.0 ? vec3(0.6, 0.0, 0.6) : (abs(id - 200.0) < 9.0 ? vec3(0.5, 0.3, 0.0) : (abs(id - 220.0) < 9.0 ? vec3(1.0, 1.0, 0.0) : (id > 231.0 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 1.0))))))));
@@ -376,6 +442,8 @@ static func apply(scene: Node, model: String, head_model: String, p, accent: Col
 			(m as ShaderMaterial).set_shader_parameter("drop_cloth", 1 if DROP_CLOTH.has(head_model) else 0)
 		# one even neck for body and head: the face's own cheek color with its tint, a touch darker
 		var ch: Color = _cheeks.get("%s/2/%.3f" % [head_model, _neck_cut(model)], Color(0, 0, 0, 0))
+		if FLAT_PAINT.has(head_model):
+			ch = Color(0.95, 0.8, 0.7).srgb_to_linear()      # (its cheeks are a patchwork: one even tone instead)
 		if OS.has_environment("HERO_CUT_DEBUG"):
 			print("HERONECKCOL head %s cheeks %s" % [head_model, ch])
 		if ch.a > 0.0:
@@ -436,6 +504,9 @@ static func _paint(node: Node, model: String, part: int, mats: Array) -> void:
 			sm.set_shader_parameter("tex", (mat as BaseMaterial3D).albedo_texture)
 			sm.set_shader_parameter("mask", mask)
 			sm.set_shader_parameter("part", part)
+			if model in FLAT_PAINT:
+				sm.set_shader_parameter("flat_paint", 1)
+				sm.set_shader_parameter("skin_nat", Color(0.95, 0.8, 0.7).srgb_to_linear())
 			for k in ["skin", "hair", "top", "bottom", "shoes"]:
 				var r: Color = refs.get(k, Color(0.5, 0.5, 0.5))
 				sm.set_shader_parameter(k + "_ref", Vector3(r.r, r.g, r.b))

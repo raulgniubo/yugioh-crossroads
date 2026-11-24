@@ -208,7 +208,8 @@ static func set_mode(how: String) -> void:
 		enter()
 
 
-## Go to where the Academy game is: the chapter in progress, or the island on a free day.
+## Go to where the Academy game is: the chapter in progress, the next chapter when one is open,
+## or the island when the story has nothing new yet.
 static func go() -> void:
 	enter()
 	var pos: Dictionary = CampusProgress.position()
@@ -216,8 +217,11 @@ static func go() -> void:
 	if ch != "" and CampusData.SCRIPTS.has(ch):
 		StoryDirector.begin(ch, true)
 		return
+	# A chapter that is open and not played yet starts straight away (0.73.2: before, once the first
+	# free day had come, "continue" landed on the island and the chapter waited behind the agenda).
+	# Free time is still one press away: the end card of every chapter and the Academy screen offer it.
 	var next := next_chapter()
-	if next != "" and not bool(v("free_days")):
+	if next != "":
 		StoryDirector.begin(next)
 		return
 	island()
@@ -321,6 +325,23 @@ static func cup_points() -> Array:
 	return ((v("cup", {}) as Dictionary).get("pts", [0, 0, 0]) as Array).duplicate()
 
 
+## The term is over (the final round of chapter 6): the table stays as it ended, nothing scores
+## any more until a new term opens a new Cup. (Saves from before 0.73.2 kept counting after the
+## final: they stop now, from the chapter being done.)
+static func cup_over() -> bool:
+	return bool((v("cup", {}) as Dictionary).get("over", false)) or chapter_done("ac_ch6")
+
+
+## Close the Cup at the end of the term: the table as it stands is the final one.
+static func cup_end() -> void:
+	if not cup_on():
+		return
+	var c: Dictionary = (v("cup", {}) as Dictionary).duplicate(true)
+	c["over"] = true
+	c["final_day"] = day()
+	put("cup", c)
+
+
 static func cup_open() -> void:
 	if cup_on():
 		return
@@ -340,7 +361,7 @@ static func cup_place(d: int) -> int:
 
 ## You beat a student of `their` dorm ("red", "yellow", "blue") worth `stars`. The points scored.
 static func cup_score(their: String, stars: int) -> int:
-	if not cup_on() or not DORMS.has(their) or their == DORMS[dorm()]:
+	if not cup_on() or cup_over() or not DORMS.has(their) or their == DORMS[dorm()]:
 		return 0
 	var c: Dictionary = (v("cup", {}) as Dictionary).duplicate(true)
 	var n := clampi(stars, 1, 5)
@@ -354,7 +375,7 @@ static func cup_score(their: String, stars: int) -> int:
 ## Points for a dorm from the story (a Cup duel on the duel field): "red", "yellow" or "blue".
 static func cup_add(which: String, n: int) -> void:
 	var i := DORMS.find(which)
-	if not cup_on() or i < 0 or n == 0:
+	if not cup_on() or bool((v("cup", {}) as Dictionary).get("over", false)) or i < 0 or n == 0:
 		return
 	var c: Dictionary = (v("cup", {}) as Dictionary).duplicate(true)
 	c["pts"][i] = int(c["pts"][i]) + n
@@ -437,7 +458,7 @@ static func beat_elite(who: String) -> bool:
 
 
 static func _cup_day() -> void:
-	if not cup_on():
+	if not cup_on() or cup_over():
 		return
 	var c: Dictionary = (v("cup", {}) as Dictionary).duplicate(true)
 	for i in 3:
@@ -453,6 +474,10 @@ static func cup_line() -> String:
 	var pts := cup_points()
 	var me := dorm()
 	var place := cup_place(me)
+	if cup_over():
+		for i in 3:
+			if cup_place(i) == 1:
+				return Loc.t("Dorm Cup, end of term: %s won it") % Loc.t(DORM_NAMES[i])
 	if place == 1:
 		return Loc.t("Dorm Cup: %s is first") % Loc.t(DORM_NAMES[me])
 	# The dorm right above yours, and how far it is.
@@ -528,6 +553,10 @@ static func mission_count(kind: String, by := 1) -> void:
 
 
 static func mission_open(m: Dictionary) -> bool:
+	# (the Cup's missions end with the term: one finished in time can still be handed in)
+	if str(m.get("kind", "")) == "cup" and cup_over():
+		var st: Dictionary = (v("missions", {}) as Dictionary).get(str(m["id"]), {})
+		return bool(st.get("done", false)) and not bool(st.get("paid", false))
 	return str(m.get("after", "")) == "" or chapter_done(str(m["after"]))
 
 

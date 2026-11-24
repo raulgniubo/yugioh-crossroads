@@ -1475,6 +1475,7 @@ const SCRIPTS := {
 		{"remember": "cup_final_won"},
 		{"s": "sheppard", "t": "Two duels to one. The final round goes to Red. And the oldest rule of this Cup says that a dorm which wins the final round cannot finish last.", "do": "chat", "cam": "low"},
 		{"cup_table": {"title": "The Dorm Cup", "sub": "The table at the end of the term", "gain": {"red": 15}, "mark": "red"}},
+		{"campus": {"cup_end": true}},
 		{"campus": {"trophy": "dorm_cup"}, "if": "cup_first"},
 		{"s": "sheppard", "t": "I have added it three times. Red is first. Tonight the Cup changes rooms, for the first time in eleven years.", "if": "cup_first", "cam": "close", "emote": "!"},
 		{"s": "sheppard", "t": "Red is not last. For the first time in eleven years, the table has to say so. I have waited a long time to be surprised. Thank you.", "unless": "cup_first", "cam": "close", "emote": "♪"},

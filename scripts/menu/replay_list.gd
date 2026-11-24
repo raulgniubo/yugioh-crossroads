@@ -17,7 +17,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	theme = UITheme.build()
-	add_child(MenuBackdrop.new())
+	add_child(AcademyBackdrop.new(0.5, "res://assets/ui/story_title_newdomino.jpg", Color(0.75, 0.9, 1.0)))
 	var m := MarginContainer.new()
 	m.set_anchors_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right"]:

@@ -40,7 +40,7 @@ func _ready() -> void:
 		add_child(bd)
 		bd.cycle(StoryGate.all_pictures())
 	else:
-		add_child(MenuBackdrop.new())
+		add_child(AcademyBackdrop.new(0.7, "res://assets/ui/story_title_heartland.jpg", Color(0.75, 0.9, 1.0)))
 	var c := CenterContainer.new()
 	c.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(c)

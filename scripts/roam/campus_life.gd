@@ -131,7 +131,7 @@ func next_line() -> String:
 			return "▸ " + Loc.t("A mission is finished. Collect it at the board in your room.")
 	if Campus.part() == 2:
 		return "▸ " + Loc.t("It is night. Sleep in your room to start a new day.")
-	if Campus.cup_on() and Campus.cup_place(Campus.dorm()) > 1:
+	if Campus.cup_on() and not Campus.cup_over() and Campus.cup_place(Campus.dorm()) > 1:
 		return "▸ " + Campus.cup_line()
 	if Campus.merits_to_go() == 0:
 		return "▸ " + Loc.t("You have the merits for the promotion exam.")
@@ -484,7 +484,7 @@ func open_agenda() -> void:
 		go.grab_focus.call_deferred()
 	# ---- the Dorm Cup
 	if Campus.cup_on():
-		_head(p, "Dorm Cup")
+		_head(p, "Dorm Cup" if not Campus.cup_over() else "Dorm Cup: final table")
 		var pts := Campus.cup_points()
 		for place in [1, 2, 3]:
 			for d in 3:
@@ -494,8 +494,11 @@ func open_agenda() -> void:
 				var row := _line(p, "%d.   %s   %d%s" % [place, Loc.t(Campus.DORM_NAMES[d]), int(pts[d]), ("   ◀ " + Loc.t("your dorm")) if mine else ""], 21 if mine else 19, (Campus.DORM_COLORS[d] as Color).lightened(0.3))
 				if mine:
 					row.add_theme_font_override("font", UITheme.semi_font())
-		_line(p, Loc.t("Every duel you win against a student of another dorm scores for yours. Stronger duelists are worth more. Each dorm also scores a little every day."), 16, UITheme.TEXT_DIM)
-		_line(p, Loc.t("If Red finishes last this term, the Red dorm closes."), 16, UITheme.TEXT_DIM)
+		if Campus.cup_over():
+			_line(p, Loc.t("The term is over: this is the final table. The Cup opens again with the next term."), 16, UITheme.TEXT_DIM)
+		else:
+			_line(p, Loc.t("Every duel you win against a student of another dorm scores for yours. Stronger duelists are worth more. Each dorm also scores a little every day."), 16, UITheme.TEXT_DIM)
+			_line(p, Loc.t("If Red finishes last this term, the Red dorm closes."), 16, UITheme.TEXT_DIM)
 	# ---- what you have won
 	var won: Array = Campus.v("trophies", [])
 	if not won.is_empty():

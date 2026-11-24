@@ -8237,4 +8237,7 @@ const ES := {
 	"If Tailscale asks you to download something or add a device, skip it: the game takes care of that.": "Si Tailscale te pide descargar algo o agregar un dispositivo, sáltalo: de eso se encarga el juego.",
 	"Play online with friends.": "Juega en línea con amigos.",
 	"SAFE FOR THE OWNER": "PRIVADO Y SEGURO",
+	"Dorm Cup, end of term: %s won it": "Copa de Dormitorios, fin de curso: ganó el %s",
+	"The term is over: this is the final table. The Cup opens again with the next term.": "Terminó el curso: esta es la tabla final. La Copa vuelve a abrir con el próximo curso.",
+	"Dorm Cup: final table": "Copa de Dormitorios: tabla final",
 }

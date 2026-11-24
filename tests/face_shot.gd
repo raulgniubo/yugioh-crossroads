@@ -15,6 +15,7 @@ var tint := false
 var lod := -1.0
 var full := false
 var yaw := 0.0
+var lodbias := -1.0
 
 
 func _ready() -> void:
@@ -42,6 +43,10 @@ func _ready() -> void:
 			dy = float(a.substr(5))
 		elif a.begins_with("--yaw="):
 			yaw = float(a.substr(6))
+		elif a.begins_with("--lodbias="):
+			lodbias = float(a.substr(10))
+		elif a.begins_with("--sig="):
+			Profile.color_index = int(a.substr(6))
 		elif a == "--tint":
 			tint = true
 		elif a.begins_with("--colors="):
@@ -109,6 +114,9 @@ func _ready() -> void:
 					# a vivid look: teal hair, a deep skin tone (any skin pixel left out of the skin shows)
 					(sm as ShaderMaterial).set_shader_parameter("hair_to", Color("1fa4a0"))
 					(sm as ShaderMaterial).set_shader_parameter("skin_to", Color("aa7345"))
+		if lodbias >= 0.0:
+			for g in m.find_children("*", "GeometryInstance3D", true, false):
+				(g as GeometryInstance3D).lod_bias = lodbias
 		for i in 20:
 			await get_tree().process_frame
 		var hp := Avatars.head_position(m) + Vector3(0, 0.07 + dy, 0)
