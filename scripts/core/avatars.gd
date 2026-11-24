@@ -180,9 +180,30 @@ func warm(key: String) -> void:
 	_warm_lock.lock()
 	var have := _warm.has(path)
 	_warm_lock.unlock()
-	if have or _warm_ids.size() >= 2:
+	if have:
 		return
+	if _warm_ids.size() >= 3:
+		# (0.72.3: three are being read: this one waits its turn instead of being forgotten)
+		if not _warm_wanted.has(path):
+			_warm_wanted.append(path)
+		return
+	_warm_wanted.erase(path)
 	_warm_ids[path] = WorkerThreadPool.add_task(_warm_read.bind(path), false, "read a duelist's model")
+
+
+var _warm_wanted: Array = []      # model files waiting for a free reader
+
+
+## The ones that waited for a reader get theirs as the others finish.
+func _warm_next() -> void:
+	_reap_warm()
+	while _warm_ids.size() < 3 and not _warm_wanted.is_empty():
+		var path := str(_warm_wanted.pop_front())
+		_warm_lock.lock()
+		var have := _warm.has(path)
+		_warm_lock.unlock()
+		if not have and not _warm_ids.has(path):
+			_warm_ids[path] = WorkerThreadPool.add_task(_warm_read.bind(path), false, "read a duelist's model")
 
 
 func _warm_read(path: String) -> void:
@@ -225,6 +246,7 @@ func _load_glb(path: String) -> Node:
 	if path.begins_with("res://"):
 		var ps = load(path)
 		return ps.instantiate() if ps is PackedScene else null
+	_warm_wanted.erase(path)
 	if _warm_ids.has(path):
 		# Being read right now: wait for that instead of reading it a second time.
 		WorkerThreadPool.wait_for_task_completion(int(_warm_ids[path]))
@@ -343,7 +365,7 @@ func _first_skeleton(n: Node) -> Skeleton3D:
 ## A dropped-in model that is rigged but has no idle / walk / run / victory of its own gets
 ## the game's. Auto-riggers give every character the same skeleton, so the bundled clips fit
 ## any model whose bones carry the same names; anything else is left alone.
-func _borrow_clips(g: Node) -> void:
+func _borrow_clips(g: Node, file := "") -> void:
 	var skel := _first_skeleton(g)
 	if skel == null:
 		return
@@ -401,7 +423,19 @@ func _borrow_clips(g: Node) -> void:
 				break
 		if src_name == "" or lib.has_animation(m):
 			continue
-		lib.add_animation(m, _retarget(dap.get_animation(src_name), dskel, skel, skel_path, ratio))
+		# (0.72.3: fitted once per model file and kept, in memory and on disk. It used to be worked out
+		# again for every copy of a model, every time: 50 to 170 ms per person put into a world.)
+		var ck := "%s|%s|borrow|%s" % [file, skel_path, m]
+		var fitted: Animation = _gest_cache.get(ck) if file != "" else null
+		if fitted == null and file != "":
+			fitted = _fit_load(ck, g, file)
+		if fitted == null:
+			fitted = _retarget(dap.get_animation(src_name), dskel, skel, skel_path, ratio)
+			if file != "":
+				_fit_save(ck, g, fitted, file)
+		if file != "":
+			_gest_cache[ck] = fitted
+		lib.add_animation(m, fitted)
 
 
 ## Re-make a donor clip for another skeleton of the same family. The two can be bound in
@@ -822,11 +856,16 @@ func _made_for(model: Node, nm: String, skel: Skeleton3D) -> String:
 	var ck := "%s|%s|%s" % [str(model.get_meta("file", "")), skel_path, nm]
 	var anim: Animation = _gest_cache.get(ck) if model.has_meta("file") else null
 	if anim == null:
+		anim = _fit_load(ck, model)
+		if anim != null:
+			_gest_cache[ck] = anim
+	if anim == null:
 		anim = _made_motion(model, nm, skel, skel_path)
 		if anim == null:
 			return ""
 		if model.has_meta("file"):
 			_gest_cache[ck] = anim
+			_fit_save(ck, model, anim)
 	ap.get_animation_library(ap.get_animation_library_list()[0]).add_animation(nm, anim)
 	return nm
 
@@ -1355,6 +1394,100 @@ const PLANTED := ["g_wave", "g_chat", "g_scratch", "g_listen", "g_phone", "g_agr
 var _gest: Node = null           # the shared library of everyday motions (wave, chat, sit, ...)
 var _gest_cache := {}            # "<model file>|<clip>" -> Animation, made once per model file
 
+# ---- (0.72.3) motions fitted to a model are kept on disk too. Fitting one is 20 to 70 ms of work, a
+# world has dozens of models with a dozen motions each, and it was all done again every session, a
+# little at a time while you played: a stutter every third of a second for the first half minute.
+const FIT_DIR := "user://fit_cache/"
+var _fit_checked := false
+var _fit_tasks: Array = []
+
+
+func _fit_path(ck: String, model: Node, file_of := "") -> String:
+	var file := file_of if file_of != "" else str(model.get_meta("file", ""))
+	var stamp := FileAccess.get_modified_time(file) if file != "" and not file.begins_with("res://") else 0
+	return FIT_DIR + ("%s|%s|%d|%s|%s" % [ck, str(ProjectSettings.get_setting("application/config/version", "")), stamp, str(arms_by_position), str(made_motions)]).md5_text() + ".res"
+
+
+func _fit_dir() -> void:
+	if _fit_checked:
+		return
+	_fit_checked = true
+	DirAccess.make_dir_recursive_absolute(FIT_DIR)
+	# A new version of the game: the old fits go (their names would never be asked for again).
+	var ver := str(ProjectSettings.get_setting("application/config/version", ""))
+	var mark := FIT_DIR + "version.txt"
+	if FileAccess.get_file_as_string(mark) != ver:
+		var d := DirAccess.open(FIT_DIR)
+		if d != null:
+			for f in d.get_files():
+				if f.ends_with(".res"):
+					d.remove(f)
+		var w := FileAccess.open(mark, FileAccess.WRITE)
+		if w != null:
+			w.store_string(ver)
+			w.close()
+
+
+func _fit_load(ck: String, model: Node, file_of := "") -> Animation:
+	if (file_of == "" and not model.has_meta("file")) or OS.has_environment("NO_FIT_CACHE"):
+		return null
+	_fit_dir()
+	var path := _fit_path(ck, model, file_of)
+	if not FileAccess.file_exists(path):
+		return null
+	var a = ResourceLoader.load(path, "Animation", ResourceLoader.CACHE_MODE_IGNORE)
+	return a as Animation
+
+
+func _fit_save(ck: String, model: Node, anim: Animation, file_of := "") -> void:
+	if (file_of == "" and not model.has_meta("file")) or anim == null or OS.has_environment("NO_FIT_CACHE"):
+		return
+	_fit_dir()
+	var path := _fit_path(ck, model, file_of)
+	var copy := anim.duplicate() as Animation      # (its own copy: written on another thread)
+	_fit_tasks.append(WorkerThreadPool.add_task(func(): ResourceSaver.save(copy, path, ResourceSaver.FLAG_COMPRESS), false, "keep a fitted motion"))
+
+
+func _fit_wait(all := false) -> void:
+	var left: Array = []
+	for t in _fit_tasks:
+		if all or WorkerThreadPool.is_task_completed(int(t)):
+			WorkerThreadPool.wait_for_task_completion(int(t))
+		else:
+			left.append(t)
+	_fit_tasks = left
+
+
+## The everyday motions of the people in a world, fitted ahead of time so nothing waits when somebody
+## waves. One line of all of them, worked through by the clock: plenty per frame while the loading
+## card is up, and once you are playing only what costs nothing, with a pause after any that had to
+## be worked out.
+var _warm_q: Array = []         # [weakref to the model, motion]
+var _warm_pause := 0
+
+
+func warm_gestures(model: Node, motions: Array) -> void:
+	for m in motions:
+		_warm_q.append([weakref(model), str(m)])
+
+
+func _warm_step() -> void:
+	if _warm_pause > 0 and not Router.loading:
+		_warm_pause -= 1
+		return
+	var t0 := Time.get_ticks_usec()
+	while not _warm_q.is_empty():
+		var e: Array = _warm_q.pop_front()
+		var m = (e[0] as WeakRef).get_ref()
+		if m == null or not is_instance_valid(m) or not (m as Node).is_inside_tree():
+			continue
+		var t1 := Time.get_ticks_usec()
+		gesture(m, str(e[1]))
+		if Time.get_ticks_usec() - t1 > 4000:
+			_warm_pause = 10      # that one had to be worked out: let ten frames go by before the next
+		if Time.get_ticks_usec() - t0 > (20000 if Router.loading else 1500):
+			break
+
 
 ## An everyday motion from the shared library, fitted to this model: "stand", "stand2", "alert",
 ## "agree", "wave", "sit", "sittalk", "scratch", "listen", "chat", "checkout", "cheer", "cheer2",
@@ -1421,6 +1554,10 @@ func gesture(model: Node, motion: String) -> String:
 	var ck := "%s|%s|%s" % [str(model.get_meta("file", "")), skel_path, nm]
 	var anim: Animation = _gest_cache.get(ck) if model.has_meta("file") else null
 	if anim == null:
+		anim = _fit_load(ck, model)
+		if anim != null:
+			_gest_cache[ck] = anim
+	if anim == null:
 		var ratio := 1.0
 		var hip_a := skel.find_bone("Hips")
 		var hip_b := dskel.find_bone("Hips")
@@ -1441,6 +1578,7 @@ func gesture(model: Node, motion: String) -> String:
 			_calm_head(anim, skel, skel_path, 0.3)
 		if model.has_meta("file"):
 			_gest_cache[ck] = anim
+			_fit_save(ck, model, anim)
 	lib.add_animation(nm, anim)
 	return nm
 
@@ -1648,6 +1786,10 @@ func rest_idle(model: Node) -> String:
 	var skel_path := str(root.get_path_to(skel))
 	var ck := "%s|%s|g_rest" % [str(model.get_meta("file", "")), skel_path]
 	var cached: Animation = _gest_cache.get(ck) if model.has_meta("file") else null
+	if cached == null:
+		cached = _fit_load(ck, model)
+		if cached != null:
+			_gest_cache[ck] = cached
 	if cached:
 		lib.add_animation("g_rest", cached)
 		return "g_rest"
@@ -1741,6 +1883,7 @@ func rest_idle(model: Node) -> String:
 		a.position_track_insert_key(hip_t, t, ho)
 	if model.has_meta("file"):
 		_gest_cache[ck] = a
+		_fit_save(ck, model, a)
 	lib.add_animation("g_rest", a)
 	return "g_rest"
 
@@ -1922,6 +2065,7 @@ func dressed(key: String) -> String:
 
 ## Load a model as a fresh Node3D, posed, tinted (tints only for the player) and dressed.
 func load_model(key: String) -> Node3D:
+	Router.pulse()      # (keeps the loading card moving while a world's people are made)
 	var m := _load_plain(key)
 	if m and dress.has(key):
 		wear(m, key, Color.html(str(dress[key])))
@@ -1942,7 +2086,7 @@ func _load_plain(key: String, sharp := false) -> Node3D:
 			g = _merge_clip_files(key, path, g)
 		# A rigged model without an idle, walk, run or victory of its own gets the game's
 		# (yours, and the bundled ones that came from the rigger with no clips).
-		_borrow_clips(g)
+		_borrow_clips(g, path)
 		var r := Node3D.new()
 		r.set_meta("file", path)
 		r.set_meta("human_bones", _guess_human_map(g))
@@ -2655,6 +2799,12 @@ var quiet := false
 
 func _process(_delta: float) -> void:
 	_tick += 1
+	if not _warm_wanted.is_empty() and _tick % 3 == 0:
+		_warm_next()
+	if not _warm_q.is_empty():
+		_warm_step()
+	if not _fit_tasks.is_empty() and _tick % 30 == 0:
+		_fit_wait()
 	if _tick % 90 == 0:
 		_trim_stages()
 	if _count_asks and _tick % 120 == 0:
@@ -2861,6 +3011,7 @@ func _notification(what: int) -> void:
 			if not WorkerThreadPool.is_task_completed(t):
 				WorkerThreadPool.wait_for_task_completion(t)
 		_lod_tasks.clear()
+		_fit_wait(true)
 
 
 func _lod_work(src: ArrayMesh, surfaces: Array, shapes: Array, mode: int) -> void:

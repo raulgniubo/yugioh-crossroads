@@ -17,6 +17,14 @@ func _exit_tree() -> void:
 
 
 func _ready() -> void:
+	# (0.72.3) The start of the game: a card with a turning ring is up while everything is got ready
+	# (see Router.boot_begin). Only the first time the menu comes up, and never in a test without a screen.
+	var boot := not Router.opening_shown and DisplayServer.get_name() != "headless" and not ("--no-boot-card" in OS.get_cmdline_user_args())
+	if boot:
+		process_mode = Node.PROCESS_MODE_DISABLED      # (nothing of the menu runs until it is whole)
+		Router.boot_begin()
+		await get_tree().process_frame
+		await get_tree().process_frame
 	# The city behind the menu is a backdrop: keep it sharp even when the 3D resolution is set low.
 	Settings.scale_floor = 0.55
 	# Back from the Academy story: your own collection and your own clothes again.
@@ -49,6 +57,12 @@ func _ready() -> void:
 		_chip.focus_neighbor_bottom = _chip.get_path_to(_home_cont)
 		_chip.focus_mode = Control.FOCUS_ALL
 	_build_footer()
+	if boot:
+		Router.prepare()
+		process_mode = Node.PROCESS_MODE_INHERIT
+		await Router.boot_end()
+		if not is_inside_tree():
+			return
 	# A new duelist: the opening is up before the menu is ever seen (it used to flash by first).
 	var first_menu := not Router.opening_shown    # the first time the menu is up since the game started
 	Router.opening_shown = true
@@ -1047,6 +1061,7 @@ func _open_panel(p: SidePanel) -> void:
 
 ## Free Roam starts with a choice of world: full screen, in the Academy door's look (0.69.1).
 func _on_roam() -> void:
+	Router.busy()      # (a ring turns in the corner if this takes a moment)
 	var gate := RoamGate.new()
 	gate.z_index = 100
 	add_child(gate)
@@ -1080,6 +1095,7 @@ func _on_roam_panel() -> void:
 
 ## The main story's door (0.69.0): full screen, in the Academy door's look.
 func _on_story() -> void:
+	Router.busy()      # (a ring turns in the corner if this takes a moment)
 	var gate := StoryGate.new()
 	gate.z_index = 100
 	add_child(gate)
@@ -1233,6 +1249,7 @@ func _on_album() -> void:
 
 ## Decks and cards (0.69.1): the full-screen door to your decks, the album and the card shops.
 func _on_deck() -> void:
+	Router.busy()      # (a ring turns in the corner if this takes a moment)
 	var gate := CardsGate.new()
 	gate.z_index = 100
 	add_child(gate)
@@ -1245,6 +1262,7 @@ func _on_deck() -> void:
 
 ## My decks straight away (after a lost story duel: fix the deck, then carry on).
 func _on_deck_list() -> void:
+	Router.busy()      # (a ring turns in the corner if this takes a moment)
 	var db := DeckMenu.new()
 	db.z_index = 100
 	add_child(db)
@@ -1257,6 +1275,7 @@ func _on_deck_list() -> void:
 
 ## Every duel you played, to watch again (see Replays).
 func _on_replays() -> void:
+	Router.busy()      # (a ring turns in the corner if this takes a moment)
 	var rl := ReplayList.new()
 	rl.z_index = 100
 	add_child(rl)
@@ -1277,6 +1296,7 @@ func _on_quit() -> void:
 
 ## The highway's door (0.69.1): races, riders, the Grand Prix and the garage, then the ride.
 func _on_turbo() -> void:
+	Router.busy()      # (a ring turns in the corner if this takes a moment)
 	Sfx.play("gong", -6.0)
 	var gate := TurboGate.new()
 	gate.z_index = 100
@@ -1290,6 +1310,7 @@ func _on_turbo() -> void:
 
 ## The Academy story's door (0.65.0). The mode from before opens from the bottom of it.
 func _on_academy() -> void:
+	Router.busy()      # (a ring turns in the corner if this takes a moment)
 	var gate := CampusGate.new()
 	gate.z_index = 100
 	add_child(gate)
@@ -1302,6 +1323,7 @@ func _on_academy() -> void:
 
 
 func _on_academy_classic() -> void:
+	Router.busy()      # (a ring turns in the corner if this takes a moment)
 	var hub := AcademyHub.new()
 	hub.z_index = 100
 	add_child(hub)
@@ -1315,6 +1337,7 @@ func _on_academy_classic() -> void:
 ## The Free Duel Knockout: the bracket. `result` is "won" / "lost" when you are back from one of
 ## its duels, so the round can be settled on screen.
 func _on_knockout(result: String) -> void:
+	Router.busy()      # (a ring turns in the corner if this takes a moment)
 	var ks := KnockoutScreen.new()
 	ks.result = result
 	ks.z_index = 100
@@ -1329,6 +1352,7 @@ func _on_knockout(result: String) -> void:
 
 
 func _on_free_duel() -> void:
+	Router.busy()      # (a ring turns in the corner if this takes a moment)
 	# The full Free Duel screen, straight away (the two duelists face to face, the roster, the setup).
 	var cs := CharacterSelect.new()
 	cs.z_index = 100

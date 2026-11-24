@@ -80,10 +80,31 @@ var _rooms := {}                  # rooms you can walk into in this district (do
 func _ready() -> void:
 	district = RoamData.district(Router.roam.get("district", "domino"))
 	_theme = FieldThemes.resolve(district.get("theme", "battlecity"), "")
+	# (0.72.3) The world is built a slice at a time while the loading card is up, so the card keeps
+	# moving instead of freezing for the whole build. Nothing of this place runs until it is whole.
+	Router.building = true
+	# (nothing of the half-built world is drawn behind the card: the card's frames stay cheap)
+	_hid_3d = Router.loading
+	if _hid_3d:
+		get_viewport().disable_3d = true
+	set_physics_process(false)
+	set_process_unhandled_input(false)
+	_slice_t = Time.get_ticks_msec()
 	_load_progress()
+	# Everybody's model starts being read now, on other threads, while the world itself is built.
+	if str(Router.roam.get("story", "")) == "":
+		for d in (district.get("npcs", []) as Array) + (district.get("shop_npcs", []) as Array):
+			var mk := str((d as Dictionary).get("char", ""))
+			if mk == "":
+				mk = str((d as Dictionary).get("id", ""))
+			if not Avatars.has_avatar(mk) and (d as Dictionary).has("model") and Avatars.has_avatar(str(d["model"])):
+				mk = str(d["model"])
+			Avatars.warm(mk)
+	for mk in ["student_boy", "student_girl", "office_worker", "stylish_woman", "street_duelist", "shopkeeper"]:
+		Avatars.warm(mk)
 	_build_world()
+	await _breath()
 	_build_player()
-	_probe.call_deferred()
 	# Where you are, written down as you go (for "Go back to where you were"), and the autosave
 	# every few minutes and as you arrive.
 	var spot := Timer.new()
@@ -96,16 +117,17 @@ func _ready() -> void:
 	auto.autostart = true
 	auto.timeout.connect(func(): Saves.autosave())
 	add_child(auto)
-	(func():
-		_note_place()
-		Saves.autosave(true)).call_deferred()
 	var in_story := str(Router.roam.get("story", "")) != ""
-	if not in_story:
-		_build_npcs()
-	_build_walkers()
-	_build_places()
+	if not in_story and not _skip("npcs"):
+		await _build_npcs()
+	if not _skip("walkers"):
+		await _build_walkers()
+	await _breath()
+	await _build_places()
+	await _breath()
 	city.player = _player
 	_build_ui()
+	Router.pulse()
 	if district.get("builder", "") == "" and _player.position.distance_to(ShopInterior.AT) < 30.0:
 		_set_inside("kame")
 	else:
@@ -128,19 +150,22 @@ func _ready() -> void:
 	extras.scene = self
 	extras.story_mode = in_story
 	add_child(extras)
+	Router.pulse()
 	# The Academy story: the day, the merits and what comes next ride along on the island.
 	if Campus.on and str(district.get("builder", "")) == "academy":
 		campus = CampusLife.new()
 		campus.scene = self
 		add_child(campus)
-	if true:
+	if not _skip("life"):
 		life = WorldLife.new()
 		add_child(life)
 		life.setup(self)
+	if not _skip("weather"):
 		weather = Weather.new()
 		add_child(weather)
 		weather.setup(self)
 	_update_fill()
+	Router.pulse()
 	if in_story:
 		if _counter:
 			_counter.visible = false
@@ -163,12 +188,12 @@ func _ready() -> void:
 			quest.free = true
 			add_child(quest)
 		# Lumen, your partner, floats along in the open world. (A story chapter stages its own.)
-		if str(district.get("builder", "")) != "museum":
+		if str(district.get("builder", "")) != "museum" and not _skip("partner"):
 			var pal := Partner.new()
 			add_child(pal)
 			pal.setup(self)
 		# The main characters live their own day out here (not while a chapter's list rides along).
-		if quest == null:
+		if quest == null and not _skip("stars"):
 			stars = StarLife.new()
 			add_child(stars)
 			stars.setup(self)
@@ -177,7 +202,8 @@ func _ready() -> void:
 	if "--task-check" in OS.get_cmdline_user_args():
 		_task_check.call_deferred()
 	# Everything is built: make it cheap to draw (see PerfPass).
-	var saved := PerfPass.apply(self)
+	await _breath()
+	var saved = (await PerfPass.apply(self, _breath)) if not _skip("perf") else null
 	if "--perf-probe" in OS.get_cmdline_user_args():
 		print("PERFPASS ", saved)
 		PerfPass.census(self)
@@ -187,7 +213,8 @@ func _ready() -> void:
 		for mi in _figure.find_children("*", "GeometryInstance3D", true, false):
 			(mi as GeometryInstance3D).visibility_range_end = 0.0
 	# The map is a picture of this world from above, taken now while the screen is still dark.
-	MapPhoto.take(self, str(Router.roam.get("district", "domino")), district)
+	if not _skip("map"):
+		MapPhoto.take(self, str(Router.roam.get("district", "domino")), district)
 	_debug()
 	# Sent here to buy something (Decks & cards: Go to this shop): the guide lights the way to the counter.
 	if str(Router.roam.get("guide", "")) == "shop":
@@ -195,6 +222,24 @@ func _ready() -> void:
 		get_tree().create_timer(1.0).timeout.connect(func():
 			if is_instance_valid(extras):
 				extras.guide_to_shop())
+	# Whole: it starts to run, and the card may go.
+	if _hid_3d:
+		get_viewport().disable_3d = false
+		_hid_3d = false
+	set_physics_process(true)
+	set_process_unhandled_input(true)
+	Router.building = false
+	_probe.call_deferred()
+	(func():
+		_note_place()
+		Saves.autosave(true)).call_deferred()
+
+
+## Dev: ROAM_SKIP=npcs,walkers,life,weather,partner,stars,perf,map leaves parts of the world out, to find
+## which of them costs the time (see tools/dev/roam_bisect.sh).
+static func _skip(what: String) -> bool:
+	var e := OS.get_environment("ROAM_SKIP")
+	return e != "" and what in e.split(",")
 
 
 # ------------------------------------------------------------------ progress
@@ -512,6 +557,7 @@ func _build_walkers() -> void:
 		marker.visible = false
 		f.add_child(marker)
 		_npcs.append([d, f, marker])
+		await _breath()
 
 
 func _move_walkers(delta: float) -> void:
@@ -711,6 +757,9 @@ func _relabel_help() -> void:
 
 
 func _exit_tree() -> void:
+	if _hid_3d:
+		get_viewport().disable_3d = false
+		Router.building = false
 	WorldClock.save_data()
 	Avatars.quiet = false
 
@@ -883,8 +932,26 @@ func _npc_color(d: Dictionary) -> Color:
 func _build_npcs() -> void:
 	for d in district.get("npcs", []):
 		_add_npc(d, Vector3.ZERO)
+		await _breath()
 	for d in district.get("shop_npcs", []):
 		_add_npc(d, ShopInterior.AT)
+		await _breath()
+
+
+var _slice_t := 0
+var _hid_3d := false
+static var _slice_force := OS.get_environment("ROAM_SLICE") != ""
+
+## While the loading card is up, the building of the world hands the screen back every few
+## milliseconds, so the card keeps moving. (Only then: with no card up, nothing waits.)
+func _breath() -> void:
+	Router.pulse()
+	if not (Router.loading or _slice_force):
+		return
+	if Time.get_ticks_msec() - _slice_t < 12:
+		return
+	await get_tree().process_frame
+	_slice_t = Time.get_ticks_msec()
 
 
 ## On Academy Island an enrolled student wears the jacket of their dorm.
@@ -1256,6 +1323,7 @@ func _build_places() -> void:
 		dk = "domino"
 	var doors: Dictionary = city.get_meta("doors", {})
 	for rk in Interiors.rooms_in(dk):
+		await _breath()
 		var rd: Dictionary = Interiors.all_rooms()[rk].duplicate()
 		if not rd.has("door"):
 			if not doors.has(str(rd.get("door_of", ""))):
@@ -1264,10 +1332,12 @@ func _build_places() -> void:
 			rd["out"] = doors[str(rd["door_of"])][1]
 		_rooms[rk] = rd
 	if district.get("builder", "") != "":
-		_build_rooms()
+		await _build_rooms()
 		return
-	ShopInterior.build(city)
-	_build_rooms()
+	await _breath()
+	await ShopInterior.build(city, _breath)
+	await _breath()
+	await _build_rooms()
 	_build_kame_spots()
 
 
@@ -1276,6 +1346,7 @@ func _build_rooms() -> void:
 	var solid_before: bool = city.make_solid
 	city.make_solid = true
 	for rk in _rooms:
+		await _breath()
 		var room: Dictionary = _rooms[rk]
 		Interiors.build(city, rk)
 		var door: Vector3 = room["door"]

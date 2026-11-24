@@ -56,10 +56,25 @@ func _process(delta: float) -> void:
 		else:
 			line += "   (F3)"
 		_fps.text = line
+	if _busy_since != 0:
+		_busy_frames -= 1
+		if _busy_frames <= 0:
+			_busy_end()
+	if _frame_log and loading and Time.get_ticks_msec() - _pulse_last > 80:
+		print("DRAWGAP %d ms (frame)" % (Time.get_ticks_msec() - _pulse_last))
+	_pulse_last = Time.get_ticks_msec()
+	_pulse_seen = _pulse_last
 	_stall_watch(delta)
-	if _frame_log and delta > 0.06:
-		print("SLOWFRAME %.0f ms  t=%.1f  busy=%s loading=%s  process %.1f ms physics %.1f ms" % [delta * 1000.0, Time.get_ticks_msec() / 1000.0, _busy, loading,
-				Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0])
+	if _frame_log:
+		# (by the clock, not by delta: the engine caps delta, so a 2 second frame read as 130 ms)
+		var now_us := Time.get_ticks_usec()
+		var real := (now_us - _frame_last) / 1000.0
+		_frame_last = now_us
+		_frame_n += 1
+		if real > float(OS.get_environment("FRAME_LOG_MS") if OS.get_environment("FRAME_LOG_MS") != "" else "60"):
+			print("SLOWFRAME %.0f ms  t=%.1f  n=%d busy=%s loading=%s  process %.1f ms physics %.1f ms  nodes %d  draws %d" % [real, Time.get_ticks_msec() / 1000.0, _frame_n, _busy, loading,
+					Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
+					int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)), RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)])
 	if _probe:
 		_probe_t += delta
 		if _probe_t > 3.0:
@@ -71,6 +86,8 @@ func _process(delta: float) -> void:
 var opening_shown := false     # the menu has been up once since the game started
 var _probe := false
 var _frame_log := "--frame-log" in OS.get_cmdline_user_args()   # dev: say every slow frame
+var _frame_last := 0
+var _frame_n := 0
 
 # How long the game takes to answer a click: from the press arriving to the end of the frame
 # that draws the answer. Shown in the F3 readout. (What the screen adds after that is not ours.)
@@ -240,8 +257,21 @@ func _ready() -> void:
 	_fps.add_theme_constant_override("outline_size", 6)
 	_fps.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_fps)
-	var tw := create_tween()
-	tw.tween_property(_fade, "color:a", 0.0, 0.8).set_delay(0.15)
+	# A ring that turns while something is being got ready (see busy()). Drawn once here, shown by its
+	# alpha: what is already drawn can be moved from inside long work, where nothing new can be drawn.
+	_spin = LoadCard._Ring.new()
+	_spin.size = Vector2(84, 84)
+	_spin.pivot_offset = Vector2(42, 42)
+	_spin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_spin.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_spin.offset_left = -150
+	_spin.offset_top = -150
+	_spin.offset_right = -66
+	_spin.offset_bottom = -66
+	_spin.modulate.a = 0.0
+	add_child(_spin)
+	_boot_tw = create_tween()
+	_boot_tw.tween_property(_fade, "color:a", 0.0, 0.8).set_delay(0.15)
 	_debug_args()
 
 
@@ -855,7 +885,8 @@ func go(path: String) -> void:
 	await tw.finished
 	get_tree().paused = false
 	# (Said before the place is even built, so whatever starts in it can wait for it.)
-	loading = path in [ROAM, RIDE] and DisplayServer.get_name() != "headless"
+	loading = path in [ROAM, RIDE] and (DisplayServer.get_name() != "headless" or _fake_load)
+	get_viewport().disable_3d = false      # (a world that was left half-built must not leave this off)
 	if loading:
 		_show_card(path)
 		# One frame so the card is on screen before the world starts building (that blocks).
@@ -938,7 +969,7 @@ func _show_card(path: String) -> void:
 ## a slideshow (2 FPS for five seconds on a machine that then runs at 200). So the dark screen
 ## stays until the frames come evenly, with a word on it, and for 7 seconds at the most.
 func _settle() -> void:
-	if DisplayServer.get_name() == "headless":
+	if DisplayServer.get_name() == "headless" and not _fake_load:
 		return
 	loading = true
 	var t0 := Time.get_ticks_msec()
@@ -955,8 +986,16 @@ func _settle() -> void:
 		if el > 900 and _load_l != null and not _load_l.visible and not _card.visible:
 			_load_l.text = Loc.t("Loading")
 			_load_l.visible = true
-		if el > 9000:
+		# (0.72.3) Never a half-built world: the place says when it is whole. And what it still has to
+		# prepare (the people's motions, the walkways of the main characters) is done behind the
+		# card too, where it can take 20 ms a frame without anyone feeling it.
+		if building and el < 90000:
+			continue
+		var preparing: bool = not Avatars._warm_q.is_empty() or not get_tree().get_nodes_in_group("loading_job").is_empty()
+		if el > (16000 if preparing else 9000):
 			break
+		if preparing:
+			continue
 		if el > 300 and recent.size() >= 12:
 			var lo := 1e9
 			var hi := 0.0
@@ -974,6 +1013,121 @@ func _settle() -> void:
 	loading = false
 
 
+var building := false      # a world is still being built (it says so itself): the loading card stays
+var _pulse_last := 0      # when the last picture was finished
+var _pulse_seen := 0      # when the last picture was begun (the ring turns by this)
+var _pulse_gap := 24
+var _fake_load := OS.get_environment("LOADING_HEADLESS") != ""      # dev: the loading card's timing with nothing drawn
+
+
+## Called from inside long pieces of work (building a world, loading a model): while the loading card
+## is up, and when the last frame is 24 ms old, the card's light is moved on and one frame is drawn
+## right now. So the card keeps moving through work that cannot be cut into frames. Anywhere else it
+## does nothing.
+func pulse() -> void:
+	if _busy_since != 0:
+		_busy_pulse()
+		return
+	if not loading or _card == null or not _card.visible:
+		return
+	var now := Time.get_ticks_msec()
+	if now - _pulse_last < _pulse_gap:
+		return
+	if _frame_log and now - _pulse_seen > maxi(80, _pulse_gap * 2):
+		print("DRAWGAP %d ms (pulse)  %s" % [now - _pulse_seen, str(get_stack()[1]).substr(0, 110) if get_stack().size() > 1 else ""])
+	_card.tick(minf((now - _pulse_seen) / 1000.0, 0.1))
+	_pulse_draw(now)
+	if OS.get_environment("PULSE_SHOT") != "" and pulses % 25 == 5:
+		get_viewport().get_texture().get_image().save_png("%s_%03d.png" % [OS.get_environment("PULSE_SHOT"), pulses])
+
+
+var pulses := 0      # (dev: how many frames pulse() drew)
+
+
+# ---- (0.72.3) a ring in the corner while a screen is being got ready
+var _spin: Control
+var _busy_since := 0
+var _boot_tw: Tween
+
+
+## Say this right before work that may take a moment (opening a big screen). If it does take long,
+## a ring turns in the corner until it is done, instead of the picture standing still. It ends by
+## itself when the frame does.
+func busy() -> void:
+	if DisplayServer.get_name() == "headless" or _busy_since != 0 or loading:
+		return
+	_busy_since = Time.get_ticks_msec()
+	_busy_frames = 2      # (this frame and the next: a screen's first drawing often asks for the faces it shows)
+
+
+var _busy_frames := 0
+
+
+func _busy_end() -> void:
+	_busy_since = 0
+	if _spin != null and _spin.modulate.a > 0.0:
+		create_tween().tween_property(_spin, "modulate:a", 0.0, 0.15)
+
+
+func _busy_pulse() -> void:
+	var now := Time.get_ticks_msec()
+	if now - _busy_since < 140 or now - _pulse_last < _pulse_gap:
+		return      # (quick things never show it)
+	_spin.modulate.a = 1.0
+	_spin.rotation += minf((now - _pulse_seen) / 1000.0, 0.1) * 3.4
+	_pulse_draw(now)
+
+
+## One picture drawn from inside the work. Drawing has a price of its own (waiting for the screen's
+## next refresh, a slow card): the work between two pictures is at least three times as long as the
+## last picture took, so showing that the game is alive never makes the wait much longer.
+func _pulse_draw(now: int) -> void:
+	RenderingServer.force_draw(true, minf((now - _pulse_seen) / 1000.0, 0.1))
+	_pulse_seen = now
+	_pulse_last = Time.get_ticks_msec()
+	_pulse_gap = clampi((_pulse_last - now) * 3, 24, 120)
+	pulses += 1
+
+
+## The start of the game: a card with the turning ring is up while the menu, the card lists and the
+## first people are got ready, and it goes when the frames come evenly. (The menu used to appear and
+## then stutter through all of that, and the first visit to the album or a shop froze for seconds.)
+func boot_begin() -> void:
+	if _boot_tw != null and _boot_tw.is_valid():
+		_boot_tw.kill()
+	_fade.color.a = 1.0
+	loading = true
+	_card.setup("boot", Loc.t("Crossroads"), Loc.t("Getting everything ready"))
+	_card.modulate.a = 1.0
+	_card.visible = true
+
+
+## What every later screen leans on, worked out once behind the card: what each pack holds and where
+## every card can be found. (The first visit to the album, a shop or "Where to find it" used to stop
+## for seconds to work these out.)
+func prepare() -> void:
+	var t0 := Time.get_ticks_msec()
+	for p in Collection.PACKS:
+		if str(p["key"]) != "echo":
+			Collection.pool(str(p["key"]))
+		pulse()
+	for p in Collection.shop_packs():
+		if str(p["key"]) != "echo":
+			Collection.pool(str(p["key"]))
+		pulse()
+	CardFinder.summary(CardData.LUMEN)
+	if _frame_log:
+		print("PREPARE %d ms" % (Time.get_ticks_msec() - t0))
+
+
+func boot_end() -> void:
+	await _settle()
+	var tw2 := create_tween().set_parallel()
+	tw2.tween_property(_fade, "color:a", 0.0, 0.45)
+	tw2.tween_property(_card, "modulate:a", 0.0, 0.3)
+	tw2.chain().tween_callback(func():
+		_card.visible = false
+		_card.modulate.a = 1.0)
 var _toast_tw: Tween
 
 

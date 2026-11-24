@@ -2429,6 +2429,7 @@ func lumen_copy(forms_first := false) -> int:
 
 ## Every card that can come out of an era's pack: the cards its duelists play.
 func pool(era: String) -> Array:
+	Router.pulse()      # (keeps a loading card or the busy ring moving while lists are worked out)
 	_fresh()
 	if era == "echo":
 		return lumen_pool()           # (grows with the story: never kept from one look to the next)
@@ -2785,11 +2786,19 @@ func release_rank(id: int) -> int:
 func _volume_ids(key: String) -> Array:
 	var era := base_key(key)
 	var v := volume_of(key)
-	var ids: Array = pool(era).duplicate()
-	ids.sort_custom(func(a, b):
-		var ra := release_rank(a)
-		var rb := release_rank(b)
-		return ra < rb if ra != rb else a < b)
+	# (0.72.3) The era in the order it came out is worked out once, not once per volume, and sorted
+	# as plain numbers (release rank, then id): 25 volumes of New Frontier took a second together.
+	var sk := "~order:" + era
+	if not _pools.has(sk):
+		var keys := PackedInt64Array()
+		for id in pool(era):
+			keys.append(release_rank(int(id)) * 268435456 + int(id))
+		keys.sort()
+		var ordered: Array = []
+		for k in keys:
+			ordered.append(int(k & 268435455))
+		_pools[sk] = ordered
+	var ids: Array = _pools[sk]
 	var n := volume_count(era)
 	var per := int(ceil(float(ids.size()) / n))
 	return ids.slice((v - 1) * per, mini(ids.size(), v * per))

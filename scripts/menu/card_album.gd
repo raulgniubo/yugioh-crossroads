@@ -64,6 +64,7 @@ static func open(host: Node) -> CardAlbum:
 
 
 func _ready() -> void:
+	Router.busy()      # (a ring turns in the corner if this screen takes a moment to come up)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	theme = UITheme.build()
@@ -172,17 +173,29 @@ func _build_data() -> void:
 	var _unused = met
 
 
-## Monsters first (lowest Level last), then Spells, Traps, and the Extra Deck at the end.
+## Monsters first, then Spells, Traps, and the Extra Deck at the end; by name within each.
+## (0.72.3: each card's place is worked out once and the list is sorted by plain text. It used to ask
+## the card data twice for every comparison: with every card in the game, opening the album took
+## seconds, most of it here.)
+static var _sort_keys := {}
+
 func _sorted(ids: Array) -> Array:
-	var out := ids.duplicate()
-	out.sort_custom(func(a, b):
-		var da := CardData.get_card(int(a))
-		var db := CardData.get_card(int(b))
-		var ka: int = {"monster": 0, "spell": 1, "trap": 2}.get(str(da.get("kind", "")), 3) + (10 if CardData.is_extra(int(a)) else 0)
-		var kb: int = {"monster": 0, "spell": 1, "trap": 2}.get(str(db.get("kind", "")), 3) + (10 if CardData.is_extra(int(b)) else 0)
-		if ka != kb:
-			return ka < kb
-		return str(da.get("name", "")) < str(db.get("name", "")))
+	var keyed := PackedStringArray()
+	keyed.resize(ids.size())
+	for i in ids.size():
+		var id := int(ids[i])
+		var k = _sort_keys.get(id)
+		if k == null:
+			var d := CardData.get_card(id)
+			var rank: int = {"monster": 0, "spell": 1, "trap": 2}.get(str(d.get("kind", "")), 3) + (10 if CardData.is_extra(id) else 0)
+			k = "%02d%s" % [rank, str(d.get("name", ""))]
+			_sort_keys[id] = k
+		keyed[i] = "%s\t%d" % [k, id]
+	keyed.sort()
+	var out: Array = []
+	out.resize(keyed.size())
+	for i in keyed.size():
+		out[i] = int(keyed[i].get_slice("\t", 1))
 	return out
 
 

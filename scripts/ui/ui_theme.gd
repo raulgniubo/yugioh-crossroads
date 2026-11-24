@@ -325,6 +325,7 @@ static func pad_scroll(sc: ScrollContainer, left := 8, right := 0, top := 2, bot
 
 
 static func label(text: String, size := 20, color := TEXT, font: Font = null) -> Label:
+	Router.pulse()      # (every screen is built out of these: this is what keeps the busy ring turning)
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", size)

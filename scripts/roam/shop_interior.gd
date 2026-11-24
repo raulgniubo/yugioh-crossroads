@@ -7,7 +7,8 @@ const HALF := Vector2(7.0, 5.0)
 const HEIGHT := 4.2
 
 
-static func build(city: CityBuilder) -> void:
+## (`breath`: the caller's "let the loading card draw a frame", between the pieces)
+static func build(city: CityBuilder, breath := Callable()) -> void:
 	var o := AT
 	var wood := city.mat(Color(0.5, 0.36, 0.24), 0.75)
 	var wall := city.mat(Color(0.92, 0.86, 0.74), 0.9)
@@ -36,22 +37,38 @@ static func build(city: CityBuilder) -> void:
 		bulb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# Furniture
 	# (Built, with real cards behind the glass: the bought-in counter had cards painted on as a blur.)
+	if breath.is_valid():
+		await breath.call()
 	ShopFittings.counter(city, o + Vector3(0, 0, -2.9), 0.0, 4.8)
 	# (The far left spot along the back wall is the vending machine's: a shelf there and the machine in
 	# the corner stood inside each other.)
 	for x in [-3.0, 3.0, 5.6]:
 		city.collide(city.prop("shop_shelf", o + Vector3(x, 0, -4.45), 0.0, 2.7, true))
+		if breath.is_valid():
+			await breath.call()
+	if breath.is_valid():
+		await breath.call()
 	for z in [-2.2, 0.6]:
 		city.collide(city.prop("shop_shelf", o + Vector3(-6.45, 0, z), PI / 2, 2.7, true))
 		city.collide(city.prop("shop_shelf", o + Vector3(6.45, 0, z), -PI / 2, 2.7, true))
+	if breath.is_valid():
+		await breath.call()
 	ShopFittings.spinner(city, o + Vector3(-2.6, 0, -0.4), 0.4)
 	ShopFittings.spinner(city, o + Vector3(2.7, 0, 0.2), -0.6)
+	if breath.is_valid():
+		await breath.call()
 	var dt0 := city.prop("duel_table", o + Vector3(-3.9, 0, 2.9), 0.0, 2.5)
 	city.collide(dt0, 0.75)
 	city.collide(city.prop("duel_table", o + Vector3(4.0, 0, 2.9), 0.0, 2.5), 0.75)
+	if breath.is_valid():
+		await breath.call()
 	city.collide(city.prop("arcade_cabinet", o + Vector3(6.35, 0, 3.6), -PI / 2, 1.9, true))
+	if breath.is_valid():
+		await breath.call()
 	city.collide(city.prop("vending", o + Vector3(-5.6, 0, -4.55), 0.0, 1.95, true))
 	# Mirror (change your look) and the door out
+	if breath.is_valid():
+		await breath.call()
 	var frame := city.box(Vector3(0.12, 2.3, 1.3), o + Vector3(-6.92, 1.35, 3.4), trim, false)
 	frame.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var glass := city.mat(Color(0.75, 0.88, 0.95), 0.04, 0.9)
@@ -60,11 +77,17 @@ static func build(city: CityBuilder) -> void:
 	glass.emission_energy_multiplier = 0.25
 	city.box(Vector3(0.05, 2.1, 1.1), o + Vector3(-6.85, 1.35, 3.4), glass, false)
 	city.exit_door(o + Vector3(0, 0, HALF.y))
+	if breath.is_valid():
+		await breath.call()
 	MoreRooms.kame(city, o, HALF, HEIGHT)
+	if breath.is_valid():
+		await breath.call()
 	_sign(city, "KAME GAME", o + Vector3(0, 3.35, -HALF.y + 0.12), 0.0, Color("ffd166"), 130)
 	_sign(city, "NEW BOOSTERS IN STOCK", o + Vector3(4.3, 3.3, -HALF.y + 0.12), 0.0, Color("ff8ac0"), 54)
 	_sign(city, "DUEL TABLES  ·  FREE PLAY", o + Vector3(HALF.x - 0.12, 3.2, 2.6), -PI / 2, Color("7cc4ff"), 54)
 	_sign(city, "FITTING MIRROR", o + Vector3(-HALF.x + 0.12, 2.9, 3.4), PI / 2, Color("b8f0ff"), 46)
+	if breath.is_valid():
+		await breath.call()
 	city.soft_edges = true
 	_dress(city, o)
 	city.soft_edges = false

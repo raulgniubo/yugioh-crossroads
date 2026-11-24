@@ -8029,4 +8029,5 @@ const ES := {
 	"Admin: add the missing card": "Admin: añadir la carta que falta",
 	"Admin: add the %d missing cards": "Admin: añadir las %d cartas que faltan",
 	"Left stick  move     %s  run     Right stick  look     %s  talk / enter     %s  map     %s  card shop     %s  menu": "Stick izq.  moverse     %s  correr     Stick der.  mirar     %s  hablar / entrar     %s  mapa     %s  tienda     %s  menú",
+	"Getting everything ready": "Preparando todo",
 }

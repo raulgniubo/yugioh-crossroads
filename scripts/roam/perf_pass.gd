@@ -8,7 +8,7 @@ extends RefCounted
 static var _level := 2
 
 
-static func apply(root: Node) -> Dictionary:
+static func apply(root: Node, breath := Callable()) -> Dictionary:
 	# "Ground detail" decides how much is traded away. Full (Ultra): small things are only left
 	# out from so far away that they are less than a pixel or two. More (High): a little sooner.
 	# Some and Off: speed first. On the Max preset nothing is ever left out.
@@ -16,11 +16,18 @@ static func apply(root: Node) -> Dictionary:
 	var k: float = [0.75, 0.9, 1.7, 3.0][_level]
 	var stats := {"small": 0, "noshadow": 0, "lights": 0, "people": 0}
 	# (Before anything is joined or shared: the pieces are still themselves here.)
+	# (`breath`: the caller's "let the loading card draw a frame", between the big steps)
 	stats["unfight"] = settle(root)
+	if breath.is_valid():
+		await breath.call()
 	stats["merged"] = merge_static(root)
+	if breath.is_valid():
+		await breath.call()
 	_one_mat.clear()
 	if not ("--no-share" in OS.get_cmdline_user_args()):      # dev: to measure what sharing saves
-		stats.merge(share(root))
+		stats.merge(await share(root, breath))
+	if breath.is_valid():
+		await breath.call()
 	_walk(root, stats, k, false)
 	return stats
 
@@ -36,6 +43,7 @@ static func apply(root: Node) -> Dictionary:
 static func unfight(root: Node, report := false, dry := false) -> int:
 	var frames := {}       # turn key -> {"f": Basis, "faces": [6 lists of [coord, lo_a, hi_a, lo_b, hi_b, node, volume, flat]]}
 	for n in root.find_children("*", "MeshInstance3D", true, false):
+		Router.pulse()      # (keeps the loading card moving)
 		var mi := n as MeshInstance3D
 		if mi.mesh == null or mi.is_queued_for_deletion() or not mi.is_visible_in_tree() or mi.get_script() != null or mi.has_meta("keep") or _moves(mi, root):
 			continue
@@ -111,6 +119,7 @@ static func unfight(root: Node, report := false, dry := false) -> int:
 			out_dir[ax2] = sgn
 			var out_w := (f2 * out_dir).normalized()
 			for i in list.size():
+				Router.pulse()
 				var f1: Array = list[i]
 				var j := i + 1
 				while j < list.size() and list[j][0] - f1[0] < 0.0035:
@@ -212,9 +221,16 @@ static var _shared := {}       # key -> Mesh
 static var _one_mat := {}      # material key -> Material
 
 
-static func share(root: Node) -> Dictionary:
+static func share(root: Node, breath := Callable()) -> Dictionary:
 	var out := {"shared": 0, "one_mat": 0}
+	var count := 0
 	for n in root.find_children("*", "MeshInstance3D", true, false):
+		# (thousands of pieces: the loading card gets its frames in between)
+		count += 1
+		if breath.is_valid() and count % 40 == 0:
+			await breath.call()
+		if not is_instance_valid(n) or (n as Node).is_queued_for_deletion():
+			continue
 		var mi := n as MeshInstance3D
 		if mi.mesh == null or mi.get_script() != null or mi.has_meta("keep"):
 			continue
@@ -339,6 +355,7 @@ static func _one_material(mi: MeshInstance3D, out: Dictionary) -> void:
 static func merge_static(root: Node) -> int:
 	var total := 0
 	for h in root.find_children("*", "Node3D", true, false):
+		Router.pulse()
 		if h.has_meta("static_boxes"):
 			total += _merge_under(h as Node3D)
 	return total
@@ -424,6 +441,7 @@ static func _glows(g: GeometryInstance3D) -> bool:
 static func _walk(n: Node, stats: Dictionary, k: float, in_person: bool) -> void:
 	if n is CanvasItem or n is CanvasLayer or n is LumenSpirit:
 		return
+	Router.pulse()
 	var person := in_person or n is RoamFigure
 	if n is Light3D and not (n is DirectionalLight3D):
 		var l := n as Light3D

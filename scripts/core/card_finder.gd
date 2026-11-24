@@ -24,17 +24,21 @@ static func _build() -> void:
 	_decks_of = {}
 	_duelists_of = {}
 	for p in Collection.shop_packs():
+		Router.pulse()
 		if str(p["key"]) == "echo":
 			continue
 		for id in Collection.pool(str(p["key"])):
+			Router.pulse()
 			if not _packs_of.has(int(id)):
 				_packs_of[int(id)] = []
 			(_packs_of[int(id)] as Array).append(p)
 	for t in Collection.THEME_DECKS:
+		Router.pulse()
 		var dk := str(t["key"])
 		if not CardData.has_deck(dk):
 			continue
 		for id in CardData.deck_list(dk) + CardData.extra_list(dk):
+			Router.pulse()
 			if not _decks_of.has(int(id)):
 				_decks_of[int(id)] = []
 			if not (_decks_of[int(id)] as Array).has(dk):
@@ -42,7 +46,9 @@ static func _build() -> void:
 	_decks_any = {}
 	_people = {}
 	for e in Collection.deck_catalog():
+		Router.pulse()
 		for id in CardData.deck_list(str(e["key"])) + CardData.extra_list(str(e["key"])):
+			Router.pulse()
 			if not _decks_any.has(int(id)):
 				_decks_any[int(id)] = []
 			if not (_decks_any[int(id)] as Array).any(func(x): return x["key"] == e["key"]):
@@ -50,18 +56,23 @@ static func _build() -> void:
 	var where := {}         # (who stands in which world: the streets, the shop, and the rooms you walk into)
 	var place_of := {}      # npc id -> where in the world they stand
 	for w in RoamData.DISTRICTS:
+		Router.pulse()
 		where[w] = RoamData.DISTRICTS[w].get("npcs", []) + RoamData.DISTRICTS[w].get("shop_npcs", [])
 		for npc in RoamData.DISTRICTS[w].get("shop_npcs", []):
+			Router.pulse()
 			place_of[str(npc.get("id", ""))] = str(SHOP_NAME.get(w, "Card shop"))
 	var rooms := Interiors.all_rooms()
 	for rk in rooms:
+		Router.pulse()
 		var w := str(rooms[rk].get("district", "domino"))
 		if where.has(w):
 			where[w] = (where[w] as Array) + Interiors.people(str(rk))
 			for npc in Interiors.people(str(rk)):
 				place_of[str(npc.get("id", ""))] = str(rooms[rk].get("name", ""))
 	for w in where:
+		Router.pulse()
 		for npc in where[w]:
+			Router.pulse()
 			var duel: Dictionary = npc.get("duel", {})
 			if duel.is_empty():
 				continue

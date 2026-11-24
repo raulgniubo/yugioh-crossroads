@@ -1047,7 +1047,33 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.72.2 STATE (Nov 23 night; NEWEST, read this first)
+#### 0.72.3 STATE (Nov 23 late; NEWEST, read this first): the performance pass
+- HOW TO FIND A STUTTER (do this before guessing): headless, nothing is drawn, so every slow frame is the game's own work.
+  `tools/dev/roam_bisect.sh <district> [ROAM_SKIP list]` (frames over 60 ms in the first 8 s of a world);
+  `--frame-log` + `FRAME_LOG_MS=35` prints SLOWFRAME by the clock (delta is capped by the engine, never trust it);
+  `LOADING_HEADLESS=1` makes the loading card's logic run headless and prints DRAWGAP (time between drawn frames while loading);
+  `tests/open_cost.tscn` (every menu screen: open time, worst frame after, what is left behind after 3 rounds).
+  For WHO takes the time: /tmp/prof_inject.py wrapped every _process in the TEST COPY with a timer (class Prof) and
+  /tmp/lap_inject.py prints laps per statement of a function. They are not in the repo (rewrite them: 40 lines each); after
+  using them run synctest and `diff -rq repo/scripts yc_test/scripts` before exporting.
+- Fixed: StarLife._build_grid (7,000 physics probes on arrival, every time) -> cached per district in memory + user://star_grid_*.bin,
+  budgeted (22 ms/frame while Router.loading, else 2 ms). Avatars: fitted motions (gestures, made motions, g_rest, borrowed clips)
+  kept on disk in user://fit_cache (key has the game version; cleared on a new version); Avatars.warm_gestures queue instead of
+  a timer per RoamFigure; _borrow_clips was retargeting for every copy of a model. RoamScene._ready is a coroutine sliced by
+  _breath() (only while Router.loading; headless stays synchronous), Router.building keeps the card up, root 3D off while building.
+  Router.pulse(): from inside long sync work, moves the card's ring and RenderingServer.force_draw (only what is ALREADY drawn can
+  move: transforms/modulate, never text or _draw). Called from CityBuilder.box/cyl/prop, Avatars.load_model, UITheme.label,
+  Collection.pool, PerfPass loops, CardFinder._build. Router.busy(): the corner ring for 2 frames (in _ready of the big screens).
+  Router.boot_begin/prepare/boot_end from MainMenu._ready (first menu only, not headless; `--no-boot-card`).
+  CardAlbum._sorted: text keys + native sort. PackShop/ReplayList fill over frames.
+- Measured here (slow container), after: worlds 1 to 3 frames over 60 ms in 25 s (was 55+ and a 5 s crawl); longest gap without a
+  drawn frame while loading 0.7 s (was the whole build, 8 to 17 s); album 0.4 s (was 10.3 s).
+- NOT done / ideas: portraits still load their model on the main thread (Avatars.portrait/_restage: make them wait for
+  warm()/ready_now and enter the stage later); CityBuilder.build per world is one piece of ~1 s; the first frame after a scene
+  change (~0.7 s here) is the old scene being freed; KnockoutScreen's first drawing loads 8 portraits (1.5 s here, ring shows).
+  Not measurable here: shader/pipeline compiles on Raul's Vulkan card.
+
+#### 0.72.2 STATE (Nov 23 night)
 - 0.72.1: drawn card faces (cards with no picture) are baked to a plain ImageTexture and their SubViewport freed
   (Cards._bake_face/_bake_step, LRU MADE_KEEP 140); before, every one kept a live viewport and the game crawled after
   browsing. tests/leak_ui.tscn scrolls all cards twice and prints nodes/VRAM. Admin button in the editor

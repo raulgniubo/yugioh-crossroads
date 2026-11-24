@@ -366,40 +366,122 @@ func _build_grid() -> void:
 			var p: Vector3 = st[1]
 			lo = Vector2(minf(lo.x, p.x), minf(lo.y, p.z))
 			hi = Vector2(maxf(hi.x, p.x), maxf(hi.y, p.z))
-	var x0 := int(floor(lo.x)) - 12
-	var z0 := int(floor(lo.y)) - 12
-	var w := int(ceil(hi.x)) + 12 - x0
-	var h := int(ceil(hi.y)) + 12 - z0
+	var need := Rect2i(int(floor(lo.x)) - 12, int(floor(lo.y)) - 12, 0, 0)
+	need.size = Vector2i(int(ceil(hi.x)) + 12 - need.position.x, int(ceil(hi.y)) + 12 - need.position.y)
+	var domino := str(Router.roam.get("district", "domino")) == "domino"
+	# (0.72.3) Which cells are walls is the same every visit, and finding out is slow: two physics
+	# questions and a look through every box of the world for each of some ten thousand cells. It used
+	# to be done 320 cells a frame right as you arrived: a quarter of a second per frame for the first
+	# five to ten seconds in every world, every time (2 to 4 frames a second). Now: kept for the
+	# session, kept on disk between sessions (thrown away when the world's solid things change), and
+	# what does have to be worked out is done by the clock: a lot per frame while the loading card is
+	# still up, two milliseconds a frame once you are playing. Nobody sets off before it is ready.
+	var sig := "%s|%s|%d" % [str(ProjectSettings.get_setting("application/config/version", "")), _district, _solid_count()]
+	var kept: Dictionary = _grid_mem.get(_district, {})
+	if str(kept.get("sig", "")) != sig:
+		kept = _grid_from_disk(sig)
+	var old: Rect2i = kept.get("rect", Rect2i())
+	var old_solid: PackedByteArray = kept.get("solid", PackedByteArray())
+	var rect := need if old_solid.is_empty() else need.merge(old)
+	var w := rect.size.x
+	var h := rect.size.y
+	var x0 := rect.position.x
+	var z0 := rect.position.y
+	var solid := old_solid
+	if rect != old or old_solid.size() != w * h:
+		add_to_group("loading_job")      # (the loading card waits for this, see Router._settle)
+		solid = PackedByteArray()
+		solid.resize(w * h)
+		solid.fill(2)      # 2 = not known yet
+		if not old_solid.is_empty():
+			for z in range(old.position.y, old.end.y):
+				for x in range(old.position.x, old.end.x):
+					solid[(z - z0) * w + (x - x0)] = old_solid[(z - old.position.y) * old.size.x + (x - old.position.x)]
+		# People are not walls: nobody standing about counts as something in the way.
+		var gcam := StoryCamera.new(scene)
+		var rids: Array = [scene._player.get_rid()]
+		for n in scene._npcs:
+			for c in (n[1] as Node).get_children():
+				if c is PhysicsBody3D:
+					rids.append((c as PhysicsBody3D).get_rid())
+		gcam.skip_rids = rids
+		var t0 := Time.get_ticks_usec()
+		var spent := 0
+		var asked := 0
+		for z in range(z0, z0 + h):
+			for x in range(x0, x0 + w):
+				if solid[(z - z0) * w + (x - x0)] != 2:
+					continue
+				if not is_inside_tree():
+					return
+				solid[(z - z0) * w + (x - x0)] = 1 if gcam.blocked_at(Vector3(x, 0, z)) != "" else 0
+				asked += 1
+				if Time.get_ticks_usec() - t0 > (22000 if Router.loading else 2000):
+					spent += Time.get_ticks_usec() - t0
+					await get_tree().process_frame
+					t0 = Time.get_ticks_usec()
+		if OS.has_environment("STAR_GRID_DEBUG"):
+			print("STARGRID worked out %d of %d cells in %d ms of work" % [asked, w * h, (spent + Time.get_ticks_usec() - t0) / 1000])
+		if not is_inside_tree():
+			return
+		_grid_to_disk(sig, rect, solid)
+		remove_from_group("loading_job")
+	elif OS.has_environment("STAR_GRID_DEBUG"):
+		print("STARGRID kept: %d cells, nothing to work out" % (w * h))
+	_grid_mem[_district] = {"sig": sig, "rect": rect, "solid": solid}
 	_grid = AStarGrid2D.new()
-	_grid.region = Rect2i(x0, z0, w, h)
+	_grid.region = rect
 	_grid.cell_size = Vector2.ONE
 	_grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
 	_grid.update()
-	# People are not walls: nobody standing about counts as something in the way.
-	var gcam := StoryCamera.new(scene)
-	var rids: Array = [scene._player.get_rid()]
-	for n in scene._npcs:
-		for c in (n[1] as Node).get_children():
-			if c is PhysicsBody3D:
-				rids.append((c as PhysicsBody3D).get_rid())
-	gcam.skip_rids = rids
-	var domino := str(Router.roam.get("district", "domino")) == "domino"
-	var done := 0
 	for z in range(z0, z0 + h):
 		for x in range(x0, x0 + w):
-			if not is_inside_tree():
-				return
 			var id := Vector2i(x, z)
-			if gcam.blocked_at(Vector3(x, 0, z)) != "":
+			if solid[(z - z0) * w + (x - x0)] == 1:
 				_grid.set_point_solid(id, true)
 			elif domino and (absf(x) < 5.6 or absf(z) < 5.6) and absf(x) < 37.0 and absf(z) < 37.0:
 				_grid.set_point_weight_scale(id, 5.0)      # the roads: cross them, do not stroll down them
-			done += 1
-			if done % 320 == 0:
-				await get_tree().process_frame
 	_grid_ready = true
 	if "--stars-check" in OS.get_cmdline_user_args():
 		_check()
+
+
+static var _grid_mem := {}     # district -> {"sig", "rect", "solid"}: which cells are walls
+const GRID_FILE := "user://star_grid_%s.bin"
+
+
+## How many solid things the world has: when that changes, the kept grid is worked out again.
+func _solid_count() -> int:
+	return scene.find_children("*", "StaticBody3D", true, false).size()
+
+
+func _grid_from_disk(sig: String) -> Dictionary:
+	var f := FileAccess.open(GRID_FILE % _district, FileAccess.READ)
+	if f == null:
+		return {}
+	var was := f.get_pascal_string()
+	if was != sig:
+		f.close()
+		return {}
+	var rect := Rect2i(int(f.get_32()) - 100000, int(f.get_32()) - 100000, int(f.get_32()), int(f.get_32()))
+	var data := f.get_buffer(rect.size.x * rect.size.y)
+	f.close()
+	if rect.size.x <= 0 or rect.size.y <= 0 or data.size() != rect.size.x * rect.size.y:
+		return {}
+	return {"sig": sig, "rect": rect, "solid": data}
+
+
+func _grid_to_disk(sig: String, rect: Rect2i, solid: PackedByteArray) -> void:
+	var f := FileAccess.open(GRID_FILE % _district, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_pascal_string(sig)
+	f.store_32(rect.position.x + 100000)
+	f.store_32(rect.position.y + 100000)
+	f.store_32(rect.size.x)
+	f.store_32(rect.size.y)
+	f.store_buffer(solid)
+	f.close()
 
 
 func _free_cell(p: Vector3) -> Vector2i:

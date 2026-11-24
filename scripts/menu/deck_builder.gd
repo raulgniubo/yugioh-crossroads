@@ -59,6 +59,7 @@ func _panel(pad := 16) -> PanelContainer:
 
 
 func _ready() -> void:
+	Router.busy()      # (a ring turns in the corner if this screen takes a moment to come up)
 	_note_seen(true)
 	_seen_at_open = (Collection.record.get("seen", {}) as Dictionary).duplicate()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

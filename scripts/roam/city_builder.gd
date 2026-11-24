@@ -387,6 +387,7 @@ func _softens(size: Vector3, m: Material) -> bool:
 
 
 func box(size: Vector3, pos: Vector3, m: Material, solid := true, parent: Node3D = null) -> MeshInstance3D:
+	Router.pulse()      # (keeps the loading card moving while a world is built)
 	var mi := MeshInstance3D.new()
 	if soft_edges and _soft_ok and _softens(size, m):
 		var least := minf(size.x, minf(size.y, size.z))
@@ -525,6 +526,7 @@ func round_box(size: Vector3, pos: Vector3, m: Material, r := 0.08, parent: Node
 
 
 func cyl(r_top: float, r_bottom: float, h: float, pos: Vector3, m: Material, parent: Node3D = null, segs := 16) -> MeshInstance3D:
+	Router.pulse()      # (keeps the loading card moving while a world is built)
 	var mi := MeshInstance3D.new()
 	var c := CylinderMesh.new()
 	c.top_radius = r_top
@@ -796,6 +798,7 @@ void fragment() {
 
 
 func prop(name: String, pos: Vector3, rot: float, size: float, by_height := false, parent: Node3D = null) -> Node3D:
+	Router.pulse()      # (keeps the loading card moving while a world is built)
 	if not has_model(name):
 		return null
 	if name in TREE_KINDS and parent == null and not _tree_fits(pos):

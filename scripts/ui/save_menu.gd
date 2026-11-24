@@ -28,6 +28,7 @@ static func open(host: Node, saving := true, academy_look := false, story_look :
 
 
 func _ready() -> void:
+	Router.busy()      # (a ring turns in the corner if this screen takes a moment to come up)
 	z_index = maxi(z_index, 120)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP

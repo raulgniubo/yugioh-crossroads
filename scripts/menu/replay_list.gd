@@ -13,6 +13,7 @@ var _ask: Control
 
 
 func _ready() -> void:
+	Router.busy()      # (a ring turns in the corner if this screen takes a moment to come up)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	theme = UITheme.build()
@@ -92,6 +93,9 @@ func _close() -> void:
 
 var _dev_once := false
 
+var _fill_gen := 0
+
+
 func _fill() -> void:
 	for c in _list.get_children():
 		_list.remove_child(c)
@@ -109,8 +113,18 @@ func _fill() -> void:
 		empty.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_list.add_child(empty)
 		return
-	for h in rows:
-		_list.add_child(_row(h))
+	# (0.72.3) The first rows now, the rest a frame at a time: a row with a face that is not in memory
+	# yet reads a model, and thirty of those in one go was seconds of standing still.
+	_fill_gen += 1
+	var gen := _fill_gen
+	var t0 := Time.get_ticks_msec()
+	for k in rows.size():
+		if k >= 6 and Time.get_ticks_msec() - t0 > 5:
+			await get_tree().process_frame
+			if not is_inside_tree() or gen != _fill_gen:
+				return
+			t0 = Time.get_ticks_msec()
+		_list.add_child(_row(rows[k]))
 	if "--replay-rename" in OS.get_cmdline_user_args() and not _dev_once:
 		_dev_once = true      # dev: the naming box, for a picture
 		_ask_name(str(rows[0]["path"]), "%s vs %s" % [str(rows[0]["names"][0]), str(rows[0]["names"][1])])

@@ -12,6 +12,7 @@ const PLACES := {
 	"heartland": {"era": "ZEXAL", "color": Color("ff6ad8"), "line": "Where they reach higher."},
 	"museum": {"era": "CROSSROADS", "color": Color("bfe9ff"), "line": "Between the ages."},
 	"ride": {"era": "5D'S", "color": Color("ff8a3a"), "line": "Where they duel at full speed."},
+	"boot": {"era": "YU-GI-OH!", "color": Color("ffd166"), "line": "Getting everything ready"},
 }
 const TIPS := [
 	"Press M for the map. Places you can go in are marked on it.",
@@ -28,6 +29,7 @@ const TIPS := [
 
 var _key := "domino"
 var _t := 0.0
+var _ring: Control
 var _tip := ""
 var _sky: Array = []        # [x, width, height, windows seed]
 
@@ -62,6 +64,12 @@ func setup(key: String, title: String, sub: String) -> void:
 	var ld := UITheme.label(Loc.t("Loading"), 26, Color(1, 1, 1, 0.8), UITheme.semi_font())
 	ld.name = "loading"
 	add_child(ld)
+	_ring = _Ring.new()
+	_ring.name = "ring"
+	_ring.size = Vector2(84, 84)
+	_ring.pivot_offset = Vector2(42, 42)
+	_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_ring)
 	_sky.clear()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(_key)
@@ -99,12 +107,24 @@ func _layout() -> void:
 	tip.size = Vector2(w * 0.6, 60)
 	var ld := get_node("loading") as Label
 	ld.position = Vector2(w - 260, h - 104)
+	if _ring != null and is_instance_valid(_ring):
+		_ring.position = Vector2(w - 296, h - 88) - Vector2(42, 42)
+
+
+## The part of the card that moves without being drawn again: the ring round Lumen's light turns.
+## (Router.pulse calls this from inside long work, where nothing can be redrawn, only moved.)
+func tick(delta: float) -> void:
+	_t += delta
+	if _ring != null and is_instance_valid(_ring):
+		_ring.rotation = _t * 3.4
+		var k := 1.0 + sin(_t * 3.0) * 0.06
+		_ring.scale = Vector2(k, k)
 
 
 func _process(delta: float) -> void:
 	if not is_visible_in_tree():
 		return
-	_t += delta
+	tick(delta)
 	var ld := get_node_or_null("loading") as Label
 	if ld:
 		ld.text = Loc.t("Loading") + ".".repeat(int(_t * 2.5) % 4)
@@ -157,3 +177,16 @@ func _draw() -> void:
 	var pulse := 1.0 + sin(_t * 3.0) * 0.15
 	for r in [30.0, 18.0, 9.0]:
 		draw_circle(lp, r * pulse, Color(0.75, 0.95, 1.0, 0.18 if r > 20 else (0.35 if r > 10 else 0.95)))
+
+
+## A ring of light round Lumen's light, drawn once and then only turned.
+class _Ring:
+	extends Control
+
+	func _draw() -> void:
+		var c := size / 2.0
+		for i in 3:
+			var a0 := i * TAU / 3.0
+			draw_arc(c, 36.0, a0, a0 + 1.25, 20, Color(0.75, 0.95, 1.0, 0.9), 3.5, true)
+			draw_arc(c, 36.0, a0 + 1.25, a0 + 1.6, 8, Color(0.75, 0.95, 1.0, 0.3), 3.5, true)
+		draw_arc(c, 36.0, 0.0, TAU, 40, Color(0.75, 0.95, 1.0, 0.1), 2.0, true)

@@ -38,6 +38,7 @@ const WORLD_PACKS := {"domino": ["Duel Monsters", "toy", "mask", "goblin", "dd",
 
 
 func _ready() -> void:
+	Router.busy()      # (a ring turns in the corner if this screen takes a moment to come up)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	theme = UITheme.build()
@@ -254,11 +255,24 @@ func _show_tab(t: int) -> void:
 		if not kept.is_empty():
 			_packs = kept
 	_sel = -1
-	for i in _packs.size():
+	# (0.72.3) The first packs of the shelf now, the rest a few per frame: with ninety packs, making
+	# every wrapper before the shop showed was over a second of standing still.
+	_shelf_gen += 1
+	var gen := _shelf_gen
+	var first: int = mini(_packs.size(), 8)
+	for i in first:
 		_shelf.add_child(_slot(i))
 	_select(0, true)
 	_scroll.scroll_horizontal = 0
 	(_slots[0]["button"] as Button).grab_focus.call_deferred()
+	var t0 := Time.get_ticks_msec()
+	for i in range(first, _packs.size()):
+		if Time.get_ticks_msec() - t0 > 5:
+			await get_tree().process_frame
+			if not is_inside_tree() or gen != _shelf_gen:
+				return
+			t0 = Time.get_ticks_msec()
+		_shelf.add_child(_slot(i))
 
 
 func _slot(i: int) -> Control:
@@ -300,8 +314,11 @@ func _process(delta: float) -> void:
 		w.modulate = w.modulate.lerp(Color(1, 1, 1, w.modulate.a) if on else Color(0.62, 0.64, 0.7, w.modulate.a), clampf(delta * 8.0, 0.0, 1.0))
 
 
+var _shelf_gen := 0
+
+
 func _select(i: int, quiet := false) -> void:
-	if i == _sel or _busy:
+	if i == _sel or _busy or i < 0 or i >= _slots.size():
 		return
 	_sel = i
 	if not quiet:

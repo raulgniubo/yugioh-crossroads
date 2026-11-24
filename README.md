@@ -5,6 +5,18 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.72.3
+
+**It runs smoothly.** A pass over everything that froze or stuttered. No cards added: 12,745 total.
+
+- **Arriving in a world no longer crawls.** Two things did it, every time: the walkways of the main characters were worked out again on arrival (seconds of 2 to 4 frames a second), and every person fitted their gestures one by one while you played (a stutter every third of a second). Both are kept now, in memory and on disk, and what still has to be worked out is done behind the loading card or two milliseconds at a time.
+- **The loading card keeps moving.** A world used to be built in one frozen frame. It is built in slices now, and a ring turns round Lumen's light the whole time, also through the pieces that cannot be sliced.
+- **Starting the game**: a card with the turning ring is up while the menu, the pack lists and "where every card is found" are got ready; the menu shows when the frames come evenly.
+- **The Card Album opens at once** (it took ten seconds with every card in the game: the sorting asked the card data twice per comparison). The pack shop and the replay list fill in over a few frames instead of all at once.
+- **A ring in the corner** when a screen takes a moment to come up (Free Duel, the deck editor, the shops, the album...), instead of the picture standing still.
+- People's models are read on other threads while a world is built; a model's borrowed walk and idle are fitted once per file instead of once per person.
+- Tools for next time: `tools/dev/roam_bisect.sh`, `tests/open_cost.tscn`, `tests/leak_ui.tscn`, `--frame-log` (now by the clock, with draw gaps), `ROAM_SKIP`, `LOADING_HEADLESS`.
+
 ## What is in 0.72.2
 
 **The card in the air is back.** No cards added: 12,745 total.

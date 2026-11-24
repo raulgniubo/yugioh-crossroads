@@ -47,7 +47,8 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 		if Avatars.rest_idle(_model) != "":
 			_anim = Avatars.anim_player(_model)
 			_stand_clip = "g_rest"
-			_warm = ["wave", "chat", "scratch", "listen", "phone", "cheer"]
+			# (0.72.3: one line for everybody, worked through by the clock; see Avatars.warm_gestures)
+			Avatars.warm_gestures(_model, ["wave", "chat", "scratch", "listen", "phone", "cheer"])
 			if stand_motion != "":
 				stand_as(stand_motion)
 		if _anim == null:
@@ -358,12 +359,6 @@ func _idle_clip() -> String:
 
 
 func _live(delta: float) -> void:
-	# Fit the everyday motions to this model a little at a time, so nothing stutters later.
-	if not _warm.is_empty():
-		_warm_t -= delta
-		if _warm_t <= 0.0:
-			_warm_t = 0.35
-			Avatars.gesture(_model, _warm.pop_front())
 	_greet_cd -= delta
 	var near := false
 	var want_yaw := 0.0
