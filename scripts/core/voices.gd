@@ -103,6 +103,10 @@ static func voice_for(who: String) -> String:
 	var pers := str(Characters.get_char(who).get("personality", ""))
 	if pers == "":
 		return ""
+	if who.begins_with("net:"):
+		# (somebody online: their style's voice, a woman's or a man's by the body they picked)
+		var fem := int(Characters.get_char(who).get("body", 0)) == 1
+		return "%s_%s" % [pers, "f" if fem and pers in HAS_F else "m"]
 	return "%s_%s" % [pers, "f" if who in FEMALE and pers in HAS_F else "m"]
 
 

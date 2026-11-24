@@ -16,3 +16,4 @@ cards.json
 Thumbs.db
 __pycache__/
 native/build/
+netbin/*.bin

@@ -1047,7 +1047,35 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.72.5 STATE (Nov 23 late night; NEWEST, read this first): four reports from play
+#### 0.73.0 STATE (Nov 24 night; NEWEST, read this first): online duels (the plan in the "Crossroads: online duels for anyone" doc)
+- Pieces: tools/netlink (Go, tsnet from tailscale v1.86.5; `tools/netlink/build.sh` builds netbin/crossroads-link-*.bin,
+  which are .gitignored: build them before exporting, the presets include them per platform). Proxy/vanity Go domains are
+  blocked here: build.sh clones from GitHub and adds replace lines; wintun is a local stub (tools/netlink/wintunstub).
+  Run `go clean -cache` after a build (the disk is small).
+- Crossroads Link: tsnet ephemeral node, memory store, no logs to Tailscale. Listens on the tailnet :41213 and pipes to
+  the game's 127.0.0.1 port with a "FROM ip host" line; the game dials others through its dial port ("DIAL token ip").
+  Control HTTP (X-Token): /status, /ping?ip=, /quit. Quits by itself 25 s after the game stops polling.
+- Net (autoload, scripts/net/net.gd): groups in user://online/groups.json, invite codes "XR1-" + base64url JSON (the key
+  is inside: the code is the way in), link start/stop, status → link_state/link_why (offline / expired / bad_key, read
+  from Tailscale's "last login error"), members, one NetConn per member (the smaller name dials), hello (duelist look),
+  status idle/away/busy/duel (_auto_status: away when not on the main menu; challenges only reach idle people),
+  challenges, host choice (more ways in = host; challenger on a tie), record.json per member.
+- NetDuel: host runs OcgDuel, OcgDuel.net_out → filtered (_for_guest_msgs, _for_guest_table) and turned around
+  (Replays._turn_around) → numbered steps; guest OcgDuel is blind (unknown cards id 0, revealed when known); answers
+  back as bytes; resume after a drop. Match of 3 with Side Deck, rematch, surrender/leave/no-contest, replay sent to the guest.
+- Screens: OnlineScreen (first time cards / connecting / lobby / modals), OnlineWizard (make 1-5, renew 2,3,5),
+  ChallengeCard (global CanvasLayer), QrCode (byte mode, level M; identical to Nayuki's encoder, tests/qr_check.tscn +
+  tools/dev/qr_check.py). Home tile ONLINE (row 3), ONLINE button in Free Duel, Router.menu_open "online".
+- Tests on one computer: `--net-local=41301 --net-peers=41302` (a fake group "Raul's Table", never saved), `--net-auto=
+  challenge|accept`, `--net-match`, NET_DECK=<deck key>, NET_LOG=1, NET_LEAK=1 (host prints any host-only card sent while
+  not public), NET_LAG / NET_JITTER / NET_DROP (bad line). Dev screens: `--open=online[:wizard:N|:renew|:help|:qr|
+  :groups|:challenge|:card|:waiting]`. This machine has 2 cores and 8 GB: two godots at a time at most (OOM otherwise).
+- NOT tested for real: an actual Tailscale key/tailnet (the control plane is blocked here; only "can't reach" was seen),
+  Windows firewall prompt, Defender on the helper, macOS prompts for the helper (local network), real latency.
+- Not done from the plan: the optional turn timer (off by default in the plan anyway). Later per the plan: spectating,
+  typed chat, own server.
+
+#### 0.72.5 STATE (Nov 23 late night): four reports from play
 - Level star: DuelBoard.refresh_stats writes m.level() into the star each time (OcgDuel sets lv_set from the core's query, so it is
   right with the real engine), colors it when it differs from the print, _level_pop when it changes. `--level-demo` shows it.
   DuelHud.inspect: the Level chip says "(was N)". The ATK/DEF in that panel are still the printed ones (not asked; the field shows the live ones).

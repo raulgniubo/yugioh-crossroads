@@ -41,6 +41,9 @@ func setup(char_key: String, color: Color, display_name := "", show_name := true
 		add_child(_model)
 		if char_key == "player":
 			_model.scale *= Profile.height()
+		elif char_key.begins_with("net:"):
+			var gl: Dictionary = Avatars.guest_look(char_key)
+			_model.scale *= float(HeroLook.HEIGHTS[clampi(int(gl.get("look_height", 2)), 0, HeroLook.HEIGHTS.size() - 1)][1])
 		await get_tree().process_frame
 		_face_plus_z()
 		_anim = Avatars.anim_player(_model)

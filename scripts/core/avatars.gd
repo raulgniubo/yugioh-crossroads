@@ -25,7 +25,23 @@ var _registered := false
 ## starts, so the duel shows them and not a drawn stand-in. (0.64.2)
 var look_as := {}
 
+## (0.73.0) The duelists of the people you play online: "net:<their id>" -> their look, as they sent it
+## (the same names Profile uses: look_body, look_hair, ...). They are made like your own duelist.
+var guests := {}
+
+
+func guest_look(key: String) -> Dictionary:
+	return guests.get(key.get_slice("@", 0), {})
+
+
 func path_for(key: String) -> String:
+	if key.begins_with("net:"):
+		var gl := guest_look(key)
+		if gl.is_empty():
+			return ""
+		var body := str(HeroLook.models(int(gl.get("look_body", 0)), int(gl.get("look_hair", 0)), int(gl.get("look_outfit", 0)))["body"])
+		var bundled := "res://assets/models/people/%s.glb" % body
+		return bundled if ResourceLoader.exists(bundled) else ""
 	var own := own_file(key)
 	if own != "":
 		return own
@@ -2380,6 +2396,14 @@ func _load_plain(key: String, sharp := false) -> Node3D:
 				ap.play(idle)
 		elif key == "player":
 			apply_tints(g)
+		if key.begins_with("net:") and path.begins_with("res://"):
+			var gl := guest_look(key)
+			var gparts := HeroLook.models(int(gl.get("look_body", 0)), int(gl.get("look_hair", 0)), int(gl.get("look_outfit", 0)))
+			var gcol: Color = Profile.COLORS[clampi(int(gl.get("color_index", 0)), 0, Profile.COLORS.size() - 1)]
+			if HeroLook.has_model(str(gparts["body"])):
+				HeroLook.apply(g, str(gparts["body"]), str(gparts["head"]), gl, gcol)
+			else:
+				apply_hero_color(g, gcol, int(gl.get("look_outfit", 0)))
 		if key == "player" and path.begins_with("res://"):
 			var parts := HeroLook.models(Profile.look_body, Profile.look_hair, Profile.look_outfit)
 			for a in OS.get_cmdline_user_args():

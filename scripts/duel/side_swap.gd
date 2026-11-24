@@ -10,13 +10,28 @@ var _side_grid: GridContainer
 var _info: Label
 var _go: Button
 var _need := 40
+## (0.73.0) Which lists are swapped: the open deck by default; an online duel hands over its own.
+var main_ref: Array = []
+var side_ref: Array = []
+var keep := true          # save the collection when done (not for an online duel's own lists)
+var _given := false
+
+
+func use_lists(main: Array, side: Array) -> void:
+	main_ref = main
+	side_ref = side
+	keep = false
+	_given = true
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	theme = UITheme.build()
-	_need = Collection.main.size()
+	if not _given:
+		main_ref = Collection.main
+		side_ref = Collection.side
+	_need = main_ref.size()
 	var bg := ColorRect.new()
 	bg.color = Color(0.012, 0.02, 0.045, 0.97)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -40,7 +55,8 @@ func _ready() -> void:
 	_go.text = "  Next duel  "
 	_go.add_theme_font_size_override("font_size", 26)
 	_go.pressed.connect(func():
-		Collection.save()
+		if keep:
+			Collection.save()
 		done.emit()
 		queue_free())
 	head.add_child(_go)
@@ -74,7 +90,7 @@ func _column(parent: Control, title: String, cols: int, ratio: float) -> GridCon
 
 
 func _rebuild() -> void:
-	for pair in [[_main_grid, Collection.main, true], [_side_grid, Collection.side, false]]:
+	for pair in [[_main_grid, main_ref, true], [_side_grid, side_ref, false]]:
 		var g: GridContainer = pair[0]
 		for c in g.get_children():
 			c.queue_free()
@@ -97,15 +113,15 @@ func _rebuild() -> void:
 			tr.gui_input.connect(func(e):
 				if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 					if from_main:
-						Collection.main.erase(id)
-						Collection.side.append(id)
+						main_ref.erase(id)
+						side_ref.append(id)
 					else:
-						Collection.side.erase(id)
-						Collection.main.append(id)
+						side_ref.erase(id)
+						main_ref.append(id)
 					Sfx.play("card", -5.0)
 					_rebuild())
 			g.add_child(tr)
-	var n := Collection.main.size()
-	_info.text = Loc.t("Main Deck %d of %d     Side Deck %d") % [n, _need, Collection.side.size()]
+	var n := main_ref.size()
+	_info.text = Loc.t("Main Deck %d of %d     Side Deck %d") % [n, _need, side_ref.size()]
 	_info.add_theme_color_override("font_color", UITheme.TEXT_DIM if n == _need else UITheme.DANGER)
 	_go.disabled = n != _need

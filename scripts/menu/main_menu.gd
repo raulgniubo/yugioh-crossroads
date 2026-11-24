@@ -120,6 +120,9 @@ func _ready() -> void:
 	elif Router.menu_open == "album":
 		Router.menu_open = ""
 		_on_album.call_deferred()
+	elif Router.menu_open == "online":
+		Router.menu_open = ""
+		_on_online.call_deferred()
 	elif Router.menu_open == "saves":
 		Router.menu_open = ""
 		_on_saves.call_deferred()
@@ -1279,6 +1282,35 @@ func _on_deck_list() -> void:
 
 
 ## Every duel you played, to watch again (see Replays).
+## Online (0.73.0): your Duel Group, the people in it, challenges.
+func _on_online() -> void:
+	Router.busy()      # (a ring turns in the corner if this takes a moment)
+	var os := OnlineScreen.new()
+	os.z_index = 100
+	add_child(os)
+	_panel_open = true
+	os.closed.connect(func():
+		_panel_open = false
+		if _items.size() > 1:
+			_items[0].grab_focus())
+
+
+func _online_line() -> String:
+	if Net.groups.is_empty():
+		return Loc.t("Duel people you know.")
+	return Loc.t("%s: your Duel Group.") % str(Net.group().get("name", ""))
+
+
+func _online_badge() -> String:
+	if Net.is_owner() and Net.key_days_left() <= 7:
+		return Loc.t("Key: %d days") % maxi(0, Net.key_days_left())
+	var n := 0
+	for p in Net.people():
+		if bool(p["online"]):
+			n += 1
+	return (Loc.t("%d online") % n) if n > 0 else ""
+
+
 func _on_replays() -> void:
 	Router.busy()      # (a ring turns in the corner if this takes a moment)
 	var rl := ReplayList.new()
@@ -1371,6 +1403,9 @@ func _on_free_duel() -> void:
 	cs.knockout.connect(func():
 		cs.queue_free()
 		_on_knockout(""))
+	cs.online.connect(func():
+		cs.queue_free()
+		_on_online())
 	cs.closed.connect(func():
 		_panel_open = false
 		if _items.size() > 1:
@@ -1416,6 +1451,7 @@ func _build_home() -> void:
 			["Open world", "FREE ROAM", "Five places to walk and duel.", Color("3fbf8a"), [_roam_picture()], _on_roam, ""]]],
 		[778.0, 104.0, [
 			["Four titles", "TOURNAMENTS", "Badges, brackets, trophies.", Color("ffd766"), ["res://assets/ui/story_title_newdomino.jpg"], _on_tournaments, "%d / %d" % [won, Tournament.DEFS.size()]],
+			["With friends", "ONLINE", _online_line(), Color("2de2e6"), ["res://assets/ui/story_title_satellite.jpg"], _on_online, _online_badge()],
 			["Your cards", "MY DECKS", "Build, rename, pick a deck.", Color("ff7ab8"), ["res://assets/ui/story_title_museum.jpg"], _on_deck, ""]]],
 	]
 	var grid: Array = [[cont]]

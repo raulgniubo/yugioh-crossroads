@@ -475,7 +475,13 @@ static func personality_lines(pers: String) -> Dictionary:
 	return out
 
 
+## (0.73.0) The people you play online, as they told your game who they are (see Net._guest_look).
+static var GUESTS := {}
+
+
 static func get_char(key: String) -> Dictionary:
+	if key.begins_with("net:"):
+		return (GUESTS.get(key, {"name": "Duelist", "short": "Duelist", "personality": "kind", "color": Color("2de2e6"), "online": true}) as Dictionary).duplicate()
 	var d: Dictionary = DATA.get(key, STORY_CAST.get(key, {})).duplicate()
 	if d.is_empty():
 		return d
@@ -557,7 +563,16 @@ static func line(key: String, kind: String, card_id := 0) -> String:
 	if key == "player" and kind == "win" and Profile.win_line > 0:
 		last_en = str(Profile.WINS[Profile.win_line])
 		return Loc.t(last_en)
-	var who: Dictionary = DATA.get(key, STORY_CAST.get(key, {}))
+	if key.begins_with("net:"):
+		# (somebody online says the lines they picked for their own duelist, and else their style's)
+		var gd: Dictionary = GUESTS.get(key, {})
+		if kind == "intro" and int(gd.get("intro_line", 0)) > 0 and int(gd["intro_line"]) < Profile.INTROS.size():
+			last_en = str(Profile.INTROS[int(gd["intro_line"])])
+			return Loc.t(last_en)
+		if kind == "win" and int(gd.get("win_line", 0)) > 0 and int(gd["win_line"]) < Profile.WINS.size():
+			last_en = str(Profile.WINS[int(gd["win_line"])])
+			return Loc.t(last_en)
+	var who: Dictionary = DATA.get(key, STORY_CAST.get(key, GUESTS.get(key, {})))
 	var arr: Array = _fitting(key, (PLAYER_LINES if key == "player" else who.get("lines", {})).get(kind, []), card_id)
 	if key != "player":
 		var pers: String = who.get("personality", "cool")

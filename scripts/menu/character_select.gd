@@ -10,6 +10,7 @@ extends Control
 signal start(config: Dictionary)
 signal closed
 signal knockout          # the Knockout button: the menu swaps this screen for the bracket
+signal online            # the Online button (0.73.0): the menu swaps this screen for the Online screen
 
 const W := 1920.0
 const H := 1080.0
@@ -705,6 +706,20 @@ func _build_extras() -> void:
 			return
 		Sfx.play("click")
 		knockout.emit())
+	# Online: duel the people in your Duel Group.
+	var on_n := 0
+	for p in Net.people():
+		if bool(p["online"]):
+			on_n += 1
+	var o := _extra_button(Vector2(1176, 22), Vector2(190, 80), Color("2de2e6"), Loc.t("ONLINE") + "   ▶",
+			Loc.t("%d online") % on_n if on_n > 0 else (Loc.t("Your Duel Group") if not Net.groups.is_empty() else Loc.t("Duel people you know")),
+			Loc.t("Their decks, their duelists"), true)
+	o.tooltip_text = Loc.t("Duel the people in your Duel Group, each from your own computer. Opens the Online screen.")
+	o.pressed.connect(func():
+		if _starting:
+			return
+		Sfx.play("click")
+		online.emit())
 
 
 func _extra_button(at: Vector2, sz: Vector2, col: Color, head: String, mid: String, foot: String, filled := false) -> Button:

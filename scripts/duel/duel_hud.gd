@@ -2994,6 +2994,8 @@ func _overlay_button(v: BoxContainer, text: String, action: String) -> Button:
 	return b
 
 
+var net_again_btn: Button
+
 func show_result(won: bool, reason: String, story := false, lose_ok := false, cont := "Continue Story", stats := {}) -> void:
 	for n in [_phase_box, _inspect_panel, _hand_root, _plates[0], _plates[1], _menu_btn]:
 		if n:
@@ -3107,7 +3109,24 @@ func show_result(won: bool, reason: String, story := false, lose_ok := false, co
 	v.add_child(bar)
 	var first: Button
 	var plain_end := false
-	if story:
+	var nt: Dictionary = stats.get("net", {})
+	if not nt.is_empty():
+		# (0.73.0) Online: your record against them, and another duel only when both say so.
+		var rl := UITheme.label(Loc.t("You and %s: %d won, %d lost") % [str(nt["name"]), int(nt["w"]), int(nt["l"])] + (Loc.t(", %d drawn") % int(nt["d"]) if int(nt["d"]) > 0 else ""), 20, UITheme.ACCENT, UITheme.semi_font())
+		rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(rl)
+		v.move_child(rl, bar.get_index())
+		if not mt.is_empty() and not mt["over"]:
+			first = _overlay_button(bar, "Next duel", "net_again")
+			if mt.get("side", false):
+				_overlay_button(bar, "Side Deck", "net_side")
+		else:
+			first = _overlay_button(bar, "New match" if not mt.is_empty() else "Rematch", "net_again")
+		net_again_btn = first
+		if bool(nt.get("gone", false)):
+			first.disabled = true
+		_overlay_button(bar, "Leave", "net_leave")
+	elif story:
 		if won or lose_ok:
 			first = _overlay_button(bar, cont, "story_continue")
 		else:
@@ -3296,7 +3315,7 @@ func show_pause() -> void:
 	if not replay_mode:
 		_overlay_button(v, "Surrender", "surrender")
 	# Admin mode: end the duel either way on the spot (for testing what comes after it).
-	if Saves.admin and not replay_mode:
+	if Saves.admin and not replay_mode and not Router.duel_config.get("net", false):
 		_overlay_button(v, "Admin: win this duel", "admin_win")
 		_overlay_button(v, "Admin: lose this duel", "admin_lose")
 	_overlay_button(v, "Main Menu", "menu")

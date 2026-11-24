@@ -75,6 +75,12 @@ var _destiny_draw := [false, false]   # ... and their next draw is that card (it
 ## say when somebody took a Destiny Draw, and they give playback its pauses.
 var rec := {}
 var replay := {}
+## (0.73.0) An online duel (NetDuel): the host's table runs the engine and waits for the other side's
+## answers over the line; the guest's table has no engine and plays the host's steps (see guest_loop).
+var net = null
+var net_guest := false
+var _wait_token := 0
+var _wait_coach := false
 var _replay_at := 0
 var ev_hash := 0           # every event of the duel, folded into one number (a replay must end on the same one)
 var replay_broken := ""    # why playback stopped early, when it did
@@ -107,7 +113,38 @@ func prepare(my_list: Array, opp_list: Array, my_extra: Array, opp_extra: Array,
 	_hand = hand
 	rules = rules_in
 	d.prepare(s.state, [my_list, opp_list], [my_extra, opp_extra], [me_name, opp_name], first, seed, setup)
+	if net != null:
+		net.swap = d.swap
+		d.net_out = net.out_step
 	s._turn_finished.connect(_on_abort)
+
+
+## (0.73.0) The guest's table: its own deck, and for the host's side only how many cards there are.
+func prepare_guest(my_list: Array, my_extra: Array, host_main: int, host_extra: int, me_name: String, opp_name: String, first: int) -> void:
+	net_guest = true
+	var opp_list: Array = []
+	opp_list.resize(host_main)
+	opp_list.fill(0)
+	var opp_extra: Array = []
+	opp_extra.resize(host_extra)
+	opp_extra.fill(0)
+	d.blind = true
+	d.check = false
+	d.playback = true
+	d.prepare(s.state, [my_list, opp_list], [my_extra, opp_extra], [me_name, opp_name], first, -1, {})
+	s._turn_finished.connect(_on_abort)
+
+
+## The guest's first step: the opening hands.
+func begin_guest() -> Array:
+	while true:
+		var e = await net.next_entry()
+		if e == null:
+			return []
+		if (e as Dictionary).has("note"):
+			continue
+		return d.feed(e)
+	return []
 
 
 ## Start the engine with the Life Points the scene settled on. Returns the opening events.
@@ -140,6 +177,9 @@ func active() -> bool:
 # ------------------------------------------------------------------ the loop
 
 func loop() -> void:
+	if net_guest:
+		await _guest_loop()
+		return
 	var seen_retries := 0
 	resync()
 	while not d.over and not s._finished and not s.state.is_over():
@@ -157,11 +197,13 @@ func loop() -> void:
 			resync()
 		var refused: bool = d.retries > seen_retries
 		seen_retries = d.retries
+		if net != null and Net._log:
+			print("NETDBG host asks p%d t%d (entries %d)" % [p, int(m["t"]), net.entries.size()])
 		if not replay.is_empty():
 			bytes = await _replay_answer(m)
 			if bytes == null:
 				break
-		elif refused:
+		elif refused and not (net != null and p == AI):
 			push_warning("OCG: answer refused for message %d" % int(m["t"]))
 			if d.retries > 12:
 				s.state._set_winner(DuelState.DRAW, "The duel could not go on.")
@@ -169,6 +211,11 @@ func loop() -> void:
 			bytes = (cpu if p == AI else me_cpu).decide(d, true)
 		elif p == ME and not s._autoplay:
 			bytes = await _ask(m)
+		elif p == AI and net != null:
+			if d.retries > 12:
+				s.state._set_winner(DuelState.DRAW, "The duel could not go on.")
+				break
+			bytes = await _net_answer(m)
 		elif p == AI:
 			bytes = await _cpu_answer(m)
 		else:
@@ -227,6 +274,87 @@ func loop() -> void:
 		var kind := "puzzle" if puzzle else ("turbo duel" if d.turbo else "duel")
 		OcgReport.duel(kind + " (engine)", str(s.state.players[AI].name), level, int(s.state.winner), int(s.state.turn), str(s.state.win_reason), d.errors)
 	d.close()
+
+
+## (0.73.0) The guest's side of an online duel. There is no engine here: the host's steps come in
+## and are played as they come (the same way a replay is), and when a question is yours it is asked
+## here and the answer goes back. The host's questions only say that it is their turn to decide.
+func _guest_loop() -> void:
+	var seen_retries := 0
+	resync()
+	while not s._finished and not s.state.is_over():
+		var m = d.request
+		if Net._log:
+			print("NETDBG guest req ", "none" if m == null else "p%d t%d" % [int(m["p"]), int(m["t"])], " played ", net._played, "/", net.inbox.size())
+		if m != null and int(m["p"]) == ME and not d.over:
+			if d.retries > seen_retries:
+				seen_retries = d.retries
+				if not s._autoplay:
+					Router.toast(Loc.t("That can't be done right now. Choose again."))
+			var bytes = me_cpu.decide(d) if s._autoplay else await _ask(m)
+			if s._finished or s.state.is_over() or bytes == null:
+				break
+			net.send_answer(bytes)
+		var token := randi()
+		_wait_token = token
+		if m == null or int(m["p"]) != ME:
+			s.get_tree().create_timer(1.2).timeout.connect(func():
+				if _wait_token == token and net.waiting_entries() == 0 and not s._finished:
+					_wait_coach = true
+					s.hud.set_coach(Loc.t("%s is thinking...") % str(s.state.players[AI].name)))
+		var e = await net.next_entry()
+		_wait_token = 0
+		if _wait_coach:
+			_wait_coach = false
+			s.hud.set_coach("")
+		if e == null:
+			break
+		if (e as Dictionary).has("note"):
+			var nt: Dictionary = e["note"]
+			if nt.has("destiny"):
+				await _destiny_show(AI, 0)
+			continue
+		var events: Array = d.feed(e)
+		if _live:
+			var nx = d.request
+			if nx == null or int(nx["p"]) != ME or int(nx["t"]) != 26 or not events.is_empty() or s._autoplay:
+				_live_end()
+		for ev in events:
+			if ev["type"] == "turn":
+				s._materials.clear()
+			elif ev["type"] == "draw" and _destiny_draw[int(ev.get("player", 0))]:
+				_destiny_draw[int(ev["player"])] = false
+				s._destiny_card = ev["card"]
+		await s._play(events)
+		resync()
+	req = null
+	print("NET guest END winner ", s.state.winner, " turn ", s.state.turn)
+
+
+## (0.73.0) The other side's answer, over the line. Their Destiny Draw is shown here face-down, the
+## way the CPU's is.
+func _net_answer(m: Dictionary):
+	var token := randi()
+	_wait_token = token
+	s.get_tree().create_timer(1.2).timeout.connect(func():
+		if _wait_token == token and net.want >= 0:
+			_wait_coach = true
+			s.hud.set_coach(Loc.t("%s is thinking...") % str(s.state.players[AI].name)))
+	var bytes = await net.wait_answer()
+	_wait_token = 0
+	if _wait_coach:
+		_wait_coach = false
+		s.hud.set_coach("")
+	if bytes == null:
+		return null
+	var p := AI
+	var t := int(m["t"])
+	if _is_destiny_offer(m):
+		_destiny_ask[p] = (bytes as PackedByteArray).size() >= 4 and (bytes as PackedByteArray).decode_s32(0) == 1
+	elif _destiny_ask[p] and t == 15:
+		_destiny_ask[p] = false
+		await _destiny_show(p, 0)
+	return bytes
 
 
 ## The next answer of a duel being played back, with the moments a live duel gives it: a breath
@@ -324,6 +452,8 @@ func _is_destiny_offer(m: Dictionary) -> bool:
 
 ## The moment itself: the duelist reaches for the card. (code 0: it stays face-down, their card.)
 func _destiny_show(p: int, code: int) -> void:
+	if net != null and not net_guest and p == ME:
+		net.note({"destiny": 1})      # (the guest's screen shows it too, face-down)
 	var st: DuelState = s.state
 	st.destiny_used[p] = true
 	_destiny_draw[p] = true
@@ -1659,6 +1789,13 @@ func resync() -> void:
 		for node in keep:
 			board._opp_hand.append(node)
 		board._layout_opp_hand()
+	# (online, the cards of theirs that were blank and are now known, a set card flipped face-up,
+	# show their face from here on)
+	if net_guest:
+		for uid in board._cards.keys():
+			var nd = board._cards[uid]
+			if is_instance_valid(nd) and nd.inst != null and nd.card_id != int(nd.inst.id):
+				nd.setup(int(nd.inst.id), int(nd.inst.owner))
 	# Anything else still standing on the table has left it.
 	for uid in board._cards.keys():
 		if not on_table.has(uid):

@@ -5,6 +5,17 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.73.0
+
+**Online duels.** No cards added: 12,745 total.
+
+- **ONLINE** on the home screen (and next to Knockout in Free Duel): duel the people you know, each from your own computer, as your own duelist (look, name, title, voice, intro and win lines) with your own cards and decks.
+- **Duel Groups.** A group is a private network that only holds copies of the game (a Tailscale tailnet on a free account made just for the game). One person makes it once with the guided steps (5 minutes: an account, a key, the game tries the key, a name and a color, an invite code with Copy and a QR code); everyone else pastes the invite code. Nothing to install: the game carries its own small helper (Crossroads Link) and starts it itself. You can be in more than one group.
+- **The lobby**: everyone in the group with their duelist, online / in a duel / away / offline, connection bars, your record against each one, Challenge. The owner gets the tools: a new invite code (the old one stops working), how to remove someone, name and color, and a reminder a week before the key runs out with a 2-minute renew.
+- **Challenges**: pick your deck, one duel or a Match of 3 (Side Deck between duels), Life Points, Destiny Draw, Forbidden/Limited list (on by default; when it is off the other person sees it before saying yes). They get a card with Accept or Decline. Only complete decks go online. The game picks who hosts (the easier connection) and says so.
+- **In the duel**: the host runs the rules and only ever sends what the other side may see. Quick reactions (Good game!, Nice move!...), "X is thinking...", a dropped line waits ("Waiting for X... (reconnecting)") and goes on where it was; after 3 minutes it can be ended as a no-contest. Rematch / next duel of the match / Side Deck / Leave at the end. No prizes online: each of you keeps the replay and your record against the other.
+- **Help** on the Online screen: the steps, and what to do when it doesn't connect (Windows firewall, same version on both, the owner's key).
+
 ## What is in 0.72.5
 
 **Four things from play.** No cards added: 12,745 total.

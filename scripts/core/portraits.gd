@@ -79,6 +79,12 @@ func clear_cache() -> void:
 	flushed.emit()
 
 
+## (0.73.0) A portrait to make again (somebody online changed their look).
+func forget_key(key: String) -> void:
+	if _cache.has(key):
+		_forget(key)
+
+
 func _forget(key: String) -> void:
 	_cache.erase(key)
 	Avatars.forget(key)

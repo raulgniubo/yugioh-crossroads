@@ -47,6 +47,11 @@ var _seed := 0
 ##   "gy": [[ids], [ids]]     "turbo": true (each side's Speed World 2)
 var turbo := false
 var speed := [0, 0]
+## (0.73.0) Online duels (NetDuel). The host's every step also goes to `net_out` (msgs, status, q, cn).
+## On the guest's side the duel is `blind`: the host's hidden cards arrive as card 0 and become what
+## they are the moment the guest may see them (_by_id, _reveal).
+var net_out := Callable()
+var blind := false
 
 func prepare(state: DuelState, decks: Array, extras: Array, names: Array, first: int, seed := -1, setup := {}) -> void:
 	st = state
@@ -165,6 +170,10 @@ func _notification(what: int) -> void:
 
 func _new_card(id: int, owner: int) -> DuelState.CardInst:
 	var c: DuelState.CardInst = st._make(id, owner)
+	if blind and id == 0:
+		c.data = UNKNOWN.duplicate()
+		c.face_up = false
+		return c
 	if c.data.is_empty() or str(c.data.get("name", "")) in ["", "Unknown"]:
 		var td := OcgCore.token_data(id)
 		c.data = td if not td.is_empty() else {"id": id, "name": "Token", "frame": "token", "kind": "monster", "atk": 0, "def": 0, "level": 1}
@@ -205,6 +214,8 @@ func advance() -> Array:
 	var status := int(res.get("status", 0))
 	var q := OcgCore.query(handle, SYNC_MASK)
 	var cn := OcgCore.counts(handle)
+	if net_out.is_valid():
+		net_out.call(msgs, status, q, cn)
 	if tape != null:
 		var step := {"m": msgs.duplicate(true), "s": status}
 		var qh := hash([q, cn])
@@ -318,7 +329,26 @@ func _by_id(list: Array, code: int, prefer := -1):
 	for c in list:
 		if c != null and c.id == code:
 			return c
+	if blind and code != 0:
+		# (a card of theirs this side could not see until now: it is the one it turns out to be)
+		if prefer >= 0 and prefer < list.size() and list[prefer] != null and list[prefer].id == 0:
+			return _reveal(list[prefer], code)
+		for c in list:
+			if c != null and c.id == 0:
+				return _reveal(c, code)
 	return null
+
+
+## A card of the other side that was hidden from this side (online, see `blind`): it is shown now.
+const UNKNOWN := {"id": 0, "name": "", "kind": "monster", "frame": "normal", "atk": 0, "def": 0, "level": 0, "unknown": true}
+
+func _reveal(c, code: int):
+	c.id = code
+	c.data = CardData.get_card(code)
+	if c.data.is_empty() or str(c.data.get("name", "")) in ["", "Unknown"]:
+		var td := OcgCore.token_data(code)
+		c.data = td if not td.is_empty() else {"id": code, "name": "Token", "frame": "token", "kind": "monster", "atk": 0, "def": 0, "level": 1}
+	return c
 
 
 ## Take a card out of where the engine says it was.
@@ -366,7 +396,10 @@ func _take(code: int, f: Dictionary):
 			c = _by_id(ps.deck, code)
 			ps.deck.erase(c)
 	if c != null and c.id != code and code != 0:
-		_dirty = true
+		if blind and c.id == 0:
+			_reveal(c, code)
+		else:
+			_dirty = true
 	return c
 
 
@@ -1039,7 +1072,11 @@ func _sync_slot(c, e, p: int, what: String):
 			_limbo.append(c)
 		return null
 	var code := int(e.get("code", 0))
-	if c == null or c.id != code:
+	if blind and c != null and c.id == 0 and code != 0:
+		_reveal(c, code)
+	elif blind and c != null and code == 0 and c.id != 0 and (int(e.get("pos", 0)) & OcgCore.POS_FACEUP) == 0:
+		pass      # (a card of theirs that went face-down: still the same card in the same zone)
+	if c == null or (c.id != code and not (blind and code == 0)):
 		if check and not _dirty:
 			_err("%s p%d: has %s, the engine has %d" % [what, p, c.cname() if c != null else "nothing", code])
 		if c != null:

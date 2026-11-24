@@ -123,7 +123,7 @@ Recipe loaded	Receta cargada
 Empty deck	Vaciar deck
 Forbidden/Limited list	Lista de Prohibidas/Limitadas
 Optional. Forbidden cards cannot be used, Limited cards 1 copy, Semi-Limited 2. Applies to the decks you build.	Opcional. Las Prohibidas no se pueden usar, las Limitadas 1 copia, las Semilimitadas 2. Se aplica a los decks que armas.
-Search name or card text	Buscar nombre o texto
+Name or text (English or Spanish)	Nombre o texto (inglés o español)
 Any Attribute	Cualquier Atributo
 Any Level	Cualquier Nivel
 Level 1 to 4	Nivel 1 a 4
@@ -1685,7 +1685,7 @@ I'm in your deck! Draw me, draw me!	¡Estoy en tu Deck! ¡Róbame, róbame!
 Okay. Deep breath. I believe in you. Also in me. Mostly you.	Bien. Respira hondo. Creo en ti. Y en mí. Sobre todo en ti.
 That's me! Hi! One monster for your hand, coming right up!	¡Esa soy yo! ¡Hola! ¡Un monstruo para tu mano, ya mismo!
 I'm on the field! Don't look at my ATK. Look at my heart.	¡Estoy en el campo! No mires mi ATK. Mira mi corazón.
-Ooh, the big one! Get them!	¡Uy, el grande! ¡A por ellos!
+Ooh, the big one! Get them!	¡Uy, el grande! ¡Vamos por ellos!
 THERE it is! I love this part!	¡AHÍ está! ¡Me encanta esta parte!
 That's their best monster. Don't panic. I'm panicking, but you shouldn't.	Ese es su mejor monstruo. No entres en pánico. Yo sí, pero tú no deberías.
 Uh oh. Big. Very big. You have a plan, right?	Oh, oh. Grande. Muy grande. Tienes un plan, ¿verdad?
@@ -2485,15 +2485,15 @@ YOUR BACK IS AGAINST THE WALL	ESTÁS CONTRA LAS CUERDAS
 DESTINY DRAW	ROBO DEL DESTINO
 Destiny Draw	Robo del Destino
 Choose the card you draw this turn. You can do this once per duel.	Elige la carta que robas este turno. Puedes hacerlo una vez por duelo.
-Reach for it	Ve a por ella
+Reach for it	Ve por ella
 Draw as usual and save it	Roba normal y guárdalo
 Destiny Draw: choose the card you draw	Robo del Destino: elige la carta que robas
 Draw this card	Robar esta carta
 %s  ·  LIFE POINTS ON THE LINE	%s  ·  LA VIDA EN JUEGO
 Ow! That one hurt just to watch.	¡Ay! Eso dolió solo de verlo.
-Okay, that was a lot of Life Points. We still have the rest!	Vale, eso fueron muchos Life Points. ¡Aún nos queda el resto!
+Okay, that was a lot of Life Points. We still have the rest!	Bueno, esos fueron muchos Puntos de Vida. ¡Todavía nos queda el resto!
 Right through! Nothing in the way!	¡De lleno! ¡Nada en medio!
-Direct hit! They felt that one!	¡Ataque directo! ¡Ese lo han notado!
+Direct hit! They felt that one!	¡Ataque directo! ¡Ese sí lo sintieron!
 A Trap! I KNEW that card looked shifty.	¡Una Trampa! SABÍA que esa carta tenía mala pinta.
 They were waiting for that. Sneaky.	Lo estaban esperando. Qué astutos.
 No cards in hand... so the next one has to count. No pressure!	Sin cartas en la mano... así que la siguiente tiene que valer. ¡Sin presión!
@@ -2501,8 +2501,8 @@ Empty hand. This is where the good draws happen. Right? Right.	Mano vacía. Aqu�
 You're back in it! I never doubted you. *bzzt* Much.	¡Has vuelto al duelo! Nunca dudé de ti. *bzzt* Mucho.
 From almost nothing to THIS? That's my duelist!	¿De casi nada a ESTO? ¡Ese es mi duelista!
 {player}. The Deck is listening. Ask it for the one card you need!	{player}. El Deck te escucha. ¡Pídele la carta que necesitas!
-This is it. One card can turn this around. Reach for it!	Es ahora. Una carta puede darle la vuelta a esto. ¡Ve a por ella!
-They can do that too?! Okay. Okay. Stay sharp.	¿¡Ellos también pueden hacer eso!? Vale. Vale. Atento.
+This is it. One card can turn this around. Reach for it!	Es ahora. Una carta puede darle la vuelta a esto. ¡Ve por ella!
+They can do that too?! Okay. Okay. Stay sharp.	¿¡Ellos también pueden hacer eso!? Okey. Okey. Atento.
 That was THEIR big draw. Whatever it is, we can take it.	Ese fue SU gran robo. Sea lo que sea, podemos con ello.
 Destiny Draw: chose the card they drew	Robo del Destino: eligió la carta que robó
 On	Sí
@@ -3960,7 +3960,6 @@ Maxed	Al máximo
 %s  ·  %d DP	%s  ·  %d PD
 Your runner looks like this in every Turbo Duel too. Speed Counters at the start of a duel come from your Momentum on the road, and from the tuning bench in the Satellite garage.	Tu runner se ve así también en todos los Duelos Turbo. Los Contadores de Velocidad al empezar un duelo salen de tu Impulso en la carretera y del banco de ajuste del garaje de Satellite.
 Violet	Violeta
-Star	Estrella
 Crown	Corona
 Wing	Ala
 Orange	Naranja
@@ -5895,7 +5894,7 @@ Open Toon World or Toon Kingdom first. Then Toon Harpie Lady and Toon Cyber Drag
 People laugh at my deck. Then the drawings climb out of the book.	La gente se ríe de mi deck. Luego los dibujos se salen del libro.
 Who wants to see a cartoon?	¿Quién quiere ver unos dibujos animados?
 Table two is mine! Don't laugh yet.	¡La mesa dos es mía! Todavía no te rías.
-Type a card name	Escribe el nombre de una carta
+Type a card name (English or Spanish)	Escribe el nombre de una carta (en inglés o español)
 Cards seen in this duel. Type to search every card.	Cartas vistas en este duelo. Escribe para buscar entre todas las cartas.
 Type to search every card.	Escribe para buscar entre todas las cartas.
 %d names match	%d nombres coinciden
@@ -5999,6 +5998,879 @@ Your banished cards	Tus cartas desterradas
 Their banished cards	Sus cartas desterradas
 Your Extra Deck	Tu Deck Extra
 Their Extra Deck	Su Deck Extra
+Gate of the Guardians	La Puerta de los Guardianes
+Sanga, Kazejin and Suijin, the three who stand at the gate, and the Gate Guardians they become. With them, the weapon Guardians who can only take the field once their own weapon is on it.	Sanga, Kazejin y Suijin, los tres que custodian la puerta, y los Gate Guardian en que se convierten. Con ellos, los Guardianes de las armas, que sólo salen al Campo cuando su propia arma ya está en él.
+Thunder, wind and water hold the line until the three of them fuse into a Gate Guardian. Dark Element calls up the darkest one, and Guardian Eatos swings her sword between them.	Trueno, viento y agua aguantan la línea hasta que los tres se fusionan en un Gate Guardian. Dark Element llama al más oscuro, y Guardian Eatos blande su espada entre ellos.
+Nobody gets past the gate. Not today.	Nadie pasa la puerta. Hoy no.
+The elevators are not. And if you want past me, you go through three of my guardians first.	Los ascensores no. Y si quieres pasar, primero tendrás que vencer a mis tres guardianes.
+Invasion of the A-Counters	La Invasión de los Contadores A
+The Aliens: they mark your monsters with A-Counters, weaken every monster that carries one, and then take them over. Brainwashing Beam, Mass Hypnosis and the "A" Cell spells do the marking.	Los Alien: marcan tus monstruos con Contadores A, debilitan a todo monstruo que lleve uno y después se los quedan. Brainwashing Beam, Mass Hypnosis y las Mágicas "A" Cell se encargan de marcar.
+Every monster an Alien touches gets an A-Counter, and every A-Counter makes it weaker against them. Mark enough and Mass Hypnosis takes three of them home.	Cada monstruo que toca un Alien recibe un Contador A, y cada Contador A lo hace más débil contra ellos. Marca suficientes y Mass Hypnosis se lleva tres a casa.
+Did you see the lights over the water last night? Those were mine.	¿Viste las luces sobre el agua anoche? Eran mías.
+Some nights there are lights over the water. I deal a different deck when they show up.	Algunas noches hay luces sobre el agua. Cuando aparecen, juego con otro deck.
+Volcano Island	La Isla del Volcán
+The Volcanics: Pyro monsters that burn, blow up and come back, and the Blaze Accelerator cannons that fire them. Volcanic Emperor and Volcanic Doomfire burn the whole field down.	Los Volcanic: monstruos de Tipo Piro que queman, explotan y vuelven, y los cañones Blaze Accelerator que los disparan. Volcanic Emperor y Volcanic Doomfire arrasan el Campo entero.
+Load the Blaze Accelerator, fire small Volcanics at their monsters, and every one that hits the Graveyard burns. When three Pyros are gone, Volcanic Emperor rises.	Carga el Blaze Accelerator, dispara pequeños Volcanic a sus monstruos, y cada uno que cae al Cementerio quema. Cuando se han ido tres Piro, se alza Volcanic Emperor.
+The volcano is glowing again. So am I.	El volcán vuelve a brillar. Y yo también.
+Did you see the volcano glowing last night? I built my deck out of it. Want to feel the heat?	¿Viste el volcán brillar anoche? Armé mi deck con él. ¿Quieres sentir el calor?
+Sabers of the Sword Saints	Los Sables de los Santos de la Espada
+The X-Sabers and XX-Sabers: EARTH swordsmen who call each other from the Deck and the Graveyard, and the Gottoms and Souza Synchros who lead them. Saber Slash cuts as many cards as they have blades.	Los X-Saber y XX-Saber: espadachines de TIERRA que se llaman unos a otros desde el Deck y el Cementerio, y los Monstruos de Sincronía Gottoms y Souza que los dirigen. Saber Slash corta tantas cartas como espadas tengan.
+Boggart Knight and Pellina bring two swordsmen at once, Faultroll calls back the fallen, and the Synchro lords take over: Hyunlei clears the back row, Gottoms empties their hand.	Boggart Knight y Pellina traen dos espadachines a la vez, Faultroll llama a los caídos, y los señores de Sincronía toman el control: Hyunlei limpia la fila de atrás y Gottoms vacía su mano.
+Draw your blade. Security does not lose.	Desenvaina. Seguridad no pierde.
+My squad duels with swords. Every one of them brings a friend. Think you can keep up?	Mi escuadrón duela con espadas. Cada uno trae a un amigo. ¿Crees que puedes seguirnos el ritmo?
+Mansion of the Dreadful Dolls	La Mansión de las Muñecas Terribles
+The Gimmick Puppets: broken dolls that drop from the hand at Level 8, overlay into Numbers 15, 40 and 88, and rank up into the Chaos Numbers that can end a duel on their own.	Los Gimmick Puppet: muñecos rotos que salen de la mano con Nivel 8, se superponen en los Number 15, 40 y 88, y suben de Rango a los Number Caos, capaces de terminar un duelo por sí solos.
+Rouge Doll and Fiendish Knight drag two dolls out at a time, Little Soldiers turn them into Level 8s, and Giant Grinder starts cutting. If Leo gets three counters, the duel is over.	Rouge Doll y Fiendish Knight sacan dos muñecos a la vez, Little Soldiers los vuelve de Nivel 8, y Giant Grinder empieza a cortar. Si Leo llega a tres contadores, el duelo se acaba.
+My dolls were waiting up for you.	Mis muñecas te estaban esperando despiertas.
+Some nights the stones stay quiet and the dolls talk instead.	Algunas noches las piedras callan y hablan las muñecas.
+Ring of Champions	El Ring de los Campeones
+The Battlin' Boxers: FIRE fighters who come in pairs, take the hits for each other, and overlay into the Numbers 79 and 105. Jolt Counter and Last Counter answer every punch.	Los Battlin' Boxer: luchadores de FUEGO que llegan en parejas, encajan los golpes unos por otros y se superponen en los Number 79 y 105. Jolt Counter y Last Counter responden a cada puñetazo.
+Promoter and Uppercutter fill the ring, King Dempsey keeps the corner stocked, and Star Cestus turns their own attacks back on them. Then Comet Cestus throws the last punch.	Promoter y Uppercutter llenan el ring, King Dempsey mantiene la esquina surtida, y Star Cestus les devuelve sus propios ataques. Después, Comet Cestus lanza el último golpe.
+Gloves on. Round one!	¡Guantes puestos. Primer asalto!
+Some days I duel with Warriors, some days with boxers. Both hit hard.	Algunos días duelo con Guerreros y otros con boxeadores. Los dos pegan fuerte.
+The Forbidden One	El Prohibido
+Exodia's five pieces and every card that calls on them, plus the Batterymen and the Gadgets: small Thunder and Machine monsters that power each other up.	Las cinco piezas de Exodia y todas las cartas que las invocan, además de los Batteryman y los Gadget: pequeños monstruos de Tipo Trueno y Máquina que se dan energía unos a otros.
+Stall, draw, and dig. Waboku and Swords buy the turns, Mystic Tomato and Break the Seal fetch the pieces, and when all five are in your hand the duel just ends.	Aguanta, roba y busca. Waboku y Swords compran turnos, Mystic Tomato y Break the Seal traen las piezas, y cuando las cinco están en tu mano el duelo simplemente se acaba.
+If I draw all five, I win. That's the rule!	Si robo las cinco, gano. ¡Es la regla!
+I just built my first deck! It has all five pieces of Exodia in it. Wanna duel? Please?	¡Acabo de armar mi primer deck! Tiene las cinco piezas de Exodia. ¿Duelamos? ¿Por favor?
+Iron Core	El Núcleo de Hierro
+The Koa'ki Meiru: strong monsters that fall apart at the End Phase unless you feed them an Iron Core or show the right monster. In return they shut down LIGHT and DARK, Spells and Traps.	Los Koa'ki Meiru: monstruos fuertes que se desmoronan en la End Phase a menos que les des un Núcleo de Hierro o muestres el monstruo correcto. A cambio, anulan a la LUZ y la OSCURIDAD, las Mágicas y las Trampas.
+Big bodies for cheap, as long as you keep the cores coming. Urnight and Boulder fill the field, the Rock guards negate whatever they throw, and Maximus breaks a card every turn.	Monstruos grandes por poco, mientras sigan llegando núcleos. Urnight y Boulder llenan el Campo, los guardianes de Roca niegan lo que te lancen, y Maximus rompe una carta cada turno.
+Lunch-table rules! Iron cores and all.	¡Reglas de la mesa del almuerzo! Con núcleos de hierro y todo.
+My monsters fall apart unless I feed them iron cores. Want to test that record?	Mis monstruos se desmoronan si no les doy núcleos de hierro. ¿Quieres poner a prueba ese récord?
+Turn of the Arcana	El Giro de los Arcanos
+The Arcana Force: Fairies that toss a coin when they are Summoned. Heads, a blessing; tails, a curse. Light Barrier lets you skip the coin and pick.	Los Arcana Force: Hadas que lanzan una moneda al ser Invocadas. Cara, una bendición; cruz, una maldición. Light Barrier te deja saltarte la moneda y elegir.
+Every Summon is a coin toss until Light Barrier hits the field. After that you choose heads every time, and the three Rulers take over.	Cada Invocación es un lanzamiento de moneda hasta que Light Barrier llega al Campo. Desde entonces eliges cara siempre, y los tres Rulers toman el control.
+The cards told me you would come.	Las cartas me dijeron que vendrías.
+Some nights I don't pick my deck. I flip a coin and the Arcana pick it for me.	Algunas noches no elijo mi deck. Lanzo una moneda y los Arcanos lo eligen por mí.
+Guardians of the Ice Barrier	Los Guardianes de la Barrera de Hielo
+The Ice Barrier: WATER monsters who lock the field while another of them stands guard, and the Synchro dragons Brionac, Gungnir and Trishula they become.	La Barrera de Hielo: monstruos de AGUA que bloquean el Campo mientras otro de ellos monta guardia, y los dragones de Sincronía Brionac, Gungnir y Trishula en que se convierten.
+Two Ice Barrier monsters on the field and the locks start: no big attackers, no Spells, no changing positions. Then a Tuner joins in and Trishula takes a card from everywhere.	Dos monstruos Ice Barrier en el Campo y empiezan los bloqueos: nada de atacantes grandes, nada de Mágicas, nada de cambiar posiciones. Luego se une un Cantante y Trishula se lleva una carta de todas partes.
+Cold out tonight. It gets colder.	Hace frío esta noche. Y hará más.
+Way of the Ninja	El Camino del Ninja
+The Ninjas and their Ninjitsu Arts: monsters that hide face-down, swap places and strike from the shadows, and the Dragon Ninjas that need a Ninja and an Art to act.	Los Ninja y sus Ninjitsu Arts: monstruos que se esconden boca abajo, cambian de lugar y atacan desde las sombras, y los Dragon Ninja, que necesitan un Ninja y un Arte para actuar.
+Hanzo finds the Arts, Yellow Ninja and Kagero bring friends face-down, and Dancing Leaves trades one ninja for another whenever you like. They never see what's under the cover.	Hanzo encuentra las Artes, Yellow Ninja y Kagero traen amigos boca abajo, y Dancing Leaves cambia un ninja por otro cuando quieras. Nunca ven lo que hay debajo.
+You never saw me coming. That's the point.	Nunca me viste venir. De eso se trata.
+On quiet days I close the shop early and practice a different art. You won't see it coming.	Los días tranquilos cierro la tienda temprano y practico otro arte. No lo verás venir.
+Kuriboh and Company	Kuriboh y Compañía
+Kuriboh and its many cousins, the Magnet Warriors who snap together into the Magna Warriors, and the Harpie Ladies with their pet dragons.	Kuriboh y sus muchos primos, los Magnet Warrior que se juntan en los Magna Warrior, y las Harpie Lady con sus dragones mascota.
+A swarm of furballs that eat attacks for breakfast. Multiply them, call the five brothers out with Five Star Twilight, and when the field is full, Detonate takes their cards down with them.	Un enjambre de bolas de pelo que se comen los ataques. Multiplícalos, llama a los cinco hermanos con Five Star Twilight y, cuando el Campo esté lleno, Detonate se lleva sus cartas con ellos.
+Kuri kuri! Okay, I'll stop. Duel!	¡Kuri kuri! Bueno, ya paro. ¡A duelar!
+My deck is all Kuribohs. Laugh now. You won't get a single hit through.	Mi deck es todo Kuribohs. Ríete ahora. No vas a pasar ni un golpe.
+Fog, Fangs and Fossils	Niebla, Colmillos y Fósiles
+The Cloudians, who spread fog counters and burst on contact; the Venom snakes and their swamp; and the Fossil fusions dug up from both Graveyards.	Los Cloudian, que reparten contadores de niebla y estallan al contacto; las serpientes Venom y su pantano; y las fusiones Fossil desenterradas de ambos Cementerios.
+Rolling Fog	Niebla Rodante
+Smoke Ball and Sheep Cloud fill the field with fog, Turbulence and Cirrostratus spend it to blow cards away, and every Cloudian that bursts comes back with Raging Cloudian.	Smoke Ball y Sheep Cloud llenan el Campo de niebla, Turbulence y Cirrostratus la gastan para barrer cartas, y cada Cloudian que estalla vuelve con Raging Cloudian.
+Fog's rolling in. Hope you brought a compass.	Llega la niebla. Espero que hayas traído brújula.
+Out at sea the fog rolls in thick. I learned to duel with it. Want to see?	En alta mar la niebla llega espesa. Aprendí a duelar con ella. ¿Quieres verlo?
+Voice of the Forest	La Voz del Bosque
+The Naturia: small plants and bugs that punish every card your opponent plays, and the Synchro beasts Barkion, Landoise and Naturia Beast that negate Spells, Traps and effects outright.	Los Naturia: pequeñas plantas e insectos que castigan cada carta que juega tu adversario, y las bestias de Sincronía Barkion, Landoise y Naturia Beast, que niegan Mágicas, Trampas y efectos sin más.
+Every time they act, the forest answers: Sunflower and Vein negate, Antjaw and Camellia grow new plants, and Naturia Beast and Barkion lock down Spells and Traps for good.	Cada vez que actúan, el bosque responde: Sunflower y Vein niegan, Antjaw y Camellia hacen crecer plantas nuevas, y Naturia Beast y Barkion bloquean las Mágicas y Trampas para siempre.
+Fresh from the garden. Espresso speed!	Recién salido del jardín. ¡Velocidad espresso!
+I grow the beans myself, and the deck too. Help me test it?	Cultivo el café yo misma, y el deck también. ¿Me ayudas a probarlo?
+Tech Genus	Tech Genus
+The T.G. monsters: machines and beasts that fetch a new T.G. every time one is destroyed, and the T.G. Synchros, up to Halberd Cannon and Glaive Blaster, that stop Summons cold.	Los monstruos T.G.: máquinas y bestias que traen un T.G. nuevo cada vez que uno es destruido, y los Monstruos de Sincronía T.G., hasta Halberd Cannon y Glaive Blaster, que frenan las Invocaciones en seco.
+Lose a T.G. and you get another. Striker and Warwolf jump in for free, Cyber Magician turns your hand into Synchro material, and Hyper Librarian draws a card for every Synchro after.	Pierdes un T.G. y llega otro. Striker y Warwolf entran gratis, Cyber Magician convierte tu mano en material de Sincronía, y Hyper Librarian roba una carta por cada Sincronía que venga después.
+Engine's warm. Let's see what yours can do.	El motor está caliente. Veamos qué puede hacer el tuyo.
+I build my deck like I build engines. Break a part, a better one drops in.	Armo mi deck como armo motores. Se rompe una pieza y entra una mejor.
+Brotherhood of the Fire Fist	La Hermandad del Puño de Fuego
+The Fire Fist: FIRE Beast-Warriors who Set Fire Formation Spells and Traps straight from the Deck, then burn them for power. Tiger King, Cardinal and Kirin lead the brotherhood.	Los Fire Fist: Bestias-Guerrero de FUEGO que Colocan Mágicas y Trampas Fire Formation directamente del Deck y luego las queman para ganar poder. Tiger King, Cardinal y Kirin lideran la hermandad.
+Bear and Rooster set a Formation, send it away to break a card, and set the next one. Every Formation makes the brothers stronger, and two of them make a Tiger King.	Bear y Rooster Colocan una Formación, la mandan al Cementerio para romper una carta y Colocan la siguiente. Cada Formación hace más fuertes a los hermanos, y dos de ellos forman un Tiger King.
+Fists up. The Brotherhood is in town!	¡Puños arriba! ¡La Hermandad ha llegado!
+And on the hot days I fight with the Fire Fist. Three decks, one me.	Y los días de calor peleo con el Puño de Fuego. Tres decks, un solo yo.
+School of Dark Magic	La Escuela de Magia Oscura
+Dark Magician, Dark Magician Girl and everything built around them: the spells that only they can cast, the knights they fuse into, and the dragon Timaeus who rides with them.	Dark Magician, Dark Magician Girl y todo lo que gira a su alrededor: los hechizos que sólo ellos pueden lanzar, los caballeros en que se fusionan y el dragón Timaeus que cabalga con ellos.
+Rod and Robe bring the master out early, Magician Navigation drops two magicians at once, and Dark Magic Attack clears the board. Then teacher and student fuse into a Dragon Knight.	Rod y Robe sacan pronto al maestro, Magician Navigation trae dos magos a la vez y Dark Magic Attack limpia el tablero. Después, maestro y aprendiz se fusionan en un Caballero Dragón.
+Let me show you a real magic trick!	¡Déjame enseñarte un truco de magia de verdad!
+I brought my deck on vacation. It's all Dark Magicians. Want a souvenir duel?	Me traje el deck de vacaciones. Es todo Dark Magicians. ¿Un duelo de recuerdo?
+Legend of the White Dragon	La Leyenda del Dragón Blanco
+Blue-Eyes White Dragon and every card that serves it: the maidens and sages with eyes of blue, the white stones, and the Ultimate, Twin Burst and Spirit dragons it becomes.	Blue-Eyes White Dragon y todas las cartas que lo sirven: las doncellas y sabios de ojos azules, las piedras blancas, y los dragones Ultimate, Twin Burst y Spirit en que se convierte.
+The sages and stones find the dragons, the maiden calls one out the moment she's targeted, and three white dragons on the field means only one thing: Ultimate.	Los sabios y las piedras encuentran a los dragones, la doncella llama a uno en cuanto la seleccionan, y tres dragones blancos en el Campo sólo significan una cosa: Ultimate.
+Registration check. Let's see that deck in action.	Control de inscripción. Veamos ese deck en acción.
+Between registrations I duel. White dragons only. Don't ask where I got three.	Entre inscripciones, duelo. Sólo dragones blancos. No preguntes de dónde saqué tres.
+Eyes of Red Potential	El Potencial de los Ojos Rojos
+Red-Eyes Black Dragon and its whole brood: the chicks and black stones that hatch it, the metal, flare and darkness dragons it grows into, and Red-Eyes Fusion to tie it all together.	Red-Eyes Black Dragon y toda su camada: las crías y piedras negras que lo hacen nacer, los dragones de metal, llamas y oscuridad en que se convierte, y Red-Eyes Fusion para unirlo todo.
+Not the strongest dragon, but the one with the most potential. The chick and the black stone bring it out, Red-Eyes Fusion skips the wait, and every Red-Eyes that falls burns on the way down.	No es el dragón más fuerte, pero sí el de más potencial. La cría y la piedra negra lo traen, Red-Eyes Fusion se salta la espera, y cada Red-Eyes que cae quema al caer.
+Climbing Levels	Subiendo de Nivel
+The Armed Dragons and every LV monster: they start small, level up by sending themselves away, and come back stronger. Armed Dragon LV10, Horus LV8 and Silent Magician LV8 wait at the top.	Los Armed Dragon y todos los monstruos LV: empiezan pequeños, suben de nivel mandándose al Cementerio y vuelven más fuertes. Armed Dragon LV10, Horus LV8 y Silent Magician LV8 esperan en la cima.
+Armed Dragon Ascent	El Ascenso del Armed Dragon
+LV3 becomes LV5, LV5 becomes LV7, and Level Up! skips the waiting. By the time LV10 lands, a single discard wipes their whole board.	LV3 se convierte en LV5, LV5 en LV7, y Level Up! se salta la espera. Cuando llega LV10, un solo descarte barre todo su tablero.
+Duel before breakfast and your hands remember it all day. My dragons level up the same way.	Duela antes del desayuno y tus manos lo recuerdan todo el día. Mis dragones suben de nivel igual.
+Twilight of the Gods	El Ocaso de los Dioses
+The Nordics: Alfar, Beasts and Ascendants who Summon each other in pairs, the Relics they carry, and the three Aesir gods Odin, Thor and Loki who come back every time they fall.	Los Nordic: Alfar, Bestias y Ascendientes que se Invocan unos a otros en parejas, las Reliquias que llevan, y los tres dioses Aesir, Odin, Thor y Loki, que vuelven cada vez que caen.
+Dverg and Ljosalf bring a second Nordic every turn, the Beasts and Ascendants tune them up, and an Aesir hits the field. Destroy one and it comes back at the End Phase.	Dverg y Ljosalf traen un segundo Nordic cada turno, las Bestias y los Ascendientes los sincronizan, y un Aesir llega al Campo. Destruye uno y vuelve en la End Phase.
+Laaadies and gentlemen! A surprise match!	¡Damaaas y caballeros! ¡Un duelo sorpresa!
+Between announcements I warm up the crowd with a duel. Gods of the north, live on stage!	Entre anuncios caliento al público con un duelo. ¡Dioses del norte, en vivo en el escenario!
+Divine Warriors of the Sun	Los Guerreros Divinos del Sol
+The Bujin: Beast-Warrior gods and their Bujingi beast servants, who throw themselves from the hand to double an attack or stop one cold. The Bujintei Xyz lead them, one of each.	Los Bujin: dioses Bestia-Guerrero y sus bestias sirvientes Bujingi, que se lanzan desde la mano para duplicar un ataque o frenarlo en seco. Los Xyz Bujintei los lideran, uno de cada uno.
+Yamato searches every End Phase, Crane doubles its ATK from the hand, and Turtle and Hare make it untouchable. Two of them become Susanowo, who strikes every monster they have.	Yamato busca en cada End Phase, Crane duplica su ATK desde la mano, y Turtle y Hare lo hacen intocable. Dos de ellos se convierten en Susanowo, que golpea a todos sus monstruos.
+The stars are out. So are the gods.	Han salido las estrellas. Y también los dioses.
+When the stars hide, I call on older names. The Bujin, the warrior gods.	Cuando las estrellas se esconden, invoco nombres más antiguos. Los Bujin, los dioses guerreros.
+Swords of Legend	Espadas de Leyenda
+The swordsman who slays dragons and the swords that serve him, the Legendary Knights who answer the Legend of Heart, Jinzo and the cyborgs that hunt Traps, and the Relinquished ritual.	El espadachín que mata dragones y las espadas que lo sirven, los Caballeros Legendarios que responden a la Legend of Heart, Jinzo y los cíborgs que cazan Trampas, y el ritual de Relinquished.
+Buster Blader takes up the Destruction Swords, Jinzo keeps every Trap shut, and a dragon on the other side of the field only makes the swordsman stronger.	Buster Blader empuña las Destruction Swords, Jinzo cierra todas las Trampas, y un dragón al otro lado del Campo sólo hace más fuerte al espadachín.
+Swords out. Traps down. Let's see what you've got.	Espadas fuera. Trampas abajo. Veamos qué tienes.
+Some days I bring the swordsman instead. Dragons hate that deck.	Algunos días traigo al espadachín. Los dragones odian ese deck.
+Age of the Jurrac	La Era de los Jurrac
+The fire dinosaurs of the Jurrac: raptors that call the next one from the Deck, giants that break the field in half, and the meteor that ends it all.	Los dinosaurios de fuego Jurrac: raptores que llaman al siguiente desde el Deck, gigantes que parten el Campo en dos, y el meteorito que acaba con todo.
+Every raptor that falls calls another from the Deck. Keep them coming until Titano shows up, then let the meteor burn the whole field down.	Cada raptor que cae llama a otro desde el Deck. Sigue sacándolos hasta que aparezca Titano y, después, deja que el meteorito queme todo el Campo.
+Ever seen a dinosaur breathe fire? You're about to.	¿Alguna vez has visto a un dinosaurio escupir fuego? Estás a punto de verlo.
+Some days the Amazons stay home and the dinosaurs come out. They eat a lot.	Algunos días las Amazonas se quedan en casa y salen los dinosaurios. Comen mucho.
+Fall of the Darklords	La Caída de los Señores Oscuros
+The fallen angels who lead the Darklords: Morningstar, Superbia and the rest, the Spells and Traps they cast twice from the grave, and the First Darklord they fuse into.	Los ángeles caídos que guían a los Darklords: Morningstar, Superbia y los demás, las Mágicas y Trampas que lanzan dos veces desde la tumba, y el First Darklord en que se fusionan.
+The Darklords pay Life Points to cast their Spells and Traps a second time from the Graveyard. Morningstar calls the host down, and three of them become the First Darklord.	Los Darklords pagan Life Points para lanzar sus Mágicas y Trampas por segunda vez desde el Cementerio. Morningstar hace bajar a la hueste, y tres de ellos se convierten en el First Darklord.
+Today's lesson: angels fall, too.	La lección de hoy: los ángeles también caen.
+Some days I teach the fallen angels instead. The Darklords never forget a Spell.	Algunos días enseño a los ángeles caídos. Los Darklords nunca olvidan una Mágica.
+Spirits of the Old Shrine	Espíritus del Viejo Santuario
+The Spirit monsters who strike and return to the hand at the end of the turn, the Shinobird ritual, and the six Elemental Lords who wake when five of their Attribute rest in the Graveyard.	Los monstruos Spirit que golpean y vuelven a la mano al final del turno, el ritual de los Shinobird, y los seis Elemental Lords que despiertan cuando cinco de su Atributo descansan en el Cementerio.
+Spirits hit hard and go home before your opponent can touch them. Aratama finds them, Nikitama doubles the summons, and the Shinobirds come down to finish the job.	Los Spirits golpean fuerte y se van a casa antes de que tu adversario pueda tocarlos. Aratama los encuentra, Nikitama duplica las Invocaciones y los Shinobirds bajan a rematar.
+They come, they hit, they go home. You'll see.	Vienen, golpean y se van a casa. Ya verás.
+Union Hangar	El Hangar Unión
+The Union monsters that equip to each other and split apart again: the A-B-C Dragon Buster pieces, the X-Y-Z cannons' new parts, Kiryu, the beasts of fire and ice, and the hangar that launches them.	Los Monstruos Unión que se equipan entre sí y se vuelven a separar: las piezas de A-B-C Dragon Buster, las piezas nuevas de los cañones X-Y-Z, Kiryu, las bestias de fuego y hielo, y el hangar que los lanza.
+Every machine snaps onto another to shield it, then breaks off when it's needed. Get A, B and C on the field and they combine into the Dragon Buster.	Cada máquina se acopla a otra para protegerla y se separa cuando hace falta. Pon A, B y C en el Campo y se combinan en el Dragon Buster.
+Early shift. Let's warm up the engines.	Turno de mañana. Vamos a calentar motores.
+Some mornings I bring the hangar crew. Every piece snaps onto another.	Algunas mañanas traigo al equipo del hangar. Cada pieza encaja en otra.
+Heroes and Villains	Héroes y Villanos
+Every kind of HERO: the Evil HEROes who fuse with Dark Fusion, the Masked HEROes behind Mask Change, the Vision and Destiny HEROes, and the rest of the Elemental HEROes and their Neos fusions.	Toda clase de HERO: los Evil HEROes que se fusionan con Dark Fusion, los Masked HEROes tras Mask Change, los HEROes Vision y Destiny, y el resto de los Elemental HEROes y sus fusiones de Neos.
+Not every hero wears white. Dark Fusion turns the Elemental HEROes into fiends nobody can target, and Mask Change keeps a Masked HERO ready for every fight.	No todos los héroes visten de blanco. Dark Fusion convierte a los Elemental HEROes en demonios que nadie puede seleccionar, y Mask Change tiene un Masked HERO listo para cada pelea.
+Hero or villain? Depends who wins.	¿Héroe o villano? Depende de quién gane.
+Some days I play the heroes. Well, the ones who went bad.	Algunos días juego con los héroes. Bueno, con los que se volvieron malos.
+The Three Phantasms	Los Tres Fantasmas
+Uria, Hamon and Raviel, the three Sacred Beasts, with the martyrs and summoners that serve them, the fallen paradise they rise in, and Armityle, the phantasm they become together.	Uria, Hamon y Raviel, las tres Bestias Sagradas, con los mártires e invocadores que los sirven, el paraíso caído donde se alzan, y Armityle, el fantasma en que se convierten juntos.
+Three beasts sealed under the school. The martyrs and summoners open the doors one by one, and once all three stand on the field they can merge into Armityle.	Tres bestias selladas bajo la escuela. Los mártires y los invocadores abren las puertas una a una y, cuando las tres están en el Campo, pueden fundirse en Armityle.
+You hear that rumbling under the school? That's them.	¿Oyes ese temblor bajo la escuela? Son ellos.
+Some nights the ground shakes. Those are the nights I bring the three beasts.	Algunas noches tiembla el suelo. Ésas son las noches en que traigo a las tres bestias.
+Cyber Style	El Estilo Cyber
+The machines of the Cyber style: the rest of the Cyber Dragon line, the Cyberdark monsters that arm themselves from the Graveyard, Cyber Ogre and the old Cyber monsters, and the Roid vehicles.	Las máquinas del estilo Cyber: el resto de la línea Cyber Dragon, los monstruos Cyberdark que se arman desde el Cementerio, Cyber Ogre y los viejos monstruos Cyber, y los vehículos Roid.
+Cyber Dragon drops in for free, Power Bond doubles whatever it fuses, and the Cyberdark dragons pull a monster out of the Graveyard to wear as armor.	Cyber Dragon entra gratis, Power Bond duplica lo que fusiona, y los dragones Cyberdark sacan un monstruo del Cementerio para llevarlo como armadura.
+Respect your opponent. Then defeat them with everything you have.	Respeta a tu adversario. Después, derrótalo con todo lo que tengas.
+On Tuesdays I teach the Cyber style. Respect first. Power Bond second.	Los martes enseño el estilo Cyber. Primero el respeto. Después, Power Bond.
+Machine Emperors and Earthbound Gods	Emperadores Máquina y Dioses Terrenales
+The Meklord Emperors that steal Synchro Monsters and wear them, their Armies and Astro dragons, and the Earthbound Immortals, the giant gods drawn on the earth that attack your Life Points directly.	Los Meklord Emperors que roban Monstruos de Sincronía y se los ponen, sus Ejércitos y sus dragones Astro, y los Earthbound Immortals, los dioses gigantes dibujados en la tierra que atacan directamente tus Life Points.
+Machine Emperors	Emperadores Máquina
+The Meklord Armies march in and fall on purpose, because every machine destroyed by an effect calls down an Emperor. And every Emperor wants your Synchro Monsters.	Los Ejércitos Meklord avanzan y caen a propósito, porque cada máquina destruida por un efecto hace bajar a un Emperador. Y cada Emperador quiere tus Monstruos de Sincronía.
+Our newest model has no driver at all. Care for a test run?	Nuestro modelo más nuevo no tiene conductor. ¿Una prueba?
+Our partners build machines that drive themselves now. I duel with them on my breaks.	Nuestros socios fabrican ya máquinas que se conducen solas. Duelo con ellas en mis descansos.
+Junk, Wings and Resonance	Chatarra, Alas y Resonancia
+The rest of the Synchron and Junk monsters that build Synchro Summons out of scrap, the Blackwings and their Assault Blackwings, and the Resonators that tune for the Archfiends.	El resto de los monstruos Synchron y Junk que construyen Invocaciones por Sincronía con chatarra, los Blackwings y sus Assault Blackwings, y los Resonators que afinan para los Archfiends.
+Junk Squad	Escuadrón Chatarra
+Nothing in Satellite goes to waste. Junk Synchron pulls a buddy back from the Graveyard, and a pile of small monsters turns into Junk Warrior, then into something bigger.	En Satellite nada se desperdicia. Junk Synchron saca a un compañero del Cementerio, y un montón de monstruos pequeños se convierte en Junk Warrior y, después, en algo más grande.
+I build runners out of junk. Decks too. Let's go.	Construyo runners con chatarra. Decks también. Vamos.
+Every part in my deck came off a scrap heap. Every single one still works.	Cada pieza de mi deck salió de un montón de chatarra. Todas siguen funcionando.
+Karakuri Workshop	El Taller Karakuri
+The Karakuri clockwork puppets that charge in, flip to defense when attacked, and trigger something every time their battle position changes, and the Karakuri Shoguns they tune into.	Las marionetas de relojería Karakuri que cargan, pasan a defensa cuando las atacan y activan algo cada vez que cambia su posición de batalla, y los Karakuri Shoguns en que se sincronizan.
+The puppets must attack, and they flip to defense the moment they're targeted. Every flip winds up another effect, and the Shoguns turn the turning into card advantage.	Las marionetas deben atacar, y pasan a defensa en cuanto las seleccionan. Cada cambio da cuerda a otro efecto, y los Shoguns convierten tanto giro en ventaja de cartas.
+Wind it up and watch it march.	Dale cuerda y míralo marchar.
+Off duty I build clockwork. The Karakuri never stop moving.	Fuera de servicio construyo relojería. Los Karakuri nunca dejan de moverse.
+Realm of the Fabled	El Reino de los Fabled
+The Fabled, fiends who do their best work from the discard pile: discard them and they come right back, and their Synchro lords punish your opponent for every card in hand.	Los Fabled, demonios que hacen su mejor trabajo desde los descartes: descártalos y vuelven enseguida, y sus señores de Sincronía castigan a tu adversario por cada carta en la mano.
+Throw your hand away. Cerburrel and Lurrie jump straight back out of the Graveyard, Grimro finds the next one, and the Fabled lords tune them into something your opponent can't answer.	Tira tu mano. Cerburrel y Lurrie saltan de vuelta desde el Cementerio, Grimro encuentra al siguiente, y los señores Fabled los sincronizan en algo a lo que tu adversario no puede responder.
+Throw away your hand. It's the only way to win down here.	Tira tu mano. Es la única forma de ganar aquí abajo.
+Some nights I play the Fabled. They like being thrown away. Most things down here do.	Algunas noches juego con los Fabled. Les gusta que los tiren. Como a casi todo aquí abajo.
+Ladies of Fortune	Damas de la Fortuna
+The Fortune Ladies, spellcasters of time whose Level rises every Standby Phase and whose ATK grows with it, and Fortune Lady Every, the Synchro who stands over them all.	Las Fortune Ladies, hechiceras del tiempo cuyo Nivel sube en cada Standby Phase y cuyo ATK crece con él, y Fortune Lady Every, la Sincronía que está por encima de todas.
+Every turn the Ladies grow one Level older and stronger. Light calls the next Lady when it leaves, Fire burns a monster on arrival, and time is always on their side.	Cada turno las Ladies suben un Nivel y se hacen más fuertes. Light llama a la siguiente Lady cuando se va, Fire quema a un monstruo al llegar, y el tiempo siempre juega a su favor.
+Shall I read your fortune? It says you lose.	¿Te leo la fortuna? Dice que pierdes.
+Some days I read fortunes instead. The Ladies are always right in the end.	Algunos días leo la fortuna. Las Ladies siempre aciertan al final.
+Winds of Gusto	Los Vientos de Gusto
+The Gusto, the wind people and their beast companions who call each other from the Deck when they fall, and the Daigusto Synchro Monsters they ride into battle.	Los Gusto, el pueblo del viento y sus compañeros bestia que se llaman unos a otros desde el Deck cuando caen, y los Monstruos de Sincronía Daigusto que montan en batalla.
+When a Gusto falls, the wind carries another out of the Deck. Shuffle the fallen back in to keep it going, and ride the Daigusto beasts once the field fills up.	Cuando cae un Gusto, el viento saca a otro del Deck. Baraja de vuelta a los caídos para seguir, y monta las bestias Daigusto cuando el Campo se llene.
+Feel that breeze? That's my deck coming.	¿Notas esa brisa? Es mi deck que llega.
+When the wind's right I bring the Gusto. They ride the same currents as the runners.	Cuando el viento acompaña traigo a los Gusto. Montan las mismas corrientes que los runners.
+Atlantis Rising	Atlántida Resurge
+The Mermails of the deep and the Atlantean sea serpents: WATER monsters that discard each other to come out, the Abyss- Spells and Traps, and the Poseidra dragons that rule the tide.	Los Mermails de las profundidades y las serpientes marinas Atlantean: monstruos de AGUA que se descartan entre sí para salir, las Mágicas y Trampas Abyss-, y los dragones Poseidra que gobiernan la marea.
+The Mermails throw other WATER monsters away to rise from the hand, and every Atlantean that sinks to the Graveyard strikes back on its way down.	Los Mermails tiran otros monstruos de AGUA para salir de la mano, y cada Atlantean que se hunde en el Cementerio contraataca al caer.
+The tide's coming in. Hope you can swim.	Sube la marea. Espero que sepas nadar.
+Some mornings the sea is calling. Then I deal the Mermails.	Algunas mañanas me llama el mar. Entonces reparto los Mermails.
+The Prophecy Library	La Biblioteca de la Profecía
+The Spellbook Spells and the Prophecy spellcasters who read them, the Spell Counter magicians of Endymion's citadel, and the Charmers who take control of monsters of their own Attribute.	Las Mágicas Spellbook y los hechiceros Prophecy que las leen, los magos de Contadores de Magia de la ciudadela de Endymion, y las Charmers que toman el control de los monstruos de su mismo Atributo.
+The Prophecy spellcasters read one Spellbook after another. Every Spellbook in the Graveyard makes the next spell stronger, and the High Priestess turns pages into destruction.	Los hechiceros Prophecy leen un Spellbook tras otro. Cada Spellbook en el Cementerio hace más fuerte el siguiente hechizo, y la High Priestess convierte las páginas en destrucción.
+I already read how this ends. Want to see?	Ya he leído cómo acaba esto. ¿Quieres verlo?
+Some days I bring the library. Every book I cast makes the next one stronger.	Algunos días traigo la biblioteca. Cada libro que lanzo hace más fuerte al siguiente.
+Wind-Up Toybox	La Caja de Juguetes Wind-Up
+The Wind-Up toys, each with an effect it can use once while face-up, the Wind-Up Factory that keeps them coming, and the Zenmai Xyz Monsters that wind them up again.	Los juguetes Wind-Up, cada uno con un efecto que puede usar una vez mientras está boca arriba, la Wind-Up Factory que no deja de sacarlos, y los Monstruos Xyz Zenmai que les vuelven a dar cuerda.
+Each toy does its trick once, then waits to be wound up again. Wind-Up Magician calls a friend every time a trick goes off, and the Zenmai reset the whole box.	Cada juguete hace su truco una vez y espera a que le vuelvan a dar cuerda. Wind-Up Magician llama a un amigo cada vez que salta un truco, y los Zenmai reinician toda la caja.
+Wind them up and let them go!	¡Dales cuerda y suéltalos!
+Some mornings I open the toybox. Every toy does its trick once, then I wind it up again.	Algunas mañanas abro la caja de juguetes. Cada juguete hace su truco una vez y, después, le vuelvo a dar cuerda.
+Ghostrick Night	La Noche Ghostrick
+The Ghostrick spooks who hide face-down and flip up to play their tricks, the haunted mansion where nobody can attack a face-down monster, and the angel who wins once she collects ten materials.	Los fantasmitas Ghostrick que se esconden boca abajo y se voltean para hacer sus travesuras, la mansión encantada donde nadie puede atacar a un monstruo boca abajo, y el ángel que gana cuando reúne diez materiales.
+Boo. The spooks hide face-down where nothing can attack them, turn your monsters face-down too, and pop up one by one to play their tricks.	Bu. Los fantasmitas se esconden boca abajo donde nada puede atacarlos, ponen boca abajo también a tus monstruos y aparecen uno a uno para hacer sus travesuras.
+Trick or treat? Trick. Always trick.	¿Truco o trato? Truco. Siempre truco.
+On the darkest nights I bring the Ghostricks. You can't hit what you can't see.	En las noches más oscuras traigo a los Ghostricks. No puedes golpear lo que no ves.
+Dragon Rulers	Los Señores Dragón
+The four Dragon Rulers of fire, water, wind and earth and their four little ones, the two that rule light and darkness, and the Rank 7 dragons that rule them all.	Los cuatro Señores Dragón del fuego, el agua, el viento y la tierra y sus cuatro pequeños, los dos que gobiernan la luz y la oscuridad, y los dragones de Rango 7 que los gobiernan a todos.
+A little dragon throws itself away to call its ruler from the Deck. The rulers come back from the Graveyard by banishing their own kind, and two of them make a Rank 7.	Un dragón pequeño se descarta para llamar a su señor desde el Deck. Los señores vuelven del Cementerio desterrando a los de su especie, y dos de ellos forman un Rango 7.
+These aren't gems. They're dragon eyes.	No son gemas. Son ojos de dragón.
+Some days I deal dragons instead of jewels. Four elements, four rulers, one me.	Algunos días reparto dragones en vez de joyas. Cuatro elementos, cuatro señores, una sola yo.
+%d packs  ·  %d DP	%d sobres  ·  %d DP
+%d%% off	%d%% de descuento
+Pack %d of %d	Sobre %d de %d
+Skip to all the pulls	Saltar a todo lo que salió
+Next pack	Siguiente sobre
+ALL YOUR PULLS	TODO LO QUE TE SALIÓ
+%s  ·  %d packs, %d cards, %d new to your collection.	%s  ·  %d sobres, %d cartas, %d nuevas para tu colección.
+Volume %d of %d, in the order the cards first came out.	Volumen %d de %d, en el orden en que salieron las cartas.
+Different Dimension	Otra Dimensión
+The D.D. monsters who banish whatever they touch and come back from the other side, the gates and jars that open the way, and the cards that call the banished home.	Los monstruos D.D. que destierran todo lo que tocan y vuelven del otro lado, las puertas y jarras que abren el camino, y las cartas que traen de vuelta a los desterrados.
+Send monsters across to the other dimension, yours and theirs, then bring your own back stronger. D.D. Survivor and D.D.R. never stay gone for long.	Manda monstruos a la otra dimensión, tuyos y suyos, y después trae los tuyos de vuelta más fuertes. D.D. Survivor y D.D.R. nunca se quedan fuera mucho tiempo.
+KaibaCorp studies the other dimension. Today you get to see it up close.	KaibaCorp estudia la otra dimensión. Hoy la vas a ver de cerca.
+Some days I carry the D.D. deck. Whatever you summon, it ends up somewhere else.	Algunos días llevo el deck D.D. Invoques lo que invoques, acaba en otra parte.
+Goblin Gang	La Banda de los Goblins
+The goblins of every squad and trade: the Attack Forces that hit hard and then need a nap, the thieves and salesmen, and the Ogre Grottos they live in.	Los goblins de todos los escuadrones y oficios: las Attack Forces que pegan fuerte y luego necesitan una siesta, los ladrones y vendedores, y las Ogre Grottos donde viven.
+Big hits from small goblins. The Attack Forces swing for 2200 and then rest, so the rest of the gang keeps the field busy while they get up again.	Golpes grandes de goblins pequeños. Las Attack Forces pegan con 2200 y luego descansan, así que el resto de la banda mantiene ocupado el Campo mientras se levantan.
+My goblins are small, loud and always hungry. Just like me!	Mis goblins son pequeños, ruidosos y siempre tienen hambre. ¡Como yo!
+Some days I bring the goblins. They hit hard, then they take a nap.	Algunos días traigo a los goblins. Pegan fuerte y después se echan una siesta.
+Masks and Curses	Máscaras y Maldiciones
+The Masked Beast and the curse that summons it, the masks that weaken, bind and steal, and the old curses that age, freeze and punish whoever they fall on.	La Bestia Enmascarada y la maldición que la invoca, las máscaras que debilitan, atan y roban, y las viejas maldiciones que envejecen, congelan y castigan a quien caigan.
+Curses and masks wear the other side down while you ready the ritual. When the Masked Beast rises, Des Gardius waits behind it to take whatever is left.	Las maldiciones y las máscaras desgastan al otro lado mientras preparas el ritual. Cuando se alza la Bestia Enmascarada, Des Gardius espera detrás para llevarse lo que quede.
+Every mask in my collection has a story. Most of them end badly.	Cada máscara de mi colección tiene una historia. Casi todas acaban mal.
+Some nights I bring the masks instead. They remember every face they've worn.	Algunas noches traigo las máscaras. Recuerdan todas las caras que han llevado.
+Toy Box Troubles	Problemas en la Caja de Juguetes
+The chess Puppets from pawn to king, the Toy soldiers and magicians that hide in the Spell & Trap Zone until they spring out, and the puppeteers who pull every string.	Las Marionetas de ajedrez, del peón al rey, los soldados y magos Toy que se esconden en la Zona de Magia y Trampas hasta que saltan, y los titiriteros que tiran de todos los hilos.
+The Toys hide face-down as Spells and jump out when they're needed, the Toy Box sets them up, and the Puppet King comes back every time he falls.	Los Toy se esconden boca abajo como Cartas Mágicas y saltan cuando hacen falta, la Toy Box los prepara, y el Puppet King vuelve cada vez que cae.
+My toys come alive when you're not looking. Wanna see?	Mis juguetes cobran vida cuando no miras. ¿Quieres verlo?
+Some days I bring my toys. The puppet king is my favorite.	Algunos días traigo mis juguetes. El rey marioneta es mi favorito.
+Wardens of the Barrier	Guardianes de la Barrera
+The six Barrier Statues that lock out every Attribute but their own, and the Counter Fairies who answer every Counter Trap with a reward.	Las seis Estatuas de la Barrera que cierran el paso a todos los Atributos menos el suyo, y las Hadas de Contraefecto que responden a cada Trampa de Contraefecto con una recompensa.
+A Barrier Statue shuts out a whole Attribute, and every Counter Trap you chain lets a Counter Fairy draw, destroy or come back. Say no to everything.	Una Estatua de la Barrera deja fuera un Atributo entero, y cada Trampa de Contraefecto que encadenas deja a un Hada de Contraefecto robar, destruir o volver. Dile que no a todo.
+A prefect keeps order. My deck keeps order too. Nothing gets through.	Un prefecto mantiene el orden. Mi deck también. No pasa nada.
+Some days I duel with the Barrier Statues. Pick an Attribute. It's not allowed.	Algunos días duelo con las Estatuas de la Barrera. Elige un Atributo. No está permitido.
+Frogs and Penguins	Ranas y Pingüinos
+The Frogs that swap, copy and sacrifice themselves for each other, the frog Xyz that rules the pond, and the Penguins that flip up to send your monsters home.	Las Ranas que se intercambian, se copian y se sacrifican unas por otras, el Xyz rana que manda en el estanque, y los Pingüinos que se voltean para devolver tus monstruos a casa.
+Swap Frog and Ronintoadin keep the pond full, Dupe Frog takes the hits, and the Penguins flip up to bounce whatever comes too close.	Swap Frog y Ronintoadin mantienen lleno el estanque, Dupe Frog recibe los golpes, y los Pingüinos se voltean para devolver lo que se acerque demasiado.
+The ferry runs on time and so do my frogs. Mostly.	El ferry sale a su hora, y mis ranas también. Casi siempre.
+Some days the frogs and penguins ride with me. They don't get seasick.	Algunos días las ranas y los pingüinos viajan conmigo. No se marean.
+Rock Solid	Duro como la Roca
+Golems, sphinxes and stone giants that shrug off attacks and grind the other side down. Slow, heavy and very hard to move.	Gólems, esfinges y gigantes de piedra que aguantan los ataques y desgastan al otro lado. Lento, pesado y muy difícil de mover.
+I've been playing since before you were born. Stone doesn't go out of style.	Juego desde antes de que nacieras. La piedra nunca pasa de moda.
+Insect Swarm	Enjambre de Insectos
+Mantises, beetles and swarms that come in numbers. Chainsaw Insect hits hard, the swarms clear the way, and the bugs keep coming.	Mantis, escarabajos y enjambres que vienen en masa. Chainsaw Insect pega fuerte, los enjambres abren camino y los bichos no paran de llegar.
+I keep my bugs in jars. Some of them got out. Sorry.	Guardo mis bichos en frascos. Algunos se escaparon. Perdón.
+Some days I bring my bug collection. Don't step on any.	Algunos días traigo mi colección de bichos. No pises ninguno.
+Zombie Night	Noche de Zombis
+The dead don't stay down. Zombie World and Book of Life bring them back, Mezuki and the Pyramid Turtle dig them up, and the mummies just keep walking.	Los muertos no se quedan en el suelo. Zombie World y Book of Life los traen de vuelta, Mezuki y la Pyramid Turtle los desentierran, y las momias siguen caminando.
+The lighthouse has seen a lot of shipwrecks. Some of the sailors are still around.	El faro ha visto muchos naufragios. Algunos de los marineros siguen por aquí.
+Some nights the dead come with me. They're better company than you'd think.	Algunas noches vienen conmigo los muertos. Son mejor compañía de lo que crees.
+Machine Assembly	Montaje de Máquinas
+The Machina soldiers and the Machine Kings, the old cannons and robots of the arcade. Line up three Machina and they build Machina Force.	Los soldados Machina y los Reyes Máquina, los viejos cañones y robots de las recreativas. Junta tres Machina y forman Machina Force.
+I opened a whole box of machines yesterday. Let's see what they can do.	Ayer abrí una caja entera de máquinas. Vamos a ver qué saben hacer.
+Packs: %s	Sobres: %s
+Ready-made decks: %s	Decks ya hechos: %s
+Duelists who play it: %s	Duelistas que la usan: %s
+no shop	ninguna tienda
+early mornings	temprano por la mañana
+at night	de noche
+some hours	a ciertas horas
+Not sold in any shop: it comes from the story or from duels.	No se vende en ninguna tienda: sale en la historia o en duelos.
+Search (English or Spanish name)	Buscar carta (inglés o español)
+You haven't found it yet. Here is where to look:	Todavía no la tienes. Aquí es donde buscarla:
+every card shop	todas las tiendas de cartas
+The Worm Invasion	La Invasión Worm
+The Worms, LIGHT Reptiles from another planet: they flip face-down, swarm the field and turn every flip into a trick, until Worm Zero takes their place.	Los Worm, Reptiles de LUZ de otro planeta: se ponen boca abajo, llenan el Campo y convierten cada volteo en un truco, hasta que Worm Zero ocupa su lugar.
+Flip the Worms face-up one after another: each one sets up the next, and the King and Queen come down when the field is full of them.	Voltea a los Worm uno tras otro: cada uno prepara al siguiente, y el Rey y la Reina bajan cuando el Campo está lleno de ellos.
+I found these in a crater out past the junkyard. They look friendly. Mostly.	Los encontré en un cráter más allá del basurero. Parecen simpáticos. Casi todos.
+Some days I bring the space worms. Don't ask where they came from.	Algunos días traigo a los gusanos del espacio. No preguntes de dónde salieron.
+Swarm of the Lswarm	El Enjambre Lswarm
+The Steelswarm demons and the Evilswarm they became after the Infestation: Tributes for the old ones, Xyz Summons for the new, and the Infestation cards that spread through both.	Los demonios Steelswarm y los Evilswarm en los que se convirtieron tras la Infestación: Sacrificios para los viejos, Invocaciones Xyz para los nuevos, y las cartas Infestation que se extienden por ambos.
+Line up two Level 4 Evilswarm and overlay them. Ophion locks out big monsters, Bahamut steals the field, and the Infestation traps keep the swarm coming back.	Pon en fila dos Evilswarm de Nivel 4 y superponlos. Ophion bloquea a los monstruos grandes, Bahamut roba el Campo, y las Trampas Infestation hacen que el enjambre siempre vuelva.
+Something crawled out of the old reactor. I made it a deck.	Algo salió arrastrándose del viejo reactor. Le hice un deck.
+Some nights I bring the swarm. They're hungry after dark.	Algunas noches traigo el enjambre. De noche tienen hambre.
+Vylon Assembly	Ensamblaje Vylon
+The Vylon, LIGHT machine-angels that Synchro Summon and then equip themselves with the Vylon Equip Spells, and the Vylon Omega and Disigma at the top.	Los Vylon, ángeles máquina de LUZ que Invocan por Sincronía y después se equipan con las Mágicas de Equipo Vylon, y Vylon Omega y Disigma en lo más alto.
+Tune a Vylon, Synchro Summon, and every Vylon that leaves the field brings an Equip Spell with it. The more equips you stack, the stronger they get.	Afina un Vylon, Invoca por Sincronía, y cada Vylon que deja el Campo trae una Mágica de Equipo con él. Cuantos más equipos acumules, más fuertes se vuelven.
+Up in the Tops we have angels on the payroll. Mechanical ones.	Arriba en los Tops tenemos ángeles en nómina. Mecánicos.
+Some days I bring the Vylon. They polish themselves.	Algunos días traigo los Vylon. Se pulen solos.
+The Aquamirror	El Espejo de Agua
+The Gishki ritualists of the water and the Evigishki they summon through the Aquamirror, with the Aquamirror spells that find a ritual in the Deck.	Los ritualistas Gishki del agua y los Evigishki que invocan a través del Espejo de Agua, con las Mágicas Aquamirror que encuentran un ritual en el Deck.
+The Gishki find the ritual and the monster, the Aquamirror brings them across, and Gustkraken looks at the other side's hand before it sends it away.	Los Gishki encuentran el ritual y el monstruo, el Espejo de Agua los trae al otro lado, y Gustkraken mira la mano del adversario antes de devolverla.
+The water remembers every duel. Look into it.	El agua recuerda cada duelo. Mírala.
+Some nights the mirror comes with me. It shows what you'll draw.	Algunas noches el espejo viene conmigo. Enseña lo que vas a robar.
+Wattage	Vatios
+The Watt monsters, small LIGHT Thunder beasts that strike for their effects when they deal damage, and the Watt Synchros that charge through.	Los monstruos Watt, pequeñas bestias Trueno de LUZ que activan sus efectos al hacer daño, y los Sincronía Watt que cargan a través de todo.
+Small Watt monsters that hit the other duelist directly and get a reward each time. Keep the current flowing and Wattchimera never stops.	Pequeños monstruos Watt que atacan directamente al otro duelista y reciben una recompensa cada vez. Mantén la corriente y Wattchimera no para.
+Every runner engine needs a spark. Here's mine.	Todo motor de runner necesita una chispa. Aquí está la mía.
+Some days I bring the Watt deck. It runs on pure static.	Algunos días traigo el deck Watt. Funciona con pura electricidad estática.
+Laval Eruption	Erupción Laval
+The Laval of the volcano: FIRE monsters that grow stronger with every Laval in the Graveyard, and the Lavalval Synchros and Xyz they melt into.	Los Laval del volcán: monstruos de FUEGO que se hacen más fuertes con cada Laval en el Cementerio, y los Sincronía y Xyz Lavalval en los que se funden.
+Fill the Graveyard with Laval and the ones on the field burn hotter. The Volcano Handmaiden sends more down and the Synchros finish the job.	Llena el Cementerio de Laval y los del Campo arden más. La Volcano Handmaiden manda más abajo y los Sincronía terminan el trabajo.
+Security keeps the city cool. My deck runs hot.	Seguridad mantiene fría la ciudad. Mi deck va caliente.
+Some days I bring the Laval. The fire marshal hates it.	Algunos días traigo a los Laval. El jefe de bomberos lo odia.
+Allies of Justice	Aliados de la Justicia
+The Ally of Justice machines built to hunt LIGHT monsters, from the little Cycle Reader up to Decisive Armor and the Field Marshal.	Las máquinas Ally of Justice construidas para cazar monstruos de LUZ, desde el pequeño Cycle Reader hasta Decisive Armor y el Field Marshal.
+Machines that punish LIGHT monsters: they destroy them in battle, take their attacks, and tune into Synchros that lock them out.	Máquinas que castigan a los monstruos de LUZ: los destruyen en combate, aguantan sus ataques y se afinan en Sincronías que los dejan fuera.
+I collect machines that were built for one job. This deck's job is you.	Colecciono máquinas construidas para un solo trabajo. El trabajo de este deck eres tú.
+Some days I bring the Allies of Justice. LIGHT decks hate me.	Algunos días traigo a los Ally of Justice. Los decks de LUZ me odian.
+Flamvell Fire	Fuego Flamvell
+The Flamvell, FIRE dragons and fiends from a world of fire, and the Neo Flamvell who burn the other side's Graveyard to ash.	Los Flamvell, dragones y demonios de FUEGO de un mundo de fuego, y los Neo Flamvell que queman el Cementerio del adversario hasta las cenizas.
+Small FIRE monsters that search each other out and tune into the Ancient Flamvell Deity, while the Neo Flamvell banish whatever the other side wanted back.	Pequeños monstruos de FUEGO que se buscan entre sí y se afinan en Ancient Flamvell Deity, mientras los Neo Flamvell destierran lo que el adversario quería recuperar.
+Light the stage! My deck brings its own pyrotechnics.	¡Enciendan el escenario! Mi deck trae su propia pirotecnia.
+Some days I bring the Flamvell. The crowd likes fire.	Algunos días traigo a los Flamvell. Al público le gusta el fuego.
+Reptilianne Den	La Guarida Reptilianne
+The Reptilianne, serpent-women who turn monsters to stone: they drop the other side's ATK to 0 and then feed on what is left.	Las Reptilianne, mujeres serpiente que convierten a los monstruos en piedra: dejan el ATK del adversario en 0 y después se alimentan de lo que queda.
+Drop their monsters to 0 ATK and they're easy prey. Gorgon and Scylla bring the stone, Vaskii comes out when the field is full of statues.	Deja sus monstruos en 0 ATK y son presas fáciles. Gorgon y Scylla traen la piedra, Vaskii sale cuando el Campo está lleno de estatuas.
+Our showcase has a new exhibit. Don't look it in the eye.	Nuestra exposición tiene una pieza nueva. No la mires a los ojos.
+Some days I bring the Reptilianne. Statues sell well.	Algunos días traigo a las Reptilianne. Las estatuas se venden bien.
+Evolution of the Dinosaurs	La Evolución de los Dinosaurios
+The Evoltiles that flip and evolve into Evolsaurs, the Evolzar dragons they become, and the Evo- cards that drive the change.	Los Evoltile que se voltean y evolucionan en Evolsaur, los dragones Evolzar en los que se convierten, y las cartas Evo- que impulsan el cambio.
+Flip an Evoltile and it calls an Evolsaur from the Deck. Two of those make an Evolzar, and the Evolzar stop Summons and traps cold.	Voltea un Evoltile y llama a un Evolsaur desde el Deck. Dos de ellos forman un Evolzar, y los Evolzar detienen Invocaciones y Trampas en seco.
+Mecha Phantom Beasts	Bestias Fantasma Mecánicas
+The Mecha Phantom Beasts, WIND machines that make Tokens to protect themselves and fight together in the air, with Dracossack at their head and the Phantom Beasts of old.	Las Bestias Fantasma Mecánicas, máquinas de VIENTO que crean Fichas para protegerse y luchan juntas en el aire, con Dracossack a la cabeza y las Bestias Fantasma de antaño.
+Every Mecha Phantom Beast makes a Hamstrat Token or two. The Tokens keep them alive, raise their Levels and become Xyz material for Dracossack.	Cada Bestia Fantasma Mecánica crea una o dos Fichas. Las Fichas las mantienen con vida, suben sus Niveles y sirven de material Xyz para Dracossack.
+Knights of the Round Table	Caballeros de la Mesa Redonda
+The Noble Knights of Artorigus's round table, the Noble Arms they carry, Gwenhwyfar their queen, and the Ignoble Knights who turned against them.	Los Caballeros Nobles de la mesa redonda de Artorigus, las Armas Nobles que portan, Gwenhwyfar su reina, y los Caballeros Innobles que se volvieron contra ellos.
+Each Noble Knight picks up a Noble Arms and passes it on. Two of them at Level 4 call the King to the table.	Cada Caballero Noble recoge un Arma Noble y la pasa al siguiente. Dos de ellos de Nivel 4 llaman al Rey a la mesa.
+Gears and Rails	Engranajes y Raíles
+The Geargia machines that gear up into Xyz, and the trains of the railway: Level 10 locomotives, their freight cars and the Superdreadnought Rail Cannons.	Las máquinas Geargia que se ensamblan en Xyz, y los trenes del ferrocarril: locomotoras de Nivel 10, sus vagones y los Superdreadnought Rail Cannons.
+The Geargia flip and search each other into a Rank 3, and when the big trains roll in, two Level 10s make a Rail Cannon.	Los Geargia se voltean y se buscan entre ellos hasta formar un Rango 3, y cuando llegan los trenes grandes, dos de Nivel 10 forman un Rail Cannon.
+Inzektor Hive	La Colmena Inzektor
+The Inzektor, DARK insects that equip to each other and fire their effects when they let go, and the Exa Xyz that rule the hive.	Los Inzektor, insectos de OSCURIDAD que se equipan entre sí y disparan sus efectos cuando se sueltan, y los Xyz Exa que gobiernan la colmena.
+Dragonfly and Centipede equip Hornet and Ladybug, then send them off to destroy a card. Every swap is another card gone from the other side.	Dragonfly y Centipede equipan a Hornet y Ladybug, y después los mandan fuera para destruir una carta. Cada cambio es otra carta menos para el adversario.
+Hazy Flame and Fire Kings	Llama Brumosa y Reyes de Fuego
+The Hazy Flame beasts that cannot be targeted and need FIRE Tributes, and the Fire King Avatars that burn themselves to rise again.	Las bestias Llama Brumosa que no pueden ser seleccionadas y necesitan Sacrificios de FUEGO, y los Avatares Rey de Fuego que se queman a sí mismos para volver a alzarse.
+Level 6 Hazy Flames nobody can target, and Fire King Avatars that destroy a card of their own to come back from the flames.	Llamas Brumosas de Nivel 6 que nadie puede seleccionar, y Avatares Rey de Fuego que destruyen una carta propia para volver de las llamas.
+Hieratic Dynasty	La Dinastía Hierática
+The Hieratic dragons of the sun: they Tribute each other from the hand and the field to call Dragon Normal Monsters, and the Sun Dragon Overlord rises over them all.	Los dragones Hieráticos del sol: se Sacrifican entre sí desde la mano y el Campo para llamar Dragones Normales, y el Señor Dragón del Sol se alza sobre todos ellos.
+Tribute a Hieratic and it pulls a Dragon Normal Monster out of the Deck with its ATK and DEF at 0. Pile them up into Atum and Heliopolis.	Sacrifica un Hierático y saca un Dragón Normal del Deck con su ATK y DEF en 0. Acumúlalos para formar a Atum y Heliopolis.
+Artifact Armory	La Armería Artefacto
+The Artifacts, LIGHT weapons of the gods that sit face-down as Spells and come out the moment the other side destroys them.	Los Artefactos, armas de LUZ de los dioses que esperan boca abajo como Cartas Mágicas y salen en cuanto el adversario las destruye.
+Set the Artifacts in the Spell & Trap Zone and wait. When the other duelist destroys one on their turn, it jumps out and strikes back.	Coloca los Artefactos en la Zona de Magia y Trampas y espera. Cuando el otro duelista destruya uno en su turno, salta y contraataca.
+Heraldic Beasts	Bestias Heráldicas
+The Heraldic Beasts of the coats of arms, the Heraldry spells that copy and return them, and the Heraldry Numbers they build.	Las Bestias Heráldicas de los escudos de armas, las Mágicas Heraldry que las copian y devuelven, y los Números Heraldry que forman.
+Level 4 beasts that call each other and turn into Heraldry Numbers. Heraldry Crest takes the other side's effects for its own.	Bestias de Nivel 4 que se llaman entre sí y se convierten en Números Heraldry. Heraldry Crest toma los efectos del adversario como suyos.
+Sylvan Grove	La Arboleda Sylvan
+The Sylvan plants of the high mountain: they dig through the top of the Deck, send Plants to the Graveyard and grow into the Sylvan High Protector and High Arbiter.	Las plantas Sylvan de la alta montaña: excavan la parte superior del Deck, mandan Plantas al Cementerio y crecen hasta ser el Alto Protector y el Alto Árbitro Sylvan.
+Excavate the top of the Deck: every Plant that gets sent to the Graveyard sets off a Sylvan's effect, and the big trees grow out of what's left.	Excava la parte superior del Deck: cada Planta que se manda al Cementerio activa el efecto de un Sylvan, y los árboles grandes crecen con lo que queda.
+Juice Bar Regular	Cliente del Bar de Zumos
+Table Champion	Campeona de la Mesa
+Night Owl Student	Estudiante Noctámbulo
+Card Artist	Artista de Cartas
+Train Spotter	Aficionada a los Trenes
+Same table every night. The juice is fine, the duels are better.	La misma mesa cada noche. El zumo está bien, los duelos están mejor.
+My dinosaurs evolve while you watch. My dragons were gods already.	Mis dinosaurios evolucionan mientras miras. Mis dragones ya eran dioses.
+Evolution doesn't wait. Neither do I.	La evolución no espera. Yo tampoco.
+The sun dragons are awake tonight.	Los dragones del sol están despiertos esta noche.
+Nobody has taken this table from me in a week.	Nadie me ha quitado esta mesa en una semana.
+Knights one day, hidden weapons the next. You never know which.	Caballeros un día, armas ocultas al siguiente. Nunca sabes cuál toca.
+Take a seat at the round table.	Siéntate a la mesa redonda.
+Go on, destroy my face-down cards. I dare you.	Vamos, destruye mis cartas boca abajo. Te reto.
+Homework can wait. This can't.	Los deberes pueden esperar. Esto no.
+I build bugs and fighter jets. Not at the same time. Usually.	Construyo bichos y aviones de combate. No a la vez. Casi nunca.
+My bugs carry each other into battle.	Mis bichos se llevan unos a otros a la batalla.
+Scramble the jets!	¡Que despeguen los cazas!
+I draw coats of arms for a living. Sometimes I duel with them.	Dibujo escudos de armas para ganarme la vida. A veces dueleo con ellos.
+Plants are easier to draw than beasts. They hold still.	Las plantas son más fáciles de dibujar que las bestias. Se quedan quietas.
+Every crest tells a story. This one ends with you losing.	Cada escudo cuenta una historia. Esta acaba contigo perdiendo.
+Let's see what grows.	Veamos qué crece.
+The monorail is three minutes late. I wrote it down.	El monorraíl llega tres minutos tarde. Lo he apuntado.
+Gears, rails and fire. That's my whole personality.	Engranajes, raíles y fuego. Esa es toda mi personalidad.
+All aboard!	¡Todos a bordo!
+Careful. You can't touch the flames.	Cuidado. Las llamas no se pueden tocar.
+Legends of Dragons and Magic	Leyendas de Dragones y Magia
+Blue-Eyes and Red-Eyes with all their support, Dark Magician and his school of magic, and the dragon-slaying swordsman with Jinzo and the Legendary Knights.	Ojos Azules y Ojos Rojos con todo su apoyo, el Mago Oscuro y su escuela de magia, y el espadachín matadragones con Jinzo y los Caballeros Legendarios.
+Kingdom of Wonders	Reino de Maravillas
+Kuriboh and its cousins, the Magnet Warriors and the Harpies, the Toons of Toon World, and Exodia with Batteryman and the Gadgets.	Kuriboh y sus primos, los Guerreros Magnéticos y las Arpías, los Toons del Mundo Toon, y Exodia con Batteryman y los Gadgets.
+Fiends and Curses	Demonios y Maldiciones
+The Archfiends and their court, the fallen Darklords, and the masks and old curses that wear a duelist down.	Los Archidemonios y su corte, los Señores Oscuros caídos, y las máscaras y viejas maldiciones que desgastan a un duelista.
+Guardians and Warriors	Guardianes y Guerreros
+The Amazons, the Gravekeepers of the Valley of the Kings, the Gate Guardians and their weapons, the Union machines and the Jurrac dinosaurs.	Las Amazonas, los Guardianes de Tumbas del Valle de los Reyes, los Guardianes de la Puerta y sus armas, las máquinas Unión y los dinosaurios Jurrac.
+Chaos and Other Dimensions	Caos y Otras Dimensiones
+The Envoys of Chaos, the D.D. monsters of the other dimension, the Spirits of the old shrine, the goblin gang and the toys that come alive.	Los Enviados del Caos, los monstruos D.D. de la otra dimensión, los Espíritus del viejo santuario, la banda de goblins y los juguetes que cobran vida.
+Heroes, Gems and Machines	Héroes, Gemas y Máquinas
+Every kind of HERO and their fusions, the seven Crystal Beasts and their rainbow, and the Cyber Dragons and Cyberdarks.	Todo tipo de HÉROE y sus fusiones, las siete Bestias de Cristal y su arcoíris, y los Ciber Dragones y Ciberoscuros.
+Dark Powers	Poderes Oscuros
+The Fiends of Dark World, the Vampire Kingdom, the three Sacred Beasts, the Arcana Force tarot and the Monarchs.	Los Demonios del Mundo Oscuro, el Reino Vampiro, las tres Bestias Sagradas, el tarot de Arcana Force y los Monarcas.
+Iron and Fire	Hierro y Fuego
+The Ancient Gear machines, the Koa'ki Meiru with their iron cores, the Alien invaders, the Barrier Statues and Counter Fairies, and the Volcanics.	Las máquinas Ancient Gear, los Koa'ki Meiru con sus núcleos de hierro, los invasores Alien, las Estatuas de la Barrera y las Hadas de Contraefecto, y los Volcanic.
+Arena of Beasts	Arena de Bestias
+The Gladiator Beasts, the Armed Dragons and every LV monster, the Cloudians, Venoms and Fossils, and the Frogs and Penguins.	Las Bestias Gladiador, los Dragones Armados y todos los monstruos LV, los Cloudian, Venom y Fósiles, y las Ranas y Pingüinos.
+Junk and Gears	Chatarra y Engranajes
+The Synchrons, Junk and Blackwings, the T.G. machines, the Morphtronics, the Scraps and the Meklord Emperors with the Earthbound Immortals.	Los Synchron, Junk y Blackwing, las máquinas T.G., los Morphtronic, los Scrap y los Emperadores Meklord con los Inmortales Terrenales.
+Way of the Blade	El Camino de la Espada
+The Six Samurai and their Shien, the X-Sabers, the Karakuri puppets and the Genex machines.	Los Seis Samuráis y su Shien, los X-Saber, las marionetas Karakuri y las máquinas Genex.
+Light and Wind	Luz y Viento
+The Lightsworn, the Dragunity, the Fabled, the Fortune Ladies, the Gusto, the Vylon angels and the Nordic gods.	Los Lightsworn, los Dragunity, los Fabled, las Fortune Lady, los Gusto, los ángeles Vylon y los dioses Nórdicos.
+Ice, Forest and Flame	Hielo, Bosque y Llama
+The Ice Barrier, the Naturia of the forest, the Laval and Flamvell of the fire, and the Gishki rituals of the water.	La Barrera de Hielo, los Naturia del bosque, los Laval y Flamvell del fuego, y los rituales Gishki del agua.
+Invaders from Beyond	Invasores del Más Allá
+The Worm aliens, the Steelswarm and the Infestation, the Reptilianne, the Watt monsters and the Ally of Justice machines.	Los alienígenas Worm, los Steelswarm y la Infestación, las Reptilianne, los monstruos Watt y las máquinas Ally of Justice.
+Knights and Stars	Caballeros y Estrellas
+The Heroic Challengers, the Noble Knights of the round table, the Constellar stars, the Battlin' Boxers and the Gem-Knights.	Los Retadores Heroicos, los Caballeros Nobles de la mesa redonda, las estrellas Constellar, los Battlin' Boxer y los Caballeros Gema.
+Gods and Dragons	Dioses y Dragones
+The Bujin, the Hieratic dragons of the sun, the Dragon Rulers, the Evoltile and Evolsaur, the Fire Fist, the Hazy Flame and Fire Kings, and the Artifacts.	Los Bujin, los dragones Hieráticos del sol, los Señores Dragón, los Evoltile y Evolsaur, el Puño de Fuego, la Llama Brumosa y los Reyes de Fuego, y los Artefactos.
+Toys, Tricks and Spellbooks	Juguetes, Trucos y Grimorios
+The Madolche sweets, the Wind-Up toys, the Ghostrick spooks, the Gimmick Puppets and the Spellbooks of Prophecy.	Los dulces Madolche, los juguetes Wind-Up, los fantasmas Ghostrick, las Gimmick Puppet y los Libros de Hechizos de la Profecía.
+Hidden Worlds	Mundos Ocultos
+The Chronomaly relics, the Ninjas, the Mermails, the Inzektor and the Sylvan, the Phantom Beasts, the Geargia and Trains, and the Heraldic Beasts.	Las reliquias Chronomaly, los Ninjas, los Mermail, los Inzektor y los Sylvan, las Bestias Fantasma, los Geargia y los Trenes, y las Bestias Heráldicas.
+MISSING	TE FALTA
+Arrows  move     Q / E or the mouse wheel  turn the page     Tab  next set     F  show: all, owned, missing     W  where to find it     /  search     Esc  close	Flechas  moverte     Q / E o la rueda del ratón  pasar página     Tab  siguiente set     F  mostrar: todas, tengo, me faltan     W  dónde conseguirla     /  buscar     Esc  cerrar
+%s move     %s / %s turn the page     %s / %s change set     %s show: all, owned, missing     %s where to find it     %s close	%s moverte     %s / %s pasar página     %s / %s cambiar de set     %s mostrar: todas, tengo, me faltan     %s dónde conseguirla     %s cerrar
+WHERE TO FIND IT	¿DÓNDE CONSEGUIRLA?
+Every place in the worlds where you can get this card.	Todos los lugares de los mundos donde puedes conseguir esta carta.
+Every card shop	Todas las tiendas de cartas
+Sold in the card shop of every world	A la venta en la tienda de cartas de cada mundo
+PACKS	SOBRES
+READY-MADE DECKS	DECKS YA HECHOS
+DUELISTS WHO PLAY IT	DUELISTAS QUE LA USAN
+To buy, walk into that world's card shop.	Para comprar, ve a la tienda de cartas de ese mundo.
+You don't have it yet.	Todavía no la tienes.
+out in the streets	por la calle
+%d packs	%d sobres
+1 pack	1 sobre
+%d decks	%d decks
+1 deck	1 deck
+%d duelists	%d duelistas
+1 duelist	1 duelista
+Kame Game	Kame Game
+Academy card shop	Tienda de cartas de la Academia
+The Card Dealer	El Vendedor de Cartas
+Card shop	Tienda de cartas
+Have	Tengo
+You have	Tienes
+1 card	1 carta
+SHOW	MOSTRAR
+BY RARITY	POR RAREZA
+EVERY CARD IN THIS PACK	TODAS LAS CARTAS DE ESTE SOBRE
+EVERY CARD IN THIS DECK	TODAS LAS CARTAS DE ESTE DECK
+Pack  ·  %d possible cards	Sobre  ·  %d cartas posibles
+%d different cards	%d cartas distintas
+★ Complete!	★ ¡Completo!
+Cards you don't have yet are shown in grey.	Las cartas que todavía no tienes salen en gris.
+Nothing here with these filters.	No hay nada con estos filtros.
+In this deck: x%d	En este deck: x%d
+SEE ALL %d CARDS	VER LAS %d CARTAS
+Arrows  move     F / Y  have or missing     R / X  rarity     LB / RB  page     Esc / B  close	Flechas  moverte     F / Y  tengo o me faltan     R / X  rareza     LB / RB  página     Esc / B  cerrar
+See every card in it	Ver todas sus cartas
+Branded Despia	Despia Marcada
+Fallen of Albaz fuses with whatever stands across from it. Branded Fusion pulls two cards straight from the Deck, and every Fusion that leaves the field brings the next Branded card with it.	Fallen of Albaz se fusiona con lo que tenga enfrente. Fusión Marcada saca dos cartas directamente del Deck, y cada Fusión que deja el Campo trae consigo la siguiente carta Marcada.
+Drytron Constellation	Constelación Drytron
+The Drytron are Rituals with no Ritual Spell needed: they Tribute each other from the hand to come out, and Meteonis Drytron calls the Level 12 Draconids down on top of them.	Los Drytron son Rituales que no necesitan Mágica de Ritual: se Sacrifican entre ellos desde la mano para salir, y Meteonis Drytron hace caer encima a los Draconids de Nivel 12.
+Dragonmaid Household	Casa Dragonmaid
+Maids by day, dragons when it matters. Each little Dragonmaid trades places with its big dragon form at the end of the Battle Phase, and House Dragonmaid keeps them coming.	Sirvientas de día, dragones cuando hace falta. Cada pequeña Dragonmaid cambia de lugar con su forma de dragón al final de la Battle Phase, y House Dragonmaid hace que sigan llegando.
+Swordsoul Mountain	Montaña Swordsoul
+Every Swordsoul makes a Wyrm Token tuner as it lands, so one card is already a Synchro Summon. Chixiao searches the next one and Chengying banishes whatever is in the way.	Cada Swordsoul crea un Token Wyrm cantante al llegar, así que una sola carta ya es una Invocación por Sincronía. Chixiao busca la siguiente y Chengying destierra lo que estorbe.
+Witchcrafter Atelier	Taller Witchcrafter
+The Witchcrafters pay for their magic by discarding Spells, and every Witchcrafter Spell comes back from the Graveyard at the End Phase. Madame Verre wins the fights the others start.	Las Witchcrafter pagan su magia descartando Mágicas, y cada Mágica Witchcrafter vuelve del Cementerio en la End Phase. Madame Verre gana las peleas que las demás empiezan.
+True Draco Throne	Trono True Draco
+Big Wyrms that Tribute Summon fast. The True Dracos get stronger the more Continuous Spells and Traps you Tribute for them, and the True Kings come out of the hand by destroying cards.	Grandes Wyrm que se Invocan por Sacrificio rápido. Los True Draco se hacen más fuertes cuantas más Mágicas y Trampas Continuas Sacrificas por ellos, y los True King salen de la mano destruyendo cartas.
+Cipher Squadron	Escuadrón Cipher
+Two Level 4 Ciphers make Galaxy-Eyes Cipher Dragon, the same dragon Kite flies. It takes control of the other side's best monster, and the Cipher spells and traps rank it up.	Dos Cipher de Nivel 4 forman a Galaxy-Eyes Cipher Dragon, el mismo dragón que pilota Kite. Toma el control del mejor monstruo del otro lado, y las Mágicas y Trampas Cipher lo suben de Rango.
+New Frontier	Nueva Frontera
+Cards from after the four shows, picked for this world: hand traps, removal and Extra Deck monsters any deck can use, and seven newer families. Opens when you finish the story.	Cartas de después de las cuatro series, elegidas para este mundo: hand traps, destrucción y monstruos del Deck Extra que sirven en cualquier deck, y siete familias más nuevas. Se abre al terminar la historia.
+Locked: opens when you finish the story.	Bloqueado: se abre al terminar la historia.
+I'll chain to that!	¡Encadeno a eso!
+Wait, I have a response!	¡Espera, tengo una respuesta!
+Sorry, that won't work!	¡Lo siento, eso no va a funcionar!
+I had to stop that one.	Esa tenía que pararla.
+Oh no, it was stopped!	¡Ay no, lo pararon!
+Together now! Fusion Summon!	¡Juntos ahora! ¡Invocación por Fusión!
+Everyone in tune! Synchro Summon!	¡Todos afinados! ¡Invocación por Sincronía!
+Side by side! Xyz Summon!	¡Lado a lado! ¡Invocación Xyz!
+The ritual is ready!	¡El ritual está listo!
+Not on my watch. Chain!	No mientras yo esté aquí. ¡Cadena!
+You forgot about my cards.	Te olvidaste de mis cartas.
+Denied.	Denegado.
+Did you think I'd allow that?	¿Creías que te lo iba a permitir?
+You stopped it? Tch.	¿Lo paraste? Tch.
+Two become one, and it's mine. Fusion Summon!	Dos se vuelven uno, y es mío. ¡Invocación por Fusión!
+Watch the stars line up for me. Synchro Summon!	Mira cómo las estrellas se alinean para mí. ¡Invocación por Sincronía!
+Two monsters, one Rank. Xyz Summon!	Dos monstruos, un Rango. ¡Invocación Xyz!
+The ritual answers to me.	El ritual me obedece a mí.
+Chain.	Cadena.
+Negated.	Negado.
+...Stopped.	...Parado.
+Fusion Summon.	Invocación por Fusión.
+Synchro Summon.	Invocación por Sincronía.
+Xyz Summon.	Invocación Xyz.
+Ritual Summon.	Invocación por Ritual.
+Hold it! I'm chaining!	¡Alto ahí! ¡Encadeno!
+Oh no you don't!	¡Ah no, eso sí que no!
+NOPE! Negated!	¡NI HABLAR! ¡Negado!
+Stopped it cold!	¡Parado en seco!
+Hey! That was a good one!	¡Oye! ¡Esa era buena!
+Smash 'em together! FUSION!	¡A juntarlos de golpe! ¡FUSIÓN!
+Rev it up! SYNCHRO!	¡A todo gas! ¡SINCRONÍA!
+Stack 'em up! XYZ!	¡Uno encima del otro! ¡XYZ!
+Light the fires! RITUAL!	¡Enciendan los fuegos! ¡RITUAL!
+The chain tightens.	La cadena se aprieta.
+Your move wakes mine.	Tu jugada despierta la mía.
+It dies unheard.	Muere sin que nadie la oiga.
+Silence.	Silencio.
+You cut the thread...	Cortaste el hilo...
+Two shadows, one shape. Fusion Summon.	Dos sombras, una forma. Invocación por Fusión.
+The stars align in the dark.	Las estrellas se alinean en la oscuridad.
+From the void between the stars, rise.	Desde el vacío entre las estrellas, levántate.
+The offering is accepted.	La ofrenda es aceptada.
+I chain this!	¡Encadeno esto!
+Not so fast!	¡No tan rápido!
+Negated!	¡Negado!
+That effect stops here.	Ese efecto se queda aquí.
+They stopped it...!	¡Lo pararon...!
+Fusion Summon!	¡Invocación por Fusión!
+Synchro Summon!	¡Invocación por Sincronía!
+Xyz Summon!	¡Invocación Xyz!
+Ritual Summon!	¡Invocación por Ritual!
+Arrows  move     Page Up / Page Down or the mouse wheel  turn the page     Tab  next set     Type  search     Enter  where to find it     Esc  close	Flechas  moverte     Re Pág / Av Pág o la rueda del ratón  pasar página     Tab  siguiente set     Escribe  buscar     Enter  dónde conseguirla     Esc  cerrar
+None in this set. %d in All cards (the first set on the left).	Ninguna en este set. %d en Todas las cartas (el primer set de la izquierda).
+Search…	Buscar…
+The Forbidden One	El Prohibido
+The message is complete	El mensaje está completo
+The countdown is over	La cuenta atrás terminó
+NO CARDS LEFT	SIN CARTAS
+The Deck is empty	El Deck está vacío
+Special victory	Victoria especial
+Voices in duels	Voces en los duelos
+Duelists and Lumen say their lines out loud. Turn it off and the lines are only bubbles, like before.	Los duelistas y Lumen dicen sus frases en voz alta. Si lo apagas, las frases solo salen en burbujas, como antes.
+Voice volume	Volumen de las voces
+Opponents' voices	Voces de los rivales
+Lumen's voice	Voz de Lumen
+My duelist's voice	Voz de mi duelista
+Your duelist speaks at the big moments: the start, their ace, a Fusion, the last hit. Pick one and you hear it.	Tu duelista habla en los grandes momentos: el inicio, su as, una Fusión, el último golpe. Elige una y la escuchas.
+Fits my duelist's look	La que va con mi duelista
+Voice A	Voz A
+Voice B	Voz B
+No voice	Sin voz
+Come on out, %s!	¡Sal ya, %s!
+Behold! %s!	¡Contempla! ¡%s!
+%s. Go.	%s. Adelante.
+Here it comes! %s!	¡Aquí viene! ¡%s!
+Rise... %s.	Álzate... %s.
+New duel, new us! Well. Same us. But ready!	¡Duelo nuevo, nosotros nuevos! Bueno. Los mismos. ¡Pero listos!
+I shuffled myself extra well this time. You're welcome.	Esta vez me barajé súper bien. De nada.
+Ta-da! It's me! Try to look impressed.	¡Tachán! ¡Soy yo! Intenta parecer impresionado.
+Lumen, reporting for duty! Small but mighty!	¡Lumen, lista para la acción! ¡Pequeña pero matona!
+Yes! YES! That's the one I was hoping for!	¡Sí! ¡SÍ! ¡Esa es la que estaba esperando!
+Your ace is here! Everybody look busy!	¡Llegó tu as! ¡Que todo el mundo disimule!
+Okay, that one has a LOT of teeth. We've handled worse. Probably.	Okey, ese tiene MUCHOS dientes. Hemos visto cosas peores. Probablemente.
+Their ace. Great. Fine. We planned for this. Did we plan for this?	Su as. Genial. Bien. Teníamos un plan para esto. ¿Teníamos un plan para esto?
+Boom! Their ace is history!	¡Bum! ¡Su as ya es historia!
+That was their best card! Not anymore!	¡Esa era su mejor carta! ¡Ya no!
+They got your ace... Shake it off! The duel isn't over.	Se llevaron tu as... ¡Sacúdetelo! El duelo no ha terminado.
+Ouch. Okay, new plan. I like new plans.	Ay. Bueno, plan nuevo. Me gustan los planes nuevos.
+We're hanging by a thread. A very brave thread!	Estamos colgando de un hilo. ¡Un hilo muy valiente!
+Life Points are getting low. Time for something clever!	Quedan pocos Life Points. ¡Hora de hacer algo ingenioso!
+They're wobbling! One good hit!	¡Se tambalean! ¡Un buen golpe!
+Look at their Life Points! We're so close!	¡Mira sus Life Points! ¡Estamos muy cerca!
+And we're back! I knew it the whole time!	¡Y volvimos! ¡Lo supe todo el tiempo!
+What a turnaround! Do that again!	¡Qué remontada! ¡Hazlo otra vez!
+I can feel it. The next card is the one. Draw!	Lo noto. La siguiente carta es la buena. ¡Roba!
+Deep breath... now reach for it!	Respira hondo... ¡y ahora ve por ella!
+Uh oh. Their deck answered them. Heads up!	Oh, oh. Su Deck les respondió. ¡Ojo!
+A big draw for them. Stay calm. Stay very calm.	Un gran robo para ellos. Calma. Mucha calma.
+Wide open! Go, go, go!	¡Vía libre! ¡Vamos, vamos, vamos!
+Straight to their Life Points! Beautiful!	¡Directo a sus Life Points! ¡Precioso!
+Yikes! Okay, we felt that.	¡Uf! Bueno, esa sí la sentimos.
+That stung. We're still standing!	Eso picó. ¡Seguimos en pie!
+Nothing in hand. Everything rides on the next draw!	Nada en la mano. ¡Todo depende del siguiente robo!
+One card at a time. That's all we need.	Carta a carta. No hace falta más.
+A Trap! Of course there was a Trap.	¡Una Trampa! Claro que había una Trampa.
+Sneaky! I should have seen that coming.	¡Qué astutos! Tendría que haberlo visto venir.
+You beat me last time. I've been practicing!	Me ganaste la última vez. ¡He estado practicando!
+Back for another? I'd love to!	¿Vienes por otra? ¡Me encanta!
+You again. Last time was a fluke.	Otra vez tú. Lo de la última vez fue suerte.
+Back for more? I'll make it quick again.	¿Vienes por más? Lo haré rápido otra vez.
+You won last time. Not today.	Ganaste la última vez. Hoy no.
+Again? Same result.	¿Otra vez? Mismo resultado.
+YOU! I want my rematch! Right now!	¡TÚ! ¡Quiero mi revancha! ¡Ahora mismo!
+Ha! Came back for another beating?	¡Ja! ¿Volviste por otra paliza?
+I remember you. I remember losing. Never again.	Te recuerdo. Recuerdo perder. Nunca más.
+You return... to lose once more.	Regresas... para perder una vez más.
+Warm	Cálida
+Bright	Alegre
+Calm	Tranquila
+Male A	Hombre A
+Male B	Hombre B
+Female A	Mujer A
+Female B	Mujer B
+Three voices to pick from, or none: she still shows what she says. Pick one and you hear it.	Tres voces para elegir, o ninguna: igual muestra lo que dice. Elige una y la escuchas.
+Voices	Voces
+Duelists, Lumen and the narrator of the opening say their lines out loud. Turn it off and the lines are only text, like before.	Los duelistas, Lumen y el narrador de la apertura dicen sus líneas en voz alta. Apágalo y las líneas son solo texto, como antes.
+You're back! I kept your deck warm.	¡Volviste! Te guardé el Deck calentito.
+There you are! Shall we duel?	¡Ahí estás! ¿Echamos un duelo?
+Hi! I was just counting our cards. Again.	¡Hola! Estaba contando nuestras cartas. Otra vez.
+Oh good, it's you. I was getting bored.	Menos mal, eres tú. Ya me estaba aburriendo.
+Still smiling about that last win. Let's get another!	Sigo sonriendo por esa última victoria. ¡Vamos por otra!
+The winner is back! Who's next?	¡Volvió quien gana! ¿Quién sigue?
+The last one got away from us. Today we get it back.	El último se nos escapó. Hoy lo recuperamos.
+New day, new duel. That loss doesn't count anymore. I checked.	Día nuevo, duelo nuevo. Esa derrota ya no cuenta. Lo comprobé.
+Psst. I have new cards for you!	Pss. ¡Tengo cartas nuevas para ti!
+It's my turn!	¡Es mi turno!
+Here I go!	¡Aquí voy!
+My draw!	¡Me toca robar!
+Come on, deck!	¡Vamos, Deck!
+First turn is mine!	¡El primer turno es mío!
+Go ahead. You start.	Adelante. Empiezas tú.
+You go first. I'll be right here.	Ve tú primero. Aquí te espero.
+I summon this monster!	¡Invoco a este monstruo!
+Come out!	¡Sal ya!
+Take the field!	¡Al campo!
+I set a monster.	Coloco un monstruo.
+One monster, face-down.	Un monstruo, boca abajo.
+Battle!	¡Batalla!
+Time to battle!	¡Hora de la batalla!
+Attack now!	¡Ataca ahora!
+Strike!	¡Golpea!
+Straight at your Life Points!	¡Directo a tus Puntos de Vida!
+Nothing in the way. Go!	Nada en el camino. ¡Ve!
+I end my turn.	Termino mi turno.
+That's it for now.	Eso es todo por ahora.
+Ugh!	¡Agh!
+That stung.	Eso dolió.
+Agh! That was a big one...	¡Agh! Esa fue fuerte...
+My Life Points...!	¡Mis Puntos de Vida...!
+I can take it. I have to.	Puedo aguantar. Tengo que hacerlo.
+I did it!	¡Lo logré!
+What a duel. Thank you!	Qué duelo. ¡Gracias!
+And that's the duel!	¡Y se acabó el duelo!
+I lost... but I learned something.	Perdí... pero aprendí algo.
+Good duel. The next one is mine.	Buen duelo. El próximo es mío.
+So close...	Tan cerca...
+I activate a Spell Card!	¡Activo una Carta Mágica!
+Spell Card, go!	¡Carta Mágica, ahora!
+I set a card face-down.	Coloco una carta boca abajo.
+One card face-down.	Una carta boca abajo.
+So that's your ace...	Así que ese es tu as...
+No!	¡No!
+I'll get you back for that.	Me las vas a pagar.
+Okay, here I go. Draw!	Bien, aquí voy. ¡Robo!
+I draw. Please be a good one!	Robo. ¡Que sea una buena, por favor!
+I'll go first, if that's okay.	Voy primero, si te parece bien.
+I'll start us off!	¡Empiezo yo!
+You can go first. Good luck!	Puedes ir primero. ¡Suerte!
+After you!	¡Después de ti!
+Come on out, friend!	¡Sal, amigo!
+This one's up next!	¡Sigue este!
+I'll set a monster.	Voy a colocar un monstruo.
+I'll leave this face-down.	Dejo esta boca abajo.
+This should help!	¡Esto debería ayudar!
+Sorry! That was a Trap.	¡Perdón! Era una Trampa.
+Let's battle!	¡Vamos a la batalla!
+Here we go, everyone!	¡Vamos, todos!
+Direct attack! Sorry!	¡Ataque directo! ¡Perdón!
+The way is open. Go!	El camino está libre. ¡Ve!
+Straight to the Life Points!	¡Directo a los Puntos de Vida!
+That's all for me. Your turn!	Eso es todo de mi parte. ¡Tu turno!
+Go ahead, it's your turn.	Adelante, es tu turno.
+Ugh... that was a strong one.	Uf... esa fue fuerte.
+I felt that... but I'm still here.	La sentí... pero sigo aquí.
+We did it! Great duel!	¡Lo logramos! ¡Gran duelo!
+Thank you for dueling me.	Gracias por este duelo.
+I lost... I'll train harder.	Perdí... voy a entrenar más.
+That was a great duel. Really.	Fue un gran duelo. En serio.
+My turn. Finally.	Mi turno. Por fin.
+Draw. Exactly what I needed.	Robo. Justo lo que necesitaba.
+Watch and learn. Draw!	Mira y aprende. ¡Robo!
+I go first. Obviously.	Voy primero. Obviamente.
+First turn is mine. Try to keep up.	El primer turno es mío. Intenta seguirme el paso.
+Go first. You'll need the head start.	Ve primero. Vas a necesitar la ventaja.
+Take the first turn. It won't matter.	Toma el primer turno. No va a importar.
+I summon this. Tremble.	Invoco esto. Tiembla.
+Come forth!	¡Preséntate!
+Another one you can't beat.	Otro que no puedes vencer.
+A monster, face-down. Guess.	Un monstruo, boca abajo. Adivina.
+Face-down. Go ahead, walk into it.	Boca abajo. Anda, cae en ella.
+A Spell Card. Pay attention.	Una Carta Mágica. Pon atención.
+This is how the game is really played.	Así se juega de verdad.
+You walked right into it.	Caíste directo en ella.
+Battle. This won't take long.	Batalla. Esto no va a tardar.
+Time to finish this.	Hora de acabar con esto.
+Direct attack. Feel that?	Ataque directo. ¿Lo sientes?
+Nothing to hide behind.	No tienes dónde esconderte.
+Straight to your Life Points.	Directo a tus Puntos de Vida.
+I end my turn. Do your worst.	Termino mi turno. Haz lo que puedas.
+Your turn. Don't waste it.	Tu turno. No lo desperdicies.
+Go. Entertain me.	Anda. Entretenme.
+Tch... you'll pay for that.	Tch... vas a pagar por eso.
+Enjoy it. It's the last one you get.	Disfrútalo. Es el último que logras.
+Was there ever any doubt?	¿Acaso había alguna duda?
+Come back when you're ready.	Vuelve cuando estés a la altura.
+This... isn't over.	Esto... no se ha acabado.
+You got lucky. Remember that.	Tuviste suerte. No lo olvides.
+My turn.	Mi turno.
+I draw.	Robo una carta.
+Draw. Good.	Robo. Bien.
+First turn. Mine.	Primer turno. Mío.
+You first.	Tú primero.
+Go ahead.	Adelante.
+Summon.	Invoco.
+I summon this.	Invoco esto.
+Take the field.	Al campo.
+Monster. Face-down.	Monstruo. Boca abajo.
+Spell Card.	Carta Mágica.
+Activate.	Activo.
+Trap.	Trampa.
+Battle.	Batalla.
+Battle Phase.	Fase de Batalla.
+Let's settle this.	Resolvamos esto.
+Direct attack.	Ataque directo.
+Open field. Go.	Campo abierto. Ve.
+Straight through.	Directo.
+Turn end.	Fin del turno.
+Your turn.	Tu turno.
+...That one counted.	...Esa sí contó.
+I'm still here.	Sigo aquí.
+It's over.	Se acabó.
+You fought well.	Peleaste bien.
+I lost. Fair.	Perdí. Es justo.
+Next time.	La próxima.
+My turn, my turn!	¡Mi turno, mi turno!
+Draw! Come on, come on!	¡Robo! ¡Vamos, vamos!
+My turn! DRAW!	¡Mi turno! ¡ROBO!
+Draw! Ha! Look at this!	¡Robo! ¡Ja! ¡Mira esto!
+Me first! Me first!	¡Yo primero! ¡Yo primero!
+I'm starting! Try and stop me!	¡Empiezo yo! ¡A ver si me paras!
+You first! Show me what you've got!	¡Tú primero! ¡Muéstrame lo que tienes!
+Go on, go on! I can't wait!	¡Dale, dale! ¡No aguanto las ganas!
+Get out here!	¡Sal de una vez!
+Summon! Yeah!	¡Invoco! ¡Sí!
+Here comes trouble!	¡Aquí vienen los problemas!
+Hehe. Face-down monster!	Jeje. ¡Monstruo boca abajo!
+Face-down! Don't peek!	¡Boca abajo! ¡No espíes!
+Spell Card! Boom!	¡Carta Mágica! ¡Bum!
+Oh, you're gonna love this one!	¡Uy, esta te va a encantar!
+Ha! Fell for it!	¡Ja! ¡Caíste!
+BATTLE!	¡BATALLA!
+Let's fight!	¡A pelear!
+Finally! Battle time!	¡Por fin! ¡Hora de la batalla!
+Direct attack! WHAM!	¡Ataque directo! ¡ZAS!
+Nobody home! Go, go, go!	¡No hay nadie! ¡Ve, ve, ve!
+Right at ya!	¡Directo a ti!
+Okay, okay, I'm done!	¡Ya, ya, terminé!
+Turn over! Your go!	¡Fin del turno! ¡Te toca!
+That's my turn! Beat that!	¡Ese fue mi turno! ¡Supera eso!
+YOWCH! That one hurt!	¡AUCH! ¡Esa sí dolió!
+Whoa... okay, that was a LOT.	Uy... bueno, eso fue MUCHO.
+YES! That was awesome!	¡SÍ! ¡Eso estuvo increíble!
+Again! Let's go again!	¡Otra! ¡Vamos otra vez!
+Aw, no way! So close!	¡Ay, no puede ser! ¡Tan cerca!
+Okay, you got me. That was fun!	Bueno, me ganaste. ¡Estuvo divertido!
+My turn... at last.	Mi turno... al fin.
+I draw... from the dark.	Robo... desde la oscuridad.
+Draw. Your end comes closer.	Robo. Tu final se acerca.
+My turn. Draw...	Mi turno. Robo...
+I begin. You only wait.	Yo empiezo. Tú solo esperas.
+The first turn is mine.	El primer turno es mío.
+Go first. It changes nothing.	Ve primero. No cambia nada.
+Begin. I am patient.	Comienza. Tengo paciencia.
+Rise.	Álzate.
+I summon this from the shadows.	Invoco esto desde las sombras.
+Come. Serve me.	Ven. Sírveme.
+Something waits, face-down.	Algo espera, boca abajo.
+A card in the dark. Step closer.	Una carta en la oscuridad. Acércate.
+A Spell Card. Despair.	Una Carta Mágica. Desespera.
+Let the dark do its work.	Que la oscuridad haga su trabajo.
+The trap closes.	La trampa se cierra.
+Battle. Scream if you like.	Batalla. Grita si quieres.
+Now, the battle.	Ahora, la batalla.
+Let it begin.	Que comience.
+Direct attack. Nothing protects you.	Ataque directo. Nada te protege.
+Feel it yourself.	Siéntelo en carne propia.
+Straight into you.	Directo hacia ti.
+I end my turn. Struggle.	Termino mi turno. Lucha.
+Your turn. Use it well.	Tu turno. Úsalo bien.
+Go on. Amuse me.	Anda. Diviérteme.
+Pain... how nostalgic.	Dolor... qué nostalgia.
+You will regret that.	Te vas a arrepentir de eso.
+It ends as it had to.	Termina como tenía que terminar.
+The dark takes you.	La oscuridad te lleva.
+The dark... fades...	La oscuridad... se apaga...
+This is not the end.	Esto no es el final.
+We go first! First is good. I like first.	¡Vamos primero! Primero es bueno. Me gusta primero.
+First turn! No pressure. Okay, a little pressure.	¡Primer turno! Sin presión. Bueno, un poquito.
+They go first. Fine! We get to see their plan.	Ellos van primero. ¡Bien! Así vemos su plan.
+Second is okay! Second gets to draw.	¡Segundo está bien! El segundo roba carta.
+This is a long one! I'm not tired. Are you tired?	¡Este va largo! Yo no me canso. ¿Tú sí?
+Still going! This is the good kind of long.	¡Seguimos! Es de los largos buenos.
+Um. The Deck is getting thin. Just saying!	Em. El Deck se está acabando. ¡Solo aviso!
+Only a few cards left in there. Make them count!	Quedan pocas cartas ahí. ¡Que valgan!
+We won! I knew it! I mostly knew it!	¡Ganamos! ¡Lo sabía! ¡Casi lo sabía!
+Victory! High five! I don't have hands. Imagine it!	¡Victoria! ¡Choca esos cinco! No tengo manos. ¡Imagínalo!
+We won! By THIS much! I'm shaking!	¡Ganamos! ¡Por ESTO! ¡Estoy temblando!
+That was so close! Never do that to me again. Okay, do it again.	¡Estuvo cerquísima! No me vuelvas a hacer eso. Bueno, hazlo otra vez.
+Not a scratch on us! Did they even play?	¡Ni un rasguño! ¿Seguro que jugaron?
+A perfect duel! Frame it!	¡Un duelo perfecto! ¡Para enmarcar!
+Hey. We lost. It happens to the best. That's us.	Oye. Perdimos. Les pasa a los mejores. O sea, a nosotros.
+It's okay. I saw three things we do better next time.	No pasa nada. Vi tres cosas que haremos mejor la próxima.
+I draw a card!	¡Robo una carta!
+Coming at you!	¡Allá voy!
+How much they talk	Cuánto hablan
+Some	Poco
+Normal	Normal
+A lot	Mucho
+Some: only the big moments. Normal: the draw, the battle and the end of the turn too. A lot: every card and every attack is called out, like in the shows.	Poco: solo los grandes momentos. Normal: también el robo, la batalla y el fin del turno. Mucho: cada carta y cada ataque se anuncia, como en las series.
+Your duelist calls out the turn, the cards and the attacks. Pick one and you hear it.	Tu duelista anuncia el turno, las cartas y los ataques. Elige una y la escuchas.
+Camera cuts	Cortes de cámara
+A short look at a duelist at the big moments: an ace summon, a Trap, a direct attack. Full: all of them, never more than one every few seconds. Fewer: only an ace and a direct attack. Off: the camera stays on the table.	Una mirada corta a un duelista en los grandes momentos: la invocación de un as, una Trampa, un ataque directo. Todo: todos, nunca más de uno cada pocos segundos. Menos: solo un as y un ataque directo. Desactivado: la cámara se queda en la mesa.
+Turn beat	Inicio de turno
+Each turn opens with a moment on the duelist whose turn it is: they call it and draw. Full: about a second, shorter from the fourth turn on. Brief: always the short one. Off: straight to the table.	Cada turno abre con un momento sobre el duelista al que le toca: lo anuncia y roba. Todo: cerca de un segundo, más corto desde el cuarto turno. Breve: siempre el corto. Desactivado: directo a la mesa.
+Fewer	Menos
+Brief	Breve
+STYLE   ·   how you stand and move in a duel	ESTILO   ·   cómo te paras y te mueves en un duelo
+Pick for me	Elige por mí
+Friendly	Amigable
+Confident	Seguro de sí
+Cool	Sereno
+Fired up	Encendido
+Dark	Oscuro
+Live duelists in the corners	Duelistas en vivo en las esquinas
+On: the two duelists next to the Life Points are the real 3D duelists, moving and reacting all through the duel. Off: still pictures, like before. Takes effect in the next duel.	Activado: los dos duelistas junto a los Puntos de Vida son los duelistas 3D de verdad, moviéndose y reaccionando durante todo el duelo. Desactivado: imágenes fijas, como antes. Se aplica en el próximo duelo.
+CHAIN	CADENA
+your card	tuya
+their card	del rival
+resolves	se resuelve
+NEGATED	NEGADA
+Chain pace	Ritmo de las cadenas
+Slower	Más lento
+When cards are chained, they line up in a strip beside the card panel and resolve one at a time, each with its name and what it does. Normal: a short beat on each card. Slower: more time to read. Fast: almost no wait.	Cuando se encadenan cartas, se alinean en una tira junto al panel de la carta y se resuelven una a una, cada una con su nombre y lo que hace. Normal: una pausa corta en cada carta. Más lento: más tiempo para leer. Rápido: casi sin espera.
+REPLAY	REPETICIÓN
+REPLAYS	REPETICIONES
+Replays	Repeticiones
+Play	Reproducir
+Speed	Velocidad
+To the next turn	Al siguiente turno
+Show both hands	Mostrar las dos manos
+Leave the replay	Salir de la repetición
+Paused	En pausa
+Playing at %dx	Reproduciendo a %dx
+both hands shown	se ven las dos manos
+On to the next turn...	Hacia el siguiente turno...
+%d turns	%d turnos
+A draw.	Empate.
+%s surrendered.	%s se rindió.
+%s won in %d turns.	%s ganó en %d turnos.
+REPLAY OVER	FIN DE LA REPETICIÓN
+Watch again	Ver otra vez
+Back to replays	Volver a las repeticiones
+Watch the replay	Ver la repetición
+That replay could not be opened.	No se pudo abrir esa repetición.
+Open the Replays folder	Abrir la carpeta de repeticiones
+No replays yet. Play a duel and it will be here when you come back.	Todavía no hay repeticiones. Juega un duelo y estará aquí cuando vuelvas.
+Turbo Duel	Duelo Turbo
+Surrendered	Rendición
+LP %d - %d	LP %d - %d
+Watch	Ver
+Delete this replay?	¿Borrar esta repetición?
+Keep it	Conservarla
+Tied duel	Empate
+Defeat	Derrota
+Pause	Pausa
+Favorite	Favorita
+Remove from favorites	Quitar de favoritas
+Favorite: keep this replay for good	Favorita: conservar esta repetición siempre
+%d replays  ·  %d favorites	%d repeticiones  ·  %d favoritas
+Every duel is kept here by itself, the last 30. Mark one as a favorite (the star) to keep it for good. To share a duel, send its file from the Replays folder; a friend puts it in their own Replays folder and it appears in this list.	Cada duelo se guarda aquí solo, los últimos 30. Marca uno como favorito (la estrella) para conservarlo siempre. Para compartir un duelo, envía su archivo desde la carpeta de repeticiones; tu amigo lo pone en su propia carpeta de repeticiones y aparece en esta lista.
+This replay has %d cards that this version of the game does not have. They are shown by name.	Esta repetición tiene %d cartas que tu versión del juego no tiene. Se muestran con su nombre.
+Its duelist is not in this version of the game, so someone else stands in.	Su duelista no está en tu versión del juego, así que otro ocupa su lugar.
+This version of the game could not show this replay to the end.	Tu versión del juego no pudo mostrar esta repetición hasta el final.
+Made with a newer version of the game (%s). Update the game to watch it.	Hecha con una versión más nueva del juego (%s). Actualiza el juego para verla.
+Delete this replay	Borrar esta repetición
+This replay is in your favorites	Esta repetición está en tus favoritas
+Keep this replay as a favorite	Guardar esta repetición en favoritas
+Name this replay	Ponle nombre a esta repetición
+This is also the name of its file in the Replays folder, so it is easy to find and to share. A replay with a name is never cleared out by newer duels.	También es el nombre de su archivo en la carpeta de repeticiones, para encontrarlo y compartirlo fácil. Una repetición con nombre nunca se borra sola por duelos más nuevos.
+Save name	Guardar nombre
+That name could not be used.	No se pudo usar ese nombre.
+On your list: %d   ·   %s	En tu lista: %d   ·   %s
+%s  make it small	%s  hacerla pequeña
 @Arcade	el Arcade
 @Blue Dorm	el Dormitorio Azul
 @Yellow Dorm	el Dormitorio Amarillo
@@ -6494,3 +7366,201 @@ Crossroads	Crossroads
 Getting everything ready	Preparando todo
 Point at a card to read it on the left (the wheel moves its text). Click a lit one to summon it.	Pasa el puntero sobre una carta para leerla a la izquierda (la rueda mueve su texto). Haz clic en una iluminada para invocarla.
 %s %d (was %d)	%s %d (era %d)
+%s's Table	La mesa de %s
+You and %s: %d won, %d lost	Tú contra %s: %d ganados, %d perdidos
+, %d drawn	, %d empatados
+Waiting for ...	Esperando a ...
+Good game!	¡Buen duelo!
+Nice move!	¡Buena jugada!
+Hmm...	Hmm...
+Oops!	¡Uy!
+Good luck!	¡Suerte!
+Wow!	¡Guau!
+That online duel is not there any more.	Ese duelo en línea ya no existe.
+Waiting for %s's deck...	Esperando el deck de %s...
+%s's deck can't be used: %s	El deck de %s no se puede usar: %s
+%s lost the last duel and chooses who goes first...	%s perdió el duelo anterior y elige quién empieza...
+Waiting for %s...	Esperando a %s...
+Online  ·  %s Deck	En línea  ·  Deck %s
+Online duel	Duelo en línea
+%s is back.	%s volvió.
+Waiting for %s... (reconnecting)	Esperando a %s... (reconectando)
+The duel goes on where it was the moment the line is back.	El duelo sigue donde estaba en cuanto vuelva la conexión.
+End it as a no-contest	Terminarlo sin resultado
+%s left the duel.	%s dejó el duelo.
+No contest: the line to %s was gone too long.	Sin resultado: la conexión con %s estuvo caída demasiado tiempo.
+%s left	%s se fue
+%s wants another! Go	¡%s quiere otro! Vamos
+ONLINE	EN LÍNEA
+%d online	%d en línea
+Your Duel Group	Tu Grupo de Duelo
+Duel people you know	Duelos con gente que conoces
+Their decks, their duelists	Sus decks, sus duelistas
+Duel the people in your Duel Group, each from your own computer. Opens the Online screen.	Duelos con la gente de tu Grupo de Duelo, cada uno desde su computadora. Abre la pantalla En línea.
+Duel people you know.	Duelos con gente que conoces.
+%s: your Duel Group.	%s: tu Grupo de Duelo.
+With friends	Con amigos
+Groups	Grupos
+Help	Ayuda
+(you own it)	(es tuyo)
+No group yet	Todavía sin grupo
+Duel the people you know, each from your own home with your own duelist, cards and decks. A Duel Group is a private network that only holds copies of Crossroads: one person makes it once, everyone else joins with an invite code.	Duelos con la gente que conoces, cada uno desde su casa con su propio duelista, cartas y decks. Un Grupo de Duelo es una red privada donde solo hay copias de Crossroads: una persona lo crea una vez y los demás entran con un código de invitación.
+JOIN A GROUP	ENTRAR A UN GRUPO
+Someone sent you an invite code? Paste it here.	¿Alguien te mandó un código de invitación? Pégalo aquí.
+Paste the invite code (XR1-...)	Pega el código de invitación (XR1-...)
+Join	Entrar
+•  You play as your own duelist, with your own cards and decks\n•  One duel or a Match of 3 with Side Deck\n•  Everyone keeps the replay and their record\n•  Nothing to install: the game does it all	•  Juegas con tu propio duelista, tus cartas y tus decks\n•  Un duelo o un Match de 3 con Side Deck\n•  Cada uno guarda la repetición y su récord\n•  Nada que instalar: el juego lo hace todo
+MAKE A GROUP	CREAR UN GRUPO
+Be the owner. Takes about 5 minutes, only once.	Sé el dueño. Toma unos 5 minutos, una sola vez.
+1  A free Tailscale account just for the game\n2  A key for the game\n3  Paste the key: the game checks it\n4  Your group's name and color\n5  Invite people	1  Una cuenta gratis de Tailscale solo para el juego\n2  Una llave para el juego\n3  Pega la llave: el juego la prueba\n4  El nombre y el color de tu grupo\n5  Invita a la gente
+Make a group	Crear un grupo
+The group lives on a free Tailscale account made only for the game, not on your own computers. Nothing else of yours is ever in it, and the game only listens for duels.	El grupo vive en una cuenta gratis de Tailscale hecha solo para el juego, no en tus computadoras. Nada más tuyo está nunca ahí, y el juego solo escucha duelos.
+Connecting to %s...	Conectando con %s...
+The first time on a new network this can take up to half a minute. If Windows asks whether Crossroads Link may use the network, say yes (Private networks is enough).	La primera vez en una red nueva puede tardar hasta medio minuto. Si Windows pregunta si Crossroads Link puede usar la red, di que sí (con Redes privadas basta).
+The group's key was not accepted	La llave del grupo no fue aceptada
+It may have run out.	Puede que se haya vencido.
+Make a new key	Hacer una llave nueva
+Ask %s (the owner) for a new invite code, then paste it under Groups.	Pídele a %s (el dueño) un código de invitación nuevo y pégalo en Grupos.
+Paste a new invite code	Pegar un código nuevo
+Try again	Intentar de nuevo
+The group can't be reached right now	No se puede llegar al grupo ahora mismo
+It doesn't connect	No conecta
+IN THE GROUP	EN EL GRUPO
+Nobody else is in the group yet. Send your invite code (on the right) to the people you want to duel: the moment they join, they show up here.	Todavía no hay nadie más en el grupo. Manda tu código de invitación (a la derecha) a la gente con quien quieres jugar: en cuanto entren, aparecen aquí.
++   Invite someone (copies the invite code)	+   Invitar a alguien (copia el código de invitación)
+Copied! Send it to them (WhatsApp, a text...)	¡Copiado! Mándaselo (WhatsApp, un mensaje...)
+● You are online: the group sees you	● Estás en línea: el grupo te ve
+You own this group.	Este grupo es tuyo.
+Owner: %s	Dueño: %s
+The group's key runs out in %d days.	La llave del grupo vence en %d días.
+The group's key has run out.	La llave del grupo venció.
+Renew it now (2 minutes)	Renovarla ahora (2 minutos)
+INVITE CODE	CÓDIGO DE INVITACIÓN
+Anyone who pastes it under Online > Join a group is in. Send it however you like (WhatsApp, a text).	Quien lo pegue en En línea > Entrar a un grupo, entra. Mándalo como quieras (WhatsApp, un mensaje).
+Copy the invite code	Copiar el código de invitación
+Copied!	¡Copiado!
+OWNER TOOLS	HERRAMIENTAS DEL DUEÑO
+New invite code (the old one stops working)	Código nuevo (el viejo deja de servir)
+Remove someone	Sacar a alguien
+Name and color	Nombre y color
+Your record: %d won, %d lost	Tu récord: %d ganados, %d perdidos
+Challenge	Retar
+Offline	Desconectado
+In a duel	En un duelo
+Away	Ausente
+Online	En línea
+Connecting...	Conectando...
+Offline  ·  last seen %s	Desconectado  ·  última vez: %s
+Has version %s (you have %s): both need the same version	Tiene la versión %s (tú tienes %s): los dos necesitan la misma
+%d min ago	Hace %d min
+%d h ago	Hace %d h
+CHALLENGE %s	RETAR A %s
+You have no complete deck yet. A deck can be taken online when it has 40 to 60 cards and you own every card in it.	Todavía no tienes un deck completo. Un deck se puede llevar en línea cuando tiene de 40 a 60 cartas y tienes todas sus cartas.
+Your deck	Tu deck
+How many duels	Cuántos duelos
+One duel	Un duelo
+Match of 3 (Side Deck between duels)	Match de 3 (Side Deck entre duelos)
+No prizes online: each duel goes on your record against them.	En línea no hay premios: cada duelo va a tu récord contra esa persona.
+Send challenge	Mandar el reto
+%s can't be reached right now.	No se puede llegar a %s ahora mismo.
+WAITING FOR %s	ESPERANDO A %s
+Your challenge is on their screen. They accept or decline.	Tu reto está en su pantalla. Acepta o lo rechaza.
+Cancel the challenge	Cancelar el reto
+NOT THIS TIME	ESTA VEZ NO
+%s declined.	%s dijo que no.
+%s is busy right now.	%s está ocupado ahora mismo.
+%s is playing something else right now.	%s está jugando otra cosa ahora mismo.
+%s didn't answer in time.	%s no contestó a tiempo.
+The line to %s dropped.	Se cayó la conexión con %s.
+DUEL GROUPS	GRUPOS DE DUELO
+owner	dueño
+Use	Usar
+Join another group	Entrar a otro grupo
+LEAVE %s?	¿SALIR DE %s?
+You can come back any time with an invite code. Your record against its members stays.	Puedes volver cuando quieras con un código de invitación. Tu récord contra sus miembros se queda.
+Leave the group	Salir del grupo
+Stay	Quedarme
+NAME AND COLOR	NOMBRE Y COLOR
+REMOVE SOMEONE	SACAR A ALGUIEN
+Two steps on Tailscale's site, signed in with the group's account:\n\n1  Make a new invite code here first (Owner tools), so the old code stops working.\n2  On the Machines page, find their copy (its name starts with xroads- and their duelist's name), press ⋯ and Remove.\n\nEveryone else's game takes the new key by itself the next time they are online with you.	Dos pasos en el sitio de Tailscale, con la sesión de la cuenta del grupo:\n\n1  Primero haz aquí un código nuevo (Herramientas del dueño), para que el viejo deje de servir.\n2  En la página Machines, busca su copia (su nombre empieza con xroads- y el nombre de su duelista), pulsa ⋯ y Remove.\n\nEl juego de los demás toma la llave nueva solo, la próxima vez que estén en línea contigo.
+Open the Machines page	Abrir la página Machines
+Scan it with a phone to send the code on from there.	Escanéalo con el teléfono para mandar el código desde ahí.
+HELP	AYUDA
+JOINING	ENTRAR
+Someone in a group sends you its invite code. Under Online, paste it in Join a group. That's all: the group and its people show up a few seconds later.	Alguien de un grupo te manda su código de invitación. En En línea, pégalo en Entrar a un grupo. Eso es todo: el grupo y su gente aparecen unos segundos después.
+MAKING A GROUP	CREAR UN GRUPO
+1  Make a free Tailscale account just for the game (use a new Google or GitHub account, or an email you don't use for anything else).\n2  On its keys page (Settings > Keys > Generate auth key): Reusable on, Expiration 90 days, then Generate. Copy the key (it starts with tskey-auth-).\n3  Paste it in the game. The game checks it and says when your group is ready.\n4  Name your group and pick its color.\n5  Copy the invite code and send it to the people you want to duel.	1  Haz una cuenta gratis de Tailscale solo para el juego (usa una cuenta nueva de Google o GitHub, o un correo que no uses para nada más).\n2  En su página de llaves (Settings > Keys > Generate auth key): Reusable encendido, Expiration 90 días, y Generate. Copia la llave (empieza con tskey-auth-).\n3  Pégala en el juego. El juego la prueba y te dice cuando tu grupo está listo.\n4  Ponle nombre a tu grupo y elige su color.\n5  Copia el código de invitación y mándalo a la gente con quien quieres jugar.
+DUELING	JUGAR
+In the lobby, press Challenge next to someone who is online. Pick your deck, one duel or a Match of 3. They get a card on their screen with Accept or Decline. The game picks who hosts the duel (the easier connection) and says so. Each of you keeps your own replay and your record against the other. There are no prizes online.	En la sala, pulsa Retar junto a alguien en línea. Elige tu deck, un duelo o un Match de 3. A esa persona le sale una tarjeta en pantalla con Aceptar o Rechazar. El juego elige quién hospeda el duelo (la conexión más fácil) y lo dice. Cada uno guarda su repetición y su récord contra el otro. En línea no hay premios.
+IT DOESN'T CONNECT	NO CONECTA
+•  Windows asks whether Crossroads Link may use the network: say Allow (Private networks is enough). If you said no, Windows Security > Firewall > Allow an app, and tick Crossroads Link.\n•  Both of you need the same version of the game. The lobby says when one of you has another.\n•  "The group's key was not accepted": the owner's key ran out. The owner makes a new one (Owner tools > New invite code); everyone else's game takes it the next time they are online with the owner, or pastes the new invite code.\n•  A slow line is fine: a duel sends very little. When the line drops, the duel waits and goes on where it was when it comes back.\n•  Still nothing? Close the game on both computers and open it again.	•  Windows pregunta si Crossroads Link puede usar la red: di Permitir (con Redes privadas basta). Si dijiste que no: Seguridad de Windows > Firewall > Permitir una aplicación, y marca Crossroads Link.\n•  Los dos necesitan la misma versión del juego. La sala avisa cuando uno tiene otra.\n•  "La llave del grupo no fue aceptada": la llave del dueño venció. El dueño hace una nueva (Herramientas del dueño > Código nuevo); el juego de los demás la toma la próxima vez que estén en línea con el dueño, o pegan el código nuevo.\n•  Una conexión lenta está bien: un duelo manda muy poco. Si se cae la conexión, el duelo espera y sigue donde estaba cuando vuelve.\n•  ¿Nada todavía? Cierra el juego en las dos computadoras y ábrelo otra vez.
+SAFE FOR THE OWNER	SEGURO PARA EL DUEÑO
+The group lives on a Tailscale account made only for the game, not on the owner's own computers. Nothing else of anyone's is ever in it: only copies of Crossroads, and the game only listens for duels. Crossroads Link keeps nothing on disk but a short log, and it closes when the game does.	El grupo vive en una cuenta de Tailscale hecha solo para el juego, no en las computadoras del dueño. Nunca hay nada más de nadie ahí: solo copias de Crossroads, y el juego solo escucha duelos. Crossroads Link no guarda nada en disco salvo un registro corto, y se cierra cuando se cierra el juego.
+A NEW KEY FOR THE GROUP	UNA LLAVE NUEVA PARA EL GRUPO
+Next  ▶	Siguiente  ▶
+Account	Cuenta
+Key	Llave
+Check	Prueba
+Invite	Invitar
+1  A FREE ACCOUNT, JUST FOR THE GAME	1  UNA CUENTA GRATIS, SOLO PARA EL JUEGO
+Your group lives on a free Tailscale account. Make one only for Crossroads: then nothing else of yours is ever in the group, and you can hand it to someone else one day.	Tu grupo vive en una cuenta gratis de Tailscale. Haz una solo para Crossroads: así nada más tuyo está nunca en el grupo, y algún día se la puedes pasar a otra persona.
+The easiest way: sign up with a new Google or GitHub account, or with an email you don't use for anything else.	Lo más fácil: regístrate con una cuenta nueva de Google o GitHub, o con un correo que no uses para nada más.
+If Tailscale asks you to download it or to add your first device, skip that. The game is the only thing that joins.	Si Tailscale te pide descargarlo o agregar tu primer dispositivo, sáltalo. Lo único que entra es el juego.
+Open tailscale.com	Abrir tailscale.com
+Signed in? Press Next.	¿Ya entraste? Pulsa Siguiente.
+2  A KEY FOR THE GAME	2  UNA LLAVE PARA EL JUEGO
+1  A NEW KEY	1  UNA LLAVE NUEVA
+Signed in to the group's Tailscale account, open the keys page (Settings > Keys) and press Generate auth key.	Con la sesión de la cuenta de Tailscale del grupo, abre la página de llaves (Settings > Keys) y pulsa Generate auth key.
+In the window that opens:\n•  Reusable: ON (everyone in the group uses the same key)\n•  Expiration: 90 days\n•  Leave the rest as it is, and press Generate key.	En la ventana que se abre:\n•  Reusable: ENCENDIDO (todos en el grupo usan la misma llave)\n•  Expiration: 90 días\n•  Deja lo demás como está y pulsa Generate key.
+Copy the key it shows (it starts with tskey-auth-). Tailscale shows it only once.	Copia la llave que muestra (empieza con tskey-auth-). Tailscale la muestra una sola vez.
+Open the keys page	Abrir la página de llaves
+3  PASTE THE KEY	3  PEGA LA LLAVE
+2  PASTE THE NEW KEY	2  PEGA LA LLAVE NUEVA
+Paste it here. The game tries it right away.	Pégala aquí. El juego la prueba enseguida.
+Try the key	Probar la llave
+Your group is ready.	Tu grupo está listo.
+That is an API access token. In step 2, press Generate auth key (not an access token).	Eso es un token de acceso a la API. En el paso 2, pulsa Generate auth key (no un access token).
+That is not a key. It starts with tskey-auth-: copy it again from step 2.	Eso no es una llave. Empieza con tskey-auth-: cópiala otra vez del paso 2.
+Trying the key...	Probando la llave...
+That key has expired. Make a new one in step %d.	Esa llave venció. Haz una nueva en el paso %d.
+Tailscale did not take that key. Copy it again from step %d (all of it), or make a new one.	Tailscale no aceptó esa llave. Cópiala otra vez del paso %d (completa), o haz una nueva.
+It didn't work: %s	No funcionó: %s
+The game couldn't reach Tailscale. Check the internet connection and try again.	El juego no pudo llegar a Tailscale. Revisa la conexión a internet y vuelve a intentar.
+4  NAME AND COLOR	4  NOMBRE Y COLOR
+This is what everyone in the group sees.	Esto es lo que ve todo el grupo.
+5  INVITE PEOPLE	5  INVITA A LA GENTE
+3  THE NEW INVITE CODE	3  EL CÓDIGO NUEVO
+Done: the group runs on the new key. The old invite code no longer lets anyone in once the old key is gone (delete it on the keys page if you want it gone now).	Listo: el grupo usa la llave nueva. El código viejo deja de dejar entrar a nadie cuando la llave vieja ya no está (bórrala en la página de llaves si quieres que deje de servir ya).
+Everyone already in the group gets the new key by itself the next time they are online with you. Someone who was away for a long time can paste this code.	Todos los que ya están en el grupo reciben la llave nueva solos la próxima vez que estén en línea contigo. Alguien que estuvo fuera mucho tiempo puede pegar este código.
+Your group is ready. Send this code to the people you want to duel (WhatsApp, a text, anything). They paste it under Online > Join a group.	Tu grupo está listo. Manda este código a la gente con quien quieres jugar (WhatsApp, un mensaje, lo que sea). Lo pegan en En línea > Entrar a un grupo.
+The code is the way in: send it only to people you want in the group. You can make a new one any time (Owner tools), and the old one stops working.	El código es la entrada: mándalo solo a la gente que quieres en el grupo. Puedes hacer uno nuevo cuando quieras (Herramientas del dueño), y el viejo deja de servir.
+A new account, only for the game	Una cuenta nueva, solo para el juego
+Someone	Alguien
+%s CHALLENGES YOU!	¡%s TE RETA!
+A Match of 3 (Side Deck between duels)	Un Match de 3 (Side Deck entre duelos)
+Destiny Draw: on	Destiny Draw: sí
+Destiny Draw: off	Destiny Draw: no
+Forbidden/Limited list: on	Lista de Prohibidas/Limitadas: sí
+Forbidden/Limited list: OFF (any card, 3 copies)	Lista de Prohibidas/Limitadas: NO (cualquier carta, 3 copias)
+Accept	Aceptar
+Decline	Rechazar
+You have no complete deck to take online yet (40 to 60 cards, every card owned).	Todavía no tienes un deck completo para llevar en línea (de 40 a 60 cartas, todas tuyas).
+Goes away in %d s	Se va en %d s
+That is not an invite code. Ask for it again and paste all of it.	Eso no es un código de invitación. Pídelo otra vez y pégalo completo.
+Duel Group	Grupo de Duelo
+Online duels are not part of this copy of the game.	Los duelos en línea no vienen en esta copia del juego.
+The game could not open its own port on this computer.	El juego no pudo abrir su propio puerto en esta computadora.
+Crossroads Link did not start on this computer.	Crossroads Link no arrancó en esta computadora.
+Crossroads Link stopped.	Crossroads Link se detuvo.
+The group's key has run out. The owner makes a new one (Owner tools > New invite code).	La llave del grupo venció. El dueño hace una nueva (Herramientas del dueño > Código nuevo).
+Tailscale doesn't take the group's key. The owner can make a new one (Owner tools > New invite code).	Tailscale no acepta la llave del grupo. El dueño puede hacer una nueva (Herramientas del dueño > Código nuevo).
+The game can't reach Tailscale right now. Check the internet connection; it keeps trying by itself.	El juego no puede llegar a Tailscale ahora mismo. Revisa la conexión a internet; sigue intentando solo.
+The Main Deck must have 40 to 60 cards.	El Main Deck debe tener de 40 a 60 cartas.
+The Extra Deck and the Side Deck hold 15 cards at most.	El Extra Deck y el Side Deck llevan 15 cartas como máximo.
+The deck has a card this version of the game does not know.	El deck tiene una carta que esta versión del juego no conoce.
+%s: %d copies, the list allows %d.	%s: %d copias, la lista permite %d.
+That can't be done right now. Choose again.	Eso no se puede hacer ahora mismo. Elige otra vez.
+Busy now	Ocupado
+Key: %d days	Llave: %d días
+Say	Decir
+Quick reactions the other duelist sees	Reacciones rápidas que ve el otro duelista

@@ -279,6 +279,47 @@ const STAND_IN := "street_duelist"      # (who stands at the table when a replay
 
 
 ## The duel settings that play a replay back.
+## (0.73.0) An online duel as the other side saw it: the host records the duel, the guest gets that
+## recording turned around (the guest is player 0 in it, as in every replay of your own).
+static func flipped(rec: Dictionary) -> Dictionary:
+	var r: Dictionary = rec.duplicate(true)
+	var su: Dictionary = r.get("setup", {})
+	for k in ["decks", "extras", "names", "hand"]:
+		if su.get(k) is Array and (su[k] as Array).size() == 2:
+			su[k] = [su[k][1], su[k][0]]
+	su["first"] = 1 - int(su.get("first", 0))
+	var lay = su.get("lay", {})
+	if lay is Dictionary:
+		for k in lay:
+			if lay[k] is Array and (lay[k] as Array).size() == 2:
+				lay[k] = [lay[k][1], lay[k][0]]
+	var ru = su.get("rules", {})
+	if ru is Dictionary:
+		for k in ["destiny", "speed"]:
+			if ru.get(k) is Array and (ru[k] as Array).size() == 2:
+				ru[k] = [ru[k][1], ru[k][0]]
+	if r.get("lp") is Array and (r["lp"] as Array).size() == 2:
+		r["lp"] = [r["lp"][1], r["lp"][0]]
+	for step in r.get("tape", []):
+		if step is Dictionary and step.has("m"):
+			_turn_around(step["m"])
+	return r
+
+
+## Every player number in the engine's messages (p, con, tc) the other way round.
+static func _turn_around(v) -> void:
+	if v is Dictionary:
+		for k in v:
+			var x = v[k]
+			if x is Dictionary or x is Array:
+				_turn_around(x)
+			elif (k == "p" or k == "con" or k == "tc") and int(x) < 2:
+				v[k] = 1 - int(x)
+	elif v is Array:
+		for x in v:
+			_turn_around(x)
+
+
 static func config_for(data: Dictionary) -> Dictionary:
 	var cfg: Dictionary = (data.get("cfg", {}) as Dictionary).duplicate(true)
 	cfg["first"] = int(data["setup"]["first"])

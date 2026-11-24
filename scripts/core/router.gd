@@ -625,6 +625,45 @@ func _debug_args() -> void:
 						n._choose("jaden")
 						n._picking = "me"
 						n._refresh_pick()
+			elif what.begins_with("online"):
+				# --open=online[:wizard:N | :renew | :help | :qr | :groups | :challenge | :card | :waiting]
+				var parts := what.split(":")
+				menu._on_online()
+				await get_tree().create_timer(0.8).timeout
+				var scr: Node = menu.find_children("*", "OnlineScreen", true, false)[0]
+				var sub := parts[1] if parts.size() > 1 else ""
+				if sub in ["challenge", "card", "waiting"]:
+					for i in 40:
+						if not Net.people().is_empty() and bool(Net.people()[0]["online"]):
+							break
+						await get_tree().create_timer(0.25).timeout
+				var first: Dictionary = Net.people()[0] if not Net.people().is_empty() else {"id": "nobody"}
+				match sub:
+					"wizard", "renew":
+						if sub == "renew" and Net.groups.is_empty():
+							Net.make_group(Loc.t("%s's Table") % Profile.duelist_name, 0, "tskey-auth-kDEMO0000CNTRL-0000000000000000000000000000")
+						scr._open_wizard("make" if sub == "wizard" else "renew")
+						await get_tree().create_timer(0.4).timeout
+						var w: Node = scr.find_children("*", "OnlineWizard", true, false)[0]
+						for i in (int(parts[2]) - 1 if parts.size() > 2 else 0):
+							if int(w._steps[w._at]) == 3:
+								if Net.groups.is_empty() or w._made_gid == "":
+									w._made_gid = str(Net.make_group(w._name, 0, "tskey-auth-kDEMO0000CNTRL-0000000000000000000000000000")["gid"])
+								w._checked = true
+							w._go(w._at + 1)
+					"help":
+						scr._help()
+					"qr":
+						scr._show_qr()
+					"groups":
+						scr._groups_menu()
+					"challenge":
+						scr._challenge_dialog(str(first["id"]))
+					"waiting":
+						scr._waiting(str(first["id"]))
+					"card":
+						ChallengeCard.show_for({"k": "challenge", "cid": "demo", "from": str(first["id"]), "mode": "match", "fl": false, "lp": 8000,
+							"destiny": true, "deck_name": "Elemental Heroes"})
 			elif what == "daily-play":
 				# Straight into today's duel, the way the Free Duel card starts it.
 				menu_open = "select"
@@ -1179,7 +1218,7 @@ func _on_node_added(n: Node) -> void:
 
 
 ## A long hover hint is broken into lines (the engine would draw it as one line across the screen).
-func _tip_later(n: Node) -> void:
+func _tip_later(n) -> void:
 	if not is_instance_valid(n):
 		return
 	var c := n as Control
@@ -1196,7 +1235,7 @@ func _tip_later(n: Node) -> void:
 	c.tooltip_text = out + line
 
 
-func _chip_later(n: Node) -> void:
+func _chip_later(n) -> void:
 	if not is_instance_valid(n):
 		return
 	var b := n as Button

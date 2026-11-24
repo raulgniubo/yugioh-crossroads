@@ -192,6 +192,9 @@ func _start() -> void:
 		CardData.GUEST.clear()
 	ocg.level = OcgTable.level_for(cfg)
 	print("DUEL ENGINE new, opponent level ", ocg.level)
+	if cfg.get("net", false):
+		await _start_net(cfg)
+		return
 	_opp_key = cfg.get("opponent", "kaiba")
 	Avatars.dress = {}
 	if str(cfg.get("opponent_coat", "")) != "":
@@ -638,6 +641,320 @@ func _speaker(p: int) -> String:
 	return _me_key if p == ME else _opp_key
 
 
+# ------------------------------------------------------------------ online duels (0.73.0)
+
+var net = null                    # the NetDuel this duel is part of (see NetDuel)
+var _net_bar: Control             # the quick reactions
+var _net_wait: Control            # "Waiting for ..." while the line is down
+const REACTIONS := ["Good game!", "Nice move!", "Hmm...", "Oops!", "Good luck!", "Wow!"]
+
+## An online duel. The host runs the engine; the guest plays what the host sends. Both screens get the
+## whole show: the two duelists with their own looks, the cards, the animations.
+func _start_net(cfg: Dictionary) -> void:
+	net = Net.session
+	if net == null:
+		Router.toast(Loc.t("That online duel is not there any more."))
+		Router.go(Router.MAIN_MENU)
+		return
+	ocg.net = net
+	net.ended.connect(_net_ended)
+	net.line_changed.connect(_net_line)
+	_opp_key = str(cfg.get("opponent", "net:" + str(net.peer)))
+	_me_key = "player"
+	Avatars.dress = {}
+	_theme = "duel_rival"
+	Music.play(_theme)
+	DuelAudio.theme = _theme
+	var opp: Dictionary = Characters.get_char(_opp_key)
+	var opp_name := str(opp.get("name", net.their_name()))
+	var me_name := Profile.duelist_name
+	_vs_key = _opp_key
+	hud.set_names(me_name, opp_name)
+	hud.set_portraits(_me_key, _opp_key)
+	_net_reactions()
+	state.defer_fx = true
+	state.turbo = false
+	state.manual = [not _autoplay, false]
+	state.bonus_cards = [0, 0]
+	state.destiny = bool(cfg.get("destiny", true))
+	state.destiny_who = [true, true]
+	board.state_ref = state
+	var my_deck := str(cfg.get("player_deck", "custom"))
+	var mine: Dictionary = net.deck
+	var my_list: Array[int] = []
+	var my_extra: Array[int] = []
+	for id in mine.get("main", []):
+		my_list.append(int(id))
+	for id in mine.get("extra", []):
+		my_extra.append(int(id))
+	var lp := int(cfg.get("lp", DuelState.START_LP))
+	_start_lp = [lp, lp]
+	var ms: Dictionary = Router.match_state if cfg.get("match", false) else {}
+	var first := ME
+	if net.host:
+		hud.set_coach(Loc.t("Waiting for %s's deck...") % opp_name)
+		if not await net.wait_deck():
+			hud.set_coach("")
+			return
+		hud.set_coach("")
+		var gd: Dictionary = net.guest_deck
+		var bad := Net.deck_problem(gd, bool(net.opts.get("fl", true)))
+		if bad != "":
+			net.host_end("deck", 0, bad)
+			Router.toast(Loc.t("%s's deck can't be used: %s") % [opp_name, bad], 6.0)
+			net.leave()
+			Router.go(Router.MAIN_MENU)
+			return
+		var opp_list: Array[int] = []
+		var opp_extra: Array[int] = []
+		for id in gd.get("main", []):
+			opp_list.append(int(id))
+		for id in gd.get("extra", []):
+			opp_extra.append(int(id))
+		# Who goes first: the loser of the last duel of a Match decides; otherwise a coin.
+		if not ms.is_empty() and int(ms.get("last_loser", -1)) >= 0:
+			hud.banner(Loc.t("MATCH  ·  DUEL %d") % int(ms["game"]), UITheme.GOLD)
+			if int(ms["last_loser"]) == ME:
+				first = ME if (_autoplay or await hud.ask_choice("You lost the last duel, so you choose", ["Go first", "Go second"]) == 0) else AI
+			else:
+				hud.set_coach(Loc.t("%s lost the last duel and chooses who goes first...") % opp_name)
+				first = AI if await net.ask_first() == 1 else ME
+				hud.set_coach("")
+		else:
+			first = randi() % 2
+		net.first_pick = first
+		var names := [me_name, opp_name]
+		var destiny := [state.destiny, state.destiny]
+		ocg.prepare(my_list, opp_list, my_extra, opp_extra, me_name, opp_name, first, [5, 5], {},
+				{"destiny": destiny})
+		net.send_start(first, [lp, lp], names, [my_list.size(), my_extra.size()], destiny)
+	else:
+		hud.set_coach(Loc.t("Waiting for %s...") % opp_name)
+		net.ask_first_in.connect(_net_choose_first)
+		if not await net.wait_start():
+			hud.set_coach("")
+			return
+		hud.set_coach("")
+		var st0: Dictionary = net.start
+		first = int(st0.get("first", 0))
+		var counts: Array = st0.get("counts", [40, 0])
+		ocg.prepare_guest(my_list, my_extra, int(counts[0]), int(counts[1]), me_name, opp_name, first)
+		lp = int((st0.get("lp", [lp, lp]) as Array)[0])
+		_start_lp = [lp, int((st0.get("lp", [lp, lp]) as Array)[1])]
+		if not ms.is_empty():
+			ms["game"] = int(st0.get("game", 1))
+			ms["wins"] = (st0.get("wins", [0, 0]) as Array).duplicate()
+	for p in 2:
+		state.players[p].lp = _start_lp[p]
+		hud.set_lp(p, _start_lp[p], 0)
+	for p in 2:
+		board.set_deck_count(p, state.players[p].deck.size())
+	_update_counts()
+	hud.set_phase_buttons("", false, false)
+	hud.set_extra_button(state.players[ME].extra.size(), 0, false)
+	board.set_extra_count(ME, state.players[ME].extra.size(), 0)
+	board.set_extra_count(AI, state.players[AI].extra.size())
+	board.add_duelists(_me_key, _opp_key)
+	_go_live()
+	_bring_spirit()
+	if not _autoplay:
+		board.intro_hold()
+		var sub := Loc.t("Online  ·  %s Deck") % str(net.opts.get("their_deck", "")) if str(net.opts.get("their_deck", "")) != "" else Loc.t("Online duel")
+		hud.name_plate(1, opp_name, sub, Color(opp.get("color", UITheme.DANGER)), 1.6, Characters.line(_opp_key, "intro"))
+		board.duelist_gesture(1, "intro")
+		await board.intro_duelists()
+		Voices.focus(true)
+		await get_tree().create_timer(0.35).timeout
+		Voices.shout(_me_key, _opp_key, Voices.DUEL)
+		Voices.focus(false)
+	await hud.banner("DUEL!", Comic.YELLOW)
+	var events: Array = await ocg.begin_guest() if not net.host else ocg.begin()
+	await _play(events)
+	if not _autoplay:
+		var who := Loc.t("You go first") if first == ME else Loc.t("%s goes first") % opp_name
+		var how := ""
+		if net.host and ms.is_empty():
+			how = Loc.t("Coin toss: ")
+		await hud.banner(how + who, UITheme.TEXT)
+	_loop()
+
+
+## (guest) You lost the last duel of the Match: you choose who starts.
+func _net_choose_first() -> void:
+	var me_first := true
+	if not _autoplay:
+		me_first = await hud.ask_choice("You lost the last duel, so you choose", ["Go first", "Go second"]) == 0
+	net.answer_first(me_first)
+
+
+## The quick reactions: a small row of buttons by your panel. What you pick shows over your duelist on
+## both screens.
+func _net_reactions() -> void:
+	if _autoplay:
+		return
+	# One button by the corner icons; it opens the quick reactions above it (they stay out of the hand's way).
+	var root := Control.new()
+	root.anchor_left = 1.0
+	root.anchor_right = 1.0
+	root.anchor_top = 1.0
+	root.anchor_bottom = 1.0
+	root.offset_left = -300
+	root.offset_right = -224
+	root.offset_top = -74
+	root.offset_bottom = -22
+	root.z_index = 30
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(root)
+	_net_bar = root
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	col.position = Vector2(-60, -6 - REACTIONS.size() * 46)
+	col.custom_minimum_size = Vector2(150, 0)
+	col.visible = false
+	root.add_child(col)
+	var say := Button.new()
+	say.text = Loc.t("Say")
+	say.focus_mode = Control.FOCUS_NONE
+	say.size = Vector2(76, 52)
+	say.add_theme_font_size_override("font_size", 17)
+	say.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.06, 0.09, 0.18, 0.9), Color(UITheme.ACCENT, 0.7), 26))
+	say.tooltip_text = Loc.t("Quick reactions the other duelist sees")
+	say.pressed.connect(func():
+		col.visible = not col.visible
+		if col.visible:
+			col.modulate.a = 0.0
+			col.create_tween().tween_property(col, "modulate:a", 1.0, 0.12))
+	root.add_child(say)
+	for i in REACTIONS.size():
+		var b := Button.new()
+		b.text = Loc.t(REACTIONS[i])
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(150, 40)
+		b.add_theme_font_size_override("font_size", 16)
+		b.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.06, 0.09, 0.18, 0.94), Color(UITheme.ACCENT, 0.5)))
+		b.pressed.connect(func():
+			col.visible = false
+			net_reaction(i, true)
+			net.react(i)
+			# (a moment before the next one: nobody floods the other screen)
+			say.disabled = true
+			get_tree().create_timer(2.5).timeout.connect(func():
+				if is_instance_valid(say):
+					say.disabled = false))
+		col.add_child(b)
+
+
+## A reaction shows as a speech bubble over whoever sent it.
+func net_reaction(r: int, mine: bool) -> void:
+	if r < 0 or r >= REACTIONS.size() or hud == null:
+		return
+	hud.say(ME if mine else AI, Loc.t(REACTIONS[r]))
+	Sfx.play("card", -10.0, 1.4)
+
+
+## The line to them dropped or came back.
+func _net_line(up: bool) -> void:
+	if up:
+		if _net_wait != null and is_instance_valid(_net_wait):
+			_net_wait.queue_free()
+		_net_wait = null
+		if not _finished:
+			Router.toast(Loc.t("%s is back.") % net.their_name())
+		return
+	if _finished or (_net_wait != null and is_instance_valid(_net_wait)):
+		return
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.05, 0.11, 0.94), 18, Color(UITheme.GOLD, 0.6)))
+	box.anchor_left = 0.5
+	box.anchor_right = 0.5
+	box.anchor_top = 0.0
+	box.offset_left = -320
+	box.offset_right = 320
+	box.offset_top = 120
+	box.z_index = 74
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	box.add_child(v)
+	var l := UITheme.label(Loc.t("Waiting for %s... (reconnecting)") % net.their_name(), 22, UITheme.GOLD, UITheme.semi_font())
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(l)
+	var sub := UITheme.label(Loc.t("The duel goes on where it was the moment the line is back."), 16, UITheme.TEXT_DIM)
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(sub)
+	var end_b := Button.new()
+	end_b.text = Loc.t("End it as a no-contest")
+	end_b.visible = false
+	end_b.pressed.connect(func():
+		net.call_off()
+		_net_ended("nocontest_me"))
+	v.add_child(end_b)
+	hud.add_child(box)
+	_net_wait = box
+	var t0 := Time.get_ticks_msec()
+	while is_instance_valid(box) and not _finished:
+		await get_tree().create_timer(1.0).timeout
+		if not is_instance_valid(box):
+			return
+		var secs := (Time.get_ticks_msec() - t0) / 1000
+		sub.text = Loc.t("The duel goes on where it was the moment the line is back.") + "  (%d:%02d)" % [secs / 60, secs % 60]
+		if secs >= 180:
+			end_b.visible = true
+
+
+## The other side left, surrendered, or the duel was called off.
+func _net_ended(why: String) -> void:
+	if _finished:
+		_net_result_update()
+		return
+	var name: String = net.their_name()
+	match why:
+		"surrender":
+			_net_surrendered_them = true
+			state._set_winner(ME, Loc.t("%s surrendered.") % name)
+		"left":
+			_net_surrendered_them = true
+			state._set_winner(ME, Loc.t("%s left the duel.") % name)
+		"nocontest", "nocontest_me":
+			state._set_winner(DuelState.DRAW, Loc.t("No contest: the line to %s was gone too long.") % name)
+		_:
+			return
+	_turn_finished.emit()
+	if not busy:
+		_finish()
+
+
+var _net_surrendered_them := false
+var _net_again_btn: Button
+
+
+## After an online duel: your record against them, the host's replay to the guest, no prizes.
+func _net_finish(won: bool, tied: bool) -> void:
+	var res := 0 if tied else (1 if won else -1)
+	if not net.record_done:
+		net.record_done = true
+		Net.record_result(str(net.peer), net.their_name(), res)
+	if net.host and ocg != null and not ocg.rec.is_empty():
+		net.send_replay(ocg.rec, {"winner": int(state.winner), "reason": str(state.win_reason), "kind": str(state.win_kind),
+			"turns": int(state.turn), "lp": [int(state.players[ME].lp), int(state.players[AI].lp)], "surrendered": _surrendered, "hash": int(ocg.ev_hash)})
+	if net.host and (_surrendered or _net_surrendered_them):
+		net.host_end("surrender" if _surrendered else "them", 1 if won else (-1 if not tied else 0), str(state.win_reason))
+
+
+## The result screen of an online duel says how often you two have played, and the buttons say
+## whether the other side wants another.
+func _net_result_update() -> void:
+	if _net_again_btn == null or not is_instance_valid(_net_again_btn):
+		return
+	if net.gone in ["left", "me"]:
+		_net_again_btn.disabled = true
+		_net_again_btn.text = Loc.t("%s left") % net.their_name()
+	elif net.again_me:
+		_net_again_btn.disabled = true
+		_net_again_btn.text = Loc.t("Waiting for %s...") % net.their_name()
+	elif not net.again_them.is_empty():
+		_net_again_btn.text = Loc.t("%s wants another! Go") % net.their_name()
+
+
 # ------------------------------------------------------------------ Destiny Draw
 
 const DestinyShow := preload("res://scripts/duel/destiny_show.gd")
@@ -744,8 +1061,8 @@ func _finish() -> void:
 		var rp := Replays.save(ocg.rec, {"winner": int(state.winner), "reason": str(state.win_reason), "kind": str(state.win_kind),
 			"turns": int(state.turn), "lp": [int(state.players[ME].lp), int(state.players[AI].lp)], "surrendered": _surrendered, "hash": int(ocg.ev_hash)})
 		print("REPLAY saved ", rp.get_file(), " answers ", (ocg.rec["answers"] as Array).size(), " hash ", ocg.ev_hash)
-	# A duel takes an hour of the day (puzzles are off the clock).
-	if _puzzle.is_empty() and _replay.is_empty():
+	# A duel takes an hour of the day (puzzles are off the clock; online duels are not in the world).
+	if _puzzle.is_empty() and _replay.is_empty() and net == null:
 		WorldClock.add_minutes(WorldClock.DUEL_COST)
 		WorldClock.save_data()
 	_cancel_mode()
@@ -779,7 +1096,9 @@ func _finish() -> void:
 	Router.last_stats = {"won": won and not _surrendered, "lp": int(state.players[ME].lp), "turns": int(state.turn), "low": int(_my_low),
 			"directs": _my_directs, "summons": _my_summons_most}
 	var earned := 0
-	if not _puzzle.is_empty():
+	if net != null:
+		_net_finish(won, tied)      # (no prizes online: your record against them instead)
+	elif not _puzzle.is_empty():
 		# A puzzle is not a duel on your record: solving it pays once, and that is all.
 		if won:
 			earned = Puzzles.mark(str(_puzzle["id"]))
@@ -841,16 +1160,19 @@ func _finish() -> void:
 	var cfg: Dictionary = Router.duel_config
 	var why: String = "You surrendered." if _surrendered else state.win_reason
 	var match_info := {}
-	if cfg.get("match", false) and not Router.match_state.is_empty() and not _autoplay:
+	if cfg.get("match", false) and not Router.match_state.is_empty() and (not _autoplay or net != null):
 		var ms: Dictionary = Router.match_state
 		if not tied:
 			ms["wins"][0 if won else 1] += 1
 			ms["last_loser"] = AI if won else ME
 		ms["game"] = int(ms["game"]) + 1
 		var over: bool = ms["wins"][0] >= 2 or ms["wins"][1] >= 2
-		match_info = {"wins": ms["wins"], "over": over, "won": ms["wins"][0] >= 2,
-			"side": cfg.get("player_deck", "") == "custom" and not (Collection.side.is_empty() and Collection.main == ms["orig"]["main"])}
-		if over:
+		var can_side: bool = (not (net.deck.get("side", []) as Array).is_empty()) if net != null \
+				else (cfg.get("player_deck", "") == "custom" and not (Collection.side.is_empty() and Collection.main == ms["orig"]["main"]))
+		match_info = {"wins": ms["wins"], "over": over, "won": ms["wins"][0] >= 2, "side": can_side}
+		if net != null:
+			net.game = int(ms["game"])
+		if over and net == null:
 			if ms["wins"][0] >= 2:
 				Collection.dp += 200
 				why += Loc.t("
@@ -897,14 +1219,37 @@ Match won: +%d Duel Points") % 200
 		earned = maxi(earned, 1)
 	if "--result-replay" in OS.get_cmdline_user_args() and Replays.last_saved == "" and not Replays.list().is_empty():
 		Replays.last_saved = str(Replays.list()[0]["path"])      # dev: a results screen with a replay to its name, for a picture
+	var net_info := {}
+	if net != null:
+		var rec := Net.record_of(str(net.peer))
+		net_info = {"name": net.their_name(), "w": int(rec.get("w", 0)), "l": int(rec.get("l", 0)), "d": int(rec.get("d", 0)),
+			"gone": net.gone in ["left", "me"]}
+		if _autoplay and Net.auto != "":
+			_net_auto_again(match_info)
 	hud.show_result(won, why, cfg.get("story", false), cfg.get("lose_ok", false), cfg.get("continue_label", "Continue Story"),
-			{"turns": state.turn, "lp": [state.players[ME].lp, state.players[AI].lp], "names": [state.players[ME].name, state.players[AI].name],
+			{"net": net_info, "turns": state.turn, "lp": [state.players[ME].lp, state.players[AI].lp], "names": [state.players[ME].name, state.players[AI].name],
 			"reward": Collection.last_reward.duplicate() if earned > 0 else [], "earned": earned,
 			"prize": Collection.last_prize if (earned > 0 and won) else 0,
 			"free": not cfg.has("return_to") and not cfg.get("story", false), "draw": tied, "match": match_info,
 			"replay": Replays.last_saved != "", "replay_path": Replays.last_saved,
 			"task": cfg.get("task", false)})
 	_won = won
+	if net != null:
+		_net_again_btn = hud.net_again_btn
+		if not net.again_in.is_connected(_net_result_update):
+			net.again_in.connect(_net_result_update)
+		_net_result_update()
+
+
+## Dev (--net-auto): the two copies go on to the next duel of a Match by themselves, then stop.
+func _net_auto_again(mi: Dictionary) -> void:
+	if mi.is_empty() or bool(mi.get("over", true)):
+		print("NET AUTO done: ", "match over " if not mi.is_empty() else "", "record ", Net.record_of(str(net.peer)))
+		get_tree().create_timer(3.0).timeout.connect(func():
+			net.leave()
+			get_tree().quit())
+		return
+	get_tree().create_timer(2.0).timeout.connect(func(): net.again())
 
 
 # ------------------------------------------------------------------ events
@@ -2394,6 +2739,8 @@ func _on_pause_action(action: String) -> void:
 			_surrendered = true
 			state.winner = AI
 			state.win_reason = "You surrendered."
+			if net != null and not net.host:
+				net.surrender()
 			_turn_finished.emit()
 			if state.current == AI or busy:
 				_finish()
@@ -2404,6 +2751,26 @@ func _on_pause_action(action: String) -> void:
 			_turn_finished.emit()
 			if state.current == AI or busy:
 				_finish()
+		"net_again":
+			if net != null and net.gone == "":
+				net.again()
+				_net_result_update()
+		"net_side":
+			if net != null:
+				var sw := SideSwap.new()
+				var dk: Dictionary = net.deck
+				sw.use_lists(dk["main"], dk["side"])
+				hud.add_child(sw)
+				sw.done.connect(func():
+					net.again()
+					_net_result_update())
+		"net_leave":
+			if net != null:
+				if not _finished:
+					_on_pause_action("surrender")
+				net.leave()
+			Router.menu_open = "online"
+			Router.go(Router.MAIN_MENU)
 		"rematch":
 			if Router.duel_config.has("gauntlet"):
 				# Start the whole run again from the first duelist.
@@ -2452,6 +2819,9 @@ func _on_pause_action(action: String) -> void:
 			Router.story_result = "won" if _won else "lost"
 			Router.go(Router.duel_config.get("return_to", Router.STORY))
 		"menu":
+			if net != null:
+				_on_pause_action("net_leave")
+				return
 			_restore_match_deck()
 			if not _replay.is_empty():
 				Router.menu_open = "replays"
