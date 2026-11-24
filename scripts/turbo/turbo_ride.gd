@@ -4,7 +4,7 @@ extends Node3D
 ## and jump ramps, grab Star Chips, dodge the haulers, pull alongside a rider for a Turbo
 ## Duel, or line up at the start flag and race everyone for a lap.
 
-const SAVE := "user://turbo.cfg"
+static var SAVE := Saves.u("turbo.cfg")
 const LANE := 4.4
 const LAP := 2600.0
 ## Stretches of the ring: [from, to, scenery, name].

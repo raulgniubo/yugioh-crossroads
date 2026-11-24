@@ -383,7 +383,13 @@ static func open(parent: Node) -> SidePanel:
 
 	# Mouse and controller together.
 	var ctl := _card(p, "Controls", "◎", Color("7cc4ff"), "The mouse, the keys and the controller.")
-	_row(ctl, "Mouse camera speed", "In the worlds, hold the right mouse button and drag to turn the camera.", _pad_slider(Settings.mouse_sens, func(v): Settings.mouse_sens = v))
+	var ml := CheckButton.new()
+	ml.button_pressed = Settings.mouse_look
+	ml.toggled.connect(func(on):
+		Settings.mouse_look = on
+		Settings.save_settings())
+	_row(ctl, "Mouse turns the camera", "While you walk in the worlds the camera follows the mouse and the pointer hides (hold Alt for it). Off: hold the right button and drag.", ml)
+	_row(ctl, "Mouse camera speed", "How fast the mouse turns the camera in the worlds.", _pad_slider(Settings.mouse_sens, func(v): Settings.mouse_sens = v))
 	var mi := CheckButton.new()
 	mi.button_pressed = Settings.mouse_invert
 	mi.toggled.connect(func(on):

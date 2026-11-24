@@ -214,6 +214,7 @@ func _fit_full() -> void:
 
 
 func _ready() -> void:
+	add_to_group("ui_modal")      # (0.74.2: while one is open, the open world gives the pointer back)
 	if full:
 		_fit_full()
 		get_viewport().size_changed.connect(_fit_full)

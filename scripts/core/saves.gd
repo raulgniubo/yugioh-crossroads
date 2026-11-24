@@ -11,10 +11,54 @@ extends RefCounted
 const FILES := ["story.cfg", "shop.cfg", "roam.cfg", "turbo.cfg", "tourney.cfg", "roam_extras.cfg", "profile.cfg", "opening.cfg", "collection.cfg", "academy.cfg", "knockout.cfg", "stars.cfg", "place.cfg",
 	"campus.cfg", "campus_cards.cfg"]     # (the Academy story, 0.65.0: its state and its own cards)
 const SLOTS := 5
-const RUNNING := "user://running.txt"      # there while the game runs; still there at the next start = it did not close properly
-const PENDING := "user://pending_save.txt"
+static var RUNNING := u("running.txt")      # there while the game runs; still there at the next start = it did not close properly
+static var PENDING := u("pending_save.txt")
 const PIN := "1010"
 const DATA_NAME := "Crossroads Data"
+
+
+## (0.74.2) Where the game keeps everything it writes while you play: your game, your settings,
+## your Duel Group, its own caches. With "Crossroads Data" beside the game that is
+## Crossroads Data/game and nothing else: a copy of the folder is a separate game that shares
+## nothing with any other copy (before 0.74.2 the game worked from the system's hidden folder,
+## which every copy shared, and only mirrored it into Crossroads Data). Without the folder (a
+## locked drive, a test run) it is the system's own place, user://. Always ends in "/".
+static func u(rel: String) -> String:
+	if not Engine.has_meta("cr_base"):
+		var b := "user://"
+		if portable():
+			b = game_dir().path_join(DATA_NAME).path_join("game") + "/"
+			DirAccess.make_dir_recursive_absolute(b)
+		Engine.set_meta("cr_base", b)
+	return str(Engine.get_meta("cr_base")) + rel
+
+
+## Once, the first time a version with the game inside the folder starts: what only ever lived in
+## the hidden folder comes into this one (the Duel Group; the settings when the folder has none).
+## The hidden folder itself is left as it is (an older copy of the game may still use it).
+static func adopt_hidden() -> void:
+	if not portable() or FileAccess.file_exists(u(".adopted")):
+		return
+	var hid := "user://"
+	if DirAccess.dir_exists_absolute(hid + "online") and not DirAccess.dir_exists_absolute(u("online")):
+		_copy_tree(hid + "online", u("online"))
+	for f in SHARED:
+		var in_folder := game_dir().path_join(DATA_NAME).path_join("saves").path_join(str(f))
+		if not FileAccess.file_exists(in_folder) and not FileAccess.file_exists(u(str(f))) and FileAccess.file_exists(hid + str(f)):
+			DirAccess.copy_absolute(hid + str(f), u(str(f)))
+	var mark := FileAccess.open(u(".adopted"), FileAccess.WRITE)
+	if mark:
+		mark.store_string(str(ProjectSettings.get_setting("application/config/version", "")))
+		mark.close()
+	print("SAVES the game now lives in ", u(""))
+
+
+static func _copy_tree(from: String, to: String) -> void:
+	DirAccess.make_dir_recursive_absolute(to)
+	for f in DirAccess.get_files_at(from):
+		DirAccess.copy_absolute(from.path_join(f), to.path_join(f))
+	for d in DirAccess.get_directories_at(from):
+		_copy_tree(from.path_join(d), to.path_join(d))
 
 
 ## Where the game itself sits (on a Mac: the folder the app is in).
@@ -41,10 +85,10 @@ static func data_dir() -> String:
 
 static func saves_dir() -> String:
 	var d := data_dir()
-	var out := d.path_join("saves") if d != "" else "user://saves"
+	var out := d.path_join("saves") if d != "" else u("saves")
 	if not DirAccess.dir_exists_absolute(out):
 		if DirAccess.make_dir_recursive_absolute(out) != OK:
-			out = "user://saves"
+			out = u("saves")
 			DirAccess.make_dir_recursive_absolute(out)
 	return out
 
@@ -67,20 +111,19 @@ const LIVE := "current"
 ## next to the game when it is not there yet. Only when that folder cannot be written to (a
 ## locked drive, a Mac app run from inside a disk image) does the game fall back to the
 ## system's own hidden place.
-static var _portable := -1
-
-
 static func portable() -> bool:
-	if _portable < 0:
+	# (kept on the Engine, not in a variable of this class: other classes ask for their paths
+	# while the classes are still loading, before this one's variables hold anything)
+	if not Engine.has_meta("cr_portable"):
 		var d := game_dir().path_join(DATA_NAME)
 		var built: bool = OS.has_feature("template") or Array(OS.get_cmdline_user_args()).any(func(a): return str(a).begins_with("--game-dir="))
+		var ok := false
 		if DirAccess.dir_exists_absolute(d):
-			_portable = 1 if _writable(d) else 0
+			ok = _writable(d)
 		elif built and DirAccess.make_dir_recursive_absolute(d.path_join("saves")) == OK:
-			_portable = 1
-		else:
-			_portable = 0
-	return _portable == 1
+			ok = true
+		Engine.set_meta("cr_portable", ok)
+	return bool(Engine.get_meta("cr_portable"))
 
 
 static func _writable(dir: String) -> bool:
@@ -114,7 +157,7 @@ static func pull_shared() -> void:
 			continue
 		var note := from + ".stamp"
 		var there := int(FileAccess.get_file_as_string(note).strip_edges()) if FileAccess.file_exists(note) else int(FileAccess.get_modified_time(from))
-		var mine: String = "user://" + str(f)
+		var mine: String = u("") + str(f)
 		var here := int(FileAccess.get_modified_time(mine)) if FileAccess.file_exists(mine) else 0
 		if there > here:
 			DirAccess.copy_absolute(from, mine)
@@ -122,7 +165,7 @@ static func pull_shared() -> void:
 
 static func _push_shared() -> void:
 	for f in SHARED:
-		var mine: String = "user://" + str(f)
+		var mine: String = u("") + str(f)
 		if not FileAccess.file_exists(mine):
 			continue
 		var to: String = game_dir().path_join(DATA_NAME).path_join("saves").path_join(str(f))
@@ -154,23 +197,23 @@ static func pull_live() -> void:
 	var on_computer := false
 	for f in FILES:
 		in_folder = in_folder or FileAccess.file_exists(live.path_join(str(f)))
-		on_computer = on_computer or FileAccess.file_exists("user://" + str(f))
+		on_computer = on_computer or FileAccess.file_exists(u("") + str(f))
 	if in_folder:
 		# The folder is the game: what is in it is what you play, whatever this computer had.
 		for f in FILES:
 			var src := live.path_join(str(f))
 			if FileAccess.file_exists(src):
-				DirAccess.copy_absolute(src, "user://" + str(f))
-			elif FileAccess.file_exists("user://" + str(f)):
-				DirAccess.remove_absolute("user://" + str(f))
+				DirAccess.copy_absolute(src, u("") + str(f))
+			elif FileAccess.file_exists(u("") + str(f)):
+				DirAccess.remove_absolute(u("") + str(f))
 		print("SAVES the game in the folder beside the game (", live, ")")
 	elif not FileAccess.file_exists(game_dir().path_join(DATA_NAME).path_join("saves").path_join("settings.cfg")) or on_computer:
 		# A fresh folder starts fresh in every way: settings too (it asks the language and picks
 		# the picture again), and not in admin mode.
 		if not FileAccess.file_exists(game_dir().path_join(DATA_NAME).path_join("saves").path_join("settings.cfg")):
 			for sh in SHARED:
-				if FileAccess.file_exists("user://" + str(sh)):
-					DirAccess.remove_absolute("user://" + str(sh))
+				if FileAccess.file_exists(u("") + str(sh)):
+					DirAccess.remove_absolute(u("") + str(sh))
 			admin = false
 		if not on_computer:
 			return
@@ -183,16 +226,16 @@ static func pull_live() -> void:
 				break
 		if slot == "":
 			slot = "from_this_computer"
-		_copy_all("user://", slot_dir(slot))
+		_copy_all(u(""), slot_dir(slot))
 		var meta := ConfigFile.new()
 		meta.set_value("save", "when", Time.get_datetime_string_from_system(false, true))
 		meta.set_value("save", "summary", "Found on this computer from an earlier version")
 		meta.save(slot_dir(slot).path_join("slot.cfg"))
 		for f in FILES:
-			if FileAccess.file_exists("user://" + str(f)):
-				DirAccess.remove_absolute("user://" + str(f))
-			if FileAccess.file_exists("user://" + str(f) + ".bak"):
-				DirAccess.remove_absolute("user://" + str(f) + ".bak")
+			if FileAccess.file_exists(u("") + str(f)):
+				DirAccess.remove_absolute(u("") + str(f))
+			if FileAccess.file_exists(u("") + str(f) + ".bak"):
+				DirAccess.remove_absolute(u("") + str(f) + ".bak")
 		print("SAVES fresh folder: the old game from this computer is kept in ", slot_dir(slot))
 
 
@@ -205,7 +248,7 @@ static func push_live() -> void:
 	if not DirAccess.dir_exists_absolute(to) and DirAccess.make_dir_recursive_absolute(to) != OK:
 		return
 	for f in FILES:
-		var src: String = "user://" + str(f)
+		var src: String = u("") + str(f)
 		var dst: String = to.path_join(str(f))
 		if FileAccess.file_exists(src):
 			if not FileAccess.file_exists(dst) or FileAccess.get_modified_time(src) > FileAccess.get_modified_time(dst):
@@ -214,7 +257,7 @@ static func push_live() -> void:
 			DirAccess.remove_absolute(dst)
 	var note := FileAccess.open(to.path_join("stamp.txt"), FileAccess.WRITE)
 	if note:
-		note.store_string(str(_newest("user://")))
+		note.store_string(str(_newest(u(""))))
 		note.close()
 
 
@@ -235,7 +278,7 @@ static func _copy_all(from: String, to: String) -> int:
 ## Write the game as it is now into a slot ("slot1".."slot3", "autosave").
 static func save_to(slot: String) -> bool:
 	_flush()
-	var n := _copy_all("user://", slot_dir(slot))
+	var n := _copy_all(u(""), slot_dir(slot))
 	var meta := ConfigFile.new()
 	meta.set_value("save", "when", Time.get_datetime_string_from_system(false, true))
 	meta.set_value("save", "summary", summary())
@@ -278,8 +321,8 @@ static func push_file(f: String) -> void:
 	var to := live_dir()
 	if not DirAccess.dir_exists_absolute(to):
 		return      # (the first full copy makes the folder)
-	if FileAccess.file_exists("user://" + f):
-		DirAccess.copy_absolute("user://" + f, to.path_join(f))
+	if FileAccess.file_exists(u("") + f):
+		DirAccess.copy_absolute(u("") + f, to.path_join(f))
 
 
 static func autosave(force := false) -> void:
@@ -310,12 +353,12 @@ static func note_place(mode: String, data: Dictionary) -> void:
 	for k in data:
 		cfg.set_value("place", str(k), data[k])
 	cfg.set_value("place", "when", Time.get_datetime_string_from_system(false, true))
-	cfg.save("user://place.cfg")
+	cfg.save(u("place.cfg"))
 
 
 static func place() -> Dictionary:
 	var cfg := ConfigFile.new()
-	if cfg.load("user://place.cfg") != OK:
+	if cfg.load(u("place.cfg")) != OK:
 		return {}
 	var out := {}
 	for k in cfg.get_section_keys("place"):
@@ -360,7 +403,7 @@ static func _keep_crash_log() -> void:
 			newest = fn
 	if newest == "":
 		return
-	var base := data_dir() if data_dir() != "" else "user://"
+	var base := data_dir() if data_dir() != "" else u("")
 	var out := base.path_join("Crash reports")
 	DirAccess.make_dir_recursive_absolute(out)
 	var name := "crash %s.log" % Time.get_datetime_string_from_system().replace(":", "-")
@@ -458,7 +501,7 @@ static func restart_with(order: String) -> void:
 static func guard_files() -> Array:
 	var fixed: Array = []
 	for f in FILES:
-		var path: String = "user://" + f
+		var path: String = u("") + f
 		var bak: String = path + ".bak"
 		if not FileAccess.file_exists(path):
 			continue
@@ -480,15 +523,15 @@ static func apply_pending() -> void:
 	DirAccess.remove_absolute(PENDING)
 	if order == "new":
 		for f in FILES:
-			if FileAccess.file_exists("user://" + f):
-				DirAccess.remove_absolute("user://" + f)
+			if FileAccess.file_exists(u("") + f):
+				DirAccess.remove_absolute(u("") + f)
 			# ...and the folder's copy of it, or the old game would come straight back.
 			if portable() and FileAccess.file_exists(live_dir().path_join(str(f))):
 				DirAccess.remove_absolute(live_dir().path_join(str(f)))
 	elif order.begins_with("load:"):
 		var slot := order.trim_prefix("load:")
 		if FileAccess.file_exists(slot_dir(slot).path_join("slot.cfg")):
-			_copy_all(slot_dir(slot), "user://")
+			_copy_all(slot_dir(slot), u(""))
 			just_loaded = slot
 	print("SAVES applied: ", order)
 
@@ -506,10 +549,10 @@ static func admin_on(pin: String) -> bool:
 	save_to("_real")
 	push_live()      # your own game, as it is right now, into the folder before the admin one starts
 	var cfg := ConfigFile.new()
-	cfg.load("user://admin.cfg")
+	cfg.load(u("admin.cfg"))
 	cfg.set_value("admin", "on", true)
 	cfg.set_value("admin", "known", true)
-	cfg.save("user://admin.cfg")
+	cfg.save(u("admin.cfg"))
 	admin = true
 	return true
 
@@ -517,21 +560,21 @@ static func admin_on(pin: String) -> bool:
 ## Has the right PIN been typed on this computer before? Then the switch needs no PIN again.
 static func pin_known() -> bool:
 	var cfg := ConfigFile.new()
-	return cfg.load("user://admin.cfg") == OK and bool(cfg.get_value("admin", "known", false))
+	return cfg.load(u("admin.cfg")) == OK and bool(cfg.get_value("admin", "known", false))
 
 
 static func admin_off() -> void:
 	var cfg := ConfigFile.new()
-	cfg.load("user://admin.cfg")
+	cfg.load(u("admin.cfg"))
 	cfg.set_value("admin", "on", false)
-	cfg.save("user://admin.cfg")
+	cfg.save(u("admin.cfg"))
 	admin = false
 	restart_with("load:_real")
 
 
 static func read_admin() -> void:
 	var cfg := ConfigFile.new()
-	admin = cfg.load("user://admin.cfg") == OK and bool(cfg.get_value("admin", "on", false))
+	admin = cfg.load(u("admin.cfg")) == OK and bool(cfg.get_value("admin", "on", false))
 	if "--admin" in OS.get_cmdline_user_args():
 		admin = true
 

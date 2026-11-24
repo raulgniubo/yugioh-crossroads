@@ -6,7 +6,7 @@ extends RefCounted
 ## has its own habits, and a shower starts and ends by the clock instead of lasting a whole visit.
 ## The clock is part of the save (roam.cfg).
 
-const PATH := "user://roam.cfg"
+static var PATH := Saves.u("roam.cfg")
 const DAY := 1440.0
 const REAL_DAY := 25.0 * 60.0        # seconds of walking around for one full day
 const DUEL_COST := 60.0              # game minutes a duel takes

@@ -3,7 +3,7 @@ extends RefCounted
 ## The Academy story's own place and memory (the same shape as StoryProgress, kept in campus.cfg
 ## beside the campus state: see Campus). StoryDirector uses this one while Campus.on.
 
-const PATH := "user://campus.cfg"
+static var PATH := Saves.u("campus.cfg")
 const SCRIPT_VERSION := 5      # bump when chapter scripts are restructured
 
 

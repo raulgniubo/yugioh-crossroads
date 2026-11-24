@@ -181,7 +181,7 @@ func _own_heights(main: Node3D, sz: Vector3) -> void:
 	_own_nx = int(ceil(sz.x)) + 1
 	_own_nz = int(ceil(sz.z)) + 1
 	var path := own_place("academy_main")
-	var cache := "user://place_cache/academy_main_%d_%d_%dx%d.bin" % [FileAccess.get_modified_time(path), int(OWN_SIZE * 10.0), _own_nx, _own_nz]
+	var cache := Saves.u("place_cache/academy_main_%d_%d_%dx%d.bin") % [FileAccess.get_modified_time(path), int(OWN_SIZE * 10.0), _own_nx, _own_nz]
 	if FileAccess.file_exists(cache):
 		var bytes := FileAccess.get_file_as_bytes(cache)
 		if bytes.size() == _own_nx * _own_nz * 4:
@@ -212,7 +212,7 @@ func _own_heights(main: Node3D, sz: Vector3) -> void:
 					var at := iz * _own_nx + ix
 					if p.y > _own_grid[at]:
 						_own_grid[at] = p.y
-		DirAccess.make_dir_recursive_absolute("user://place_cache")
+		DirAccess.make_dir_recursive_absolute(Saves.u("place_cache"))
 		var out := FileAccess.open(cache, FileAccess.WRITE)
 		if out:
 			out.store_buffer(_own_grid.to_byte_array())

@@ -4,7 +4,7 @@ class_name Tournament
 ## eight-duelist knockout: quarterfinals, semifinals, final. Lose and you are out until you
 ## enter again. Everything here is bookkeeping; the world and the bracket screen show it.
 
-const SAVE := "user://tourney.cfg"
+static var SAVE := Saves.u("tourney.cfg")
 const ROUNDS := ["QUARTERFINALS", "SEMIFINALS", "FINAL", "CHAMPION"]
 const DEFS := {
 	"domino": {"name": "Domino Street Championship", "district": "domino", "need": 6, "field": "kaibacorp", "color": Color("ffd166"),

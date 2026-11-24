@@ -3,7 +3,7 @@ extends Node
 
 signal changed
 
-const PATH := "user://profile.cfg"
+static var PATH := Saves.u("profile.cfg")
 const COLORS: Array[Color] = [
 	Color("2de2e6"), Color("3a86ff"), Color("7b5cff"), Color("ff4d6d"), Color("ff9f1c"), Color("4fd18b"),
 	Color("ff6ec7"), Color("ffd23a"), Color("b8f24a"), Color("59c8ff"), Color("d946ef"), Color("ff7a59"),

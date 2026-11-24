@@ -2625,6 +2625,8 @@ func _rebuild_task_box(rows: Array, nxt: Array) -> void:
 	foot.add_child(sp)
 	if not nxt.is_empty() or _guide >= 0:
 		foot.add_child(_tchip(fkey, Loc.t("Guiding") if _guide >= 0 else Loc.t("Show the way")))
+		if _guide >= 0 and task_view == 1 and not Pad.connected:
+			foot.add_child(_tchip("R", Loc.t("Next task")))
 	_task_box.reset_size()
 	_task_box.reset_size.call_deferred()
 
@@ -2640,6 +2642,21 @@ func _set_guide(i: int) -> void:
 		flags.erase("_guide")
 	_task_sig = ""
 	_task_wp_at = Vector3(1e9, 0, 1e9)
+
+
+## (0.74.2) R: the beacon moves on to the next task that is not done (with the mouse turning the
+## camera, a task is no longer clicked to pick it).
+func _next_guide() -> void:
+	var here := str(Router.roam.get("district", "domino"))
+	var open: Array = []
+	for r in task_rows(here, _district_at(step)):
+		if r[1] != "done":
+			open.append(int(r[3]))
+	if open.is_empty():
+		return
+	var at := open.find(_guide)
+	_set_guide(open[(at + 1) % open.size()])
+	Sfx.play("click", -10.0)
 
 
 ## F (or L3): show the way to the task the box shows, or stop showing it.
@@ -4190,6 +4207,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif _task_box != null and _task_box.visible and ((event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F) \
 				or (event is InputEventJoypadButton and event.pressed and Pad.b(event) == JOY_BUTTON_LEFT_STICK)):
 			_toggle_guide()
+			get_viewport().set_input_as_handled()
+		elif _task_box != null and _task_box.visible and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:
+			_next_guide()
 			get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("ui_accept") or (event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_SPACE, KEY_E, KEY_ENTER]) \

@@ -19,7 +19,7 @@ signal challenged(ch: Dictionary)    # somebody challenges you
 signal answered(ch: Dictionary)      # your challenge was answered (ok / no / gone)
 signal session_message(msg: Dictionary)
 
-const DIR := "user://online/"
+static var DIR := Saves.u("online/")
 const KEY_DAYS := 90                 # how long the keys the steps ask for last
 const HOST_PREFIX := "xroads-"
 const LINK_IDLE := 25
@@ -925,7 +925,7 @@ func end_session() -> void:
 
 # ------------------------------------------------------------------ your record against each member
 
-const RECORD := DIR + "record.json"
+static var RECORD := DIR + "record.json"
 
 func record_all() -> Dictionary:
 	var v = JSON.parse_string(FileAccess.get_file_as_string(RECORD)) if FileAccess.file_exists(RECORD) else null

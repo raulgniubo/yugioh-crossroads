@@ -1478,7 +1478,7 @@ var _gest_cache := {}            # "<model file>|<clip>" -> Animation, made once
 # ---- (0.72.3) motions fitted to a model are kept on disk too. Fitting one is 20 to 70 ms of work, a
 # world has dozens of models with a dozen motions each, and it was all done again every session, a
 # little at a time while you played: a stutter every third of a second for the first half minute.
-const FIT_DIR := "user://fit_cache/"
+static var FIT_DIR := Saves.u("fit_cache/")
 var _fit_checked := false
 var _fit_tasks: Array = []
 

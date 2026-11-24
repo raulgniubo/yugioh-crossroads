@@ -3,7 +3,7 @@ class_name Academy
 ## class duels and a Friday exam; pass the exam with enough class wins and you move up a dorm.
 ## From Ra Yellow on you can also enter the Academy Tournament, an 8-duelist knockout.
 
-const SAVE := "user://academy.cfg"
+static var SAVE := Saves.u("academy.cfg")
 const DORMS := [
 	{"key": "red", "name": "Slifer Red", "color": Color("d9342b"), "motto": "The underdogs. Everybody starts somewhere."},
 	{"key": "yellow", "name": "Ra Yellow", "color": Color("f2c230"), "motto": "Solid duelists who earned their place."},

@@ -1047,7 +1047,21 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.74.1 STATE (Nov 24 evening; NEWEST, read this first): Turbo top 5 + Raul's fixes
+#### 0.74.2 STATE (Nov 24 night; NEWEST, read this first): the folder is the game, mouse look
+- Saves.u(rel): every file the game writes goes to Crossroads Data/game/ when the folder is beside the game (portable),
+  else user://. All former "user://..." constants are `static var X := Saves.u("...")`. portable() and the base are
+  cached with Engine.set_meta("cr_portable"/"cr_base") because classes ask while they are still loading (circular class
+  loads left static vars empty and sent paths to user://). Only the engine's own log stays in user://logs.
+- Saves.adopt_hidden() (first thing in Settings._ready, once, marker game/.adopted): copies user://online (the Duel
+  Group) and settings/admin when the folder has none. The old hidden copy is left alone. Checked with --game-dir: two
+  copies of a folder keep their own settings.
+- Mouse look (Settings.mouse_look, default on, toggle in Settings > Controls): roam_scene._mouse_look_step captures the
+  mouse while walking; pointer back with pause, talk, overlays, map, bench wait box, story cut/dialog box, any SidePanel
+  (group "ui_modal"), Alt held, window unfocused. Story task box: R moves the beacon to the next open task (rows were
+  click-only). Not seen running here (software rendering never got past the world's loading card).
+- Home tile Online: "Group: <name>" (one line).
+
+#### 0.74.1 STATE (Nov 24 evening; previous): Turbo top 5 + Raul's fixes
 - Runners back at the two ends (TURBO_RIDER (0,0,6.7)/(0,0,-7.3), camera as before, fov 47): 0.74.0's left-edge spot hid
   them under the card panel, the intro looked at empty road, the opponent's hand floated. Your runner is in your corner
   picture now: live portraits run in Turbo too (_has_fig, the runner's meshes on PORTRAIT_LAYER, camera ahead of the
@@ -1062,8 +1076,7 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Speed World 2 button: chips 4 / 7 / 10 lit by what can be paid now (set_speed_button(enabled, costs)).
 - Rivals react: lead flip -> surge + "comeback" line; low_smoke(i) under 2000 LP; alongside() only when close.
 - Router.go(DUEL) shows the LoadCard while the duel builds (no black screen).
-- NEXT (Raul): mouse look while walking in every open world, no right click (Settings.mouse_look exists but nothing
-  reads it). Everything that needs the pointer there must get a key or a menu entry; the pointer comes back in menus.
+- (done in 0.74.2) mouse look while walking.
 - ALSO NEXT: a copied game folder is not a separate game. user:// (custom dir "Crossroads", shared by every copy) and
   Crossroads Data sync newest-wins (Saves.pull_shared / live_dir). Raul duplicated the folder to keep an older version
   for online with his brother: the copy came up in English. Make a folder with Crossroads Data beside it fully its own

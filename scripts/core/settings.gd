@@ -3,7 +3,7 @@ extends Node
 
 signal changed
 
-const PATH := "user://settings.cfg"
+static var PATH := Saves.u("settings.cfg")
 const RESOLUTIONS: Array[Vector2i] = [
 	Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080),
 	Vector2i(2560, 1440), Vector2i(3840, 2160),
@@ -390,6 +390,7 @@ func tune_sun(l: DirectionalLight3D) -> void:
 func _ready() -> void:
 	Voices.warm.call_deferred()
 	# Before anything reads a save: a load, a new game or leaving admin mode asked for last run.
+	Saves.adopt_hidden()
 	Saves.session_start()
 	Saves.apply_pending()
 	Saves.pull_shared()

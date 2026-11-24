@@ -7,7 +7,7 @@ extends RefCounted
 ## Also the duel of the day: one set duel with a twist, the same for the whole day, that pays
 ## the first time you win it.
 
-const SAVE := "user://knockout.cfg"
+static var SAVE := Saves.u("knockout.cfg")
 const ROUNDS := ["Quarterfinal", "Semifinal", "Final"]
 const PRIZES := [0, 600, 1000, 1500]            # for winning it, by difficulty (1 Easy .. 3 Hard)
 const CUPS := ["", "Bronze cup", "Silver cup", "Gold cup"]

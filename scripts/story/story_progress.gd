@@ -2,7 +2,7 @@ class_name StoryProgress
 extends RefCounted
 ## Story save: unlocked chapters, current chapter + step, flags. user://story.cfg
 
-const PATH := "user://story.cfg"
+static var PATH := Saves.u("story.cfg")
 const SCRIPT_VERSION := 5      # bump when chapter scripts are restructured
 
 

@@ -4,7 +4,7 @@ extends RefCounted
 ## the light it trails, what is painted on its side, and the parts bolted in. Kept in the
 ## highway's own save file, and worn in every Turbo Duel as well as on the ride.
 
-const SAVE := "user://turbo.cfg"
+static var SAVE := Saves.u("turbo.cfg")
 const FRAMES := ["Street frame", "Long frame"]
 ## [name, colour]. An empty colour means "the colour of your duelist".
 const PAINTS := [["Your colour", ""], ["Signal red", "e23a3a"], ["Sunset orange", "ff8a3a"], ["Solar yellow", "ffd23a"],

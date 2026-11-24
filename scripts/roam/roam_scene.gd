@@ -4,7 +4,7 @@ extends Node3D
 const SPEED := 4.2
 const RUN := 7.5
 const TALK_RANGE := 2.6
-const SAVE_PATH := "user://roam.cfg"
+static var SAVE_PATH := Saves.u("roam.cfg")
 
 var district: Dictionary
 var _player: CharacterBody3D
@@ -762,10 +762,40 @@ func _exit_tree() -> void:
 		Router.building = false
 	WorldClock.save_data()
 	Avatars.quiet = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE      # (mouse look: the pointer comes back whatever comes next)
 
+
+
+## (0.74.2) Mouse look: while you walk, the camera follows the mouse with no button held and the
+## pointer is hidden, the way most games do it. Anything that needs the pointer brings it back:
+## a menu or panel, a conversation, the map, the bench, a cutscene, or holding Alt. Off in the
+## settings: the right button drags the camera, as before.
+func _wants_pointer() -> bool:
+	if not Settings.mouse_look or DisplayServer.get_name() == "headless":
+		return true
+	if _pause != null or _talking or _overlay_open or Router._busy:
+		return true
+	if (_map_full and _map_full.visible) or (_wait_box and _wait_box.visible):
+		return true
+	if story != null and (story._cut or (story._box != null and story._box.visible)):
+		return true
+	if not get_tree().get_nodes_in_group("ui_modal").is_empty():
+		return true
+	if Input.is_key_pressed(KEY_ALT) or not get_window().has_focus():
+		return true
+	return false
+
+
+func _mouse_look_step() -> void:
+	var want := Input.MOUSE_MODE_VISIBLE if _wants_pointer() else Input.MOUSE_MODE_CAPTURED
+	if Input.mouse_mode != want:
+		Input.mouse_mode = want
+		if want == Input.MOUSE_MODE_CAPTURED:
+			_dragging = false
 
 
 func _physics_process(delta: float) -> void:
+	_mouse_look_step()
 	_door_marks_step(delta)
 	# Standing on the low paving (sidewalks are drawn a few cm up, the floor you walk on is the
 	# road): lift your figure onto it, so your feet are never inside the slab.
@@ -873,7 +903,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_dragging = event.pressed      # right-click drag turns the camera (left click is for everything else)
 		elif event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and event.pressed and not _wheel_for_ui():
 			_arm.spring_length = clampf(_arm.spring_length + (-0.4 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 0.4), 2.5, 9.0)
-	elif event is InputEventMouseMotion and _dragging and not _talking:
+	elif event is InputEventMouseMotion and (_dragging or Input.mouse_mode == Input.MOUSE_MODE_CAPTURED) and not _talking:
 		_yaw -= event.relative.x * 0.006 * Settings.mouse_sens
 		_pitch = clampf(_pitch - event.relative.y * 0.004 * Settings.mouse_sens * (-1.0 if Settings.mouse_invert else 1.0), -1.1, 0.15)
 	if _talking:
@@ -2027,7 +2057,7 @@ func _show_line() -> void:
 
 func _shop_cfg() -> ConfigFile:
 	var cfg := ConfigFile.new()
-	cfg.load("user://shop.cfg")
+	cfg.load(Saves.u("shop.cfg"))
 	return cfg
 
 
@@ -2038,7 +2068,7 @@ func _shop_flag(key: String) -> bool:
 func _shop_set(key: String, value) -> void:
 	var cfg := _shop_cfg()
 	cfg.set_value("shop", key, value)
-	cfg.save("user://shop.cfg")
+	cfg.save(Saves.u("shop.cfg"))
 
 
 func _today() -> String:
@@ -2285,7 +2315,8 @@ func _build_ui() -> void:
 	_purse = purse
 	_update_counter()
 	# Controls, bottom left.
-	var help := UITheme.label("WASD / stick  move     Shift  run     Right-drag  look     Scroll  zoom     E  talk / enter     L  ask Lumen     M  map     B  decks     Esc  menu", 17, Color(0.93, 0.95, 1.0, 0.95))
+	var help := UITheme.label(Loc.t("WASD / stick  move     Shift  run     Mouse  look     Alt  pointer     Scroll  zoom     E  talk / enter     L  ask Lumen     M  map     B  decks     Esc  menu" if Settings.mouse_look
+			else "WASD / stick  move     Shift  run     Right-drag  look     Scroll  zoom     E  talk / enter     L  ask Lumen     M  map     B  decks     Esc  menu"), 17, Color(0.93, 0.95, 1.0, 0.95))
 	# On a dark strip of its own, so it reads over grass, sand and bright paving alike.
 	var help_bar := PanelContainer.new()
 	var hb := StyleBoxFlat.new()

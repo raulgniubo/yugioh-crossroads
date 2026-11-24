@@ -4,7 +4,7 @@ extends Node
 
 signal changed
 
-const PATH := "user://collection.cfg"
+static var PATH := Saves.u("collection.cfg")
 const PACK_PRICE := 150
 const PACK_SIZE := 5
 const MAIN_MIN := 40
@@ -1126,7 +1126,7 @@ func _read() -> void:
 ## dueling with then stays yours.
 func _adopt_old_deck() -> void:
 	var cfg := ConfigFile.new()
-	if cfg.load("user://roam.cfg") != OK:
+	if cfg.load(Saves.u("roam.cfg")) != OK:
 		return
 	var old := str(cfg.get_value("roam", "deck", ""))
 	if old == "custom":
@@ -1523,7 +1523,7 @@ var _covers := {}
 ## a time for a screen that wants to stay smooth meanwhile; `pack_cover` finishes it at once.
 var _cover_q: Array = []        # packs still to give a cover (while it is done a little at a time)
 var _cover_used := {}
-const COVERS_FILE := "user://pack_covers.cfg"
+static var COVERS_FILE := Saves.u("pack_covers.cfg")
 
 
 func _cover_sig() -> String:

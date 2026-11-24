@@ -17,7 +17,7 @@ static var last_saved := ""      # the file of the duel that just ended
 
 static func dir() -> String:
 	var d := Saves.data_dir()
-	var out := d.path_join("Replays") if d != "" else "user://Replays"
+	var out := d.path_join("Replays") if d != "" else Saves.u("Replays")
 	DirAccess.make_dir_recursive_absolute(out)
 	return out
 

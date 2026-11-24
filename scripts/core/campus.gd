@@ -9,8 +9,8 @@ class_name Campus
 ##   "academia"  you start from a novice deck and everything is earned on the island
 ##   "libre"     your own decks and your whole collection; rivals come one step stronger
 
-const PATH := "user://campus.cfg"
-const CARDS := "user://campus_cards.cfg"
+static var PATH := Saves.u("campus.cfg")
+static var CARDS := Saves.u("campus_cards.cfg")
 const PARTS := ["Morning", "Afternoon", "Night"]
 const PART_TOD := ["day", "sunset", "night"]
 const WEEK := ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]

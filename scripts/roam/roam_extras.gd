@@ -3,7 +3,7 @@ extends Node
 ## Everything that gives free roam a purpose: the guide (map, search, worlds), directions to a
 ## place you picked, a quick bar, the marked edge of each area, Star Chips to collect and quests.
 
-const SAVE := "user://roam_extras.cfg"
+static var SAVE := Saves.u("roam_extras.cfg")
 const CHIP_DP := 15
 const CHIPS_ALL_DP := 300
 

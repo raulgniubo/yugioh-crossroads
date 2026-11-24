@@ -68,7 +68,7 @@ func _ready() -> void:
 func _read_save() -> void:
 	var cfg := ConfigFile.new()
 	_save = {}
-	if cfg.load("user://turbo.cfg") == OK:
+	if cfg.load(Saves.u("turbo.cfg")) == OK:
 		for k in ["beaten", "medals", "events_best"]:
 			_save[k] = cfg.get_value("turbo", k, {})
 		for k in ["chips", "wins"]:

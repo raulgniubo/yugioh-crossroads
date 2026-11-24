@@ -940,7 +940,7 @@ static func load_external(folder: String) -> void:
 	var src := folder.path_join("cards.json")
 	if not FileAccess.file_exists(src):
 		return
-	var cache := "user://card_index.json"
+	var cache := Saves.u("card_index.json")
 	var stamp := str(FileAccess.get_modified_time(src)) + "-v11"
 	if FileAccess.file_exists(cache):
 		var c = JSON.parse_string(FileAccess.get_file_as_string(cache))

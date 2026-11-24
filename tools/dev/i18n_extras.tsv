@@ -7591,3 +7591,9 @@ THEY TAKE THE CORNER	TE GANAN LA CURVA
 10: destroy 1 card on their field	10: destruye 1 carta de su campo
 Duel	Duelo
 against %s	contra %s
+WASD / stick  move     Shift  run     Mouse  look     Alt  pointer     Scroll  zoom     E  talk / enter     L  ask Lumen     M  map     B  decks     Esc  menu	WASD / stick  mover     Shift  correr     Mouse  mirar     Alt  puntero     Rueda  zoom     E  hablar / entrar     L  preguntar a Lumen     M  mapa     B  decks     Esc  menú
+Mouse turns the camera	El mouse mueve la cámara
+While you walk in the worlds the camera follows the mouse and the pointer hides (hold Alt for it). Off: hold the right button and drag.	Mientras caminas por los mundos la cámara sigue al mouse y el puntero se esconde (mantén Alt para verlo). Apagado: mantén el botón derecho y arrastra.
+How fast the mouse turns the camera in the worlds.	Qué tan rápido gira la cámara con el mouse en los mundos.
+Next task	Siguiente tarea
+Group: %s	Grupo: %s

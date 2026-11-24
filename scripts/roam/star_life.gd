@@ -9,7 +9,7 @@ extends Node
 ## Free Roam only. In Story, and while a chapter's list rides along, everybody stays where the
 ## story has them.
 
-const SAVE := "user://stars.cfg"
+static var SAVE := Saves.u("stars.cfg")
 const WALK := 1.35
 
 ## Where each one is through the day: [from this minute, where, facing, what they do there].
@@ -447,7 +447,7 @@ func _build_grid() -> void:
 
 
 static var _grid_mem := {}     # district -> {"sig", "rect", "solid"}: which cells are walls
-const GRID_FILE := "user://star_grid_%s.bin"
+static var GRID_FILE := Saves.u("star_grid_%s.bin")
 
 
 ## How many solid things the world has: when that changes, the kept grid is worked out again.

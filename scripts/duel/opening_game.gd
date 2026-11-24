@@ -7,7 +7,7 @@ extends Control
 signal finished(player_first: bool)
 signal _picked(i: int)
 
-const SAVE := "user://opening.cfg"
+static var SAVE := Saves.u("opening.cfg")
 const HANDS := ["Rock", "Paper", "Scissors"]
 
 var me_key := "player"

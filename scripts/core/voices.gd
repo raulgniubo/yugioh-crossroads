@@ -183,7 +183,7 @@ static func _note_mute(voice: String, text: String) -> void:
 	_mute[voice + "|" + text] = true
 	if DisplayServer.get_name() == "headless":
 		return
-	var base := Saves.data_dir() if Saves.data_dir() != "" else "user://"
+	var base := Saves.data_dir() if Saves.data_dir() != "" else Saves.u("")
 	var dir := base.path_join("Crash reports")
 	DirAccess.make_dir_recursive_absolute(dir)
 	var path := dir.path_join("lines without a voice.txt")
