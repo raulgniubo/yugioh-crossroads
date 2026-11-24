@@ -90,7 +90,9 @@ func _init(over: String, title: String, sub: String, color: Color, pics: Array, 
 	v.add_child(t)
 	if sub != "":
 		var s := UITheme.label(sub, 19 if big else 15, Color(0.88, 0.91, 1.0, 0.86))
-		if size_px.x < 340.0:
+		# (0.74.1) A short tile has room for one line only: two pushed the small heading out over
+		# its top edge ("With friends" on Online, with a long group name).
+		if size_px.x < 340.0 and size_px.y >= 120.0:
 			s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			s.max_lines_visible = 2
 		else:
