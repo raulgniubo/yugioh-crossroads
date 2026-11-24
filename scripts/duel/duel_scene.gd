@@ -494,6 +494,25 @@ func _start() -> void:
 					hud.cut_in(0, "DARK MAGICIAN", "ATK 2500   ·   DEF 2100", Color("a070ff"), 30.0, true)
 				else:
 					hud.cut_in(0, "TRAP CARD!", "Mirror Force", Color("ff4dd2"), 30.0))
+	if "--level-demo" in OS.get_cmdline_user_args():
+		# Dev: two monsters of yours on the field, then the Level of one is lowered by an effect:
+		# its star must say the new Level (0.72.5).
+		await _play(events)
+		var lv_a = state._make(89631139, ME)
+		var lv_b = state._make(70781052, ME)
+		state.players[ME].field[1] = lv_a
+		state.players[ME].field[2] = lv_b
+		lv_a.face_up = true
+		lv_b.face_up = true
+		await board.anim_summon(ME, lv_a, 1, false)
+		await board.anim_summon(ME, lv_b, 2, false)
+		board.refresh_stats(state)
+		await get_tree().create_timer(1.0).timeout
+		lv_a.lv_set = maxi(1, lv_a.level() - 1)
+		lv_b.lv_set = lv_b.level() + 2
+		board.refresh_stats(state)
+		hud.inspect(lv_a)
+		return
 	if "--extra-demo" in OS.get_cmdline_user_args():
 		# Dev: the Extra Deck list with a full Extra Deck (15), two of them ready.
 		await _play(events)

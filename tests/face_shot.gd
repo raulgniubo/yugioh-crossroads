@@ -8,6 +8,9 @@ var sun := false
 var dy := 0.0  # aim this far above (or below, negative) the usual spot
 var looks: Array = []
 var ids := false
+var rawskin := false
+var lines := -1.0
+var dbg := 1
 var tint := false
 var lod := -1.0
 var full := false
@@ -24,6 +27,13 @@ func _ready() -> void:
 			dist = float(a.substr(7))
 		elif a == "--ids":
 			ids = true
+		elif a == "--rawskin":
+			rawskin = true
+		elif a.begins_with("--lines="):
+			lines = float(a.substr(8))
+		elif a.begins_with("--dbg="):
+			ids = true
+			dbg = int(a.substr(6))
 		elif a.begins_with("--lod="):
 			lod = float(a.substr(6))
 		elif a == "--full":
@@ -40,6 +50,8 @@ func _ready() -> void:
 			Profile.look_top = int(cs[1])
 			Profile.look_bottom = int(cs[2])
 			Profile.look_skin = int(cs[3])
+		elif a.begins_with("--eyes="):
+			Profile.look_eyes = int(a.substr(7))
 		elif a == "--sun":
 			sun = true
 		elif a.begins_with("--looks="):
@@ -84,7 +96,13 @@ func _ready() -> void:
 			for si in (mm as MeshInstance3D).get_surface_override_material_count():
 				var sm = (mm as MeshInstance3D).get_surface_override_material(si)
 				if sm is ShaderMaterial and ids:
-					(sm as ShaderMaterial).set_shader_parameter("debug_ids", 1)
+					(sm as ShaderMaterial).set_shader_parameter("debug_ids", dbg)
+				if sm is ShaderMaterial and rawskin:
+					# the skin as the texture has it (no "Natural" tone, no picked color)
+					(sm as ShaderMaterial).set_shader_parameter("skin_nat", Color(0, 0, 0, 0))
+					(sm as ShaderMaterial).set_shader_parameter("skin_to", Color(0, 0, 0, 0))
+				if sm is ShaderMaterial and lines >= 0.0:
+					(sm as ShaderMaterial).set_shader_parameter("face_lines", lines)
 				if sm is ShaderMaterial and lod >= 0.0:
 					(sm as ShaderMaterial).set_shader_parameter("lod_max", lod)
 				if sm is ShaderMaterial and tint:

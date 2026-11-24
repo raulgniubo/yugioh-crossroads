@@ -3119,6 +3119,22 @@ func refresh_stats(state: DuelState) -> void:
 			for l in pair:
 				l.visible = true
 			pair[3].visible = not hidden
+			# (0.72.5) The star shows the Level the monster has NOW: an effect that raised or lowered
+			# it used to work (a Synchro counted the new Level) while the star kept the printed one.
+			var star_l := pair[3].get_child(0) as Label3D if (pair[3] as Node).get_child_count() > 0 else null
+			if star_l != null:
+				var printed := int(m.data.get("level", 0))
+				var lv := int(m.level())
+				var is_xyz: bool = str(m.data.get("frame", "")) == "xyz"
+				star_l.text = str(lv)
+				if lv == printed:
+					star_l.modulate = Color("ffd23a") if is_xyz else Color("0a1236")
+				else:
+					star_l.modulate = (Color("7dffa0") if is_xyz else Color("0b6b2a")) if lv > printed else (Color("ff8a8a") if is_xyz else Color("c21414"))
+				if not hidden and m.face_up:
+					if _last_lv.has(m.uid) and int(_last_lv[m.uid]) != lv:
+						_level_pop(base, pair[3], lv, lv > int(_last_lv[m.uid]))
+					_last_lv[m.uid] = lv
 			# What the Field Spell in force does to this one: a mark on the card's far corner,
 			# up in the place's color or down in red, with the numbers.
 			var fd: Array = FieldLooks.delta(state, m) if m.face_up else [0, 0]
@@ -3149,9 +3165,35 @@ func refresh_stats(state: DuelState) -> void:
 	for uid in _last_stats.keys():
 		if not seen.has(uid):
 			_last_stats.erase(uid)
+	for uid in _last_lv.keys():
+		if not seen.has(uid):
+			_last_lv.erase(uid)
 
 
 var _last_stats := {}    # monster uid -> [ATK, DEF] as last shown
+var _last_lv := {}       # monster uid -> the Level as last shown
+
+
+## The Level changed: the star jumps and the new Level rises (gold) or sinks (red) over the card.
+func _level_pop(base: Vector3, star: Node3D, lv: int, up: bool) -> void:
+	var col := Color("ffd23a") if up else Color("ff6a6a")
+	var l := _stat_label()
+	l.text = ("▲ " if up else "▼ ") + "★ " + str(lv)
+	l.font_size = 84
+	l.outline_size = 20
+	l.modulate = col
+	l.position = base + Vector3(-0.35, 0.6, 0.3)
+	l.visible = true
+	l.scale = Vector3.ONE * 0.4
+	var tw := create_tween().set_parallel()
+	tw.tween_property(l, "scale", Vector3.ONE, Settings.t(0.16)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "position:y", l.position.y + (0.45 if up else -0.25), Settings.t(1.0)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "modulate:a", 0.0, Settings.t(0.3)).set_delay(Settings.t(0.85))
+	tw.chain().tween_callback(l.queue_free)
+	if is_instance_valid(star):
+		star.scale = Vector3.ONE * 1.7
+		create_tween().tween_property(star, "scale", Vector3.ONE, Settings.t(0.35)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	Sfx.play("charge" if up else "fizz", -12.0, 1.3 if up else 0.9)
 
 
 ## "+500" rising in gold with light going up, or "-500" sinking in red with light going down.

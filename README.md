@@ -5,6 +5,15 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.72.5
+
+**Four things from play.** No cards added: 12,745 total.
+
+- **The star on the field shows the Level a monster has now.** An effect that raised or lowered a Level already worked (a Synchro counted the new one), but the star kept the printed Level. It now changes (red when lowered, green when raised), jumps and says "▼ ★ 2" over the card when it happens, and the card panel says "Level 2 (was 3)".
+- **The Extra Deck list**: it is drawn over your hand and over Lumen (they covered its bottom row and the Close button), it sits to the right of the card panel, and the card panel comes up over the dark, so the card under the pointer can be read whole. The wheel moves its text. The first card is shown as soon as the list opens.
+- **Your duelist's face keeps its nose and mouth** whatever the skin color. Skin is painted toward one tone (so an arm is not darker than a leg), and that also wiped out what was drawn on the face; in "Natural" too since 0.72.1. What is clearly darker than the skin right next to it (a line, the shade beside a nose) now stays.
+- **"Short Twists"**: one eyebrow and the strand over the forehead were marked wrong in its mask and came out in the eye color and a grey-green. The eyebrow takes the hair color; the strand is hair with a streak in your signature color, like the other hairstyles.
+
 ## What is in 0.72.4
 
 **A model you dropped in is read once.** No cards added: 12,745 total.

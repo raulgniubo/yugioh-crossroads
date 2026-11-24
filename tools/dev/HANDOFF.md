@@ -1047,7 +1047,30 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.72.4 STATE (Nov 23 night; NEWEST, read this first): dropped-in models are read once
+#### 0.72.5 STATE (Nov 23 late night; NEWEST, read this first): four reports from play
+- Level star: DuelBoard.refresh_stats writes m.level() into the star each time (OcgDuel sets lv_set from the core's query, so it is
+  right with the real engine), colors it when it differs from the print, _level_pop when it changes. `--level-demo` shows it.
+  DuelHud.inspect: the Level chip says "(was N)". The ATK/DEF in that panel are still the printed ones (not asked; the field shows the live ones).
+- Extra Deck list (DuelHud.show_extra): z_index 72 (hand cards go up to 60, Lumen 4, the pause screen 75); placed right of
+  _inspect_panel, which is lifted to 73 while the list is open; DuelHud._input sends the wheel to the card text while it is open.
+- Hero skin (HeroLook shader, the id 40 branch): after the even paint, each FACE pixel (mask g > 0.75, or `all_face` on a borrowed
+  head) is compared with the lightest skin texel on three rings around it (line_r 7/20/44 texels); 9% to 30% darker (line_w) = drawn,
+  and that much darkness is put back (luminance only: carrying the hue over made orange blotches on Swept Back).
+  DO NOT compare against one reference tone for the whole face (skin_ref, the cheeks): hero_m12's face is painted chalk white
+  and a whole-face reference turned it white; tried twice. Not on bodies: knee and knuckle lines read as scratches.
+  `face_lines` 0 = the old way. tests/face_shot.tscn got --eyes= --rawskin --lines= --dbg=2.
+- Mask of hero_m12_hair mended by where the triangles sit: tests/tri_dump.tscn writes every triangle's UVs + place on the body,
+  /tmp/masktool/where.py (not kept: 40 lines, rasterizes triangle numbers into the texture, lists mask components with their
+  place) and then components are renamed by place. AFTER CHANGING A MASK: `godot --headless --path <REPO> --import` (the test copy
+  links the repo's .godot/imported; importing in yc_test is undone by the next synctest).
+- OTHER HEADS WITH THE SAME KIND OF MASK FAULTS, seen on the sheet (hair Red, eyes Violet, `--colors=5:0:0:0 --eyes=7`), not mended:
+  m6 Buzz Cut (irises not marked: eye color does not take), m8 Messy Shag (same), m5 Curly Top (grey unmarked hair pieces by
+  the right eye), m10 Tied Back (right brow + a strand grey), m11 Layered Fringe (left brow grey), f6 Pixie Cut (the worst:
+  the face is a patchwork), f3/f5 irises partly unmarked. Same recipe as m12.
+- Raul also said recoloring CLOTHES "a veces pierde un poco el detalle". Not looked at: paint() carries light and dark over but
+  everything in the region takes the one hue (stripes, logos). Ask him for a picture of a case before changing it.
+
+#### 0.72.4 STATE (Nov 23 night): dropped-in models are read once
 - Raul asked for point 1 of the list after 0.72.3 ("los modelos se leen del archivo cada vez"). About point 2 (portraits) he said:
   "no me gusta que se vaya a la pantalla y que las cosas no se vean bien... prefiero que todo se cargue anteriormente y ya cuando
   se vaya pues todo esté cargado". So: NO pop-in fixes. Read ahead, wait behind a card or the ring, then show everything at once.

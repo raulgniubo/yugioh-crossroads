@@ -706,9 +706,12 @@ func show_extra(options: Array) -> void:
 	_extra_panel = Control.new()
 	_extra_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_extra_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	# (0.72.5) Over the cards in your hand and over Lumen: they were drawn on top of the list and
+	# covered its bottom row and the Close button. (Under the pause screen, which is 75.)
+	_extra_panel.z_index = 72
 	add_child(_extra_panel)
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.5)
+	dim.color = Color(0, 0, 0, 0.62)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.gui_input.connect(func(e):
 		if e is InputEventMouseButton and e.pressed:
@@ -726,6 +729,7 @@ func show_extra(options: Array) -> void:
 	ex.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ex.custom_minimum_size = Vector2(700, 0)
 	v.add_child(ex)
+	v.add_child(UITheme.label("Point at a card to read it on the left (the wheel moves its text). Click a lit one to summon it.", 16, Color("ffd23a", 0.85)))
 	# (0.72.2: a grid that wraps, the ones you can summon first. One long row ran off both sides of
 	# the screen with a full Extra Deck of 15 and could not be scrolled.)
 	var list: Array = options.duplicate()
@@ -778,6 +782,9 @@ func show_extra(options: Array) -> void:
 		row.add_child(col)
 	var close := Button.new()
 	close.text = "Close"
+	close.custom_minimum_size = Vector2(0, 52)
+	close.add_theme_font_size_override("font_size", 20)
+	close.add_theme_stylebox_override("normal", UITheme.button_box(Color(1, 1, 1, 0.08), Color(1, 1, 1, 0.55)))
 	close.pressed.connect(hide_extra)
 	v.add_child(close)
 	await get_tree().process_frame
@@ -785,16 +792,32 @@ func show_extra(options: Array) -> void:
 		return
 	panel.reset_size()
 	var vs := get_viewport_rect().size
+	# (0.72.5) The list sits to the right of the card panel, and the card panel comes up over the dark
+	# so the card under the pointer can be read whole: its picture, its numbers and its text.
+	# (The list used to cover most of it, and a click on a card already summons it.)
+	var left := 20.0
+	if _inspect_panel != null and is_instance_valid(_inspect_panel):
+		left = _inspect_panel.get_global_rect().end.x + 18.0
+		_inspect_z = _inspect_panel.z_index
+		_inspect_panel.z_index = 73
+	var room := vs.x - left - 20.0
 	# should it still not fit (a small window), it is made smaller as a whole, never cut off
-	var k := minf(1.0, minf((vs.x - 40.0) / maxf(panel.size.x, 1.0), (vs.y - 40.0) / maxf(panel.size.y, 1.0)))
+	var k := minf(1.0, minf(room / maxf(panel.size.x, 1.0), (vs.y - 40.0) / maxf(panel.size.y, 1.0)))
 	panel.scale = Vector2(k, k)
-	panel.position = (vs - panel.size * k) / 2.0
+	panel.position = Vector2(left + (room - panel.size.x * k) / 2.0, (vs.y - panel.size.y * k) / 2.0)
+	# Something to read from the start: the first one in the list.
+	if not list.is_empty():
+		inspect(list[0][0])
 
+
+var _inspect_z := 0
 
 func hide_extra() -> void:
 	if _extra_panel:
 		_extra_panel.queue_free()
 		_extra_panel = null
+		if _inspect_panel != null and is_instance_valid(_inspect_panel):
+			_inspect_panel.z_index = _inspect_z
 
 
 ## A sweeping band across the screen for phase changes.
@@ -1174,7 +1197,13 @@ func inspect(inst, hidden := false) -> void:
 	if d.get("kind", "monster") == "monster":
 		var frame: String = d.get("frame", "normal")
 		var lv_word := "Rank" if frame == "xyz" else "Level"
-		_chip("%s %d" % [Loc.t(lv_word), int(d.get("level", 0))], Color("ffd23a"))
+		# (0.72.5) The Level it has now, when an effect changed it (the card's print is said beside it).
+		var lv_print := int(d.get("level", 0))
+		var lv_now: int = int(inst.level()) if inst.has_method("level") else lv_print
+		if lv_now != lv_print and lv_now > 0:
+			_chip(Loc.t("%s %d (was %d)") % [Loc.t(lv_word), lv_now, lv_print], Color("7dffa0") if lv_now > lv_print else Color("ff8a8a"))
+		else:
+			_chip("%s %d" % [Loc.t(lv_word), lv_print], Color("ffd23a"))
 		_chip(str(d.get("attribute", "")), Cards.ATTRIBUTE_COLORS.get(d.get("attribute", ""), [Color.GRAY, Color.GRAY])[1])
 		_chip(str(d.get("race", "")), UITheme.ACCENT)
 		_chip(frame.capitalize() + (" Tuner" if d.get("tuner", false) else ""), Color("b0b8c8"))
@@ -1298,6 +1327,16 @@ func _hand_band() -> float:
 ## Dragging a card: up onto the table plays it (when it can be played), and sideways inside the hand
 ## moves it to a new place among the others, so you can keep your cards in the order you like.
 func _input(event: InputEvent) -> void:
+	# (0.72.5) With the Extra Deck list open, the wheel moves the text of the card being read (the
+	# list takes the pointer, so the wheel never reached the card panel).
+	if _extra_panel != null and is_instance_valid(_extra_panel) and event is InputEventMouseButton and event.pressed \
+			and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and not overlay_visible():
+		_inspect_scroll.scroll_vertical += (-48 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 48)
+		var bar0 := _inspect_scroll.get_v_scroll_bar()
+		if bar0 != null and bar0.value >= bar0.max_value - bar0.page - 2.0:
+			_inspect_more.text = " "
+		get_viewport().set_input_as_handled()
+		return
 	if _drag.is_empty():
 		return
 	var entry: Dictionary = _drag["entry"]

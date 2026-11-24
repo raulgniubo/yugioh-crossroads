@@ -8030,4 +8030,6 @@ const ES := {
 	"Admin: add the %d missing cards": "Admin: añadir las %d cartas que faltan",
 	"Left stick  move     %s  run     Right stick  look     %s  talk / enter     %s  map     %s  card shop     %s  menu": "Stick izq.  moverse     %s  correr     Stick der.  mirar     %s  hablar / entrar     %s  mapa     %s  tienda     %s  menú",
 	"Getting everything ready": "Preparando todo",
+	"Point at a card to read it on the left (the wheel moves its text). Click a lit one to summon it.": "Pasa el puntero sobre una carta para leerla a la izquierda (la rueda mueve su texto). Haz clic en una iluminada para invocarla.",
+	"%s %d (was %d)": "%s %d (era %d)",
 }

@@ -176,6 +176,10 @@ uniform int debug_ids = 0;       // dev: 1 shows each mask region in a flat colo
 // Never going past this mipmap keeps every island its own color (1.5: up to about 3x smaller).
 uniform float lod_max = 1.5;
 uniform float face_flat = 0.7;
+uniform vec3 line_r = vec3(7.0, 20.0, 44.0);   // (texels) how far around a pixel the lightest skin is looked for
+uniform vec2 line_w = vec2(0.09, 0.30);        // how much darker than that counts as drawn: from, fully
+uniform int all_face = 0;      // a borrowed head: all of its skin is face (its mask may call part of it body)
+uniform float face_lines = 1.0;     // how much of what is drawn on the skin is kept (dev: 0 for the old way)
 // Where a borrowed head meets the body: the skin of both necks is drawn in one even color (the
 // generated necks were painted with blotches, collar bleed and different shades). The weight is in
 // the vertex color, set when the mesh is cut; only cut meshes turn it on.
@@ -184,6 +188,7 @@ uniform vec3 neck_col = vec3(0.8, 0.55, 0.42);
 uniform int drop_cloth = 0;
 uniform vec4 skin_nat = vec4(0.0);    // the borrowed face's own tone, for the body's skin
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+const vec2 RING[8] = vec2[8](vec2(1.0, 0.0), vec2(0.707, 0.707), vec2(0.0, 1.0), vec2(-0.707, 0.707), vec2(-1.0, 0.0), vec2(-0.707, -0.707), vec2(0.0, -1.0), vec2(0.707, -0.707));
 vec3 rgb2hsv(vec3 c) {
 	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
 	vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
@@ -255,7 +260,45 @@ void fragment() {
 		if (sto.a < 0.5 && skin_nat.a > 0.5) {
 			sto = vec4(skin_nat.rgb, 1.0);
 		}
-		c = paint_e(c, mix(skin_ref * skin_gain, neck_col, nw), sto, 0.25);
+		vec3 sref = mix(skin_ref * skin_gain, neck_col, nw);
+		vec3 even = paint_e(c, sref, sto, 0.25);
+		if (sto.a > 0.5 && face_lines > 0.0 && (m.g > 0.75 || all_face == 1)) {
+			// (0.72.5) What is DRAWN on the skin keeps its strength: the line of a nose, a mouth, a
+			// lash, a crease. Painting everything toward one tone (above) is right for the skin itself
+			// (an arm a little darker than a leg, a face paler than its hands) and wiped these out:
+			// a face in a picked color, and since 0.72.1 in "Natural" too, had eyes and nothing else.
+			// A drawn line is paint clearly darker than the skin right next to it, so each pixel is
+			// held against the lightest skin a few texels around it (three rings: thin strokes, thicker
+			// ones, the soft shade beside a nose), never against one tone for the whole body: generated faces are
+			// painted anywhere from chalk white to orange, and only the difference to their own
+			// neighbourhood says "line". Only on the face: on a body the same strokes are knee and
+			// knuckle lines, which read as scratches when they get stronger.
+			float lc = dot(c, LUMA);
+			vec3 best = c;
+			float lbest = lc;
+			for (int i = 0; i < 24; i++) {
+				vec2 uv2 = UV + RING[i % 8] * (i < 8 ? line_r.x : (i < 16 ? line_r.y : line_r.z)) / tsz;
+				float id2 = texture(mask, uv2).r * 255.0;
+				if (abs(id2 - 40.0) < 12.0) {
+					vec3 n = mix(min(textureLod(tex, uv2, clamp(lod, 0.0, lod_max)).rgb * skin_gain, vec3(1.0)), neck_col, nw);
+					float ln = dot(n, LUMA);
+					if (ln > lbest) {
+						lbest = ln;
+						best = n;
+					}
+				}
+			}
+			float w = smoothstep(line_w.x, line_w.y, 1.0 - lc / max(lbest, 0.004)) * face_lines;
+			// (Only how much darker, never the hue: a painted blush or a reddish shade under an eye
+			// came back as orange blotches when its color was carried over too.)
+			float q = clamp(lc / max(lbest, 0.004), 0.0, 1.0);
+			c = mix(even, paint_e(best, sref, sto, 0.25) * q, w);
+			if (debug_ids == 2) {
+				c = vec3(w, 1.0 - w, 0.0);
+			}
+		} else {
+			c = even;
+		}
 		// Faces are drawn flat, the way the art is: light that follows every small bump of a
 		// generated face shows lumps around the nose and mouth.
 		if (m.g > 0.75 || nw > 0.5) {
@@ -329,6 +372,7 @@ static func apply(scene: Node, model: String, head_model: String, p, accent: Col
 			print("HEROSKIN body %s head %s gain head %s (body neck %s)" % [model, head_model, hg, r])
 		for m in hm:
 			(m as ShaderMaterial).set_shader_parameter("skin_gain", hg)
+			(m as ShaderMaterial).set_shader_parameter("all_face", 1)
 			(m as ShaderMaterial).set_shader_parameter("drop_cloth", 1 if DROP_CLOTH.has(head_model) else 0)
 		# one even neck for body and head: the face's own cheek color with its tint, a touch darker
 		var ch: Color = _cheeks.get("%s/2/%.3f" % [head_model, _neck_cut(model)], Color(0, 0, 0, 0))
