@@ -1047,7 +1047,13 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.74.2 STATE (Nov 24 night; NEWEST, read this first): the folder is the game, mouse look
+#### 0.74.3 STATE (Nov 24 night; NEWEST, read this first): small fixes from play
+- CardPicker sits right of the card panel (hud._inspect_panel.offset_right + 18) and drops columns until it fits.
+- Avatars.apply_uniform (dorm jacket on stand-ins): past_wrist() keeps hands out of the jacket (they were painted blue).
+- Story task box: "R  Guide to another task" chip whenever 2+ tasks are open (R starts guiding when none is).
+- tests/tri_dump.gd adds the dominant bone name per triangle (10th field).
+
+#### 0.74.2 STATE (Nov 24 night; previous): the folder is the game, mouse look
 - Saves.u(rel): every file the game writes goes to Crossroads Data/game/ when the folder is beside the game (portable),
   else user://. All former "user://..." constants are `static var X := Saves.u("...")`. portable() and the base are
   cached with Engine.set_meta("cr_portable"/"cr_base") because classes ask while they are still loading (circular class

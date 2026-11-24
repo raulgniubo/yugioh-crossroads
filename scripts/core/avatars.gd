@@ -2676,6 +2676,18 @@ float off_sleeve(vec3 p, vec3 a, vec3 b, float lim) {
 	float d = length(p - (a + ab * clamp(along, 0.0, 1.0)));
 	return smoothstep(lim, lim * 1.1, d) * smoothstep(-0.3, -0.18, along) * (1.0 - smoothstep(1.6, 1.8, along));
 }
+// (0.74.2) Past the wrist, along the forearm and close to its line: a hand. Never jacket (a
+// student's hands came out painted in the dorm color, fingers and all).
+float past_wrist(vec3 p, vec3 a, vec3 b) {
+	vec3 ab = b - a;
+	float l2 = dot(ab, ab);
+	if (l2 < 0.0001) {
+		return 0.0;
+	}
+	float along = dot(p - a, ab) / l2;
+	float d = length(p - (a + ab * along));
+	return smoothstep(0.96, 1.02, along) * (1.0 - smoothstep(0.55, 0.7, d / sqrt(l2)));
+}
 void fragment() {
 	vec4 t = texture(tex, UV);
 	float y = lp.y / h;
@@ -2688,6 +2700,7 @@ void fragment() {
 	float on_fore = smoothstep(0.35, 0.65, fore);
 	body *= 1.0 - off_sleeve(lp, el_l, wr_l, lim_l) * on_fore;
 	body *= 1.0 - off_sleeve(lp, el_r, wr_r, lim_r) * on_fore;
+	body *= 1.0 - clamp(past_wrist(lp, el_l, wr_l) + past_wrist(lp, el_r, wr_r), 0.0, 1.0);
 	float lum = dot(t.rgb, vec3(0.3, 0.59, 0.11));
 	vec3 cloth = coat * (0.5 + 0.7 * lum);
 	// Thin piping only: a line just above the hem, a narrow zip and a line round the collar.

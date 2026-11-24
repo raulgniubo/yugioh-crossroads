@@ -21,6 +21,9 @@ var lo := 1
 var hi := 1
 var live := false
 var _tiles := {}             # uid -> {"pic", "rim", "badge", "num", "home"}
+var _grid: GridContainer
+var _scroll: ScrollContainer
+var _cell_w := 0.0
 var _count: Label
 var _count_box: PanelContainer
 var _info: Label
@@ -99,11 +102,15 @@ func open(h, text: String, list: Array, opts: Dictionary, animate := true) -> vo
 	var hidden: Array = o.get("hidden", [])
 	var labels: Dictionary = o.get("labels", {})
 	var grid := GridContainer.new()
+	_grid = grid
+	_scroll = null
+	_cell_w = csize.x
 	grid.columns = clampi(all.size(), 1, 9)
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 8)
 	if all.size() > 18:
 		var sc := ScrollContainer.new()
+		_scroll = sc
 		sc.custom_minimum_size = Vector2(9 * (csize.x + 18) + 24, 520)
 		sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		_body.add_child(sc)
@@ -219,7 +226,25 @@ func open(h, text: String, list: Array, opts: Dictionary, animate := true) -> vo
 		return
 	reset_size()
 	var vs := get_viewport_rect().size
-	position = Vector2((vs.x - size.x) / 2.0, clampf((vs.y - size.y) * 0.42, 16.0, vs.y * 0.3))
+	# (0.74.2) Right of the card panel, never over it: a card in the list is read there while you
+	# choose. Too wide for the room left: fewer cards to a row (more rows).
+	var left := 20.0
+	if hud != null and "_inspect_panel" in hud and hud._inspect_panel != null and is_instance_valid(hud._inspect_panel):
+		left = hud._inspect_panel.offset_right + 18.0
+	var room := vs.x - left - 16.0
+	while size.x > room and _grid != null and _grid.columns > 3:
+		_grid.columns -= 1
+		if _scroll != null:
+			_scroll.custom_minimum_size.x = _grid.columns * (_cell_w + 18) + 24
+		reset_size()
+		await get_tree().process_frame
+		if not is_inside_tree():
+			return
+		reset_size()
+	var x := left + maxf(0.0, (room - size.x) / 2.0)
+	if size.x > room:
+		x = maxf(16.0, vs.x - 16.0 - size.x)
+	position = Vector2(x, clampf((vs.y - size.y) * 0.42, 16.0, vs.y * 0.3))
 	if animate:
 		pivot_offset = size / 2.0
 		scale = Vector2(0.94, 0.94)

@@ -2607,7 +2607,7 @@ func _rebuild_task_box(rows: Array, nxt: Array) -> void:
 				# Click a task: the beacon shows the way to it. Click it again: no beacon.
 				row.mouse_filter = Control.MOUSE_FILTER_STOP
 				row.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-				row.tooltip_text = Loc.t("Click: show the way to this one (again: stop showing it).")
+				row.tooltip_text = Loc.t("Click (or R): show the way to this one (again: stop showing it).")
 				row.gui_input.connect(func(e: InputEvent):
 					if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 						row.accept_event()
@@ -2625,8 +2625,9 @@ func _rebuild_task_box(rows: Array, nxt: Array) -> void:
 	foot.add_child(sp)
 	if not nxt.is_empty() or _guide >= 0:
 		foot.add_child(_tchip(fkey, Loc.t("Guiding") if _guide >= 0 else Loc.t("Show the way")))
-		if _guide >= 0 and task_view == 1 and not Pad.connected:
-			foot.add_child(_tchip("R", Loc.t("Next task")))
+		if task_view == 1 and not Pad.connected and rows.size() - done_n >= 2:
+			# (with the mouse turning the camera a task is not clicked any more: R picks which one)
+			foot.add_child(_tchip("R", Loc.t("Guide to another task")))
 	_task_box.reset_size()
 	_task_box.reset_size.call_deferred()
 
@@ -2655,7 +2656,7 @@ func _next_guide() -> void:
 	if open.is_empty():
 		return
 	var at := open.find(_guide)
-	_set_guide(open[(at + 1) % open.size()])
+	_set_guide(open[(at + 1) % open.size()] if at >= 0 else open[0])
 	Sfx.play("click", -10.0)
 
 

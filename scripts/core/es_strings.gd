@@ -8262,4 +8262,6 @@ const ES := {
 	"How fast the mouse turns the camera in the worlds.": "Qué tan rápido gira la cámara con el mouse en los mundos.",
 	"Next task": "Siguiente tarea",
 	"Group: %s": "Grupo: %s",
+	"Guide to another task": "Guiar a otra tarea",
+	"Click (or R): show the way to this one (again: stop showing it).": "Clic (o R): te guía a esta (otra vez: deja de guiar).",
 }
