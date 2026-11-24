@@ -1051,7 +1051,7 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - EVERY BUILD (Raul, Nov 24): add a row to the Google Doc "Yu-Gi-Oh! Crossroads - Release Notes"
   (id 179K-mhdp_04e5-8coMF_1GnEQYDWRzwWGSfvLeIzmdo, Google Docs connector): a table Versión | Fecha | Cartas | Lo nuevo,
   newest first (insertTableRow below row 0, then fill the 4 cells; version in bold). "Lo nuevo" is BULLETS (Raul, Nov 24):
-  one short Spanish line per item, "Tema: qué cambió", joined by \n, then createParagraphBullets BULLET_DISC_CIRCLE_SQUARE.
+  one short Spanish line per item, "Tema: qué cambió", joined by \n, then createParagraphBullets BULLET_DISC_CIRCLE_SQUARE. Write "online", never "en línea", in the doc.
 - Campus.go: an open, unplayed chapter starts even after free_days (the agenda wait is gone); CampusGate shows
   "Free time on the island" under Continue when a chapter waits.
 - Cup: Campus.cup_over() (cup "over" flag set by {"campus": {"cup_end": true}} after the ch6 final table, or ac_ch6 done for
