@@ -1064,6 +1064,10 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Router.go(DUEL) shows the LoadCard while the duel builds (no black screen).
 - NEXT (Raul): mouse look while walking in every open world, no right click (Settings.mouse_look exists but nothing
   reads it). Everything that needs the pointer there must get a key or a menu entry; the pointer comes back in menus.
+- ALSO NEXT: a copied game folder is not a separate game. user:// (custom dir "Crossroads", shared by every copy) and
+  Crossroads Data sync newest-wins (Saves.pull_shared / live_dir). Raul duplicated the folder to keep an older version
+  for online with his brother: the copy came up in English. Make a folder with Crossroads Data beside it fully its own
+  (its own user dir), and find why the language did not carry. Old builds still use the shared place.
 
 #### 0.74.0 STATE (Nov 24 afternoon; previous): Turbo Duels look and feel
 - Speed World 2 starting counters (GP place, Momentum, runner_tune, --speed-start) were LOST: the global EVENT_STARTUP
