@@ -1070,7 +1070,10 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   challenge|accept`, `--net-match`, NET_DECK=<deck key>, NET_LOG=1, NET_LEAK=1 (host prints any host-only card sent while
   not public), NET_LAG / NET_JITTER / NET_DROP (bad line). Dev screens: `--open=online[:wizard:N|:renew|:help|:qr|
   :groups|:challenge|:card|:waiting]`. This machine has 2 cores and 8 GB: two godots at a time at most (OOM otherwise).
-- NOT tested for real: an actual Tailscale key/tailnet (the control plane is blocked here; only "can't reach" was seen),
+- Tried on Raul's Mac (arm64, macOS 27): the helper starts as a child process (no Gatekeeper stop), reaches Tailscale, and a
+  made-up key gives "invalid key: API key does not exist" (read as bad_key). Installed as .new48. The Go module cache was
+  cleared for disk room: the next build.sh fetches everything again from GitHub (slow, works).
+- NOT tested for real: an actual Tailscale key/tailnet with two people (no account here),
   Windows firewall prompt, Defender on the helper, macOS prompts for the helper (local network), real latency.
 - Not done from the plan: the optional turn timer (off by default in the plan anyway). Later per the plan: spectating,
   typed chat, own server.
