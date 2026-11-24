@@ -92,6 +92,16 @@ func _ready() -> void:
 		Sfx.ambience("engine", -21.0)
 		Sfx.ambience_pitch(0.8)
 	add_child(board)
+	if board.track != null:
+		# (0.74.0) The weather on the road: the same as the highway you rode in from, otherwise
+		# any hour, sometimes rain.
+		var w: Dictionary = Router.roam.get("ride_weather", {}) if str(cfg0.get("return_to", "")) == Router.RIDE else {}
+		if w.is_empty():
+			w = {"mood": ["dusk", "dusk", "night", "dawn"][randi() % 4], "rain": randf() < 0.25}
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--weather="):
+				w = {"mood": a.trim_prefix("--weather=").get_slice(",", 0), "rain": "rain" in a}
+		board.track.set_weather(str(w["mood"]), bool(w["rain"]), board.camera)
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	hud = DuelHUD.new()
@@ -2169,6 +2179,15 @@ func _play_event(ev: Dictionary) -> void:
 			hud.set_speed(p, ev["speed"], ev["delta"])
 			if board.track:
 				board.track.target_speed = 22.0 + 3.2 * float(state.players[ME].speed + state.players[AI].speed) / 2.0
+				board.road_rush = clampf(float(maxi(state.players[ME].speed, state.players[AI].speed)) / 12.0, 0.0, 1.0)
+				if int(ev["speed"]) >= 10 and int(ev["speed"]) - int(ev["delta"]) < 10 and not _autoplay:
+					# (0.74.0) Top speed: the road opens up, the runner surges and the screen says so.
+					board.track.surge(p)
+					board.track.react(1.0, Color("ffd23a") if p == ME else Color("2de2e6"))
+					ScreenFx.flash(hud, Color(1.0, 0.95, 0.8), 0.25, 0.5)
+					hud.effect_text(Loc.t("TOP SPEED!") if p == ME else Loc.t("%s hits top speed!") % str(Characters.get_char(_opp_key).get("name", "")), Color("ffd23a"))
+					if hud.speed_fx:
+						hud.speed_fx.kick(1.0)
 				Sfx.ambience_pitch(0.8 + 0.045 * float(state.players[ME].speed + state.players[AI].speed) / 2.0)
 				if hud.speed_fx:
 					hud.speed_fx.amount = 0.12 + 0.035 * float(state.players[ME].speed + state.players[AI].speed) / 2.0
@@ -2317,6 +2336,11 @@ func _play_event(ev: Dictionary) -> void:
 			elif int(ev["delta"]) > 0 and not _autoplay:
 				CardFx.bless(board, p)
 			hud.set_lp(p, ev["lp"], ev["delta"])
+			if board.track != null:
+				# (0.74.0) The road tells the duel: whoever leads on Life Points rides ahead.
+				var lead := clampf(float(state.players[ME].lp - state.players[AI].lp) / 4000.0, -1.0, 1.0) * 1.5
+				board.track.set_lead(ME, lead)
+				board.track.set_lead(AI, -lead)
 			if p == ME:
 				_my_low = mini(_my_low, int(ev["lp"]))
 			if ev["delta"] < 0 and int(ev["lp"]) <= 0 and not _autoplay and not ev.get("finished", false) and not board.turbo:

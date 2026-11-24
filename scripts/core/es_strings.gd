@@ -8244,4 +8244,7 @@ const ES := {
 	"A card with ACTIVATE can use its effect now: click it.": "Una carta con ACTIVAR puede usar su efecto ahora: haz clic en ella.",
 	"Deck: %d  ·  Hand: %d  ·  GY: %d": "Deck: %d  ·  Mano: %d  ·  Cem.: %d",
 	"  ·  Banished: %d": "  ·  Dest.: %d",
+	"TOP SPEED!": "¡VELOCIDAD MÁXIMA!",
+	"%s hits top speed!": "¡%s llega a velocidad máxima!",
+	"⚡ %d · %d to go": "⚡ %d · faltan %d",
 }

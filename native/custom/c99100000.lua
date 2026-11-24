@@ -32,22 +32,23 @@ function Speed.Need(rc)
 end
 --A Grand Prix lap or a tuned runner starts with Speed Counters already on the dial
 --(CROSSROADS_SPEED_START={[0]=n,[1]=n}, set by the game before the duel starts).
-if CROSSROADS_SPEED_START and not Speed.started then
-	Speed.started=true
-	local ge=Effect.GlobalEffect()
-	ge:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_CONTINUOUS)
-	ge:SetCode(EVENT_STARTUP)
-	ge:SetOperation(function()
-		for p=0,1 do
-			local n=CROSSROADS_SPEED_START[p] or 0
-			if n>0 then Speed.Add(p,n) end
-		end
-	end)
-	Duel.RegisterEffect(ge,0)
+--(Registered on the card itself: a global effect set up while the scripts load never heard
+--the duel start, so the starting counters were lost.)
+function s.startup(e)
+	local c=e:GetHandler()
+	local n=CROSSROADS_SPEED_START and CROSSROADS_SPEED_START[c:GetControler()] or 0
+	if n>0 then Speed.Add(c:GetControler(),n) end
 end
 function s.initial_effect(c)
 	c:EnableCounterPermit(COUNTER_SPEED)
 	c:SetCounterLimit(COUNTER_SPEED,12)
+	local es=Effect.CreateEffect(c)
+	es:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_CONTINUOUS)
+	es:SetProperty(EFFECT_FLAG_CANNOT_DISABLE)
+	es:SetCode(EVENT_STARTUP)
+	es:SetRange(LOCATION_FZONE)
+	es:SetOperation(s.startup)
+	c:RegisterEffect(es)
 	--It is the road itself: nothing takes it away or touches it
 	for _,code in ipairs({EFFECT_INDESTRUCTABLE,EFFECT_CANNOT_REMOVE,EFFECT_CANNOT_TO_HAND,EFFECT_CANNOT_TO_DECK,EFFECT_CANNOT_TO_GRAVE,EFFECT_CANNOT_BE_EFFECT_TARGET}) do
 		local e0=Effect.CreateEffect(c)

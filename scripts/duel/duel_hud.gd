@@ -691,6 +691,49 @@ func set_speed(p: int, value: int, delta := 0) -> void:
 	_gauge_to[p] = value
 	if delta != 0:
 		_gauge_kick[p] = 1.0
+	if p == 0:
+		_speed_badges()
+
+
+## (0.74.0) Turbo Duels: every Spell in your hand wears how many Speed Counters it needs, green
+## when you have them, grey with how many are still missing when you do not.
+func _speed_badges() -> void:
+	if not speed_need.is_valid():
+		return
+	var have := int(_gauge_to[0]) if _gauge_to.size() > 0 else 0
+	for e in _hand:
+		var node: Control = e["node"]
+		if not is_instance_valid(node):
+			continue
+		var need: int = speed_need.call(e["inst"])
+		var b: Label = node.get_node_or_null("Spd")
+		if need <= 0:
+			if b:
+				b.visible = false
+			continue
+		if b == null:
+			b = Label.new()
+			b.name = "Spd"
+			b.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			b.add_theme_font_size_override("font_size", 19)
+			b.add_theme_constant_override("outline_size", 6)
+			b.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.06))
+			var sb := StyleBoxFlat.new()
+			sb.set_corner_radius_all(10)
+			sb.content_margin_left = 8
+			sb.content_margin_right = 8
+			sb.content_margin_top = 1
+			sb.content_margin_bottom = 2
+			b.add_theme_stylebox_override("normal", sb)
+			b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			node.add_child(b)
+		var ok := have >= need
+		b.visible = true
+		b.text = ("⚡ %d" % need) if ok else (Loc.t("⚡ %d · %d to go") % [need, need - have])
+		b.add_theme_color_override("font_color", Color("eafff2") if ok else Color("c9ced8"))
+		(b.get_theme_stylebox("normal") as StyleBoxFlat).bg_color = Color("1fae62", 0.92) if ok else Color("3a3f4c", 0.92)
+		b.reset_size()
+		b.position = Vector2((HAND_CARD.x - b.size.x) / 2.0, -14.0)
 
 
 func set_speed_button(enabled: bool) -> void:
@@ -1371,6 +1414,7 @@ func add_hand_card(inst) -> void:
 			_drag = {"entry": entry, "from": get_viewport().get_mouse_position(), "on": false}
 			hand_card_pressed.emit(inst, tr.global_position + Vector2(tr.size.x / 2.0, 0)))
 	_layout_hand()
+	_speed_badges()
 
 
 # ------------------------------------------------------------------ dragging a card out of the hand

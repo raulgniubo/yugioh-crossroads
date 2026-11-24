@@ -1909,6 +1909,14 @@ func _ux_demo() -> void:
 				if not pe.is_empty():
 					print("UX using ", pe[0].cname())
 					s.hud.pile_chosen.emit(pe[0])
+		"fakehit":
+			# (dev, 0.74.0) Your first monster on the field throws a direct attack again and again
+			# (the picture only: nothing in the duel changes), for screenshots of a blow landing.
+			_ux_done = true
+			while is_instance_valid(s) and not mons.is_empty():
+				print("UX fakehit at ", Time.get_ticks_msec())
+				await s.board.anim_battle(ME, mons[0], null)
+				await s.get_tree().create_timer(1.5).timeout
 		"menu":
 			_ux_done = true
 			for c in hand:
@@ -1967,7 +1975,7 @@ func _ux_demo() -> void:
 							if not zone_pick.is_empty():
 								_zone_picked.emit(zone_pick[0])
 						return
-		"aim", "direct":
+		"aim", "direct", "hit":
 			s.hud.auto_answer = true
 			if battle:
 				var who = null
@@ -1975,7 +1983,14 @@ func _ux_demo() -> void:
 					if _has(mm, "attack"):
 						who = mm
 						break
-				if who != null:
+				if who != null and what == "hit":
+					# (dev, 0.74.0) The attack goes through, for pictures of a blow landing.
+					_ux_done = true
+					for a in acts.get(who.uid, []):
+						if str(a[2]) == "attack":
+							_answer(a[1])
+							break
+				elif who != null:
 					_ux_done = true
 					s.hud.auto_answer = false
 					_aim_from(who)

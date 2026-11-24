@@ -1047,7 +1047,27 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.73.2 STATE (Nov 24 morning; NEWEST, read this first): open items closed, menus
+#### 0.74.0 STATE (Nov 24 afternoon; NEWEST, read this first): Turbo Duels look and feel
+- Speed World 2 starting counters (GP place, Momentum, runner_tune, --speed-start) were LOST: the global EVENT_STARTUP
+  effect set up while scripts loaded never fired. Now an EVENT_STARTUP effect on the card itself (native/custom/c99100000.lua,
+  s.startup). tools/dev/patch_scripts.py puts native/custom/*.lua into data/ocg/scripts.bin without a full repack.
+- Turbo table: DuelBoard.TURBO_RIDER both runners left of the field, side by side (-6.9, 0, 1.5 / -2.0); camera
+  (-0.45, 7.3, 9.7) fov 50; rider_at(p). TurboTrack.set_lead(i, x): the LP leader rides up to 1.5 m ahead (duel_scene lp event).
+- Turbo attacks: _battle_shot/_battle_follow have turbo shots (behind the attacker's runner, then alongside the blow);
+  ElementFx and cam_punch now also in Turbo; a direct attack lands on the other runner (_attack_goal).
+- Speed feel: DuelBoard.road_rush (0-1 from the higher Speed Counters) widens the fov up to +6 and adds a road hum shake.
+  10+ counters: "TOP SPEED!" moment (surge, react, flash, speed lines). Hand Spells wear "⚡ n" (green) or "⚡ n · m to go"
+  (grey): DuelHUD._speed_badges.
+- TurboTrack: set_weather(mood dusk|night|dawn, rain, host camera) (dome uniforms night/dawn/rain, road wet + sky_ref,
+  GPU rain on the camera when Settings.gfx.detail >= 1, wheel spray when >= 2); road shader mirrors up to 8 lights
+  (refl/refl_col/refl_n: the runners' glow + set_lights from ride traffic tail lights); scrape(i, on) sparks on the barrier;
+  set_tuck(i, 0-1) bends the rider at the hips (boost / high speed). Ride: weather picked once per visit
+  (Router.roam.ride_weather, kept into its duels); traffic gets CAR_PAINTS overlays and a little size spread.
+- Dev: --weather=night,rain | dawn | dusk; --ride-tuck; --ux=hit (the first attack goes through), --ux=fakehit (direct
+  attack picture loop, nothing in the duel changes). Picture of a blow: --shots=prefix and pick frames.
+- Not done: hair/jacket moving in the wind, wheel glow rings, new runner models (Meshy, original designs only).
+
+#### 0.73.2 STATE (Nov 24 morning; previous): open items closed, menus
 - EVERY BUILD (Raul, Nov 24): add a row to the Google Doc "Yu-Gi-Oh! Crossroads - Release Notes"
   (id 179K-mhdp_04e5-8coMF_1GnEQYDWRzwWGSfvLeIzmdo, Google Docs connector): a table Versión | Fecha | Cartas | Lo nuevo,
   newest first (insertTableRow below row 0, then fill the 4 cells; version in bold). "Lo nuevo" is BULLETS (Raul, Nov 24):

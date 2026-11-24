@@ -76,6 +76,8 @@ var _race_d := 0.0
 var _race_t := 0.0
 var _count := 0.0
 var _eye := ""                # dev: --ride-eye, a fixed camera offset for a picture
+var _env: Environment
+var _tuck_test := "--ride-tuck" in OS.get_cmdline_user_args()      # dev: always tucked in, for a picture
 
 
 func _ready() -> void:
@@ -229,6 +231,7 @@ func _save() -> void:
 func _build_world() -> void:
 	var we := WorldEnvironment.new()
 	var env := Environment.new()
+	_env = env
 	var sky := Sky.new()
 	var sm := ProceduralSkyMaterial.new()
 	sm.sky_top_color = Color("03040a")
@@ -287,6 +290,22 @@ func _build_world() -> void:
 	_cam.current = true
 	_apply_zone()
 	_place_camera(1.0)
+	# (0.74.0) The hour and the weather: picked once when you come onto the highway and kept
+	# while you go in and out of duels on it.
+	var w: Dictionary = Router.roam.get("ride_weather", {})
+	if w.is_empty():
+		w = {"mood": ["dusk", "dusk", "night", "dawn"][_rng.randi() % 4], "rain": _rng.randf() < 0.3}
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--weather="):
+			w = {"mood": a.trim_prefix("--weather=").get_slice(",", 0), "rain": "rain" in a}
+	Router.roam["ride_weather"] = w
+	track.set_weather(str(w["mood"]), bool(w["rain"]), _cam)
+	if bool(w["rain"]):
+		_env.fog_density = 0.011
+		_env.fog_light_color = Color("1a1c26")
+	elif str(w["mood"]) == "dawn":
+		_env.fog_light_color = Color("3a3650")
+		_env.ambient_light_energy = 0.75
 
 
 func _refresh_tags() -> void:
@@ -405,6 +424,18 @@ func _vehicle(node: Node3D, pick: Dictionary) -> Vector3:
 		model.rotation.y = TRAFFIC_TURN
 		model.position = Vector3(-box.get_center().x * k * cos(TRAFFIC_TURN), -box.position.y * k, box.get_center().z * k)
 		size = box.size * k
+		# (0.74.0) Not every car on the road is the same white one: a coat of paint each, and a
+		# slightly different size. (An overlay, so the model and its texture stay shared.)
+		var paint: Color = CAR_PAINTS[_rng.randi() % CAR_PAINTS.size()]
+		if paint.a > 0.0:
+			var coat := StandardMaterial3D.new()
+			coat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			coat.albedo_color = paint
+			coat.metallic = 0.7
+			coat.roughness = 0.3
+			for mi in model.find_children("*", "MeshInstance3D", true, false):
+				(mi as MeshInstance3D).material_overlay = coat
+		model.scale *= _rng.randf_range(0.94, 1.06)
 	else:
 		track._box(node, size, Vector3(0, size.y / 2.0, 0), track._solid(Color(0.3, 0.32, 0.36)))
 	# Tail lights you can read from far back, their glow on the road, and headlights ahead.
@@ -435,6 +466,8 @@ func _vehicle(node: Node3D, pick: Dictionary) -> Vector3:
 
 
 const TRAFFIC_TURN := PI      # the models are built nose toward -X
+const CAR_PAINTS := [Color(0, 0, 0, 0), Color(0.08, 0.09, 0.11, 0.62), Color(0.55, 0.06, 0.07, 0.5), Color(0.06, 0.2, 0.5, 0.5),
+	Color(0.6, 0.6, 0.62, 0.4), Color(0.75, 0.5, 0.08, 0.45), Color(0.05, 0.3, 0.22, 0.5), Color(0.3, 0.06, 0.32, 0.45)]
 
 
 ## Things on the road: boost strips, Star Chips and slow cargo haulers.
@@ -770,7 +803,9 @@ func _process(delta: float) -> void:
 	var grip := TurboGarage.grip()
 	_vz = lerpf(_vz, steer * (11.0 * grip if not airborne else 4.0) - c * _speed * 0.05 / grip, clampf(delta * 6.0 * grip, 0.0, 1.0))
 	_z = clampf(_z + _vz * delta, -LANE * 2.5, LANE * 2.5)
-	if absf(_z) >= LANE * 2.48 and _speed > 30.0:
+	var scraping := absf(_z) >= LANE * 2.48 and _speed > 30.0
+	track.scrape(0, scraping)
+	if scraping:
 		_speed -= delta * 14.0      # scraping the barrier
 		_gain(-delta * 9.0)
 	# Momentum drains slowly by itself, faster if you crawl: it has to be kept up.
@@ -790,6 +825,13 @@ func _process(delta: float) -> void:
 	track.target_speed = _speed
 	track.speed = lerpf(track.speed, _speed, clampf(delta * 6.0, 0.0, 1.0))
 	track.place_rider(0, Vector3(0, _y, _z), -_vz * 0.035)
+	track.set_tuck(0, 1.0 if _boost > 0.0 or _tuck_test else clampf((_speed - 45.0) / 40.0, 0.0, 0.5))
+	# Tail lights ahead, for the wet road to mirror.
+	var lights: Array = []
+	for th in _things:
+		if str(th["kind"]) == "hauler" and float(th["x"]) > -12.0 and float(th["x"]) < 95.0 and lights.size() < 5:
+			lights.append([Vector3(float(th["x"]) - float(th.get("hx", 3.0)) + 0.8, 0, float(th["z"])), Color(1.0, 0.18, 0.12), 1.5])
+	track.set_lights(lights)
 	_apply_zone()
 	_tick_race(delta)
 	# Other riders hold their own pace and wander between lanes.

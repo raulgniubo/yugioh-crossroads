@@ -317,6 +317,11 @@ uniform vec3 sky_ref : source_color = vec3(1.0, 0.5, 0.42);   // what the wet ro
 uniform float indoors = 0.0;
 uniform vec3 flash_col : source_color = vec3(1.0);
 uniform float flash = 0.0;       // the duel just did something big: the whole road takes its color
+// (0.74.0) Lights going along the road (tail lights, the glow under each runner): on the wet
+// asphalt each one throws a long streak toward the camera. xy = where (road x, z), z = how strong.
+uniform vec4 refl[8];
+uniform vec4 refl_col[8];
+uniform int refl_n = 0;
 """ + GLSL + """
 // (pow() of a negative number is undefined: on some GPUs it gave white-hot pixels that the glow blew up into blobs)
 float sq(float v) {
@@ -402,6 +407,21 @@ void fragment() {
 	float gx = (x * 0.5 + 3.0) / 36.0;
 	float pool = pow(max(0.0, cos(gx * 6.2832)), 6.0) * (0.45 + 0.55 * hash(vec2(floor(gx + 0.5), 3.0)));
 	col += mix(glow_a, glow_b, step(0.5, hash(vec2(floor(gx + 0.5), 9.0)))) * pool * smoothstep(13.0, 2.0, az) * 0.06 * wet * (1.0 - indoors);
+	// The lights on the road, mirrored: a streak from each toward the eye, longer the wetter.
+	vec2 eye_xz = CAMERA_POSITION_WORLD.xz;
+	for (int i = 0; i < refl_n; i++) {
+		vec2 L = refl[i].xy;
+		vec2 to_eye = eye_xz - L;
+		float le = length(to_eye);
+		if (le < 0.01) { continue; }
+		vec2 dir2 = to_eye / le;
+		vec2 rel = vec2(wp.x, z) - L;
+		float along = dot(rel, dir2);
+		float across = abs(rel.x * dir2.y - rel.y * dir2.x);
+		float reach = (3.0 + 7.0 * wet) * refl[i].w;
+		float streak = exp(-sq(across / (0.22 + 0.05 * max(along, 0.0)))) * exp(-max(along, 0.0) / reach) * smoothstep(-0.6, 0.4, along) * step(along, le);
+		col += refl_col[i].rgb * streak * refl[i].z * wet * (0.55 + 0.45 * grain) * (1.0 - indoors * 0.5);
+	}
 	// Fade into the dark far away.
 	float fade = 1.0 - smoothstep(70.0, 126.0, abs(wp.x));
 	// A wash of the color over the asphalt, strongest in bands that race back along the road.
@@ -985,6 +1005,9 @@ shader_type spatial;
 render_mode unshaded, cull_front, fog_disabled;
 uniform vec3 glow_a : source_color = vec3(1.0, 0.54, 0.23);
 uniform vec3 glow_b : source_color = vec3(0.18, 0.89, 0.9);
+uniform float night = 0.0;      // (0.74.0) 0 dusk, 1 deep night
+uniform float dawn = 0.0;       // 1: first light, cold blue going gold
+uniform float rain = 0.0;       // 1: low cloud, no stars
 varying vec3 dir;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p) {
@@ -999,21 +1022,27 @@ void fragment() {
 	vec3 mid = vec3(0.1, 0.04, 0.2);
 	// The side of the sky you ride toward burns warm, the other side stays cold.
 	vec3 hor = mix(glow_b * 0.55 + vec3(0.1, 0.05, 0.3), glow_a * 0.8 + vec3(0.35, 0.05, 0.25), smoothstep(-0.6, 0.8, d.x));
+	hor = mix(hor, hor * 0.3 + vec3(0.02, 0.02, 0.06), night);
+	hor = mix(hor, mix(vec3(0.2, 0.32, 0.55), vec3(1.0, 0.72, 0.42), smoothstep(-0.4, 0.9, d.x)), dawn);
+	hor = mix(hor, vec3(0.11, 0.115, 0.15) + hor * 0.25, rain * 0.75);
+	mid = mix(mid, vec3(0.03, 0.02, 0.07), night);
+	mid = mix(mid, vec3(0.16, 0.2, 0.36), dawn);
+	mid = mix(mid, vec3(0.06, 0.065, 0.085), rain * 0.8);
 	vec3 col = mix(hor, mid, smoothstep(0.0, 0.22, h));
-	col = mix(col, top, smoothstep(0.15, 0.7, h));
+	col = mix(col, top + vec3(0.04, 0.06, 0.12) * dawn, smoothstep(0.15, 0.7, h));
 	// Stars, thinning toward the glow of the city.
 	vec2 sp = d.xz / (abs(d.y) + 0.35) * 150.0;
 	float st = step(0.99, hash(floor(sp))) * smoothstep(0.5, 0.2, length(fract(sp) - 0.5)) * smoothstep(0.12, 0.5, h);
-	col += vec3(0.8, 0.85, 1.0) * st * (0.4 + 0.6 * hash(floor(sp) + 3.0)) * (0.7 + 0.3 * sin(TIME * 2.0 + hash(floor(sp)) * 20.0));
+	col += vec3(0.8, 0.85, 1.0) * st * (0.4 + 0.6 * hash(floor(sp) + 3.0)) * (0.7 + 0.3 * sin(TIME * 2.0 + hash(floor(sp)) * 20.0)) * (1.0 + night * 0.6 - dawn * 0.8) * (1.0 - rain);
 	// Thin cloud bands lit from below.
 	float cl = noise(vec2(d.x * 3.0 + TIME * 0.01, d.y * 16.0 + d.z * 2.0)) * noise(vec2(d.z * 4.0, d.y * 9.0));
-	col += hor * cl * 0.55 * smoothstep(0.02, 0.12, h) * smoothstep(0.5, 0.18, h);
+	col += hor * cl * (0.55 + rain * 0.9) * smoothstep(0.02, 0.12, h) * smoothstep(0.5 + rain * 0.4, 0.18, h);
 	// A big pale moon.
 	vec3 md = normalize(vec3(0.55, 0.34, -0.76));
 	float m = dot(d, md);
 	float disc = smoothstep(0.9955, 0.9965, m);
 	float crater = noise(d.xy * 60.0) * 0.25;
-	col = mix(col, vec3(0.92, 0.94, 1.0) * (0.85 - crater), disc);
+	col = mix(col, vec3(0.92, 0.94, 1.0) * (0.85 - crater), disc * (1.0 - rain) * (1.0 - dawn * 0.6));
 	col += vec3(0.5, 0.6, 1.0) * pow(max(m, 0.0), 90.0) * 0.35;
 	// Below the horizon it is just dark haze.
 	col = mix(col, hor * 0.25, smoothstep(0.0, -0.12, d.y));
@@ -1022,6 +1051,7 @@ void fragment() {
 """
 	var dm := ShaderMaterial.new()
 	dm.shader = sh
+	_dome = dm
 	dm.set_shader_parameter("glow_a", accent)
 	dm.set_shader_parameter("glow_b", accent2)
 	dome.material_override = dm
@@ -1158,6 +1188,12 @@ func _build_speed_lines() -> void:
 func add_rider(index: int, key: String, at: Vector3, color: Color, look := {}) -> RoamFigure:
 	var made := _make_rider(index, key, at, color, look)
 	_bikes.append([made[0], at, randf() * TAU])
+	(made[0] as Node3D).set_meta("glow", color)
+	(made[0] as Node3D).set_meta("fig", made[1])
+	if bool(weather["rain"]) and int(Settings.gfx.get("detail", 2)) >= 2:
+		var sp := _make_spray()
+		(made[0] as Node3D).add_child(sp)
+		_sprays.append(sp)
 	return made[1]
 
 
@@ -1173,6 +1209,8 @@ func replace_rider(index: int, key: String, color: Color, look := {}) -> RoamFig
 	old.queue_free()
 	var made := _make_rider(index, key, at, color, look)
 	_bikes[index][0] = made[0]
+	(made[0] as Node3D).set_meta("glow", color)
+	(made[0] as Node3D).set_meta("fig", made[1])
 	return made[1]
 
 
@@ -1348,6 +1386,180 @@ var _fx := {}      # rider index -> {"surge": 1..0, "wobble": 1..0, "sparks": no
 
 
 ## The rider guns it for a moment: used when their monster attacks.
+var _dome: ShaderMaterial
+var weather := {"mood": "dusk", "rain": false}
+var _rain_node: GPUParticles3D
+var _sprays: Array = []
+
+
+## (0.74.0) The hour and the weather on the road: "dusk" (the usual), "night" or "dawn", with or
+## without rain. Rain soaks the road (longer mirrored lights), hides the stars and, when the
+## graphics allow it, falls past `host` (the camera) and sprays off every rear wheel.
+func set_weather(mood: String, rain: bool, host: Node3D = null) -> void:
+	weather = {"mood": mood, "rain": rain}
+	var detail := int(Settings.gfx.get("detail", 2))
+	if _dome:
+		_dome.set_shader_parameter("night", 1.0 if mood == "night" else 0.0)
+		_dome.set_shader_parameter("dawn", 1.0 if mood == "dawn" else 0.0)
+		_dome.set_shader_parameter("rain", 1.0 if rain else 0.0)
+	if _road:
+		_road.set_shader_parameter("wet", 1.0 if rain else 0.7)
+		var ref: Color = accent * 0.8 + Color(0.35, 0.05, 0.25)
+		if mood == "night":
+			ref = ref * 0.45
+		elif mood == "dawn":
+			ref = Color(0.75, 0.62, 0.5)
+		if rain:
+			ref = ref.lerp(Color(0.32, 0.34, 0.4), 0.6)
+		_road.set_shader_parameter("sky_ref", ref)
+	if is_instance_valid(_rain_node):
+		_rain_node.queue_free()
+	for sp in _sprays:
+		if is_instance_valid(sp):
+			sp.queue_free()
+	_sprays.clear()
+	if rain and host != null and detail >= 1:
+		_rain_node = _make_rain(320 if detail <= 1 else 700)
+		host.add_child(_rain_node)
+	if rain and detail >= 2:
+		for i in _bikes.size():
+			var sp := _make_spray()
+			(_bikes[i][0] as Node3D).add_child(sp)
+			_sprays.append(sp)
+
+
+func _make_rain(n: int) -> GPUParticles3D:
+	var gp := GPUParticles3D.new()
+	gp.amount = n
+	gp.lifetime = 0.7
+	gp.preprocess = 0.7
+	gp.local_coords = false
+	gp.visibility_aabb = AABB(Vector3(-30, -20, -30), Vector3(60, 40, 60))
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = Vector3(15, 1, 9)
+	pm.direction = Vector3(0, -1, 0.35)     # (in the camera's own frame: down and back past you)
+	pm.spread = 4.0
+	pm.initial_velocity_min = 26.0
+	pm.initial_velocity_max = 32.0
+	pm.gravity = Vector3.ZERO
+	pm.particle_flag_align_y = true
+	gp.process_material = pm
+	var qm := QuadMesh.new()
+	qm.size = Vector2(0.018, 0.75)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.billboard_keep_scale = true
+	m.albedo_color = Color(0.7, 0.8, 1.0, 0.26)
+	qm.material = m
+	gp.draw_pass_1 = qm
+	gp.position = Vector3(0.0, 7.0, -13.0)      # (all ahead of the lens: a drop right in front of it is a white bar)
+	return gp
+
+
+## Water thrown up behind a rear wheel on a wet road.
+func _make_spray() -> CPUParticles3D:
+	var sp := CPUParticles3D.new()
+	sp.amount = 22
+	sp.lifetime = 0.45
+	sp.direction = Vector3(-1, 0.55, 0)
+	sp.spread = 18.0
+	sp.initial_velocity_min = 4.0
+	sp.initial_velocity_max = 8.0
+	sp.gravity = Vector3(0, -9, 0)
+	sp.scale_amount_min = 0.6
+	sp.scale_amount_max = 1.4
+	var fade := Gradient.new()
+	fade.set_color(0, Color(0.8, 0.85, 0.95, 0.35))
+	fade.set_color(1, Color(0.8, 0.85, 0.95, 0.0))
+	sp.color_ramp = fade
+	var qm := QuadMesh.new()
+	qm.size = Vector2(0.35, 0.35)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.vertex_color_use_as_albedo = true
+	m.albedo_texture = _puff()
+	qm.material = m
+	sp.mesh = qm
+	sp.position = Vector3(-1.05, 0.15, 0)
+	return sp
+
+
+## Lights on the road for the wet asphalt to mirror: up to 8 of [Vector3 at, Color, strength].
+## Most of them come from set_lights; the runners' own glow is added here every frame.
+var _ext_lights: Array = []
+
+
+func set_lights(list: Array) -> void:
+	_ext_lights = list
+
+
+func _push_reflections() -> void:
+	if _road == null:
+		return
+	var pos := PackedVector4Array()
+	var cols := PackedVector4Array()
+	pos.resize(8)
+	cols.resize(8)
+	var n := 0
+	if int(Settings.gfx.get("detail", 2)) >= 1:
+		for b in _bikes:
+			if n >= 8:
+				break
+			var h: Node3D = b[0]
+			if not is_instance_valid(h) or not h.visible or absf(h.position.x) > 90.0:
+				continue
+			var lc: Color = h.get_meta("glow", Color(1, 0.6, 0.3))
+			pos[n] = Vector4(h.position.x - 0.9, h.position.z, 0.55, 0.8)
+			cols[n] = Vector4(lc.r, lc.g, lc.b, 1.0)
+			n += 1
+		for e in _ext_lights:
+			if n >= 8:
+				break
+			var at: Vector3 = e[0]
+			var c: Color = e[1]
+			pos[n] = Vector4(at.x, at.z, float(e[2]), 1.0)
+			cols[n] = Vector4(c.r, c.g, c.b, 1.0)
+			n += 1
+	_road.set_shader_parameter("refl", pos)
+	_road.set_shader_parameter("refl_col", cols)
+	_road.set_shader_parameter("refl_n", n)
+
+
+## Sparks off a runner scraping along the barrier (ride mode), on or off.
+func scrape(i: int, on: bool) -> void:
+	if i >= _bikes.size():
+		return
+	var fx: Dictionary = _fx.get(i, {})
+	if on:
+		_sparks_for(i, fx)
+		(fx["sparks"] as CPUParticles3D).emitting = true
+	elif fx.has("sparks") and is_instance_valid(fx["sparks"]) and not fx.has("wobble"):
+		(fx["sparks"] as CPUParticles3D).emitting = false
+	_fx[i] = fx
+
+
+## The rider tucks in behind the screen: 0 sitting up, 1 flat out (a boost).
+func set_tuck(i: int, amount: float) -> void:
+	if i < _bikes.size():
+		(_bikes[i][0] as Node3D).set_meta("tuck", amount)
+
+
+var _lead := [0.0, 0.0]        # how far ahead each runner rides right now (the Life Points lead)
+var _lead_to := [0.0, 0.0]
+
+
+## Ride `x` meters ahead of (or behind, below 0) where this runner usually rides.
+func set_lead(i: int, x: float) -> void:
+	if i >= 0 and i < 2:
+		_lead_to[i] = x
+
+
 func surge(i: int) -> void:
 	if i >= _bikes.size():
 		return
@@ -1364,6 +1576,12 @@ func wobble(i: int, hard := false) -> void:
 		return
 	var fx: Dictionary = _fx.get(i, {})
 	fx["wobble"] = 1.0 if not hard else 1.5
+	_sparks_for(i, fx)
+	(fx["sparks"] as CPUParticles3D).emitting = true
+	_fx[i] = fx
+
+
+func _sparks_for(i: int, fx: Dictionary) -> void:
 	if not fx.has("sparks") or not is_instance_valid(fx["sparks"]):
 		var sp := CPUParticles3D.new()
 		sp.amount = 40
@@ -1391,8 +1609,6 @@ func wobble(i: int, hard := false) -> void:
 		sp.position = Vector3(-0.9, 0.12, 0)
 		(_bikes[i][0] as Node3D).add_child(sp)
 		fx["sparks"] = sp
-	(fx["sparks"] as CPUParticles3D).emitting = true
-	_fx[i] = fx
 
 
 var blow_busy := false
@@ -1523,8 +1739,12 @@ func _aabb(n: Node, xf: Transform3D) -> AABB:
 	return out
 
 
+const TUCK_SIGN := 1.0
+
+
 func _process(delta: float) -> void:
 	_t += delta
+	_push_reflections()
 	_react_step(delta)
 	speed = lerpf(speed, target_speed, clampf(delta * 1.5, 0.0, 1.0))
 	# Every repeat on the road (6, 12, 16, 20, 36, 48 ... meters) divides this, so nothing
@@ -1564,6 +1784,17 @@ func _process(delta: float) -> void:
 			# Driven from outside: just the engine shake and the lean it was given.
 			h.position = base + Vector3(0, absf(sin(_t * 9.0 + ph)) * 0.012, 0)
 			h.rotation.x = lerpf(h.rotation.x, float(b[3]), clampf(delta * 8.0, 0.0, 1.0))
+			var fg = h.get_meta("fig") if h.has_meta("fig") else null
+			if fg is Node3D and is_instance_valid(fg):
+				var tk := float(h.get_meta("tuck", 0.0))
+				var fn := fg as Node3D
+				if not fn.has_meta("home"):
+					fn.set_meta("home", fn.position)
+				fn.rotation.x = lerpf(fn.rotation.x, TUCK_SIGN * tk * 0.2, clampf(delta * 6.0, 0.0, 1.0))
+				# (it bends at the hips, not at the feet: the legs stay where they are on the runner)
+				var piv := Vector3(0, 0.95, 0) * fn.scale.x
+				var home: Vector3 = fn.get_meta("home")
+				fn.position = home + Basis.from_euler(Vector3(0, fn.rotation.y, 0)) * piv - Basis.from_euler(fn.rotation) * piv + Vector3(0, -0.04 * tk, 0)
 			continue
 		var sway := sin(_t * 0.7 + ph)
 		var idx := _bikes.find(b)
@@ -1583,7 +1814,10 @@ func _process(delta: float) -> void:
 				fx.erase("wobble")
 				if fx.has("sparks") and is_instance_valid(fx["sparks"]):
 					(fx["sparks"] as CPUParticles3D).emitting = false
-		h.position = base + Vector3(sin(_t * 0.43 + ph) * 0.5 + surge * 2.4 - wob * 0.9, absf(sin(_t * 9.0 + ph)) * 0.012, sway * 0.28 + sin(_t * 24.0) * 0.22 * wob)
+		if idx < 2:
+			_lead[idx] = lerpf(float(_lead[idx]), float(_lead_to[idx]), clampf(delta * 0.9, 0.0, 1.0))
+		var ahead := float(_lead[idx]) if idx < 2 else 0.0
+		h.position = base + Vector3(ahead + sin(_t * 0.43 + ph) * 0.5 + surge * 2.4 - wob * 0.9, absf(sin(_t * 9.0 + ph)) * 0.012, sway * 0.28 + sin(_t * 24.0) * 0.22 * wob)
 		h.rotation.x = cos(_t * 0.7 + ph) * 0.07 + sin(_t * 31.0) * 0.16 * wob
 		h.rotation.z = surge * 0.2
 	for tr in _trails:

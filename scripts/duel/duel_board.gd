@@ -181,9 +181,9 @@ func _build_environment() -> void:
 	camera.fov = 44
 	if turbo:
 		# Lower and further back on the road: the far rider and the skyline stay in the picture.
-		cam_home = Vector3(0, 7.0, 9.3)
-		cam_home_target = Vector3(0, 0.0, 0.55)
-		camera.fov = 46
+		cam_home = Vector3(-0.45, 7.3, 9.7)
+		cam_home_target = Vector3(-0.45, 0.0, 0.45)
+		camera.fov = 50
 	for a in OS.get_cmdline_user_args():
 		# --duel-cam=px,py,pz,tx,ty,tz (testing): where the table camera sits, for wide pictures.
 		if a.begins_with("--duel-cam="):
@@ -2414,7 +2414,7 @@ func anim_battle(p: int, inst, target) -> void:
 	var goal := _attack_goal(p, target)
 	var tier := ElementFx.tier_of(inst)
 	var shoots := ElementFx.ranged(inst)
-	var show := not turbo and Settings.anim_speed <= 2.0
+	var show := Settings.anim_speed <= 2.0
 	_battle_shot(p, home.origin, goal)
 	await _wait(BATTLE_WAIT[tier])
 	# The lunge: slow off the mark, fastest at the moment it lands. A monster that shoots
@@ -2574,6 +2574,13 @@ func anim_attack_stopped(inst) -> void:
 
 ## Low camera for attacks: behind your attacker, or facing the incoming one.
 func _battle_shot(p: int, from: Vector3, goal: Vector3) -> void:
+	if turbo:
+		# (0.74.0) On the road: the camera drops in behind the attacker's runner, the field
+		# floating ahead of it and the blow going out across it.
+		var r := rider_at(p)
+		var out := 1.0 if r.z >= 0.0 else -1.0
+		cam_shot(r + Vector3(-3.6, 2.2, out * 2.2), goal.lerp(r, 0.35) + Vector3(0, 0.6, 0), 0.35)
+		return
 	if p == 0:
 		cam_shot(from + Vector3(from.x * 0.15, 2.3, 4.2), goal.lerp(from, 0.25) + Vector3(0, 0.4, 0), 0.35)
 	else:
@@ -2585,6 +2592,11 @@ func _battle_shot(p: int, from: Vector3, goal: Vector3) -> void:
 ## and ends just short of the target. Theirs: it swings round to meet the blow where it lands.
 func _battle_follow(p: int, from: Vector3, goal: Vector3, direct: bool, tier := 0) -> void:
 	if turbo:
+		# Then it rides up alongside the blow and is there when it lands: on a monster, or on
+		# the other runner itself when nothing is in the way.
+		var out := 1.0 if goal.z >= 0.0 else -1.0
+		var w := 0.5 * tier
+		cam_shot(goal + Vector3(-3.4 - w, 1.9 + w * 0.4, out * (2.8 + w)), goal + Vector3(0.3, 0.5, 0), 0.17)
 		return
 	# (a bigger attack is seen from a little further back, so all of it fits in the picture)
 	var wide := 0.55 * tier
@@ -2744,6 +2756,8 @@ func _shatter(at: Vector3, color: Color) -> void:
 func _attack_goal(p: int, target) -> Vector3:
 	if target != null and card_for(target) != null:
 		return card_for(target).position
+	if turbo:
+		return rider_at(1 - p) + Vector3(0.5, 1.0, 0)
 	return Vector3(0, 0.6, -3.4) if p == 0 else Vector3(0, 0.6, 3.6)
 
 
@@ -2756,7 +2770,7 @@ func anim_attack(p: int, inst, target) -> void:
 	if target != null and card_for(target) != null:
 		goal = card_for(target).position
 	else:
-		goal = Vector3(0, 0.6, -3.4) if p == 0 else Vector3(0, 0.6, 3.6)
+		goal = _attack_goal(p, null)
 	var lift := Transform3D(home.basis, home.origin + Vector3(0, 0.7, 0) + (goal - home.origin) * -0.08)
 	_battle_shot(p, home.origin, goal)
 	await _move(c, lift, 0.3, 0.0)
@@ -3744,6 +3758,16 @@ func cam_release(dur := 0.5) -> void:
 var _duelists := {}   # player index -> RoamFigure
 var _aside := 0.0
 const DUELIST_Z := 6.7
+const TURBO_RIDER := [Vector3(-6.9, 0, 1.5), Vector3(-6.9, 0, -2.0)]
+
+
+## Where a rider is on the road right now (a Turbo Duel), for a blow or a camera to find them.
+func rider_at(p: int) -> Vector3:
+	if track != null:
+		var n := track.rider_node(p)
+		if n != null:
+			return n.position
+	return TURBO_RIDER[clampi(p, 0, 1)]
 
 
 ## The two duelists stand at their ends of the field, each on a lit plate.
@@ -3757,7 +3781,10 @@ func add_duelists(me_key: String, opp_key: String) -> void:
 				# Your own runner, the way you left it in the garage.
 				look = {"frame": TurboGarage.frame(), "trail": TurboGarage.trail(TurboGarage.paint(col)), "mark": TurboGarage.mark()}
 				col = TurboGarage.paint(col)
-			_duelists[p] = track.add_rider(p, me_key if p == 0 else opp_key, Vector3(0, 0, side * DUELIST_Z), col, look)
+			# (0.74.0) Both runners ride side by side just left of the field, the field floating
+			# ahead of them: both are in the picture (yours used to sit under the screen's edge,
+			# theirs behind their own hand).
+			_duelists[p] = track.add_rider(p, me_key if p == 0 else opp_key, TURBO_RIDER[p], col, look)
 		return
 	for p in 2:
 		var key := me_key if p == 0 else opp_key
@@ -4299,11 +4326,13 @@ func shake(amount: float) -> void:
 var _punch := 0.0       # degrees of field of view taken off (a quick push in)
 var _tilt := 0.0        # roll, in radians
 var _fov_home := 0.0
+var road_rush := 0.0      # Turbo Duels: 0 to 1, how fast the duel is riding (set from the Speed Counters)
+var _rush_now := 0.0
 
 
 ## The camera lunges in for an instant (`deg` degrees narrower) and tips sideways by `roll`.
 func cam_punch(deg := 3.0, roll := 0.0) -> void:
-	if turbo or Settings.anim_speed > 2.0:
+	if Settings.anim_speed > 2.0:
 		return
 	_punch = clampf(maxf(_punch, deg) if deg >= 0.0 else deg, -8.0, 9.0)
 	if roll != 0.0:
@@ -4320,6 +4349,11 @@ func _process(delta: float) -> void:
 	var sway := Vector3(sin(_time * 0.35) * 0.06, sin(_time * 0.5) * 0.04, 0)
 	var s := _shake * _shake * 0.35
 	var jitter := Vector3(_rng.randf_range(-s, s), _rng.randf_range(-s, s), 0)
+	if turbo:
+		# (0.74.0) The road under you: a fine shake that grows with the Speed Counters.
+		_rush_now = lerpf(_rush_now, road_rush, 1.0 - exp(-delta * 1.5))
+		var hum := 0.006 + 0.016 * _rush_now
+		jitter += Vector3(sin(_time * 37.0) * hum, sin(_time * 53.0 + 1.3) * hum, 0)
 	var pos := cam_home.lerp(cam_pos, cam_weight) + sway * (1.0 - cam_weight) + jitter
 	var tgt := cam_home_target.lerp(cam_target, cam_weight) + jitter * 0.5
 	camera.position = pos
@@ -4329,7 +4363,7 @@ func _process(delta: float) -> void:
 	_tilt = lerpf(_tilt, 0.0, 1.0 - exp(-delta * 5.0))
 	if _fov_home <= 0.0:
 		_fov_home = camera.fov
-	camera.fov = clampf(_fov_home - _punch, 20.0, 80.0)
+	camera.fov = clampf(_fov_home + 6.0 * _rush_now - _punch, 20.0, 80.0)
 	if absf(_tilt) > 0.0005:
 		camera.rotate_object_local(Vector3(0, 0, 1), _tilt)
 	_update_arrow()
