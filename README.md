@@ -14,6 +14,8 @@ Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 - **Hairstyles take their colors whole**: Curly Top, Buzz Cut, Messy Shag, Tied Back, Layered Fringe, Twin Tails, Side Braid and Pixie Cut had irises that kept their own color, grey brows and grey strands. Pixie Cut, whose picture is a patchwork, is painted one skin tone and one hair tone.
 - **No more blue mouth** (Ponytail and others, seen from a few steps away), and the face is lifted a shade so it matches the arms and neck.
 - **Clothes keep their details in a new color**: stripes, trims, a belt in another color, grey parts and dark cloth (no blotches on black trousers).
+- **The Graveyard and banished window works like the Extra Deck list**: it sits next to the card panel, the card panel stays bright and the wheel moves its text, so the effect of a card in your Graveyard can be read whole. A card whose effect can be used from there right now has an ACTIVATE button (it was only in the menu of your Deck before). Checked with Stardust Illumination: activated from the Graveyard, banished as its cost.
+- **Under your Life Points**: "Deck: 34 · Hand: 2 · GY: 3 ▸" (the numbers read as counts, and "▸ view" no longer gets cut off).
 - **Menus**: Replays, My Decks, the Deck Builder, the Card Album, the deck shop, Knockout, the Academy (classic) and the save screen have the game's pictures behind them, like the newer screens.
 
 ## What is in 0.73.1

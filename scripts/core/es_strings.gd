@@ -8240,4 +8240,8 @@ const ES := {
 	"Dorm Cup, end of term: %s won it": "Copa de Dormitorios, fin de curso: ganó el %s",
 	"The term is over: this is the final table. The Cup opens again with the next term.": "Terminó el curso: esta es la tabla final. La Copa vuelve a abrir con el próximo curso.",
 	"Dorm Cup: final table": "Copa de Dormitorios: tabla final",
+	"Point at a card to read it on the left (the wheel moves its text).": "Pasa el puntero sobre una carta para leerla a la izquierda (la rueda mueve su texto).",
+	"A card with ACTIVATE can use its effect now: click it.": "Una carta con ACTIVAR puede usar su efecto ahora: haz clic en ella.",
+	"Deck: %d  ·  Hand: %d  ·  GY: %d": "Deck: %d  ·  Mano: %d  ·  Cem.: %d",
+	"  ·  Banished: %d": "  ·  Dest.: %d",
 }

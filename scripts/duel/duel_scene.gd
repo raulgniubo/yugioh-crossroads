@@ -123,6 +123,11 @@ func _ready() -> void:
 	hud.drop_handler = _on_hand_drop
 	board.deck_clicked.connect(_on_deck_clicked)
 	board.pile_clicked.connect(func(p): hud.show_piles(p))
+	hud.pile_usable = func(): return ocg.pile_effects() if ocg != null else []
+	hud.pile_chosen.connect(func(inst):
+		hud.hide_piles()
+		if ocg != null:
+			ocg.use_pile_card(inst))
 	hud.hand_card_hovered.connect(func(inst): hud.inspect(inst))
 	hud.phase_button.connect(_on_phase_button)
 	hud.action_chosen.connect(_on_action)

@@ -14,6 +14,9 @@ signal pause_action(action: String)
 signal extra_pressed
 signal speed_pressed
 signal extra_chosen(inst)
+signal pile_chosen(inst)          # (0.73.2) a card in your Graveyard / banished pile whose effect can be used now
+## Which of your Graveyard and banished cards can use an effect right now (set by the duel).
+var pile_usable: Callable
 signal _response_picked(choice)
 
 const HAND_CARD := Vector2(150, 218)
@@ -300,10 +303,12 @@ func set_destiny(p: int, code: int) -> void:
 
 
 func set_counts(p: int, deck: int, hand: int, gy: int, banished := 0) -> void:
-	var t := Loc.t("Deck %d   ·   Hand %d   ·   GY %d") % [deck, hand, gy]
+	# (0.73.2: "Deck: 34 · Hand: 2", so a number reads as a count; "▸ view" was cut off at the edge.
+	# The line itself opens the piles: a pointing hand, a tooltip and the little arrow say so.)
+	var t := Loc.t("Deck: %d  ·  Hand: %d  ·  GY: %d") % [deck, hand, gy]
 	if banished > 0:
-		t += Loc.t("   ·   Banished %d") % banished
-	_count_labels[p].text = t + Loc.t("     ▸ view")
+		t += Loc.t("  ·  Banished: %d") % banished
+	_count_labels[p].text = t + "  ▸"
 
 
 ## Every card in a player's Graveyard and banished pile.
@@ -312,6 +317,7 @@ func show_piles(p: int) -> void:
 	_pile_panel = Control.new()
 	_pile_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_pile_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_pile_panel.z_index = 72      # (0.73.2: like the Extra Deck list, over the hand and Lumen)
 	add_child(_pile_panel)
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.55)
@@ -328,9 +334,16 @@ func show_piles(p: int) -> void:
 	panel.add_child(v)
 	var who: String = str(player_names[p]) if player_names.size() > p else ("You" if p == 0 else "Opponent")
 	v.add_child(UITheme.label(who.to_upper(), 20, UITheme.TEXT_DIM, UITheme.semi_font()))
+	v.add_child(UITheme.label("Point at a card to read it on the left (the wheel moves its text).", 16, Color("ffd23a", 0.85)))
 	var titles := ["GRAVEYARD", "BANISHED", "REVEALED BY A CARD EFFECT"]
 	var cols := [UITheme.ACCENT, Color("b06cff"), UITheme.GOLD]
 	var tall: bool = not (revealed[p] as Array).is_empty()
+	var usable := {}
+	if p == 0 and pile_usable.is_valid():
+		for c in pile_usable.call():
+			usable[c.uid] = true
+	if not usable.is_empty():
+		v.add_child(UITheme.label(Loc.t("A card with ACTIVATE can use its effect now: click it."), 18, Color("4fd18b"), UITheme.semi_font()))
 	for k in ([2, 0, 1] if tall else [0, 1]):
 		var list: Array = revealed[p] if k == 2 else piles[p][k]
 		v.add_child(UITheme.label("%s  ·  %d" % [Loc.t(titles[k]), list.size()], 26 if tall else 34, cols[k], UITheme.title_font()))
@@ -338,7 +351,7 @@ func show_piles(p: int) -> void:
 			v.add_child(UITheme.label("Empty" if k == 0 else "No cards have been banished.", 18, UITheme.TEXT_DIM))
 			continue
 		var sc := ScrollContainer.new()
-		sc.custom_minimum_size = Vector2(1080, 150 if tall else 196)
+		sc.custom_minimum_size = Vector2(1080, (150 if tall else 196) + (44 if not usable.is_empty() and k != 2 else 0))
 		sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		v.add_child(sc)
 		var row := HBoxContainer.new()
@@ -357,22 +370,71 @@ func show_piles(p: int) -> void:
 			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			tr.mouse_filter = Control.MOUSE_FILTER_STOP
 			tr.mouse_entered.connect(func(): inspect(inst, secret))
+			if k != 2 and usable.has(inst.uid):
+				# (it can use its effect from here: lit, with a button, and a click on it does it)
+				var cell := VBoxContainer.new()
+				cell.add_theme_constant_override("separation", 4)
+				var frame := PanelContainer.new()
+				frame.add_theme_stylebox_override("panel", UITheme.button_box(Color(0, 0, 0, 0), Color("4fd18b"), 8))
+				frame.add_child(tr)
+				cell.add_child(frame)
+				var go := Button.new()
+				go.text = Loc.t("ACTIVATE")
+				go.add_theme_font_size_override("font_size", 15)
+				go.add_theme_stylebox_override("normal", UITheme.button_box(Color("4fd18b", 0.25), Color("4fd18b")))
+				go.pressed.connect(func(): pile_chosen.emit(inst))
+				go.mouse_entered.connect(func(): inspect(inst, false))
+				cell.add_child(go)
+				tr.gui_input.connect(func(e):
+					if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+						pile_chosen.emit(inst))
+				tr.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+				row.add_child(cell)
+				continue
 			row.add_child(tr)
 	var close := Button.new()
 	close.text = "Close"
 	close.pressed.connect(hide_piles)
 	v.add_child(close)
 	await get_tree().process_frame
-	if _pile_panel:
+	if _pile_panel and is_instance_valid(panel):
 		panel.reset_size()
-		panel.position = (get_viewport_rect().size - panel.size) / 2.0
+		# (0.73.2) As with the Extra Deck list: the list sits to the right of the card panel, and the
+		# card panel comes up over the dark, so the text of a card in the Graveyard can be read whole
+		# (the wheel moves it).
+		var vs := get_viewport_rect().size
+		var left := 20.0
+		if _inspect_panel != null and is_instance_valid(_inspect_panel):
+			left = _inspect_panel.get_global_rect().end.x + 18.0
+			if not _pile_lifted:
+				_pile_z = _inspect_panel.z_index
+				_pile_lifted = true
+			_inspect_panel.z_index = 73
+		var room := vs.x - left - 20.0
+		var k := minf(1.0, minf(room / maxf(panel.size.x, 1.0), (vs.y - 40.0) / maxf(panel.size.y, 1.0)))
+		panel.scale = Vector2(k, k)
+		panel.position = Vector2(left + (room - panel.size.x * k) / 2.0, (vs.y - panel.size.y * k) / 2.0)
 		close.grab_focus()
+		# something to read from the start: the newest card of the pile
+		for kk in ([2, 0, 1] if tall else [0, 1]):
+			var first: Array = revealed[p] if kk == 2 else piles[p][kk]
+			if not first.is_empty():
+				var inst0 = first[first.size() - 1]
+				inspect(inst0, kk == 1 and p != 0 and inst0.tags.has("facedown"))
+				break
 
+
+var _pile_z := 0
+var _pile_lifted := false
 
 func hide_piles() -> void:
 	if _pile_panel:
 		_pile_panel.queue_free()
 		_pile_panel = null
+	if _pile_lifted:
+		_pile_lifted = false
+		if _inspect_panel != null and is_instance_valid(_inspect_panel):
+			_inspect_panel.z_index = _pile_z
 
 
 func set_lp(p: int, lp: int, delta: int) -> void:
@@ -1329,7 +1391,8 @@ func _hand_band() -> float:
 func _input(event: InputEvent) -> void:
 	# (0.72.5) With the Extra Deck list open, the wheel moves the text of the card being read (the
 	# list takes the pointer, so the wheel never reached the card panel).
-	if _extra_panel != null and is_instance_valid(_extra_panel) and event is InputEventMouseButton and event.pressed \
+	if ((_extra_panel != null and is_instance_valid(_extra_panel)) or (_pile_panel != null and is_instance_valid(_pile_panel))) \
+			and event is InputEventMouseButton and event.pressed and not event.shift_pressed \
 			and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and not overlay_visible():
 		_inspect_scroll.scroll_vertical += (-48 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 48)
 		var bar0 := _inspect_scroll.get_v_scroll_bar()

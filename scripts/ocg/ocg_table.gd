@@ -1622,6 +1622,11 @@ func on_pile_effects() -> void:
 		return
 	var res = await s.hud.ask_cards(Loc.t("Use which card's effect?"), cards, {"min": 1, "max": 1, "confirm": Loc.t("Activate"), "cancel": Loc.t("Not now"), "labels": _labels(cards)})
 	var got = res[0] if (res is Array and not (res as Array).is_empty()) else null
+	use_pile_card(got)
+
+
+## Use the effect of this card in your Graveyard or banished pile (from the piles window, 0.73.2).
+func use_pile_card(got) -> void:
 	if got == null or not active() or not acts.has(got.uid):
 		return
 	var list: Array = acts[got.uid]
@@ -1892,6 +1897,18 @@ func _ux_demo() -> void:
 	var mons: Array = s.state.players[ME].monsters()
 	var battle := int(req["t"]) == 10
 	match what:
+		"piles", "piles-use":
+			# (0.73.2) The piles window with a card whose effect works from the Graveyard; "-use" also
+			# uses it, the way a click on ACTIVATE does.
+			_ux_done = true
+			print("UX pile effects: ", pile_effects().map(func(c): return c.cname()))
+			s.hud.show_piles(ME)
+			if what == "piles-use":
+				await s.get_tree().create_timer(1.0).timeout
+				var pe := pile_effects()
+				if not pe.is_empty():
+					print("UX using ", pe[0].cname())
+					s.hud.pile_chosen.emit(pe[0])
 		"menu":
 			_ux_done = true
 			for c in hand:

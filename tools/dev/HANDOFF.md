@@ -1058,6 +1058,10 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   masks are NOT kept in the repo (git has them). After a mask change: --import in the repo.
 - HeroLook shader: paint_cloth for top/bottom/shoes (keeps other hues, greys, trims), unmarked head texels read at lod 0,
   greyed, flat normals; face skin * face_lift 1.06.
+- DuelHud.show_piles: z 72, right of _inspect_panel (lifted to 73), wheel to the card text (shift+wheel left for the row),
+  ACTIVATE on cards in DuelHud.pile_usable (ocg.pile_effects) -> pile_chosen -> OcgTable.use_pile_card. `--ux=piles` /
+  `--ux=piles-use` with --lay (gy) show and use it; verified with Stardust Illumination (chain_link + banish).
+- Count line: "Deck: %d  ·  Hand: %d  ·  GY: %d" + "  ▸".
 - Menus on AcademyBackdrop pictures: replay_list, deck_menu, deck_builder, card_album, deck_shop, save_menu, bracket_panel,
   knockout_screen, academy_hub. MenuBackdrop is no longer used by any screen (kept).
 
