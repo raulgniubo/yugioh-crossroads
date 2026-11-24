@@ -798,8 +798,8 @@ func _net_reactions() -> void:
 	root.anchor_right = 1.0
 	root.anchor_top = 1.0
 	root.anchor_bottom = 1.0
-	root.offset_left = -300
-	root.offset_right = -224
+	root.offset_left = -352
+	root.offset_right = -276
 	root.offset_top = -74
 	root.offset_bottom = -22
 	root.z_index = 30
