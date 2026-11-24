@@ -5,6 +5,15 @@ Not affiliated with or endorsed by Konami. Not for distribution.
 
 Built with **Godot 4.7** for macOS and Windows first, iOS and Android later.
 
+## What is in 0.73.1
+
+**The Online screens, nicer.** No cards added: 12,745 total.
+
+- The Online screen and "Make a group" have a picture of the city behind them, like the newer screens, and the panels are as tall as what is in them.
+- The cards' pictures have round corners that match the card (a square bit poked out at the top corners).
+- The ONLINE button in Free Duel fits: "ONLINE / Play online / With your group", like Knockout next to it.
+- Plainer words: no "each from your own home" or "the game only listens for duels".
+
 ## What is in 0.73.0
 
 **Online duels.** No cards added: 12,745 total.

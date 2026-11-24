@@ -32,7 +32,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_steps = [1, 2, 3, 4, 5] if mode == "make" else [2, 3, 5]
 	_name = Loc.t("%s's Table") % Profile.duelist_name
-	add_child(MenuBackdrop.new(1.0, TEAL))
+	add_child(AcademyBackdrop.new(0.55, OnlineScreen.BACK_PICTURE, Color(0.75, 0.95, 1.0)))
 	var m := MarginContainer.new()
 	m.set_anchors_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right"]:
@@ -58,8 +58,9 @@ func _ready() -> void:
 	_bar.add_theme_constant_override("separation", 0)
 	root.add_child(_bar)
 	var pp := PanelContainer.new()
-	pp.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.05, 0.11, 0.92), 22, Color(TEAL, 0.35)))
-	pp.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	pp.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.05, 0.11, 0.82), 22, Color(TEAL, 0.4)))
+	pp.size_flags_vertical = Control.SIZE_EXPAND | Control.SIZE_SHRINK_CENTER
+	pp.custom_minimum_size = Vector2(0, 560)
 	root.add_child(pp)
 	var pm := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
@@ -219,9 +220,9 @@ func _big_btn(v: Control, text: String, cb: Callable, col := UITheme.GOLD) -> Bu
 
 func _step1() -> void:
 	var v := _text_col("1  A FREE ACCOUNT, JUST FOR THE GAME")
-	_para(v, "Your group lives on a free Tailscale account. Make one only for Crossroads: then nothing else of yours is ever in the group, and you can hand it to someone else one day.")
+	_para(v, "Your group uses a free Tailscale account. Make a new one just for Crossroads, so it stays separate from your other accounts.")
 	_para(v, "The easiest way: sign up with a new Google or GitHub account, or with an email you don't use for anything else.", 18, UITheme.TEXT_DIM)
-	_para(v, "If Tailscale asks you to download it or to add your first device, skip that. The game is the only thing that joins.", 18, UITheme.TEXT_DIM)
+	_para(v, "If Tailscale asks you to download something or add a device, skip it: the game takes care of that.", 18, UITheme.TEXT_DIM)
 	_big_btn(v, "Open tailscale.com", func(): OS.shell_open(START_URL))
 	_para(v, "Signed in? Press Next.", 17, TEAL)
 	_picture("signup")

@@ -10,6 +10,27 @@ extends Control
 signal closed
 
 const TEAL := Color("2de2e6")
+const BACK_PICTURE := "res://assets/ui/story_title_heartland.jpg"
+
+## The top corners of a card's picture, rounded like the card itself (the picture is drawn inside
+## the border, so nothing pokes out at the corners).
+const ROUND_TOP := """
+shader_type canvas_item;
+uniform vec2 box = vec2(100.0);
+uniform float radius = 20.0;
+varying vec2 local;
+void vertex() { local = VERTEX; }
+void fragment() {
+	vec4 c = texture(TEXTURE, UV) * COLOR;
+	vec2 q = vec2(min(local.x, box.x - local.x), local.y);
+	if (q.x < radius && q.y < radius) {
+		float d = length(vec2(radius) - q);
+		c.a *= 1.0 - smoothstep(radius - 1.0, radius + 0.5, d);
+	}
+	COLOR = c;
+}
+"""
+static var _round_shader: Shader
 const GROUP_COLORS := [Color("2de2e6"), Color("ffd766"), Color("ff4d6d"), Color("7b5cff"), Color("4fd18b"), Color("3a86ff"), Color("ff9f1c"), Color("ff6ec7")]
 
 var _body: VBoxContainer
@@ -29,7 +50,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	theme = UITheme.build()
-	add_child(MenuBackdrop.new())
+	add_child(AcademyBackdrop.new(0.42, BACK_PICTURE, Color(0.75, 0.95, 1.0)))
 	var m := MarginContainer.new()
 	m.set_anchors_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right"]:
@@ -158,7 +179,7 @@ func _refresh(force: bool) -> void:
 
 ## No group yet: two big cards, nothing else to read.
 func _first_time() -> void:
-	var intro := UITheme.label("Duel the people you know, each from your own home with your own duelist, cards and decks. A Duel Group is a private network that only holds copies of Crossroads: one person makes it once, everyone else joins with an invite code.", 18, UITheme.TEXT_DIM)
+	var intro := UITheme.label("Play duels online with your friends, with your own duelist, cards and decks. A Duel Group is a private group just for Crossroads: one person creates it, and everyone else joins with an invite code.", 18, UITheme.TEXT_DIM)
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_body.add_child(intro)
 	var row := HBoxContainer.new()
@@ -166,7 +187,7 @@ func _first_time() -> void:
 	row.size_flags_vertical = Control.SIZE_EXPAND | Control.SIZE_SHRINK_CENTER
 	_body.add_child(row)
 	# Join
-	var jv := _big_card(row, "JOIN A GROUP", "Someone sent you an invite code? Paste it here.", TEAL, "res://assets/ui/story_title_heartland.jpg")
+	var jv := _big_card(row, "JOIN A GROUP", "Someone sent you an invite code? Paste it here.", TEAL, "res://assets/ui/story_title_newdomino.jpg")
 	var code := LineEdit.new()
 	code.placeholder_text = Loc.t("Paste the invite code (XR1-...)")
 	code.custom_minimum_size = Vector2(0, 52)
@@ -201,7 +222,7 @@ func _first_time() -> void:
 	mb.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.GOLD, 0.2), UITheme.GOLD))
 	mb.pressed.connect(func(): _open_wizard("make"))
 	mv.add_child(mb)
-	var safe := UITheme.label("The group lives on a free Tailscale account made only for the game, not on your own computers. Nothing else of yours is ever in it, and the game only listens for duels.", 14, UITheme.TEXT_DIM)
+	var safe := UITheme.label("The group uses a free Tailscale account that you make just for the game. Only people with your invite code can join.", 14, UITheme.TEXT_DIM)
 	safe.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	mv.add_child(safe)
 
@@ -214,40 +235,46 @@ func _big_card(row: HBoxContainer, title: String, sub: String, col: Color, pic :
 	p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	p.size_flags_vertical = Control.SIZE_FILL
 	p.custom_minimum_size = Vector2(0, 600)
-	p.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
 	row.add_child(p)
 	var stack := VBoxContainer.new()
 	stack.add_theme_constant_override("separation", 0)
 	p.add_child(stack)
 	if pic != "" and ResourceLoader.exists(pic):
+		# (inside the 2-pixel border, its top corners rounded to match: see ROUND_TOP)
+		var bm := MarginContainer.new()
+		for side in ["left", "right", "top"]:
+			bm.add_theme_constant_override("margin_" + side, 2)
+		stack.add_child(bm)
 		var banner := Control.new()
 		banner.custom_minimum_size = Vector2(0, 190)
-		banner.clip_contents = true
-		stack.add_child(banner)
+		bm.add_child(banner)
+		if _round_shader == null:
+			_round_shader = Shader.new()
+			_round_shader.code = ROUND_TOP
 		var tr := TextureRect.new()
 		tr.texture = load(pic)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		tr.set_anchors_preset(Control.PRESET_FULL_RECT)
-		tr.modulate = Color(0.75, 0.8, 0.9)
+		tr.modulate = Color(0.8, 0.85, 0.95)
+		var sm := ShaderMaterial.new()
+		sm.shader = _round_shader
+		sm.set_shader_parameter("radius", 20.0)
+		tr.material = sm
+		tr.resized.connect(func(): sm.set_shader_parameter("box", tr.size))
 		banner.add_child(tr)
 		var fade := TextureRect.new()
 		var g := Gradient.new()
 		g.set_color(0, Color(0.03, 0.05, 0.11, 0.0))
-		g.set_color(1, Color(0.03, 0.05, 0.11, 1.0))
+		g.set_color(1, Color(0.03, 0.05, 0.11, 0.96))
 		var gt := GradientTexture2D.new()
 		gt.gradient = g
-		gt.fill_from = Vector2(0, 0.2)
+		gt.fill_from = Vector2(0, 0.25)
 		gt.fill_to = Vector2(0, 1)
 		fade.texture = gt
 		fade.set_anchors_preset(Control.PRESET_FULL_RECT)
 		fade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		banner.add_child(fade)
-		var strip := ColorRect.new()
-		strip.color = col
-		strip.custom_minimum_size = Vector2(0, 4)
-		strip.set_anchors_preset(Control.PRESET_TOP_WIDE)
-		banner.add_child(strip)
 	var mm := MarginContainer.new()
 	for side in ["left", "right", "bottom"]:
 		mm.add_theme_constant_override("margin_" + side, 34)
@@ -339,7 +366,8 @@ func _lobby() -> void:
 	_body.add_child(cols)
 	# The people
 	var lp := PanelContainer.new()
-	lp.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.05, 0.11, 0.86), 20, Color(TEAL, 0.25)))
+	lp.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.05, 0.11, 0.8), 20, Color(TEAL, 0.3)))
+	lp.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	lp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lp.size_flags_stretch_ratio = 1.9
 	cols.add_child(lp)
@@ -353,12 +381,15 @@ func _lobby() -> void:
 	lv.add_child(UITheme.label("IN THE GROUP", 26, TEAL, UITheme.title_font()))
 	var sc := ScrollContainer.new()
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	lv.add_child(sc)
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 10)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(list)
+	# (as tall as the people in it, up to most of the screen; past that it scrolls)
+	list.minimum_size_changed.connect(func():
+		if is_instance_valid(sc):
+			sc.custom_minimum_size.y = minf(list.get_combined_minimum_size().y, 700.0))
 	var people := Net.people()
 	if people.is_empty():
 		var e := UITheme.label("Nobody else is in the group yet. Send your invite code (on the right) to the people you want to duel: the moment they join, they show up here.", 19, UITheme.TEXT_DIM)
@@ -386,7 +417,8 @@ func _lobby() -> void:
 	list.add_child(inv)
 	# Your group
 	var rp := PanelContainer.new()
-	rp.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.05, 0.11, 0.86), 20, Color(UITheme.GOLD, 0.25)))
+	rp.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.05, 0.11, 0.8), 20, Color(UITheme.GOLD, 0.3)))
+	rp.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	rp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cols.add_child(rp)
 	var rm := MarginContainer.new()
@@ -887,7 +919,7 @@ func _help() -> void:
 		["MAKING A GROUP", "1  Make a free Tailscale account just for the game (use a new Google or GitHub account, or an email you don't use for anything else).\n2  On its keys page (Settings > Keys > Generate auth key): Reusable on, Expiration 90 days, then Generate. Copy the key (it starts with tskey-auth-).\n3  Paste it in the game. The game checks it and says when your group is ready.\n4  Name your group and pick its color.\n5  Copy the invite code and send it to the people you want to duel."],
 		["DUELING", "In the lobby, press Challenge next to someone who is online. Pick your deck, one duel or a Match of 3. They get a card on their screen with Accept or Decline. The game picks who hosts the duel (the easier connection) and says so. Each of you keeps your own replay and your record against the other. There are no prizes online."],
 		["IT DOESN'T CONNECT", "•  Windows asks whether Crossroads Link may use the network: say Allow (Private networks is enough). If you said no, Windows Security > Firewall > Allow an app, and tick Crossroads Link.\n•  Both of you need the same version of the game. The lobby says when one of you has another.\n•  \"The group's key was not accepted\": the owner's key ran out. The owner makes a new one (Owner tools > New invite code); everyone else's game takes it the next time they are online with the owner, or pastes the new invite code.\n•  A slow line is fine: a duel sends very little. When the line drops, the duel waits and goes on where it was when it comes back.\n•  Still nothing? Close the game on both computers and open it again."],
-		["SAFE FOR THE OWNER", "The group lives on a Tailscale account made only for the game, not on the owner's own computers. Nothing else of anyone's is ever in it: only copies of Crossroads, and the game only listens for duels. Crossroads Link keeps nothing on disk but a short log, and it closes when the game does."]]:
+		["SAFE FOR THE OWNER", "The group uses a Tailscale account made only for the game, separate from your other accounts. Only people with the invite code can join, and the game only uses it for duels. Crossroads Link closes when the game does."]]:
 		tv.add_child(UITheme.label(str(part[0]), 20, UITheme.GOLD, UITheme.semi_font()))
 		var t := UITheme.label(str(part[1]), 17, UITheme.TEXT)
 		t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

@@ -1297,7 +1297,7 @@ func _on_online() -> void:
 
 func _online_line() -> String:
 	if Net.groups.is_empty():
-		return Loc.t("Duel people you know.")
+		return Loc.t("Play online with friends.")
 	return Loc.t("%s: your Duel Group.") % str(Net.group().get("name", ""))
 
 

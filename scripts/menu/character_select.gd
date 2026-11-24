@@ -712,8 +712,7 @@ func _build_extras() -> void:
 		if bool(p["online"]):
 			on_n += 1
 	var o := _extra_button(Vector2(1176, 22), Vector2(190, 80), Color("2de2e6"), Loc.t("ONLINE") + "   ▶",
-			Loc.t("%d online") % on_n if on_n > 0 else (Loc.t("Your Duel Group") if not Net.groups.is_empty() else Loc.t("Duel people you know")),
-			Loc.t("Their decks, their duelists"), true)
+			Loc.t("Play online"), (Loc.t("%d online") % on_n) if on_n > 0 else Loc.t("With your group"), true)
 	o.tooltip_text = Loc.t("Duel the people in your Duel Group, each from your own computer. Opens the Online screen.")
 	o.pressed.connect(func():
 		if _starting:
