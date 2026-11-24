@@ -13,6 +13,7 @@ var roam := {"district": "domino", "pos": null, "last_duel": "", "result": ""}
 ## Story position handed between the story player and story duels.
 var story := {}
 var story_result := ""
+var legend_pending := {}      # (0.75.0) the Legendary Duel being played: {id, side}
 var last_stats := {}      # the last duel, for whoever started it: {won, lp, turns, low, directs, summons}
 
 ## Set by the menu before starting a duel.

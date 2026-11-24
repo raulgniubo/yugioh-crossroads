@@ -87,6 +87,13 @@ func _init(over: String, title: String, sub: String, color: Color, pics: Array, 
 	t.add_theme_constant_override("shadow_outline_size", 8)
 	t.clip_text = true
 	t.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# (0.75.0) A long title in a narrow tile gets smaller instead of losing its end.
+	var fnt := UITheme.title_font()
+	var fs := (40 if big else (34 if size_px.y >= 140 else 28))
+	var room := size_px.x - (30.0 + 250.0 if big else 44.0)
+	while fnt != null and fs > 20 and fnt.get_string_size(t.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > room:
+		fs -= 1
+	t.add_theme_font_size_override("font_size", fs)
 	v.add_child(t)
 	if sub != "":
 		var s := UITheme.label(sub, 19 if big else 15, Color(0.88, 0.91, 1.0, 0.86))

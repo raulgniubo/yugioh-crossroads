@@ -1108,7 +1108,8 @@ func _finish() -> void:
 		print("PROMPTS: ", _asked)
 	print("DUEL OVER: winner %d (%s) LP %d vs %d turn %d" % [state.winner, state.win_reason, state.players[0].lp, state.players[1].lp, state.turn])
 	Router.last_stats = {"won": won and not _surrendered, "lp": int(state.players[ME].lp), "turns": int(state.turn), "low": int(_my_low),
-			"directs": _my_directs, "summons": _my_summons_most}
+			"directs": _my_directs, "summons": _my_summons_most,
+			"field": state.players[ME].monsters().map(func(c): return c.cname())}      # (0.75.0: Legendary Duels' stars)
 	var earned := 0
 	if net != null:
 		_net_finish(won, tied)      # (no prizes online: your record against them instead)

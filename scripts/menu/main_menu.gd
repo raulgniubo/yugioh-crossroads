@@ -107,6 +107,9 @@ func _ready() -> void:
 	elif Router.menu_open == "turbo":
 		Router.menu_open = ""
 		_on_turbo.call_deferred()
+	elif Router.menu_open == "legends":
+		Router.menu_open = ""
+		_on_legends.call_deferred()
 	elif Router.menu_open == "builder":
 		Router.menu_open = ""
 		(func():
@@ -1345,6 +1348,20 @@ func _on_turbo() -> void:
 			_items[0].grab_focus())
 
 
+## Legendary Duels (0.75.0).
+func _on_legends() -> void:
+	Router.busy()
+	Sfx.play("gong", -6.0)
+	var gate := LegendsGate.new()
+	gate.z_index = 100
+	add_child(gate)
+	_panel_open = true
+	gate.closed.connect(func():
+		_panel_open = false
+		if is_instance_valid(gate) and _items.size() > 1:
+			_items[0].grab_focus())
+
+
 ## The Academy story's door (0.65.0). The mode from before opens from the bottom of it.
 func _on_academy() -> void:
 	Router.busy()      # (a ring turns in the corner if this takes a moment)
@@ -1444,7 +1461,8 @@ func _build_home() -> void:
 	var rows := [
 		[476.0, 150.0, [
 			["The main story", "STORY", _chapter_label(_story_chapter()), Color("ffb62e"), [story_pic], _on_story, ""],
-			["A story of its own", "DUEL ACADEMY", Campus.summary() if Campus.started() else Loc.t("A school year on the island."), Color("e0533f"), [AcademyBackdrop.PICTURE], _on_academy, ""]]],
+			["A story of its own", "DUEL ACADEMY", Campus.summary() if Campus.started() else Loc.t("A school year on the island."), Color("e0533f"), [AcademyBackdrop.PICTURE], _on_academy, ""],
+			["The shows' famous duels", "LEGENDARY DUELS", "With the decks of their time.", Color("ffd766"), ["res://assets/ui/cards_title.jpg"], _on_legends, ""]]],
 		[640.0, 124.0, [
 			["Quick play", "FREE DUEL", "Any duelist, deck and field.", Color("8a6dff"), ["res://assets/ui/story_title_heartland.jpg"], _on_free_duel, ""],
 			["Riding Duels", "TURBO DUEL", "Race the highway at speed.", Color("3fc6ff"), ["res://assets/ui/roam_title_highway.jpg"], _on_turbo, ""],
@@ -1459,7 +1477,7 @@ func _build_home() -> void:
 		var y: float = row[0]
 		var h: float = row[1]
 		var entries: Array = row[2]
-		var w: float = half if entries.size() == 2 else third
+		var w: float = half if entries.size() == 2 else third      # (0.75.0: the top row has three now too)
 		var x := HOME_X
 		grid.append([])
 		for e in entries:

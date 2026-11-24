@@ -1047,7 +1047,21 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Open: the Cup goes on counting after the "end of term" (no second term yet); the island's generic "Blue Dorm
   Prefect" still stands next to Octavia the prefect.
 
-#### 0.74.3 STATE (Nov 24 night; NEWEST, read this first): small fixes from play
+#### 0.75.0 STATE (Nov 24 night; NEWEST, read this first): Legendary Duels (one GX matchup)
+- Raul's idea: famous show matchups with the decks of that moment, pick a side, short scenes before/after, solo and
+  online. RULE kept: the scenes and lines are written for this game, never the show's own (no one-to-one recreation).
+- scripts/story/legend_data.gd (LegendData): LEGENDS (one now: gx_jaden_chazz_y1), stars per side (win / ace on field /
+  by turn N), progress in Saves.u("legends.cfg") (in Saves.FILES). Decks: CardData.NAMED_DECKS legend_jaden_y1,
+  legend_chazz_y1 (40 main each; anime-only cards swapped for real ones).
+- scripts/menu/legends_gate.gd (LegendsGate, home tile row 1, Router.menu_open "legends"), scripts/menu/legend_scene.gd
+  (LegendScene: picture, two portraits, typed lines, Skip/Esc). Duel: story:true, return_to MAIN_MENU,
+  Router.legend_pending {id, side}; back in the gate: closing scene for the winner, LegendData.award(Router.last_stats),
+  first win of a side puts its deck in Collection.decks_owned (Free Duel and online deck lists).
+- Router.last_stats gains "field" (names of your monsters when the duel ended). HomeTile titles shrink to fit.
+- Dev: --menu-open=legends --legend-test[=scene|play|after].
+- No voices yet (ElevenLabs credits reset Dec 21). Next if Raul likes it: more matchups per era.
+
+#### 0.74.3 STATE (Nov 24 night; previous): small fixes from play
 - CardPicker sits right of the card panel (hud._inspect_panel.offset_right + 18) and drops columns until it fits.
 - Avatars.apply_uniform (dorm jacket on stand-ins): past_wrist() keeps hands out of the jacket (they were painted blue).
 - Story task box: "R  Guide to another task" chip whenever 2+ tasks are open (R starts guiding when none is).

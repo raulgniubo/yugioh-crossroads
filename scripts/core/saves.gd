@@ -9,7 +9,7 @@ extends RefCounted
 ## restart the game, so every part of it wakes up on the same save.
 
 const FILES := ["story.cfg", "shop.cfg", "roam.cfg", "turbo.cfg", "tourney.cfg", "roam_extras.cfg", "profile.cfg", "opening.cfg", "collection.cfg", "academy.cfg", "knockout.cfg", "stars.cfg", "place.cfg",
-	"campus.cfg", "campus_cards.cfg"]     # (the Academy story, 0.65.0: its state and its own cards)
+	"campus.cfg", "campus_cards.cfg", "legends.cfg"]     # (the Academy story, 0.65.0: its state and its own cards)
 const SLOTS := 5
 static var RUNNING := u("running.txt")      # there while the game runs; still there at the next start = it did not close properly
 static var PENDING := u("pending_save.txt")
