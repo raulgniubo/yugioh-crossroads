@@ -43,6 +43,7 @@ func _auto(what: Callable) -> void:
 
 func _init(scene) -> void:
 	s = scene
+	cpu.blind = false
 
 
 ## Every duel is run by the rules engine. False only when its library did not load on this
@@ -402,17 +403,24 @@ func _cpu_answer(m: Dictionary) -> PackedByteArray:
 	var command: bool = int(m["t"]) in [10, 11]
 	var reach: bool = _destiny_ask[AI] and int(m["t"]) == 15
 	_destiny_ask[AI] = false
-	if level <= 0 or _turn_asks > 140:
+	if level <= 0 or _turn_asks > 260:
+		# (a turn that will not end: the plainest answers close it)
 		if command and not s._autoplay:
 			await s._ai_wait(0.35)
 		if reach:
 			await _destiny_show(AI, 0)
-		return cpu.decide(d, _turn_asks > 180)
+		return cpu.decide(d, _turn_asks > 260)
 	var cap := 0
+	var lv_now := level
 	if _turn_think > int(TURN_BUDGET[level]):
 		cap = 350
+	if _turn_asks > 140:
+		# A very long turn: it still thinks (and keeps its common sense), only quicker. Before 0.76.0
+		# it fell back to a placeholder that used every card it could, on anything.
+		lv_now = 1
+		cap = 200
 	var t0 := Time.get_ticks_msec()
-	OcgCore.think_start(d.handle, level, cap, randi())
+	OcgCore.think_start(d.handle, lv_now, cap, randi())
 	var shown := false
 	while true:
 		await s.get_tree().process_frame

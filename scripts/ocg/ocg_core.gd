@@ -426,6 +426,8 @@ static func match_duel(decks: Array, extras: Array, levels: Array, seed: int, ms
 		elif lg is Dictionary:
 			out["logs"] = lg.get("logs", [])
 			out["acted"] = lg.get("acted", [])
+			out["cs"] = lg.get("cs", {})          # (0.76.0) common-sense mistakes per level: "L2:help_foe" -> n
+			out["cs_ex"] = lg.get("cs_ex", [])
 	return out
 
 

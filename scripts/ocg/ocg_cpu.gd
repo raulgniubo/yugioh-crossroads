@@ -1,11 +1,13 @@
 class_name OcgCpu
 extends RefCounted
-## The placeholder opponent for the new engine: legal, basic moves and nothing clever.
-## It summons its biggest monster, plays its cards, attacks what it can beat, and answers
-## every question the engine asks. The real opponent replaces it in the next build.
+## The plainest answers: legal, basic moves and nothing clever. It summons its biggest monster,
+## sets its Traps, attacks what it can beat, and answers every question the engine asks. The real
+## opponent thinks in the engine (native/ai.hpp); this is only its answer of last resort (and it
+## plays your side in the test duels). 0.76.0: it no longer uses every effect blindly.
 
 
 var memo := {}       # per turn: what it already tried, so it never loops
+var blind := true    # uses every effect it can (your side in the test duels); off for the opponent
 var rng := RandomNumberGenerator.new()
 
 
@@ -87,8 +89,13 @@ func _idle(d: OcgDuel, m: Dictionary, mm: Dictionary, safe: bool) -> PackedByteA
 					if int(ms[j]["code"]) == int(ns[best]["code"]):
 						return OcgDuel.i32((j << 16) | 3)
 			return OcgDuel.i32((best << 16) | 0)
+		# (0.76.0) As the opponent it no longer uses every effect it can on anything (`blind` off): it
+		# is only the answer of last resort there, and a card used blindly (a Typhoon on its own Set
+		# card) is worse than a card kept. In the test duels it still tries everything on your side.
 		var ch: Array = m["chains"]
 		for i in ch.size():
+			if not blind:
+				break
 			var key := "ac%d_%d" % [int(ch[i]["code"]), int(ch[i]["desc"])]
 			if mm["done"].has(key):
 				continue
@@ -192,6 +199,18 @@ func _cards(d: OcgDuel, m: Dictionary, mm: Dictionary, safe: bool) -> PackedByte
 	var hint := int(d.hints.get(p, 0))
 	# Mine and paid as a cost: the weakest. Theirs, or something I get: the strongest.
 	var give := hint in [500, 501, 502, 503, 504, 505, 507, 511, 512, 513]
+	# An Equip goes on one of mine, the strongest (0.76.0).
+	if hint == 518:
+		var mine_first: Array = []
+		for i in list.size():
+			mine_first.append(i)
+		mine_first.sort_custom(func(a, b):
+			var ma: bool = int(list[a]["con"]) == p
+			var mb: bool = int(list[b]["con"]) == p
+			if ma != mb:
+				return ma
+			return _score(d, cards[a]) > _score(d, cards[b]))
+		return OcgDuel.pick(mine_first.slice(0, mini(n, mine_first.size())))
 	var order: Array = []
 	for i in list.size():
 		order.append(i)

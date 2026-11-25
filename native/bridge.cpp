@@ -594,6 +594,11 @@ static std::vector<uint8_t> run_op(int code, const uint8_t* data, size_t size) {
 		for(uint32_t c : mr.acted) acted.push((int64_t)c);
 		JV tail = JV::obj();
 		tail.set("logs", std::move(logs)); tail.set("acted", std::move(acted));
+		JV cs = JV::obj();
+		for(auto& kv : mr.cs) cs.set(kv.first.c_str(), kv.second);
+		JV ex = JV::arr();
+		for(auto& e : mr.cs_ex) ex.push(JV(e));
+		tail.set("cs", std::move(cs)); tail.set("cs_ex", std::move(ex));
 		encode(out, tail);
 		break; }
 	default: break;

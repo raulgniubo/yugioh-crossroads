@@ -342,12 +342,12 @@ static func open(parent: Node) -> SidePanel:
 	_row(game, "Destiny Draw", "Once per duel, when you are at 2000 Life Points or less (or under half of your opponent's), you may choose the card you draw. The strongest opponents can do it too.", fate)
 	var brain := OptionButton.new()
 	for i in 3:
-		brain.add_item(["Normal", "Hard", "Extreme"][i], i)
+		brain.add_item(Loc.t(["Normal", "Hard", "Extreme"][i]), i)
 	brain.select(clampi(Settings.cpu_level, 1, 3) - 1)
 	brain.item_selected.connect(func(i):
 		Settings.cpu_level = i + 1
 		Settings.save_settings())
-	_row(game, "Opponent difficulty", "How every opponent in Story and in the worlds thinks. Normal looks a little ahead and sometimes slips. Hard plans its turn and checks what you could answer. Extreme tries more plays for longer. None of them looks at your hand or face-down cards. Free Duel has its own buttons.", brain)
+	_row(game, "Opponent difficulty", "How every opponent in Story and in the worlds thinks. Normal plays well but simply: it does not plan long combos or play around your face-down cards. Hard looks further ahead, keeps its Traps for the right moment and plays around yours. Extreme is the strongest: it tries the most plays, looks the furthest and always hunts for the win. None of them looks at your hand or face-down cards, and none makes silly plays. Free Duel has its own buttons.", brain)
 	var field := OptionButton.new()
 	var fkeys := ["auto"] + FieldThemes.ORDER
 	for i in fkeys.size():

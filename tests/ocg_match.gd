@@ -29,6 +29,8 @@ func _ready() -> void:
 	var sims := 0
 	var refused := 0
 	var turns := 0
+	var cs := {}          # (0.76.0) the common-sense mistakes of both sides, by level
+	var cs_ex: Array = []
 	for g in n:
 		# Each pair of decks is played twice with the sides swapped, so neither level gets the better deck.
 		var pair := g / 2
@@ -53,9 +55,21 @@ func _ready() -> void:
 		sims += int(r.get("sims", 0))
 		refused += int(r.get("refused", 0))
 		turns += int(r.get("turns", 0))
+		for k in (r.get("cs", {}) as Dictionary):
+			cs[k] = int(cs.get(k, 0)) + int(r["cs"][k])
+		for e in r.get("cs_ex", []):
+			if cs_ex.size() < 60:
+				cs_ex.append("%s vs %s: %s" % [ka, kb, str(e)])
 		if out_path != "":
 			var f := FileAccess.open(out_path, FileAccess.WRITE)
 			f.store_line("%d %d %d of %d" % [wins[0], wins[1], wins[2], g + 1])
+			f.store_line(JSON.stringify(cs))
 			f.close()
 	print("MATCH level %d vs level %d: %s  duels %d  wall ms %d  think ms %d  worst decision ms %d  decisions %d  tries %d  refused %d  turns %d" % [la, lb, str(wins), n, Time.get_ticks_msec() - t0, think, worst, decisions, sims, refused, turns])
+	var keys_cs: Array = cs.keys()
+	keys_cs.sort()
+	for k in keys_cs:
+		print("CS %s %d" % [k, int(cs[k])])
+	for e in cs_ex:
+		print("CS EX ", e)
 	get_tree().quit(0)

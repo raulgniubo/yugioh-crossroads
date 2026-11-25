@@ -1579,3 +1579,31 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   a soft additive light of their color behind. Listener: 0.66 bright, 0.82 saturation, softly out of focus,
   small rim. No slab, no outer glow. Text box: dark glass with a top line in the speaker's color; name tab filled
   with their color. Old version kept in /tmp/legend_scene_prev.gd only (not in the repo).
+
+### STATE 0.76.0: the opponent's common sense (difficulty pass)
+- Raul + his brother saw it (on Hard too): Typhoon on its own Set card, no attack on an open field, a bigger
+  monster that does not attack, an ATK boost put on YOUR monster. Causes found: Normal took its 2nd idea 20% of
+  the time even when far worse; picks took "theirs first" always (Equips/buffs went to you); the GDScript
+  placeholder (OcgCpu) took over in long turns and used every effect blindly; "go to the Battle Phase" was
+  weighed with the steady policy's all-out attack, so traps in the re-dealt worlds scared it off attacking at all.
+- native/ai.hpp "common sense" section: cs_command (board-only checks), cs_settle (an answer played to the end
+  of its chain with the other side passing, their hidden cards re-dealt: never peeks), cs_outcome (SELF_HARM:
+  my side loses > 700 and theirs < 250; HELP_FOE: their monster gains ATK/DEF or mine loses ATK; cs_meant() allows
+  Forbidden Chalice/Dress/Lance and Book of Moon), cs_veto per candidate. Hard bans: self_harm, help_foe,
+  leave_free (leave BP with a direct attack open), skip_bp (End Phase with a monster that could fight: going to
+  BP costs nothing), suicide (attack into a known bigger monster with no card that could turn it), bad_pick
+  (a pick 500 worse than the best pick, by settle). Soft (value down): risky_attack -800, missed_hit -700.
+  Activation vetoes retry the settle with its own picks flipped (PMemo.flip) before banning. Steady policy:
+  an Equip (hint 518) goes on its own strongest monster. Normal's slip only between answers within 150.
+  Setting a plain Spell gets no "do something" bias. Very long turns (140+ asks) think at level 1, 200 ms,
+  instead of the old placeholder (game: ocg_table _cpu_answer; matches: play_match). OcgCpu.blind=false for the
+  opponent (it no longer activates blindly as a last resort; your side in test duels still does).
+- OCG_BASELINE=1 (env) = the opponent as before 0.76.0, for measuring. play_match counts every common-sense
+  mistake per level (MatchResult.cs, cs_ex with the decision notes); tests/ocg_match.gd prints "CS L<n>:<kind> n".
+- tests/ocg_boards.gd: 7 new "Sense:" boards (Typhoon on own card, Typhoon on theirs, Equip on own, Rush
+  Recklessly on own, two attackers on an open field, attack the weaker monster, Shrink then attack). KNOWN table
+  for card names outside the pools. Baseline: all 3 levels used Typhoon on their own Set card; Normal also threw
+  Raigeki at nothing and attacked into a higher DEF. Now: 38 of 38 at levels 1, 2 and 3.
+- Main menu: a "Difficulty: Hard" tag right of the title (colored by level), click opens Settings
+  (main_menu._build_difficulty / _refresh_difficulty). Settings names the levels in Spanish now.
+- Native libs rebuilt for linux, macos, windows (native/build.sh linux macos windows).

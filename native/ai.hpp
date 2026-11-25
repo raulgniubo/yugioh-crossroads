@@ -16,6 +16,9 @@
 #include <mutex>
 #include <memory>
 
+// (0.76.0) OCG_BASELINE=1: the opponent as it was before common sense (for measuring the change).
+static const bool g_base = std::getenv("OCG_BASELINE") != nullptr;
+
 struct Sim {
 	Duel d;
 	int status = 2;
@@ -31,6 +34,8 @@ struct Sim {
 	int attacker_seq[2] = { -1, -1 }; // the monster each player last declared an attack with
 	std::set<uint32_t>* acted = nullptr;    // (card positions: only what was summoned or went on the chain, not what was merely Set)
 	std::set<uint32_t>* played = nullptr;   // (sweeps: every card that was summoned or had an effect go on the chain)
+	int chained[2] = { 0, 0 };              // (0.76.0) how many chain links each player has started
+	uint32_t chain_code[2] = { 0, 0 };      // ... and the card of the last one
 	// (its Duel frees the engine)
 };
 
@@ -49,6 +54,7 @@ static void sim_step(Sim& s) {
 			uint32_t l; std::memcpy(&l, buf + pos, 4); pos += 4;
 			if(pos + l > len || l == 0) { pos += l; continue; }
 			int t = buf[pos];
+			if(t == 70 && l >= 6 && buf[pos + 5] < 2) { s.chained[buf[pos + 5]]++; std::memcpy(&s.chain_code[buf[pos + 5]], buf + pos + 1, 4); }
 			if(t == 5 && l >= 2) s.winner = buf[pos + 1];
 			else if(t == 40 && l >= 2) { s.turns++; s.turn_player = buf[pos + 1]; }
 			else if(t == 41 && l >= 3) s.phase = buf[pos + 1] | (buf[pos + 2] << 8);
@@ -266,8 +272,9 @@ struct PMemo {
 	std::map<int, int> skip;
 	std::map<std::string, int> chains;
 	int target_seq = -1;     // the monster it means to attack (their zone), for the question that follows
+	bool flip = false;       // (common sense: its picks take its own cards first, to see if that was meant)
 	int announce = 0;
-	void fresh(int t, int w) { if(turn != t || who != w) { auto keep = hunt; *this = PMemo(); hunt = keep; turn = t; who = w; } }
+	void fresh(int t, int w) { if(turn != t || who != w) { auto keep = hunt; bool fl = flip; *this = PMemo(); hunt = keep; flip = fl; turn = t; who = w; } }
 };
 
 static const JV& arr(const JV& m, const char* k) { static JV none = JV::arr(); auto* v = m.get(k); return v ? *v : none; }
@@ -535,10 +542,12 @@ static std::vector<uint8_t> policy(Sim& s, const JV& m, PMemo& mm, bool safe, ui
 		std::vector<int> score(list.a.size());
 		for(size_t i = 0; i < list.a.size(); ++i) score[i] = card_power(b, ref_of(list.a[i]));
 		// Theirs first and the strongest of them; of mine, the weakest (it is usually a price).
+		// An Equip goes on one of mine, the strongest (0.76.0); `flip` turns the whole thing round.
+		bool mine_first = !g_base && (mm.flip != (s.hint[p] == 518));
 		std::stable_sort(order.begin(), order.end(), [&](int a, int c) {
 			bool ma = (int)list.a[a].geti("con") == p, mc = (int)list.a[c].geti("con") == p;
-			if(ma != mc) return mc;
-			if(ma) { int la = (int)list.a[a].geti("loc") & 0x7f; if(la == 0x04 || la == 0x02 || la == 0x08) return score[a] < score[c]; }
+			if(ma != mc) return mine_first ? ma : mc;
+			if(ma && !mine_first) { int la = (int)list.a[a].geti("loc") & 0x7f; if(la == 0x04 || la == 0x02 || la == 0x08) return score[a] < score[c]; }
 			return score[a] > score[c];
 		});
 		order.resize(std::min<size_t>(order.size(), (size_t)n));
@@ -759,7 +768,7 @@ static Level level_of(int level) {
 	return lv;
 }
 
-struct Decision { std::vector<uint8_t> bytes; int sims = 0; int cands = 0; double ms = 0; std::string notes; };
+struct Decision { std::vector<uint8_t> bytes; int sims = 0; int cands = 0; double ms = 0; std::string notes; int vetoed = 0; };
 
 static uint64_t mix(uint64_t x) { x += 0x9E3779B97F4A7C15ull; x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ull; x = (x ^ (x >> 27)) * 0x94D049BB133111EBull; return x ^ (x >> 31); }
 
@@ -952,6 +961,208 @@ static double one_try(const History& h, const Level& lv, uint64_t seed, int w, i
 	return rollout(*sim, me, until, rnd, 1500, lv.mode).score;
 }
 
+// ---------------------------------------------------------------- common sense (0.76.0)
+// Things no duelist does at any level: destroy or weaken its own cards for nothing, make the other
+// side's monster stronger (or its own weaker), stay out of a fight it wins for free, run a monster
+// into one that is known to be bigger. The same checks count these mistakes in the test matches
+// (play_match) and keep the opponent from choosing them (decide).
+enum : int { CS_SELF_HARM = 1, CS_HELP_FOE = 2, CS_LEAVE_FREE = 4, CS_SUICIDE = 8, CS_SKIP_BP = 16, CS_MISS_LETHAL = 32, CS_BAD_PICK = 64, CS_RISKY = 128, CS_MISSED_HIT = 256 };
+// (CS_RISKY and CS_MISSED_HIT are not ruled out, only marked down: an attack into a bigger monster
+// while it still holds a card that could turn the fight, and leaving a fight it wins in the open.)
+static const int CS_SOFT = 128 | 256;
+static const char* cs_name(int bit) {
+	switch(bit) {
+	case CS_SELF_HARM: return "self_harm"; case CS_HELP_FOE: return "help_foe"; case CS_LEAVE_FREE: return "leave_free";
+	case CS_SUICIDE: return "suicide"; case CS_SKIP_BP: return "skip_bp"; case CS_MISS_LETHAL: return "miss_lethal"; case CS_BAD_PICK: return "bad_pick";
+	case CS_RISKY: return "risky_attack"; case CS_MISSED_HIT: return "missed_hit";
+	}
+	return "?";
+}
+
+// What one side has on the table and in hand, in the units of evaluate().
+static double side_worth(const Board& b, int p) {
+	double v = lp_worth(b.lp[p]);
+	for(auto& x : b.m[p]) {
+		if(!x.there) continue;
+		if(x.pos & 0x1) v += 0.95 * x.atk + 300;
+		else if(x.pos & 0x4) v += 0.5 * std::max(x.def, (int)(x.atk * 0.8)) + 250;
+		else v += 0.45 * x.def + 300;
+	}
+	v += 520.0 * b.hand[p] + 600.0 * (b.st_set[p] - b.st_plain[p]) + 470.0 * b.st_plain[p] + 420.0 * b.st_up[p];
+	return v;
+}
+
+// Cards whose whole point is to change a monster the "wrong" way: Forbidden Chalice (theirs gains
+// ATK but loses its effects), Forbidden Dress and Forbidden Lance (one of mine loses ATK to be safe),
+// Book of Moon (one of mine turned face-down to save it).
+static bool cs_meant(uint32_t code) { return code == 25789292u || code == 96864811u || code == 27243130u || code == 14087893u; }
+
+// What `me` did to the table between b0 and b1, with nobody answering it. `code`: the card it used.
+static int cs_outcome(const Board& b0, const Board& b1, int me, uint32_t code) {
+	if(cs_meant(code)) return 0;
+	int op = 1 - me, f = 0;
+	double lost_me = side_worth(b0, me) - side_worth(b1, me);
+	double lost_op = side_worth(b0, op) - side_worth(b1, op);
+	if(lost_me > 700 && lost_op < 250) f |= CS_SELF_HARM;
+	for(int z = 0; z < 7; ++z) {
+		const Mon& a = b0.m[op][z]; const Mon& c = b1.m[op][z];
+		if(a.there && c.there && a.code == c.code && (a.pos & 0x5) && (c.pos & 0x5) && (c.atk - a.atk >= 100 || ((c.pos & 0x4) && c.def - a.def >= 300))) f |= CS_HELP_FOE;
+		const Mon& d = b0.m[me][z]; const Mon& e = b1.m[me][z];
+		if(d.there && e.there && d.code == e.code && (d.pos & 0x5) && (e.pos & 0x5) && d.atk - e.atk >= 100) f |= CS_HELP_FOE;
+	}
+	return f;
+}
+
+static int32_t ans_i32(const std::vector<uint8_t>& a) { int32_t v = 0; if(a.size() >= 4) std::memcpy(&v, a.data(), 4); return v; }
+
+// Does this answer use a card (an effect going on the chain)?
+static bool cs_is_activation(const JV& m, const std::vector<uint8_t>& ans) {
+	int t = (int)m.geti("t");
+	int32_t v = ans_i32(ans);
+	if(t == 11) return (v & 0xffff) == 5;
+	if(t == 10) return (v & 0xffff) == 0 && !arr(m, "chains").a.empty();
+	if(t == 16) return v >= 0;
+	return false;
+}
+
+// The checks of a command that need only the table (no tries).
+static int cs_command(Sim& s, const Board& b, const JV& m, const std::vector<uint8_t>& ans) {
+	int t = (int)m.geti("t"), p = (int)m.geti("p");
+	if(p < 0 || p > 1 || ans.size() < 4) return 0;
+	int op = 1 - p;
+	int32_t v = ans_i32(ans);
+	int foes = b.count(op);
+	if(t == 10) {
+		const JV& at = arr(m, "attacks");
+		if((v == 2 || v == 3) && !at.a.empty()) {
+			long dmg = 0; bool free_hit = false;
+			for(auto& e : at.a) {
+				int seq = (int)e.geti("seq");
+				if(e.geti("direct") != 0 || foes == 0) { free_hit = true; if(seq >= 0 && seq < 7) dmg += b.m[p][seq].atk; }
+			}
+			if(free_hit) return CS_LEAVE_FREE | (dmg >= b.lp[op] ? CS_MISS_LETHAL : 0);
+			for(auto& e : at.a) {
+				int seq = (int)e.geti("seq");
+				if(seq < 0 || seq > 6) continue;
+				int power = b.m[p][seq].atk;
+				for(auto& f : b.m[op]) if(f.there && (f.pos & 0x5) && power > ((f.pos & 0x1) ? f.atk : f.def)) return CS_MISSED_HIT;
+			}
+		}
+		if((v & 0xffff) == 1) {
+			size_t i = (size_t)(v >> 16);
+			if(i < at.a.size() && at.a[i].geti("direct") == 0 && foes > 0) {
+				int seq = (int)at.a[i].geti("seq");
+				int power = (seq >= 0 && seq < 7) ? b.m[p][seq].atk : 0;
+				bool any_ok = false;
+				for(auto& f : b.m[op]) {
+					if(!f.there) continue;
+					if(!(f.pos & 0x5)) { any_ok = true; break; }       // (face-down: not known to be bigger)
+					int wall = (f.pos & 0x1) ? f.atk : f.def;
+					if(power >= wall) { any_ok = true; break; }
+				}
+				if(!any_ok) return (b.st_set[p] > 0 || b.hand[p] > 0) ? CS_RISKY : CS_SUICIDE;
+			}
+		}
+	}
+	if(t == 11 && v == 7 && m.geti("to_bp") != 0) {
+		// Straight to the End Phase with a monster that could fight: going to the Battle Phase costs
+		// nothing (each attack is still weighed there, one by one), so it always goes and looks.
+		for(auto& x : b.m[p]) {
+			if(!x.there || !(x.pos & 0x1) || x.atk <= 0) continue;
+			if(foes == 0) return CS_SKIP_BP;
+			for(auto& f : b.m[op]) if(f.there && (!(f.pos & 0x5) || x.atk > ((f.pos & 0x1) ? f.atk : f.def))) return CS_SKIP_BP;
+		}
+	}
+	if(t == 15 && s.hint[p] == 549 && s.attacker_seq[p] >= 0 && s.attacker_seq[p] < 7 && b.m[p][s.attacker_seq[p]].there && v == 0 && ans.size() >= 12) {
+		// An attack target known to be bigger, when the attacker had a better one.
+		uint32_t idx; std::memcpy(&idx, ans.data() + 8, 4);
+		const JV& list = arr(m, "cards");
+		int power = b.m[p][s.attacker_seq[p]].atk;
+		auto loses = [&](const JV& e) {
+			int con = (int)e.geti("con"), seq = (int)e.geti("seq");
+			if(con != op || ((int)e.geti("loc") & 0x7f) != 0x04 || seq < 0 || seq > 6 || !b.m[con][seq].there) return false;
+			const Mon& f = b.m[con][seq];
+			if(!(f.pos & 0x5)) return false;
+			return power < ((f.pos & 0x1) ? f.atk : f.def);
+		};
+		if(idx < list.a.size() && loses(list.a[idx])) {
+			for(auto& e : list.a) if(!loses(e)) return (b.st_set[p] > 0 || b.hand[p] > 0) ? CS_RISKY : CS_SUICIDE;
+		}
+	}
+	return 0;
+}
+
+// What an answer does by itself if the other side lets it be: the table once what it started has
+// resolved (the next command, or the turn passes). The other side's hidden cards are re-dealt first,
+// so this never peeks. `flip`: my own picks along the way take my cards first instead of theirs.
+static bool cs_settle(const History& h, const Level& lv, uint64_t seed, int me, const std::vector<uint8_t>& ans, bool flip, Board& before, Board& after, uint32_t& code) {
+	uint64_t ws[4];
+	world_seed(seed, 0, ws);
+	auto sim = sim_replay(h);
+	if(!sim || !sim->has_ask) return false;
+	if(lv.deal) OCG_DuelDeterminize(sim->d.d, (uint8_t)(1 - me), ws, (uint32_t)lv.deal);
+	before = read_board(*sim);
+	const int turn0 = sim->turns;
+	const int links0 = sim->chained[me];
+	note_answer(*sim, sim->ask, ans);
+	OCG_DuelSetResponse(sim->d.d, ans.data(), (uint32_t)ans.size());
+	sim_step(*sim);
+	if(sim->retry) return false;
+	code = sim->chained[me] > links0 ? sim->chain_code[me] : 0;
+	PMemo memo[2];
+	memo[me].flip = flip;
+	uint64_t rnd = ws[0] | 1;
+	for(int guard = 0; guard < 200; ++guard) {
+		if(!sim->has_ask || sim->winner != -1 || sim->turns != turn0) break;
+		int t = (int)sim->ask.geti("t"), p = (int)sim->ask.geti("p");
+		if(t == 10 || t == 11 || p < 0 || p > 1) break;
+		std::vector<uint8_t> a;
+		if(t == 16) a = bytes_i32(sim->ask.geti("forced") != 0 ? 0 : -1);     // nobody adds to it
+		else a = policy(*sim, sim->ask, memo[p], sim->retry, rnd, 1);
+		note_answer(*sim, sim->ask, a);
+		OCG_DuelSetResponse(sim->d.d, a.data(), (uint32_t)a.size());
+		sim_step(*sim);
+	}
+	after = read_board(*sim);
+	return true;
+}
+
+// Which answers of this question common sense rules out. Empty when none could be judged.
+static std::vector<int> cs_veto(const History& h, const Level& lv, uint64_t seed, Sim& root, const JV& m, const std::vector<Cand>& cands) {
+	std::vector<int> out(cands.size(), 0);
+	int t = (int)m.geti("t"), me = (int)m.geti("p");
+	if(me < 0 || me > 1) return out;
+	Board b = read_board(root);
+	bool attack_pick = t == 15 && root.hint[me] == 549;
+	std::vector<double> pick_v(cands.size(), -1e18);
+	for(size_t c = 0; c < cands.size(); ++c) {
+		out[c] = cs_command(root, b, m, cands[c].bytes);
+		bool act = cs_is_activation(m, cands[c].bytes);
+		bool pick = t == 15 && !attack_pick && ans_i32(cands[c].bytes) == 0;
+		if(!act && !pick) continue;
+		Board b0, b1; uint32_t code = 0;
+		if(!cs_settle(h, lv, seed, me, cands[c].bytes, false, b0, b1, code)) continue;
+		int f = cs_outcome(b0, b1, me, code);
+		if(f && act) {
+			// (perhaps only its own pick along the way was wrong: try that the other way round)
+			Board c0, c1; uint32_t code2 = 0;
+			if(cs_settle(h, lv, seed, me, cands[c].bytes, true, c0, c1, code2)) {
+				int f2 = cs_outcome(c0, c1, me, code2);
+				if(f2 == 0) f = 0;
+			}
+		}
+		out[c] |= f;
+		if(pick) pick_v[c] = side_worth(b1, me) - side_worth(b1, 1 - me);
+	}
+	if(t == 15 && !attack_pick) {
+		// One card of several: the ones that leave things much worse than the best of them are out.
+		double best = -1e18;
+		for(double v : pick_v) best = std::max(best, v);
+		for(size_t c = 0; c < cands.size(); ++c) if(pick_v[c] > -1e17 && pick_v[c] < best - 500) out[c] |= CS_BAD_PICK;
+	}
+	return out;
+}
+
 static Decision decide(const History& h, int level, int time_ms, uint64_t seed, PMemo* lives = nullptr) {
 	Decision out;
 	auto t0 = std::chrono::steady_clock::now();
@@ -965,7 +1176,7 @@ static Decision decide(const History& h, int level, int time_ms, uint64_t seed, 
 	if(live && !live->hunt) live->hunt = std::make_shared<Hunt>();
 	PMemo mm;
 	if(live) mm = *live;
-	if(root->retry || level <= 0) { out.bytes = policy(*root, m, mm, root->retry, rnd); if(live) *live = mm; out.ms = elapsed(); return out; }
+	if(root->retry || level <= 0) { out.bytes = policy(*root, m, mm, root->retry, rnd, g_base ? 0 : 1); if(live) *live = mm; out.ms = elapsed(); return out; }
 	Level lv = level_of(level);
 	if(time_ms > 0) { lv.ms = time_ms; lv.deep = 0; lv.finish = std::min(lv.finish, time_ms / 2); }
 	{
@@ -1037,16 +1248,42 @@ static Decision decide(const History& h, int level, int time_ms, uint64_t seed, 
 	if(full == 0) for(size_t c = 0; c < N; ++c) if(have[0][c]) { total[c] = score[0][c]; count[c] = 1; }
 	static const std::set<std::string> passive = { "ep", "bp", "m2", "pass", "n", "none", "done" };
 	std::vector<double> value(N, -1e18);
+	// (0.76.0) Setting a plain Spell is not "doing something": it is a card that could have stayed in
+	// the hand, so it gets no nudge (it was how a Raigeki ended up Set with nothing to hit).
+	auto plain_set = [&](size_t c) {
+		if(g_base || (int)m.geti("t") != 11) return false;
+		int32_t v = ans_i32(cands[c].bytes);
+		if((v & 0xffff) != 4) return false;
+		const JV& ss = arr(m, "sset");
+		size_t i = (size_t)(v >> 16);
+		if(i >= ss.a.size()) return false;
+		uint32_t ty = base_type((uint32_t)ss.a[i].geti("code"));
+		return (ty & 0x2) && !(ty & 0x10000) && !(ty & 0x80000);
+	};
 	for(size_t c = 0; c < N; ++c)
-		if(count[c]) value[c] = total[c] / count[c] + (passive.count(cands[c].key) ? 0.0 : lv.bias);
+		if(count[c]) value[c] = total[c] / count[c] + ((passive.count(cands[c].key) || plain_set(c)) ? 0.0 : lv.bias);
 	// Between doing something and doing nothing that come out the same, it does something: what a
 	// search or a set-up is worth does not show on the table yet (that is the small bias above).
+
+	// (0.76.0) Common sense: the answers no duelist gives are out, whatever the tries said.
+	std::vector<int> veto(N, 0);
+	if(!g_base) {
+		veto = cs_veto(h, lv, seed, *root, m, cands);
+		bool any_ok = false;
+		for(size_t c = 0; c < N; ++c) if(!(veto[c] & ~CS_SOFT)) any_ok = true;
+		if(!any_ok) std::fill(veto.begin(), veto.end(), 0);
+		for(size_t c = 0; c < N; ++c) {
+			if(veto[c] && !(veto[c] & ~CS_SOFT)) { value[c] -= (veto[c] & CS_RISKY) ? 800 : 700; out.vetoed |= veto[c]; veto[c] = 0; continue; }
+			veto[c] &= ~CS_SOFT;
+			if(veto[c]) { value[c] = -1e18; out.vetoed |= veto[c]; }
+		}
+	}
 
 	// Extreme: the best few answers get a second look. After each, what is the best thing to do next?
 	int t = (int)m.geti("t");
 	if(lv.deep > 0 && (t == 10 || t == 11) && elapsed() < lv.ms * 0.8) {
 		std::vector<size_t> order;
-		for(size_t c = 0; c < N; ++c) if(count[c]) order.push_back(c);
+		for(size_t c = 0; c < N; ++c) if(count[c] && !veto[c]) order.push_back(c);
 		std::sort(order.begin(), order.end(), [&](size_t a, size_t b) { return value[a] > value[b]; });
 		order.resize(std::min<size_t>(order.size(), (size_t)lv.deep));
 		const int W2 = std::min(3, std::max(1, full));
@@ -1075,25 +1312,30 @@ static Decision decide(const History& h, int level, int time_ms, uint64_t seed, 
 				}
 				if(n) best2 = std::max(best2, sum / n);
 			}
-			if(best2 > -1e17) value[a] = std::max(value[a], best2 + (passive.count(cands[a].key) ? 0.0 : lv.bias));
+			if(best2 > -1e17 && !veto[a]) value[a] = std::max(value[a], best2 + (passive.count(cands[a].key) ? 0.0 : lv.bias));
 		}
 	}
 	out.sims += sims.load();
 	size_t best = 0; double best_v = -1e18;
 	std::vector<std::pair<double, size_t>> ranked;
 	for(size_t c = 0; c < N; ++c) {
-		if(!count[c]) continue;
+		if(!count[c] || veto[c]) continue;
 		ranked.push_back({ value[c], c });
 		if(value[c] > best_v) { best_v = value[c]; best = c; }
 	}
-	// Normal plays like a person: now and then it takes its second idea.
+	// Normal plays like a person: now and then it takes its second idea. (0.76.0: only when the two
+	// are close; before, it could take a far worse one, and that was most of its silly plays.)
 	if(lv.slip > 0 && ranked.size() >= 2) {
 		std::sort(ranked.begin(), ranked.end(), [](auto& a, auto& b) { return a.first > b.first; });
 		rnd = mix(rnd);
-		if((rnd % 1000) / 1000.0 < lv.slip && ranked[0].first - ranked[1].first < 2500) best = ranked[1].second;
+		if((rnd % 1000) / 1000.0 < lv.slip && ranked[0].first - ranked[1].first < (g_base ? 2500 : 150)) best = ranked[1].second;
 	}
 	// The steady policy's answer stands unless another is better by a clear margin.
-	if(best != 0 && count[0] > 0 && lv.margin > 0 && lv.slip <= 0 && best_v - value[0] < lv.margin) best = 0;
+	if(best != 0 && count[0] > 0 && !veto[0] && lv.margin > 0 && lv.slip <= 0 && best_v - value[0] < lv.margin) best = 0;
+	if(veto[best]) {
+		// (nothing that was tried is allowed: the first answer that is)
+		for(size_t c = 0; c < N; ++c) if(!veto[c]) { best = c; break; }
+	}
 	if(live && best == 0) *live = mm;
 	for(size_t c = 0; c < N; ++c)
 		out.notes += (c == best ? "*" : " ") + cands[c].key + "=" + (count[c] ? std::to_string((long)value[c]) : "?") + "  ";
@@ -1104,7 +1346,10 @@ static Decision decide(const History& h, int level, int time_ms, uint64_t seed, 
 }
 
 // ---------------------------------------------------------------- a whole duel, both sides (for measuring)
-struct MatchResult { int winner = 2; int turns = 0; long decisions = 0; long sims = 0; double think_ms = 0; double max_ms = 0; int refused = 0; Board end; std::set<uint32_t> played; std::set<uint32_t> acted; std::vector<std::string> logs; };
+struct MatchResult { int winner = 2; int turns = 0; long decisions = 0; long sims = 0; double think_ms = 0; double max_ms = 0; int refused = 0; Board end; std::set<uint32_t> played; std::set<uint32_t> acted; std::vector<std::string> logs;
+	std::map<std::string, int> cs;          // (0.76.0) common-sense mistakes, "L<level>:<kind>" -> how many (and "L<level>:decisions")
+	std::vector<std::string> cs_ex;         // ... a few of them, to look at
+	};
 
 static MatchResult play_match(History h, int level0, int level1, uint64_t seed, int time_ms, int max_turns) {
 	MatchResult r;
@@ -1117,6 +1362,7 @@ static MatchResult play_match(History h, int level0, int level1, uint64_t seed, 
 	uint64_t rnd = mix(seed) | 1;
 	int refused = 0, last_turn = -1, turn_decisions = 0;
 	const bool trace = std::getenv("OCG_TRACE") != nullptr;
+	bool pend_on = false; int pend_p = 0, pend_lv = 0, pend_turn = 0, pend_links = 0, pend_opp = 0; uint32_t pend_code = 0; Board pend_b;
 	std::string last_notes;
 	while(live->winner == -1 && live->status == OCG_DUEL_STATUS_AWAITING && live->has_ask && live->turns <= max_turns) {
 		int p = (int)live->ask.geti("p");
@@ -1127,10 +1373,12 @@ static MatchResult play_match(History h, int level0, int level1, uint64_t seed, 
 			r.refused++;
 			if(++refused > 8) break;
 			ans = policy(*live, live->ask, memo[p], true, rnd);
-		} else if(lv <= 0 || turn_decisions > 120) {
-			ans = policy(*live, live->ask, memo[p], turn_decisions > 160, rnd);
+		} else if(lv <= 0 || (g_base && turn_decisions > 120) || turn_decisions > 260) {
+			ans = policy(*live, live->ask, memo[p], g_base ? turn_decisions > 160 : true, rnd);
 		} else {
-			Decision d = decide(h, lv, time_ms, mix(seed + r.decisions), memo);
+			// (a very long turn: quicker thinking at the lowest level, as the game does)
+			bool hurry = turn_decisions > 140;
+			Decision d = decide(h, hurry ? 1 : lv, hurry ? 200 : time_ms, mix(seed + r.decisions), memo);
 			ans = d.bytes;
 			last_notes = d.cands > 1 ? d.notes : "";
 			r.sims += d.sims; r.think_ms += d.ms; r.max_ms = std::max(r.max_ms, d.ms);
@@ -1142,6 +1390,21 @@ static MatchResult play_match(History h, int level0, int level1, uint64_t seed, 
 			for(auto& c : arr(live->ask, "chains").a) offer += " " + std::to_string(c.geti("code"));
 			fprintf(stderr, "T%d p%d ask %d chains[%s ] forced %d answer %d\n", live->turns, p, (int)live->ask.geti("t"), offer.c_str(), (int)live->ask.geti("forced"), ans.size() >= 4 ? (int)(ans[0] | (ans[1] << 8) | (ans[2] << 16) | (ans[3] << 24)) : -9);
 		}
+		{
+			// (0.76.0) The mistakes common sense names, counted for this side's level.
+			Board b = read_board(*live);
+			const std::string L = "L" + std::to_string(lv) + ":";
+			r.cs[L + "decisions"]++;
+			int f = cs_command(*live, b, live->ask, ans);
+			for(int bit = 1; bit <= CS_MISSED_HIT; bit <<= 1) if(f & bit) {
+				r.cs[L + cs_name(bit)]++;
+				if(r.cs_ex.size() < 40) r.cs_ex.push_back("T" + std::to_string(live->turns) + " " + L + cs_name(bit) + " ask " + std::to_string(live->ask.geti("t")) + "  " + last_notes.substr(0, 220));
+			}
+			if(!pend_on && cs_is_activation(live->ask, ans)) {
+				pend_on = true; pend_p = p; pend_lv = lv; pend_b = b; pend_turn = live->turns;
+				pend_links = live->chained[p]; pend_opp = live->chained[1 - p]; pend_code = 0;
+			}
+		}
 		note_answer(*live, live->ask, ans);
 		r.decisions++;
 		if(live->turns != last_turn) { last_turn = live->turns; turn_decisions = 0; }
@@ -1149,6 +1412,22 @@ static MatchResult play_match(History h, int level0, int level1, uint64_t seed, 
 		h.answers.push_back(ans);
 		OCG_DuelSetResponse(live->d.d, ans.data(), (uint32_t)ans.size());
 		sim_step(*live);
+		if(pend_on) {
+			if(!pend_code && live->chained[pend_p] > pend_links) pend_code = live->chain_code[pend_p];
+			int tq = live->has_ask ? (int)live->ask.geti("t") : -1;
+			if(live->winner != -1 || live->turns != pend_turn || tq == 10 || tq == 11 || !live->has_ask) {
+				pend_on = false;
+				if(live->chained[1 - pend_p] == pend_opp && live->winner == -1) {     // (nobody answered it)
+					Board b1 = read_board(*live);
+					int f = cs_outcome(pend_b, b1, pend_p, pend_code);
+					const std::string L = "L" + std::to_string(pend_lv) + ":";
+					for(int bit = 1; bit <= CS_BAD_PICK; bit <<= 1) if(f & bit) {
+						r.cs[L + cs_name(bit)]++;
+						if(r.cs_ex.size() < 40) r.cs_ex.push_back("T" + std::to_string(pend_turn) + " " + L + cs_name(bit) + " card " + std::to_string(pend_code));
+					}
+				}
+			}
+		}
 	}
 	r.winner = live->winner == -1 ? 2 : live->winner;
 	r.turns = live->turns;

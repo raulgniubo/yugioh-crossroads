@@ -6,6 +6,7 @@ extends Node
 const F := "Mystical Elf"     # (the Decks are filler: nobody decks out)
 
 var ids := {}
+const KNOWN := {"Axe of Despair": 40619825, "Battle Ox": 5053103, "Blue-Eyes White Dragon": 89631139, "Brain Control": 87910978, "Celtic Guardian": 91152256, "Change of Heart": 4031928, "Cyber Dragon": 70095154, "Cyber Twin Dragon": 74157028, "Dark Hole": 53129443, "Fissure": 66788016, "Gate Guardian": 25833572, "Gemini Elf": 69140098, "Giant Soldier of Stone": 13039848, "Hinotama": 46130346, "Jinzo": 77585513, "Kuriboh": 40640057, "La Jinn the Mystical Genie of the Lamp": 97590747, "Lightning Vortex": 69162969, "Mirror Force": 44095762, "Monster Reborn": 83764719, "Mystical Elf": 15025844, "Mystical Space Typhoon": 5318639, "Ookazi": 19523799, "Pot of Greed": 55144522, "Power Bond": 37630732, "Raigeki": 12580477, "Rush Recklessly": 70046172, "Shrink": 55713623, "Smashing Ground": 97169186, "Summoned Skull": 70781052, "Vorse Raider": 14898066}   # (names the test uses -> ids, for cards outside the pools)
 
 
 func b(name: String, me: Dictionary, opp: Dictionary, want: Callable, turns := 1) -> Dictionary:
@@ -67,6 +68,29 @@ func boards() -> Array:
 		b("Rules: Power Bond's End Phase damage", {"m": [["Cyber Dragon", 1], ["Cyber Dragon", 1]], "hand": ["Power Bond"], "extra": ["Cyber Twin Dragon"]}, {"lp": 8000, "m": [["Gate Guardian", 1]]},
 			func(r): return int(r["lp"][0]) == 8000 - 2800),
 		b("Tempo: direct attack instead of a pointless trade", {"m": [["Vorse Raider", 1]], "hand": ["Fissure"]}, {"lp": 1900, "m": [["Gemini Elf", 1]]}, win),
+		# (0.76.0) What Raul and his brother saw it do, and what no level may do.
+		b("Sense: Typhoon is not used on its own Set card", {"m": [["Vorse Raider", 1]], "hand": ["Mystical Space Typhoon"], "st": ["Mirror Force"]}, {"m": [["Gemini Elf", 1]]},
+			func(r): return int(r["st"][0]) == 1),
+		b("Sense: Typhoon hits their card, not its own", {"hand": ["Mystical Space Typhoon"], "st": ["Mirror Force"]}, {"st": ["Mirror Force"]},
+			func(r): return int(r["st"][0]) == 1),
+		b("Sense: an Equip goes on its own monster", {"m": [["Battle Ox", 1]], "hand": ["Axe of Despair"]}, {"m": [["Vorse Raider", 1]]},
+			func(r):
+				for c in r["mons"][1]:
+					if int(c["atk"]) > 1900:
+						return false
+				return true),
+		b("Sense: Rush Recklessly on its own attacker", {"m": [["Battle Ox", 1]], "hand": ["Rush Recklessly"]}, {"m": [["Vorse Raider", 1]]},
+			func(r):
+				for c in r["mons"][1]:
+					if int(c["atk"]) > 1900:
+						return false
+				return int(r["lp"][0]) >= 8000),
+		b("Sense: two monsters attack an empty field", {"m": [["Mystical Elf", 1], ["Celtic Guardian", 1]]}, {},
+			func(r): return int(r["lp"][1]) == 8000 - 2200),
+		b("Sense: attack the weaker monster", {"m": [["Vorse Raider", 1]]}, {"m": [["Celtic Guardian", 1]]},
+			func(r): return (r["mons"][1] as Array).size() == 0),
+		b("Sense: Shrink on theirs, then the attack", {"m": [["Summoned Skull", 1]], "hand": ["Shrink"]}, {"m": [["Blue-Eyes White Dragon", 1]]},
+			func(r): return (r["mons"][1] as Array).size() == 0 and (r["mons"][0] as Array).size() == 1),
 	]
 
 
@@ -125,6 +149,18 @@ func _ready() -> void:
 		return
 	for id in Collection.all_cards():
 		ids[str(CardData.get_card(int(id)).get("name", ""))] = int(id)
+	var lower := {}
+	for nm in ids:
+		lower[str(nm).to_lower()] = true
+	for board in boards():
+		for side in [board["me"], board["opp"]]:
+			var names: Array = []
+			for m in side.get("m", []):
+				names.append(m[0])
+			names += side.get("st", []) + side.get("hand", []) + side.get("gy", []) + side.get("extra", [])
+			for nm in names:
+				if not ids.has(nm) and KNOWN.has(nm):
+					ids[nm] = int(KNOWN[nm])
 	var passed := 0
 	var list := boards()
 	var t0 := Time.get_ticks_msec()
