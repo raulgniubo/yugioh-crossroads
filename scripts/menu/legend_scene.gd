@@ -148,6 +148,10 @@ func _ready() -> void:
 		_hide_versus()
 	if _i < 0:
 		_next()
+	for a in OS.get_cmdline_user_args():
+		if str(a).begins_with("--legend-line="):
+			for _k in int(str(a).get_slice("=", 1)):
+				_next()
 	if Array(OS.get_cmdline_user_args()).any(func(a): return str(a).begins_with("--legend-test")) and not "--legend-test=scene" in OS.get_cmdline_user_args():
 		# (dev: the lines go by on their own)
 		while not _done and is_inside_tree():
@@ -241,16 +245,17 @@ func _process(delta: float) -> void:
 		var on := float(sd["on"])
 		var holder: Control = sd["holder"]
 		# Slides in from its edge at the start; the one speaking stands a little further in.
-		var out := (1.0 - e) * size.x * 0.3 + (1.0 - on) * 16.0
+		var out := (1.0 - e) * size.x * 0.3 + (1.0 - on) * 30.0
 		holder.position.x = -out if sd["left"] else out
 		var breath := 1.0 + 0.005 * sin(_t * 1.6 + k * 1.9)
-		holder.scale = Vector2(1.0, breath) * (1.0 + 0.025 * on)
+		holder.scale = Vector2(1.0, breath) * (0.95 + 0.09 * on)
 		holder.modulate = Color(1, 1, 1, e)
-		(sd["fig"] as CanvasItem).self_modulate = Color(0.42, 0.45, 0.55).lerp(Color.WHITE, on)
-		(sd["slab"] as CanvasItem).self_modulate = Color(1, 1, 1, 0.3 + 0.7 * on)
+		# (the one listening goes dark and cold, the one speaking is in full light with their glow)
+		(sd["fig"] as CanvasItem).self_modulate = Color(0.26, 0.29, 0.38).lerp(Color.WHITE, on)
+		(sd["slab"] as CanvasItem).self_modulate = Color(1, 1, 1, 0.15 + 0.85 * on)
 		var pulse := 0.85 + 0.15 * sin(_t * 2.4 + k)
 		var c: Color = Color(sd["col"]).lightened(0.3)
-		((sd["aura"] as TextureRect).material as ShaderMaterial).set_shader_parameter("tint", Color(c, (0.12 + 0.6 * on) * pulse))
+		((sd["aura"] as TextureRect).material as ShaderMaterial).set_shader_parameter("tint", Color(c, (0.85 * on * on) * pulse))
 
 
 ## The opening card: both names in their colors and a VS between them, gone after a moment.
@@ -332,6 +337,15 @@ func _next() -> void:
 	var txt := Loc.t(str(ln[1]))
 	_name_box.visible = who != ""
 	_name.text = str(Characters.get_char(who).get("name", who)) if who != "" else ""
+	# The name tab sits on the speaker's side of the box, in their color.
+	var right_side := who != "" and who == _right_key and who != _left_key
+	_name_box.anchor_left = 0.5
+	_name_box.anchor_right = 0.5
+	_name_box.grow_horizontal = Control.GROW_DIRECTION_BEGIN if right_side else Control.GROW_DIRECTION_END
+	_name_box.offset_left = 540 if right_side else -540
+	_name_box.offset_right = 540 if right_side else -540
+	if who != "":
+		_name.add_theme_color_override("font_color", Color(Characters.get_char(who).get("color", UITheme.GOLD)).lightened(0.45))
 	_text.add_theme_color_override("font_color", Color(0.95, 0.97, 1.0) if who != "" else Color(1.0, 0.86, 0.55))
 	_text.text = txt
 	_text.visible_ratio = 0.0
