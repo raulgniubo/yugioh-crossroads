@@ -670,18 +670,12 @@ func _close_modal() -> void:
 func _challenge_dialog(id: String) -> void:
 	var p := Net.person(id)
 	var decks := Net.decks()
+	var anime_list := Net.anime_decks()
 	var v := _modal_box(Loc.t("CHALLENGE %s") % str(p.get("name", "")).to_upper(), TEAL)
-	if decks.is_empty():
-		var l := UITheme.label("You have no complete deck yet. A deck can be taken online when it has 40 to 60 cards and you own every card in it.", 18, UITheme.TEXT)
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		v.add_child(l)
-		_btn(v, "OK", _close_modal, Color.WHITE)
-		return
-	v.add_child(UITheme.label("Your deck", 16, UITheme.TEXT_DIM))
+	var deck_head := UITheme.label("Your deck", 16, UITheme.TEXT_DIM)
+	v.add_child(deck_head)
 	var dp := OptionButton.new()
 	dp.custom_minimum_size = Vector2(0, 46)
-	for d in decks:
-		dp.add_item(str(d[1]))
 	v.add_child(dp)
 	v.add_child(UITheme.label("How many duels", 16, UITheme.TEXT_DIM))
 	var mode := OptionButton.new()
@@ -697,6 +691,28 @@ func _challenge_dialog(id: String) -> void:
 	de.text = "Destiny Draw"
 	de.button_pressed = Settings.destiny_draw
 	v.add_child(de)
+	# (0.79.0) Old-school: the show's duelists and their anime decks only. Off unless you tick it.
+	var an := CheckButton.new()
+	an.text = "Anime decks only"
+	an.tooltip_text = Loc.t("Both of you play as a duelist from the shows, with one of the decks they had in the anime. No own duelist, no own decks, no Competitive.")
+	v.add_child(an)
+	var fill := func():
+		dp.clear()
+		if an.button_pressed:
+			deck_head.text = Loc.t("Your duelist and their anime deck")
+			for a in anime_list:
+				dp.add_item(str(a[2]))
+			fl.button_pressed = false
+			fl.disabled = true
+		else:
+			deck_head.text = Loc.t("Your deck")
+			for d in decks:
+				dp.add_item(str(d[1]))
+			if decks.is_empty():
+				dp.add_item(Loc.t("You have no complete deck yet"))
+			fl.disabled = false
+	an.toggled.connect(func(_on): fill.call())
+	fill.call()
 	var lpb := OptionButton.new()
 	for x in [8000, 4000, 16000]:
 		lpb.add_item(Loc.t("%d Life Points") % x)
@@ -707,8 +723,15 @@ func _challenge_dialog(id: String) -> void:
 	row.add_theme_constant_override("separation", 12)
 	v.add_child(row)
 	var go := _btn(row, "Send challenge", func():
-		var opts := {"deck": str(decks[dp.selected][0]), "mode": "match" if mode.selected == 1 else "single", "fl": fl.button_pressed,
-			"lp": [8000, 4000, 16000][lpb.selected], "destiny": de.button_pressed}
+		var anime := an.button_pressed
+		if not anime and decks.is_empty():
+			note.text = Loc.t("You have no complete deck yet. A deck can be taken online when it has 40 to 60 cards and you own every card in it.")
+			note.add_theme_color_override("font_color", UITheme.DANGER)
+			return
+		var pick: Array = anime_list[dp.selected] if anime else []
+		var opts := {"deck": str(pick[1]) if anime else str(decks[dp.selected][0]), "mode": "match" if mode.selected == 1 else "single",
+			"fl": fl.button_pressed and not anime, "lp": [8000, 4000, 16000][lpb.selected], "destiny": de.button_pressed,
+			"anime": anime, "char": str(pick[0]) if anime else ""}
 		var bad := Net.deck_problem(Net.deck_lists(opts["deck"]), opts["fl"])
 		if bad != "":
 			note.text = bad
@@ -751,6 +774,8 @@ func _on_answered(a: Dictionary) -> void:
 		why = Loc.t("%s is playing something else right now.") % name
 	elif str(a.get("why", "")) == "time":
 		why = Loc.t("%s didn't answer in time.") % name
+	elif str(a.get("why", "")) == "rule":
+		why = Loc.t("%s picked a deck the Anime decks only rule does not allow.") % name
 	elif a.get("gone", false):
 		why = Loc.t("The line to %s dropped.") % name
 	v.add_child(UITheme.label(why, 19, UITheme.TEXT))

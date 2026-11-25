@@ -80,17 +80,21 @@ func _ready() -> void:
 	var lines := [mode, Loc.t("%d Life Points") % int(ch.get("lp", 8000)),
 		Loc.t("Destiny Draw: on") if bool(ch.get("destiny", false)) else Loc.t("Destiny Draw: off"),
 		Loc.t("Their deck: %s") % str(ch.get("deck_name", ""))]
+	var anime := bool(ch.get("anime", false))
+	if anime:
+		lines.append(Loc.t("Anime decks only: you play as a duelist from the shows, with one of their anime decks"))
 	for l in lines:
 		v.add_child(UITheme.label("•  " + str(l), 19, UITheme.TEXT))
 	var fl := UITheme.label("•  " + (Loc.t("Forbidden/Limited list: on") if bool(ch.get("fl", true)) else Loc.t("Forbidden/Limited list: OFF (any card, 3 copies)")), 19,
 			UITheme.TEXT if bool(ch.get("fl", true)) else UITheme.GOLD, null if bool(ch.get("fl", true)) else UITheme.semi_font())
 	v.add_child(fl)
-	v.add_child(UITheme.label("Your deck", 16, UITheme.TEXT_DIM))
+	v.add_child(UITheme.label(Loc.t("Your duelist and their anime deck") if anime else Loc.t("Your deck"), 16, UITheme.TEXT_DIM))
 	_deck = OptionButton.new()
 	_deck.custom_minimum_size = Vector2(0, 46)
-	var decks := Net.decks()
+	# (anime decks only: [character, deck, name] picks; else your own complete decks)
+	var decks := Net.anime_decks() if anime else Net.decks()
 	for d in decks:
-		_deck.add_item(str(d[1]))
+		_deck.add_item(str(d[2]) if anime else str(d[1]))
 	v.add_child(_deck)
 	var msg := UITheme.label("", 16, UITheme.DANGER)
 	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -107,14 +111,14 @@ func _ready() -> void:
 	ok.pressed.connect(func():
 		if decks.is_empty():
 			return
-		var dk := str(decks[_deck.selected][0])
-		var bad := Net.deck_problem(Net.deck_lists(dk), bool(ch.get("fl", true)))
+		var dk := str(decks[_deck.selected][1]) if anime else str(decks[_deck.selected][0])
+		var bad := Net.deck_problem(Net.deck_lists(dk), bool(ch.get("fl", true)) and not anime)
 		if bad != "":
 			msg.text = bad
 			return
 		_gone = true
 		Sfx.play("summon", -6.0)
-		Net.accept(str(ch["cid"]), dk)
+		Net.accept(str(ch["cid"]), dk, str(decks[_deck.selected][0]) if anime else "")
 		_close())
 	row.add_child(ok)
 	var no := Button.new()

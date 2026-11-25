@@ -649,7 +649,11 @@ func _on_message(c: NetConn, msg: Dictionary) -> void:
 			if auto == "":
 				ChallengeCard.show_for(msg)
 			if auto == "accept":
-				get_tree().create_timer(0.5).timeout.connect(func(): accept(str(msg["cid"]), _auto_deck()))
+				if bool(msg.get("anime", false)):
+					var a: Array = anime_decks()[int(OS.get_environment("NET_ANIME_ME")) if OS.get_environment("NET_ANIME_ME") != "" else 0]
+					get_tree().create_timer(0.5).timeout.connect(func(): accept(str(msg["cid"]), str(a[1]), str(a[0])))
+				else:
+					get_tree().create_timer(0.5).timeout.connect(func(): accept(str(msg["cid"]), _auto_deck()))
 		"cancel":
 			challenges_in.erase(str(msg.get("cid", "")))
 			answered.emit({"cid": msg.get("cid", ""), "from": from, "cancelled": true})
@@ -795,6 +799,29 @@ static func decks() -> Array:
 	return kept
 
 
+## (0.79.0) The "Anime decks only" rule: the show's duelists with the decks they had in the anime,
+## nothing else (no own duelist, no own decks, no Competitive). [[character key, deck key, name], ...]
+static func anime_decks() -> Array:
+	var out: Array = []
+	for k in Characters.ORDER:
+		var base := str(Characters.get_char(str(k)).get("deck", ""))
+		for v in DeckTiers.versions_of(base):
+			if not v in DeckTiers.ANIME_VERSIONS:
+				continue
+			var dk := DeckTiers.anime_key(base, str(v))
+			if dk != "" and CardData.has_deck(dk):
+				out.append([str(k), dk, Loc.t(CardData.deck_name(dk))])
+	return out
+
+
+## Is this one of the anime-only rule's picks (a show duelist with one of their own anime decks)?
+static func anime_pick_ok(char_key: String, deck_key: String) -> bool:
+	for a in anime_decks():
+		if str(a[0]) == char_key and str(a[1]) == deck_key:
+			return true
+	return false
+
+
 static func deck_lists(key: String) -> Dictionary:
 	var main: Array = []
 	var extra: Array = []
@@ -846,6 +873,7 @@ func challenge(id: String, opts: Dictionary) -> bool:
 	challenge_out = {"cid": cid, "to": id, "opts": opts, "at": Time.get_ticks_msec()}
 	var ok := send_to(id, {"k": "challenge", "cid": cid, "mode": str(opts.get("mode", "single")), "fl": bool(opts.get("fl", true)),
 		"lp": int(opts.get("lp", 8000)), "destiny": bool(opts.get("destiny", Settings.destiny_draw)),
+		"anime": bool(opts.get("anime", false)), "char": str(opts.get("char", "")),
 		"deck_name": str(deck_lists(str(opts["deck"]))["name"]), "score": self_addrs})
 	if not ok:
 		challenge_out = {}
@@ -867,7 +895,7 @@ func decline(cid: String, why := "no") -> void:
 
 
 ## Accept a challenge with one of your decks. The challenger then says who hosts the duel (see _on_accepted).
-func accept(cid: String, deck_key: String) -> void:
+func accept(cid: String, deck_key: String, my_char := "") -> void:
 	var ch: Dictionary = challenges_in.get(cid, {})
 	if ch.is_empty():
 		return
@@ -875,16 +903,28 @@ func accept(cid: String, deck_key: String) -> void:
 	for other in challenges_in.keys():
 		decline(str(other), "busy")
 	ch["deck"] = deck_key
+	var anime := bool(ch.get("anime", false))
 	challenge_out = {"cid": cid, "to": str(ch["from"]), "opts": {"deck": deck_key, "mode": ch["mode"], "fl": ch["fl"], "lp": ch["lp"],
-		"destiny": bool(ch.get("destiny", false))}, "accepted": true}
+		"destiny": bool(ch.get("destiny", false)), "anime": anime, "char": my_char if anime else "",
+		"their_char": str(ch.get("char", "")) if anime else ""}, "accepted": true}
 	set_status("busy")
-	send_to(str(ch["from"]), {"k": "accept", "cid": cid, "score": self_addrs, "deck_name": str(deck_lists(deck_key)["name"])})
+	send_to(str(ch["from"]), {"k": "accept", "cid": cid, "score": self_addrs, "deck_name": str(deck_lists(deck_key)["name"]),
+		"char": my_char if anime else "", "deck_key": deck_key if anime else ""})
 
 
 ## They said yes. The host is the one with the easier connection (more ways in); the challenger
 ## when it is even. The guest sends its deck to the host; the host never sends its own.
 func _on_accepted(msg: Dictionary) -> void:
 	var them := str(msg["from"])
+	var o: Dictionary = challenge_out["opts"]
+	if bool(o.get("anime", false)):
+		# (anime decks only: their pick has to be a show duelist with one of their anime decks)
+		if not anime_pick_ok(str(msg.get("char", "")), str(msg.get("deck_key", ""))):
+			send_to(them, {"k": "cancel", "cid": msg["cid"]})
+			challenge_out = {}
+			answered.emit({"cid": msg["cid"], "from": them, "why": "rule"})
+			return
+		o["their_char"] = str(msg.get("char", ""))
 	var mine := self_addrs
 	var theirs := int(msg.get("score", 0))
 	var host := me_id if mine >= theirs else them
@@ -966,4 +1006,9 @@ func _auto_challenge(id: String) -> void:
 	if session != null or not challenge_out.is_empty():
 		return
 	var mode := "match" if "--net-match" in OS.get_cmdline_user_args() else "single"
+	if OS.get_environment("NET_ANIME") != "":
+		# (dev: the "Anime decks only" rule, with the pick at that index of anime_decks())
+		var a: Array = anime_decks()[int(OS.get_environment("NET_ANIME"))]
+		challenge(id, {"deck": str(a[1]), "mode": mode, "fl": false, "lp": 8000, "anime": true, "char": str(a[0])})
+		return
 	challenge(id, {"deck": _auto_deck(), "mode": mode, "fl": false, "lp": 8000})

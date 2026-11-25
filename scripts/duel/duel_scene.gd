@@ -674,14 +674,14 @@ func _start_net(cfg: Dictionary) -> void:
 	net.ended.connect(_net_ended)
 	net.line_changed.connect(_net_line)
 	_opp_key = str(cfg.get("opponent", "net:" + str(net.peer)))
-	_me_key = "player"
+	_me_key = str(cfg.get("player_char", "player"))      # (a show duelist under the "Anime decks only" rule)
 	Avatars.dress = {}
 	_theme = "duel_rival"
 	Music.play(_theme)
 	DuelAudio.theme = _theme
 	var opp: Dictionary = Characters.get_char(_opp_key)
 	var opp_name := str(opp.get("name", net.their_name()))
-	var me_name := Profile.duelist_name
+	var me_name := Profile.duelist_name if _me_key == "player" else str(Characters.get_char(_me_key).get("name", Profile.duelist_name))
 	_vs_key = _opp_key
 	hud.set_names(me_name, opp_name)
 	hud.set_portraits(_me_key, _opp_key)

@@ -1652,3 +1652,16 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Free Duel rival default = their last anime deck (_default_their_deck); Competitive is remembered only if you picked it (cfg opponent_version="full").
 - ATK/DEF of "?" cards (stored -1: Slifer, Ra) show "?" via CardData.stat_text (duel inspect, deck builder, deck peek, street duels, summon show).
 - ocg_boards: two Sense boards added in 0.78.1 (spells with no use stay in hand; weak monster goes to Defense). 9/9 Sense pass at levels 1-3.
+
+## STATE 0.79.0
+- LEGENDARY DUELS: 12 matchups, 3 per era (LegendData.LEGENDS, grouped by era). New: dm_yugi_pegasus_dk, dm_yugi_marik_bc,
+  gx_jaden_zane_grad, gx_jaden_aster_y2, 5ds_yusei_kalin_ds, 5ds_yusei_akiza_fc, zexal_yuma_kite_hunt, zexal_yuma_vector_barian.
+  Decks are the existing anime / legend decks (no new deck lists). Lines are original. Data + Spanish: /home/claude/work/legends2/new.py
+  (new.json, rows.tsv). Voices es+en: lbuild2.py -> world_todo.json, batches 618-626, pack 618_626 landed (176, flags []).
+  Next batch number 627. (Batch 620 was drawn twice by mistake and undone: b620_undrawn.json; state backup in legends2/.)
+- legends_gate: an era's three matchups side by side (compact _matchup/_side).
+- ONLINE "Anime decks only" rule (check in the challenge form, off by default): Net.anime_decks() / anime_pick_ok();
+  challenge msg carries anime + char; accept carries char + deck_key (the challenger checks it, cancels with why "rule");
+  NetDuel cfg player_char/opponent = the picked show duelists; duel_scene _start_net uses cfg player_char.
+  F/L list is off under that rule. Dev: NET_ANIME=<index> (challenger) NET_ANIME_ME=<index> (accepter) with /tmp/nettest.sh.
+- New duelists plan (NOT started, waits for Raul's models): tools/dev/CHARACTERS_PLAN.md.

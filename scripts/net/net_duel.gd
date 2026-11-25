@@ -94,7 +94,10 @@ func begin() -> void:
 		guest_deck = {}
 	else:
 		_send({"k": "deck", "deck": deck})
-	var cfg := {"net": true, "player_char": "player", "opponent": "net:" + peer, "player_deck": str(opts["deck"]),
+	# (0.79.0) Anime decks only: both play as the show's duelist they picked, not as their own.
+	var anime := bool(opts.get("anime", false)) and str(opts.get("char", "")) != "" and str(opts.get("their_char", "")) != ""
+	var cfg := {"net": true, "player_char": str(opts["char"]) if anime else "player", "opponent": str(opts["their_char"]) if anime else "net:" + peer,
+		"player_deck": str(opts["deck"]), "anime": anime,
 		"opponent_deck": "", "lp": int(opts.get("lp", 8000)), "match": str(opts.get("mode", "single")) == "match",
 		"field": "auto", "destiny": bool(opts.get("destiny", Settings.destiny_draw))}
 	if str(opts.get("mode", "")) == "match" and game == 1:

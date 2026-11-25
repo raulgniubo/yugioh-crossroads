@@ -115,8 +115,12 @@ func _page() -> void:
 		var soon := UITheme.label(Loc.t("The duels of this era are on their way. GX is first: tell us how it plays."), 22, UITheme.TEXT_DIM)
 		soon.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_body.add_child(soon)
+	# (0.79.0) Three matchups an era, side by side, so the whole era fits on one screen.
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 18)
+	_body.add_child(row)
 	for l in list:
-		_body.add_child(_matchup(l))
+		row.add_child(_matchup(l))
 	var back := Button.new()
 	back.text = Loc.t("Back")
 	back.custom_minimum_size = Vector2(220, 54)
@@ -126,39 +130,44 @@ func _page() -> void:
 	_body.add_child(back)
 
 
-## One matchup: the two sides, each with its duelist, its deck of the time, its three stars and
-## a button to play it.
+## One matchup: its title and moment, then the two sides face to face, each with its duelist, its
+## deck of the time, its three stars and a button to play it.
 func _matchup(l: Dictionary) -> Control:
 	var id := str(l["id"])
 	var col: Color = ERA_COLORS.get(str(l["era"]), UITheme.GOLD)
 	var card := PanelContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.045, 0.11, 0.88), 22, Color(col, 0.7)))
 	var m := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		m.add_theme_constant_override("margin_" + side, 22)
+		m.add_theme_constant_override("margin_" + side, 18)
 	card.add_child(m)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
 	m.add_child(v)
 	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 16)
+	head.add_theme_constant_override("separation", 12)
 	v.add_child(head)
 	var hv := VBoxContainer.new()
 	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(hv)
-	hv.add_child(UITheme.label(Loc.t(str(l["title"])).to_upper(), 46, Color.WHITE, UITheme.title_font()))
-	hv.add_child(UITheme.label(Loc.t(str(l["when"])), 21, col.lightened(0.35), UITheme.semi_font()))
-	head.add_child(UITheme.label("★ %d / 6" % LegendData.star_count(id), 26, UITheme.GOLD, UITheme.title_font()))
+	var tl := UITheme.label(Loc.t(str(l["title"])).to_upper(), 34, Color.WHITE, UITheme.title_font())
+	tl.clip_text = true
+	tl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	hv.add_child(tl)
+	hv.add_child(UITheme.label(Loc.t(str(l["when"])), 18, col.lightened(0.35), UITheme.semi_font()))
+	head.add_child(UITheme.label("★ %d / 6" % LegendData.star_count(id), 22, UITheme.GOLD, UITheme.title_font()))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 18)
+	row.add_theme_constant_override("separation", 12)
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(row)
 	for side in 2:
 		row.add_child(_side(l, side, col))
 	if LegendData.seen(id):
 		var again := Button.new()
 		again.text = Loc.t("Watch the opening scene again")
-		again.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		again.custom_minimum_size = Vector2(0, 44)
+		again.custom_minimum_size = Vector2(0, 40)
+		again.add_theme_font_size_override("font_size", 16)
 		again.pressed.connect(func():
 			var sc := LegendScene.new(l["before"], str(l["sides"][0]["key"]), str(l["sides"][1]["key"]), str(l["picture"]), true)
 			add_child(sc))
@@ -175,32 +184,39 @@ func _side(l: Dictionary, side: int, col: Color) -> Control:
 	p.add_theme_stylebox_override("panel", UITheme.panel_box(Color(1, 1, 1, 0.04), 16, Color(1, 1, 1, 0.1)))
 	var m := MarginContainer.new()
 	for k in ["left", "right", "top", "bottom"]:
-		m.add_theme_constant_override("margin_" + k, 14)
+		m.add_theme_constant_override("margin_" + k, 12)
 	p.add_child(m)
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 14)
-	m.add_child(h)
-	var face := TextureRect.new()
-	face.texture = Portraits.get_portrait(key)
-	face.custom_minimum_size = Vector2(130, 160)
-	face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	h.add_child(face)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 4)
-	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	h.add_child(v)
-	v.add_child(UITheme.label(who, 28, Color.WHITE, UITheme.title_font()))
-	v.add_child(UITheme.label(Loc.t("Deck: %s") % Loc.t(CardData.deck_name(str(s["deck"]))), 17, UITheme.TEXT_DIM))
+	m.add_child(v)
+	var face := TextureRect.new()
+	face.texture = Portraits.get_portrait(key)
+	face.custom_minimum_size = Vector2(0, 150)
+	face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	v.add_child(face)
+	var nm := UITheme.label(who, 22, Color.WHITE, UITheme.title_font())
+	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nm.clip_text = true
+	nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	v.add_child(nm)
+	var dk := UITheme.label(Loc.t(CardData.deck_name(str(s["deck"]))), 14, UITheme.TEXT_DIM)
+	dk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(dk)
 	var got := LegendData.stars(str(l["id"]), side)
 	var st: Array = s["stars"]
 	for i in st.size():
-		var line := UITheme.label(("★  " if got[i] else "☆  ") + LegendData.star_text(st[i]), 17, UITheme.GOLD if got[i] else Color(0.82, 0.86, 0.94, 0.85))
+		var line := UITheme.label(("★  " if got[i] else "☆  ") + LegendData.star_text(st[i]), 14, UITheme.GOLD if got[i] else Color(0.82, 0.86, 0.94, 0.85))
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(line)
+	var gap := Control.new()
+	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(gap)
 	var play := Button.new()
-	play.text = Loc.t("Play as %s") % who
-	play.custom_minimum_size = Vector2(0, 50)
-	play.add_theme_font_size_override("font_size", 20)
+	play.text = Loc.t("Play as %s") % str(Characters.get_char(key).get("short", who))
+	play.custom_minimum_size = Vector2(0, 46)
+	play.add_theme_font_size_override("font_size", 17)
 	play.add_theme_stylebox_override("normal", UITheme.panel_box(Color(col.darkened(0.55), 0.95), 12, col))
 	play.add_theme_stylebox_override("hover", UITheme.panel_box(Color(col.darkened(0.35), 0.98), 12, col.lightened(0.3)))
 	play.pressed.connect(func():
