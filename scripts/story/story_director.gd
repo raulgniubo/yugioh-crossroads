@@ -2883,7 +2883,7 @@ func _start_duel(d: Dictionary) -> void:
 	# bosses. Hard brings each one a step stronger, Extreme two.
 	# (In the Academy, with your own collection brought along, everybody comes a step stronger.)
 	var harder := Campus.deck_steps() if campus else Saves.story_difficulty()
-	opp_deck = DeckTiers.with_version(opp_deck, DeckTiers.shift(str(d.get("deck_tier", "full")), harder))
+	opp_deck = DeckTiers.with_version(opp_deck, DeckTiers.shift_in(opp_deck, str(d.get("deck_tier", "full")), harder, Saves.story_difficulty() >= 2))
 	# "opp_deck_exact": that very deck, card for card (the Circle's swap night: they play yours).
 	if d.has("opp_deck_exact") and CardData.has_deck(str(d["opp_deck_exact"])):
 		opp_deck = str(d["opp_deck_exact"])

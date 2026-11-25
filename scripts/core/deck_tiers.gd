@@ -131,10 +131,33 @@ static func for_stars(key: String, stars: int, who := "") -> String:
 
 
 ## for_stars for a duel against `who`: the show's characters always play their own deck whole.
+## (0.78.0) Unless they have their decks from the show: a duelist of 1-2 stars brings the early one,
+## 3 stars the later one, 4-5 stars the competitive deck.
 static func for_duel(key: String, who: String, stars: int) -> String:
 	if Unlocks.SERIES_STARS.has(who):
+		if ANIME.has(key):
+			var ladder := versions_of(key)
+			var v: String = ladder[0] if stars <= 2 else (ladder[maxi(0, ladder.size() - 2)] if stars == 3 else "full")
+			return with_version(key, v)
 		return key
 	return for_stars(key, stars, who)
+
+
+## (0.78.0) One duel's version of `base`, `steps` up the ladder (story difficulty). A deck with the
+## show's versions climbs those: Basic is the early one, Strong the later one; and only a duel written
+## as "full" (a boss, a final) brings the competitive deck, however many steps it is moved up. On
+## Extreme (`allow_full`) the steps may take any duel all the way to the competitive deck.
+static func shift_in(base: String, version: String, steps: int, allow_full := false) -> String:
+	if not ANIME.has(base):
+		return shift(version, steps)
+	var ladder := versions_of(base)
+	var top := ladder.size() - (1 if allow_full else 2)
+	var i: int = ladder.find(version)
+	if i < 0:
+		i = 0 if version == "starter" else (ladder.size() - 2 if version == "standard" else ladder.size() - 1)
+	if str(ladder[i]) == "full":
+		return "full"
+	return str(ladder[clampi(i + steps, 0, top)])
 
 
 ## One step up or down the ladder (story difficulty).

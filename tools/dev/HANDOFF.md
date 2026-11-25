@@ -1623,3 +1623,17 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   tests/anime_decks.tscn -- --assets=<cards>: 51 of 51 fine. tests/ocg_match.gd now takes --assets= too.
   One AI-vs-AI duel per deck (43 duels, level 1, 150 ms): all ended with a winner, no refused answers.
 - Fixed two Legendary Duels decks: Shark's had Cat Shark (an Xyz) in the Main Deck; Jaden's had 4 Polymerization.
+
+### STATE 0.78.0: Story, Academy and the worlds bring the show's decks
+- Raul: with the show's decks in the game, most duels should use them; the competitive deck for the hard ones.
+- DeckTiers.shift_in(base, tier, steps, allow_full): for a deck with the show's versions the ladder is
+  anime1 -> anime2 -> full; "starter" is the early deck, "standard" the later one (Bastion/Sheppard/Vector: the one
+  they have). Story difficulty still moves a duel up, but only a duel written as "full" (bosses, finals, the
+  Circle's Midnight rank) brings the competitive deck, except on Extreme (allow_full = story_difficulty >= 2).
+  StoryDirector and Campus.deck_now use it. Decks without the show's versions work as before (shift()).
+- DeckTiers.for_duel (worlds, tournaments, Turbo rides, Academy schedule): a show duelist of 1-2 stars brings the
+  early deck, 3 stars the later one, 4-5 stars the competitive deck (before: always the whole deck).
+- Duels pointed at a deck by their era: Story's Battle City Weevil and Joey use "anime2"; the Academy tryout with
+  Chazz uses "anime1". Table of every Story/Academy duel per level: see the 0.78.0 report (all bosses stay full).
+- tests/anime_decks.tscn also checks the ladder (9 cases) and the worlds' choice. test_runner accepts anime1/anime2
+  as a duel's deck_tier; the trio's worlds check expects the show's deck at 1 star and the whole one at 5.

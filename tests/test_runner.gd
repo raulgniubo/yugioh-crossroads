@@ -11076,7 +11076,7 @@ func _test_act4() -> void:
 					may_lose += 1
 				check(not Characters.get_char(str(du["opponent"])).is_empty() and placed.has(str(du["opponent"])), "%s: the opponent %s exists and is on the floor" % [nm, du["opponent"]])
 				check(not big or CardData.has_deck(str(du["opp_deck"])), "%s: the deck %s is in the game" % [nm, du["opp_deck"]])
-				check(str(du.get("deck_tier", "")) in ["starter", "standard", "full"] and str(du.get("rule", "")) != "" and not du.has("puzzle"), "%s: the duel against %s says its deck's version and its stakes" % [nm, du["opponent"]])
+				check(str(du.get("deck_tier", "")) in ["starter", "standard", "full", "anime1", "anime2"] and str(du.get("rule", "")) != "" and not du.has("puzzle"), "%s: the duel against %s says its deck's version and its stakes" % [nm, du["opponent"]])
 			if d.has("bond") and d.has("card"):
 				check(int(d["card"]) != 0 and not d.has("card_name") and (not big or not CardData.get_card(int(d["card"])).is_empty()), "%s: the card of the bond banner is a real card" % nm)
 				if str(d["bond"]) == "Lumen":
@@ -11140,7 +11140,8 @@ func _test_trio() -> void:
 		check(Characters.available(who) or not big, "%s can be picked in Free Duel (the deck exists)" % who)
 		for kind in ["intro", "turn", "ace", "attack", "direct", "hurt", "win", "lose"]:
 			check((c.get("lines", {}) as Dictionary).has(kind), "%s has a line of their own for '%s'" % [who, kind])
-		check(Unlocks.SERIES_STARS.has(who) and DeckTiers.for_duel(trio[who], who, 1) == trio[who], "%s plays the whole deck in the worlds, like the show's other duelists" % who)
+		# (0.78.0) In the worlds: the deck from the show at 1-2 stars, the whole deck at 4-5, like the show's other duelists.
+		check(Unlocks.SERIES_STARS.has(who) and DeckTiers.for_duel(trio[who], who, 1) == trio[who] + "@anime1" and DeckTiers.for_duel(trio[who], who, 5) == trio[who], "%s plays the deck from the show in the worlds at few stars, the whole deck at many, like the show's other duelists" % who)
 		for v in ["starter", "standard"]:
 			check(CardData.deck_list(trio[who] + "@" + v).size() >= 40 or not big, "%s's deck has a %s version for the story" % [who, v])
 		check(Voices.voice_for(who) == who, "%s speaks in a voice of their own" % who)
@@ -11384,7 +11385,7 @@ func _test_act3() -> void:
 				check(not Characters.get_char(str(du["opponent"])).is_empty(), "chapter %d: the opponent %s exists" % [n, du["opponent"]])
 				check(not big or CardData.has_deck(str(du["opp_deck"])), "chapter %d: the deck %s is in the game" % [n, du["opp_deck"]])
 				check(not du.has("my_deck") or not big or CardData.has_deck(str(du["my_deck"])), "chapter %d: the deck you are lent (%s) is in the game" % [n, du.get("my_deck", "")])
-				check(str(du.get("deck_tier", "")) in ["starter", "standard", "full"] and str(du.get("rule", "")) != "", "chapter %d: the duel against %s says its deck's version and its stakes" % [n, du["opponent"]])
+				check(str(du.get("deck_tier", "")) in ["starter", "standard", "full", "anime1", "anime2"] and str(du.get("rule", "")) != "", "chapter %d: the duel against %s says its deck's version and its stakes" % [n, du["opponent"]])
 			for key in ["prize", "bond"]:
 				if d.has(key) and d.has("card"):
 					check(int(d["card"]) != 0 and not d.has("card_name") and (not big or not CardData.get_card(int(d["card"])).is_empty()), "chapter %d: the card of the %s banner is a real card" % [n, key])
@@ -11519,7 +11520,7 @@ func _test_act2() -> void:
 					check(not pz.is_empty() and bool(pz.get("exam", false)) and bool(du.get("lose_ok", false)) and (not big or Puzzles.ready(pz)), "chapter %d: the problem %s exists, with its cards, and may be failed" % [n, du["puzzle"]])
 				else:
 					check(not big or CardData.has_deck(str(du["opp_deck"])), "chapter %d: the deck %s is in the game" % [n, du["opp_deck"]])
-					check(str(du.get("deck_tier", "")) in ["starter", "standard", "full"] and str(du.get("rule", "")) != "", "chapter %d: the duel against %s says its deck's version and its stakes" % [n, du["opponent"]])
+					check(str(du.get("deck_tier", "")) in ["starter", "standard", "full", "anime1", "anime2"] and str(du.get("rule", "")) != "", "chapter %d: the duel against %s says its deck's version and its stakes" % [n, du["opponent"]])
 			for key in ["prize", "bond"]:
 				if d.has(key) and d.has("card"):
 					check(int(d["card"]) != 0 and not d.has("card_name") and (not big or not CardData.get_card(int(d["card"])).is_empty()), "chapter %d: the card of the %s banner is a real card" % [n, key])

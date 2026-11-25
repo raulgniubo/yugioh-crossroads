@@ -440,7 +440,7 @@ static func deck_now(key: String) -> String:
 	if harder <= 0 or not key.contains("@"):
 		return key
 	var sp: Array = DeckTiers.split(key)
-	return DeckTiers.with_version(str(sp[0]), DeckTiers.shift(str(sp[1]), harder))
+	return DeckTiers.with_version(str(sp[0]), DeckTiers.shift_in(str(sp[0]), str(sp[1]), harder, Saves.story_difficulty() >= 2))
 
 
 ## The island's best (they play their whole deck and think at Extreme from the first day): beating

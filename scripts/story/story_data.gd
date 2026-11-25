@@ -289,7 +289,7 @@ const SCRIPTS := {
 				{"s": "weevil", "t": "Those are INVENTORY. The gentleman in the hood pays double for anything pulled off a statue. I merely supply.", "emote": "♪"},
 				{"s": "lumen", "t": "(He's selling them to the man in the hood!)", "emote": "!"},
 				{"s": "weevil", "t": "Tell you what. Beat me and you can have the whole box. Lose, and your funny blank deck goes on the pile. Hee hee!", "cam": "low"}],
-				"duel": {"opponent": "weevil", "opp_deck": "weevil", "deck_tier": "starter", "opp_lp": 6000, "fallback": "joey", "lose_ok": false, "difficulty": 1, "field": "battlecity"},
+				"duel": {"opponent": "weevil", "opp_deck": "weevil", "deck_tier": "anime2", "opp_lp": 6000, "fallback": "joey", "lose_ok": false, "difficulty": 1, "field": "battlecity"},
 				"retry": [
 				{"s": "weevil", "t": "Back again? The pile only gets taller! Hee hee hee!", "cam": "low"}],
 				"after": [
@@ -372,7 +372,7 @@ const SCRIPTS := {
 		{"s": "joey", "t": "...draw... ...draw...", "emote": "...", "cam": "close"},
 		{"s": "player", "t": "Joey Wheeler. I challenge you.", "cam": "close"},
 		{"s": "joey", "t": "...a challenge...? ...yeah. Yeah. Never... turn one down...", "cam": "close", "react": {"yugi": "!"}},
-		{"duel": {"opponent": "joey", "opp_deck": "joey", "deck_tier": "starter", "lose_ok": false, "difficulty": 1, "field": "battlecity"}},
+		{"duel": {"opponent": "joey", "opp_deck": "joey", "deck_tier": "anime2", "lose_ok": false, "difficulty": 1, "field": "battlecity"}},
 		{"s": "", "t": "The last card hits the field. The purple light around Joey cracks like glass.", "fx": "flash", "sfx": "special"},
 		{"gone": "joey"},
 		{"actor": "joey", "at": PIER + Vector3(0, 0, -2.5), "face": "player"},
