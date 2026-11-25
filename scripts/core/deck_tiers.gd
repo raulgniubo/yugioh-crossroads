@@ -12,6 +12,39 @@ class_name DeckTiers
 ## version per duel (StoryDirector) and the story difficulty moves it (Hard one step up, Extreme two).
 
 const VERSIONS := ["starter", "standard", "full"]
+## (0.77.0) The characters of the show also have their decks from the show: "anime1" from early on,
+## "anime2" from later (Free Duel offers these and the full one instead of Basic and Strong).
+const ANIME_VERSIONS := ["anime1", "anime2"]
+const ANIME := {
+	"akiza": ["anime_akiza_1", "anime_akiza_2"],
+	"alexis": ["anime_alexis_1", "anime_alexis_2"],
+	"aster": ["anime_aster_1", "anime_aster_2"],
+	"bakura": ["anime_bakura_1", "anime_bakura_2"],
+	"chazz": ["legend_chazz_y1", "anime_chazz_2"],
+	"crow": ["anime_crow_1", "anime_crow_2"],
+	"deck_ancient_gear": ["anime_crowler_1", "anime_crowler_2"],
+	"deck_cyber": ["anime_sheppard_1", ""],
+	"deck_water": ["anime_bastion_1", ""],
+	"jack": ["legend_jack_s1", "anime_jack_2"],
+	"jaden": ["legend_jaden_y1", "anime_jaden_2"],
+	"joey": ["anime_joey_1", "anime_joey_2"],
+	"kaiba": ["legend_kaiba_dk", "anime_kaiba_2"],
+	"kalin": ["anime_kalin_1", "anime_kalin_2"],
+	"kite": ["anime_kite_1", "anime_kite_2"],
+	"mai": ["anime_mai_1", "anime_mai_2"],
+	"marik": ["anime_marik_1", "anime_marik_2"],
+	"pegasus": ["anime_pegasus_1", "anime_pegasus_2"],
+	"rex": ["anime_rex_1", "anime_rex_2"],
+	"shark": ["legend_shark_early", "anime_shark_2"],
+	"syrus": ["anime_syrus_1", "anime_syrus_2"],
+	"vector": ["anime_vector_1", ""],
+	"weevil": ["anime_weevil_1", "anime_weevil_2"],
+	"yugi": ["legend_yugi_dk", "anime_yugi_2"],
+	"yuma": ["legend_yuma_early", "anime_yuma_2"],
+	"yusei": ["legend_yusei_s1", "anime_yusei_2"],
+	"zane": ["anime_zane_1", "anime_zane_2"],
+}
+
 
 ## The strongest generic staples: a Standard deck plays without them.
 const TOP := ["Solemn Judgment", "Solemn Warning", "Solemn Strike", "Mirror Force", "Dark Hole", "Raigeki", "Heavy Storm",
@@ -60,7 +93,26 @@ static func split(key: String) -> Array:
 	if at < 0:
 		return [key, "full"]
 	var v := key.substr(at + 1)
-	return [key.substr(0, at), v if v in VERSIONS else "full"]
+	return [key.substr(0, at), v if (v in VERSIONS or v in ANIME_VERSIONS) else "full"]
+
+
+## The deck behind an anime version ("" when this deck has none).
+static func anime_key(base: String, version: String) -> String:
+	if not ANIME.has(base) or not version in ANIME_VERSIONS:
+		return ""
+	return str(ANIME[base][ANIME_VERSIONS.find(version)])
+
+
+## The versions a deck is offered in: the show's decks and the full one when it has them, else the three.
+static func versions_of(base: String) -> Array:
+	if not ANIME.has(base):
+		return VERSIONS
+	var out: Array = []
+	for i in 2:
+		if str(ANIME[base][i]) != "":
+			out.append(ANIME_VERSIONS[i])
+	out.append("full")
+	return out
 
 
 static func with_version(key: String, version: String) -> String:

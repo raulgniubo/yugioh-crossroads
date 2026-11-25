@@ -69,11 +69,13 @@ var _tab_counts := {}
 
 const VERSIONS := ["starter", "standard", "full"]
 ## What the player sees for the three versions of a deck (the keys stay starter / standard / full).
-const VERSION_NAME := {"starter": "Basic", "standard": "Strong", "full": "Competitive"}
+const VERSION_NAME := {"starter": "Basic", "standard": "Strong", "full": "Competitive", "anime1": "Anime: early", "anime2": "Anime: late"}
 const VERSION_HOW := {
 	"starter": "A simple version: fewer key cards, good to start.",
 	"standard": "More of their key cards and combos.",
 	"full": "Their full deck, at full power.",
+	"anime1": "The deck they played early in the show.",
+	"anime2": "The deck they played later in the show.",
 }
 ## The world behind each era (5D's: the two from the Satellite stand over it).
 const ERA_PICTURE := {
@@ -115,7 +117,7 @@ func _ready() -> void:
 	var od := str(cfg.get("opponent_deck", ""))
 	if od.contains("@"):
 		var sp: Array = DeckTiers.split(od)
-		if str(sp[0]) == str(Characters.get_char(_opp).get("deck", "")) and str(sp[1]) in ["starter", "standard"]:
+		if str(sp[0]) == str(Characters.get_char(_opp).get("deck", "")) and str(sp[1]) in ["starter", "standard", "anime1", "anime2"]:
 			_their_deck = "@" + str(sp[1])
 	if not CardData.has_deck(_my_deck):
 		_my_deck = "echo" if CardData.has_deck("echo") else "yugi"
@@ -1383,7 +1385,7 @@ func _version_in(key: String, deck_key: String) -> String:
 		return "full"
 	if deck_key.contains("@"):
 		var sp: Array = DeckTiers.split(deck_key)
-		if str(sp[0]) == base and str(sp[1]) in VERSIONS:
+		if str(sp[0]) == base and str(sp[1]) in DeckTiers.versions_of(base):
 			return str(sp[1])
 	return ""
 
@@ -1456,7 +1458,7 @@ func _version_card(key: String, v: String, on: bool, col: Color, pick: Callable)
 	if not on:
 		art.modulate = Color(0.72, 0.72, 0.78)
 	b.add_child(art)
-	var steps := {"starter": 1, "standard": 2, "full": 3}
+	var steps := {"starter": 1, "standard": 2, "full": 3, "anime1": 1, "anime2": 2}
 	var pips := HBoxContainer.new()
 	pips.position = Vector2(78, 12)
 	pips.add_theme_constant_override("separation", 4)
@@ -1474,7 +1476,12 @@ func _version_card(key: String, v: String, on: bool, col: Color, pick: Callable)
 	vn.clip_text = true
 	vn.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(vn)
-	var st2 := UITheme.label(Loc.t(str(VERSION_HOW[v])), 13, Color(1, 1, 1, 0.92) if on else UITheme.TEXT_DIM, UITheme.semi_font())
+	# (an anime version says which part of the show: "Battle City", "Neos and the Neo-Spacians")
+	var how := Loc.t(str(VERSION_HOW[v]))
+	if v in DeckTiers.ANIME_VERSIONS:
+		var dn := Loc.t(CardData.deck_name(DeckTiers.anime_key(_base_of(key), v)))
+		how = dn.get_slice(" · ", 1) if dn.contains(" · ") else dn
+	var st2 := UITheme.label(how, 13, Color(1, 1, 1, 0.92) if on else UITheme.TEXT_DIM, UITheme.semi_font())
 	st2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	st2.position = Vector2(78, 48)
 	st2.size = Vector2(122, 60)
@@ -1507,7 +1514,10 @@ func _refresh_versions() -> void:
 			c.queue_free()
 	var ocol: Color = Portraits.info(_opp).get("color", UITheme.DANGER)
 	var tv := _their_version()
-	for v in VERSIONS:
+	if not tv in DeckTiers.versions_of(_base_of(_opp)) and _their_deck.begins_with("@"):
+		_their_deck = ""
+		tv = "full"
+	for v in DeckTiers.versions_of(_base_of(_opp)):
 		_their_cards.add_child(_version_card(_opp, str(v), str(v) == tv, ocol, func(pv: String):
 			_their_deck = "" if pv == "full" else "@" + pv
 			_their_other.select(0)
@@ -1521,7 +1531,7 @@ func _refresh_versions() -> void:
 	if as_char:
 		var mcol: Color = Portraits.info(_me).get("color", UITheme.ACCENT)
 		var mv := _version_in(_me, _my_deck)
-		for v in VERSIONS:
+		for v in DeckTiers.versions_of(_base_of(_me)):
 			_my_cards.add_child(_version_card(_me, str(v), str(v) == mv, mcol, func(pv: String):
 				_my_deck = _version_key_of(_me, pv)
 				_refresh_slots()

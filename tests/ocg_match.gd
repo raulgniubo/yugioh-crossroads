@@ -3,7 +3,12 @@ extends Node
 ##   godot --headless res://tests/ocg_match.tscn -- <deck a|all> <deck b> <level a> <level b> <duels> [seed] [ms] [out file]
 ## Sides swap who goes first every duel. Prints wins for a, wins for b, draws.
 func _ready() -> void:
-	var args := OS.get_cmdline_user_args()
+	var args: Array = []
+	for a in OS.get_cmdline_user_args():
+		if str(a).begins_with("--assets="):
+			Settings.card_folder = str(a).substr(9)     # (the named decks need the card list to read their names)
+		else:
+			args.append(a)
 	var a := str(args[0]) if args.size() > 0 else "deck_monarchs"
 	var b := str(args[1]) if args.size() > 1 else "deck_gem_knight"
 	var la := int(args[2]) if args.size() > 2 else 0

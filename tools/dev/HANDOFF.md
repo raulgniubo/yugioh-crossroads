@@ -1607,3 +1607,19 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Main menu: a "Difficulty: Hard" tag right of the title (colored by level), click opens Settings
   (main_menu._build_difficulty / _refresh_difficulty). Settings names the levels in Spanish now.
 - Native libs rebuilt for linux, macos, windows (native/build.sh linux macos windows).
+
+### STATE 0.77.0: the show's decks in Free Duel
+- Raul: instead of Basic / Strong / Competitive for the characters of the show, two decks from the show
+  (early and late) and the competitive one; 1, 2 and 3 bars. 43 new decks in CardData.NAMED_DECKS
+  (anime_<who>_1/_2), plus the 8 Legendary Duels decks reused as the early one (yugi, kaiba, jaden, chazz, yusei,
+  jack, yuma, shark). Sheppard, Bastion and Vector have one deck from the show only (anime1 + full).
+- DeckTiers.ANIME (base deck -> [anime1 key, anime2 key]), ANIME_VERSIONS, anime_key(), versions_of(). A key
+  "joey@anime2" reads the named deck (CardData.deck_list/extra_list/deck_name follow it). Crowler, Sheppard and
+  Bastion are keyed by their deck (deck_ancient_gear, deck_cyber, deck_water).
+- character_select: the version cards come from DeckTiers.versions_of(); an anime card says which part of the
+  show (the deck name after " · "). VERSION_NAME "Anime: early"/"Anime: late" (es: "Anime: inicio/final").
+- The decks were written in /home/claude/work/anime (dm.py, gx.py, fds.py, zx.py, adds.py; all.py checks every
+  name against cards.json, 40 main, nothing from the Extra Deck in the Main, gen.py writes the GDScript).
+  tests/anime_decks.tscn -- --assets=<cards>: 51 of 51 fine. tests/ocg_match.gd now takes --assets= too.
+  One AI-vs-AI duel per deck (43 duels, level 1, 150 ms): all ended with a winner, no refused answers.
+- Fixed two Legendary Duels decks: Shark's had Cat Shark (an Xyz) in the Main Deck; Jaden's had 4 Polymerization.
