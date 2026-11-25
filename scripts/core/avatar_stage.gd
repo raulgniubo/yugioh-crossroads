@@ -191,3 +191,22 @@ func _process(delta: float) -> void:
 				w = 0.0
 		for b in _blink:
 			(b[0] as MeshInstance3D).set_blend_shape_value(b[1], clampf(w, 0.0, 1.0))
+
+
+## (0.75.1) A motion from the shared library played on the portrait ("chat", "listen", "agree",
+## ...): once, then back to the calm standing idle. False when this model cannot do it.
+func act(motion: String, blend := 0.35) -> bool:
+	if _model == null or not is_instance_valid(_model):
+		return false
+	var c := Avatars.gesture(_model, motion)
+	if c == "":
+		return false
+	var ap := Avatars.anim_player(_model)
+	if ap == null:
+		return false
+	ap.play(c, blend)
+	var rest := Avatars.rest_idle(_model)
+	if rest != "" and ap.has_animation(rest):
+		ap.get_animation(rest).loop_mode = Animation.LOOP_LINEAR
+		ap.queue(rest)
+	return true

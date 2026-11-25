@@ -1566,3 +1566,7 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   "NAME VS NAME" card for 1.7 s (click skips). Voices.say per line, Voices.hush(true) on next/finish.
 - Dev: `--legend-n=<index>` picks the matchup for --legend-test runs, `--legend-era=<era>` opens that tab,
   `--legend-vs-hold` keeps the VS card up. replay_check: `--pairs=deckA:deckB,...` (the three new pairs: 3 of 3 SAME).
+- Scene polish (same build): name tab on the speaker's side in their color; the listener goes dark, smaller and
+  back, the speaker gets full light + glow. Portraits MOVE: `Avatars.portrait_act(key, motion)` plays a library
+  gesture on the live portrait (avatar_stage.gd `act`: once, then the looping g_rest idle); speaker "chat",
+  listener "listen" (not "agree": the nod showed a neck seam on one stand-in). `--legend-line=N` jumps to line N.

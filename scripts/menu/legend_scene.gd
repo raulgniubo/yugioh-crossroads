@@ -39,6 +39,7 @@ var _done := false
 var _versus := false
 var _vs_layer: Control
 var _t := 0.0
+var _dev := Array(OS.get_cmdline_user_args()).any(func(a): return str(a).begins_with("--legend-test"))
 
 
 func _init(lines: Array, left_key: String, right_key: String, picture: String, versus := false) -> void:
@@ -139,6 +140,8 @@ func _ready() -> void:
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.3)
 	_layout()
+	for k in [_left_key, _right_key]:
+		Avatars.portrait_warm(k, ["chat", "listen"])
 	if _versus:
 		_box.modulate.a = 0.0      # (the words come in after the VS card)
 		_show_versus()
@@ -352,6 +355,14 @@ func _next() -> void:
 	# The one speaking is lit and steps forward; the other waits in the shade (a narrator: both half lit).
 	for sd in _sides:
 		sd["want"] = 0.6 if who == "" else (1.0 if str(sd["key"]) == who else 0.0)
+	# They move: the one speaking talks with their hands, the other listens.
+	if who != "":
+		for sd in _sides:
+			var k := str(sd["key"])
+			var mo := "chat" if k == who else "listen"
+			var moved := Avatars.portrait_act(k, mo)
+			if _dev:
+				print("LEGEND ACT %s %s -> %s" % [k, mo, moved])
 	# Their voice (the line before is cut: one voice at a time, and a click means "next").
 	Voices.hush(true)
 	if who != "":

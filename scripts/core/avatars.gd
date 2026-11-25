@@ -3052,6 +3052,23 @@ func _trim_stages() -> void:
 		_stage_of(k).call("unload")
 
 
+## (0.75.1) Makes the portrait of `key` move: a motion from the shared library, played once, then
+## its calm idle again (Legendary Duels scenes: the one speaking talks with their hands, the other
+## listens). False when that portrait has no model loaded or the model cannot do it.
+func portrait_act(key: String, motion: String, blend := 0.35) -> bool:
+	var stage := _stage_of(dressed(key))
+	if stage == null or not bool(stage.call("loaded")) or not stage.has_method("act"):
+		return false
+	return bool(stage.call("act", motion, blend))
+
+
+## The motions a portrait is about to need, fitted ahead in small steps so the first one does not stall.
+func portrait_warm(key: String, motions: Array) -> void:
+	var stage := _stage_of(dressed(key))
+	if stage != null and bool(stage.call("loaded")) and stage.get("_model") != null:
+		warm_gestures(stage.get("_model"), motions)
+
+
 ## The size every portrait is drawn at when it is not one of the few big ones. Bigger on High
 ## and Ultra, so a tile that zooms in on a face stays crisp.
 func stage_size() -> Vector2i:
