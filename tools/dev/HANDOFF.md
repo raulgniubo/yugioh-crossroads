@@ -1649,4 +1649,5 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Free Duel rival quote moved to (1384,22) 472x80, wraps up to 3 lines beside the Knockout/Online buttons, never under them.
 - Anime deck versions both read "ANIME"; the arc name (from the deck name) under it tells them apart; the bars say which is stronger.
 - Spanish: every "en línea" is now "online" (Raul's choice). Edit /home/claude/work/i18n/es/extras.tsv, never write "en línea".
+- Free Duel rival default = their last anime deck (_default_their_deck); Competitive is remembered only if you picked it (cfg opponent_version="full").
 - ocg_boards: two Sense boards added in 0.78.1 (spells with no use stay in hand; weak monster goes to Defense). 9/9 Sense pass at levels 1-3.

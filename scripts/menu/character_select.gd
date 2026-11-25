@@ -114,7 +114,9 @@ func _ready() -> void:
 	_difficulty = Settings.free_difficulty   # Normal unless you picked another one here before
 	_my_deck = cfg.get("player_deck", "yugi")
 	# Their deck as one of its versions (Free Duel's front screen picks one: "kaiba@standard").
+	# Back from a Free Duel: the version you had. Otherwise their last anime deck (see _default_their_deck).
 	var od := str(cfg.get("opponent_deck", ""))
+	_their_deck = "" if str(cfg.get("opponent_version", "")) == "full" else _default_their_deck(_opp)
 	if od.contains("@"):
 		var sp: Array = DeckTiers.split(od)
 		if str(sp[0]) == str(Characters.get_char(_opp).get("deck", "")) and str(sp[1]) in ["starter", "standard", "anime1", "anime2"]:
@@ -1023,6 +1025,8 @@ func _choose(key: String) -> void:
 		_picking = "opp"
 	else:
 		_opp = key
+		if _their_deck == "" or _their_deck.begins_with("@"):
+			_their_deck = _default_their_deck(_opp)
 	Sfx.play("card", -6.0)
 	_refresh_pick()
 
@@ -1081,6 +1085,8 @@ func _random_opponent() -> void:
 		return
 	_picking = "opp"
 	_opp = pool[randi() % pool.size()]
+	if _their_deck == "" or _their_deck.begins_with("@"):
+		_their_deck = _default_their_deck(_opp)
 	Sfx.play("card", -6.0)
 	_refresh_pick()
 
@@ -1391,6 +1397,16 @@ func _version_in(key: String, deck_key: String) -> String:
 		var sp: Array = DeckTiers.split(deck_key)
 		if str(sp[0]) == base and str(sp[1]) in DeckTiers.versions_of(base):
 			return str(sp[1])
+	return ""
+
+
+## The version a rival starts on: their last anime deck (the middle step), else their full deck.
+## The Competitive one is a pick, not the default (Raul, 0.78.2).
+func _default_their_deck(key: String) -> String:
+	var vs: Array = DeckTiers.versions_of(_base_of(key))
+	for v in ["anime2", "anime1"]:
+		if v in vs:
+			return "@" + v
 	return ""
 
 
@@ -1784,6 +1800,8 @@ func _start_duel() -> void:
 		"turbo": _turbo_btn != null and _turbo_btn.button_pressed, "lp": _lp, "hand": _hand_n,
 		"destiny": not (_fate_off_btn != null and _fate_off_btn.button_pressed),
 		"cpu_level": _difficulty}
+	if _their_deck == "":
+		cfg["opponent_version"] = "full"          # (so coming back keeps Competitive picked)
 	if _their_deck.begins_with("@"):
 		cfg["opponent_deck"] = _deck_of("opp")    # one of the smaller versions of their own deck
 	elif _their_deck != "":
