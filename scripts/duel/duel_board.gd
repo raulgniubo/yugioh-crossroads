@@ -1067,7 +1067,12 @@ func _build_decks() -> void:
 		etop.set_pickable(p == 0)
 		if p == 0:
 			etop.clicked.connect(func(_c): extra_clicked.emit())
-			etop.hovered.connect(func(_c, inside): etop.set_glow(inside, Color("b06bff")))
+			# (when a Summon is ready the top card glows gold; a hover still shows purple)
+			etop.hovered.connect(func(_c, inside):
+				if inside:
+					etop.set_glow(true, Color("b06bff"))
+				else:
+					etop.set_glow(_extra_ring != null and _extra_ring.visible, Color("ffd23a")))
 		ep.add_child(etop)
 		_extra_piles.append(ep)
 		var el := _count_chip(extra_pos(p) + Vector3(0, 0, 0.7 if p == 0 else -0.7), Color("d9b8ff"))
@@ -1166,8 +1171,11 @@ func set_extra_count(p: int, count: int, ready := 0) -> void:
 	pile.visible = count > 0
 	_set_chip(_extra_labels[p], str(count) if count > 0 else "")
 	if p == 0 and _extra_ready:
-		_extra_ready.visible = ready > 0
+		# (0.79.2) No floating words over the table (they could sit behind something): the ring and
+		# a gold glow on the top card say it, and the coach line above says what it means.
+		_extra_ready.visible = false
 		_extra_ring.visible = ready > 0
+		top.set_glow(ready > 0, Color("ffd23a"))
 		_extra_ready.text = Loc.t("SUMMON READY") if ready == 1 else Loc.t("SUMMON READY  x%d") % ready
 
 
@@ -1176,9 +1184,30 @@ func set_extra_count(p: int, count: int, ready := 0) -> void:
 func set_gy_ready(ready: int) -> void:
 	if _gy_ready == null:
 		return
-	_gy_ready.visible = ready > 0
+	_gy_ready.visible = false      # (0.79.2: no words, the ring and the green glow on the top card say it)
 	_gy_ring.visible = ready > 0
+	_light_gy_top()
 	_gy_ready.text = Loc.t("EFFECT READY") if ready == 1 else Loc.t("EFFECT READY  x%d") % ready
+
+
+var _gy_lit: Card3D = null
+
+
+## The top card of your Graveyard glows green while one of your pile cards can use its effect
+## (the top card changes as cards go in and out, so this is checked every frame too).
+func _light_gy_top() -> void:
+	var want: Card3D = null
+	if _gy_ring != null and _gy_ring.visible and not (_gy_cards[0] as Array).is_empty():
+		var top = (_gy_cards[0] as Array).back()
+		if top != null and is_instance_valid(top):
+			want = top
+	if want == _gy_lit:
+		return
+	if _gy_lit != null and is_instance_valid(_gy_lit):
+		_gy_lit.set_glow(false)
+	_gy_lit = want
+	if want != null:
+		want.set_glow(true, Color("4fd18b"))
 
 
 func _process_extra(t: float) -> void:
@@ -1186,6 +1215,7 @@ func _process_extra(t: float) -> void:
 		var k := 1.0 + sin(t * 4.0) * 0.06
 		_extra_ring.scale = Vector3(k, 0.3, 1.25 * k)
 		_extra_ready.position.y = extra_pos(0).y + 0.75 + sin(t * 3.0) * 0.05
+	_light_gy_top()
 	if _gy_ring and _gy_ring.visible:
 		var g := 1.0 + sin(t * 4.0 + 1.0) * 0.06
 		_gy_ring.scale = Vector3(g, 0.3, 1.25 * g)

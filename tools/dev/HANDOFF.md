@@ -1673,3 +1673,8 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - CHARACTERS_PLAN.md: Team Ragnarok (halldor, dragan, broder) added.
 - BUILDS (Raul, Nov 25 1:10 PM): export BOTH (Windows + Mac) and send the parts here as always, but NEVER copy or install
   a build onto his Mac (it eats his disk). The Mac install step is gone for good unless he asks.
+
+## STATE 0.79.2
+- No floating words on the table (Raul: like Master Duel): "SUMMON READY" and "EFFECT READY" labels are never shown.
+  Extra Deck ready = gold ring + gold glow on its top card (purple on hover); Graveyard ready = green ring + green glow on
+  its top card (_light_gy_top, checked every frame). The coach line above still explains both.
