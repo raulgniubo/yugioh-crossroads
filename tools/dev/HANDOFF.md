@@ -1671,3 +1671,5 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   ocg_table refresh = pile_effects().size(); coach line says to tap the Graveyard. The Graveyard list puts the cards that
   can activate first (newest-first otherwise). Raul: do NOT dim the other cards there (he opens it to read cards too).
 - CHARACTERS_PLAN.md: Team Ragnarok (halldor, dragan, broder) added.
+- BUILDS (Raul, Nov 25 1:10 PM): export BOTH (Windows + Mac) and send the parts here as always, but NEVER copy or install
+  a build onto his Mac (it eats his disk). The Mac install step is gone for good unless he asks.
