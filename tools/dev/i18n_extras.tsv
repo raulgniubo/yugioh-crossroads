@@ -287,7 +287,7 @@ Receptionist	Recepcionista
 Welcome to KaibaCorp. Mr. Kaiba is not taking visitors. He never is.	Esto es KaibaCorp. El señor Kaiba no recibe visitas. Nunca lo hace.
 The Duel Simulator on your right is open to the public. It does not go easy on anyone.	El Simulador de Duelos a tu derecha está abierto al público. No le tiene piedad a nadie.
 Duel Simulator	Simulador de Duelos
-DUEL SIMULATOR ONLINE. Opponent profile: Expert. Reward on victory: Duel Points.	SIMULADOR DE DUELOS EN LÍNEA. Perfil del rival: Experto. Premio por victoria: Puntos de Duelo.
+DUEL SIMULATOR ONLINE. Opponent profile: Expert. Reward on victory: Duel Points.	SIMULADOR DE DUELOS ONLINE. Perfil del rival: Experto. Premio por victoria: Puntos de Duelo.
 Step onto the pad to begin.	Sube a la plataforma para empezar.
 Simulation start.	Simulación iniciada.
 Lobby Guard	Guardia del Vestíbulo
@@ -7376,13 +7376,13 @@ Hmm...	Hmm...
 Oops!	¡Uy!
 Good luck!	¡Suerte!
 Wow!	¡Guau!
-That online duel is not there any more.	Ese duelo en línea ya no existe.
+That online duel is not there any more.	Ese duelo online ya no existe.
 Waiting for %s's deck...	Esperando el deck de %s...
 %s's deck can't be used: %s	El deck de %s no se puede usar: %s
 %s lost the last duel and chooses who goes first...	%s perdió el duelo anterior y elige quién empieza...
 Waiting for %s...	Esperando a %s...
-Online  ·  %s Deck	En línea  ·  Deck %s
-Online duel	Duelo en línea
+Online  ·  %s Deck	Online  ·  Deck %s
+Online duel	Duelo online
 %s is back.	%s volvió.
 Waiting for %s... (reconnecting)	Esperando a %s... (reconectando)
 The duel goes on where it was the moment the line is back.	El duelo sigue donde estaba en cuanto vuelva la conexión.
@@ -7391,12 +7391,12 @@ End it as a no-contest	Terminarlo sin resultado
 No contest: the line to %s was gone too long.	Sin resultado: la conexión con %s estuvo caída demasiado tiempo.
 %s left	%s se fue
 %s wants another! Go	¡%s quiere otro! Vamos
-ONLINE	EN LÍNEA
-%d online	%d en línea
+ONLINE	ONLINE
+%d online	%d online
 Your Duel Group	Tu Grupo de Duelo
 Duel people you know	Duelos con gente que conoces
 Their decks, their duelists	Sus decks, sus duelistas
-Duel the people in your Duel Group, each from your own computer. Opens the Online screen.	Duelos con la gente de tu Grupo de Duelo, cada uno desde su computadora. Abre la pantalla En línea.
+Duel the people in your Duel Group, each from your own computer. Opens the Online screen.	Duelos con la gente de tu Grupo de Duelo, cada uno desde su computadora. Abre la pantalla Online.
 Duel people you know.	Duelos con gente que conoces.
 %s: your Duel Group.	%s: tu Grupo de Duelo.
 With friends	Con amigos
@@ -7429,14 +7429,14 @@ IN THE GROUP	EN EL GRUPO
 Nobody else is in the group yet. Send your invite code (on the right) to the people you want to duel: the moment they join, they show up here.	Todavía no hay nadie más en el grupo. Manda tu código de invitación (a la derecha) a la gente con quien quieres jugar: en cuanto entren, aparecen aquí.
 +   Invite someone (copies the invite code)	+   Invitar a alguien (copia el código de invitación)
 Copied! Send it to them (WhatsApp, a text...)	¡Copiado! Mándaselo (WhatsApp, un mensaje...)
-● You are online: the group sees you	● Estás en línea: el grupo te ve
+● You are online: the group sees you	● Estás online: el grupo te ve
 You own this group.	Este grupo es tuyo.
 Owner: %s	Dueño: %s
 The group's key runs out in %d days.	La llave del grupo vence en %d días.
 The group's key has run out.	La llave del grupo venció.
 Renew it now (2 minutes)	Renovarla ahora (2 minutos)
 INVITE CODE	CÓDIGO DE INVITACIÓN
-Anyone who pastes it under Online > Join a group is in. Send it however you like (WhatsApp, a text).	Quien lo pegue en En línea > Entrar a un grupo, entra. Mándalo como quieras (WhatsApp, un mensaje).
+Anyone who pastes it under Online > Join a group is in. Send it however you like (WhatsApp, a text).	Quien lo pegue en Online > Entrar a un grupo, entra. Mándalo como quieras (WhatsApp, un mensaje).
 Copy the invite code	Copiar el código de invitación
 Copied!	¡Copiado!
 OWNER TOOLS	HERRAMIENTAS DEL DUEÑO
@@ -7448,19 +7448,19 @@ Challenge	Retar
 Offline	Desconectado
 In a duel	En un duelo
 Away	Ausente
-Online	En línea
+Online	Online
 Connecting...	Conectando...
 Offline  ·  last seen %s	Desconectado  ·  última vez: %s
 Has version %s (you have %s): both need the same version	Tiene la versión %s (tú tienes %s): los dos necesitan la misma
 %d min ago	Hace %d min
 %d h ago	Hace %d h
 CHALLENGE %s	RETAR A %s
-You have no complete deck yet. A deck can be taken online when it has 40 to 60 cards and you own every card in it.	Todavía no tienes un deck completo. Un deck se puede llevar en línea cuando tiene de 40 a 60 cartas y tienes todas sus cartas.
+You have no complete deck yet. A deck can be taken online when it has 40 to 60 cards and you own every card in it.	Todavía no tienes un deck completo. Un deck se puede llevar online cuando tiene de 40 a 60 cartas y tienes todas sus cartas.
 Your deck	Tu deck
 How many duels	Cuántos duelos
 One duel	Un duelo
 Match of 3 (Side Deck between duels)	Match de 3 (Side Deck entre duelos)
-No prizes online: each duel goes on your record against them.	En línea no hay premios: cada duelo va a tu récord contra esa persona.
+No prizes online: each duel goes on your record against them.	Online no hay premios: cada duelo va a tu récord contra esa persona.
 Send challenge	Mandar el reto
 %s can't be reached right now.	No se puede llegar a %s ahora mismo.
 WAITING FOR %s	ESPERANDO A %s
@@ -7482,18 +7482,18 @@ Leave the group	Salir del grupo
 Stay	Quedarme
 NAME AND COLOR	NOMBRE Y COLOR
 REMOVE SOMEONE	SACAR A ALGUIEN
-Two steps on Tailscale's site, signed in with the group's account:\n\n1  Make a new invite code here first (Owner tools), so the old code stops working.\n2  On the Machines page, find their copy (its name starts with xroads- and their duelist's name), press ⋯ and Remove.\n\nEveryone else's game takes the new key by itself the next time they are online with you.	Dos pasos en el sitio de Tailscale, con la sesión de la cuenta del grupo:\n\n1  Primero haz aquí un código nuevo (Herramientas del dueño), para que el viejo deje de servir.\n2  En la página Machines, busca su copia (su nombre empieza con xroads- y el nombre de su duelista), pulsa ⋯ y Remove.\n\nEl juego de los demás toma la llave nueva solo, la próxima vez que estén en línea contigo.
+Two steps on Tailscale's site, signed in with the group's account:\n\n1  Make a new invite code here first (Owner tools), so the old code stops working.\n2  On the Machines page, find their copy (its name starts with xroads- and their duelist's name), press ⋯ and Remove.\n\nEveryone else's game takes the new key by itself the next time they are online with you.	Dos pasos en el sitio de Tailscale, con la sesión de la cuenta del grupo:\n\n1  Primero haz aquí un código nuevo (Herramientas del dueño), para que el viejo deje de servir.\n2  En la página Machines, busca su copia (su nombre empieza con xroads- y el nombre de su duelista), pulsa ⋯ y Remove.\n\nEl juego de los demás toma la llave nueva solo, la próxima vez que estén online contigo.
 Open the Machines page	Abrir la página Machines
 Scan it with a phone to send the code on from there.	Escanéalo con el teléfono para mandar el código desde ahí.
 HELP	AYUDA
 JOINING	ENTRAR
-Someone in a group sends you its invite code. Under Online, paste it in Join a group. That's all: the group and its people show up a few seconds later.	Alguien de un grupo te manda su código de invitación. En En línea, pégalo en Entrar a un grupo. Eso es todo: el grupo y su gente aparecen unos segundos después.
+Someone in a group sends you its invite code. Under Online, paste it in Join a group. That's all: the group and its people show up a few seconds later.	Alguien de un grupo te manda su código de invitación. En Online, pégalo en Entrar a un grupo. Eso es todo: el grupo y su gente aparecen unos segundos después.
 MAKING A GROUP	CREAR UN GRUPO
 1  Make a free Tailscale account just for the game (use a new Google or GitHub account, or an email you don't use for anything else).\n2  On its keys page (Settings > Keys > Generate auth key): Reusable on, Expiration 90 days, then Generate. Copy the key (it starts with tskey-auth-).\n3  Paste it in the game. The game checks it and says when your group is ready.\n4  Name your group and pick its color.\n5  Copy the invite code and send it to the people you want to duel.	1  Haz una cuenta gratis de Tailscale solo para el juego (usa una cuenta nueva de Google o GitHub, o un correo que no uses para nada más).\n2  En su página de llaves (Settings > Keys > Generate auth key): Reusable encendido, Expiration 90 días, y Generate. Copia la llave (empieza con tskey-auth-).\n3  Pégala en el juego. El juego la prueba y te dice cuando tu grupo está listo.\n4  Ponle nombre a tu grupo y elige su color.\n5  Copia el código de invitación y mándalo a la gente con quien quieres jugar.
 DUELING	JUGAR
-In the lobby, press Challenge next to someone who is online. Pick your deck, one duel or a Match of 3. They get a card on their screen with Accept or Decline. The game picks who hosts the duel (the easier connection) and says so. Each of you keeps your own replay and your record against the other. There are no prizes online.	En la sala, pulsa Retar junto a alguien en línea. Elige tu deck, un duelo o un Match de 3. A esa persona le sale una tarjeta en pantalla con Aceptar o Rechazar. El juego elige quién hospeda el duelo (la conexión más fácil) y lo dice. Cada uno guarda su repetición y su récord contra el otro. En línea no hay premios.
+In the lobby, press Challenge next to someone who is online. Pick your deck, one duel or a Match of 3. They get a card on their screen with Accept or Decline. The game picks who hosts the duel (the easier connection) and says so. Each of you keeps your own replay and your record against the other. There are no prizes online.	En la sala, pulsa Retar junto a alguien online. Elige tu deck, un duelo o un Match de 3. A esa persona le sale una tarjeta en pantalla con Aceptar o Rechazar. El juego elige quién hospeda el duelo (la conexión más fácil) y lo dice. Cada uno guarda su repetición y su récord contra el otro. Online no hay premios.
 IT DOESN'T CONNECT	NO CONECTA
-•  Windows asks whether Crossroads Link may use the network: say Allow (Private networks is enough). If you said no, Windows Security > Firewall > Allow an app, and tick Crossroads Link.\n•  Both of you need the same version of the game. The lobby says when one of you has another.\n•  "The group's key was not accepted": the owner's key ran out. The owner makes a new one (Owner tools > New invite code); everyone else's game takes it the next time they are online with the owner, or pastes the new invite code.\n•  A slow line is fine: a duel sends very little. When the line drops, the duel waits and goes on where it was when it comes back.\n•  Still nothing? Close the game on both computers and open it again.	•  Windows pregunta si Crossroads Link puede usar la red: di Permitir (con Redes privadas basta). Si dijiste que no: Seguridad de Windows > Firewall > Permitir una aplicación, y marca Crossroads Link.\n•  Los dos necesitan la misma versión del juego. La sala avisa cuando uno tiene otra.\n•  "La llave del grupo no fue aceptada": la llave del dueño venció. El dueño hace una nueva (Herramientas del dueño > Código nuevo); el juego de los demás la toma la próxima vez que estén en línea con el dueño, o pegan el código nuevo.\n•  Una conexión lenta está bien: un duelo manda muy poco. Si se cae la conexión, el duelo espera y sigue donde estaba cuando vuelve.\n•  ¿Nada todavía? Cierra el juego en las dos computadoras y ábrelo otra vez.
+•  Windows asks whether Crossroads Link may use the network: say Allow (Private networks is enough). If you said no, Windows Security > Firewall > Allow an app, and tick Crossroads Link.\n•  Both of you need the same version of the game. The lobby says when one of you has another.\n•  "The group's key was not accepted": the owner's key ran out. The owner makes a new one (Owner tools > New invite code); everyone else's game takes it the next time they are online with the owner, or pastes the new invite code.\n•  A slow line is fine: a duel sends very little. When the line drops, the duel waits and goes on where it was when it comes back.\n•  Still nothing? Close the game on both computers and open it again.	•  Windows pregunta si Crossroads Link puede usar la red: di Permitir (con Redes privadas basta). Si dijiste que no: Seguridad de Windows > Firewall > Permitir una aplicación, y marca Crossroads Link.\n•  Los dos necesitan la misma versión del juego. La sala avisa cuando uno tiene otra.\n•  "La llave del grupo no fue aceptada": la llave del dueño venció. El dueño hace una nueva (Herramientas del dueño > Código nuevo); el juego de los demás la toma la próxima vez que estén online con el dueño, o pegan el código nuevo.\n•  Una conexión lenta está bien: un duelo manda muy poco. Si se cae la conexión, el duelo espera y sigue donde estaba cuando vuelve.\n•  ¿Nada todavía? Cierra el juego en las dos computadoras y ábrelo otra vez.
 The group lives on a Tailscale account made only for the game, not on the owner's own computers. Nothing else of anyone's is ever in it: only copies of Crossroads, and the game only listens for duels. Crossroads Link keeps nothing on disk but a short log, and it closes when the game does.	El grupo vive en una cuenta de Tailscale hecha solo para el juego, no en las computadoras del dueño. Nunca hay nada más de nadie ahí: solo copias de Crossroads, y el juego solo escucha duelos. Crossroads Link no guarda nada en disco salvo un registro corto, y se cierra cuando se cierra el juego.
 A NEW KEY FOR THE GROUP	UNA LLAVE NUEVA PARA EL GRUPO
 Next  ▶	Siguiente  ▶
@@ -7530,8 +7530,8 @@ This is what everyone in the group sees.	Esto es lo que ve todo el grupo.
 5  INVITE PEOPLE	5  INVITA A LA GENTE
 3  THE NEW INVITE CODE	3  EL CÓDIGO NUEVO
 Done: the group runs on the new key. The old invite code no longer lets anyone in once the old key is gone (delete it on the keys page if you want it gone now).	Listo: el grupo usa la llave nueva. El código viejo deja de dejar entrar a nadie cuando la llave vieja ya no está (bórrala en la página de llaves si quieres que deje de servir ya).
-Everyone already in the group gets the new key by itself the next time they are online with you. Someone who was away for a long time can paste this code.	Todos los que ya están en el grupo reciben la llave nueva solos la próxima vez que estén en línea contigo. Alguien que estuvo fuera mucho tiempo puede pegar este código.
-Your group is ready. Send this code to the people you want to duel (WhatsApp, a text, anything). They paste it under Online > Join a group.	Tu grupo está listo. Manda este código a la gente con quien quieres jugar (WhatsApp, un mensaje, lo que sea). Lo pegan en En línea > Entrar a un grupo.
+Everyone already in the group gets the new key by itself the next time they are online with you. Someone who was away for a long time can paste this code.	Todos los que ya están en el grupo reciben la llave nueva solos la próxima vez que estén online contigo. Alguien que estuvo fuera mucho tiempo puede pegar este código.
+Your group is ready. Send this code to the people you want to duel (WhatsApp, a text, anything). They paste it under Online > Join a group.	Tu grupo está listo. Manda este código a la gente con quien quieres jugar (WhatsApp, un mensaje, lo que sea). Lo pegan en Online > Entrar a un grupo.
 The code is the way in: send it only to people you want in the group. You can make a new one any time (Owner tools), and the old one stops working.	El código es la entrada: mándalo solo a la gente que quieres en el grupo. Puedes hacer uno nuevo cuando quieras (Herramientas del dueño), y el viejo deja de servir.
 A new account, only for the game	Una cuenta nueva, solo para el juego
 Someone	Alguien
@@ -7543,11 +7543,11 @@ Forbidden/Limited list: on	Lista de Prohibidas/Limitadas: sí
 Forbidden/Limited list: OFF (any card, 3 copies)	Lista de Prohibidas/Limitadas: NO (cualquier carta, 3 copias)
 Accept	Aceptar
 Decline	Rechazar
-You have no complete deck to take online yet (40 to 60 cards, every card owned).	Todavía no tienes un deck completo para llevar en línea (de 40 a 60 cartas, todas tuyas).
+You have no complete deck to take online yet (40 to 60 cards, every card owned).	Todavía no tienes un deck completo para llevar online (de 40 a 60 cartas, todas tuyas).
 Goes away in %d s	Se va en %d s
 That is not an invite code. Ask for it again and paste all of it.	Eso no es un código de invitación. Pídelo otra vez y pégalo completo.
 Duel Group	Grupo de Duelo
-Online duels are not part of this copy of the game.	Los duelos en línea no vienen en esta copia del juego.
+Online duels are not part of this copy of the game.	Los duelos online no vienen en esta copia del juego.
 The game could not open its own port on this computer.	El juego no pudo abrir su propio puerto en esta computadora.
 Crossroads Link did not start on this computer.	Crossroads Link no arrancó en esta computadora.
 Crossroads Link stopped.	Crossroads Link se detuvo.
@@ -7563,14 +7563,14 @@ Busy now	Ocupado
 Key: %d days	Llave: %d días
 Say	Decir
 Quick reactions the other duelist sees	Reacciones rápidas que ve el otro duelista
-Play online	Jugar en línea
+Play online	Jugar online
 With your group	Con tu grupo
-Play duels online with your friends, with your own duelist, cards and decks. A Duel Group is a private group just for Crossroads: one person creates it, and everyone else joins with an invite code.	Juega duelos en línea con tus amigos, con tu propio duelista, tus cartas y tus decks. Un Grupo de Duelo es un grupo privado solo para Crossroads: una persona lo crea y los demás entran con un código de invitación.
+Play duels online with your friends, with your own duelist, cards and decks. A Duel Group is a private group just for Crossroads: one person creates it, and everyone else joins with an invite code.	Juega duelos online con tus amigos, con tu propio duelista, tus cartas y tus decks. Un Grupo de Duelo es un grupo privado solo para Crossroads: una persona lo crea y los demás entran con un código de invitación.
 The group uses a free Tailscale account that you make just for the game. Only people with your invite code can join.	El grupo usa una cuenta gratis de Tailscale que haces solo para el juego. Solo entra quien tenga tu código de invitación.
 The group uses a Tailscale account made only for the game, separate from your other accounts. Only people with the invite code can join, and the game only uses it for duels. Crossroads Link closes when the game does.	El grupo usa una cuenta de Tailscale hecha solo para el juego, aparte de tus otras cuentas. Solo entra quien tenga el código de invitación, y el juego la usa solo para duelos. Crossroads Link se cierra cuando cierras el juego.
 Your group uses a free Tailscale account. Make a new one just for Crossroads, so it stays separate from your other accounts.	Tu grupo usa una cuenta gratis de Tailscale. Haz una nueva solo para Crossroads, así queda aparte de tus otras cuentas.
 If Tailscale asks you to download something or add a device, skip it: the game takes care of that.	Si Tailscale te pide descargar algo o agregar un dispositivo, sáltalo: de eso se encarga el juego.
-Play online with friends.	Juega en línea con amigos.
+Play online with friends.	Juega online con amigos.
 SAFE FOR THE OWNER	PRIVADO Y SEGURO
 Dorm Cup, end of term: %s won it	Copa de Dormitorios, fin de curso: ganó el %s
 The term is over: this is the final table. The Cup opens again with the next term.	Terminó el curso: esta es la tabla final. La Copa vuelve a abrir con el próximo curso.

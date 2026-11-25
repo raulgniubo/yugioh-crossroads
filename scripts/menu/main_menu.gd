@@ -57,7 +57,6 @@ func _ready() -> void:
 		_chip.focus_neighbor_bottom = _chip.get_path_to(_home_cont)
 		_chip.focus_mode = Control.FOCUS_ALL
 	_build_footer()
-	_build_difficulty()
 	if boot:
 		Router.prepare()
 		process_mode = Node.PROCESS_MODE_INHERIT
@@ -1327,56 +1326,6 @@ func _on_replays() -> void:
 			_items[0].grab_focus())
 
 
-## (0.76.0) How the opponents think right now, as a small tag beside the title (never in the duel
-## itself). A click opens Settings, where it is changed; the tag follows the change.
-var _diff_tag: Button
-var _diff_shown := -1
-
-const DIFF_COLORS := [Color("4fd18b"), Color("ffb347"), Color("ff5d5d")]
-
-
-func _build_difficulty() -> void:
-	_diff_tag = Button.new()
-	_diff_tag.focus_mode = Control.FOCUS_NONE
-	_diff_tag.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	_diff_tag.position = Vector2(600, 236)
-	_diff_tag.size = Vector2(300, 40)
-	_diff_tag.alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_diff_tag.add_theme_font_override("font", UITheme.semi_font())
-	_diff_tag.add_theme_font_size_override("font_size", 19)
-	_diff_tag.tooltip_text = Loc.t("How the opponents in Story and in the worlds think. Change it in Settings.")
-	_diff_tag.pressed.connect(_on_settings)
-	add_child(_diff_tag)
-	_refresh_difficulty()
-
-
-func _refresh_difficulty() -> void:
-	if _diff_tag == null:
-		return
-	var lv := clampi(Settings.cpu_level, 1, 3)
-	if lv == _diff_shown:
-		return
-	_diff_shown = lv
-	var col: Color = DIFF_COLORS[lv - 1]
-	_diff_tag.text = "%s:  %s" % [Loc.t("Difficulty"), Loc.t(Settings.LEVEL_NAMES[lv - 1])]
-	for st in ["normal", "hover", "pressed"]:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0.02, 0.03, 0.09, 0.55 if st == "normal" else 0.8)
-		sb.set_corner_radius_all(20)
-		sb.border_width_left = 4
-		sb.border_color = col
-		sb.content_margin_left = 16
-		sb.content_margin_right = 16
-		_diff_tag.add_theme_stylebox_override(st, sb)
-	for k in ["font_color", "font_hover_color", "font_pressed_color"]:
-		_diff_tag.add_theme_color_override(k, col.lightened(0.35))
-	# (sized to its words, its right end where the tiles end)
-	var w := _diff_tag.get_theme_font("font").get_string_size(_diff_tag.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 19).x + 40.0
-	_diff_tag.size = Vector2(w, 40)
-	_diff_tag.position = Vector2(900.0 - w, 236)
-
-
-
 func _on_settings() -> void:
 	_open_panel(SettingsPanel.open(self))
 
@@ -1748,8 +1697,6 @@ func _on_free_duel_setup() -> void:
 ## (once a game version and card set: then they are read from disk), so the shops page never waits.
 var _idle_t := 0.0
 func _process(delta: float) -> void:
-	if _diff_tag != null and _diff_shown != clampi(Settings.cpu_level, 1, 3):
-		_refresh_difficulty()      # (changed in Settings)
 	_idle_t += delta
 	if _idle_t > 3.0 and not Collection.covers_ready():
 		Collection.cover_step(3.0)

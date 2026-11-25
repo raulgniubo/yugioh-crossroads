@@ -1643,3 +1643,10 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   Easy = old Normal (cpu_level 1), Normal = old Hard (2, still the default), Hard = old Extreme (3).
   Settings.LEVEL_NAMES is the one list; Settings, the main-menu tag, Free Duel's buttons and notes, the Story
   door, the saves screen, ocg_table.NAMES and the engine report use it (es: Fácil, Normal, Difícil).
+
+## STATE 0.78.2
+- Main menu difficulty tag removed (Raul: difficulty lives in Settings and in each mode). _build_difficulty/_refresh_difficulty gone.
+- Free Duel rival quote moved to (1384,22) 472x80, wraps up to 3 lines beside the Knockout/Online buttons, never under them.
+- Anime deck versions both read "ANIME"; the arc name (from the deck name) under it tells them apart; the bars say which is stronger.
+- Spanish: every "en línea" is now "online" (Raul's choice). Edit /home/claude/work/i18n/es/extras.tsv, never write "en línea".
+- ocg_boards: two Sense boards added in 0.78.1 (spells with no use stay in hand; weak monster goes to Defense). 9/9 Sense pass at levels 1-3.

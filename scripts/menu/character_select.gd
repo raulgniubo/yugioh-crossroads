@@ -69,7 +69,7 @@ var _tab_counts := {}
 
 const VERSIONS := ["starter", "standard", "full"]
 ## What the player sees for the three versions of a deck (the keys stay starter / standard / full).
-const VERSION_NAME := {"starter": "Basic", "standard": "Strong", "full": "Competitive", "anime1": "Anime: early", "anime2": "Anime: late"}
+const VERSION_NAME := {"starter": "Basic", "standard": "Strong", "full": "Competitive", "anime1": "Anime", "anime2": "Anime"}
 const VERSION_HOW := {
 	"starter": "A simple version: fewer key cards, good to start.",
 	"standard": "More of their key cards and combos.",
@@ -1143,11 +1143,15 @@ func _build_setup() -> void:
 	col.add_theme_constant_override("separation", 10)
 	_root.add_child(col)
 	_quote = UITheme.label("", 17, UITheme.TEXT)
-	_quote.position = Vector2(1170, 64)
-	_quote.size = Vector2(686, 26)
+	# The line sits to the right of the Knockout and Online buttons and wraps, so a long one never runs under them.
+	_quote.position = Vector2(1384, 22)
+	_quote.size = Vector2(472, 80)
 	_quote.clip_text = true
+	_quote.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_quote.max_lines_visible = 3
 	_quote.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_quote.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_quote.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_root.add_child(_quote)
 	# Everything but the DUEL! row scrolls, should a language or a small window make it taller.
 	var sc := ScrollContainer.new()
