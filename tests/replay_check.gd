@@ -28,6 +28,11 @@ func _ready() -> void:
 	Engine.time_scale = speed
 	var decks := ["deck_dragon", "deck_warrior", "yugi", "kaiba", "joey", "jaden", "deck_hero", "deck_x_saber"]
 	var foes := ["kaiba", "yugi", "joey", "jaden", "mai", "zane", "chazz", "weevil"]
+	var pairs: Array = []   # --pairs=a:b,c:d  plays exactly these decks against each other
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--pairs="):
+			for pr in a.substr(8).split(","):
+				pairs.append(pr.split(":"))
 	var same := 0
 	var played := 0
 	var t0 := Time.get_ticks_msec()
@@ -36,6 +41,10 @@ func _ready() -> void:
 			"difficulty": 1 + (i % 3), "cpu_level": level, "lp": 4000 if i % 2 == 0 else 8000}
 		if turbo:
 			Router.duel_config["turbo"] = true
+		if not pairs.is_empty():
+			Router.duel_config["player_deck"] = str(pairs[i % pairs.size()][0])
+			Router.duel_config["opponent_deck"] = str(pairs[i % pairs.size()][1])
+			Router.duel_config["lp"] = 8000
 		if one_pair:
 			# (the same pairing every time: then whatever keeps growing is a leak, not a new face being loaded)
 			Router.duel_config["player_deck"] = decks[0]

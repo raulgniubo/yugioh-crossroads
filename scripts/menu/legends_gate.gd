@@ -11,7 +11,7 @@ const ERA_COLORS := {"dm": Color("ffd166"), "gx": Color("e0533f"), "5ds": Color(
 
 var _back: AcademyBackdrop
 var _body: VBoxContainer
-var _era := "gx"
+var _era := "dm"
 
 
 func _ready() -> void:
@@ -37,7 +37,7 @@ func _ready() -> void:
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.25)
 	if "--legend-test=after" in OS.get_cmdline_user_args():
-		Router.legend_pending = {"id": str(LegendData.LEGENDS[0]["id"]), "side": 0}
+		Router.legend_pending = {"id": str(LegendData.LEGENDS[_test_n()]["id"]), "side": 0}
 		Router.story_result = "won"
 		Router.last_stats = {"won": true, "turns": 6, "field": ["Elemental HERO Flame Wingman"]}
 	var pend: Dictionary = Router.legend_pending
@@ -49,6 +49,9 @@ func _ready() -> void:
 		_after(str(pend["id"]), int(pend["side"]), won)
 		return
 	Router.legend_pending = {}
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--legend-era="):
+			_era = a.get_slice("=", 1)
 	_page()
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--legend-test"):
@@ -57,10 +60,18 @@ func _ready() -> void:
 				for sd in l["sides"]:
 					print("LEGEND deck %s: %d main, %d extra" % [sd["deck"], CardData.deck_list(str(sd["deck"])).size(), CardData.extra_list(str(sd["deck"])).size()])
 			if a == "--legend-test=play":
-				_start(LegendData.LEGENDS[0], 0)
+				_start(LegendData.LEGENDS[_test_n()], 0)
 			elif a == "--legend-test=scene":
-				var l0: Dictionary = LegendData.LEGENDS[0]
-				add_child(LegendScene.new(l0["before"], str(l0["sides"][0]["key"]), str(l0["sides"][1]["key"]), str(l0["picture"])))
+				var l0: Dictionary = LegendData.LEGENDS[_test_n()]
+				add_child(LegendScene.new(l0["before"], str(l0["sides"][0]["key"]), str(l0["sides"][1]["key"]), str(l0["picture"]), true))
+
+
+## Dev: which matchup the --legend-test runs use (--legend-n=index into LEGENDS, default 0).
+static func _test_n() -> int:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--legend-n="):
+			return clampi(int(a.get_slice("=", 1)), 0, LegendData.LEGENDS.size() - 1)
+	return 0
 
 
 func _clear() -> void:
@@ -149,7 +160,7 @@ func _matchup(l: Dictionary) -> Control:
 		again.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		again.custom_minimum_size = Vector2(0, 44)
 		again.pressed.connect(func():
-			var sc := LegendScene.new(l["before"], str(l["sides"][0]["key"]), str(l["sides"][1]["key"]), str(l["picture"]))
+			var sc := LegendScene.new(l["before"], str(l["sides"][0]["key"]), str(l["sides"][1]["key"]), str(l["picture"]), true)
 			add_child(sc))
 		v.add_child(again)
 	return card
@@ -201,7 +212,7 @@ func _side(l: Dictionary, side: int, col: Color) -> Control:
 
 ## The opening scene, then the duel.
 func _start(l: Dictionary, side: int) -> void:
-	var sc := LegendScene.new(l["before"], str(l["sides"][0]["key"]), str(l["sides"][1]["key"]), str(l["picture"]))
+	var sc := LegendScene.new(l["before"], str(l["sides"][0]["key"]), str(l["sides"][1]["key"]), str(l["picture"]), true)
 	add_child(sc)
 	await sc.finished
 	LegendData.mark_seen(str(l["id"]))

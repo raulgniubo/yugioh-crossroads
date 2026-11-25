@@ -1551,3 +1551,18 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - He asked whether the game can make money: answered (not as it is; the original parts could, with its own card
   game; YouTube ads on videos are the tolerated route). He said it was only a question: change nothing.
 
+
+### STATE 0.75.1: Legendary Duels, one matchup per era + voices + new scene look
+- `legend_data.gd` LEGENDS: dm_yugi_kaiba_dk (battlecity, legend_yugi_dk / legend_kaiba_dk), gx_jaden_chazz_y1,
+  5ds_yusei_jack_s1 (highway, legend_yusei_s1 / legend_jack_s1), zexal_yuma_shark_early (heartland,
+  legend_yuma_early / legend_shark_early). All decks 40 main, every name checked against cards.json.
+  The gate opens on the Duel Monsters tab. Lines are written for this game; Spanish in extras.tsv.
+- Voices: all 47 speaking lines in Spanish AND English (batches 613-617, pack 613_617, made.json 11,568), with the
+  personality voice each character already uses in duels (kind_m Yugi, cocky_m Kaiba/Chazz/Jack, wild_m Jaden/Yuma,
+  cool_m Yusei/Shark). Narrator lines (speaker "") have no voice. Builder: /home/claude/work/legends/lbuild.py.
+- `legend_scene.gd` rewritten: figures 1.32x screen height with the bottom 14 % off screen, a dark ground
+  gradient, a slanted slab and a glow (AURA_SHADER) in the character's color, slide-in, breathing, the speaker
+  lit/forward. `LegendScene.new(lines, l, r, picture, versus)`: versus=true (the scene before a duel) opens with a
+  "NAME VS NAME" card for 1.7 s (click skips). Voices.say per line, Voices.hush(true) on next/finish.
+- Dev: `--legend-n=<index>` picks the matchup for --legend-test runs, `--legend-era=<era>` opens that tab,
+  `--legend-vs-hold` keeps the VS card up. replay_check: `--pairs=deckA:deckB,...` (the three new pairs: 3 of 3 SAME).
