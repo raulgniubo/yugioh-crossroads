@@ -3,33 +3,92 @@ extends Control
 ## A short scene of Legendary Duels: a picture of the place, the two duelists at the sides and their
 ## words in a box at the bottom, one line at a time. Click, Space, E or Enter: the rest of the line,
 ## then the next. Esc or "Skip": straight to the end.
-## (0.75.1) The duelists stand big, their legs running off the bottom of the screen into shadow, with
-## a slanted slab of their color and a soft glow of it behind them, so nobody floats. Whoever speaks
-## is lit and steps forward; the other waits in the shade. The scene before a duel opens with a VS
+## (0.75.2) Shot like a film: black bars, the place behind out of focus, the duelists big with their
+## legs running off the bottom into shadow. The one speaking is in focus with a rim of light in their
+## color and a soft light of it behind them; the other is a step darker and softly out of focus. The scene before a duel opens with a VS
 ## card. Every line with a speaker is voiced (Voices.say, the English line is the key).
 
 signal finished
 
-const AURA_SHADER := """shader_type canvas_item;
-uniform vec4 tint : source_color = vec4(1.0);
-uniform float spread = 6.0;
+## The figure: a rim of light in the character's color on the edges that face the light (from behind
+## and above, towards the middle of the screen), and a camera focus: the one listening is a little
+## darker and softly out of focus, never grayed out.
+const FIG_SHADER := """shader_type canvas_item;
+uniform vec4 rim_col : source_color = vec4(1.0);
+uniform float rim = 1.0;
+uniform vec2 light_dir = vec2(0.9, -0.45);
+uniform float focus = 1.0;
+uniform float bright = 1.0;
+uniform float sat = 1.0;
+void fragment() {
+	vec2 px = TEXTURE_PIXEL_SIZE;
+	vec4 c = texture(TEXTURE, UV);
+	float r = (1.0 - focus) * 3.0;
+	if (r > 0.05) {
+		vec4 acc = c;
+		for (int i = 0; i < 8; i++) {
+			float an = float(i) * 0.7854;
+			acc += texture(TEXTURE, UV + vec2(cos(an), sin(an)) * px * r);
+			acc += texture(TEXTURE, UV + vec2(cos(an + 0.39), sin(an + 0.39)) * px * r * 2.0);
+		}
+		c = acc / 17.0;
+	}
+	vec2 d = normalize(light_dir) * px;
+	float a1 = texture(TEXTURE, UV + d * 4.0).a;
+	float a2 = texture(TEXTURE, UV + d * 10.0).a;
+	float edge = clamp(c.a - 0.55 * a1 - 0.45 * a2, 0.0, 1.0);
+	float g = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+	vec3 col = mix(vec3(g), c.rgb, sat) * bright;
+	col += rim_col.rgb * edge * rim * 1.3;
+	COLOR = vec4(col, c.a) * COLOR;
+}"""
+
+## A soft dark shadow of the figure behind it, so it stands off the picture behind.
+const SHADOW_SHADER := """shader_type canvas_item;
+uniform float amount = 0.55;
+uniform float spread = 9.0;
 void fragment() {
 	vec2 px = TEXTURE_PIXEL_SIZE * spread;
-	float a = texture(TEXTURE, UV).a * 0.2;
+	float a = texture(TEXTURE, UV).a;
 	for (int i = 0; i < 12; i++) {
 		float an = float(i) * 0.5236;
-		vec2 d = vec2(cos(an), sin(an)) * px;
-		a += texture(TEXTURE, UV + d).a * 0.0667;
-		a += texture(TEXTURE, UV + d * 2.2).a * 0.0667;
+		a += texture(TEXTURE, UV + vec2(cos(an), sin(an)) * px).a;
+		a += texture(TEXTURE, UV + vec2(cos(an), sin(an)) * px * 2.0).a;
 	}
-	COLOR = vec4(tint.rgb, clamp(a, 0.0, 1.0) * tint.a);
+	COLOR = vec4(0.0, 0.0, 0.02, a / 25.0 * amount);
+}"""
+
+## The place behind them out of focus, darker and cooler, darker still at the corners.
+const BG_SHADER := """shader_type canvas_item;
+uniform sampler2D screen : hint_screen_texture, filter_linear;
+uniform float radius = 7.0;
+uniform float dark = 0.62;
+void fragment() {
+	vec2 px = SCREEN_PIXEL_SIZE * radius;
+	vec3 acc = texture(screen, SCREEN_UV).rgb;
+	float n = 1.0;
+	for (int ring = 1; ring <= 3; ring++) {
+		float rr = float(ring) * 0.9;
+		float tw = 1.0 / float(ring);
+		for (int i = 0; i < 12; i++) {
+			float an = float(i) * 0.5236 + float(ring) * 0.26;
+			acc += texture(screen, SCREEN_UV + vec2(cos(an), sin(an)) * px * rr).rgb * tw;
+			n += tw;
+		}
+	}
+	vec3 c = acc / n;
+	vec2 q = SCREEN_UV - 0.5;
+	float vig = clamp(1.0 - dot(q * vec2(1.0, 1.3), q * vec2(1.0, 1.3)) * 1.6, 0.0, 1.0);
+	c = c * dark * (0.35 + 0.65 * vig);
+	c *= vec3(0.86, 0.9, 1.08);
+	COLOR = vec4(c, 1.0);
 }"""
 
 var _lines: Array = []
 var _i := -1
 var _left_key := ""
 var _right_key := ""
-var _sides: Array = []      # one Dictionary per side: holder, fig, aura, slab, left, col, on, want, in
+var _sides: Array = []      # one Dictionary per side: holder, fig, shadow, light, left, key, col, on, want, in
 var _name: Label
 var _name_box: PanelContainer
 var _box: PanelContainer
@@ -49,7 +108,19 @@ func _init(lines: Array, left_key: String, right_key: String, picture: String, v
 	_versus = versus
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(AcademyBackdrop.new(0.3, picture if ResourceLoader.exists(picture) else AcademyBackdrop.PICTURE))
+	var bd := AcademyBackdrop.new(0.0, picture if ResourceLoader.exists(picture) else AcademyBackdrop.PICTURE)
+	add_child(bd)
+	if bd.get("_side") is CanvasItem:
+		(bd.get("_side") as CanvasItem).visible = false      # (its dark left side is for menus, not for a scene)
+	var blur := ColorRect.new()
+	var bm := ShaderMaterial.new()
+	var bs := Shader.new()
+	bs.code = BG_SHADER
+	bm.shader = bs
+	blur.material = bm
+	blur.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	blur.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(blur)
 	_portrait(left_key, true)
 	_portrait(right_key, false)
 	# The ground: the bottom of the screen goes dark, so the figures end in shadow, not in a cut.
@@ -69,17 +140,30 @@ func _init(lines: Array, left_key: String, right_key: String, picture: String, v
 	ground.anchor_bottom = 1.0
 	ground.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(ground)
+	# Black bars at the top and the bottom, as in a film.
+	for top in [true, false]:
+		var bar := ColorRect.new()
+		bar.color = Color(0, 0, 0, 1)
+		bar.anchor_right = 1.0
+		bar.anchor_top = 0.0 if top else 1.0
+		bar.anchor_bottom = 0.0 if top else 1.0
+		bar.offset_top = 0.0 if top else -54.0
+		bar.offset_bottom = 54.0 if top else 0.0
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(bar)
+		bar.create_tween().tween_property(bar, "offset_" + ("top" if top else "bottom"), bar.offset_top if top else 0.0, 0.5) \
+				.from(-54.0 if top else 54.0).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	# The words: a dark box across the bottom, the speaker's name on a tab above it.
 	var box := PanelContainer.new()
-	box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.03, 0.045, 0.1, 0.9), 20, Color(UITheme.GOLD, 0.45)))
+	box.add_theme_stylebox_override("panel", _box_style(Color(UITheme.GOLD, 0.7)))
 	box.anchor_left = 0.5
 	box.anchor_right = 0.5
 	box.anchor_top = 1.0
 	box.anchor_bottom = 1.0
 	box.offset_left = -560
 	box.offset_right = 560
-	box.offset_top = -230
-	box.offset_bottom = -40
+	box.offset_top = -236
+	box.offset_bottom = -72
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(box)
 	_box = box
@@ -95,13 +179,13 @@ func _init(lines: Array, left_key: String, right_key: String, picture: String, v
 	_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	m.add_child(_text)
 	_name_box = PanelContainer.new()
-	_name_box.add_theme_stylebox_override("panel", UITheme.panel_box(Color(0.1, 0.07, 0.02, 0.95), 10, Color(UITheme.GOLD, 0.8)))
+	_name_box.add_theme_stylebox_override("panel", _tab_style(UITheme.GOLD))
 	_name_box.anchor_left = 0.5
 	_name_box.anchor_top = 1.0
 	_name_box.anchor_bottom = 1.0
 	_name_box.offset_left = -540
-	_name_box.offset_top = -254
-	_name_box.offset_bottom = -212
+	_name_box.offset_top = -258
+	_name_box.offset_bottom = -218
 	_name_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_name_box.visible = false
 	add_child(_name_box)
@@ -109,7 +193,9 @@ func _init(lines: Array, left_key: String, right_key: String, picture: String, v
 	nm.add_theme_constant_override("margin_left", 18)
 	nm.add_theme_constant_override("margin_right", 18)
 	_name_box.add_child(nm)
-	_name = UITheme.label("", 24, UITheme.GOLD, UITheme.title_font())
+	_name = UITheme.label("", 23, Color.WHITE, UITheme.title_font())
+	_name.add_theme_constant_override("outline_size", 6)
+	_name.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.5))
 	nm.add_child(_name)
 	var skip := Button.new()
 	skip.text = Loc.t("Skip")
@@ -118,8 +204,8 @@ func _init(lines: Array, left_key: String, right_key: String, picture: String, v
 	skip.anchor_right = 1.0
 	skip.offset_left = -170
 	skip.offset_right = -36
-	skip.offset_top = 32
-	skip.offset_bottom = 82
+	skip.offset_top = 70
+	skip.offset_bottom = 116
 	skip.add_theme_font_size_override("font_size", 20)
 	skip.pressed.connect(_finish)
 	add_child(skip)
@@ -130,8 +216,8 @@ func _init(lines: Array, left_key: String, right_key: String, picture: String, v
 	hint.anchor_bottom = 1.0
 	hint.offset_left = 300
 	hint.offset_right = 560
-	hint.offset_top = -36
-	hint.offset_bottom = -12
+	hint.offset_top = -44
+	hint.offset_bottom = -18
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(hint)
 
@@ -162,37 +248,84 @@ func _ready() -> void:
 			_next()
 
 
-## A duelist at one side of the screen: a slanted slab of their color, then a soft glow of that
-## color around the figure, then the figure. Placed by _layout, moved by _process.
+## The words' box: dark glass, a line of the speaker's color along its top.
+func _box_style(accent: Color) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.015, 0.02, 0.05, 0.86)
+	sb.set_corner_radius_all(14)
+	sb.border_width_top = 3
+	sb.border_color = accent
+	sb.shadow_color = Color(0, 0, 0, 0.45)
+	sb.shadow_size = 18
+	sb.anti_aliasing = true
+	return sb
+
+
+## The name tab: filled with the speaker's color.
+func _tab_style(c: Color) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(c.darkened(0.25), 0.96)
+	sb.set_corner_radius_all(9)
+	sb.border_width_bottom = 2
+	sb.border_color = c.lightened(0.3)
+	sb.shadow_color = Color(0, 0, 0, 0.35)
+	sb.shadow_size = 8
+	return sb
+
+
+## A duelist at one side of the screen: a soft light of their color behind them, their shadow, then
+## the figure with its rim of light. Placed by _layout, moved by _process.
 func _portrait(key: String, left: bool) -> void:
 	var col: Color = Characters.get_char(key).get("color", UITheme.ACCENT)
 	var tex := Portraits.get_portrait(key, true)
 	var holder := Control.new()
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(holder)
-	var slab := Polygon2D.new()
-	holder.add_child(slab)
-	var aura := TextureRect.new()
-	aura.texture = tex
-	aura.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	aura.stretch_mode = TextureRect.STRETCH_SCALE
-	aura.flip_h = not left
-	var sm := ShaderMaterial.new()
-	var sh := Shader.new()
-	sh.code = AURA_SHADER
-	sm.shader = sh
-	sm.set_shader_parameter("tint", Color(col.lightened(0.3), 0.0))
-	aura.material = sm
-	aura.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(aura)
+	var light := TextureRect.new()
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
+	g.colors = PackedColorArray([Color(col.lightened(0.2), 0.75), Color(col, 0.25), Color(col, 0.0)])
+	var gt := GradientTexture2D.new()
+	gt.gradient = g
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.0, 0.5)
+	gt.width = 256
+	gt.height = 256
+	light.texture = gt
+	light.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	light.stretch_mode = TextureRect.STRETCH_SCALE
+	var add := CanvasItemMaterial.new()
+	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	light.material = add
+	light.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(light)
+	var shadow := TextureRect.new()
+	shadow.texture = tex
+	shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	shadow.stretch_mode = TextureRect.STRETCH_SCALE
+	shadow.flip_h = not left
+	var shm := ShaderMaterial.new()
+	var shs := Shader.new()
+	shs.code = SHADOW_SHADER
+	shm.shader = shs
+	shadow.material = shm
+	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(shadow)
 	var fig := TextureRect.new()
 	fig.texture = tex
 	fig.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	fig.stretch_mode = TextureRect.STRETCH_SCALE
 	fig.flip_h = not left
+	var fm := ShaderMaterial.new()
+	var fs := Shader.new()
+	fs.code = FIG_SHADER
+	fm.shader = fs
+	fm.set_shader_parameter("rim_col", col.lightened(0.45))
+	fig.material = fm
 	fig.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(fig)
-	_sides.append({"holder": holder, "fig": fig, "aura": aura, "slab": slab, "left": left, "key": key, "col": col,
+	_sides.append({"holder": holder, "fig": fig, "shadow": shadow, "light": light, "left": left, "key": key, "col": col,
 			"on": 0.6, "want": 0.6, "in": 0.0})
 
 
@@ -209,28 +342,22 @@ func _layout() -> void:
 		var fh := h * 1.32
 		var fw := fh * asp
 		var left: bool = sd["left"]
-		# (in from its edge; the bottom fifth of the picture is below the screen)
-		var cx := w * 0.17 if left else w * 0.83
+		# (in from its edge; the bottom of the picture is below the screen)
+		var cx := w * 0.2 if left else w * 0.8
 		var x := cx - fw * 0.5
 		var y := h - fh * 0.86
 		var holder: Control = sd["holder"]
 		holder.position = Vector2.ZERO
 		holder.size = Vector2(w, h)
 		holder.pivot_offset = Vector2(cx, h)
-		var aura: TextureRect = sd["aura"]
-		for n in [fig, aura]:
-			(n as Control).position = Vector2(x, y)
-			(n as Control).size = Vector2(fw, fh)
-		aura.pivot_offset = Vector2(fw * 0.5, fh)
-		aura.scale = Vector2(1.02, 1.01)
-		# The slab: a slanted band from the top of the screen to the bottom, behind the figure.
-		var bw := w * 0.15
-		var lean := h * 0.2 * (1.0 if left else -1.0)
-		var slab: Polygon2D = sd["slab"]
-		slab.polygon = PackedVector2Array([Vector2(cx - bw * 0.5 + lean, 0), Vector2(cx + bw * 0.5 + lean, 0),
-				Vector2(cx + bw * 0.5 - lean, h), Vector2(cx - bw * 0.5 - lean, h)])
-		var c: Color = sd["col"]
-		slab.vertex_colors = PackedColorArray([Color(c, 0.0), Color(c, 0.0), Color(c.darkened(0.15), 0.55), Color(c.darkened(0.15), 0.55)])
+		fig.position = Vector2(x, y)
+		fig.size = Vector2(fw, fh)
+		var shadow: TextureRect = sd["shadow"]
+		shadow.position = Vector2(x + (-14.0 if left else 14.0), y + 10.0)
+		shadow.size = Vector2(fw, fh)
+		var light: TextureRect = sd["light"]
+		light.size = Vector2(fw * 1.25, fh * 0.95)
+		light.position = Vector2(cx - light.size.x * 0.5, y + fh * 0.05)
 
 
 func _notification(what: int) -> void:
@@ -243,22 +370,24 @@ func _process(delta: float) -> void:
 	for k in _sides.size():
 		var sd: Dictionary = _sides[k]
 		sd["in"] = minf(1.0, float(sd["in"]) + delta * 2.4)
-		sd["on"] = move_toward(float(sd["on"]), float(sd["want"]), delta * 4.0)
+		sd["on"] = move_toward(float(sd["on"]), float(sd["want"]), delta * 3.5)
 		var e := 1.0 - pow(1.0 - float(sd["in"]), 3.0)
 		var on := float(sd["on"])
 		var holder: Control = sd["holder"]
 		# Slides in from its edge at the start; the one speaking stands a little further in.
-		var out := (1.0 - e) * size.x * 0.3 + (1.0 - on) * 30.0
+		var out := (1.0 - e) * size.x * 0.3 + (1.0 - on) * 26.0
 		holder.position.x = -out if sd["left"] else out
 		var breath := 1.0 + 0.005 * sin(_t * 1.6 + k * 1.9)
-		holder.scale = Vector2(1.0, breath) * (0.95 + 0.09 * on)
+		holder.scale = Vector2(1.0, breath) * (0.96 + 0.06 * on)
 		holder.modulate = Color(1, 1, 1, e)
-		# (the one listening goes dark and cold, the one speaking is in full light with their glow)
-		(sd["fig"] as CanvasItem).self_modulate = Color(0.26, 0.29, 0.38).lerp(Color.WHITE, on)
-		(sd["slab"] as CanvasItem).self_modulate = Color(1, 1, 1, 0.15 + 0.85 * on)
-		var pulse := 0.85 + 0.15 * sin(_t * 2.4 + k)
-		var c: Color = Color(sd["col"]).lightened(0.3)
-		((sd["aura"] as TextureRect).material as ShaderMaterial).set_shader_parameter("tint", Color(c, (0.85 * on * on) * pulse))
+		# The camera's focus: the one speaking sharp and in full light, the other a step darker and soft.
+		var fm := (sd["fig"] as TextureRect).material as ShaderMaterial
+		fm.set_shader_parameter("bright", lerpf(0.66, 1.04, on))
+		fm.set_shader_parameter("sat", lerpf(0.82, 1.06, on))
+		fm.set_shader_parameter("focus", lerpf(0.3, 1.0, on))
+		fm.set_shader_parameter("rim", lerpf(0.15, 1.0, on))
+		var pulse := 0.92 + 0.08 * sin(_t * 1.3 + k)
+		(sd["light"] as CanvasItem).modulate = Color(1, 1, 1, clampf((on - 0.3) / 0.7, 0.0, 1.0) * 0.8 * pulse)
 
 
 ## The opening card: both names in their colors and a VS between them, gone after a moment.
@@ -345,10 +474,11 @@ func _next() -> void:
 	_name_box.anchor_left = 0.5
 	_name_box.anchor_right = 0.5
 	_name_box.grow_horizontal = Control.GROW_DIRECTION_BEGIN if right_side else Control.GROW_DIRECTION_END
-	_name_box.offset_left = 540 if right_side else -540
-	_name_box.offset_right = 540 if right_side else -540
-	if who != "":
-		_name.add_theme_color_override("font_color", Color(Characters.get_char(who).get("color", UITheme.GOLD)).lightened(0.45))
+	_name_box.offset_left = 530 if right_side else -530
+	_name_box.offset_right = 530 if right_side else -530
+	var c: Color = Characters.get_char(who).get("color", UITheme.GOLD) if who != "" else UITheme.GOLD
+	_name_box.add_theme_stylebox_override("panel", _tab_style(c))
+	_box.add_theme_stylebox_override("panel", _box_style(Color(c.lightened(0.2), 0.9)))
 	_text.add_theme_color_override("font_color", Color(0.95, 0.97, 1.0) if who != "" else Color(1.0, 0.86, 0.55))
 	_text.text = txt
 	_text.visible_ratio = 0.0

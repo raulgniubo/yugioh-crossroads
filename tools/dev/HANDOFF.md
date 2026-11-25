@@ -1570,3 +1570,12 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   back, the speaker gets full light + glow. Portraits MOVE: `Avatars.portrait_act(key, motion)` plays a library
   gesture on the live portrait (avatar_stage.gd `act`: once, then the looping g_rest idle); speaker "chat",
   listener "listen" (not "agree": the nod showed a neck seam on one stand-in). `--legend-line=N` jumps to line N.
+
+### STATE 0.75.2: Legendary Duels scenes shot like a film
+- Raul: the glow looked cheap and the gray listener looked bad. `legend_scene.gd` now: black bars top and bottom,
+  the backdrop blurred/darkened/cooled with a vignette (BG_SHADER, a screen-reading ColorRect; AcademyBackdrop's dark
+  left side hidden), each figure with SHADOW_SHADER (soft dark shadow behind) and FIG_SHADER (rim light in the
+  character's color on the edges facing the middle/top, plus focus/bright/sat). Speaker: sharp, full color, rim,
+  a soft additive light of their color behind. Listener: 0.66 bright, 0.82 saturation, softly out of focus,
+  small rim. No slab, no outer glow. Text box: dark glass with a top line in the speaker's color; name tab filled
+  with their color. Old version kept in /tmp/legend_scene_prev.gd only (not in the repo).
