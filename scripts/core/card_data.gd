@@ -771,6 +771,11 @@ static func knows(id: int) -> bool:
 	return CARDS.has(id) or EXT.has(id) or TOKENS.has(id)
 
 
+## ATK or DEF as printed: "?" for the cards whose stat is "?" (the database keeps it as -1: Slifer, Ra).
+static func stat_text(v) -> String:
+	return "?" if int(v) < 0 else str(int(v))
+
+
 static func get_card(id: int) -> Dictionary:
 	var d: Dictionary
 	if TOKENS.has(id):

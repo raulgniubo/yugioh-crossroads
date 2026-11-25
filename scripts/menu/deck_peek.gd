@@ -192,7 +192,7 @@ func _show(id: int) -> void:
 	var lines := []
 	if str(d.get("kind", "")) == "monster":
 		lines.append(Loc.t("Level %d  ·  %s  ·  %s") % [int(d.get("level", 0)), d.get("attribute", ""), d.get("race", "")])
-		lines.append(Loc.t("ATK %d   DEF %d") % [int(d.get("atk", 0)), int(d.get("def", 0))])
+		lines.append(Loc.t("ATK %s   DEF %s") % [CardData.stat_text(d.get("atk", 0)), CardData.stat_text(d.get("def", 0))])
 	else:
 		lines.append(Loc.t("Spell Card") if str(d.get("kind", "")) == "spell" else Loc.t("Trap Card"))
 	lines.append(CardText.shown(str(d.get("name", "")), str(d.get("desc", d.get("text", "")))))

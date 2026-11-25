@@ -1349,8 +1349,8 @@ func inspect(inst, hidden := false) -> void:
 		_chip(str(d.get("race", "")), UITheme.ACCENT)
 		_chip(frame.capitalize() + (" Tuner" if d.get("tuner", false) else ""), Color("b0b8c8"))
 		_inspect_stat_row.visible = true
-		_inspect_atk.text = str(int(d.get("atk", 0)))      # (whole numbers: it showed "3300.0")
-		_inspect_def.text = str(int(d.get("def", 0)))
+		_inspect_atk.text = CardData.stat_text(d.get("atk", 0))      # (whole numbers: it showed "3300.0")
+		_inspect_def.text = CardData.stat_text(d.get("def", 0))
 		var txt := str(d.get("desc", ""))
 		var nm := str(d.get("name", ""))
 		var note := str(CardEffects.of(nm).get("note", CardData.MONSTER_EFFECTS.get(nm, "")))

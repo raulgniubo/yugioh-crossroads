@@ -333,7 +333,7 @@ func _summon(d: Dictionary, i: int) -> void:
 	tag.font_size = 40
 	tag.pixel_size = 0.005
 	tag.outline_size = 10
-	tag.text = str(int(data.get("atk", 0)))
+	tag.text = CardData.stat_text(data.get("atk", 0))
 	tag.modulate = Color(1.0, 0.9, 0.5)
 	tag.position = Vector3(0, 0.24, 0)
 	holder.add_child(tag)

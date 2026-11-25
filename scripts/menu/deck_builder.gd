@@ -2060,7 +2060,7 @@ func _show(id: int) -> void:
 		lines.append(Loc.t("CROSSROADS ORIGINAL  ·  %s  ·  This card only exists in this game.") % CardData.set_code(id))
 	if d["kind"] == "monster":
 		lines.append(Loc.t("Level %d  ·  %s  ·  %s") % [int(d.get("level", 0)), d.get("attribute", ""), d.get("race", "")])
-		lines.append(Loc.t("ATK %d   DEF %d") % [int(d.get("atk", 0)), int(d.get("def", 0))])
+		lines.append(Loc.t("ATK %s   DEF %s") % [CardData.stat_text(d.get("atk", 0)), CardData.stat_text(d.get("def", 0))])
 		var note := str(CardEffects.of(str(d.get("name", ""))).get("note", ""))
 		if note != "":
 			lines.append(Loc.t("IN THIS GAME: ") + note)

@@ -178,7 +178,7 @@ func _build(card: Dictionary, nm: String, line: String, mine: bool) -> void:
 	name_l.add_theme_constant_override("outline_size", 14)
 	name_l.modulate.a = 0.0
 	add_child(name_l)
-	var sub := UITheme.label(Loc.t(line) if line != "" else ("ATK %d" % int(card.get("atk", 0))), 26, _a.lightened(0.4), UITheme.semi_font())
+	var sub := UITheme.label(Loc.t(line) if line != "" else ("ATK %s" % CardData.stat_text(card.get("atk", 0))), 26, _a.lightened(0.4), UITheme.semi_font())
 	sub.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
 	sub.offset_left = -800
 	sub.offset_right = 800
