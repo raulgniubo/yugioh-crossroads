@@ -35,7 +35,7 @@ static func story_block(body: VBoxContainer, host: Node) -> void:
 	dl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	diff_row.add_child(dl)
 	var opt := OptionButton.new()
-	for nm in ["Normal", "Hard", "Extreme"]:
+	for nm in Settings.LEVEL_NAMES:
 		opt.add_item(Loc.t(nm))
 	opt.select(Saves.story_difficulty())
 	opt.custom_minimum_size = Vector2(150, 52)

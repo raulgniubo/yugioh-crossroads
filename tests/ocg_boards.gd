@@ -89,6 +89,10 @@ func boards() -> Array:
 			func(r): return int(r["lp"][1]) == 8000 - 2200),
 		b("Sense: attack the weaker monster", {"m": [["Vorse Raider", 1]]}, {"m": [["Celtic Guardian", 1]]},
 			func(r): return (r["mons"][1] as Array).size() == 0),
+		b("Sense: Spells with nothing to do stay in the hand", {"m": [["Vorse Raider", 1]], "hand": ["Monster Reborn", "Fissure", "Dark Hole"]}, {},
+			func(r): return int(r["st"][0]) == 0 and int(r["hand"][0]) == 3 and int(r["lp"][1]) == 6100),
+		b("Sense: no attack into a bigger monster, and the weak one goes to Defense", {"hand": ["Mystical Elf"]}, {"m": [["Blue-Eyes White Dragon", 1]]},
+			func(r): return int(r["lp"][0]) == 8000),
 		b("Sense: Shrink on theirs, then the attack", {"m": [["Summoned Skull", 1]], "hand": ["Shrink"]}, {"m": [["Blue-Eyes White Dragon", 1]]},
 			func(r): return (r["mons"][1] as Array).size() == 0 and (r["mons"][0] as Array).size() == 1),
 	]

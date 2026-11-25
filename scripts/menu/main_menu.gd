@@ -1358,7 +1358,7 @@ func _refresh_difficulty() -> void:
 		return
 	_diff_shown = lv
 	var col: Color = DIFF_COLORS[lv - 1]
-	_diff_tag.text = "%s:  %s" % [Loc.t("Difficulty"), Loc.t(["Normal", "Hard", "Extreme"][lv - 1])]
+	_diff_tag.text = "%s:  %s" % [Loc.t("Difficulty"), Loc.t(Settings.LEVEL_NAMES[lv - 1])]
 	for st in ["normal", "hover", "pressed"]:
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0.02, 0.03, 0.09, 0.55 if st == "normal" else 0.8)

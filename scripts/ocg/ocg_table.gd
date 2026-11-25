@@ -24,12 +24,12 @@ var press := {}            # a press on one of your monsters in Main Phase 1 tha
 var zone_pick: Array = []  # the zones lit up for you to choose from
 var _hand := [5, 5]
 var _menu: Array = []
-var level := 2             # how the opponent thinks: 0 the plain policy, 1 Normal, 2 Hard, 3 Extreme
+var level := 2             # how the opponent thinks: 0 the plain policy, 1 Easy, 2 Normal, 3 Hard
 var _turn_think := 0       # ms it has thought this turn
 var _turn_seen := -1
 var _turn_asks := 0
 const TURN_BUDGET := [0, 6000, 14000, 28000]     # after this much thinking in one turn it hurries
-const NAMES := ["Basic", "Normal", "Hard", "Extreme"]
+const NAMES := ["Basic", "Easy", "Normal", "Hard"]
 var _log := "--ocg-log" in OS.get_cmdline_user_args()
 ## Dev (with --human-test): picks on the table and zone choices are made too, at random, so
 ## the code that runs when you point at cards and zones is exercised without anybody there.

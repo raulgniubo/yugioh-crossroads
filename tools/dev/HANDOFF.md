@@ -1637,3 +1637,9 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   Chazz uses "anime1". Table of every Story/Academy duel per level: see the 0.78.0 report (all bosses stay full).
 - tests/anime_decks.tscn also checks the ladder (9 cases) and the worlds' choice. test_runner accepts anime1/anime2
   as a duel's deck_tier; the trio's worlds check expects the show's deck at 1 star and the whole one at 5.
+
+### STATE 0.78.1: the levels are called Easy, Normal, Hard
+- Raul's call: the old "Normal" plays like an easy opponent and the default was "Hard". Only the names changed:
+  Easy = old Normal (cpu_level 1), Normal = old Hard (2, still the default), Hard = old Extreme (3).
+  Settings.LEVEL_NAMES is the one list; Settings, the main-menu tag, Free Duel's buttons and notes, the Story
+  door, the saves screen, ocg_table.NAMES and the engine report use it (es: Fácil, Normal, Difícil).

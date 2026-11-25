@@ -27,7 +27,9 @@ var anim_speed := 1.0
 var crowd_cam := true         # after a big hit the camera glances at the people watching
 var ask_always := false       # duels: stop at every chance to use a card (off: only when there is something to answer)
 var destiny_draw := true        # Destiny Draw is part of duels (once per duel, when you are in trouble)
-var cpu_level := 2              # how opponents think in Story and in the worlds: 1 Normal, 2 Hard, 3 Extreme (Free Duel has its own buttons)
+var cpu_level := 2              # how opponents think in Story and in the worlds: 1 Easy, 2 Normal, 3 Hard (Free Duel has its own buttons)
+## (0.78.1) What the three levels are called everywhere (before: Normal, Hard, Extreme; the levels did not change).
+const LEVEL_NAMES := ["Easy", "Normal", "Hard"]
 var pace := 1.0          # extra speed on top, set by the duel (the opponent's turn runs quicker)
 var card_folder := ""
 var sleeve := "default"         # the back of your own cards in a duel (see Cards.sleeves)

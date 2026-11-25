@@ -221,7 +221,7 @@ func _difficulty_row(col: Color) -> Control:
 	var tabs: Array = []
 	for i in 3:
 		var b := Button.new()
-		b.text = Loc.t(["Normal", "Hard", "Extreme"][i])
+		b.text = Loc.t(Settings.LEVEL_NAMES[i])
 		b.toggle_mode = true
 		b.custom_minimum_size = Vector2(132, 44)
 		b.add_theme_font_size_override("font_size", 19)

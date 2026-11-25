@@ -1710,11 +1710,11 @@ func _refresh_setup() -> void:
 		_diff_btns[i].set_pressed_no_signal(i + 1 == maxi(1, _difficulty))
 	var new_engine: bool = _engine_btn != null and _engine_btn.button_pressed
 	for i in _diff_btns.size():
-		_diff_btns[i].text = Loc.t((["Normal", "Hard", "Extreme"] if new_engine else ["Easy", "Normal", "Hard"])[i])
+		_diff_btns[i].text = Loc.t(Settings.LEVEL_NAMES[i])
 	if new_engine:
-		_diff_note.text = ["", "Looks a little ahead and sometimes slips, like a person.",
-				"Plans its turn by trying its plays on copies of the duel and checks what you could answer. Tuned deck.",
-				"Tries more plays, against more of what you might be holding, for longer. Tuned deck. It never looks at your hand or face-down cards."][_difficulty]
+		_diff_note.text = Loc.t(["", "Plays well but simply: no long combos, and it does not play around your face-down cards.",
+				"Looks further ahead, keeps its Traps for the right moment and plays around yours. Tuned deck.",
+				"The strongest: it tries the most plays, looks the furthest and always hunts for the win. Tuned deck. It never looks at your hand or face-down cards."][_difficulty])
 	else:
 		_diff_note.text = ["Plays sensibly and attacks when it can.", "Plays sensibly and attacks when it can.",
 				"Thinks ahead, brings a tuned deck and starts with one extra card.",

@@ -24,7 +24,7 @@ static func _head() -> String:
 		"system: %s %s, %s, %s" % [OS.get_name(), OS.get_version(), Engine.get_architecture_name(), OS.get_processor_name()],
 		"rules engine: %s" % ("loaded" + ((" (" + ver + ")") if ver != "" else "") if ok else "NOT LOADED: " + OcgCore.why_not()),
 		"duels run on: %s" % ("the rules engine" if ok else "nothing: the engine did not load, so no duel can start"),
-		"opponent difficulty: %s" % ["", "Normal", "Hard", "Extreme"][clampi(Settings.cpu_level, 1, 3)],
+		"opponent difficulty: %s" % ["", "Easy", "Normal", "Hard"][clampi(Settings.cpu_level, 1, 3)],
 		"written: %s" % Time.get_datetime_string_from_system(false, true),
 	]
 	return "\n".join(PackedStringArray(lines))
