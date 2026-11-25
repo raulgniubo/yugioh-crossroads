@@ -373,6 +373,7 @@ const HOME := {
 	"jaden": "reddorm", "syrus": "reddorm", "chazz": "academy", "aster": "academy", "zane": "bluehall", "alexis": "bluehall",
 	"yusei": "highway", "jack": "highway", "crow": "satellite", "kalin": "satellite", "akiza": "highway",
 	"yuma": "heartland", "shark": "tide", "kite": "heartland", "vector": "shadow",
+	"mako": "tide", "jesse": "academy", "hassleberry": "volcano", "atticus": "bluehall", "yubel": "shadow", "leo5ds": "highway", "luna": "meadow", "trudge": "satellite", "sherry": "highway", "goodwin": "ruins", "halldor": "peak", "dragan": "peak", "broder": "peak", "bronk": "heartland", "tori": "heartland",
 }
 
 

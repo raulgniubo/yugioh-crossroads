@@ -17,9 +17,10 @@ const CLASSES := [
 	[["red_student", "Red Dorm Student", "joey", 0], ["syrus", "", "syrus", 0], ["student_girl", "First-Year Student", "yuma", 0],
 		["jaden", "", "jaden", 1], ["student_boy", "Lunch-Table Champ", "yugi", 0]],
 	[["yellow_student", "Yellow Dorm Student", "rex", 1], ["student_girl", "Honor Student", "mai", 1], ["jaden", "", "jaden", 1],
-		["yellow_student", "Dorm Strategist", "weevil", 1], ["syrus", "", "syrus", 1]],
+		["yellow_student", "Dorm Strategist", "weevil", 1], ["syrus", "", "syrus", 1], ["hassleberry", "", "hassleberry", 1]],
 	[["chazz", "", "chazz", 2], ["alexis", "", "alexis", 2], ["blue_student", "Blue Dorm Elite", "kaiba", 2],
-		["aster", "", "aster", 2], ["blue_student", "Blue Dorm Prefect", "kite", 2]],
+		["aster", "", "aster", 2], ["blue_student", "Blue Dorm Prefect", "kite", 2],
+		["atticus", "", "atticus", 2], ["jesse", "", "jesse", 2], ["yubel", "", "yubel", 3]],
 ]
 ## Friday exam proctors: the entrance exam is index 0, then one per dorm.
 const EXAMS := [

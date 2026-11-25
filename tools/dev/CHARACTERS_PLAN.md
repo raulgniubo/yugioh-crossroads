@@ -1,4 +1,8 @@
-# New show duelists: plan (NOT started; waiting for Raul's 3D models)
+# New show duelists: plan
+
+**0.80.0 (Nov 25): DONE for 15 of them** (mako, jesse, hassleberry, atticus, yubel, leo5ds, luna, trudge, sherry,
+goodwin, halldor, dragan, broder, bronk, tori): decks, lines, voices, worlds, Academy, Free Duel, shops. They use stand-in
+bodies until Raul's `characters/<key>.glb` files are in. Still open from this list: ishizu, keith, duke, rafael, quattro, mizar.
 
 Raul makes the models. Files go in his `characters` folder, lowercase, no underscore in the key
 (an underscore means an animation clip: `jesse_idle.glb`). Leo of 5D's is `leo5ds` (`leo` = Leo Brasa

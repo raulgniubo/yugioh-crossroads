@@ -84,7 +84,7 @@ const ERA_PICTURE := {
 	"5D's": "res://assets/ui/story_title_newdomino.jpg",
 	"ZEXAL": "res://assets/ui/story_title_heartland.jpg",
 }
-const SATELLITE := ["crow", "kalin"]
+const SATELLITE := ["crow", "kalin", "trudge"]
 ## A field picked by hand shows its own world, where there is a big picture of it.
 const ARENA_PICTURE := {
 	"battlecity": "res://assets/ui/story_title_domino.jpg", "kaibacorp": "res://assets/ui/story_title_domino.jpg",
@@ -542,7 +542,7 @@ func _refresh_slots() -> void:
 			for i in 3:
 				tips.append("%s %s: %s  (+%d DP)" % ["★" if held[i] else "☆", Loc.t(str(Collection.MEDALS[i]["name"])), Loc.t(str(Collection.MEDALS[i]["how"])), int(Collection.MEDALS[i]["dp"])])
 			(sl["medals_bg"] as Control).tooltip_text = "\n".join(tips)
-		_shrink(sl["sub"], 18, 14)
+		_shrink(sl["sub"], 18, 12)
 		var ace := 0
 		if side == "opp":
 			ace = int(Characters.get_char(key).get("ace", 0))
@@ -937,6 +937,14 @@ func _roster_card(key: String) -> Control:
 	n.position = Vector2(8, 2)
 	n.size = Vector2(CELL.x - 12, 26)
 	n.clip_text = true
+	# (0.80.0) A long name (HASSLEBERRY) gets a smaller size instead of being cut off.
+	var nf: Font = UITheme.title_font()
+	var fs := 18
+	while fs > 11 and nf.get_string_size(n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > CELL.x - 14:
+		fs -= 1
+	if fs != 18:
+		n.add_theme_font_size_override("font_size", fs)
+		n.position.y += (18 - fs) * 0.5
 	band.add_child(n)
 	var stripe := ColorRect.new()
 	stripe.color = col
@@ -1673,7 +1681,9 @@ func _paint_arena(key: String) -> void:
 	else:
 		_arena_wait.erase(key)
 	var b: Button = _arena_tiles[key][0]
-	(b.get_node("Name") as Label).text = Loc.t(str(th["name"]))
+	var nl := b.get_node("Name") as Label
+	nl.text = Loc.t(str(th["name"]))
+	_shrink(nl, 13, 9)      # (0.80.0: "Arena de la Academia de Duelos" was cut off)
 	b.tooltip_text = (Loc.t("The opponent's home field") + ":  " if key == "auto" else "") + Loc.t(str(th["name"])) + "\n" + Loc.t(str(th.get("blurb", "")))
 	b.set_pressed_no_signal(key == _field)
 

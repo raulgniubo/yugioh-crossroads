@@ -43,6 +43,22 @@ const ANIME := {
 	"yuma": ["legend_yuma_early", "anime_yuma_2"],
 	"yusei": ["legend_yusei_s1", "anime_yusei_2"],
 	"zane": ["anime_zane_1", "anime_zane_2"],
+	# (0.80.0) the 15 new duelists
+	"atticus": ["anime_atticus_1", "anime_atticus_2"],
+	"broder": ["anime_broder_1", "anime_broder_2"],
+	"bronk": ["anime_bronk_1", "anime_bronk_2"],
+	"dragan": ["anime_dragan_1", "anime_dragan_2"],
+	"goodwin": ["anime_goodwin_1", "anime_goodwin_2"],
+	"halldor": ["anime_halldor_1", "anime_halldor_2"],
+	"hassleberry": ["anime_hassleberry_1", "anime_hassleberry_2"],
+	"jesse": ["anime_jesse_1", "anime_jesse_2"],
+	"leo5ds": ["anime_leo5ds_1", "anime_leo5ds_2"],
+	"luna": ["anime_luna_1", "anime_luna_2"],
+	"mako": ["anime_mako_1", "anime_mako_2"],
+	"sherry": ["anime_sherry_1", "anime_sherry_2"],
+	"tori": ["anime_tori_1", "anime_tori_2"],
+	"trudge": ["anime_trudge_1", "anime_trudge_2"],
+	"yubel": ["anime_yubel_1", "anime_yubel_2"],
 }
 
 
@@ -94,6 +110,16 @@ static func split(key: String) -> Array:
 		return [key, "full"]
 	var v := key.substr(at + 1)
 	return [key.substr(0, at), v if (v in VERSIONS or v in ANIME_VERSIONS) else "full"]
+
+
+## (0.80.0) Which deck and version an anime deck's own key belongs to: "anime_joey_1" -> ["joey", "anime1"];
+## [] for any other key. (The shop sells the anime decks by their own keys.)
+static func anime_owner(key: String) -> Array:
+	for base in ANIME:
+		var i: int = (ANIME[base] as Array).find(key)
+		if i >= 0 and key != "":
+			return [base, ANIME_VERSIONS[i]]
+	return []
 
 
 ## The deck behind an anime version ("" when this deck has none).

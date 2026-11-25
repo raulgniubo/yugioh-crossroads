@@ -153,6 +153,13 @@ static func theme_sold_in(key: String, world: String) -> bool:
 ## Ready-made theme decks sold at the card shop (duelists' decks are sold there too).
 const DECK_PRICE := 1200
 const THEME_PRICE := 900
+## (0.80.0) The decks from the show cost less than the Competitive one: early show, later show
+## (700 and 950 DP next to a 1200 DP duelist's deck; 500 and 700 next to a 900 DP theme deck).
+const ANIME_SHARE := {"anime1": 0.58, "anime2": 0.79}
+
+
+static func anime_price(version: String, full_price: int) -> int:
+	return int(round(full_price * float(ANIME_SHARE.get(version, 1.0)) / 50.0)) * 50
 const THEME_DECKS := [
 	{"key": "deck_water", "worlds": ["academy", "heartland"], "art": "deck_water", "color": Color("4aa8ff"), "blurb": "Sharks that call each other out of the hand, Salvage to get them back, and seven WATER Xyz Monsters led by Bahamut Shark."},
 	{"key": "deck_fire", "worlds": ["domino", "newdomino"], "art": "deck_fire", "color": Color("ff6a3c"), "blurb": "Volcanic Slicer and Solar Flare Dragon burn every turn while Backfire punishes every removal. Resonators bring out Synchro finishers."},
@@ -1192,6 +1199,9 @@ func owns_deck(key: String) -> bool:
 
 
 func deck_price(key: String) -> int:
+	var an := DeckTiers.anime_owner(key)
+	if not an.is_empty():
+		return anime_price(an[1], deck_price(str(an[0])))
 	for t in THEME_DECKS:
 		if t["key"] == key:
 			return THEME_PRICE
@@ -1357,6 +1367,39 @@ func deck_catalog() -> Array:
 	return out
 
 
+## (0.80.0) Every version of a ready-made deck the shop sells, in the order shown: the two decks from
+## the show (when the duelist has them) and the Competitive one. Each is a catalog entry of its own,
+## with "version" ("anime1", "anime2", "full") and "base" (the catalog entry's key).
+func deck_versions(e: Dictionary) -> Array:
+	var out: Array = []
+	var base := str(e["key"])
+	if DeckTiers.ANIME.has(base):
+		for i in 2:
+			var ak := str(DeckTiers.ANIME[base][i])
+			if ak == "" or not CardData.has_deck(ak):
+				continue
+			var v: String = DeckTiers.ANIME_VERSIONS[i]
+			var a := e.duplicate()
+			a["key"] = ak
+			a["name"] = CardData.deck_name(ak)
+			a["price"] = anime_price(v, int(e["price"]))
+			a["version"] = v
+			a["base"] = base
+			if str(a.get("owner", "")) == "":
+				# (A theme deck one of the cast plays, Crowler's Ancient Gears: their decks from the show are theirs.)
+				for k in Characters.ORDER:
+					if str(Characters.DATA[k].get("deck", "")) == base:
+						a["owner"] = str(Characters.DATA[k].get("name", ""))
+						a["who"] = k
+						break
+			out.append(a)
+	var f := e.duplicate()
+	f["version"] = "full"
+	f["base"] = base
+	out.append(f)
+	return out
+
+
 func deck_info(key: String) -> Dictionary:
 	if key == "echo":
 		return {"key": "echo", "name": CardData.deck_name("echo"), "owner": "Lumen", "who": "player", "color": Color("2de2e6"),
@@ -1365,9 +1408,14 @@ func deck_info(key: String) -> Dictionary:
 	if not st.is_empty():
 		return {"key": key, "name": CardData.deck_name(key), "owner": "", "who": "player", "color": st["color"],
 			"blurb": st["blurb"], "art": "", "price": 0, "kind": "starter", "era": ""}
+	var an := DeckTiers.anime_owner(key)
 	for e in deck_catalog():
 		if e["key"] == key:
 			return e
+		if not an.is_empty() and e["key"] == an[0]:
+			for v in deck_versions(e):
+				if v["key"] == key:
+					return v
 	return {"key": key, "name": CardData.deck_name(key), "owner": "", "who": "", "color": Color.WHITE, "blurb": "", "art": "", "price": 0, "kind": "", "era": ""}
 
 

@@ -1678,3 +1678,29 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - No floating words on the table (Raul: like Master Duel): "SUMMON READY" and "EFFECT READY" labels are never shown.
   Extra Deck ready = gold ring + gold glow on its top card (purple on hover); Graveyard ready = green ring + green glow on
   its top card (_light_gy_top, checked every frame). The coach line above still explains both.
+
+## STATE 0.80.0 (Nov 25 evening): 15 new show duelists
+- mako, jesse, hassleberry, atticus, yubel, leo5ds, luna, trudge, sherry, goodwin, halldor, dragan, broder, bronk, tori.
+  Characters entries + ORDER, 45 decks (competitive in card_data.gd, anime_<key>_1/_2 in DeckTiers.ANIME), Free Duel tiles
+  (locked until beaten in their world: Unlocks.opponent), worlds (roam_data, star_life day plans, star_meets), Academy
+  classes (academy.gd), knockout pools (tournament.gd), Turbo rivals (turbo_ride.gd), Spanish in es_strings.gd.
+  No 3D models yet: Raul makes characters/<key>.glb himself; until then Avatars uses the stand-in body in avatars.gd.
+- VOICES: their world + duel lines in their personality voice (wild_m, kind_m/kind_f, cool_*, cocky_*, dark_m). Luna,
+  Sherry and Tori are women: Voices.FEMALE and new_lines.json "female" (build_lines.py needs both to agree).
+  World queue /home/claude/work/world/world_todo.json (1030 files) + batch 679 (2 ace calls x2 langs, 1 Lumen line x3).
+  Batches 627-679, last packs 667_678 and 679_679 landed. made.json 12,778. build_lines todo = 426 = only the English
+  own-cast lines parked in /home/claude/work/voices/todo_academy_en_later.json (waiting for credits, on purpose).
+  wbuild.py over all five districts: 0 files to make in es and en. Next batch number: 680.
+  NOTE: batch.py reads tools/voices/todo.json, which now lists those 426 parked lines: do NOT run batch.py/next2.py
+  until they are moved out (or credits are there), or it will draw them.
+- DECK SHOP (Raul, Nov 25 5 PM): a duelist's box now sells every version: Anime (early), Anime (later), Competitive,
+  each its own deck key and price (Collection.deck_versions(e), anime_price(): 58% / 79% of the full price, 700/950 next
+  to 1200, 500/700 next to a 900 theme deck). DeckTiers.anime_owner(key) maps an anime key back; deck_info/deck_price
+  know anime keys. Box says OWNED only when every version is owned; the version buttons say "✓ Tuyo". Opens on the later
+  anime deck like Free Duel. World shops sell their era's duelists (the new ones included).
+- PORTRAIT TILE FIX: a live portrait drops out of Avatars._live on an "off" frame (UPDATE_DISABLED) and was never drawn
+  again; with 43 tiles a tile could stay empty (Jack/Crow in the 5D's tab). _touch now sets UPDATE_ALWAYS before
+  _freeze_later, and the blank check keeps it drawing (up to 80 checks).
+- TEXT THAT DOES NOT FIT: `--shot=... --clip-scan` prints CLIPPED lines (labels cut / trimmed / more lines than shown /
+  off the window, clipped buttons). Free Duel tile names shrink (HASSLEBERRY), field names shrink, rival line min 12.
+- Dev: --open=freeduel-opp:<key>[:<version>] picks that rival (pictures).

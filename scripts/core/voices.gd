@@ -6,7 +6,7 @@ class_name Voices
 ## digits of the md5 of the line's English text ("call:<card id>" for a monster call-out).
 ## tools/voices/build_lines.py lists every line; a line with no file is simply not spoken.
 
-const FEMALE := ["akiza", "alexis", "mai", "student_girl", "stylish_woman", "vesper", "ink", "irina", "tova", "sparrow",
+const FEMALE := ["akiza", "alexis", "mai", "luna", "sherry", "tori", "student_girl", "stylish_woman", "vesper", "ink", "irina", "tova", "sparrow",
 	"selene", "vera", "luz", "brisa", "mirela", "tuesday",
 	"ines", "petra", "cassia"]
 const HAS_F := ["kind", "cocky", "cool"]

@@ -23,6 +23,11 @@ var _use: Button
 var _face: TextureRect
 var _see_btn: Button
 var _viewing := false
+## (0.80.0) A duelist's deck comes in up to three versions (their two decks from the show and the
+## Competitive one), each sold on its own at its own price. The box picks the duelist; these pick the deck.
+var _vers: HBoxContainer
+var _vlist: Array = []
+var _cur := {}
 
 
 func _ready() -> void:
@@ -122,6 +127,9 @@ func _ready() -> void:
 	tv.add_child(_name)
 	_who = UITheme.label("", 22, UITheme.GOLD, UITheme.semi_font())
 	tv.add_child(_who)
+	_vers = HBoxContainer.new()
+	_vers.add_theme_constant_override("separation", 8)
+	right.add_child(_vers)
 	_blurb = UITheme.label("", 21, UITheme.TEXT)
 	_blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	right.add_child(_blurb)
@@ -183,7 +191,7 @@ func _see_cards() -> void:
 		return
 	_viewing = true
 	Sfx.play("click")
-	var v := CardListView.new("deck", _entries[_sel])
+	var v := CardListView.new("deck", _cur)
 	add_child(v)
 	await v.closed
 	_viewing = false
@@ -227,7 +235,7 @@ func _slot(i: int) -> Control:
 		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
 	var box := DeckBox.new().setup(e)
 	box.size = Vector2(206, 290)
-	box.owned = Collection.owns_deck(str(e["key"]))
+	box.owned = _owns_all(e)
 	box.pivot_offset = Vector2(103, 145)
 	b.add_child(box)
 	b.pressed.connect(func(): _select(i))
@@ -248,13 +256,98 @@ func _process(delta: float) -> void:
 		box.scale = Vector2(s, s)
 
 
+## Every version of this box's deck is on your shelf.
+func _owns_all(e: Dictionary) -> bool:
+	for v in Collection.deck_versions(e):
+		if not Collection.owns_deck(str(v["key"])):
+			return false
+	return true
+
+
 func _select(i: int, quiet := false) -> void:
 	if i == _sel:
 		return
 	_sel = i
 	if not quiet:
 		Sfx.play("hover", -10.0)
-	var e: Dictionary = _entries[i]
+	_vlist = Collection.deck_versions(_entries[i])
+	# Opens on their later deck from the show, like Free Duel; the Competitive one is a pick.
+	var start := _vlist.size() - 1
+	for j in _vlist.size():
+		if str(_vlist[j]["version"]) == "anime2":
+			start = j
+	if start == _vlist.size() - 1 and _vlist.size() > 1:
+		start = 0
+	_show_version(start)
+
+
+func _version_buttons(pick: int) -> void:
+	for c in _vers.get_children():
+		_vers.remove_child(c)
+		c.queue_free()
+	_vers.visible = _vlist.size() > 1
+	if not _vers.visible:
+		return
+	for j in _vlist.size():
+		var v: Dictionary = _vlist[j]
+		var b := Button.new()
+		b.toggle_mode = true
+		b.button_pressed = j == pick
+		b.focus_mode = Control.FOCUS_ALL
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.size_flags_stretch_ratio = 1.0
+		b.custom_minimum_size = Vector2(0, 108)
+		var title := Loc.t("Competitive") if str(v["version"]) == "full" else Loc.t("Anime")
+		var nm := Loc.t(str(v["name"]))
+		var sub := nm.get_slice("·", 1).strip_edges() if "·" in nm else ""
+		var owned_v := Collection.owns_deck(str(v["key"]))
+		var price := Loc.t("✓ Yours") if owned_v else Loc.t("%d DP") % int(v["price"])
+		# Three lines of their own (a long deck name gets smaller rather than cut off).
+		var col_box := VBoxContainer.new()
+		col_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		col_box.alignment = BoxContainer.ALIGNMENT_CENTER
+		col_box.add_theme_constant_override("separation", 0)
+		col_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(col_box)
+		var room := 128.0
+		for line in [[title.to_upper(), 20, Color.WHITE, UITheme.title_font()], [sub, 17, UITheme.TEXT, UITheme.semi_font()],
+				[price, 18, Color("2bb673") if owned_v else UITheme.GOLD, UITheme.semi_font()]]:
+			if str(line[0]) == "":
+				continue
+			var lb := UITheme.label(str(line[0]), int(line[1]), line[2], line[3])
+			lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			if str(line[0]) == sub:
+				# (A long deck name goes on two lines, never cut: "Reino de los Duelistas".)
+				lb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				lb.custom_minimum_size = Vector2(room, 0)
+				lb.max_lines_visible = 2
+				lb.add_theme_constant_override("line_spacing", -3)
+			else:
+				var f: Font = line[3]
+				var fs := int(line[1])
+				while fs > 11 and f.get_string_size(str(line[0]), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > room:
+					fs -= 1
+				lb.add_theme_font_size_override("font_size", fs)
+			col_box.add_child(lb)
+		var col: Color = v["color"]
+		b.add_theme_stylebox_override("normal", UITheme.button_box(Color(0.06, 0.09, 0.16, 0.9), Color(1, 1, 1, 0.15), 12))
+		b.add_theme_stylebox_override("hover", UITheme.button_box(Color(col, 0.25), Color(col.lightened(0.3), 0.9), 12))
+		b.add_theme_stylebox_override("pressed", UITheme.button_box(Color(col, 0.38), col.lightened(0.45), 12))
+		b.add_theme_stylebox_override("hover_pressed", UITheme.button_box(Color(col, 0.45), Color.WHITE, 12))
+		b.add_theme_stylebox_override("focus", UITheme.button_box(Color(col, 0.3), Color.WHITE, 12))
+		b.pressed.connect(func():
+			Sfx.play("select", -6.0)
+			_show_version(j)
+			if _vers.get_child_count() > j:
+				(_vers.get_child(j) as Button).grab_focus.call_deferred())
+		_vers.add_child(b)
+
+
+func _show_version(j: int) -> void:
+	_cur = _vlist[j]
+	_version_buttons(j)
+	var e: Dictionary = _cur
 	var key := str(e["key"])
 	var col: Color = e["color"]
 	_name.text = Loc.t(str(e["name"])).to_upper()
@@ -266,6 +359,10 @@ func _select(i: int, quiet := false) -> void:
 	if str(e["owner"]) != "":
 		_who.text = Loc.t("%s's deck") % Loc.t(str(e["owner"])) + ("   ·   " + Loc.t(str(e["era"])) if str(e["era"]) != "" else "")
 		_blurb.text = Loc.t("The deck %s duels with, card for card.") % Loc.t(str(e["owner"]))
+		if str(e.get("version", "")) == "anime1":
+			_blurb.text = Loc.t("The deck %s played early in the show, card for card.") % Loc.t(str(e["owner"]))
+		elif str(e.get("version", "")) == "anime2":
+			_blurb.text = Loc.t("The deck %s played later in the show, card for card.") % Loc.t(str(e["owner"]))
 	else:
 		_who.text = Loc.t("Theme deck")
 		_blurb.text = Loc.t(str(e["blurb"]))
@@ -313,9 +410,9 @@ func _select(i: int, quiet := false) -> void:
 
 func _refresh() -> void:
 	_dp.text = Loc.t("%d DP") % Collection.dp
-	if _sel < 0:
+	if _sel < 0 or _cur.is_empty():
 		return
-	var e: Dictionary = _entries[_sel]
+	var e: Dictionary = _cur
 	var key := str(e["key"])
 	var mine := Collection.owns_deck(key)
 	_buy.visible = not mine
@@ -332,11 +429,11 @@ func _refresh() -> void:
 	_use.text = Loc.t("✓ Yours. You are dueling with it.") if using else Loc.t("Yours. Duel with this deck")
 	_use.disabled = using
 	for s in _slots:
-		(s["box"] as DeckBox).owned = Collection.owns_deck(str(s["entry"]["key"]))
+		(s["box"] as DeckBox).owned = _owns_all(s["entry"])
 
 
 func _do_buy() -> void:
-	var e: Dictionary = _entries[_sel]
+	var e: Dictionary = _cur
 	var before := Collection.owned.duplicate()
 	if not Collection.buy_deck(str(e["key"])):
 		Router.toast("Not enough Duel Points")
@@ -352,11 +449,12 @@ func _do_buy() -> void:
 	var box: DeckBox = _slots[_sel]["box"]
 	box.scale = Vector2(1.25, 1.25)
 	_refresh()
+	_version_buttons(_vlist.find(_cur))
 	_use.grab_focus.call_deferred()
 
 
 func _do_use() -> void:
-	var e: Dictionary = _entries[_sel]
+	var e: Dictionary = _cur
 	Collection.use_owned(str(e["key"]))
 	Sfx.play("coin", -6.0)
 	Router.toast(Loc.t("You'll duel with %s") % Loc.t(str(e["name"])))

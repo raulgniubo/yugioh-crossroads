@@ -11,16 +11,18 @@ const DEFS := {
 		"desk": Vector3(-6.2, 0.2, -37.6), "desk_yaw": 0.5, "prize_dp": 1500,
 		"blurb": "Beat duelists anywhere in the city for Finals Badges. Every win also takes a card from their deck. Six badges opens the finals at the tower.",
 		"pool": [{"char": "kaiba", "diff": 3}, {"char": "yugi", "diff": 3}, {"char": "joey", "diff": 2}, {"char": "mai", "diff": 2}, {"char": "bakura", "diff": 2},
-			{"char": "marik", "diff": 3}, {"char": "pegasus", "diff": 3}, {"char": "weevil", "diff": 1}, {"char": "rex", "diff": 1}]},
+			{"char": "marik", "diff": 3}, {"char": "pegasus", "diff": 3}, {"char": "weevil", "diff": 1}, {"char": "rex", "diff": 1}, {"char": "mako", "diff": 1}]},
 	"academy": {"name": "Academy Dorm Cup", "district": "academy", "need": 4, "field": "academy", "color": Color("7cc4ff"),
 		"desk": Vector3(12.6, 0.1, 27.0), "desk_yaw": 1.2, "prize_dp": 1200,
 		"blurb": "Beat students around the island for Finals Badges. Every win also takes a card from their deck. Four badges opens the cup on the duel field.",
 		"pool": [{"char": "jaden", "diff": 2}, {"char": "chazz", "diff": 2}, {"char": "alexis", "diff": 2}, {"char": "syrus", "diff": 1}, {"char": "zane", "diff": 3}, {"char": "aster", "diff": 3},
+			{"char": "jesse", "diff": 2}, {"char": "hassleberry", "diff": 1}, {"char": "atticus", "diff": 2},
 			{"char": "street_duelist", "name": "Rin Akagi", "deck": "jaden", "diff": 1}, {"char": "duelist_m5", "name": "Dax Morrow", "deck": "syrus", "diff": 2},
 			{"char": "duelist_f1", "name": "Celeste Vane", "deck": "alexis", "diff": 3}]},
 	"turbo": {"name": "Highway Grand Prix", "district": "ride", "need": 0, "field": "highway", "color": Color("ff8a3a"), "all_turbo": true, "prize_dp": 2000,
 		"blurb": "Three rounds on the ring. Before each Turbo Duel you race a lap: the better you finish, the more Speed Counters you start with.",
 		"pool": [{"char": "yusei", "diff": 2}, {"char": "jack", "diff": 3}, {"char": "crow", "diff": 1}, {"char": "akiza", "diff": 2}, {"char": "kalin", "diff": 2},
+			{"char": "trudge", "diff": 1}, {"char": "sherry", "diff": 2}, {"char": "halldor", "diff": 3}, {"char": "dragan", "diff": 2}, {"char": "broder", "diff": 2},
 			{"char": "duelist_m9", "name": "Night Courier", "deck": "zane", "diff": 2}, {"char": "duelist_f1", "name": "Sector Queen", "deck": "mai", "diff": 2},
 			{"char": "street_duelist", "name": "Satellite Ace", "deck": "joey", "diff": 1}, {"char": "duelist_m5", "name": "Overpass Ghost", "deck": "bakura", "diff": 3}]},
 	"cup": {"name": "Crossroads Cup", "district": "domino", "need": 0, "field": "crossroads", "color": Color("c9a0ff"), "prize_dp": 4000,
@@ -29,7 +31,7 @@ const DEFS := {
 		"blurb": "Champions only. Duelists from every era, a Turbo Duel in the semifinal, and one title above all the others.",
 		"pool": [{"char": "yugi", "diff": 3}, {"char": "kaiba", "diff": 3}, {"char": "jaden", "diff": 3}, {"char": "zane", "diff": 3}, {"char": "yusei", "diff": 3},
 			{"char": "jack", "diff": 3}, {"char": "yuma", "diff": 3}, {"char": "kite", "diff": 3}, {"char": "shark", "diff": 3}, {"char": "aster", "diff": 3},
-			{"char": "marik", "diff": 3}, {"char": "pegasus", "diff": 3}]},
+			{"char": "marik", "diff": 3}, {"char": "pegasus", "diff": 3}, {"char": "goodwin", "diff": 3}, {"char": "yubel", "diff": 3}]},
 }
 
 static var _loaded := false

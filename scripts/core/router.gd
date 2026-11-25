@@ -621,6 +621,13 @@ func _debug_args() -> void:
 						n._step_era(int(what.substr(12)))
 					elif what == "freeduel-random":
 						n._random_opponent()
+					elif what.begins_with("freeduel-opp"):
+						# freeduel-opp:<key>[:<their version>]: that rival picked (dev pictures).
+						n._picking = "opp"
+						n._choose(parts[1])
+						if parts.size() > 2:
+							n._their_deck = "" if parts[2] == "full" else "@" + parts[2]
+							n._refresh_pick()
 					elif what == "freeduel-mine":
 						n._picking = "me"
 						n._choose("jaden")
@@ -903,6 +910,8 @@ func _debug_args() -> void:
 				await get_tree().create_timer(1.5).timeout
 		if "--unfight-scan" in OS.get_cmdline_user_args():     # dev: list surfaces lying on top of each other, change nothing
 			print("UNFIGHT SCAN finds ", PerfPass.unfight(get_tree().root, true, true))
+		if "--clip-scan" in OS.get_cmdline_user_args():       # dev (0.80.0): words on screen that do not fit their box
+			_clip_scan(get_tree().root)
 		if DisplayServer.get_name() != "headless":
 			var img := get_viewport().get_texture().get_image()
 			img.save_png(shot)
@@ -1323,3 +1332,71 @@ func _esc_test() -> void:
 func _dev_shot(path: String) -> void:
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(path)
+
+
+## (0.80.0) Dev, with --shot= --clip-scan: every label and button on screen whose words do not fit
+## (cut off, trimmed with "...", more lines than it shows, or running off the window). Prints CLIPPED lines.
+func _clip_scan(top: Node) -> void:
+	var vr := get_viewport().get_visible_rect()
+	var found := 0
+	for n in top.find_children("*", "Control", true, false):
+		var c := n as Control
+		if c == null or not c.is_visible_in_tree() or c.get_viewport() != get_viewport():
+			continue
+		var text := ""
+		var fits := true
+		var why := ""
+		if c is Label:
+			var l := c as Label
+			text = l.atr(l.text)
+			if l.uppercase:
+				text = text.to_upper()
+			if text.strip_edges() == "" or l.modulate.a < 0.05:
+				continue
+			var f := l.get_theme_font("font")
+			var fs := l.get_theme_font_size("font_size")
+			if l.autowrap_mode == TextServer.AUTOWRAP_OFF:
+				var w := f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+				if w > l.size.x + 2.0 and (l.clip_text or l.text_overrun_behavior != TextServer.OVERRUN_NO_TRIMMING):
+					fits = false
+					why = "cut (%d > %d px)" % [w, l.size.x]
+			elif l.max_lines_visible > 0 and l.get_line_count() > l.max_lines_visible:
+				fits = false
+				why = "%d lines, shows %d" % [l.get_line_count(), l.max_lines_visible]
+			elif l.get_line_count() * l.get_line_height() > l.size.y + 4.0 and l.clip_text:
+				fits = false
+				why = "taller than its box"
+		elif c is Button:
+			var b := c as Button
+			text = b.atr(b.text)
+			if text.strip_edges() == "" or not b.clip_text:
+				continue
+			var f := b.get_theme_font("font")
+			var fs := b.get_theme_font_size("font_size")
+			var sb := b.get_theme_stylebox("normal")
+			var pad := (sb.get_margin(SIDE_LEFT) + sb.get_margin(SIDE_RIGHT)) if sb else 0.0
+			var widest := 0.0
+			for line in text.split("\n"):
+				widest = maxf(widest, f.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+			if widest + pad > b.size.x + 2.0:
+				fits = false
+				why = "cut (%d > %d px)" % [widest + pad, b.size.x]
+		else:
+			continue
+		var r := c.get_global_rect()
+		if fits and (r.end.x > vr.end.x + 2.0 or r.position.x < vr.position.x - 2.0) and r.size.x < vr.size.x:
+			# (Off the window, unless something it sits in scrolls or clips it on purpose.)
+			var p := c.get_parent()
+			var held := false
+			while p is Control:
+				if p is ScrollContainer or (p as Control).clip_contents:
+					held = true
+					break
+				p = p.get_parent()
+			if not held:
+				fits = false
+				why = "runs off the window"
+		if not fits:
+			found += 1
+			print("CLIPPED %s | %s | %s" % [why, text.replace("\n", " / ").left(80), str(c.get_path()).right(90)])
+	print("CLIP SCAN: %d" % found)

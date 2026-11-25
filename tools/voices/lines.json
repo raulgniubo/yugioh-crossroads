@@ -2027,6 +2027,24 @@
 {
 "voice": "cocky_m",
 "lang": "en",
+"key": "0806db7cd53d",
+"kind": "ace",
+"en": "Goyo Guardian! Take them in!",
+"text": "Goyo Guardian! Take them in!",
+"tts": "Goyo Guardian! Take them in!"
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "0910d6a00d9f",
+"kind": "ace",
+"en": "Loki, Lord of the Aesir. Let the tricks begin.",
+"text": "Loki, Lord of the Aesir. Let the tricks begin.",
+"tts": "Loki, Lord of the Aesir. Let the tricks begin."
+},
+{
+"voice": "cocky_m",
+"lang": "en",
 "key": "34e8bc12c033",
 "kind": "ace",
 "en": "Witness true power!",
@@ -2095,6 +2113,15 @@
 "en": "Behold, the Blue-Eyes White Dragon!",
 "text": "Behold, the Blue-Eyes White Dragon!",
 "tts": "Behold, the Blue-Eyes White Dragon!"
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "f7327bf1f785",
+"kind": "ace",
+"en": "Spread your wings, Red-Eyes Black Dragon!",
+"text": "Spread your wings, Red-Eyes Black Dragon!",
+"tts": "Spread your wings, Red-Eyes Black Dragon!"
 },
 {
 "voice": "cocky_m",
@@ -2194,6 +2221,15 @@
 "en": "call:89631139",
 "text": "Behold! Blue-Eyes White Dragon!",
 "tts": "Behold! Blue-Eyes White Dragon!"
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "2cb19a02df83",
+"kind": "call",
+"en": "call:74677422",
+"text": "Behold! Red-Eyes Black Dragon!",
+"tts": "Behold! Red-Eyes Black Dragon!"
 },
 {
 "voice": "cocky_m",
@@ -2468,6 +2504,15 @@
 {
 "voice": "cocky_m",
 "lang": "en",
+"key": "3c500a2eadbf",
+"kind": "intro",
+"en": "Nothing is what it seems. Shall we play?",
+"text": "Nothing is what it seems. Shall we play?",
+"tts": "Nothing is what it seems. Shall we play?"
+},
+{
+"voice": "cocky_m",
+"lang": "en",
 "key": "3c87f880237a",
 "kind": "intro",
 "en": "My dinos are gonna stomp you flat!",
@@ -2531,11 +2576,29 @@
 {
 "voice": "cocky_m",
 "lang": "en",
+"key": "89a61637c1aa",
+"kind": "intro",
+"en": "Sector Security. You are under arrest... after this duel.",
+"text": "Sector Security. You are under arrest... after this duel.",
+"tts": "Sector Security. You are under arrest... after this duel."
+},
+{
+"voice": "cocky_m",
+"lang": "en",
 "key": "b27b4d1150b3",
 "kind": "intro",
 "en": "There is only one King, and it's me!",
 "text": "There is only one King, and it's me!",
 "tts": "There is only one King, and it's me!"
+},
+{
+"voice": "cocky_m",
+"lang": "en",
+"key": "eb30756bf740",
+"kind": "intro",
+"en": "Get ready for a show, my friend. Atticus is on stage!",
+"text": "Get ready for a show, my friend. Atticus is on stage!",
+"tts": "Get ready for a show, my friend. Atticus is on stage!"
 },
 {
 "voice": "cocky_m",
@@ -2954,6 +3017,15 @@
 {
 "voice": "cool_f",
 "lang": "en",
+"key": "b15353f954d1",
+"kind": "ace",
+"en": "Chevalier de Fleur, ride with me.",
+"text": "Chevalier de Fleur, ride with me.",
+"tts": "Chevalier de Fleur, ride with me."
+},
+{
+"voice": "cool_f",
+"lang": "en",
 "key": "b5ba57590a09",
 "kind": "ace",
 "en": "Here it comes.",
@@ -3202,6 +3274,15 @@
 "en": "...That one counted.",
 "text": "...That one counted.",
 "tts": "...That one counted."
+},
+{
+"voice": "cool_f",
+"lang": "en",
+"key": "2af2a58db4d0",
+"kind": "intro",
+"en": "I do not duel for fun. I duel to win.",
+"text": "I do not duel for fun. I duel to win.",
+"tts": "I do not duel for fun. I duel to win."
 },
 {
 "voice": "cool_f",
@@ -3566,11 +3647,29 @@
 {
 "voice": "cool_m",
 "lang": "en",
+"key": "73bf46bfdc4a",
+"kind": "ace",
+"en": "Rise, Sun Dragon Inti.",
+"text": "Rise, Sun Dragon Inti.",
+"tts": "Rise, Sun Dragon Inti."
+},
+{
+"voice": "cool_m",
+"lang": "en",
 "key": "8d4d777dee54",
 "kind": "ace",
 "en": "A masterpiece. I kept it perfect.",
 "text": "A masterpiece. I kept it perfect.",
 "tts": "A masterpiece. I kept it perfect."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "91c6e1d0c520",
+"kind": "ace",
+"en": "Odin, Father of the Aesir, descend!",
+"text": "Odin, Father of the Aesir, descend!",
+"tts": "Odin, Father of the Aesir, descend!"
 },
 {
 "voice": "cool_m",
@@ -3976,6 +4075,24 @@
 "en": "Show me respect by giving everything you've got.",
 "text": "Show me respect by giving everything you've got.",
 "tts": "Show me respect by giving everything you've got."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "8ad53f97082c",
+"kind": "intro",
+"en": "The gods of the north ride with me. Prepare yourself.",
+"text": "The gods of the north ride with me. Prepare yourself.",
+"tts": "The gods of the north ride with me. Prepare yourself."
+},
+{
+"voice": "cool_m",
+"lang": "en",
+"key": "a497cc170d88",
+"kind": "intro",
+"en": "Everything in this city happens according to my plan. Even this duel.",
+"text": "Everything in this city happens according to my plan. Even this duel.",
+"tts": "Everything in this city happens according to my plan. Even this duel."
 },
 {
 "voice": "cool_m",
@@ -5825,6 +5942,15 @@
 {
 "voice": "dark_m",
 "lang": "en",
+"key": "5fb3b3577c6c",
+"kind": "ace",
+"en": "Awaken, my Ultimate Nightmare.",
+"text": "Awaken, my Ultimate Nightmare.",
+"tts": "Awaken, my Ultimate Nightmare."
+},
+{
+"voice": "dark_m",
+"lang": "en",
 "key": "6235990f25b9",
 "kind": "ace",
 "en": "Feel the power of the shadows!",
@@ -6199,6 +6325,15 @@
 "en": "Everything gets filed. Even you.",
 "text": "Everything gets filed. Even you.",
 "tts": "Everything gets filed. Even you."
+},
+{
+"voice": "dark_m",
+"lang": "en",
+"key": "d9c4a171015c",
+"kind": "intro",
+"en": "Pain and love are the same thing. Let me show you.",
+"text": "Pain and love are the same thing. Let me show you.",
+"tts": "Pain and love are the same thing. Let me show you."
 },
 {
 "voice": "dark_m",
@@ -6590,6 +6725,15 @@
 {
 "voice": "kind_f",
 "lang": "en",
+"key": "0f4cbc0f6144",
+"kind": "ace",
+"en": "Please lend me your power, Ancient Fairy Dragon.",
+"text": "Please lend me your power, Ancient Fairy Dragon.",
+"tts": "Please lend me your power, Ancient Fairy Dragon."
+},
+{
+"voice": "kind_f",
+"lang": "en",
 "key": "15b859059832",
 "kind": "ace",
 "en": "I believe in you!",
@@ -6604,6 +6748,15 @@
 "en": "Take the stage, Cyber Blader!",
 "text": "Take the stage, Cyber Blader!",
 "tts": "Take the stage, Cyber Blader!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "7ea78e31e6a2",
+"kind": "ace",
+"en": "Fairy Cheer Girl, cheer me on!",
+"text": "Fairy Cheer Girl, cheer me on!",
+"tts": "Fairy Cheer Girl, cheer me on!"
 },
 {
 "voice": "kind_f",
@@ -6883,6 +7036,24 @@
 "en": "Let's see if you can keep up with my dance.",
 "text": "Let's see if you can keep up with my dance.",
 "tts": "Let's see if you can keep up with my dance."
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "8e14d8cfad9b",
+"kind": "intro",
+"en": "Yuma always says to feel the flow. Let's see if I can!",
+"text": "Yuma always says to feel the flow. Let's see if I can!",
+"tts": "Yuma always says to feel the flow. Let's see if I can!"
+},
+{
+"voice": "kind_f",
+"lang": "en",
+"key": "9bed6ba701d2",
+"kind": "intro",
+"en": "My friends from the Spirit World are with me. Let's duel.",
+"text": "My friends from the Spirit World are with me. Let's duel.",
+"tts": "My friends from the Spirit World are with me. Let's duel."
 },
 {
 "voice": "kind_f",
@@ -7229,6 +7400,15 @@
 {
 "voice": "kind_m",
 "lang": "en",
+"key": "33a17eab80be",
+"kind": "ace",
+"en": "Gear Gigant X, let's crank it up!",
+"text": "Gear Gigant X, let's crank it up!",
+"tts": "Gear Gigant X, let's crank it up!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
 "key": "47ee7d2f17ec",
 "kind": "ace",
 "en": "Dark Magician, I summon you!",
@@ -7252,6 +7432,15 @@
 "en": "My most trusted monster!",
 "text": "My most trusted monster!",
 "tts": "My most trusted monster!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "e36f9019d618",
+"kind": "ace",
+"en": "Shine on, Rainbow Dragon!",
+"text": "Shine on, Rainbow Dragon!",
+"tts": "Shine on, Rainbow Dragon!"
 },
 {
 "voice": "kind_m",
@@ -7324,6 +7513,15 @@
 "en": "That one landed!",
 "text": "That one landed!",
 "tts": "That one landed!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "1e9d3ac991f2",
+"kind": "call",
+"en": "call:79856792",
+"text": "Come on out, Rainbow Dragon!",
+"tts": "Come on out, Rainbow Dragon!"
 },
 {
 "voice": "kind_m",
@@ -7576,6 +7774,24 @@
 "en": "Good luck! Let's have a great duel.",
 "text": "Good luck! Let's have a great duel.",
 "tts": "Good luck! Let's have a great duel."
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "2a86689d2705",
+"kind": "intro",
+"en": "Gear up! My machines are ready to roll!",
+"text": "Gear up! My machines are ready to roll!",
+"tts": "Gear up! My machines are ready to roll!"
+},
+{
+"voice": "kind_m",
+"lang": "en",
+"key": "37c0811fafb7",
+"kind": "intro",
+"en": "My Crystal Beasts are raring to go. Let's have a great duel!",
+"text": "My Crystal Beasts are raring to go. Let's have a great duel!",
+"tts": "My Crystal Beasts are raring to go. Let's have a great duel!"
 },
 {
 "voice": "kind_m",
@@ -19127,6 +19343,24 @@
 {
 "voice": "wild_m",
 "lang": "en",
+"key": "6a1ddec5709f",
+"kind": "ace",
+"en": "Roll out, Super Conductor Tyranno!",
+"text": "Roll out, Super Conductor Tyranno!",
+"tts": "Roll out, Super Conductor Tyranno!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "7fba8af22019",
+"kind": "ace",
+"en": "Thor, Lord of the Aesir! Bring the thunder!",
+"text": "Thor, Lord of the Aesir! Bring the thunder!",
+"tts": "Thor, Lord of the Aesir! Bring the thunder!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
 "key": "87a47721a2f9",
 "kind": "ace",
 "en": "Red-Eyes, show 'em what you got!",
@@ -19136,11 +19370,29 @@
 {
 "voice": "wild_m",
 "lang": "en",
+"key": "8cf92c3346a7",
+"kind": "ace",
+"en": "Power Tool Dragon, let's do this!",
+"text": "Power Tool Dragon, let's do this!",
+"tts": "Power Tool Dragon, let's do this!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
 "key": "e583fc5dcb41",
 "kind": "ace",
 "en": "Now we're talkin'!",
 "text": "Now we're talkin'!",
 "tts": "Now we're talkin'!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "e6a292e73033",
+"kind": "ace",
+"en": "Cast the line! Here comes the Legendary Fisherman!",
+"text": "Cast the line! Here comes the Legendary Fisherman!",
+"tts": "Cast the line! Here comes the Legendary Fisherman!"
 },
 {
 "voice": "wild_m",
@@ -19577,6 +19829,15 @@
 {
 "voice": "wild_m",
 "lang": "en",
+"key": "22bdedd2ecb8",
+"kind": "intro",
+"en": "Ten-hut! The dinos are deployed. Time to stomp!",
+"text": "Ten-hut! The dinos are deployed. Time to stomp!",
+"tts": "Ten-hut! The dinos are deployed. Time to stomp!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
 "key": "2665bf4e203f",
 "kind": "intro",
 "en": "Get your game on!",
@@ -19586,11 +19847,38 @@
 {
 "voice": "wild_m",
 "lang": "en",
+"key": "3e68ce279f79",
+"kind": "intro",
+"en": "The sea decides who wins today. And the sea likes me.",
+"text": "The sea decides who wins today. And the sea likes me.",
+"tts": "The sea decides who wins today. And the sea likes me."
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "5be805e48304",
+"kind": "intro",
+"en": "Thunder is coming! Brace yourself!",
+"text": "Thunder is coming! Brace yourself!",
+"tts": "Thunder is coming! Brace yourself!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
 "key": "6d496ef58ab3",
 "kind": "intro",
 "en": "This is gonna be fun!",
 "text": "This is gonna be fun!",
 "tts": "This is gonna be fun!"
+},
+{
+"voice": "wild_m",
+"lang": "en",
+"key": "7eb0937b36cb",
+"kind": "intro",
+"en": "Get ready! I am going to be a Signer someday, just watch!",
+"text": "Get ready! I am going to be a Signer someday, just watch!",
+"tts": "Get ready! I am going to be a Signer someday, just watch!"
 },
 {
 "voice": "wild_m",
@@ -21299,8 +21587,8 @@
 "key": "4eda6d9b0028",
 "kind": "taunt",
 "en": "You're really good!",
-"text": "¡Eres muy bueno!",
-"tts": "¡Eres muy bueno!"
+"text": "¡Juegas muy bien!",
+"tts": "¡Juegas muy bien!"
 },
 {
 "voice": "bruno",
@@ -22097,6 +22385,24 @@
 {
 "voice": "cocky_m",
 "lang": "es",
+"key": "0806db7cd53d",
+"kind": "ace",
+"en": "Goyo Guardian! Take them in!",
+"text": "¡Guardián Goyo! ¡Llévatelos!",
+"tts": "¡Guardián Goyo! ¡Llévatelos!"
+},
+{
+"voice": "cocky_m",
+"lang": "es",
+"key": "0910d6a00d9f",
+"kind": "ace",
+"en": "Loki, Lord of the Aesir. Let the tricks begin.",
+"text": "Loki, Señor de los Aesir. Que empiecen los trucos.",
+"tts": "Loki, Señor de los Aesir. Que empiecen los trucos."
+},
+{
+"voice": "cocky_m",
+"lang": "es",
 "key": "34e8bc12c033",
 "kind": "ace",
 "en": "Witness true power!",
@@ -22165,6 +22471,15 @@
 "en": "Behold, the Blue-Eyes White Dragon!",
 "text": "¡Contempla al Blue-Eyes White Dragon!",
 "tts": "¡Contempla al Blue-Eyes White Dragon!"
+},
+{
+"voice": "cocky_m",
+"lang": "es",
+"key": "f7327bf1f785",
+"kind": "ace",
+"en": "Spread your wings, Red-Eyes Black Dragon!",
+"text": "¡Abre tus alas, Dragón Negro de Ojos Rojos!",
+"tts": "¡Abre tus alas, Dragón Negro de Ojos Rojos!"
 },
 {
 "voice": "cocky_m",
@@ -22264,6 +22579,15 @@
 "en": "call:89631139",
 "text": "¡Contempla! ¡Dragón Blanco de Ojos Azules!",
 "tts": "¡Contempla! ¡Dragón Blanco de Ojos Azules!"
+},
+{
+"voice": "cocky_m",
+"lang": "es",
+"key": "2cb19a02df83",
+"kind": "call",
+"en": "call:74677422",
+"text": "¡Contempla! ¡Dragón Negro de Ojos Rojos!",
+"tts": "¡Contempla! ¡Dragón Negro de Ojos Rojos!"
 },
 {
 "voice": "cocky_m",
@@ -22538,6 +22862,15 @@
 {
 "voice": "cocky_m",
 "lang": "es",
+"key": "3c500a2eadbf",
+"kind": "intro",
+"en": "Nothing is what it seems. Shall we play?",
+"text": "Nada es lo que parece. ¿Jugamos?",
+"tts": "Nada es lo que parece. ¿Jugamos?"
+},
+{
+"voice": "cocky_m",
+"lang": "es",
 "key": "3c87f880237a",
 "kind": "intro",
 "en": "My dinos are gonna stomp you flat!",
@@ -22601,11 +22934,29 @@
 {
 "voice": "cocky_m",
 "lang": "es",
+"key": "89a61637c1aa",
+"kind": "intro",
+"en": "Sector Security. You are under arrest... after this duel.",
+"text": "Seguridad del Sector. Quedas arrestado... después de este duelo.",
+"tts": "Seguridad del Sector. Quedas arrestado... después de este duelo."
+},
+{
+"voice": "cocky_m",
+"lang": "es",
 "key": "b27b4d1150b3",
 "kind": "intro",
 "en": "There is only one King, and it's me!",
 "text": "¡Solo hay un Rey, y soy yo!",
 "tts": "¡Solo hay un Rey, y soy yo!"
+},
+{
+"voice": "cocky_m",
+"lang": "es",
+"key": "eb30756bf740",
+"kind": "intro",
+"en": "Get ready for a show, my friend. Atticus is on stage!",
+"text": "Prepárate para el show, amigo. ¡Atticus sube al escenario!",
+"tts": "Prepárate para el show, amigo. ¡Atticus sube al escenario!"
 },
 {
 "voice": "cocky_m",
@@ -23024,6 +23375,15 @@
 {
 "voice": "cool_f",
 "lang": "es",
+"key": "b15353f954d1",
+"kind": "ace",
+"en": "Chevalier de Fleur, ride with me.",
+"text": "Chevalier de Fleur, cabalga conmigo.",
+"tts": "Chevalier de Fleur, cabalga conmigo."
+},
+{
+"voice": "cool_f",
+"lang": "es",
 "key": "b5ba57590a09",
 "kind": "ace",
 "en": "Here it comes.",
@@ -23272,6 +23632,15 @@
 "en": "...That one counted.",
 "text": "...Esa sí contó.",
 "tts": "...Esa sí contó."
+},
+{
+"voice": "cool_f",
+"lang": "es",
+"key": "2af2a58db4d0",
+"kind": "intro",
+"en": "I do not duel for fun. I duel to win.",
+"text": "No juego por diversión. Juego para ganar.",
+"tts": "No juego por diversión. Juego para ganar."
 },
 {
 "voice": "cool_f",
@@ -23636,11 +24005,29 @@
 {
 "voice": "cool_m",
 "lang": "es",
+"key": "73bf46bfdc4a",
+"kind": "ace",
+"en": "Rise, Sun Dragon Inti.",
+"text": "Levántate, Dragón del Sol Inti.",
+"tts": "Levántate, Dragón del Sol Inti."
+},
+{
+"voice": "cool_m",
+"lang": "es",
 "key": "8d4d777dee54",
 "kind": "ace",
 "en": "A masterpiece. I kept it perfect.",
 "text": "Una obra maestra. La conservé perfecta.",
 "tts": "Una obra maestra. La conservé perfecta."
+},
+{
+"voice": "cool_m",
+"lang": "es",
+"key": "91c6e1d0c520",
+"kind": "ace",
+"en": "Odin, Father of the Aesir, descend!",
+"text": "¡Odín, Padre de los Aesir, desciende!",
+"tts": "¡Odín, Padre de los Aesir, desciende!"
 },
 {
 "voice": "cool_m",
@@ -24050,6 +24437,24 @@
 {
 "voice": "cool_m",
 "lang": "es",
+"key": "8ad53f97082c",
+"kind": "intro",
+"en": "The gods of the north ride with me. Prepare yourself.",
+"text": "Los dioses del norte cabalgan conmigo. Prepárate.",
+"tts": "Los dioses del norte cabalgan conmigo. Prepárate."
+},
+{
+"voice": "cool_m",
+"lang": "es",
+"key": "a497cc170d88",
+"kind": "intro",
+"en": "Everything in this city happens according to my plan. Even this duel.",
+"text": "Todo en esta ciudad pasa según mi plan. Incluso este duelo.",
+"tts": "Todo en esta ciudad pasa según mi plan. Incluso este duelo."
+},
+{
+"voice": "cool_m",
+"lang": "es",
 "key": "a67009bab430",
 "kind": "intro",
 "en": "Stay out of my way.",
@@ -24368,8 +24773,8 @@
 "key": "e4fc05c9335d",
 "kind": "taunt",
 "en": "You're slow.",
-"text": "Eres lento.",
-"tts": "Eres lento."
+"text": "Te falta velocidad.",
+"tts": "Te falta velocidad."
 },
 {
 "voice": "cool_m",
@@ -25895,6 +26300,15 @@
 {
 "voice": "dark_m",
 "lang": "es",
+"key": "5fb3b3577c6c",
+"kind": "ace",
+"en": "Awaken, my Ultimate Nightmare.",
+"text": "Despierta, mi Pesadilla Definitiva.",
+"tts": "Despierta, mi Pesadilla Definitiva."
+},
+{
+"voice": "dark_m",
+"lang": "es",
 "key": "6235990f25b9",
 "kind": "ace",
 "en": "Feel the power of the shadows!",
@@ -26273,11 +26687,20 @@
 {
 "voice": "dark_m",
 "lang": "es",
+"key": "d9c4a171015c",
+"kind": "intro",
+"en": "Pain and love are the same thing. Let me show you.",
+"text": "El dolor y el amor son lo mismo. Déjame mostrártelo.",
+"tts": "El dolor y el amor son lo mismo. Déjame mostrártelo."
+},
+{
+"voice": "dark_m",
+"lang": "es",
 "key": "f0336c28f46b",
 "kind": "intro",
 "en": "Welcome to the shadows.",
-"text": "Bienvenido a las sombras.",
-"tts": "Bienvenido a las sombras."
+"text": "Te damos la bienvenida a las sombras.",
+"tts": "Te damos la bienvenida a las sombras."
 },
 {
 "voice": "dark_m",
@@ -26660,6 +27083,15 @@
 {
 "voice": "kind_f",
 "lang": "es",
+"key": "0f4cbc0f6144",
+"kind": "ace",
+"en": "Please lend me your power, Ancient Fairy Dragon.",
+"text": "Por favor, préstame tu poder, Dragón Hada Antiguo.",
+"tts": "Por favor, préstame tu poder, Dragón Hada Antiguo."
+},
+{
+"voice": "kind_f",
+"lang": "es",
 "key": "15b859059832",
 "kind": "ace",
 "en": "I believe in you!",
@@ -26674,6 +27106,15 @@
 "en": "Take the stage, Cyber Blader!",
 "text": "¡A escena, Cyber Blader!",
 "tts": "¡A escena, Cyber Blader!"
+},
+{
+"voice": "kind_f",
+"lang": "es",
+"key": "7ea78e31e6a2",
+"kind": "ace",
+"en": "Fairy Cheer Girl, cheer me on!",
+"text": "¡Fairy Cheer Girl, échame porras!",
+"tts": "¡Fairy Cheer Girl, échame porras!"
 },
 {
 "voice": "kind_f",
@@ -26957,6 +27398,24 @@
 {
 "voice": "kind_f",
 "lang": "es",
+"key": "8e14d8cfad9b",
+"kind": "intro",
+"en": "Yuma always says to feel the flow. Let's see if I can!",
+"text": "Yuma siempre dice que hay que sentir el flujo. ¡A ver si puedo!",
+"tts": "Yuma siempre dice que hay que sentir el flujo. ¡A ver si puedo!"
+},
+{
+"voice": "kind_f",
+"lang": "es",
+"key": "9bed6ba701d2",
+"kind": "intro",
+"en": "My friends from the Spirit World are with me. Let's duel.",
+"text": "Mis amigos del Mundo de los Espíritus están conmigo. Juguemos.",
+"tts": "Mis amigos del Mundo de los Espíritus están conmigo. Juguemos."
+},
+{
+"voice": "kind_f",
+"lang": "es",
 "key": "2547477a8d24",
 "kind": "lose",
 "en": "You're amazing. Well played.",
@@ -27203,8 +27662,8 @@
 "key": "4eda6d9b0028",
 "kind": "taunt",
 "en": "You're really good!",
-"text": "¡Eres muy bueno!",
-"tts": "¡Eres muy bueno!"
+"text": "¡Juegas muy bien!",
+"tts": "¡Juegas muy bien!"
 },
 {
 "voice": "kind_f",
@@ -27299,6 +27758,15 @@
 {
 "voice": "kind_m",
 "lang": "es",
+"key": "33a17eab80be",
+"kind": "ace",
+"en": "Gear Gigant X, let's crank it up!",
+"text": "¡Gear Gigant X, a toda máquina!",
+"tts": "¡Gear Gigant X, a toda máquina!"
+},
+{
+"voice": "kind_m",
+"lang": "es",
 "key": "47ee7d2f17ec",
 "kind": "ace",
 "en": "Dark Magician, I summon you!",
@@ -27322,6 +27790,15 @@
 "en": "My most trusted monster!",
 "text": "¡Mi monstruo de mayor confianza!",
 "tts": "¡Mi monstruo de mayor confianza!"
+},
+{
+"voice": "kind_m",
+"lang": "es",
+"key": "e36f9019d618",
+"kind": "ace",
+"en": "Shine on, Rainbow Dragon!",
+"text": "¡Brilla, Dragón Arcoíris!",
+"tts": "¡Brilla, Dragón Arcoíris!"
 },
 {
 "voice": "kind_m",
@@ -27394,6 +27871,15 @@
 "en": "That one landed!",
 "text": "¡Esa sí entró!",
 "tts": "¡Esa sí entró!"
+},
+{
+"voice": "kind_m",
+"lang": "es",
+"key": "1e9d3ac991f2",
+"kind": "call",
+"en": "call:79856792",
+"text": "¡Sal ya, Dragón Arco Iris!",
+"tts": "¡Sal ya, Dragón Arco Iris!"
 },
 {
 "voice": "kind_m",
@@ -27646,6 +28132,24 @@
 "en": "Good luck! Let's have a great duel.",
 "text": "¡Buena suerte! Tengamos un gran duelo.",
 "tts": "¡Buena suerte! Tengamos un gran duelo."
+},
+{
+"voice": "kind_m",
+"lang": "es",
+"key": "2a86689d2705",
+"kind": "intro",
+"en": "Gear up! My machines are ready to roll!",
+"text": "¡A engranar! ¡Mis máquinas están listas para rodar!",
+"tts": "¡A engranar! ¡Mis máquinas están listas para rodar!"
+},
+{
+"voice": "kind_m",
+"lang": "es",
+"key": "37c0811fafb7",
+"kind": "intro",
+"en": "My Crystal Beasts are raring to go. Let's have a great duel!",
+"text": "Mis Bestias de Cristal están listas. ¡Hagamos un gran duelo!",
+"tts": "Mis Bestias de Cristal están listas. ¡Hagamos un gran duelo!"
 },
 {
 "voice": "kind_m",
@@ -27923,8 +28427,8 @@
 "key": "4eda6d9b0028",
 "kind": "taunt",
 "en": "You're really good!",
-"text": "¡Eres muy bueno!",
-"tts": "¡Eres muy bueno!"
+"text": "¡Juegas muy bien!",
+"tts": "¡Juegas muy bien!"
 },
 {
 "voice": "kind_m",
@@ -28202,8 +28706,8 @@
 "key": "4faf0a4ee90d",
 "kind": "direct",
 "en": "Straight to their Life Points! Beautiful!",
-"text": "¡Directo a sus Life Points! ¡Precioso!",
-"tts": "¡Directo a sus Life Points! ¡Precioso!"
+"text": "¡Directo a sus Puntos de Vida! ¡Precioso!",
+"tts": "¡Directo a sus Puntos de Vida! ¡Precioso!"
 },
 {
 "voice": "lumen",
@@ -28571,8 +29075,8 @@
 "key": "3505ce50606a",
 "kind": "my_low",
 "en": "Your Life Points are low. I'm not worried. *bzzt* I'm a little worried.",
-"text": "Te quedan pocos Life Points. No estoy preocupada. *bzzt* Estoy un poco preocupada.",
-"tts": "Te quedan pocos Life Points. No estoy preocupada. Estoy un poco preocupada."
+"text": "Te quedan pocos Puntos de Vida. No estoy preocupada. *bzzt* Estoy un poco preocupada.",
+"tts": "Te quedan pocos Puntos de Vida. No estoy preocupada. Estoy un poco preocupada."
 },
 {
 "voice": "lumen",
@@ -28580,8 +29084,8 @@
 "key": "ce8a200b29c8",
 "kind": "my_low",
 "en": "Life Points are getting low. Time for something clever!",
-"text": "Quedan pocos Life Points. ¡Hora de hacer algo ingenioso!",
-"tts": "Quedan pocos Life Points. ¡Hora de hacer algo ingenioso!"
+"text": "Quedan pocos Puntos de Vida. ¡Hora de hacer algo ingenioso!",
+"tts": "Quedan pocos Puntos de Vida. ¡Hora de hacer algo ingenioso!"
 },
 {
 "voice": "lumen",
@@ -28715,8 +29219,8 @@
 "key": "39b28b38e6a8",
 "kind": "their_low",
 "en": "Look at their Life Points! We're so close!",
-"text": "¡Mira sus Life Points! ¡Estamos muy cerca!",
-"tts": "¡Mira sus Life Points! ¡Estamos muy cerca!"
+"text": "¡Mira sus Puntos de Vida! ¡Estamos muy cerca!",
+"tts": "¡Mira sus Puntos de Vida! ¡Estamos muy cerca!"
 },
 {
 "voice": "lumen",
@@ -29021,8 +29525,8 @@
 "key": "4faf0a4ee90d",
 "kind": "direct",
 "en": "Straight to their Life Points! Beautiful!",
-"text": "¡Directo a sus Life Points! ¡Precioso!",
-"tts": "¡Directo a sus Life Points! ¡Precioso!"
+"text": "¡Directo a sus Puntos de Vida! ¡Precioso!",
+"tts": "¡Directo a sus Puntos de Vida! ¡Precioso!"
 },
 {
 "voice": "lumen_b",
@@ -29390,8 +29894,8 @@
 "key": "3505ce50606a",
 "kind": "my_low",
 "en": "Your Life Points are low. I'm not worried. *bzzt* I'm a little worried.",
-"text": "Te quedan pocos Life Points. No estoy preocupada. *bzzt* Estoy un poco preocupada.",
-"tts": "Te quedan pocos Life Points. No estoy preocupada. Estoy un poco preocupada."
+"text": "Te quedan pocos Puntos de Vida. No estoy preocupada. *bzzt* Estoy un poco preocupada.",
+"tts": "Te quedan pocos Puntos de Vida. No estoy preocupada. Estoy un poco preocupada."
 },
 {
 "voice": "lumen_b",
@@ -29399,8 +29903,8 @@
 "key": "ce8a200b29c8",
 "kind": "my_low",
 "en": "Life Points are getting low. Time for something clever!",
-"text": "Quedan pocos Life Points. ¡Hora de hacer algo ingenioso!",
-"tts": "Quedan pocos Life Points. ¡Hora de hacer algo ingenioso!"
+"text": "Quedan pocos Puntos de Vida. ¡Hora de hacer algo ingenioso!",
+"tts": "Quedan pocos Puntos de Vida. ¡Hora de hacer algo ingenioso!"
 },
 {
 "voice": "lumen_b",
@@ -29534,8 +30038,8 @@
 "key": "39b28b38e6a8",
 "kind": "their_low",
 "en": "Look at their Life Points! We're so close!",
-"text": "¡Mira sus Life Points! ¡Estamos muy cerca!",
-"tts": "¡Mira sus Life Points! ¡Estamos muy cerca!"
+"text": "¡Mira sus Puntos de Vida! ¡Estamos muy cerca!",
+"tts": "¡Mira sus Puntos de Vida! ¡Estamos muy cerca!"
 },
 {
 "voice": "lumen_b",
@@ -29840,8 +30344,8 @@
 "key": "4faf0a4ee90d",
 "kind": "direct",
 "en": "Straight to their Life Points! Beautiful!",
-"text": "¡Directo a sus Life Points! ¡Precioso!",
-"tts": "¡Directo a sus Life Points! ¡Precioso!"
+"text": "¡Directo a sus Puntos de Vida! ¡Precioso!",
+"tts": "¡Directo a sus Puntos de Vida! ¡Precioso!"
 },
 {
 "voice": "lumen_c",
@@ -30209,8 +30713,8 @@
 "key": "3505ce50606a",
 "kind": "my_low",
 "en": "Your Life Points are low. I'm not worried. *bzzt* I'm a little worried.",
-"text": "Te quedan pocos Life Points. No estoy preocupada. *bzzt* Estoy un poco preocupada.",
-"tts": "Te quedan pocos Life Points. No estoy preocupada. Estoy un poco preocupada."
+"text": "Te quedan pocos Puntos de Vida. No estoy preocupada. *bzzt* Estoy un poco preocupada.",
+"tts": "Te quedan pocos Puntos de Vida. No estoy preocupada. Estoy un poco preocupada."
 },
 {
 "voice": "lumen_c",
@@ -30218,8 +30722,8 @@
 "key": "ce8a200b29c8",
 "kind": "my_low",
 "en": "Life Points are getting low. Time for something clever!",
-"text": "Quedan pocos Life Points. ¡Hora de hacer algo ingenioso!",
-"tts": "Quedan pocos Life Points. ¡Hora de hacer algo ingenioso!"
+"text": "Quedan pocos Puntos de Vida. ¡Hora de hacer algo ingenioso!",
+"tts": "Quedan pocos Puntos de Vida. ¡Hora de hacer algo ingenioso!"
 },
 {
 "voice": "lumen_c",
@@ -30353,8 +30857,8 @@
 "key": "39b28b38e6a8",
 "kind": "their_low",
 "en": "Look at their Life Points! We're so close!",
-"text": "¡Mira sus Life Points! ¡Estamos muy cerca!",
-"tts": "¡Mira sus Life Points! ¡Estamos muy cerca!"
+"text": "¡Mira sus Puntos de Vida! ¡Estamos muy cerca!",
+"tts": "¡Mira sus Puntos de Vida! ¡Estamos muy cerca!"
 },
 {
 "voice": "lumen_c",
@@ -39047,8 +39551,8 @@
 "key": "4eda6d9b0028",
 "kind": "taunt",
 "en": "You're really good!",
-"text": "¡Eres muy bueno!",
-"tts": "¡Eres muy bueno!"
+"text": "¡Juegas muy bien!",
+"tts": "¡Juegas muy bien!"
 },
 {
 "voice": "sheppard",
@@ -39197,6 +39701,24 @@
 {
 "voice": "wild_m",
 "lang": "es",
+"key": "6a1ddec5709f",
+"kind": "ace",
+"en": "Roll out, Super Conductor Tyranno!",
+"text": "¡Adelante, Súper Conductor Tyranno!",
+"tts": "¡Adelante, Súper Conductor Tyranno!"
+},
+{
+"voice": "wild_m",
+"lang": "es",
+"key": "7fba8af22019",
+"kind": "ace",
+"en": "Thor, Lord of the Aesir! Bring the thunder!",
+"text": "¡Thor, Señor de los Aesir! ¡Trae el trueno!",
+"tts": "¡Thor, Señor de los Aesir! ¡Trae el trueno!"
+},
+{
+"voice": "wild_m",
+"lang": "es",
 "key": "87a47721a2f9",
 "kind": "ace",
 "en": "Red-Eyes, show 'em what you got!",
@@ -39206,11 +39728,29 @@
 {
 "voice": "wild_m",
 "lang": "es",
+"key": "8cf92c3346a7",
+"kind": "ace",
+"en": "Power Tool Dragon, let's do this!",
+"text": "¡Dragón Herramienta de Poder, vamos!",
+"tts": "¡Dragón Herramienta de Poder, vamos!"
+},
+{
+"voice": "wild_m",
+"lang": "es",
 "key": "e583fc5dcb41",
 "kind": "ace",
 "en": "Now we're talkin'!",
 "text": "¡Así se habla!",
 "tts": "¡Así se habla!"
+},
+{
+"voice": "wild_m",
+"lang": "es",
+"key": "e6a292e73033",
+"kind": "ace",
+"en": "Cast the line! Here comes the Legendary Fisherman!",
+"text": "¡Lanza la caña! ¡Aquí viene el Pescador Legendario!",
+"tts": "¡Lanza la caña! ¡Aquí viene el Pescador Legendario!"
 },
 {
 "voice": "wild_m",
@@ -39647,6 +40187,15 @@
 {
 "voice": "wild_m",
 "lang": "es",
+"key": "22bdedd2ecb8",
+"kind": "intro",
+"en": "Ten-hut! The dinos are deployed. Time to stomp!",
+"text": "¡Firmes! Los dinosaurios están desplegados. ¡A pisotear!",
+"tts": "¡Firmes! Los dinosaurios están desplegados. ¡A pisotear!"
+},
+{
+"voice": "wild_m",
+"lang": "es",
 "key": "2665bf4e203f",
 "kind": "intro",
 "en": "Get your game on!",
@@ -39656,11 +40205,38 @@
 {
 "voice": "wild_m",
 "lang": "es",
+"key": "3e68ce279f79",
+"kind": "intro",
+"en": "The sea decides who wins today. And the sea likes me.",
+"text": "El mar decide quién gana hoy. Y el mar me quiere.",
+"tts": "El mar decide quién gana hoy. Y el mar me quiere."
+},
+{
+"voice": "wild_m",
+"lang": "es",
+"key": "5be805e48304",
+"kind": "intro",
+"en": "Thunder is coming! Brace yourself!",
+"text": "¡Viene el trueno! ¡Agárrate!",
+"tts": "¡Viene el trueno! ¡Agárrate!"
+},
+{
+"voice": "wild_m",
+"lang": "es",
 "key": "6d496ef58ab3",
 "kind": "intro",
 "en": "This is gonna be fun!",
 "text": "¡Esto va a ser divertido!",
 "tts": "¡Esto va a ser divertido!"
+},
+{
+"voice": "wild_m",
+"lang": "es",
+"key": "7eb0937b36cb",
+"kind": "intro",
+"en": "Get ready! I am going to be a Signer someday, just watch!",
+"text": "¡Prepárate! Algún día voy a ser un Signer, ¡ya verás!",
+"tts": "¡Prepárate! Algún día voy a ser un Signer, ¡ya verás!"
 },
 {
 "voice": "wild_m",

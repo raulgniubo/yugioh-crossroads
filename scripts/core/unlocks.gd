@@ -90,6 +90,7 @@ const SERIES_STARS := {
 	"jaden": 5, "zane": 5, "aster": 5, "chazz": 4, "alexis": 4, "syrus": 3, "sheppard": 5, "crowler": 4, "bastion": 4,
 	"yusei": 5, "jack": 5, "crow": 4, "akiza": 4, "kalin": 4,
 	"kite": 5, "yuma": 4, "shark": 4, "vector": 4,
+	"mako": 3, "jesse": 4, "hassleberry": 3, "atticus": 4, "yubel": 5, "leo5ds": 2, "luna": 3, "trudge": 3, "sherry": 4, "goodwin": 5, "halldor": 5, "dragan": 4, "broder": 4, "bronk": 2, "tori": 2,
 }
 const DORM_STARS := {"red": [1, 2], "yellow": [2, 3], "blue": [3, 4]}
 

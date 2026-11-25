@@ -12,23 +12,25 @@ const WINDOW := 150
 ## and the middle of the spot. They stand 3.3 m either side of it, facing each other along x.
 const MEETS := {
 	"domino": [
-		{"at": 900, "pairs": [["yugi", "joey"], ["joey", "mai"]], "mid": Vector3(18.5, 0, 25.5), "fan_z": 2.4},
+		{"at": 900, "pairs": [["yugi", "joey"], ["joey", "mai"], ["mako", "joey"]], "mid": Vector3(18.5, 0, 25.5), "fan_z": 2.4},
 		{"at": 1140, "pairs": [["kaiba", "yugi"], ["kaiba", "joey"]], "mid": Vector3(18.5, 0, 25.5), "fan_z": 2.4},
 	],
 	"academy": [
-		{"at": 660, "pairs": [["jaden", "chazz"], ["jaden", "alexis"]], "mid": Vector3(0.0, 0, -1.5), "fan_z": 2.7},
-		{"at": 840, "pairs": [["crowler", "bastion"], ["bastion", "chazz"]], "mid": Vector3(0.0, 0, -1.5), "fan_z": 2.7},
-		{"at": 1080, "pairs": [["alexis", "chazz"], ["chazz", "jaden"]], "mid": Vector3(0.0, 0, -1.5), "fan_z": 2.7},
+		{"at": 660, "pairs": [["jaden", "chazz"], ["jaden", "alexis"], ["jesse", "jaden"]], "mid": Vector3(0.0, 0, -1.5), "fan_z": 2.7},
+		{"at": 840, "pairs": [["crowler", "bastion"], ["bastion", "chazz"], ["hassleberry", "bastion"]], "mid": Vector3(0.0, 0, -1.5), "fan_z": 2.7},
+		{"at": 1080, "pairs": [["alexis", "chazz"], ["chazz", "jaden"], ["atticus", "alexis"], ["hassleberry", "jesse"]], "mid": Vector3(0.0, 0, -1.5), "fan_z": 2.7},
 	],
 	"satellite": [
-		{"at": 840, "pairs": [["yusei", "crow"]], "mid": Vector3(0.0, 0, 0.0), "fan_z": 2.7},
+		{"at": 840, "pairs": [["yusei", "crow"], ["trudge", "yusei"], ["crow", "trudge"]], "mid": Vector3(0.0, 0, 0.0), "fan_z": 2.7},
 	],
 	"newdomino": [
-		{"at": 900, "pairs": [["jack", "akiza"]], "mid": Vector3(20.0, 0, 24.0), "fan_z": 2.6},
+		{"at": 660, "pairs": [["leo5ds", "luna"], ["sherry", "akiza"], ["dragan", "broder"]], "mid": Vector3(20.0, 0, 24.0), "fan_z": 2.6},
+		{"at": 900, "pairs": [["jack", "akiza"], ["halldor", "jack"], ["sherry", "jack"]], "mid": Vector3(20.0, 0, 24.0), "fan_z": 2.6},
+		{"at": 1140, "pairs": [["goodwin", "halldor"], ["broder", "leo5ds"], ["dragan", "akiza"]], "mid": Vector3(20.0, 0, 24.0), "fan_z": 2.6},
 	],
 	"heartland": [
-		{"at": 840, "pairs": [["yuma", "shark"], ["yuma", "kite"]], "mid": Vector3(0.0, 0, 0.0), "fan_z": 2.7},
-		{"at": 1140, "pairs": [["kite", "shark"], ["shark", "yuma"]], "mid": Vector3(0.0, 0, 0.0), "fan_z": 2.7},
+		{"at": 840, "pairs": [["yuma", "shark"], ["yuma", "kite"], ["bronk", "yuma"]], "mid": Vector3(0.0, 0, 0.0), "fan_z": 2.7},
+		{"at": 1140, "pairs": [["kite", "shark"], ["shark", "yuma"], ["tori", "bronk"]], "mid": Vector3(0.0, 0, 0.0), "fan_z": 2.7},
 	],
 }
 
@@ -122,7 +124,28 @@ const MORE := {
 		"invite": "Be at %s around %s. I have something that is of more use to you than to me.", "met": "You are on time. Take it. Do not thank me.",
 		"missed": "You were absent. Noted.",
 		"bond2": "I have reclassified you. From target to rival. Take it as intended.", "bond4": "There are two people whose strength I respect. You are the other one."},
+	# (0.80.0)
+	"mako": {"bout_won": "I beat %s! Reeled them in, nice and slow.", "bout_lost": "%s won today. Fine. Not every day the net comes up full.", "busy": "{player}! Hold on, I have a big one on the line!", "dare": "{player}! They say nobody can beat you. Let me try, sailor to sailor!", "invite": "Meet me at %s around %s. I brought something back from the sea for you!", "met": "You came! Here, I found this washed up on the beach. It is yours.", "missed": "I waited by the water, but you never showed. The fish kept me company.", "bond2": "You are a friend of the sea now, {player}. That means something.", "bond4": "If I ever sail around the world, you are the first one I ask to come along."},
+	"jesse": {"bout_won": "I won against %s! Rainbow Dragon came through!", "bout_lost": "%s beat me today. What a duel, though!", "busy": "{player}! I am in the middle of a duel, come watch!", "dare": "{player}! Nobody can stop you lately. My Crystal Beasts want to try!", "invite": "Come to %s around %s. I have something to show you!", "met": "You came! Here, this card wanted to go with you.", "missed": "I waited, but you did not show. No problem, there is always tomorrow!", "bond2": "You are a real friend, {player}. My Beasts think so too.", "bond4": "Best friends, {player}. Wherever I go, that does not change."},
+	"hassleberry": {"bout_won": "Victory against %s! The dinos stomped right through!", "bout_lost": "%s got me today. I will be back, twice as big.", "busy": "{player}! Not now, I am on the front line!", "dare": "{player}! Your record is too clean. Time for a real battle!", "invite": "Report to %s at %s, soldier! That is an order!", "met": "Right on time, soldier! A reward for your service.", "missed": "You missed the meeting, soldier. I will let it slide. Once.", "bond2": "You are part of my platoon now, {player}. That is a promotion!", "bond4": "You are my best buddy, {player}. I would follow you into any battle."},
+	"atticus": {"bout_won": "I beat %s! The crowd went wild. Well, it should have.", "bout_lost": "%s stole the show today. Fine. Tomorrow is opening night again.", "busy": "{player}! I am on stage right now! Watch and applaud!", "dare": "{player}! The island only has room for one star. Let us settle it!", "invite": "Meet me at %s around %s. I have a little surprise, darling.", "met": "You came! A gift from the star of the island.", "missed": "You stood me up! Me! Do you know how many people want this spot?", "bond2": "You are officially in my inner circle, {player}. Very exclusive.", "bond4": "Between you and me, you are the best friend a star could have."},
+	"leo5ds": {"bout_won": "I beat %s! Did you see? Did you see?!", "bout_lost": "%s won. But I almost had it! Almost!", "busy": "{player}! I am dueling! Cheer for me!", "dare": "{player}! Everybody says you are the best. I want to beat the best!", "invite": "Come to %s around %s! I have something awesome for you!", "met": "You came! Here, I traded for this. It is for you!", "missed": "You did not come! I waited forever! Okay, like five minutes.", "bond2": "We are friends now, {player}! Official!", "bond4": "You are my best friend, {player}. Well, after Luna. Tied with Luna!"},
+	"luna": {"bout_won": "I won against %s. The fairies helped a lot.", "bout_lost": "%s won today. It was still a nice duel.", "busy": "{player}, I am in a duel right now. Can you wait a moment?", "dare": "{player}, the spirits say you are very strong. I want to see for myself.", "invite": "Can you come to %s around %s? I have something for you.", "met": "You came. This card told me it wanted to be yours.", "missed": "You did not come. That is okay. Maybe you were busy.", "bond2": "I am glad we are friends, {player}.", "bond4": "You are one of my most important people, {player}. Thank you."},
+	"trudge": {"bout_won": "I took down %s. Case closed.", "bout_lost": "%s beat me. I am filing a complaint. With myself.", "busy": "{player}, step back. Official duel in progress.", "dare": "{player}. Too many wins. That is suspicious. Let us investigate.", "invite": "Meet me at %s around %s. Do not be late. That is an order.", "met": "You showed up. Good. Take this. Off the record.", "missed": "You did not show. I am writing that down.", "bond2": "You are all right, {player}. For a civilian.", "bond4": "If anyone gives you trouble, they answer to me. Got it?"},
+	"sherry": {"bout_won": "I defeated %s. As expected.", "bout_lost": "%s won. I will remember it.", "busy": "Not now, {player}. I am in the middle of something.", "dare": "{player}. Everyone speaks of your wins. Let us see if they are real.", "invite": "Be at %s around %s. I have something that suits you better than me.", "met": "Punctual. Good. This is yours.", "missed": "You did not come. I do not wait twice.", "bond2": "You have earned my respect, {player}. That is rare.", "bond4": "You are the only rival I truly trust. Do not make me regret it."},
+	"goodwin": {"bout_won": "I defeated %s. Exactly as planned.", "bout_lost": "%s won. Even I can be surprised. Occasionally.", "busy": "{player}. A duel is in progress. Observe.", "dare": "{player}. You have won too much to be ignored. Face me.", "invite": "Come to %s around %s. I have something for you.", "met": "Right on time. Take this. Consider it an investment.", "missed": "You did not come. A pity. Opportunities rarely knock twice.", "bond2": "You have potential, {player}. I do not say that lightly.", "bond4": "Of everyone in this city, you are the one I trust to surprise me."},
+	"halldor": {"bout_won": "I defeated %s. The north stands strong.", "bout_lost": "%s won. A worthy opponent. I accept it.", "busy": "{player}. Wait. A battle is underway.", "dare": "{player}. Your name reaches even us. Prove it is earned.", "invite": "Come to %s around %s. I have a gift from the north.", "met": "You came. Take this. In the north, gifts mean trust.", "missed": "You did not come. The north is patient. I am not always.", "bond2": "You fight with honor, {player}. You would do well in the north.", "bond4": "You are family to Team Ragnarok now, {player}. That is forever."},
+	"dragan": {"bout_won": "I crushed %s! The thunder won!", "bout_lost": "%s beat me! Ha! Good fight!", "busy": "{player}! Watch this! I am about to swing!", "dare": "{player}! Everybody says you cannot be beaten! I want to try!", "invite": "Come to %s around %s! I have something good!", "met": "You came! Ha! Here, take it!", "missed": "You did not come! I waited and waited. Next time!", "bond2": "You are my friend now, {player}! Strong friend!", "bond4": "You are like a brother, {player}! Thunder and lightning!"},
+	"broder": {"bout_won": "I beat %s! They never saw it coming.", "bout_lost": "%s won. Hmph. They must have peeked.", "busy": "{player}! Shh. I am setting a trap.", "dare": "{player}. Your luck is too good. Let me test it.", "invite": "Come to %s around %s. No tricks. Well, one small one.", "met": "You came! And this time the gift is real.", "missed": "You did not show. Was that a trick? I respect it.", "bond2": "You are fun, {player}. I will only prank you a little.", "bond4": "You are my best friend, {player}. No tricks. That is the truth."},
+	"bronk": {"bout_won": "I beat %s! My gears did not slip once!", "bout_lost": "%s won. Back to the workshop!", "busy": "{player}! I am in a duel! Watch my machines go!", "dare": "{player}! You are on a roll! Let me be the speed bump!", "invite": "Come to %s around %s! I made something for you!", "met": "You came! I found this card in my toolbox. It is yours!", "missed": "You did not come. That is okay! I fixed a bike while I waited.", "bond2": "We are friends now, {player}! Like gears that fit just right.", "bond4": "You are one of my best friends, {player}. Right up there with Yuma and Tori!"},
+	"tori": {"bout_won": "I beat %s! I cannot believe it either!", "bout_lost": "%s won. That is okay. I had fun!", "busy": "{player}! I am in the middle of a duel! Wish me luck!", "dare": "{player}! Everybody says you are amazing. Show me!", "invite": "Can you come to %s around %s? I have a little surprise!", "met": "You came! Here, I picked this card just for you.", "missed": "You did not come. I hope everything is okay!", "bond2": "I am really glad we are friends, {player}.", "bond4": "You are one of my best friends, {player}. Promise you will stay that way."},
 }
+
+
+## A star's name in what the others say about their duels ("I beat Joey!"). The key, capitalized,
+## except where the key is not the name (Leo of 5D's is "leo5ds": Leo Brasa is "leo").
+static func short_name(id: String) -> String:
+	return {"leo5ds": "Leo"}.get(id, id.capitalize())
 
 
 ## Today's duels in a world: [{at, a, b, mid, fan_z}], the pair being the one whose turn it is.

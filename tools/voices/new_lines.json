@@ -5,7 +5,10 @@
   "mai",
   "student_girl",
   "stylish_woman",
-  "vesper"
+  "vesper",
+  "luna",
+  "sherry",
+  "tori"
  ],
  "say": {
   "en": [
@@ -229,9 +232,9 @@
   "They got your ace... Shake it off! The duel isn't over.": "Se llevaron tu as... ¡Sacúdetelo! El duelo no ha terminado.",
   "Ouch. Okay, new plan. I like new plans.": "Ay. Bueno, plan nuevo. Me gustan los planes nuevos.",
   "We're hanging by a thread. A very brave thread!": "Estamos colgando de un hilo. ¡Un hilo muy valiente!",
-  "Life Points are getting low. Time for something clever!": "Quedan pocos Life Points. ¡Hora de hacer algo ingenioso!",
+  "Life Points are getting low. Time for something clever!": "Quedan pocos Puntos de Vida. ¡Hora de hacer algo ingenioso!",
   "They're wobbling! One good hit!": "¡Se tambalean! ¡Un buen golpe!",
-  "Look at their Life Points! We're so close!": "¡Mira sus Life Points! ¡Estamos muy cerca!",
+  "Look at their Life Points! We're so close!": "¡Mira sus Puntos de Vida! ¡Estamos muy cerca!",
   "And we're back! I knew it the whole time!": "¡Y volvimos! ¡Lo supe todo el tiempo!",
   "What a turnaround! Do that again!": "¡Qué remontada! ¡Hazlo otra vez!",
   "I can feel it. The next card is the one. Draw!": "Lo noto. La siguiente carta es la buena. ¡Roba!",
@@ -239,7 +242,7 @@
   "Uh oh. Their deck answered them. Heads up!": "Oh, oh. Su Deck les respondió. ¡Ojo!",
   "A big draw for them. Stay calm. Stay very calm.": "Un gran robo para ellos. Calma. Mucha calma.",
   "Wide open! Go, go, go!": "¡Vía libre! ¡Vamos, vamos, vamos!",
-  "Straight to their Life Points! Beautiful!": "¡Directo a sus Life Points! ¡Precioso!",
+  "Straight to their Life Points! Beautiful!": "¡Directo a sus Puntos de Vida! ¡Precioso!",
   "Yikes! Okay, we felt that.": "¡Uf! Bueno, esa sí la sentimos.",
   "That stung. We're still standing!": "Eso picó. ¡Seguimos en pie!",
   "Nothing in hand. Everything rides on the next draw!": "Nada en la mano. ¡Todo depende del siguiente robo!",

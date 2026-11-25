@@ -71,6 +71,8 @@ const STANDINS := {
 	"jaden": "duelist_m8", "chazz": "duelist_m9", "zane": "duelist_m10", "alexis": "duelist_f2", "syrus": "duelist_m11", "aster": "duelist_m12",
 	"yusei": "duelist_m13", "jack": "duelist_m14", "crow": "duelist_m15", "akiza": "duelist_f3", "kalin": "duelist_m16",
 	"yuma": "duelist_m17", "shark": "duelist_m18", "kite": "duelist_m19", "vector": "office_worker",
+	# (0.80.0) the fifteen new duelists, until their own model is dropped in
+	"mako": "hero_m1_island", "jesse": "hero_m2_academy", "hassleberry": "hero_m1_varsity", "atticus": "hero_m1_academy", "yubel": "hunter", "leo5ds": "hero_m1_sporty", "luna": "hero_f1_sporty", "trudge": "hero_m1_trench", "sherry": "hero_f1_rider", "goodwin": "hero_m1_vest", "halldor": "hero_m2_rider", "dragan": "hero_m1_rider", "broder": "hero_m3_street", "bronk": "hero_m1_heartland", "tori": "hero_f1_heartland",
 	"kid": "street_duelist", "vendor": "shopkeeper", "grandpa": "shopkeeper", "guard": "office_worker", "lumen": "student_girl", "vesper": "stylish_woman", "curator": "shopkeeper", "aurel": "shopkeeper", "vellum": "duelist_m7", "ren": "duelist_m11", "boy_sol": "student_boy", "boy_aurel": "duelist_m11",
 	"dai": "student_boy", "koji": "student_boy", "mechanic": "street_duelist",
 	"professor": "duelist_m3", "red_student": "student_boy", "yellow_student": "duelist_m4", "blue_student": "duelist_m7",
@@ -95,7 +97,7 @@ const DORM_COLORS := {"red": Color("d9342b"), "yellow": Color("f2c230"), "blue":
 const UNIFORMS := {"jaden": "red", "syrus": "red", "red_student": "red", "koji": "red", "yellow_student": "yellow",
 	"chazz": "blue", "alexis": "blue", "zane": "blue", "blue_student": "blue",
 	"nico": "red", "mika": "red", "bruno": "red", "bastion": "yellow", "dante": "blue", "octavia": "blue",
-	"gus": "red", "felix": "blue", "ivo": "yellow"}
+	"gus": "red", "felix": "blue", "ivo": "yellow", "hassleberry": "yellow", "atticus": "blue"}
 ## People of other schools: the coat of their school, painted the same way (and only on stand-ins).
 const COATS := {"irina": Color("8a8f98"), "tova": Color("8a8f98"), "rurik": Color("8a8f98"),
 	"leo": Color("e8862a"), "paco": Color("e8862a"), "luz": Color("e8862a"), "brisa": Color("e8862a"), "tano": Color("e8862a"),
@@ -3115,6 +3117,10 @@ func _touch(key: String) -> void:
 	while _live.size() > LIVE_MAX:
 		var old: String = _live.pop_back()
 		if _stages.has(old):
+			# (0.80.0) A live portrait is drawn every other frame (_process switches it off in between):
+			# one that left the live list on an "off" frame was never drawn again, and if its first
+			# picture was not there yet the tile froze empty (Jack, Crow in Free Duel's 5D's tab).
+			(_stages[old] as SubViewport).render_target_update_mode = SubViewport.UPDATE_ALWAYS
 			_freeze_later(old)
 
 
@@ -3179,9 +3185,12 @@ func _freeze_later(key: String) -> void:
 	await RenderingServer.frame_post_draw
 	# Still nothing in the picture (a model whose textures or meshes arrived late): keep drawing
 	# and look again, so a tile never freezes empty (Pegasus's tile on the Mac, Bakura's on Windows).
+	# (0.80.0: 20 tries were not enough on a slow machine with 43 tiles to draw: a tile froze empty.
+	# Up to 40 s now; a real picture is there in well under a second on any graphics card.)
 	var checks := 0
-	while _stages.has(key) and not _live.has(key) and checks < 20 and _blank(_stages[key]):
+	while _stages.has(key) and not _live.has(key) and checks < 80 and _blank(_stages[key]):
 		checks += 1
+		(_stages[key] as SubViewport).render_target_update_mode = SubViewport.UPDATE_ALWAYS
 		await get_tree().create_timer(0.5).timeout
 	if _stages.has(key) and not _live.has(key):
 		(_stages[key] as SubViewport).render_target_update_mode = SubViewport.UPDATE_DISABLED

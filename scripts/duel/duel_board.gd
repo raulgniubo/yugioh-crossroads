@@ -3934,7 +3934,8 @@ const SIGNATURE := {
 	"chazz": ["hip", "summon_big"], "crow": ["challenge", "ace_sweep"], "jack": ["battle_pose", "ace_both"],
 	"kalin": ["shrug", "ace_slam"], "kite": ["challenge", "ace_sky"], "shark": ["battle_pose", "ace_sweep"],
 	"syrus": ["fo_bow", "ace_both"], "vector": ["fo_beckon", "ace_snap"], "zane": ["challenge", "ace_slam"],
-	"grandpa": ["fo_bow", "summon_big"]}
+	"grandpa": ["fo_bow", "summon_big"],
+	"mako": ["fist_pump", "ace_sweep"], "jesse": ["fo_salute", "ace_sky"], "hassleberry": ["stomp", "ace_slam"], "atticus": ["fo_open", "ace_snap"], "yubel": ["fo_beckon", "ace_both"], "leo5ds": ["punch_pose", "ace_both"], "luna": ["fo_bow", "ace_sky"], "trudge": ["challenge", "ace_slam"], "sherry": ["hip", "ace_sweep"], "goodwin": ["fo_open", "ace_sky"], "halldor": ["battle_pose", "ace_sky"], "dragan": ["shout", "ace_slam"], "broder": ["scheme", "ace_snap"], "bronk": ["fist_pump", "ace_both"], "tori": ["cheer", "ace_sky"]}
 ## Everybody else squares up the way their personality does.
 const STYLE_FACEOFF := {"kind": "challenge", "cocky": "hip", "cool": "battle_pose", "wild": "punch_pose", "dark": "scheme"}
 const STYLE_TAUNT := {"kind": "talk_open", "cocky": "shrug", "cool": "hip", "wild": "shout", "dark": "scheme"}

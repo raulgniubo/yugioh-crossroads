@@ -17,6 +17,11 @@ const RIVALS := [
 	{"key": "akiza", "deck": "akiza", "difficulty": 1, "pace": 34.0, "race": 41.0, "line": "Keep up, if you can."},
 	{"key": "kalin", "deck": "kalin", "difficulty": 2, "pace": 38.0, "race": 43.0, "line": "A duel at full speed. Now that is satisfying."},
 	{"key": "yusei", "deck": "yusei", "difficulty": 2, "pace": 42.0, "race": 45.5, "line": "Speed World 2, set on! Let's rev it up!"},
+	{"key": "trudge", "deck": "trudge", "difficulty": 1, "pace": 33.0, "race": 40.0, "line": "Sector Security! Pull over! ...After this duel."},
+	{"key": "sherry", "deck": "sherry", "difficulty": 2, "pace": 40.0, "race": 44.0, "line": "Keep your eyes on the road. I will be gone before you blink."},
+	{"key": "dragan", "deck": "dragan", "difficulty": 2, "pace": 39.0, "race": 43.5, "line": "Full throttle! Thunder rides with me!"},
+	{"key": "broder", "deck": "broder", "difficulty": 2, "pace": 41.0, "race": 44.5, "line": "Catch me if you can. You cannot."},
+	{"key": "halldor", "deck": "halldor", "difficulty": 3, "pace": 45.0, "race": 46.5, "line": "The road is long and cold. Ride it with honor."},
 	{"key": "jack", "deck": "jack", "difficulty": 3, "pace": 47.0, "race": 47.0, "line": "The King rides alone. Prove you belong on my road!"},
 ]
 

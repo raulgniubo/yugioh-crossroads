@@ -95,7 +95,7 @@ static func _blanks(out: Array, seen: Dictionary, voice: String, dk: String, d: 
 		for pair in m["pairs"]:
 			if not id in pair:
 				continue
-			var other := str(pair[1] if str(pair[0]) == id else pair[0]).capitalize()
+			var other := StarMeets.short_name(str(pair[1] if str(pair[0]) == id else pair[0]))
 			for kind in ["bout_won", "bout_lost"]:
 				for t in _each(more.get(kind, talk.get(kind))):
 					if "%s" in t:
