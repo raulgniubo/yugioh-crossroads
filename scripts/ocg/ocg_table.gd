@@ -1201,6 +1201,7 @@ func refresh() -> void:
 		hud.set_phase_buttons("", false, false)
 		hud.set_extra_button(st.players[ME].extra.size(), 0, false)
 		board.set_extra_count(ME, st.players[ME].extra.size(), 0)
+		board.set_gy_ready(0)
 		hud.set_playable([])
 		hud.set_coach("")
 		s._clear_glows()
@@ -1218,12 +1219,14 @@ func refresh() -> void:
 			ready += 1
 	hud.set_extra_button(st.players[ME].extra.size(), ready, true)
 	board.set_extra_count(ME, st.players[ME].extra.size(), ready)
+	var gy_ready := pile_effects().size()
+	board.set_gy_ready(gy_ready)
 	var playable: Array = []
 	for c in st.players[ME].hand:
 		if acts.has(c.uid):
 			playable.append(c)
 	hud.set_playable(playable)
-	hud.set_coach(_coach(battle, ready))
+	hud.set_coach(_coach(battle, ready, gy_ready))
 	s._clear_glows()
 	for p in 2:
 		for c in st.players[p].monsters() + st.players[p].set_cards() + ([st.players[p].field_spell] if st.players[p].field_spell != null else []):
@@ -1239,11 +1242,13 @@ func refresh() -> void:
 				node.set_glow(false)
 
 
-func _coach(battle: bool, ready: int) -> String:
+func _coach(battle: bool, ready: int, gy_ready := 0) -> String:
 	if battle:
 		return Loc.t("Tap a glowing monster and then its target, or drag it there.")
 	if ready > 0:
 		return Loc.t("A monster in your Extra Deck is ready. Glowing cards can do something.")
+	if gy_ready > 0:
+		return Loc.t("A card in your Graveyard can use its effect: tap your Graveyard.")
 	if acts.is_empty():
 		return Loc.t("Nothing to play. Go to the Battle Phase or end your turn.")
 	return Loc.t("Glowing cards can do something: tap one, or drag it onto the table.")

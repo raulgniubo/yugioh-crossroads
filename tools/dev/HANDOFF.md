@@ -1665,3 +1665,9 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   NetDuel cfg player_char/opponent = the picked show duelists; duel_scene _start_net uses cfg player_char.
   F/L list is off under that rule. Dev: NET_ANIME=<index> (challenger) NET_ANIME_ME=<index> (accepter) with /tmp/nettest.sh.
 - New duelists plan (NOT started, waits for Raul's models): tools/dev/CHARACTERS_PLAN.md.
+
+## STATE 0.79.1
+- Graveyard hint: board.set_gy_ready(n) (green ring + "EFFECT READY" over your Graveyard, like SUMMON READY) from
+  ocg_table refresh = pile_effects().size(); coach line says to tap the Graveyard. The Graveyard list puts the cards that
+  can activate first (newest-first otherwise). Raul: do NOT dim the other cards there (he opens it to read cards too).
+- CHARACTERS_PLAN.md: Team Ragnarok (halldor, dragan, broder) added.

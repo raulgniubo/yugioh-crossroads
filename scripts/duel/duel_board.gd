@@ -42,6 +42,8 @@ var _deck_labels: Array[Label3D] = []
 var _extra_piles: Array[Node3D] = []
 var _extra_labels: Array[Label3D] = []
 var _extra_ready: Label3D
+var _gy_ready: Label3D      # (0.79.1) your Graveyard (or banished) has a card that can use its effect now
+var _gy_ring: MeshInstance3D
 var _extra_ring: MeshInstance3D
 var _shake := 0.0
 var _time := 0.0
@@ -1095,6 +1097,19 @@ func _build_decks() -> void:
 	_extra_ring.scale = Vector3(1, 0.3, 1.25)
 	_extra_ring.visible = false
 	add_child(_extra_ring)
+	_gy_ready = _extra_ready.duplicate() as Label3D
+	_gy_ready.text = Loc.t("EFFECT READY")
+	_gy_ready.modulate = Color("4fd18b")
+	_gy_ready.position = gy_pos(0) + Vector3(-0.35, 0.75, 0.2)
+	_gy_ready.visible = false
+	add_child(_gy_ready)
+	_gy_ring = _extra_ring.duplicate() as MeshInstance3D
+	var gm := (_extra_ring.material_override as StandardMaterial3D).duplicate() as StandardMaterial3D
+	gm.albedo_color = Color("4fd18b")
+	_gy_ring.material_override = gm
+	_gy_ring.position = gy_pos(0) + Vector3(0, 0.02, 0)
+	_gy_ring.visible = false
+	add_child(_gy_ring)
 
 
 var _gy_labels: Array[Label3D] = []
@@ -1156,11 +1171,25 @@ func set_extra_count(p: int, count: int, ready := 0) -> void:
 		_extra_ready.text = Loc.t("SUMMON READY") if ready == 1 else Loc.t("SUMMON READY  x%d") % ready
 
 
+## (0.79.1) How many cards in your Graveyard or banished pile can use an effect right now: a green
+## ring and "EFFECT READY" over your Graveyard, like the Extra Deck's "SUMMON READY".
+func set_gy_ready(ready: int) -> void:
+	if _gy_ready == null:
+		return
+	_gy_ready.visible = ready > 0
+	_gy_ring.visible = ready > 0
+	_gy_ready.text = Loc.t("EFFECT READY") if ready == 1 else Loc.t("EFFECT READY  x%d") % ready
+
+
 func _process_extra(t: float) -> void:
 	if _extra_ring and _extra_ring.visible:
 		var k := 1.0 + sin(t * 4.0) * 0.06
 		_extra_ring.scale = Vector3(k, 0.3, 1.25 * k)
 		_extra_ready.position.y = extra_pos(0).y + 0.75 + sin(t * 3.0) * 0.05
+	if _gy_ring and _gy_ring.visible:
+		var g := 1.0 + sin(t * 4.0 + 1.0) * 0.06
+		_gy_ring.scale = Vector3(g, 0.3, 1.25 * g)
+		_gy_ready.position.y = gy_pos(0).y + 0.75 + sin(t * 3.0 + 1.0) * 0.05
 
 
 func set_deck_count(p: int, count: int) -> void:

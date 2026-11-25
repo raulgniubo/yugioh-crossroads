@@ -9,6 +9,7 @@ of the Academy); Rex Goodwin is `goodwin` (`rex` = Rex Raptor).
 | DM | ishizu, mako, keith, duke, rafael | Ishizu Ishtar, Mako Tsunami, Bandit Keith, Duke Devlin, Rafael |
 | GX | jesse, hassleberry, atticus, yubel | Jesse Anderson, Tyranno Hassleberry, Atticus Rhodes, Yubel |
 | 5D's | luna, leo5ds, trudge, sherry, goodwin | Luna, Leo, Trudge, Sherry LeBlanc, Rex Goodwin |
+| 5D's (Team Ragnarok, Raul's idea Nov 25) | halldor, dragan, broder | Halldor (Odin), Dragan (Thor), Broder (Loki): Nordic / Aesir decks |
 | ZEXAL | quattro, mizar, tori, bronk | Quattro (IV), Mizar, Tori, Bronk |
 
 First wave suggested: ishizu, jesse, luna, trudge, goodwin, quattro, mizar, bronk.

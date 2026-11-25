@@ -357,8 +357,15 @@ func show_piles(p: int) -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
 		sc.add_child(row)
+		# (newest first, but a card that can use its effect now comes before all of them, 0.79.1)
+		var order: Array = []
 		for i in range(list.size() - 1, -1, -1):
-			var inst = list[i]
+			if k != 2 and usable.has(list[i].uid):
+				order.append(list[i])
+		for i in range(list.size() - 1, -1, -1):
+			if not (k != 2 and usable.has(list[i].uid)):
+				order.append(list[i])
+		for inst in order:
 			var tr := TextureRect.new()
 			# (their face-down banished cards stay secret; your own you may look at)
 			var secret: bool = k == 1 and p != 0 and inst.tags.has("facedown")
