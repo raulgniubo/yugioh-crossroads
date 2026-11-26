@@ -1741,3 +1741,6 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   the game only won when that one was missing. Now the Crossroads Data beside the game always wins (settings.gd).
   Also: a portrait made before a model was dropped in kept the stand-in all session: Avatars._stage_path +
   file_changed(key) (checked every 4 s per key in Portraits.get_portrait) remakes it and emits Portraits.flushed.
+- 0.80.3 (Nov 25, 11:50 PM): deck shop side panel ran off the bottom on Raul's screen (the name wrapped to two lines,
+  plus the version buttons). Name is one line, shrunk to fit 380 px (40 -> 22); version buttons 88 px; key cards 96x140;
+  buy 60, use 52, leave 50, see-all 44; separation 8. At 1600x900 about 80 px are left over.

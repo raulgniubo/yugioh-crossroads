@@ -108,13 +108,13 @@ func _ready() -> void:
 		pm.add_theme_constant_override("margin_" + side, 24)
 	panel.add_child(pm)
 	var right := VBoxContainer.new()
-	right.add_theme_constant_override("separation", 10)
+	right.add_theme_constant_override("separation", 8)
 	pm.add_child(right)
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 16)
 	right.add_child(top)
 	_face = TextureRect.new()
-	_face.custom_minimum_size = Vector2(110, 130)
+	_face.custom_minimum_size = Vector2(96, 112)
 	_face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	top.add_child(_face)
@@ -123,7 +123,7 @@ func _ready() -> void:
 	tv.add_theme_constant_override("separation", 2)
 	top.add_child(tv)
 	_name = UITheme.label("", 40, Color.WHITE, UITheme.title_font())
-	_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_name.clip_text = true      # (0.80.3: one line, made smaller to fit: two lines pushed the buttons off the screen)
 	tv.add_child(_name)
 	_who = UITheme.label("", 22, UITheme.GOLD, UITheme.semi_font())
 	tv.add_child(_who)
@@ -142,7 +142,7 @@ func _ready() -> void:
 	right.add_child(_keys)
 	# Every card in the deck (0.55.3).
 	_see_btn = Button.new()
-	_see_btn.custom_minimum_size = Vector2(0, 50)
+	_see_btn.custom_minimum_size = Vector2(0, 44)
 	_see_btn.add_theme_font_size_override("font_size", 20)
 	_see_btn.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.ACCENT, 0.14), Color(UITheme.ACCENT, 0.75), 14))
 	_see_btn.add_theme_stylebox_override("hover", UITheme.button_box(Color(UITheme.ACCENT, 0.35), Color.WHITE, 14))
@@ -153,7 +153,7 @@ func _ready() -> void:
 	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right.add_child(sp)
 	_buy = Button.new()
-	_buy.custom_minimum_size = Vector2(0, 70)
+	_buy.custom_minimum_size = Vector2(0, 60)
 	_buy.add_theme_font_size_override("font_size", 30)
 	_buy.add_theme_stylebox_override("normal", UITheme.button_box(Color(UITheme.GOLD, 0.22), UITheme.GOLD, 16))
 	_buy.add_theme_stylebox_override("hover", UITheme.button_box(Color(UITheme.GOLD, 0.4), Color.WHITE, 16))
@@ -161,13 +161,13 @@ func _ready() -> void:
 	_buy.pressed.connect(_do_buy)
 	right.add_child(_buy)
 	_use = Button.new()
-	_use.custom_minimum_size = Vector2(0, 58)
+	_use.custom_minimum_size = Vector2(0, 52)
 	_use.add_theme_font_size_override("font_size", 24)
 	_use.pressed.connect(_do_use)
 	right.add_child(_use)
 	var done := Button.new()
 	done.text = "Leave the counter"
-	done.custom_minimum_size = Vector2(0, 58)
+	done.custom_minimum_size = Vector2(0, 50)
 	done.add_theme_font_size_override("font_size", 24)
 	done.pressed.connect(_close)
 	right.add_child(done)
@@ -296,7 +296,7 @@ func _version_buttons(pick: int) -> void:
 		b.focus_mode = Control.FOCUS_ALL
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.size_flags_stretch_ratio = 1.0
-		b.custom_minimum_size = Vector2(0, 108)
+		b.custom_minimum_size = Vector2(0, 88)
 		var title := Loc.t("Competitive") if str(v["version"]) == "full" else Loc.t("Anime")
 		var nm := Loc.t(str(v["name"]))
 		var sub := nm.get_slice("·", 1).strip_edges() if "·" in nm else ""
@@ -310,8 +310,8 @@ func _version_buttons(pick: int) -> void:
 		col_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(col_box)
 		var room := 128.0
-		for line in [[title.to_upper(), 20, Color.WHITE, UITheme.title_font()], [sub, 17, UITheme.TEXT, UITheme.semi_font()],
-				[price, 18, Color("2bb673") if owned_v else UITheme.GOLD, UITheme.semi_font()]]:
+		for line in [[title.to_upper(), 18, Color.WHITE, UITheme.title_font()], [sub, 15, UITheme.TEXT, UITheme.semi_font()],
+				[price, 16, Color("2bb673") if owned_v else UITheme.GOLD, UITheme.semi_font()]]:
 			if str(line[0]) == "":
 				continue
 			var lb := UITheme.label(str(line[0]), int(line[1]), line[2], line[3])
@@ -351,6 +351,11 @@ func _show_version(j: int) -> void:
 	var key := str(e["key"])
 	var col: Color = e["color"]
 	_name.text = Loc.t(str(e["name"])).to_upper()
+	var nf: Font = UITheme.title_font()
+	var nfs := 40
+	while nfs > 22 and nf.get_string_size(_name.text, HORIZONTAL_ALIGNMENT_LEFT, -1, nfs).x > 380.0:
+		nfs -= 1
+	_name.add_theme_font_size_override("font_size", nfs)
 	_name.add_theme_color_override("font_color", col.lightened(0.45))
 	var who := str(e["who"])
 	_face.visible = who != "" and Avatars.has_avatar(who)
@@ -399,7 +404,7 @@ func _show_version(j: int) -> void:
 	for k in mini(4, pool.size()):
 		var tr := TextureRect.new()
 		tr.texture = Cards.get_face(pool[k])
-		tr.custom_minimum_size = Vector2(118, 172)
+		tr.custom_minimum_size = Vector2(96, 140)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tr.tooltip_text = str(CardData.get_card(pool[k]).get("name", ""))
