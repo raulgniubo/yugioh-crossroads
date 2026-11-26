@@ -1628,14 +1628,20 @@ func _cover_for(p: Dictionary) -> int:
 	var monsters: Array = ids.filter(func(id): return CardData.get_card(id).get("kind", "") == "monster")
 	if not monsters.is_empty():
 		ids = monsters
-	ids.sort_custom(func(a, b):
-		var ra := CardData.rarity(a)
-		var rb := CardData.rarity(b)
-		if ra != rb:
-			return ra > rb
-		var aa := int(CardData.get_card(a).get("atk", 0))
-		var ab := int(CardData.get_card(b).get("atk", 0))
-		return aa > ab if aa != ab else a < b)
+	Router.pulse()
+	# (0.80.1) Rarest first, then strongest, then the lowest id: one number per card, sorted once
+	# (sorting with a comparison that looked every card up again held the loading card still).
+	var keyed := PackedInt64Array()
+	keyed.resize(ids.size())
+	for i in ids.size():
+		var cid := int(ids[i])
+		var score := CardData.rarity(cid) * 100000 + clampi(int(CardData.get_card(cid).get("atk", 0)), 0, 99999)
+		keyed[i] = score * 1000000000 + (999999999 - cid)
+	keyed.sort()
+	keyed.reverse()
+	ids = []
+	for k in keyed:
+		ids.append(999999999 - int(k % 1000000000))
 	var pick := 0
 	for id in ids:
 		if not _cover_used.has(id):
@@ -2506,7 +2512,11 @@ func pool(era: String) -> Array:
 		var later := {}
 		for id in pool("frontier"):
 			later[id] = true
+		var n := 0
 		for id in all_cards():
+			n += 1
+			if n % 250 == 0:
+				Router.pulse()      # (0.80.1: the loading card stood still while this went through every card)
 			if _in_theme(era, id) and not later.has(id):
 				themed.append(id)
 		_pools[era] = themed
@@ -2523,6 +2533,7 @@ func pool(era: String) -> Array:
 	else:
 		for fk in FAMILIES:
 			if str(FAMILIES[fk]["era"]) == era:
+				Router.pulse()
 				for id in family_ids(fk):
 					ids[id] = true
 		for k in Characters.ORDER:
@@ -2531,7 +2542,11 @@ func pool(era: String) -> Array:
 				continue
 			for id in CardData.deck_list(str(d["deck"])) + CardData.extra_list(str(d["deck"])):
 				ids[id] = true
+	var m := 0
 	for id in ids.keys():
+		m += 1
+		if m % 250 == 0:
+			Router.pulse()
 		var cd := CardData.get_card(int(id))
 		if cd.is_empty() or str(cd.get("name", "Unknown")) == "Unknown":
 			ids.erase(id)      # (the card folder does not know it)

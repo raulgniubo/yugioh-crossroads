@@ -1704,3 +1704,31 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - TEXT THAT DOES NOT FIT: `--shot=... --clip-scan` prints CLIPPED lines (labels cut / trimmed / more lines than shown /
   off the window, clipped buttons). Free Duel tile names shrink (HASSLEBERRY), field names shrink, rival line min 12.
 - Dev: --open=freeduel-opp:<key>[:<version>] picks that rival (pictures).
+
+## NEXT BUILD (0.80.1, not shipped yet): smoothness pass (Raul Nov 25 evening: "da tirones" in every world at 100 FPS,
+## people talking while the loading card is up, the card freezing now and then)
+- CAMERA/PLAYER JUDDER (the big one): the camera pivot (position AND mouse-look rotation) and your figure were only moved
+  in _physics_process (60 Hz). At 100-144 FPS some drawn frames moved and the next did not. RoamScene._process now places
+  the pivot, its rotation and your figure every drawn frame, between the last two physics positions
+  (_phys_prev/_phys_now, Engine.get_physics_interpolation_fraction; a move outside physics resets them). The body still
+  moves in physics. NPC walkers (_move_walkers/_move_wanderers) still step at 60 Hz (less visible).
+- Hitches found with a timer on every _process in the TEST COPY (/tmp/prof_inject.py + /tmp/prof_inject2.py wrap them;
+  Router prints "PARTS" under each SLOWFRAME; NEVER inject city_builder/academy_builder: subclass recursion) and
+  /tmp/walkperf.sh <copy> <district> <tag> (walks through the NPC spots, LOADING_HEADLESS=1, PROF=<name> keeps the profile
+  so the second run has the caches). Fixed:
+  a. street duels read two card pictures from disk on the main thread per monster put down (35-60 ms): Cards.prefetch(id)
+     reads face+art on worker threads, Cards.pictures_ready(id); a street duel uses 6 monsters a side, only ready ones.
+  b. stars fitted a motion the first time they used it (40-80 ms, again and again): StarLife._warm_day queues today's
+     stop motions + ALWAYS_MOTIONS at setup (behind the loading card: Router._settle waits for Avatars._warm_q) and on a
+     new day; street duel figures warm their five motions.
+  c. MapArt.face (mini map, big map, Knockout) read models synchronously: now never blocks (Avatars.warm, token shows its
+     color until ready, 2 new pictures a frame at most, redraw by 0.2 s timer). Knockout first frame 2.7-3 s -> 30 ms.
+     (Do NOT queue_redraw.call_deferred from inside a draw: it loops inside the same frame.)
+  d. Voices.say_as refuses while Router.loading; roam_extras barks and StarLife._hail wait for the card to go.
+  e. Loading card stood still in Collection.pool (whole card list without a pulse) and _cover_for's sort: pulses every 250
+     cards, the cover sort is one Int64 key per card. Domino load (headless fake) 22.9 s (0.80.0) -> 18.8 s.
+- Measured, headless, warm profile, walking 85 s through New Domino: frames over 40 ms 54 (first run) / 17 (0.80.0
+  warm) -> 0-4 now. Not measurable here: GPU-side hitches (shader compiles) and a real Mac/Windows.
+- Still open: the first frame after the scene change (~0.9 s headless, ~0.25 s real?) and shop counters' build gap
+  (box/counter ~0.4 s headless); Knockout still has one 1.3 s frame headless while 22 heavy test models finish (engine side,
+  not found); the deck shop keeps a portrait for every duelist (+285 MB headless with 15 more duelists, flat, not a leak).

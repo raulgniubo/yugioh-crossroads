@@ -40,11 +40,31 @@ static func photo(ci: CanvasItem, dest: Rect2, world: Rect2, back := Color(0.035
 
 
 ## The face of a character, cut square from the top of their portrait.
+static var waiting := {}
+static var _made_frame := -1
+static var _made_n := 0      # faces asked for whose models are still being read
+
 static func face(key: String) -> Texture2D:
 	if key == "":
 		return null
 	if _faces.has(key) and is_instance_valid(_faces[key]):
 		return _faces[key]
+	# (0.80.1) Never read a model from disk in the middle of drawing (the mini map, the Knockout
+	# screen): until it has been read on another thread the token shows its plain color.
+	if key != "player" and Avatars.has_avatar(key) and not (Portraits.holds(key) or Avatars.ready_now(key)):
+		Avatars.warm(key)
+		waiting[key] = true
+		return null
+	if not Portraits.holds(key):
+		# (Two new pictures a frame at most: each sets up a small 3D view.)
+		if _made_frame != Engine.get_process_frames():
+			_made_frame = Engine.get_process_frames()
+			_made_n = 0
+		if _made_n >= 2:
+			waiting[key] = true
+			return null
+		_made_n += 1
+	waiting.erase(key)
 	var t: Texture2D = Portraits.get_portrait(key)
 	_faces[key] = t
 	return t

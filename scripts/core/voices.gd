@@ -151,6 +151,9 @@ static func src(shown: String) -> String:
 ## Never on top of another voice: with somebody already talking it is simply not said. True when
 ## it will be heard.
 static func say_as(voice: String, text: String, at = null, pitch := 1.0) -> bool:
+	# (0.80.1) Nobody out in the world talks while the loading card is still up.
+	if Router.loading:
+		return false
 	var key := key_of(text)
 	var may := not muted and Settings.voices_on and Settings.voice_volume > 0.001 and Settings.voice_opp
 	if voice == "" or text == "" or not may or not has(voice, key):

@@ -201,6 +201,9 @@ func _exit_tree() -> void:
 	for id in _thumb_tasks.keys():
 		WorkerThreadPool.wait_for_task_completion(int(_thumb_tasks[id]))
 	_thumb_tasks.clear()
+	for k in _pre_tasks.keys():
+		WorkerThreadPool.wait_for_task_completion(int(_pre_tasks[k]))
+	_pre_tasks.clear()
 	for id in _big_tasks.keys():
 		WorkerThreadPool.wait_for_task_completion(int(_big_tasks[id]))
 	_big_tasks.clear()
@@ -271,6 +274,54 @@ func thumbs_busy() -> int:
 
 func has_thumb(id: int) -> bool:
 	return _thumb_cache.has(id)
+
+
+## (0.80.1) The face and the artwork of a card read ahead on another thread, so whoever shows them next
+## (a street duel's hologram) finds them in memory. A street duel used to read two pictures from disk
+## on the main thread for every monster it put down: a 35-60 ms hitch each time, out in the worlds.
+var _pre_tasks := {}      # "f<id>" / "a<id>" -> thread task
+
+func prefetch(id: int) -> void:
+	if Settings.card_folder == "" or id <= 0:
+		return
+	var fk := "f%d" % id
+	if not _face_cache.has(id) and not _pre_tasks.has(fk):
+		var fpath := Settings.card_folder.path_join("cards/%d.jpg" % id)
+		if not FileAccess.file_exists(fpath) and CardData.IMAGE_ALT.has(id):
+			fpath = Settings.card_folder.path_join("cards/%d.jpg" % int(CardData.IMAGE_ALT[id]))
+		if FileAccess.file_exists(fpath):
+			_pre_tasks[fk] = WorkerThreadPool.add_task(func():
+				_pre_ready.call_deferred(fk, id, _read_image(fpath, FACE_WIDE)))
+	var ak := "a%d" % id
+	if not _art_cache.has(id) and not _pre_tasks.has(ak):
+		var apath := Settings.card_folder.path_join("art/%d.jpg" % id)
+		if not FileAccess.file_exists(apath) and CardData.IMAGE_ALT.has(id):
+			apath = Settings.card_folder.path_join("art/%d.jpg" % int(CardData.IMAGE_ALT[id]))
+		if FileAccess.file_exists(apath):
+			_pre_tasks[ak] = WorkerThreadPool.add_task(func():
+				_pre_ready.call_deferred(ak, id, _read_image(apath)))
+
+
+func _pre_ready(k: String, id: int, img: Image) -> void:
+	if _pre_tasks.has(k):
+		WorkerThreadPool.wait_for_task_completion(int(_pre_tasks[k]))
+		_pre_tasks.erase(k)
+	if img == null:
+		return
+	if k.begins_with("f"):
+		if not _face_cache.has(id):
+			_keep(_face_cache, id, ImageTexture.create_from_image(img), FACE_KEEP)
+	elif not _art_cache.has(id):
+		_keep(_art_cache, id, ImageTexture.create_from_image(img), ART_KEEP)
+
+
+## Both pictures prefetch() reads are in memory (or there is nothing on disk to read for them).
+func pictures_ready(id: int) -> bool:
+	if _pre_tasks.has("f%d" % id) or _pre_tasks.has("a%d" % id):
+		return false
+	var has_face := _face_cache.has(id) or not FileAccess.file_exists(Settings.card_folder.path_join("cards/%d.jpg" % id))
+	var has_art := _art_cache.has(id) or not FileAccess.file_exists(Settings.card_folder.path_join("art/%d.jpg" % id))
+	return has_face and has_art
 
 
 ## Artwork only (for holograms). Falls back to the full face.

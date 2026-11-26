@@ -468,6 +468,10 @@ func setup(roam: Node) -> void:
 		fig.position = spot
 		fig.rotation.y = float(s["stops"][i][2])
 		_start_doing(s, str(s["stops"][i][3]))
+		# (0.80.1) Every motion today's stops will ask of them, fitted now, behind the loading card
+		# (Router._settle waits for Avatars' queue). Fitting one the first time it was used froze the
+		# world for 40-80 ms, again and again as people went about their day.
+		_warm_day(s, true)
 	_build_grid.call_deferred()
 	# A duel just now may have taken you a step up with somebody: tell it once you are back.
 	get_tree().create_timer(2.5).timeout.connect(func():
@@ -906,6 +910,24 @@ func _process(delta: float) -> void:
 		_invite_step()
 
 
+## The motions a star's day will use (its stops), and the ones a duel or a meeting asks of anybody.
+const ALWAYS_MOTIONS := ["agree", "challenge", "cheer2", "stomp", "checkout", "disk", "armsx", "wave"]
+
+func _warm_day(s: Dictionary, with_always := false) -> void:
+	var fig: RoamFigure = s["fig"]
+	if fig == null or not is_instance_valid(fig) or fig._model == null:
+		return
+	var want := {}
+	if with_always:
+		for mo in ALWAYS_MOTIONS:
+			want[mo] = true
+	for st in s["stops"]:
+		for mo in ACTS.get(str(st[3]), []):
+			want[mo] = true
+	if not want.is_empty():
+		Avatars.warm_gestures(fig._model, want.keys())
+
+
 ## Midnight: tomorrow's duels are other pairs, so everybody's day is put together again.
 func _new_day() -> void:
 	_day = WorldClock.day
@@ -922,6 +944,7 @@ func _new_day() -> void:
 		var now := _stop_now(stops)
 		if (stops[now][1] as Vector3).distance_to(keep) < 0.1:
 			s["at"] = now
+		_warm_day(s)
 
 
 ## Time to go: say so if you are near enough to hear, get up, and set off.
@@ -1037,6 +1060,8 @@ func _act(s: Dictionary, delta: float) -> void:
 
 ## You come by: they call out (or, the ones who keep to themselves, give you a nod).
 func _hail(s: Dictionary, dist: float) -> void:
+	if Router.loading:
+		return      # (0.80.1: not while the loading card is still up)
 	var id := str(s["id"])
 	# Somebody who counts you a friend (or a rival) spots you from further off.
 	var reach := 12.0 if rank_of(int((_mem.get(id, {}) as Dictionary).get("bond", 0))) >= 2 else 8.0

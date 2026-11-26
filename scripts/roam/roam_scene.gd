@@ -794,6 +794,34 @@ func _mouse_look_step() -> void:
 			_dragging = false
 
 
+## (0.80.1) Smooth at any frame rate. The world moves you 60 times a second (physics), but the screen
+## draws 100 or 144: placing the camera and your figure only on physics steps made some frames move
+## and the next ones stand still, a small jerk again and again while walking or turning the camera.
+## Every drawn frame now shows you where you are between the last two steps, and the camera turns
+## with the mouse on every frame.
+var _phys_prev := Vector3.ZERO
+var _phys_now := Vector3.ZERO
+
+
+func _process(delta: float) -> void:
+	if _player == null or _pivot == null:
+		return
+	var here := _player.global_position
+	if here.distance_to(_phys_now) > 0.001:
+		# (Moved outside the physics step: a door, a teleport, a scene. No in-between for that.)
+		_phys_prev = here
+		_phys_now = here
+	var shown := _phys_prev.lerp(_phys_now, Engine.get_physics_interpolation_fraction())
+	if _figure and is_instance_valid(_figure) and _figure.get_parent() == _player:
+		_figure.position.x = shown.x - here.x
+		_figure.position.z = shown.z - here.z
+	_pivot.position = _pivot.position.lerp(shown + Vector3(0, 1.45, 0), 1.0 - exp(-delta * 10.0))
+	_pivot.rotation = Vector3(_pitch, _yaw, 0)
+	# Backed against a wall the camera ends up at your shoulder: step out of its way.
+	if _figure and _cam and (story == null or not story._cut):
+		_figure.visible = _cam.global_position.distance_to(shown + Vector3(0, 1.3, 0)) > 0.75
+
+
 func _physics_process(delta: float) -> void:
 	_mouse_look_step()
 	_door_marks_step(delta)
@@ -859,12 +887,14 @@ func _physics_process(delta: float) -> void:
 		Sfx.play("jump", -9.0)
 		_air = true
 	_jump = false
+	_phys_prev = _player.global_position
 	if life and life.seated:
 		# On a bench: the body stays put (the bench is solid, and it would push you off it).
 		_player.velocity = Vector3.ZERO
 	else:
 		_player.move_and_slide()
 		_unstick(delta, input.length() > 0.4)
+	_phys_now = _player.global_position
 	var flat := Vector2(_player.velocity.x, _player.velocity.z)
 	_figure.set_speed(flat.length() if not _air else 0.0)
 	var turn := 0.0
@@ -878,11 +908,7 @@ func _physics_process(delta: float) -> void:
 	_figure.rotation.x = lerpf(_figure.rotation.x, 0.07 * clampf((flat.length() - SPEED) / (RUN - SPEED), 0.0, 1.0) + (-0.12 if _air else 0.0), k)
 	_squash = move_toward(_squash, 0.0, delta * 0.6)
 	_figure.scale = Vector3(1.0 + _squash * 0.5, 1.0 - _squash, 1.0 + _squash * 0.5)
-	_pivot.position = _pivot.position.lerp(_player.position + Vector3(0, 1.45, 0), 1.0 - exp(-delta * 10.0))
-	_pivot.rotation = Vector3(_pitch, _yaw, 0)
-	# Backed against a wall the camera ends up at your shoulder: step out of its way.
-	if story == null or not story._cut:
-		_figure.visible = _cam.global_position.distance_to(_player.global_position + Vector3(0, 1.3, 0)) > 0.75
+	# (0.80.1) The camera and your figure are placed every drawn frame in _process, not here.
 	_light_t -= delta
 	if _light_t <= 0.0:
 		_light_t = 0.35

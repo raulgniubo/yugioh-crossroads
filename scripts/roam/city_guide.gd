@@ -13,6 +13,7 @@ var _search: LineEdit
 var _list: VBoxContainer
 var _tabs := {}
 var _map: Control
+var _map_redraw_set := false
 var _entries: Array = []      # everything listable: {name, sub, pos: Vector3, kind, color, ...}
 var _selected: Dictionary = {}
 var _hover: Dictionary = {}
@@ -457,7 +458,10 @@ func _who_row(e: Dictionary) -> Control:
 	face.custom_minimum_size = Vector2(66, 66)
 	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var key := str(e.get("char", ""))
-	face.draw.connect(func(): MapArt.token(face, Vector2(33, 33), 28.0, key, UITheme.GOLD))
+	face.draw.connect(func():
+		MapArt.token(face, Vector2(33, 33), 28.0, key, UITheme.GOLD)
+		if MapArt.waiting.has(key) and face.is_inside_tree():
+			face.get_tree().create_timer(0.2).timeout.connect(face.queue_redraw))
 	h.add_child(face)
 	var v := VBoxContainer.new()
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -855,6 +859,13 @@ func _draw_map() -> void:
 		var r: float = f[2]
 		var lit: bool = f[3]
 		MapArt.token(_map, c, r, str(e["char"]), Color.WHITE if lit else Color("ffd166"))
+		if MapArt.waiting.has(str(e["char"])) and not _map_redraw_set and _map.is_inside_tree():
+			# (0.80.1: a face still being read is drawn when it comes in)
+			_map_redraw_set = true
+			_map.get_tree().create_timer(0.2).timeout.connect(func():
+				_map_redraw_set = false
+				if is_instance_valid(_map):
+					_map.queue_redraw())
 		if f[4]:
 			MapArt.tag(_map, font, c + Vector2(0, r + 5.0), Loc.t(str(e["name"])), 16, Color("ffe9a8"), Color(0, 0, 0, 0), lit)
 		if lit:

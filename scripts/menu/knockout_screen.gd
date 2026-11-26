@@ -199,7 +199,9 @@ func _build_setup() -> Control:
 			MapArt.token(faces, at, 30.0, k, Color(Color(Characters.get_char(k).get("color", Color(0.5, 0.6, 0.8))), 1.0 if met else 0.35), Color(0.18, 0.75, 0.8), 1.9)
 			if not met:
 				faces.draw_circle(at, 31.0, Color(0.03, 0.05, 0.09, 0.55))
-			faces.draw_string(UITheme.semi_font(), at + Vector2(-38, 54), str(Characters.get_char(k).get("short", k)), HORIZONTAL_ALIGNMENT_CENTER, 76, 14, Color(1, 1, 1, 0.85 if met else 0.4)))
+			faces.draw_string(UITheme.semi_font(), at + Vector2(-38, 54), str(Characters.get_char(k).get("short", k)), HORIZONTAL_ALIGNMENT_CENTER, 76, 14, Color(1, 1, 1, 0.85 if met else 0.4))
+		if not MapArt.waiting.is_empty() and faces.is_inside_tree():
+			faces.get_tree().create_timer(0.2).timeout.connect(faces.queue_redraw))      # (faces still being read come in as they are ready)
 	box.add_child(faces)
 	return box
 

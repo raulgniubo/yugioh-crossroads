@@ -49,7 +49,10 @@ func _monsters(deck: String) -> Array:
 				out.append(int(id))
 	if out.is_empty():
 		out = [0]
-	return out
+	# (0.80.1) Six of them are plenty for a duel you watch in passing, and their pictures are read
+	# ahead (Cards.prefetch) without crowding the picture caches.
+	out.shuffle()
+	return out.slice(0, 6)
 
 
 func _build(s: Dictionary) -> void:
@@ -90,6 +93,9 @@ func _build(s: Dictionary) -> void:
 		f.watch = null
 		f.lively = false
 		d["figs"].append(f)
+		# (0.80.1) The motions of a street duel fitted ahead (behind the loading card), not mid-duel.
+		if f._model != null:
+			Avatars.warm_gestures(f._model, ["challenge", "cheer", "cheer2", "stomp", "checkout"])
 		# A duel disk glow on the arm side and the Life Points overhead.
 		var l := Label3D.new()
 		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -105,6 +111,8 @@ func _build(s: Dictionary) -> void:
 		root.add_child(l)
 		d["lp_l"].append(l)
 		d["pool"].append(_monsters(str((s["decks"] as Array)[i])))
+		for x in d["pool"][-1]:
+			Cards.prefetch(int(x))
 	# People watching from the long sides.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(absf((s["at"] as Vector3).x * 31.0 + (s["at"] as Vector3).z * 7.0))
@@ -182,6 +190,8 @@ func open_bout(fa: RoamFigure, fb: RoamFigure, names: Array, decks: Array, fans:
 		d["lp_l"].append(l)
 		l.text = _lp_text(d, i)
 		d["pool"].append(_monsters(str(decks[i])))
+		for x in d["pool"][-1]:
+			Cards.prefetch(int(x))
 	_gather(d, fans, fan_z, free_at, pa.y)
 	_duels.append(d)
 	return d
@@ -290,7 +300,14 @@ func _summon(d: Dictionary, i: int) -> void:
 			zone = k
 			break
 	var pool: Array = d["pool"][i]
-	var id: int = pool[randi() % pool.size()]
+	# (0.80.1) Only a monster whose pictures are already in memory: the rest are read on another
+	# thread and come into play on a later turn. Reading them here froze the world for 35-60 ms.
+	var ready: Array = pool.filter(func(x): return Cards.pictures_ready(int(x)))
+	for x in pool:
+		Cards.prefetch(int(x))
+	if ready.is_empty():
+		return
+	var id: int = ready[randi() % ready.size()]
 	var data := CardData.get_card(id)
 	var root: Node3D = d["root"]
 	var holder := Node3D.new()

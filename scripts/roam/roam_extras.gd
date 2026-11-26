@@ -955,7 +955,7 @@ func _street_life(delta: float, p: Vector3) -> void:
 		var want: float = atan2(to.x, to.z) if to.length() < 5.5 else float(n[0]["face"])
 		fig.rotation.y = lerp_angle(fig.rotation.y, want, clampf(delta * 3.0, 0.0, 1.0))
 	_bark_in -= delta
-	if _bark_in > 0.0 or scene._overlay_open:
+	if _bark_in > 0.0 or scene._overlay_open or Router.loading:
 		return
 	# Out loud now, so there is air between two of them, and none while a scene is being told, while
 	# you are talking to somebody, or while any other voice is going.
