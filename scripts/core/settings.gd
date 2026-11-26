@@ -405,7 +405,10 @@ func _ready() -> void:
 	# A game folder beside the game wins over the old default place (a folder you picked
 	# yourself in Settings is left alone).
 	var beside := Saves.game_dir().path_join(Saves.DATA_NAME)
-	if DirAccess.dir_exists_absolute(beside) and (card_folder == "" or card_folder == old_default_folder() or not DirAccess.dir_exists_absolute(card_folder)):
+	# (0.80.2) Always, when there is one: everything lives in the one Crossroads Data folder beside the
+	# game. A folder remembered from an older install (still on disk, with the older models in it)
+	# used to win, so models dropped into the folder beside the game were never read.
+	if DirAccess.dir_exists_absolute(beside):
 		card_folder = beside
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--lang="):

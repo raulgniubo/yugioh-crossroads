@@ -39,6 +39,7 @@ var _field := "auto"
 var _root: Control
 var _backdrop: Control
 var _grid: GridContainer
+var _grid_scroll: ScrollContainer
 var _slots := {}
 var _tabs: Array[Button] = []
 var _diff_btns: Array[Button] = []
@@ -172,10 +173,18 @@ func _ready() -> void:
 	# Ten across, three rows: the roster owns the bottom left and never reaches the setup
 	# column on the right.
 	_grid.columns = 10      # (ten across since Crowler, Sheppard and Bastion joined: 29 tiles in three rows)
-	_grid.position = Vector2(64, 632)
 	_grid.add_theme_constant_override("h_separation", 7)
 	_grid.add_theme_constant_override("v_separation", 7)
-	_root.add_child(_grid)
+	# (0.80.2) With 43 duelists the roster is five rows: it scrolls (wheel, drag of the bar, and the
+	# arrows / controller follow the focused tile), three rows on show, never under the bottom edge.
+	_grid_scroll = ScrollContainer.new()
+	_grid_scroll.position = Vector2(64, 632)
+	_grid_scroll.size = Vector2(CELL.x * 10 + 7 * 9 + 18, H - 632 - 20)
+	_grid_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_grid_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_grid_scroll.follow_focus = true
+	_root.add_child(_grid_scroll)
+	_grid_scroll.add_child(_grid)
 	_refresh_all()
 	_enter()
 	_focus_opp.call_deferred()

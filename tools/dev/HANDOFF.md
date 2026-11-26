@@ -1732,3 +1732,12 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - Still open: the first frame after the scene change (~0.9 s headless, ~0.25 s real?) and shop counters' build gap
   (box/counter ~0.4 s headless); Knockout still has one 1.3 s frame headless while 22 heavy test models finish (engine side,
   not found); the deck shop keeps a portrait for every duelist (+285 MB headless with 15 more duelists, flat, not a leak).
+
+## 0.80.2 (Nov 25, 11:30 PM): Raul's two reports on 0.80.1
+- Free Duel roster (43 tiles, 5 rows) ran off the bottom with no scroll: _grid now sits in _grid_scroll (ScrollContainer,
+  3 rows on show, follow_focus).
+- His new models in Games\Yu-Gi-Oh! Crossroads\Crossroads Data\characters (names were right: atticus.glb, broder.glb...)
+  were not read. Likely cause: Settings kept a card_folder from an older install that still exists, and the folder beside
+  the game only won when that one was missing. Now the Crossroads Data beside the game always wins (settings.gd).
+  Also: a portrait made before a model was dropped in kept the stand-in all session: Avatars._stage_path +
+  file_changed(key) (checked every 4 s per key in Portraits.get_portrait) remakes it and emits Portraits.flushed.

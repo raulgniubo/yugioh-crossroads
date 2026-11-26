@@ -2970,6 +2970,7 @@ func portrait(key: String, hi := false) -> Texture2D:
 	stage.call("setup", model)
 	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
 	_stages[key] = vp
+	_stage_path[key] = path_for(key.get_slice("@", 0))
 	_touch(key)
 	if hi:
 		_sharpen(key)
@@ -3239,7 +3240,26 @@ func retint(key := "player") -> void:
 			apply_tints(stage.get("_model"))
 
 
+## (0.80.2) The file each portrait was made from, so a model dropped into the characters folder
+## while the game is open replaces the stand-in's portrait (it kept the stand-in until a restart).
+var _stage_path := {}
+var _path_checked := {}       # key -> when its file was last looked for (msec)
+
+
+## Has the file behind this portrait changed since it was made (a model dropped in or taken out)?
+## Looked at once every few seconds per duelist: it asks the disk.
+func file_changed(key: String) -> bool:
+	if not _stages.has(key) or not _stage_path.has(key):
+		return false
+	var now := Time.get_ticks_msec()
+	if now - int(_path_checked.get(key, -100000)) < 4000:
+		return false
+	_path_checked[key] = now
+	return path_for(key.get_slice("@", 0)) != str(_stage_path[key])
+
+
 func forget(key: String) -> void:
+	_stage_path.erase(key)
 	_live.erase(key)
 	if _stages.has(key):
 		_stages[key].queue_free()

@@ -45,6 +45,9 @@ func get_portrait(key: String, hi := false) -> Texture2D:
 		key = Avatars.dressed(key)      # in a dorm jacket for this duel: that picture, not the usual one
 	if hi and Avatars.has_avatar(key):
 		Avatars.portrait(key, true)
+	if _cache.has(key) and Avatars.file_changed(key):
+		_forget(key)      # (0.80.2: its model file was dropped in or changed while the game was open)
+		flushed.emit.call_deferred()
 	if _cache.has(key):
 		Avatars.wake(key)      # (a portrait that had let its model go gets it back)
 		return _cache[key]
