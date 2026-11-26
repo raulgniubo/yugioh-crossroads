@@ -1705,7 +1705,7 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   off the window, clipped buttons). Free Duel tile names shrink (HASSLEBERRY), field names shrink, rival line min 12.
 - Dev: --open=freeduel-opp:<key>[:<version>] picks that rival (pictures).
 
-## NEXT BUILD (0.80.1, not shipped yet): smoothness pass (Raul Nov 25 evening: "da tirones" in every world at 100 FPS,
+## 0.80.1 (shipped Nov 25 night): smoothness pass (Raul Nov 25 evening: "da tirones" in every world at 100 FPS,
 ## people talking while the loading card is up, the card freezing now and then)
 - CAMERA/PLAYER JUDDER (the big one): the camera pivot (position AND mouse-look rotation) and your figure were only moved
   in _physics_process (60 Hz). At 100-144 FPS some drawn frames moved and the next did not. RoamScene._process now places
