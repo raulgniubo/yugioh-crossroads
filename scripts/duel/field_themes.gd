@@ -313,6 +313,22 @@ vec3 ground_color(vec2 p, int kind, float t) {
 		vec3 g = vec3(0.03, 0.015, 0.06) * (0.8 + 0.8 * g_fbm(p * 3.0));
 		return g + vec3(0.62, 0.2, 1.0) * arc * (0.7 + 0.3 * sin(t * 5.0 + n * 30.0)) + vec3(0.16, 0.03, 0.26) * smoothstep(0.4, 0.75, n);
 	}
+	if (kind == 24) {
+		// The Hall of Echoes (0.81.0): dark polished stone in big tiles with light in the seams,
+		// and rings of light going out from the middle one after another, each the echo of the last.
+		vec2 f = abs(fract(p * 0.5) - 0.5);
+		float seam = smoothstep(0.465, 0.5, max(f.x, f.y));
+		vec3 stone = mix(vec3(0.015, 0.04, 0.085), vec3(0.04, 0.11, 0.19), g_fbm(p * 1.3));
+		stone *= 0.85 + 0.25 * g_hash(floor(p * 0.5));
+		float r = length(p);
+		float ring = 0.0;
+		for (int i = 0; i < 4; i++) {
+			float ph = fract(t * 0.14 + float(i) * 0.25);
+			ring += (1.0 - smoothstep(0.0, 0.2, abs(r - ph * 13.0))) * (1.0 - ph);
+		}
+		vec3 c = stone + vec3(0.25, 0.85, 1.0) * seam * (0.16 + 0.5 * ring);
+		return c + vec3(0.3, 0.9, 1.0) * ring * 0.42;
+	}
 	if (kind == 23) {
 		// A town of gears: brushed brass plates bolted down, and round wells in them where big
 		// steel gears turn over the glow of a furnace, each the other way from its neighbour.
@@ -359,7 +375,7 @@ vec3 ground_lit(vec2 p, int kind, float t) {
 	float h = dot(c, LUM);
 	vec2 slope = vec2(dot(ground_color(p + vec2(e, 0.0), kind, t), LUM) - h, dot(ground_color(p + vec2(0.0, e), kind, t), LUM) - h) / e;
 	// (moving, glowing grounds get less of it: water, lava, sky, light, plasma)
-	float k = (kind == 5 || kind == 2 || kind == 20 || kind == 21 || kind == 22 || kind == 6) ? 0.018 : 0.05;
+	float k = (kind == 5 || kind == 2 || kind == 20 || kind == 21 || kind == 22 || kind == 24 || kind == 6) ? 0.018 : 0.05;
 	c *= 1.0 + clamp(dot(slope, vec2(-0.55, -0.8)) * k, -0.3, 0.4);
 	c *= 0.955 + 0.09 * g_noise(p * 33.0 + 7.0);
 	return c;

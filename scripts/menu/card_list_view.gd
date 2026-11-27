@@ -387,7 +387,7 @@ func _show_card(id: int) -> void:
 	_d_id = id
 	Cards.face_later(id, _when_big(weakref(self), id))
 	if n > 0:
-		Foil.apply(_d_face, CardData.rarity(id))
+		Foil.apply(_d_face, CardData.rarity(id), id)
 	else:
 		_d_face.material = AlbumSlot.gray_material()
 	_d_face.scale = Vector2(0.95, 0.95)

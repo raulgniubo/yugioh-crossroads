@@ -13,15 +13,40 @@ extends RefCounted
 ## Each one returns at the moment the new monster should appear. `mats` are the material
 ## cards' insts that still have a card on the table; `board` is the DuelBoard.
 
-const GREEN := Color("6dff9a")
-const GOLD := Color("ffd23a")
-const VIOLET := Color("b15cff")
-const BLUE := Color("5aa8ff")
-const ORANGE := Color("ff8a3a")
-const AZURE := Color("3aa0ff")
+## The colors of the set pieces. They are the same for every card but Lumen's forms, which
+## have their own (0.81.0): see LOOKS and `look` in play().
+const PLAIN := {"GREEN": Color("6dff9a"), "GOLD": Color("ffd23a"), "VIOLET": Color("b15cff"), "BLUE": Color("5aa8ff"), "ORANGE": Color("ff8a3a"), "AZURE": Color("3aa0ff")}
+const LOOKS := {
+	"comet": {"GREEN": Color("7fe8ff")},
+	"zenith": {"GOLD": Color("9fe0ff"), "VIOLET": Color("8a6bff")},
+	"chorus": {"ORANGE": Color("ff8fd6"), "AZURE": Color("6fd0ff"), "VIOLET": Color("ffc8f0")},
+	"nova": {"ORANGE": Color("ffd24d"), "AZURE": Color("5a9eff"), "VIOLET": Color("ffffff")},
+	"aurora": {"BLUE": Color("4dffb0")},
+}
+static var GREEN := Color("6dff9a")
+static var GOLD := Color("ffd23a")
+static var VIOLET := Color("b15cff")
+static var BLUE := Color("5aa8ff")
+static var ORANGE := Color("ff8a3a")
+static var AZURE := Color("3aa0ff")
+static var _look := ""
 
 
-static func play(board, method: String, at: Vector3, core: Vector3, mats: Array) -> void:
+static func _palette(look: String) -> void:
+	var p: Dictionary = PLAIN.duplicate()
+	p.merge(LOOKS.get(look, {}), true)
+	GREEN = p["GREEN"]
+	GOLD = p["GOLD"]
+	VIOLET = p["VIOLET"]
+	BLUE = p["BLUE"]
+	ORANGE = p["ORANGE"]
+	AZURE = p["AZURE"]
+	_look = look
+
+
+## `look`: "" for any card; "chorus", "comet", "zenith", "aurora", "nova" for Lumen's forms.
+static func play(board, method: String, at: Vector3, core: Vector3, mats: Array, look := "") -> void:
+	_palette(look)
 	match method:
 		"synchro":
 			await _synchro(board, at, core, mats)
@@ -31,6 +56,7 @@ static func play(board, method: String, at: Vector3, core: Vector3, mats: Array)
 			await _fusion(board, at, core, mats)
 		"ritual":
 			await _ritual(board, at, core, mats)
+	_palette("")
 
 
 static func _levels(list: Array, lo: int, hi: int, fallback: int) -> int:
@@ -106,7 +132,7 @@ static func _synchro(board, at: Vector3, core: Vector3, mats: Array) -> void:
 		tw2.tween_property(rm, "shader_parameter/energy", 3.0, Settings.t(0.2))
 	await board._wait(0.36 + 0.035 * n_stars)
 	# The pillar of light.
-	DuelFx.pillar(board, at, Color(0.55, 1.0, 0.7), 0.62, 7.5, 0.95, 0.0, 1.9)
+	DuelFx.pillar(board, at, GREEN.lerp(Color.WHITE, 0.2), 0.62, 7.5, 0.95, 0.0, 1.9)
 	DuelFx.ring(board, at, GREEN, 0.4, 2.6, 0.6, 0.06)
 	for o3 in stars:
 		if is_instance_valid(o3):
@@ -117,8 +143,18 @@ static func _synchro(board, at: Vector3, core: Vector3, mats: Array) -> void:
 		tw3.tween_property(mi, "scale", Vector3(1.9, 1, 1.9), Settings.t(0.3)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw3.tween_property(mi.material_override, "shader_parameter/alpha", 0.0, Settings.t(0.3))
 		tw3.chain().tween_callback(mi.queue_free)
-	DuelFx.glow(board, core, Color(0.85, 1.0, 0.9), 2.8, 0.5, 1.0, 2.4)
+	DuelFx.glow(board, core, GREEN.lerp(Color.WHITE, 0.7), 2.8, 0.5, 1.0, 2.4)
 	DuelFx.rays(board, core, GREEN, 2.8, 0.45, 30, false)
+	if _look == "comet":
+		# Lumen's Comet: a tail of light falls across the field into the pillar.
+		for i in 5:
+			var cs: Vector3 = at + Vector3(3.4 - i * 0.2, 4.4 + i * 0.3, -1.6)
+			var co := DuelFx.orb(board, cs, Color.WHITE if i == 0 else GREEN, 0.34 - 0.04 * i)
+			co.trail = true
+			var ct: Tween = board.create_tween()
+			ct.tween_interval(Settings.t(0.03 * i))
+			ct.tween_property(co, "position", at + Vector3(0, 0.3, 0), Settings.t(0.22)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			ct.tween_callback(co.pop.bind(0.8))
 	board.shake(0.5)
 	Sfx.play("special", -2.0, 1.1)
 	await board._wait(0.2)
@@ -164,6 +200,17 @@ static func _xyz(board, at: Vector3, core: Vector3, mats: Array) -> void:
 	DuelFx.rays(board, at, GOLD, 3.0, 0.5, 32)
 	DuelFx.pillar(board, at, GOLD, 0.7, 6.5, 0.8, 0.0, 1.8)
 	DuelFx.sparks(board, at + Vector3(0, 0.2, 0), GOLD, 50, 6.0, 0.7)
+	if _look == "zenith":
+		# Lumen's Zenith: two lights go round the place she rises from.
+		for i in 2:
+			var zo := DuelFx.orb(board, at + Vector3(1.4 if i == 0 else -1.4, 0.9, 0), VIOLET.lightened(0.3) if i == 0 else GOLD, 0.26)
+			zo.trail = true
+			var zt: Tween = board.create_tween()
+			zt.tween_method(func(t: float):
+				if is_instance_valid(zo):
+					var za := t * DuelFx.TAU_F * 1.5 + PI * i
+					zo.position = at + Vector3(cos(za) * 1.4, 0.9 + 0.5 * t, sin(za) * 1.4), 0.0, 1.0, Settings.t(0.7))
+			zt.tween_callback(zo.pop.bind(0.8))
 	DuelFx.fade(sp, 0.4)
 	board.shake(0.6)
 	Sfx.play("special", -2.0, 0.9)
@@ -218,6 +265,18 @@ static func _fusion(board, at: Vector3, core: Vector3, mats: Array) -> void:
 	DuelFx.ring(board, at, VIOLET, 0.3, 2.6, 0.6, 0.06)
 	DuelFx.sparks(board, core, ORANGE, 30, 5.0, 0.4)
 	DuelFx.sparks(board, core, AZURE, 30, 5.0, 0.4)
+	if _look == "nova":
+		# Lumen's Nova: one ring for each world she has crossed, then all of it in white.
+		var four := [Color("5a9eff"), Color("ffd24d"), Color("b86bff"), Color("eef8ff")]
+		for w in 4:
+			DuelFx.ring(board, at, four[w], 0.3, 2.2 + 0.8 * w, 0.7, 0.07, 0.07 * w)
+			DuelFx.rays(board, core, four[w], 2.6 + 0.5 * w, 0.55, 14, false)
+		DuelFx.glow(board, core, Color.WHITE, 5.0, 0.7, 1.0, 3.0)
+		DuelFx.pillar(board, at, Color(1.0, 0.97, 0.85), 0.9, 8.0, 1.0, 0.1, 2.2)
+	elif _look == "chorus":
+		# Lumen's Chorus: the two voices go out as rings, one after the other.
+		DuelFx.ring(board, at, ORANGE, 0.3, 2.4, 0.6, 0.06, 0.08)
+		DuelFx.ring(board, at, AZURE, 0.3, 3.0, 0.7, 0.06, 0.18)
 	board.shake(0.6)
 	Sfx.play("special", -2.0, 1.0)
 	await board._wait(0.12)
@@ -256,6 +315,11 @@ static func _ritual(board, at: Vector3, core: Vector3, mats: Array) -> void:
 	DuelFx.pillar(board, at, BLUE.lightened(0.15), 0.8, 7.5, 1.35, 0.0, 1.9)
 	DuelFx.ring(board, at, Color.WHITE, 0.3, 2.3, 0.55, 0.05)
 	DuelFx.glow(board, core + Vector3(0, 0.6, 0), BLUE.lightened(0.5), 3.4, 0.5, 1.0)
+	if _look == "aurora":
+		# Lumen's Aurora: curtains of light stand up across the whole field behind her.
+		for i in 13:
+			var ax := -4.8 + i * 0.8
+			DuelFx.pillar(board, Vector3(ax, 0.0, at.z - 2.4 - 0.3 * sin(i * 1.3)), Color("4dffb0") if i % 2 == 0 else Color("9a6bff"), 0.36, 5.0 + 1.4 * sin(i * 2.1), 1.9, 0.04 * i, 1.0)
 	board.shake(0.45)
 	Sfx.play("special", -2.0, 0.85)
 	await board._wait(0.22)

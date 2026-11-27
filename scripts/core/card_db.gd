@@ -338,6 +338,19 @@ func get_art(id: int) -> Texture2D:
 	return tex
 
 
+## The figure of a monster as it stands on the table (its hologram, its arrival). For the cards
+## of this game that is the painted figure itself, cut out, and Lumen alive for her own card;
+## for every other card it is the card's art.
+func get_figure(id: int) -> Texture2D:
+	if CardData.is_original(id):
+		if id == CardData.LUMEN or id == 99200023:
+			return LumenSpirit.portrait(self)
+		var path := "res://assets/originals/%d.png" % id
+		if ResourceLoader.exists(path):
+			return load(path)
+	return get_art(id)
+
+
 ## The picture of a card for a cover (a pack wrapper, a deck box): its artwork, and which part of
 ## that texture to show. If only the full card face is on disk, the art window is cut out of it.
 ## Returns [texture, region].
@@ -350,6 +363,9 @@ func cover_art(id: int) -> Array:
 	if ts.x / maxf(ts.y, 1.0) < 0.82:
 		# A full card face: the artwork sits in a square window under the name bar.
 		region = Rect2(ts.x * 0.125, ts.y * 0.185, ts.x * 0.75, ts.x * 0.75)
+		if CardData.is_original(id):
+			# (a card of this game: its picture, without the band with its set number under it)
+			region = Rect2(ts.x * 0.11, ts.y * 0.193, ts.x * 0.78, ts.y * 0.447)
 	return [tex, region]
 
 
@@ -822,7 +838,12 @@ func _make_original_face(id: int) -> Texture2D:
 	_label(root, attr.substr(0, 1), Vector2(346, 27), Vector2(44, 44), _font_title, 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	# Level (Rank, for an Xyz Monster: on the left) or the kind of Spell.
 	if is_spell:
-		_label(root, "TRAP CARD" if is_trap else ("SPEED SPELL" if d.get("speed_spell", false) else "SPELL CARD"), Vector2(30, 80), Vector2(360, 30), _font_title, 22, tone.lightened(0.55), HORIZONTAL_ALIGNMENT_RIGHT)
+		# (The kind of Spell or Trap, when it has one: Field, Continuous, Quick-Play, Ritual, Counter.)
+		var st_kind := str(d.get("st", "")).to_upper()
+		var kind_line := "TRAP CARD" if is_trap else ("SPEED SPELL" if d.get("speed_spell", false) else "SPELL CARD")
+		if st_kind != "":
+			kind_line = "%s %s" % [st_kind, "TRAP" if is_trap else "SPELL"]
+		_label(root, kind_line, Vector2(30, 80), Vector2(360, 30), _font_title, 22, tone.lightened(0.55), HORIZONTAL_ALIGNMENT_RIGHT)
 	else:
 		_label(root, "★".repeat(int(d.get("level", 1))), Vector2(30, 80), Vector2(360, 30), _font_title, 24, gold if ftype != "xyz" else Color("b9a6ff"),
 				HORIZONTAL_ALIGNMENT_LEFT if ftype == "xyz" else HORIZONTAL_ALIGNMENT_RIGHT)
@@ -843,6 +864,14 @@ func _make_original_face(id: int) -> Texture2D:
 		get_tree().create_timer(2.0).timeout.connect(func():
 			if is_instance_valid(vp):
 				vp.render_target_update_mode = SubViewport.UPDATE_DISABLED)
+	elif EchoArt.has(id):
+		# (0.81.0) The Echo cards: drawn in EchoArt. Lumen is on some of them, and needs a moment.
+		if EchoArt.build(art_box, id, self):
+			vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+			LumenSpirit.wake(2.5)
+			get_tree().create_timer(2.0).timeout.connect(func():
+				if is_instance_valid(vp):
+					vp.render_target_update_mode = SubViewport.UPDATE_DISABLED)
 	else:
 		_speed_art(art_box, id)
 	_crossroads_mark(root, id)
@@ -856,7 +885,7 @@ func _make_original_face(id: int) -> Texture2D:
 		desc.clip_text = false
 	else:
 		var kinds := [str(d.get("race", ""))]
-		if ftype in ["fusion", "synchro", "xyz"]:
+		if ftype in ["fusion", "synchro", "xyz", "ritual"]:
 			kinds.append(ftype.capitalize())
 		if d.get("tuner", false):
 			kinds.append("Tuner")
@@ -901,6 +930,9 @@ func _speed_art(art_box: Control, id: int) -> void:
 	var n := _label(art_box, str(need) if need > 0 else "", Vector2(214, 150), Vector2(100, 110), _font_title, 96, Color(1, 1, 1, 0.92), HORIZONTAL_ALIGNMENT_RIGHT)
 	n.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
 	n.add_theme_constant_override("shadow_offset_y", 4)
+
+
+const EchoArt := preload("res://scripts/core/echo_art.gd")
 
 
 ## Which of Lumen's cards shows which form of her: 0 the spirit, 1 Chorus, 2 Comet, 3 Zenith, 4 Radiant.

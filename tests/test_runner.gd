@@ -37,6 +37,7 @@ func _ready() -> void:
 	_test_world_voices()
 	_test_trio()
 	await _test_cards_gate()
+	_test_lumen_081()
 	_test_classes()
 	_test_circle()
 	var stress := OS.get_environment("STRESS_FOLDER")
@@ -11879,3 +11880,71 @@ func _test_cards_gate() -> void:
 	check(gate._left.get_child_count() > 0, "and Back goes home")
 	gate.queue_free()
 	await get_tree().process_frame
+
+
+## (0.81.0) Lumen's new cards: two more forms, the Echo monsters, Spells and Traps; her three
+## decks in the deck shops; the Echo Pack holding the cards around her from the first day.
+func _test_lumen_081() -> void:
+	var es = JSON.parse_string(FileAccess.get_file_as_string("res://data/card_text_es.json"))
+	var codes := {}
+	for id in CardData.LUMEN_CARDS:
+		var d := CardData.get_card(int(id))
+		check(str(d.get("name", "")) != "" and str(d.get("text", "")) != "" and bool(d.get("original", false)), "Lumen card %d has a name, a text and the Crossroads mark" % id)
+		check(es is Dictionary and str((es as Dictionary).get(str(d.get("name", "")), "")) != "", "Lumen card %s has its Spanish text" % d.get("name", id))
+		check(FileAccess.file_exists("res://native/custom/c%d.lua" % id), "Lumen card %s has its script" % d.get("name", id))
+		check(not codes.has(CardData.set_code(int(id))), "Lumen card %s has a set number of its own" % d.get("name", id))
+		codes[CardData.set_code(int(id))] = true
+		check(Collection.playable(int(id)), "Lumen card %s is a card the game plays" % d.get("name", id))
+	check(CardData.LUMEN_CARDS.size() == 22 and CardData.set_code(99200013) == "CR-008" and CardData.set_code(99100022) == "CR-030" and CardData.set_code(99200006) == "CR-031", "the new cards are numbered after the old ones (no old card changed its number)")
+	for id in CardData.LUMEN_FORMS:
+		check(str(CardData.get_card(int(id)).get("name", "")).begins_with("Lumen, Echo "), "every form of hers is a Lumen monster by name too (%d)" % id)
+	for id in [99200006, 99200007, 99200021, 99200022, 99200024, 99200025]:
+		check(ResourceLoader.exists("res://assets/originals/%d.png" % id), "the painting of %s is in the game" % CardData.get_card(id).get("name", id))
+	check(CardData.get_card(99200014).get("st", "") == "ritual" and CardData.get_card(99200016).get("st", "") == "field" and CardData.get_card(99200018).get("st", "") == "quick-play"
+			and CardData.get_card(99200015).get("st", "") == "continuous" and CardData.get_card(99200020).get("st", "") == "counter", "the new Spells and Traps say what kind they are")
+	# The Echo Pack: the cards around her from the first day, her forms only once the story has handed them over.
+	var kept_gifts = Collection.record.get("lumen_gifts", [])
+	Collection.record["lumen_gifts"] = []
+	var pool0 := Collection.lumen_pool()
+	check(pool0.has(CardData.LUMEN) and CardData.ECHO_SUPPORT.all(func(x): return pool0.has(int(x))), "Echo Pack: Lumen and every card around her from the first day")
+	check(not pool0.has(99200006) and not pool0.has(99200007) and not pool0.has(99200002) and not pool0.has(99200005), "Echo Pack: none of her forms before the story hands it over")
+	Collection.record["lumen_gifts"] = [99200006]
+	check(Collection.lumen_pool().has(99200006), "Echo Pack: a form joins it when the story has given it")
+	Collection.record["lumen_gifts"] = kept_gifts
+	var staged := {}
+	for g in CardData.LUMEN_GIFTS:
+		staged[int(g[1])] = int(g[0])
+	check(int(staged.get(99200006, 0)) == 3 and int(staged.get(99200014, 0)) == 3 and int(staged.get(99200007, 0)) == 5, "the story hands over Aurora with her Rite, and Nova last")
+	for id in CardData.LUMEN_CARDS:
+		check(int(id) == CardData.LUMEN or CardData.ECHO_SUPPORT.has(int(id)) or staged.has(int(id)), "every card of Lumen's can be had: %s" % CardData.get_card(int(id)).get("name", id))
+	check(int(Unlocks.PACK_STAGE.get("echo", -1)) == 0, "the Echo Pack is on sale from the first day")
+	# Her decks in the deck shops.
+	var cat := Collection.deck_catalog()
+	var lum: Array = cat.filter(func(e): return bool(e.get("lumen", false)))
+	check(lum.size() == 1 and str(lum[0]["kind"]) == "duelist" and bool(lum[0].get("everywhere", false)), "the deck shops have Lumen's deck among the duelists', in every world")
+	if lum.size() == 1:
+		var vs := Collection.deck_versions(lum[0])
+		check(vs.size() == 3 and vs.map(func(v): return str(v["key"])) == ["echo", "echo_2", "echo_3"], "Lumen's deck comes in three versions")
+		check(vs.size() == 3 and int(vs[0]["price"]) < int(vs[1]["price"]) and int(vs[1]["price"]) < int(vs[2]["price"]) and int(vs[2]["price"]) == Collection.DECK_PRICE, "each version of Lumen's deck has its own price")
+		check(vs.size() == 3 and int(vs[2].get("stage", 0)) == 5 and int(vs[0].get("stage", 0)) == 0 and int(vs[1].get("stage", 0)) == 0, "only the deck with every form waits for the story")
+		for v in vs:
+			var main := CardData.deck_list(str(v["key"]))
+			var counts := {}
+			for id in main + CardData.extra_list(str(v["key"])):
+				counts[id] = int(counts.get(id, 0)) + 1
+			check(main.size() == 40 and counts.values().all(func(n): return int(n) <= 3), "%s: 40 cards, no more than three of any" % v["name"])
+			check(Collection.deck_price(str(v["key"])) == int(v["price"]) and (str(v["key"]) == "echo" or str(Collection.deck_info(str(v["key"]))["name"]) == str(v["name"])), "%s: the shelf and the shop agree on it" % v["name"])
+		var second := CardData.deck_list("echo_2")
+		check(not second.any(func(id): return int(id) in [99200006, 99200007]) and CardData.extra_list("echo_2").is_empty(), "the second deck gives none of her later forms away")
+		var third := CardData.deck_list("echo_3") + CardData.extra_list("echo_3")
+		check(CardData.LUMEN_FORMS.all(func(id): return third.has(int(id))), "the third deck has every form of hers")
+	check(CardAlbum.LUMEN_IDS.size() == 22, "the album lists every card of Lumen's")
+	check(str(FieldLooks.BY_NAME.get("Hall of Echoes", "")) == "echo" and FieldLooks.LOOKS.has("echo"), "Hall of Echoes is a place of its own")
+	for nm in ["Lumen, Echo Aurora", "Lumen, Echo Nova"]:
+		check(SummonShow.SIGNATURE.has(nm) and SummonShow.attack_name({"name": nm}) != "", "%s has its own arrival and its own attack" % nm)
+	var untold: Array = []
+	for s in ["Aurora Veil", "Nova Crossing", "Support", "Lumen's Dawn", "Locked: opens when the story has shown you all of her forms.", "The Echo Pack and Lumen's decks in the deck shops", "Negate the activation"]:
+		if not EsStrings.ES.has(s):
+			untold.append(s)
+	check(untold.is_empty(), "the new words about Lumen's cards have their Spanish (%s)" % str(untold))
+

@@ -23,10 +23,13 @@ const LOOKS := {
 	"city": {"surface": 9, "glow": Color("7cc4ff"), "fog": Color("1a1430"), "sky": [Color("06081a"), Color("3a2a6a")], "air": "none", "props": "towers"},
 	"sand": {"surface": 4, "glow": Color("ffe0a0"), "fog": Color("e8c890"), "sky": [Color("3a5fae"), Color("ffcf8a")], "air": "dust", "props": "ruins", "dark": true, "day": true, "shade": 0.95},
 	"gears": {"surface": 23, "glow": Color("ffc66a"), "fog": Color("3a2a1a"), "sky": [Color("120c08"), Color("6a4a2a")], "air": "embers", "props": "towers"},
+	# (0.81.0) Hall of Echoes: dark polished stone, rings of light going out over it, tall lit columns.
+	"echo": {"surface": 24, "glow": Color("7fe8ff"), "fog": Color("0a2038"), "sky": [Color("020510"), Color("0d3a5c")], "air": "motes_light", "props": "echo_pillars"},
 	"marble": {"surface": 14, "glow": Color("ffe9a0"), "fog": Color("c8d8f0"), "sky": [Color("3a5a9a"), Color("e8f0ff")], "air": "motes_light", "props": "pillars", "dark": true, "day": true, "shade": 0.8},
 }
 
 const BY_NAME := {
+	"Hall of Echoes": "echo",
 	"Yami": "dark", "Sogen": "grass", "Forest": "forest", "Mountain": "peak", "Wasteland": "waste",
 	"Umi": "sea", "A Legendary Ocean": "sea", "Umiiruka": "sea",
 	"Gaia Power": "forest", "Molten Destruction": "lava", "Luminous Spark": "light", "Mystic Plasma Zone": "plasma",
@@ -91,6 +94,8 @@ static func look_for(card) -> Dictionary:
 ## What the card does, as short lines for the strip under the card panel:
 ## ["Dragon, Winged Beast, Thunder", "+200 ATK  +200 DEF"] pairs.
 static func says(card) -> Array:
+	if str(card.data.get("name", "")) == "Hall of Echoes":
+		return [[Loc.t("LIGHT Fairy"), "+300 ATK"], ["\"Lumen\"", Loc.t("1 more Normal Summon")], [Loc.t("End Phase, with a \"Lumen\""), "+500 LP"]]
 	var sp: Dictionary = SpellRules.spec(card)
 	var groups := {}        # "+200 ATK  +200 DEF" -> [who, who]
 	var order: Array = []

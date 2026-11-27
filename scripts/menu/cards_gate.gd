@@ -189,7 +189,7 @@ static func best_cards(d: Dictionary, n := FAN) -> Array:
 ## How much of the card list you own: [have, total]. (The same count as the album's.)
 static func collection_count() -> Array:
 	var every: Array = Collection.all_cards().duplicate()
-	for id in CardAlbum.LUMEN_IDS + CardAlbum.SPEED_IDS:
+	for id in CardData.LUMEN_CARDS + CardAlbum.SPEED_IDS:
 		if not every.has(id) and not CardData.get_card(id).is_empty():
 			every.append(id)
 	var have := 0
@@ -403,7 +403,7 @@ func _build_fan(ids: Array) -> void:
 		tr.rotation = rot
 		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		tr.modulate = Color(1, 1, 1, 0.0) if s == 0 else Color(0.82, 0.84, 0.9, 0.0)
-		Foil.apply(tr, CardData.rarity(id))
+		Foil.apply(tr, CardData.rarity(id), id)
 		_fan.add_child(tr)
 		_fan_cards.append([tr, base, rot])
 		var tw := tr.create_tween().set_parallel()
@@ -535,7 +535,7 @@ static func _world_decks(world: String) -> Array:
 	if _catalog.is_empty():
 		_catalog = Collection.deck_catalog()
 	for e in _catalog:
-		if (e["kind"] == "duelist" and str(e["era"]) == era) or (e["kind"] == "theme" and Collection.theme_sold_in(str(e["key"]), world)):
+		if bool(e.get("everywhere", false)) or (e["kind"] == "duelist" and str(e["era"]) == era) or (e["kind"] == "theme" and Collection.theme_sold_in(str(e["key"]), world)):
 			out.append(e)
 	return out
 

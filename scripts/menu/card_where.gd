@@ -61,7 +61,7 @@ func _ready() -> void:
 	face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	if owned:
-		Foil.apply(face, CardData.rarity(_id))
+		Foil.apply(face, CardData.rarity(_id), _id)
 	else:
 		face.material = AlbumSlot.gray_material()
 	left.add_child(face)

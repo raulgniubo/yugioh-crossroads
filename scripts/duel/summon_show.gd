@@ -12,6 +12,9 @@ const SIGNATURE := {
 	"Lumen, Echo Comet": ["3fd8ff", "ffffff", "lightning", "Faster than the echo", "Comet Dive"],
 	"Lumen, Echo Zenith": ["8a6bff", "ffd76a", "circle", "The sky, listening", "Zenith Orbit"],
 	"Lumen, Echo Radiant": ["ffc23d", "fff6d6", "flames", "Every echo at once", "Radiant Answer"],
+	"Lumen, Echo Aurora": ["4dffb0", "9a6bff", "aurora", "The first light after the longest night", "Aurora Veil"],
+	"Lumen, Echo Nova": ["ffe9a8", "5a9eff", "nova", "Every road, one light", "Nova Crossing"],
+	"Echo Sentinel": ["9fd8ff", "ffd766", "hex", "Nothing reaches her", "Echo Guard"],
 	"Dark Magician": ["8a4dff", "ff7ad9", "circle", "The ultimate wizard", "Dark Magic Attack"],
 	"Dark Magician Girl": ["ff7ad9", "7cc4ff", "circle", "Apprentice of the dark arts", "Dark Burning Attack"],
 	"Blue-Eyes White Dragon": ["bfe6ff", "3a7bff", "lightning", "Engine of destruction", "White Lightning"],
@@ -87,7 +90,7 @@ func _build_strike(card: Dictionary, attack: String, mine: bool) -> void:
 	add_child(_pad)
 	var vp := get_viewport().get_visible_rect().size
 	_art = TextureRect.new()
-	_art.texture = Cards.get_art(int(card.get("id", 0)))
+	_art.texture = Cards.get_figure(int(card.get("id", 0)))
 	_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_art.size = Vector2(300, 430)
@@ -99,6 +102,14 @@ func _build_strike(card: Dictionary, attack: String, mine: bool) -> void:
 	var hold_x := vp.x * (0.22 if mine else 0.78) - 150.0
 	var out_x := vp.x + 80.0 if mine else -380.0
 	_art.position = Vector2(from_x, y)
+	var echoes: Array = []
+	if CardData.LUMEN_CARDS.has(int(card.get("id", 0))):
+		# One of Lumen's: two echoes of it come across behind it, each a step later.
+		for k in 2:
+			var e := _art.duplicate() as TextureRect
+			e.modulate = Color(0.5, 0.92, 1.0, 0.5 - 0.2 * k)
+			add_child(e)
+			echoes.append(e)
 	add_child(_art)
 	var name_l := UITheme.label(Loc.t(attack).to_upper() + "!", 66, Color.WHITE, UITheme.title_font())
 	name_l.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -119,6 +130,15 @@ func _build_strike(card: Dictionary, attack: String, mine: bool) -> void:
 	tw.tween_property(_art, "position:x", out_x, 0.16).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN)
 	tw.parallel().tween_property(self, "_fade", 0.0, 0.2)
 	tw.tween_callback(queue_free)
+	for k in echoes.size():
+		var e2: TextureRect = echoes[k]
+		var lag := 0.07 * (k + 1)
+		var back := 70.0 * (k + 1) * _dir
+		var et := create_tween()
+		et.tween_interval(lag)
+		et.tween_property(e2, "position:x", hold_x - back, 0.2).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+		et.tween_property(e2, "position:x", hold_x - back * 0.3 + 40.0 * _dir, 0.4 + dev_hold)
+		et.tween_property(e2, "position:x", out_x, 0.16).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_IN)
 
 
 ## Does this monster get an arrival? (Signature cards always; others from Level 7 up.)
@@ -155,7 +175,7 @@ func _build(card: Dictionary, nm: String, line: String, mine: bool) -> void:
 	_pad.draw.connect(_paint)
 	add_child(_pad)
 	_art = TextureRect.new()
-	_art.texture = Cards.get_art(int(card.get("id", 0)))
+	_art.texture = Cards.get_figure(int(card.get("id", 0)))
 	_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_art.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -166,6 +186,27 @@ func _build(card: Dictionary, nm: String, line: String, mine: bool) -> void:
 	_art.pivot_offset = Vector2(190, 275)
 	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_art.modulate.a = 0.0
+	if CardData.LUMEN_CARDS.has(int(card.get("id", 0))):
+		# One of Lumen's: four echoes of it stand round where it will be and close into it as it lands.
+		for k in 4:
+			var e := _art.duplicate() as TextureRect
+			var off := Vector2([-330.0, 330.0, -190.0, 190.0][k], [-20.0, -20.0, 30.0, 30.0][k])
+			e.offset_left += off.x
+			e.offset_right += off.x
+			e.offset_top += off.y
+			e.offset_bottom += off.y
+			e.modulate = Color(0.5, 0.92, 1.0, 0.0)
+			add_child(e)
+			var et := create_tween()
+			et.tween_interval(0.12 + 0.05 * k)
+			et.tween_property(e, "modulate:a", 0.5 if k < 2 else 0.34, 0.16)
+			et.tween_interval(0.12)
+			et.tween_property(e, "offset_left", -190.0, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+			et.parallel().tween_property(e, "offset_right", 190.0, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+			et.parallel().tween_property(e, "offset_top", -300.0, 0.22)
+			et.parallel().tween_property(e, "offset_bottom", 250.0, 0.22)
+			et.tween_property(e, "modulate:a", 0.0, 0.1)
+			et.tween_callback(e.queue_free)
 	add_child(_art)
 	var name_l := UITheme.label(Loc.t(nm).to_upper(), 58, Color.WHITE, UITheme.title_font())
 	name_l.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
@@ -274,6 +315,31 @@ func _paint() -> void:
 					_pad.draw_rect(Rect2(p - Vector2(13, 19), Vector2(26, 38)), Color(_b if i % 8 == 0 else _a, 0.9 * f))
 				else:
 					_pad.draw_circle(p, 4.0, Color(_b.lightened(0.4), 0.9 * f))
+		"aurora":
+			# Curtains of light hanging from the top of the screen, swaying, and a few stars.
+			for i in 16:
+				var ax := sz.x * (float(i) + 0.5) / 16.0 + sin(_t * 0.9 + float(i) * 1.3) * 26.0
+				var aw := sz.x / 16.0 * (0.7 + 0.5 * float(_seeds[i][0]))
+				var ay := sz.y * (0.42 + 0.2 * sin(float(i) * 1.7 + _t * 0.7)) * k
+				var ac := (_a if i % 2 == 0 else _b)
+				_pad.draw_polygon(PackedVector2Array([Vector2(ax - aw, 0), Vector2(ax + aw, 0), Vector2(ax + aw * 0.7, ay), Vector2(ax - aw * 0.7, ay)]),
+						PackedColorArray([Color(ac, 0.0), Color(ac, 0.0), Color(ac, 0.62 * f), Color(ac, 0.62 * f)]))
+			for i in 30:
+				var sp0: Array = _seeds[i]
+				var tw0 := 0.5 + 0.5 * sin(_t * 6.0 + float(i))
+				_pad.draw_circle(Vector2(sz.x * float(sp0[1]), sz.y * 0.95 * float(sp0[2])), 1.5 + 2.5 * float(sp0[3]) * tw0, Color(1, 1, 1, 0.8 * f * k))
+			_pad.draw_arc(c, R * 0.95 * k, 0, TAU, 96, Color(1.0, 0.97, 0.8, 0.8 * f), 3.0)
+		"nova":
+			# A burst in the four colors of the worlds, and rings going out from it.
+			var four := [Color("5a9eff"), Color("ffd24d"), Color("b86bff"), Color("eef8ff")]
+			for i in 40:
+				var na := float(i) * TAU / 40.0 + _t * 0.3
+				var nc: Color = four[int(floor(fposmod(na - _t * 0.3 + 0.4, TAU) / (TAU / 4.0))) % 4]
+				var nl := R * (0.6 + 2.2 * k) * (0.55 + 0.45 * float(_seeds[i][0]))
+				_pad.draw_line(c + Vector2(cos(na), sin(na)) * 140.0, c + Vector2(cos(na), sin(na)) * (140.0 + nl), Color(nc, 0.6 * f), 5.0 + 9.0 * float(_seeds[i][1]))
+			for i in 4:
+				var nph := fmod(_t * 0.6 + float(i) / 4.0, 1.0)
+				_pad.draw_arc(c, R * 2.2 * nph, 0, TAU, 96, Color(four[i] as Color, (1.0 - nph) * 0.9 * f), 6.0 * (1.0 - nph) + 1.0)
 		"rays":
 			for i in 28:
 				var a3 := float(i) * TAU / 28.0 + _t * 0.25

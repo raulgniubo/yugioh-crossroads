@@ -94,7 +94,7 @@ static func _when_face(me: WeakRef, want: int) -> Callable:
 func _show_face(tex: Texture2D) -> void:
 	_card.texture = tex
 	if state == "owned":
-		Foil.apply(_card, CardData.rarity(id))
+		Foil.apply(_card, CardData.rarity(id), id)
 		_card.modulate = Color.WHITE
 	else:
 		# Not yours yet: the picture in grey, darker, so it reads at a glance (0.55.3; it was a "?").

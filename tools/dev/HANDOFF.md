@@ -1750,3 +1750,37 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   NOT approved, NOT started. Raul wants some things in the game polished first; he will send fixes one by one.
 - Facts found: Android + iOS export templates are installed here; Android SDK/NDK downloads are blocked by the proxy
   (dl.google.com 403); iOS must be compiled/signed on his Mac (needs his OK: his rule is no builds on the Mac).
+
+## 0.81.0 (Nov 27): Lumen's cards (Raul: "vamos a hacer todo esto de Lumen", and "usa Meshy para los dibujos si mejora")
+14 new cards of this game (CR-031 to CR-044), 12,759 total. Everything of Lumen's is `CardData.LUMEN_CARDS` (22 ids).
+- **Cards**: forms 99200006 Lumen, Echo Aurora (Ritual) and 99200007 Lumen, Echo Nova (Fusion); Spells/Traps 99200014
+  Echo Dawn Rite (Ritual Spell), 15 Echo Bond (Continuous), 16 Hall of Echoes (Field), 17 Echo Merge, 18 Echo Memory
+  (Quick-Play), 19 Echo Return, 20 Echo Silence (Counter); monsters 21 Echo Wisp, 22 Echo Lantern Keeper, 23 Echo Twin,
+  24 Echo Messenger, 25 Echo Sentinel. Scripts in native/custom (then `python3 tools/dev/patch_scripts.py`).
+- **"Lumen" / "Echo" are set codes now** (OcgCore.SET_LUMEN 0xfe0, SET_ECHO 0xfe1, written by register_originals from
+  CardData.LUMEN_FORMS / LUMEN_CARDS). The old scripts no longer list card codes. Echo Call now finds any "Echo" monster.
+  Echo Bond reads your bonds from its own card data (register_originals writes mini(5, bonds) where ATK would be;
+  the script reads GetTextAttack). Lumen herself can be the whole Tribute for Aurora (Ritual.AddWholeLevelTribute).
+- Changed from the ideas Raul saw: Echo Wisp is NOT a Tuner (Comet needs Lumen as the Tuner; Wisp draws when used as
+  material for any "Lumen" Summon); Echo Sentinel Tributes any "Echo" monster; Echo Bond is +300 and +100 per bond.
+- **Art**: paintings (Meshy text-to-image nano-banana-pro, cut out) in assets/originals/<id>.png for Aurora, Nova, Wisp,
+  Lantern Keeper, Messenger, Sentinel; originals kept on his Mac in `Yu-Gi-Oh! Crossroads/meshy_work/lumen_art/`. The
+  bird and the knight came back with holes from the cutout: repaired here (alpha rebuilt, the bird's eye and threads
+  redrawn). Everything else (skies, Twin, all Spells and Traps) is drawn in scripts/core/echo_art.gd (EchoArt.build).
+  `Cards.get_figure(id)`: the cut-out painting (Lumen alive for her own card) for holograms and SummonShow.
+- **Where they come from**: CardData.ECHO_SUPPORT is in the Echo Pack from day one (PACK_STAGE echo 0); forms and the
+  Rite by LUMEN_GIFTS (Aurora + Rite stage 3, Nova stage 5). Deck shops: Collection.LUMEN_DECKS echo / echo_2 / echo_3
+  ("Basic", "Support", "Complete"; echo_3 opens at stage 5), a catalog entry with "lumen" and "everywhere".
+- **Animations** (scripts/duel/echo_fx.gd, preloaded as EchoFx in duel_board): echoes gather on a summon, trail and
+  strike again on an attack, gather for a finishing blow; bonds as threads into Lumen (her summon, Echo Bond);
+  SummonFx.play(..., look) with palettes "chorus/comet/zenith/aurora/nova"; SummonShow figures "aurora" and "nova" and
+  echo copies; Card3D._set_echo (edge of light, face side only); Foil.apply(tr, rarity, id) for the 2D edge;
+  FieldLooks "echo" (surface 24, props "echo_pillars") for Hall of Echoes.
+- **Tests**: tests/lumen_cards.tscn (19 positions on the engine: all pass), test_runner `_test_lumen_081`,
+  tests/card_sheet.tscn (card faces to a PNG), FxDemo cases lumen_summon / lumen_battle / lumen_finish / lumen_field /
+  lumen_aurora / lumen_nova / lumen_chorus / lumen_comet / lumen_zenith.
+- tests/card_positions (op 35) plays nothing at all here since before this build (old copy too): not looked into.
+- Also in this build (Raul Nov 27 morning): deck editor lists every card by default with "Only cards I have"
+  (the "Every card in the game" switch is gone) and finds Lumen's cards; "Cargando" label moved off the ring.
+- OPEN: his brother lost Lumen's deck and some cards going 0.73.1 -> 0.80.2; no cause found in code; waiting for his
+  `Crossroads Data/saves` and `%APPDATA%\Godot\app_userdata\Yu-Gi-Oh! Crossroads`.

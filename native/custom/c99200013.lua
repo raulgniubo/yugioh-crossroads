@@ -11,9 +11,10 @@ function s.initial_effect(c)
 	e1:SetOperation(s.activate)
 	c:RegisterEffect(e1)
 end
-local LUMEN={99200001,99200002,99200003,99200004,99200005}
+local SET_LUMEN=0xfe0
+local SET_ECHO=0xfe1
 function s.lfilter(c)
-	return c:IsFaceup() and c:IsCode(table.unpack(LUMEN))
+	return c:IsFaceup() and c:IsSetCard(SET_LUMEN)
 end
 function s.activate(e,tp,eg,ep,ev,re,r,rp)
 	if Duel.NegateAttack() and Duel.IsExistingMatchingCard(s.lfilter,tp,LOCATION_MZONE,0,1,nil) then

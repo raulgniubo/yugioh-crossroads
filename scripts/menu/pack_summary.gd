@@ -100,7 +100,7 @@ func _tile(id: int, n: int, k: int) -> Control:
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.tooltip_text = str(CardData.get_card(id).get("name", ""))
 	holder.add_child(tr)
-	Foil.apply(tr, r)
+	Foil.apply(tr, r, id)
 	var is_new := int(_before.get(id, 0)) == 0
 	var line := Loc.t(Foil.NAMES[r]) if r > 0 else ""
 	if n > 1:

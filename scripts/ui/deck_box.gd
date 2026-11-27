@@ -36,6 +36,8 @@ func setup(entry: Dictionary, lazy := false) -> DeckBox:
 		else:
 			_face_wait = who          # (their model is read on a worker thread first)
 			Avatars.warm(who)
+	elif bool(entry.get("lumen", false)):
+		_face = LumenSpirit.portrait(self)      # (Lumen's own decks: she is on the box)
 	return self
 
 

@@ -7,7 +7,13 @@ extends Node
 const FILL := "Mystical Elf"
 
 func _id(n: String) -> int:
-	return int(CardData.NAME_TO_ID.get(n.to_lower(), 0))
+	var id := int(CardData.NAME_TO_ID.get(n.to_lower(), 0))
+	if id == 0:
+		# (the cards of this game are in no card database: look for the name among them)
+		for oid in CardData.ORIGINALS:
+			if str(CardData.CARDS[oid].get("name", "")).to_lower() == n.to_lower():
+				return int(oid)
+	return id
 
 
 func _ready() -> void:

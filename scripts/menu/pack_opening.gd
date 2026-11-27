@@ -258,7 +258,7 @@ func _flip(c: Dictionary) -> void:
 	t1.tween_property(holder, "scale:x", 0.0, 0.1)
 	await t1.finished
 	tr.texture = Cards.get_face(id)
-	Foil.apply(tr, r)
+	Foil.apply(tr, r, id)
 	var sb := UITheme.panel_box(Color(col.r, col.g, col.b, 0.35), 16, col)
 	(c["glow"] as Panel).add_theme_stylebox_override("panel", sb)
 	var t2 := create_tween().set_parallel()

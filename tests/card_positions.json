@@ -3666,5 +3666,239 @@
 },
 "opp": {},
 "turns": 3
+},
+{
+"card": "Echo Wisp",
+"me": {
+"m": [
+"Lumen, Echo Spirit"
+],
+"hand": [
+"Echo Wisp"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Echo Lantern Keeper",
+"me": {
+"hand": [
+"Echo Lantern Keeper"
+],
+"deck": [
+"Echo Call",
+"Echo Veil"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Echo Twin",
+"me": {
+"hand": [
+"Lumen, Echo Spirit",
+"Echo Twin"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Echo Messenger",
+"me": {
+"m": [
+"Echo Messenger"
+],
+"gy": [
+"Lumen, Echo Spirit"
+]
+},
+"opp": {
+"m": [
+"Blue-Eyes White Dragon"
+]
+},
+"turns": 4
+},
+{
+"card": "Echo Sentinel",
+"me": {
+"m": [
+"Echo Wisp"
+],
+"hand": [
+"Echo Sentinel"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Echo Dawn Rite",
+"me": {
+"m": [
+"Lumen, Echo Spirit"
+],
+"hand": [
+"Echo Dawn Rite",
+"Lumen, Echo Aurora"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Lumen, Echo Aurora",
+"me": {
+"m": [
+"Lumen, Echo Spirit"
+],
+"hand": [
+"Echo Dawn Rite",
+"Lumen, Echo Aurora"
+]
+},
+"opp": {
+"hand": [
+"Pot of Greed",
+"Dark Hole"
+]
+},
+"turns": 4,
+"pass": "placed"
+},
+{
+"card": "Lumen, Echo Nova",
+"me": {
+"m": [
+"Lumen, Echo Spirit",
+"Lumen, Echo Comet"
+],
+"hand": [
+"Polymerization"
+],
+"gy": [
+"Lumen, Echo Zenith"
+],
+"extra": [
+"Lumen, Echo Nova"
+]
+},
+"opp": {
+"m": [
+"Vorse Raider"
+],
+"st": [
+"Mirror Force"
+]
+},
+"turns": 3,
+"pass": "placed"
+},
+{
+"card": "Echo Bond",
+"me": {
+"m": [
+"Lumen, Echo Spirit"
+],
+"hand": [
+"Echo Bond"
+]
+},
+"opp": {
+"m": [
+"Blue-Eyes White Dragon"
+]
+},
+"turns": 4
+},
+{
+"card": "Hall of Echoes",
+"me": {
+"hand": [
+"Hall of Echoes",
+"Lumen, Echo Spirit",
+"Echo Lantern Keeper"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Echo Merge",
+"me": {
+"m": [
+"Lumen, Echo Spirit"
+],
+"hand": [
+"Echo Merge"
+],
+"deck": [
+"Vorse Raider"
+],
+"extra": [
+"Lumen, Echo Chorus"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Echo Memory",
+"me": {
+"hand": [
+"Echo Memory"
+],
+"gy": [
+"Echo Call",
+"Echo Veil",
+"Lumen, Echo Spirit"
+]
+},
+"opp": {},
+"turns": 3
+},
+{
+"card": "Echo Return",
+"me": {
+"m": [
+"Lumen, Echo Aurora"
+],
+"gy": [
+"Lumen, Echo Spirit"
+],
+"st": [
+"Echo Return"
+]
+},
+"opp": {
+"m": [
+"Blue-Eyes White Dragon"
+]
+},
+"turns": 4
+},
+{
+"card": "Echo Silence",
+"me": {
+"m": [
+[
+"Lumen, Echo Spirit",
+"def"
+]
+],
+"st": [
+"Echo Silence"
+]
+},
+"opp": {
+"hand": [
+"Pot of Greed",
+"Mystical Space Typhoon"
+]
+},
+"turns": 4
 }
 ]

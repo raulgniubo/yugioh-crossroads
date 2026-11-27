@@ -366,7 +366,7 @@ func _thumb(id: int, k: int, owned: bool, is_new: bool) -> Control:
 	tr.pivot_offset = Vector2(60, 87)
 	tr.tooltip_text = str(CardData.get_card(id).get("name", ""))
 	holder.add_child(tr)
-	Foil.apply(tr, CardData.rarity(id))
+	Foil.apply(tr, CardData.rarity(id), id)
 	var r := CardData.rarity(id)
 	var tag := UITheme.label("NEW!" if is_new else (Loc.t(Foil.NAMES[r]) if r > 0 else ("" if owned else "")), 15,
 			Color("ffd23a") if is_new else Foil.COLORS[r], UITheme.semi_font())

@@ -154,7 +154,7 @@ func _run() -> void:
 		tr.position = center - small / 2.0
 		tr.scale = Vector2(0.2, 0.2)
 		tr.modulate.a = 0.0
-		Foil.apply(tr, CardData.rarity(id))
+		Foil.apply(tr, CardData.rarity(id), id)
 		add_child(tr)
 		tr.custom_minimum_size = small
 		tr.size = small
@@ -202,7 +202,7 @@ func _run() -> void:
 		t1.tween_property(holder, "scale:x", 0.0, 0.1)
 		await t1.finished
 		tr2.texture = Cards.get_face(id2)
-		Foil.apply(tr2, rr)
+		Foil.apply(tr2, rr, id2)
 		var t2 := create_tween()
 		t2.tween_property(holder, "scale:x", 1.0, 0.12)
 		var at := holder.position + big / 2.0

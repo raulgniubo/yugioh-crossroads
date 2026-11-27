@@ -17,13 +17,14 @@ function s.initial_effect(c)
 	c:RegisterEffect(e1)
 end
 s.listed_names={99200001}
-local LUMEN={99200001,99200002,99200003,99200004,99200005}
+local SET_LUMEN=0xfe0
+local SET_ECHO=0xfe1
 function s.cost(e,tp,eg,ep,ev,re,r,rp,chk)
 	if chk==0 then return e:GetHandler():CheckRemoveOverlayCard(tp,1,REASON_COST) end
 	e:GetHandler():RemoveOverlayCard(tp,1,1,REASON_COST)
 end
 function s.spfilter(c,e,tp)
-	return c:IsCode(table.unpack(LUMEN)) and c:IsCanBeSpecialSummoned(e,0,tp,false,false)
+	return c:IsSetCard(SET_LUMEN) and c:IsCanBeSpecialSummoned(e,0,tp,false,false)
 end
 function s.sptg(e,tp,eg,ep,ev,re,r,rp,chk)
 	if chk==0 then return Duel.GetLocationCount(tp,LOCATION_MZONE)>0

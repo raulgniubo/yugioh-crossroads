@@ -9,10 +9,11 @@ function s.initial_effect(c)
 	e1:SetOperation(s.activate)
 	c:RegisterEffect(e1)
 end
-local LUMEN={99200001,99200002,99200003,99200004,99200005}
---Add 1 "Lumen" monster from your Deck to your hand
+local SET_LUMEN=0xfe0
+local SET_ECHO=0xfe1
+--Add 1 "Echo" monster from your Deck to your hand
 function s.filter(c)
-	return c:IsCode(table.unpack(LUMEN)) and c:IsMonster() and c:IsAbleToHand()
+	return c:IsSetCard(SET_ECHO) and c:IsMonster() and c:IsAbleToHand()
 end
 function s.target(e,tp,eg,ep,ev,re,r,rp,chk)
 	if chk==0 then return Duel.IsExistingMatchingCard(s.filter,tp,LOCATION_DECK,0,1,nil) end

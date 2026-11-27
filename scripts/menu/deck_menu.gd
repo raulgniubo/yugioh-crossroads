@@ -498,7 +498,7 @@ func _tile(id: int, n: int, lacking := 0) -> Control:
 		miss.add_child(UITheme.label(Loc.t("missing %d") % lacking, 14, Color.WHITE, UITheme.semi_font()))
 		tr.add_child(miss)
 	else:
-		Foil.apply(tr, CardData.rarity(id))
+		Foil.apply(tr, CardData.rarity(id), id)
 	if n > 1:
 		var badge := PanelContainer.new()
 		var bsb := UITheme.panel_box(Color(0.032, 0.058, 0.125, 0.94), 9, Color(UITheme.GOLD, 0.9))

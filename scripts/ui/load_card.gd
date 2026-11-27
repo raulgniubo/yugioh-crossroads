@@ -106,7 +106,7 @@ func _layout() -> void:
 	tip.position = Vector2(110, h - 112)
 	tip.size = Vector2(w * 0.6, 60)
 	var ld := get_node("loading") as Label
-	ld.position = Vector2(w - 260, h - 104)
+	ld.position = Vector2(w - 226, h - 104)      # (0.80.4: clear of the ring, which grows a little as it turns)
 	if _ring != null and is_instance_valid(_ring):
 		_ring.position = Vector2(w - 296, h - 88) - Vector2(42, 42)
 

@@ -12,7 +12,7 @@ const PER_PAGE := 9
 const SPREAD := 18
 const ROWS := 3
 const COLS := 3
-const LUMEN_IDS := [99200001, 99200002, 99200003, 99200004, 99200005, 99200011, 99200012, 99200013]
+const LUMEN_IDS := CardData.LUMEN_CARDS
 const SPEED_IDS := CardData.SPEED_SPELLS
 
 var _sets: Array = []            # [{key, name, color, ids, group}]
@@ -143,7 +143,8 @@ func _build_data() -> void:
 	for id in LUMEN_IDS:
 		if not CardData.get_card(id).is_empty():
 			lumen.append(id)
-			_comes_from[id] = ["Story gifts and the Echo Pack"]
+			# (0.81.0) The Echo cards around her are in the pack from the first day; all of them are in her decks.
+			_comes_from[id] = ["The Echo Pack and Lumen's decks in the deck shops"] if id in CardData.ECHO_SUPPORT else ["Story gifts, the Echo Pack and Lumen's decks in the deck shops"]
 	var speed: Array = []
 	for id in SPEED_IDS:
 		if not CardData.get_card(id).is_empty():
@@ -717,7 +718,7 @@ func _show_card(id: int, st: String, num: int) -> void:
 	_d_unknown.visible = false
 	_d_face.texture = Cards.get_face(id, true)
 	if st == "owned":
-		Foil.apply(_d_face, CardData.rarity(id))
+		Foil.apply(_d_face, CardData.rarity(id), id)
 		_d_face.modulate = Color.WHITE
 	else:
 		_d_face.material = AlbumSlot.gray_material()

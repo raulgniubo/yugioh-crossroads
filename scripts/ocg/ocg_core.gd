@@ -186,10 +186,23 @@ const ORIGINAL_LINES := {
 	99200003: ["Destroy 1 card your opponent controls"],
 	99200004: ["Detach 1: Special Summon a \"Lumen\" monster from your Graveyard"],
 	99200005: ["Destroy 1 card your opponent controls", "Gain 1000 Life Points"],
+	99200006: ["Negate the activation"],
+	99200007: ["Destroy cards your opponent controls"],
+	99200015: ["Return the destroyed \"Lumen\" monster to your hand"],
+	99200016: ["Normal Summon 1 more \"Lumen\" monster", "Gain 500 Life Points"],
+	99200021: ["Special Summon it from your hand", "Draw 1 card"],
+	99200022: ["Add 1 \"Echo\" Spell or Trap from your Deck to your hand"],
+	99200023: ["Special Summon it from your hand or Graveyard"],
+	99200024: ["Add \"Lumen, Echo Spirit\" from your Graveyard to your hand"],
+	99200025: ["Tribute 1 \"Echo\" monster: Special Summon it from your hand"],
 	99100000: ["4 Speed Counters: 800 damage for each Spell in your hand", "7 Speed Counters: draw 1 card", "10 Speed Counters: destroy 1 card on their field"],
 	99199999: ["Destiny Draw: reach for the card you need?", "Destiny Draw: choose the card you draw"],
 }
 const QUICK_ORIGINALS := [99100004, 99100007, 99100012, 99100013, 99100017]
+## The set codes of this game's own families (no real card has them): "Lumen" monsters and "Echo" cards.
+const SET_LUMEN := 0xfe0
+const SET_ECHO := 0xfe1
+const ECHO_BOND := 99200015
 
 
 ## The cards that exist only in this game (your partner and her cards) are in no card
@@ -242,12 +255,21 @@ static func register_originals() -> void:
 		b.put_u32(int(d.get("level", 0)) if kind == "monster" else 0)
 		b.put_u32(int(ATTRS.get(str(d.get("attribute", "")), 0)) if kind == "monster" else 0)
 		b.put_u64(race)
-		b.put_32(int(d.get("atk", 0)) if kind == "monster" else 0)
+		# (Echo Bond counts your bonds: its script reads the number from where a monster's ATK is written.)
+		b.put_32(int(d.get("atk", 0)) if kind == "monster" else (mini(5, StoryProgress.bonds()) if id == ECHO_BOND else 0))
 		b.put_32(int(d.get("def", 0)) if kind == "monster" else 0)
 		b.put_u32(0)
 		b.put_u32(0)
 		b.put_u32(0)
-		b.put_u8(0)
+		# Set codes: every card of Lumen's is an "Echo" card, and her forms are "Lumen" monsters.
+		var sets: Array = []
+		if CardData.LUMEN_FORMS.has(id):
+			sets.append(SET_LUMEN)
+		if CardData.LUMEN_CARDS.has(id):
+			sets.append(SET_ECHO)
+		b.put_u8(sets.size())
+		for sc in sets:
+			b.put_u16(int(sc))
 	op(1, b.data_array)
 	if not _strings.has("card"):
 		_strings["card"] = {}

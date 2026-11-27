@@ -10,8 +10,10 @@ static var _solid: Shader
 
 
 ## Put the foil on a TextureRect (or clear it for commons).
-static func apply(tr: CanvasItem, rarity: int) -> void:
-	if rarity <= 0:
+## `id`: the card, when it is known. Lumen's cards (0.81.0) also get an edge of light that breathes.
+static func apply(tr: CanvasItem, rarity: int, id := 0) -> void:
+	var echo := id != 0 and CardData.LUMEN_CARDS.has(id)
+	if rarity <= 0 and not echo:
 		tr.material = null
 		return
 	if _flat == null:
@@ -20,6 +22,7 @@ static func apply(tr: CanvasItem, rarity: int) -> void:
 shader_type canvas_item;
 uniform float rarity = 1.0;
 uniform float phase = 0.0;
+uniform float echo = 0.0;
 vec3 rainbow(float t) {
 	return 0.5 + 0.5 * cos(6.28318 * (t + vec3(0.0, 0.33, 0.67)));
 }
@@ -34,10 +37,16 @@ void fragment() {
 		tint = vec3(1.0, 0.85, 0.45);
 	}
 	float sparkle = step(0.985, fract(sin(dot(floor(UV * vec2(46.0, 66.0)), vec2(12.9898, 78.233)) + floor(TIME * 3.0)) * 43758.5453));
-	float amount = (rarity > 2.5 ? 0.42 : (rarity > 1.5 ? 0.34 : 0.22));
+	float amount = (rarity > 2.5 ? 0.42 : (rarity > 1.5 ? 0.34 : (rarity > 0.5 ? 0.22 : 0.0)));
 	vec3 col = c.rgb + tint * sheen * amount + tint * sparkle * (rarity > 1.5 ? 0.5 : 0.0);
 	if (rarity > 2.5) {
 		col = mix(col, col * (0.75 + 0.5 * rainbow(UV.y * 1.2 - TIME * 0.2 + phase)), 0.22);
+	}
+	if (echo > 0.5) {
+		// One of Lumen's: light along the card's edge, coming and going slowly.
+		vec2 e = min(UV, 1.0 - UV) * vec2(1.0, 1.457);
+		float rim = 1.0 - smoothstep(0.0, 0.055, min(e.x, e.y));
+		col += vec3(0.45, 0.9, 1.0) * rim * rim * (0.45 + 0.4 * sin(TIME * 2.1 + phase * 6.28318));
 	}
 	COLOR = vec4(col, c.a) * COLOR;
 }
@@ -45,6 +54,7 @@ void fragment() {
 	var m := ShaderMaterial.new()
 	m.shader = _flat
 	m.set_shader_parameter("rarity", float(rarity))
+	m.set_shader_parameter("echo", 1.0 if echo else 0.0)
 	m.set_shader_parameter("phase", randf())
 	tr.material = m
 

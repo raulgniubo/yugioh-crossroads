@@ -31,8 +31,10 @@ function s.initial_effect(c)
 	e4:SetRange(LOCATION_MZONE)
 	e4:SetValue(s.xyzlv)
 	c:RegisterEffect(e4)
+	--She can be the entire Tribute for the Ritual Summon of "Lumen, Echo Aurora"
+	Ritual.AddWholeLevelTribute(c,aux.FilterBoolFunction(Card.IsCode,99200006))
 end
-s.listed_names={99200004}
+s.listed_names={99200004,99200006}
 function s.thfilter(c)
 	return c:IsMonster() and c:IsAttackBelow(1500) and c:IsAbleToHand()
 end

@@ -108,9 +108,49 @@ func setup(id: int, owner := -1) -> void:
 	_front_mat.albedo_texture = face
 	_front_mat.emission_texture = face
 	_front_mat.next_pass = Foil.layer_3d(CardData.rarity(id))
+	_set_echo(CardData.LUMEN_CARDS.has(id))
 	var back := Cards.duel_back(owner)
 	_back_mat.albedo_texture = back
 	_back_mat.emission_texture = back
+
+
+## (0.81.0) Lumen's cards breathe: a soft edge of light round the card, seen from its face only
+## (a card lying face-down, or held with its back to you, shows nothing).
+var _echo: MeshInstance3D
+static var _echo_sh: Shader
+
+func _set_echo(on: bool) -> void:
+	if not on:
+		if _echo != null:
+			_echo.visible = false
+		return
+	if _echo == null:
+		if _echo_sh == null:
+			_echo_sh = Shader.new()
+			_echo_sh.code = """
+shader_type spatial;
+render_mode unshaded, blend_add, cull_back, depth_draw_never, shadows_disabled;
+void fragment() {
+	vec2 d = abs(UV * 2.0 - 1.0);
+	vec2 inner = vec2(0.59, 0.86) / vec2(0.77, 1.04);
+	vec2 o = max(d - inner, vec2(0.0)) / (vec2(1.0) - inner);
+	float away = length(o);
+	float edge = (1.0 - smoothstep(0.0, 1.0, away)) * step(0.0001, away);
+	float pulse = 0.55 + 0.45 * sin(TIME * 2.1);
+	ALBEDO = vec3(0.5, 0.91, 1.0) * edge * edge * 1.5 * pulse;
+}
+"""
+		_echo = MeshInstance3D.new()
+		var q := QuadMesh.new()
+		q.size = SIZE + Vector2(0.18, 0.18)
+		_echo.mesh = q
+		var m := ShaderMaterial.new()
+		m.shader = _echo_sh
+		_echo.material_override = m
+		_echo.position.z = 0.001
+		_echo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(_echo)
+	_echo.visible = true
 
 
 func set_pickable(on: bool) -> void:
@@ -135,6 +175,8 @@ func set_alpha(a: float) -> void:
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA if a < 0.999 else BaseMaterial3D.TRANSPARENCY_DISABLED
 		m.albedo_color.a = a
 	_core.visible = a > 0.5
+	if _echo != null:
+		_echo.visible = a > 0.5 and CardData.LUMEN_CARDS.has(card_id)
 
 
 func flash(amount: float) -> void:

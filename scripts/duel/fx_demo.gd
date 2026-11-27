@@ -49,10 +49,71 @@ static func _mk(st, name: String, owner: int):
 	return c
 
 
+static func _mk_id(st, id: int, owner: int):
+	var c = st._make(id, owner)
+	c.face_up = true
+	return c
+
+
 static func _play(scene, board, st, name: String) -> void:
 	var ME := 0
 	var AI := 1
 	match name:
+		# (0.81.0) Lumen's cards: lumen_summon, lumen_battle, lumen_finish, lumen_field,
+		# lumen_aurora (Ritual), lumen_nova / lumen_chorus (Fusion), lumen_comet (Synchro), lumen_zenith (Xyz)
+		"lumen_summon":
+			await board.anim_summon(ME, _mk_id(st, 99200001, ME), 2, false)
+			await board.hologram(_mk_id(st, 99200001, ME), board.monster_zone_pos(ME, 2))
+		"lumen_battle", "lumen_finish":
+			var la = _mk_id(st, 99200006 if name == "lumen_battle" else 99200007, ME)
+			var lfoe = _mk(st, "Dark Magician", AI)
+			var lca: Card3D = board._new_card(la)
+			lca.transform = Transform3D(board.table_basis(ME, true, true), board.monster_zone_pos(ME, 2) + Vector3(0, 0.02, 0))
+			if name == "lumen_battle":
+				var lcf: Card3D = board._new_card(lfoe)
+				lcf.transform = Transform3D(board.table_basis(AI, true, true), board.monster_zone_pos(AI, 2) + Vector3(0, 0.02, 0))
+				await scene.get_tree().create_timer(0.2).timeout
+				await scene._play([{"type": "attack", "player": ME, "card": la, "target": lfoe},
+					{"type": "battle", "player": ME, "card": la, "target": lfoe, "atk": 2800, "t_atk": 2500, "t_def": 2100, "t_defending": false},
+					{"type": "destroy", "player": AI, "card": lfoe}])
+			else:
+				await scene.get_tree().create_timer(0.2).timeout
+				await scene._play([{"type": "attack", "player": ME, "card": la, "target": null},
+					{"type": "battle", "player": ME, "card": la, "target": null},
+					{"type": "lp", "player": AI, "lp": 0, "delta": -3000}])
+		"lumen_bonds":
+			var lb0 = _mk_id(st, 99200001, ME)
+			var lbc: Card3D = board._new_card(lb0)
+			lbc.transform = Transform3D(board.table_basis(ME, true, true), board.monster_zone_pos(ME, 2) + Vector3(0, 0.02, 0))
+			await scene.get_tree().create_timer(0.2).timeout
+			board.EchoFx.bonds(board, lbc.position, 5)
+			await scene.get_tree().create_timer(1.6).timeout
+		"lumen_field":
+			var hall = _mk_id(st, 99200016, ME)
+			board.set_field_look(FieldLooks.look_for(hall), board.field_pos(ME))
+			scene.hud.field_banner(hall.cname(), "yours", Color("7fe8ff"))
+			scene.hud.set_field_strip(hall, FieldLooks.says(hall), Color("7fe8ff"), "yours")
+			await scene.get_tree().create_timer(6.0).timeout
+		"lumen_aurora", "lumen_nova", "lumen_chorus", "lumen_comet", "lumen_zenith":
+			var how: String = {"lumen_aurora": "ritual", "lumen_nova": "fusion", "lumen_chorus": "fusion", "lumen_comet": "synchro", "lumen_zenith": "xyz"}[name]
+			var lbig: int = {"lumen_aurora": 99200006, "lumen_nova": 99200007, "lumen_chorus": 99200002, "lumen_comet": 99200003, "lumen_zenith": 99200004}[name]
+			var lmats: Array = {"lumen_aurora": [99200001], "lumen_nova": [99200001, 99200003], "lumen_chorus": [99200001, 99200021],
+				"lumen_comet": [99200001, 99200024, 99200021], "lumen_zenith": [99200001, 99200022]}[name]
+			var lms: Array = []
+			var lz := 1
+			for mid in lmats:
+				var lm = _mk_id(st, int(mid), ME)
+				lms.append(lm)
+				var lc3: Card3D = board._new_card(lm)
+				lc3.transform = Transform3D(board.table_basis(ME, true, true), board.monster_zone_pos(ME, lz) + Vector3(0, 0.02, 0))
+				lz += 2 if lmats.size() <= 2 else 1
+			await scene.get_tree().create_timer(0.3).timeout
+			for lm2 in lms:
+				await board.anim_material(ME, lm2, "field", board.monster_zone_pos(ME, 2))
+			var lb = _mk_id(st, lbig, ME)
+			if how == "xyz":
+				lb.overlays = lms.duplicate()
+			await board.anim_special(ME, lb, 2, how, lms)
 		"summon":
 			await board.anim_summon(ME, _mk(st, "Gagaga Magician", ME), 2, false)
 		"set":

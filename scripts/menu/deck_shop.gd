@@ -213,7 +213,7 @@ func _show_tab(t: int) -> void:
 	var here := str(Router.roam.get("district", "")) if get_tree().current_scene and "district" in get_tree().current_scene and "_npcs" in get_tree().current_scene else ""
 	if here != "":
 		var era_here := str(Collection.WORLD_ERA.get(here, ""))
-		_entries = _entries.filter(func(e): return (e["kind"] == "duelist" and str(e["era"]) == era_here) or (e["kind"] == "theme" and Collection.theme_sold_in(str(e["key"]), here)))
+		_entries = _entries.filter(func(e): return (bool(e.get("everywhere", false)) and e["kind"] == want) or (e["kind"] == "duelist" and str(e["era"]) == era_here) or (e["kind"] == "theme" and Collection.theme_sold_in(str(e["key"]), here)))
 	_sel = -1
 	for i in _entries.size():
 		_grid.add_child(_slot(i))
@@ -298,6 +298,8 @@ func _version_buttons(pick: int) -> void:
 		b.size_flags_stretch_ratio = 1.0
 		b.custom_minimum_size = Vector2(0, 88)
 		var title := Loc.t("Competitive") if str(v["version"]) == "full" else Loc.t("Anime")
+		if v.has("title"):
+			title = Loc.t(str(v["title"]))      # (Lumen's decks have names of their own for the three)
 		var nm := Loc.t(str(v["name"]))
 		var sub := nm.get_slice("·", 1).strip_edges() if "·" in nm else ""
 		var owned_v := Collection.owns_deck(str(v["key"]))
@@ -358,8 +360,10 @@ func _show_version(j: int) -> void:
 	_name.add_theme_font_size_override("font_size", nfs)
 	_name.add_theme_color_override("font_color", col.lightened(0.45))
 	var who := str(e["who"])
-	_face.visible = who != "" and Avatars.has_avatar(who)
-	if _face.visible:
+	_face.visible = (who != "" and Avatars.has_avatar(who)) or bool(e.get("lumen", false))
+	if bool(e.get("lumen", false)):
+		_face.texture = LumenSpirit.portrait(self)
+	elif _face.visible:
 		_face.texture = Portraits.get_portrait(who)
 	if str(e["owner"]) != "":
 		_who.text = Loc.t("%s's deck") % Loc.t(str(e["owner"])) + ("   ·   " + Loc.t(str(e["era"])) if str(e["era"]) != "" else "")
@@ -368,6 +372,9 @@ func _show_version(j: int) -> void:
 			_blurb.text = Loc.t("The deck %s played early in the show, card for card.") % Loc.t(str(e["owner"]))
 		elif str(e.get("version", "")) == "anime2":
 			_blurb.text = Loc.t("The deck %s played later in the show, card for card.") % Loc.t(str(e["owner"]))
+		if bool(e.get("lumen", false)):
+			_who.text = Loc.t("%s's deck") % "Lumen" + "   ·   " + Loc.t("Crossroads Original")
+			_blurb.text = Loc.t(str(e["blurb"]))
 	else:
 		_who.text = Loc.t("Theme deck")
 		_blurb.text = Loc.t(str(e["blurb"]))
@@ -408,7 +415,7 @@ func _show_version(j: int) -> void:
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tr.tooltip_text = str(CardData.get_card(pool[k]).get("name", ""))
-		Foil.apply(tr, CardData.rarity(pool[k]))
+		Foil.apply(tr, CardData.rarity(pool[k]), int(pool[k]))
 		_keys.add_child(tr)
 	_refresh()
 
@@ -427,7 +434,7 @@ func _refresh() -> void:
 		_buy.text = Loc.t("%d DP  ·  you need %d more") % [int(e["price"]), int(e["price"]) - Collection.dp]
 	if not mine and int(e.get("stage", 0)) > 0 and Unlocks.stage() < int(e.get("stage", 0)):
 		# (The New Frontier decks, 0.56.0: they open with the end of the story, like their pack.)
-		_buy.text = Loc.t("Locked: opens when you finish the story.")
+		_buy.text = Loc.t(str(e.get("lock_text", "Locked: opens when you finish the story.")))
 		_buy.disabled = true
 	_use.visible = mine
 	var using := Collection.using_origin(key) and Collection.active_deck() == "custom"

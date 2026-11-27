@@ -44,8 +44,39 @@ const CARDS := {
 		"text": "Cannot be Normal Summoned or Set. Must be Special Summoned by \"Echo Resonance\". When it is: destroy 1 card your opponent controls. Once per turn, it is not destroyed by battle. Destroys a monster by battle: gain 1000 Life Points."},
 	99200011: {"name": "Echo Resonance", "frame": "spell",
 		"text": "Tribute 1 \"Lumen, Echo Spirit\" you control that was not Summoned this turn (any, if your Life Points are 2000 or less): Special Summon 1 \"Lumen, Echo Radiant\" from your hand or Deck."},
-	99200012: {"name": "Echo Call", "frame": "spell", "text": "Add 1 \"Lumen\" monster from your Deck to your hand."},
+	99200012: {"name": "Echo Call", "frame": "spell", "text": "Add 1 \"Echo\" monster from your Deck to your hand."},
 	99200013: {"name": "Echo Veil", "frame": "trap", "text": "When an opponent's monster declares an attack: negate the attack. Then, if you control a \"Lumen\" monster, draw 1 card."},
+	# (0.81.0) Two more forms of her, and the cards for a deck built around her. Every one of them is an
+	# "Echo" card and her forms are "Lumen" monsters: the rules engine knows them by set code
+	# (OcgCore.SET_LUMEN / SET_ECHO), so a card that says "Lumen" or "Echo" means these and no other.
+	99200006: {"name": "Lumen, Echo Aurora", "frame": "ritual", "atk": 2800, "def": 2600, "level": 8, "attribute": "LIGHT", "race": "Fairy",
+		"text": "You can Ritual Summon this card with \"Echo Dawn Rite\". Unaffected by your opponent's Spell effects. Once per turn, when your opponent activates a card or effect (Quick Effect): you can negate the activation."},
+	99200007: {"name": "Lumen, Echo Nova", "frame": "fusion", "atk": 2800, "def": 2800, "level": 10, "attribute": "LIGHT", "race": "Fairy",
+		"text": "1 \"Lumen\" monster + 1 Fusion, Synchro or Xyz Monster\nGains 400 ATK for each kind of monster in your Graveyard among Ritual, Fusion, Synchro and Xyz. Fusion Summoned: you can target up to that many cards your opponent controls; destroy them."},
+	99200014: {"name": "Echo Dawn Rite", "frame": "spell", "race": "Ritual", "st": "ritual",
+		"text": "This card is used to Ritual Summon \"Lumen, Echo Aurora\". You must also Tribute monsters from your hand or field whose total Levels equal 8 or more. \"Lumen, Echo Spirit\" can be the entire Tribute."},
+	99200015: {"name": "Echo Bond", "frame": "spell", "race": "Continuous", "st": "continuous",
+		"text": "\"Lumen\" monsters you control gain 300 ATK, and 100 more for every bond you have made. Once per turn, if a \"Lumen\" monster you control is destroyed: you can return it to your hand (or Extra Deck)."},
+	99200016: {"name": "Hall of Echoes", "frame": "spell", "race": "Field", "st": "field",
+		"text": "LIGHT Fairy monsters you control gain 300 ATK. During your Main Phase, you can Normal Summon 1 \"Lumen\" monster in addition to your Normal Summon/Set. During your End Phase, if you control a \"Lumen\" monster: gain 500 Life Points."},
+	99200017: {"name": "Echo Merge", "frame": "spell",
+		"text": "Fusion Summon 1 \"Lumen\" Fusion Monster from your Extra Deck, using monsters from your hand or field as material. If you use a \"Lumen, Echo Spirit\" you control as material, you can also use 1 monster from your Deck."},
+	99200018: {"name": "Echo Memory", "frame": "spell", "race": "Quick-Play", "st": "quick-play",
+		"text": "Target up to 3 \"Echo\" cards in your Graveyard: shuffle them into the Deck, then draw 1 card. You can only activate 1 \"Echo Memory\" per turn."},
+	99200019: {"name": "Echo Return", "frame": "trap",
+		"text": "When a \"Lumen\" monster you control is destroyed: Special Summon 1 \"Lumen\" monster with a different name from your Graveyard."},
+	99200020: {"name": "Echo Silence", "frame": "trap", "race": "Counter", "st": "counter",
+		"text": "If you control a \"Lumen\" monster, when your opponent activates a Spell/Trap Card: negate the activation, and if you do, destroy it."},
+	99200021: {"name": "Echo Wisp", "frame": "effect", "atk": 300, "def": 300, "level": 1, "attribute": "LIGHT", "race": "Fairy",
+		"text": "If you control a \"Lumen\" monster: you can Special Summon this card from your hand. If this card is used as material for the Summon of a \"Lumen\" monster: draw 1 card. You can only use each effect of \"Echo Wisp\" once per turn."},
+	99200022: {"name": "Echo Lantern Keeper", "frame": "effect", "atk": 1600, "def": 1200, "level": 4, "attribute": "LIGHT", "race": "Fairy",
+		"text": "Normal Summoned: add 1 \"Echo\" Spell or Trap from your Deck to your hand. You can only use this effect of \"Echo Lantern Keeper\" once per turn."},
+	99200023: {"name": "Echo Twin", "frame": "effect", "atk": 1400, "def": 1800, "level": 4, "attribute": "LIGHT", "race": "Fairy",
+		"text": "When \"Lumen, Echo Spirit\" is Normal or Special Summoned to your field: you can Special Summon this card from your hand or Graveyard (if from the Graveyard, banish it when it leaves the field). You can only use this effect of \"Echo Twin\" once per turn."},
+	99200024: {"name": "Echo Messenger", "frame": "effect", "atk": 1200, "def": 1000, "level": 3, "attribute": "LIGHT", "race": "Fairy",
+		"text": "If this card is sent to the Graveyard: you can add 1 \"Lumen, Echo Spirit\" from your Graveyard to your hand. You can only use this effect of \"Echo Messenger\" once per turn."},
+	99200025: {"name": "Echo Sentinel", "frame": "effect", "atk": 2100, "def": 2400, "level": 6, "attribute": "LIGHT", "race": "Fairy",
+		"text": "You can Special Summon this card (from your hand) by Tributing 1 \"Echo\" monster. Your opponent cannot target \"Lumen\" monsters you control with card effects."},
 	# ---------------------------------------------------------------- Yugi
 	46986414: {"name": "Dark Magician", "frame": "normal", "atk": 2500, "def": 2100, "level": 7, "attribute": "DARK", "race": "Spellcaster"},
 	70781052: {"name": "Summoned Skull", "frame": "normal", "atk": 2500, "def": 1200, "level": 6, "attribute": "DARK", "race": "Fiend"},
@@ -176,11 +207,22 @@ const MIN_DECK := 40
 ## carry the Crossroads mark on their face and in every card list.
 const ORIGINALS := [99200001, 99200002, 99200003, 99200004, 99200005, 99200011, 99200012, 99200013,
 	99100001, 99100002, 99100003, 99100004, 99100005, 99100006, 99100007, 99100008, 99100009, 99100010,
-	99100011, 99100012, 99100013, 99100014, 99100015, 99100016, 99100017, 99100018, 99100019, 99100020, 99100021, 99100022]
+	99100011, 99100012, 99100013, 99100014, 99100015, 99100016, 99100017, 99100018, 99100019, 99100020, 99100021, 99100022,
+	99200006, 99200007, 99200014, 99200015, 99200016, 99200017, 99200018, 99200019, 99200020, 99200021, 99200022, 99200023, 99200024, 99200025]
+## Every card of Lumen's, her forms first (the album, the deck editor and the card finder list these).
+const LUMEN_CARDS := [99200001, 99200002, 99200003, 99200004, 99200005, 99200006, 99200007,
+	99200011, 99200012, 99200013, 99200014, 99200015, 99200016, 99200017, 99200018, 99200019, 99200020,
+	99200021, 99200022, 99200023, 99200024, 99200025]
+## Her forms: "Lumen" monsters to the rules (the rest of LUMEN_CARDS are "Echo" cards only).
+const LUMEN_FORMS := [99200001, 99200002, 99200003, 99200004, 99200005, 99200006, 99200007]
+## The cards around her that the Echo Pack holds from the first day (0.81.0): nothing of the story
+## is given away by them. Her forms and the cards that call them still come with the story.
+const ECHO_SUPPORT := [99200021, 99200022, 99200023, 99200024, 99200025, 99200015, 99200016, 99200017, 99200018, 99200019, 99200020]
 ## Lumen's cards, and the story stage (see StoryProgress.stage) that hands each one over:
 ## [stage, id, copies]. Stage 1 is the prologue done, 2 Domino, 3 the Academy, 4 the 5D's
 ## worlds, 5 Heartland.
-const LUMEN_GIFTS := [[1, 99200012, 2], [1, 99200013, 2], [2, 99200011, 2], [2, 99200005, 1], [3, 99200002, 1], [4, 99200003, 1], [5, 99200004, 1]]
+const LUMEN_GIFTS := [[1, 99200012, 2], [1, 99200013, 2], [2, 99200011, 2], [2, 99200005, 1], [3, 99200002, 1], [4, 99200003, 1], [5, 99200004, 1],
+	[3, 99200006, 1], [3, 99200014, 2], [5, 99200007, 1]]
 const LUMEN_TUNER_STAGE := 4
 
 
@@ -221,6 +263,21 @@ const DECKS := {
 			91152256: 2, 48305365: 2, 69140098: 2, 14898066: 2, 41392891: 2, 32452818: 2, 15025844: 2,
 			28279543: 2, 40640057: 2, 70781052: 1,
 			55144522: 1, 66788016: 1, 12607053: 1, 84257639: 1},
+	},
+	# (0.81.0) Two bigger decks of hers, sold beside the first one in the deck shops: the Echo
+	# monsters and the cards around her, then every form she has.
+	"echo_2": {
+		"name": "Lumen's Echoes",
+		"cards": {99200001: 3, 99200021: 3, 99200022: 3, 99200023: 3, 99200024: 2, 99200025: 2, 99200005: 1, 95956346: 2, 37742478: 1,
+			99200012: 3, 99200011: 2, 99200015: 2, 99200016: 2, 99200018: 2, 55144522: 1,
+			99200013: 3, 99200019: 2, 99200020: 2, 97077563: 1},
+	},
+	"echo_3": {
+		"name": "Lumen's Dawn",
+		"cards": {99200001: 3, 99200021: 3, 99200022: 3, 99200023: 3, 99200024: 2, 99200025: 2, 99200005: 1, 99200006: 2, 37742478: 1,
+			99200012: 3, 99200011: 1, 99200014: 2, 99200017: 2, 99200015: 1, 99200016: 2, 99200018: 2,
+			99200013: 2, 99200019: 2, 99200020: 2, 97077563: 1},
+		"extra": {99200002: 2, 99200003: 2, 99200004: 2, 99200007: 1},
 	},
 	"kairo": {
 		"name": "Stolen Echo",
@@ -1310,12 +1367,13 @@ static func legend_deck(deck_key: String, plain := false) -> Array[int]:
 	var counts: Dictionary = DECKS[deck_key]["cards"].duplicate()
 	var monsters := []
 	for id in counts:
-		if not (CARDS.get(id, {}).get("frame", "") in ["spell", "trap"]):
+		if str(get_card(id).get("kind", "monster")) == "monster":
 			monsters.append(id)
-	monsters.sort_custom(func(a, b): return CARDS[a].get("atk", 0) < CARDS[b].get("atk", 0))
+	# (get_card, not CARDS: Lumen's bigger decks have cards from the card database in them, 0.81.0)
+	monsters.sort_custom(func(a, b): return int(get_card(a).get("atk", 0)) < int(get_card(b).get("atk", 0)))
 	var removed := 0
 	for id in monsters:
-		while removed < 6 and counts[id] > 0 and CARDS[id].get("level", 4) <= 4:
+		while removed < 6 and counts[id] > 0 and int(get_card(id).get("level", 4)) <= 4:
 			counts[id] -= 1
 			removed += 1
 	var strong := monsters.duplicate()

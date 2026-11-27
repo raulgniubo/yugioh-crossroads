@@ -33,7 +33,7 @@ const PACKS := [
 	{"key": "Vault", "tab": 0, "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
 	{"key": "frontier", "tab": 0, "name": "New Frontier", "color": Color("4ad8c8"), "price": 200, "blurb": "Cards from after the four shows, picked for this world: hand traps, removal and Extra Deck monsters any deck can use, and seven newer families. Opens when you finish the story."},
 	{"key": "legends", "tab": 0, "name": "Monster Legends", "color": Color("e8b04a"), "blurb": "Normal Monsters from every era: hundreds of them, from the classics to the rare big ones."},
-	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen, her forms and the cards around her. Only the ones the story has already handed you, up to three of each."},
+	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen and the Echo cards around her, up to three of each. Her forms join it as the story hands them to you."},
 	{"key": "sylvan", "tab": 1, "name": "Sylvan Grove", "color": Color("5aa04a"), "family": true, "blurb": "The Sylvan plants of the high mountain: they dig through the top of the Deck, send Plants to the Graveyard and grow into the Sylvan High Protector and High Arbiter."},
 	{"key": "heraldic", "tab": 1, "name": "Heraldic Beasts", "color": Color("8a5ac0"), "family": true, "blurb": "The Heraldic Beasts of the coats of arms, the Heraldry spells that copy and return them, and the Heraldry Numbers they build."},
 	{"key": "artifact", "tab": 1, "name": "Artifact Armory", "color": Color("a0b0d0"), "family": true, "blurb": "The Artifacts, LIGHT weapons of the gods that sit face-down as Spells and come out the moment the other side destroys them."},
@@ -156,6 +156,13 @@ const THEME_PRICE := 900
 ## (0.80.0) The decks from the show cost less than the Competitive one: early show, later show
 ## (700 and 950 DP next to a 1200 DP duelist's deck; 500 and 700 next to a 900 DP theme deck).
 const ANIME_SHARE := {"anime1": 0.58, "anime2": 0.79}
+## (0.81.0) Lumen's decks in the deck shops: the one she gives you, the one with the Echo cards
+## around her, and the one with every form she has (that one opens when the story has shown them all).
+const LUMEN_DECKS := ["echo", "echo_2", "echo_3"]
+const LUMEN_DECK_TITLES := ["Basic", "Support", "Complete"]
+const LUMEN_DECK_BLURBS := ["Lumen's own deck: hers, and the Echo cards she has given you.",
+	"Her deck grown up: the Echo monsters that follow her, Hall of Echoes, and the Traps that keep her on the field.",
+	"Everything she can become in one deck: Aurora by Ritual, Chorus and Nova by Fusion, Comet by Synchro, Zenith by Xyz."]
 
 
 static func anime_price(version: String, full_price: int) -> int:
@@ -1199,6 +1206,8 @@ func owns_deck(key: String) -> bool:
 
 
 func deck_price(key: String) -> int:
+	if key in LUMEN_DECKS:
+		return anime_price(["anime1", "anime2", "full"][LUMEN_DECKS.find(key)], DECK_PRICE)
 	var an := DeckTiers.anime_owner(key)
 	if not an.is_empty():
 		return anime_price(an[1], deck_price(str(an[0])))
@@ -1351,6 +1360,10 @@ func copy_ready_to_slot(key: String, i: int) -> void:
 func deck_catalog() -> Array:
 	var out: Array = []
 	var seen := {"echo": true}
+	# (0.81.0) Lumen's decks: sold in every world's shop, three versions (see deck_versions).
+	if CardData.has_deck("echo"):
+		out.append({"key": "echo", "name": CardData.deck_name("echo"), "owner": "Lumen", "who": "", "lumen": true, "everywhere": true, "color": Color("2de2e6"),
+			"blurb": "", "art": "", "price": DECK_PRICE, "kind": "duelist", "era": ""})
 	for k in Characters.ORDER:
 		var d: Dictionary = Characters.DATA[k]
 		var dk := str(d.get("deck", ""))
@@ -1373,6 +1386,25 @@ func deck_catalog() -> Array:
 func deck_versions(e: Dictionary) -> Array:
 	var out: Array = []
 	var base := str(e["key"])
+	if base == "echo":
+		for i in LUMEN_DECKS.size():
+			var lk := str(LUMEN_DECKS[i])
+			if not CardData.has_deck(lk):
+				continue
+			var l := e.duplicate()
+			l["key"] = lk
+			l["name"] = CardData.deck_name(lk)
+			l["price"] = deck_price(lk)
+			l["version"] = "lumen%d" % (i + 1)
+			l["title"] = LUMEN_DECK_TITLES[i]
+			l["blurb"] = LUMEN_DECK_BLURBS[i]
+			l["base"] = base
+			if i == 2:
+				# (her forms are the story's to show: the deck with all of them opens after the last one)
+				l["stage"] = 5
+				l["lock_text"] = "Locked: opens when the story has shown you all of her forms."
+			out.append(l)
+		return out
 	if DeckTiers.ANIME.has(base):
 		for i in 2:
 			var ak := str(DeckTiers.ANIME[base][i])
@@ -1401,6 +1433,11 @@ func deck_versions(e: Dictionary) -> Array:
 
 
 func deck_info(key: String) -> Dictionary:
+	if key in LUMEN_DECKS and key != "echo":
+		for v in deck_versions({"key": "echo", "name": CardData.deck_name("echo"), "owner": "Lumen", "who": "", "lumen": true, "everywhere": true,
+				"color": Color("2de2e6"), "blurb": "", "art": "", "price": DECK_PRICE, "kind": "duelist", "era": ""}):
+			if v["key"] == key:
+				return v
 	if key == "echo":
 		return {"key": "echo", "name": CardData.deck_name("echo"), "owner": "Lumen", "who": "player", "color": Color("2de2e6"),
 			"blurb": "Lumen's own deck: hers, and the Echo cards she has given you.", "art": "", "price": 0, "kind": "gift", "era": ""}
@@ -2461,7 +2498,8 @@ func meet(id: int) -> void:
 func lumen_pool(open_only := false) -> Array:
 	var had: Array = record.get("lumen_gifts", [])
 	var out: Array = []
-	for id in [CardData.LUMEN] + had:
+	# (0.81.0: the Echo cards around her are in the pack from the first day; her forms come with the story.)
+	for id in [CardData.LUMEN] + CardData.ECHO_SUPPORT + had:
 		if not out.has(int(id)) and (not open_only or int(owned.get(int(id), 0)) < 3):
 			out.append(int(id))
 	return out
@@ -2473,7 +2511,7 @@ func lumen_copy(forms_first := false) -> int:
 	var open := lumen_pool(true)
 	if open.is_empty():
 		return 0
-	var forms: Array = open.filter(func(id): return CardData.is_extra(int(id)) or int(id) == 99200005)
+	var forms: Array = open.filter(func(id): return CardData.LUMEN_FORMS.has(int(id)) and int(id) != CardData.LUMEN)
 	var from: Array = forms if forms_first and not forms.is_empty() else open
 	var id: int = int(from[randi() % from.size()])
 	owned[id] = int(owned.get(id, 0)) + 1
@@ -2583,7 +2621,7 @@ func open_packs(era: String, n: int) -> Array:
 		if n != 1 or dp < price:
 			return []
 		if lumen_pool(true).is_empty():
-			Router.toast(Loc.t("You hold three of every card of Lumen's that the story has given you so far."))
+			Router.toast(Loc.t("You hold three of every card of Lumen's that the Echo Pack has for now."))
 			return []
 		dp -= price
 		var got: Array = []

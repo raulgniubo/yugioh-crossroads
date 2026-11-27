@@ -27,7 +27,7 @@ var _to_side := false
 var _race := ""           # monster Type filter ("" = any)
 var _addable := false     # only cards that can still go into this deck
 var _grid_empty: Label
-var _all := false         # every card of the game, not only yours (the ones you don't own are greyed)
+var _mine := false        # (0.80.4) only the cards you have; off = every card of the game, yours first, the rest greyed
 const CLASSES := [["", "Any kind"], ["-", "Monsters"], ["normal", "Normal monster"], ["effect", "Effect monster"],
 	["ritual", "Ritual monster"], ["fusion", "Fusion"], ["synchro", "Synchro"], ["xyz", "Xyz"], ["tuner", "Tuner"],
 	["-", "Spells"], ["s:normal", "Normal Spell"], ["s:quick-play", "Quick-Play Spell"], ["s:continuous", "Continuous Spell"],
@@ -514,18 +514,18 @@ func _ready() -> void:
 	foot.add_theme_constant_override("h_separation", 18)
 	foot.add_theme_constant_override("v_separation", 4)
 	col.add_child(foot)
-	var all_t := CheckButton.new()
-	all_t.text = Loc.t("Every card in the game")
-	all_t.add_theme_font_size_override("font_size", 15)
-	all_t.tooltip_text = Loc.t("Also shows the cards you don't have yet, greyed. You can put them in a deck to plan it; the deck can be dueled with once you have them all. A search always looks through every card.")
+	# (0.80.4, Raul) Every card of the game is listed by default, like Master Duel: yours first, the
+	# ones you don't have greyed (you can still plan a deck with them). This switch narrows it to yours.
+	var mine_t := CheckButton.new()
+	mine_t.text = Loc.t("Only cards I have")
+	mine_t.add_theme_font_size_override("font_size", 15)
+	mine_t.tooltip_text = Loc.t("Shows only the cards in your collection. Off: every card of the game, yours first and the ones you don't have yet greyed.")
 	for cn in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color"]:
-		all_t.add_theme_color_override(cn, UITheme.GOLD)
-	all_t.toggled.connect(func(on):
-		_all = on
+		mine_t.add_theme_color_override(cn, UITheme.GOLD)
+	mine_t.toggled.connect(func(on):
+		_mine = on
 		_rebuild_grid())
-	foot.add_child(all_t)
-	if "--builder-all" in OS.get_cmdline_user_args():
-		all_t.button_pressed = true      # (dev: pictures)
+	foot.add_child(mine_t)
 	var can_t := CheckButton.new()
 	can_t.text = "Only what I can add"
 	can_t.add_theme_font_size_override("font_size", 15)
@@ -614,30 +614,33 @@ func _refresh_all() -> void:
 ## The cards in the order picked. Each card's key is worked out once (a sort that looked every
 ## card up again for every comparison took seconds over the whole game). `owned_first`: yours come
 ## before the ones you don't have yet.
-func _sorted(ids: Array, owned_first := false) -> Array:
-	var keys := {}
+## (0.81.0) The list is every card of the game by default now, so this runs over 12,700 cards each
+## time: one sort key per card and the engine's own sort (it was a comparison written here, called
+## 170,000 times). `info`: card data already read by the caller, by id.
+func _sorted(ids: Array, owned_first := false, info := {}) -> Array:
+	var rows: Array = []
+	rows.resize(ids.size())
+	var n := 0
 	for id in ids:
-		var d := CardData.get_card(id)
+		var d: Dictionary = info[id] if info.has(id) else CardData.get_card(id)
 		var k := 0 if d["kind"] == "monster" else (1 if d["kind"] == "spell" else 2)
 		var own := 0 if (not owned_first or Collection.count(id) > 0) else 1
 		var nm := str(d.get("name", ""))
 		match _sort:
 			3:
-				keys[id] = [own, 0, 0, nm]
+				rows[n] = [own, 0, 0, nm, id]
 			2:
-				keys[id] = [own, -int(d.get("level", 0)), k, nm]
+				rows[n] = [own, -int(d.get("level", 0)), k, nm, id]
 			1:
-				keys[id] = [own, -int(d.get("atk", 0)), k, nm]
+				rows[n] = [own, -int(d.get("atk", 0)), k, nm, id]
 			_:
-				keys[id] = [own, k, -int(d.get("atk", 0)), nm]
-	var out := ids.duplicate()
-	out.sort_custom(func(a, b):
-		var ka: Array = keys[a]
-		var kb: Array = keys[b]
-		for i in 3:
-			if ka[i] != kb[i]:
-				return ka[i] < kb[i]
-		return ka[3] < kb[3])
+				rows[n] = [own, k, -int(d.get("atk", 0)), nm, id]
+		n += 1
+	rows.sort()
+	var out: Array = []
+	out.resize(rows.size())
+	for i in rows.size():
+		out[i] = rows[i][4]
 	return out
 
 
@@ -650,11 +653,23 @@ func _rebuild_grid() -> void:
 	_grid_far_n = -1
 	# Yours, or every card of the game (with "Every card in the game", and always when searching:
 	# a card you are looking for is found whether you have it or not; yours come first).
-	var everything := _all or _search != ""
-	var source: Array = Collection.all_cards() if everything else Collection.owned.keys()
+	var everything := not _mine
+	var source: Array = _every_card() if everything else Collection.owned.keys()
 	var keep: Array = []
+	# (What a card is does not change while the game runs: read once, kept for every later look.
+	# Lumen herself is the exception, she grows with your bonds.)
+	if _info_stamp != CardData.EXT.size():
+		_info_stamp = CardData.EXT.size()
+		_info = {}
+	var info := _info
+	info.erase(CardData.LUMEN)
 	for id in source:
-		var d := CardData.get_card(id)
+		var d: Dictionary
+		if info.has(id):
+			d = info[id]
+		else:
+			d = CardData.get_card(id)
+			info[id] = d
 		var fr := str(d.get("frame", ""))
 		var is_extra: bool = fr in ["fusion", "synchro", "xyz"]
 		if _filter == "extra" and not is_extra:
@@ -680,16 +695,22 @@ func _rebuild_grid() -> void:
 		if _addable and not Collection.can_add(id, _to_side, true):
 			continue
 		keep.append(id)
-	var shown := 0
-	for id in _sorted(keep, everything):
-		_grid.add_child(_tile(id))
-		shown += 1
+	# The first screens of tiles are there at once; the rest of a long list follows over the next
+	# frames (a tile is an empty box until it comes near the screen, but 12,700 boxes in one frame
+	# was a hitch you could feel).
+	var order := _sorted(keep, everything, info)
+	var shown := order.size()
+	_grid_gen += 1
+	for i in mini(GRID_FIRST, order.size()):
+		_grid.add_child(_tile(order[i]))
+	if order.size() > GRID_FIRST:
+		_grid_rest(order, _grid_gen)
 	if _owned_l:
 		var copies := 0
 		for k in Collection.owned:
 			copies += int(Collection.owned[k])
 		var total: int = Collection.owned.size()
-		var all_n: int = Collection.all_cards().size()
+		var all_n: int = _every_card().size()      # (with Lumen's cards, which no booster set lists)
 		if everything:
 			_owned_l.text = Loc.t("You own %d of %d cards") % [total, all_n] + "  ·  " + (Loc.t("showing every card") if shown == all_n else Loc.t("showing %d") % shown) + "  ·  " + Loc.t("the grey ones you don't have yet")
 		else:
@@ -697,7 +718,42 @@ func _rebuild_grid() -> void:
 		_owned_l.add_theme_color_override("font_color", UITheme.TEXT if shown == total and not everything else UITheme.GOLD)
 	_grid_empty.visible = shown == 0
 	if shown == 0:
-		_grid_empty.text = Loc.t("No card matches. Try fewer filters.") if everything else Loc.t("None of your cards match. Turn on \"Every card in the game\" to look through all of them.")
+		_grid_empty.text = Loc.t("No card matches. Try fewer filters.") if everything else Loc.t("None of your cards match. Turn off \"Only cards I have\" to look through all of them.")
+
+
+const GRID_FIRST := 240
+const GRID_STEP := 1100
+var _grid_gen := 0
+static var _info := {}
+static var _info_stamp := -1
+
+func _grid_rest(order: Array, gen: int) -> void:
+	var at := GRID_FIRST
+	while at < order.size():
+		await get_tree().process_frame
+		if gen != _grid_gen or not is_inside_tree():
+			return      # (the list was built again meanwhile)
+		for i in range(at, mini(at + GRID_STEP, order.size())):
+			_grid.add_child(_tile(order[i]))
+		at += GRID_STEP
+
+
+## Every card a deck can be built from: the game's whole list, Lumen's cards (the game's own, which
+## no booster set lists) and anything else you hold. (Lumen's cards were missing from the search.)
+var _every: Array = []
+
+func _every_card() -> Array:
+	if _every.is_empty():
+		var seen := {}
+		for id in Collection.all_cards():
+			seen[int(id)] = true
+		for id in CardData.LUMEN_CARDS:
+			if not CardData.get_card(int(id)).is_empty():
+				seen[int(id)] = true
+		for id in Collection.owned.keys():
+			seen[int(id)] = true
+		_every = seen.keys()
+	return _every
 
 
 ## Is this card of the kind picked in the class filter?
@@ -786,7 +842,7 @@ func _fill_tile(holder: Control) -> void:
 	holder.add_child(tr)
 	var have := Collection.count(id) > 0
 	if have:
-		Foil.apply(tr, CardData.rarity(id))
+		Foil.apply(tr, CardData.rarity(id), id)
 	else:
 		tr.material = AlbumSlot.gray_material()
 	var badge := Label.new()
@@ -2053,7 +2109,7 @@ func _refresh_count() -> void:
 func _show(id: int) -> void:
 	var d := CardData.get_card(id)
 	_detail_tex.texture = Cards.get_face(id, true)
-	Foil.apply(_detail_tex, CardData.rarity(id))
+	Foil.apply(_detail_tex, CardData.rarity(id), id)
 	_detail_name.text = str(d.get("name", ""))
 	var lines := []
 	if CardData.is_original(id):

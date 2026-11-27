@@ -6,6 +6,9 @@ extends Node3D
 signal card_clicked(card: Card3D)
 signal card_hovered(card: Card3D, inside: bool)
 
+## (0.81.0) Lumen's cards leave echoes: see EchoFx.
+const EchoFx := preload("res://scripts/duel/echo_fx.gd")
+
 const ZONE_SPACING := 1.3
 const MONSTER_ROW := 1.05
 const SPELL_ROW := 2.35
@@ -640,6 +643,16 @@ func _field_prop(h: Node3D, kind: String, k: float, glow: Color, rng: RandomNumb
 			_fpart(h, _cone(0.42, hgt, 5), _fmat(Color(0.08, 0.05, 0.13)), Vector3(0, hgt * 0.5, 0), Vector3(0, 0, rng.randf_range(-0.1, 0.1)))
 			_fpart(h, _cone(0.1, hgt * 0.5, 4), _fmat(glow, 2.4), Vector3(0, hgt * 0.78, 0))
 			_fpart(h, _ball(0.12), _fmat(glow, 3.0), Vector3(rng.randf_range(-0.5, 0.5), hgt * rng.randf_range(0.4, 0.9), rng.randf_range(-0.5, 0.5)))
+		"echo_pillars":
+			# The Hall of Echoes: tall dark columns with bands of light, and a light held over each.
+			var hgt := rng.randf_range(2.6, 3.8) * k
+			var dark := _fmat(Color(0.05, 0.1, 0.18), 0.0, 0.35)
+			_fpart(h, _cyl(0.22, 0.26, hgt, 12), dark, Vector3(0, hgt * 0.5, 0))
+			_fpart(h, _brick(Vector3(0.7, 0.16, 0.7)), dark, Vector3(0, 0.08, 0))
+			_fpart(h, _brick(Vector3(0.66, 0.14, 0.66)), dark, Vector3(0, hgt + 0.07, 0))
+			for band in 3:
+				_fpart(h, _cyl(0.25, 0.25, 0.05, 12), _fmat(glow, 2.4), Vector3(0, hgt * (0.25 + 0.25 * band), 0))
+			_fpart(h, _ball(0.18), _fmat(glow.lerp(Color.WHITE, 0.4), 3.2), Vector3(0, hgt + 0.5, 0))
 		"pillars":
 			var hgt := rng.randf_range(1.8, 3.0) * k
 			var stone := _fmat(Color(0.93, 0.91, 0.84), 0.0, 0.5)
@@ -1552,12 +1565,16 @@ func anim_summon(p: int, inst, zone: int, set_card: bool) -> void:
 	await _move(c, hover, 0.28, 0.4)
 	if not _orbs.is_empty():
 		await _consume_orbs(to.origin)
+	if EchoFx.is_echo(int(inst.id)):
+		# One of Lumen's: its echoes gather into it before it comes down.
+		await EchoFx.gather(self, c)
 	create_tween().tween_method(c.flash, 1.4, 0.2, Settings.t(0.14))
 	await _wait(0.08)
 	await _dash(c, to, 0.11)
 	_land(c)
 	slam(to.origin, col, 1.0)
 	create_tween().tween_method(c.flash, 1.8, 0.0, Settings.t(0.45))
+	_lumen_bonds(inst, to.origin)
 	await hologram(inst, to.origin)
 
 
@@ -1577,13 +1594,15 @@ func slam(at: Vector3, col: Color, k := 1.0, sideways := false) -> void:
 
 func hologram(inst, at: Vector3, force_big := false) -> void:
 	var big: bool = force_big or int(inst.data.get("level", 0)) >= 7
-	var art := Cards.get_art(inst.id)
+	var art := Cards.get_figure(inst.id)
 	var col: Color = _frame_color(inst)
 	var spr := Sprite3D.new()
 	spr.texture = art
 	spr.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 	spr.shaded = false
 	var h := 3.3 if big else 2.2
+	if int(inst.id) == CardData.LUMEN or int(inst.id) == 99200023:
+		h *= 1.45      # (her living picture has air round her: stand her as tall as the others)
 	spr.pixel_size = h / maxf(1.0, art.get_height())
 	spr.position = at + Vector3(0, h * 0.55, 0)
 	spr.modulate = Color(1.1, 1.2, 1.3, 0.0)
@@ -1599,6 +1618,23 @@ func hologram(inst, at: Vector3, force_big := false) -> void:
 	glow.position = Vector3(0, 0, -0.02)
 	spr.add_child(glow)
 	var beam := _beam(at, big)
+	if EchoFx.is_echo(int(inst.id)):
+		# One of Lumen's: two echoes of it stand either side for a moment and close into it.
+		for sx in [-1.0, 1.0]:
+			var ech := Sprite3D.new()
+			ech.texture = art
+			ech.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+			ech.shaded = false
+			ech.pixel_size = spr.pixel_size
+			ech.modulate = Color(0.5, 0.92, 1.0, 0.0)
+			ech.position = at + Vector3(sx * h * 0.42, h * 0.55, -0.05)
+			add_child(ech)
+			var et := create_tween()
+			et.tween_property(ech, "modulate:a", 0.55, Settings.t(0.2))
+			et.tween_interval(Settings.t(0.12))
+			et.tween_property(ech, "position:x", at.x, Settings.t(0.3)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+			et.parallel().tween_property(ech, "modulate:a", 0.0, Settings.t(0.3))
+			et.tween_callback(ech.queue_free)
 	if big:
 		_ring_fx(at + Vector3(0, 0.05, 0), col, 1.4, 0.0, 0.0)
 		_ring_fx(at + Vector3(0, 0.05, 0), col, 2.2, 0.15, 0.0)
@@ -1764,7 +1800,7 @@ func anim_special(p: int, inst, zone: int, method: String, materials: Array, ori
 		_dim_field(2.3)
 		house(0.6, col, at, 1.2)
 		var flying: Array = materials.filter(func(m): return card_for(m) != null)
-		await SummonFx.play(self, method, at, core, flying)
+		await SummonFx.play(self, method, at, core, flying, EchoFx.summon_look(int(inst.id)))
 	for m in materials:
 		var mc := card_for(m)
 		if mc:
@@ -1815,6 +1851,8 @@ func anim_special(p: int, inst, zone: int, method: String, materials: Array, ori
 		create_tween().tween_method(c.flash, 2.2, 0.0, Settings.t(0.5))
 		if method == "xyz":
 			set_overlays(inst)
+		if EchoFx.is_echo(int(inst.id)):
+			await EchoFx.gather(self, c, 6, 1.1)
 	else:
 		# From where it was: the Graveyard, the hand, a Deck, the banished pile.
 		var start := Transform3D(to.basis * Basis(Vector3.RIGHT, 0.3), core)
@@ -1859,11 +1897,14 @@ func anim_special(p: int, inst, zone: int, method: String, materials: Array, ori
 		orb.trail = from_gy or origin != OcgCore.LOC_HAND
 		orb.visible = orb.trail
 		await _move(c, hover, 0.34, 0.9 if from_gy else 0.5)
+		if EchoFx.is_echo(int(inst.id)):
+			await EchoFx.gather(self, c)
 		await _wait(0.06)
 		await _dash(c, to, 0.11)
 		_land(c)
 		slam(at, lit, 1.25, not attack)
 		create_tween().tween_method(c.flash, 2.0, 0.0, Settings.t(0.45))
+	_lumen_bonds(inst, at)
 	await hologram(inst, at, grand)
 	if grand:
 		cam_release(0.6)
@@ -2149,8 +2190,20 @@ func anim_activate(p: int, inst, zone := 2) -> void:
 	DuelFx.pillar(self, to.origin, teal.lightened(0.3), 0.36, 2.6, 0.6, 0.0, 1.8)
 	DuelFx.sparks(self, to.origin + Vector3(0, 0.1, 0), teal.lightened(0.3), 18, 2.4, 0.85, 0.7, 0.5, 0.04)
 	shake(0.14)
+	if int(inst.id) == OcgCore.ECHO_BOND and state_ref != null:
+		# Echo Bond: your bonds run into every Lumen you control.
+		for m in state_ref.players[p].monsters():
+			var mc := card_for(m)
+			if mc != null and m.face_up and CardData.LUMEN_FORMS.has(int(m.id)):
+				EchoFx.bonds(self, mc.position, maxi(1, StoryProgress.bonds()))
 	await _wait(0.4)
 	c.set_glow(false)
+
+
+## Lumen herself has just arrived: the bonds that make her stronger run into her, one thread each.
+func _lumen_bonds(inst, at: Vector3) -> void:
+	if int(inst.id) == CardData.LUMEN and StoryProgress.bonds() > 0 and bool(inst.face_up if "face_up" in inst else true):
+		EchoFx.bonds(self, at, StoryProgress.bonds())
 
 
 func anim_spell_done(inst) -> void:
@@ -2487,8 +2540,14 @@ func anim_battle(p: int, inst, target) -> void:
 	# (0.60.0) Beat 2: its element crosses the field with it.
 	if show:
 		ElementFx.travel(self, inst, home.origin, goal, tier, BATTLE_DASH[tier])
+	var echoes := EchoFx.is_echo(int(inst.id))
+	if echoes:
+		EchoFx.trail(self, c, BATTLE_DASH[tier] + 0.06)
 	await _dash(c, hit, BATTLE_DASH[tier])
 	StrikeFx.play(self, inst, home.origin, goal)
+	if echoes:
+		# (her echoes land the same blow a moment after her)
+		EchoFx.strikes(self, int(inst.id), Transform3D(home.basis, home.origin + Vector3(0, 0.6, 0)), goal, 2)
 	# Beat 3: it lands.
 	_impact(goal + Vector3(0, 0.15, 0), ATTR_COLORS.get(ElementFx.attr_of(inst), Color("ff8a5c")))
 	if show:
@@ -2553,10 +2612,16 @@ func anim_finisher(p: int, inst, target) -> void:
 	Sfx.play("charge", -3.0, 0.8)
 	var back := Transform3D(Basis(dir.cross(Vector3.UP).normalized(), 0.45) * home.basis, home.origin + Vector3(0, 1.15, 0) - dir * 0.75)
 	await _move(c, back, 0.5, 0.0)
+	var echo_end := EchoFx.is_echo(int(inst.id))
+	if echo_end:
+		# One of Lumen's lands the last blow: every echo she has gathers into it first.
+		await EchoFx.finisher_gather(self, c)
 	await _wait(0.1)
 	# The lunge, in slow motion.
 	if slow_ok:
 		Engine.time_scale = 0.32
+	if echo_end:
+		EchoFx.trail(self, c, 0.24)
 	var orb := DuelFx.orb(self, c.position, col.lightened(0.35), 0.75)
 	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.9) + Vector3(0, 0.3, 0))
 	create_tween().tween_property(orb, "position", hit.origin, Settings.t(0.2)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
@@ -2569,6 +2634,9 @@ func anim_finisher(p: int, inst, target) -> void:
 	StrikeFx.play(self, inst, home.origin, goal)
 	ElementFx.impact(self, inst, home.origin, floor_at, 2)
 	finisher_hit.emit(goal, col)
+	if echo_end:
+		EchoFx.strikes(self, int(inst.id), back, goal, 3)
+		EchoFx.finisher_burst(self, floor_at)
 	DuelFx.glow(self, goal + Vector3(0, 0.5, 0), Color.WHITE, 3.6, 0.55, 1.0, 2.6)
 	for i in 3:
 		DuelFx.ring(self, floor_at, col.lightened(0.15 * i), 0.4, 2.4 + i * 1.4, 0.7 + 0.15 * i, 0.07, 0.08 * i)
@@ -2834,6 +2902,9 @@ func anim_attack(p: int, inst, target) -> void:
 	_battle_shot(p, home.origin, goal)
 	await _move(c, lift, 0.3, 0.0)
 	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.82) + Vector3(0, 0.25, 0))
+	if EchoFx.is_echo(int(inst.id)):
+		EchoFx.trail(self, c, 0.2)
+		EchoFx.strikes(self, int(inst.id), lift, goal, 2)
 	await _move(c, hit, 0.16, 0.15)
 	StrikeFx.play(self, inst, home.origin, goal)
 	_attr_hit(inst, home.origin, goal + Vector3(0, 0.15, 0))
